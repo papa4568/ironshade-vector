@@ -139,7 +139,6 @@ function authoredObjective(location: LocationId, mode: ObjectiveMode): { objecti
       'gravity-stabilization': { objective: 'Calibrate both deck mass trims so pressure shear cannot throw the platform out of alignment.', steps: ['Calibrate the maintenance-deck trim.', 'Calibrate the compressor-crown trim.', 'Hold the platform through the shear window.'] },
       'machinery-recovery': { objective: 'Tag an intact skimmer compressor and separator package before the storm vent cycle returns.', steps: ['Reach both exposed machinery packages.', 'Tag each package with ACT.', 'Clear the maintenance route for extraction.'] },
       'emergency-boarding': { objective: 'Cycle both storm-rated pressure locks and reopen the maintenance route.', steps: ['Cycle the inner storm lock.', 'Cycle the outer maintenance lock.', 'Clear the boarding line before the next vent pulse.'] },
-      'deep-salage': undefined as never,
       'deep-salvage': { objective: 'Tag three skimmer assemblies distributed across unequal-pressure maintenance decks.', steps: ['Tag the intake package.', 'Tag the separator package.', 'Tag the compressor package and clear the deck.'] },
     },
     'ice-mine': {

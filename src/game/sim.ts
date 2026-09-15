@@ -1,4 +1,4 @@
-import { enemyHasProtocol, protocolAimPenalty, protocolAnchorsEnemy, protocolCarriesObjective, protocolIgnoresPressureRetreat, protocolMobilityScale, protocolRewardForEnemy, protocolVacuumImmune, stepEnemyProtocols } from './eliteProtocolRuntime';
+import { protocolAimPenalty, protocolAnchorsEnemy, protocolCarriesObjective, protocolIgnoresPressureRetreat, protocolMobilityScale, protocolRewardForEnemy, protocolVacuumImmune, stepEnemyProtocols } from './eliteProtocolRuntime';
 import type { EnemyCombatClass, EnemyProtocolInstance } from './eliteProtocols';
 
 export type Vec2 = { x: number; y: number };

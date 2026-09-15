@@ -151,7 +151,7 @@ export function generateDirective(campaign: CampaignState, tierInput: number, se
   };
 }
 
-export function buildDirectiveContract(campaign: CampaignState, directive: OperationDirective): Contract {
+export function buildDirectiveContract(_campaign: CampaignState, directive: OperationDirective): Contract {
   const objective = missionObjectiveFor(directive.objectiveMode, directive.location);
   const stats = directiveStats(directive);
   const rewardBase = directive.archetype === 'salvage'

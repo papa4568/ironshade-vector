@@ -181,9 +181,10 @@ assert(profile.allocatedNodes.join('|') === beforeSpecializationNodes, 'Choosing
 profile = setSpecializationOverclock(profile, true);
 assert(profile.specializationOverclock === false, 'Level 15 must not enable the level 16 overclock early.');
 
+const pressureBaselineBuild = deriveCombatBuild({ ...profile, specialization: null, specializationOverclock: false });
 const pressureBuild = deriveCombatBuild(profile);
 assert(pressureBuild.specialization === 'pressure-diver', 'Selected specialization should reach the combat build.');
-assert(pressureBuild.player.maxArmorAdd <= -12, 'Pressure Diver tradeoff should reduce maximum armor by 12 before gear bonuses.');
+assert(pressureBuild.player.maxArmorAdd === pressureBaselineBuild.player.maxArmorAdd - 12, 'Pressure Diver should reduce maximum armor by exactly 12 versus the same equipped loadout.');
 
 assert(frameGenerationForRecovery(55, 14) === 5, 'Operator level 14 must not access Gen VI even at recovery level 55.');
 assert(frameGenerationForRecovery(55, 15) === 6, 'Operator level 15 should access Gen VI at recovery level 55.');

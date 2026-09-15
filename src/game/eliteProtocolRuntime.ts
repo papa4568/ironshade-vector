@@ -2,7 +2,6 @@ import { protocolDefinition, protocolRewardValue, type EnemyProtocolId } from '.
 import type { CombatObject, Enemy, SimState, Vec2 } from './sim';
 
 const clamp = (value: number, minimum: number, maximum: number) => Math.max(minimum, Math.min(maximum, value));
-const norm = (value: Vec2): Vec2 => { const length = Math.hypot(value.x, value.y); return length > 0.0001 ? { x: value.x / length, y: value.y / length } : { x: 0, y: 0 }; };
 
 export function enemyHasProtocol(enemy: Enemy, id: EnemyProtocolId) { return enemy.protocols.some(protocol => protocol.id === id); }
 export function protocolRewardForEnemy(enemy: Enemy) { return enemy.protocols.reduce((total, protocol) => total + protocolRewardValue(protocol), 0); }

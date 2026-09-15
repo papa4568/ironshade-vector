@@ -28,7 +28,7 @@ import {
 import { factionSetDefinition, type EquipmentFaction } from '../game/factionGear';
 import { weaponConfigs, type WeaponId } from '../game/sim';
 import { modifierFamilyFor, recoveryQualityLabel, type ModifierFamily } from '../game/lootQuality';
-import { augmentDefinition, availableAugments, frameIdentityDefinition, resolveFrameIdentity } from '../game/gearDepth';
+import { augmentDefinition, frameIdentityDefinition, resolveFrameIdentity } from '../game/gearDepth';
 import { accessibleAugmentSlots, compatibleAugments, reconstructItem, reconstructionCost, reconstructionGradeCap, reconstructionQualityCap, type ReconstructionAction } from '../game/reconstruction';
 import { resourceLabels, type CampaignState, type ResourceId, type SalvageWallet } from '../game/campaign';
 
