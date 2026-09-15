@@ -1,0 +1,38 @@
+.story-operations { display: grid; gap: 14px; }
+.story-intro { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, .7fr); gap: 14px; }
+.story-brief,.lattice-dossier,.story-arc-card,.story-contract-note { border: 1px solid #2a3b38; border-radius: 13px; background: #0b1514; }
+.story-brief,.lattice-dossier { padding: 16px; }
+.story-brief h2,.lattice-dossier h2,.story-arc-card h2 { margin: 6px 0; color: #cfddd8; }
+.story-brief p,.lattice-dossier p,.story-arc-card p { color: #7f918b; line-height: 1.55; }
+.lattice-meter { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.lattice-meter div { flex: 1; height: 7px; overflow: hidden; border-radius: 999px; background: #172421; }
+.lattice-meter i { display: block; height: 100%; background: #8cae9f; }
+.lattice-meter b { color: #bfcfc9; font-size: 10px; }
+.lattice-findings { display: grid; gap: 7px; margin-top: 10px; }
+.lattice-findings span { padding: 8px 9px; border-left: 2px solid #637c74; background: #0f1b19; color: #82938e; font-size: 10px; line-height: 1.45; }
+.story-arc-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.story-arc-card { padding: 15px; display: flex; flex-direction: column; gap: 9px; }
+.story-arc-card header { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.story-state { border: 1px solid #40544e; border-radius: 999px; padding: 5px 8px; color: #93aaa2; font-size: 8px; letter-spacing: .08em; white-space: nowrap; }
+.story-state.complete { border-color: #617a5f; color: #b6d0a8; }
+.story-state.active { border-color: #836c4e; color: #d4b881; }
+.story-progress { display: flex; gap: 5px; }
+.story-progress i { flex: 1; height: 4px; border-radius: 99px; background: #1a2825; }
+.story-progress i.done { background: #829b8f; }
+.story-choice { margin-top: 4px; padding-top: 10px; border-top: 1px solid #263632; }
+.story-choice > b,.story-choice > span { display: block; }
+.story-choice > b { color: #c9d6d2; font-size: 11px; }
+.story-choice > span { margin-top: 4px; color: #778984; font-size: 9px; line-height: 1.45; }
+.story-choice-options { display: grid; gap: 7px; margin-top: 9px; }
+.story-choice-options button,.story-arc-card > button { border: 1px solid #354640; border-radius: 9px; background: #14201e; color: #c3d1cd; padding: 10px 11px; cursor: pointer; text-align: left; }
+.story-choice-options button b,.story-choice-options button span { display: block; }
+.story-choice-options button span { margin-top: 3px; color: #778984; font-size: 9px; line-height: 1.35; }
+.story-choice-options button small { display: block; margin-top: 5px; color: #b3996b; font-size: 8px; }
+.story-arc-card > button { margin-top: auto; text-align: center; font-weight: 800; }
+.story-arc-card > button.primary { background: #cfdfc6; color: #0c120f; border-color: transparent; }
+.story-contract-note { margin-top: 12px; padding: 11px 12px; border-color: rgba(131,108,78,.7); background: rgba(37,28,18,.62); }
+.story-contract-note b,.story-contract-note span { display: block; }
+.story-contract-note b { color: #d1ba89; font-size: 9px; letter-spacing: .08em; }
+.story-contract-note span { margin-top: 5px; color: #998a70; font-size: 9px; line-height: 1.4; }
+.contract-card.story { border-color: rgba(135,111,76,.7); }
+@media (max-width: 900px) { .story-intro { grid-template-columns: 1fr; } .story-arc-grid { grid-template-columns: 1fr; } }
