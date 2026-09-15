@@ -1,0 +1,327 @@
+/* Mobile combat dock: large primary actions, curved ability fan, broad precision-aim surface. */
+@media (pointer: coarse), (max-width: 900px) {
+  .aim-stick {
+    display: none !important;
+  }
+
+  .move-stick {
+    left: max(14px, env(safe-area-inset-left));
+    bottom: max(14px, env(safe-area-inset-bottom));
+    width: 150px;
+    height: 150px;
+    border-color: rgba(174, 213, 201, 0.34);
+    background: radial-gradient(circle, rgba(92, 132, 121, 0.13), rgba(5, 8, 9, 0.24));
+  }
+
+  .move-stick::after {
+    width: 58px;
+    height: 58px;
+    background: rgba(170, 211, 198, 0.3);
+  }
+
+  .touch-button {
+    z-index: 5;
+    min-width: 52px;
+    min-height: 52px;
+    border-color: rgba(185, 220, 209, 0.44);
+    background: rgba(18, 31, 28, 0.92);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.34);
+    transition: transform 70ms ease, filter 70ms ease, border-color 70ms ease;
+  }
+
+  .touch-button:active:not(:disabled) {
+    transform: scale(0.93);
+    filter: brightness(1.18);
+    border-color: rgba(218, 244, 235, 0.78);
+  }
+
+  .touch-button span,
+  .touch-button small {
+    display: block;
+  }
+
+  .touch-button small {
+    margin-top: 3px;
+    color: #789087;
+    font-size: 6px;
+    letter-spacing: 0.04em;
+  }
+
+  .touch-utility-rail {
+    position: absolute;
+    left: max(24px, calc(env(safe-area-inset-left) + 10px));
+    bottom: max(176px, calc(env(safe-area-inset-bottom) + 176px));
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    pointer-events: none;
+  }
+
+  .touch-utility-rail .touch-button {
+    position: relative;
+    inset: auto;
+    pointer-events: auto;
+  }
+
+  .weapon-cycle {
+    left: auto;
+    right: auto;
+    top: auto;
+    bottom: auto;
+    width: 70px;
+    height: 58px;
+    border-radius: 19px;
+  }
+
+  .weapon-cycle small {
+    color: #9cb7ae;
+  }
+
+  .touch-utility-rail .vent-button {
+    left: auto;
+    right: auto;
+    top: auto;
+    bottom: auto;
+    width: 66px;
+    height: 50px;
+    border-radius: 17px;
+    background: rgba(55, 70, 68, 0.94);
+  }
+
+  .combat-dock {
+    position: absolute;
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    width: 260px;
+    height: 232px;
+    pointer-events: none;
+  }
+
+  .combat-dock::before {
+    content: '';
+    position: absolute;
+    right: -20px;
+    bottom: -28px;
+    width: 246px;
+    height: 214px;
+    border: 1px solid rgba(117, 158, 148, 0.17);
+    border-left-color: transparent;
+    border-bottom-color: rgba(117, 158, 148, 0.08);
+    border-radius: 52% 48% 48% 52%;
+    background: radial-gradient(circle at 82% 84%, rgba(41, 66, 60, 0.22), transparent 61%);
+    pointer-events: none;
+  }
+
+  .combat-dock .touch-button {
+    position: absolute;
+    pointer-events: auto;
+  }
+
+  .touch-ability-fan {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .touch-ability-fan .ability-button {
+    width: 58px;
+    height: 58px;
+    border-radius: 19px;
+    font-size: 9px;
+    background: rgba(17, 34, 30, 0.94);
+  }
+
+  .touch-ability-fan .ability-0 {
+    right: 168px;
+    bottom: 105px;
+  }
+
+  .touch-ability-fan .ability-1 {
+    right: 99px;
+    bottom: 151px;
+  }
+
+  .touch-ability-fan .ability-2 {
+    right: 28px;
+    bottom: 133px;
+  }
+
+  .combat-dock .fire-button {
+    right: 0;
+    bottom: 0;
+    width: 104px;
+    height: 104px;
+    border-width: 2px;
+    border-radius: 50%;
+    border-color: rgba(235, 151, 124, 0.8);
+    background: radial-gradient(circle at 40% 34%, rgba(146, 78, 61, 0.98), rgba(72, 35, 29, 0.98));
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.42), inset 0 0 0 6px rgba(255, 188, 163, 0.04);
+    font-size: 15px;
+  }
+
+  .combat-dock .fire-button small {
+    margin-top: 5px;
+    color: #efc2b2;
+    font-size: 6px;
+  }
+
+  .combat-dock .dodge-button {
+    right: 112px;
+    bottom: 14px;
+    width: 82px;
+    height: 66px;
+    border-radius: 24px;
+    background: rgba(31, 55, 49, 0.96);
+    font-size: 10px;
+  }
+
+  .combat-dock .interact-button {
+    left: auto;
+    right: 112px;
+    top: auto;
+    bottom: 86px;
+    transform: none;
+    width: 82px;
+    height: 48px;
+    border-radius: 18px;
+    background: rgba(38, 91, 75, 0.97);
+  }
+
+  .tutorial-coach {
+    top: max(108px, calc(env(safe-area-inset-top) + 96px));
+    bottom: auto;
+    max-width: min(340px, 72vw);
+  }
+}
+
+@media (pointer: coarse) and (orientation: portrait) {
+  .rotate-note {
+    top: max(72px, calc(env(safe-area-inset-top) + 60px));
+    width: min(300px, 72vw);
+  }
+
+  .combat-dock {
+    right: max(8px, env(safe-area-inset-right));
+    bottom: max(8px, env(safe-area-inset-bottom));
+    width: 210px;
+    height: 300px;
+  }
+
+  .touch-ability-fan .ability-0 {
+    right: 140px;
+    bottom: 132px;
+  }
+
+  .touch-ability-fan .ability-1 {
+    right: 75px;
+    bottom: 184px;
+  }
+
+  .touch-ability-fan .ability-2 {
+    right: 8px;
+    bottom: 160px;
+  }
+
+  .combat-dock .fire-button {
+    width: 96px;
+    height: 96px;
+  }
+
+  .combat-dock .dodge-button {
+    right: 105px;
+    bottom: 12px;
+    width: 76px;
+    height: 62px;
+  }
+
+  .combat-dock .interact-button {
+    right: 108px;
+    bottom: 82px;
+    width: 76px;
+    height: 46px;
+  }
+
+  .tutorial-coach {
+    top: max(132px, calc(env(safe-area-inset-top) + 120px));
+    max-width: 76vw;
+  }
+}
+
+@media (max-height: 500px) {
+  .move-stick {
+    width: 122px;
+    height: 122px;
+  }
+
+  .move-stick::after {
+    width: 48px;
+    height: 48px;
+  }
+
+  .touch-utility-rail {
+    bottom: max(140px, calc(env(safe-area-inset-bottom) + 140px));
+  }
+
+  .weapon-cycle {
+    width: 60px;
+    height: 50px;
+    border-radius: 16px;
+  }
+
+  .touch-utility-rail .vent-button {
+    width: 58px;
+    height: 46px;
+  }
+
+  .combat-dock {
+    width: 246px;
+    height: 184px;
+  }
+
+  .touch-ability-fan .ability-button {
+    width: 50px;
+    height: 50px;
+    border-radius: 16px;
+    font-size: 8px;
+  }
+
+  .touch-ability-fan .ability-0 {
+    right: 154px;
+    bottom: 94px;
+  }
+
+  .touch-ability-fan .ability-1 {
+    right: 96px;
+    bottom: 121px;
+  }
+
+  .touch-ability-fan .ability-2 {
+    right: 36px;
+    bottom: 108px;
+  }
+
+  .combat-dock .fire-button {
+    width: 88px;
+    height: 88px;
+    font-size: 13px;
+  }
+
+  .combat-dock .dodge-button {
+    right: 96px;
+    bottom: 10px;
+    width: 72px;
+    height: 58px;
+  }
+
+  .combat-dock .interact-button {
+    right: 94px;
+    bottom: 72px;
+    width: 74px;
+    height: 44px;
+  }
+
+  .tutorial-coach {
+    top: max(76px, calc(env(safe-area-inset-top) + 66px));
+    max-width: 42vw;
+  }
+}
