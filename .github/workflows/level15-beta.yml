@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Apply strict-validation cleanup
+      - name: Apply beta fixes
         shell: bash
         run: |
           python - <<'PY'
@@ -43,6 +43,10 @@ jobs:
               'src/game/sim.ts': [
                   ("import { enemyHasProtocol, protocolAimPenalty,", "import { protocolAimPenalty,"),
               ],
+              'tests/beta-level15.ts': [
+                  ("const pressureBuild = deriveCombatBuild(profile);\nassert(pressureBuild.specialization === 'pressure-diver', 'Selected specialization should reach the combat build.');\nassert(pressureBuild.player.maxArmorAdd <= -12, 'Pressure Diver tradeoff should reduce maximum armor by 12 before gear bonuses.');",
+                   "const pressureBaselineBuild = deriveCombatBuild({ ...profile, specialization: null, specializationOverclock: false });\nconst pressureBuild = deriveCombatBuild(profile);\nassert(pressureBuild.specialization === 'pressure-diver', 'Selected specialization should reach the combat build.');\nassert(pressureBuild.player.maxArmorAdd === pressureBaselineBuild.player.maxArmorAdd - 12, 'Pressure Diver should reduce maximum armor by exactly 12 versus the same equipped loadout.');"),
+              ],
           }
 
           for filename, pairs in replacements.items():
@@ -59,13 +63,13 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Validate level 15 beta and production build
         run: npm run build
-      - name: Commit validated cleanup
+      - name: Commit validated fixes
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add tsconfig.json src/components/Armory.tsx src/game/campaign.ts src/game/eliteProtocolRuntime.ts src/game/operationDirectives.ts src/game/sim.ts
+          git add tsconfig.json src/components/Armory.tsx src/game/campaign.ts src/game/eliteProtocolRuntime.ts src/game/operationDirectives.ts src/game/sim.ts tests/beta-level15.ts
           if ! git diff --cached --quiet; then
-            git commit -m "Fix strict beta validation findings"
+            git commit -m "Fix beta validation findings"
             git push origin HEAD:beta/level-15-smoke
           fi
