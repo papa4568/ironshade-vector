@@ -270,6 +270,7 @@ function ensureWeaponDetails(pivot: THREE.Group) {
   };
   for (const detail of Object.values(details)) {
     detail.root.visible = false;
+    detail.root.position.y = 1.02;
     pivot.add(detail.root);
   }
   pivot.userData[WEAPON_KEY] = details;
@@ -302,6 +303,7 @@ export function syncOperatorVisual(root: THREE.Group, weaponPivot: THREE.Group, 
   const speed = Math.hypot(player.vx, player.vy);
   const stride = THREE.MathUtils.clamp(speed * 0.012, 0, 1);
   const gait = Math.sin(state.time * (8.5 + stride * 3)) * stride;
+  root.position.y = lowG ? 0.08 + Math.sin(state.time * 2.6) * 0.045 : 0;
 
   rig.shell.color.setHex(faction ? playerFactionColor[faction] : 0x819d93);
   const accentColor = faction === 'heliostat' ? 0xe7a354 : faction === 'longarc' ? 0x79b7d2 : 0x8bc8b6;
@@ -344,6 +346,7 @@ export function syncEnemyVisual(root: THREE.Group, enemy: Enemy, state: SimState
   const speed = Math.hypot(enemy.vx, enemy.vy);
   const sector = sectorAt(state, enemy.x, enemy.y);
   const gravity = sector?.gravity ?? 1;
+  root.position.y = gravity < 0.72 ? 0.04 + Math.sin(state.time * 2.2 + enemy.id) * 0.035 : 0;
   const gait = Math.sin(state.time * 8 + enemy.id) * THREE.MathUtils.clamp(speed * 0.012, 0, 0.72);
 
   rig.leftLeg.rotation.z = gravity < 0.72 ? gait * 0.1 : gait * 0.28;

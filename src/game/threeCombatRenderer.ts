@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Contract } from './campaign';
 import type { EquipmentFaction } from './factionGear';
 import { getWorldSize, type CombatObject, type Enemy, type Player, type SimState, type WeaponId } from './sim';
+import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
 
 const WORLD_SCALE = 0.02;
 const FLOOR_Y = 0;
@@ -178,6 +179,7 @@ export class ThreeCombatRenderer {
     this.playerBody.castShadow = true;
     this.playerBody.receiveShadow = true;
     this.playerRoot.add(this.playerBody);
+    decorateOperator(this.playerRoot);
 
     this.playerHead = new THREE.Mesh(new THREE.SphereGeometry(0.27, 12, 8), new THREE.MeshStandardMaterial({ color: 0xbcc9c4, metalness: 0.55, roughness: 0.28 }));
     this.playerHead.position.y = 1.53;
@@ -208,6 +210,7 @@ export class ThreeCombatRenderer {
   render(state: SimState, width: number, height: number, quality: number, mission: Contract, mobileTargetId: number | null, operatorFaction: EquipmentFaction | null) {
     this.resize(width, height, quality);
     this.ensureEnvironment(state, mission);
+    syncHardSciFiEnvironment(this.environmentRoot, state, mission);
     this.syncSectors(state);
     this.syncObjects(state);
     this.syncPlayer(state, operatorFaction);
@@ -216,6 +219,7 @@ export class ThreeCombatRenderer {
     this.syncHazards(state);
     this.syncEffects(state);
     this.syncBreaches(state);
+    syncHardSciFiBreaches(this.dynamicRoot, state, WORLD_SCALE);
     this.syncDebris(state, quality);
     this.syncCamera(state, mission, width / Math.max(1, height));
     this.renderer.render(this.scene, this.camera);
@@ -293,6 +297,7 @@ export class ThreeCombatRenderer {
 
     this.addPerimeter(world.w, world.h, palette);
     this.addLocationScenery(mission.location, world.w, world.h, palette);
+    buildHardSciFiEnvironment(this.environmentRoot, mission, scaled(world.w), scaled(world.h), palette);
 
     for (const sector of state.sectors) {
       const material = new THREE.MeshBasicMaterial({ color: 0x4a8070, transparent: true, opacity: 0.025, depthWrite: false, side: THREE.DoubleSide });
@@ -437,6 +442,7 @@ export class ThreeCombatRenderer {
   private syncPlayer(state: SimState, operatorFaction: EquipmentFaction | null) {
     const player = state.player;
     this.playerRoot.position.set(scaled(player.x), 0, scaled(player.y));
+    syncOperatorVisual(this.playerRoot, this.weaponPivot, state, operatorFaction);
     const suitColor = operatorFaction ? factionColors[operatorFaction] : 0x8aa89d;
     this.playerBody.material.color.setHex(suitColor);
     this.playerBody.material.emissive.setHex(player.disrupted > 0 ? 0x7655a0 : player.vacuumExposure > 0.55 ? 0x6b8794 : 0x000000);
@@ -449,6 +455,7 @@ export class ThreeCombatRenderer {
     this.weaponPivot.rotation.y = Math.atan2(-player.aim.y, player.aim.x);
     this.muzzleFlash.material.color.setHex(weaponColor);
     this.muzzleFlash.visible = state.weaponFlash > 0;
+    this.muzzleFlash.position.x = hardSciFiMuzzleOffset(this.weaponPivot, 1.45);
     const flashScale = 0.7 + Math.min(1.7, state.weaponFlash * 8);
     this.muzzleFlash.scale.setScalar(flashScale);
 
@@ -481,6 +488,7 @@ export class ThreeCombatRenderer {
     head.position.y = 1.4 * bossScale;
     head.castShadow = true;
     root.add(head);
+    decorateEnemy(root, enemy);
 
     const targetRing = new THREE.Mesh(new THREE.TorusGeometry(0.7 * bossScale, 0.045, 6, 32), new THREE.MeshBasicMaterial({ color: 0xa7eed7, transparent: true, opacity: 0.82, depthWrite: false }));
     targetRing.rotation.x = Math.PI / 2;
@@ -523,6 +531,7 @@ export class ThreeCombatRenderer {
       visual.barRoot.visible = enemy.active && !enemy.dead;
       if (!enemy.active) continue;
       visual.root.position.set(scaled(enemy.x), 0, scaled(enemy.y));
+      syncEnemyVisual(visual.root, enemy, state);
       if (enemy.dead) {
         visual.root.scale.set(1, Math.max(0.16, enemy.deathT * 0.32), 1);
         visual.body.material.opacity = 0.35;
@@ -676,11 +685,11 @@ export class ThreeCombatRenderer {
     const px = scaled(state.player.x);
     const pz = scaled(state.player.y);
     const narrow = aspect < 1.15;
-    const cameraHeight = narrow ? 18.5 : this.coarse ? 16.2 : 14.8;
-    const cameraOffset = narrow ? 13.5 : this.coarse ? 12.2 : 11.2;
+    const cameraHeight = narrow ? 18 : this.coarse ? 14.8 : 12.8;
+    const cameraOffset = narrow ? 13.2 : this.coarse ? 11.2 : 9.8;
     const shake = state.weaponFlash > 0 ? (state.player.currentWeapon === 'rail' ? 0.13 : state.player.currentWeapon === 'breacher' ? 0.08 : 0.025) : 0;
     this.camera.position.set(px + cameraOffset + Math.sin(state.time * 103) * shake, cameraHeight, pz + cameraOffset + Math.cos(state.time * 83) * shake);
-    this.camera.lookAt(px, 0.4, pz);
+    this.camera.lookAt(px + state.player.aim.x * 1.1, 0.62, pz + state.player.aim.y * 1.1);
     this.camera.updateMatrixWorld();
     this.keyLight.position.set(px + 15, 28, pz + 12);
     this.keyLight.target.position.set(px, 0, pz);
