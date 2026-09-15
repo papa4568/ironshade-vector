@@ -240,7 +240,6 @@ export class ThreeCombatRenderer {
   dispose() {
     disposeTree(this.scene);
     this.renderer.dispose();
-    this.renderer.forceContextLoss();
   }
 
   private resize(width: number, height: number, quality: number) {
