@@ -1,0 +1,107 @@
+/* Phase 2: objective clarity and deeper industrial presentation. */
+.objective-steps {
+  display: grid;
+  gap: 6px;
+  margin-top: 9px;
+}
+
+.objective-steps span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #82938d;
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.objective-steps span::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border: 1px solid #728b82;
+  transform: rotate(45deg);
+  background: rgba(105, 143, 131, 0.12);
+}
+
+.objective-progress-chip {
+  position: absolute;
+  left: 50%;
+  top: max(96px, calc(env(safe-area-inset-top) + 82px));
+  z-index: 4;
+  transform: translateX(-50%);
+  min-width: 220px;
+  max-width: min(520px, 62vw);
+  padding: 7px 10px;
+  border: 1px solid rgba(103, 145, 132, 0.44);
+  border-radius: 999px;
+  background: rgba(7, 14, 13, 0.84);
+  color: #91aaa1;
+  font: 800 8px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.08em;
+  text-align: center;
+  pointer-events: none;
+}
+
+.objective-progress-chip.complete {
+  border-color: rgba(130, 180, 145, 0.55);
+  color: #b7d5c2;
+}
+
+@media (pointer: coarse), (max-width: 900px) {
+  .objective-progress-chip {
+    top: max(86px, calc(env(safe-area-inset-top) + 72px));
+    min-width: 0;
+    max-width: 52vw;
+    padding: 6px 8px;
+    font-size: 7px;
+  }
+}
+
+.post-clear-objective {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 6;
+  transform: translate(-50%, -50%);
+  display: grid;
+  gap: 5px;
+  width: min(430px, 72vw);
+  padding: 13px 16px;
+  border: 1px solid rgba(188, 218, 151, 0.58);
+  border-radius: 12px;
+  background: rgba(5, 12, 11, 0.9);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.32);
+  color: #d6e8c3;
+  text-align: center;
+  pointer-events: none;
+}
+
+.post-clear-objective small {
+  color: #94aa9d;
+  font: 800 8px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.1em;
+}
+
+.post-clear-objective b {
+  font-size: 14px;
+}
+
+.post-clear-objective span {
+  color: #b9d297;
+  font: 800 9px/1.25 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.06em;
+}
+
+@media (max-height: 500px) {
+  .objective-progress-chip {
+    top: max(68px, calc(env(safe-area-inset-top) + 58px));
+    max-width: 44vw;
+  }
+
+  .post-clear-objective {
+    top: 42%;
+    width: min(390px, 62vw);
+    padding: 9px 12px;
+  }
+}
