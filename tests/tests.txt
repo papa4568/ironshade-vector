@@ -1,0 +1,26 @@
+# Tests
+
+## Test 1 - Fresh operator onboarding, first recovery, and persistence [sanity]
+Viewport: desktop (1280x800)
+Covers: level 1 profile, starter loadout, field tutorial, fixed-step combat, three weapons, abilities, dodge, ACT objective interaction, safe/deep extraction, first curated recovery, XP/level gain, progression point, local persistence, debrief next-action guidance
+Expected: A fresh player can complete the first operation without a blocked objective; debrief guidance surfaces new loot or unspent points without changing rewards; first recovery is sparse and usable; XP never exceeds the current level-16 cap; and persistence survives reload without resetting unrelated state.
+
+## Test 2 - Levels 2-5 navigation, objectives, buildcraft, Story, Daily, Escalation, and derelicts
+Viewport: desktop (1280x800)
+Covers: Current Priorities shortcuts, Contract Board filters, pressure recovery, grid isolation, gravity stabilization, machinery recovery, emergency boarding, deep salvage, universal extraction-sweep anti-softlock, reserve/support-drone cleanup, Story choice gates, Daily Operation, Escalation I-II, ship upgrades, faction reputation, graded frames, Build Bay search/filter/sort, doctrine collapse, Protocol Lenses, reconstruction, Augments, rare megastructure checkpoints, repeat-contract availability
+Expected: Navigation controls reduce visible clutter without mutating progression; every objective remains completable; extraction still requires live hostiles to be defeated; Build Bay filters/sorts are view-only; Story/Daily/Escalation state remains independent; and reconstruction/resource checks remain transactional.
+
+## Test 3 - Levels 6-9 advanced combat, factions, narrative finales, Black Lattice, and source loot
+Viewport: desktop (1280x800)
+Covers: sticky Ship/Build navigation, Operation Tier scaling, Enhanced/Elite Protocols, environmental events, faction Priority unlocks/set bonuses, named bosses, Singular source priority, Story finales, Black Lattice choice gates, Khepri unlock protection, safe-finale guardrail
+Expected: Sticky management navigation remains usable on long pages; higher tiers use modest Combat Effectiveness plus richer protocols/events rather than indefinite body density; Story/Campaign gates advance exactly once; and faction/Singular identities remain source-correct.
+
+## Test 4 - Levels 10-16 migration, Generation VI, specialization build matrix, Lenses, and source recovery
+Viewport: desktop (1280x800)
+Covers: level-10 Directive unlock, level-11 Dead Reckoning, level-12 Generation V, level-13 Interdiction, level-14 Command Trace, level-15 Vector Specializations and Generation VI, level-16 overclocks, profile-v3/campaign-v1 migration, old/new gear parity, faction doctrines, Protocol Lenses, source-fixed Singulars, Directive T1-12 independence
+Expected: Levels 10-14 remain behaviorally and transactionally intact; existing points/nodes/items are never reset; level 15 introduces optional specialization and rare socket-depth Gen VI rather than raw stat replacement; level 16 adds optional overclocks with visible costs; old gear, faction frames, Singulars, ship upgrades and existing Lenses remain viable.
+
+## Test 5 - Mobile QoL, death/restart, telemetry, offline resilience, and full-save regression
+Viewport: mobile (375x667)
+Covers: sticky Ship/Build tabs, Current Priorities horizontal shortcuts, Contract Board filter scroller, Build Bay tab badges, Equipment Bay full-width idle state, six-slot loadout, stowed-only Ship Storage, specialization cards/overclocks, Protocol Lenses, Gen VI comparison, Reconstruction/Augment transactions, Operations legacy-telemetry migration, legacy replay traces, tab scroll reset, touch combat, portrait warning, death/restart, telemetry opt-in/off, Operations offline fallback, old-save migration, level 1-16 feature persistence
+Expected: Equipment Bay remains touch-safe; mobile combat controls remain usable; failed attempts remain non-transactional; telemetry stays optional; and the same save remains coherent from level 1 through level 16.
