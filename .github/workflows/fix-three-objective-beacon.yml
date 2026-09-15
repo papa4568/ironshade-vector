@@ -14,90 +14,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: fix/three-objective-beacon
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Add 3D objective beacon
+      - name: Apply 3D objective beacon
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          p = Path('src/game/threeCombatRenderer.ts')
-          text = p.read_text()
-
-          old_import = "import type { EquipmentFaction } from './factionGear';\n"
-          new_import = old_import + "import { getNextMissionObjectiveTarget } from './encounters';\n"
-          if "getNextMissionObjectiveTarget" not in text:
-              if old_import not in text: raise SystemExit('Import anchor missing')
-              text = text.replace(old_import, new_import, 1)
-
-          old_field = "  private readonly dynamicRoot = new THREE.Group();\n"
-          new_field = old_field + "  private readonly objectiveBeacon = new THREE.Group();\n"
-          if "private readonly objectiveBeacon" not in text:
-              if old_field not in text: raise SystemExit('Field anchor missing')
-              text = text.replace(old_field, new_field, 1)
-
-          old_scene = "    this.scene.add(this.environmentRoot, this.objectRoot, this.dynamicRoot, this.playerRoot);\n"
-          new_scene = "    this.scene.add(this.environmentRoot, this.objectRoot, this.dynamicRoot, this.playerRoot);\n    this.dynamicRoot.add(this.objectiveBeacon);\n"
-          if "this.dynamicRoot.add(this.objectiveBeacon);" not in text:
-              if old_scene not in text: raise SystemExit('Constructor anchor missing')
-              text = text.replace(old_scene, new_scene, 1)
-
-          old_render = "    this.syncObjects(state);\n    this.syncPlayer(state, operatorFaction);\n"
-          new_render = "    this.syncObjects(state);\n    this.syncObjectiveBeacon(state, mission);\n    this.syncPlayer(state, operatorFaction);\n"
-          if "this.syncObjectiveBeacon(state, mission);" not in text:
-              if old_render not in text: raise SystemExit('Render anchor missing')
-              text = text.replace(old_render, new_render, 1)
-
-          method_anchor = "  private syncPlayer(state: SimState, operatorFaction: EquipmentFaction | null) {\n"
-          method = """  private syncObjectiveBeacon(state: SimState, mission: Contract) {
-    const target = getNextMissionObjectiveTarget(state, mission);
-    if (!target) {
-      this.objectiveBeacon.visible = false;
-      return;
-    }
-
-    if (this.objectiveBeacon.children.length === 0) {
-      const markerMaterial = new THREE.MeshBasicMaterial({ color: 0xc8e87f, transparent: true, opacity: 0.92, depthTest: false, depthWrite: false });
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.065, 8, 48), markerMaterial);
-      ring.rotation.x = Math.PI / 2;
-      ring.position.y = 0.08;
-      ring.renderOrder = 40;
-      ring.name = 'objective-ring';
-
-      const diamond = new THREE.Mesh(new THREE.OctahedronGeometry(0.2, 0), markerMaterial.clone());
-      diamond.position.y = 1.75;
-      diamond.renderOrder = 41;
-      diamond.name = 'objective-diamond';
-
-      const beam = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.022, 0.022, 1.28, 6),
-        new THREE.MeshBasicMaterial({ color: 0xc8e87f, transparent: true, opacity: 0.34, depthTest: false, depthWrite: false }),
-      );
-      beam.position.y = 1.05;
-      beam.renderOrder = 39;
-      beam.name = 'objective-beam';
-      this.objectiveBeacon.add(ring, diamond, beam);
-    }
-
-    this.objectiveBeacon.visible = true;
-    this.objectiveBeacon.position.set(scaled(target.x + target.w / 2), 0, scaled(target.y + target.h / 2));
-    const pulse = 1 + Math.sin(state.time * 6.5) * 0.08;
-    this.objectiveBeacon.scale.setScalar(pulse);
-    const ring = this.objectiveBeacon.getObjectByName('objective-ring');
-    const diamond = this.objectiveBeacon.getObjectByName('objective-diamond');
-    if (ring) ring.rotation.z = state.time * 0.9;
-    if (diamond) diamond.rotation.y = state.time * 1.8;
-  }
-
-"""
-          if "private syncObjectiveBeacon" not in text:
-              if method_anchor not in text: raise SystemExit('Method anchor missing')
-              text = text.replace(method_anchor, method + method_anchor, 1)
-
-          p.write_text(text)
-          PY
+          node scripts/apply-three-objective-beacon.mjs
           git diff --check
       - name: Install dependencies
         run: npm install --no-audit --no-fund
