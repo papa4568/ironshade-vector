@@ -35,7 +35,6 @@ jobs:
                   ("      'deep-salage': undefined as never,\n", ''),
               ],
               'src/game/eliteProtocolRuntime.ts': [
-                  ("import type { CombatObject, Enemy, SimState, Vec2 } from './sim';", "import type { CombatObject, Enemy, SimState } from './sim';"),
                   ("const norm = (value: Vec2): Vec2 => { const length = Math.hypot(value.x, value.y); return length > 0.0001 ? { x: value.x / length, y: value.y / length } : { x: 0, y: 0 }; };\n", ''),
               ],
               'src/game/operationDirectives.ts': [
