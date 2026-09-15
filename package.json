@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "test:beta": "vite build --ssr tests/beta-level15.ts --outDir .beta-dist && node .beta-dist/beta-level15.js",
+    "test:beta": "tsc --noEmit && vite build --ssr tests/beta-level15.ts --outDir .beta-dist && node .beta-dist/beta-level15.js",
     "build": "npm run test:beta && vite build",
     "preview": "vite preview"
   },
