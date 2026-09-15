@@ -1,0 +1,321 @@
+/* Hard-sci-fi space-combat art direction. Presentation only; no gameplay layout/state changes. */
+
+:root {
+  --space-hud-line: rgba(120, 174, 175, .34);
+  --space-hud-bright: #b8d9d5;
+  --space-hud-dim: #66827f;
+  --space-warn: #d36f55;
+  --space-panel: rgba(3, 9, 12, .82);
+  --space-panel-strong: rgba(4, 10, 13, .94);
+}
+
+.app-shell {
+  background:
+    radial-gradient(circle at 78% 12%, rgba(73, 110, 123, .14), transparent 24%),
+    radial-gradient(circle at 15% 84%, rgba(92, 62, 41, .12), transparent 28%),
+    linear-gradient(180deg, #05090b 0%, #020506 100%);
+}
+
+.hub-shell {
+  background:
+    linear-gradient(rgba(98, 137, 140, .022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(98, 137, 140, .022) 1px, transparent 1px);
+  background-size: 42px 42px;
+}
+
+.hub-card,
+.deploy-card {
+  border-radius: 3px;
+  border-color: rgba(74, 100, 103, .48);
+  background:
+    linear-gradient(135deg, rgba(70, 104, 101, .045), transparent 28%),
+    rgba(5, 11, 13, .92);
+  box-shadow:
+    inset 3px 0 0 rgba(103, 152, 148, .08),
+    inset 0 1px 0 rgba(181, 210, 205, .035);
+}
+
+.ship-schematic {
+  border-radius: 3px;
+  background:
+    radial-gradient(circle at 70% 25%, rgba(101, 159, 172, .12), transparent 28%),
+    linear-gradient(145deg, rgba(21, 39, 43, .82), rgba(3, 8, 10, .95));
+}
+
+.game-root {
+  background: #010304;
+  isolation: isolate;
+}
+
+.game-root::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  z-index: 8;
+  pointer-events: none;
+  border: 1px solid rgba(119, 165, 166, .12);
+  clip-path: polygon(
+    0 18px, 18px 0,
+    calc(50% - 90px) 0, calc(50% - 75px) 6px,
+    calc(50% + 75px) 6px, calc(50% + 90px) 0,
+    calc(100% - 18px) 0, 100% 18px,
+    100% calc(100% - 18px), calc(100% - 18px) 100%,
+    18px 100%, 0 calc(100% - 18px)
+  );
+  box-shadow:
+    inset 0 0 90px rgba(0, 0, 0, .28),
+    inset 0 0 20px rgba(83, 136, 142, .03);
+}
+
+.game-root::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(106, 162, 163, .08), transparent 2.2%, transparent 97.8%, rgba(106, 162, 163, .08)),
+    linear-gradient(180deg, rgba(108, 168, 170, .05), transparent 8%, transparent 91%, rgba(108, 168, 170, .04)),
+    repeating-linear-gradient(180deg, rgba(178, 220, 218, .012) 0 1px, transparent 1px 5px);
+  mix-blend-mode: screen;
+  opacity: .68;
+}
+
+.game-canvas {
+  filter: saturate(.9) contrast(1.06);
+}
+
+.hud-top {
+  z-index: 10;
+}
+
+.vitals,
+.mission-card,
+.weapon-hud,
+.desktop-weapons button,
+.action-chip,
+.context-action,
+.combat-alert,
+.status-rack span,
+.boss-hud,
+.objective-progress-chip,
+.mega-objective-chip,
+.post-clear-objective,
+.tutorial-coach {
+  border-radius: 2px !important;
+  backdrop-filter: blur(5px);
+}
+
+.vitals,
+.mission-card,
+.weapon-hud {
+  position: relative;
+  border-color: var(--space-hud-line);
+  background:
+    linear-gradient(135deg, rgba(102, 160, 157, .07), transparent 31%),
+    var(--space-panel);
+  box-shadow:
+    inset 2px 0 0 rgba(121, 187, 182, .12),
+    inset 0 1px 0 rgba(194, 224, 220, .035);
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+}
+
+.vitals::before {
+  content: 'PRESSURE SUIT // BUS A';
+  position: absolute;
+  top: -9px;
+  left: 10px;
+  padding: 0 5px;
+  background: #030709;
+  color: #6e9692;
+  font: 800 7px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .13em;
+}
+
+.mission-card::before {
+  content: 'TACTICAL NAV // LOCAL FRAME';
+  display: block;
+  margin-bottom: 3px;
+  color: #658985;
+  font: 800 7px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .12em;
+}
+
+.weapon-hud::before {
+  content: 'VAC-SAFE FIRE CONTROL';
+  display: block;
+  margin-bottom: 4px;
+  color: #668985;
+  font: 800 7px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .14em;
+}
+
+.bar {
+  height: 5px;
+  border-radius: 0;
+  background:
+    repeating-linear-gradient(90deg, #182323 0 10px, #0b1112 10px 12px);
+}
+
+.bar > i,
+.heat-track i {
+  box-shadow: 0 0 10px currentColor;
+}
+
+.barline {
+  color: #78908d;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.mission-chip {
+  border-radius: 0 !important;
+  border-color: rgba(119, 165, 166, .25) !important;
+  background: rgba(2, 7, 9, .84) !important;
+  color: #88aaa5 !important;
+  letter-spacing: .13em !important;
+}
+
+.desktop-weapons button,
+.action-chip {
+  border-color: rgba(91, 126, 126, .46);
+  background:
+    linear-gradient(90deg, rgba(77, 120, 119, .07), transparent 50%),
+    rgba(3, 9, 11, .9);
+  color: #839a97;
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 7px 100%, 0 calc(100% - 7px));
+}
+
+.desktop-weapons button.selected,
+.action-chip:not(:disabled):hover {
+  border-color: rgba(118, 182, 176, .62);
+  background:
+    linear-gradient(90deg, rgba(77, 135, 129, .19), transparent 62%),
+    rgba(5, 14, 16, .94);
+  color: #c4dbd7;
+}
+
+.weapon-hud strong {
+  color: #d5e4e0;
+  text-shadow: 0 0 16px rgba(111, 175, 170, .16);
+}
+
+.heat-track {
+  border-radius: 0;
+  background: #141e1f;
+}
+
+.combat-alert {
+  border-color: rgba(211, 111, 76, .55);
+  background:
+    linear-gradient(90deg, rgba(130, 50, 34, .22), transparent, rgba(130, 50, 34, .22)),
+    rgba(10, 7, 7, .9);
+  color: #e1a18c;
+  clip-path: polygon(12px 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 12px 100%, 0 50%);
+}
+
+.status-rack span {
+  border-color: rgba(196, 111, 91, .45);
+  background: rgba(22, 7, 8, .85);
+}
+
+.boss-hud {
+  padding: 8px 10px;
+  border: 1px solid rgba(159, 81, 68, .38);
+  background: rgba(9, 5, 6, .76);
+  clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%, 0 10px);
+}
+
+.boss-bars {
+  border-radius: 0;
+}
+
+.touch-stick {
+  border-radius: 50%;
+  border-color: rgba(122, 174, 171, .26);
+  background:
+    radial-gradient(circle, transparent 0 24%, rgba(112, 169, 165, .08) 25% 26%, transparent 27% 48%, rgba(112, 169, 165, .08) 49% 50%, transparent 51%),
+    linear-gradient(90deg, transparent 49%, rgba(112, 169, 165, .08) 50%, transparent 51%),
+    linear-gradient(transparent 49%, rgba(112, 169, 165, .08) 50%, transparent 51%),
+    rgba(3, 10, 12, .35);
+}
+
+.touch-stick::after {
+  background: rgba(111, 170, 165, .18);
+  border-color: rgba(164, 211, 205, .38);
+  box-shadow: 0 0 18px rgba(92, 166, 160, .12);
+}
+
+.touch-button {
+  border-color: rgba(114, 169, 164, .34);
+  background: rgba(5, 15, 17, .86);
+  box-shadow: inset 0 0 16px rgba(87, 149, 145, .06);
+}
+
+.fire-button {
+  background:
+    radial-gradient(circle, rgba(130, 54, 41, .82), rgba(49, 19, 17, .94));
+  border-color: rgba(227, 108, 79, .68);
+  box-shadow:
+    0 0 20px rgba(188, 69, 47, .12),
+    inset 0 0 18px rgba(255, 128, 94, .08);
+}
+
+.context-action,
+.interact-button {
+  border-color: rgba(118, 190, 173, .58);
+  background: rgba(8, 30, 27, .92);
+}
+
+.overlay {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(20, 39, 42, .26), rgba(1, 4, 5, .82));
+}
+
+.overlay-card {
+  border-radius: 2px;
+  border-color: rgba(93, 127, 128, .62);
+  background:
+    linear-gradient(135deg, rgba(88, 135, 133, .06), transparent 28%),
+    #071012;
+  box-shadow:
+    0 24px 100px rgba(0, 0, 0, .72),
+    inset 3px 0 0 rgba(109, 164, 159, .09);
+  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
+}
+
+.overlay-card h2 {
+  letter-spacing: -.035em;
+}
+
+.primary-action,
+.overlay-actions button,
+.extraction-choice button {
+  border-radius: 2px !important;
+}
+
+.rotate-note {
+  border-radius: 0 !important;
+}
+
+@media (pointer: coarse), (max-width: 900px) {
+  .game-root::before {
+    inset: 4px;
+    opacity: .58;
+  }
+
+  .game-root::after {
+    opacity: .4;
+  }
+
+  .vitals::before,
+  .mission-card::before,
+  .weapon-hud::before {
+    font-size: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-root::after {
+    background: linear-gradient(90deg, rgba(106, 162, 163, .06), transparent 3%, transparent 97%, rgba(106, 162, 163, .06));
+  }
+}
