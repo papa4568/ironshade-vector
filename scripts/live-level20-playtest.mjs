@@ -164,7 +164,7 @@ async function handleDeath(page) {
   summary.restarts += 1;
   writeSummary();
   log('RESTART AFTER DEATH', `deaths=${summary.deaths}`);
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(650);
   return true;
 }
 async function finishDebrief(page) {
@@ -192,11 +192,28 @@ async function playCombat(page, contractNumber) {
   ];
   let tick = 0;
   let fireHeld = false;
-  const combatStarted = Date.now();
-  while (Date.now() - combatStarted < 150_000) {
+  let attemptStarted = Date.now();
+  let attempt = 1;
+  let contractDeaths = 0;
+  while (true) {
     assertTime();
+    if (Date.now() - attemptStarted > 210_000) {
+      await releaseFire(page);
+      await snap(page, `stuck-contract-${contractNumber}-attempt-${attempt}`);
+      const body = (await text(page)).replace(/\s+/g, ' ').slice(0, 900);
+      throw new Error(`Combat attempt ${attempt} did not reach extraction/debrief within 210 seconds. Visible UI: ${body}`);
+    }
     if (await visible(page.locator('.debrief-shell'))) return 'debrief';
-    if (await handleDeath(page)) { tick = 0; fireHeld = false; continue; }
+    if (await handleDeath(page)) {
+      contractDeaths += 1;
+      if (contractDeaths >= 5) throw new Error(`Contract ${contractNumber} killed the browser player ${contractDeaths} times without a clear.`);
+      tick = 0;
+      fireHeld = false;
+      attempt += 1;
+      attemptStarted = Date.now();
+      log('NEW ATTEMPT', `contract=${contractNumber}`, `attempt=${attempt}`);
+      continue;
+    }
     if (await clickSafeExtraction(page)) {
       await page.locator('.debrief-shell').waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {});
       return 'debrief';
@@ -206,12 +223,8 @@ async function playCombat(page, contractNumber) {
     const [dx, dy] = directions[tick % directions.length];
     await moveStick(page, dx, dy, tick % 4 === 0 ? 1200 : 850);
     tick += 1;
-    if (tick % 14 === 0) log('COMBAT ACTIVE', `contract=${contractNumber}`, `seconds=${Math.round((Date.now() - combatStarted) / 1000)}`);
+    if (tick % 14 === 0) log('COMBAT ACTIVE', `contract=${contractNumber}`, `attempt=${attempt}`, `seconds=${Math.round((Date.now() - attemptStarted) / 1000)}`);
   }
-  await releaseFire(page);
-  await snap(page, `stuck-contract-${contractNumber}`);
-  const body = (await text(page)).replace(/\s+/g, ' ').slice(0, 900);
-  throw new Error(`Combat did not reach extraction/debrief within 150 seconds. Visible UI: ${body}`);
 }
 
 const browser = await chromium.launch({ headless: true });
