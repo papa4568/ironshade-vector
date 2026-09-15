@@ -17,16 +17,16 @@ jobs:
           node-version: 22
       - name: Install project dependencies
         run: npm install --no-audit --no-fund
-      - name: Install Playwright Chromium
+      - name: Install browser playtest dependencies
         run: |
-          npm install --no-save playwright@latest
+          npm install --no-save playwright@latest pngjs@latest
           npx playwright install --with-deps chromium
       - name: Play the live game from level 1 to 20
         env:
           PLAYTEST_URL: https://ironshade-vector.netlify.app
-          PLAYTEST_MAX_MINUTES: 85
+          PLAYTEST_MAX_MINUTES: 88
           PLAYTEST_MAX_CONTRACTS: 70
-        run: node scripts/live-level20-playtest.mjs
+        run: node scripts/live-level20-playtest-v3.mjs
       - name: Upload playthrough evidence
         if: always()
         uses: actions/upload-artifact@v4
