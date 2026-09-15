@@ -1,0 +1,36 @@
+name: Live level 20 browser playthrough
+
+on:
+  push:
+    branches:
+      - qa/level20-live-playthrough-final
+  workflow_dispatch:
+
+jobs:
+  playthrough:
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install project dependencies
+        run: npm install --no-audit --no-fund
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@latest
+          npx playwright install --with-deps chromium
+      - name: Play the live game from level 1 to 20
+        env:
+          PLAYTEST_URL: https://ironshade-vector.netlify.app
+          PLAYTEST_MAX_MINUTES: 85
+          PLAYTEST_MAX_CONTRACTS: 70
+        run: node scripts/live-level20-playtest.mjs
+      - name: Upload playthrough evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: level20-live-playthrough
+          path: playtest-artifacts
+          if-no-files-found: error
