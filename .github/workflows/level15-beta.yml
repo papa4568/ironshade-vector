@@ -6,6 +6,9 @@ on:
       - beta/level-15-smoke
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   beta:
     runs-on: ubuntu-latest
@@ -14,7 +17,56 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Apply strict-validation cleanup
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              'tsconfig.json': [
+                  ('"target": "ES2020"', '"target": "ES2022"'),
+                  ('"lib": ["ES2020", "DOM", "DOM.Iterable"]', '"lib": ["ES2022", "DOM", "DOM.Iterable"]'),
+              ],
+              'src/components/Armory.tsx': [
+                  ('augmentDefinition, availableAugments, frameIdentityDefinition', 'augmentDefinition, frameIdentityDefinition'),
+              ],
+              'src/game/campaign.ts': [
+                  ("      'deep-salage': undefined as never,\n", ''),
+              ],
+              'src/game/eliteProtocolRuntime.ts': [
+                  ("import type { CombatObject, Enemy, SimState, Vec2 } from './sim';", "import type { CombatObject, Enemy, SimState } from './sim';"),
+                  ("const norm = (value: Vec2): Vec2 => { const length = Math.hypot(value.x, value.y); return length > 0.0001 ? { x: value.x / length, y: value.y / length } : { x: 0, y: 0 }; };\n", ''),
+              ],
+              'src/game/operationDirectives.ts': [
+                  ('export function buildDirectiveContract(campaign: CampaignState, directive: OperationDirective): Contract {', 'export function buildDirectiveContract(_campaign: CampaignState, directive: OperationDirective): Contract {'),
+              ],
+              'src/game/sim.ts': [
+                  ("import { enemyHasProtocol, protocolAimPenalty,", "import { protocolAimPenalty,"),
+              ],
+          }
+
+          for filename, pairs in replacements.items():
+              path = Path(filename)
+              text = path.read_text()
+              for old, new in pairs:
+                  if old in text:
+                      text = text.replace(old, new, 1)
+                  elif new and new not in text:
+                      raise SystemExit(f'Expected source pattern not found in {filename}: {old!r}')
+              path.write_text(text)
+          PY
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Validate level 15 beta and production build
         run: npm run build
+      - name: Commit validated cleanup
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tsconfig.json src/components/Armory.tsx src/game/campaign.ts src/game/eliteProtocolRuntime.ts src/game/operationDirectives.ts src/game/sim.ts
+          if ! git diff --cached --quiet; then
+            git commit -m "Fix strict beta validation findings"
+            git push origin HEAD:beta/level-15-smoke
+          fi
