@@ -1,0 +1,44 @@
+name: Hard sci-fi overhaul validation
+
+on:
+  push:
+    branches:
+      - graphics/hard-sci-fi-overhaul
+    paths:
+      - scripts/apply-hard-sci-fi-overhaul.mjs
+      - .github/workflows/hard-sci-fi-overhaul.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  integrate-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Integrate hard sci-fi renderer
+        run: node scripts/apply-hard-sci-fi-overhaul.mjs
+      - name: Check diff integrity
+        run: git diff --check
+      - name: Validate level 15 beta and production build
+        run: npm run build
+      - name: Commit validated renderer integration
+        shell: bash
+        run: |
+          if git diff --quiet -- src/game/threeCombatRenderer.ts src/game/hardSciFiVisuals.ts; then
+            echo "Renderer already integrated."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/game/threeCombatRenderer.ts src/game/hardSciFiVisuals.ts
+          git commit -m "Integrate hard sci-fi space combat visuals"
+          git push origin HEAD:graphics/hard-sci-fi-overhaul
