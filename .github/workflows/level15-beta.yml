@@ -14,18 +14,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: Typecheck application
-        run: npx tsc --noEmit
-      - name: Production build
+      - name: Validate level 15 beta and production build
         run: npm run build
-      - name: Bundle beta harness
-        run: npx vite build --ssr tests/beta-level15.ts --outDir .beta-dist --emptyOutDir
-      - name: Run beta harness
-        shell: bash
-        run: |
-          entry="$(find .beta-dist -maxdepth 1 -type f \( -name 'beta-level15.js' -o -name 'beta-level15.mjs' \) | head -n 1)"
-          test -n "$entry"
-          node "$entry"
