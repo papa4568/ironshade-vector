@@ -9,8 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@netlify/blobs": "^10.0.0",
-    "@netlify/functions": "^4.2.5",
+    "@netlify/blobs": "^11.1.0",
+    "@netlify/functions": "^6.0.0",
     "lucide-react": "^0.469.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
