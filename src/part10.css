@@ -1,0 +1,16 @@
+.contract-card.megastructure { border-color: rgba(115, 170, 160, .82); background: radial-gradient(circle at 100% 0, rgba(50, 112, 103, .17), rgba(9, 16, 15, .94) 58%); }
+.megastructure-note { border-color: rgba(103, 169, 157, .75); background: rgba(15, 39, 36, .7); }
+.megastructure-note b { color: #a9d6cd; }
+.megastructure-note > span { color: #8eb1aa; }
+.mega-route { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+.mega-route span { border: 1px solid rgba(91, 132, 125, .45); border-radius: 8px; padding: 7px 8px; background: rgba(5, 16, 15, .62); color: #8fa9a4; font: 800 8px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.mega-objective-chip { position: absolute; z-index: 5; top: max(102px, calc(env(safe-area-inset-top) + 92px)); left: 50%; transform: translateX(-50%); width: min(430px, 72vw); border: 1px solid rgba(103, 169, 157, .55); border-radius: 10px; padding: 7px 10px; background: rgba(7, 22, 20, .86); text-align: center; pointer-events: none; }
+.mega-objective-chip small,.mega-objective-chip b,.mega-objective-chip span { display: block; }
+.mega-objective-chip small { color: #729890; font: 800 7px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .1em; }
+.mega-objective-chip b { margin-top: 3px; color: #bfd8d2; font-size: 10px; }
+.mega-objective-chip span { margin-top: 2px; color: #76948e; font: 700 7px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.mega-objective-chip.complete { border-color: rgba(175, 205, 137, .62); }
+.mega-objective-chip.complete b { color: #d1dfa7; }
+.mega-checkpoint { border-color: rgba(103, 169, 157, .72); box-shadow: 0 22px 80px rgba(0, 0, 0, .48); }
+@media (max-width: 650px), (pointer: coarse) { .mega-route { grid-template-columns: 1fr; } .mega-objective-chip { top: max(88px, calc(env(safe-area-inset-top) + 78px)); width: min(390px, 70vw); padding: 5px 8px; } .mega-objective-chip b { font-size: 9px; } }
+@media (max-height: 540px) and (orientation: landscape) { .mega-objective-chip { top: max(66px, calc(env(safe-area-inset-top) + 58px)); width: min(360px, 58vw); } .mega-objective-chip span { display: none; } }
