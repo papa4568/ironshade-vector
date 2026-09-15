@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Contract } from './campaign';
 import type { EquipmentFaction } from './factionGear';
+import { getNextMissionObjectiveTarget } from './encounters';
 import { getWorldSize, type CombatObject, type Enemy, type Player, type SimState, type WeaponId } from './sim';
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
 
@@ -119,6 +120,7 @@ export class ThreeCombatRenderer {
   private readonly environmentRoot = new THREE.Group();
   private readonly objectRoot = new THREE.Group();
   private readonly dynamicRoot = new THREE.Group();
+  private readonly objectiveBeacon = new THREE.Group();
   private readonly playerRoot = new THREE.Group();
   private readonly weaponPivot = new THREE.Group();
   private readonly playerBody: THREE.Mesh<THREE.CylinderGeometry, THREE.MeshStandardMaterial>;
@@ -154,6 +156,7 @@ export class ThreeCombatRenderer {
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
 
     this.scene.add(this.environmentRoot, this.objectRoot, this.dynamicRoot, this.playerRoot);
+    this.dynamicRoot.add(this.objectiveBeacon);
     this.scene.add(new THREE.HemisphereLight(0xa6c7c2, 0x14110e, 1.25));
 
     this.keyLight.position.set(16, 28, 14);
@@ -213,6 +216,7 @@ export class ThreeCombatRenderer {
     syncHardSciFiEnvironment(this.environmentRoot, state, mission);
     this.syncSectors(state);
     this.syncObjects(state);
+    this.syncObjectiveBeacon(state, mission);
     this.syncPlayer(state, operatorFaction);
     this.syncEnemies(state, mobileTargetId);
     this.syncProjectiles(state);
@@ -436,6 +440,46 @@ export class ThreeCombatRenderer {
       mesh.scale.y = object.destructible && object.maxHp < 9000 ? 0.72 + hpRatio * 0.28 : 1;
     }
     for (const [id, mesh] of this.objectVisuals) if (!activeIds.has(id)) mesh.visible = false;
+  }
+
+  private syncObjectiveBeacon(state: SimState, mission: Contract) {
+    const target = getNextMissionObjectiveTarget(state, mission);
+    if (!target) {
+      this.objectiveBeacon.visible = false;
+      return;
+    }
+
+    if (this.objectiveBeacon.children.length === 0) {
+      const markerMaterial = new THREE.MeshBasicMaterial({ color: 0xc8e87f, transparent: true, opacity: 0.92, depthTest: false, depthWrite: false });
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.065, 8, 48), markerMaterial);
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = 0.08;
+      ring.renderOrder = 40;
+      ring.name = 'objective-ring';
+
+      const diamond = new THREE.Mesh(new THREE.OctahedronGeometry(0.2, 0), markerMaterial.clone());
+      diamond.position.y = 1.75;
+      diamond.renderOrder = 41;
+      diamond.name = 'objective-diamond';
+
+      const beam = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.022, 0.022, 1.28, 6),
+        new THREE.MeshBasicMaterial({ color: 0xc8e87f, transparent: true, opacity: 0.34, depthTest: false, depthWrite: false }),
+      );
+      beam.position.y = 1.05;
+      beam.renderOrder = 39;
+      beam.name = 'objective-beam';
+      this.objectiveBeacon.add(ring, diamond, beam);
+    }
+
+    this.objectiveBeacon.visible = true;
+    this.objectiveBeacon.position.set(scaled(target.x + target.w / 2), 0, scaled(target.y + target.h / 2));
+    const pulse = 1 + Math.sin(state.time * 6.5) * 0.08;
+    this.objectiveBeacon.scale.setScalar(pulse);
+    const ring = this.objectiveBeacon.getObjectByName('objective-ring');
+    const diamond = this.objectiveBeacon.getObjectByName('objective-diamond');
+    if (ring) ring.rotation.z = state.time * 0.9;
+    if (diamond) diamond.rotation.y = state.time * 1.8;
   }
 
   private syncPlayer(state: SimState, operatorFaction: EquipmentFaction | null) {
