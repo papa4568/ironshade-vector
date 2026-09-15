@@ -1,1 +1,153 @@
-/* placeholder */
+/* Mobile combat readability: keep guidance around the edges instead of covering the playfield. */
+
+@media (pointer: coarse), (max-width: 900px) {
+  .hud-top {
+    top: max(8px, env(safe-area-inset-top));
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+  }
+
+  .vitals {
+    width: min(280px, 33vw);
+    padding: 8px 10px;
+  }
+
+  .mission-card {
+    max-width: min(290px, 34vw);
+    padding: 8px 10px;
+    overflow: hidden;
+  }
+
+  .mission-card span {
+    display: none;
+  }
+
+  .mission-chip {
+    top: max(8px, env(safe-area-inset-top));
+    max-width: 35vw;
+    padding: 5px 8px;
+    font-size: 7px;
+  }
+
+  .objective-progress-chip {
+    top: max(40px, calc(env(safe-area-inset-top) + 32px));
+    max-width: 38vw;
+    padding: 5px 7px;
+    font-size: 6px;
+    opacity: .92;
+  }
+
+  .mega-objective-chip {
+    top: max(64px, calc(env(safe-area-inset-top) + 54px)) !important;
+    max-width: 36vw !important;
+    padding: 5px 8px !important;
+    font-size: 7px !important;
+    opacity: .9;
+  }
+
+  .mega-objective-chip small,
+  .mega-objective-chip span {
+    display: none !important;
+  }
+
+  /* The post-clear directive already contains the active objective. Hide duplicate banners. */
+  .game-root:has(.post-clear-objective) .objective-progress-chip,
+  .game-root:has(.post-clear-objective) .mega-objective-chip {
+    display: none !important;
+  }
+
+  .post-clear-objective {
+    top: max(54px, calc(env(safe-area-inset-top) + 44px));
+    bottom: auto;
+    transform: translateX(-50%);
+    width: min(360px, 42vw);
+    padding: 7px 10px;
+    gap: 2px;
+    background: rgba(4, 11, 11, .82);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .2);
+  }
+
+  .post-clear-objective small {
+    display: none;
+  }
+
+  .post-clear-objective b {
+    font-size: 10px;
+    line-height: 1.15;
+  }
+
+  .post-clear-objective span {
+    font-size: 7px;
+    line-height: 1.1;
+  }
+
+  /* Tutorial help sits between the left stick and right combat dock, not over combat. */
+  .tutorial-coach {
+    top: auto !important;
+    bottom: max(10px, calc(env(safe-area-inset-bottom) + 10px)) !important;
+    width: auto;
+    min-width: 0;
+    max-width: min(310px, 34vw) !important;
+    padding: 6px 9px;
+    background: rgba(4, 11, 12, .76);
+    box-shadow: none;
+  }
+
+  .tutorial-coach small {
+    font-size: 6px;
+  }
+
+  .tutorial-coach b {
+    margin-top: 3px;
+    font-size: 8px;
+  }
+
+  .combat-alert {
+    top: max(42px, calc(env(safe-area-inset-top) + 34px));
+    max-width: 34vw;
+    padding: 5px 8px;
+    font-size: 7px;
+  }
+
+  .status-rack {
+    top: max(58px, calc(env(safe-area-inset-top) + 48px));
+  }
+
+  .status-rack span {
+    padding: 3px 5px;
+    font-size: 6px;
+  }
+}
+
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 560px) {
+  .vitals {
+    width: min(255px, 31vw);
+  }
+
+  .barline {
+    margin: 2px 0;
+    font-size: 7px;
+  }
+
+  .mission-card {
+    max-width: min(250px, 30vw);
+  }
+
+  .mission-card b {
+    font-size: 8px;
+  }
+
+  .post-clear-objective {
+    top: max(42px, calc(env(safe-area-inset-top) + 34px));
+    width: min(330px, 38vw);
+  }
+
+  .tutorial-coach {
+    bottom: max(7px, calc(env(safe-area-inset-bottom) + 7px)) !important;
+    max-width: min(280px, 31vw) !important;
+  }
+
+  .objective-progress-chip {
+    top: max(35px, calc(env(safe-area-inset-top) + 27px));
+  }
+}
