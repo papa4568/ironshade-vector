@@ -1,0 +1,39 @@
+/* Part 2 combat-system UI extensions. */
+.bar.capacitor > i { background: #8cb8a7; }
+.combat-alert { position: absolute; top: max(76px, calc(env(safe-area-inset-top) + 62px)); left: 50%; transform: translateX(-50%); max-width: min(620px, 70vw); padding: 8px 12px; border: 1px solid rgba(209,151,92,.42); border-radius: 9px; background: rgba(14,13,11,.82); color: #d9b080; font: 800 10px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing: .08em; text-align: center; pointer-events: none; z-index: 4; }
+.status-rack { position: absolute; top: max(84px, calc(env(safe-area-inset-top) + 70px)); left: max(14px, env(safe-area-inset-left)); display: flex; flex-direction: column; gap: 5px; pointer-events: none; }
+.status-rack span { width: max-content; border: 1px solid rgba(187,125,110,.45); border-radius: 999px; padding: 5px 8px; background: rgba(26,13,14,.8); color: #dfaa9d; font: 800 8px/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing: .08em; }
+.boss-hud { position: absolute; top: max(112px, calc(env(safe-area-inset-top) + 98px)); left: 50%; width: min(420px,48vw); transform: translateX(-50%); pointer-events: none; text-align: center; z-index: 3; }
+.boss-title { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 5px; color: #d7c2b8; font: 800 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing: .1em; }
+.boss-title b { color: #dd7767; }
+.boss-bars { position: relative; height: 10px; overflow: hidden; border: 1px solid rgba(119,84,78,.75); border-radius: 999px; background: rgba(15,12,12,.82); }
+.boss-bars i { position: absolute; left: 0; display: block; transition: width 80ms linear; }
+.boss-health { top: 0; height: 100%; background: #a95048; }
+.boss-armor { bottom: 0; height: 3px; background: #729ab1; }
+.boss-hud small { display: block; margin-top: 5px; color: #e59681; font: 800 8px/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing: .12em; }
+.weapon-hud > span { display: block; margin-top: 5px; color: #88796b; font-size: 8px; letter-spacing: .09em; }
+.desktop-weapons { position: absolute; right: max(18px, env(safe-area-inset-right)); bottom: max(105px, calc(env(safe-area-inset-bottom) + 105px)); display: grid; gap: 5px; }
+.desktop-weapons button { min-width: 170px; padding: 7px 9px; border: 1px solid #2f3d3b; border-radius: 8px; background: rgba(7,11,12,.77); color: #6f7e7a; text-align: left; cursor: pointer; font-size: 9px; letter-spacing: .06em; }
+.desktop-weapons button b { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-right: 7px; border: 1px solid #354440; border-radius: 4px; color: #91a39e; }
+.desktop-weapons button.selected { border-color: #68877e; color: #cad8d3; background: rgba(24,39,36,.88); }
+.desktop-actions { bottom: max(64px, calc(env(safe-area-inset-bottom) + 64px)); }
+.desktop-actions .action-chip { min-width: 106px; padding: 8px 9px; }
+.context-action { position: absolute; left: 50%; bottom: max(124px, calc(env(safe-area-inset-bottom) + 124px)); transform: translateX(-50%); padding: 9px 12px; border: 1px solid rgba(121,174,157,.52); border-radius: 9px; background: rgba(10,19,17,.88); color: #b8d4cb; font: 800 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing: .08em; cursor: pointer; }
+.context-action b { display: inline-block; margin-right: 6px; color: #e1eac7; }
+.telemetry-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin: 18px 0 4px; }
+.telemetry-grid span { padding: 10px 6px; border: 1px solid #263633; border-radius: 9px; background: #0c1514; }
+.telemetry-grid small,.telemetry-grid b { display: block; }
+.telemetry-grid small { color: #62736f; font-size: 7px; letter-spacing: .06em; }
+.telemetry-grid b { margin-top: 4px; color: #b8ccc5; }
+.touch-ability-cluster { position: absolute; top: max(146px, calc(env(safe-area-inset-top) + 132px)); right: max(12px, env(safe-area-inset-right)); display: grid; grid-template-columns: repeat(2,50px); gap: 7px; pointer-events: none; }
+.touch-ability-cluster .touch-button { position: relative; width: 50px; height: 50px; pointer-events: auto; }
+.touch-ability-cluster .dodge-button { right: auto; bottom: auto; width: 50px; height: 50px; }
+.weapon-cycle { left: max(12px, env(safe-area-inset-left)); top: max(150px, calc(env(safe-area-inset-top) + 136px)); width: 58px; height: 58px; border-radius: 14px; }
+.weapon-cycle small { font-size: 7px; color: #8eaaa1; }
+.fire-button { right: max(136px, calc(env(safe-area-inset-right) + 136px)); bottom: max(30px, calc(env(safe-area-inset-bottom) + 30px)); width: 62px; height: 62px; }
+.interact-button { left: 50%; bottom: max(112px, calc(env(safe-area-inset-bottom) + 112px)); transform: translateX(-50%); width: 52px; height: 52px; background: rgba(41,83,71,.9); }
+.vent-button { right: max(204px, calc(env(safe-area-inset-right) + 204px)); bottom: max(35px, calc(env(safe-area-inset-bottom) + 35px)); width: 48px; height: 48px; background: rgba(66,76,75,.9); }
+@media (pointer: coarse), (max-width: 900px) { .desktop-weapons,.context-action { display: none; } .combat-alert { top: max(62px, calc(env(safe-area-inset-top) + 50px)); max-width: 56vw; padding: 6px 8px; font-size: 8px; } .status-rack { top: max(78px, calc(env(safe-area-inset-top) + 66px)); } .status-rack span { font-size: 7px; padding: 4px 6px; } .boss-hud { top: max(96px, calc(env(safe-area-inset-top) + 84px)); width: min(270px,52vw); } .boss-title { font-size: 7px; } .boss-bars { height: 8px; } .mission-card b { white-space: nowrap; } .mobile-tip { max-width: 46vw; overflow: hidden; text-overflow: ellipsis; } }
+@media (pointer: coarse) and (orientation: portrait) { .touch-ability-cluster { top: max(158px, calc(env(safe-area-inset-top) + 144px)); } .weapon-cycle { top: max(160px, calc(env(safe-area-inset-top) + 146px)); } .boss-hud { top: max(118px, calc(env(safe-area-inset-top) + 104px)); width: 58vw; } .combat-alert { max-width: 48vw; } }
+@media (max-height: 500px) { .hud-top { top: max(8px, env(safe-area-inset-top)); } .vitals { width: min(220px,38vw); } .vitals .barline { margin: 2px 0; font-size: 8px; } .combat-alert { top: max(54px, calc(env(safe-area-inset-top) + 44px)); } .boss-hud { top: max(78px, calc(env(safe-area-inset-top) + 68px)); width: min(250px,38vw); } .status-rack { top: max(68px, calc(env(safe-area-inset-top) + 58px)); } .touch-ability-cluster { top: max(82px, calc(env(safe-area-inset-top) + 72px)); grid-template-columns: repeat(2,46px); gap: 5px; } .touch-ability-cluster .touch-button,.touch-ability-cluster .dodge-button { width: 46px; height: 46px; font-size: 8px; } .weapon-cycle { top: max(84px, calc(env(safe-area-inset-top) + 74px)); width: 52px; height: 52px; } .fire-button { right: max(122px, calc(env(safe-area-inset-right) + 122px)); bottom: max(26px, calc(env(safe-area-inset-bottom) + 26px)); width: 56px; height: 56px; } .interact-button { bottom: max(92px, calc(env(safe-area-inset-bottom) + 92px)); width: 46px; height: 46px; } .vent-button { right: max(184px, calc(env(safe-area-inset-right) + 184px)); bottom: max(28px, calc(env(safe-area-inset-bottom) + 28px)); width: 44px; height: 44px; } }
+@media (max-width: 520px) and (min-height: 501px) { .touch-ability-cluster { grid-template-columns: repeat(2,48px); } .touch-ability-cluster .touch-button,.touch-ability-cluster .dodge-button { width: 48px; height: 48px; } .fire-button { right: max(128px, calc(env(safe-area-inset-right) + 128px)); } .vent-button { right: max(194px, calc(env(safe-area-inset-right) + 194px)); } .telemetry-grid { grid-template-columns: repeat(2,1fr); } }
