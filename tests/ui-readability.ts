@@ -12,6 +12,7 @@ const armory = read('src/components/Armory.tsx');
 const combat = read('src/components/GameCanvas.tsx');
 const renderer = read('src/game/threeCombatRenderer.ts');
 const css = read('src/readability.css');
+const shipHub = read('src/components/ShipHub.tsx');
 
 assert(!armory.includes('Review faction doctrines'), 'Equipment Bay still advertises undiscovered faction doctrine targets.');
 assert(!armory.includes('2 PIECE'), 'Equipment Bay still exposes 2-piece set targets.');
@@ -28,5 +29,13 @@ assert(combat.includes('lootLabel(drop.rarity)'), 'High-value ground loot does n
 assert(renderer.includes("enemy.role === 'elite' ? 1.6 : 1.35"), 'Three.js hostile bars were not enlarged for readability.');
 assert(renderer.includes('0xff735f'), 'Three.js health bar contrast update is missing.');
 assert(css.includes('.target-readout') && css.includes('.gear-quick-read') && css.includes('.loot-radar'), 'Readability stylesheet is incomplete.');
+assert(!shipHub.includes('bossSingularNames'), 'Contract Board still imports unrecovered boss gear names.');
+assert(!shipHub.includes('locationSingularNames'), 'Contract Board still imports unrecovered location gear names.');
+assert(!shipHub.includes('factionEquipmentNames'), 'Ship UI still exposes unrecovered faction gear names.');
+assert(!shipHub.includes('DEDICATED SINGULAR POOL'), 'Contract Board still advertises a named Singular pool.');
+assert(!shipHub.includes('LOCATION CHASE POOL'), 'Contract Board still advertises location chase gear before discovery.');
+assert(!shipHub.includes('RECOVERY CEILING // RL'), 'Contract Board still leads with opaque recovery-level jargon.');
+assert(shipHub.includes('UNIDENTIFIED EQUIPMENT RECOVERY'), 'Contract Board is missing the discovery-safe equipment explanation.');
+assert(shipHub.includes('Frame identities and interactions reveal only after recovery.'), 'Faction panel is missing acquisition-first discovery guidance.');
 
-console.log('UI_READABILITY_PASS discovery=hidden targetHp=visible loot=explained');
+console.log('UI_READABILITY_PASS discovery=hidden contractGear=unidentified targetHp=visible loot=explained');
