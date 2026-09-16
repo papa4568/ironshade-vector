@@ -3,12 +3,20 @@ import { resolve } from 'node:path';
 
 const manifestPath = resolve('android/app/src/main/AndroidManifest.xml');
 const activityPath = resolve('android/app/src/main/java/app/ironshade/vector/MainActivity.java');
+const appGradlePath = resolve('android/app/build.gradle');
 
-if (!existsSync(manifestPath) || !existsSync(activityPath)) {
-  throw new Error('Android platform has not been generated. Run npx cap add android first.');
+for (const requiredPath of [manifestPath, activityPath, appGradlePath]) {
+  if (!existsSync(requiredPath)) {
+    throw new Error('Android platform has not been generated. Run npx cap add android first.');
+  }
 }
 
 let manifest = readFileSync(manifestPath, 'utf8');
+if (!manifest.includes('android:hardwareAccelerated=')) {
+  manifest = manifest.replace('<application', '<application\n        android:hardwareAccelerated="true"');
+} else {
+  manifest = manifest.replace(/android:hardwareAccelerated="[^"]*"/, 'android:hardwareAccelerated="true"');
+}
 if (!manifest.includes('android:screenOrientation="sensorLandscape"')) {
   manifest = manifest.replace(
     'android:exported="true">',
@@ -17,9 +25,35 @@ if (!manifest.includes('android:screenOrientation="sensorLandscape"')) {
 }
 writeFileSync(manifestPath, manifest);
 
+let appGradle = readFileSync(appGradlePath, 'utf8');
+const signingMarker = '// IRONSHADE_RELEASE_SIGNING';
+if (!appGradle.includes(signingMarker)) {
+  const buildTypesMatch = appGradle.match(/\n(\s*)buildTypes\s*\{/);
+  if (!buildTypesMatch || buildTypesMatch.index === undefined) {
+    throw new Error('Unable to locate Android buildTypes block for release-signing configuration.');
+  }
+
+  const indent = buildTypesMatch[1];
+  const signingBlock = `\n${indent}${signingMarker}\n${indent}signingConfigs {\n${indent}    release {\n${indent}        def signingStore = System.getenv("ANDROID_SIGNING_STORE_FILE")\n${indent}        if (signingStore) {\n${indent}            storeFile file(signingStore)\n${indent}            storePassword System.getenv("ANDROID_SIGNING_STORE_PASSWORD")\n${indent}            keyAlias System.getenv("ANDROID_SIGNING_KEY_ALIAS")\n${indent}            keyPassword System.getenv("ANDROID_SIGNING_KEY_PASSWORD")\n${indent}        }\n${indent}    }\n${indent}}\n`;
+  appGradle = appGradle.slice(0, buildTypesMatch.index) + signingBlock + appGradle.slice(buildTypesMatch.index);
+
+  const buildTypesIndex = appGradle.indexOf('buildTypes');
+  const releaseNeedle = 'release {';
+  const releaseIndex = appGradle.indexOf(releaseNeedle, buildTypesIndex);
+  if (releaseIndex === -1) {
+    throw new Error('Unable to locate Android release build type for signing configuration.');
+  }
+  const releaseInsert = releaseIndex + releaseNeedle.length;
+  const signingAssignment = `\n${indent}        if (System.getenv("ANDROID_SIGNING_STORE_FILE")) {\n${indent}            signingConfig signingConfigs.release\n${indent}        }`;
+  appGradle = appGradle.slice(0, releaseInsert) + signingAssignment + appGradle.slice(releaseInsert);
+  writeFileSync(appGradlePath, appGradle);
+}
+
 writeFileSync(activityPath, `package app.ironshade.vector;
 
 import android.os.Bundle;
+import android.view.View;
+import android.webkit.WebView;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
@@ -29,6 +63,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        configureGameWebView();
         enterImmersiveMode();
     }
 
@@ -36,6 +71,13 @@ public class MainActivity extends BridgeActivity {
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) enterImmersiveMode();
+    }
+
+    private void configureGameWebView() {
+        WebView webView = getBridge().getWebView();
+        webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        webView.setHorizontalScrollBarEnabled(false);
+        webView.setVerticalScrollBarEnabled(false);
     }
 
     private void enterImmersiveMode() {
@@ -49,4 +91,4 @@ public class MainActivity extends BridgeActivity {
 }
 `);
 
-console.log('ANDROID_GAME_SHELL_CONFIGURED landscape=sensor fullscreen=immersive');
+console.log('ANDROID_GAME_SHELL_CONFIGURED landscape=sensor fullscreen=immersive hardwareAcceleration=true releaseSigning=env-backed');
