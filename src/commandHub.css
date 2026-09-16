@@ -1,0 +1,75 @@
+/* Command hub + explained stats. Keep opening navigation visual, fast, and readable on landscape phones. */
+.command-overview { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(280px,.75fr); gap:12px; margin:0 auto 14px; }
+.command-visual { position:relative; min-height:330px; overflow:hidden; border:1px solid #2d4741; border-radius:16px; background:radial-gradient(circle at 72% 34%,color-mix(in srgb,var(--hub-accent) 12%,transparent),transparent 34%),linear-gradient(145deg,#07100f,#101b19 58%,#050909); }
+.command-visual-copy { position:absolute; z-index:3; left:18px; top:16px; max-width:47%; }
+.command-visual-copy h2 { margin:5px 0 2px; color:#d7e2de; font-size:28px; }
+.command-visual-copy p { margin:0; color:#899d96; font-size:10px; }
+.command-visual-tags { display:flex; flex-wrap:wrap; gap:5px; margin-top:9px; }
+.command-visual-tags span { padding:5px 7px; border:1px solid color-mix(in srgb,var(--hub-accent) 45%,#273934); border-radius:999px; color:#a9beb7; background:#07100fcc; font:800 7px/1 ui-monospace,monospace; letter-spacing:.06em; }
+.command-diorama { position:absolute; inset:0; width:100%; height:100%; }
+.command-side { display:grid; align-content:start; gap:9px; }
+.command-card { padding:13px; border:1px solid #2a3e39; border-radius:12px; background:linear-gradient(135deg,rgba(18,30,28,.94),rgba(7,12,12,.96)); }
+.command-card small,.command-card b,.command-card span { display:block; }
+.command-card small { color:#738a82; font-size:7px; font-weight:900; letter-spacing:.12em; }
+.command-card b { margin-top:5px; color:#d1dcd8; font-size:13px; }
+.command-card span { margin-top:5px; color:#84978f; font-size:8px; line-height:1.35; }
+.command-card.primary-card { border-color:#4d756a; }
+.command-card.primary-card button { width:100%; margin-top:11px; min-height:44px; border:1px solid #8ab9aa; border-radius:9px; background:#c4dacd; color:#0a1210; font-weight:900; }
+.command-nav-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.command-nav-grid button { min-height:70px; padding:10px; border:1px solid #324841; border-radius:10px; background:#0b1413; color:#aebfba; text-align:left; }
+.command-nav-grid button b,.command-nav-grid button small { display:block; }
+.command-nav-grid button b { font-size:10px; }
+.command-nav-grid button small { margin-top:4px; color:#667b74; font-size:7px; line-height:1.25; }
+.command-nav-grid button:hover { border-color:#62877c; background:#11201d; }
+
+.stats-panel { display:grid; gap:12px; padding-bottom:24px; }
+.stats-hero { display:flex; align-items:end; justify-content:space-between; gap:20px; padding:16px; border:1px solid #324a43; border-radius:14px; background:linear-gradient(120deg,#101d1a,#07100f); }
+.stats-hero h2 { margin:5px 0 3px; color:#d7e2de; font-size:28px; }
+.stats-hero p { margin:0; color:#81948d; font-size:9px; }
+.stats-level { min-width:190px; text-align:right; }
+.stats-level small,.stats-level b,.stats-level span { display:block; }
+.stats-level small { color:#72867f; font-size:7px; letter-spacing:.1em; }
+.stats-level b { margin-top:5px; color:#bdd3cb; font-size:14px; }
+.stats-level span { margin-top:4px; color:#778a84; font-size:8px; }
+.stats-section { padding:14px; border:1px solid #253934; border-radius:13px; background:#08110f; }
+.stats-section-heading { display:flex; justify-content:space-between; gap:20px; align-items:end; margin-bottom:10px; }
+.stats-section-heading small { color:#6f867d; font-size:7px; font-weight:900; letter-spacing:.12em; }
+.stats-section-heading h3 { margin:3px 0 0; color:#c9d5d1; font-size:16px; }
+.stats-section-heading p { max-width:48%; margin:0; color:#6e817a; font-size:8px; line-height:1.35; text-align:right; }
+.player-stat-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; }
+.player-stat-card { min-height:112px; padding:10px; border:1px solid #283d37; border-radius:10px; background:#0d1715; }
+.player-stat-card div { display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
+.player-stat-card small { color:#769087; font-size:7px; font-weight:900; text-transform:uppercase; }
+.player-stat-card b { color:#d5e0dc; font-size:18px; }
+.player-stat-card p { margin:9px 0 0; color:#81958e; font-size:8px; line-height:1.42; }
+.weapon-stat-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.weapon-stat-card { padding:11px; border:1px solid #2d413c; border-radius:11px; background:#0c1514; }
+.weapon-stat-card header small,.weapon-stat-card header b { display:block; }
+.weapon-stat-card header small { color:#6f857e; font-size:7px; }
+.weapon-stat-card header b { margin-top:4px; color:#c8d6d1; font-size:11px; }
+.weapon-stat-values { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; margin-top:10px; }
+.weapon-stat-values span { padding:7px; border:1px solid #1e302c; border-radius:7px; background:#08100f; }
+.weapon-stat-values small,.weapon-stat-values b { display:block; }
+.weapon-stat-values small { color:#63776f; font-size:6px; }
+.weapon-stat-values b { margin-top:3px; color:#bdcbc6; font-size:11px; }
+.weapon-stat-card details { margin-top:8px; border-top:1px solid #233630; padding-top:8px; }
+.weapon-stat-card summary { color:#89a39a; font-size:8px; font-weight:800; cursor:pointer; }
+.weapon-stat-card details p { color:#768a83; font-size:8px; line-height:1.45; }
+.ability-stat-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.ability-stat-grid article { padding:11px; border:1px solid #2b403a; border-radius:10px; background:#0c1514; }
+.ability-stat-grid article>small,.ability-stat-grid article>b { display:block; }
+.ability-stat-grid article>small { color:#7fa79a; font-size:7px; }
+.ability-stat-grid article>b { margin-top:4px; color:#c9d7d2; font-size:11px; }
+.ability-stat-grid article>div { display:grid; gap:4px; margin-top:9px; }
+.ability-stat-grid span { display:flex; justify-content:space-between; color:#748881; font-size:8px; }
+.ability-stat-grid strong { color:#b9cbc5; }
+.mechanic-chip-grid { display:flex; flex-wrap:wrap; gap:6px; }
+.mechanic-chip-grid span { padding:7px 9px; border:1px solid #3d5a51; border-radius:999px; background:#0d1b18; color:#a7bdb5; font-size:8px; font-weight:800; }
+.stats-empty { padding:12px; border:1px dashed #31453f; border-radius:9px; color:#74877f; }
+.stats-empty b,.stats-empty span { display:block; }
+.stats-empty b { color:#adbfba; font-size:10px; }
+.stats-empty span { margin-top:4px; font-size:8px; }
+
+@media (max-width:1000px) { .command-overview{grid-template-columns:1fr}.command-visual{min-height:290px}.player-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.weapon-stat-grid{grid-template-columns:1fr}.ability-stat-grid{grid-template-columns:1fr} }
+@media (orientation:landscape) and (max-height:650px) { .command-overview{grid-template-columns:minmax(0,1.4fr) minmax(280px,.8fr);gap:8px}.command-visual{min-height:245px}.command-visual-copy{left:12px;top:10px;max-width:44%}.command-visual-copy h2{font-size:20px}.command-nav-grid button{min-height:57px}.command-card{padding:9px}.stats-panel{gap:8px}.stats-hero{padding:10px}.stats-hero h2{font-size:21px}.stats-section{padding:9px}.player-stat-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}.player-stat-card{min-height:88px;padding:7px}.player-stat-card b{font-size:14px}.player-stat-card p{font-size:7px;margin-top:5px}.weapon-stat-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}.weapon-stat-card{padding:8px}.weapon-stat-values{gap:4px;margin-top:6px}.weapon-stat-values span{padding:5px}.ability-stat-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}.ability-stat-grid article{padding:8px}.stats-section-heading{margin-bottom:6px}.stats-section-heading p{display:none} }
+@media (max-width:620px) { .command-overview{grid-template-columns:1fr}.command-visual{min-height:260px}.command-visual-copy{max-width:58%}.command-diorama{transform:translateX(8%)}.player-stat-grid{grid-template-columns:1fr}.stats-hero{align-items:start;flex-direction:column}.stats-level{text-align:left}.stats-section-heading{align-items:start;flex-direction:column}.stats-section-heading p{max-width:none;text-align:left}.weapon-stat-grid,.ability-stat-grid{grid-template-columns:1fr} }

@@ -13,6 +13,9 @@ const combat = read('src/components/GameCanvas.tsx');
 const renderer = read('src/game/threeCombatRenderer.ts');
 const css = read('src/readability.css');
 const shipHub = read('src/components/ShipHub.tsx');
+const statsPanel = read('src/components/PlayerStatsPanel.tsx');
+const hubVisual = read('src/components/CommandHubVisual.tsx');
+const hubCss = read('src/commandHub.css');
 const app = read('src/App.tsx');
 const equipmentCss = read('src/equipmentBay.css');
 
@@ -43,5 +46,13 @@ assert(!shipHub.includes('LOCATION CHASE POOL'), 'Contract Board still advertise
 assert(!shipHub.includes('RECOVERY CEILING // RL'), 'Contract Board still leads with opaque recovery-level jargon.');
 assert(shipHub.includes('UNIDENTIFIED EQUIPMENT RECOVERY'), 'Contract Board is missing the discovery-safe equipment explanation.');
 assert(shipHub.includes('Frame identities and interactions reveal only after recovery.'), 'Faction panel is missing acquisition-first discovery guidance.');
+assert(shipHub.includes("useState<Tab>('overview')"), 'App does not open on the new command overview.');
+assert(shipHub.includes("switchTab('stats')"), 'Command hub is missing Player Stats navigation.');
+assert(shipHub.includes('CommandHubVisual'), 'Command hub visual is not integrated.');
+assert(shipHub.includes('PlayerStatsPanel'), 'Player stats page is not integrated.');
+assert(statsPanel.includes('Player Stats') && statsPanel.includes('Vacuum resistance') && statsPanel.includes('BURST DPS'), 'Player stats page is missing explained final stats.');
+assert(statsPanel.includes('createSimulation(build)'), 'Stats page is not using the real combat build for final values.');
+assert(hubVisual.includes('MV Quiet Signal') && hubVisual.includes('current operator'), 'Opening hub does not visually represent ship and operator.');
+assert(hubCss.includes('.command-overview') && hubCss.includes('.player-stat-grid'), 'Command hub responsive styling is incomplete.');
 
 console.log('UI_READABILITY_PASS discovery=hidden contractGear=unidentified targetHp=strong missionLoot=reviewable gearSheet=compact');
