@@ -224,9 +224,17 @@ async function equipFreshLoot(page) {
       await equip.click();
       equipped += 1;
       await page.waitForTimeout(250);
+      const close = page.locator('.item-inspector.open .sheet-close').first();
+      if (await visible(close)) {
+        await close.click();
+        await page.locator('.item-inspector.open').waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {});
+      }
     } else {
       const close = inspector.getByRole('button', { name: /^Close$/i }).first();
-      if (await visible(close)) await close.click();
+      if (await visible(close)) {
+        await close.click();
+        await page.locator('.item-inspector.open').waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {});
+      }
       break;
     }
   }
