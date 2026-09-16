@@ -64,7 +64,7 @@ async function clickFirstVisibleButton(scope, patterns) {
   return null;
 }
 async function readVitals(page) {
-  const bars = page.locator('.barline');
+  const bars = page.locator('.hud-top .vitals .barline');
   if (await bars.count() < 3) return { hp: NaN, armor: NaN, cap: NaN };
   return {
     hp: Number.parseFloat(await text(bars.nth(0).locator('b'))),
@@ -89,17 +89,17 @@ async function useCombatActions(page, cycle) {
   if (cycle % 3 === 0 && await visible(dodge) && await dodge.isEnabled().catch(() => false)) await dodge.click().catch(() => {});
   await useSuppliesIfNeeded(page);
 }
-async function fireBurst(page, shots = 18) {
+async function holdAssistedFire(page, durationMs) {
   const fire = page.locator('.fire-button').first();
   if (!await visible(fire)) throw new Error('Mobile assisted FIRE control is not visible.');
   const box = await fire.boundingBox();
   if (!box) throw new Error('Mobile assisted FIRE control has no layout box.');
-  const x = box.x + box.width / 2;
-  const y = box.y + box.height / 2;
-  for (let index = 0; index < shots; index += 1) {
-    await page.touchscreen.tap(x, y).catch(() => {});
-    await page.waitForTimeout(96);
-    if (await visible(page.locator('.overlay').first()) || await visible(page.locator('.debrief-shell'))) break;
+  const init = { pointerId: 42, pointerType: 'touch', isPrimary: false, clientX: box.x + box.width / 2, clientY: box.y + box.height / 2, buttons: 1, bubbles: true };
+  await fire.dispatchEvent('pointerdown', init);
+  try {
+    await page.waitForTimeout(durationMs);
+  } finally {
+    await fire.dispatchEvent('pointerup', { ...init, buttons: 0 }).catch(() => {});
   }
 }
 async function moveWithStick(page, angle, durationMs = 1150) {
@@ -192,18 +192,27 @@ async function playMission(page, missionIndex, startingLevel) {
 
     await interactIfAvailable(page);
     await useCombatActions(page, cycle);
-    const routeAngle = (cycle % 16) / 16 * Math.PI * 2 + (cycle % 3 === 0 ? Math.PI / 4 : 0);
-    const moveDuration = cycle % 4 === 0 ? 1850 : 1350;
+    const worldAxisAngles = { px: 0.497, py: 2.645, nx: 3.639, ny: 5.786 };
+    const patrol = [
+      [worldAxisAngles.px, 4600], [worldAxisAngles.py, 2100],
+      [worldAxisAngles.px, 4600], [worldAxisAngles.ny, 2100],
+      [worldAxisAngles.px, 4600], [worldAxisAngles.py, 2100],
+      [worldAxisAngles.nx, 4600], [worldAxisAngles.py, 2100],
+      [worldAxisAngles.nx, 4600], [worldAxisAngles.ny, 2100],
+      [worldAxisAngles.nx, 4600], [worldAxisAngles.py, 2100],
+    ];
+    const [routeAngle, moveDuration] = patrol[cycle % patrol.length];
     await Promise.all([
       moveWithStick(page, routeAngle, moveDuration),
-      fireBurst(page, cycle % 4 === 0 ? 18 : 13),
+      holdAssistedFire(page, moveDuration),
     ]);
     if (await visible(page.locator('.overlay').first())) continue;
     await interactIfAvailable(page);
 
     if (Date.now() - lastStatusLog > 12_000) {
       const status = [await text(page.locator('.objective-progress-chip')), await text(page.locator('.post-clear-objective')), await text(page.locator('.mission-card')), await text(page.locator('.target-readout'))].filter(Boolean).join(' | ');
-      log(`Mission ${missionIndex} status: ${status.slice(0, 420)}`);
+      const vitals = await readVitals(page);
+      log(`Mission ${missionIndex} status: ${status.slice(0, 420)} | player HP ${vitals.hp} ARM ${vitals.armor} CAP ${vitals.cap}`);
       lastStatusLog = Date.now();
     }
     cycle += 1;
