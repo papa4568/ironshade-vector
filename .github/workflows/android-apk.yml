@@ -1,0 +1,94 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - android/capacitor-apk
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'scripts/configure-android.mjs'
+      - 'capacitor.config.ts'
+      - 'package.json'
+      - 'vite.config.ts'
+      - 'index.html'
+      - '.github/workflows/android-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install Android SDK 36
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run full web regression and production build
+        run: npm run build
+
+      - name: Generate native Android project
+        shell: bash
+        run: |
+          rm -rf android
+          npx cap add android
+          node scripts/configure-android.mjs
+          npx cap sync android
+          test -f android/app/src/main/assets/public/index.html
+          find android/app/src/main/assets/public/assets -name 'three-runtime-*.js' -print -quit | grep -q .
+          grep -q 'android:screenOrientation="sensorLandscape"' android/app/src/main/AndroidManifest.xml
+
+      - name: Build installable debug APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Verify APK package and SDK
+        shell: bash
+        run: |
+          APK='android/app/build/outputs/apk/debug/app-debug.apk'
+          test -s "$APK"
+          AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
+          "$AAPT" dump badging "$APK" | tee android-apk-badging.txt
+          grep -q "package: name='app.ironshade.vector'" android-apk-badging.txt
+          grep -q "sdkVersion:'24'" android-apk-badging.txt
+          grep -q "targetSdkVersion:'36'" android-apk-badging.txt
+          grep -q "launchable-activity: name='app.ironshade.vector.MainActivity'" android-apk-badging.txt
+          cp "$APK" Ironshade-Vector-Android-Beta.apk
+          sha256sum Ironshade-Vector-Android-Beta.apk | tee Ironshade-Vector-Android-Beta.sha256
+          echo "ANDROID_APK_PASS size=$(du -h Ironshade-Vector-Android-Beta.apk | cut -f1)"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ironshade-vector-android-apk
+          path: |
+            Ironshade-Vector-Android-Beta.apk
+            Ironshade-Vector-Android-Beta.sha256
+            android-apk-badging.txt
+          if-no-files-found: error
+          retention-days: 90
