@@ -3,6 +3,19 @@ import { chromium } from 'playwright';
 const target = 'https://ironshade-vector.netlify.app';
 const browser = await chromium.launch({ headless: true });
 
+async function bundleHasMapOverhaul(page) {
+  return page.evaluate(async () => {
+    const scripts = Array.from(document.querySelectorAll('script[src]')).map(script => script.src).filter(Boolean);
+    for (const src of scripts) {
+      try {
+        const text = await fetch(src, { cache: 'no-store' }).then(response => response.text());
+        if (text.includes('map-route-light') && text.includes('COUNTERMASS CRADLE')) return true;
+      } catch {}
+    }
+    return false;
+  });
+}
+
 async function openCombat(context, label) {
   const page = await context.newPage();
   const errors = [];
@@ -13,6 +26,10 @@ async function openCombat(context, label) {
   let deployed = false;
   for (let attempt = 0; attempt < 30; attempt += 1) {
     await page.goto(target, { waitUntil: 'domcontentloaded', timeout: 45_000 });
+    if (!(await bundleHasMapOverhaul(page))) {
+      await page.waitForTimeout(4_000);
+      continue;
+    }
     const contracts = page.getByRole('button', { name: /^contracts$/i });
     if (await contracts.isVisible().catch(() => false)) {
       await contracts.click();
@@ -27,7 +44,7 @@ async function openCombat(context, label) {
     }
     await page.waitForTimeout(4_000);
   }
-  if (!deployed) throw new Error(`${label}: production combat did not become available in the deploy wait window`);
+  if (!deployed) throw new Error(`${label}: production map-overhaul bundle did not become available in the deploy wait window`);
   const canvas = page.locator('.game-canvas');
   await canvas.waitFor({ state: 'visible', timeout: 15_000 });
   const box = await canvas.boundingBox();
