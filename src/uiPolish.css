@@ -62,3 +62,15 @@
   .command-action-row { grid-template-columns: 1fr; }
   .ship-tabs button { min-height: 42px; }
 }
+
+
+/* Navigation-level code splitting fallback. Keep this tiny because it is part of the boot CSS. */
+.surface-loader { min-height:100svh; display:grid; place-items:center; padding:24px; background:radial-gradient(circle at 50% 42%,rgba(63,111,98,.12),transparent 34%),#050a09; color:#c7d7d1; }
+.surface-loader>div { width:min(420px,82vw); padding:18px; border:1px solid #304b43; background:#091210; box-shadow:0 18px 60px rgba(0,0,0,.35); }
+.surface-loader span,.surface-loader b { display:block; }
+.surface-loader span { color:#6f8c82; font:800 8px/1 ui-monospace,monospace; letter-spacing:.13em; }
+.surface-loader b { margin-top:8px; font-size:15px; }
+.surface-loader i { display:block; position:relative; height:3px; margin-top:14px; overflow:hidden; background:#14251f; }
+.surface-loader i::after { content:''; position:absolute; inset:0; width:38%; background:#89b8a8; animation:client-stream 1s ease-in-out infinite alternate; }
+@keyframes client-stream { from { transform:translateX(-10%); } to { transform:translateX(190%); } }
+@media (prefers-reduced-motion:reduce) { .surface-loader i::after { animation:none; width:65%; } }

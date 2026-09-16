@@ -1,7 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
-import Armory from './components/Armory';
-import GameCanvas from './components/GameCanvas';
-import ShipHub from './components/ShipHub';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import './qol.css';
 import './equipmentBay.css';
 import './readability.css';
@@ -19,8 +16,20 @@ import { advanceDirectivesAfterContract, preparedDirectiveContract, syncDirectiv
 import type { Telemetry } from './game/sim';
 import type { GroundLootReceipt } from './game/fieldLoot';
 
+const loadArmory = () => import('./components/Armory');
+const loadGameCanvas = () => import('./components/GameCanvas');
+const loadShipHub = () => import('./components/ShipHub');
+const Armory = lazy(loadArmory);
+const GameCanvas = lazy(loadGameCanvas);
+const ShipHub = lazy(loadShipHub);
+
 type Screen = 'ship' | 'combat' | 'build' | 'debrief';
 type UplinkStatus = 'local' | 'sharing' | 'shared' | 'error';
+
+function SurfaceLoader({ screen }: { screen: Screen }) {
+  const label = screen === 'combat' ? 'Preparing combat renderer' : screen === 'build' ? 'Opening equipment systems' : screen === 'ship' ? 'Opening command deck' : 'Loading mission debrief';
+  return <main className="surface-loader" role="status" aria-live="polite"><div><span>QUIET SIGNAL // CLIENT STREAM</span><b>{label}</b><i /></div></main>;
+}
 type Debrief = { contract: Contract; campaignReward: CampaignReward; lootReward: VictoryReward; uplinkStatus: UplinkStatus; storyNote: string | null; chapterNote: string | null; postKhepriNote: string | null; interdictionNote: string | null; escalationNote: string | null; directiveNote: string | null; protocolValue: number; expeditionProgress?: ExpeditionProgress };  
 
 function debriefRarityCue(rarity: VictoryReward['loot'][number]['rarity']) {
@@ -205,11 +214,16 @@ function App() {
   const discardRecoveredItem = (itemId: string) => { setProfile(current => discardItem(current, itemId).profile); setNewLootIds(current => current.filter(id => id !== itemId)); };
   const changeProfileSettings = (settings: Partial<ProfileSettings>) => setProfile(current => setProfileSettings(current, settings));
 
-  return <div className="app-shell" onPointerDownCapture={() => feedback.unlock()} onClickCapture={event => { const target = event.target as HTMLElement; if (target.closest('button') && !target.closest('.game-root')) feedback.cue('ui'); }}>
-    {screen === 'ship' && <ShipHub profile={profile} campaign={campaign} contracts={contracts} operations={operations} operationsStatus={operationsStatus} telemetrySharing={profile.settings.telemetrySharing} selectedContractId={selectedContract?.id ?? ''} statusMessage={statusMessage} onSelectContract={setSelectedContractId} onDeploy={() => selectedContract && setScreen('combat')} onOpenBuild={() => setScreen('build')} onCampaignChange={setCampaign} />}
-    {screen === 'build' && <Armory profile={profile} campaign={campaign} newLootIds={newLootIds} onProfileChange={setProfile} onCampaignChange={setCampaign} onClose={() => { setNewLootIds([]); setScreen('ship'); }} />}
-    {screen === 'combat' && selectedContract && <GameCanvas key={selectedContract.id} build={combatBuild} mission={selectedContract} profileSettings={profile.settings} consumables={campaign.consumables} buildLabel={buildIdentity(profile)} operatorFaction={dominantEquipmentFaction(profile)} onProfileSettingsChange={changeProfileSettings} onConsumablesChange={consumables => setCampaign(current => ({ ...current, consumables }))} onMissionResolve={finishMission} onAttemptFailed={reportFailedAttempt} onReturnToHub={abandonMission} />}
-    {screen === 'debrief' && debrief && <DebriefScreen result={debrief} onShip={() => { setNewLootIds([]); setScreen('ship'); }} onBuild={() => setScreen('build')} onDiscard={discardRecoveredItem} onRepeat={contracts.some(contract => contract.id === debrief.contract.id) ? () => setScreen('combat') : undefined} />}
+  const openBuild = () => { void loadArmory(); setScreen('build'); };
+  const openCombat = () => { if (!selectedContract) return; void loadGameCanvas(); setScreen('combat'); };
+
+  return <div className="app-shell" data-client-architecture="split-v1" onPointerDownCapture={() => feedback.unlock()} onClickCapture={event => { const target = event.target as HTMLElement; if (target.closest('button') && !target.closest('.game-root')) feedback.cue('ui'); }}>
+    <Suspense fallback={<SurfaceLoader screen={screen} />}>
+      {screen === 'ship' && <ShipHub profile={profile} campaign={campaign} contracts={contracts} operations={operations} operationsStatus={operationsStatus} telemetrySharing={profile.settings.telemetrySharing} selectedContractId={selectedContract?.id ?? ''} statusMessage={statusMessage} onSelectContract={setSelectedContractId} onDeploy={openCombat} onOpenBuild={openBuild} onCampaignChange={setCampaign} />}
+      {screen === 'build' && <Armory profile={profile} campaign={campaign} newLootIds={newLootIds} onProfileChange={setProfile} onCampaignChange={setCampaign} onClose={() => { setNewLootIds([]); setScreen('ship'); }} />}
+      {screen === 'combat' && selectedContract && <GameCanvas key={selectedContract.id} build={combatBuild} mission={selectedContract} profileSettings={profile.settings} consumables={campaign.consumables} buildLabel={buildIdentity(profile)} operatorFaction={dominantEquipmentFaction(profile)} onProfileSettingsChange={changeProfileSettings} onConsumablesChange={consumables => setCampaign(current => ({ ...current, consumables }))} onMissionResolve={finishMission} onAttemptFailed={reportFailedAttempt} onReturnToHub={abandonMission} />}
+      {screen === 'debrief' && debrief && <DebriefScreen result={debrief} onShip={() => { setNewLootIds([]); setScreen('ship'); }} onBuild={openBuild} onDiscard={discardRecoveredItem} onRepeat={contracts.some(contract => contract.id === debrief.contract.id) ? () => { void loadGameCanvas(); setScreen('combat'); } : undefined} />}
+    </Suspense>
   </div>;
 }
 
