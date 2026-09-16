@@ -5,6 +5,9 @@ on:
     branches:
       - feat/item-inspector-redesign
 
+permissions:
+  contents: write
+
 jobs:
   qa:
     if: github.actor != 'github-actions[bot]'
@@ -16,8 +19,31 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Fix legacy cascade conflict
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          css_path = Path('src/equipmentBay.css')
+          css = css_path.read_text()
+          marker = '/* ITEM INSPECTOR LAZY-CSS CASCADE GUARD */'
+          if marker not in css:
+              css += '''\n\n/* ITEM INSPECTOR LAZY-CSS CASCADE GUARD */\n.gear-layout .item-inspector.open {\n  display: grid;\n}\n'''
+              css_path.write_text(css)
+
+          test_path = Path('tests/ui-readability.ts')
+          tests = test_path.read_text()
+          anchor = "assert(equipmentCss.includes('ITEM INSPECTOR REDESIGN') && equipmentCss.includes('grid-template-rows: auto minmax(0, 1fr) auto') && equipmentCss.includes('.inspector-scroll') && equipmentCss.includes('overflow: hidden'), 'Item inspector is not using the fixed-header/scroll-body/action-dock layout.');"
+          addition = "assert(equipmentCss.includes('ITEM INSPECTOR LAZY-CSS CASCADE GUARD') && equipmentCss.includes('.gear-layout .item-inspector.open'), 'Lazy Armory CSS can override the redesigned inspector grid.');"
+          if addition not in tests:
+              if anchor not in tests:
+                  raise SystemExit('UI test anchor missing')
+              tests = tests.replace(anchor, anchor + '\n' + addition)
+              test_path.write_text(tests)
+          PY
       - name: Install app dependencies
         run: npm install --no-audit --no-fund
+      - name: Validate production build
+        run: npm run build
       - name: Install Playwright
         run: |
           npm install --no-save playwright
@@ -33,6 +59,15 @@ jobs:
           exit 1
       - name: Run phone landscape visual QA
         run: node scripts/qa-item-inspector-redesign.mjs
+      - name: Commit verified cascade fix
+        if: success()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/equipmentBay.css tests/ui-readability.ts
+          git diff --cached --check
+          git commit -m 'Keep redesigned item inspector grid on mobile'
+          git push origin HEAD:feat/item-inspector-redesign
       - name: Upload visual QA
         if: always()
         uses: actions/upload-artifact@v4
