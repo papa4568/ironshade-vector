@@ -92,9 +92,13 @@ async function useCombatActions(page, cycle) {
 async function fireBurst(page, shots = 18) {
   const fire = page.locator('.fire-button').first();
   if (!await visible(fire)) throw new Error('Mobile assisted FIRE control is not visible.');
+  const box = await fire.boundingBox();
+  if (!box) throw new Error('Mobile assisted FIRE control has no layout box.');
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
   for (let index = 0; index < shots; index += 1) {
-    await fire.click({ delay: 18 }).catch(() => {});
-    await page.waitForTimeout(92);
+    await page.touchscreen.tap(x, y).catch(() => {});
+    await page.waitForTimeout(96);
     if (await visible(page.locator('.overlay').first()) || await visible(page.locator('.debrief-shell'))) break;
   }
 }
@@ -151,13 +155,14 @@ async function playMission(page, missionIndex, startingLevel) {
   const coarse = await page.evaluate(() => window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 900);
   if (!coarse) throw new Error('Playtest viewport did not activate the shipped mobile/coarse control path.');
 
-  const started = Date.now();
+  const missionStarted = Date.now();
+  let attemptStarted = Date.now();
   let cycle = 0;
   let deaths = 0;
   let choseDepth = null;
   let lastStatusLog = 0;
-  while (Date.now() - started < MISSION_TIMEOUT_MS) {
-    if (await visible(page.locator('.debrief-shell'))) return { deaths, durationMs: Date.now() - started, depth: choseDepth ?? 'unknown', missionChip };
+  while (Date.now() - attemptStarted < MISSION_TIMEOUT_MS) {
+    if (await visible(page.locator('.debrief-shell'))) return { deaths, durationMs: Date.now() - missionStarted, depth: choseDepth ?? 'unknown', missionChip };
 
     const overlay = page.locator('.overlay').first();
     if (await visible(overlay)) {
@@ -166,6 +171,8 @@ async function playMission(page, missionIndex, startingLevel) {
         deaths += 1;
         await screenshot(page, `mission-${missionIndex}-death-${deaths}`);
         if (deaths > 4) throw new Error(`Mission ${missionIndex} exceeded four legitimate combat deaths.`);
+        attemptStarted = Date.now();
+        cycle = 0;
         await page.waitForTimeout(700);
         continue;
       }
@@ -184,13 +191,14 @@ async function playMission(page, missionIndex, startingLevel) {
     }
 
     await interactIfAvailable(page);
-    await fireBurst(page, cycle % 4 === 0 ? 26 : 16);
-    if (await visible(page.locator('.overlay').first())) continue;
     await useCombatActions(page, cycle);
-    await interactIfAvailable(page);
-
-    const routeAngle = (cycle % 12) / 12 * Math.PI * 2 + (cycle % 3 === 0 ? Math.PI / 4 : 0);
-    await moveWithStick(page, routeAngle, cycle % 4 === 0 ? 1550 : 1050);
+    const routeAngle = (cycle % 16) / 16 * Math.PI * 2 + (cycle % 3 === 0 ? Math.PI / 4 : 0);
+    const moveDuration = cycle % 4 === 0 ? 1850 : 1350;
+    await Promise.all([
+      moveWithStick(page, routeAngle, moveDuration),
+      fireBurst(page, cycle % 4 === 0 ? 18 : 13),
+    ]);
+    if (await visible(page.locator('.overlay').first())) continue;
     await interactIfAvailable(page);
 
     if (Date.now() - lastStatusLog > 12_000) {
