@@ -567,3 +567,26 @@
   .gear-deep-details { margin-top: 7px; }
   .gear-deep-details > summary { min-height: 36px; padding: 7px 9px; }
 }
+
+
+/* MOBILE INSPECTOR ESCAPE RELIABILITY */
+.gear-layout.has-selection::before { pointer-events: none; }
+.item-inspector-backdrop { display: none; }
+@media (pointer: coarse), (max-width: 1100px) {
+  .gear-layout.has-selection .item-inspector-backdrop {
+    display: block;
+    position: fixed;
+    z-index: 60;
+    inset: 0;
+    width: 100vw;
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    appearance: none;
+    background: transparent;
+    cursor: default;
+  }
+  .item-inspector.open { z-index: 70; }
+  .item-inspector .sheet-close { pointer-events: auto; touch-action: manipulation; }
+}

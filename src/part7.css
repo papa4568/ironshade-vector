@@ -105,3 +105,27 @@
     padding: 9px 12px;
   }
 }
+
+
+/* MOBILE OBJECTIVE COMPACTNESS OVERRIDE */
+@media (pointer: coarse), (max-width: 900px) {
+  .post-clear-objective {
+    top: max(52px, calc(env(safe-area-inset-top) + 42px));
+    bottom: auto;
+    transform: translateX(-50%);
+    width: min(300px, 34vw);
+    padding: 6px 9px;
+    gap: 2px;
+    border-radius: 9px;
+    background: rgba(4, 11, 11, .8);
+    box-shadow: 0 6px 18px rgba(0,0,0,.18);
+  }
+  .post-clear-objective small { display: none; }
+  .post-clear-objective b { font-size: 10px; line-height: 1.1; }
+  .post-clear-objective span { font-size: 7px; line-height: 1.15; letter-spacing: .04em; }
+}
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 560px) {
+  .post-clear-objective { top: max(42px, calc(env(safe-area-inset-top) + 32px)); width: min(280px, 31vw); padding: 5px 8px; }
+  .post-clear-objective b { font-size: 9px; }
+  .post-clear-objective span { font-size: 6px; }
+}
