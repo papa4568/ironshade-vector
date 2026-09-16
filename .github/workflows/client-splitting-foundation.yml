@@ -1,0 +1,61 @@
+name: Validate client splitting foundation
+
+on:
+  push:
+    branches:
+      - perf/client-splitting-foundation
+
+permissions:
+  contents: write
+
+jobs:
+  validate-publish-qa:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply client splitting foundation
+        run: |
+          git fetch origin perf/client-splitting-foundation
+          git show FETCH_HEAD:scripts/apply_client_splitting.py > /tmp/apply_client_splitting.py
+          git show FETCH_HEAD:tests/client-bundle-budget.mjs > tests/client-bundle-budget.mjs
+          python /tmp/apply_client_splitting.py
+          git diff --check
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run full regression suite, production build, and bundle budget
+        run: npm run build
+      - name: Publish validated performance foundation to main
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/App.tsx src/main.tsx src/uiPolish.css vite.config.ts package.json tests/client-bundle-budget.mjs
+          git commit -m 'Split client surfaces and defer Three runtime'
+          git push origin HEAD:main
+      - name: Load live QA
+        run: |
+          git fetch origin perf/client-splitting-foundation
+          git show FETCH_HEAD:scripts/live_client_splitting_qa.mjs > .live-client-splitting-qa.mjs
+      - name: Install browser QA dependency
+        run: |
+          npm install --no-save playwright@latest
+          npx playwright install --with-deps chromium
+      - name: Verify production chunk loading
+        run: node .live-client-splitting-qa.mjs
+      - name: Upload QA screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-splitting-live-qa
+          path: |
+            client-split-mobile-build.png
+            client-split-mobile-combat.png
+            client-split-desktop-hub.png
+          if-no-files-found: ignore
