@@ -1,0 +1,62 @@
+name: Validate command hub and stats
+
+on:
+  push:
+    branches:
+      - ui/command-hub-stats
+
+permissions:
+  contents: write
+
+jobs:
+  validate-publish-qa:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply command hub and stats
+        run: |
+          git fetch origin ui/command-hub-stats
+          git show FETCH_HEAD:src/components/PlayerStatsPanel.tsx > src/components/PlayerStatsPanel.tsx
+          git show FETCH_HEAD:src/components/CommandHubVisual.tsx > src/components/CommandHubVisual.tsx
+          git show FETCH_HEAD:src/commandHub.css > src/commandHub.css
+          git show FETCH_HEAD:scripts/apply_command_hub_stats.py > /tmp/apply_command_hub_stats.py
+          python /tmp/apply_command_hub_stats.py
+          git diff --check
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run full regression suite and production build
+        run: npm run build
+      - name: Publish validated command hub to main
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/components/ShipHub.tsx src/components/PlayerStatsPanel.tsx src/components/CommandHubVisual.tsx src/commandHub.css tests/ui-readability.ts
+          git commit -m 'Add visual command hub and player stats'
+          git push origin HEAD:main
+      - name: Load live QA
+        run: |
+          git fetch origin ui/command-hub-stats
+          git show FETCH_HEAD:scripts/live_command_hub_qa.mjs > .live-command-hub-qa.mjs
+      - name: Install browser QA dependency
+        run: |
+          npm install --no-save playwright@latest
+          npx playwright install --with-deps chromium
+      - name: Verify live mobile command hub
+        run: node .live-command-hub-qa.mjs
+      - name: Upload live QA screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: command-hub-live-qa
+          path: |
+            command-hub-mobile.png
+            player-stats-mobile.png
+          if-no-files-found: ignore
