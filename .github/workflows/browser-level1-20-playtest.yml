@@ -70,4 +70,4 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-# Harness revision 8: follow obstacle-aware post-clear route guidance and close one fresh gear decision per visit.
+# Harness revision 9: validate obstacle-aware route guidance with the corrected regression assertion.
