@@ -241,15 +241,18 @@ async function playMission(page, missionIndex, startingLevel) {
 }
 
 async function equipFreshLoot(page) {
-  const cards = page.locator('.inventory-card');
-  let fresh = null;
-  for (let index = 0; index < await cards.count(); index += 1) {
-    const card = cards.nth(index);
-    if (/\bNEW\b/i.test(await text(card))) { fresh = card; break; }
+  let inspector = page.locator('.item-inspector.open').first();
+  if (!await visible(inspector)) {
+    const cards = page.locator('.inventory-card');
+    let fresh = null;
+    for (let index = 0; index < await cards.count(); index += 1) {
+      const card = cards.nth(index);
+      if (/\bNEW\b/i.test(await text(card))) { fresh = card; break; }
+    }
+    if (!fresh) return 0;
+    await fresh.click();
+    inspector = page.locator('.item-inspector.open').first();
   }
-  if (!fresh) return 0;
-  await fresh.click();
-  const inspector = page.locator('.item-inspector.open');
   await inspector.waitFor({ state: 'visible', timeout: 5000 });
   const equip = inspector.locator('.inspector-actions button.primary').first();
   let equipped = 0;
@@ -261,7 +264,7 @@ async function equipFreshLoot(page) {
   const close = inspector.getByRole('button', { name: /^Close$/i }).first();
   await close.waitFor({ state: 'visible', timeout: 3000 });
   await close.click({ force: true });
-  await inspector.waitFor({ state: 'hidden', timeout: 3000 });
+  await page.locator('.item-inspector.open').waitFor({ state: 'hidden', timeout: 3000 });
   return equipped;
 }
 async function spendProgression(page, level) {
