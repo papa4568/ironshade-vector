@@ -70,4 +70,4 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-# Harness revision 3: close each gear inspector before selecting another item.
+# Harness revision 4: circle-strafe and assisted-fire simultaneously; restart timeout per attempt.
