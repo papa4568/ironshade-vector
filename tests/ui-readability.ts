@@ -17,9 +17,9 @@ const statsPanel = read('src/components/PlayerStatsPanel.tsx');
 const hubVisual = read('src/components/CommandHubVisual.tsx');
 const hubCss = read('src/commandHub.css');
 const app = read('src/App.tsx');
-const equipmentCss = read('src/equipmentBay.css');
 const missionCss = read('src/part4.css');
 const objectiveCss = read('src/part7.css');
+const gearDetailCss = read('src/gearDetail.css');
 
 assert(!armory.includes('Review faction doctrines'), 'Equipment Bay still advertises undiscovered faction doctrine targets.');
 assert(!armory.includes('2 PIECE'), 'Equipment Bay still exposes 2-piece set targets.');
@@ -37,14 +37,10 @@ assert(renderer.includes("enemy.role === 'elite' ? 2.2 : 1.9"), 'Three.js hostil
 assert(renderer.includes('0xff725f') && renderer.includes('0x8ee8ff') && renderer.includes('THREE.AdditiveBlending') && renderer.includes('toneMapped: false'), 'Three.js hostile bars are not using the bright mobile treatment.');
 assert(css.includes('.target-readout') && css.includes('.gear-quick-read') && css.includes('.loot-radar'), 'Readability stylesheet is incomplete.');
 assert(armory.includes('gear-deep-details') && css.includes('.gear-deep-details'), 'Gear inspector does not separate essential comparison from advanced telemetry.');
-assert(equipmentCss.includes('gear-layout.has-selection::before') && equipmentCss.includes('width: min(72vw, 760px)'), 'Landscape mobile gear inspector is missing focused modal treatment.');
-assert(equipmentCss.includes('.item-inspector .sheet-close') && equipmentCss.includes('@media (pointer: coarse)'), 'Gear inspector cannot be reliably closed on coarse-pointer landscape devices.');
-assert(equipmentCss.includes('MOBILE INSPECTOR SCROLL RELIABILITY') && equipmentCss.includes('touch-action: pan-y') && equipmentCss.includes('-webkit-overflow-scrolling: touch') && equipmentCss.includes('height: calc(100dvh'), 'Mobile gear inspector is not a bounded touch-scroll surface.');
-assert(armory.includes('inspector-header') && armory.includes('inspector-scroll') && armory.includes('gear-summary-grid') && armory.includes('impact-stat'), 'Item inspector redesign hierarchy is missing.');
-assert(equipmentCss.includes('ITEM INSPECTOR REDESIGN') && equipmentCss.includes('grid-template-rows: auto minmax(0, 1fr) auto') && equipmentCss.includes('.inspector-scroll') && equipmentCss.includes('overflow: hidden'), 'Item inspector is not using the fixed-header/scroll-body/action-dock layout.');
-assert(equipmentCss.includes('ITEM INSPECTOR LAZY-CSS CASCADE GUARD') && equipmentCss.includes('.gear-layout .item-inspector.open'), 'Lazy Armory CSS can override the redesigned inspector grid.');
-assert(armory.includes("useState<string | null>(null)") && armory.includes("newLootIds.length > 0 ? 'new' : 'all'") && armory.includes('item-inspector-backdrop'), 'Recovered loot should open as a dismissible filtered list rather than trapping the player in an inspector.');
-assert(equipmentCss.includes('MOBILE INSPECTOR ESCAPE RELIABILITY') && equipmentCss.includes('.item-inspector-backdrop') && equipmentCss.includes('pointer-events: none'), 'Mobile item inspector backdrop/escape behavior is missing.');
+assert(armory.includes('gear-detail-mode') && armory.includes('gear-detail-screen') && armory.includes('gear-detail-back') && armory.includes('gear-detail-actions'), 'Gear selection is not using the standalone equipment detail screen.');
+assert(!armory.includes('item-inspector-backdrop') && !armory.includes("className={'item-inspector "), 'Gear tab still mounts the legacy item inspector overlay.');
+assert(armory.includes("newLootIds.length > 0 ? 'new' : 'all'"), 'Recovered loot should still open as a filtered equipment list.');
+assert(gearDetailCss.includes('Build Bay remains the only scroll surface') && gearDetailCss.includes('overflow: visible') && !gearDetailCss.includes('position: fixed') && !gearDetailCss.includes('position: sticky'), 'Standalone gear detail must remain in normal document flow without nested or fixed scroll surfaces.');
 assert(css.includes('DEBRIEF RARITY COLORS') && css.includes('.recovery-review-card.rarity-singular') && css.includes('.recovery-review-card.rarity-prototype'), 'Debrief recovery cards are missing rarity color treatment.');
 assert(objectiveCss.includes('MOBILE OBJECTIVE COMPACTNESS OVERRIDE') && objectiveCss.includes('width: min(300px, 34vw)') && objectiveCss.includes('.post-clear-objective small { display: none; }'), 'Post-clear objective guidance can still cover too much of the mobile combat view.');
 assert(missionCss.includes('RESPONSIVE MISSION SURFACE RELIABILITY') && missionCss.includes('overflow-y: auto'), 'Combat completion overlays can still extend outside the visible viewport.');
@@ -80,7 +76,5 @@ assert(hubCss.includes('PLAYTEST READINESS VISIBILITY') && hubCss.includes('.con
 const polishCss = read('src/uiPolish.css');
 assert(polishCss.includes('.command-action-row') && polishCss.includes('.stats-help') && polishCss.includes('.compact-discovery'), 'UI polish stylesheet is incomplete.');
 
-const mobileInspectorCss = read('src/part12.css');
-assert(mobileInspectorCss.includes('ANDROID ITEM INSPECTOR SINGLE SCROLLER') && mobileInspectorCss.includes('overflow-y: auto') && mobileInspectorCss.includes('.gear-layout .item-inspector.open .inspector-scroll') && mobileInspectorCss.includes('overflow: visible') && mobileInspectorCss.includes('touch-action: auto'), 'Android item inspector still depends on a nested touch-scroll pane.');
 
 console.log('UI_READABILITY_PASS discovery=hidden contractGear=unidentified targetHp=strong missionLoot=reviewable hierarchy=polished');
