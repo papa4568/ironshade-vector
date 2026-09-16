@@ -1,0 +1,61 @@
+name: Validate map overhaul
+
+on:
+  push:
+    branches:
+      - maps/overhaul-navigation
+
+permissions:
+  contents: write
+
+jobs:
+  validate-publish-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Load map overhaul from validation branch
+        run: |
+          git fetch origin maps/overhaul-navigation
+          for path in src/game/mapNavigation.ts src/game/mapPathfinding.ts src/game/mapVisuals.ts tests/map-navigation.ts; do
+            git show FETCH_HEAD:$path > $path
+          done
+          git show FETCH_HEAD:scripts/apply_map_overhaul_patch.py > /tmp/apply_map_overhaul_patch.py
+          python /tmp/apply_map_overhaul_patch.py
+          git diff --check
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run regression tests, navigation audit, and production build
+        run: npm run build
+      - name: Commit validated map overhaul to main
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package.json src/game/mapNavigation.ts src/game/mapPathfinding.ts src/game/mapVisuals.ts src/game/encounters.ts src/game/hardSciFiVisuals.ts src/game/threeCombatRenderer.ts tests/map-navigation.ts
+          git commit -m 'Overhaul combat maps and navigation readability'
+          git push origin HEAD:main
+      - name: Load live map QA
+        run: |
+          git fetch origin maps/overhaul-navigation
+          git show FETCH_HEAD:scripts/live_map_qa.mjs > .live-map-qa.mjs
+      - name: Install browser QA dependency
+        run: |
+          npm install --no-save playwright@latest
+          npx playwright install --with-deps chromium
+      - name: Verify live desktop and mobile combat maps
+        run: node .live-map-qa.mjs
+      - name: Upload live map screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: map-overhaul-live-qa
+          path: |
+            map-overhaul-desktop.png
+            map-overhaul-mobile.png
+          if-no-files-found: ignore
