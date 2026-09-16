@@ -1,0 +1,166 @@
+/* Standalone equipment detail page.
+   Deliberately uses normal document flow: the Build Bay remains the only scroll surface. */
+.gear-browser,
+.gear-detail-screen {
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.gear-detail-screen {
+  --gear-rarity: #b9c7c2;
+  --gear-rarity-border: rgba(145,160,155,.66);
+  --gear-rarity-wash: rgba(99,115,110,.16);
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  min-height: 0;
+  padding-bottom: max(18px, env(safe-area-inset-bottom));
+  overflow: visible;
+}
+.gear-detail-screen.rarity-field { --gear-rarity:#9aa7a3; --gear-rarity-border:rgba(145,160,155,.66); --gear-rarity-wash:rgba(99,115,110,.16); }
+.gear-detail-screen.rarity-refined { --gear-rarity:#7bd0a4; --gear-rarity-border:rgba(91,183,137,.8); --gear-rarity-wash:rgba(39,120,79,.2); }
+.gear-detail-screen.rarity-prototype { --gear-rarity:#a8b8ff; --gear-rarity-border:rgba(112,137,222,.9); --gear-rarity-wash:rgba(55,72,155,.24); }
+.gear-detail-screen.rarity-singular { --gear-rarity:#efb45f; --gear-rarity-border:rgba(226,157,66,.94); --gear-rarity-wash:rgba(139,84,24,.28); }
+
+.gear-detail-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--gear-rarity-border);
+  border-radius: 13px;
+  background: linear-gradient(145deg, var(--gear-rarity-wash), rgba(7,12,13,.96) 42%);
+}
+.gear-detail-back {
+  min-height: 44px;
+  padding: 9px 12px;
+  border: 1px solid #466058;
+  border-radius: 9px;
+  background: #14201e;
+  color: #d4dfdb;
+  font-weight: 900;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.gear-detail-title { min-width: 0; }
+.gear-detail-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.gear-detail-badges span {
+  padding: 4px 7px;
+  border: 1px solid #344741;
+  border-radius: 999px;
+  color: #8ea39c;
+  font: 800 7px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .08em;
+}
+.gear-detail-badges .rarity-badge {
+  border-color: var(--gear-rarity-border);
+  color: var(--gear-rarity);
+  background: var(--gear-rarity-wash);
+}
+.gear-detail-badges .equipped-badge {
+  border-color: #638d7f;
+  color: #a9d6c6;
+}
+.gear-detail-title h2 {
+  margin: 8px 0 5px;
+  color: var(--gear-rarity);
+  font-size: clamp(24px, 4vw, 42px);
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+.gear-detail-title p {
+  margin: 0;
+  color: #91a29d;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.gear-detail-body {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #2f403c;
+  border-radius: 13px;
+  background: rgba(7,12,13,.9);
+  overflow: visible;
+}
+.gear-detail-body .gear-summary-grid {
+  align-items: start;
+}
+
+.gear-detail-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+.gear-detail-actions button {
+  min-height: 46px;
+  padding: 10px 14px;
+  border: 1px solid #3d504a;
+  border-radius: 10px;
+  background: #14201e;
+  color: #c9d6d2;
+  font-weight: 900;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.gear-detail-actions button.primary {
+  border-color: transparent;
+  background: #cfe1c5;
+  color: #0c120f;
+}
+.gear-detail-actions button.danger {
+  background: #211514;
+  color: #d29688;
+}
+
+@media (max-width: 760px) {
+  .gear-detail-header {
+    grid-template-columns: 1fr;
+    gap: 9px;
+    padding: 11px;
+  }
+  .gear-detail-back {
+    justify-self: start;
+  }
+  .gear-detail-body {
+    padding: 10px;
+  }
+  .gear-detail-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 650px) {
+  .gear-detail-screen {
+    gap: 8px;
+  }
+  .gear-detail-header {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
+    padding: 9px 10px;
+  }
+  .gear-detail-back {
+    min-height: 38px;
+    padding: 7px 10px;
+  }
+  .gear-detail-title h2 {
+    margin: 5px 0 3px;
+    font-size: clamp(21px, 7vh, 30px);
+  }
+  .gear-detail-title p {
+    font-size: 8px;
+  }
+  .gear-detail-body {
+    padding: 9px 10px;
+  }
+  .gear-detail-actions button {
+    min-height: 40px;
+    padding: 8px 11px;
+  }
+}
