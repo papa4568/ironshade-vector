@@ -73,3 +73,15 @@
 @media (max-width:1000px) { .command-overview{grid-template-columns:1fr}.command-visual{min-height:290px}.player-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.weapon-stat-grid{grid-template-columns:1fr}.ability-stat-grid{grid-template-columns:1fr} }
 @media (orientation:landscape) and (max-height:650px) { .command-overview{grid-template-columns:minmax(0,1.4fr) minmax(280px,.8fr);gap:8px}.command-visual{min-height:245px}.command-visual-copy{left:12px;top:10px;max-width:44%}.command-visual-copy h2{font-size:20px}.command-nav-grid button{min-height:57px}.command-card{padding:9px}.stats-panel{gap:8px}.stats-hero{padding:10px}.stats-hero h2{font-size:21px}.stats-section{padding:9px}.player-stat-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}.player-stat-card{min-height:88px;padding:7px}.player-stat-card b{font-size:14px}.player-stat-card p{font-size:7px;margin-top:5px}.weapon-stat-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}.weapon-stat-card{padding:8px}.weapon-stat-values{gap:4px;margin-top:6px}.weapon-stat-values span{padding:5px}.ability-stat-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}.ability-stat-grid article{padding:8px}.stats-section-heading{margin-bottom:6px}.stats-section-heading p{display:none} }
 @media (max-width:620px) { .command-overview{grid-template-columns:1fr}.command-visual{min-height:260px}.command-visual-copy{max-width:58%}.command-diorama{transform:translateX(8%)}.player-stat-grid{grid-template-columns:1fr}.stats-hero{align-items:start;flex-direction:column}.stats-level{text-align:left}.stats-section-heading{align-items:start;flex-direction:column}.stats-section-heading p{max-width:none;text-align:left}.weapon-stat-grid,.ability-stat-grid{grid-template-columns:1fr} }
+
+/* PLAYTEST READINESS VISIBILITY */
+.readiness-chip { font-weight:900; letter-spacing:.05em; }
+.readiness-chip.matched,.contract-readiness.matched { border-color:#45695f; color:#a9c8bd; }
+.readiness-chip.elevated,.contract-readiness.elevated { border-color:#8b7543; color:#dbc789; }
+.readiness-chip.high-gap,.contract-readiness.high-gap { border-color:#8b4f49; color:#e4a49b; }
+.readiness-chip.lower,.contract-readiness.lower { border-color:#405962; color:#96b9c7; }
+.contract-readiness { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:8px; margin:10px 0; padding:9px 10px; border:1px solid #314740; border-radius:9px; background:#091310; }
+.contract-readiness small { color:#738a82; font-size:7px; font-weight:900; letter-spacing:.11em; }
+.contract-readiness b { color:#d3ded9; font-size:10px; }
+.contract-readiness span { justify-self:end; font-size:8px; font-weight:900; letter-spacing:.04em; }
+@media (orientation:landscape) and (max-height:650px) { .contract-readiness { margin:6px 0; padding:6px 8px; } }

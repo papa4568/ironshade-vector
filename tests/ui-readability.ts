@@ -65,6 +65,9 @@ assert((statsPanel.match(/Weapon stat glossary/g) ?? []).length === 1, 'Weapon s
 assert(!statsPanel.includes('What these numbers mean'), 'Per-weapon duplicate glossary remains.');
 assert(armory.includes('compact-discovery') && !armory.includes('Build changes save automatically on this device.'), 'Equipment Bay still shows repetitive instructional/status chrome.');
 assert(combat.includes('mission-build-label') && !combat.includes('objectiveStatus.detail : hud.squadRemaining'), 'Combat mission card still duplicates objective guidance.');
+assert(combat.includes('hostileRouteMode') && combat.includes('objectiveRouteMode'), 'Combat cleanup guidance is missing obstacle-aware route state.');
+assert(shipHub.includes('OPERATOR READINESS') && shipHub.includes('readiness-chip'), 'Contract board is missing visible operator/monster readiness guidance.');
+assert(hubCss.includes('PLAYTEST READINESS VISIBILITY') && hubCss.includes('.contract-readiness.high-gap'), 'Contract readiness styling is missing.');
 const polishCss = read('src/uiPolish.css');
 assert(polishCss.includes('.command-action-row') && polishCss.includes('.stats-help') && polishCss.includes('.compact-discovery'), 'UI polish stylesheet is incomplete.');
 

@@ -9,11 +9,38 @@ const clamp = (value: number, minimum: number, maximum: number) => Math.max(mini
 
 export function frameGenerationForRecovery(recoveryLevel: number, operatorLevel = 10): FrameGeneration { if (operatorLevel >= 15 && recoveryLevel >= 55) return 6; if (operatorLevel >= 12 && recoveryLevel >= 43) return 5; if (recoveryLevel >= 43) return 4; if (recoveryLevel >= 31) return 3; if (recoveryLevel >= 19) return 2; return 1; }
 export function monsterLevelForTier(operationTier: number) { const tier = clamp(Math.round(operationTier), 1, 12); return clamp(Math.round(1 + (tier - 1) * 19 / 11), 1, 20); }
-function tierForContract(contract: Contract, campaign: CampaignState) { if (contract.directiveTier) return clamp(contract.directiveTier, 1, 12); const baseline = clamp(1 + Math.floor(campaign.contractsCompleted / 2), 1, 12); let tier = baseline; if (contract.daily) tier = Math.max(tier, 3 + (contract.seed % 4)); if (contract.storyArc) tier = Math.max(tier, 2 + (contract.storyStep ?? 0)); if (contract.campaignChapter === 'black-lattice') tier = Math.max(tier, 3 + Math.floor((contract.campaignStep ?? 0) / 2)); if (contract.campaignChapter === 'dead-reckoning') tier = Math.max(tier, 7 + Math.floor((contract.campaignStep ?? 0) / 2)); if (contract.campaignChapter === 'dead-reckoning-interdiction') tier = Math.max(tier, 9 + Math.floor((contract.campaignStep ?? 0) / 2)); if (contract.commandTrace) tier = Math.max(tier, 10); if (contract.escalationStage) tier = Math.max(tier, 4 + contract.escalationStage * 2); if (contract.megastructure) tier = Math.max(tier, 5 + Math.min(3, Math.floor(campaign.contractsCompleted / 5))); if (contract.priority) tier += 1; if (contract.storyFinale || contract.campaignFinale || contract.escalationFinale) tier += 1; return clamp(tier, 1, 12); }
+export function standardTierCapForOperator(operatorLevel = 10) {
+  const targetMonsterLevel = Math.min(20, Math.max(1, Math.round(operatorLevel)) + 2);
+  let cap = 1;
+  for (let tier = 1; tier <= 12; tier += 1) {
+    if (monsterLevelForTier(tier) <= targetMonsterLevel) cap = tier;
+  }
+  return cap;
+}
+function isRotatingStandardContract(contract: Contract) {
+  return !contract.directiveTier && !contract.daily && !contract.storyArc && !contract.campaignChapter && !contract.commandTrace && !contract.escalationStage && !contract.megastructure;
+}
+function tierForContract(contract: Contract, campaign: CampaignState, operatorLevel: number) {
+  if (contract.directiveTier) return clamp(contract.directiveTier, 1, 12);
+  const baseline = clamp(1 + Math.floor(campaign.contractsCompleted / 2), 1, 12);
+  let tier = baseline;
+  if (contract.daily) tier = Math.max(tier, 3 + (contract.seed % 4));
+  if (contract.storyArc) tier = Math.max(tier, 2 + (contract.storyStep ?? 0));
+  if (contract.campaignChapter === 'black-lattice') tier = Math.max(tier, 3 + Math.floor((contract.campaignStep ?? 0) / 2));
+  if (contract.campaignChapter === 'dead-reckoning') tier = Math.max(tier, 7 + Math.floor((contract.campaignStep ?? 0) / 2));
+  if (contract.campaignChapter === 'dead-reckoning-interdiction') tier = Math.max(tier, 9 + Math.floor((contract.campaignStep ?? 0) / 2));
+  if (contract.commandTrace) tier = Math.max(tier, 10);
+  if (contract.escalationStage) tier = Math.max(tier, 4 + contract.escalationStage * 2);
+  if (contract.megastructure) tier = Math.max(tier, 5 + Math.min(3, Math.floor(campaign.contractsCompleted / 5)));
+  if (contract.priority) tier += 1;
+  if (contract.storyFinale || contract.campaignFinale || contract.escalationFinale) tier += 1;
+  if (isRotatingStandardContract(contract)) tier = Math.min(tier, standardTierCapForOperator(operatorLevel));
+  return clamp(tier, 1, 12);
+}
 function patternFor(contract: Contract, tier: number): EncounterPattern { if (tier <= 2) return 'swarm'; const roll = ((contract.seed >>> 3) + tier) % 3; if (roll === 2 && tier >= 4) return 'elite-led'; return roll === 0 ? 'swarm' : 'mixed'; }
 
 export function operationScalingFor(contract: Contract, campaign: CampaignState, operatorLevel = 10): OperationScaling {
-  const operationTier = tierForContract(contract, campaign);
+  const operationTier = tierForContract(contract, campaign, operatorLevel);
   const monsterLevel = monsterLevelForTier(operationTier);
   const basePattern = patternFor(contract, operationTier);
   const encounterPattern = contract.directiveTargetClass === 'elite-led' ? 'elite-led' : basePattern;
