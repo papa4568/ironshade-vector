@@ -26,7 +26,9 @@ jobs:
           git fetch origin ui/polish-hierarchy
           git show FETCH_HEAD:src/uiPolish.css > src/uiPolish.css
           git show FETCH_HEAD:scripts/apply_ui_polish.py > /tmp/apply_ui_polish.py
+          git show FETCH_HEAD:scripts/fix_ui_polish_test.py > /tmp/fix_ui_polish_test.py
           python /tmp/apply_ui_polish.py
+          python /tmp/fix_ui_polish_test.py
           git diff --check
       - name: Install dependencies
         run: npm install --no-audit --no-fund
