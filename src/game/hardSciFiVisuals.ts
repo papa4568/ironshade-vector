@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Contract, LocationId } from './campaign';
 import type { EquipmentFaction } from './factionGear';
 import type { Enemy, SimState, WeaponId } from './sim';
+import { buildMapVisualOverhaul, syncMapVisualOverhaul } from './mapVisuals';
 
 type MeshStd = THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
 type MeshBasic = THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
@@ -555,12 +556,14 @@ export function buildHardSciFiEnvironment(root: THREE.Group, mission: Contract, 
   root.add(environment);
   addSpaceVista(environment, mission.location, worldW, worldH, palette);
   addStationArchitecture(environment, mission.location, worldW, worldH, palette);
+  buildMapVisualOverhaul(environment, mission, worldW, worldH, palette);
   addLocationKit(environment, mission.location, worldW, worldH, palette);
 }
 
 export function syncHardSciFiEnvironment(root: THREE.Group, state: SimState, mission: Contract) {
   const environment = root.getObjectByName(ENV_KEY);
   if (!environment) return;
+  syncMapVisualOverhaul(environment as THREE.Group, state);
   const dust = environment.getObjectByName('hard-dust') as THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial> | undefined;
   const stars = environment.getObjectByName('hard-stars') as THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial> | undefined;
   const sector = sectorAt(state, state.player.x, state.player.y);

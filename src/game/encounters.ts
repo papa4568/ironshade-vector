@@ -1,5 +1,6 @@
 import type { Contract, ObjectiveMode } from './campaign';
 import type { CombatObject, SimState } from './sim';
+import { reserveNavigationLanes } from './mapNavigation';
 
 export type MissionObjectiveStatus = {
   label: string;
@@ -487,6 +488,7 @@ export function applyEncounterLayout(state: SimState, contract: Contract) {
   configureStoryFinale(state, contract);
   configureCampaignFinale(state, contract);
   configureEscalationFinale(state, contract);
+  reserveNavigationLanes(state, contract.location);
 }
 
 function exposedCount(state: SimState, ids: string[]) {

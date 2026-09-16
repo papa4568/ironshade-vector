@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Contract } from './campaign';
 import type { EquipmentFaction } from './factionGear';
 import { getNextMissionObjectiveTarget } from './encounters';
+import { findNavigationPath } from './mapPathfinding';
 import { getWorldSize, type CombatObject, type Enemy, type Player, type SimState, type WeaponId } from './sim';
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
 
@@ -121,6 +122,7 @@ export class ThreeCombatRenderer {
   private readonly objectRoot = new THREE.Group();
   private readonly dynamicRoot = new THREE.Group();
   private readonly objectiveBeacon = new THREE.Group();
+  private readonly objectiveGuide = new THREE.Group();
   private readonly playerRoot = new THREE.Group();
   private readonly weaponPivot = new THREE.Group();
   private readonly playerBody: THREE.Mesh<THREE.CylinderGeometry, THREE.MeshStandardMaterial>;
@@ -142,6 +144,9 @@ export class ThreeCombatRenderer {
   private readonly debrisPool: DebrisVisual[] = [];
   private readonly coarse: boolean;
   private environmentSignature = '';
+  private objectiveGuideTargetId = '';
+  private objectiveGuideRefreshAt = -1;
+  private objectiveGuidePoints: Array<{ x: number; y: number }> = [];
   private width = 1;
   private height = 1;
   private pixelRatio = 1;
@@ -156,7 +161,7 @@ export class ThreeCombatRenderer {
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
 
     this.scene.add(this.environmentRoot, this.objectRoot, this.dynamicRoot, this.playerRoot);
-    this.dynamicRoot.add(this.objectiveBeacon);
+    this.dynamicRoot.add(this.objectiveBeacon, this.objectiveGuide);
     this.scene.add(new THREE.HemisphereLight(0xa6c7c2, 0x14110e, 1.25));
 
     this.keyLight.position.set(16, 28, 14);
@@ -428,6 +433,17 @@ export class ThreeCombatRenderer {
         );
         mesh.castShadow = true;
         mesh.receiveShadow = true;
+        const collidable = object.kind === 'cover' || object.kind === 'conduit' || object.kind === 'coolant' || object.kind === 'breachPlate' || object.kind === 'anchorNode';
+        if (collidable) {
+          const footprintColor = object.material === 'bulkhead' ? 0xd66f4f : object.material === 'system' ? 0x68aab1 : 0xd0a65d;
+          const footprint = new THREE.Mesh(
+            new THREE.BoxGeometry(Math.max(0.24, scaled(object.w) + 0.28), 0.035, Math.max(0.24, scaled(object.h) + 0.28)),
+            new THREE.MeshBasicMaterial({ color: footprintColor, transparent: true, opacity: 0.34, depthWrite: false }),
+          );
+          footprint.name = 'navigation-footprint';
+          footprint.position.y = -height / 2 + 0.035;
+          mesh.add(footprint);
+        }
         this.objectRoot.add(mesh);
         this.objectVisuals.set(object.id, mesh);
       }
@@ -436,6 +452,14 @@ export class ThreeCombatRenderer {
       mesh.material.color.setHex(objectColor(object));
       mesh.material.emissive.setHex(object.exposed ? 0xd69b4d : 0x000000);
       mesh.material.emissiveIntensity = object.exposed ? 0.32 : 0;
+      const objectCenterX = object.x + object.w / 2;
+      const objectCenterY = object.y + object.h / 2;
+      const nearPlayer = Math.hypot(objectCenterX - state.player.x, objectCenterY - state.player.y) < 155;
+      const tallOccluder = mesh.geometry.parameters.height >= 1.05 && object.kind === 'cover';
+      mesh.material.transparent = nearPlayer && tallOccluder;
+      mesh.material.opacity = nearPlayer && tallOccluder ? 0.48 : 1;
+      const footprint = mesh.getObjectByName('navigation-footprint') as THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial> | undefined;
+      if (footprint) footprint.material.opacity = object.active ? (object.material === 'bulkhead' ? 0.48 : 0.3) : 0;
       const hpRatio = object.maxHp > 0 ? THREE.MathUtils.clamp(object.hp / object.maxHp, 0.18, 1) : 1;
       mesh.scale.y = object.destructible && object.maxHp < 9000 ? 0.72 + hpRatio * 0.28 : 1;
     }
@@ -446,6 +470,7 @@ export class ThreeCombatRenderer {
     const target = getNextMissionObjectiveTarget(state, mission);
     if (!target) {
       this.objectiveBeacon.visible = false;
+      this.objectiveGuide.visible = false;
       return;
     }
 
@@ -480,6 +505,45 @@ export class ThreeCombatRenderer {
     const diamond = this.objectiveBeacon.getObjectByName('objective-diamond');
     if (ring) ring.rotation.z = state.time * 0.9;
     if (diamond) diamond.rotation.y = state.time * 1.8;
+    this.syncObjectiveGuide(state, target);
+  }
+
+  private syncObjectiveGuide(state: SimState, target: CombatObject) {
+    this.objectiveGuide.visible = true;
+    if (this.objectiveGuideTargetId !== target.id || state.time >= this.objectiveGuideRefreshAt) {
+      const result = findNavigationPath(state, target);
+      this.objectiveGuideTargetId = target.id;
+      this.objectiveGuideRefreshAt = state.time + 0.55;
+      const markers: Array<{ x: number; y: number }> = [];
+      for (let index = 0; index < result.points.length - 1; index += 1) {
+        const a = result.points[index];
+        const b = result.points[index + 1];
+        const distance = Math.hypot(b.x - a.x, b.y - a.y);
+        const count = Math.max(1, Math.floor(distance / 125));
+        for (let step = 1; step <= count; step += 1) {
+          const t = step / (count + 1);
+          markers.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+        }
+      }
+      this.objectiveGuidePoints = markers.slice(0, 28);
+    }
+    while (this.objectiveGuide.children.length < this.objectiveGuidePoints.length) {
+      const marker = new THREE.Mesh(
+        new THREE.BoxGeometry(0.28, 0.035, 0.28),
+        new THREE.MeshBasicMaterial({ color: 0xc8e87f, transparent: true, opacity: 0.72, depthWrite: false, depthTest: false }),
+      );
+      marker.rotation.y = Math.PI / 4;
+      marker.renderOrder = 38;
+      this.objectiveGuide.add(marker);
+    }
+    for (let index = 0; index < this.objectiveGuide.children.length; index += 1) {
+      const marker = this.objectiveGuide.children[index] as THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>;
+      const point = this.objectiveGuidePoints[index];
+      marker.visible = !!point;
+      if (!point) continue;
+      marker.position.set(scaled(point.x), 0.075, scaled(point.y));
+      marker.material.opacity = 0.42 + Math.sin(state.time * 6.5 + index * 0.7) * 0.24;
+    }
   }
 
   private syncPlayer(state: SimState, operatorFaction: EquipmentFaction | null) {
