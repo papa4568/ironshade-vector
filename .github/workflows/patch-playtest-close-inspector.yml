@@ -1,0 +1,31 @@
+name: Patch playtest gear modal flow
+
+on:
+  push:
+    branches:
+      - beta/playthrough-1-20
+    paths:
+      - 'scripts/patch-playtest-close-inspector.mjs'
+      - '.github/workflows/patch-playtest-close-inspector.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Patch harness
+        run: node scripts/patch-playtest-close-inspector.mjs
+      - name: Commit harness fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add scripts/browser-level1-20-playtest.mjs
+          git diff --cached --check
+          git commit -m 'Close gear inspector between playtest selections'
+          git push origin HEAD:beta/playthrough-1-20
