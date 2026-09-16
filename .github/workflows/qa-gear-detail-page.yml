@@ -1,0 +1,335 @@
+name: QA dedicated gear detail page
+
+on:
+  push:
+    branches:
+      - fix/gear-detail-page
+
+permissions:
+  contents: write
+
+jobs:
+  qa:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Replace mobile inspector with dedicated gear screen
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          armory_path = Path('src/components/Armory.tsx')
+          armory = armory_path.read_text()
+
+          helper_anchor = "  const applyResult = (result: { profile: PlayerProfile; message: string }) => { onProfileChange(result.profile); setMessage(result.message); };\n"
+          helpers = helper_anchor + "  const openGearDetails = (itemId: string) => {\n    setSelectedId(itemId);\n    requestAnimationFrame(() => buildRef.current?.scrollTo({ top: 0, left: 0, behavior: 'auto' }));\n  };\n  const closeGearDetails = () => {\n    setSelectedId(null);\n    requestAnimationFrame(() => buildRef.current?.scrollTo({ top: 0, left: 0, behavior: 'auto' }));\n  };\n"
+          if 'const openGearDetails' not in armory:
+              if helper_anchor not in armory:
+                  raise SystemExit('applyResult anchor missing')
+              armory = armory.replace(helper_anchor, helpers, 1)
+
+          tab_anchor = "  const selectTab = (value: Tab) => {\n    setTab(value);\n    if (value === 'reconstruct' && !selectedId && profile.inventory[0]) setSelectedId(profile.inventory[0].id);\n"
+          tab_replacement = "  const selectTab = (value: Tab) => {\n    setTab(value);\n    if (value === 'gear') setSelectedId(null);\n    if (value === 'reconstruct' && !selectedId && profile.inventory[0]) setSelectedId(profile.inventory[0].id);\n"
+          if tab_anchor in armory:
+              armory = armory.replace(tab_anchor, tab_replacement, 1)
+
+          equipped_click = "onClick={() => item && setSelectedId(item.id)}"
+          if equipped_click not in armory:
+              raise SystemExit('equipped gear click anchor missing')
+          armory = armory.replace(equipped_click, "onClick={() => item && openGearDetails(item.id)}", 1)
+
+          inventory_click = "onClick={() => setSelectedId(item.id)}"
+          if inventory_click not in armory:
+              raise SystemExit('storage gear click anchor missing')
+          armory = armory.replace(inventory_click, "onClick={() => openGearDetails(item.id)}", 1)
+          armory = armory.replace('Tap a slot to inspect or compare.', 'Tap any item to open its full gear page.', 1)
+
+          return_anchor = "  return <main ref={buildRef} className=\"build-bay\">\n"
+          dedicated = r'''  if (tab === 'gear' && selected) {
+    const selectedIsEquipped = profile.equipped[selected.slot] === selected.id;
+    return <main ref={buildRef} className="build-bay gear-detail-mode">
+      <section className={`gear-detail-page ${rarityClass(selected)} ${factionClass(selected)} ${qualityClass(selected)}`} aria-label="Gear details">
+        <button type="button" className="gear-detail-back gear-detail-back-top" onClick={closeGearDetails}>← Back to equipment</button>
+        <header className="gear-detail-header">
+          <div className="gear-detail-badges"><span>{selected.rarity.toUpperCase()}</span><span>{slotLabels[selected.slot]}</span><span>EQUIP LV {selected.levelRequirement}</span>{selected.faction && <span>{factionLabel(selected.faction).toUpperCase()}</span>}{selectedIsEquipped && <span>EQUIPPED</span>}</div>
+          <h1>{selected.name}</h1>
+          <p>{selected.equipmentClass}. {selected.core}</p>
+        </header>
+        <div className="gear-detail-actions" aria-label="Gear actions">
+          {selectedIsEquipped ? <button onClick={() => unequipLatest(selected.slot)}>Unequip</button> : <button className="primary" onClick={() => equipLatest(selected)}>Equip {slotLabels[selected.slot]}</button>}
+          <button className="danger" onClick={() => discardLatest(selected)}>Discard</button>
+        </div>
+        {message && <div className="build-message gear-detail-message" role="status">{message}</div>}
+        <div className="gear-detail-content"><GearComparison profile={profile} item={selected} /></div>
+        <footer className="gear-detail-footer">
+          <button type="button" className="gear-detail-back" onClick={closeGearDetails}>Back to equipment list</button>
+          <div className="gear-detail-actions" aria-label="Gear actions after details">
+            {selectedIsEquipped ? <button onClick={() => unequipLatest(selected.slot)}>Unequip</button> : <button className="primary" onClick={() => equipLatest(selected)}>Equip {slotLabels[selected.slot]}</button>}
+            <button className="danger" onClick={() => discardLatest(selected)}>Discard</button>
+          </div>
+        </footer>
+      </section>
+    </main>;
+  }
+
+'''
+          if 'gear-detail-page' not in armory:
+              if return_anchor not in armory:
+                  raise SystemExit('main return anchor missing')
+              armory = armory.replace(return_anchor, dedicated + return_anchor, 1)
+          armory_path.write_text(armory)
+
+          css_path = Path('src/part12.css')
+          css = css_path.read_text()
+          old_marker = '/* ANDROID ITEM INSPECTOR SINGLE SCROLLER */'
+          if old_marker in css:
+              css = css.split(old_marker, 1)[0].rstrip() + '\n\n'
+          if '/* DEDICATED GEAR DETAIL PAGE */' not in css:
+              css += r'''/* DEDICATED GEAR DETAIL PAGE */
+.gear-detail-mode {
+  display: block;
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  padding: max(12px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+}
+.gear-detail-page {
+  position: static;
+  display: grid;
+  width: min(1100px, 100%);
+  max-width: 1100px;
+  min-height: 0;
+  margin: 0 auto;
+  gap: 12px;
+  overflow: visible;
+}
+.gear-detail-back,
+.gear-detail-actions button {
+  min-height: 44px;
+  border: 1px solid #425750;
+  border-radius: 9px;
+  padding: 10px 14px;
+  background: #14201d;
+  color: #d8e1de;
+  font-weight: 900;
+  cursor: pointer;
+}
+.gear-detail-back {
+  justify-self: start;
+}
+.gear-detail-back-top {
+  font-size: 13px;
+}
+.gear-detail-header {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--gear-rarity-border, #415650);
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--gear-rarity-wash, rgba(39,60,54,.22)), rgba(7,16,14,.98));
+}
+.gear-detail-header h1 {
+  margin: 0;
+  color: var(--gear-rarity, #e2e9e6);
+  font-size: clamp(25px, 5vw, 42px);
+  line-height: 1.05;
+}
+.gear-detail-header p {
+  margin: 0;
+  color: #93a49f;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.gear-detail-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.gear-detail-badges span {
+  padding: 5px 8px;
+  border: 1px solid #3a4e48;
+  border-radius: 999px;
+  color: #a6b6b1;
+  font: 800 8px ui-monospace, monospace;
+  letter-spacing: .08em;
+}
+.gear-detail-actions {
+  position: static;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, auto);
+  gap: 8px;
+}
+.gear-detail-actions .primary {
+  border-color: #8f977c;
+  background: #c9c8ad;
+  color: #101511;
+}
+.gear-detail-actions .danger {
+  border-color: #80514d;
+  background: #2a1716;
+  color: #e0aaa4;
+}
+.gear-detail-message {
+  width: 100%;
+  margin: 0;
+}
+.gear-detail-content {
+  position: static;
+  display: block;
+  min-height: 0;
+  overflow: visible;
+}
+.gear-detail-footer {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid #293a35;
+}
+@media (orientation: landscape) and (max-height: 650px) {
+  .gear-detail-mode {
+    padding-top: max(8px, env(safe-area-inset-top));
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+  }
+  .gear-detail-page {
+    gap: 8px;
+  }
+  .gear-detail-header {
+    padding: 10px 12px;
+  }
+  .gear-detail-header h1 {
+    font-size: clamp(22px, 8vh, 30px);
+  }
+  .gear-detail-header p {
+    font-size: 9px;
+  }
+  .gear-detail-back,
+  .gear-detail-actions button {
+    min-height: 40px;
+    padding: 8px 11px;
+  }
+  .gear-detail-content .gear-summary-grid {
+    gap: 8px;
+  }
+}
+'''
+          css_path.write_text(css)
+
+          test_path = Path('tests/ui-readability.ts')
+          tests = test_path.read_text()
+          old = "const mobileInspectorCss = read('src/part12.css');\nassert(mobileInspectorCss.includes('ANDROID ITEM INSPECTOR SINGLE SCROLLER') && mobileInspectorCss.includes('overflow-y: auto') && mobileInspectorCss.includes('.gear-layout .item-inspector.open .inspector-scroll') && mobileInspectorCss.includes('overflow: visible') && mobileInspectorCss.includes('touch-action: auto'), 'Android item inspector still depends on a nested touch-scroll pane.');\n"
+          new = "const gearDetailCss = read('src/part12.css');\nconst gearDetailSection = gearDetailCss.split('/* DEDICATED GEAR DETAIL PAGE */')[1] ?? '';\nassert(armory.includes(\"if (tab === 'gear' && selected)\") && armory.includes('gear-detail-page') && armory.includes('Back to equipment list'), 'Gear selection does not switch to a dedicated detail screen.');\nassert(gearDetailSection.includes('.gear-detail-mode') && gearDetailSection.includes('overflow-y: auto') && gearDetailSection.includes('touch-action: pan-y') && !gearDetailSection.includes('position: fixed') && !gearDetailSection.includes('position: sticky'), 'Dedicated gear detail page must use one normal page scroll surface without overlay positioning.');\n"
+          if old not in tests:
+              raise SystemExit('old mobile inspector regression assertion missing')
+          tests = tests.replace(old, new, 1)
+          test_path.write_text(tests)
+          PY
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Full production validation
+        run: npm run build
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start client
+        run: |
+          npx vite --host 127.0.0.1 --port 4173 > /tmp/ironshade-vite.log 2>&1 &
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:4173 >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/ironshade-vite.log
+          exit 1
+      - name: Verify dedicated gear navigation and touch scrolling
+        run: |
+          mkdir -p qa-artifacts/gear-detail-page
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          import { writeFileSync } from 'node:fs';
+          const browser = await chromium.launch({ headless: true });
+          const report = [];
+          try {
+            for (const viewport of [{ width: 844, height: 390 }, { width: 740, height: 360 }]) {
+              const context = await browser.newContext({ viewport, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
+              const page = await context.newPage();
+              const errors = [];
+              page.on('pageerror', error => errors.push(`pageerror: ${error.message}`));
+              page.on('console', message => { if (message.type() === 'error') errors.push(`console: ${message.text()}`); });
+              await page.goto('http://127.0.0.1:4173', { waitUntil: 'networkidle' });
+              await page.getByRole('button', { name: 'Equipment' }).click();
+              await page.waitForSelector('.gear-storage');
+              await page.locator('.equipped-card').first().click();
+              await page.waitForSelector('.gear-detail-page');
+
+              if (await page.locator('.gear-storage').count()) throw new Error('Gear browser remained mounted behind dedicated detail page');
+              if (await page.locator('.item-inspector.open').count()) throw new Error('Legacy item inspector opened instead of dedicated page');
+              const mode = page.locator('.gear-detail-mode');
+              const style = await mode.evaluate(el => ({ overflowY: getComputedStyle(el).overflowY, touchAction: getComputedStyle(el).touchAction, position: getComputedStyle(el).position, scrollHeight: el.scrollHeight, clientHeight: el.clientHeight }));
+              if (!['auto', 'scroll'].includes(style.overflowY) || style.touchAction !== 'pan-y' || style.position === 'fixed') throw new Error(`Dedicated page scroll style is wrong: ${JSON.stringify(style)}`);
+
+              const details = page.locator('.gear-deep-details');
+              if (await details.count()) await details.locator('summary').click();
+              const before = await mode.evaluate(el => el.scrollTop);
+              const box = await mode.boundingBox();
+              if (!box) throw new Error('Dedicated gear page box unavailable');
+              const client = await context.newCDPSession(page);
+              const x = Math.round(box.x + box.width * 0.55);
+              const startY = Math.round(box.y + box.height * 0.76);
+              const endY = Math.round(box.y + box.height * 0.25);
+              await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y: startY, radiusX: 4, radiusY: 4, force: 1 }] });
+              for (let step = 1; step <= 9; step++) {
+                const y = Math.round(startY + (endY - startY) * step / 9);
+                await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y, radiusX: 4, radiusY: 4, force: 1 }] });
+                await page.waitForTimeout(25);
+              }
+              await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+              await page.waitForTimeout(300);
+              const after = await mode.evaluate(el => el.scrollTop);
+              if (after <= before + 20) throw new Error(`Finger swipe did not move dedicated gear page: before=${before} after=${after}`);
+
+              const bottomBack = page.getByRole('button', { name: 'Back to equipment list' });
+              await bottomBack.scrollIntoViewIfNeeded();
+              await bottomBack.click();
+              await page.waitForSelector('.gear-storage');
+              if (await page.locator('.gear-detail-page').count()) throw new Error('Back did not return to equipment browser');
+
+              const storageItem = page.locator('.inventory-card').first();
+              if (await storageItem.count()) {
+                await storageItem.click();
+                await page.waitForSelector('.gear-detail-page');
+                if (await page.locator('.item-inspector.open').count()) throw new Error('Storage item still opened legacy inspector');
+              }
+              if (errors.length) throw new Error(errors.join(' | '));
+              await page.screenshot({ path: `qa-artifacts/gear-detail-page/detail-${viewport.width}x${viewport.height}.png`, fullPage: false });
+              report.push({ viewport, style, before, after });
+              await context.close();
+            }
+            writeFileSync('qa-artifacts/gear-detail-page/report.json', JSON.stringify(report, null, 2));
+            console.log('GEAR_DETAIL_PAGE_QA_PASS', JSON.stringify(report));
+          } finally {
+            await browser.close();
+          }
+          JS
+      - name: Commit verified product changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/components/Armory.tsx src/part12.css tests/ui-readability.ts
+          git diff --cached --check
+          git commit -m 'Replace gear inspector with dedicated detail page'
+          git push origin HEAD:fix/gear-detail-page
+      - name: Upload QA artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gear-detail-page-qa
+          path: qa-artifacts/gear-detail-page
+          if-no-files-found: warn
