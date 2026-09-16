@@ -70,4 +70,4 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-# Harness revision 9: validate obstacle-aware route guidance with the corrected regression assertion.
+# Harness revision 10: use the Build Bay's preselected recovered item before tapping inventory.
