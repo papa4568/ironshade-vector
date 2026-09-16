@@ -85,6 +85,10 @@ export function applyMissionSetup(state: SimState, contract: Contract) {
   if (contract.directiveModifierIds?.includes('repair-network')) setTacticalEnemy(state, 5, 'technician', 'repairDrone', 'Directive Repair Mesh Drone', 72, 34);
   applyEncounterLayout(state, contract);
   applyThreatBudget(state.enemies, contract);
+  state.operationTier = contract.operationTier ?? 1;
+  state.monsterLevel = contract.monsterLevel ?? Math.max(1, Math.round(1 + ((contract.operationTier ?? 1) - 1) * 19 / 11));
+  state.maxRecoveryLevel = contract.maxRecoveryLevel ?? 12;
+  state.monsterDamageScale = contract.monsterDamageScale ?? 1;
   if (boss && (contract.operationTier ?? 1) >= 9) boss.patternIndex = (contract.seed + (contract.operationTier ?? 1)) % 3;
 }
 

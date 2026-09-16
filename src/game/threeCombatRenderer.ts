@@ -5,6 +5,7 @@ import { getNextMissionObjectiveTarget } from './encounters';
 import { findNavigationPath } from './mapPathfinding';
 import { getWorldSize, type CombatObject, type Enemy, type Player, type SimState, type WeaponId } from './sim';
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
+import { lootColor } from './fieldLoot';
 
 const WORLD_SCALE = 0.02;
 const FLOOR_Y = 0;
@@ -48,6 +49,7 @@ type ProjectileVisual = {
 
 type RingVisual = THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>;
 type DebrisVisual = THREE.Mesh<THREE.IcosahedronGeometry, THREE.MeshStandardMaterial>;
+type GroundLootVisual = { root: THREE.Group; core: THREE.Mesh<THREE.OctahedronGeometry, THREE.MeshStandardMaterial>; ring: THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>; beam: THREE.Mesh<THREE.CylinderGeometry, THREE.MeshBasicMaterial> };
 
 type LocationPalette = {
   background: number;
@@ -142,6 +144,7 @@ export class ThreeCombatRenderer {
   private readonly effectPool: RingVisual[] = [];
   private readonly breachPool: RingVisual[] = [];
   private readonly debrisPool: DebrisVisual[] = [];
+  private readonly groundLootPool: GroundLootVisual[] = [];
   private readonly coarse: boolean;
   private environmentSignature = '';
   private objectiveGuideTargetId = '';
@@ -225,6 +228,7 @@ export class ThreeCombatRenderer {
     this.syncPlayer(state, operatorFaction);
     this.syncEnemies(state, mobileTargetId);
     this.syncProjectiles(state);
+    this.syncGroundLoot(state);
     this.syncHazards(state);
     this.syncEffects(state);
     this.syncBreaches(state);
@@ -702,6 +706,23 @@ export class ThreeCombatRenderer {
       visual.trail.scale.x = projectile.weapon === 'rail' ? 2.4 : projectile.weapon === 'breacher' ? 0.8 : 1.35;
     }
     for (let index = count; index < this.projectilePool.length; index += 1) this.projectilePool[index].root.visible = false;
+  }
+
+  private syncGroundLoot(state: SimState) {
+    let count = 0;
+    for (const drop of state.groundLoot) {
+      if (!drop.active || drop.collected) continue;
+      while (this.groundLootPool.length <= count) {
+        const root = new THREE.Group();
+        const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.22, 0), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1.2, metalness: 0.35, roughness: 0.22 }));
+        core.position.y = 0.52;
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.045, 6, 32), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, depthWrite: false })); ring.rotation.x = Math.PI / 2; ring.position.y = 0.06;
+        const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.055, 1.7, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.22, depthWrite: false })); beam.position.y = 0.9;
+        root.add(core, ring, beam); this.dynamicRoot.add(root); this.groundLootPool.push({ root, core, ring, beam });
+      }
+      const visual = this.groundLootPool[count++]; const color = lootColor(drop.rarity); visual.root.visible = true; visual.root.position.set(scaled(drop.x), 0, scaled(drop.y)); visual.root.rotation.y = state.time * 0.8 + drop.enemyId; visual.core.material.color.setHex(color); visual.core.material.emissive.setHex(color); visual.ring.material.color.setHex(color); visual.beam.material.color.setHex(color); const pulse = 1 + Math.sin(state.time * 7 + drop.enemyId) * 0.12; visual.core.scale.setScalar(drop.rarity === 'Singular' ? 1.35 * pulse : drop.rarity === 'Prototype' ? 1.15 * pulse : pulse); visual.ring.scale.setScalar(drop.rarity === 'Singular' ? 1.4 : drop.rarity === 'Prototype' ? 1.18 : 1); visual.beam.material.opacity = drop.rarity === 'Singular' ? 0.48 : drop.rarity === 'Prototype' ? 0.34 : 0.2;
+    }
+    for (let index = count; index < this.groundLootPool.length; index += 1) this.groundLootPool[index].root.visible = false;
   }
 
   private ensureRing(pool: RingVisual[], index: number, color: number) {

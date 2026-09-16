@@ -4,15 +4,17 @@ import type { Enemy, EnemyRole, EnemyVariant } from './sim';
 
 export type EncounterPattern = 'swarm' | 'mixed' | 'elite-led';
 export type FrameGeneration = 1 | 2 | 3 | 4 | 5 | 6;
-export type OperationScaling = { operationTier: number; encounterRating: number; threatBudget: number; maxRecoveryLevel: number; maxFrameGeneration: FrameGeneration; eliteProtocolSlots: number; environmentalEventSlots: number; combatEffectiveness: number; operationRewardMultiplier: number; encounterPattern: EncounterPattern; reserveCount: number };
+export type OperationScaling = { operationTier: number; monsterLevel: number; encounterRating: number; threatBudget: number; maxRecoveryLevel: number; maxFrameGeneration: FrameGeneration; eliteProtocolSlots: number; environmentalEventSlots: number; combatEffectiveness: number; monsterDamageScale: number; operationRewardMultiplier: number; encounterPattern: EncounterPattern; reserveCount: number };
 const clamp = (value: number, minimum: number, maximum: number) => Math.max(minimum, Math.min(maximum, value));
 
 export function frameGenerationForRecovery(recoveryLevel: number, operatorLevel = 10): FrameGeneration { if (operatorLevel >= 15 && recoveryLevel >= 55) return 6; if (operatorLevel >= 12 && recoveryLevel >= 43) return 5; if (recoveryLevel >= 43) return 4; if (recoveryLevel >= 31) return 3; if (recoveryLevel >= 19) return 2; return 1; }
+export function monsterLevelForTier(operationTier: number) { const tier = clamp(Math.round(operationTier), 1, 12); return clamp(Math.round(1 + (tier - 1) * 19 / 11), 1, 20); }
 function tierForContract(contract: Contract, campaign: CampaignState) { if (contract.directiveTier) return clamp(contract.directiveTier, 1, 12); const baseline = clamp(1 + Math.floor(campaign.contractsCompleted / 2), 1, 12); let tier = baseline; if (contract.daily) tier = Math.max(tier, 3 + (contract.seed % 4)); if (contract.storyArc) tier = Math.max(tier, 2 + (contract.storyStep ?? 0)); if (contract.campaignChapter === 'black-lattice') tier = Math.max(tier, 3 + Math.floor((contract.campaignStep ?? 0) / 2)); if (contract.campaignChapter === 'dead-reckoning') tier = Math.max(tier, 7 + Math.floor((contract.campaignStep ?? 0) / 2)); if (contract.campaignChapter === 'dead-reckoning-interdiction') tier = Math.max(tier, 9 + Math.floor((contract.campaignStep ?? 0) / 2)); if (contract.commandTrace) tier = Math.max(tier, 10); if (contract.escalationStage) tier = Math.max(tier, 4 + contract.escalationStage * 2); if (contract.megastructure) tier = Math.max(tier, 5 + Math.min(3, Math.floor(campaign.contractsCompleted / 5))); if (contract.priority) tier += 1; if (contract.storyFinale || contract.campaignFinale || contract.escalationFinale) tier += 1; return clamp(tier, 1, 12); }
 function patternFor(contract: Contract, tier: number): EncounterPattern { if (tier <= 2) return 'swarm'; const roll = ((contract.seed >>> 3) + tier) % 3; if (roll === 2 && tier >= 4) return 'elite-led'; return roll === 0 ? 'swarm' : 'mixed'; }
 
 export function operationScalingFor(contract: Contract, campaign: CampaignState, operatorLevel = 10): OperationScaling {
   const operationTier = tierForContract(contract, campaign);
+  const monsterLevel = monsterLevelForTier(operationTier);
   const basePattern = patternFor(contract, operationTier);
   const encounterPattern = contract.directiveTargetClass === 'elite-led' ? 'elite-led' : basePattern;
   let environmentalEventSlots = operationTier <= 2 ? 1 : operationTier <= 5 ? 2 : operationTier <= 8 ? 3 : 4;
@@ -23,11 +25,14 @@ export function operationScalingFor(contract: Contract, campaign: CampaignState,
   const encounterRating = 10 + operationTier * 5 + (contract.storyFinale || contract.campaignFinale || contract.escalationFinale ? 5 : contract.megastructure ? 3 : 0) + Math.min(12, (contract.directiveRiskScore ?? 0));
   const baseProtocolSlots = operationTier <= 2 ? 0 : operationTier <= 4 ? 1 : operationTier <= 7 ? 2 : operationTier <= 9 ? 3 : 4;
   const eliteProtocolSlots = Math.min(4, baseProtocolSlots + (contract.directiveProtocolBonus ?? 0));
-  const combatEffectiveness = 1 + Math.max(0, operationTier - 4) * 0.025;
-  const operationRewardMultiplier = (1 + (operationTier - 1) * 0.025) * (contract.directiveMaterialMultiplier ?? 1);
+  const levelDelta = clamp(monsterLevel - Math.max(1, operatorLevel), -4, 4);
+  const directivePressure = Math.min(0.16, Math.max(0, contract.directiveRiskScore ?? 0) * 0.008);
+  const combatEffectiveness = clamp(1 + (operationTier - 1) * 0.055 + levelDelta * 0.025 + directivePressure, 0.9, 1.85);
+  const monsterDamageScale = clamp(1 + (operationTier - 1) * 0.035 + Math.max(0, levelDelta) * 0.02 + directivePressure * 0.45, 0.95, 1.55);
+  const operationRewardMultiplier = (1 + (operationTier - 1) * 0.04) * (contract.directiveMaterialMultiplier ?? 1);
   const baseReserveCount = encounterPattern === 'elite-led' ? 1 : encounterPattern === 'swarm' ? 2 : operationTier >= 4 ? 2 : 1;
   const reserveCount = Math.min(2, baseReserveCount + (contract.directiveReserveBonus ?? 0));
-  return { operationTier, encounterRating, threatBudget, maxRecoveryLevel, maxFrameGeneration: frameGenerationForRecovery(maxRecoveryLevel, operatorLevel), eliteProtocolSlots, environmentalEventSlots, combatEffectiveness, operationRewardMultiplier, encounterPattern, reserveCount };
+  return { operationTier, monsterLevel, encounterRating, threatBudget, maxRecoveryLevel, maxFrameGeneration: frameGenerationForRecovery(maxRecoveryLevel, operatorLevel), eliteProtocolSlots, environmentalEventSlots, combatEffectiveness, monsterDamageScale, operationRewardMultiplier, encounterPattern, reserveCount };
 }
 export function withOperationScaling(contract: Contract, campaign: CampaignState, operatorLevel = 10): Contract { return { ...contract, ...operationScalingFor(contract, campaign, operatorLevel) }; }
 
@@ -47,6 +52,8 @@ export function applyThreatBudget(enemies: Enemy[], contract: Contract) {
   const regular = enemies.filter(enemy => enemy.role !== 'boss' && enemy.id <= 8);
   for (const enemy of enemies) { enemy.protocols = []; enemy.protocolPulse = 0; enemy.combatClass = enemy.role === 'boss' ? 'command' : enemy.role === 'elite' ? 'elite' : 'standard'; }
   for (const enemy of regular) { enemy.effectiveness = effectiveness; enemy.maxHp = Math.max(1, Math.round(enemy.maxHp * effectiveness)); enemy.hp = enemy.maxHp; enemy.maxArmor = Math.max(0, Math.round(enemy.maxArmor * effectiveness)); enemy.armor = enemy.maxArmor; }
+  const boss = enemies.find(enemy => enemy.role === 'boss');
+  if (boss) { const bossEffectiveness = Math.max(1, 1 + (effectiveness - 1) * 0.82); boss.effectiveness = bossEffectiveness; boss.maxHp = Math.max(1, Math.round(boss.maxHp * bossEffectiveness)); boss.hp = boss.maxHp; boss.maxArmor = Math.max(0, Math.round(boss.maxArmor * bossEffectiveness)); boss.armor = boss.maxArmor; }
 
   const reserveCommitment = (contract.reserveCount ?? 1) * 3;
   const environmentCommitment = (contract.environmentalEventSlots ?? 1) * 2;

@@ -3,6 +3,7 @@ import { factionFrames, factionGearChance, factionSetDefinitions, type Equipment
 import { frameGenerationForRecovery, recoveryLevelForSource, type FrameGeneration } from './scaling';
 import { modifierCountForRarity, modifierFamilyFor, modifierPowerFactor, modifierTradeoffFactor, rollModifierGrade, rollRarityForQuality, rollRecoveryQuality, type ModifierFamily, type ModifierGrade, type RecoveryQualityGrade } from './lootQuality';
 import { applyAugments, applyFrameIdentity, augmentSlotCount, equipmentQualityForRecovery, factionFrameIdentity, frameImplicitDescription, inferFrameIdentity, normalizeAugments, rollFrameIdentity, singularFrameIdentity, type AugmentId, type FrameIdentityId } from './gearDepth';
+import type { GroundLootReceipt } from './fieldLoot';
 
 export type EquipmentSlot = WeaponId | 'suit' | 'rig' | 'implant';
 export type Rarity = 'Field' | 'Refined' | 'Prototype' | 'Singular';
@@ -162,19 +163,24 @@ const chaseCatalog: SingularTemplate[] = [
   singular({ baseId: 'scrap-circuit-rig', name: 'Scrap Circuit Rig', slot: 'rig', equipmentClass: 'Destruction-to-Arc recovery bus', rarity: 'Singular', core: 'An ice-mine field bus that uses the electrical collapse of machinery to precharge Arc Tap instead of harvesting the wreck for raw damage.', modifiers: [{ ...affixes.arcDrone }, { ...affixes.capacitorRecycler }, { ...affixes.dodgeVent }], singularTrait: 'scrapCircuit', singularEffect: 'Destroying machinery spends 4 capacitor to advance Arc Tap recovery by 0.9 seconds.' }),
   singular({ baseId: 'eventide-eva-skin', name: 'Eventide EVA Skin', slot: 'suit', equipmentClass: 'Cryogenic-plume maneuvering suit', rarity: 'Singular', core: 'An Umbra EVA skin built to cross service-purge geometry by consuming it as a one-shot maneuvering resource.', modifiers: [{ ...affixes.vacuumSeal }, { ...affixes.servoWeave }, { ...affixes.dodgeVent }], singularTrait: 'boiloffDash', singularEffect: 'Dodging through a nearby coolant or boiloff plume spends 8 capacitor, consumes one plume, extends the dash, and cools all weapons.' }),
   singular({ baseId: 'khepri-split-reference-link', name: 'Khepri Split-Reference Link', slot: 'implant', equipmentClass: 'Marked-machine Arc cognition implant', rarity: 'Singular', core: 'A Khepri reconstruction that spends a mark as permission to use nearby machinery as a second electrical origin.', modifiers: [{ ...affixes.markShear }, { ...affixes.arcDrone }, { ...affixes.magRedirect }], singularTrait: 'splitReference', singularEffect: 'Arc Tap on a marked target consumes the mark and can relay through nearby machinery into a second enemy.' }),
+  singular({ baseId: 'sixth-vector-m12', name: 'Sixth-Vector M-12', slot: 'carbine', equipmentClass: 'Cadence-fork coil carbine', rarity: 'Singular', core: 'A counter-rotating feed cage stores a firing solution for exactly five ordinary pulses before opening two side vectors on the sixth.', modifiers: [{ ...affixes.hypervelocity }, { ...affixes.extendedFeed }, { ...affixes.overdrive }], singularTrait: 'forkedSpool', singularEffect: 'Every sixth Carbine shot forks two 55% side vectors. The forked shot adds extra heat, rewarding deliberate cadence rather than permanent free damage.' }),
+  singular({ baseId: 'backstep-kestrel-b9', name: 'Backstep Kestrel B-9', slot: 'breacher', equipmentClass: 'Counterstep breach scattergun', rarity: 'Singular', core: 'A recoil latch reads suit-thruster transients and briefly opens a second scatter gate after a committed evasive burn.', modifiers: [{ ...affixes.countermass }, { ...affixes.breachPropulsion }, { ...affixes.dodgeVent }], singularTrait: 'breachEcho', singularEffect: 'A Breacher shot within 0.65s of a dodge gains a three-pellet 55% echo cone, but the echoed shot adds extra heat.' }),
+  singular({ baseId: 'cold-doublet-r7', name: 'Cold Doublet R-7', slot: 'rail', equipmentClass: 'Cold-start paired rail lance', rarity: 'Singular', core: 'Two unequal accelerator rails share a cryogenic bus: the secondary rail is stable only before the primary assembly warms.', modifiers: [{ ...affixes.cryoloop }, { ...affixes.tungsten }, { ...affixes.countermass }], singularTrait: 'railDoublet', singularEffect: 'Below 22% Rail heat and with 8 spare capacitor, each Rail shot launches a second 58% penetrator. The doublet consumes the extra capacitor and adds heat.' }),
+  singular({ baseId: 'bloom-vector-rig', name: 'Bloom Vector Rig', slot: 'rig', equipmentClass: 'Radial impulse recovery rig', rarity: 'Singular', core: 'A ring of sacrificial micro-coils turns the MAG field collapse into a brief omnidirectional kinetic bloom.', modifiers: [{ ...affixes.capacitorRecycler }, { ...affixes.magRedirect }, { ...affixes.servoWeave }], singularTrait: 'magBloom', singularEffect: 'MAG fires eight radial kinetic micro-slugs after the impulse. Magnetic Impulse costs 25% more capacitor and recovers 8% slower.' }),
+  singular({ baseId: 'cascade-sight-link', name: 'Cascade Sight Link', slot: 'implant', equipmentClass: 'Kill-relay sensor cognition link', rarity: 'Singular', core: 'A narrowband target model refuses to hold one solution for long, but transfers the dying target state into the nearest live return.', modifiers: [{ ...affixes.markShear }, { ...affixes.arcDrone }, { ...affixes.capacitorRecycler }], singularTrait: 'markCascade', singularEffect: 'Killing a marked target relays a 4.2s mark to a nearby enemy. Initial Sensor Spike marks are shorter and Sensor Spike recovers 12% slower.' }),
 ];
 
 const locationChaseIds: Record<string, string[]> = {
-  'orbital-station': ['arcspindle-m7', 'deadreckon-optics', 'palisade-breaker-b9'],
-  'damaged-vessel': ['vacuum-choir-rails', 'glasswalker-eva', 'salvage-dynamo-rig', 'breathless-choir-mantle'],
-  'asteroid-refinery': ['borecutter-m7', 'cryostack-burn-rig', 'nullpoint-needle'],
-  'spin-habitat': ['atlas-countermass-harness', 'axis-ghost-rig', 'ghostline-m7', 'falling-star-harness'],
-  'jovian-harvester': ['stormline-ventgun', 'jovian-stormskin', 'vacuum-choir-rails', 'vacuum-psalm-m12'],
-  'ice-mine': ['redline-kestrel', 'long-arc-relay-crown', 'salvage-dynamo-rig', 'scrap-circuit-rig'],
-  'solar-yard': ['nullpoint-needle', 'arcspindle-m7', 'cryostack-burn-rig', 'relay-orchard-node', 'radiant-liability-kestrel'],
-  'lattice-annex': ['nullpoint-needle', 'deadreckon-optics', 'vacuum-choir-rails', 'cold-witness-r7', 'khepri-split-reference-link'],
-  'momentum-exchange': ['pendulum-kestrel', 'mass-return-crown', 'vector-debt-m12'],
-  'cryo-reserve': ['umbra-heatsink-rig', 'cryoline-reference-rails', 'capacitor-rosary-rig', 'eventide-eva-skin'],
+  'orbital-station': ['arcspindle-m7', 'deadreckon-optics', 'palisade-breaker-b9', 'sixth-vector-m12', 'cascade-sight-link'],
+  'damaged-vessel': ['vacuum-choir-rails', 'glasswalker-eva', 'salvage-dynamo-rig', 'breathless-choir-mantle', 'backstep-kestrel-b9'],
+  'asteroid-refinery': ['borecutter-m7', 'cryostack-burn-rig', 'nullpoint-needle', 'cold-doublet-r7'],
+  'spin-habitat': ['atlas-countermass-harness', 'axis-ghost-rig', 'ghostline-m7', 'falling-star-harness', 'bloom-vector-rig'],
+  'jovian-harvester': ['stormline-ventgun', 'jovian-stormskin', 'vacuum-choir-rails', 'vacuum-psalm-m12', 'sixth-vector-m12'],
+  'ice-mine': ['redline-kestrel', 'long-arc-relay-crown', 'salvage-dynamo-rig', 'scrap-circuit-rig', 'backstep-kestrel-b9'],
+  'solar-yard': ['nullpoint-needle', 'arcspindle-m7', 'cryostack-burn-rig', 'relay-orchard-node', 'radiant-liability-kestrel', 'bloom-vector-rig'],
+  'lattice-annex': ['nullpoint-needle', 'deadreckon-optics', 'vacuum-choir-rails', 'cold-witness-r7', 'khepri-split-reference-link', 'cascade-sight-link'],
+  'momentum-exchange': ['pendulum-kestrel', 'mass-return-crown', 'vector-debt-m12', 'sixth-vector-m12'],
+  'cryo-reserve': ['umbra-heatsink-rig', 'cryoline-reference-rails', 'capacitor-rosary-rig', 'eventide-eva-skin', 'cold-doublet-r7'],
 };
 
 function inferFactionFromBaseId(baseId: string): EquipmentFaction | undefined {
@@ -192,7 +198,7 @@ function makeSingularItem(template: SingularTemplate, prefix: string, index: num
   return {
     ...template,
     id: `${prefix}-${Date.now().toString(36)}-${index}-${Math.floor(random() * 99999).toString(36)}`,
-    levelRequirement: Math.max(1, level - 1),
+    levelRequirement: levelRequirementForRecovery(recoveryLevel),
     modifiers: template.modifiers.map(modifier => materializeModifier(modifier.id, modifier.grade ?? 3)),
     faction: template.faction ?? inferFactionFromBaseId(template.baseId),
     recoveryLevel,
@@ -275,7 +281,9 @@ function cloneItem(item: Item): Item {
     modifiers: item.modifiers.map(modifier => materializeModifier(modifier.id, modifier.grade ?? 3)),
   };
 }
-const levelThresholds = [0, 120, 300, 540, 840, 1200, 1620, 2100, 2640, 3240, 3900, 4620, 5400, 6240, 7140, 8100];
+const levelThresholds = [0, 120, 300, 540, 840, 1200, 1620, 2100, 2640, 3240, 3900, 4620, 5400, 6240, 7140, 8100, 9120, 10200, 11340, 12540];
+export const maxOperatorLevel = levelThresholds.length;
+export function levelRequirementForRecovery(recoveryLevel: number) { const normalized = Math.max(12, Math.min(56, recoveryLevel)); return Math.max(1, Math.min(maxOperatorLevel, 1 + Math.round((normalized - 12) / 44 * (maxOperatorLevel - 1)))); }
 const maxLevelXp = levelThresholds[levelThresholds.length - 1];
 
 export function createDefaultProfile(): PlayerProfile {
@@ -358,7 +366,7 @@ function makeFactionItem(slot: EquipmentSlot, index: number, level: number, rand
     slot,
     equipmentClass: frame.equipmentClass,
     rarity,
-    levelRequirement: Math.max(1, level - 1),
+    levelRequirement: levelRequirementForRecovery(recoveryLevel),
     core: frame.core,
     modifiers: rollModifierSet(base.affixes, count, random, recoveryLevel, recoveryQuality, frame.preferredAffixes),
     faction,
@@ -374,16 +382,16 @@ function makeFactionItem(slot: EquipmentSlot, index: number, level: number, rand
   };
 }
 
-function makeItem(slot: EquipmentSlot, index: number, level: number, random: () => number, forcedAffixes: AffixId[] = [], recoveryLevel = 4, recoveryQuality: RecoveryQualityGrade = 0, recoverySource = 'Contract recovery', forcedCount?: number, frameOperatorLevel = level): Item {
+function makeItem(slot: EquipmentSlot, index: number, level: number, random: () => number, forcedAffixes: AffixId[] = [], recoveryLevel = 4, recoveryQuality: RecoveryQualityGrade = 0, recoverySource = 'Contract recovery', forcedCount?: number, frameOperatorLevel = level, forcedRarity?: Exclude<Rarity, 'Singular'>): Item {
   const base = baseNames[slot];
-  const rarity: Rarity = forcedAffixes.length > 0 ? 'Prototype' : rollRarityForQuality(random, recoveryQuality);
+  const rarity: Rarity = forcedRarity ?? (forcedAffixes.length > 0 ? 'Prototype' : rollRarityForQuality(random, recoveryQuality));
   const count = forcedCount ?? modifierCountForRarity(rarity, recoveryQuality, random);
   const frameGeneration = frameGenerationForRecovery(recoveryLevel, frameOperatorLevel);
   const generationNames = frameGenerationNames[slot][frameGeneration];
   const frameIdentity = rollFrameIdentity(slot, random);
   const equipmentQuality = equipmentQualityForRecovery(recoveryQuality, frameGeneration, rarity);
   const augmentSlots = augmentSlotCount(rarity, frameGeneration);
-  return { id: `loot-${Date.now().toString(36)}-${index}-${Math.floor(random() * 99999).toString(36)}`, baseId: base.baseId, name: generationNames[Math.floor(random() * generationNames.length)], slot, equipmentClass: base.equipmentClass, rarity, levelRequirement: Math.max(1, level - 1), core: base.core, modifiers: rollModifierSet(base.affixes, count, random, recoveryLevel, recoveryQuality, [], forcedAffixes), recoveryLevel, frameGeneration, frameIdentity, frameImplicit: frameImplicitFor(slot, frameGeneration, frameIdentity, equipmentQuality), equipmentQuality, augmentSlots, augments: [], recoveryQuality, recoverySource };
+  return { id: `loot-${Date.now().toString(36)}-${index}-${Math.floor(random() * 99999).toString(36)}`, baseId: base.baseId, name: generationNames[Math.floor(random() * generationNames.length)], slot, equipmentClass: base.equipmentClass, rarity, levelRequirement: levelRequirementForRecovery(recoveryLevel), core: base.core, modifiers: rollModifierSet(base.affixes, count, random, recoveryLevel, recoveryQuality, [], forcedAffixes), recoveryLevel, frameGeneration, frameIdentity, frameImplicit: frameImplicitFor(slot, frameGeneration, frameIdentity, equipmentQuality), equipmentQuality, augmentSlots, augments: [], recoveryQuality, recoverySource };
 }
 export function awardVictory(profile: PlayerProfile, telemetry: Telemetry): VictoryReward {
   const requestedXp = 280 + Math.min(80, Math.round(telemetry.damageDealt / 18));
@@ -428,7 +436,7 @@ function chooseRecoverySlots(profile: PlayerProfile, count: number, random: () =
   return chosen;
 }
 
-export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep: boolean, _fabricationLevel = 0, source: { deepTarget?: string; location?: string; locationName?: string; faction?: EquipmentFaction; factionReputation?: number; operationTier?: number; maxRecoveryLevel?: number; combatEffectiveness?: number; threatBudget?: number; eliteProtocolCount?: number; environmentalComplications?: number; optionalObjectives?: number; actualDepth?: boolean; directiveQualityBonus?: number; directiveSingularChanceBonus?: number; directiveRecoveryLevelBonus?: number } = {}): VictoryReward {
+export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep: boolean, _fabricationLevel = 0, source: { deepTarget?: string; location?: string; locationName?: string; faction?: EquipmentFaction; factionReputation?: number; operationTier?: number; maxRecoveryLevel?: number; combatEffectiveness?: number; threatBudget?: number; eliteProtocolCount?: number; environmentalComplications?: number; optionalObjectives?: number; actualDepth?: boolean; directiveQualityBonus?: number; directiveSingularChanceBonus?: number; directiveRecoveryLevelBonus?: number } = {}, fieldLoot?: GroundLootReceipt[]): VictoryReward {
   const rawXp = (deep ? 250 : 145) + Math.min(deep ? 90 : 45, Math.round(telemetry.damageDealt / 22));
   const requestedXp = Math.round(rawXp * (1 + Math.max(0, (source.combatEffectiveness ?? 1) - 1) * 0.65));
   const cappedProfileXp = Math.max(0, Math.min(maxLevelXp, profile.xp));
@@ -450,7 +458,20 @@ export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep
   const rollQuality = (boss: boolean, minimum: RecoveryQualityGrade = 0) => Math.max(minimum, rollRecoveryQuality(random, { operationTier: source.operationTier ?? 1, threatBudget: source.threatBudget ?? 32, eliteKills, eliteProtocolCount: source.eliteProtocolCount ?? 0, deep: actualDepth, optionalObjectives: source.optionalObjectives ?? 0, environmentalComplications: source.environmentalComplications ?? 0, boss, location: source.location, faction: source.faction, factionReputation: source.factionReputation, directiveBonus: source.directiveQualityBonus ?? 0 })) as RecoveryQualityGrade;
   const sponsoredChance = source.faction ? factionGearChance(source.factionReputation ?? 0, deep) : 0;
   const makeRecoveredItem = (slot: EquipmentSlot, index: number) => { const recoveryQuality = rollQuality(actualDepth); return source.faction && random() < sponsoredChance ? makeFactionItem(slot, index, nextLevel, random, source.faction, ordinaryRecoveryLevel, recoveryQuality, `Sponsored recovery // ${factionName}`, profile.level) : makeItem(slot, index, nextLevel, random, [], ordinaryRecoveryLevel, recoveryQuality, `${locationName} contract recovery`, undefined, profile.level); };
-  const bossItem = actualDepth ? makeBossSingular(source.deepTarget ?? '', 0, nextLevel, random, bossRecoveryLevel, rollQuality(true, 4), `Boss pool // ${source.deepTarget ?? 'deep target'}`, profile.level) : null;
+  const fieldMode = Array.isArray(fieldLoot);
+  const fieldDrops = (fieldLoot ?? []).slice(0, 12);
+  const fieldSlots = chooseRecoverySlots(profile, fieldDrops.filter(drop => drop.source !== 'boss').length, random);
+  let fieldSlotIndex = 0;
+  const fieldItems: Item[] = fieldDrops.map((drop, index) => {
+    const recoveryQuality = Math.max(drop.recoveryQualityFloor, rollQuality(drop.source === 'boss', drop.recoveryQualityFloor as RecoveryQualityGrade)) as RecoveryQualityGrade;
+    const recoveryLevel = Math.max(1, Math.min(maxRecoveryLevel, drop.recoveryLevel));
+    const recoverySource = `Ground drop // ${drop.enemyLabel}`;
+    if (drop.source === 'boss' && drop.rarity === 'Singular') return makeBossSingular(source.deepTarget ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeLocationSingular(source.location ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeItem('rail', 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, 'Prototype');
+    const slot = fieldSlots[fieldSlotIndex++] ?? recoverySlotOrder[(drop.enemyId + index) % recoverySlotOrder.length];
+    const visibleRarity: Exclude<Rarity, 'Singular'> = drop.rarity === 'Singular' ? 'Prototype' : drop.rarity;
+    return makeItem(slot, 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, visibleRarity);
+  });
+  const bossItem = actualDepth && !fieldMode ? makeBossSingular(source.deepTarget ?? '', 0, nextLevel, random, bossRecoveryLevel, rollQuality(true, 4), `Boss pool // ${source.deepTarget ?? 'deep target'}`, profile.level) : null;
   const locationChance = Math.min(0.85, (deep ? (bossItem ? 0.3 : 0.48) : 0.06) + Math.max(0, source.directiveSingularChanceBonus ?? 0));
   const locationItem = profile.runsCompleted > 0 && random() < locationChance ? makeLocationSingular(source.location ?? '', bossItem ? 1 : 0, nextLevel, random, locationRecoveryLevel, rollQuality(actualDepth, 3), `Location chase // ${locationName}`, profile.level) : null;
   let loot: Item[] = [];
@@ -480,6 +501,8 @@ export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep
     const slots = chooseRecoverySlots(profile, count, random);
     loot = slots.map((slot, index) => makeRecoveredItem(slot, index));
   }
+
+  loot = [...fieldItems, ...loot];
 
   const profileNext: PlayerProfile = {
     ...profile,
@@ -562,6 +585,8 @@ function applyAffix(build: CombatBuild, item: Item, modifier: ItemModifier) { co
 export function deriveCombatBuild(profile: PlayerProfile): CombatBuild {
   const build = freshBuild();
   for (const item of equippedItems(profile)) { applyFrameGeneration(build, item); applyFrameIdentity(build, item); applyAugments(build, item.slot, item.augments ?? []); for (const modifier of item.modifiers) applyAffix(build, item, modifier); if (item.singularTrait && !build.singularTraits.includes(item.singularTrait)) build.singularTraits.push(item.singularTrait); }
+  if (build.singularTraits.includes('magBloom')) { build.abilities[0].costMul *= 1.25; build.abilities[0].cooldownMul *= 1.08; }
+  if (build.singularTraits.includes('markCascade')) build.abilities[1].cooldownMul *= 1.12;
   applyFactionSetBonuses(build, profile);
   const nodes = new Set(profile.allocatedNodes);
   if (nodes.has('ballistics-1')) for (const weapon of Object.values(build.weapon)) weapon.penetrationAdd += 8; if (nodes.has('ballistics-2')) for (const weapon of Object.values(build.weapon)) weapon.armorDamageMul *= 1.15; if (nodes.has('ballistics-3')) build.mechanics.breachDoctrine = true;

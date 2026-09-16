@@ -17,6 +17,7 @@ import { withOperationScaling } from './game/scaling';
 import { advanceDirectivesAfterContract, preparedDirectiveContract, syncDirectiveAccess } from './game/operationDirectives';
 import { recoveryQualityLabel } from './game/lootQuality';
 import type { Telemetry } from './game/sim';
+import type { GroundLootReceipt } from './game/fieldLoot';
 
 type Screen = 'ship' | 'combat' | 'build' | 'debrief';
 type UplinkStatus = 'local' | 'sharing' | 'shared' | 'error';
@@ -132,7 +133,7 @@ function App() {
   }, []);
   useEffect(() => { if (!contracts.some(contract => contract.id === selectedContractId) && contracts[0]) setSelectedContractId(contracts[0].id); }, [contracts, selectedContractId]);
 
-  const finishMission = (telemetry: Telemetry, depth: 'safe' | 'deep', salvageTags: number, expeditionProgress?: ExpeditionProgress) => {
+  const finishMission = (telemetry: Telemetry, depth: 'safe' | 'deep', salvageTags: number, expeditionProgress?: ExpeditionProgress, fieldLoot: GroundLootReceipt[] = []) => {
     if (!selectedContract) return;
     const buildLabel = buildIdentity(profile);
     const baseCampaignReward = settleContract(campaign, selectedContract, depth, salvageTags, expeditionProgress);
@@ -162,7 +163,7 @@ function App() {
       directiveQualityBonus: selectedContract.directiveQualityBonus,
       directiveSingularChanceBonus: selectedContract.directiveSingularChanceBonus,
       directiveRecoveryLevelBonus: selectedContract.directiveRecoveryLevelBonus,
-    });
+    }, fieldLoot);
     const uplinkStatus: UplinkStatus = profile.settings.telemetrySharing ? 'sharing' : 'local';
     setCampaign(campaignReward.campaign);
     setProfile(lootReward.profile);

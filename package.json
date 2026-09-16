@@ -7,9 +7,10 @@
     "dev": "vite",
     "test:beta": "tsc --noEmit && vite build --ssr tests/beta-level15.ts --outDir .beta-dist && node .beta-dist/beta-level15.js",
     "test:gameplay": "vite build --ssr tests/gameplay-regressions.ts --outDir .gameplay-dist && node .gameplay-dist/gameplay-regressions.js",
-    "build": "npm run test:beta && npm run test:gameplay && npm run test:maps && vite build",
+    "build": "npm run test:beta && npm run test:gameplay && npm run test:maps && npm run test:loot && vite build",
     "preview": "vite preview",
-    "test:maps": "vite build --ssr tests/map-navigation.ts --outDir .map-dist && node .map-dist/map-navigation.js"
+    "test:maps": "vite build --ssr tests/map-navigation.ts --outDir .map-dist && node .map-dist/map-navigation.js",
+    "test:loot": "vite build --ssr tests/loot-difficulty.ts --outDir .loot-dist && node .loot-dist/loot-difficulty.js"
   },
   "dependencies": {
     "@netlify/blobs": "^11.1.0",
