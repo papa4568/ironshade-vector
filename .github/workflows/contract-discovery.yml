@@ -1,0 +1,54 @@
+name: Validate acquisition-first gear discovery
+
+on:
+  push:
+    branches:
+      - ui/gear-discovery-contracts
+
+permissions:
+  contents: write
+
+jobs:
+  validate-publish-qa:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply discovery-safe contract UI
+        run: |
+          git fetch origin ui/gear-discovery-contracts
+          git show FETCH_HEAD:scripts/apply_contract_discovery_patch.py > /tmp/apply_contract_discovery_patch.py
+          python /tmp/apply_contract_discovery_patch.py
+          git diff --check
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run full regression suite and production build
+        run: npm run build
+      - name: Publish validated discovery UI to main
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/components/ShipHub.tsx tests/ui-readability.ts
+          git commit -m 'Hide unrecovered gear previews'
+          git push origin HEAD:main
+      - name: Load live QA
+        run: |
+          git fetch origin ui/gear-discovery-contracts
+          git show FETCH_HEAD:scripts/live_contract_discovery_qa.mjs > .live-contract-discovery-qa.mjs
+      - name: Install browser QA dependency
+        run: |
+          npm install --no-save playwright@latest
+          npx playwright install --with-deps chromium
+      - name: Verify live acquisition-first discovery
+        run: node .live-contract-discovery-qa.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: contract-discovery-live-qa
+          path: contract-discovery-live.png
+          if-no-files-found: ignore
