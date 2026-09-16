@@ -19,7 +19,7 @@
 .directive-mods { display: flex; flex-wrap: wrap; gap: 4px; }
 .directive-mods span,.directive-risk span { padding: 5px 7px; border: 1px solid #3d504a; border-radius: 999px; color: #9fb0aa; font: 700 7px ui-monospace,monospace; }
 .directive-risk { display: flex; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
-.directive-card button,.directive-state-note button { border: 1px solid #4b625b; border-radius: 8px; background: #17231f; color: #d4dfdb; padding: 9px 11px; font-weight: 800; cursor: pointer; }
+.directive-card button,.directive-state-note button { border: 1px solid #4b625b; border-radius: 9px; background: #17231f; color: #d4dfdb; padding: 9px 11px; font-weight: 800; cursor: pointer; }
 .directive-card button.primary { background: #cbc8ac; color: #111713; }
 .directive-state-note { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 11px; border: 1px solid #34443f; border-radius: 10px; background: rgba(11,18,17,.8); }
 .directive-state-note b { font-size: 9px; }
@@ -77,7 +77,7 @@
     z-index: 92;
     top: 0;
     padding: 11px 13px 10px;
-    background: linear-gradient(135deg, var(--gear-rarity-wash, rgba(35,55,49,.24)), #07100e 62%);
+    background: #07100e;
     box-shadow: 0 10px 28px rgba(0,0,0,.28);
   }
   .gear-layout .item-inspector.open .inspector-heading h2 {
