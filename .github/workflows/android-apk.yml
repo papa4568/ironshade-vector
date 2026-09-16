@@ -38,6 +38,43 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      - name: Resolve APK signing mode
+        id: signing
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
+          ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
+          ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          present=0
+          for value in "$ANDROID_KEYSTORE_BASE64" "$ANDROID_SIGNING_STORE_PASSWORD" "$ANDROID_SIGNING_KEY_ALIAS" "$ANDROID_SIGNING_KEY_PASSWORD"; do
+            if [[ -n "$value" ]]; then
+              present=$((present + 1))
+            fi
+          done
+
+          if [[ "$present" -eq 0 ]]; then
+            echo "::warning::Persistent Android signing secrets are not configured; building an ephemeral debug-signed APK."
+            echo "mode=debug" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "$present" -ne 4 ]]; then
+            echo "::error::Android signing is partially configured. Set all four ANDROID_* signing secrets or remove all four."
+            exit 1
+          fi
+
+          KEYSTORE="$RUNNER_TEMP/ironshade-vector-release.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+          chmod 600 "$KEYSTORE"
+          test -s "$KEYSTORE"
+          keytool -list -keystore "$KEYSTORE" -storepass "$ANDROID_SIGNING_STORE_PASSWORD" -alias "$ANDROID_SIGNING_KEY_ALIAS" >/dev/null
+          echo "mode=release" >> "$GITHUB_OUTPUT"
+          echo "keystore=$KEYSTORE" >> "$GITHUB_OUTPUT"
+          echo "Persistent Android release signing is configured."
+
       - name: Install Android SDK 36
         shell: bash
         run: |
@@ -65,27 +102,56 @@ jobs:
           test -f android/app/src/main/assets/public/index.html
           find android/app/src/main/assets/public/assets -name 'three-runtime-*.js' -print -quit | grep -q .
           grep -q 'android:screenOrientation="sensorLandscape"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:hardwareAccelerated="true"' android/app/src/main/AndroidManifest.xml
+          grep -q 'IRONSHADE_RELEASE_SIGNING' android/app/build.gradle
+          grep -q 'ANDROID_SIGNING_STORE_FILE' android/app/build.gradle
+
+      - name: Build persistent-signed release APK
+        if: steps.signing.outputs.mode == 'release'
+        working-directory: android
+        env:
+          ANDROID_SIGNING_STORE_FILE: ${{ steps.signing.outputs.keystore }}
+          ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
+          ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
+          ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Build installable debug APK
+        if: steps.signing.outputs.mode == 'debug'
         working-directory: android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace
 
-      - name: Verify APK package and SDK
+      - name: Verify APK package, SDK and signature
         shell: bash
+        env:
+          SIGNING_MODE: ${{ steps.signing.outputs.mode }}
         run: |
-          APK='android/app/build/outputs/apk/debug/app-debug.apk'
+          if [[ "$SIGNING_MODE" == "release" ]]; then
+            APK='android/app/build/outputs/apk/release/app-release.apk'
+          else
+            APK='android/app/build/outputs/apk/debug/app-debug.apk'
+          fi
           test -s "$APK"
+
           AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
+          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
           "$AAPT" dump badging "$APK" | tee android-apk-badging.txt
           grep -q "package: name='app.ironshade.vector'" android-apk-badging.txt
           grep -q "sdkVersion:'24'" android-apk-badging.txt
           grep -q "targetSdkVersion:'36'" android-apk-badging.txt
           grep -q "launchable-activity: name='app.ironshade.vector.MainActivity'" android-apk-badging.txt
+
+          "$APKSIGNER" verify --verbose --print-certs "$APK" | tee android-apk-signing.txt
+          grep -q 'Signer #1 certificate SHA-256 digest:' android-apk-signing.txt
+          printf 'signing_mode=%s\n' "$SIGNING_MODE" | tee android-apk-signing-mode.txt
+
           cp "$APK" Ironshade-Vector-Android-Beta.apk
           sha256sum Ironshade-Vector-Android-Beta.apk | tee Ironshade-Vector-Android-Beta.sha256
-          echo "ANDROID_APK_PASS size=$(du -h Ironshade-Vector-Android-Beta.apk | cut -f1)"
+          echo "ANDROID_APK_PASS signing=$SIGNING_MODE size=$(du -h Ironshade-Vector-Android-Beta.apk | cut -f1)"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -95,5 +161,7 @@ jobs:
             Ironshade-Vector-Android-Beta.apk
             Ironshade-Vector-Android-Beta.sha256
             android-apk-badging.txt
+            android-apk-signing.txt
+            android-apk-signing-mode.txt
           if-no-files-found: error
           retention-days: 90
