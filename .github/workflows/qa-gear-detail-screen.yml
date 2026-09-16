@@ -1,0 +1,242 @@
+name: QA standalone gear detail screen
+
+on:
+  push:
+    branches:
+      - fix/gear-detail-screen
+
+permissions:
+  contents: write
+
+jobs:
+  qa:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Replace modal inspector with standalone detail screen
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          armory_path = Path('src/components/Armory.tsx')
+          armory = armory_path.read_text()
+          if "import '../gearDetail.css';" not in armory:
+              armory = armory.replace("import '../part12.css';", "import '../part12.css';\nimport '../gearDetail.css';")
+
+          old_discard = """  const discardLatest = (item: Item) => {
+            const preview = discardItem(profile, item.id);
+            setMessage(preview.message);
+            onProfileChange(current => discardItem(current, item.id).profile);
+            if (preview.profile !== profile) setSelectedId(null);
+          };
+          """
+          old_discard = '\n'.join(line[10:] if line.startswith('          ') else line for line in old_discard.splitlines()) + '\n'
+          new_discard = """  const discardLatest = (item: Item) => {
+            const preview = discardItem(profile, item.id);
+            setMessage(preview.message);
+            onProfileChange(current => discardItem(current, item.id).profile);
+            if (preview.profile !== profile) {
+              setSelectedId(null);
+              requestAnimationFrame(() => buildRef.current?.scrollTo({ top: 0, left: 0, behavior: 'auto' }));
+            }
+          };
+          """
+          new_discard = '\n'.join(line[10:] if line.startswith('          ') else line for line in new_discard.splitlines()) + '\n'
+          if old_discard not in armory:
+              raise SystemExit('discardLatest anchor not found')
+          armory = armory.replace(old_discard, new_discard, 1)
+
+          select_anchor = "  const selectTab = (value: Tab) => {\n"
+          helpers = """  const openGearDetails = (item: Item) => {
+            setSelectedId(item.id);
+            requestAnimationFrame(() => buildRef.current?.scrollTo({ top: 0, left: 0, behavior: 'auto' }));
+          };
+          const closeGearDetails = () => {
+            setSelectedId(null);
+            requestAnimationFrame(() => buildRef.current?.scrollTo({ top: 0, left: 0, behavior: 'auto' }));
+          };
+          """
+          helpers = '\n'.join(line[10:] if line.startswith('          ') else line for line in helpers.splitlines()) + '\n'
+          if 'const openGearDetails' not in armory:
+              if select_anchor not in armory:
+                  raise SystemExit('selectTab anchor not found')
+              armory = armory.replace(select_anchor, helpers + select_anchor, 1)
+          armory = armory.replace("    setTab(value);\n    if (value === 'reconstruct'", "    setTab(value);\n    if (value === 'gear') setSelectedId(null);\n    if (value === 'reconstruct'", 1)
+
+          return_anchor = "  return <main ref={buildRef} className=\"build-bay\">\n"
+          detail_return = """  if (tab === 'gear' && selected) {
+            return <main ref={buildRef} className="build-bay gear-detail-mode">
+              <section className={`gear-detail-screen ${rarityClass(selected)} ${factionClass(selected)} ${qualityClass(selected)}`} aria-label="Equipment detail">
+                <header className="gear-detail-header">
+                  <button type="button" className="gear-detail-back" onClick={closeGearDetails}>← Back to equipment</button>
+                  <div className="gear-detail-title">
+                    <div className="gear-detail-badges">
+                      <span className="rarity-badge">{selected.rarity.toUpperCase()}</span>
+                      <span>{slotLabels[selected.slot]}</span>
+                      <span>EQUIP LV {selected.levelRequirement}</span>
+                      {selected.faction && <span>{factionLabel(selected.faction).toUpperCase()}</span>}
+                      {profile.equipped[selected.slot] === selected.id && <span className="equipped-badge">EQUIPPED</span>}
+                    </div>
+                    <h2>{selected.name}</h2>
+                    <p>{selected.equipmentClass}. {selected.core}</p>
+                  </div>
+                </header>
+                <div className="gear-detail-body"><GearComparison profile={profile} item={selected} /></div>
+                <footer className="gear-detail-actions">
+                  {profile.equipped[selected.slot] === selected.id ? <button onClick={() => unequipLatest(selected.slot)}>Unequip</button> : <button className="primary" onClick={() => equipLatest(selected)}>Equip {slotLabels[selected.slot]}</button>}
+                  <button className="danger" onClick={() => discardLatest(selected)}>Discard</button>
+                </footer>
+              </section>
+            </main>;
+          }
+
+          """
+          detail_return = '\n'.join(line[10:] if line.startswith('          ') else line for line in detail_return.splitlines()) + '\n'
+          if 'className="build-bay gear-detail-mode"' not in armory:
+              if return_anchor not in armory:
+                  raise SystemExit('main return anchor not found')
+              armory = armory.replace(return_anchor, detail_return + return_anchor, 1)
+
+          start = armory.find("    {tab === 'gear' && ")
+          end_marker = "\n\n    {tab === 'reconstruct'"
+          end = armory.find(end_marker, start)
+          if start < 0 or end < 0:
+              raise SystemExit('gear tab render region not found')
+          gear_browser = r'''    {tab === 'gear' && <><section className="gear-discovery-note compact-discovery"><details><summary>How equipment discovery works</summary><p>Undiscovered frame interactions remain hidden until you recover and equip the relevant gear. The bay only reveals effects your current collection has actually discovered.</p></details>{activeDoctrineStates.length > 0 && <div className="discovered-effects">{activeDoctrineStates.map(state => <article key={state.definition.id} className={`discovered-doctrine faction-${state.definition.id}`}><small>{state.definition.displayName.toUpperCase()} // DISCOVERED</small><b>Active loadout interaction</b><span>{state.definition.twoPiece}</span>{state.fourPieceActive && <span>{state.definition.fourPiece}</span>}</article>)}</div>}</section><div className="gear-browser"><section className="gear-storage"><div className="loadout-heading"><div><small>LOADOUT</small><b>{equippedSlotCount}/6 equipped</b></div><span>Tap a slot to open its detail screen.</span></div><div className="equipment-slots">{slots.map(slot => { const item = loadoutItems[slot]; return <button key={`${slot}:${profile.equipped[slot] ?? 'empty'}`} className={`equipped-card ${item ? rarityClass(item) : ''} ${factionClass(item)}`} onClick={() => item && openGearDetails(item)}><small>{slotLabels[slot]}</small><b>{item?.name ?? 'Empty'}</b><span>{item ? `${item.rarity} · Q${item.equipmentQuality ?? 0}` : '—'}</span></button>; })}</div><div className="storage-heading"><h2>Ship Storage</h2><span>{visibleInventory.length} shown of {storageItemCount} stowed items</span></div><div className="inventory-tools"><input type="search" value={gearQuery} onChange={event => setGearQuery(event.target.value)} placeholder="Search name, frame, faction…" aria-label="Search ship storage" /><select value={gearSort} onChange={event => setGearSort(event.target.value as InventorySort)} aria-label="Sort ship storage"><option value="recent">Recent order</option><option value="quality">Recovery quality</option><option value="recovery">Recovery level</option><option value="name">Name</option></select><div className="inventory-filter-scroll" aria-label="Equipment filters"><button className={gearFilter === 'all' ? 'selected' : ''} onClick={() => setGearFilter('all')}>All</button><button className={gearFilter === 'new' ? 'selected' : ''} onClick={() => setGearFilter('new')}>New</button>{slots.map(slot => <button key={slot} className={gearFilter === slot ? 'selected' : ''} onClick={() => setGearFilter(slot)}>{slotLabels[slot]}</button>)}</div></div><div className="inventory-grid">{visibleInventory.map(item => { const fresh = newLootIds.includes(item.id); const identityDef = frameIdentityDefinition(frameIdentity(item)); return <button key={item.id} className={`inventory-card ${rarityClass(item)} ${factionClass(item)} ${qualityClass(item)}`} onClick={() => openGearDetails(item)}><div><small>{slotLabels[item.slot]} · EQUIP LV {item.levelRequirement}</small><em className="rarity-pill">{item.rarity.toUpperCase()} · {rarityCue(item)}</em>{item.faction && <em className="faction-mark">{item.faction.toUpperCase()}</em>}{fresh && <em>NEW</em>}</div><b>{item.name}</b><span className="item-effect-preview">{shortItemEffect(item)}</span><small className="item-depth-line">{identityDef.name} · FRAME Q {item.equipmentQuality ?? 0}/20 · {(item.augments ?? []).length} AUGMENT{(item.augments ?? []).length === 1 ? '' : 'S'} INSTALLED</small></button>; })}{visibleInventory.length === 0 && <div className="inventory-empty"><b>{storageItemCount === 0 ? 'Ship storage is empty' : 'No matching equipment'}</b><span>{storageItemCount === 0 ? 'Equipped frames are shown in the operator kit above and return here when unequipped.' : 'Clear filters or search to show the rest of ship storage.'}</span>{storageItemCount > 0 && <button onClick={() => { setGearFilter('all'); setGearQuery(''); }}>Clear filters</button>}</div>}</div></section></div></>}'''
+          armory = armory[:start] + gear_browser + armory[end:]
+          armory_path.write_text(armory)
+
+          test_path = Path('tests/ui-readability.ts')
+          tests = test_path.read_text()
+          tests = tests.replace("const equipmentCss = read('src/equipmentBay.css');\n", "")
+          if "const gearDetailCss = read('src/gearDetail.css');" not in tests:
+              tests = tests.replace("const objectiveCss = read('src/part7.css');", "const objectiveCss = read('src/part7.css');\nconst gearDetailCss = read('src/gearDetail.css');")
+          remove_prefixes = (
+              "assert(equipmentCss.includes('gear-layout.has-selection::before')",
+              "assert(equipmentCss.includes('.item-inspector .sheet-close')",
+              "assert(equipmentCss.includes('MOBILE INSPECTOR SCROLL RELIABILITY')",
+              "assert(armory.includes('inspector-header')",
+              "assert(equipmentCss.includes('ITEM INSPECTOR REDESIGN')",
+              "assert(equipmentCss.includes('ITEM INSPECTOR LAZY-CSS CASCADE GUARD')",
+              "assert(armory.includes(\"useState<string | null>(null)\") && armory.includes(\"newLootIds.length > 0 ? 'new' : 'all'\") && armory.includes('item-inspector-backdrop')",
+              "assert(equipmentCss.includes('MOBILE INSPECTOR ESCAPE RELIABILITY')",
+              "const mobileInspectorCss = read('src/part12.css');",
+              "assert(mobileInspectorCss.includes('ANDROID ITEM INSPECTOR SINGLE SCROLLER')",
+          )
+          lines = [line for line in tests.splitlines() if not line.startswith(remove_prefixes)]
+          tests = '\n'.join(lines) + '\n'
+          marker = "assert(armory.includes('gear-deep-details') && css.includes('.gear-deep-details'), 'Gear inspector does not separate essential comparison from advanced telemetry.');"
+          replacement = marker + "\nassert(armory.includes('gear-detail-mode') && armory.includes('gear-detail-screen') && armory.includes('gear-detail-back') && armory.includes('gear-detail-actions'), 'Gear selection is not using the standalone equipment detail screen.');\nassert(!armory.includes('item-inspector-backdrop') && !armory.includes(\"className={'item-inspector \"), 'Gear tab still mounts the legacy item inspector overlay.');\nassert(armory.includes(\"newLootIds.length > 0 ? 'new' : 'all'\"), 'Recovered loot should still open as a filtered equipment list.');\nassert(gearDetailCss.includes('Build Bay remains the only scroll surface') && gearDetailCss.includes('overflow: visible') && !gearDetailCss.includes('position: fixed') && !gearDetailCss.includes('position: sticky'), 'Standalone gear detail must remain in normal document flow without nested or fixed scroll surfaces.');"
+          if marker not in tests:
+              raise SystemExit('UI regression insertion marker missing')
+          tests = tests.replace(marker, replacement, 1)
+          test_path.write_text(tests)
+          PY
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run full production validation
+        run: npm run build
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start client
+        run: |
+          npx vite --host 127.0.0.1 --port 4173 > /tmp/ironshade-vite.log 2>&1 &
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:4173 >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/ironshade-vite.log
+          exit 1
+      - name: Verify standalone gear detail interaction
+        run: |
+          mkdir -p qa-artifacts/gear-detail
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          import { writeFileSync } from 'node:fs';
+
+          const browser = await chromium.launch({ headless: true });
+          const report = [];
+          try {
+            for (const viewport of [{ width: 844, height: 390 }, { width: 740, height: 360 }]) {
+              const context = await browser.newContext({ viewport, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
+              const page = await context.newPage();
+              const errors = [];
+              page.on('pageerror', error => errors.push(`pageerror: ${error.message}`));
+              page.on('console', message => { if (message.type() === 'error') errors.push(`console: ${message.text()}`); });
+              await page.goto('http://127.0.0.1:4173', { waitUntil: 'networkidle' });
+              await page.getByRole('button', { name: 'Equipment' }).click();
+              await page.waitForSelector('.gear-browser');
+              await page.locator('.equipped-card').filter({ has: page.locator('b:not(:text("Empty"))') }).first().click().catch(async () => page.locator('.inventory-card').first().click());
+              await page.waitForSelector('.gear-detail-screen');
+
+              if (await page.locator('.item-inspector').count()) throw new Error('Legacy item inspector mounted on gear detail screen');
+              if (await page.locator('.gear-browser').count()) throw new Error('Gear browser remains mounted behind detail screen');
+              if (await page.locator('.build-header').count()) throw new Error('Build Bay chrome remains mounted in standalone gear detail mode');
+
+              const buildBay = page.locator('.build-bay.gear-detail-mode');
+              const initial = await buildBay.evaluate(el => ({
+                scrollTop: el.scrollTop,
+                scrollHeight: el.scrollHeight,
+                clientHeight: el.clientHeight,
+                overflowY: getComputedStyle(el).overflowY,
+              }));
+              if (!['auto', 'scroll'].includes(initial.overflowY)) throw new Error(`Build Bay is not the scroll surface: ${JSON.stringify(initial)}`);
+              if (initial.scrollHeight <= initial.clientHeight) throw new Error(`Detail page does not have scrollable content: ${JSON.stringify(initial)}`);
+              await page.screenshot({ path: `qa-artifacts/gear-detail/before-${viewport.width}x${viewport.height}.png`, fullPage: false });
+
+              const box = await buildBay.boundingBox();
+              if (!box) throw new Error('Build Bay box unavailable');
+              const client = await context.newCDPSession(page);
+              const x = Math.round(viewport.width * .55);
+              const startY = Math.round(viewport.height * .78);
+              const endY = Math.round(viewport.height * .28);
+              await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y: startY, radiusX: 4, radiusY: 4, force: 1 }] });
+              for (let step = 1; step <= 10; step++) {
+                const y = Math.round(startY + (endY - startY) * step / 10);
+                await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y, radiusX: 4, radiusY: 4, force: 1 }] });
+                await page.waitForTimeout(25);
+              }
+              await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+              await page.waitForTimeout(350);
+              const after = await buildBay.evaluate(el => el.scrollTop);
+              if (after < 30) throw new Error(`Finger swipe did not scroll standalone detail page: ${after}`);
+              await page.screenshot({ path: `qa-artifacts/gear-detail/after-${viewport.width}x${viewport.height}.png`, fullPage: false });
+
+              await buildBay.evaluate(el => el.scrollTo({ top: 0, left: 0, behavior: 'auto' }));
+              await page.getByRole('button', { name: '← Back to equipment' }).click();
+              await page.waitForSelector('.gear-browser');
+              if (await page.locator('.gear-detail-screen').count()) throw new Error('Back did not leave detail screen');
+              if (await page.locator('.item-inspector').count()) throw new Error('Legacy item inspector mounted after returning to browser');
+              if (errors.length) throw new Error(errors.join(' | '));
+              report.push({ viewport, initial, after });
+              await context.close();
+            }
+            writeFileSync('qa-artifacts/gear-detail/report.json', JSON.stringify(report, null, 2));
+            console.log('GEAR_DETAIL_SCREEN_QA_PASS', JSON.stringify(report));
+          } finally {
+            await browser.close();
+          }
+          JS
+      - name: Commit verified product changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/components/Armory.tsx tests/ui-readability.ts
+          git diff --cached --check
+          git commit -m 'Replace gear inspector with detail screen'
+          git push origin HEAD:fix/gear-detail-screen
+      - name: Upload QA screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gear-detail-screen-qa
+          path: qa-artifacts/gear-detail
+          if-no-files-found: warn
