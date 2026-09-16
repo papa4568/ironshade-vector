@@ -5,7 +5,7 @@ on:
     branches:
       - fix/playtest-recommendations
     paths:
-      - 'scripts/apply-playtest-recommendations.mjs'
+      - 'scripts/apply-playtest-recommendations-v2.mjs'
       - '.github/workflows/apply-playtest-recommendations.yml'
 
 permissions:
@@ -22,7 +22,7 @@ jobs:
         with:
           node-version: '22'
       - name: Apply production fixes
-        run: node scripts/apply-playtest-recommendations.mjs
+        run: node scripts/apply-playtest-recommendations-v2.mjs
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Validate full production build
