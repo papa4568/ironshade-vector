@@ -1,5 +1,0 @@
-/* Loaded by Armory after the legacy Part 3 stylesheet so the redesigned shell
-   keeps its fixed header / scroll body / action dock layout on phone widths. */
-.gear-layout .item-inspector.open {
-  display: grid;
-}
