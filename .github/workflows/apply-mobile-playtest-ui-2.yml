@@ -1,0 +1,37 @@
+name: Apply mobile playtest UI fixes 2
+
+on:
+  push:
+    branches:
+      - fix/mobile-playtest-ui-2
+    paths:
+      - 'scripts/apply-mobile-playtest-ui-2.mjs'
+      - '.github/workflows/apply-mobile-playtest-ui-2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.event.head_commit.message != 'Remove temporary mobile playtest patch machinery'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply mobile playtest fixes
+        run: node scripts/apply-mobile-playtest-ui-2.mjs
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Validate production build
+        run: npm run build
+      - name: Commit verified production changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src tests
+          git diff --cached --check
+          git commit -m 'Fix mobile combat and recovery UI'
+          git push origin HEAD:fix/mobile-playtest-ui-2
