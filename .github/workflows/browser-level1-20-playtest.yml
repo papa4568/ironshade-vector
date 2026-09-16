@@ -1,0 +1,71 @@
+name: Browser level 1-20 playtest
+
+on:
+  push:
+    branches:
+      - beta/playthrough-1-20
+    paths:
+      - 'scripts/browser-level1-20-playtest.mjs'
+      - '.github/workflows/browser-level1-20-playtest.yml'
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+
+permissions:
+  contents: read
+
+jobs:
+  playthrough:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Check out playtest branch
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install app dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Install Chromium play driver
+        run: |
+          npm install --no-save --no-audit --no-fund playwright
+          npx playwright install --with-deps chromium
+
+      - name: Build production client
+        run: npm run build
+
+      - name: Start production preview
+        shell: bash
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4173 > /tmp/ironshade-vite.log 2>&1 &
+          echo $! > /tmp/ironshade-vite.pid
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/ironshade-vite.log
+          exit 1
+
+      - name: Play fresh profile from level 1 to 20
+        env:
+          PLAYTEST_URL: http://127.0.0.1:4173
+        run: node scripts/browser-level1-20-playtest.mjs
+
+      - name: Show preview log
+        if: always()
+        run: cat /tmp/ironshade-vite.log || true
+
+      - name: Upload playthrough evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ironshade-vector-level1-20-playthrough
+          path: playtest-artifacts
+          if-no-files-found: warn
+          retention-days: 14
