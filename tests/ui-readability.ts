@@ -18,6 +18,7 @@ const hubVisual = read('src/components/CommandHubVisual.tsx');
 const hubCss = read('src/commandHub.css');
 const app = read('src/App.tsx');
 const equipmentCss = read('src/equipmentBay.css');
+const missionCss = read('src/part4.css');
 
 assert(!armory.includes('Review faction doctrines'), 'Equipment Bay still advertises undiscovered faction doctrine targets.');
 assert(!armory.includes('2 PIECE'), 'Equipment Bay still exposes 2-piece set targets.');
@@ -36,6 +37,10 @@ assert(renderer.includes('0xff4a3d') && renderer.includes('toneMapped: false'), 
 assert(css.includes('.target-readout') && css.includes('.gear-quick-read') && css.includes('.loot-radar'), 'Readability stylesheet is incomplete.');
 assert(armory.includes('gear-deep-details') && css.includes('.gear-deep-details'), 'Gear inspector does not separate essential comparison from advanced telemetry.');
 assert(equipmentCss.includes('gear-layout.has-selection::before') && equipmentCss.includes('width: min(72vw, 760px)'), 'Landscape mobile gear inspector is missing focused modal treatment.');
+assert(equipmentCss.includes('.item-inspector .sheet-close') && equipmentCss.includes('@media (pointer: coarse)'), 'Gear inspector cannot be reliably closed on coarse-pointer landscape devices.');
+assert(missionCss.includes('RESPONSIVE MISSION SURFACE RELIABILITY') && missionCss.includes('overflow-y: auto'), 'Combat completion overlays can still extend outside the visible viewport.');
+assert(missionCss.includes('place-items: start center') && missionCss.includes('height: 100dvh'), 'Mission debrief can still center oversized content outside the scrollable viewport.');
+assert(missionCss.includes('max-height: 900px'), 'Short landscape viewport scaling regression coverage is missing.');
 assert(app.includes('RECOVERED EQUIPMENT // REVIEW') && app.includes('Confirm discard'), 'Mission debrief is missing acquired-gear review/discard controls.');
 assert(app.includes('discardRecoveredItem') && app.includes('discardItem(current, itemId)'), 'Debrief discard is not wired to persistent profile inventory.');
 assert(!shipHub.includes('bossSingularNames'), 'Contract Board still imports unrecovered boss gear names.');
