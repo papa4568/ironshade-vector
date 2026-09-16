@@ -1,0 +1,57 @@
+name: Validate loot and difficulty overhaul
+
+on:
+  push:
+    branches:
+      - systems/loot-difficulty-overhaul
+
+permissions:
+  contents: write
+
+jobs:
+  validate-publish-qa:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Load overhaul from validation branch
+        run: |
+          git fetch origin systems/loot-difficulty-overhaul
+          git show FETCH_HEAD:src/game/fieldLoot.ts > src/game/fieldLoot.ts
+          git show FETCH_HEAD:src/game/scaling.ts > src/game/scaling.ts
+          git show FETCH_HEAD:tests/loot-difficulty.ts > tests/loot-difficulty.ts
+          git show FETCH_HEAD:scripts/apply_loot_difficulty_patch.py > /tmp/apply_loot_difficulty_patch.py
+          python /tmp/apply_loot_difficulty_patch.py
+          git diff --check
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run full regression suite and production build
+        run: npm run build
+      - name: Publish validated overhaul to main
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package.json src/App.tsx src/components/GameCanvas.tsx src/game/campaign.ts src/game/director.ts src/game/fieldLoot.ts src/game/meta.ts src/game/scaling.ts src/game/sim.ts src/game/threeCombatRenderer.ts tests/loot-difficulty.ts
+          git commit -m 'Rebalance progression and add field loot'
+          git push origin HEAD:main
+      - name: Load live QA
+        run: |
+          git fetch origin systems/loot-difficulty-overhaul
+          git show FETCH_HEAD:scripts/live_loot_difficulty_qa.mjs > .live-loot-difficulty-qa.mjs
+      - name: Install browser QA dependency
+        run: |
+          npm install --no-save playwright@latest
+          npx playwright install --with-deps chromium
+      - name: Verify live mobile combat scaling
+        run: node .live-loot-difficulty-qa.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: loot-difficulty-live-qa
+          path: loot-difficulty-live.png
+          if-no-files-found: ignore
