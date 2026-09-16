@@ -2,8 +2,9 @@ import { solidNavigationObject } from './mapNavigation';
 import type { CombatObject, SimState, Vec2 } from './sim';
 
 const point = (x: number, y: number): Vec2 => ({ x, y });
+export type NavigationTarget = Pick<CombatObject, 'x' | 'y'> & Partial<Pick<CombatObject, 'id' | 'w' | 'h'>>;
 
-export function findNavigationPath(state: SimState, target: CombatObject, cell = 58) {
+export function findNavigationPath(state: SimState, target: NavigationTarget, cell = 58) {
   const clearance = 28;
   const minX = 105;
   const maxX = 2215;
@@ -11,7 +12,9 @@ export function findNavigationPath(state: SimState, target: CombatObject, cell =
   const maxY = 915;
   const cols = Math.floor((maxX - minX) / cell) + 1;
   const rows = Math.floor((maxY - minY) / cell) + 1;
-  const solids = state.objects.filter(solidNavigationObject).filter(object => object.id !== target.id);
+  const targetX = target.x + (target.w ?? 0) / 2;
+  const targetY = target.y + (target.h ?? 0) / 2;
+  const solids = state.objects.filter(solidNavigationObject).filter(object => !target.id || object.id !== target.id);
   const blocked = (x: number, y: number) => solids.some(object => x >= object.x - clearance && x <= object.x + object.w + clearance && y >= object.y - clearance && y <= object.y + object.h + clearance);
   const key = (cx: number, cy: number) => cy * cols + cx;
   const fromKey = (value: number) => [value % cols, Math.floor(value / cols)] as const;
@@ -21,7 +24,7 @@ export function findNavigationPath(state: SimState, target: CombatObject, cell =
     Math.max(0, Math.min(rows - 1, Math.round((y - minY) / cell))),
   ] as const;
   const [startX, startY] = clampCell(state.player.x, state.player.y);
-  const [goalX, goalY] = clampCell(target.x + target.w / 2, target.y + target.h / 2);
+  const [goalX, goalY] = clampCell(targetX, targetY);
   const startId = key(startX, startY);
   const goalId = key(goalX, goalY);
   const queue = [startId];
@@ -36,7 +39,7 @@ export function findNavigationPath(state: SimState, target: CombatObject, cell =
     const current = queue[index];
     const [cx, cy] = fromKey(current);
     const p = cellPoint(cx, cy);
-    const goalDistance = Math.hypot(p.x - (target.x + target.w / 2), p.y - (target.y + target.h / 2));
+    const goalDistance = Math.hypot(p.x - targetX, p.y - targetY);
     if (goalDistance < nearestDistance) { nearestDistance = goalDistance; nearest = current; }
     if (goalDistance <= Math.max(100, cell * 1.7)) { resolvedGoal = current; found = true; break; }
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
@@ -79,6 +82,6 @@ export function findNavigationPath(state: SimState, target: CombatObject, cell =
   }
   if (simplified.length === 0) simplified.push(point(state.player.x, state.player.y));
   simplified[0] = point(state.player.x, state.player.y);
-  simplified.push(point(target.x + target.w / 2, target.y + target.h / 2));
+  simplified.push(point(targetX, targetY));
   return { points: simplified, complete: found };
 }
