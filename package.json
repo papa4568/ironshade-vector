@@ -12,9 +12,12 @@
     "test:maps": "vite build --ssr tests/map-navigation.ts --outDir .map-dist && node .map-dist/map-navigation.js",
     "test:loot": "vite build --ssr tests/loot-difficulty.ts --outDir .loot-dist && node .loot-dist/loot-difficulty.js",
     "test:ui": "vite build --ssr tests/ui-readability.ts --outDir .ui-dist && node .ui-dist/ui-readability.js",
-    "test:bundle": "node tests/client-bundle-budget.mjs"
+    "test:bundle": "node tests/client-bundle-budget.mjs",
+    "android:sync": "npx cap sync android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
     "@netlify/blobs": "^11.1.0",
     "@netlify/functions": "^6.0.0",
     "lucide-react": "^0.469.0",
@@ -26,6 +29,7 @@
     "@rollup/rollup-linux-x64-gnu": "^4.0.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/three": "0.186.0",
