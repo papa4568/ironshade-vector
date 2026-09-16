@@ -24,7 +24,7 @@ jobs:
           git fetch origin ui/readability-loot-discovery
           git show FETCH_HEAD:src/readability.css > src/readability.css
           git show FETCH_HEAD:tests/ui-readability.ts > tests/ui-readability.ts
-          git show FETCH_HEAD:scripts/apply_readability_patch.py > /tmp/apply_readability_patch.py
+          git show FETCH_HEAD:scripts/apply_readability_patch_v2.py > /tmp/apply_readability_patch.py
           python /tmp/apply_readability_patch.py
           git diff --check
       - name: Install dependencies
