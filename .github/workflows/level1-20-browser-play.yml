@@ -5,7 +5,7 @@ on:
     branches:
       - beta/level1-20-playthrough
     paths:
-      - 'tests/e2e-level1-20.mjs'
+      - 'tests/e2e-level1-20-v2.mjs'
       - 'scripts/instrument-browser-playtest.mjs'
       - '.github/workflows/level1-20-browser-play.yml'
       - 'src/**'
@@ -54,7 +54,7 @@ jobs:
           exit 1
 
       - name: Play from level 1 through level 20
-        run: node tests/e2e-level1-20.mjs
+        run: node tests/e2e-level1-20-v2.mjs
 
       - name: Upload playthrough evidence
         if: always()
