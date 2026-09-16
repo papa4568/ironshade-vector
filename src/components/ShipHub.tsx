@@ -10,6 +10,7 @@ import BalanceAudit from './BalanceAudit';
 import { blackLatticeChapter, blackLatticeEvidence, blackLatticeUnlocked, chooseBlackLatticeBranch, getBlackLatticeChoicePrompt, startBlackLatticeChapter } from '../game/blackLattice';
 import {
   buyShipUpgrade,
+  buyConsumable,
   escalationStages,
   factions,
   factionDisplayName,
@@ -23,6 +24,7 @@ import {
   type ShipUpgradeId,
 } from '../game/campaign';
 import { bossSingularNames, buildIdentity, locationSingularNames, namedSingularCount, type PlayerProfile } from '../game/meta';
+import { consumableDefinitions, type ConsumableId } from '../game/consumables';
 import { factionEquipmentNames, factionGearChance } from '../game/factionGear';
 import { getEnvironmentalEventForecast, environmentalEventCount } from '../game/environmentalEvents';
 import { loadRunTrace, type OperationsSnapshot, type RunTraceRecord } from '../game/network';
@@ -131,6 +133,11 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
   }, []);
   const buy = (id: ShipUpgradeId) => {
     const result = buyShipUpgrade(campaign, id);
+    onCampaignChange(result.campaign);
+    setMessage(result.message);
+  };
+  const buySupply = (id: ConsumableId) => {
+    const result = buyConsumable(campaign, id);
     onCampaignChange(result.campaign);
     setMessage(result.message);
   };
@@ -255,6 +262,6 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
 
     {tab === 'factions' && <section className="faction-panel">{factions.map(faction => <article key={faction.id} className="faction-card"><header><div><span className="card-kicker">{faction.name}</span><h2>Reputation {campaign.reputation[faction.id]}</h2></div><div className="rep-meter"><i style={{ width: `${Math.max(0, Math.min(100, (campaign.reputation[faction.id] + 10) / 30 * 100))}%` }} /></div></header><div className="faction-copy"><p><b>History.</b> {faction.history}</p><p><b>Economic foundation.</b> {faction.economy}</p><p><b>Culture.</b> {faction.culture}</p><p><b>Technology.</b> {faction.technology}</p><p><b>Political goals.</b> {faction.goals}</p><p><b>Strengths.</b> {faction.strengths}</p><p><b>Failures.</b> {faction.failures}</p><p><b>Internal divisions.</b> {faction.divisions}</p></div><div className="faction-unlocks">{faction.unlocks.map(unlock => <span key={unlock}>{unlock}</span>)}</div><div className={`faction-armory-summary faction-${faction.id}`}><b>SPONSORED EQUIPMENT ACCESS</b><span>Current normal-slot odds: {Math.round(factionGearChance(campaign.reputation[faction.id], false) * 100)}% safe · {Math.round(factionGearChance(campaign.reputation[faction.id], true) * 100)}% deep</span><small>{factionEquipmentNames(faction.id).join(' · ')}</small></div></article>)}</section>}
 
-    {tab === 'cargo' && <section className="cargo-panel"><article className="cargo-ledger"><span className="card-kicker">CARGO / SALVAGE LEDGER</span><h2>Banked resources</h2>{(Object.keys(campaign.resources) as ResourceId[]).map(key => <div key={key}><span>{resourceLabels[key]}</span><b>{campaign.resources[key]}</b></div>)}</article><article className="cargo-ledger"><span className="card-kicker">EQUIPMENT STORAGE</span><h2>{profile.inventory.length} equipment packages</h2><p>Equipment recovery remains sparse and meaningful. Cargo upgrades increase material yield, not item spam.</p><button onClick={onOpenBuild}>Inspect equipment</button></article><article className="cargo-ledger"><span className="card-kicker">LAST OPERATION</span><h2>Mission log</h2><p>{campaign.lastOutcome}</p>{campaign.resources.rareTech > 0 && <div className="anomaly-note"><b>QUARANTINED TRACE // {campaign.resources.rareTech}</b><span>Recovered lattice material occupies shielded sample storage. Its geometry has not been matched to normal human industrial methods; the Campaign dossier tracks what Quiet Signal can actually support from the evidence.</span></div>}</article></section>}
+    {tab === 'cargo' && <section className="cargo-panel"><article className="consumable-store"><span className="card-kicker">FIELD CONSUMABLES // SHIP STORE</span><h2>Spend Credits on deployment supplies</h2><p>Credits are the field currency. Supplies persist in Quiet Signal storage and are only consumed when an effect successfully activates in combat.</p><div className="consumable-credit-balance"><small>AVAILABLE CREDITS</small><b>{campaign.resources.credits}</b></div><div className="consumable-shop-grid">{consumableDefinitions.map(item => { const stock = campaign.consumables[item.id]; const full = stock >= item.maxStock; const affordable = campaign.resources.credits >= item.cost; return <div key={item.id} className="consumable-shop-card"><header><div><small>{item.hotkey} // {item.shortName}</small><b>{item.name}</b></div><strong>{stock}/{item.maxStock}</strong></header><p>{item.description}</p><span>{item.effect}</span><button disabled={full || !affordable} onClick={() => buySupply(item.id)}>{full ? 'Stock full' : `Buy // ${item.cost} Credits`}</button></div>; })}</div></article><article className="cargo-ledger"><span className="card-kicker">CARGO / SALVAGE LEDGER</span><h2>Banked resources</h2>{(Object.keys(campaign.resources) as ResourceId[]).map(key => <div key={key}><span>{resourceLabels[key]}</span><b>{campaign.resources[key]}</b></div>)}</article><article className="cargo-ledger"><span className="card-kicker">EQUIPMENT STORAGE</span><h2>{profile.inventory.length} equipment packages</h2><p>Equipment recovery remains sparse and meaningful. Cargo upgrades increase material yield, not item spam.</p><button onClick={onOpenBuild}>Inspect equipment</button></article><article className="cargo-ledger"><span className="card-kicker">LAST OPERATION</span><h2>Mission log</h2><p>{campaign.lastOutcome}</p>{campaign.resources.rareTech > 0 && <div className="anomaly-note"><b>QUARANTINED TRACE // {campaign.resources.rareTech}</b><span>Recovered lattice material occupies shielded sample storage. Its geometry has not been matched to normal human industrial methods; the Campaign dossier tracks what Quiet Signal can actually support from the evidence.</span></div>}</article></section>}
   </main>;
 }

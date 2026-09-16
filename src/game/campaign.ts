@@ -1,4 +1,5 @@
 import type { CombatBuild } from './sim';
+import { consumableDefinition, defaultConsumables, type ConsumableId, type ConsumableInventory } from './consumables';
 
 export type FactionId = 'meridian' | 'heliostat' | 'longarc';
 export type ContractArchetype = 'salvage' | 'boarding' | 'stabilization';
@@ -23,7 +24,7 @@ export type DirectiveModifierId = 'compromised-shell' | 'unstable-mass' | 'overl
 export type DirectiveTargetClass = 'elite-led' | 'command-target';
 export type OperationDirective = { id: string; seed: number; tier: number; location: LocationId; locationName: string; sponsor: FactionId; archetype: ContractArchetype; objectiveMode: ObjectiveMode; modifierIds: DirectiveModifierId[]; targetClass: DirectiveTargetClass; deepTarget: string; codename: string; sourceLabel: string };
 export type DirectiveState = { unlocked: boolean; inventory: OperationDirective[]; preparedId: string | null; completed: number; highestTier: number; lastBeat: string };
-export type CampaignState = { version: 1; cycle: number; contractsCompleted: number; resources: SalvageWallet; reputation: Record<FactionId, number>; shipUpgrades: Record<ShipUpgradeId, number>; anomalyRecovered: boolean; dailyCompletedDate: string | null; lastOutcome: string; story: StoryState; escalation: EscalationState; directives: DirectiveState };
+export type CampaignState = { version: 1; cycle: number; contractsCompleted: number; resources: SalvageWallet; consumables: ConsumableInventory; reputation: Record<FactionId, number>; shipUpgrades: Record<ShipUpgradeId, number>; anomalyRecovered: boolean; dailyCompletedDate: string | null; lastOutcome: string; story: StoryState; escalation: EscalationState; directives: DirectiveState };
 export type FactionProfile = { id: FactionId; name: string; history: string; economy: string; culture: string; technology: string; goals: string; strengths: string; failures: string; divisions: string; unlocks: string[] };
 export type Contract = { id: string; sponsor: FactionId; archetype: ContractArchetype; location: LocationId; locationName: string; title: string; objective: string; objectiveMode: ObjectiveMode; objectiveSteps: string[]; briefing: string; conditions: ConditionId[]; conditionLabels: string[]; directorPreview: string; deepTarget: string; rewardBase: Partial<SalvageWallet>; reputationGain: number; contestedFaction?: FactionId; priority: boolean; anomalyOpportunity: boolean; daily?: boolean; operationDate?: string; seed: number; storyArc?: StoryArcId; storyStep?: number; storyFinale?: boolean; storyChapter?: string; storyClue?: boolean; storyAftermath?: string; campaignChapter?: 'black-lattice' | 'dead-reckoning' | 'dead-reckoning-interdiction'; campaignStep?: number; campaignFinale?: boolean; campaignEvidence?: string; campaignAftermath?: string; escalationStage?: number; escalationFinale?: boolean; escalationDate?: string; megastructure?: MegastructureId; megastructureStage?: number; megastructureStageCount?: number; megastructureZoneNames?: string[]; megastructureOptionalLabel?: string; megastructureBossTarget?: string; operationTier?: number; encounterRating?: number; threatBudget?: number; maxRecoveryLevel?: number; maxFrameGeneration?: 1 | 2 | 3 | 4 | 5 | 6; eliteProtocolSlots?: number; environmentalEventSlots?: number; combatEffectiveness?: number; operationRewardMultiplier?: number; encounterPattern?: 'swarm' | 'mixed' | 'elite-led'; reserveCount?: number; directiveId?: string; directiveTier?: number; directiveModifierIds?: DirectiveModifierId[]; directiveTargetClass?: DirectiveTargetClass; directiveMaterialMultiplier?: number; directiveQualityBonus?: number; directiveSingularChanceBonus?: number; directiveRecoveryLevelBonus?: number; directiveEventBias?: string[]; directiveProtocolBias?: string[]; directiveThreatBonus?: number; directiveProtocolBonus?: number; directiveProtocolDensity?: number; directiveEventBonus?: number; directiveReserveBonus?: number; directiveRiskScore?: number; directiveSource?: string; commandTrace?: boolean };
 export type DailyOperationSpec = { date: string; seed: number; codename: string; sponsor: FactionId; archetype: ContractArchetype; objectiveMode: ObjectiveMode; location: LocationId; conditions: ConditionId[]; challenge: string; generatedAt: string };
@@ -62,7 +63,7 @@ function createDefaultEscalation(): EscalationState {
 function createDefaultDirectives(): DirectiveState {
   return { unlocked: false, inventory: [], preparedId: null, completed: 0, highestTier: 0, lastBeat: 'Directive Array locked // reach operator level 10 to begin endgame navigation recovery.' };
 }
-export function createDefaultCampaign(): CampaignState { return { version: 1, cycle: 0, contractsCompleted: 0, resources: { credits: 120, alloys: 1, electronics: 1, medstock: 1, components: 0, rareTech: 0 }, reputation: { meridian: 0, heliostat: 0, longarc: 0 }, shipUpgrades: { reactor: 0, drive: 0, armor: 0, cargo: 0, sensors: 0, fabrication: 0, medical: 0, drones: 0 }, anomalyRecovered: false, dailyCompletedDate: null, lastOutcome: 'Quiet Signal ready for contract selection.', story: createDefaultStory(), escalation: createDefaultEscalation(), directives: createDefaultDirectives() }; }
+export function createDefaultCampaign(): CampaignState { return { version: 1, cycle: 0, contractsCompleted: 0, resources: { credits: 120, alloys: 1, electronics: 1, medstock: 1, components: 0, rareTech: 0 }, consumables: defaultConsumables(), reputation: { meridian: 0, heliostat: 0, longarc: 0 }, shipUpgrades: { reactor: 0, drive: 0, armor: 0, cargo: 0, sensors: 0, fabrication: 0, medical: 0, drones: 0 }, anomalyRecovered: false, dailyCompletedDate: null, lastOutcome: 'Quiet Signal ready for contract selection.', story: createDefaultStory(), escalation: createDefaultEscalation(), directives: createDefaultDirectives() }; }
 export function loadCampaign(): CampaignState {
   if (typeof window === 'undefined') return createDefaultCampaign();
   try {
@@ -78,6 +79,7 @@ export function loadCampaign(): CampaignState {
       ...defaults,
       ...parsed,
       resources: { ...defaults.resources, ...parsed.resources },
+      consumables: { ...defaults.consumables, ...parsed.consumables },
       reputation: { ...defaults.reputation, ...parsed.reputation },
       shipUpgrades: { ...defaults.shipUpgrades, ...parsed.shipUpgrades },
       story: {
@@ -98,6 +100,21 @@ export function loadCampaign(): CampaignState {
   } catch { return createDefaultCampaign(); }
 }
 export function saveCampaign(campaign: CampaignState) { if (typeof window !== 'undefined') window.localStorage.setItem(STORAGE_KEY, JSON.stringify(campaign)); }
+
+export function buyConsumable(campaign: CampaignState, id: ConsumableId) {
+  const definition = consumableDefinition(id);
+  const current = campaign.consumables[id] ?? 0;
+  if (current >= definition.maxStock) return { campaign, message: `${definition.name} stock is full (${definition.maxStock}).` };
+  if (campaign.resources.credits < definition.cost) return { campaign, message: `Need ${definition.cost} Credits for ${definition.name}.` };
+  return {
+    campaign: {
+      ...campaign,
+      resources: { ...campaign.resources, credits: campaign.resources.credits - definition.cost },
+      consumables: { ...campaign.consumables, [id]: current + 1 },
+    },
+    message: `${definition.name} purchased // ${current + 1}/${definition.maxStock} stocked // ${definition.cost} Credits spent.`,
+  };
+}
 
 export const conditionLabel: Record<ConditionId, string> = { 'unstable-pressure': 'Unstable pressure shell', 'failing-gravity': 'Failing gravity control', 'damaged-grid': 'Damaged electrical grid', 'automated-defense': 'Automated defense remnants', 'limited-atmosphere': 'Limited atmosphere', 'low-visibility': 'Low visibility particulates' };
 const locations: Array<{ id: LocationId; name: string }> = [

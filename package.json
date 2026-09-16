@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "test:beta": "tsc --noEmit && vite build --ssr tests/beta-level15.ts --outDir .beta-dist && node .beta-dist/beta-level15.js",
-    "build": "npm run test:beta && vite build",
+    "test:gameplay": "vite build --ssr tests/gameplay-regressions.ts --outDir .gameplay-dist && node .gameplay-dist/gameplay-regressions.js",
+    "build": "npm run test:beta && npm run test:gameplay && vite build",
     "preview": "vite preview"
   },
   "dependencies": {

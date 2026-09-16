@@ -4,6 +4,7 @@ import GameCanvas from './components/GameCanvas';
 import ShipHub from './components/ShipHub';
 import './qol.css';
 import './equipmentBay.css';
+import './consumables.css';
 import { advanceBlackLatticeAfterContract, getBlackLatticeContract } from './game/blackLattice';
 import { advanceEscalationAfterContract, applyShipBonuses, dailyOperationContract, factionDisplayName, generateContracts, generateEscalationContract, loadCampaign, resourceLabels, saveCampaign, settleContract, type CampaignReward, type CampaignState, type Contract, type ExpeditionProgress, type ResourceId } from './game/campaign';
 import { feedback } from './game/feedback';
@@ -187,7 +188,7 @@ function App() {
   return <div className="app-shell" onPointerDownCapture={() => feedback.unlock()} onClickCapture={event => { const target = event.target as HTMLElement; if (target.closest('button') && !target.closest('.game-root')) feedback.cue('ui'); }}>
     {screen === 'ship' && <ShipHub profile={profile} campaign={campaign} contracts={contracts} operations={operations} operationsStatus={operationsStatus} telemetrySharing={profile.settings.telemetrySharing} selectedContractId={selectedContract?.id ?? ''} statusMessage={statusMessage} onSelectContract={setSelectedContractId} onDeploy={() => selectedContract && setScreen('combat')} onOpenBuild={() => setScreen('build')} onCampaignChange={setCampaign} />}
     {screen === 'build' && <Armory profile={profile} campaign={campaign} newLootIds={newLootIds} onProfileChange={setProfile} onCampaignChange={setCampaign} onClose={() => { setNewLootIds([]); setScreen('ship'); }} />}
-    {screen === 'combat' && selectedContract && <GameCanvas key={selectedContract.id} build={combatBuild} mission={selectedContract} profileSettings={profile.settings} buildLabel={buildIdentity(profile)} operatorFaction={dominantEquipmentFaction(profile)} onProfileSettingsChange={changeProfileSettings} onMissionResolve={finishMission} onAttemptFailed={reportFailedAttempt} onReturnToHub={abandonMission} />}
+    {screen === 'combat' && selectedContract && <GameCanvas key={selectedContract.id} build={combatBuild} mission={selectedContract} profileSettings={profile.settings} consumables={campaign.consumables} buildLabel={buildIdentity(profile)} operatorFaction={dominantEquipmentFaction(profile)} onProfileSettingsChange={changeProfileSettings} onConsumablesChange={consumables => setCampaign(current => ({ ...current, consumables }))} onMissionResolve={finishMission} onAttemptFailed={reportFailedAttempt} onReturnToHub={abandonMission} />}
     {screen === 'debrief' && debrief && <DebriefScreen result={debrief} onShip={() => { setNewLootIds([]); setScreen('ship'); }} onBuild={() => setScreen('build')} onRepeat={contracts.some(contract => contract.id === debrief.contract.id) ? () => setScreen('combat') : undefined} />}
   </div>;
 }
