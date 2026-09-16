@@ -314,13 +314,34 @@ async function chooseStandardContractAndDeploy(page, missionIndex) {
     count = await cards.count();
   }
   if (count === 0) throw new Error('Contract Board has no deployable contracts.');
-  const index = missionIndex % count;
-  await cards.nth(index).click();
-  const title = await text(cards.nth(index).locator('h2'));
+
+  const candidates = [];
+  for (let index = 0; index < count; index += 1) {
+    const card = cards.nth(index);
+    const cardText = await text(card);
+    const title = await text(card.locator('h2'));
+    const opTier = Number(cardText.match(/OP T(\d+)/i)?.[1] ?? 99);
+    const encounter = Number(cardText.match(/ER\s+(\d+)/i)?.[1] ?? 999);
+    const priority = /\bPRIORITY\b|COMMAND TRACE|RARE DERELICT|DIRECTIVE|ESCALATION|DAILY|STORY|CAMPAIGN/i.test(cardText);
+    candidates.push({ index, title, opTier, encounter, priority });
+  }
+
+  const ordinary = candidates.filter(candidate => !candidate.priority);
+  const pool = ordinary.length > 0 ? ordinary : candidates;
+  const minimumTier = Math.min(...pool.map(candidate => candidate.opTier));
+  const tierPool = pool.filter(candidate => candidate.opTier === minimumTier).sort((a, b) => a.encounter - b.encounter || a.index - b.index);
+  const minimumEncounter = tierPool[0]?.encounter ?? 999;
+  const safest = tierPool.filter(candidate => candidate.encounter <= minimumEncounter + 2);
+  const choices = safest.length > 0 ? safest : tierPool;
+  const chosen = choices[(missionIndex - 1) % choices.length];
+  log('Contract choice: ' + chosen.title + ' // OP T' + chosen.opTier + ' // ER ' + chosen.encounter + ' // ordinary=' + (!chosen.priority));
+  const chosenCard = cards.nth(chosen.index);
+  await chosenCard.click();
   await page.locator('.deploy-contract').first().click();
   await page.locator('.game-root').waitFor({ state: 'visible', timeout: 15_000 });
-  return title;
+  return chosen.title;
 }
+
 
 const browser = await chromium.launch({ headless: true, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--disable-dev-shm-usage'] });
 const context = await browser.newContext({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
