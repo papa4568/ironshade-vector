@@ -6,6 +6,7 @@ import { findNavigationPath } from './mapPathfinding';
 import { getWorldSize, type CombatObject, type Enemy, type Player, type SimState, type WeaponId } from './sim';
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
 import { lootColor } from './fieldLoot';
+import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
 
 const WORLD_SCALE = 0.02;
 const FLOOR_Y = 0;
@@ -96,13 +97,17 @@ function panelObject(object: CombatObject) {
 }
 
 function disposeTree(root: THREE.Object3D) {
+  const geometries = new Set<THREE.BufferGeometry>();
+  const materials = new Set<THREE.Material>();
   root.traverse(child => {
     const mesh = child as THREE.Mesh;
-    if (mesh.geometry) mesh.geometry.dispose();
+    if (mesh.geometry) geometries.add(mesh.geometry);
     const material = mesh.material;
-    if (Array.isArray(material)) material.forEach(item => item.dispose());
-    else if (material) material.dispose();
+    if (Array.isArray(material)) material.forEach(item => materials.add(item));
+    else if (material) materials.add(material);
   });
+  geometries.forEach(geometry => geometry.dispose());
+  materials.forEach(material => material.dispose());
 }
 
 export class ThreeCombatRenderer {
@@ -145,6 +150,20 @@ export class ThreeCombatRenderer {
   private readonly breachPool: RingVisual[] = [];
   private readonly debrisPool: DebrisVisual[] = [];
   private readonly groundLootPool: GroundLootVisual[] = [];
+  private readonly projectileCoreGeometry = new THREE.SphereGeometry(0.11, 8, 6);
+  private readonly projectileTrailGeometry = new THREE.BoxGeometry(0.62, 0.035, 0.035);
+  private readonly groundLootCoreGeometry = new THREE.OctahedronGeometry(0.22, 0);
+  private readonly groundLootRingGeometry = new THREE.TorusGeometry(0.48, 0.045, 6, 32);
+  private readonly groundLootBeamGeometry = new THREE.CylinderGeometry(0.018, 0.055, 1.7, 6);
+  private readonly effectRingGeometry = new THREE.TorusGeometry(1, 0.045, 6, 40);
+  private readonly debrisGeometry = new THREE.IcosahedronGeometry(0.12, 0);
+  private readonly objectiveGuideMesh = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(0.28, 0.035, 0.28),
+    new THREE.MeshBasicMaterial({ color: 0xc8e87f, transparent: true, opacity: 0.62, depthWrite: false, depthTest: false }),
+    28,
+  );
+  private readonly objectiveGuideTransform = new THREE.Object3D();
+  private readonly renderBudget: AdaptiveRenderBudget;
   private readonly coarse: boolean;
   private environmentSignature = '';
   private objectiveGuideTargetId = '';
@@ -153,9 +172,11 @@ export class ThreeCombatRenderer {
   private width = 1;
   private height = 1;
   private pixelRatio = 1;
+  private lastFrameAt = 0;
 
   constructor(canvas: HTMLCanvasElement, coarse: boolean) {
     this.coarse = coarse;
+    this.renderBudget = new AdaptiveRenderBudget(coarse);
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !coarse, alpha: false, powerPreference: 'high-performance' });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -165,6 +186,10 @@ export class ThreeCombatRenderer {
 
     this.scene.add(this.environmentRoot, this.objectRoot, this.dynamicRoot, this.playerRoot);
     this.dynamicRoot.add(this.objectiveBeacon, this.objectiveGuide);
+    this.objectiveGuideMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.objectiveGuideMesh.count = 0;
+    this.objectiveGuideMesh.renderOrder = 38;
+    this.objectiveGuide.add(this.objectiveGuideMesh);
     this.scene.add(new THREE.HemisphereLight(0xa6c7c2, 0x14110e, 1.25));
 
     this.keyLight.position.set(16, 28, 14);
@@ -219,7 +244,11 @@ export class ThreeCombatRenderer {
   }
 
   render(state: SimState, width: number, height: number, quality: number, mission: Contract, mobileTargetId: number | null, operatorFaction: EquipmentFaction | null) {
-    this.resize(width, height, quality);
+    const now = performance.now();
+    const frameMs = this.lastFrameAt > 0 ? now - this.lastFrameAt : 1000 / 60;
+    this.lastFrameAt = now;
+    const budget = this.renderBudget.sample(frameMs, quality);
+    this.resize(width, height, quality, budget);
     this.ensureEnvironment(state, mission);
     syncHardSciFiEnvironment(this.environmentRoot, state, mission);
     this.syncSectors(state);
@@ -233,7 +262,7 @@ export class ThreeCombatRenderer {
     this.syncEffects(state);
     this.syncBreaches(state);
     syncHardSciFiBreaches(this.dynamicRoot, state, WORLD_SCALE);
-    this.syncDebris(state, quality);
+    this.syncDebris(state, quality * budget.detailScale);
     this.syncCamera(state, mission, width / Math.max(1, height));
     this.renderer.render(this.scene, this.camera);
   }
@@ -255,8 +284,9 @@ export class ThreeCombatRenderer {
     this.renderer.dispose();
   }
 
-  private resize(width: number, height: number, quality: number) {
-    const maxRatio = this.coarse || quality < 0.8 ? 1.35 : 1.8;
+  private resize(width: number, height: number, quality: number, budget: RenderBudgetSnapshot) {
+    const qualityCap = quality < 0.55 ? 1.12 : this.coarse || quality < 0.8 ? 1.35 : 1.8;
+    const maxRatio = Math.max(0.76, qualityCap * budget.pixelRatioScale);
     const nextRatio = Math.min(maxRatio, window.devicePixelRatio || 1);
     if (Math.abs(nextRatio - this.pixelRatio) > 0.01) {
       this.pixelRatio = nextRatio;
@@ -269,7 +299,7 @@ export class ThreeCombatRenderer {
       this.camera.aspect = this.width / this.height;
       this.camera.updateProjectionMatrix();
     }
-    this.keyLight.castShadow = quality > 0.62;
+    this.keyLight.castShadow = budget.shadows;
   }
 
   private ensureEnvironment(state: SimState, mission: Contract) {
@@ -326,10 +356,10 @@ export class ThreeCombatRenderer {
     const longWall = new THREE.BoxGeometry(scaled(worldW), 1.45, 0.42);
     const shortWall = new THREE.BoxGeometry(0.42, 1.45, scaled(worldH));
     const walls = [
-      new THREE.Mesh(longWall, material.clone()),
-      new THREE.Mesh(longWall.clone(), material.clone()),
-      new THREE.Mesh(shortWall, material.clone()),
-      new THREE.Mesh(shortWall.clone(), material.clone()),
+      new THREE.Mesh(longWall, material),
+      new THREE.Mesh(longWall, material),
+      new THREE.Mesh(shortWall, material),
+      new THREE.Mesh(shortWall, material),
     ];
     walls[0].position.set(scaled(worldW / 2), 0.66, 0);
     walls[1].position.set(scaled(worldW / 2), 0.66, scaled(worldH));
@@ -345,7 +375,7 @@ export class ThreeCombatRenderer {
     const emissive = new THREE.MeshStandardMaterial({ color: palette.accent, emissive: palette.accent, emissiveIntensity: 0.24, metalness: 0.56, roughness: 0.3 });
 
     const addBox = (x: number, z: number, w: number, d: number, h: number, material: THREE.MeshStandardMaterial) => {
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material.clone());
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
       mesh.position.set(x, h / 2, z);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
@@ -354,7 +384,7 @@ export class ThreeCombatRenderer {
 
     if (location === 'asteroid-refinery') {
       for (const offset of [-12, 0, 12]) {
-        const tank = new THREE.Mesh(new THREE.CylinderGeometry(2.1, 2.1, 4.8, 16), structural.clone());
+        const tank = new THREE.Mesh(new THREE.CylinderGeometry(2.1, 2.1, 4.8, 16), structural);
         tank.position.set(cx + offset, 2.4, cz + (offset === 0 ? -5 : 4));
         tank.castShadow = true;
         this.environmentRoot.add(tank);
@@ -362,7 +392,7 @@ export class ThreeCombatRenderer {
       addBox(cx, cz - 9, 30, 0.45, 0.45, emissive);
     } else if (location === 'spin-habitat') {
       for (const radius of [5.5, 8.5, 11.5]) {
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.16, 8, 64), emissive.clone());
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.16, 8, 64), emissive);
         ring.rotation.x = Math.PI / 2;
         ring.position.set(cx, 2.8, cz);
         this.environmentRoot.add(ring);
@@ -373,7 +403,7 @@ export class ThreeCombatRenderer {
       addBox(cx, cz - 7, 34, 0.35, 0.35, emissive);
     } else if (location === 'ice-mine') {
       for (let i = 0; i < 9; i += 1) {
-        const crystal = new THREE.Mesh(new THREE.ConeGeometry(0.7 + (i % 3) * 0.3, 2.4 + (i % 4) * 0.8, 6), emissive.clone());
+        const crystal = new THREE.Mesh(new THREE.ConeGeometry(0.7 + (i % 3) * 0.3, 2.4 + (i % 4) * 0.8, 6), emissive);
         crystal.position.set(cx - 16 + i * 4, 1.4, cz + (i % 2 ? 7 : -7));
         crystal.rotation.z = (i - 4) * 0.04;
         crystal.castShadow = true;
@@ -381,7 +411,7 @@ export class ThreeCombatRenderer {
       }
     } else if (location === 'solar-yard') {
       for (let i = -3; i <= 3; i += 1) {
-        const panel = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.18, 2.2), emissive.clone());
+        const panel = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.18, 2.2), emissive);
         panel.position.set(cx + i * 5.2, 1.3 + Math.abs(i) * 0.08, cz + (i % 2 ? 6 : -6));
         panel.rotation.z = -0.16;
         panel.castShadow = true;
@@ -389,7 +419,7 @@ export class ThreeCombatRenderer {
       }
     } else if (location === 'momentum-exchange') {
       for (const offset of [-9, 0, 9]) {
-        const flywheel = new THREE.Mesh(new THREE.TorusGeometry(2.6, 0.48, 12, 48), structural.clone());
+        const flywheel = new THREE.Mesh(new THREE.TorusGeometry(2.6, 0.48, 12, 48), structural);
         flywheel.rotation.y = Math.PI / 2;
         flywheel.position.set(cx + offset, 3.2, cz + (offset === 0 ? -5 : 5));
         flywheel.castShadow = true;
@@ -397,7 +427,7 @@ export class ThreeCombatRenderer {
       }
     } else if (location === 'cryo-reserve') {
       for (let i = -3; i <= 3; i += 1) {
-        const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 4.2, 12), emissive.clone());
+        const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 4.2, 12), emissive);
         tank.position.set(cx + i * 4.1, 2.1, cz + (i % 2 ? 6.5 : -6.5));
         tank.castShadow = true;
         this.environmentRoot.add(tank);
@@ -531,23 +561,18 @@ export class ThreeCombatRenderer {
       }
       this.objectiveGuidePoints = markers.slice(0, 28);
     }
-    while (this.objectiveGuide.children.length < this.objectiveGuidePoints.length) {
-      const marker = new THREE.Mesh(
-        new THREE.BoxGeometry(0.28, 0.035, 0.28),
-        new THREE.MeshBasicMaterial({ color: 0xc8e87f, transparent: true, opacity: 0.72, depthWrite: false, depthTest: false }),
-      );
-      marker.rotation.y = Math.PI / 4;
-      marker.renderOrder = 38;
-      this.objectiveGuide.add(marker);
-    }
-    for (let index = 0; index < this.objectiveGuide.children.length; index += 1) {
-      const marker = this.objectiveGuide.children[index] as THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>;
+    this.objectiveGuideMesh.count = this.objectiveGuidePoints.length;
+    this.objectiveGuideMesh.material.opacity = 0.56 + Math.sin(state.time * 5.4) * 0.1;
+    for (let index = 0; index < this.objectiveGuidePoints.length; index += 1) {
       const point = this.objectiveGuidePoints[index];
-      marker.visible = !!point;
-      if (!point) continue;
-      marker.position.set(scaled(point.x), 0.075, scaled(point.y));
-      marker.material.opacity = 0.42 + Math.sin(state.time * 6.5 + index * 0.7) * 0.24;
+      const pulse = 0.82 + Math.sin(state.time * 6.5 + index * 0.7) * 0.14;
+      this.objectiveGuideTransform.position.set(scaled(point.x), 0.075, scaled(point.y));
+      this.objectiveGuideTransform.rotation.set(0, Math.PI / 4, 0);
+      this.objectiveGuideTransform.scale.setScalar(pulse);
+      this.objectiveGuideTransform.updateMatrix();
+      this.objectiveGuideMesh.setMatrixAt(index, this.objectiveGuideTransform.matrix);
     }
+    this.objectiveGuideMesh.instanceMatrix.needsUpdate = true;
   }
 
   private syncPlayer(state: SimState, operatorFaction: EquipmentFaction | null) {
@@ -690,8 +715,8 @@ export class ThreeCombatRenderer {
   private ensureProjectile(index: number) {
     while (this.projectilePool.length <= index) {
       const root = new THREE.Group();
-      const core = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1.2, metalness: 0.15, roughness: 0.22 }));
-      const trail = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.035, 0.035), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false }));
+      const core = new THREE.Mesh(this.projectileCoreGeometry, new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1.2, metalness: 0.15, roughness: 0.22 }));
+      const trail = new THREE.Mesh(this.projectileTrailGeometry, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false }));
       trail.position.x = -0.32;
       root.add(core, trail);
       this.dynamicRoot.add(root);
@@ -725,10 +750,10 @@ export class ThreeCombatRenderer {
       if (!drop.active || drop.collected) continue;
       while (this.groundLootPool.length <= count) {
         const root = new THREE.Group();
-        const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.22, 0), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1.2, metalness: 0.35, roughness: 0.22 }));
+        const core = new THREE.Mesh(this.groundLootCoreGeometry, new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1.2, metalness: 0.35, roughness: 0.22 }));
         core.position.y = 0.52;
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.045, 6, 32), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, depthWrite: false })); ring.rotation.x = Math.PI / 2; ring.position.y = 0.06;
-        const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.055, 1.7, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.22, depthWrite: false })); beam.position.y = 0.9;
+        const ring = new THREE.Mesh(this.groundLootRingGeometry, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, depthWrite: false })); ring.rotation.x = Math.PI / 2; ring.position.y = 0.06;
+        const beam = new THREE.Mesh(this.groundLootBeamGeometry, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.22, depthWrite: false })); beam.position.y = 0.9;
         root.add(core, ring, beam); this.dynamicRoot.add(root); this.groundLootPool.push({ root, core, ring, beam });
       }
       const visual = this.groundLootPool[count++]; const color = lootColor(drop.rarity); visual.root.visible = true; visual.root.position.set(scaled(drop.x), 0, scaled(drop.y)); visual.root.rotation.y = state.time * 0.8 + drop.enemyId; visual.core.material.color.setHex(color); visual.core.material.emissive.setHex(color); visual.ring.material.color.setHex(color); visual.beam.material.color.setHex(color); const pulse = 1 + Math.sin(state.time * 7 + drop.enemyId) * 0.12; visual.core.scale.setScalar(drop.rarity === 'Singular' ? 1.35 * pulse : drop.rarity === 'Prototype' ? 1.15 * pulse : pulse); visual.ring.scale.setScalar(drop.rarity === 'Singular' ? 1.4 : drop.rarity === 'Prototype' ? 1.18 : 1); visual.beam.material.opacity = drop.rarity === 'Singular' ? 0.48 : drop.rarity === 'Prototype' ? 0.34 : 0.2;
@@ -738,7 +763,7 @@ export class ThreeCombatRenderer {
 
   private ensureRing(pool: RingVisual[], index: number, color: number) {
     while (pool.length <= index) {
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(1, 0.045, 6, 40), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.6, depthWrite: false }));
+      const ring = new THREE.Mesh(this.effectRingGeometry, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.6, depthWrite: false }));
       ring.rotation.x = Math.PI / 2;
       this.dynamicRoot.add(ring);
       pool.push(ring);
@@ -797,7 +822,7 @@ export class ThreeCombatRenderer {
 
   private ensureDebris(index: number) {
     while (this.debrisPool.length <= index) {
-      const mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(0.12, 0), new THREE.MeshStandardMaterial({ color: 0x66736f, metalness: 0.72, roughness: 0.48 }));
+      const mesh = new THREE.Mesh(this.debrisGeometry, new THREE.MeshStandardMaterial({ color: 0x66736f, metalness: 0.72, roughness: 0.48 }));
       mesh.castShadow = true;
       this.dynamicRoot.add(mesh);
       this.debrisPool.push(mesh);
