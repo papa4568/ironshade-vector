@@ -913,3 +913,9 @@
   .gear-summary-grid { grid-template-columns: 1fr; }
   .impact-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+
+/* ITEM INSPECTOR LAZY-CSS CASCADE GUARD */
+.gear-layout .item-inspector.open {
+  display: grid;
+}
