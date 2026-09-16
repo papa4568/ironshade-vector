@@ -73,7 +73,12 @@ for (let index = 0; index < locations.length; index += 1) {
   if (plan.routes.length < 7 || plan.landmarks.length !== 3) throw new Error(`${location}: wayfinding plan incomplete`);
   for (const objective of objectives) {
     const path = findNavigationPath(state, objective);
-    if (!path.complete || path.points.length < 2) throw new Error(`${location}: no obstacle-aware route to ${objective.id}`);
+    if (!path.complete || path.points.length < 2) throw new Error(location + ': no obstacle-aware route to ' + objective.id);
+  }
+  const hostile = state.enemies.find(enemy => enemy.role !== 'boss' && enemy.active && !enemy.dead);
+  if (hostile) {
+    const hostilePath = findNavigationPath(state, { x: hostile.x, y: hostile.y });
+    if (!hostilePath.complete || hostilePath.points.length < 2) throw new Error(location + ': no obstacle-aware route to active hostile');
   }
   lowestReachableRatio = Math.min(lowestReachableRatio, audit.reachableRatio);
   totalObjectives += objectives.length;

@@ -1,7 +1,7 @@
 import { createDefaultCampaign, generateContracts } from '../src/game/campaign';
 import { rollGroundLoot, type GroundLootReceipt } from '../src/game/fieldLoot';
 import { awardRecovery, createDefaultProfile, deriveCombatBuild, levelRequirementForRecovery, locationSingularNames, maxOperatorLevel, type Item } from '../src/game/meta';
-import { applyThreatBudget, operationScalingFor } from '../src/game/scaling';
+import { applyThreatBudget, operationScalingFor, standardTierCapForOperator } from '../src/game/scaling';
 import { createSimulation, type Telemetry } from '../src/game/sim';
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -18,6 +18,14 @@ assert(high.monsterLevel === 20, `tier 12 monster level should be 20, saw ${high
 assert(high.combatEffectiveness >= 1.55, `tier 12 effectiveness too low: ${high.combatEffectiveness}`);
 assert(high.monsterDamageScale >= 1.35, `tier 12 damage scale too low: ${high.monsterDamageScale}`);
 assert(high.operationRewardMultiplier > low.operationRewardMultiplier, 'higher tier should reward more materials');
+
+const cautiousCampaign = { ...campaign, contractsCompleted: 30, reputation: { meridian: 12, heliostat: 12, longarc: 12 } };
+const cautiousContract = generateContracts(cautiousCampaign)[0];
+const cautious = operationScalingFor(cautiousContract, cautiousCampaign, 11);
+assert(cautious.operationTier <= standardTierCapForOperator(11), 'standard board exceeded LV11 tier cap');
+assert(cautious.monsterLevel <= 13, 'standard board should stay within +2 monster levels at LV11');
+const explicitHardMode = operationScalingFor({ ...base, directiveTier: 12 }, cautiousCampaign, 11);
+assert(explicitHardMode.operationTier === 12 && explicitHardMode.monsterLevel === 20, 'explicit Directive tiers must remain uncapped by standard-board safety.');
 
 const lowState = createSimulation();
 const highState = createSimulation();
