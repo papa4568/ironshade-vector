@@ -612,16 +612,16 @@ export class ThreeCombatRenderer {
     root.add(protocolRing);
 
     const barRoot = new THREE.Group();
-    const barWidth = enemy.role === 'boss' ? 1.8 : 1.05;
-    const bg = new THREE.Mesh(new THREE.PlaneGeometry(barWidth, 0.09), new THREE.MeshBasicMaterial({ color: 0x171e1d, transparent: true, opacity: 0.9, depthTest: false }));
+    const barWidth = enemy.role === 'boss' ? 2.3 : enemy.role === 'elite' ? 1.6 : 1.35;
+    const bg = new THREE.Mesh(new THREE.PlaneGeometry(barWidth, 0.15), new THREE.MeshBasicMaterial({ color: 0x171e1d, transparent: true, opacity: 0.9, depthTest: false }));
     bg.renderOrder = 30;
     barRoot.add(bg);
-    const hp = new THREE.Mesh(new THREE.PlaneGeometry(barWidth, 0.065), new THREE.MeshBasicMaterial({ color: 0xd48368, depthTest: false }));
+    const hp = new THREE.Mesh(new THREE.PlaneGeometry(barWidth, 0.11), new THREE.MeshBasicMaterial({ color: 0xff735f, depthTest: false }));
     hp.position.z = 0.002;
     hp.renderOrder = 31;
     barRoot.add(hp);
-    const armor = new THREE.Mesh(new THREE.PlaneGeometry(barWidth, 0.045), new THREE.MeshBasicMaterial({ color: 0x6fa2bd, depthTest: false }));
-    armor.position.y = 0.12;
+    const armor = new THREE.Mesh(new THREE.PlaneGeometry(barWidth, 0.065), new THREE.MeshBasicMaterial({ color: 0x72c7ef, depthTest: false }));
+    armor.position.y = 0.16;
     armor.position.z = 0.003;
     armor.renderOrder = 31;
     barRoot.add(armor);
@@ -666,7 +666,8 @@ export class ThreeCombatRenderer {
       visual.barRoot.quaternion.copy(this.camera.quaternion);
       const hpRatio = THREE.MathUtils.clamp(enemy.hp / Math.max(1, enemy.maxHp), 0, 1);
       const armorRatio = enemy.maxArmor > 0 ? THREE.MathUtils.clamp(enemy.armor / enemy.maxArmor, 0, 1) : 0;
-      const barWidth = enemy.role === 'boss' ? 1.8 : 1.05;
+      const barWidth = enemy.role === 'boss' ? 2.3 : enemy.role === 'elite' ? 1.6 : 1.35;
+      visual.barRoot.scale.setScalar(enemy.maxArmor > 0 && enemy.armor <= 0 ? 1.12 : 1);
       visual.hp.scale.x = hpRatio;
       visual.hp.position.x = -barWidth * (1 - hpRatio) / 2;
       visual.armor.visible = enemy.maxArmor > 0 && enemy.armor > 0;

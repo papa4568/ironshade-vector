@@ -1,0 +1,167 @@
+/* Combat + gear readability pass. Prioritize immediate meaning; keep deep telemetry available on inspection. */
+.target-readout {
+  position: absolute;
+  z-index: 6;
+  top: max(86px, calc(env(safe-area-inset-top) + 72px));
+  right: max(16px, env(safe-area-inset-right));
+  width: min(310px, 34vw);
+  padding: 10px 12px;
+  border: 1px solid rgba(213, 121, 101, .56);
+  border-radius: 10px;
+  background: rgba(8, 11, 12, .9);
+  box-shadow: 0 10px 30px rgba(0,0,0,.3);
+  pointer-events: none;
+}
+.target-readout header,
+.target-readout .target-values,
+.boss-values {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.target-readout header small {
+  color: #9daaa6;
+  font: 800 7px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing: .12em;
+}
+.target-readout header b {
+  overflow: hidden;
+  color: #f0d6cf;
+  font: 900 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.target-health-track,
+.target-armor-track {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  border-radius: 999px;
+  background: #15191a;
+  box-shadow: inset 0 0 0 1px rgba(235,241,238,.12);
+}
+.target-health-track { height: 11px; margin-top: 8px; }
+.target-armor-track { height: 6px; margin-top: 5px; }
+.target-health-track i,
+.target-armor-track i { display:block; height:100%; transition: width 80ms linear; }
+.target-health-track i { background: linear-gradient(90deg,#c65348,#ff856d); }
+.target-armor-track i { background: linear-gradient(90deg,#4e87a7,#78c9ef); }
+.target-values { margin-top: 6px; }
+.target-values span {
+  color: #b5c1bd;
+  font: 800 8px/1.15 ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+.target-values .armor-broken,
+.boss-values .armor-broken { color: #f0bd7b; }
+
+.loot-radar {
+  position: absolute;
+  z-index: 5;
+  left: max(16px, env(safe-area-inset-left));
+  bottom: max(148px, calc(env(safe-area-inset-bottom) + 148px));
+  width: min(300px, 34vw);
+  padding: 9px 11px 9px 14px;
+  border: 1px solid var(--loot-color, #c3d0ca);
+  border-radius: 9px;
+  background: rgba(7,11,12,.88);
+  box-shadow: inset 3px 0 0 var(--loot-color, #c3d0ca), 0 9px 26px rgba(0,0,0,.28);
+  pointer-events: none;
+}
+.loot-radar small,.loot-radar b,.loot-radar span { display:block; }
+.loot-radar small { color:#83918d; font:800 7px/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.12em; }
+.loot-radar b { margin-top:4px; color:var(--loot-color,#d7e0dd); font:900 10px/1.1 ui-monospace,SFMono-Regular,Menlo,monospace; }
+.loot-radar span { margin-top:4px; color:#a6b2ae; font:700 8px/1.25 ui-monospace,SFMono-Regular,Menlo,monospace; }
+
+.boss-bars { height: 15px; border-width: 1px; }
+.boss-health { background: linear-gradient(90deg,#9f403a,#e16858); }
+.boss-armor { height: 4px; background: #67acd1; }
+.boss-values { margin-top: 5px; color:#b8c4c0; font:800 7px/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.06em; }
+
+.gear-discovery-note {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(260px, .8fr);
+  gap: 10px;
+  margin: 0 auto 12px;
+  padding: 12px 14px;
+  border: 1px solid #2b3c38;
+  border-radius: 12px;
+  background: linear-gradient(120deg, rgba(20,31,29,.82), rgba(7,12,12,.9));
+}
+.gear-discovery-note > div > small,
+.discovered-doctrine small { display:block; color:#789087; font-size:7px; font-weight:900; letter-spacing:.12em; }
+.gear-discovery-note > div > b { display:block; margin-top:5px; color:#c8d6d1; font-size:12px; }
+.gear-discovery-note > div > span { display:block; margin-top:5px; color:#7f918b; font-size:8px; line-height:1.35; }
+.discovered-effects { display:grid; gap:6px; }
+.discovered-doctrine { padding:8px 10px; border:1px solid rgba(103,139,127,.35); border-radius:8px; background:rgba(9,16,15,.76); }
+.discovered-doctrine b,.discovered-doctrine span { display:block; }
+.discovered-doctrine b { margin-top:4px; color:#b9cbc5; font-size:9px; }
+.discovered-doctrine span { margin-top:3px; color:#8ea39c; font-size:8px; line-height:1.3; }
+.discovery-empty { align-self:center; color:#687b75; font-size:8px; line-height:1.35; }
+
+.gear-quick-read {
+  margin: 10px 0;
+  padding: 11px 12px;
+  border: 1px solid var(--gear-rarity-border, #3d504a);
+  border-radius: 10px;
+  background: linear-gradient(135deg,var(--gear-rarity-wash,rgba(74,93,87,.14)),rgba(8,13,13,.9));
+}
+.gear-quick-read small,.gear-quick-read b,.gear-quick-read span { display:block; }
+.gear-quick-read small { color:#83958f; font-size:7px; font-weight:900; letter-spacing:.12em; }
+.gear-quick-read b { margin-top:5px; color:var(--gear-rarity,#c8d5d1); font-size:11px; }
+.gear-quick-read span { margin-top:5px; color:#b5c4bf; font-size:9px; line-height:1.38; }
+.inventory-card .rarity-pill {
+  display:inline-flex;
+  align-items:center;
+  min-height:18px;
+  margin-left:5px;
+  padding:3px 5px;
+  border:1px solid var(--gear-rarity-border,rgba(120,140,134,.5));
+  border-radius:999px;
+  color:var(--gear-rarity,#aab8b4);
+  background:var(--gear-rarity-wash,rgba(80,98,92,.13));
+  font-size:6px;
+  font-style:normal;
+  font-weight:900;
+  letter-spacing:.06em;
+}
+.inventory-card .item-effect-preview {
+  display:-webkit-box;
+  overflow:hidden;
+  margin-top:5px;
+  color:#aab9b4;
+  font-size:8px;
+  line-height:1.3;
+  text-align:left;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+}
+.inventory-card .item-depth-line { display:block; margin-top:6px; color:#657873; font-size:7px; text-align:left; }
+.faction-signature span { line-height:1.35; }
+
+.recovery-list > span { position:relative; padding-left:13px; }
+.recovery-list > span::before { content:''; position:absolute; left:0; top:10px; bottom:10px; width:3px; border-radius:99px; background:currentColor; opacity:.55; }
+.recovery-list > span em { font-style:normal; }
+.recovery-list > span small { line-height:1.35; }
+
+@media (pointer: coarse), (max-width: 900px) {
+  .target-readout { top:max(72px,calc(env(safe-area-inset-top) + 60px)); right:max(8px,env(safe-area-inset-right)); width:min(270px,48vw); padding:8px 9px; }
+  .target-readout header b { font-size:8px; }
+  .target-health-track { height:9px; margin-top:6px; }
+  .target-values span { font-size:7px; }
+  .loot-radar { left:max(8px,env(safe-area-inset-left)); bottom:max(102px,calc(env(safe-area-inset-bottom) + 102px)); width:min(255px,42vw); padding:7px 8px 7px 11px; }
+  .loot-radar span { display:none; }
+  .boss-bars { height:12px; }
+  .gear-discovery-note { grid-template-columns:1fr; }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .target-readout { top:max(56px,calc(env(safe-area-inset-top) + 46px)); width:min(270px,36vw); padding:7px 9px; }
+  .target-readout header small { display:none; }
+  .target-armor-track { margin-top:3px; }
+  .target-values { margin-top:4px; }
+  .loot-radar { bottom:max(80px,calc(env(safe-area-inset-bottom) + 80px)); width:min(250px,31vw); }
+  .gear-discovery-note { grid-template-columns:minmax(0,1fr) minmax(240px,.8fr); padding:8px 10px; margin-bottom:7px; }
+  .gear-discovery-note > div > span { display:none; }
+  .discovered-doctrine { padding:6px 8px; }
+}

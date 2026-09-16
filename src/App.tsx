@@ -4,6 +4,7 @@ import GameCanvas from './components/GameCanvas';
 import ShipHub from './components/ShipHub';
 import './qol.css';
 import './equipmentBay.css';
+import './readability.css';
 import './consumables.css';
 import { advanceBlackLatticeAfterContract, getBlackLatticeContract } from './game/blackLattice';
 import { advanceEscalationAfterContract, applyShipBonuses, dailyOperationContract, factionDisplayName, generateContracts, generateEscalationContract, loadCampaign, resourceLabels, saveCampaign, settleContract, type CampaignReward, type CampaignState, type Contract, type ExpeditionProgress, type ResourceId } from './game/campaign';
@@ -15,13 +16,26 @@ import { advancePostKhepriAfterContract, getPostKhepriContract, syncPostKhepriAc
 import { advanceInterdictionAfterContract, getCommandTraceContracts, getInterdictionContract, syncInterdictionAccess } from './game/postKhepriInterdiction';
 import { withOperationScaling } from './game/scaling';
 import { advanceDirectivesAfterContract, preparedDirectiveContract, syncDirectiveAccess } from './game/operationDirectives';
-import { recoveryQualityLabel } from './game/lootQuality';
 import type { Telemetry } from './game/sim';
 import type { GroundLootReceipt } from './game/fieldLoot';
 
 type Screen = 'ship' | 'combat' | 'build' | 'debrief';
 type UplinkStatus = 'local' | 'sharing' | 'shared' | 'error';
 type Debrief = { contract: Contract; campaignReward: CampaignReward; lootReward: VictoryReward; uplinkStatus: UplinkStatus; storyNote: string | null; chapterNote: string | null; postKhepriNote: string | null; interdictionNote: string | null; escalationNote: string | null; directiveNote: string | null; protocolValue: number; expeditionProgress?: ExpeditionProgress };  
+
+function debriefRarityCue(rarity: VictoryReward['loot'][number]['rarity']) {
+  if (rarity === 'Singular') return 'RULE-CHANGING';
+  if (rarity === 'Prototype') return 'HIGH-END';
+  if (rarity === 'Refined') return 'UPGRADED';
+  return 'BASELINE';
+}
+function debriefItemEffect(item: VictoryReward['loot'][number]) {
+  if (item.singularEffect) return item.singularEffect;
+  const mechanical = item.modifiers.find(modifier => modifier.mechanical);
+  if (mechanical) return `${mechanical.label}: ${mechanical.description}`;
+  const first = item.modifiers[0];
+  return first ? `${first.label}: ${first.description}` : item.core;
+}
 
 function DebriefScreen({ result, onShip, onBuild, onRepeat }: { result: Debrief; onShip: () => void; onBuild: () => void; onRepeat?: () => void }) {
   const gained = (Object.entries(result.campaignReward.gained) as Array<[ResourceId, number]>).filter(([, value]) => value > 0);
@@ -66,7 +80,7 @@ function DebriefScreen({ result, onShip, onBuild, onRepeat }: { result: Debrief;
         {milestones.length > 0 && <div className="anomaly-note"><b>FACTION ACCESS EXPANDED</b>{milestones.map(milestone => <span key={milestone}>{milestone}</span>)}</div>}
         <div className={`uplink-note ${result.uplinkStatus}`}><b>{uplinkCopy[0]}</b><span>{uplinkCopy[1]}</span></div>
         <div className="recovery-list" aria-label="Recovered equipment">
-          {result.lootReward.loot.map(item => <span key={item.id} className={`quality-${item.recoveryQuality ?? 0}`}><b>{item.name}</b><em>RQ {item.recoveryQuality ?? 0} // {recoveryQualityLabel(item.recoveryQuality ?? 0)}</em><small>{item.rarity} · RL {item.recoveryLevel ?? 1} · GEN {item.frameGeneration ?? 1} · {item.recoverySource ?? 'Legacy recovery'}</small></span>)}
+          {result.lootReward.loot.map(item => <span key={item.id} className={`quality-${item.recoveryQuality ?? 0}`}><b>{item.name}</b><em>{item.rarity.toUpperCase()} · {debriefRarityCue(item.rarity)} · {item.slot.toUpperCase()} · EQUIP LV {item.levelRequirement}</em><small>{debriefItemEffect(item)}</small></span>)}
         </div>
         {nextActions.length > 0 && <div className="debrief-next"><small>NEXT ON QUIET SIGNAL</small>{nextActions.map(action => <span key={action}>{action}</span>)}</div>}
         {result.campaignReward.anomalyRecovered && <div className="anomaly-note"><b>QUARANTINED TRACE RECOVERED</b><span>The sample is physically stable but its non-reflective lattice does not match registered human industrial geometry. It has been isolated rather than integrated into normal equipment.</span></div>}
