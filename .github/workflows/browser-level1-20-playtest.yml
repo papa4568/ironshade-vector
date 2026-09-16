@@ -70,4 +70,4 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-# Harness revision 6: follow player-visible objective direction/range after clearing hostiles.
+# Harness revision 7: close the visible gear inspector after one fresh equipment decision.
