@@ -70,4 +70,4 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-# Harness revision 7: close the visible gear inspector after one fresh equipment decision.
+# Harness revision 8: follow obstacle-aware post-clear route guidance and close one fresh gear decision per visit.
