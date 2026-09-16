@@ -48,6 +48,11 @@ replace_once(
 )
 replace_once(
     'src/components/ShipHub.tsx',
+    "<small>{factionEquipmentNames(faction.id).join(' · ')}</small>",
+    "<small>Frame identities and interactions reveal only after recovery.</small>",
+)
+replace_once(
+    'src/components/ShipHub.tsx',
     "Repeatable target reconstruction from banked evidence. Deep victory guarantees one item from the named command target's dedicated Singular pool before the normal second recovery resolves.",
     "Repeatable target reconstruction from banked evidence. Deep victory guarantees one high-value equipment recovery before the normal second recovery resolves; its identity remains unknown until recovered.",
 )
@@ -64,7 +69,6 @@ regex_once(
 
 # Extend the UI regression so future contract-board changes cannot reintroduce item spoilers.
 test_path = 'tests/ui-readability.ts'
-test = read(test_path)
 replace_once(
     test_path,
     "const css = read('src/readability.css');\n",
@@ -76,11 +80,12 @@ replace_once(
     """assert(css.includes('.target-readout') && css.includes('.gear-quick-read') && css.includes('.loot-radar'), 'Readability stylesheet is incomplete.');
 assert(!shipHub.includes('bossSingularNames'), 'Contract Board still imports unrecovered boss gear names.');
 assert(!shipHub.includes('locationSingularNames'), 'Contract Board still imports unrecovered location gear names.');
-assert(!shipHub.includes('factionEquipmentNames'), 'Contract Board still imports unrecovered faction gear names.');
+assert(!shipHub.includes('factionEquipmentNames'), 'Ship UI still exposes unrecovered faction gear names.');
 assert(!shipHub.includes('DEDICATED SINGULAR POOL'), 'Contract Board still advertises a named Singular pool.');
 assert(!shipHub.includes('LOCATION CHASE POOL'), 'Contract Board still advertises location chase gear before discovery.');
 assert(!shipHub.includes('RECOVERY CEILING // RL'), 'Contract Board still leads with opaque recovery-level jargon.');
 assert(shipHub.includes('UNIDENTIFIED EQUIPMENT RECOVERY'), 'Contract Board is missing the discovery-safe equipment explanation.');
+assert(shipHub.includes('Frame identities and interactions reveal only after recovery.'), 'Faction panel is missing acquisition-first discovery guidance.');
 """,
 )
 replace_once(
