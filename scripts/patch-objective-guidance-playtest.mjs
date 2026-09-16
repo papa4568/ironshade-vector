@@ -42,7 +42,7 @@ async function followPostClearLocator(page) {
   const direction = match[1].toUpperCase();
   const range = Number(match[2]);
   const duration = range > 500 ? 1800 : range > 240 ? 1200 : 650;
-  log(`Following visible objective locator: ${direction} range ${range}`);
+  log('Following visible objective locator: ' + direction + ' range ' + range);
   await moveWithStick(page, angles[direction], duration);
   await interactIfAvailable(page);
   return true;
