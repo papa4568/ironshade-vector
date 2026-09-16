@@ -43,75 +43,116 @@
 .protocol-audit span { padding: 5px 7px; border: 1px solid #33453f; border-radius: 999px; font: 700 7px ui-monospace,monospace; color: #90a49e; }
 @media (max-width: 720px) { .directive-array > header { display: block; } .directive-summary { margin-top: 10px; } .directive-grid { grid-template-columns: 1fr; } .tier-audit-grid { grid-template-columns: 1fr; } }
 
-
-/* ANDROID ITEM INSPECTOR SINGLE SCROLLER */
-@media (pointer: coarse), (max-width: 1100px), (orientation: landscape) and (max-height: 900px) {
-  .gear-layout .item-inspector.open {
-    display: block;
-    position: fixed;
-    z-index: 90;
-    top: max(0px, env(safe-area-inset-top));
-    right: max(0px, env(safe-area-inset-right));
-    bottom: max(0px, env(safe-area-inset-bottom));
-    left: max(0px, env(safe-area-inset-left));
-    width: auto;
-    max-width: none;
-    height: auto;
-    max-height: none;
-    min-height: 0;
-    padding: 0;
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior-y: contain;
-    -webkit-overflow-scrolling: touch;
-    touch-action: auto;
-    scrollbar-gutter: auto;
-    border-radius: 0;
-    background: #07100e;
+/* DEDICATED GEAR DETAIL PAGE */
+.gear-detail-mode {
+  display: block;
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  padding: max(12px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+}
+.gear-detail-page {
+  position: static;
+  display: grid;
+  width: min(1100px, 100%);
+  max-width: 1100px;
+  min-height: 0;
+  margin: 0 auto;
+  gap: 12px;
+  overflow: visible;
+}
+.gear-detail-back,
+.gear-detail-actions button {
+  min-height: 44px;
+  border: 1px solid #425750;
+  border-radius: 9px;
+  padding: 10px 14px;
+  background: #14201d;
+  color: #d8e1de;
+  font-weight: 900;
+  cursor: pointer;
+}
+.gear-detail-back { justify-self: start; }
+.gear-detail-back-top { font-size: 13px; }
+.gear-detail-header {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--gear-rarity-border, #415650);
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--gear-rarity-wash, rgba(39,60,54,.22)), rgba(7,16,14,.98));
+}
+.gear-detail-header h1 {
+  margin: 0;
+  color: var(--gear-rarity, #e2e9e6);
+  font-size: clamp(25px, 5vw, 42px);
+  line-height: 1.05;
+}
+.gear-detail-header p {
+  margin: 0;
+  color: #93a49f;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.gear-detail-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.gear-detail-badges span {
+  padding: 5px 8px;
+  border: 1px solid #3a4e48;
+  border-radius: 999px;
+  color: #a6b6b1;
+  font: 800 8px ui-monospace, monospace;
+  letter-spacing: .08em;
+}
+.gear-detail-actions {
+  position: static;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, auto);
+  gap: 8px;
+}
+.gear-detail-actions .primary {
+  border-color: #8f977c;
+  background: #c9c8ad;
+  color: #101511;
+}
+.gear-detail-actions .danger {
+  border-color: #80514d;
+  background: #2a1716;
+  color: #e0aaa4;
+}
+.gear-detail-message { width: 100%; margin: 0; }
+.gear-detail-content {
+  position: static;
+  display: block;
+  min-height: 0;
+  overflow: visible;
+}
+.gear-detail-footer {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid #293a35;
+}
+@media (orientation: landscape) and (max-height: 650px) {
+  .gear-detail-mode {
+    padding-top: max(8px, env(safe-area-inset-top));
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
   }
-  .gear-layout.has-selection .item-inspector-backdrop {
-    display: none;
+  .gear-detail-page { gap: 8px; }
+  .gear-detail-header { padding: 10px 12px; }
+  .gear-detail-header h1 { font-size: clamp(22px, 8vh, 30px); }
+  .gear-detail-header p { font-size: 9px; }
+  .gear-detail-back,
+  .gear-detail-actions button {
+    min-height: 40px;
+    padding: 8px 11px;
   }
-  .gear-layout .item-inspector.open .inspector-header {
-    position: sticky;
-    z-index: 92;
-    top: 0;
-    padding: 11px 13px 10px;
-    background: #07100e;
-    box-shadow: 0 10px 28px rgba(0,0,0,.28);
-  }
-  .gear-layout .item-inspector.open .inspector-heading h2 {
-    font-size: clamp(20px, 7vh, 30px);
-  }
-  .gear-layout .item-inspector.open .inspector-heading > p {
-    max-width: min(76vw, 760px);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .gear-layout .item-inspector.open .inspector-scroll {
-    min-height: auto;
-    overflow: visible;
-    overscroll-behavior: auto;
-    -webkit-overflow-scrolling: auto;
-    touch-action: auto;
-    padding: 11px 13px 82px;
-  }
-  .gear-layout .item-inspector.open .inspector-actions {
-    position: fixed;
-    z-index: 95;
-    right: max(0px, env(safe-area-inset-right));
-    bottom: max(0px, env(safe-area-inset-bottom));
-    left: max(0px, env(safe-area-inset-left));
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 7px;
-    margin: 0;
-    padding: 8px 13px max(8px, env(safe-area-inset-bottom));
-    border-top: 1px solid #2a3a36;
-    background: rgba(7,16,14,.98);
-    box-shadow: 0 -12px 30px rgba(0,0,0,.34);
-  }
-  .gear-layout .item-inspector.open .inspector-actions button {
-    min-height: 42px;
-  }
+  .gear-detail-content .gear-summary-grid { gap: 8px; }
 }
