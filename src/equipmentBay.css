@@ -496,3 +496,74 @@
   .gear-deep-details > summary { min-height:36px; padding:7px 9px; }
   .inspector-actions { margin:8px -13px -12px; }
 }
+
+/* RESPONSIVE GEAR INSPECTOR RELIABILITY */
+.item-inspector .sheet-close {
+  display: block;
+  position: sticky;
+  z-index: 8;
+  top: 0;
+  width: fit-content;
+  min-height: 38px;
+  margin: 0 0 8px auto;
+  float: none;
+  border: 1px solid #456159;
+  background: #13201d;
+  color: #d3dfdb;
+  box-shadow: 0 6px 18px rgba(0,0,0,.38);
+}
+@media (pointer: coarse) {
+  .gear-layout { display: block; }
+  .gear-layout.has-selection::before {
+    content: '';
+    position: fixed;
+    z-index: 59;
+    inset: 0;
+    background: rgba(0,0,0,.7);
+    backdrop-filter: blur(2px);
+  }
+  .item-inspector,
+  .gear-layout:not(.has-selection) .item-inspector {
+    display: none;
+    position: fixed;
+    z-index: 70;
+    top: max(8px, env(safe-area-inset-top));
+    right: max(8px, env(safe-area-inset-right));
+    bottom: max(8px, env(safe-area-inset-bottom));
+    left: auto;
+    width: min(72vw, 760px);
+    max-width: calc(100vw - max(16px, env(safe-area-inset-left)) - max(16px, env(safe-area-inset-right)));
+    max-height: none;
+    min-height: 0;
+    padding: 12px 13px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-color: #678b80;
+    border-radius: 12px;
+    background: #07100e;
+    box-shadow: -22px 0 80px rgba(0,0,0,.82);
+  }
+  .item-inspector.open { display: block; }
+  .item-inspector h2 { font-size: clamp(20px, 5vh, 28px); line-height: 1.08; }
+  .inspector-actions { position: sticky; z-index: 7; bottom: 0; }
+}
+@media (orientation: landscape) and (max-height: 900px) {
+  .build-bay { height: 100dvh; min-height: 100dvh; }
+  .item-inspector,
+  .gear-layout:not(.has-selection) .item-inspector {
+    top: max(8px, env(safe-area-inset-top));
+    bottom: max(8px, env(safe-area-inset-bottom));
+    width: min(72vw, 760px);
+    max-width: calc(100vw - max(16px, env(safe-area-inset-left)) - max(16px, env(safe-area-inset-right)));
+    padding: 12px 13px;
+  }
+  .item-inspector h2 { margin: 5px 0; font-size: 21px; line-height: 1.05; }
+  .item-inspector > p { margin-bottom: 8px; font-size: 9px; line-height: 1.3; }
+  .item-inspector .sheet-close { min-height: 34px; padding: 6px 9px; }
+  .gear-quick-read { margin: 7px 0; padding: 9px 10px; }
+  .compare-head > div { padding: 8px 9px; }
+  .compare-stats { margin-top: 6px; }
+  .compare-line { min-height: 28px; }
+  .gear-deep-details { margin-top: 7px; }
+  .gear-deep-details > summary { min-height: 36px; padding: 7px 9px; }
+}
