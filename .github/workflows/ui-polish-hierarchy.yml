@@ -1,0 +1,60 @@
+name: Validate UI hierarchy polish
+
+on:
+  push:
+    branches:
+      - ui/polish-hierarchy
+
+permissions:
+  contents: write
+
+jobs:
+  validate-publish-qa:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply UI hierarchy polish
+        run: |
+          git fetch origin ui/polish-hierarchy
+          git show FETCH_HEAD:src/uiPolish.css > src/uiPolish.css
+          git show FETCH_HEAD:scripts/apply_ui_polish.py > /tmp/apply_ui_polish.py
+          python /tmp/apply_ui_polish.py
+          git diff --check
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run full regression suite and production build
+        run: npm run build
+      - name: Publish validated UI polish to main
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/main.tsx src/uiPolish.css src/components/ShipHub.tsx src/components/PlayerStatsPanel.tsx src/components/Armory.tsx src/components/GameCanvas.tsx tests/ui-readability.ts
+          git commit -m 'Polish UI hierarchy and remove repetition'
+          git push origin HEAD:main
+      - name: Load live QA
+        run: |
+          git fetch origin ui/polish-hierarchy
+          git show FETCH_HEAD:scripts/live_ui_polish_qa.mjs > .live-ui-polish-qa.mjs
+      - name: Install browser QA dependency
+        run: |
+          npm install --no-save playwright@latest
+          npx playwright install --with-deps chromium
+      - name: Verify live UI polish
+        run: node .live-ui-polish-qa.mjs
+      - name: Upload live QA screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-polish-live-qa
+          path: |
+            ui-polish-mobile.png
+            ui-polish-desktop.png
+          if-no-files-found: ignore
