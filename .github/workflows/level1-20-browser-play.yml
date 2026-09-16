@@ -7,6 +7,7 @@ on:
     paths:
       - 'tests/e2e-level1-20-v2.mjs'
       - 'scripts/instrument-browser-playtest.mjs'
+      - 'scripts/upgrade-browser-player-v3.mjs'
       - '.github/workflows/level1-20-browser-play.yml'
       - 'src/**'
 
@@ -37,6 +38,9 @@ jobs:
       - name: Add read-only playtest perception hooks
         run: node scripts/instrument-browser-playtest.mjs
 
+      - name: Prepare objective-aware browser player
+        run: node scripts/upgrade-browser-player-v3.mjs
+
       - name: Build production client
         run: npm run build
 
@@ -54,7 +58,7 @@ jobs:
           exit 1
 
       - name: Play from level 1 through level 20
-        run: node tests/e2e-level1-20-v2.mjs
+        run: node tests/e2e-level1-20-v3.mjs
 
       - name: Upload playthrough evidence
         if: always()
