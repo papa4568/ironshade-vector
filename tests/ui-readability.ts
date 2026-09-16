@@ -19,6 +19,7 @@ const hubCss = read('src/commandHub.css');
 const app = read('src/App.tsx');
 const equipmentCss = read('src/equipmentBay.css');
 const missionCss = read('src/part4.css');
+const objectiveCss = read('src/part7.css');
 
 assert(!armory.includes('Review faction doctrines'), 'Equipment Bay still advertises undiscovered faction doctrine targets.');
 assert(!armory.includes('2 PIECE'), 'Equipment Bay still exposes 2-piece set targets.');
@@ -33,11 +34,15 @@ assert(combat.includes('Focused hostile status'), 'Focused hostile health readou
 assert(combat.includes('DROP ON DECK'), 'Ground-loot explanation is missing from combat HUD.');
 assert(combat.includes('lootLabel(drop.rarity)'), 'High-value ground loot does not receive a readable world label.');
 assert(renderer.includes("enemy.role === 'elite' ? 2.2 : 1.9"), 'Three.js hostile bars are still too small for mobile readability.');
-assert(renderer.includes('0xff4a3d') && renderer.includes('toneMapped: false'), 'Three.js health bar contrast update is missing.');
+assert(renderer.includes('0xff725f') && renderer.includes('0x8ee8ff') && renderer.includes('THREE.AdditiveBlending') && renderer.includes('toneMapped: false'), 'Three.js hostile bars are not using the bright mobile treatment.');
 assert(css.includes('.target-readout') && css.includes('.gear-quick-read') && css.includes('.loot-radar'), 'Readability stylesheet is incomplete.');
 assert(armory.includes('gear-deep-details') && css.includes('.gear-deep-details'), 'Gear inspector does not separate essential comparison from advanced telemetry.');
 assert(equipmentCss.includes('gear-layout.has-selection::before') && equipmentCss.includes('width: min(72vw, 760px)'), 'Landscape mobile gear inspector is missing focused modal treatment.');
 assert(equipmentCss.includes('.item-inspector .sheet-close') && equipmentCss.includes('@media (pointer: coarse)'), 'Gear inspector cannot be reliably closed on coarse-pointer landscape devices.');
+assert(armory.includes("useState<string | null>(null)") && armory.includes("newLootIds.length > 0 ? 'new' : 'all'") && armory.includes('item-inspector-backdrop'), 'Recovered loot should open as a dismissible filtered list rather than trapping the player in an inspector.');
+assert(equipmentCss.includes('MOBILE INSPECTOR ESCAPE RELIABILITY') && equipmentCss.includes('.item-inspector-backdrop') && equipmentCss.includes('pointer-events: none'), 'Mobile item inspector backdrop/escape behavior is missing.');
+assert(css.includes('DEBRIEF RARITY COLORS') && css.includes('.recovery-review-card.rarity-singular') && css.includes('.recovery-review-card.rarity-prototype'), 'Debrief recovery cards are missing rarity color treatment.');
+assert(objectiveCss.includes('MOBILE OBJECTIVE COMPACTNESS OVERRIDE') && objectiveCss.includes('width: min(300px, 34vw)') && objectiveCss.includes('.post-clear-objective small { display: none; }'), 'Post-clear objective guidance can still cover too much of the mobile combat view.');
 assert(missionCss.includes('RESPONSIVE MISSION SURFACE RELIABILITY') && missionCss.includes('overflow-y: auto'), 'Combat completion overlays can still extend outside the visible viewport.');
 assert(missionCss.includes('place-items: start center') && missionCss.includes('height: 100dvh'), 'Mission debrief can still center oversized content outside the scrollable viewport.');
 assert(missionCss.includes('max-height: 900px'), 'Short landscape viewport scaling regression coverage is missing.');

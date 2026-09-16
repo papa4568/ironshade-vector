@@ -642,7 +642,7 @@ export class ThreeCombatRenderer {
     hpBack.position.y = -0.04;
     hpBack.renderOrder = 30;
     barRoot.add(hpBack);
-    const hp = new THREE.Mesh(new THREE.PlaneGeometry(barWidth, 0.16), new THREE.MeshBasicMaterial({ color: 0xff4a3d, depthTest: false, depthWrite: false, toneMapped: false }));
+    const hp = new THREE.Mesh(new THREE.PlaneGeometry(barWidth, 0.2), new THREE.MeshBasicMaterial({ color: 0xff725f, transparent: true, opacity: 0.98, blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false, toneMapped: false }));
     hp.position.y = -0.04;
     hp.position.z = 0.003;
     hp.renderOrder = 32;
@@ -653,7 +653,7 @@ export class ThreeCombatRenderer {
       armorBack.renderOrder = 30;
       barRoot.add(armorBack);
     }
-    const armor = new THREE.Mesh(new THREE.PlaneGeometry(barWidth, 0.09), new THREE.MeshBasicMaterial({ color: 0x6fd2ff, depthTest: false, depthWrite: false, toneMapped: false }));
+    const armor = new THREE.Mesh(new THREE.PlaneGeometry(barWidth, 0.12), new THREE.MeshBasicMaterial({ color: 0x8ee8ff, transparent: true, opacity: 0.98, blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false, toneMapped: false }));
     armor.position.y = 0.18;
     armor.position.z = 0.004;
     armor.renderOrder = 33;
@@ -702,7 +702,7 @@ export class ThreeCombatRenderer {
       const armorRatio = enemy.maxArmor > 0 ? THREE.MathUtils.clamp(enemy.armor / enemy.maxArmor, 0, 1) : 0;
       const barWidth = enemy.role === 'boss' ? 3.0 : enemy.role === 'elite' ? 2.2 : 1.9;
       visual.barRoot.scale.setScalar(enemy.id === mobileTargetId ? 1.18 : enemy.maxArmor > 0 && enemy.armor <= 0 ? 1.12 : 1);
-      visual.hp.material.color.setHex(enemy.maxArmor > 0 && enemy.armor <= 0 ? 0xff6557 : 0xff4a3d);
+      visual.hp.material.color.setHex(enemy.maxArmor > 0 && enemy.armor <= 0 ? 0xffa080 : 0xff725f);
       visual.hp.scale.x = hpRatio;
       visual.hp.position.x = -barWidth * (1 - hpRatio) / 2;
       visual.armor.visible = enemy.maxArmor > 0 && enemy.armor > 0;
