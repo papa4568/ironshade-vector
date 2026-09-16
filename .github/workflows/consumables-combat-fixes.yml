@@ -5,45 +5,28 @@ on:
     branches:
       - feature/consumables-combat-fixes
 
-permissions:
-  contents: write
-
 jobs:
-  validate-publish-qa:
+  verify-main-and-live:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Load patch from validation branch
-        run: |
-          git fetch origin feature/consumables-combat-fixes
-          git show FETCH_HEAD:scripts/apply_combat_consumable_patch.py > /tmp/apply_patch.py
-          python /tmp/apply_patch.py
-          git diff --check
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Run regression tests and production build
         run: npm run build
-      - name: Commit validated changes to main
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/game/consumables.ts src/game/campaign.ts src/game/sim.ts src/components/GameCanvas.tsx src/components/ShipHub.tsx src/App.tsx src/consumables.css tests/gameplay-regressions.ts package.json
-          git commit -m 'Smooth target switching and add field consumables'
-          git push origin HEAD:main
       - name: Load live QA script
         run: |
           git fetch origin feature/consumables-combat-fixes
-          git show FETCH_HEAD:scripts/live_consumable_qa.mjs > /tmp/live_consumable_qa.mjs
+          git show FETCH_HEAD:scripts/live_consumable_qa.mjs > .live-consumable-qa.mjs
       - name: Install browser QA dependency
         run: |
           npm install --no-save playwright@latest
           npx playwright install --with-deps chromium
-      - name: Verify live deploy
-        run: node /tmp/live_consumable_qa.mjs
+      - name: Verify live purchase and combat stock
+        run: node .live-consumable-qa.mjs
