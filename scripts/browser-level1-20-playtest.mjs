@@ -126,6 +126,22 @@ async function interactIfAvailable(page) {
   return false;
 }
 
+async function followPostClearLocator(page) {
+  const prompt = page.locator('.post-clear-objective').first();
+  if (!await visible(prompt)) return false;
+  const guidance = await text(prompt);
+  const match = guidance.match(/NEXT ACT[\s\S]*?\b(UP-LEFT|UP-RIGHT|DOWN-LEFT|DOWN-RIGHT|UP|DOWN|LEFT|RIGHT)\b[\s\S]*?RANGE\s+(\d+)/i);
+  if (!match) return false;
+  const angles = { RIGHT: 0, 'DOWN-RIGHT': Math.PI / 4, DOWN: Math.PI / 2, 'DOWN-LEFT': Math.PI * 3 / 4, LEFT: Math.PI, 'UP-LEFT': Math.PI * 5 / 4, UP: Math.PI * 3 / 2, 'UP-RIGHT': Math.PI * 7 / 4 };
+  const direction = match[1].toUpperCase();
+  const range = Number(match[2]);
+  const duration = range > 500 ? 1800 : range > 240 ? 1200 : 650;
+  log('Following visible objective locator: ' + direction + ' range ' + range);
+  await moveWithStick(page, angles[direction], duration);
+  await interactIfAvailable(page);
+  return true;
+}
+
 async function handleOverlay(page, overlay, missionIndex, startingLevel) {
   const overlayText = await text(overlay);
   if (/Operator down/i.test(overlayText)) {
@@ -190,6 +206,7 @@ async function playMission(page, missionIndex, startingLevel) {
       throw new Error(`Mission ${missionIndex} reached an unrecognized blocking overlay: ${result.text.slice(0, 500)}`);
     }
 
+    if (await followPostClearLocator(page)) { cycle += 1; continue; }
     await interactIfAvailable(page);
     await useCombatActions(page, cycle);
     const worldAxisAngles = { px: 0.497, py: 2.645, nx: 3.639, ny: 5.786 };
