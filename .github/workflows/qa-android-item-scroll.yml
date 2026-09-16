@@ -1,0 +1,224 @@
+name: QA Android item inspector scroll
+
+on:
+  push:
+    branches:
+      - fix/android-item-scroll
+
+permissions:
+  contents: write
+
+jobs:
+  qa:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply single-scroller mobile inspector fix
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          css_path = Path('src/part12.css')
+          css = css_path.read_text()
+          marker = '/* ANDROID ITEM INSPECTOR SINGLE SCROLLER */'
+          if marker not in css:
+              css += r'''
+
+          /* ANDROID ITEM INSPECTOR SINGLE SCROLLER */
+          @media (pointer: coarse), (max-width: 1100px), (orientation: landscape) and (max-height: 900px) {
+            .gear-layout .item-inspector.open {
+              display: block;
+              position: fixed;
+              z-index: 90;
+              top: max(0px, env(safe-area-inset-top));
+              right: max(0px, env(safe-area-inset-right));
+              bottom: max(0px, env(safe-area-inset-bottom));
+              left: max(0px, env(safe-area-inset-left));
+              width: auto;
+              max-width: none;
+              height: auto;
+              max-height: none;
+              min-height: 0;
+              padding: 0;
+              overflow-x: hidden;
+              overflow-y: auto;
+              overscroll-behavior-y: contain;
+              -webkit-overflow-scrolling: touch;
+              touch-action: auto;
+              scrollbar-gutter: auto;
+              border-radius: 0;
+              background: #07100e;
+            }
+            .gear-layout.has-selection .item-inspector-backdrop {
+              display: none;
+            }
+            .gear-layout .item-inspector.open .inspector-header {
+              position: sticky;
+              z-index: 92;
+              top: 0;
+              padding: 11px 13px 10px;
+              background: linear-gradient(135deg, var(--gear-rarity-wash, rgba(35,55,49,.24)), #07100e 62%);
+              box-shadow: 0 10px 28px rgba(0,0,0,.28);
+            }
+            .gear-layout .item-inspector.open .inspector-heading h2 {
+              font-size: clamp(20px, 7vh, 30px);
+            }
+            .gear-layout .item-inspector.open .inspector-heading > p {
+              max-width: min(76vw, 760px);
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+            }
+            .gear-layout .item-inspector.open .inspector-scroll {
+              min-height: auto;
+              overflow: visible;
+              overscroll-behavior: auto;
+              -webkit-overflow-scrolling: auto;
+              touch-action: auto;
+              padding: 11px 13px 82px;
+            }
+            .gear-layout .item-inspector.open .inspector-actions {
+              position: fixed;
+              z-index: 95;
+              right: max(0px, env(safe-area-inset-right));
+              bottom: max(0px, env(safe-area-inset-bottom));
+              left: max(0px, env(safe-area-inset-left));
+              grid-template-columns: minmax(0, 1fr) auto;
+              gap: 7px;
+              margin: 0;
+              padding: 8px 13px max(8px, env(safe-area-inset-bottom));
+              border-top: 1px solid #2a3a36;
+              background: rgba(7,16,14,.98);
+              box-shadow: 0 -12px 30px rgba(0,0,0,.34);
+            }
+            .gear-layout .item-inspector.open .inspector-actions button {
+              min-height: 42px;
+            }
+          }
+          '''
+              css_path.write_text(css)
+
+          test_path = Path('tests/ui-readability.ts')
+          tests = test_path.read_text()
+          assertion = "const mobileInspectorCss = read('src/part12.css');\nassert(mobileInspectorCss.includes('ANDROID ITEM INSPECTOR SINGLE SCROLLER') && mobileInspectorCss.includes('overflow-y: auto') && mobileInspectorCss.includes('.gear-layout .item-inspector.open .inspector-scroll') && mobileInspectorCss.includes('overflow: visible') && mobileInspectorCss.includes('touch-action: auto'), 'Android item inspector still depends on a nested touch-scroll pane.');\n"
+          if assertion not in tests:
+              anchor = "console.log('UI_READABILITY_PASS discovery=hidden contractGear=unidentified targetHp=strong missionLoot=reviewable hierarchy=polished');"
+              if anchor not in tests:
+                  raise SystemExit('UI test anchor missing')
+              tests = tests.replace(anchor, assertion + '\n' + anchor)
+              test_path.write_text(tests)
+          PY
+      - name: Install app dependencies
+        run: npm install --no-audit --no-fund
+      - name: Validate production build
+        run: npm run build
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start client
+        run: |
+          npx vite --host 127.0.0.1 --port 4173 > /tmp/ironshade-vite.log 2>&1 &
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:4173 >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/ironshade-vite.log
+          exit 1
+      - name: Verify real touch gesture scrolls inspector
+        run: |
+          mkdir -p qa-artifacts/android-item-scroll
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          import { writeFileSync } from 'node:fs';
+
+          const browser = await chromium.launch({ headless: true });
+          const results = [];
+          try {
+            for (const viewport of [{ width: 844, height: 390 }, { width: 740, height: 360 }]) {
+              const context = await browser.newContext({ viewport, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
+              const page = await context.newPage();
+              const runtimeErrors = [];
+              page.on('pageerror', error => runtimeErrors.push(`pageerror: ${error.message}`));
+              page.on('console', message => { if (message.type() === 'error') runtimeErrors.push(`console: ${message.text()}`); });
+              await page.goto('http://127.0.0.1:4173', { waitUntil: 'networkidle' });
+              await page.getByRole('button', { name: 'Equipment' }).click();
+              await page.waitForSelector('.build-bay');
+              await page.locator('.equipped-card').first().click();
+              await page.waitForSelector('.item-inspector.open');
+
+              const inspector = page.locator('.item-inspector.open');
+              const header = page.locator('.inspector-header');
+              const body = page.locator('.inspector-scroll');
+              const actions = page.locator('.inspector-actions');
+              const close = page.getByRole('button', { name: 'Back to ship storage' });
+              const initial = await inspector.evaluate(el => ({
+                scrollTop: el.scrollTop,
+                scrollHeight: el.scrollHeight,
+                clientHeight: el.clientHeight,
+                overflowY: getComputedStyle(el).overflowY,
+                touchAction: getComputedStyle(el).touchAction,
+                display: getComputedStyle(el).display,
+              }));
+              const bodyStyle = await body.evaluate(el => ({ overflowY: getComputedStyle(el).overflowY, touchAction: getComputedStyle(el).touchAction }));
+              const headerStyle = await header.evaluate(el => getComputedStyle(el).position);
+              const actionStyle = await actions.evaluate(el => getComputedStyle(el).position);
+              const box = await inspector.boundingBox();
+              if (!box) throw new Error('Inspector box unavailable');
+              if (box.x > 2 || box.y > 2 || box.x + box.width < viewport.width - 2 || box.y + box.height < viewport.height - 2) throw new Error(`Inspector is not full-screen at ${viewport.width}x${viewport.height}: ${JSON.stringify(box)}`);
+              if (!['auto', 'scroll'].includes(initial.overflowY) || initial.scrollHeight <= initial.clientHeight) throw new Error(`Inspector is not the scroll surface: ${JSON.stringify(initial)}`);
+              if (bodyStyle.overflowY !== 'visible') throw new Error(`Nested inspector body still scrolls: ${JSON.stringify(bodyStyle)}`);
+              if (headerStyle !== 'sticky') throw new Error(`Header is not sticky: ${headerStyle}`);
+              if (actionStyle !== 'fixed') throw new Error(`Actions are not fixed: ${actionStyle}`);
+
+              const client = await context.newCDPSession(page);
+              const x = Math.round(box.x + box.width * 0.55);
+              const startY = Math.round(box.y + box.height * 0.72);
+              const endY = Math.round(box.y + box.height * 0.28);
+              await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y: startY, radiusX: 4, radiusY: 4, force: 1 }] });
+              for (let step = 1; step <= 8; step++) {
+                const y = Math.round(startY + (endY - startY) * (step / 8));
+                await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y, radiusX: 4, radiusY: 4, force: 1 }] });
+                await page.waitForTimeout(25);
+              }
+              await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+              await page.waitForTimeout(350);
+              const after = await inspector.evaluate(el => ({ scrollTop: el.scrollTop, scrollHeight: el.scrollHeight, clientHeight: el.clientHeight }));
+              if (after.scrollTop < 20) throw new Error(`Finger swipe did not scroll inspector at ${viewport.width}x${viewport.height}: ${JSON.stringify(after)}`);
+
+              const closeBox = await close.boundingBox();
+              const actionsBox = await actions.boundingBox();
+              if (!closeBox || closeBox.y < -1 || closeBox.y + closeBox.height > viewport.height + 1) throw new Error('Back control left the viewport after touch scroll');
+              if (!actionsBox || actionsBox.y < 0 || actionsBox.y + actionsBox.height > viewport.height + 1) throw new Error('Action dock left the viewport after touch scroll');
+              if (runtimeErrors.length) throw new Error(runtimeErrors.join(' | '));
+              await page.screenshot({ path: `qa-artifacts/android-item-scroll/item-${viewport.width}x${viewport.height}.png`, fullPage: false });
+              results.push({ viewport, initial, bodyStyle, after, closeBox, actionsBox });
+              await context.close();
+            }
+            writeFileSync('qa-artifacts/android-item-scroll/report.json', JSON.stringify(results, null, 2));
+            console.log('ANDROID_ITEM_TOUCH_SCROLL_PASS', JSON.stringify(results.map(result => ({ viewport: result.viewport, scrollTop: result.after.scrollTop, scrollHeight: result.after.scrollHeight }))));
+          } finally {
+            await browser.close();
+          }
+          JS
+      - name: Commit verified product fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/part12.css tests/ui-readability.ts
+          git diff --cached --check
+          git commit -m 'Fix Android item inspector touch scrolling'
+          git push origin HEAD:fix/android-item-scroll
+      - name: Upload QA screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-item-scroll-qa
+          path: qa-artifacts/android-item-scroll
+          if-no-files-found: warn
