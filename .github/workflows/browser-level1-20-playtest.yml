@@ -69,3 +69,5 @@ jobs:
           path: playtest-artifacts
           if-no-files-found: warn
           retention-days: 14
+
+# Harness revision 3: close each gear inspector before selecting another item.
