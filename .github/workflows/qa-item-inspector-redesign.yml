@@ -1,0 +1,42 @@
+name: QA item inspector redesign
+
+on:
+  push:
+    branches:
+      - feat/item-inspector-redesign
+
+jobs:
+  qa:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install app dependencies
+        run: npm install --no-audit --no-fund
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start client
+        run: |
+          npx vite --host 127.0.0.1 --port 4173 > /tmp/ironshade-vite.log 2>&1 &
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:4173 >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/ironshade-vite.log
+          exit 1
+      - name: Run phone landscape visual QA
+        run: node scripts/qa-item-inspector-redesign.mjs
+      - name: Upload visual QA
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: item-inspector-redesign-qa
+          path: qa-artifacts/item-inspector
+          if-no-files-found: warn
