@@ -1,1 +1,64 @@
-placeholder
+/* UI hierarchy polish: reduce repeated chrome and make one concept = one visual home. */
+.ship-header { padding-top: 10px; padding-bottom: 10px; align-items: center; }
+.ship-header h1 { margin: 3px 0 2px; font-size: clamp(20px, 2.2vw, 30px); letter-spacing: -.02em; }
+.ship-header p { margin: 0; opacity: .78; }
+.hub-build-button { min-height: 40px; padding: 0 14px; }
+
+.hub-resource-ribbon { margin-bottom: 8px; }
+.hub-resource-ribbon > div { padding-top: 7px; padding-bottom: 7px; }
+
+.qol-priority-strip { padding: 7px 9px; margin-bottom: 8px; gap: 10px; border-color: #39594f; background: #0a1412; }
+.qol-priority-copy { min-width: 92px; }
+.qol-priority-copy small { display: none; }
+.qol-priority-copy b { font-size: 9px; color: #afc3bc; }
+.qol-priority-actions { gap: 5px; }
+.qol-priority-actions button { min-height: 32px; padding: 0 9px; font-size: 7px; border-radius: 7px; }
+
+.ship-tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding-bottom: 6px; }
+.ship-tabs::-webkit-scrollbar { display: none; }
+.ship-tabs button { flex: 0 0 auto; min-width: 0; min-height: 38px; padding: 0 11px; border-radius: 8px; text-transform: none; letter-spacing: .02em; }
+.ship-tabs button.selected { background: #1a2d28; }
+.ship-status { margin: 0 0 8px; padding: 7px 10px; border-radius: 7px; font-size: 8px; }
+
+.command-action-row { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 7px; }
+.command-action-row button { min-height: 58px; padding: 9px; border: 1px solid #2d433d; border-radius: 9px; background: #0b1413; color: #afbfba; text-align: left; }
+.command-action-row button b,.command-action-row button small { display: block; }
+.command-action-row button b { font-size: 9px; }
+.command-action-row button small { margin-top: 3px; color: #687c75; font-size: 7px; line-height: 1.25; }
+.command-action-row button:hover { border-color: #58766e; background: #101d1a; }
+
+.contract-inspector .director-box,
+.contract-inspector .contract-reward,
+.contract-inspector .faction-armory-preview { margin-top: 9px; }
+.contract-inspector .condition-chips { gap: 5px; }
+.contract-inspector .condition-chips span { padding: 5px 7px; }
+
+.stats-help { margin-top: 9px; padding-top: 8px; border-top: 1px solid #243833; }
+.stats-help summary { cursor: pointer; color: #91a89f; font-size: 8px; font-weight: 800; }
+.stats-help p { margin: 7px 0 0; color: #74877f; font-size: 8px; line-height: 1.45; }
+
+.compact-discovery { display: grid; gap: 8px; padding: 9px 10px; }
+.compact-discovery > details { border: 0; padding: 0; background: transparent; }
+.compact-discovery > details summary { cursor: pointer; color: #9bb0a9; font-size: 8px; font-weight: 900; letter-spacing: .05em; }
+.compact-discovery > details p { margin: 6px 0 0; color: #6f837c; font-size: 8px; line-height: 1.4; }
+.compact-discovery .discovered-effects { margin-top: 0; }
+.gear-quick-read > span { display: block; margin-top: 6px; color: #d5ded9; font-size: 10px; line-height: 1.45; }
+.build-message { min-height: 0; }
+
+@media (orientation: landscape) and (max-height: 650px) {
+  .ship-header { padding-top: 6px; padding-bottom: 6px; }
+  .ship-header h1 { font-size: 18px; }
+  .ship-header p { font-size: 7px; }
+  .hub-resource-ribbon { margin-bottom: 5px; }
+  .ship-tabs { padding-bottom: 4px; }
+  .ship-tabs button { min-height: 34px; padding: 0 9px; font-size: 8px; }
+  .command-action-row button { min-height: 48px; padding: 7px; }
+  .command-action-row button small { display: none; }
+  .stats-help { margin-top: 6px; }
+  .compact-discovery { padding: 7px 8px; }
+}
+
+@media (max-width: 620px) {
+  .command-action-row { grid-template-columns: 1fr; }
+  .ship-tabs button { min-height: 42px; }
+}
