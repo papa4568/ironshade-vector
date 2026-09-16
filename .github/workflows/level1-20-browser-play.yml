@@ -1,0 +1,68 @@
+name: Level 1-20 browser playthrough
+
+on:
+  push:
+    branches:
+      - beta/level1-20-playthrough
+    paths:
+      - 'tests/e2e-level1-20.mjs'
+      - 'scripts/instrument-browser-playtest.mjs'
+      - '.github/workflows/level1-20-browser-play.yml'
+      - 'src/**'
+
+permissions:
+  contents: read
+
+jobs:
+  play-level-1-to-20:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Check out beta branch
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install project dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Install browser driver
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Add read-only playtest perception hooks
+        run: node scripts/instrument-browser-playtest.mjs
+
+      - name: Build production client
+        run: npm run build
+
+      - name: Start production preview
+        shell: bash
+        run: |
+          nohup npm run preview -- --host 127.0.0.1 --port 4173 > /tmp/ironshade-preview.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/ironshade-preview.log
+          exit 1
+
+      - name: Play from level 1 through level 20
+        run: node tests/e2e-level1-20.mjs
+
+      - name: Upload playthrough evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: level1-20-browser-playthrough
+          path: |
+            playtest-artifacts/**
+            /tmp/ironshade-preview.log
+          if-no-files-found: warn
+          retention-days: 30
