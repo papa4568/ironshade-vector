@@ -165,3 +165,87 @@
   .gear-discovery-note > div > span { display:none; }
   .discovered-doctrine { padding:6px 8px; }
 }
+
+/* Mobile clarity + recovery review follow-up */
+.target-health-track { height: 14px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18), 0 0 12px rgba(222,77,62,.12); }
+.target-armor-track { height: 7px; }
+.target-health-track i { background: linear-gradient(90deg,#d54036,#ff7566); }
+.target-armor-track i { background: linear-gradient(90deg,#4e9ccc,#7dd9ff); }
+
+.gear-deep-details {
+  margin: 10px 0 0;
+  border: 1px solid #293936;
+  border-radius: 9px;
+  background: rgba(5,10,10,.72);
+}
+.gear-deep-details > summary {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  padding: 9px 11px;
+  color: #a9bbb5;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  cursor: pointer;
+  list-style: none;
+}
+.gear-deep-details > summary::-webkit-details-marker { display: none; }
+.gear-deep-details > summary::after { content: 'SHOW'; margin-left: auto; color: #6f8d84; font-size: 7px; }
+.gear-deep-details[open] > summary::after { content: 'HIDE'; }
+.gear-deep-details[open] > summary { border-bottom: 1px solid #24332f; }
+.gear-deep-details > :not(summary) { margin-left: 9px; margin-right: 9px; }
+.gear-deep-details > :last-child { margin-bottom: 9px; }
+
+.recovery-review {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid #334a43;
+  border-radius: 12px;
+  background: linear-gradient(145deg,rgba(12,22,20,.96),rgba(6,10,10,.97));
+}
+.recovery-review-heading,
+.recovery-review-meta,
+.recovery-review-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.recovery-review-heading small,
+.recovery-review-heading b { display: block; }
+.recovery-review-heading small { color:#7f9c92; font-size:7px; font-weight:900; letter-spacing:.12em; }
+.recovery-review-heading b { margin-top:4px; color:#d2ddd9; font-size:12px; }
+.recovery-review-heading > span { color:#91a69f; font-size:8px; font-weight:800; }
+.recovery-review-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin-top:10px; }
+.recovery-review-card {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:12px;
+  padding:11px 12px;
+  border:1px solid var(--gear-rarity-border,rgba(108,139,129,.5));
+  border-radius:10px;
+  background:linear-gradient(135deg,var(--gear-rarity-wash,rgba(65,90,82,.15)),rgba(8,13,13,.94));
+}
+.recovery-review-card.discarded { opacity:.48; filter:saturate(.45); }
+.recovery-review-meta small { color:var(--gear-rarity,#aab8b4); font-size:7px; font-weight:900; letter-spacing:.05em; }
+.recovery-review-meta strong { color:#9db2aa; font-size:7px; white-space:nowrap; }
+.recovery-review-copy h3 { margin:7px 0 4px; color:var(--gear-rarity,#d0d9d6); font-size:14px; }
+.recovery-review-copy p { margin:0; color:#aabbb5; font-size:9px; line-height:1.35; }
+.recovery-review-actions { align-self:end; justify-content:flex-end; }
+.recovery-review-actions button { min-height:38px; padding:8px 10px; border-radius:8px; }
+.recovery-review-actions .danger { border:1px solid #6d3731; background:#291514; color:#efaea3; }
+.recovery-review-actions .danger.confirm { border-color:#b25345; background:#54231e; color:#ffd3ca; }
+
+@media (pointer: coarse), (max-width: 900px) {
+  .target-health-track { height: 13px; }
+  .target-armor-track { height: 7px; }
+  .recovery-review-grid { grid-template-columns:1fr; }
+}
+@media (orientation: landscape) and (max-height: 650px) {
+  .target-readout { background:rgba(5,8,9,.96); }
+  .target-health-track { height: 13px; }
+  .recovery-review { padding:9px; }
+  .recovery-review-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; }
+  .recovery-review-card { padding:9px 10px; }
+}

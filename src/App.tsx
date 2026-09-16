@@ -9,7 +9,7 @@ import './consumables.css';
 import { advanceBlackLatticeAfterContract, getBlackLatticeContract } from './game/blackLattice';
 import { advanceEscalationAfterContract, applyShipBonuses, dailyOperationContract, factionDisplayName, generateContracts, generateEscalationContract, loadCampaign, resourceLabels, saveCampaign, settleContract, type CampaignReward, type CampaignState, type Contract, type ExpeditionProgress, type ResourceId } from './game/campaign';
 import { feedback } from './game/feedback';
-import { awardRecovery, buildIdentity, deriveCombatBuild, dominantEquipmentFaction, loadProfile, saveProfile, setProfileSettings, type PlayerProfile, type ProfileSettings, type VictoryReward } from './game/meta';
+import { awardRecovery, buildIdentity, deriveCombatBuild, discardItem, dominantEquipmentFaction, loadProfile, saveProfile, setProfileSettings, type PlayerProfile, type ProfileSettings, type VictoryReward } from './game/meta';
 import { loadOperationsSnapshot, uploadRunTelemetry, type OperationsSnapshot } from './game/network';
 import { advanceStoryAfterContract, generateStoryContracts } from './game/story';
 import { advancePostKhepriAfterContract, getPostKhepriContract, syncPostKhepriAccess } from './game/postKhepri';
@@ -37,16 +37,19 @@ function debriefItemEffect(item: VictoryReward['loot'][number]) {
   return first ? `${first.label}: ${first.description}` : item.core;
 }
 
-function DebriefScreen({ result, onShip, onBuild, onRepeat }: { result: Debrief; onShip: () => void; onBuild: () => void; onRepeat?: () => void }) {
+function DebriefScreen({ result, onShip, onBuild, onRepeat, onDiscard }: { result: Debrief; onShip: () => void; onBuild: () => void; onRepeat?: () => void; onDiscard: (itemId: string) => void }) {
+  const [discardedIds, setDiscardedIds] = useState<string[]>([]);
+  const [confirmDiscardId, setConfirmDiscardId] = useState<string | null>(null);
   const gained = (Object.entries(result.campaignReward.gained) as Array<[ResourceId, number]>).filter(([, value]) => value > 0);
   const sponsor = result.contract.sponsor;
   const reputationGain = result.campaignReward.reputationDelta[sponsor] ?? 0;
   const reputationAfter = result.campaignReward.campaign.reputation[sponsor];
   const reputationBefore = reputationAfter - reputationGain;
   const newRecoveryCount = result.lootReward.loot.length;
+  const keptRecoveryCount = result.lootReward.loot.filter(item => !discardedIds.includes(item.id)).length;
   const unspentPoints = result.lootReward.profile.progressionPoints;
   const nextActions: string[] = [];
-  if (newRecoveryCount > 0) nextActions.push(`${newRecoveryCount} recovered equipment package${newRecoveryCount === 1 ? '' : 's'} ready to compare.`);
+  if (keptRecoveryCount > 0) nextActions.push(`${keptRecoveryCount} recovered equipment package${keptRecoveryCount === 1 ? '' : 's'} kept in ship storage.`);
   if (unspentPoints > 0) nextActions.push(`${unspentPoints} unspent progression point${unspentPoints === 1 ? '' : 's'} available in the Vector Development Network.`);
   if (result.lootReward.profile.level >= 15 && !result.lootReward.profile.specialization) nextActions.push('LV15 Vector Specialization ready in Build Bay → Network. Choosing one does not consume a progression point.');
   const milestones = [
@@ -79,9 +82,10 @@ function DebriefScreen({ result, onShip, onBuild, onRepeat }: { result: Debrief;
         </div>
         {milestones.length > 0 && <div className="anomaly-note"><b>FACTION ACCESS EXPANDED</b>{milestones.map(milestone => <span key={milestone}>{milestone}</span>)}</div>}
         <div className={`uplink-note ${result.uplinkStatus}`}><b>{uplinkCopy[0]}</b><span>{uplinkCopy[1]}</span></div>
-        <div className="recovery-list" aria-label="Recovered equipment">
-          {result.lootReward.loot.map(item => <span key={item.id} className={`quality-${item.recoveryQuality ?? 0}`}><b>{item.name}</b><em>{item.rarity.toUpperCase()} · {debriefRarityCue(item.rarity)} · {item.slot.toUpperCase()} · EQUIP LV {item.levelRequirement}</em><small>{debriefItemEffect(item)}</small></span>)}
-        </div>
+        {newRecoveryCount > 0 && <section className="recovery-review" aria-label="Recovered equipment review">
+          <header className="recovery-review-heading"><div><small>RECOVERED EQUIPMENT // REVIEW</small><b>Keep what matters. Discard what does not.</b></div><span>{keptRecoveryCount} kept · {discardedIds.length} discarded</span></header>
+          <div className="recovery-review-grid">{result.lootReward.loot.map(item => { const discarded = discardedIds.includes(item.id); const confirming = confirmDiscardId === item.id; return <article key={item.id} className={`recovery-review-card quality-${item.recoveryQuality ?? 0} rarity-${item.rarity.toLowerCase()} ${discarded ? 'discarded' : ''}`}><div className="recovery-review-copy"><div className="recovery-review-meta"><small>{item.rarity.toUpperCase()} · {debriefRarityCue(item.rarity)} · {item.slot.toUpperCase()} · EQUIP LV {item.levelRequirement}</small><strong>{discarded ? 'DISCARDED' : 'KEPT IN STORAGE'}</strong></div><h3>{item.name}</h3><p>{debriefItemEffect(item)}</p></div><div className="recovery-review-actions">{confirming && !discarded && <button onClick={() => setConfirmDiscardId(null)}>Keep</button>}<button className={`danger ${confirming ? 'confirm' : ''}`} disabled={discarded} onClick={() => { if (!confirming) { setConfirmDiscardId(item.id); return; } onDiscard(item.id); setDiscardedIds(current => current.includes(item.id) ? current : [...current, item.id]); setConfirmDiscardId(null); }}>{discarded ? 'Discarded' : confirming ? 'Confirm discard' : 'Discard'}</button></div></article>; })}</div>
+        </section>}
         {nextActions.length > 0 && <div className="debrief-next"><small>NEXT ON QUIET SIGNAL</small>{nextActions.map(action => <span key={action}>{action}</span>)}</div>}
         {result.campaignReward.anomalyRecovered && <div className="anomaly-note"><b>QUARANTINED TRACE RECOVERED</b><span>The sample is physically stable but its non-reflective lattice does not match registered human industrial geometry. It has been isolated rather than integrated into normal equipment.</span></div>}
         {result.storyNote && <div className="anomaly-note"><b>STORY OPERATION UPDATED</b><span>{result.storyNote}</span></div>}
@@ -97,7 +101,7 @@ function DebriefScreen({ result, onShip, onBuild, onRepeat }: { result: Debrief;
         {result.directiveNote && <div className="anomaly-note"><b>DIRECTIVE ARRAY UPDATED</b><span>{result.directiveNote}</span></div>}
         {result.contract.megastructure && result.expeditionProgress && <div className="anomaly-note"><b>DERELICT EXPEDITION BANKED</b><span>{result.expeditionProgress.zonesCompleted}/{result.contract.megastructureStageCount ?? 4} connected spaces secured · {result.expeditionProgress.optionalRecovered} optional recoveries banked.</span></div>}
         <div className="debrief-actions">
-          <button className="primary" onClick={onBuild}>{newRecoveryCount > 0 ? `Inspect ${newRecoveryCount} recovered item${newRecoveryCount === 1 ? '' : 's'}` : unspentPoints > 0 ? 'Spend progression points' : 'Open Build Bay'}</button>
+          <button className="primary" onClick={onBuild}>{keptRecoveryCount > 0 ? `Inspect ${keptRecoveryCount} kept item${keptRecoveryCount === 1 ? '' : 's'}` : unspentPoints > 0 ? 'Spend progression points' : 'Open Build Bay'}</button>
           {onRepeat && <button onClick={onRepeat}>Repeat contract</button>}
           <button onClick={onShip}>Return to contract hub</button>
         </div>
@@ -198,13 +202,14 @@ function App() {
   };
   const reportFailedAttempt = (telemetry: Telemetry) => { if (!selectedContract || !profile.settings.telemetrySharing) return; void uploadRunTelemetry({ contract: selectedContract, telemetry, outcome: 'failed', salvageTags: 0, level: profile.level, buildLabel: buildIdentity(profile) }).then(result => setOperations(current => current ? { ...current, metrics: result.metrics } : current)).catch(() => undefined); };
   const abandonMission = () => { setStatusMessage('Mission failed or abandoned // unbanked salvage lost; permanent progression retained. Prepared Directives are not consumed.'); setScreen('ship'); };
+  const discardRecoveredItem = (itemId: string) => { setProfile(current => discardItem(current, itemId).profile); setNewLootIds(current => current.filter(id => id !== itemId)); };
   const changeProfileSettings = (settings: Partial<ProfileSettings>) => setProfile(current => setProfileSettings(current, settings));
 
   return <div className="app-shell" onPointerDownCapture={() => feedback.unlock()} onClickCapture={event => { const target = event.target as HTMLElement; if (target.closest('button') && !target.closest('.game-root')) feedback.cue('ui'); }}>
     {screen === 'ship' && <ShipHub profile={profile} campaign={campaign} contracts={contracts} operations={operations} operationsStatus={operationsStatus} telemetrySharing={profile.settings.telemetrySharing} selectedContractId={selectedContract?.id ?? ''} statusMessage={statusMessage} onSelectContract={setSelectedContractId} onDeploy={() => selectedContract && setScreen('combat')} onOpenBuild={() => setScreen('build')} onCampaignChange={setCampaign} />}
     {screen === 'build' && <Armory profile={profile} campaign={campaign} newLootIds={newLootIds} onProfileChange={setProfile} onCampaignChange={setCampaign} onClose={() => { setNewLootIds([]); setScreen('ship'); }} />}
     {screen === 'combat' && selectedContract && <GameCanvas key={selectedContract.id} build={combatBuild} mission={selectedContract} profileSettings={profile.settings} consumables={campaign.consumables} buildLabel={buildIdentity(profile)} operatorFaction={dominantEquipmentFaction(profile)} onProfileSettingsChange={changeProfileSettings} onConsumablesChange={consumables => setCampaign(current => ({ ...current, consumables }))} onMissionResolve={finishMission} onAttemptFailed={reportFailedAttempt} onReturnToHub={abandonMission} />}
-    {screen === 'debrief' && debrief && <DebriefScreen result={debrief} onShip={() => { setNewLootIds([]); setScreen('ship'); }} onBuild={() => setScreen('build')} onRepeat={contracts.some(contract => contract.id === debrief.contract.id) ? () => setScreen('combat') : undefined} />}
+    {screen === 'debrief' && debrief && <DebriefScreen result={debrief} onShip={() => { setNewLootIds([]); setScreen('ship'); }} onBuild={() => setScreen('build')} onDiscard={discardRecoveredItem} onRepeat={contracts.some(contract => contract.id === debrief.contract.id) ? () => setScreen('combat') : undefined} />}
   </div>;
 }
 

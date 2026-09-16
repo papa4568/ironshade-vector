@@ -448,3 +448,51 @@
 .inventory-card.quality-5,.reconstruct-storage button.quality-5 { box-shadow:inset 0 0 34px rgba(222,181,77,.13),0 0 16px rgba(222,181,77,.06); }
 .item-inspector.quality-4 { box-shadow:0 18px 60px rgba(0,0,0,.3),inset 0 0 28px rgba(195,164,84,.05); }
 .item-inspector.quality-5 { box-shadow:0 18px 60px rgba(0,0,0,.32),inset 0 0 36px rgba(222,181,77,.08); }
+
+/* Mobile inspector focus follow-up */
+@media (max-width: 1100px) {
+  .gear-layout.has-selection::before {
+    content: '';
+    position: fixed;
+    z-index: 59;
+    inset: 0;
+    background: rgba(0,0,0,.68);
+    backdrop-filter: blur(2px);
+  }
+  .item-inspector.open {
+    z-index: 70;
+    background: #07100e;
+    border-color: #678b80;
+    box-shadow: 0 -24px 90px rgba(0,0,0,.88);
+  }
+  .item-inspector > p,
+  .compare-head > div > span,
+  .compare-line > span { color:#a9bbb5; }
+  .compare-head > div { background:#0b1513; }
+  .inspector-actions { background:linear-gradient(180deg,rgba(7,16,14,.96),#07100e 35%); }
+}
+
+@media (orientation: landscape) and (max-height: 650px) {
+  .item-inspector,
+  .gear-layout:not(.has-selection) .item-inspector {
+    top: max(8px, env(safe-area-inset-top));
+    right: max(8px, env(safe-area-inset-right));
+    bottom: max(8px, env(safe-area-inset-bottom));
+    width: min(72vw, 760px);
+    max-width: calc(100vw - 16px - env(safe-area-inset-left) - env(safe-area-inset-right));
+    padding: 12px 13px;
+    background: #07100e;
+    border-radius: 12px;
+  }
+  .item-inspector h2 { font-size: 21px; line-height:1.05; }
+  .item-inspector > p { color:#a9bbb5; font-size:9px; line-height:1.3; }
+  .sheet-close { min-height:32px; padding:5px 8px; background:#13201d; }
+  .compare-head > div { padding:8px 9px; }
+  .compare-head > div > span { font-size:8px; line-height:1.3; }
+  .compare-stats { margin-top:6px; }
+  .compare-line { min-height:28px; }
+  .gear-quick-read { margin:7px 0; padding:9px 10px; }
+  .gear-deep-details { margin-top:7px; }
+  .gear-deep-details > summary { min-height:36px; padding:7px 9px; }
+  .inspector-actions { margin:8px -13px -12px; }
+}

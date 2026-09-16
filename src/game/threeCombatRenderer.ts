@@ -612,18 +612,27 @@ export class ThreeCombatRenderer {
     root.add(protocolRing);
 
     const barRoot = new THREE.Group();
-    const barWidth = enemy.role === 'boss' ? 2.3 : enemy.role === 'elite' ? 1.6 : 1.35;
-    const bg = new THREE.Mesh(new THREE.PlaneGeometry(barWidth, 0.15), new THREE.MeshBasicMaterial({ color: 0x171e1d, transparent: true, opacity: 0.9, depthTest: false }));
-    bg.renderOrder = 30;
-    barRoot.add(bg);
-    const hp = new THREE.Mesh(new THREE.PlaneGeometry(barWidth, 0.11), new THREE.MeshBasicMaterial({ color: 0xff735f, depthTest: false }));
-    hp.position.z = 0.002;
-    hp.renderOrder = 31;
+    const barWidth = enemy.role === 'boss' ? 3.0 : enemy.role === 'elite' ? 2.2 : 1.9;
+    const hpBack = new THREE.Mesh(new THREE.PlaneGeometry(barWidth + 0.1, 0.24), new THREE.MeshBasicMaterial({ color: 0x050707, transparent: true, opacity: 0.96, depthTest: false, depthWrite: false, toneMapped: false }));
+    hpBack.position.y = -0.04;
+    hpBack.renderOrder = 30;
+    barRoot.add(hpBack);
+    const hp = new THREE.Mesh(new THREE.PlaneGeometry(barWidth, 0.16), new THREE.MeshBasicMaterial({ color: 0xff4a3d, depthTest: false, depthWrite: false, toneMapped: false }));
+    hp.position.y = -0.04;
+    hp.position.z = 0.003;
+    hp.renderOrder = 32;
     barRoot.add(hp);
-    const armor = new THREE.Mesh(new THREE.PlaneGeometry(barWidth, 0.065), new THREE.MeshBasicMaterial({ color: 0x72c7ef, depthTest: false }));
-    armor.position.y = 0.16;
-    armor.position.z = 0.003;
-    armor.renderOrder = 31;
+    if (enemy.maxArmor > 0) {
+      const armorBack = new THREE.Mesh(new THREE.PlaneGeometry(barWidth + 0.1, 0.15), new THREE.MeshBasicMaterial({ color: 0x050707, transparent: true, opacity: 0.96, depthTest: false, depthWrite: false, toneMapped: false }));
+      armorBack.position.y = 0.18;
+      armorBack.renderOrder = 30;
+      barRoot.add(armorBack);
+    }
+    const armor = new THREE.Mesh(new THREE.PlaneGeometry(barWidth, 0.09), new THREE.MeshBasicMaterial({ color: 0x6fd2ff, depthTest: false, depthWrite: false, toneMapped: false }));
+    armor.position.y = 0.18;
+    armor.position.z = 0.004;
+    armor.renderOrder = 33;
+    armor.visible = enemy.maxArmor > 0;
     barRoot.add(armor);
 
     this.dynamicRoot.add(root);
@@ -666,8 +675,9 @@ export class ThreeCombatRenderer {
       visual.barRoot.quaternion.copy(this.camera.quaternion);
       const hpRatio = THREE.MathUtils.clamp(enemy.hp / Math.max(1, enemy.maxHp), 0, 1);
       const armorRatio = enemy.maxArmor > 0 ? THREE.MathUtils.clamp(enemy.armor / enemy.maxArmor, 0, 1) : 0;
-      const barWidth = enemy.role === 'boss' ? 2.3 : enemy.role === 'elite' ? 1.6 : 1.35;
-      visual.barRoot.scale.setScalar(enemy.maxArmor > 0 && enemy.armor <= 0 ? 1.12 : 1);
+      const barWidth = enemy.role === 'boss' ? 3.0 : enemy.role === 'elite' ? 2.2 : 1.9;
+      visual.barRoot.scale.setScalar(enemy.id === mobileTargetId ? 1.18 : enemy.maxArmor > 0 && enemy.armor <= 0 ? 1.12 : 1);
+      visual.hp.material.color.setHex(enemy.maxArmor > 0 && enemy.armor <= 0 ? 0xff6557 : 0xff4a3d);
       visual.hp.scale.x = hpRatio;
       visual.hp.position.x = -barWidth * (1 - hpRatio) / 2;
       visual.armor.visible = enemy.maxArmor > 0 && enemy.armor > 0;
