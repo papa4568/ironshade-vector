@@ -1,0 +1,29 @@
+name: Build production dist artifact
+
+on:
+  push:
+    branches:
+      - perf/client-splitting-foundation
+
+jobs:
+  build-dist:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out validated main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build validated production client
+        run: npm run build
+      - name: Upload production dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: ironshade-production-dist
+          path: dist
+          if-no-files-found: error
