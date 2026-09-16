@@ -241,37 +241,27 @@ async function playMission(page, missionIndex, startingLevel) {
 }
 
 async function equipFreshLoot(page) {
-  let equipped = 0;
-  for (let guard = 0; guard < 4; guard += 1) {
-    const cards = page.locator('.inventory-card');
-    let fresh = null;
-    for (let index = 0; index < await cards.count(); index += 1) {
-      const card = cards.nth(index);
-      if (/\bNEW\b/i.test(await text(card))) { fresh = card; break; }
-    }
-    if (!fresh) break;
-    await fresh.click();
-    const inspector = page.locator('.item-inspector.open');
-    await inspector.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
-    const equip = inspector.locator('.inspector-actions button.primary').first();
-    if (await visible(equip)) {
-      await equip.click();
-      equipped += 1;
-      await page.waitForTimeout(250);
-      const close = page.locator('.item-inspector.open .sheet-close').first();
-      if (await visible(close)) {
-        await close.click();
-        await page.locator('.item-inspector.open').waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {});
-      }
-    } else {
-      const close = inspector.getByRole('button', { name: /^Close$/i }).first();
-      if (await visible(close)) {
-        await close.click();
-        await page.locator('.item-inspector.open').waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {});
-      }
-      break;
-    }
+  const cards = page.locator('.inventory-card');
+  let fresh = null;
+  for (let index = 0; index < await cards.count(); index += 1) {
+    const card = cards.nth(index);
+    if (/\bNEW\b/i.test(await text(card))) { fresh = card; break; }
   }
+  if (!fresh) return 0;
+  await fresh.click();
+  const inspector = page.locator('.item-inspector.open');
+  await inspector.waitFor({ state: 'visible', timeout: 5000 });
+  const equip = inspector.locator('.inspector-actions button.primary').first();
+  let equipped = 0;
+  if (await visible(equip)) {
+    await equip.click();
+    equipped = 1;
+    await page.waitForTimeout(250);
+  }
+  const close = inspector.getByRole('button', { name: /^Close$/i }).first();
+  await close.waitFor({ state: 'visible', timeout: 3000 });
+  await close.click({ force: true });
+  await inspector.waitFor({ state: 'hidden', timeout: 3000 });
   return equipped;
 }
 async function spendProgression(page, level) {
