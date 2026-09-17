@@ -66,6 +66,7 @@ writeFileSync(appGradlePath, appGradle);
 
 writeFileSync(activityPath, `package app.ironshade.vector;
 
+import android.content.pm.ApplicationInfo;
 import android.os.Bundle;
 import android.view.View;
 import android.webkit.WebView;
@@ -90,7 +91,8 @@ public class MainActivity extends BridgeActivity {
 
     private void configureGameWebView() {
         WebView webView = getBridge().getWebView();
-        if (BuildConfig.DEBUG) WebView.setWebContentsDebuggingEnabled(true);
+        boolean debuggable = (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+        if (debuggable) WebView.setWebContentsDebuggingEnabled(true);
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         webView.setHorizontalScrollBarEnabled(false);
         webView.setVerticalScrollBarEnabled(false);
