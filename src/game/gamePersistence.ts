@@ -2,6 +2,7 @@ import { loadCampaign, type CampaignState } from './campaign';
 import { loadProfile, type PlayerProfile } from './meta';
 import { GAME_STATE_STORAGE_KEY, validateStoredCampaign, validateStoredProfile } from './saveRecovery';
 
+// Profile and campaign are committed together so readers never observe half of a progression update.
 type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 
 export type PersistedGameState = {
