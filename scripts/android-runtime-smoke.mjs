@@ -7,31 +7,19 @@ if (typeof WebSocket !== 'function') {
   throw new Error('Node runtime does not expose WebSocket support required for Android runtime smoke testing.');
 }
 
-async function waitForTarget() {
-  let lastError = null;
-  let lastTargets = [];
-  while (Date.now() - startedAt < timeoutMs) {
-    try {
-      const response = await fetch(`${cdpBase}/json/list`);
-      if (!response.ok) throw new Error(`CDP target listing returned HTTP ${response.status}`);
-      const targets = await response.json();
-      lastTargets = targets;
-      const candidates = targets.filter(candidate => candidate.webSocketDebuggerUrl);
-      const readyTarget = candidates.find(candidate => candidate.title === 'Ironshade Vector')
-        ?? candidates.find(candidate => /ironshade/i.test(candidate.title ?? '') && /localhost/i.test(candidate.url ?? ''));
-      if (readyTarget) return readyTarget;
-    } catch (error) {
-      lastError = error;
-    }
-    await sleep(500);
-  }
-  throw new Error(`Timed out waiting for ready Android WebView CDP target; targets=${JSON.stringify(lastTargets)}${lastError ? ` error=${lastError}` : ''}`);
+async function listTargets() {
+  const response = await fetch(`${cdpBase}/json/list`);
+  if (!response.ok) throw new Error(`CDP target listing returned HTTP ${response.status}`);
+  return await response.json();
 }
 
-function connect(url) {
+function connect(url, timeout = 5_000) {
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(url);
-    const timer = setTimeout(() => reject(new Error('Timed out connecting to Android WebView CDP socket')), 15_000);
+    const timer = setTimeout(() => {
+      socket.close();
+      reject(new Error('Timed out connecting to Android WebView CDP socket'));
+    }, timeout);
     socket.addEventListener('open', () => {
       clearTimeout(timer);
       resolve(socket);
@@ -43,53 +31,109 @@ function connect(url) {
   });
 }
 
-const target = await waitForTarget();
-console.log(`ANDROID_CDP_TARGET title=${JSON.stringify(target.title ?? '')} url=${JSON.stringify(target.url ?? '')}`);
-const socket = await connect(target.webSocketDebuggerUrl);
-let requestId = 0;
-const pending = new Map();
+function createSession(socket) {
+  let requestId = 0;
+  const pending = new Map();
 
-socket.addEventListener('message', event => {
-  let message;
-  try {
-    message = JSON.parse(String(event.data));
-  } catch {
-    return;
-  }
-  if (!message.id) return;
-  const request = pending.get(message.id);
-  if (!request) return;
-  pending.delete(message.id);
-  if (message.error) request.reject(new Error(message.error.message ?? 'CDP request failed'));
-  else request.resolve(message.result);
-});
+  const rejectPending = error => {
+    for (const request of pending.values()) request.reject(error);
+    pending.clear();
+  };
 
-function call(method, params = {}) {
-  const id = ++requestId;
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      pending.delete(id);
-      reject(new Error(`Timed out waiting for CDP ${method}`));
-    }, 20_000);
-    pending.set(id, {
-      resolve: value => { clearTimeout(timer); resolve(value); },
-      reject: error => { clearTimeout(timer); reject(error); },
+  socket.addEventListener('message', event => {
+    let message;
+    try {
+      message = JSON.parse(String(event.data));
+    } catch {
+      return;
+    }
+    if (!message.id) return;
+    const request = pending.get(message.id);
+    if (!request) return;
+    pending.delete(message.id);
+    if (message.error) request.reject(new Error(message.error.message ?? 'CDP request failed'));
+    else request.resolve(message.result);
+  });
+  socket.addEventListener('close', () => rejectPending(new Error('Android WebView CDP socket closed')));
+  socket.addEventListener('error', () => rejectPending(new Error('Android WebView CDP socket failed')));
+
+  function call(method, params = {}, timeout = 20_000) {
+    if (socket.readyState !== WebSocket.OPEN) return Promise.reject(new Error(`CDP socket is not open for ${method}`));
+    const id = ++requestId;
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        pending.delete(id);
+        reject(new Error(`Timed out waiting for CDP ${method}`));
+      }, timeout);
+      pending.set(id, {
+        resolve: value => { clearTimeout(timer); resolve(value); },
+        reject: error => { clearTimeout(timer); reject(error); },
+      });
+      socket.send(JSON.stringify({ id, method, params }));
     });
-    socket.send(JSON.stringify({ id, method, params }));
-  });
+  }
+
+  async function evaluate(expression, timeout) {
+    const response = await call('Runtime.evaluate', {
+      expression,
+      awaitPromise: true,
+      returnByValue: true,
+    }, timeout);
+    if (response.exceptionDetails) {
+      throw new Error(response.exceptionDetails.exception?.description ?? response.exceptionDetails.text ?? 'Runtime.evaluate failed');
+    }
+    return response.result?.value;
+  }
+
+  return {
+    call,
+    evaluate,
+    close() {
+      rejectPending(new Error('Android WebView CDP session closed'));
+      if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) socket.close();
+    },
+  };
 }
 
-async function evaluate(expression) {
-  const response = await call('Runtime.evaluate', {
-    expression,
-    awaitPromise: true,
-    returnByValue: true,
-  });
-  if (response.exceptionDetails) {
-    throw new Error(response.exceptionDetails.exception?.description ?? response.exceptionDetails.text ?? 'Runtime.evaluate failed');
+async function waitForResponsiveSession() {
+  let lastError = null;
+  let lastTargets = [];
+  while (Date.now() - startedAt < timeoutMs) {
+    try {
+      const targets = await listTargets();
+      lastTargets = targets;
+      const candidates = targets.filter(candidate => candidate.webSocketDebuggerUrl && (
+        candidate.title === 'Ironshade Vector'
+        || (/ironshade/i.test(candidate.title ?? '') && /localhost/i.test(candidate.url ?? ''))
+      ));
+
+      for (const target of candidates) {
+        let session;
+        try {
+          const socket = await connect(target.webSocketDebuggerUrl, 4_000);
+          session = createSession(socket);
+          await session.call('Runtime.enable', {}, 4_000);
+          const probe = await session.evaluate(`({ title: document.title, url: location.href, readyState: document.readyState })`, 4_000);
+          if (probe?.title === 'Ironshade Vector' && /localhost/i.test(probe?.url ?? '')) {
+            return { target, session };
+          }
+          lastError = new Error(`Android WebView target was not ready: ${JSON.stringify(probe)}`);
+        } catch (error) {
+          lastError = error;
+        }
+        session?.close();
+      }
+    } catch (error) {
+      lastError = error;
+    }
+    await sleep(500);
   }
-  return response.result?.value;
+  throw new Error(`Timed out waiting for responsive Android WebView CDP target; targets=${JSON.stringify(lastTargets)}${lastError ? ` error=${lastError}` : ''}`);
 }
+
+const { target, session } = await waitForResponsiveSession();
+const { call, evaluate } = session;
+console.log(`ANDROID_CDP_TARGET title=${JSON.stringify(target.title ?? '')} url=${JSON.stringify(target.url ?? '')}`);
 
 async function snapshot() {
   return evaluate(`(() => ({
@@ -147,7 +191,6 @@ async function tap(selector, id = 1, holdMs = 90) {
   return metrics;
 }
 
-await call('Runtime.enable');
 await call('Page.enable').catch(() => undefined);
 await waitFor(`document.readyState === 'complete' && document.title === 'Ironshade Vector'`, 'Ironshade document', 45_000);
 await waitFor(`(() => {
@@ -240,5 +283,5 @@ if (scrollAfter.x !== scrollBefore.x || scrollAfter.y !== scrollBefore.y) {
 }
 
 console.log(`ANDROID_TOUCH_SMOKE_PASS move=drag aim=drag fire=hold ability=tap dodge=tap weapon=cycle scroll=${scrollAfter.x},${scrollAfter.y}`);
-socket.close();
+session.close();
 console.log(`ANDROID_RUNTIME_SMOKE_PASS title=${startup.title} route=ship>contracts>combat canvases=${combat.canvases}`);
