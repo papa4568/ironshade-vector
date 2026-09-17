@@ -1,0 +1,41 @@
+name: Apply megastructure loot carry fix
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/fix-megastructure-loot-carry.yml'
+      - 'scripts/apply-megastructure-loot-carry.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply expedition loot carry fix
+        run: node scripts/apply-megastructure-loot-carry.mjs
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Validate complete production build
+        run: npm run build
+      - name: Verify patch cleanliness
+        run: git diff --check
+      - name: Commit verified fix
+        run: |
+          if git diff --quiet; then
+            echo 'No changes required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/components/GameCanvas.tsx src/game/expeditionCarry.ts tests/gameplay-regressions.ts
+          git commit -m 'Preserve megastructure loot across stages'
+          git push origin HEAD:main
