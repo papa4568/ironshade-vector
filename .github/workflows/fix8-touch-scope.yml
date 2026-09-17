@@ -1,0 +1,90 @@
+name: Fix 8 combat touch scope
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply scoped combat touch handling
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          combat_path = Path('src/components/GameCanvas.tsx')
+          combat = combat_path.read_text()
+          old_effect = "  useEffect(() => { const prevent = (event: Event) => event.preventDefault(); document.addEventListener('touchmove', prevent, { passive: false }); document.addEventListener('gesturestart', prevent, { passive: false }); return () => { document.removeEventListener('touchmove', prevent); document.removeEventListener('gesturestart', prevent); }; }, []);\n"
+          if combat.count(old_effect) != 1:
+              raise SystemExit('Expected exactly one document-wide combat gesture blocker.')
+          combat_path.write_text(combat.replace(old_effect, '', 1))
+
+          css_path = Path('src/index.css')
+          css = css_path.read_text()
+          old_root = ".game-root {\n  position: relative;\n  width: 100%;\n  height: 100%;\n  background: #050808;\n  touch-action: none;\n  user-select: none;"
+          new_root = ".game-root {\n  position: relative;\n  width: 100%;\n  height: 100%;\n  background: #050808;\n  user-select: none;"
+          if css.count(old_root) != 1:
+              raise SystemExit('Expected exactly one game-root touch-action rule.')
+          css = css.replace(old_root, new_root, 1)
+
+          old_overlay = ".overlay {\n  position: absolute;\n  inset: 0;\n  display: grid;\n  place-items: center;\n  background: rgba(3, 6, 7, 0.68);\n  backdrop-filter: blur(4px);\n  padding: 20px;\n  z-index: 10;\n}\n.overlay-card {\n  width: min(440px, 92vw);\n  padding: 28px;"
+          new_overlay = ".overlay {\n  position: absolute;\n  inset: 0;\n  display: grid;\n  place-items: center;\n  background: rgba(3, 6, 7, 0.68);\n  backdrop-filter: blur(4px);\n  padding: 20px;\n  z-index: 10;\n  overflow-y: auto;\n  overscroll-behavior: contain;\n  touch-action: pan-y;\n  -webkit-overflow-scrolling: touch;\n}\n.overlay-card {\n  width: min(440px, 92vw);\n  max-height: calc(100dvh - 40px);\n  overflow-y: auto;\n  touch-action: pan-y;\n  -webkit-overflow-scrolling: touch;\n  padding: 28px;"
+          if css.count(old_overlay) != 1:
+              raise SystemExit('Expected exactly one base overlay rule.')
+          css_path.write_text(css.replace(old_overlay, new_overlay, 1))
+
+          test_path = Path('tests/ui-readability.ts')
+          test = test_path.read_text()
+          old_read = "const objectiveCss = read('src/part7.css');\n"
+          new_read = "const objectiveCss = read('src/part7.css');\nconst rootCss = read('src/index.css');\n"
+          if test.count(old_read) != 1:
+              raise SystemExit('Unable to locate UI test stylesheet imports.')
+          test = test.replace(old_read, new_read, 1)
+
+          anchor = "assert(combat.includes('hostileRouteMode') && combat.includes('objectiveRouteMode'), 'Combat cleanup guidance is missing obstacle-aware route state.');\n"
+          addition = """assert(combat.includes('hostileRouteMode') && combat.includes('objectiveRouteMode'), 'Combat cleanup guidance is missing obstacle-aware route state.');
+const gameRootRule = rootCss.match(/\\.game-root\\s*\\{[^}]*\\}/)?.[0] ?? '';
+const gameCanvasRule = rootCss.match(/\\.game-canvas\\s*\\{[^}]*\\}/)?.[0] ?? '';
+const touchStickRule = rootCss.match(/\\.touch-stick\\s*\\{[^}]*\\}/)?.[0] ?? '';
+const touchButtonRule = rootCss.match(/\\.touch-button\\s*\\{[^}]*\\}/)?.[0] ?? '';
+const overlayRule = rootCss.match(/\\.overlay\\s*\\{[^}]*\\}/)?.[0] ?? '';
+const overlayCardRule = rootCss.match(/\\.overlay-card\\s*\\{[^}]*\\}/)?.[0] ?? '';
+assert(!combat.includes("document.addEventListener('touchmove'") && !combat.includes("document.addEventListener('gesturestart'"), 'Combat still suppresses touch gestures at document scope.');
+assert(!gameRootRule.includes('touch-action: none'), 'Combat root still disables gestures for descendant overlays.');
+assert(gameCanvasRule.includes('touch-action: none') && touchStickRule.includes('touch-action: none') && touchButtonRule.includes('touch-action: manipulation'), 'Combat input surfaces are missing scoped touch-action protection.');
+assert(overlayRule.includes('touch-action: pan-y') && overlayRule.includes('overflow-y: auto') && overlayCardRule.includes('touch-action: pan-y') && overlayCardRule.includes('overflow-y: auto'), 'Combat overlays are not explicit vertical touch-scroll surfaces.');
+"""
+          if test.count(anchor) != 1:
+              raise SystemExit('Unable to locate combat UI regression-test anchor.')
+          test_path.write_text(test.replace(anchor, addition, 1))
+          PY
+      - name: Install dependencies
+        run: npm install
+      - name: Validate complete production build
+        run: npm run build
+      - name: Verify patch cleanliness
+        run: git diff --check
+      - name: Commit verified fix
+        shell: bash
+        run: |
+          rm .github/workflows/fix8-touch-scope.yml
+          git add src/components/GameCanvas.tsx src/index.css tests/ui-readability.ts .github/workflows/fix8-touch-scope.yml
+          git diff --cached --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Scope combat touch gestures to controls"
+          git push
