@@ -143,6 +143,16 @@ async function runSaveRecoveryRegressions() {
   assert.deepEqual(loadProfile(), createDefaultProfile(), 'normal profile loading should see a clean slot after quarantine');
 
   storage.clear();
+  const mismatchedEquipmentProfile = createDefaultProfile();
+  mismatchedEquipmentProfile.equipped.carbine = 'starter-suit';
+  const mismatchedEquipmentRaw = JSON.stringify(mismatchedEquipmentProfile);
+  localStorage.setItem(PROFILE_STORAGE_KEY, mismatchedEquipmentRaw);
+  const equipmentRecovery = await prepareSaveRecovery({ storage: localStorage, indexedDb: null, now: () => new Date('2026-09-16T12:01:30.000Z'), id: () => 'equipment' });
+  assert.equal(equipmentRecovery.blocked, false, 'an equipped-slot mismatch should be quarantined after backup');
+  assert.equal(localStorage.getItem(PROFILE_STORAGE_KEY), null, 'mismatched equipment must not reach the normal profile loader');
+  assert.ok(equipmentRecovery.backups.some(backup => backup.kind === 'profile'), 'mismatched equipment should create a profile recovery backup');
+
+  storage.clear();
   const incompatibleCampaignRaw = JSON.stringify({ ...createDefaultCampaign(), version: 99 });
   localStorage.setItem(CAMPAIGN_STORAGE_KEY, incompatibleCampaignRaw);
   const campaignRecovery = await prepareSaveRecovery({ storage: localStorage, indexedDb: null, now: () => new Date('2026-09-16T12:02:00.000Z'), id: () => 'campaign' });
@@ -152,6 +162,16 @@ async function runSaveRecoveryRegressions() {
   assert.ok(campaignBackup, 'incompatible campaign should produce a recovery backup');
   assert.equal(localStorage.getItem(campaignBackup.backupKey), incompatibleCampaignRaw, 'campaign recovery backup must preserve the exact original bytes');
   assert.deepEqual(loadCampaign(), createDefaultCampaign(), 'normal campaign loading should see a clean slot after quarantine');
+
+  storage.clear();
+  const invalidUpgradeCampaign = createDefaultCampaign();
+  invalidUpgradeCampaign.shipUpgrades.reactor = 9;
+  const invalidUpgradeRaw = JSON.stringify(invalidUpgradeCampaign);
+  localStorage.setItem(CAMPAIGN_STORAGE_KEY, invalidUpgradeRaw);
+  const upgradeRecovery = await prepareSaveRecovery({ storage: localStorage, indexedDb: null, now: () => new Date('2026-09-16T12:02:15.000Z'), id: () => 'upgrade' });
+  assert.equal(upgradeRecovery.blocked, false, 'out-of-range ship upgrades should be quarantined after backup');
+  assert.equal(localStorage.getItem(CAMPAIGN_STORAGE_KEY), null, 'invalid upgrade state must not reach campaign loading');
+  assert.ok(upgradeRecovery.backups.some(backup => backup.kind === 'campaign'), 'invalid upgrade state should create a campaign recovery backup');
 
   storage.clear();
   const incompatibleStateRaw = JSON.stringify({ version: 1, profile: createDefaultProfile(), campaign: { ...createDefaultCampaign(), version: 99 }, savedAt: '2026-09-16T12:02:30.000Z' });
@@ -164,6 +184,14 @@ async function runSaveRecoveryRegressions() {
   assert.equal(localStorage.getItem(stateBackup.backupKey), incompatibleStateRaw, 'combined state recovery must preserve the exact original bytes');
 
   storage.clear();
+  const invalidTimestampStateRaw = JSON.stringify({ version: 1, profile: createDefaultProfile(), campaign: createDefaultCampaign(), savedAt: 'not-a-date' });
+  localStorage.setItem(GAME_STATE_STORAGE_KEY, invalidTimestampStateRaw);
+  const timestampRecovery = await prepareSaveRecovery({ storage: localStorage, indexedDb: null, now: () => new Date('2026-09-16T12:02:45.000Z'), id: () => 'timestamp' });
+  assert.equal(timestampRecovery.blocked, false, 'invalid envelope metadata should be quarantined after backup');
+  assert.equal(localStorage.getItem(GAME_STATE_STORAGE_KEY), null, 'invalid envelope metadata must not reach the combined-state loader');
+  assert.ok(timestampRecovery.backups.some(backup => backup.kind === 'state'), 'invalid envelope metadata should create a state recovery backup');
+
+  storage.clear();
   const unreadableRaw = '{bad-profile-json';
   localStorage.setItem(PROFILE_STORAGE_KEY, unreadableRaw);
   failBackupWrites = true;
@@ -173,7 +201,7 @@ async function runSaveRecoveryRegressions() {
   assert.equal(localStorage.getItem(PROFILE_STORAGE_KEY), unreadableRaw, 'failed backup must leave the original save untouched');
   assert.equal(blockedRecovery.backups.length, 0, 'a failed copy must never be reported as a verified backup');
 
-  return malformedProfileRecovery.backups.length + campaignRecovery.backups.length + stateRecovery.backups.length;
+  return malformedProfileRecovery.backups.length + equipmentRecovery.backups.length + campaignRecovery.backups.length + upgradeRecovery.backups.length + stateRecovery.backups.length + timestampRecovery.backups.length;
 }
 
 runSaveRecoveryRegressions()
