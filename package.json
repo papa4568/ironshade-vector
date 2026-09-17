@@ -7,7 +7,7 @@
     "dev": "vite",
     "test:beta": "tsc --noEmit && vite build --ssr tests/beta-level15.ts --outDir .beta-dist && node .beta-dist/beta-level15.js",
     "test:gameplay": "vite build --ssr tests/gameplay-regressions.ts --outDir .gameplay-dist && node .gameplay-dist/gameplay-regressions.js",
-    "build": "npm run test:beta && npm run test:gameplay && npm run test:service && npm run test:maps && npm run test:loot && npm run test:ui && npm run test:render && vite build && npm run test:bundle",
+    "build": "npm run test:beta && npm run test:gameplay && npm run test:network && npm run test:service && npm run test:maps && npm run test:loot && npm run test:ui && npm run test:render && vite build && npm run test:bundle",
     "preview": "vite preview",
     "test:maps": "vite build --ssr tests/map-navigation.ts --outDir .map-dist && node .map-dist/map-navigation.js",
     "test:loot": "vite build --ssr tests/loot-difficulty.ts --outDir .loot-dist && node .loot-dist/loot-difficulty.js",
@@ -15,7 +15,8 @@
     "test:render": "vite build --ssr tests/render-performance.ts --outDir .render-dist && node .render-dist/render-performance.js",
     "test:bundle": "node tests/client-bundle-budget.mjs",
     "android:sync": "npx cap sync android",
-    "test:service": "node tests/service-regressions.mjs"
+    "test:service": "node tests/service-regressions.mjs",
+    "test:network": "vite build --ssr tests/network-regressions.ts --outDir .network-dist && node .network-dist/network-regressions.js"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.0",

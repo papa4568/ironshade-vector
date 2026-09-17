@@ -7,7 +7,7 @@ import { advanceBlackLatticeAfterContract, getBlackLatticeContract } from './gam
 import { advanceEscalationAfterContract, applyShipBonuses, dailyOperationContract, factionDisplayName, generateContracts, generateEscalationContract, resourceLabels, settleContract, type CampaignReward, type CampaignState, type Contract, type ExpeditionProgress, type ResourceId } from './game/campaign';
 import { feedback } from './game/feedback';
 import { awardRecovery, buildIdentity, deriveCombatBuild, discardItem, dominantEquipmentFaction, setProfileSettings, type PlayerProfile, type ProfileSettings, type VictoryReward } from './game/meta';
-import { createTelemetryRequestId, loadOperationsSnapshot, uploadRunTelemetry, type OperationsSnapshot } from './game/network';
+import { createTelemetryRequestId, isNetworkRequestError, loadOperationsSnapshot, networkFailureMessage, uploadRunTelemetry, type OperationsSnapshot } from './game/network';
 import { advanceStoryAfterContract, generateStoryContracts } from './game/story';
 import { advancePostKhepriAfterContract, getPostKhepriContract, syncPostKhepriAccess } from './game/postKhepri';
 import { advanceInterdictionAfterContract, getCommandTraceContracts, getInterdictionContract, syncInterdictionAccess } from './game/postKhepriInterdiction';
@@ -31,7 +31,7 @@ function SurfaceLoader({ screen }: { screen: Screen }) {
   const label = screen === 'combat' ? 'Preparing combat renderer' : screen === 'build' ? 'Opening equipment systems' : screen === 'ship' ? 'Opening command deck' : 'Loading mission debrief';
   return <main className="surface-loader" role="status" aria-live="polite"><div><span>QUIET SIGNAL // CLIENT STREAM</span><b>{label}</b><i /></div></main>;
 }
-type Debrief = { runId: number; contract: Contract; campaignReward: CampaignReward; lootReward: VictoryReward; uplinkStatus: UplinkStatus; storyNote: string | null; chapterNote: string | null; postKhepriNote: string | null; interdictionNote: string | null; escalationNote: string | null; directiveNote: string | null; protocolValue: number; expeditionProgress?: ExpeditionProgress };
+type Debrief = { runId: number; contract: Contract; campaignReward: CampaignReward; lootReward: VictoryReward; uplinkStatus: UplinkStatus; uplinkError: string | null; storyNote: string | null; chapterNote: string | null; postKhepriNote: string | null; interdictionNote: string | null; escalationNote: string | null; directiveNote: string | null; protocolValue: number; expeditionProgress?: ExpeditionProgress };
 
 function debriefRarityCue(rarity: VictoryReward['loot'][number]['rarity']) {
   if (rarity === 'Singular') return 'RULE-CHANGING';
@@ -72,7 +72,7 @@ function DebriefScreen({ result, onShip, onBuild, onRepeat, onDiscard }: { resul
     : result.uplinkStatus === 'sharing'
       ? ['TELEMETRY UPLINK', 'Banked progression is already safe. Anonymous run telemetry is uploading separately.']
       : result.uplinkStatus === 'error'
-        ? ['UPLINK DELAYED', 'Rewards and local progression are safe. The optional telemetry upload failed and will not block play.']
+        ? ['UPLINK DELAYED', result.uplinkError ?? 'Rewards and local progression are safe. The optional telemetry upload failed and will not block play.']
         : ['LOCAL RUN ONLY', 'Anonymous telemetry sharing is disabled in Build Bay → Settings. No run data was uploaded.'];
 
   return (
@@ -126,6 +126,7 @@ function App() {
   const [campaign, setCampaign] = useState<CampaignState>(initialGameState.campaign);
   const [operations, setOperations] = useState<OperationsSnapshot | null>(null);
   const [operationsStatus, setOperationsStatus] = useState<'loading' | 'online' | 'offline'>('loading');
+  const [operationsError, setOperationsError] = useState('');
   const [screen, setScreen] = useState<Screen>('ship');
   const contracts = useMemo(() => {
     const story = generateStoryContracts(campaign);
@@ -159,10 +160,20 @@ function App() {
   useEffect(() => feedback.configure(profile.settings), [profile.settings]);
   useEffect(() => {
     let active = true;
-    loadOperationsSnapshot()
-      .then(snapshot => { if (active) { setOperations(snapshot); setOperationsStatus('online'); } })
-      .catch(() => { if (active) setOperationsStatus('offline'); });
-    return () => { active = false; };
+    const controller = new AbortController();
+    loadOperationsSnapshot({ signal: controller.signal })
+      .then(snapshot => {
+        if (!active) return;
+        setOperations(snapshot);
+        setOperationsStatus('online');
+        setOperationsError('');
+      })
+      .catch(error => {
+        if (!active || (isNetworkRequestError(error) && error.kind === 'aborted')) return;
+        setOperationsStatus('offline');
+        setOperationsError(networkFailureMessage(error, 'Operations link'));
+      });
+    return () => { active = false; controller.abort(); };
   }, []);
   useEffect(() => { if (!contracts.some(contract => contract.id === selectedContractId) && contracts[0]) setSelectedContractId(contracts[0].id); }, [contracts, selectedContractId]);
 
@@ -203,7 +214,7 @@ function App() {
     setProfile(lootReward.profile);
     setNewLootIds(lootReward.loot.map(item => item.id));
     setStatusMessage(directiveAdvance.note ?? escalationAdvance.note ?? interdictionAdvance.note ?? postKhepriAdvance.note ?? chapterAdvance.note ?? storyAdvance.note ?? `${selectedContract.title} complete // ${depth === 'deep' ? 'deep' : 'safe'} extraction banked`);
-    setDebrief({ runId: debriefRunId, contract: selectedContract, campaignReward, lootReward, uplinkStatus, storyNote: storyAdvance.note, chapterNote: chapterAdvance.note, postKhepriNote: postKhepriAdvance.note, interdictionNote: interdictionAdvance.note, escalationNote: escalationAdvance.note, directiveNote: directiveAdvance.note, protocolValue: telemetry.eliteProtocolsDefeated, expeditionProgress });
+    setDebrief({ runId: debriefRunId, contract: selectedContract, campaignReward, lootReward, uplinkStatus, uplinkError: null, storyNote: storyAdvance.note, chapterNote: chapterAdvance.note, postKhepriNote: postKhepriAdvance.note, interdictionNote: interdictionAdvance.note, escalationNote: escalationAdvance.note, directiveNote: directiveAdvance.note, protocolValue: telemetry.eliteProtocolsDefeated, expeditionProgress });
     feedback.cue(lootReward.loot.some(item => (item.recoveryQuality ?? 0) >= 4) ? 'rareLoot' : 'loot');
     setScreen('debrief');
 
@@ -212,9 +223,9 @@ function App() {
       void uploadRunTelemetry({ contract: selectedContract, telemetry, outcome: depth, salvageTags, level: profile.level, buildLabel, requestId: telemetryRequestId, recoveryQualities: lootReward.loot.map(item => item.recoveryQuality ?? 0), modifierGrades: lootReward.loot.flatMap(item => item.modifiers.map(modifier => modifier.grade ?? 3)), singularCount: lootReward.loot.filter(item => item.rarity === 'Singular').length })
         .then(result => {
           setOperations(current => current ? { ...current, metrics: result.metrics } : current);
-          setDebrief(current => current?.runId === debriefRunId ? { ...current, uplinkStatus: 'shared' } : current);
+          setDebrief(current => current?.runId === debriefRunId ? { ...current, uplinkStatus: 'shared', uplinkError: null } : current);
         })
-        .catch(() => setDebrief(current => current?.runId === debriefRunId ? { ...current, uplinkStatus: 'error' } : current));
+        .catch(error => setDebrief(current => current?.runId === debriefRunId ? { ...current, uplinkStatus: 'error', uplinkError: `${networkFailureMessage(error, 'Telemetry uplink')} Rewards and local progression are safe.` } : current));
     }
   };
   const reportFailedAttempt = (telemetry: Telemetry) => { if (!selectedContract || !profile.settings.telemetrySharing) return; const telemetryRequestId = createTelemetryRequestId(); void uploadRunTelemetry({ contract: selectedContract, telemetry, outcome: 'failed', salvageTags: 0, level: profile.level, buildLabel: buildIdentity(profile), requestId: telemetryRequestId }).then(result => setOperations(current => current ? { ...current, metrics: result.metrics } : current)).catch(() => undefined); };
@@ -227,7 +238,7 @@ function App() {
 
   return <div className="app-shell" data-client-architecture="split-v1" onPointerDownCapture={() => feedback.unlock()} onClickCapture={event => { const target = event.target as HTMLElement; if (target.closest('button') && !target.closest('.game-root')) feedback.cue('ui'); }}>
     <Suspense fallback={<SurfaceLoader screen={screen} />}>
-      {screen === 'ship' && <ShipHub profile={profile} campaign={campaign} contracts={contracts} operations={operations} operationsStatus={operationsStatus} telemetrySharing={profile.settings.telemetrySharing} selectedContractId={selectedContract?.id ?? ''} statusMessage={statusMessage} onSelectContract={setSelectedContractId} onDeploy={openCombat} onOpenBuild={openBuild} onCampaignChange={setCampaign} />}
+      {screen === 'ship' && <ShipHub profile={profile} campaign={campaign} contracts={contracts} operations={operations} operationsStatus={operationsStatus} operationsError={operationsError} telemetrySharing={profile.settings.telemetrySharing} selectedContractId={selectedContract?.id ?? ''} statusMessage={statusMessage} onSelectContract={setSelectedContractId} onDeploy={openCombat} onOpenBuild={openBuild} onCampaignChange={setCampaign} />}
       {screen === 'build' && <Armory profile={profile} campaign={campaign} newLootIds={newLootIds} onProfileChange={setProfile} onCampaignChange={setCampaign} onClose={() => { setNewLootIds([]); setScreen('ship'); }} />}
       {screen === 'combat' && selectedContract && <GameCanvas key={selectedContract.id} build={combatBuild} mission={selectedContract} profileSettings={profile.settings} consumables={campaign.consumables} buildLabel={buildIdentity(profile)} operatorFaction={dominantEquipmentFaction(profile)} onProfileSettingsChange={changeProfileSettings} onConsumablesChange={consumables => setCampaign(current => ({ ...current, consumables }))} onMissionResolve={finishMission} onAttemptFailed={reportFailedAttempt} onReturnToHub={abandonMission} />}
       {screen === 'debrief' && debrief && <DebriefScreen result={debrief} onShip={() => { setNewLootIds([]); setScreen('ship'); }} onBuild={openBuild} onDiscard={discardRecoveredItem} onRepeat={contracts.some(contract => contract.id === debrief.contract.id) ? () => { void loadGameCanvas(); setScreen('combat'); } : undefined} />}

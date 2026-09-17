@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import '../part4.css';
 import '../part8.css';
 import '../part9.css';
@@ -30,7 +30,7 @@ import { buildIdentity, type PlayerProfile } from '../game/meta';
 import { consumableDefinitions, type ConsumableId } from '../game/consumables';
 import { factionGearChance } from '../game/factionGear';
 import { getEnvironmentalEventForecast } from '../game/environmentalEvents';
-import { loadRunTrace, type OperationsSnapshot, type RunTraceRecord } from '../game/network';
+import { isNetworkRequestError, loadRunTrace, networkFailureMessage, type OperationsSnapshot, type RunTraceRecord } from '../game/network';
 import { chooseStoryBranch, getStoryChoicePrompt, latticeFindings, startStoryArc, storyArcDefinitions } from '../game/story';
 import { protocolForecastForContract, protocolTierSummary } from '../game/eliteProtocols';
 import { directiveModifierName, directiveRewardPreview } from '../game/operationDirectives';
@@ -43,6 +43,7 @@ type Props = {
   contracts: Contract[];
   operations: OperationsSnapshot | null;
   operationsStatus: 'loading' | 'online' | 'offline';
+  operationsError: string;
   telemetrySharing: boolean;
   selectedContractId: string;
   statusMessage: string;
@@ -89,7 +90,7 @@ function contractReadiness(contract: Contract, operatorLevel: number): { tone: C
   return { tone: 'matched', label: 'LEVEL-APPROPRIATE' };
 }
 
-export default function ShipHub({ profile, campaign, contracts, operations, operationsStatus, telemetrySharing, selectedContractId, statusMessage, onSelectContract, onDeploy, onOpenBuild, onCampaignChange }: Props) {
+export default function ShipHub({ profile, campaign, contracts, operations, operationsStatus, operationsError, telemetrySharing, selectedContractId, statusMessage, onSelectContract, onDeploy, onOpenBuild, onCampaignChange }: Props) {
   const [tab, setTab] = useState<Tab>('overview');
   const [message, setMessage] = useState(campaign.lastOutcome);
   const [traceRecord, setTraceRecord] = useState<RunTraceRecord | null>(null);
@@ -97,6 +98,8 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
   const [contractFilter, setContractFilter] = useState<ContractFilter>('all');
   const hubRef = useRef<HTMLElement>(null);
   const traceRequestIdRef = useRef(0);
+  const traceAbortRef = useRef<AbortController | null>(null);
+  useEffect(() => () => traceAbortRef.current?.abort(), []);
   const switchTab = (next: Tab) => {
     setTab(next);
     requestAnimationFrame(() => hubRef.current?.scrollTo({ top: 0, left: 0, behavior: 'auto' }));
@@ -154,17 +157,22 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
   };
   const inspectTrace = async (id: string) => {
     const requestId = ++traceRequestIdRef.current;
+    traceAbortRef.current?.abort();
+    const controller = new AbortController();
+    traceAbortRef.current = controller;
     setTraceRecord(null);
     setTraceMessage('Loading anonymous run trace…');
     try {
-      const trace = await loadRunTrace(id);
+      const trace = await loadRunTrace(id, { signal: controller.signal });
       if (traceRequestIdRef.current !== requestId) return;
       setTraceRecord(trace);
       setTraceMessage('');
-    } catch {
-      if (traceRequestIdRef.current !== requestId) return;
+    } catch (error) {
+      if (traceRequestIdRef.current !== requestId || (isNetworkRequestError(error) && error.kind === 'aborted')) return;
       setTraceRecord(null);
-      setTraceMessage('Run trace unavailable. The rest of the Operations Board remains usable.');
+      setTraceMessage(`${networkFailureMessage(error, 'Run trace')} The rest of the Operations Board remains usable.`);
+    } finally {
+      if (traceAbortRef.current === controller) traceAbortRef.current = null;
     }
   };
   const openDaily = () => {
@@ -251,7 +259,7 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
           <div className="operations-facts"><span><small>LOCATION</small><b>{dailyContract.locationName}</b></span><span><small>SPONSOR</small><b>{factionDisplayName(dailyContract.sponsor)}</b></span><span><small>RESET</small><b>00:00 UTC</b></span><span><small>FIRST EXTRACTION</small><b>{campaign.dailyCompletedDate === operation.date ? 'BONUS BANKED' : '+15% MATERIALS'}</b></span></div>
           <div className="condition-chips">{dailyContract.conditionLabels.map(condition => <span key={condition}>{condition}</span>)}</div>
           <button onClick={openDaily}>Open daily contract</button>
-        </> : <p>{operationsStatus === 'offline' ? 'Standard contracts remain fully playable. The board will reconnect automatically on a later app load.' : 'The Quiet Signal is waiting for the shared operation record.'}</p>}
+        </> : <p>{operationsStatus === 'offline' ? `${operationsError || 'Operations link unavailable.'} Standard contracts remain fully playable. The board will reconnect automatically on a later app load.` : 'The Quiet Signal is waiting for the shared operation record.'}</p>}
       </article>
 
       <article className="operations-escalation">

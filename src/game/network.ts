@@ -74,23 +74,82 @@ export type RunTraceRecord = RunSummary & {
   trace: RunTracePoint[];
 };
 
-async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
-    ...init,
-    headers: {
-      ...(init?.body ? { 'content-type': 'application/json' } : {}),
-      ...(init?.headers ?? {}),
-    },
-  });
-  if (!response.ok) {
-    const detail = await response.text().catch(() => '');
-    throw new Error(detail || `Operations request failed (${response.status})`);
+export type NetworkFailureKind = 'timeout' | 'aborted' | 'http' | 'network' | 'invalid-response';
+export type NetworkRequestOptions = { signal?: AbortSignal; timeoutMs?: number };
+
+export class NetworkRequestError extends Error {
+  kind: NetworkFailureKind;
+  status?: number;
+  constructor(kind: NetworkFailureKind, message: string, status?: number) {
+    super(message);
+    this.name = 'NetworkRequestError';
+    this.kind = kind;
+    this.status = status;
   }
-  return response.json() as Promise<T>;
 }
 
-export async function loadOperationsSnapshot() {
-  return requestJson<OperationsSnapshot>('/api/operations');
+export function isNetworkRequestError(error: unknown): error is NetworkRequestError {
+  return error instanceof NetworkRequestError;
+}
+
+export function networkFailureMessage(error: unknown, label = 'Network request') {
+  if (!isNetworkRequestError(error)) return `${label} failed unexpectedly.`;
+  if (error.kind === 'timeout') return `${label} timed out.`;
+  if (error.kind === 'aborted') return `${label} was cancelled.`;
+  if (error.kind === 'http') return `${label} was rejected by the service${error.status ? ` (HTTP ${error.status})` : ''}.`;
+  if (error.kind === 'invalid-response') return `${label} returned unreadable data.`;
+  return `${label} could not reach the service.`;
+}
+
+const OPERATIONS_TIMEOUT_MS = 8_000;
+const TELEMETRY_TIMEOUT_MS = 10_000;
+const TRACE_TIMEOUT_MS = 8_000;
+
+async function requestJson<T>(path: string, init?: RequestInit, options: NetworkRequestOptions = {}): Promise<T> {
+  const controller = new AbortController();
+  const sourceSignal = options.signal ?? init?.signal ?? undefined;
+  const timeoutMs = Math.max(1, options.timeoutMs ?? OPERATIONS_TIMEOUT_MS);
+  let timedOut = false;
+  const abortFromSource = () => controller.abort(sourceSignal?.reason);
+  if (sourceSignal?.aborted) abortFromSource();
+  else sourceSignal?.addEventListener('abort', abortFromSource, { once: true });
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+  try {
+    let response: Response;
+    try {
+      response = await fetch(path, {
+        ...init,
+        signal: controller.signal,
+        headers: {
+          ...(init?.body ? { 'content-type': 'application/json' } : {}),
+          ...(init?.headers ?? {}),
+        },
+      });
+    } catch (error) {
+      if (timedOut) throw new NetworkRequestError('timeout', `Request timed out after ${timeoutMs}ms.`);
+      if (controller.signal.aborted || (error as { name?: string } | null)?.name === 'AbortError') throw new NetworkRequestError('aborted', 'Request cancelled.');
+      throw new NetworkRequestError('network', 'Network unavailable.');
+    }
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '');
+      throw new NetworkRequestError('http', detail || `Operations request failed (${response.status})`, response.status);
+    }
+    try {
+      return await response.json() as T;
+    } catch {
+      throw new NetworkRequestError('invalid-response', 'Operations service returned unreadable data.');
+    }
+  } finally {
+    clearTimeout(timeout);
+    sourceSignal?.removeEventListener('abort', abortFromSource);
+  }
+}
+
+export async function loadOperationsSnapshot(options?: NetworkRequestOptions) {
+  return requestJson<OperationsSnapshot>('/api/operations', undefined, { ...options, timeoutMs: options?.timeoutMs ?? OPERATIONS_TIMEOUT_MS });
 }
 
 // One mission submission keeps one opaque key so transport retries cannot double-bank telemetry.
@@ -110,7 +169,7 @@ export async function uploadRunTelemetry(input: {
   modifierGrades?: number[];
   singularCount?: number;
   requestId?: string;
-}) {
+}, options?: NetworkRequestOptions) {
   const requestId = input.requestId ?? createTelemetryRequestId();
   return requestJson<{ id: string; metrics: RunMetrics }>('/api/runs', {
     method: 'POST',
@@ -144,9 +203,9 @@ export async function uploadRunTelemetry(input: {
       operationDate: input.contract.operationDate ?? '',
       trace: input.telemetry.trace,
     }),
-  });
+  }, { ...options, timeoutMs: options?.timeoutMs ?? TELEMETRY_TIMEOUT_MS });
 }
 
-export async function loadRunTrace(id: string) {
-  return requestJson<RunTraceRecord>(`/api/runs/${encodeURIComponent(id)}`);
+export async function loadRunTrace(id: string, options?: NetworkRequestOptions) {
+  return requestJson<RunTraceRecord>(`/api/runs/${encodeURIComponent(id)}`, undefined, { ...options, timeoutMs: options?.timeoutMs ?? TRACE_TIMEOUT_MS });
 }
