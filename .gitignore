@@ -10,6 +10,7 @@ dist/
 .service-dist/
 .graphics-dist/
 public/assets/codecs/
+public/assets/models/operators/operator-field-suit-lod2.glb
 android/
 *.log
 .DS_Store
