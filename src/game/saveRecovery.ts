@@ -55,17 +55,85 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
+function optionalNumberReason(value: Record<string, unknown>, field: string, minimum: number, maximum: number, integer = false) {
+  const candidate = value[field];
+  if (candidate === undefined) return null;
+  if (typeof candidate !== 'number' || !Number.isFinite(candidate) || candidate < minimum || candidate > maximum || (integer && !Number.isInteger(candidate))) {
+    return `${field} is outside its valid range`;
+  }
+  return null;
+}
+
+function optionalBooleanReason(value: Record<string, unknown>, field: string) {
+  const candidate = value[field];
+  return candidate !== undefined && typeof candidate !== 'boolean' ? `${field} is not a boolean` : null;
+}
+
+function optionalStringOrNullReason(value: Record<string, unknown>, field: string, maxLength = 256) {
+  const candidate = value[field];
+  if (candidate === undefined || candidate === null) return null;
+  return typeof candidate !== 'string' || candidate.length > maxLength ? `${field} is not a valid string` : null;
+}
+
+function optionalStringArrayReason(value: Record<string, unknown>, field: string, maxLength = 256) {
+  const candidate = value[field];
+  if (candidate === undefined) return null;
+  if (!Array.isArray(candidate) || candidate.length > maxLength || candidate.some(entry => typeof entry !== 'string')) return `${field} is not a valid string array`;
+  return null;
+}
+
 function invalidProfileReason(value: unknown): string | null {
   if (!isRecord(value)) return 'profile root is not an object';
   if (value.version !== PROFILE_VERSION) return `unsupported profile version ${String(value.version ?? 'missing')}`;
   if (!Array.isArray(value.inventory)) return 'profile inventory is not an array';
 
+  for (const reason of [
+    optionalNumberReason(value, 'xp', 0, 10_000_000),
+    optionalNumberReason(value, 'level', 1, 20, true),
+    optionalNumberReason(value, 'progressionPoints', 0, 10_000, true),
+    optionalNumberReason(value, 'runsCompleted', 0, 10_000_000, true),
+    optionalBooleanReason(value, 'specializationOverclock'),
+    optionalStringOrNullReason(value, 'specialization', 64),
+    optionalStringArrayReason(value, 'allocatedNodes', 256),
+  ]) {
+    if (reason) return reason;
+  }
+
+  if (value.settings !== undefined) {
+    if (!isRecord(value.settings)) return 'settings is not an object';
+    const settings = value.settings;
+    if (settings.aimAssist !== undefined && settings.aimAssist !== 'light' && settings.aimAssist !== 'balanced') return 'settings.aimAssist is invalid';
+    if (settings.effectIntensity !== undefined && settings.effectIntensity !== 'full' && settings.effectIntensity !== 'reduced') return 'settings.effectIntensity is invalid';
+    for (const field of ['rightStickFire', 'screenShake', 'haptics', 'telemetrySharing', 'tutorialComplete']) {
+      const reason = optionalBooleanReason(settings, field);
+      if (reason) return `settings.${reason}`;
+    }
+    for (const field of ['effectsVolume', 'uiVolume']) {
+      const reason = optionalNumberReason(settings, field, 0, 1);
+      if (reason) return `settings.${reason}`;
+    }
+  }
+
+  if (value.abilityMods !== undefined) {
+    if (!isRecord(value.abilityMods)) return 'abilityMods is not an object';
+    for (const field of ['mag', 'mark', 'arc']) {
+      const reason = optionalStringOrNullReason(value.abilityMods, field, 80);
+      if (reason) return `abilityMods.${reason}`;
+    }
+  }
+
+  const inventoryById = new Map<string, string>();
   for (let index = 0; index < value.inventory.length; index += 1) {
     const item = value.inventory[index];
     if (!isRecord(item)) return `inventory item ${index} is not an object`;
+    if (typeof item.id !== 'string' || !item.id || item.id.length > 160) return `inventory item ${index} has an invalid id`;
+    if (inventoryById.has(item.id)) return `inventory item ${index} duplicates an existing id`;
     if (typeof item.slot !== 'string' || !profileSlots.has(item.slot)) return `inventory item ${index} has an unknown equipment slot`;
+    inventoryById.set(item.id, item.slot);
     if (typeof item.rarity !== 'string' || !profileRarities.has(item.rarity)) return `inventory item ${index} has an unknown rarity`;
     if (!Array.isArray(item.modifiers)) return `inventory item ${index} modifiers are not an array`;
+    const levelReason = optionalNumberReason(item, 'levelRequirement', 1, 20, true);
+    if (levelReason) return `inventory item ${index} ${levelReason}`;
 
     for (const modifier of item.modifiers) {
       if (!isRecord(modifier) || typeof modifier.id !== 'string' || !modifierIds.has(modifier.id)) return `inventory item ${index} contains an unknown modifier`;
@@ -89,6 +157,16 @@ function invalidProfileReason(value: unknown): string | null {
     }
   }
 
+  if (value.equipped !== undefined) {
+    if (!isRecord(value.equipped)) return 'equipped is not an object';
+    for (const slot of profileSlots) {
+      const equippedId = value.equipped[slot];
+      if (equippedId === undefined || equippedId === null) continue;
+      if (typeof equippedId !== 'string') return `equipped.${slot} is not an item id`;
+      if (inventoryById.get(equippedId) !== slot) return `equipped.${slot} points to a missing or mismatched item`;
+    }
+  }
+
   return null;
 }
 
@@ -103,9 +181,34 @@ function arrayFieldReason(value: unknown, label: string, field: string) {
   return candidate !== undefined && !Array.isArray(candidate) ? `${label}.${field} is not an array` : null;
 }
 
+function numericMapReason(value: unknown, label: string, minimum: number, maximum: number, integer = false) {
+  if (value === undefined) return null;
+  if (!isRecord(value)) return `${label} is not an object`;
+  for (const [key, candidate] of Object.entries(value)) {
+    if (typeof candidate !== 'number' || !Number.isFinite(candidate) || candidate < minimum || candidate > maximum || (integer && !Number.isInteger(candidate))) {
+      return `${label}.${key} is outside its valid range`;
+    }
+  }
+  return null;
+}
+
 function invalidCampaignReason(value: unknown): string | null {
   if (!isRecord(value)) return 'campaign root is not an object';
   if (value.version !== CAMPAIGN_VERSION) return `unsupported campaign version ${String(value.version ?? 'missing')}`;
+
+  for (const reason of [
+    optionalNumberReason(value, 'cycle', 0, 10_000_000, true),
+    optionalNumberReason(value, 'contractsCompleted', 0, 10_000_000, true),
+    optionalBooleanReason(value, 'anomalyRecovered'),
+    optionalStringOrNullReason(value, 'dailyCompletedDate', 40),
+    optionalStringOrNullReason(value, 'lastOutcome', 2_000),
+    numericMapReason(value.resources, 'resources', 0, 1_000_000_000),
+    numericMapReason(value.consumables, 'consumables', 0, 100_000, true),
+    numericMapReason(value.reputation, 'reputation', -1_000_000, 1_000_000),
+    numericMapReason(value.shipUpgrades, 'shipUpgrades', 0, 2, true),
+  ]) {
+    if (reason) return reason;
+  }
 
   for (const field of ['resources', 'consumables', 'reputation', 'shipUpgrades', 'story', 'escalation', 'directives']) {
     const reason = objectFieldReason(value, field);
@@ -128,8 +231,23 @@ function invalidCampaignReason(value: unknown): string | null {
 
   const escalationReason = arrayFieldReason(value.escalation, 'escalation', 'completed');
   if (escalationReason) return escalationReason;
+  if (isRecord(value.escalation)) {
+    const stageReason = optionalNumberReason(value.escalation, 'stage', 0, 1_000, true);
+    if (stageReason) return `escalation.${stageReason}`;
+  }
+
   const directivesReason = arrayFieldReason(value.directives, 'directives', 'inventory');
   if (directivesReason) return directivesReason;
+  if (isRecord(value.directives)) {
+    for (const reason of [
+      optionalBooleanReason(value.directives, 'unlocked'),
+      optionalNumberReason(value.directives, 'completed', 0, 1_000_000, true),
+      optionalNumberReason(value.directives, 'highestTier', 0, 12, true),
+      optionalStringOrNullReason(value.directives, 'preparedId', 160),
+    ]) {
+      if (reason) return `directives.${reason}`;
+    }
+  }
   return null;
 }
 
@@ -139,6 +257,7 @@ export function validateStoredCampaign(value: unknown) { return invalidCampaignR
 function invalidGameStateReason(value: unknown): string | null {
   if (!isRecord(value)) return 'game-state root is not an object';
   if (value.version !== 1) return `unsupported game-state version ${String(value.version ?? 'missing')}`;
+  if (value.savedAt !== undefined && (typeof value.savedAt !== 'string' || Number.isNaN(Date.parse(value.savedAt)))) return 'savedAt is not a valid timestamp';
   const profileReason = invalidProfileReason(value.profile);
   if (profileReason) return `profile: ${profileReason}`;
   const campaignReason = invalidCampaignReason(value.campaign);
