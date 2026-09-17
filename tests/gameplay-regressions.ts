@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs';
 import { buyConsumable, createDefaultCampaign, loadCampaign, saveCampaign } from '../src/game/campaign';
 import { aimAtMobileTarget, applyPlayerDamage, createSimulation, triggerConsumable } from '../src/game/sim';
 import { createDefaultProfile, loadProfile, saveProfile } from '../src/game/meta';
-import { CAMPAIGN_STORAGE_KEY, prepareSaveRecovery, PROFILE_STORAGE_KEY } from '../src/game/saveRecovery';
+import { CAMPAIGN_STORAGE_KEY, GAME_STATE_STORAGE_KEY, prepareSaveRecovery, PROFILE_STORAGE_KEY } from '../src/game/saveRecovery';
+import { loadGameState, saveGameState } from '../src/game/gamePersistence';
 import { carryExpeditionLoot } from '../src/game/expeditionCarry';
 
 const storage = new Map<string, string>();
@@ -88,6 +89,35 @@ assert.equal(saveCampaign(campaign), false, 'campaign persistence should report 
 assert.equal(saveProfile(createDefaultProfile()), false, 'profile persistence should report blocked storage without throwing');
 failStorageWrites = false;
 
+storage.clear();
+const atomicProfile = createDefaultProfile();
+atomicProfile.xp = 111;
+const atomicCampaign = createDefaultCampaign();
+atomicCampaign.resources.credits = 777;
+assert.equal(saveGameState(atomicProfile, atomicCampaign, localStorage), true, 'combined game state should commit profile and campaign in one storage write');
+const committedEnvelope = localStorage.getItem(GAME_STATE_STORAGE_KEY);
+assert.ok(committedEnvelope, 'combined persistence should create a versioned game-state envelope');
+const nextAtomicProfile = { ...atomicProfile, xp: 222 };
+const nextAtomicCampaign = { ...atomicCampaign, resources: { ...atomicCampaign.resources, credits: 888 } };
+failStorageWrites = true;
+assert.equal(saveGameState(nextAtomicProfile, nextAtomicCampaign, localStorage), false, 'failed combined persistence should report the failed transaction');
+failStorageWrites = false;
+assert.equal(localStorage.getItem(GAME_STATE_STORAGE_KEY), committedEnvelope, 'a failed transaction must leave the previous committed envelope byte-for-byte intact');
+const reloadedAtomic = loadGameState(localStorage);
+assert.equal(reloadedAtomic.profile.xp, 111, 'failed persistence must not expose the newer profile without its matching campaign');
+assert.equal(reloadedAtomic.campaign.resources.credits, 777, 'failed persistence must not expose the newer campaign without its matching profile');
+
+storage.clear();
+const legacyProfile = createDefaultProfile();
+legacyProfile.xp = 63;
+const legacyAtomicCampaign = createDefaultCampaign();
+legacyAtomicCampaign.resources.credits = 432;
+assert.equal(saveProfile(legacyProfile), true);
+assert.equal(saveCampaign(legacyAtomicCampaign), true);
+const migratedAtomic = loadGameState(localStorage);
+assert.equal(migratedAtomic.profile.xp, 63, 'combined persistence should migrate from the existing profile key when no envelope exists');
+assert.equal(migratedAtomic.campaign.resources.credits, 432, 'combined persistence should migrate from the existing campaign key when no envelope exists');
+
 async function runSaveRecoveryRegressions() {
   storage.clear();
   const validProfileRaw = JSON.stringify(createDefaultProfile());
@@ -124,6 +154,16 @@ async function runSaveRecoveryRegressions() {
   assert.deepEqual(loadCampaign(), createDefaultCampaign(), 'normal campaign loading should see a clean slot after quarantine');
 
   storage.clear();
+  const incompatibleStateRaw = JSON.stringify({ version: 1, profile: createDefaultProfile(), campaign: { ...createDefaultCampaign(), version: 99 }, savedAt: '2026-09-16T12:02:30.000Z' });
+  localStorage.setItem(GAME_STATE_STORAGE_KEY, incompatibleStateRaw);
+  const stateRecovery = await prepareSaveRecovery({ storage: localStorage, indexedDb: null, now: () => new Date('2026-09-16T12:02:30.000Z'), id: () => 'state' });
+  assert.equal(stateRecovery.blocked, false, 'an incompatible combined state should be quarantined before startup');
+  assert.equal(localStorage.getItem(GAME_STATE_STORAGE_KEY), null, 'unsafe combined state should be detached before the game loader can use it');
+  const stateBackup = stateRecovery.backups.find(backup => backup.kind === 'state');
+  assert.ok(stateBackup, 'invalid combined state should produce a recovery backup');
+  assert.equal(localStorage.getItem(stateBackup.backupKey), incompatibleStateRaw, 'combined state recovery must preserve the exact original bytes');
+
+  storage.clear();
   const unreadableRaw = '{bad-profile-json';
   localStorage.setItem(PROFILE_STORAGE_KEY, unreadableRaw);
   failBackupWrites = true;
@@ -133,11 +173,11 @@ async function runSaveRecoveryRegressions() {
   assert.equal(localStorage.getItem(PROFILE_STORAGE_KEY), unreadableRaw, 'failed backup must leave the original save untouched');
   assert.equal(blockedRecovery.backups.length, 0, 'a failed copy must never be reported as a verified backup');
 
-  return malformedProfileRecovery.backups.length + campaignRecovery.backups.length;
+  return malformedProfileRecovery.backups.length + campaignRecovery.backups.length + stateRecovery.backups.length;
 }
 
 runSaveRecoveryRegressions()
-  .then(saveRecoveryCount => console.log(`GAMEPLAY_REGRESSIONS_PASS credits=${campaign.resources.credits} med=${campaign.consumables.medGel} hp=${deathState.player.hp} aim=${aimState.player.aim.x.toFixed(3)} expeditionLoot=${expeditionLootCarry.length} saveRecovery=${saveRecoveryCount}`))
+  .then(saveRecoveryCount => console.log(`GAMEPLAY_REGRESSIONS_PASS credits=${campaign.resources.credits} med=${campaign.consumables.medGel} hp=${deathState.player.hp} aim=${aimState.player.aim.x.toFixed(3)} expeditionLoot=${expeditionLootCarry.length} saveRecovery=${saveRecoveryCount} transactional=1`))
   .catch(error => {
     console.error(error);
     process.exitCode = 1;

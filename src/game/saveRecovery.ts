@@ -2,6 +2,7 @@ import { augmentDefinitions, frameIdentityDefinitions } from './gearDepth';
 
 export const PROFILE_STORAGE_KEY = 'ironshade-vector-profile-v3';
 export const CAMPAIGN_STORAGE_KEY = 'ironshade-vector-campaign-v1';
+export const GAME_STATE_STORAGE_KEY = 'ironshade-vector-state-v1';
 
 const RECOVERY_DATABASE = 'ironshade-vector-recovery';
 const RECOVERY_STORE = 'backups';
@@ -18,7 +19,7 @@ const frameIdentityById = new Map(frameIdentityDefinitions.map(definition => [de
 const augmentById = new Map(augmentDefinitions.map(definition => [definition.id, definition]));
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
-type SaveKind = 'profile' | 'campaign';
+type SaveKind = 'profile' | 'campaign' | 'state';
 
 type RecoveryEnvironment = {
   storage?: StorageLike | null;
@@ -129,6 +130,19 @@ function invalidCampaignReason(value: unknown): string | null {
   if (escalationReason) return escalationReason;
   const directivesReason = arrayFieldReason(value.directives, 'directives', 'inventory');
   if (directivesReason) return directivesReason;
+  return null;
+}
+
+export function validateStoredProfile(value: unknown) { return invalidProfileReason(value); }
+export function validateStoredCampaign(value: unknown) { return invalidCampaignReason(value); }
+
+function invalidGameStateReason(value: unknown): string | null {
+  if (!isRecord(value)) return 'game-state root is not an object';
+  if (value.version !== 1) return `unsupported game-state version ${String(value.version ?? 'missing')}`;
+  const profileReason = invalidProfileReason(value.profile);
+  if (profileReason) return `profile: ${profileReason}`;
+  const campaignReason = invalidCampaignReason(value.campaign);
+  if (campaignReason) return `campaign: ${campaignReason}`;
   return null;
 }
 
@@ -251,9 +265,10 @@ export async function prepareSaveRecovery(environment: RecoveryEnvironment = {})
   const now = (environment.now ?? (() => new Date()))();
   const createdAt = now.toISOString();
   const makeId = environment.id ?? randomId;
+  const state = await inspectSave(storage, indexedDb ?? null, GAME_STATE_STORAGE_KEY, 'state', invalidGameStateReason, createdAt, makeId());
   const profile = await inspectSave(storage, indexedDb ?? null, PROFILE_STORAGE_KEY, 'profile', invalidProfileReason, createdAt, makeId());
   const campaign = await inspectSave(storage, indexedDb ?? null, CAMPAIGN_STORAGE_KEY, 'campaign', invalidCampaignReason, createdAt, makeId());
-  const backups = [profile.backup, campaign.backup].filter((backup): backup is SaveRecoveryBackup => !!backup);
-  const notices = [profile.notice, campaign.notice].filter((notice): notice is string => !!notice);
-  return { blocked: profile.blocked || campaign.blocked, notices, backups };
+  const backups = [state.backup, profile.backup, campaign.backup].filter((backup): backup is SaveRecoveryBackup => !!backup);
+  const notices = [state.notice, profile.notice, campaign.notice].filter((notice): notice is string => !!notice);
+  return { blocked: state.blocked || profile.blocked || campaign.blocked, notices, backups };
 }

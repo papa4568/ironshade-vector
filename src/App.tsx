@@ -4,9 +4,9 @@ import './equipmentBay.css';
 import './readability.css';
 import './consumables.css';
 import { advanceBlackLatticeAfterContract, getBlackLatticeContract } from './game/blackLattice';
-import { advanceEscalationAfterContract, applyShipBonuses, dailyOperationContract, factionDisplayName, generateContracts, generateEscalationContract, loadCampaign, resourceLabels, saveCampaign, settleContract, type CampaignReward, type CampaignState, type Contract, type ExpeditionProgress, type ResourceId } from './game/campaign';
+import { advanceEscalationAfterContract, applyShipBonuses, dailyOperationContract, factionDisplayName, generateContracts, generateEscalationContract, resourceLabels, settleContract, type CampaignReward, type CampaignState, type Contract, type ExpeditionProgress, type ResourceId } from './game/campaign';
 import { feedback } from './game/feedback';
-import { awardRecovery, buildIdentity, deriveCombatBuild, discardItem, dominantEquipmentFaction, loadProfile, saveProfile, setProfileSettings, type PlayerProfile, type ProfileSettings, type VictoryReward } from './game/meta';
+import { awardRecovery, buildIdentity, deriveCombatBuild, discardItem, dominantEquipmentFaction, setProfileSettings, type PlayerProfile, type ProfileSettings, type VictoryReward } from './game/meta';
 import { loadOperationsSnapshot, uploadRunTelemetry, type OperationsSnapshot } from './game/network';
 import { advanceStoryAfterContract, generateStoryContracts } from './game/story';
 import { advancePostKhepriAfterContract, getPostKhepriContract, syncPostKhepriAccess } from './game/postKhepri';
@@ -15,6 +15,7 @@ import { withOperationScaling } from './game/scaling';
 import { advanceDirectivesAfterContract, preparedDirectiveContract, syncDirectiveAccess } from './game/operationDirectives';
 import type { Telemetry } from './game/sim';
 import type { GroundLootReceipt } from './game/fieldLoot';
+import { loadGameState, saveGameState } from './game/gamePersistence';
 
 const loadArmory = () => import('./components/Armory');
 const loadGameCanvas = () => import('./components/GameCanvas');
@@ -120,8 +121,9 @@ function DebriefScreen({ result, onShip, onBuild, onRepeat, onDiscard }: { resul
 }
 
 function App() {
-  const [profile, setProfile] = useState<PlayerProfile>(() => loadProfile());
-  const [campaign, setCampaign] = useState<CampaignState>(() => loadCampaign());
+  const [initialGameState] = useState(() => loadGameState());
+  const [profile, setProfile] = useState<PlayerProfile>(initialGameState.profile);
+  const [campaign, setCampaign] = useState<CampaignState>(initialGameState.campaign);
   const [operations, setOperations] = useState<OperationsSnapshot | null>(null);
   const [operationsStatus, setOperationsStatus] = useState<'loading' | 'online' | 'offline'>('loading');
   const [screen, setScreen] = useState<Screen>('ship');
@@ -147,8 +149,7 @@ function App() {
   const combatBuild = useMemo(() => applyShipBonuses(deriveCombatBuild(profile), campaign), [profile, campaign]);
 
   const persistenceWarning = 'LOCAL SAVE FAILED // browser storage is unavailable; current-session progress may not survive a restart.';
-  useEffect(() => { if (!saveProfile(profile)) setStatusMessage(persistenceWarning); }, [profile]);
-  useEffect(() => { if (!saveCampaign(campaign)) setStatusMessage(persistenceWarning); }, [campaign]);
+  useEffect(() => { if (!saveGameState(profile, campaign)) setStatusMessage(persistenceWarning); }, [profile, campaign]);
   useEffect(() => { setCampaign(current => syncDirectiveAccess(current, profile.level)); }, [profile.level]);
   useEffect(() => { setCampaign(current => syncPostKhepriAccess(current, profile.level)); }, [profile.level, campaign.story.blackLattice.status]);
   useEffect(() => { setCampaign(current => syncInterdictionAccess(current, profile.level)); }, [profile.level, campaign.story.postKhepri.status]);
