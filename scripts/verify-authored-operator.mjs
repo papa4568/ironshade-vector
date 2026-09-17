@@ -104,6 +104,9 @@ try {
       return {
         visual: canvas.dataset.operatorVisual ?? '',
         asset: canvas.dataset.operatorAsset ?? '',
+        rig: canvas.dataset.operatorRig ?? '',
+        socket: canvas.dataset.operatorSocket ?? '',
+        animation: canvas.dataset.operatorAnimation ?? '',
         canvases: document.querySelectorAll('canvas').length,
         width: rect.width,
         height: rect.height,
@@ -114,13 +117,19 @@ try {
       throw new Error(`Authored operator entered procedural fallback: ${JSON.stringify(lastState)}`);
     }
     if (lastState?.visual?.startsWith('authored-')) {
-      if (lastState.asset !== 'operator-field-suit-lod2') {
+      if (lastState.asset !== 'operator-field-suit-lod1') {
         throw new Error(`Unexpected authored operator asset: ${JSON.stringify(lastState)}`);
+      }
+      if (lastState.rig !== 'articulated' || lastState.socket !== 'weapon-socket') {
+        throw new Error(`Authored operator rig/socket contract is not active: ${JSON.stringify(lastState)}`);
+      }
+      if (!['idle', 'locomotion', 'recoil', 'reload', 'dodge', 'down'].includes(lastState.animation)) {
+        throw new Error(`Unexpected authored operator animation state: ${JSON.stringify(lastState)}`);
       }
       if (!(lastState.width > 0 && lastState.height > 0)) {
         throw new Error(`Authored operator canvas is not visible: ${JSON.stringify(lastState)}`);
       }
-      console.log(`AUTHORED_OPERATOR_RUNTIME_PASS visual=${lastState.visual} asset=${lastState.asset} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
+      console.log(`AUTHORED_OPERATOR_RUNTIME_PASS visual=${lastState.visual} asset=${lastState.asset} rig=${lastState.rig} socket=${lastState.socket} animation=${lastState.animation} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
       process.exitCode = 0;
       break;
     }
