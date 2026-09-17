@@ -66,4 +66,17 @@ assert(source.includes('activeInstances'), 'asset cache must track mounted insta
 assert(source.includes('texture.dispose()'), 'cached asset eviction must release textures');
 assert(source.includes('skeleton.dispose()'), 'asset lifecycle must release skeleton GPU resources');
 
-console.log('GRAPHICS_ASSET_PIPELINE_PASS format=glb mesh=meshopt textures=ktx2 loader=deferred lifecycle=leased lod=adaptive operatorTriangles=45000 operatorPayload=2500000');
+const manifestSource = readFileSync(resolve(process.cwd(), 'src/game/graphicsAssetManifest.ts'), 'utf8');
+assert(manifestSource.includes("operator-field-suit-lod2.glb"), 'operator asset family must reference the committed authored LOD2 GLB');
+
+const rendererSource = readFileSync(resolve(process.cwd(), 'src/game/threeCombatRenderer.ts'), 'utf8');
+assert(rendererSource.includes("import { OPERATOR_ASSET_FAMILY } from './graphicsAssetManifest'"), 'combat renderer must consume the authored operator manifest');
+assert(rendererSource.includes('configureGraphicsAssetRenderer(this.renderer)'), 'combat renderer must configure authored texture support lazily at runtime');
+assert(rendererSource.includes('void this.loadAuthoredOperator()'), 'authored operator loading must start only after the combat renderer is constructed');
+assert(rendererSource.includes('await instantiateGraphicsAsset(spec)'), 'combat renderer must instantiate the cached authored operator GLB');
+assert(rendererSource.includes("dataset.operatorVisual = 'procedural-fallback'"), 'authored operator load failures must keep the procedural fallback active');
+assert(rendererSource.includes('this.proceduralOperatorVisuals.forEach'), 'procedural body visuals must only be hidden after authored load succeeds');
+assert(rendererSource.includes('material.color.setHex(suitColor)'), 'authored operator materials must preserve faction color identity');
+assert(rendererSource.includes('this.operatorAssetInstance?.release()'), 'combat renderer disposal must release the authored operator lease');
+
+console.log('GRAPHICS_ASSET_PIPELINE_PASS format=glb mesh=meshopt textures=ktx2 loader=deferred lifecycle=leased lod=adaptive operator=authored+fallback operatorTriangles=45000 operatorPayload=2500000');
