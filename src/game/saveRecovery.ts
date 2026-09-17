@@ -54,10 +54,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
-function finiteNumber(value: unknown) {
-  return typeof value === 'number' && Number.isFinite(value);
-}
-
 function invalidProfileReason(value: unknown): string | null {
   if (!isRecord(value)) return 'profile root is not an object';
   if (value.version !== PROFILE_VERSION) return `unsupported profile version ${String(value.version ?? 'missing')}`;
@@ -72,7 +68,8 @@ function invalidProfileReason(value: unknown): string | null {
 
     for (const modifier of item.modifiers) {
       if (!isRecord(modifier) || typeof modifier.id !== 'string' || !modifierIds.has(modifier.id)) return `inventory item ${index} contains an unknown modifier`;
-      if (modifier.grade !== undefined && (!finiteNumber(modifier.grade) || modifier.grade < 1 || modifier.grade > 5)) return `inventory item ${index} contains an invalid modifier grade`;
+      const grade = modifier.grade;
+      if (grade !== undefined && (typeof grade !== 'number' || !Number.isFinite(grade) || grade < 1 || grade > 5)) return `inventory item ${index} contains an invalid modifier grade`;
     }
 
     if (item.frameIdentity !== undefined) {
