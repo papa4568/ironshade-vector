@@ -99,7 +99,7 @@ export function loadCampaign(): CampaignState {
     };
   } catch { return createDefaultCampaign(); }
 }
-export function saveCampaign(campaign: CampaignState) { if (typeof window !== 'undefined') window.localStorage.setItem(STORAGE_KEY, JSON.stringify(campaign)); }
+export function saveCampaign(campaign: CampaignState) { if (typeof window === 'undefined') return true; try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(campaign)); return true; } catch { return false; } }
 
 export function buyConsumable(campaign: CampaignState, id: ConsumableId) {
   const definition = consumableDefinition(id);
