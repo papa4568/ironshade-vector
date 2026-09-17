@@ -20,7 +20,7 @@
     "test:render": "vite build --ssr tests/render-performance.ts --outDir .render-dist && node .render-dist/render-performance.js",
     "test:bundle": "node tests/client-bundle-budget.mjs",
     "android:sync": "npx cap sync android",
-    "test:service": "node tests/service-regressions.mjs",
+    "test:service": "vite build --ssr tests/service-regressions.ts --outDir .service-dist --config vite.service.config.ts && node .service-dist/service-regressions.js",
     "test:network": "vite build --ssr tests/network-regressions.ts --outDir .network-dist && node .network-dist/network-regressions.js"
   },
   "dependencies": {
