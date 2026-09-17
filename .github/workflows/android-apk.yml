@@ -91,6 +91,8 @@ jobs:
           test -n "$SDKMANAGER"
           echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          echo "$SDK_ROOT/emulator" >> "$GITHUB_PATH"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" \
             'platform-tools' \
@@ -202,6 +204,7 @@ jobs:
           EMULATOR="$(find "$ANDROID_HOME" -type f -name emulator 2>/dev/null | sort | tail -n 1)"
           test -n "$AVDMANAGER"
           test -n "$EMULATOR"
+          command -v adb >/dev/null
           echo no | "$AVDMANAGER" create avd --force --name ironshade-ci --package 'system-images;android-35;google_apis;x86_64' --device 'pixel_6'
 
           "$EMULATOR" -avd ironshade-ci -no-window -no-audio -no-boot-anim -no-snapshot -wipe-data -gpu swiftshader_indirect > android-emulator.log 2>&1 &
