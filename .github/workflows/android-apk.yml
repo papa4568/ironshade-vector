@@ -94,7 +94,16 @@ jobs:
         run: npm ci --no-audit --no-fund
 
       - name: Run full web regression and production build
-        run: npm run build
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+        run: |
+          npm run build
+          if [[ -n "$VITE_API_BASE_URL" ]]; then
+            grep -R --fixed-strings "$VITE_API_BASE_URL" dist/assets >/dev/null
+            echo "Native Operations API origin embedded in production bundle."
+          else
+            echo "::warning::VITE_API_BASE_URL is not configured; native Operations features will report configuration unavailable instead of calling the app-local origin."
+          fi
 
       - name: Generate native Android project
         shell: bash
@@ -109,6 +118,7 @@ jobs:
           grep -q 'android:hardwareAccelerated="true"' android/app/src/main/AndroidManifest.xml
           grep -q 'IRONSHADE_RELEASE_SIGNING' android/app/build.gradle
           grep -q 'ANDROID_SIGNING_STORE_FILE' android/app/build.gradle
+          grep -q 'CapacitorHttp' android/app/src/main/assets/capacitor.config.json
 
       - name: Build persistent-signed release APK
         if: steps.signing.outputs.mode == 'release'
