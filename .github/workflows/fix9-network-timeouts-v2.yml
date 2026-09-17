@@ -1,0 +1,211 @@
+name: Fix 9 network timeout handling v2
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply bounded network handling
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              if text.count(old) != 1:
+                  raise SystemExit(f'{label}: expected exactly one match, found {text.count(old)}')
+              return text.replace(old, new, 1)
+
+          network_path = Path('src/game/network.ts')
+          network = network_path.read_text()
+          old_request = "async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {\n  const response = await fetch(path, {\n    ...init,\n    headers: {\n      ...(init?.body ? { 'content-type': 'application/json' } : {}),\n      ...(init?.headers ?? {}),\n    },\n  });\n  if (!response.ok) {\n    const detail = await response.text().catch(() => '');\n    throw new Error(detail || `Operations request failed (${response.status})`);\n  }\n  return response.json() as Promise<T>;\n}\n"
+          new_request = """export type NetworkFailureKind = 'timeout' | 'aborted' | 'http' | 'network' | 'invalid-response';
+          export type NetworkRequestOptions = { signal?: AbortSignal; timeoutMs?: number };
+
+          export class NetworkRequestError extends Error {
+            kind: NetworkFailureKind;
+            status?: number;
+            constructor(kind: NetworkFailureKind, message: string, status?: number) {
+              super(message);
+              this.name = 'NetworkRequestError';
+              this.kind = kind;
+              this.status = status;
+            }
+          }
+
+          export function isNetworkRequestError(error: unknown): error is NetworkRequestError {
+            return error instanceof NetworkRequestError;
+          }
+
+          export function networkFailureMessage(error: unknown, label = 'Network request') {
+            if (!isNetworkRequestError(error)) return `${label} failed unexpectedly.`;
+            if (error.kind === 'timeout') return `${label} timed out.`;
+            if (error.kind === 'aborted') return `${label} was cancelled.`;
+            if (error.kind === 'http') return `${label} was rejected by the service${error.status ? ` (HTTP ${error.status})` : ''}.`;
+            if (error.kind === 'invalid-response') return `${label} returned unreadable data.`;
+            return `${label} could not reach the service.`;
+          }
+
+          const OPERATIONS_TIMEOUT_MS = 8_000;
+          const TELEMETRY_TIMEOUT_MS = 10_000;
+          const TRACE_TIMEOUT_MS = 8_000;
+
+          async function requestJson<T>(path: string, init?: RequestInit, options: NetworkRequestOptions = {}): Promise<T> {
+            const controller = new AbortController();
+            const sourceSignal = options.signal ?? init?.signal ?? undefined;
+            const timeoutMs = Math.max(1, options.timeoutMs ?? OPERATIONS_TIMEOUT_MS);
+            let timedOut = false;
+            const abortFromSource = () => controller.abort(sourceSignal?.reason);
+            if (sourceSignal?.aborted) abortFromSource();
+            else sourceSignal?.addEventListener('abort', abortFromSource, { once: true });
+            const timeout = setTimeout(() => {
+              timedOut = true;
+              controller.abort();
+            }, timeoutMs);
+            try {
+              let response: Response;
+              try {
+                response = await fetch(path, {
+                  ...init,
+                  signal: controller.signal,
+                  headers: {
+                    ...(init?.body ? { 'content-type': 'application/json' } : {}),
+                    ...(init?.headers ?? {}),
+                  },
+                });
+              } catch (error) {
+                if (timedOut) throw new NetworkRequestError('timeout', `Request timed out after ${timeoutMs}ms.`);
+                if (controller.signal.aborted || (error as { name?: string } | null)?.name === 'AbortError') throw new NetworkRequestError('aborted', 'Request cancelled.');
+                throw new NetworkRequestError('network', 'Network unavailable.');
+              }
+              if (!response.ok) {
+                const detail = await response.text().catch(() => '');
+                throw new NetworkRequestError('http', detail || `Operations request failed (${response.status})`, response.status);
+              }
+              try {
+                return await response.json() as T;
+              } catch {
+                throw new NetworkRequestError('invalid-response', 'Operations service returned unreadable data.');
+              }
+            } finally {
+              clearTimeout(timeout);
+              sourceSignal?.removeEventListener('abort', abortFromSource);
+            }
+          }
+          """.replace('\n          ', '\n')
+          network = replace_once(network, old_request, new_request, 'network request wrapper')
+          network = replace_once(network, "export async function loadOperationsSnapshot() {\n  return requestJson<OperationsSnapshot>('/api/operations');\n}", "export async function loadOperationsSnapshot(options?: NetworkRequestOptions) {\n  return requestJson<OperationsSnapshot>('/api/operations', undefined, { ...options, timeoutMs: options?.timeoutMs ?? OPERATIONS_TIMEOUT_MS });\n}", 'operations request signature')
+          network = replace_once(network, "  singularCount?: number;\n  requestId?: string;\n}) {\n  const requestId = input.requestId ?? createTelemetryRequestId();", "  singularCount?: number;\n  requestId?: string;\n}, options?: NetworkRequestOptions) {\n  const requestId = input.requestId ?? createTelemetryRequestId();", 'telemetry request signature')
+          network = replace_once(network, "    }),\n  });\n}\n\nexport async function loadRunTrace(id: string) {\n  return requestJson<RunTraceRecord>(`/api/runs/${encodeURIComponent(id)}`);\n}", "    }),\n  }, { ...options, timeoutMs: options?.timeoutMs ?? TELEMETRY_TIMEOUT_MS });\n}\n\nexport async function loadRunTrace(id: string, options?: NetworkRequestOptions) {\n  return requestJson<RunTraceRecord>(`/api/runs/${encodeURIComponent(id)}`, undefined, { ...options, timeoutMs: options?.timeoutMs ?? TRACE_TIMEOUT_MS });\n}", 'telemetry/trace request tail')
+          network_path.write_text(network)
+
+          app_path = Path('src/App.tsx')
+          app = app_path.read_text()
+          app = replace_once(app, "import { createTelemetryRequestId, loadOperationsSnapshot, uploadRunTelemetry, type OperationsSnapshot } from './game/network';", "import { createTelemetryRequestId, isNetworkRequestError, loadOperationsSnapshot, networkFailureMessage, uploadRunTelemetry, type OperationsSnapshot } from './game/network';", 'App network import')
+          app = replace_once(app, "type Debrief = { runId: number; contract: Contract; campaignReward: CampaignReward; lootReward: VictoryReward; uplinkStatus: UplinkStatus; storyNote: string | null; chapterNote: string | null; postKhepriNote: string | null; interdictionNote: string | null; escalationNote: string | null; directiveNote: string | null; protocolValue: number; expeditionProgress?: ExpeditionProgress };", "type Debrief = { runId: number; contract: Contract; campaignReward: CampaignReward; lootReward: VictoryReward; uplinkStatus: UplinkStatus; uplinkError: string | null; storyNote: string | null; chapterNote: string | null; postKhepriNote: string | null; interdictionNote: string | null; escalationNote: string | null; directiveNote: string | null; protocolValue: number; expeditionProgress?: ExpeditionProgress };", 'Debrief network error field')
+          app = replace_once(app, "      : result.uplinkStatus === 'error'\n        ? ['UPLINK DELAYED', 'Rewards and local progression are safe. The optional telemetry upload failed and will not block play.']", "      : result.uplinkStatus === 'error'\n        ? ['UPLINK DELAYED', result.uplinkError ?? 'Rewards and local progression are safe. The optional telemetry upload failed and will not block play.']", 'Debrief error copy')
+          app = replace_once(app, "  const [operationsStatus, setOperationsStatus] = useState<'loading' | 'online' | 'offline'>('loading');\n  const [screen, setScreen] = useState<Screen>('ship');", "  const [operationsStatus, setOperationsStatus] = useState<'loading' | 'online' | 'offline'>('loading');\n  const [operationsError, setOperationsError] = useState('');\n  const [screen, setScreen] = useState<Screen>('ship');", 'Operations error state')
+          old_operations_effect = "  useEffect(() => {\n    let active = true;\n    loadOperationsSnapshot()\n      .then(snapshot => { if (active) { setOperations(snapshot); setOperationsStatus('online'); } })\n      .catch(() => { if (active) setOperationsStatus('offline'); });\n    return () => { active = false; };\n  }, []);\n"
+          new_operations_effect = "  useEffect(() => {\n    let active = true;\n    const controller = new AbortController();\n    loadOperationsSnapshot({ signal: controller.signal })\n      .then(snapshot => {\n        if (!active) return;\n        setOperations(snapshot);\n        setOperationsStatus('online');\n        setOperationsError('');\n      })\n      .catch(error => {\n        if (!active || (isNetworkRequestError(error) && error.kind === 'aborted')) return;\n        setOperationsStatus('offline');\n        setOperationsError(networkFailureMessage(error, 'Operations link'));\n      });\n    return () => { active = false; controller.abort(); };\n  }, []);\n"
+          app = replace_once(app, old_operations_effect, new_operations_effect, 'Operations load effect')
+          app = replace_once(app, "setDebrief({ runId: debriefRunId, contract: selectedContract, campaignReward, lootReward, uplinkStatus, storyNote:", "setDebrief({ runId: debriefRunId, contract: selectedContract, campaignReward, lootReward, uplinkStatus, uplinkError: null, storyNote:", 'Debrief initialization')
+          app = replace_once(app, "setDebrief(current => current?.runId === debriefRunId ? { ...current, uplinkStatus: 'shared' } : current);", "setDebrief(current => current?.runId === debriefRunId ? { ...current, uplinkStatus: 'shared', uplinkError: null } : current);", 'Telemetry success state')
+          app = replace_once(app, ".catch(() => setDebrief(current => current?.runId === debriefRunId ? { ...current, uplinkStatus: 'error' } : current));", ".catch(error => setDebrief(current => current?.runId === debriefRunId ? { ...current, uplinkStatus: 'error', uplinkError: `${networkFailureMessage(error, 'Telemetry uplink')} Rewards and local progression are safe.` } : current));", 'Telemetry error state')
+          app = replace_once(app, "<ShipHub profile={profile} campaign={campaign} contracts={contracts} operations={operations} operationsStatus={operationsStatus} telemetrySharing=", "<ShipHub profile={profile} campaign={campaign} contracts={contracts} operations={operations} operationsStatus={operationsStatus} operationsError={operationsError} telemetrySharing=", 'ShipHub operations error prop')
+          app_path.write_text(app)
+
+          hub_path = Path('src/components/ShipHub.tsx')
+          hub = hub_path.read_text()
+          hub = replace_once(hub, "import { useMemo, useRef, useState } from 'react';", "import { useEffect, useMemo, useRef, useState } from 'react';", 'ShipHub React import')
+          hub = replace_once(hub, "import { loadRunTrace, type OperationsSnapshot, type RunTraceRecord } from '../game/network';", "import { isNetworkRequestError, loadRunTrace, networkFailureMessage, type OperationsSnapshot, type RunTraceRecord } from '../game/network';", 'ShipHub network import')
+          hub = replace_once(hub, "  operationsStatus: 'loading' | 'online' | 'offline';\n  telemetrySharing: boolean;", "  operationsStatus: 'loading' | 'online' | 'offline';\n  operationsError: string;\n  telemetrySharing: boolean;", 'ShipHub operations error prop type')
+          hub = replace_once(hub, "export default function ShipHub({ profile, campaign, contracts, operations, operationsStatus, telemetrySharing, selectedContractId, statusMessage, onSelectContract, onDeploy, onOpenBuild, onCampaignChange }: Props) {", "export default function ShipHub({ profile, campaign, contracts, operations, operationsStatus, operationsError, telemetrySharing, selectedContractId, statusMessage, onSelectContract, onDeploy, onOpenBuild, onCampaignChange }: Props) {", 'ShipHub operations error prop destructure')
+          hub = replace_once(hub, "  const traceRequestIdRef = useRef(0);\n  const switchTab = (next: Tab) => {", "  const traceRequestIdRef = useRef(0);\n  const traceAbortRef = useRef<AbortController | null>(null);\n  useEffect(() => () => traceAbortRef.current?.abort(), []);\n  const switchTab = (next: Tab) => {", 'Trace abort ref')
+          old_trace = "  const inspectTrace = async (id: string) => {\n    const requestId = ++traceRequestIdRef.current;\n    setTraceRecord(null);\n    setTraceMessage('Loading anonymous run trace…');\n    try {\n      const trace = await loadRunTrace(id);\n      if (traceRequestIdRef.current !== requestId) return;\n      setTraceRecord(trace);\n      setTraceMessage('');\n    } catch {\n      if (traceRequestIdRef.current !== requestId) return;\n      setTraceRecord(null);\n      setTraceMessage('Run trace unavailable. The rest of the Operations Board remains usable.');\n    }\n  };\n"
+          new_trace = "  const inspectTrace = async (id: string) => {\n    const requestId = ++traceRequestIdRef.current;\n    traceAbortRef.current?.abort();\n    const controller = new AbortController();\n    traceAbortRef.current = controller;\n    setTraceRecord(null);\n    setTraceMessage('Loading anonymous run trace…');\n    try {\n      const trace = await loadRunTrace(id, { signal: controller.signal });\n      if (traceRequestIdRef.current !== requestId) return;\n      setTraceRecord(trace);\n      setTraceMessage('');\n    } catch (error) {\n      if (traceRequestIdRef.current !== requestId || (isNetworkRequestError(error) && error.kind === 'aborted')) return;\n      setTraceRecord(null);\n      setTraceMessage(`${networkFailureMessage(error, 'Run trace')} The rest of the Operations Board remains usable.`);\n    } finally {\n      if (traceAbortRef.current === controller) traceAbortRef.current = null;\n    }\n  };\n"
+          hub = replace_once(hub, old_trace, new_trace, 'Trace request handling')
+          hub = replace_once(hub, "{operationsStatus === 'offline' ? 'Standard contracts remain fully playable. The board will reconnect automatically on a later app load.' : 'The Quiet Signal is waiting for the shared operation record.'}", "{operationsStatus === 'offline' ? `${operationsError || 'Operations link unavailable.'} Standard contracts remain fully playable. The board will reconnect automatically on a later app load.` : 'The Quiet Signal is waiting for the shared operation record.'}", 'Operations offline message')
+          hub_path.write_text(hub)
+
+          Path('tests/network-regressions.ts').write_text("""import assert from 'node:assert/strict';
+          import { isNetworkRequestError, loadOperationsSnapshot, loadRunTrace } from '../src/game/network';
+
+          const originalFetch = globalThis.fetch;
+
+          function hangingFetch() {
+            globalThis.fetch = ((_, init) => new Promise<Response>((_, reject) => {
+              const signal = init?.signal;
+              const abort = () => {
+                const error = new Error('aborted');
+                error.name = 'AbortError';
+                reject(error);
+              };
+              if (signal?.aborted) abort();
+              else signal?.addEventListener('abort', abort, { once: true });
+            })) as typeof fetch;
+          }
+
+          try {
+            hangingFetch();
+            const timeoutStarted = Date.now();
+            await assert.rejects(() => loadOperationsSnapshot({ timeoutMs: 20 }), error => isNetworkRequestError(error) && error.kind === 'timeout', 'stalled Operations requests must fail as a timeout');
+            assert(Date.now() - timeoutStarted < 1_000, 'timeout handling must resolve promptly in regression tests');
+
+            hangingFetch();
+            const controller = new AbortController();
+            const abortedRequest = loadRunTrace('trace-a', { signal: controller.signal, timeoutMs: 1_000 });
+            controller.abort();
+            await assert.rejects(() => abortedRequest, error => isNetworkRequestError(error) && error.kind === 'aborted', 'explicitly aborted trace requests must be classified separately from timeouts');
+
+            globalThis.fetch = (async () => new Response('rate limited', { status: 429 })) as typeof fetch;
+            await assert.rejects(() => loadOperationsSnapshot({ timeoutMs: 100 }), error => isNetworkRequestError(error) && error.kind === 'http' && error.status === 429, 'HTTP failures must preserve their response status');
+
+            globalThis.fetch = (async () => { throw new TypeError('offline'); }) as typeof fetch;
+            await assert.rejects(() => loadOperationsSnapshot({ timeoutMs: 100 }), error => isNetworkRequestError(error) && error.kind === 'network', 'transport failures must be classified as offline/network failures');
+
+            globalThis.fetch = (async () => new Response('{bad json', { status: 200 })) as typeof fetch;
+            await assert.rejects(() => loadOperationsSnapshot({ timeoutMs: 100 }), error => isNetworkRequestError(error) && error.kind === 'invalid-response', 'unreadable JSON must not masquerade as an offline failure');
+
+            console.log('NETWORK_REGRESSION_PASS timeout=bounded abort=distinct http=typed offline=typed invalid=typed');
+          } finally {
+            globalThis.fetch = originalFetch;
+          }
+          """.replace('\n          ', '\n'))
+
+          package_path = Path('package.json')
+          package = package_path.read_text()
+          package = replace_once(package, '"build": "npm run test:beta && npm run test:gameplay && npm run test:service && npm run test:maps && npm run test:loot && npm run test:ui && npm run test:render && vite build && npm run test:bundle",', '"build": "npm run test:beta && npm run test:gameplay && npm run test:network && npm run test:service && npm run test:maps && npm run test:loot && npm run test:ui && npm run test:render && vite build && npm run test:bundle",', 'Build network test hook')
+          package = replace_once(package, '"test:service": "node tests/service-regressions.mjs"', '"test:service": "node tests/service-regressions.mjs",\n    "test:network": "vite build --ssr tests/network-regressions.ts --outDir .network-dist && node .network-dist/network-regressions.js"', 'Network test script')
+          package_path.write_text(package)
+          PY
+      - name: Install dependencies
+        run: npm install
+      - name: Validate complete production build
+        run: npm run build
+      - name: Verify patch cleanliness
+        run: git diff --check
+      - name: Commit verified fix
+        shell: bash
+        run: |
+          rm -f .github/workflows/fix9-network-timeouts.yml .github/workflows/fix9-network-timeouts-v2.yml
+          git add src/game/network.ts src/App.tsx src/components/ShipHub.tsx tests/network-regressions.ts package.json .github/workflows/fix9-network-timeouts.yml .github/workflows/fix9-network-timeouts-v2.yml
+          git diff --cached --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Bound network requests and classify failures"
+          git push
