@@ -8,6 +8,8 @@ dist/
 .ui-dist/
 .network-dist/
 .service-dist/
+.graphics-dist/
+public/assets/codecs/
 android/
 *.log
 .DS_Store

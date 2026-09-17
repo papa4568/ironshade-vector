@@ -1,6 +1,6 @@
 # Graphics asset pipeline
 
-This document defines the first runtime contract for the premium stylized hard-sci-fi 3D overhaul tracked in #10.
+This document defines the runtime contract for the premium stylized hard-sci-fi 3D overhaul tracked in #10.
 
 ## Runtime format
 
@@ -13,17 +13,15 @@ This document defines the first runtime contract for the premium stylized hard-s
 
 ## Naming
 
-Use lowercase kebab-case and stable semantic names:
+Use lowercase kebab-case and stable semantic names. Runtime filenames include their LOD suffix and the declared LOD must match the filename:
 
-`operator-meridian-lod0.glb`
+`operator-field-suit-lod0.glb`
 
 `enemy-technician-lod1.glb`
 
 `weapon-rail-lod0.glb`
 
 `refinery-pipe-straight-a-lod1.glb`
-
-LOD suffixes are mandatory for assets that have multiple detail levels.
 
 ## PBR material contract
 
@@ -45,7 +43,7 @@ Avoid material proliferation. Repeated environment pieces should share atlases a
 - Environment modules: 1024px maximum by default; prefer atlases.
 - UI-independent authored art must remain readable with lower mip levels on small screens.
 
-KTX2/Basis texture compression is the intended mobile target. It is not enabled in the loader yet; enabling it is a tracked Phase 1 task and must be verified on Android before compressed textures become required content.
+KTX2/Basis Universal is the mobile texture target. `scripts/prepare-graphics-codecs.mjs` copies the Basis transcoder JS/WASM from the locked Three.js package into generated public assets so the Android package does not depend on a CDN. The runtime loader keeps KTX2 code deferred until an authored asset is actually requested. A live WebGL renderer must be registered with `configureGraphicsAssetRenderer()` before KTX2 content is loaded so Three.js can select the supported GPU texture format.
 
 ## Geometry and LOD
 
@@ -56,26 +54,37 @@ KTX2/Basis texture compression is the intended mobile target. It is not enabled 
 - Repeated static props should be compatible with `InstancedMesh` where feasible.
 - Skinning influence counts and bone counts should stay minimal for mobile.
 
-Mesh compression will be added only after its decoder cost and Android compatibility are measured. Until then the loader accepts standard GLB content and keeps compression opt-in rather than silently adding boot/runtime cost.
+Meshopt is the geometry-compression target. Its decoder is dynamically imported with the GLTF loader, so existing app boot chunks remain unaffected until authored 3D content is requested.
 
-## Loading contract
+`graphicsAssetLodForDetailScale()` maps the existing adaptive renderer detail scale to LOD0/1/2. Missing preferred LODs fall toward a cheaper model first, protecting mobile performance rather than silently escalating to the heaviest asset.
 
-`src/game/graphicsAssets.ts` owns the initial GLB load/cache boundary.
+## Loading and ownership contract
 
-- `GLTFLoader` is dynamically imported only when an authored asset is requested.
-- Validated asset URLs live under `/assets/models/` and end in `.glb`.
-- Successful loads are cached by URL.
+`src/game/graphicsAssets.ts` owns the GLB load/cache boundary.
+
+- `GLTFLoader`, Meshopt, KTX2, and `SkeletonUtils` are dynamically imported.
+- Validated asset URLs live under `/assets/models/`, end in `.glb`, and include `-lodN` matching their declared LOD.
+- Successful source GLBs are cached by URL.
 - Failed loads are removed from cache so a later request can retry.
+- `instantiateGraphicsAsset()` clones rigged scenes with `SkeletonUtils.clone()` so bones are correctly rebound while geometry/material data remains shareable.
+- Mounted instances hold a cache lease. Eviction waits for mounted clones to release before disposing shared geometry, materials, textures, image bitmaps, and skeleton GPU resources.
+- Instance release detaches the clone and disposes clone-specific skeleton resources without destroying shared cached geometry/materials.
 - The current procedural renderer remains the required fallback until each authored asset family is production-ready.
-- Clearing the load cache does not dispose resources already mounted in scenes; renderer owners remain responsible for geometry/material/texture disposal when they stop owning an instantiated asset.
 
 ## Current compression status
 
-- GLB: supported by the loader boundary.
-- Mesh compression: not enabled yet.
-- KTX2/Basis textures: not enabled yet.
-- Animation clips: supported by GLB/GLTFLoader; animation-system integration is Phase 2.
+- GLB: supported.
+- Mesh compression: Meshopt runtime decoding supported.
+- KTX2/Basis textures: transcoder packaging and runtime loader support implemented; renderer registration is required before compressed content is mounted.
+- Animation clips: carried through instantiated GLBs; animation-state integration remains Phase 2.
+
+## First asset slots
+
+`src/game/graphicsAssetManifest.ts` reserves stable LOD0/1/2 URLs for the operator field suit and the Asteroid Refinery showcase processing module. These are contracts only until the corresponding authored GLBs are added.
 
 ## Validation
 
-`npm run test:graphics` validates the source-level asset contract and is part of `npm run build`. Content-specific geometry/texture inspection will be expanded when the first authored GLB is committed.
+- `npm run test:graphics` validates the source-level asset contract, LOD behavior, deferred decoder imports, and ownership/disposal safeguards.
+- `npm run test:graphics:dist` verifies the production build contains the local Basis JS/WASM transcoder and enforces a codec payload budget.
+- Both run as part of `npm run build`.
+- Content-specific triangle, texture, animation, and payload inspection will expand when the first authored GLB is committed.
