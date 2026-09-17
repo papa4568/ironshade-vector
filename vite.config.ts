@@ -5,7 +5,6 @@ export default defineConfig({
   plugins: [react()],
   base: './',
   build: {
-    target: 'esnext',
     outDir: 'dist',
     sourcemap: false,
     manifest: true,
@@ -13,7 +12,8 @@ export default defineConfig({
       maxParallelFileOps: 128,
       output: {
         manualChunks(id) {
-          if (id.includes('/node_modules/three/')) return 'three-runtime';
+          if (id.endsWith('/node_modules/three/build/three.core.js')) return 'three-core';
+          if (id.endsWith('/node_modules/three/build/three.module.js')) return 'three-webgl';
           if (id.includes('/node_modules/react/') || id.includes('/node_modules/react-dom/')) return 'react-runtime';
         },
       },
