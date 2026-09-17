@@ -9,28 +9,29 @@ if (typeof WebSocket !== 'function') {
 
 async function waitForTarget() {
   let lastError = null;
+  let lastTargets = [];
   while (Date.now() - startedAt < timeoutMs) {
     try {
       const response = await fetch(`${cdpBase}/json/list`);
       if (!response.ok) throw new Error(`CDP target listing returned HTTP ${response.status}`);
       const targets = await response.json();
+      lastTargets = targets;
       const candidates = targets.filter(candidate => candidate.webSocketDebuggerUrl);
-      const target = candidates.find(candidate => /localhost|ironshade/i.test(`${candidate.url ?? ''} ${candidate.title ?? ''}`))
-        ?? candidates.find(candidate => candidate.type === 'page')
-        ?? candidates[0];
-      if (target) return target;
+      const readyTarget = candidates.find(candidate => candidate.title === 'Ironshade Vector')
+        ?? candidates.find(candidate => /ironshade/i.test(candidate.title ?? '') && /localhost/i.test(candidate.url ?? ''));
+      if (readyTarget) return readyTarget;
     } catch (error) {
       lastError = error;
     }
     await sleep(500);
   }
-  throw new Error(`Timed out waiting for Android WebView CDP target${lastError ? `: ${lastError}` : ''}`);
+  throw new Error(`Timed out waiting for ready Android WebView CDP target; targets=${JSON.stringify(lastTargets)}${lastError ? ` error=${lastError}` : ''}`);
 }
 
 function connect(url) {
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(url);
-    const timer = setTimeout(() => reject(new Error('Timed out connecting to Android WebView CDP socket')), 10_000);
+    const timer = setTimeout(() => reject(new Error('Timed out connecting to Android WebView CDP socket')), 15_000);
     socket.addEventListener('open', () => {
       clearTimeout(timer);
       resolve(socket);
@@ -69,7 +70,7 @@ function call(method, params = {}) {
     const timer = setTimeout(() => {
       pending.delete(id);
       reject(new Error(`Timed out waiting for CDP ${method}`));
-    }, 10_000);
+    }, 20_000);
     pending.set(id, {
       resolve: value => { clearTimeout(timer); resolve(value); },
       reject: error => { clearTimeout(timer); reject(error); },
