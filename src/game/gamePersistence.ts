@@ -41,6 +41,7 @@ export function loadGameState(storage: StorageLike | null = browserStorage()): G
   }
 }
 
+// Callers can clear a save-failure warning only after this whole-envelope write succeeds.
 export function saveGameState(profile: PlayerProfile, campaign: CampaignState, storage: StorageLike | null = browserStorage()) {
   if (!storage) return typeof window === 'undefined';
   if (validateStoredProfile(profile) || validateStoredCampaign(campaign)) return false;
