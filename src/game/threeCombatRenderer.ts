@@ -63,6 +63,18 @@ type LocationPalette = {
   secondary: number;
 };
 
+type OperatorRig = {
+  hip: THREE.Object3D;
+  torso: THREE.Object3D;
+  helmet: THREE.Object3D;
+  leftArm: THREE.Object3D;
+  rightArm: THREE.Object3D;
+  leftLeg: THREE.Object3D;
+  rightLeg: THREE.Object3D;
+  backpack: THREE.Object3D;
+  weaponSocket: THREE.Object3D;
+};
+
 function scaled(value: number) {
   return value * WORLD_SCALE;
 }
@@ -171,6 +183,7 @@ export class ThreeCombatRenderer {
   private operatorAssetInstance: GraphicsAssetInstance | null = null;
   private authoredOperatorRoot: THREE.Group | null = null;
   private authoredOperatorMaterials: THREE.MeshStandardMaterial[] = [];
+  private authoredOperatorRig: OperatorRig | null = null;
   private disposed = false;
   private environmentSignature = '';
   private objectiveGuideTargetId = '';
@@ -296,6 +309,7 @@ export class ThreeCombatRenderer {
     this.operatorAssetInstance?.release();
     this.operatorAssetInstance = null;
     this.authoredOperatorRoot = null;
+    this.authoredOperatorRig = null;
     this.authoredOperatorMaterials.forEach(material => material.dispose());
     this.authoredOperatorMaterials = [];
     disposeTree(this.scene);
@@ -303,7 +317,7 @@ export class ThreeCombatRenderer {
   }
 
   private async loadAuthoredOperator() {
-    const spec = selectGraphicsAssetSpec(OPERATOR_ASSET_FAMILY, this.coarse ? 0.5 : 1);
+    const spec = selectGraphicsAssetSpec(OPERATOR_ASSET_FAMILY, this.coarse ? 0.72 : 1);
     if (!spec) {
       this.renderer.domElement.dataset.operatorVisual = 'procedural-fallback';
       return;
@@ -347,6 +361,39 @@ export class ThreeCombatRenderer {
       root.name = 'authored-operator';
       this.playerRoot.add(root);
 
+      const rigCandidates = {
+        hip: root.getObjectByName('hip'),
+        torso: root.getObjectByName('torso'),
+        helmet: root.getObjectByName('helmet'),
+        leftArm: root.getObjectByName('arm-left'),
+        rightArm: root.getObjectByName('arm-right'),
+        leftLeg: root.getObjectByName('leg-left'),
+        rightLeg: root.getObjectByName('leg-right'),
+        backpack: root.getObjectByName('backpack'),
+        weaponSocket: root.getObjectByName('weapon-socket'),
+      };
+      const rigReady = Object.values(rigCandidates).every(Boolean);
+      if (rigReady) {
+        const rig = rigCandidates as OperatorRig;
+        for (const node of Object.values(rig)) {
+          node.userData.operatorRestPosition = node.position.clone();
+          node.userData.operatorRestRotation = node.rotation.clone();
+        }
+        this.authoredOperatorRig = rig;
+        this.weaponPivot.removeFromParent();
+        rig.weaponSocket.add(this.weaponPivot);
+        this.weaponPivot.position.set(0, 0, 0);
+        this.weaponPivot.rotation.set(0, 0, 0);
+        this.playerWeapon.position.set(0.72, 0, 0);
+        this.muzzleFlash.position.set(1.45, 0, 0);
+        this.renderer.domElement.dataset.operatorRig = 'articulated';
+        this.renderer.domElement.dataset.operatorSocket = 'weapon-socket';
+      } else {
+        this.authoredOperatorRig = null;
+        this.renderer.domElement.dataset.operatorRig = 'static';
+        delete this.renderer.domElement.dataset.operatorSocket;
+      }
+
       const tintable = [...standardMaterials].filter(material => {
         const name = material.name.toLowerCase();
         return name.includes('suit') || name.includes('shell') || name.includes('primary');
@@ -357,11 +404,89 @@ export class ThreeCombatRenderer {
       this.proceduralOperatorVisuals.forEach(item => { item.visible = false; });
       this.renderer.domElement.dataset.operatorVisual = `authored-${spec.lod}`;
       this.renderer.domElement.dataset.operatorAsset = spec.id;
+      this.renderer.domElement.dataset.operatorAnimation = this.authoredOperatorRig ? 'idle' : 'static';
     } catch (error) {
       if (this.disposed) return;
       this.renderer.domElement.dataset.operatorVisual = 'procedural-fallback';
       console.warn('Authored operator asset failed to load; keeping procedural fallback.', error);
     }
+  }
+
+  private syncAuthoredOperatorAnimation(state: SimState) {
+    const rig = this.authoredOperatorRig;
+    if (!rig) return;
+
+    const player = state.player;
+    const animatedNodes = [rig.hip, rig.torso, rig.helmet, rig.leftArm, rig.rightArm, rig.leftLeg, rig.rightLeg, rig.backpack, rig.weaponSocket];
+    for (const node of animatedNodes) {
+      const restPosition = node.userData.operatorRestPosition as THREE.Vector3 | undefined;
+      const restRotation = node.userData.operatorRestRotation as THREE.Euler | undefined;
+      if (restPosition) node.position.copy(restPosition);
+      if (restRotation) node.rotation.copy(restRotation);
+    }
+
+    const speed = THREE.MathUtils.clamp(Math.hypot(player.vx, player.vy) * 0.012, 0, 1);
+    const gait = Math.sin(state.time * (8.5 + speed * 3)) * speed;
+    const idleBreath = Math.sin(state.time * 2.4);
+    const recoil = THREE.MathUtils.clamp(state.weaponFlash * 8, 0, 1);
+    const reloadDuration = Math.max(0.01, state.weapons[player.reloadWeapon].reloadSeconds);
+    const reload = player.reloadT > 0 ? THREE.MathUtils.clamp(player.reloadT / reloadDuration, 0, 1) : 0;
+    const dodge = player.dodgeTime > 0 ? THREE.MathUtils.clamp(player.dodgeTime / 0.3, 0, 1) : 0;
+
+    rig.torso.position.y += idleBreath * 0.012;
+    rig.backpack.position.y += idleBreath * 0.008;
+    rig.helmet.rotation.z += idleBreath * 0.012;
+    rig.leftLeg.rotation.z += gait * 0.42;
+    rig.rightLeg.rotation.z -= gait * 0.42;
+
+    // Aim-ready upper-body pose. The authored root owns yaw; limb motion is local and simulation-read-only.
+    rig.leftArm.rotation.z += -0.52 - gait * 0.09;
+    rig.rightArm.rotation.z += 0.42 + gait * 0.06;
+    rig.leftArm.rotation.x += -0.12;
+    rig.rightArm.rotation.x += 0.12;
+
+    if (recoil > 0) {
+      rig.weaponSocket.position.x -= 0.1 * recoil;
+      rig.torso.rotation.z -= 0.055 * recoil;
+      rig.rightArm.rotation.z += 0.1 * recoil;
+    }
+
+    if (reload > 0) {
+      const cycle = Math.sin((1 - reload) * Math.PI);
+      rig.weaponSocket.rotation.z += 0.5 * cycle;
+      rig.weaponSocket.position.y -= 0.08 * cycle;
+      rig.leftArm.rotation.z += 0.58 * cycle;
+      rig.rightArm.rotation.z -= 0.22 * cycle;
+    }
+
+    if (dodge > 0) {
+      rig.torso.rotation.z -= 0.28 * dodge;
+      rig.hip.position.x += 0.1 * dodge;
+      rig.backpack.rotation.z += 0.16 * dodge;
+    }
+
+    if (player.dead) {
+      rig.hip.position.y -= 0.48;
+      rig.torso.rotation.z = -1.02;
+      rig.helmet.rotation.z = -0.34;
+      rig.leftArm.rotation.z = -0.12;
+      rig.rightArm.rotation.z = 0.1;
+      rig.leftLeg.rotation.z = 0.2;
+      rig.rightLeg.rotation.z = -0.22;
+    }
+
+    const mode = player.dead
+      ? 'down'
+      : player.dodgeTime > 0
+        ? 'dodge'
+        : player.reloadT > 0
+          ? 'reload'
+          : state.weaponFlash > 0
+            ? 'recoil'
+            : speed > 0.08
+              ? 'locomotion'
+              : 'idle';
+    this.renderer.domElement.dataset.operatorAnimation = mode;
   }
 
   private resize(width: number, height: number, quality: number, budget: RenderBudgetSnapshot) {
@@ -665,7 +790,10 @@ export class ThreeCombatRenderer {
     this.playerBody.material.color.setHex(suitColor);
     this.playerBody.material.emissive.setHex(operatorEmissive);
     this.playerBody.material.emissiveIntensity = operatorEmissiveIntensity;
-    if (this.authoredOperatorRoot) this.authoredOperatorRoot.rotation.y = Math.atan2(-player.aim.y, player.aim.x);
+    if (this.authoredOperatorRoot) {
+      this.authoredOperatorRoot.rotation.y = Math.atan2(-player.aim.y, player.aim.x);
+      this.syncAuthoredOperatorAnimation(state);
+    }
     for (const material of this.authoredOperatorMaterials) {
       material.color.setHex(suitColor);
       material.emissive.setHex(operatorEmissive);
@@ -676,7 +804,14 @@ export class ThreeCombatRenderer {
     this.playerWeapon.material.color.setHex(weaponColor);
     this.playerWeapon.material.emissive.setHex(weaponColor);
     this.playerWeapon.scale.x = player.currentWeapon === 'rail' ? 1.28 : player.currentWeapon === 'breacher' ? 0.9 : 1;
-    this.weaponPivot.rotation.y = Math.atan2(-player.aim.y, player.aim.x);
+    if (this.authoredOperatorRig) {
+      this.weaponPivot.rotation.y = 0;
+      for (const child of this.weaponPivot.children) {
+        if (child.name.startsWith('hard-weapon-')) child.position.y = 0;
+      }
+    } else {
+      this.weaponPivot.rotation.y = Math.atan2(-player.aim.y, player.aim.x);
+    }
     this.muzzleFlash.material.color.setHex(weaponColor);
     this.muzzleFlash.visible = state.weaponFlash > 0;
     this.muzzleFlash.position.x = hardSciFiMuzzleOffset(this.weaponPivot, 1.45);
