@@ -202,6 +202,7 @@ async function accessibilityAudit(surface) {
 }
 
 async function keyboardActivateButton(label) {
+  await call('Page.bringToFront');
   const focused = await evaluate(`(() => {
     const target = ${JSON.stringify(label.toLowerCase())};
     const button = [...document.querySelectorAll('button')].find(candidate => candidate.textContent?.trim().toLowerCase() === target);
@@ -211,8 +212,22 @@ async function keyboardActivateButton(label) {
   })()`);
   if (!focused) throw new Error(`Could not keyboard-focus ${label} button.`);
 
-  await call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 });
-  await call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 });
+  await call('Input.dispatchKeyEvent', {
+    type: 'keyDown',
+    key: ' ',
+    code: 'Space',
+    text: ' ',
+    unmodifiedText: ' ',
+    windowsVirtualKeyCode: 32,
+    nativeVirtualKeyCode: 32,
+  });
+  await call('Input.dispatchKeyEvent', {
+    type: 'keyUp',
+    key: ' ',
+    code: 'Space',
+    windowsVirtualKeyCode: 32,
+    nativeVirtualKeyCode: 32,
+  });
 }
 
 await call('Runtime.enable');
