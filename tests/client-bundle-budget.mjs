@@ -46,12 +46,31 @@ const threeManifestKeys = new Set(records
 const bootImports = new Set(entry.imports ?? []);
 assert([...threeManifestKeys].every(key => !bootImports.has(key)), 'Three.js runtime is no longer deferred from the boot entry.');
 
+const graphicsRuntimePrefixes = ['GLTFLoader-', 'KTX2Loader-', 'meshopt_decoder.module-', 'SkeletonUtils-'];
+const graphicsRuntimeChunks = jsFiles.filter(name => graphicsRuntimePrefixes.some(prefix => name.startsWith(prefix)));
+assert(graphicsRuntimeChunks.length === graphicsRuntimePrefixes.length, `Expected ${graphicsRuntimePrefixes.length} authored-asset runtime chunks; found ${graphicsRuntimeChunks.length}.`);
+const graphicsRuntimeStats = graphicsRuntimeChunks.map(name => {
+  const file = resolve(assetsDir, name);
+  const source = readFileSync(file);
+  return { name, raw: statSync(file).size, gzip: gzipSync(source).byteLength };
+});
+const graphicsRuntimeRaw = graphicsRuntimeStats.reduce((sum, chunk) => sum + chunk.raw, 0);
+const graphicsRuntimeGzip = graphicsRuntimeStats.reduce((sum, chunk) => sum + chunk.gzip, 0);
+const graphicsManifestKeys = new Set(records
+  .filter(([, record]) => graphicsRuntimeChunks.includes(basename(record.file)))
+  .map(([key]) => key));
+assert([...graphicsManifestKeys].every(key => !bootImports.has(key)), 'Authored-asset loaders must remain deferred from the boot entry.');
+
 assert(entryRaw < 360_000, `Boot entry regressed to ${(entryRaw / 1024).toFixed(1)} KiB; budget is < 351.6 KiB.`);
 assert(entryGzip < 110_000, `Boot entry gzip regressed to ${(entryGzip / 1024).toFixed(1)} KiB; budget is < 107.4 KiB.`);
-assert(threeRaw < 550_000, `Combined deferred Three.js runtime regressed to ${(threeRaw / 1024).toFixed(1)} KiB; budget is < 537.1 KiB.`);
-assert(threeGzip < 140_000, `Combined deferred Three.js gzip regressed to ${(threeGzip / 1024).toFixed(1)} KiB; budget is < 136.7 KiB.`);
+// The production GLTF/KTX2/Meshopt path makes additional Three core exports reachable only after combat starts.
+// Keep that deliberate deferred cost bounded separately instead of hiding it in the boot budget.
+assert(threeRaw < 620_000, `Combined deferred Three.js + authored-asset core regressed to ${(threeRaw / 1024).toFixed(1)} KiB; budget is < 605.5 KiB.`);
+assert(threeGzip < 160_000, `Combined deferred Three.js + authored-asset core gzip regressed to ${(threeGzip / 1024).toFixed(1)} KiB; budget is < 156.3 KiB.`);
 assert(threeMaxRaw < 500_000, `Largest Three.js chunk regressed to ${(threeMaxRaw / 1024).toFixed(1)} KiB; budget is < 488.3 KiB.`);
-assert(jsFiles.length >= 6, `Expected navigation and Three.js code splitting; found only ${jsFiles.length} JS chunks.`);
+assert(graphicsRuntimeRaw < 150_000, `Deferred authored-asset loaders regressed to ${(graphicsRuntimeRaw / 1024).toFixed(1)} KiB; budget is < 146.5 KiB.`);
+assert(graphicsRuntimeGzip < 52_000, `Deferred authored-asset loaders gzip regressed to ${(graphicsRuntimeGzip / 1024).toFixed(1)} KiB; budget is < 50.8 KiB.`);
+assert(jsFiles.length >= 10, `Expected navigation, Three.js, and authored-asset code splitting; found only ${jsFiles.length} JS chunks.`);
 
 const chunkStats = jsFiles.map(name => {
   const file = resolve(assetsDir, name);
@@ -59,5 +78,5 @@ const chunkStats = jsFiles.map(name => {
   return { name, raw: statSync(file).size, gzip: gzipSync(source).byteLength };
 }).sort((a, b) => b.raw - a.raw);
 
-console.log(`CLIENT_BUNDLE_PASS entry=${(entryRaw / 1024).toFixed(1)}KiB gzip=${(entryGzip / 1024).toFixed(1)}KiB chunks=${jsFiles.length} threeTotal=${(threeRaw / 1024).toFixed(1)}KiB/${(threeGzip / 1024).toFixed(1)}KiB threeMax=${(threeMaxRaw / 1024).toFixed(1)}KiB`);
-console.log('CLIENT_BUNDLE_TOP ' + chunkStats.slice(0, 6).map(chunk => `${chunk.name}:${(chunk.raw / 1024).toFixed(1)}KiB/${(chunk.gzip / 1024).toFixed(1)}KiB`).join(' '));
+console.log(`CLIENT_BUNDLE_PASS entry=${(entryRaw / 1024).toFixed(1)}KiB gzip=${(entryGzip / 1024).toFixed(1)}KiB chunks=${jsFiles.length} threeTotal=${(threeRaw / 1024).toFixed(1)}KiB/${(threeGzip / 1024).toFixed(1)}KiB threeMax=${(threeMaxRaw / 1024).toFixed(1)}KiB graphicsRuntime=${(graphicsRuntimeRaw / 1024).toFixed(1)}KiB/${(graphicsRuntimeGzip / 1024).toFixed(1)}KiB`);
+console.log('CLIENT_BUNDLE_TOP ' + chunkStats.slice(0, 10).map(chunk => `${chunk.name}:${(chunk.raw / 1024).toFixed(1)}KiB/${(chunk.gzip / 1024).toFixed(1)}KiB`).join(' '));
