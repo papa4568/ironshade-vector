@@ -7,17 +7,22 @@ on:
       - beta/level-15-smoke
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   beta:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '22.23.2'
           cache: npm
           cache-dependency-path: package-lock.json
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
+      - name: Audit runtime dependencies
+        run: npm audit --omit=dev --audit-level=high
       - name: Validate level 15 beta and production build
         run: npm run build
