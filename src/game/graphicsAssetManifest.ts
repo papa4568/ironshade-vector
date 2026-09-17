@@ -1,10 +1,11 @@
 import { createGraphicsAssetSpec, type GraphicsAssetFamily } from './graphicsAssets';
 
+// The first committed authored operator asset is the Performance-tier LOD2.
+// Higher-detail LOD0/LOD1 variants will be added during the rigged operator vertical slice.
+// Keeping only shipped files in the family guarantees adaptive selection falls back to a real asset.
 export const OPERATOR_ASSET_FAMILY: GraphicsAssetFamily = {
   id: 'operator-field-suit',
   lods: {
-    0: createGraphicsAssetSpec('operator-field-suit-lod0', 'operator', '/assets/models/operators/operator-field-suit-lod0.glb', 0),
-    1: createGraphicsAssetSpec('operator-field-suit-lod1', 'operator', '/assets/models/operators/operator-field-suit-lod1.glb', 1),
     2: createGraphicsAssetSpec('operator-field-suit-lod2', 'operator', '/assets/models/operators/operator-field-suit-lod2.glb', 2),
   },
 };
