@@ -15,6 +15,7 @@ const CLASS_BUDGETS = {
   weapons: { maxBytes: 800_000, maxTriangles: 12_000 },
   environments: { maxBytes: 1_200_000, maxTriangles: 20_000 },
 };
+const REQUIRED_OPERATOR_CLIPS = ['idle', 'locomotion', 'aim', 'fire', 'reload', 'dodge', 'hit', 'death'];
 
 async function collectGlbs(dir) {
   const files = [];
@@ -133,8 +134,10 @@ for (const path of glbs) {
   assert(gltf.scene, `${relativePath}: GLTFLoader did not produce a scene`);
   const instance = clone(gltf.scene);
   let runtimeMeshes = 0;
+  let runtimeSkinnedMeshes = 0;
   instance.traverse(child => {
     if (child.isMesh) runtimeMeshes += 1;
+    if (child.isSkinnedMesh) runtimeSkinnedMeshes += 1;
   });
   assert(runtimeMeshes > 0, `${relativePath}: cloned runtime scene contains no meshes`);
 
@@ -143,11 +146,19 @@ for (const path of glbs) {
     const height = bounds.max[1] - bounds.min[1];
     assert(Math.abs(bounds.min[1]) <= 0.02, `${relativePath}: operator feet must rest on authored ground origin; minY=${bounds.min[1]}`);
     assert(height >= 1.5 && height <= 2.6, `${relativePath}: operator height ${height.toFixed(2)}m is outside mobile gameplay scale`);
+    assert((json.skins?.length ?? 0) > 0, `${relativePath}: operator must contain an authored skeleton/skin`);
+    assert(runtimeSkinnedMeshes > 0, `${relativePath}: runtime clone must contain a SkinnedMesh`);
+    const nodeNames = new Set((json.nodes ?? []).map(node => node.name));
+    assert(nodeNames.has('weapon-socket'), `${relativePath}: operator must expose a weapon-socket node`);
+    const clipNames = new Set((json.animations ?? []).map(animation => animation.name));
+    for (const clip of REQUIRED_OPERATOR_CLIPS) {
+      assert(clipNames.has(clip), `${relativePath}: missing required operator animation clip ${clip}`);
+    }
   }
 
-  reports.push({ relativePath, bytes: data.byteLength, triangles, meshes: runtimeMeshes });
+  reports.push({ relativePath, bytes: data.byteLength, triangles, meshes: runtimeMeshes, skinnedMeshes: runtimeSkinnedMeshes, animations: json.animations?.length ?? 0 });
 }
 
 const totalBytes = reports.reduce((sum, report) => sum + report.bytes, 0);
 const totalTriangles = reports.reduce((sum, report) => sum + report.triangles, 0);
-console.log(`GRAPHICS_CONTENT_PASS assets=${reports.length} bytes=${totalBytes} triangles=${totalTriangles} ${reports.map(report => `${report.relativePath}:${report.triangles}t`).join(' ')}`);
+console.log(`GRAPHICS_CONTENT_PASS assets=${reports.length} bytes=${totalBytes} triangles=${totalTriangles} ${reports.map(report => `${report.relativePath}:${report.triangles}t/${report.skinnedMeshes}s/${report.animations}a`).join(' ')}`);
