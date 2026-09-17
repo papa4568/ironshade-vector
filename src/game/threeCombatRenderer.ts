@@ -183,6 +183,7 @@ export class ThreeCombatRenderer {
   private operatorAssetInstance: GraphicsAssetInstance | null = null;
   private authoredOperatorRoot: THREE.Group | null = null;
   private authoredOperatorMaterials: THREE.MeshStandardMaterial[] = [];
+  private authoredOperatorOwnedMaterials: THREE.Material[] = [];
   private authoredOperatorRig: OperatorRig | null = null;
   private disposed = false;
   private environmentSignature = '';
@@ -306,11 +307,15 @@ export class ThreeCombatRenderer {
 
   dispose() {
     this.disposed = true;
+    if (this.authoredOperatorRig && this.weaponPivot.parent === this.authoredOperatorRig.weaponSocket) {
+      this.playerRoot.add(this.weaponPivot);
+    }
     this.operatorAssetInstance?.release();
     this.operatorAssetInstance = null;
     this.authoredOperatorRoot = null;
     this.authoredOperatorRig = null;
-    this.authoredOperatorMaterials.forEach(material => material.dispose());
+    this.authoredOperatorOwnedMaterials.forEach(material => material.dispose());
+    this.authoredOperatorOwnedMaterials = [];
     this.authoredOperatorMaterials = [];
     disposeTree(this.scene);
     this.renderer.dispose();
@@ -400,6 +405,7 @@ export class ThreeCombatRenderer {
       });
       this.operatorAssetInstance = instance;
       this.authoredOperatorRoot = root;
+      this.authoredOperatorOwnedMaterials = [...standardMaterials];
       this.authoredOperatorMaterials = tintable.length > 0 ? tintable : [...standardMaterials];
       this.proceduralOperatorVisuals.forEach(item => { item.visible = false; });
       this.renderer.domElement.dataset.operatorVisual = `authored-${spec.lod}`;
