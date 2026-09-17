@@ -12,7 +12,7 @@ type DailyOperation = { date: string; seed: number; codename: string; sponsor: '
 
 const dailyStore = () => getStore('ironshade-daily');
 const metricsStore = () => getStore({ name: 'ironshade-metrics', consistency: 'strong' });
-const runsStore = () => getStore('ironshade-runs');
+const runsStore = () => getStore({ name: 'ironshade-runs', consistency: 'strong' });
 const METRICS_KEY = 'global';
 
 function json(data: unknown, status = 200) {
@@ -81,21 +81,7 @@ function normalizeMetrics(value: Partial<MetricsRecord> | null | undefined): Met
   const recent = (value?.recent ?? []).slice(0, 8).map((entry, index) => normalizeRunSummary(entry, index));
   return { ...base, ...value, attempts: value?.attempts ?? value?.runs ?? 0, failedRuns: value?.failedRuns ?? 0, weaponShots: { ...base.weaponShots, ...(value?.weaponShots ?? {}) }, byTier, protocolCombinations: { ...(value?.protocolCombinations ?? {}) }, recent };
 }
-async function readMetrics() {
-  const stored = await metricsStore().get(METRICS_KEY, { type: 'json', consistency: 'strong' }) as MetricsRecord | null;
-  return normalizeMetrics(stored);
-}
-function mergeCountMap(base: Record<string, number>, addition: Record<string, number>, maxKeys = 30) {
-  const next = { ...base };
-  for (const [key, value] of Object.entries(addition)) next[key] = (next[key] ?? 0) + value;
-  return Object.fromEntries(Object.entries(next).sort((a, b) => b[1] - a[1]).slice(0, maxKeys));
-}
-
-async function updateMetrics(runId: string, run: RunRecord) {
-  const store = metricsStore();
-  for (let attempt = 0; attempt < 8; attempt += 1) {
-    const version = await store.getWithMetadata(METRICS_KEY, { type: 'json', consistency: 'strong' }) as { data: MetricsRecord; etag: string } | null;
-    const base = normalizeMetrics(version?.data);
+function applyRunToMetrics(base: MetricsRecord, runId: string, run: RunRecord): MetricsRecord {
   const banked = run.outcome !== 'failed';
   const summary: RunSummary = { id: runId, contractTitle: run.contractTitle, location: run.location, outcome: run.outcome, operationTier: run.operationTier, directive: run.directive, level: run.level, duration: run.duration, buildLabel: run.buildLabel, createdAt: run.createdAt, tracePoints: run.trace.length, daily: run.daily };
   const tierKey = String(run.operationTier);
@@ -118,7 +104,7 @@ async function updateMetrics(runId: string, run: RunRecord) {
     singulars: tier.singulars + run.singularCount,
     modifierGrades: grades,
   };
-  const next: MetricsRecord = {
+  return {
     runs: base.runs + (banked ? 1 : 0),
     attempts: base.attempts + 1,
     safeRuns: base.safeRuns + (run.outcome === 'safe' ? 1 : 0),
@@ -132,6 +118,54 @@ async function updateMetrics(runId: string, run: RunRecord) {
     protocolCombinations: mergeCountMap(base.protocolCombinations, run.protocolCombinations),
     recent: [summary, ...base.recent].slice(0, 8),
   };
+}
+
+async function rebuildMetricsFromLedger(runKeys: string[]) {
+  const store = runsStore();
+  let rebuilt = emptyMetrics();
+  for (const runId of runKeys) {
+    const run = await store.get(runId, { type: 'json', consistency: 'strong' }) as RunRecord | null;
+    if (run) rebuilt = applyRunToMetrics(rebuilt, runId, run);
+  }
+  return rebuilt;
+}
+
+async function readMetrics() {
+  const store = metricsStore();
+  const version = await store.getWithMetadata(METRICS_KEY, { type: 'json', consistency: 'strong' }) as { data: MetricsRecord; etag: string } | null;
+  const cached = normalizeMetrics(version?.data);
+  const runStore = runsStore();
+  const ledger = await runStore.list();
+  const runKeys = ledger.blobs.map(blob => blob.key);
+  if (cached.attempts === runKeys.length) return cached;
+
+  const rebuilt = await rebuildMetricsFromLedger(runKeys);
+  const confirmed = await runStore.list();
+  if (confirmed.blobs.length === runKeys.length) {
+    const result = version
+      ? await store.setJSON(METRICS_KEY, rebuilt, { onlyIfMatch: version.etag })
+      : await store.setJSON(METRICS_KEY, rebuilt, { onlyIfNew: true });
+    if (!result.modified) {
+      const current = await store.get(METRICS_KEY, { type: 'json', consistency: 'strong' }) as MetricsRecord | null;
+      const normalized = normalizeMetrics(current);
+      if (normalized.attempts === confirmed.blobs.length) return normalized;
+    }
+  }
+  return rebuilt;
+}
+
+function mergeCountMap(base: Record<string, number>, addition: Record<string, number>, maxKeys = 30) {
+  const next = { ...base };
+  for (const [key, value] of Object.entries(addition)) next[key] = (next[key] ?? 0) + value;
+  return Object.fromEntries(Object.entries(next).sort((a, b) => b[1] - a[1]).slice(0, maxKeys));
+}
+
+async function updateMetrics(runId: string, run: RunRecord) {
+  const store = metricsStore();
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const version = await store.getWithMetadata(METRICS_KEY, { type: 'json', consistency: 'strong' }) as { data: MetricsRecord; etag: string } | null;
+    const base = normalizeMetrics(version?.data);
+    const next = applyRunToMetrics(base, runId, run);
     const result = version
       ? await store.setJSON(METRICS_KEY, next, { onlyIfMatch: version.etag })
       : await store.setJSON(METRICS_KEY, next, { onlyIfNew: true });
@@ -188,10 +222,18 @@ async function handlePostRun(req: Request) {
     operationDate: cleanText(raw.operationDate, 16),
     trace,
   };
-  const runId = crypto.randomUUID();
-  await runsStore().setJSON(runId, run);
-  const metrics = await updateMetrics(runId, run);
-  return json({ id: runId, metrics }, 201);
+  const idempotencyKey = cleanText(req.headers.get('x-idempotency-key'), 80);
+  if (!/^[A-Za-z0-9._-]{16,80}$/.test(idempotencyKey)) return problem('Run telemetry requires a valid idempotency key', 400);
+  const runId = idempotencyKey;
+  const store = runsStore();
+  const created = await store.setJSON(runId, run, { onlyIfNew: true });
+  if (!created.modified) return json({ id: runId, metrics: await readMetrics() }, 200);
+  try {
+    return json({ id: runId, metrics: await updateMetrics(runId, run) }, 201);
+  } catch (cause) {
+    console.error('Telemetry aggregate update deferred to ledger reconciliation', cause);
+    return json({ id: runId, metrics: await readMetrics() }, 201);
+  }
 }
 
 export default async function handler(req: Request, context: Context) {

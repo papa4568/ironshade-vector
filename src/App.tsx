@@ -7,7 +7,7 @@ import { advanceBlackLatticeAfterContract, getBlackLatticeContract } from './gam
 import { advanceEscalationAfterContract, applyShipBonuses, dailyOperationContract, factionDisplayName, generateContracts, generateEscalationContract, resourceLabels, settleContract, type CampaignReward, type CampaignState, type Contract, type ExpeditionProgress, type ResourceId } from './game/campaign';
 import { feedback } from './game/feedback';
 import { awardRecovery, buildIdentity, deriveCombatBuild, discardItem, dominantEquipmentFaction, setProfileSettings, type PlayerProfile, type ProfileSettings, type VictoryReward } from './game/meta';
-import { loadOperationsSnapshot, uploadRunTelemetry, type OperationsSnapshot } from './game/network';
+import { createTelemetryRequestId, loadOperationsSnapshot, uploadRunTelemetry, type OperationsSnapshot } from './game/network';
 import { advanceStoryAfterContract, generateStoryContracts } from './game/story';
 import { advancePostKhepriAfterContract, getPostKhepriContract, syncPostKhepriAccess } from './game/postKhepri';
 import { advanceInterdictionAfterContract, getCommandTraceContracts, getInterdictionContract, syncInterdictionAccess } from './game/postKhepriInterdiction';
@@ -208,7 +208,8 @@ function App() {
     setScreen('debrief');
 
     if (profile.settings.telemetrySharing) {
-      void uploadRunTelemetry({ contract: selectedContract, telemetry, outcome: depth, salvageTags, level: profile.level, buildLabel, recoveryQualities: lootReward.loot.map(item => item.recoveryQuality ?? 0), modifierGrades: lootReward.loot.flatMap(item => item.modifiers.map(modifier => modifier.grade ?? 3)), singularCount: lootReward.loot.filter(item => item.rarity === 'Singular').length })
+      const telemetryRequestId = createTelemetryRequestId();
+      void uploadRunTelemetry({ contract: selectedContract, telemetry, outcome: depth, salvageTags, level: profile.level, buildLabel, requestId: telemetryRequestId, recoveryQualities: lootReward.loot.map(item => item.recoveryQuality ?? 0), modifierGrades: lootReward.loot.flatMap(item => item.modifiers.map(modifier => modifier.grade ?? 3)), singularCount: lootReward.loot.filter(item => item.rarity === 'Singular').length })
         .then(result => {
           setOperations(current => current ? { ...current, metrics: result.metrics } : current);
           setDebrief(current => current?.runId === debriefRunId ? { ...current, uplinkStatus: 'shared' } : current);
@@ -216,7 +217,7 @@ function App() {
         .catch(() => setDebrief(current => current?.runId === debriefRunId ? { ...current, uplinkStatus: 'error' } : current));
     }
   };
-  const reportFailedAttempt = (telemetry: Telemetry) => { if (!selectedContract || !profile.settings.telemetrySharing) return; void uploadRunTelemetry({ contract: selectedContract, telemetry, outcome: 'failed', salvageTags: 0, level: profile.level, buildLabel: buildIdentity(profile) }).then(result => setOperations(current => current ? { ...current, metrics: result.metrics } : current)).catch(() => undefined); };
+  const reportFailedAttempt = (telemetry: Telemetry) => { if (!selectedContract || !profile.settings.telemetrySharing) return; const telemetryRequestId = createTelemetryRequestId(); void uploadRunTelemetry({ contract: selectedContract, telemetry, outcome: 'failed', salvageTags: 0, level: profile.level, buildLabel: buildIdentity(profile), requestId: telemetryRequestId }).then(result => setOperations(current => current ? { ...current, metrics: result.metrics } : current)).catch(() => undefined); };
   const abandonMission = () => { setStatusMessage('Mission failed or abandoned // unbanked salvage lost; permanent progression retained. Prepared Directives are not consumed.'); setScreen('ship'); };
   const discardRecoveredItem = (itemId: string) => { setProfile(current => discardItem(current, itemId).profile); setNewLootIds(current => current.filter(id => id !== itemId)); };
   const changeProfileSettings = (settings: Partial<ProfileSettings>) => setProfile(current => setProfileSettings(current, settings));

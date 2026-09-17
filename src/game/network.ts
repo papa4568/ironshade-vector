@@ -93,6 +93,11 @@ export async function loadOperationsSnapshot() {
   return requestJson<OperationsSnapshot>('/api/operations');
 }
 
+export function createTelemetryRequestId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  return `telemetry-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
 export async function uploadRunTelemetry(input: {
   contract: Contract;
   telemetry: Telemetry;
@@ -103,9 +108,12 @@ export async function uploadRunTelemetry(input: {
   recoveryQualities?: number[];
   modifierGrades?: number[];
   singularCount?: number;
+  requestId?: string;
 }) {
+  const requestId = input.requestId ?? createTelemetryRequestId();
   return requestJson<{ id: string; metrics: RunMetrics }>('/api/runs', {
     method: 'POST',
+    headers: { 'x-idempotency-key': requestId },
     body: JSON.stringify({
       contractId: input.contract.id,
       contractTitle: input.contract.title,
