@@ -1,0 +1,8 @@
+{
+  "tests/map-navigation.ts": {
+    "file": "map-navigation.js",
+    "name": "map-navigation",
+    "src": "tests/map-navigation.ts",
+    "isEntry": true
+  }
+}

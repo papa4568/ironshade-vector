@@ -54,6 +54,7 @@ assert(app.includes('RECOVERED EQUIPMENT // REVIEW') && app.includes('Confirm di
 assert(app.includes('discardRecoveredItem') && app.includes('discardItem(current, itemId)'), 'Debrief discard is not wired to persistent profile inventory.');
 assert(app.includes('debriefRunSequenceRef') && app.includes('current?.runId === debriefRunId'), 'Telemetry completion can still mutate a later mission debrief.');
 assert(app.includes('LOCAL SAVE FAILED') && app.includes('!saveGameState(profile, campaign)') && app.includes("current === persistenceWarning ? '' : current") && shipHub.includes("const displayedStatusMessage = statusMessage ||") && shipHub.includes("role={statusMessage ? 'alert' : 'status'}"), 'Local persistence failures are not surfaced reliably to an already-mounted ShipHub.');
+assert(shipHub.includes('traceRequestIdRef') && shipHub.includes('const requestId = ++traceRequestIdRef.current') && shipHub.includes('traceRequestIdRef.current !== requestId'), 'Operations trace loading can still let an older request overwrite a newer selection.');
 assert(!shipHub.includes('bossSingularNames'), 'Contract Board still imports unrecovered boss gear names.');
 assert(!shipHub.includes('locationSingularNames'), 'Contract Board still imports unrecovered location gear names.');
 assert(!shipHub.includes('factionEquipmentNames'), 'Ship UI still exposes unrecovered faction gear names.');

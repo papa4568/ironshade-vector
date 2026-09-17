@@ -96,6 +96,7 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
   const [traceMessage, setTraceMessage] = useState('');
   const [contractFilter, setContractFilter] = useState<ContractFilter>('all');
   const hubRef = useRef<HTMLElement>(null);
+  const traceRequestIdRef = useRef(0);
   const switchTab = (next: Tab) => {
     setTab(next);
     requestAnimationFrame(() => hubRef.current?.scrollTo({ top: 0, left: 0, behavior: 'auto' }));
@@ -152,12 +153,16 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
     setMessage(result.message);
   };
   const inspectTrace = async (id: string) => {
+    const requestId = ++traceRequestIdRef.current;
+    setTraceRecord(null);
     setTraceMessage('Loading anonymous run trace…');
     try {
       const trace = await loadRunTrace(id);
+      if (traceRequestIdRef.current !== requestId) return;
       setTraceRecord(trace);
       setTraceMessage('');
     } catch {
+      if (traceRequestIdRef.current !== requestId) return;
       setTraceRecord(null);
       setTraceMessage('Run trace unavailable. The rest of the Operations Board remains usable.');
     }

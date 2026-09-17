@@ -1,0 +1,8 @@
+{
+  "tests/gameplay-regressions.ts": {
+    "file": "gameplay-regressions.js",
+    "name": "gameplay-regressions",
+    "src": "tests/gameplay-regressions.ts",
+    "isEntry": true
+  }
+}

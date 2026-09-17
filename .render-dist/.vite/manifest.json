@@ -1,0 +1,8 @@
+{
+  "tests/render-performance.ts": {
+    "file": "render-performance.js",
+    "name": "render-performance",
+    "src": "tests/render-performance.ts",
+    "isEntry": true
+  }
+}

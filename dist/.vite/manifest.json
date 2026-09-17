@@ -1,0 +1,96 @@
+{
+  "_environmentalEvents-CaSClzVW.js": {
+    "file": "assets/environmentalEvents-CaSClzVW.js",
+    "name": "environmentalEvents",
+    "css": [
+      "assets/environmentalEvents-jTu78CYa.css"
+    ]
+  },
+  "_environmentalEvents-jTu78CYa.css": {
+    "file": "assets/environmentalEvents-jTu78CYa.css",
+    "src": "_environmentalEvents-jTu78CYa.css"
+  },
+  "_part12-CDkn7May.css": {
+    "file": "assets/part12-CDkn7May.css",
+    "src": "_part12-CDkn7May.css"
+  },
+  "_react-runtime-rtuF3O1N.js": {
+    "file": "assets/react-runtime-rtuF3O1N.js",
+    "name": "react-runtime"
+  },
+  "_sim-DPuIuDgl.js": {
+    "file": "assets/sim-DPuIuDgl.js",
+    "name": "sim",
+    "imports": [
+      "index.html"
+    ]
+  },
+  "_three-runtime-B0qbJLiK.js": {
+    "file": "assets/three-runtime-B0qbJLiK.js",
+    "name": "three-runtime"
+  },
+  "index.html": {
+    "file": "assets/index-Ci77b9zX.js",
+    "name": "index",
+    "src": "index.html",
+    "isEntry": true,
+    "imports": [
+      "_react-runtime-rtuF3O1N.js"
+    ],
+    "dynamicImports": [
+      "src/components/Armory.tsx",
+      "src/components/GameCanvas.tsx",
+      "src/components/ShipHub.tsx"
+    ],
+    "css": [
+      "assets/index-CYoFHfo0.css"
+    ]
+  },
+  "src/components/Armory.tsx": {
+    "file": "assets/Armory-f_6C6r2N.js",
+    "name": "Armory",
+    "src": "src/components/Armory.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "_react-runtime-rtuF3O1N.js",
+      "index.html",
+      "_sim-DPuIuDgl.js"
+    ],
+    "css": [
+      "assets/Armory-BOMJjCGT.css",
+      "assets/part12-CDkn7May.css"
+    ]
+  },
+  "src/components/GameCanvas.tsx": {
+    "file": "assets/GameCanvas-DVodMESj.js",
+    "name": "GameCanvas",
+    "src": "src/components/GameCanvas.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "_react-runtime-rtuF3O1N.js",
+      "_environmentalEvents-CaSClzVW.js",
+      "index.html",
+      "_sim-DPuIuDgl.js",
+      "_three-runtime-B0qbJLiK.js"
+    ],
+    "css": [
+      "assets/GameCanvas-DRKDdnpj.css"
+    ]
+  },
+  "src/components/ShipHub.tsx": {
+    "file": "assets/ShipHub-C92ya8gL.js",
+    "name": "ShipHub",
+    "src": "src/components/ShipHub.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "_react-runtime-rtuF3O1N.js",
+      "_environmentalEvents-CaSClzVW.js",
+      "index.html",
+      "_sim-DPuIuDgl.js"
+    ],
+    "css": [
+      "assets/ShipHub-CoQdn1GX.css",
+      "assets/part12-CDkn7May.css"
+    ]
+  }
+}
