@@ -26,3 +26,13 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
       - name: Validate level 15 beta and production build
         run: npm run build
+      - name: Smoke test browser command deck
+        run: BROWSER_E2E_SKIP_BUILD=1 npm run test:e2e
+      - name: Upload browser E2E evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ironshade-vector-browser-e2e
+          path: browser-e2e-combat.png
+          if-no-files-found: warn
+          retention-days: 30
