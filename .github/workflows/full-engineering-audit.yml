@@ -26,7 +26,9 @@ jobs:
           node-version: '22'
 
       - name: Apply audited repairs
-        run: node .github/scripts/apply-full-audit-fixes.mjs
+        run: |
+          node .github/scripts/apply-full-audit-fixes.mjs
+          sed -i 's/[[:space:]]\+$//' src/App.tsx
 
       - name: Verify patch cleanliness
         run: git diff --check
