@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.beta-dist/
+.gameplay-dist/
+.loot-dist/
+.map-dist/
+.render-dist/
+.ui-dist/
+.network-dist/
+.service-dist/
+android/
+*.log
+.DS_Store
