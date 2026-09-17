@@ -20,6 +20,7 @@ const app = read('src/App.tsx');
 const equipmentCss = read('src/equipmentBay.css');
 const missionCss = read('src/part4.css');
 const objectiveCss = read('src/part7.css');
+const rootCss = read('src/index.css');
 
 assert(!armory.includes('Review faction doctrines'), 'Equipment Bay still advertises undiscovered faction doctrine targets.');
 assert(!armory.includes('2 PIECE'), 'Equipment Bay still exposes 2-piece set targets.');
@@ -78,6 +79,16 @@ assert(!statsPanel.includes('What these numbers mean'), 'Per-weapon duplicate gl
 assert(armory.includes('compact-discovery') && !armory.includes('Build changes save automatically on this device.'), 'Equipment Bay still shows repetitive instructional/status chrome.');
 assert(combat.includes('mission-build-label') && !combat.includes('objectiveStatus.detail : hud.squadRemaining'), 'Combat mission card still duplicates objective guidance.');
 assert(combat.includes('hostileRouteMode') && combat.includes('objectiveRouteMode'), 'Combat cleanup guidance is missing obstacle-aware route state.');
+const gameRootRule = rootCss.match(/\.game-root\s*\{[^}]*\}/)?.[0] ?? '';
+const gameCanvasRule = rootCss.match(/\.game-canvas\s*\{[^}]*\}/)?.[0] ?? '';
+const touchStickRule = rootCss.match(/\.touch-stick\s*\{[^}]*\}/)?.[0] ?? '';
+const touchButtonRule = rootCss.match(/\.touch-button\s*\{[^}]*\}/)?.[0] ?? '';
+const overlayRule = rootCss.match(/\.overlay\s*\{[^}]*\}/)?.[0] ?? '';
+const overlayCardRule = rootCss.match(/\.overlay-card\s*\{[^}]*\}/)?.[0] ?? '';
+assert(!combat.includes("document.addEventListener('touchmove'") && !combat.includes("document.addEventListener('gesturestart'"), 'Combat still suppresses touch gestures at document scope.');
+assert(!gameRootRule.includes('touch-action: none'), 'Combat root still disables gestures for descendant overlays.');
+assert(gameCanvasRule.includes('touch-action: none') && touchStickRule.includes('touch-action: none') && touchButtonRule.includes('touch-action: manipulation'), 'Combat input surfaces are missing scoped touch-action protection.');
+assert(overlayRule.includes('touch-action: pan-y') && overlayRule.includes('overflow-y: auto') && overlayCardRule.includes('touch-action: pan-y') && overlayCardRule.includes('overflow-y: auto'), 'Combat overlays are not explicit vertical touch-scroll surfaces.');
 assert(shipHub.includes('OPERATOR READINESS') && shipHub.includes('readiness-chip'), 'Contract board is missing visible operator/monster readiness guidance.');
 assert(hubCss.includes('PLAYTEST READINESS VISIBILITY') && hubCss.includes('.contract-readiness.high-gap'), 'Contract readiness styling is missing.');
 const polishCss = read('src/uiPolish.css');
