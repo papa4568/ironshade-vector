@@ -93,6 +93,7 @@ export async function loadOperationsSnapshot() {
   return requestJson<OperationsSnapshot>('/api/operations');
 }
 
+// One mission submission keeps one opaque key so transport retries cannot double-bank telemetry.
 export function createTelemetryRequestId() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
   return `telemetry-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
