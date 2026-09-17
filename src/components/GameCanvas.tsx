@@ -16,6 +16,7 @@ import { feedback } from '../game/feedback';
 import { ThreeCombatRenderer } from '../game/threeCombatRenderer';
 import { combatClassLabel, protocolDefinition } from '../game/eliteProtocols';
 import { lootColor, lootLabel, type GroundLootReceipt } from '../game/fieldLoot';
+import { carryExpeditionLoot } from '../game/expeditionCarry';
 
 type Props = { build: CombatBuild; mission: Contract; profileSettings: ProfileSettings; consumables: ConsumableInventory; buildLabel: string; operatorFaction: EquipmentFaction | null; onProfileSettingsChange: (settings: Partial<ProfileSettings>) => void; onConsumablesChange: (consumables: ConsumableInventory) => void; onMissionResolve: (telemetry: Telemetry, depth: 'safe' | 'deep', salvageTags: number, expeditionProgress?: ExpeditionProgress, fieldLoot?: GroundLootReceipt[]) => void; onAttemptFailed: (telemetry: Telemetry) => void; onReturnToHub: () => void };
 type HudState = { hp: number; maxHp: number; armor: number; maxArmor: number; capacitor: number; maxCapacitor: number; mag: number; heat: number; weapon: WeaponId; ability: [number, number, number]; dodge: number; reload: number; venting: boolean; dead: boolean; complete: boolean; kills: number; squadRemaining: number; extractionReady: boolean; pressureState: string; pressure: number; gravity: number; eventText: string; eventT: number; contextLabel: string; bossActive: boolean; bossLabel: string; bossHp: number; bossMaxHp: number; bossArmor: number; bossMaxArmor: number; bossPhase: number; bossPattern: string; vacuumExposure: number; disrupted: number; consumableCooldown: number; damageDealt: number; damageTaken: number; shots: Record<WeaponId, number>; abilityUses: [number, number, number] };
@@ -271,6 +272,7 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
     const state = createSimulation(build);
     applyMissionSetup(state, stageMission);
     if (carry) {
+      state.collectedLoot = carryExpeditionLoot(carry.collectedLoot);
       state.time = carry.time + 1;
       state.player.hp = Math.min(state.player.maxHp, carry.player.hp);
       state.player.armor = Math.min(state.player.maxArmor, carry.player.armor);

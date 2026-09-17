@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { buyConsumable, createDefaultCampaign, loadCampaign, saveCampaign } from '../src/game/campaign';
 import { aimAtMobileTarget, applyPlayerDamage, createSimulation, triggerConsumable } from '../src/game/sim';
 import { createDefaultProfile, loadProfile, saveProfile } from '../src/game/meta';
 import { CAMPAIGN_STORAGE_KEY, prepareSaveRecovery, PROFILE_STORAGE_KEY } from '../src/game/saveRecovery';
+import { carryExpeditionLoot } from '../src/game/expeditionCarry';
 
 const storage = new Map<string, string>();
 let failStorageWrites = false;
@@ -72,6 +74,14 @@ assert.equal(aimAtMobileTarget(aimState, 'balanced', target.id), target.id);
 assert.ok(aimState.player.aim.x > 0.95, 'first target-switch frame should turn toward the new target instead of snapping 180 degrees');
 for (let i = 0; i < 30; i += 1) aimAtMobileTarget(aimState, 'balanced', target.id);
 assert.ok(aimState.player.aim.x < -0.95, 'assisted aim should still converge fully on the target');
+
+const expeditionLootSource = [{ id: 'stage-1-drop', enemyId: 7, enemyLabel: 'Stage One Elite', rarity: 'Prototype' as const, source: 'elite' as const, recoveryQualityFloor: 3 as const, recoveryLevel: 24, monsterLevel: 8 }];
+const expeditionLootCarry = carryExpeditionLoot(expeditionLootSource);
+assert.deepEqual(expeditionLootCarry, expeditionLootSource, 'megastructure stage transit should preserve every collected field-loot receipt');
+assert.notEqual(expeditionLootCarry, expeditionLootSource, 'stage transit should copy the receipt list instead of sharing the mutable array');
+assert.notEqual(expeditionLootCarry[0], expeditionLootSource[0], 'stage transit should copy individual receipts so later mutation cannot rewrite earlier-stage recovery data');
+const gameCanvasSource = readFileSync('src/components/GameCanvas.tsx', 'utf8');
+assert.match(gameCanvasSource, /state\.collectedLoot = carryExpeditionLoot\(carry\.collectedLoot\);/, 'GameCanvas must carry collected expedition loot into each new megastructure stage');
 
 failStorageWrites = true;
 assert.equal(saveCampaign(campaign), false, 'campaign persistence should report blocked storage without throwing');
