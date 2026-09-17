@@ -1,0 +1,41 @@
+name: Apply save warning visibility fix
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/fix-save-warning-visibility.yml'
+      - 'scripts/apply-save-warning-visibility.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply save warning visibility fix
+        run: node scripts/apply-save-warning-visibility.mjs
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Validate complete production build
+        run: npm run build
+      - name: Verify patch cleanliness
+        run: git diff --check
+      - name: Commit verified fix
+        run: |
+          if git diff --quiet; then
+            echo 'No changes required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A -- src/App.tsx src/components/ShipHub.tsx tests/ui-readability.ts scripts/apply-save-warning-visibility.mjs .github/workflows/fix-save-warning-visibility.yml
+          git commit -m 'Keep save failure warnings visible'
+          git push origin HEAD:main
