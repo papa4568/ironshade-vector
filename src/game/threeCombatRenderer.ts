@@ -7,6 +7,8 @@ import { getWorldSize, type CombatObject, type Enemy, type Player, type SimState
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
 import { lootColor } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
+import { OPERATOR_ASSET_FAMILY } from './graphicsAssetManifest';
+import { configureGraphicsAssetRenderer, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
 
 const WORLD_SCALE = 0.02;
 const FLOOR_Y = 0;
@@ -165,6 +167,11 @@ export class ThreeCombatRenderer {
   private readonly objectiveGuideTransform = new THREE.Object3D();
   private readonly renderBudget: AdaptiveRenderBudget;
   private readonly coarse: boolean;
+  private readonly proceduralOperatorVisuals: THREE.Object3D[] = [];
+  private operatorAssetInstance: GraphicsAssetInstance | null = null;
+  private authoredOperatorRoot: THREE.Group | null = null;
+  private authoredOperatorMaterials: THREE.MeshStandardMaterial[] = [];
+  private disposed = false;
   private environmentSignature = '';
   private objectiveGuideTargetId = '';
   private objectiveGuideRefreshAt = -1;
@@ -178,6 +185,8 @@ export class ThreeCombatRenderer {
     this.coarse = coarse;
     this.renderBudget = new AdaptiveRenderBudget(coarse);
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !coarse, alpha: false, powerPreference: 'high-performance' });
+    configureGraphicsAssetRenderer(this.renderer);
+    this.renderer.domElement.dataset.operatorVisual = 'procedural-loading';
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.08;
@@ -221,6 +230,7 @@ export class ThreeCombatRenderer {
     this.playerHead.position.y = 1.53;
     this.playerHead.castShadow = true;
     this.playerRoot.add(this.playerHead);
+    this.proceduralOperatorVisuals.push(...this.playerRoot.children);
 
     this.playerWeapon = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.14, 0.16), new THREE.MeshStandardMaterial({ color: weaponColors.carbine, metalness: 0.8, roughness: 0.23, emissive: weaponColors.carbine, emissiveIntensity: 0.12 }));
     this.playerWeapon.position.set(0.72, 1.02, 0);
@@ -241,6 +251,8 @@ export class ThreeCombatRenderer {
     aimGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
     this.aimLine = new THREE.Line(aimGeometry, new THREE.LineBasicMaterial({ color: 0xb5d6ca, transparent: true, opacity: 0.72, depthWrite: false }));
     this.playerRoot.add(this.aimLine);
+
+    void this.loadAuthoredOperator();
   }
 
   render(state: SimState, width: number, height: number, quality: number, mission: Contract, mobileTargetId: number | null, operatorFaction: EquipmentFaction | null) {
@@ -280,8 +292,76 @@ export class ThreeCombatRenderer {
   }
 
   dispose() {
+    this.disposed = true;
+    this.operatorAssetInstance?.release();
+    this.operatorAssetInstance = null;
+    this.authoredOperatorRoot = null;
+    this.authoredOperatorMaterials.forEach(material => material.dispose());
+    this.authoredOperatorMaterials = [];
     disposeTree(this.scene);
     this.renderer.dispose();
+  }
+
+  private async loadAuthoredOperator() {
+    const spec = selectGraphicsAssetSpec(OPERATOR_ASSET_FAMILY, this.coarse ? 0.5 : 1);
+    if (!spec) {
+      this.renderer.domElement.dataset.operatorVisual = 'procedural-fallback';
+      return;
+    }
+
+    try {
+      const instance = await instantiateGraphicsAsset(spec);
+      if (this.disposed) {
+        instance.release();
+        return;
+      }
+
+      const root = instance.root;
+      const standardMaterials = new Set<THREE.MeshStandardMaterial>();
+      root.traverse(child => {
+        const mesh = child as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        if (Array.isArray(mesh.material)) {
+          const cloned = mesh.material.map(material => material.clone());
+          mesh.material = cloned;
+          cloned.forEach(material => {
+            if (material instanceof THREE.MeshStandardMaterial) standardMaterials.add(material);
+          });
+        } else if (mesh.material) {
+          const cloned = mesh.material.clone();
+          mesh.material = cloned;
+          if (cloned instanceof THREE.MeshStandardMaterial) standardMaterials.add(cloned);
+        }
+      });
+
+      root.updateMatrixWorld(true);
+      const bounds = new THREE.Box3().setFromObject(root);
+      if (!bounds.isEmpty()) {
+        const center = bounds.getCenter(new THREE.Vector3());
+        root.position.x -= center.x;
+        root.position.y -= bounds.min.y;
+        root.position.z -= center.z;
+      }
+      root.name = 'authored-operator';
+      this.playerRoot.add(root);
+
+      const tintable = [...standardMaterials].filter(material => {
+        const name = material.name.toLowerCase();
+        return name.includes('suit') || name.includes('shell') || name.includes('primary');
+      });
+      this.operatorAssetInstance = instance;
+      this.authoredOperatorRoot = root;
+      this.authoredOperatorMaterials = tintable.length > 0 ? tintable : [...standardMaterials];
+      this.proceduralOperatorVisuals.forEach(item => { item.visible = false; });
+      this.renderer.domElement.dataset.operatorVisual = `authored-${spec.lod}`;
+      this.renderer.domElement.dataset.operatorAsset = spec.id;
+    } catch (error) {
+      if (this.disposed) return;
+      this.renderer.domElement.dataset.operatorVisual = 'procedural-fallback';
+      console.warn('Authored operator asset failed to load; keeping procedural fallback.', error);
+    }
   }
 
   private resize(width: number, height: number, quality: number, budget: RenderBudgetSnapshot) {
@@ -580,9 +660,17 @@ export class ThreeCombatRenderer {
     this.playerRoot.position.set(scaled(player.x), 0, scaled(player.y));
     syncOperatorVisual(this.playerRoot, this.weaponPivot, state, operatorFaction);
     const suitColor = operatorFaction ? factionColors[operatorFaction] : 0x8aa89d;
+    const operatorEmissive = player.disrupted > 0 ? 0x7655a0 : player.vacuumExposure > 0.55 ? 0x6b8794 : 0x000000;
+    const operatorEmissiveIntensity = player.disrupted > 0 || player.vacuumExposure > 0.55 ? 0.25 : 0;
     this.playerBody.material.color.setHex(suitColor);
-    this.playerBody.material.emissive.setHex(player.disrupted > 0 ? 0x7655a0 : player.vacuumExposure > 0.55 ? 0x6b8794 : 0x000000);
-    this.playerBody.material.emissiveIntensity = player.disrupted > 0 || player.vacuumExposure > 0.55 ? 0.25 : 0;
+    this.playerBody.material.emissive.setHex(operatorEmissive);
+    this.playerBody.material.emissiveIntensity = operatorEmissiveIntensity;
+    if (this.authoredOperatorRoot) this.authoredOperatorRoot.rotation.y = Math.atan2(-player.aim.y, player.aim.x);
+    for (const material of this.authoredOperatorMaterials) {
+      material.color.setHex(suitColor);
+      material.emissive.setHex(operatorEmissive);
+      material.emissiveIntensity = operatorEmissiveIntensity;
+    }
 
     const weaponColor = weaponColors[player.currentWeapon];
     this.playerWeapon.material.color.setHex(weaponColor);
