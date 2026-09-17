@@ -1,6 +1,7 @@
 import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
+import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { prepareSaveRecovery, type SaveRecoveryResult } from './game/saveRecovery';
 import './index.css';
 import './spaceCombat.css';
@@ -32,7 +33,7 @@ const root = createRoot(document.getElementById('root')!);
 function renderClient(recovery: SaveRecoveryResult) {
   root.render(
     <StrictMode>
-      {recovery.blocked ? <main className="surface-loader" role="alert" aria-live="assertive"><div><span>QUIET SIGNAL // SAVE RECOVERY LOCK</span><b>Existing save data was left untouched.</b><p>{recovery.notices.join(' ')}</p><button onClick={() => window.location.reload()}>Retry startup</button></div></main> : <><App /><RecoveryNotice notices={recovery.notices} /></>}
+      {recovery.blocked ? <main className="surface-loader" role="alert" aria-live="assertive"><div><span>QUIET SIGNAL // SAVE RECOVERY LOCK</span><b>Existing save data was left untouched.</b><p>{recovery.notices.join(' ')}</p><button onClick={() => window.location.reload()}>Retry startup</button></div></main> : <AppErrorBoundary><App /><RecoveryNotice notices={recovery.notices} /></AppErrorBoundary>}
     </StrictMode>
   );
 }
