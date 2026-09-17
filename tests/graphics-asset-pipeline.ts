@@ -67,7 +67,8 @@ assert(source.includes('texture.dispose()'), 'cached asset eviction must release
 assert(source.includes('skeleton.dispose()'), 'asset lifecycle must release skeleton GPU resources');
 
 const manifestSource = readFileSync(resolve(process.cwd(), 'src/game/graphicsAssetManifest.ts'), 'utf8');
-assert(manifestSource.includes("operator-field-suit-lod2.glb"), 'operator asset family must reference the committed authored LOD2 GLB');
+assert(manifestSource.includes("operator-field-suit-lod1.glb"), 'operator asset family must reference the articulated authored LOD1 GLB');
+assert(manifestSource.includes("operator-field-suit-lod2.glb"), 'operator asset family must retain the lightweight LOD2 fallback');
 
 const rendererSource = readFileSync(resolve(process.cwd(), 'src/game/threeCombatRenderer.ts'), 'utf8');
 assert(rendererSource.includes("import { OPERATOR_ASSET_FAMILY } from './graphicsAssetManifest'"), 'combat renderer must consume the authored operator manifest');
@@ -78,5 +79,9 @@ assert(rendererSource.includes("dataset.operatorVisual = 'procedural-fallback'")
 assert(rendererSource.includes('this.proceduralOperatorVisuals.forEach'), 'procedural body visuals must only be hidden after authored load succeeds');
 assert(rendererSource.includes('material.color.setHex(suitColor)'), 'authored operator materials must preserve faction color identity');
 assert(rendererSource.includes('this.operatorAssetInstance?.release()'), 'combat renderer disposal must release the authored operator lease');
+assert(rendererSource.includes("root.getObjectByName('weapon-socket')"), 'authored operator integration must require the weapon socket');
+assert(rendererSource.includes('syncAuthoredOperatorAnimation(state)'), 'authored operator must receive simulation-driven animation poses');
+assert(rendererSource.includes("dataset.operatorRig = 'articulated'"), 'runtime QA must expose articulated-rig activation');
+assert(rendererSource.includes("dataset.operatorAnimation = mode"), 'runtime QA must expose the active animation state');
 
-console.log('GRAPHICS_ASSET_PIPELINE_PASS format=glb mesh=meshopt textures=ktx2 loader=deferred lifecycle=leased lod=adaptive operator=authored+fallback operatorTriangles=45000 operatorPayload=2500000');
+console.log('GRAPHICS_ASSET_PIPELINE_PASS format=glb mesh=meshopt textures=ktx2 loader=deferred lifecycle=leased lod=adaptive operator=articulated+fallback socket=weapon animation=state-driven operatorTriangles=45000 operatorPayload=2500000');
