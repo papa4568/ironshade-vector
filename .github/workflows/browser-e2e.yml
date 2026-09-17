@@ -102,7 +102,9 @@ jobs:
         env:
           CDP_ENDPOINT: http://127.0.0.1:9223
           BROWSER_E2E_APP_URL: http://127.0.0.1:4173/
-        run: node scripts/browser-runtime-smoke.mjs
+        run: |
+          node scripts/browser-runtime-smoke.mjs
+          node scripts/verify-authored-operator.mjs
 
       - name: Upload browser QA evidence
         if: ${{ always() }}
