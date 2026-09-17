@@ -7,7 +7,7 @@ import { getWorldSize, type CombatObject, type Enemy, type Player, type SimState
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
 import { lootColor } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
-import { OPERATOR_ASSET_FAMILY } from './graphicsAssetManifest';
+import { ENEMY_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY } from './graphicsAssetManifest';
 import { configureGraphicsAssetRenderer, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
 
 const WORLD_SCALE = 0.02;
@@ -33,6 +33,18 @@ const factionColors: Record<EquipmentFaction, number> = {
   longarc: 0x79a8bf,
 };
 
+type EnemyRig = {
+  hip: THREE.Object3D;
+  torso: THREE.Object3D;
+  helmet: THREE.Object3D;
+  leftArm: THREE.Object3D;
+  rightArm: THREE.Object3D;
+  leftLeg: THREE.Object3D;
+  rightLeg: THREE.Object3D;
+  backpack: THREE.Object3D;
+  weaponSocket: THREE.Object3D;
+};
+
 type EnemyVisual = {
   root: THREE.Group;
   body: THREE.Mesh<THREE.CylinderGeometry, THREE.MeshStandardMaterial>;
@@ -42,6 +54,13 @@ type EnemyVisual = {
   armor: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
   targetRing: THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>;
   protocolRing: THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>;
+  role: Enemy['role'];
+  proceduralVisuals: THREE.Object3D[];
+  assetInstance: GraphicsAssetInstance | null;
+  authoredRoot: THREE.Group | null;
+  authoredMaterials: THREE.MeshStandardMaterial[];
+  authoredOwnedMaterials: THREE.Material[];
+  rig: EnemyRig | null;
 };
 
 type ProjectileVisual = {
@@ -158,6 +177,8 @@ export class ThreeCombatRenderer {
   private readonly objectVisuals = new Map<string, THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial>>();
   private readonly sectorVisuals = new Map<string, THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>>();
   private readonly enemyVisuals = new Map<number, EnemyVisual>();
+  private readonly authoredEnemyRoles = new Set<Enemy['role']>();
+  private authoredEnemyCount = 0;
   private readonly projectilePool: ProjectileVisual[] = [];
   private readonly hazardPool: RingVisual[] = [];
   private readonly effectPool: RingVisual[] = [];
@@ -317,6 +338,15 @@ export class ThreeCombatRenderer {
     this.authoredOperatorOwnedMaterials.forEach(material => material.dispose());
     this.authoredOperatorOwnedMaterials = [];
     this.authoredOperatorMaterials = [];
+    for (const visual of this.enemyVisuals.values()) {
+      visual.assetInstance?.release();
+      visual.assetInstance = null;
+      visual.authoredRoot = null;
+      visual.rig = null;
+      visual.authoredOwnedMaterials.forEach(material => material.dispose());
+      visual.authoredOwnedMaterials = [];
+      visual.authoredMaterials = [];
+    }
     disposeTree(this.scene);
     this.renderer.dispose();
   }
@@ -854,6 +884,8 @@ export class ThreeCombatRenderer {
     head.castShadow = true;
     root.add(head);
     decorateEnemy(root, enemy);
+    // Phase 4 replaces weapons. Keep the current weapon detail visible while the authored body takes over.
+    const proceduralVisuals = root.children.filter(child => child.name !== 'hard-enemy-weapon');
 
     const targetRing = new THREE.Mesh(new THREE.TorusGeometry(0.7 * bossScale, 0.045, 6, 32), new THREE.MeshBasicMaterial({ color: 0xa7eed7, transparent: true, opacity: 0.82, depthWrite: false }));
     targetRing.rotation.x = Math.PI / 2;
@@ -891,9 +923,158 @@ export class ThreeCombatRenderer {
 
     this.dynamicRoot.add(root);
     this.scene.add(barRoot);
-    const visual = { root, body, head, barRoot, hp, armor, targetRing, protocolRing };
+    const visual: EnemyVisual = {
+      root,
+      body,
+      head,
+      barRoot,
+      hp,
+      armor,
+      targetRing,
+      protocolRing,
+      role: enemy.role,
+      proceduralVisuals,
+      assetInstance: null,
+      authoredRoot: null,
+      authoredMaterials: [],
+      authoredOwnedMaterials: [],
+      rig: null,
+    };
     this.enemyVisuals.set(enemy.id, visual);
+    void this.loadAuthoredEnemy(visual, enemy);
     return visual;
+  }
+
+  private async loadAuthoredEnemy(visual: EnemyVisual, enemy: Enemy) {
+    const spec = selectGraphicsAssetSpec(ENEMY_ASSET_FAMILIES[enemy.role], this.coarse ? 0.72 : 1);
+    if (!spec) return;
+
+    try {
+      const instance = await instantiateGraphicsAsset(spec);
+      if (this.disposed || visual.role !== enemy.role) {
+        instance.release();
+        return;
+      }
+
+      const root = instance.root;
+      const standardMaterials = new Set<THREE.MeshStandardMaterial>();
+      root.traverse(child => {
+        const mesh = child as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        if (Array.isArray(mesh.material)) {
+          const cloned = mesh.material.map(material => material.clone());
+          mesh.material = cloned;
+          cloned.forEach(material => {
+            if (material instanceof THREE.MeshStandardMaterial) standardMaterials.add(material);
+          });
+        } else if (mesh.material) {
+          const cloned = mesh.material.clone();
+          mesh.material = cloned;
+          if (cloned instanceof THREE.MeshStandardMaterial) standardMaterials.add(cloned);
+        }
+      });
+
+      root.updateMatrixWorld(true);
+      const bounds = new THREE.Box3().setFromObject(root);
+      if (!bounds.isEmpty()) {
+        const center = bounds.getCenter(new THREE.Vector3());
+        root.position.x -= center.x;
+        root.position.y -= bounds.min.y;
+        root.position.z -= center.z;
+      }
+      root.name = `authored-enemy-${enemy.role}`;
+      visual.root.add(root);
+
+      const rigCandidates = {
+        hip: root.getObjectByName('hip'),
+        torso: root.getObjectByName('torso'),
+        helmet: root.getObjectByName('helmet'),
+        leftArm: root.getObjectByName('arm-left'),
+        rightArm: root.getObjectByName('arm-right'),
+        leftLeg: root.getObjectByName('leg-left'),
+        rightLeg: root.getObjectByName('leg-right'),
+        backpack: root.getObjectByName('backpack'),
+        weaponSocket: root.getObjectByName('weapon-socket'),
+      };
+      if (Object.values(rigCandidates).every(Boolean)) {
+        const rig = rigCandidates as EnemyRig;
+        for (const node of Object.values(rig)) {
+          node.userData.enemyRestPosition = node.position.clone();
+          node.userData.enemyRestRotation = node.rotation.clone();
+        }
+        visual.rig = rig;
+      }
+
+      const tintable = [...standardMaterials].filter(material => material.name.toLowerCase().includes('primary'));
+      visual.assetInstance = instance;
+      visual.authoredRoot = root;
+      visual.authoredOwnedMaterials = [...standardMaterials];
+      visual.authoredMaterials = tintable.length > 0 ? tintable : [...standardMaterials];
+      visual.proceduralVisuals.forEach(item => { item.visible = false; });
+
+      this.authoredEnemyCount += 1;
+      this.authoredEnemyRoles.add(enemy.role);
+      this.renderer.domElement.dataset.enemyVisual = 'authored';
+      this.renderer.domElement.dataset.enemyAuthoredCount = String(this.authoredEnemyCount);
+      this.renderer.domElement.dataset.enemyRoles = [...this.authoredEnemyRoles].sort().join(',');
+    } catch (error) {
+      if (this.disposed) return;
+      const fallback = new Set((this.renderer.domElement.dataset.enemyFallbackRoles ?? '').split(',').filter(Boolean));
+      fallback.add(enemy.role);
+      this.renderer.domElement.dataset.enemyFallbackRoles = [...fallback].sort().join(',');
+      console.warn(`Authored ${enemy.role} enemy asset failed to load; keeping procedural fallback.`, error);
+    }
+  }
+
+  private syncAuthoredEnemyAnimation(visual: EnemyVisual, enemy: Enemy, state: SimState) {
+    const rig = visual.rig;
+    if (!rig) return;
+
+    for (const node of [rig.hip, rig.torso, rig.helmet, rig.leftArm, rig.rightArm, rig.leftLeg, rig.rightLeg, rig.backpack, rig.weaponSocket]) {
+      const restPosition = node.userData.enemyRestPosition as THREE.Vector3 | undefined;
+      const restRotation = node.userData.enemyRestRotation as THREE.Euler | undefined;
+      if (restPosition) node.position.copy(restPosition);
+      if (restRotation) node.rotation.copy(restRotation);
+    }
+
+    const speed = THREE.MathUtils.clamp(Math.hypot(enemy.vx, enemy.vy) * 0.012, 0, 1);
+    const gait = Math.sin(state.time * (7.4 + speed * 2.8) + enemy.id * 0.71) * speed;
+    const idle = Math.sin(state.time * 2.1 + enemy.id * 0.37);
+    const aim = THREE.MathUtils.clamp(enemy.telegraph * 1.8, 0, 1);
+    const burst = enemy.burst > 0 && enemy.fireCooldown <= 0.78 ? 1 : 0;
+    const hit = THREE.MathUtils.clamp(enemy.statuses.stagger * 2, 0, 1);
+
+    rig.torso.position.y += idle * 0.01;
+    rig.backpack.position.y += idle * 0.006;
+    rig.helmet.rotation.z += idle * 0.01;
+    rig.leftLeg.rotation.z += gait * 0.34;
+    rig.rightLeg.rotation.z -= gait * 0.34;
+    rig.leftArm.rotation.z += -0.20 - gait * 0.07 - aim * 0.22;
+    rig.rightArm.rotation.z += 0.18 + gait * 0.05 + aim * 0.18;
+    rig.weaponSocket.rotation.z -= aim * 0.08;
+
+    if (burst > 0) {
+      rig.weaponSocket.position.x -= 0.08;
+      rig.torso.rotation.z -= 0.04;
+      rig.rightArm.rotation.z += 0.08;
+    }
+
+    if (hit > 0) {
+      const side = enemy.id % 2 === 0 ? 1 : -1;
+      rig.torso.rotation.z += side * 0.18 * hit;
+      rig.helmet.rotation.z -= side * 0.12 * hit;
+      rig.hip.position.x -= 0.06 * hit;
+    }
+
+    if (enemy.dead) {
+      const fall = THREE.MathUtils.clamp(1 - enemy.deathT, 0, 1);
+      rig.hip.position.y -= 0.45 * fall;
+      rig.torso.rotation.z = (enemy.id % 2 === 0 ? -1 : 1) * 1.1 * fall;
+      rig.leftArm.rotation.z = -0.15;
+      rig.rightArm.rotation.z = 0.12;
+    }
   }
 
   private syncEnemies(state: SimState, mobileTargetId: number | null) {
@@ -923,6 +1104,16 @@ export class ThreeCombatRenderer {
       visual.protocolRing.rotation.z = state.time * (enemy.combatClass === 'elite' ? 1.2 : 0.72);
       visual.body.material.emissive.setHex(enemy.statuses.disrupted > 0 ? 0x63508a : enemy.telegraph > 0 ? 0x7a3327 : 0x000000);
       visual.body.material.emissiveIntensity = enemy.statuses.disrupted > 0 || enemy.telegraph > 0 ? 0.34 : 0;
+      if (visual.authoredRoot) {
+        this.syncAuthoredEnemyAnimation(visual, enemy, state);
+        const statusEmissive = enemy.statuses.disrupted > 0 ? 0x63508a : enemy.telegraph > 0 ? 0x7a3327 : 0x000000;
+        const statusIntensity = enemy.statuses.disrupted > 0 || enemy.telegraph > 0 ? 0.28 : 0;
+        for (const material of visual.authoredMaterials) {
+          material.color.setHex(roleColors[enemy.role]);
+          material.emissive.setHex(statusEmissive);
+          material.emissiveIntensity = statusIntensity;
+        }
+      }
 
       const height = enemy.role === 'boss' ? 3.55 : enemy.role === 'elite' ? 2.85 : 2.35;
       visual.barRoot.position.set(scaled(enemy.x), height, scaled(enemy.y));
