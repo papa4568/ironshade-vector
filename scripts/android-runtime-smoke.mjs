@@ -86,7 +86,7 @@ async function evaluate(expression) {
     returnByValue: true,
   });
   if (response.exceptionDetails) {
-    throw new Error(response.exceptionDetails.text ?? 'Runtime.evaluate failed');
+    throw new Error(response.exceptionDetails.exception?.description ?? response.exceptionDetails.text ?? 'Runtime.evaluate failed');
   }
   return response.result?.value;
 }
@@ -112,6 +112,41 @@ async function waitFor(predicateExpression, label, timeout = 45_000) {
   throw new Error(`Timed out waiting for ${label}; webview=${JSON.stringify(state)}`);
 }
 
+async function elementMetrics(selector) {
+  const encoded = JSON.stringify(selector);
+  return evaluate(`(() => {
+    const element = document.querySelector(${encoded});
+    if (!element) return null;
+    const rect = element.getBoundingClientRect();
+    return {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+      text: element.textContent?.trim() ?? '',
+      disabled: 'disabled' in element ? Boolean(element.disabled) : false,
+    };
+  })()`);
+}
+
+async function dispatchTouch(type, x, y, id = 1) {
+  const touchPoints = type === 'touchEnd' || type === 'touchCancel'
+    ? []
+    : [{ x, y, id, radiusX: 1, radiusY: 1, force: 1 }];
+  await call('Input.dispatchTouchEvent', { type, touchPoints });
+}
+
+async function tap(selector, id = 1, holdMs = 90) {
+  const metrics = await elementMetrics(selector);
+  if (!metrics || metrics.disabled) throw new Error(`Touch target unavailable: ${selector}`);
+  await dispatchTouch('touchStart', metrics.x, metrics.y, id);
+  await sleep(holdMs);
+  await dispatchTouch('touchEnd', metrics.x, metrics.y, id);
+  return metrics;
+}
+
 await call('Runtime.enable');
 await call('Page.enable').catch(() => undefined);
 await waitFor(`document.readyState === 'complete' && document.title === 'Ironshade Vector'`, 'Ironshade document', 45_000);
@@ -123,7 +158,7 @@ await waitFor(`(() => {
 
 const startup = await snapshot();
 const startupText = startup.text ?? '';
-if (startupText.includes('SAVE RECOVERY LOCK')) {
+if (startupText.toLowerCase().includes('save recovery lock')) {
   throw new Error(`Android startup entered save recovery lock: ${JSON.stringify(startup)}`);
 }
 const startupButtons = startup.buttons ?? [];
@@ -154,5 +189,56 @@ if (!(combat.text ?? '').toLowerCase().includes('field coach') || combat.canvase
   throw new Error(`Android combat surface failed smoke validation: ${JSON.stringify(combat)}`);
 }
 
+await waitFor(`Boolean(document.querySelector('[aria-label="Touch combat controls"]') && document.querySelector('.move-stick') && document.querySelector('.fire-button') && document.querySelector('.dodge-button'))`, 'Android touch controls');
+const scrollBefore = await evaluate(`({ x: window.scrollX, y: window.scrollY })`);
+
+const move = await elementMetrics('.move-stick');
+if (!move) throw new Error('Android movement stick was not found.');
+await dispatchTouch('touchStart', move.x, move.y, 11);
+await dispatchTouch('touchMove', move.x + Math.min(36, move.width * 0.3), move.y - Math.min(18, move.height * 0.15), 11);
+await waitFor(`(() => {
+  const stick = document.querySelector('.move-stick');
+  const coach = document.querySelector('.tutorial-coach')?.textContent ?? '';
+  return Boolean(stick && stick.style.getPropertyValue('--knob-x') && stick.style.getPropertyValue('--knob-x') !== '0px' && coach.includes('FIELD COACH // 2/5'));
+})()`, 'movement touch response', 15_000);
+await dispatchTouch('touchEnd', move.x, move.y, 11);
+await waitFor(`document.querySelector('.move-stick')?.style.getPropertyValue('--knob-x') === '0px' && document.querySelector('.move-stick')?.style.getPropertyValue('--knob-y') === '0px'`, 'movement stick release', 10_000);
+
+const canvas = await elementMetrics('canvas');
+if (!canvas) throw new Error('Android combat canvas was not found for manual aim test.');
+const aimStartX = canvas.left + canvas.width * 0.72;
+const aimStartY = canvas.top + canvas.height * 0.5;
+const aimEndX = Math.min(canvas.left + canvas.width - 12, aimStartX + Math.min(52, canvas.width * 0.08));
+const aimEndY = Math.max(canvas.top + 12, aimStartY - Math.min(28, canvas.height * 0.08));
+await dispatchTouch('touchStart', aimStartX, aimStartY, 12);
+await dispatchTouch('touchMove', aimEndX, aimEndY, 12);
+await sleep(120);
+await dispatchTouch('touchEnd', aimEndX, aimEndY, 12);
+await waitFor(`(document.querySelector('.tutorial-coach')?.textContent ?? '').includes('FIELD COACH // 3/5')`, 'manual aim touch response', 15_000);
+
+const fireBefore = await evaluate(`document.querySelector('.fire-button small')?.textContent ?? ''`);
+const fire = await elementMetrics('.fire-button');
+if (!fire || fire.disabled) throw new Error('Android FIRE control was unavailable.');
+await dispatchTouch('touchStart', fire.x, fire.y, 13);
+await sleep(420);
+await dispatchTouch('touchEnd', fire.x, fire.y, 13);
+await waitFor(`(document.querySelector('.fire-button small')?.textContent ?? '') !== ${JSON.stringify(fireBefore)}`, 'hold-to-fire response', 15_000);
+
+const weaponBefore = await evaluate(`document.querySelector('.weapon-cycle small')?.textContent ?? ''`);
+await tap('.weapon-cycle', 14);
+await waitFor(`(document.querySelector('.weapon-cycle small')?.textContent ?? '') !== ${JSON.stringify(weaponBefore)}`, 'weapon cycle response', 15_000);
+
+await tap('.ability-button:not(:disabled)', 15);
+await waitFor(`(document.querySelector('.tutorial-coach')?.textContent ?? '').includes('FIELD COACH // 4/5')`, 'ability touch response', 15_000);
+
+await tap('.dodge-button:not(:disabled)', 16);
+await waitFor(`document.querySelector('.dodge-button')?.disabled === true`, 'dodge touch response', 15_000);
+
+const scrollAfter = await evaluate(`({ x: window.scrollX, y: window.scrollY })`);
+if (scrollAfter.x !== scrollBefore.x || scrollAfter.y !== scrollBefore.y) {
+  throw new Error(`Android combat touch gestures moved the page: before=${JSON.stringify(scrollBefore)} after=${JSON.stringify(scrollAfter)}`);
+}
+
+console.log(`ANDROID_TOUCH_SMOKE_PASS move=drag aim=drag fire=hold ability=tap dodge=tap weapon=cycle scroll=${scrollAfter.x},${scrollAfter.y}`);
 socket.close();
 console.log(`ANDROID_RUNTIME_SMOKE_PASS title=${startup.title} route=ship>contracts>combat canvases=${combat.canvases}`);
