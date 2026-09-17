@@ -9,7 +9,7 @@ on:
     paths:
       - 'src/**'
       - 'tests/**'
-      - 'scripts/configure-android.mjs'
+      - 'scripts/**'
       - 'capacitor.config.ts'
       - 'package.json'
       - 'package-lock.json'
@@ -24,20 +24,23 @@ permissions:
 jobs:
   build-apk:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
+    env:
+      ANDROID_VERSION_CODE: ${{ github.run_number }}
+      ANDROID_VERSION_NAME: 0.0.1-beta.${{ github.run_number }}
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '22.23.2'
           cache: npm
           cache-dependency-path: package-lock.json
 
       - name: Set up Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
@@ -79,19 +82,28 @@ jobs:
           echo "keystore=$KEYSTORE" >> "$GITHUB_OUTPUT"
           echo "Persistent Android release signing is configured."
 
-      - name: Install Android SDK 36
+      - name: Install Android SDK and emulator image
         shell: bash
         run: |
+          set -euo pipefail
           SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
           SDKMANAGER="$(find "$SDK_ROOT" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
           test -n "$SDKMANAGER"
           echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
+          "$SDKMANAGER" \
+            'platform-tools' \
+            'platforms;android-36' \
+            'build-tools;36.0.0' \
+            'emulator' \
+            'system-images;android-35;google_apis;x86_64'
 
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
+
+      - name: Audit runtime dependencies
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Run full web regression and production build
         env:
@@ -108,6 +120,7 @@ jobs:
       - name: Generate native Android project
         shell: bash
         run: |
+          set -euo pipefail
           rm -rf android
           npx cap add android
           node scripts/configure-android.mjs
@@ -118,6 +131,8 @@ jobs:
           grep -q 'android:hardwareAccelerated="true"' android/app/src/main/AndroidManifest.xml
           grep -q 'IRONSHADE_RELEASE_SIGNING' android/app/build.gradle
           grep -q 'ANDROID_SIGNING_STORE_FILE' android/app/build.gradle
+          grep -q "versionCode ${ANDROID_VERSION_CODE}" android/app/build.gradle
+          grep -q "versionName \"${ANDROID_VERSION_NAME}\"" android/app/build.gradle
           grep -q 'CapacitorHttp' android/app/src/main/assets/capacitor.config.json
 
       - name: Build persistent-signed release APK
@@ -139,11 +154,19 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace
 
-      - name: Verify APK package, SDK and signature
+      - name: Build emulator smoke APK
+        if: steps.signing.outputs.mode == 'release'
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Verify APK package, version, SDK and signature
         shell: bash
         env:
           SIGNING_MODE: ${{ steps.signing.outputs.mode }}
         run: |
+          set -euo pipefail
           if [[ "$SIGNING_MODE" == "release" ]]; then
             APK='android/app/build/outputs/apk/release/app-release.apk'
           else
@@ -154,21 +177,69 @@ jobs:
           AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
           APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
           "$AAPT" dump badging "$APK" | tee android-apk-badging.txt
-          grep -q "package: name='app.ironshade.vector'" android-apk-badging.txt
+          grep -q "package: name='app.ironshade.vector' versionCode='${ANDROID_VERSION_CODE}' versionName='${ANDROID_VERSION_NAME}'" android-apk-badging.txt
           grep -q "sdkVersion:'24'" android-apk-badging.txt
           grep -q "targetSdkVersion:'36'" android-apk-badging.txt
           grep -q "launchable-activity: name='app.ironshade.vector.MainActivity'" android-apk-badging.txt
 
           "$APKSIGNER" verify --verbose --print-certs "$APK" | tee android-apk-signing.txt
           grep -q 'Signer #1 certificate SHA-256 digest:' android-apk-signing.txt
-          printf 'signing_mode=%s\n' "$SIGNING_MODE" | tee android-apk-signing-mode.txt
+          printf 'signing_mode=%s\nversion_code=%s\nversion_name=%s\n' "$SIGNING_MODE" "$ANDROID_VERSION_CODE" "$ANDROID_VERSION_NAME" | tee android-apk-signing-mode.txt
 
           cp "$APK" Ironshade-Vector-Android-Beta.apk
           sha256sum Ironshade-Vector-Android-Beta.apk | tee Ironshade-Vector-Android-Beta.sha256
-          echo "ANDROID_APK_PASS signing=$SIGNING_MODE size=$(du -h Ironshade-Vector-Android-Beta.apk | cut -f1)"
+          echo "ANDROID_APK_PASS signing=$SIGNING_MODE version=${ANDROID_VERSION_NAME}(${ANDROID_VERSION_CODE}) size=$(du -h Ironshade-Vector-Android-Beta.apk | cut -f1)"
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - name: Smoke test APK on Android emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm || true
+
+          AVDMANAGER="$(find "$ANDROID_HOME" -type f -name avdmanager 2>/dev/null | sort | tail -n 1)"
+          EMULATOR="$(find "$ANDROID_HOME" -type f -name emulator 2>/dev/null | sort | tail -n 1)"
+          test -n "$AVDMANAGER"
+          test -n "$EMULATOR"
+          echo no | "$AVDMANAGER" create avd --force --name ironshade-ci --package 'system-images;android-35;google_apis;x86_64' --device 'pixel_6'
+
+          "$EMULATOR" -avd ironshade-ci -no-window -no-audio -no-boot-anim -no-snapshot -wipe-data -gpu swiftshader_indirect > android-emulator.log 2>&1 &
+          EMULATOR_PID=$!
+          cleanup() {
+            adb emu kill >/dev/null 2>&1 || true
+            kill "$EMULATOR_PID" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          adb wait-for-device
+          timeout 240 bash -c 'until [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d "\r")" == "1" ]]; do sleep 2; done'
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+
+          SMOKE_APK='android/app/build/outputs/apk/debug/app-debug.apk'
+          test -s "$SMOKE_APK"
+          adb install -r "$SMOKE_APK"
+          adb logcat -c
+          adb shell am force-stop app.ironshade.vector
+          adb shell am start -W -n app.ironshade.vector/.MainActivity
+          timeout 30 bash -c 'until [[ -n "$(adb shell pidof app.ironshade.vector 2>/dev/null | tr -d "\r")" ]]; do sleep 1; done'
+          APP_PID="$(adb shell pidof app.ironshade.vector | tr -d '\r')"
+          test -n "$APP_PID"
+          adb forward tcp:9222 "localabstract:webview_devtools_remote_${APP_PID}"
+          node scripts/android-runtime-smoke.mjs
+
+          adb logcat -d > android-runtime-logcat.txt
+          if grep -E 'FATAL EXCEPTION|Process: app\.ironshade\.vector' android-runtime-logcat.txt; then
+            echo 'Android runtime crash detected.' >&2
+            exit 1
+          fi
+          adb exec-out screencap -p > android-runtime-smoke.png || true
+          echo "ANDROID_EMULATOR_PASS pid=${APP_PID} route=ship>contracts>combat"
+
+      - name: Upload APK and QA evidence
+        uses: actions/upload-artifact@v7
         with:
           name: ironshade-vector-android-apk
           path: |
@@ -177,5 +248,8 @@ jobs:
             android-apk-badging.txt
             android-apk-signing.txt
             android-apk-signing-mode.txt
+            android-emulator.log
+            android-runtime-logcat.txt
+            android-runtime-smoke.png
           if-no-files-found: error
           retention-days: 90
