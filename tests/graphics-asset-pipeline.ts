@@ -69,6 +69,10 @@ assert(source.includes('skeleton.dispose()'), 'asset lifecycle must release skel
 const manifestSource = readFileSync(resolve(process.cwd(), 'src/game/graphicsAssetManifest.ts'), 'utf8');
 assert(manifestSource.includes("operator-field-suit-lod1.glb"), 'operator asset family must reference the articulated authored LOD1 GLB');
 assert(manifestSource.includes("operator-field-suit-lod2.glb"), 'operator asset family must retain the lightweight LOD2 fallback');
+for (const role of ['assault', 'suppressor', 'technician', 'elite']) {
+  assert(manifestSource.includes(`enemy-${role}-lod1.glb`), `enemy manifest must include authored ${role} LOD1`);
+}
+assert(manifestSource.includes("enemy-boss-lod1.glb"), 'enemy manifest must include the authored boss silhouette');
 
 const rendererSource = readFileSync(resolve(process.cwd(), 'src/game/threeCombatRenderer.ts'), 'utf8');
 assert(rendererSource.includes("import { OPERATOR_ASSET_FAMILY } from './graphicsAssetManifest'"), 'combat renderer must consume the authored operator manifest');
@@ -83,5 +87,10 @@ assert(rendererSource.includes("root.getObjectByName('weapon-socket')"), 'author
 assert(rendererSource.includes('syncAuthoredOperatorAnimation(state)'), 'authored operator must receive simulation-driven animation poses');
 assert(rendererSource.includes("dataset.operatorRig = 'articulated'"), 'runtime QA must expose articulated-rig activation');
 assert(rendererSource.includes("dataset.operatorAnimation = mode"), 'runtime QA must expose the active animation state');
+assert(rendererSource.includes('ENEMY_ASSET_FAMILIES[enemy.role]'), 'enemy rendering must select authored assets by combat role');
+assert(rendererSource.includes('void this.loadAuthoredEnemy(visual, enemy)'), 'enemy visuals must load authored assets while retaining procedural fallback');
+assert(rendererSource.includes('syncAuthoredEnemyAnimation(visual, enemy, state)'), 'enemy animation must derive from deterministic simulation state');
+assert(rendererSource.includes("dataset.enemyVisual = 'authored'"), 'runtime QA must expose authored enemy activation');
+assert(rendererSource.includes('visual.proceduralVisuals.forEach'), 'procedural enemy bodies must only hide after authored loading succeeds');
 
-console.log('GRAPHICS_ASSET_PIPELINE_PASS format=glb mesh=meshopt textures=ktx2 loader=deferred lifecycle=leased lod=adaptive operator=articulated+fallback socket=weapon animation=state-driven operatorTriangles=45000 operatorPayload=2500000');
+console.log('GRAPHICS_ASSET_PIPELINE_PASS format=glb mesh=meshopt textures=ktx2 loader=deferred lifecycle=leased lod=adaptive operator=articulated enemies=role-authored+fallback animation=state-driven operatorTriangles=45000 enemyTriangles=30000');
