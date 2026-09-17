@@ -114,37 +114,38 @@ async function waitFor(predicateExpression, label, timeout = 45_000) {
 await call('Runtime.enable');
 await call('Page.enable').catch(() => undefined);
 await waitFor(`document.readyState === 'complete' && document.title === 'Ironshade Vector'`, 'Ironshade document', 45_000);
-await waitFor(`document.body?.innerText.includes('Command deck') || document.body?.innerText.includes('SAVE RECOVERY LOCK')`, 'Command deck', 45_000);
+await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('command deck') || (document.body?.innerText ?? '').includes('SAVE RECOVERY LOCK')`, 'Command deck', 45_000);
 
 const startup = await snapshot();
-if (startup.text.includes('SAVE RECOVERY LOCK')) {
+const startupText = startup.text ?? '';
+if (startupText.includes('SAVE RECOVERY LOCK')) {
   throw new Error(`Android startup entered save recovery lock: ${JSON.stringify(startup)}`);
 }
 const startupButtons = startup.buttons ?? [];
-if (startup.title !== 'Ironshade Vector' || !startup.text.includes('Command deck') || !startupButtons.includes('Contracts')) {
+if (startup.title !== 'Ironshade Vector' || !startupText.toLowerCase().includes('command deck') || !startupButtons.some(label => label.toLowerCase() === 'contracts')) {
   throw new Error(`Unexpected Android startup surface: ${JSON.stringify(startup)}`);
 }
 
 const openedContracts = await evaluate(`(() => {
-  const button = [...document.querySelectorAll('button')].find(candidate => candidate.textContent?.trim() === 'Contracts');
+  const button = [...document.querySelectorAll('button')].find(candidate => candidate.textContent?.trim().toLowerCase() === 'contracts');
   if (!button) return false;
   button.click();
   return true;
 })()`);
 if (!openedContracts) throw new Error('Contracts navigation button was not found.');
-await waitFor(`document.body?.innerText.includes('Contract board') && [...document.querySelectorAll('button')].some(button => button.textContent?.trim() === 'Deploy selected contract')`, 'Contract Board');
+await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('contract board') && [...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'deploy selected contract')`, 'Contract Board');
 
 const deployed = await evaluate(`(() => {
-  const button = [...document.querySelectorAll('button')].find(candidate => candidate.textContent?.trim() === 'Deploy selected contract');
+  const button = [...document.querySelectorAll('button')].find(candidate => candidate.textContent?.trim().toLowerCase() === 'deploy selected contract');
   if (!button || button.disabled) return false;
   button.click();
   return true;
 })()`);
 if (!deployed) throw new Error(`Selected contract could not be deployed from the Android Contract Board: ${JSON.stringify(await snapshot())}`);
-await waitFor(`document.body?.innerText.includes('FIELD COACH') && document.querySelectorAll('canvas').length > 0`, 'Combat surface', 45_000);
+await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('field coach') && document.querySelectorAll('canvas').length > 0`, 'Combat surface', 45_000);
 
 const combat = await snapshot();
-if (!combat.text.includes('FIELD COACH') || combat.canvases < 1) {
+if (!(combat.text ?? '').toLowerCase().includes('field coach') || combat.canvases < 1) {
   throw new Error(`Android combat surface failed smoke validation: ${JSON.stringify(combat)}`);
 }
 
