@@ -27,9 +27,15 @@ chrome_log="${RUNNER_TEMP:-/tmp}/ironshade-browser-chrome.log"
 profile_dir="${RUNNER_TEMP:-/tmp}/ironshade-browser-profile-$$"
 
 cleanup() {
-  if [[ -n "${chrome_pid:-}" ]]; then kill "$chrome_pid" 2>/dev/null || true; fi
-  if [[ -n "${preview_pid:-}" ]]; then kill "$preview_pid" 2>/dev/null || true; fi
-  rm -rf "$profile_dir"
+  if [[ -n "${chrome_pid:-}" ]]; then
+    kill "$chrome_pid" 2>/dev/null || true
+    wait "$chrome_pid" 2>/dev/null || true
+  fi
+  if [[ -n "${preview_pid:-}" ]]; then
+    kill "$preview_pid" 2>/dev/null || true
+    wait "$preview_pid" 2>/dev/null || true
+  fi
+  rm -rf "$profile_dir" || true
 }
 trap cleanup EXIT
 
@@ -56,6 +62,7 @@ curl --fail --silent --show-error "$ORIGIN" >/dev/null
   --remote-allow-origins='*' \
   --user-data-dir="$profile_dir" \
   --enable-webgl \
+  --enable-unsafe-swiftshader \
   --ignore-gpu-blocklist \
   --use-angle=swiftshader \
   "$ORIGIN" >"$chrome_log" 2>&1 &
