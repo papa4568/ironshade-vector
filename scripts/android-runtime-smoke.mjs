@@ -114,7 +114,11 @@ async function waitFor(predicateExpression, label, timeout = 45_000) {
 await call('Runtime.enable');
 await call('Page.enable').catch(() => undefined);
 await waitFor(`document.readyState === 'complete' && document.title === 'Ironshade Vector'`, 'Ironshade document', 45_000);
-await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('command deck') || (document.body?.innerText ?? '').includes('SAVE RECOVERY LOCK')`, 'Command deck', 45_000);
+await waitFor(`(() => {
+  const text = (document.body?.innerText ?? '').toLowerCase();
+  const labels = [...document.querySelectorAll('button')].map(button => button.textContent?.trim().toLowerCase() ?? '');
+  return text.includes('save recovery lock') || (text.includes('command deck') && labels.includes('contracts'));
+})()`, 'interactive Command deck', 45_000);
 
 const startup = await snapshot();
 const startupText = startup.text ?? '';
