@@ -149,7 +149,10 @@ function App() {
   const combatBuild = useMemo(() => applyShipBonuses(deriveCombatBuild(profile), campaign), [profile, campaign]);
 
   const persistenceWarning = 'LOCAL SAVE FAILED // browser storage is unavailable; current-session progress may not survive a restart.';
-  useEffect(() => { if (!saveGameState(profile, campaign)) setStatusMessage(persistenceWarning); }, [profile, campaign]);
+  useEffect(() => {
+    if (!saveGameState(profile, campaign)) setStatusMessage(persistenceWarning);
+    else setStatusMessage(current => current === persistenceWarning ? '' : current);
+  }, [profile, campaign]);
   useEffect(() => { setCampaign(current => syncDirectiveAccess(current, profile.level)); }, [profile.level]);
   useEffect(() => { setCampaign(current => syncPostKhepriAccess(current, profile.level)); }, [profile.level, campaign.story.blackLattice.status]);
   useEffect(() => { setCampaign(current => syncInterdictionAccess(current, profile.level)); }, [profile.level, campaign.story.postKhepri.status]);
