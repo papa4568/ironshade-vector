@@ -137,7 +137,7 @@ async function runSaveRecoveryRegressions() {
 }
 
 runSaveRecoveryRegressions()
-  .then(saveRecoveryCount => console.log(`GAMEPLAY_REGRESSIONS_PASS credits=${campaign.resources.credits} med=${campaign.consumables.medGel} hp=${deathState.player.hp} aim=${aimState.player.aim.x.toFixed(3)} saveRecovery=${saveRecoveryCount}`))
+  .then(saveRecoveryCount => console.log(`GAMEPLAY_REGRESSIONS_PASS credits=${campaign.resources.credits} med=${campaign.consumables.medGel} hp=${deathState.player.hp} aim=${aimState.player.aim.x.toFixed(3)} expeditionLoot=${expeditionLootCarry.length} saveRecovery=${saveRecoveryCount}`))
   .catch(error => {
     console.error(error);
     process.exitCode = 1;
