@@ -19,6 +19,7 @@
     "test:ui": "vite build --ssr tests/ui-readability.ts --outDir .ui-dist && node .ui-dist/ui-readability.js",
     "test:render": "vite build --ssr tests/render-performance.ts --outDir .render-dist && node .render-dist/render-performance.js",
     "test:bundle": "node tests/client-bundle-budget.mjs",
+    "test:e2e": "bash scripts/browser-e2e.sh",
     "android:sync": "npx cap sync android",
     "test:service": "vite build --ssr tests/service-regressions.ts --outDir .service-dist --config vite.service.config.ts && node .service-dist/service-regressions.js",
     "test:network": "vite build --ssr tests/network-regressions.ts --outDir .network-dist && node .network-dist/network-regressions.js"
