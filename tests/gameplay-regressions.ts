@@ -78,48 +78,57 @@ assert.equal(saveCampaign(campaign), false, 'campaign persistence should report 
 assert.equal(saveProfile(createDefaultProfile()), false, 'profile persistence should report blocked storage without throwing');
 failStorageWrites = false;
 
-storage.clear();
-const validProfileRaw = JSON.stringify(createDefaultProfile());
-localStorage.setItem(PROFILE_STORAGE_KEY, validProfileRaw);
-const validRecovery = await prepareSaveRecovery({ storage: localStorage, indexedDb: null, now: () => new Date('2026-09-16T12:00:00.000Z'), id: () => 'valid' });
-assert.equal(validRecovery.blocked, false, 'valid saves should not block startup');
-assert.equal(validRecovery.backups.length, 0, 'valid saves should not be copied into recovery storage');
-assert.equal(localStorage.getItem(PROFILE_STORAGE_KEY), validProfileRaw, 'valid saves should remain untouched');
+async function runSaveRecoveryRegressions() {
+  storage.clear();
+  const validProfileRaw = JSON.stringify(createDefaultProfile());
+  localStorage.setItem(PROFILE_STORAGE_KEY, validProfileRaw);
+  const validRecovery = await prepareSaveRecovery({ storage: localStorage, indexedDb: null, now: () => new Date('2026-09-16T12:00:00.000Z'), id: () => 'valid' });
+  assert.equal(validRecovery.blocked, false, 'valid saves should not block startup');
+  assert.equal(validRecovery.backups.length, 0, 'valid saves should not be copied into recovery storage');
+  assert.equal(localStorage.getItem(PROFILE_STORAGE_KEY), validProfileRaw, 'valid saves should remain untouched');
 
-storage.clear();
-const defaultProfile = createDefaultProfile();
-const malformedProfileRaw = JSON.stringify({
-  ...defaultProfile,
-  inventory: defaultProfile.inventory.map((item, index) => index === 0 ? { ...item, augments: ['future-unknown-augment'] } : item),
-});
-localStorage.setItem(PROFILE_STORAGE_KEY, malformedProfileRaw);
-const malformedProfileRecovery = await prepareSaveRecovery({ storage: localStorage, indexedDb: null, now: () => new Date('2026-09-16T12:01:00.000Z'), id: () => 'profile' });
-assert.equal(malformedProfileRecovery.blocked, false, 'a malformed profile should start only after its raw data is backed up');
-assert.equal(localStorage.getItem(PROFILE_STORAGE_KEY), null, 'unsafe profile save should be detached before the normal loader can replace it');
-const profileBackup = malformedProfileRecovery.backups.find(backup => backup.kind === 'profile');
-assert.ok(profileBackup, 'malformed profile should produce a recovery backup');
-assert.equal(localStorage.getItem(profileBackup.backupKey), malformedProfileRaw, 'profile recovery backup must preserve the exact original bytes');
-assert.deepEqual(loadProfile(), createDefaultProfile(), 'normal profile loading should see a clean slot after quarantine');
+  storage.clear();
+  const defaultProfile = createDefaultProfile();
+  const malformedProfileRaw = JSON.stringify({
+    ...defaultProfile,
+    inventory: defaultProfile.inventory.map((item, index) => index === 0 ? { ...item, augments: ['future-unknown-augment'] } : item),
+  });
+  localStorage.setItem(PROFILE_STORAGE_KEY, malformedProfileRaw);
+  const malformedProfileRecovery = await prepareSaveRecovery({ storage: localStorage, indexedDb: null, now: () => new Date('2026-09-16T12:01:00.000Z'), id: () => 'profile' });
+  assert.equal(malformedProfileRecovery.blocked, false, 'a malformed profile should start only after its raw data is backed up');
+  assert.equal(localStorage.getItem(PROFILE_STORAGE_KEY), null, 'unsafe profile save should be detached before the normal loader can replace it');
+  const profileBackup = malformedProfileRecovery.backups.find(backup => backup.kind === 'profile');
+  assert.ok(profileBackup, 'malformed profile should produce a recovery backup');
+  assert.equal(localStorage.getItem(profileBackup.backupKey), malformedProfileRaw, 'profile recovery backup must preserve the exact original bytes');
+  assert.deepEqual(loadProfile(), createDefaultProfile(), 'normal profile loading should see a clean slot after quarantine');
 
-storage.clear();
-const incompatibleCampaignRaw = JSON.stringify({ ...createDefaultCampaign(), version: 99 });
-localStorage.setItem(CAMPAIGN_STORAGE_KEY, incompatibleCampaignRaw);
-const campaignRecovery = await prepareSaveRecovery({ storage: localStorage, indexedDb: null, now: () => new Date('2026-09-16T12:02:00.000Z'), id: () => 'campaign' });
-assert.equal(campaignRecovery.blocked, false, 'an incompatible campaign should be quarantined before startup');
-assert.equal(localStorage.getItem(CAMPAIGN_STORAGE_KEY), null, 'incompatible campaign should be detached from the primary key');
-const campaignBackup = campaignRecovery.backups.find(backup => backup.kind === 'campaign');
-assert.ok(campaignBackup, 'incompatible campaign should produce a recovery backup');
-assert.equal(localStorage.getItem(campaignBackup.backupKey), incompatibleCampaignRaw, 'campaign recovery backup must preserve the exact original bytes');
-assert.deepEqual(loadCampaign(), createDefaultCampaign(), 'normal campaign loading should see a clean slot after quarantine');
+  storage.clear();
+  const incompatibleCampaignRaw = JSON.stringify({ ...createDefaultCampaign(), version: 99 });
+  localStorage.setItem(CAMPAIGN_STORAGE_KEY, incompatibleCampaignRaw);
+  const campaignRecovery = await prepareSaveRecovery({ storage: localStorage, indexedDb: null, now: () => new Date('2026-09-16T12:02:00.000Z'), id: () => 'campaign' });
+  assert.equal(campaignRecovery.blocked, false, 'an incompatible campaign should be quarantined before startup');
+  assert.equal(localStorage.getItem(CAMPAIGN_STORAGE_KEY), null, 'incompatible campaign should be detached from the primary key');
+  const campaignBackup = campaignRecovery.backups.find(backup => backup.kind === 'campaign');
+  assert.ok(campaignBackup, 'incompatible campaign should produce a recovery backup');
+  assert.equal(localStorage.getItem(campaignBackup.backupKey), incompatibleCampaignRaw, 'campaign recovery backup must preserve the exact original bytes');
+  assert.deepEqual(loadCampaign(), createDefaultCampaign(), 'normal campaign loading should see a clean slot after quarantine');
 
-storage.clear();
-const unreadableRaw = '{bad-profile-json';
-localStorage.setItem(PROFILE_STORAGE_KEY, unreadableRaw);
-failBackupWrites = true;
-const blockedRecovery = await prepareSaveRecovery({ storage: localStorage, indexedDb: null, now: () => new Date('2026-09-16T12:03:00.000Z'), id: () => 'blocked' });
-failBackupWrites = false;
-assert.equal(blockedRecovery.blocked, true, 'startup must stop if an unreadable save cannot be backed up');
-assert.equal(localStorage.getItem(PROFILE_STORAGE_KEY), unreadableRaw, 'failed backup must leave the original save untouched');
-assert.equal(blockedRecovery.backups.length, 0, 'a failed copy must never be reported as a verified backup');
+  storage.clear();
+  const unreadableRaw = '{bad-profile-json';
+  localStorage.setItem(PROFILE_STORAGE_KEY, unreadableRaw);
+  failBackupWrites = true;
+  const blockedRecovery = await prepareSaveRecovery({ storage: localStorage, indexedDb: null, now: () => new Date('2026-09-16T12:03:00.000Z'), id: () => 'blocked' });
+  failBackupWrites = false;
+  assert.equal(blockedRecovery.blocked, true, 'startup must stop if an unreadable save cannot be backed up');
+  assert.equal(localStorage.getItem(PROFILE_STORAGE_KEY), unreadableRaw, 'failed backup must leave the original save untouched');
+  assert.equal(blockedRecovery.backups.length, 0, 'a failed copy must never be reported as a verified backup');
 
-console.log(`GAMEPLAY_REGRESSIONS_PASS credits=${campaign.resources.credits} med=${campaign.consumables.medGel} hp=${deathState.player.hp} aim=${aimState.player.aim.x.toFixed(3)} saveRecovery=${malformedProfileRecovery.backups.length + campaignRecovery.backups.length}`);
+  return malformedProfileRecovery.backups.length + campaignRecovery.backups.length;
+}
+
+runSaveRecoveryRegressions()
+  .then(saveRecoveryCount => console.log(`GAMEPLAY_REGRESSIONS_PASS credits=${campaign.resources.credits} med=${campaign.consumables.medGel} hp=${deathState.player.hp} aim=${aimState.player.aim.x.toFixed(3)} saveRecovery=${saveRecoveryCount}`))
+  .catch(error => {
+    console.error(error);
+    process.exitCode = 1;
+  });
