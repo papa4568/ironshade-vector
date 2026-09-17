@@ -56,18 +56,19 @@ jobs:
           test = test.replace(old_read, new_read, 1)
 
           anchor = "assert(combat.includes('hostileRouteMode') && combat.includes('objectiveRouteMode'), 'Combat cleanup guidance is missing obstacle-aware route state.');\n"
-          addition = """assert(combat.includes('hostileRouteMode') && combat.includes('objectiveRouteMode'), 'Combat cleanup guidance is missing obstacle-aware route state.');
-const gameRootRule = rootCss.match(/\\.game-root\\s*\\{[^}]*\\}/)?.[0] ?? '';
-const gameCanvasRule = rootCss.match(/\\.game-canvas\\s*\\{[^}]*\\}/)?.[0] ?? '';
-const touchStickRule = rootCss.match(/\\.touch-stick\\s*\\{[^}]*\\}/)?.[0] ?? '';
-const touchButtonRule = rootCss.match(/\\.touch-button\\s*\\{[^}]*\\}/)?.[0] ?? '';
-const overlayRule = rootCss.match(/\\.overlay\\s*\\{[^}]*\\}/)?.[0] ?? '';
-const overlayCardRule = rootCss.match(/\\.overlay-card\\s*\\{[^}]*\\}/)?.[0] ?? '';
-assert(!combat.includes("document.addEventListener('touchmove'") && !combat.includes("document.addEventListener('gesturestart'"), 'Combat still suppresses touch gestures at document scope.');
-assert(!gameRootRule.includes('touch-action: none'), 'Combat root still disables gestures for descendant overlays.');
-assert(gameCanvasRule.includes('touch-action: none') && touchStickRule.includes('touch-action: none') && touchButtonRule.includes('touch-action: manipulation'), 'Combat input surfaces are missing scoped touch-action protection.');
-assert(overlayRule.includes('touch-action: pan-y') && overlayRule.includes('overflow-y: auto') && overlayCardRule.includes('touch-action: pan-y') && overlayCardRule.includes('overflow-y: auto'), 'Combat overlays are not explicit vertical touch-scroll surfaces.');
-"""
+          addition = (
+              "assert(combat.includes('hostileRouteMode') && combat.includes('objectiveRouteMode'), 'Combat cleanup guidance is missing obstacle-aware route state.');\n"
+              "const gameRootRule = rootCss.match(/\\.game-root\\s*\\{[^}]*\\}/)?.[0] ?? '';\n"
+              "const gameCanvasRule = rootCss.match(/\\.game-canvas\\s*\\{[^}]*\\}/)?.[0] ?? '';\n"
+              "const touchStickRule = rootCss.match(/\\.touch-stick\\s*\\{[^}]*\\}/)?.[0] ?? '';\n"
+              "const touchButtonRule = rootCss.match(/\\.touch-button\\s*\\{[^}]*\\}/)?.[0] ?? '';\n"
+              "const overlayRule = rootCss.match(/\\.overlay\\s*\\{[^}]*\\}/)?.[0] ?? '';\n"
+              "const overlayCardRule = rootCss.match(/\\.overlay-card\\s*\\{[^}]*\\}/)?.[0] ?? '';\n"
+              "assert(!combat.includes(\"document.addEventListener('touchmove'\") && !combat.includes(\"document.addEventListener('gesturestart'\"), 'Combat still suppresses touch gestures at document scope.');\n"
+              "assert(!gameRootRule.includes('touch-action: none'), 'Combat root still disables gestures for descendant overlays.');\n"
+              "assert(gameCanvasRule.includes('touch-action: none') && touchStickRule.includes('touch-action: none') && touchButtonRule.includes('touch-action: manipulation'), 'Combat input surfaces are missing scoped touch-action protection.');\n"
+              "assert(overlayRule.includes('touch-action: pan-y') && overlayRule.includes('overflow-y: auto') && overlayCardRule.includes('touch-action: pan-y') && overlayCardRule.includes('overflow-y: auto'), 'Combat overlays are not explicit vertical touch-scroll surfaces.');\n"
+          )
           if test.count(anchor) != 1:
               raise SystemExit('Unable to locate combat UI regression-test anchor.')
           test_path.write_text(test.replace(anchor, addition, 1))
