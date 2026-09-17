@@ -26,6 +26,21 @@ if (!manifest.includes('android:screenOrientation="sensorLandscape"')) {
 writeFileSync(manifestPath, manifest);
 
 let appGradle = readFileSync(appGradlePath, 'utf8');
+const versionCodeRaw = process.env.ANDROID_VERSION_CODE ?? '1';
+const versionCode = Number.parseInt(versionCodeRaw, 10);
+if (!Number.isInteger(versionCode) || versionCode < 1 || versionCode > 2_100_000_000) {
+  throw new Error(`Invalid ANDROID_VERSION_CODE: ${versionCodeRaw}`);
+}
+const versionName = (process.env.ANDROID_VERSION_NAME ?? '1.0').trim();
+if (!/^[0-9A-Za-z][0-9A-Za-z._-]{0,63}$/.test(versionName)) {
+  throw new Error(`Invalid ANDROID_VERSION_NAME: ${versionName}`);
+}
+if (!/versionCode\s+\d+/.test(appGradle) || !/versionName\s+["'][^"']+["']/.test(appGradle)) {
+  throw new Error('Unable to locate Android versionCode/versionName fields.');
+}
+appGradle = appGradle.replace(/versionCode\s+\d+/, `versionCode ${versionCode}`);
+appGradle = appGradle.replace(/versionName\s+["'][^"']+["']/, `versionName "${versionName}"`);
+
 const signingMarker = '// IRONSHADE_RELEASE_SIGNING';
 if (!appGradle.includes(signingMarker)) {
   const buildTypesMatch = appGradle.match(/\n(\s*)buildTypes\s*\{/);
@@ -46,8 +61,8 @@ if (!appGradle.includes(signingMarker)) {
   const releaseInsert = releaseIndex + releaseNeedle.length;
   const signingAssignment = `\n${indent}        if (System.getenv("ANDROID_SIGNING_STORE_FILE")) {\n${indent}            signingConfig signingConfigs.release\n${indent}        }`;
   appGradle = appGradle.slice(0, releaseInsert) + signingAssignment + appGradle.slice(releaseInsert);
-  writeFileSync(appGradlePath, appGradle);
 }
+writeFileSync(appGradlePath, appGradle);
 
 writeFileSync(activityPath, `package app.ironshade.vector;
 
@@ -75,6 +90,7 @@ public class MainActivity extends BridgeActivity {
 
     private void configureGameWebView() {
         WebView webView = getBridge().getWebView();
+        if (BuildConfig.DEBUG) WebView.setWebContentsDebuggingEnabled(true);
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         webView.setHorizontalScrollBarEnabled(false);
         webView.setVerticalScrollBarEnabled(false);
@@ -91,4 +107,4 @@ public class MainActivity extends BridgeActivity {
 }
 `);
 
-console.log('ANDROID_GAME_SHELL_CONFIGURED landscape=sensor fullscreen=immersive hardwareAcceleration=true releaseSigning=env-backed');
+console.log(`ANDROID_GAME_SHELL_CONFIGURED landscape=sensor fullscreen=immersive hardwareAcceleration=true releaseSigning=env-backed version=${versionName}(${versionCode})`);
