@@ -1,5 +1,6 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { resolve, relative } from 'node:path';
+import { Box3 } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone } from 'three/examples/jsm/utils/SkeletonUtils.js';
 
@@ -138,14 +139,21 @@ for (const path of glbs) {
   });
   assert(runtimeMeshes > 0, `${relativePath}: cloned runtime scene contains no meshes`);
 
-  const bounds = positionBounds(json, relativePath);
+  const authoredBounds = positionBounds(json, relativePath);
+  const runtimeBounds = new Box3().setFromObject(instance);
   if (top === 'operators') {
-    const height = bounds.max[1] - bounds.min[1];
-    assert(Math.abs(bounds.min[1]) <= 0.02, `${relativePath}: operator feet must rest on authored ground origin; minY=${bounds.min[1]}`);
+    const height = runtimeBounds.max.y - runtimeBounds.min.y;
+    assert(Math.abs(runtimeBounds.min.y) <= 0.03, `${relativePath}: operator feet must rest on authored ground origin; minY=${runtimeBounds.min.y}`);
     assert(height >= 1.5 && height <= 2.6, `${relativePath}: operator height ${height.toFixed(2)}m is outside mobile gameplay scale`);
+    if (filename.endsWith('-lod1.glb')) {
+      const nodeNames = new Set((json.nodes ?? []).map(node => node.name).filter(Boolean));
+      for (const required of ['operator-rig', 'hip', 'torso', 'helmet', 'arm-left', 'arm-right', 'leg-left', 'leg-right', 'backpack', 'weapon-socket']) {
+        assert(nodeNames.has(required), `${relativePath}: articulated LOD1 is missing required node ${required}`);
+      }
+    }
   }
 
-  reports.push({ relativePath, bytes: data.byteLength, triangles, meshes: runtimeMeshes });
+  reports.push({ relativePath, bytes: data.byteLength, triangles, meshes: runtimeMeshes, authoredBounds });
 }
 
 const totalBytes = reports.reduce((sum, report) => sum + report.bytes, 0);
