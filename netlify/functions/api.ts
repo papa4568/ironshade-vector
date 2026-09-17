@@ -12,7 +12,8 @@ type DailyOperation = { date: string; seed: number; codename: string; sponsor: '
 
 const dailyStore = () => getStore('ironshade-daily');
 const metricsStore = () => getStore({ name: 'ironshade-metrics', consistency: 'strong' });
-const runsStore = () => getStore({ name: 'ironshade-runs', consistency: 'strong' });
+// Only telemetry that passes the strict ingestion gate enters this ledger; aggregate balance metrics are derived exclusively from it.
+const acceptedRunsStore = () => getStore({ name: 'ironshade-runs', consistency: 'strong' });
 const METRICS_KEY = 'global';
 
 function json(data: unknown, status = 200) {
@@ -121,7 +122,7 @@ function applyRunToMetrics(base: MetricsRecord, runId: string, run: RunRecord): 
 }
 
 async function rebuildMetricsFromLedger(runKeys: string[]) {
-  const store = runsStore();
+  const store = acceptedRunsStore();
   let rebuilt = emptyMetrics();
   for (const runId of runKeys) {
     const run = await store.get(runId, { type: 'json', consistency: 'strong' }) as RunRecord | null;
@@ -134,7 +135,7 @@ async function readMetrics() {
   const store = metricsStore();
   const version = await store.getWithMetadata(METRICS_KEY, { type: 'json', consistency: 'strong' }) as { data: MetricsRecord; etag: string } | null;
   const cached = normalizeMetrics(version?.data);
-  const runStore = runsStore();
+  const runStore = acceptedRunsStore();
   const ledger = await runStore.list();
   const runKeys = ledger.blobs.map(blob => blob.key);
   if (cached.attempts === runKeys.length) return cached;
@@ -182,15 +183,61 @@ function cleanNumberArray(value: unknown, minimum: number, maximum: number, limi
 function cleanCountMap(value: unknown, maxKeys = 20) { const record = value && typeof value === 'object' ? value as Record<string, unknown> : {}; const result: Record<string, number> = {}; for (const [key, raw] of Object.entries(record).slice(0, maxKeys)) { const cleanKey = cleanText(key, 100); if (cleanKey) result[cleanKey] = Math.round(cleanNumber(raw, 0, 10000)); } return result; }
 function cleanTrace(value: unknown): TracePoint[] { if (!Array.isArray(value)) return []; const result: TracePoint[] = []; for (const entry of value.slice(0, 720)) { if (!entry || typeof entry !== 'object') continue; const point = entry as Record<string, unknown>; const weapon = point.weapon === 'breacher' || point.weapon === 'rail' ? point.weapon : 'carbine'; result.push({ t: Math.round(cleanNumber(point.t, 0, 1800) * 10) / 10, x: Math.round(cleanNumber(point.x, 0, 2320)), y: Math.round(cleanNumber(point.y, 0, 1040)), hp: Math.round(cleanNumber(point.hp, 0, 250)), armor: Math.round(cleanNumber(point.armor, 0, 250)), weapon }); } return result; }
 
+function isRecord(value: unknown): value is Record<string, unknown> { return !!value && typeof value === 'object' && !Array.isArray(value); }
+function isText(value: unknown, minimum: number, maximum: number) { return typeof value === 'string' && value.length >= minimum && value.length <= maximum; }
+function isFiniteInRange(value: unknown, minimum: number, maximum: number) { return typeof value === 'number' && Number.isFinite(value) && value >= minimum && value <= maximum; }
+function isIntegerInRange(value: unknown, minimum: number, maximum: number) { return isFiniteInRange(value, minimum, maximum) && Number.isInteger(value); }
+function isRunOutcome(value: unknown): value is RunOutcome { return value === 'safe' || value === 'deep' || value === 'failed'; }
+function isWeapon(value: unknown): value is WeaponId { return value === 'carbine' || value === 'breacher' || value === 'rail'; }
+function isStrictNumberArray(value: unknown, minimum: number, maximum: number, limit: number) { return Array.isArray(value) && value.length <= limit && value.every(entry => isIntegerInRange(entry, minimum, maximum)); }
+function isStrictCountMap(value: unknown, maxKeys = 20) {
+  if (!isRecord(value)) return false;
+  const entries = Object.entries(value);
+  return entries.length <= maxKeys && entries.every(([key, count]) => key.length > 0 && key.length <= 100 && isIntegerInRange(count, 0, 10000));
+}
+function isStrictTrace(value: unknown) {
+  if (!Array.isArray(value) || value.length > 720) return false;
+  return value.every(entry => {
+    if (!isRecord(entry)) return false;
+    return isFiniteInRange(entry.t, 0, 1800)
+      && isFiniteInRange(entry.x, 0, 2320)
+      && isFiniteInRange(entry.y, 0, 1040)
+      && isFiniteInRange(entry.hp, 0, 250)
+      && isFiniteInRange(entry.armor, 0, 250)
+      && isWeapon(entry.weapon);
+  });
+}
+function validateRunPayload(raw: Record<string, unknown>): string | null {
+  if (!isText(raw.contractId, 1, 120) || !isText(raw.contractTitle, 1, 120)) return 'Run telemetry requires a valid contract identifier and title';
+  if (!isText(raw.location, 1, 80) || !isText(raw.objectiveMode, 1, 80) || !isText(raw.buildLabel, 1, 80)) return 'Run telemetry contains invalid descriptive fields';
+  if (!isRunOutcome(raw.outcome)) return 'Invalid run outcome';
+  if (!isIntegerInRange(raw.operationTier, 1, 12) || !isIntegerInRange(raw.level, 1, 20)) return 'Run telemetry contains an invalid tier or level';
+  if (!isFiniteInRange(raw.duration, 0, 1800) || !isIntegerInRange(raw.salvageTags, 0, 1000)) return 'Run telemetry contains invalid timing or salvage values';
+  if (!isIntegerInRange(raw.damageDealt, 0, 1000000) || !isIntegerInRange(raw.damageTaken, 0, 1000000) || !isIntegerInRange(raw.kills, 0, 1000)) return 'Run telemetry contains invalid combat totals';
+  if (!isIntegerInRange(raw.eliteProtocolValue, 0, 1000) || !isFiniteInRange(raw.killIntervalTotal, 0, 100000) || !isIntegerInRange(raw.killIntervalSamples, 0, 1000)) return 'Run telemetry contains invalid protocol timing values';
+  if (!isIntegerInRange(raw.singularCount, 0, 20)) return 'Run telemetry contains an invalid Singular count';
+  if (typeof raw.directive !== 'boolean' || typeof raw.bossDefeated !== 'boolean' || typeof raw.daily !== 'boolean') return 'Run telemetry contains invalid boolean flags';
+  if (!isText(raw.operationDate, 0, 16)) return 'Run telemetry contains an invalid operation date';
+  if (!isStrictCountMap(raw.protocolCombinations)) return 'Run telemetry contains invalid protocol combinations';
+  if (!isStrictNumberArray(raw.recoveryQualities, 0, 5, 40) || !isStrictNumberArray(raw.modifierGrades, 1, 5, 100)) return 'Run telemetry contains invalid recovery data';
+  if (!isRecord(raw.weaponShots) || !isIntegerInRange(raw.weaponShots.carbine, 0, 100000) || !isIntegerInRange(raw.weaponShots.breacher, 0, 100000) || !isIntegerInRange(raw.weaponShots.rail, 0, 100000)) return 'Run telemetry contains invalid weapon totals';
+  if (!Array.isArray(raw.abilityUses) || raw.abilityUses.length !== 3 || !raw.abilityUses.every(value => isIntegerInRange(value, 0, 10000))) return 'Run telemetry contains invalid ability totals';
+  if (!isStrictTrace(raw.trace)) return 'Run telemetry contains an invalid trace';
+  return null;
+}
+
 async function handlePostRun(req: Request) {
+  const declaredLength = Number(req.headers.get('content-length') ?? 0);
+  if (Number.isFinite(declaredLength) && declaredLength > 512_000) return problem('Run telemetry payload is too large', 413);
   let body: unknown;
   try { body = await req.json(); } catch { return problem('Invalid run telemetry payload', 400); }
-  if (!body || typeof body !== 'object') return problem('Invalid run telemetry payload', 400);
-  const raw = body as Record<string, unknown>;
+  if (!isRecord(body)) return problem('Invalid run telemetry payload', 400);
+  const raw = body;
+  const validationError = validateRunPayload(raw);
+  if (validationError) return problem(validationError, 400);
   const contractId = cleanText(raw.contractId, 120);
   const contractTitle = cleanText(raw.contractTitle, 120);
-  if (!contractId || !contractTitle) return problem('Run telemetry requires a contract identifier and title', 400);
-  const outcome: RunOutcome = raw.outcome === 'failed' ? 'failed' : raw.outcome === 'deep' ? 'deep' : 'safe';
+  const outcome = raw.outcome as RunOutcome;
   const trace = cleanTrace(raw.trace);
   const run: RunRecord = {
     contractId,
@@ -225,7 +272,7 @@ async function handlePostRun(req: Request) {
   const idempotencyKey = cleanText(req.headers.get('x-idempotency-key'), 80);
   if (!/^[A-Za-z0-9._-]{16,80}$/.test(idempotencyKey)) return problem('Run telemetry requires a valid idempotency key', 400);
   const runId = idempotencyKey;
-  const store = runsStore();
+  const store = acceptedRunsStore();
   const created = await store.setJSON(runId, run, { onlyIfNew: true });
   if (!created.modified) return json({ id: runId, metrics: await readMetrics() }, 200);
   try {
@@ -249,7 +296,7 @@ export default async function handler(req: Request, context: Context) {
     if (req.method === 'GET' && path.startsWith('/api/runs/')) {
       const id = cleanText(context.params.id ?? decodeURIComponent(path.slice('/api/runs/'.length)), 80);
       if (!id) return problem('Run id is required', 400);
-      const stored = await runsStore().get(id, { type: 'json', consistency: 'strong' }) as RunRecord | null;
+      const stored = await acceptedRunsStore().get(id, { type: 'json', consistency: 'strong' }) as RunRecord | null;
       if (!stored) return problem('Run trace not found', 404);
       return json({ id, ...stored, outcome: normalizeRunOutcome(stored.outcome), operationTier: Math.round(cleanNumber(stored.operationTier, 1, 12)), level: Math.round(cleanNumber(stored.level, 1, 20)), trace: cleanTrace(stored.trace) });
     }
@@ -262,4 +309,5 @@ export default async function handler(req: Request, context: Context) {
 
 export const config: Config = {
   path: ['/api/_healthcheck', '/api/operations', '/api/runs', '/api/runs/:id'],
+  rateLimit: { windowLimit: 60, windowSize: 60, aggregateBy: ['ip', 'domain'] },
 };
