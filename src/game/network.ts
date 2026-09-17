@@ -105,6 +105,12 @@ const OPERATIONS_TIMEOUT_MS = 8_000;
 const TELEMETRY_TIMEOUT_MS = 10_000;
 const TRACE_TIMEOUT_MS = 8_000;
 
+function abortFailure(timedOut: boolean, timeoutMs: number) {
+  return timedOut
+    ? new NetworkRequestError('timeout', `Request timed out after ${timeoutMs}ms.`)
+    : new NetworkRequestError('aborted', 'Request cancelled.');
+}
+
 async function requestJson<T>(path: string, init?: RequestInit, options: NetworkRequestOptions = {}): Promise<T> {
   const controller = new AbortController();
   const sourceSignal = options.signal ?? init?.signal ?? undefined;
@@ -117,31 +123,43 @@ async function requestJson<T>(path: string, init?: RequestInit, options: Network
     timedOut = true;
     controller.abort();
   }, timeoutMs);
+
   try {
-    let response: Response;
-    try {
-      response = await fetch(path, {
-        ...init,
-        signal: controller.signal,
-        headers: {
-          ...(init?.body ? { 'content-type': 'application/json' } : {}),
-          ...(init?.headers ?? {}),
-        },
-      });
-    } catch (error) {
-      if (timedOut) throw new NetworkRequestError('timeout', `Request timed out after ${timeoutMs}ms.`);
-      if (controller.signal.aborted || (error as { name?: string } | null)?.name === 'AbortError') throw new NetworkRequestError('aborted', 'Request cancelled.');
-      throw new NetworkRequestError('network', 'Network unavailable.');
-    }
+    const response = await fetch(path, {
+      ...init,
+      signal: controller.signal,
+      headers: {
+        ...(init?.body ? { 'content-type': 'application/json' } : {}),
+        ...(init?.headers ?? {}),
+      },
+    });
+
     if (!response.ok) {
-      const detail = await response.text().catch(() => '');
+      let detail = '';
+      try {
+        detail = await response.text();
+      } catch (error) {
+        if (timedOut || controller.signal.aborted || (error as { name?: string } | null)?.name === 'AbortError') {
+          throw abortFailure(timedOut, timeoutMs);
+        }
+      }
       throw new NetworkRequestError('http', detail || `Operations request failed (${response.status})`, response.status);
     }
+
     try {
       return await response.json() as T;
-    } catch {
+    } catch (error) {
+      if (timedOut || controller.signal.aborted || (error as { name?: string } | null)?.name === 'AbortError') {
+        throw abortFailure(timedOut, timeoutMs);
+      }
       throw new NetworkRequestError('invalid-response', 'Operations service returned unreadable data.');
     }
+  } catch (error) {
+    if (isNetworkRequestError(error)) throw error;
+    if (timedOut || controller.signal.aborted || (error as { name?: string } | null)?.name === 'AbortError') {
+      throw abortFailure(timedOut, timeoutMs);
+    }
+    throw new NetworkRequestError('network', 'Network unavailable.');
   } finally {
     clearTimeout(timeout);
     sourceSignal?.removeEventListener('abort', abortFromSource);

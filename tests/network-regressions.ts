@@ -29,12 +29,34 @@ function hangingFetch() {
   })) as typeof fetch;
 }
 
+function hangingBodyFetch() {
+  globalThis.fetch = (async (_, init) => {
+    const signal = init?.signal;
+    return {
+      ok: true,
+      status: 200,
+      json: () => new Promise<never>((_, reject) => {
+        const abort = () => {
+          const error = new Error('aborted body');
+          error.name = 'AbortError';
+          reject(error);
+        };
+        if (signal?.aborted) abort();
+        else signal?.addEventListener('abort', abort, { once: true });
+      }),
+    } as Response;
+  }) as typeof fetch;
+}
+
 async function main() {
   try {
     hangingFetch();
     const timeoutStarted = Date.now();
     await expectFailure(() => loadOperationsSnapshot({ timeoutMs: 20 }), error => isNetworkRequestError(error) && error.kind === 'timeout', 'stalled Operations requests must fail as a timeout');
     assert(Date.now() - timeoutStarted < 1_000, 'timeout handling must resolve promptly in regression tests');
+
+    hangingBodyFetch();
+    await expectFailure(() => loadOperationsSnapshot({ timeoutMs: 20 }), error => isNetworkRequestError(error) && error.kind === 'timeout', 'stalled response bodies must remain bounded and classify as a timeout');
 
     hangingFetch();
     const controller = new AbortController();
@@ -51,7 +73,7 @@ async function main() {
     globalThis.fetch = (async () => new Response('{bad json', { status: 200 })) as typeof fetch;
     await expectFailure(() => loadOperationsSnapshot({ timeoutMs: 100 }), error => isNetworkRequestError(error) && error.kind === 'invalid-response', 'unreadable JSON must not masquerade as an offline failure');
 
-    console.log('NETWORK_REGRESSION_PASS timeout=bounded abort=distinct http=typed offline=typed invalid=typed');
+    console.log('NETWORK_REGRESSION_PASS timeout=bounded body=bounded abort=distinct http=typed offline=typed invalid=typed');
   } finally {
     globalThis.fetch = originalFetch;
   }
