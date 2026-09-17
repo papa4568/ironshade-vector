@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/fix-transactional-persistence.yml'
       - 'scripts/apply-transactional-persistence.mjs'
+      - 'scripts/patch-transactional-persistence-ui-test.mjs'
   workflow_dispatch:
 
 permissions:
@@ -22,6 +23,8 @@ jobs:
           node-version: 22
       - name: Apply transactional persistence fix
         run: node scripts/apply-transactional-persistence.mjs
+      - name: Update persistence UI regression
+        run: node scripts/patch-transactional-persistence-ui-test.mjs
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Validate complete production build
@@ -36,6 +39,6 @@ jobs:
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A -- src/App.tsx src/game/gamePersistence.ts src/game/saveRecovery.ts tests/gameplay-regressions.ts scripts/apply-transactional-persistence.mjs .github/workflows/fix-transactional-persistence.yml
+          git add -A -- src/App.tsx src/game/gamePersistence.ts src/game/saveRecovery.ts tests/gameplay-regressions.ts tests/ui-readability.ts scripts/apply-transactional-persistence.mjs scripts/patch-transactional-persistence-ui-test.mjs .github/workflows/fix-transactional-persistence.yml
           git commit -m 'Make profile and campaign persistence transactional'
           git push origin HEAD:main
