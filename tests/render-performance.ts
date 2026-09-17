@@ -1,8 +1,15 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { AdaptiveRenderBudget } from '../src/game/renderQuality';
 
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
 }
+
+const gameCanvasSource = readFileSync(resolve(process.cwd(), 'src/components/GameCanvas.tsx'), 'utf8');
+assert(!gameCanvasSource.includes('useRef<SimState>(createMissionState(firstMission))'), 'GameCanvas must not construct a new simulation on every React render');
+assert(gameCanvasSource.includes('useState(() => createMissionState(firstMission))'), 'GameCanvas initial simulation should use a lazy one-time initializer');
+assert(gameCanvasSource.includes('profileSettingsRef.current.effectIntensity') && gameCanvasSource.includes('profileSettingsRef.current.screenShake'), 'combat render loop must read live profile settings');
 
 const desktop = new AdaptiveRenderBudget(false);
 let snapshot = desktop.sample(16.7, 1);

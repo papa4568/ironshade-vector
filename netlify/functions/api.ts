@@ -93,7 +93,9 @@ function mergeCountMap(base: Record<string, number>, addition: Record<string, nu
 
 async function updateMetrics(runId: string, run: RunRecord) {
   const store = metricsStore();
-  const base = await readMetrics();
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const version = await store.getWithMetadata(METRICS_KEY, { type: 'json', consistency: 'strong' }) as { data: MetricsRecord; etag: string } | null;
+    const base = normalizeMetrics(version?.data);
   const banked = run.outcome !== 'failed';
   const summary: RunSummary = { id: runId, contractTitle: run.contractTitle, location: run.location, outcome: run.outcome, operationTier: run.operationTier, directive: run.directive, level: run.level, duration: run.duration, buildLabel: run.buildLabel, createdAt: run.createdAt, tracePoints: run.trace.length, daily: run.daily };
   const tierKey = String(run.operationTier);
@@ -130,8 +132,12 @@ async function updateMetrics(runId: string, run: RunRecord) {
     protocolCombinations: mergeCountMap(base.protocolCombinations, run.protocolCombinations),
     recent: [summary, ...base.recent].slice(0, 8),
   };
-  await store.setJSON(METRICS_KEY, next);
-  return next;
+    const result = version
+      ? await store.setJSON(METRICS_KEY, next, { onlyIfMatch: version.etag })
+      : await store.setJSON(METRICS_KEY, next, { onlyIfNew: true });
+    if (result.modified) return next;
+  }
+  throw new Error('Metrics update contention exceeded retry budget');
 }
 
 function cleanText(value: unknown, maxLength = 96) { return typeof value === 'string' ? value.slice(0, maxLength) : ''; }

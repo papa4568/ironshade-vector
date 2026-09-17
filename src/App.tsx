@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import './qol.css';
 import './equipmentBay.css';
 import './readability.css';
@@ -30,7 +30,7 @@ function SurfaceLoader({ screen }: { screen: Screen }) {
   const label = screen === 'combat' ? 'Preparing combat renderer' : screen === 'build' ? 'Opening equipment systems' : screen === 'ship' ? 'Opening command deck' : 'Loading mission debrief';
   return <main className="surface-loader" role="status" aria-live="polite"><div><span>QUIET SIGNAL // CLIENT STREAM</span><b>{label}</b><i /></div></main>;
 }
-type Debrief = { contract: Contract; campaignReward: CampaignReward; lootReward: VictoryReward; uplinkStatus: UplinkStatus; storyNote: string | null; chapterNote: string | null; postKhepriNote: string | null; interdictionNote: string | null; escalationNote: string | null; directiveNote: string | null; protocolValue: number; expeditionProgress?: ExpeditionProgress };  
+type Debrief = { runId: number; contract: Contract; campaignReward: CampaignReward; lootReward: VictoryReward; uplinkStatus: UplinkStatus; storyNote: string | null; chapterNote: string | null; postKhepriNote: string | null; interdictionNote: string | null; escalationNote: string | null; directiveNote: string | null; protocolValue: number; expeditionProgress?: ExpeditionProgress };
 
 function debriefRarityCue(rarity: VictoryReward['loot'][number]['rarity']) {
   if (rarity === 'Singular') return 'RULE-CHANGING';
@@ -142,11 +142,13 @@ function App() {
   const [newLootIds, setNewLootIds] = useState<string[]>([]);
   const [statusMessage, setStatusMessage] = useState('');
   const [debrief, setDebrief] = useState<Debrief | null>(null);
+  const debriefRunSequenceRef = useRef(0);
   const selectedContract = contracts.find(contract => contract.id === selectedContractId) ?? contracts[0];
   const combatBuild = useMemo(() => applyShipBonuses(deriveCombatBuild(profile), campaign), [profile, campaign]);
 
-  useEffect(() => saveProfile(profile), [profile]);
-  useEffect(() => saveCampaign(campaign), [campaign]);
+  const persistenceWarning = 'LOCAL SAVE FAILED // browser storage is unavailable; current-session progress may not survive a restart.';
+  useEffect(() => { if (!saveProfile(profile)) setStatusMessage(persistenceWarning); }, [profile]);
+  useEffect(() => { if (!saveCampaign(campaign)) setStatusMessage(persistenceWarning); }, [campaign]);
   useEffect(() => { setCampaign(current => syncDirectiveAccess(current, profile.level)); }, [profile.level]);
   useEffect(() => { setCampaign(current => syncPostKhepriAccess(current, profile.level)); }, [profile.level, campaign.story.blackLattice.status]);
   useEffect(() => { setCampaign(current => syncInterdictionAccess(current, profile.level)); }, [profile.level, campaign.story.postKhepri.status]);
@@ -162,6 +164,7 @@ function App() {
 
   const finishMission = (telemetry: Telemetry, depth: 'safe' | 'deep', salvageTags: number, expeditionProgress?: ExpeditionProgress, fieldLoot: GroundLootReceipt[] = []) => {
     if (!selectedContract) return;
+    const debriefRunId = ++debriefRunSequenceRef.current;
     const buildLabel = buildIdentity(profile);
     const baseCampaignReward = settleContract(campaign, selectedContract, depth, salvageTags, expeditionProgress);
     const storyAdvance = advanceStoryAfterContract(baseCampaignReward.campaign, selectedContract, depth);
@@ -196,7 +199,7 @@ function App() {
     setProfile(lootReward.profile);
     setNewLootIds(lootReward.loot.map(item => item.id));
     setStatusMessage(directiveAdvance.note ?? escalationAdvance.note ?? interdictionAdvance.note ?? postKhepriAdvance.note ?? chapterAdvance.note ?? storyAdvance.note ?? `${selectedContract.title} complete // ${depth === 'deep' ? 'deep' : 'safe'} extraction banked`);
-    setDebrief({ contract: selectedContract, campaignReward, lootReward, uplinkStatus, storyNote: storyAdvance.note, chapterNote: chapterAdvance.note, postKhepriNote: postKhepriAdvance.note, interdictionNote: interdictionAdvance.note, escalationNote: escalationAdvance.note, directiveNote: directiveAdvance.note, protocolValue: telemetry.eliteProtocolsDefeated, expeditionProgress });
+    setDebrief({ runId: debriefRunId, contract: selectedContract, campaignReward, lootReward, uplinkStatus, storyNote: storyAdvance.note, chapterNote: chapterAdvance.note, postKhepriNote: postKhepriAdvance.note, interdictionNote: interdictionAdvance.note, escalationNote: escalationAdvance.note, directiveNote: directiveAdvance.note, protocolValue: telemetry.eliteProtocolsDefeated, expeditionProgress });
     feedback.cue(lootReward.loot.some(item => (item.recoveryQuality ?? 0) >= 4) ? 'rareLoot' : 'loot');
     setScreen('debrief');
 
@@ -204,9 +207,9 @@ function App() {
       void uploadRunTelemetry({ contract: selectedContract, telemetry, outcome: depth, salvageTags, level: profile.level, buildLabel, recoveryQualities: lootReward.loot.map(item => item.recoveryQuality ?? 0), modifierGrades: lootReward.loot.flatMap(item => item.modifiers.map(modifier => modifier.grade ?? 3)), singularCount: lootReward.loot.filter(item => item.rarity === 'Singular').length })
         .then(result => {
           setOperations(current => current ? { ...current, metrics: result.metrics } : current);
-          setDebrief(current => current ? { ...current, uplinkStatus: 'shared' } : current);
+          setDebrief(current => current?.runId === debriefRunId ? { ...current, uplinkStatus: 'shared' } : current);
         })
-        .catch(() => setDebrief(current => current ? { ...current, uplinkStatus: 'error' } : current));
+        .catch(() => setDebrief(current => current?.runId === debriefRunId ? { ...current, uplinkStatus: 'error' } : current));
     }
   };
   const reportFailedAttempt = (telemetry: Telemetry) => { if (!selectedContract || !profile.settings.telemetrySharing) return; void uploadRunTelemetry({ contract: selectedContract, telemetry, outcome: 'failed', salvageTags: 0, level: profile.level, buildLabel: buildIdentity(profile) }).then(result => setOperations(current => current ? { ...current, metrics: result.metrics } : current)).catch(() => undefined); };

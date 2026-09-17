@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
 import { buyConsumable, createDefaultCampaign, loadCampaign, saveCampaign } from '../src/game/campaign';
 import { aimAtMobileTarget, applyPlayerDamage, createSimulation, triggerConsumable } from '../src/game/sim';
+import { createDefaultProfile, saveProfile } from '../src/game/meta';
 
 const storage = new Map<string, string>();
+let failStorageWrites = false;
 const localStorage = {
   getItem: (key: string) => storage.get(key) ?? null,
-  setItem: (key: string, value: string) => { storage.set(key, String(value)); },
+  setItem: (key: string, value: string) => { if (failStorageWrites) throw new Error('storage blocked'); storage.set(key, String(value)); },
   removeItem: (key: string) => { storage.delete(key); },
   clear: () => { storage.clear(); },
 };
@@ -65,5 +67,10 @@ assert.equal(aimAtMobileTarget(aimState, 'balanced', target.id), target.id);
 assert.ok(aimState.player.aim.x > 0.95, 'first target-switch frame should turn toward the new target instead of snapping 180 degrees');
 for (let i = 0; i < 30; i += 1) aimAtMobileTarget(aimState, 'balanced', target.id);
 assert.ok(aimState.player.aim.x < -0.95, 'assisted aim should still converge fully on the target');
+
+failStorageWrites = true;
+assert.equal(saveCampaign(campaign), false, 'campaign persistence should report blocked storage without throwing');
+assert.equal(saveProfile(createDefaultProfile()), false, 'profile persistence should report blocked storage without throwing');
+failStorageWrites = false;
 
 console.log(`GAMEPLAY_REGRESSIONS_PASS credits=${campaign.resources.credits} med=${campaign.consumables.medGel} hp=${deathState.player.hp} aim=${aimState.player.aim.x.toFixed(3)}`);
