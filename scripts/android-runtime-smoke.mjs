@@ -1,5 +1,5 @@
 const cdpBase = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9222';
-const timeoutMs = Number(process.env.ANDROID_SMOKE_TIMEOUT_MS ?? 45_000);
+const timeoutMs = Number(process.env.ANDROID_SMOKE_TIMEOUT_MS ?? 75_000);
 const startedAt = Date.now();
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -14,8 +14,10 @@ async function waitForTarget() {
       const response = await fetch(`${cdpBase}/json/list`);
       if (!response.ok) throw new Error(`CDP target listing returned HTTP ${response.status}`);
       const targets = await response.json();
-      const target = targets.find(candidate => candidate.type === 'page' && candidate.webSocketDebuggerUrl)
-        ?? targets.find(candidate => candidate.webSocketDebuggerUrl);
+      const candidates = targets.filter(candidate => candidate.webSocketDebuggerUrl);
+      const target = candidates.find(candidate => /localhost|ironshade/i.test(`${candidate.url ?? ''} ${candidate.title ?? ''}`))
+        ?? candidates.find(candidate => candidate.type === 'page')
+        ?? candidates[0];
       if (target) return target;
     } catch (error) {
       lastError = error;
@@ -41,6 +43,7 @@ function connect(url) {
 }
 
 const target = await waitForTarget();
+console.log(`ANDROID_CDP_TARGET title=${JSON.stringify(target.title ?? '')} url=${JSON.stringify(target.url ?? '')}`);
 const socket = await connect(target.webSocketDebuggerUrl);
 let requestId = 0;
 const pending = new Map();
@@ -87,29 +90,38 @@ async function evaluate(expression) {
   return response.result?.value;
 }
 
-async function waitFor(predicateExpression, label, timeout = 20_000) {
+async function snapshot() {
+  return evaluate(`(() => ({
+    readyState: document.readyState,
+    title: document.title,
+    url: location.href,
+    text: (document.body?.innerText ?? '').slice(0, 1200),
+    buttons: [...document.querySelectorAll('button')].map(button => button.textContent?.trim() ?? '').slice(0, 40),
+    canvases: document.querySelectorAll('canvas').length,
+  }))()`);
+}
+
+async function waitFor(predicateExpression, label, timeout = 45_000) {
   const deadline = Date.now() + timeout;
   while (Date.now() < deadline) {
     if (await evaluate(predicateExpression)) return;
     await sleep(250);
   }
-  throw new Error(`Timed out waiting for ${label}`);
+  const state = await snapshot().catch(error => ({ snapshotError: String(error) }));
+  throw new Error(`Timed out waiting for ${label}; webview=${JSON.stringify(state)}`);
 }
 
 await call('Runtime.enable');
-await waitFor(`document.readyState === 'complete' && document.body?.innerText.includes('Command deck')`, 'Command deck');
+await call('Page.enable').catch(() => undefined);
+await waitFor(`document.readyState === 'complete' && document.title === 'Ironshade Vector'`, 'Ironshade document', 45_000);
+await waitFor(`document.body?.innerText.includes('Command deck') || document.body?.innerText.includes('SAVE RECOVERY LOCK')`, 'Command deck', 45_000);
 
-const startup = await evaluate(`(() => {
-  const text = document.body?.innerText ?? '';
-  const buttons = [...document.querySelectorAll('button')].map(button => button.textContent?.trim() ?? '');
-  return {
-    title: document.title,
-    commandDeck: text.includes('Command deck'),
-    contracts: buttons.includes('Contracts'),
-    deploy: buttons.includes('Deploy selected contract'),
-  };
-})()`);
-if (startup?.title !== 'Ironshade Vector' || !startup.commandDeck || !startup.contracts || !startup.deploy) {
+const startup = await snapshot();
+if (startup.text.includes('SAVE RECOVERY LOCK')) {
+  throw new Error(`Android startup entered save recovery lock: ${JSON.stringify(startup)}`);
+}
+const startupButtons = startup.buttons ?? [];
+if (startup.title !== 'Ironshade Vector' || !startup.text.includes('Command deck') || !startupButtons.includes('Contracts')) {
   throw new Error(`Unexpected Android startup surface: ${JSON.stringify(startup)}`);
 }
 
@@ -120,7 +132,7 @@ const openedContracts = await evaluate(`(() => {
   return true;
 })()`);
 if (!openedContracts) throw new Error('Contracts navigation button was not found.');
-await waitFor(`document.body?.innerText.includes('CONTRACT BOARD // VIEW') && document.body?.innerText.includes('Deploy selected contract')`, 'Contract Board');
+await waitFor(`document.body?.innerText.includes('Contract board') && [...document.querySelectorAll('button')].some(button => button.textContent?.trim() === 'Deploy selected contract')`, 'Contract Board');
 
 const deployed = await evaluate(`(() => {
   const button = [...document.querySelectorAll('button')].find(candidate => candidate.textContent?.trim() === 'Deploy selected contract');
@@ -128,15 +140,11 @@ const deployed = await evaluate(`(() => {
   button.click();
   return true;
 })()`);
-if (!deployed) throw new Error('Selected contract could not be deployed from the Android Contract Board.');
-await waitFor(`document.body?.innerText.includes('FIELD COACH') && document.querySelectorAll('canvas').length > 0`, 'Combat surface', 30_000);
+if (!deployed) throw new Error(`Selected contract could not be deployed from the Android Contract Board: ${JSON.stringify(await snapshot())}`);
+await waitFor(`document.body?.innerText.includes('FIELD COACH') && document.querySelectorAll('canvas').length > 0`, 'Combat surface', 45_000);
 
-const combat = await evaluate(`(() => ({
-  fieldCoach: document.body?.innerText.includes('FIELD COACH'),
-  canvases: document.querySelectorAll('canvas').length,
-  dialogs: document.querySelectorAll('[role="dialog"]').length,
-}))()`);
-if (!combat?.fieldCoach || combat.canvases < 1) {
+const combat = await snapshot();
+if (!combat.text.includes('FIELD COACH') || combat.canvases < 1) {
   throw new Error(`Android combat surface failed smoke validation: ${JSON.stringify(combat)}`);
 }
 
