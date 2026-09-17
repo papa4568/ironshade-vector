@@ -122,7 +122,8 @@ jobs:
           node scripts/configure-android.mjs
           npx cap sync android
           test -f android/app/src/main/assets/public/index.html
-          find android/app/src/main/assets/public/assets -name 'three-runtime-*.js' -print -quit | grep -q .
+          find android/app/src/main/assets/public/assets -name 'three-core-*.js' -print -quit | grep -q .
+          find android/app/src/main/assets/public/assets -name 'three-webgl-*.js' -print -quit | grep -q .
           grep -q 'android:screenOrientation="sensorLandscape"' android/app/src/main/AndroidManifest.xml
           grep -q 'android:hardwareAccelerated="true"' android/app/src/main/AndroidManifest.xml
           grep -q 'IRONSHADE_RELEASE_SIGNING' android/app/build.gradle
