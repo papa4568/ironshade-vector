@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import type { Contract, DailyOperationSpec } from './campaign';
 import type { RunTracePoint, Telemetry, WeaponId } from './sim';
 
@@ -74,7 +75,7 @@ export type RunTraceRecord = RunSummary & {
   trace: RunTracePoint[];
 };
 
-export type NetworkFailureKind = 'timeout' | 'aborted' | 'http' | 'network' | 'invalid-response';
+export type NetworkFailureKind = 'configuration' | 'timeout' | 'aborted' | 'http' | 'network' | 'invalid-response';
 export type NetworkRequestOptions = { signal?: AbortSignal; timeoutMs?: number };
 
 export class NetworkRequestError extends Error {
@@ -94,6 +95,7 @@ export function isNetworkRequestError(error: unknown): error is NetworkRequestEr
 
 export function networkFailureMessage(error: unknown, label = 'Network request') {
   if (!isNetworkRequestError(error)) return `${label} failed unexpectedly.`;
+  if (error.kind === 'configuration') return `${label} is not configured for this native build.`;
   if (error.kind === 'timeout') return `${label} timed out.`;
   if (error.kind === 'aborted') return `${label} was cancelled.`;
   if (error.kind === 'http') return `${label} was rejected by the service${error.status ? ` (HTTP ${error.status})` : ''}.`;
@@ -104,6 +106,37 @@ export function networkFailureMessage(error: unknown, label = 'Network request')
 const OPERATIONS_TIMEOUT_MS = 8_000;
 const TELEMETRY_TIMEOUT_MS = 10_000;
 const TRACE_TIMEOUT_MS = 8_000;
+const viteEnv = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
+
+export function normalizeOperationsApiBase(value: string | null | undefined) {
+  const candidate = value?.trim();
+  if (!candidate) return '';
+  try {
+    const url = new URL(candidate);
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return '';
+    return url.toString().replace(/\/+$/, '');
+  } catch {
+    return '';
+  }
+}
+
+const configuredApiBaseUrl = normalizeOperationsApiBase(viteEnv?.VITE_API_BASE_URL);
+
+export function resolveOperationsApiUrl(path: string, apiBaseUrl = configuredApiBaseUrl) {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return apiBaseUrl ? `${apiBaseUrl}${normalizedPath}` : normalizedPath;
+}
+
+export function operationsApiConfiguration() {
+  return { native: Capacitor.isNativePlatform(), baseUrl: configuredApiBaseUrl };
+}
+
+function requestUrl(path: string) {
+  if (Capacitor.isNativePlatform() && !configuredApiBaseUrl) {
+    throw new NetworkRequestError('configuration', 'Native Operations API origin is missing. Set VITE_API_BASE_URL when building the app.');
+  }
+  return resolveOperationsApiUrl(path);
+}
 
 function abortFailure(timedOut: boolean, timeoutMs: number) {
   return timedOut
@@ -125,7 +158,7 @@ async function requestJson<T>(path: string, init?: RequestInit, options: Network
   }, timeoutMs);
 
   try {
-    const response = await fetch(path, {
+    const response = await fetch(requestUrl(path), {
       ...init,
       signal: controller.signal,
       headers: {
