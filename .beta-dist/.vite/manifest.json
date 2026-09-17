@@ -1,8 +1,0 @@
-{
-  "tests/beta-level15.ts": {
-    "file": "beta-level15.js",
-    "name": "beta-level15",
-    "src": "tests/beta-level15.ts",
-    "isEntry": true
-  }
-}

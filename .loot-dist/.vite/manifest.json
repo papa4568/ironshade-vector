@@ -1,8 +1,0 @@
-{
-  "tests/loot-difficulty.ts": {
-    "file": "loot-difficulty.js",
-    "name": "loot-difficulty",
-    "src": "tests/loot-difficulty.ts",
-    "isEntry": true
-  }
-}

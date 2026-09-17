@@ -1,8 +1,0 @@
-{
-  "tests/ui-readability.ts": {
-    "file": "ui-readability.js",
-    "name": "ui-readability",
-    "src": "tests/ui-readability.ts",
-    "isEntry": true
-  }
-}
