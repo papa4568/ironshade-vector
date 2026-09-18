@@ -1,5 +1,5 @@
 import { loadCampaign, type CampaignState } from './campaign';
-import { loadProfile, type PlayerProfile } from './meta';
+import { loadProfile, operatorClassForProfile, type PlayerProfile } from './meta';
 import { GAME_STATE_STORAGE_KEY, validateStoredCampaign, validateStoredProfile } from './saveRecovery';
 
 // Profile and campaign are committed atomically so readers never observe half of a progression update. APK verification follows each audited fix.
@@ -35,7 +35,8 @@ export function loadGameState(storage: StorageLike | null = browserStorage()): G
     const parsed = JSON.parse(raw) as Partial<PersistedGameState>;
     if (parsed.version !== 1) return legacySnapshot();
     if (validateStoredProfile(parsed.profile) || validateStoredCampaign(parsed.campaign)) return legacySnapshot();
-    return { profile: parsed.profile as PlayerProfile, campaign: parsed.campaign as CampaignState };
+    const profile = parsed.profile as PlayerProfile;
+    return { profile: profile.operatorClass ? profile : { ...profile, operatorClass: operatorClassForProfile(profile) }, campaign: parsed.campaign as CampaignState };
   } catch {
     return legacySnapshot();
   }
