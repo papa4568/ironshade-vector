@@ -139,7 +139,7 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
   const [traceRecord, setTraceRecord] = useState<RunTraceRecord | null>(null);
   const [traceMessage, setTraceMessage] = useState('');
   const [contractFilter, setContractFilter] = useState<ContractFilter>('all');
-  const hubRef = useRef<HTMLElement>(null);
+  const hubRef = useRef<HTMLDivElement>(null);
   const traceRequestIdRef = useRef(0);
   const traceAbortRef = useRef<AbortController | null>(null);
   useEffect(() => () => traceAbortRef.current?.abort(), []);
@@ -273,7 +273,7 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
       <button className="command-rail-equipment" onClick={onOpenBuild}><Settings2 aria-hidden="true" size={17} /><span>Equipment</span></button>
       <div className="command-rail-status"><i /><span>LOCAL CORE</span><b>ONLINE</b></div>
     </aside>
-    <div ref={hubRef as React.RefObject<HTMLDivElement>} className="tactical-workspace">
+    <div ref={hubRef} className="tactical-workspace">
       <header className="ship-header tactical-header"><div><span className="card-kicker">MV QUIET SIGNAL // {areaLabels[primaryArea].toUpperCase()}</span><h1>{areaLabels[primaryArea]}</h1><p>{tabLabels[tab]} · {buildIdentity(profile)} · LV {profile.level} · {campaign.contractsCompleted} contracts</p></div><button className="hub-build-button" onClick={onOpenBuild}>Equipment</button></header>
       {tab !== 'cargo' && <section className="resource-ribbon hub-resource-ribbon" aria-label="Ship resources">{(Object.keys(campaign.resources) as ResourceId[]).map(key => <div key={key} className={key === 'rareTech' && campaign.resources[key] === 0 ? 'muted-resource' : ''}><small>{resourceLabels[key]}</small><b>{campaign.resources[key]}</b></div>)}</section>}
       {attentionCount > 0 && <section className="qol-priority-strip" aria-label="Items needing attention"><div className="qol-priority-copy"><b>{attentionCount} pending</b></div><div className="qol-priority-actions">{profile.progressionPoints > 0 && <button onClick={onOpenBuild}>Network · {profile.progressionPoints}</button>}{chapterProgress.status === 'active' && <button onClick={() => switchTab('campaign')}>Black Lattice · {Math.min(chapterProgress.step + 1, blackLatticeChapter.totalContracts)}/{blackLatticeChapter.totalContracts}</button>}{(postKhepriProgress.status === 'available' || postKhepriProgress.status === 'active') && <button onClick={() => switchTab('campaign')}>Dead Reckoning · {postKhepriProgress.status === 'available' ? 'Ready' : `${Math.min(postKhepriProgress.step + 1, postKhepriChapter.totalContracts)}/${postKhepriChapter.totalContracts}`}</button>}{(interdictionProgress.status === 'available' || interdictionProgress.status === 'active') && <button onClick={() => switchTab('campaign')}>Interdiction · {interdictionProgress.status === 'available' ? 'Ready' : `${Math.min(interdictionProgress.step + 1, interdictionChapter.totalContracts)}/${interdictionChapter.totalContracts}`}</button>}{activeStoryCount > 0 && <button onClick={() => switchTab('stories')}>Stories · {activeStoryCount}</button>}{escalationStatus === 'active' && <button onClick={() => switchTab('operations')}>Escalation · {campaign.escalation.stage + 1}/3</button>}{preparedDirective && <button onClick={() => switchTab('operations')}>Directive · T{preparedDirective.tier}</button>}</div></section>}
