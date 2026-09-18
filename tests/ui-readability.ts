@@ -87,6 +87,8 @@ assert(!shipHub.includes('aria-label="Ship areas"'), 'Legacy nine-tab primary na
 assert(menuOverhaulCss.includes('.command-rail') && menuOverhaulCss.includes('.tactical-workspace') && menuOverhaulCss.includes('.command-bridge') && menuOverhaulCss.includes('max-height: 650px'), 'Tactical Command Deck responsive visual system is incomplete.');
 assert(menuOverhaulCss.includes('prefers-reduced-motion') && menuOverhaulCss.includes('safe-area-inset-bottom'), 'Menu overhaul is missing reduced-motion or safe-area handling.');
 assert(browserSmoke.includes("keyboardActivateButton('Operations')") && browserSmoke.includes("keyboardActivateButton('Contracts')"), 'Browser E2E does not follow the new Command > Operations > Contracts hierarchy.');
+assert(browserSmoke.includes('BROWSER_MOBILE_MENU_PASS') && browserSmoke.includes('primaryCount !== 5'), 'Browser E2E is missing mobile Tactical Command rail layout coverage.');
+assert(armory.includes("import '../menuOverhaul.css';"), 'Equipment surface is not using the Tactical Command visual system.');
 assert(!shipHub.includes('No urgent ship tasks'), 'Empty priority chrome is still rendered when nothing needs attention.');
 assert(!shipHub.includes('command-nav-grid'), 'Overview still duplicates the full tab navigation.');
 assert((statsPanel.match(/Weapon stat glossary/g) ?? []).length === 1, 'Weapon stat help should be shared once, not repeated per weapon.');
