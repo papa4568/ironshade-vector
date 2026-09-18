@@ -106,6 +106,7 @@ jobs:
           node scripts/browser-runtime-smoke.mjs
           node scripts/verify-authored-operator.mjs
           node scripts/verify-authored-enemies.mjs
+          node scripts/verify-authored-weapons.mjs
 
       - name: Upload browser QA evidence
         if: ${{ always() }}
