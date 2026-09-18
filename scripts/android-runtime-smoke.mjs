@@ -448,13 +448,33 @@ await sleep(120);
 await dispatchTouch('touchEnd', aimEndX, aimEndY, 12);
 await waitFor(`(document.querySelector('.tutorial-coach')?.textContent ?? '').includes('FIELD COACH // 3/5')`, 'manual aim touch response', 15_000);
 
-const fireBefore = await evaluate(`document.querySelector('.fire-button small')?.textContent ?? ''`);
+// Manual aim may have fired a shot immediately before this check. Give the
+// weapon cooldown time to clear, then require a real magazine/heat change.
+// One retry makes the emulator touch path resilient without accepting a no-op.
+await sleep(350);
 const fire = await elementMetrics('.fire-button');
 if (!fire || fire.disabled) throw new Error('Android FIRE control was unavailable.');
-await dispatchTouch('touchStart', fire.x, fire.y, 13);
-await sleep(420);
-await dispatchTouch('touchEnd', fire.x, fire.y, 13);
-await waitFor(`(document.querySelector('.fire-button small')?.textContent ?? '') !== ${JSON.stringify(fireBefore)}`, 'hold-to-fire response', 15_000);
+let fireObserved = false;
+for (let attempt = 0; attempt < 2 && !fireObserved; attempt += 1) {
+  const fireBefore = await evaluate(`document.querySelector('.fire-button small')?.textContent ?? ''`);
+  await dispatchTouch('touchStart', fire.x, fire.y, 13 + attempt);
+  await sleep(700);
+  await dispatchTouch('touchEnd', fire.x, fire.y, 13 + attempt);
+  const deadline = Date.now() + 8_000;
+  while (Date.now() < deadline) {
+    const fireAfter = await evaluate(`document.querySelector('.fire-button small')?.textContent ?? ''`);
+    if (fireAfter !== fireBefore) {
+      fireObserved = true;
+      break;
+    }
+    await sleep(250);
+  }
+  if (!fireObserved) await sleep(400);
+}
+if (!fireObserved) {
+  const state = await snapshot().catch(error => ({ snapshotError: String(error) }));
+  throw new Error(`Android FIRE control did not change magazine/heat after retry; webview=${JSON.stringify(state)}`);
+}
 
 const weaponBefore = await evaluate(`document.querySelector('.weapon-cycle small')?.textContent ?? ''`);
 await tap('.weapon-cycle', 14);
