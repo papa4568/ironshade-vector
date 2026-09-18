@@ -8,6 +8,7 @@ const viewportMode = process.env.BROWSER_E2E_VIEWPORT ?? 'desktop';
 const targetLocation = process.env.BROWSER_E2E_LOCATION ?? 'asteroid-refinery';
 const screenshotPath = process.env.BROWSER_E2E_SCREENSHOT ?? 'browser-e2e-smoke.png';
 const commandScreenshotPath = process.env.BROWSER_E2E_COMMAND_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-command.png');
+const classScreenshotPath = process.env.BROWSER_E2E_CLASS_SCREENSHOT ?? commandScreenshotPath.replace(/command/i, 'class');
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 if (typeof WebSocket !== 'function') {
@@ -445,6 +446,7 @@ try {
   const firstSurface = await snapshot();
   if ((firstSurface.text ?? '').toLowerCase().includes('operator intake')) {
     await accessibilityAudit('class-selection');
+    await captureScreenshot(classScreenshotPath);
     await keyboardActivateButton('Select Vanguard class');
     await keyboardActivateButton('Confirm Vanguard');
     await waitFor(`(() => {
