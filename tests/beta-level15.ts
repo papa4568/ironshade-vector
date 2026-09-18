@@ -123,6 +123,7 @@ function objectiveSmoke(profileLevel: number) {
     const state = createSimulation(deriveCombatBuild(profile));
     const director = createDirector();
     applyMissionSetup(state, contract);
+    assert(state.eventText.includes('BREACH GUARD'), `${contract.id} deployment callout should carry the active class signature.`);
     const status = getMissionObjectiveStatus(state, contract);
     assert(status.required > 0, `${contract.id} should expose a non-zero objective requirement.`);
     assert(status.progress >= 0 && status.progress <= status.required, `${contract.id} objective progress should start within bounds.`);
