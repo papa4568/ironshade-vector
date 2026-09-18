@@ -241,6 +241,20 @@ async function buttonMetrics(label) {
 }
 
 async function tapButton(label, id = 1, holdMs = 90) {
+  const expected = JSON.stringify(label.toLowerCase());
+  await evaluate(`(() => {
+    const label = ${expected};
+    const element = [...document.querySelectorAll('button')].find(candidate => (candidate.getAttribute('aria-label') || candidate.textContent || '').trim().toLowerCase() === label);
+    if (!element) return false;
+    const rect = element.getBoundingClientRect();
+    const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
+    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    if (rect.left < 0 || rect.top < 0 || rect.right > viewportWidth || rect.bottom > viewportHeight) {
+      element.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+    }
+    return true;
+  })()`);
+  await sleep(180);
   const metrics = await buttonMetrics(label);
   if (!metrics || metrics.disabled) throw new Error(`Touch button unavailable: ${label}`);
   await dispatchTouch('touchStart', metrics.x, metrics.y, id);
