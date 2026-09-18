@@ -406,6 +406,100 @@ function environmentMaterials() {
   ];
 }
 
+function damagedVesselMaterials() {
+  return [
+    {
+      name: 'damaged-vessel-hull',
+      pbrMetallicRoughness: {
+        baseColorFactor: [0.24, 0.22, 0.20, 1],
+        metallicFactor: 0.84,
+        roughnessFactor: 0.46,
+      },
+    },
+    {
+      name: 'damaged-vessel-scarred-dark',
+      pbrMetallicRoughness: {
+        baseColorFactor: [0.075, 0.065, 0.062, 1],
+        metallicFactor: 0.78,
+        roughnessFactor: 0.58,
+      },
+    },
+    {
+      name: 'damaged-vessel-warning-emissive',
+      pbrMetallicRoughness: {
+        baseColorFactor: [0.38, 0.10, 0.05, 1],
+        metallicFactor: 0.42,
+        roughnessFactor: 0.32,
+      },
+      emissiveFactor: [0.92, 0.24, 0.10],
+    },
+    {
+      name: 'damaged-vessel-salvage-emissive',
+      pbrMetallicRoughness: {
+        baseColorFactor: [0.04, 0.14, 0.16, 1],
+        metallicFactor: 0.32,
+        roughnessFactor: 0.24,
+      },
+      emissiveFactor: [0.10, 0.62, 0.66],
+    },
+  ];
+}
+
+function damagedVesselNodes(kind, lod) {
+  const detail = lod === 1;
+  if (kind === 'rib') {
+    const nodes = [
+      { name: 'damaged-vessel-broken-rib-spine', mesh: 0, translation: [0, 1.65, 0], scale: [0.34, 3.30, 0.46] },
+      { name: 'damaged-vessel-broken-rib-shoulder', mesh: 0, translation: [0.58, 3.02, 0], scale: [1.50, 0.28, 0.50] },
+      { name: 'damaged-vessel-broken-rib-scar', mesh: 2, translation: [0.12, 1.88, 0.27], scale: [0.08, 1.10, 0.08] },
+      { name: 'damaged-vessel-broken-rib-foot', mesh: 1, translation: [0.42, 0.28, 0], scale: [1.18, 0.56, 0.82] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'damaged-vessel-broken-rib-splinter-upper', mesh: 1, translation: [1.32, 3.18, 0], scale: [0.72, 0.18, 0.30] },
+        { name: 'damaged-vessel-broken-rib-cable', mesh: 3, translation: [0.38, 1.22, 0.34], scale: [0.08, 1.28, 0.08] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  if (kind === 'breachFrame') {
+    const nodes = [
+      { name: 'damaged-vessel-breach-frame-left', mesh: 0, translation: [0, 1.95, -2.35], scale: [0.42, 3.90, 0.46] },
+      { name: 'damaged-vessel-breach-frame-right', mesh: 0, translation: [0, 1.95, 2.35], scale: [0.42, 3.90, 0.46] },
+      { name: 'damaged-vessel-breach-frame-crown', mesh: 1, translation: [0, 3.66, 0], scale: [0.54, 0.46, 5.20] },
+      { name: 'damaged-vessel-breach-frame-warning', mesh: 2, translation: [0.29, 2.02, 2.05], scale: [0.08, 2.42, 0.12] },
+      { name: 'damaged-vessel-breach-frame-jagged', mesh: 1, translation: [0.34, 0.58, -1.58], scale: [0.28, 1.16, 0.88] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'damaged-vessel-breach-frame-cable-a', mesh: 3, translation: [0.42, 2.52, -1.42], scale: [0.08, 1.72, 0.08] },
+        { name: 'damaged-vessel-breach-frame-cable-b', mesh: 3, translation: [0.42, 1.42, 1.52], scale: [0.08, 1.12, 0.08] },
+        { name: 'damaged-vessel-breach-frame-scar-cap', mesh: 2, translation: [0.30, 3.38, -0.72], scale: [0.08, 0.12, 1.38] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  const nodes = [
+    { name: 'damaged-vessel-salvage-rack-shell', mesh: 0, translation: [0, 0.88, 0], scale: [2.30, 1.76, 0.76] },
+    { name: 'damaged-vessel-salvage-rack-shelf', mesh: 1, translation: [0.08, 1.08, 0], scale: [2.02, 0.12, 0.82] },
+    { name: 'damaged-vessel-salvage-rack-status', mesh: 3, translation: [0.82, 1.48, 0.42], scale: [0.28, 0.20, 0.06] },
+    { name: 'damaged-vessel-salvage-rack-warning', mesh: 2, translation: [-0.72, 0.42, 0.42], scale: [0.46, 0.16, 0.06] },
+  ];
+  if (detail) {
+    nodes.push(
+      { name: 'damaged-vessel-salvage-rack-bin-left', mesh: 1, translation: [-0.58, 0.62, 0.46], scale: [0.62, 0.54, 0.40] },
+      { name: 'damaged-vessel-salvage-rack-bin-right', mesh: 1, translation: [0.34, 0.62, 0.46], scale: [0.72, 0.54, 0.40] },
+      { name: 'damaged-vessel-salvage-rack-tag', mesh: 3, translation: [-0.12, 1.34, 0.44], scale: [0.40, 0.14, 0.05] },
+    );
+  }
+  nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+  return nodes;
+}
+
 function refineryNodes(kind, lod) {
   const detail = lod === 1;
   if (kind === 'floor') {
@@ -626,6 +720,23 @@ for (const [weapon, path, accent] of weaponProfiles) {
   outputs.push(await writeAsset(path, `weapon-${weapon}-lod1`, weaponNodes(weapon), weaponMaterials(accent)));
 }
 
+
+const damagedVesselProfiles = [
+  ['rib', 'damaged-vessel-broken-rib'],
+  ['breachFrame', 'damaged-vessel-breach-frame'],
+  ['salvageRack', 'damaged-vessel-salvage-rack'],
+];
+
+for (const [kind, id] of damagedVesselProfiles) {
+  for (const lod of [1, 2]) {
+    outputs.push(await writeAsset(
+      `environments/${id}-lod${lod}.glb`,
+      `${id}-lod${lod}`,
+      damagedVesselNodes(kind, lod),
+      damagedVesselMaterials(),
+    ));
+  }
+}
 
 const refineryProfiles = [
   ['floor', 'refinery-floor-panel'],

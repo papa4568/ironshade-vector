@@ -116,6 +116,8 @@ jobs:
           node scripts/verify-authored-enemies.mjs
           node scripts/verify-authored-weapons.mjs
           node scripts/verify-authored-refinery.mjs
+          BROWSER_E2E_LOCATION=damaged-vessel BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-damaged-vessel.png node scripts/browser-runtime-smoke.mjs
+          node scripts/verify-authored-damaged-vessel.mjs
 
       - name: Upload browser QA evidence
         if: ${{ always() }}
@@ -124,6 +126,7 @@ jobs:
           name: ironshade-vector-browser-e2e-${{ matrix.viewport }}
           path: |
             browser-e2e-${{ matrix.viewport }}.png
+            browser-e2e-${{ matrix.viewport }}-damaged-vessel.png
             browser-preview.log
             browser-chrome.log
           if-no-files-found: warn

@@ -11,6 +11,30 @@ export const OPERATOR_ASSET_FAMILY: GraphicsAssetFamily = {
   },
 };
 
+export const DAMAGED_VESSEL_ASSET_FAMILIES = {
+  rib: {
+    id: 'damaged-vessel-broken-rib',
+    lods: {
+      1: createGraphicsAssetSpec('damaged-vessel-broken-rib-lod1', 'environment-module', '/assets/models/environments/damaged-vessel-broken-rib-lod1.glb', 1),
+      2: createGraphicsAssetSpec('damaged-vessel-broken-rib-lod2', 'environment-module', '/assets/models/environments/damaged-vessel-broken-rib-lod2.glb', 2),
+    },
+  },
+  breachFrame: {
+    id: 'damaged-vessel-breach-frame',
+    lods: {
+      1: createGraphicsAssetSpec('damaged-vessel-breach-frame-lod1', 'environment-module', '/assets/models/environments/damaged-vessel-breach-frame-lod1.glb', 1),
+      2: createGraphicsAssetSpec('damaged-vessel-breach-frame-lod2', 'environment-module', '/assets/models/environments/damaged-vessel-breach-frame-lod2.glb', 2),
+    },
+  },
+  salvageRack: {
+    id: 'damaged-vessel-salvage-rack',
+    lods: {
+      1: createGraphicsAssetSpec('damaged-vessel-salvage-rack-lod1', 'environment-module', '/assets/models/environments/damaged-vessel-salvage-rack-lod1.glb', 1),
+      2: createGraphicsAssetSpec('damaged-vessel-salvage-rack-lod2', 'environment-module', '/assets/models/environments/damaged-vessel-salvage-rack-lod2.glb', 2),
+    },
+  },
+} as const satisfies Record<'rib' | 'breachFrame' | 'salvageRack', GraphicsAssetFamily>;
+
 export const REFINERY_ASSET_FAMILIES = {
   floor: {
     id: 'refinery-floor-panel',
