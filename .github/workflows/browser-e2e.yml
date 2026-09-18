@@ -34,6 +34,12 @@ permissions:
 
 jobs:
   browser-e2e:
+    strategy:
+      fail-fast: false
+      matrix:
+        viewport:
+          - desktop
+          - mobile-landscape
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -102,6 +108,8 @@ jobs:
         env:
           CDP_ENDPOINT: http://127.0.0.1:9223
           BROWSER_E2E_APP_URL: http://127.0.0.1:4173/
+          BROWSER_E2E_VIEWPORT: ${{ matrix.viewport }}
+          BROWSER_E2E_SCREENSHOT: browser-e2e-${{ matrix.viewport }}.png
         run: |
           node scripts/browser-runtime-smoke.mjs
           node scripts/verify-authored-operator.mjs
@@ -113,9 +121,9 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@v7
         with:
-          name: ironshade-vector-browser-e2e
+          name: ironshade-vector-browser-e2e-${{ matrix.viewport }}
           path: |
-            browser-e2e-smoke.png
+            browser-e2e-${{ matrix.viewport }}.png
             browser-preview.log
             browser-chrome.log
           if-no-files-found: warn

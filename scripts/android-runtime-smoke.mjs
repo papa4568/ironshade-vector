@@ -290,6 +290,64 @@ if (!/^pixel:\\d+\\.\\d{2}\\+shadow:\\d+\\+vfx:\\d+\\.\\d{2}\\+transparency:\\d+
 }
 console.log(`ANDROID_RENDER_TIER_PASS tier=${renderTier.tier} budget=${renderTier.budget}`);
 
+const mobileLayout = await evaluate(`(() => {
+  const viewport = {
+    width: window.visualViewport?.width ?? window.innerWidth,
+    height: window.visualViewport?.height ?? window.innerHeight,
+  };
+  const visible = element => {
+    if (!element) return false;
+    const style = getComputedStyle(element);
+    const rect = element.getBoundingClientRect();
+    return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0 && rect.width > 0 && rect.height > 0;
+  };
+  const rect = element => {
+    if (!visible(element)) return null;
+    const value = element.getBoundingClientRect();
+    return { left: value.left, top: value.top, right: value.right, bottom: value.bottom, width: value.width, height: value.height };
+  };
+  const within = value => !value || (
+    value.left >= -1 && value.top >= -1
+    && value.right <= viewport.width + 1
+    && value.bottom <= viewport.height + 1
+  );
+  const intersects = (a, b) => !!a && !!b && !(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top);
+  const canvas = rect(document.querySelector('canvas'));
+  const move = rect(document.querySelector('.move-stick'));
+  const dock = rect(document.querySelector('.combat-dock'));
+  const fire = rect(document.querySelector('.fire-button'));
+  const dodge = rect(document.querySelector('.dodge-button'));
+  const hud = rect(document.querySelector('.hud-top'));
+  const touchButtons = [...document.querySelectorAll('.touch-button')].filter(visible).map(button => ({
+    label: button.getAttribute('aria-label') || button.textContent?.trim().slice(0, 40) || button.className,
+    rect: rect(button),
+  }));
+  return {
+    viewport,
+    canvas,
+    move,
+    dock,
+    fire,
+    dodge,
+    hud,
+    landscape: viewport.width > viewport.height,
+    offscreen: [
+      ['canvas', canvas], ['move', move], ['dock', dock], ['fire', fire], ['dodge', dodge], ['hud', hud],
+      ...touchButtons.map(item => [item.label, item.rect]),
+    ].filter(([, value]) => !within(value)).map(([label]) => label),
+    undersized: touchButtons.filter(item => item.rect && (item.rect.width < 40 || item.rect.height < 40)).map(item => item.label),
+    moveDockOverlap: intersects(move, dock),
+    touchButtons: touchButtons.length,
+  };
+})()`);
+if (!mobileLayout.landscape || !mobileLayout.canvas || mobileLayout.canvas.width < mobileLayout.viewport.width * 0.95 || mobileLayout.canvas.height < mobileLayout.viewport.height * 0.9) {
+  throw new Error(`Android combat viewport/layout is invalid: ${JSON.stringify(mobileLayout)}`);
+}
+if (mobileLayout.offscreen.length || mobileLayout.undersized.length || mobileLayout.moveDockOverlap) {
+  throw new Error(`Android combat controls failed safe-area/touch-target checks: ${JSON.stringify(mobileLayout)}`);
+}
+console.log(`ANDROID_MOBILE_LAYOUT_PASS viewport=${Math.round(mobileLayout.viewport.width)}x${Math.round(mobileLayout.viewport.height)} touchButtons=${mobileLayout.touchButtons} safe=onscreen+separated`);
+
 await waitFor(`Boolean(document.querySelector('[aria-label="Touch combat controls"]') && document.querySelector('.move-stick') && document.querySelector('.fire-button') && document.querySelector('.dodge-button'))`, 'Android touch controls');
 const scrollBefore = await evaluate(`({ x: window.scrollX, y: window.scrollY })`);
 

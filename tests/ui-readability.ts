@@ -21,6 +21,10 @@ const equipmentCss = read('src/equipmentBay.css');
 const missionCss = read('src/part4.css');
 const objectiveCss = read('src/part7.css');
 const rootCss = read('src/index.css');
+const mobileCombatCss = read('src/mobileCombatReadability.css');
+const browserSmoke = read('scripts/browser-runtime-smoke.mjs');
+const androidSmoke = read('scripts/android-runtime-smoke.mjs');
+const browserWorkflow = read('.github/workflows/browser-e2e.yml');
 
 assert(!armory.includes('Review faction doctrines'), 'Equipment Bay still advertises undiscovered faction doctrine targets.');
 assert(!armory.includes('2 PIECE'), 'Equipment Bay still exposes 2-piece set targets.');
@@ -97,4 +101,12 @@ assert(polishCss.includes('.command-action-row') && polishCss.includes('.stats-h
 const mobileInspectorCss = read('src/part12.css');
 assert(mobileInspectorCss.includes('ANDROID ITEM INSPECTOR SINGLE SCROLLER') && mobileInspectorCss.includes('overflow-y: auto') && mobileInspectorCss.includes('.gear-layout .item-inspector.open .inspector-scroll') && mobileInspectorCss.includes('overflow: visible') && mobileInspectorCss.includes('touch-action: auto'), 'Android item inspector still depends on a nested touch-scroll pane.');
 
-console.log('UI_READABILITY_PASS discovery=hidden contractGear=unidentified targetHp=strong missionLoot=reviewable hierarchy=polished');
+for (const inset of ['safe-area-inset-top', 'safe-area-inset-right', 'safe-area-inset-bottom', 'safe-area-inset-left']) {
+  assert(mobileCombatCss.includes(`env(${inset})`) || rootCss.includes(`env(${inset})`), `mobile combat CSS is missing ${inset} handling`);
+}
+assert(browserWorkflow.includes('mobile-landscape') && browserWorkflow.includes('matrix.viewport'), 'Browser E2E must cover both desktop and mobile-landscape viewports');
+assert(browserSmoke.includes('BROWSER_MOBILE_LAYOUT_PASS') && browserSmoke.includes('moveDockOverlap') && browserSmoke.includes('undersized'), 'Browser mobile E2E is missing safe-area/touch-target layout assertions');
+assert(androidSmoke.includes('ANDROID_MOBILE_LAYOUT_PASS') && androidSmoke.includes('moveDockOverlap') && androidSmoke.includes('undersized'), 'Android smoke is missing safe-area/touch-target layout assertions');
+assert(androidSmoke.includes('ANDROID_LIFECYCLE_RESUME_PASS'), 'Android lifecycle pause/resume validation is missing');
+
+console.log('UI_READABILITY_PASS discovery=hidden contractGear=unidentified targetHp=strong missionLoot=reviewable hierarchy=polished mobile=desktop+landscape-safe');
