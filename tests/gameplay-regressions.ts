@@ -156,6 +156,17 @@ const migratedAtomic = loadGameState(localStorage);
 assert.equal(migratedAtomic.profile.xp, 63, 'combined persistence should migrate from the existing profile key when no envelope exists');
 assert.equal(migratedAtomic.campaign.resources.credits, 432, 'combined persistence should migrate from the existing campaign key when no envelope exists');
 
+storage.clear();
+const legacyClasslessProfile = createDefaultProfile();
+delete legacyClasslessProfile.operatorClass;
+legacyClasslessProfile.level = 15;
+legacyClasslessProfile.xp = 7140;
+legacyClasslessProfile.specialization = 'grid-weaver';
+localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(legacyClasslessProfile));
+const inferredLegacyClass = loadProfile();
+assert.equal(inferredLegacyClass.operatorClass, 'systems', 'Legacy profile-key saves should infer class from their existing specialization.');
+assert.equal(inferredLegacyClass.specialization, 'grid-weaver', 'Legacy class inference must preserve specialization state.');
+
 async function runSaveRecoveryRegressions() {
   storage.clear();
   const validProfileRaw = JSON.stringify(createDefaultProfile());
