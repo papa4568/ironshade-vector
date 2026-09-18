@@ -2,14 +2,22 @@ export type AdaptiveRenderTier = 0 | 1 | 2;
 
 export type RenderBudgetSnapshot = {
   tier: AdaptiveRenderTier;
+  tierName: 'high' | 'balanced' | 'performance';
   smoothedFrameMs: number;
   pixelRatioScale: number;
   detailScale: number;
   shadows: boolean;
+  shadowMapSize: 1024 | 512 | 256;
+  vfxDensity: number;
+  transparencyScale: number;
 };
 
+const TIER_NAME: Record<AdaptiveRenderTier, RenderBudgetSnapshot['tierName']> = { 0: 'high', 1: 'balanced', 2: 'performance' };
 const PIXEL_RATIO_SCALE: Record<AdaptiveRenderTier, number> = { 0: 1, 1: 0.84, 2: 0.68 };
 const DETAIL_SCALE: Record<AdaptiveRenderTier, number> = { 0: 1, 1: 0.78, 2: 0.5 };
+const SHADOW_MAP_SIZE: Record<AdaptiveRenderTier, 1024 | 512 | 256> = { 0: 1024, 1: 512, 2: 256 };
+const VFX_DENSITY: Record<AdaptiveRenderTier, number> = { 0: 1, 1: 0.72, 2: 0.45 };
+const TRANSPARENCY_SCALE: Record<AdaptiveRenderTier, number> = { 0: 1, 1: 0.68, 2: 0.4 };
 
 function qualityFloorTier(requestedQuality: number): AdaptiveRenderTier {
   if (requestedQuality < 0.55) return 2;
@@ -58,10 +66,14 @@ export class AdaptiveRenderBudget {
     const tier = Math.max(this.runtimeTier, qualityFloorTier(requested)) as AdaptiveRenderTier;
     return {
       tier,
+      tierName: TIER_NAME[tier],
       smoothedFrameMs: this.smoothedFrameMs,
       pixelRatioScale: PIXEL_RATIO_SCALE[tier],
       detailScale: DETAIL_SCALE[tier],
       shadows: requested > 0.62 && tier < 2,
+      shadowMapSize: SHADOW_MAP_SIZE[tier],
+      vfxDensity: VFX_DENSITY[tier],
+      transparencyScale: TRANSPARENCY_SCALE[tier],
     };
   }
 }
