@@ -7,7 +7,7 @@ import { getWorldSize, type CombatObject, type Enemy, type Player, type SimState
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
 import { lootColor } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
-import { ENEMY_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY } from './graphicsAssetManifest';
+import { ENEMY_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
 import { configureGraphicsAssetRenderer, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
 
 const WORLD_SCALE = 0.02;
@@ -61,6 +61,15 @@ type EnemyVisual = {
   authoredMaterials: THREE.MeshStandardMaterial[];
   authoredOwnedMaterials: THREE.Material[];
   rig: EnemyRig | null;
+};
+
+type AuthoredWeaponVisual = {
+  instance: GraphicsAssetInstance;
+  root: THREE.Group;
+  muzzleSocket: THREE.Object3D;
+  shellMaterials: THREE.MeshStandardMaterial[];
+  accentMaterials: THREE.MeshStandardMaterial[];
+  ownedMaterials: THREE.Material[];
 };
 
 type ProjectileVisual = {
@@ -179,6 +188,8 @@ export class ThreeCombatRenderer {
   private readonly enemyVisuals = new Map<number, EnemyVisual>();
   private readonly authoredEnemyRoles = new Set<Enemy['role']>();
   private authoredEnemyCount = 0;
+  private readonly authoredWeapons = new Map<WeaponId, AuthoredWeaponVisual>();
+  private readonly authoredWeaponFailures = new Set<WeaponId>();
   private readonly projectilePool: ProjectileVisual[] = [];
   private readonly hazardPool: RingVisual[] = [];
   private readonly effectPool: RingVisual[] = [];
@@ -288,6 +299,7 @@ export class ThreeCombatRenderer {
     this.playerRoot.add(this.aimLine);
 
     void this.loadAuthoredOperator();
+    void this.loadAuthoredWeapons();
   }
 
   render(state: SimState, width: number, height: number, quality: number, mission: Contract, mobileTargetId: number | null, operatorFaction: EquipmentFaction | null) {
@@ -338,6 +350,11 @@ export class ThreeCombatRenderer {
     this.authoredOperatorOwnedMaterials.forEach(material => material.dispose());
     this.authoredOperatorOwnedMaterials = [];
     this.authoredOperatorMaterials = [];
+    for (const visual of this.authoredWeapons.values()) {
+      visual.instance.release();
+      visual.ownedMaterials.forEach(material => material.dispose());
+    }
+    this.authoredWeapons.clear();
     for (const visual of this.enemyVisuals.values()) {
       visual.assetInstance?.release();
       visual.assetInstance = null;
@@ -349,6 +366,141 @@ export class ThreeCombatRenderer {
     }
     disposeTree(this.scene);
     this.renderer.dispose();
+  }
+
+  private async loadAuthoredWeapons() {
+    await Promise.all((['carbine', 'breacher', 'rail'] as WeaponId[]).map(id => this.loadAuthoredWeapon(id)));
+    if (this.disposed) return;
+    const loaded = [...this.authoredWeapons.keys()].sort();
+    this.renderer.domElement.dataset.weaponRoles = loaded.join(',');
+    this.renderer.domElement.dataset.weaponVisual = loaded.length === 3 ? 'authored' : loaded.length > 0 ? 'partial' : 'procedural-fallback';
+    this.renderer.domElement.dataset.weaponFallback = [...this.authoredWeaponFailures].sort().join(',');
+  }
+
+  private async loadAuthoredWeapon(id: WeaponId) {
+    const spec = selectGraphicsAssetSpec(WEAPON_ASSET_FAMILIES[id], this.coarse ? 0.72 : 1);
+    if (!spec) {
+      this.authoredWeaponFailures.add(id);
+      return;
+    }
+
+    try {
+      const instance = await instantiateGraphicsAsset(spec);
+      if (this.disposed) {
+        instance.release();
+        return;
+      }
+
+      const root = instance.root;
+      const standardMaterials = new Set<THREE.MeshStandardMaterial>();
+      root.traverse(child => {
+        const mesh = child as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        mesh.castShadow = true;
+        if (Array.isArray(mesh.material)) {
+          const cloned = mesh.material.map(material => material.clone());
+          mesh.material = cloned;
+          cloned.forEach(material => {
+            if (material instanceof THREE.MeshStandardMaterial) standardMaterials.add(material);
+          });
+        } else if (mesh.material) {
+          const cloned = mesh.material.clone();
+          mesh.material = cloned;
+          if (cloned instanceof THREE.MeshStandardMaterial) standardMaterials.add(cloned);
+        }
+      });
+
+      const muzzleSocket = root.getObjectByName('muzzle-socket');
+      if (!muzzleSocket) {
+        instance.release();
+        standardMaterials.forEach(material => material.dispose());
+        throw new Error(`Authored ${id} weapon is missing muzzle-socket`);
+      }
+
+      const shellMaterials = [...standardMaterials].filter(material => {
+        const name = material.name.toLowerCase();
+        return name.includes('weapon-shell');
+      });
+      const accentMaterials = [...standardMaterials].filter(material => {
+        const name = material.name.toLowerCase();
+        return name.includes('accent') || name.includes('emissive');
+      });
+
+      root.name = `authored-weapon-${id}`;
+      root.visible = false;
+      this.weaponPivot.add(root);
+      this.authoredWeapons.set(id, {
+        instance,
+        root,
+        muzzleSocket,
+        shellMaterials,
+        accentMaterials,
+        ownedMaterials: [...standardMaterials],
+      });
+    } catch (error) {
+      if (this.disposed) return;
+      this.authoredWeaponFailures.add(id);
+      console.warn(`Authored ${id} weapon asset failed to load; keeping procedural fallback.`, error);
+    }
+  }
+
+  private syncAuthoredWeapon(state: SimState, operatorFaction: EquipmentFaction | null) {
+    const player = state.player;
+    const current = this.authoredWeapons.get(player.currentWeapon) ?? null;
+    for (const [id, visual] of this.authoredWeapons) {
+      visual.root.visible = id === player.currentWeapon;
+    }
+
+    if (!current) {
+      this.playerWeapon.visible = true;
+      this.renderer.domElement.dataset.weaponActive = `procedural-${player.currentWeapon}`;
+      this.renderer.domElement.dataset.weaponAsset = '';
+      return;
+    }
+
+    this.playerWeapon.visible = false;
+    for (const child of this.weaponPivot.children) {
+      if (child.name.startsWith('hard-weapon-')) child.visible = false;
+    }
+
+    const shellColor = operatorFaction ? factionColors[operatorFaction] : 0x64716f;
+    const weaponColor = weaponColors[player.currentWeapon];
+    const heat = THREE.MathUtils.clamp(player.weaponHeat[player.currentWeapon] ?? 0, 0, 1);
+    const reloadDuration = Math.max(0.01, state.weapons[player.currentWeapon].reloadSeconds);
+    const reload = player.reloadT > 0 && player.reloadWeapon === player.currentWeapon
+      ? THREE.MathUtils.clamp(player.reloadT / reloadDuration, 0, 1)
+      : 0;
+    const flash = THREE.MathUtils.clamp(state.weaponFlash * 8, 0, 1);
+    const pulse = 0.75 + Math.sin(state.time * 11) * 0.12;
+
+    current.shellMaterials.forEach(material => {
+      material.color.setHex(shellColor);
+      material.emissive.setHex(heat > 0.72 ? 0x7a2f18 : 0x000000);
+      material.emissiveIntensity = heat > 0.72 ? 0.15 + heat * 0.22 : 0;
+    });
+    current.accentMaterials.forEach(material => {
+      material.color.setHex(weaponColor);
+      material.emissive.setHex(weaponColor);
+      material.emissiveIntensity = 0.28 + heat * 0.9 + flash * 0.8 + reload * pulse * 0.25;
+    });
+
+    const muzzleLocal = new THREE.Vector3();
+    current.muzzleSocket.getWorldPosition(muzzleLocal);
+    this.weaponPivot.worldToLocal(muzzleLocal);
+    this.muzzleFlash.position.copy(muzzleLocal);
+
+    if (player.currentWeapon === 'breacher') {
+      this.muzzleFlash.scale.set(1.7 + flash * 0.8, 1.18 + flash * 0.35, 1.18 + flash * 0.35);
+    } else if (player.currentWeapon === 'rail') {
+      this.muzzleFlash.scale.set(2.3 + flash * 1.1, 0.52 + flash * 0.2, 0.52 + flash * 0.2);
+    } else {
+      this.muzzleFlash.scale.set(1.25 + flash * 0.55, 0.78 + flash * 0.25, 0.78 + flash * 0.25);
+    }
+
+    this.renderer.domElement.dataset.weaponActive = player.currentWeapon;
+    this.renderer.domElement.dataset.weaponAsset = WEAPON_ASSET_FAMILIES[player.currentWeapon].id;
+    this.renderer.domElement.dataset.weaponHeat = heat.toFixed(2);
+    this.renderer.domElement.dataset.weaponFx = player.currentWeapon === 'rail' ? 'lance' : player.currentWeapon === 'breacher' ? 'scatter' : 'tracer';
   }
 
   private async loadAuthoredOperator() {
@@ -850,9 +1002,12 @@ export class ThreeCombatRenderer {
     }
     this.muzzleFlash.material.color.setHex(weaponColor);
     this.muzzleFlash.visible = state.weaponFlash > 0;
-    this.muzzleFlash.position.x = hardSciFiMuzzleOffset(this.weaponPivot, 1.45);
-    const flashScale = 0.7 + Math.min(1.7, state.weaponFlash * 8);
-    this.muzzleFlash.scale.setScalar(flashScale);
+    this.syncAuthoredWeapon(state, operatorFaction);
+    if (!this.authoredWeapons.has(player.currentWeapon)) {
+      this.muzzleFlash.position.x = hardSciFiMuzzleOffset(this.weaponPivot, 1.45);
+      const flashScale = 0.7 + Math.min(1.7, state.weaponFlash * 8);
+      this.muzzleFlash.scale.setScalar(flashScale);
+    }
 
     this.pulseRing.visible = state.pulse > 0;
     if (state.pulse > 0) {
@@ -1158,8 +1313,22 @@ export class ThreeCombatRenderer {
       visual.core.material.emissive.setHex(color);
       visual.trail.material.color.setHex(color);
       const size = Math.max(0.55, projectile.radius * 0.18);
-      visual.core.scale.setScalar(size);
-      visual.trail.scale.x = projectile.weapon === 'rail' ? 2.4 : projectile.weapon === 'breacher' ? 0.8 : 1.35;
+      if (projectile.weapon === 'rail') {
+        visual.core.scale.setScalar(size * 0.72);
+        visual.core.material.emissiveIntensity = 2.1;
+        visual.trail.scale.set(3.25, 0.72, 0.72);
+        visual.trail.material.opacity = 0.88;
+      } else if (projectile.weapon === 'breacher') {
+        visual.core.scale.set(size * 1.22, size * 0.92, size * 1.22);
+        visual.core.material.emissiveIntensity = 1.45;
+        visual.trail.scale.set(0.62, 1.35, 1.35);
+        visual.trail.material.opacity = 0.40;
+      } else {
+        visual.core.scale.setScalar(size * 0.88);
+        visual.core.material.emissiveIntensity = 1.65;
+        visual.trail.scale.set(1.5, 0.92, 0.92);
+        visual.trail.material.opacity = 0.62;
+      }
     }
     for (let index = count; index < this.projectilePool.length; index += 1) this.projectilePool[index].root.visible = false;
   }
