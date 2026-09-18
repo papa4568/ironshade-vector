@@ -4,6 +4,8 @@ const cdpBase = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9223';
 const appUrl = process.env.BROWSER_E2E_APP_URL ?? 'http://127.0.0.1:4173/';
 const timeoutMs = Number(process.env.BROWSER_E2E_TIMEOUT_MS ?? 75_000);
 const startedAt = Date.now();
+const viewportMode = process.env.BROWSER_E2E_VIEWPORT ?? 'desktop';
+const screenshotPath = process.env.BROWSER_E2E_SCREENSHOT ?? 'browser-e2e-smoke.png';
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 if (typeof WebSocket !== 'function') {
@@ -123,7 +125,7 @@ async function waitFor(predicateExpression, label, timeout = 45_000) {
   throw new Error(`Timed out waiting for ${label}; browser=${JSON.stringify(state)}`);
 }
 
-async function captureScreenshot(path = 'browser-e2e-smoke.png') {
+async function captureScreenshot(path = screenshotPath) {
   const result = await call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   if (!result?.data) throw new Error('Browser screenshot payload was empty.');
   await writeFile(path, Buffer.from(result.data, 'base64'));
@@ -201,6 +203,78 @@ async function accessibilityAudit(surface) {
   return result;
 }
 
+async function mobileCombatLayoutAudit() {
+  const result = await evaluate(`(() => {
+    const viewport = {
+      width: window.visualViewport?.width ?? window.innerWidth,
+      height: window.visualViewport?.height ?? window.innerHeight,
+    };
+    const visible = element => {
+      if (!element) return false;
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0 && rect.width > 0 && rect.height > 0;
+    };
+    const rect = element => {
+      if (!visible(element)) return null;
+      const value = element.getBoundingClientRect();
+      return { left: value.left, top: value.top, right: value.right, bottom: value.bottom, width: value.width, height: value.height };
+    };
+    const withinViewport = value => !value || (
+      value.left >= -1 && value.top >= -1
+      && value.right <= viewport.width + 1
+      && value.bottom <= viewport.height + 1
+    );
+    const intersects = (a, b) => !!a && !!b && !(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top);
+
+    const canvas = rect(document.querySelector('canvas'));
+    const move = rect(document.querySelector('.move-stick'));
+    const dock = rect(document.querySelector('.combat-dock'));
+    const fire = rect(document.querySelector('.fire-button'));
+    const dodge = rect(document.querySelector('.dodge-button'));
+    const tutorial = rect(document.querySelector('.tutorial-coach'));
+    const topHud = rect(document.querySelector('.hud-top'));
+    const visibleTouchButtons = [...document.querySelectorAll('.touch-button')].filter(visible).map(button => ({
+      label: button.getAttribute('aria-label') || button.textContent?.trim().slice(0, 40) || button.className,
+      rect: rect(button),
+    }));
+    const undersized = visibleTouchButtons.filter(item => item.rect && (item.rect.width < 40 || item.rect.height < 40));
+    const offscreen = [
+      ['canvas', canvas], ['move', move], ['dock', dock], ['fire', fire], ['dodge', dodge], ['tutorial', tutorial], ['hud', topHud],
+      ...visibleTouchButtons.map(item => [item.label, item.rect]),
+    ].filter(([, value]) => !withinViewport(value)).map(([label]) => label);
+
+    return {
+      viewport,
+      canvas,
+      move,
+      dock,
+      fire,
+      dodge,
+      tutorial,
+      topHud,
+      touchUi: Boolean(document.querySelector('[aria-label="Touch combat controls"]')),
+      touchButtons: visibleTouchButtons.length,
+      undersized: undersized.map(item => item.label),
+      offscreen,
+      moveDockOverlap: intersects(move, dock),
+      landscape: viewport.width > viewport.height,
+    };
+  })()`);
+
+  if (!result.landscape || result.viewport.width > 900 || !result.touchUi) {
+    throw new Error(`Mobile landscape emulation did not activate coarse combat controls: ${JSON.stringify(result)}`);
+  }
+  if (!result.canvas || result.canvas.width < result.viewport.width * 0.95 || result.canvas.height < result.viewport.height * 0.9) {
+    throw new Error(`Combat canvas does not cover the mobile viewport: ${JSON.stringify(result)}`);
+  }
+  if (result.offscreen.length || result.undersized.length || result.moveDockOverlap) {
+    throw new Error(`Mobile combat controls/HUD failed viewport or touch-target checks: ${JSON.stringify(result)}`);
+  }
+  console.log(`BROWSER_MOBILE_LAYOUT_PASS viewport=${Math.round(result.viewport.width)}x${Math.round(result.viewport.height)} touchButtons=${result.touchButtons} safe=onscreen+separated`);
+  return result;
+}
+
 async function keyboardActivateButton(label) {
   await call('Page.bringToFront');
   const focused = await evaluate(`(() => {
@@ -232,6 +306,18 @@ async function keyboardActivateButton(label) {
 
 await call('Runtime.enable');
 await call('Page.enable');
+if (viewportMode === 'mobile-landscape') {
+  await call('Emulation.setDeviceMetricsOverride', {
+    width: 844,
+    height: 390,
+    deviceScaleFactor: 2.5,
+    mobile: true,
+    screenWidth: 844,
+    screenHeight: 390,
+    screenOrientation: { type: 'landscapePrimary', angle: 90 },
+  });
+  await call('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+}
 
 try {
   await waitFor(`document.readyState === 'complete' && document.title === 'Ironshade Vector'`, 'Ironshade document');
@@ -273,13 +359,14 @@ try {
     throw new Error(`Browser combat surface failed E2E validation: ${JSON.stringify(combat)}`);
   }
   await accessibilityAudit('combat');
+  if (viewportMode === 'mobile-landscape') await mobileCombatLayoutAudit();
 
   if (pageExceptions.length > 0) {
     throw new Error(`Browser E2E observed uncaught page exceptions: ${JSON.stringify(pageExceptions)}`);
   }
 
   await captureScreenshot();
-  console.log(`BROWSER_E2E_PASS title=${startup.title} route=ship>contracts>combat input=keyboard canvases=${combat.canvases}`);
+  console.log(`BROWSER_E2E_PASS title=${startup.title} route=ship>contracts>combat input=keyboard viewport=${viewportMode} canvases=${combat.canvases}`);
 } catch (error) {
   await captureScreenshot().catch(() => undefined);
   const state = await snapshot().catch(snapshotError => ({ snapshotError: String(snapshotError) }));
