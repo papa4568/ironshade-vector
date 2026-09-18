@@ -36,7 +36,12 @@ export function loadGameState(storage: StorageLike | null = browserStorage()): G
     if (parsed.version !== 1) return legacySnapshot();
     if (validateStoredProfile(parsed.profile) || validateStoredCampaign(parsed.campaign)) return legacySnapshot();
     const profile = parsed.profile as PlayerProfile;
-    return { profile: profile.operatorClass ? profile : { ...profile, operatorClass: operatorClassForProfile(profile) }, campaign: parsed.campaign as CampaignState };
+    const normalizedProfile: PlayerProfile = {
+      ...profile,
+      operatorClass: profile.operatorClass ?? operatorClassForProfile(profile),
+      classSelectionComplete: typeof profile.classSelectionComplete === 'boolean' ? profile.classSelectionComplete : true,
+    };
+    return { profile: normalizedProfile, campaign: parsed.campaign as CampaignState };
   } catch {
     return legacySnapshot();
   }

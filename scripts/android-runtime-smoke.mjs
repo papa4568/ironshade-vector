@@ -305,8 +305,22 @@ await waitFor(`document.readyState === 'complete' && document.title === 'Ironsha
 await waitFor(`(() => {
   const text = (document.body?.innerText ?? '').toLowerCase();
   const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase());
-  return text.includes('save recovery lock') || ((text.includes('command ready') || text.includes('command deck')) && labels.includes('operations'));
-})()`, 'interactive Command deck', 45_000);
+  return text.includes('save recovery lock')
+    || text.includes('operator intake')
+    || ((text.includes('command ready') || text.includes('command deck')) && labels.includes('operations'));
+})()`, 'interactive startup surface', 45_000);
+
+const firstSurface = await snapshot();
+if ((firstSurface.text ?? '').toLowerCase().includes('operator intake')) {
+  await tapButton('Select Vanguard class', 11);
+  await tapButton('Confirm Vanguard', 12);
+  await waitFor(`(() => {
+    const text = (document.body?.innerText ?? '').toLowerCase();
+    const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase());
+    return (text.includes('command ready') || text.includes('command deck')) && labels.includes('operations');
+  })()`, 'Command deck after class selection', 45_000);
+  console.log('ANDROID_CLASS_SELECTION_PASS class=Vanguard');
+}
 
 const startup = await snapshot();
 const startupText = startup.text ?? '';

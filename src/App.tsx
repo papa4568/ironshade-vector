@@ -6,7 +6,7 @@ import './consumables.css';
 import { advanceBlackLatticeAfterContract, getBlackLatticeContract } from './game/blackLattice';
 import { advanceEscalationAfterContract, applyShipBonuses, dailyOperationContract, factionDisplayName, generateContracts, generateEscalationContract, resourceLabels, settleContract, type CampaignReward, type CampaignState, type Contract, type ExpeditionProgress, type ResourceId } from './game/campaign';
 import { feedback } from './game/feedback';
-import { awardRecovery, buildIdentity, deriveCombatBuild, discardItem, dominantEquipmentFaction, setProfileSettings, type PlayerProfile, type ProfileSettings, type VictoryReward } from './game/meta';
+import { awardRecovery, buildIdentity, deriveCombatBuild, discardItem, dominantEquipmentFaction, operatorClassDefinitions, operatorClassForProfile, setOperatorClass, setProfileSettings, type OperatorClassId, type PlayerProfile, type ProfileSettings, type VictoryReward } from './game/meta';
 import { createTelemetryRequestId, isNetworkRequestError, loadOperationsSnapshot, networkFailureMessage, uploadRunTelemetry, type OperationsSnapshot } from './game/network';
 import { advanceStoryAfterContract, generateStoryContracts } from './game/story';
 import { advancePostKhepriAfterContract, getPostKhepriContract, syncPostKhepriAccess } from './game/postKhepri';
@@ -16,6 +16,7 @@ import { advanceDirectivesAfterContract, preparedDirectiveContract, syncDirectiv
 import type { Telemetry } from './game/sim';
 import type { GroundLootReceipt } from './game/fieldLoot';
 import { loadGameState, saveGameState } from './game/gamePersistence';
+import ClassSelectScreen from './components/ClassSelectScreen';
 
 const loadArmory = () => import('./components/Armory');
 const loadGameCanvas = () => import('./components/GameCanvas');
@@ -24,11 +25,11 @@ const Armory = lazy(loadArmory);
 const GameCanvas = lazy(loadGameCanvas);
 const ShipHub = lazy(loadShipHub);
 
-type Screen = 'ship' | 'combat' | 'build' | 'debrief';
+type Screen = 'class' | 'ship' | 'combat' | 'build' | 'debrief';
 type UplinkStatus = 'local' | 'sharing' | 'shared' | 'error';
 
 function SurfaceLoader({ screen }: { screen: Screen }) {
-  const label = screen === 'combat' ? 'Preparing combat renderer' : screen === 'build' ? 'Opening equipment systems' : screen === 'ship' ? 'Opening command deck' : 'Loading mission debrief';
+  const label = screen === 'combat' ? 'Preparing combat renderer' : screen === 'build' ? 'Opening equipment systems' : screen === 'class' ? 'Opening operator intake' : screen === 'ship' ? 'Opening command deck' : 'Loading mission debrief';
   return <main className="surface-loader" role="status" aria-live="polite"><div><span>QUIET SIGNAL // CLIENT STREAM</span><b>{label}</b><i /></div></main>;
 }
 type Debrief = { runId: number; contract: Contract; campaignReward: CampaignReward; lootReward: VictoryReward; uplinkStatus: UplinkStatus; uplinkError: string | null; storyNote: string | null; chapterNote: string | null; postKhepriNote: string | null; interdictionNote: string | null; escalationNote: string | null; directiveNote: string | null; protocolValue: number; expeditionProgress?: ExpeditionProgress };
@@ -52,6 +53,7 @@ function DebriefScreen({ result, onShip, onBuild, onRepeat, onDiscard }: { resul
   const [confirmDiscardId, setConfirmDiscardId] = useState<string | null>(null);
   const gained = (Object.entries(result.campaignReward.gained) as Array<[ResourceId, number]>).filter(([, value]) => value > 0);
   const sponsor = result.contract.sponsor;
+  const resultClass = operatorClassDefinitions.find(definition => definition.id === operatorClassForProfile(result.lootReward.profile)) ?? operatorClassDefinitions[0];
   const reputationGain = result.campaignReward.reputationDelta[sponsor] ?? 0;
   const reputationAfter = result.campaignReward.campaign.reputation[sponsor];
   const reputationBefore = reputationAfter - reputationGain;
@@ -61,7 +63,7 @@ function DebriefScreen({ result, onShip, onBuild, onRepeat, onDiscard }: { resul
   const nextActions: string[] = [];
   if (keptRecoveryCount > 0) nextActions.push(`${keptRecoveryCount} recovered equipment package${keptRecoveryCount === 1 ? '' : 's'} kept in ship storage.`);
   if (unspentPoints > 0) nextActions.push(`${unspentPoints} unspent progression point${unspentPoints === 1 ? '' : 's'} available in the Vector Development Network.`);
-  if (result.lootReward.profile.level >= 15 && !result.lootReward.profile.specialization) nextActions.push('LV15 Vector Specialization ready in Build Bay → Network. Choosing one does not consume a progression point.');
+  if (result.lootReward.profile.level >= 15 && !result.lootReward.profile.specialization) nextActions.push(`LV15 ${resultClass.name} specialization ready in Build Bay → Network. Choosing one does not consume a progression point.`);
   const milestones = [
     reputationBefore < 6 && reputationAfter >= 6 ? 'REP 6 // SPECIALIZED SHIP-UPGRADE DISCOUNT UNLOCKED' : '',
     reputationBefore < 8 && reputationAfter >= 8 ? 'REP 8 // PRIORITY CONTRACTS UNLOCKED' : '',
@@ -105,8 +107,8 @@ function DebriefScreen({ result, onShip, onBuild, onRepeat, onDiscard }: { resul
         {result.lootReward.levelsGained > 0 && result.lootReward.profile.level >= 12 && <div className="anomaly-note"><b>LV12 // GENERATION V CALIBRATION</b><span>High-Recovery-Level equipment can now resolve as Generation V frames. Operation Tier and source Recovery Level still determine whether a Gen V frame can actually drop.</span></div>}
         {result.lootReward.levelsGained > 0 && result.lootReward.profile.level >= 13 && <div className="anomaly-note"><b>LV13 // DEAD RECKONING INTERDICTION</b><span>Completed Dead Reckoning evidence can now resolve the custody operators defending the hidden logistics cadence without assigning an unsupported client or origin.</span></div>}
         {result.lootReward.levelsGained > 0 && result.lootReward.profile.level >= 14 && <div className="anomaly-note"><b>LV14 // COMMAND TRACE ARRAY</b><span>Identified Interdiction command targets can now be reconstructed as repeatable source-specific deep hunts. Operation Tier remains independent.</span></div>}
-        {result.lootReward.levelsGained > 0 && result.lootReward.profile.level >= 15 && <div className="anomaly-note"><b>LV15 // VECTOR SPECIALIZATION + GENERATION VI</b><span>Choose one deep build identity in Build Bay → Network. RL55+ sources can now resolve Generation VI frames; Gen VI stays on the mature Gen V stat band and expands Augment socket depth instead.</span></div>}
-        {result.lootReward.levelsGained > 0 && result.lootReward.profile.level >= 16 && <div className="anomaly-note"><b>LV16 // SPECIALIZATION OVERCLOCK</b><span>Your active Vector Specialization can take an optional second-stage rule with an additional explicit tradeoff. The three-button MAG/MARK/ARC combat language is unchanged.</span></div>}
+        {result.lootReward.levelsGained > 0 && result.lootReward.profile.level >= 15 && <div className="anomaly-note"><b>LV15 // {resultClass.name.toUpperCase()} SPECIALIZATION + GENERATION VI</b><span>Choose one deeper {resultClass.name} path in Build Bay → Network. RL55+ sources can now resolve Generation VI frames; Gen VI stays on the mature Gen V stat band and expands Augment socket depth instead.</span></div>}
+        {result.lootReward.levelsGained > 0 && result.lootReward.profile.level >= 16 && <div className="anomaly-note"><b>LV16 // SPECIALIZATION OVERCLOCK</b><span>Your active class specialization can take an optional second-stage rule with an additional explicit tradeoff. The three-button MAG/MARK/ARC combat language is unchanged.</span></div>}
         {result.escalationNote && <div className="anomaly-note"><b>ESCALATION UPDATED</b><span>{result.escalationNote}</span></div>}
         {result.directiveNote && <div className="anomaly-note"><b>DIRECTIVE ARRAY UPDATED</b><span>{result.directiveNote}</span></div>}
         {result.contract.megastructure && result.expeditionProgress && <div className="anomaly-note"><b>DERELICT EXPEDITION BANKED</b><span>{result.expeditionProgress.zonesCompleted}/{result.contract.megastructureStageCount ?? 4} connected spaces secured · {result.expeditionProgress.optionalRecovered} optional recoveries banked.</span></div>}
@@ -127,7 +129,7 @@ function App() {
   const [operations, setOperations] = useState<OperationsSnapshot | null>(null);
   const [operationsStatus, setOperationsStatus] = useState<'loading' | 'online' | 'offline'>('loading');
   const [operationsError, setOperationsError] = useState('');
-  const [screen, setScreen] = useState<Screen>('ship');
+  const [screen, setScreen] = useState<Screen>(() => initialGameState.profile.classSelectionComplete ? 'ship' : 'class');
   const contracts = useMemo(() => {
     const story = generateStoryContracts(campaign);
     const chapter = getBlackLatticeContract(campaign);
@@ -234,10 +236,18 @@ function App() {
   const changeProfileSettings = (settings: Partial<ProfileSettings>) => setProfile(current => setProfileSettings(current, settings));
 
   const openBuild = () => { void loadArmory(); setScreen('build'); };
+  const confirmOperatorClass = (operatorClass: OperatorClassId) => {
+    const result = setOperatorClass(profile, operatorClass);
+    const definition = operatorClassDefinitions.find(entry => entry.id === operatorClass) ?? operatorClassDefinitions[0];
+    setProfile({ ...result.profile, classSelectionComplete: true });
+    setStatusMessage(`${definition.name} field doctrine confirmed // ${definition.signatureName} online. Recalibration remains available in Build Bay.`);
+    setScreen('ship');
+  };
   const openCombat = () => { if (!selectedContract) return; void loadGameCanvas(); setScreen('combat'); };
 
   return <div className="app-shell" data-client-architecture="split-v1" onPointerDownCapture={() => feedback.unlock()} onClickCapture={event => { const target = event.target as HTMLElement; if (target.closest('button') && !target.closest('.game-root')) feedback.cue('ui'); }}>
     <Suspense fallback={<SurfaceLoader screen={screen} />}>
+      {screen === 'class' && <ClassSelectScreen profile={profile} onConfirm={confirmOperatorClass} />}
       {screen === 'ship' && <ShipHub profile={profile} campaign={campaign} contracts={contracts} operations={operations} operationsStatus={operationsStatus} operationsError={operationsError} telemetrySharing={profile.settings.telemetrySharing} selectedContractId={selectedContract?.id ?? ''} statusMessage={statusMessage} onSelectContract={setSelectedContractId} onDeploy={openCombat} onOpenBuild={openBuild} onCampaignChange={setCampaign} />}
       {screen === 'build' && <Armory profile={profile} campaign={campaign} newLootIds={newLootIds} onProfileChange={setProfile} onCampaignChange={setCampaign} onClose={() => { setNewLootIds([]); setScreen('ship'); }} />}
       {screen === 'combat' && selectedContract && <GameCanvas key={selectedContract.id} build={combatBuild} mission={selectedContract} profileSettings={profile.settings} consumables={campaign.consumables} buildLabel={buildIdentity(profile)} operatorFaction={dominantEquipmentFaction(profile)} onProfileSettingsChange={changeProfileSettings} onConsumablesChange={consumables => setCampaign(current => ({ ...current, consumables }))} onMissionResolve={finishMission} onAttemptFailed={reportFailedAttempt} onReturnToHub={abandonMission} />}

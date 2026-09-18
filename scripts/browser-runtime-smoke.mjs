@@ -8,6 +8,7 @@ const viewportMode = process.env.BROWSER_E2E_VIEWPORT ?? 'desktop';
 const targetLocation = process.env.BROWSER_E2E_LOCATION ?? 'asteroid-refinery';
 const screenshotPath = process.env.BROWSER_E2E_SCREENSHOT ?? 'browser-e2e-smoke.png';
 const commandScreenshotPath = process.env.BROWSER_E2E_COMMAND_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-command.png');
+const classScreenshotPath = process.env.BROWSER_E2E_CLASS_SCREENSHOT ?? commandScreenshotPath.replace(/command/i, 'class');
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 if (typeof WebSocket !== 'function') {
@@ -437,8 +438,24 @@ try {
   await waitFor(`(() => {
     const text = (document.body?.innerText ?? '').toLowerCase();
     const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase());
-    return text.includes('save recovery lock') || ((text.includes('command ready') || text.includes('command deck')) && labels.includes('operations'));
-  })()`, 'interactive Command Deck');
+    return text.includes('save recovery lock')
+      || text.includes('operator intake')
+      || ((text.includes('command ready') || text.includes('command deck')) && labels.includes('operations'));
+  })()`, 'interactive startup surface');
+
+  const firstSurface = await snapshot();
+  if ((firstSurface.text ?? '').toLowerCase().includes('operator intake')) {
+    await accessibilityAudit('class-selection');
+    await captureScreenshot(classScreenshotPath);
+    await keyboardActivateButton('Select Vanguard class');
+    await keyboardActivateButton('Confirm Vanguard');
+    await waitFor(`(() => {
+      const text = (document.body?.innerText ?? '').toLowerCase();
+      const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase());
+      return (text.includes('command ready') || text.includes('command deck')) && labels.includes('operations');
+    })()`, 'Command Deck after class selection');
+    console.log(`BROWSER_CLASS_SELECTION_PASS viewport=${viewportMode} class=Vanguard`);
+  }
 
   const startup = await snapshot();
   const startupText = startup.text ?? '';

@@ -94,6 +94,7 @@ function invalidProfileReason(value: unknown): string | null {
     optionalNumberReason(value, 'progressionPoints', 0, 10_000, true),
     optionalNumberReason(value, 'runsCompleted', 0, 10_000_000, true),
     optionalBooleanReason(value, 'specializationOverclock'),
+    optionalBooleanReason(value, 'classSelectionComplete'),
     optionalStringOrNullReason(value, 'specialization', 64),
     optionalStringArrayReason(value, 'allocatedNodes', 256),
   ]) {
