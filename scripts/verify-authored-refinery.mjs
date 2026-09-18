@@ -108,6 +108,9 @@ try {
         tone: canvas.dataset.environmentTone ?? '',
         effectsMode: canvas.dataset.effectsMode ?? '',
         readability: canvas.dataset.readabilityLanguage ?? '',
+        locationArt: canvas.dataset.locationArt ?? '',
+        locationLighting: canvas.dataset.locationLighting ?? '',
+        locationProps: canvas.dataset.locationProps ?? '',
         canvases: document.querySelectorAll('canvas').length,
         width: rect.width,
         height: rect.height,
@@ -145,6 +148,15 @@ try {
       if (lastState.readability !== 'shape+silhouette+luminance') {
         throw new Error(`Color-independent gameplay readability language is missing: ${JSON.stringify(lastState)}`);
       }
+      if (!String(lastState.locationArt).startsWith('asteroid-refinery:processor-tanks:heavy-ferrous')) {
+        throw new Error(`Campaign-wide location art identity is not active for the showcase: ${JSON.stringify(lastState)}`);
+      }
+      if (!String(lastState.locationLighting).startsWith('asteroid-refinery:furnace-amber:aces-')) {
+        throw new Error(`Location-specific lighting profile is not active: ${JSON.stringify(lastState)}`);
+      }
+      if (lastState.locationProps !== 'ore-service:instanced-shared-library') {
+        throw new Error(`Shared instanced prop library is not active: ${JSON.stringify(lastState)}`);
+      }
       if (!String(lastState.tone).startsWith('aces-')) {
         throw new Error(`Refinery ACES exposure telemetry is missing: ${JSON.stringify(lastState)}`);
       }
@@ -154,7 +166,7 @@ try {
       if (!(lastState.width > 0 && lastState.height > 0)) {
         throw new Error(`Authored refinery canvas is not visible: ${JSON.stringify(lastState)}`);
       }
-      console.log(`AUTHORED_REFINERY_RUNTIME_PASS lod=${lastState.lod} kit=${[...kit].sort().join(',')} instances=${lastState.instances} terminals=${lastState.terminals} lighting=${lastState.lighting} materials=${lastState.materials} vfx=${lastState.vfx} tone=${lastState.tone} effects=${lastState.effectsMode} readability=${lastState.readability} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
+      console.log(`AUTHORED_REFINERY_RUNTIME_PASS lod=${lastState.lod} kit=${[...kit].sort().join(',')} instances=${lastState.instances} terminals=${lastState.terminals} lighting=${lastState.lighting} materials=${lastState.materials} vfx=${lastState.vfx} tone=${lastState.tone} effects=${lastState.effectsMode} readability=${lastState.readability} location=${lastState.locationArt} props=${lastState.locationProps} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
       process.exitCode = 0;
       break;
     }
