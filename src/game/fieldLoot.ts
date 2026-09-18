@@ -33,6 +33,7 @@ export type GroundLootRollInput = {
   operationTier: number;
   maxRecoveryLevel: number;
   monsterLevel: number;
+  modifierCount?: number;
   sequence: number;
 };
 
@@ -61,27 +62,57 @@ function recoveryPenalty(source: GroundLootSource) {
   return 6;
 }
 
+function dropChance(source: GroundLootSource, tier: number, modifierCount: number) {
+  const modifierQuantityBonus = modifierCount * 0.015;
+  if (source === 'boss') return 1;
+  if (source === 'elite') return Math.min(0.995, 0.8 + tier * 0.015 + modifierQuantityBonus);
+  if (source === 'enhanced') return Math.min(0.6, 0.3 + tier * 0.015 + modifierQuantityBonus);
+  return Math.min(0.3, 0.12 + tier * 0.008 + modifierQuantityBonus);
+}
+
+function rarityFor(source: GroundLootSource, tier: number, roll: number, modifierCount: number): GroundLootRarity {
+  const rarityRoll = Math.max(0, roll - modifierCount * 0.008);
+  if (source === 'boss') {
+    const singularChance = 0.04 + tier * 0.009;
+    return rarityRoll < singularChance ? 'Singular' : 'Prototype';
+  }
+
+  if (source === 'elite') {
+    const singularChance = 0.006 + tier * 0.0015;
+    const prototypeChance = 0.24 + tier * 0.025;
+    const refinedChance = 0.6 - tier * 0.015;
+    if (rarityRoll < singularChance) return 'Singular';
+    if (rarityRoll < singularChance + prototypeChance) return 'Prototype';
+    if (rarityRoll < singularChance + prototypeChance + refinedChance) return 'Refined';
+    return 'Field';
+  }
+
+  if (source === 'enhanced') {
+    const singularChance = 0.0015 + tier * 0.0005;
+    const prototypeChance = 0.05 + tier * 0.012;
+    const refinedChance = 0.58 + tier * 0.01;
+    if (rarityRoll < singularChance) return 'Singular';
+    if (rarityRoll < singularChance + prototypeChance) return 'Prototype';
+    if (rarityRoll < singularChance + prototypeChance + refinedChance) return 'Refined';
+    return 'Field';
+  }
+
+  const singularChance = 0.0005 + tier * 0.00025;
+  const prototypeChance = tier >= 5 ? 0.015 + (tier - 5) * 0.006 : 0;
+  const refinedChance = 0.26 + tier * 0.02;
+  if (rarityRoll < singularChance) return 'Singular';
+  if (rarityRoll < singularChance + prototypeChance) return 'Prototype';
+  if (rarityRoll < singularChance + prototypeChance + refinedChance) return 'Refined';
+  return 'Field';
+}
+
 export function rollGroundLoot(input: GroundLootRollInput, random: () => number): GroundLootDrop | null {
   const source = sourceFor(input);
   const tier = clamp(Math.round(input.operationTier), 1, 12);
-  if (source === 'standard') {
-    const chance = 0.14 + tier * 0.012;
-    if (random() >= chance) return null;
-  } else if (source === 'enhanced') {
-    const chance = 0.48 + tier * 0.018;
-    if (random() >= chance) return null;
-  }
+  const modifierCount = clamp(Math.round(input.modifierCount ?? 0), 0, 4);
+  if (random() >= dropChance(source, tier, modifierCount)) return null;
 
-  let rarity: GroundLootRarity = 'Field';
-  if (source === 'boss') rarity = 'Singular';
-  else if (source === 'elite') rarity = 'Prototype';
-  else if (source === 'enhanced') rarity = random() < 0.18 + tier * 0.035 ? 'Prototype' : 'Refined';
-  else {
-    const prototypeChance = tier >= 8 ? 0.025 + (tier - 8) * 0.012 : 0;
-    if (random() < prototypeChance) rarity = 'Prototype';
-    else rarity = random() < 0.24 + tier * 0.025 ? 'Refined' : 'Field';
-  }
-
+  const rarity = rarityFor(source, tier, random(), modifierCount);
   const recoveryLevel = Math.max(1, Math.round(input.maxRecoveryLevel - recoveryPenalty(source)));
   return {
     id: `ground-${input.enemyId}-${input.sequence}`,
