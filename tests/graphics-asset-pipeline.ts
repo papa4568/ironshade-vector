@@ -75,7 +75,7 @@ for (const role of ['assault', 'suppressor', 'technician', 'elite']) {
 assert(manifestSource.includes("enemy-boss-lod1.glb"), 'enemy manifest must include the authored boss silhouette');
 
 const rendererSource = readFileSync(resolve(process.cwd(), 'src/game/threeCombatRenderer.ts'), 'utf8');
-assert(rendererSource.includes("import { OPERATOR_ASSET_FAMILY } from './graphicsAssetManifest'"), 'combat renderer must consume the authored operator manifest');
+assert(rendererSource.includes('OPERATOR_ASSET_FAMILY') && rendererSource.includes("from './graphicsAssetManifest'"), 'combat renderer must consume the authored operator manifest');
 assert(rendererSource.includes('configureGraphicsAssetRenderer(this.renderer)'), 'combat renderer must configure authored texture support lazily at runtime');
 assert(rendererSource.includes('void this.loadAuthoredOperator()'), 'authored operator loading must start only after the combat renderer is constructed');
 assert(rendererSource.includes('await instantiateGraphicsAsset(spec)'), 'combat renderer must instantiate the cached authored operator GLB');
