@@ -205,6 +205,31 @@ async function accessibilityAudit(surface) {
   return result;
 }
 
+async function commandHubViewportAudit() {
+  const result = await evaluate(`(() => {
+    const workspace = document.querySelector('.tactical-workspace');
+    const overview = document.querySelector('.command-overview');
+    if (!workspace || !overview) return null;
+    const workspaceRect = workspace.getBoundingClientRect();
+    const overviewRect = overview.getBoundingClientRect();
+    return {
+      clientHeight: workspace.clientHeight,
+      scrollHeight: workspace.scrollHeight,
+      scrollTop: workspace.scrollTop,
+      workspaceBottom: workspaceRect.bottom,
+      overviewBottom: overviewRect.bottom,
+      viewportHeight: window.visualViewport?.height ?? window.innerHeight,
+    };
+  })()`);
+  if (!result) throw new Error('Command hub viewport audit could not find the workspace or overview.');
+  const overflow = result.scrollHeight - result.clientHeight;
+  if (overflow > 2 || result.overviewBottom > result.workspaceBottom + 2 || result.scrollTop !== 0) {
+    throw new Error(`Command hub requires vertical scrolling: ${JSON.stringify(result)}`);
+  }
+  console.log(`BROWSER_COMMAND_FIT_PASS viewportHeight=${Math.round(result.viewportHeight)} workspace=${result.clientHeight}px overflow=${Math.max(0, overflow)}px`);
+  return result;
+}
+
 async function mobileMenuLayoutAudit() {
   const audit = async syntheticSafeLeft => evaluate(`(() => {
     const viewport = {
@@ -425,6 +450,7 @@ try {
     throw new Error(`Unexpected browser startup surface: ${JSON.stringify(startup)}`);
   }
   await accessibilityAudit('command-deck');
+  await commandHubViewportAudit();
   if (viewportMode === 'mobile-landscape') await mobileMenuLayoutAudit();
   await captureScreenshot(commandScreenshotPath);
 
