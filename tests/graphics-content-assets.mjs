@@ -161,28 +161,38 @@ for (const path of glbs) {
     assert(sizeX <= 8 && sizeY <= 6 && sizeZ <= 8, `${relativePath}: authored environment module exceeds modular scale bounds`);
     const nodeNames = new Set((json.nodes ?? []).map(node => node.name).filter(Boolean));
     assert(nodeNames.has('environment-root'), `${relativePath}: authored environment module is missing environment-root`);
-    const marker = filename.includes('floor-panel')
-      ? 'refinery-floor-panel'
-      : filename.includes('floor-service-grate')
-        ? 'refinery-floor-service-grate'
-        : filename.includes('bulkhead')
-        ? 'refinery-bulkhead-left'
-        : filename.includes('processor')
-          ? 'refinery-processor-core'
-          : filename.includes('pipe-rack')
-            ? 'refinery-pipe-rack-spine'
-            : filename.includes('wall-service-panel')
-              ? 'refinery-wall-service-panel-shell'
-              : filename.includes('cable-tray')
-                ? 'refinery-cable-tray-spine'
-                : filename.includes('service-conduit')
-                  ? 'refinery-service-conduit-trunk'
-                  : filename.includes('smelter-gantry')
-                ? 'refinery-smelter-gantry-beam'
-                : filename.includes('crate')
-                  ? 'refinery-crate-shell'
-                  : 'refinery-terminal-screen';
+    const marker = filename.includes('damaged-vessel-broken-rib')
+      ? 'damaged-vessel-broken-rib-spine'
+      : filename.includes('damaged-vessel-breach-frame')
+        ? 'damaged-vessel-breach-frame-crown'
+        : filename.includes('damaged-vessel-salvage-rack')
+          ? 'damaged-vessel-salvage-rack-shell'
+          : filename.includes('floor-panel')
+            ? 'refinery-floor-panel'
+            : filename.includes('floor-service-grate')
+              ? 'refinery-floor-service-grate'
+              : filename.includes('bulkhead')
+                ? 'refinery-bulkhead-left'
+                : filename.includes('processor')
+                  ? 'refinery-processor-core'
+                  : filename.includes('pipe-rack')
+                    ? 'refinery-pipe-rack-spine'
+                    : filename.includes('wall-service-panel')
+                      ? 'refinery-wall-service-panel-shell'
+                      : filename.includes('cable-tray')
+                        ? 'refinery-cable-tray-spine'
+                        : filename.includes('service-conduit')
+                          ? 'refinery-service-conduit-trunk'
+                          : filename.includes('smelter-gantry')
+                            ? 'refinery-smelter-gantry-beam'
+                            : filename.includes('crate')
+                              ? 'refinery-crate-shell'
+                              : 'refinery-terminal-screen';
     assert(nodeNames.has(marker), `${relativePath}: environment silhouette marker ${marker} is missing`);
+    if (filename.includes('damaged-vessel-breach-frame') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('damaged-vessel-breach-frame-cable-a'), `${relativePath}: breach landmark is missing exposed cable detail`);
+      assert(nodeNames.has('damaged-vessel-breach-frame-scar-cap'), `${relativePath}: breach landmark is missing scar-cap detail`);
+    }
     if (filename.includes('processor') && filename.endsWith('-lod1.glb')) {
       assert(nodeNames.has('refinery-processor-ore-intake'), `${relativePath}: refined processor is missing ore intake silhouette`);
       assert(nodeNames.has('refinery-processor-exhaust-stack'), `${relativePath}: refined processor is missing exhaust stack silhouette`);
