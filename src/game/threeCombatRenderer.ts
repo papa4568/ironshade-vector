@@ -191,6 +191,11 @@ export class ThreeCombatRenderer {
   private readonly keyLight = new THREE.DirectionalLight(0xd8e8e1, 2.4);
   private readonly rimLight = new THREE.DirectionalLight(0x7bb0c8, 1.1);
   private readonly emergencyLight = new THREE.PointLight(0xdf7a55, 18, 18, 2);
+  private readonly playerReadabilityLight = new THREE.PointLight(0xb7efe3, 7.2, 7.5, 2);
+  private readonly refineryPracticalLights = [
+    new THREE.PointLight(0xffb36c, 10, 12, 2),
+    new THREE.PointLight(0x6edce7, 8, 10, 2),
+  ];
   private readonly objectVisuals = new Map<string, THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial>>();
   private readonly sectorVisuals = new Map<string, THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>>();
   private readonly enemyVisuals = new Map<number, EnemyVisual>();
@@ -201,6 +206,9 @@ export class ThreeCombatRenderer {
   private readonly proceduralRefineryVisuals: THREE.Object3D[] = [];
   private readonly refineryAssetInstances: GraphicsAssetInstance[] = [];
   private readonly refineryInstancedMeshes: THREE.InstancedMesh[] = [];
+  private readonly refineryOwnedMaterials: THREE.Material[] = [];
+  private refinerySteam: THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial> | null = null;
+  private refineryDecals: THREE.InstancedMesh | null = null;
   private refineryLoadGeneration = 0;
   private readonly projectilePool: ProjectileVisual[] = [];
   private readonly hazardPool: RingVisual[] = [];
@@ -214,6 +222,8 @@ export class ThreeCombatRenderer {
   private readonly groundLootRingGeometry = new THREE.TorusGeometry(0.48, 0.045, 6, 32);
   private readonly groundLootBeamGeometry = new THREE.CylinderGeometry(0.018, 0.055, 1.7, 6);
   private readonly effectRingGeometry = new THREE.TorusGeometry(1, 0.045, 6, 40);
+  private readonly impactSparkGeometry = new THREE.BufferGeometry();
+  private readonly impactSparkPool: THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial>[] = [];
   private readonly debrisGeometry = new THREE.IcosahedronGeometry(0.12, 0);
   private readonly objectiveGuideMesh = new THREE.InstancedMesh(
     new THREE.BoxGeometry(0.28, 0.035, 0.28),
@@ -260,6 +270,14 @@ export class ThreeCombatRenderer {
     this.objectiveGuideMesh.renderOrder = 38;
     this.objectiveGuide.add(this.objectiveGuideMesh);
     this.scene.add(new THREE.HemisphereLight(0xa6c7c2, 0x14110e, 1.25));
+    this.impactSparkGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+      0, 0.12, 0,
+      0.24, 0.34, 0.04,
+      -0.22, 0.28, 0.08,
+      0.12, 0.42, -0.18,
+      -0.08, 0.38, 0.2,
+      0.3, 0.2, -0.1,
+    ]), 3));
 
     this.keyLight.position.set(16, 28, 14);
     this.keyLight.castShadow = true;
@@ -276,7 +294,15 @@ export class ThreeCombatRenderer {
     this.rimLight.position.set(-18, 16, -10);
     this.scene.add(this.rimLight);
     this.emergencyLight.position.set(0, 3.5, 0);
+    this.emergencyLight.castShadow = false;
     this.scene.add(this.emergencyLight);
+    this.playerReadabilityLight.castShadow = false;
+    this.scene.add(this.playerReadabilityLight);
+    this.refineryPracticalLights.forEach(light => {
+      light.castShadow = false;
+      light.visible = false;
+      this.scene.add(light);
+    });
 
     const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x8aa89d, metalness: 0.72, roughness: 0.34 });
     this.playerBody = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.46, 1.25, 10), bodyMaterial);
@@ -332,11 +358,13 @@ export class ThreeCombatRenderer {
     this.syncProjectiles(state);
     this.syncGroundLoot(state);
     this.syncHazards(state);
-    this.syncEffects(state);
+    this.syncEffects(state, quality * budget.detailScale);
     this.syncBreaches(state);
-    syncHardSciFiBreaches(this.dynamicRoot, state, WORLD_SCALE);
+    syncHardSciFiBreaches(this.dynamicRoot, state, WORLD_SCALE, quality * budget.detailScale);
     this.syncDebris(state, quality * budget.detailScale);
+    this.syncRefineryAtmospherics(state, quality * budget.detailScale);
     this.syncCamera(state, mission, width / Math.max(1, height));
+    this.syncLighting(state, mission, quality, budget);
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -390,6 +418,19 @@ export class ThreeCombatRenderer {
       mesh.dispose();
     }
     this.refineryInstancedMeshes.length = 0;
+    this.refineryOwnedMaterials.forEach(material => material.dispose());
+    this.refineryOwnedMaterials.length = 0;
+    if (this.refinerySteam) {
+      this.refinerySteam.geometry.dispose();
+      this.refinerySteam.material.dispose();
+      this.refinerySteam = null;
+    }
+    if (this.refineryDecals) {
+      this.refineryDecals.geometry.dispose();
+      const materials = Array.isArray(this.refineryDecals.material) ? this.refineryDecals.material : [this.refineryDecals.material];
+      materials.forEach(material => material.dispose());
+      this.refineryDecals = null;
+    }
     for (const instance of this.refineryAssetInstances) instance.release();
     this.refineryAssetInstances.length = 0;
     this.authoredEnvironmentRoot.clear();
@@ -399,6 +440,91 @@ export class ThreeCombatRenderer {
     delete this.renderer.domElement.dataset.environmentKit;
     delete this.renderer.domElement.dataset.environmentInstances;
     delete this.renderer.domElement.dataset.environmentTerminals;
+    delete this.renderer.domElement.dataset.environmentLighting;
+    delete this.renderer.domElement.dataset.environmentMaterials;
+    delete this.renderer.domElement.dataset.environmentVfx;
+    delete this.renderer.domElement.dataset.environmentTone;
+  }
+
+  private cloneRefineryMaterial(source: THREE.Material, label: string) {
+    const material = source.clone();
+    this.refineryOwnedMaterials.push(material);
+    if (material instanceof THREE.MeshStandardMaterial) {
+      const tuning = label.includes('floor')
+        ? { metalness: 0.64, roughness: 0.54 }
+        : label.includes('bulkhead') || label.includes('pipe')
+          ? { metalness: 0.82, roughness: 0.38 }
+          : label.includes('crate')
+            ? { metalness: 0.58, roughness: 0.58 }
+            : { metalness: 0.7, roughness: 0.42 };
+      material.metalness = tuning.metalness;
+      material.roughness = tuning.roughness;
+      if (label.includes('terminal')) {
+        material.emissive.setHex(0x63d7d7);
+        material.emissiveIntensity = 0.34;
+      } else if (label.includes('processor')) {
+        material.emissive.setHex(0xd18c4f);
+        material.emissiveIntensity = 0.16;
+      }
+    }
+    return material;
+  }
+
+  private buildRefineryAtmospherics(width: number, height: number) {
+    const steamPositions = new Float32Array(36 * 3);
+    for (let index = 0; index < 36; index += 1) {
+      const stack = index % 3;
+      const t = Math.floor(index / 3) / 11;
+      steamPositions[index * 3] = width * (0.28 + stack * 0.22) + Math.sin(index * 1.7) * 0.18;
+      steamPositions[index * 3 + 1] = 0.42 + t * 2.7;
+      steamPositions[index * 3 + 2] = height * (stack === 1 ? 0.72 : 0.27) + Math.cos(index * 1.3) * 0.16;
+    }
+    const steamGeometry = new THREE.BufferGeometry();
+    steamGeometry.setAttribute('position', new THREE.BufferAttribute(steamPositions, 3));
+    const steamMaterial = new THREE.PointsMaterial({
+      color: 0xb8d9d4,
+      size: 0.16,
+      transparent: true,
+      opacity: 0.13,
+      depthWrite: false,
+      sizeAttenuation: true,
+    });
+    const steam = new THREE.Points(steamGeometry, steamMaterial);
+    steam.name = 'refinery-steam';
+    steam.frustumCulled = false;
+    this.refinerySteam = steam;
+    this.authoredEnvironmentRoot.add(steam);
+
+    const decalGeometry = new THREE.PlaneGeometry(2.4, 0.2);
+    const decalMaterial = new THREE.MeshBasicMaterial({
+      color: 0xe2a052,
+      transparent: true,
+      opacity: 0.34,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    const decals = new THREE.InstancedMesh(decalGeometry, decalMaterial, 8);
+    const transform = new THREE.Object3D();
+    for (let index = 0; index < 8; index += 1) {
+      transform.position.set(width * (0.36 + index * 0.04), 0.028, height * (index % 2 === 0 ? 0.42 : 0.58));
+      transform.rotation.set(-Math.PI / 2, 0, index % 2 === 0 ? 0.18 : -0.18);
+      transform.updateMatrix();
+      decals.setMatrixAt(index, transform.matrix);
+    }
+    decals.instanceMatrix.needsUpdate = true;
+    decals.renderOrder = 3;
+    decals.name = 'refinery-safety-decals';
+    this.refineryDecals = decals;
+    this.authoredEnvironmentRoot.add(decals);
+  }
+
+  private syncRefineryAtmospherics(state: SimState, detailLevel: number) {
+    if (!this.refinerySteam) return;
+    const reducedEffects = detailLevel < 0.58;
+    this.refinerySteam.visible = !reducedEffects;
+    this.refinerySteam.rotation.y = Math.sin(state.time * 0.16) * 0.025;
+    this.refinerySteam.material.opacity = 0.1 + Math.sin(state.time * 1.7) * 0.025;
+    if (this.refineryDecals) this.refineryDecals.visible = true;
   }
 
   private addInstancedEnvironmentAsset(instance: GraphicsAssetInstance, placements: EnvironmentPlacement[], label: string) {
@@ -409,7 +535,10 @@ export class ThreeCombatRenderer {
       const source = child as THREE.Mesh;
       if (!source.isMesh || !source.geometry || !source.material) return;
       source.updateWorldMatrix(true, false);
-      const mesh = new THREE.InstancedMesh(source.geometry, source.material, placements.length);
+      const material = Array.isArray(source.material)
+        ? source.material.map(item => this.cloneRefineryMaterial(item, label))
+        : this.cloneRefineryMaterial(source.material, label);
+      const mesh = new THREE.InstancedMesh(source.geometry, material, placements.length);
       mesh.name = `authored-${label}-${source.name || 'mesh'}`;
       mesh.castShadow = source.castShadow || label !== 'floor';
       mesh.receiveShadow = true;
@@ -510,6 +639,7 @@ export class ThreeCombatRenderer {
       instances += this.addInstancedEnvironmentAsset(byKey.get('pipeRack')!.instance, pipePlacements, 'refinery-pipe-rack');
       instances += this.addInstancedEnvironmentAsset(byKey.get('crate')!.instance, cratePlacements, 'refinery-crate');
       instances += this.addInstancedEnvironmentAsset(byKey.get('terminal')!.instance, terminalPlacements, 'refinery-terminal');
+      this.buildRefineryAtmospherics(width, height);
 
       this.proceduralRefineryVisuals.forEach(item => { item.visible = false; });
       const lods = [...new Set(loaded.map(item => item.lod))].sort();
@@ -518,6 +648,8 @@ export class ThreeCombatRenderer {
       this.renderer.domElement.dataset.environmentKit = 'floor,bulkhead,processor,pipe-rack,crate,terminal';
       this.renderer.domElement.dataset.environmentInstances = String(instances);
       this.renderer.domElement.dataset.environmentTerminals = String(terminalPlacements.length);
+      this.renderer.domElement.dataset.environmentMaterials = 'pbr-bounded+emissive+decals';
+      this.renderer.domElement.dataset.environmentVfx = 'steam+sparse-sparks+breach+objective';
     } catch (error) {
       loaded.forEach(item => item.instance.release());
       if (this.disposed || generation !== this.refineryLoadGeneration) return;
@@ -1582,12 +1714,25 @@ export class ThreeCombatRenderer {
     for (let index = count; index < this.hazardPool.length; index += 1) this.hazardPool[index].visible = false;
   }
 
-  private syncEffects(state: SimState) {
+  private ensureImpactSpark(index: number, color: number) {
+    while (this.impactSparkPool.length <= index) {
+      const material = new THREE.PointsMaterial({ color, size: 0.11, transparent: true, opacity: 0.72, depthWrite: false, sizeAttenuation: true });
+      const points = new THREE.Points(this.impactSparkGeometry, material);
+      points.frustumCulled = false;
+      this.dynamicRoot.add(points);
+      this.impactSparkPool.push(points);
+    }
+    return this.impactSparkPool[index];
+  }
+
+  private syncEffects(state: SimState, detailLevel: number) {
     let count = 0;
+    let sparkCount = 0;
     let lastImpactLanguage = '';
+    const reducedEffects = detailLevel < 0.58;
     for (const effect of state.effects) {
       if (!effect.active) continue;
-      let color = effect.kind === 'arc' ? 0x84caeb : effect.kind === 'breach' ? 0xf07d4d : effect.kind === 'mark' ? 0xd0e07a : 0xc2ddd3;
+      let color = effect.kind === 'arc' ? 0x84caeb : effect.kind === 'breach' ? 0xf07d4d : effect.kind === 'mark' ? 0xd0e07a : effect.kind === 'pulse' ? 0x9debd8 : 0xc2ddd3;
       let impactScale = 1;
       if (effect.kind === 'impact') {
         let nearbyEnemy: Enemy | null = null;
@@ -1643,15 +1788,40 @@ export class ThreeCombatRenderer {
 
       const ring = this.ensureRing(this.effectPool, count++, color);
       const progress = 1 - effect.life / Math.max(0.01, effect.maxLife);
+      const baseScale = Math.max(0.18, scaled(effect.radius) * (0.42 + progress * 0.85) * impactScale);
       ring.visible = true;
       ring.material.color.setHex(color);
-      ring.material.opacity = Math.max(0, 0.76 * (1 - progress));
+      ring.material.opacity = Math.max(0, (effect.kind === 'mark' ? 0.58 : 0.76) * (1 - progress));
       ring.position.set(scaled(effect.x), 0.12 + progress * 0.35, scaled(effect.y));
-      ring.scale.setScalar(Math.max(0.18, scaled(effect.radius) * (0.42 + progress * 0.85) * impactScale));
-      if (effect.kind === 'impact') ring.rotation.z = state.time * 2.2 + progress * Math.PI;
+      if (effect.kind === 'arc') {
+        ring.scale.set(baseScale * 0.72, baseScale, baseScale * 1.28);
+        ring.rotation.z = -state.time * 2.8 - progress * Math.PI;
+      } else if (effect.kind === 'mark') {
+        ring.scale.set(baseScale * 0.78, baseScale, baseScale * 0.78);
+        ring.rotation.z = state.time * 0.7;
+      } else if (effect.kind === 'pulse') {
+        ring.scale.set(baseScale * 1.2, baseScale, baseScale * 1.2);
+        ring.rotation.z = progress * Math.PI * 0.5;
+      } else {
+        ring.scale.setScalar(baseScale);
+        if (effect.kind === 'impact') ring.rotation.z = state.time * 2.2 + progress * Math.PI;
+      }
+
+      if (effect.kind === 'impact' && !reducedEffects) {
+        const spark = this.ensureImpactSpark(sparkCount++, color);
+        spark.visible = true;
+        spark.material.color.setHex(color);
+        spark.material.opacity = Math.max(0, 0.8 * (1 - progress));
+        spark.position.set(scaled(effect.x), 0.12, scaled(effect.y));
+        spark.rotation.set(state.time * 2.4, state.time * 1.6, state.time * 3.1);
+        spark.scale.setScalar(0.72 + progress * 1.9);
+      }
     }
     for (let index = count; index < this.effectPool.length; index += 1) this.effectPool[index].visible = false;
+    for (let index = sparkCount; index < this.impactSparkPool.length; index += 1) this.impactSparkPool[index].visible = false;
     if (lastImpactLanguage) this.renderer.domElement.dataset.impactFx = lastImpactLanguage;
+    this.renderer.domElement.dataset.effectsMode = reducedEffects ? 'reduced' : 'full';
+    this.renderer.domElement.dataset.combatVfx = 'shape-coded+surface-impacts+ability-pulses';
   }
 
   private syncBreaches(state: SimState) {
@@ -1694,6 +1864,46 @@ export class ThreeCombatRenderer {
       }
     }
     for (let index = count; index < this.debrisPool.length; index += 1) this.debrisPool[index].visible = false;
+  }
+
+  private syncLighting(state: SimState, mission: Contract, quality: number, budget: RenderBudgetSnapshot) {
+    const px = scaled(state.player.x);
+    const pz = scaled(state.player.y);
+    const isRefinery = mission.location === 'asteroid-refinery';
+    const reducedEffects = budget.tier === 2 || quality < 0.55;
+    const solarBoost = mission.location === 'solar-yard'
+      && state.time >= 10
+      && state.time < 18
+      && !state.objects.find(object => object.id === 'solar-shutter')?.exposed;
+
+    this.playerReadabilityLight.position.set(px - 0.6, 2.7, pz + 0.7);
+    this.playerReadabilityLight.intensity = reducedEffects ? 4.8 : 7.2;
+    this.playerReadabilityLight.distance = reducedEffects ? 5.8 : 7.5;
+
+    this.emergencyLight.position.set(px + 2.4, 3.2, pz - 2.2);
+    this.emergencyLight.intensity = isRefinery ? (reducedEffects ? 7 : 11) : (reducedEffects ? 6 : 9);
+
+    const world = getWorldSize();
+    const practicalPositions = [
+      new THREE.Vector3(scaled(world.w * 0.36), 3.1, scaled(world.h * 0.28)),
+      new THREE.Vector3(scaled(world.w * 0.68), 2.8, scaled(world.h * 0.70)),
+    ];
+    this.refineryPracticalLights.forEach((light, index) => {
+      light.visible = isRefinery && (!reducedEffects || index === 0);
+      light.position.copy(practicalPositions[index]);
+      light.intensity = index === 0 ? (reducedEffects ? 6.5 : 10) : 7.5;
+    });
+
+    this.keyLight.intensity = solarBoost ? 3.6 : isRefinery ? 2.15 : 2.4;
+    this.rimLight.intensity = isRefinery ? 0.95 : 1.1;
+    const baseExposure = solarBoost ? 1.18 : isRefinery ? 1.02 : 1.08;
+    this.renderer.toneMappingExposure = mission.conditions.includes('low-visibility') ? baseExposure * 1.04 : baseExposure;
+
+    if (isRefinery) {
+      const practicalCount = this.refineryPracticalLights.filter(light => light.visible).length;
+      this.renderer.domElement.dataset.environmentLighting = `refinery-key+rim+contact+practical:${practicalCount}+shadow:key`;
+      this.renderer.domElement.dataset.environmentTone = `aces-${this.renderer.toneMappingExposure.toFixed(2)}`;
+    }
   }
 
   private syncCamera(state: SimState, mission: Contract, aspect: number) {
