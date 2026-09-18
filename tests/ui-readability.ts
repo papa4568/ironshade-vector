@@ -78,8 +78,8 @@ assert(shipHub.includes('CommandHubVisual'), 'Command hub visual is not integrat
 assert(shipHub.includes('PlayerStatsPanel'), 'Player stats page is not integrated.');
 assert(statsPanel.includes('Current build') && statsPanel.includes('Vacuum resistance') && statsPanel.includes('BURST DPS'), 'Player stats page is missing explained final stats.');
 assert(statsPanel.includes('createSimulation(build)'), 'Stats page is not using the real combat build for final values.');
-assert(hubVisual.includes('MV Quiet Signal') && hubVisual.includes('current operator'), 'Opening hub does not visually represent ship and operator.');
-assert(hubVisual.includes('COMMAND DECK') && hubVisual.includes('command-bridge-scene') && hubVisual.includes('TASKING READY'), 'Opening Command surface is missing the cinematic tactical bridge treatment.');
+assert(hubVisual.includes('command-bridge-schematic') && hubVisual.includes('OPERATOR LV') && hubVisual.includes('GEAR LINK'), 'Opening hub does not visually represent the ship and operator readiness.');
+assert(hubVisual.includes('COMMAND READY') && hubVisual.includes('bridge-compact-readiness') && !hubVisual.includes('bridge-gear-panel') && !hubVisual.includes('bridge-gear-strip'), 'Opening Command surface is not using the compact readiness treatment.');
 assert(hubCss.includes('.command-overview') && hubCss.includes('.player-stat-grid'), 'Command hub responsive styling is incomplete.');
 assert(shipHub.includes("type PrimaryArea = 'command' | 'operations' | 'operator' | 'ship' | 'intel'"), 'Ship Hub has not collapsed navigation into five primary mental models.');
 assert(shipHub.includes('command-rail-nav') && shipHub.includes('section-tabs') && shipHub.includes('areaTabs'), 'Tactical Command Deck navigation shell is incomplete.');
