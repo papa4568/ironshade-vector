@@ -214,6 +214,29 @@ async function tap(selector, id = 1, holdMs = 90) {
   return metrics;
 }
 
+async function buttonMetrics(label) {
+  const target = JSON.stringify(label.toLowerCase());
+  return evaluate(`(() => {
+    const expected = ${target};
+    const element = [...document.querySelectorAll('button')].find(candidate => (candidate.getAttribute('aria-label') || candidate.textContent || '').trim().toLowerCase() === expected);
+    if (!element) return null;
+    const rect = element.getBoundingClientRect();
+    return {
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+      disabled: Boolean(element.disabled),
+    };
+  })()`);
+}
+
+async function tapButton(label, id = 1, holdMs = 90) {
+  const metrics = await buttonMetrics(label);
+  if (!metrics || metrics.disabled) throw new Error(`Touch button unavailable: ${label}`);
+  await dispatchTouch('touchStart', metrics.x, metrics.y, id);
+  await sleep(holdMs);
+  await dispatchTouch('touchEnd', metrics.x, metrics.y, id);
+}
+
 await call('Page.enable').catch(() => undefined);
 
 if (resumeOnly) {
@@ -302,40 +325,16 @@ if (!commandLayout.landscape || !commandLayout.rail || !commandLayout.workspace 
 }
 console.log(`ANDROID_MOBILE_MENU_PASS viewport=${Math.round(commandLayout.viewport.width)}x${Math.round(commandLayout.viewport.height)} destinations=${commandLayout.primaryCount} safe=onscreen+separated`);
 
-const openedOperations = await evaluate(`(() => {
-  const button = [...document.querySelectorAll('button')].find(candidate => (candidate.getAttribute('aria-label') || candidate.textContent || '').trim().toLowerCase() === 'operations');
-  if (!button) return false;
-  button.click();
-  return true;
-})()`);
-if (!openedOperations) throw new Error('Operations primary navigation button was not found.');
+await tapButton('Operations', 21);
 await waitFor(`[...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'contracts')`, 'Operations navigation');
 
-const openedContracts = await evaluate(`(() => {
-  const button = [...document.querySelectorAll('button')].find(candidate => candidate.textContent?.trim().toLowerCase() === 'contracts');
-  if (!button) return false;
-  button.click();
-  return true;
-})()`);
-if (!openedContracts) throw new Error('Contracts secondary navigation button was not found.');
+await tapButton('Contracts', 22);
 await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('contract board') && [...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'deploy selected contract')`, 'Contract Board');
 
-const refinerySelected = await evaluate(`(() => {
-  const button = document.querySelector('button[data-location="asteroid-refinery"]');
-  if (!button || button.disabled) return false;
-  button.click();
-  return true;
-})()`);
-if (!refinerySelected) throw new Error('Asteroid Refinery showcase contract was not available on the Android Contract Board.');
+await tap('button[data-location="asteroid-refinery"]', 23);
 await waitFor(`document.querySelector('button[data-location="asteroid-refinery"]')?.classList.contains('selected') === true`, 'Asteroid Refinery contract selection');
 
-const deployed = await evaluate(`(() => {
-  const button = [...document.querySelectorAll('button')].find(candidate => candidate.textContent?.trim().toLowerCase() === 'deploy selected contract');
-  if (!button || button.disabled) return false;
-  button.click();
-  return true;
-})()`);
-if (!deployed) throw new Error(`Selected contract could not be deployed from the Android Contract Board: ${JSON.stringify(await snapshot())}`);
+await tapButton('Deploy selected contract', 24, 120);
 await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('field coach') && document.querySelectorAll('canvas').length > 0`, 'Combat surface', 45_000);
 
 const combat = await snapshot();
