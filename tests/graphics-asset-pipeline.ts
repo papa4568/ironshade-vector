@@ -122,6 +122,14 @@ assert(rendererSource.includes("'armor-spark'") && rendererSource.includes("'met
 assert(rendererSource.includes('dataset.impactFx'), 'impact FX classification must remain observable for runtime QA');
 
 assert(rendererSource.includes('REFINERY_ASSET_FAMILIES'), 'showcase environment must load through authored refinery asset families');
+assert(rendererSource.includes('DAMAGED_VESSEL_ASSET_FAMILIES'), 'Damaged Vessel second pass must load through authored asset families');
+assert(manifestSource.includes('damaged-vessel-broken-rib-lod1.glb') && manifestSource.includes('damaged-vessel-broken-rib-lod2.glb'), 'Damaged Vessel broken ribs must preserve adaptive LOD coverage');
+assert(manifestSource.includes('damaged-vessel-breach-frame-lod1.glb') && manifestSource.includes('damaged-vessel-breach-frame-lod2.glb'), 'Damaged Vessel breach landmark must preserve adaptive LOD coverage');
+assert(manifestSource.includes('damaged-vessel-salvage-rack-lod1.glb') && manifestSource.includes('damaged-vessel-salvage-rack-lod2.glb'), 'Damaged Vessel salvage racks must preserve adaptive LOD coverage');
+assert(rendererSource.includes('loadAuthoredDamagedVesselEnvironment(world.w, world.h, budget.detailScale)'), 'Damaged Vessel authored overlay must select LOD from the active render tier');
+assert(rendererSource.includes("dataset.environmentVisual = 'authored-damaged-vessel'"), 'runtime QA must expose Damaged Vessel authored overlay activation');
+assert(rendererSource.includes("dataset.environmentLandmark = 'starboard-hull-breach'"), 'Damaged Vessel second pass must expose its breach landmark');
+assert(rendererSource.includes("dataset.environmentComposition = 'broken-rib-corridor+starboard-breach+perimeter-salvage'"), 'Damaged Vessel authored composition contract must remain explicit');
 assert(rendererSource.includes('loadAuthoredRefineryEnvironment(state, world.w, world.h, budget.detailScale)'), 'Asteroid Refinery authored environment must select LOD from the active render tier');
 assert(rendererSource.includes('new THREE.InstancedMesh'), 'repeated refinery props must use instancing');
 assert(rendererSource.includes("dataset.environmentVisual = 'authored-refinery'"), 'runtime QA must expose authored refinery activation');
