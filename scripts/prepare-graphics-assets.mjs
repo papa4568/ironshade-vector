@@ -483,6 +483,39 @@ function damagedVesselNodes(kind, lod) {
     return nodes;
   }
 
+  if (kind === 'tornPlate') {
+    const nodes = [
+      { name: 'damaged-vessel-torn-wall-plate-shell', mesh: 0, translation: [0, 1.20, 0], scale: [2.80, 2.40, 0.18] },
+      { name: 'damaged-vessel-torn-wall-plate-cut-edge', mesh: 2, translation: [-0.34, 1.34, 0.16], scale: [0.08, 1.72, 0.08] },
+      { name: 'damaged-vessel-torn-wall-plate-lower-flap', mesh: 1, translation: [0.58, 0.42, 0.19], scale: [1.42, 0.54, 0.22] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'damaged-vessel-torn-wall-plate-reinforcement', mesh: 1, translation: [-0.10, 1.95, 0.17], scale: [2.10, 0.12, 0.12] },
+        { name: 'damaged-vessel-torn-wall-plate-tooth', mesh: 1, translation: [1.12, 0.82, 0.28], scale: [0.36, 0.82, 0.16] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  if (kind === 'serviceBundle') {
+    const nodes = [
+      { name: 'damaged-vessel-service-bundle-trunk', mesh: 1, translation: [0, 1.45, 0], scale: [0.32, 2.90, 0.34] },
+      { name: 'damaged-vessel-service-bundle-junction', mesh: 0, translation: [0.08, 1.66, 0.30], scale: [0.84, 0.72, 0.42] },
+      { name: 'damaged-vessel-service-bundle-status', mesh: 3, translation: [0.50, 1.76, 0.54], scale: [0.12, 0.18, 0.06] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'damaged-vessel-service-bundle-conduit-a', mesh: 1, translation: [-0.26, 1.18, 0.31], scale: [0.10, 2.16, 0.10] },
+        { name: 'damaged-vessel-service-bundle-conduit-b', mesh: 1, translation: [0.28, 1.02, 0.31], scale: [0.10, 1.82, 0.10] },
+        { name: 'damaged-vessel-service-bundle-drop', mesh: 3, translation: [0.46, 0.48, 0.36], scale: [0.08, 0.82, 0.08] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
   const nodes = [
     { name: 'damaged-vessel-salvage-rack-shell', mesh: 0, translation: [0, 0.88, 0], scale: [2.30, 1.76, 0.76] },
     { name: 'damaged-vessel-salvage-rack-shelf', mesh: 1, translation: [0.08, 1.08, 0], scale: [2.02, 0.12, 0.82] },
@@ -725,6 +758,8 @@ const damagedVesselProfiles = [
   ['rib', 'damaged-vessel-broken-rib'],
   ['breachFrame', 'damaged-vessel-breach-frame'],
   ['salvageRack', 'damaged-vessel-salvage-rack'],
+  ['tornPlate', 'damaged-vessel-torn-wall-plate'],
+  ['serviceBundle', 'damaged-vessel-service-bundle'],
 ];
 
 for (const [kind, id] of damagedVesselProfiles) {
