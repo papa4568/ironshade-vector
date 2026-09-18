@@ -784,3 +784,343 @@
     font-size: 8px;
   }
 }
+
+
+/* Vivid tactical palette.
+   Keep the near-black ship interior, but give navigation, resources, rarity, and
+   high-value actions distinct signal colors so the interface scans at a glance. */
+.ship-hub,
+.build-bay {
+  --ui-cyan: #62d9ff;
+  --ui-blue: #7fa9ff;
+  --ui-mint: #67e6b5;
+  --ui-amber: #f3bd68;
+  --ui-violet: #c19cff;
+  --ui-coral: #ff8578;
+  --ui-ice: #dcefed;
+  --ui-panel: #091211;
+  --ui-panel-raised: #0d1816;
+}
+.ship-hub {
+  --area-accent: var(--ui-mint);
+  background:
+    radial-gradient(circle at 78% -14%, rgba(72, 174, 205, .22), transparent 32%),
+    radial-gradient(circle at 18% 78%, rgba(126, 83, 190, .11), transparent 30%),
+    linear-gradient(135deg, #040809, #071210 52%, #05070b);
+}
+.ship-hub.area-command { --area-accent: var(--ui-mint); }
+.ship-hub.area-operations { --area-accent: var(--ui-cyan); }
+.ship-hub.area-operator { --area-accent: var(--ui-violet); }
+.ship-hub.area-ship { --area-accent: var(--ui-amber); }
+.ship-hub.area-intel { --area-accent: var(--ui-coral); }
+
+.command-rail {
+  background:
+    radial-gradient(circle at 48% 4%, rgba(74, 209, 183, .16), transparent 30%),
+    radial-gradient(circle at 30% 78%, rgba(123, 93, 199, .10), transparent 34%),
+    linear-gradient(180deg, rgba(11, 27, 25, .985), rgba(5, 12, 13, .995) 48%, rgba(5, 7, 12, .998));
+  border-right-color: rgba(90, 151, 139, .42);
+}
+.command-rail::after {
+  width: 2px;
+  background: linear-gradient(180deg, var(--ui-cyan), var(--ui-mint) 38%, var(--ui-violet) 72%, transparent);
+  box-shadow: 0 0 18px rgba(98, 217, 255, .28);
+}
+.command-rail-brand > span {
+  border-color: rgba(98, 217, 255, .58);
+  background:
+    linear-gradient(145deg, rgba(98, 217, 255, .18), rgba(103, 230, 181, .08)),
+    #0d1b1a;
+  color: #d8fbf3;
+  box-shadow: inset 0 0 14px rgba(98, 217, 255, .08), 0 0 16px rgba(98, 217, 255, .09);
+}
+.command-rail-brand b { color: #edf8f5; }
+.command-rail-brand small { color: #73a89a; }
+
+.command-rail-nav button { --nav-accent: var(--ui-mint); }
+.command-rail-nav button.nav-command { --nav-accent: var(--ui-mint); }
+.command-rail-nav button.nav-operations { --nav-accent: var(--ui-cyan); }
+.command-rail-nav button.nav-operator { --nav-accent: var(--ui-violet); }
+.command-rail-nav button.nav-ship { --nav-accent: var(--ui-amber); }
+.command-rail-nav button.nav-intel { --nav-accent: var(--ui-coral); }
+.command-rail-nav button svg {
+  color: var(--nav-accent);
+  opacity: .9;
+  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--nav-accent) 32%, transparent));
+}
+.command-rail-nav button:hover {
+  border-color: color-mix(in srgb, var(--nav-accent) 46%, #263a35);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--nav-accent) 10%, transparent), rgba(11, 23, 21, .9));
+}
+.command-rail-nav button.selected {
+  border-color: color-mix(in srgb, var(--nav-accent) 62%, #385148);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--nav-accent) 22%, transparent), color-mix(in srgb, var(--nav-accent) 5%, #07110f)),
+    #091513;
+  color: #f0f8f5;
+  box-shadow:
+    inset 3px 0 var(--nav-accent),
+    inset 0 0 24px color-mix(in srgb, var(--nav-accent) 7%, transparent),
+    0 0 18px color-mix(in srgb, var(--nav-accent) 8%, transparent);
+}
+.command-rail-nav button.selected small {
+  color: color-mix(in srgb, var(--nav-accent) 62%, #789087);
+}
+.command-rail-equipment,
+.hub-build-button {
+  border-color: rgba(193, 156, 255, .46);
+  background:
+    linear-gradient(135deg, rgba(193, 156, 255, .12), rgba(98, 217, 255, .06)),
+    #0b1517;
+  color: #ddd1ff;
+  box-shadow: inset 0 0 18px rgba(193, 156, 255, .04);
+}
+.command-rail-equipment svg { color: var(--ui-violet); }
+.command-rail-equipment:hover,
+.hub-build-button:hover {
+  border-color: rgba(193, 156, 255, .76);
+  background:
+    linear-gradient(135deg, rgba(193, 156, 255, .20), rgba(98, 217, 255, .09)),
+    #0d171a;
+}
+.command-rail-status i {
+  background: var(--ui-mint);
+  box-shadow: 0 0 13px rgba(103, 230, 181, .66);
+}
+.command-rail-status b { color: #8ff2c8; }
+
+.tactical-header h1 {
+  color: #eef8f5;
+  text-shadow: 0 0 24px color-mix(in srgb, var(--area-accent) 14%, transparent);
+}
+.tactical-header .card-kicker {
+  color: color-mix(in srgb, var(--area-accent) 74%, #93a9a1);
+}
+.section-tabs button {
+  border-color: #2b403c;
+  background:
+    linear-gradient(180deg, rgba(16, 28, 26, .86), rgba(7, 14, 14, .96));
+}
+.section-tabs button.selected {
+  border-color: color-mix(in srgb, var(--area-accent) 62%, #344a44);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--area-accent) 15%, #101917), #0d1715);
+  color: #eef7f4;
+  box-shadow:
+    inset 0 -2px var(--area-accent),
+    0 0 14px color-mix(in srgb, var(--area-accent) 8%, transparent);
+}
+
+.hub-resource-ribbon > div {
+  --resource-accent: var(--ui-mint);
+  position: relative;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--resource-accent) 34%, #263634);
+  background:
+    radial-gradient(circle at 92% 0, color-mix(in srgb, var(--resource-accent) 12%, transparent), transparent 50%),
+    linear-gradient(180deg, rgba(10, 20, 19, .94), rgba(5, 11, 12, .96));
+  box-shadow: inset 0 0 18px color-mix(in srgb, var(--resource-accent) 3%, transparent);
+}
+.hub-resource-ribbon > div::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--resource-accent), transparent 82%);
+  opacity: .86;
+}
+.hub-resource-ribbon > div small {
+  color: color-mix(in srgb, var(--resource-accent) 54%, #768983);
+}
+.hub-resource-ribbon > div b {
+  color: color-mix(in srgb, var(--resource-accent) 32%, #e9f1ee);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--resource-accent) 11%, transparent);
+}
+.hub-resource-ribbon .resource-credits { --resource-accent: var(--ui-amber); }
+.hub-resource-ribbon .resource-alloys { --resource-accent: #a7c8d6; }
+.hub-resource-ribbon .resource-electronics { --resource-accent: var(--ui-cyan); }
+.hub-resource-ribbon .resource-medstock { --resource-accent: var(--ui-mint); }
+.hub-resource-ribbon .resource-components { --resource-accent: var(--ui-violet); }
+.hub-resource-ribbon .resource-rareTech { --resource-accent: var(--ui-coral); }
+.hub-resource-ribbon .resource-rareTech:not(.muted-resource) {
+  box-shadow: inset 0 0 24px rgba(255, 133, 120, .06), 0 0 16px rgba(255, 133, 120, .05);
+}
+
+.qol-priority-strip {
+  border-color: rgba(98, 217, 255, .34);
+  background:
+    linear-gradient(90deg, rgba(98, 217, 255, .08), rgba(193, 156, 255, .05) 54%, rgba(8, 15, 14, .94));
+  box-shadow: inset 2px 0 rgba(98, 217, 255, .48);
+}
+.qol-priority-copy b { color: #bfefff; }
+.qol-priority-actions button {
+  border-color: rgba(98, 217, 255, .28);
+  background: rgba(13, 30, 31, .82);
+  color: #afe7f6;
+}
+.qol-priority-actions button:hover {
+  border-color: rgba(98, 217, 255, .58);
+  background: rgba(18, 42, 43, .92);
+}
+.ship-status {
+  border-color: rgba(103, 230, 181, .28);
+  background:
+    linear-gradient(90deg, rgba(103, 230, 181, .07), rgba(7, 14, 13, .94));
+  color: #a9d4c5;
+}
+
+.command-visual.command-bridge {
+  border-color: color-mix(in srgb, var(--area-accent) 34%, #304b43);
+  background:
+    radial-gradient(circle at 72% 34%, rgba(98, 217, 255, .09), transparent 26%),
+    radial-gradient(circle at 30% 78%, rgba(193, 156, 255, .06), transparent 30%),
+    #050a0b;
+  box-shadow:
+    0 18px 55px rgba(0, 0, 0, .28),
+    inset 0 0 90px rgba(98, 217, 255, .035);
+}
+.command-bridge-copy .card-kicker {
+  color: color-mix(in srgb, var(--area-accent) 78%, #9db0aa);
+}
+.command-bridge-copy h2 {
+  color: #f1f8f5;
+  text-shadow: 0 0 28px color-mix(in srgb, var(--area-accent) 14%, transparent);
+}
+.command-visual-tags span {
+  border-color: color-mix(in srgb, var(--area-accent) 44%, #273934);
+  color: color-mix(in srgb, var(--area-accent) 48%, #b5c6c0);
+  background: color-mix(in srgb, var(--area-accent) 5%, #07100fcc);
+}
+.command-progress i {
+  background: linear-gradient(90deg, var(--ui-cyan), var(--ui-mint));
+  box-shadow: 0 0 14px rgba(98, 217, 255, .34);
+}
+
+.command-card.primary-card {
+  border-color: rgba(98, 217, 255, .54);
+  background:
+    radial-gradient(circle at 90% 8%, rgba(98, 217, 255, .13), transparent 38%),
+    radial-gradient(circle at 12% 100%, rgba(103, 230, 181, .08), transparent 40%),
+    linear-gradient(180deg, rgba(13, 28, 28, .82), rgba(7, 16, 16, .97));
+  box-shadow: inset 0 0 28px rgba(98, 217, 255, .03);
+}
+.command-card.primary-card small { color: #82cfe4; }
+.command-card.primary-card b { color: #edf7f4; }
+.command-card.primary-card button {
+  border-color: rgba(152, 239, 218, .88);
+  background: linear-gradient(120deg, #b7f3dc, #83dcf2 58%, #a99cef);
+  color: #071111;
+  box-shadow: 0 7px 20px rgba(78, 197, 190, .12);
+}
+.command-card.primary-card button:hover {
+  filter: brightness(1.08) saturate(1.06);
+}
+.command-action-row button {
+  transition: border-color .14s ease, background .14s ease, transform .14s ease, color .14s ease;
+}
+.command-action-row button:nth-child(1) {
+  border-color: rgba(98, 217, 255, .28);
+  background: linear-gradient(120deg, rgba(98, 217, 255, .08), #0a1414 58%);
+}
+.command-action-row button:nth-child(2) {
+  border-color: rgba(193, 156, 255, .30);
+  background: linear-gradient(120deg, rgba(193, 156, 255, .09), #0b1317 58%);
+}
+.command-action-row button:nth-child(3) {
+  border-color: rgba(243, 189, 104, .28);
+  background: linear-gradient(120deg, rgba(243, 189, 104, .08), #11130f 58%);
+}
+.command-action-row button:nth-child(1) b { color: #aeeaff; }
+.command-action-row button:nth-child(2) b { color: #d6c4ff; }
+.command-action-row button:nth-child(3) b { color: #f2d09b; }
+.command-action-row button:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--area-accent) 52%, #395047);
+}
+
+/* Equipment rarity now matches the field-drop language:
+   Refined = blue, Prototype = violet, Singular = amber/orange. */
+.build-bay {
+  background:
+    radial-gradient(circle at 80% -8%, rgba(193, 156, 255, .16), transparent 30%),
+    radial-gradient(circle at 18% 76%, rgba(98, 217, 255, .08), transparent 28%),
+    linear-gradient(140deg, #05090c, #081011 54%, #06070b);
+}
+.build-header {
+  border-bottom-color: rgba(193, 156, 255, .24);
+}
+.build-header .card-kicker { color: #aeb1f1; }
+.build-header h1 {
+  color: #f0f4f8;
+  text-shadow: 0 0 24px rgba(193, 156, 255, .10);
+}
+.build-tabs button {
+  border-color: #303d48;
+  background: linear-gradient(180deg, rgba(13, 19, 24, .94), rgba(7, 11, 15, .98));
+}
+.build-tabs button.selected {
+  border-color: rgba(193, 156, 255, .64);
+  background:
+    linear-gradient(180deg, rgba(193, 156, 255, .16), rgba(13, 18, 25, .95));
+  color: #eee8ff;
+  box-shadow: inset 0 -2px var(--ui-violet), 0 0 14px rgba(193, 156, 255, .08);
+}
+.build-bay .equipped-card.rarity-field,
+.build-bay .inventory-card.rarity-field,
+.build-bay .item-inspector.rarity-field,
+.build-bay .reconstruct-storage button.rarity-field {
+  --gear-rarity: #b9c6c2;
+  --gear-rarity-border: rgba(157, 174, 168, .62);
+  --gear-rarity-wash: rgba(115, 132, 126, .14);
+}
+.build-bay .equipped-card.rarity-refined,
+.build-bay .inventory-card.rarity-refined,
+.build-bay .item-inspector.rarity-refined,
+.build-bay .reconstruct-storage button.rarity-refined {
+  --gear-rarity: #69bfff;
+  --gear-rarity-border: rgba(91, 174, 235, .82);
+  --gear-rarity-wash: rgba(44, 116, 173, .22);
+}
+.build-bay .equipped-card.rarity-prototype,
+.build-bay .inventory-card.rarity-prototype,
+.build-bay .item-inspector.rarity-prototype,
+.build-bay .reconstruct-storage button.rarity-prototype {
+  --gear-rarity: #c491f2;
+  --gear-rarity-border: rgba(179, 121, 229, .84);
+  --gear-rarity-wash: rgba(113, 67, 158, .23);
+}
+.build-bay .equipped-card.rarity-singular,
+.build-bay .inventory-card.rarity-singular,
+.build-bay .item-inspector.rarity-singular,
+.build-bay .reconstruct-storage button.rarity-singular {
+  --gear-rarity: #f3b15f;
+  --gear-rarity-border: rgba(235, 158, 75, .92);
+  --gear-rarity-wash: rgba(151, 89, 27, .27);
+}
+.build-bay .equipped-card.rarity-refined {
+  border-color: rgba(91, 174, 235, .76);
+  background: linear-gradient(145deg, rgba(39, 103, 157, .25), rgba(8, 14, 19, .95));
+}
+.build-bay .equipped-card.rarity-refined > span { color: #7cc8ff; }
+.build-bay .equipped-card.rarity-prototype {
+  border-color: rgba(179, 121, 229, .80);
+  background: linear-gradient(145deg, rgba(100, 58, 143, .25), rgba(13, 10, 20, .96));
+}
+.build-bay .equipped-card.rarity-prototype > span { color: #d1a7f5; }
+.build-bay .equipped-card.rarity-singular {
+  border-color: rgba(235, 158, 75, .90);
+  background: linear-gradient(145deg, rgba(132, 74, 20, .30), rgba(20, 12, 7, .97));
+  box-shadow: inset 0 0 26px rgba(243, 177, 95, .08), 0 0 18px rgba(243, 177, 95, .04);
+}
+.build-bay .equipped-card.rarity-singular > span { color: #f4bf78; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .command-rail-nav button.selected svg {
+    animation: nav-signal-pulse 2.8s ease-in-out infinite alternate;
+  }
+}
+@keyframes nav-signal-pulse {
+  from { filter: drop-shadow(0 0 3px color-mix(in srgb, var(--nav-accent) 24%, transparent)); }
+  to { filter: drop-shadow(0 0 8px color-mix(in srgb, var(--nav-accent) 44%, transparent)); }
+}

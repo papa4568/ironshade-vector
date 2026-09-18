@@ -110,6 +110,7 @@ jobs:
           BROWSER_E2E_APP_URL: http://127.0.0.1:4173/
           BROWSER_E2E_VIEWPORT: ${{ matrix.viewport }}
           BROWSER_E2E_SCREENSHOT: browser-e2e-${{ matrix.viewport }}.png
+          BROWSER_E2E_COMMAND_SCREENSHOT: browser-command-${{ matrix.viewport }}.png
         run: |
           node scripts/browser-runtime-smoke.mjs
           node scripts/verify-authored-operator.mjs
@@ -125,6 +126,7 @@ jobs:
         with:
           name: ironshade-vector-browser-e2e-${{ matrix.viewport }}
           path: |
+            browser-command-${{ matrix.viewport }}.png
             browser-e2e-${{ matrix.viewport }}.png
             browser-e2e-${{ matrix.viewport }}-damaged-vessel.png
             browser-preview.log

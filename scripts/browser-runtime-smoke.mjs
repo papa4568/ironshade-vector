@@ -7,6 +7,7 @@ const startedAt = Date.now();
 const viewportMode = process.env.BROWSER_E2E_VIEWPORT ?? 'desktop';
 const targetLocation = process.env.BROWSER_E2E_LOCATION ?? 'asteroid-refinery';
 const screenshotPath = process.env.BROWSER_E2E_SCREENSHOT ?? 'browser-e2e-smoke.png';
+const commandScreenshotPath = process.env.BROWSER_E2E_COMMAND_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-command.png');
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 if (typeof WebSocket !== 'function') {
@@ -425,6 +426,7 @@ try {
   }
   await accessibilityAudit('command-deck');
   if (viewportMode === 'mobile-landscape') await mobileMenuLayoutAudit();
+  await captureScreenshot(commandScreenshotPath);
 
   await keyboardActivateButton('Operations');
   await waitFor(`[...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'contracts')`, 'Operations navigation');
