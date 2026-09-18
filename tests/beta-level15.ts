@@ -60,6 +60,60 @@ function combatSmoke() {
   assert(state.time > 0, 'Fixed-step simulation should advance time.');
 }
 
+function classMechanicSmoke() {
+  const fresh = createDefaultProfile();
+  assert(fresh.classSelectionComplete === false, 'A fresh profile should require explicit operator class selection.');
+
+  const vanguardProfile = setOperatorClass(fresh, 'vanguard').profile;
+  assert(vanguardProfile.classSelectionComplete === true, 'Confirming an operator class should complete class intake.');
+  const vanguard = createSimulation(deriveCombatBuild(vanguardProfile));
+  assert(vanguard.build.operatorClass === 'vanguard' && vanguard.build.classResonanceTier === 1, 'Vanguard combat build should carry class and starter resonance into simulation.');
+  vanguard.player.currentWeapon = 'breacher';
+  vanguard.player.armor = Math.max(0, vanguard.player.maxArmor - 12);
+  const armorBefore = vanguard.player.armor;
+  const closeTarget = vanguard.enemies[0];
+  for (const enemy of vanguard.enemies) enemy.active = false;
+  closeTarget.active = true;
+  closeTarget.dead = false;
+  closeTarget.x = vanguard.player.x + 95;
+  closeTarget.y = vanguard.player.y;
+  closeTarget.armor = 1;
+  closeTarget.maxArmor = 1;
+  closeTarget.hp = 300;
+  closeTarget.maxHp = 300;
+  closeTarget.statuses.stagger = 10;
+  setAim(vanguard, { x: 1, y: 0 }, false);
+  assert(triggerFire(vanguard), 'Vanguard should be able to fire the Breacher.');
+  for (let index = 0; index < 24; index += 1) stepSimulation(vanguard, 1 / 120);
+  assert(vanguard.classState.vanguardGuard > 0, 'Close Breacher contact should activate Vanguard Breach Guard.');
+  assert(vanguard.player.armor > armorBefore, 'Breaking armor at close range should restore Vanguard armor.');
+
+  const vectorProfile = setOperatorClass(fresh, 'vector').profile;
+  const vector = createSimulation(deriveCombatBuild(vectorProfile));
+  setMove(vector, { x: 1, y: 0 });
+  assert(triggerDodge(vector), 'Vector should be able to dodge into Slipstream.');
+  assert(vector.classState.vectorWindow > 0, 'Vector dodge should prime Slipstream.');
+  const baseCarbineVelocity = vector.weapons.carbine.projectileSpeed;
+  assert(triggerFire(vector), 'Vector should be able to spend Slipstream on a shot.');
+  const slipstreamProjectile = vector.projectiles.find(projectile => projectile.active && projectile.owner === 'player');
+  assert(!!slipstreamProjectile, 'Vector Slipstream shot should create a player projectile.');
+  assert(Math.hypot(slipstreamProjectile.vx, slipstreamProjectile.vy) > baseCarbineVelocity * 1.15, 'Slipstream should materially accelerate the primed shot.');
+  assert(vector.classState.vectorWindow === 0, 'Slipstream should be consumed by the next shot.');
+
+  const systemsProfile = setOperatorClass(fresh, 'systems').profile;
+  const systems = createSimulation(deriveCombatBuild(systemsProfile));
+  setAim(systems, { x: 1, y: 0 }, false);
+  assert(triggerAbility(systems, 0), 'Systems MAG should activate.');
+  const magCooldown = systems.player.abilityCooldowns[0];
+  assert(triggerAbility(systems, 1), 'Systems MARK should chain after MAG.');
+  assert(systems.classState.systemsLinks === 1, 'Systems should bank the first Closed Loop link.');
+  assert(systems.player.abilityCooldowns[0] < magCooldown, 'Closed Loop should advance the previous ability cooldown.');
+  systems.player.weaponHeat.carbine = 0.5;
+  assert(triggerAbility(systems, 2), 'Systems ARC should complete the three-ability loop.');
+  assert(systems.classState.systemsLinks === 0, 'Completing Closed Loop should reset the link counter.');
+  assert(systems.player.weaponHeat.carbine < 0.5, 'Completing Closed Loop should cool the active weapon.');
+}
+
 function objectiveSmoke(profileLevel: number) {
   const campaign = createDefaultCampaign();
   const profile = { ...createDefaultProfile(), level: profileLevel, xp: profileLevel >= 15 ? 7140 : 0 };
@@ -79,6 +133,7 @@ function objectiveSmoke(profileLevel: number) {
 
 installStorage();
 combatSmoke();
+classMechanicSmoke();
 objectiveSmoke(1);
 objectiveSmoke(15);
 
