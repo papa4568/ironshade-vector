@@ -111,8 +111,8 @@ export default function CommandHubVisual({ profile, campaign }: Props) {
       <span><small>RECOVERY LOG</small><b>{campaign.contractsCompleted} contracts</b></span>
     </div>
 
-    <svg className="command-diorama command-bridge-scene" viewBox="0 0 1120 430" role="img" aria-label="MV Quiet Signal command deck with current equipped operator">
-      <title>MV Quiet Signal command deck with current equipped operator</title>
+    <svg className="command-diorama command-bridge-scene" viewBox="0 0 1120 430" role="img" aria-label="MV Quiet Signal command deck with current operator and equipped gear">
+      <title>MV Quiet Signal command deck with current operator and equipped gear</title>
       <defs>
         <linearGradient id="bridgeGlass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#101c1b"/><stop offset=".55" stopColor="#081110"/><stop offset="1" stopColor="#030706"/></linearGradient>
         <linearGradient id="shipHull" x1="0" x2="1"><stop offset="0" stopColor="#172321"/><stop offset=".55" stopColor="#263734"/><stop offset="1" stopColor="#0d1514"/></linearGradient>
@@ -183,7 +183,7 @@ export default function CommandHubVisual({ profile, campaign }: Props) {
 
       <g className="bridge-side-data" fontFamily="monospace">
         <text x="896" y="92" fill="#58766e" fontSize="10">TACTICAL LINK</text>
-        <text x="896" y="110" fill="#b8cbc5" fontSize="13">{equipped.length}/6 SYSTEMS</text>
+        <text x="896" y="110" fill="#b8cbc5" fontSize="13">TASKING READY</text>\n        <text x="896" y="126" fill="#7b9b93" fontSize="10">{equipped.length}/6 SYSTEMS LINKED</text>
         <text x="896" y="150" fill="#58766e" fontSize="10">PRIMARY</text>
         <text x="896" y="168" fill="#b8cbc5" fontSize="13">{weapon?.rarity ?? 'UNSET'}</text>
         <text x="896" y="208" fill="#58766e" fontSize="10">RECOVERY INDEX</text>
