@@ -2,7 +2,7 @@ import type { Contract } from './campaign';
 import { applyEncounterLayout, getMissionObjectiveStatus } from './encounters';
 import { createEnvironmentalEventRuntime, stepEnvironmentalEvents, type EnvironmentalEventRuntime } from './environmentalEvents';
 import { applyThreatBudget } from './scaling';
-import { releaseBossGate, type EnemyRole, type EnemyVariant, type SimState } from './sim';
+import { getClassMechanicStatus, releaseBossGate, type EnemyRole, type EnemyVariant, type SimState } from './sim';
 
 export type DirectorRuntime = { elapsed: number; deepElapsed: number; deep: boolean; reinforcementsReleased: boolean; gridTriggered: boolean; defenseTriggered: boolean; pressureWarned: boolean; pressureTriggered: boolean; gravityTriggered: boolean; locationEventA: boolean; locationEventB: boolean; thermalPulseUntil: number; clearSweepElapsed: number; clearSweepWarned: boolean; environmental: EnvironmentalEventRuntime };
 export function createDirector(): DirectorRuntime { return { elapsed: 0, deepElapsed: 0, deep: false, reinforcementsReleased: false, gridTriggered: false, defenseTriggered: false, pressureWarned: false, pressureTriggered: false, gravityTriggered: false, locationEventA: false, locationEventB: false, thermalPulseUntil: 0, clearSweepElapsed: 0, clearSweepWarned: false, environmental: createEnvironmentalEventRuntime() }; }
@@ -38,7 +38,8 @@ function enforcePersistentConditions(state: SimState, contract: Contract) {
 
 export function applyMissionSetup(state: SimState, contract: Contract) {
   state.bossGateHold = true;
-  state.eventText = `${contract.locationName.toUpperCase()} // ${contract.objective.toUpperCase()}`;
+  const classStatus = getClassMechanicStatus(state);
+  state.eventText = `${contract.locationName.toUpperCase()} // ${contract.objective.toUpperCase()}${classStatus.id !== 'none' ? ` // ${classStatus.label}` : ''}`;
   state.eventT = 4;
   const boss = state.enemies.find(enemy => enemy.role === 'boss');
   if (boss) boss.label = contract.deepTarget;
