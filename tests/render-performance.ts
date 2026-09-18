@@ -23,14 +23,22 @@ assert(rendererSource.includes("telegraph.visible = enemy.telegraph > 0"), 'boss
 const desktop = new AdaptiveRenderBudget(false);
 let snapshot = desktop.sample(16.7, 1);
 assert(snapshot.tier === 0, 'desktop should start at full quality');
+assert(snapshot.tierName === 'high', 'desktop full quality should expose the high tier name');
 assert(snapshot.shadows, 'desktop full quality should keep shadows');
+assert(snapshot.shadowMapSize === 1024, 'high tier should use the 1024 shadow budget');
+assert(snapshot.vfxDensity === 1, 'high tier should keep full VFX density');
+assert(snapshot.transparencyScale === 1, 'high tier should keep full transparency budget');
 
 for (let index = 0; index < 90; index += 1) snapshot = desktop.sample(30, 1);
 assert(snapshot.tier >= 1, 'sustained slow frames should lower render quality');
 for (let index = 0; index < 90; index += 1) snapshot = desktop.sample(30, 1);
 assert(snapshot.tier === 2, 'continued slow frames should reach performance tier');
+assert(snapshot.tierName === 'performance', 'slow-frame adaptation should expose the performance tier name');
 assert(!snapshot.shadows, 'performance tier should disable dynamic shadows');
+assert(snapshot.shadowMapSize === 256, 'performance tier should cap shadow-map allocation at 256');
 assert(snapshot.pixelRatioScale < 0.75, 'performance tier should reduce pixel density');
+assert(snapshot.vfxDensity === 0.45, 'performance tier should reduce secondary VFX density');
+assert(snapshot.transparencyScale === 0.4, 'performance tier should reduce transparency-heavy effects');
 
 for (let index = 0; index < 700; index += 1) snapshot = desktop.sample(16.4, 1);
 assert(snapshot.tier === 0, 'sustained healthy frames should recover desktop quality');
@@ -38,10 +46,22 @@ assert(snapshot.tier === 0, 'sustained healthy frames should recover desktop qua
 const coarse = new AdaptiveRenderBudget(true);
 snapshot = coarse.sample(16.7, 1);
 assert(snapshot.tier === 1, 'coarse pointers should start at balanced tier');
+assert(snapshot.tierName === 'balanced', 'coarse/mobile should expose balanced tier at startup');
+assert(snapshot.shadowMapSize === 512, 'balanced tier should cap shadows at 512');
+assert(snapshot.vfxDensity === 0.72, 'balanced tier should reduce secondary VFX density');
+assert(snapshot.transparencyScale === 0.68, 'balanced tier should reduce transparency cost');
 
 const reducedEffects = new AdaptiveRenderBudget(false);
 snapshot = reducedEffects.sample(16.7, 0.45);
 assert(snapshot.tier === 2, 'reduced effect intensity should enforce performance visual tier');
 assert(!snapshot.shadows, 'reduced effect intensity should disable dynamic shadows');
+assert(snapshot.vfxDensity === 0.45 && snapshot.transparencyScale === 0.4, 'reduced effects should enforce the low-cost VFX/transparency budgets');
+
+assert(rendererSource.includes('budget.shadowMapSize'), 'renderer must apply the tier shadow-map budget');
+assert(rendererSource.includes('budget.vfxDensity'), 'renderer must apply the tier VFX density budget');
+assert(rendererSource.includes('budget.transparencyScale'), 'renderer must apply the tier transparency budget');
+assert(rendererSource.includes('dataset.renderTier = budget.tierName'), 'runtime QA must expose the active render tier');
+assert(rendererSource.includes('tier-${budget.tier}'), 'environment signature must react to render-tier transitions so authored LOD can change');
+assert(rendererSource.includes('loadAuthoredRefineryEnvironment(state, world.w, world.h, budget.detailScale)'), 'refinery authored LOD selection must follow the active detail tier');
 
 console.log('RENDER_PERFORMANCE_PASS');
