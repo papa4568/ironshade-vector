@@ -1,5 +1,6 @@
 import { createDefaultCampaign, generateContracts } from '../src/game/campaign';
 import { rollGroundLoot, type GroundLootReceipt } from '../src/game/fieldLoot';
+import { modifierCountForRarity } from '../src/game/lootQuality';
 import { awardRecovery, createDefaultProfile, deriveCombatBuild, levelRequirementForRecovery, locationSingularNames, maxOperatorLevel, type Item } from '../src/game/meta';
 import { applyThreatBudget, operationScalingFor, standardTierCapForOperator } from '../src/game/scaling';
 import { createSimulation, type Telemetry } from '../src/game/sim';
@@ -42,6 +43,9 @@ assert(maxOperatorLevel === 20, `operator cap should be 20, saw ${maxOperatorLev
 assert(levelRequirementForRecovery(12) === 1, 'RL12 should remain starter-tier compatible');
 assert(levelRequirementForRecovery(56) === 20, 'RL56 should require level 20');
 assert(levelRequirementForRecovery(40) > levelRequirementForRecovery(24), 'gear requirements should climb with recovery level');
+assert(modifierCountForRarity('Field', 5, () => 0) === 0, 'Field items should remain clean bases without explicit modifiers');
+assert(modifierCountForRarity('Refined', 0, () => 0) === 2 && modifierCountForRarity('Refined', 0, () => 0.99) === 1, 'Refined items should have one or two modifiers');
+assert(modifierCountForRarity('Prototype', 0, () => 0) === 6 && modifierCountForRarity('Prototype', 0, () => 0.2) === 5 && modifierCountForRarity('Prototype', 0, () => 0.9) === 4, 'Prototype items should use the 4/5/6 modifier structure');
 
 function sequenceRandom(values: number[]) {
   let index = 0;
