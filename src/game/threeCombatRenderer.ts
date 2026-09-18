@@ -1884,15 +1884,14 @@ export class ThreeCombatRenderer {
     this.emergencyLight.intensity = isRefinery ? (reducedEffects ? 7 : 11) : (reducedEffects ? 6 : 9);
 
     const world = getWorldSize();
-    const practicalPositions = [
-      new THREE.Vector3(scaled(world.w * 0.36), 3.1, scaled(world.h * 0.28)),
-      new THREE.Vector3(scaled(world.w * 0.68), 2.8, scaled(world.h * 0.70)),
-    ];
-    this.refineryPracticalLights.forEach((light, index) => {
-      light.visible = isRefinery && (!reducedEffects || index === 0);
-      light.position.copy(practicalPositions[index]);
-      light.intensity = index === 0 ? (reducedEffects ? 6.5 : 10) : 7.5;
-    });
+    const firstPractical = this.refineryPracticalLights[0];
+    firstPractical.visible = isRefinery;
+    firstPractical.position.set(scaled(world.w * 0.36), 3.1, scaled(world.h * 0.28));
+    firstPractical.intensity = reducedEffects ? 6.5 : 10;
+    const secondPractical = this.refineryPracticalLights[1];
+    secondPractical.visible = isRefinery && !reducedEffects;
+    secondPractical.position.set(scaled(world.w * 0.68), 2.8, scaled(world.h * 0.70));
+    secondPractical.intensity = 7.5;
 
     this.keyLight.intensity = solarBoost ? 3.6 : isRefinery ? 2.15 : 2.4;
     this.rimLight.intensity = isRefinery ? 0.95 : 1.1;
@@ -1900,7 +1899,7 @@ export class ThreeCombatRenderer {
     this.renderer.toneMappingExposure = mission.conditions.includes('low-visibility') ? baseExposure * 1.04 : baseExposure;
 
     if (isRefinery) {
-      const practicalCount = this.refineryPracticalLights.filter(light => light.visible).length;
+      const practicalCount = (firstPractical.visible ? 1 : 0) + (secondPractical.visible ? 1 : 0);
       this.renderer.domElement.dataset.environmentLighting = `refinery-key+rim+contact+practical:${practicalCount}+shadow:key`;
       this.renderer.domElement.dataset.environmentTone = `aces-${this.renderer.toneMappingExposure.toFixed(2)}`;
     }
