@@ -4,7 +4,7 @@ import type { EquipmentFaction } from './factionGear';
 import { getNextMissionObjectiveTarget } from './encounters';
 import { findNavigationPath } from './mapPathfinding';
 import { getWorldSize, type CombatObject, type Enemy, type Player, type SimState, type WeaponId } from './sim';
-import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
+import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, locationArtIdentityFor, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
 import { lootColor } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
 import { ENEMY_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
@@ -31,6 +31,30 @@ const factionColors: Record<EquipmentFaction, number> = {
   meridian: 0x7fa697,
   heliostat: 0xe0a45c,
   longarc: 0x79a8bf,
+};
+
+type LocationLightingProfile = {
+  id: string;
+  keyColor: number;
+  rimColor: number;
+  emergencyColor: number;
+  keyIntensity: number;
+  rimIntensity: number;
+  emergencyIntensity: number;
+  exposure: number;
+};
+
+const LOCATION_LIGHTING_PROFILES: Record<Contract['location'], LocationLightingProfile> = {
+  'orbital-station': { id: 'neutral-cyan', keyColor: 0xd8e8e1, rimColor: 0x72a8b2, emergencyColor: 0xd97958, keyIntensity: 2.35, rimIntensity: 1.0, emergencyIntensity: 8.5, exposure: 1.06 },
+  'damaged-vessel': { id: 'emergency-amber', keyColor: 0xd8c6b2, rimColor: 0xa65d48, emergencyColor: 0xf0754f, keyIntensity: 1.8, rimIntensity: 0.92, emergencyIntensity: 12, exposure: 1.0 },
+  'asteroid-refinery': { id: 'furnace-amber', keyColor: 0xe3d0b8, rimColor: 0xc58a4f, emergencyColor: 0xdf7a55, keyIntensity: 2.15, rimIntensity: 0.95, emergencyIntensity: 11, exposure: 1.02 },
+  'spin-habitat': { id: 'cool-green', keyColor: 0xd2e4dc, rimColor: 0x6fb2ac, emergencyColor: 0x6ba89f, keyIntensity: 2.2, rimIntensity: 1.06, emergencyIntensity: 7.8, exposure: 1.07 },
+  'jovian-harvester': { id: 'storm-orange', keyColor: 0xffc89a, rimColor: 0xd59a57, emergencyColor: 0xd46b45, keyIntensity: 2.5, rimIntensity: 1.18, emergencyIntensity: 9.5, exposure: 1.09 },
+  'ice-mine': { id: 'ice-cyan', keyColor: 0xd2e7ef, rimColor: 0x7ec9df, emergencyColor: 0x76cde9, keyIntensity: 2.1, rimIntensity: 1.1, emergencyIntensity: 8, exposure: 1.08 },
+  'solar-yard': { id: 'solar-orange', keyColor: 0xffc89a, rimColor: 0xef8f46, emergencyColor: 0xe27745, keyIntensity: 2.55, rimIntensity: 1.14, emergencyIntensity: 8.8, exposure: 1.1 },
+  'lattice-annex': { id: 'metrology-teal', keyColor: 0xd9e6e2, rimColor: 0x88b8ad, emergencyColor: 0x629d93, keyIntensity: 2.25, rimIntensity: 1.0, emergencyIntensity: 7.6, exposure: 1.05 },
+  'momentum-exchange': { id: 'transfer-blue', keyColor: 0xd4e5ed, rimColor: 0x67b5d5, emergencyColor: 0x4d90ac, keyIntensity: 2.3, rimIntensity: 1.16, emergencyIntensity: 8.2, exposure: 1.06 },
+  'cryo-reserve': { id: 'cold-blue', keyColor: 0xd0e3ed, rimColor: 0x77c6de, emergencyColor: 0x76cde9, keyIntensity: 2.0, rimIntensity: 1.12, emergencyIntensity: 8.4, exposure: 1.07 },
 };
 
 type EnemyRig = {
@@ -1071,9 +1095,10 @@ export class ThreeCombatRenderer {
     const palette = locationPalette(mission.location);
     this.scene.background = new THREE.Color(palette.background);
     this.scene.fog = new THREE.FogExp2(palette.fog, mission.conditions.includes('low-visibility') ? 0.037 : 0.019);
-    this.keyLight.color.setHex(mission.location === 'solar-yard' || mission.location === 'jovian-harvester' ? 0xffc89a : 0xd8e8e1);
-    this.rimLight.color.setHex(palette.accent);
-    this.emergencyLight.color.setHex(mission.location === 'ice-mine' || mission.location === 'cryo-reserve' ? 0x76cde9 : 0xdf7a55);
+    const lightingProfile = LOCATION_LIGHTING_PROFILES[mission.location];
+    this.keyLight.color.setHex(lightingProfile.keyColor);
+    this.rimLight.color.setHex(lightingProfile.rimColor);
+    this.emergencyLight.color.setHex(lightingProfile.emergencyColor);
 
     const world = getWorldSize();
     const floor = new THREE.Mesh(
@@ -1094,6 +1119,10 @@ export class ThreeCombatRenderer {
     this.addPerimeter(world.w, world.h, palette);
     this.addLocationScenery(mission.location, world.w, world.h, palette);
     buildHardSciFiEnvironment(this.environmentRoot, mission, scaled(world.w), scaled(world.h), palette);
+    const artIdentity = locationArtIdentityFor(mission.location);
+    this.renderer.domElement.dataset.locationArt = `${mission.location}:${artIdentity.silhouette}:${artIdentity.material}`;
+    this.renderer.domElement.dataset.locationLighting = `${mission.location}:${artIdentity.lighting}`;
+    this.renderer.domElement.dataset.locationProps = `${artIdentity.propSet}:instanced-shared-library`;
     if (mission.location === 'asteroid-refinery') {
       void this.loadAuthoredRefineryEnvironment(state, world.w, world.h);
     } else {
@@ -2044,6 +2073,7 @@ export class ThreeCombatRenderer {
     const px = scaled(state.player.x);
     const pz = scaled(state.player.y);
     const isRefinery = mission.location === 'asteroid-refinery';
+    const lightingProfile = LOCATION_LIGHTING_PROFILES[mission.location];
     const reducedEffects = budget.tier === 2 || quality < 0.55;
     const solarBoost = mission.location === 'solar-yard'
       && state.time >= 10
@@ -2078,7 +2108,8 @@ export class ThreeCombatRenderer {
     const bossPulse = bossPhaseTwo ? 1 + Math.sin(state.time * 4.6) * 0.16 : 1;
 
     this.emergencyLight.position.set(px + 2.4, 3.2, pz - 2.2);
-    this.emergencyLight.intensity = (isRefinery ? (reducedEffects ? 7 : 11) : (reducedEffects ? 6 : 9)) * (bossPhaseTwo ? bossPulse : 1);
+    this.emergencyLight.color.setHex(lightingProfile.emergencyColor);
+    this.emergencyLight.intensity = lightingProfile.emergencyIntensity * (reducedEffects ? 0.72 : 1) * (bossPhaseTwo ? bossPulse : 1);
 
     const world = getWorldSize();
     const firstPractical = this.refineryPracticalLights[0];
@@ -2090,10 +2121,13 @@ export class ThreeCombatRenderer {
     secondPractical.position.set(scaled(world.w * 0.68), 2.8, scaled(world.h * 0.70));
     secondPractical.intensity = 7.5 * bossPulse;
 
-    this.keyLight.intensity = solarBoost ? 3.6 : isRefinery ? 2.15 : 2.4;
-    this.rimLight.intensity = isRefinery ? 0.95 : 1.1;
-    const baseExposure = solarBoost ? 1.18 : isRefinery ? 1.02 : 1.08;
+    this.keyLight.color.setHex(lightingProfile.keyColor);
+    this.rimLight.color.setHex(lightingProfile.rimColor);
+    this.keyLight.intensity = solarBoost ? Math.max(3.6, lightingProfile.keyIntensity) : lightingProfile.keyIntensity;
+    this.rimLight.intensity = lightingProfile.rimIntensity;
+    const baseExposure = solarBoost ? Math.max(1.18, lightingProfile.exposure) : lightingProfile.exposure;
     this.renderer.toneMappingExposure = mission.conditions.includes('low-visibility') ? baseExposure * 1.04 : baseExposure;
+    this.renderer.domElement.dataset.locationLighting = `${mission.location}:${lightingProfile.id}:aces-${this.renderer.toneMappingExposure.toFixed(2)}`;
 
     if (isRefinery) {
       const practicalCount = (firstPractical.visible ? 1 : 0) + (secondPractical.visible ? 1 : 0);
