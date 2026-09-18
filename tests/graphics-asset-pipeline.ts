@@ -95,6 +95,9 @@ assert(rendererSource.includes("root.getObjectByName('weapon-socket')"), 'author
 assert(rendererSource.includes('syncAuthoredOperatorAnimation(state)'), 'authored operator must receive simulation-driven animation poses');
 assert(rendererSource.includes("dataset.operatorRig = 'articulated'"), 'runtime QA must expose articulated-rig activation');
 assert(rendererSource.includes("dataset.operatorAnimation = mode"), 'runtime QA must expose the active animation state');
+assert(rendererSource.includes('operatorHitUntil'), 'authored operator must track visual-only hit reactions');
+assert(rendererSource.includes("dataset.operatorBlend"), 'operator animation blending telemetry must remain available for QA');
+
 assert(rendererSource.includes('ENEMY_ASSET_FAMILIES[enemy.role]'), 'enemy rendering must select authored assets by combat role');
 assert(rendererSource.includes('void this.loadAuthoredEnemy(visual, enemy)'), 'enemy visuals must load authored assets while retaining procedural fallback');
 assert(rendererSource.includes('syncAuthoredEnemyAnimation(visual, enemy, state)'), 'enemy animation must derive from deterministic simulation state');
@@ -106,6 +109,9 @@ assert(rendererSource.includes("root.getObjectByName('muzzle-socket')"), 'author
 assert(rendererSource.includes('syncAuthoredWeapon(state, operatorFaction)'), 'authored weapons must receive visual-only simulation state');
 assert(rendererSource.includes("dataset.weaponVisual = loaded.length === 3 ? 'authored'"), 'runtime QA must expose authored weapon readiness');
 assert(rendererSource.includes("dataset.weaponFx = player.currentWeapon === 'rail' ? 'lance'"), 'weapon-specific combat readability language must remain explicit');
+assert(rendererSource.includes("'armor-spark'") && rendererSource.includes("'metal-spark'") && rendererSource.includes("'electrical-flash'"), 'impact effects must preserve target/surface-specific visual language');
+assert(rendererSource.includes('dataset.impactFx'), 'impact FX classification must remain observable for runtime QA');
+
 assert(rendererSource.includes('REFINERY_ASSET_FAMILIES'), 'showcase environment must load through authored refinery asset families');
 assert(rendererSource.includes('loadAuthoredRefineryEnvironment(state, world.w, world.h)'), 'Asteroid Refinery must start authored environment loading from the combat scene');
 assert(rendererSource.includes('new THREE.InstancedMesh'), 'repeated refinery props must use instancing');
@@ -115,4 +121,4 @@ assert(rendererSource.includes('this.proceduralRefineryVisuals.forEach'), 'proce
 
 
 
-console.log('GRAPHICS_ASSET_PIPELINE_PASS format=glb mesh=meshopt textures=ktx2 loader=deferred lifecycle=leased lod=adaptive operator=articulated enemies=role-authored weapons=authored+fallback environment=refinery-instanced sockets=muzzle animation=state-driven operatorTriangles=45000 enemyTriangles=30000 weaponTriangles=12000 environmentTriangles=20000');
+console.log('GRAPHICS_ASSET_PIPELINE_PASS format=glb mesh=meshopt textures=ktx2 loader=deferred lifecycle=leased lod=adaptive operator=articulated+hit-blend enemies=role-authored weapons=authored+surface-impacts environment=refinery-instanced sockets=muzzle animation=state-driven operatorTriangles=45000 enemyTriangles=30000 weaponTriangles=12000 environmentTriangles=20000');
