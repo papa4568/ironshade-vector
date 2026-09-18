@@ -268,7 +268,7 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
     <aside className="command-rail" aria-label="Primary navigation">
       <div className="command-rail-brand"><span>IV</span><div><b>QUIET SIGNAL</b><small>VECTOR COMMAND</small></div></div>
       <nav className="command-rail-nav">
-        {primaryAreas.map(({ id, icon: Icon }) => <button key={id} className={primaryArea === id ? 'selected' : ''} aria-current={primaryArea === id ? 'page' : undefined} onClick={() => openPrimaryArea(id)}><Icon aria-hidden="true" size={18} strokeWidth={1.7} /><span><b>{areaLabels[id]}</b><small>{areaDescriptions[id]}</small></span></button>)}
+        {primaryAreas.map(({ id, icon: Icon }) => <button key={id} aria-label={areaLabels[id]} className={primaryArea === id ? 'selected' : ''} aria-current={primaryArea === id ? 'page' : undefined} onClick={() => openPrimaryArea(id)}><Icon aria-hidden="true" size={18} strokeWidth={1.7} /><span><b>{areaLabels[id]}</b><small>{areaDescriptions[id]}</small></span></button>)}
       </nav>
       <button className="command-rail-equipment" onClick={onOpenBuild}><Settings2 aria-hidden="true" size={17} /><span>Equipment</span></button>
       <div className="command-rail-status"><i /><span>LOCAL CORE</span><b>ONLINE</b></div>
