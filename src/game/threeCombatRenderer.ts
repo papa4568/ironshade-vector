@@ -107,6 +107,7 @@ type ProjectileVisual = {
 type RingVisual = THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>;
 type DebrisVisual = THREE.Mesh<THREE.IcosahedronGeometry, THREE.MeshStandardMaterial>;
 type GroundLootVisual = { root: THREE.Group; core: THREE.Mesh<THREE.OctahedronGeometry, THREE.MeshStandardMaterial>; ring: THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>; beam: THREE.Mesh<THREE.CylinderGeometry, THREE.MeshBasicMaterial> };
+type DamageNumberVisual = { sprite: THREE.Sprite; canvas: HTMLCanvasElement; context: CanvasRenderingContext2D; texture: THREE.CanvasTexture; serial: number };
 
 type LocationPalette = {
   background: number;
@@ -246,6 +247,7 @@ export class ThreeCombatRenderer {
   private readonly breachPool: RingVisual[] = [];
   private readonly debrisPool: DebrisVisual[] = [];
   private readonly groundLootPool: GroundLootVisual[] = [];
+  private readonly damageNumberPool: DamageNumberVisual[] = [];
   private readonly projectileCoreGeometry = new THREE.SphereGeometry(0.11, 8, 6);
   private readonly projectileTrailGeometry = new THREE.BoxGeometry(0.62, 0.035, 0.035);
   private readonly groundLootCoreGeometry = new THREE.OctahedronGeometry(0.22, 0);
@@ -385,6 +387,7 @@ export class ThreeCombatRenderer {
     this.syncObjectiveBeacon(state, mission);
     this.syncPlayer(state, operatorFaction);
     this.syncEnemies(state, mobileTargetId);
+    this.syncDamageNumbers(state);
     this.syncProjectiles(state, budget.transparencyScale);
     this.syncGroundLoot(state);
     this.syncHazards(state);
@@ -438,6 +441,8 @@ export class ThreeCombatRenderer {
       visual.authoredOwnedMaterials = [];
       visual.authoredMaterials = [];
     }
+    for (const visual of this.damageNumberPool) visual.texture.dispose();
+    this.damageNumberPool.length = 0;
     disposeTree(this.scene);
     this.renderer.dispose();
   }
@@ -2182,6 +2187,74 @@ export class ThreeCombatRenderer {
       visual.armor.position.x = -barWidth * (1 - armorRatio) / 2;
     }
     for (const [id, visual] of this.enemyVisuals) if (!seen.has(id)) { visual.root.visible = false; visual.barRoot.visible = false; }
+  }
+
+  private ensureDamageNumber(index: number) {
+    while (this.damageNumberPool.length <= index) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 160;
+      canvas.height = 72;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Unable to create damage number canvas context.');
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.minFilter = THREE.LinearFilter;
+      texture.magFilter = THREE.LinearFilter;
+      texture.generateMipmaps = false;
+      const material = new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+        toneMapped: false,
+      });
+      const sprite = new THREE.Sprite(material);
+      sprite.name = 'enemy-damage-number';
+      sprite.renderOrder = 80;
+      sprite.frustumCulled = false;
+      sprite.visible = false;
+      this.dynamicRoot.add(sprite);
+      this.damageNumberPool.push({ sprite, canvas, context, texture, serial: -1 });
+    }
+    return this.damageNumberPool[index];
+  }
+
+  private paintDamageNumber(visual: DamageNumberVisual, value: number, kind: 'armor' | 'health' | 'heavy') {
+    const { canvas, context, texture } = visual;
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    const label = String(Math.max(1, Math.round(value)));
+    const heavy = kind === 'heavy';
+    context.font = `900 ${heavy ? 44 : 38}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.lineJoin = 'round';
+    context.lineWidth = heavy ? 10 : 8;
+    context.strokeStyle = 'rgba(3, 6, 7, 0.9)';
+    context.strokeText(label, canvas.width / 2, canvas.height / 2 + 1);
+    context.fillStyle = kind === 'armor' ? '#8ee8ff' : heavy ? '#ffd27a' : '#fff0dc';
+    context.fillText(label, canvas.width / 2, canvas.height / 2 + 1);
+    texture.needsUpdate = true;
+  }
+
+  private syncDamageNumbers(state: SimState) {
+    let count = 0;
+    for (const popup of state.damageNumbers) {
+      if (!popup.active) continue;
+      const visual = this.ensureDamageNumber(count++);
+      if (visual.serial !== popup.serial) {
+        visual.serial = popup.serial;
+        this.paintDamageNumber(visual, popup.value, popup.kind);
+      }
+      const progress = 1 - popup.life / Math.max(0.01, popup.maxLife);
+      const fade = THREE.MathUtils.clamp(1 - Math.max(0, progress - 0.55) / 0.45, 0, 1);
+      const heavyScale = popup.kind === 'heavy' ? 1.18 : 1;
+      visual.sprite.visible = true;
+      visual.sprite.material.opacity = fade;
+      visual.sprite.position.set(scaled(popup.x), 2.55 + progress * 1.05, scaled(popup.y));
+      visual.sprite.scale.set(1.85 * heavyScale, 0.84 * heavyScale, 1);
+    }
+    for (let index = count; index < this.damageNumberPool.length; index += 1) this.damageNumberPool[index].sprite.visible = false;
+    this.renderer.domElement.dataset.damageNumbers = count > 0 ? 'active' : 'idle';
   }
 
   private ensureProjectile(index: number) {

@@ -240,6 +240,27 @@ function renderGame(ctx: CanvasRenderingContext2D, state: SimState, width: numbe
     if (protocols) { ctx.font = '700 7px ui-monospace, monospace'; ctx.fillStyle = '#c8d8a5'; ctx.textAlign = 'center'; ctx.fillText(protocols, pos.x, tagY - (roleTag ? 20 : 10) - (classTag ? 10 : 0)); ctx.textAlign = 'left'; }
     if (enemy.role === 'boss' && enemy.bossPattern !== 'none') { ctx.font = '9px ui-monospace, monospace'; ctx.fillStyle = '#f1b49c'; ctx.textAlign = 'center'; ctx.fillText(enemy.bossPattern.toUpperCase(), pos.x, pos.y - 78); ctx.textAlign = 'left'; }
   }
+  for (const popup of state.damageNumbers) {
+    if (!popup.active) continue;
+    const progress = 1 - popup.life / Math.max(0.01, popup.maxLife);
+    const pos = project(popup.x, popup.y, camX, camY, width, height);
+    const fade = Math.max(0, Math.min(1, 1 - Math.max(0, progress - 0.55) / 0.45));
+    const heavy = popup.kind === 'heavy';
+    ctx.save();
+    ctx.globalAlpha = fade;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `900 ${heavy ? 22 : 18}px ui-monospace, monospace`;
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = heavy ? 5 : 4;
+    ctx.strokeStyle = 'rgba(3,6,7,.92)';
+    const label = String(Math.max(1, Math.round(popup.value)));
+    const y = pos.y - 76 - progress * 34;
+    ctx.strokeText(label, pos.x, y);
+    ctx.fillStyle = popup.kind === 'armor' ? '#8ee8ff' : heavy ? '#ffd27a' : '#fff0dc';
+    ctx.fillText(label, pos.x, y);
+    ctx.restore();
+  }
   const playerPos = project(p.x, p.y, camX, camY, width, height); const aimEnd = project(p.x + p.aim.x * 96, p.y + p.aim.y * 96, camX, camY, width, height); ctx.strokeStyle = '#b5d6ca'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(playerPos.x, playerPos.y - 18); ctx.lineTo(aimEnd.x, aimEnd.y - 18); ctx.stroke(); ctx.lineWidth = 1; drawOperatorSilhouette(ctx, state, playerPos, operatorFaction);
   if (state.weaponFlash > 0) { ctx.fillStyle = p.currentWeapon === 'rail' ? '#b8edff' : '#efffc7'; if (quality > 0.7) { ctx.shadowBlur = 18; ctx.shadowColor = ctx.fillStyle; } ctx.beginPath(); ctx.arc(aimEnd.x, aimEnd.y - 18, 7, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0; }
   if (state.pulse > 0) { const radius = (0.36 - state.pulse) / 0.36 * 285; ctx.strokeStyle = `rgba(139,220,205,${state.pulse / 0.36})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(playerPos.x, playerPos.y - 10, radius * 1.4, radius * 0.76, 0, 0, Math.PI * 2); ctx.stroke(); ctx.lineWidth = 1; }
