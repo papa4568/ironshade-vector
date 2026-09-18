@@ -102,6 +102,8 @@ try {
         lod: canvas.dataset.environmentLod ?? '',
         instances: Number(canvas.dataset.environmentInstances ?? 0),
         terminals: Number(canvas.dataset.environmentTerminals ?? 0),
+        landmark: canvas.dataset.environmentLandmark ?? '',
+        serviceDetails: canvas.dataset.environmentServiceDetails ?? '',
         lighting: canvas.dataset.environmentLighting ?? '',
         materials: canvas.dataset.environmentMaterials ?? '',
         vfx: canvas.dataset.environmentVfx ?? '',
@@ -124,7 +126,7 @@ try {
     }
 
     if (lastState?.visual === 'authored-refinery') {
-      const expectedKit = new Set(['floor', 'bulkhead', 'processor', 'pipe-rack', 'crate', 'terminal']);
+      const expectedKit = new Set(['floor', 'bulkhead', 'processor', 'pipe-rack', 'service-conduit', 'gantry', 'crate', 'terminal']);
       const kit = new Set(String(lastState.kit ?? '').split(',').filter(Boolean));
       if (![...expectedKit].every(item => kit.has(item))) {
         throw new Error(`Authored refinery kit is incomplete: ${JSON.stringify(lastState)}`);
@@ -137,6 +139,12 @@ try {
       }
       if (!(lastState.terminals >= 1)) {
         throw new Error(`Authored refinery interactive terminals were not mounted: ${JSON.stringify(lastState)}`);
+      }
+      if (lastState.landmark !== 'ore-smelter-gantry') {
+        throw new Error(`Authored refinery bespoke landmark is missing: ${JSON.stringify(lastState)}`);
+      }
+      if (lastState.serviceDetails !== 'service-conduit:6') {
+        throw new Error(`Authored refinery secondary service-detail coverage is incomplete: ${JSON.stringify(lastState)}`);
       }
       if (!String(lastState.lighting).startsWith('refinery-key+rim+contact:player+enemy+practical:')) {
         throw new Error(`Refinery player/enemy readability lighting recipe is not active: ${JSON.stringify(lastState)}`);
@@ -174,7 +182,7 @@ try {
       if (!(lastState.width > 0 && lastState.height > 0)) {
         throw new Error(`Authored refinery canvas is not visible: ${JSON.stringify(lastState)}`);
       }
-      console.log(`AUTHORED_REFINERY_RUNTIME_PASS lod=${lastState.lod} kit=${[...kit].sort().join(',')} instances=${lastState.instances} terminals=${lastState.terminals} lighting=${lastState.lighting} materials=${lastState.materials} vfx=${lastState.vfx} tone=${lastState.tone} effects=${lastState.effectsMode} readability=${lastState.readability} location=${lastState.locationArt} props=${lastState.locationProps} tier=${lastState.renderTier} budget=${lastState.renderBudget} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
+      console.log(`AUTHORED_REFINERY_RUNTIME_PASS lod=${lastState.lod} kit=${[...kit].sort().join(',')} instances=${lastState.instances} terminals=${lastState.terminals} landmark=${lastState.landmark} service=${lastState.serviceDetails} lighting=${lastState.lighting} materials=${lastState.materials} vfx=${lastState.vfx} tone=${lastState.tone} effects=${lastState.effectsMode} readability=${lastState.readability} location=${lastState.locationArt} props=${lastState.locationProps} tier=${lastState.renderTier} budget=${lastState.renderBudget} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
       process.exitCode = 0;
       break;
     }
