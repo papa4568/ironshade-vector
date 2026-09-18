@@ -204,6 +204,43 @@ async function accessibilityAudit(surface) {
   return result;
 }
 
+async function mobileMenuLayoutAudit() {
+  const result = await evaluate(`(() => {
+    const viewport = {
+      width: window.visualViewport?.width ?? window.innerWidth,
+      height: window.visualViewport?.height ?? window.innerHeight,
+    };
+    const visible = element => {
+      if (!element) return false;
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0 && rect.width > 0 && rect.height > 0;
+    };
+    const bounds = element => {
+      if (!visible(element)) return null;
+      const rect = element.getBoundingClientRect();
+      return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
+    };
+    const rail = bounds(document.querySelector('.command-rail'));
+    const workspace = bounds(document.querySelector('.tactical-workspace'));
+    const primaryButtons = [...document.querySelectorAll('.command-rail-nav button')].filter(visible).map(button => ({
+      label: button.textContent?.trim() ?? '',
+      rect: bounds(button),
+    }));
+    const offscreen = primaryButtons.filter(item => item.rect && (item.rect.left < -1 || item.rect.top < -1 || item.rect.right > viewport.width + 1 || item.rect.bottom > viewport.height + 1)).map(item => item.label);
+    const undersized = primaryButtons.filter(item => item.rect && item.rect.height < 40).map(item => item.label);
+    const overlap = !!rail && !!workspace && !(rail.right <= workspace.left || workspace.right <= rail.left || rail.bottom <= workspace.top || workspace.bottom <= rail.top);
+    return { viewport, rail, workspace, primaryCount: primaryButtons.length, offscreen, undersized, overlap, landscape: viewport.width > viewport.height };
+  })()`);
+
+  if (!result.landscape || result.viewport.width > 900) throw new Error(`Mobile command audit did not run in the expected landscape viewport: ${JSON.stringify(result)}`);
+  if (!result.rail || !result.workspace || result.primaryCount !== 5 || result.offscreen.length || result.undersized.length || result.overlap) {
+    throw new Error(`Mobile Tactical Command navigation failed viewport/touch checks: ${JSON.stringify(result)}`);
+  }
+  console.log(`BROWSER_MOBILE_MENU_PASS viewport=${Math.round(result.viewport.width)}x${Math.round(result.viewport.height)} destinations=${result.primaryCount} safe=onscreen+separated`);
+  return result;
+}
+
 async function mobileCombatLayoutAudit() {
   const result = await evaluate(`(() => {
     const viewport = {
@@ -341,6 +378,7 @@ try {
     throw new Error(`Unexpected browser startup surface: ${JSON.stringify(startup)}`);
   }
   await accessibilityAudit('command-deck');
+  if (viewportMode === 'mobile-landscape') await mobileMenuLayoutAudit();
 
   await keyboardActivateButton('Operations');
   await waitFor(`[...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'contracts')`, 'Operations navigation');
