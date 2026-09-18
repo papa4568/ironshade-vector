@@ -4,6 +4,28 @@ const startedAt = Date.now();
 const resumeOnly = process.env.ANDROID_RESUME_CHECK === '1';
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
+function validRenderBudget(value) {
+  if (typeof value !== 'string' || !value) return false;
+  const parts = value.split('+');
+  if (parts.length !== 5) return false;
+  const fields = Object.fromEntries(parts.map(part => {
+    const separator = part.indexOf(':');
+    return separator > 0 ? [part.slice(0, separator), part.slice(separator + 1)] : ['', ''];
+  }));
+  const required = ['pixel', 'shadow', 'vfx', 'transparency', 'detail'];
+  if (!required.every(key => Object.prototype.hasOwnProperty.call(fields, key))) return false;
+  const pixel = Number(fields.pixel);
+  const shadow = Number(fields.shadow);
+  const vfx = Number(fields.vfx);
+  const transparency = Number(fields.transparency);
+  const detail = Number(fields.detail);
+  return Number.isFinite(pixel) && pixel > 0 && pixel <= 1
+    && Number.isInteger(shadow) && shadow >= 0 && shadow <= 2048
+    && Number.isFinite(vfx) && vfx > 0 && vfx <= 1
+    && Number.isFinite(transparency) && transparency > 0 && transparency <= 1
+    && Number.isFinite(detail) && detail > 0 && detail <= 1;
+}
+
 if (typeof WebSocket !== 'function') {
   throw new Error('Node runtime does not expose WebSocket support required for Android runtime smoke testing.');
 }
@@ -215,7 +237,7 @@ if (resumeOnly) {
   if (!['balanced', 'performance'].includes(resumed.tier)) {
     throw new Error(`Android resume did not restore a mobile render tier: ${JSON.stringify(resumed)}`);
   }
-  if (!/^pixel:\\d+\\.\\d{2}\\+shadow:\\d+\\+vfx:\\d+\\.\\d{2}\\+transparency:\\d+\\.\\d{2}\\+detail:\\d+\\.\\d{2}$/.test(resumed.budget)) {
+  if (!validRenderBudget(resumed.budget)) {
     throw new Error(`Android resume render budget telemetry is malformed: ${JSON.stringify(resumed)}`);
   }
   if (!resumed.touch || resumed.canvases < 1) {
@@ -285,7 +307,7 @@ const renderTier = await evaluate(`(() => {
 if (!['balanced', 'performance'].includes(renderTier.tier)) {
   throw new Error(`Android coarse/mobile renderer started outside Balanced/Performance: ${JSON.stringify(renderTier)}`);
 }
-if (!/^pixel:\\d+\\.\\d{2}\\+shadow:\\d+\\+vfx:\\d+\\.\\d{2}\\+transparency:\\d+\\.\\d{2}\\+detail:\\d+\\.\\d{2}$/.test(renderTier.budget)) {
+if (!validRenderBudget(renderTier.budget)) {
   throw new Error(`Android render budget telemetry is malformed: ${JSON.stringify(renderTier)}`);
 }
 console.log(`ANDROID_RENDER_TIER_PASS tier=${renderTier.tier} budget=${renderTier.budget}`);
