@@ -23,6 +23,7 @@ const missionCss = read('src/part4.css');
 const objectiveCss = read('src/part7.css');
 const rootCss = read('src/index.css');
 const mobileCombatCss = read('src/mobileCombatReadability.css');
+const qolCss = read('src/qol.css');
 const browserSmoke = read('scripts/browser-runtime-smoke.mjs');
 const androidSmoke = read('scripts/android-runtime-smoke.mjs');
 const androidResumeGate = androidSmoke.match(/if \(resumeOnly\) \{[\s\S]*?process\.exit\(0\);\n\}/)?.[0] ?? '';
@@ -107,6 +108,9 @@ assert(!gameRootRule.includes('touch-action: none'), 'Combat root still disables
 assert(gameCanvasRule.includes('touch-action: none') && touchStickRule.includes('touch-action: none') && touchButtonRule.includes('touch-action: manipulation'), 'Combat input surfaces are missing scoped touch-action protection.');
 assert(overlayRule.includes('touch-action: pan-y') && overlayRule.includes('overflow-y: auto') && overlayCardRule.includes('touch-action: pan-y') && overlayCardRule.includes('overflow-y: auto'), 'Combat overlays are not explicit vertical touch-scroll surfaces.');
 assert(shipHub.includes('OPERATOR READINESS') && shipHub.includes('readiness-chip'), 'Contract board is missing visible operator/monster readiness guidance.');
+assert(shipHub.includes("type ContractSort = 'level-match'") && shipHub.includes('aria-label="Search contracts"') && shipHub.includes('contract-quick-deploy') && shipHub.includes("filter === 'ready'"), 'Contract Board QoL search, level-match sorting, ready filter, or quick deploy is missing.');
+assert(armory.includes("type InventoryFilter = 'all' | 'new' | 'usable'") && armory.includes('Clear storage filters') && armory.includes('Usable now') && armory.includes("window.addEventListener('keydown', closeInspector)"), 'Equipment storage QoL filtering, reset, or Escape-to-close behavior is missing.');
+assert(qolCss.includes('BETA UI QOL // CONTRACT BOARD + INVENTORY DISCOVERY') && qolCss.includes(':focus-visible') && qolCss.includes('.contract-quick-deploy') && qolCss.includes('.inventory-reset'), 'QoL stylesheet is missing focus visibility, quick deploy, or inventory reset treatment.');
 assert(hubCss.includes('PLAYTEST READINESS VISIBILITY') && hubCss.includes('.contract-readiness.high-gap'), 'Contract readiness styling is missing.');
 const polishCss = read('src/uiPolish.css');
 assert(polishCss.includes('.command-action-row') && polishCss.includes('.stats-help') && polishCss.includes('.compact-discovery'), 'UI polish stylesheet is incomplete.');
