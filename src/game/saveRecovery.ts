@@ -86,6 +86,7 @@ function invalidProfileReason(value: unknown): string | null {
   if (!isRecord(value)) return 'profile root is not an object';
   if (value.version !== PROFILE_VERSION) return `unsupported profile version ${String(value.version ?? 'missing')}`;
   if (!Array.isArray(value.inventory)) return 'profile inventory is not an array';
+  if (value.operatorClass !== undefined && value.operatorClass !== 'vanguard' && value.operatorClass !== 'vector' && value.operatorClass !== 'systems') return 'operatorClass is invalid';
 
   for (const reason of [
     optionalNumberReason(value, 'xp', 0, 10_000_000),

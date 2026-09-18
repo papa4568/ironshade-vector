@@ -1,4 +1,4 @@
-import { createDefaultProfile, awardRecovery, allocateNode, deriveCombatBuild, loadProfile, saveProfile, setSpecialization, setSpecializationOverclock, xpProgress } from '../src/game/meta';
+import { createDefaultProfile, awardRecovery, allocateNode, deriveCombatBuild, gearResonanceForProfile, loadProfile, operatorClassForProfile, saveProfile, setOperatorClass, setSpecialization, setSpecializationOverclock, xpProgress } from '../src/game/meta';
 import { createDefaultCampaign, generateContracts, loadCampaign, saveCampaign, settleContract } from '../src/game/campaign';
 import { withOperationScaling, frameGenerationForRecovery } from '../src/game/scaling';
 import { applyMissionSetup, createDirector } from '../src/game/director';
@@ -83,6 +83,19 @@ objectiveSmoke(1);
 objectiveSmoke(15);
 
 let profile = createDefaultProfile();
+assert(operatorClassForProfile(profile) === 'vanguard', 'Fresh operators should begin on the Vanguard class path.');
+const starterVanguardResonance = gearResonanceForProfile(profile);
+assert(starterVanguardResonance.count === 2 && starterVanguardResonance.tier === 1, 'Starter Breacher + Suit should activate Vanguard Tier I resonance without locking other gear.');
+const classProbe = setOperatorClass(profile, 'systems');
+assert(operatorClassForProfile(classProbe.profile) === 'systems', 'Operator class should be freely changeable aboard the ship.');
+assert(classProbe.profile.specialization === null, 'Changing an unspecialized class should keep specialization empty.');
+assert(JSON.stringify(classProbe.profile.equipped) === JSON.stringify(profile.equipped), 'Changing class must never rewrite the equipped loadout.');
+const starterSystemsResonance = gearResonanceForProfile(classProbe.profile);
+assert(starterSystemsResonance.count === 2 && starterSystemsResonance.tier === 1, 'Starter Rig + Implant should activate Systems Tier I resonance.');
+const vanguardBuild = deriveCombatBuild(profile);
+const systemsBuild = deriveCombatBuild(classProbe.profile);
+assert(vanguardBuild.player.maxArmorAdd > systemsBuild.player.maxArmorAdd, 'Vanguard class identity should materially favor armor.');
+assert(systemsBuild.player.maxCapAdd > vanguardBuild.player.maxCapAdd, 'Systems class identity should materially favor capacitor headroom.');
 let campaign = createDefaultCampaign();
 const starterEquipped = JSON.stringify(profile.equipped);
 const starterIds = new Set(Object.values(profile.equipped).filter(Boolean));
@@ -174,6 +187,8 @@ assert(JSON.stringify(profile.equipped) === starterEquipped, 'Level 15 transitio
 
 const beforeSpecializationPoints = profile.progressionPoints;
 const beforeSpecializationNodes = profile.allocatedNodes.join('|');
+const rejectedCrossClassSpecialization = setSpecialization(profile, 'grid-weaver');
+assert(rejectedCrossClassSpecialization.specialization === null, 'A Vanguard should not be able to select a Systems specialization without changing class.');
 profile = setSpecialization(profile, 'pressure-diver');
 assert(profile.specialization === 'pressure-diver', 'Level 15 should unlock Vector Specialization selection.');
 assert(profile.progressionPoints === beforeSpecializationPoints, 'Choosing a specialization must not consume a progression point.');
@@ -185,6 +200,8 @@ const pressureBaselineBuild = deriveCombatBuild({ ...profile, specialization: nu
 const pressureBuild = deriveCombatBuild(profile);
 assert(pressureBuild.specialization === 'pressure-diver', 'Selected specialization should reach the combat build.');
 assert(pressureBuild.player.maxArmorAdd === pressureBaselineBuild.player.maxArmorAdd - 12, 'Pressure Diver should reduce maximum armor by exactly 12 versus the same equipped loadout.');
+const classSwapAfterSpecialization = setOperatorClass(profile, 'systems');
+assert(classSwapAfterSpecialization.profile.specialization === null && classSwapAfterSpecialization.profile.specializationOverclock === false, 'Changing to an incompatible class should clear its specialization and overclock without touching progression.');
 
 assert(frameGenerationForRecovery(55, 14) === 5, 'Operator level 14 must not access Gen VI even at recovery level 55.');
 assert(frameGenerationForRecovery(55, 15) === 6, 'Operator level 15 should access Gen VI at recovery level 55.');
