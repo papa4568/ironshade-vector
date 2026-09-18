@@ -229,6 +229,8 @@ export class ThreeCombatRenderer {
   private authoredOperatorMaterials: THREE.MeshStandardMaterial[] = [];
   private authoredOperatorOwnedMaterials: THREE.Material[] = [];
   private authoredOperatorRig: OperatorRig | null = null;
+  private operatorHitUntil = -1;
+  private lastPlayerDurability = Number.NaN;
   private disposed = false;
   private environmentSignature = '';
   private objectiveGuideTargetId = '';
@@ -785,6 +787,9 @@ export class ThreeCombatRenderer {
     const reloadDuration = Math.max(0.01, state.weapons[player.reloadWeapon].reloadSeconds);
     const reload = player.reloadT > 0 ? THREE.MathUtils.clamp(player.reloadT / reloadDuration, 0, 1) : 0;
     const dodge = player.dodgeTime > 0 ? THREE.MathUtils.clamp(player.dodgeTime / 0.3, 0, 1) : 0;
+    const hit = state.time < this.operatorHitUntil
+      ? THREE.MathUtils.clamp((this.operatorHitUntil - state.time) / 0.18, 0, 1)
+      : 0;
 
     rig.torso.position.y += idleBreath * 0.012;
     rig.backpack.position.y += idleBreath * 0.008;
@@ -818,6 +823,16 @@ export class ThreeCombatRenderer {
       rig.backpack.rotation.z += 0.16 * dodge;
     }
 
+    if (hit > 0) {
+      const stagger = Math.sin((1 - hit) * Math.PI);
+      rig.torso.rotation.z += 0.22 * stagger;
+      rig.torso.rotation.x += 0.08 * stagger;
+      rig.helmet.rotation.z -= 0.16 * stagger;
+      rig.leftArm.rotation.z += 0.18 * stagger;
+      rig.rightArm.rotation.z -= 0.12 * stagger;
+      rig.hip.position.x -= 0.06 * stagger;
+    }
+
     if (player.dead) {
       rig.hip.position.y -= 0.48;
       rig.torso.rotation.z = -1.02;
@@ -832,14 +847,23 @@ export class ThreeCombatRenderer {
       ? 'down'
       : player.dodgeTime > 0
         ? 'dodge'
-        : player.reloadT > 0
-          ? 'reload'
-          : state.weaponFlash > 0
-            ? 'recoil'
-            : speed > 0.08
-              ? 'locomotion'
-              : 'idle';
+        : hit > 0
+          ? 'hit'
+          : player.reloadT > 0
+            ? 'reload'
+            : state.weaponFlash > 0
+              ? 'recoil'
+              : speed > 0.08
+                ? 'locomotion'
+                : 'idle';
     this.renderer.domElement.dataset.operatorAnimation = mode;
+    this.renderer.domElement.dataset.operatorBlend = [
+      `move:${speed.toFixed(2)}`,
+      `recoil:${recoil.toFixed(2)}`,
+      `reload:${reload.toFixed(2)}`,
+      `dodge:${dodge.toFixed(2)}`,
+      `hit:${hit.toFixed(2)}`,
+    ].join(',');
   }
 
   private resize(width: number, height: number, quality: number, budget: RenderBudgetSnapshot) {
@@ -1144,6 +1168,11 @@ export class ThreeCombatRenderer {
 
   private syncPlayer(state: SimState, operatorFaction: EquipmentFaction | null) {
     const player = state.player;
+    const durability = player.hp + player.armor;
+    if (Number.isFinite(this.lastPlayerDurability) && durability < this.lastPlayerDurability - 0.5 && !player.dead) {
+      this.operatorHitUntil = state.time + 0.18;
+    }
+    this.lastPlayerDurability = durability;
     this.playerRoot.position.set(scaled(player.x), 0, scaled(player.y));
     syncOperatorVisual(this.playerRoot, this.weaponPivot, state, operatorFaction);
     const suitColor = operatorFaction ? factionColors[operatorFaction] : 0x8aa89d;
@@ -1552,18 +1581,65 @@ export class ThreeCombatRenderer {
 
   private syncEffects(state: SimState) {
     let count = 0;
+    let lastImpactLanguage = '';
     for (const effect of state.effects) {
       if (!effect.active) continue;
-      const color = effect.kind === 'arc' ? 0x84caeb : effect.kind === 'breach' ? 0xf07d4d : effect.kind === 'mark' ? 0xd0e07a : 0xc2ddd3;
+      let color = effect.kind === 'arc' ? 0x84caeb : effect.kind === 'breach' ? 0xf07d4d : effect.kind === 'mark' ? 0xd0e07a : 0xc2ddd3;
+      let impactScale = 1;
+      if (effect.kind === 'impact') {
+        const nearbyEnemy = state.enemies
+          .filter(enemy => enemy.active && !enemy.dead)
+          .map(enemy => ({ enemy, distance: Math.hypot(enemy.x - effect.x, enemy.y - effect.y) }))
+          .sort((a, b) => a.distance - b.distance)[0];
+        if (nearbyEnemy && nearbyEnemy.distance < 95) {
+          if (nearbyEnemy.enemy.armor > 0) {
+            color = 0x8ee8ff;
+            impactScale = 1.2;
+            lastImpactLanguage = 'armor-spark';
+          } else {
+            color = 0xff8a68;
+            impactScale = 0.95;
+            lastImpactLanguage = 'hull-spall';
+          }
+        } else {
+          const nearbyObject = state.objects
+            .filter(object => object.active)
+            .map(object => ({
+              object,
+              distance: Math.hypot(object.x + object.w / 2 - effect.x, object.y + object.h / 2 - effect.y),
+            }))
+            .sort((a, b) => a.distance - b.distance)[0];
+          if (nearbyObject && nearbyObject.distance < 110) {
+            if (nearbyObject.object.material === 'bulkhead') {
+              color = 0xf0b164;
+              impactScale = 1.15;
+              lastImpactLanguage = 'metal-spark';
+            } else if (nearbyObject.object.material === 'system') {
+              color = 0x82d8df;
+              impactScale = 1.1;
+              lastImpactLanguage = 'electrical-flash';
+            } else {
+              color = 0xc9a878;
+              impactScale = 0.88;
+              lastImpactLanguage = 'industrial-spall';
+            }
+          } else {
+            lastImpactLanguage = 'generic-spark';
+          }
+        }
+      }
+
       const ring = this.ensureRing(this.effectPool, count++, color);
       const progress = 1 - effect.life / Math.max(0.01, effect.maxLife);
       ring.visible = true;
       ring.material.color.setHex(color);
       ring.material.opacity = Math.max(0, 0.76 * (1 - progress));
       ring.position.set(scaled(effect.x), 0.12 + progress * 0.35, scaled(effect.y));
-      ring.scale.setScalar(Math.max(0.18, scaled(effect.radius) * (0.42 + progress * 0.85)));
+      ring.scale.setScalar(Math.max(0.18, scaled(effect.radius) * (0.42 + progress * 0.85) * impactScale));
+      if (effect.kind === 'impact') ring.rotation.z = state.time * 2.2 + progress * Math.PI;
     }
     for (let index = count; index < this.effectPool.length; index += 1) this.effectPool[index].visible = false;
+    if (lastImpactLanguage) this.renderer.domElement.dataset.impactFx = lastImpactLanguage;
   }
 
   private syncBreaches(state: SimState) {
