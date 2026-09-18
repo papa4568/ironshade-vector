@@ -235,6 +235,7 @@ export class ThreeCombatRenderer {
   private refinerySteam: THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial> | null = null;
   private refineryDecals: THREE.InstancedMesh | null = null;
   private refineryGrimeDecals: THREE.InstancedMesh | null = null;
+  private refineryContactShadows: THREE.InstancedMesh | null = null;
   private refineryLoadGeneration = 0;
   private readonly projectilePool: ProjectileVisual[] = [];
   private readonly hazardPool: RingVisual[] = [];
@@ -463,6 +464,12 @@ export class ThreeCombatRenderer {
       materials.forEach(material => material.dispose());
       this.refineryGrimeDecals = null;
     }
+    if (this.refineryContactShadows) {
+      this.refineryContactShadows.geometry.dispose();
+      const materials = Array.isArray(this.refineryContactShadows.material) ? this.refineryContactShadows.material : [this.refineryContactShadows.material];
+      materials.forEach(material => material.dispose());
+      this.refineryContactShadows = null;
+    }
     for (const instance of this.refineryAssetInstances) instance.release();
     this.refineryAssetInstances.length = 0;
     this.authoredEnvironmentRoot.clear();
@@ -474,6 +481,7 @@ export class ThreeCombatRenderer {
     delete this.renderer.domElement.dataset.environmentTerminals;
     delete this.renderer.domElement.dataset.environmentLandmark;
     delete this.renderer.domElement.dataset.environmentServiceDetails;
+    delete this.renderer.domElement.dataset.environmentSurfaceDetail;
     delete this.renderer.domElement.dataset.environmentLighting;
     delete this.renderer.domElement.dataset.environmentMaterials;
     delete this.renderer.domElement.dataset.environmentVfx;
@@ -487,7 +495,7 @@ export class ThreeCombatRenderer {
     if (material instanceof THREE.MeshStandardMaterial) {
       const tuning = label.includes('floor')
         ? { metalness: 0.64, roughness: 0.54 }
-        : label.includes('bulkhead') || label.includes('pipe') || label.includes('conduit') || label.includes('gantry')
+        : label.includes('bulkhead') || label.includes('pipe') || label.includes('conduit') || label.includes('gantry') || label.includes('wall') || label.includes('cable')
           ? { metalness: 0.82, roughness: 0.38 }
           : label.includes('crate')
             ? { metalness: 0.58, roughness: 0.58 }
@@ -575,6 +583,34 @@ export class ThreeCombatRenderer {
     grime.name = 'refinery-grime-decals';
     this.refineryGrimeDecals = grime;
     this.authoredEnvironmentRoot.add(grime);
+
+    const contactGeometry = new THREE.PlaneGeometry(2.4, 1.6);
+    const contactMaterial = new THREE.MeshBasicMaterial({
+      color: 0x050403,
+      transparent: true,
+      opacity: 0.22,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    const contactShadows = new THREE.InstancedMesh(contactGeometry, contactMaterial, 10);
+    const contactPoints = [
+      [0.28, 0.66, 1.00, 0.72], [0.50, 0.32, 1.12, 0.82], [0.72, 0.64, 1.00, 0.72],
+      [0.50, 0.09, 1.55, 0.62], [0.18, 0.24, 0.72, 0.52], [0.82, 0.24, 0.72, 0.52],
+      [0.18, 0.76, 0.72, 0.52], [0.82, 0.76, 0.72, 0.52], [0.35, 0.50, 0.58, 0.44],
+      [0.65, 0.50, 0.58, 0.44],
+    ];
+    contactPoints.forEach(([x, z, sx, sz], index) => {
+      transform.position.set(width * x, 0.021, height * z);
+      transform.rotation.set(-Math.PI / 2, 0, index * 0.31);
+      transform.scale.set(sx, sz, 1);
+      transform.updateMatrix();
+      contactShadows.setMatrixAt(index, transform.matrix);
+    });
+    contactShadows.instanceMatrix.needsUpdate = true;
+    contactShadows.renderOrder = 1;
+    contactShadows.name = 'refinery-contact-darkening';
+    this.refineryContactShadows = contactShadows;
+    this.authoredEnvironmentRoot.add(contactShadows);
   }
 
   private syncRefineryAtmospherics(state: SimState, detailLevel: number, vfxDensity: number, transparencyScale: number) {
@@ -677,6 +713,24 @@ export class ThreeCombatRenderer {
         { position: new THREE.Vector3(width * 0.50, 0, height * 0.86), rotationY: Math.PI },
       ];
 
+      const wallPanelPlacements: EnvironmentPlacement[] = [
+        { position: new THREE.Vector3(width * 0.115, 0, height * 0.30) },
+        { position: new THREE.Vector3(width * 0.115, 0, height * 0.50) },
+        { position: new THREE.Vector3(width * 0.115, 0, height * 0.70) },
+        { position: new THREE.Vector3(width * 0.885, 0, height * 0.30), rotationY: Math.PI },
+        { position: new THREE.Vector3(width * 0.885, 0, height * 0.50), rotationY: Math.PI },
+        { position: new THREE.Vector3(width * 0.885, 0, height * 0.70), rotationY: Math.PI },
+      ];
+
+      const cableTrayPlacements: EnvironmentPlacement[] = [
+        { position: new THREE.Vector3(width * 0.095, 0, height * 0.20) },
+        { position: new THREE.Vector3(width * 0.095, 0, height * 0.50) },
+        { position: new THREE.Vector3(width * 0.095, 0, height * 0.80) },
+        { position: new THREE.Vector3(width * 0.905, 0, height * 0.20), rotationY: Math.PI },
+        { position: new THREE.Vector3(width * 0.905, 0, height * 0.50), rotationY: Math.PI },
+        { position: new THREE.Vector3(width * 0.905, 0, height * 0.80), rotationY: Math.PI },
+      ];
+
       const serviceConduitPlacements: EnvironmentPlacement[] = [
         { position: new THREE.Vector3(width * 0.08, 0, height * 0.24), rotationY: Math.PI / 2, scale: 0.92 },
         { position: new THREE.Vector3(width * 0.08, 0, height * 0.50), rotationY: Math.PI / 2, scale: 0.92 },
@@ -709,6 +763,8 @@ export class ThreeCombatRenderer {
       instances += this.addInstancedEnvironmentAsset(byKey.get('bulkhead')!.instance, bulkheadPlacements, 'refinery-bulkhead');
       instances += this.addInstancedEnvironmentAsset(byKey.get('processor')!.instance, processorPlacements, 'refinery-processor');
       instances += this.addInstancedEnvironmentAsset(byKey.get('pipeRack')!.instance, pipePlacements, 'refinery-pipe-rack');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('wallPanel')!.instance, wallPanelPlacements, 'refinery-wall-service-panel');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('cableTray')!.instance, cableTrayPlacements, 'refinery-cable-tray');
       instances += this.addInstancedEnvironmentAsset(byKey.get('serviceConduit')!.instance, serviceConduitPlacements, 'refinery-service-conduit');
       instances += this.addInstancedEnvironmentAsset(byKey.get('gantry')!.instance, gantryPlacements, 'refinery-smelter-gantry');
       instances += this.addInstancedEnvironmentAsset(byKey.get('crate')!.instance, cratePlacements, 'refinery-crate');
@@ -719,12 +775,13 @@ export class ThreeCombatRenderer {
       const lods = [...new Set(loaded.map(item => item.lod))].sort();
       this.renderer.domElement.dataset.environmentVisual = 'authored-refinery';
       this.renderer.domElement.dataset.environmentLod = lods.join(',');
-      this.renderer.domElement.dataset.environmentKit = 'floor,bulkhead,processor,pipe-rack,service-conduit,gantry,crate,terminal';
+      this.renderer.domElement.dataset.environmentKit = 'floor,bulkhead,processor,pipe-rack,wall-panel,cable-tray,service-conduit,gantry,crate,terminal';
       this.renderer.domElement.dataset.environmentInstances = String(instances);
       this.renderer.domElement.dataset.environmentTerminals = String(terminalPlacements.length);
       this.renderer.domElement.dataset.environmentLandmark = 'ore-smelter-gantry';
       this.renderer.domElement.dataset.environmentServiceDetails = `service-conduit:${serviceConduitPlacements.length}`;
-      this.renderer.domElement.dataset.environmentMaterials = 'pbr-bounded+emissive+decals:safety+grime';
+      this.renderer.domElement.dataset.environmentSurfaceDetail = `wall-panel:${wallPanelPlacements.length}+cable-tray:${cableTrayPlacements.length}+contact-darkening:10`;
+      this.renderer.domElement.dataset.environmentMaterials = 'pbr-bounded+emissive+decals:safety+grime+contact-darkening';
       this.renderer.domElement.dataset.environmentVfx = 'steam+sparse-sparks+debris+breach+objective';
       this.renderer.domElement.dataset.readabilityLanguage = 'shape+silhouette+luminance';
     } catch (error) {
@@ -741,6 +798,7 @@ export class ThreeCombatRenderer {
       this.renderer.domElement.dataset.environmentVisual = 'procedural-fallback';
       delete this.renderer.domElement.dataset.environmentLandmark;
       delete this.renderer.domElement.dataset.environmentServiceDetails;
+      delete this.renderer.domElement.dataset.environmentSurfaceDetail;
       console.warn('Authored Asteroid Refinery kit failed to load; keeping procedural scenery.', error);
     }
   }
