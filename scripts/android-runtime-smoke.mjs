@@ -220,8 +220,13 @@ if (resumeOnly) {
   await waitFor(`document.readyState === 'complete' && document.title === 'Ironshade Vector'`, 'resumed Ironshade document', 45_000);
   await waitFor(`(() => {
     const canvas = document.querySelector('canvas[data-render-tier]');
-    const text = (document.body?.innerText ?? '').toLowerCase();
-    return Boolean(canvas && text.includes('field coach') && document.querySelector('[aria-label="Touch combat controls"]'));
+    return Boolean(
+      canvas
+      && document.querySelector('[aria-label="Touch combat controls"]')
+      && document.querySelector('.move-stick')
+      && document.querySelector('.fire-button')
+      && document.querySelector('.dodge-button')
+    );
   })()`, 'resumed Android combat surface', 45_000);
 
   const resumed = await evaluate(`(() => {
