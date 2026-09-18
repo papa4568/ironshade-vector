@@ -460,7 +460,7 @@ export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep
   const sponsoredChance = source.faction ? factionGearChance(source.factionReputation ?? 0, deep) : 0;
   const makeRecoveredItem = (slot: EquipmentSlot, index: number) => { const recoveryQuality = rollQuality(actualDepth); return source.faction && random() < sponsoredChance ? makeFactionItem(slot, index, nextLevel, random, source.faction, ordinaryRecoveryLevel, recoveryQuality, `Sponsored recovery // ${factionName}`, profile.level) : makeItem(slot, index, nextLevel, random, [], ordinaryRecoveryLevel, recoveryQuality, `${locationName} contract recovery`, undefined, profile.level); };
   const fieldDrops = fieldLoot ?? [];
-  const fieldSlots = chooseRecoverySlots(profile, fieldDrops.filter(drop => drop.source !== 'boss').length, random);
+  const fieldSlots = chooseRecoverySlots(profile, fieldDrops.filter(drop => drop.source !== 'boss' && drop.rarity !== 'Singular').length, random);
   let fieldSlotIndex = 0;
   const fieldItems: Item[] = fieldDrops.map((drop, index) => {
     const recoveryQuality = Math.max(drop.recoveryQualityFloor, rollQuality(drop.source === 'boss', drop.recoveryQualityFloor as RecoveryQualityGrade)) as RecoveryQualityGrade;
