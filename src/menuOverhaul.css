@@ -3,11 +3,12 @@
    and a cinematic command surface without changing gameplay or save data. */
 
 .ship-hub {
+  --command-safe-left: env(safe-area-inset-left, 0px);
   height: 100%;
   overflow: hidden;
   padding: 0;
   display: grid;
-  grid-template-columns: 176px minmax(0, 1fr);
+  grid-template-columns: calc(176px + var(--command-safe-left)) minmax(0, 1fr);
   background:
     radial-gradient(circle at 74% -18%, rgba(55, 94, 86, .22), transparent 36%),
     linear-gradient(135deg, #050909, #08110f 52%, #040707);
@@ -94,7 +95,9 @@
 }
 .command-rail-nav button {
   width: 100%;
+  min-width: 0;
   min-height: 61px;
+  overflow: hidden;
   display: grid;
   grid-template-columns: 26px minmax(0, 1fr);
   align-items: center;
@@ -117,6 +120,10 @@
 .command-rail-nav button small {
   display: block;
   min-width: 0;
+}
+.command-rail-nav button span {
+  max-width: 100%;
+  overflow: hidden;
 }
 .command-rail-nav button b {
   color: inherit;
@@ -148,7 +155,9 @@
 }
 .command-rail-equipment {
   margin-top: auto;
+  min-width: 0;
   min-height: 42px;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -484,7 +493,7 @@
 }
 
 @media (max-width: 1050px) {
-  .ship-hub { grid-template-columns: 132px minmax(0, 1fr); }
+  .ship-hub { grid-template-columns: calc(132px + var(--command-safe-left)) minmax(0, 1fr); }
   .command-rail-nav button {
     grid-template-columns: 22px minmax(0, 1fr);
     padding: 8px 6px;
@@ -499,7 +508,7 @@
 }
 
 @media (orientation: landscape) and (max-height: 650px) {
-  .ship-hub { grid-template-columns: 94px minmax(0, 1fr); }
+  .ship-hub { grid-template-columns: calc(94px + var(--command-safe-left)) minmax(0, 1fr); }
   .command-rail {
     gap: 8px;
     padding-top: max(8px, env(safe-area-inset-top));
@@ -549,14 +558,30 @@
   .tactical-header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     min-height: 38px;
     padding: 0;
     margin-bottom: 5px;
   }
+  .tactical-header > div { min-width: 0; }
   .tactical-header h1 { font-size: 18px; }
-  .tactical-header p { font-size: 7px; }
+  .tactical-header p {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 7px;
+  }
   .tactical-header .card-kicker { display: none; }
-  .tactical-header .hub-build-button { min-height: 34px; }
+  .tactical-header .hub-build-button {
+    flex: 0 0 auto;
+    min-height: 32px;
+    padding: 0 9px;
+    border-radius: 7px;
+    font-size: 9px;
+    line-height: 1;
+  }
   .hub-resource-ribbon {
     margin-bottom: 5px;
   }
@@ -606,7 +631,12 @@
     padding: 10px;
   }
   .command-card.primary-card b { font-size: 14px; }
-  .command-card.primary-card button { min-height: 40px; }
+  .command-card.primary-card button {
+    min-height: 40px;
+    padding: 0 8px;
+    font-size: 10px;
+    line-height: 1.1;
+  }
   .command-action-row button {
     min-height: 39px;
     padding: 6px 8px;
