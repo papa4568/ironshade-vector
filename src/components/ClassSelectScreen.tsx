@@ -84,7 +84,7 @@ export default function ClassSelectScreen({ profile, onConfirm }: Props) {
           <b>{specializationNames.join(' · ')}</b>
           <span>Specializations deepen this doctrine later; class choice does not spend a progression point.</span>
         </div>
-        <button className="class-confirm" type="button" onClick={() => onConfirm(selectedId)}>
+        <button className="class-confirm" type="button" aria-label={`Confirm ${selected.name}`} onClick={() => onConfirm(selectedId)}>
           <span>Confirm {selected.name}</span>
           <small>Begin aboard Quiet Signal</small>
         </button>
