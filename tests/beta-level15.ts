@@ -1,4 +1,4 @@
-import { createDefaultProfile, awardRecovery, allocateNode, deriveCombatBuild, gearResonanceForProfile, loadProfile, operatorClassForProfile, saveProfile, setOperatorClass, setSpecialization, setSpecializationOverclock, xpProgress } from '../src/game/meta';
+import { createDefaultProfile, awardRecovery, awardVictory, allocateNode, deriveCombatBuild, gearResonanceForProfile, itemBuildAffinities, loadProfile, operatorClassForProfile, operatorClassOnboardingRecovery, saveProfile, setOperatorClass, setSpecialization, setSpecializationOverclock, xpProgress } from '../src/game/meta';
 import { createDefaultCampaign, generateContracts, loadCampaign, saveCampaign, settleContract } from '../src/game/campaign';
 import { withOperationScaling, frameGenerationForRecovery } from '../src/game/scaling';
 import { applyMissionSetup, createDirector } from '../src/game/director';
@@ -63,6 +63,17 @@ function combatSmoke() {
 function classMechanicSmoke() {
   const fresh = createDefaultProfile();
   assert(fresh.classSelectionComplete === false, 'A fresh profile should require explicit operator class selection.');
+
+  for (const classId of ['vanguard', 'vector', 'systems'] as const) {
+    const selected = setOperatorClass(fresh, classId).profile;
+    const expected = operatorClassOnboardingRecovery[classId];
+    const firstRecovery = awardRecovery(selected, telemetry(), false, 0, { operationTier: 1, maxRecoveryLevel: 12, actualDepth: false });
+    assert(firstRecovery.loot[0]?.name === expected[0].name, `${classId} first contract recovery should use its doctrine-aligned onboarding frame.`);
+    assert(itemBuildAffinities(firstRecovery.loot[0]).includes(classId), `${classId} first contract recovery should resonate with the selected class.`);
+    const trainingRecovery = awardVictory(selected, telemetry());
+    assert(trainingRecovery.loot[0]?.name === expected[0].name && trainingRecovery.loot[1]?.name === expected[1].name, `${classId} training recovery should use both doctrine-aligned onboarding frames.`);
+    assert(trainingRecovery.loot.every(item => itemBuildAffinities(item).includes(classId)), `${classId} training recovery should reinforce the chosen class without locking equipment.`);
+  }
 
   const vanguardProfile = setOperatorClass(fresh, 'vanguard').profile;
   assert(vanguardProfile.classSelectionComplete === true, 'Confirming an operator class should complete class intake.');
@@ -247,7 +258,7 @@ const beforeSpecializationNodes = profile.allocatedNodes.join('|');
 const rejectedCrossClassSpecialization = setSpecialization(profile, 'grid-weaver');
 assert(rejectedCrossClassSpecialization.specialization === null, 'A Vanguard should not be able to select a Systems specialization without changing class.');
 profile = setSpecialization(profile, 'pressure-diver');
-assert(profile.specialization === 'pressure-diver', 'Level 15 should unlock Vector Specialization selection.');
+assert(profile.specialization === 'pressure-diver', 'Level 15 should unlock Vanguard specialization selection.');
 assert(profile.progressionPoints === beforeSpecializationPoints, 'Choosing a specialization must not consume a progression point.');
 assert(profile.allocatedNodes.join('|') === beforeSpecializationNodes, 'Choosing a specialization must not rewrite the progression network.');
 profile = setSpecializationOverclock(profile, true);

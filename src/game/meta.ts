@@ -500,6 +500,29 @@ function makeItem(slot: EquipmentSlot, index: number, level: number, random: () 
   const augmentSlots = augmentSlotCount(rarity, frameGeneration);
   return { id: `loot-${Date.now().toString(36)}-${index}-${Math.floor(random() * 99999).toString(36)}`, baseId: base.baseId, name: generationNames[Math.floor(random() * generationNames.length)], slot, equipmentClass: base.equipmentClass, rarity, levelRequirement: levelRequirementForRecovery(recoveryLevel), core: base.core, modifiers: rollModifierSet(base.affixes, count, random, recoveryLevel, recoveryQuality, [], forcedAffixes), recoveryLevel, frameGeneration, frameIdentity, frameImplicit: frameImplicitFor(slot, frameGeneration, frameIdentity, equipmentQuality), equipmentQuality, augmentSlots, augments: [], recoveryQuality, recoverySource };
 }
+
+type ClassOnboardingRecoveryTemplate = { slot: EquipmentSlot; name: string; affixes: [AffixId, AffixId] };
+export const operatorClassOnboardingRecovery: Record<OperatorClassId, [ClassOnboardingRecoveryTemplate, ClassOnboardingRecoveryTemplate]> = {
+  vanguard: [
+    { slot: 'breacher', name: 'Backblast Kestrel Frame', affixes: ['overdrive', 'breachPropulsion'] },
+    { slot: 'suit', name: 'Bulkhead Pressure Skin', affixes: ['vacuumSeal', 'capacitorRecycler'] },
+  ],
+  vector: [
+    { slot: 'carbine', name: 'Slipstream M-7 Driver', affixes: ['hypervelocity', 'countermass'] },
+    { slot: 'suit', name: 'Countermass EVA Harness', affixes: ['servoWeave', 'dodgeVent'] },
+  ],
+  systems: [
+    { slot: 'rig', name: 'Closed-Loop Thermal Rig', affixes: ['cryoloop', 'capacitorRecycler'] },
+    { slot: 'implant', name: 'Relay Cognition Node', affixes: ['arcDrone', 'magRedirect'] },
+  ],
+};
+
+function makeClassOnboardingRecoveryItem(profile: PlayerProfile, index: 0 | 1, level: number, random: () => number, recoveryLevel: number, recoveryQuality: RecoveryQualityGrade, recoverySource: string) {
+  const template = operatorClassOnboardingRecovery[operatorClassForProfile(profile)][index];
+  const item = makeItem(template.slot, index, level, random, [...template.affixes], recoveryLevel, recoveryQuality, recoverySource, 2, profile.level);
+  return { ...item, name: template.name };
+}
+
 export function awardVictory(profile: PlayerProfile, telemetry: Telemetry): VictoryReward {
   const requestedXp = 280 + Math.min(80, Math.round(telemetry.damageDealt / 18));
   const cappedProfileXp = Math.max(0, Math.min(maxLevelXp, profile.xp));
@@ -511,9 +534,10 @@ export function awardVictory(profile: PlayerProfile, telemetry: Telemetry): Vict
   const quality: RecoveryQualityGrade = 1;
   let loot: Item[];
   if (profile.runsCompleted === 0) {
-    loot = [makeItem('breacher', 0, nextLevel, random, ['overdrive', 'breachPropulsion'], 4, quality, 'Quiet Signal training recovery', 2), makeItem('rig', 1, nextLevel, random, ['dodgeVent', 'capacitorRecycler'], 4, quality, 'Quiet Signal training recovery', 2)];
-    loot[0] = { ...loot[0], name: 'Backblast Kestrel Frame' };
-    loot[1] = { ...loot[1], name: 'Slipstream Thermal Rig' };
+    loot = [
+      makeClassOnboardingRecoveryItem(profile, 0, nextLevel, random, 4, quality, 'Quiet Signal training recovery'),
+      makeClassOnboardingRecoveryItem(profile, 1, nextLevel, random, 4, quality, 'Quiet Signal training recovery'),
+    ];
   } else {
     const slots: EquipmentSlot[] = ['carbine', 'breacher', 'rail', 'suit', 'rig', 'implant'];
     const first = slots[Math.floor(random() * slots.length)];
@@ -588,14 +612,10 @@ export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep
   let loot: Item[] = [];
 
   if (profile.runsCompleted === 0) {
-    const first = makeItem('breacher', 0, nextLevel, random, ['overdrive', 'breachPropulsion'], ordinaryRecoveryLevel, Math.max(1, rollQuality(false)) as RecoveryQualityGrade, 'Quiet Signal onboarding recovery', 2, profile.level);
-    loot.push({ ...first, name: 'Backblast Kestrel Frame' });
+    loot.push(makeClassOnboardingRecoveryItem(profile, 0, nextLevel, random, ordinaryRecoveryLevel, Math.max(1, rollQuality(false)) as RecoveryQualityGrade, 'Quiet Signal onboarding recovery'));
     if (deep) {
       if (bossItem) loot.push(bossItem);
-      else {
-        const second = makeItem('rig', 1, nextLevel, random, ['dodgeVent', 'capacitorRecycler'], ordinaryRecoveryLevel, Math.max(1, rollQuality(false)) as RecoveryQualityGrade, 'Quiet Signal onboarding recovery', 2, profile.level);
-        loot.push({ ...second, name: 'Slipstream Thermal Rig' });
-      }
+      else loot.push(makeClassOnboardingRecoveryItem(profile, 1, nextLevel, random, ordinaryRecoveryLevel, Math.max(1, rollQuality(false)) as RecoveryQualityGrade, 'Quiet Signal onboarding recovery'));
     }
   } else if (deep && bossItem) {
     if (locationItem) loot = [bossItem, locationItem];

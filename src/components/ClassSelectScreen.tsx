@@ -4,6 +4,7 @@ import {
   gearResonanceForProfile,
   operatorClassDefinitions,
   operatorClassForProfile,
+  operatorClassOnboardingRecovery,
   specializationDefinitions,
   type OperatorClassId,
   type PlayerProfile,
@@ -77,7 +78,7 @@ export default function ClassSelectScreen({ profile, onConfirm }: Props) {
         <div>
           <small>STARTING RESONANCE</small>
           <b>{resonance.count}/6 · {resonance.tier >= 1 ? 'TIER I ACTIVE' : 'BUILDING'}</b>
-          <span>{selected.resonanceTier1}</span>
+          <span>{selected.resonanceTier1}</span><span>FIRST RECOVERY // {operatorClassOnboardingRecovery[selected.id][0].name}</span>
         </div>
         <div>
           <small>LV15 PATHS</small>
