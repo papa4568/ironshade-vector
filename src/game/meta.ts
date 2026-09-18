@@ -8,17 +8,20 @@ import type { GroundLootReceipt } from './fieldLoot';
 export type EquipmentSlot = WeaponId | 'suit' | 'rig' | 'implant';
 export type Rarity = 'Field' | 'Refined' | 'Prototype' | 'Singular';
 export type AbilityId = 'mag' | 'mark' | 'arc';
+export type OperatorClassId = 'vanguard' | 'vector' | 'systems';
 export type MobileAimAssist = 'light' | 'balanced';
 export type AffixId = 'hypervelocity' | 'countermass' | 'overdrive' | 'cryoloop' | 'extendedFeed' | 'tungsten' | 'vacuumSeal' | 'servoWeave' | 'capacitorRecycler' | 'railFracture' | 'dodgeVent' | 'magRedirect' | 'breachPropulsion' | 'markShear' | 'arcDrone';
 export type ItemModifier = { id: AffixId; label: string; description: string; mechanical: boolean; family?: ModifierFamily; grade?: ModifierGrade };
 export type Item = { id: string; baseId: string; name: string; slot: EquipmentSlot; equipmentClass: string; rarity: Rarity; levelRequirement: number; core: string; modifiers: ItemModifier[]; faction?: EquipmentFaction; singularTrait?: SingularTraitId; singularEffect?: string; recoveryLevel?: number; frameGeneration?: FrameGeneration; frameIdentity?: FrameIdentityId; frameImplicit?: string; equipmentQuality?: number; augmentSlots?: number; augments?: AugmentId[]; recoveryQuality?: RecoveryQualityGrade; recoverySource?: string };
 export type EffectIntensity = 'full' | 'reduced';
 export type ProfileSettings = { aimAssist: MobileAimAssist; rightStickFire: boolean; screenShake: boolean; effectIntensity: EffectIntensity; effectsVolume: number; uiVolume: number; haptics: boolean; telemetrySharing: boolean; tutorialComplete: boolean };
-export type PlayerProfile = { version: 3; xp: number; level: number; progressionPoints: number; allocatedNodes: string[]; abilityMods: Record<AbilityId, string | null>; specialization: SpecializationId | null; specializationOverclock: boolean; inventory: Item[]; equipped: Record<EquipmentSlot, string | null>; settings: ProfileSettings; runsCompleted: number };
+export type PlayerProfile = { version: 3; xp: number; level: number; progressionPoints: number; allocatedNodes: string[]; abilityMods: Record<AbilityId, string | null>; operatorClass?: OperatorClassId; specialization: SpecializationId | null; specializationOverclock: boolean; inventory: Item[]; equipped: Record<EquipmentSlot, string | null>; settings: ProfileSettings; runsCompleted: number };
 export type VictoryReward = { profile: PlayerProfile; xpGained: number; levelsGained: number; loot: Item[] };
 export type ProgressionNode = { id: string; branch: 'Ballistics' | 'Mobility' | 'Systems' | 'Survival' | 'Engineering' | 'Awareness'; name: string; description: string; major?: boolean; requires?: string };
 export type AbilityMod = { id: string; ability: AbilityId; name: string; description: string; tradeoff: string };
-export type SpecializationDefinition = { id: SpecializationId; name: string; identity: string; description: string; tradeoff: string; overclock: string; overclockTradeoff: string };
+export type SpecializationDefinition = { id: SpecializationId; operatorClass: OperatorClassId; name: string; identity: string; description: string; tradeoff: string; overclock: string; overclockTradeoff: string };
+export type OperatorClassDefinition = { id: OperatorClassId; name: string; identity: string; description: string; trait: string; branchAffinities: ProgressionNode['branch'][]; specializationIds: SpecializationId[]; resonanceTier1: string; resonanceTier2: string };
+export type GearResonanceState = { classId: OperatorClassId; count: number; tier: 0 | 1 | 2; nextAt: 2 | 4 | null; matchingItemIds: string[] };
 
 const STORAGE_KEY = 'ironshade-vector-profile-v3';
 const starterItems: Item[] = [
@@ -250,14 +253,102 @@ export const abilityMods: AbilityMod[] = [
 ];
 
 export const specializationDefinitions: SpecializationDefinition[] = [
-  { id: 'pressure-diver', name: 'Pressure Diver', identity: 'Pressure / vacuum manipulation', description: 'MAG below 45% pressure leaves a short player-owned vacuum wake, while ability use sheds accumulated vacuum exposure.', tradeoff: '-12 maximum armor.', overclock: 'Low-pressure wakes last longer and ability use clears more exposure.', overclockTradeoff: '+12% ability capacitor cost.' },
-  { id: 'momentum-broker', name: 'Momentum Broker', identity: 'Recoil / capacitor conversion', description: 'Weapon recoil is treated as recoverable bus energy, returning a capped amount of capacitor per shot.', tradeoff: '-15% passive capacitor regeneration.', overclock: 'Raises the per-shot recoil conversion ceiling from 8 to 10 capacitor.', overclockTradeoff: '+12% weapon recoil.' },
-  { id: 'grid-weaver', name: 'Grid Weaver', identity: 'Machinery-network Arc routing', description: 'Arc Tap through machinery can paint an additional remote target for MARK follow-up.', tradeoff: '-4% direct weapon output.', overclock: 'Machinery Arc also advances Sensor Spike recovery.', overclockTradeoff: '+15% Arc Tap capacitor cost.' },
-  { id: 'survey-deadeye', name: 'Survey Deadeye', identity: 'Marked-target rail precision', description: 'Rail hits consume marks to break committed attacks and create a short Armor Breach window.', tradeoff: 'Sensor Spike marks are 20% shorter and recover 10% slower.', overclock: 'Consuming a mark pulls Sensor Spike back toward a 2.2 second recovery window.', overclockTradeoff: '+8% Rail Lance heat per shot.' },
-  { id: 'redline-pilot', name: 'Redline Pilot', identity: 'Heat / mobility decisions', description: 'Above 75% active-weapon heat, movement acceleration and maximum speed increase instead of encouraging immediate disengagement.', tradeoff: '-18% passive weapon cooling.', overclock: 'A high-heat dodge vents heat and emits a short stagger pulse.', overclockTradeoff: '-8 maximum armor; the high-heat pulse adds 0.18s dodge recovery.' },
-  { id: 'breach-vanguard', name: 'Breach Vanguard', identity: 'Close armor-breaking assault', description: 'Breacher hits inside 300 units gain a capped armor-damage conversion and armor breaks stagger the target.', tradeoff: '-5% movement speed and +10% Breacher heat per shot.', overclock: 'Close armor breaks rebuild a small amount of operator armor.', overclockTradeoff: '-8% Breacher direct-health conversion.' },
-  { id: 'capacitor-conductor', name: 'Capacitor Conductor', identity: 'Ability-cycle combo routing', description: 'Casting a different MAG/MARK/ARC ability within 3.4 seconds returns capped capacitor and rewards deliberate three-button sequencing.', tradeoff: '-12 maximum capacitor.', overclock: 'Completing the third link of a sequence raises the capped refund and cools the active weapon.', overclockTradeoff: '+10% ability capacitor cost.' },
+  { id: 'pressure-diver', operatorClass: 'vanguard', name: 'Pressure Diver', identity: 'Pressure / vacuum manipulation', description: 'MAG below 45% pressure leaves a short player-owned vacuum wake, while ability use sheds accumulated vacuum exposure.', tradeoff: '-12 maximum armor.', overclock: 'Low-pressure wakes last longer and ability use clears more exposure.', overclockTradeoff: '+12% ability capacitor cost.' },
+  { id: 'momentum-broker', operatorClass: 'vector', name: 'Momentum Broker', identity: 'Recoil / capacitor conversion', description: 'Weapon recoil is treated as recoverable bus energy, returning a capped amount of capacitor per shot.', tradeoff: '-15% passive capacitor regeneration.', overclock: 'Raises the per-shot recoil conversion ceiling from 8 to 10 capacitor.', overclockTradeoff: '+12% weapon recoil.' },
+  { id: 'grid-weaver', operatorClass: 'systems', name: 'Grid Weaver', identity: 'Machinery-network Arc routing', description: 'Arc Tap through machinery can paint an additional remote target for MARK follow-up.', tradeoff: '-4% direct weapon output.', overclock: 'Machinery Arc also advances Sensor Spike recovery.', overclockTradeoff: '+15% Arc Tap capacitor cost.' },
+  { id: 'survey-deadeye', operatorClass: 'vector', name: 'Survey Deadeye', identity: 'Marked-target rail precision', description: 'Rail hits consume marks to break committed attacks and create a short Armor Breach window.', tradeoff: 'Sensor Spike marks are 20% shorter and recover 10% slower.', overclock: 'Consuming a mark pulls Sensor Spike back toward a 2.2 second recovery window.', overclockTradeoff: '+8% Rail Lance heat per shot.' },
+  { id: 'redline-pilot', operatorClass: 'vector', name: 'Redline Pilot', identity: 'Heat / mobility decisions', description: 'Above 75% active-weapon heat, movement acceleration and maximum speed increase instead of encouraging immediate disengagement.', tradeoff: '-18% passive weapon cooling.', overclock: 'A high-heat dodge vents heat and emits a short stagger pulse.', overclockTradeoff: '-8 maximum armor; the high-heat pulse adds 0.18s dodge recovery.' },
+  { id: 'breach-vanguard', operatorClass: 'vanguard', name: 'Breach Vanguard', identity: 'Close armor-breaking assault', description: 'Breacher hits inside 300 units gain a capped armor-damage conversion and armor breaks stagger the target.', tradeoff: '-5% movement speed and +10% Breacher heat per shot.', overclock: 'Close armor breaks rebuild a small amount of operator armor.', overclockTradeoff: '-8% Breacher direct-health conversion.' },
+  { id: 'capacitor-conductor', operatorClass: 'systems', name: 'Capacitor Conductor', identity: 'Ability-cycle combo routing', description: 'Casting a different MAG/MARK/ARC ability within 3.4 seconds returns capped capacitor and rewards deliberate three-button sequencing.', tradeoff: '-12 maximum capacitor.', overclock: 'Completing the third link of a sequence raises the capped refund and cools the active weapon.', overclockTradeoff: '+10% ability capacitor cost.' },
 ];
+
+export const operatorClassDefinitions: OperatorClassDefinition[] = [
+  {
+    id: 'vanguard',
+    name: 'Vanguard',
+    identity: 'Breach / armor control',
+    description: 'A pressure-rated frontline operator. Vanguard builds turn close-range impact, armor work, and durable suit geometry into reliable room control.',
+    trait: 'Bulkhead Doctrine // +8 maximum armor and +8% Breacher armor damage.',
+    branchAffinities: ['Ballistics', 'Survival'],
+    specializationIds: ['pressure-diver', 'breach-vanguard'],
+    resonanceTier1: '2 resonant frames // +6 maximum armor and +6% armor damage to all weapons.',
+    resonanceTier2: '4 resonant frames // +8 maximum armor and -8% weapon recoil.',
+  },
+  {
+    id: 'vector',
+    name: 'Vector',
+    identity: 'Mobility / precision routing',
+    description: 'A movement-first operator built around clean firing solutions. Vector builds reward projectile control, low-g handling, and deliberate repositioning.',
+    trait: 'Flight Discipline // +3% move speed, +6% projectile velocity, and -5% Rail recoil.',
+    branchAffinities: ['Mobility', 'Awareness'],
+    specializationIds: ['momentum-broker', 'survey-deadeye', 'redline-pilot'],
+    resonanceTier1: '2 resonant frames // +4% move speed and improved low-g control.',
+    resonanceTier2: '4 resonant frames // +8% projectile velocity and -8% weapon recoil.',
+  },
+  {
+    id: 'systems',
+    name: 'Systems',
+    identity: 'Capacitor / thermal networks',
+    description: 'A systems operator who treats weapons, abilities, and ship-grade electronics as one power network. Systems builds trade raw toughness for cycle control.',
+    trait: 'Closed Loop // +6 maximum capacitor, +6% capacitor regeneration, and -3% ability cost.',
+    branchAffinities: ['Systems', 'Engineering'],
+    specializationIds: ['grid-weaver', 'capacitor-conductor'],
+    resonanceTier1: '2 resonant frames // +8% capacitor regeneration and +6% weapon cooling.',
+    resonanceTier2: '4 resonant frames // +8 maximum capacitor and -6% ability cooldown.',
+  },
+];
+
+const operatorClassIds = new Set<OperatorClassId>(operatorClassDefinitions.map(definition => definition.id));
+const slotClassAffinity: Record<EquipmentSlot, OperatorClassId> = {
+  carbine: 'vector',
+  breacher: 'vanguard',
+  rail: 'vector',
+  suit: 'vanguard',
+  rig: 'systems',
+  implant: 'systems',
+};
+const factionClassAffinity: Record<EquipmentFaction, OperatorClassId> = {
+  meridian: 'vanguard',
+  longarc: 'vector',
+  heliostat: 'systems',
+};
+const modifierClassAffinity: Partial<Record<AffixId, OperatorClassId[]>> = {
+  overdrive: ['vanguard'],
+  tungsten: ['vanguard'],
+  vacuumSeal: ['vanguard'],
+  breachPropulsion: ['vanguard'],
+  hypervelocity: ['vector'],
+  countermass: ['vector'],
+  servoWeave: ['vector'],
+  dodgeVent: ['vector'],
+  markShear: ['vector'],
+  railFracture: ['vector'],
+  cryoloop: ['systems'],
+  capacitorRecycler: ['systems'],
+  magRedirect: ['systems'],
+  arcDrone: ['systems'],
+  extendedFeed: ['vanguard', 'systems'],
+};
+
+export function operatorClassForProfile(profile: Pick<PlayerProfile, 'operatorClass' | 'specialization' | 'allocatedNodes'>): OperatorClassId {
+  if (profile.operatorClass && operatorClassIds.has(profile.operatorClass)) return profile.operatorClass;
+  const specializationClass = specializationDefinitions.find(definition => definition.id === profile.specialization)?.operatorClass;
+  if (specializationClass) return specializationClass;
+  const nodeIds = new Set(profile.allocatedNodes ?? []);
+  let best: { id: OperatorClassId; score: number } = { id: 'vanguard', score: -1 };
+  for (const definition of operatorClassDefinitions) {
+    const score = progressionNodes.filter(node => nodeIds.has(node.id) && definition.branchAffinities.includes(node.branch)).length;
+    if (score > best.score) best = { id: definition.id, score };
+  }
+  return best.id;
+}
+
+export function itemBuildAffinities(item: Item): OperatorClassId[] {
+  const affinities = new Set<OperatorClassId>([slotClassAffinity[item.slot]]);
+  if (item.faction) affinities.add(factionClassAffinity[item.faction]);
+  for (const modifier of item.modifiers) for (const affinity of modifierClassAffinity[modifier.id] ?? []) affinities.add(affinity);
+  return operatorClassDefinitions.map(definition => definition.id).filter(id => affinities.has(id));
+}
 
 function cloneItem(item: Item): Item {
   const recoveryLevel = item.recoveryLevel ?? Math.max(1, Math.min(56, item.levelRequirement * 4));
@@ -288,7 +379,7 @@ const maxLevelXp = levelThresholds[levelThresholds.length - 1];
 
 export function createDefaultProfile(): PlayerProfile {
   const inventory = starterItems.map(cloneItem);
-  return { version: 3, xp: 0, level: 1, progressionPoints: 0, allocatedNodes: [], abilityMods: { mag: null, mark: null, arc: null }, specialization: null, specializationOverclock: false, inventory, equipped: { carbine: 'starter-carbine', breacher: 'starter-breacher', rail: 'starter-rail', suit: 'starter-suit', rig: 'starter-rig', implant: 'starter-implant' }, settings: { aimAssist: 'balanced', rightStickFire: true, screenShake: true, effectIntensity: 'full', effectsVolume: 0.65, uiVolume: 0.45, haptics: true, telemetrySharing: false, tutorialComplete: false }, runsCompleted: 0 };
+  return { version: 3, xp: 0, level: 1, progressionPoints: 0, allocatedNodes: [], abilityMods: { mag: null, mark: null, arc: null }, operatorClass: 'vanguard', specialization: null, specializationOverclock: false, inventory, equipped: { carbine: 'starter-carbine', breacher: 'starter-breacher', rail: 'starter-rail', suit: 'starter-suit', rig: 'starter-rig', implant: 'starter-implant' }, settings: { aimAssist: 'balanced', rightStickFire: true, screenShake: true, effectIntensity: 'full', effectsVolume: 0.65, uiVolume: 0.45, haptics: true, telemetrySharing: false, tutorialComplete: false }, runsCompleted: 0 };
 }
 export function loadProfile(): PlayerProfile {
   if (typeof window === 'undefined') return createDefaultProfile();
@@ -523,13 +614,41 @@ export function unequipSlot(profile: PlayerProfile, slot: EquipmentSlot): { prof
 export function discardItem(profile: PlayerProfile, itemId: string): { profile: PlayerProfile; message: string } { const item = profile.inventory.find(entry => entry.id === itemId); if (!item) return { profile, message: 'Item not found.' }; if (Object.values(profile.equipped).includes(itemId)) return { profile, message: 'Unequip this item before discarding it.' }; return { profile: { ...profile, inventory: profile.inventory.filter(entry => entry.id !== itemId) }, message: `${item.name} discarded.` }; }
 export function allocateNode(profile: PlayerProfile, nodeId: string): { profile: PlayerProfile; message: string } { const node = progressionNodes.find(entry => entry.id === nodeId); if (!node) return { profile, message: 'Progression node unavailable.' }; if (profile.allocatedNodes.includes(nodeId)) return { profile, message: 'Node already allocated.' }; if (profile.progressionPoints <= 0) return { profile, message: 'Gain another level to earn a progression point.' }; if (node.requires && !profile.allocatedNodes.includes(node.requires)) return { profile, message: 'Allocate the previous node in this branch first.' }; return { profile: { ...profile, progressionPoints: profile.progressionPoints - 1, allocatedNodes: [...profile.allocatedNodes, nodeId] }, message: `${node.name} allocated.` }; }
 export function setAbilityMod(profile: PlayerProfile, ability: AbilityId, modId: string | null): PlayerProfile { if (modId && !abilityMods.some(mod => mod.id === modId && mod.ability === ability)) return profile; return { ...profile, abilityMods: { ...profile.abilityMods, [ability]: modId } }; }
-export function setSpecialization(profile: PlayerProfile, specialization: SpecializationId | null): PlayerProfile { if (profile.level < 15) return profile; if (specialization && !specializationDefinitions.some(definition => definition.id === specialization)) return profile; const specializationOverclock = specialization && specialization === profile.specialization && profile.level >= 16 ? profile.specializationOverclock : false; return { ...profile, specialization, specializationOverclock }; }
+export function setOperatorClass(profile: PlayerProfile, operatorClass: OperatorClassId): { profile: PlayerProfile; message: string } {
+  if (!operatorClassIds.has(operatorClass)) return { profile, message: 'Operator class unavailable.' };
+  const current = operatorClassForProfile(profile);
+  if (current === operatorClass && profile.operatorClass === operatorClass) return { profile, message: `${operatorClassDefinitions.find(definition => definition.id === operatorClass)?.name ?? 'Operator'} class already active.` };
+  const specialization = specializationDefinitions.find(definition => definition.id === profile.specialization);
+  const clearsSpecialization = !!specialization && specialization.operatorClass !== operatorClass;
+  const next: PlayerProfile = {
+    ...profile,
+    operatorClass,
+    specialization: clearsSpecialization ? null : profile.specialization,
+    specializationOverclock: clearsSpecialization ? false : profile.specializationOverclock,
+  };
+  const name = operatorClassDefinitions.find(definition => definition.id === operatorClass)?.name ?? 'Operator';
+  return { profile: next, message: clearsSpecialization ? `${name} class active // incompatible specialization cleared; progression nodes and equipment are unchanged.` : `${name} class active // progression nodes, lenses, and equipment remain available.` };
+}
+export function setSpecialization(profile: PlayerProfile, specialization: SpecializationId | null): PlayerProfile {
+  if (profile.level < 15) return profile;
+  const definition = specialization ? specializationDefinitions.find(entry => entry.id === specialization) : undefined;
+  if (specialization && (!definition || definition.operatorClass !== operatorClassForProfile(profile))) return profile;
+  const specializationOverclock = specialization && specialization === profile.specialization && profile.level >= 16 ? profile.specializationOverclock : false;
+  return { ...profile, specialization, specializationOverclock };
+}
 export function setSpecializationOverclock(profile: PlayerProfile, enabled: boolean): PlayerProfile { if (profile.level < 16 || !profile.specialization) return profile; return { ...profile, specializationOverclock: enabled }; }
 export function setProfileSettings(profile: PlayerProfile, settings: Partial<ProfileSettings>): PlayerProfile { return { ...profile, settings: { ...profile.settings, ...settings } }; }
 function equippedItems(profile: PlayerProfile) {
   return (Object.keys(profile.equipped) as EquipmentSlot[])
     .map(slot => itemForSlot(profile, slot))
     .filter((item): item is Item => !!item);
+}
+
+export function gearResonanceForProfile(profile: PlayerProfile, classId: OperatorClassId = operatorClassForProfile(profile)): GearResonanceState {
+  const matchingItemIds = equippedItems(profile).filter(item => itemBuildAffinities(item).includes(classId)).map(item => item.id);
+  const count = matchingItemIds.length;
+  const tier: 0 | 1 | 2 = count >= 4 ? 2 : count >= 2 ? 1 : 0;
+  return { classId, count, tier, nextAt: tier === 0 ? 2 : tier === 1 ? 4 : null, matchingItemIds };
 }
 
 export function factionSetState(profile: PlayerProfile) {
@@ -583,6 +702,51 @@ function applyFactionSetBonuses(build: CombatBuild, profile: PlayerProfile) {
   }
 }
 
+function applyOperatorClassBonuses(build: CombatBuild, profile: PlayerProfile) {
+  const classId = operatorClassForProfile(profile);
+  const resonance = gearResonanceForProfile(profile, classId);
+  if (classId === 'vanguard') {
+    build.player.maxArmorAdd += 8;
+    build.weapon.breacher.armorDamageMul *= 1.08;
+    if (resonance.tier >= 1) {
+      build.player.maxArmorAdd += 6;
+      for (const weapon of Object.values(build.weapon)) weapon.armorDamageMul *= 1.06;
+    }
+    if (resonance.tier >= 2) {
+      build.player.maxArmorAdd += 8;
+      for (const weapon of Object.values(build.weapon)) weapon.recoilMul *= 0.92;
+    }
+  }
+  if (classId === 'vector') {
+    build.player.moveSpeedMul *= 1.03;
+    for (const weapon of Object.values(build.weapon)) weapon.speedMul *= 1.06;
+    build.weapon.rail.recoilMul *= 0.95;
+    if (resonance.tier >= 1) {
+      build.player.moveSpeedMul *= 1.04;
+      build.player.lowGControl += 0.12;
+    }
+    if (resonance.tier >= 2) {
+      for (const weapon of Object.values(build.weapon)) {
+        weapon.speedMul *= 1.08;
+        weapon.recoilMul *= 0.92;
+      }
+    }
+  }
+  if (classId === 'systems') {
+    build.player.maxCapAdd += 6;
+    build.player.capRegenMul *= 1.06;
+    for (const ability of build.abilities) ability.costMul *= 0.97;
+    if (resonance.tier >= 1) {
+      build.player.capRegenMul *= 1.08;
+      for (const weapon of Object.values(build.weapon)) weapon.heatDissipationMul *= 1.06;
+    }
+    if (resonance.tier >= 2) {
+      build.player.maxCapAdd += 8;
+      for (const ability of build.abilities) ability.cooldownMul *= 0.94;
+    }
+  }
+}
+
 function freshBuild(): CombatBuild { const weapon = () => ({ damageMul: 1, speedMul: 1, penetrationAdd: 0, recoilMul: 1, heatPerShotMul: 1, heatDissipationMul: 1, magazineAdd: 0, reloadMul: 1, armorDamageMul: 1, healthMultiplierMul: 1, knockbackMul: 1 }); return { weapon: { carbine: weapon(), breacher: weapon(), rail: weapon() }, player: { maxHpAdd: 0, maxArmorAdd: 0, maxCapAdd: 0, moveSpeedMul: 1, capRegenMul: 1, vacuumResistance: 0, lowGControl: 0, ventSpeedMul: 1 }, mechanics: { railFragment: false, railFragmentScale: 0, dodgeVent: false, dodgeVentScale: 0, magRedirect: false, magRedirectScale: 0, breacherPropulsion: false, breacherPropulsionScale: 0, markWeakArmor: false, markWeakArmorScale: 0, arcDrone: false, arcDroneScale: 0, recoilVectoring: false, breachDoctrine: false, sensorPenetration: false, widebandMark: false, magOverdriveKick: false, arcGroundLoop: false, magBoundarySink: false, markExecutionTrace: false, arcCascadeLattice: false }, singularTraits: [], specialization: null, specializationOverclock: false, abilities: [{ costMul: 1, cooldownMul: 1, powerMul: 1 }, { costMul: 1, cooldownMul: 1, powerMul: 1 }, { costMul: 1, cooldownMul: 1, powerMul: 1 }] }; }
 function applyFrameGeneration(build: CombatBuild, item: Item) { const step = Math.min(4, Math.max(0, (item.frameGeneration ?? 1) - 1)); if (step <= 0) return; if (item.slot === 'carbine') { build.weapon.carbine.speedMul *= 1 + step * 0.025; build.weapon.carbine.penetrationAdd += step * 2; } else if (item.slot === 'breacher') { build.weapon.breacher.damageMul *= 1 + step * 0.025; build.weapon.breacher.knockbackMul *= 1 + step * 0.04; } else if (item.slot === 'rail') { build.weapon.rail.penetrationAdd += step * 4; build.weapon.rail.recoilMul *= 1 - step * 0.025; } else if (item.slot === 'suit') { build.player.maxArmorAdd += step * 4; build.player.vacuumResistance = Math.min(0.9, build.player.vacuumResistance + step * 0.025); } else if (item.slot === 'rig') { build.player.maxCapAdd += step * 4; build.player.capRegenMul *= 1 + step * 0.025; } else { for (const ability of build.abilities) ability.cooldownMul *= 1 - step * 0.02; } }
 function applyAffix(build: CombatBuild, item: Item, modifier: ItemModifier) { const id = modifier.id; const power = modifierPowerFactor(modifier.grade ?? 3); const tradeoff = modifierTradeoffFactor(modifier.grade ?? 3); const weapon = item.slot === 'carbine' || item.slot === 'breacher' || item.slot === 'rail' ? build.weapon[item.slot] : null; if (id === 'hypervelocity' && weapon) { weapon.speedMul *= 1 + 0.18 * power; weapon.penetrationAdd += Math.round(12 * power); weapon.recoilMul *= 1 + 0.1 * tradeoff; } if (id === 'countermass') { if (weapon) { weapon.recoilMul *= 1 - 0.22 * power; weapon.damageMul *= 1 - 0.07 * tradeoff; } else build.player.lowGControl += 0.12 * power; } if (id === 'overdrive' && weapon) { weapon.damageMul *= 1 + 0.14 * power; weapon.recoilMul *= 1 + 0.2 * tradeoff; weapon.heatPerShotMul *= 1 + 0.12 * tradeoff; } if (id === 'cryoloop') { if (weapon) { weapon.heatDissipationMul *= 1 + 0.3 * power; weapon.penetrationAdd -= Math.round(8 * tradeoff); } else for (const stats of Object.values(build.weapon)) stats.heatDissipationMul *= 1 + 0.15 * power; } if (id === 'extendedFeed' && weapon) { weapon.magazineAdd += Math.max(1, Math.round(6 * power)); weapon.reloadMul *= 1 + 0.12 * tradeoff; } if (id === 'tungsten' && weapon) { weapon.armorDamageMul *= 1 + 0.3 * power; weapon.penetrationAdd += Math.round(14 * power); weapon.heatPerShotMul *= 1 + 0.08 * tradeoff; } if (id === 'vacuumSeal') build.player.vacuumResistance = Math.min(0.8, build.player.vacuumResistance + 0.55 * power); if (id === 'servoWeave') { build.player.moveSpeedMul *= 1 + 0.08 * power; build.player.lowGControl += 0.22 * power; } if (id === 'capacitorRecycler') { build.player.capRegenMul *= 1 + 0.2 * power; for (const ability of build.abilities) ability.costMul *= 1 - 0.1 * power; } if (id === 'railFracture') { build.mechanics.railFragment = true; build.mechanics.railFragmentScale = Math.max(build.mechanics.railFragmentScale, power); } if (id === 'dodgeVent') { build.mechanics.dodgeVent = true; build.mechanics.dodgeVentScale = Math.max(build.mechanics.dodgeVentScale, power); } if (id === 'magRedirect') { build.mechanics.magRedirect = true; build.mechanics.magRedirectScale = Math.max(build.mechanics.magRedirectScale, power); } if (id === 'breachPropulsion') { build.mechanics.breacherPropulsion = true; build.mechanics.breacherPropulsionScale = Math.max(build.mechanics.breacherPropulsionScale, power); } if (id === 'markShear') { build.mechanics.markWeakArmor = true; build.mechanics.markWeakArmorScale = Math.max(build.mechanics.markWeakArmorScale, power); } if (id === 'arcDrone') { build.mechanics.arcDrone = true; build.mechanics.arcDroneScale = Math.max(build.mechanics.arcDroneScale, power); } }
@@ -592,6 +756,7 @@ export function deriveCombatBuild(profile: PlayerProfile): CombatBuild {
   if (build.singularTraits.includes('magBloom')) { build.abilities[0].costMul *= 1.25; build.abilities[0].cooldownMul *= 1.08; }
   if (build.singularTraits.includes('markCascade')) build.abilities[1].cooldownMul *= 1.12;
   applyFactionSetBonuses(build, profile);
+  applyOperatorClassBonuses(build, profile);
   const nodes = new Set(profile.allocatedNodes);
   if (nodes.has('ballistics-1')) for (const weapon of Object.values(build.weapon)) weapon.penetrationAdd += 8; if (nodes.has('ballistics-2')) for (const weapon of Object.values(build.weapon)) weapon.armorDamageMul *= 1.15; if (nodes.has('ballistics-3')) build.mechanics.breachDoctrine = true;
   if (nodes.has('mobility-1')) build.player.moveSpeedMul *= 1.06; if (nodes.has('mobility-2')) build.player.lowGControl += 0.28; if (nodes.has('mobility-3')) build.mechanics.recoilVectoring = true;
@@ -620,6 +785,6 @@ export function deriveCombatBuild(profile: PlayerProfile): CombatBuild {
   if (profile.abilityMods.arc === 'arc-cascade') { build.mechanics.arcCascadeLattice = true; build.abilities[2].costMul *= 1.15; build.abilities[2].powerMul *= 0.78; }
   return build;
 }
-export function buildIdentity(profile: PlayerProfile) { const factionDoctrine = factionSetState(profile).sort((a, b) => b.count - a.count).find(state => state.count >= 4); const items = equippedItems(profile); const allModifiers = items.flatMap(item => item.modifiers.map(modifier => modifier.id)); const nodes = new Set(profile.allocatedNodes); const breacher = allModifiers.filter(id => ['overdrive', 'tungsten', 'breachPropulsion'].includes(id)).length + (nodes.has('ballistics-3') ? 2 : 0); const mobile = allModifiers.filter(id => ['countermass', 'servoWeave', 'dodgeVent'].includes(id)).length + (nodes.has('mobility-3') ? 2 : 0); const systems = allModifiers.filter(id => ['capacitorRecycler', 'magRedirect', 'markShear', 'arcDrone'].includes(id)).length + (nodes.has('systems-3') ? 2 : 0); const base = factionDoctrine ? factionDoctrine.definition.combatIdentity : systems >= breacher && systems >= mobile && systems > 0 ? 'Systems / Drone Specialist' : mobile >= breacher && mobile > 0 ? 'Mobile Gunfighter' : breacher > 0 ? 'Heavy Breacher' : 'Generalist Operator'; const specialization = profile.level >= 15 ? specializationDefinitions.find(definition => definition.id === profile.specialization) : undefined; return specialization ? `${specialization.name}${profile.level >= 16 && profile.specializationOverclock ? ' // OVERCLOCK' : ''} · ${base}` : base; }
+export function buildIdentity(profile: PlayerProfile) { const factionDoctrine = factionSetState(profile).sort((a, b) => b.count - a.count).find(state => state.count >= 4); const items = equippedItems(profile); const allModifiers = items.flatMap(item => item.modifiers.map(modifier => modifier.id)); const nodes = new Set(profile.allocatedNodes); const breacher = allModifiers.filter(id => ['overdrive', 'tungsten', 'breachPropulsion'].includes(id)).length + (nodes.has('ballistics-3') ? 2 : 0); const mobile = allModifiers.filter(id => ['countermass', 'servoWeave', 'dodgeVent'].includes(id)).length + (nodes.has('mobility-3') ? 2 : 0); const systems = allModifiers.filter(id => ['capacitorRecycler', 'magRedirect', 'markShear', 'arcDrone'].includes(id)).length + (nodes.has('systems-3') ? 2 : 0); const base = factionDoctrine ? factionDoctrine.definition.combatIdentity : systems >= breacher && systems >= mobile && systems > 0 ? 'Systems / Drone Specialist' : mobile >= breacher && mobile > 0 ? 'Mobile Gunfighter' : breacher > 0 ? 'Heavy Breacher' : 'Generalist Operator'; const classDefinition = operatorClassDefinitions.find(definition => definition.id === operatorClassForProfile(profile))!; const specialization = profile.level >= 15 ? specializationDefinitions.find(definition => definition.id === profile.specialization) : undefined; return specialization ? `${classDefinition.name} / ${specialization.name}${profile.level >= 16 && profile.specializationOverclock ? ' // OVERCLOCK' : ''} · ${base}` : `${classDefinition.name} · ${base}`; }
 export function comparisonSummary(item: Item, equipped: Item | undefined) { const summarize = (entry: Item | undefined) => entry?.modifiers.map(modifier => `${(modifier.family ?? modifierFamilyFor(modifier.id)).toUpperCase()} G${modifier.grade ?? 3} ${modifier.label}`).join(', ') || 'No special modifiers'; return { current: summarize(equipped), candidate: summarize(item) }; }
 export function itemForSlot(profile: PlayerProfile, slot: EquipmentSlot) { const id = profile.equipped[slot]; return id ? profile.inventory.find(item => item.id === id && item.slot === slot) : undefined; }
