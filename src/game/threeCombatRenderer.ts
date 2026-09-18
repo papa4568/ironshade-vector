@@ -482,6 +482,7 @@ export class ThreeCombatRenderer {
     delete this.renderer.domElement.dataset.environmentLandmark;
     delete this.renderer.domElement.dataset.environmentServiceDetails;
     delete this.renderer.domElement.dataset.environmentSurfaceDetail;
+    delete this.renderer.domElement.dataset.environmentMachineDetail;
     delete this.renderer.domElement.dataset.environmentLighting;
     delete this.renderer.domElement.dataset.environmentMaterials;
     delete this.renderer.domElement.dataset.environmentVfx;
@@ -691,6 +692,17 @@ export class ThreeCombatRenderer {
         }
       }
 
+      const floorGratePlacements: EnvironmentPlacement[] = [
+        [0.34, 0.40, 0], [0.66, 0.40, Math.PI / 2],
+        [0.34, 0.60, Math.PI / 2], [0.66, 0.60, 0],
+        [0.18, 0.40, Math.PI / 2], [0.82, 0.40, 0],
+        [0.18, 0.60, 0], [0.82, 0.60, Math.PI / 2],
+      ].map(([x, z, rotationY]) => ({
+        position: new THREE.Vector3(width * x, 0.010, height * z),
+        rotationY,
+        scale: 0.92,
+      }));
+
       const bulkheadPlacements: EnvironmentPlacement[] = [
         { position: new THREE.Vector3(width * 0.14, 0, height * 0.24) },
         { position: new THREE.Vector3(width * 0.14, 0, height * 0.50) },
@@ -760,6 +772,7 @@ export class ThreeCombatRenderer {
 
       let instances = 0;
       instances += this.addInstancedEnvironmentAsset(byKey.get('floor')!.instance, floorPlacements, 'refinery-floor');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('floorGrate')!.instance, floorGratePlacements, 'refinery-floor-service-grate');
       instances += this.addInstancedEnvironmentAsset(byKey.get('bulkhead')!.instance, bulkheadPlacements, 'refinery-bulkhead');
       instances += this.addInstancedEnvironmentAsset(byKey.get('processor')!.instance, processorPlacements, 'refinery-processor');
       instances += this.addInstancedEnvironmentAsset(byKey.get('pipeRack')!.instance, pipePlacements, 'refinery-pipe-rack');
@@ -775,12 +788,13 @@ export class ThreeCombatRenderer {
       const lods = [...new Set(loaded.map(item => item.lod))].sort();
       this.renderer.domElement.dataset.environmentVisual = 'authored-refinery';
       this.renderer.domElement.dataset.environmentLod = lods.join(',');
-      this.renderer.domElement.dataset.environmentKit = 'floor,bulkhead,processor,pipe-rack,wall-panel,cable-tray,service-conduit,gantry,crate,terminal';
+      this.renderer.domElement.dataset.environmentKit = 'floor,floor-grate,bulkhead,processor,pipe-rack,wall-panel,cable-tray,service-conduit,gantry,crate,terminal';
       this.renderer.domElement.dataset.environmentInstances = String(instances);
       this.renderer.domElement.dataset.environmentTerminals = String(terminalPlacements.length);
       this.renderer.domElement.dataset.environmentLandmark = 'ore-smelter-gantry';
       this.renderer.domElement.dataset.environmentServiceDetails = `service-conduit:${serviceConduitPlacements.length}`;
       this.renderer.domElement.dataset.environmentSurfaceDetail = `wall-panel:${wallPanelPlacements.length}+cable-tray:${cableTrayPlacements.length}+contact-darkening:10`;
+      this.renderer.domElement.dataset.environmentMachineDetail = `processor-functional:3+floor-grate:${floorGratePlacements.length}`;
       this.renderer.domElement.dataset.environmentMaterials = 'pbr-bounded+emissive+decals:safety+grime+contact-darkening';
       this.renderer.domElement.dataset.environmentVfx = 'steam+sparse-sparks+debris+breach+objective';
       this.renderer.domElement.dataset.readabilityLanguage = 'shape+silhouette+luminance';
@@ -799,6 +813,7 @@ export class ThreeCombatRenderer {
       delete this.renderer.domElement.dataset.environmentLandmark;
       delete this.renderer.domElement.dataset.environmentServiceDetails;
       delete this.renderer.domElement.dataset.environmentSurfaceDetail;
+      delete this.renderer.domElement.dataset.environmentMachineDetail;
       console.warn('Authored Asteroid Refinery kit failed to load; keeping procedural scenery.', error);
     }
   }
