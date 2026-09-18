@@ -25,9 +25,10 @@ export type Player = { x: number; y: number; vx: number; vy: number; aim: Vec2; 
 export type Hazard = { active: boolean; x: number; y: number; radius: number; life: number; kind: 'shockGrid' | 'gravityWell' | 'coolantJet' | 'vacuumWake' | 'vectorWash' | 'boiloffJet'; owner: 'enemy' | 'environment' | 'player' };
 export type Debris = { active: boolean; x: number; y: number; vx: number; vy: number; radius: number; sectorId: string };
 export type Effect = { active: boolean; x: number; y: number; kind: 'pulse' | 'arc' | 'impact' | 'breach' | 'mark'; life: number; maxLife: number; radius: number };
+export type DamageNumber = { active: boolean; serial: number; x: number; y: number; value: number; kind: 'armor' | 'health' | 'heavy'; life: number; maxLife: number };
 export type RunTracePoint = { t: number; x: number; y: number; hp: number; armor: number; weapon: WeaponId };
 export type Telemetry = { damageDealt: number; damageTaken: number; deaths: number; kills: number; eliteKills: number; eliteProtocolsDefeated: number; killIntervalTotal: number; killIntervalSamples: number; lastKillAt: number; protocolCombinations: Record<string, number>; weaponShots: Record<WeaponId, number>; abilityUses: [number, number, number]; encounterStart: number; bossStart: number; duration: number; trace: RunTracePoint[]; nextTraceAt: number };
-export type SimState = { time: number; build: CombatBuild; weapons: Record<WeaponId, WeaponConfig>; droneTick: number; lastAbilityIndex: number; lastAbilityAt: number; abilityChain: number; bossGateHold: boolean; operationTier: number; monsterLevel: number; maxRecoveryLevel: number; monsterDamageScale: number; groundLoot: GroundLootDrop[]; collectedLoot: GroundLootReceipt[]; player: Player; enemies: Enemy[]; projectiles: Projectile[]; objects: CombatObject[]; sectors: Sector[]; links: PressureLink[]; breaches: Breach[]; hazards: Hazard[]; debris: Debris[]; effects: Effect[]; complete: boolean; bossActive: boolean; bossDefeated: boolean; pulse: number; weaponFlash: number; kills: number; squadSuppressing: boolean; eventText: string; eventT: number; telemetry: Telemetry };
+export type SimState = { time: number; build: CombatBuild; weapons: Record<WeaponId, WeaponConfig>; droneTick: number; lastAbilityIndex: number; lastAbilityAt: number; abilityChain: number; bossGateHold: boolean; operationTier: number; monsterLevel: number; maxRecoveryLevel: number; monsterDamageScale: number; groundLoot: GroundLootDrop[]; collectedLoot: GroundLootReceipt[]; player: Player; enemies: Enemy[]; projectiles: Projectile[]; objects: CombatObject[]; sectors: Sector[]; links: PressureLink[]; breaches: Breach[]; hazards: Hazard[]; debris: Debris[]; effects: Effect[]; damageNumbers: DamageNumber[]; damageNumberSerial: number; complete: boolean; bossActive: boolean; bossDefeated: boolean; pulse: number; weaponFlash: number; kills: number; squadSuppressing: boolean; eventText: string; eventT: number; telemetry: Telemetry };
 export type WeaponConfig = { id: WeaponId; name: string; shortName: string; damage: number; rate: number; projectileSpeed: number; penetration: number; recoil: number; spread: number; heatPerShot: number; heatDissipation: number; magazine: number; reloadSeconds: number; armorDamage: number; healthMultiplier: number; knockback: number; pellets: number; capacitorCost: number };
 export type CombatBuild = { weapon: Record<WeaponId, { damageMul: number; speedMul: number; penetrationAdd: number; recoilMul: number; heatPerShotMul: number; heatDissipationMul: number; magazineAdd: number; reloadMul: number; armorDamageMul: number; healthMultiplierMul: number; knockbackMul: number }>; player: { maxHpAdd: number; maxArmorAdd: number; maxCapAdd: number; moveSpeedMul: number; capRegenMul: number; vacuumResistance: number; lowGControl: number; ventSpeedMul: number }; mechanics: { railFragment: boolean; railFragmentScale: number; dodgeVent: boolean; dodgeVentScale: number; magRedirect: boolean; magRedirectScale: number; breacherPropulsion: boolean; breacherPropulsionScale: number; markWeakArmor: boolean; markWeakArmorScale: number; arcDrone: boolean; arcDroneScale: number; recoilVectoring: boolean; breachDoctrine: boolean; sensorPenetration: boolean; widebandMark: boolean; magOverdriveKick: boolean; arcGroundLoop: boolean; magBoundarySink: boolean; markExecutionTrace: boolean; arcCascadeLattice: boolean }; singularTraits: SingularTraitId[]; specialization: SpecializationId | null; specializationOverclock: boolean; abilities: [{ costMul: number; cooldownMul: number; powerMul: number }, { costMul: number; cooldownMul: number; powerMul: number }, { costMul: number; cooldownMul: number; powerMul: number }] };
 
@@ -114,6 +115,14 @@ function clearLine(state: SimState, ax: number, ay: number, bx: number, by: numb
 function blankStatuses(): StatusTimers { return { armorBreach: 0, disrupted: 0, marked: 0, stagger: 0, conductive: 0, vacuum: 0 }; }
 function staggerDuration(enemy: Enemy, duration: number) { return duration / Math.max(1, enemy.effectiveness); }
 function spawnEffect(state: SimState, x: number, y: number, kind: Effect['kind'], radius: number, life = 0.45) { const effect = state.effects.find(item => !item.active); if (!effect) return; Object.assign(effect, { active: true, x, y, kind, radius, life, maxLife: life }); }
+function spawnDamageNumber(state: SimState, enemy: Enemy, value: number, kind: DamageNumber['kind']) {
+  if (value < 1) return;
+  const slot = state.damageNumbers.find(item => !item.active) ?? state.damageNumbers.reduce((oldest, item) => item.life < oldest.life ? item : oldest, state.damageNumbers[0]);
+  if (!slot) return;
+  const serial = ++state.damageNumberSerial;
+  const jitter = ((serial * 37) % 23) - 11;
+  Object.assign(slot, { active: true, serial, x: enemy.x + jitter, y: enemy.y, value, kind, life: 0.78, maxLife: 0.78 });
+}
 function pushEvent(state: SimState, text: string, duration = 2.2) { state.eventText = text; state.eventT = duration; }
 function hasTrait(state: SimState, trait: SingularTraitId) { return state.build.singularTraits.includes(trait); }
 
@@ -207,12 +216,22 @@ function dealEnemyDamage(state: SimState, enemy: Enemy, amount: number, armorDam
     const penetrated = amount >= 40;
     if (frontal && !penetrated) shieldScale = 0.22;
   }
+  const armorBefore = enemy.armor;
+  const hpBefore = enemy.hp;
   let healthDamage = amount * 0.2 * markedBonus * directScale * anchorScale * shieldScale;
   if (enemy.armor > 0) {
     enemy.armor = Math.max(0, enemy.armor - amount * armorDamageFactor * markedBonus * anchorScale * shieldScale);
     if (enemy.armor <= 0) { enemy.statuses.armorBreach = state.build.mechanics.breachDoctrine ? 12 : 8; spawnEffect(state, enemy.x, enemy.y, 'impact', 48, 0.55); }
   } else healthDamage = amount * healthMultiplier * markedBonus * directScale * anchorScale;
-  if (enemy.statuses.armorBreach > 0) healthDamage *= 1.18; enemy.hp -= healthDamage; state.telemetry.damageDealt += Math.max(0, healthDamage);
+  if (enemy.statuses.armorBreach > 0) healthDamage *= 1.18;
+  enemy.hp -= healthDamage;
+  state.telemetry.damageDealt += Math.max(0, healthDamage);
+  const appliedArmorDamage = Math.max(0, armorBefore - enemy.armor);
+  const appliedHealthDamage = Math.max(0, hpBefore - Math.max(0, enemy.hp));
+  const displayedDamage = appliedArmorDamage + appliedHealthDamage;
+  const armorBroken = armorBefore > 0 && enemy.armor <= 0;
+  const damageKind: DamageNumber['kind'] = armorBroken || displayedDamage >= 34 ? 'heavy' : armorBefore > 0 ? 'armor' : 'health';
+  spawnDamageNumber(state, enemy, displayedDamage, damageKind);
   if (sourceVelocity && sourceKnockback > 0) { enemy.vx += sourceVelocity.x * sourceKnockback; enemy.vy += sourceVelocity.y * sourceKnockback; }
   if (enemy.hp <= 0) finishEnemyDeath(state, enemy);
 }
@@ -289,6 +308,8 @@ export function createSimulation(build: CombatBuild = neutralCombatBuild): SimSt
     monsterDamageScale: 1,
     groundLoot: [],
     collectedLoot: [],
+    damageNumbers: Array.from({ length: 24 }, () => ({ active: false, serial: 0, x: 0, y: 0, value: 0, kind: 'health' as const, life: 0, maxLife: 0.78 })),
+    damageNumberSerial: 0,
     player: { x: 330, y: 590, vx: 0, vy: 0, aim: { x: 1, y: 0 }, move: { x: 0, y: 0 }, hp: 100 + build.player.maxHpAdd, maxHp: 100 + build.player.maxHpAdd, armor: 68 + build.player.maxArmorAdd, maxArmor: 68 + build.player.maxArmorAdd, capacitor: 100 + build.player.maxCapAdd, maxCapacitor: 100 + build.player.maxCapAdd, fireCooldown: 0, abilityCooldowns: [0, 0, 0], dodgeCooldown: 0, dodgeTime: 0, lastDodgeAt: -99, invulnerable: 0, consumableCooldown: 0, weaponHeat: { carbine: 0, breacher: 0, rail: 0 }, mags: { carbine: carbineConfig.magazine, breacher: breacherConfig.magazine, rail: railConfig.magazine }, reloadT: 0, reloadWeapon: 'carbine', ventT: 0, dead: false, currentWeapon: 'carbine', vacuumExposure: 0, disrupted: 0 },
     enemies: [spawnEnemy(1, 'assault', 'Pressure Raider', 760, 500, 76, 38, 1), spawnEnemy(2, 'suppressor', 'Line Suppressor', 1030, 655, 82, 46, -1), spawnEnemy(3, 'technician', 'Systems Tech', 1140, 330, 70, 34, 1), spawnEnemy(4, 'assault', 'Pressure Raider', 1320, 540, 78, 40, -1), spawnEnemy(5, 'suppressor', 'Line Suppressor', 1370, 760, 84, 48, 1), spawnEnemy(6, 'elite', 'Anchor Marshal', 1270, 430, 140, 105, -1), spawnEnemy(7, 'assault', 'Reserve Raider', 1450, 300, 76, 38, 1, false), spawnEnemy(8, 'technician', 'Reserve Systems Tech', 1320, 790, 72, 36, -1, false), spawnEnemy(9, 'technician', 'Carrier Repair Drone', 0, 0, 52, 20, 1, false, 'repairDrone'), spawnEnemy(10, 'technician', 'Carrier Repair Drone', 0, 0, 52, 20, -1, false, 'repairDrone'), spawnEnemy(99, 'boss', 'Dock Warden Orison', 2070, 525, 560, 185, 1, false, 'orison')],
     projectiles: Array.from({ length: 112 }, () => ({ active: false, x: 0, y: 0, vx: 0, vy: 0, radius: 4, damage: 0, life: 0, owner: 'player' as const, weapon: 'carbine' as const, penetration: 0, armorDamage: 0.5, healthMultiplier: 1, knockback: 0.05, lastObjectId: null, lastObjectT: 0 })),
@@ -948,13 +969,14 @@ function stepGroundLoot(state: SimState, dt: number) {
   if (state.bossDefeated && !state.complete && !state.groundLoot.some(drop => drop.source === 'boss' && drop.active && !drop.collected)) { state.complete = true; pushEvent(state, 'COMMAND RECOVERY SECURED // DEEP EXTRACTION READY', 3.2); }
 }
 function stepEffects(state: SimState, dt: number) { for (const effect of state.effects) if (effect.active) { effect.life -= dt; if (effect.life <= 0) effect.active = false; } }
+function stepDamageNumbers(state: SimState, dt: number) { for (const popup of state.damageNumbers) if (popup.active) { popup.life -= dt; if (popup.life <= 0) popup.active = false; } }
 function updateSquad(state: SimState) { state.squadSuppressing = state.enemies.some(enemy => enemy.role === 'suppressor' && enemy.active && !enemy.dead && enemy.telegraph > 0 && clearLine(state, enemy.x, enemy.y, state.player.x, state.player.y)); }
 function stepBuildMechanics(state: SimState) { if (!state.build.mechanics.arcDrone || state.time < state.droneTick) return; const target = state.enemies.filter(enemy => enemy.active && !enemy.dead && (enemy.statuses.disrupted > 0 || enemy.statuses.conductive > 0)).sort((a, b) => Math.hypot(a.x - state.player.x, a.y - state.player.y) - Math.hypot(b.x - state.player.x, b.y - state.player.y))[0]; state.droneTick = state.time + 1.55; if (!target || Math.hypot(target.x - state.player.x, target.y - state.player.y) > 760) return; dealEnemyDamage(state, target, 8 * (state.build.mechanics.arcDroneScale || 1), 0.55, 1); spawnEffect(state, target.x, target.y, 'arc', 48, 0.35); }
 function unlockBoss(state: SimState) { if (state.bossGateHold || state.bossActive || activeSquadCount(state) > 0) return; const boss = findBoss(state); if (!boss) return; boss.active = true; state.bossActive = true; state.telemetry.bossStart = state.time; const link = state.links.find(item => item.id === 'door-bc'); if (link) link.open = true; const gate = state.objects.find(item => item.id === 'boss-gate'); if (gate) gate.active = false; pushEvent(state, `${boss.label.toUpperCase()} ONLINE // DEEP ZONE OPEN`, 4); }
 export function releaseBossGate(state: SimState) { state.bossGateHold = false; unlockBoss(state); }
 export function getSquadRemaining(state: SimState) { return activeSquadCount(state); }
 
-export function stepSimulation(state: SimState, dt: number) { state.time += dt; state.pulse = Math.max(0, state.pulse - dt); state.weaponFlash = Math.max(0, state.weaponFlash - dt); state.eventT = Math.max(0, state.eventT - dt); stepPressure(state, dt); updateSquad(state); stepPlayer(state, dt); for (const enemy of state.enemies) stepEnemy(state, enemy, dt); stepHazards(state, dt); stepDebris(state, dt); stepProjectiles(state, dt); stepGroundLoot(state, dt); stepBuildMechanics(state); stepEffects(state, dt); unlockBoss(state); if (!state.complete) state.telemetry.duration = state.time; if (state.time >= state.telemetry.nextTraceAt && state.telemetry.trace.length < 720) { const p = state.player; state.telemetry.trace.push({ t: Math.round(state.time * 10) / 10, x: Math.round(p.x), y: Math.round(p.y), hp: Math.round(p.hp), armor: Math.round(p.armor), weapon: p.currentWeapon }); state.telemetry.nextTraceAt = state.time + 1; } }
+export function stepSimulation(state: SimState, dt: number) { state.time += dt; state.pulse = Math.max(0, state.pulse - dt); state.weaponFlash = Math.max(0, state.weaponFlash - dt); state.eventT = Math.max(0, state.eventT - dt); stepPressure(state, dt); updateSquad(state); stepPlayer(state, dt); for (const enemy of state.enemies) stepEnemy(state, enemy, dt); stepHazards(state, dt); stepDebris(state, dt); stepProjectiles(state, dt); stepGroundLoot(state, dt); stepBuildMechanics(state); stepEffects(state, dt); stepDamageNumbers(state, dt); unlockBoss(state); if (!state.complete) state.telemetry.duration = state.time; if (state.time >= state.telemetry.nextTraceAt && state.telemetry.trace.length < 720) { const p = state.player; state.telemetry.trace.push({ t: Math.round(state.time * 10) / 10, x: Math.round(p.x), y: Math.round(p.y), hp: Math.round(p.hp), armor: Math.round(p.armor), weapon: p.currentWeapon }); state.telemetry.nextTraceAt = state.time + 1; } }
 export function getWorldSize() { return world; }
 export function getPlayerSector(state: SimState) { return currentSector(state, state.player.x, state.player.y); }
 export function getBoss(state: SimState) { return findBoss(state); }
