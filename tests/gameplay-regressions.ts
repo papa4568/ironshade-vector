@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buyConsumable, createDefaultCampaign, loadCampaign, saveCampaign } from '../src/game/campaign';
-import { aimAtMobileTarget, applyPlayerDamage, createSimulation, triggerConsumable } from '../src/game/sim';
+import { aimAtMobileTarget, applyPlayerDamage, createSimulation, stepSimulation, triggerAbility, triggerConsumable } from '../src/game/sim';
 import { createDefaultProfile, loadProfile, saveProfile } from '../src/game/meta';
 import { CAMPAIGN_STORAGE_KEY, GAME_STATE_STORAGE_KEY, prepareSaveRecovery, PROFILE_STORAGE_KEY } from '../src/game/saveRecovery';
 import { loadGameState, saveGameState } from '../src/game/gamePersistence';
@@ -75,6 +75,24 @@ assert.equal(aimAtMobileTarget(aimState, 'balanced', target.id), target.id);
 assert.ok(aimState.player.aim.x > 0.95, 'first target-switch frame should turn toward the new target instead of snapping 180 degrees');
 for (let i = 0; i < 30; i += 1) aimAtMobileTarget(aimState, 'balanced', target.id);
 assert.ok(aimState.player.aim.x < -0.95, 'assisted aim should still converge fully on the target');
+
+const damageNumberState = createSimulation();
+for (const enemy of damageNumberState.enemies) enemy.active = false;
+const damageTarget = damageNumberState.enemies.find(enemy => enemy.id === 1)!;
+damageTarget.active = true;
+damageTarget.dead = false;
+damageTarget.x = damageNumberState.player.x + 120;
+damageTarget.y = damageNumberState.player.y;
+damageTarget.armor = 38;
+damageTarget.hp = 76;
+damageNumberState.player.aim = { x: 1, y: 0 };
+assert.equal(triggerAbility(damageNumberState, 0), true, 'Magnetic Impulse should provide a deterministic enemy hit for damage-number coverage');
+const armorPopup = damageNumberState.damageNumbers.find(item => item.active);
+assert.ok(armorPopup, 'enemy damage should spawn a floating damage number');
+assert.equal(armorPopup.kind, 'armor', 'armored hits should use the armor damage-number treatment');
+assert.ok(armorPopup.value >= 1, 'damage number should report actual applied durability loss');
+for (let index = 0; index < 50; index += 1) stepSimulation(damageNumberState, 1 / 60);
+assert.equal(damageNumberState.damageNumbers.some(item => item.active), false, 'floating damage numbers should expire instead of accumulating');
 
 const expeditionLootSource = [{ id: 'stage-1-drop', enemyId: 7, enemyLabel: 'Stage One Elite', rarity: 'Prototype' as const, source: 'elite' as const, recoveryQualityFloor: 3 as const, recoveryLevel: 24, monsterLevel: 8 }];
 const expeditionLootCarry = carryExpeditionLoot(expeditionLootSource);
