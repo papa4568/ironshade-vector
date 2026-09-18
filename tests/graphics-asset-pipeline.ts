@@ -95,7 +95,7 @@ assert(rendererSource.includes('void this.loadAuthoredEnemy(visual, enemy)'), 'e
 assert(rendererSource.includes('syncAuthoredEnemyAnimation(visual, enemy, state)'), 'enemy animation must derive from deterministic simulation state');
 assert(rendererSource.includes("dataset.enemyVisual = 'authored'"), 'runtime QA must expose authored enemy activation');
 assert(rendererSource.includes('visual.proceduralVisuals.forEach'), 'procedural enemy bodies must only hide after authored loading succeeds');
-assert(rendererSource.includes('WEAPON_ASSET_FAMILIES[player.currentWeapon]'), 'player weapon rendering must use authored weapon families');
+assert(rendererSource.includes('WEAPON_ASSET_FAMILIES[id]'), 'player weapon loading must use authored weapon families');
 assert(rendererSource.includes('void this.loadAuthoredWeapons()'), 'authored player weapons must load through the shared asset pipeline');
 assert(rendererSource.includes("root.getObjectByName('muzzle-socket')"), 'authored weapons must expose muzzle sockets');
 assert(rendererSource.includes('syncAuthoredWeapon(state, operatorFaction)'), 'authored weapons must receive visual-only simulation state');
