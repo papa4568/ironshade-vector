@@ -1124,3 +1124,426 @@
   from { filter: drop-shadow(0 0 3px color-mix(in srgb, var(--nav-accent) 24%, transparent)); }
   to { filter: drop-shadow(0 0 8px color-mix(in srgb, var(--nav-accent) 44%, transparent)); }
 }
+
+
+/* Command Deck gear showcase */
+.command-bridge-overhaul {
+  display: grid;
+  grid-template-columns: minmax(250px, .92fr) minmax(390px, 1.35fr) minmax(250px, .86fr);
+  grid-template-areas:
+    "copy scene status"
+    "gear scene panel"
+    "progress progress progress";
+  gap: 14px;
+  align-items: start;
+  padding: 18px;
+  overflow: hidden;
+  position: relative;
+}
+.command-bridge-overhaul::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(112deg, rgba(98,217,255,.04), transparent 28%, rgba(193,156,255,.05) 67%, transparent),
+    linear-gradient(180deg, rgba(255,255,255,.015), transparent 22%);
+  pointer-events: none;
+}
+.command-bridge-overhaul .command-bridge-copy {
+  grid-area: copy;
+  position: relative;
+  z-index: 1;
+}
+.command-bridge-overhaul .command-bridge-copy h2 {
+  max-width: 9ch;
+  font-size: clamp(27px, 3.1vw, 46px);
+  line-height: .96;
+  letter-spacing: -.03em;
+}
+.command-bridge-overhaul .command-bridge-copy > p {
+  margin-top: 10px;
+}
+.command-bridge-overhaul .bridge-readiness-band {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+.command-bridge-overhaul .bridge-readiness-band > div,
+.command-bridge-overhaul .bridge-status-stack span,
+.command-bridge-overhaul .bridge-gear-summary span {
+  min-width: 0;
+  border: 1px solid rgba(86, 126, 118, .3);
+  border-radius: 13px;
+  background:
+    linear-gradient(180deg, rgba(11, 24, 23, .92), rgba(6, 12, 13, .96));
+  box-shadow: inset 0 0 20px rgba(98, 217, 255, .025);
+}
+.command-bridge-overhaul .bridge-readiness-band > div {
+  padding: 10px 11px;
+}
+.command-bridge-overhaul .bridge-readiness-band small,
+.command-bridge-overhaul .bridge-status-stack small,
+.command-bridge-overhaul .bridge-gear-panel-header small,
+.command-bridge-overhaul .bridge-gear-summary small,
+.command-bridge-overhaul .bridge-gear-slot small {
+  display: block;
+  color: #6f8b84;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+.command-bridge-overhaul .bridge-readiness-band b,
+.command-bridge-overhaul .bridge-status-stack b,
+.command-bridge-overhaul .bridge-gear-summary b {
+  display: block;
+  margin-top: 4px;
+  color: #edf7f4;
+  font-size: 11px;
+}
+.command-bridge-overhaul .bridge-status-stack {
+  grid-area: status;
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+.command-bridge-overhaul .bridge-status-stack span {
+  padding: 11px 12px;
+}
+.command-bridge-overhaul .command-bridge-scene {
+  grid-area: scene;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-height: 390px;
+  border: 1px solid rgba(96,149,138,.35);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 68% 26%, rgba(98,217,255,.05), transparent 31%),
+    linear-gradient(180deg, rgba(4,10,11,.985), rgba(4,8,9,.965));
+  box-shadow:
+    0 20px 45px rgba(0,0,0,.36),
+    inset 0 0 60px rgba(98,217,255,.035);
+}
+.command-bridge-overhaul .bridge-callouts text {
+  letter-spacing: .05em;
+}
+.command-bridge-overhaul .bridge-gear-panel {
+  grid-area: panel;
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 8px;
+}
+.command-bridge-overhaul .bridge-gear-panel-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: end;
+  padding: 0 2px 2px;
+}
+.command-bridge-overhaul .bridge-gear-panel-header b {
+  color: #dce8e4;
+  font-size: 9px;
+  letter-spacing: .05em;
+  white-space: nowrap;
+}
+.command-bridge-overhaul .bridge-feature-card {
+  --gear-card-accent: #9fb0ab;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid rgba(106, 140, 132, .38);
+  border-radius: 14px;
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--gear-card-accent) 8%, transparent), transparent 55%),
+    linear-gradient(180deg, rgba(8,18,18,.98), rgba(6,11,13,.96));
+  box-shadow:
+    inset 2px 0 color-mix(in srgb, var(--gear-card-accent) 48%, transparent),
+    inset 0 0 26px color-mix(in srgb, var(--gear-card-accent) 3%, transparent);
+}
+.command-bridge-overhaul .bridge-feature-card.rarity-refined { --gear-card-accent: #69bfff; }
+.command-bridge-overhaul .bridge-feature-card.rarity-prototype { --gear-card-accent: #c491f2; }
+.command-bridge-overhaul .bridge-feature-card.rarity-singular { --gear-card-accent: #f3b15f; }
+.command-bridge-overhaul .bridge-feature-card.rarity-empty {
+  --gear-card-accent: #52625d;
+  border-style: dashed;
+}
+.command-bridge-overhaul .bridge-feature-card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.command-bridge-overhaul .bridge-feature-card header span {
+  color: color-mix(in srgb, var(--gear-card-accent) 68%, #84968f);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.command-bridge-overhaul .bridge-feature-card header i {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  box-shadow: 0 0 12px var(--gear-card-accent);
+}
+.command-bridge-overhaul .bridge-feature-card > b {
+  display: block;
+  margin-top: 6px;
+  overflow: hidden;
+  color: #eff7f4;
+  font-size: 12px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.command-bridge-overhaul .bridge-feature-card p {
+  margin: 4px 0 0;
+  overflow: hidden;
+  color: #869a94;
+  font-size: 8px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.command-bridge-overhaul .bridge-feature-card > small {
+  display: block;
+  margin-top: 5px;
+  color: #718881;
+  font-size: 8px;
+  line-height: 1.35;
+}
+.command-bridge-overhaul .bridge-gear-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.command-bridge-overhaul .bridge-gear-summary span {
+  padding: 8px;
+  text-align: center;
+}
+.command-bridge-overhaul .bridge-gear-strip {
+  grid-area: gear;
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.command-bridge-overhaul .bridge-gear-slot {
+  --gear-slot-accent: #9fb0ab;
+  min-width: 0;
+  padding: 10px 11px;
+  border: 1px solid color-mix(in srgb, var(--gear-slot-accent) 38%, #22322f);
+  border-radius: 13px;
+  background:
+    radial-gradient(circle at 100% 0, color-mix(in srgb, var(--gear-slot-accent) 10%, transparent), transparent 46%),
+    rgba(7, 14, 15, .95);
+}
+.command-bridge-overhaul .bridge-gear-slot.rarity-refined { --gear-slot-accent: #69bfff; }
+.command-bridge-overhaul .bridge-gear-slot.rarity-prototype { --gear-slot-accent: #c491f2; }
+.command-bridge-overhaul .bridge-gear-slot.rarity-singular { --gear-slot-accent: #f3b15f; }
+.command-bridge-overhaul .bridge-gear-slot.rarity-empty {
+  --gear-slot-accent: #52625d;
+  border-style: dashed;
+}
+.command-bridge-overhaul .bridge-gear-slot-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+.command-bridge-overhaul .bridge-gear-slot-top span {
+  color: var(--gear-slot-accent);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+.command-bridge-overhaul .bridge-gear-slot > b {
+  display: block;
+  margin-top: 6px;
+  overflow: hidden;
+  color: #e8f1ee;
+  font-size: 10px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.command-bridge-overhaul .bridge-gear-slot > span {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  color: #70867f;
+  font-size: 8px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.command-bridge-overhaul .command-progress {
+  grid-area: progress;
+  position: relative;
+  z-index: 1;
+  margin-top: 0;
+}
+.command-bridge-overhaul .command-progress > span {
+  height: 7px;
+  overflow: hidden;
+  border: 1px solid rgba(96,149,138,.22);
+  border-radius: 999px;
+  background: #0d1718;
+}
+.command-bridge-overhaul .command-progress small {
+  display: block;
+  margin-top: 5px;
+  color: #759089;
+  font-size: 8px;
+}
+
+@media (max-width: 1160px) {
+  .command-bridge-overhaul {
+    grid-template-columns: minmax(220px, .8fr) minmax(0, 1.4fr);
+    grid-template-areas:
+      "copy scene"
+      "status scene"
+      "panel panel"
+      "gear gear"
+      "progress progress";
+  }
+  .command-bridge-overhaul .bridge-status-stack {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .command-bridge-overhaul .bridge-gear-panel {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .command-bridge-overhaul .bridge-gear-panel-header,
+  .command-bridge-overhaul .bridge-gear-summary {
+    grid-column: 1 / -1;
+  }
+  .command-bridge-overhaul .bridge-gear-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (orientation: landscape) and (max-height: 650px) {
+  .command-bridge-overhaul {
+    grid-template-columns: minmax(190px, .72fr) minmax(360px, 1.4fr) minmax(190px, .72fr);
+    grid-template-areas:
+      "copy scene status"
+      "gear scene panel"
+      "progress progress progress";
+    gap: 8px;
+    padding: 9px;
+  }
+  .command-bridge-overhaul .command-bridge-copy h2 {
+    margin: 6px 0 5px;
+    font-size: 24px;
+  }
+  .command-bridge-overhaul .command-bridge-copy > p {
+    margin: 4px 0;
+    font-size: 8px;
+  }
+  .command-bridge-overhaul .command-visual-tags {
+    gap: 4px;
+  }
+  .command-bridge-overhaul .command-visual-tags span {
+    padding: 4px 6px;
+    font-size: 7px;
+  }
+  .command-bridge-overhaul .bridge-readiness-band {
+    gap: 5px;
+    margin-top: 7px;
+  }
+  .command-bridge-overhaul .bridge-readiness-band > div,
+  .command-bridge-overhaul .bridge-status-stack span {
+    padding: 7px;
+  }
+  .command-bridge-overhaul .bridge-readiness-band small,
+  .command-bridge-overhaul .bridge-status-stack small,
+  .command-bridge-overhaul .bridge-gear-panel-header small,
+  .command-bridge-overhaul .bridge-gear-summary small,
+  .command-bridge-overhaul .bridge-gear-slot small {
+    font-size: 6px;
+  }
+  .command-bridge-overhaul .bridge-readiness-band b,
+  .command-bridge-overhaul .bridge-status-stack b,
+  .command-bridge-overhaul .bridge-gear-summary b {
+    margin-top: 2px;
+    font-size: 8px;
+  }
+  .command-bridge-overhaul .bridge-status-stack {
+    gap: 5px;
+  }
+  .command-bridge-overhaul .command-bridge-scene {
+    min-height: 280px;
+  }
+  .command-bridge-overhaul .bridge-gear-panel {
+    gap: 5px;
+  }
+  .command-bridge-overhaul .bridge-gear-panel-header {
+    padding: 0;
+  }
+  .command-bridge-overhaul .bridge-gear-panel-header b {
+    font-size: 6px;
+  }
+  .command-bridge-overhaul .bridge-feature-card,
+  .command-bridge-overhaul .bridge-gear-slot {
+    padding: 7px;
+    border-radius: 9px;
+  }
+  .command-bridge-overhaul .bridge-feature-card header span,
+  .command-bridge-overhaul .bridge-feature-card p,
+  .command-bridge-overhaul .bridge-feature-card > small,
+  .command-bridge-overhaul .bridge-gear-slot-top span,
+  .command-bridge-overhaul .bridge-gear-slot > span {
+    font-size: 6px;
+  }
+  .command-bridge-overhaul .bridge-feature-card > b,
+  .command-bridge-overhaul .bridge-gear-slot > b {
+    margin-top: 3px;
+    font-size: 7px;
+  }
+  .command-bridge-overhaul .bridge-feature-card p,
+  .command-bridge-overhaul .bridge-feature-card > small,
+  .command-bridge-overhaul .bridge-gear-slot > span {
+    margin-top: 2px;
+  }
+  .command-bridge-overhaul .bridge-gear-summary {
+    gap: 4px;
+  }
+  .command-bridge-overhaul .bridge-gear-summary span {
+    padding: 5px;
+  }
+  .command-bridge-overhaul .bridge-gear-strip {
+    gap: 5px;
+  }
+  .command-bridge-overhaul .command-progress small {
+    font-size: 6px;
+  }
+}
+
+@media (max-width: 760px) {
+  .command-bridge-overhaul {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "copy"
+      "status"
+      "scene"
+      "panel"
+      "gear"
+      "progress";
+  }
+  .command-bridge-overhaul .bridge-gear-panel {
+    grid-template-columns: 1fr;
+  }
+  .command-bridge-overhaul .bridge-gear-panel-header,
+  .command-bridge-overhaul .bridge-gear-summary {
+    grid-column: auto;
+  }
+  .command-bridge-overhaul .bridge-gear-strip {
+    grid-template-columns: 1fr;
+  }
+}
