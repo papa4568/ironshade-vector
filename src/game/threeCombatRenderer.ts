@@ -695,7 +695,6 @@ export class ThreeCombatRenderer {
       const width = scaled(worldW);
       const height = scaled(worldH);
       const cx = width / 2;
-      const cz = height / 2;
       const floorPlacements: EnvironmentPlacement[] = [];
       for (const fx of [0.18, 0.34, 0.50, 0.66, 0.82]) {
         for (const fz of [0.20, 0.40, 0.60, 0.80]) {
