@@ -605,8 +605,9 @@ function ensureBreachJets(dynamicRoot: THREE.Group, state: SimState) {
   return group;
 }
 
-export function syncHardSciFiBreaches(dynamicRoot: THREE.Group, state: SimState, worldScale: number) {
+export function syncHardSciFiBreaches(dynamicRoot: THREE.Group, state: SimState, worldScale: number, detailLevel = 1) {
   const group = ensureBreachJets(dynamicRoot, state);
+  const reducedEffects = detailLevel < 0.58;
   for (let index = 0; index < group.children.length; index += 1) {
     const breach = state.breaches[index];
     const visual = group.children[index] as THREE.Group;
@@ -617,7 +618,9 @@ export function syncHardSciFiBreaches(dynamicRoot: THREE.Group, state: SimState,
     const plume = visual.children[0] as THREE.Mesh<THREE.ConeGeometry, THREE.MeshBasicMaterial>;
     plume.scale.setScalar(0.58 + breach.strength * 0.07);
     plume.material.color.setHex(breach.boss ? 0xff9c7d : 0xb7e4ee);
+    plume.material.opacity = reducedEffects ? 0.09 : 0.14;
     const particles = visual.children[1] as THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial>;
+    particles.visible = !reducedEffects;
     particles.rotation.y = state.time * (0.8 + breach.strength * 0.04);
     particles.material.opacity = 0.32 + Math.sin(state.time * 8 + index) * 0.12;
   }
