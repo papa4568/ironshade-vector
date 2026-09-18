@@ -445,7 +445,8 @@ export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep
   const nextLevel = levelForXp(nextXp);
   const levelsGained = Math.max(0, nextLevel - profile.level);
   const random = seeded(0x9e3779b9 ^ profile.runsCompleted * 7919 ^ profile.level * 104729 ^ (deep ? 0x51ed270b : 0x17c6d));
-  const count = deep ? 2 : 1;
+  const fieldMode = Array.isArray(fieldLoot);
+  const count = deep && !fieldMode ? 2 : 1;
   const maxRecoveryLevel = source.maxRecoveryLevel ?? 8 + Math.max(1, source.operationTier ?? 1) * 4;
   const eliteKills = telemetry.eliteKills ?? 0;
   const directiveRecoveryBonus = Math.max(0, Math.min(3, source.directiveRecoveryLevelBonus ?? 0));
@@ -458,21 +459,24 @@ export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep
   const rollQuality = (boss: boolean, minimum: RecoveryQualityGrade = 0) => Math.max(minimum, rollRecoveryQuality(random, { operationTier: source.operationTier ?? 1, threatBudget: source.threatBudget ?? 32, eliteKills, eliteProtocolCount: source.eliteProtocolCount ?? 0, deep: actualDepth, optionalObjectives: source.optionalObjectives ?? 0, environmentalComplications: source.environmentalComplications ?? 0, boss, location: source.location, faction: source.faction, factionReputation: source.factionReputation, directiveBonus: source.directiveQualityBonus ?? 0 })) as RecoveryQualityGrade;
   const sponsoredChance = source.faction ? factionGearChance(source.factionReputation ?? 0, deep) : 0;
   const makeRecoveredItem = (slot: EquipmentSlot, index: number) => { const recoveryQuality = rollQuality(actualDepth); return source.faction && random() < sponsoredChance ? makeFactionItem(slot, index, nextLevel, random, source.faction, ordinaryRecoveryLevel, recoveryQuality, `Sponsored recovery // ${factionName}`, profile.level) : makeItem(slot, index, nextLevel, random, [], ordinaryRecoveryLevel, recoveryQuality, `${locationName} contract recovery`, undefined, profile.level); };
-  const fieldMode = Array.isArray(fieldLoot);
-  const fieldDrops = (fieldLoot ?? []).slice(0, 12);
+  const fieldDrops = fieldLoot ?? [];
   const fieldSlots = chooseRecoverySlots(profile, fieldDrops.filter(drop => drop.source !== 'boss').length, random);
   let fieldSlotIndex = 0;
   const fieldItems: Item[] = fieldDrops.map((drop, index) => {
     const recoveryQuality = Math.max(drop.recoveryQualityFloor, rollQuality(drop.source === 'boss', drop.recoveryQualityFloor as RecoveryQualityGrade)) as RecoveryQualityGrade;
     const recoveryLevel = Math.max(1, Math.min(maxRecoveryLevel, drop.recoveryLevel));
     const recoverySource = `Ground drop // ${drop.enemyLabel}`;
-    if (drop.source === 'boss' && drop.rarity === 'Singular') return makeBossSingular(source.deepTarget ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeLocationSingular(source.location ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeItem('rail', 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, 'Prototype');
+    if (drop.rarity === 'Singular') {
+      if (drop.source === 'boss') return makeBossSingular(source.deepTarget ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeLocationSingular(source.location ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeItem('rail', 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, 'Prototype');
+      return makeLocationSingular(source.location ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeItem(recoverySlotOrder[(drop.enemyId + index) % recoverySlotOrder.length], 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, 'Prototype');
+    }
     const slot = fieldSlots[fieldSlotIndex++] ?? recoverySlotOrder[(drop.enemyId + index) % recoverySlotOrder.length];
-    const visibleRarity: Exclude<Rarity, 'Singular'> = drop.rarity === 'Singular' ? 'Prototype' : drop.rarity;
+    const visibleRarity = drop.rarity as Exclude<Rarity, 'Singular'>;
     return makeItem(slot, 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, visibleRarity);
   });
   const bossItem = actualDepth && !fieldMode ? makeBossSingular(source.deepTarget ?? '', 0, nextLevel, random, bossRecoveryLevel, rollQuality(true, 4), `Boss pool // ${source.deepTarget ?? 'deep target'}`, profile.level) : null;
-  const locationChance = Math.min(0.85, (deep ? (bossItem ? 0.3 : 0.48) : 0.06) + Math.max(0, source.directiveSingularChanceBonus ?? 0));
+  const fieldHasSingular = fieldItems.some(item => item.rarity === 'Singular');
+  const locationChance = fieldHasSingular ? 0 : Math.min(0.24, (deep ? (bossItem ? 0.06 : 0.08) : 0.02) + Math.max(0, source.directiveSingularChanceBonus ?? 0));
   const locationItem = profile.runsCompleted > 0 && random() < locationChance ? makeLocationSingular(source.location ?? '', bossItem ? 1 : 0, nextLevel, random, locationRecoveryLevel, rollQuality(actualDepth, 3), `Location chase // ${locationName}`, profile.level) : null;
   let loot: Item[] = [];
 
