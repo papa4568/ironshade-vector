@@ -153,6 +153,31 @@ for (const path of glbs) {
     }
   }
 
+  if (top === 'environments') {
+    const sizeX = runtimeBounds.max.x - runtimeBounds.min.x;
+    const sizeY = runtimeBounds.max.y - runtimeBounds.min.y;
+    const sizeZ = runtimeBounds.max.z - runtimeBounds.min.z;
+    assert(sizeX > 0.05 && sizeY > 0.02 && sizeZ > 0.05, `${relativePath}: authored environment bounds are degenerate`);
+    assert(sizeX <= 8 && sizeY <= 6 && sizeZ <= 8, `${relativePath}: authored environment module exceeds modular scale bounds`);
+    const nodeNames = new Set((json.nodes ?? []).map(node => node.name).filter(Boolean));
+    assert(nodeNames.has('environment-root'), `${relativePath}: authored environment module is missing environment-root`);
+    const marker = filename.includes('floor-panel')
+      ? 'refinery-floor-panel'
+      : filename.includes('bulkhead')
+        ? 'refinery-bulkhead-left'
+        : filename.includes('processor')
+          ? 'refinery-processor-core'
+          : filename.includes('pipe-rack')
+            ? 'refinery-pipe-rack-spine'
+            : filename.includes('crate')
+              ? 'refinery-crate-shell'
+              : 'refinery-terminal-screen';
+    assert(nodeNames.has(marker), `${relativePath}: environment silhouette marker ${marker} is missing`);
+    if (filename.includes('terminal')) {
+      assert(nodeNames.has('objective-beacon-mount'), `${relativePath}: interactive refinery terminal is missing objective beacon mount`);
+    }
+  }
+
   if (top === 'weapons') {
     const weaponLength = runtimeBounds.max.x - runtimeBounds.min.x;
     assert(weaponLength >= 0.9 && weaponLength <= 2.4, `${relativePath}: authored weapon length ${weaponLength.toFixed(2)}m is outside gameplay scale`);
