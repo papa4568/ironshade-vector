@@ -475,6 +475,42 @@ function refineryNodes(kind, lod) {
     return nodes;
   }
 
+  if (kind === 'serviceConduit') {
+    const nodes = [
+      { name: 'refinery-service-conduit-trunk', mesh: 0, translation: [0, 0.30, 0], scale: [2.8, 0.18, 0.22] },
+      { name: 'refinery-service-conduit-upper', mesh: 1, translation: [0, 0.68, 0], scale: [2.35, 0.12, 0.16] },
+      { name: 'refinery-service-conduit-valve', mesh: 2, translation: [0.72, 0.72, 0], scale: [0.14, 0.34, 0.38] },
+      { name: 'refinery-service-conduit-status', mesh: 3, translation: [-0.72, 0.70, 0.18], scale: [0.18, 0.10, 0.06] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'refinery-service-conduit-support-left', mesh: 0, translation: [-1.05, 0.18, 0], scale: [0.16, 0.36, 0.48] },
+        { name: 'refinery-service-conduit-support-right', mesh: 0, translation: [1.05, 0.18, 0], scale: [0.16, 0.36, 0.48] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  if (kind === 'gantry') {
+    const nodes = [
+      { name: 'refinery-smelter-gantry-left', mesh: 0, translation: [-2.60, 1.78, 0], scale: [0.36, 3.56, 0.58] },
+      { name: 'refinery-smelter-gantry-right', mesh: 0, translation: [2.60, 1.78, 0], scale: [0.36, 3.56, 0.58] },
+      { name: 'refinery-smelter-gantry-beam', mesh: 1, translation: [0, 3.46, 0], scale: [5.80, 0.46, 0.82] },
+      { name: 'refinery-smelter-gantry-hazard', mesh: 2, translation: [0, 3.17, 0.43], scale: [3.90, 0.10, 0.08] },
+      { name: 'refinery-smelter-gantry-carriage', mesh: 1, translation: [0.72, 2.92, 0], scale: [0.92, 0.42, 0.62] },
+      { name: 'refinery-smelter-gantry-status', mesh: 3, translation: [1.48, 3.45, 0.44], scale: [0.28, 0.16, 0.06] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'refinery-smelter-gantry-service-rail', mesh: 0, translation: [0, 3.03, -0.42], scale: [4.60, 0.12, 0.12] },
+        { name: 'refinery-smelter-gantry-drop-line', mesh: 2, translation: [0.72, 2.15, 0], scale: [0.10, 1.28, 0.10] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
   if (kind === 'crate') {
     const nodes = [
       { name: 'refinery-crate-shell', mesh: 1, translation: [0, 0.42, 0], scale: [1.05, 0.84, 0.82] },
@@ -533,6 +569,8 @@ const refineryProfiles = [
   ['bulkhead', 'refinery-bulkhead'],
   ['processor', 'refinery-processor'],
   ['pipeRack', 'refinery-pipe-rack'],
+  ['serviceConduit', 'refinery-service-conduit'],
+  ['gantry', 'refinery-smelter-gantry'],
   ['crate', 'refinery-crate'],
   ['terminal', 'refinery-terminal'],
 ];
