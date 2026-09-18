@@ -77,6 +77,11 @@ for (const weapon of ['carbine', 'breacher', 'rail']) {
   assert(manifestSource.includes(`weapon-${weapon}-lod1.glb`), `weapon manifest must include authored ${weapon} LOD1`);
 }
 
+for (const asset of ['floor-panel', 'bulkhead', 'processor', 'pipe-rack', 'crate', 'terminal']) {
+  assert(manifestSource.includes(`refinery-${asset}-lod1.glb`), `refinery manifest must include authored ${asset} LOD1`);
+  assert(manifestSource.includes(`refinery-${asset}-lod2.glb`), `refinery manifest must include authored ${asset} LOD2`);
+}
+
 const rendererSource = readFileSync(resolve(process.cwd(), 'src/game/threeCombatRenderer.ts'), 'utf8');
 assert(rendererSource.includes('OPERATOR_ASSET_FAMILY') && rendererSource.includes("from './graphicsAssetManifest'"), 'combat renderer must consume the authored operator manifest');
 assert(rendererSource.includes('configureGraphicsAssetRenderer(this.renderer)'), 'combat renderer must configure authored texture support lazily at runtime');
@@ -101,6 +106,13 @@ assert(rendererSource.includes("root.getObjectByName('muzzle-socket')"), 'author
 assert(rendererSource.includes('syncAuthoredWeapon(state, operatorFaction)'), 'authored weapons must receive visual-only simulation state');
 assert(rendererSource.includes("dataset.weaponVisual = loaded.length === 3 ? 'authored'"), 'runtime QA must expose authored weapon readiness');
 assert(rendererSource.includes("dataset.weaponFx = player.currentWeapon === 'rail' ? 'lance'"), 'weapon-specific combat readability language must remain explicit');
+assert(rendererSource.includes('REFINERY_ASSET_FAMILIES'), 'showcase environment must load through authored refinery asset families');
+assert(rendererSource.includes('loadAuthoredRefineryEnvironment(state, world.w, world.h)'), 'Asteroid Refinery must start authored environment loading from the combat scene');
+assert(rendererSource.includes('new THREE.InstancedMesh'), 'repeated refinery props must use instancing');
+assert(rendererSource.includes("dataset.environmentVisual = 'authored-refinery'"), 'runtime QA must expose authored refinery activation');
+assert(rendererSource.includes("dataset.environmentKit = 'floor,bulkhead,processor,pipe-rack,crate,terminal'"), 'runtime QA must expose the complete refinery kit');
+assert(rendererSource.includes('this.proceduralRefineryVisuals.forEach'), 'procedural refinery scenery must remain as a load-failure fallback');
 
 
-console.log('GRAPHICS_ASSET_PIPELINE_PASS format=glb mesh=meshopt textures=ktx2 loader=deferred lifecycle=leased lod=adaptive operator=articulated enemies=role-authored weapons=authored+fallback sockets=muzzle animation=state-driven operatorTriangles=45000 enemyTriangles=30000 weaponTriangles=12000');
+
+console.log('GRAPHICS_ASSET_PIPELINE_PASS format=glb mesh=meshopt textures=ktx2 loader=deferred lifecycle=leased lod=adaptive operator=articulated enemies=role-authored weapons=authored+fallback environment=refinery-instanced sockets=muzzle animation=state-driven operatorTriangles=45000 enemyTriangles=30000 weaponTriangles=12000 environmentTriangles=20000');
