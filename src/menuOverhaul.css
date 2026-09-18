@@ -660,3 +660,97 @@
   .command-progress { width: 54%; }
   .hub-resource-ribbon { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+
+/* Operator / Equipment surface uses the same command-system language. */
+.build-bay {
+  background:
+    radial-gradient(circle at 78% -12%, rgba(62, 105, 92, .18), transparent 34%),
+    linear-gradient(140deg, #050909, #08110f 55%, #040707);
+}
+.build-header {
+  max-width: 1280px;
+  margin-bottom: 9px;
+  padding: 5px 0 10px;
+  border-bottom: 1px solid #243831;
+}
+.build-header h1 {
+  margin: 4px 0 2px;
+  font-size: clamp(24px, 2.7vw, 36px);
+  letter-spacing: -.03em;
+}
+.build-header p {
+  color: #73877f;
+  font-size: 9px;
+}
+.build-header .card-kicker {
+  color: #78988e;
+  font-size: 7px;
+}
+.close-build {
+  min-height: 42px;
+  border-radius: 8px;
+}
+.xp-strip,
+.build-tabs,
+.build-message,
+.gear-discovery-note,
+.gear-layout,
+.reconstruction-panel,
+.network-panel,
+.protocol-panel,
+.settings-panel {
+  max-width: 1280px;
+}
+.build-tabs {
+  gap: 5px;
+  margin-bottom: 9px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.build-tabs::-webkit-scrollbar { display: none; }
+.build-tabs button {
+  min-height: 39px;
+  border: 1px solid #2a3e38;
+  border-radius: 8px;
+  padding: 0 12px;
+  background: #091210;
+  color: #70857d;
+  font-size: 9px;
+  font-weight: 800;
+}
+.build-tabs button.selected {
+  border-color: #5c8175;
+  background: #162722;
+  color: #d0ddd8;
+  box-shadow: inset 0 -2px #7aa798;
+}
+.build-message {
+  border-radius: 7px;
+}
+.gear-discovery-note,
+.reconstruction-bench,
+.specialization-panel,
+.network-branch,
+.protocol-grid > article,
+.settings-panel label {
+  border-radius: 9px;
+}
+@media (orientation: landscape) and (max-height: 650px) {
+  .build-header {
+    padding: 2px 0 6px;
+    margin-bottom: 5px;
+  }
+  .build-header h1 { font-size: 19px; }
+  .build-header p { font-size: 7px; }
+  .build-header .card-kicker { display: none; }
+  .build-tabs { margin-bottom: 5px; }
+  .build-tabs button {
+    min-height: 34px;
+    padding: 0 9px;
+    font-size: 8px;
+  }
+}
