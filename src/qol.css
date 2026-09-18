@@ -310,3 +310,202 @@
     min-height: 48px;
   }
 }
+
+
+/* BETA UI QOL // CONTRACT BOARD + INVENTORY DISCOVERY */
+:where(button, input, select, summary):focus-visible {
+  outline: 2px solid #8fb8ac;
+  outline-offset: 2px;
+}
+:where(button, summary) {
+  -webkit-tap-highlight-color: transparent;
+}
+.contract-toolbar-qol {
+  display: grid;
+  grid-template-columns: minmax(150px, .55fr) minmax(360px, 1.45fr) minmax(210px, .72fr);
+  align-items: center;
+}
+.contract-toolbar-summary {
+  min-width: 0;
+}
+.contract-toolbar-controls {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+}
+.contract-search-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(190px, .72fr) auto;
+  gap: 6px;
+}
+.contract-search-row input,
+.contract-search-row select,
+.contract-reset {
+  min-width: 0;
+  min-height: 38px;
+  border: 1px solid #30433e;
+  border-radius: 8px;
+  background: #0b1413;
+  color: #c7d4d0;
+  padding: 7px 9px;
+  font: 800 8px/1.2 ui-monospace, monospace;
+}
+.contract-search-row input::placeholder {
+  color: #60726d;
+}
+.contract-reset {
+  padding-inline: 11px;
+  cursor: pointer;
+}
+.contract-quick-deploy {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 9px;
+  border: 1px solid #395148;
+  border-radius: 9px;
+  background: linear-gradient(145deg, rgba(18, 34, 29, .92), rgba(8, 15, 14, .94));
+}
+.contract-quick-deploy small,
+.contract-quick-deploy b,
+.contract-quick-deploy span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.contract-quick-deploy small {
+  color: #779188;
+  font-size: 6px;
+  letter-spacing: .1em;
+}
+.contract-quick-deploy b {
+  margin-top: 3px;
+  color: #d1dfda;
+  font-size: 9px;
+}
+.contract-quick-deploy span {
+  margin-top: 3px;
+  color: #8da39b;
+  font-size: 7px;
+}
+.contract-quick-deploy button {
+  min-height: 40px;
+  padding: 8px 13px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.inventory-tools {
+  grid-template-columns: minmax(190px, 1fr) 180px auto;
+}
+.inventory-reset {
+  min-height: 40px;
+  border: 1px solid #3b514a;
+  border-radius: 9px;
+  padding: 8px 11px;
+  background: #13201e;
+  color: #bed0ca;
+  font: 800 8px/1 ui-monospace, monospace;
+  cursor: pointer;
+}
+.inventory-filter-scroll {
+  grid-column: 1 / -1;
+}
+.contract-card,
+.inventory-card,
+.equipped-card {
+  transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .contract-card:hover,
+  .inventory-card:hover,
+  .equipped-card:hover {
+    border-color: #58766d;
+    transform: translateY(-1px);
+  }
+}
+@media (max-width: 1100px) {
+  .contract-toolbar-qol {
+    grid-template-columns: minmax(130px, .45fr) minmax(330px, 1.35fr);
+  }
+  .contract-quick-deploy {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 800px) {
+  .contract-toolbar-qol {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .contract-search-row {
+    grid-template-columns: minmax(0, 1fr) minmax(150px, .72fr) auto;
+  }
+  .contract-quick-deploy {
+    grid-column: 1;
+  }
+}
+@media (pointer: coarse) {
+  .contract-search-row input,
+  .contract-search-row select,
+  .contract-reset,
+  .contract-quick-deploy button,
+  .inventory-tools input,
+  .inventory-tools select,
+  .inventory-reset,
+  .inventory-filter-scroll button {
+    min-height: 44px;
+  }
+}
+@media (orientation: landscape) and (max-height: 650px) {
+  .contract-toolbar-qol {
+    grid-template-columns: minmax(120px, .45fr) minmax(310px, 1.45fr) minmax(190px, .7fr);
+    gap: 7px;
+    padding: 7px 8px;
+  }
+  .contract-toolbar-qol .card-kicker {
+    display: none;
+  }
+  .contract-toolbar-summary > b {
+    margin-top: 0 !important;
+  }
+  .contract-toolbar-controls {
+    gap: 4px;
+  }
+  .contract-search-row input,
+  .contract-search-row select,
+  .contract-reset,
+  .contract-quick-deploy button {
+    min-height: 34px;
+  }
+  .contract-filter-row {
+    gap: 4px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+  .contract-filter-row button {
+    flex: 0 0 auto;
+    min-height: 30px;
+    padding: 5px 8px;
+  }
+  .contract-quick-deploy {
+    grid-column: auto;
+    padding: 5px 7px;
+  }
+}
+@media (max-width: 560px) {
+  .contract-search-row {
+    grid-template-columns: 1fr;
+  }
+  .contract-reset {
+    width: 100%;
+  }
+  .inventory-tools {
+    grid-template-columns: 1fr;
+  }
+  .inventory-tools .inventory-reset,
+  .inventory-filter-scroll {
+    grid-column: 1;
+  }
+}
