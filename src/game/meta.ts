@@ -1,4 +1,5 @@
-import type { CombatBuild, SingularTraitId, SpecializationId, Telemetry, WeaponId } from './sim';
+import type { CombatBuild, OperatorClassId, SingularTraitId, SpecializationId, Telemetry, WeaponId } from './sim';
+export type { OperatorClassId } from './sim';
 import { factionFrames, factionGearChance, factionSetDefinitions, type EquipmentFaction } from './factionGear';
 import { frameGenerationForRecovery, recoveryLevelForSource, type FrameGeneration } from './scaling';
 import { modifierCountForRarity, modifierFamilyFor, modifierPowerFactor, modifierTradeoffFactor, rollModifierGrade, rollRarityForQuality, rollRecoveryQuality, type ModifierFamily, type ModifierGrade, type RecoveryQualityGrade } from './lootQuality';
@@ -8,19 +9,18 @@ import type { GroundLootReceipt } from './fieldLoot';
 export type EquipmentSlot = WeaponId | 'suit' | 'rig' | 'implant';
 export type Rarity = 'Field' | 'Refined' | 'Prototype' | 'Singular';
 export type AbilityId = 'mag' | 'mark' | 'arc';
-export type OperatorClassId = 'vanguard' | 'vector' | 'systems';
 export type MobileAimAssist = 'light' | 'balanced';
 export type AffixId = 'hypervelocity' | 'countermass' | 'overdrive' | 'cryoloop' | 'extendedFeed' | 'tungsten' | 'vacuumSeal' | 'servoWeave' | 'capacitorRecycler' | 'railFracture' | 'dodgeVent' | 'magRedirect' | 'breachPropulsion' | 'markShear' | 'arcDrone';
 export type ItemModifier = { id: AffixId; label: string; description: string; mechanical: boolean; family?: ModifierFamily; grade?: ModifierGrade };
 export type Item = { id: string; baseId: string; name: string; slot: EquipmentSlot; equipmentClass: string; rarity: Rarity; levelRequirement: number; core: string; modifiers: ItemModifier[]; faction?: EquipmentFaction; singularTrait?: SingularTraitId; singularEffect?: string; recoveryLevel?: number; frameGeneration?: FrameGeneration; frameIdentity?: FrameIdentityId; frameImplicit?: string; equipmentQuality?: number; augmentSlots?: number; augments?: AugmentId[]; recoveryQuality?: RecoveryQualityGrade; recoverySource?: string };
 export type EffectIntensity = 'full' | 'reduced';
 export type ProfileSettings = { aimAssist: MobileAimAssist; rightStickFire: boolean; screenShake: boolean; effectIntensity: EffectIntensity; effectsVolume: number; uiVolume: number; haptics: boolean; telemetrySharing: boolean; tutorialComplete: boolean };
-export type PlayerProfile = { version: 3; xp: number; level: number; progressionPoints: number; allocatedNodes: string[]; abilityMods: Record<AbilityId, string | null>; operatorClass?: OperatorClassId; specialization: SpecializationId | null; specializationOverclock: boolean; inventory: Item[]; equipped: Record<EquipmentSlot, string | null>; settings: ProfileSettings; runsCompleted: number };
+export type PlayerProfile = { version: 3; xp: number; level: number; progressionPoints: number; allocatedNodes: string[]; abilityMods: Record<AbilityId, string | null>; operatorClass?: OperatorClassId; classSelectionComplete?: boolean; specialization: SpecializationId | null; specializationOverclock: boolean; inventory: Item[]; equipped: Record<EquipmentSlot, string | null>; settings: ProfileSettings; runsCompleted: number };
 export type VictoryReward = { profile: PlayerProfile; xpGained: number; levelsGained: number; loot: Item[] };
 export type ProgressionNode = { id: string; branch: 'Ballistics' | 'Mobility' | 'Systems' | 'Survival' | 'Engineering' | 'Awareness'; name: string; description: string; major?: boolean; requires?: string };
 export type AbilityMod = { id: string; ability: AbilityId; name: string; description: string; tradeoff: string };
 export type SpecializationDefinition = { id: SpecializationId; operatorClass: OperatorClassId; name: string; identity: string; description: string; tradeoff: string; overclock: string; overclockTradeoff: string };
-export type OperatorClassDefinition = { id: OperatorClassId; name: string; identity: string; description: string; trait: string; branchAffinities: ProgressionNode['branch'][]; specializationIds: SpecializationId[]; resonanceTier1: string; resonanceTier2: string };
+export type OperatorClassDefinition = { id: OperatorClassId; name: string; identity: string; description: string; trait: string; signatureName: string; signatureDescription: string; combatLoop: string; starterPair: string; branchAffinities: ProgressionNode['branch'][]; specializationIds: SpecializationId[]; resonanceTier1: string; resonanceTier2: string };
 export type GearResonanceState = { classId: OperatorClassId; count: number; tier: 0 | 1 | 2; nextAt: 2 | 4 | null; matchingItemIds: string[] };
 
 const STORAGE_KEY = 'ironshade-vector-profile-v3';
@@ -269,10 +269,14 @@ export const operatorClassDefinitions: OperatorClassDefinition[] = [
     identity: 'Breach / armor control',
     description: 'A pressure-rated frontline operator. Vanguard builds turn close-range impact, armor work, and durable suit geometry into reliable room control.',
     trait: 'Bulkhead Doctrine // +8 maximum armor and +8% Breacher armor damage.',
+    signatureName: 'Breach Guard',
+    signatureDescription: 'Close Breacher hits brace the suit for incoming armor impact. Breaking hostile armor restores your armor and extends the guard window.',
+    combatLoop: 'Close distance → break armor → hold the lane while Breach Guard is active.',
+    starterPair: 'Breacher + Combat Suit',
     branchAffinities: ['Ballistics', 'Survival'],
     specializationIds: ['pressure-diver', 'breach-vanguard'],
-    resonanceTier1: '2 resonant frames // +6 maximum armor and +6% armor damage to all weapons.',
-    resonanceTier2: '4 resonant frames // +8 maximum armor and -8% weapon recoil.',
+    resonanceTier1: '2 resonant frames // +6 maximum armor, +6% armor damage, and a stronger Breach Guard loop.',
+    resonanceTier2: '4 resonant frames // +8 maximum armor, -8% weapon recoil, longer Guard, and larger armor-break recovery.',
   },
   {
     id: 'vector',
@@ -280,10 +284,14 @@ export const operatorClassDefinitions: OperatorClassDefinition[] = [
     identity: 'Mobility / precision routing',
     description: 'A movement-first operator built around clean firing solutions. Vector builds reward projectile control, low-g handling, and deliberate repositioning.',
     trait: 'Flight Discipline // +3% move speed, +6% projectile velocity, and -5% Rail recoil.',
+    signatureName: 'Slipstream',
+    signatureDescription: 'Dodging primes the next shot with greatly reduced recoil, increased projectile speed, and bonus penetration. Tier II adds a short damage spike.',
+    combatLoop: 'Dodge through danger → take the new angle → spend Slipstream on a precision shot.',
+    starterPair: 'Carbine/Rail + mobility geometry',
     branchAffinities: ['Mobility', 'Awareness'],
     specializationIds: ['momentum-broker', 'survey-deadeye', 'redline-pilot'],
-    resonanceTier1: '2 resonant frames // +4% move speed and improved low-g control.',
-    resonanceTier2: '4 resonant frames // +8% projectile velocity and -8% weapon recoil.',
+    resonanceTier1: '2 resonant frames // +4% move speed, improved low-g control, and a wider Slipstream firing window.',
+    resonanceTier2: '4 resonant frames // +8% projectile velocity, -8% weapon recoil, and Slipstream gains damage.',
   },
   {
     id: 'systems',
@@ -291,10 +299,14 @@ export const operatorClassDefinitions: OperatorClassDefinition[] = [
     identity: 'Capacitor / thermal networks',
     description: 'A systems operator who treats weapons, abilities, and ship-grade electronics as one power network. Systems builds trade raw toughness for cycle control.',
     trait: 'Closed Loop // +6 maximum capacitor, +6% capacitor regeneration, and -3% ability cost.',
+    signatureName: 'Closed Loop',
+    signatureDescription: 'Chaining different MAG, MARK, and ARC abilities recycles capacitor and advances the previous ability. Completing the three-link loop also sheds weapon heat.',
+    combatLoop: 'Rotate MAG → MARK → ARC instead of repeating one button; keep the whole ability network cycling.',
+    starterPair: 'Systems Rig + Implant',
     branchAffinities: ['Systems', 'Engineering'],
     specializationIds: ['grid-weaver', 'capacitor-conductor'],
-    resonanceTier1: '2 resonant frames // +8% capacitor regeneration and +6% weapon cooling.',
-    resonanceTier2: '4 resonant frames // +8 maximum capacitor and -6% ability cooldown.',
+    resonanceTier1: '2 resonant frames // +8% capacitor regeneration, +6% weapon cooling, and stronger Closed Loop timing.',
+    resonanceTier2: '4 resonant frames // +8 maximum capacitor, -6% ability cooldown, and larger loop refunds/cooling.',
   },
 ];
 
@@ -379,7 +391,7 @@ const maxLevelXp = levelThresholds[levelThresholds.length - 1];
 
 export function createDefaultProfile(): PlayerProfile {
   const inventory = starterItems.map(cloneItem);
-  return { version: 3, xp: 0, level: 1, progressionPoints: 0, allocatedNodes: [], abilityMods: { mag: null, mark: null, arc: null }, operatorClass: 'vanguard', specialization: null, specializationOverclock: false, inventory, equipped: { carbine: 'starter-carbine', breacher: 'starter-breacher', rail: 'starter-rail', suit: 'starter-suit', rig: 'starter-rig', implant: 'starter-implant' }, settings: { aimAssist: 'balanced', rightStickFire: true, screenShake: true, effectIntensity: 'full', effectsVolume: 0.65, uiVolume: 0.45, haptics: true, telemetrySharing: false, tutorialComplete: false }, runsCompleted: 0 };
+  return { version: 3, xp: 0, level: 1, progressionPoints: 0, allocatedNodes: [], abilityMods: { mag: null, mark: null, arc: null }, operatorClass: 'vanguard', classSelectionComplete: false, specialization: null, specializationOverclock: false, inventory, equipped: { carbine: 'starter-carbine', breacher: 'starter-breacher', rail: 'starter-rail', suit: 'starter-suit', rig: 'starter-rig', implant: 'starter-implant' }, settings: { aimAssist: 'balanced', rightStickFire: true, screenShake: true, effectIntensity: 'full', effectsVolume: 0.65, uiVolume: 0.45, haptics: true, telemetrySharing: false, tutorialComplete: false }, runsCompleted: 0 };
 }
 export function loadProfile(): PlayerProfile {
   if (typeof window === 'undefined') return createDefaultProfile();
@@ -402,6 +414,7 @@ export function loadProfile(): PlayerProfile {
     const specialization = normalizedLevel >= 15 && specializationDefinitions.some(definition => definition.id === parsed.specialization) ? parsed.specialization as SpecializationId : null;
     const specializationOverclock = normalizedLevel >= 16 && !!specialization && parsed.specializationOverclock === true;
     const operatorClass = operatorClassForProfile({ operatorClass: parsed.operatorClass, specialization, allocatedNodes });
+    const classSelectionComplete = typeof parsed.classSelectionComplete === 'boolean' ? parsed.classSelectionComplete : true;
     return {
       ...defaults,
       ...parsed,
@@ -409,6 +422,7 @@ export function loadProfile(): PlayerProfile {
       level: normalizedLevel,
       progressionPoints,
       operatorClass,
+      classSelectionComplete,
       specialization,
       specializationOverclock,
       settings: { ...defaults.settings, ...parsed.settings },
@@ -625,6 +639,7 @@ export function setOperatorClass(profile: PlayerProfile, operatorClass: Operator
   const next: PlayerProfile = {
     ...profile,
     operatorClass,
+    classSelectionComplete: true,
     specialization: clearsSpecialization ? null : profile.specialization,
     specializationOverclock: clearsSpecialization ? false : profile.specializationOverclock,
   };
@@ -707,6 +722,8 @@ function applyFactionSetBonuses(build: CombatBuild, profile: PlayerProfile) {
 function applyOperatorClassBonuses(build: CombatBuild, profile: PlayerProfile) {
   const classId = operatorClassForProfile(profile);
   const resonance = gearResonanceForProfile(profile, classId);
+  build.operatorClass = classId;
+  build.classResonanceTier = resonance.tier;
   if (classId === 'vanguard') {
     build.player.maxArmorAdd += 8;
     build.weapon.breacher.armorDamageMul *= 1.08;
@@ -749,7 +766,7 @@ function applyOperatorClassBonuses(build: CombatBuild, profile: PlayerProfile) {
   }
 }
 
-function freshBuild(): CombatBuild { const weapon = () => ({ damageMul: 1, speedMul: 1, penetrationAdd: 0, recoilMul: 1, heatPerShotMul: 1, heatDissipationMul: 1, magazineAdd: 0, reloadMul: 1, armorDamageMul: 1, healthMultiplierMul: 1, knockbackMul: 1 }); return { weapon: { carbine: weapon(), breacher: weapon(), rail: weapon() }, player: { maxHpAdd: 0, maxArmorAdd: 0, maxCapAdd: 0, moveSpeedMul: 1, capRegenMul: 1, vacuumResistance: 0, lowGControl: 0, ventSpeedMul: 1 }, mechanics: { railFragment: false, railFragmentScale: 0, dodgeVent: false, dodgeVentScale: 0, magRedirect: false, magRedirectScale: 0, breacherPropulsion: false, breacherPropulsionScale: 0, markWeakArmor: false, markWeakArmorScale: 0, arcDrone: false, arcDroneScale: 0, recoilVectoring: false, breachDoctrine: false, sensorPenetration: false, widebandMark: false, magOverdriveKick: false, arcGroundLoop: false, magBoundarySink: false, markExecutionTrace: false, arcCascadeLattice: false }, singularTraits: [], specialization: null, specializationOverclock: false, abilities: [{ costMul: 1, cooldownMul: 1, powerMul: 1 }, { costMul: 1, cooldownMul: 1, powerMul: 1 }, { costMul: 1, cooldownMul: 1, powerMul: 1 }] }; }
+function freshBuild(): CombatBuild { const weapon = () => ({ damageMul: 1, speedMul: 1, penetrationAdd: 0, recoilMul: 1, heatPerShotMul: 1, heatDissipationMul: 1, magazineAdd: 0, reloadMul: 1, armorDamageMul: 1, healthMultiplierMul: 1, knockbackMul: 1 }); return { operatorClass: null, classResonanceTier: 0, weapon: { carbine: weapon(), breacher: weapon(), rail: weapon() }, player: { maxHpAdd: 0, maxArmorAdd: 0, maxCapAdd: 0, moveSpeedMul: 1, capRegenMul: 1, vacuumResistance: 0, lowGControl: 0, ventSpeedMul: 1 }, mechanics: { railFragment: false, railFragmentScale: 0, dodgeVent: false, dodgeVentScale: 0, magRedirect: false, magRedirectScale: 0, breacherPropulsion: false, breacherPropulsionScale: 0, markWeakArmor: false, markWeakArmorScale: 0, arcDrone: false, arcDroneScale: 0, recoilVectoring: false, breachDoctrine: false, sensorPenetration: false, widebandMark: false, magOverdriveKick: false, arcGroundLoop: false, magBoundarySink: false, markExecutionTrace: false, arcCascadeLattice: false }, singularTraits: [], specialization: null, specializationOverclock: false, abilities: [{ costMul: 1, cooldownMul: 1, powerMul: 1 }, { costMul: 1, cooldownMul: 1, powerMul: 1 }, { costMul: 1, cooldownMul: 1, powerMul: 1 }] }; }
 function applyFrameGeneration(build: CombatBuild, item: Item) { const step = Math.min(4, Math.max(0, (item.frameGeneration ?? 1) - 1)); if (step <= 0) return; if (item.slot === 'carbine') { build.weapon.carbine.speedMul *= 1 + step * 0.025; build.weapon.carbine.penetrationAdd += step * 2; } else if (item.slot === 'breacher') { build.weapon.breacher.damageMul *= 1 + step * 0.025; build.weapon.breacher.knockbackMul *= 1 + step * 0.04; } else if (item.slot === 'rail') { build.weapon.rail.penetrationAdd += step * 4; build.weapon.rail.recoilMul *= 1 - step * 0.025; } else if (item.slot === 'suit') { build.player.maxArmorAdd += step * 4; build.player.vacuumResistance = Math.min(0.9, build.player.vacuumResistance + step * 0.025); } else if (item.slot === 'rig') { build.player.maxCapAdd += step * 4; build.player.capRegenMul *= 1 + step * 0.025; } else { for (const ability of build.abilities) ability.cooldownMul *= 1 - step * 0.02; } }
 function applyAffix(build: CombatBuild, item: Item, modifier: ItemModifier) { const id = modifier.id; const power = modifierPowerFactor(modifier.grade ?? 3); const tradeoff = modifierTradeoffFactor(modifier.grade ?? 3); const weapon = item.slot === 'carbine' || item.slot === 'breacher' || item.slot === 'rail' ? build.weapon[item.slot] : null; if (id === 'hypervelocity' && weapon) { weapon.speedMul *= 1 + 0.18 * power; weapon.penetrationAdd += Math.round(12 * power); weapon.recoilMul *= 1 + 0.1 * tradeoff; } if (id === 'countermass') { if (weapon) { weapon.recoilMul *= 1 - 0.22 * power; weapon.damageMul *= 1 - 0.07 * tradeoff; } else build.player.lowGControl += 0.12 * power; } if (id === 'overdrive' && weapon) { weapon.damageMul *= 1 + 0.14 * power; weapon.recoilMul *= 1 + 0.2 * tradeoff; weapon.heatPerShotMul *= 1 + 0.12 * tradeoff; } if (id === 'cryoloop') { if (weapon) { weapon.heatDissipationMul *= 1 + 0.3 * power; weapon.penetrationAdd -= Math.round(8 * tradeoff); } else for (const stats of Object.values(build.weapon)) stats.heatDissipationMul *= 1 + 0.15 * power; } if (id === 'extendedFeed' && weapon) { weapon.magazineAdd += Math.max(1, Math.round(6 * power)); weapon.reloadMul *= 1 + 0.12 * tradeoff; } if (id === 'tungsten' && weapon) { weapon.armorDamageMul *= 1 + 0.3 * power; weapon.penetrationAdd += Math.round(14 * power); weapon.heatPerShotMul *= 1 + 0.08 * tradeoff; } if (id === 'vacuumSeal') build.player.vacuumResistance = Math.min(0.8, build.player.vacuumResistance + 0.55 * power); if (id === 'servoWeave') { build.player.moveSpeedMul *= 1 + 0.08 * power; build.player.lowGControl += 0.22 * power; } if (id === 'capacitorRecycler') { build.player.capRegenMul *= 1 + 0.2 * power; for (const ability of build.abilities) ability.costMul *= 1 - 0.1 * power; } if (id === 'railFracture') { build.mechanics.railFragment = true; build.mechanics.railFragmentScale = Math.max(build.mechanics.railFragmentScale, power); } if (id === 'dodgeVent') { build.mechanics.dodgeVent = true; build.mechanics.dodgeVentScale = Math.max(build.mechanics.dodgeVentScale, power); } if (id === 'magRedirect') { build.mechanics.magRedirect = true; build.mechanics.magRedirectScale = Math.max(build.mechanics.magRedirectScale, power); } if (id === 'breachPropulsion') { build.mechanics.breacherPropulsion = true; build.mechanics.breacherPropulsionScale = Math.max(build.mechanics.breacherPropulsionScale, power); } if (id === 'markShear') { build.mechanics.markWeakArmor = true; build.mechanics.markWeakArmorScale = Math.max(build.mechanics.markWeakArmorScale, power); } if (id === 'arcDrone') { build.mechanics.arcDrone = true; build.mechanics.arcDroneScale = Math.max(build.mechanics.arcDroneScale, power); } }
 export function deriveCombatBuild(profile: PlayerProfile): CombatBuild {
