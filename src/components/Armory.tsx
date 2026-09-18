@@ -30,7 +30,6 @@ import {
   type AbilityId,
   type EquipmentSlot,
   type Item,
-  type OperatorClassId,
   type PlayerProfile,
 } from '../game/meta';
 import { factionSetDefinition, type EquipmentFaction } from '../game/factionGear';
