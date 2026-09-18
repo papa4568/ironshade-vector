@@ -475,6 +475,44 @@ function refineryNodes(kind, lod) {
     return nodes;
   }
 
+  if (kind === 'wallPanel') {
+    const nodes = [
+      { name: 'refinery-wall-service-panel-shell', mesh: 1, translation: [0, 1.28, 0], scale: [0.18, 2.56, 2.75] },
+      { name: 'refinery-wall-service-panel-frame-left', mesh: 0, translation: [0.10, 1.28, -1.22], scale: [0.24, 2.70, 0.16] },
+      { name: 'refinery-wall-service-panel-frame-right', mesh: 0, translation: [0.10, 1.28, 1.22], scale: [0.24, 2.70, 0.16] },
+      { name: 'refinery-wall-service-panel-signage', mesh: 2, translation: [0.14, 1.86, 0.58], scale: [0.05, 0.28, 0.72] },
+      { name: 'refinery-wall-service-panel-status', mesh: 3, translation: [0.14, 0.82, -0.68], scale: [0.05, 0.24, 0.44] },
+      { name: 'refinery-wall-service-panel-vent', mesh: 0, translation: [0.14, 1.24, 0], scale: [0.06, 0.52, 0.68] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'refinery-wall-service-panel-vent-upper', mesh: 0, translation: [0.14, 1.48, 0], scale: [0.07, 0.07, 0.72] },
+        { name: 'refinery-wall-service-panel-vent-lower', mesh: 0, translation: [0.14, 1.00, 0], scale: [0.07, 0.07, 0.72] },
+        { name: 'refinery-wall-service-panel-junction', mesh: 1, translation: [0.16, 0.52, 0.62], scale: [0.10, 0.36, 0.42] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  if (kind === 'cableTray') {
+    const nodes = [
+      { name: 'refinery-cable-tray-spine', mesh: 0, translation: [0, 1.34, 0], scale: [0.14, 0.16, 3.20] },
+      { name: 'refinery-cable-tray-power', mesh: 2, translation: [0.13, 1.32, 0.30], scale: [0.08, 0.08, 2.92] },
+      { name: 'refinery-cable-tray-data', mesh: 3, translation: [0.13, 1.50, -0.26], scale: [0.07, 0.07, 2.72] },
+      { name: 'refinery-cable-tray-clamp', mesh: 1, translation: [0.08, 1.40, 0], scale: [0.20, 0.34, 0.16] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'refinery-cable-tray-clamp-forward', mesh: 1, translation: [0.08, 1.40, 1.18], scale: [0.20, 0.34, 0.12] },
+        { name: 'refinery-cable-tray-clamp-aft', mesh: 1, translation: [0.08, 1.40, -1.18], scale: [0.20, 0.34, 0.12] },
+        { name: 'refinery-cable-tray-drop', mesh: 2, translation: [0.12, 0.76, -1.08], scale: [0.08, 1.08, 0.08] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
   if (kind === 'serviceConduit') {
     const nodes = [
       { name: 'refinery-service-conduit-trunk', mesh: 0, translation: [0, 0.30, 0], scale: [2.8, 0.18, 0.22] },
@@ -569,6 +607,8 @@ const refineryProfiles = [
   ['bulkhead', 'refinery-bulkhead'],
   ['processor', 'refinery-processor'],
   ['pipeRack', 'refinery-pipe-rack'],
+  ['wallPanel', 'refinery-wall-service-panel'],
+  ['cableTray', 'refinery-cable-tray'],
   ['serviceConduit', 'refinery-service-conduit'],
   ['gantry', 'refinery-smelter-gantry'],
   ['crate', 'refinery-crate'],
