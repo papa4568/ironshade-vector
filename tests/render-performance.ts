@@ -64,4 +64,13 @@ assert(rendererSource.includes('dataset.renderTier = budget.tierName'), 'runtime
 assert(rendererSource.includes('tier-${budget.tier}'), 'environment signature must react to render-tier transitions so authored LOD can change');
 assert(rendererSource.includes('loadAuthoredRefineryEnvironment(state, world.w, world.h, budget.detailScale)'), 'refinery authored LOD selection must follow the active detail tier');
 
-console.log('RENDER_PERFORMANCE_PASS');
+const sustainedMobile = new AdaptiveRenderBudget(true);
+let sustainedSnapshot = sustainedMobile.sample(16.7, 1);
+for (let index = 0; index < 60 * 10; index += 1) sustainedSnapshot = sustainedMobile.sample(18.2, 1);
+assert(sustainedSnapshot.tier === 1, 'ten simulated minutes of stable mobile frame pacing should remain Balanced without quality thrash');
+for (let index = 0; index < 120; index += 1) sustainedSnapshot = sustainedMobile.sample(29, 1);
+assert(sustainedSnapshot.tier === 2, 'sustained thermal-like slow frames should degrade mobile rendering to Performance');
+for (let index = 0; index < 320; index += 1) sustainedSnapshot = sustainedMobile.sample(16.4, 1);
+assert(sustainedSnapshot.tier === 1, 'recovered mobile frame pacing should climb only to the coarse-pointer Balanced baseline');
+
+console.log('RENDER_PERFORMANCE_PASS sustained=stable+degrade+recover');
