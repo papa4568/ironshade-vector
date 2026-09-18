@@ -98,6 +98,9 @@ try {
         surfaceDetail: canvas.dataset.environmentSurfaceDetail ?? '',
         composition: canvas.dataset.environmentComposition ?? '',
         materials: canvas.dataset.environmentMaterials ?? '',
+        vfx: canvas.dataset.environmentVfx ?? '',
+        environmentLighting: canvas.dataset.environmentLighting ?? '',
+        environmentTone: canvas.dataset.environmentTone ?? '',
         readability: canvas.dataset.readabilityLanguage ?? '',
         locationArt: canvas.dataset.locationArt ?? '',
         locationLighting: canvas.dataset.locationLighting ?? '',
@@ -114,24 +117,27 @@ try {
     }
 
     if (lastState?.visual === 'authored-damaged-vessel') {
-      const expectedKit = new Set(['broken-rib', 'breach-frame', 'salvage-rack']);
+      const expectedKit = new Set(['broken-rib', 'breach-frame', 'salvage-rack', 'torn-plate', 'service-bundle']);
       const kit = new Set(String(lastState.kit ?? '').split(',').filter(Boolean));
       if (![...expectedKit].every(item => kit.has(item))) throw new Error(`Authored Damaged Vessel kit is incomplete: ${JSON.stringify(lastState)}`);
       if (!String(lastState.lod).split(',').every(value => value === '1' || value === '2')) throw new Error(`Unexpected Damaged Vessel LOD: ${JSON.stringify(lastState)}`);
-      if (!(lastState.instances >= 20)) throw new Error(`Damaged Vessel instancing coverage is too low: ${JSON.stringify(lastState)}`);
+      if (!(lastState.instances >= 50)) throw new Error(`Damaged Vessel instancing coverage is too low: ${JSON.stringify(lastState)}`);
       if (lastState.landmark !== 'starboard-hull-breach') throw new Error(`Damaged Vessel breach landmark is missing: ${JSON.stringify(lastState)}`);
-      if (lastState.serviceDetails !== 'salvage-rack:6') throw new Error(`Damaged Vessel salvage coverage is incomplete: ${JSON.stringify(lastState)}`);
-      if (lastState.surfaceDetail !== 'broken-rib:5') throw new Error(`Damaged Vessel rib coverage is incomplete: ${JSON.stringify(lastState)}`);
-      if (lastState.composition !== 'broken-rib-corridor+starboard-breach+perimeter-salvage') throw new Error(`Damaged Vessel composition contract is missing: ${JSON.stringify(lastState)}`);
-      if (lastState.materials !== 'scarred-hull+warning-emissive+salvage-status') throw new Error(`Damaged Vessel material language is missing: ${JSON.stringify(lastState)}`);
-      if (lastState.readability !== 'silhouette+damage-edge+luminance') throw new Error(`Damaged Vessel readability language is missing: ${JSON.stringify(lastState)}`);
+      if (lastState.serviceDetails !== 'salvage-rack:6+service-bundle:5') throw new Error(`Damaged Vessel salvage/service coverage is incomplete: ${JSON.stringify(lastState)}`);
+      if (lastState.surfaceDetail !== 'broken-rib:5+torn-plate:6+scorch:6') throw new Error(`Damaged Vessel surface damage coverage is incomplete: ${JSON.stringify(lastState)}`);
+      if (lastState.composition !== 'broken-rib-corridor+starboard-breach+torn-shell+perimeter-salvage') throw new Error(`Damaged Vessel composition contract is missing: ${JSON.stringify(lastState)}`);
+      if (lastState.materials !== 'scarred-hull+torn-edge+warning-emissive+salvage-status') throw new Error(`Damaged Vessel material language is missing: ${JSON.stringify(lastState)}`);
+      if (lastState.vfx !== 'breach-vapor:18+scorch:6') throw new Error(`Damaged Vessel bounded breach VFX are missing: ${JSON.stringify(lastState)}`);
+      if (!/^damaged-vessel-emergency:breach\+salvage\+contact:player\+enemy\+practical:[12]\+shadow:key$/.test(lastState.environmentLighting)) throw new Error(`Damaged Vessel emergency lighting recipe is missing: ${JSON.stringify(lastState)}`);
+      if (!/^aces-\d+\.\d{2}$/.test(lastState.environmentTone)) throw new Error(`Damaged Vessel authored tone telemetry is malformed: ${JSON.stringify(lastState)}`);
+      if (lastState.readability !== 'silhouette+damage-edge+breach-vapor+luminance') throw new Error(`Damaged Vessel readability language is missing: ${JSON.stringify(lastState)}`);
       if (!String(lastState.locationArt).startsWith('damaged-vessel:broken-ribs:scarred-hull')) throw new Error(`Damaged Vessel campaign art identity is not active: ${JSON.stringify(lastState)}`);
       if (!String(lastState.locationLighting).startsWith('damaged-vessel:emergency-amber:aces-')) throw new Error(`Damaged Vessel lighting profile is not active: ${JSON.stringify(lastState)}`);
       if (lastState.locationProps !== 'salvage-cases:instanced-shared-library') throw new Error(`Damaged Vessel shared salvage props are not active: ${JSON.stringify(lastState)}`);
       if (!['high', 'balanced', 'performance'].includes(lastState.renderTier)) throw new Error(`Adaptive render tier telemetry is missing: ${JSON.stringify(lastState)}`);
       if (!/^pixel:\d+\.\d{2}\+shadow:\d+\+vfx:\d+\.\d{2}\+transparency:\d+\.\d{2}\+detail:\d+\.\d{2}$/.test(lastState.renderBudget)) throw new Error(`Adaptive render budget telemetry is malformed: ${JSON.stringify(lastState)}`);
       if (!(lastState.width > 0 && lastState.height > 0)) throw new Error(`Authored Damaged Vessel canvas is not visible: ${JSON.stringify(lastState)}`);
-      console.log(`AUTHORED_DAMAGED_VESSEL_RUNTIME_PASS lod=${lastState.lod} kit=${[...kit].sort().join(',')} instances=${lastState.instances} landmark=${lastState.landmark} service=${lastState.serviceDetails} surface=${lastState.surfaceDetail} composition=${lastState.composition} materials=${lastState.materials} readability=${lastState.readability} location=${lastState.locationArt} props=${lastState.locationProps} tier=${lastState.renderTier} budget=${lastState.renderBudget} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
+      console.log(`AUTHORED_DAMAGED_VESSEL_RUNTIME_PASS lod=${lastState.lod} kit=${[...kit].sort().join(',')} instances=${lastState.instances} landmark=${lastState.landmark} service=${lastState.serviceDetails} surface=${lastState.surfaceDetail} composition=${lastState.composition} materials=${lastState.materials} vfx=${lastState.vfx} lighting=${lastState.environmentLighting} tone=${lastState.environmentTone} readability=${lastState.readability} location=${lastState.locationArt} props=${lastState.locationProps} tier=${lastState.renderTier} budget=${lastState.renderBudget} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
       process.exitCode = 0;
       break;
     }
