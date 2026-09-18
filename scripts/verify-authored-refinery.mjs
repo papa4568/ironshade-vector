@@ -102,6 +102,11 @@ try {
         lod: canvas.dataset.environmentLod ?? '',
         instances: Number(canvas.dataset.environmentInstances ?? 0),
         terminals: Number(canvas.dataset.environmentTerminals ?? 0),
+        lighting: canvas.dataset.environmentLighting ?? '',
+        materials: canvas.dataset.environmentMaterials ?? '',
+        vfx: canvas.dataset.environmentVfx ?? '',
+        tone: canvas.dataset.environmentTone ?? '',
+        effectsMode: canvas.dataset.effectsMode ?? '',
         canvases: document.querySelectorAll('canvas').length,
         width: rect.width,
         height: rect.height,
@@ -127,10 +132,25 @@ try {
       if (!(lastState.terminals >= 1)) {
         throw new Error(`Authored refinery interactive terminals were not mounted: ${JSON.stringify(lastState)}`);
       }
+      if (!String(lastState.lighting).startsWith('refinery-key+rim+contact+practical:')) {
+        throw new Error(`Refinery lighting recipe is not active: ${JSON.stringify(lastState)}`);
+      }
+      if (lastState.materials !== 'pbr-bounded+emissive+decals') {
+        throw new Error(`Refinery material normalization/decal strategy is missing: ${JSON.stringify(lastState)}`);
+      }
+      if (lastState.vfx !== 'steam+sparse-sparks+breach+objective') {
+        throw new Error(`Refinery atmosphere/VFX pass is missing: ${JSON.stringify(lastState)}`);
+      }
+      if (!String(lastState.tone).startsWith('aces-')) {
+        throw new Error(`Refinery ACES exposure telemetry is missing: ${JSON.stringify(lastState)}`);
+      }
+      if (!['full', 'reduced'].includes(lastState.effectsMode)) {
+        throw new Error(`Reduced-effects telemetry is missing: ${JSON.stringify(lastState)}`);
+      }
       if (!(lastState.width > 0 && lastState.height > 0)) {
         throw new Error(`Authored refinery canvas is not visible: ${JSON.stringify(lastState)}`);
       }
-      console.log(`AUTHORED_REFINERY_RUNTIME_PASS lod=${lastState.lod} kit=${[...kit].sort().join(',')} instances=${lastState.instances} terminals=${lastState.terminals} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
+      console.log(`AUTHORED_REFINERY_RUNTIME_PASS lod=${lastState.lod} kit=${[...kit].sort().join(',')} instances=${lastState.instances} terminals=${lastState.terminals} lighting=${lastState.lighting} materials=${lastState.materials} vfx=${lastState.vfx} tone=${lastState.tone} effects=${lastState.effectsMode} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
       process.exitCode = 0;
       break;
     }
