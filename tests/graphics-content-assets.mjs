@@ -163,7 +163,9 @@ for (const path of glbs) {
     assert(nodeNames.has('environment-root'), `${relativePath}: authored environment module is missing environment-root`);
     const marker = filename.includes('floor-panel')
       ? 'refinery-floor-panel'
-      : filename.includes('bulkhead')
+      : filename.includes('floor-service-grate')
+        ? 'refinery-floor-service-grate'
+        : filename.includes('bulkhead')
         ? 'refinery-bulkhead-left'
         : filename.includes('processor')
           ? 'refinery-processor-core'
@@ -181,6 +183,11 @@ for (const path of glbs) {
                   ? 'refinery-crate-shell'
                   : 'refinery-terminal-screen';
     assert(nodeNames.has(marker), `${relativePath}: environment silhouette marker ${marker} is missing`);
+    if (filename.includes('processor') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('refinery-processor-ore-intake'), `${relativePath}: refined processor is missing ore intake silhouette`);
+      assert(nodeNames.has('refinery-processor-exhaust-stack'), `${relativePath}: refined processor is missing exhaust stack silhouette`);
+      assert(nodeNames.has('refinery-processor-maintenance-screen'), `${relativePath}: refined processor is missing maintenance screen detail`);
+    }
     if (filename.includes('terminal')) {
       assert(nodeNames.has('objective-beacon-mount'), `${relativePath}: interactive refinery terminal is missing objective beacon mount`);
     }
