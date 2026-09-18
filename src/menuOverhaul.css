@@ -1547,3 +1547,208 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Compact Command hub: keep the landing screen above the fold and leave deep gear detail to dedicated screens. */
+.command-overview {
+  align-items: stretch;
+}
+.command-visual.command-bridge.command-bridge-compact {
+  min-height: 300px;
+}
+.command-bridge-compact {
+  display: grid;
+  grid-template-columns: minmax(210px, .82fr) minmax(260px, 1.18fr);
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    "copy scene"
+    "readiness scene";
+  gap: 12px;
+  padding: 18px;
+  overflow: hidden;
+}
+.command-bridge-compact .command-bridge-copy {
+  grid-area: copy;
+  position: relative;
+  inset: auto;
+  z-index: 2;
+  max-width: none;
+}
+.command-bridge-compact .command-bridge-copy h2 {
+  max-width: 10ch;
+  margin: 6px 0 4px;
+  font-size: clamp(24px, 2.4vw, 34px);
+  line-height: .98;
+}
+.command-bridge-compact .command-bridge-copy > p {
+  margin: 0;
+}
+.command-bridge-compact .command-visual-tags {
+  margin-top: 10px;
+}
+.bridge-compact-readiness {
+  grid-area: readiness;
+  align-self: end;
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+.bridge-compact-readiness > span {
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(86, 126, 118, .36);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(11, 24, 23, .92), rgba(6, 12, 13, .96));
+}
+.bridge-compact-readiness small,
+.bridge-compact-readiness b {
+  display: block;
+}
+.bridge-compact-readiness small {
+  color: #718b83;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: .1em;
+}
+.bridge-compact-readiness b {
+  margin-top: 3px;
+  color: #e4efeb;
+  font-size: 10px;
+}
+.command-bridge-schematic {
+  grid-area: scene;
+  align-self: stretch;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 220px;
+  border: 1px solid rgba(96, 149, 138, .34);
+  border-radius: 16px;
+  background: #050b0a;
+  box-shadow: inset 0 0 42px rgba(98, 217, 255, .025);
+}
+.command-side {
+  grid-template-rows: auto 1fr;
+}
+.command-card.primary-card {
+  min-height: 142px;
+  justify-content: flex-start;
+}
+.command-card.primary-card button {
+  margin-top: auto;
+}
+.command-action-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+.command-side .command-action-row button {
+  min-height: 44px;
+}
+.command-side .command-action-row button small {
+  display: none;
+}
+
+@media (max-width: 1160px) {
+  .command-bridge-compact {
+    grid-template-columns: minmax(160px, .86fr) minmax(0, 1.14fr);
+    gap: 9px;
+    padding: 13px;
+  }
+  .command-bridge-compact .command-bridge-copy h2 {
+    font-size: clamp(21px, 2.6vw, 28px);
+  }
+  .command-bridge-schematic {
+    min-height: 190px;
+  }
+  .bridge-compact-readiness {
+    gap: 5px;
+  }
+  .bridge-compact-readiness > span {
+    padding: 7px 8px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 650px) {
+  .ship-hub.area-command .tactical-workspace {
+    overflow-y: hidden;
+  }
+  .ship-hub.area-command .qol-priority-strip {
+    display: none;
+  }
+  .ship-hub.area-command .command-overview {
+    margin-bottom: 0;
+  }
+  .command-visual.command-bridge.command-bridge-compact {
+    min-height: 238px;
+  }
+  .command-bridge-compact {
+    grid-template-columns: minmax(145px, .86fr) minmax(0, 1.14fr);
+    gap: 7px;
+    padding: 9px;
+  }
+  .command-bridge-compact .command-bridge-copy h2 {
+    margin: 4px 0 3px;
+    font-size: 20px;
+  }
+  .command-bridge-compact .command-bridge-copy > p {
+    font-size: 7px;
+  }
+  .command-bridge-compact .command-visual-tags {
+    gap: 3px;
+    margin-top: 6px;
+  }
+  .command-bridge-compact .command-visual-tags span {
+    padding: 3px 5px;
+    font-size: 5.5px;
+  }
+  .bridge-compact-readiness {
+    gap: 4px;
+  }
+  .bridge-compact-readiness > span {
+    padding: 5px 6px;
+    border-radius: 7px;
+  }
+  .bridge-compact-readiness small {
+    font-size: 5.5px;
+  }
+  .bridge-compact-readiness b {
+    margin-top: 2px;
+    font-size: 7px;
+  }
+  .command-bridge-schematic {
+    min-height: 0;
+    border-radius: 10px;
+  }
+  .command-card.primary-card {
+    min-height: 108px;
+    padding: 9px;
+  }
+  .command-card.primary-card b {
+    font-size: 13px;
+  }
+  .command-card.primary-card span {
+    margin-top: 3px;
+    font-size: 7px;
+  }
+  .command-card.primary-card button {
+    min-height: 34px;
+    margin-top: 7px;
+    font-size: 9px;
+  }
+  .command-side {
+    gap: 5px;
+  }
+  .command-action-row {
+    gap: 4px;
+  }
+  .command-side .command-action-row button {
+    min-height: 36px;
+    padding: 5px 8px;
+  }
+  .command-side .command-action-row button b {
+    font-size: 8px;
+  }
+}
