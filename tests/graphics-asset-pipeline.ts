@@ -122,7 +122,7 @@ assert(rendererSource.includes("'armor-spark'") && rendererSource.includes("'met
 assert(rendererSource.includes('dataset.impactFx'), 'impact FX classification must remain observable for runtime QA');
 
 assert(rendererSource.includes('REFINERY_ASSET_FAMILIES'), 'showcase environment must load through authored refinery asset families');
-assert(rendererSource.includes('loadAuthoredRefineryEnvironment(state, world.w, world.h)'), 'Asteroid Refinery must start authored environment loading from the combat scene');
+assert(rendererSource.includes('loadAuthoredRefineryEnvironment(state, world.w, world.h, budget.detailScale)'), 'Asteroid Refinery authored environment must select LOD from the active render tier');
 assert(rendererSource.includes('new THREE.InstancedMesh'), 'repeated refinery props must use instancing');
 assert(rendererSource.includes("dataset.environmentVisual = 'authored-refinery'"), 'runtime QA must expose authored refinery activation');
 assert(rendererSource.includes("dataset.environmentKit = 'floor,bulkhead,processor,pipe-rack,crate,terminal'"), 'runtime QA must expose the complete refinery kit');
@@ -135,7 +135,7 @@ assert(rendererSource.includes("dataset.effectsMode = reducedEffects ? 'reduced'
 assert(rendererSource.includes("'shape+silhouette+luminance'"), 'gameplay-significant visual language must not rely on hue alone');
 assert(rendererSource.includes("'objective-chevron'"), 'objective effects must retain a shape-coded high-contrast beacon');
 assert(rendererSource.includes('mesh.material.emissiveIntensity = speed > 240 ? 0.18 : 0'), 'debris readability polish must remain bounded and quality-aware');
-assert(rendererSource.includes('syncHardSciFiBreaches(this.dynamicRoot, state, WORLD_SCALE, quality * budget.detailScale)'), 'breach particles must follow the adaptive effects budget');
+assert(rendererSource.includes('syncHardSciFiBreaches(this.dynamicRoot, state, WORLD_SCALE, quality * budget.vfxDensity)'), 'breach particles must follow the adaptive VFX-density budget');
 assert(rendererSource.includes("'boss-signature-root'") && rendererSource.includes("'boss-phase-ring'") && rendererSource.includes('boss-signature-pylon-'), 'boss visual must add a bespoke silhouette assembly beyond ordinary enemy presentation');
 assert(rendererSource.includes("'boss-telegraph-wedge'") && rendererSource.includes('enemy.telegraph > 0'), 'boss attack telegraphs must use a shape-coded directional wedge');
 assert(rendererSource.includes("'armor-break+phase-emissive+low-hp-pulse'") && rendererSource.includes('enemy.bossPhase === 2'), 'boss phase/damage state must drive authored material and signature VFX changes');
@@ -145,7 +145,12 @@ for (const location of campaignLocations) {
 }
 assert(rendererSource.includes('dataset.locationArt') && rendererSource.includes('dataset.locationProps'), 'runtime QA must expose location art identity and shared prop telemetry');
 assert(rendererSource.includes('lightingProfile.keyColor') && rendererSource.includes('lightingProfile.rimColor') && rendererSource.includes('lightingProfile.exposure'), 'location lighting identity must drive color, intensity, and exposure');
+assert(rendererSource.includes('dataset.renderTier = budget.tierName') && rendererSource.includes('dataset.renderBudget'), 'runtime QA must expose adaptive render-tier budgets');
+assert(rendererSource.includes('budget.shadowMapSize') && rendererSource.includes('budget.vfxDensity') && rendererSource.includes('budget.transparencyScale'), 'renderer must apply explicit shadow, VFX-density, and transparency budgets');
+assert(rendererSource.includes('syncHardSciFiEnvironment(this.environmentRoot, state, mission, budget.detailScale, budget.transparencyScale)'), 'environment atmosphere must follow detail/transparency budgets');
+assert(rendererSource.includes('this.syncProjectiles(state, budget.transparencyScale)'), 'projectile trails must follow the transparency budget');
+assert(rendererSource.includes('this.syncEffects(state, quality * budget.detailScale, budget.vfxDensity, budget.transparencyScale)'), 'combat effects must follow detail, VFX-density, and transparency budgets');
 
 
 
-console.log('GRAPHICS_ASSET_PIPELINE_PASS format=glb mesh=meshopt textures=ktx2 loader=deferred lifecycle=leased lod=adaptive operator=articulated+hit-blend enemies=role-authored weapons=authored+surface-impacts environment=refinery-instanced+phase6 lighting=key+rim+contact+practical materials=pbr-bounded+emissive+decals:safety+grime vfx=shape-coded+debris+reduced-effects readability=shape+silhouette+luminance boss=signature+phase+telegraph locations=10+shared-instancing sockets=muzzle animation=state-driven operatorTriangles=45000 enemyTriangles=30000 weaponTriangles=12000 environmentTriangles=20000');
+console.log('GRAPHICS_ASSET_PIPELINE_PASS format=glb mesh=meshopt textures=ktx2 loader=deferred lifecycle=leased lod=adaptive operator=articulated+hit-blend enemies=role-authored weapons=authored+surface-impacts environment=refinery-instanced+phase6 lighting=key+rim+contact+practical materials=pbr-bounded+emissive+decals:safety+grime vfx=shape-coded+debris+reduced-effects readability=shape+silhouette+luminance boss=signature+phase+telegraph locations=10+shared-instancing render-tiers=high+balanced+performance sockets=muzzle animation=state-driven operatorTriangles=45000 enemyTriangles=30000 weaponTriangles=12000 environmentTriangles=20000');
