@@ -305,7 +305,7 @@ await waitFor(`document.readyState === 'complete' && document.title === 'Ironsha
 await waitFor(`(() => {
   const text = (document.body?.innerText ?? '').toLowerCase();
   const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase());
-  return text.includes('save recovery lock') || (text.includes('command deck') && labels.includes('operations'));
+  return text.includes('save recovery lock') || ((text.includes('command ready') || text.includes('command deck')) && labels.includes('operations'));
 })()`, 'interactive Command deck', 45_000);
 
 const startup = await snapshot();
@@ -314,7 +314,7 @@ if (startupText.toLowerCase().includes('save recovery lock')) {
   throw new Error(`Android startup entered save recovery lock: ${JSON.stringify(startup)}`);
 }
 const startupButtons = startup.buttons ?? [];
-if (startup.title !== 'Ironshade Vector' || !startupText.toLowerCase().includes('command deck') || !startupButtons.some(label => label.toLowerCase() === 'operations')) {
+if (startup.title !== 'Ironshade Vector' || !(startupText.toLowerCase().includes('command ready') || startupText.toLowerCase().includes('command deck')) || !startupButtons.some(label => label.toLowerCase() === 'operations')) {
   throw new Error(`Unexpected Android startup surface: ${JSON.stringify(startup)}`);
 }
 
@@ -335,7 +335,9 @@ const commandLayout = await evaluate(`(() => {
     return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
   };
   const rail = bounds(document.querySelector('.command-rail'));
-  const workspace = bounds(document.querySelector('.tactical-workspace'));
+  const workspaceElement = document.querySelector('.tactical-workspace');
+  const workspace = bounds(workspaceElement);
+  const overview = bounds(document.querySelector('.command-overview'));
   const primaryButtons = [...document.querySelectorAll('.command-rail-nav button')].filter(visible).map(button => ({
     label: button.getAttribute('aria-label') || button.textContent?.trim() || '',
     rect: bounds(button),
@@ -343,12 +345,19 @@ const commandLayout = await evaluate(`(() => {
   const offscreen = primaryButtons.filter(item => item.rect && (item.rect.left < -1 || item.rect.top < -1 || item.rect.right > viewport.width + 1 || item.rect.bottom > viewport.height + 1)).map(item => item.label);
   const undersized = primaryButtons.filter(item => item.rect && item.rect.height < 40).map(item => item.label);
   const overlap = !!rail && !!workspace && !(rail.right <= workspace.left || workspace.right <= rail.left || rail.bottom <= workspace.top || workspace.bottom <= rail.top);
-  return { viewport, rail, workspace, primaryCount: primaryButtons.length, offscreen, undersized, overlap, landscape: viewport.width > viewport.height };
+  const verticalOverflow = workspaceElement ? workspaceElement.scrollHeight - workspaceElement.clientHeight : null;
+  const scrollTop = workspaceElement?.scrollTop ?? null;
+  return { viewport, rail, workspace, overview, primaryCount: primaryButtons.length, offscreen, undersized, overlap, verticalOverflow, scrollTop, landscape: viewport.width > viewport.height };
 })()`);
-if (!commandLayout.landscape || !commandLayout.rail || !commandLayout.workspace || commandLayout.primaryCount !== 5 || commandLayout.offscreen.length || commandLayout.undersized.length || commandLayout.overlap) {
-  throw new Error(`Android Tactical Command navigation failed viewport/touch checks: ${JSON.stringify(commandLayout)}`);
+const commandDoesNotFit = commandLayout.verticalOverflow === null
+  || commandLayout.verticalOverflow > 2
+  || commandLayout.scrollTop !== 0
+  || !commandLayout.overview
+  || commandLayout.overview.bottom > commandLayout.workspace.bottom + 2;
+if (!commandLayout.landscape || !commandLayout.rail || !commandLayout.workspace || commandLayout.primaryCount !== 5 || commandLayout.offscreen.length || commandLayout.undersized.length || commandLayout.overlap || commandDoesNotFit) {
+  throw new Error(`Android Tactical Command navigation/fit failed viewport checks: ${JSON.stringify(commandLayout)}`);
 }
-console.log(`ANDROID_MOBILE_MENU_PASS viewport=${Math.round(commandLayout.viewport.width)}x${Math.round(commandLayout.viewport.height)} destinations=${commandLayout.primaryCount} safe=onscreen+separated`);
+console.log(`ANDROID_MOBILE_MENU_PASS viewport=${Math.round(commandLayout.viewport.width)}x${Math.round(commandLayout.viewport.height)} destinations=${commandLayout.primaryCount} safe=onscreen+separated overflow=${Math.max(0, commandLayout.verticalOverflow)}px`);
 
 await tapButton('Operations', 21);
 await waitFor(`[...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'contracts')`, 'Operations navigation');
