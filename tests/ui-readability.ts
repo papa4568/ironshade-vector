@@ -24,6 +24,7 @@ const rootCss = read('src/index.css');
 const mobileCombatCss = read('src/mobileCombatReadability.css');
 const browserSmoke = read('scripts/browser-runtime-smoke.mjs');
 const androidSmoke = read('scripts/android-runtime-smoke.mjs');
+const androidResumeGate = androidSmoke.match(/if \(resumeOnly\) \{[\s\S]*?process\.exit\(0\);\n\}/)?.[0] ?? '';
 const androidSmokeShell = read('scripts/android-runtime-smoke.sh');
 const browserWorkflow = read('.github/workflows/browser-e2e.yml');
 
@@ -109,6 +110,7 @@ assert(browserWorkflow.includes('mobile-landscape') && browserWorkflow.includes(
 assert(browserSmoke.includes('BROWSER_MOBILE_LAYOUT_PASS') && browserSmoke.includes('moveDockOverlap') && browserSmoke.includes('undersized'), 'Browser mobile E2E is missing safe-area/touch-target layout assertions');
 assert(androidSmoke.includes('ANDROID_MOBILE_LAYOUT_PASS') && androidSmoke.includes('moveDockOverlap') && androidSmoke.includes('undersized'), 'Android smoke is missing safe-area/touch-target layout assertions');
 assert(androidSmoke.includes('ANDROID_LIFECYCLE_RESUME_PASS'), 'Android lifecycle pause/resume validation is missing');
+assert(androidResumeGate.includes("canvas[data-render-tier]") && androidResumeGate.includes('[aria-label="Touch combat controls"]') && androidResumeGate.includes('.move-stick') && !androidResumeGate.includes("text.includes('field coach')"), 'Android lifecycle resume gate must detect the restored combat renderer/controls without depending on tutorial coach text');
 assert(androidSmokeShell.includes('--activity-reorder-to-front') && androidSmokeShell.includes('RESUME_PID') && androidSmokeShell.includes('RESUME_PID" != "$APP_PID'), 'Android lifecycle smoke must foreground the existing activity and reject process restarts');
 assert(androidSmoke.includes('function validRenderBudget(value)') && androidSmoke.includes('validRenderBudget(renderTier.budget)') && androidSmoke.includes('validRenderBudget(resumed.budget)'), 'Android render-budget QA must parse telemetry structurally instead of relying on an escaped regex');
 
