@@ -3,7 +3,7 @@ import { createDefaultCampaign, generateContracts, loadCampaign, saveCampaign, s
 import { withOperationScaling, frameGenerationForRecovery } from '../src/game/scaling';
 import { applyMissionSetup, createDirector } from '../src/game/director';
 import { getMissionObjectiveStatus, getNextMissionObjectiveTarget } from '../src/game/encounters';
-import { createSimulation, setAim, setMove, stepSimulation, triggerAbility, triggerDodge, triggerFire } from '../src/game/sim';
+import { applyPlayerDamage, createSimulation, setAim, setMove, stepSimulation, triggerAbility, triggerDodge, triggerFire } from '../src/game/sim';
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -70,7 +70,6 @@ function classMechanicSmoke() {
   assert(vanguard.build.operatorClass === 'vanguard' && vanguard.build.classResonanceTier === 1, 'Vanguard combat build should carry class and starter resonance into simulation.');
   vanguard.player.currentWeapon = 'breacher';
   vanguard.player.armor = Math.max(0, vanguard.player.maxArmor - 12);
-  const armorBefore = vanguard.player.armor;
   const closeTarget = vanguard.enemies[0];
   for (const enemy of vanguard.enemies) enemy.active = false;
   closeTarget.active = true;
@@ -86,7 +85,9 @@ function classMechanicSmoke() {
   assert(triggerFire(vanguard), 'Vanguard should be able to fire the Breacher.');
   for (let index = 0; index < 24; index += 1) stepSimulation(vanguard, 1 / 120);
   assert(vanguard.classState.vanguardGuard > 0, 'Close Breacher contact should activate Vanguard Breach Guard.');
-  assert(vanguard.player.armor > armorBefore, 'Breaking armor at close range should restore Vanguard armor.');
+  const guardedArmorBefore = vanguard.player.armor;
+  applyPlayerDamage(vanguard, 10, 0);
+  assert(guardedArmorBefore - vanguard.player.armor < 10, 'Active Breach Guard should reduce incoming armor impact without duplicating Breach Vanguard armor recovery.');
 
   const vectorProfile = setOperatorClass(fresh, 'vector').profile;
   const vector = createSimulation(deriveCombatBuild(vectorProfile));
