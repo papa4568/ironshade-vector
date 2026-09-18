@@ -153,8 +153,8 @@ try {
       if (!String(lastState.lighting).startsWith('refinery-key+rim+contact:player+enemy+practical:')) {
         throw new Error(`Refinery player/enemy readability lighting recipe is not active: ${JSON.stringify(lastState)}`);
       }
-      if (lastState.materials !== 'pbr-bounded+emissive+decals:safety+grime') {
-        throw new Error(`Refinery material normalization/decal strategy is missing: ${JSON.stringify(lastState)}`);
+      if (lastState.materials !== 'pbr-bounded+emissive+decals:safety+grime+contact-darkening') {
+        throw new Error(`Refinery material normalization/decal/contact strategy is missing: ${JSON.stringify(lastState)}`);
       }
       if (lastState.vfx !== 'steam+sparse-sparks+debris+breach+objective') {
         throw new Error(`Refinery atmosphere/VFX pass is missing: ${JSON.stringify(lastState)}`);
