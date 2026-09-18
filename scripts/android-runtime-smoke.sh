@@ -28,6 +28,7 @@ adb forward --remove tcp:9222 >/dev/null 2>&1 || true
 adb forward tcp:9222 "localabstract:${SOCKET}"
 node scripts/android-runtime-smoke.mjs
 CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/verify-authored-operator.mjs
+CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/verify-authored-enemies.mjs
 
 adb logcat -d > android-runtime-logcat.txt
 if grep -E 'FATAL EXCEPTION|Process: app\.ironshade\.vector' android-runtime-logcat.txt; then
@@ -41,4 +42,4 @@ if [[ ! -s android-runtime-smoke.png ]]; then
   exit 1
 fi
 
-echo "ANDROID_EMULATOR_PASS pid=${APP_PID} route=ship>contracts>combat authoredOperator=verified"
+echo "ANDROID_EMULATOR_PASS pid=${APP_PID} route=ship>contracts>combat authoredOperator=verified authoredEnemies=verified"

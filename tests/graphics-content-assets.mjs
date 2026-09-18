@@ -153,6 +153,26 @@ for (const path of glbs) {
     }
   }
 
+  if (top === 'enemies' || top === 'bosses') {
+    const height = runtimeBounds.max.y - runtimeBounds.min.y;
+    assert(Math.abs(runtimeBounds.min.y) <= 0.05, `${relativePath}: enemy feet must rest near authored ground origin; minY=${runtimeBounds.min.y}`);
+    assert(height >= 1.45 && height <= 3.6, `${relativePath}: enemy height ${height.toFixed(2)}m is outside gameplay scale`);
+    const nodeNames = new Set((json.nodes ?? []).map(node => node.name).filter(Boolean));
+    for (const required of ['enemy-rig', 'hip', 'torso', 'helmet', 'arm-left', 'arm-right', 'leg-left', 'leg-right', 'backpack', 'weapon-socket']) {
+      assert(nodeNames.has(required), `${relativePath}: authored enemy is missing required node ${required}`);
+    }
+    const silhouetteMarker = filename.includes('assault')
+      ? 'assault-ram-plate'
+      : filename.includes('suppressor')
+        ? 'suppressor-shoulder-left'
+        : filename.includes('technician')
+          ? 'technician-mast'
+          : filename.includes('elite')
+            ? 'elite-crest'
+            : 'boss-command-crest';
+    assert(nodeNames.has(silhouetteMarker), `${relativePath}: role silhouette marker ${silhouetteMarker} is missing`);
+  }
+
   reports.push({ relativePath, bytes: data.byteLength, triangles, meshes: runtimeMeshes, authoredBounds });
 }
 

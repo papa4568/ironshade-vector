@@ -19,3 +19,37 @@ export const SHOWCASE_REFINERY_MODULE_FAMILY: GraphicsAssetFamily = {
     2: createGraphicsAssetSpec('refinery-processing-module-a-lod2', 'environment-module', '/assets/models/environments/refinery-processing-module-a-lod2.glb', 2),
   },
 };
+
+
+export const ENEMY_ASSET_FAMILIES = {
+  assault: {
+    id: 'enemy-assault',
+    lods: {
+      1: createGraphicsAssetSpec('enemy-assault-lod1', 'enemy', '/assets/models/enemies/enemy-assault-lod1.glb', 1),
+    },
+  },
+  suppressor: {
+    id: 'enemy-suppressor',
+    lods: {
+      1: createGraphicsAssetSpec('enemy-suppressor-lod1', 'enemy', '/assets/models/enemies/enemy-suppressor-lod1.glb', 1),
+    },
+  },
+  technician: {
+    id: 'enemy-technician',
+    lods: {
+      1: createGraphicsAssetSpec('enemy-technician-lod1', 'enemy', '/assets/models/enemies/enemy-technician-lod1.glb', 1),
+    },
+  },
+  elite: {
+    id: 'enemy-elite',
+    lods: {
+      1: createGraphicsAssetSpec('enemy-elite-lod1', 'enemy', '/assets/models/enemies/enemy-elite-lod1.glb', 1),
+    },
+  },
+  boss: {
+    id: 'enemy-boss',
+    lods: {
+      1: createGraphicsAssetSpec('enemy-boss-lod1', 'boss', '/assets/models/bosses/enemy-boss-lod1.glb', 1),
+    },
+  },
+} as const satisfies Record<'assault' | 'suppressor' | 'technician' | 'elite' | 'boss', GraphicsAssetFamily>;
