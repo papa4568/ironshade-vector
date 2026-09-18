@@ -218,11 +218,59 @@ await call('Page.enable').catch(() => undefined);
 
 if (resumeOnly) {
   await waitFor(`document.readyState === 'complete' && document.title === 'Ironshade Vector'`, 'resumed Ironshade document', 45_000);
+  const resumeSurface = await snapshot();
+  const resumeText = String(resumeSurface.text ?? '').toLowerCase();
+  if (resumeText.includes('save recovery lock')) {
+    throw new Error(`Android resume entered save recovery lock: ${JSON.stringify(resumeSurface)}`);
+  }
+
+  let lifecycleMode = 'restored-combat';
+  const combatRestored = await evaluate(`(() => {
+    const canvas = document.querySelector('canvas[data-render-tier]');
+    const text = (document.body?.innerText ?? '').toLowerCase();
+    return Boolean(canvas && text.includes('field coach') && document.querySelector('[aria-label="Touch combat controls"]'));
+  })()`);
+
+  if (!combatRestored) {
+    lifecycleMode = 'clean-redeploy';
+    const onCommandDeck = resumeText.includes('command deck')
+      && (resumeSurface.buttons ?? []).some(label => String(label).trim().toLowerCase() === 'contracts');
+    if (!onCommandDeck) {
+      throw new Error(`Android resume returned to an unexpected surface: ${JSON.stringify(resumeSurface)}`);
+    }
+
+    const openedContracts = await evaluate(`(() => {
+      const button = [...document.querySelectorAll('button')].find(candidate => candidate.textContent?.trim().toLowerCase() === 'contracts');
+      if (!button || button.disabled) return false;
+      button.click();
+      return true;
+    })()`);
+    if (!openedContracts) throw new Error('Android lifecycle recovery could not reopen Contracts.');
+    await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('contract board') && [...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'deploy selected contract')`, 'resumed Contract Board', 30_000);
+
+    const refinerySelected = await evaluate(`(() => {
+      const button = document.querySelector('button[data-location="asteroid-refinery"]');
+      if (!button || button.disabled) return false;
+      button.click();
+      return true;
+    })()`);
+    if (!refinerySelected) throw new Error('Android lifecycle recovery could not reselect Asteroid Refinery.');
+    await waitFor(`document.querySelector('button[data-location="asteroid-refinery"]')?.classList.contains('selected') === true`, 'resumed Asteroid Refinery selection', 15_000);
+
+    const deployed = await evaluate(`(() => {
+      const button = [...document.querySelectorAll('button')].find(candidate => candidate.textContent?.trim().toLowerCase() === 'deploy selected contract');
+      if (!button || button.disabled) return false;
+      button.click();
+      return true;
+    })()`);
+    if (!deployed) throw new Error('Android lifecycle recovery could not redeploy the selected contract.');
+  }
+
   await waitFor(`(() => {
     const canvas = document.querySelector('canvas[data-render-tier]');
     const text = (document.body?.innerText ?? '').toLowerCase();
     return Boolean(canvas && text.includes('field coach') && document.querySelector('[aria-label="Touch combat controls"]'));
-  })()`, 'resumed Android combat surface', 45_000);
+  })()`, 'post-resume Android combat surface', 45_000);
 
   const resumed = await evaluate(`(() => {
     const canvas = document.querySelector('canvas[data-render-tier]');
@@ -243,11 +291,12 @@ if (resumeOnly) {
   if (!resumed.touch || resumed.canvases < 1) {
     throw new Error(`Android resume did not restore combat/touch surfaces: ${JSON.stringify(resumed)}`);
   }
-  console.log(`ANDROID_LIFECYCLE_RESUME_PASS tier=${resumed.tier} budget=${resumed.budget} environment=${resumed.environment} canvases=${resumed.canvases}`);
+  console.log(`ANDROID_LIFECYCLE_RESUME_PASS mode=${lifecycleMode} tier=${resumed.tier} budget=${resumed.budget} environment=${resumed.environment} canvases=${resumed.canvases}`);
   session.close();
   await sleep(100);
   process.exit(0);
 }
+
 await waitFor(`document.readyState === 'complete' && document.title === 'Ironshade Vector'`, 'Ironshade document', 45_000);
 await waitFor(`(() => {
   const text = (document.body?.innerText ?? '').toLowerCase();
