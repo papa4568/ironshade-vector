@@ -256,6 +256,15 @@ try {
   await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('contract board') && [...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'deploy selected contract')`, 'Contract Board');
   await accessibilityAudit('contract-board');
 
+  const refinerySelected = await evaluate(`(() => {
+    const button = document.querySelector('button[data-location="asteroid-refinery"]');
+    if (!button || button.disabled) return false;
+    button.click();
+    return button.classList.contains('selected') || true;
+  })()`);
+  if (!refinerySelected) throw new Error('Asteroid Refinery showcase contract was not available on the fresh Contract Board.');
+  await waitFor(`document.querySelector('button[data-location="asteroid-refinery"]')?.classList.contains('selected') === true`, 'Asteroid Refinery contract selection');
+
   await keyboardActivateButton('Deploy Selected Contract');
   await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('field coach') && document.querySelectorAll('canvas').length > 0`, 'Combat surface');
 
