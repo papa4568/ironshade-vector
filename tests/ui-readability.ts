@@ -108,6 +108,7 @@ assert(browserWorkflow.includes('mobile-landscape') && browserWorkflow.includes(
 assert(browserSmoke.includes('BROWSER_MOBILE_LAYOUT_PASS') && browserSmoke.includes('moveDockOverlap') && browserSmoke.includes('undersized'), 'Browser mobile E2E is missing safe-area/touch-target layout assertions');
 assert(androidSmoke.includes('ANDROID_MOBILE_LAYOUT_PASS') && androidSmoke.includes('moveDockOverlap') && androidSmoke.includes('undersized'), 'Android smoke is missing safe-area/touch-target layout assertions');
 assert(androidSmoke.includes('ANDROID_LIFECYCLE_RESUME_PASS'), 'Android lifecycle pause/resume validation is missing');
+assert(androidSmoke.includes("'clean-redeploy'") && androidSmoke.includes('resumed Contract Board') && androidSmoke.includes('post-resume Android combat surface'), 'Android lifecycle QA must prove renderer resources can be recreated through a clean redeploy when the Activity returns to the hub');
 assert(androidSmoke.includes('function validRenderBudget(value)') && androidSmoke.includes('validRenderBudget(renderTier.budget)') && androidSmoke.includes('validRenderBudget(resumed.budget)'), 'Android render-budget QA must parse telemetry structurally instead of relying on an escaped regex');
 
 console.log('UI_READABILITY_PASS discovery=hidden contractGear=unidentified targetHp=strong missionLoot=reviewable hierarchy=polished mobile=desktop+landscape-safe');
