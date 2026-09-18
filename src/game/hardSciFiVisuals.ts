@@ -35,6 +35,30 @@ type PaletteLike = {
   background: number;
 };
 
+export type LocationArtIdentity = {
+  silhouette: string;
+  material: string;
+  lighting: string;
+  propSet: string;
+};
+
+export const LOCATION_ART_IDENTITIES: Record<LocationId, LocationArtIdentity> = {
+  'orbital-station': { silhouette: 'radial-spine', material: 'clean-industrial', lighting: 'neutral-cyan', propSet: 'service-cases' },
+  'damaged-vessel': { silhouette: 'broken-ribs', material: 'scarred-hull', lighting: 'emergency-amber', propSet: 'salvage-cases' },
+  'asteroid-refinery': { silhouette: 'processor-tanks', material: 'heavy-ferrous', lighting: 'furnace-amber', propSet: 'ore-service' },
+  'spin-habitat': { silhouette: 'ring-and-spokes', material: 'habitat-alloy', lighting: 'cool-green', propSet: 'habitat-service' },
+  'jovian-harvester': { silhouette: 'skimmer-towers', material: 'weathered-condenser', lighting: 'storm-orange', propSet: 'compressor-service' },
+  'ice-mine': { silhouette: 'bore-crystals', material: 'frosted-industrial', lighting: 'ice-cyan', propSet: 'drill-service' },
+  'solar-yard': { silhouette: 'panel-clamps', material: 'heat-shielded-alloy', lighting: 'solar-orange', propSet: 'fabrication-service' },
+  'lattice-annex': { silhouette: 'reference-pylons', material: 'survey-ceramic', lighting: 'metrology-teal', propSet: 'calibration-service' },
+  'momentum-exchange': { silhouette: 'flywheel-lane', material: 'magnetic-machinery', lighting: 'transfer-blue', propSet: 'capture-service' },
+  'cryo-reserve': { silhouette: 'tank-gallery', material: 'cryogenic-shell', lighting: 'cold-blue', propSet: 'valve-service' },
+};
+
+export function locationArtIdentityFor(location: LocationId) {
+  return LOCATION_ART_IDENTITIES[location];
+}
+
 const SUIT_KEY = '__ironshadeHardSuit';
 const WEAPON_KEY = '__ironshadeWeaponDetail';
 const ENV_KEY = '__ironshadeSpaceEnvironment';
@@ -461,6 +485,55 @@ function addStationArchitecture(root: THREE.Group, location: LocationId, worldW:
   }
 }
 
+function addSharedPropLibrary(root: THREE.Group, location: LocationId, worldW: number, worldH: number, palette: PaletteLike) {
+  const random = randomSource(seedFromString(`shared-props:${location}:${worldW}:${worldH}`));
+  const identity = locationArtIdentityFor(location);
+  const caseGeometry = new THREE.BoxGeometry(0.92, 0.62, 0.72);
+  const caseMaterial = std(palette.secondary, 0.76, location === 'ice-mine' || location === 'cryo-reserve' ? 0.5 : 0.38);
+  const cases = new THREE.InstancedMesh(caseGeometry, caseMaterial, 12);
+  cases.name = `shared-props-${location}-cases`;
+  cases.castShadow = true;
+  cases.receiveShadow = true;
+
+  const postGeometry = new THREE.CylinderGeometry(0.11, 0.14, 1.5, 8);
+  const postMaterial = std(palette.accent, 0.58, 0.3, palette.accent, 0.16);
+  const posts = new THREE.InstancedMesh(postGeometry, postMaterial, 8);
+  posts.name = `shared-props-${location}-posts`;
+  posts.castShadow = true;
+  posts.receiveShadow = true;
+
+  const transform = new THREE.Object3D();
+  const materialScale = identity.material.includes('heavy') || identity.material.includes('magnetic') ? 1.18
+    : identity.material.includes('frosted') || identity.material.includes('cryogenic') ? 0.9
+      : 1;
+  for (let index = 0; index < 12; index += 1) {
+    const edge = index % 2 === 0;
+    const x = 1.7 + random() * Math.max(1, worldW - 3.4);
+    const z = edge ? 2 + random() * 1.3 : worldH - 2 - random() * 1.3;
+    const scale = materialScale * (0.78 + random() * 0.42);
+    transform.position.set(x, 0.31 * scale, z);
+    transform.rotation.set(0, (random() - 0.5) * 0.7, 0);
+    transform.scale.set(scale * (index % 3 === 0 ? 1.25 : 1), scale, scale);
+    transform.updateMatrix();
+    cases.setMatrixAt(index, transform.matrix);
+  }
+  for (let index = 0; index < 8; index += 1) {
+    const x = worldW * (0.12 + (index / 7) * 0.76);
+    const z = index % 2 === 0 ? worldH * 0.13 : worldH * 0.87;
+    const heightScale = location === 'spin-habitat' || location === 'lattice-annex' ? 1.3 : location === 'damaged-vessel' ? 0.78 : 1;
+    transform.position.set(x, 0.75 * heightScale, z);
+    transform.rotation.set(0, index * 0.47, 0);
+    transform.scale.set(1, heightScale, 1);
+    transform.updateMatrix();
+    posts.setMatrixAt(index, transform.matrix);
+  }
+  cases.instanceMatrix.needsUpdate = true;
+  posts.instanceMatrix.needsUpdate = true;
+  root.add(cases, posts);
+  root.userData.sharedPropLibrary = identity.propSet;
+  root.userData.sharedPropInstances = 20;
+}
+
 function addLocationKit(root: THREE.Group, location: LocationId, worldW: number, worldH: number, palette: PaletteLike) {
   const cx = worldW / 2;
   const cz = worldH / 2;
@@ -557,7 +630,9 @@ export function buildHardSciFiEnvironment(root: THREE.Group, mission: Contract, 
   addSpaceVista(environment, mission.location, worldW, worldH, palette);
   addStationArchitecture(environment, mission.location, worldW, worldH, palette);
   buildMapVisualOverhaul(environment, mission, worldW, worldH, palette);
+  addSharedPropLibrary(environment, mission.location, worldW, worldH, palette);
   addLocationKit(environment, mission.location, worldW, worldH, palette);
+  environment.userData.locationArtIdentity = locationArtIdentityFor(mission.location);
 }
 
 export function syncHardSciFiEnvironment(root: THREE.Group, state: SimState, mission: Contract) {
