@@ -40,6 +40,20 @@ export const REFINERY_ASSET_FAMILIES = {
       2: createGraphicsAssetSpec('refinery-pipe-rack-lod2', 'environment-module', '/assets/models/environments/refinery-pipe-rack-lod2.glb', 2),
     },
   },
+  serviceConduit: {
+    id: 'refinery-service-conduit',
+    lods: {
+      1: createGraphicsAssetSpec('refinery-service-conduit-lod1', 'environment-module', '/assets/models/environments/refinery-service-conduit-lod1.glb', 1),
+      2: createGraphicsAssetSpec('refinery-service-conduit-lod2', 'environment-module', '/assets/models/environments/refinery-service-conduit-lod2.glb', 2),
+    },
+  },
+  gantry: {
+    id: 'refinery-smelter-gantry',
+    lods: {
+      1: createGraphicsAssetSpec('refinery-smelter-gantry-lod1', 'environment-module', '/assets/models/environments/refinery-smelter-gantry-lod1.glb', 1),
+      2: createGraphicsAssetSpec('refinery-smelter-gantry-lod2', 'environment-module', '/assets/models/environments/refinery-smelter-gantry-lod2.glb', 2),
+    },
+  },
   crate: {
     id: 'refinery-crate',
     lods: {
@@ -54,7 +68,7 @@ export const REFINERY_ASSET_FAMILIES = {
       2: createGraphicsAssetSpec('refinery-terminal-lod2', 'environment-module', '/assets/models/environments/refinery-terminal-lod2.glb', 2),
     },
   },
-} as const satisfies Record<'floor' | 'bulkhead' | 'processor' | 'pipeRack' | 'crate' | 'terminal', GraphicsAssetFamily>;
+} as const satisfies Record<'floor' | 'bulkhead' | 'processor' | 'pipeRack' | 'serviceConduit' | 'gantry' | 'crate' | 'terminal', GraphicsAssetFamily>;
 
 export const SHOWCASE_REFINERY_MODULE_FAMILY: GraphicsAssetFamily = REFINERY_ASSET_FAMILIES.processor;
 
