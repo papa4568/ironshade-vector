@@ -11,6 +11,15 @@ assert(!gameCanvasSource.includes('useRef<SimState>(createMissionState(firstMiss
 assert(gameCanvasSource.includes('useState(() => createMissionState(firstMission))'), 'GameCanvas initial simulation should use a lazy one-time initializer');
 assert(gameCanvasSource.includes('profileSettingsRef.current.effectIntensity') && gameCanvasSource.includes('profileSettingsRef.current.screenShake'), 'combat render loop must read live profile settings');
 
+const rendererSource = readFileSync(resolve(process.cwd(), 'src/game/threeCombatRenderer.ts'), 'utf8');
+const bossSyncStart = rendererSource.indexOf('private syncBossSignature');
+const enemySyncStart = rendererSource.indexOf('private syncEnemies');
+assert(bossSyncStart > 0 && enemySyncStart > bossSyncStart, 'boss signature sync path must exist before enemy iteration');
+const bossSyncSource = rendererSource.slice(bossSyncStart, enemySyncStart);
+assert(!bossSyncSource.includes('new THREE.Mesh(') && !bossSyncSource.includes('new THREE.' + 'Geometry'), 'boss hot path must update pooled visuals instead of allocating geometry per frame');
+assert(rendererSource.includes("this.playerReadabilityLight.distance = reducedEffects ? 5.8 : 7.5"), 'reduced-effects mode must retain combat readability lighting');
+assert(rendererSource.includes("telegraph.visible = enemy.telegraph > 0"), 'boss telegraph geometry must remain available independent of particle density');
+
 const desktop = new AdaptiveRenderBudget(false);
 let snapshot = desktop.sample(16.7, 1);
 assert(snapshot.tier === 0, 'desktop should start at full quality');
