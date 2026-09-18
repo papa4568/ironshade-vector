@@ -76,7 +76,7 @@ const standardRates = sampleGroundLoot({ enemyId: 1, enemyLabel: 'Raider', role:
 const enhancedRates = sampleGroundLoot({ enemyId: 2, enemyLabel: 'Enhanced Raider', role: 'assault', combatClass: 'enhanced', x: 0, y: 0, operationTier: 12, maxRecoveryLevel: 56, monsterLevel: 20, sequence: 0 });
 const eliteRates = sampleGroundLoot({ enemyId: 3, enemyLabel: 'Elite Raider', role: 'elite', combatClass: 'elite', x: 0, y: 0, operationTier: 12, maxRecoveryLevel: 56, monsterLevel: 20, sequence: 0 });
 const bossRates = sampleGroundLoot({ enemyId: 4, enemyLabel: 'Command Target', role: 'boss', combatClass: 'command', x: 0, y: 0, operationTier: 12, maxRecoveryLevel: 56, monsterLevel: 20, sequence: 0 });
-const modifiedStandardRates = sampleGroundLoot({ enemyId: 5, enemyLabel: 'Modified Raider', role: 'assault', combatClass: 'standard', x: 0, y: 0, operationTier: 12, maxRecoveryLevel: 56, monsterLevel: 20, modifierCount: 4, sequence: 0 });
+const modifiedEnhancedRates = sampleGroundLoot({ enemyId: 5, enemyLabel: 'Modified Enhanced Raider', role: 'assault', combatClass: 'enhanced', x: 0, y: 0, operationTier: 12, maxRecoveryLevel: 56, monsterLevel: 20, modifierCount: 4, sequence: 0 });
 assert(standardRates.drops > 0.19 && standardRates.drops < 0.24, `standard T12 equipment rate drifted: ${standardRates.drops}`);
 assert(standardRates.Prototype > 0.008 && standardRates.Prototype < 0.017 && standardRates.Singular < 0.002, 'standard enemies are producing too many chase rarities');
 assert(enhancedRates.drops > 0.44 && enhancedRates.drops < 0.52, `enhanced T12 equipment rate drifted: ${enhancedRates.drops}`);
@@ -84,8 +84,8 @@ assert(enhancedRates.Prototype > 0.075 && enhancedRates.Prototype < 0.115 && enh
 assert(eliteRates.drops > 0.95 && eliteRates.drops < 0.995, `elite T12 equipment rate drifted: ${eliteRates.drops}`);
 assert(eliteRates.Prototype > 0.49 && eliteRates.Prototype < 0.57 && eliteRates.Singular > 0.015 && eliteRates.Singular < 0.035, 'elite rarity bias drifted outside intended PoE2-style bands');
 assert(bossRates.drops === 1 && bossRates.Prototype > 0.82 && bossRates.Prototype < 0.89 && bossRates.Singular > 0.12 && bossRates.Singular < 0.18, 'bosses should guarantee Prototype-or-better while keeping Singular a chase outcome');
-assert(modifiedStandardRates.drops > standardRates.drops + 0.04, 'monster modifiers should materially increase item quantity pressure');
-assert(modifiedStandardRates.Prototype + modifiedStandardRates.Singular > standardRates.Prototype + standardRates.Singular + 0.008, 'monster modifiers should materially increase rarity pressure');
+assert(modifiedEnhancedRates.drops > enhancedRates.drops + 0.04, 'monster modifiers should materially increase item quantity pressure');
+assert(modifiedEnhancedRates.Prototype + modifiedEnhancedRates.Singular > enhancedRates.Prototype + enhancedRates.Singular + 0.02, 'monster modifiers should materially increase rarity pressure');
 
 const profile = createDefaultProfile();
 const starterRig = profile.inventory.find(item => item.slot === 'rig')!;
