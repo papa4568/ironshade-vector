@@ -299,6 +299,73 @@ function enemyNodes(role) {
   return nodes;
 }
 
+
+function weaponMaterials(accent) {
+  return [
+    {
+      name: 'weapon-shell',
+      pbrMetallicRoughness: {
+        baseColorFactor: [0.34, 0.40, 0.40, 1],
+        metallicFactor: 0.86,
+        roughnessFactor: 0.26,
+      },
+    },
+    {
+      name: 'weapon-dark',
+      pbrMetallicRoughness: {
+        baseColorFactor: [0.035, 0.045, 0.052, 1],
+        metallicFactor: 0.92,
+        roughnessFactor: 0.22,
+      },
+    },
+    {
+      name: 'weapon-accent-emissive',
+      pbrMetallicRoughness: {
+        baseColorFactor: [accent[0] * 0.42, accent[1] * 0.42, accent[2] * 0.42, 1],
+        metallicFactor: 0.50,
+        roughnessFactor: 0.18,
+      },
+      emissiveFactor: accent,
+    },
+  ];
+}
+
+function weaponNodes(id) {
+  if (id === 'carbine') {
+    return [
+      { name: 'carbine-receiver', mesh: 0, translation: [0.38, 0, 0], scale: [0.78, 0.20, 0.22] },
+      { name: 'carbine-stock', mesh: 1, translation: [-0.28, -0.02, 0], scale: [0.48, 0.16, 0.20] },
+      { name: 'carbine-barrel', mesh: 1, translation: [1.04, 0.02, 0], scale: [0.58, 0.07, 0.07] },
+      { name: 'carbine-magazine', mesh: 1, translation: [0.28, -0.26, 0], scale: [0.20, 0.38, 0.18] },
+      { name: 'carbine-status-rail', mesh: 2, translation: [0.48, 0.16, 0], scale: [0.46, 0.05, 0.08] },
+      { name: 'muzzle-socket', translation: [1.36, 0.02, 0] },
+      { name: 'weapon-root', children: [0, 1, 2, 3, 4, 5] },
+    ];
+  }
+  if (id === 'breacher') {
+    return [
+      { name: 'breacher-receiver', mesh: 0, translation: [0.30, 0, 0], scale: [0.68, 0.30, 0.42] },
+      { name: 'breacher-stock', mesh: 1, translation: [-0.30, -0.02, 0], scale: [0.46, 0.22, 0.30] },
+      { name: 'breacher-twin-barrel', mesh: 1, translation: [0.96, 0.08, 0.12], scale: [0.72, 0.08, 0.10] },
+      { name: 'breacher-barrel-lower', mesh: 1, translation: [0.96, 0.08, -0.12], scale: [0.72, 0.08, 0.10] },
+      { name: 'breacher-feed', mesh: 1, translation: [0.20, -0.30, 0], scale: [0.28, 0.34, 0.34] },
+      { name: 'breacher-pump-glow', mesh: 2, translation: [0.58, 0.20, 0], scale: [0.34, 0.06, 0.30] },
+      { name: 'muzzle-socket', translation: [1.36, 0.08, 0] },
+      { name: 'weapon-root', children: [0, 1, 2, 3, 4, 5, 6] },
+    ];
+  }
+  return [
+    { name: 'rail-receiver', mesh: 0, translation: [0.40, 0, 0], scale: [0.92, 0.22, 0.30] },
+    { name: 'rail-capacitor', mesh: 1, translation: [-0.18, -0.18, 0], scale: [0.42, 0.34, 0.26] },
+    { name: 'rail-upper-spine', mesh: 1, translation: [0.88, 0.16, 0.16], scale: [1.18, 0.06, 0.07] },
+    { name: 'rail-lower-spine', mesh: 1, translation: [0.88, 0.16, -0.16], scale: [1.18, 0.06, 0.07] },
+    { name: 'rail-coil', mesh: 2, translation: [0.54, 0.04, 0], scale: [0.56, 0.08, 0.34] },
+    { name: 'rail-coil-forward', mesh: 2, translation: [1.10, 0.04, 0], scale: [0.34, 0.07, 0.30] },
+    { name: 'muzzle-socket', translation: [1.52, 0.08, 0] },
+    { name: 'weapon-root', children: [0, 1, 2, 3, 4, 5, 6] },
+  ];
+}
+
 const outputs = [];
 outputs.push(await writeAsset(
   'operators/operator-field-suit-lod1.glb',
@@ -317,6 +384,16 @@ const enemyProfiles = [
 
 for (const [role, path, primary, accent] of enemyProfiles) {
   outputs.push(await writeAsset(path, `enemy-${role}-lod1`, enemyNodes(role), materials(primary, accent)));
+}
+
+const weaponProfiles = [
+  ['carbine', 'weapons/weapon-carbine-lod1.glb', [0.58, 0.90, 0.42]],
+  ['breacher', 'weapons/weapon-breacher-lod1.glb', [1.00, 0.63, 0.28]],
+  ['rail', 'weapons/weapon-rail-lod1.glb', [0.34, 0.78, 1.00]],
+];
+
+for (const [weapon, path, accent] of weaponProfiles) {
+  outputs.push(await writeAsset(path, `weapon-${weapon}-lod1`, weaponNodes(weapon), weaponMaterials(accent)));
 }
 
 console.log(
