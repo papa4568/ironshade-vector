@@ -7,7 +7,7 @@ import { getWorldSize, type CombatObject, type Enemy, type Player, type SimState
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, locationArtIdentityFor, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
 import { lootColor } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
-import { ENEMY_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
+import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
 import { configureGraphicsAssetRenderer, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
 
 const WORLD_SCALE = 0.02;
@@ -237,6 +237,7 @@ export class ThreeCombatRenderer {
   private refineryGrimeDecals: THREE.InstancedMesh | null = null;
   private refineryContactShadows: THREE.InstancedMesh | null = null;
   private refineryLoadGeneration = 0;
+  private damagedVesselLoadGeneration = 0;
   private readonly projectilePool: ProjectileVisual[] = [];
   private readonly hazardPool: RingVisual[] = [];
   private readonly effectPool: RingVisual[] = [];
@@ -440,6 +441,7 @@ export class ThreeCombatRenderer {
 
   private clearAuthoredRefineryEnvironment() {
     this.refineryLoadGeneration += 1;
+    this.damagedVesselLoadGeneration += 1;
     for (const mesh of this.refineryInstancedMeshes) {
       mesh.removeFromParent();
       mesh.dispose();
@@ -511,6 +513,21 @@ export class ThreeCombatRenderer {
         material.emissive.setHex(0xd18c4f);
         material.emissiveIntensity = 0.16;
       }
+    }
+    return material;
+  }
+
+  private cloneDamagedVesselMaterial(source: THREE.Material, label: string) {
+    const material = source.clone();
+    this.refineryOwnedMaterials.push(material);
+    if (material instanceof THREE.MeshStandardMaterial) {
+      const tuning = label.includes('salvage')
+        ? { metalness: 0.62, roughness: 0.54 }
+        : label.includes('breach')
+          ? { metalness: 0.78, roughness: 0.50 }
+          : { metalness: 0.84, roughness: 0.46 };
+      material.metalness = tuning.metalness;
+      material.roughness = tuning.roughness;
     }
     return material;
   }
@@ -670,6 +687,122 @@ export class ThreeCombatRenderer {
       created += placements.length;
     });
     return created;
+  }
+
+  private addInstancedDamagedVesselAsset(instance: GraphicsAssetInstance, placements: EnvironmentPlacement[], label: string) {
+    if (placements.length === 0) return 0;
+    instance.root.updateMatrixWorld(true);
+    let created = 0;
+    instance.root.traverse(child => {
+      const source = child as THREE.Mesh;
+      if (!source.isMesh || !source.geometry || !source.material) return;
+      source.updateWorldMatrix(true, false);
+      const material = Array.isArray(source.material)
+        ? source.material.map(item => this.cloneDamagedVesselMaterial(item, label))
+        : this.cloneDamagedVesselMaterial(source.material, label);
+      const mesh = new THREE.InstancedMesh(source.geometry, material, placements.length);
+      mesh.name = `authored-${label}-${source.name || 'mesh'}`;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.frustumCulled = true;
+      const sourceMatrix = source.matrixWorld.clone();
+      const placementMatrix = new THREE.Matrix4();
+      const finalMatrix = new THREE.Matrix4();
+      const quaternion = new THREE.Quaternion();
+      const scale = new THREE.Vector3();
+      for (let index = 0; index < placements.length; index += 1) {
+        const placement = placements[index];
+        quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), placement.rotationY ?? 0);
+        scale.setScalar(placement.scale ?? 1);
+        placementMatrix.compose(placement.position, quaternion, scale);
+        finalMatrix.multiplyMatrices(placementMatrix, sourceMatrix);
+        mesh.setMatrixAt(index, finalMatrix);
+      }
+      mesh.instanceMatrix.needsUpdate = true;
+      this.authoredEnvironmentRoot.add(mesh);
+      this.refineryInstancedMeshes.push(mesh);
+      created += placements.length;
+    });
+    return created;
+  }
+
+  private async loadAuthoredDamagedVesselEnvironment(worldW: number, worldH: number, detailScale: number) {
+    const generation = ++this.damagedVesselLoadGeneration;
+    this.renderer.domElement.dataset.environmentVisual = 'authored-loading';
+    const loaded: Array<{ key: keyof typeof DAMAGED_VESSEL_ASSET_FAMILIES; instance: GraphicsAssetInstance; lod: number }> = [];
+
+    try {
+      for (const key of Object.keys(DAMAGED_VESSEL_ASSET_FAMILIES) as Array<keyof typeof DAMAGED_VESSEL_ASSET_FAMILIES>) {
+        const spec = selectGraphicsAssetSpec(DAMAGED_VESSEL_ASSET_FAMILIES[key], detailScale);
+        if (!spec) throw new Error(`No authored damaged-vessel asset available for ${key}`);
+        const instance = await instantiateGraphicsAsset(spec);
+        loaded.push({ key, instance, lod: spec.lod });
+      }
+
+      if (this.disposed || generation !== this.damagedVesselLoadGeneration) {
+        loaded.forEach(item => item.instance.release());
+        return;
+      }
+
+      this.refineryAssetInstances.push(...loaded.map(item => item.instance));
+      const byKey = new Map(loaded.map(item => [item.key, item]));
+      const width = scaled(worldW);
+      const height = scaled(worldH);
+
+      const ribPlacements: EnvironmentPlacement[] = [
+        { position: new THREE.Vector3(width * 0.82, 0, height * 0.22), rotationY: Math.PI, scale: 0.94 },
+        { position: new THREE.Vector3(width * 0.84, 0, height * 0.36), rotationY: Math.PI - 0.10, scale: 1.02 },
+        { position: new THREE.Vector3(width * 0.85, 0, height * 0.50), rotationY: Math.PI + 0.06, scale: 1.08 },
+        { position: new THREE.Vector3(width * 0.84, 0, height * 0.64), rotationY: Math.PI - 0.05, scale: 1.00 },
+        { position: new THREE.Vector3(width * 0.82, 0, height * 0.78), rotationY: Math.PI + 0.09, scale: 0.92 },
+      ];
+      const breachPlacements: EnvironmentPlacement[] = [
+        { position: new THREE.Vector3(width * 0.91, 0, height * 0.50), rotationY: Math.PI, scale: 1.05 },
+      ];
+      const salvagePlacements: EnvironmentPlacement[] = [
+        [0.16, 0.24, 0.06], [0.17, 0.40, -0.05], [0.16, 0.72, 0.08],
+        [0.38, 0.86, Math.PI], [0.56, 0.86, Math.PI], [0.72, 0.84, Math.PI - 0.05],
+      ].map(([x, z, rotationY]) => ({
+        position: new THREE.Vector3(width * x, 0, height * z),
+        rotationY,
+        scale: 0.94,
+      }));
+
+      let instances = 0;
+      instances += this.addInstancedDamagedVesselAsset(byKey.get('rib')!.instance, ribPlacements, 'damaged-vessel-broken-rib');
+      instances += this.addInstancedDamagedVesselAsset(byKey.get('breachFrame')!.instance, breachPlacements, 'damaged-vessel-breach-frame');
+      instances += this.addInstancedDamagedVesselAsset(byKey.get('salvageRack')!.instance, salvagePlacements, 'damaged-vessel-salvage-rack');
+
+      const lods = [...new Set(loaded.map(item => item.lod))].sort();
+      this.renderer.domElement.dataset.environmentVisual = 'authored-damaged-vessel';
+      this.renderer.domElement.dataset.environmentLod = lods.join(',');
+      this.renderer.domElement.dataset.environmentKit = 'broken-rib,breach-frame,salvage-rack';
+      this.renderer.domElement.dataset.environmentInstances = String(instances);
+      this.renderer.domElement.dataset.environmentLandmark = 'starboard-hull-breach';
+      this.renderer.domElement.dataset.environmentServiceDetails = `salvage-rack:${salvagePlacements.length}`;
+      this.renderer.domElement.dataset.environmentSurfaceDetail = `broken-rib:${ribPlacements.length}`;
+      this.renderer.domElement.dataset.environmentComposition = 'broken-rib-corridor+starboard-breach+perimeter-salvage';
+      this.renderer.domElement.dataset.environmentMaterials = 'scarred-hull+warning-emissive+salvage-status';
+      this.renderer.domElement.dataset.readabilityLanguage = 'silhouette+damage-edge+luminance';
+    } catch (error) {
+      loaded.forEach(item => item.instance.release());
+      if (this.disposed || generation !== this.damagedVesselLoadGeneration) return;
+      this.refineryAssetInstances.length = 0;
+      this.refineryInstancedMeshes.forEach(mesh => {
+        mesh.removeFromParent();
+        mesh.dispose();
+      });
+      this.refineryInstancedMeshes.length = 0;
+      this.refineryOwnedMaterials.forEach(material => material.dispose());
+      this.refineryOwnedMaterials.length = 0;
+      this.authoredEnvironmentRoot.clear();
+      this.renderer.domElement.dataset.environmentVisual = 'procedural-fallback';
+      delete this.renderer.domElement.dataset.environmentLandmark;
+      delete this.renderer.domElement.dataset.environmentServiceDetails;
+      delete this.renderer.domElement.dataset.environmentSurfaceDetail;
+      delete this.renderer.domElement.dataset.environmentComposition;
+      console.warn('Authored Damaged Vessel overlay failed to load; keeping procedural scenery.', error);
+    }
   }
 
   private async loadAuthoredRefineryEnvironment(state: SimState, worldW: number, worldH: number, detailScale: number) {
@@ -1244,6 +1377,8 @@ export class ThreeCombatRenderer {
     this.renderer.domElement.dataset.locationProps = `${artIdentity.propSet}:instanced-shared-library`;
     if (mission.location === 'asteroid-refinery') {
       void this.loadAuthoredRefineryEnvironment(state, world.w, world.h, budget.detailScale);
+    } else if (mission.location === 'damaged-vessel') {
+      void this.loadAuthoredDamagedVesselEnvironment(world.w, world.h, budget.detailScale);
     } else {
       this.renderer.domElement.dataset.environmentVisual = 'procedural';
     }
