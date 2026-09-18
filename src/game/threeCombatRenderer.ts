@@ -483,6 +483,7 @@ export class ThreeCombatRenderer {
     delete this.renderer.domElement.dataset.environmentServiceDetails;
     delete this.renderer.domElement.dataset.environmentSurfaceDetail;
     delete this.renderer.domElement.dataset.environmentMachineDetail;
+    delete this.renderer.domElement.dataset.environmentComposition;
     delete this.renderer.domElement.dataset.environmentLighting;
     delete this.renderer.domElement.dataset.environmentMaterials;
     delete this.renderer.domElement.dataset.environmentVfx;
@@ -515,13 +516,19 @@ export class ThreeCombatRenderer {
   }
 
   private buildRefineryAtmospherics(width: number, height: number) {
-    const steamPositions = new Float32Array(36 * 3);
-    for (let index = 0; index < 36; index += 1) {
-      const stack = index % 3;
-      const t = Math.floor(index / 3) / 11;
-      steamPositions[index * 3] = width * (0.28 + stack * 0.22) + Math.sin(index * 1.7) * 0.18;
-      steamPositions[index * 3 + 1] = 0.42 + t * 2.7;
-      steamPositions[index * 3 + 2] = height * (stack === 1 ? 0.72 : 0.27) + Math.cos(index * 1.3) * 0.16;
+    const steamPositions = new Float32Array(30 * 3);
+    const steamStacks = [
+      [0.29, 0.67],
+      [0.50, 0.26],
+      [0.71, 0.67],
+    ] as const;
+    for (let index = 0; index < 30; index += 1) {
+      const stack = index % steamStacks.length;
+      const t = Math.floor(index / steamStacks.length) / 9;
+      const [stackX, stackZ] = steamStacks[stack];
+      steamPositions[index * 3] = width * stackX + Math.sin(index * 1.7) * 0.16;
+      steamPositions[index * 3 + 1] = 0.52 + t * 2.55;
+      steamPositions[index * 3 + 2] = height * stackZ + Math.cos(index * 1.3) * 0.14;
     }
     const steamGeometry = new THREE.BufferGeometry();
     steamGeometry.setAttribute('position', new THREE.BufferAttribute(steamPositions, 3));
@@ -549,12 +556,16 @@ export class ThreeCombatRenderer {
     });
     const decals = new THREE.InstancedMesh(decalGeometry, decalMaterial, 8);
     const transform = new THREE.Object3D();
-    for (let index = 0; index < 8; index += 1) {
-      transform.position.set(width * (0.36 + index * 0.04), 0.028, height * (index % 2 === 0 ? 0.42 : 0.58));
-      transform.rotation.set(-Math.PI / 2, 0, index % 2 === 0 ? 0.18 : -0.18);
+    const safetyLaneMarkers = [
+      [0.32, 0.36, 0.18], [0.32, 0.48, 0.18], [0.32, 0.60, 0.18], [0.32, 0.72, 0.18],
+      [0.68, 0.36, -0.18], [0.68, 0.48, -0.18], [0.68, 0.60, -0.18], [0.68, 0.72, -0.18],
+    ];
+    safetyLaneMarkers.forEach(([x, z, rotationZ], index) => {
+      transform.position.set(width * x, 0.028, height * z);
+      transform.rotation.set(-Math.PI / 2, 0, rotationZ);
       transform.updateMatrix();
       decals.setMatrixAt(index, transform.matrix);
-    }
+    });
     decals.instanceMatrix.needsUpdate = true;
     decals.renderOrder = 3;
     decals.name = 'refinery-safety-decals';
@@ -595,10 +606,10 @@ export class ThreeCombatRenderer {
     });
     const contactShadows = new THREE.InstancedMesh(contactGeometry, contactMaterial, 10);
     const contactPoints = [
-      [0.28, 0.66, 1.00, 0.72], [0.50, 0.32, 1.12, 0.82], [0.72, 0.64, 1.00, 0.72],
+      [0.29, 0.67, 1.00, 0.72], [0.50, 0.26, 1.16, 0.84], [0.71, 0.67, 1.00, 0.72],
       [0.50, 0.09, 1.55, 0.62], [0.18, 0.24, 0.72, 0.52], [0.82, 0.24, 0.72, 0.52],
-      [0.18, 0.76, 0.72, 0.52], [0.82, 0.76, 0.72, 0.52], [0.35, 0.50, 0.58, 0.44],
-      [0.65, 0.50, 0.58, 0.44],
+      [0.18, 0.76, 0.72, 0.52], [0.82, 0.76, 0.72, 0.52], [0.29, 0.52, 0.54, 0.40],
+      [0.71, 0.52, 0.54, 0.40],
     ];
     contactPoints.forEach(([x, z, sx, sz], index) => {
       transform.position.set(width * x, 0.021, height * z);
@@ -684,7 +695,6 @@ export class ThreeCombatRenderer {
       const width = scaled(worldW);
       const height = scaled(worldH);
       const cx = width / 2;
-      const cz = height / 2;
       const floorPlacements: EnvironmentPlacement[] = [];
       for (const fx of [0.18, 0.34, 0.50, 0.66, 0.82]) {
         for (const fz of [0.20, 0.40, 0.60, 0.80]) {
@@ -713,9 +723,9 @@ export class ThreeCombatRenderer {
       ];
 
       const processorPlacements: EnvironmentPlacement[] = [
-        { position: new THREE.Vector3(cx - Math.min(11, width * 0.22), 0, cz + height * 0.16), rotationY: 0.12 },
-        { position: new THREE.Vector3(cx, 0, cz - height * 0.18), rotationY: -0.10 },
-        { position: new THREE.Vector3(cx + Math.min(11, width * 0.22), 0, cz + height * 0.14), rotationY: Math.PI - 0.12 },
+        { position: new THREE.Vector3(width * 0.29, 0, height * 0.67), rotationY: 0.14, scale: 0.96 },
+        { position: new THREE.Vector3(cx, 0, height * 0.26), rotationY: 0, scale: 1.05 },
+        { position: new THREE.Vector3(width * 0.71, 0, height * 0.67), rotationY: Math.PI - 0.14, scale: 0.96 },
       ];
 
       const pipePlacements: EnvironmentPlacement[] = [
@@ -757,8 +767,8 @@ export class ThreeCombatRenderer {
       ];
 
       const cratePlacements: EnvironmentPlacement[] = [
-        [0.22, 0.31, 0.1], [0.27, 0.69, -0.2], [0.38, 0.82, 0.12], [0.62, 0.20, -0.12],
-        [0.73, 0.66, 0.2], [0.79, 0.34, -0.16], [0.32, 0.55, 0.08], [0.68, 0.48, -0.08],
+        [0.22, 0.31, 0.1], [0.22, 0.69, -0.2], [0.38, 0.82, 0.12], [0.62, 0.20, -0.12],
+        [0.78, 0.69, 0.2], [0.79, 0.34, -0.16], [0.18, 0.52, 0.08], [0.82, 0.48, -0.08],
       ].map(([x, z, rotationY]) => ({ position: new THREE.Vector3(width * x, 0, height * z), rotationY }));
 
       const terminalPlacements: EnvironmentPlacement[] = state.objects
@@ -795,6 +805,7 @@ export class ThreeCombatRenderer {
       this.renderer.domElement.dataset.environmentServiceDetails = `service-conduit:${serviceConduitPlacements.length}`;
       this.renderer.domElement.dataset.environmentSurfaceDetail = `wall-panel:${wallPanelPlacements.length}+cable-tray:${cableTrayPlacements.length}+contact-darkening:10`;
       this.renderer.domElement.dataset.environmentMachineDetail = `processor-functional:3+floor-grate:${floorGratePlacements.length}`;
+      this.renderer.domElement.dataset.environmentComposition = 'clear-center-lane+processor-triangle+gantry-focal+perimeter-clutter';
       this.renderer.domElement.dataset.environmentMaterials = 'pbr-bounded+emissive+decals:safety+grime+contact-darkening';
       this.renderer.domElement.dataset.environmentVfx = 'steam+sparse-sparks+debris+breach+objective';
       this.renderer.domElement.dataset.readabilityLanguage = 'shape+silhouette+luminance';
@@ -814,6 +825,7 @@ export class ThreeCombatRenderer {
       delete this.renderer.domElement.dataset.environmentServiceDetails;
       delete this.renderer.domElement.dataset.environmentSurfaceDetail;
       delete this.renderer.domElement.dataset.environmentMachineDetail;
+      delete this.renderer.domElement.dataset.environmentComposition;
       console.warn('Authored Asteroid Refinery kit failed to load; keeping procedural scenery.', error);
     }
   }
@@ -2224,12 +2236,12 @@ export class ThreeCombatRenderer {
     const world = getWorldSize();
     const firstPractical = this.refineryPracticalLights[0];
     firstPractical.visible = isRefinery;
-    firstPractical.position.set(scaled(world.w * 0.36), 3.1, scaled(world.h * 0.28));
-    firstPractical.intensity = (reducedEffects ? 6.5 : 10) * bossPulse;
+    firstPractical.position.set(scaled(world.w * 0.50), 3.25, scaled(world.h * 0.23));
+    firstPractical.intensity = (reducedEffects ? 6.2 : 9.6) * bossPulse;
     const secondPractical = this.refineryPracticalLights[1];
     secondPractical.visible = isRefinery && !reducedEffects;
-    secondPractical.position.set(scaled(world.w * 0.68), 2.8, scaled(world.h * 0.70));
-    secondPractical.intensity = 7.5 * bossPulse;
+    secondPractical.position.set(scaled(world.w * 0.71), 2.9, scaled(world.h * 0.67));
+    secondPractical.intensity = 7.0 * bossPulse;
 
     this.keyLight.color.setHex(lightingProfile.keyColor);
     this.rimLight.color.setHex(lightingProfile.rimColor);

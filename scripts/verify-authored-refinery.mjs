@@ -106,6 +106,7 @@ try {
         serviceDetails: canvas.dataset.environmentServiceDetails ?? '',
         surfaceDetail: canvas.dataset.environmentSurfaceDetail ?? '',
         machineDetail: canvas.dataset.environmentMachineDetail ?? '',
+        composition: canvas.dataset.environmentComposition ?? '',
         lighting: canvas.dataset.environmentLighting ?? '',
         materials: canvas.dataset.environmentMaterials ?? '',
         vfx: canvas.dataset.environmentVfx ?? '',
@@ -154,6 +155,9 @@ try {
       if (lastState.machineDetail !== 'processor-functional:3+floor-grate:8') {
         throw new Error(`Authored refinery processor/floor refinement coverage is incomplete: ${JSON.stringify(lastState)}`);
       }
+      if (lastState.composition !== 'clear-center-lane+processor-triangle+gantry-focal+perimeter-clutter') {
+        throw new Error(`Authored refinery composition/readability hierarchy is missing: ${JSON.stringify(lastState)}`);
+      }
       if (!String(lastState.lighting).startsWith('refinery-key+rim+contact:player+enemy+practical:')) {
         throw new Error(`Refinery player/enemy readability lighting recipe is not active: ${JSON.stringify(lastState)}`);
       }
@@ -190,7 +194,7 @@ try {
       if (!(lastState.width > 0 && lastState.height > 0)) {
         throw new Error(`Authored refinery canvas is not visible: ${JSON.stringify(lastState)}`);
       }
-      console.log(`AUTHORED_REFINERY_RUNTIME_PASS lod=${lastState.lod} kit=${[...kit].sort().join(',')} instances=${lastState.instances} terminals=${lastState.terminals} landmark=${lastState.landmark} service=${lastState.serviceDetails} surface=${lastState.surfaceDetail} machine=${lastState.machineDetail} lighting=${lastState.lighting} materials=${lastState.materials} vfx=${lastState.vfx} tone=${lastState.tone} effects=${lastState.effectsMode} readability=${lastState.readability} location=${lastState.locationArt} props=${lastState.locationProps} tier=${lastState.renderTier} budget=${lastState.renderBudget} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
+      console.log(`AUTHORED_REFINERY_RUNTIME_PASS lod=${lastState.lod} kit=${[...kit].sort().join(',')} instances=${lastState.instances} terminals=${lastState.terminals} landmark=${lastState.landmark} service=${lastState.serviceDetails} surface=${lastState.surfaceDetail} machine=${lastState.machineDetail} composition=${lastState.composition} lighting=${lastState.lighting} materials=${lastState.materials} vfx=${lastState.vfx} tone=${lastState.tone} effects=${lastState.effectsMode} readability=${lastState.readability} location=${lastState.locationArt} props=${lastState.locationProps} tier=${lastState.renderTier} budget=${lastState.renderBudget} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
       process.exitCode = 0;
       break;
     }
