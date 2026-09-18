@@ -171,12 +171,23 @@ async function snapshot() {
 
 async function waitFor(predicateExpression, label, timeout = 45_000) {
   const deadline = Date.now() + timeout;
+  let lastEvaluationError = null;
   while (Date.now() < deadline) {
-    if (await evaluate(predicateExpression)) return;
-    await sleep(250);
+    try {
+      const remaining = Math.max(500, deadline - Date.now());
+      if (await evaluate(predicateExpression, Math.min(5_000, remaining))) return;
+      lastEvaluationError = null;
+    } catch (error) {
+      // Android WebView can briefly expose a responsive CDP target and then
+      // stall while the page finishes startup. Treat individual polling calls
+      // as transient; the overall wait timeout remains the release gate.
+      lastEvaluationError = error;
+    }
+    await sleep(300);
   }
   const state = await snapshot().catch(error => ({ snapshotError: String(error) }));
-  throw new Error(`Timed out waiting for ${label}; webview=${JSON.stringify(state)}`);
+  const suffix = lastEvaluationError ? ` lastEvaluationError=${String(lastEvaluationError)}` : '';
+  throw new Error(`Timed out waiting for ${label}; webview=${JSON.stringify(state)}${suffix}`);
 }
 
 async function elementMetrics(selector) {
