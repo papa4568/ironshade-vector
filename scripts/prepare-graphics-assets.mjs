@@ -423,6 +423,25 @@ function refineryNodes(kind, lod) {
     return nodes;
   }
 
+  if (kind === 'floorGrate') {
+    const nodes = [
+      { name: 'refinery-floor-service-grate', mesh: 0, translation: [0, 0.035, 0], scale: [3.8, 0.07, 3.8] },
+      { name: 'refinery-floor-service-grate-frame-x', mesh: 1, translation: [0, 0.082, 0], scale: [3.30, 0.035, 0.12] },
+      { name: 'refinery-floor-service-grate-frame-z', mesh: 1, translation: [0, 0.083, 0], scale: [0.12, 0.035, 3.30] },
+      { name: 'refinery-floor-service-grate-hazard', mesh: 2, translation: [1.26, 0.088, -1.26], scale: [0.64, 0.025, 0.18] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'refinery-floor-service-grate-slat-a', mesh: 0, translation: [-0.80, 0.086, 0], scale: [0.10, 0.025, 2.65] },
+        { name: 'refinery-floor-service-grate-slat-b', mesh: 0, translation: [0.00, 0.086, 0], scale: [0.10, 0.025, 2.65] },
+        { name: 'refinery-floor-service-grate-slat-c', mesh: 0, translation: [0.80, 0.086, 0], scale: [0.10, 0.025, 2.65] },
+        { name: 'refinery-floor-service-grate-service-light', mesh: 3, translation: [-1.28, 0.10, 1.22], scale: [0.22, 0.035, 0.36] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
   if (kind === 'bulkhead') {
     const nodes = [
       { name: 'refinery-bulkhead-left', mesh: 0, translation: [0, 1.45, -1.75], scale: [0.44, 2.9, 0.38] },
@@ -446,12 +465,18 @@ function refineryNodes(kind, lod) {
       { name: 'refinery-processor-core', mesh: 1, translation: [0, 1.55, 0], scale: [1.9, 2.5, 1.55] },
       { name: 'refinery-processor-status', mesh: 3, translation: [0.98, 1.72, 0], scale: [0.08, 0.56, 0.74] },
       { name: 'refinery-processor-vent', mesh: 2, translation: [0.62, 2.55, 0], scale: [0.58, 0.10, 1.0] },
+      { name: 'refinery-processor-ore-intake', mesh: 0, translation: [-1.34, 1.18, 0], scale: [0.78, 0.92, 1.02] },
+      { name: 'refinery-processor-exhaust-stack', mesh: 1, translation: [-0.62, 3.10, 0.54], scale: [0.42, 1.34, 0.42] },
+      { name: 'refinery-processor-hazard-band', mesh: 2, translation: [0, 0.62, 1.13], scale: [1.70, 0.16, 0.08] },
     ];
     if (detail) {
       nodes.push(
         { name: 'refinery-processor-sidecar-left', mesh: 0, translation: [-0.30, 1.25, 1.16], scale: [1.0, 1.55, 0.46] },
         { name: 'refinery-processor-sidecar-right', mesh: 0, translation: [-0.30, 1.25, -1.16], scale: [1.0, 1.55, 0.46] },
         { name: 'refinery-processor-service-line', mesh: 2, translation: [1.12, 0.66, 0], scale: [0.16, 0.16, 1.45] },
+        { name: 'refinery-processor-rib-left', mesh: 0, translation: [0.28, 1.45, 0.86], scale: [0.18, 1.92, 0.12] },
+        { name: 'refinery-processor-rib-right', mesh: 0, translation: [0.28, 1.45, -0.86], scale: [0.18, 1.92, 0.12] },
+        { name: 'refinery-processor-maintenance-screen', mesh: 3, translation: [1.02, 1.06, -0.62], scale: [0.06, 0.34, 0.42] },
       );
     }
     nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
@@ -604,6 +629,7 @@ for (const [weapon, path, accent] of weaponProfiles) {
 
 const refineryProfiles = [
   ['floor', 'refinery-floor-panel'],
+  ['floorGrate', 'refinery-floor-service-grate'],
   ['bulkhead', 'refinery-bulkhead'],
   ['processor', 'refinery-processor'],
   ['pipeRack', 'refinery-pipe-rack'],
