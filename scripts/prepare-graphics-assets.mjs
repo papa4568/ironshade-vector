@@ -216,7 +216,7 @@ function enemyNodes(role) {
   const technician = role === 'technician';
   const elite = role === 'elite';
 
-  const hipY = boss ? 1.12 : elite ? 0.98 : 0.90;
+  const hipY = boss ? 0.93 : elite ? 0.92 : 0.90;
   const legScale = boss ? [0.34, 0.92, 0.34] : suppressor ? [0.29, 0.78, 0.30] : technician ? [0.20, 0.78, 0.20] : [0.24, 0.78, 0.24];
   const torsoScale = boss ? [0.90, 0.82, 0.85] : suppressor ? [0.72, 0.70, 0.72] : technician ? [0.46, 0.64, 0.44] : elite ? [0.64, 0.73, 0.60] : [0.56, 0.64, 0.52];
   const armScale = boss ? [0.26, 0.52, 0.26] : suppressor ? [0.23, 0.46, 0.24] : technician ? [0.15, 0.42, 0.15] : [0.18, 0.42, 0.18];
