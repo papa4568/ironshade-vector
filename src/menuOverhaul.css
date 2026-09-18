@@ -1,0 +1,756 @@
+/* Tactical Command Deck overhaul.
+   One persistent shell, five primary destinations, readable secondary navigation,
+   and a cinematic command surface without changing gameplay or save data. */
+
+.ship-hub {
+  height: 100%;
+  overflow: hidden;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 176px minmax(0, 1fr);
+  background:
+    radial-gradient(circle at 74% -18%, rgba(55, 94, 86, .22), transparent 36%),
+    linear-gradient(135deg, #050909, #08110f 52%, #040707);
+}
+.tactical-workspace {
+  min-width: 0;
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding:
+    max(18px, env(safe-area-inset-top))
+    max(24px, env(safe-area-inset-right))
+    max(28px, env(safe-area-inset-bottom))
+    max(24px, env(safe-area-inset-left));
+  scrollbar-gutter: stable;
+}
+.command-rail {
+  position: relative;
+  z-index: 4;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding:
+    max(18px, env(safe-area-inset-top))
+    12px
+    max(16px, env(safe-area-inset-bottom))
+    max(12px, env(safe-area-inset-left));
+  border-right: 1px solid #243831;
+  background:
+    linear-gradient(180deg, rgba(18, 32, 28, .96), rgba(6, 12, 11, .985) 46%, rgba(4, 8, 8, .995)),
+    radial-gradient(circle at 50% 0, rgba(121, 176, 157, .12), transparent 36%);
+  box-shadow: 14px 0 42px rgba(0, 0, 0, .22);
+}
+.command-rail::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -1px;
+  width: 1px;
+  height: 24%;
+  background: linear-gradient(180deg, #8bb4a8, transparent);
+  opacity: .7;
+}
+.command-rail-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 42px;
+  padding: 0 5px 13px;
+  border-bottom: 1px solid #263b35;
+}
+.command-rail-brand > span {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #4f7569;
+  clip-path: polygon(18% 0, 100% 0, 82% 100%, 0 100%);
+  background: #10211c;
+  color: #c5ddd4;
+  font: 900 11px/1 ui-monospace, monospace;
+  letter-spacing: .08em;
+}
+.command-rail-brand b,
+.command-rail-brand small {
+  display: block;
+}
+.command-rail-brand b {
+  color: #d4e1dc;
+  font-size: 9px;
+  letter-spacing: .08em;
+}
+.command-rail-brand small {
+  margin-top: 3px;
+  color: #607c73;
+  font: 800 6px/1 ui-monospace, monospace;
+  letter-spacing: .13em;
+}
+.command-rail-nav {
+  display: grid;
+  gap: 6px;
+}
+.command-rail-nav button {
+  width: 100%;
+  min-height: 61px;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  padding: 9px 8px;
+  background: transparent;
+  color: #748b83;
+  text-align: left;
+  cursor: pointer;
+  transition: background .14s ease, border-color .14s ease, color .14s ease, transform .14s ease;
+}
+.command-rail-nav button svg {
+  justify-self: center;
+  opacity: .8;
+}
+.command-rail-nav button span,
+.command-rail-nav button b,
+.command-rail-nav button small {
+  display: block;
+  min-width: 0;
+}
+.command-rail-nav button b {
+  color: inherit;
+  font-size: 10px;
+  letter-spacing: .015em;
+}
+.command-rail-nav button small {
+  margin-top: 3px;
+  color: #526860;
+  font-size: 6.5px;
+  line-height: 1.2;
+}
+.command-rail-nav button:hover {
+  border-color: #314d44;
+  background: #0d1916;
+  color: #b8cbc4;
+  transform: translateX(1px);
+}
+.command-rail-nav button.selected {
+  border-color: #45695e;
+  background:
+    linear-gradient(90deg, rgba(70, 112, 98, .26), rgba(12, 25, 22, .7)),
+    #0a1513;
+  color: #d6e5df;
+  box-shadow: inset 2px 0 #86b5a6;
+}
+.command-rail-nav button.selected small {
+  color: #78988e;
+}
+.command-rail-equipment {
+  margin-top: auto;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  border: 1px solid #304a42;
+  border-radius: 8px;
+  padding: 0 10px;
+  background: #0c1715;
+  color: #a7bbb4;
+  font-size: 9px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.command-rail-equipment:hover {
+  border-color: #62897c;
+  color: #d6e2de;
+}
+.command-rail-status {
+  display: grid;
+  grid-template-columns: 7px 1fr auto;
+  gap: 6px;
+  align-items: center;
+  padding: 9px 5px 0;
+  border-top: 1px solid #1f302b;
+}
+.command-rail-status i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #86c7a0;
+  box-shadow: 0 0 12px rgba(134, 199, 160, .5);
+}
+.command-rail-status span,
+.command-rail-status b {
+  font: 800 6px/1 ui-monospace, monospace;
+  letter-spacing: .09em;
+}
+.command-rail-status span { color: #53675f; }
+.command-rail-status b { color: #8ab09f; }
+
+.tactical-header {
+  max-width: 1280px;
+  margin-bottom: 9px;
+  padding: 3px 0 7px;
+}
+.tactical-header h1 {
+  margin: 3px 0 1px;
+  font-size: clamp(23px, 2.5vw, 34px);
+  letter-spacing: -.025em;
+  text-transform: uppercase;
+}
+.tactical-header p {
+  font-size: 9px;
+  color: #71847d;
+}
+.tactical-header .card-kicker {
+  color: #78988e;
+  font-size: 7px;
+}
+.hub-resource-ribbon,
+.qol-priority-strip,
+.section-tabs,
+.ship-status,
+.command-overview,
+.contract-toolbar,
+.contracts-layout,
+.stats-panel,
+.campaign-panel,
+.story-operations,
+.operations-panel,
+.ship-systems-panel,
+.faction-panel,
+.cargo-panel {
+  max-width: 1280px;
+}
+
+.section-tabs {
+  margin: 0 auto 10px;
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.section-tabs::-webkit-scrollbar { display: none; }
+.section-tabs button {
+  flex: 0 0 auto;
+  min-height: 38px;
+  border: 1px solid #2a3e38;
+  border-radius: 8px;
+  padding: 0 12px;
+  background: #091210;
+  color: #70857d;
+  font-size: 9px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.section-tabs button.selected {
+  border-color: #5c8175;
+  background: #162722;
+  color: #d0ddd8;
+  box-shadow: inset 0 -2px #7aa798;
+}
+.operator-section-tabs {
+  margin-top: -2px;
+}
+.ship-tabs {
+  display: none !important;
+}
+
+.hub-resource-ribbon {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 5px;
+  margin-bottom: 7px;
+}
+.hub-resource-ribbon > div {
+  min-height: 42px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  background: linear-gradient(180deg, rgba(10, 19, 17, .88), rgba(6, 12, 11, .9));
+}
+.hub-resource-ribbon small {
+  font-size: 7px;
+}
+.hub-resource-ribbon b {
+  font-size: 12px;
+}
+.qol-priority-strip {
+  margin-bottom: 8px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(18, 35, 30, .88), rgba(8, 15, 14, .9));
+}
+.ship-status {
+  max-width: 1280px;
+  border-radius: 7px;
+}
+
+.command-overview {
+  grid-template-columns: minmax(0, 1.58fr) minmax(300px, .72fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.command-visual.command-bridge {
+  min-height: 410px;
+  border-radius: 10px;
+  border-color: #355249;
+  background: #050a09;
+  box-shadow:
+    0 18px 55px rgba(0, 0, 0, .25),
+    inset 0 0 80px rgba(71, 117, 102, .05);
+}
+.command-visual.command-bridge::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(2, 6, 5, .64), transparent 37%),
+    linear-gradient(180deg, transparent 65%, rgba(2, 6, 5, .76));
+}
+.command-bridge-copy {
+  position: absolute;
+  z-index: 5;
+  top: 17px;
+  left: 18px;
+  max-width: 42%;
+}
+.command-bridge-copy h2 {
+  margin: 6px 0 3px;
+  color: #e0e9e5;
+  font-size: clamp(24px, 3vw, 39px);
+  line-height: .98;
+  letter-spacing: -.04em;
+}
+.command-bridge-copy p {
+  margin: 0;
+  color: #8ca199;
+  font-size: 10px;
+}
+.bridge-status-stack {
+  position: absolute;
+  z-index: 5;
+  right: 14px;
+  bottom: 17px;
+  width: 168px;
+  display: grid;
+  gap: 4px;
+}
+.bridge-status-stack > span {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 7px;
+  align-items: baseline;
+  padding: 7px 8px;
+  border: 1px solid rgba(73, 106, 96, .52);
+  background: rgba(5, 12, 10, .82);
+  backdrop-filter: blur(6px);
+}
+.bridge-status-stack small {
+  color: #617a71;
+  font: 800 6px/1 ui-monospace, monospace;
+  letter-spacing: .07em;
+}
+.bridge-status-stack b {
+  color: #b6c9c2;
+  font-size: 8px;
+}
+.command-bridge-scene {
+  opacity: .98;
+}
+.bridge-hologram {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bridge-float 6s ease-in-out infinite alternate;
+}
+.bridge-stars {
+  animation: bridge-stars 3.5s ease-in-out infinite alternate;
+}
+.command-progress {
+  position: absolute;
+  z-index: 5;
+  left: 18px;
+  bottom: 18px;
+  width: min(310px, 42%);
+}
+.command-progress > span {
+  display: block;
+  height: 3px;
+  overflow: hidden;
+  background: #14241f;
+}
+.command-progress i {
+  display: block;
+  height: 100%;
+  background: var(--hub-accent);
+  box-shadow: 0 0 13px color-mix(in srgb, var(--hub-accent) 55%, transparent);
+}
+.command-progress small {
+  display: block;
+  margin-top: 6px;
+  color: #657d74;
+  font: 800 6px/1.25 ui-monospace, monospace;
+  letter-spacing: .06em;
+}
+.command-side {
+  gap: 8px;
+}
+.command-card {
+  border-radius: 9px;
+}
+.command-card.primary-card {
+  min-height: 182px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 16px;
+  border-color: #5c8276;
+  background:
+    linear-gradient(180deg, rgba(16, 31, 27, .5), rgba(12, 24, 21, .96)),
+    radial-gradient(circle at 90% 10%, rgba(105, 160, 140, .12), transparent 36%);
+}
+.command-card.primary-card small { font-size: 7px; }
+.command-card.primary-card b {
+  font-size: 18px;
+  line-height: 1.06;
+}
+.command-card.primary-card span {
+  font-size: 9px;
+}
+.command-card.primary-card button {
+  min-height: 48px;
+  border-radius: 7px;
+  background: #d4e5dc;
+}
+.command-action-row {
+  grid-template-columns: 1fr;
+}
+.command-action-row button {
+  min-height: 60px;
+  border-radius: 8px;
+  background: linear-gradient(120deg, #0a1412, #0d1916);
+}
+.command-action-row button b {
+  font-size: 10px;
+}
+.command-action-row button small {
+  font-size: 7.5px;
+}
+
+.contract-toolbar {
+  padding: 9px 11px;
+  border: 1px solid #243731;
+  border-radius: 8px;
+  background: rgba(7, 13, 12, .72);
+}
+.contracts-layout {
+  grid-template-columns: minmax(300px, .78fr) minmax(440px, 1.22fr);
+}
+.contract-list {
+  gap: 6px;
+}
+.contract-card {
+  border-radius: 9px;
+  padding: 13px 14px;
+  background: linear-gradient(135deg, rgba(10, 17, 16, .92), rgba(7, 12, 12, .95));
+}
+.contract-card.selected {
+  border-color: #698f83;
+  box-shadow: inset 3px 0 #86b3a5;
+}
+.contract-card h2 {
+  font-size: 16px;
+}
+.contract-inspector {
+  position: sticky;
+  top: 0;
+  border-radius: 10px;
+  background:
+    linear-gradient(150deg, rgba(10, 19, 17, .97), rgba(5, 10, 9, .96)),
+    radial-gradient(circle at 82% 12%, rgba(84, 132, 116, .09), transparent 28%);
+}
+
+@keyframes bridge-float {
+  from { transform: translateY(-2px); opacity: .86; }
+  to { transform: translateY(4px); opacity: .98; }
+}
+@keyframes bridge-stars {
+  from { opacity: .52; }
+  to { opacity: .9; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bridge-hologram,
+  .bridge-stars { animation: none; }
+}
+
+@media (max-width: 1050px) {
+  .ship-hub { grid-template-columns: 132px minmax(0, 1fr); }
+  .command-rail-nav button {
+    grid-template-columns: 22px minmax(0, 1fr);
+    padding: 8px 6px;
+  }
+  .command-rail-nav button small { display: none; }
+  .command-rail-brand div small { display: none; }
+  .command-overview {
+    grid-template-columns: minmax(0, 1.35fr) minmax(270px, .65fr);
+  }
+  .command-visual.command-bridge { min-height: 350px; }
+  .bridge-status-stack { width: 145px; }
+}
+
+@media (orientation: landscape) and (max-height: 650px) {
+  .ship-hub { grid-template-columns: 94px minmax(0, 1fr); }
+  .command-rail {
+    gap: 8px;
+    padding-top: max(8px, env(safe-area-inset-top));
+    padding-right: 7px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    padding-left: max(7px, env(safe-area-inset-left));
+  }
+  .command-rail-brand {
+    min-height: 32px;
+    padding: 0 2px 7px;
+    gap: 5px;
+  }
+  .command-rail-brand > span {
+    width: 28px;
+    height: 28px;
+    font-size: 9px;
+  }
+  .command-rail-brand div { display: none; }
+  .command-rail-nav { gap: 3px; }
+  .command-rail-nav button {
+    min-height: 48px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    padding: 5px 3px;
+    text-align: center;
+  }
+  .command-rail-nav button b {
+    font-size: 7px;
+  }
+  .command-rail-nav button small { display: none; }
+  .command-rail-equipment {
+    min-height: 38px;
+    justify-content: center;
+    padding: 0 5px;
+    font-size: 7px;
+  }
+  .command-rail-equipment span { display: none; }
+  .command-rail-status { display: none; }
+  .tactical-workspace {
+    padding-top: max(8px, env(safe-area-inset-top));
+    padding-right: max(10px, env(safe-area-inset-right));
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    padding-left: 10px;
+  }
+  .tactical-header {
+    display: flex;
+    align-items: center;
+    min-height: 38px;
+    padding: 0;
+    margin-bottom: 5px;
+  }
+  .tactical-header h1 { font-size: 18px; }
+  .tactical-header p { font-size: 7px; }
+  .tactical-header .card-kicker { display: none; }
+  .tactical-header .hub-build-button { min-height: 34px; }
+  .hub-resource-ribbon {
+    margin-bottom: 5px;
+  }
+  .hub-resource-ribbon > div {
+    min-height: 34px;
+    padding: 5px 7px;
+  }
+  .hub-resource-ribbon small { font-size: 6px; }
+  .hub-resource-ribbon b { font-size: 10px; }
+  .qol-priority-strip { margin-bottom: 5px; }
+  .section-tabs { margin-bottom: 6px; }
+  .section-tabs button {
+    min-height: 34px;
+    padding: 0 10px;
+    font-size: 8px;
+  }
+  .command-overview {
+    grid-template-columns: minmax(0, 1.55fr) minmax(248px, .65fr);
+    gap: 7px;
+  }
+  .command-visual.command-bridge {
+    min-height: 265px;
+  }
+  .command-bridge-copy {
+    top: 10px;
+    left: 11px;
+  }
+  .command-bridge-copy h2 {
+    font-size: 22px;
+  }
+  .command-bridge-copy p { font-size: 8px; }
+  .command-visual-tags span { font-size: 6px; padding: 4px 5px; }
+  .bridge-status-stack {
+    right: 8px;
+    bottom: 8px;
+    width: 124px;
+  }
+  .bridge-status-stack > span { padding: 5px 6px; }
+  .bridge-status-stack small { font-size: 5px; }
+  .bridge-status-stack b { font-size: 7px; }
+  .command-progress {
+    left: 11px;
+    bottom: 10px;
+  }
+  .command-card.primary-card {
+    min-height: 132px;
+    padding: 10px;
+  }
+  .command-card.primary-card b { font-size: 14px; }
+  .command-card.primary-card button { min-height: 40px; }
+  .command-action-row button {
+    min-height: 39px;
+    padding: 6px 8px;
+  }
+  .command-action-row button small { display: none; }
+}
+
+@media (max-width: 620px) and (orientation: portrait) {
+  .ship-hub {
+    display: flex;
+    flex-direction: column;
+  }
+  .tactical-workspace {
+    order: 1;
+    flex: 1 1 auto;
+    height: auto;
+    padding: max(12px, env(safe-area-inset-top)) 12px 18px;
+  }
+  .command-rail {
+    order: 2;
+    flex: 0 0 auto;
+    height: auto;
+    display: block;
+    padding: 6px max(8px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    border-top: 1px solid #294039;
+    border-right: 0;
+  }
+  .command-rail-brand,
+  .command-rail-equipment,
+  .command-rail-status {
+    display: none;
+  }
+  .command-rail-nav {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 3px;
+  }
+  .command-rail-nav button {
+    min-height: 49px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    padding: 4px 2px;
+    text-align: center;
+  }
+  .command-rail-nav button b { font-size: 7px; }
+  .command-rail-nav button small { display: none; }
+  .command-overview { grid-template-columns: 1fr; }
+  .command-visual.command-bridge { min-height: 300px; }
+  .bridge-status-stack { display: none; }
+  .command-progress { width: 54%; }
+  .hub-resource-ribbon { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+
+/* Operator / Equipment surface uses the same command-system language. */
+.build-bay {
+  background:
+    radial-gradient(circle at 78% -12%, rgba(62, 105, 92, .18), transparent 34%),
+    linear-gradient(140deg, #050909, #08110f 55%, #040707);
+}
+.build-header {
+  max-width: 1280px;
+  margin-bottom: 9px;
+  padding: 5px 0 10px;
+  border-bottom: 1px solid #243831;
+}
+.build-header h1 {
+  margin: 4px 0 2px;
+  font-size: clamp(24px, 2.7vw, 36px);
+  letter-spacing: -.03em;
+}
+.build-header p {
+  color: #73877f;
+  font-size: 9px;
+}
+.build-header .card-kicker {
+  color: #78988e;
+  font-size: 7px;
+}
+.close-build {
+  min-height: 42px;
+  border-radius: 8px;
+}
+.xp-strip,
+.build-tabs,
+.build-message,
+.gear-discovery-note,
+.gear-layout,
+.reconstruction-panel,
+.network-panel,
+.protocol-panel,
+.settings-panel {
+  max-width: 1280px;
+}
+.build-tabs {
+  gap: 5px;
+  margin-bottom: 9px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.build-tabs::-webkit-scrollbar { display: none; }
+.build-tabs button {
+  min-height: 39px;
+  border: 1px solid #2a3e38;
+  border-radius: 8px;
+  padding: 0 12px;
+  background: #091210;
+  color: #70857d;
+  font-size: 9px;
+  font-weight: 800;
+}
+.build-tabs button.selected {
+  border-color: #5c8175;
+  background: #162722;
+  color: #d0ddd8;
+  box-shadow: inset 0 -2px #7aa798;
+}
+.build-message {
+  border-radius: 7px;
+}
+.gear-discovery-note,
+.reconstruction-bench,
+.specialization-panel,
+.network-branch,
+.protocol-grid > article,
+.settings-panel label {
+  border-radius: 9px;
+}
+@media (orientation: landscape) and (max-height: 650px) {
+  .build-header {
+    padding: 2px 0 6px;
+    margin-bottom: 5px;
+  }
+  .build-header h1 { font-size: 19px; }
+  .build-header p { font-size: 7px; }
+  .build-header .card-kicker { display: none; }
+  .build-tabs { margin-bottom: 5px; }
+  .build-tabs button {
+    min-height: 34px;
+    padding: 0 9px;
+    font-size: 8px;
+  }
+}

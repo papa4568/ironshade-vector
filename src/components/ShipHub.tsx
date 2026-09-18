@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Crosshair, Database, Gauge, RadioTower, Settings2, UserRound } from 'lucide-react';
 import '../part4.css';
 import '../part8.css';
 import '../part9.css';
@@ -6,6 +7,7 @@ import '../part10.css';
 import '../part11.css';
 import '../part12.css';
 import '../commandHub.css';
+import '../menuOverhaul.css';
 import DirectivePanel from './DirectivePanel';
 import CommandHubVisual from './CommandHubVisual';
 import PlayerStatsPanel from './PlayerStatsPanel';
@@ -53,6 +55,47 @@ type Props = {
   onCampaignChange: (campaign: CampaignState) => void;
 };
 type Tab = 'overview' | 'contracts' | 'stats' | 'campaign' | 'stories' | 'operations' | 'ship' | 'factions' | 'cargo';
+type PrimaryArea = 'command' | 'operations' | 'operator' | 'ship' | 'intel';
+
+const areaTabs: Record<PrimaryArea, Tab[]> = {
+  command: ['overview'],
+  operations: ['contracts', 'campaign', 'stories', 'operations'],
+  operator: ['stats'],
+  ship: ['ship', 'cargo'],
+  intel: ['factions'],
+};
+const areaLabels: Record<PrimaryArea, string> = {
+  command: 'Command',
+  operations: 'Operations',
+  operator: 'Operator',
+  ship: 'Ship',
+  intel: 'Intel',
+};
+const areaDescriptions: Record<PrimaryArea, string> = {
+  command: 'Immediate status and next deployment',
+  operations: 'Contracts, campaigns and shared operations',
+  operator: 'Loadout, progression and combat telemetry',
+  ship: 'Systems, supplies and cargo',
+  intel: 'Factions, evidence and recovered context',
+};
+const tabLabels: Record<Tab, string> = {
+  overview: 'Command',
+  contracts: 'Contracts',
+  stats: 'Telemetry',
+  campaign: 'Campaign',
+  stories: 'Stories',
+  operations: 'Network',
+  ship: 'Systems',
+  factions: 'Factions',
+  cargo: 'Cargo',
+};
+function primaryAreaForTab(tab: Tab): PrimaryArea {
+  if (tab === 'overview') return 'command';
+  if (tab === 'contracts' || tab === 'campaign' || tab === 'stories' || tab === 'operations') return 'operations';
+  if (tab === 'stats') return 'operator';
+  if (tab === 'ship' || tab === 'cargo') return 'ship';
+  return 'intel';
+}
 type ContractFilter = 'all' | 'narrative' | 'operations' | 'rare' | 'standard';
 
 function costText(cost: ReturnType<typeof getUpgradeCost>) {
@@ -96,7 +139,7 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
   const [traceRecord, setTraceRecord] = useState<RunTraceRecord | null>(null);
   const [traceMessage, setTraceMessage] = useState('');
   const [contractFilter, setContractFilter] = useState<ContractFilter>('all');
-  const hubRef = useRef<HTMLElement>(null);
+  const hubRef = useRef<HTMLDivElement>(null);
   const traceRequestIdRef = useRef(0);
   const traceAbortRef = useRef<AbortController | null>(null);
   useEffect(() => () => traceAbortRef.current?.abort(), []);
@@ -211,13 +254,32 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
   const averageDuration = metricAttempts ? Math.round((metrics?.totalDuration ?? 0) / metricAttempts) : 0;
   const tracePolyline = traceRecord?.trace.map(point => `${point.x},${1040 - point.y}`).join(' ') ?? '';
   const displayedStatusMessage = statusMessage || (message && message !== campaign.lastOutcome ? message : '');
+  const primaryArea = primaryAreaForTab(tab);
+  const primaryAreas: Array<{ id: PrimaryArea; icon: typeof RadioTower }> = [
+    { id: 'command', icon: RadioTower },
+    { id: 'operations', icon: Crosshair },
+    { id: 'operator', icon: UserRound },
+    { id: 'ship', icon: Gauge },
+    { id: 'intel', icon: Database },
+  ];
+  const openPrimaryArea = (area: PrimaryArea) => switchTab(areaTabs[area][0]);
 
-  return <main ref={hubRef} className="ship-hub">
-    <header className="ship-header"><div><span className="card-kicker">MV QUIET SIGNAL</span><h1>{tab === 'overview' ? 'Command deck' : tab === 'stats' ? 'Operator telemetry' : tab === 'contracts' ? 'Contract board' : tab === 'ship' ? 'Ship systems' : tab === 'cargo' ? 'Cargo' : tab === 'campaign' ? 'Campaign' : tab === 'stories' ? 'Story operations' : tab === 'operations' ? 'Operations' : 'Faction network'}</h1><p>{buildIdentity(profile)} · LV {profile.level} · {campaign.contractsCompleted} contracts</p></div><button className="hub-build-button" onClick={onOpenBuild}>Equipment</button></header>
-    {tab !== 'cargo' && <section className="resource-ribbon hub-resource-ribbon" aria-label="Ship resources">{(Object.keys(campaign.resources) as ResourceId[]).map(key => <div key={key} className={key === 'rareTech' && campaign.resources[key] === 0 ? 'muted-resource' : ''}><small>{resourceLabels[key]}</small><b>{campaign.resources[key]}</b></div>)}</section>}
-    {attentionCount > 0 && <section className="qol-priority-strip" aria-label="Items needing attention"><div className="qol-priority-copy"><b>{attentionCount} pending</b></div><div className="qol-priority-actions">{profile.progressionPoints > 0 && <button onClick={onOpenBuild}>Network · {profile.progressionPoints}</button>}{chapterProgress.status === 'active' && <button onClick={() => switchTab('campaign')}>Black Lattice · {Math.min(chapterProgress.step + 1, blackLatticeChapter.totalContracts)}/{blackLatticeChapter.totalContracts}</button>}{(postKhepriProgress.status === 'available' || postKhepriProgress.status === 'active') && <button onClick={() => switchTab('campaign')}>Dead Reckoning · {postKhepriProgress.status === 'available' ? 'Ready' : `${Math.min(postKhepriProgress.step + 1, postKhepriChapter.totalContracts)}/${postKhepriChapter.totalContracts}`}</button>}{(interdictionProgress.status === 'available' || interdictionProgress.status === 'active') && <button onClick={() => switchTab('campaign')}>Interdiction · {interdictionProgress.status === 'available' ? 'Ready' : `${Math.min(interdictionProgress.step + 1, interdictionChapter.totalContracts)}/${interdictionChapter.totalContracts}`}</button>}{activeStoryCount > 0 && <button onClick={() => switchTab('stories')}>Stories · {activeStoryCount}</button>}{escalationStatus === 'active' && <button onClick={() => switchTab('operations')}>Escalation · {campaign.escalation.stage + 1}/3</button>}{preparedDirective && <button onClick={() => switchTab('operations')}>Directive · T{preparedDirective.tier}</button>}</div></section>}
-    <nav className="ship-tabs" aria-label="Ship areas">{(['overview', 'contracts', 'stats', 'campaign', 'stories', 'operations', 'ship', 'factions', 'cargo'] as Tab[]).map(value => <button key={value} className={tab === value ? 'selected' : ''} onClick={() => switchTab(value)}>{value === 'overview' ? 'Command' : value === 'contracts' ? 'Contracts' : value === 'stats' ? 'Stats' : value === 'campaign' ? 'Campaign' : value === 'stories' ? 'Stories' : value === 'operations' ? 'Operations' : value === 'ship' ? 'Ship' : value === 'factions' ? 'Factions' : 'Cargo'}</button>)}</nav>
-    {displayedStatusMessage && <div className="ship-status" role={statusMessage ? 'alert' : 'status'} aria-live={statusMessage ? 'assertive' : 'polite'}>{displayedStatusMessage}</div>}
+  return <main className="ship-hub">
+    <aside className="command-rail" aria-label="Primary navigation">
+      <div className="command-rail-brand"><span>IV</span><div><b>QUIET SIGNAL</b><small>VECTOR COMMAND</small></div></div>
+      <nav className="command-rail-nav">
+        {primaryAreas.map(({ id, icon: Icon }) => <button key={id} aria-label={areaLabels[id]} className={primaryArea === id ? 'selected' : ''} aria-current={primaryArea === id ? 'page' : undefined} onClick={() => openPrimaryArea(id)}><Icon aria-hidden="true" size={18} strokeWidth={1.7} /><span><b>{areaLabels[id]}</b><small>{areaDescriptions[id]}</small></span></button>)}
+      </nav>
+      <button className="command-rail-equipment" onClick={onOpenBuild}><Settings2 aria-hidden="true" size={17} /><span>Equipment</span></button>
+      <div className="command-rail-status"><i /><span>LOCAL CORE</span><b>ONLINE</b></div>
+    </aside>
+    <div ref={hubRef} className="tactical-workspace">
+      <header className="ship-header tactical-header"><div><span className="card-kicker">MV QUIET SIGNAL // {areaLabels[primaryArea].toUpperCase()}</span><h1>{areaLabels[primaryArea]}</h1><p>{tabLabels[tab]} · {buildIdentity(profile)} · LV {profile.level} · {campaign.contractsCompleted} contracts</p></div><button className="hub-build-button" onClick={onOpenBuild}>Equipment</button></header>
+      {tab !== 'cargo' && <section className="resource-ribbon hub-resource-ribbon" aria-label="Ship resources">{(Object.keys(campaign.resources) as ResourceId[]).map(key => <div key={key} className={key === 'rareTech' && campaign.resources[key] === 0 ? 'muted-resource' : ''}><small>{resourceLabels[key]}</small><b>{campaign.resources[key]}</b></div>)}</section>}
+      {attentionCount > 0 && <section className="qol-priority-strip" aria-label="Items needing attention"><div className="qol-priority-copy"><b>{attentionCount} pending</b></div><div className="qol-priority-actions">{profile.progressionPoints > 0 && <button onClick={onOpenBuild}>Network · {profile.progressionPoints}</button>}{chapterProgress.status === 'active' && <button onClick={() => switchTab('campaign')}>Black Lattice · {Math.min(chapterProgress.step + 1, blackLatticeChapter.totalContracts)}/{blackLatticeChapter.totalContracts}</button>}{(postKhepriProgress.status === 'available' || postKhepriProgress.status === 'active') && <button onClick={() => switchTab('campaign')}>Dead Reckoning · {postKhepriProgress.status === 'available' ? 'Ready' : `${Math.min(postKhepriProgress.step + 1, postKhepriChapter.totalContracts)}/${postKhepriChapter.totalContracts}`}</button>}{(interdictionProgress.status === 'available' || interdictionProgress.status === 'active') && <button onClick={() => switchTab('campaign')}>Interdiction · {interdictionProgress.status === 'available' ? 'Ready' : `${Math.min(interdictionProgress.step + 1, interdictionChapter.totalContracts)}/${interdictionChapter.totalContracts}`}</button>}{activeStoryCount > 0 && <button onClick={() => switchTab('stories')}>Stories · {activeStoryCount}</button>}{escalationStatus === 'active' && <button onClick={() => switchTab('operations')}>Escalation · {campaign.escalation.stage + 1}/3</button>}{preparedDirective && <button onClick={() => switchTab('operations')}>Directive · T{preparedDirective.tier}</button>}</div></section>}
+      {areaTabs[primaryArea].length > 1 && <nav className="section-tabs" aria-label={`${areaLabels[primaryArea]} sections`}>{areaTabs[primaryArea].map(value => <button key={value} className={tab === value ? 'selected' : ''} aria-current={tab === value ? 'page' : undefined} onClick={() => switchTab(value)}>{tabLabels[value]}</button>)}</nav>}
+      {primaryArea === 'operator' && <nav className="section-tabs operator-section-tabs" aria-label="Operator sections"><button className="selected" onClick={() => switchTab('stats')}>Telemetry</button><button onClick={onOpenBuild}>Equipment & Build</button></nav>}
+      {displayedStatusMessage && <div className="ship-status" role={statusMessage ? 'alert' : 'status'} aria-live={statusMessage ? 'assertive' : 'polite'}>{displayedStatusMessage}</div>}
 
     {tab === 'overview' && <section className="command-overview"><CommandHubVisual profile={profile} campaign={campaign} /><aside className="command-side"><article className="command-card primary-card"><small>NEXT DEPLOYMENT</small><b>{selected?.title ?? 'No contract selected'}</b><span>{selected ? `OP T${selected.operationTier ?? 1} · ML ${selected.monsterLevel ?? 1} · ${selected.locationName}` : 'Open the Contract Board to choose an operation.'}</span><button onClick={onDeploy} disabled={!selected}>Deploy selected contract</button></article><div className="command-action-row"><button onClick={() => switchTab('contracts')}><b>Change contract</b><small>Review the operation board.</small></button><button onClick={onOpenBuild}><b>Tune loadout</b><small>Compare equipment and build choices.</small></button><button onClick={() => switchTab('stats')}><b>Review stats</b><small>See final combat values.</small></button></div></aside></section>}
     {tab === 'stats' && <PlayerStatsPanel profile={profile} campaign={campaign} />}
@@ -290,5 +352,6 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
     {tab === 'factions' && <section className="faction-panel">{factions.map(faction => <article key={faction.id} className="faction-card"><header><div><span className="card-kicker">{faction.name}</span><h2>Reputation {campaign.reputation[faction.id]}</h2></div><div className="rep-meter"><i style={{ width: `${Math.max(0, Math.min(100, (campaign.reputation[faction.id] + 10) / 30 * 100))}%` }} /></div></header><div className="faction-copy"><p><b>History.</b> {faction.history}</p><p><b>Economic foundation.</b> {faction.economy}</p><p><b>Culture.</b> {faction.culture}</p><p><b>Technology.</b> {faction.technology}</p><p><b>Political goals.</b> {faction.goals}</p><p><b>Strengths.</b> {faction.strengths}</p><p><b>Failures.</b> {faction.failures}</p><p><b>Internal divisions.</b> {faction.divisions}</p></div><div className="faction-unlocks">{faction.unlocks.map(unlock => <span key={unlock}>{unlock}</span>)}</div><div className={`faction-armory-summary faction-${faction.id}`}><b>SPONSORED EQUIPMENT ACCESS</b><span>Current normal-slot odds: {Math.round(factionGearChance(campaign.reputation[faction.id], false) * 100)}% safe · {Math.round(factionGearChance(campaign.reputation[faction.id], true) * 100)}% deep</span><small>Frame identities and interactions reveal only after recovery.</small></div></article>)}</section>}
 
     {tab === 'cargo' && <section className="cargo-panel"><article className="consumable-store"><span className="card-kicker">FIELD CONSUMABLES // SHIP STORE</span><h2>Spend Credits on deployment supplies</h2><p>Credits are the field currency. Supplies persist in Quiet Signal storage and are only consumed when an effect successfully activates in combat.</p><div className="consumable-credit-balance"><small>AVAILABLE CREDITS</small><b>{campaign.resources.credits}</b></div><div className="consumable-shop-grid">{consumableDefinitions.map(item => { const stock = campaign.consumables[item.id]; const full = stock >= item.maxStock; const affordable = campaign.resources.credits >= item.cost; return <div key={item.id} className="consumable-shop-card"><header><div><small>{item.hotkey} // {item.shortName}</small><b>{item.name}</b></div><strong>{stock}/{item.maxStock}</strong></header><p>{item.description}</p><span>{item.effect}</span><button disabled={full || !affordable} onClick={() => buySupply(item.id)}>{full ? 'Stock full' : `Buy // ${item.cost} Credits`}</button></div>; })}</div></article><article className="cargo-ledger"><span className="card-kicker">CARGO / SALVAGE LEDGER</span><h2>Banked resources</h2>{(Object.keys(campaign.resources) as ResourceId[]).map(key => <div key={key}><span>{resourceLabels[key]}</span><b>{campaign.resources[key]}</b></div>)}</article><article className="cargo-ledger"><span className="card-kicker">EQUIPMENT STORAGE</span><h2>{profile.inventory.length} equipment packages</h2><p>Equipment recovery remains sparse and meaningful. Cargo upgrades increase material yield, not item spam.</p><button onClick={onOpenBuild}>Inspect equipment</button></article><article className="cargo-ledger"><span className="card-kicker">LAST OPERATION</span><h2>Mission log</h2><p>{campaign.lastOutcome}</p>{campaign.resources.rareTech > 0 && <div className="anomaly-note"><b>QUARANTINED TRACE // {campaign.resources.rareTech}</b><span>Recovered lattice material occupies shielded sample storage. Its geometry has not been matched to normal human industrial methods; the Campaign dossier tracks what Quiet Signal can actually support from the evidence.</span></div>}</article></section>}
+    </div>
   </main>;
 }
