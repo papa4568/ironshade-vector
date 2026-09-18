@@ -111,6 +111,8 @@ try {
         locationArt: canvas.dataset.locationArt ?? '',
         locationLighting: canvas.dataset.locationLighting ?? '',
         locationProps: canvas.dataset.locationProps ?? '',
+        renderTier: canvas.dataset.renderTier ?? '',
+        renderBudget: canvas.dataset.renderBudget ?? '',
         canvases: document.querySelectorAll('canvas').length,
         width: rect.width,
         height: rect.height,
@@ -157,6 +159,12 @@ try {
       if (lastState.locationProps !== 'ore-service:instanced-shared-library') {
         throw new Error(`Shared instanced prop library is not active: ${JSON.stringify(lastState)}`);
       }
+      if (!['high', 'balanced', 'performance'].includes(lastState.renderTier)) {
+        throw new Error(`Adaptive render tier telemetry is missing: ${JSON.stringify(lastState)}`);
+      }
+      if (!/^pixel:\d+\.\d{2}\+shadow:\d+\+vfx:\d+\.\d{2}\+transparency:\d+\.\d{2}\+detail:\d+\.\d{2}$/.test(lastState.renderBudget)) {
+        throw new Error(`Adaptive render budget telemetry is malformed: ${JSON.stringify(lastState)}`);
+      }
       if (!String(lastState.tone).startsWith('aces-')) {
         throw new Error(`Refinery ACES exposure telemetry is missing: ${JSON.stringify(lastState)}`);
       }
@@ -166,7 +174,7 @@ try {
       if (!(lastState.width > 0 && lastState.height > 0)) {
         throw new Error(`Authored refinery canvas is not visible: ${JSON.stringify(lastState)}`);
       }
-      console.log(`AUTHORED_REFINERY_RUNTIME_PASS lod=${lastState.lod} kit=${[...kit].sort().join(',')} instances=${lastState.instances} terminals=${lastState.terminals} lighting=${lastState.lighting} materials=${lastState.materials} vfx=${lastState.vfx} tone=${lastState.tone} effects=${lastState.effectsMode} readability=${lastState.readability} location=${lastState.locationArt} props=${lastState.locationProps} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
+      console.log(`AUTHORED_REFINERY_RUNTIME_PASS lod=${lastState.lod} kit=${[...kit].sort().join(',')} instances=${lastState.instances} terminals=${lastState.terminals} lighting=${lastState.lighting} materials=${lastState.materials} vfx=${lastState.vfx} tone=${lastState.tone} effects=${lastState.effectsMode} readability=${lastState.readability} location=${lastState.locationArt} props=${lastState.locationProps} tier=${lastState.renderTier} budget=${lastState.renderBudget} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
       process.exitCode = 0;
       break;
     }

@@ -1,6 +1,7 @@
 const cdpBase = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9222';
 const timeoutMs = Number(process.env.ANDROID_SMOKE_TIMEOUT_MS ?? 75_000);
 const startedAt = Date.now();
+const resumeOnly = process.env.ANDROID_RESUME_CHECK === '1';
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 if (typeof WebSocket !== 'function') {
@@ -192,6 +193,39 @@ async function tap(selector, id = 1, holdMs = 90) {
 }
 
 await call('Page.enable').catch(() => undefined);
+
+if (resumeOnly) {
+  await waitFor(`document.readyState === 'complete' && document.title === 'Ironshade Vector'`, 'resumed Ironshade document', 45_000);
+  await waitFor(`(() => {
+    const canvas = document.querySelector('canvas[data-render-tier]');
+    const text = (document.body?.innerText ?? '').toLowerCase();
+    return Boolean(canvas && text.includes('field coach') && document.querySelector('[aria-label="Touch combat controls"]'));
+  })()`, 'resumed Android combat surface', 45_000);
+
+  const resumed = await evaluate(`(() => {
+    const canvas = document.querySelector('canvas[data-render-tier]');
+    return {
+      tier: canvas?.dataset.renderTier ?? '',
+      budget: canvas?.dataset.renderBudget ?? '',
+      environment: canvas?.dataset.environmentVisual ?? '',
+      canvases: document.querySelectorAll('canvas').length,
+      touch: Boolean(document.querySelector('[aria-label="Touch combat controls"]') && document.querySelector('.move-stick') && document.querySelector('.fire-button') && document.querySelector('.dodge-button')),
+    };
+  })()`);
+  if (!['balanced', 'performance'].includes(resumed.tier)) {
+    throw new Error(`Android resume did not restore a mobile render tier: ${JSON.stringify(resumed)}`);
+  }
+  if (!/^pixel:\\d+\\.\\d{2}\\+shadow:\\d+\\+vfx:\\d+\\.\\d{2}\\+transparency:\\d+\\.\\d{2}\\+detail:\\d+\\.\\d{2}$/.test(resumed.budget)) {
+    throw new Error(`Android resume render budget telemetry is malformed: ${JSON.stringify(resumed)}`);
+  }
+  if (!resumed.touch || resumed.canvases < 1) {
+    throw new Error(`Android resume did not restore combat/touch surfaces: ${JSON.stringify(resumed)}`);
+  }
+  console.log(`ANDROID_LIFECYCLE_RESUME_PASS tier=${resumed.tier} budget=${resumed.budget} environment=${resumed.environment} canvases=${resumed.canvases}`);
+  session.close();
+  await sleep(100);
+  process.exit(0);
+}
 await waitFor(`document.readyState === 'complete' && document.title === 'Ironshade Vector'`, 'Ironshade document', 45_000);
 await waitFor(`(() => {
   const text = (document.body?.innerText ?? '').toLowerCase();
@@ -240,6 +274,21 @@ const combat = await snapshot();
 if (!(combat.text ?? '').toLowerCase().includes('field coach') || combat.canvases < 1) {
   throw new Error(`Android combat surface failed smoke validation: ${JSON.stringify(combat)}`);
 }
+
+const renderTier = await evaluate(`(() => {
+  const canvas = document.querySelector('canvas[data-render-tier]');
+  return {
+    tier: canvas?.dataset.renderTier ?? '',
+    budget: canvas?.dataset.renderBudget ?? '',
+  };
+})()`);
+if (!['balanced', 'performance'].includes(renderTier.tier)) {
+  throw new Error(`Android coarse/mobile renderer started outside Balanced/Performance: ${JSON.stringify(renderTier)}`);
+}
+if (!/^pixel:\\d+\\.\\d{2}\\+shadow:\\d+\\+vfx:\\d+\\.\\d{2}\\+transparency:\\d+\\.\\d{2}\\+detail:\\d+\\.\\d{2}$/.test(renderTier.budget)) {
+  throw new Error(`Android render budget telemetry is malformed: ${JSON.stringify(renderTier)}`);
+}
+console.log(`ANDROID_RENDER_TIER_PASS tier=${renderTier.tier} budget=${renderTier.budget}`);
 
 await waitFor(`Boolean(document.querySelector('[aria-label="Touch combat controls"]') && document.querySelector('.move-stick') && document.querySelector('.fire-button') && document.querySelector('.dodge-button'))`, 'Android touch controls');
 const scrollBefore = await evaluate(`({ x: window.scrollX, y: window.scrollY })`);

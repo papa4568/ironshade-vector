@@ -635,7 +635,7 @@ export function buildHardSciFiEnvironment(root: THREE.Group, mission: Contract, 
   environment.userData.locationArtIdentity = locationArtIdentityFor(mission.location);
 }
 
-export function syncHardSciFiEnvironment(root: THREE.Group, state: SimState, mission: Contract) {
+export function syncHardSciFiEnvironment(root: THREE.Group, state: SimState, mission: Contract, detailLevel = 1, transparencyScale = 1) {
   const environment = root.getObjectByName(ENV_KEY);
   if (!environment) return;
   syncMapVisualOverhaul(environment as THREE.Group, state);
@@ -643,11 +643,13 @@ export function syncHardSciFiEnvironment(root: THREE.Group, state: SimState, mis
   const stars = environment.getObjectByName('hard-stars') as THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial> | undefined;
   const sector = sectorAt(state, state.player.x, state.player.y);
   if (dust) {
+    dust.visible = detailLevel > 0.55;
     dust.rotation.y = state.time * 0.012;
     dust.position.x = Math.sin(state.time * 0.18) * 0.08;
-    dust.material.opacity = sector?.pressureState === 'vacuum' ? 0.05 : sector?.pressureState === 'decompressing' ? 0.34 : mission.conditions.includes('low-visibility') ? 0.28 : 0.17;
+    const baseOpacity = sector?.pressureState === 'vacuum' ? 0.05 : sector?.pressureState === 'decompressing' ? 0.34 : mission.conditions.includes('low-visibility') ? 0.28 : 0.17;
+    dust.material.opacity = baseOpacity * transparencyScale;
   }
-  if (stars) stars.material.opacity = sector?.pressureState === 'vacuum' ? 1 : 0.78;
+  if (stars) stars.material.opacity = (sector?.pressureState === 'vacuum' ? 1 : 0.78) * Math.max(0.72, transparencyScale);
 }
 
 function ensureBreachJets(dynamicRoot: THREE.Group, state: SimState) {

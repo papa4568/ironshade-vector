@@ -374,21 +374,21 @@ export class ThreeCombatRenderer {
     this.lastFrameAt = now;
     const budget = this.renderBudget.sample(frameMs, quality);
     this.resize(width, height, quality, budget);
-    this.ensureEnvironment(state, mission);
-    syncHardSciFiEnvironment(this.environmentRoot, state, mission);
+    this.ensureEnvironment(state, mission, budget);
+    syncHardSciFiEnvironment(this.environmentRoot, state, mission, budget.detailScale, budget.transparencyScale);
     this.syncSectors(state);
     this.syncObjects(state);
     this.syncObjectiveBeacon(state, mission);
     this.syncPlayer(state, operatorFaction);
     this.syncEnemies(state, mobileTargetId);
-    this.syncProjectiles(state);
+    this.syncProjectiles(state, budget.transparencyScale);
     this.syncGroundLoot(state);
     this.syncHazards(state);
-    this.syncEffects(state, quality * budget.detailScale);
+    this.syncEffects(state, quality * budget.detailScale, budget.vfxDensity, budget.transparencyScale);
     this.syncBreaches(state);
-    syncHardSciFiBreaches(this.dynamicRoot, state, WORLD_SCALE, quality * budget.detailScale);
-    this.syncDebris(state, quality * budget.detailScale);
-    this.syncRefineryAtmospherics(state, quality * budget.detailScale);
+    syncHardSciFiBreaches(this.dynamicRoot, state, WORLD_SCALE, quality * budget.vfxDensity);
+    this.syncDebris(state, quality * budget.detailScale * budget.vfxDensity);
+    this.syncRefineryAtmospherics(state, quality * budget.detailScale, budget.vfxDensity, budget.transparencyScale);
     this.syncCamera(state, mission, width / Math.max(1, height));
     this.syncLighting(state, mission, quality, budget);
     this.renderer.render(this.scene, this.camera);
@@ -575,12 +575,12 @@ export class ThreeCombatRenderer {
     this.authoredEnvironmentRoot.add(grime);
   }
 
-  private syncRefineryAtmospherics(state: SimState, detailLevel: number) {
+  private syncRefineryAtmospherics(state: SimState, detailLevel: number, vfxDensity: number, transparencyScale: number) {
     if (!this.refinerySteam) return;
-    const reducedEffects = detailLevel < 0.58;
+    const reducedEffects = detailLevel < 0.58 || vfxDensity < 0.55;
     this.refinerySteam.visible = !reducedEffects;
     this.refinerySteam.rotation.y = Math.sin(state.time * 0.16) * 0.025;
-    this.refinerySteam.material.opacity = 0.1 + Math.sin(state.time * 1.7) * 0.025;
+    this.refinerySteam.material.opacity = (0.1 + Math.sin(state.time * 1.7) * 0.025) * transparencyScale;
     if (this.refineryDecals) this.refineryDecals.visible = true;
     if (this.refineryGrimeDecals) this.refineryGrimeDecals.visible = !reducedEffects;
   }
@@ -622,10 +622,9 @@ export class ThreeCombatRenderer {
     return created;
   }
 
-  private async loadAuthoredRefineryEnvironment(state: SimState, worldW: number, worldH: number) {
+  private async loadAuthoredRefineryEnvironment(state: SimState, worldW: number, worldH: number, detailScale: number) {
     const generation = ++this.refineryLoadGeneration;
     this.renderer.domElement.dataset.environmentVisual = 'authored-loading';
-    const detailScale = this.coarse ? 0.5 : 0.78;
     const loaded: Array<{ key: keyof typeof REFINERY_ASSET_FAMILIES; instance: GraphicsAssetInstance; lod: number }> = [];
 
     try {
@@ -1076,10 +1075,24 @@ export class ThreeCombatRenderer {
       this.camera.updateProjectionMatrix();
     }
     this.keyLight.castShadow = budget.shadows;
+    const shadowSize = budget.shadowMapSize;
+    if (this.keyLight.shadow.mapSize.x !== shadowSize || this.keyLight.shadow.mapSize.y !== shadowSize) {
+      this.keyLight.shadow.mapSize.set(shadowSize, shadowSize);
+      this.keyLight.shadow.map?.dispose();
+      this.keyLight.shadow.map = null;
+    }
+    this.renderer.domElement.dataset.renderTier = budget.tierName;
+    this.renderer.domElement.dataset.renderBudget = [
+      `pixel:${budget.pixelRatioScale.toFixed(2)}`,
+      `shadow:${budget.shadows ? budget.shadowMapSize : 0}`,
+      `vfx:${budget.vfxDensity.toFixed(2)}`,
+      `transparency:${budget.transparencyScale.toFixed(2)}`,
+      `detail:${budget.detailScale.toFixed(2)}`,
+    ].join('+');
   }
 
-  private ensureEnvironment(state: SimState, mission: Contract) {
-    const signature = `${mission.location}:${mission.locationName}:${state.sectors.length}:${state.objects.length}`;
+  private ensureEnvironment(state: SimState, mission: Contract, budget: RenderBudgetSnapshot) {
+    const signature = `${mission.location}:${mission.locationName}:${state.sectors.length}:${state.objects.length}:tier-${budget.tier}`;
     if (signature === this.environmentSignature) return;
     this.environmentSignature = signature;
 
@@ -1124,7 +1137,7 @@ export class ThreeCombatRenderer {
     this.renderer.domElement.dataset.locationLighting = `${mission.location}:${artIdentity.lighting}`;
     this.renderer.domElement.dataset.locationProps = `${artIdentity.propSet}:instanced-shared-library`;
     if (mission.location === 'asteroid-refinery') {
-      void this.loadAuthoredRefineryEnvironment(state, world.w, world.h);
+      void this.loadAuthoredRefineryEnvironment(state, world.w, world.h, budget.detailScale);
     } else {
       this.renderer.domElement.dataset.environmentVisual = 'procedural';
     }
@@ -1833,7 +1846,7 @@ export class ThreeCombatRenderer {
     return this.projectilePool[index];
   }
 
-  private syncProjectiles(state: SimState) {
+  private syncProjectiles(state: SimState, transparencyScale: number) {
     let count = 0;
     for (const projectile of state.projectiles) {
       if (!projectile.active) continue;
@@ -1850,17 +1863,17 @@ export class ThreeCombatRenderer {
         visual.core.scale.setScalar(size * 0.72);
         visual.core.material.emissiveIntensity = 2.1;
         visual.trail.scale.set(3.25, 0.72, 0.72);
-        visual.trail.material.opacity = 0.88;
+        visual.trail.material.opacity = 0.88 * transparencyScale;
       } else if (projectile.weapon === 'breacher') {
         visual.core.scale.set(size * 1.22, size * 0.92, size * 1.22);
         visual.core.material.emissiveIntensity = 1.45;
         visual.trail.scale.set(0.62, 1.35, 1.35);
-        visual.trail.material.opacity = 0.40;
+        visual.trail.material.opacity = 0.40 * transparencyScale;
       } else {
         visual.core.scale.setScalar(size * 0.88);
         visual.core.material.emissiveIntensity = 1.65;
         visual.trail.scale.set(1.5, 0.92, 0.92);
-        visual.trail.material.opacity = 0.62;
+        visual.trail.material.opacity = 0.62 * transparencyScale;
       }
     }
     for (let index = count; index < this.projectilePool.length; index += 1) this.projectilePool[index].root.visible = false;
@@ -1920,11 +1933,12 @@ export class ThreeCombatRenderer {
     return this.impactSparkPool[index];
   }
 
-  private syncEffects(state: SimState, detailLevel: number) {
+  private syncEffects(state: SimState, detailLevel: number, vfxDensity: number, transparencyScale: number) {
     let count = 0;
     let sparkCount = 0;
+    let impactOrdinal = 0;
     let lastImpactLanguage = '';
-    const reducedEffects = detailLevel < 0.58;
+    const reducedEffects = detailLevel < 0.58 || vfxDensity < 0.55;
     for (const effect of state.effects) {
       if (!effect.active) continue;
       let color = effect.kind === 'arc' ? 0x84caeb : effect.kind === 'breach' ? 0xf07d4d : effect.kind === 'mark' ? 0xd0e07a : effect.kind === 'pulse' ? 0x9debd8 : 0xc2ddd3;
@@ -1986,7 +2000,7 @@ export class ThreeCombatRenderer {
       const baseScale = Math.max(0.18, scaled(effect.radius) * (0.42 + progress * 0.85) * impactScale);
       ring.visible = true;
       ring.material.color.setHex(color);
-      ring.material.opacity = Math.max(0, (effect.kind === 'mark' ? 0.58 : 0.76) * (1 - progress));
+      ring.material.opacity = Math.max(0, (effect.kind === 'mark' ? 0.58 : 0.76) * (1 - progress) * Math.max(0.72, transparencyScale));
       ring.position.set(scaled(effect.x), 0.12 + progress * 0.35, scaled(effect.y));
       if (effect.kind === 'arc') {
         ring.scale.set(baseScale * 0.72, baseScale, baseScale * 1.28);
@@ -2002,11 +2016,13 @@ export class ThreeCombatRenderer {
         if (effect.kind === 'impact') ring.rotation.z = state.time * 2.2 + progress * Math.PI;
       }
 
-      if (effect.kind === 'impact' && !reducedEffects) {
+      if (effect.kind === 'impact') impactOrdinal += 1;
+      const sparkStride = vfxDensity >= 0.95 ? 1 : vfxDensity >= 0.65 ? 2 : 3;
+      if (effect.kind === 'impact' && !reducedEffects && impactOrdinal % sparkStride === 0) {
         const spark = this.ensureImpactSpark(sparkCount++, color);
         spark.visible = true;
         spark.material.color.setHex(color);
-        spark.material.opacity = Math.max(0, 0.8 * (1 - progress));
+        spark.material.opacity = Math.max(0, 0.8 * (1 - progress) * transparencyScale);
         spark.position.set(scaled(effect.x), 0.12, scaled(effect.y));
         spark.rotation.set(state.time * 2.4, state.time * 1.6, state.time * 3.1);
         spark.scale.setScalar(0.72 + progress * 1.9);
