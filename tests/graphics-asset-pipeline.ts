@@ -125,7 +125,8 @@ assert(rendererSource.includes('REFINERY_ASSET_FAMILIES'), 'showcase environment
 assert(rendererSource.includes('loadAuthoredRefineryEnvironment(state, world.w, world.h, budget.detailScale)'), 'Asteroid Refinery authored environment must select LOD from the active render tier');
 assert(rendererSource.includes('new THREE.InstancedMesh'), 'repeated refinery props must use instancing');
 assert(rendererSource.includes("dataset.environmentVisual = 'authored-refinery'"), 'runtime QA must expose authored refinery activation');
-assert(rendererSource.includes("dataset.environmentKit = 'floor,bulkhead,processor,pipe-rack,wall-panel,cable-tray,service-conduit,gantry,crate,terminal'"), 'runtime QA must expose the complete refinery kit');
+assert(rendererSource.includes("dataset.environmentKit = 'floor,floor-grate,bulkhead,processor,pipe-rack,wall-panel,cable-tray,service-conduit,gantry,crate,terminal'"), 'runtime QA must expose the complete refinery kit');
+assert(manifestSource.includes('refinery-floor-service-grate-lod1.glb') && manifestSource.includes('refinery-floor-service-grate-lod2.glb'), 'refinery floor variation must preserve adaptive LOD coverage');
 assert(manifestSource.includes('refinery-wall-service-panel-lod1.glb') && manifestSource.includes('refinery-wall-service-panel-lod2.glb'), 'refinery wall panels must preserve adaptive LOD coverage');
 assert(manifestSource.includes('refinery-cable-tray-lod1.glb') && manifestSource.includes('refinery-cable-tray-lod2.glb'), 'refinery cable trays must preserve adaptive LOD coverage');
 assert(manifestSource.includes('refinery-service-conduit-lod1.glb') && manifestSource.includes('refinery-service-conduit-lod2.glb'), 'refinery second-pass service conduit must preserve adaptive LOD coverage');
@@ -133,6 +134,7 @@ assert(manifestSource.includes('refinery-smelter-gantry-lod1.glb') && manifestSo
 assert(rendererSource.includes("dataset.environmentLandmark = 'ore-smelter-gantry'"), 'refinery second pass must expose the bespoke landmark for runtime QA');
 assert(rendererSource.includes('dataset.environmentServiceDetails') && rendererSource.includes('service-conduit:'), 'refinery second pass must expose secondary service-detail coverage');
 assert(rendererSource.includes('dataset.environmentSurfaceDetail') && rendererSource.includes('wall-panel:') && rendererSource.includes('cable-tray:') && rendererSource.includes('contact-darkening:10'), 'refinery wall/cable/contact detail coverage must remain observable for runtime QA');
+assert(rendererSource.includes('dataset.environmentMachineDetail') && rendererSource.includes('processor-functional:3+floor-grate:'), 'refinery processor/floor refinement coverage must remain observable for runtime QA');
 assert(rendererSource.includes('this.proceduralRefineryVisuals.forEach'), 'procedural refinery scenery must remain as a load-failure fallback');
 assert(rendererSource.includes('playerReadabilityLight') && rendererSource.includes('nearestEnemyDistanceSq') && rendererSource.includes('refineryPracticalLights'), 'lighting pass must preserve player/enemy contact light and bounded practical lights');
 assert(rendererSource.includes('cloneRefineryMaterial') && rendererSource.includes("'pbr-bounded+emissive+decals:safety+grime+contact-darkening'"), 'refinery materials must use bounded PBR tuning plus controlled safety/grime/contact detail');
