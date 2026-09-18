@@ -437,7 +437,7 @@ try {
   await waitFor(`(() => {
     const text = (document.body?.innerText ?? '').toLowerCase();
     const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase());
-    return text.includes('save recovery lock') || (text.includes('command deck') && labels.includes('operations'));
+    return text.includes('save recovery lock') || ((text.includes('command ready') || text.includes('command deck')) && labels.includes('operations'));
   })()`, 'interactive Command Deck');
 
   const startup = await snapshot();
@@ -446,7 +446,7 @@ try {
   if (startupText.toLowerCase().includes('save recovery lock')) {
     throw new Error(`Browser startup entered save recovery lock: ${JSON.stringify(startup)}`);
   }
-  if (startup.title !== 'Ironshade Vector' || !startupText.toLowerCase().includes('command deck') || !startupButtons.some(label => label.toLowerCase() === 'operations')) {
+  if (startup.title !== 'Ironshade Vector' || !(startupText.toLowerCase().includes('command ready') || startupText.toLowerCase().includes('command deck')) || !startupButtons.some(label => label.toLowerCase() === 'operations')) {
     throw new Error(`Unexpected browser startup surface: ${JSON.stringify(startup)}`);
   }
   await accessibilityAudit('command-deck');
