@@ -277,6 +277,13 @@ function spawnEnemy(id: number, role: EnemyRole, label: string, x: number, y: nu
 export function createSimulation(build: CombatBuild = neutralCombatBuild): SimState {
   seed = 0x5f3759df;
   const carbineConfig = resolveWeaponConfig(build, 'carbine'); const breacherConfig = resolveWeaponConfig(build, 'breacher'); const railConfig = resolveWeaponConfig(build, 'rail');
+  const classBootText = build.operatorClass === 'vanguard'
+    ? 'VANGUARD ONLINE // CLOSE BREACH CONTACT BUILDS GUARD'
+    : build.operatorClass === 'vector'
+      ? 'VECTOR ONLINE // DODGE PRIMES SLIPSTREAM SHOT'
+      : build.operatorClass === 'systems'
+        ? 'SYSTEMS ONLINE // CHAIN MAG / MARK / ARC FOR CLOSED LOOP'
+        : 'VECTOR SYSTEM ONLINE // MULTI-SYSTEM COMBAT AUTHORIZED';
   const objects: CombatObject[] = [
     { id: 'crate-a', label: 'Light cargo stack', kind: 'cover', material: 'light', x: 540, y: 390, w: 120, h: 180, hp: 70, maxHp: 70, destructible: true, active: true, exposed: false },
     { id: 'bulkhead-a', label: 'Compressor housing', kind: 'cover', material: 'bulkhead', x: 860, y: 650, w: 190, h: 82, hp: 9999, maxHp: 9999, destructible: false, active: true, exposed: false },
@@ -328,7 +335,7 @@ export function createSimulation(build: CombatBuild = neutralCombatBuild): SimSt
     hazards: Array.from({ length: 12 }, () => ({ active: false, x: 0, y: 0, radius: 0, life: 0, kind: 'shockGrid' as const, owner: 'enemy' as const })),
     debris: Array.from({ length: 16 }, (_, index) => ({ active: false, x: index < 8 ? 930 + (index % 4) * 145 : 1770 + (index % 4) * 135, y: 265 + (index % 5) * 115, vx: 0, vy: 0, radius: 8 + (index % 3) * 3, sectorId: index < 8 ? 'B' : 'C' })),
     effects: Array.from({ length: 30 }, () => ({ active: false, x: 0, y: 0, kind: 'impact' as const, life: 0, maxLife: 0, radius: 0 })),
-    complete: false, bossActive: false, bossDefeated: false, pulse: 0, weaponFlash: 0, kills: 0, squadSuppressing: false, eventText: 'VECTOR SYSTEM ONLINE // MULTI-SYSTEM COMBAT AUTHORIZED', eventT: 3,
+    complete: false, bossActive: false, bossDefeated: false, pulse: 0, weaponFlash: 0, kills: 0, squadSuppressing: false, eventText: classBootText, eventT: 3,
     telemetry: { damageDealt: 0, damageTaken: 0, deaths: 0, kills: 0, eliteKills: 0, eliteProtocolsDefeated: 0, killIntervalTotal: 0, killIntervalSamples: 0, lastKillAt: 0, protocolCombinations: {}, weaponShots: { carbine: 0, breacher: 0, rail: 0 }, abilityUses: [0, 0, 0], encounterStart: 0, bossStart: 0, duration: 0, trace: [], nextTraceAt: 0 },
   };
 }
