@@ -2,6 +2,12 @@ name: Build Android APK
 
 on:
   workflow_dispatch:
+    inputs:
+      require_release_signing:
+        description: Fail unless persistent Android release-signing secrets are configured
+        required: true
+        default: false
+        type: boolean
   push:
     branches:
       - main
@@ -53,6 +59,7 @@ jobs:
           ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
           ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
           ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
+          REQUIRE_RELEASE_SIGNING: ${{ github.event_name == 'workflow_dispatch' && inputs.require_release_signing }}
         run: |
           set -euo pipefail
           present=0
@@ -63,6 +70,10 @@ jobs:
           done
 
           if [[ "$present" -eq 0 ]]; then
+            if [[ "$REQUIRE_RELEASE_SIGNING" == "true" ]]; then
+              echo "::error::Release signing is required for this run, but persistent Android signing secrets are not configured."
+              exit 1
+            fi
             echo "::warning::Persistent Android signing secrets are not configured; building an ephemeral debug-signed APK."
             echo "mode=debug" >> "$GITHUB_OUTPUT"
             exit 0

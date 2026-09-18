@@ -34,6 +34,12 @@ Once the first APK is installed with the permanent release key, every later APK 
 
 The APKs produced before persistent signing was configured were debug-signed on disposable GitHub runners. A new release key cannot update an already installed APK that was signed by a different debug certificate. Treat the first permanent-signed build as a signing migration: do not uninstall a save-bearing debug installation until its save data has been backed up or a verified migration path exists.
 
+## Release-candidate enforcement
+
+Normal push CI may continue to produce the verified debug-signed fallback when no persistent signing secrets are configured. This keeps emulator, lifecycle, graphics, and packaging validation available before production credentials exist.
+
+For a distributable release candidate, run **Build Android APK** manually and enable `require_release_signing`. That run fails during signing-mode resolution unless all four persistent signing secrets are present and the configured keystore/alias can be opened. This prevents a release-candidate run from succeeding with an ephemeral debug signer.
+
 ## Workflow verification
 
 Every Android build now records:
