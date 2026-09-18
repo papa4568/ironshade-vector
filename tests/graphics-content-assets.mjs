@@ -169,9 +169,13 @@ for (const path of glbs) {
           ? 'refinery-processor-core'
           : filename.includes('pipe-rack')
             ? 'refinery-pipe-rack-spine'
-            : filename.includes('crate')
-              ? 'refinery-crate-shell'
-              : 'refinery-terminal-screen';
+            : filename.includes('service-conduit')
+              ? 'refinery-service-conduit-trunk'
+              : filename.includes('smelter-gantry')
+                ? 'refinery-smelter-gantry-beam'
+                : filename.includes('crate')
+                  ? 'refinery-crate-shell'
+                  : 'refinery-terminal-screen';
     assert(nodeNames.has(marker), `${relativePath}: environment silhouette marker ${marker} is missing`);
     if (filename.includes('terminal')) {
       assert(nodeNames.has('objective-beacon-mount'), `${relativePath}: interactive refinery terminal is missing objective beacon mount`);
