@@ -169,9 +169,13 @@ for (const path of glbs) {
           ? 'refinery-processor-core'
           : filename.includes('pipe-rack')
             ? 'refinery-pipe-rack-spine'
-            : filename.includes('service-conduit')
-              ? 'refinery-service-conduit-trunk'
-              : filename.includes('smelter-gantry')
+            : filename.includes('wall-service-panel')
+              ? 'refinery-wall-service-panel-shell'
+              : filename.includes('cable-tray')
+                ? 'refinery-cable-tray-spine'
+                : filename.includes('service-conduit')
+                  ? 'refinery-service-conduit-trunk'
+                  : filename.includes('smelter-gantry')
                 ? 'refinery-smelter-gantry-beam'
                 : filename.includes('crate')
                   ? 'refinery-crate-shell'
