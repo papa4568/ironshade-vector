@@ -127,7 +127,7 @@ assert(rendererSource.includes("'shape+silhouette+luminance'"), 'gameplay-signif
 assert(rendererSource.includes("'objective-chevron'"), 'objective effects must retain a shape-coded high-contrast beacon');
 assert(rendererSource.includes('mesh.material.emissiveIntensity = speed > 240 ? 0.18 : 0'), 'debris readability polish must remain bounded and quality-aware');
 assert(rendererSource.includes('syncHardSciFiBreaches(this.dynamicRoot, state, WORLD_SCALE, quality * budget.detailScale)'), 'breach particles must follow the adaptive effects budget');
-assert(rendererSource.includes("'boss-signature-root'") && rendererSource.includes("'boss-phase-ring'") && rendererSource.includes("'boss-signature-pylon-'"), 'boss visual must add a bespoke silhouette assembly beyond ordinary enemy presentation');
+assert(rendererSource.includes("'boss-signature-root'") && rendererSource.includes("'boss-phase-ring'") && rendererSource.includes('boss-signature-pylon-'), 'boss visual must add a bespoke silhouette assembly beyond ordinary enemy presentation');
 assert(rendererSource.includes("'boss-telegraph-wedge'") && rendererSource.includes('enemy.telegraph > 0'), 'boss attack telegraphs must use a shape-coded directional wedge');
 assert(rendererSource.includes("'armor-break+phase-emissive+low-hp-pulse'") && rendererSource.includes('enemy.bossPhase === 2'), 'boss phase/damage state must drive authored material and signature VFX changes');
 assert(rendererSource.includes("'phase2-practical-pulse'") && rendererSource.includes('bossPulse'), 'boss phase must trigger a bounded environment lighting reaction');
