@@ -53,3 +53,25 @@ export const ENEMY_ASSET_FAMILIES = {
     },
   },
 } as const satisfies Record<'assault' | 'suppressor' | 'technician' | 'elite' | 'boss', GraphicsAssetFamily>;
+
+export const WEAPON_ASSET_FAMILIES = {
+  carbine: {
+    id: 'weapon-carbine',
+    lods: {
+      1: createGraphicsAssetSpec('weapon-carbine-lod1', 'weapon', '/assets/models/weapons/weapon-carbine-lod1.glb', 1),
+    },
+  },
+  breacher: {
+    id: 'weapon-breacher',
+    lods: {
+      1: createGraphicsAssetSpec('weapon-breacher-lod1', 'weapon', '/assets/models/weapons/weapon-breacher-lod1.glb', 1),
+    },
+  },
+  rail: {
+    id: 'weapon-rail',
+    lods: {
+      1: createGraphicsAssetSpec('weapon-rail-lod1', 'weapon', '/assets/models/weapons/weapon-rail-lod1.glb', 1),
+    },
+  },
+} as const satisfies Record<'carbine' | 'breacher' | 'rail', GraphicsAssetFamily>;
+

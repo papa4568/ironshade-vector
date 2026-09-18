@@ -153,6 +153,21 @@ for (const path of glbs) {
     }
   }
 
+  if (top === 'weapons') {
+    const weaponLength = runtimeBounds.max.x - runtimeBounds.min.x;
+    assert(weaponLength >= 0.9 && weaponLength <= 2.4, `${relativePath}: authored weapon length ${weaponLength.toFixed(2)}m is outside gameplay scale`);
+    const nodeNames = new Set((json.nodes ?? []).map(node => node.name).filter(Boolean));
+    for (const required of ['weapon-root', 'muzzle-socket']) {
+      assert(nodeNames.has(required), `${relativePath}: authored weapon is missing required node ${required}`);
+    }
+    const silhouetteMarker = filename.includes('carbine')
+      ? 'carbine-magazine'
+      : filename.includes('breacher')
+        ? 'breacher-twin-barrel'
+        : 'rail-coil';
+    assert(nodeNames.has(silhouetteMarker), `${relativePath}: weapon silhouette marker ${silhouetteMarker} is missing`);
+  }
+
   if (top === 'enemies' || top === 'bosses') {
     const height = runtimeBounds.max.y - runtimeBounds.min.y;
     assert(Math.abs(runtimeBounds.min.y) <= 0.05, `${relativePath}: enemy feet must rest near authored ground origin; minY=${runtimeBounds.min.y}`);
