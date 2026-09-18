@@ -167,6 +167,10 @@ for (const path of glbs) {
         ? 'damaged-vessel-breach-frame-crown'
         : filename.includes('damaged-vessel-salvage-rack')
           ? 'damaged-vessel-salvage-rack-shell'
+          : filename.includes('damaged-vessel-torn-wall-plate')
+            ? 'damaged-vessel-torn-wall-plate-shell'
+            : filename.includes('damaged-vessel-service-bundle')
+              ? 'damaged-vessel-service-bundle-trunk'
           : filename.includes('floor-panel')
             ? 'refinery-floor-panel'
             : filename.includes('floor-service-grate')
@@ -192,6 +196,14 @@ for (const path of glbs) {
     if (filename.includes('damaged-vessel-breach-frame') && filename.endsWith('-lod1.glb')) {
       assert(nodeNames.has('damaged-vessel-breach-frame-cable-a'), `${relativePath}: breach landmark is missing exposed cable detail`);
       assert(nodeNames.has('damaged-vessel-breach-frame-scar-cap'), `${relativePath}: breach landmark is missing scar-cap detail`);
+    }
+    if (filename.includes('damaged-vessel-torn-wall-plate') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('damaged-vessel-torn-wall-plate-lower-flap'), `${relativePath}: torn wall plate is missing damaged silhouette detail`);
+      assert(nodeNames.has('damaged-vessel-torn-wall-plate-tooth'), `${relativePath}: torn wall plate is missing jagged edge detail`);
+    }
+    if (filename.includes('damaged-vessel-service-bundle') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('damaged-vessel-service-bundle-junction'), `${relativePath}: service bundle is missing junction housing`);
+      assert(nodeNames.has('damaged-vessel-service-bundle-conduit-a'), `${relativePath}: service bundle is missing exposed conduit detail`);
     }
     if (filename.includes('processor') && filename.endsWith('-lod1.glb')) {
       assert(nodeNames.has('refinery-processor-ore-intake'), `${relativePath}: refined processor is missing ore intake silhouette`);
