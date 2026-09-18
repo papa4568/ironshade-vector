@@ -111,7 +111,7 @@ async function snapshot() {
     title: document.title,
     url: location.href,
     text: (document.body?.innerText ?? '').slice(0, 1600),
-    buttons: [...document.querySelectorAll('button')].map(button => button.textContent?.trim() ?? '').slice(0, 60),
+    buttons: [...document.querySelectorAll('button')].map(button => button.getAttribute('aria-label') || button.textContent?.trim() || '').slice(0, 60),
     canvases: document.querySelectorAll('canvas').length,
   }))()`);
 }
@@ -317,7 +317,7 @@ async function keyboardActivateButton(label) {
   await call('Page.bringToFront');
   const focused = await evaluate(`(() => {
     const target = ${JSON.stringify(label.toLowerCase())};
-    const button = [...document.querySelectorAll('button')].find(candidate => candidate.textContent?.trim().toLowerCase() === target);
+    const button = [...document.querySelectorAll('button')].find(candidate => (candidate.getAttribute('aria-label') || candidate.textContent || '').trim().toLowerCase() === target);
     if (!button || button.disabled) return false;
     button.focus();
     return document.activeElement === button;
@@ -364,7 +364,7 @@ try {
   await waitFor(`document.readyState === 'complete' && document.title === 'Ironshade Vector'`, 'Ironshade document');
   await waitFor(`(() => {
     const text = (document.body?.innerText ?? '').toLowerCase();
-    const labels = [...document.querySelectorAll('button')].map(button => button.textContent?.trim().toLowerCase() ?? '');
+    const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase());
     return text.includes('save recovery lock') || (text.includes('command deck') && labels.includes('operations'));
   })()`, 'interactive Command Deck');
 
