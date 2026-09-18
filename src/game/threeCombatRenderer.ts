@@ -65,6 +65,7 @@ type EnemyVisual = {
 
 type AuthoredWeaponVisual = {
   instance: GraphicsAssetInstance;
+  assetId: string;
   root: THREE.Group;
   muzzleSocket: THREE.Object3D;
   shellMaterials: THREE.MeshStandardMaterial[];
@@ -431,6 +432,7 @@ export class ThreeCombatRenderer {
       this.weaponPivot.add(root);
       this.authoredWeapons.set(id, {
         instance,
+        assetId: spec.id,
         root,
         muzzleSocket,
         shellMaterials,
@@ -498,7 +500,7 @@ export class ThreeCombatRenderer {
     }
 
     this.renderer.domElement.dataset.weaponActive = player.currentWeapon;
-    this.renderer.domElement.dataset.weaponAsset = WEAPON_ASSET_FAMILIES[player.currentWeapon].id;
+    this.renderer.domElement.dataset.weaponAsset = current.assetId;
     this.renderer.domElement.dataset.weaponHeat = heat.toFixed(2);
     this.renderer.domElement.dataset.weaponFx = player.currentWeapon === 'rail' ? 'lance' : player.currentWeapon === 'breacher' ? 'scatter' : 'tracer';
   }
