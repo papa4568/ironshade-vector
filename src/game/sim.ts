@@ -159,7 +159,7 @@ function dropCarriedObjective(state: SimState, enemy: Enemy, recovered = true) {
 }
 
 function spawnGroundLoot(state: SimState, enemy: Enemy) {
-  const drop = rollGroundLoot({ enemyId: enemy.id, enemyLabel: enemy.label, role: enemy.role, combatClass: enemy.combatClass, x: enemy.x, y: enemy.y, operationTier: state.operationTier, maxRecoveryLevel: state.maxRecoveryLevel, monsterLevel: state.monsterLevel, sequence: state.groundLoot.length + state.collectedLoot.length }, rand);
+  const drop = rollGroundLoot({ enemyId: enemy.id, enemyLabel: enemy.label, role: enemy.role, combatClass: enemy.combatClass, x: enemy.x, y: enemy.y, operationTier: state.operationTier, maxRecoveryLevel: state.maxRecoveryLevel, monsterLevel: state.monsterLevel, modifierCount: enemy.protocols.length, sequence: state.groundLoot.length + state.collectedLoot.length }, rand);
   if (!drop) return;
   state.groundLoot.push(drop);
   spawnEffect(state, drop.x, drop.y, drop.rarity === 'Singular' ? 'arc' : 'pulse', drop.rarity === 'Singular' ? 86 : 54, 0.6);
