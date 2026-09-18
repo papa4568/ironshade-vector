@@ -5,6 +5,7 @@ const appUrl = process.env.BROWSER_E2E_APP_URL ?? 'http://127.0.0.1:4173/';
 const timeoutMs = Number(process.env.BROWSER_E2E_TIMEOUT_MS ?? 75_000);
 const startedAt = Date.now();
 const viewportMode = process.env.BROWSER_E2E_VIEWPORT ?? 'desktop';
+const targetLocation = process.env.BROWSER_E2E_LOCATION ?? 'asteroid-refinery';
 const screenshotPath = process.env.BROWSER_E2E_SCREENSHOT ?? 'browser-e2e-smoke.png';
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -319,6 +320,9 @@ if (viewportMode === 'mobile-landscape') {
   await call('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
 }
 
+await call('Page.navigate', { url: appUrl });
+await sleep(250);
+
 try {
   await waitFor(`document.readyState === 'complete' && document.title === 'Ironshade Vector'`, 'Ironshade document');
   await waitFor(`(() => {
@@ -342,14 +346,15 @@ try {
   await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('contract board') && [...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'deploy selected contract')`, 'Contract Board');
   await accessibilityAudit('contract-board');
 
-  const refinerySelected = await evaluate(`(() => {
-    const button = document.querySelector('button[data-location="asteroid-refinery"]');
+  const targetSelected = await evaluate(`(() => {
+    const target = ${JSON.stringify(targetLocation)};
+    const button = [...document.querySelectorAll('button[data-location]')].find(candidate => candidate.dataset.location === target);
     if (!button || button.disabled) return false;
     button.click();
     return button.classList.contains('selected') || true;
   })()`);
-  if (!refinerySelected) throw new Error('Asteroid Refinery showcase contract was not available on the fresh Contract Board.');
-  await waitFor(`document.querySelector('button[data-location="asteroid-refinery"]')?.classList.contains('selected') === true`, 'Asteroid Refinery contract selection');
+  if (!targetSelected) throw new Error(`Target contract ${targetLocation} was not available on the fresh Contract Board.`);
+  await waitFor(`[...document.querySelectorAll('button[data-location]')].some(button => button.dataset.location === ${JSON.stringify(targetLocation)} && button.classList.contains('selected'))`, `${targetLocation} contract selection`);
 
   await keyboardActivateButton('Deploy Selected Contract');
   await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('field coach') && document.querySelectorAll('canvas').length > 0`, 'Combat surface');
@@ -366,7 +371,7 @@ try {
   }
 
   await captureScreenshot();
-  console.log(`BROWSER_E2E_PASS title=${startup.title} route=ship>contracts>combat input=keyboard viewport=${viewportMode} canvases=${combat.canvases}`);
+  console.log(`BROWSER_E2E_PASS title=${startup.title} route=ship>contracts>combat location=${targetLocation} input=keyboard viewport=${viewportMode} canvases=${combat.canvases}`);
 } catch (error) {
   await captureScreenshot().catch(() => undefined);
   const state = await snapshot().catch(snapshotError => ({ snapshotError: String(snapshotError) }));
