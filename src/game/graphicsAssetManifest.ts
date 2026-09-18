@@ -33,7 +33,21 @@ export const DAMAGED_VESSEL_ASSET_FAMILIES = {
       2: createGraphicsAssetSpec('damaged-vessel-salvage-rack-lod2', 'environment-module', '/assets/models/environments/damaged-vessel-salvage-rack-lod2.glb', 2),
     },
   },
-} as const satisfies Record<'rib' | 'breachFrame' | 'salvageRack', GraphicsAssetFamily>;
+  tornPlate: {
+    id: 'damaged-vessel-torn-wall-plate',
+    lods: {
+      1: createGraphicsAssetSpec('damaged-vessel-torn-wall-plate-lod1', 'environment-module', '/assets/models/environments/damaged-vessel-torn-wall-plate-lod1.glb', 1),
+      2: createGraphicsAssetSpec('damaged-vessel-torn-wall-plate-lod2', 'environment-module', '/assets/models/environments/damaged-vessel-torn-wall-plate-lod2.glb', 2),
+    },
+  },
+  serviceBundle: {
+    id: 'damaged-vessel-service-bundle',
+    lods: {
+      1: createGraphicsAssetSpec('damaged-vessel-service-bundle-lod1', 'environment-module', '/assets/models/environments/damaged-vessel-service-bundle-lod1.glb', 1),
+      2: createGraphicsAssetSpec('damaged-vessel-service-bundle-lod2', 'environment-module', '/assets/models/environments/damaged-vessel-service-bundle-lod2.glb', 2),
+    },
+  },
+} as const satisfies Record<'rib' | 'breachFrame' | 'salvageRack' | 'tornPlate' | 'serviceBundle', GraphicsAssetFamily>;
 
 export const REFINERY_ASSET_FAMILIES = {
   floor: {
