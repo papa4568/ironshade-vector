@@ -54,6 +54,7 @@ type EnemyVisual = {
   armor: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
   targetRing: THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>;
   protocolRing: THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>;
+  bossSignature: THREE.Group | null;
   role: Enemy['role'];
   proceduralVisuals: THREE.Object3D[];
   assetInstance: GraphicsAssetInstance | null;
@@ -1441,6 +1442,62 @@ export class ThreeCombatRenderer {
     protocolRing.position.y = 0.08;
     root.add(protocolRing);
 
+    let bossSignature: THREE.Group | null = null;
+    if (enemy.role === 'boss') {
+      bossSignature = new THREE.Group();
+      bossSignature.name = 'boss-signature-root';
+
+      const phaseRing = new THREE.Mesh(
+        new THREE.TorusGeometry(1.45, 0.075, 8, 48),
+        new THREE.MeshBasicMaterial({ color: 0x8ee8ff, transparent: true, opacity: 0.42, depthWrite: false, toneMapped: false }),
+      );
+      phaseRing.name = 'boss-phase-ring';
+      phaseRing.rotation.x = Math.PI / 2;
+      phaseRing.position.y = 0.055;
+      bossSignature.add(phaseRing);
+
+      const phaseHalo = new THREE.Mesh(
+        new THREE.TorusGeometry(0.72, 0.055, 8, 40),
+        new THREE.MeshBasicMaterial({ color: 0xff9a70, transparent: true, opacity: 0.5, depthWrite: false, toneMapped: false }),
+      );
+      phaseHalo.name = 'boss-phase-halo';
+      phaseHalo.position.y = 2.65;
+      phaseHalo.rotation.y = Math.PI / 2;
+      phaseHalo.visible = false;
+      bossSignature.add(phaseHalo);
+
+      const telegraph = new THREE.Mesh(
+        new THREE.CircleGeometry(2.65, 32, -0.42, 0.84),
+        new THREE.MeshBasicMaterial({ color: 0xffa070, transparent: true, opacity: 0.4, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }),
+      );
+      telegraph.name = 'boss-telegraph-wedge';
+      telegraph.rotation.x = -Math.PI / 2;
+      telegraph.position.y = 0.035;
+      telegraph.visible = false;
+      bossSignature.add(telegraph);
+
+      const pylonGeometry = new THREE.BoxGeometry(0.18, 0.7, 0.18);
+      for (let index = 0; index < 4; index += 1) {
+        const angle = index * Math.PI / 2;
+        const pylon = new THREE.Mesh(
+          pylonGeometry,
+          new THREE.MeshStandardMaterial({
+            color: 0x6b5f5a,
+            emissive: 0x5a241d,
+            emissiveIntensity: 0.3,
+            metalness: 0.78,
+            roughness: 0.34,
+          }),
+        );
+        pylon.name = `boss-signature-pylon-${index}`;
+        pylon.position.set(Math.cos(angle) * 0.92, 1.72 + (index % 2) * 0.14, Math.sin(angle) * 0.92);
+        pylon.rotation.z = index % 2 === 0 ? 0.28 : -0.28;
+        pylon.castShadow = true;
+        bossSignature.add(pylon);
+      }
+      root.add(bossSignature);
+    }
+
     const barRoot = new THREE.Group();
     const barWidth = enemy.role === 'boss' ? 3.0 : enemy.role === 'elite' ? 2.2 : 1.9;
     const hpBack = new THREE.Mesh(new THREE.PlaneGeometry(barWidth + 0.1, 0.24), new THREE.MeshBasicMaterial({ color: 0x050707, transparent: true, opacity: 0.96, depthTest: false, depthWrite: false, toneMapped: false }));
@@ -1476,6 +1533,7 @@ export class ThreeCombatRenderer {
       armor,
       targetRing,
       protocolRing,
+      bossSignature,
       role: enemy.role,
       proceduralVisuals,
       assetInstance: null,
@@ -1563,6 +1621,11 @@ export class ThreeCombatRenderer {
       this.renderer.domElement.dataset.enemyVisual = 'authored';
       this.renderer.domElement.dataset.enemyAuthoredCount = String(this.authoredEnemyCount);
       this.renderer.domElement.dataset.enemyRoles = [...this.authoredEnemyRoles].sort().join(',');
+      if (enemy.role === 'boss') {
+        this.renderer.domElement.dataset.bossSignature = 'authored-boss+phase-ring+pylons';
+        this.renderer.domElement.dataset.bossTelegraph = 'directional-wedge+phase-halo+pulse';
+        this.renderer.domElement.dataset.bossDamageFx = 'armor-break+phase-emissive+low-hp-pulse';
+      }
     } catch (error) {
       if (this.disposed) return;
       const fallback = new Set((this.renderer.domElement.dataset.enemyFallbackRoles ?? '').split(',').filter(Boolean));
@@ -1621,6 +1684,56 @@ export class ThreeCombatRenderer {
     }
   }
 
+  private syncBossSignature(visual: EnemyVisual, enemy: Enemy, state: SimState) {
+    const signature = visual.bossSignature;
+    if (!signature) return;
+    signature.visible = enemy.active && !enemy.dead;
+    if (!signature.visible) return;
+
+    const phaseRing = signature.getObjectByName('boss-phase-ring') as THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial> | undefined;
+    const phaseHalo = signature.getObjectByName('boss-phase-halo') as THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial> | undefined;
+    const telegraph = signature.getObjectByName('boss-telegraph-wedge') as THREE.Mesh<THREE.CircleGeometry, THREE.MeshBasicMaterial> | undefined;
+    const hpRatio = THREE.MathUtils.clamp(enemy.hp / Math.max(1, enemy.maxHp), 0, 1);
+    const phaseTwo = enemy.bossPhase === 2;
+    const armorBroken = enemy.maxArmor > 0 && enemy.armor <= 0;
+    const lowHp = hpRatio < 0.34;
+    const phaseColor = phaseTwo ? 0xff8e68 : armorBroken ? 0xffc078 : 0x8ee8ff;
+
+    if (phaseRing) {
+      phaseRing.material.color.setHex(phaseColor);
+      phaseRing.material.opacity = 0.34 + Math.sin(state.time * (phaseTwo ? 5.8 : 3.2) + enemy.patternIndex) * 0.1 + (lowHp ? 0.1 : 0);
+      const ringScale = 1 + (phaseTwo ? 0.08 : 0.04) * Math.sin(state.time * 4.5);
+      phaseRing.scale.setScalar(ringScale);
+      phaseRing.rotation.z = state.time * (phaseTwo ? 1.1 : 0.55);
+    }
+
+    if (phaseHalo) {
+      phaseHalo.visible = phaseTwo || armorBroken;
+      phaseHalo.material.color.setHex(phaseColor);
+      phaseHalo.material.opacity = phaseTwo ? 0.58 : 0.38;
+      phaseHalo.rotation.z = -state.time * (phaseTwo ? 1.8 : 0.8);
+      phaseHalo.scale.setScalar(lowHp ? 1.2 + Math.sin(state.time * 7.5) * 0.08 : 1);
+    }
+
+    if (telegraph) {
+      telegraph.visible = enemy.telegraph > 0;
+      telegraph.material.color.setHex(phaseColor);
+      telegraph.material.opacity = THREE.MathUtils.clamp(0.16 + enemy.telegraph * 0.55, 0.16, 0.72);
+      const telegraphScale = 0.86 + THREE.MathUtils.clamp(enemy.telegraph, 0, 1) * (phaseTwo ? 0.38 : 0.28);
+      telegraph.scale.set(telegraphScale, telegraphScale, telegraphScale);
+    }
+
+    for (let index = 0; index < 4; index += 1) {
+      const pylon = signature.getObjectByName(`boss-signature-pylon-${index}`) as THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial> | undefined;
+      if (!pylon) continue;
+      pylon.material.emissive.setHex(phaseColor);
+      pylon.material.emissiveIntensity = phaseTwo ? 0.58 : armorBroken ? 0.42 : 0.28;
+      pylon.scale.y = lowHp ? 0.8 + Math.sin(state.time * 8 + index) * 0.08 : 1;
+    }
+
+    this.renderer.domElement.dataset.bossPhaseVisual = `phase:${enemy.bossPhase}+pattern:${enemy.bossPattern}+telegraph:${enemy.telegraph > 0 ? 'active' : 'idle'}`;
+  }
+
   private syncEnemies(state: SimState, mobileTargetId: number | null) {
     const seen = new Set<number>();
     for (const enemy of state.enemies) {
@@ -1646,14 +1759,16 @@ export class ThreeCombatRenderer {
       visual.protocolRing.visible = !enemy.dead && (enemy.combatClass === 'enhanced' || enemy.combatClass === 'elite' || enemy.protocolPulse > 0);
       visual.protocolRing.material.opacity = enemy.protocolPulse > 0 ? Math.min(0.86, 0.4 + enemy.protocolPulse * 0.42) : 0.38;
       visual.protocolRing.rotation.z = state.time * (enemy.combatClass === 'elite' ? 1.2 : 0.72);
+      if (enemy.role === 'boss') this.syncBossSignature(visual, enemy, state);
       visual.body.material.emissive.setHex(enemy.statuses.disrupted > 0 ? 0x63508a : enemy.telegraph > 0 ? 0x7a3327 : 0x000000);
       visual.body.material.emissiveIntensity = enemy.statuses.disrupted > 0 || enemy.telegraph > 0 ? 0.34 : 0;
       if (visual.authoredRoot) {
         this.syncAuthoredEnemyAnimation(visual, enemy, state);
-        const statusEmissive = enemy.statuses.disrupted > 0 ? 0x63508a : enemy.telegraph > 0 ? 0x7a3327 : 0x000000;
-        const statusIntensity = enemy.statuses.disrupted > 0 || enemy.telegraph > 0 ? 0.28 : 0;
+        const bossPhaseEmissive = enemy.role === 'boss' && enemy.bossPhase === 2 ? 0x7a2f24 : 0x000000;
+        const statusEmissive = enemy.statuses.disrupted > 0 ? 0x63508a : enemy.telegraph > 0 ? 0x7a3327 : bossPhaseEmissive;
+        const statusIntensity = enemy.statuses.disrupted > 0 || enemy.telegraph > 0 ? 0.28 : bossPhaseEmissive ? 0.24 : 0;
         for (const material of visual.authoredMaterials) {
-          material.color.setHex(roleColors[enemy.role]);
+          material.color.setHex(enemy.role === 'boss' && enemy.bossPhase === 2 ? 0xc76252 : roleColors[enemy.role]);
           material.emissive.setHex(statusEmissive);
           material.emissiveIntensity = statusIntensity;
         }
@@ -1952,18 +2067,28 @@ export class ThreeCombatRenderer {
     this.playerReadabilityLight.intensity = reducedEffects ? 4.8 : 7.2;
     this.playerReadabilityLight.distance = reducedEffects ? 5.8 : 7.5;
 
+    let activeBoss: Enemy | null = null;
+    for (const enemy of state.enemies) {
+      if (enemy.active && !enemy.dead && enemy.role === 'boss') {
+        activeBoss = enemy;
+        break;
+      }
+    }
+    const bossPhaseTwo = activeBoss?.bossPhase === 2;
+    const bossPulse = bossPhaseTwo ? 1 + Math.sin(state.time * 4.6) * 0.16 : 1;
+
     this.emergencyLight.position.set(px + 2.4, 3.2, pz - 2.2);
-    this.emergencyLight.intensity = isRefinery ? (reducedEffects ? 7 : 11) : (reducedEffects ? 6 : 9);
+    this.emergencyLight.intensity = (isRefinery ? (reducedEffects ? 7 : 11) : (reducedEffects ? 6 : 9)) * (bossPhaseTwo ? bossPulse : 1);
 
     const world = getWorldSize();
     const firstPractical = this.refineryPracticalLights[0];
     firstPractical.visible = isRefinery;
     firstPractical.position.set(scaled(world.w * 0.36), 3.1, scaled(world.h * 0.28));
-    firstPractical.intensity = reducedEffects ? 6.5 : 10;
+    firstPractical.intensity = (reducedEffects ? 6.5 : 10) * bossPulse;
     const secondPractical = this.refineryPracticalLights[1];
     secondPractical.visible = isRefinery && !reducedEffects;
     secondPractical.position.set(scaled(world.w * 0.68), 2.8, scaled(world.h * 0.70));
-    secondPractical.intensity = 7.5;
+    secondPractical.intensity = 7.5 * bossPulse;
 
     this.keyLight.intensity = solarBoost ? 3.6 : isRefinery ? 2.15 : 2.4;
     this.rimLight.intensity = isRefinery ? 0.95 : 1.1;
@@ -1974,6 +2099,7 @@ export class ThreeCombatRenderer {
       const practicalCount = (firstPractical.visible ? 1 : 0) + (secondPractical.visible ? 1 : 0);
       this.renderer.domElement.dataset.environmentLighting = `refinery-key+rim+contact:player+enemy+practical:${practicalCount}+shadow:key`;
       this.renderer.domElement.dataset.environmentTone = `aces-${this.renderer.toneMappingExposure.toFixed(2)}`;
+      this.renderer.domElement.dataset.bossEnvironmentFx = bossPhaseTwo ? 'phase2-practical-pulse' : 'phase-reactive-ready';
     }
   }
 
