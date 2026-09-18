@@ -394,7 +394,7 @@ export class ThreeCombatRenderer {
     this.syncDebris(state, quality * budget.detailScale * budget.vfxDensity);
     this.syncRefineryAtmospherics(state, quality * budget.detailScale, budget.vfxDensity, budget.transparencyScale);
     this.syncDamagedVesselAtmospherics(state, quality * budget.detailScale, budget.vfxDensity, budget.transparencyScale);
-    this.syncCamera(state, mission, width / Math.max(1, height));
+    this.syncCamera(state, width / Math.max(1, height));
     this.syncLighting(state, mission, quality, budget);
     this.renderer.render(this.scene, this.camera);
   }
@@ -2523,7 +2523,7 @@ export class ThreeCombatRenderer {
     }
   }
 
-  private syncCamera(state: SimState, mission: Contract, aspect: number) {
+  private syncCamera(state: SimState, aspect: number) {
     const px = scaled(state.player.x);
     const pz = scaled(state.player.y);
     const narrow = aspect < 1.15;
