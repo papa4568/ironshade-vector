@@ -209,6 +209,7 @@ export class ThreeCombatRenderer {
   private readonly refineryOwnedMaterials: THREE.Material[] = [];
   private refinerySteam: THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial> | null = null;
   private refineryDecals: THREE.InstancedMesh | null = null;
+  private refineryGrimeDecals: THREE.InstancedMesh | null = null;
   private refineryLoadGeneration = 0;
   private readonly projectilePool: ProjectileVisual[] = [];
   private readonly hazardPool: RingVisual[] = [];
@@ -431,6 +432,12 @@ export class ThreeCombatRenderer {
       materials.forEach(material => material.dispose());
       this.refineryDecals = null;
     }
+    if (this.refineryGrimeDecals) {
+      this.refineryGrimeDecals.geometry.dispose();
+      const materials = Array.isArray(this.refineryGrimeDecals.material) ? this.refineryGrimeDecals.material : [this.refineryGrimeDecals.material];
+      materials.forEach(material => material.dispose());
+      this.refineryGrimeDecals = null;
+    }
     for (const instance of this.refineryAssetInstances) instance.release();
     this.refineryAssetInstances.length = 0;
     this.authoredEnvironmentRoot.clear();
@@ -444,6 +451,7 @@ export class ThreeCombatRenderer {
     delete this.renderer.domElement.dataset.environmentMaterials;
     delete this.renderer.domElement.dataset.environmentVfx;
     delete this.renderer.domElement.dataset.environmentTone;
+    delete this.renderer.domElement.dataset.readabilityLanguage;
   }
 
   private cloneRefineryMaterial(source: THREE.Material, label: string) {
@@ -516,6 +524,30 @@ export class ThreeCombatRenderer {
     decals.name = 'refinery-safety-decals';
     this.refineryDecals = decals;
     this.authoredEnvironmentRoot.add(decals);
+
+    const grimeGeometry = new THREE.CircleGeometry(0.72, 10);
+    const grimeMaterial = new THREE.MeshBasicMaterial({
+      color: 0x171410,
+      transparent: true,
+      opacity: 0.16,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    const grime = new THREE.InstancedMesh(grimeGeometry, grimeMaterial, 7);
+    for (let index = 0; index < 7; index += 1) {
+      const t = index / 6;
+      transform.position.set(width * (0.2 + t * 0.62), 0.024, height * (0.28 + (index % 3) * 0.2));
+      transform.rotation.set(-Math.PI / 2, 0, index * 0.53);
+      const scale = 0.65 + (index % 3) * 0.22;
+      transform.scale.set(scale * 1.5, scale * 0.72, 1);
+      transform.updateMatrix();
+      grime.setMatrixAt(index, transform.matrix);
+    }
+    grime.instanceMatrix.needsUpdate = true;
+    grime.renderOrder = 2;
+    grime.name = 'refinery-grime-decals';
+    this.refineryGrimeDecals = grime;
+    this.authoredEnvironmentRoot.add(grime);
   }
 
   private syncRefineryAtmospherics(state: SimState, detailLevel: number) {
@@ -525,6 +557,7 @@ export class ThreeCombatRenderer {
     this.refinerySteam.rotation.y = Math.sin(state.time * 0.16) * 0.025;
     this.refinerySteam.material.opacity = 0.1 + Math.sin(state.time * 1.7) * 0.025;
     if (this.refineryDecals) this.refineryDecals.visible = true;
+    if (this.refineryGrimeDecals) this.refineryGrimeDecals.visible = !reducedEffects;
   }
 
   private addInstancedEnvironmentAsset(instance: GraphicsAssetInstance, placements: EnvironmentPlacement[], label: string) {
@@ -648,8 +681,9 @@ export class ThreeCombatRenderer {
       this.renderer.domElement.dataset.environmentKit = 'floor,bulkhead,processor,pipe-rack,crate,terminal';
       this.renderer.domElement.dataset.environmentInstances = String(instances);
       this.renderer.domElement.dataset.environmentTerminals = String(terminalPlacements.length);
-      this.renderer.domElement.dataset.environmentMaterials = 'pbr-bounded+emissive+decals';
-      this.renderer.domElement.dataset.environmentVfx = 'steam+sparse-sparks+breach+objective';
+      this.renderer.domElement.dataset.environmentMaterials = 'pbr-bounded+emissive+decals:safety+grime';
+      this.renderer.domElement.dataset.environmentVfx = 'steam+sparse-sparks+debris+breach+objective';
+      this.renderer.domElement.dataset.readabilityLanguage = 'shape+silhouette+luminance';
     } catch (error) {
       loaded.forEach(item => item.instance.release());
       if (this.disposed || generation !== this.refineryLoadGeneration) return;
@@ -1247,6 +1281,15 @@ export class ThreeCombatRenderer {
       diamond.renderOrder = 41;
       diamond.name = 'objective-diamond';
 
+      const chevron = new THREE.Mesh(
+        new THREE.ConeGeometry(0.18, 0.34, 3),
+        new THREE.MeshBasicMaterial({ color: 0xf4f0bf, transparent: true, opacity: 0.88, depthTest: false, depthWrite: false }),
+      );
+      chevron.position.y = 2.18;
+      chevron.rotation.z = Math.PI;
+      chevron.renderOrder = 42;
+      chevron.name = 'objective-chevron';
+
       const beam = new THREE.Mesh(
         new THREE.CylinderGeometry(0.022, 0.022, 1.28, 6),
         new THREE.MeshBasicMaterial({ color: 0xc8e87f, transparent: true, opacity: 0.34, depthTest: false, depthWrite: false }),
@@ -1254,7 +1297,7 @@ export class ThreeCombatRenderer {
       beam.position.y = 1.05;
       beam.renderOrder = 39;
       beam.name = 'objective-beam';
-      this.objectiveBeacon.add(ring, diamond, beam);
+      this.objectiveBeacon.add(ring, diamond, chevron, beam);
     }
 
     this.objectiveBeacon.visible = true;
@@ -1263,8 +1306,16 @@ export class ThreeCombatRenderer {
     this.objectiveBeacon.scale.setScalar(pulse);
     const ring = this.objectiveBeacon.getObjectByName('objective-ring');
     const diamond = this.objectiveBeacon.getObjectByName('objective-diamond');
+    const chevron = this.objectiveBeacon.getObjectByName('objective-chevron');
     if (ring) ring.rotation.z = state.time * 0.9;
-    if (diamond) diamond.rotation.y = state.time * 1.8;
+    if (diamond) {
+      diamond.rotation.y = state.time * 1.8;
+      diamond.position.y = 1.75 + Math.sin(state.time * 4.2) * 0.08;
+    }
+    if (chevron) {
+      chevron.rotation.y = state.time * 1.1;
+      chevron.position.y = 2.18 + Math.sin(state.time * 4.2 + 0.8) * 0.12;
+    }
     this.syncObjectiveGuide(state, target);
   }
 
@@ -1859,8 +1910,16 @@ export class ThreeCombatRenderer {
         const mesh = this.ensureDebris(count++);
         mesh.visible = true;
         mesh.position.set(scaled(debris.x), 0.28, scaled(debris.y));
-        mesh.scale.setScalar(Math.max(0.45, debris.radius * 0.14));
-        mesh.rotation.set(state.time * debris.vy * 0.01, state.time * debris.vx * 0.008, state.time * 0.5);
+        const speed = Math.hypot(debris.vx, debris.vy);
+        mesh.scale.set(
+          Math.max(0.48, debris.radius * 0.16),
+          Math.max(0.32, debris.radius * 0.11),
+          Math.max(0.4, debris.radius * 0.13),
+        );
+        mesh.rotation.set(state.time * debris.vy * 0.012, state.time * debris.vx * 0.01, state.time * (0.55 + Math.min(1.2, speed * 0.002)));
+        mesh.material.color.setHex(speed > 240 ? 0x8c7761 : 0x66736f);
+        mesh.material.emissive.setHex(speed > 240 ? 0x6f371f : 0x000000);
+        mesh.material.emissiveIntensity = speed > 240 ? 0.18 : 0;
       }
     }
     for (let index = count; index < this.debrisPool.length; index += 1) this.debrisPool[index].visible = false;
@@ -1876,7 +1935,20 @@ export class ThreeCombatRenderer {
       && state.time < 18
       && !state.objects.find(object => object.id === 'solar-shutter')?.exposed;
 
-    this.playerReadabilityLight.position.set(px - 0.6, 2.7, pz + 0.7);
+    let readabilityX = px - 0.6;
+    let readabilityZ = pz + 0.7;
+    let nearestEnemyDistanceSq = Number.POSITIVE_INFINITY;
+    for (const enemy of state.enemies) {
+      if (!enemy.active || enemy.dead) continue;
+      const dx = enemy.x - state.player.x;
+      const dy = enemy.y - state.player.y;
+      const distanceSq = dx * dx + dy * dy;
+      if (distanceSq >= nearestEnemyDistanceSq || distanceSq > 650 * 650) continue;
+      nearestEnemyDistanceSq = distanceSq;
+      readabilityX = scaled(state.player.x + dx * 0.42);
+      readabilityZ = scaled(state.player.y + dy * 0.42);
+    }
+    this.playerReadabilityLight.position.set(readabilityX, 2.7, readabilityZ);
     this.playerReadabilityLight.intensity = reducedEffects ? 4.8 : 7.2;
     this.playerReadabilityLight.distance = reducedEffects ? 5.8 : 7.5;
 
@@ -1900,7 +1972,7 @@ export class ThreeCombatRenderer {
 
     if (isRefinery) {
       const practicalCount = (firstPractical.visible ? 1 : 0) + (secondPractical.visible ? 1 : 0);
-      this.renderer.domElement.dataset.environmentLighting = `refinery-key+rim+contact+practical:${practicalCount}+shadow:key`;
+      this.renderer.domElement.dataset.environmentLighting = `refinery-key+rim+contact:player+enemy+practical:${practicalCount}+shadow:key`;
       this.renderer.domElement.dataset.environmentTone = `aces-${this.renderer.toneMappingExposure.toFixed(2)}`;
     }
   }

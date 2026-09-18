@@ -118,12 +118,15 @@ assert(rendererSource.includes('new THREE.InstancedMesh'), 'repeated refinery pr
 assert(rendererSource.includes("dataset.environmentVisual = 'authored-refinery'"), 'runtime QA must expose authored refinery activation');
 assert(rendererSource.includes("dataset.environmentKit = 'floor,bulkhead,processor,pipe-rack,crate,terminal'"), 'runtime QA must expose the complete refinery kit');
 assert(rendererSource.includes('this.proceduralRefineryVisuals.forEach'), 'procedural refinery scenery must remain as a load-failure fallback');
-assert(rendererSource.includes('playerReadabilityLight') && rendererSource.includes('refineryPracticalLights'), 'lighting pass must preserve contact light and bounded practical lights');
-assert(rendererSource.includes('cloneRefineryMaterial') && rendererSource.includes("'pbr-bounded+emissive+decals'"), 'refinery materials must use bounded PBR tuning plus controlled emissive/decal language');
-assert(rendererSource.includes("'steam+sparse-sparks+breach+objective'"), 'refinery VFX telemetry must cover atmosphere, impacts, breaches, and objectives');
+assert(rendererSource.includes('playerReadabilityLight') && rendererSource.includes('nearestEnemyDistanceSq') && rendererSource.includes('refineryPracticalLights'), 'lighting pass must preserve player/enemy contact light and bounded practical lights');
+assert(rendererSource.includes('cloneRefineryMaterial') && rendererSource.includes("'pbr-bounded+emissive+decals:safety+grime'"), 'refinery materials must use bounded PBR tuning plus controlled safety/grime decals');
+assert(rendererSource.includes("'steam+sparse-sparks+debris+breach+objective'"), 'refinery VFX telemetry must cover atmosphere, impacts, debris, breaches, and objectives');
 assert(rendererSource.includes('impactSparkPool') && rendererSource.includes("'shape-coded+surface-impacts+ability-pulses'"), 'combat VFX must keep shape-coded impact/ability language');
 assert(rendererSource.includes("dataset.effectsMode = reducedEffects ? 'reduced' : 'full'"), 'reduced-effects mode must remain explicit for runtime QA');
+assert(rendererSource.includes("'shape+silhouette+luminance'"), 'gameplay-significant visual language must not rely on hue alone');
+assert(rendererSource.includes("'objective-chevron'"), 'objective effects must retain a shape-coded high-contrast beacon');
+assert(rendererSource.includes('mesh.material.emissiveIntensity = speed > 240 ? 0.18 : 0'), 'debris readability polish must remain bounded and quality-aware');
 assert(rendererSource.includes('syncHardSciFiBreaches(this.dynamicRoot, state, WORLD_SCALE, quality * budget.detailScale)'), 'breach particles must follow the adaptive effects budget');
 
 
-console.log('GRAPHICS_ASSET_PIPELINE_PASS format=glb mesh=meshopt textures=ktx2 loader=deferred lifecycle=leased lod=adaptive operator=articulated+hit-blend enemies=role-authored weapons=authored+surface-impacts environment=refinery-instanced+phase6 lighting=key+rim+contact+practical materials=pbr-bounded+emissive+decals vfx=shape-coded+reduced-effects sockets=muzzle animation=state-driven operatorTriangles=45000 enemyTriangles=30000 weaponTriangles=12000 environmentTriangles=20000');
+console.log('GRAPHICS_ASSET_PIPELINE_PASS format=glb mesh=meshopt textures=ktx2 loader=deferred lifecycle=leased lod=adaptive operator=articulated+hit-blend enemies=role-authored weapons=authored+surface-impacts environment=refinery-instanced+phase6 lighting=key+rim+contact+practical materials=pbr-bounded+emissive+decals:safety+grime vfx=shape-coded+debris+reduced-effects readability=shape+silhouette+luminance sockets=muzzle animation=state-driven operatorTriangles=45000 enemyTriangles=30000 weaponTriangles=12000 environmentTriangles=20000');
