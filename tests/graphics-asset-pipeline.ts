@@ -82,6 +82,15 @@ for (const asset of ['floor-panel', 'bulkhead', 'processor', 'pipe-rack', 'crate
   assert(manifestSource.includes(`refinery-${asset}-lod2.glb`), `refinery manifest must include authored ${asset} LOD2`);
 }
 
+const hardSciFiSource = readFileSync(resolve(process.cwd(), 'src/game/hardSciFiVisuals.ts'), 'utf8');
+const campaignLocations = ['orbital-station', 'damaged-vessel', 'asteroid-refinery', 'spin-habitat', 'jovian-harvester', 'ice-mine', 'solar-yard', 'lattice-annex', 'momentum-exchange', 'cryo-reserve'];
+for (const location of campaignLocations) {
+  assert(hardSciFiSource.includes(`'${location}': { silhouette:`), `location art identity missing for ${location}`);
+}
+assert(hardSciFiSource.includes('new THREE.InstancedMesh(caseGeometry') && hardSciFiSource.includes('new THREE.InstancedMesh(postGeometry'), 'shared environment prop library must use instancing');
+assert(hardSciFiSource.includes('root.userData.sharedPropInstances = 20'), 'shared prop library must expose its bounded instance count');
+assert(hardSciFiSource.includes('addSharedPropLibrary(environment, mission.location'), 'every campaign environment must receive the shared prop library');
+
 const rendererSource = readFileSync(resolve(process.cwd(), 'src/game/threeCombatRenderer.ts'), 'utf8');
 assert(rendererSource.includes('OPERATOR_ASSET_FAMILY') && rendererSource.includes("from './graphicsAssetManifest'"), 'combat renderer must consume the authored operator manifest');
 assert(rendererSource.includes('configureGraphicsAssetRenderer(this.renderer)'), 'combat renderer must configure authored texture support lazily at runtime');
@@ -131,6 +140,12 @@ assert(rendererSource.includes("'boss-signature-root'") && rendererSource.includ
 assert(rendererSource.includes("'boss-telegraph-wedge'") && rendererSource.includes('enemy.telegraph > 0'), 'boss attack telegraphs must use a shape-coded directional wedge');
 assert(rendererSource.includes("'armor-break+phase-emissive+low-hp-pulse'") && rendererSource.includes('enemy.bossPhase === 2'), 'boss phase/damage state must drive authored material and signature VFX changes');
 assert(rendererSource.includes("'phase2-practical-pulse'") && rendererSource.includes('bossPulse'), 'boss phase must trigger a bounded environment lighting reaction');
+for (const location of campaignLocations) {
+  assert(rendererSource.includes(`'${location}': { id:`), `location lighting profile missing for ${location}`);
+}
+assert(rendererSource.includes('dataset.locationArt') && rendererSource.includes('dataset.locationProps'), 'runtime QA must expose location art identity and shared prop telemetry');
+assert(rendererSource.includes('lightingProfile.keyColor') && rendererSource.includes('lightingProfile.rimColor') && rendererSource.includes('lightingProfile.exposure'), 'location lighting identity must drive color, intensity, and exposure');
 
 
-console.log('GRAPHICS_ASSET_PIPELINE_PASS format=glb mesh=meshopt textures=ktx2 loader=deferred lifecycle=leased lod=adaptive operator=articulated+hit-blend enemies=role-authored weapons=authored+surface-impacts environment=refinery-instanced+phase6 lighting=key+rim+contact+practical materials=pbr-bounded+emissive+decals:safety+grime vfx=shape-coded+debris+reduced-effects readability=shape+silhouette+luminance boss=signature+phase+telegraph sockets=muzzle animation=state-driven operatorTriangles=45000 enemyTriangles=30000 weaponTriangles=12000 environmentTriangles=20000');
+
+console.log('GRAPHICS_ASSET_PIPELINE_PASS format=glb mesh=meshopt textures=ktx2 loader=deferred lifecycle=leased lod=adaptive operator=articulated+hit-blend enemies=role-authored weapons=authored+surface-impacts environment=refinery-instanced+phase6 lighting=key+rim+contact+practical materials=pbr-bounded+emissive+decals:safety+grime vfx=shape-coded+debris+reduced-effects readability=shape+silhouette+luminance boss=signature+phase+telegraph locations=10+shared-instancing sockets=muzzle animation=state-driven operatorTriangles=45000 enemyTriangles=30000 weaponTriangles=12000 environmentTriangles=20000');
