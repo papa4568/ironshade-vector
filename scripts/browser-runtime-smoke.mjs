@@ -328,7 +328,7 @@ try {
   await waitFor(`(() => {
     const text = (document.body?.innerText ?? '').toLowerCase();
     const labels = [...document.querySelectorAll('button')].map(button => button.textContent?.trim().toLowerCase() ?? '');
-    return text.includes('save recovery lock') || (text.includes('command deck') && labels.includes('contracts'));
+    return text.includes('save recovery lock') || (text.includes('command deck') && labels.includes('operations'));
   })()`, 'interactive Command Deck');
 
   const startup = await snapshot();
@@ -337,11 +337,13 @@ try {
   if (startupText.toLowerCase().includes('save recovery lock')) {
     throw new Error(`Browser startup entered save recovery lock: ${JSON.stringify(startup)}`);
   }
-  if (startup.title !== 'Ironshade Vector' || !startupText.toLowerCase().includes('command deck') || !startupButtons.some(label => label.toLowerCase() === 'contracts')) {
+  if (startup.title !== 'Ironshade Vector' || !startupText.toLowerCase().includes('command deck') || !startupButtons.some(label => label.toLowerCase() === 'operations')) {
     throw new Error(`Unexpected browser startup surface: ${JSON.stringify(startup)}`);
   }
   await accessibilityAudit('command-deck');
 
+  await keyboardActivateButton('Operations');
+  await waitFor(`[...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'contracts')`, 'Operations navigation');
   await keyboardActivateButton('Contracts');
   await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('contract board') && [...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'deploy selected contract')`, 'Contract Board');
   await accessibilityAudit('contract-board');
@@ -371,7 +373,7 @@ try {
   }
 
   await captureScreenshot();
-  console.log(`BROWSER_E2E_PASS title=${startup.title} route=ship>contracts>combat location=${targetLocation} input=keyboard viewport=${viewportMode} canvases=${combat.canvases}`);
+  console.log(`BROWSER_E2E_PASS title=${startup.title} route=command>operations>contracts>combat location=${targetLocation} input=keyboard viewport=${viewportMode} canvases=${combat.canvases}`);
 } catch (error) {
   await captureScreenshot().catch(() => undefined);
   const state = await snapshot().catch(snapshotError => ({ snapshotError: String(snapshotError) }));
