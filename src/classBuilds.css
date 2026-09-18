@@ -1,0 +1,357 @@
+/* Operator class + build synergy layer.
+   Class choice guides identity and resonance without hard-locking weapons, lenses, or Network branches. */
+
+.operator-class-panel {
+  margin: 0 0 14px;
+  padding: 14px;
+  border: 1px solid #314740;
+  border-radius: 13px;
+  background:
+    radial-gradient(circle at 88% 8%, rgba(115, 169, 151, .11), transparent 32%),
+    linear-gradient(145deg, rgba(13, 24, 21, .96), rgba(6, 12, 11, .97));
+}
+.operator-class-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 14px;
+}
+.operator-class-heading small,
+.operator-class-heading b,
+.operator-class-heading span {
+  display: block;
+}
+.operator-class-heading > div:first-child > small {
+  color: #79968c;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+.operator-class-heading > div:first-child > b {
+  margin-top: 5px;
+  color: #d7e4df;
+  font-size: 14px;
+}
+.operator-class-heading > div:first-child > span {
+  max-width: 760px;
+  margin-top: 5px;
+  color: #90a59e;
+  font-size: 9px;
+  line-height: 1.45;
+}
+.resonance-meter {
+  min-width: 116px;
+  padding: 9px 11px;
+  border: 1px solid #405d53;
+  border-radius: 10px;
+  background: rgba(13, 26, 22, .82);
+  text-align: right;
+}
+.resonance-meter small {
+  color: #718c83;
+  font-size: 6px;
+  font-weight: 900;
+  letter-spacing: .1em;
+}
+.resonance-meter b {
+  margin-top: 3px;
+  color: #e1ece8;
+  font-size: 18px;
+}
+.resonance-meter span {
+  margin-top: 3px;
+  color: #91b5a8;
+  font-size: 7px;
+  font-weight: 800;
+}
+.operator-class-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.operator-class-grid > button {
+  min-width: 0;
+  min-height: 154px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid #2d403a;
+  border-radius: 11px;
+  background: linear-gradient(160deg, rgba(10, 18, 17, .94), rgba(7, 12, 12, .98));
+  color: #a9bab4;
+  text-align: left;
+  cursor: pointer;
+}
+.operator-class-grid > button:hover {
+  border-color: #5a7c70;
+}
+.operator-class-grid > button.selected {
+  border-color: #7ba597;
+  background:
+    linear-gradient(160deg, rgba(28, 49, 42, .96), rgba(9, 17, 15, .98));
+  box-shadow: inset 0 0 0 1px rgba(133, 186, 168, .08), inset 3px 0 #88b8a7;
+}
+.operator-class-grid small,
+.operator-class-grid b,
+.operator-class-grid span,
+.operator-class-grid em,
+.operator-class-grid strong {
+  display: block;
+}
+.operator-class-grid small {
+  min-height: 18px;
+  color: #759087;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+.operator-class-grid b {
+  color: #d3dfdb;
+  font-size: 15px;
+}
+.operator-class-grid span {
+  flex: 1;
+  color: #9cadA7;
+  font-size: 8px;
+  line-height: 1.42;
+}
+.operator-class-grid em {
+  color: #7f9c92;
+  font-size: 7px;
+  font-style: normal;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.operator-class-grid strong {
+  color: #aac5bc;
+  font-size: 7px;
+  font-weight: 900;
+}
+.class-resonance-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 9px;
+}
+.class-resonance-strip > div {
+  padding: 9px 10px;
+  border: 1px solid #2a3c37;
+  border-radius: 9px;
+  background: rgba(7, 13, 12, .74);
+  opacity: .62;
+}
+.class-resonance-strip > div.active {
+  border-color: #537568;
+  background: rgba(20, 37, 32, .82);
+  opacity: 1;
+}
+.class-resonance-strip small,
+.class-resonance-strip b {
+  display: block;
+}
+.class-resonance-strip small {
+  color: #718a82;
+  font-size: 6px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+.class-resonance-strip b {
+  margin-top: 4px;
+  color: #aebfba;
+  font-size: 8px;
+  line-height: 1.35;
+}
+.class-resonance-strip > div.active b {
+  color: #d3e0dc;
+}
+.class-freedom-note {
+  margin: 9px 0 0;
+  color: #778b84;
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.network-branch.class-affinity {
+  border-color: #456258;
+  box-shadow: inset 0 2px rgba(116, 164, 149, .22);
+}
+.network-branch h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.network-branch h3 small {
+  color: #73968a;
+  font-size: 6px;
+  font-weight: 900;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.gear-class-fit {
+  margin-top: 10px;
+  padding: 8px 9px;
+  border: 1px solid #2f3f3b;
+  border-radius: 8px;
+  background: rgba(7, 13, 12, .62);
+}
+.gear-class-fit.matched {
+  border-color: #53786b;
+  background: rgba(19, 38, 32, .72);
+}
+.gear-class-fit small,
+.gear-class-fit b,
+.gear-class-fit span {
+  display: block;
+}
+.gear-class-fit small {
+  color: #718981;
+  font-size: 6px;
+  font-weight: 900;
+  letter-spacing: .1em;
+}
+.gear-class-fit b {
+  margin-top: 3px;
+  color: #abc0b9;
+  font-size: 8px;
+}
+.gear-class-fit.matched b {
+  color: #d4e5df;
+}
+.gear-class-fit span {
+  margin-top: 3px;
+  color: #7d918a;
+  font-size: 7px;
+  line-height: 1.35;
+}
+.inventory-card .class-resonance-pill {
+  border-color: #4f7568;
+  background: rgba(31, 57, 48, .74);
+  color: #a9cdc0;
+}
+
+.build-class-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) repeat(2, minmax(150px, .4fr));
+  gap: 8px;
+  margin: 0 0 10px;
+}
+.build-class-summary > article {
+  min-width: 0;
+  padding: 10px 11px;
+  border: 1px solid #2b3f39;
+  border-radius: 9px;
+  background: rgba(8, 15, 14, .8);
+}
+.build-class-summary small,
+.build-class-summary b,
+.build-class-summary span {
+  display: block;
+}
+.build-class-summary small {
+  color: #718c83;
+  font-size: 6px;
+  font-weight: 900;
+  letter-spacing: .09em;
+}
+.build-class-summary b {
+  margin-top: 4px;
+  color: #ccd9d5;
+  font-size: 11px;
+}
+.build-class-summary span {
+  margin-top: 4px;
+  color: #839790;
+  font-size: 8px;
+  line-height: 1.38;
+}
+.build-class-summary .active {
+  border-color: #537568;
+}
+
+@media (max-width: 900px) {
+  .operator-class-grid {
+    grid-template-columns: 1fr;
+  }
+  .operator-class-grid > button {
+    min-height: 118px;
+  }
+  .build-class-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (pointer: coarse) {
+  .operator-class-grid > button {
+    min-height: 132px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 650px) {
+  .operator-class-panel {
+    padding: 9px;
+    margin-bottom: 8px;
+  }
+  .operator-class-heading {
+    gap: 8px;
+  }
+  .operator-class-heading > div:first-child > span {
+    display: none;
+  }
+  .operator-class-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+    margin-top: 7px;
+  }
+  .operator-class-grid > button {
+    min-height: 100px;
+    padding: 8px;
+    gap: 3px;
+  }
+  .operator-class-grid small {
+    min-height: auto;
+    font-size: 5.5px;
+  }
+  .operator-class-grid b {
+    font-size: 11px;
+  }
+  .operator-class-grid span {
+    font-size: 6.5px;
+    line-height: 1.28;
+  }
+  .operator-class-grid em,
+  .operator-class-grid strong {
+    font-size: 5.5px;
+  }
+  .class-resonance-strip {
+    margin-top: 6px;
+    gap: 5px;
+  }
+  .class-resonance-strip > div {
+    padding: 6px 7px;
+  }
+  .class-resonance-strip b {
+    font-size: 6px;
+  }
+  .class-freedom-note {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .operator-class-heading {
+    grid-template-columns: 1fr;
+  }
+  .resonance-meter {
+    width: 100%;
+    text-align: left;
+  }
+  .class-resonance-strip {
+    grid-template-columns: 1fr;
+  }
+}
