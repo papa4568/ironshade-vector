@@ -1587,12 +1587,18 @@ export class ThreeCombatRenderer {
       let color = effect.kind === 'arc' ? 0x84caeb : effect.kind === 'breach' ? 0xf07d4d : effect.kind === 'mark' ? 0xd0e07a : 0xc2ddd3;
       let impactScale = 1;
       if (effect.kind === 'impact') {
-        const nearbyEnemy = state.enemies
-          .filter(enemy => enemy.active && !enemy.dead)
-          .map(enemy => ({ enemy, distance: Math.hypot(enemy.x - effect.x, enemy.y - effect.y) }))
-          .sort((a, b) => a.distance - b.distance)[0];
-        if (nearbyEnemy && nearbyEnemy.distance < 95) {
-          if (nearbyEnemy.enemy.armor > 0) {
+        let nearbyEnemy: Enemy | null = null;
+        let enemyDistance = 95;
+        for (const enemy of state.enemies) {
+          if (!enemy.active || enemy.dead) continue;
+          const distance = Math.hypot(enemy.x - effect.x, enemy.y - effect.y);
+          if (distance < enemyDistance) {
+            nearbyEnemy = enemy;
+            enemyDistance = distance;
+          }
+        }
+        if (nearbyEnemy) {
+          if (nearbyEnemy.armor > 0) {
             color = 0x8ee8ff;
             impactScale = 1.2;
             lastImpactLanguage = 'armor-spark';
@@ -1602,19 +1608,22 @@ export class ThreeCombatRenderer {
             lastImpactLanguage = 'hull-spall';
           }
         } else {
-          const nearbyObject = state.objects
-            .filter(object => object.active)
-            .map(object => ({
-              object,
-              distance: Math.hypot(object.x + object.w / 2 - effect.x, object.y + object.h / 2 - effect.y),
-            }))
-            .sort((a, b) => a.distance - b.distance)[0];
-          if (nearbyObject && nearbyObject.distance < 110) {
-            if (nearbyObject.object.material === 'bulkhead') {
+          let nearbyObject: CombatObject | null = null;
+          let objectDistance = 110;
+          for (const object of state.objects) {
+            if (!object.active) continue;
+            const distance = Math.hypot(object.x + object.w / 2 - effect.x, object.y + object.h / 2 - effect.y);
+            if (distance < objectDistance) {
+              nearbyObject = object;
+              objectDistance = distance;
+            }
+          }
+          if (nearbyObject) {
+            if (nearbyObject.material === 'bulkhead') {
               color = 0xf0b164;
               impactScale = 1.15;
               lastImpactLanguage = 'metal-spark';
-            } else if (nearbyObject.object.material === 'system') {
+            } else if (nearbyObject.material === 'system') {
               color = 0x82d8df;
               impactScale = 1.1;
               lastImpactLanguage = 'electrical-flash';
