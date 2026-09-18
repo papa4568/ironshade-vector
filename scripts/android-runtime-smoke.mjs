@@ -218,6 +218,15 @@ const openedContracts = await evaluate(`(() => {
 if (!openedContracts) throw new Error('Contracts navigation button was not found.');
 await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('contract board') && [...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'deploy selected contract')`, 'Contract Board');
 
+const refinerySelected = await evaluate(`(() => {
+  const button = document.querySelector('button[data-location="asteroid-refinery"]');
+  if (!button || button.disabled) return false;
+  button.click();
+  return true;
+})()`);
+if (!refinerySelected) throw new Error('Asteroid Refinery showcase contract was not available on the Android Contract Board.');
+await waitFor(`document.querySelector('button[data-location="asteroid-refinery"]')?.classList.contains('selected') === true`, 'Asteroid Refinery contract selection');
+
 const deployed = await evaluate(`(() => {
   const button = [...document.querySelectorAll('button')].find(candidate => candidate.textContent?.trim().toLowerCase() === 'deploy selected contract');
   if (!button || button.disabled) return false;
