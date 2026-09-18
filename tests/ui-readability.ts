@@ -24,6 +24,7 @@ const objectiveCss = read('src/part7.css');
 const rootCss = read('src/index.css');
 const mobileCombatCss = read('src/mobileCombatReadability.css');
 const qolCss = read('src/qol.css');
+const classBuildCss = read('src/classBuilds.css');
 const browserSmoke = read('scripts/browser-runtime-smoke.mjs');
 const androidSmoke = read('scripts/android-runtime-smoke.mjs');
 const androidResumeGate = androidSmoke.match(/if \(resumeOnly\) \{[\s\S]*?process\.exit\(0\);\n\}/)?.[0] ?? '';
@@ -110,6 +111,10 @@ assert(overlayRule.includes('touch-action: pan-y') && overlayRule.includes('over
 assert(shipHub.includes('OPERATOR READINESS') && shipHub.includes('readiness-chip'), 'Contract board is missing visible operator/monster readiness guidance.');
 assert(shipHub.includes("type ContractSort = 'level-match'") && shipHub.includes('aria-label="Search contracts"') && shipHub.includes('contract-quick-deploy') && shipHub.includes("filter === 'ready'"), 'Contract Board QoL search, level-match sorting, ready filter, or quick deploy is missing.');
 assert(armory.includes("type InventoryFilter = 'all' | 'new' | 'usable'") && armory.includes('Clear storage filters') && armory.includes('Usable now') && armory.includes("window.addEventListener('keydown', closeInspector)"), 'Equipment storage QoL filtering, reset, or Escape-to-close behavior is missing.');
+assert(armory.includes('OPERATOR CLASS // FIELD DOCTRINE') && armory.includes('class-resonance-strip') && armory.includes('availableSpecializations') && armory.includes('class-freedom-note'), 'Operator class selection, class-specific specialization routes, or open-build guidance is missing.');
+assert(armory.includes('CLASS RESONANCE') && armory.includes('itemBuildAffinities(item)') && armory.includes('class-resonance-pill'), 'Equipment UI does not surface class resonance on recovered gear.');
+assert(classBuildCss.includes('.operator-class-grid') && classBuildCss.includes('.class-resonance-strip') && classBuildCss.includes('.gear-class-fit') && classBuildCss.includes('max-height: 650px'), 'Operator class/build styling is incomplete or missing mobile-landscape coverage.');
+assert(statsPanel.includes('build-class-summary') && statsPanel.includes('gearResonanceForProfile'), 'Player Stats does not expose the active class and gear resonance state.');
 assert(qolCss.includes('BETA UI QOL // CONTRACT BOARD + INVENTORY DISCOVERY') && qolCss.includes(':focus-visible') && qolCss.includes('.contract-quick-deploy') && qolCss.includes('.inventory-reset'), 'QoL stylesheet is missing focus visibility, quick deploy, or inventory reset treatment.');
 assert(hubCss.includes('PLAYTEST READINESS VISIBILITY') && hubCss.includes('.contract-readiness.high-gap'), 'Contract readiness styling is missing.');
 const polishCss = read('src/uiPolish.css');
