@@ -107,6 +107,7 @@ try {
         rig: canvas.dataset.operatorRig ?? '',
         socket: canvas.dataset.operatorSocket ?? '',
         animation: canvas.dataset.operatorAnimation ?? '',
+        blend: canvas.dataset.operatorBlend ?? '',
         canvases: document.querySelectorAll('canvas').length,
         width: rect.width,
         height: rect.height,
@@ -123,13 +124,16 @@ try {
       if (lastState.rig !== 'articulated' || lastState.socket !== 'weapon-socket') {
         throw new Error(`Authored operator rig/socket contract is not active: ${JSON.stringify(lastState)}`);
       }
-      if (!['idle', 'locomotion', 'recoil', 'reload', 'dodge', 'down'].includes(lastState.animation)) {
+      if (!['idle', 'locomotion', 'recoil', 'reload', 'dodge', 'hit', 'down'].includes(lastState.animation)) {
         throw new Error(`Unexpected authored operator animation state: ${JSON.stringify(lastState)}`);
+      }
+      if (!/move:\d+\.\d+,recoil:\d+\.\d+,reload:\d+\.\d+,dodge:\d+\.\d+,hit:\d+\.\d+/.test(lastState.blend)) {
+        throw new Error(`Authored operator animation blend telemetry is missing: ${JSON.stringify(lastState)}`);
       }
       if (!(lastState.width > 0 && lastState.height > 0)) {
         throw new Error(`Authored operator canvas is not visible: ${JSON.stringify(lastState)}`);
       }
-      console.log(`AUTHORED_OPERATOR_RUNTIME_PASS visual=${lastState.visual} asset=${lastState.asset} rig=${lastState.rig} socket=${lastState.socket} animation=${lastState.animation} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
+      console.log(`AUTHORED_OPERATOR_RUNTIME_PASS visual=${lastState.visual} asset=${lastState.asset} rig=${lastState.rig} socket=${lastState.socket} animation=${lastState.animation} blend=${lastState.blend} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
       process.exitCode = 0;
       break;
     }
