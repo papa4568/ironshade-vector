@@ -343,6 +343,11 @@ if (!(combat.text ?? '').toLowerCase().includes('field coach') || combat.canvase
   throw new Error(`Android combat surface failed smoke validation: ${JSON.stringify(combat)}`);
 }
 
+await waitFor(`(() => {
+  const canvas = document.querySelector('canvas[data-render-tier]');
+  return Boolean(canvas?.dataset.renderTier && canvas?.dataset.renderBudget);
+})()`, 'Android render tier telemetry', 20_000);
+
 const renderTier = await evaluate(`(() => {
   const canvas = document.querySelector('canvas[data-render-tier]');
   return {
