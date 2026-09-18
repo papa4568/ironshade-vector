@@ -342,6 +342,13 @@ await waitFor(`[...document.querySelectorAll('button')].some(button => button.te
 await tapButton('Contracts', 22);
 await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('contract board') && [...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'deploy selected contract')`, 'Contract Board');
 
+await evaluate(`(() => {
+  const target = document.querySelector('button[data-location="asteroid-refinery"]');
+  if (!target) return false;
+  target.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+  return true;
+})()`);
+await sleep(300);
 await tap('button[data-location="asteroid-refinery"]', 23);
 await waitFor(`document.querySelector('button[data-location="asteroid-refinery"]')?.classList.contains('selected') === true`, 'Asteroid Refinery contract selection');
 
