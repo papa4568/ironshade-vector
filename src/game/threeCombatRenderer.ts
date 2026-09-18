@@ -760,6 +760,9 @@ export class ThreeCombatRenderer {
       this.renderer.domElement.dataset.operatorVisual = `authored-${spec.lod}`;
       this.renderer.domElement.dataset.operatorAsset = spec.id;
       this.renderer.domElement.dataset.operatorAnimation = this.authoredOperatorRig ? 'idle' : 'static';
+      this.renderer.domElement.dataset.operatorBlend = this.authoredOperatorRig
+        ? 'move:0.00,recoil:0.00,reload:0.00,dodge:0.00,hit:0.00'
+        : '';
     } catch (error) {
       if (this.disposed) return;
       this.renderer.domElement.dataset.operatorVisual = 'procedural-fallback';
