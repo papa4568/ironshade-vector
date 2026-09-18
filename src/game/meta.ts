@@ -633,7 +633,7 @@ export function setAbilityMod(profile: PlayerProfile, ability: AbilityId, modId:
 export function setOperatorClass(profile: PlayerProfile, operatorClass: OperatorClassId): { profile: PlayerProfile; message: string } {
   if (!operatorClassIds.has(operatorClass)) return { profile, message: 'Operator class unavailable.' };
   const current = operatorClassForProfile(profile);
-  if (current === operatorClass && profile.operatorClass === operatorClass) return { profile, message: `${operatorClassDefinitions.find(definition => definition.id === operatorClass)?.name ?? 'Operator'} class already active.` };
+  if (current === operatorClass && profile.operatorClass === operatorClass) { const name = operatorClassDefinitions.find(definition => definition.id === operatorClass)?.name ?? 'Operator'; return profile.classSelectionComplete ? { profile, message: `${name} class already active.` } : { profile: { ...profile, classSelectionComplete: true }, message: `${name} field doctrine confirmed.` }; }
   const specialization = specializationDefinitions.find(definition => definition.id === profile.specialization);
   const clearsSpecialization = !!specialization && specialization.operatorClass !== operatorClass;
   const next: PlayerProfile = {
