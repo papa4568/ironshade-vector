@@ -134,6 +134,18 @@ assert.equal(reloadedAtomic.profile.xp, 111, 'failed persistence must not expose
 assert.equal(reloadedAtomic.campaign.resources.credits, 777, 'failed persistence must not expose the newer campaign without its matching profile');
 
 storage.clear();
+const preClassProfile = createDefaultProfile();
+delete preClassProfile.operatorClass;
+preClassProfile.level = 15;
+preClassProfile.xp = 7140;
+preClassProfile.specialization = 'grid-weaver';
+const preClassCampaign = createDefaultCampaign();
+localStorage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify({ version: 1, profile: preClassProfile, campaign: preClassCampaign, savedAt: '2026-09-18T00:00:00.000Z' }));
+const classMigrated = loadGameState(localStorage);
+assert.equal(classMigrated.profile.operatorClass, 'systems', 'Existing atomic saves should infer a compatible operator class from their specialization instead of resetting progress.');
+assert.equal(classMigrated.profile.specialization, 'grid-weaver', 'Class migration must preserve an existing specialization.');
+
+storage.clear();
 const legacyProfile = createDefaultProfile();
 legacyProfile.xp = 63;
 const legacyAtomicCampaign = createDefaultCampaign();
