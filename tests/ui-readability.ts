@@ -27,6 +27,7 @@ const androidSmoke = read('scripts/android-runtime-smoke.mjs');
 const androidResumeGate = androidSmoke.match(/if \(resumeOnly\) \{[\s\S]*?process\.exit\(0\);\n\}/)?.[0] ?? '';
 const androidSmokeShell = read('scripts/android-runtime-smoke.sh');
 const browserWorkflow = read('.github/workflows/browser-e2e.yml');
+const androidWorkflow = read('.github/workflows/android-apk.yml');
 
 assert(!armory.includes('Review faction doctrines'), 'Equipment Bay still advertises undiscovered faction doctrine targets.');
 assert(!armory.includes('2 PIECE'), 'Equipment Bay still exposes 2-piece set targets.');
@@ -107,6 +108,7 @@ for (const inset of ['safe-area-inset-top', 'safe-area-inset-right', 'safe-area-
   assert(mobileCombatCss.includes(`env(${inset})`) || rootCss.includes(`env(${inset})`), `mobile combat CSS is missing ${inset} handling`);
 }
 assert(browserWorkflow.includes('mobile-landscape') && browserWorkflow.includes('matrix.viewport'), 'Browser E2E must cover both desktop and mobile-landscape viewports');
+assert(androidWorkflow.includes('require_release_signing') && androidWorkflow.includes('REQUIRE_RELEASE_SIGNING') && androidWorkflow.includes('Release signing is required for this run'), 'Manual Android release-candidate runs must fail closed when persistent release signing is required but unavailable');
 assert(browserSmoke.includes('BROWSER_MOBILE_LAYOUT_PASS') && browserSmoke.includes('moveDockOverlap') && browserSmoke.includes('undersized'), 'Browser mobile E2E is missing safe-area/touch-target layout assertions');
 assert(androidSmoke.includes('ANDROID_MOBILE_LAYOUT_PASS') && androidSmoke.includes('moveDockOverlap') && androidSmoke.includes('undersized'), 'Android smoke is missing safe-area/touch-target layout assertions');
 assert(androidSmoke.includes('ANDROID_LIFECYCLE_RESUME_PASS'), 'Android lifecycle pause/resume validation is missing');
