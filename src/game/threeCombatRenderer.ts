@@ -7,7 +7,7 @@ import { getWorldSize, type CombatObject, type Enemy, type Player, type SimState
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
 import { lootColor } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
-import { ENEMY_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
+import { ENEMY_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
 import { configureGraphicsAssetRenderer, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
 
 const WORLD_SCALE = 0.02;
@@ -92,6 +92,12 @@ type LocationPalette = {
   secondary: number;
 };
 
+type EnvironmentPlacement = {
+  position: THREE.Vector3;
+  rotationY?: number;
+  scale?: number;
+};
+
 type OperatorRig = {
   hip: THREE.Object3D;
   torso: THREE.Object3D;
@@ -169,6 +175,7 @@ export class ThreeCombatRenderer {
   private readonly raycaster = new THREE.Raycaster();
   private readonly groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -FLOOR_Y);
   private readonly environmentRoot = new THREE.Group();
+  private readonly authoredEnvironmentRoot = new THREE.Group();
   private readonly objectRoot = new THREE.Group();
   private readonly dynamicRoot = new THREE.Group();
   private readonly objectiveBeacon = new THREE.Group();
@@ -191,6 +198,10 @@ export class ThreeCombatRenderer {
   private authoredEnemyCount = 0;
   private readonly authoredWeapons = new Map<WeaponId, AuthoredWeaponVisual>();
   private readonly authoredWeaponFailures = new Set<WeaponId>();
+  private readonly proceduralRefineryVisuals: THREE.Object3D[] = [];
+  private readonly refineryAssetInstances: GraphicsAssetInstance[] = [];
+  private readonly refineryInstancedMeshes: THREE.InstancedMesh[] = [];
+  private refineryLoadGeneration = 0;
   private readonly projectilePool: ProjectileVisual[] = [];
   private readonly hazardPool: RingVisual[] = [];
   private readonly effectPool: RingVisual[] = [];
@@ -240,7 +251,7 @@ export class ThreeCombatRenderer {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
 
-    this.scene.add(this.environmentRoot, this.objectRoot, this.dynamicRoot, this.playerRoot);
+    this.scene.add(this.environmentRoot, this.authoredEnvironmentRoot, this.objectRoot, this.dynamicRoot, this.playerRoot);
     this.dynamicRoot.add(this.objectiveBeacon, this.objectiveGuide);
     this.objectiveGuideMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.objectiveGuideMesh.count = 0;
@@ -341,6 +352,7 @@ export class ThreeCombatRenderer {
 
   dispose() {
     this.disposed = true;
+    this.clearAuthoredRefineryEnvironment();
     if (this.authoredOperatorRig && this.weaponPivot.parent === this.authoredOperatorRig.weaponSocket) {
       this.playerRoot.add(this.weaponPivot);
     }
@@ -367,6 +379,157 @@ export class ThreeCombatRenderer {
     }
     disposeTree(this.scene);
     this.renderer.dispose();
+  }
+
+  private clearAuthoredRefineryEnvironment() {
+    this.refineryLoadGeneration += 1;
+    for (const mesh of this.refineryInstancedMeshes) {
+      mesh.removeFromParent();
+      mesh.dispose();
+    }
+    this.refineryInstancedMeshes.length = 0;
+    for (const instance of this.refineryAssetInstances) instance.release();
+    this.refineryAssetInstances.length = 0;
+    this.authoredEnvironmentRoot.clear();
+    this.proceduralRefineryVisuals.forEach(item => { item.visible = true; });
+    this.renderer.domElement.dataset.environmentVisual = 'procedural';
+    delete this.renderer.domElement.dataset.environmentLod;
+    delete this.renderer.domElement.dataset.environmentKit;
+    delete this.renderer.domElement.dataset.environmentInstances;
+    delete this.renderer.domElement.dataset.environmentTerminals;
+  }
+
+  private addInstancedEnvironmentAsset(instance: GraphicsAssetInstance, placements: EnvironmentPlacement[], label: string) {
+    if (placements.length === 0) return 0;
+    instance.root.updateMatrixWorld(true);
+    let created = 0;
+    instance.root.traverse(child => {
+      const source = child as THREE.Mesh;
+      if (!source.isMesh || !source.geometry || !source.material) return;
+      source.updateWorldMatrix(true, false);
+      const mesh = new THREE.InstancedMesh(source.geometry, source.material, placements.length);
+      mesh.name = `authored-${label}-${source.name || 'mesh'}`;
+      mesh.castShadow = source.castShadow || label !== 'floor';
+      mesh.receiveShadow = true;
+      mesh.frustumCulled = true;
+      const sourceMatrix = source.matrixWorld.clone();
+      const placementMatrix = new THREE.Matrix4();
+      const finalMatrix = new THREE.Matrix4();
+      const quaternion = new THREE.Quaternion();
+      const scale = new THREE.Vector3();
+      for (let index = 0; index < placements.length; index += 1) {
+        const placement = placements[index];
+        quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), placement.rotationY ?? 0);
+        scale.setScalar(placement.scale ?? 1);
+        placementMatrix.compose(placement.position, quaternion, scale);
+        finalMatrix.multiplyMatrices(placementMatrix, sourceMatrix);
+        mesh.setMatrixAt(index, finalMatrix);
+      }
+      mesh.instanceMatrix.needsUpdate = true;
+      this.authoredEnvironmentRoot.add(mesh);
+      this.refineryInstancedMeshes.push(mesh);
+      created += placements.length;
+    });
+    return created;
+  }
+
+  private async loadAuthoredRefineryEnvironment(state: SimState, worldW: number, worldH: number) {
+    const generation = ++this.refineryLoadGeneration;
+    this.renderer.domElement.dataset.environmentVisual = 'authored-loading';
+    const detailScale = this.coarse ? 0.5 : 0.78;
+    const loaded: Array<{ key: keyof typeof REFINERY_ASSET_FAMILIES; instance: GraphicsAssetInstance; lod: number }> = [];
+
+    try {
+      for (const key of Object.keys(REFINERY_ASSET_FAMILIES) as Array<keyof typeof REFINERY_ASSET_FAMILIES>) {
+        const spec = selectGraphicsAssetSpec(REFINERY_ASSET_FAMILIES[key], detailScale);
+        if (!spec) throw new Error(`No authored refinery asset available for ${key}`);
+        const instance = await instantiateGraphicsAsset(spec);
+        loaded.push({ key, instance, lod: spec.lod });
+      }
+
+      if (this.disposed || generation !== this.refineryLoadGeneration) {
+        loaded.forEach(item => item.instance.release());
+        return;
+      }
+
+      this.refineryAssetInstances.push(...loaded.map(item => item.instance));
+      const byKey = new Map(loaded.map(item => [item.key, item]));
+      const width = scaled(worldW);
+      const height = scaled(worldH);
+      const cx = width / 2;
+      const cz = height / 2;
+      const floorPlacements: EnvironmentPlacement[] = [];
+      for (const fx of [0.18, 0.34, 0.50, 0.66, 0.82]) {
+        for (const fz of [0.20, 0.40, 0.60, 0.80]) {
+          floorPlacements.push({ position: new THREE.Vector3(width * fx, 0.005, height * fz), scale: 1.35 });
+        }
+      }
+
+      const bulkheadPlacements: EnvironmentPlacement[] = [
+        { position: new THREE.Vector3(width * 0.14, 0, height * 0.24) },
+        { position: new THREE.Vector3(width * 0.14, 0, height * 0.50) },
+        { position: new THREE.Vector3(width * 0.14, 0, height * 0.76) },
+        { position: new THREE.Vector3(width * 0.86, 0, height * 0.24), rotationY: Math.PI },
+        { position: new THREE.Vector3(width * 0.86, 0, height * 0.50), rotationY: Math.PI },
+        { position: new THREE.Vector3(width * 0.86, 0, height * 0.76), rotationY: Math.PI },
+      ];
+
+      const processorPlacements: EnvironmentPlacement[] = [
+        { position: new THREE.Vector3(cx - Math.min(11, width * 0.22), 0, cz + height * 0.16), rotationY: 0.12 },
+        { position: new THREE.Vector3(cx, 0, cz - height * 0.18), rotationY: -0.10 },
+        { position: new THREE.Vector3(cx + Math.min(11, width * 0.22), 0, cz + height * 0.14), rotationY: Math.PI - 0.12 },
+      ];
+
+      const pipePlacements: EnvironmentPlacement[] = [
+        { position: new THREE.Vector3(width * 0.26, 0, height * 0.14) },
+        { position: new THREE.Vector3(width * 0.50, 0, height * 0.14) },
+        { position: new THREE.Vector3(width * 0.74, 0, height * 0.14) },
+        { position: new THREE.Vector3(width * 0.50, 0, height * 0.86), rotationY: Math.PI },
+      ];
+
+      const cratePlacements: EnvironmentPlacement[] = [
+        [0.22, 0.31, 0.1], [0.27, 0.69, -0.2], [0.38, 0.82, 0.12], [0.62, 0.20, -0.12],
+        [0.73, 0.66, 0.2], [0.79, 0.34, -0.16], [0.32, 0.55, 0.08], [0.68, 0.48, -0.08],
+      ].map(([x, z, rotationY]) => ({ position: new THREE.Vector3(width * x, 0, height * z), rotationY }));
+
+      const terminalPlacements: EnvironmentPlacement[] = state.objects
+        .filter(object => object.active && panelObject(object))
+        .slice(0, 10)
+        .map(object => ({
+          position: new THREE.Vector3(scaled(object.x + object.w / 2), 0, scaled(object.y + object.h / 2)),
+          rotationY: Math.PI / 4,
+          scale: 0.9,
+        }));
+
+      let instances = 0;
+      instances += this.addInstancedEnvironmentAsset(byKey.get('floor')!.instance, floorPlacements, 'refinery-floor');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('bulkhead')!.instance, bulkheadPlacements, 'refinery-bulkhead');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('processor')!.instance, processorPlacements, 'refinery-processor');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('pipeRack')!.instance, pipePlacements, 'refinery-pipe-rack');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('crate')!.instance, cratePlacements, 'refinery-crate');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('terminal')!.instance, terminalPlacements, 'refinery-terminal');
+
+      this.proceduralRefineryVisuals.forEach(item => { item.visible = false; });
+      const lods = [...new Set(loaded.map(item => item.lod))].sort();
+      this.renderer.domElement.dataset.environmentVisual = 'authored-refinery';
+      this.renderer.domElement.dataset.environmentLod = lods.join(',');
+      this.renderer.domElement.dataset.environmentKit = 'floor,bulkhead,processor,pipe-rack,crate,terminal';
+      this.renderer.domElement.dataset.environmentInstances = String(instances);
+      this.renderer.domElement.dataset.environmentTerminals = String(terminalPlacements.length);
+    } catch (error) {
+      loaded.forEach(item => item.instance.release());
+      if (this.disposed || generation !== this.refineryLoadGeneration) return;
+      this.refineryAssetInstances.length = 0;
+      this.refineryInstancedMeshes.forEach(mesh => {
+        mesh.removeFromParent();
+        mesh.dispose();
+      });
+      this.refineryInstancedMeshes.length = 0;
+      this.authoredEnvironmentRoot.clear();
+      this.proceduralRefineryVisuals.forEach(item => { item.visible = true; });
+      this.renderer.domElement.dataset.environmentVisual = 'procedural-fallback';
+      console.warn('Authored Asteroid Refinery kit failed to load; keeping procedural scenery.', error);
+    }
   }
 
   private async loadAuthoredWeapons() {
@@ -702,6 +865,8 @@ export class ThreeCombatRenderer {
     if (signature === this.environmentSignature) return;
     this.environmentSignature = signature;
 
+    this.clearAuthoredRefineryEnvironment();
+    this.proceduralRefineryVisuals.length = 0;
     disposeTree(this.environmentRoot);
     this.environmentRoot.clear();
     disposeTree(this.objectRoot);
@@ -735,6 +900,11 @@ export class ThreeCombatRenderer {
     this.addPerimeter(world.w, world.h, palette);
     this.addLocationScenery(mission.location, world.w, world.h, palette);
     buildHardSciFiEnvironment(this.environmentRoot, mission, scaled(world.w), scaled(world.h), palette);
+    if (mission.location === 'asteroid-refinery') {
+      void this.loadAuthoredRefineryEnvironment(state, world.w, world.h);
+    } else {
+      this.renderer.domElement.dataset.environmentVisual = 'procedural';
+    }
 
     for (const sector of state.sectors) {
       const material = new THREE.MeshBasicMaterial({ color: 0x4a8070, transparent: true, opacity: 0.025, depthWrite: false, side: THREE.DoubleSide });
@@ -775,6 +945,7 @@ export class ThreeCombatRenderer {
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       this.environmentRoot.add(mesh);
+      return mesh;
     };
 
     if (location === 'asteroid-refinery') {
@@ -783,8 +954,9 @@ export class ThreeCombatRenderer {
         tank.position.set(cx + offset, 2.4, cz + (offset === 0 ? -5 : 4));
         tank.castShadow = true;
         this.environmentRoot.add(tank);
+        this.proceduralRefineryVisuals.push(tank);
       }
-      addBox(cx, cz - 9, 30, 0.45, 0.45, emissive);
+      this.proceduralRefineryVisuals.push(addBox(cx, cz - 9, 30, 0.45, 0.45, emissive));
     } else if (location === 'spin-habitat') {
       for (const radius of [5.5, 8.5, 11.5]) {
         const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.16, 8, 64), emissive);
