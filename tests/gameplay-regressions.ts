@@ -117,6 +117,7 @@ failStorageWrites = false;
 
 storage.clear();
 const atomicProfile = createDefaultProfile();
+assert.equal(atomicProfile.classSelectionComplete, false, 'Only truly fresh profiles should start before class intake.');
 atomicProfile.xp = 111;
 const atomicCampaign = createDefaultCampaign();
 atomicCampaign.resources.credits = 777;
@@ -136,6 +137,7 @@ assert.equal(reloadedAtomic.campaign.resources.credits, 777, 'failed persistence
 storage.clear();
 const preClassProfile = createDefaultProfile();
 delete preClassProfile.operatorClass;
+delete preClassProfile.classSelectionComplete;
 preClassProfile.level = 15;
 preClassProfile.xp = 7140;
 preClassProfile.specialization = 'grid-weaver';
@@ -144,6 +146,7 @@ localStorage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify({ version: 1, profil
 const classMigrated = loadGameState(localStorage);
 assert.equal(classMigrated.profile.operatorClass, 'systems', 'Existing atomic saves should infer a compatible operator class from their specialization instead of resetting progress.');
 assert.equal(classMigrated.profile.specialization, 'grid-weaver', 'Class migration must preserve an existing specialization.');
+assert.equal(classMigrated.profile.classSelectionComplete, true, 'Existing atomic saves should not be forced back through first-run class intake.');
 
 storage.clear();
 const legacyProfile = createDefaultProfile();
@@ -159,6 +162,7 @@ assert.equal(migratedAtomic.campaign.resources.credits, 432, 'combined persisten
 storage.clear();
 const legacyClasslessProfile = createDefaultProfile();
 delete legacyClasslessProfile.operatorClass;
+delete legacyClasslessProfile.classSelectionComplete;
 legacyClasslessProfile.level = 15;
 legacyClasslessProfile.xp = 7140;
 legacyClasslessProfile.specialization = 'grid-weaver';
@@ -166,6 +170,7 @@ localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(legacyClasslessProfile)
 const inferredLegacyClass = loadProfile();
 assert.equal(inferredLegacyClass.operatorClass, 'systems', 'Legacy profile-key saves should infer class from their existing specialization.');
 assert.equal(inferredLegacyClass.specialization, 'grid-weaver', 'Legacy class inference must preserve specialization state.');
+assert.equal(inferredLegacyClass.classSelectionComplete, true, 'Legacy profile-key saves should be treated as already onboarded.');
 
 async function runSaveRecoveryRegressions() {
   storage.clear();
