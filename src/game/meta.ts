@@ -401,12 +401,14 @@ export function loadProfile(): PlayerProfile {
     const progressionPoints = Math.max(parsedPoints, Math.max(0, normalizedLevel - 1 - validAllocatedCount));
     const specialization = normalizedLevel >= 15 && specializationDefinitions.some(definition => definition.id === parsed.specialization) ? parsed.specialization as SpecializationId : null;
     const specializationOverclock = normalizedLevel >= 16 && !!specialization && parsed.specializationOverclock === true;
+    const operatorClass = operatorClassForProfile({ operatorClass: parsed.operatorClass, specialization, allocatedNodes });
     return {
       ...defaults,
       ...parsed,
       xp: normalizedXp,
       level: normalizedLevel,
       progressionPoints,
+      operatorClass,
       specialization,
       specializationOverclock,
       settings: { ...defaults.settings, ...parsed.settings },
