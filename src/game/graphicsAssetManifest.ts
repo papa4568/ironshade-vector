@@ -11,14 +11,52 @@ export const OPERATOR_ASSET_FAMILY: GraphicsAssetFamily = {
   },
 };
 
-export const SHOWCASE_REFINERY_MODULE_FAMILY: GraphicsAssetFamily = {
-  id: 'refinery-processing-module-a',
-  lods: {
-    0: createGraphicsAssetSpec('refinery-processing-module-a-lod0', 'environment-module', '/assets/models/environments/refinery-processing-module-a-lod0.glb', 0),
-    1: createGraphicsAssetSpec('refinery-processing-module-a-lod1', 'environment-module', '/assets/models/environments/refinery-processing-module-a-lod1.glb', 1),
-    2: createGraphicsAssetSpec('refinery-processing-module-a-lod2', 'environment-module', '/assets/models/environments/refinery-processing-module-a-lod2.glb', 2),
+export const REFINERY_ASSET_FAMILIES = {
+  floor: {
+    id: 'refinery-floor-panel',
+    lods: {
+      1: createGraphicsAssetSpec('refinery-floor-panel-lod1', 'environment-module', '/assets/models/environments/refinery-floor-panel-lod1.glb', 1),
+      2: createGraphicsAssetSpec('refinery-floor-panel-lod2', 'environment-module', '/assets/models/environments/refinery-floor-panel-lod2.glb', 2),
+    },
   },
-};
+  bulkhead: {
+    id: 'refinery-bulkhead',
+    lods: {
+      1: createGraphicsAssetSpec('refinery-bulkhead-lod1', 'environment-module', '/assets/models/environments/refinery-bulkhead-lod1.glb', 1),
+      2: createGraphicsAssetSpec('refinery-bulkhead-lod2', 'environment-module', '/assets/models/environments/refinery-bulkhead-lod2.glb', 2),
+    },
+  },
+  processor: {
+    id: 'refinery-processor',
+    lods: {
+      1: createGraphicsAssetSpec('refinery-processor-lod1', 'environment-module', '/assets/models/environments/refinery-processor-lod1.glb', 1),
+      2: createGraphicsAssetSpec('refinery-processor-lod2', 'environment-module', '/assets/models/environments/refinery-processor-lod2.glb', 2),
+    },
+  },
+  pipeRack: {
+    id: 'refinery-pipe-rack',
+    lods: {
+      1: createGraphicsAssetSpec('refinery-pipe-rack-lod1', 'environment-module', '/assets/models/environments/refinery-pipe-rack-lod1.glb', 1),
+      2: createGraphicsAssetSpec('refinery-pipe-rack-lod2', 'environment-module', '/assets/models/environments/refinery-pipe-rack-lod2.glb', 2),
+    },
+  },
+  crate: {
+    id: 'refinery-crate',
+    lods: {
+      1: createGraphicsAssetSpec('refinery-crate-lod1', 'environment-module', '/assets/models/environments/refinery-crate-lod1.glb', 1),
+      2: createGraphicsAssetSpec('refinery-crate-lod2', 'environment-module', '/assets/models/environments/refinery-crate-lod2.glb', 2),
+    },
+  },
+  terminal: {
+    id: 'refinery-terminal',
+    lods: {
+      1: createGraphicsAssetSpec('refinery-terminal-lod1', 'environment-module', '/assets/models/environments/refinery-terminal-lod1.glb', 1),
+      2: createGraphicsAssetSpec('refinery-terminal-lod2', 'environment-module', '/assets/models/environments/refinery-terminal-lod2.glb', 2),
+    },
+  },
+} as const satisfies Record<'floor' | 'bulkhead' | 'processor' | 'pipeRack' | 'crate' | 'terminal', GraphicsAssetFamily>;
+
+export const SHOWCASE_REFINERY_MODULE_FAMILY: GraphicsAssetFamily = REFINERY_ASSET_FAMILIES.processor;
 
 
 export const ENEMY_ASSET_FAMILIES = {
