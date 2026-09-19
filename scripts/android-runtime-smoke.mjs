@@ -391,6 +391,11 @@ await waitFor(`document.querySelector('button[data-location="asteroid-refinery"]
 
 await tapButton('Deploy selected contract', 24, 120);
 await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('field coach') && document.querySelectorAll('canvas').length > 0`, 'Combat surface', 45_000);
+await waitFor(`(() => {
+  const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || '').trim());
+  return ['Breach Rush', 'Fracture Tag', 'Bulwark Pulse'].every(label => labels.includes(label));
+})()`, 'Vanguard level-one skill kit', 20_000);
+console.log('ANDROID_CLASS_KIT_PASS kit=RUSH/BREAK/GUARD');
 
 const combat = await snapshot();
 if (!(combat.text ?? '').toLowerCase().includes('field coach') || combat.canvases < 1) {
