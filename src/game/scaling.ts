@@ -29,6 +29,7 @@ function tierForContract(contract: Contract, campaign: CampaignState, operatorLe
   if (contract.campaignChapter === 'black-lattice') tier = Math.max(tier, 3 + Math.floor((contract.campaignStep ?? 0) / 2));
   if (contract.campaignChapter === 'dead-reckoning') tier = Math.max(tier, 7 + Math.floor((contract.campaignStep ?? 0) / 2));
   if (contract.campaignChapter === 'dead-reckoning-interdiction') tier = Math.max(tier, 9 + Math.floor((contract.campaignStep ?? 0) / 2));
+  if (contract.campaignChapter === 'parallax-debt') tier = Math.max(tier, 8 + Math.floor((contract.campaignStep ?? 0) / 3));
   if (contract.commandTrace) tier = Math.max(tier, 10);
   if (contract.escalationStage) tier = Math.max(tier, 4 + contract.escalationStage * 2);
   if (contract.megastructure) tier = Math.max(tier, 5 + Math.min(3, Math.floor(campaign.contractsCompleted / 5)));
