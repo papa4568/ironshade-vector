@@ -46,7 +46,7 @@ const androidWorkflow = read('.github/workflows/android-apk.yml');
 const parallaxDebt = read('src/game/parallaxDebt.ts');
 const scaling = read('src/game/scaling.ts');
 
-assert(shipHub.includes('P1 // PARALLAX DEBT // LV15–18') && shipHub.includes('parallaxDebtNextRequiredLevel'), 'Campaign UI must present the expanded LV15–18 Parallax Debt progression and its level gates.');
+assert(shipHub.includes('PARALLAX INTEL // ROUTE RECONSTRUCTION // LV15–18') && shipHub.includes('parallaxDebtNextRequiredLevel'), 'Campaign UI must present the expanded LV15–18 Parallax Debt progression and its level gates.');
 assert(shipHub.includes('PARALLAX DEBT // CONTRACT') && shipHub.includes('parallaxChoice.choices.map') && shipHub.includes('chooseParallaxDebtBranch'), 'Contract and campaign surfaces must expose the Parallax Debt decision and closing branch.');
 assert(shipHub.includes('PARALLAX INTEL // ROUTE RECONSTRUCTION // LV15–18') && shipHub.includes('parallax-intel-summary') && shipHub.includes('parallax-phase-grid') && shipHub.includes('parallax-route-grid') && shipHub.includes('UNRESOLVED BOUNDARY // DO NOT OVERCLAIM'), 'P1.18 dedicated Parallax Intel dossier is missing phase, route, or evidence-boundary presentation.');
 assert(shipHub.includes('parallaxDebtIntel(campaign)') && shipHub.includes('parallaxFindings.length') && shipHub.includes('CLASSIFIED UNTIL FALSE HORIZON'), 'Parallax Intel presentation is not synchronized to campaign evidence and route reveal state.');
