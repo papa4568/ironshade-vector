@@ -217,13 +217,20 @@
 }
 .class-card-kit span {
   min-width: 0;
-  display: flex;
-  align-items: baseline;
+  display: grid;
+  grid-template-columns: 18px auto minmax(0, 1fr);
+  align-items: center;
   gap: 5px;
   padding: 6px 7px;
   border: 1px solid #30443d;
   border-radius: 7px;
   background: rgba(6, 12, 11, .72);
+}
+.class-card-kit img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  opacity: .96;
 }
 .class-card-kit small {
   color: #71877f;
@@ -401,6 +408,7 @@
   background: rgba(6, 13, 11, .72);
 }
 .class-skill-key {
+  position: relative;
   width: 32px;
   height: 32px;
   display: grid;
@@ -411,6 +419,25 @@
   color: #e5eeeb;
   font-size: 11px;
   font-weight: 950;
+}
+.class-skill-key img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+.class-skill-key span {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  min-width: 13px;
+  padding: 1px 3px;
+  border: 1px solid #42584f;
+  border-radius: 4px;
+  background: #07100e;
+  color: #dfe9e5;
+  font-size: 6px;
+  line-height: 1.2;
+  text-align: center;
 }
 .class-starting-kit-grid article small,
 .class-starting-kit-grid article b,
@@ -777,7 +804,13 @@
     gap: 3px;
   }
   .class-card-kit span {
+    grid-template-columns: 11px auto minmax(0, 1fr);
+    gap: 3px;
     padding: 3px 4px;
+  }
+  .class-card-kit img {
+    width: 10px;
+    height: 10px;
   }
   .class-card-kit small,
   .class-card-kit b {
@@ -855,6 +888,17 @@
     height: 22px;
     border-radius: 5px;
     font-size: 7px;
+  }
+  .class-skill-key img {
+    width: 16px;
+    height: 16px;
+  }
+  .class-skill-key span {
+    right: -2px;
+    bottom: -2px;
+    min-width: 9px;
+    padding: 0 2px;
+    font-size: 4px;
   }
   .class-starting-kit-grid article b {
     margin-top: 1px;

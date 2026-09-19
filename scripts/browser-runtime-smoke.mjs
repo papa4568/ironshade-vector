@@ -542,9 +542,19 @@ try {
   })()`, 'Vanguard level-one skill kit');
   console.log(`BROWSER_CLASS_KIT_PASS viewport=${viewportMode} kit=RUSH/BREAK/GUARD`);
   await waitFor(`(() => {
+    const icons = [...document.querySelectorAll('img[src*="/assets/ui/skills/"], img[src*="/assets/ui/weapons/"]')];
+    return icons.length >= 4 && icons.every(image => image.complete && image.naturalWidth > 0);
+  })()`, 'Mobile combat SVG assets', 20_000);
+  const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);
+  const expectedCombatLod = coarseCombatSurface ? '2' : '1';
+  await waitFor(`(() => {
     const canvas = document.querySelector('canvas');
-    return canvas?.dataset.operatorClassAsset === 'vanguard' && (canvas?.dataset.operatorAsset ?? '').includes('operator-vanguard');
-  })()`, 'Vanguard authored operator asset', 20_000);
+    return canvas?.dataset.operatorClassAsset === 'vanguard'
+      && canvas?.dataset.operatorVisual === 'authored-${expectedCombatLod}'
+      && (canvas?.dataset.operatorAsset ?? '').includes('operator-vanguard-lod${expectedCombatLod}')
+      && (canvas?.dataset.weaponAsset ?? '').includes('weapon-breacher-lod${expectedCombatLod}');
+  })()`, 'Vanguard authored mobile combat assets', 20_000);
+  console.log(`BROWSER_MOBILE_ASSET_PASS viewport=${viewportMode} icons=loaded operatorLod=${expectedCombatLod} weaponLod=${expectedCombatLod}`);
   console.log(`BROWSER_CLASS_ASSET_PASS viewport=${viewportMode} operator=vanguard`);
 
   const combat = await snapshot();
