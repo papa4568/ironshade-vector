@@ -207,6 +207,84 @@ assert.equal(heldParallax.story.parallaxDebt.evidence.length, 12, 'The held-rout
 assert.match(heldParallax.story.parallaxDebt.lastBeat, /QUIET CUSTODY/, 'The held-route outcome should persist its distinct campaign resolution.');
 
 
+function parallaxBaseClassCounterSmoke() {
+  const classProfile = (operatorClass: 'vanguard' | 'vector' | 'systems') => ({
+    ...createDefaultProfile(),
+    xp: 7140,
+    level: 15,
+    operatorClass,
+    classSelectionComplete: true,
+    specialization: null,
+    specializationOverclock: false,
+  });
+
+  const vanguardState = createSimulation(deriveCombatBuild(classProfile('vanguard')));
+  for (const enemy of vanguardState.enemies) enemy.active = false;
+  const runner = vanguardState.enemies[0];
+  Object.assign(runner, {
+    active: true,
+    dead: false,
+    role: 'assault' as const,
+    variant: 'parallaxSkirmisher' as const,
+    label: 'Parallax Shear Runner',
+    x: vanguardState.player.x + 120,
+    y: vanguardState.player.y,
+    hazardCooldown: 0,
+  });
+  runner.statuses.disrupted = 0;
+  runner.statuses.stagger = 0;
+  vanguardState.player.aim = { x: 1, y: 0 };
+  assert.equal(triggerAbility(vanguardState, 0), true, 'Vanguard should be able to Breach Rush a Parallax Shear Runner.');
+  assert.ok(runner.hazardCooldown >= 5.8, 'Vanguard Breach Rush should delay the Shear Runner reference-wash counterstep.');
+  assert.ok(runner.statuses.disrupted >= 2.2, 'Vanguard Breach Rush should disrupt the Shear Runner reference package.');
+  assert.match(vanguardState.eventText, /VANGUARD INTERCEPT/, 'Vanguard counterplay should have explicit combat feedback.');
+
+  const vectorState = createSimulation(deriveCombatBuild(classProfile('vector')));
+  for (const enemy of vectorState.enemies) enemy.active = false;
+  const marksman = vectorState.enemies[0];
+  Object.assign(marksman, {
+    active: true,
+    dead: false,
+    role: 'suppressor' as const,
+    variant: 'baselineMarksman' as const,
+    label: 'Long-Baseline Marksman',
+    x: vectorState.player.x + 150,
+    y: vectorState.player.y,
+    telegraph: 0.9,
+    fireCooldown: 0,
+  });
+  marksman.statuses.disrupted = 0;
+  vectorState.player.aim = { x: 1, y: 0 };
+  assert.equal(triggerAbility(vectorState, 1), true, 'Vector should be able to Deadeye Lock a Long-Baseline Marksman.');
+  assert.equal(marksman.telegraph, 0, 'Vector Deadeye Lock should cancel the Long-Baseline firing solution.');
+  assert.ok(marksman.fireCooldown >= 3.2, 'Vector counter-snipe should force the Marksman to reacquire the baseline.');
+  assert.match(vectorState.eventText, /VECTOR COUNTER-SNIPE/, 'Vector counterplay should have explicit combat feedback.');
+
+  const systemsState = createSimulation(deriveCombatBuild(classProfile('systems')));
+  for (const enemy of systemsState.enemies) enemy.active = false;
+  const technician = systemsState.enemies[0];
+  Object.assign(technician, {
+    active: true,
+    dead: false,
+    role: 'technician' as const,
+    variant: 'referenceTech' as const,
+    label: 'Reference Shear Technician',
+    x: systemsState.player.x + 120,
+    y: systemsState.player.y,
+    hazardCooldown: 0,
+  });
+  technician.statuses.disrupted = 0;
+  technician.statuses.conductive = 0;
+  systemsState.player.aim = { x: 1, y: 0 };
+  systemsState.player.abilityCooldowns[2] = 5;
+  assert.equal(triggerAbility(systemsState, 1), true, 'Systems should be able to Relay Hack a Reference Shear Technician.');
+  assert.ok(technician.hazardCooldown >= 8.4, 'Systems Relay Hack should delay the Technician reference-field projection.');
+  assert.ok(technician.statuses.conductive >= 8, 'Systems Relay Hack should overload the Technician bus for Arc follow-up.');
+  assert.ok(systemsState.player.abilityCooldowns[2] <= 2.2, 'Systems counterplay should pull Cascade Arc toward an immediate follow-up.');
+  assert.match(systemsState.eventText, /SYSTEMS BASELINE SPOOF/, 'Systems counterplay should have explicit combat feedback.');
+}
+parallaxBaseClassCounterSmoke();
+
 function parallaxSpecializationSmoke() {
   const pressureProfile = { ...createDefaultProfile(), xp: 8100, level: 16, operatorClass: 'vanguard' as const, classSelectionComplete: true, specialization: 'pressure-diver' as const, specializationOverclock: true };
   const pressureState = createSimulation(deriveCombatBuild(pressureProfile));
