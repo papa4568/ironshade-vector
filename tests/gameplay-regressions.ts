@@ -1,13 +1,35 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buyConsumable, createDefaultCampaign, loadCampaign, saveCampaign } from '../src/game/campaign';
-import { aimAtMobileTarget, applyPlayerDamage, createSimulation, stepSimulation, triggerAbility, triggerConsumable, weaponConfigs } from '../src/game/sim';
-import { createDefaultProfile, loadProfile, saveProfile } from '../src/game/meta';
+import { aimAtMobileTarget, applyPlayerDamage, createSimulation, stepSimulation, triggerAbility, triggerConsumable, triggerDodge, triggerFire, weaponConfigs, type Telemetry } from '../src/game/sim';
+import { awardRecovery, createDefaultProfile, deriveCombatBuild, loadProfile, saveProfile } from '../src/game/meta';
 import { CAMPAIGN_STORAGE_KEY, GAME_STATE_STORAGE_KEY, prepareSaveRecovery, PROFILE_STORAGE_KEY } from '../src/game/saveRecovery';
 import { loadGameState, saveGameState } from '../src/game/gamePersistence';
 import { carryExpeditionLoot } from '../src/game/expeditionCarry';
 import { advanceParallaxDebtAfterContract, chooseParallaxDebtBranch, getParallaxDebtChoicePrompt, getParallaxDebtContract, parallaxDebtChapter, parallaxDebtNextRequiredLevel, syncParallaxDebtAccess } from '../src/game/parallaxDebt';
 import { operationScalingFor } from '../src/game/scaling';
+
+function parallaxPacingTelemetry(): Telemetry {
+  return {
+    damageDealt: 0,
+    damageTaken: 0,
+    deaths: 0,
+    kills: 6,
+    eliteKills: 1,
+    eliteProtocolsDefeated: 1,
+    killIntervalTotal: 18,
+    killIntervalSamples: 5,
+    lastKillAt: 38,
+    protocolCombinations: {},
+    weaponShots: { carbine: 12, breacher: 4, rail: 3 },
+    abilityUses: [1, 1, 1],
+    encounterStart: 0,
+    bossStart: 0,
+    duration: 55,
+    trace: [],
+    nextTraceAt: 0,
+  };
+}
 
 const storage = new Map<string, string>();
 let failStorageWrites = false;
@@ -46,13 +68,41 @@ assert.equal(parallaxCampaign.story.parallaxDebt.status, 'active', 'LV15 + compl
 assert.equal(parallaxDebtChapter.totalContracts, 12, 'Parallax Debt should contain a full 12-contract Chapter 3 arc.');
 assert.equal(parallaxDebtChapter.authoredContracts, 12, 'All twelve Chapter 3 contracts should now be authored.');
 
+let pacingCampaign = createDefaultCampaign();
+pacingCampaign.story.interdiction.status = 'complete';
+pacingCampaign = syncParallaxDebtAccess(pacingCampaign, 15);
+let pacingProfile = { ...createDefaultProfile(), xp: 7140, level: 15, runsCompleted: 20, classSelectionComplete: true };
+for (let step = 0; step < 8; step += 1) {
+  const contract = getParallaxDebtContract(pacingCampaign, pacingProfile.level);
+  assert.ok(contract, `Parallax pacing contract ${step + 1} should unlock from campaign-earned XP without side grinding.`);
+  const scaling = operationScalingFor(contract, pacingCampaign, pacingProfile.level);
+  const recovery = awardRecovery(pacingProfile, parallaxPacingTelemetry(), false, 0, {
+    operationTier: scaling.operationTier,
+    maxRecoveryLevel: scaling.maxRecoveryLevel,
+    combatEffectiveness: scaling.combatEffectiveness,
+    xpFloor: contract.xpFloor,
+  });
+  assert.ok(recovery.xpGained >= (contract.xpFloor ?? 0), `Parallax operation ${step + 1} should honor its authored XP floor.`);
+  pacingProfile = recovery.profile;
+  pacingCampaign = advanceParallaxDebtAfterContract(pacingCampaign, contract).campaign;
+  if (step === 2) assert.equal(pacingProfile.level, 16, 'Three LV15 Parallax operations should fund the LV16 continuation gate on safe extraction.');
+  if (step === 5) assert.equal(pacingProfile.level, 17, 'Three LV16 Parallax operations should fund the LV17 continuation gate on safe extraction.');
+}
+assert.equal(pacingProfile.level, 18, 'Null Transit and Counterfactual Burn should fund the LV18 False Horizon gate on safe extraction.');
+assert.ok(getParallaxDebtContract(pacingCampaign, pacingProfile.level), 'False Horizon should unlock without requiring unrelated side-contract XP.');
+
+
 for (let step = 0; step < 3; step += 1) {
   const contract = getParallaxDebtContract(parallaxCampaign, 15);
   assert.ok(contract, `Parallax Debt opening contract ${step + 1} should exist at LV15`);
   if (step === 0) {
     assert.equal(contract.location, 'parallax-array');
     assert.equal(contract.objectiveMode, 'reference-alignment');
-    assert.equal(operationScalingFor(contract, parallaxCampaign, 15).operationTier, 9, 'Opening Parallax work should start at T9 / LV15 pressure.');
+    const openingScaling = operationScalingFor(contract, parallaxCampaign, 15);
+    assert.equal(openingScaling.operationTier, 9, 'Opening Parallax work should start at T9 / LV15 pressure.');
+    assert.equal(openingScaling.encounterPattern, 'swarm', 'Opening Parallax pressure should preserve the authored swarm pattern.');
+    assert.equal(openingScaling.reserveCount, 1, 'Opening Parallax pressure should preserve the authored single reserve instead of generic T9 reserves.');
+    assert.equal(contract.xpFloor, 320, 'LV15 Parallax operations should carry the gate-safe XP floor.');
   }
   parallaxCampaign = advanceParallaxDebtAfterContract(parallaxCampaign, contract).campaign;
 }
@@ -81,7 +131,10 @@ for (let step = 3; step < 6; step += 1) {
   assert.ok(contract, `Parallax Debt LV16 contract ${step + 1} should exist`);
   if (step === 3) {
     assert.equal(contract.title, 'Parallax Debt // Kepler Wake');
-    assert.equal(operationScalingFor(contract, parallaxCampaign, 16).operationTier, 10, 'LV16 continuation should move Parallax Debt to T10 pressure.');
+    const continuationScaling = operationScalingFor(contract, parallaxCampaign, 16);
+    assert.equal(continuationScaling.operationTier, 10, 'LV16 continuation should move Parallax Debt to T10 pressure.');
+    assert.equal(continuationScaling.reserveCount, 2, 'LV16 continuation should commit both authored reserve waves.');
+    assert.equal(contract.xpFloor, 340, 'LV16 Parallax operations should carry the gate-safe XP floor.');
   }
   parallaxCampaign = advanceParallaxDebtAfterContract(parallaxCampaign, contract).campaign;
 }
@@ -93,7 +146,11 @@ for (let step = 6; step < 8; step += 1) {
   assert.ok(contract, `Parallax Debt LV17 contract ${step + 1} should exist`);
   if (step === 6) {
     assert.equal(contract.title, 'Parallax Debt // Null Transit');
-    assert.equal(operationScalingFor(contract, parallaxCampaign, 17).operationTier, 11, 'LV17 continuation should move Parallax Debt to T11 pressure.');
+    const lateScaling = operationScalingFor(contract, parallaxCampaign, 17);
+    assert.equal(lateScaling.operationTier, 11, 'LV17 continuation should move Parallax Debt to T11 pressure.');
+    assert.equal(lateScaling.encounterPattern, 'elite-led', 'LV17 Parallax operations should use the authored elite-led pressure profile.');
+    assert.equal(lateScaling.reserveCount, 2, 'LV17 Parallax operations should retain two reserve commitments.');
+    assert.equal(contract.xpFloor, 540, 'The two LV17 operations should each cover half of the LV18 gate requirement.');
   }
   parallaxCampaign = advanceParallaxDebtAfterContract(parallaxCampaign, contract).campaign;
 }
@@ -103,6 +160,8 @@ assert.equal(getParallaxDebtContract(parallaxCampaign, 17), null, 'LV17 should n
 const falseHorizon = getParallaxDebtContract(parallaxCampaign, 18);
 assert.ok(falseHorizon, 'False Horizon should unlock at LV18.');
 assert.equal(falseHorizon.title, 'Parallax Debt // False Horizon');
+assert.equal(falseHorizon.xpFloor, 380, 'LV18 campaign operations should continue meaningful progression after the final level gate.');
+assert.ok((falseHorizon.chapterRewardMultiplier ?? 1) > 1, 'Late Chapter 3 operations should carry an authored material-reward premium.');
 parallaxCampaign = advanceParallaxDebtAfterContract(parallaxCampaign, falseHorizon).campaign;
 assert.equal(parallaxCampaign.story.parallaxDebt.status, 'active', 'False Horizon should hand off to the final campaign decision.');
 assert.equal(parallaxCampaign.story.parallaxDebt.step, 9, 'False Horizon should bank the ninth Chapter 3 contract.');
@@ -146,6 +205,63 @@ for (let step = 9; step < 12; step += 1) {
 assert.equal(heldParallax.story.parallaxDebt.status, 'complete', 'The held-route branch should complete Chapter 3 after twelve contracts.');
 assert.equal(heldParallax.story.parallaxDebt.evidence.length, 12, 'The held-route branch should bank three new closing evidence records.');
 assert.match(heldParallax.story.parallaxDebt.lastBeat, /QUIET CUSTODY/, 'The held-route outcome should persist its distinct campaign resolution.');
+
+
+function parallaxSpecializationSmoke() {
+  const pressureProfile = { ...createDefaultProfile(), xp: 8100, level: 16, operatorClass: 'vanguard' as const, classSelectionComplete: true, specialization: 'pressure-diver' as const, specializationOverclock: true };
+  const pressureState = createSimulation(deriveCombatBuild(pressureProfile));
+  const pressureShear = pressureState.hazards[0];
+  Object.assign(pressureShear, { active: true, x: pressureState.player.x + 90, y: pressureState.player.y, radius: 210, life: 5, kind: 'vectorWash' as const, owner: 'enemy' as const });
+  assert.equal(triggerAbility(pressureState, 0), true, 'Pressure Diver should be able to cast into a live Parallax shear field.');
+  assert.equal(pressureState.hazards.some(hazard => hazard.active && hazard.owner !== 'player' && hazard.kind === 'vectorWash'), false, 'Pressure Diver should collapse the hostile Parallax shear field.');
+  assert.ok(pressureState.hazards.some(hazard => hazard.active && hazard.kind === 'vacuumWake' && hazard.owner === 'player'), 'Pressure Diver should convert collapsed shear into a player-owned vacuum wake.');
+
+  const momentumProfile = { ...createDefaultProfile(), xp: 8100, level: 16, operatorClass: 'vector' as const, classSelectionComplete: true, specialization: 'momentum-broker' as const, specializationOverclock: true };
+  const momentumBaseline = createSimulation(deriveCombatBuild(momentumProfile));
+  momentumBaseline.player.currentWeapon = 'rail';
+  momentumBaseline.player.capacitor = 70;
+  const baselineBefore = momentumBaseline.player.capacitor;
+  assert.equal(triggerFire(momentumBaseline), true);
+  const baselineReturn = momentumBaseline.player.capacitor - (baselineBefore - momentumBaseline.weapons.rail.capacitorCost);
+  const momentumField = createSimulation(deriveCombatBuild(momentumProfile));
+  momentumField.player.currentWeapon = 'rail';
+  momentumField.player.capacitor = 70;
+  Object.assign(momentumField.hazards[0], { active: true, x: momentumField.player.x + 80, y: momentumField.player.y, radius: 185, life: 5, kind: 'gravityWell' as const, owner: 'enemy' as const });
+  const fieldBefore = momentumField.player.capacitor;
+  assert.equal(triggerFire(momentumField), true);
+  const fieldReturn = momentumField.player.capacitor - (fieldBefore - momentumField.weapons.rail.capacitorCost);
+  assert.ok(fieldReturn > baselineReturn + 1.5, 'Momentum Broker should harvest extra recoil energy while fighting inside Parallax reference fields.');
+
+  const gridProfile = { ...createDefaultProfile(), xp: 8100, level: 16, operatorClass: 'systems' as const, classSelectionComplete: true, specialization: 'grid-weaver' as const, specializationOverclock: true };
+  const gridState = createSimulation(deriveCombatBuild(gridProfile));
+  const conduit = gridState.objects.find(object => object.kind === 'conduit')!;
+  conduit.active = true;
+  conduit.exposed = true;
+  conduit.x = gridState.player.x + 140;
+  conduit.y = gridState.player.y - conduit.h / 2;
+  Object.assign(gridState.hazards[0], { active: true, x: conduit.x + conduit.w / 2 + 40, y: conduit.y + conduit.h / 2, radius: 185, life: 5, kind: 'gravityWell' as const, owner: 'enemy' as const });
+  assert.equal(triggerAbility(gridState, 2), true, 'Grid Weaver should route Cascade Arc through nearby machinery.');
+  assert.equal(gridState.hazards[0].active, false, 'Grid Weaver machinery routing should collapse nearby Parallax reference shear.');
+
+  const redlineProfile = { ...createDefaultProfile(), xp: 8100, level: 16, operatorClass: 'vector' as const, classSelectionComplete: true, specialization: 'redline-pilot' as const, specializationOverclock: true };
+  const redlineState = createSimulation(deriveCombatBuild(redlineProfile));
+  redlineState.player.currentWeapon = 'rail';
+  redlineState.player.weaponHeat.rail = 0.82;
+  Object.assign(redlineState.hazards[0], { active: true, x: redlineState.player.x + 70, y: redlineState.player.y, radius: 210, life: 5, kind: 'vectorWash' as const, owner: 'enemy' as const });
+  assert.equal(triggerDodge(redlineState), true);
+  assert.equal(redlineState.hazards[0].active, false, 'Redline Pilot overclock dodge should punch through nearby Parallax shear.');
+
+  const conductorProfile = { ...createDefaultProfile(), xp: 8100, level: 16, operatorClass: 'systems' as const, classSelectionComplete: true, specialization: 'capacitor-conductor' as const, specializationOverclock: true };
+  const conductorState = createSimulation(deriveCombatBuild(conductorProfile));
+  Object.assign(conductorState.hazards[0], { active: true, x: conductorState.player.x + 85, y: conductorState.player.y, radius: 185, life: 5, kind: 'gravityWell' as const, owner: 'enemy' as const });
+  assert.equal(triggerAbility(conductorState, 0), true);
+  conductorState.player.abilityCooldowns = [0, 0, 0];
+  assert.equal(triggerAbility(conductorState, 1), true);
+  conductorState.player.abilityCooldowns = [0, 0, 0];
+  assert.equal(triggerAbility(conductorState, 2), true);
+  assert.equal(conductorState.hazards[0].active, false, 'Capacitor Conductor three-link sequence should short a nearby Parallax reference field.');
+}
+parallaxSpecializationSmoke();
 
 const healState = createSimulation();
 healState.player.hp = 25;
