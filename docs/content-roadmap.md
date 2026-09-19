@@ -195,7 +195,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] P2.2 Rotating habitat architecture
 - [x] P2.3 Rim / spoke / axis visual differences
 - [x] P2.4 Spindown VFX
-- [ ] P2.5 Machinery/interactables
+- [x] P2.5 Machinery/interactables
 - [ ] P2.6 Local enemy visual identity
 - [ ] P2.7 Sable Voss presentation
 - [ ] P2.8 Biome ambient effects
@@ -307,7 +307,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1 is complete and **P2.4 is now delivered**. Continue in roadmap order with **P2.5 — Machinery/interactables**, keeping enemy presentation, Sable Voss, ambient effects, and the dedicated mobile optimization pass in their later P2 slots.
+P1 is complete and **P2.5 is now delivered**. Continue in roadmap order with **P2.6 — Local enemy visual identity**, keeping Sable Voss, ambient effects, and the dedicated mobile optimization pass in their later P2 slots.
+
+**P2.5 delivered:** Spin Habitat gameplay machinery now has five authored, mobile-LOD-aware families tied to the real mission objects: spin-bus isolators, rim/spoke gravity trims, bearing-control recovery hardware, attitude flywheels, and pressure locks. The renderer selects these families by biome, object kind, and machinery-recovery objective identity while preserving generic salvage/cache visuals where appropriate. Runtime QA exposes the active habitat interactable kit and loaded assets, generated-GLB tests validate every LOD pair and silhouette marker, desktop and mobile-landscape Browser E2E verify authored habitat machinery without procedural fallback, and Android beta.151 re-verifies the packaged runtime, touch flow, Chapter 3 playthrough, package metadata, signature, and emulator smoke.
 
 **P2.4 delivered:** Spin Habitat emergency spindown now has gameplay-driven VFX tied to the real Sector B transfer-gravity state: lowering transfer gravity toward 0.05G activates amber rim brake arcs and a stationary-axis warning pulse while preserving the existing Sector A gravity-coupled architecture rotation. The effect exposes runtime QA state/intensity/source/detail, scales transparency through the adaptive render budget, drops secondary arcs in the performance VFX tier, and retains deterministic nominal/emergency regression coverage. Desktop and mobile-landscape Browser E2E verify the runtime VFX contract, and Android beta.150 re-verifies the packaged runtime, touch flow, Chapter 3 playthrough, package metadata, and emulator smoke.
 
@@ -329,11 +331,12 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.150**
+- Android beta: **0.0.1-beta.151**
 - Package: `app.ironshade.vector`
-- Verified: P2.4 gameplay-driven spindown VFX, deterministic nominal/emergency intensity coverage, adaptive performance-tier VFX reduction, full production regression/build, desktop + mobile-landscape Browser E2E with live spin-phase and spindown runtime assertions, Level 15 beta smoke, Android APK package/version/signature checks, Android emulator runtime/touch smoke, native Chapter 3 touch playthrough, and retained browser/Android QA artifacts
+- Verified: P2.5 authored Spin Habitat machinery/interactables with five adaptive LOD1/LOD2 families, gameplay-object family selection, generated GLB content/silhouette coverage, full production regression/build, desktop + mobile-landscape Browser E2E with live authored-machinery/no-fallback assertions, Level 15 beta smoke, Android APK package/version/signature checks, Android emulator runtime/touch smoke, native Chapter 3 touch playthrough, and retained browser/Android QA artifacts
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P2.4 state derivation commit: `91c40473a6026c31f4a00c620857fea18386fe0c`
-- P2.4 runtime delivery commit: `c96dbdce4f0b071ebd3ec7b6b7cfb33998b02614`
-- P2.4 final browser/asset QA head: `d233be208d2c0ec3201b2a7c689cae141d0b8da4`
-- Android beta.150 artifact head: `d233be208d2c0ec3201b2a7c689cae141d0b8da4`
+- P2.5 runtime delivery commit: `86d575e61b32b205bec8668220a574196be3610d`
+- Browser E2E run: `35473684812`
+- Android beta.151 run: `35473684801`
+- Android beta.151 artifact ID: `10593536805`
+- Android beta.151 artifact head: `86d575e61b32b205bec8668220a574196be3610d`
