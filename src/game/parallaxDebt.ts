@@ -214,6 +214,21 @@ const heldRouteMissions: MissionSpec[] = [
   },
 ];
 
+const parallaxOperationTuning = [
+  { xpFloor: 320, encounterPressureBonus: 0, chapterRewardMultiplier: 1.00 },
+  { xpFloor: 320, encounterPressureBonus: 1, chapterRewardMultiplier: 1.02 },
+  { xpFloor: 320, encounterPressureBonus: 3, chapterRewardMultiplier: 1.05 },
+  { xpFloor: 340, encounterPressureBonus: 2, chapterRewardMultiplier: 1.04 },
+  { xpFloor: 340, encounterPressureBonus: 3, chapterRewardMultiplier: 1.06 },
+  { xpFloor: 340, encounterPressureBonus: 4, chapterRewardMultiplier: 1.08 },
+  { xpFloor: 540, encounterPressureBonus: 4, chapterRewardMultiplier: 1.08 },
+  { xpFloor: 540, encounterPressureBonus: 5, chapterRewardMultiplier: 1.10 },
+  { xpFloor: 380, encounterPressureBonus: 7, chapterRewardMultiplier: 1.12 },
+  { xpFloor: 390, encounterPressureBonus: 6, chapterRewardMultiplier: 1.12 },
+  { xpFloor: 400, encounterPressureBonus: 7, chapterRewardMultiplier: 1.14 },
+  { xpFloor: 425, encounterPressureBonus: 9, chapterRewardMultiplier: 1.18 },
+] as const;
+
 function branchMissions(campaign: CampaignState) {
   if (campaign.story.parallaxDebt.choiceA === 'expose-route') return exposedRouteMissions;
   if (campaign.story.parallaxDebt.choiceA === 'hold-route') return heldRouteMissions;
@@ -227,6 +242,7 @@ function missionForStep(campaign: CampaignState, step: number) {
 
 function buildContract(campaign: CampaignState, step: number, spec: MissionSpec): Contract {
   const objective = missionObjectiveFor(spec.mode, spec.location);
+  const tuning = parallaxOperationTuning[Math.max(0, Math.min(step, parallaxOperationTuning.length - 1))];
   const locationName = spec.location === 'parallax-array'
     ? 'Cislunar Parallax Array'
     : spec.location === 'momentum-exchange'
@@ -260,6 +276,9 @@ function buildContract(campaign: CampaignState, step: number, spec: MissionSpec)
       ? { credits: 390 + step * 25, alloys: 4 + Math.floor(step / 4), electronics: 7, components: 3 + Math.floor(step / 3) }
       : { credits: 370 + step * 24, alloys: 4, electronics: 6 + Math.floor(step / 3), components: 3 + Math.floor(step / 4) },
     reputationGain: 4 + Math.floor(step / 4),
+    xpFloor: tuning.xpFloor,
+    encounterPressureBonus: tuning.encounterPressureBonus,
+    chapterRewardMultiplier: tuning.chapterRewardMultiplier,
     priority: true,
     anomalyOpportunity: false,
     seed: 0x9a1100 + step * 196613 + campaign.contractsCompleted * 17 + (campaign.story.parallaxDebt.choiceA === 'expose-route' ? 43 : campaign.story.parallaxDebt.choiceA === 'hold-route' ? 71 : 0),
