@@ -20,7 +20,7 @@
 .ship-tabs button.selected { background: #1a2d28; }
 .ship-status { margin: 0 0 8px; padding: 7px 10px; border-radius: 7px; font-size: 8px; }
 
-.command-action-row { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 7px; }
+.command-action-row { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px; }
 .command-action-row button { min-height: 58px; padding: 9px; border: 1px solid #2d433d; border-radius: 9px; background: #0b1413; color: #afbfba; text-align: left; }
 .command-action-row button b,.command-action-row button small { display: block; }
 .command-action-row button b { font-size: 9px; }
