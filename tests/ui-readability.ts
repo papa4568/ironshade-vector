@@ -42,6 +42,14 @@ const androidResumeGate = androidSmoke.match(/if \(resumeOnly\) \{[\s\S]*?proces
 const androidSmokeShell = read('scripts/android-runtime-smoke.sh');
 const browserWorkflow = read('.github/workflows/browser-e2e.yml');
 const androidWorkflow = read('.github/workflows/android-apk.yml');
+const parallaxDebt = read('src/game/parallaxDebt.ts');
+const scaling = read('src/game/scaling.ts');
+
+assert(shipHub.includes('P1 // PARALLAX DEBT // LV15–18') && shipHub.includes('parallaxDebtNextRequiredLevel'), 'Campaign UI must present the expanded LV15–18 Parallax Debt progression and its level gates.');
+assert(shipHub.includes('PARALLAX DEBT // CONTRACT') && shipHub.includes('MID-CHAPTER HOLD'), 'Contract and campaign surfaces must explain Parallax Debt progression state.');
+assert(app.includes('getParallaxDebtContract(campaign, profile.level)'), 'Contract generation must enforce Parallax Debt operator-level gates.');
+assert(parallaxDebt.includes("authoredContracts: 9") && parallaxDebt.includes("minimumLevel: 18") && parallaxDebt.includes('MID-CHAPTER VECTOR COMPLETE'), 'Parallax Debt content must preserve the nine-contract LV15–18 vertical slice.');
+assert(scaling.includes("contract.campaignChapter === 'parallax-debt'") && scaling.includes("8 + Math.floor((contract.campaignStep ?? 0) / 3)"), 'Parallax Debt must retain late-game tier scaling across its LV15–18 phases.');
 
 assert(!armory.includes('Review faction doctrines'), 'Equipment Bay still advertises undiscovered faction doctrine targets.');
 assert(!armory.includes('2 PIECE'), 'Equipment Bay still exposes 2-piece set targets.');
