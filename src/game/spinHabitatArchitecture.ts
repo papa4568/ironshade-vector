@@ -8,7 +8,15 @@ export type SpinHabitatArchitectureState = {
   mode: SpinHabitatSpinMode;
 };
 
+export type SpinHabitatSpindownState = {
+  active: boolean;
+  intensity: number;
+  transferGravity: number;
+  transferRatio: number;
+};
+
 const NOMINAL_SPIN_GRAVITY = 1;
+const NOMINAL_TRANSFER_GRAVITY = 0.42;
 const NOMINAL_ANGULAR_SPEED = 0.12;
 
 function clamp(value: number, min: number, max: number) {
@@ -22,4 +30,16 @@ export function spinHabitatArchitectureState(gravity: number): SpinHabitatArchit
   const rpm = angularSpeed * 60 / (Math.PI * 2);
   const mode: SpinHabitatSpinMode = gravityRatio > 1.06 ? 'overspeed' : gravityRatio < 0.82 ? 'reduced' : 'nominal';
   return { gravity: safeGravity, gravityRatio, angularSpeed, rpm, mode };
+}
+
+export function spinHabitatSpindownState(transferGravity: number): SpinHabitatSpindownState {
+  const safeGravity = Number.isFinite(transferGravity) ? Math.max(0, transferGravity) : NOMINAL_TRANSFER_GRAVITY;
+  const transferRatio = clamp(safeGravity / NOMINAL_TRANSFER_GRAVITY, 0, 1.5);
+  const intensity = clamp((0.78 - transferRatio) / 0.66, 0, 1);
+  return {
+    active: intensity > 0.01,
+    intensity,
+    transferGravity: safeGravity,
+    transferRatio,
+  };
 }
