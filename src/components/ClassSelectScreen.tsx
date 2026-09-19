@@ -16,9 +16,54 @@ type Props = {
   onConfirm: (operatorClass: OperatorClassId) => void;
 };
 
+type IntakeCopy = {
+  role: string;
+  learning: string;
+  range: string;
+  pitch: string;
+  summary: string;
+  strengths: [string, string, string];
+  firstFight: string;
+  watchFor: string;
+};
+
+const classIntakeCopy: Record<OperatorClassId, IntakeCopy> = {
+  vanguard: {
+    role: 'Frontline',
+    learning: 'Forgiving',
+    range: 'Close range',
+    pitch: 'Get in close, break armor, and stay standing.',
+    summary: 'Vanguard is the most direct starting role. You create space by charging into a lane, opening armor, and using Guard when enemies collapse on you.',
+    strengths: ['High survivability', 'Armor breaking', 'Close-range control'],
+    firstFight: 'RUSH into range → BREAK the toughest target → GUARD when pressure spikes.',
+    watchFor: 'You are strongest near enemies, so ranged threats can force you to close distance.',
+  },
+  vector: {
+    role: 'Skirmisher',
+    learning: 'Mobile',
+    range: 'Mid / long range',
+    pitch: 'Move first, create an angle, then land the clean shot.',
+    summary: 'Vector rewards repositioning and precision. Shift or dodge to prime Slipstream, lock the important target, then fire from the new angle.',
+    strengths: ['Fast repositioning', 'Precision damage', 'Strong ranged control'],
+    firstFight: 'SHIFT to a new angle → LOCK a priority target → fire or SPLIT through the opening.',
+    watchFor: 'Vector is less forgiving if you stand still or waste your movement windows.',
+  },
+  systems: {
+    role: 'Controller',
+    learning: 'Technical',
+    range: 'Flexible range',
+    pitch: 'Group enemies, spread disruption, and keep your ability loop moving.',
+    summary: 'Systems plays like a combat network. You pull enemies together, hack the group, then chain Arc through the room to recycle capacitor and heat.',
+    strengths: ['Crowd control', 'Ability combos', 'Resource recycling'],
+    firstFight: 'WELL groups the room → HACK spreads control → CHAIN completes the loop.',
+    watchFor: 'Systems gets the most value from using different abilities in sequence instead of repeating one button.',
+  },
+};
+
 export default function ClassSelectScreen({ profile, onConfirm }: Props) {
   const [selectedId, setSelectedId] = useState<OperatorClassId>(() => operatorClassForProfile(profile));
   const selected = operatorClassDefinitions.find(definition => definition.id === selectedId) ?? operatorClassDefinitions[0];
+  const onboarding = classIntakeCopy[selectedId];
   const resonance = useMemo(() => gearResonanceForProfile({ ...profile, operatorClass: selectedId }, selectedId), [profile, selectedId]);
   const activeKit = classAbilityKits[selectedId];
   const specializationNames = selected.specializationIds
@@ -31,73 +76,143 @@ export default function ClassSelectScreen({ profile, onConfirm }: Props) {
       <header className="class-intake-header">
         <div>
           <span>QUIET SIGNAL // OPERATOR INTAKE</span>
-          <h1>Choose your field doctrine</h1>
-          <p>Your class changes how you fight immediately. It guides gear synergy and later specialization, but never locks weapons, Ability Lenses, or Development Network branches.</p>
+          <h1>Pick your combat role</h1>
+          <p>Choose the way you want your first fights to feel. Your class gives you a starting skill kit and signature mechanic; weapons and gear stay open later.</p>
         </div>
         <aside>
-          <small>LOADOUT POLICY</small>
-          <b>OPEN ARSENAL</b>
-          <span>Recalibrate aboard Quiet Signal whenever you want.</span>
+          <small>GOOD TO KNOW</small>
+          <b>Gear is not class-locked</b>
+          <span>You can rebuild your loadout aboard Quiet Signal after intake.</span>
         </aside>
       </header>
 
-      <div className="class-choice-grid">
-        {operatorClassDefinitions.map(definition => {
-          const active = definition.id === selectedId;
-          const preview = gearResonanceForProfile({ ...profile, operatorClass: definition.id }, definition.id);
-          return <button
-            key={definition.id}
-            type="button"
-            className={`class-choice-card class-${definition.id} ${active ? 'selected' : ''}`}
-            aria-label={`Select ${definition.name} class`}
-            aria-pressed={active}
-            onClick={() => setSelectedId(definition.id)}
-          >
-            <div className="class-choice-top">
-              <small>{definition.identity}</small>
-              <strong>{preview.count}/6 RESONANT</strong>
-            </div>
-            <h2>{definition.name}</h2>
-            <p>{definition.description}</p>
-            <div className="class-signature">
-              <small>SIGNATURE // {definition.signatureName}</small>
-              <b>{definition.signatureDescription}</b>
-            </div>
-            <div className="class-card-kit">
-              {classAbilityKits[definition.id].map((ability, index) => <span key={ability.shortName}><small>{['Q', 'E', 'F'][index]}</small><b>{ability.shortName}</b></span>)}
-            </div>
-            <div className="class-choice-foot">
-              <span>{definition.branchAffinities.join(' + ')} affinity</span>
-              <span>{definition.starterPair}</span>
-            </div>
-          </button>;
-        })}
-      </div>
+      <section className="class-choice-section" aria-labelledby="class-choice-heading">
+        <div className="class-choice-section-head">
+          <div>
+            <small>STEP 1</small>
+            <h2 id="class-choice-heading">Choose the role that sounds fun</h2>
+          </div>
+          <span>Vanguard is the most forgiving first pick. All three are fully viable.</span>
+        </div>
 
-      <section className="class-level-one-kit" aria-label={`${selected.name} level one active skills`}>
-        <header><small>LEVEL 1 ACTIVE KIT // {selected.name.toUpperCase()}</small><b>Different skills from the first deployment</b></header>
-        <div>{activeKit.map((ability, index) => <article key={ability.shortName}><small>{['Q', 'E', 'F'][index]} // {ability.shortName}</small><b>{ability.name}</b><span>{ability.description}</span><em>{ability.cost} CAP · {ability.cooldown.toFixed(1)}s base cooldown</em></article>)}</div>
+        <div className="class-choice-grid">
+          {operatorClassDefinitions.map(definition => {
+            const active = definition.id === selectedId;
+            const copy = classIntakeCopy[definition.id];
+            const kit = classAbilityKits[definition.id];
+            return <button
+              key={definition.id}
+              type="button"
+              className={`class-choice-card class-${definition.id} ${active ? 'selected' : ''}`}
+              aria-label={`Select ${definition.name} class`}
+              aria-pressed={active}
+              onClick={() => setSelectedId(definition.id)}
+            >
+              <div className="class-choice-top">
+                <span>{copy.role}</span>
+                <strong>{active ? 'SELECTED' : copy.learning}</strong>
+              </div>
+              <h3>{definition.name}</h3>
+              <b className="class-choice-pitch">{copy.pitch}</b>
+              <div className="class-choice-tags" aria-label={`${definition.name} playstyle`}>
+                <span>{copy.range}</span>
+                {copy.strengths.slice(0, 2).map(strength => <span key={strength}>{strength}</span>)}
+              </div>
+              <div className="class-card-kit" aria-label={`${definition.name} starting abilities`}>
+                {kit.map((ability, index) => <span key={ability.shortName}><small>{['Q', 'E', 'F'][index]}</small><b>{ability.shortName}</b></span>)}
+              </div>
+            </button>;
+          })}
+        </div>
       </section>
-      <section className="class-intake-summary" aria-live="polite">
-        <div className="class-summary-main">
-          <small>{selected.name.toUpperCase()} COMBAT LOOP</small>
-          <b>{selected.combatLoop}</b>
-          <span>{selected.trait}</span>
+
+      <section className={`class-selected-panel class-${selectedId}`} aria-live="polite">
+        <div className="class-selected-overview">
+          <div className="class-selected-heading">
+            <div>
+              <small>STEP 2 // YOUR PICK</small>
+              <h2>{selected.name}</h2>
+              <b>{onboarding.pitch}</b>
+            </div>
+            <span>{onboarding.learning} · {onboarding.range}</span>
+          </div>
+
+          <p className="class-selected-summary">{onboarding.summary}</p>
+
+          <div className="class-selected-facts">
+            <article>
+              <small>HOW TO PLAY</small>
+              <b>{onboarding.firstFight}</b>
+            </article>
+            <article>
+              <small>STARTING LOADOUT</small>
+              <b>{selected.starterPair}</b>
+              <span>First recovery: {operatorClassOnboardingRecovery[selected.id][0].name}</span>
+            </article>
+            <article>
+              <small>SIGNATURE // {selected.signatureName}</small>
+              <b>{selected.signatureDescription}</b>
+            </article>
+          </div>
+
+          <div className="class-new-player-note">
+            <small>WATCH FOR</small>
+            <span>{onboarding.watchFor}</span>
+          </div>
         </div>
-        <div>
-          <small>STARTING RESONANCE</small>
-          <b>{resonance.count}/6 · {resonance.tier >= 1 ? 'TIER I ACTIVE' : 'BUILDING'}</b>
-          <span>{selected.resonanceTier1}</span><span>FIRST RECOVERY // {operatorClassOnboardingRecovery[selected.id][0].name}</span>
+
+        <div className="class-starting-kit">
+          <header>
+            <div>
+              <small>YOUR FIRST 3 ABILITIES</small>
+              <h3>These are the buttons you start with</h3>
+            </div>
+            <span>{onboarding.strengths.join(' · ')}</span>
+          </header>
+          <div className="class-starting-kit-grid">
+            {activeKit.map((ability, index) => <article key={ability.shortName}>
+              <div className="class-skill-key">{['Q', 'E', 'F'][index]}</div>
+              <div>
+                <small>{ability.shortName}</small>
+                <b>{ability.name}</b>
+                <span>{ability.description}</span>
+              </div>
+            </article>)}
+          </div>
         </div>
-        <div>
-          <small>LV15 PATHS</small>
-          <b>{specializationNames.join(' · ')}</b>
-          <span>Specializations deepen this doctrine later; class choice does not spend a progression point.</span>
+
+        <details className="class-advanced-details">
+          <summary>Build details for later</summary>
+          <div>
+            <article>
+              <small>GEAR RESONANCE</small>
+              <b>{resonance.count}/6 · {resonance.tier >= 1 ? 'TIER I ACTIVE' : 'BUILDING'}</b>
+              <span>{selected.resonanceTier1}</span>
+            </article>
+            <article>
+              <small>LEVEL 15 SPECIALIZATIONS</small>
+              <b>{specializationNames.join(' · ')}</b>
+              <span>Specializations deepen the role later; choosing a class does not spend a progression point.</span>
+            </article>
+            <article>
+              <small>OPEN BUILD SYSTEM</small>
+              <b>{selected.branchAffinities.join(' + ')} affinity</b>
+              <span>These branches synergize naturally, but you can still use every weapon family and Development Network branch.</span>
+            </article>
+          </div>
+        </details>
+
+        <div className="class-confirm-row">
+          <div>
+            <small>STEP 3</small>
+            <b>Ready to start as {selected.name}?</b>
+            <span>You can change gear freely later. Class recalibration remains available in Build Bay.</span>
+          </div>
+          <button className="class-confirm" type="button" aria-label={`Confirm ${selected.name}`} onClick={() => onConfirm(selectedId)}>
+            <span>Play {selected.name}</span>
+            <small>Begin aboard Quiet Signal</small>
+          </button>
         </div>
-        <button className="class-confirm" type="button" aria-label={`Confirm ${selected.name}`} onClick={() => onConfirm(selectedId)}>
-          <span>Confirm {selected.name}</span>
-          <small>Begin aboard Quiet Signal</small>
-        </button>
       </section>
     </section>
   </main>;
