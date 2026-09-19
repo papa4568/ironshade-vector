@@ -118,8 +118,8 @@ async function seedCheckpoint({ level, step, status = 'active', choiceA = null, 
       level: ${level},
       operatorClass: 'vanguard',
       classSelectionComplete: true,
-      specialization: level >= 15 ? 'breach-vanguard' : null,
-      specializationOverclock: level >= 16,
+      specialization: ${level} >= 15 ? 'breach-vanguard' : null,
+      specializationOverclock: ${level} >= 16,
     });
     campaign.story.interdiction.status = 'complete';
     campaign.story.parallaxDebt = {
