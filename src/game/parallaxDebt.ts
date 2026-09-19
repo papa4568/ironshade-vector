@@ -4,7 +4,7 @@ export const parallaxDebtChapter = {
   id: 'parallax-debt',
   title: 'Parallax Debt',
   totalContracts: 12,
-  authoredContracts: 9,
+  authoredContracts: 12,
   openingContracts: 3,
 } as const;
 
@@ -22,7 +22,7 @@ type MissionSpec = {
   phaseFinale?: boolean;
 };
 
-const missions: MissionSpec[] = [
+const openingMissions: MissionSpec[] = [
   {
     title: 'Parallax Debt // Baseline Zero',
     location: 'parallax-array',
@@ -129,10 +129,101 @@ const missions: MissionSpec[] = [
     conditions: ['failing-gravity', 'automated-defense'],
     deepTarget: 'Reference Executor Kael Venn',
     evidence: 'false-horizon',
-    aftermath: 'The live transit is physically confirmed. Parallax Debt now has nine banked operations and a bounded active route; the campaign still needs a player decision about how to expose or exploit that route before the final branch is authored.',
+    aftermath: 'The live transit is physically confirmed. Parallax Debt now has nine banked operations and a bounded active route; Quiet Signal must decide whether to expose the correction package or keep the route dark before the final three operations.',
     minimumLevel: 18,
   },
 ];
+
+const exposedRouteMissions: MissionSpec[] = [
+  {
+    title: 'Parallax Debt // Common Reference',
+    location: 'parallax-array',
+    sponsor: 'meridian',
+    mode: 'reference-alignment',
+    briefing: 'Quiet Signal has released the bounded correction package to independent bonded observatories. Hold the Parallax Array against their external clocks, align all three references, and prove the route can be reproduced without trusting Quiet Signal’s private ledger.',
+    conditions: ['failing-gravity', 'low-visibility'],
+    deepTarget: 'Open Baseline Marshal Talia Rook',
+    evidence: 'common-reference',
+    aftermath: 'Independent observatories reproduce the private route against their own clocks. The baseline is no longer exclusive to Quiet Signal, and its operators can no longer erase the route by changing one local ledger.',
+    minimumLevel: 18,
+  },
+  {
+    title: 'Parallax Debt // Witness Transit',
+    location: 'momentum-exchange',
+    sponsor: 'heliostat',
+    mode: 'momentum-capture',
+    briefing: 'Published timing now gives multiple stations the same transit window. Capture the inbound and outbound countermass state while external observers record the event, forcing the hidden traffic to cross a route that is being measured by more than one operator.',
+    conditions: ['failing-gravity', 'automated-defense'],
+    deepTarget: 'Transit Witness Orin Vale',
+    evidence: 'witness-transit',
+    aftermath: 'The hidden vehicle crosses on schedule while independent observers record the same momentum debt. The route remains physically real even after its timing is made public.',
+    minimumLevel: 18,
+  },
+  {
+    title: 'Parallax Debt // Released Vector',
+    location: 'lattice-annex',
+    sponsor: 'meridian',
+    mode: 'grid-isolation',
+    briefing: 'The published route forces its support shell to choose between abandoning the correction stack or defending it in public. Isolate the geometry relays, recover the active service map, and leave enough evidence distributed that the same baseline cannot quietly resume under a new ledger.',
+    conditions: ['damaged-grid', 'automated-defense'],
+    deepTarget: 'Route Custodian Seva Nox',
+    evidence: 'released-vector',
+    aftermath: 'The correction stack is physically mapped and its service dependencies are distributed across independent archives. The route is exposed and disrupted, while client, cargo, original lattice provenance, and purpose remain unsupported.',
+    minimumLevel: 18,
+    phaseFinale: true,
+  },
+];
+
+const heldRouteMissions: MissionSpec[] = [
+  {
+    title: 'Parallax Debt // Dark Baseline',
+    location: 'parallax-array',
+    sponsor: 'longarc',
+    mode: 'reference-alignment',
+    briefing: 'Quiet Signal keeps the bounded route off-network and re-enters the Parallax Array during the next correction cycle. Align all three references without broadcasting the solution, then tag the maintenance delta that tells the route operators whether their private frame is still trusted.',
+    conditions: ['failing-gravity', 'damaged-grid'],
+    deepTarget: 'Baseline Shadow Iven Kade',
+    evidence: 'dark-baseline',
+    aftermath: 'The route operators accept the untouched correction delta. Quiet Signal retains a working private reference without alerting the wider custody network that the full route is known.',
+    minimumLevel: 18,
+  },
+  {
+    title: 'Parallax Debt // Ghost Transit',
+    location: 'damaged-vessel',
+    sponsor: 'longarc',
+    mode: 'deep-salvage',
+    briefing: 'The preserved baseline predicts a courier handoff that never appears in public traffic control. Board the damaged relay hull after the transfer, recover its three navigation cores, and reconstruct what the route exposes only to trusted maintenance crews.',
+    conditions: ['limited-atmosphere', 'low-visibility'],
+    deepTarget: 'Courier Custodian Rhea Sol',
+    evidence: 'ghost-transit',
+    aftermath: 'The courier cores retain the same private correction and a fresh downstream handoff. Quiet Signal can continue following the route without publishing the reference that makes the pursuit possible.',
+    minimumLevel: 18,
+  },
+  {
+    title: 'Parallax Debt // Private Vector',
+    location: 'lattice-annex',
+    sponsor: 'longarc',
+    mode: 'grid-isolation',
+    briefing: 'The downstream handoff terminates at a geometry relay that can invalidate the private frame if it detects a compromised client. Isolate the relay, copy its active service map, and leave the correction stack operational so Quiet Signal keeps a live path into the network.',
+    conditions: ['damaged-grid', 'low-visibility'],
+    deepTarget: 'Quiet Route Warden Sera Venn',
+    evidence: 'private-vector',
+    aftermath: 'Quiet Signal leaves with a live service map and a still-valid private route. Access is preserved for future pursuit, while client, cargo, original lattice provenance, and purpose remain unsupported.',
+    minimumLevel: 18,
+    phaseFinale: true,
+  },
+];
+
+function branchMissions(campaign: CampaignState) {
+  if (campaign.story.parallaxDebt.choiceA === 'expose-route') return exposedRouteMissions;
+  if (campaign.story.parallaxDebt.choiceA === 'hold-route') return heldRouteMissions;
+  return [] as MissionSpec[];
+}
+
+function missionForStep(campaign: CampaignState, step: number) {
+  if (step < openingMissions.length) return openingMissions[step] ?? null;
+  return branchMissions(campaign)[step - openingMissions.length] ?? null;
+}
 
 function buildContract(campaign: CampaignState, step: number, spec: MissionSpec): Contract {
   const objective = missionObjectiveFor(spec.mode, spec.location);
@@ -149,7 +240,7 @@ function buildContract(campaign: CampaignState, step: number, spec: MissionSpec)
             : spec.location;
 
   return {
-    id: `parallax-debt-${step}`,
+    id: step < openingMissions.length ? `parallax-debt-${step}` : `parallax-debt-${step}-${campaign.story.parallaxDebt.choiceA}`,
     sponsor: spec.sponsor,
     archetype: spec.mode === 'momentum-capture' || spec.mode === 'grid-isolation' ? 'stabilization' : spec.mode === 'deep-salvage' ? 'boarding' : 'salvage',
     location: spec.location,
@@ -171,7 +262,7 @@ function buildContract(campaign: CampaignState, step: number, spec: MissionSpec)
     reputationGain: 4 + Math.floor(step / 4),
     priority: true,
     anomalyOpportunity: false,
-    seed: 0x9a1100 + step * 196613 + campaign.contractsCompleted * 17,
+    seed: 0x9a1100 + step * 196613 + campaign.contractsCompleted * 17 + (campaign.story.parallaxDebt.choiceA === 'expose-route' ? 43 : campaign.story.parallaxDebt.choiceA === 'hold-route' ? 71 : 0),
     campaignChapter: 'parallax-debt',
     campaignStep: step,
     campaignFinale: !!spec.phaseFinale,
@@ -217,16 +308,62 @@ export function syncParallaxDebtAccess(campaign: CampaignState, operatorLevel: n
   };
 }
 
+export function getParallaxDebtChoicePrompt(campaign: CampaignState) {
+  const progress = campaign.story.parallaxDebt;
+  if (progress.status !== 'active' || progress.step !== openingMissions.length || progress.choiceA) return null;
+  return {
+    title: 'What should Quiet Signal do with the bounded Parallax route?',
+    body: 'False Horizon proves a live route and gives Quiet Signal the correction package needed to reproduce it. Exposing that package creates independent witnesses and burns the route’s secrecy. Keeping it compartmentalized preserves a live path for further pursuit. Both choices keep the evidence boundary intact: client, cargo, origin, and purpose remain unknown.',
+    choices: [
+      {
+        id: 'expose-route',
+        title: 'Expose the route',
+        body: 'Publish the correction package to independent observatories and force the final operations into a witnessed, reproducible baseline.',
+        consequence: 'Final operations: Common Reference → Witness Transit → Released Vector.',
+        reputation: 'meridian' as FactionId,
+      },
+      {
+        id: 'hold-route',
+        title: 'Keep the route dark',
+        body: 'Keep the correction package aboard Quiet Signal and use the final operations to preserve covert access deeper into the support network.',
+        consequence: 'Final operations: Dark Baseline → Ghost Transit → Private Vector.',
+        reputation: 'longarc' as FactionId,
+      },
+    ],
+  };
+}
+
+export function chooseParallaxDebtBranch(campaign: CampaignState, choiceId: string) {
+  const prompt = getParallaxDebtChoicePrompt(campaign);
+  const choice = prompt?.choices.find(item => item.id === choiceId);
+  if (!choice) return campaign;
+  const reputation = {
+    ...campaign.reputation,
+    [choice.reputation]: Math.max(-10, Math.min(20, campaign.reputation[choice.reputation] + 1)),
+  };
+  const lastBeat = `${choice.title} // ${choice.consequence}`;
+  return {
+    ...campaign,
+    reputation,
+    story: {
+      ...campaign.story,
+      parallaxDebt: { ...campaign.story.parallaxDebt, choiceA: choice.id, lastBeat },
+      lastBeat,
+    },
+    lastOutcome: `${factionDisplayName(choice.reputation)} campaign decision // ${choice.title}`,
+  };
+}
+
 export function parallaxDebtNextRequiredLevel(campaign: CampaignState) {
   const progress = campaign.story.parallaxDebt;
-  if (progress.status !== 'active') return null;
-  return missions[progress.step]?.minimumLevel ?? null;
+  if (progress.status !== 'active' || getParallaxDebtChoicePrompt(campaign)) return null;
+  return missionForStep(campaign, progress.step)?.minimumLevel ?? null;
 }
 
 export function getParallaxDebtContract(campaign: CampaignState, operatorLevel = 20) {
   const progress = campaign.story.parallaxDebt;
-  if (progress.status !== 'active') return null;
-  const spec = missions[progress.step];
+  if (progress.status !== 'active' || getParallaxDebtChoicePrompt(campaign)) return null;
+  const spec = missionForStep(campaign, progress.step);
   if (!spec || operatorLevel < spec.minimumLevel) return null;
   return buildContract(campaign, progress.step, spec);
 }
@@ -241,14 +378,19 @@ export function advanceParallaxDebtAfterContract(campaign: CampaignState, comple
     : progress.evidence;
   const nextStep = progress.step + 1;
   const complete = nextStep >= parallaxDebtChapter.totalContracts;
-  const currentSpec = missions[completed.campaignStep];
-  const nextSpec = missions[nextStep];
+  const currentSpec = missionForStep(campaign, completed.campaignStep);
+  const nextSpec = missionForStep(campaign, nextStep);
+  const needsChoice = !complete && nextStep === openingMissions.length && !progress.choiceA;
 
   let note: string;
   if (complete) {
-    note = 'PARALLAX DEBT COMPLETE // the private baseline route has been physically resolved through its final branch.';
+    note = progress.choiceA === 'expose-route'
+      ? 'PARALLAX DEBT COMPLETE // OPEN REFERENCE // the private route is independently reproducible and its local support stack is disrupted. Client, cargo, lattice origin, and purpose remain unresolved.'
+      : 'PARALLAX DEBT COMPLETE // QUIET CUSTODY // Quiet Signal retains a live private route and downstream service map for future pursuit. Client, cargo, lattice origin, and purpose remain unresolved.';
+  } else if (needsChoice) {
+    note = `${completed.campaignAftermath ?? 'The live route is bounded.'} CAMPAIGN DECISION REQUIRED // expose the correction package or keep the route dark before the final three operations.`;
   } else if (!nextSpec) {
-    note = 'PARALLAX DEBT // MID-CHAPTER VECTOR COMPLETE // nine authored operations now bound a live private route from LV15 through LV18. The campaign remains active for its decision branch and final three contracts.';
+    note = 'PARALLAX DEBT // ROUTE DECISION REQUIRED // choose how Quiet Signal handles the bounded route before the final operations can appear.';
   } else if (nextSpec.minimumLevel > (currentSpec?.minimumLevel ?? 15)) {
     note = `${completed.campaignAftermath ?? `Parallax evidence advanced // ${factionDisplayName(completed.sponsor)} record banked.`} NEXT PHASE // reach LV${nextSpec.minimumLevel} to continue Parallax Debt.`;
   } else {
@@ -284,6 +426,12 @@ const evidenceText: Record<string, string> = {
   'null-transit': 'A geometry service timing buffer proves the correction stack is supporting moving traffic instead of a hypothetical route model.',
   'counterfactual-burn': 'Physical countermass debt proves an unlisted vehicle crossed the exchange inside the private reference frame.',
   'false-horizon': 'A live LV18 alignment directly observes the route crossing the Parallax Array during an active reference-shear window.',
+  'common-reference': 'Independent observatories reproduce the private route against their own clocks after Quiet Signal releases the correction package.',
+  'witness-transit': 'Multiple observers record the same hidden transit and countermass debt after the route timing is made public.',
+  'released-vector': 'The route support stack is physically mapped and distributed across independent archives, preventing the same baseline from quietly resuming unchanged.',
+  'dark-baseline': 'The route accepts an unbroadcast correction delta, preserving Quiet Signal’s covert access to the private reference.',
+  'ghost-transit': 'A courier relay preserves the private correction and exposes a fresh downstream handoff without publishing the route.',
+  'private-vector': 'Quiet Signal retains a live service map and still-valid private route into the support network.',
 };
 
 export function parallaxDebtEvidence(campaign: CampaignState) {
