@@ -653,10 +653,7 @@
     font-size: 19px;
   }
   .class-intake-header p {
-    max-width: 680px;
-    margin-top: 3px;
-    font-size: 6.5px;
-    line-height: 1.3;
+    display: none;
   }
   .class-intake-header aside {
     display: block;
@@ -691,17 +688,14 @@
     font-size: 8px;
   }
   .class-choice-section-head > span {
-    margin-left: auto;
-    max-width: none;
-    font-size: 5.5px;
-    text-align: right;
+    display: none;
   }
   .class-choice-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 5px;
   }
   .class-choice-card {
-    min-height: 88px;
+    min-height: 82px;
     padding: 6px 7px;
     gap: 3px;
     border-radius: 9px;
@@ -761,9 +755,7 @@
     font-size: 4.5px;
   }
   .class-selected-summary {
-    margin-top: 4px;
-    font-size: 5.3px;
-    line-height: 1.22;
+    display: none;
   }
   .class-selected-facts {
     margin-top: 4px;
