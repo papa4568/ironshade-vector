@@ -79,7 +79,7 @@ const areaDescriptions: Record<PrimaryArea, string> = {
   intel: 'Campaign, stories, factions and evidence',
 };
 const tabLabels: Record<Tab, string> = {
-  overview: 'Tasking',
+  overview: 'Overview',
   contracts: 'Contracts',
   stats: 'Stats',
   campaign: 'Campaign',
@@ -284,7 +284,7 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
     { id: 'intel', icon: Database },
   ];
   const openPrimaryArea = (area: PrimaryArea) => switchTab(areaTabs[area][0]);
-  const pageTitle = tab === 'overview' ? 'Tasking' : areaLabels[primaryArea];
+  const pageTitle = tab === 'overview' ? 'Overview' : areaLabels[primaryArea];
 
   return <main className={`ship-hub area-${primaryArea}`}>
     <aside className="command-rail" aria-label="Primary navigation">
