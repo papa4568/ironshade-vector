@@ -191,6 +191,14 @@ for (const path of glbs) {
                     ? 'parallax-shear-anchor-spine'
                     : filename.includes('parallax-reference-console')
                       ? 'parallax-reference-console-screen'
+                      : filename.includes('spin-habitat-ring-segment')
+                        ? 'spin-habitat-ring-segment-deck'
+                        : filename.includes('spin-habitat-spoke-truss')
+                          ? 'spin-habitat-spoke-truss-main'
+                          : filename.includes('spin-habitat-axis-hub')
+                            ? 'spin-habitat-axis-hub-core'
+                            : filename.includes('spin-habitat-service-bay')
+                              ? 'spin-habitat-service-bay-shell'
           : filename.includes('floor-panel')
             ? 'refinery-floor-panel'
             : filename.includes('floor-service-grate')
@@ -224,6 +232,19 @@ for (const path of glbs) {
     if (filename.includes('damaged-vessel-service-bundle') && filename.endsWith('-lod1.glb')) {
       assert(nodeNames.has('damaged-vessel-service-bundle-junction'), `${relativePath}: service bundle is missing junction housing`);
       assert(nodeNames.has('damaged-vessel-service-bundle-conduit-a'), `${relativePath}: service bundle is missing exposed conduit detail`);
+    }
+
+
+    if (filename.includes('spin-habitat-ring-segment') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('spin-habitat-ring-segment-rib-left'), `${relativePath}: Spin Habitat ring LOD1 is missing structural rib detail`);
+      assert(nodeNames.has('spin-habitat-ring-segment-service-strip'), `${relativePath}: Spin Habitat ring LOD1 is missing service-light detail`);
+    }
+    if (filename.includes('spin-habitat-spoke-truss') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('spin-habitat-spoke-truss-cross-brace-a'), `${relativePath}: Spin Habitat spoke LOD1 is missing cross-brace detail`);
+    }
+    if (filename.includes('spin-habitat-axis-hub') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('spin-habitat-axis-hub-service-ring'), `${relativePath}: Spin Habitat axis hub LOD1 is missing service-ring detail`);
+      assert(nodeNames.has('spin-habitat-axis-hub-control-screen'), `${relativePath}: Spin Habitat axis hub LOD1 is missing control readout`);
     }
 
     if (filename.includes('parallax-baseline-pylon') && filename.endsWith('-lod1.glb')) {
@@ -352,6 +373,14 @@ for (const interactableAsset of ['interactable-control-terminal', 'interactable-
   assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, `${interactableAsset}: mobile LOD2 must reduce payload and draw surfaces`);
 }
 
+
+
+for (const asset of ['spin-habitat-ring-segment', 'spin-habitat-spoke-truss', 'spin-habitat-axis-hub', 'spin-habitat-service-bay']) {
+  const lod1 = reportByPath.get(`environments/${asset}-lod1.glb`);
+  const lod2 = reportByPath.get(`environments/${asset}-lod2.glb`);
+  assert(lod1 && lod2, `${asset}: Spin Habitat LOD1/LOD2 pair missing`);
+  assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, `${asset}: Spin Habitat mobile LOD2 must reduce payload and draw surfaces`);
+}
 
 for (const asset of ['parallax-baseline-pylon', 'parallax-reference-frame', 'parallax-mass-carriage', 'parallax-shear-anchor', 'parallax-reference-console']) {
   const lod1 = reportByPath.get(`environments/${asset}-lod1.glb`);
