@@ -7,7 +7,7 @@ import { getWorldSize, type CombatObject, type Enemy, type Player, type SimState
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, locationArtIdentityFor, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
 import { lootColor } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
-import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES, OPERATOR_CLASS_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, SPIN_HABITAT_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
+import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, SPIN_HABITAT_ENEMY_ASSET_FAMILIES, SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES, OPERATOR_CLASS_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, SPIN_HABITAT_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
 import { configureGraphicsAssetRenderer, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
 import { spinHabitatArchitectureState, spinHabitatSpindownState } from './spinHabitatArchitecture';
 
@@ -21,6 +21,23 @@ const roleColors: Record<Enemy['role'], number> = {
   elite: 0xc34f6e,
   boss: 0xd04c46,
 };
+
+function spinHabitatEnemyAssetFamily(enemy: Enemy, mission: Contract) {
+  if (mission.location !== 'spin-habitat' || enemy.role === 'boss') return null;
+  if (enemy.variant === 'marksman') return SPIN_HABITAT_ENEMY_ASSET_FAMILIES.marksman;
+  if (enemy.variant === 'gravitySpecialist') return SPIN_HABITAT_ENEMY_ASSET_FAMILIES.gravitySpecialist;
+  if (enemy.variant === 'droneCarrier') return SPIN_HABITAT_ENEMY_ASSET_FAMILIES.droneCarrier;
+  if (enemy.variant === 'shieldBoarder') return SPIN_HABITAT_ENEMY_ASSET_FAMILIES.shieldBoarder;
+  return null;
+}
+
+function spinHabitatEnemyColor(enemy: Enemy) {
+  if (enemy.variant === 'marksman') return 0x3d6159;
+  if (enemy.variant === 'gravitySpecialist') return 0x40585c;
+  if (enemy.variant === 'droneCarrier') return 0x485d56;
+  if (enemy.variant === 'shieldBoarder') return 0x506157;
+  return roleColors[enemy.role];
+}
 
 const weaponColors: Record<WeaponId, number> = {
   carbine: 0xd9f3c6,
@@ -87,6 +104,7 @@ type EnemyVisual = {
   authoredRoot: THREE.Group | null;
   authoredMaterials: THREE.MeshStandardMaterial[];
   authoredOwnedMaterials: THREE.Material[];
+  authoredAssetId: string | null;
   rig: EnemyRig | null;
 };
 
@@ -426,7 +444,7 @@ export class ThreeCombatRenderer {
       void this.loadAuthoredOperator(state.build.operatorClass);
     }
     this.syncPlayer(state, operatorFaction);
-    this.syncEnemies(state, mobileTargetId);
+    this.syncEnemies(state, mission, mobileTargetId);
     this.syncDamageNumbers(state);
     this.syncProjectiles(state, budget.transparencyScale);
     this.syncGroundLoot(state);
@@ -2365,7 +2383,7 @@ export class ThreeCombatRenderer {
     this.emergencyLight.intensity = state.weaponFlash > 0 ? 32 : state.eventT > 0 ? 12 : 5;
   }
 
-  private createEnemyVisual(enemy: Enemy) {
+  private createEnemyVisual(enemy: Enemy, mission: Contract) {
     const root = new THREE.Group();
     const bossScale = enemy.role === 'boss' ? 1.75 : enemy.role === 'elite' ? 1.22 : 1;
     const material = new THREE.MeshStandardMaterial({ color: roleColors[enemy.role], metalness: 0.64, roughness: 0.4 });
@@ -2490,15 +2508,18 @@ export class ThreeCombatRenderer {
       authoredRoot: null,
       authoredMaterials: [],
       authoredOwnedMaterials: [],
+      authoredAssetId: null,
       rig: null,
     };
     this.enemyVisuals.set(enemy.id, visual);
-    void this.loadAuthoredEnemy(visual, enemy);
+    void this.loadAuthoredEnemy(visual, enemy, mission);
     return visual;
   }
 
-  private async loadAuthoredEnemy(visual: EnemyVisual, enemy: Enemy) {
-    const spec = selectGraphicsAssetSpec(ENEMY_ASSET_FAMILIES[enemy.role], this.coarse ? 0.55 : 1);
+  private async loadAuthoredEnemy(visual: EnemyVisual, enemy: Enemy, mission: Contract) {
+    const spinHabitatFamily = spinHabitatEnemyAssetFamily(enemy, mission);
+    const family = spinHabitatFamily ?? ENEMY_ASSET_FAMILIES[enemy.role];
+    const spec = selectGraphicsAssetSpec(family, this.coarse ? 0.55 : 1);
     if (!spec) return;
 
     try {
@@ -2536,7 +2557,7 @@ export class ThreeCombatRenderer {
         root.position.y -= bounds.min.y;
         root.position.z -= center.z;
       }
-      root.name = `authored-enemy-${enemy.role}`;
+      root.name = `authored-enemy-${spinHabitatFamily?.id ?? enemy.role}`;
       visual.root.add(root);
 
       const rigCandidates = {
@@ -2564,6 +2585,7 @@ export class ThreeCombatRenderer {
       visual.authoredRoot = root;
       visual.authoredOwnedMaterials = [...standardMaterials];
       visual.authoredMaterials = tintable.length > 0 ? tintable : [...standardMaterials];
+      visual.authoredAssetId = family.id;
       visual.proceduralVisuals.forEach(item => { item.visible = false; });
 
       this.authoredEnemyCount += 1;
@@ -2571,6 +2593,14 @@ export class ThreeCombatRenderer {
       this.renderer.domElement.dataset.enemyVisual = 'authored';
       this.renderer.domElement.dataset.enemyAuthoredCount = String(this.authoredEnemyCount);
       this.renderer.domElement.dataset.enemyRoles = [...this.authoredEnemyRoles].sort().join(',');
+      if (spinHabitatFamily) {
+        const localAssets = new Set((this.renderer.domElement.dataset.enemyLocalAssets ?? '').split(',').filter(Boolean));
+        localAssets.add(spec.id);
+        this.renderer.domElement.dataset.enemyBiome = 'spin-habitat';
+        this.renderer.domElement.dataset.enemyLocalVisual = 'authored';
+        this.renderer.domElement.dataset.enemyLocalKit = 'spoke-marksman+spin-trim-specialist+ring-drone-carrier+axis-shield-boarder';
+        this.renderer.domElement.dataset.enemyLocalAssets = [...localAssets].sort().join(',');
+      }
       if (enemy.role === 'boss') {
         this.renderer.domElement.dataset.bossSignature = 'authored-boss+phase-ring+pylons';
         this.renderer.domElement.dataset.bossTelegraph = 'directional-wedge+phase-halo+pulse';
@@ -2581,7 +2611,12 @@ export class ThreeCombatRenderer {
       const fallback = new Set((this.renderer.domElement.dataset.enemyFallbackRoles ?? '').split(',').filter(Boolean));
       fallback.add(enemy.role);
       this.renderer.domElement.dataset.enemyFallbackRoles = [...fallback].sort().join(',');
-      console.warn(`Authored ${enemy.role} enemy asset failed to load; keeping procedural fallback.`, error);
+      if (spinHabitatFamily) {
+        const localFallback = new Set((this.renderer.domElement.dataset.enemyLocalFallback ?? '').split(',').filter(Boolean));
+        localFallback.add(enemy.variant);
+        this.renderer.domElement.dataset.enemyLocalFallback = [...localFallback].sort().join(',');
+      }
+      console.warn(`Authored ${spinHabitatFamily?.id ?? enemy.role} enemy asset failed to load; keeping procedural fallback.`, error);
     }
   }
 
@@ -2684,11 +2719,11 @@ export class ThreeCombatRenderer {
     this.renderer.domElement.dataset.bossPhaseVisual = `phase:${enemy.bossPhase}+pattern:${enemy.bossPattern}+telegraph:${enemy.telegraph > 0 ? 'active' : 'idle'}`;
   }
 
-  private syncEnemies(state: SimState, mobileTargetId: number | null) {
+  private syncEnemies(state: SimState, mission: Contract, mobileTargetId: number | null) {
     const seen = new Set<number>();
     for (const enemy of state.enemies) {
       seen.add(enemy.id);
-      const visual = this.enemyVisuals.get(enemy.id) ?? this.createEnemyVisual(enemy);
+      const visual = this.enemyVisuals.get(enemy.id) ?? this.createEnemyVisual(enemy, mission);
       visual.root.visible = enemy.active;
       visual.barRoot.visible = enemy.active && !enemy.dead;
       if (!enemy.active) continue;
@@ -2718,7 +2753,7 @@ export class ThreeCombatRenderer {
         const statusEmissive = enemy.statuses.disrupted > 0 ? 0x63508a : enemy.telegraph > 0 ? 0x7a3327 : bossPhaseEmissive;
         const statusIntensity = enemy.statuses.disrupted > 0 || enemy.telegraph > 0 ? 0.28 : bossPhaseEmissive ? 0.24 : 0;
         for (const material of visual.authoredMaterials) {
-          material.color.setHex(enemy.role === 'boss' && enemy.bossPhase === 2 ? 0xc76252 : roleColors[enemy.role]);
+          material.color.setHex(enemy.role === 'boss' && enemy.bossPhase === 2 ? 0xc76252 : visual.authoredAssetId?.startsWith('spin-habitat-') ? spinHabitatEnemyColor(enemy) : roleColors[enemy.role]);
           material.emissive.setHex(statusEmissive);
           material.emissiveIntensity = statusIntensity;
         }

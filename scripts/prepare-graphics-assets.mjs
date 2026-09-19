@@ -402,6 +402,82 @@ function enemyMobileNodes(role) {
   ];
 }
 
+function spinHabitatEnemyRole(identity) {
+  if (identity === 'spokeMarksman') return 'suppressor';
+  if (identity === 'axisShieldBoarder') return 'assault';
+  return 'technician';
+}
+
+function spinHabitatEnemyMarker(identity, lod) {
+  const mobile = lod === 2;
+  if (identity === 'spokeMarksman') {
+    return mobile
+      ? [
+          { name: 'spin-habitat-spoke-marksman-brace', mesh: 1, translation: [-0.08, 0.28, 0], scale: [0.40, 0.18, 1.10] },
+          { name: 'spin-habitat-spoke-marksman-optic', mesh: 4, translation: [0.08, 0.62, 0], scale: [0.10, 0.34, 0.10] },
+        ]
+      : [
+          { name: 'spin-habitat-spoke-marksman-brace', mesh: 1, translation: [-0.14, 0.30, 0], scale: [0.54, 0.16, 1.18] },
+          { name: 'spin-habitat-spoke-marksman-optic', mesh: 4, translation: [0.04, 0.82, 0], scale: [0.08, 0.50, 0.08] },
+          { name: 'spin-habitat-spoke-marksman-counterweight', mesh: 2, translation: [-0.38, 0.04, 0], scale: [0.22, 0.36, 0.62] },
+        ];
+  }
+  if (identity === 'spinTrimSpecialist') {
+    return mobile
+      ? [
+          { name: 'spin-habitat-spin-trim-gyro', mesh: 4, translation: [-0.24, 0.24, 0], scale: [0.12, 0.70, 0.54] },
+          { name: 'spin-habitat-spin-trim-index', mesh: 4, translation: [0.32, 0.16, 0], scale: [0.05, 0.34, 0.30] },
+        ]
+      : [
+          { name: 'spin-habitat-spin-trim-gyro-left', mesh: 4, translation: [-0.30, 0.24, 0.30], scale: [0.10, 0.72, 0.12] },
+          { name: 'spin-habitat-spin-trim-gyro-right', mesh: 4, translation: [-0.30, 0.24, -0.30], scale: [0.10, 0.72, 0.12] },
+          { name: 'spin-habitat-spin-trim-index', mesh: 4, translation: [0.34, 0.16, 0], scale: [0.05, 0.38, 0.34] },
+        ];
+  }
+  if (identity === 'ringDroneCarrier') {
+    return mobile
+      ? [
+          { name: 'spin-habitat-ring-drone-rack', mesh: 2, translation: [-0.28, 0.20, 0], scale: [0.24, 0.56, 1.02] },
+          { name: 'spin-habitat-ring-drone-beacon', mesh: 4, translation: [-0.34, 0.56, 0], scale: [0.08, 0.20, 0.54] },
+        ]
+      : [
+          { name: 'spin-habitat-ring-drone-rack', mesh: 2, translation: [-0.32, 0.18, 0], scale: [0.28, 0.56, 1.08] },
+          { name: 'spin-habitat-ring-drone-pod-left', mesh: 1, translation: [-0.34, 0.18, 0.54], scale: [0.24, 0.30, 0.30] },
+          { name: 'spin-habitat-ring-drone-pod-right', mesh: 1, translation: [-0.34, 0.18, -0.54], scale: [0.24, 0.30, 0.30] },
+          { name: 'spin-habitat-ring-drone-beacon', mesh: 4, translation: [-0.38, 0.58, 0], scale: [0.08, 0.18, 0.58] },
+        ];
+  }
+  return mobile
+    ? [
+        { name: 'spin-habitat-axis-shield', mesh: 1, translation: [0.28, 0.12, 0.52], scale: [0.16, 0.76, 0.62] },
+        { name: 'spin-habitat-axis-stabilizer', mesh: 4, translation: [-0.26, 0.16, 0], scale: [0.10, 0.62, 0.52] },
+      ]
+    : [
+        { name: 'spin-habitat-axis-shield', mesh: 1, translation: [0.34, 0.10, 0.56], scale: [0.16, 0.86, 0.68] },
+        { name: 'spin-habitat-axis-shield-rim', mesh: 4, translation: [0.43, 0.12, 0.56], scale: [0.04, 0.70, 0.54] },
+        { name: 'spin-habitat-axis-stabilizer', mesh: 4, translation: [-0.30, 0.18, 0], scale: [0.10, 0.66, 0.56] },
+      ];
+}
+
+function spinHabitatEnemyNodes(identity, lod) {
+  const nodes = lod === 2 ? enemyMobileNodes(spinHabitatEnemyRole(identity)) : enemyNodes(spinHabitatEnemyRole(identity));
+  const root = nodes.pop();
+  const torsoIndex = nodes.findIndex(node => node.name === 'torso');
+  const backpackIndex = nodes.findIndex(node => node.name === 'backpack');
+  const helmetIndex = nodes.findIndex(node => node.name === 'helmet');
+  const markers = spinHabitatEnemyMarker(identity, lod);
+  for (const marker of markers) {
+    const index = nodes.length;
+    nodes.push(marker);
+    const parentIndex = marker.name.includes('optic') ? helmetIndex : marker.name.includes('drone') || marker.name.includes('gyro') || marker.name.includes('stabilizer') ? backpackIndex : torsoIndex;
+    nodes[parentIndex].children ??= [];
+    nodes[parentIndex].children.push(index);
+  }
+  nodes.push(root);
+  return nodes;
+}
+
+
 function weaponMobileNodes(id) {
   if (id === 'carbine') {
     return [
@@ -1383,6 +1459,18 @@ const enemyProfiles = [
 for (const [role, folder, primary, accent] of enemyProfiles) {
   outputs.push(await writeAsset(`${folder}/enemy-${role}-lod1.glb`, `enemy-${role}-lod1`, enemyNodes(role), materials(primary, accent)));
   outputs.push(await writeAsset(`${folder}/enemy-${role}-lod2.glb`, `enemy-${role}-lod2`, enemyMobileNodes(role), materials(primary, accent)));
+}
+
+const spinHabitatEnemyProfiles = [
+  ['spokeMarksman', 'spin-habitat-spoke-marksman', [0.24, 0.38, 0.35, 1], [0.50, 0.88, 0.78]],
+  ['spinTrimSpecialist', 'spin-habitat-spin-trim-specialist', [0.25, 0.33, 0.36, 1], [0.45, 0.86, 0.92]],
+  ['ringDroneCarrier', 'spin-habitat-ring-drone-carrier', [0.28, 0.36, 0.33, 1], [0.56, 0.94, 0.76]],
+  ['axisShieldBoarder', 'spin-habitat-axis-shield-boarder', [0.31, 0.38, 0.34, 1], [0.62, 0.90, 0.72]],
+];
+
+for (const [identity, id, primary, accent] of spinHabitatEnemyProfiles) {
+  outputs.push(await writeAsset(`enemies/${id}-lod1.glb`, `${id}-lod1`, spinHabitatEnemyNodes(identity, 1), materials(primary, accent)));
+  outputs.push(await writeAsset(`enemies/${id}-lod2.glb`, `${id}-lod2`, spinHabitatEnemyNodes(identity, 2), materials(primary, accent)));
 }
 
 const weaponProfiles = [
