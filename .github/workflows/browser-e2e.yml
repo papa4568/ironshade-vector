@@ -140,6 +140,8 @@ jobs:
           BROWSER_E2E_SCREENSHOT: browser-e2e-${{ matrix.viewport }}.png
           BROWSER_E2E_COMMAND_SCREENSHOT: browser-command-${{ matrix.viewport }}.png
           BROWSER_E2E_CLASS_SCREENSHOT: browser-class-${{ matrix.viewport }}.png
+          BROWSER_E2E_CHAPTER3_SCREENSHOT: browser-chapter3-${{ matrix.viewport }}.png
+          BROWSER_E2E_CHAPTER3_REPORT: browser-chapter3-${{ matrix.viewport }}.json
         run: |
           node scripts/browser-runtime-smoke.mjs
           node scripts/verify-authored-operator.mjs
@@ -149,6 +151,7 @@ jobs:
           node scripts/verify-authored-refinery.mjs
           BROWSER_E2E_LOCATION=damaged-vessel BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-damaged-vessel.png node scripts/browser-runtime-smoke.mjs
           node scripts/verify-authored-damaged-vessel.mjs
+          node scripts/browser-chapter3-playthrough.mjs
 
       - name: Upload browser QA evidence
         if: ${{ always() }}
@@ -157,6 +160,8 @@ jobs:
           name: ironshade-vector-browser-e2e-${{ matrix.viewport }}
           path: |
             browser-class-${{ matrix.viewport }}.png
+            browser-chapter3-${{ matrix.viewport }}.png
+            browser-chapter3-${{ matrix.viewport }}.json
             browser-command-${{ matrix.viewport }}.png
             browser-e2e-${{ matrix.viewport }}.png
             browser-e2e-${{ matrix.viewport }}-damaged-vessel.png
