@@ -213,7 +213,7 @@ function parallaxSpecializationSmoke() {
   const pressureShear = pressureState.hazards[0];
   Object.assign(pressureShear, { active: true, x: pressureState.player.x + 90, y: pressureState.player.y, radius: 210, life: 5, kind: 'vectorWash' as const, owner: 'enemy' as const });
   assert.equal(triggerAbility(pressureState, 0), true, 'Pressure Diver should be able to cast into a live Parallax shear field.');
-  assert.equal(pressureShear.active, false, 'Pressure Diver should collapse a nearby hostile Parallax shear field.');
+  assert.equal(pressureState.hazards.some(hazard => hazard.active && hazard.owner !== 'player' && hazard.kind === 'vectorWash'), false, 'Pressure Diver should collapse the hostile Parallax shear field.');
   assert.ok(pressureState.hazards.some(hazard => hazard.active && hazard.kind === 'vacuumWake' && hazard.owner === 'player'), 'Pressure Diver should convert collapsed shear into a player-owned vacuum wake.');
 
   const momentumProfile = { ...createDefaultProfile(), xp: 8100, level: 16, operatorClass: 'vector' as const, classSelectionComplete: true, specialization: 'momentum-broker' as const, specializationOverclock: true };
