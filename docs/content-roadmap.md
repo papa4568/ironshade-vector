@@ -192,7 +192,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ### Spin Habitat
 - [x] P2.1 Unique environment kit
-- [ ] P2.2 Rotating habitat architecture
+- [x] P2.2 Rotating habitat architecture
 - [ ] P2.3 Rim / spoke / axis visual differences
 - [ ] P2.4 Spindown VFX
 - [ ] P2.5 Machinery/interactables
@@ -307,9 +307,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1 is complete and **P2.1 is now delivered**. Continue in roadmap order with **P2.2 — Rotating habitat architecture**, then deepen rim/spoke/axis identity without folding later P2 items into the foundation pass.
+P1 is complete and **P2.2 is now delivered**. Continue in roadmap order with **P2.3 — Rim / spoke / axis visual differences**, keeping spindown VFX, machinery/interactables, enemy presentation, ambient effects, and mobile optimization in their dedicated later P2 passes.
 
-**P2.1 delivered:** Spin Habitat now has an authored reusable environment kit with ring segments, spoke trusses, an axis hub, and service bays; every family ships adaptive LOD1/LOD2 assets, runtime authored placement, procedural fallback, and graphics-content regression coverage. Rotation behavior, stronger zone differentiation, spindown VFX, machinery/interactables, local enemy presentation, ambient effects, and the dedicated mobile performance pass remain in P2.2–P2.9.
+**P2.2 delivered:** Spin Habitat ring segments, spoke trusses, and service bays now share a gravity-coupled rotating structural frame while the central axis hub remains stationary. The procedural fallback rotates with an asymmetric witness marker, runtime QA exposes spin mode/RPM/phase/source, spin overspeed naturally accelerates the visual frame through sector-A gravity, and desktop/mobile browser QA verifies that the rendered phase advances. Stronger rim/spoke/axis differentiation, spindown VFX, machinery/interactables, local enemy presentation, ambient effects, and the dedicated mobile performance pass remain in P2.3–P2.9.\n\n**P2.1 delivered:** Spin Habitat now has an authored reusable environment kit with ring segments, spoke trusses, an axis hub, and service bays; every family ships adaptive LOD1/LOD2 assets, runtime authored placement, procedural fallback, and graphics-content regression coverage.
 
 **P1.22 delivered:** Chapter 3 now uses a smoother authored pressure curve, stronger late/finale material premiums, separate opening-vs-closing boss durability budgets, preserved no-side-grind LV15–18 XP gates, and dedicated regression coverage for the tuned values. Android beta.134 re-verified the packaged combat/touch/lifecycle and native Chapter 3 touch flow.
 
@@ -323,8 +323,8 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.139**
+- Android beta: **0.0.1-beta.140**
 - Package: `app.ironshade.vector`
-- Verified: P2.1 Spin Habitat authored environment kit, full production regression/build, Browser E2E, Level 15 beta smoke, Android APK package/version/signature checks, Android emulator runtime/touch smoke, and retained Android QA artifacts
+- Verified: P2.2 gravity-coupled Spin Habitat architecture, full production regression/build, desktop + mobile-landscape Browser E2E with live spin-phase advancement, Level 15 beta smoke, Android APK package/version/signature checks, Android emulator runtime/touch smoke, native Chapter 3 touch playthrough, and retained Android QA artifacts
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- Verified delivery commit before this roadmap-only sync: `4807d2dd09d9dda382664064a3b5620018dec87f`
+- Game-code delivery commit: `785a09042b6df6ac933fefad26f982ed6743c75e`\n- Browser QA fixture follow-up before this roadmap-only sync: `7e422cb843bfc4ca8fa024743c16d7c5c86f8b35`\n- Android beta.140 artifact head: `785a09042b6df6ac933fefad26f982ed6743c75e`
