@@ -236,6 +236,7 @@ function parallaxSpecializationSmoke() {
   const gridState = createSimulation(deriveCombatBuild(gridProfile));
   const conduit = gridState.objects.find(object => object.kind === 'conduit')!;
   conduit.active = true;
+  conduit.exposed = true;
   conduit.x = gridState.player.x + 140;
   conduit.y = gridState.player.y - conduit.h / 2;
   Object.assign(gridState.hazards[0], { active: true, x: conduit.x + conduit.w / 2 + 40, y: conduit.y + conduit.h / 2, radius: 185, life: 5, kind: 'gravityWell' as const, owner: 'enemy' as const });
