@@ -227,6 +227,37 @@ export const REFINERY_ASSET_FAMILIES = {
 export const SHOWCASE_REFINERY_MODULE_FAMILY: GraphicsAssetFamily = REFINERY_ASSET_FAMILIES.processor;
 
 
+export const SPIN_HABITAT_ENEMY_ASSET_FAMILIES = {
+  marksman: {
+    id: 'spin-habitat-spoke-marksman',
+    lods: {
+      1: createGraphicsAssetSpec('spin-habitat-spoke-marksman-lod1', 'enemy', '/assets/models/enemies/spin-habitat-spoke-marksman-lod1.glb', 1),
+      2: createGraphicsAssetSpec('spin-habitat-spoke-marksman-lod2', 'enemy', '/assets/models/enemies/spin-habitat-spoke-marksman-lod2.glb', 2),
+    },
+  },
+  gravitySpecialist: {
+    id: 'spin-habitat-spin-trim-specialist',
+    lods: {
+      1: createGraphicsAssetSpec('spin-habitat-spin-trim-specialist-lod1', 'enemy', '/assets/models/enemies/spin-habitat-spin-trim-specialist-lod1.glb', 1),
+      2: createGraphicsAssetSpec('spin-habitat-spin-trim-specialist-lod2', 'enemy', '/assets/models/enemies/spin-habitat-spin-trim-specialist-lod2.glb', 2),
+    },
+  },
+  droneCarrier: {
+    id: 'spin-habitat-ring-drone-carrier',
+    lods: {
+      1: createGraphicsAssetSpec('spin-habitat-ring-drone-carrier-lod1', 'enemy', '/assets/models/enemies/spin-habitat-ring-drone-carrier-lod1.glb', 1),
+      2: createGraphicsAssetSpec('spin-habitat-ring-drone-carrier-lod2', 'enemy', '/assets/models/enemies/spin-habitat-ring-drone-carrier-lod2.glb', 2),
+    },
+  },
+  shieldBoarder: {
+    id: 'spin-habitat-axis-shield-boarder',
+    lods: {
+      1: createGraphicsAssetSpec('spin-habitat-axis-shield-boarder-lod1', 'enemy', '/assets/models/enemies/spin-habitat-axis-shield-boarder-lod1.glb', 1),
+      2: createGraphicsAssetSpec('spin-habitat-axis-shield-boarder-lod2', 'enemy', '/assets/models/enemies/spin-habitat-axis-shield-boarder-lod2.glb', 2),
+    },
+  },
+} as const satisfies Record<'marksman' | 'gravitySpecialist' | 'droneCarrier' | 'shieldBoarder', GraphicsAssetFamily>;
+
 export const ENEMY_ASSET_FAMILIES = {
   assault: {
     id: 'enemy-assault',
