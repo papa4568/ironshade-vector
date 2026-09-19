@@ -269,7 +269,7 @@ function buildContract(campaign: CampaignState, step: number, spec: MissionSpec)
     conditions: spec.conditions,
     conditionLabels: spec.conditions.map(condition => conditionLabel[condition]),
     directorPreview: spec.location === 'parallax-array'
-      ? 'PARALLAX ECOLOGY // reference shear reverses local gravity vectors; specialist units exploit the moving baseline. Aligning pylons collapses active shear fields.'
+      ? 'PARALLAX ECOLOGY // reference shear reverses local gravity vectors; specialist units exploit the moving baseline. Vanguard Breach Rush interrupts Shear Runner countersteps; Vector Deadeye Lock breaks Long-Baseline firing solutions; Systems Relay Hack overloads Reference Technician buses. Aligning pylons collapses active shear fields.'
       : 'PARALLAX CROSSCHECK // each operation converts the private reference into a different physical record: navigation, machinery, geometry, or momentum.',
     deepTarget: spec.deepTarget,
     rewardBase: spec.location === 'parallax-array'

@@ -72,12 +72,12 @@ Repository checklist for the current content plan. Keep this file synchronized w
   - [x] Parallax Shear Runner
   - [x] Reference Shear Technician
   - [x] Long-Baseline Marksman
-- [ ] **P1.8** Add explicit class-specific counters/interactions for Chapter 3 enemies
-  - [ ] Review P1.17 specialization mechanics first and avoid duplicating specialization-specific interactions
-  - [ ] Add clear Vanguard-specific enemy counterplay
-  - [ ] Add clear Vector-specific enemy counterplay
-  - [ ] Add clear Systems-specific enemy counterplay
-  - [ ] Add deterministic regression coverage for all three class interactions
+- [x] **P1.8** Add explicit class-specific counters/interactions for Chapter 3 enemies
+  - [x] Review P1.17 specialization mechanics first and avoid duplicating specialization-specific interactions
+  - [x] Add clear Vanguard-specific enemy counterplay
+  - [x] Add clear Vector-specific enemy counterplay
+  - [x] Add clear Systems-specific enemy counterplay
+  - [x] Add deterministic regression coverage for all three class interactions
 
 ### Boss
 
@@ -290,13 +290,12 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 Follow these in order unless testing reveals a blocker or a smaller prerequisite:
 
-1. **P1.8** — Review whether P1.17 already covers the intended class counterplay; finish only the missing class-level enemy interactions and regression coverage.
-2. **P1.15** — Add Normal/Prototype Chapter 3 gear identities.
-3. **P1.18** — Finish dedicated Parallax Debt Intel/campaign presentation.
-4. **P1.20** — Complete a full Chapter 3 browser/mobile campaign playthrough.
-5. **P1.21** — Complete a full Chapter 3 Android hands-on playtest.
-6. **P1.22** — Apply final reward, boss difficulty, enemy pressure, and completion-pacing tuning from playtest findings.
-7. Close the two remaining P1 completion gates: full LV15–18 balance pass and complete Chapter 3 playtest.
+1. **P1.15** — Add Normal/Prototype Chapter 3 gear identities.
+2. **P1.18** — Finish dedicated Parallax Debt Intel/campaign presentation.
+3. **P1.20** — Complete a full Chapter 3 browser/mobile campaign playthrough.
+4. **P1.21** — Complete a full Chapter 3 Android hands-on playtest.
+5. **P1.22** — Apply final reward, boss difficulty, enemy pressure, and completion-pacing tuning from playtest findings.
+6. Close the two remaining P1 completion gates: full LV15–18 balance pass and complete Chapter 3 playtest.
 
 Further Sera Nox boss tuning should be folded into the P1.20–P1.22 playtest/balance pass instead of handled as a disconnected task.
 
