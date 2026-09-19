@@ -312,6 +312,38 @@ await waitFor(`(() => {
 
 const firstSurface = await snapshot();
 if ((firstSurface.text ?? '').toLowerCase().includes('operator intake')) {
+  const classLayout = await evaluate(`(() => {
+    const root = document.querySelector('.class-intake');
+    const shell = document.querySelector('.class-intake-shell');
+    const confirm = document.querySelector('.class-confirm');
+    const detail = document.querySelector('.class-selected-panel');
+    const cards = [...document.querySelectorAll('.class-choice-card')];
+    if (!root || !shell || !confirm || !detail || cards.length !== 3) return null;
+    const viewport = {
+      width: window.visualViewport?.width ?? window.innerWidth,
+      height: window.visualViewport?.height ?? window.innerHeight,
+    };
+    const rect = element => {
+      const value = element.getBoundingClientRect();
+      return { left: value.left, top: value.top, right: value.right, bottom: value.bottom, width: value.width, height: value.height };
+    };
+    const confirmRect = rect(confirm);
+    const detailRect = rect(detail);
+    return {
+      viewport,
+      horizontalOverflow: Math.max(0, root.scrollWidth - root.clientWidth),
+      scrollTop: root.scrollTop,
+      confirm: confirmRect,
+      detail: detailRect,
+      cardCount: cards.length,
+      confirmOnscreen: confirmRect.left >= -1 && confirmRect.right <= viewport.width + 1 && confirmRect.top >= -1 && confirmRect.bottom <= viewport.height + 1,
+      detailOnscreen: detailRect.left >= -1 && detailRect.right <= viewport.width + 1,
+    };
+  })()`);
+  if (!classLayout || classLayout.horizontalOverflow > 2 || classLayout.scrollTop !== 0 || !classLayout.detailOnscreen || !classLayout.confirmOnscreen) {
+    throw new Error(`Android class selection layout is not first-screen safe: ${JSON.stringify(classLayout)}`);
+  }
+  console.log(`ANDROID_CLASS_SELECTION_LAYOUT_PASS viewport=${Math.round(classLayout.viewport.width)}x${Math.round(classLayout.viewport.height)} horizontalOverflow=${classLayout.horizontalOverflow}px confirm=onscreen`);
   await tapButton('Select Vanguard class', 11);
   await tapButton('Confirm Vanguard', 12);
   await waitFor(`(() => {
