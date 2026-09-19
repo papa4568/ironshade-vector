@@ -216,17 +216,17 @@ const heldRouteMissions: MissionSpec[] = [
 
 const parallaxOperationTuning = [
   { xpFloor: 320, encounterPressureBonus: 0, chapterRewardMultiplier: 1.00 },
-  { xpFloor: 320, encounterPressureBonus: 1, chapterRewardMultiplier: 1.02 },
-  { xpFloor: 320, encounterPressureBonus: 3, chapterRewardMultiplier: 1.05 },
-  { xpFloor: 340, encounterPressureBonus: 2, chapterRewardMultiplier: 1.04 },
-  { xpFloor: 340, encounterPressureBonus: 3, chapterRewardMultiplier: 1.06 },
-  { xpFloor: 340, encounterPressureBonus: 4, chapterRewardMultiplier: 1.08 },
-  { xpFloor: 540, encounterPressureBonus: 4, chapterRewardMultiplier: 1.08 },
-  { xpFloor: 540, encounterPressureBonus: 5, chapterRewardMultiplier: 1.10 },
-  { xpFloor: 380, encounterPressureBonus: 7, chapterRewardMultiplier: 1.12 },
-  { xpFloor: 390, encounterPressureBonus: 6, chapterRewardMultiplier: 1.12 },
-  { xpFloor: 400, encounterPressureBonus: 7, chapterRewardMultiplier: 1.14 },
-  { xpFloor: 425, encounterPressureBonus: 9, chapterRewardMultiplier: 1.18 },
+  { xpFloor: 320, encounterPressureBonus: 1, chapterRewardMultiplier: 1.03 },
+  { xpFloor: 320, encounterPressureBonus: 2, chapterRewardMultiplier: 1.08 },
+  { xpFloor: 340, encounterPressureBonus: 2, chapterRewardMultiplier: 1.05 },
+  { xpFloor: 340, encounterPressureBonus: 3, chapterRewardMultiplier: 1.07 },
+  { xpFloor: 340, encounterPressureBonus: 4, chapterRewardMultiplier: 1.10 },
+  { xpFloor: 540, encounterPressureBonus: 4, chapterRewardMultiplier: 1.10 },
+  { xpFloor: 540, encounterPressureBonus: 5, chapterRewardMultiplier: 1.12 },
+  { xpFloor: 380, encounterPressureBonus: 6, chapterRewardMultiplier: 1.16 },
+  { xpFloor: 390, encounterPressureBonus: 6, chapterRewardMultiplier: 1.14 },
+  { xpFloor: 400, encounterPressureBonus: 7, chapterRewardMultiplier: 1.17 },
+  { xpFloor: 425, encounterPressureBonus: 8, chapterRewardMultiplier: 1.24 },
 ] as const;
 
 function branchMissions(campaign: CampaignState) {

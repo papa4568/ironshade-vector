@@ -1,5 +1,6 @@
 import type { Contract, ObjectiveMode } from './campaign';
 import type { CombatObject, SimState } from './sim';
+import { parallaxDebtChapter } from './parallaxDebt';
 import { reserveNavigationLanes } from './mapNavigation';
 
 export type MissionObjectiveStatus = {
@@ -454,8 +455,13 @@ function configureParallaxFinale(state: SimState, contract: Contract) {
   if (contract.campaignChapter !== 'parallax-debt' || !contract.campaignFinale) return;
   const boss = state.enemies.find(enemy => enemy.role === 'boss');
   if (!boss) return;
-  boss.variant = 'baselineKeeper'; boss.hp = 860; boss.maxHp = 860; boss.armor = 300; boss.maxArmor = 300; boss.anchored = false; boss.x = 2030; boss.y = 520;
-  for (const [id, x, y] of [['baseline-anchor-a', 1770, 300], ['baseline-anchor-b', 2040, 720]] as const) { const node = systemObject(id, 'Live baseline servo', 'anchorNode', x, y, 52, 52); node.active = true; node.exposed = true; node.hp = 82; node.maxHp = 82; addObject(state, node); }
+
+  const openingFinale = (contract.campaignStep ?? parallaxDebtChapter.totalContracts - 1) < parallaxDebtChapter.openingContracts;
+  const bossHp = openingFinale ? 680 : 820;
+  const bossArmor = openingFinale ? 220 : 270;
+  const anchorHp = openingFinale ? 64 : 76;
+  boss.variant = 'baselineKeeper'; boss.hp = bossHp; boss.maxHp = bossHp; boss.armor = bossArmor; boss.maxArmor = bossArmor; boss.anchored = false; boss.x = 2030; boss.y = 520;
+  for (const [id, x, y] of [['baseline-anchor-a', 1770, 300], ['baseline-anchor-b', 2040, 720]] as const) { const node = systemObject(id, 'Live baseline servo', 'anchorNode', x, y, 52, 52); node.active = true; node.exposed = true; node.hp = anchorHp; node.maxHp = anchorHp; addObject(state, node); }
 }
 
 function configureEscalationFinale(state: SimState, contract: Contract) {

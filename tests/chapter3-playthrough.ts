@@ -11,7 +11,9 @@ import {
   parallaxDebtNextRequiredLevel,
   syncParallaxDebtAccess,
 } from '../src/game/parallaxDebt';
-import { type Telemetry } from '../src/game/sim';
+import { applyEncounterLayout } from '../src/game/encounters';
+import { operationScalingFor } from '../src/game/scaling';
+import { createSimulation, type Telemetry } from '../src/game/sim';
 
 type RouteChoice = 'expose-route' | 'hold-route';
 
@@ -26,6 +28,9 @@ const commonTitles = [
   'Parallax Debt // Counterfactual Burn',
   'Parallax Debt // False Horizon',
 ];
+
+const expectedPressure = [0, 1, 2, 2, 3, 4, 4, 5, 6, 6, 7, 8] as const;
+const expectedRewardMultiplier = [1.00, 1.03, 1.08, 1.05, 1.07, 1.10, 1.10, 1.12, 1.16, 1.14, 1.17, 1.24] as const;
 
 const routeTitles: Record<RouteChoice, string[]> = {
   'expose-route': [
@@ -90,29 +95,53 @@ function bankOperation(
   assert.equal(contract.campaignChapter, 'parallax-debt');
   assert.equal(contract.campaignStep, step);
   assert.equal(contract.title, expectedTitle);
+  assert.equal(contract.encounterPressureBonus, expectedPressure[step], `${contract.title} should use the tuned Chapter 3 pressure curve`);
+  assert.equal(contract.chapterRewardMultiplier, expectedRewardMultiplier[step], `${contract.title} should use the tuned Chapter 3 reward curve`);
 
-  const campaignReward = settleContract(campaign, contract, 'safe', 4);
+  const scaledContract = { ...contract, ...operationScalingFor(contract, campaign, profile.level) };
+  assert.ok((scaledContract.operationRewardMultiplier ?? 1) >= (contract.chapterRewardMultiplier ?? 1), `${contract.title} should apply its Chapter 3 reward premium to scaled operation rewards`);
+
+  if (contract.campaignFinale) {
+    const encounter = createSimulation();
+    applyEncounterLayout(encounter, scaledContract);
+    const boss = encounter.enemies.find(enemy => enemy.role === 'boss');
+    assert.ok(boss, `${contract.title} should stage a Parallax command target`);
+    const anchors = encounter.objects.filter(object => object.id.startsWith('baseline-anchor-'));
+    assert.equal(anchors.length, 2, `${contract.title} should stage both baseline servos`);
+    if (step === 2) {
+      assert.equal(boss.maxHp, 680, 'Blind Meridian should use the tuned opening-finale health budget');
+      assert.equal(boss.maxArmor, 220, 'Blind Meridian should use the tuned opening-finale armor budget');
+      assert.ok(anchors.every(anchor => anchor.maxHp === 64), 'Blind Meridian baseline servos should use the opening-finale durability budget');
+    }
+    if (step === 11) {
+      assert.equal(boss.maxHp, 820, 'Chapter 3 closing bosses should use the tuned final health budget');
+      assert.equal(boss.maxArmor, 270, 'Chapter 3 closing bosses should use the tuned final armor budget');
+      assert.ok(anchors.every(anchor => anchor.maxHp === 76), 'Chapter 3 closing servos should use the final durability budget');
+    }
+  }
+
+  const campaignReward = settleContract(campaign, scaledContract, 'safe', 4);
   const lootReward = awardRecovery(profile, telemetryFor(step), false, campaign.shipUpgrades.fabrication, {
-    deepTarget: contract.deepTarget,
-    location: contract.location,
-    locationName: contract.locationName,
-    campaignChapter: contract.campaignChapter,
-    faction: contract.sponsor,
-    factionReputation: campaignReward.campaign.reputation[contract.sponsor],
-    operationTier: contract.operationTier,
-    maxRecoveryLevel: contract.maxRecoveryLevel,
-    combatEffectiveness: contract.combatEffectiveness,
-    threatBudget: contract.threatBudget,
+    deepTarget: scaledContract.deepTarget,
+    location: scaledContract.location,
+    locationName: scaledContract.locationName,
+    campaignChapter: scaledContract.campaignChapter,
+    faction: scaledContract.sponsor,
+    factionReputation: campaignReward.campaign.reputation[scaledContract.sponsor],
+    operationTier: scaledContract.operationTier,
+    maxRecoveryLevel: scaledContract.maxRecoveryLevel,
+    combatEffectiveness: scaledContract.combatEffectiveness,
+    threatBudget: scaledContract.threatBudget,
     eliteProtocolCount: telemetryFor(step).eliteProtocolsDefeated,
-    environmentalComplications: contract.environmentalEventSlots,
+    environmentalComplications: scaledContract.environmentalEventSlots,
     actualDepth: false,
-    xpFloor: contract.xpFloor,
+    xpFloor: scaledContract.xpFloor,
   });
-  assert.ok(lootReward.xpGained >= (contract.xpFloor ?? 0), `${contract.title} should honor its authored XP floor`);
+  assert.ok(lootReward.xpGained >= (scaledContract.xpFloor ?? 0), `${scaledContract.title} should honor its authored XP floor`);
 
-  const advanced = advanceParallaxDebtAfterContract(campaignReward.campaign, contract);
-  assert.ok(advanced.note, `${contract.title} should produce a Chapter 3 campaign note`);
-  return { campaign: advanced.campaign, profile: lootReward.profile, contract };
+  const advanced = advanceParallaxDebtAfterContract(campaignReward.campaign, scaledContract);
+  assert.ok(advanced.note, `${scaledContract.title} should produce a Chapter 3 campaign note`);
+  return { campaign: advanced.campaign, profile: lootReward.profile, contract: scaledContract };
 }
 
 function assertGate(campaign: CampaignState, currentLevel: number, requiredLevel: number) {
