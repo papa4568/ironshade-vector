@@ -112,8 +112,19 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ### Progression / Builds
 
-- [ ] **P1.16** Tune XP progression across LV15–18
-- [ ] **P1.17** Make specializations materially affect Chapter 3 encounters
+- [x] **P1.16** Tune XP progression across LV15–18
+  - [x] Authored safe-extraction XP floors carry the 12-operation campaign through the LV16/LV17/LV18 gates without unrelated side-contract grinding
+  - [x] LV18 closing operations continue meaningful progression instead of dropping back to generic recovery pacing
+  - [x] Chapter-specific reward multipliers rise with late-campaign pressure while deep extraction can still exceed the XP floor
+  - [x] Authored encounter patterns/reserve counts survive operation scaling; late operations add explicit threat-budget pressure
+- [x] **P1.17** Make specializations materially affect Chapter 3 encounters
+  - [x] Pressure Diver converts hostile reference shear into vacuum wakes that disrupt Parallax specialists
+  - [x] Momentum Broker recovers additional recoil energy inside live reference fields
+  - [x] Grid Weaver collapses nearby reference shear through machinery-routed Arc
+  - [x] Survey Deadeye gains stronger precision interruption against Parallax reference enemies
+  - [x] Redline Pilot overclock dodges punch through nearby shear fields
+  - [x] Breach Vanguard armor breaks suppress Parallax specialist hardware
+  - [x] Capacitor Conductor three-link cycles short nearby reference fields and disrupt reference enemies
 - [x] Campaign progression unlocks at LV15 after Interdiction
 - [x] Chapter 3 continuation is level-gated at LV16, LV17, and LV18
 - [x] Existing saves migrate safely into expanded Parallax Debt state
