@@ -210,6 +210,44 @@ function operatorNodes() {
   ];
 }
 
+function operatorClassNodes(operatorClass) {
+  const nodes = operatorNodes();
+  const root = nodes.pop();
+  const torsoIndex = nodes.findIndex(node => node.name === 'torso');
+  const backpackIndex = nodes.findIndex(node => node.name === 'backpack');
+  const helmetIndex = nodes.findIndex(node => node.name === 'helmet');
+  const leftLegIndex = nodes.findIndex(node => node.name === 'leg-left');
+  const rightLegIndex = nodes.findIndex(node => node.name === 'leg-right');
+  const attach = (parentIndex, node) => {
+    const index = nodes.length;
+    nodes.push(node);
+    nodes[parentIndex].children ??= [];
+    nodes[parentIndex].children.push(index);
+    return index;
+  };
+
+  if (operatorClass === 'vanguard') {
+    attach(torsoIndex, { name: 'vanguard-breacher-pauldrons', mesh: 1, translation: [-0.02, 0.32, 0], scale: [0.38, 0.22, 0.92] });
+    attach(torsoIndex, { name: 'vanguard-ram-plate', mesh: 1, translation: [0.34, 0.08, 0], scale: [0.18, 0.52, 0.60] });
+    attach(torsoIndex, { name: 'vanguard-guard-light', mesh: 4, translation: [0.44, 0.20, 0], scale: [0.05, 0.18, 0.30] });
+    attach(backpackIndex, { name: 'vanguard-reactive-pack', mesh: 2, translation: [-0.16, 0.04, 0], scale: [0.34, 0.60, 0.58] });
+  } else if (operatorClass === 'vector') {
+    attach(torsoIndex, { name: 'vector-stabilizer-left', mesh: 1, translation: [-0.14, 0.20, 0.55], scale: [0.30, 0.08, 0.22] });
+    attach(torsoIndex, { name: 'vector-stabilizer-right', mesh: 1, translation: [-0.14, 0.20, -0.55], scale: [0.30, 0.08, 0.22] });
+    attach(backpackIndex, { name: 'vector-thruster-spine', mesh: 4, translation: [-0.34, 0.08, 0], scale: [0.10, 0.64, 0.18] });
+    attach(leftLegIndex, { name: 'vector-calf-thruster-left', mesh: 4, translation: [-0.18, -0.42, 0], scale: [0.08, 0.28, 0.10] });
+    attach(rightLegIndex, { name: 'vector-calf-thruster-right', mesh: 4, translation: [-0.18, -0.42, 0], scale: [0.08, 0.28, 0.10] });
+  } else if (operatorClass === 'systems') {
+    attach(backpackIndex, { name: 'systems-relay-left', mesh: 4, translation: [-0.30, 0.22, 0.28], scale: [0.09, 0.56, 0.09] });
+    attach(backpackIndex, { name: 'systems-relay-right', mesh: 4, translation: [-0.30, 0.22, -0.28], scale: [0.09, 0.56, 0.09] });
+    attach(backpackIndex, { name: 'systems-capacitor-bank', mesh: 2, translation: [-0.30, -0.18, 0], scale: [0.22, 0.34, 0.58] });
+    attach(helmetIndex, { name: 'systems-sensor-crown', mesh: 4, translation: [-0.04, 0.38, 0], scale: [0.08, 0.28, 0.08] });
+  }
+
+  nodes.push(root);
+  return nodes;
+}
+
 function enemyNodes(role) {
   const boss = role === 'boss';
   const suppressor = role === 'suppressor';
@@ -730,6 +768,21 @@ outputs.push(await writeAsset(
   operatorNodes(),
   materials([0.28, 0.45, 0.42, 1], [0.20, 0.80, 0.68]),
 ));
+
+const operatorClassProfiles = [
+  ['vanguard', [0.34, 0.31, 0.28, 1], [0.95, 0.50, 0.24]],
+  ['vector', [0.24, 0.34, 0.40, 1], [0.34, 0.78, 1.00]],
+  ['systems', [0.30, 0.26, 0.40, 1], [0.66, 0.50, 0.92]],
+];
+
+for (const [operatorClass, primary, accent] of operatorClassProfiles) {
+  outputs.push(await writeAsset(
+    `operators/operator-${operatorClass}-lod1.glb`,
+    `operator-${operatorClass}-lod1`,
+    operatorClassNodes(operatorClass),
+    materials(primary, accent),
+  ));
+}
 
 const enemyProfiles = [
   ['assault', 'enemies/enemy-assault-lod1.glb', [0.56, 0.18, 0.14, 1], [0.95, 0.33, 0.22]],
