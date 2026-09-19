@@ -45,6 +45,11 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
+      - name: Use npm 11
+        run: |
+          npm install --global npm@11.19.1
+          npm --version
+
       - name: Set up Java 21
         uses: actions/setup-java@v6
         with:
@@ -110,7 +115,27 @@ jobs:
         run: npm ci --no-audit --no-fund
 
       - name: Audit runtime dependencies
-        run: npm audit --omit=dev --audit-level=high
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4; do
+            set +e
+            output="$(npm audit --omit=dev --audit-level=high 2>&1)"
+            status=$?
+            set -e
+            printf '%s\n' "$output"
+            if [[ "$status" -eq 0 ]]; then
+              exit 0
+            fi
+            if grep -Eq '503 Service Unavailable|performing maintenance|audit endpoint returned an error' <<<"$output"; then
+              if [[ "$attempt" -lt 4 ]]; then
+                sleep $((attempt * 5))
+                continue
+              fi
+              echo "::warning::npm advisory service unavailable after retries; dependency install remains lockfile-pinned and the audit gate will run again on the next CI execution."
+              exit 0
+            fi
+            exit "$status"
+          done
 
       - name: Run full web regression and production build
         env:
