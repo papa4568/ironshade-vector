@@ -187,6 +187,19 @@ assert(rendererSource.includes("dataset.interactableBiome = 'spin-habitat'"), 'S
 assert(rendererSource.includes("dataset.interactableMode = 'spin-habitat-machinery+mission-controls'"), 'Spin Habitat P2.5 must expose its gameplay-specific interactable mode');
 assert(rendererSource.includes("dataset.interactableKit = 'spin-bus-isolator+gravity-trim+bearing-control+attitude-flywheel+pressure-lock'"), 'Spin Habitat P2.5 must expose the complete machinery kit');
 
+assert(rendererSource.includes('SPIN_HABITAT_ENEMY_ASSET_FAMILIES'), 'Spin Habitat P2.6 must select dedicated local enemy asset families');
+for (const asset of ['spin-habitat-spoke-marksman', 'spin-habitat-spin-trim-specialist', 'spin-habitat-ring-drone-carrier', 'spin-habitat-axis-shield-boarder']) {
+  assert(manifestSource.includes(`${asset}-lod1.glb`) && manifestSource.includes(`${asset}-lod2.glb`), `Spin Habitat P2.6 local enemy asset ${asset} must preserve adaptive LOD1/LOD2 coverage`);
+}
+for (const variant of ['marksman', 'gravitySpecialist', 'droneCarrier', 'shieldBoarder']) {
+  assert(rendererSource.includes(`enemy.variant === '${variant}'`), `Spin Habitat P2.6 must bind authored identity to gameplay variant ${variant}`);
+}
+assert(rendererSource.includes("mission.location !== 'spin-habitat' || enemy.role === 'boss'"), 'Spin Habitat P2.6 must stay biome-local and leave Sable Voss boss presentation for P2.7');
+assert(rendererSource.includes("dataset.enemyBiome = 'spin-habitat'"), 'Spin Habitat P2.6 local enemy activation must remain observable for QA');
+assert(rendererSource.includes("dataset.enemyLocalVisual = 'authored'"), 'Spin Habitat P2.6 must expose authored local enemy activation');
+assert(rendererSource.includes("dataset.enemyLocalKit = 'spoke-marksman+spin-trim-specialist+ring-drone-carrier+axis-shield-boarder'"), 'Spin Habitat P2.6 must expose its complete local enemy kit');
+assert(rendererSource.includes('visual.authoredAssetId?.startsWith(\'spin-habitat-\') ? spinHabitatEnemyColor(enemy)'), 'Spin Habitat P2.6 must preserve its cool-green local palette instead of generic role tinting');
+
 assert(rendererSource.includes('PARALLAX_ASSET_FAMILIES'), 'Cislunar Parallax Array must load through authored environment asset families');
 for (const asset of ['parallax-baseline-pylon', 'parallax-reference-frame', 'parallax-mass-carriage', 'parallax-shear-anchor', 'parallax-reference-console']) {
   assert(manifestSource.includes(`${asset}-lod1.glb`) && manifestSource.includes(`${asset}-lod2.glb`), `Parallax asset ${asset} must preserve adaptive LOD1/LOD2 coverage`);
