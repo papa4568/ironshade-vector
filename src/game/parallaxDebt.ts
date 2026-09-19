@@ -129,7 +129,7 @@ const openingMissions: MissionSpec[] = [
     conditions: ['failing-gravity', 'automated-defense'],
     deepTarget: 'Reference Executor Kael Venn',
     evidence: 'false-horizon',
-    aftermath: 'The live transit is physically confirmed. Parallax Debt now has nine banked operations and a bounded active route; the campaign still needs a player decision about how to expose or exploit that route before the final branch is authored.',
+    aftermath: 'The live transit is physically confirmed. Parallax Debt now has nine banked operations and a bounded active route; Quiet Signal must decide whether to expose the correction package or keep the route dark before the final three operations.',
     minimumLevel: 18,
   },
 ];
