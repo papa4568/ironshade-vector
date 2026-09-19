@@ -298,11 +298,11 @@ export function createSimulation(build: CombatBuild = neutralCombatBuild): SimSt
   seed = 0x5f3759df;
   const carbineConfig = resolveWeaponConfig(build, 'carbine'); const breacherConfig = resolveWeaponConfig(build, 'breacher'); const railConfig = resolveWeaponConfig(build, 'rail');
   const classBootText = build.operatorClass === 'vanguard'
-    ? 'VANGUARD ONLINE // CLOSE BREACH CONTACT BUILDS GUARD'
+    ? 'VANGUARD ONLINE // RUSH / BREAK / GUARD // BREACH LANE READY'
     : build.operatorClass === 'vector'
-      ? 'VECTOR ONLINE // DODGE PRIMES SLIPSTREAM SHOT'
+      ? 'VECTOR ONLINE // SHIFT / LOCK / SPLIT // PRECISION ROUTE READY'
       : build.operatorClass === 'systems'
-        ? 'SYSTEMS ONLINE // CHAIN MAG / MARK / ARC FOR CLOSED LOOP'
+        ? 'SYSTEMS ONLINE // WELL / HACK / CHAIN // CLOSED LOOP READY'
         : 'VECTOR SYSTEM ONLINE // MULTI-SYSTEM COMBAT AUTHORIZED';
   const objects: CombatObject[] = [
     { id: 'crate-a', label: 'Light cargo stack', kind: 'cover', material: 'light', x: 540, y: 390, w: 120, h: 180, hp: 70, maxHp: 70, destructible: true, active: true, exposed: false },
