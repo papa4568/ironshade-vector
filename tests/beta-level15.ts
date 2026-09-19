@@ -48,6 +48,7 @@ function combatSmoke() {
   const profile = createDefaultProfile();
   const state = createSimulation(deriveCombatBuild(profile));
   selectWeapon(state, 'carbine');
+  stepSimulation(state, 0.15);
   const initialMag = state.player.mags.carbine;
   setAim(state, { x: 1, y: 0 }, false);
   assert(triggerFire(state), 'Carbine should fire from a fresh simulation.');
