@@ -138,7 +138,7 @@ function App() {
     const postKhepri = getPostKhepriContract(campaign);
     const interdiction = getInterdictionContract(campaign);
     const commandTraces = getCommandTraceContracts(campaign, profile.level);
-    const parallax = getParallaxDebtContract(campaign);
+    const parallax = getParallaxDebtContract(campaign, profile.level);
     const escalation = generateEscalationContract(campaign);
     const directive = preparedDirectiveContract(campaign);
     const standard = generateContracts(campaign);
