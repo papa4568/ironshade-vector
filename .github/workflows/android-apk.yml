@@ -184,8 +184,18 @@ jobs:
         if: steps.signing.outputs.mode == 'debug'
         working-directory: android
         run: |
+          set -euo pipefail
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          for attempt in 1 2 3; do
+            if ./gradlew assembleDebug --no-daemon --stacktrace; then
+              exit 0
+            fi
+            if [[ "$attempt" -lt 3 ]]; then
+              echo "::warning::Gradle dependency/build attempt $attempt failed; retrying after a short backoff."
+              sleep $((attempt * 10))
+            fi
+          done
+          exit 1
 
       - name: Build emulator smoke APK
         if: steps.signing.outputs.mode == 'release'
