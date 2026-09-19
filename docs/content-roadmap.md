@@ -196,7 +196,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] P2.3 Rim / spoke / axis visual differences
 - [x] P2.4 Spindown VFX
 - [x] P2.5 Machinery/interactables
-- [ ] P2.6 Local enemy visual identity
+- [x] P2.6 Local enemy visual identity
 - [ ] P2.7 Sable Voss presentation
 - [ ] P2.8 Biome ambient effects
 - [ ] P2.9 Mobile LOD/performance
@@ -307,9 +307,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1 is complete and **P2.5 is now delivered**. Continue in roadmap order with **P2.6 — Local enemy visual identity**, keeping Sable Voss, ambient effects, and the dedicated mobile optimization pass in their later P2 slots.
+P1 is complete and **P2.6 is now delivered**. Continue in roadmap order with **P2.7 — Sable Voss presentation**, keeping ambient effects and the dedicated mobile optimization pass in their later P2 slots.
 
-**P2.5 delivered:** Spin Habitat gameplay machinery now has five authored, mobile-LOD-aware families tied to the real mission objects: spin-bus isolators, rim/spoke gravity trims, bearing-control recovery hardware, attitude flywheels, and pressure locks. The renderer selects these families by biome, object kind, and machinery-recovery objective identity while preserving generic salvage/cache visuals where appropriate. Runtime QA exposes the active habitat interactable kit and loaded assets, generated-GLB tests validate every LOD pair and silhouette marker, desktop and mobile-landscape Browser E2E verify authored habitat machinery without procedural fallback, and Android beta.151 re-verifies the packaged runtime, touch flow, Chapter 3 playthrough, package metadata, signature, and emulator smoke.
+**P2.6 delivered:** Spin Habitat combat now has four biome-local authored enemy identities tied to the existing tactical variants: Spoke Marksman, Spin-Trim Specialist, Ring Drone Carrier, and Axis Shield Boarder. Each identity ships adaptive LOD1/LOD2 GLBs with preserved articulated enemy rig sockets, a distinct silhouette marker and cool green/cyan habitat palette; renderer routing is restricted to Spin Habitat and deliberately leaves Recovery Commander Sable Voss on the generic boss path for P2.7. Generated-content tests validate every local LOD pair and mobile payload reduction, runtime QA exposes the local kit/assets and fallback state, desktop + mobile-landscape Browser E2E verify all four authored identities in live Spin Habitat combat, and Android beta.152 re-verifies package metadata/signature plus native emulator runtime/touch smoke.\n\n**P2.5 delivered:** Spin Habitat gameplay machinery now has five authored, mobile-LOD-aware families tied to the real mission objects: spin-bus isolators, rim/spoke gravity trims, bearing-control recovery hardware, attitude flywheels, and pressure locks. The renderer selects these families by biome, object kind, and machinery-recovery objective identity while preserving generic salvage/cache visuals where appropriate. Runtime QA exposes the active habitat interactable kit and loaded assets, generated-GLB tests validate every LOD pair and silhouette marker, desktop and mobile-landscape Browser E2E verify authored habitat machinery without procedural fallback, and Android beta.151 re-verifies the packaged runtime, touch flow, Chapter 3 playthrough, package metadata, signature, and emulator smoke.
 
 **P2.4 delivered:** Spin Habitat emergency spindown now has gameplay-driven VFX tied to the real Sector B transfer-gravity state: lowering transfer gravity toward 0.05G activates amber rim brake arcs and a stationary-axis warning pulse while preserving the existing Sector A gravity-coupled architecture rotation. The effect exposes runtime QA state/intensity/source/detail, scales transparency through the adaptive render budget, drops secondary arcs in the performance VFX tier, and retains deterministic nominal/emergency regression coverage. Desktop and mobile-landscape Browser E2E verify the runtime VFX contract, and Android beta.150 re-verifies the packaged runtime, touch flow, Chapter 3 playthrough, package metadata, and emulator smoke.
 
@@ -331,12 +331,13 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.151**
+- Android beta: **0.0.1-beta.152**
 - Package: `app.ironshade.vector`
-- Verified: P2.5 authored Spin Habitat machinery/interactables with five adaptive LOD1/LOD2 families, gameplay-object family selection, generated GLB content/silhouette coverage, full production regression/build, desktop + mobile-landscape Browser E2E with live authored-machinery/no-fallback assertions, Level 15 beta smoke, Android APK package/version/signature checks, Android emulator runtime/touch smoke, native Chapter 3 touch playthrough, and retained browser/Android QA artifacts
+- Verified: P2.6 authored Spin Habitat local enemy visual identity with four gameplay-variant-specific adaptive LOD1/LOD2 families, preserved enemy rig/sockets and local palette, generated GLB content/silhouette/mobile-payload coverage, full production regression/build, desktop + mobile-landscape Browser E2E with live four-enemy authored/no-fallback assertions, Level 15 beta smoke, Android APK package/version/signature checks, Android emulator runtime/touch smoke, and retained browser/Android QA artifacts
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P2.5 runtime delivery commit: `86d575e61b32b205bec8668220a574196be3610d`
-- Browser E2E run: `35473684812`
-- Android beta.151 run: `35473684801`
-- Android beta.151 artifact ID: `10593536805`
-- Android beta.151 artifact head: `86d575e61b32b205bec8668220a574196be3610d`
+- P2.6 runtime delivery commit: `656e42c872bca8d6c72cf886c311061749e7559d`
+- Browser E2E run: `35474569834`
+- Level 15 beta smoke run: `35474569883`
+- Android beta.152 run: `35474569915`
+- Android beta.152 artifact ID: `10593268282`
+- Android beta.152 artifact head: `656e42c872bca8d6c72cf886c311061749e7559d`
