@@ -264,9 +264,11 @@ function operatorClassMobileNodes(operatorClass) {
     { name: 'backpack', mesh: 2, translation: [-0.22, 0.05, 0], scale: operatorClass === 'vanguard' ? [0.28, 0.52, 0.50] : operatorClass === 'systems' ? [0.24, 0.56, 0.48] : [0.20, 0.46, 0.36] },
     { name: 'weapon-socket', translation: [0.20, 0.08, -0.24] },
     marker,
-    { name: 'torso', mesh: 0, translation: [0, 0.33, 0], scale: operatorClass === 'vanguard' ? [0.62, 0.70, 0.62] : operatorClass === 'vector' ? [0.50, 0.64, 0.48] : [0.54, 0.66, 0.54], children: [2, 3, 4, 5, 6, 7] },
-    { name: 'hip', mesh: 1, translation: [0, 0.91, 0], scale: [0.46, 0.20, 0.46], children: [8, 0, 1] },
-    { name: 'operator-rig', children: [9] },
+    { name: 'torso-shell-mobile', mesh: 0, translation: [0, 0, 0], scale: operatorClass === 'vanguard' ? [0.62, 0.70, 0.62] : operatorClass === 'vector' ? [0.50, 0.64, 0.48] : [0.54, 0.66, 0.54] },
+    { name: 'torso', translation: [0, 0.33, 0], children: [8, 2, 3, 4, 5, 6, 7] },
+    { name: 'hip-shell-mobile', mesh: 1, translation: [0, 0, 0], scale: [0.46, 0.20, 0.46] },
+    { name: 'hip', translation: [0, 0.91, 0], children: [10, 9, 0, 1] },
+    { name: 'operator-rig', children: [11] },
   ];
 }
 
@@ -392,9 +394,11 @@ function enemyMobileNodes(role) {
     { name: 'backpack', mesh: 2, translation: [-0.22, 0.05, 0], scale: boss ? [0.42, 0.60, 0.68] : suppressor ? [0.35, 0.55, 0.60] : technician ? [0.23, 0.62, 0.34] : [0.23, 0.45, 0.42] },
     { name: 'weapon-socket', translation: [0.22, 0.08, -0.24] },
     marker,
-    { name: 'torso', mesh: 0, translation: [0, boss ? 0.42 : 0.32, 0], scale: torsoScale, children: [2, 3, 4, 5, 6, 7] },
-    { name: 'hip', mesh: 1, translation: [0, hipY, 0], scale: boss ? [0.66, 0.24, 0.66] : [0.46, 0.20, 0.46], children: [8, 0, 1] },
-    { name: 'enemy-rig', children: [9] },
+    { name: 'torso-shell-mobile', mesh: 0, translation: [0, 0, 0], scale: torsoScale },
+    { name: 'torso', translation: [0, boss ? 0.42 : 0.32, 0], children: [8, 2, 3, 4, 5, 6, 7] },
+    { name: 'hip-shell-mobile', mesh: 1, translation: [0, 0, 0], scale: boss ? [0.66, 0.24, 0.66] : [0.46, 0.20, 0.46] },
+    { name: 'hip', translation: [0, hipY, 0], children: [10, 9, 0, 1] },
+    { name: 'enemy-rig', children: [11] },
   ];
 }
 
