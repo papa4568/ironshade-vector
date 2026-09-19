@@ -1068,15 +1068,15 @@ export function getBoss(state: SimState) { return findBoss(state); }
 export function getClassMechanicStatus(state: SimState) {
   if (state.build.operatorClass === 'vanguard') {
     const active = state.classState.vanguardGuard > 0;
-    return { id: 'vanguard' as const, label: 'BREACH GUARD', active, detail: active ? `${state.classState.vanguardGuard.toFixed(1)}s // armor impact reduced` : 'Close Breacher hits brace the suit' };
+    return { id: 'vanguard' as const, label: 'BREACH GUARD', active, detail: active ? `${state.classState.vanguardGuard.toFixed(1)}s // armor impact reduced` : 'Breach Rush, Bulwark Pulse, or close Breacher contact raises Guard' };
   }
   if (state.build.operatorClass === 'vector') {
     const active = state.classState.vectorWindow > 0;
-    return { id: 'vector' as const, label: 'SLIPSTREAM', active, detail: active ? `${state.classState.vectorWindow.toFixed(1)}s // next shot stabilized` : 'Dodge to prime a precision shot' };
+    return { id: 'vector' as const, label: 'SLIPSTREAM', active, detail: active ? `${state.classState.vectorWindow.toFixed(1)}s // next shot stabilized` : 'Vector Shift, Deadeye Lock, or dodge primes the next shot' };
   }
   if (state.build.operatorClass === 'systems') {
     const active = state.classState.systemsLinks > 0;
-    return { id: 'systems' as const, label: 'CLOSED LOOP', active, detail: active ? `${state.classState.systemsLinks}/2 links // use a different ability` : 'Chain different abilities to recycle power' };
+    return { id: 'systems' as const, label: 'CLOSED LOOP', active, detail: active ? `${state.classState.systemsLinks}/2 links // use a different class skill` : 'Rotate WELL / HACK / CHAIN to recycle the network' };
   }
   return { id: 'none' as const, label: 'NO CLASS DOCTRINE', active: false, detail: 'Neutral combat build' };
 }
