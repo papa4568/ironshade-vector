@@ -75,7 +75,7 @@ function DebriefScreen({ result, onShip, onBuild, onRepeat, onDiscard }: { resul
       ? ['TELEMETRY UPLINK', 'Banked progression is already safe. Anonymous run telemetry is uploading separately.']
       : result.uplinkStatus === 'error'
         ? ['UPLINK DELAYED', result.uplinkError ?? 'Rewards and local progression are safe. The optional telemetry upload failed and will not block play.']
-        : ['LOCAL RUN ONLY', 'Anonymous telemetry sharing is disabled in Build Bay → Settings. No run data was uploaded.'];
+        : ['LOCAL RUN ONLY', 'Anonymous telemetry sharing is disabled in Build → Settings. No run data was uploaded.'];
 
   return (
     <main className="debrief-shell">
@@ -240,7 +240,7 @@ function App() {
     const result = setOperatorClass(profile, operatorClass);
     const definition = operatorClassDefinitions.find(entry => entry.id === operatorClass) ?? operatorClassDefinitions[0];
     setProfile({ ...result.profile, classSelectionComplete: true });
-    setStatusMessage(`${definition.name} field doctrine confirmed // ${definition.signatureName} online. Recalibration remains available in Build Bay.`);
+    setStatusMessage(`${definition.name} field doctrine confirmed // ${definition.signatureName} online. Recalibration remains available in Build → Progression.`);
     setScreen('ship');
   };
   const openCombat = () => { if (!selectedContract) return; void loadGameCanvas(); setScreen('combat'); };
