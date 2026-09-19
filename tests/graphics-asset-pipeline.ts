@@ -147,6 +147,16 @@ assert(rendererSource.includes('INTERACTABLE_ASSET_FAMILIES') && rendererSource.
 assert(rendererSource.includes("dataset.interactableMode = 'control-terminal+salvage-tag-node'"), 'runtime QA must expose authored interactable coverage');
 assert(rendererSource.includes('this.coarse ? 0.55 : 1'), 'mobile authored props must continue selecting LOD2 on coarse-pointer devices');
 
+
+assert(rendererSource.includes('PARALLAX_ASSET_FAMILIES'), 'Cislunar Parallax Array must load through authored environment asset families');
+for (const asset of ['parallax-baseline-pylon', 'parallax-reference-frame', 'parallax-mass-carriage', 'parallax-shear-anchor', 'parallax-reference-console']) {
+  assert(manifestSource.includes(`${asset}-lod1.glb`) && manifestSource.includes(`${asset}-lod2.glb`), `Parallax asset ${asset} must preserve adaptive LOD1/LOD2 coverage`);
+}
+assert(rendererSource.includes('loadAuthoredParallaxEnvironment(state, world.w, world.h, budget.detailScale)'), 'Parallax authored overlay must select LOD from the active render tier');
+assert(rendererSource.includes("dataset.environmentVisual = 'authored-parallax-array'"), 'runtime QA must expose Parallax authored overlay activation');
+assert(rendererSource.includes("dataset.environmentLandmark = 'three-point-long-baseline'"), 'Parallax authored kit must expose the long-baseline landmark');
+assert(rendererSource.includes("dataset.environmentComposition = 'three-point-baseline+cross-track-frames+perimeter-shear-anchors'"), 'Parallax authored composition must remain explicit for mobile readability');
+
 assert(rendererSource.includes('REFINERY_ASSET_FAMILIES'), 'showcase environment must load through authored refinery asset families');
 assert(rendererSource.includes('DAMAGED_VESSEL_ASSET_FAMILIES'), 'Damaged Vessel second pass must load through authored asset families');
 assert(manifestSource.includes('damaged-vessel-broken-rib-lod1.glb') && manifestSource.includes('damaged-vessel-broken-rib-lod2.glb'), 'Damaged Vessel broken ribs must preserve adaptive LOD coverage');

@@ -181,6 +181,16 @@ for (const path of glbs) {
             ? 'damaged-vessel-torn-wall-plate-shell'
             : filename.includes('damaged-vessel-service-bundle')
               ? 'damaged-vessel-service-bundle-trunk'
+            : filename.includes('parallax-baseline-pylon')
+              ? 'parallax-baseline-pylon-spine'
+              : filename.includes('parallax-reference-frame')
+                ? 'parallax-reference-frame-crown'
+                : filename.includes('parallax-mass-carriage')
+                  ? 'parallax-mass-carriage-body'
+                  : filename.includes('parallax-shear-anchor')
+                    ? 'parallax-shear-anchor-spine'
+                    : filename.includes('parallax-reference-console')
+                      ? 'parallax-reference-console-screen'
           : filename.includes('floor-panel')
             ? 'refinery-floor-panel'
             : filename.includes('floor-service-grate')
@@ -214,6 +224,18 @@ for (const path of glbs) {
     if (filename.includes('damaged-vessel-service-bundle') && filename.endsWith('-lod1.glb')) {
       assert(nodeNames.has('damaged-vessel-service-bundle-junction'), `${relativePath}: service bundle is missing junction housing`);
       assert(nodeNames.has('damaged-vessel-service-bundle-conduit-a'), `${relativePath}: service bundle is missing exposed conduit detail`);
+    }
+
+    if (filename.includes('parallax-baseline-pylon') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('parallax-baseline-pylon-ring-a'), `${relativePath}: Parallax pylon LOD1 is missing calibration ring detail`);
+      assert(nodeNames.has('parallax-baseline-pylon-calibration-fin'), `${relativePath}: Parallax pylon LOD1 is missing calibration fin detail`);
+    }
+    if (filename.includes('parallax-reference-frame') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('parallax-reference-frame-lattice-left'), `${relativePath}: Parallax reference frame LOD1 is missing lattice detail`);
+      assert(nodeNames.has('parallax-reference-frame-readout'), `${relativePath}: Parallax reference frame LOD1 is missing readout detail`);
+    }
+    if (filename.includes('parallax-mass-carriage') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('parallax-mass-carriage-counterweight'), `${relativePath}: Parallax mass carriage LOD1 is missing counterweight silhouette`);
     }
     if (filename.includes('processor') && filename.endsWith('-lod1.glb')) {
       assert(nodeNames.has('refinery-processor-ore-intake'), `${relativePath}: refined processor is missing ore intake silhouette`);
@@ -328,6 +350,14 @@ for (const interactableAsset of ['interactable-control-terminal', 'interactable-
   const lod2 = reportByPath.get(`interactables/${interactableAsset}-lod2.glb`);
   assert(lod1 && lod2, `${interactableAsset}: authored LOD1/LOD2 pair missing`);
   assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, `${interactableAsset}: mobile LOD2 must reduce payload and draw surfaces`);
+}
+
+
+for (const asset of ['parallax-baseline-pylon', 'parallax-reference-frame', 'parallax-mass-carriage', 'parallax-shear-anchor', 'parallax-reference-console']) {
+  const lod1 = reportByPath.get(`environments/${asset}-lod1.glb`);
+  const lod2 = reportByPath.get(`environments/${asset}-lod2.glb`);
+  assert(lod1 && lod2, `${asset}: Parallax LOD1/LOD2 pair missing`);
+  assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, `${asset}: Parallax mobile LOD2 must reduce payload and draw surfaces`);
 }
 
 const totalBytes = reports.reduce((sum, report) => sum + report.bytes, 0);
