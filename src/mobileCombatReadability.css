@@ -151,3 +151,20 @@
     top: max(35px, calc(env(safe-area-inset-top) + 27px));
   }
 }
+
+
+/* MOBILE HUD INFORMATION BUDGET */
+@media (pointer: coarse), (max-width: 900px) {
+  .mission-build-label { display: none; }
+  .mission-card {
+    max-width: min(260px, 31vw);
+  }
+  .target-readout {
+    top: max(58px, calc(env(safe-area-inset-top) + 48px));
+    width: min(240px, 28vw);
+    padding: 7px 8px;
+  }
+  .target-readout .target-values {
+    gap: 5px;
+  }
+}
