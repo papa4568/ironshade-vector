@@ -202,7 +202,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] P2.9 Mobile LOD/performance
 
 ### Jovian Harvester
-- [ ] P2.10 Environment kit
+- [x] P2.10 Environment kit
 - [ ] P2.11 Gas-harvester machinery
 - [ ] P2.12 Storm/pressure visual language
 - [ ] P2.13 Pressure props/interactables
@@ -307,7 +307,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1 is complete and **Spin Habitat P2.1–P2.9 is now delivered**. Continue in roadmap order with **P2.10 — Jovian Harvester environment kit**, then proceed through P2.16 before moving to Authored Biomes Pack II.
+P1 is complete, **Spin Habitat P2.1–P2.9 is delivered**, and **Jovian Harvester P2.10 is now implemented**. Continue in roadmap order with **P2.11 — Gas-harvester machinery**, then proceed through P2.16 before moving to Authored Biomes Pack II.
+
+**P2.10 delivered:** Jovian Harvester now has a reusable authored structural environment foundation with weathered elevated deck spans, a five-skimmer-tower silhouette, dark transfer bridges, and suspended ballast pods. All four families generate adaptive LOD1/LOD2 GLBs, route through runtime authored placement with procedural fallback, expose deterministic screenshot/readability telemetry, and are covered by generated-content, static pipeline, and desktop/mobile-landscape browser runtime QA. Gas-harvester machinery, storm/pressure visual language, pressure interactables, Stormline Foreman presentation, atmospheric effects, and the dedicated mobile performance pass remain scoped to P2.11–P2.16.
 
 **P2.9 delivered:** Spin Habitat now has a biome-specific adaptive render profile: coarse/mobile play forces authored environment LOD2, trims the rotating environment from 15 to 11 authored placements while preserving all four spokes and the stationary axis, disables rotating environment shadow casters outside the full desktop profile, lowers procedural rim tessellation, and uses the three-arc spindown presentation on mobile. Runtime telemetry exposes profile, instance budget, and shadow-caster mode. Full production regression/build, Level 15 beta smoke, desktop + mobile-landscape Browser E2E (including live mobile LOD2 / 11-instance / axis-only assertions), Android beta.156 package/version/SDK/signature verification, and Android emulator runtime smoke are green.
 

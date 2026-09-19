@@ -640,6 +640,29 @@ try {
     console.log(`BROWSER_SPIN_HABITAT_PASS viewport=${viewportMode} identity=rim/spoke/axis machinery=${habitatInteractables} enemies=${habitatEnemies} boss=${habitatBoss} ambient=${habitatAmbient} performance=${habitatPerformance.profile}:${habitatPerformance.instances}:${habitatPerformance.shadows} vfx=spindown:${spindownState.mode}:${spindownState.detail} phase=${firstPhase.toFixed(3)}->${nextPhase.toFixed(3)}`);
   }
 
+  if (targetLocation === 'jovian-harvester') {
+    await waitFor(`(() => {
+      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-jovian-harvester');
+      return canvas?.dataset.environmentKit === 'deck-span,skimmer-tower,transfer-bridge,ballast-pod'
+        && canvas?.dataset.environmentLandmark === 'five-skimmer-tower-spine'
+        && canvas?.dataset.environmentComposition === 'elevated-skimmer-decks+five-tower-spine+transfer-bridges+ballast-pods'
+        && canvas?.dataset.environmentZoneIdentity === 'deck:weathered-plate|tower:vertical-skimmer-spine|bridge:dark-transfer-truss|ballast:light-suspended-pod'
+        && canvas?.dataset.readabilityLanguage === 'tower-height+bridge-lines+amber-wayfinding'
+        && Number(canvas?.dataset.environmentInstances) > 0
+        && ['1', '2'].includes(canvas?.dataset.environmentLod ?? '');
+    })()`, 'Jovian Harvester authored environment kit', 20_000);
+    const jovianEnvironment = await evaluate(`(() => {
+      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-jovian-harvester');
+      return {
+        lod: canvas?.dataset.environmentLod ?? '',
+        instances: canvas?.dataset.environmentInstances ?? '',
+        kit: canvas?.dataset.environmentKit ?? '',
+        composition: canvas?.dataset.environmentComposition ?? '',
+      };
+    })()`);
+    console.log(`BROWSER_JOVIAN_HARVESTER_PASS viewport=${viewportMode} lod=${jovianEnvironment?.lod} instances=${jovianEnvironment?.instances} kit=${jovianEnvironment?.kit} composition=${jovianEnvironment?.composition}`);
+  }
+
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);
   const expectedCombatLod = coarseCombatSurface ? '2' : '1';
   await waitFor(`(() => {

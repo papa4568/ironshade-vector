@@ -7,7 +7,7 @@ import { getWorldSize, type CombatObject, type Enemy, type Player, type SimState
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, locationArtIdentityFor, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
 import { lootColor } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
-import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, SPIN_HABITAT_BOSS_ASSET_FAMILY, SPIN_HABITAT_ENEMY_ASSET_FAMILIES, SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES, OPERATOR_CLASS_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, SPIN_HABITAT_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
+import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, SPIN_HABITAT_BOSS_ASSET_FAMILY, SPIN_HABITAT_ENEMY_ASSET_FAMILIES, SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES, OPERATOR_CLASS_ASSET_FAMILIES, JOVIAN_HARVESTER_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, SPIN_HABITAT_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
 import { configureGraphicsAssetRenderer, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
 import { spinHabitatArchitectureState, spinHabitatRenderProfile, spinHabitatSpindownState } from './spinHabitatArchitecture';
 
@@ -289,6 +289,7 @@ export class ThreeCombatRenderer {
   private damagedVesselLoadGeneration = 0;
   private parallaxLoadGeneration = 0;
   private spinHabitatLoadGeneration = 0;
+  private jovianHarvesterLoadGeneration = 0;
   private spinHabitatAuthoredRotor: THREE.Group | null = null;
   private spinHabitatProceduralRotor: THREE.Group | null = null;
   private spinHabitatSpindownVfx: THREE.Group | null = null;
@@ -528,6 +529,7 @@ export class ThreeCombatRenderer {
     this.damagedVesselLoadGeneration += 1;
     this.parallaxLoadGeneration += 1;
     this.spinHabitatLoadGeneration += 1;
+    this.jovianHarvesterLoadGeneration += 1;
     this.spinHabitatAuthoredRotor = null;
     this.spinHabitatProceduralRotor = null;
     this.spinHabitatSpindownVfx = null;
@@ -918,6 +920,104 @@ export class ThreeCombatRenderer {
   }
 
 
+
+  private async loadAuthoredJovianHarvesterEnvironment(worldW: number, worldH: number, detailScale: number) {
+    const generation = ++this.jovianHarvesterLoadGeneration;
+    this.renderer.domElement.dataset.environmentVisual = 'authored-loading';
+    const loaded: Array<{ key: keyof typeof JOVIAN_HARVESTER_ASSET_FAMILIES; instance: GraphicsAssetInstance; lod: number }> = [];
+
+    try {
+      for (const key of Object.keys(JOVIAN_HARVESTER_ASSET_FAMILIES) as Array<keyof typeof JOVIAN_HARVESTER_ASSET_FAMILIES>) {
+        const spec = selectGraphicsAssetSpec(JOVIAN_HARVESTER_ASSET_FAMILIES[key], detailScale);
+        if (!spec) throw new Error(`No authored Jovian Harvester asset available for ${key}`);
+        const instance = await instantiateGraphicsAsset(spec);
+        loaded.push({ key, instance, lod: spec.lod });
+      }
+
+      if (this.disposed || generation !== this.jovianHarvesterLoadGeneration) {
+        loaded.forEach(item => item.instance.release());
+        return;
+      }
+
+      this.refineryAssetInstances.push(...loaded.map(item => item.instance));
+      const byKey = new Map(loaded.map(item => [item.key, item]));
+      const width = scaled(worldW);
+      const height = scaled(worldH);
+
+      const deckPlacements: EnvironmentPlacement[] = [
+        [0.26, 0.26, 0], [0.50, 0.25, 0], [0.74, 0.26, 0],
+        [0.28, 0.72, Math.PI], [0.52, 0.74, Math.PI], [0.76, 0.72, Math.PI],
+      ].map(([x, z, rotationY]) => ({
+        position: new THREE.Vector3(width * x, 0, height * z),
+        rotationY,
+        scale: 0.92,
+      }));
+      const towerPlacements: EnvironmentPlacement[] = [
+        [0.18, 0.38, 0.78], [0.34, 0.54, 0.92], [0.50, 0.42, 1.10], [0.66, 0.57, 0.96], [0.82, 0.40, 0.82],
+      ].map(([x, z, scale]) => ({
+        position: new THREE.Vector3(width * x, 0, height * z),
+        rotationY: x < 0.5 ? Math.PI * 0.08 : -Math.PI * 0.08,
+        scale,
+      }));
+      const bridgePlacements: EnvironmentPlacement[] = [
+        [0.26, 0.46, 0], [0.42, 0.48, 0], [0.58, 0.49, 0], [0.74, 0.47, 0],
+      ].map(([x, z, rotationY]) => ({
+        position: new THREE.Vector3(width * x, 0, height * z),
+        rotationY,
+        scale: 0.88,
+      }));
+      const ballastPlacements: EnvironmentPlacement[] = [
+        [0.18, 0.22, Math.PI / 2], [0.82, 0.22, -Math.PI / 2],
+        [0.20, 0.78, Math.PI / 2], [0.80, 0.78, -Math.PI / 2],
+      ].map(([x, z, rotationY]) => ({
+        position: new THREE.Vector3(width * x, 0, height * z),
+        rotationY,
+        scale: 0.86,
+      }));
+
+      let instances = 0;
+      instances += this.addInstancedEnvironmentAsset(byKey.get('deckSpan')!.instance, deckPlacements, 'jovian-harvester-deck-span');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('skimmerTower')!.instance, towerPlacements, 'jovian-harvester-skimmer-tower');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('transferBridge')!.instance, bridgePlacements, 'jovian-harvester-transfer-bridge');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('ballastPod')!.instance, ballastPlacements, 'jovian-harvester-ballast-pod');
+
+      this.proceduralRefineryVisuals.forEach(item => { item.visible = false; });
+      const lods = [...new Set(loaded.map(item => item.lod))].sort();
+      this.renderer.domElement.dataset.environmentVisual = 'authored-jovian-harvester';
+      this.renderer.domElement.dataset.environmentLod = lods.join(',');
+      this.renderer.domElement.dataset.environmentKit = 'deck-span,skimmer-tower,transfer-bridge,ballast-pod';
+      this.renderer.domElement.dataset.environmentInstances = String(instances);
+      this.renderer.domElement.dataset.environmentLandmark = 'five-skimmer-tower-spine';
+      this.renderer.domElement.dataset.environmentServiceDetails = `transfer-bridge:${bridgePlacements.length}+ballast-pod:${ballastPlacements.length}`;
+      this.renderer.domElement.dataset.environmentSurfaceDetail = `deck-span:${deckPlacements.length}+skimmer-tower:${towerPlacements.length}`;
+      this.renderer.domElement.dataset.environmentComposition = 'elevated-skimmer-decks+five-tower-spine+transfer-bridges+ballast-pods';
+      this.renderer.domElement.dataset.environmentMaterials = 'weathered-shell+dark-truss+amber-wayfinding+bright-ballast-shell';
+      this.renderer.domElement.dataset.environmentZoneIdentity = 'deck:weathered-plate|tower:vertical-skimmer-spine|bridge:dark-transfer-truss|ballast:light-suspended-pod';
+      this.renderer.domElement.dataset.readabilityLanguage = 'tower-height+bridge-lines+amber-wayfinding';
+    } catch (error) {
+      loaded.forEach(item => item.instance.release());
+      if (this.disposed || generation !== this.jovianHarvesterLoadGeneration) return;
+      this.refineryAssetInstances.length = 0;
+      this.refineryInstancedMeshes.forEach(mesh => {
+        mesh.removeFromParent();
+        mesh.dispose();
+      });
+      this.refineryInstancedMeshes.length = 0;
+      this.refineryOwnedMaterials.forEach(material => material.dispose());
+      this.refineryOwnedMaterials.length = 0;
+      this.authoredEnvironmentRoot.clear();
+      this.proceduralRefineryVisuals.forEach(item => { item.visible = true; });
+      this.renderer.domElement.dataset.environmentVisual = 'procedural-fallback';
+      delete this.renderer.domElement.dataset.environmentLandmark;
+      delete this.renderer.domElement.dataset.environmentServiceDetails;
+      delete this.renderer.domElement.dataset.environmentSurfaceDetail;
+      delete this.renderer.domElement.dataset.environmentComposition;
+      delete this.renderer.domElement.dataset.environmentZoneIdentity;
+      delete this.renderer.domElement.dataset.environmentMaterials;
+      delete this.renderer.domElement.dataset.readabilityLanguage;
+      console.warn('Authored Jovian Harvester kit failed to load; keeping procedural scenery.', error);
+    }
+  }
 
   private async loadAuthoredSpinHabitatEnvironment(worldW: number, worldH: number, detailScale: number) {
     const generation = ++this.spinHabitatLoadGeneration;
@@ -1847,6 +1947,8 @@ export class ThreeCombatRenderer {
       void this.loadAuthoredParallaxEnvironment(state, world.w, world.h, budget.detailScale);
     } else if (mission.location === 'spin-habitat') {
       void this.loadAuthoredSpinHabitatEnvironment(world.w, world.h, budget.detailScale);
+    } else if (mission.location === 'jovian-harvester') {
+      void this.loadAuthoredJovianHarvesterEnvironment(world.w, world.h, budget.detailScale);
     } else {
       this.renderer.domElement.dataset.environmentVisual = 'procedural';
     }
@@ -2057,8 +2159,10 @@ export class ThreeCombatRenderer {
       this.spinHabitatAmbientAxisHaze = axisHaze;
       this.proceduralRefineryVisuals.push(rotor, axisHub, axisCollar);
     } else if (location === 'jovian-harvester') {
-      for (let i = -2; i <= 2; i += 1) addBox(cx + i * 7, cz + i * 1.5, 1.1, 1.1, 6 + Math.abs(i), structural);
-      addBox(cx, cz - 7, 34, 0.35, 0.35, emissive);
+      const jovianVisuals: THREE.Object3D[] = [];
+      for (let i = -2; i <= 2; i += 1) jovianVisuals.push(addBox(cx + i * 7, cz + i * 1.5, 1.1, 1.1, 6 + Math.abs(i), structural));
+      jovianVisuals.push(addBox(cx, cz - 7, 34, 0.35, 0.35, emissive));
+      this.proceduralRefineryVisuals.push(...jovianVisuals);
     } else if (location === 'ice-mine') {
       for (let i = 0; i < 9; i += 1) {
         const crystal = new THREE.Mesh(new THREE.ConeGeometry(0.7 + (i % 3) * 0.3, 2.4 + (i % 4) * 0.8, 6), emissive);

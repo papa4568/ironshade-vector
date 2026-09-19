@@ -106,6 +106,37 @@ export const SPIN_HABITAT_ASSET_FAMILIES = {
   },
 } as const satisfies Record<'ringSegment' | 'spokeTruss' | 'axisHub' | 'serviceBay', GraphicsAssetFamily>;
 
+export const JOVIAN_HARVESTER_ASSET_FAMILIES = {
+  deckSpan: {
+    id: 'jovian-harvester-deck-span',
+    lods: {
+      1: createGraphicsAssetSpec('jovian-harvester-deck-span-lod1', 'environment-module', '/assets/models/environments/jovian-harvester-deck-span-lod1.glb', 1),
+      2: createGraphicsAssetSpec('jovian-harvester-deck-span-lod2', 'environment-module', '/assets/models/environments/jovian-harvester-deck-span-lod2.glb', 2),
+    },
+  },
+  skimmerTower: {
+    id: 'jovian-harvester-skimmer-tower',
+    lods: {
+      1: createGraphicsAssetSpec('jovian-harvester-skimmer-tower-lod1', 'environment-module', '/assets/models/environments/jovian-harvester-skimmer-tower-lod1.glb', 1),
+      2: createGraphicsAssetSpec('jovian-harvester-skimmer-tower-lod2', 'environment-module', '/assets/models/environments/jovian-harvester-skimmer-tower-lod2.glb', 2),
+    },
+  },
+  transferBridge: {
+    id: 'jovian-harvester-transfer-bridge',
+    lods: {
+      1: createGraphicsAssetSpec('jovian-harvester-transfer-bridge-lod1', 'environment-module', '/assets/models/environments/jovian-harvester-transfer-bridge-lod1.glb', 1),
+      2: createGraphicsAssetSpec('jovian-harvester-transfer-bridge-lod2', 'environment-module', '/assets/models/environments/jovian-harvester-transfer-bridge-lod2.glb', 2),
+    },
+  },
+  ballastPod: {
+    id: 'jovian-harvester-ballast-pod',
+    lods: {
+      1: createGraphicsAssetSpec('jovian-harvester-ballast-pod-lod1', 'environment-module', '/assets/models/environments/jovian-harvester-ballast-pod-lod1.glb', 1),
+      2: createGraphicsAssetSpec('jovian-harvester-ballast-pod-lod2', 'environment-module', '/assets/models/environments/jovian-harvester-ballast-pod-lod2.glb', 2),
+    },
+  },
+} as const satisfies Record<'deckSpan' | 'skimmerTower' | 'transferBridge' | 'ballastPod', GraphicsAssetFamily>;
+
 export const PARALLAX_ASSET_FAMILIES = {
   pylon: {
     id: 'parallax-baseline-pylon',

@@ -205,6 +205,14 @@ for (const path of glbs) {
                             ? 'spin-habitat-axis-hub-core'
                             : filename.includes('spin-habitat-service-bay')
                               ? 'spin-habitat-service-bay-shell'
+                              : filename.includes('jovian-harvester-deck-span')
+                                ? 'jovian-harvester-deck-span-main'
+                                : filename.includes('jovian-harvester-skimmer-tower')
+                                  ? 'jovian-harvester-skimmer-tower-spine'
+                                  : filename.includes('jovian-harvester-transfer-bridge')
+                                    ? 'jovian-harvester-transfer-bridge-main'
+                                    : filename.includes('jovian-harvester-ballast-pod')
+                                      ? 'jovian-harvester-ballast-pod-shell'
           : filename.includes('floor-panel')
             ? 'refinery-floor-panel'
             : filename.includes('floor-service-grate')
@@ -258,6 +266,27 @@ for (const path of glbs) {
       assert(nodeNames.has('spin-habitat-axis-hub-fin-left') && nodeNames.has('spin-habitat-axis-hub-fin-right'), `${relativePath}: Spin Habitat axis hub LOD1 is missing its tall stationary fin silhouette`);
       assert(materialForNode('spin-habitat-axis-hub-core') === 'spin-habitat-axis-shell', `${relativePath}: Spin Habitat axis hub lost its bright shell identity`);
       assert(materialForNode('spin-habitat-axis-hub-beacon') === 'spin-habitat-axis-emissive', `${relativePath}: Spin Habitat axis beacon must remain bright cool emissive`);
+    }
+
+    if (filename.includes('jovian-harvester-deck-span') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('jovian-harvester-deck-span-edge-beam-left'), `${relativePath}: Jovian deck LOD1 is missing edge-beam detail`);
+      assert(nodeNames.has('jovian-harvester-deck-span-service-rib'), `${relativePath}: Jovian deck LOD1 is missing service-rib detail`);
+      assert(materialForNode('jovian-harvester-deck-span-main') === 'jovian-harvester-deck-plating', `${relativePath}: Jovian deck lost its weathered plated material identity`);
+      assert(materialForNode('jovian-harvester-deck-span-wayfinding') === 'jovian-harvester-amber-emissive', `${relativePath}: Jovian deck wayfinding must remain storm amber`);
+    }
+    if (filename.includes('jovian-harvester-skimmer-tower') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('jovian-harvester-skimmer-tower-lattice-left'), `${relativePath}: Jovian tower LOD1 is missing side lattice detail`);
+      assert(nodeNames.has('jovian-harvester-skimmer-tower-crown-light'), `${relativePath}: Jovian tower LOD1 is missing crown light detail`);
+      assert(materialForNode('jovian-harvester-skimmer-tower-spine') === 'jovian-harvester-weathered-shell', `${relativePath}: Jovian skimmer tower lost its weathered shell identity`);
+    }
+    if (filename.includes('jovian-harvester-transfer-bridge') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('jovian-harvester-transfer-bridge-cross-brace-a'), `${relativePath}: Jovian transfer bridge LOD1 is missing cross-brace detail`);
+      assert(materialForNode('jovian-harvester-transfer-bridge-main') === 'jovian-harvester-dark-structure', `${relativePath}: Jovian transfer bridge lost its dark truss identity`);
+    }
+    if (filename.includes('jovian-harvester-ballast-pod') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('jovian-harvester-ballast-pod-keel'), `${relativePath}: Jovian ballast pod LOD1 is missing keel detail`);
+      assert(nodeNames.has('jovian-harvester-ballast-pod-strap'), `${relativePath}: Jovian ballast pod LOD1 is missing retention strap detail`);
+      assert(materialForNode('jovian-harvester-ballast-pod-shell') === 'jovian-harvester-ballast-shell', `${relativePath}: Jovian ballast pod lost its bright shell identity`);
     }
 
     if (filename.includes('parallax-baseline-pylon') && filename.endsWith('-lod1.glb')) {
@@ -435,6 +464,13 @@ for (const asset of ['spin-habitat-ring-segment', 'spin-habitat-spoke-truss', 's
   const lod2 = reportByPath.get(`environments/${asset}-lod2.glb`);
   assert(lod1 && lod2, `${asset}: Spin Habitat LOD1/LOD2 pair missing`);
   assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, `${asset}: Spin Habitat mobile LOD2 must reduce payload and draw surfaces`);
+}
+
+for (const asset of ['jovian-harvester-deck-span', 'jovian-harvester-skimmer-tower', 'jovian-harvester-transfer-bridge', 'jovian-harvester-ballast-pod']) {
+  const lod1 = reportByPath.get(`environments/${asset}-lod1.glb`);
+  const lod2 = reportByPath.get(`environments/${asset}-lod2.glb`);
+  assert(lod1 && lod2, `${asset}: Jovian Harvester LOD1/LOD2 pair missing`);
+  assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, `${asset}: Jovian Harvester mobile LOD2 must reduce payload and draw surfaces`);
 }
 
 for (const asset of ['parallax-baseline-pylon', 'parallax-reference-frame', 'parallax-mass-carriage', 'parallax-shear-anchor', 'parallax-reference-console']) {

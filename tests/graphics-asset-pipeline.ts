@@ -149,6 +149,24 @@ assert(rendererSource.includes('this.coarse ? 0.55 : 1'), 'mobile authored props
 
 
 
+assert(rendererSource.includes('JOVIAN_HARVESTER_ASSET_FAMILIES'), 'Jovian Harvester P2.10 must load through authored environment asset families');
+for (const asset of ['jovian-harvester-deck-span', 'jovian-harvester-skimmer-tower', 'jovian-harvester-transfer-bridge', 'jovian-harvester-ballast-pod']) {
+  assert(manifestSource.includes(`${asset}-lod1.glb`) && manifestSource.includes(`${asset}-lod2.glb`), `Jovian Harvester P2.10 asset ${asset} must preserve adaptive LOD1/LOD2 coverage`);
+}
+assert(rendererSource.includes('loadAuthoredJovianHarvesterEnvironment(world.w, world.h, budget.detailScale)'), 'Jovian Harvester P2.10 authored overlay must select LOD from the active render tier');
+assert(rendererSource.includes("dataset.environmentVisual = 'authored-jovian-harvester'"), 'Jovian Harvester P2.10 authored activation must remain observable');
+assert(rendererSource.includes("dataset.environmentKit = 'deck-span,skimmer-tower,transfer-bridge,ballast-pod'"), 'Jovian Harvester P2.10 environment kit identity must remain explicit');
+assert(rendererSource.includes("dataset.environmentComposition = 'elevated-skimmer-decks+five-tower-spine+transfer-bridges+ballast-pods'"), 'Jovian Harvester P2.10 screenshot silhouette must preserve the five-tower platform composition');
+assert(rendererSource.includes("dataset.environmentZoneIdentity = 'deck:weathered-plate|tower:vertical-skimmer-spine|bridge:dark-transfer-truss|ballast:light-suspended-pod'"), 'Jovian Harvester P2.10 zone identity must remain observable');
+assert(rendererSource.includes('this.proceduralRefineryVisuals.push(...jovianVisuals)'), 'Jovian Harvester P2.10 procedural scenery must remain available as an authored-load fallback');
+const jovianAssetGeneratorSource = readFileSync(resolve(process.cwd(), 'scripts/prepare-graphics-assets.mjs'), 'utf8');
+for (const material of ['jovian-harvester-weathered-shell', 'jovian-harvester-dark-structure', 'jovian-harvester-deck-plating', 'jovian-harvester-amber-emissive', 'jovian-harvester-ballast-shell']) {
+  assert(jovianAssetGeneratorSource.includes(`name: '${material}'`), `Jovian Harvester P2.10 material identity ${material} must remain authored`);
+}
+for (const marker of ['jovian-harvester-deck-span-main', 'jovian-harvester-skimmer-tower-spine', 'jovian-harvester-transfer-bridge-main', 'jovian-harvester-ballast-pod-shell']) {
+  assert(jovianAssetGeneratorSource.includes(`name: '${marker}'`), `Jovian Harvester P2.10 silhouette marker ${marker} must remain authored`);
+}
+
 assert(rendererSource.includes('SPIN_HABITAT_ASSET_FAMILIES'), 'Spin Habitat must load through authored environment asset families');
 for (const asset of ['spin-habitat-ring-segment', 'spin-habitat-spoke-truss', 'spin-habitat-axis-hub', 'spin-habitat-service-bay']) {
   assert(manifestSource.includes(`${asset}-lod1.glb`) && manifestSource.includes(`${asset}-lod2.glb`), `Spin Habitat asset ${asset} must preserve adaptive LOD1/LOD2 coverage`);

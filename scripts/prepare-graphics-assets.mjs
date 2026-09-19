@@ -975,6 +975,101 @@ function spinHabitatNodes(kind, lod) {
   return nodes;
 }
 
+function jovianHarvesterMaterials() {
+  return [
+    {
+      name: 'jovian-harvester-weathered-shell',
+      pbrMetallicRoughness: { baseColorFactor: [0.30, 0.20, 0.13, 1], metallicFactor: 0.78, roughnessFactor: 0.48 },
+    },
+    {
+      name: 'jovian-harvester-dark-structure',
+      pbrMetallicRoughness: { baseColorFactor: [0.075, 0.065, 0.055, 1], metallicFactor: 0.92, roughnessFactor: 0.34 },
+    },
+    {
+      name: 'jovian-harvester-deck-plating',
+      pbrMetallicRoughness: { baseColorFactor: [0.40, 0.30, 0.20, 1], metallicFactor: 0.70, roughnessFactor: 0.44 },
+    },
+    {
+      name: 'jovian-harvester-amber-emissive',
+      pbrMetallicRoughness: { baseColorFactor: [0.34, 0.14, 0.035, 1], metallicFactor: 0.30, roughnessFactor: 0.22 },
+      emissiveFactor: [0.98, 0.42, 0.10],
+    },
+    {
+      name: 'jovian-harvester-ballast-shell',
+      pbrMetallicRoughness: { baseColorFactor: [0.50, 0.44, 0.34, 1], metallicFactor: 0.62, roughnessFactor: 0.52 },
+    },
+  ];
+}
+
+function jovianHarvesterNodes(kind, lod) {
+  const detail = lod === 1;
+
+  if (kind === 'deckSpan') {
+    const nodes = [
+      { name: 'jovian-harvester-deck-span-main', mesh: 2, translation: [0, 0.22, 0], scale: [3.30, 0.44, 1.38] },
+      { name: 'jovian-harvester-deck-span-underbeam', mesh: 1, translation: [0, 0.56, 0], scale: [3.05, 0.22, 0.38] },
+      { name: 'jovian-harvester-deck-span-wayfinding', mesh: 3, translation: [0, 0.48, 1.12], scale: [2.65, 0.07, 0.07] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'jovian-harvester-deck-span-edge-beam-left', mesh: 1, translation: [-2.62, 0.74, 0], scale: [0.18, 0.90, 1.20] },
+        { name: 'jovian-harvester-deck-span-edge-beam-right', mesh: 1, translation: [2.62, 0.74, 0], scale: [0.18, 0.90, 1.20] },
+        { name: 'jovian-harvester-deck-span-service-rib', mesh: 0, translation: [0.72, 0.78, -1.10], scale: [0.22, 0.76, 0.12] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  if (kind === 'skimmerTower') {
+    const nodes = [
+      { name: 'jovian-harvester-skimmer-tower-foot', mesh: 1, translation: [0, 0.24, 0], scale: [1.70, 0.48, 1.70] },
+      { name: 'jovian-harvester-skimmer-tower-spine', mesh: 0, translation: [0, 2.42, 0], scale: [1.10, 4.36, 1.10] },
+      { name: 'jovian-harvester-skimmer-tower-crown', mesh: 2, translation: [0, 4.58, 0], scale: [1.95, 0.44, 1.95] },
+      { name: 'jovian-harvester-skimmer-tower-beacon', mesh: 3, translation: [0.72, 4.98, 0], scale: [0.18, 0.38, 0.18] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'jovian-harvester-skimmer-tower-lattice-left', mesh: 1, translation: [0, 2.46, -0.86], scale: [0.22, 3.30, 0.22] },
+        { name: 'jovian-harvester-skimmer-tower-lattice-right', mesh: 1, translation: [0, 2.46, 0.86], scale: [0.22, 3.30, 0.22] },
+        { name: 'jovian-harvester-skimmer-tower-crown-light', mesh: 3, translation: [-0.68, 4.80, 0], scale: [0.22, 0.10, 0.82] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  if (kind === 'transferBridge') {
+    const nodes = [
+      { name: 'jovian-harvester-transfer-bridge-main', mesh: 1, translation: [0, 1.58, 0], scale: [3.65, 0.30, 0.56] },
+      { name: 'jovian-harvester-transfer-bridge-deck', mesh: 2, translation: [0, 1.84, 0], scale: [3.50, 0.20, 0.82] },
+      { name: 'jovian-harvester-transfer-bridge-guide', mesh: 3, translation: [0, 1.98, 0.68], scale: [2.80, 0.06, 0.06] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'jovian-harvester-transfer-bridge-cross-brace-a', mesh: 1, translation: [-1.62, 1.18, 0], scale: [0.16, 1.12, 0.52] },
+        { name: 'jovian-harvester-transfer-bridge-cross-brace-b', mesh: 1, translation: [1.62, 1.18, 0], scale: [0.16, 1.12, 0.52] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  const nodes = [
+    { name: 'jovian-harvester-ballast-pod-shell', mesh: 4, translation: [0, 0.92, 0], scale: [1.58, 1.42, 2.36] },
+    { name: 'jovian-harvester-ballast-pod-mount', mesh: 1, translation: [0, 1.74, 0], scale: [1.06, 0.24, 1.34] },
+    { name: 'jovian-harvester-ballast-pod-marker', mesh: 3, translation: [0.82, 1.06, 0], scale: [0.08, 0.22, 0.78] },
+  ];
+  if (detail) {
+    nodes.push(
+      { name: 'jovian-harvester-ballast-pod-keel', mesh: 1, translation: [0, 0.18, 0], scale: [0.42, 0.36, 1.92] },
+      { name: 'jovian-harvester-ballast-pod-strap', mesh: 0, translation: [0, 1.28, 0], scale: [1.74, 0.12, 0.24] },
+    );
+  }
+  nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+  return nodes;
+}
+
 function damagedVesselNodes(kind, lod) {
   const detail = lod === 1;
   if (kind === 'rib') {
@@ -1604,6 +1699,24 @@ for (const [kind, id] of spinHabitatProfiles) {
       `${id}-lod${lod}`,
       spinHabitatNodes(kind, lod),
       spinHabitatMaterials(),
+    ));
+  }
+}
+
+const jovianHarvesterProfiles = [
+  ['deckSpan', 'jovian-harvester-deck-span'],
+  ['skimmerTower', 'jovian-harvester-skimmer-tower'],
+  ['transferBridge', 'jovian-harvester-transfer-bridge'],
+  ['ballastPod', 'jovian-harvester-ballast-pod'],
+];
+
+for (const [kind, id] of jovianHarvesterProfiles) {
+  for (const lod of [1, 2]) {
+    outputs.push(await writeAsset(
+      `environments/${id}-lod${lod}.glb`,
+      `${id}-lod${lod}`,
+      jovianHarvesterNodes(kind, lod),
+      jovianHarvesterMaterials(),
     ));
   }
 }
