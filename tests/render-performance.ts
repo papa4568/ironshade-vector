@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { AdaptiveRenderBudget } from '../src/game/renderQuality';
+import { spinHabitatArchitectureState } from '../src/game/spinHabitatArchitecture';
 
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
@@ -67,6 +68,15 @@ assert(rendererSource.includes('budget.transparencyScale'), 'renderer must apply
 assert(rendererSource.includes('dataset.renderTier = budget.tierName'), 'runtime QA must expose the active render tier');
 assert(rendererSource.includes('tier-${budget.tier}'), 'environment signature must react to render-tier transitions so authored LOD can change');
 assert(rendererSource.includes('loadAuthoredRefineryEnvironment(state, world.w, world.h, budget.detailScale)'), 'refinery authored LOD selection must follow the active detail tier');
+
+const nominalSpin = spinHabitatArchitectureState(1);
+const overspeedSpin = spinHabitatArchitectureState(1.2);
+const reducedSpin = spinHabitatArchitectureState(0.42);
+assert(nominalSpin.mode === 'nominal', 'Spin Habitat nominal gravity must report nominal rotation');
+assert(overspeedSpin.mode === 'overspeed' && overspeedSpin.angularSpeed > nominalSpin.angularSpeed, 'Spin Habitat overspeed gravity must accelerate architecture rotation');
+assert(reducedSpin.mode === 'reduced' && reducedSpin.angularSpeed < nominalSpin.angularSpeed, 'Spin Habitat reduced gravity must slow architecture rotation');
+assert(rendererSource.includes('private syncSpinHabitatArchitecture(state: SimState, mission: Contract)'), 'Spin Habitat architecture must have a per-frame rotation sync');
+assert(rendererSource.includes("dataset.environmentMotion = 'gravity-coupled-rigid-rotation'"), 'Spin Habitat runtime QA must expose its gravity-coupled rotation mode');
 
 const sustainedMobile = new AdaptiveRenderBudget(true);
 let sustainedSnapshot = sustainedMobile.sample(16.7, 1);

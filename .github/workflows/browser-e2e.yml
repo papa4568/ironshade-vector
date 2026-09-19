@@ -151,6 +151,7 @@ jobs:
           node scripts/verify-authored-refinery.mjs
           BROWSER_E2E_LOCATION=damaged-vessel BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-damaged-vessel.png node scripts/browser-runtime-smoke.mjs
           node scripts/verify-authored-damaged-vessel.mjs
+          BROWSER_E2E_LOCATION=spin-habitat BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-spin-habitat.png node scripts/browser-runtime-smoke.mjs
           node scripts/browser-chapter3-playthrough.mjs
 
       - name: Upload browser QA evidence
@@ -165,6 +166,7 @@ jobs:
             browser-command-${{ matrix.viewport }}.png
             browser-e2e-${{ matrix.viewport }}.png
             browser-e2e-${{ matrix.viewport }}-damaged-vessel.png
+            browser-e2e-${{ matrix.viewport }}-spin-habitat.png
             browser-preview.log
             browser-chrome.log
           if-no-files-found: warn

@@ -545,6 +545,22 @@ try {
     const icons = [...document.querySelectorAll('img[src*="/assets/ui/skills/"], img[src*="/assets/ui/weapons/"]')];
     return icons.length >= 4 && icons.every(image => image.complete && image.naturalWidth > 0);
   })()`, 'Mobile combat SVG assets', 20_000);
+  if (targetLocation === 'spin-habitat') {
+    await waitFor(`(() => {
+      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-spin-habitat');
+      return canvas?.dataset.environmentMotion === 'gravity-coupled-rigid-rotation'
+        && canvas?.dataset.environmentSpinSource === 'sector-A-gravity'
+        && Number.isFinite(Number(canvas?.dataset.environmentSpinPhase));
+    })()`, 'Spin Habitat authored rotating architecture', 20_000);
+    const firstPhase = Number(await evaluate(`[...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-spin-habitat')?.dataset.environmentSpinPhase`));
+    await sleep(900);
+    const nextPhase = Number(await evaluate(`[...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-spin-habitat')?.dataset.environmentSpinPhase`));
+    if (!Number.isFinite(firstPhase) || !Number.isFinite(nextPhase) || Math.abs(nextPhase - firstPhase) < 0.015) {
+      throw new Error(`Spin Habitat rotation phase did not advance: ${firstPhase} -> ${nextPhase}`);
+    }
+    console.log(`BROWSER_SPIN_HABITAT_PASS viewport=${viewportMode} phase=${firstPhase.toFixed(3)}->${nextPhase.toFixed(3)}`);
+  }
+
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);
   const expectedCombatLod = coarseCombatSurface ? '2' : '1';
   await waitFor(`(() => {

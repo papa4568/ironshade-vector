@@ -9,6 +9,7 @@ import { lootColor } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
 import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, OPERATOR_CLASS_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, SPIN_HABITAT_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
 import { configureGraphicsAssetRenderer, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
+import { spinHabitatArchitectureState } from './spinHabitatArchitecture';
 
 const WORLD_SCALE = 0.02;
 const FLOOR_Y = 0;
@@ -265,6 +266,10 @@ export class ThreeCombatRenderer {
   private damagedVesselLoadGeneration = 0;
   private parallaxLoadGeneration = 0;
   private spinHabitatLoadGeneration = 0;
+  private spinHabitatAuthoredRotor: THREE.Group | null = null;
+  private spinHabitatProceduralRotor: THREE.Group | null = null;
+  private spinHabitatRotationY = 0;
+  private spinHabitatLastSimTime = Number.NaN;
   private interactableLoadGeneration = 0;
   private readonly projectilePool: ProjectileVisual[] = [];
   private readonly hazardPool: RingVisual[] = [];
@@ -408,6 +413,7 @@ export class ThreeCombatRenderer {
     const budget = this.renderBudget.sample(frameMs, quality);
     this.resize(width, height, quality, budget);
     this.ensureEnvironment(state, mission, budget);
+    this.syncSpinHabitatArchitecture(state, mission);
     syncHardSciFiEnvironment(this.environmentRoot, state, mission, budget.detailScale, budget.transparencyScale);
     this.syncSectors(state);
     this.syncObjects(state);
@@ -492,6 +498,10 @@ export class ThreeCombatRenderer {
     this.damagedVesselLoadGeneration += 1;
     this.parallaxLoadGeneration += 1;
     this.spinHabitatLoadGeneration += 1;
+    this.spinHabitatAuthoredRotor = null;
+    this.spinHabitatProceduralRotor = null;
+    this.spinHabitatRotationY = 0;
+    this.spinHabitatLastSimTime = Number.NaN;
     for (const mesh of this.refineryInstancedMeshes) {
       mesh.removeFromParent();
       mesh.dispose();
@@ -543,6 +553,11 @@ export class ThreeCombatRenderer {
     delete this.renderer.domElement.dataset.environmentInstances;
     delete this.renderer.domElement.dataset.environmentTerminals;
     delete this.renderer.domElement.dataset.environmentLandmark;
+    delete this.renderer.domElement.dataset.environmentMotion;
+    delete this.renderer.domElement.dataset.environmentSpinMode;
+    delete this.renderer.domElement.dataset.environmentSpinRpm;
+    delete this.renderer.domElement.dataset.environmentSpinPhase;
+    delete this.renderer.domElement.dataset.environmentSpinSource;
     delete this.renderer.domElement.dataset.environmentServiceDetails;
     delete this.renderer.domElement.dataset.environmentSurfaceDetail;
     delete this.renderer.domElement.dataset.environmentMachineDetail;
@@ -779,7 +794,7 @@ export class ThreeCombatRenderer {
     if (this.damagedVesselScorchDecals) this.damagedVesselScorchDecals.visible = true;
   }
 
-  private addInstancedEnvironmentAsset(instance: GraphicsAssetInstance, placements: EnvironmentPlacement[], label: string) {
+  private addInstancedEnvironmentAsset(instance: GraphicsAssetInstance, placements: EnvironmentPlacement[], label: string, parent: THREE.Object3D = this.authoredEnvironmentRoot) {
     if (placements.length === 0) return 0;
     instance.root.updateMatrixWorld(true);
     let created = 0;
@@ -809,7 +824,7 @@ export class ThreeCombatRenderer {
         mesh.setMatrixAt(index, finalMatrix);
       }
       mesh.instanceMatrix.needsUpdate = true;
-      this.authoredEnvironmentRoot.add(mesh);
+      parent.add(mesh);
       this.refineryInstancedMeshes.push(mesh);
       created += placements.length;
     });
@@ -878,20 +893,27 @@ export class ThreeCombatRenderer {
       const width = scaled(worldW);
       const height = scaled(worldH);
 
+      const rotorRoot = new THREE.Group();
+      rotorRoot.name = 'spin-habitat-rotating-frame';
+      rotorRoot.position.set(width * 0.50, 0, height * 0.50);
+      rotorRoot.rotation.y = this.spinHabitatRotationY;
+      this.authoredEnvironmentRoot.add(rotorRoot);
+      this.spinHabitatAuthoredRotor = rotorRoot;
+
       const ringPlacements: EnvironmentPlacement[] = [
         [0.22, 0.12, 0, 0.92], [0.50, 0.11, 0, 0.96], [0.78, 0.12, 0, 0.92],
         [0.22, 0.88, Math.PI, 0.92], [0.50, 0.89, Math.PI, 0.96], [0.78, 0.88, Math.PI, 0.92],
       ].map(([x, z, rotationY, scale]) => ({
-        position: new THREE.Vector3(width * x, 0, height * z),
+        position: new THREE.Vector3(width * (x - 0.50), 0, height * (z - 0.50)),
         rotationY,
         scale,
       }));
 
       const spokePlacements: EnvironmentPlacement[] = [
-        { position: new THREE.Vector3(width * 0.50, 0, height * 0.30), rotationY: Math.PI / 2, scale: 0.88 },
-        { position: new THREE.Vector3(width * 0.50, 0, height * 0.70), rotationY: Math.PI / 2, scale: 0.88 },
-        { position: new THREE.Vector3(width * 0.30, 0, height * 0.50), rotationY: 0, scale: 0.88 },
-        { position: new THREE.Vector3(width * 0.70, 0, height * 0.50), rotationY: 0, scale: 0.88 },
+        { position: new THREE.Vector3(0, 0, height * -0.20), rotationY: Math.PI / 2, scale: 0.88 },
+        { position: new THREE.Vector3(0, 0, height * 0.20), rotationY: Math.PI / 2, scale: 0.88 },
+        { position: new THREE.Vector3(width * -0.20, 0, 0), rotationY: 0, scale: 0.88 },
+        { position: new THREE.Vector3(width * 0.20, 0, 0), rotationY: 0, scale: 0.88 },
       ];
 
       const hubPlacements: EnvironmentPlacement[] = [
@@ -901,17 +923,18 @@ export class ThreeCombatRenderer {
       const servicePlacements: EnvironmentPlacement[] = [
         [0.18, 0.28, Math.PI / 2], [0.82, 0.30, -Math.PI / 2], [0.20, 0.72, Math.PI / 2], [0.80, 0.70, -Math.PI / 2],
       ].map(([x, z, rotationY]) => ({
-        position: new THREE.Vector3(width * x, 0, height * z),
+        position: new THREE.Vector3(width * (x - 0.50), 0, height * (z - 0.50)),
         rotationY,
         scale: 0.90,
       }));
 
       let instances = 0;
-      instances += this.addInstancedEnvironmentAsset(byKey.get('ringSegment')!.instance, ringPlacements, 'spin-habitat-ring-segment');
-      instances += this.addInstancedEnvironmentAsset(byKey.get('spokeTruss')!.instance, spokePlacements, 'spin-habitat-spoke-truss');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('ringSegment')!.instance, ringPlacements, 'spin-habitat-ring-segment', rotorRoot);
+      instances += this.addInstancedEnvironmentAsset(byKey.get('spokeTruss')!.instance, spokePlacements, 'spin-habitat-spoke-truss', rotorRoot);
       instances += this.addInstancedEnvironmentAsset(byKey.get('axisHub')!.instance, hubPlacements, 'spin-habitat-axis-hub');
-      instances += this.addInstancedEnvironmentAsset(byKey.get('serviceBay')!.instance, servicePlacements, 'spin-habitat-service-bay');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('serviceBay')!.instance, servicePlacements, 'spin-habitat-service-bay', rotorRoot);
 
+      this.proceduralRefineryVisuals.forEach(item => { item.visible = false; });
       const lods = [...new Set(loaded.map(item => item.lod))].sort();
       this.renderer.domElement.dataset.environmentVisual = 'authored-spin-habitat';
       this.renderer.domElement.dataset.environmentLod = lods.join(',');
@@ -921,7 +944,9 @@ export class ThreeCombatRenderer {
       this.renderer.domElement.dataset.environmentServiceDetails = `service-bay:${servicePlacements.length}`;
       this.renderer.domElement.dataset.environmentSurfaceDetail = `ring-segment:${ringPlacements.length}+spoke-truss:${spokePlacements.length}`;
       this.renderer.domElement.dataset.environmentMachineDetail = 'axis-hub:1';
-      this.renderer.domElement.dataset.environmentComposition = 'static-ring-arc+cross-spokes+central-axis';
+      this.renderer.domElement.dataset.environmentComposition = 'rotating-ring-arc+rotating-cross-spokes+stationary-axis';
+      this.renderer.domElement.dataset.environmentMotion = 'gravity-coupled-rigid-rotation';
+      this.renderer.domElement.dataset.environmentSpinSource = 'sector-A-gravity';
       this.renderer.domElement.dataset.environmentMaterials = 'habitat-alloy+maintenance-dark+cool-green+service-amber';
       this.renderer.domElement.dataset.readabilityLanguage = 'ring-spoke-axis-silhouette+green-amber';
     } catch (error) {
@@ -936,6 +961,8 @@ export class ThreeCombatRenderer {
       this.refineryOwnedMaterials.forEach(material => material.dispose());
       this.refineryOwnedMaterials.length = 0;
       this.authoredEnvironmentRoot.clear();
+      this.spinHabitatAuthoredRotor = null;
+      this.proceduralRefineryVisuals.forEach(item => { item.visible = true; });
       this.renderer.domElement.dataset.environmentVisual = 'procedural-fallback';
       delete this.renderer.domElement.dataset.environmentLandmark;
       delete this.renderer.domElement.dataset.environmentServiceDetails;
@@ -1816,13 +1843,29 @@ export class ThreeCombatRenderer {
       }
       this.proceduralRefineryVisuals.push(addBox(cx, cz - 9, 30, 0.45, 0.45, emissive));
     } else if (location === 'spin-habitat') {
+      const rotor = new THREE.Group();
+      rotor.name = 'spin-habitat-procedural-rotor';
+      rotor.position.set(cx, 2.8, cz);
       for (const radius of [5.5, 8.5, 11.5]) {
         const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.16, 8, 64), emissive);
         ring.rotation.x = Math.PI / 2;
-        ring.position.set(cx, 2.8, cz);
-        this.environmentRoot.add(ring);
+        ring.castShadow = true;
+        rotor.add(ring);
       }
-      addBox(cx, cz, 0.45, 20, 0.45, structural);
+      const radialSpoke = new THREE.Mesh(new THREE.BoxGeometry(22, 0.32, 0.32), structural);
+      radialSpoke.castShadow = true;
+      rotor.add(radialSpoke);
+      const crossSpoke = radialSpoke.clone();
+      crossSpoke.rotation.y = Math.PI / 2;
+      rotor.add(crossSpoke);
+      const rotationWitness = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.52, 0.72), emissive);
+      rotationWitness.position.set(8.5, 0.34, 0);
+      rotationWitness.castShadow = true;
+      rotationWitness.name = 'spin-habitat-rotation-witness';
+      rotor.add(rotationWitness);
+      this.environmentRoot.add(rotor);
+      this.spinHabitatProceduralRotor = rotor;
+      this.proceduralRefineryVisuals.push(rotor);
     } else if (location === 'jovian-harvester') {
       for (let i = -2; i <= 2; i += 1) addBox(cx + i * 7, cz + i * 1.5, 1.1, 1.1, 6 + Math.abs(i), structural);
       addBox(cx, cz - 7, 34, 0.35, 0.35, emissive);
@@ -1865,6 +1908,29 @@ export class ThreeCombatRenderer {
       }
       addBox(cx, cz, 26, 0.35, 0.35, emissive);
     }
+  }
+
+  private syncSpinHabitatArchitecture(state: SimState, mission: Contract) {
+    if (mission.location !== 'spin-habitat') {
+      this.spinHabitatLastSimTime = Number.NaN;
+      return;
+    }
+
+    const spinSector = state.sectors.find(sector => sector.id === 'A') ?? state.sectors[0];
+    const motion = spinHabitatArchitectureState(spinSector?.gravity ?? 1);
+    const previousTime = this.spinHabitatLastSimTime;
+    this.spinHabitatLastSimTime = state.time;
+    const delta = Number.isFinite(previousTime) ? THREE.MathUtils.clamp(state.time - previousTime, 0, 0.25) : 0;
+    this.spinHabitatRotationY = (this.spinHabitatRotationY + motion.angularSpeed * delta) % (Math.PI * 2);
+
+    if (this.spinHabitatAuthoredRotor) this.spinHabitatAuthoredRotor.rotation.y = this.spinHabitatRotationY;
+    if (this.spinHabitatProceduralRotor) this.spinHabitatProceduralRotor.rotation.y = this.spinHabitatRotationY;
+
+    this.renderer.domElement.dataset.environmentMotion = 'gravity-coupled-rigid-rotation';
+    this.renderer.domElement.dataset.environmentSpinMode = motion.mode;
+    this.renderer.domElement.dataset.environmentSpinRpm = motion.rpm.toFixed(2);
+    this.renderer.domElement.dataset.environmentSpinPhase = this.spinHabitatRotationY.toFixed(3);
+    this.renderer.domElement.dataset.environmentSpinSource = 'sector-A-gravity';
   }
 
   private syncSectors(state: SimState) {
