@@ -576,10 +576,15 @@ try {
         && Number.isFinite(Number(canvas?.dataset.environmentSpinPhase));
     })()`, 'Spin Habitat authored rotating architecture', 20_000);
     const firstPhase = Number(await evaluate(`[...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-spin-habitat')?.dataset.environmentSpinPhase`));
-    await sleep(900);
+    if (!Number.isFinite(firstPhase)) throw new Error(`Spin Habitat rotation phase was not observable: ${firstPhase}`);
+    await waitFor(`(() => {
+      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-spin-habitat');
+      const phase = Number(canvas?.dataset.environmentSpinPhase);
+      return Number.isFinite(phase) && Math.abs(phase - ${JSON.stringify(firstPhase)}) >= 0.015;
+    })()`, 'Spin Habitat rotation phase advance', 5_000);
     const nextPhase = Number(await evaluate(`[...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-spin-habitat')?.dataset.environmentSpinPhase`));
-    if (!Number.isFinite(firstPhase) || !Number.isFinite(nextPhase) || Math.abs(nextPhase - firstPhase) < 0.015) {
-      throw new Error(`Spin Habitat rotation phase did not advance: ${firstPhase} -> ${nextPhase}`);
+    if (!Number.isFinite(nextPhase)) {
+      throw new Error(`Spin Habitat rotation phase became unavailable after advancing from ${firstPhase}`);
     }
     const spindownState = await evaluate(`(() => {
       const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-spin-habitat');
