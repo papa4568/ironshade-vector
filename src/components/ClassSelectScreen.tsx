@@ -27,6 +27,12 @@ type IntakeCopy = {
   watchFor: string;
 };
 
+const classIconSrc: Record<OperatorClassId, string> = {
+  vanguard: '/assets/ui/classes/vanguard.svg',
+  vector: '/assets/ui/classes/vector.svg',
+  systems: '/assets/ui/classes/systems.svg',
+};
+
 const classIntakeCopy: Record<OperatorClassId, IntakeCopy> = {
   vanguard: {
     role: 'Frontline',
@@ -109,7 +115,10 @@ export default function ClassSelectScreen({ profile, onConfirm }: Props) {
               onClick={() => setSelectedId(definition.id)}
             >
               <div className="class-choice-top">
-                <span>{copy.role}</span>
+                <div className="class-choice-role">
+                  <img src={classIconSrc[definition.id]} alt="" aria-hidden="true" />
+                  <span>{copy.role}</span>
+                </div>
                 <strong>{active ? 'SELECTED' : copy.learning}</strong>
               </div>
               <h3>{definition.name}</h3>
@@ -129,10 +138,13 @@ export default function ClassSelectScreen({ profile, onConfirm }: Props) {
       <section className={`class-selected-panel class-${selectedId}`} aria-live="polite">
         <div className="class-selected-overview">
           <div className="class-selected-heading">
-            <div>
-              <small>STEP 2 // YOUR PICK</small>
-              <h2>{selected.name}</h2>
-              <b>{onboarding.pitch}</b>
+            <div className="class-selected-title">
+              <img src={classIconSrc[selectedId]} alt="" aria-hidden="true" />
+              <div>
+                <small>STEP 2 // YOUR PICK</small>
+                <h2>{selected.name}</h2>
+                <b>{onboarding.pitch}</b>
+              </div>
             </div>
             <span>{onboarding.learning} · {onboarding.range}</span>
           </div>

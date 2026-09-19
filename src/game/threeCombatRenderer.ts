@@ -7,7 +7,7 @@ import { getWorldSize, type CombatObject, type Enemy, type Player, type SimState
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, locationArtIdentityFor, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
 import { lootColor } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
-import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
+import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, OPERATOR_CLASS_ASSET_FAMILIES, REFINERY_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
 import { configureGraphicsAssetRenderer, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
 
 const WORLD_SCALE = 0.02;
@@ -271,6 +271,7 @@ export class ThreeCombatRenderer {
   private authoredOperatorMaterials: THREE.MeshStandardMaterial[] = [];
   private authoredOperatorOwnedMaterials: THREE.Material[] = [];
   private authoredOperatorRig: OperatorRig | null = null;
+  private operatorAssetRequested = false;
   private operatorHitUntil = -1;
   private lastPlayerDurability = Number.NaN;
   private disposed = false;
@@ -370,7 +371,6 @@ export class ThreeCombatRenderer {
     this.aimLine = new THREE.Line(aimGeometry, new THREE.LineBasicMaterial({ color: 0xb5d6ca, transparent: true, opacity: 0.72, depthWrite: false }));
     this.playerRoot.add(this.aimLine);
 
-    void this.loadAuthoredOperator();
     void this.loadAuthoredWeapons();
   }
 
@@ -385,6 +385,10 @@ export class ThreeCombatRenderer {
     this.syncSectors(state);
     this.syncObjects(state);
     this.syncObjectiveBeacon(state, mission);
+    if (!this.operatorAssetRequested) {
+      this.operatorAssetRequested = true;
+      void this.loadAuthoredOperator(state.build.operatorClass);
+    }
     this.syncPlayer(state, operatorFaction);
     this.syncEnemies(state, mobileTargetId);
     this.syncDamageNumbers(state);
@@ -1214,8 +1218,9 @@ export class ThreeCombatRenderer {
     this.renderer.domElement.dataset.weaponFx = player.currentWeapon === 'rail' ? 'lance' : player.currentWeapon === 'breacher' ? 'scatter' : 'tracer';
   }
 
-  private async loadAuthoredOperator() {
-    const spec = selectGraphicsAssetSpec(OPERATOR_ASSET_FAMILY, this.coarse ? 0.72 : 1);
+  private async loadAuthoredOperator(operatorClass: SimState['build']['operatorClass']) {
+    const family = operatorClass ? OPERATOR_CLASS_ASSET_FAMILIES[operatorClass] : OPERATOR_ASSET_FAMILY;
+    const spec = selectGraphicsAssetSpec(family, this.coarse ? 0.72 : 1);
     if (!spec) {
       this.renderer.domElement.dataset.operatorVisual = 'procedural-fallback';
       return;
@@ -1303,6 +1308,7 @@ export class ThreeCombatRenderer {
       this.proceduralOperatorVisuals.forEach(item => { item.visible = false; });
       this.renderer.domElement.dataset.operatorVisual = `authored-${spec.lod}`;
       this.renderer.domElement.dataset.operatorAsset = spec.id;
+      this.renderer.domElement.dataset.operatorClassAsset = operatorClass ?? 'generic';
       this.renderer.domElement.dataset.operatorAnimation = this.authoredOperatorRig ? 'idle' : 'static';
       this.renderer.domElement.dataset.operatorBlend = this.authoredOperatorRig
         ? 'move:0.00,recoil:0.00,reload:0.00,dodge:0.00,hit:0.00'
@@ -1310,6 +1316,7 @@ export class ThreeCombatRenderer {
     } catch (error) {
       if (this.disposed) return;
       this.renderer.domElement.dataset.operatorVisual = 'procedural-fallback';
+      this.renderer.domElement.dataset.operatorClassAsset = operatorClass ?? 'generic';
       console.warn('Authored operator asset failed to load; keeping procedural fallback.', error);
     }
   }

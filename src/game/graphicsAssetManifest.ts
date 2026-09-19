@@ -11,6 +11,30 @@ export const OPERATOR_ASSET_FAMILY: GraphicsAssetFamily = {
   },
 };
 
+export const OPERATOR_CLASS_ASSET_FAMILIES = {
+  vanguard: {
+    id: 'operator-vanguard',
+    lods: {
+      1: createGraphicsAssetSpec('operator-vanguard-lod1', 'operator', '/assets/models/operators/operator-vanguard-lod1.glb', 1),
+      2: createGraphicsAssetSpec('operator-field-suit-lod2', 'operator', '/assets/models/operators/operator-field-suit-lod2.glb', 2),
+    },
+  },
+  vector: {
+    id: 'operator-vector',
+    lods: {
+      1: createGraphicsAssetSpec('operator-vector-lod1', 'operator', '/assets/models/operators/operator-vector-lod1.glb', 1),
+      2: createGraphicsAssetSpec('operator-field-suit-lod2', 'operator', '/assets/models/operators/operator-field-suit-lod2.glb', 2),
+    },
+  },
+  systems: {
+    id: 'operator-systems',
+    lods: {
+      1: createGraphicsAssetSpec('operator-systems-lod1', 'operator', '/assets/models/operators/operator-systems-lod1.glb', 1),
+      2: createGraphicsAssetSpec('operator-field-suit-lod2', 'operator', '/assets/models/operators/operator-field-suit-lod2.glb', 2),
+    },
+  },
+} as const satisfies Record<'vanguard' | 'vector' | 'systems', GraphicsAssetFamily>;
+
 export const DAMAGED_VESSEL_ASSET_FAMILIES = {
   rib: {
     id: 'damaged-vessel-broken-rib',
