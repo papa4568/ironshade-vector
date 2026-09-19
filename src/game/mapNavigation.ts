@@ -34,6 +34,7 @@ const variants: Record<LocationId, number> = {
   'lattice-annex': -1,
   'momentum-exchange': 2,
   'cryo-reserve': -2,
+  'parallax-array': 1,
 };
 
 export function getMapNavigationPlan(location: LocationId): MapNavigationPlan {
@@ -50,6 +51,7 @@ export function getMapNavigationPlan(location: LocationId): MapNavigationPlan {
     'lattice-annex': ['METROLOGY RING', 'REFERENCE GALLERY', 'SAMPLE VAULT'],
     'momentum-exchange': ['BRAKE DECK', 'TRANSFER TUNNEL', 'COUNTERMASS CRADLE'],
     'cryo-reserve': ['SERVICE COLLAR', 'PROPELLANT GALLERY', 'UMBRA TANK FARM'],
+    'parallax-array': ['NEAR BASELINE', 'CROSS-TRACK GALLERY', 'DEEP REFERENCE'],
   };
   const [a, b, c] = labels[location];
   return {
@@ -88,7 +90,7 @@ function rectRouteDistance(object: CombatObject, a: Vec2, b: Vec2) {
 
 export function reserveNavigationLanes(state: SimState, location: LocationId) {
   const plan = getMapNavigationPlan(location);
-  const protectedIds = new Set(['boss-gate', 'boss-seal', 'service-plate', 'door-control', 'gravity-control', 'service-seal', 'boarding-lock', 'grid-isolator-a', 'grid-isolator-b', 'gravity-control-a', 'gravity-control-b', 'salvage-node-a', 'salvage-node-b', 'salvage-node-c', 'capture-drum-a', 'capture-drum-b', 'purge-valve-a', 'purge-valve-b', 'mega-optional-cache']);
+  const protectedIds = new Set(['boss-gate', 'boss-seal', 'service-plate', 'door-control', 'gravity-control', 'service-seal', 'boarding-lock', 'grid-isolator-a', 'grid-isolator-b', 'gravity-control-a', 'gravity-control-b', 'salvage-node-a', 'salvage-node-b', 'salvage-node-c', 'capture-drum-a', 'capture-drum-b', 'purge-valve-a', 'purge-valve-b', 'reference-node-a', 'reference-node-b', 'reference-node-c', 'mega-optional-cache']);
   const routes = plan.routes.filter(route => route.kind !== 'connector');
   let relocationIndex = 0;
   const pads = [
