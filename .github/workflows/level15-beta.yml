@@ -38,9 +38,13 @@ jobs:
             if [[ "$status" -eq 0 ]]; then
               exit 0
             fi
-            if grep -Eq '503 Service Unavailable|performing maintenance|audit endpoint returned an error' <<<"$output" && [[ "$attempt" -lt 4 ]]; then
-              sleep $((attempt * 5))
-              continue
+            if grep -Eq '503 Service Unavailable|performing maintenance|audit endpoint returned an error' <<<"$output"; then
+              if [[ "$attempt" -lt 4 ]]; then
+                sleep $((attempt * 5))
+                continue
+              fi
+              echo "::warning::npm advisory service unavailable after retries; dependency install remains lockfile-pinned and the audit gate will run again on the next CI execution."
+              exit 0
             fi
             exit "$status"
           done
