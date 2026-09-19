@@ -73,6 +73,45 @@ export const DAMAGED_VESSEL_ASSET_FAMILIES = {
   },
 } as const satisfies Record<'rib' | 'breachFrame' | 'salvageRack' | 'tornPlate' | 'serviceBundle', GraphicsAssetFamily>;
 
+
+export const PARALLAX_ASSET_FAMILIES = {
+  pylon: {
+    id: 'parallax-baseline-pylon',
+    lods: {
+      1: createGraphicsAssetSpec('parallax-baseline-pylon-lod1', 'environment-module', '/assets/models/environments/parallax-baseline-pylon-lod1.glb', 1),
+      2: createGraphicsAssetSpec('parallax-baseline-pylon-lod2', 'environment-module', '/assets/models/environments/parallax-baseline-pylon-lod2.glb', 2),
+    },
+  },
+  frame: {
+    id: 'parallax-reference-frame',
+    lods: {
+      1: createGraphicsAssetSpec('parallax-reference-frame-lod1', 'environment-module', '/assets/models/environments/parallax-reference-frame-lod1.glb', 1),
+      2: createGraphicsAssetSpec('parallax-reference-frame-lod2', 'environment-module', '/assets/models/environments/parallax-reference-frame-lod2.glb', 2),
+    },
+  },
+  massCarriage: {
+    id: 'parallax-mass-carriage',
+    lods: {
+      1: createGraphicsAssetSpec('parallax-mass-carriage-lod1', 'environment-module', '/assets/models/environments/parallax-mass-carriage-lod1.glb', 1),
+      2: createGraphicsAssetSpec('parallax-mass-carriage-lod2', 'environment-module', '/assets/models/environments/parallax-mass-carriage-lod2.glb', 2),
+    },
+  },
+  shearAnchor: {
+    id: 'parallax-shear-anchor',
+    lods: {
+      1: createGraphicsAssetSpec('parallax-shear-anchor-lod1', 'environment-module', '/assets/models/environments/parallax-shear-anchor-lod1.glb', 1),
+      2: createGraphicsAssetSpec('parallax-shear-anchor-lod2', 'environment-module', '/assets/models/environments/parallax-shear-anchor-lod2.glb', 2),
+    },
+  },
+  console: {
+    id: 'parallax-reference-console',
+    lods: {
+      1: createGraphicsAssetSpec('parallax-reference-console-lod1', 'environment-module', '/assets/models/environments/parallax-reference-console-lod1.glb', 1),
+      2: createGraphicsAssetSpec('parallax-reference-console-lod2', 'environment-module', '/assets/models/environments/parallax-reference-console-lod2.glb', 2),
+    },
+  },
+} as const satisfies Record<'pylon' | 'frame' | 'massCarriage' | 'shearAnchor' | 'console', GraphicsAssetFamily>;
+
 export const REFINERY_ASSET_FAMILIES = {
   floor: {
     id: 'refinery-floor-panel',

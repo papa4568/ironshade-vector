@@ -7,7 +7,7 @@ import { getWorldSize, type CombatObject, type Enemy, type Player, type SimState
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, locationArtIdentityFor, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
 import { lootColor } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
-import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, OPERATOR_CLASS_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
+import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, OPERATOR_CLASS_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
 import { configureGraphicsAssetRenderer, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
 
 const WORLD_SCALE = 0.02;
@@ -263,6 +263,7 @@ export class ThreeCombatRenderer {
   private damagedVesselScorchDecals: THREE.InstancedMesh | null = null;
   private refineryLoadGeneration = 0;
   private damagedVesselLoadGeneration = 0;
+  private parallaxLoadGeneration = 0;
   private interactableLoadGeneration = 0;
   private readonly projectilePool: ProjectileVisual[] = [];
   private readonly hazardPool: RingVisual[] = [];
@@ -488,6 +489,7 @@ export class ThreeCombatRenderer {
   private clearAuthoredRefineryEnvironment() {
     this.refineryLoadGeneration += 1;
     this.damagedVesselLoadGeneration += 1;
+    this.parallaxLoadGeneration += 1;
     for (const mesh of this.refineryInstancedMeshes) {
       mesh.removeFromParent();
       mesh.dispose();
@@ -847,6 +849,128 @@ export class ThreeCombatRenderer {
       created += placements.length;
     });
     return created;
+  }
+
+
+  private async loadAuthoredParallaxEnvironment(state: SimState, worldW: number, worldH: number, detailScale: number) {
+    const generation = ++this.parallaxLoadGeneration;
+    this.renderer.domElement.dataset.environmentVisual = 'authored-loading';
+    const loaded: Array<{ key: keyof typeof PARALLAX_ASSET_FAMILIES; instance: GraphicsAssetInstance; lod: number }> = [];
+
+    try {
+      for (const key of Object.keys(PARALLAX_ASSET_FAMILIES) as Array<keyof typeof PARALLAX_ASSET_FAMILIES>) {
+        const spec = selectGraphicsAssetSpec(PARALLAX_ASSET_FAMILIES[key], detailScale);
+        if (!spec) throw new Error(`No authored Parallax asset available for ${key}`);
+        const instance = await instantiateGraphicsAsset(spec);
+        loaded.push({ key, instance, lod: spec.lod });
+      }
+
+      if (this.disposed || generation !== this.parallaxLoadGeneration) {
+        loaded.forEach(item => item.instance.release());
+        return;
+      }
+
+      this.refineryAssetInstances.push(...loaded.map(item => item.instance));
+      const byKey = new Map(loaded.map(item => [item.key, item]));
+      const width = scaled(worldW);
+      const height = scaled(worldH);
+
+      const pylonObjects = state.objects
+        .filter(object => object.active && object.id.startsWith('reference-node-'))
+        .slice(0, 3);
+      const pylonPlacements: EnvironmentPlacement[] = pylonObjects.length === 3
+        ? pylonObjects.map((object, index) => ({
+            position: new THREE.Vector3(scaled(object.x + object.w / 2), 0, scaled(object.y + object.h / 2)),
+            rotationY: [0.18, Math.PI * 0.72, -Math.PI * 0.58][index],
+            scale: 0.92,
+          }))
+        : [
+            { position: new THREE.Vector3(width * 0.24, 0, height * 0.28), rotationY: 0.18, scale: 0.92 },
+            { position: new THREE.Vector3(width * 0.50, 0, height * 0.72), rotationY: Math.PI * 0.72, scale: 0.92 },
+            { position: new THREE.Vector3(width * 0.76, 0, height * 0.30), rotationY: -Math.PI * 0.58, scale: 0.92 },
+          ];
+
+      const frameObjects = state.objects
+        .filter(object => object.active && object.id.startsWith('parallax-frame-'))
+        .slice(0, 3);
+      const framePlacements: EnvironmentPlacement[] = frameObjects.length > 0
+        ? frameObjects.map((object, index) => ({
+            position: new THREE.Vector3(scaled(object.x + object.w / 2), 0, scaled(object.y + object.h / 2)),
+            rotationY: index === 1 ? Math.PI / 2 : 0,
+            scale: 0.88,
+          }))
+        : [
+            { position: new THREE.Vector3(width * 0.34, 0, height * 0.38), rotationY: 0, scale: 0.88 },
+            { position: new THREE.Vector3(width * 0.50, 0, height * 0.62), rotationY: Math.PI / 2, scale: 0.88 },
+            { position: new THREE.Vector3(width * 0.66, 0, height * 0.40), rotationY: 0, scale: 0.88 },
+          ];
+
+      const carriagePlacements: EnvironmentPlacement[] = [
+        { position: new THREE.Vector3(width * 0.18, 0, height * 0.53), rotationY: Math.PI / 2, scale: 0.92 },
+        { position: new THREE.Vector3(width * 0.50, 0, height * 0.22), rotationY: 0, scale: 0.94 },
+        { position: new THREE.Vector3(width * 0.82, 0, height * 0.58), rotationY: -Math.PI / 2, scale: 0.92 },
+      ];
+
+      const shearAnchorPlacements: EnvironmentPlacement[] = [
+        [0.10, 0.18, 0], [0.10, 0.50, 0], [0.10, 0.82, 0],
+        [0.90, 0.18, Math.PI], [0.90, 0.50, Math.PI], [0.90, 0.82, Math.PI],
+        [0.32, 0.10, Math.PI / 2], [0.68, 0.90, -Math.PI / 2],
+      ].map(([x, z, rotationY]) => ({
+        position: new THREE.Vector3(width * x, 0, height * z),
+        rotationY,
+        scale: 0.86,
+      }));
+
+      const consolePlacements: EnvironmentPlacement[] = pylonPlacements.map((placement, index) => ({
+        position: placement.position.clone().add(new THREE.Vector3(index === 1 ? -1.7 : 1.55, 0, index === 2 ? -1.2 : 1.0)),
+        rotationY: (placement.rotationY ?? 0) + Math.PI / 2,
+        scale: 0.90,
+      }));
+
+      let instances = 0;
+      instances += this.addInstancedEnvironmentAsset(byKey.get('pylon')!.instance, pylonPlacements, 'parallax-baseline-pylon');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('frame')!.instance, framePlacements, 'parallax-reference-frame');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('massCarriage')!.instance, carriagePlacements, 'parallax-mass-carriage');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('shearAnchor')!.instance, shearAnchorPlacements, 'parallax-shear-anchor');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('console')!.instance, consolePlacements, 'parallax-reference-console');
+
+      const lods = [...new Set(loaded.map(item => item.lod))].sort();
+      this.renderer.domElement.dataset.environmentVisual = 'authored-parallax-array';
+      this.renderer.domElement.dataset.environmentLod = lods.join(',');
+      this.renderer.domElement.dataset.environmentKit = 'baseline-pylon,reference-frame,mass-carriage,shear-anchor,reference-console';
+      this.renderer.domElement.dataset.environmentInstances = String(instances);
+      this.renderer.domElement.dataset.environmentTerminals = String(consolePlacements.length);
+      this.renderer.domElement.dataset.environmentLandmark = 'three-point-long-baseline';
+      this.renderer.domElement.dataset.environmentServiceDetails = `reference-console:${consolePlacements.length}+mass-carriage:${carriagePlacements.length}`;
+      this.renderer.domElement.dataset.environmentSurfaceDetail = `reference-frame:${framePlacements.length}+shear-anchor:${shearAnchorPlacements.length}`;
+      this.renderer.domElement.dataset.environmentMachineDetail = `baseline-pylon:${pylonPlacements.length}+mass-carriage:${carriagePlacements.length}`;
+      this.renderer.domElement.dataset.environmentComposition = 'three-point-baseline+cross-track-frames+perimeter-shear-anchors';
+      this.renderer.domElement.dataset.environmentMaterials = 'graphite-structure+reference-shell+violet-alignment+cyan-readout';
+      this.renderer.domElement.dataset.environmentVfx = 'reference-shear-procedural+authored-emissive-calibration';
+      this.renderer.domElement.dataset.readabilityLanguage = 'baseline-silhouette+violet-cyan+luminance';
+    } catch (error) {
+      loaded.forEach(item => item.instance.release());
+      if (this.disposed || generation !== this.parallaxLoadGeneration) return;
+      this.refineryAssetInstances.length = 0;
+      this.refineryInstancedMeshes.forEach(mesh => {
+        mesh.removeFromParent();
+        mesh.dispose();
+      });
+      this.refineryInstancedMeshes.length = 0;
+      this.refineryOwnedMaterials.forEach(material => material.dispose());
+      this.refineryOwnedMaterials.length = 0;
+      this.authoredEnvironmentRoot.clear();
+      this.renderer.domElement.dataset.environmentVisual = 'procedural-fallback';
+      delete this.renderer.domElement.dataset.environmentLandmark;
+      delete this.renderer.domElement.dataset.environmentServiceDetails;
+      delete this.renderer.domElement.dataset.environmentSurfaceDetail;
+      delete this.renderer.domElement.dataset.environmentMachineDetail;
+      delete this.renderer.domElement.dataset.environmentComposition;
+      delete this.renderer.domElement.dataset.environmentMaterials;
+      delete this.renderer.domElement.dataset.environmentVfx;
+      delete this.renderer.domElement.dataset.readabilityLanguage;
+      console.warn('Authored Cislunar Parallax Array kit failed to load; keeping procedural scenery.', error);
+    }
   }
 
   private async loadAuthoredDamagedVesselEnvironment(worldW: number, worldH: number, detailScale: number) {
@@ -1536,6 +1660,8 @@ export class ThreeCombatRenderer {
       void this.loadAuthoredRefineryEnvironment(state, world.w, world.h, budget.detailScale);
     } else if (mission.location === 'damaged-vessel') {
       void this.loadAuthoredDamagedVesselEnvironment(world.w, world.h, budget.detailScale);
+    } else if (mission.location === 'parallax-array') {
+      void this.loadAuthoredParallaxEnvironment(state, world.w, world.h, budget.detailScale);
     } else {
       this.renderer.domElement.dataset.environmentVisual = 'procedural';
     }

@@ -576,6 +576,137 @@ function damagedVesselMaterials() {
   ];
 }
 
+
+function parallaxMaterials() {
+  return [
+    {
+      name: 'parallax-structural',
+      pbrMetallicRoughness: {
+        baseColorFactor: [0.14, 0.15, 0.20, 1],
+        metallicFactor: 0.90,
+        roughnessFactor: 0.32,
+      },
+    },
+    {
+      name: 'parallax-reference-shell',
+      pbrMetallicRoughness: {
+        baseColorFactor: [0.34, 0.35, 0.43, 1],
+        metallicFactor: 0.72,
+        roughnessFactor: 0.38,
+      },
+    },
+    {
+      name: 'parallax-alignment-emissive',
+      pbrMetallicRoughness: {
+        baseColorFactor: [0.22, 0.15, 0.42, 1],
+        metallicFactor: 0.48,
+        roughnessFactor: 0.24,
+      },
+      emissiveFactor: [0.58, 0.42, 0.96],
+    },
+    {
+      name: 'parallax-reference-emissive',
+      pbrMetallicRoughness: {
+        baseColorFactor: [0.04, 0.16, 0.20, 1],
+        metallicFactor: 0.36,
+        roughnessFactor: 0.20,
+      },
+      emissiveFactor: [0.18, 0.76, 0.88],
+    },
+  ];
+}
+
+function parallaxNodes(kind, lod) {
+  const detail = lod === 1;
+
+  if (kind === 'pylon') {
+    const nodes = [
+      { name: 'parallax-baseline-pylon-base', mesh: 0, translation: [0, 0.22, 0], scale: [1.45, 0.44, 1.45] },
+      { name: 'parallax-baseline-pylon-spine', mesh: 1, translation: [0, 2.28, 0], scale: [0.42, 4.10, 0.42] },
+      { name: 'parallax-baseline-pylon-cap', mesh: 2, translation: [0, 4.42, 0], scale: [0.96, 0.18, 0.96] },
+      { name: 'parallax-baseline-pylon-reference-strip', mesh: 3, translation: [0.24, 2.30, 0], scale: [0.08, 2.48, 0.18] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'parallax-baseline-pylon-ring-a', mesh: 2, translation: [0, 1.32, 0], scale: [1.08, 0.12, 1.08] },
+        { name: 'parallax-baseline-pylon-ring-b', mesh: 2, translation: [0, 3.22, 0], scale: [1.08, 0.12, 1.08] },
+        { name: 'parallax-baseline-pylon-calibration-fin', mesh: 1, translation: [-0.38, 2.48, 0], scale: [0.18, 1.42, 0.82] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  if (kind === 'frame') {
+    const nodes = [
+      { name: 'parallax-reference-frame-left', mesh: 0, translation: [0, 1.90, -2.25], scale: [0.40, 3.80, 0.40] },
+      { name: 'parallax-reference-frame-right', mesh: 0, translation: [0, 1.90, 2.25], scale: [0.40, 3.80, 0.40] },
+      { name: 'parallax-reference-frame-crown', mesh: 1, translation: [0, 3.64, 0], scale: [0.50, 0.34, 5.00] },
+      { name: 'parallax-reference-frame-baseline', mesh: 2, translation: [0.28, 2.10, 0], scale: [0.08, 0.12, 3.86] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'parallax-reference-frame-lattice-left', mesh: 1, translation: [0.12, 1.92, -1.42], scale: [0.18, 2.78, 0.18] },
+        { name: 'parallax-reference-frame-lattice-right', mesh: 1, translation: [0.12, 1.92, 1.42], scale: [0.18, 2.78, 0.18] },
+        { name: 'parallax-reference-frame-readout', mesh: 3, translation: [0.31, 3.16, 1.52], scale: [0.06, 0.34, 0.62] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  if (kind === 'massCarriage') {
+    const nodes = [
+      { name: 'parallax-mass-carriage-body', mesh: 1, translation: [0, 0.58, 0], scale: [3.50, 0.92, 1.64] },
+      { name: 'parallax-mass-carriage-rail-left', mesh: 0, translation: [0, 0.10, -0.98], scale: [4.30, 0.16, 0.20] },
+      { name: 'parallax-mass-carriage-rail-right', mesh: 0, translation: [0, 0.10, 0.98], scale: [4.30, 0.16, 0.20] },
+      { name: 'parallax-mass-carriage-trim', mesh: 2, translation: [1.22, 0.78, 0], scale: [0.34, 0.18, 1.22] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'parallax-mass-carriage-counterweight', mesh: 0, translation: [-1.28, 1.28, 0], scale: [0.74, 1.64, 1.22] },
+        { name: 'parallax-mass-carriage-reference-cell', mesh: 3, translation: [0.58, 1.18, 0.58], scale: [0.42, 0.46, 0.28] },
+        { name: 'parallax-mass-carriage-service-spine', mesh: 0, translation: [0.20, 1.38, -0.58], scale: [1.90, 0.18, 0.18] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  if (kind === 'shearAnchor') {
+    const nodes = [
+      { name: 'parallax-shear-anchor-foot', mesh: 0, translation: [0, 0.18, 0], scale: [1.70, 0.36, 1.34] },
+      { name: 'parallax-shear-anchor-spine', mesh: 1, translation: [-0.34, 1.65, 0], scale: [0.42, 2.95, 0.50] },
+      { name: 'parallax-shear-anchor-cantilever', mesh: 1, translation: [0.64, 2.68, 0], scale: [2.28, 0.28, 0.44] },
+      { name: 'parallax-shear-anchor-field-band', mesh: 2, translation: [1.56, 2.68, 0], scale: [0.18, 0.56, 0.86] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'parallax-shear-anchor-brace-upper', mesh: 0, translation: [0.06, 2.22, 0.42], scale: [1.32, 0.16, 0.16] },
+        { name: 'parallax-shear-anchor-brace-lower', mesh: 0, translation: [0.06, 1.36, -0.42], scale: [1.32, 0.16, 0.16] },
+        { name: 'parallax-shear-anchor-sensor', mesh: 3, translation: [1.64, 2.95, 0], scale: [0.24, 0.24, 0.24] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  const nodes = [
+    { name: 'parallax-reference-console-base', mesh: 0, translation: [0, 0.28, 0], scale: [1.50, 0.56, 1.12] },
+    { name: 'parallax-reference-console-mast', mesh: 1, translation: [-0.18, 1.05, 0], scale: [0.42, 1.30, 0.52] },
+    { name: 'parallax-reference-console-screen', mesh: 3, translation: [0.18, 1.42, 0], scale: [0.12, 0.52, 0.82] },
+    { name: 'parallax-reference-console-status', mesh: 2, translation: [0.26, 0.72, 0.34], scale: [0.10, 0.22, 0.28] },
+  ];
+  if (detail) {
+    nodes.push(
+      { name: 'parallax-reference-console-sidecar', mesh: 1, translation: [-0.42, 0.72, -0.50], scale: [0.48, 0.66, 0.42] },
+      { name: 'parallax-reference-console-calibration-bar', mesh: 2, translation: [0.14, 1.68, 0], scale: [0.10, 0.10, 0.92] },
+    );
+  }
+  nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+  return nodes;
+}
+
 function damagedVesselNodes(kind, lod) {
   const detail = lod === 1;
   if (kind === 'rib') {
@@ -1068,6 +1199,26 @@ for (const [kind, id] of damagedVesselProfiles) {
       `${id}-lod${lod}`,
       damagedVesselNodes(kind, lod),
       damagedVesselMaterials(),
+    ));
+  }
+}
+
+
+const parallaxProfiles = [
+  ['pylon', 'parallax-baseline-pylon'],
+  ['frame', 'parallax-reference-frame'],
+  ['massCarriage', 'parallax-mass-carriage'],
+  ['shearAnchor', 'parallax-shear-anchor'],
+  ['console', 'parallax-reference-console'],
+];
+
+for (const [kind, id] of parallaxProfiles) {
+  for (const lod of [1, 2]) {
+    outputs.push(await writeAsset(
+      `environments/${id}-lod${lod}.glb`,
+      `${id}-lod${lod}`,
+      parallaxNodes(kind, lod),
+      parallaxMaterials(),
     ));
   }
 }
