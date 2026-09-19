@@ -854,6 +854,130 @@ function refineryNodes(kind, lod) {
   return nodes;
 }
 
+
+function pickupMaterials() {
+  return [
+    {
+      name: 'pickup-shell',
+      pbrMetallicRoughness: {
+        baseColorFactor: [0.28, 0.33, 0.33, 1],
+        metallicFactor: 0.82,
+        roughnessFactor: 0.30,
+      },
+    },
+    {
+      name: 'pickup-dark',
+      pbrMetallicRoughness: {
+        baseColorFactor: [0.045, 0.060, 0.064, 1],
+        metallicFactor: 0.72,
+        roughnessFactor: 0.34,
+      },
+    },
+    {
+      name: 'pickup-accent-emissive',
+      pbrMetallicRoughness: {
+        baseColorFactor: [0.18, 0.34, 0.31, 1],
+        metallicFactor: 0.38,
+        roughnessFactor: 0.20,
+      },
+      emissiveFactor: [0.40, 0.92, 0.78],
+    },
+  ];
+}
+
+function pickupNodes(lod) {
+  const nodes = [
+    { name: 'pickup-recovery-shell', mesh: 0, translation: [0, 0.24, 0], scale: [0.72, 0.34, 0.46] },
+    { name: 'pickup-recovery-core', mesh: 2, translation: [0.38, 0.25, 0], scale: [0.08, 0.22, 0.30] },
+    { name: 'pickup-recovery-beacon', mesh: 2, translation: [0, 0.56, 0], scale: [0.12, 0.22, 0.12] },
+    { name: 'pickup-recovery-skid', mesh: 1, translation: [0, 0.07, 0], scale: [0.54, 0.10, 0.34] },
+  ];
+  if (lod === 1) {
+    nodes.push(
+      { name: 'pickup-recovery-rail-left', mesh: 1, translation: [-0.04, 0.38, 0.27], scale: [0.46, 0.08, 0.08] },
+      { name: 'pickup-recovery-rail-right', mesh: 1, translation: [-0.04, 0.38, -0.27], scale: [0.46, 0.08, 0.08] },
+      { name: 'pickup-recovery-tag', mesh: 2, translation: [-0.32, 0.25, 0], scale: [0.08, 0.16, 0.22] },
+    );
+  }
+  nodes.push({ name: 'pickup-root', children: nodes.map((_, index) => index) });
+  return nodes;
+}
+
+function interactableMaterials() {
+  return [
+    {
+      name: 'interactable-shell',
+      pbrMetallicRoughness: {
+        baseColorFactor: [0.24, 0.29, 0.29, 1],
+        metallicFactor: 0.78,
+        roughnessFactor: 0.36,
+      },
+    },
+    {
+      name: 'interactable-dark',
+      pbrMetallicRoughness: {
+        baseColorFactor: [0.050, 0.065, 0.070, 1],
+        metallicFactor: 0.84,
+        roughnessFactor: 0.30,
+      },
+    },
+    {
+      name: 'interactable-warning',
+      pbrMetallicRoughness: {
+        baseColorFactor: [0.42, 0.22, 0.08, 1],
+        metallicFactor: 0.46,
+        roughnessFactor: 0.32,
+      },
+      emissiveFactor: [0.62, 0.24, 0.06],
+    },
+    {
+      name: 'interactable-status-emissive',
+      pbrMetallicRoughness: {
+        baseColorFactor: [0.04, 0.18, 0.17, 1],
+        metallicFactor: 0.30,
+        roughnessFactor: 0.18,
+      },
+      emissiveFactor: [0.25, 0.86, 0.75],
+    },
+  ];
+}
+
+function interactableNodes(kind, lod) {
+  if (kind === 'control') {
+    const nodes = [
+      { name: 'interactable-control-base', mesh: 1, translation: [0, 0.10, 0], scale: [0.66, 0.20, 0.70] },
+      { name: 'interactable-control-column', mesh: 0, translation: [-0.10, 0.64, 0], scale: [0.42, 1.08, 0.52] },
+      { name: 'interactable-control-console', mesh: 0, translation: [0.22, 1.14, 0], scale: [0.58, 0.24, 0.74] },
+      { name: 'interactable-control-screen', mesh: 3, translation: [0.52, 1.19, 0], scale: [0.05, 0.18, 0.54] },
+    ];
+    if (lod === 1) {
+      nodes.push(
+        { name: 'interactable-control-hazard-band', mesh: 2, translation: [-0.32, 0.34, 0], scale: [0.06, 0.12, 0.46] },
+        { name: 'interactable-control-side-status', mesh: 3, translation: [0.04, 0.74, 0.29], scale: [0.18, 0.30, 0.05] },
+        { name: 'objective-beacon-mount', mesh: 1, translation: [0, 1.48, 0], scale: [0.18, 0.08, 0.18] },
+      );
+    }
+    nodes.push({ name: 'interactable-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  const nodes = [
+    { name: 'interactable-salvage-base', mesh: 1, translation: [0, 0.09, 0], scale: [0.92, 0.18, 0.72] },
+    { name: 'interactable-salvage-case', mesh: 0, translation: [0, 0.38, 0], scale: [0.78, 0.48, 0.58] },
+    { name: 'interactable-salvage-tag-emitter', mesh: 3, translation: [0.43, 0.45, 0], scale: [0.08, 0.24, 0.34] },
+    { name: 'interactable-salvage-beacon', mesh: 3, translation: [-0.22, 0.82, 0], scale: [0.12, 0.28, 0.12] },
+  ];
+  if (lod === 1) {
+    nodes.push(
+      { name: 'interactable-salvage-restraint-left', mesh: 1, translation: [0, 0.42, 0.32], scale: [0.62, 0.10, 0.08] },
+      { name: 'interactable-salvage-restraint-right', mesh: 1, translation: [0, 0.42, -0.32], scale: [0.62, 0.10, 0.08] },
+      { name: 'interactable-salvage-tag-plate', mesh: 2, translation: [-0.40, 0.38, 0], scale: [0.06, 0.20, 0.34] },
+    );
+  }
+  nodes.push({ name: 'interactable-root', children: nodes.map((_, index) => index) });
+  return nodes;
+}
+
 const outputs = [];
 outputs.push(await writeAsset(
   'operators/operator-field-suit-lod1.glb',
@@ -907,6 +1031,27 @@ for (const [weapon, accent] of weaponProfiles) {
   outputs.push(await writeAsset(`weapons/weapon-${weapon}-lod2.glb`, `weapon-${weapon}-lod2`, weaponMobileNodes(weapon), weaponMaterials(accent)));
 }
 
+
+
+for (const lod of [1, 2]) {
+  outputs.push(await writeAsset(
+    `pickups/pickup-recovery-capsule-lod${lod}.glb`,
+    `pickup-recovery-capsule-lod${lod}`,
+    pickupNodes(lod),
+    pickupMaterials(),
+  ));
+}
+
+for (const [kind, id] of [['control', 'interactable-control-terminal'], ['salvage', 'interactable-salvage-tag-node']]) {
+  for (const lod of [1, 2]) {
+    outputs.push(await writeAsset(
+      `interactables/${id}-lod${lod}.glb`,
+      `${id}-lod${lod}`,
+      interactableNodes(kind, lod),
+      interactableMaterials(),
+    ));
+  }
+}
 
 const damagedVesselProfiles = [
   ['rib', 'damaged-vessel-broken-rib'],
