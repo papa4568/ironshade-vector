@@ -148,6 +148,16 @@ assert(rendererSource.includes("dataset.interactableMode = 'control-terminal+sal
 assert(rendererSource.includes('this.coarse ? 0.55 : 1'), 'mobile authored props must continue selecting LOD2 on coarse-pointer devices');
 
 
+
+assert(rendererSource.includes('SPIN_HABITAT_ASSET_FAMILIES'), 'Spin Habitat must load through authored environment asset families');
+for (const asset of ['spin-habitat-ring-segment', 'spin-habitat-spoke-truss', 'spin-habitat-axis-hub', 'spin-habitat-service-bay']) {
+  assert(manifestSource.includes(`${asset}-lod1.glb`) && manifestSource.includes(`${asset}-lod2.glb`), `Spin Habitat asset ${asset} must preserve adaptive LOD1/LOD2 coverage`);
+}
+assert(rendererSource.includes('loadAuthoredSpinHabitatEnvironment(world.w, world.h, budget.detailScale)'), 'Spin Habitat authored overlay must select LOD from the active render tier');
+assert(rendererSource.includes("dataset.environmentVisual = 'authored-spin-habitat'"), 'runtime QA must expose Spin Habitat authored overlay activation');
+assert(rendererSource.includes("dataset.environmentKit = 'ring-segment,spoke-truss,axis-hub,service-bay'"), 'Spin Habitat authored kit identity must remain explicit');
+assert(rendererSource.includes("dataset.environmentComposition = 'static-ring-arc+cross-spokes+central-axis'"), 'Spin Habitat P2.1 foundation must preserve its authored static composition');
+
 assert(rendererSource.includes('PARALLAX_ASSET_FAMILIES'), 'Cislunar Parallax Array must load through authored environment asset families');
 for (const asset of ['parallax-baseline-pylon', 'parallax-reference-frame', 'parallax-mass-carriage', 'parallax-shear-anchor', 'parallax-reference-console']) {
   assert(manifestSource.includes(`${asset}-lod1.glb`) && manifestSource.includes(`${asset}-lod2.glb`), `Parallax asset ${asset} must preserve adaptive LOD1/LOD2 coverage`);
