@@ -202,6 +202,7 @@ function App() {
       deepTarget: selectedContract.deepTarget,
       location: selectedContract.location,
       locationName: selectedContract.locationName,
+      campaignChapter: selectedContract.campaignChapter,
       faction: selectedContract.sponsor,
       factionReputation: baseCampaignReward.campaign.reputation[selectedContract.sponsor],
       operationTier: selectedContract.operationTier,
