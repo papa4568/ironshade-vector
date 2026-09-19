@@ -161,7 +161,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] Mobile-landscape Browser E2E green
 - [x] Android APK package/version/signature verification
 - [x] Android emulator runtime smoke
-- [ ] **P1.20** Dedicated full Chapter 3 browser/mobile campaign playthrough
+- [x] **P1.20** Dedicated full Chapter 3 browser/mobile campaign playthrough
 - [ ] **P1.21** Full Chapter 3 Android hands-on playtest
 - [ ] **P1.22** Tune rewards, boss difficulty, enemy pressure, and completion pacing
 
@@ -305,7 +305,7 @@ Follow these in order unless testing reveals a blocker or a smaller prerequisite
 3. **P1.22** — Apply final reward, boss difficulty, enemy pressure, and completion-pacing tuning from playtest findings.
 4. Close the two remaining P1 completion gates: full LV15–18 balance pass and complete Chapter 3 playtest.
 
-**P1.18 delivered:** Parallax Debt now has a dedicated LV15–18 phase timeline, evidence bank, route-decision/branch presentation, unresolved-evidence boundary, responsive mobile-landscape treatment, and regression coverage.
+**P1.20 delivered:** Dedicated Chapter 3 QA now plays all 12 operations through normal settlement/XP progression on both route branches, verifies LV16/LV17/LV18 gates, and exercises the Chapter 3 Intel/Contract Board flow at desktop and mobile-landscape browser viewports.\n\n**P1.18 delivered:** Parallax Debt now has a dedicated LV15–18 phase timeline, evidence bank, route-decision/branch presentation, unresolved-evidence boundary, responsive mobile-landscape treatment, and regression coverage.
 
 Further Sera Nox boss tuning should be folded into the P1.20–P1.22 playtest/balance pass instead of handled as a disconnected task.
 
