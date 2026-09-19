@@ -77,6 +77,11 @@ for (const weapon of ['carbine', 'breacher', 'rail']) {
   assert(manifestSource.includes(`weapon-${weapon}-lod1.glb`), `weapon manifest must include authored ${weapon} LOD1`);
 }
 
+for (const operatorClass of ['vanguard', 'vector', 'systems']) {
+  assert(manifestSource.includes(`operator-${operatorClass}-lod1.glb`), `operator manifest must include mobile class silhouette for ${operatorClass}`);
+}
+assert(manifestSource.includes('OPERATOR_CLASS_ASSET_FAMILIES'), 'operator manifest must expose class-specific asset families');
+
 for (const asset of ['floor-panel', 'bulkhead', 'processor', 'pipe-rack', 'crate', 'terminal']) {
   assert(manifestSource.includes(`refinery-${asset}-lod1.glb`), `refinery manifest must include authored ${asset} LOD1`);
   assert(manifestSource.includes(`refinery-${asset}-lod2.glb`), `refinery manifest must include authored ${asset} LOD2`);
@@ -92,11 +97,12 @@ assert(hardSciFiSource.includes('root.userData.sharedPropInstances = 20'), 'shar
 assert(hardSciFiSource.includes('addSharedPropLibrary(environment, mission.location'), 'every campaign environment must receive the shared prop library');
 
 const rendererSource = readFileSync(resolve(process.cwd(), 'src/game/threeCombatRenderer.ts'), 'utf8');
-assert(rendererSource.includes('OPERATOR_ASSET_FAMILY') && rendererSource.includes("from './graphicsAssetManifest'"), 'combat renderer must consume the authored operator manifest');
+assert(rendererSource.includes('OPERATOR_ASSET_FAMILY') && rendererSource.includes('OPERATOR_CLASS_ASSET_FAMILIES') && rendererSource.includes("from './graphicsAssetManifest'"), 'combat renderer must consume generic and class-specific authored operator manifests');
 assert(rendererSource.includes('configureGraphicsAssetRenderer(this.renderer)'), 'combat renderer must configure authored texture support lazily at runtime');
-assert(rendererSource.includes('void this.loadAuthoredOperator()'), 'authored operator loading must start only after the combat renderer is constructed');
+assert(rendererSource.includes('void this.loadAuthoredOperator(state.build.operatorClass)'), 'authored operator loading must wait for simulation class identity before requesting a mobile model');
 assert(rendererSource.includes('await instantiateGraphicsAsset(spec)'), 'combat renderer must instantiate the cached authored operator GLB');
 assert(rendererSource.includes("dataset.operatorVisual = 'procedural-fallback'"), 'authored operator load failures must keep the procedural fallback active');
+assert(rendererSource.includes('dataset.operatorClassAsset'), 'runtime QA must expose which class-specific operator asset was requested');
 assert(rendererSource.includes('this.proceduralOperatorVisuals.forEach'), 'procedural body visuals must only be hidden after authored load succeeds');
 assert(rendererSource.includes('material.color.setHex(suitColor)'), 'authored operator materials must preserve faction color identity');
 assert(rendererSource.includes('this.operatorAssetInstance?.release()'), 'combat renderer disposal must release the authored operator lease');
