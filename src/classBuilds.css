@@ -229,6 +229,12 @@
   font-size: 7px;
   line-height: 1.35;
 }
+.protocol-skill-copy {
+  margin: -2px 0 8px;
+  color: #82978f;
+  font-size: 7px;
+  line-height: 1.38;
+}
 .inventory-card .class-resonance-pill {
   border-color: #4f7568;
   background: rgba(31, 57, 48, .74);
