@@ -1774,3 +1774,70 @@
     font-size: 8px;
   }
 }
+
+
+/* UI SIMPLIFICATION // PRIORITY-FIRST COMMAND + CONTRACT CARDS */
+.command-priority-panel {
+  display: grid;
+  gap: 6px;
+  padding: 8px 9px;
+  border: 1px solid rgba(73, 104, 94, .52);
+  border-radius: 8px;
+  background: rgba(6, 13, 11, .72);
+}
+.command-priority-panel > div:first-child {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.command-priority-panel small {
+  color: #70867e;
+  font-size: 7px;
+  letter-spacing: .11em;
+}
+.command-priority-panel b {
+  color: #a9bbb4;
+  font-size: 9px;
+}
+.command-priority-panel > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.command-priority-panel button {
+  min-height: 28px;
+  padding: 5px 8px;
+  border: 1px solid rgba(81, 119, 106, .52);
+  border-radius: 6px;
+  background: rgba(12, 24, 20, .9);
+  color: #aebdb8;
+  font-size: 8px;
+}
+.contract-card-readiness {
+  margin-top: auto;
+  padding-top: 4px;
+}
+.contract-card-readiness .readiness-chip {
+  display: inline-flex;
+  width: auto;
+}
+@media (max-height: 650px) and (orientation: landscape) {
+  .command-priority-panel {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    padding: 5px 7px;
+  }
+  .command-priority-panel > div:first-child {
+    display: grid;
+    gap: 0;
+  }
+  .command-priority-panel > div:last-child {
+    justify-content: flex-end;
+  }
+  .command-priority-panel button {
+    min-height: 24px;
+    padding: 3px 6px;
+    font-size: 7px;
+  }
+}
