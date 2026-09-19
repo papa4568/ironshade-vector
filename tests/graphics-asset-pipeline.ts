@@ -171,6 +171,12 @@ assert(spinAssetGeneratorSource.includes("{ name: 'spin-habitat-axis-hub-core', 
 assert(rendererSource.includes("dataset.environmentZoneIdentity = 'rim:plated-green-deck|spoke:skeletal-cyan-truss|axis:bright-stationary-tower'"), 'Spin Habitat P2.3 zone identity must remain observable for QA');
 assert(rendererSource.includes("axisHub.name = 'spin-habitat-procedural-axis-hub'"), 'Spin Habitat procedural fallback must retain a stationary axis landmark distinct from the rotating frame');
 
+assert(rendererSource.includes("spindownVfx.name = 'spin-habitat-spindown-vfx'"), 'Spin Habitat P2.4 must retain a dedicated spindown VFX root');
+assert(rendererSource.includes("`spin-habitat-brake-arc-${index}`"), 'Spin Habitat P2.4 must retain readable rim braking arcs');
+assert(rendererSource.includes("spindownBeacon.name = 'spin-habitat-axis-warning-pulse'"), 'Spin Habitat P2.4 must retain a stationary-axis warning pulse');
+assert(rendererSource.includes("dataset.environmentSpindownSource = 'sector-B-transfer-gravity'"), 'Spin Habitat P2.4 VFX must follow the gameplay transfer-gravity state');
+assert(rendererSource.includes("dataset.environmentSpindownDetail = reducedSpindownDetail ? '3-arcs+axis-pulse' : '6-arcs+axis-pulse'"), 'Spin Habitat P2.4 must preserve reduced mobile/performance VFX detail');
+
 assert(rendererSource.includes('PARALLAX_ASSET_FAMILIES'), 'Cislunar Parallax Array must load through authored environment asset families');
 for (const asset of ['parallax-baseline-pylon', 'parallax-reference-frame', 'parallax-mass-carriage', 'parallax-shear-anchor', 'parallax-reference-console']) {
   assert(manifestSource.includes(`${asset}-lod1.glb`) && manifestSource.includes(`${asset}-lod2.glb`), `Parallax asset ${asset} must preserve adaptive LOD1/LOD2 coverage`);
