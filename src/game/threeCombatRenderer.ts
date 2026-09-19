@@ -9,7 +9,7 @@ import { lootColor } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
 import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, OPERATOR_CLASS_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, SPIN_HABITAT_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
 import { configureGraphicsAssetRenderer, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
-import { spinHabitatArchitectureState } from './spinHabitatArchitecture';
+import { spinHabitatArchitectureState, spinHabitatSpindownState } from './spinHabitatArchitecture';
 
 const WORLD_SCALE = 0.02;
 const FLOOR_Y = 0;
@@ -268,6 +268,9 @@ export class ThreeCombatRenderer {
   private spinHabitatLoadGeneration = 0;
   private spinHabitatAuthoredRotor: THREE.Group | null = null;
   private spinHabitatProceduralRotor: THREE.Group | null = null;
+  private spinHabitatSpindownVfx: THREE.Group | null = null;
+  private readonly spinHabitatSpindownArcs: Array<THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>> = [];
+  private spinHabitatSpindownBeacon: THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial> | null = null;
   private spinHabitatRotationY = 0;
   private spinHabitatLastSimTime = Number.NaN;
   private interactableLoadGeneration = 0;
@@ -413,7 +416,7 @@ export class ThreeCombatRenderer {
     const budget = this.renderBudget.sample(frameMs, quality);
     this.resize(width, height, quality, budget);
     this.ensureEnvironment(state, mission, budget);
-    this.syncSpinHabitatArchitecture(state, mission);
+    this.syncSpinHabitatArchitecture(state, mission, budget);
     syncHardSciFiEnvironment(this.environmentRoot, state, mission, budget.detailScale, budget.transparencyScale);
     this.syncSectors(state);
     this.syncObjects(state);
@@ -500,6 +503,9 @@ export class ThreeCombatRenderer {
     this.spinHabitatLoadGeneration += 1;
     this.spinHabitatAuthoredRotor = null;
     this.spinHabitatProceduralRotor = null;
+    this.spinHabitatSpindownVfx = null;
+    this.spinHabitatSpindownArcs.length = 0;
+    this.spinHabitatSpindownBeacon = null;
     this.spinHabitatRotationY = 0;
     this.spinHabitatLastSimTime = Number.NaN;
     for (const mesh of this.refineryInstancedMeshes) {
@@ -558,6 +564,10 @@ export class ThreeCombatRenderer {
     delete this.renderer.domElement.dataset.environmentSpinRpm;
     delete this.renderer.domElement.dataset.environmentSpinPhase;
     delete this.renderer.domElement.dataset.environmentSpinSource;
+    delete this.renderer.domElement.dataset.environmentSpindown;
+    delete this.renderer.domElement.dataset.environmentSpindownIntensity;
+    delete this.renderer.domElement.dataset.environmentSpindownSource;
+    delete this.renderer.domElement.dataset.environmentSpindownDetail;
     delete this.renderer.domElement.dataset.environmentServiceDetails;
     delete this.renderer.domElement.dataset.environmentSurfaceDetail;
     delete this.renderer.domElement.dataset.environmentMachineDetail;
@@ -1881,8 +1891,51 @@ export class ThreeCombatRenderer {
       axisCollar.castShadow = true;
       axisCollar.name = 'spin-habitat-procedural-axis-collar';
 
-      this.environmentRoot.add(rotor, axisHub, axisCollar);
+      const spindownVfx = new THREE.Group();
+      spindownVfx.name = 'spin-habitat-spindown-vfx';
+      spindownVfx.position.set(cx, 0.075, cz);
+      spindownVfx.visible = false;
+      const spindownArcGeometry = new THREE.TorusGeometry(10.2, 0.055, 6, 40, Math.PI * 0.58);
+      for (let index = 0; index < 6; index += 1) {
+        const arc = new THREE.Mesh(
+          spindownArcGeometry,
+          new THREE.MeshBasicMaterial({
+            color: 0xff9b5a,
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+            toneMapped: false,
+          }),
+        );
+        arc.name = `spin-habitat-brake-arc-${index}`;
+        arc.rotation.x = Math.PI / 2;
+        arc.rotation.z = (index / 6) * Math.PI * 2;
+        arc.position.y = index % 2 === 0 ? 0 : 0.012;
+        arc.renderOrder = 6;
+        spindownVfx.add(arc);
+        this.spinHabitatSpindownArcs.push(arc);
+      }
+      const spindownBeacon = new THREE.Mesh(
+        new THREE.TorusGeometry(2.05, 0.075, 6, 36),
+        new THREE.MeshBasicMaterial({
+          color: 0xffc071,
+          transparent: true,
+          opacity: 0,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+          toneMapped: false,
+        }),
+      );
+      spindownBeacon.name = 'spin-habitat-axis-warning-pulse';
+      spindownBeacon.rotation.x = Math.PI / 2;
+      spindownBeacon.renderOrder = 7;
+      spindownVfx.add(spindownBeacon);
+
+      this.environmentRoot.add(rotor, axisHub, axisCollar, spindownVfx);
       this.spinHabitatProceduralRotor = rotor;
+      this.spinHabitatSpindownVfx = spindownVfx;
+      this.spinHabitatSpindownBeacon = spindownBeacon;
       this.proceduralRefineryVisuals.push(rotor, axisHub, axisCollar);
     } else if (location === 'jovian-harvester') {
       for (let i = -2; i <= 2; i += 1) addBox(cx + i * 7, cz + i * 1.5, 1.1, 1.1, 6 + Math.abs(i), structural);
@@ -1928,14 +1981,16 @@ export class ThreeCombatRenderer {
     }
   }
 
-  private syncSpinHabitatArchitecture(state: SimState, mission: Contract) {
+  private syncSpinHabitatArchitecture(state: SimState, mission: Contract, budget: RenderBudgetSnapshot) {
     if (mission.location !== 'spin-habitat') {
       this.spinHabitatLastSimTime = Number.NaN;
       return;
     }
 
     const spinSector = state.sectors.find(sector => sector.id === 'A') ?? state.sectors[0];
+    const transferSector = state.sectors.find(sector => sector.id === 'B');
     const motion = spinHabitatArchitectureState(spinSector?.gravity ?? 1);
+    const spindown = spinHabitatSpindownState(transferSector?.gravity ?? 0.42);
     const previousTime = this.spinHabitatLastSimTime;
     this.spinHabitatLastSimTime = state.time;
     const delta = Number.isFinite(previousTime) ? THREE.MathUtils.clamp(state.time - previousTime, 0, 0.25) : 0;
@@ -1944,11 +1999,39 @@ export class ThreeCombatRenderer {
     if (this.spinHabitatAuthoredRotor) this.spinHabitatAuthoredRotor.rotation.y = this.spinHabitatRotationY;
     if (this.spinHabitatProceduralRotor) this.spinHabitatProceduralRotor.rotation.y = this.spinHabitatRotationY;
 
+    const reducedSpindownDetail = budget.vfxDensity < 0.55;
+    if (this.spinHabitatSpindownVfx) {
+      const pulse = 0.5 + Math.sin(state.time * (4.2 + spindown.intensity * 2.6)) * 0.5;
+      this.spinHabitatSpindownVfx.visible = spindown.active;
+      this.spinHabitatSpindownVfx.rotation.y = -this.spinHabitatRotationY * 0.32 + state.time * (0.08 + spindown.intensity * 0.16);
+      for (let index = 0; index < this.spinHabitatSpindownArcs.length; index += 1) {
+        const arc = this.spinHabitatSpindownArcs[index];
+        arc.visible = spindown.active && (!reducedSpindownDetail || index % 2 === 0);
+        arc.material.opacity = spindown.active
+          ? (0.12 + pulse * 0.28) * spindown.intensity * budget.transparencyScale
+          : 0;
+        const arcScale = 1 + spindown.intensity * 0.035 + Math.sin(state.time * 2.1 + index) * 0.008;
+        arc.scale.setScalar(arcScale);
+      }
+      if (this.spinHabitatSpindownBeacon) {
+        this.spinHabitatSpindownBeacon.visible = spindown.active;
+        this.spinHabitatSpindownBeacon.material.opacity = spindown.active
+          ? (0.18 + pulse * 0.42) * spindown.intensity * budget.transparencyScale
+          : 0;
+        this.spinHabitatSpindownBeacon.scale.setScalar(0.92 + spindown.intensity * 0.16 + pulse * 0.08);
+      }
+    }
+
     this.renderer.domElement.dataset.environmentMotion = 'gravity-coupled-rigid-rotation';
     this.renderer.domElement.dataset.environmentSpinMode = motion.mode;
     this.renderer.domElement.dataset.environmentSpinRpm = motion.rpm.toFixed(2);
     this.renderer.domElement.dataset.environmentSpinPhase = this.spinHabitatRotationY.toFixed(3);
     this.renderer.domElement.dataset.environmentSpinSource = 'sector-A-gravity';
+    this.renderer.domElement.dataset.environmentSpindown = spindown.active ? 'active' : 'idle';
+    this.renderer.domElement.dataset.environmentSpindownIntensity = spindown.intensity.toFixed(2);
+    this.renderer.domElement.dataset.environmentSpindownSource = 'sector-B-transfer-gravity';
+    this.renderer.domElement.dataset.environmentSpindownDetail = reducedSpindownDetail ? '3-arcs+axis-pulse' : '6-arcs+axis-pulse';
+    this.renderer.domElement.dataset.environmentVfx = 'spindown-brake-arcs+axis-warning-pulse';
   }
 
   private syncSectors(state: SimState) {
