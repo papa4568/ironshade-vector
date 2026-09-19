@@ -197,7 +197,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] P2.4 Spindown VFX
 - [x] P2.5 Machinery/interactables
 - [x] P2.6 Local enemy visual identity
-- [ ] P2.7 Sable Voss presentation
+- [x] P2.7 Sable Voss presentation
 - [ ] P2.8 Biome ambient effects
 - [ ] P2.9 Mobile LOD/performance
 
@@ -307,7 +307,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1 is complete and **P2.6 is now delivered**. Continue in roadmap order with **P2.7 — Sable Voss presentation**, keeping ambient effects and the dedicated mobile optimization pass in their later P2 slots.
+P1 is complete and **P2.7 is now delivered**. Continue in roadmap order with **P2.8 — Biome ambient effects**, keeping the dedicated mobile optimization pass in **P2.9**.
+
+**P2.7 delivered:** Recovery Commander Sable Voss now has a Spin Habitat-specific authored boss presentation instead of the shared generic boss silhouette. Her adaptive LOD1/LOD2 model adds a broad counter-spin mantle, command visor, governor hardware, and a recovery-green/cyan command palette that shifts to amber pressure cues in phase two while preserving the shared boss telegraph language. Runtime routing is scoped to Spin Habitat contracts whose deep target is Sable Voss, with explicit authored/fallback QA telemetry. Generated-content regression validates the silhouette marker and mobile payload reduction; full production regression/build, desktop + mobile-landscape Browser E2E, APK package/version/signature verification, and Android emulator smoke are green on the final P2.7 head.
 
 **P2.6 delivered:** Spin Habitat combat now has four biome-local authored enemy identities tied to the existing tactical variants: Spoke Marksman, Spin-Trim Specialist, Ring Drone Carrier, and Axis Shield Boarder. Each identity ships adaptive LOD1/LOD2 GLBs with preserved articulated enemy rig sockets, a distinct silhouette marker and cool green/cyan habitat palette; renderer routing is restricted to Spin Habitat and deliberately leaves Recovery Commander Sable Voss on the generic boss path for P2.7. Generated-content tests validate every local LOD pair and mobile payload reduction, runtime QA exposes the local kit/assets and fallback state, desktop + mobile-landscape Browser E2E verify all four authored identities in live Spin Habitat combat, and Android beta.152 re-verifies package metadata/signature plus native emulator runtime/touch smoke.\n\n**P2.5 delivered:** Spin Habitat gameplay machinery now has five authored, mobile-LOD-aware families tied to the real mission objects: spin-bus isolators, rim/spoke gravity trims, bearing-control recovery hardware, attitude flywheels, and pressure locks. The renderer selects these families by biome, object kind, and machinery-recovery objective identity while preserving generic salvage/cache visuals where appropriate. Runtime QA exposes the active habitat interactable kit and loaded assets, generated-GLB tests validate every LOD pair and silhouette marker, desktop and mobile-landscape Browser E2E verify authored habitat machinery without procedural fallback, and Android beta.151 re-verifies the packaged runtime, touch flow, Chapter 3 playthrough, package metadata, signature, and emulator smoke.
 
@@ -331,13 +333,14 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.152**
+- Android beta: **0.0.1-beta.154**
 - Package: `app.ironshade.vector`
-- Verified: P2.6 authored Spin Habitat local enemy visual identity with four gameplay-variant-specific adaptive LOD1/LOD2 families, preserved enemy rig/sockets and local palette, generated GLB content/silhouette/mobile-payload coverage, full production regression/build, desktop + mobile-landscape Browser E2E with live four-enemy authored/no-fallback assertions, Level 15 beta smoke, Android APK package/version/signature checks, Android emulator runtime/touch smoke, and retained browser/Android QA artifacts
+- Verified: P2.7 authored Sable Voss Spin Habitat boss presentation with adaptive LOD1/LOD2 command silhouette, biome/deep-target-scoped runtime routing, phase-aware recovery-green/cyan-to-amber presentation, generated GLB silhouette/mobile-payload coverage, full production regression/build, desktop + mobile-landscape Browser E2E with live authored/no-fallback boss assertions, Level 15 beta smoke, Android beta.154 APK package/version/signature checks, Android emulator runtime/touch smoke, and retained browser/Android QA artifacts
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P2.6 runtime delivery commit: `656e42c872bca8d6c72cf886c311061749e7559d`
-- Browser E2E run: `35474569834`
-- Level 15 beta smoke run: `35474569883`
-- Android beta.152 run: `35474569915`
-- Android beta.152 artifact ID: `10593268282`
-- Android beta.152 artifact head: `656e42c872bca8d6c72cf886c311061749e7559d`
+- P2.7 final verified head: `512a7d45854bde9d79bf5da93e29589b449fa220`
+- P2.7 authored boss implementation commit: `bfd4d881baec6c117e3a4856c9538abbdd514e0d`
+- Browser E2E run: `35475536350`
+- Level 15 beta smoke run: `35475536346`
+- Android beta.154 run: `35475536411`
+- Android beta.154 artifact ID: `10594248410`
+- Android beta.154 artifact head: `512a7d45854bde9d79bf5da93e29589b449fa220`
