@@ -312,8 +312,8 @@ Further Sera Nox boss tuning should be folded into the P1.20–P1.22 playtest/ba
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.130**
+- Android beta: **0.0.1-beta.131**
 - Package: `app.ironshade.vector`
-- Verified: production regression/build, desktop Browser E2E, mobile-landscape Browser E2E, Level 15 beta smoke, Android APK package/version/signature checks, Android emulator runtime/touch smoke
+- Verified: production regression/build, dedicated two-route Chapter 3 playthrough, desktop Browser E2E, mobile-landscape Browser E2E, Level 15 beta smoke, Android APK package/version/signature checks, Android emulator runtime/touch smoke
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- Verified delivery commit before this roadmap-only sync: `554a03b3b2399104d81f0c4ad898f7327e6ac7b2`
+- Verified delivery commit before this roadmap-only sync: `56a91a71b9b0b42435378afc5798246ea958424d`
