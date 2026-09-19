@@ -575,6 +575,9 @@ try {
         && canvas?.dataset.environmentAmbientMotion === 'gravity-coupled-sweep+counterspin-drift+stationary-axis-pulse'
         && (canvas?.dataset.environmentAmbientDetail ?? '').includes('motes+axis-haze')
         && Number.isFinite(Number(canvas?.dataset.environmentAmbientIntensity))
+        && (canvas?.dataset.environmentPerformanceProfile ?? '').includes('lod')
+        && (canvas?.dataset.environmentInstanceBudget ?? '').includes('ring:')
+        && ['rotor+axis', 'axis-only'].includes(canvas?.dataset.environmentShadowCasters ?? '')
         && ['idle', 'active'].includes(canvas?.dataset.environmentSpindown ?? '')
         && Number.isFinite(Number(canvas?.dataset.environmentSpindownIntensity))
         && Number.isFinite(Number(canvas?.dataset.environmentSpinPhase));
@@ -617,7 +620,24 @@ try {
       const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-spin-habitat');
       return canvas?.dataset.environmentAmbientDetail ?? '';
     })()`);
-    console.log(`BROWSER_SPIN_HABITAT_PASS viewport=${viewportMode} identity=rim/spoke/axis machinery=${habitatInteractables} enemies=${habitatEnemies} boss=${habitatBoss} ambient=${habitatAmbient} vfx=spindown:${spindownState.mode}:${spindownState.detail} phase=${firstPhase.toFixed(3)}->${nextPhase.toFixed(3)}`);
+    const habitatPerformance = await evaluate(`(() => {
+      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-spin-habitat');
+      return {
+        lod: canvas?.dataset.environmentLod ?? '',
+        profile: canvas?.dataset.environmentPerformanceProfile ?? '',
+        instances: canvas?.dataset.environmentInstanceBudget ?? '',
+        shadows: canvas?.dataset.environmentShadowCasters ?? '',
+        renderTier: canvas?.dataset.renderTier ?? '',
+      };
+    })()`);
+    if (viewportMode === 'mobile-landscape') {
+      if (habitatPerformance?.lod !== '2') throw new Error(`Spin Habitat mobile environment did not select LOD2: ${JSON.stringify(habitatPerformance)}`);
+      if (!/^(mobile|performance):lod2:rotor-shadows-off$/.test(habitatPerformance?.profile ?? '')) throw new Error(`Spin Habitat mobile performance profile is invalid: ${JSON.stringify(habitatPerformance)}`);
+      if (habitatPerformance?.instances !== 'ring:4+spoke:4+axis:1+service:2') throw new Error(`Spin Habitat mobile instance budget regressed: ${JSON.stringify(habitatPerformance)}`);
+      if (habitatPerformance?.shadows !== 'axis-only') throw new Error(`Spin Habitat mobile moving shadows were not suppressed: ${JSON.stringify(habitatPerformance)}`);
+      if (spindownState.detail !== '3-arcs+axis-pulse') throw new Error(`Spin Habitat mobile spindown VFX kept excess arcs: ${JSON.stringify(spindownState)}`);
+    }
+    console.log(`BROWSER_SPIN_HABITAT_PASS viewport=${viewportMode} identity=rim/spoke/axis machinery=${habitatInteractables} enemies=${habitatEnemies} boss=${habitatBoss} ambient=${habitatAmbient} performance=${habitatPerformance.profile}:${habitatPerformance.instances}:${habitatPerformance.shadows} vfx=spindown:${spindownState.mode}:${spindownState.detail} phase=${firstPhase.toFixed(3)}->${nextPhase.toFixed(3)}`);
   }
 
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);

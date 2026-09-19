@@ -9,7 +9,7 @@ import { lootColor } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
 import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, SPIN_HABITAT_BOSS_ASSET_FAMILY, SPIN_HABITAT_ENEMY_ASSET_FAMILIES, SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES, OPERATOR_CLASS_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, SPIN_HABITAT_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
 import { configureGraphicsAssetRenderer, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
-import { spinHabitatArchitectureState, spinHabitatSpindownState } from './spinHabitatArchitecture';
+import { spinHabitatArchitectureState, spinHabitatRenderProfile, spinHabitatSpindownState } from './spinHabitatArchitecture';
 
 const WORLD_SCALE = 0.02;
 const FLOOR_Y = 0;
@@ -603,6 +603,9 @@ export class ThreeCombatRenderer {
     delete this.renderer.domElement.dataset.environmentAmbientMotion;
     delete this.renderer.domElement.dataset.environmentAmbientDetail;
     delete this.renderer.domElement.dataset.environmentAmbientIntensity;
+    delete this.renderer.domElement.dataset.environmentPerformanceProfile;
+    delete this.renderer.domElement.dataset.environmentInstanceBudget;
+    delete this.renderer.domElement.dataset.environmentShadowCasters;
     delete this.renderer.domElement.dataset.environmentServiceDetails;
     delete this.renderer.domElement.dataset.environmentSurfaceDetail;
     delete this.renderer.domElement.dataset.environmentMachineDetail;
@@ -840,7 +843,7 @@ export class ThreeCombatRenderer {
     if (this.damagedVesselScorchDecals) this.damagedVesselScorchDecals.visible = true;
   }
 
-  private addInstancedEnvironmentAsset(instance: GraphicsAssetInstance, placements: EnvironmentPlacement[], label: string, parent: THREE.Object3D = this.authoredEnvironmentRoot) {
+  private addInstancedEnvironmentAsset(instance: GraphicsAssetInstance, placements: EnvironmentPlacement[], label: string, parent: THREE.Object3D = this.authoredEnvironmentRoot, castShadow = true) {
     if (placements.length === 0) return 0;
     instance.root.updateMatrixWorld(true);
     let created = 0;
@@ -853,7 +856,7 @@ export class ThreeCombatRenderer {
         : this.cloneRefineryMaterial(source.material, label);
       const mesh = new THREE.InstancedMesh(source.geometry, material, placements.length);
       mesh.name = `authored-${label}-${source.name || 'mesh'}`;
-      mesh.castShadow = source.castShadow || label !== 'floor';
+      mesh.castShadow = castShadow && (source.castShadow || label !== 'floor');
       mesh.receiveShadow = true;
       mesh.frustumCulled = true;
       const sourceMatrix = source.matrixWorld.clone();
@@ -919,11 +922,12 @@ export class ThreeCombatRenderer {
   private async loadAuthoredSpinHabitatEnvironment(worldW: number, worldH: number, detailScale: number) {
     const generation = ++this.spinHabitatLoadGeneration;
     this.renderer.domElement.dataset.environmentVisual = 'authored-loading';
+    const profile = spinHabitatRenderProfile(detailScale, this.coarse);
     const loaded: Array<{ key: keyof typeof SPIN_HABITAT_ASSET_FAMILIES; instance: GraphicsAssetInstance; lod: number }> = [];
 
     try {
       for (const key of Object.keys(SPIN_HABITAT_ASSET_FAMILIES) as Array<keyof typeof SPIN_HABITAT_ASSET_FAMILIES>) {
-        const spec = selectGraphicsAssetSpec(SPIN_HABITAT_ASSET_FAMILIES[key], detailScale);
+        const spec = selectGraphicsAssetSpec(SPIN_HABITAT_ASSET_FAMILIES[key], profile.assetDetailScale);
         if (!spec) throw new Error(`No authored Spin Habitat asset available for ${key}`);
         const instance = await instantiateGraphicsAsset(spec);
         loaded.push({ key, instance, lod: spec.lod });
@@ -946,7 +950,7 @@ export class ThreeCombatRenderer {
       this.authoredEnvironmentRoot.add(rotorRoot);
       this.spinHabitatAuthoredRotor = rotorRoot;
 
-      const ringPlacements: EnvironmentPlacement[] = [
+      const ringPlacementsAll: EnvironmentPlacement[] = [
         [0.22, 0.12, 0, 0.92], [0.50, 0.11, 0, 0.96], [0.78, 0.12, 0, 0.92],
         [0.22, 0.88, Math.PI, 0.92], [0.50, 0.89, Math.PI, 0.96], [0.78, 0.88, Math.PI, 0.92],
       ].map(([x, z, rotationY, scale]) => ({
@@ -954,6 +958,7 @@ export class ThreeCombatRenderer {
         rotationY,
         scale,
       }));
+      const ringPlacements = ringPlacementsAll.filter((_, index) => profile.ringInstances === 6 || [0, 2, 3, 5].includes(index));
 
       const spokePlacements: EnvironmentPlacement[] = [
         { position: new THREE.Vector3(0, 0, height * -0.20), rotationY: Math.PI / 2, scale: 0.88 },
@@ -966,19 +971,20 @@ export class ThreeCombatRenderer {
         { position: new THREE.Vector3(width * 0.50, 0, height * 0.50), rotationY: Math.PI / 4, scale: 1.04 },
       ];
 
-      const servicePlacements: EnvironmentPlacement[] = [
+      const servicePlacementsAll: EnvironmentPlacement[] = [
         [0.18, 0.28, Math.PI / 2], [0.82, 0.30, -Math.PI / 2], [0.20, 0.72, Math.PI / 2], [0.80, 0.70, -Math.PI / 2],
       ].map(([x, z, rotationY]) => ({
         position: new THREE.Vector3(width * (x - 0.50), 0, height * (z - 0.50)),
         rotationY,
         scale: 0.90,
       }));
+      const servicePlacements = servicePlacementsAll.filter((_, index) => profile.serviceInstances === 4 || index === 0 || index === 3);
 
       let instances = 0;
-      instances += this.addInstancedEnvironmentAsset(byKey.get('ringSegment')!.instance, ringPlacements, 'spin-habitat-ring-segment', rotorRoot);
-      instances += this.addInstancedEnvironmentAsset(byKey.get('spokeTruss')!.instance, spokePlacements, 'spin-habitat-spoke-truss', rotorRoot);
+      instances += this.addInstancedEnvironmentAsset(byKey.get('ringSegment')!.instance, ringPlacements, 'spin-habitat-ring-segment', rotorRoot, profile.movingShadows);
+      instances += this.addInstancedEnvironmentAsset(byKey.get('spokeTruss')!.instance, spokePlacements, 'spin-habitat-spoke-truss', rotorRoot, profile.movingShadows);
       instances += this.addInstancedEnvironmentAsset(byKey.get('axisHub')!.instance, hubPlacements, 'spin-habitat-axis-hub');
-      instances += this.addInstancedEnvironmentAsset(byKey.get('serviceBay')!.instance, servicePlacements, 'spin-habitat-service-bay', rotorRoot);
+      instances += this.addInstancedEnvironmentAsset(byKey.get('serviceBay')!.instance, servicePlacements, 'spin-habitat-service-bay', rotorRoot, profile.movingShadows);
 
       this.proceduralRefineryVisuals.forEach(item => { item.visible = false; });
       const lods = [...new Set(loaded.map(item => item.lod))].sort();
@@ -986,6 +992,9 @@ export class ThreeCombatRenderer {
       this.renderer.domElement.dataset.environmentLod = lods.join(',');
       this.renderer.domElement.dataset.environmentKit = 'ring-segment,spoke-truss,axis-hub,service-bay';
       this.renderer.domElement.dataset.environmentInstances = String(instances);
+      this.renderer.domElement.dataset.environmentPerformanceProfile = `${profile.name}:lod${lods.join(',')}:rotor-shadows-${profile.movingShadows ? 'on' : 'off'}`;
+      this.renderer.domElement.dataset.environmentInstanceBudget = `ring:${ringPlacements.length}+spoke:${spokePlacements.length}+axis:${hubPlacements.length}+service:${servicePlacements.length}`;
+      this.renderer.domElement.dataset.environmentShadowCasters = profile.movingShadows ? 'rotor+axis' : 'axis-only';
       this.renderer.domElement.dataset.environmentLandmark = 'central-axis-hub';
       this.renderer.domElement.dataset.environmentServiceDetails = `service-bay:${servicePlacements.length}`;
       this.renderer.domElement.dataset.environmentSurfaceDetail = `ring-segment:${ringPlacements.length}+spoke-truss:${spokePlacements.length}`;
@@ -1018,6 +1027,9 @@ export class ThreeCombatRenderer {
       delete this.renderer.domElement.dataset.environmentComposition;
       delete this.renderer.domElement.dataset.environmentZoneIdentity;
       delete this.renderer.domElement.dataset.environmentMaterials;
+      delete this.renderer.domElement.dataset.environmentPerformanceProfile;
+      delete this.renderer.domElement.dataset.environmentInstanceBudget;
+      delete this.renderer.domElement.dataset.environmentShadowCasters;
       delete this.renderer.domElement.dataset.readabilityLanguage;
       console.warn('Authored Spin Habitat kit failed to load; keeping procedural scenery.', error);
     }
@@ -1821,7 +1833,7 @@ export class ThreeCombatRenderer {
     this.environmentRoot.add(grid);
 
     this.addPerimeter(world.w, world.h, palette);
-    this.addLocationScenery(mission.location, world.w, world.h, palette);
+    this.addLocationScenery(mission.location, world.w, world.h, palette, budget.detailScale);
     buildHardSciFiEnvironment(this.environmentRoot, mission, scaled(world.w), scaled(world.h), palette);
     const artIdentity = locationArtIdentityFor(mission.location);
     this.renderer.domElement.dataset.locationArt = `${mission.location}:${artIdentity.silhouette}:${artIdentity.material}`;
@@ -1866,7 +1878,7 @@ export class ThreeCombatRenderer {
     walls.forEach(wall => { wall.castShadow = true; wall.receiveShadow = true; this.environmentRoot.add(wall); });
   }
 
-  private addLocationScenery(location: string, worldW: number, worldH: number, palette: LocationPalette) {
+  private addLocationScenery(location: string, worldW: number, worldH: number, palette: LocationPalette, detailScale = 1) {
     const cx = scaled(worldW / 2);
     const cz = scaled(worldH / 2);
     const structural = new THREE.MeshStandardMaterial({ color: palette.secondary, metalness: 0.82, roughness: 0.32 });
@@ -1891,6 +1903,7 @@ export class ThreeCombatRenderer {
       }
       this.proceduralRefineryVisuals.push(addBox(cx, cz - 9, 30, 0.45, 0.45, emissive));
     } else if (location === 'spin-habitat') {
+      const spinProfile = spinHabitatRenderProfile(detailScale, this.coarse);
       const rimMaterial = new THREE.MeshStandardMaterial({ color: 0x587168, emissive: 0x102c20, emissiveIntensity: 0.14, metalness: 0.72, roughness: 0.42 });
       const spokeMaterial = new THREE.MeshStandardMaterial({ color: 0x14262d, emissive: 0x0b4051, emissiveIntensity: 0.28, metalness: 0.90, roughness: 0.30 });
       const axisMaterial = new THREE.MeshStandardMaterial({ color: 0x98aaa6, emissive: 0x315b60, emissiveIntensity: 0.22, metalness: 0.76, roughness: 0.28 });
@@ -1898,20 +1911,20 @@ export class ThreeCombatRenderer {
       rotor.name = 'spin-habitat-procedural-rotor';
       rotor.position.set(cx, 2.8, cz);
       for (const radius of [5.5, 8.5, 11.5]) {
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.18, 8, 64), rimMaterial);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.18, 8, spinProfile.proceduralRingSegments), rimMaterial);
         ring.rotation.x = Math.PI / 2;
-        ring.castShadow = true;
+        ring.castShadow = spinProfile.movingShadows;
         rotor.add(ring);
       }
       const radialSpoke = new THREE.Mesh(new THREE.BoxGeometry(22, 0.24, 0.24), spokeMaterial);
-      radialSpoke.castShadow = true;
+      radialSpoke.castShadow = spinProfile.movingShadows;
       rotor.add(radialSpoke);
       const crossSpoke = radialSpoke.clone();
       crossSpoke.rotation.y = Math.PI / 2;
       rotor.add(crossSpoke);
       const rotationWitness = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.52, 0.72), emissive);
       rotationWitness.position.set(8.5, 0.34, 0);
-      rotationWitness.castShadow = true;
+      rotationWitness.castShadow = spinProfile.movingShadows;
       rotationWitness.name = 'spin-habitat-rotation-witness';
       rotor.add(rotationWitness);
 
@@ -2105,7 +2118,7 @@ export class ThreeCombatRenderer {
     if (this.spinHabitatAuthoredRotor) this.spinHabitatAuthoredRotor.rotation.y = this.spinHabitatRotationY;
     if (this.spinHabitatProceduralRotor) this.spinHabitatProceduralRotor.rotation.y = this.spinHabitatRotationY;
 
-    const reducedSpindownDetail = budget.vfxDensity < 0.55;
+    const reducedSpindownDetail = this.coarse || budget.vfxDensity < 0.55;
     if (this.spinHabitatAmbientRoot) {
       const density = budget.vfxDensity < 0.55 ? 'reduced' : budget.vfxDensity < 0.85 ? 'balanced' : 'full';
       const visibleBands = density === 'reduced' ? 2 : density === 'balanced' ? 3 : 4;

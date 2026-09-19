@@ -216,6 +216,16 @@ assert(rendererSource.includes("dataset.environmentAmbientMotion = 'gravity-coup
 assert(rendererSource.includes("visibleBands = density === 'reduced' ? 2 : density === 'balanced' ? 3 : 4"), 'Spin Habitat P2.8 ambient effects must respect the existing adaptive VFX budget');
 assert(rendererSource.includes("visibleDust = density === 'reduced' ? 20 : density === 'balanced' ? 34 : 48"), 'Spin Habitat P2.8 dust density must scale with the render tier');
 
+assert(rendererSource.includes('const profile = spinHabitatRenderProfile(detailScale, this.coarse)'), 'Spin Habitat P2.9 must apply a biome-specific mobile/performance profile');
+assert(rendererSource.includes('selectGraphicsAssetSpec(SPIN_HABITAT_ASSET_FAMILIES[key], profile.assetDetailScale)'), 'Spin Habitat P2.9 mobile profile must force authored environment LOD2');
+assert(rendererSource.includes('profile.ringInstances === 6 || [0, 2, 3, 5].includes(index)'), 'Spin Habitat P2.9 must trim redundant mobile ring instances without losing the rim silhouette');
+assert(rendererSource.includes('profile.serviceInstances === 4 || index === 0 || index === 3'), 'Spin Habitat P2.9 must trim non-critical mobile service bays');
+assert(rendererSource.includes('rotorRoot, profile.movingShadows'), 'Spin Habitat P2.9 must suppress moving authored shadow casters outside the full profile');
+assert(rendererSource.includes('spinProfile.proceduralRingSegments'), 'Spin Habitat P2.9 procedural fallback must scale ring tessellation');
+assert(rendererSource.includes('dataset.environmentPerformanceProfile'), 'Spin Habitat P2.9 runtime QA must expose the active environment performance profile');
+assert(rendererSource.includes('dataset.environmentInstanceBudget'), 'Spin Habitat P2.9 runtime QA must expose the reduced placement budget');
+assert(rendererSource.includes("dataset.environmentShadowCasters = profile.movingShadows ? 'rotor+axis' : 'axis-only'"), 'Spin Habitat P2.9 runtime QA must expose moving-shadow suppression');
+
 assert(rendererSource.includes('PARALLAX_ASSET_FAMILIES'), 'Cislunar Parallax Array must load through authored environment asset families');
 for (const asset of ['parallax-baseline-pylon', 'parallax-reference-frame', 'parallax-mass-carriage', 'parallax-shear-anchor', 'parallax-reference-console']) {
   assert(manifestSource.includes(`${asset}-lod1.glb`) && manifestSource.includes(`${asset}-lod2.glb`), `Parallax asset ${asset} must preserve adaptive LOD1/LOD2 coverage`);

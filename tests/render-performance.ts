@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { AdaptiveRenderBudget } from '../src/game/renderQuality';
-import { spinHabitatArchitectureState, spinHabitatSpindownState } from '../src/game/spinHabitatArchitecture';
+import { spinHabitatArchitectureState, spinHabitatRenderProfile, spinHabitatSpindownState } from '../src/game/spinHabitatArchitecture';
 
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
@@ -69,6 +69,29 @@ assert(rendererSource.includes('dataset.renderTier = budget.tierName'), 'runtime
 assert(rendererSource.includes('tier-${budget.tier}'), 'environment signature must react to render-tier transitions so authored LOD can change');
 assert(rendererSource.includes('loadAuthoredRefineryEnvironment(state, world.w, world.h, budget.detailScale)'), 'refinery authored LOD selection must follow the active detail tier');
 
+const fullSpinProfile = spinHabitatRenderProfile(1, false);
+assert(fullSpinProfile.name === 'full' && fullSpinProfile.assetDetailScale >= 0.9, 'desktop Spin Habitat should keep the full authored environment profile');
+assert(fullSpinProfile.ringInstances === 6 && fullSpinProfile.serviceInstances === 4 && fullSpinProfile.movingShadows, 'full Spin Habitat profile should preserve all authored placements and rotor shadows');
+
+const mobileSpinProfile = spinHabitatRenderProfile(0.78, true);
+assert(mobileSpinProfile.name === 'mobile' && mobileSpinProfile.assetDetailScale < 0.62, 'coarse/mobile Spin Habitat should force the LOD2 asset threshold');
+assert(mobileSpinProfile.ringInstances === 4 && mobileSpinProfile.spokeInstances === 4 && mobileSpinProfile.serviceInstances === 2, 'mobile Spin Habitat should trim non-critical environment instances while preserving the four-spoke silhouette');
+assert(!mobileSpinProfile.movingShadows && mobileSpinProfile.proceduralRingSegments === 40, 'mobile Spin Habitat should disable rotating shadow casters and reduce procedural ring tessellation');
+
+const balancedSpinProfile = spinHabitatRenderProfile(0.78, false);
+assert(balancedSpinProfile.name === 'balanced' && balancedSpinProfile.assetDetailScale === 0.78, 'desktop Balanced Spin Habitat should retain LOD1 assets while trimming scene cost');
+assert(!balancedSpinProfile.movingShadows && balancedSpinProfile.ringInstances === 4 && balancedSpinProfile.serviceInstances === 2, 'desktop Balanced Spin Habitat should use the reduced rotating layout');
+
+const performanceSpinProfile = spinHabitatRenderProfile(0.5, true);
+assert(performanceSpinProfile.name === 'performance' && performanceSpinProfile.assetDetailScale === 0.5, 'Spin Habitat performance tier should remain on LOD2');
+assert(!performanceSpinProfile.movingShadows && performanceSpinProfile.proceduralRingSegments === 32, 'Spin Habitat performance tier should use the lowest rotating geometry/shadow budget');
+
+assert(rendererSource.includes('const profile = spinHabitatRenderProfile(detailScale, this.coarse)'), 'Spin Habitat authored environment must derive a dedicated mobile/performance profile');
+assert(rendererSource.includes('selectGraphicsAssetSpec(SPIN_HABITAT_ASSET_FAMILIES[key], profile.assetDetailScale)'), 'Spin Habitat mobile profile must drive authored environment LOD selection');
+assert(rendererSource.includes("dataset.environmentShadowCasters = profile.movingShadows ? 'rotor+axis' : 'axis-only'"), 'Spin Habitat runtime QA must expose the moving-shadow budget');
+assert(rendererSource.includes('dataset.environmentInstanceBudget'), 'Spin Habitat runtime QA must expose its environment instance budget');
+assert(rendererSource.includes('this.addLocationScenery(mission.location, world.w, world.h, palette, budget.detailScale)'), 'Spin Habitat procedural fallback must follow the adaptive detail tier');
+
 const nominalSpin = spinHabitatArchitectureState(1);
 const overspeedSpin = spinHabitatArchitectureState(1.2);
 const reducedSpin = spinHabitatArchitectureState(0.42);
@@ -84,7 +107,7 @@ assert(!nominalSpindown.active && nominalSpindown.intensity === 0, 'Spin Habitat
 assert(emergencySpindown.active && emergencySpindown.intensity > 0.95, 'Spin Habitat 0.05G emergency spindown must drive full visual intensity');
 assert(rendererSource.includes("dataset.environmentSpindownSource = 'sector-B-transfer-gravity'"), 'Spin Habitat spindown VFX must derive from the actual transfer-gravity gameplay control');
 assert(rendererSource.includes("dataset.environmentVfx = 'spindown-brake-arcs+axis-warning-pulse'"), 'Spin Habitat must expose its authored spindown VFX language for runtime QA');
-assert(rendererSource.includes('const reducedSpindownDetail = budget.vfxDensity < 0.55'), 'Spin Habitat spindown VFX must reduce secondary arcs under the mobile/performance VFX budget');
+assert(rendererSource.includes('const reducedSpindownDetail = this.coarse || budget.vfxDensity < 0.55'), 'Spin Habitat spindown VFX must reduce secondary arcs on mobile and under the performance VFX budget');
 
 const sustainedMobile = new AdaptiveRenderBudget(true);
 let sustainedSnapshot = sustainedMobile.sample(16.7, 1);
