@@ -562,6 +562,7 @@ export class ThreeCombatRenderer {
     delete this.renderer.domElement.dataset.environmentSurfaceDetail;
     delete this.renderer.domElement.dataset.environmentMachineDetail;
     delete this.renderer.domElement.dataset.environmentComposition;
+    delete this.renderer.domElement.dataset.environmentZoneIdentity;
     delete this.renderer.domElement.dataset.environmentLighting;
     delete this.renderer.domElement.dataset.environmentMaterials;
     delete this.renderer.domElement.dataset.environmentVfx;
@@ -947,8 +948,9 @@ export class ThreeCombatRenderer {
       this.renderer.domElement.dataset.environmentComposition = 'rotating-ring-arc+rotating-cross-spokes+stationary-axis';
       this.renderer.domElement.dataset.environmentMotion = 'gravity-coupled-rigid-rotation';
       this.renderer.domElement.dataset.environmentSpinSource = 'sector-A-gravity';
-      this.renderer.domElement.dataset.environmentMaterials = 'habitat-alloy+maintenance-dark+cool-green+service-amber';
-      this.renderer.domElement.dataset.readabilityLanguage = 'ring-spoke-axis-silhouette+green-amber';
+      this.renderer.domElement.dataset.environmentMaterials = 'rim-green-plating+spoke-dark-cyan+axis-bright-cool+service-amber';
+      this.renderer.domElement.dataset.environmentZoneIdentity = 'rim:plated-green-deck|spoke:skeletal-cyan-truss|axis:bright-stationary-tower';
+      this.renderer.domElement.dataset.readabilityLanguage = 'rim-plated-green+spoke-skeletal-cyan+axis-bright-stationary';
     } catch (error) {
       loaded.forEach(item => item.instance.release());
       if (this.disposed || generation !== this.spinHabitatLoadGeneration) return;
@@ -969,6 +971,7 @@ export class ThreeCombatRenderer {
       delete this.renderer.domElement.dataset.environmentSurfaceDetail;
       delete this.renderer.domElement.dataset.environmentMachineDetail;
       delete this.renderer.domElement.dataset.environmentComposition;
+      delete this.renderer.domElement.dataset.environmentZoneIdentity;
       delete this.renderer.domElement.dataset.environmentMaterials;
       delete this.renderer.domElement.dataset.readabilityLanguage;
       console.warn('Authored Spin Habitat kit failed to load; keeping procedural scenery.', error);
@@ -1843,16 +1846,19 @@ export class ThreeCombatRenderer {
       }
       this.proceduralRefineryVisuals.push(addBox(cx, cz - 9, 30, 0.45, 0.45, emissive));
     } else if (location === 'spin-habitat') {
+      const rimMaterial = new THREE.MeshStandardMaterial({ color: 0x587168, emissive: 0x102c20, emissiveIntensity: 0.14, metalness: 0.72, roughness: 0.42 });
+      const spokeMaterial = new THREE.MeshStandardMaterial({ color: 0x14262d, emissive: 0x0b4051, emissiveIntensity: 0.28, metalness: 0.90, roughness: 0.30 });
+      const axisMaterial = new THREE.MeshStandardMaterial({ color: 0x98aaa6, emissive: 0x315b60, emissiveIntensity: 0.22, metalness: 0.76, roughness: 0.28 });
       const rotor = new THREE.Group();
       rotor.name = 'spin-habitat-procedural-rotor';
       rotor.position.set(cx, 2.8, cz);
       for (const radius of [5.5, 8.5, 11.5]) {
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.16, 8, 64), emissive);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.18, 8, 64), rimMaterial);
         ring.rotation.x = Math.PI / 2;
         ring.castShadow = true;
         rotor.add(ring);
       }
-      const radialSpoke = new THREE.Mesh(new THREE.BoxGeometry(22, 0.32, 0.32), structural);
+      const radialSpoke = new THREE.Mesh(new THREE.BoxGeometry(22, 0.24, 0.24), spokeMaterial);
       radialSpoke.castShadow = true;
       rotor.add(radialSpoke);
       const crossSpoke = radialSpoke.clone();
@@ -1863,9 +1869,21 @@ export class ThreeCombatRenderer {
       rotationWitness.castShadow = true;
       rotationWitness.name = 'spin-habitat-rotation-witness';
       rotor.add(rotationWitness);
-      this.environmentRoot.add(rotor);
+
+      const axisHub = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.25, 4.8, 12), axisMaterial);
+      axisHub.position.set(cx, 2.4, cz);
+      axisHub.castShadow = true;
+      axisHub.receiveShadow = true;
+      axisHub.name = 'spin-habitat-procedural-axis-hub';
+      const axisCollar = new THREE.Mesh(new THREE.TorusGeometry(1.75, 0.14, 8, 32), axisMaterial);
+      axisCollar.rotation.x = Math.PI / 2;
+      axisCollar.position.set(cx, 3.25, cz);
+      axisCollar.castShadow = true;
+      axisCollar.name = 'spin-habitat-procedural-axis-collar';
+
+      this.environmentRoot.add(rotor, axisHub, axisCollar);
       this.spinHabitatProceduralRotor = rotor;
-      this.proceduralRefineryVisuals.push(rotor);
+      this.proceduralRefineryVisuals.push(rotor, axisHub, axisCollar);
     } else if (location === 'jovian-harvester') {
       for (let i = -2; i <= 2; i += 1) addBox(cx + i * 7, cz + i * 1.5, 1.1, 1.1, 6 + Math.abs(i), structural);
       addBox(cx, cz - 7, 34, 0.35, 0.35, emissive);
