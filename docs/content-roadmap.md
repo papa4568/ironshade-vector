@@ -113,7 +113,11 @@ Repository checklist for the current content plan. Keep this file synchronized w
   - [x] Baseline Debt Rig
   - [x] Blind Meridian Link
 - [x] **P1.14** Add 4–6 Parallax location chase Singulars
-- [ ] **P1.15** Add new normal/Prototype Chapter 3 gear identities where useful
+- [x] **P1.15** Add new normal/Prototype Chapter 3 gear identities where useful
+  - [x] Six Parallax Debt slot identities across weapons, suit, rig, and implant
+  - [x] Prototype signature-affix identity on Chapter 3 recoveries
+  - [x] Chapter-scoped recovery routing without leaking into shared locations
+  - [x] Loot regression coverage
 
 ### Progression / Builds
 
@@ -290,12 +294,11 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 Follow these in order unless testing reveals a blocker or a smaller prerequisite:
 
-1. **P1.15** — Add Normal/Prototype Chapter 3 gear identities.
-2. **P1.18** — Finish dedicated Parallax Debt Intel/campaign presentation.
-3. **P1.20** — Complete a full Chapter 3 browser/mobile campaign playthrough.
-4. **P1.21** — Complete a full Chapter 3 Android hands-on playtest.
-5. **P1.22** — Apply final reward, boss difficulty, enemy pressure, and completion-pacing tuning from playtest findings.
-6. Close the two remaining P1 completion gates: full LV15–18 balance pass and complete Chapter 3 playtest.
+1. **P1.18** — Finish dedicated Parallax Debt Intel/campaign presentation.
+2. **P1.20** — Complete a full Chapter 3 browser/mobile campaign playthrough.
+3. **P1.21** — Complete a full Chapter 3 Android hands-on playtest.
+4. **P1.22** — Apply final reward, boss difficulty, enemy pressure, and completion-pacing tuning from playtest findings.
+5. Close the two remaining P1 completion gates: full LV15–18 balance pass and complete Chapter 3 playtest.
 
 Further Sera Nox boss tuning should be folded into the P1.20–P1.22 playtest/balance pass instead of handled as a disconnected task.
 
