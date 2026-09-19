@@ -550,6 +550,8 @@ try {
       const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-spin-habitat');
       return canvas?.dataset.environmentMotion === 'gravity-coupled-rigid-rotation'
         && canvas?.dataset.environmentSpinSource === 'sector-A-gravity'
+        && canvas?.dataset.environmentZoneIdentity === 'rim:plated-green-deck|spoke:skeletal-cyan-truss|axis:bright-stationary-tower'
+        && canvas?.dataset.readabilityLanguage === 'rim-plated-green+spoke-skeletal-cyan+axis-bright-stationary'
         && Number.isFinite(Number(canvas?.dataset.environmentSpinPhase));
     })()`, 'Spin Habitat authored rotating architecture', 20_000);
     const firstPhase = Number(await evaluate(`[...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-spin-habitat')?.dataset.environmentSpinPhase`));
@@ -558,7 +560,7 @@ try {
     if (!Number.isFinite(firstPhase) || !Number.isFinite(nextPhase) || Math.abs(nextPhase - firstPhase) < 0.015) {
       throw new Error(`Spin Habitat rotation phase did not advance: ${firstPhase} -> ${nextPhase}`);
     }
-    console.log(`BROWSER_SPIN_HABITAT_PASS viewport=${viewportMode} phase=${firstPhase.toFixed(3)}->${nextPhase.toFixed(3)}`);
+    console.log(`BROWSER_SPIN_HABITAT_PASS viewport=${viewportMode} identity=rim/spoke/axis phase=${firstPhase.toFixed(3)}->${nextPhase.toFixed(3)}`);
   }
 
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);
