@@ -2,7 +2,7 @@ import { protocolAimPenalty, protocolAnchorsEnemy, protocolCarriesObjective, pro
 import type { EnemyCombatClass, EnemyProtocolInstance } from './eliteProtocols';
 import type { ConsumableId } from './consumables';
 import { lootLabel, rollGroundLoot, type GroundLootDrop, type GroundLootReceipt } from './fieldLoot';
-import { abilityMeta, getAbilityKitForClass, type OperatorClassId } from './classSkills';
+import { getAbilityKitForClass, type OperatorClassId } from './classSkills';
 export { abilityMeta, classAbilityKits, getAbilityKitForClass } from './classSkills';
 export type { AbilityMeta, OperatorClassId } from './classSkills';
 
