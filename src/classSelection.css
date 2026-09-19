@@ -344,6 +344,43 @@
   letter-spacing: .07em;
 }
 
+/* The action deck uses a restrained class accent so the active doctrine reads before the player parses text. */
+.game-root.class-vanguard {
+  --class-control-border: rgba(194, 138, 96, .72);
+  --class-control-bg: rgba(52, 31, 20, .88);
+  --class-control-text: #e6c3a6;
+}
+.game-root.class-vector {
+  --class-control-border: rgba(112, 164, 201, .75);
+  --class-control-bg: rgba(18, 38, 52, .9);
+  --class-control-text: #bcd9eb;
+}
+.game-root.class-systems {
+  --class-control-border: rgba(158, 137, 196, .76);
+  --class-control-bg: rgba(37, 28, 53, .9);
+  --class-control-text: #d4c4e9;
+}
+.game-root.class-vanguard .desktop-actions .action-chip,
+.game-root.class-vector .desktop-actions .action-chip,
+.game-root.class-systems .desktop-actions .action-chip,
+.game-root.class-vanguard .ability-button,
+.game-root.class-vector .ability-button,
+.game-root.class-systems .ability-button {
+  border-color: var(--class-control-border);
+  background: var(--class-control-bg);
+  color: var(--class-control-text);
+}
+.game-root.class-vanguard .desktop-actions .action-chip:not(:disabled):hover,
+.game-root.class-vector .desktop-actions .action-chip:not(:disabled):hover,
+.game-root.class-systems .desktop-actions .action-chip:not(:disabled):hover {
+  box-shadow: inset 0 0 0 1px var(--class-control-border);
+}
+.game-root.class-vanguard .ability-button:disabled,
+.game-root.class-vector .ability-button:disabled,
+.game-root.class-systems .ability-button:disabled {
+  opacity: .54;
+}
+
 /* Combat signature state stays compact and does not compete with mission objectives. */
 .class-mechanic-hud {
   position: absolute;
