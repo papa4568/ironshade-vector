@@ -212,6 +212,7 @@ function App() {
       environmentalComplications: selectedContract.environmentalEventSlots,
       optionalObjectives: expeditionProgress?.optionalRecovered ?? 0,
       actualDepth: depth === 'deep',
+      xpFloor: selectedContract.xpFloor,
       directiveQualityBonus: selectedContract.directiveQualityBonus,
       directiveSingularChanceBonus: selectedContract.directiveSingularChanceBonus,
       directiveRecoveryLevelBonus: selectedContract.directiveRecoveryLevelBonus,
