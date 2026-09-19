@@ -53,6 +53,7 @@ const locationNames: Record<LocationId, string> = {
   'lattice-annex': 'Khepri Survey Annex',
   'momentum-exchange': 'Cislunar Momentum Exchange',
   'cryo-reserve': 'Umbra Cryogenic Propellant Reserve',
+  'parallax-array': 'Cislunar Parallax Array',
 };
 
 const conditionNames: Record<ConditionId, string> = {
