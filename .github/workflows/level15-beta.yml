@@ -23,6 +23,6 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
       - name: Audit runtime dependencies
-        run: npm audit --omit=dev --audit-level=high
+        run: npm audit --package-lock-only --omit=dev --audit-level=high
       - name: Validate level 15 beta and production build
         run: npm run build
