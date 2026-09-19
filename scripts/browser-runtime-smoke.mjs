@@ -541,6 +541,11 @@ try {
     return ['Breach Rush', 'Fracture Tag', 'Bulwark Pulse'].every(label => labels.includes(label));
   })()`, 'Vanguard level-one skill kit');
   console.log(`BROWSER_CLASS_KIT_PASS viewport=${viewportMode} kit=RUSH/BREAK/GUARD`);
+  await waitFor(`(() => {
+    const canvas = document.querySelector('canvas');
+    return canvas?.dataset.operatorClassAsset === 'vanguard' && (canvas?.dataset.operatorAsset ?? '').includes('operator-vanguard');
+  })()`, 'Vanguard authored operator asset', 20_000);
+  console.log(`BROWSER_CLASS_ASSET_PASS viewport=${viewportMode} operator=vanguard`);
 
   const combat = await snapshot();
   if (!(combat.text ?? '').toLowerCase().includes('field coach') || combat.canvases < 1) {
