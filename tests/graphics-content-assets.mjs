@@ -150,6 +150,14 @@ for (const path of glbs) {
       for (const required of ['operator-rig', 'hip', 'torso', 'helmet', 'arm-left', 'arm-right', 'leg-left', 'leg-right', 'backpack', 'weapon-socket']) {
         assert(nodeNames.has(required), `${relativePath}: articulated LOD1 is missing required node ${required}`);
       }
+      const classMarker = filename.includes('operator-vanguard')
+        ? 'vanguard-ram-plate'
+        : filename.includes('operator-vector')
+          ? 'vector-stabilizer-left'
+          : filename.includes('operator-systems')
+            ? 'systems-relay-left'
+            : null;
+      if (classMarker) assert(nodeNames.has(classMarker), `${relativePath}: class silhouette marker ${classMarker} is missing`);
     }
   }
 
