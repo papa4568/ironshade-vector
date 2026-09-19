@@ -80,6 +80,7 @@ const locationBias: Record<LocationId, EnemyProtocolId[]> = {
   'lattice-annex': ['sensorGhost', 'gravityAnchor', 'arcConduit', 'emergencyShutters', 'signalJammer', 'penetratorVolley'],
   'momentum-exchange': ['countermassMobility', 'penetratorVolley', 'repairMesh', 'emergencyShutters', 'reactivePlating', 'magneticLock'],
   'cryo-reserve': ['vacuumAdapted', 'thermalOverrun', 'repairMesh', 'emergencyShutters', 'reactivePlating', 'penetratorVolley'],
+  'parallax-array': ['gravityAnchor', 'countermassMobility', 'sensorGhost', 'penetratorVolley', 'signalJammer', 'arcConduit'],
 };
 
 function hash32(value: number) {
