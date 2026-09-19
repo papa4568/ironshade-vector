@@ -53,16 +53,29 @@ adb forward --remove tcp:9222 >/dev/null 2>&1 || true
 adb forward tcp:9222 "localabstract:${RESUME_SOCKET}"
 ANDROID_RESUME_CHECK=1 CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-runtime-smoke.mjs
 
-adb logcat -d > android-runtime-logcat.txt
-if grep -E 'FATAL EXCEPTION|Process: app\.ironshade\.vector' android-runtime-logcat.txt; then
-  echo 'Android runtime crash detected.' >&2
-  exit 1
-fi
-
 adb exec-out screencap -p > android-runtime-smoke.png
 if [[ ! -s android-runtime-smoke.png ]]; then
   echo 'Android runtime screenshot was not captured.' >&2
   exit 1
 fi
 
-echo "ANDROID_EMULATOR_PASS pid=${APP_PID} resumePid=${RESUME_PID} route=ship>contracts>combat lifecycle=resume authoredOperator=verified authoredEnemies=verified authoredWeapons=verified authoredRefinery=verified"
+CHAPTER3_INTERACTION_MODE=touch \
+CHAPTER3_TARGET_TITLE='Ironshade Vector' \
+CDP_ENDPOINT=http://127.0.0.1:9222 \
+BROWSER_E2E_APP_URL=https://localhost/ \
+BROWSER_E2E_VIEWPORT=android-emulator \
+BROWSER_E2E_CHAPTER3_SCREENSHOT=android-chapter3-playthrough.png \
+BROWSER_E2E_CHAPTER3_REPORT=android-chapter3-playthrough.json \
+node scripts/browser-chapter3-playthrough.mjs
+
+test -s android-chapter3-playthrough.png
+test -s android-chapter3-playthrough.json
+grep -q '"result": "PASS"' android-chapter3-playthrough.json
+
+adb logcat -d > android-runtime-logcat.txt
+if grep -E 'FATAL EXCEPTION|Process: app\.ironshade\.vector' android-runtime-logcat.txt; then
+  echo 'Android runtime crash detected.' >&2
+  exit 1
+fi
+
+echo "ANDROID_EMULATOR_PASS pid=${APP_PID} resumePid=${RESUME_PID} route=ship>contracts>combat lifecycle=resume chapter3=touch-playthrough authoredOperator=verified authoredEnemies=verified authoredWeapons=verified authoredRefinery=verified"

@@ -253,5 +253,7 @@ jobs:
             android-apk-signing-mode.txt
             android-runtime-logcat.txt
             android-runtime-smoke.png
+            android-chapter3-playthrough.png
+            android-chapter3-playthrough.json
           if-no-files-found: error
           retention-days: 90
