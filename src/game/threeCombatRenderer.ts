@@ -1092,7 +1092,7 @@ export class ThreeCombatRenderer {
   }
 
   private async loadAuthoredWeapon(id: WeaponId) {
-    const spec = selectGraphicsAssetSpec(WEAPON_ASSET_FAMILIES[id], this.coarse ? 0.72 : 1);
+    const spec = selectGraphicsAssetSpec(WEAPON_ASSET_FAMILIES[id], this.coarse ? 0.55 : 1);
     if (!spec) {
       this.authoredWeaponFailures.add(id);
       return;
@@ -1220,7 +1220,7 @@ export class ThreeCombatRenderer {
 
   private async loadAuthoredOperator(operatorClass: SimState['build']['operatorClass']) {
     const family = operatorClass ? OPERATOR_CLASS_ASSET_FAMILIES[operatorClass] : OPERATOR_ASSET_FAMILY;
-    const spec = selectGraphicsAssetSpec(family, this.coarse ? 0.72 : 1);
+    const spec = selectGraphicsAssetSpec(family, this.coarse ? 0.55 : 1);
     if (!spec) {
       this.renderer.domElement.dataset.operatorVisual = 'procedural-fallback';
       return;
@@ -1953,7 +1953,7 @@ export class ThreeCombatRenderer {
   }
 
   private async loadAuthoredEnemy(visual: EnemyVisual, enemy: Enemy) {
-    const spec = selectGraphicsAssetSpec(ENEMY_ASSET_FAMILIES[enemy.role], this.coarse ? 0.72 : 1);
+    const spec = selectGraphicsAssetSpec(ENEMY_ASSET_FAMILIES[enemy.role], this.coarse ? 0.55 : 1);
     if (!spec) return;
 
     try {
