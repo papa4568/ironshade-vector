@@ -206,6 +206,52 @@ async function accessibilityAudit(surface) {
   return result;
 }
 
+async function classSelectionViewportAudit() {
+  const result = await evaluate(`(() => {
+    const root = document.querySelector('.class-intake');
+    const shell = document.querySelector('.class-intake-shell');
+    const confirm = document.querySelector('.class-confirm');
+    const cards = [...document.querySelectorAll('.class-choice-card')];
+    const detail = document.querySelector('.class-selected-panel');
+    if (!root || !shell || !confirm || cards.length !== 3 || !detail) return null;
+    const viewport = {
+      width: window.visualViewport?.width ?? window.innerWidth,
+      height: window.visualViewport?.height ?? window.innerHeight,
+    };
+    const rect = element => {
+      const value = element.getBoundingClientRect();
+      return { left: value.left, top: value.top, right: value.right, bottom: value.bottom, width: value.width, height: value.height };
+    };
+    const confirmRect = rect(confirm);
+    const shellRect = rect(shell);
+    const detailRect = rect(detail);
+    const cardRects = cards.map(rect);
+    const horizontalOverflow = Math.max(0, root.scrollWidth - root.clientWidth);
+    const mobileLandscape = viewport.width > viewport.height && viewport.height <= 650;
+    return {
+      viewport,
+      horizontalOverflow,
+      scrollTop: root.scrollTop,
+      shell: shellRect,
+      detail: detailRect,
+      confirm: confirmRect,
+      cards: cardRects,
+      confirmOnscreen: confirmRect.left >= -1 && confirmRect.right <= viewport.width + 1 && confirmRect.top >= -1 && confirmRect.bottom <= viewport.height + 1,
+      detailOnscreen: detailRect.left >= -1 && detailRect.right <= viewport.width + 1,
+      mobileLandscape,
+    };
+  })()`);
+  if (!result) throw new Error('Class-selection viewport audit could not find the intake surfaces.');
+  if (result.horizontalOverflow > 2 || result.scrollTop !== 0 || !result.detailOnscreen) {
+    throw new Error(`Class selection has horizontal overflow or an offscreen detail panel: ${JSON.stringify(result)}`);
+  }
+  if (result.mobileLandscape && !result.confirmOnscreen) {
+    throw new Error(`Class selection confirm action is not visible in short landscape: ${JSON.stringify(result)}`);
+  }
+  console.log(`BROWSER_CLASS_SELECTION_LAYOUT_PASS viewport=${Math.round(result.viewport.width)}x${Math.round(result.viewport.height)} horizontalOverflow=${result.horizontalOverflow}px confirm=${result.confirmOnscreen ? 'onscreen' : 'scroll'}`);
+  return result;
+}
+
 async function commandHubViewportAudit() {
   const result = await evaluate(`(() => {
     const workspace = document.querySelector('.tactical-workspace');
@@ -446,6 +492,7 @@ try {
   const firstSurface = await snapshot();
   if ((firstSurface.text ?? '').toLowerCase().includes('operator intake')) {
     await accessibilityAudit('class-selection');
+    await classSelectionViewportAudit();
     await captureScreenshot(classScreenshotPath);
     await keyboardActivateButton('Select Vanguard class');
     await keyboardActivateButton('Confirm Vanguard');
