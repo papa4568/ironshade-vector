@@ -108,11 +108,11 @@ const xpForLevel = { 15: 7140, 16: 8100, 17: 9120, 18: 10200 };
 
 async function seedCheckpoint({ level, step, status = 'active', choiceA = null, evidence = commonEvidence.slice(0, Math.min(step, 9)), label }) {
   const saved = await evaluate(`(() => {
-    const profileKey = 'ironshade-vector-profile-v3';
-    const campaignKey = 'ironshade-vector-campaign-v1';
-    const profile = JSON.parse(localStorage.getItem(profileKey) || 'null');
-    const campaign = JSON.parse(localStorage.getItem(campaignKey) || 'null');
-    if (!profile || !Array.isArray(profile.inventory) || !campaign?.story?.parallaxDebt || !campaign?.story?.interdiction) return false;
+    const stateKey = 'ironshade-vector-state-v1';
+    const state = JSON.parse(localStorage.getItem(stateKey) || 'null');
+    const profile = state?.profile;
+    const campaign = state?.campaign;
+    if (state?.version !== 1 || !profile || !Array.isArray(profile.inventory) || !campaign?.story?.parallaxDebt || !campaign?.story?.interdiction) return false;
     Object.assign(profile, {
       xp: ${xpForLevel[level]},
       level: ${level},
@@ -131,8 +131,7 @@ async function seedCheckpoint({ level, step, status = 'active', choiceA = null, 
       evidence: ${JSON.stringify(evidence)},
       lastBeat: 'BROWSER QA CHECKPOINT // ${label}',
     };
-    localStorage.setItem(profileKey, JSON.stringify(profile));
-    localStorage.setItem(campaignKey, JSON.stringify(campaign));
+    localStorage.setItem(stateKey, JSON.stringify({ ...state, profile, campaign, savedAt: new Date().toISOString() }));
     return true;
   })()`);
   if (!saved) throw new Error(`Could not seed Chapter 3 browser checkpoint ${label}`);
