@@ -207,6 +207,15 @@ assert(rendererSource.includes("dataset.bossPresentation = 'sable-voss'"), 'Sabl
 assert(rendererSource.includes("dataset.bossSilhouette = 'counterspin-mantle+governor-towers+command-visor'"), 'Sable Voss must expose her authored command silhouette identity');
 assert(rendererSource.includes("visual.authoredAssetId === 'spin-habitat-sable-voss'"), 'Sable Voss must receive a dedicated phase-aware presentation palette');
 
+assert(rendererSource.includes("ambientRoot.name = 'spin-habitat-ambient-effects'"), 'Spin Habitat P2.8 must retain a dedicated ambient effects layer');
+assert(rendererSource.includes("`spin-habitat-rim-light-band-${index}`"), 'Spin Habitat P2.8 must retain rotating rim light bands');
+assert(rendererSource.includes("ambientDust.name = 'spin-habitat-spin-dust'"), 'Spin Habitat P2.8 must retain gravity-coupled drifting particulate');
+assert(rendererSource.includes("axisHaze.name = 'spin-habitat-axis-haze'"), 'Spin Habitat P2.8 must retain a stationary-axis haze cue');
+assert(rendererSource.includes("dataset.environmentAmbient = 'rim-light-sweep+spin-dust+axis-haze'"), 'Spin Habitat P2.8 ambient identity must remain observable for QA');
+assert(rendererSource.includes("dataset.environmentAmbientMotion = 'gravity-coupled-sweep+counterspin-drift+stationary-axis-pulse'"), 'Spin Habitat P2.8 ambient motion language must remain explicit');
+assert(rendererSource.includes("visibleBands = density === 'reduced' ? 2 : density === 'balanced' ? 3 : 4"), 'Spin Habitat P2.8 ambient effects must respect the existing adaptive VFX budget');
+assert(rendererSource.includes("visibleDust = density === 'reduced' ? 20 : density === 'balanced' ? 34 : 48"), 'Spin Habitat P2.8 dust density must scale with the render tier');
+
 assert(rendererSource.includes('PARALLAX_ASSET_FAMILIES'), 'Cislunar Parallax Array must load through authored environment asset families');
 for (const asset of ['parallax-baseline-pylon', 'parallax-reference-frame', 'parallax-mass-carriage', 'parallax-shear-anchor', 'parallax-reference-console']) {
   assert(manifestSource.includes(`${asset}-lod1.glb`) && manifestSource.includes(`${asset}-lod2.glb`), `Parallax asset ${asset} must preserve adaptive LOD1/LOD2 coverage`);

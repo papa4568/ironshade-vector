@@ -294,6 +294,10 @@ export class ThreeCombatRenderer {
   private spinHabitatSpindownVfx: THREE.Group | null = null;
   private readonly spinHabitatSpindownArcs: Array<THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>> = [];
   private spinHabitatSpindownBeacon: THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial> | null = null;
+  private spinHabitatAmbientRoot: THREE.Group | null = null;
+  private spinHabitatAmbientDust: THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial> | null = null;
+  private spinHabitatAmbientAxisHaze: THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial> | null = null;
+  private readonly spinHabitatAmbientBands: Array<THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>> = [];
   private spinHabitatRotationY = 0;
   private spinHabitatLastSimTime = Number.NaN;
   private interactableLoadGeneration = 0;
@@ -529,6 +533,10 @@ export class ThreeCombatRenderer {
     this.spinHabitatSpindownVfx = null;
     this.spinHabitatSpindownArcs.length = 0;
     this.spinHabitatSpindownBeacon = null;
+    this.spinHabitatAmbientRoot = null;
+    this.spinHabitatAmbientDust = null;
+    this.spinHabitatAmbientAxisHaze = null;
+    this.spinHabitatAmbientBands.length = 0;
     this.spinHabitatRotationY = 0;
     this.spinHabitatLastSimTime = Number.NaN;
     for (const mesh of this.refineryInstancedMeshes) {
@@ -591,6 +599,10 @@ export class ThreeCombatRenderer {
     delete this.renderer.domElement.dataset.environmentSpindownIntensity;
     delete this.renderer.domElement.dataset.environmentSpindownSource;
     delete this.renderer.domElement.dataset.environmentSpindownDetail;
+    delete this.renderer.domElement.dataset.environmentAmbient;
+    delete this.renderer.domElement.dataset.environmentAmbientMotion;
+    delete this.renderer.domElement.dataset.environmentAmbientDetail;
+    delete this.renderer.domElement.dataset.environmentAmbientIntensity;
     delete this.renderer.domElement.dataset.environmentServiceDetails;
     delete this.renderer.domElement.dataset.environmentSurfaceDetail;
     delete this.renderer.domElement.dataset.environmentMachineDetail;
@@ -1955,10 +1967,81 @@ export class ThreeCombatRenderer {
       spindownBeacon.renderOrder = 7;
       spindownVfx.add(spindownBeacon);
 
-      this.environmentRoot.add(rotor, axisHub, axisCollar, spindownVfx);
+      const ambientRoot = new THREE.Group();
+      ambientRoot.name = 'spin-habitat-ambient-effects';
+      ambientRoot.position.set(cx, 0.085, cz);
+      const ambientBandGeometry = new THREE.BoxGeometry(0.46, 0.018, 18.8);
+      for (let index = 0; index < 4; index += 1) {
+        const band = new THREE.Mesh(
+          ambientBandGeometry,
+          new THREE.MeshBasicMaterial({
+            color: index % 2 === 0 ? 0x79d8c8 : 0x8dc7d0,
+            transparent: true,
+            opacity: 0.08,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+            toneMapped: false,
+          }),
+        );
+        band.name = `spin-habitat-rim-light-band-${index}`;
+        band.rotation.y = index * Math.PI / 4;
+        band.position.y = 0.01 + index * 0.004;
+        band.renderOrder = 5;
+        ambientRoot.add(band);
+        this.spinHabitatAmbientBands.push(band);
+      }
+
+      const dustCount = 48;
+      const dustPositions = new Float32Array(dustCount * 3);
+      const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+      for (let index = 0; index < dustCount; index += 1) {
+        const angle = index * goldenAngle;
+        const radius = 2.8 + (index % 12) / 11 * 8.4;
+        dustPositions[index * 3] = Math.cos(angle) * radius;
+        dustPositions[index * 3 + 1] = 0.24 + ((index * 7) % 13) / 12 * 1.45;
+        dustPositions[index * 3 + 2] = Math.sin(angle) * radius;
+      }
+      const dustGeometry = new THREE.BufferGeometry();
+      dustGeometry.setAttribute('position', new THREE.BufferAttribute(dustPositions, 3));
+      const dustMaterial = new THREE.PointsMaterial({
+        color: 0xa5eadc,
+        size: 0.085,
+        sizeAttenuation: true,
+        transparent: true,
+        opacity: 0.22,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        toneMapped: false,
+      });
+      const ambientDust = new THREE.Points(dustGeometry, dustMaterial);
+      ambientDust.name = 'spin-habitat-spin-dust';
+      ambientDust.renderOrder = 5;
+      ambientRoot.add(ambientDust);
+
+      const axisHaze = new THREE.Mesh(
+        new THREE.TorusGeometry(2.45, 0.13, 6, 44),
+        new THREE.MeshBasicMaterial({
+          color: 0x83dfd4,
+          transparent: true,
+          opacity: 0.13,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+          toneMapped: false,
+        }),
+      );
+      axisHaze.name = 'spin-habitat-axis-haze';
+      axisHaze.rotation.x = Math.PI / 2;
+      axisHaze.position.y = 0.02;
+      axisHaze.renderOrder = 5;
+      ambientRoot.add(axisHaze);
+
+      this.environmentRoot.add(rotor, axisHub, axisCollar, spindownVfx, ambientRoot);
       this.spinHabitatProceduralRotor = rotor;
       this.spinHabitatSpindownVfx = spindownVfx;
       this.spinHabitatSpindownBeacon = spindownBeacon;
+      this.spinHabitatAmbientRoot = ambientRoot;
+      this.spinHabitatAmbientDust = ambientDust;
+      this.spinHabitatAmbientAxisHaze = axisHaze;
       this.proceduralRefineryVisuals.push(rotor, axisHub, axisCollar);
     } else if (location === 'jovian-harvester') {
       for (let i = -2; i <= 2; i += 1) addBox(cx + i * 7, cz + i * 1.5, 1.1, 1.1, 6 + Math.abs(i), structural);
@@ -2023,6 +2106,35 @@ export class ThreeCombatRenderer {
     if (this.spinHabitatProceduralRotor) this.spinHabitatProceduralRotor.rotation.y = this.spinHabitatRotationY;
 
     const reducedSpindownDetail = budget.vfxDensity < 0.55;
+    if (this.spinHabitatAmbientRoot) {
+      const density = budget.vfxDensity < 0.55 ? 'reduced' : budget.vfxDensity < 0.85 ? 'balanced' : 'full';
+      const visibleBands = density === 'reduced' ? 2 : density === 'balanced' ? 3 : 4;
+      const visibleDust = density === 'reduced' ? 20 : density === 'balanced' ? 34 : 48;
+      const ambientPulse = 0.5 + Math.sin(state.time * 1.35) * 0.5;
+      const ambientIntensity = (0.68 + ambientPulse * 0.32) * budget.transparencyScale;
+
+      this.spinHabitatAmbientRoot.rotation.y = this.spinHabitatRotationY * 0.72 + state.time * 0.022;
+      for (let index = 0; index < this.spinHabitatAmbientBands.length; index += 1) {
+        const band = this.spinHabitatAmbientBands[index];
+        band.visible = index < visibleBands;
+        band.material.opacity = band.visible ? (0.045 + ambientPulse * 0.055) * budget.transparencyScale : 0;
+      }
+      if (this.spinHabitatAmbientDust) {
+        this.spinHabitatAmbientDust.geometry.setDrawRange(0, visibleDust);
+        this.spinHabitatAmbientDust.rotation.y = -this.spinHabitatRotationY * 0.28 + state.time * 0.035;
+        this.spinHabitatAmbientDust.material.opacity = (0.12 + ambientPulse * 0.12) * budget.transparencyScale;
+      }
+      if (this.spinHabitatAmbientAxisHaze) {
+        this.spinHabitatAmbientAxisHaze.material.opacity = (0.07 + ambientPulse * 0.09) * budget.transparencyScale;
+        this.spinHabitatAmbientAxisHaze.scale.setScalar(0.94 + ambientPulse * 0.12);
+      }
+
+      this.renderer.domElement.dataset.environmentAmbient = 'rim-light-sweep+spin-dust+axis-haze';
+      this.renderer.domElement.dataset.environmentAmbientMotion = 'gravity-coupled-sweep+counterspin-drift+stationary-axis-pulse';
+      this.renderer.domElement.dataset.environmentAmbientDetail = `${visibleBands}-bands+${visibleDust}-motes+axis-haze`;
+      this.renderer.domElement.dataset.environmentAmbientIntensity = ambientIntensity.toFixed(2);
+    }
+
     if (this.spinHabitatSpindownVfx) {
       const pulse = 0.5 + Math.sin(state.time * (4.2 + spindown.intensity * 2.6)) * 0.5;
       this.spinHabitatSpindownVfx.visible = spindown.active;

@@ -571,6 +571,10 @@ try {
         && (canvas?.dataset.bossAsset ?? '').includes('spin-habitat-sable-voss-lod')
         && canvas?.dataset.bossSilhouette === 'counterspin-mantle+governor-towers+command-visor'
         && !(canvas?.dataset.bossFallback ?? '')
+        && canvas?.dataset.environmentAmbient === 'rim-light-sweep+spin-dust+axis-haze'
+        && canvas?.dataset.environmentAmbientMotion === 'gravity-coupled-sweep+counterspin-drift+stationary-axis-pulse'
+        && (canvas?.dataset.environmentAmbientDetail ?? '').includes('motes+axis-haze')
+        && Number.isFinite(Number(canvas?.dataset.environmentAmbientIntensity))
         && ['idle', 'active'].includes(canvas?.dataset.environmentSpindown ?? '')
         && Number.isFinite(Number(canvas?.dataset.environmentSpindownIntensity))
         && Number.isFinite(Number(canvas?.dataset.environmentSpinPhase));
@@ -609,7 +613,11 @@ try {
       const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-spin-habitat');
       return canvas?.dataset.bossAsset ?? '';
     })()`);
-    console.log(`BROWSER_SPIN_HABITAT_PASS viewport=${viewportMode} identity=rim/spoke/axis machinery=${habitatInteractables} enemies=${habitatEnemies} boss=${habitatBoss} vfx=spindown:${spindownState.mode}:${spindownState.detail} phase=${firstPhase.toFixed(3)}->${nextPhase.toFixed(3)}`);
+    const habitatAmbient = await evaluate(`(() => {
+      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-spin-habitat');
+      return canvas?.dataset.environmentAmbientDetail ?? '';
+    })()`);
+    console.log(`BROWSER_SPIN_HABITAT_PASS viewport=${viewportMode} identity=rim/spoke/axis machinery=${habitatInteractables} enemies=${habitatEnemies} boss=${habitatBoss} ambient=${habitatAmbient} vfx=spindown:${spindownState.mode}:${spindownState.detail} phase=${firstPhase.toFixed(3)}->${nextPhase.toFixed(3)}`);
   }
 
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);
