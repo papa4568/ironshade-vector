@@ -2,11 +2,13 @@ import { protocolAimPenalty, protocolAnchorsEnemy, protocolCarriesObjective, pro
 import type { EnemyCombatClass, EnemyProtocolInstance } from './eliteProtocols';
 import type { ConsumableId } from './consumables';
 import { lootLabel, rollGroundLoot, type GroundLootDrop, type GroundLootReceipt } from './fieldLoot';
+import { abilityMeta, getAbilityKitForClass, type OperatorClassId } from './classSkills';
+export { abilityMeta, classAbilityKits, getAbilityKitForClass } from './classSkills';
+export type { AbilityMeta, OperatorClassId } from './classSkills';
 
 export type Vec2 = { x: number; y: number };
 export type PressureState = 'normal' | 'leaking' | 'decompressing' | 'vacuum';
 export type WeaponId = 'carbine' | 'breacher' | 'rail';
-export type OperatorClassId = 'vanguard' | 'vector' | 'systems';
 export type SpecializationId = 'pressure-diver' | 'momentum-broker' | 'grid-weaver' | 'survey-deadeye' | 'redline-pilot' | 'breach-vanguard' | 'capacitor-conductor';
 export type EnemyRole = 'assault' | 'suppressor' | 'technician' | 'elite' | 'boss';
 export type EnemyVariant = 'standard' | 'vectorSkirmisher' | 'anchorEngineer' | 'barricadeTrooper' | 'pressureLockTech' | 'tetherRigger' | 'maintenanceDrone' | 'gravityDrone' | 'shieldBoarder' | 'tetherOperator' | 'droneCarrier' | 'coverBreacher' | 'marksman' | 'vacuumSaboteur' | 'repairDrone' | 'gravitySpecialist' | 'meleeExosuit' | 'salvageThief' | 'impulseRigger' | 'boiloffTech' | 'partitionRigger' | 'recoilBroker' | 'siphonTech' | 'purgeOrchestrator' | 'custodyPorter' | 'geometryTech' | 'orison' | 'foundryMarshal' | 'meridianCommander' | 'salvageCaptain' | 'yardmind' | 'pressureBroker' | 'bondArbiter' | 'forgeChorus' | 'cascadeCustodian' | 'latticeCustodian' | 'transferAdjudicator' | 'umbraMarshal' | 'custodyDirector';
@@ -39,30 +41,6 @@ export const weaponConfigs: Record<WeaponId, WeaponConfig> = {
   breacher: { id: 'breacher', name: 'Kestrel B-4 Breach Scattergun', shortName: 'B-4 BREACHER', damage: 8.25, rate: 1.25, projectileSpeed: 560, penetration: 8, recoil: 112, spread: 0.16, heatPerShot: 0.17, heatDissipation: 0.2, magazine: 6, reloadSeconds: 1.85, armorDamage: 0.34, healthMultiplier: 1.45, knockback: 0.11, pellets: 7, capacitorCost: 0 },
   rail: { id: 'rail', name: 'Helix R-2 Rail Lance', shortName: 'R-2 RAIL LANCE', damage: 36, rate: 0.82, projectileSpeed: 1380, penetration: 115, recoil: 168, spread: 0.004, heatPerShot: 0.28, heatDissipation: 0.16, magazine: 5, reloadSeconds: 2.1, armorDamage: 1.75, healthMultiplier: 0.92, knockback: 0.12, pellets: 1, capacitorCost: 10 },
 };
-export type AbilityMeta = { name: string; shortName: string; cost: number; cooldown: number; description: string };
-export const abilityMeta: readonly [AbilityMeta, AbilityMeta, AbilityMeta] = [
-  { name: 'Magnetic Impulse', shortName: 'MAG', cost: 24, cooldown: 5.6, description: 'Displace nearby threats and hostile projectiles.' },
-  { name: 'Sensor Spike', shortName: 'MARK', cost: 18, cooldown: 6.8, description: 'Mark a priority target for follow-up fire.' },
-  { name: 'Arc Tap', shortName: 'ARC', cost: 30, cooldown: 7.5, description: 'Disrupt a target or exposed machinery with an electrical strike.' },
-];
-export const classAbilityKits: Record<OperatorClassId, readonly [AbilityMeta, AbilityMeta, AbilityMeta]> = {
-  vanguard: [
-    { name: 'Breach Rush', shortName: 'RUSH', cost: 18, cooldown: 4.8, description: 'Drive forward behind a magnetic ram, stagger the lane, and immediately raise Breach Guard.' },
-    { name: 'Fracture Tag', shortName: 'BREAK', cost: 20, cooldown: 6.2, description: 'Tag one target, tear open its armor path, and drag it toward Breacher range.' },
-    { name: 'Bulwark Pulse', shortName: 'GUARD', cost: 28, cooldown: 8.2, description: 'Brace the suit and detonate a close defensive shockwave that staggers enemies around you.' },
-  ],
-  vector: [
-    { name: 'Vector Shift', shortName: 'SHIFT', cost: 15, cooldown: 4.0, description: 'Burst along your aim vector and prime Slipstream without spending the dodge charge.' },
-    { name: 'Deadeye Lock', shortName: 'LOCK', cost: 18, cooldown: 5.8, description: 'Acquire a long-range precision lock and prime the next stabilized shot.' },
-    { name: 'Splitshot', shortName: 'SPLIT', cost: 24, cooldown: 6.5, description: 'Launch a three-lane high-velocity kinetic fan for mobile ranged pressure.' },
-  ],
-  systems: [
-    { name: 'Polarity Well', shortName: 'WELL', cost: 22, cooldown: 5.2, description: 'Collapse nearby targets toward a projected mass point and disrupt their formation.' },
-    { name: 'Relay Hack', shortName: 'HACK', cost: 20, cooldown: 6.3, description: 'Hack a priority target and propagate marks and disruption through nearby hostiles.' },
-    { name: 'Cascade Arc', shortName: 'CHAIN', cost: 28, cooldown: 7.0, description: 'Route an electrical cascade through enemies or machinery to keep Closed Loop cycling.' },
-  ],
-};
-export function getAbilityKitForClass(operatorClass: OperatorClassId | null) { return operatorClass ? classAbilityKits[operatorClass] : abilityMeta; }
 export function getAbilityKit(state: Pick<SimState, 'build'>) { return getAbilityKitForClass(state.build.operatorClass); }
 
 export const neutralCombatBuild: CombatBuild = { operatorClass: null, classResonanceTier: 0, weapon: { carbine: { damageMul: 1, speedMul: 1, penetrationAdd: 0, recoilMul: 1, heatPerShotMul: 1, heatDissipationMul: 1, magazineAdd: 0, reloadMul: 1, armorDamageMul: 1, healthMultiplierMul: 1, knockbackMul: 1 }, breacher: { damageMul: 1, speedMul: 1, penetrationAdd: 0, recoilMul: 1, heatPerShotMul: 1, heatDissipationMul: 1, magazineAdd: 0, reloadMul: 1, armorDamageMul: 1, healthMultiplierMul: 1, knockbackMul: 1 }, rail: { damageMul: 1, speedMul: 1, penetrationAdd: 0, recoilMul: 1, heatPerShotMul: 1, heatDissipationMul: 1, magazineAdd: 0, reloadMul: 1, armorDamageMul: 1, healthMultiplierMul: 1, knockbackMul: 1 } }, player: { maxHpAdd: 0, maxArmorAdd: 0, maxCapAdd: 0, moveSpeedMul: 1, capRegenMul: 1, vacuumResistance: 0, lowGControl: 0, ventSpeedMul: 1 }, mechanics: { railFragment: false, railFragmentScale: 0, dodgeVent: false, dodgeVentScale: 0, magRedirect: false, magRedirectScale: 0, breacherPropulsion: false, breacherPropulsionScale: 0, markWeakArmor: false, markWeakArmorScale: 0, arcDrone: false, arcDroneScale: 0, recoilVectoring: false, breachDoctrine: false, sensorPenetration: false, widebandMark: false, magOverdriveKick: false, arcGroundLoop: false, magBoundarySink: false, markExecutionTrace: false, arcCascadeLattice: false }, singularTraits: [], specialization: null, specializationOverclock: false, abilities: [{ costMul: 1, cooldownMul: 1, powerMul: 1 }, { costMul: 1, cooldownMul: 1, powerMul: 1 }, { costMul: 1, cooldownMul: 1, powerMul: 1 }] };
