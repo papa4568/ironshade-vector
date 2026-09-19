@@ -71,14 +71,17 @@ assert(manifestSource.includes("operator-field-suit-lod1.glb"), 'operator asset 
 assert(manifestSource.includes("operator-field-suit-lod2.glb"), 'operator asset family must retain the lightweight LOD2 fallback');
 for (const role of ['assault', 'suppressor', 'technician', 'elite']) {
   assert(manifestSource.includes(`enemy-${role}-lod1.glb`), `enemy manifest must include authored ${role} LOD1`);
+  assert(manifestSource.includes(`enemy-${role}-lod2.glb`), `enemy manifest must include mobile ${role} LOD2`);
 }
-assert(manifestSource.includes("enemy-boss-lod1.glb"), 'enemy manifest must include the authored boss silhouette');
+assert(manifestSource.includes("enemy-boss-lod1.glb") && manifestSource.includes("enemy-boss-lod2.glb"), 'enemy manifest must include authored boss LOD1/LOD2 silhouettes');
 for (const weapon of ['carbine', 'breacher', 'rail']) {
   assert(manifestSource.includes(`weapon-${weapon}-lod1.glb`), `weapon manifest must include authored ${weapon} LOD1`);
+  assert(manifestSource.includes(`weapon-${weapon}-lod2.glb`), `weapon manifest must include mobile ${weapon} LOD2`);
 }
 
 for (const operatorClass of ['vanguard', 'vector', 'systems']) {
-  assert(manifestSource.includes(`operator-${operatorClass}-lod1.glb`), `operator manifest must include mobile class silhouette for ${operatorClass}`);
+  assert(manifestSource.includes(`operator-${operatorClass}-lod1.glb`), `operator manifest must include class silhouette LOD1 for ${operatorClass}`);
+  assert(manifestSource.includes(`operator-${operatorClass}-lod2.glb`), `operator manifest must include class-preserving mobile LOD2 for ${operatorClass}`);
 }
 assert(manifestSource.includes('OPERATOR_CLASS_ASSET_FAMILIES'), 'operator manifest must expose class-specific asset families');
 
@@ -119,6 +122,7 @@ assert(rendererSource.includes('syncAuthoredEnemyAnimation(visual, enemy, state)
 assert(rendererSource.includes("dataset.enemyVisual = 'authored'"), 'runtime QA must expose authored enemy activation');
 assert(rendererSource.includes('visual.proceduralVisuals.forEach'), 'procedural enemy bodies must only hide after authored loading succeeds');
 assert(rendererSource.includes('WEAPON_ASSET_FAMILIES[id]'), 'player weapon loading must use authored weapon families');
+assert((rendererSource.match(/this\.coarse \? 0\.55 : 1/g) ?? []).length >= 3, 'coarse-pointer devices must select mobile LOD2 for operator, enemy, and weapon assets');
 assert(rendererSource.includes('void this.loadAuthoredWeapons()'), 'authored player weapons must load through the shared asset pipeline');
 assert(rendererSource.includes("root.getObjectByName('muzzle-socket')"), 'authored weapons must expose muzzle sockets');
 assert(rendererSource.includes('syncAuthoredWeapon(state, operatorFaction)'), 'authored weapons must receive visual-only simulation state');
@@ -188,4 +192,4 @@ assert(rendererSource.includes('this.syncEffects(state, quality * budget.detailS
 
 
 
-console.log('GRAPHICS_ASSET_PIPELINE_PASS format=glb mesh=meshopt textures=ktx2 loader=deferred lifecycle=leased lod=adaptive operator=articulated+hit-blend enemies=role-authored weapons=authored+surface-impacts environment=refinery-instanced+phase6 lighting=key+rim+contact+practical materials=pbr-bounded+emissive+decals:safety+grime vfx=shape-coded+debris+reduced-effects readability=shape+silhouette+luminance boss=signature+phase+telegraph locations=10+shared-instancing render-tiers=high+balanced+performance sockets=muzzle animation=state-driven operatorTriangles=45000 enemyTriangles=30000 weaponTriangles=12000 environmentTriangles=20000');
+console.log('GRAPHICS_ASSET_PIPELINE_PASS format=glb mesh=meshopt textures=ktx2 loader=deferred lifecycle=leased lod=adaptive+mobile-lod2 operator=articulated+class-silhouette enemies=role-authored+mobile-lod2 weapons=authored+mobile-lod2+surface-impacts environment=refinery-instanced+phase6 lighting=key+rim+contact+practical materials=pbr-bounded+emissive+decals:safety+grime vfx=shape-coded+debris+reduced-effects readability=shape+silhouette+luminance boss=signature+phase+telegraph locations=10+shared-instancing render-tiers=high+balanced+performance sockets=muzzle animation=state-driven operatorTriangles=45000 enemyTriangles=30000 weaponTriangles=12000 environmentTriangles=20000');
