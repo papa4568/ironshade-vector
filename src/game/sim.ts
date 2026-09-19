@@ -531,12 +531,12 @@ export function triggerAbility(state: SimState, index = 0) {
   if (index === 0) {
     state.pulse = 0.36;
     if (state.build.operatorClass === 'vanguard') {
-      const rushSpeed = state.build.classResonanceTier >= 2 ? 620 : state.build.classResonanceTier >= 1 ? 560 : 510;
+      const rushSpeed = (state.build.classResonanceTier >= 2 ? 620 : state.build.classResonanceTier >= 1 ? 560 : 510) * meta.power;
       p.vx += p.aim.x * rushSpeed; p.vy += p.aim.y * rushSpeed;
       p.invulnerable = Math.max(p.invulnerable, 0.14);
       state.classState.vanguardGuard = Math.max(state.classState.vanguardGuard, state.build.classResonanceTier >= 2 ? 4.2 : 3.4);
     } else if (state.build.operatorClass === 'vector') {
-      const shiftSpeed = state.build.classResonanceTier >= 2 ? 760 : state.build.classResonanceTier >= 1 ? 700 : 640;
+      const shiftSpeed = (state.build.classResonanceTier >= 2 ? 760 : state.build.classResonanceTier >= 1 ? 700 : 640) * meta.power;
       p.vx += p.aim.x * shiftSpeed; p.vy += p.aim.y * shiftSpeed;
       p.invulnerable = Math.max(p.invulnerable, 0.16);
       state.classState.vectorWindow = Math.max(state.classState.vectorWindow, state.build.classResonanceTier >= 2 ? 2.1 : 1.55);
@@ -586,6 +586,8 @@ export function triggerAbility(state: SimState, index = 0) {
       hits += 1;
     }
     spawnEffect(state, p.x, p.y, 'pulse', 330, 0.6);
+    if (state.build.mechanics.arcGroundLoop && hits > 0) p.capacitor = Math.min(p.maxCapacitor, p.capacitor + Math.min(14, 4 + hits * 2));
+    if (state.build.mechanics.arcCascadeLattice) { p.abilityCooldowns[0] = Math.max(0, p.abilityCooldowns[0] - 0.45); p.abilityCooldowns[1] = Math.max(0, p.abilityCooldowns[1] - 0.45); }
     pushEvent(state, `BULWARK PULSE // GUARD LOCKED // ${hits} CONTACT${hits === 1 ? '' : 'S'}`, 1.45);
   } else if (state.build.operatorClass === 'vector') {
     const baseDir = norm(p.aim);
@@ -595,6 +597,8 @@ export function triggerAbility(state: SimState, index = 0) {
       addProjectile(state, p.x + dir.x * 30, p.y + dir.y * 30, dir, 1480, 22 * meta.power, 'player', { weapon: 'rail', penetration: state.build.classResonanceTier >= 2 ? 82 : 68, armorDamage: 1.08, healthMultiplier: 0.96, knockback: 0.07, radius: 4 });
     }
     p.vx -= baseDir.x * 72; p.vy -= baseDir.y * 72;
+    if (state.build.mechanics.arcGroundLoop) p.capacitor = Math.min(p.maxCapacitor, p.capacitor + 7);
+    if (state.build.mechanics.arcCascadeLattice) { p.abilityCooldowns[0] = Math.max(0, p.abilityCooldowns[0] - 0.45); p.abilityCooldowns[1] = Math.max(0, p.abilityCooldowns[1] - 0.45); }
     spawnEffect(state, p.x + baseDir.x * 60, p.y + baseDir.y * 60, 'impact', 75, 0.35);
     pushEvent(state, 'SPLITSHOT // THREE-LANE KINETIC FAN', 1.35);
   } else {
