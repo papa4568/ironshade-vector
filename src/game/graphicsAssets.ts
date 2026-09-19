@@ -2,7 +2,7 @@ import type { AnimationClip, BufferGeometry, Group, Material, Object3D, Skeleton
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 
-export type GraphicsAssetClass = 'operator' | 'enemy' | 'boss' | 'weapon' | 'environment-module';
+export type GraphicsAssetClass = 'operator' | 'enemy' | 'boss' | 'weapon' | 'environment-module' | 'pickup' | 'interactable';
 export type GraphicsAssetLod = 0 | 1 | 2;
 
 export type GraphicsAssetSpec = {
@@ -50,6 +50,8 @@ export const GRAPHICS_ASSET_STANDARDS = {
     boss: 2048,
     weapon: 1024,
     'environment-module': 1024,
+    pickup: 512,
+    interactable: 1024,
   },
   defaultBudgets: {
     operator: { triangles: 45_000, compressedBytes: 2_500_000 },
@@ -57,6 +59,8 @@ export const GRAPHICS_ASSET_STANDARDS = {
     boss: { triangles: 60_000, compressedBytes: 3_500_000 },
     weapon: { triangles: 12_000, compressedBytes: 800_000 },
     'environment-module': { triangles: 20_000, compressedBytes: 1_200_000 },
+    pickup: { triangles: 4_000, compressedBytes: 240_000 },
+    interactable: { triangles: 8_000, compressedBytes: 480_000 },
   },
 } as const;
 
