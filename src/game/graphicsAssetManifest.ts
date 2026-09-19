@@ -258,6 +258,15 @@ export const SPIN_HABITAT_ENEMY_ASSET_FAMILIES = {
   },
 } as const satisfies Record<'marksman' | 'gravitySpecialist' | 'droneCarrier' | 'shieldBoarder', GraphicsAssetFamily>;
 
+
+export const SPIN_HABITAT_BOSS_ASSET_FAMILY: GraphicsAssetFamily = {
+  id: 'spin-habitat-sable-voss',
+  lods: {
+    1: createGraphicsAssetSpec('spin-habitat-sable-voss-lod1', 'enemy', '/assets/models/bosses/spin-habitat-sable-voss-lod1.glb', 1),
+    2: createGraphicsAssetSpec('spin-habitat-sable-voss-lod2', 'enemy', '/assets/models/bosses/spin-habitat-sable-voss-lod2.glb', 2),
+  },
+};
+
 export const ENEMY_ASSET_FAMILIES = {
   assault: {
     id: 'enemy-assault',

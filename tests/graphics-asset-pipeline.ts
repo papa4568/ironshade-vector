@@ -200,6 +200,13 @@ assert(rendererSource.includes("dataset.enemyLocalVisual = 'authored'"), 'Spin H
 assert(rendererSource.includes("dataset.enemyLocalKit = 'spoke-marksman+spin-trim-specialist+ring-drone-carrier+axis-shield-boarder'"), 'Spin Habitat P2.6 must expose its complete local enemy kit');
 assert(rendererSource.includes('visual.authoredAssetId?.startsWith(\'spin-habitat-\') ? spinHabitatEnemyColor(enemy)'), 'Spin Habitat P2.6 must preserve its cool-green local palette instead of generic role tinting');
 
+assert(manifestSource.includes("id: 'spin-habitat-sable-voss'"), 'Spin Habitat P2.7 must register a dedicated Sable Voss boss asset family');
+assert(manifestSource.includes('/assets/models/bosses/spin-habitat-sable-voss-lod1.glb') && manifestSource.includes('/assets/models/bosses/spin-habitat-sable-voss-lod2.glb'), 'Sable Voss must preserve adaptive LOD1/LOD2 coverage');
+assert(rendererSource.includes("mission.deepTarget !== 'Recovery Commander Sable Voss'"), 'Sable Voss authored presentation must remain scoped to her Spin Habitat boss contract');
+assert(rendererSource.includes("dataset.bossPresentation = 'sable-voss'"), 'Sable Voss authored presentation must be observable for runtime QA');
+assert(rendererSource.includes("dataset.bossSilhouette = 'counterspin-mantle+governor-towers+command-visor'"), 'Sable Voss must expose her authored command silhouette identity');
+assert(rendererSource.includes("visual.authoredAssetId === 'spin-habitat-sable-voss'"), 'Sable Voss must receive a dedicated phase-aware presentation palette');
+
 assert(rendererSource.includes('PARALLAX_ASSET_FAMILIES'), 'Cislunar Parallax Array must load through authored environment asset families');
 for (const asset of ['parallax-baseline-pylon', 'parallax-reference-frame', 'parallax-mass-carriage', 'parallax-shear-anchor', 'parallax-reference-console']) {
   assert(manifestSource.includes(`${asset}-lod1.glb`) && manifestSource.includes(`${asset}-lod2.glb`), `Parallax asset ${asset} must preserve adaptive LOD1/LOD2 coverage`);

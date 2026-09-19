@@ -478,6 +478,41 @@ function spinHabitatEnemyNodes(identity, lod) {
 }
 
 
+function spinHabitatSableVossNodes(lod) {
+  const nodes = lod === 2 ? enemyMobileNodes('boss') : enemyNodes('boss');
+  const root = nodes.pop();
+  const torsoIndex = nodes.findIndex(node => node.name === 'torso');
+  const backpackIndex = nodes.findIndex(node => node.name === 'backpack');
+  const helmetIndex = nodes.findIndex(node => node.name === 'helmet');
+  const markers = lod === 2
+    ? [
+        { name: 'spin-habitat-sable-voss-counterspin-mantle', mesh: 1, translation: [-0.04, 0.24, 0], scale: [0.62, 0.16, 1.28] },
+        { name: 'spin-habitat-sable-voss-command-visor', mesh: 4, translation: [0.16, 0.62, 0], scale: [0.08, 0.18, 0.54] },
+        { name: 'spin-habitat-sable-voss-governor-spine', mesh: 4, translation: [-0.36, 0.26, 0], scale: [0.10, 0.82, 0.48] },
+      ]
+    : [
+        { name: 'spin-habitat-sable-voss-counterspin-mantle', mesh: 1, translation: [-0.06, 0.26, 0], scale: [0.72, 0.18, 1.42] },
+        { name: 'spin-habitat-sable-voss-command-visor', mesh: 4, translation: [0.18, 0.76, 0], scale: [0.08, 0.20, 0.62] },
+        { name: 'spin-habitat-sable-voss-governor-left', mesh: 4, translation: [-0.40, 0.28, 0.42], scale: [0.10, 0.92, 0.12] },
+        { name: 'spin-habitat-sable-voss-governor-right', mesh: 4, translation: [-0.40, 0.28, -0.42], scale: [0.10, 0.92, 0.12] },
+        { name: 'spin-habitat-sable-voss-command-pack', mesh: 2, translation: [-0.40, 0.14, 0], scale: [0.32, 0.64, 0.82] },
+      ];
+
+  for (const marker of markers) {
+    const index = nodes.length;
+    nodes.push(marker);
+    const parentIndex = marker.name.includes('visor')
+      ? helmetIndex
+      : marker.name.includes('governor') || marker.name.includes('command-pack')
+        ? backpackIndex
+        : torsoIndex;
+    nodes[parentIndex].children ??= [];
+    nodes[parentIndex].children.push(index);
+  }
+  nodes.push(root);
+  return nodes;
+}
+
 function weaponMobileNodes(id) {
   if (id === 'carbine') {
     return [
@@ -1471,6 +1506,15 @@ const spinHabitatEnemyProfiles = [
 for (const [identity, id, primary, accent] of spinHabitatEnemyProfiles) {
   outputs.push(await writeAsset(`enemies/${id}-lod1.glb`, `${id}-lod1`, spinHabitatEnemyNodes(identity, 1), materials(primary, accent)));
   outputs.push(await writeAsset(`enemies/${id}-lod2.glb`, `${id}-lod2`, spinHabitatEnemyNodes(identity, 2), materials(primary, accent)));
+}
+
+for (const lod of [1, 2]) {
+  outputs.push(await writeAsset(
+    `bosses/spin-habitat-sable-voss-lod${lod}.glb`,
+    `spin-habitat-sable-voss-lod${lod}`,
+    spinHabitatSableVossNodes(lod),
+    materials([0.25, 0.39, 0.36, 1], [0.55, 0.96, 0.82]),
+  ));
 }
 
 const weaponProfiles = [

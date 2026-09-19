@@ -7,7 +7,7 @@ import { getWorldSize, type CombatObject, type Enemy, type Player, type SimState
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, locationArtIdentityFor, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
 import { lootColor } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
-import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, SPIN_HABITAT_ENEMY_ASSET_FAMILIES, SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES, OPERATOR_CLASS_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, SPIN_HABITAT_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
+import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, SPIN_HABITAT_BOSS_ASSET_FAMILY, SPIN_HABITAT_ENEMY_ASSET_FAMILIES, SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES, OPERATOR_CLASS_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, SPIN_HABITAT_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
 import { configureGraphicsAssetRenderer, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
 import { spinHabitatArchitectureState, spinHabitatSpindownState } from './spinHabitatArchitecture';
 
@@ -37,6 +37,11 @@ function spinHabitatEnemyColor(enemy: Enemy) {
   if (enemy.variant === 'droneCarrier') return 0x485d56;
   if (enemy.variant === 'shieldBoarder') return 0x506157;
   return roleColors[enemy.role];
+}
+
+function spinHabitatBossAssetFamily(enemy: Enemy, mission: Contract) {
+  if (mission.location !== 'spin-habitat' || enemy.role !== 'boss' || mission.deepTarget !== 'Recovery Commander Sable Voss') return null;
+  return SPIN_HABITAT_BOSS_ASSET_FAMILY;
 }
 
 const weaponColors: Record<WeaponId, number> = {
@@ -2518,7 +2523,9 @@ export class ThreeCombatRenderer {
 
   private async loadAuthoredEnemy(visual: EnemyVisual, enemy: Enemy, mission: Contract) {
     const spinHabitatFamily = spinHabitatEnemyAssetFamily(enemy, mission);
-    const family = spinHabitatFamily ?? ENEMY_ASSET_FAMILIES[enemy.role];
+    const spinHabitatBossFamily = spinHabitatBossAssetFamily(enemy, mission);
+    const localFamily = spinHabitatBossFamily ?? spinHabitatFamily;
+    const family = localFamily ?? ENEMY_ASSET_FAMILIES[enemy.role];
     const spec = selectGraphicsAssetSpec(family, this.coarse ? 0.55 : 1);
     if (!spec) return;
 
@@ -2557,7 +2564,7 @@ export class ThreeCombatRenderer {
         root.position.y -= bounds.min.y;
         root.position.z -= center.z;
       }
-      root.name = `authored-enemy-${spinHabitatFamily?.id ?? enemy.role}`;
+      root.name = `authored-enemy-${localFamily?.id ?? enemy.role}`;
       visual.root.add(root);
 
       const rigCandidates = {
@@ -2601,6 +2608,14 @@ export class ThreeCombatRenderer {
         this.renderer.domElement.dataset.enemyLocalKit = 'spoke-marksman+spin-trim-specialist+ring-drone-carrier+axis-shield-boarder';
         this.renderer.domElement.dataset.enemyLocalAssets = [...localAssets].sort().join(',');
       }
+      if (spinHabitatBossFamily) {
+        this.renderer.domElement.dataset.bossBiome = 'spin-habitat';
+        this.renderer.domElement.dataset.bossPresentation = 'sable-voss';
+        this.renderer.domElement.dataset.bossVisual = 'authored';
+        this.renderer.domElement.dataset.bossAsset = spec.id;
+        this.renderer.domElement.dataset.bossSilhouette = 'counterspin-mantle+governor-towers+command-visor';
+        this.renderer.domElement.dataset.bossPalette = 'recovery-green+cyan-command+amber-phase-two';
+      }
       if (enemy.role === 'boss') {
         this.renderer.domElement.dataset.bossSignature = 'authored-boss+phase-ring+pylons';
         this.renderer.domElement.dataset.bossTelegraph = 'directional-wedge+phase-halo+pulse';
@@ -2616,7 +2631,10 @@ export class ThreeCombatRenderer {
         localFallback.add(enemy.variant);
         this.renderer.domElement.dataset.enemyLocalFallback = [...localFallback].sort().join(',');
       }
-      console.warn(`Authored ${spinHabitatFamily?.id ?? enemy.role} enemy asset failed to load; keeping procedural fallback.`, error);
+      if (spinHabitatBossFamily) {
+        this.renderer.domElement.dataset.bossFallback = 'sable-voss';
+      }
+      console.warn(`Authored ${localFamily?.id ?? enemy.role} enemy asset failed to load; keeping procedural fallback.`, error);
     }
   }
 
@@ -2682,7 +2700,10 @@ export class ThreeCombatRenderer {
     const phaseTwo = enemy.bossPhase === 2;
     const armorBroken = enemy.maxArmor > 0 && enemy.armor <= 0;
     const lowHp = hpRatio < 0.34;
-    const phaseColor = phaseTwo ? 0xff8e68 : armorBroken ? 0xffc078 : 0x8ee8ff;
+    const sableVoss = visual.authoredAssetId === 'spin-habitat-sable-voss';
+    const phaseColor = sableVoss
+      ? phaseTwo ? 0xffb15b : armorBroken ? 0xffd27a : 0x72f1d0
+      : phaseTwo ? 0xff8e68 : armorBroken ? 0xffc078 : 0x8ee8ff;
 
     if (phaseRing) {
       phaseRing.material.color.setHex(phaseColor);
@@ -2716,7 +2737,7 @@ export class ThreeCombatRenderer {
       pylon.scale.y = lowHp ? 0.8 + Math.sin(state.time * 8 + index) * 0.08 : 1;
     }
 
-    this.renderer.domElement.dataset.bossPhaseVisual = `phase:${enemy.bossPhase}+pattern:${enemy.bossPattern}+telegraph:${enemy.telegraph > 0 ? 'active' : 'idle'}`;
+    this.renderer.domElement.dataset.bossPhaseVisual = `${sableVoss ? 'sable-voss+' : ''}phase:${enemy.bossPhase}+pattern:${enemy.bossPattern}+telegraph:${enemy.telegraph > 0 ? 'active' : 'idle'}`;
   }
 
   private syncEnemies(state: SimState, mission: Contract, mobileTargetId: number | null) {
@@ -2749,11 +2770,12 @@ export class ThreeCombatRenderer {
       visual.body.material.emissiveIntensity = enemy.statuses.disrupted > 0 || enemy.telegraph > 0 ? 0.34 : 0;
       if (visual.authoredRoot) {
         this.syncAuthoredEnemyAnimation(visual, enemy, state);
-        const bossPhaseEmissive = enemy.role === 'boss' && enemy.bossPhase === 2 ? 0x7a2f24 : 0x000000;
+        const sableVoss = visual.authoredAssetId === 'spin-habitat-sable-voss';
+        const bossPhaseEmissive = enemy.role === 'boss' && enemy.bossPhase === 2 ? sableVoss ? 0x76521f : 0x7a2f24 : 0x000000;
         const statusEmissive = enemy.statuses.disrupted > 0 ? 0x63508a : enemy.telegraph > 0 ? 0x7a3327 : bossPhaseEmissive;
         const statusIntensity = enemy.statuses.disrupted > 0 || enemy.telegraph > 0 ? 0.28 : bossPhaseEmissive ? 0.24 : 0;
         for (const material of visual.authoredMaterials) {
-          material.color.setHex(enemy.role === 'boss' && enemy.bossPhase === 2 ? 0xc76252 : visual.authoredAssetId?.startsWith('spin-habitat-') ? spinHabitatEnemyColor(enemy) : roleColors[enemy.role]);
+          material.color.setHex(sableVoss ? enemy.bossPhase === 2 ? 0x79623f : 0x3f6b64 : enemy.role === 'boss' && enemy.bossPhase === 2 ? 0xc76252 : visual.authoredAssetId?.startsWith('spin-habitat-') ? spinHabitatEnemyColor(enemy) : roleColors[enemy.role]);
           material.emissive.setHex(statusEmissive);
           material.emissiveIntensity = statusIntensity;
         }
