@@ -323,8 +323,8 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.134**
+- Android beta: **0.0.1-beta.139**
 - Package: `app.ironshade.vector`
-- Verified: production regression/build, tuned two-route Chapter 3 progression/balance playthrough, desktop Browser E2E, mobile-landscape Browser E2E, Level 15 beta smoke, Android APK package/version/signature checks, Android emulator runtime/touch smoke, native Android WebView Chapter 3 touch playtest with retained report/screenshot evidence
+- Verified: P2.1 Spin Habitat authored environment kit, full production regression/build, Browser E2E, Level 15 beta smoke, Android APK package/version/signature checks, Android emulator runtime/touch smoke, and retained Android QA artifacts
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- Verified delivery commit before this roadmap-only sync: `9e860420574aeed0eaeb3820f7bb9b75eaed16ba`
+- Verified delivery commit before this roadmap-only sync: `4807d2dd09d9dda382664064a3b5620018dec87f`
