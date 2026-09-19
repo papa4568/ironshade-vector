@@ -128,7 +128,7 @@ assert(rendererSource.includes('operatorHitUntil'), 'authored operator must trac
 assert(rendererSource.includes("dataset.operatorBlend"), 'operator animation blending telemetry must remain available for QA');
 
 assert(rendererSource.includes('ENEMY_ASSET_FAMILIES[enemy.role]'), 'enemy rendering must select authored assets by combat role');
-assert(rendererSource.includes('void this.loadAuthoredEnemy(visual, enemy)'), 'enemy visuals must load authored assets while retaining procedural fallback');
+assert(rendererSource.includes('void this.loadAuthoredEnemy(visual, enemy, mission)'), 'enemy visuals must load authored assets while retaining procedural fallback');
 assert(rendererSource.includes('syncAuthoredEnemyAnimation(visual, enemy, state)'), 'enemy animation must derive from deterministic simulation state');
 assert(rendererSource.includes("dataset.enemyVisual = 'authored'"), 'runtime QA must expose authored enemy activation');
 assert(rendererSource.includes('visual.proceduralVisuals.forEach'), 'procedural enemy bodies must only hide after authored loading succeeds');
