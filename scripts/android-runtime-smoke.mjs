@@ -429,9 +429,17 @@ await waitFor(`(() => {
 })()`, 'Vanguard level-one skill kit', 20_000);
 console.log('ANDROID_CLASS_KIT_PASS kit=RUSH/BREAK/GUARD');
 await waitFor(`(() => {
+  const icons = [...document.querySelectorAll('img[src*="/assets/ui/skills/"], img[src*="/assets/ui/weapons/"]')];
+  return icons.length >= 4 && icons.every(image => image.complete && image.naturalWidth > 0);
+})()`, 'Android mobile combat SVG assets', 20_000);
+await waitFor(`(() => {
   const canvas = document.querySelector('canvas');
-  return canvas?.dataset.operatorClassAsset === 'vanguard' && (canvas?.dataset.operatorAsset ?? '').includes('operator-vanguard');
-})()`, 'Android Vanguard authored operator asset', 20_000);
+  return canvas?.dataset.operatorClassAsset === 'vanguard'
+    && canvas?.dataset.operatorVisual === 'authored-2'
+    && (canvas?.dataset.operatorAsset ?? '').includes('operator-vanguard-lod2')
+    && (canvas?.dataset.weaponAsset ?? '').includes('weapon-breacher-lod2');
+})()`, 'Android Vanguard authored mobile assets', 20_000);
+console.log('ANDROID_MOBILE_ASSET_PASS icons=loaded operatorLod=2 weaponLod=2');
 console.log('ANDROID_CLASS_ASSET_PASS operator=vanguard');
 
 const combat = await snapshot();
