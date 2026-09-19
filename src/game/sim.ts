@@ -39,16 +39,36 @@ export const weaponConfigs: Record<WeaponId, WeaponConfig> = {
   breacher: { id: 'breacher', name: 'Kestrel B-4 Breach Scattergun', shortName: 'B-4 BREACHER', damage: 8.25, rate: 1.25, projectileSpeed: 560, penetration: 8, recoil: 112, spread: 0.16, heatPerShot: 0.17, heatDissipation: 0.2, magazine: 6, reloadSeconds: 1.85, armorDamage: 0.34, healthMultiplier: 1.45, knockback: 0.11, pellets: 7, capacitorCost: 0 },
   rail: { id: 'rail', name: 'Helix R-2 Rail Lance', shortName: 'R-2 RAIL LANCE', damage: 36, rate: 0.82, projectileSpeed: 1380, penetration: 115, recoil: 168, spread: 0.004, heatPerShot: 0.28, heatDissipation: 0.16, magazine: 5, reloadSeconds: 2.1, armorDamage: 1.75, healthMultiplier: 0.92, knockback: 0.12, pellets: 1, capacitorCost: 10 },
 };
-export const abilityMeta = [
-  { name: 'Magnetic Impulse', shortName: 'MAG', cost: 24, cooldown: 5.6 },
-  { name: 'Sensor Spike', shortName: 'MARK', cost: 18, cooldown: 6.8 },
-  { name: 'Arc Tap', shortName: 'ARC', cost: 30, cooldown: 7.5 },
-] as const;
+export type AbilityMeta = { name: string; shortName: string; cost: number; cooldown: number; description: string };
+export const abilityMeta: readonly [AbilityMeta, AbilityMeta, AbilityMeta] = [
+  { name: 'Magnetic Impulse', shortName: 'MAG', cost: 24, cooldown: 5.6, description: 'Displace nearby threats and hostile projectiles.' },
+  { name: 'Sensor Spike', shortName: 'MARK', cost: 18, cooldown: 6.8, description: 'Mark a priority target for follow-up fire.' },
+  { name: 'Arc Tap', shortName: 'ARC', cost: 30, cooldown: 7.5, description: 'Disrupt a target or exposed machinery with an electrical strike.' },
+];
+export const classAbilityKits: Record<OperatorClassId, readonly [AbilityMeta, AbilityMeta, AbilityMeta]> = {
+  vanguard: [
+    { name: 'Breach Rush', shortName: 'RUSH', cost: 18, cooldown: 4.8, description: 'Drive forward behind a magnetic ram, stagger the lane, and immediately raise Breach Guard.' },
+    { name: 'Fracture Tag', shortName: 'BREAK', cost: 20, cooldown: 6.2, description: 'Tag one target, tear open its armor path, and drag it toward Breacher range.' },
+    { name: 'Bulwark Pulse', shortName: 'GUARD', cost: 28, cooldown: 8.2, description: 'Brace the suit and detonate a close defensive shockwave that staggers enemies around you.' },
+  ],
+  vector: [
+    { name: 'Vector Shift', shortName: 'SHIFT', cost: 15, cooldown: 4.0, description: 'Burst along your aim vector and prime Slipstream without spending the dodge charge.' },
+    { name: 'Deadeye Lock', shortName: 'LOCK', cost: 18, cooldown: 5.8, description: 'Acquire a long-range precision lock and prime the next stabilized shot.' },
+    { name: 'Splitshot', shortName: 'SPLIT', cost: 24, cooldown: 6.5, description: 'Launch a three-lane high-velocity kinetic fan for mobile ranged pressure.' },
+  ],
+  systems: [
+    { name: 'Polarity Well', shortName: 'WELL', cost: 22, cooldown: 5.2, description: 'Collapse nearby targets toward a projected mass point and disrupt their formation.' },
+    { name: 'Relay Hack', shortName: 'HACK', cost: 20, cooldown: 6.3, description: 'Hack a priority target and propagate marks and disruption through nearby hostiles.' },
+    { name: 'Cascade Arc', shortName: 'CHAIN', cost: 28, cooldown: 7.0, description: 'Route an electrical cascade through enemies or machinery to keep Closed Loop cycling.' },
+  ],
+};
+export function getAbilityKitForClass(operatorClass: OperatorClassId | null) { return operatorClass ? classAbilityKits[operatorClass] : abilityMeta; }
+export function getAbilityKit(state: Pick<SimState, 'build'>) { return getAbilityKitForClass(state.build.operatorClass); }
 
 export const neutralCombatBuild: CombatBuild = { operatorClass: null, classResonanceTier: 0, weapon: { carbine: { damageMul: 1, speedMul: 1, penetrationAdd: 0, recoilMul: 1, heatPerShotMul: 1, heatDissipationMul: 1, magazineAdd: 0, reloadMul: 1, armorDamageMul: 1, healthMultiplierMul: 1, knockbackMul: 1 }, breacher: { damageMul: 1, speedMul: 1, penetrationAdd: 0, recoilMul: 1, heatPerShotMul: 1, heatDissipationMul: 1, magazineAdd: 0, reloadMul: 1, armorDamageMul: 1, healthMultiplierMul: 1, knockbackMul: 1 }, rail: { damageMul: 1, speedMul: 1, penetrationAdd: 0, recoilMul: 1, heatPerShotMul: 1, heatDissipationMul: 1, magazineAdd: 0, reloadMul: 1, armorDamageMul: 1, healthMultiplierMul: 1, knockbackMul: 1 } }, player: { maxHpAdd: 0, maxArmorAdd: 0, maxCapAdd: 0, moveSpeedMul: 1, capRegenMul: 1, vacuumResistance: 0, lowGControl: 0, ventSpeedMul: 1 }, mechanics: { railFragment: false, railFragmentScale: 0, dodgeVent: false, dodgeVentScale: 0, magRedirect: false, magRedirectScale: 0, breacherPropulsion: false, breacherPropulsionScale: 0, markWeakArmor: false, markWeakArmorScale: 0, arcDrone: false, arcDroneScale: 0, recoilVectoring: false, breachDoctrine: false, sensorPenetration: false, widebandMark: false, magOverdriveKick: false, arcGroundLoop: false, magBoundarySink: false, markExecutionTrace: false, arcCascadeLattice: false }, singularTraits: [], specialization: null, specializationOverclock: false, abilities: [{ costMul: 1, cooldownMul: 1, powerMul: 1 }, { costMul: 1, cooldownMul: 1, powerMul: 1 }, { costMul: 1, cooldownMul: 1, powerMul: 1 }] };
 function resolveWeaponConfig(build: CombatBuild, id: WeaponId): WeaponConfig { const base = weaponConfigs[id]; const mod = build.weapon[id]; return { ...base, damage: base.damage * mod.damageMul, projectileSpeed: base.projectileSpeed * mod.speedMul, penetration: base.penetration + mod.penetrationAdd, recoil: base.recoil * mod.recoilMul, heatPerShot: base.heatPerShot * mod.heatPerShotMul, heatDissipation: base.heatDissipation * mod.heatDissipationMul, magazine: Math.max(1, Math.round(base.magazine + mod.magazineAdd)), reloadSeconds: base.reloadSeconds * mod.reloadMul, armorDamage: base.armorDamage * mod.armorDamageMul, healthMultiplier: base.healthMultiplier * mod.healthMultiplierMul, knockback: base.knockback * mod.knockbackMul }; }
 export function getWeaponConfig(state: SimState, id: WeaponId) { return state.weapons[id]; }
-export function getAbilityConfig(state: SimState, index: number) { const base = abilityMeta[index] ?? abilityMeta[0]; const tuning = state.build.abilities[index] ?? state.build.abilities[0]; return { ...base, cost: Math.round(base.cost * tuning.costMul), cooldown: base.cooldown * tuning.cooldownMul, power: tuning.powerMul }; }
+export function getAbilityConfig(state: SimState, index: number) { const kit = getAbilityKit(state); const base = kit[index] ?? kit[0]; const tuning = state.build.abilities[index] ?? state.build.abilities[0]; return { ...base, cost: Math.round(base.cost * tuning.costMul), cooldown: base.cooldown * tuning.cooldownMul, power: tuning.powerMul }; }
 
 const world = { w: 2320, h: 1040 };
 const playerRadius = 22;
@@ -321,7 +341,7 @@ export function createSimulation(build: CombatBuild = neutralCombatBuild): SimSt
     collectedLoot: [],
     damageNumbers: Array.from({ length: 24 }, () => ({ active: false, serial: 0, x: 0, y: 0, value: 0, kind: 'health' as const, life: 0, maxLife: 0.78 })),
     damageNumberSerial: 0,
-    player: { x: 330, y: 590, vx: 0, vy: 0, aim: { x: 1, y: 0 }, move: { x: 0, y: 0 }, hp: 100 + build.player.maxHpAdd, maxHp: 100 + build.player.maxHpAdd, armor: 68 + build.player.maxArmorAdd, maxArmor: 68 + build.player.maxArmorAdd, capacitor: 100 + build.player.maxCapAdd, maxCapacitor: 100 + build.player.maxCapAdd, fireCooldown: 0, abilityCooldowns: [0, 0, 0], dodgeCooldown: 0, dodgeTime: 0, lastDodgeAt: -99, invulnerable: 0, consumableCooldown: 0, weaponHeat: { carbine: 0, breacher: 0, rail: 0 }, mags: { carbine: carbineConfig.magazine, breacher: breacherConfig.magazine, rail: railConfig.magazine }, reloadT: 0, reloadWeapon: 'carbine', ventT: 0, dead: false, currentWeapon: 'carbine', vacuumExposure: 0, disrupted: 0 },
+    player: { x: 330, y: 590, vx: 0, vy: 0, aim: { x: 1, y: 0 }, move: { x: 0, y: 0 }, hp: 100 + build.player.maxHpAdd, maxHp: 100 + build.player.maxHpAdd, armor: 68 + build.player.maxArmorAdd, maxArmor: 68 + build.player.maxArmorAdd, capacitor: 100 + build.player.maxCapAdd, maxCapacitor: 100 + build.player.maxCapAdd, fireCooldown: 0, abilityCooldowns: [0, 0, 0], dodgeCooldown: 0, dodgeTime: 0, lastDodgeAt: -99, invulnerable: 0, consumableCooldown: 0, weaponHeat: { carbine: 0, breacher: 0, rail: 0 }, mags: { carbine: carbineConfig.magazine, breacher: breacherConfig.magazine, rail: railConfig.magazine }, reloadT: 0, reloadWeapon: build.operatorClass === 'vanguard' ? 'breacher' : build.operatorClass === 'vector' ? 'rail' : 'carbine', ventT: 0, dead: false, currentWeapon: build.operatorClass === 'vanguard' ? 'breacher' : build.operatorClass === 'vector' ? 'rail' : 'carbine', vacuumExposure: 0, disrupted: 0 },
     enemies: [spawnEnemy(1, 'assault', 'Pressure Raider', 760, 500, 76, 38, 1), spawnEnemy(2, 'suppressor', 'Line Suppressor', 1030, 655, 82, 46, -1), spawnEnemy(3, 'technician', 'Systems Tech', 1140, 330, 70, 34, 1), spawnEnemy(4, 'assault', 'Pressure Raider', 1320, 540, 78, 40, -1), spawnEnemy(5, 'suppressor', 'Line Suppressor', 1370, 760, 84, 48, 1), spawnEnemy(6, 'elite', 'Anchor Marshal', 1270, 430, 140, 105, -1), spawnEnemy(7, 'assault', 'Reserve Raider', 1450, 300, 76, 38, 1, false), spawnEnemy(8, 'technician', 'Reserve Systems Tech', 1320, 790, 72, 36, -1, false), spawnEnemy(9, 'technician', 'Carrier Repair Drone', 0, 0, 52, 20, 1, false, 'repairDrone'), spawnEnemy(10, 'technician', 'Carrier Repair Drone', 0, 0, 52, 20, -1, false, 'repairDrone'), spawnEnemy(99, 'boss', 'Dock Warden Orison', 2070, 525, 560, 185, 1, false, 'orison')],
     projectiles: Array.from({ length: 112 }, () => ({ active: false, x: 0, y: 0, vx: 0, vy: 0, radius: 4, damage: 0, life: 0, owner: 'player' as const, weapon: 'carbine' as const, penetration: 0, armorDamage: 0.5, healthMultiplier: 1, knockback: 0.05, lastObjectId: null, lastObjectT: 0 })),
     objects,
