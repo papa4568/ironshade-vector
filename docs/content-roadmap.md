@@ -62,7 +62,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
   - [x] Explicit LV16/LV17/LV18 progression gates
   - [x] T9 → T11 Chapter 3 encounter scaling
   - [x] Legacy three-contract completion migration
-  - [ ] Final decision branch + final three Chapter 3 operations
+  - [x] Final decision branch + final three Chapter 3 operations
+    - [x] Expose route — Common Reference → Witness Transit → Released Vector
+    - [x] Keep route dark — Dark Baseline → Ghost Transit → Private Vector
 
 ### Enemies
 
@@ -84,7 +86,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ### Narrative / Choice
 
-- [ ] **P1.11** Add meaningful campaign decision/branch
+- [x] **P1.11** Add meaningful campaign decision/branch
+  - [x] Expose the route — independent witnesses, Meridian reputation, disrupted support stack
+  - [x] Keep the route dark — Long Arc reputation, preserved covert route access
 - [x] **P1.12** Add evidence/intel progression
   - [x] Baseline Offset
   - [x] Return Vector
@@ -144,7 +148,8 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] Major boss
 - [x] New build-defining Singular loot
 - [x] Bespoke authored Parallax environment assets
-- [ ] Campaign branch/choice
+- [x] Campaign branch/choice
+- [x] Final three Chapter 3 operations
 - [ ] Full LV15–18 progression/balance pass
 - [ ] Complete Chapter 3 playtest
 
@@ -267,4 +272,4 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Next P1 Task
 
-**P1.11 — Add the Parallax Debt campaign decision/branch and author the final three operations, then move into the LV15–18 XP/balance pass.**
+**P1.16 / P1.17 — Tune LV15–18 XP, rewards, encounter pressure, and specialization impact across the complete 12-operation Parallax Debt campaign.**
