@@ -347,16 +347,24 @@ for (const path of glbs) {
     for (const required of ['enemy-rig', 'hip', 'torso', 'helmet', 'arm-left', 'arm-right', 'leg-left', 'leg-right', 'backpack', 'weapon-socket']) {
       assert(nodeNames.has(required), `${relativePath}: authored enemy is missing required node ${required}`);
     }
-    const silhouetteMarker = filename.includes('assault')
-      ? 'assault-ram-plate'
-      : filename.includes('suppressor')
-        ? 'suppressor-shoulder-left'
-        : filename.includes('technician')
-          ? 'technician-mast'
-          : filename.includes('elite')
-            ? 'elite-crest'
-            : 'boss-command-crest';
-    assert(nodeNames.has(silhouetteMarker), `${relativePath}: role silhouette marker ${silhouetteMarker} is missing`);
+    const silhouetteMarker = filename.includes('spin-habitat-spoke-marksman')
+      ? 'spin-habitat-spoke-marksman-brace'
+      : filename.includes('spin-habitat-spin-trim-specialist')
+        ? filename.endsWith('-lod1.glb') ? 'spin-habitat-spin-trim-gyro-left' : 'spin-habitat-spin-trim-gyro'
+        : filename.includes('spin-habitat-ring-drone-carrier')
+          ? 'spin-habitat-ring-drone-rack'
+          : filename.includes('spin-habitat-axis-shield-boarder')
+            ? 'spin-habitat-axis-shield'
+            : filename.includes('assault')
+              ? 'assault-ram-plate'
+              : filename.includes('suppressor')
+                ? 'suppressor-shoulder-left'
+                : filename.includes('technician')
+                  ? 'technician-mast'
+                  : filename.includes('elite')
+                    ? 'elite-crest'
+                    : 'boss-command-crest';
+    assert(nodeNames.has(silhouetteMarker), `${relativePath}: role/local silhouette marker ${silhouetteMarker} is missing`);
   }
 
   reports.push({ relativePath, bytes: data.byteLength, triangles, meshes: runtimeMeshes, authoredBounds });
@@ -374,6 +382,12 @@ for (const role of ['assault', 'suppressor', 'technician', 'elite']) {
   const lod2 = reportByPath.get(`enemies/enemy-${role}-lod2.glb`);
   assert(lod1 && lod2, `${role}: enemy LOD1/LOD2 pair missing`);
   assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, `${role}: mobile enemy LOD2 must reduce payload and draw surfaces`);
+}
+for (const asset of ['spin-habitat-spoke-marksman', 'spin-habitat-spin-trim-specialist', 'spin-habitat-ring-drone-carrier', 'spin-habitat-axis-shield-boarder']) {
+  const lod1 = reportByPath.get(`enemies/${asset}-lod1.glb`);
+  const lod2 = reportByPath.get(`enemies/${asset}-lod2.glb`);
+  assert(lod1 && lod2, `${asset}: Spin Habitat local enemy LOD1/LOD2 pair missing`);
+  assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, `${asset}: Spin Habitat local enemy mobile LOD2 must reduce payload and draw surfaces`);
 }
 {
   const lod1 = reportByPath.get('bosses/enemy-boss-lod1.glb');
