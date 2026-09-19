@@ -453,6 +453,77 @@ const evidenceText: Record<string, string> = {
   'private-vector': 'Quiet Signal retains a live service map and still-valid private route into the support network.',
 };
 
+
+function parallaxIntelOperation(spec: MissionSpec, step: number) {
+  return {
+    step,
+    title: spec.title.replace('Parallax Debt // ', ''),
+    minimumLevel: spec.minimumLevel,
+    evidence: evidenceText[spec.evidence] ?? spec.evidence,
+  };
+}
+
+export function parallaxDebtIntel(campaign: CampaignState) {
+  const phases = [
+    {
+      id: 'lv15',
+      label: 'LV15 // FALSE BASELINE',
+      summary: 'Establish that the reference offset is physical, repeatable, and actively maintained.',
+      minimumLevel: 15,
+      operations: openingMissions.slice(0, 3).map((spec, index) => parallaxIntelOperation(spec, index)),
+    },
+    {
+      id: 'lv16',
+      label: 'LV16 // SUPPORT LAYER',
+      summary: 'Cross-check ordinary guidance, service ledgers, and repeated correction schedules.',
+      minimumLevel: 16,
+      operations: openingMissions.slice(3, 6).map((spec, index) => parallaxIntelOperation(spec, index + 3)),
+    },
+    {
+      id: 'lv17',
+      label: 'LV17 // LIVE ROUTE',
+      summary: 'Prove the correction stack services moving traffic and bound the hidden transit in space and time.',
+      minimumLevel: 17,
+      operations: openingMissions.slice(6, 8).map((spec, index) => parallaxIntelOperation(spec, index + 6)),
+    },
+    {
+      id: 'lv18',
+      label: 'LV18 // FALSE HORIZON',
+      summary: 'Observe the route under live reference shear and recover the correction package that forces the final decision.',
+      minimumLevel: 18,
+      operations: openingMissions.slice(8, 9).map((spec, index) => parallaxIntelOperation(spec, index + 8)),
+    },
+  ];
+
+  const branches = [
+    {
+      id: 'expose-route' as const,
+      title: 'Open Reference',
+      summary: 'Release the bounded correction package, create independent witnesses, and disrupt the local support stack.',
+      operations: exposedRouteMissions.map((spec, index) => parallaxIntelOperation(spec, index + 9)),
+    },
+    {
+      id: 'hold-route' as const,
+      title: 'Quiet Custody',
+      summary: 'Keep the correction package compartmentalized and preserve a covert path deeper into the support network.',
+      operations: heldRouteMissions.map((spec, index) => parallaxIntelOperation(spec, index + 9)),
+    },
+  ];
+  const selectedBranch = branches.find(branch => branch.id === campaign.story.parallaxDebt.choiceA) ?? null;
+
+  return {
+    phases,
+    branches,
+    selectedBranch,
+    unresolved: [
+      'The client using the private route.',
+      'The cargo or traffic purpose.',
+      'The original lattice manufacturer and provenance.',
+      'Why the first recovery network knew where to look.',
+    ],
+  };
+}
+
 export function parallaxDebtEvidence(campaign: CampaignState) {
   return campaign.story.parallaxDebt.evidence.map(id => evidenceText[id] ?? id);
 }

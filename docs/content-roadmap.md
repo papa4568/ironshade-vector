@@ -104,7 +104,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
   - [x] Null Transit
   - [x] Counterfactual Burn
   - [x] False Horizon
-- [ ] Expand full Intel UI presentation for Parallax Debt
+- [x] Expand full Intel UI presentation for Parallax Debt
 
 ### Loot
 
@@ -144,7 +144,13 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] Debrief integration
 - [x] Campaign status integration
 - [x] Dedicated Chapter 3 campaign progress card with level-gate/readiness state
-- [ ] **P1.18** Finish dedicated Intel/campaign presentation
+- [x] **P1.18** Finish dedicated Intel/campaign presentation
+  - [x] LV15–18 phase timeline with current/gated/banked operation states
+  - [x] Evidence-bank count and readable physical findings
+  - [x] False Horizon route decision and closing-branch presentation
+  - [x] Explicit unresolved-evidence boundary
+  - [x] Mobile-landscape responsive coverage
+  - [x] Gameplay/UI regression coverage keeps dossier metadata synchronized
 
 ### QA
 
@@ -294,11 +300,12 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 Follow these in order unless testing reveals a blocker or a smaller prerequisite:
 
-1. **P1.18** — Finish dedicated Parallax Debt Intel/campaign presentation.
-2. **P1.20** — Complete a full Chapter 3 browser/mobile campaign playthrough.
-3. **P1.21** — Complete a full Chapter 3 Android hands-on playtest.
-4. **P1.22** — Apply final reward, boss difficulty, enemy pressure, and completion-pacing tuning from playtest findings.
-5. Close the two remaining P1 completion gates: full LV15–18 balance pass and complete Chapter 3 playtest.
+1. **P1.20** — Complete a full Chapter 3 browser/mobile campaign playthrough.
+2. **P1.21** — Complete a full Chapter 3 Android hands-on playtest.
+3. **P1.22** — Apply final reward, boss difficulty, enemy pressure, and completion-pacing tuning from playtest findings.
+4. Close the two remaining P1 completion gates: full LV15–18 balance pass and complete Chapter 3 playtest.
+
+**P1.18 delivered:** Parallax Debt now has a dedicated LV15–18 phase timeline, evidence bank, route-decision/branch presentation, unresolved-evidence boundary, responsive mobile-landscape treatment, and regression coverage.
 
 Further Sera Nox boss tuning should be folded into the P1.20–P1.22 playtest/balance pass instead of handled as a disconnected task.
 

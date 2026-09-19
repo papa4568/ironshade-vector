@@ -6,7 +6,7 @@ import { awardRecovery, createDefaultProfile, deriveCombatBuild, loadProfile, sa
 import { CAMPAIGN_STORAGE_KEY, GAME_STATE_STORAGE_KEY, prepareSaveRecovery, PROFILE_STORAGE_KEY } from '../src/game/saveRecovery';
 import { loadGameState, saveGameState } from '../src/game/gamePersistence';
 import { carryExpeditionLoot } from '../src/game/expeditionCarry';
-import { advanceParallaxDebtAfterContract, chooseParallaxDebtBranch, getParallaxDebtChoicePrompt, getParallaxDebtContract, parallaxDebtChapter, parallaxDebtNextRequiredLevel, syncParallaxDebtAccess } from '../src/game/parallaxDebt';
+import { advanceParallaxDebtAfterContract, chooseParallaxDebtBranch, getParallaxDebtChoicePrompt, getParallaxDebtContract, parallaxDebtChapter, parallaxDebtIntel, parallaxDebtNextRequiredLevel, syncParallaxDebtAccess } from '../src/game/parallaxDebt';
 import { operationScalingFor } from '../src/game/scaling';
 
 function parallaxPacingTelemetry(): Telemetry {
@@ -67,6 +67,10 @@ parallaxCampaign = syncParallaxDebtAccess(parallaxCampaign, 15);
 assert.equal(parallaxCampaign.story.parallaxDebt.status, 'active', 'LV15 + completed Interdiction should open Parallax Debt');
 assert.equal(parallaxDebtChapter.totalContracts, 12, 'Parallax Debt should contain a full 12-contract Chapter 3 arc.');
 assert.equal(parallaxDebtChapter.authoredContracts, 12, 'All twelve Chapter 3 contracts should now be authored.');
+const openingIntel = parallaxDebtIntel(parallaxCampaign);
+assert.deepEqual(openingIntel.phases.map(phase => phase.minimumLevel), [15, 16, 17, 18], 'Parallax Intel phases should mirror the LV15-LV18 progression gates.');
+assert.deepEqual(openingIntel.phases.map(phase => phase.operations.length), [3, 3, 2, 1], 'Parallax Intel should present the nine pre-decision operations in their authored phase groups.');
+assert.deepEqual(openingIntel.branches.map(branch => branch.operations.length), [3, 3], 'Parallax Intel should present three closing operations for each route decision.');
 
 let pacingCampaign = createDefaultCampaign();
 pacingCampaign.story.interdiction.status = 'complete';
@@ -175,6 +179,7 @@ const preDecisionParallax = JSON.parse(JSON.stringify(parallaxCampaign)) as type
 const meridianBefore = parallaxCampaign.reputation.meridian;
 parallaxCampaign = chooseParallaxDebtBranch(parallaxCampaign, 'expose-route');
 assert.equal(parallaxCampaign.story.parallaxDebt.choiceA, 'expose-route');
+assert.equal(parallaxDebtIntel(parallaxCampaign).selectedBranch?.id, 'expose-route', 'Parallax Intel should follow the exposed-route campaign decision.');
 assert.equal(parallaxCampaign.reputation.meridian, meridianBefore + 1, 'Exposing the route should bank the documented Meridian reputation consequence.');
 for (let step = 9; step < 12; step += 1) {
   const contract = getParallaxDebtContract(parallaxCampaign, 18);
@@ -193,6 +198,7 @@ assert.match(parallaxCampaign.story.parallaxDebt.lastBeat, /OPEN REFERENCE/, 'Th
 let heldParallax = chooseParallaxDebtBranch(preDecisionParallax, 'hold-route');
 const longArcBefore = preDecisionParallax.reputation.longarc;
 assert.equal(heldParallax.story.parallaxDebt.choiceA, 'hold-route');
+assert.equal(parallaxDebtIntel(heldParallax).selectedBranch?.id, 'hold-route', 'Parallax Intel should follow the quiet-custody campaign decision.');
 assert.equal(heldParallax.reputation.longarc, longArcBefore + 1, 'Keeping the route dark should bank the documented Long Arc reputation consequence.');
 for (let step = 9; step < 12; step += 1) {
   const contract = getParallaxDebtContract(heldParallax, 18);
