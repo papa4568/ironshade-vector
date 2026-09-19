@@ -1,5 +1,6 @@
-import type { CombatBuild, OperatorClassId, SingularTraitId, SpecializationId, Telemetry, WeaponId } from './sim';
-export type { OperatorClassId } from './sim';
+import type { CombatBuild, SingularTraitId, SpecializationId, Telemetry, WeaponId } from './sim';
+import type { OperatorClassId } from './classSkills';
+export type { OperatorClassId } from './classSkills';
 import { factionFrames, factionGearChance, factionSetDefinitions, type EquipmentFaction } from './factionGear';
 import { frameGenerationForRecovery, recoveryLevelForSource, type FrameGeneration } from './scaling';
 import { modifierCountForRarity, modifierFamilyFor, modifierPowerFactor, modifierTradeoffFactor, rollModifierGrade, rollRarityForQuality, rollRecoveryQuality, type ModifierFamily, type ModifierGrade, type RecoveryQualityGrade } from './lootQuality';
