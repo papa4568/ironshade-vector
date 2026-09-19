@@ -1,5 +1,6 @@
-import type { CombatBuild, OperatorClassId, SingularTraitId, SpecializationId, Telemetry, WeaponId } from './sim';
-export type { OperatorClassId } from './sim';
+import type { CombatBuild, SingularTraitId, SpecializationId, Telemetry, WeaponId } from './sim';
+import type { OperatorClassId } from './classSkills';
+export type { OperatorClassId } from './classSkills';
 import { factionFrames, factionGearChance, factionSetDefinitions, type EquipmentFaction } from './factionGear';
 import { frameGenerationForRecovery, recoveryLevelForSource, type FrameGeneration } from './scaling';
 import { modifierCountForRarity, modifierFamilyFor, modifierPowerFactor, modifierTradeoffFactor, rollModifierGrade, rollRarityForQuality, rollRecoveryQuality, type ModifierFamily, type ModifierGrade, type RecoveryQualityGrade } from './lootQuality';
@@ -247,9 +248,9 @@ export const progressionNodes: ProgressionNode[] = [
   { id: 'awareness-1', branch: 'Awareness', name: 'Predictive Lead', description: '+8% projectile velocity.' }, { id: 'awareness-2', branch: 'Awareness', name: 'Weak-Path Telemetry', description: 'Marked targets take more armor damage.', requires: 'awareness-1' }, { id: 'awareness-3', branch: 'Awareness', name: 'Penetration Optics', description: 'Sensor-marked targets expose penetration paths to all weapons.', major: true, requires: 'awareness-2' },
 ];
 export const abilityMods: AbilityMod[] = [
-  { id: 'mag-revector', ability: 'mag', name: 'Revector Lens', description: 'Magnetic Impulse redirects hostile projectiles as friendly kinetic vectors.', tradeoff: '+25% capacitor cost and +10% cooldown.' }, { id: 'mag-overdrive', ability: 'mag', name: 'Impulse Overdrive', description: '+45% displacement strength.', tradeoff: 'The operator receives a stronger counter-impulse.' }, { id: 'mag-boundary', ability: 'mag', name: 'Boundary Sink', description: 'Magnetic Impulse collapses one nearby gravity, countermass, boiloff, or hostile grid field and turns its geometry into an outward impulse.', tradeoff: '+20% capacitor cost; only one field can be consumed per cast.' },
-  { id: 'mark-shear', ability: 'mark', name: 'Shear Map', description: 'Marked enemies expose weak armor paths and take much greater armor damage.', tradeoff: '+10% capacitor cost.' }, { id: 'mark-wideband', ability: 'mark', name: 'Wideband Echo', description: 'Sensor Spike also marks a nearby secondary target.', tradeoff: '+18% cooldown and shorter marks.' }, { id: 'mark-execution', ability: 'mark', name: 'Execution Trace', description: 'A Rail Lance hit consumes the mark to break a committed firing solution and leave a short Armor Breach window.', tradeoff: '+10% Sensor Spike cooldown and substantially shorter marks.' },
-  { id: 'arc-relay', ability: 'arc', name: 'Relay Drone', description: 'A microdrone periodically attacks disrupted targets.', tradeoff: '+20% Arc Tap capacitor cost.' }, { id: 'arc-ground', ability: 'arc', name: 'Ground Loop', description: 'Conduit propagation restores capacitor charge.', tradeoff: '-15% Arc Tap direct damage.' }, { id: 'arc-cascade', ability: 'arc', name: 'Cascade Lattice', description: 'Arc Tap through machinery advances MAG and MARK recovery, turning the environment into a combo router.', tradeoff: '+15% Arc Tap capacitor cost and -22% direct Arc power.' },
+  { id: 'mag-revector', ability: 'mag', name: 'Revector Lens', description: 'Your first class skill redirects hostile projectiles as friendly kinetic vectors when its field crosses them.', tradeoff: '+25% capacitor cost and +10% cooldown.' }, { id: 'mag-overdrive', ability: 'mag', name: 'Impulse Overdrive', description: '+45% displacement / movement impulse on your first class skill.', tradeoff: 'The operator receives a stronger counter-impulse where applicable.' }, { id: 'mag-boundary', ability: 'mag', name: 'Boundary Sink', description: 'Your first class skill can collapse one nearby gravity, countermass, boiloff, or hostile grid field and vent its geometry outward.', tradeoff: '+20% capacitor cost; only one field can be consumed per cast.' },
+  { id: 'mark-shear', ability: 'mark', name: 'Shear Map', description: 'Targets acquired by your second class skill expose weak armor paths and take much greater armor damage.', tradeoff: '+10% capacitor cost.' }, { id: 'mark-wideband', ability: 'mark', name: 'Wideband Echo', description: 'Your second class skill also acquires a nearby secondary target.', tradeoff: '+18% cooldown and shorter target marks.' }, { id: 'mark-execution', ability: 'mark', name: 'Execution Trace', description: 'A Rail Lance hit consumes a target mark to break a committed firing solution and leave a short Armor Breach window.', tradeoff: '+10% second-skill cooldown and substantially shorter marks.' },
+  { id: 'arc-relay', ability: 'arc', name: 'Relay Drone', description: 'A microdrone periodically attacks targets disrupted by your third class skill.', tradeoff: '+20% third-skill capacitor cost.' }, { id: 'arc-ground', ability: 'arc', name: 'Ground Loop', description: 'Third-skill propagation through machinery restores capacitor charge.', tradeoff: '-15% third-skill direct damage.' }, { id: 'arc-cascade', ability: 'arc', name: 'Cascade Lattice', description: 'Routing your third class skill through machinery advances the first two skill slots, turning the environment into a combo router.', tradeoff: '+15% third-skill capacitor cost and -22% direct power.' },
 ];
 
 export const specializationDefinitions: SpecializationDefinition[] = [
@@ -271,7 +272,7 @@ export const operatorClassDefinitions: OperatorClassDefinition[] = [
     trait: 'Bulkhead Doctrine // +8 maximum armor and +8% Breacher armor damage.',
     signatureName: 'Breach Guard',
     signatureDescription: 'Close Breacher hits brace the suit for incoming armor impact. Breaking hostile armor extends the guard window so you can keep pressure on the room.',
-    combatLoop: 'Close distance → break armor → hold the lane while Breach Guard is active.',
+    combatLoop: 'Breach Rush into the lane → Fracture Tag the hard target → Bulwark Pulse when the room collapses on you.',
     starterPair: 'Breacher + Combat Suit',
     branchAffinities: ['Ballistics', 'Survival'],
     specializationIds: ['pressure-diver', 'breach-vanguard'],
@@ -286,7 +287,7 @@ export const operatorClassDefinitions: OperatorClassDefinition[] = [
     trait: 'Flight Discipline // +3% move speed, +6% projectile velocity, and -5% Rail recoil.',
     signatureName: 'Slipstream',
     signatureDescription: 'Dodging primes the next shot with greatly reduced recoil, increased projectile speed, and bonus penetration. Tier II adds a short damage spike.',
-    combatLoop: 'Dodge through danger → take the new angle → spend Slipstream on a precision shot.',
+    combatLoop: 'Vector Shift or dodge to a new angle → Deadeye Lock a priority target → fire or Splitshot through the opening.',
     starterPair: 'Carbine/Rail + mobility geometry',
     branchAffinities: ['Mobility', 'Awareness'],
     specializationIds: ['momentum-broker', 'survey-deadeye', 'redline-pilot'],
@@ -301,7 +302,7 @@ export const operatorClassDefinitions: OperatorClassDefinition[] = [
     trait: 'Closed Loop // +6 maximum capacitor, +6% capacitor regeneration, and -3% ability cost.',
     signatureName: 'Closed Loop',
     signatureDescription: 'Chaining different MAG, MARK, and ARC abilities advances the previous ability. Completing the three-link loop recycles capacitor and sheds weapon heat.',
-    combatLoop: 'Rotate MAG → MARK → ARC instead of repeating one button; keep the whole ability network cycling.',
+    combatLoop: 'Polarity Well groups the room → Relay Hack spreads control → Cascade Arc completes the network and Closed Loop cycle.',
     starterPair: 'Systems Rig + Implant',
     branchAffinities: ['Systems', 'Engineering'],
     specializationIds: ['grid-weaver', 'capacitor-conductor'],

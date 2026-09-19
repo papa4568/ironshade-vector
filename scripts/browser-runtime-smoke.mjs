@@ -489,6 +489,11 @@ try {
 
   await keyboardActivateButton('Deploy Selected Contract');
   await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('field coach') && document.querySelectorAll('canvas').length > 0`, 'Combat surface');
+  await waitFor(`(() => {
+    const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || '').trim());
+    return ['Breach Rush', 'Fracture Tag', 'Bulwark Pulse'].every(label => labels.includes(label));
+  })()`, 'Vanguard level-one skill kit');
+  console.log(`BROWSER_CLASS_KIT_PASS viewport=${viewportMode} kit=RUSH/BREAK/GUARD`);
 
   const combat = await snapshot();
   if (!(combat.text ?? '').toLowerCase().includes('field coach') || combat.canvases < 1) {

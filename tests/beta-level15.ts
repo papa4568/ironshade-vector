@@ -3,7 +3,8 @@ import { createDefaultCampaign, generateContracts, loadCampaign, saveCampaign, s
 import { withOperationScaling, frameGenerationForRecovery } from '../src/game/scaling';
 import { applyMissionSetup, createDirector } from '../src/game/director';
 import { getMissionObjectiveStatus, getNextMissionObjectiveTarget } from '../src/game/encounters';
-import { applyPlayerDamage, createSimulation, setAim, setMove, stepSimulation, triggerAbility, triggerDodge, triggerFire } from '../src/game/sim';
+import { applyPlayerDamage, createSimulation, selectWeapon, setAim, setMove, stepSimulation, triggerAbility, triggerDodge, triggerFire } from '../src/game/sim';
+import { classAbilityKits } from '../src/game/classSkills';
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -47,6 +48,8 @@ function installStorage() {
 function combatSmoke() {
   const profile = createDefaultProfile();
   const state = createSimulation(deriveCombatBuild(profile));
+  selectWeapon(state, 'carbine');
+  stepSimulation(state, 0.15);
   const initialMag = state.player.mags.carbine;
   setAim(state, { x: 1, y: 0 }, false);
   assert(triggerFire(state), 'Carbine should fire from a fresh simulation.');
@@ -63,6 +66,11 @@ function combatSmoke() {
 function classMechanicSmoke() {
   const fresh = createDefaultProfile();
   assert(fresh.classSelectionComplete === false, 'A fresh profile should require explicit operator class selection.');
+  const kitSignatures = (['vanguard', 'vector', 'systems'] as const).map(classId => classAbilityKits[classId].map(ability => ability.name).join('|'));
+  assert(new Set(kitSignatures).size === 3, 'Each operator class should have a distinct level-one active skill kit.');
+  assert(classAbilityKits.vanguard.map(ability => ability.shortName).join('/') === 'RUSH/BREAK/GUARD', 'Vanguard should expose the close-range RUSH/BREAK/GUARD kit.');
+  assert(classAbilityKits.vector.map(ability => ability.shortName).join('/') === 'SHIFT/LOCK/SPLIT', 'Vector should expose the mobility/precision SHIFT/LOCK/SPLIT kit.');
+  assert(classAbilityKits.systems.map(ability => ability.shortName).join('/') === 'WELL/HACK/CHAIN', 'Systems should expose the control/network WELL/HACK/CHAIN kit.');
 
   for (const classId of ['vanguard', 'vector', 'systems'] as const) {
     const selected = setOperatorClass(fresh, classId).profile;
@@ -79,6 +87,10 @@ function classMechanicSmoke() {
   assert(vanguardProfile.classSelectionComplete === true, 'Confirming an operator class should complete class intake.');
   const vanguard = createSimulation(deriveCombatBuild(vanguardProfile));
   assert(vanguard.build.operatorClass === 'vanguard' && vanguard.build.classResonanceTier === 1, 'Vanguard combat build should carry class and starter resonance into simulation.');
+  assert(vanguard.player.currentWeapon === 'breacher', 'Vanguard should deploy with the Breacher already in hand.');
+  setAim(vanguard, { x: 1, y: 0 }, false);
+  assert(triggerAbility(vanguard, 0), 'Vanguard Breach Rush should activate at level one.');
+  assert(vanguard.player.vx > 400 && vanguard.classState.vanguardGuard > 0, 'Breach Rush should visibly move Vanguard forward and raise Breach Guard.');
   vanguard.player.currentWeapon = 'breacher';
   vanguard.player.armor = Math.max(0, vanguard.player.maxArmor - 12);
   const closeTarget = vanguard.enemies[0];
@@ -93,6 +105,8 @@ function classMechanicSmoke() {
   closeTarget.maxHp = 300;
   closeTarget.statuses.stagger = 10;
   setAim(vanguard, { x: 1, y: 0 }, false);
+  assert(triggerAbility(vanguard, 1), 'Vanguard Fracture Tag should activate on a nearby target.');
+  assert(closeTarget.statuses.armorBreach > 0, 'Fracture Tag should open an armor breach immediately.');
   assert(triggerFire(vanguard), 'Vanguard should be able to fire the Breacher.');
   for (let index = 0; index < 24; index += 1) stepSimulation(vanguard, 1 / 120);
   assert(vanguard.classState.vanguardGuard > 0, 'Close Breacher contact should activate Vanguard Breach Guard.');
@@ -102,26 +116,39 @@ function classMechanicSmoke() {
 
   const vectorProfile = setOperatorClass(fresh, 'vector').profile;
   const vector = createSimulation(deriveCombatBuild(vectorProfile));
+  assert(vector.player.currentWeapon === 'rail', 'Vector should deploy with the Rail Lance already in hand.');
+  setAim(vector, { x: 1, y: 0 }, false);
+  assert(triggerAbility(vector, 0), 'Vector Shift should activate at level one.');
+  assert(vector.player.vx > 500 && vector.classState.vectorWindow > 0, 'Vector Shift should create immediate mobility and prime Slipstream.');
+  const splitshot = createSimulation(deriveCombatBuild(vectorProfile));
+  setAim(splitshot, { x: 1, y: 0 }, false);
+  assert(triggerAbility(splitshot, 2), 'Vector Splitshot should activate at level one.');
+  assert(splitshot.projectiles.filter(projectile => projectile.active && projectile.owner === 'player').length === 3, 'Splitshot should launch a three-lane projectile fan.');
   setMove(vector, { x: 1, y: 0 });
-  assert(triggerDodge(vector), 'Vector should be able to dodge into Slipstream.');
+  vector.classState.vectorWindow = 0;
+  assert(triggerDodge(vector), 'Vector should also be able to dodge into Slipstream.');
   assert(vector.classState.vectorWindow > 0, 'Vector dodge should prime Slipstream.');
-  const baseCarbineVelocity = vector.weapons.carbine.projectileSpeed;
-  assert(triggerFire(vector), 'Vector should be able to spend Slipstream on a shot.');
+  const baseRailVelocity = vector.weapons.rail.projectileSpeed;
+  assert(triggerFire(vector), 'Vector should be able to spend Slipstream on a Rail shot.');
   const slipstreamProjectile = vector.projectiles.find(projectile => projectile.active && projectile.owner === 'player');
   assert(!!slipstreamProjectile, 'Vector Slipstream shot should create a player projectile.');
-  assert(Math.hypot(slipstreamProjectile.vx, slipstreamProjectile.vy) > baseCarbineVelocity * 1.15, 'Slipstream should materially accelerate the primed shot.');
+  assert(Math.hypot(slipstreamProjectile.vx, slipstreamProjectile.vy) > baseRailVelocity * 1.15, 'Slipstream should materially accelerate the primed Rail shot.');
   assert(vector.classState.vectorWindow === 0, 'Slipstream should be consumed by the next shot.');
 
   const systemsProfile = setOperatorClass(fresh, 'systems').profile;
   const systems = createSimulation(deriveCombatBuild(systemsProfile));
+  assert(systems.player.currentWeapon === 'carbine', 'Systems should deploy with the flexible Carbine in hand.');
+  const polarityTarget = systems.enemies.find(enemy => enemy.active && !enemy.dead)!;
   setAim(systems, { x: 1, y: 0 }, false);
-  assert(triggerAbility(systems, 0), 'Systems MAG should activate.');
+  assert(triggerAbility(systems, 0), 'Systems Polarity Well should activate at level one.');
+  assert(polarityTarget.vx < 0 && polarityTarget.statuses.disrupted > 0, 'Polarity Well should pull forward enemies back toward its mass point and disrupt them.');
   const magCooldown = systems.player.abilityCooldowns[0];
-  assert(triggerAbility(systems, 1), 'Systems MARK should chain after MAG.');
+  assert(triggerAbility(systems, 1), 'Systems Relay Hack should chain after Polarity Well.');
+  assert(systems.enemies.filter(enemy => enemy.active && !enemy.dead && enemy.statuses.marked > 0).length >= 2, 'Relay Hack should spread target control across multiple hostiles.');
   assert(systems.classState.systemsLinks === 1, 'Systems should bank the first Closed Loop link.');
   assert(systems.player.abilityCooldowns[0] < magCooldown, 'Closed Loop should advance the previous ability cooldown.');
   systems.player.weaponHeat.carbine = 0.5;
-  assert(triggerAbility(systems, 2), 'Systems ARC should complete the three-ability loop.');
+  assert(triggerAbility(systems, 2), 'Systems Cascade Arc should complete the three-ability loop.');
   assert(systems.classState.systemsLinks === 0, 'Completing Closed Loop should reset the link counter.');
   assert(systems.player.weaponHeat.carbine < 0.5, 'Completing Closed Loop should cool the active weapon.');
 }
