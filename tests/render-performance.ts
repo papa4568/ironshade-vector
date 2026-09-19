@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { AdaptiveRenderBudget } from '../src/game/renderQuality';
-import { spinHabitatArchitectureState } from '../src/game/spinHabitatArchitecture';
+import { spinHabitatArchitectureState, spinHabitatSpindownState } from '../src/game/spinHabitatArchitecture';
 
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
@@ -75,8 +75,16 @@ const reducedSpin = spinHabitatArchitectureState(0.42);
 assert(nominalSpin.mode === 'nominal', 'Spin Habitat nominal gravity must report nominal rotation');
 assert(overspeedSpin.mode === 'overspeed' && overspeedSpin.angularSpeed > nominalSpin.angularSpeed, 'Spin Habitat overspeed gravity must accelerate architecture rotation');
 assert(reducedSpin.mode === 'reduced' && reducedSpin.angularSpeed < nominalSpin.angularSpeed, 'Spin Habitat reduced gravity must slow architecture rotation');
-assert(rendererSource.includes('private syncSpinHabitatArchitecture(state: SimState, mission: Contract)'), 'Spin Habitat architecture must have a per-frame rotation sync');
+assert(rendererSource.includes('private syncSpinHabitatArchitecture(state: SimState, mission: Contract, budget: RenderBudgetSnapshot)'), 'Spin Habitat architecture must have a per-frame rotation/VFX sync');
 assert(rendererSource.includes("dataset.environmentMotion = 'gravity-coupled-rigid-rotation'"), 'Spin Habitat runtime QA must expose its gravity-coupled rotation mode');
+
+const nominalSpindown = spinHabitatSpindownState(0.42);
+const emergencySpindown = spinHabitatSpindownState(0.05);
+assert(!nominalSpindown.active && nominalSpindown.intensity === 0, 'Spin Habitat nominal transfer gravity must keep emergency spindown VFX idle');
+assert(emergencySpindown.active && emergencySpindown.intensity > 0.95, 'Spin Habitat 0.05G emergency spindown must drive full visual intensity');
+assert(rendererSource.includes("dataset.environmentSpindownSource = 'sector-B-transfer-gravity'"), 'Spin Habitat spindown VFX must derive from the actual transfer-gravity gameplay control');
+assert(rendererSource.includes("dataset.environmentVfx = 'spindown-brake-arcs+axis-warning-pulse'"), 'Spin Habitat must expose its authored spindown VFX language for runtime QA');
+assert(rendererSource.includes('const reducedSpindownDetail = budget.vfxDensity < 0.55'), 'Spin Habitat spindown VFX must reduce secondary arcs under the mobile/performance VFX budget');
 
 const sustainedMobile = new AdaptiveRenderBudget(true);
 let sustainedSnapshot = sustainedMobile.sample(16.7, 1);
