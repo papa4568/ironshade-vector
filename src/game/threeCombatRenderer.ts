@@ -7,7 +7,7 @@ import { getWorldSize, type CombatObject, type Enemy, type Player, type SimState
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, locationArtIdentityFor, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
 import { lootColor } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
-import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, OPERATOR_CLASS_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
+import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, OPERATOR_CLASS_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, SPIN_HABITAT_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
 import { configureGraphicsAssetRenderer, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
 
 const WORLD_SCALE = 0.02;
@@ -264,6 +264,7 @@ export class ThreeCombatRenderer {
   private refineryLoadGeneration = 0;
   private damagedVesselLoadGeneration = 0;
   private parallaxLoadGeneration = 0;
+  private spinHabitatLoadGeneration = 0;
   private interactableLoadGeneration = 0;
   private readonly projectilePool: ProjectileVisual[] = [];
   private readonly hazardPool: RingVisual[] = [];
@@ -490,6 +491,7 @@ export class ThreeCombatRenderer {
     this.refineryLoadGeneration += 1;
     this.damagedVesselLoadGeneration += 1;
     this.parallaxLoadGeneration += 1;
+    this.spinHabitatLoadGeneration += 1;
     for (const mesh of this.refineryInstancedMeshes) {
       mesh.removeFromParent();
       mesh.dispose();
@@ -851,6 +853,100 @@ export class ThreeCombatRenderer {
     return created;
   }
 
+
+
+  private async loadAuthoredSpinHabitatEnvironment(worldW: number, worldH: number, detailScale: number) {
+    const generation = ++this.spinHabitatLoadGeneration;
+    this.renderer.domElement.dataset.environmentVisual = 'authored-loading';
+    const loaded: Array<{ key: keyof typeof SPIN_HABITAT_ASSET_FAMILIES; instance: GraphicsAssetInstance; lod: number }> = [];
+
+    try {
+      for (const key of Object.keys(SPIN_HABITAT_ASSET_FAMILIES) as Array<keyof typeof SPIN_HABITAT_ASSET_FAMILIES>) {
+        const spec = selectGraphicsAssetSpec(SPIN_HABITAT_ASSET_FAMILIES[key], detailScale);
+        if (!spec) throw new Error(`No authored Spin Habitat asset available for ${key}`);
+        const instance = await instantiateGraphicsAsset(spec);
+        loaded.push({ key, instance, lod: spec.lod });
+      }
+
+      if (this.disposed || generation !== this.spinHabitatLoadGeneration) {
+        loaded.forEach(item => item.instance.release());
+        return;
+      }
+
+      this.refineryAssetInstances.push(...loaded.map(item => item.instance));
+      const byKey = new Map(loaded.map(item => [item.key, item]));
+      const width = scaled(worldW);
+      const height = scaled(worldH);
+
+      const ringPlacements: EnvironmentPlacement[] = [
+        [0.22, 0.12, 0, 0.92], [0.50, 0.11, 0, 0.96], [0.78, 0.12, 0, 0.92],
+        [0.22, 0.88, Math.PI, 0.92], [0.50, 0.89, Math.PI, 0.96], [0.78, 0.88, Math.PI, 0.92],
+      ].map(([x, z, rotationY, scale]) => ({
+        position: new THREE.Vector3(width * x, 0, height * z),
+        rotationY,
+        scale,
+      }));
+
+      const spokePlacements: EnvironmentPlacement[] = [
+        { position: new THREE.Vector3(width * 0.50, 0, height * 0.30), rotationY: Math.PI / 2, scale: 0.88 },
+        { position: new THREE.Vector3(width * 0.50, 0, height * 0.70), rotationY: Math.PI / 2, scale: 0.88 },
+        { position: new THREE.Vector3(width * 0.30, 0, height * 0.50), rotationY: 0, scale: 0.88 },
+        { position: new THREE.Vector3(width * 0.70, 0, height * 0.50), rotationY: 0, scale: 0.88 },
+      ];
+
+      const hubPlacements: EnvironmentPlacement[] = [
+        { position: new THREE.Vector3(width * 0.50, 0, height * 0.50), rotationY: Math.PI / 4, scale: 1.04 },
+      ];
+
+      const servicePlacements: EnvironmentPlacement[] = [
+        [0.18, 0.28, Math.PI / 2], [0.82, 0.30, -Math.PI / 2], [0.20, 0.72, Math.PI / 2], [0.80, 0.70, -Math.PI / 2],
+      ].map(([x, z, rotationY]) => ({
+        position: new THREE.Vector3(width * x, 0, height * z),
+        rotationY,
+        scale: 0.90,
+      }));
+
+      let instances = 0;
+      instances += this.addInstancedEnvironmentAsset(byKey.get('ringSegment')!.instance, ringPlacements, 'spin-habitat-ring-segment');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('spokeTruss')!.instance, spokePlacements, 'spin-habitat-spoke-truss');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('axisHub')!.instance, hubPlacements, 'spin-habitat-axis-hub');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('serviceBay')!.instance, servicePlacements, 'spin-habitat-service-bay');
+
+      const lods = [...new Set(loaded.map(item => item.lod))].sort();
+      this.renderer.domElement.dataset.environmentVisual = 'authored-spin-habitat';
+      this.renderer.domElement.dataset.environmentLod = lods.join(',');
+      this.renderer.domElement.dataset.environmentKit = 'ring-segment,spoke-truss,axis-hub,service-bay';
+      this.renderer.domElement.dataset.environmentInstances = String(instances);
+      this.renderer.domElement.dataset.environmentLandmark = 'central-axis-hub';
+      this.renderer.domElement.dataset.environmentServiceDetails = `service-bay:${servicePlacements.length}`;
+      this.renderer.domElement.dataset.environmentSurfaceDetail = `ring-segment:${ringPlacements.length}+spoke-truss:${spokePlacements.length}`;
+      this.renderer.domElement.dataset.environmentMachineDetail = 'axis-hub:1';
+      this.renderer.domElement.dataset.environmentComposition = 'static-ring-arc+cross-spokes+central-axis';
+      this.renderer.domElement.dataset.environmentMaterials = 'habitat-alloy+maintenance-dark+cool-green+service-amber';
+      this.renderer.domElement.dataset.readabilityLanguage = 'ring-spoke-axis-silhouette+green-amber';
+    } catch (error) {
+      loaded.forEach(item => item.instance.release());
+      if (this.disposed || generation !== this.spinHabitatLoadGeneration) return;
+      this.refineryAssetInstances.length = 0;
+      this.refineryInstancedMeshes.forEach(mesh => {
+        mesh.removeFromParent();
+        mesh.dispose();
+      });
+      this.refineryInstancedMeshes.length = 0;
+      this.refineryOwnedMaterials.forEach(material => material.dispose());
+      this.refineryOwnedMaterials.length = 0;
+      this.authoredEnvironmentRoot.clear();
+      this.renderer.domElement.dataset.environmentVisual = 'procedural-fallback';
+      delete this.renderer.domElement.dataset.environmentLandmark;
+      delete this.renderer.domElement.dataset.environmentServiceDetails;
+      delete this.renderer.domElement.dataset.environmentSurfaceDetail;
+      delete this.renderer.domElement.dataset.environmentMachineDetail;
+      delete this.renderer.domElement.dataset.environmentComposition;
+      delete this.renderer.domElement.dataset.environmentMaterials;
+      delete this.renderer.domElement.dataset.readabilityLanguage;
+      console.warn('Authored Spin Habitat kit failed to load; keeping procedural scenery.', error);
+    }
+  }
 
   private async loadAuthoredParallaxEnvironment(state: SimState, worldW: number, worldH: number, detailScale: number) {
     const generation = ++this.parallaxLoadGeneration;
@@ -1662,6 +1758,8 @@ export class ThreeCombatRenderer {
       void this.loadAuthoredDamagedVesselEnvironment(world.w, world.h, budget.detailScale);
     } else if (mission.location === 'parallax-array') {
       void this.loadAuthoredParallaxEnvironment(state, world.w, world.h, budget.detailScale);
+    } else if (mission.location === 'spin-habitat') {
+      void this.loadAuthoredSpinHabitatEnvironment(world.w, world.h, budget.detailScale);
     } else {
       this.renderer.domElement.dataset.environmentVisual = 'procedural';
     }
