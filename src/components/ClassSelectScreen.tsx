@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import '../classSelection.css';
-import { classAbilityKits } from '../game/sim';
+import { classAbilityKits } from '../game/classSkills';
 import {
   gearResonanceForProfile,
   operatorClassDefinitions,
