@@ -508,6 +508,90 @@ function makeItem(slot: EquipmentSlot, index: number, level: number, random: () 
   return { id: `loot-${Date.now().toString(36)}-${index}-${Math.floor(random() * 99999).toString(36)}`, baseId: base.baseId, name: generationNames[Math.floor(random() * generationNames.length)], slot, equipmentClass: base.equipmentClass, rarity, levelRequirement: levelRequirementForRecovery(recoveryLevel), core: base.core, modifiers: rollModifierSet(base.affixes, count, random, recoveryLevel, recoveryQuality, [], forcedAffixes), recoveryLevel, frameGeneration, frameIdentity, frameImplicit: frameImplicitFor(slot, frameGeneration, frameIdentity, equipmentQuality), equipmentQuality, augmentSlots, augments: [], recoveryQuality, recoverySource };
 }
 
+export type ParallaxDebtGearIdentity = {
+  baseId: string;
+  name: string;
+  equipmentClass: string;
+  core: string;
+  frameIdentity: FrameIdentityId;
+  prototypeAffix: AffixId;
+};
+
+export const parallaxDebtGearIdentities: Record<EquipmentSlot, ParallaxDebtGearIdentity> = {
+  carbine: {
+    baseId: 'parallax-baseline-carbine',
+    name: 'Baseline-Corrected M-12',
+    equipmentClass: 'Parallax reference carbine assembly',
+    core: 'A dual-reference receiver that reconciles recoil against the Array baseline before committing the next coil cycle.',
+    frameIdentity: 'carbine-countermass',
+    prototypeAffix: 'magRedirect',
+  },
+  breacher: {
+    baseId: 'parallax-shearwake-breacher',
+    name: 'Shearwake B-9 Cage',
+    equipmentClass: 'Reference-shear breach scattergun',
+    core: 'A counter-impulse cage that turns local reference disagreement into a deliberate movement vector at close range.',
+    frameIdentity: 'breacher-thrust',
+    prototypeAffix: 'breachPropulsion',
+  },
+  rail: {
+    baseId: 'parallax-long-baseline-rail',
+    name: 'Long-Baseline R-7',
+    equipmentClass: 'Parallax survey rail assembly',
+    core: 'Survey rails keyed to long-baseline timing, preserving a firing solution while nearby inertial references drift.',
+    frameIdentity: 'rail-hypervelocity',
+    prototypeAffix: 'markShear',
+  },
+  suit: {
+    baseId: 'parallax-reference-eva',
+    name: 'Reference-Shear EVA Shell',
+    equipmentClass: 'Parallax maneuvering pressure suit',
+    core: 'A low-mass EVA shell with distributed countermass trim for crossing live reference-shear lanes without losing vector authority.',
+    frameIdentity: 'suit-countermass',
+    prototypeAffix: 'servoWeave',
+  },
+  rig: {
+    baseId: 'parallax-three-reference-rig',
+    name: 'Three-Reference Control Bus',
+    equipmentClass: 'Parallax reference-control rig',
+    core: 'A control bus that compares three physical references before routing capacitor, thermal, and magnetic-control load.',
+    frameIdentity: 'rig-pulse',
+    prototypeAffix: 'magRedirect',
+  },
+  implant: {
+    baseId: 'parallax-blind-meridian-link',
+    name: 'Blind Meridian Reference Link',
+    equipmentClass: 'Parallax metrology cognition implant',
+    core: 'A metrology link that keeps target solutions separate from the operator frame until a physical reference confirms the comparison.',
+    frameIdentity: 'implant-sensor',
+    prototypeAffix: 'markShear',
+  },
+};
+
+function applyParallaxDebtGearIdentity(item: Item): Item {
+  const identity = parallaxDebtGearIdentities[item.slot];
+  let modifiers = item.modifiers;
+  if (item.rarity === 'Prototype' && modifiers.length > 0 && !modifiers.some(modifier => modifier.id === identity.prototypeAffix)) {
+    const grade = modifiers[modifiers.length - 1]?.grade ?? 3;
+    modifiers = [...modifiers.slice(0, -1), materializeModifier(identity.prototypeAffix, grade)];
+  }
+  return {
+    ...item,
+    baseId: identity.baseId,
+    name: identity.name,
+    equipmentClass: identity.equipmentClass,
+    core: identity.core,
+    modifiers,
+    frameIdentity: identity.frameIdentity,
+    frameImplicit: frameImplicitFor(item.slot, item.frameGeneration ?? 1, identity.frameIdentity, item.equipmentQuality ?? 0),
+  };
+}
+
+type CampaignGearChapter = 'black-lattice' | 'dead-reckoning' | 'dead-reckoning-interdiction' | 'parallax-debt';
+function applyCampaignGearIdentity(item: Item, campaignChapter?: CampaignGearChapter): Item {
+  return campaignChapter === 'parallax-debt' ? applyParallaxDebtGearIdentity(item) : item;
+}
+
 type ClassOnboardingRecoveryTemplate = { slot: EquipmentSlot; name: string; affixes: [AffixId, AffixId] };
 export const operatorClassOnboardingRecovery: Record<OperatorClassId, [ClassOnboardingRecoveryTemplate, ClassOnboardingRecoveryTemplate]> = {
   vanguard: [
@@ -574,7 +658,7 @@ function chooseRecoverySlots(profile: PlayerProfile, count: number, random: () =
   return chosen;
 }
 
-export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep: boolean, _fabricationLevel = 0, source: { deepTarget?: string; location?: string; locationName?: string; faction?: EquipmentFaction; factionReputation?: number; operationTier?: number; maxRecoveryLevel?: number; combatEffectiveness?: number; threatBudget?: number; eliteProtocolCount?: number; environmentalComplications?: number; optionalObjectives?: number; actualDepth?: boolean; xpFloor?: number; directiveQualityBonus?: number; directiveSingularChanceBonus?: number; directiveRecoveryLevelBonus?: number } = {}, fieldLoot?: GroundLootReceipt[]): VictoryReward {
+export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep: boolean, _fabricationLevel = 0, source: { deepTarget?: string; location?: string; locationName?: string; faction?: EquipmentFaction; factionReputation?: number; operationTier?: number; maxRecoveryLevel?: number; combatEffectiveness?: number; threatBudget?: number; eliteProtocolCount?: number; environmentalComplications?: number; optionalObjectives?: number; actualDepth?: boolean; xpFloor?: number; directiveQualityBonus?: number; directiveSingularChanceBonus?: number; directiveRecoveryLevelBonus?: number; campaignChapter?: CampaignGearChapter } = {}, fieldLoot?: GroundLootReceipt[]): VictoryReward {
   const rawXp = (deep ? 250 : 145) + Math.min(deep ? 90 : 45, Math.round(telemetry.damageDealt / 22));
   const requestedXp = Math.max(Math.max(0, Math.round(source.xpFloor ?? 0)), Math.round(rawXp * (1 + Math.max(0, (source.combatEffectiveness ?? 1) - 1) * 0.65)));
   const cappedProfileXp = Math.max(0, Math.min(maxLevelXp, profile.xp));
@@ -596,7 +680,13 @@ export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep
   const factionName = source.faction === 'meridian' ? 'Meridian Compact' : source.faction === 'heliostat' ? 'Heliostat League' : source.faction === 'longarc' ? 'Long Arc Assembly' : 'Independent';
   const rollQuality = (boss: boolean, minimum: RecoveryQualityGrade = 0) => Math.max(minimum, rollRecoveryQuality(random, { operationTier: source.operationTier ?? 1, threatBudget: source.threatBudget ?? 32, eliteKills, eliteProtocolCount: source.eliteProtocolCount ?? 0, deep: actualDepth, optionalObjectives: source.optionalObjectives ?? 0, environmentalComplications: source.environmentalComplications ?? 0, boss, location: source.location, faction: source.faction, factionReputation: source.factionReputation, directiveBonus: source.directiveQualityBonus ?? 0 })) as RecoveryQualityGrade;
   const sponsoredChance = source.faction ? factionGearChance(source.factionReputation ?? 0, deep) : 0;
-  const makeRecoveredItem = (slot: EquipmentSlot, index: number) => { const recoveryQuality = rollQuality(actualDepth); return source.faction && random() < sponsoredChance ? makeFactionItem(slot, index, nextLevel, random, source.faction, ordinaryRecoveryLevel, recoveryQuality, `Sponsored recovery // ${factionName}`, profile.level) : makeItem(slot, index, nextLevel, random, [], ordinaryRecoveryLevel, recoveryQuality, `${locationName} contract recovery`, undefined, profile.level); };
+  const makeCampaignItem = (...args: Parameters<typeof makeItem>) => applyCampaignGearIdentity(makeItem(...args), source.campaignChapter);
+  const makeRecoveredItem = (slot: EquipmentSlot, index: number) => {
+    const recoveryQuality = rollQuality(actualDepth);
+    return source.faction && random() < sponsoredChance
+      ? makeFactionItem(slot, index, nextLevel, random, source.faction, ordinaryRecoveryLevel, recoveryQuality, `Sponsored recovery // ${factionName}`, profile.level)
+      : makeCampaignItem(slot, index, nextLevel, random, [], ordinaryRecoveryLevel, recoveryQuality, `${locationName} contract recovery`, undefined, profile.level);
+  };
   const fieldDrops = fieldLoot ?? [];
   const fieldSlots = chooseRecoverySlots(profile, fieldDrops.filter(drop => drop.source !== 'boss' && drop.rarity !== 'Singular').length, random);
   let fieldSlotIndex = 0;
@@ -605,12 +695,12 @@ export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep
     const recoveryLevel = Math.max(1, Math.min(maxRecoveryLevel, drop.recoveryLevel));
     const recoverySource = `Ground drop // ${drop.enemyLabel}`;
     if (drop.rarity === 'Singular') {
-      if (drop.source === 'boss') return makeBossSingular(source.deepTarget ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeLocationSingular(source.location ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeItem('rail', 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, 'Prototype');
-      return makeLocationSingular(source.location ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeItem(recoverySlotOrder[(drop.enemyId + index) % recoverySlotOrder.length], 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, 'Prototype');
+      if (drop.source === 'boss') return makeBossSingular(source.deepTarget ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeLocationSingular(source.location ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeCampaignItem('rail', 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, 'Prototype');
+      return makeLocationSingular(source.location ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeCampaignItem(recoverySlotOrder[(drop.enemyId + index) % recoverySlotOrder.length], 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, 'Prototype');
     }
     const slot = fieldSlots[fieldSlotIndex++] ?? recoverySlotOrder[(drop.enemyId + index) % recoverySlotOrder.length];
     const visibleRarity = drop.rarity as Exclude<Rarity, 'Singular'>;
-    return makeItem(slot, 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, visibleRarity);
+    return makeCampaignItem(slot, 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, visibleRarity);
   });
   const bossItem = actualDepth && !fieldMode ? makeBossSingular(source.deepTarget ?? '', 0, nextLevel, random, bossRecoveryLevel, rollQuality(true, 4), `Boss pool // ${source.deepTarget ?? 'deep target'}`, profile.level) : null;
   const fieldHasSingular = fieldItems.some(item => item.rarity === 'Singular');
