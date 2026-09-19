@@ -170,6 +170,12 @@ for (const path of glbs) {
     assert(sizeX > 0.05 && sizeY > 0.02 && sizeZ > 0.05, `${relativePath}: authored environment bounds are degenerate`);
     assert(sizeX <= 8 && sizeY <= 6 && sizeZ <= 8, `${relativePath}: authored environment module exceeds modular scale bounds`);
     const nodeNames = new Set((json.nodes ?? []).map(node => node.name).filter(Boolean));
+    const materialForNode = (nodeName) => {
+      const node = (json.nodes ?? []).find(item => item.name === nodeName);
+      const mesh = Number.isInteger(node?.mesh) ? json.meshes?.[node.mesh] : null;
+      const materialIndex = mesh?.primitives?.[0]?.material;
+      return Number.isInteger(materialIndex) ? (json.materials?.[materialIndex]?.name ?? null) : null;
+    };
     assert(nodeNames.has('environment-root'), `${relativePath}: authored environment module is missing environment-root`);
     const marker = filename.includes('damaged-vessel-broken-rib')
       ? 'damaged-vessel-broken-rib-spine'
@@ -238,13 +244,20 @@ for (const path of glbs) {
     if (filename.includes('spin-habitat-ring-segment') && filename.endsWith('-lod1.glb')) {
       assert(nodeNames.has('spin-habitat-ring-segment-rib-left'), `${relativePath}: Spin Habitat ring LOD1 is missing structural rib detail`);
       assert(nodeNames.has('spin-habitat-ring-segment-service-strip'), `${relativePath}: Spin Habitat ring LOD1 is missing service-light detail`);
+      assert(materialForNode('spin-habitat-ring-segment-deck') === 'spin-habitat-rim-plating', `${relativePath}: Spin Habitat rim deck lost its dedicated plated material identity`);
+      assert(materialForNode('spin-habitat-ring-segment-wayfinding') === 'spin-habitat-green-emissive', `${relativePath}: Spin Habitat rim wayfinding must remain green`);
     }
     if (filename.includes('spin-habitat-spoke-truss') && filename.endsWith('-lod1.glb')) {
       assert(nodeNames.has('spin-habitat-spoke-truss-cross-brace-a'), `${relativePath}: Spin Habitat spoke LOD1 is missing cross-brace detail`);
+      assert(materialForNode('spin-habitat-spoke-truss-main') === 'spin-habitat-spoke-structure', `${relativePath}: Spin Habitat spoke truss lost its dark structural material identity`);
+      assert(materialForNode('spin-habitat-spoke-truss-status') === 'spin-habitat-spoke-emissive', `${relativePath}: Spin Habitat spoke status strip must remain cyan`);
     }
     if (filename.includes('spin-habitat-axis-hub') && filename.endsWith('-lod1.glb')) {
       assert(nodeNames.has('spin-habitat-axis-hub-service-ring'), `${relativePath}: Spin Habitat axis hub LOD1 is missing service-ring detail`);
       assert(nodeNames.has('spin-habitat-axis-hub-control-screen'), `${relativePath}: Spin Habitat axis hub LOD1 is missing control readout`);
+      assert(nodeNames.has('spin-habitat-axis-hub-fin-left') && nodeNames.has('spin-habitat-axis-hub-fin-right'), `${relativePath}: Spin Habitat axis hub LOD1 is missing its tall stationary fin silhouette`);
+      assert(materialForNode('spin-habitat-axis-hub-core') === 'spin-habitat-axis-shell', `${relativePath}: Spin Habitat axis hub lost its bright shell identity`);
+      assert(materialForNode('spin-habitat-axis-hub-beacon') === 'spin-habitat-axis-emissive', `${relativePath}: Spin Habitat axis beacon must remain bright cool emissive`);
     }
 
     if (filename.includes('parallax-baseline-pylon') && filename.endsWith('-lod1.glb')) {
