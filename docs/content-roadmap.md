@@ -25,7 +25,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] Authored loot/interactables
 - [x] Browser + Android automated QA
 
-## P1 — Chapter 3: LV15–18 Campaign 🚧 IN PROGRESS
+## P1 — Chapter 3: LV15–18 Campaign ✅ COMPLETE
 
 ### Chapter Foundation
 
@@ -87,7 +87,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
   - [x] Parallax Sweep
   - [x] Shear Collapse
   - [x] Phase-two gravity reconfiguration
-- [ ] Add further boss tuning after extended player testing
+- [x] Add further boss tuning after Chapter 3 playtest
 
 ### Narrative / Choice
 
@@ -167,7 +167,12 @@ Repository checklist for the current content plan. Keep this file synchronized w
   - [x] Touch-driven Intel, contract-open, and False Horizon route-decision interaction
   - [x] Both Chapter 3 completion branches verified at mobile-landscape viewport width
   - [x] Android Chapter 3 screenshot/report retained with the APK QA artifact
-- [ ] **P1.22** Tune rewards, boss difficulty, enemy pressure, and completion pacing
+- [x] **P1.22** Tune rewards, boss difficulty, enemy pressure, and completion pacing
+  - [x] Smooth Chapter 3 pressure bonuses across all 12 operations while preserving T9 → T12 escalation
+  - [x] Split boss durability by campaign role: Blind Meridian opening finale vs. true Chapter 3 closing finale
+  - [x] Increase late-operation/finale material premiums while preserving the proven LV16/LV17/LV18 XP gates
+  - [x] Exercise scaled rewards/pressure and boss budgets in the dedicated two-route Chapter 3 regression
+  - [x] Re-verify desktop/mobile browser E2E and packaged Android beta.134 emulator/Chapter 3 touch QA
 
 ### P1 Completion Gate
 
@@ -180,7 +185,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] Bespoke authored Parallax environment assets
 - [x] Campaign branch/choice
 - [x] Final three Chapter 3 operations
-- [ ] Full LV15–18 progression/balance pass
+- [x] Full LV15–18 progression/balance pass
 - [x] Complete Chapter 3 playtest
 
 ## P2 — Authored Biomes Pack I
@@ -300,12 +305,11 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 **P1 → P2 → P3 → P4 → P5 → P6 → P7 → P8**
 
-## Immediate P1 Queue
+## Immediate Queue
 
-Follow these in order unless testing reveals a blocker or a smaller prerequisite:
+P1 is complete. Continue into **P2 — Authored Biomes Pack I** in roadmap order, starting with the Spin Habitat environment kit and mobile performance-safe authored identity.
 
-1. **P1.22** — Apply final reward, boss difficulty, enemy pressure, and completion-pacing tuning from P1.21 findings.
-2. Close the remaining P1 completion gate: full LV15–18 progression/balance pass.
+**P1.22 delivered:** Chapter 3 now uses a smoother authored pressure curve, stronger late/finale material premiums, separate opening-vs-closing boss durability budgets, preserved no-side-grind LV15–18 XP gates, and dedicated regression coverage for the tuned values. Android beta.134 re-verified the packaged combat/touch/lifecycle and native Chapter 3 touch flow.
 
 **P1.21 delivered:** Packaged Android beta.133 now verifies Chapter 3 in the native WebView with touch-driven Intel/contract/route-decision interaction, LV15–18 checkpoint coverage, both completion branches, zero horizontal overflow at the Android emulator viewport, retained screenshot/report evidence, and the existing Android combat/lifecycle smoke.
 
@@ -313,12 +317,12 @@ Follow these in order unless testing reveals a blocker or a smaller prerequisite
 
 **P1.18 delivered:** Parallax Debt now has a dedicated LV15–18 phase timeline, evidence bank, route-decision/branch presentation, unresolved-evidence boundary, responsive mobile-landscape treatment, and regression coverage.
 
-Further Sera Nox boss tuning should be folded into P1.22's final playtest-informed balance pass instead of handled as a disconnected task.
+Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-finale budget while Chapter 3 closing bosses retain the higher end-of-chapter durability budget.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.133**
+- Android beta: **0.0.1-beta.134**
 - Package: `app.ironshade.vector`
-- Verified: production regression/build, dedicated two-route Chapter 3 playthrough, desktop Browser E2E, mobile-landscape Browser E2E, Level 15 beta smoke, Android APK package/version/signature checks, Android emulator runtime/touch smoke, native Android WebView Chapter 3 touch playtest with retained report/screenshot evidence
+- Verified: production regression/build, tuned two-route Chapter 3 progression/balance playthrough, desktop Browser E2E, mobile-landscape Browser E2E, Level 15 beta smoke, Android APK package/version/signature checks, Android emulator runtime/touch smoke, native Android WebView Chapter 3 touch playtest with retained report/screenshot evidence
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- Verified delivery commit before this roadmap-only sync: `10288f257fad10b762fa332afd8b5487eb487a57`
+- Verified delivery commit before this roadmap-only sync: `9e860420574aeed0eaeb3820f7bb9b75eaed16ba`
