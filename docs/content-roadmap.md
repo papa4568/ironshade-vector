@@ -191,7 +191,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 ## P2 — Authored Biomes Pack I
 
 ### Spin Habitat
-- [ ] P2.1 Unique environment kit
+- [x] P2.1 Unique environment kit
 - [ ] P2.2 Rotating habitat architecture
 - [ ] P2.3 Rim / spoke / axis visual differences
 - [ ] P2.4 Spindown VFX
@@ -307,7 +307,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1 is complete. Continue into **P2 — Authored Biomes Pack I** in roadmap order, starting with the Spin Habitat environment kit and mobile performance-safe authored identity.
+P1 is complete and **P2.1 is now delivered**. Continue in roadmap order with **P2.2 — Rotating habitat architecture**, then deepen rim/spoke/axis identity without folding later P2 items into the foundation pass.
+
+**P2.1 delivered:** Spin Habitat now has an authored reusable environment kit with ring segments, spoke trusses, an axis hub, and service bays; every family ships adaptive LOD1/LOD2 assets, runtime authored placement, procedural fallback, and graphics-content regression coverage. Rotation behavior, stronger zone differentiation, spindown VFX, machinery/interactables, local enemy presentation, ambient effects, and the dedicated mobile performance pass remain in P2.2–P2.9.
 
 **P1.22 delivered:** Chapter 3 now uses a smoother authored pressure curve, stronger late/finale material premiums, separate opening-vs-closing boss durability budgets, preserved no-side-grind LV15–18 XP gates, and dedicated regression coverage for the tuned values. Android beta.134 re-verified the packaged combat/touch/lifecycle and native Chapter 3 touch flow.
 
