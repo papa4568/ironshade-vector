@@ -60,7 +60,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
   - [x] LV17 — Counterfactual Burn
   - [x] LV18 — False Horizon
   - [x] Explicit LV16/LV17/LV18 progression gates
-  - [x] T9 → T11 Chapter 3 encounter scaling
+  - [x] T9 → T12 Chapter 3 encounter scaling
   - [x] Legacy three-contract completion migration
   - [x] Final decision branch + final three Chapter 3 operations
     - [x] Expose route — Common Reference → Witness Transit → Released Vector
