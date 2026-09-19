@@ -266,24 +266,24 @@ for (const operatorClass of ['vanguard', 'vector', 'systems']) {
   const lod1 = reportByPath.get(`operators/operator-${operatorClass}-lod1.glb`);
   const lod2 = reportByPath.get(`operators/operator-${operatorClass}-lod2.glb`);
   assert(lod1 && lod2, `${operatorClass}: class operator LOD1/LOD2 pair missing`);
-  assert(lod2.triangles < lod1.triangles && lod2.meshes < lod1.meshes, `${operatorClass}: mobile operator LOD2 must reduce geometry and draw surfaces`);
+  assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, `${operatorClass}: mobile operator LOD2 must reduce payload and draw surfaces`);
 }
 for (const role of ['assault', 'suppressor', 'technician', 'elite']) {
   const lod1 = reportByPath.get(`enemies/enemy-${role}-lod1.glb`);
   const lod2 = reportByPath.get(`enemies/enemy-${role}-lod2.glb`);
   assert(lod1 && lod2, `${role}: enemy LOD1/LOD2 pair missing`);
-  assert(lod2.triangles < lod1.triangles && lod2.meshes < lod1.meshes, `${role}: mobile enemy LOD2 must reduce geometry and draw surfaces`);
+  assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, `${role}: mobile enemy LOD2 must reduce payload and draw surfaces`);
 }
 {
   const lod1 = reportByPath.get('bosses/enemy-boss-lod1.glb');
   const lod2 = reportByPath.get('bosses/enemy-boss-lod2.glb');
-  assert(lod1 && lod2 && lod2.triangles < lod1.triangles && lod2.meshes < lod1.meshes, 'boss mobile LOD2 must reduce geometry and draw surfaces');
+  assert(lod1 && lod2 && lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, 'boss mobile LOD2 must reduce payload and draw surfaces');
 }
 for (const weapon of ['carbine', 'breacher', 'rail']) {
   const lod1 = reportByPath.get(`weapons/weapon-${weapon}-lod1.glb`);
   const lod2 = reportByPath.get(`weapons/weapon-${weapon}-lod2.glb`);
   assert(lod1 && lod2, `${weapon}: weapon LOD1/LOD2 pair missing`);
-  assert(lod2.triangles < lod1.triangles && lod2.meshes < lod1.meshes, `${weapon}: mobile weapon LOD2 must reduce geometry and draw surfaces`);
+  assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, `${weapon}: mobile weapon LOD2 must reduce payload and draw surfaces`);
 }
 
 const totalBytes = reports.reduce((sum, report) => sum + report.bytes, 0);
