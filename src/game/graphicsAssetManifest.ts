@@ -74,6 +74,38 @@ export const DAMAGED_VESSEL_ASSET_FAMILIES = {
 } as const satisfies Record<'rib' | 'breachFrame' | 'salvageRack' | 'tornPlate' | 'serviceBundle', GraphicsAssetFamily>;
 
 
+
+export const SPIN_HABITAT_ASSET_FAMILIES = {
+  ringSegment: {
+    id: 'spin-habitat-ring-segment',
+    lods: {
+      1: createGraphicsAssetSpec('spin-habitat-ring-segment-lod1', 'environment-module', '/assets/models/environments/spin-habitat-ring-segment-lod1.glb', 1),
+      2: createGraphicsAssetSpec('spin-habitat-ring-segment-lod2', 'environment-module', '/assets/models/environments/spin-habitat-ring-segment-lod2.glb', 2),
+    },
+  },
+  spokeTruss: {
+    id: 'spin-habitat-spoke-truss',
+    lods: {
+      1: createGraphicsAssetSpec('spin-habitat-spoke-truss-lod1', 'environment-module', '/assets/models/environments/spin-habitat-spoke-truss-lod1.glb', 1),
+      2: createGraphicsAssetSpec('spin-habitat-spoke-truss-lod2', 'environment-module', '/assets/models/environments/spin-habitat-spoke-truss-lod2.glb', 2),
+    },
+  },
+  axisHub: {
+    id: 'spin-habitat-axis-hub',
+    lods: {
+      1: createGraphicsAssetSpec('spin-habitat-axis-hub-lod1', 'environment-module', '/assets/models/environments/spin-habitat-axis-hub-lod1.glb', 1),
+      2: createGraphicsAssetSpec('spin-habitat-axis-hub-lod2', 'environment-module', '/assets/models/environments/spin-habitat-axis-hub-lod2.glb', 2),
+    },
+  },
+  serviceBay: {
+    id: 'spin-habitat-service-bay',
+    lods: {
+      1: createGraphicsAssetSpec('spin-habitat-service-bay-lod1', 'environment-module', '/assets/models/environments/spin-habitat-service-bay-lod1.glb', 1),
+      2: createGraphicsAssetSpec('spin-habitat-service-bay-lod2', 'environment-module', '/assets/models/environments/spin-habitat-service-bay-lod2.glb', 2),
+    },
+  },
+} as const satisfies Record<'ringSegment' | 'spokeTruss' | 'axisHub' | 'serviceBay', GraphicsAssetFamily>;
+
 export const PARALLAX_ASSET_FAMILIES = {
   pylon: {
     id: 'parallax-baseline-pylon',
