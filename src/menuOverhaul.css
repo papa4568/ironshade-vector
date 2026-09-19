@@ -1671,6 +1671,28 @@
   }
 }
 
+@media (orientation: landscape) and (max-height: 380px) {
+  .ship-hub.area-command .hub-resource-ribbon {
+    display: none;
+  }
+  .ship-hub.area-command .tactical-header {
+    min-height: 32px;
+    margin-bottom: 4px;
+  }
+  .ship-hub.area-command .command-overview {
+    max-height: calc(100dvh - 104px);
+  }
+  .ship-hub.area-command .command-visual.command-bridge.command-bridge-compact {
+    min-height: 204px;
+  }
+  .ship-hub.area-command .command-card.primary-card {
+    min-height: 92px;
+  }
+  .ship-hub.area-command .command-side .command-action-row button {
+    min-height: 32px;
+  }
+}
+
 @media (orientation: landscape) and (max-height: 650px) {
   .ship-hub.area-command .tactical-workspace {
     overflow-y: hidden;

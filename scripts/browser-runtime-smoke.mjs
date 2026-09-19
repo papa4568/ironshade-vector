@@ -419,12 +419,12 @@ await call('Runtime.enable');
 await call('Page.enable');
 if (viewportMode === 'mobile-landscape') {
   await call('Emulation.setDeviceMetricsOverride', {
-    width: 844,
-    height: 390,
+    width: 851,
+    height: 360,
     deviceScaleFactor: 2.5,
     mobile: true,
-    screenWidth: 844,
-    screenHeight: 390,
+    screenWidth: 851,
+    screenHeight: 360,
     screenOrientation: { type: 'landscapePrimary', angle: 90 },
   });
   await call('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
