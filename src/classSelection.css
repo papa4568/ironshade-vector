@@ -790,6 +790,7 @@
     display: none;
   }
   .class-starting-kit-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 3px;
   }
   .class-starting-kit-grid article {
@@ -808,12 +809,7 @@
     font-size: 5.4px;
   }
   .class-starting-kit-grid article span {
-    margin-top: 1px;
-    overflow: hidden;
-    font-size: 4.7px;
-    line-height: 1.15;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    display: none;
   }
   .class-advanced-details {
     display: none;
