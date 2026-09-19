@@ -3,7 +3,7 @@ import { createDefaultCampaign, generateContracts, loadCampaign, saveCampaign, s
 import { withOperationScaling, frameGenerationForRecovery } from '../src/game/scaling';
 import { applyMissionSetup, createDirector } from '../src/game/director';
 import { getMissionObjectiveStatus, getNextMissionObjectiveTarget } from '../src/game/encounters';
-import { applyPlayerDamage, classAbilityKits, createSimulation, setAim, setMove, stepSimulation, triggerAbility, triggerDodge, triggerFire } from '../src/game/sim';
+import { applyPlayerDamage, classAbilityKits, createSimulation, selectWeapon, setAim, setMove, stepSimulation, triggerAbility, triggerDodge, triggerFire } from '../src/game/sim';
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -47,6 +47,7 @@ function installStorage() {
 function combatSmoke() {
   const profile = createDefaultProfile();
   const state = createSimulation(deriveCombatBuild(profile));
+  selectWeapon(state, 'carbine');
   const initialMag = state.player.mags.carbine;
   setAim(state, { x: 1, y: 0 }, false);
   assert(triggerFire(state), 'Carbine should fire from a fresh simulation.');
