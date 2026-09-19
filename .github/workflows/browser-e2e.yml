@@ -140,8 +140,6 @@ jobs:
           BROWSER_E2E_SCREENSHOT: browser-e2e-${{ matrix.viewport }}.png
           BROWSER_E2E_COMMAND_SCREENSHOT: browser-command-${{ matrix.viewport }}.png
           BROWSER_E2E_CLASS_SCREENSHOT: browser-class-${{ matrix.viewport }}.png
-            browser-chapter3-${{ matrix.viewport }}.png
-            browser-chapter3-${{ matrix.viewport }}.json
           BROWSER_E2E_CHAPTER3_SCREENSHOT: browser-chapter3-${{ matrix.viewport }}.png
           BROWSER_E2E_CHAPTER3_REPORT: browser-chapter3-${{ matrix.viewport }}.json
         run: |
@@ -162,6 +160,8 @@ jobs:
           name: ironshade-vector-browser-e2e-${{ matrix.viewport }}
           path: |
             browser-class-${{ matrix.viewport }}.png
+            browser-chapter3-${{ matrix.viewport }}.png
+            browser-chapter3-${{ matrix.viewport }}.json
             browser-command-${{ matrix.viewport }}.png
             browser-e2e-${{ matrix.viewport }}.png
             browser-e2e-${{ matrix.viewport }}-damaged-vessel.png
