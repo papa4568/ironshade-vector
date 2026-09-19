@@ -161,6 +161,15 @@ assert(rendererSource.includes("dataset.environmentMotion = 'gravity-coupled-rig
 assert(rendererSource.includes("dataset.environmentSpinSource = 'sector-A-gravity'"), 'Spin Habitat P2.2 must derive visual rotation from the gameplay gravity state');
 assert(rendererSource.includes("rotorRoot.name = 'spin-habitat-rotating-frame'"), 'Spin Habitat authored ring/spoke/service geometry must share a rotating structural frame');
 assert(rendererSource.includes("rotationWitness.name = 'spin-habitat-rotation-witness'"), 'Spin Habitat procedural fallback must retain an asymmetric rotation witness');
+const spinAssetGeneratorSource = readFileSync(resolve(process.cwd(), 'scripts/prepare-graphics-assets.mjs'), 'utf8');
+for (const material of ['spin-habitat-rim-plating', 'spin-habitat-spoke-structure', 'spin-habitat-spoke-emissive', 'spin-habitat-axis-shell', 'spin-habitat-axis-emissive']) {
+  assert(spinAssetGeneratorSource.includes(`name: '${material}'`), `Spin Habitat P2.3 material identity ${material} must remain authored`);
+}
+assert(spinAssetGeneratorSource.includes("{ name: 'spin-habitat-ring-segment-deck', mesh: 4"), 'Spin Habitat rim deck must use its dedicated plated material');
+assert(spinAssetGeneratorSource.includes("{ name: 'spin-habitat-spoke-truss-main', mesh: 5"), 'Spin Habitat spoke truss must use its dedicated dark structural material');
+assert(spinAssetGeneratorSource.includes("{ name: 'spin-habitat-axis-hub-core', mesh: 7"), 'Spin Habitat stationary axis must use its brighter dedicated shell material');
+assert(rendererSource.includes("dataset.environmentZoneIdentity = 'rim:plated-green-deck|spoke:skeletal-cyan-truss|axis:bright-stationary-tower'"), 'Spin Habitat P2.3 zone identity must remain observable for QA');
+assert(rendererSource.includes("axisHub.name = 'spin-habitat-procedural-axis-hub'"), 'Spin Habitat procedural fallback must retain a stationary axis landmark distinct from the rotating frame');
 
 assert(rendererSource.includes('PARALLAX_ASSET_FAMILIES'), 'Cislunar Parallax Array must load through authored environment asset families');
 for (const asset of ['parallax-baseline-pylon', 'parallax-reference-frame', 'parallax-mass-carriage', 'parallax-shear-anchor', 'parallax-reference-console']) {
