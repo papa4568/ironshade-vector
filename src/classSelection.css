@@ -951,6 +951,63 @@
   }
 }
 
+@media (orientation: landscape) and (max-height: 380px) {
+  .class-intake-shell {
+    gap: 3px;
+  }
+  .class-intake-header h1 {
+    font-size: 17px;
+  }
+  .class-choice-section-head {
+    display: none;
+  }
+  .class-choice-card {
+    min-height: 68px;
+    padding: 4px 6px;
+  }
+  .class-choice-tags {
+    display: none;
+  }
+  .class-card-kit span {
+    padding: 2px 3px;
+  }
+  .class-selected-panel {
+    gap: 4px;
+    padding: 4px;
+  }
+  .class-selected-overview,
+  .class-starting-kit {
+    padding: 4px 5px;
+  }
+  .class-selected-facts {
+    display: none;
+  }
+  .class-starting-kit > header h3 {
+    display: none;
+  }
+  .class-starting-kit-grid article {
+    grid-template-columns: 21px minmax(0, 1fr);
+    gap: 4px;
+    padding: 2px 3px;
+  }
+  .class-skill-key {
+    width: 20px;
+    height: 20px;
+  }
+  .class-skill-key img {
+    width: 15px;
+    height: 15px;
+  }
+  .class-confirm-row {
+    min-height: 32px;
+    padding: 3px 4px 3px 6px;
+  }
+  .class-confirm {
+    min-height: 30px;
+    padding: 3px 7px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .class-choice-card {
     transition: none;
