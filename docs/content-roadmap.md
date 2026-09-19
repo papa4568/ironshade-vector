@@ -199,7 +199,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] P2.6 Local enemy visual identity
 - [x] P2.7 Sable Voss presentation
 - [x] P2.8 Biome ambient effects
-- [ ] P2.9 Mobile LOD/performance
+- [x] P2.9 Mobile LOD/performance
 
 ### Jovian Harvester
 - [ ] P2.10 Environment kit
@@ -307,7 +307,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1 is complete and **P2.8 is now delivered**. Continue in roadmap order with **P2.9 — Mobile LOD/performance** to finish the Spin Habitat biome before starting the Jovian Harvester in **P2.10**.
+P1 is complete and **Spin Habitat P2.1–P2.9 is now delivered**. Continue in roadmap order with **P2.10 — Jovian Harvester environment kit**, then proceed through P2.16 before moving to Authored Biomes Pack II.
+
+**P2.9 delivered:** Spin Habitat now has a biome-specific adaptive render profile: coarse/mobile play forces authored environment LOD2, trims the rotating environment from 15 to 11 authored placements while preserving all four spokes and the stationary axis, disables rotating environment shadow casters outside the full desktop profile, lowers procedural rim tessellation, and uses the three-arc spindown presentation on mobile. Runtime telemetry exposes profile, instance budget, and shadow-caster mode. Full production regression/build, Level 15 beta smoke, desktop + mobile-landscape Browser E2E (including live mobile LOD2 / 11-instance / axis-only assertions), Android beta.156 package/version/SDK/signature verification, and Android emulator runtime smoke are green.
 
 **P2.8 delivered:** Spin Habitat now has a bounded ambient-effects layer that makes the biome read even when no emergency event is active: gravity-coupled cyan/green rim-light sweeps, counter-drifting habitat particulate, and a stationary-axis haze pulse. The effects follow the real habitat rotation state, scale their light-band count, mote count, opacity, and pulse intensity through the existing adaptive VFX/transparency budget, and expose deterministic runtime QA telemetry without folding the dedicated performance/LOD pass forward from P2.9. Full production regression/build, desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.155 package/version/signature verification, and Android emulator runtime smoke are green.
 
@@ -335,13 +337,13 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.155**
+- Android beta: **0.0.1-beta.156**
 - Package: `app.ironshade.vector`
-- Verified: P2.8 Spin Habitat ambient identity with gravity-coupled rim light sweeps, counter-drifting particulate, stationary-axis haze, adaptive VFX-density/transparency scaling, full production regression/build, desktop + mobile-landscape Browser E2E with live ambient telemetry assertions, Level 15 beta smoke, Android beta.155 APK package/version/signature checks, Android emulator runtime smoke, and retained browser/Android QA artifacts
+- Verified: P2.9 Spin Habitat mobile rendering pass with coarse/mobile environment LOD2, 11-instance authored habitat budget, axis-only environment shadow casting, reduced procedural ring tessellation, mobile three-arc spindown VFX, deterministic performance telemetry, full production regression/build, desktop + mobile-landscape Browser E2E with live mobile performance assertions, Level 15 beta smoke, Android beta.156 package/version/SDK/signature checks, Android emulator runtime smoke, and retained browser/Android QA artifacts
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P2.8 final verified head: `d500e5d24ed6aace08b72ce97fb8fc7e8b91ca69`
-- Browser E2E run: `35476002047`
-- Level 15 beta smoke run: `35476002075`
-- Android beta.155 run: `35476002045`
-- Android beta.155 artifact ID: `10593384314`
-- Android beta.155 artifact head: `d500e5d24ed6aace08b72ce97fb8fc7e8b91ca69`
+- P2.9 final verified head: `a8211b41a1548b14cfeef7f763a5bc809b02b173`
+- Browser E2E run: `35476633263`
+- Level 15 beta smoke run: `35476633270`
+- Android beta.156 run: `35476633254`
+- Android beta.156 artifact ID: `10594347277`
+- Android beta.156 artifact head: `a8211b41a1548b14cfeef7f763a5bc809b02b173`
