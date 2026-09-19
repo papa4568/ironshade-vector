@@ -6,7 +6,8 @@ import { createDefaultProfile, loadProfile, saveProfile } from '../src/game/meta
 import { CAMPAIGN_STORAGE_KEY, GAME_STATE_STORAGE_KEY, prepareSaveRecovery, PROFILE_STORAGE_KEY } from '../src/game/saveRecovery';
 import { loadGameState, saveGameState } from '../src/game/gamePersistence';
 import { carryExpeditionLoot } from '../src/game/expeditionCarry';
-import { advanceParallaxDebtAfterContract, getParallaxDebtContract, syncParallaxDebtAccess } from '../src/game/parallaxDebt';
+import { advanceParallaxDebtAfterContract, getParallaxDebtContract, parallaxDebtChapter, parallaxDebtNextRequiredLevel, syncParallaxDebtAccess } from '../src/game/parallaxDebt';
+import { operationScalingFor } from '../src/game/scaling';
 
 const storage = new Map<string, string>();
 let failStorageWrites = false;
@@ -42,18 +43,71 @@ let parallaxCampaign = createDefaultCampaign();
 parallaxCampaign.story.interdiction.status = 'complete';
 parallaxCampaign = syncParallaxDebtAccess(parallaxCampaign, 15);
 assert.equal(parallaxCampaign.story.parallaxDebt.status, 'active', 'LV15 + completed Interdiction should open Parallax Debt');
+assert.equal(parallaxDebtChapter.totalContracts, 12, 'Parallax Debt should reserve a full 12-contract Chapter 3 arc.');
+assert.equal(parallaxDebtChapter.authoredContracts, 9, 'This slice should author nine Chapter 3 contracts through LV18.');
+
 for (let step = 0; step < 3; step += 1) {
-  const contract = getParallaxDebtContract(parallaxCampaign);
-  assert.ok(contract, `Parallax Debt contract ${step + 1} should exist`);
+  const contract = getParallaxDebtContract(parallaxCampaign, 15);
+  assert.ok(contract, `Parallax Debt opening contract ${step + 1} should exist at LV15`);
   if (step === 0) {
     assert.equal(contract.location, 'parallax-array');
     assert.equal(contract.objectiveMode, 'reference-alignment');
+    assert.equal(operationScalingFor(contract, parallaxCampaign, 15).operationTier, 9, 'Opening Parallax work should start at T9 / LV15 pressure.');
   }
   const advanced = advanceParallaxDebtAfterContract(parallaxCampaign, contract);
   parallaxCampaign = advanced.campaign;
 }
-assert.equal(parallaxCampaign.story.parallaxDebt.status, 'complete', 'Parallax Debt opening sequence should complete after three contracts');
-assert.equal(parallaxCampaign.story.parallaxDebt.evidence.length, 3, 'Parallax Debt should bank all three evidence records');
+assert.equal(parallaxCampaign.story.parallaxDebt.status, 'active', 'Blind Meridian should now finish only the opening phase, not the full chapter.');
+assert.equal(parallaxCampaign.story.parallaxDebt.evidence.length, 3, 'Opening Parallax Debt should bank its original three evidence records.');
+assert.equal(parallaxDebtNextRequiredLevel(parallaxCampaign), 16, 'The first continuation phase should require LV16.');
+assert.equal(getParallaxDebtContract(parallaxCampaign, 15), null, 'LV15 should not bypass the LV16 Parallax continuation gate.');
+
+let migratedLegacyParallax = createDefaultCampaign();
+migratedLegacyParallax.story.interdiction.status = 'complete';
+migratedLegacyParallax.story.parallaxDebt = {
+  status: 'complete',
+  step: 3,
+  completed: ['parallax-debt-0', 'parallax-debt-1', 'parallax-debt-2'],
+  evidence: ['baseline-offset', 'return-vector', 'blind-meridian'],
+  lastBeat: 'Legacy opening sequence complete.',
+};
+migratedLegacyParallax = syncParallaxDebtAccess(migratedLegacyParallax, 15);
+assert.equal(migratedLegacyParallax.story.parallaxDebt.status, 'active', 'Legacy saves that completed the three-contract opening must reopen safely into the expanded chapter.');
+assert.equal(migratedLegacyParallax.story.parallaxDebt.step, 3, 'Legacy Parallax migration must preserve the completed opening step.');
+
+for (let step = 3; step < 6; step += 1) {
+  const contract = getParallaxDebtContract(parallaxCampaign, 16);
+  assert.ok(contract, `Parallax Debt LV16 contract ${step + 1} should exist`);
+  if (step === 3) {
+    assert.equal(contract.title, 'Parallax Debt // Kepler Wake');
+    assert.equal(operationScalingFor(contract, parallaxCampaign, 16).operationTier, 10, 'LV16 continuation should move Parallax Debt to T10 pressure.');
+  }
+  parallaxCampaign = advanceParallaxDebtAfterContract(parallaxCampaign, contract).campaign;
+}
+assert.equal(parallaxDebtNextRequiredLevel(parallaxCampaign), 17, 'Residual Frame should hand the campaign into an LV17 gate.');
+assert.equal(getParallaxDebtContract(parallaxCampaign, 16), null, 'LV16 should not bypass the LV17 Parallax continuation gate.');
+
+for (let step = 6; step < 8; step += 1) {
+  const contract = getParallaxDebtContract(parallaxCampaign, 17);
+  assert.ok(contract, `Parallax Debt LV17 contract ${step + 1} should exist`);
+  if (step === 6) {
+    assert.equal(contract.title, 'Parallax Debt // Null Transit');
+    assert.equal(operationScalingFor(contract, parallaxCampaign, 17).operationTier, 11, 'LV17 continuation should move Parallax Debt to T11 pressure.');
+  }
+  parallaxCampaign = advanceParallaxDebtAfterContract(parallaxCampaign, contract).campaign;
+}
+assert.equal(parallaxDebtNextRequiredLevel(parallaxCampaign), 18, 'False Horizon should be the LV18 gate for the current authored slice.');
+assert.equal(getParallaxDebtContract(parallaxCampaign, 17), null, 'LV17 should not bypass the LV18 False Horizon gate.');
+
+const falseHorizon = getParallaxDebtContract(parallaxCampaign, 18);
+assert.ok(falseHorizon, 'False Horizon should unlock at LV18.');
+assert.equal(falseHorizon.title, 'Parallax Debt // False Horizon');
+parallaxCampaign = advanceParallaxDebtAfterContract(parallaxCampaign, falseHorizon).campaign;
+assert.equal(parallaxCampaign.story.parallaxDebt.status, 'active', 'The nine-contract LV15–18 slice should leave Parallax Debt active for its decision branch and final operations.');
+assert.equal(parallaxCampaign.story.parallaxDebt.step, 9, 'The authored slice should bank nine Chapter 3 contracts.');
+assert.equal(parallaxCampaign.story.parallaxDebt.evidence.length, 9, 'The LV15–18 slice should bank nine distinct evidence records.');
+assert.equal(getParallaxDebtContract(parallaxCampaign, 20), null, 'No un-authored Chapter 3 contract should leak onto the board after the current slice.');
+assert.match(parallaxCampaign.story.parallaxDebt.lastBeat, /MID-CHAPTER VECTOR COMPLETE/, 'The campaign should clearly explain why the next Parallax contract is not yet available.');
 
 const healState = createSimulation();
 healState.player.hp = 25;
