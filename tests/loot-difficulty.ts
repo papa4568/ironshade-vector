@@ -1,7 +1,7 @@
 import { createDefaultCampaign, generateContracts } from '../src/game/campaign';
 import { rollGroundLoot, type GroundLootReceipt } from '../src/game/fieldLoot';
 import { modifierCountForRarity } from '../src/game/lootQuality';
-import { awardRecovery, createDefaultProfile, deriveCombatBuild, levelRequirementForRecovery, locationSingularNames, maxOperatorLevel, type Item } from '../src/game/meta';
+import { awardRecovery, createDefaultProfile, deriveCombatBuild, levelRequirementForRecovery, locationSingularNames, maxOperatorLevel, parallaxDebtGearIdentities, type Item } from '../src/game/meta';
 import { applyThreatBudget, operationScalingFor, standardTierCapForOperator } from '../src/game/scaling';
 import { createSimulation, type Telemetry } from '../src/game/sim';
 
@@ -113,6 +113,41 @@ assert(overflowRecovery.loot.filter(item => item.recoverySource?.startsWith('Gro
 const bossPrototypeReceipt: GroundLootReceipt = { id: 'boss-prototype', enemyId: 99, enemyLabel: 'Command Target', rarity: 'Prototype', source: 'boss', recoveryQualityFloor: 5, recoveryLevel: 56, monsterLevel: 20 };
 const deepFieldRecovery = awardRecovery(repeatProfile, telemetry, true, 0, { deepTarget: 'Unpooled Command Target', location: 'unpooled-location', locationName: 'Unpooled Site', operationTier: 12, maxRecoveryLevel: 56, combatEffectiveness: high.combatEffectiveness, threatBudget: high.threatBudget, actualDepth: true }, [bossPrototypeReceipt]);
 assert(deepFieldRecovery.loot.length === 2, `field-loot deep run should add one contract recovery, saw ${deepFieldRecovery.loot.length}`);
+
+const parallaxFieldReceipt: GroundLootReceipt = { id: 'parallax-field', enemyId: 21, enemyLabel: 'Parallax Shear Runner', rarity: 'Field', source: 'standard', recoveryQualityFloor: 2, recoveryLevel: 48, monsterLevel: 17 };
+const parallaxPrototypeReceipt: GroundLootReceipt = { id: 'parallax-prototype', enemyId: 22, enemyLabel: 'Reference Shear Technician', rarity: 'Prototype', source: 'elite', recoveryQualityFloor: 4, recoveryLevel: 52, monsterLevel: 18 };
+const parallaxRecovery = awardRecovery(repeatProfile, telemetry, false, 0, {
+  campaignChapter: 'parallax-debt',
+  location: 'parallax-array',
+  locationName: 'Cislunar Parallax Array',
+  operationTier: 10,
+  maxRecoveryLevel: 52,
+  threatBudget: 70,
+  actualDepth: false,
+}, [parallaxFieldReceipt, parallaxPrototypeReceipt]);
+const parallaxDrops = parallaxRecovery.loot.filter(item => item.recoverySource?.startsWith('Ground drop //'));
+assert(parallaxDrops.length === 2, 'Parallax field receipts should both materialize at extraction.');
+for (const item of parallaxDrops) {
+  const identity = parallaxDebtGearIdentities[item.slot];
+  assert(item.baseId === identity.baseId, `Parallax ${item.slot} should use its Chapter 3 base identity.`);
+  assert(item.name === identity.name, `Parallax ${item.slot} should use its Chapter 3 frame name.`);
+  assert(item.frameIdentity === identity.frameIdentity, `Parallax ${item.slot} should use its authored frame identity.`);
+}
+const parallaxPrototype = parallaxDrops.find(item => item.rarity === 'Prototype');
+assert(parallaxPrototype, 'Parallax Prototype field receipt should remain Prototype after materialization.');
+assert(parallaxPrototype.modifiers.some(modifier => modifier.id === parallaxDebtGearIdentities[parallaxPrototype.slot].prototypeAffix), 'Parallax Prototype should carry the slot-specific Chapter 3 signature modifier.');
+
+const sharedLocationRecovery = awardRecovery(repeatProfile, telemetry, false, 0, {
+  location: 'parallax-array',
+  locationName: 'Cislunar Parallax Array',
+  operationTier: 10,
+  maxRecoveryLevel: 52,
+  threatBudget: 70,
+  actualDepth: false,
+}, [parallaxFieldReceipt]);
+const sharedLocationDrop = sharedLocationRecovery.loot.find(item => item.recoverySource?.startsWith('Ground drop //'));
+assert(sharedLocationDrop, 'Control recovery should materialize the shared-location field receipt.');
+assert(!sharedLocationDrop.baseId.startsWith('parallax-'), 'Parallax gear identity must remain chapter-scoped instead of leaking through shared locations.');
 
 let leveling = createDefaultProfile();
 for (let run = 0; run < 70 && leveling.level < 20; run += 1) leveling = awardRecovery(leveling, telemetry, false, 0, { operationTier: 12, maxRecoveryLevel: 56, combatEffectiveness: high.combatEffectiveness, threatBudget: high.threatBudget }).profile;
