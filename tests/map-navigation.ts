@@ -4,11 +4,12 @@ import { auditNavigation, getMapNavigationPlan } from '../src/game/mapNavigation
 import { findNavigationPath } from '../src/game/mapPathfinding';
 import { createSimulation, neutralCombatBuild, type CombatObject } from '../src/game/sim';
 
-const locations: LocationId[] = ['orbital-station', 'damaged-vessel', 'asteroid-refinery', 'spin-habitat', 'jovian-harvester', 'ice-mine', 'solar-yard', 'lattice-annex', 'momentum-exchange', 'cryo-reserve'];
+const locations: LocationId[] = ['orbital-station', 'damaged-vessel', 'asteroid-refinery', 'spin-habitat', 'jovian-harvester', 'ice-mine', 'solar-yard', 'lattice-annex', 'momentum-exchange', 'cryo-reserve', 'parallax-array'];
 
 function modeFor(location: LocationId): ObjectiveMode {
   if (location === 'momentum-exchange') return 'momentum-capture';
   if (location === 'cryo-reserve') return 'thermal-routing';
+  if (location === 'parallax-array') return 'reference-alignment';
   if (location === 'damaged-vessel' || location === 'jovian-harvester') return 'pressure-recovery';
   if (location === 'spin-habitat' || location === 'ice-mine') return 'gravity-stabilization';
   if (location === 'solar-yard' || location === 'lattice-annex') return 'grid-isolation';
@@ -49,6 +50,7 @@ function objectiveIds(mode: ObjectiveMode) {
   if (mode === 'emergency-boarding') return ['door-control', 'boarding-lock'];
   if (mode === 'momentum-capture') return ['capture-drum-a', 'capture-drum-b'];
   if (mode === 'thermal-routing') return ['purge-valve-a', 'purge-valve-b'];
+  if (mode === 'reference-alignment') return ['reference-node-a', 'reference-node-b', 'reference-node-c'];
   return ['salvage-node-a', 'salvage-node-b', 'salvage-node-c'];
 }
 

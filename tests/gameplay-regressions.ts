@@ -6,6 +6,7 @@ import { createDefaultProfile, loadProfile, saveProfile } from '../src/game/meta
 import { CAMPAIGN_STORAGE_KEY, GAME_STATE_STORAGE_KEY, prepareSaveRecovery, PROFILE_STORAGE_KEY } from '../src/game/saveRecovery';
 import { loadGameState, saveGameState } from '../src/game/gamePersistence';
 import { carryExpeditionLoot } from '../src/game/expeditionCarry';
+import { advanceParallaxDebtAfterContract, getParallaxDebtContract, syncParallaxDebtAccess } from '../src/game/parallaxDebt';
 
 const storage = new Map<string, string>();
 let failStorageWrites = false;
@@ -36,6 +37,23 @@ assert.equal(campaign.resources.credits, creditsBefore - 45, 'Trauma Gel should 
 assert.equal(campaign.consumables.medGel, stockBefore + 1, 'purchase should increase persistent stock');
 saveCampaign(campaign);
 assert.equal(loadCampaign().consumables.medGel, stockBefore + 1, 'consumable stock should round-trip through campaign save');
+
+let parallaxCampaign = createDefaultCampaign();
+parallaxCampaign.story.interdiction.status = 'complete';
+parallaxCampaign = syncParallaxDebtAccess(parallaxCampaign, 15);
+assert.equal(parallaxCampaign.story.parallaxDebt.status, 'active', 'LV15 + completed Interdiction should open Parallax Debt');
+for (let step = 0; step < 3; step += 1) {
+  const contract = getParallaxDebtContract(parallaxCampaign);
+  assert.ok(contract, `Parallax Debt contract ${step + 1} should exist`);
+  if (step === 0) {
+    assert.equal(contract.location, 'parallax-array');
+    assert.equal(contract.objectiveMode, 'reference-alignment');
+  }
+  const advanced = advanceParallaxDebtAfterContract(parallaxCampaign, contract);
+  parallaxCampaign = advanced.campaign;
+}
+assert.equal(parallaxCampaign.story.parallaxDebt.status, 'complete', 'Parallax Debt opening sequence should complete after three contracts');
+assert.equal(parallaxCampaign.story.parallaxDebt.evidence.length, 3, 'Parallax Debt should bank all three evidence records');
 
 const healState = createSimulation();
 healState.player.hp = 25;

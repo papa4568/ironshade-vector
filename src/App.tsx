@@ -11,6 +11,7 @@ import { createTelemetryRequestId, isNetworkRequestError, loadOperationsSnapshot
 import { advanceStoryAfterContract, generateStoryContracts } from './game/story';
 import { advancePostKhepriAfterContract, getPostKhepriContract, syncPostKhepriAccess } from './game/postKhepri';
 import { advanceInterdictionAfterContract, getCommandTraceContracts, getInterdictionContract, syncInterdictionAccess } from './game/postKhepriInterdiction';
+import { advanceParallaxDebtAfterContract, getParallaxDebtContract, syncParallaxDebtAccess } from './game/parallaxDebt';
 import { withOperationScaling } from './game/scaling';
 import { advanceDirectivesAfterContract, preparedDirectiveContract, syncDirectiveAccess } from './game/operationDirectives';
 import type { Telemetry } from './game/sim';
@@ -32,7 +33,7 @@ function SurfaceLoader({ screen }: { screen: Screen }) {
   const label = screen === 'combat' ? 'Preparing combat renderer' : screen === 'build' ? 'Opening equipment systems' : screen === 'class' ? 'Opening operator intake' : screen === 'ship' ? 'Opening command deck' : 'Loading mission debrief';
   return <main className="surface-loader" role="status" aria-live="polite"><div><span>QUIET SIGNAL // CLIENT STREAM</span><b>{label}</b><i /></div></main>;
 }
-type Debrief = { runId: number; contract: Contract; campaignReward: CampaignReward; lootReward: VictoryReward; uplinkStatus: UplinkStatus; uplinkError: string | null; storyNote: string | null; chapterNote: string | null; postKhepriNote: string | null; interdictionNote: string | null; escalationNote: string | null; directiveNote: string | null; protocolValue: number; expeditionProgress?: ExpeditionProgress };
+type Debrief = { runId: number; contract: Contract; campaignReward: CampaignReward; lootReward: VictoryReward; uplinkStatus: UplinkStatus; uplinkError: string | null; storyNote: string | null; chapterNote: string | null; postKhepriNote: string | null; interdictionNote: string | null; parallaxNote: string | null; escalationNote: string | null; directiveNote: string | null; protocolValue: number; expeditionProgress?: ExpeditionProgress };
 
 function debriefRarityCue(rarity: VictoryReward['loot'][number]['rarity']) {
   if (rarity === 'Singular') return 'RULE-CHANGING';
@@ -104,6 +105,7 @@ function DebriefScreen({ result, onShip, onBuild, onRepeat, onDiscard }: { resul
         {result.chapterNote && <div className="anomaly-note"><b>THE BLACK LATTICE UPDATED</b><span>{result.chapterNote}</span></div>}
         {result.postKhepriNote && <div className="anomaly-note"><b>DEAD RECKONING UPDATED</b><span>{result.postKhepriNote}</span></div>}
         {result.interdictionNote && <div className="anomaly-note"><b>INTERDICTION UPDATED</b><span>{result.interdictionNote}</span></div>}
+        {result.parallaxNote && <div className="anomaly-note"><b>PARALLAX DEBT UPDATED</b><span>{result.parallaxNote}</span></div>}
         {result.lootReward.levelsGained > 0 && result.lootReward.profile.level >= 12 && <div className="anomaly-note"><b>LV12 // GENERATION V CALIBRATION</b><span>High-Recovery-Level equipment can now resolve as Generation V frames. Operation Tier and source Recovery Level still determine whether a Gen V frame can actually drop.</span></div>}
         {result.lootReward.levelsGained > 0 && result.lootReward.profile.level >= 13 && <div className="anomaly-note"><b>LV13 // DEAD RECKONING INTERDICTION</b><span>Completed Dead Reckoning evidence can now resolve the custody operators defending the hidden logistics cadence without assigning an unsupported client or origin.</span></div>}
         {result.lootReward.levelsGained > 0 && result.lootReward.profile.level >= 14 && <div className="anomaly-note"><b>LV14 // COMMAND TRACE ARRAY</b><span>Identified Interdiction command targets can now be reconstructed as repeatable source-specific deep hunts. Operation Tier remains independent.</span></div>}
@@ -136,10 +138,11 @@ function App() {
     const postKhepri = getPostKhepriContract(campaign);
     const interdiction = getInterdictionContract(campaign);
     const commandTraces = getCommandTraceContracts(campaign, profile.level);
+    const parallax = getParallaxDebtContract(campaign);
     const escalation = generateEscalationContract(campaign);
     const directive = preparedDirectiveContract(campaign);
     const standard = generateContracts(campaign);
-    const localContracts = [...(directive ? [directive] : []), ...(escalation ? [escalation] : []), ...commandTraces, ...(interdiction ? [interdiction] : []), ...(postKhepri ? [postKhepri] : []), ...(chapter ? [chapter] : []), ...story, ...standard];
+    const localContracts = [...(directive ? [directive] : []), ...(escalation ? [escalation] : []), ...commandTraces, ...(parallax ? [parallax] : []), ...(interdiction ? [interdiction] : []), ...(postKhepri ? [postKhepri] : []), ...(chapter ? [chapter] : []), ...story, ...standard];
     const available = operations?.operation ? [dailyOperationContract(operations.operation), ...localContracts] : localContracts;
     return available.map(contract => withOperationScaling(contract, campaign, profile.level));
   }, [campaign, operations?.operation, profile.level]);
@@ -159,6 +162,7 @@ function App() {
   useEffect(() => { setCampaign(current => syncDirectiveAccess(current, profile.level)); }, [profile.level]);
   useEffect(() => { setCampaign(current => syncPostKhepriAccess(current, profile.level)); }, [profile.level, campaign.story.blackLattice.status]);
   useEffect(() => { setCampaign(current => syncInterdictionAccess(current, profile.level)); }, [profile.level, campaign.story.postKhepri.status]);
+  useEffect(() => { setCampaign(current => syncParallaxDebtAccess(current, profile.level)); }, [profile.level, campaign.story.interdiction.status]);
   useEffect(() => feedback.configure(profile.settings), [profile.settings]);
   useEffect(() => {
     let active = true;
@@ -188,7 +192,8 @@ function App() {
     const chapterAdvance = advanceBlackLatticeAfterContract(storyAdvance.campaign, selectedContract, depth);
     const postKhepriAdvance = advancePostKhepriAfterContract(chapterAdvance.campaign, selectedContract);
     const interdictionAdvance = advanceInterdictionAfterContract(postKhepriAdvance.campaign, selectedContract);
-    const escalationAdvance = advanceEscalationAfterContract(interdictionAdvance.campaign, selectedContract, depth);
+    const parallaxAdvance = advanceParallaxDebtAfterContract(interdictionAdvance.campaign, selectedContract);
+    const escalationAdvance = advanceEscalationAfterContract(parallaxAdvance.campaign, selectedContract, depth);
     const fullMegastructure = !!selectedContract.megastructure && expeditionProgress?.zonesCompleted === (selectedContract.megastructureStageCount ?? 4);
     const directiveAdvance = advanceDirectivesAfterContract(escalationAdvance.campaign, selectedContract, depth, telemetry, fullMegastructure);
     const narrativeRareTechGain = Math.max(0, directiveAdvance.campaign.resources.rareTech - baseCampaignReward.campaign.resources.rareTech);
@@ -215,8 +220,8 @@ function App() {
     setCampaign(campaignReward.campaign);
     setProfile(lootReward.profile);
     setNewLootIds(lootReward.loot.map(item => item.id));
-    setStatusMessage(directiveAdvance.note ?? escalationAdvance.note ?? interdictionAdvance.note ?? postKhepriAdvance.note ?? chapterAdvance.note ?? storyAdvance.note ?? `${selectedContract.title} complete // ${depth === 'deep' ? 'deep' : 'safe'} extraction banked`);
-    setDebrief({ runId: debriefRunId, contract: selectedContract, campaignReward, lootReward, uplinkStatus, uplinkError: null, storyNote: storyAdvance.note, chapterNote: chapterAdvance.note, postKhepriNote: postKhepriAdvance.note, interdictionNote: interdictionAdvance.note, escalationNote: escalationAdvance.note, directiveNote: directiveAdvance.note, protocolValue: telemetry.eliteProtocolsDefeated, expeditionProgress });
+    setStatusMessage(directiveAdvance.note ?? escalationAdvance.note ?? parallaxAdvance.note ?? interdictionAdvance.note ?? postKhepriAdvance.note ?? chapterAdvance.note ?? storyAdvance.note ?? `${selectedContract.title} complete // ${depth === 'deep' ? 'deep' : 'safe'} extraction banked`);
+    setDebrief({ runId: debriefRunId, contract: selectedContract, campaignReward, lootReward, uplinkStatus, uplinkError: null, storyNote: storyAdvance.note, chapterNote: chapterAdvance.note, postKhepriNote: postKhepriAdvance.note, interdictionNote: interdictionAdvance.note, parallaxNote: parallaxAdvance.note, escalationNote: escalationAdvance.note, directiveNote: directiveAdvance.note, protocolValue: telemetry.eliteProtocolsDefeated, expeditionProgress });
     feedback.cue(lootReward.loot.some(item => (item.recoveryQuality ?? 0) >= 4) ? 'rareLoot' : 'loot');
     setScreen('debrief');
 

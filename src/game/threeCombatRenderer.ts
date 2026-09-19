@@ -55,6 +55,7 @@ const LOCATION_LIGHTING_PROFILES: Record<Contract['location'], LocationLightingP
   'lattice-annex': { id: 'metrology-teal', keyColor: 0xd9e6e2, rimColor: 0x88b8ad, emergencyColor: 0x629d93, keyIntensity: 2.25, rimIntensity: 1.0, emergencyIntensity: 7.6, exposure: 1.05 },
   'momentum-exchange': { id: 'transfer-blue', keyColor: 0xd4e5ed, rimColor: 0x67b5d5, emergencyColor: 0x4d90ac, keyIntensity: 2.3, rimIntensity: 1.16, emergencyIntensity: 8.2, exposure: 1.06 },
   'cryo-reserve': { id: 'cold-blue', keyColor: 0xd0e3ed, rimColor: 0x77c6de, emergencyColor: 0x76cde9, keyIntensity: 2.0, rimIntensity: 1.12, emergencyIntensity: 8.4, exposure: 1.07 },
+  'parallax-array': { id: 'reference-violet', keyColor: 0xe2ddf1, rimColor: 0x9a87cf, emergencyColor: 0x7864ba, keyIntensity: 2.2, rimIntensity: 1.15, emergencyIntensity: 8.1, exposure: 1.06 },
 };
 
 type EnemyRig = {
@@ -166,6 +167,7 @@ function locationPalette(location: string): LocationPalette {
   if (location === 'lattice-annex') return { background: 0x030606, fog: 0x091010, floor: 0x111818, grid: 0x3f5a58, accent: 0x88b8ad, secondary: 0x546c68 };
   if (location === 'momentum-exchange') return { background: 0x020609, fog: 0x041019, floor: 0x07161d, grid: 0x31586a, accent: 0x67b5d5, secondary: 0x3f758d };
   if (location === 'cryo-reserve') return { background: 0x020609, fog: 0x041019, floor: 0x07151c, grid: 0x31576a, accent: 0x77c6de, secondary: 0x466f83 };
+  if (location === 'parallax-array') return { background: 0x05040a, fog: 0x0b0913, floor: 0x12101b, grid: 0x514674, accent: 0x9a87cf, secondary: 0x665a82 };
   return { background: 0x030506, fog: 0x080d0f, floor: 0x101716, grid: 0x334844, accent: 0x7aa99c, secondary: 0x4d6760 };
 }
 

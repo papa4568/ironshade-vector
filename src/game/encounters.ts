@@ -300,6 +300,21 @@ function configureSolarYard(state: SimState) {
 }
 
 function configureMomentumExchange(state: SimState) { patchObject(state, 'crate-a', { label: 'Capture-collar pallet', x: 410, y: 300, w: 120, h: 96, hp: 72, maxHp: 72 }); patchObject(state, 'bulkhead-a', { label: 'Inbound flywheel housing', x: 650, y: 660, w: 165, h: 72, hp: 210, maxHp: 210 }); patchObject(state, 'crate-b', { label: 'Transfer cradle dolly', x: 980, y: 270, w: 118, h: 100, hp: 70, maxHp: 70 }); patchObject(state, 'bulkhead-b', { label: 'Outbound flywheel housing', x: 1240, y: 690, w: 165, h: 72, hp: 210, maxHp: 210 }); patchObject(state, 'conduit-a', { label: 'Countermass bus', x: 1110, y: 510, w: 82, h: 72 }); patchObject(state, 'coolant-a', { label: 'Flywheel bearing loop', x: 850, y: 420, w: 58, h: 92 }); patchObject(state, 'service-plate', { label: 'Transfer-lane service panel', x: 1400, y: 300, w: 90, h: 68, hp: 74, maxHp: 74 }); patchObject(state, 'door-control', { label: 'Inbound capture collar', x: 610, y: 275 }); patchObject(state, 'gravity-control', { label: 'Outbound mass trim', x: 1320, y: 760 }); patchObject(state, 'arena-cover', { label: 'Deep counterweight cradle', x: 1910, y: 520, w: 150, h: 90, hp: 225, maxHp: 225 }); patchObject(state, 'arena-conduit', { label: 'Exchange reference bus', x: 2070, y: 285 }); addObject(state, coverObject('momentum-rail-a', 'Electromagnetic transfer rail A', 760, 370, 180, 48, 'industrial')); addObject(state, coverObject('momentum-rail-b', 'Electromagnetic transfer rail B', 1090, 640, 180, 48, 'industrial')); addObject(state, coverObject('momentum-baffle', 'Countermass service baffle', 1410, 470, 110, 58, 'light')); }
+function configureParallaxArray(state: SimState) {
+  patchObject(state, 'crate-a', { label: 'Inertial reference case', x: 430, y: 285, w: 116, h: 92, hp: 74, maxHp: 74 });
+  patchObject(state, 'bulkhead-a', { label: 'Near-baseline mass carriage', x: 690, y: 660, w: 160, h: 74, hp: 230, maxHp: 230 });
+  patchObject(state, 'crate-b', { label: 'Cross-track calibration rack', x: 1010, y: 710, w: 116, h: 94, hp: 72, maxHp: 72 });
+  patchObject(state, 'bulkhead-b', { label: 'Reference interferometer housing', x: 1260, y: 300, w: 165, h: 86, hp: 240, maxHp: 240 });
+  patchObject(state, 'conduit-a', { label: 'Baseline timing bus', x: 1130, y: 520, w: 84, h: 72 });
+  patchObject(state, 'coolant-a', { label: 'Inertial standard coolant loop', x: 850, y: 390, w: 56, h: 92 });
+  patchObject(state, 'service-plate', { label: 'Reference service hatch', x: 1400, y: 700, w: 92, h: 66, hp: 78, maxHp: 78 });
+  patchObject(state, 'door-control', { label: 'Near-baseline isolation gate', x: 610, y: 760 });
+  patchObject(state, 'gravity-control', { label: 'Cross-track mass trim', x: 1330, y: 245 });
+  patchObject(state, 'arena-cover', { label: 'Deep-reference carriage', x: 1910, y: 565, w: 165, h: 92, hp: 235, maxHp: 235 });
+  patchObject(state, 'arena-conduit', { label: 'Deep-baseline timing trunk', x: 2070, y: 300 });
+  for (const [id, x, y] of [['parallax-frame-a', 760, 340], ['parallax-frame-b', 1080, 690], ['parallax-frame-c', 1370, 390]] as const) addObject(state, coverObject(id, 'Long-baseline reference frame', x, y, 72, 150, 'industrial'));
+}
+
 function configureCryoReserve(state: SimState) { patchObject(state, 'crate-a', { label: 'Valve service cassette', x: 400, y: 700, w: 110, h: 96, hp: 68, maxHp: 68 }); patchObject(state, 'bulkhead-a', { label: 'LH2 tank saddle', x: 650, y: 290, w: 145, h: 88, hp: 220, maxHp: 220 }); patchObject(state, 'crate-b', { label: 'Insulation repair rack', x: 960, y: 730, w: 110, h: 98, hp: 66, maxHp: 66 }); patchObject(state, 'bulkhead-b', { label: 'Methane reserve saddle', x: 1230, y: 290, w: 150, h: 90, hp: 220, maxHp: 220 }); patchObject(state, 'conduit-a', { label: 'Cryopump power trunk', x: 1100, y: 520, w: 82, h: 72 }); patchObject(state, 'coolant-a', { label: 'Boiloff return header', x: 820, y: 520, w: 58, h: 94 }); patchObject(state, 'service-plate', { label: 'Vacuum-jacket service plate', x: 1390, y: 700, w: 90, h: 68, hp: 72, maxHp: 72 }); patchObject(state, 'door-control', { label: 'Service collar lock', x: 610, y: 760 }); patchObject(state, 'gravity-control', { label: 'Tank-farm mass trim', x: 1310, y: 245 }); patchObject(state, 'arena-cover', { label: 'Umbra transfer manifold', x: 1900, y: 560, w: 150, h: 90, hp: 215, maxHp: 215 }); patchObject(state, 'arena-conduit', { label: 'Reserve pump bus', x: 2070, y: 300 }); addObject(state, coverObject('cryo-tank-a', 'Vacuum-jacket tank A', 760, 390, 125, 78, 'industrial')); addObject(state, coverObject('cryo-tank-b', 'Vacuum-jacket tank B', 1010, 610, 125, 78, 'industrial')); addObject(state, coverObject('cryo-tank-c', 'Vacuum-jacket tank C', 1320, 410, 125, 78, 'industrial')); addObject(state, coverObject('cryo-insulation', 'Brittle insulation screen', 1450, 650, 105, 52, 'light')); }
 function configureInterdictionCommand(state: SimState, contract: Contract) { const boss = state.enemies.find(enemy => enemy.role === 'boss'); if (!boss) return; if (contract.deepTarget === 'Transfer Adjudicator Iona Vale') { for (const [id, x, y] of [['transfer-partition-a', 930, 300], ['transfer-partition-b', 1180, 610], ['transfer-partition-c', 1880, 430]] as const) { const partition = coverObject(id, 'Movable custody pressure partition', x, y, 58, 180, 'industrial'); partition.active = false; partition.hp = 125; partition.maxHp = 125; addObject(state, partition); } boss.variant = 'transferAdjudicator'; boss.hp = 700; boss.maxHp = 700; boss.armor = 225; boss.maxArmor = 225; boss.anchored = false; } else if (contract.deepTarget === 'Umbra Systems Marshal Oren Saal') { for (const [id, x, y] of [['siphon-node-a', 980, 390], ['siphon-node-b', 1280, 680], ['boss-siphon-a', 1800, 315], ['boss-siphon-b', 2110, 700]] as const) { const node = systemObject(id, 'Capacitor siphon relay', 'anchorNode', x, y, 48, 48); node.active = false; node.hp = 68; node.maxHp = 68; addObject(state, node); } boss.variant = 'umbraMarshal'; boss.hp = 690; boss.maxHp = 690; boss.armor = 210; boss.maxArmor = 210; boss.anchored = false; } else if (contract.deepTarget === 'Custody Director Mara Teth') { for (const [id, x, y] of [['custody-shutter-a', 1030, 330], ['custody-shutter-b', 1320, 610], ['custody-shutter-c', 1900, 450]] as const) { const shutter = coverObject(id, 'Custody geometry shutter', x, y, 54, 170, 'industrial'); shutter.active = false; shutter.hp = 125; shutter.maxHp = 125; addObject(state, shutter); } for (const [id, x, y] of [['custody-reference-a', 1740, 280], ['custody-reference-b', 1980, 510], ['custody-reference-c', 2150, 735]] as const) { const node = systemObject(id, 'Custody reference relay', 'anchorNode', x, y, 50, 50); node.active = true; node.exposed = true; node.hp = 72; node.maxHp = 72; addObject(state, node); } boss.variant = 'custodyDirector'; boss.hp = 710; boss.maxHp = 710; boss.armor = 215; boss.maxArmor = 215; boss.anchored = false; } }
 
@@ -314,13 +329,14 @@ function objectivePosition(contract: Contract, index: number) {
     'lattice-annex': [{ x: 480, y: 720 }, { x: 990, y: 270 }, { x: 1420, y: 710 }],
     'momentum-exchange': [{ x: 520, y: 710 }, { x: 980, y: 280 }, { x: 1390, y: 720 }],
     'cryo-reserve': [{ x: 500, y: 280 }, { x: 980, y: 760 }, { x: 1390, y: 300 }],
+    'parallax-array': [{ x: 500, y: 300 }, { x: 980, y: 760 }, { x: 1400, y: 300 }],
   };
   const positions = positionsByLocation[contract.location] ?? [{ x: 540, y: 270 }, { x: 1040, y: 785 }, { x: 1375, y: 300 }];
   return positions[index] ?? positions[positions.length - 1];
 }
 
 function objectiveNames(contract: Contract) {
-  const authored: Partial<Record<Contract['location'], { pressure: string; grid: [string, string]; gravity: [string, string]; machinery: [string, string]; boarding: [string, string]; salvage: [string, string, string] }>> = {
+  const authored: Partial<Record<Contract['location'], { pressure: string; grid: [string, string]; gravity: [string, string]; machinery: [string, string]; boarding: [string, string]; salvage: [string, string, string]; reference?: [string, string, string] }>> = {
     'spin-habitat': { pressure: 'Rim pressure manifold', grid: ['Rim spin-bus isolator', 'Spoke spin-bus isolator'], gravity: ['Rim gravity trim', 'Spoke gravity trim'], machinery: ['Bearing-control package', 'Attitude-flywheel package'], boarding: ['Spoke pressure interlock', 'Axis pressure lock'], salvage: ['Rim recovery cache', 'Spoke recovery cache', 'Axis recovery cache'] },
     'jovian-harvester': { pressure: 'Storm relief manifold', grid: ['Skimmer bus isolator', 'Compressor bus isolator'], gravity: ['Maintenance-deck mass trim', 'Compressor-crown mass trim'], machinery: ['Skimmer compressor package', 'Separator package'], boarding: ['Inner storm lock', 'Outer maintenance lock'], salvage: ['Intake recovery package', 'Separator recovery package', 'Compressor recovery package'] },
     'ice-mine': { pressure: 'Bore pressure manifold', grid: ['Upper thaw-grid isolator', 'Deep thaw-grid isolator'], gravity: ['Haulage gravity trim', 'Deep-bore gravity trim'], machinery: ['Cryobore cutter package', 'Volatile separator package'], boarding: ['Access-bore lock', 'Deep-tunnel lock'], salvage: ['Access-bore cache', 'Extraction-tunnel cache', 'Subglacial vault cache'] },
@@ -328,6 +344,7 @@ function objectiveNames(contract: Contract) {
     'lattice-annex': { pressure: 'Khepri sample-vault manifold', grid: ['Cold-ring archive isolator', 'Sample-vault archive isolator'], gravity: ['Metrology-ring mass trim', 'Reference-gallery mass trim'], machinery: ['Precision carriage package', 'Cryogenic reference package'], boarding: ['Reference gallery interlock', 'Sample vault pressure lock'], salvage: ['Cold-ring metrology archive', 'Reference-gallery archive', 'Sample-vault custody record'] },
     'momentum-exchange': { pressure: 'Transfer pressure manifold', grid: ['Inbound bus isolator', 'Outbound bus isolator'], gravity: ['Inbound mass trim', 'Outbound mass trim'], machinery: ['Capture flywheel package', 'Transfer cradle package'], boarding: ['Inbound capture collar', 'Outbound pressure lock'], salvage: ['Inbound ledger core', 'Transfer timing core', 'Countermass reference core'] },
     'cryo-reserve': { pressure: 'Vacuum-jacket manifold', grid: ['Cryopump isolator A', 'Cryopump isolator B'], gravity: ['Service-collar mass trim', 'Tank-farm mass trim'], machinery: ['Cryopump package', 'Boiloff separator package'], boarding: ['Service collar lock', 'Tank-farm pressure lock'], salvage: ['Valve archive', 'Propellant ledger core', 'Umbra pump controller'] },
+    'parallax-array': { pressure: 'Array pressure manifold', grid: ['Near-baseline timing isolator', 'Deep-reference timing isolator'], gravity: ['Near-baseline mass trim', 'Cross-track mass trim'], machinery: ['Inertial standard package', 'Interferometer package'], boarding: ['Near-baseline isolation gate', 'Deep-reference pressure lock'], salvage: ['Reference ledger A', 'Reference ledger B', 'Reference ledger C'], reference: ['Near-baseline reference pylon', 'Cross-track reference pylon', 'Deep-baseline reference pylon'] },
   };
   return authored[contract.location] ?? { pressure: 'Emergency pressure manifold', grid: ['Grid isolator A', 'Grid isolator B'], gravity: ['Deck gravity trim', 'Transfer gravity trim'], machinery: ['Machinery package A', 'Machinery package B'], boarding: ['Pressure interlock A', 'Pressure interlock B'], salvage: ['Recovery package A', 'Recovery package B', 'Recovery package C'] };
 }
@@ -367,6 +384,7 @@ function configureObjectiveObjects(state: SimState, contract: Contract) {
     addAt('boarding-lock', names.boarding[1], 'doorControl', 2);
   } else if (contract.objectiveMode === 'momentum-capture') { addAt('capture-drum-a', 'Inbound capture drum', 'gravityControl', 0); addAt('capture-drum-b', 'Outbound capture drum', 'gravityControl', 2); }
   else if (contract.objectiveMode === 'thermal-routing') { addAt('purge-valve-a', 'LH2 purge valve', 'doorControl', 0); addAt('purge-valve-b', 'Methane purge valve', 'doorControl', 2); }
+  else if (contract.objectiveMode === 'reference-alignment') { const labels = names.reference ?? ['Reference pylon A', 'Reference pylon B', 'Reference pylon C']; addAt('reference-node-a', labels[0], 'gravityControl', 0); addAt('reference-node-b', labels[1], 'gravityControl', 1); addAt('reference-node-c', labels[2], 'gravityControl', 2); }
   else {
     addAt('salvage-node-a', names.salvage[0], 'salvageNode', 0);
     addAt('salvage-node-b', names.salvage[1], 'salvageNode', 1);
@@ -432,6 +450,14 @@ function configureCampaignFinale(state: SimState, contract: Contract) {
   const elite = state.enemies.find(enemy => enemy.id === 6); if (elite) { elite.role = 'elite'; elite.variant = 'meleeExosuit'; elite.label = 'Vault Recovery Exosuit'; elite.hp = 195; elite.maxHp = 195; elite.armor = 150; elite.maxArmor = 150; }
 }
 
+function configureParallaxFinale(state: SimState, contract: Contract) {
+  if (contract.campaignChapter !== 'parallax-debt' || !contract.campaignFinale) return;
+  const boss = state.enemies.find(enemy => enemy.role === 'boss');
+  if (!boss) return;
+  boss.variant = 'baselineKeeper'; boss.hp = 860; boss.maxHp = 860; boss.armor = 300; boss.maxArmor = 300; boss.anchored = false; boss.x = 2030; boss.y = 520;
+  for (const [id, x, y] of [['baseline-anchor-a', 1770, 300], ['baseline-anchor-b', 2040, 720]] as const) { const node = systemObject(id, 'Live baseline servo', 'anchorNode', x, y, 52, 52); node.active = true; node.exposed = true; node.hp = 82; node.maxHp = 82; addObject(state, node); }
+}
+
 function configureEscalationFinale(state: SimState, contract: Contract) {
   if (!contract.escalationFinale) return;
   const boss = state.enemies.find(enemy => enemy.role === 'boss');
@@ -481,12 +507,14 @@ export function applyEncounterLayout(state: SimState, contract: Contract) {
   else if (contract.location === 'lattice-annex') configureLatticeAnnex(state);
   else if (contract.location === 'momentum-exchange') configureMomentumExchange(state);
   else if (contract.location === 'cryo-reserve') configureCryoReserve(state);
+  else if (contract.location === 'parallax-array') configureParallaxArray(state);
 
   configureInterdictionCommand(state, contract);
   configureObjectiveObjects(state, contract);
   configureMegastructureStage(state, contract);
   configureStoryFinale(state, contract);
   configureCampaignFinale(state, contract);
+  configureParallaxFinale(state, contract);
   configureEscalationFinale(state, contract);
   reserveNavigationLanes(state, contract.location);
 }
@@ -515,7 +543,9 @@ export function getNextMissionObjectiveTarget(state: SimState, contract: Contrac
             ? ['capture-drum-a', 'capture-drum-b']
             : contract.objectiveMode === 'thermal-routing'
               ? ['purge-valve-a', 'purge-valve-b']
-              : ['salvage-node-a', 'salvage-node-b', 'salvage-node-c'];
+              : contract.objectiveMode === 'reference-alignment'
+                ? ['reference-node-a', 'reference-node-b', 'reference-node-c']
+                : ['salvage-node-a', 'salvage-node-b', 'salvage-node-c'];
 
   let target: CombatObject | null = null;
   let bestDistance = Infinity;
@@ -584,6 +614,7 @@ export function getMissionObjectiveStatus(state: SimState, contract: Contract): 
   if (mode === 'emergency-boarding') { const progress = exposedCount(state, ['door-control', 'boarding-lock']); return { label: 'Pressure-gate boarding', detail: progress < 2 ? 'Cycle both pressure interlocks' : 'Cargo route pressure-gated', progress, required: 2, complete: progress >= 2 }; }
   if (mode === 'momentum-capture') { const progress = exposedCount(state, ['capture-drum-a', 'capture-drum-b']); return { label: 'Momentum capture', detail: progress < 2 ? 'Load both counter-momentum references' : 'Capture drums synchronized', progress, required: 2, complete: progress >= 2 }; }
   if (mode === 'thermal-routing') { const progress = exposedCount(state, ['purge-valve-a', 'purge-valve-b']); return { label: 'Thermal routing', detail: progress < 2 ? 'Route both cryogenic purge branches' : 'Boiloff routed clear of service gallery', progress, required: 2, complete: progress >= 2 }; }
+  if (mode === 'reference-alignment') { const progress = exposedCount(state, ['reference-node-a', 'reference-node-b', 'reference-node-c']); return { label: 'Reference alignment', detail: progress < 3 ? 'Align all three physical reference pylons' : 'Long-baseline references converged', progress, required: 3, complete: progress >= 3 }; }
 
   const progress = exposedCount(state, ['salvage-node-a', 'salvage-node-b', 'salvage-node-c']);
   return {
