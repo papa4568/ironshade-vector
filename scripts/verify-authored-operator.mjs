@@ -119,11 +119,18 @@ try {
       throw new Error(`Authored operator entered procedural fallback: ${JSON.stringify(lastState)}`);
     }
     if (lastState?.visual?.startsWith('authored-')) {
-      const validAssets = new Set(['operator-field-suit-lod1', 'operator-vanguard-lod1', 'operator-vector-lod1', 'operator-systems-lod1']);
+      const mobileViewport = lastState.width <= 900 && lastState.height <= 500;
+      const expectedLod = mobileViewport ? 2 : 1;
+      const validAssets = new Set([
+        `operator-field-suit-lod${expectedLod}`,
+        `operator-vanguard-lod${expectedLod}`,
+        `operator-vector-lod${expectedLod}`,
+        `operator-systems-lod${expectedLod}`,
+      ]);
       if (!validAssets.has(lastState.asset)) {
-        throw new Error(`Unexpected authored operator asset: ${JSON.stringify(lastState)}`);
+        throw new Error(`Unexpected authored operator asset for LOD${expectedLod}: ${JSON.stringify(lastState)}`);
       }
-      if (lastState.operatorClass && lastState.operatorClass !== 'generic' && lastState.asset !== `operator-${lastState.operatorClass}-lod1`) {
+      if (lastState.operatorClass && lastState.operatorClass !== 'generic' && lastState.asset !== `operator-${lastState.operatorClass}-lod${expectedLod}`) {
         throw new Error(`Authored operator class/asset identity mismatch: ${JSON.stringify(lastState)}`);
       }
       if (lastState.rig !== 'articulated' || lastState.socket !== 'weapon-socket') {
