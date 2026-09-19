@@ -3,7 +3,8 @@ import { createDefaultCampaign, generateContracts, loadCampaign, saveCampaign, s
 import { withOperationScaling, frameGenerationForRecovery } from '../src/game/scaling';
 import { applyMissionSetup, createDirector } from '../src/game/director';
 import { getMissionObjectiveStatus, getNextMissionObjectiveTarget } from '../src/game/encounters';
-import { applyPlayerDamage, classAbilityKits, createSimulation, selectWeapon, setAim, setMove, stepSimulation, triggerAbility, triggerDodge, triggerFire } from '../src/game/sim';
+import { applyPlayerDamage, createSimulation, selectWeapon, setAim, setMove, stepSimulation, triggerAbility, triggerDodge, triggerFire } from '../src/game/sim';
+import { classAbilityKits } from '../src/game/classSkills';
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
