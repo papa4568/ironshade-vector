@@ -60,6 +60,12 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Rebuild package lock metadata
+        run: |
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          git diff --stat -- package-lock.json
+          git diff --check -- package-lock.json
+
       - name: Audit runtime dependencies
         run: npm audit --package-lock-only --omit=dev --audit-level=high
 
@@ -137,5 +143,6 @@ jobs:
             browser-e2e-${{ matrix.viewport }}-damaged-vessel.png
             browser-preview.log
             browser-chrome.log
+            package-lock.json
           if-no-files-found: warn
           retention-days: 30
