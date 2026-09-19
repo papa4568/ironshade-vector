@@ -545,7 +545,8 @@ try {
     const icons = [...document.querySelectorAll('img[src*="/assets/ui/skills/"], img[src*="/assets/ui/weapons/"]')];
     return icons.length >= 4 && icons.every(image => image.complete && image.naturalWidth > 0);
   })()`, 'Mobile combat SVG assets', 20_000);
-  const expectedCombatLod = viewportMode === 'mobile-landscape' ? '2' : '1';
+  const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);
+  const expectedCombatLod = coarseCombatSurface ? '2' : '1';
   await waitFor(`(() => {
     const canvas = document.querySelector('canvas');
     return canvas?.dataset.operatorClassAsset === 'vanguard'
