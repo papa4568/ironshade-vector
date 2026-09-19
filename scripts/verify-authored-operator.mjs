@@ -104,6 +104,7 @@ try {
       return {
         visual: canvas.dataset.operatorVisual ?? '',
         asset: canvas.dataset.operatorAsset ?? '',
+        operatorClass: canvas.dataset.operatorClassAsset ?? '',
         rig: canvas.dataset.operatorRig ?? '',
         socket: canvas.dataset.operatorSocket ?? '',
         animation: canvas.dataset.operatorAnimation ?? '',
@@ -118,8 +119,12 @@ try {
       throw new Error(`Authored operator entered procedural fallback: ${JSON.stringify(lastState)}`);
     }
     if (lastState?.visual?.startsWith('authored-')) {
-      if (lastState.asset !== 'operator-field-suit-lod1') {
+      const validAssets = new Set(['operator-field-suit-lod1', 'operator-vanguard-lod1', 'operator-vector-lod1', 'operator-systems-lod1']);
+      if (!validAssets.has(lastState.asset)) {
         throw new Error(`Unexpected authored operator asset: ${JSON.stringify(lastState)}`);
+      }
+      if (lastState.operatorClass && lastState.operatorClass !== 'generic' && lastState.asset !== `operator-${lastState.operatorClass}-lod1`) {
+        throw new Error(`Authored operator class/asset identity mismatch: ${JSON.stringify(lastState)}`);
       }
       if (lastState.rig !== 'articulated' || lastState.socket !== 'weapon-socket') {
         throw new Error(`Authored operator rig/socket contract is not active: ${JSON.stringify(lastState)}`);
@@ -133,7 +138,7 @@ try {
       if (!(lastState.width > 0 && lastState.height > 0)) {
         throw new Error(`Authored operator canvas is not visible: ${JSON.stringify(lastState)}`);
       }
-      console.log(`AUTHORED_OPERATOR_RUNTIME_PASS visual=${lastState.visual} asset=${lastState.asset} rig=${lastState.rig} socket=${lastState.socket} animation=${lastState.animation} blend=${lastState.blend} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
+      console.log(`AUTHORED_OPERATOR_RUNTIME_PASS visual=${lastState.visual} asset=${lastState.asset} class=${lastState.operatorClass || 'generic'} rig=${lastState.rig} socket=${lastState.socket} animation=${lastState.animation} blend=${lastState.blend} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
       process.exitCode = 0;
       break;
     }
