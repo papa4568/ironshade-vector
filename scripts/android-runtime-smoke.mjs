@@ -428,6 +428,11 @@ await waitFor(`(() => {
   return ['Breach Rush', 'Fracture Tag', 'Bulwark Pulse'].every(label => labels.includes(label));
 })()`, 'Vanguard level-one skill kit', 20_000);
 console.log('ANDROID_CLASS_KIT_PASS kit=RUSH/BREAK/GUARD');
+await waitFor(`(() => {
+  const canvas = document.querySelector('canvas');
+  return canvas?.dataset.operatorClassAsset === 'vanguard' && (canvas?.dataset.operatorAsset ?? '').includes('operator-vanguard');
+})()`, 'Android Vanguard authored operator asset', 20_000);
+console.log('ANDROID_CLASS_ASSET_PASS operator=vanguard');
 
 const combat = await snapshot();
 if (!(combat.text ?? '').toLowerCase().includes('field coach') || combat.canvases < 1) {
