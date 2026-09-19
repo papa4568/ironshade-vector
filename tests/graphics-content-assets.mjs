@@ -303,11 +303,24 @@ for (const path of glbs) {
         assert(nodeNames.has(required), `${relativePath}: control terminal is missing required node ${required}`);
       }
       if (filename.endsWith('-lod1.glb')) assert(nodeNames.has('objective-beacon-mount'), `${relativePath}: control LOD1 is missing objective beacon mount`);
-    } else {
+    } else if (filename.includes('salvage-tag-node')) {
       for (const required of ['interactable-salvage-base', 'interactable-salvage-case', 'interactable-salvage-tag-emitter']) {
         assert(nodeNames.has(required), `${relativePath}: salvage tag node is missing required node ${required}`);
       }
       if (filename.endsWith('-lod1.glb')) assert(nodeNames.has('interactable-salvage-tag-plate'), `${relativePath}: salvage LOD1 is missing tag plate detail`);
+    } else {
+      const marker = filename.includes('spin-bus-isolator')
+        ? 'spin-habitat-spin-bus-isolator-knife'
+        : filename.includes('gravity-trim')
+          ? 'spin-habitat-gravity-trim-yoke'
+          : filename.includes('bearing-control')
+            ? 'spin-habitat-bearing-control-spindle'
+            : filename.includes('attitude-flywheel')
+              ? 'spin-habitat-attitude-flywheel-axle'
+              : 'spin-habitat-pressure-lock-wheel';
+      assert(nodeNames.has(marker), `${relativePath}: Spin Habitat machinery silhouette marker ${marker} is missing`);
+      assert(nodeNames.has('spin-habitat-interactable-status'), `${relativePath}: Spin Habitat machinery is missing its state-readable status emitter`);
+      if (filename.endsWith('-lod1.glb')) assert(nodeNames.has('objective-beacon-mount'), `${relativePath}: Spin Habitat machinery LOD1 is missing objective beacon mount`);
     }
   }
 
@@ -384,6 +397,13 @@ for (const interactableAsset of ['interactable-control-terminal', 'interactable-
   const lod2 = reportByPath.get(`interactables/${interactableAsset}-lod2.glb`);
   assert(lod1 && lod2, `${interactableAsset}: authored LOD1/LOD2 pair missing`);
   assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, `${interactableAsset}: mobile LOD2 must reduce payload and draw surfaces`);
+}
+
+for (const interactableAsset of ['spin-habitat-spin-bus-isolator', 'spin-habitat-gravity-trim', 'spin-habitat-bearing-control', 'spin-habitat-attitude-flywheel', 'spin-habitat-pressure-lock']) {
+  const lod1 = reportByPath.get(`interactables/${interactableAsset}-lod1.glb`);
+  const lod2 = reportByPath.get(`interactables/${interactableAsset}-lod2.glb`);
+  assert(lod1 && lod2, `${interactableAsset}: Spin Habitat machinery LOD1/LOD2 pair missing`);
+  assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, `${interactableAsset}: Spin Habitat mobile machinery LOD2 must reduce payload and draw surfaces`);
 }
 
 

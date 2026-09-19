@@ -7,7 +7,7 @@ import { getWorldSize, type CombatObject, type Enemy, type Player, type SimState
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, locationArtIdentityFor, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
 import { lootColor } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
-import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, OPERATOR_CLASS_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, SPIN_HABITAT_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
+import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES, OPERATOR_CLASS_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, SPIN_HABITAT_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
 import { configureGraphicsAssetRenderer, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
 import { spinHabitatArchitectureState, spinHabitatSpindownState } from './spinHabitatArchitecture';
 
@@ -419,7 +419,7 @@ export class ThreeCombatRenderer {
     this.syncSpinHabitatArchitecture(state, mission, budget);
     syncHardSciFiEnvironment(this.environmentRoot, state, mission, budget.detailScale, budget.transparencyScale);
     this.syncSectors(state);
-    this.syncObjects(state);
+    this.syncObjects(state, mission);
     this.syncObjectiveBeacon(state, mission);
     if (!this.operatorAssetRequested) {
       this.operatorAssetRequested = true;
@@ -2058,15 +2058,32 @@ export class ThreeCombatRenderer {
     this.renderer.domElement.dataset.interactableVisual = 'procedural-loading';
     delete this.renderer.domElement.dataset.interactableAssets;
     delete this.renderer.domElement.dataset.interactableFallback;
+    delete this.renderer.domElement.dataset.interactableMode;
+    delete this.renderer.domElement.dataset.interactableBiome;
+    delete this.renderer.domElement.dataset.interactableKit;
   }
 
-  private async loadAuthoredInteractable(object: CombatObject) {
+  private async loadAuthoredInteractable(object: CombatObject, mission: Contract) {
     if (this.authoredInteractableRequests.has(object.id)) return;
-    const family = object.kind === 'salvageNode'
-      ? INTERACTABLE_ASSET_FAMILIES.salvage
-      : panelObject(object)
-        ? INTERACTABLE_ASSET_FAMILIES.control
-        : null;
+    const spinHabitatFamily = mission.location !== 'spin-habitat'
+      ? null
+      : object.kind === 'powerControl'
+        ? SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES.spinBusIsolator
+        : object.kind === 'gravityControl'
+          ? SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES.gravityTrim
+          : mission.objectiveMode === 'machinery-recovery' && object.id === 'salvage-node-a'
+            ? SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES.bearingControl
+            : mission.objectiveMode === 'machinery-recovery' && object.id === 'salvage-node-b'
+              ? SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES.attitudeFlywheel
+              : object.kind === 'doorControl' || object.kind === 'sealControl'
+                ? SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES.pressureLock
+                : null;
+    const family = spinHabitatFamily
+      ?? (object.kind === 'salvageNode'
+        ? INTERACTABLE_ASSET_FAMILIES.salvage
+        : panelObject(object)
+          ? INTERACTABLE_ASSET_FAMILIES.control
+          : null);
     if (!family) return;
     const spec = selectGraphicsAssetSpec(family, this.coarse ? 0.55 : 1);
     if (!spec) return;
@@ -2112,7 +2129,15 @@ export class ThreeCombatRenderer {
       loaded.add(spec.id);
       this.renderer.domElement.dataset.interactableAssets = [...loaded].sort().join(',');
       this.renderer.domElement.dataset.interactableVisual = 'authored';
-      this.renderer.domElement.dataset.interactableMode = 'control-terminal+salvage-tag-node';
+      if (mission.location === 'spin-habitat') {
+        this.renderer.domElement.dataset.interactableBiome = 'spin-habitat';
+        this.renderer.domElement.dataset.interactableMode = 'spin-habitat-machinery+mission-controls';
+        this.renderer.domElement.dataset.interactableKit = 'spin-bus-isolator+gravity-trim+bearing-control+attitude-flywheel+pressure-lock';
+      } else {
+        delete this.renderer.domElement.dataset.interactableBiome;
+        delete this.renderer.domElement.dataset.interactableKit;
+        this.renderer.domElement.dataset.interactableMode = 'control-terminal+salvage-tag-node';
+      }
     } catch (error) {
       if (this.disposed || generation !== this.interactableLoadGeneration) return;
       const fallback = new Set((this.renderer.domElement.dataset.interactableFallback ?? '').split(',').filter(Boolean));
@@ -2123,7 +2148,7 @@ export class ThreeCombatRenderer {
     }
   }
 
-  private syncObjects(state: SimState) {
+  private syncObjects(state: SimState, mission: Contract) {
     const activeIds = new Set<string>();
     for (const object of state.objects) {
       activeIds.add(object.id);
@@ -2149,7 +2174,7 @@ export class ThreeCombatRenderer {
         }
         this.objectRoot.add(mesh);
         this.objectVisuals.set(object.id, mesh);
-        if (panelObject(object)) void this.loadAuthoredInteractable(object);
+        if (panelObject(object)) void this.loadAuthoredInteractable(object, mission);
       }
 
       const authored = this.authoredInteractables.get(object.id);

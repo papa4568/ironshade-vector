@@ -1266,6 +1266,83 @@ function interactableNodes(kind, lod) {
   return nodes;
 }
 
+function spinHabitatInteractableNodes(kind, lod) {
+  const detail = lod === 1;
+
+  if (kind === 'spinBusIsolator') {
+    const nodes = [
+      { name: 'spin-habitat-spin-bus-isolator-base', mesh: 1, translation: [0, 0.10, 0], scale: [0.82, 0.20, 0.70] },
+      { name: 'spin-habitat-spin-bus-isolator-housing', mesh: 0, translation: [-0.08, 0.64, 0], scale: [0.52, 1.08, 0.54] },
+      { name: 'spin-habitat-spin-bus-isolator-knife', mesh: 2, translation: [0.27, 0.88, 0], scale: [0.10, 0.52, 0.18] },
+      { name: 'spin-habitat-interactable-status', mesh: 3, translation: [0.30, 1.18, 0], scale: [0.06, 0.20, 0.36] },
+    ];
+    if (detail) nodes.push(
+      { name: 'spin-habitat-spin-bus-isolator-brace', mesh: 1, translation: [-0.12, 1.20, 0], scale: [0.48, 0.12, 0.62] },
+      { name: 'objective-beacon-mount', mesh: 1, translation: [0, 1.48, 0], scale: [0.18, 0.08, 0.18] },
+    );
+    nodes.push({ name: 'interactable-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  if (kind === 'gravityTrim') {
+    const nodes = [
+      { name: 'spin-habitat-gravity-trim-base', mesh: 1, translation: [0, 0.10, 0], scale: [0.86, 0.20, 0.68] },
+      { name: 'spin-habitat-gravity-trim-column', mesh: 0, translation: [-0.10, 0.62, 0], scale: [0.46, 1.04, 0.48] },
+      { name: 'spin-habitat-gravity-trim-yoke', mesh: 0, translation: [0.18, 1.08, 0], scale: [0.58, 0.22, 0.64] },
+      { name: 'spin-habitat-interactable-status', mesh: 3, translation: [0.48, 1.12, 0], scale: [0.05, 0.18, 0.46] },
+    ];
+    if (detail) nodes.push(
+      { name: 'spin-habitat-gravity-trim-index', mesh: 2, translation: [-0.35, 0.58, 0.27], scale: [0.06, 0.46, 0.06] },
+      { name: 'objective-beacon-mount', mesh: 1, translation: [0, 1.46, 0], scale: [0.18, 0.08, 0.18] },
+    );
+    nodes.push({ name: 'interactable-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  if (kind === 'bearingControl') {
+    const nodes = [
+      { name: 'spin-habitat-bearing-control-skid', mesh: 1, translation: [0, 0.10, 0], scale: [1.30, 0.20, 0.84] },
+      { name: 'spin-habitat-bearing-control-cradle', mesh: 0, translation: [-0.12, 0.48, 0], scale: [1.08, 0.56, 0.66] },
+      { name: 'spin-habitat-bearing-control-spindle', mesh: 1, translation: [0.24, 0.82, 0], scale: [0.56, 0.22, 0.72] },
+      { name: 'spin-habitat-interactable-status', mesh: 3, translation: [0.62, 0.58, 0], scale: [0.06, 0.24, 0.42] },
+    ];
+    if (detail) nodes.push(
+      { name: 'spin-habitat-bearing-control-restraint', mesh: 2, translation: [-0.22, 0.82, 0], scale: [0.70, 0.10, 0.76] },
+      { name: 'objective-beacon-mount', mesh: 1, translation: [0, 1.18, 0], scale: [0.18, 0.08, 0.18] },
+    );
+    nodes.push({ name: 'interactable-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  if (kind === 'attitudeFlywheel') {
+    const nodes = [
+      { name: 'spin-habitat-attitude-flywheel-skid', mesh: 1, translation: [0, 0.10, 0], scale: [1.34, 0.20, 0.86] },
+      { name: 'spin-habitat-attitude-flywheel-cage', mesh: 0, translation: [-0.08, 0.54, 0], scale: [0.86, 0.76, 0.78] },
+      { name: 'spin-habitat-attitude-flywheel-axle', mesh: 2, translation: [0.28, 0.56, 0], scale: [0.66, 0.18, 0.18] },
+      { name: 'spin-habitat-interactable-status', mesh: 3, translation: [0.62, 0.62, 0], scale: [0.06, 0.24, 0.42] },
+    ];
+    if (detail) nodes.push(
+      { name: 'spin-habitat-attitude-flywheel-guard', mesh: 1, translation: [-0.16, 0.98, 0], scale: [0.76, 0.10, 0.82] },
+      { name: 'objective-beacon-mount', mesh: 1, translation: [0, 1.24, 0], scale: [0.18, 0.08, 0.18] },
+    );
+    nodes.push({ name: 'interactable-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  const nodes = [
+    { name: 'spin-habitat-pressure-lock-base', mesh: 1, translation: [0, 0.10, 0], scale: [0.78, 0.20, 0.68] },
+    { name: 'spin-habitat-pressure-lock-column', mesh: 0, translation: [-0.08, 0.70, 0], scale: [0.48, 1.20, 0.50] },
+    { name: 'spin-habitat-pressure-lock-wheel', mesh: 2, translation: [0.24, 0.84, 0], scale: [0.16, 0.46, 0.46] },
+    { name: 'spin-habitat-interactable-status', mesh: 3, translation: [0.22, 1.28, 0], scale: [0.06, 0.22, 0.38] },
+  ];
+  if (detail) nodes.push(
+    { name: 'spin-habitat-pressure-lock-guard', mesh: 1, translation: [-0.12, 1.34, 0], scale: [0.46, 0.12, 0.58] },
+    { name: 'objective-beacon-mount', mesh: 1, translation: [0, 1.60, 0], scale: [0.18, 0.08, 0.18] },
+  );
+  nodes.push({ name: 'interactable-root', children: nodes.map((_, index) => index) });
+  return nodes;
+}
+
 const outputs = [];
 outputs.push(await writeAsset(
   'operators/operator-field-suit-lod1.glb',
@@ -1336,6 +1413,25 @@ for (const [kind, id] of [['control', 'interactable-control-terminal'], ['salvag
       `interactables/${id}-lod${lod}.glb`,
       `${id}-lod${lod}`,
       interactableNodes(kind, lod),
+      interactableMaterials(),
+    ));
+  }
+}
+
+const spinHabitatInteractableProfiles = [
+  ['spinBusIsolator', 'spin-habitat-spin-bus-isolator'],
+  ['gravityTrim', 'spin-habitat-gravity-trim'],
+  ['bearingControl', 'spin-habitat-bearing-control'],
+  ['attitudeFlywheel', 'spin-habitat-attitude-flywheel'],
+  ['pressureLock', 'spin-habitat-pressure-lock'],
+];
+
+for (const [kind, id] of spinHabitatInteractableProfiles) {
+  for (const lod of [1, 2]) {
+    outputs.push(await writeAsset(
+      `interactables/${id}-lod${lod}.glb`,
+      `${id}-lod${lod}`,
+      spinHabitatInteractableNodes(kind, lod),
       interactableMaterials(),
     ));
   }

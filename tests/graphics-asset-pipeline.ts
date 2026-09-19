@@ -177,6 +177,16 @@ assert(rendererSource.includes("spindownBeacon.name = 'spin-habitat-axis-warning
 assert(rendererSource.includes("dataset.environmentSpindownSource = 'sector-B-transfer-gravity'"), 'Spin Habitat P2.4 VFX must follow the gameplay transfer-gravity state');
 assert(rendererSource.includes("dataset.environmentSpindownDetail = reducedSpindownDetail ? '3-arcs+axis-pulse' : '6-arcs+axis-pulse'"), 'Spin Habitat P2.4 must preserve reduced mobile/performance VFX detail');
 
+assert(rendererSource.includes('SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES'), 'Spin Habitat P2.5 must select dedicated authored machinery families');
+for (const asset of ['spin-habitat-spin-bus-isolator', 'spin-habitat-gravity-trim', 'spin-habitat-bearing-control', 'spin-habitat-attitude-flywheel', 'spin-habitat-pressure-lock']) {
+  assert(manifestSource.includes(`${asset}-lod1.glb`) && manifestSource.includes(`${asset}-lod2.glb`), `Spin Habitat P2.5 machinery asset ${asset} must preserve adaptive LOD1/LOD2 coverage`);
+}
+assert(rendererSource.includes("mission.objectiveMode === 'machinery-recovery' && object.id === 'salvage-node-a'"), 'Spin Habitat P2.5 bearing-control machinery must bind to the real recovery objective');
+assert(rendererSource.includes("mission.objectiveMode === 'machinery-recovery' && object.id === 'salvage-node-b'"), 'Spin Habitat P2.5 attitude-flywheel machinery must bind to the real recovery objective');
+assert(rendererSource.includes("dataset.interactableBiome = 'spin-habitat'"), 'Spin Habitat P2.5 authored machinery activation must remain observable for QA');
+assert(rendererSource.includes("dataset.interactableMode = 'spin-habitat-machinery+mission-controls'"), 'Spin Habitat P2.5 must expose its gameplay-specific interactable mode');
+assert(rendererSource.includes("dataset.interactableKit = 'spin-bus-isolator+gravity-trim+bearing-control+attitude-flywheel+pressure-lock'"), 'Spin Habitat P2.5 must expose the complete machinery kit');
+
 assert(rendererSource.includes('PARALLAX_ASSET_FAMILIES'), 'Cislunar Parallax Array must load through authored environment asset families');
 for (const asset of ['parallax-baseline-pylon', 'parallax-reference-frame', 'parallax-mass-carriage', 'parallax-shear-anchor', 'parallax-reference-console']) {
   assert(manifestSource.includes(`${asset}-lod1.glb`) && manifestSource.includes(`${asset}-lod2.glb`), `Parallax asset ${asset} must preserve adaptive LOD1/LOD2 coverage`);

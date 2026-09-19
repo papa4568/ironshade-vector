@@ -299,6 +299,44 @@ export const PICKUP_ASSET_FAMILY: GraphicsAssetFamily = {
   },
 };
 
+export const SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES = {
+  spinBusIsolator: {
+    id: 'spin-habitat-spin-bus-isolator',
+    lods: {
+      1: createGraphicsAssetSpec('spin-habitat-spin-bus-isolator-lod1', 'interactable', '/assets/models/interactables/spin-habitat-spin-bus-isolator-lod1.glb', 1),
+      2: createGraphicsAssetSpec('spin-habitat-spin-bus-isolator-lod2', 'interactable', '/assets/models/interactables/spin-habitat-spin-bus-isolator-lod2.glb', 2),
+    },
+  },
+  gravityTrim: {
+    id: 'spin-habitat-gravity-trim',
+    lods: {
+      1: createGraphicsAssetSpec('spin-habitat-gravity-trim-lod1', 'interactable', '/assets/models/interactables/spin-habitat-gravity-trim-lod1.glb', 1),
+      2: createGraphicsAssetSpec('spin-habitat-gravity-trim-lod2', 'interactable', '/assets/models/interactables/spin-habitat-gravity-trim-lod2.glb', 2),
+    },
+  },
+  bearingControl: {
+    id: 'spin-habitat-bearing-control',
+    lods: {
+      1: createGraphicsAssetSpec('spin-habitat-bearing-control-lod1', 'interactable', '/assets/models/interactables/spin-habitat-bearing-control-lod1.glb', 1),
+      2: createGraphicsAssetSpec('spin-habitat-bearing-control-lod2', 'interactable', '/assets/models/interactables/spin-habitat-bearing-control-lod2.glb', 2),
+    },
+  },
+  attitudeFlywheel: {
+    id: 'spin-habitat-attitude-flywheel',
+    lods: {
+      1: createGraphicsAssetSpec('spin-habitat-attitude-flywheel-lod1', 'interactable', '/assets/models/interactables/spin-habitat-attitude-flywheel-lod1.glb', 1),
+      2: createGraphicsAssetSpec('spin-habitat-attitude-flywheel-lod2', 'interactable', '/assets/models/interactables/spin-habitat-attitude-flywheel-lod2.glb', 2),
+    },
+  },
+  pressureLock: {
+    id: 'spin-habitat-pressure-lock',
+    lods: {
+      1: createGraphicsAssetSpec('spin-habitat-pressure-lock-lod1', 'interactable', '/assets/models/interactables/spin-habitat-pressure-lock-lod1.glb', 1),
+      2: createGraphicsAssetSpec('spin-habitat-pressure-lock-lod2', 'interactable', '/assets/models/interactables/spin-habitat-pressure-lock-lod2.glb', 2),
+    },
+  },
+} as const satisfies Record<'spinBusIsolator' | 'gravityTrim' | 'bearingControl' | 'attitudeFlywheel' | 'pressureLock', GraphicsAssetFamily>;
+
 export const INTERACTABLE_ASSET_FAMILIES = {
   control: {
     id: 'interactable-control-terminal',

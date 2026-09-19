@@ -554,6 +554,12 @@ try {
         && canvas?.dataset.readabilityLanguage === 'rim-plated-green+spoke-skeletal-cyan+axis-bright-stationary'
         && canvas?.dataset.environmentSpindownSource === 'sector-B-transfer-gravity'
         && canvas?.dataset.environmentVfx === 'spindown-brake-arcs+axis-warning-pulse'
+        && canvas?.dataset.interactableBiome === 'spin-habitat'
+        && canvas?.dataset.interactableMode === 'spin-habitat-machinery+mission-controls'
+        && canvas?.dataset.interactableKit === 'spin-bus-isolator+gravity-trim+bearing-control+attitude-flywheel+pressure-lock'
+        && canvas?.dataset.interactableVisual === 'authored'
+        && !(canvas?.dataset.interactableFallback ?? '')
+        && (canvas?.dataset.interactableAssets ?? '').includes('spin-habitat-gravity-trim-lod')
         && ['idle', 'active'].includes(canvas?.dataset.environmentSpindown ?? '')
         && Number.isFinite(Number(canvas?.dataset.environmentSpindownIntensity))
         && Number.isFinite(Number(canvas?.dataset.environmentSpinPhase));
@@ -575,7 +581,11 @@ try {
     if (!Number.isFinite(spindownState?.intensity)) {
       throw new Error(`Spin Habitat spindown VFX state was not observable: ${JSON.stringify(spindownState)}`);
     }
-    console.log(`BROWSER_SPIN_HABITAT_PASS viewport=${viewportMode} identity=rim/spoke/axis vfx=spindown:${spindownState.mode}:${spindownState.detail} phase=${firstPhase.toFixed(3)}->${nextPhase.toFixed(3)}`);
+    const habitatInteractables = await evaluate(`(() => {
+      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-spin-habitat');
+      return canvas?.dataset.interactableAssets ?? '';
+    })()`);
+    console.log(`BROWSER_SPIN_HABITAT_PASS viewport=${viewportMode} identity=rim/spoke/axis machinery=${habitatInteractables} vfx=spindown:${spindownState.mode}:${spindownState.detail} phase=${firstPhase.toFixed(3)}->${nextPhase.toFixed(3)}`);
   }
 
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);
