@@ -79,7 +79,7 @@ const areaDescriptions: Record<PrimaryArea, string> = {
   intel: 'Campaign, stories, factions and evidence',
 };
 const tabLabels: Record<Tab, string> = {
-  overview: 'Command',
+  overview: 'Tasking',
   contracts: 'Contracts',
   stats: 'Stats',
   campaign: 'Campaign',
@@ -284,6 +284,7 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
     { id: 'intel', icon: Database },
   ];
   const openPrimaryArea = (area: PrimaryArea) => switchTab(areaTabs[area][0]);
+  const pageTitle = tab === 'overview' ? 'Tasking' : areaLabels[primaryArea];
 
   return <main className={`ship-hub area-${primaryArea}`}>
     <aside className="command-rail" aria-label="Primary navigation">
@@ -295,7 +296,7 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
       <div className="command-rail-status"><i /><span>LOCAL CORE</span><b>ONLINE</b></div>
     </aside>
     <div ref={hubRef} className="tactical-workspace">
-      <header className="ship-header tactical-header"><div><span className="card-kicker">MV QUIET SIGNAL // {areaLabels[primaryArea].toUpperCase()}</span><h1>{areaLabels[primaryArea]}</h1><p>{tabLabels[tab]} · {buildIdentity(profile)} · LV {profile.level} · {campaign.contractsCompleted} contracts{tab === 'overview' && attentionCount > 0 ? ` · ${attentionCount} pending` : ''}</p></div></header>
+      <header className="ship-header tactical-header"><div><span className="card-kicker">MV QUIET SIGNAL // {areaLabels[primaryArea].toUpperCase()}</span><h1>{pageTitle}</h1><p>{tabLabels[tab]} · {buildIdentity(profile)} · LV {profile.level} · {campaign.contractsCompleted} contracts{tab === 'overview' && attentionCount > 0 ? ` · ${attentionCount} pending` : ''}</p></div></header>
       {tab !== 'cargo' && tab !== 'overview' && <section className="resource-ribbon hub-resource-ribbon" aria-label="Ship resources">{(Object.keys(campaign.resources) as ResourceId[]).map(key => <div key={key} className={`resource-${key} ${key === 'rareTech' && campaign.resources[key] === 0 ? 'muted-resource' : ''}`}><small>{resourceLabels[key]}</small><b>{campaign.resources[key]}</b></div>)}</section>}
       {attentionCount > 0 && tab !== 'overview' && <section className="qol-priority-strip" aria-label="Items needing attention"><div className="qol-priority-copy"><b>{attentionCount} pending</b></div><div className="qol-priority-actions">{profile.progressionPoints > 0 && <button onClick={onOpenBuild}>Progression · {profile.progressionPoints}</button>}{chapterProgress.status === 'active' && <button onClick={() => switchTab('campaign')}>Black Lattice · {Math.min(chapterProgress.step + 1, blackLatticeChapter.totalContracts)}/{blackLatticeChapter.totalContracts}</button>}{(postKhepriProgress.status === 'available' || postKhepriProgress.status === 'active') && <button onClick={() => switchTab('campaign')}>Dead Reckoning · {postKhepriProgress.status === 'available' ? 'Ready' : `${Math.min(postKhepriProgress.step + 1, postKhepriChapter.totalContracts)}/${postKhepriChapter.totalContracts}`}</button>}{(interdictionProgress.status === 'available' || interdictionProgress.status === 'active') && <button onClick={() => switchTab('campaign')}>Interdiction · {interdictionProgress.status === 'available' ? 'Ready' : `${Math.min(interdictionProgress.step + 1, interdictionChapter.totalContracts)}/${interdictionChapter.totalContracts}`}</button>}{activeStoryCount > 0 && <button onClick={() => switchTab('stories')}>Stories · {activeStoryCount}</button>}{escalationStatus === 'active' && <button onClick={() => switchTab('operations')}>Escalation · {campaign.escalation.stage + 1}/3</button>}{preparedDirective && <button onClick={() => switchTab('operations')}>Directive · T{preparedDirective.tier}</button>}</div></section>}
       {areaTabs[primaryArea].length > 1 && <nav className="section-tabs" aria-label={`${areaLabels[primaryArea]} sections`}>{areaTabs[primaryArea].map(value => <button key={value} className={tab === value ? 'selected' : ''} aria-current={tab === value ? 'page' : undefined} onClick={() => switchTab(value)}>{tabLabels[value]}</button>)}</nav>}
