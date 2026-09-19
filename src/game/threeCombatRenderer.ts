@@ -7,7 +7,7 @@ import { getWorldSize, type CombatObject, type Enemy, type Player, type SimState
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, locationArtIdentityFor, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
 import { lootColor } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
-import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, OPERATOR_CLASS_ASSET_FAMILIES, REFINERY_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
+import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, OPERATOR_CLASS_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
 import { configureGraphicsAssetRenderer, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
 
 const WORLD_SCALE = 0.02;
@@ -106,7 +106,24 @@ type ProjectileVisual = {
 
 type RingVisual = THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>;
 type DebrisVisual = THREE.Mesh<THREE.IcosahedronGeometry, THREE.MeshStandardMaterial>;
-type GroundLootVisual = { root: THREE.Group; core: THREE.Mesh<THREE.OctahedronGeometry, THREE.MeshStandardMaterial>; ring: THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>; beam: THREE.Mesh<THREE.CylinderGeometry, THREE.MeshBasicMaterial> };
+type GroundLootVisual = {
+  root: THREE.Group;
+  core: THREE.Mesh<THREE.OctahedronGeometry, THREE.MeshStandardMaterial>;
+  ring: THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>;
+  beam: THREE.Mesh<THREE.CylinderGeometry, THREE.MeshBasicMaterial>;
+  assetInstance: GraphicsAssetInstance | null;
+  authoredRoot: THREE.Group | null;
+  accentMaterials: THREE.MeshStandardMaterial[];
+  ownedMaterials: THREE.Material[];
+  assetRequested: boolean;
+};
+type AuthoredInteractableVisual = {
+  instance: GraphicsAssetInstance;
+  root: THREE.Group;
+  assetId: string;
+  statusMaterials: THREE.MeshStandardMaterial[];
+  ownedMaterials: THREE.Material[];
+};
 type DamageNumberVisual = { sprite: THREE.Sprite; canvas: HTMLCanvasElement; context: CanvasRenderingContext2D; texture: THREE.CanvasTexture; serial: number };
 
 type LocationPalette = {
@@ -203,6 +220,7 @@ export class ThreeCombatRenderer {
   private readonly environmentRoot = new THREE.Group();
   private readonly authoredEnvironmentRoot = new THREE.Group();
   private readonly objectRoot = new THREE.Group();
+  private readonly authoredInteractableRoot = new THREE.Group();
   private readonly dynamicRoot = new THREE.Group();
   private readonly objectiveBeacon = new THREE.Group();
   private readonly objectiveGuide = new THREE.Group();
@@ -223,6 +241,8 @@ export class ThreeCombatRenderer {
     new THREE.PointLight(0x6edce7, 8, 10, 2),
   ];
   private readonly objectVisuals = new Map<string, THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial>>();
+  private readonly authoredInteractables = new Map<string, AuthoredInteractableVisual>();
+  private readonly authoredInteractableRequests = new Set<string>();
   private readonly sectorVisuals = new Map<string, THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>>();
   private readonly enemyVisuals = new Map<number, EnemyVisual>();
   private readonly authoredEnemyRoles = new Set<Enemy['role']>();
@@ -241,6 +261,7 @@ export class ThreeCombatRenderer {
   private damagedVesselScorchDecals: THREE.InstancedMesh | null = null;
   private refineryLoadGeneration = 0;
   private damagedVesselLoadGeneration = 0;
+  private interactableLoadGeneration = 0;
   private readonly projectilePool: ProjectileVisual[] = [];
   private readonly hazardPool: RingVisual[] = [];
   private readonly effectPool: RingVisual[] = [];
@@ -290,13 +311,15 @@ export class ThreeCombatRenderer {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !coarse, alpha: false, powerPreference: 'high-performance' });
     configureGraphicsAssetRenderer(this.renderer);
     this.renderer.domElement.dataset.operatorVisual = 'procedural-loading';
+    this.renderer.domElement.dataset.interactableVisual = 'procedural-loading';
+    this.renderer.domElement.dataset.lootVisual = 'procedural-ready';
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.08;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
 
-    this.scene.add(this.environmentRoot, this.authoredEnvironmentRoot, this.objectRoot, this.dynamicRoot, this.playerRoot);
+    this.scene.add(this.environmentRoot, this.authoredEnvironmentRoot, this.objectRoot, this.authoredInteractableRoot, this.dynamicRoot, this.playerRoot);
     this.dynamicRoot.add(this.objectiveBeacon, this.objectiveGuide);
     this.objectiveGuideMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.objectiveGuideMesh.count = 0;
@@ -421,6 +444,7 @@ export class ThreeCombatRenderer {
   dispose() {
     this.disposed = true;
     this.clearAuthoredRefineryEnvironment();
+    this.clearAuthoredInteractables();
     if (this.authoredOperatorRig && this.weaponPivot.parent === this.authoredOperatorRig.weaponSocket) {
       this.playerRoot.add(this.weaponPivot);
     }
@@ -444,6 +468,14 @@ export class ThreeCombatRenderer {
       visual.authoredOwnedMaterials.forEach(material => material.dispose());
       visual.authoredOwnedMaterials = [];
       visual.authoredMaterials = [];
+    }
+    for (const visual of this.groundLootPool) {
+      visual.assetInstance?.release();
+      visual.assetInstance = null;
+      visual.authoredRoot = null;
+      visual.ownedMaterials.forEach(material => material.dispose());
+      visual.ownedMaterials = [];
+      visual.accentMaterials = [];
     }
     for (const visual of this.damageNumberPool) visual.texture.dispose();
     this.damageNumberPool.length = 0;
@@ -1458,6 +1490,7 @@ export class ThreeCombatRenderer {
     this.environmentSignature = signature;
 
     this.clearAuthoredRefineryEnvironment();
+    this.clearAuthoredInteractables();
     this.proceduralRefineryVisuals.length = 0;
     disposeTree(this.environmentRoot);
     this.environmentRoot.clear();
@@ -1620,6 +1653,83 @@ export class ThreeCombatRenderer {
     }
   }
 
+  private clearAuthoredInteractables() {
+    this.interactableLoadGeneration += 1;
+    for (const visual of this.authoredInteractables.values()) {
+      visual.instance.release();
+      visual.ownedMaterials.forEach(material => material.dispose());
+    }
+    this.authoredInteractables.clear();
+    this.authoredInteractableRequests.clear();
+    this.authoredInteractableRoot.clear();
+    this.renderer.domElement.dataset.interactableVisual = 'procedural-loading';
+    delete this.renderer.domElement.dataset.interactableAssets;
+    delete this.renderer.domElement.dataset.interactableFallback;
+  }
+
+  private async loadAuthoredInteractable(object: CombatObject) {
+    if (this.authoredInteractableRequests.has(object.id)) return;
+    const family = object.kind === 'salvageNode'
+      ? INTERACTABLE_ASSET_FAMILIES.salvage
+      : panelObject(object)
+        ? INTERACTABLE_ASSET_FAMILIES.control
+        : null;
+    if (!family) return;
+    const spec = selectGraphicsAssetSpec(family, this.coarse ? 0.55 : 1);
+    if (!spec) return;
+
+    this.authoredInteractableRequests.add(object.id);
+    const generation = this.interactableLoadGeneration;
+    try {
+      const instance = await instantiateGraphicsAsset(spec);
+      if (this.disposed || generation !== this.interactableLoadGeneration) {
+        instance.release();
+        return;
+      }
+
+      const root = instance.root;
+      const ownedMaterials: THREE.Material[] = [];
+      const statusMaterials: THREE.MeshStandardMaterial[] = [];
+      root.traverse(child => {
+        const mesh = child as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        const material = Array.isArray(mesh.material) ? null : mesh.material;
+        if (material instanceof THREE.MeshStandardMaterial && material.name.includes('interactable-status-emissive')) {
+          const cloned = material.clone();
+          mesh.material = cloned;
+          ownedMaterials.push(cloned);
+          statusMaterials.push(cloned);
+        }
+      });
+      root.updateMatrixWorld(true);
+      const bounds = new THREE.Box3().setFromObject(root);
+      if (!bounds.isEmpty()) {
+        const center = bounds.getCenter(new THREE.Vector3());
+        root.position.x -= center.x;
+        root.position.z -= center.z;
+        root.position.y -= bounds.min.y;
+      }
+      root.name = `authored-interactable-${object.id}`;
+      this.authoredInteractableRoot.add(root);
+      this.authoredInteractables.set(object.id, { instance, root, assetId: spec.id, statusMaterials, ownedMaterials });
+
+      const loaded = new Set((this.renderer.domElement.dataset.interactableAssets ?? '').split(',').filter(Boolean));
+      loaded.add(spec.id);
+      this.renderer.domElement.dataset.interactableAssets = [...loaded].sort().join(',');
+      this.renderer.domElement.dataset.interactableVisual = 'authored';
+      this.renderer.domElement.dataset.interactableMode = 'control-terminal+salvage-tag-node';
+    } catch (error) {
+      if (this.disposed || generation !== this.interactableLoadGeneration) return;
+      const fallback = new Set((this.renderer.domElement.dataset.interactableFallback ?? '').split(',').filter(Boolean));
+      fallback.add(object.kind === 'salvageNode' ? 'salvage' : 'control');
+      this.renderer.domElement.dataset.interactableFallback = [...fallback].sort().join(',');
+      this.renderer.domElement.dataset.interactableVisual = 'procedural-fallback';
+      console.warn(`Authored interactable asset failed to load for ${object.id}; keeping procedural fallback.`, error);
+    }
+  }
+
   private syncObjects(state: SimState) {
     const activeIds = new Set<string>();
     for (const object of state.objects) {
@@ -1646,8 +1756,11 @@ export class ThreeCombatRenderer {
         }
         this.objectRoot.add(mesh);
         this.objectVisuals.set(object.id, mesh);
+        if (panelObject(object)) void this.loadAuthoredInteractable(object);
       }
-      mesh.visible = object.active;
+
+      const authored = this.authoredInteractables.get(object.id);
+      mesh.visible = object.active && !authored;
       mesh.position.set(scaled(object.x + object.w / 2), mesh.geometry.parameters.height / 2, scaled(object.y + object.h / 2));
       mesh.material.color.setHex(objectColor(object));
       mesh.material.emissive.setHex(object.exposed ? 0xd69b4d : 0x000000);
@@ -1662,8 +1775,22 @@ export class ThreeCombatRenderer {
       if (footprint) footprint.material.opacity = object.active ? (object.material === 'bulkhead' ? 0.48 : 0.3) : 0;
       const hpRatio = object.maxHp > 0 ? THREE.MathUtils.clamp(object.hp / object.maxHp, 0.18, 1) : 1;
       mesh.scale.y = object.destructible && object.maxHp < 9000 ? 0.72 + hpRatio * 0.28 : 1;
+
+      if (authored) {
+        authored.root.visible = object.active;
+        authored.root.position.set(scaled(objectCenterX), 0, scaled(objectCenterY));
+        const footprintScale = THREE.MathUtils.clamp(scaled(Math.max(object.w, object.h)) * 0.82, 0.72, 1.08);
+        authored.root.scale.setScalar(object.kind === 'salvageNode' ? Math.max(0.82, footprintScale) : footprintScale);
+        const statusColor = object.exposed ? 0x82c58c : objectColor(object);
+        for (const material of authored.statusMaterials) {
+          material.color.setHex(statusColor);
+          material.emissive.setHex(statusColor);
+          material.emissiveIntensity = object.exposed ? 0.42 : 1.0 + Math.sin(state.time * 4.5 + objectCenterX * 0.01) * 0.16;
+        }
+      }
     }
     for (const [id, mesh] of this.objectVisuals) if (!activeIds.has(id)) mesh.visible = false;
+    for (const [id, visual] of this.authoredInteractables) if (!activeIds.has(id)) visual.root.visible = false;
   }
 
   private syncObjectiveBeacon(state: SimState, mission: Contract) {
@@ -2310,6 +2437,60 @@ export class ThreeCombatRenderer {
     for (let index = count; index < this.projectilePool.length; index += 1) this.projectilePool[index].root.visible = false;
   }
 
+  private async loadAuthoredGroundLoot(visual: GroundLootVisual) {
+    if (visual.assetRequested) return;
+    visual.assetRequested = true;
+    const spec = selectGraphicsAssetSpec(PICKUP_ASSET_FAMILY, this.coarse ? 0.55 : 1);
+    if (!spec) return;
+
+    try {
+      const instance = await instantiateGraphicsAsset(spec);
+      if (this.disposed) {
+        instance.release();
+        return;
+      }
+      const root = instance.root;
+      const ownedMaterials: THREE.Material[] = [];
+      const accentMaterials: THREE.MeshStandardMaterial[] = [];
+      root.traverse(child => {
+        const mesh = child as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        const material = Array.isArray(mesh.material) ? null : mesh.material;
+        if (material instanceof THREE.MeshStandardMaterial && material.name.includes('pickup-accent-emissive')) {
+          const cloned = material.clone();
+          mesh.material = cloned;
+          ownedMaterials.push(cloned);
+          accentMaterials.push(cloned);
+        }
+      });
+      root.updateMatrixWorld(true);
+      const bounds = new THREE.Box3().setFromObject(root);
+      if (!bounds.isEmpty()) {
+        const center = bounds.getCenter(new THREE.Vector3());
+        root.position.x -= center.x;
+        root.position.z -= center.z;
+        root.position.y -= bounds.min.y;
+      }
+      root.name = 'authored-ground-loot';
+      visual.root.add(root);
+      visual.assetInstance = instance;
+      visual.authoredRoot = root;
+      visual.accentMaterials = accentMaterials;
+      visual.ownedMaterials = ownedMaterials;
+      visual.core.visible = false;
+      this.renderer.domElement.dataset.lootVisual = 'authored';
+      this.renderer.domElement.dataset.lootAsset = spec.id;
+      this.renderer.domElement.dataset.lootReadability = 'authored-capsule+rarity-ring+beam';
+    } catch (error) {
+      if (this.disposed) return;
+      visual.core.visible = true;
+      this.renderer.domElement.dataset.lootVisual = 'procedural-fallback';
+      console.warn('Authored recovery pickup failed to load; keeping procedural fallback.', error);
+    }
+  }
+
   private syncGroundLoot(state: SimState) {
     let count = 0;
     for (const drop of state.groundLoot) {
@@ -2320,9 +2501,36 @@ export class ThreeCombatRenderer {
         core.position.y = 0.52;
         const ring = new THREE.Mesh(this.groundLootRingGeometry, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, depthWrite: false })); ring.rotation.x = Math.PI / 2; ring.position.y = 0.06;
         const beam = new THREE.Mesh(this.groundLootBeamGeometry, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.22, depthWrite: false })); beam.position.y = 0.9;
-        root.add(core, ring, beam); this.dynamicRoot.add(root); this.groundLootPool.push({ root, core, ring, beam });
+        root.add(core, ring, beam);
+        this.dynamicRoot.add(root);
+        const visual: GroundLootVisual = { root, core, ring, beam, assetInstance: null, authoredRoot: null, accentMaterials: [], ownedMaterials: [], assetRequested: false };
+        this.groundLootPool.push(visual);
+        void this.loadAuthoredGroundLoot(visual);
       }
-      const visual = this.groundLootPool[count++]; const color = lootColor(drop.rarity); visual.root.visible = true; visual.root.position.set(scaled(drop.x), 0, scaled(drop.y)); visual.root.rotation.y = state.time * 0.8 + drop.enemyId; visual.core.material.color.setHex(color); visual.core.material.emissive.setHex(color); visual.ring.material.color.setHex(color); visual.beam.material.color.setHex(color); const pulse = 1 + Math.sin(state.time * 7 + drop.enemyId) * 0.12; visual.core.scale.setScalar(drop.rarity === 'Singular' ? 1.35 * pulse : drop.rarity === 'Prototype' ? 1.15 * pulse : pulse); visual.ring.scale.setScalar(drop.rarity === 'Singular' ? 1.4 : drop.rarity === 'Prototype' ? 1.18 : 1); visual.beam.material.opacity = drop.rarity === 'Singular' ? 0.48 : drop.rarity === 'Prototype' ? 0.34 : 0.2;
+      const visual = this.groundLootPool[count++];
+      const color = lootColor(drop.rarity);
+      visual.root.visible = true;
+      visual.root.position.set(scaled(drop.x), 0, scaled(drop.y));
+      visual.root.rotation.y = state.time * 0.8 + drop.enemyId;
+      visual.core.visible = !visual.authoredRoot;
+      visual.core.material.color.setHex(color);
+      visual.core.material.emissive.setHex(color);
+      visual.ring.material.color.setHex(color);
+      visual.beam.material.color.setHex(color);
+      for (const material of visual.accentMaterials) {
+        material.color.setHex(color);
+        material.emissive.setHex(color);
+        material.emissiveIntensity = drop.rarity === 'Singular' ? 1.65 : drop.rarity === 'Prototype' ? 1.35 : 1.05;
+      }
+      const pulse = 1 + Math.sin(state.time * 7 + drop.enemyId) * 0.12;
+      visual.core.scale.setScalar(drop.rarity === 'Singular' ? 1.35 * pulse : drop.rarity === 'Prototype' ? 1.15 * pulse : pulse);
+      if (visual.authoredRoot) {
+        const authoredScale = drop.rarity === 'Singular' ? 1.16 : drop.rarity === 'Prototype' ? 1.08 : 1;
+        visual.authoredRoot.scale.setScalar(authoredScale * (0.98 + Math.sin(state.time * 5 + drop.enemyId) * 0.025));
+        visual.authoredRoot.position.y = 0.10 + Math.sin(state.time * 4.5 + drop.enemyId) * 0.035;
+      }
+      visual.ring.scale.setScalar(drop.rarity === 'Singular' ? 1.4 : drop.rarity === 'Prototype' ? 1.18 : 1);
+      visual.beam.material.opacity = drop.rarity === 'Singular' ? 0.48 : drop.rarity === 'Prototype' ? 0.34 : 0.2;
     }
     for (let index = count; index < this.groundLootPool.length; index += 1) this.groundLootPool[index].root.visible = false;
   }
