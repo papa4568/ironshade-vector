@@ -574,9 +574,9 @@ function chooseRecoverySlots(profile: PlayerProfile, count: number, random: () =
   return chosen;
 }
 
-export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep: boolean, _fabricationLevel = 0, source: { deepTarget?: string; location?: string; locationName?: string; faction?: EquipmentFaction; factionReputation?: number; operationTier?: number; maxRecoveryLevel?: number; combatEffectiveness?: number; threatBudget?: number; eliteProtocolCount?: number; environmentalComplications?: number; optionalObjectives?: number; actualDepth?: boolean; directiveQualityBonus?: number; directiveSingularChanceBonus?: number; directiveRecoveryLevelBonus?: number } = {}, fieldLoot?: GroundLootReceipt[]): VictoryReward {
+export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep: boolean, _fabricationLevel = 0, source: { deepTarget?: string; location?: string; locationName?: string; faction?: EquipmentFaction; factionReputation?: number; operationTier?: number; maxRecoveryLevel?: number; combatEffectiveness?: number; threatBudget?: number; eliteProtocolCount?: number; environmentalComplications?: number; optionalObjectives?: number; actualDepth?: boolean; xpFloor?: number; directiveQualityBonus?: number; directiveSingularChanceBonus?: number; directiveRecoveryLevelBonus?: number } = {}, fieldLoot?: GroundLootReceipt[]): VictoryReward {
   const rawXp = (deep ? 250 : 145) + Math.min(deep ? 90 : 45, Math.round(telemetry.damageDealt / 22));
-  const requestedXp = Math.round(rawXp * (1 + Math.max(0, (source.combatEffectiveness ?? 1) - 1) * 0.65));
+  const requestedXp = Math.max(Math.max(0, Math.round(source.xpFloor ?? 0)), Math.round(rawXp * (1 + Math.max(0, (source.combatEffectiveness ?? 1) - 1) * 0.65)));
   const cappedProfileXp = Math.max(0, Math.min(maxLevelXp, profile.xp));
   const xpGained = Math.max(0, Math.min(requestedXp, maxLevelXp - cappedProfileXp));
   const nextXp = cappedProfileXp + xpGained;
