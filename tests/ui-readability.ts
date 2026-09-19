@@ -11,6 +11,7 @@ function assert(condition: unknown, message: string): asserts condition {
 const armory = read('src/components/Armory.tsx');
 const combat = read('src/components/GameCanvas.tsx');
 const sim = read('src/game/sim.ts');
+const classSkills = read('src/game/classSkills.ts');
 const renderer = read('src/game/threeCombatRenderer.ts');
 const css = read('src/readability.css');
 const shipHub = read('src/components/ShipHub.tsx');
@@ -124,9 +125,9 @@ assert(classSelect.includes('signatureName') && classSelect.includes('combatLoop
 assert(classSelectCss.includes('.class-choice-grid') && classSelectCss.includes('.class-level-one-kit') && classSelectCss.includes('.class-card-kit') && classSelectCss.includes('.class-mechanic-hud') && classSelectCss.includes('.game-root.class-vanguard') && classSelectCss.includes('.game-root.class-vector') && classSelectCss.includes('.game-root.class-systems') && classSelectCss.includes('max-height: 650px') && classSelectCss.includes('safe-area-inset-left'), 'Class intake/skill-kit/combat feedback styling is missing class theming, landscape, or safe-area coverage.');
 assert(combat.includes('getClassMechanicStatus') && combat.includes('class-mechanic-hud') && combat.includes('Class signature status'), 'Combat HUD is missing live class signature feedback.');
 assert(combat.includes('getAbilityKit') && combat.includes('abilityKit.map') && !combat.includes('abilityMeta.map'), 'Combat controls are not rendering the active class-specific skill kit.');
-assert(sim.includes("shortName: 'RUSH'") && sim.includes("shortName: 'BREAK'") && sim.includes("shortName: 'GUARD'") && sim.includes("shortName: 'SHIFT'") && sim.includes("shortName: 'LOCK'") && sim.includes("shortName: 'SPLIT'") && sim.includes("shortName: 'WELL'") && sim.includes("shortName: 'HACK'") && sim.includes("shortName: 'CHAIN'"), 'One or more level-one class skill kits are missing.');
+assert(classSkills.includes("shortName: 'RUSH'") && classSkills.includes("shortName: 'BREAK'") && classSkills.includes("shortName: 'GUARD'") && classSkills.includes("shortName: 'SHIFT'") && classSkills.includes("shortName: 'LOCK'") && classSkills.includes("shortName: 'SPLIT'") && classSkills.includes("shortName: 'WELL'") && classSkills.includes("shortName: 'HACK'") && classSkills.includes("shortName: 'CHAIN'"), 'One or more level-one class skill kits are missing.');
 assert(sim.includes("currentWeapon: build.operatorClass === 'vanguard' ? 'breacher'") && sim.includes("build.operatorClass === 'vector' ? 'rail'"), 'Class deployments do not begin with distinct preferred weapons in hand.');
-assert(armory.includes('Class Skill Lenses') && armory.includes('activeAbilityKit') && armory.includes('LV1 KIT //'), 'Build Bay does not surface class-specific skills or lens mapping.');
+assert(armory.includes('Class Skill Lenses') && armory.includes('activeAbilityKit') && armory.includes('LV1 KIT //') && armory.includes("../game/classSkills"), 'Build Bay does not surface class-specific skills through the lightweight class-skill module.');
 assert(browserSmoke.includes('BROWSER_CLASS_SELECTION_PASS') && browserSmoke.includes('BROWSER_CLASS_KIT_PASS') && browserSmoke.includes('Breach Rush') && browserSmoke.includes('Fracture Tag') && browserSmoke.includes('Bulwark Pulse'), 'Browser E2E does not exercise first-run class selection and the resulting Vanguard skill kit.');
 assert(androidSmoke.includes('ANDROID_CLASS_SELECTION_PASS') && androidSmoke.includes('ANDROID_CLASS_KIT_PASS') && androidSmoke.includes('Breach Rush') && androidSmoke.includes('Fracture Tag') && androidSmoke.includes('Bulwark Pulse'), 'Android smoke does not exercise first-run class selection and the resulting Vanguard skill kit.');
 assert(!app.includes('LV15 Vector Specialization ready') && !app.includes('LV15 // VECTOR SPECIALIZATION + GENERATION VI'), 'Mission debrief still hardcodes Vector specialization copy for every class.');
