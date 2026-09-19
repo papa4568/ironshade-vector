@@ -10,6 +10,7 @@ function assert(condition: unknown, message: string): asserts condition {
 
 const armory = read('src/components/Armory.tsx');
 const combat = read('src/components/GameCanvas.tsx');
+const sim = read('src/game/sim.ts');
 const renderer = read('src/game/threeCombatRenderer.ts');
 const css = read('src/readability.css');
 const shipHub = read('src/components/ShipHub.tsx');
@@ -119,9 +120,13 @@ assert(classBuildCss.includes('.operator-class-grid') && classBuildCss.includes(
 assert(statsPanel.includes('build-class-summary') && statsPanel.includes('gearResonanceForProfile'), 'Player Stats does not expose the active class and gear resonance state.');
 assert(app.includes("type Screen = 'class'") && app.includes("initialGameState.profile.classSelectionComplete ? 'ship' : 'class'") && app.includes('ClassSelectScreen'), 'Fresh profiles are not routed through a dedicated class selection screen.');
 assert(classSelect.includes('Choose your field doctrine') && classSelect.includes('OPEN ARSENAL') && classSelect.includes('Select ${definition.name} class') && classSelect.includes('Confirm {selected.name}'), 'Class intake is missing explicit selection, build-freedom guidance, or confirmation controls.');
-assert(classSelect.includes('signatureName') && classSelect.includes('combatLoop') && classSelect.includes('STARTING RESONANCE') && classSelect.includes('operatorClassOnboardingRecovery') && classSelect.includes('FIRST RECOVERY'), 'Class intake does not explain signature gameplay loops, starting resonance, or doctrine-aligned first recovery.');
-assert(classSelectCss.includes('.class-choice-grid') && classSelectCss.includes('.class-mechanic-hud') && classSelectCss.includes('max-height: 650px') && classSelectCss.includes('safe-area-inset-left'), 'Class intake/combat feedback styling is missing landscape or safe-area coverage.');
+assert(classSelect.includes('signatureName') && classSelect.includes('combatLoop') && classSelect.includes('STARTING RESONANCE') && classSelect.includes('operatorClassOnboardingRecovery') && classSelect.includes('FIRST RECOVERY') && classSelect.includes('LEVEL 1 ACTIVE KIT') && classSelect.includes('classAbilityKits'), 'Class intake does not explain signature gameplay loops, unique level-one active skills, starting resonance, or doctrine-aligned first recovery.');
+assert(classSelectCss.includes('.class-choice-grid') && classSelectCss.includes('.class-level-one-kit') && classSelectCss.includes('.class-card-kit') && classSelectCss.includes('.class-mechanic-hud') && classSelectCss.includes('max-height: 650px') && classSelectCss.includes('safe-area-inset-left'), 'Class intake/skill-kit/combat feedback styling is missing landscape or safe-area coverage.');
 assert(combat.includes('getClassMechanicStatus') && combat.includes('class-mechanic-hud') && combat.includes('Class signature status'), 'Combat HUD is missing live class signature feedback.');
+assert(combat.includes('getAbilityKit') && combat.includes('abilityKit.map') && !combat.includes('abilityMeta.map'), 'Combat controls are not rendering the active class-specific skill kit.');
+assert(sim.includes("shortName: 'RUSH'") && sim.includes("shortName: 'BREAK'") && sim.includes("shortName: 'GUARD'") && sim.includes("shortName: 'SHIFT'") && sim.includes("shortName: 'LOCK'") && sim.includes("shortName: 'SPLIT'") && sim.includes("shortName: 'WELL'") && sim.includes("shortName: 'HACK'") && sim.includes("shortName: 'CHAIN'"), 'One or more level-one class skill kits are missing.');
+assert(sim.includes("currentWeapon: build.operatorClass === 'vanguard' ? 'breacher'") && sim.includes("build.operatorClass === 'vector' ? 'rail'"), 'Class deployments do not begin with distinct preferred weapons in hand.');
+assert(armory.includes('Class Skill Lenses') && armory.includes('activeAbilityKit') && armory.includes('LV1 KIT //'), 'Build Bay does not surface class-specific skills or lens mapping.');
 assert(browserSmoke.includes('BROWSER_CLASS_SELECTION_PASS') && browserSmoke.includes('Select Vanguard class') && browserSmoke.includes('Confirm Vanguard'), 'Browser E2E does not exercise first-run class selection.');
 assert(androidSmoke.includes('ANDROID_CLASS_SELECTION_PASS') && androidSmoke.includes('Select Vanguard class') && androidSmoke.includes('Confirm Vanguard'), 'Android smoke does not exercise first-run class selection.');
 assert(!app.includes('LV15 Vector Specialization ready') && !app.includes('LV15 // VECTOR SPECIALIZATION + GENERATION VI'), 'Mission debrief still hardcodes Vector specialization copy for every class.');
