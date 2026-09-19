@@ -744,6 +744,48 @@ function spinHabitatMaterials() {
       },
       emissiveFactor: [0.92, 0.52, 0.14],
     },
+    {
+      name: 'spin-habitat-rim-plating',
+      pbrMetallicRoughness: {
+        baseColorFactor: [0.31, 0.44, 0.37, 1],
+        metallicFactor: 0.68,
+        roughnessFactor: 0.48,
+      },
+    },
+    {
+      name: 'spin-habitat-spoke-structure',
+      pbrMetallicRoughness: {
+        baseColorFactor: [0.055, 0.095, 0.11, 1],
+        metallicFactor: 0.92,
+        roughnessFactor: 0.30,
+      },
+    },
+    {
+      name: 'spin-habitat-spoke-emissive',
+      pbrMetallicRoughness: {
+        baseColorFactor: [0.035, 0.18, 0.24, 1],
+        metallicFactor: 0.38,
+        roughnessFactor: 0.18,
+      },
+      emissiveFactor: [0.12, 0.72, 0.90],
+    },
+    {
+      name: 'spin-habitat-axis-shell',
+      pbrMetallicRoughness: {
+        baseColorFactor: [0.62, 0.71, 0.69, 1],
+        metallicFactor: 0.76,
+        roughnessFactor: 0.30,
+      },
+    },
+    {
+      name: 'spin-habitat-axis-emissive',
+      pbrMetallicRoughness: {
+        baseColorFactor: [0.12, 0.28, 0.30, 1],
+        metallicFactor: 0.34,
+        roughnessFactor: 0.16,
+      },
+      emissiveFactor: [0.52, 0.92, 0.96],
+    },
   ];
 }
 
@@ -752,15 +794,15 @@ function spinHabitatNodes(kind, lod) {
 
   if (kind === 'ringSegment') {
     const nodes = [
-      { name: 'spin-habitat-ring-segment-deck', mesh: 0, translation: [0, 0.30, 0], scale: [3.40, 0.60, 1.30] },
-      { name: 'spin-habitat-ring-segment-inner-rail', mesh: 1, translation: [0, 0.86, -1.06], scale: [3.15, 0.30, 0.18] },
-      { name: 'spin-habitat-ring-segment-outer-rail', mesh: 1, translation: [0, 0.86, 1.06], scale: [3.15, 0.30, 0.18] },
+      { name: 'spin-habitat-ring-segment-deck', mesh: 4, translation: [0, 0.30, 0], scale: [3.40, 0.60, 1.30] },
+      { name: 'spin-habitat-ring-segment-inner-rail', mesh: 0, translation: [0, 0.86, -1.06], scale: [3.15, 0.30, 0.18] },
+      { name: 'spin-habitat-ring-segment-outer-rail', mesh: 0, translation: [0, 0.86, 1.06], scale: [3.15, 0.30, 0.18] },
       { name: 'spin-habitat-ring-segment-wayfinding', mesh: 2, translation: [0, 0.64, 1.31], scale: [2.45, 0.08, 0.06] },
     ];
     if (detail) {
       nodes.push(
-        { name: 'spin-habitat-ring-segment-rib-left', mesh: 0, translation: [-2.28, 1.06, 0], scale: [0.20, 1.52, 1.28] },
-        { name: 'spin-habitat-ring-segment-rib-right', mesh: 0, translation: [2.28, 1.06, 0], scale: [0.20, 1.52, 1.28] },
+        { name: 'spin-habitat-ring-segment-rib-left', mesh: 4, translation: [-2.28, 1.06, 0], scale: [0.20, 1.52, 1.28] },
+        { name: 'spin-habitat-ring-segment-rib-right', mesh: 4, translation: [2.28, 1.06, 0], scale: [0.20, 1.52, 1.28] },
         { name: 'spin-habitat-ring-segment-service-strip', mesh: 3, translation: [1.18, 0.72, -1.30], scale: [0.92, 0.08, 0.06] },
       );
     }
@@ -770,16 +812,16 @@ function spinHabitatNodes(kind, lod) {
 
   if (kind === 'spokeTruss') {
     const nodes = [
-      { name: 'spin-habitat-spoke-truss-main', mesh: 0, translation: [0, 1.16, 0], scale: [4.50, 0.34, 0.44] },
-      { name: 'spin-habitat-spoke-truss-upper', mesh: 1, translation: [0, 1.72, 0], scale: [4.05, 0.18, 0.24] },
-      { name: 'spin-habitat-spoke-truss-lower', mesh: 1, translation: [0, 0.60, 0], scale: [4.05, 0.18, 0.24] },
-      { name: 'spin-habitat-spoke-truss-status', mesh: 2, translation: [1.55, 1.16, 0.28], scale: [0.70, 0.10, 0.06] },
+      { name: 'spin-habitat-spoke-truss-main', mesh: 5, translation: [0, 1.16, 0], scale: [4.50, 0.28, 0.34] },
+      { name: 'spin-habitat-spoke-truss-upper', mesh: 5, translation: [0, 1.74, 0], scale: [4.05, 0.14, 0.18] },
+      { name: 'spin-habitat-spoke-truss-lower', mesh: 5, translation: [0, 0.58, 0], scale: [4.05, 0.14, 0.18] },
+      { name: 'spin-habitat-spoke-truss-status', mesh: 6, translation: [1.55, 1.16, 0.23], scale: [0.70, 0.08, 0.05] },
     ];
     if (detail) {
       nodes.push(
-        { name: 'spin-habitat-spoke-truss-cross-brace-a', mesh: 0, translation: [-1.46, 1.16, 0], scale: [0.18, 1.46, 0.48] },
-        { name: 'spin-habitat-spoke-truss-cross-brace-b', mesh: 0, translation: [1.46, 1.16, 0], scale: [0.18, 1.46, 0.48] },
-        { name: 'spin-habitat-spoke-truss-service-light', mesh: 3, translation: [-1.52, 1.40, -0.28], scale: [0.38, 0.08, 0.06] },
+        { name: 'spin-habitat-spoke-truss-cross-brace-a', mesh: 5, translation: [-1.46, 1.16, 0], scale: [0.14, 1.52, 0.34] },
+        { name: 'spin-habitat-spoke-truss-cross-brace-b', mesh: 5, translation: [1.46, 1.16, 0], scale: [0.14, 1.52, 0.34] },
+        { name: 'spin-habitat-spoke-truss-service-light', mesh: 6, translation: [-1.52, 1.40, -0.22], scale: [0.38, 0.06, 0.05] },
       );
     }
     nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
@@ -788,16 +830,18 @@ function spinHabitatNodes(kind, lod) {
 
   if (kind === 'axisHub') {
     const nodes = [
-      { name: 'spin-habitat-axis-hub-foot', mesh: 0, translation: [0, 0.24, 0], scale: [2.30, 0.48, 2.30] },
-      { name: 'spin-habitat-axis-hub-core', mesh: 1, translation: [0, 1.52, 0], scale: [1.28, 2.56, 1.28] },
-      { name: 'spin-habitat-axis-hub-collar', mesh: 0, translation: [0, 2.84, 0], scale: [1.92, 0.26, 1.92] },
-      { name: 'spin-habitat-axis-hub-beacon', mesh: 2, translation: [0, 3.22, 0], scale: [0.42, 0.52, 0.42] },
+      { name: 'spin-habitat-axis-hub-foot', mesh: 7, translation: [0, 0.24, 0], scale: [2.30, 0.48, 2.30] },
+      { name: 'spin-habitat-axis-hub-core', mesh: 7, translation: [0, 1.52, 0], scale: [1.18, 2.74, 1.18] },
+      { name: 'spin-habitat-axis-hub-collar', mesh: 8, translation: [0, 2.92, 0], scale: [1.92, 0.20, 1.92] },
+      { name: 'spin-habitat-axis-hub-beacon', mesh: 8, translation: [0, 3.42, 0], scale: [0.36, 0.70, 0.36] },
     ];
     if (detail) {
       nodes.push(
-        { name: 'spin-habitat-axis-hub-service-ring', mesh: 0, translation: [0, 1.30, 0], scale: [1.66, 0.16, 1.66] },
+        { name: 'spin-habitat-axis-hub-service-ring', mesh: 8, translation: [0, 1.30, 0], scale: [1.66, 0.12, 1.66] },
         { name: 'spin-habitat-axis-hub-control-bank', mesh: 1, translation: [0.78, 1.12, 0], scale: [0.46, 0.72, 0.82] },
-        { name: 'spin-habitat-axis-hub-control-screen', mesh: 3, translation: [1.03, 1.34, 0], scale: [0.06, 0.34, 0.54] },
+        { name: 'spin-habitat-axis-hub-control-screen', mesh: 8, translation: [1.03, 1.34, 0], scale: [0.06, 0.34, 0.54] },
+        { name: 'spin-habitat-axis-hub-fin-left', mesh: 7, translation: [0, 2.08, -1.28], scale: [0.22, 1.18, 0.52] },
+        { name: 'spin-habitat-axis-hub-fin-right', mesh: 7, translation: [0, 2.08, 1.28], scale: [0.22, 1.18, 0.52] },
       );
     }
     nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
