@@ -83,7 +83,7 @@ export default function ClassSelectScreen({ profile, onConfirm }: Props) {
         <aside>
           <small>GOOD TO KNOW</small>
           <b>Gear is not class-locked</b>
-          <span>You can rebuild your loadout aboard Quiet Signal after intake.</span>
+          <span>Weapons and equipment stay open after intake; class mainly changes skills, signature mechanics, and synergy.</span>
         </aside>
       </header>
 
@@ -93,7 +93,7 @@ export default function ClassSelectScreen({ profile, onConfirm }: Props) {
             <small>STEP 1</small>
             <h2 id="class-choice-heading">Choose the role that sounds fun</h2>
           </div>
-          <span>Vanguard is the most forgiving first pick. All three are fully viable.</span>
+          <span>All three are fully viable. Pick the combat loop you want to learn first.</span>
         </div>
 
         <div className="class-choice-grid">
@@ -202,7 +202,7 @@ export default function ClassSelectScreen({ profile, onConfirm }: Props) {
               <span>Specializations deepen the role later; choosing a class does not spend a progression point.</span>
             </article>
             <article>
-              <small>OPEN BUILD SYSTEM</small>
+              <small>BUILD FREEDOM</small>
               <b>{selected.branchAffinities.join(' + ')} affinity</b>
               <span>These branches synergize naturally, but you can still use every weapon family and Development Network branch.</span>
             </article>
@@ -213,7 +213,7 @@ export default function ClassSelectScreen({ profile, onConfirm }: Props) {
           <div>
             <small>STEP 3</small>
             <b>Ready to start as {selected.name}?</b>
-            <span>You can change gear freely later. Class recalibration remains available in Build Bay.</span>
+            <span>You can change gear freely later. Class recalibration remains available in Build → Progression.</span>
           </div>
           <button className="class-confirm" type="button" aria-label={`Confirm ${selected.name}`} onClick={() => onConfirm(selectedId)}>
             <span>Play {selected.name}</span>
