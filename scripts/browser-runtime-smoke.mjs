@@ -552,6 +552,10 @@ try {
         && canvas?.dataset.environmentSpinSource === 'sector-A-gravity'
         && canvas?.dataset.environmentZoneIdentity === 'rim:plated-green-deck|spoke:skeletal-cyan-truss|axis:bright-stationary-tower'
         && canvas?.dataset.readabilityLanguage === 'rim-plated-green+spoke-skeletal-cyan+axis-bright-stationary'
+        && canvas?.dataset.environmentSpindownSource === 'sector-B-transfer-gravity'
+        && canvas?.dataset.environmentVfx === 'spindown-brake-arcs+axis-warning-pulse'
+        && ['idle', 'active'].includes(canvas?.dataset.environmentSpindown ?? '')
+        && Number.isFinite(Number(canvas?.dataset.environmentSpindownIntensity))
         && Number.isFinite(Number(canvas?.dataset.environmentSpinPhase));
     })()`, 'Spin Habitat authored rotating architecture', 20_000);
     const firstPhase = Number(await evaluate(`[...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-spin-habitat')?.dataset.environmentSpinPhase`));
@@ -560,7 +564,18 @@ try {
     if (!Number.isFinite(firstPhase) || !Number.isFinite(nextPhase) || Math.abs(nextPhase - firstPhase) < 0.015) {
       throw new Error(`Spin Habitat rotation phase did not advance: ${firstPhase} -> ${nextPhase}`);
     }
-    console.log(`BROWSER_SPIN_HABITAT_PASS viewport=${viewportMode} identity=rim/spoke/axis phase=${firstPhase.toFixed(3)}->${nextPhase.toFixed(3)}`);
+    const spindownState = await evaluate(`(() => {
+      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-spin-habitat');
+      return {
+        mode: canvas?.dataset.environmentSpindown ?? 'missing',
+        intensity: Number(canvas?.dataset.environmentSpindownIntensity),
+        detail: canvas?.dataset.environmentSpindownDetail ?? 'missing',
+      };
+    })()`);
+    if (!Number.isFinite(spindownState?.intensity)) {
+      throw new Error(`Spin Habitat spindown VFX state was not observable: ${JSON.stringify(spindownState)}`);
+    }
+    console.log(`BROWSER_SPIN_HABITAT_PASS viewport=${viewportMode} identity=rim/spoke/axis vfx=spindown:${spindownState.mode}:${spindownState.detail} phase=${firstPhase.toFixed(3)}->${nextPhase.toFixed(3)}`);
   }
 
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);
