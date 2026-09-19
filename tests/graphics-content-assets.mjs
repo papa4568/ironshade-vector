@@ -15,6 +15,8 @@ const CLASS_BUDGETS = {
   bosses: { maxBytes: 3_500_000, maxTriangles: 60_000 },
   weapons: { maxBytes: 800_000, maxTriangles: 12_000 },
   environments: { maxBytes: 1_200_000, maxTriangles: 20_000 },
+  pickups: { maxBytes: 240_000, maxTriangles: 4_000 },
+  interactables: { maxBytes: 480_000, maxTriangles: 8_000 },
 };
 
 async function collectGlbs(dir) {
@@ -223,6 +225,36 @@ for (const path of glbs) {
     }
   }
 
+  if (top === 'pickups') {
+    const height = runtimeBounds.max.y - runtimeBounds.min.y;
+    const width = runtimeBounds.max.x - runtimeBounds.min.x;
+    assert(height >= 0.35 && height <= 1.2 && width >= 0.4 && width <= 1.4, `${relativePath}: authored pickup is outside mobile gameplay scale`);
+    const nodeNames = new Set((json.nodes ?? []).map(node => node.name).filter(Boolean));
+    for (const required of ['pickup-root', 'pickup-recovery-shell', 'pickup-recovery-core', 'pickup-recovery-beacon']) {
+      assert(nodeNames.has(required), `${relativePath}: authored pickup is missing required node ${required}`);
+    }
+    if (filename.endsWith('-lod1.glb')) assert(nodeNames.has('pickup-recovery-tag'), `${relativePath}: pickup LOD1 is missing recovery tag detail`);
+  }
+
+  if (top === 'interactables') {
+    const height = runtimeBounds.max.y - runtimeBounds.min.y;
+    const width = runtimeBounds.max.x - runtimeBounds.min.x;
+    assert(height >= 0.55 && height <= 2.0 && width >= 0.45 && width <= 1.6, `${relativePath}: authored interactable is outside mobile gameplay scale`);
+    const nodeNames = new Set((json.nodes ?? []).map(node => node.name).filter(Boolean));
+    assert(nodeNames.has('interactable-root'), `${relativePath}: authored interactable is missing interactable-root`);
+    if (filename.includes('control-terminal')) {
+      for (const required of ['interactable-control-base', 'interactable-control-console', 'interactable-control-screen']) {
+        assert(nodeNames.has(required), `${relativePath}: control terminal is missing required node ${required}`);
+      }
+      if (filename.endsWith('-lod1.glb')) assert(nodeNames.has('objective-beacon-mount'), `${relativePath}: control LOD1 is missing objective beacon mount`);
+    } else {
+      for (const required of ['interactable-salvage-base', 'interactable-salvage-case', 'interactable-salvage-tag-emitter']) {
+        assert(nodeNames.has(required), `${relativePath}: salvage tag node is missing required node ${required}`);
+      }
+      if (filename.endsWith('-lod1.glb')) assert(nodeNames.has('interactable-salvage-tag-plate'), `${relativePath}: salvage LOD1 is missing tag plate detail`);
+    }
+  }
+
   if (top === 'weapons') {
     const weaponLength = runtimeBounds.max.x - runtimeBounds.min.x;
     assert(weaponLength >= 0.9 && weaponLength <= 2.4, `${relativePath}: authored weapon length ${weaponLength.toFixed(2)}m is outside gameplay scale`);
@@ -284,6 +316,18 @@ for (const weapon of ['carbine', 'breacher', 'rail']) {
   const lod2 = reportByPath.get(`weapons/weapon-${weapon}-lod2.glb`);
   assert(lod1 && lod2, `${weapon}: weapon LOD1/LOD2 pair missing`);
   assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, `${weapon}: mobile weapon LOD2 must reduce payload and draw surfaces`);
+}
+
+{
+  const lod1 = reportByPath.get('pickups/pickup-recovery-capsule-lod1.glb');
+  const lod2 = reportByPath.get('pickups/pickup-recovery-capsule-lod2.glb');
+  assert(lod1 && lod2 && lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, 'recovery pickup mobile LOD2 must reduce payload and draw surfaces');
+}
+for (const interactableAsset of ['interactable-control-terminal', 'interactable-salvage-tag-node']) {
+  const lod1 = reportByPath.get(`interactables/${interactableAsset}-lod1.glb`);
+  const lod2 = reportByPath.get(`interactables/${interactableAsset}-lod2.glb`);
+  assert(lod1 && lod2, `${interactableAsset}: authored LOD1/LOD2 pair missing`);
+  assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, `${interactableAsset}: mobile LOD2 must reduce payload and draw surfaces`);
 }
 
 const totalBytes = reports.reduce((sum, report) => sum + report.bytes, 0);

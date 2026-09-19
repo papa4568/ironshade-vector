@@ -27,6 +27,11 @@ assert(validateGraphicsAssetSpec(operator).length === 0, 'valid operator GLB con
 assert(operator.triangleBudget === 45_000, 'operator default triangle budget changed unexpectedly');
 assert(operator.compressedByteBudget === 2_500_000, 'operator default payload budget changed unexpectedly');
 
+const pickup = createGraphicsAssetSpec('pickup-recovery-capsule-lod1', 'pickup', '/assets/models/pickups/pickup-recovery-capsule-lod1.glb', 1);
+assert(pickup.triangleBudget === 4_000 && pickup.compressedByteBudget === 240_000, 'pickup budget must remain lightweight for mobile');
+const interactable = createGraphicsAssetSpec('interactable-control-terminal-lod1', 'interactable', '/assets/models/interactables/interactable-control-terminal-lod1.glb', 1);
+assert(interactable.triangleBudget === 8_000 && interactable.compressedByteBudget === 480_000, 'interactable budget must remain bounded for mobile');
+
 const invalidName = createGraphicsAssetSpec('Operator Meridian', 'operator', '/assets/models/operators/operator-meridian-lod0.glb');
 assert(validateGraphicsAssetSpec(invalidName).some(issue => issue.includes('kebab-case')), 'invalid asset id should be rejected');
 
@@ -84,6 +89,12 @@ for (const operatorClass of ['vanguard', 'vector', 'systems']) {
   assert(manifestSource.includes(`operator-${operatorClass}-lod2.glb`), `operator manifest must include class-preserving mobile LOD2 for ${operatorClass}`);
 }
 assert(manifestSource.includes('OPERATOR_CLASS_ASSET_FAMILIES'), 'operator manifest must expose class-specific asset families');
+assert(manifestSource.includes('PICKUP_ASSET_FAMILY'), 'manifest must expose the authored recovery pickup family');
+assert(manifestSource.includes('pickup-recovery-capsule-lod1.glb') && manifestSource.includes('pickup-recovery-capsule-lod2.glb'), 'recovery pickup must preserve adaptive LOD coverage');
+assert(manifestSource.includes('INTERACTABLE_ASSET_FAMILIES'), 'manifest must expose gameplay interactable families');
+for (const interactableAsset of ['interactable-control-terminal', 'interactable-salvage-tag-node']) {
+  assert(manifestSource.includes(`${interactableAsset}-lod1.glb`) && manifestSource.includes(`${interactableAsset}-lod2.glb`), `${interactableAsset} must preserve adaptive LOD coverage`);
+}
 
 for (const asset of ['floor-panel', 'bulkhead', 'processor', 'pipe-rack', 'crate', 'terminal']) {
   assert(manifestSource.includes(`refinery-${asset}-lod1.glb`), `refinery manifest must include authored ${asset} LOD1`);
@@ -130,6 +141,11 @@ assert(rendererSource.includes("dataset.weaponVisual = loaded.length === 3 ? 'au
 assert(rendererSource.includes("dataset.weaponFx = player.currentWeapon === 'rail' ? 'lance'"), 'weapon-specific combat readability language must remain explicit');
 assert(rendererSource.includes("'armor-spark'") && rendererSource.includes("'metal-spark'") && rendererSource.includes("'electrical-flash'"), 'impact effects must preserve target/surface-specific visual language');
 assert(rendererSource.includes('dataset.impactFx'), 'impact FX classification must remain observable for runtime QA');
+assert(rendererSource.includes('PICKUP_ASSET_FAMILY') && rendererSource.includes('loadAuthoredGroundLoot'), 'ground loot must use the authored recovery pickup family');
+assert(rendererSource.includes("'authored-capsule+rarity-ring+beam'"), 'authored loot must retain rarity ring/beam readability support');
+assert(rendererSource.includes('INTERACTABLE_ASSET_FAMILIES') && rendererSource.includes('loadAuthoredInteractable'), 'mission controls and salvage nodes must load authored interactable assets');
+assert(rendererSource.includes("dataset.interactableMode = 'control-terminal+salvage-tag-node'"), 'runtime QA must expose authored interactable coverage');
+assert(rendererSource.includes('this.coarse ? 0.55 : 1'), 'mobile authored props must continue selecting LOD2 on coarse-pointer devices');
 
 assert(rendererSource.includes('REFINERY_ASSET_FAMILIES'), 'showcase environment must load through authored refinery asset families');
 assert(rendererSource.includes('DAMAGED_VESSEL_ASSET_FAMILIES'), 'Damaged Vessel second pass must load through authored asset families');
@@ -192,4 +208,4 @@ assert(rendererSource.includes('this.syncEffects(state, quality * budget.detailS
 
 
 
-console.log('GRAPHICS_ASSET_PIPELINE_PASS format=glb mesh=meshopt textures=ktx2 loader=deferred lifecycle=leased lod=adaptive+mobile-lod2 operator=articulated+class-silhouette enemies=role-authored+mobile-lod2 weapons=authored+mobile-lod2+surface-impacts environment=refinery-instanced+phase6 lighting=key+rim+contact+practical materials=pbr-bounded+emissive+decals:safety+grime vfx=shape-coded+debris+reduced-effects readability=shape+silhouette+luminance boss=signature+phase+telegraph locations=10+shared-instancing render-tiers=high+balanced+performance sockets=muzzle animation=state-driven operatorTriangles=45000 enemyTriangles=30000 weaponTriangles=12000 environmentTriangles=20000');
+console.log('GRAPHICS_ASSET_PIPELINE_PASS format=glb mesh=meshopt textures=ktx2 loader=deferred lifecycle=leased lod=adaptive+mobile-lod2 operator=articulated+class-silhouette enemies=role-authored+mobile-lod2 weapons=authored+mobile-lod2+surface-impacts loot=authored+rarity-readable interactables=authored+mobile-lod2 environment=refinery-instanced+phase6 lighting=key+rim+contact+practical materials=pbr-bounded+emissive+decals:safety+grime vfx=shape-coded+debris+reduced-effects readability=shape+silhouette+luminance boss=signature+phase+telegraph locations=10+shared-instancing render-tiers=high+balanced+performance sockets=muzzle animation=state-driven operatorTriangles=45000 enemyTriangles=30000 weaponTriangles=12000 environmentTriangles=20000');

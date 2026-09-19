@@ -218,3 +218,29 @@ export const WEAPON_ASSET_FAMILIES = {
   },
 } as const satisfies Record<'carbine' | 'breacher' | 'rail', GraphicsAssetFamily>;
 
+
+
+export const PICKUP_ASSET_FAMILY: GraphicsAssetFamily = {
+  id: 'pickup-recovery-capsule',
+  lods: {
+    1: createGraphicsAssetSpec('pickup-recovery-capsule-lod1', 'pickup', '/assets/models/pickups/pickup-recovery-capsule-lod1.glb', 1),
+    2: createGraphicsAssetSpec('pickup-recovery-capsule-lod2', 'pickup', '/assets/models/pickups/pickup-recovery-capsule-lod2.glb', 2),
+  },
+};
+
+export const INTERACTABLE_ASSET_FAMILIES = {
+  control: {
+    id: 'interactable-control-terminal',
+    lods: {
+      1: createGraphicsAssetSpec('interactable-control-terminal-lod1', 'interactable', '/assets/models/interactables/interactable-control-terminal-lod1.glb', 1),
+      2: createGraphicsAssetSpec('interactable-control-terminal-lod2', 'interactable', '/assets/models/interactables/interactable-control-terminal-lod2.glb', 2),
+    },
+  },
+  salvage: {
+    id: 'interactable-salvage-tag-node',
+    lods: {
+      1: createGraphicsAssetSpec('interactable-salvage-tag-node-lod1', 'interactable', '/assets/models/interactables/interactable-salvage-tag-node-lod1.glb', 1),
+      2: createGraphicsAssetSpec('interactable-salvage-tag-node-lod2', 'interactable', '/assets/models/interactables/interactable-salvage-tag-node-lod2.glb', 2),
+    },
+  },
+} as const satisfies Record<'control' | 'salvage', GraphicsAssetFamily>;
