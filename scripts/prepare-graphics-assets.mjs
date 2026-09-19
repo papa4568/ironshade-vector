@@ -248,6 +248,28 @@ function operatorClassNodes(operatorClass) {
   return nodes;
 }
 
+function operatorClassMobileNodes(operatorClass) {
+  const marker = operatorClass === 'vanguard'
+    ? { name: 'vanguard-ram-plate', mesh: 1, translation: [0.34, 0.05, 0], scale: [0.18, 0.50, 0.62] }
+    : operatorClass === 'vector'
+      ? { name: 'vector-stabilizer-left', mesh: 4, translation: [-0.24, 0.11, 0], scale: [0.10, 0.58, 0.34] }
+      : { name: 'systems-relay-left', mesh: 4, translation: [-0.30, 0.16, 0], scale: [0.08, 0.54, 0.50] };
+
+  return [
+    { name: 'leg-left', mesh: 0, translation: [0, -0.455, 0.18], scale: [0.22, 0.91, 0.24] },
+    { name: 'leg-right', mesh: 0, translation: [0, -0.455, -0.18], scale: [0.22, 0.91, 0.24] },
+    { name: 'arm-left', mesh: 0, translation: [0.01, 0.08, 0.42], scale: [0.18, 0.48, 0.18] },
+    { name: 'arm-right', mesh: 0, translation: [0.01, 0.08, -0.42], scale: [0.18, 0.48, 0.18] },
+    { name: 'helmet', mesh: 1, translation: [0.02, 0.43, 0], scale: [0.42, 0.44, 0.40] },
+    { name: 'backpack', mesh: 2, translation: [-0.22, 0.05, 0], scale: operatorClass === 'vanguard' ? [0.28, 0.52, 0.50] : operatorClass === 'systems' ? [0.24, 0.56, 0.48] : [0.20, 0.46, 0.36] },
+    { name: 'weapon-socket', translation: [0.20, 0.08, -0.24] },
+    marker,
+    { name: 'torso', mesh: 0, translation: [0, 0.33, 0], scale: operatorClass === 'vanguard' ? [0.62, 0.70, 0.62] : operatorClass === 'vector' ? [0.50, 0.64, 0.48] : [0.54, 0.66, 0.54], children: [2, 3, 4, 5, 6, 7] },
+    { name: 'hip', mesh: 1, translation: [0, 0.91, 0], scale: [0.46, 0.20, 0.46], children: [8, 0, 1] },
+    { name: 'operator-rig', children: [9] },
+  ];
+}
+
 function enemyNodes(role) {
   const boss = role === 'boss';
   const suppressor = role === 'suppressor';
@@ -335,6 +357,73 @@ function enemyNodes(role) {
   nodes.push({ name: 'hip', translation: [0, hipY, 0], children: [hipArmorIndex, torsoIndex, 2, 5] });
   nodes.push({ name: 'enemy-rig', children: [hipIndex] });
   return nodes;
+}
+
+
+
+function enemyMobileNodes(role) {
+  const boss = role === 'boss';
+  const suppressor = role === 'suppressor';
+  const technician = role === 'technician';
+  const elite = role === 'elite';
+
+  const marker = role === 'assault'
+    ? { name: 'assault-ram-plate', mesh: 1, translation: [0.31, 0.08, 0], scale: [0.18, 0.42, 0.54] }
+    : role === 'suppressor'
+      ? { name: 'suppressor-shoulder-left', mesh: 1, translation: [-0.02, 0.27, 0], scale: [0.42, 0.20, 0.96] }
+      : role === 'technician'
+        ? { name: 'technician-mast', mesh: 4, translation: [-0.08, 0.58, 0], scale: [0.07, 0.48, 0.07] }
+        : role === 'elite'
+          ? { name: 'elite-crest', mesh: 4, translation: [-0.02, 0.61, 0], scale: [0.10, 0.44, 0.09] }
+          : { name: 'boss-command-crest', mesh: 4, translation: [-0.04, 0.78, 0], scale: [0.16, 0.58, 0.11] };
+
+  const hipY = boss ? 1.03 : 0.91;
+  const legScale = boss ? [0.31, 1.03, 0.32] : suppressor ? [0.28, 0.91, 0.29] : technician ? [0.20, 0.91, 0.20] : [0.24, 0.91, 0.24];
+  const torsoScale = boss ? [0.88, 0.82, 0.84] : suppressor ? [0.70, 0.68, 0.70] : technician ? [0.44, 0.62, 0.42] : elite ? [0.62, 0.70, 0.58] : [0.56, 0.64, 0.52];
+  const armZ = boss ? 0.64 : suppressor ? 0.53 : technician ? 0.34 : elite ? 0.48 : 0.40;
+  const armScale = boss ? [0.25, 0.54, 0.25] : suppressor ? [0.23, 0.48, 0.23] : technician ? [0.15, 0.44, 0.15] : [0.18, 0.46, 0.18];
+
+  return [
+    { name: 'leg-left', mesh: 0, translation: [0, -hipY / 2, boss ? 0.28 : 0.18], scale: legScale },
+    { name: 'leg-right', mesh: 0, translation: [0, -hipY / 2, boss ? -0.28 : -0.18], scale: legScale },
+    { name: 'arm-left', mesh: 0, translation: [0.02, boss ? 0.10 : 0.07, armZ], scale: armScale },
+    { name: 'arm-right', mesh: 0, translation: [0.02, boss ? 0.10 : 0.07, -armZ], scale: armScale },
+    { name: 'helmet', mesh: 1, translation: [0.02, boss ? 0.56 : 0.43, 0], scale: boss ? [0.58, 0.54, 0.56] : suppressor ? [0.49, 0.46, 0.49] : technician ? [0.37, 0.50, 0.35] : [0.45, 0.47, 0.42] },
+    { name: 'backpack', mesh: 2, translation: [-0.22, 0.05, 0], scale: boss ? [0.42, 0.60, 0.68] : suppressor ? [0.35, 0.55, 0.60] : technician ? [0.23, 0.62, 0.34] : [0.23, 0.45, 0.42] },
+    { name: 'weapon-socket', translation: [0.22, 0.08, -0.24] },
+    marker,
+    { name: 'torso', mesh: 0, translation: [0, boss ? 0.42 : 0.32, 0], scale: torsoScale, children: [2, 3, 4, 5, 6, 7] },
+    { name: 'hip', mesh: 1, translation: [0, hipY, 0], scale: boss ? [0.66, 0.24, 0.66] : [0.46, 0.20, 0.46], children: [8, 0, 1] },
+    { name: 'enemy-rig', children: [9] },
+  ];
+}
+
+function weaponMobileNodes(id) {
+  if (id === 'carbine') {
+    return [
+      { name: 'carbine-receiver', mesh: 0, translation: [0.38, 0, 0], scale: [0.78, 0.20, 0.22] },
+      { name: 'carbine-magazine', mesh: 1, translation: [0.24, -0.25, 0], scale: [0.18, 0.34, 0.17] },
+      { name: 'carbine-barrel', mesh: 1, translation: [1.03, 0.02, 0], scale: [0.56, 0.07, 0.07] },
+      { name: 'muzzle-socket', translation: [1.34, 0.02, 0] },
+      { name: 'weapon-root', children: [0, 1, 2, 3] },
+    ];
+  }
+  if (id === 'breacher') {
+    return [
+      { name: 'breacher-receiver', mesh: 0, translation: [0.30, 0, 0], scale: [0.66, 0.28, 0.40] },
+      { name: 'breacher-twin-barrel', mesh: 1, translation: [0.96, 0.08, 0], scale: [0.70, 0.09, 0.24] },
+      { name: 'breacher-feed', mesh: 2, translation: [0.18, -0.28, 0], scale: [0.25, 0.30, 0.30] },
+      { name: 'muzzle-socket', translation: [1.34, 0.08, 0] },
+      { name: 'weapon-root', children: [0, 1, 2, 3] },
+    ];
+  }
+  return [
+    { name: 'rail-receiver', mesh: 0, translation: [0.40, 0, 0], scale: [0.90, 0.20, 0.28] },
+    { name: 'rail-coil', mesh: 2, translation: [0.70, 0.07, 0], scale: [0.92, 0.07, 0.30] },
+    { name: 'rail-spine', mesh: 1, translation: [1.14, 0.12, 0], scale: [0.80, 0.05, 0.10] },
+    { name: 'muzzle-socket', translation: [1.54, 0.08, 0] },
+    { name: 'weapon-root', children: [0, 1, 2, 3] },
+  ];
 }
 
 
@@ -782,28 +871,36 @@ for (const [operatorClass, primary, accent] of operatorClassProfiles) {
     operatorClassNodes(operatorClass),
     materials(primary, accent),
   ));
+  outputs.push(await writeAsset(
+    `operators/operator-${operatorClass}-lod2.glb`,
+    `operator-${operatorClass}-lod2`,
+    operatorClassMobileNodes(operatorClass),
+    materials(primary, accent),
+  ));
 }
 
 const enemyProfiles = [
-  ['assault', 'enemies/enemy-assault-lod1.glb', [0.56, 0.18, 0.14, 1], [0.95, 0.33, 0.22]],
-  ['suppressor', 'enemies/enemy-suppressor-lod1.glb', [0.52, 0.28, 0.15, 1], [0.95, 0.56, 0.22]],
-  ['technician', 'enemies/enemy-technician-lod1.glb', [0.28, 0.24, 0.52, 1], [0.54, 0.48, 0.95]],
-  ['elite', 'enemies/enemy-elite-lod1.glb', [0.58, 0.16, 0.32, 1], [0.98, 0.30, 0.58]],
-  ['boss', 'bosses/enemy-boss-lod1.glb', [0.60, 0.12, 0.10, 1], [1.00, 0.24, 0.18]],
+  ['assault', 'enemies', [0.56, 0.18, 0.14, 1], [0.95, 0.33, 0.22]],
+  ['suppressor', 'enemies', [0.52, 0.28, 0.15, 1], [0.95, 0.56, 0.22]],
+  ['technician', 'enemies', [0.28, 0.24, 0.52, 1], [0.54, 0.48, 0.95]],
+  ['elite', 'enemies', [0.58, 0.16, 0.32, 1], [0.98, 0.30, 0.58]],
+  ['boss', 'bosses', [0.60, 0.12, 0.10, 1], [1.00, 0.24, 0.18]],
 ];
 
-for (const [role, path, primary, accent] of enemyProfiles) {
-  outputs.push(await writeAsset(path, `enemy-${role}-lod1`, enemyNodes(role), materials(primary, accent)));
+for (const [role, folder, primary, accent] of enemyProfiles) {
+  outputs.push(await writeAsset(`${folder}/enemy-${role}-lod1.glb`, `enemy-${role}-lod1`, enemyNodes(role), materials(primary, accent)));
+  outputs.push(await writeAsset(`${folder}/enemy-${role}-lod2.glb`, `enemy-${role}-lod2`, enemyMobileNodes(role), materials(primary, accent)));
 }
 
 const weaponProfiles = [
-  ['carbine', 'weapons/weapon-carbine-lod1.glb', [0.58, 0.90, 0.42]],
-  ['breacher', 'weapons/weapon-breacher-lod1.glb', [1.00, 0.63, 0.28]],
-  ['rail', 'weapons/weapon-rail-lod1.glb', [0.34, 0.78, 1.00]],
+  ['carbine', [0.58, 0.90, 0.42]],
+  ['breacher', [1.00, 0.63, 0.28]],
+  ['rail', [0.34, 0.78, 1.00]],
 ];
 
-for (const [weapon, path, accent] of weaponProfiles) {
-  outputs.push(await writeAsset(path, `weapon-${weapon}-lod1`, weaponNodes(weapon), weaponMaterials(accent)));
+for (const [weapon, accent] of weaponProfiles) {
+  outputs.push(await writeAsset(`weapons/weapon-${weapon}-lod1.glb`, `weapon-${weapon}-lod1`, weaponNodes(weapon), weaponMaterials(accent)));
+  outputs.push(await writeAsset(`weapons/weapon-${weapon}-lod2.glb`, `weapon-${weapon}-lod2`, weaponMobileNodes(weapon), weaponMaterials(accent)));
 }
 
 
