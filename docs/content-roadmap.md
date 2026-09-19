@@ -198,7 +198,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] P2.5 Machinery/interactables
 - [x] P2.6 Local enemy visual identity
 - [x] P2.7 Sable Voss presentation
-- [ ] P2.8 Biome ambient effects
+- [x] P2.8 Biome ambient effects
 - [ ] P2.9 Mobile LOD/performance
 
 ### Jovian Harvester
@@ -307,7 +307,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1 is complete and **P2.7 is now delivered**. Continue in roadmap order with **P2.8 — Biome ambient effects**, keeping the dedicated mobile optimization pass in **P2.9**.
+P1 is complete and **P2.8 is now delivered**. Continue in roadmap order with **P2.9 — Mobile LOD/performance** to finish the Spin Habitat biome before starting the Jovian Harvester in **P2.10**.
+
+**P2.8 delivered:** Spin Habitat now has a bounded ambient-effects layer that makes the biome read even when no emergency event is active: gravity-coupled cyan/green rim-light sweeps, counter-drifting habitat particulate, and a stationary-axis haze pulse. The effects follow the real habitat rotation state, scale their light-band count, mote count, opacity, and pulse intensity through the existing adaptive VFX/transparency budget, and expose deterministic runtime QA telemetry without folding the dedicated performance/LOD pass forward from P2.9. Full production regression/build, desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.155 package/version/signature verification, and Android emulator runtime smoke are green.
 
 **P2.7 delivered:** Recovery Commander Sable Voss now has a Spin Habitat-specific authored boss presentation instead of the shared generic boss silhouette. Her adaptive LOD1/LOD2 model adds a broad counter-spin mantle, command visor, governor hardware, and a recovery-green/cyan command palette that shifts to amber pressure cues in phase two while preserving the shared boss telegraph language. Runtime routing is scoped to Spin Habitat contracts whose deep target is Sable Voss, with explicit authored/fallback QA telemetry. Generated-content regression validates the silhouette marker and mobile payload reduction; full production regression/build, desktop + mobile-landscape Browser E2E, APK package/version/signature verification, and Android emulator smoke are green on the final P2.7 head.
 
@@ -333,14 +335,13 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.154**
+- Android beta: **0.0.1-beta.155**
 - Package: `app.ironshade.vector`
-- Verified: P2.7 authored Sable Voss Spin Habitat boss presentation with adaptive LOD1/LOD2 command silhouette, biome/deep-target-scoped runtime routing, phase-aware recovery-green/cyan-to-amber presentation, generated GLB silhouette/mobile-payload coverage, full production regression/build, desktop + mobile-landscape Browser E2E with live authored/no-fallback boss assertions, Level 15 beta smoke, Android beta.154 APK package/version/signature checks, Android emulator runtime/touch smoke, and retained browser/Android QA artifacts
+- Verified: P2.8 Spin Habitat ambient identity with gravity-coupled rim light sweeps, counter-drifting particulate, stationary-axis haze, adaptive VFX-density/transparency scaling, full production regression/build, desktop + mobile-landscape Browser E2E with live ambient telemetry assertions, Level 15 beta smoke, Android beta.155 APK package/version/signature checks, Android emulator runtime smoke, and retained browser/Android QA artifacts
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P2.7 final verified head: `512a7d45854bde9d79bf5da93e29589b449fa220`
-- P2.7 authored boss implementation commit: `bfd4d881baec6c117e3a4856c9538abbdd514e0d`
-- Browser E2E run: `35475536350`
-- Level 15 beta smoke run: `35475536346`
-- Android beta.154 run: `35475536411`
-- Android beta.154 artifact ID: `10594248410`
-- Android beta.154 artifact head: `512a7d45854bde9d79bf5da93e29589b449fa220`
+- P2.8 final verified head: `d500e5d24ed6aace08b72ce97fb8fc7e8b91ca69`
+- Browser E2E run: `35476002047`
+- Level 15 beta smoke run: `35476002075`
+- Android beta.155 run: `35476002045`
+- Android beta.155 artifact ID: `10593384314`
+- Android beta.155 artifact head: `d500e5d24ed6aace08b72ce97fb8fc7e8b91ca69`
