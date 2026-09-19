@@ -16,21 +16,21 @@ export const OPERATOR_CLASS_ASSET_FAMILIES = {
     id: 'operator-vanguard',
     lods: {
       1: createGraphicsAssetSpec('operator-vanguard-lod1', 'operator', '/assets/models/operators/operator-vanguard-lod1.glb', 1),
-      2: createGraphicsAssetSpec('operator-field-suit-lod2', 'operator', '/assets/models/operators/operator-field-suit-lod2.glb', 2),
+      2: createGraphicsAssetSpec('operator-vanguard-lod2', 'operator', '/assets/models/operators/operator-vanguard-lod2.glb', 2),
     },
   },
   vector: {
     id: 'operator-vector',
     lods: {
       1: createGraphicsAssetSpec('operator-vector-lod1', 'operator', '/assets/models/operators/operator-vector-lod1.glb', 1),
-      2: createGraphicsAssetSpec('operator-field-suit-lod2', 'operator', '/assets/models/operators/operator-field-suit-lod2.glb', 2),
+      2: createGraphicsAssetSpec('operator-vector-lod2', 'operator', '/assets/models/operators/operator-vector-lod2.glb', 2),
     },
   },
   systems: {
     id: 'operator-systems',
     lods: {
       1: createGraphicsAssetSpec('operator-systems-lod1', 'operator', '/assets/models/operators/operator-systems-lod1.glb', 1),
-      2: createGraphicsAssetSpec('operator-field-suit-lod2', 'operator', '/assets/models/operators/operator-field-suit-lod2.glb', 2),
+      2: createGraphicsAssetSpec('operator-systems-lod2', 'operator', '/assets/models/operators/operator-systems-lod2.glb', 2),
     },
   },
 } as const satisfies Record<'vanguard' | 'vector' | 'systems', GraphicsAssetFamily>;
@@ -161,30 +161,35 @@ export const ENEMY_ASSET_FAMILIES = {
     id: 'enemy-assault',
     lods: {
       1: createGraphicsAssetSpec('enemy-assault-lod1', 'enemy', '/assets/models/enemies/enemy-assault-lod1.glb', 1),
+      2: createGraphicsAssetSpec('enemy-assault-lod2', 'enemy', '/assets/models/enemies/enemy-assault-lod2.glb', 2),
     },
   },
   suppressor: {
     id: 'enemy-suppressor',
     lods: {
       1: createGraphicsAssetSpec('enemy-suppressor-lod1', 'enemy', '/assets/models/enemies/enemy-suppressor-lod1.glb', 1),
+      2: createGraphicsAssetSpec('enemy-suppressor-lod2', 'enemy', '/assets/models/enemies/enemy-suppressor-lod2.glb', 2),
     },
   },
   technician: {
     id: 'enemy-technician',
     lods: {
       1: createGraphicsAssetSpec('enemy-technician-lod1', 'enemy', '/assets/models/enemies/enemy-technician-lod1.glb', 1),
+      2: createGraphicsAssetSpec('enemy-technician-lod2', 'enemy', '/assets/models/enemies/enemy-technician-lod2.glb', 2),
     },
   },
   elite: {
     id: 'enemy-elite',
     lods: {
       1: createGraphicsAssetSpec('enemy-elite-lod1', 'enemy', '/assets/models/enemies/enemy-elite-lod1.glb', 1),
+      2: createGraphicsAssetSpec('enemy-elite-lod2', 'enemy', '/assets/models/enemies/enemy-elite-lod2.glb', 2),
     },
   },
   boss: {
     id: 'enemy-boss',
     lods: {
       1: createGraphicsAssetSpec('enemy-boss-lod1', 'boss', '/assets/models/bosses/enemy-boss-lod1.glb', 1),
+      2: createGraphicsAssetSpec('enemy-boss-lod2', 'boss', '/assets/models/bosses/enemy-boss-lod2.glb', 2),
     },
   },
 } as const satisfies Record<'assault' | 'suppressor' | 'technician' | 'elite' | 'boss', GraphicsAssetFamily>;
@@ -194,18 +199,21 @@ export const WEAPON_ASSET_FAMILIES = {
     id: 'weapon-carbine',
     lods: {
       1: createGraphicsAssetSpec('weapon-carbine-lod1', 'weapon', '/assets/models/weapons/weapon-carbine-lod1.glb', 1),
+      2: createGraphicsAssetSpec('weapon-carbine-lod2', 'weapon', '/assets/models/weapons/weapon-carbine-lod2.glb', 2),
     },
   },
   breacher: {
     id: 'weapon-breacher',
     lods: {
       1: createGraphicsAssetSpec('weapon-breacher-lod1', 'weapon', '/assets/models/weapons/weapon-breacher-lod1.glb', 1),
+      2: createGraphicsAssetSpec('weapon-breacher-lod2', 'weapon', '/assets/models/weapons/weapon-breacher-lod2.glb', 2),
     },
   },
   rail: {
     id: 'weapon-rail',
     lods: {
       1: createGraphicsAssetSpec('weapon-rail-lod1', 'weapon', '/assets/models/weapons/weapon-rail-lod1.glb', 1),
+      2: createGraphicsAssetSpec('weapon-rail-lod2', 'weapon', '/assets/models/weapons/weapon-rail-lod2.glb', 2),
     },
   },
 } as const satisfies Record<'carbine' | 'breacher' | 'rail', GraphicsAssetFamily>;
