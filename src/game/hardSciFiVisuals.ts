@@ -53,6 +53,7 @@ export const LOCATION_ART_IDENTITIES: Record<LocationId, LocationArtIdentity> = 
   'lattice-annex': { silhouette: 'reference-pylons', material: 'survey-ceramic', lighting: 'metrology-teal', propSet: 'calibration-service' },
   'momentum-exchange': { silhouette: 'flywheel-lane', material: 'magnetic-machinery', lighting: 'transfer-blue', propSet: 'capture-service' },
   'cryo-reserve': { silhouette: 'tank-gallery', material: 'cryogenic-shell', lighting: 'cold-blue', propSet: 'valve-service' },
+  'parallax-array': { silhouette: 'baseline-pylons', material: 'metrology-composite', lighting: 'reference-violet', propSet: 'inertial-reference' },
 };
 
 export function locationArtIdentityFor(location: LocationId) {
@@ -378,7 +379,7 @@ export function syncEnemyVisual(root: THREE.Group, enemy: Enemy, state: SimState
   rig.rightLeg.rotation.z = gravity < 0.72 ? -gait * 0.1 : -gait * 0.28;
   rig.leftArm.rotation.z = -0.12 - gait * 0.08;
   rig.rightArm.rotation.z = 0.14 + gait * 0.05;
-  const usesThrusters = enemy.variant === 'vectorSkirmisher' || enemy.variant === 'gravityDrone' || enemy.variant === 'vacuumSaboteur';
+  const usesThrusters = enemy.variant === 'vectorSkirmisher' || enemy.variant === 'parallaxSkirmisher' || enemy.variant === 'gravityDrone' || enemy.variant === 'vacuumSaboteur';
   rig.leftThruster.visible = usesThrusters && speed > 6;
   rig.rightThruster.visible = usesThrusters && speed > 6;
 
@@ -608,6 +609,17 @@ function addLocationKit(root: THREE.Group, location: LocationId, worldW: number,
       mesh(root, new THREE.CylinderGeometry(0.92, 0.92, 4.4, 12), structural, cx + index * 3.7, 2.2, z);
       const cap = mesh(root, new THREE.SphereGeometry(0.92, 12, 8), glow, cx + index * 3.7, 4.25, z, false);
       cap.scale.y = 0.45;
+    }
+  } else if (location === 'parallax-array') {
+    for (const offset of [-12, 0, 12]) {
+      const pylon = addBox(root, cx + offset, cz + (offset === 0 ? -4 : 4), 0.8, 0.8, 6.2, structural);
+      for (const y of [1.4, 3.1, 4.8]) {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(1.35, 0.08, 8, 28), glow);
+        ring.rotation.x = Math.PI / 2; ring.position.set(pylon.position.x, y, pylon.position.z); root.add(ring);
+      }
+    }
+    for (const z of [cz - 7, cz + 7]) {
+      const rail = addBox(root, cx, z, 29, 0.18, 0.12, glow); rail.position.y = 0.24;
     }
   } else if (location === 'lattice-annex') {
     for (let index = -5; index <= 5; index += 1) {
