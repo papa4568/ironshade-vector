@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import '../classSelection.css';
 import { classAbilityKits } from '../game/classSkills';
+import { classSkillIconAssets, operatorClassIconAssets } from '../game/mobileUiAssets';
 import {
   gearResonanceForProfile,
   operatorClassDefinitions,
@@ -25,12 +26,6 @@ type IntakeCopy = {
   strengths: [string, string, string];
   firstFight: string;
   watchFor: string;
-};
-
-const classIconSrc: Record<OperatorClassId, string> = {
-  vanguard: '/assets/ui/classes/vanguard.svg',
-  vector: '/assets/ui/classes/vector.svg',
-  systems: '/assets/ui/classes/systems.svg',
 };
 
 const classIntakeCopy: Record<OperatorClassId, IntakeCopy> = {
@@ -116,7 +111,7 @@ export default function ClassSelectScreen({ profile, onConfirm }: Props) {
             >
               <div className="class-choice-top">
                 <div className="class-choice-role">
-                  <img src={classIconSrc[definition.id]} alt="" aria-hidden="true" />
+                  <img src={operatorClassIconAssets[definition.id]} alt="" aria-hidden="true" />
                   <span>{copy.role}</span>
                 </div>
                 <strong>{active ? 'SELECTED' : copy.learning}</strong>
@@ -128,7 +123,7 @@ export default function ClassSelectScreen({ profile, onConfirm }: Props) {
                 {copy.strengths.slice(0, 2).map(strength => <span key={strength}>{strength}</span>)}
               </div>
               <div className="class-card-kit" aria-label={`${definition.name} starting abilities`}>
-                {kit.map((ability, index) => <span key={ability.shortName}><small>{['Q', 'E', 'F'][index]}</small><b>{ability.shortName}</b></span>)}
+                {kit.map((ability, index) => <span key={ability.shortName}><img src={classSkillIconAssets[definition.id][index]} alt="" aria-hidden="true" /><small>{['Q', 'E', 'F'][index]}</small><b>{ability.shortName}</b></span>)}
               </div>
             </button>;
           })}
@@ -139,7 +134,7 @@ export default function ClassSelectScreen({ profile, onConfirm }: Props) {
         <div className="class-selected-overview">
           <div className="class-selected-heading">
             <div className="class-selected-title">
-              <img src={classIconSrc[selectedId]} alt="" aria-hidden="true" />
+              <img src={operatorClassIconAssets[selectedId]} alt="" aria-hidden="true" />
               <div>
                 <small>STEP 2 // YOUR PICK</small>
                 <h2>{selected.name}</h2>
@@ -183,7 +178,7 @@ export default function ClassSelectScreen({ profile, onConfirm }: Props) {
           </header>
           <div className="class-starting-kit-grid">
             {activeKit.map((ability, index) => <article key={ability.shortName}>
-              <div className="class-skill-key">{['Q', 'E', 'F'][index]}</div>
+              <div className="class-skill-key"><img src={classSkillIconAssets[selectedId][index]} alt="" aria-hidden="true" /><span>{['Q', 'E', 'F'][index]}</span></div>
               <div>
                 <small>{ability.shortName}</small>
                 <b>{ability.name}</b>
