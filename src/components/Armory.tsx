@@ -4,7 +4,7 @@ import '../part11.css';
 import '../part12.css';
 import '../menuOverhaul.css';
 import '../classBuilds.css';
-import { classAbilityKits } from '../game/sim';
+import { classAbilityKits } from '../game/classSkills';
 import {
   abilityMods,
   allocateNode,
