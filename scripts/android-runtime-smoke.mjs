@@ -552,17 +552,18 @@ await sleep(120);
 await dispatchTouch('touchEnd', aimEndX, aimEndY, 12);
 await waitFor(`(document.querySelector('.tutorial-coach')?.textContent ?? '').includes('FIELD COACH // 3/5')`, 'manual aim touch response', 15_000);
 
-// Manual aim may have fired a shot immediately before this check. Give the
-// weapon cooldown time to clear, then require a real magazine/heat change.
-// One retry makes the emulator touch path resilient without accepting a no-op.
-await sleep(350);
+// Manual aim can fire the class-preferred weapon immediately before this check.
+// Vanguard begins on the slower Breacher and authored mobile asset loading can
+// temporarily reduce simulation cadence on SwiftShader, so clear the full
+// weapon cooldown before validating the FIRE control itself.
+await sleep(1_250);
 const fire = await elementMetrics('.fire-button');
 if (!fire || fire.disabled) throw new Error('Android FIRE control was unavailable.');
 let fireObserved = false;
-for (let attempt = 0; attempt < 2 && !fireObserved; attempt += 1) {
+for (let attempt = 0; attempt < 3 && !fireObserved; attempt += 1) {
   const fireBefore = await evaluate(`document.querySelector('.fire-button small')?.textContent ?? ''`);
   await dispatchTouch('touchStart', fire.x, fire.y, 13 + attempt);
-  await sleep(700);
+  await sleep(900);
   await dispatchTouch('touchEnd', fire.x, fire.y, 13 + attempt);
   const deadline = Date.now() + 8_000;
   while (Date.now() < deadline) {
@@ -573,7 +574,7 @@ for (let attempt = 0; attempt < 2 && !fireObserved; attempt += 1) {
     }
     await sleep(250);
   }
-  if (!fireObserved) await sleep(400);
+  if (!fireObserved) await sleep(900);
 }
 if (!fireObserved) {
   const state = await snapshot().catch(error => ({ snapshotError: String(error) }));
