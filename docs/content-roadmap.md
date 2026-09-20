@@ -259,7 +259,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] P5.3 Vanguard capstone interactions
 - [x] P5.4 Deepen Vector specializations
 - [x] P5.5 Vector skill evolutions
-- [ ] P5.6 Systems third specialization
+- [x] P5.6 Systems third specialization
 - [ ] P5.7 Systems skill evolution
 - [ ] P5.8 Systems capstone interactions
 - [ ] P5.9 Same-class builds feel different at LV16+
@@ -317,7 +317,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1, P2, P3, and **P4 — Megastructure Capstone Pass** are complete. **P5.1–P5.5 class-capstone work** is complete. Continue in roadmap order with **P5.6 — Systems third specialization**.
+P1, P2, P3, and **P4 — Megastructure Capstone Pass** are complete. **P5.1–P5.6 class-capstone work** is complete. Continue in roadmap order with **P5.7 — Systems skill evolution**.
+
+**P5.6 delivered:** Systems now has a third LV15 specialization, **Thermal Shunter**, alongside Grid Weaver and Capacitor Conductor. Thermal Shunter creates a weapon/ability weaving loop: casting a Systems ability with at least 35% active-weapon heat shunts 8% heat (10% with the LV16 overclock) into a short crossfire bank; the next weapon shot gains 12% projectile velocity, 10% damage, +10 penetration, and returns 4 capacitor. The LV16 overclock extends the bank to 3 seconds, advances the ability that armed it by 0.5 seconds on discharge, and sheds another 5% weapon heat, balanced by +10% weapon heat per shot. The base specialization trades 10 maximum armor. Deterministic gameplay regression covers hot-vs-cold arming, heat routing, projectile bonuses, capacitor return, one-shot bank consumption, cooldown recycling, combat feedback, and both tradeoffs; UI regression verifies the third Systems path is sourced through the shared specialization metadata. **P5.7 — Systems skill evolution** is next.
 
 **P5.5 delivered:** Vector now has three LV16 class skill evolutions in the existing Skill Lens slots. **Slingshot Shift** turns Vector Shift into a longer route with an extended Slipstream bank and partial dodge recovery, balanced by +18% capacitor cost. **Triangulation Lock** opens a short Armor Breach firing window and advances Splitshot recovery, balanced by +18% Deadeye Lock cooldown. **Needle Fan** compresses Splitshot into a tighter 1,700-speed fan with +20 penetration and a reinforced center lane, balanced by +20% Splitshot cooldown. Class/LV16 gating, class-switch cleanup, build-stat visibility, tradeoffs, ballistic behavior, recovery routing, and explicit combat feedback are covered by deterministic regression. PR full regression/production build and browser player journey passed on both desktop and mobile-landscape in Browser E2E run `35539490995`. Merged-main desktop/mobile Browser E2E, Level 15 beta smoke, Android beta.195 package/version/SDK/signature verification, native emulator install/launch/resume smoke, Android touch/runtime smoke, and the Chapter 3 touch playthrough all passed. **P5.6 — Systems third specialization** is next.
 
