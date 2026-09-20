@@ -224,7 +224,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ### Solar Yard
 - [x] P3.7 Assets
-- [ ] P3.8 Fabrication machinery
+- [x] P3.8 Fabrication machinery
 - [ ] P3.9 Sun/shadow identity
 - [ ] P3.10 Thermal shutters
 - [ ] P3.11 Cranes/rails/motion
@@ -307,7 +307,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1 and P2 are complete, **Ice Mine P3.1–P3.6** are delivered, and **Solar Yard P3.7 assets** are delivered. Continue in roadmap order with **P3.8 — Fabrication machinery**, followed by P3.9–P3.13 to finish Solar Yard.
+P1 and P2 are complete, **Ice Mine P3.1–P3.6** are delivered, and **Solar Yard P3.7–P3.8** are delivered. Continue in roadmap order with **P3.9 — Sun/shadow identity**, followed by P3.10–P3.13 to finish Solar Yard.
+
+**P3.8 delivered:** Solar Yard fabrication is now represented by three authored machine families instead of generic service props: sinter forges, printer spindles, and feedstock presses. Seven machines are distributed across the shade deck, fabrication spine, and sunward work yard; the P3.7 ceramic decks, truss frames, radiator towers, and reflector pylons now load with them as one authored Solar Yard scene. Every family ships adaptive LOD1/LOD2 GLBs, the runtime preserves procedural fallback, coarse/mobile forces LOD2, and deterministic telemetry exposes the exact fabrication-machine budget for browser QA. Generated-content, static graphics, and desktop/mobile-landscape Browser E2E cover the complete P3.7–P3.8 yard foundation. Sun/shadow identity remains P3.9; thermal shutters, cranes/rails/motion, HELIOS-9 presentation, and the dedicated mobile optimization pass remain P3.10–P3.13.
 
 **P3.7 delivered:** Solar Yard now has a reusable authored static environment foundation with ceramic fabrication decks, scorched structural truss frames, black radiator towers, and gold reflector pylons. All four families generate adaptive LOD1/LOD2 GLBs, retain a ceramic / scorched-steel / black-radiator / solar-gold / heat-amber material language, and expose deterministic silhouette markers for asset QA. Generated-content and static asset-pipeline regressions verify the authored kit and mobile LOD reduction. Active fabrication machinery remains P3.8; sun/shadow identity, thermal shutters, cranes/rails/motion, HELIOS-9 presentation, and the dedicated mobile optimization pass remain P3.9–P3.13.
 
