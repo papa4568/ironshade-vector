@@ -511,8 +511,11 @@ function findAimConduit(state: SimState, maxDistance: number) {
 export function triggerAbility(state: SimState, index = 0) {
   const p = state.player; const meta = getAbilityConfig(state, index);
   let parallaxClassCounterEvent: string | null = null;
+  let vanguardCapstoneEvent: string | null = null;
   let vanguardSiegeContacts = 0;
+  let vanguardSiegeWakePoint: Vec2 | null = null;
   let vanguardFaultlineRelay: Enemy | null = null;
+  let vanguardFaultlineRelayArmorBefore = 0;
   if (p.dead || state.complete || p.abilityCooldowns[index] > 0) return false;
   if (p.capacitor < meta.cost) { pushEvent(state, 'CAPACITOR LOW // ABILITY INHIBITED', 1.1); return false; }
   const previousAbility = state.lastAbilityIndex; const chained = previousAbility >= 0 && previousAbility !== index && state.time - state.lastAbilityAt <= 3.4;
@@ -545,9 +548,18 @@ export function triggerAbility(state: SimState, index = 0) {
         enemy.vx += p.aim.x * 120;
         enemy.vy += p.aim.y * 120;
         spawnEffect(state, enemy.x, enemy.y, 'impact', 54, 0.35);
+        if (state.build.specialization === 'pressure-diver') {
+          enemy.statuses.vacuum = Math.max(enemy.statuses.vacuum, state.build.specializationOverclock ? 3 : 2.4);
+          if (!vanguardSiegeWakePoint) vanguardSiegeWakePoint = { x: enemy.x, y: enemy.y };
+        }
         vanguardSiegeContacts += 1;
       }
       if (vanguardSiegeContacts > 0) state.classState.vanguardGuard = Math.min(6.4, state.classState.vanguardGuard + Math.min(1.8, vanguardSiegeContacts * 0.6));
+      if (vanguardSiegeWakePoint && state.build.specialization === 'pressure-diver') {
+        plantHazard(state, vanguardSiegeWakePoint.x, vanguardSiegeWakePoint.y, 'vacuumWake', state.build.specializationOverclock ? 2.8 : 2.1, 'player');
+        p.vacuumExposure = Math.max(0, p.vacuumExposure - (state.build.specializationOverclock ? 0.65 : 0.35));
+        vanguardCapstoneEvent = `VOID RAM // ${vanguardSiegeContacts} CONTACT${vanguardSiegeContacts === 1 ? '' : 'S'} // VACUUM TRAIL SEEDED`;
+      }
     }
     for (const projectile of state.projectiles) { if (!projectile.active || projectile.owner !== 'enemy') continue; const delta = { x: projectile.x - p.x, y: projectile.y - p.y }; const distance = len(delta); if (distance > 250 || distance < 1) continue; const dir = norm(delta); if (dir.x * p.aim.x + dir.y * p.aim.y > 0) { if (state.build.mechanics.magRedirect) { projectile.owner = 'player'; projectile.weapon = 'carbine'; projectile.damage = 16 * (state.build.mechanics.magRedirectScale || 1); projectile.penetration = 10 * (state.build.mechanics.magRedirectScale || 1); const speed = Math.max(560, Math.hypot(projectile.vx, projectile.vy)); projectile.vx = dir.x * speed; projectile.vy = dir.y * speed; } else { projectile.vx += dir.x * 620; projectile.vy += dir.y * 620; } } }
     if (hasTrait(state, 'magBloom')) {
@@ -561,7 +573,9 @@ export function triggerAbility(state: SimState, index = 0) {
     const pressureDiverField = state.build.specialization === 'pressure-diver' ? state.hazards.filter(hazard => hazard.active && hazard.owner !== 'player' && (hazard.kind === 'gravityWell' || hazard.kind === 'vectorWash') && Math.hypot(hazard.x - p.x, hazard.y - p.y) < 340).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0] : null;
     if (pressureDiverField) { pressureDiverField.active = false; spawnEffect(state, pressureDiverField.x, pressureDiverField.y, 'pulse', pressureDiverField.radius, 0.5); }
     const sector = currentSector(state, p.x, p.y); if (state.build.specialization === 'pressure-diver' && (sector.pressure < 0.45 || !!pressureDiverField)) plantHazard(state, p.x + p.aim.x * 145, p.y + p.aim.y * 145, 'vacuumWake', state.build.specializationOverclock ? 3 : 2.2, 'player');
-    const slotOneEvent = pressureDiverField
+    const slotOneEvent = vanguardCapstoneEvent
+      ? vanguardCapstoneEvent
+      : pressureDiverField
       ? 'PRESSURE DIVER // REFERENCE SHEAR COLLAPSED TO VACUUM WAKE'
       : state.build.operatorClass === 'vanguard'
       ? state.build.mechanics.vanguardSiegeRam ? `SIEGE RAM // ${vanguardSiegeContacts} ARMOR CONTACT${vanguardSiegeContacts === 1 ? '' : 'S'} // GUARD FED` : 'BREACH RUSH // RAM LINE COMMITTED // GUARD UP'
@@ -579,6 +593,7 @@ export function triggerAbility(state: SimState, index = 0) {
         return score(a) - score(b);
       })[0] ?? null
       : targetInAimCone(state, targetRange, state.build.operatorClass === 'vector' ? 0.075 : 0.1);
+    const vanguardFaultlinePrimaryArmorBefore = target?.armor ?? 0;
     if (target) { target.statuses.marked = (state.build.operatorClass === 'vector' ? 10 : 7.5) * meta.power * (hasTrait(state, 'markCascade') ? 0.78 : 1); if (state.build.operatorClass === 'vanguard') { target.statuses.armorBreach = Math.max(target.statuses.armorBreach, 4.8); const towardOperator = norm({ x: p.x - target.x, y: p.y - target.y }); target.vx += towardOperator.x * 320; target.vy += towardOperator.y * 320; target.armor = Math.max(0, target.armor - 18 * meta.power); target.statuses.stagger = Math.max(target.statuses.stagger, staggerDuration(target, 0.55)); } if (state.build.operatorClass === 'vector') { state.classState.vectorWindow = Math.max(state.classState.vectorWindow, state.build.classResonanceTier >= 2 ? 2.6 : 2.1); p.weaponHeat.rail = Math.max(0, p.weaponHeat.rail - 0.06); } if (target.role === 'technician' || target.combatClass === 'elite' || target.role === 'boss' || target.protocols.length > 0) target.statuses.disrupted = Math.max(target.statuses.disrupted, 2.8); target.anchored = false; spawnEffect(state, target.x, target.y, 'mark', 64, 0.7); if (hasTrait(state, 'tetherhand')) plantHazard(state, target.x, target.y, 'gravityWell', 2.8); if (state.build.mechanics.widebandMark) { const secondary = state.enemies.find(enemy => enemy.active && !enemy.dead && enemy.id !== target.id && Math.hypot(enemy.x - target.x, enemy.y - target.y) < 260); if (secondary) { secondary.statuses.marked = 5.2 * meta.power; spawnEffect(state, secondary.x, secondary.y, 'mark', 48, 0.55); } } if (state.build.operatorClass === 'systems') { let relays = 0; const relayLimit = state.build.classResonanceTier >= 2 ? 3 : 2; const relayCandidates = state.enemies.filter(enemy => enemy.active && !enemy.dead && enemy.id !== target.id && Math.hypot(enemy.x - p.x, enemy.y - p.y) < 900).sort((a, b) => { const aTarget = Math.hypot(a.x - target.x, a.y - target.y); const bTarget = Math.hypot(b.x - target.x, b.y - target.y); return aTarget - bTarget || Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y); }); for (const secondary of relayCandidates) { secondary.statuses.marked = Math.max(secondary.statuses.marked, 4.6 * meta.power); secondary.statuses.disrupted = Math.max(secondary.statuses.disrupted, 2.2); spawnEffect(state, secondary.x, secondary.y, 'mark', 42, 0.5); relays += 1; if (relays >= relayLimit) break; } } if (hasTrait(state, 'custodyShear') && target.carriedObjectId) { dropCarriedObjective(state, target, true); p.abilityCooldowns[1] = Math.min(p.abilityCooldowns[1], 1.4); pushEvent(state, 'CUSTODY SHEAR // CARRIED MISSION HARDWARE RELEASED // TAG RESTORED', 1.6); } if (hasTrait(state, 'custodyShear')) { const hardware = state.objects.filter(object => object.active && object.kind === 'anchorNode' && (object.id.includes('custody-') || object.id.includes('siphon')) && Math.hypot(object.x + object.w / 2 - target.x, object.y + object.h / 2 - target.y) < 360).sort((a, b) => Math.hypot(a.x - target.x, a.y - target.y) - Math.hypot(b.x - target.x, b.y - target.y))[0]; if (hardware) { hardware.hp = 0; hardware.active = false; hardware.exposed = true; spawnEffect(state, hardware.x + hardware.w / 2, hardware.y + hardware.h / 2, 'arc', 80, 0.45); } } if (hasTrait(state, 'relayCrown')) { const relay = state.objects.find(object => object.active && (object.kind === 'conduit' || object.kind === 'anchorNode') && (object.exposed || object.kind === 'anchorNode') && Math.hypot(object.x + object.w / 2 - target.x, object.y + object.h / 2 - target.y) < 330); if (relay) { const cx = relay.x + relay.w / 2; const cy = relay.y + relay.h / 2; let jumped = 0; for (const enemy of state.enemies) { if (!enemy.active || enemy.dead || enemy.id === target.id || Math.hypot(enemy.x - cx, enemy.y - cy) > 310) continue; enemy.statuses.marked = Math.max(enemy.statuses.marked, 4.8 * meta.power); spawnEffect(state, enemy.x, enemy.y, 'mark', 42, 0.5); jumped += 1; if (jumped >= 2) break; } if (jumped > 0) pushEvent(state, `RELAY CROWN // SENSOR SPIKE JUMPED THROUGH ${relay.label.toUpperCase()}`, 1.7); else pushEvent(state, `SENSOR SPIKE // ${target.label.toUpperCase()} MARKED`, 1.4); } else pushEvent(state, `SENSOR SPIKE // ${target.label.toUpperCase()} MARKED`, 1.4); } else pushEvent(state, `SENSOR SPIKE // ${target.label.toUpperCase()} MARKED`, 1.4); }
     else { p.capacitor = Math.min(p.maxCapacitor, p.capacitor + meta.cost * 0.55); p.abilityCooldowns[index] = 1.2; pushEvent(state, state.build.operatorClass === 'vanguard' ? 'FRACTURE TAG // NO TARGET IN BREACH LANE' : state.build.operatorClass === 'vector' ? 'DEADEYE LOCK // NO FIRING SOLUTION' : state.build.operatorClass === 'systems' ? 'RELAY HACK // NO HOSTILE NODE FOUND' : 'SENSOR SPIKE // NO VALID RETURN', 1.1); }
     if (target && state.build.operatorClass === 'vanguard' && state.build.mechanics.vanguardFaultlineTag) {
@@ -586,6 +601,7 @@ export function triggerAbility(state: SimState, index = 0) {
         .filter(enemy => enemy.active && !enemy.dead && enemy.id !== target.id && Math.hypot(enemy.x - target.x, enemy.y - target.y) <= 300)
         .sort((a, b) => Math.hypot(a.x - target.x, a.y - target.y) - Math.hypot(b.x - target.x, b.y - target.y))[0] ?? null;
       if (secondary) {
+        vanguardFaultlineRelayArmorBefore = secondary.armor;
         secondary.armor = Math.max(0, secondary.armor - 12 * meta.power);
         secondary.statuses.armorBreach = Math.max(secondary.statuses.armorBreach, 3.8);
         secondary.statuses.stagger = Math.max(secondary.statuses.stagger, staggerDuration(secondary, 0.4));
@@ -596,10 +612,27 @@ export function triggerAbility(state: SimState, index = 0) {
         vanguardFaultlineRelay = secondary;
       }
     }
+    if (target && state.build.specialization === 'breach-vanguard' && state.build.mechanics.vanguardFaultlineTag) {
+      target.armor = Math.max(0, target.armor - 8 * meta.power);
+      target.statuses.armorBreach = Math.max(target.statuses.armorBreach, 6);
+      if (vanguardFaultlineRelay) {
+        vanguardFaultlineRelay.armor = Math.max(0, vanguardFaultlineRelay.armor - 8 * meta.power);
+        vanguardFaultlineRelay.statuses.armorBreach = Math.max(vanguardFaultlineRelay.statuses.armorBreach, 5.2);
+      }
+      const breaks = (vanguardFaultlinePrimaryArmorBefore > 0 && target.armor <= 0 ? 1 : 0)
+        + (vanguardFaultlineRelay && vanguardFaultlineRelayArmorBefore > 0 && vanguardFaultlineRelay.armor <= 0 ? 1 : 0);
+      if (breaks > 0) {
+        state.classState.vanguardGuard = Math.max(state.classState.vanguardGuard, Math.min(5.2, 3.6 + breaks * 0.7));
+        if (state.build.specializationOverclock) p.armor = Math.min(p.maxArmor, p.armor + Math.min(8, breaks * 4));
+      }
+      vanguardCapstoneEvent = breaks > 0
+        ? `BREACH CASCADE // ${breaks} ARMOR BREAK${breaks === 1 ? '' : 'S'} // GUARD FED`
+        : 'BREACH CASCADE // DUAL FRACTURE DEEPENED';
+    }
     if (target && state.build.operatorClass === 'vector' && target.variant === 'baselineMarksman') { target.telegraph = 0; target.fireCooldown = Math.max(target.fireCooldown, 3.2); target.statuses.disrupted = Math.max(target.statuses.disrupted, 2.4); parallaxClassCounterEvent = 'VECTOR COUNTER-SNIPE // BASELINE FIRING SOLUTION BROKEN'; }
     else if (target && state.build.operatorClass === 'systems' && target.variant === 'referenceTech') { target.hazardCooldown = Math.max(target.hazardCooldown, 8.4); target.statuses.disrupted = Math.max(target.statuses.disrupted, 4.2); target.statuses.conductive = Math.max(target.statuses.conductive, 8); p.abilityCooldowns[2] = Math.min(p.abilityCooldowns[2], 2.2); parallaxClassCounterEvent = 'SYSTEMS BASELINE SPOOF // REFERENCE TECH BUS OVERLOADED'; }
     if (parallaxClassCounterEvent) pushEvent(state, parallaxClassCounterEvent, 1.6);
-    else if (target && state.build.operatorClass === 'vanguard') pushEvent(state, vanguardFaultlineRelay ? `FAULTLINE TAG // ${target.label.toUpperCase()} + ${vanguardFaultlineRelay.label.toUpperCase()} FRACTURED` : `FRACTURE TAG // ${target.label.toUpperCase()} ARMOR PATH OPEN`, 1.35);
+    else if (target && state.build.operatorClass === 'vanguard') pushEvent(state, vanguardCapstoneEvent ?? (vanguardFaultlineRelay ? `FAULTLINE TAG // ${target.label.toUpperCase()} + ${vanguardFaultlineRelay.label.toUpperCase()} FRACTURED` : `FRACTURE TAG // ${target.label.toUpperCase()} ARMOR PATH OPEN`), 1.35);
     else if (target && state.build.operatorClass === 'vector') pushEvent(state, `DEADEYE LOCK // ${target.label.toUpperCase()} // SLIPSTREAM READY`, 1.35);
     else if (target && state.build.operatorClass === 'systems') pushEvent(state, `RELAY HACK // ${target.label.toUpperCase()} NETWORK COMPROMISED`, 1.35);
   } else if (state.build.operatorClass === 'vanguard') {
@@ -636,9 +669,16 @@ export function triggerAbility(state: SimState, index = 0) {
       const repair = Math.min(state.build.specializationOverclock ? 14 : 10, hits * (state.build.specializationOverclock ? 3.5 : 2.5));
       p.armor = Math.min(p.maxArmor, p.armor + repair);
     }
+    if (bulkheadWarden && state.build.mechanics.vanguardReprisalPulse && vanguardReprisalHits > 0) {
+      const counterfortRepair = Math.min(8, vanguardReprisalHits * 1.5);
+      p.armor = Math.min(p.maxArmor, p.armor + counterfortRepair);
+      state.classState.vanguardGuard = Math.min(8, state.classState.vanguardGuard + Math.min(0.8, vanguardReprisalHits * 0.2));
+      if (state.build.specializationOverclock) p.capacitor = Math.min(p.maxCapacitor, p.capacitor + Math.min(9, vanguardReprisalHits * 2.25));
+      vanguardCapstoneEvent = `COUNTERFORT // ${vanguardReprisalHits} REPRISAL${vanguardReprisalHits === 1 ? '' : 'S'} // GUARD + ARMOR RECYCLED`;
+    }
     if (state.build.mechanics.arcGroundLoop && hits > 0) p.capacitor = Math.min(p.maxCapacitor, p.capacitor + Math.min(14, 4 + hits * 2));
     if (state.build.mechanics.arcCascadeLattice) { p.abilityCooldowns[0] = Math.max(0, p.abilityCooldowns[0] - 0.45); p.abilityCooldowns[1] = Math.max(0, p.abilityCooldowns[1] - 0.45); }
-    pushEvent(state, vanguardReprisalHits > 0 ? `REPRISAL PULSE // ${vanguardReprisalHits} BREACH CONTACT${vanguardReprisalHits === 1 ? '' : 'S'} // RUSH RECYCLED` : bulkheadWarden ? `BULKHEAD WARDEN // IMPACT RECYCLED // ${hits} CONTACT${hits === 1 ? '' : 'S'}` : `BULWARK PULSE // GUARD LOCKED // ${hits} CONTACT${hits === 1 ? '' : 'S'}`, 1.45);
+    pushEvent(state, vanguardCapstoneEvent ?? (vanguardReprisalHits > 0 ? `REPRISAL PULSE // ${vanguardReprisalHits} BREACH CONTACT${vanguardReprisalHits === 1 ? '' : 'S'} // RUSH RECYCLED` : bulkheadWarden ? `BULKHEAD WARDEN // IMPACT RECYCLED // ${hits} CONTACT${hits === 1 ? '' : 'S'}` : `BULWARK PULSE // GUARD LOCKED // ${hits} CONTACT${hits === 1 ? '' : 'S'}`), 1.45);
   } else if (state.build.operatorClass === 'vector') {
     const baseDir = norm(p.aim);
     for (const angle of [-0.13, 0, 0.13]) {
