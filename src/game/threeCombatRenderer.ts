@@ -11,6 +11,7 @@ import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET
 import { configureGraphicsAssetRenderer, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
 import { spinHabitatArchitectureState, spinHabitatRenderProfile, spinHabitatSpindownState } from './spinHabitatArchitecture';
 import { jovianHarvesterRenderProfile, jovianHarvesterStormState } from './jovianHarvesterVisualLanguage';
+import { solarYardRenderProfile } from './solarYardVisualProfile';
 
 const WORLD_SCALE = 0.02;
 const FLOOR_Y = 0;
@@ -1132,7 +1133,8 @@ export class ThreeCombatRenderer {
   private async loadAuthoredIceMineEnvironment(state: SimState, worldW: number, worldH: number, detailScale: number) {
     const generation = ++this.iceMineLoadGeneration;
     this.renderer.domElement.dataset.environmentVisual = 'authored-loading';
-    const assetDetailScale = this.coarse ? Math.min(detailScale, 0.55) : detailScale;
+    const profile = solarYardRenderProfile(detailScale, this.coarse);
+    const assetDetailScale = profile.assetDetailScale;
     const loaded: Array<{ key: keyof typeof ICE_MINE_ASSET_FAMILIES; instance: GraphicsAssetInstance; lod: number }> = [];
 
     try {
@@ -1363,7 +1365,7 @@ export class ThreeCombatRenderer {
       const width = scaled(worldW);
       const height = scaled(worldH);
 
-      const ceramicDeckPlacements: EnvironmentPlacement[] = [
+      const ceramicDeckPlacementsAll: EnvironmentPlacement[] = [
         [0.24, 0.27, 0, 0.94], [0.50, 0.27, 0, 0.96], [0.76, 0.27, 0, 0.94],
         [0.26, 0.73, Math.PI, 0.94], [0.52, 0.73, Math.PI, 0.96], [0.78, 0.73, Math.PI, 0.94],
       ].map(([x, z, rotationY, scale]) => ({
@@ -1371,22 +1373,25 @@ export class ThreeCombatRenderer {
         rotationY,
         scale,
       }));
+      const ceramicDeckPlacements = ceramicDeckPlacementsAll.filter((_, index) => profile.ceramicDeckInstances === 6 || [0, 2, 3, 5].includes(index));
 
-      const trussFramePlacements: EnvironmentPlacement[] = [
+      const trussFramePlacementsAll: EnvironmentPlacement[] = [
         [0.18, 0.50, 0.92], [0.34, 0.50, 0.96], [0.50, 0.50, 1.04], [0.66, 0.50, 0.96], [0.82, 0.50, 0.92],
       ].map(([x, z, scale]) => ({
         position: new THREE.Vector3(width * x, 0, height * z),
         rotationY: 0,
         scale,
       }));
+      const trussFramePlacements = trussFramePlacementsAll.filter((_, index) => profile.trussFrameInstances === 5 || [0, 2, 4].includes(index));
 
-      const radiatorTowerPlacements: EnvironmentPlacement[] = [
+      const radiatorTowerPlacementsAll: EnvironmentPlacement[] = [
         [0.14, 0.22, 0.86], [0.14, 0.78, 0.86], [0.86, 0.22, 0.90], [0.86, 0.78, 0.90],
       ].map(([x, z, scale]) => ({
         position: new THREE.Vector3(width * x, 0, height * z),
         rotationY: x < 0.5 ? Math.PI / 2 : -Math.PI / 2,
         scale,
       }));
+      const radiatorTowerPlacements = radiatorTowerPlacementsAll.filter((_, index) => profile.radiatorTowerInstances === 4 || index === 0 || index === 3);
 
       const reflectorPylonPlacements: EnvironmentPlacement[] = [
         [0.72, 0.22, Math.PI / 2, 0.90],
@@ -1398,7 +1403,7 @@ export class ThreeCombatRenderer {
         scale,
       }));
 
-      const sinterForgePlacements: EnvironmentPlacement[] = [
+      const sinterForgePlacementsAll: EnvironmentPlacement[] = [
         [0.40, 0.38, Math.PI / 2, 0.90],
         [0.58, 0.62, -Math.PI / 2, 0.94],
       ].map(([x, z, rotationY, scale]) => ({
@@ -1406,8 +1411,9 @@ export class ThreeCombatRenderer {
         rotationY,
         scale,
       }));
+      const sinterForgePlacements = sinterForgePlacementsAll.filter((_, index) => profile.sinterForgeInstances === 2 || index === 0);
 
-      const printerSpindlePlacements: EnvironmentPlacement[] = [
+      const printerSpindlePlacementsAll: EnvironmentPlacement[] = [
         [0.26, 0.36, 0, 0.88],
         [0.50, 0.50, 0, 0.94],
         [0.74, 0.34, Math.PI, 0.90],
@@ -1416,8 +1422,9 @@ export class ThreeCombatRenderer {
         rotationY,
         scale,
       }));
+      const printerSpindlePlacements = printerSpindlePlacementsAll.filter((_, index) => profile.printerSpindleInstances === 3 || index === 0 || index === 2);
 
-      const feedstockPressPlacements: EnvironmentPlacement[] = [
+      const feedstockPressPlacementsAll: EnvironmentPlacement[] = [
         [0.34, 0.68, Math.PI / 2, 0.88],
         [0.68, 0.70, -Math.PI / 2, 0.90],
       ].map(([x, z, rotationY, scale]) => ({
@@ -1425,8 +1432,9 @@ export class ThreeCombatRenderer {
         rotationY,
         scale,
       }));
+      const feedstockPressPlacements = feedstockPressPlacementsAll.filter((_, index) => profile.feedstockPressInstances === 2 || index === 0);
 
-      const transferRailPlacements: EnvironmentPlacement[] = [
+      const transferRailPlacementsAll: EnvironmentPlacement[] = [
         [0.22, 0.50, 0.86],
         [0.50, 0.50, 0.92],
         [0.78, 0.50, 0.86],
@@ -1435,11 +1443,15 @@ export class ThreeCombatRenderer {
         rotationY: 0,
         scale,
       }));
+      const transferRailPlacements = transferRailPlacementsAll.filter((_, index) => profile.transferRailInstances === 3 || index === 0 || index === 2);
 
-      const gantryCranePlacements = [
+      const gantryCranePlacementsAll = [
         { x: 0.34, z: 0.50, scale: 0.72, phase: 0, amplitude: 2.06, speed: 0.48 },
         { x: 0.66, z: 0.50, scale: 0.76, phase: Math.PI * 0.72, amplitude: 1.78, speed: 0.56 },
       ] as const;
+      const gantryCranePlacements = profile.gantryCraneInstances === 2
+        ? gantryCranePlacementsAll
+        : [{ x: 0.50, z: 0.50, scale: 0.74, phase: Math.PI * 0.36, amplitude: 1.92, speed: 0.52 }] as const;
 
       const thermalShutterControl = state.objects.find(object => object.id === 'solar-shutter');
       if (!thermalShutterControl) throw new Error('Solar Yard thermal shutter control is missing from encounter state');
@@ -1455,7 +1467,7 @@ export class ThreeCombatRenderer {
       thermalShutterRoot.traverse(child => {
         const mesh = child as THREE.Mesh;
         if (!mesh.isMesh) return;
-        mesh.castShadow = true;
+        mesh.castShadow = profile.environmentShadows;
         mesh.receiveShadow = true;
       });
       this.authoredEnvironmentRoot.add(thermalShutterRoot);
@@ -1477,7 +1489,7 @@ export class ThreeCombatRenderer {
         root.traverse(child => {
           const mesh = child as THREE.Mesh;
           if (!mesh.isMesh) return;
-          mesh.castShadow = true;
+          mesh.castShadow = profile.environmentShadows;
           mesh.receiveShadow = true;
         });
         const trolley = root.getObjectByName('solar-yard-gantry-crane-trolley');
@@ -1492,14 +1504,14 @@ export class ThreeCombatRenderer {
       }
 
       let instances = 1 + gantryCranePlacements.length;
-      instances += this.addInstancedEnvironmentAsset(byKey.get('ceramicDeck')!.instance, ceramicDeckPlacements, 'solar-yard-ceramic-deck');
-      instances += this.addInstancedEnvironmentAsset(byKey.get('trussFrame')!.instance, trussFramePlacements, 'solar-yard-truss-frame');
-      instances += this.addInstancedEnvironmentAsset(byKey.get('radiatorTower')!.instance, radiatorTowerPlacements, 'solar-yard-radiator-tower');
-      instances += this.addInstancedEnvironmentAsset(byKey.get('reflectorPylon')!.instance, reflectorPylonPlacements, 'solar-yard-reflector-pylon');
-      instances += this.addInstancedEnvironmentAsset(byKey.get('sinterForge')!.instance, sinterForgePlacements, 'solar-yard-sinter-forge');
-      instances += this.addInstancedEnvironmentAsset(byKey.get('printerSpindle')!.instance, printerSpindlePlacements, 'solar-yard-printer-spindle');
-      instances += this.addInstancedEnvironmentAsset(byKey.get('feedstockPress')!.instance, feedstockPressPlacements, 'solar-yard-feedstock-press');
-      instances += this.addInstancedEnvironmentAsset(byKey.get('transferRail')!.instance, transferRailPlacements, 'solar-yard-transfer-rail');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('ceramicDeck')!.instance, ceramicDeckPlacements, 'solar-yard-ceramic-deck', this.authoredEnvironmentRoot, profile.environmentShadows);
+      instances += this.addInstancedEnvironmentAsset(byKey.get('trussFrame')!.instance, trussFramePlacements, 'solar-yard-truss-frame', this.authoredEnvironmentRoot, profile.environmentShadows);
+      instances += this.addInstancedEnvironmentAsset(byKey.get('radiatorTower')!.instance, radiatorTowerPlacements, 'solar-yard-radiator-tower', this.authoredEnvironmentRoot, profile.environmentShadows);
+      instances += this.addInstancedEnvironmentAsset(byKey.get('reflectorPylon')!.instance, reflectorPylonPlacements, 'solar-yard-reflector-pylon', this.authoredEnvironmentRoot, profile.environmentShadows);
+      instances += this.addInstancedEnvironmentAsset(byKey.get('sinterForge')!.instance, sinterForgePlacements, 'solar-yard-sinter-forge', this.authoredEnvironmentRoot, profile.environmentShadows);
+      instances += this.addInstancedEnvironmentAsset(byKey.get('printerSpindle')!.instance, printerSpindlePlacements, 'solar-yard-printer-spindle', this.authoredEnvironmentRoot, profile.environmentShadows);
+      instances += this.addInstancedEnvironmentAsset(byKey.get('feedstockPress')!.instance, feedstockPressPlacements, 'solar-yard-feedstock-press', this.authoredEnvironmentRoot, profile.environmentShadows);
+      instances += this.addInstancedEnvironmentAsset(byKey.get('transferRail')!.instance, transferRailPlacements, 'solar-yard-transfer-rail', this.authoredEnvironmentRoot, profile.environmentShadows);
 
       this.refineryAssetInstances.push(...loaded.map(item => item.instance));
       this.proceduralRefineryVisuals.forEach(item => { item.visible = false; });
@@ -1508,6 +1520,9 @@ export class ThreeCombatRenderer {
       this.renderer.domElement.dataset.environmentLod = lods.join(',');
       this.renderer.domElement.dataset.environmentKit = 'ceramic-deck,truss-frame,radiator-tower,reflector-pylon,sinter-forge,printer-spindle,feedstock-press,transfer-rail,gantry-crane,thermal-shutter';
       this.renderer.domElement.dataset.environmentInstances = String(instances);
+      this.renderer.domElement.dataset.environmentPerformanceProfile = `${profile.name}:lod${lods.join(',')}:structure-shadows-${profile.environmentShadows ? 'on' : 'off'}`;
+      this.renderer.domElement.dataset.environmentInstanceBudget = `deck:${ceramicDeckPlacements.length}+truss:${trussFramePlacements.length}+radiator:${radiatorTowerPlacements.length}+reflector:${reflectorPylonPlacements.length}+machines:${sinterForgePlacements.length + printerSpindlePlacements.length + feedstockPressPlacements.length}+rail:${transferRailPlacements.length}+crane:${gantryCranePlacements.length}+shutter:1`;
+      this.renderer.domElement.dataset.environmentShadowCasters = profile.environmentShadows ? 'solar-yard-structures+gameplay-actors' : 'gameplay-actors-only';
       this.renderer.domElement.dataset.environmentLandmark = 'gold-reflector-pylon-row';
       this.renderer.domElement.dataset.environmentServiceDetails = `ceramic-deck:${ceramicDeckPlacements.length}+truss-frame:${trussFramePlacements.length}+radiator-tower:${radiatorTowerPlacements.length}+thermal-shutter:1`;
       this.renderer.domElement.dataset.environmentTransport = `transfer-rail:${transferRailPlacements.length}+gantry-crane:${gantryCranePlacements.length}`;
@@ -1547,6 +1562,9 @@ export class ThreeCombatRenderer {
       delete this.renderer.domElement.dataset.environmentTransport;
       delete this.renderer.domElement.dataset.environmentCraneMotion;
       delete this.renderer.domElement.dataset.environmentCraneOffsets;
+      delete this.renderer.domElement.dataset.environmentPerformanceProfile;
+      delete this.renderer.domElement.dataset.environmentInstanceBudget;
+      delete this.renderer.domElement.dataset.environmentShadowCasters;
       delete this.renderer.domElement.dataset.readabilityLanguage;
       console.warn('Authored Solar Yard fabrication kit failed to load; keeping procedural scenery.', error);
     }
@@ -2866,12 +2884,18 @@ export class ThreeCombatRenderer {
       }
       this.proceduralRefineryVisuals.push(...iceMineFallback);
     } else if (location === 'solar-yard') {
+      const solarYardProfile = solarYardRenderProfile(detailScale, this.coarse);
       const solarYardFallback: THREE.Object3D[] = [];
-      for (let i = -3; i <= 3; i += 1) {
+      const fallbackPanelOffsets = solarYardProfile.fallbackPanelInstances === 7
+        ? [-3, -2, -1, 0, 1, 2, 3]
+        : solarYardProfile.fallbackPanelInstances === 5
+          ? [-3, -2, 0, 2, 3]
+          : [-3, 0, 3];
+      for (const i of fallbackPanelOffsets) {
         const panel = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.18, 2.2), emissive);
         panel.position.set(cx + i * 5.2, 1.3 + Math.abs(i) * 0.08, cz + (i % 2 ? 6 : -6));
         panel.rotation.z = -0.16;
-        panel.castShadow = true;
+        panel.castShadow = solarYardProfile.environmentShadows;
         this.environmentRoot.add(panel);
         solarYardFallback.push(panel);
       }
@@ -2899,7 +2923,7 @@ export class ThreeCombatRenderer {
         [0.36, 0.66, 0.18, 0.52, -0.10],
         [0.52, 0.28, 0.13, 0.36, -0.10],
       ] as const;
-      for (const [x, z, widthRatio, depthRatio, rotation] of shadePlacements) {
+      for (const [x, z, widthRatio, depthRatio, rotation] of shadePlacements.slice(0, solarYardProfile.shadePatchInstances)) {
         const shade = new THREE.Mesh(new THREE.PlaneGeometry(scaled(worldW * widthRatio), scaled(worldH * depthRatio)), createShadeMaterial());
         shade.rotation.x = -Math.PI / 2;
         shade.rotation.z = rotation;
@@ -2913,7 +2937,7 @@ export class ThreeCombatRenderer {
         [0.78, 0.56, 0.17, 0.30, -0.10],
         [0.64, 0.78, 0.16, 0.24, -0.10],
       ] as const;
-      for (const [x, z, widthRatio, depthRatio, rotation] of sunPlacements) {
+      for (const [x, z, widthRatio, depthRatio, rotation] of sunPlacements.slice(0, solarYardProfile.sunPatchInstances)) {
         const sunPatch = new THREE.Mesh(new THREE.PlaneGeometry(scaled(worldW * widthRatio), scaled(worldH * depthRatio)), createSunMaterial());
         sunPatch.rotation.x = -Math.PI / 2;
         sunPatch.rotation.z = rotation;
@@ -2923,6 +2947,9 @@ export class ThreeCombatRenderer {
         this.solarYardSunPatches.push(sunPatch);
       }
       this.environmentRoot.add(sunShadowRoot);
+      this.renderer.domElement.dataset.environmentPerformanceProfile = `${solarYardProfile.name}:procedural:structure-shadows-${solarYardProfile.environmentShadows ? 'on' : 'off'}`;
+      this.renderer.domElement.dataset.environmentInstanceBudget = `fallback-panel:${solarYardFallback.length}+sun:${this.solarYardSunPatches.length}+shade:${this.solarYardShadePatches.length}`;
+      this.renderer.domElement.dataset.environmentShadowCasters = solarYardProfile.environmentShadows ? 'solar-yard-structures+gameplay-actors' : 'gameplay-actors-only';
     } else if (location === 'momentum-exchange') {
       for (const offset of [-9, 0, 9]) {
         const flywheel = new THREE.Mesh(new THREE.TorusGeometry(2.6, 0.48, 12, 48), structural);
