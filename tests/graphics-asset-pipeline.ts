@@ -181,11 +181,11 @@ for (const marker of ['ice-mine-frost-wall-rock', 'ice-mine-support-frame-crown'
 assert(rendererSource.includes('ICE_MINE_ASSET_FAMILIES'), 'Ice Mine P3.2 must load the authored environment kit at runtime');
 assert(rendererSource.includes('loadAuthoredIceMineEnvironment(state, world.w, world.h, budget.detailScale)'), 'Ice Mine P3.2 must route combat rendering through authored bore/tunnel composition');
 assert(rendererSource.includes("dataset.environmentVisual = 'authored-ice-mine'"), 'Ice Mine P3.2 authored activation must remain observable');
-assert(rendererSource.includes("dataset.environmentKit = 'frost-wall,support-frame,service-deck,ice-pillar'"), 'Ice Mine P3.2 runtime kit identity must remain explicit');
+assert(rendererSource.includes("dataset.environmentKit = 'frost-wall,support-frame,service-deck,ice-pillar,cryo-pump,coolant-manifold,freeze-compressor'"), 'Ice Mine P3.4 runtime kit must include the authored cryogenic machinery families');
 assert(rendererSource.includes("dataset.environmentComposition = 'access-bore+reinforced-extraction-tunnel+subglacial-vault'"), 'Ice Mine P3.2 must preserve the three-zone mine composition');
 assert(rendererSource.includes("dataset.environmentTunnelSequence = 'access-bore>extraction-tunnel>subglacial-vault'"), 'Ice Mine P3.2 must preserve the authored bore-to-vault sequence');
-assert(rendererSource.includes("dataset.environmentZoneIdentity = 'access-bore:frost-wall-cut|extraction-tunnel:steel-support-frames+service-deck|subglacial-vault:ice-pillar-cluster'"), 'Ice Mine P3.2 zone silhouettes must remain explicit');
-assert(rendererSource.includes("dataset.readabilityLanguage = 'frost-wall-corridor+support-frame-rhythm+cyan-service-deck+vault-pillars'"), 'Ice Mine P3.2 screenshot readability language must remain explicit');
+assert(rendererSource.includes("dataset.environmentZoneIdentity = 'access-bore:frost-wall-cut|extraction-tunnel:steel-support-frames+service-deck+cryo-pumps|subglacial-vault:ice-pillar-cluster+coolant-manifolds+freeze-compressors'"), 'Ice Mine P3.4 zone silhouettes must include cryogenic machinery placement');
+assert(rendererSource.includes("dataset.readabilityLanguage = 'frost-wall-corridor+support-frame-rhythm+cyan-service-deck+vault-pillars+cold-cyan-machinery'"), 'Ice Mine P3.4 screenshot readability language must expose the cold machinery identity');
 assert(rendererSource.includes('this.proceduralRefineryVisuals.push(...iceMineFallback)'), 'Ice Mine P3.2 must retain procedural scenery as an authored-load fallback');
 assert(rendererSource.includes('this.coarse ? Math.min(detailScale, 0.55) : detailScale'), 'Ice Mine P3.2 coarse/mobile runtime must force the authored mobile LOD');
 
@@ -195,6 +195,17 @@ assert(rendererSource.includes('syncIceMineBrittleSupports(state, mission)'), 'I
 assert(rendererSource.includes('dataset.environmentBrittleSupports'), 'Ice Mine P3.3 support destruction must expose deterministic runtime QA telemetry');
 assert(rendererSource.includes('dataset.environmentBrittleSupportState'), 'Ice Mine P3.3 must expose intact/partial/cleared support state');
 assert(rendererSource.includes("mission.location === 'ice-mine' && this.iceMineBrittleSupportVisuals.has(object.id)"), 'Ice Mine P3.3 authored supports must suppress duplicate procedural collision-box visuals once loaded');
+
+for (const asset of ['ice-mine-cryo-pump', 'ice-mine-coolant-manifold', 'ice-mine-freeze-compressor']) {
+  assert(manifestSource.includes(`${asset}-lod1.glb`) && manifestSource.includes(`${asset}-lod2.glb`), `Ice Mine P3.4 machinery asset ${asset} must preserve adaptive LOD1/LOD2 coverage`);
+}
+for (const marker of ['ice-mine-cryo-pump-housing', 'ice-mine-coolant-manifold-spine', 'ice-mine-freeze-compressor-body']) {
+  assert(jovianAssetGeneratorSource.includes(`name: '${marker}'`), `Ice Mine P3.4 machinery silhouette marker ${marker} must remain authored`);
+}
+assert(rendererSource.includes('cryoPumpPlacements'), 'Ice Mine P3.4 must place authored cryo pumps in the extraction path');
+assert(rendererSource.includes('coolantManifoldPlacements'), 'Ice Mine P3.4 must place coolant manifolds through the machinery run');
+assert(rendererSource.includes('freezeCompressorPlacements'), 'Ice Mine P3.4 must place freeze compressors at the tunnel/vault transition');
+assert(rendererSource.includes('dataset.environmentMachineDetail'), 'Ice Mine P3.4 must expose deterministic machinery runtime telemetry');
 
 assert(rendererSource.includes('JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES'), 'Jovian Harvester P2.11 must select dedicated authored gas machinery families');
 for (const asset of ['jovian-harvester-storm-bus-isolator', 'jovian-harvester-deck-mass-trim', 'jovian-harvester-skimmer-compressor', 'jovian-harvester-separator-package']) {

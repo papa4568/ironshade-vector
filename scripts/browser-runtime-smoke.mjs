@@ -729,16 +729,17 @@ try {
   if (targetLocation === 'ice-mine') {
     await waitFor(`(() => {
       const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-ice-mine');
-      return canvas?.dataset.environmentKit === 'frost-wall,support-frame,service-deck,ice-pillar'
+      return canvas?.dataset.environmentKit === 'frost-wall,support-frame,service-deck,ice-pillar,cryo-pump,coolant-manifold,freeze-compressor'
         && canvas?.dataset.environmentLandmark === 'subglacial-vault-ice-pillars'
         && canvas?.dataset.environmentComposition === 'access-bore+reinforced-extraction-tunnel+subglacial-vault'
         && canvas?.dataset.environmentTunnelSequence === 'access-bore>extraction-tunnel>subglacial-vault'
-        && canvas?.dataset.environmentZoneIdentity === 'access-bore:frost-wall-cut|extraction-tunnel:steel-support-frames+service-deck|subglacial-vault:ice-pillar-cluster'
-        && canvas?.dataset.readabilityLanguage === 'frost-wall-corridor+support-frame-rhythm+cyan-service-deck+vault-pillars'
+        && canvas?.dataset.environmentZoneIdentity === 'access-bore:frost-wall-cut|extraction-tunnel:steel-support-frames+service-deck+cryo-pumps|subglacial-vault:ice-pillar-cluster+coolant-manifolds+freeze-compressors'
+        && canvas?.dataset.readabilityLanguage === 'frost-wall-corridor+support-frame-rhythm+cyan-service-deck+vault-pillars+cold-cyan-machinery'
         && (canvas?.dataset.environmentServiceDetails ?? '').includes('support-frame:6')
         && (canvas?.dataset.environmentServiceDetails ?? '').includes('service-deck:4')
         && (canvas?.dataset.environmentSurfaceDetail ?? '').includes('frost-wall:10')
         && (canvas?.dataset.environmentSurfaceDetail ?? '').includes('ice-pillar:5')
+        && canvas?.dataset.environmentMachineDetail === 'cryo-pump:2+coolant-manifold:3+freeze-compressor:2'
         && canvas?.dataset.environmentBrittleSupportIds === 'ice-brittle-gate-a,ice-brittle-gate-b'
         && /^(intact|damaged|partial|cleared)$/.test(canvas?.dataset.environmentBrittleSupportState ?? '')
         && Number(canvas?.dataset.environmentInstances) > 0
@@ -754,6 +755,7 @@ try {
         sequence: canvas?.dataset.environmentTunnelSequence ?? '',
         service: canvas?.dataset.environmentServiceDetails ?? '',
         surface: canvas?.dataset.environmentSurfaceDetail ?? '',
+        machinery: canvas?.dataset.environmentMachineDetail ?? '',
         brittle: canvas?.dataset.environmentBrittleSupports ?? '',
         brittleState: canvas?.dataset.environmentBrittleSupportState ?? '',
       };
@@ -761,10 +763,13 @@ try {
     if (viewportMode === 'mobile-landscape' && iceMineEnvironment?.lod !== '2') {
       throw new Error(`Ice Mine mobile environment did not select LOD2: ${JSON.stringify(iceMineEnvironment)}`);
     }
+    if (iceMineEnvironment?.machinery !== 'cryo-pump:2+coolant-manifold:3+freeze-compressor:2') {
+      throw new Error(`Ice Mine cryogenic machinery runtime telemetry was not observable: ${JSON.stringify(iceMineEnvironment)}`);
+    }
     if (!iceMineEnvironment?.brittle || !/^(intact|damaged|partial|cleared)$/.test(iceMineEnvironment?.brittleState ?? '')) {
       throw new Error(`Ice Mine brittle support runtime telemetry was not observable: ${JSON.stringify(iceMineEnvironment)}`);
     }
-    console.log(`BROWSER_ICE_MINE_PASS viewport=${viewportMode} lod=${iceMineEnvironment?.lod} instances=${iceMineEnvironment?.instances} kit=${iceMineEnvironment?.kit} composition=${iceMineEnvironment?.composition} sequence=${iceMineEnvironment?.sequence} service=${iceMineEnvironment?.service} surface=${iceMineEnvironment?.surface} brittle=${iceMineEnvironment?.brittleState}:${iceMineEnvironment?.brittle}`);
+    console.log(`BROWSER_ICE_MINE_PASS viewport=${viewportMode} lod=${iceMineEnvironment?.lod} instances=${iceMineEnvironment?.instances} kit=${iceMineEnvironment?.kit} composition=${iceMineEnvironment?.composition} sequence=${iceMineEnvironment?.sequence} service=${iceMineEnvironment?.service} surface=${iceMineEnvironment?.surface} machinery=${iceMineEnvironment?.machinery} brittle=${iceMineEnvironment?.brittleState}:${iceMineEnvironment?.brittle}`);
   }
 
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);

@@ -1186,6 +1186,61 @@ function iceMineNodes(kind, lod) {
     return nodes;
   }
 
+  if (kind === 'cryoPump') {
+    const nodes = [
+      { name: 'ice-mine-cryo-pump-skid', mesh: 2, translation: [0, 0.18, 0], scale: [2.24, 0.36, 1.30] },
+      { name: 'ice-mine-cryo-pump-housing', mesh: 1, translation: [0, 1.10, 0], scale: [1.42, 1.84, 1.08] },
+      { name: 'ice-mine-cryo-pump-cold-head', mesh: 3, translation: [0.22, 2.02, 0], scale: [0.72, 0.56, 0.74] },
+      { name: 'ice-mine-cryo-pump-status', mesh: 4, translation: [1.10, 1.22, 0.82], scale: [0.12, 0.64, 0.08] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'ice-mine-cryo-pump-feed-left', mesh: 1, translation: [-1.18, 0.88, -0.62], scale: [0.18, 1.18, 0.18] },
+        { name: 'ice-mine-cryo-pump-feed-right', mesh: 1, translation: [-1.18, 0.88, 0.62], scale: [0.18, 1.18, 0.18] },
+        { name: 'ice-mine-cryo-pump-frost-collar', mesh: 3, translation: [0.18, 1.68, 0], scale: [1.08, 0.18, 1.02] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  if (kind === 'coolantManifold') {
+    const nodes = [
+      { name: 'ice-mine-coolant-manifold-skid', mesh: 2, translation: [0, 0.16, 0], scale: [2.52, 0.32, 0.84] },
+      { name: 'ice-mine-coolant-manifold-spine', mesh: 1, translation: [0, 1.26, 0], scale: [2.10, 0.34, 0.34] },
+      { name: 'ice-mine-coolant-manifold-riser-a', mesh: 1, translation: [-1.18, 0.88, 0], scale: [0.20, 1.42, 0.20] },
+      { name: 'ice-mine-coolant-manifold-riser-b', mesh: 1, translation: [1.18, 0.88, 0], scale: [0.20, 1.42, 0.20] },
+      { name: 'ice-mine-coolant-manifold-status', mesh: 4, translation: [0, 1.62, 0.28], scale: [0.84, 0.10, 0.08] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'ice-mine-coolant-manifold-branch-left', mesh: 1, translation: [-0.64, 0.70, -0.58], scale: [0.16, 0.94, 0.16] },
+        { name: 'ice-mine-coolant-manifold-branch-right', mesh: 1, translation: [0.64, 0.70, 0.58], scale: [0.16, 0.94, 0.16] },
+        { name: 'ice-mine-coolant-manifold-frost-sump', mesh: 3, translation: [0, 0.44, 0], scale: [1.16, 0.20, 0.62] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  if (kind === 'freezeCompressor') {
+    const nodes = [
+      { name: 'ice-mine-freeze-compressor-skid', mesh: 2, translation: [0, 0.18, 0], scale: [2.18, 0.36, 1.18] },
+      { name: 'ice-mine-freeze-compressor-body', mesh: 1, translation: [0, 1.10, 0], scale: [1.54, 1.70, 0.96] },
+      { name: 'ice-mine-freeze-compressor-jacket', mesh: 3, translation: [0, 1.34, 0], scale: [1.66, 0.18, 1.04] },
+      { name: 'ice-mine-freeze-compressor-status', mesh: 4, translation: [1.18, 1.18, 0.74], scale: [0.10, 0.58, 0.08] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'ice-mine-freeze-compressor-drive', mesh: 1, translation: [-1.34, 0.90, 0], scale: [0.54, 0.54, 0.54] },
+        { name: 'ice-mine-freeze-compressor-service-rail', mesh: 1, translation: [0, 2.04, 0], scale: [1.62, 0.14, 0.18] },
+        { name: 'ice-mine-freeze-compressor-frost-trap', mesh: 3, translation: [0.72, 0.62, -0.62], scale: [0.42, 0.46, 0.42] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
   const nodes = [
     { name: 'ice-mine-ice-pillar-core', mesh: 3, translation: [0, 1.78, 0], scale: [1.04, 3.56, 1.04] },
     { name: 'ice-mine-ice-pillar-rock-base', mesh: 0, translation: [0, 0.32, 0], scale: [1.62, 0.64, 1.52] },
@@ -1981,6 +2036,9 @@ const iceMineProfiles = [
   ['supportFrame', 'ice-mine-support-frame'],
   ['serviceDeck', 'ice-mine-service-deck'],
   ['icePillar', 'ice-mine-ice-pillar'],
+  ['cryoPump', 'ice-mine-cryo-pump'],
+  ['coolantManifold', 'ice-mine-coolant-manifold'],
+  ['freezeCompressor', 'ice-mine-freeze-compressor'],
 ];
 
 for (const [kind, id] of iceMineProfiles) {
