@@ -365,16 +365,16 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.177**
+- Android beta: **0.0.1-beta.178**
 - Package: `app.ironshade.vector`
-- Verified: Solar Yard P3.7–P3.9 is complete through the authored fabrication foundation and sun/shadow identity. The yard retains ceramic fabrication decks, scorched truss frames, black radiator towers, gold reflector pylons, two sinter forges, three printer spindles, and two feedstock presses, now lit by a fixed sunward hard key instead of the shared player-following key. Three bounded warm sun patches and three cool shade masses reinforce the shade-deck → fabrication-spine → sunward-yard composition; adaptive shadow telemetry and the live solar-surge hook remain observable without implementing P3.10 shutter hardware early. PR and merged-`main` full regression/production builds passed desktop + mobile-landscape Browser E2E including the dedicated Solar Yard route; Level 15 beta smoke passed; Android beta.177 passed package/version/SDK/signature verification, native emulator runtime smoke, and Chapter 3 touch playthrough.
+- Verified: Solar Yard P3.7–P3.10 is complete through authored fabrication, sun/shadow identity, and gameplay-bound local thermal shutters. The yard now includes adaptive LOD1/LOD2 thermal shutter hardware anchored to the existing `solar-shutter` control; the authored panels reflect the live `exposed` state, while the existing timed solar-surge path remains the single source of radiant-load behavior. Runtime QA exposes shutter state/protection/source alongside the established fabrication and sun/shadow telemetry. PR and merged-`main` full regression/production builds passed desktop + mobile-landscape Browser E2E including the dedicated Solar Yard route; Level 15 beta smoke passed; Android beta.178 passed package/version/SDK/signature verification, native emulator runtime smoke, and Chapter 3 touch playthrough.
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P3.9 final implementation head: `017b6b444471b44e51637969bedf0d2ee364a964`
-- P3.9 merged main head / APK source: `c7eae9ac0eb5f74b92042e97440333b9477aa444`
-- PR Browser E2E run: `35515531972`
-- Browser E2E run: `35515658180`
-- Level 15 beta smoke run: `35515658111`
-- Android beta.177 run: `35515658101`
-- Android beta.177 artifact ID: `10606728179`
-- Android beta.177 artifact head: `c7eae9ac0eb5f74b92042e97440333b9477aa444`
-- APK SHA-256: `1e21f73b25927de0ff0b55d81ee1019475e0eef78fe10334d0ea590b34ed7dc0`
+- P3.10 final implementation head: `9db22f0bea37305dc8c288a285632e0b516ffd21`
+- P3.10 merged main head / APK source: `39f8578ca36ab95eb9ef81b46254c38daa2e304f`
+- PR Browser E2E run: `35516477654`
+- Browser E2E run: `35516601852`
+- Level 15 beta smoke run: `35516601859`
+- Android beta.178 run: `35516601758`
+- Android beta.178 artifact ID: `10606519713`
+- Android beta.178 artifact head: `39f8578ca36ab95eb9ef81b46254c38daa2e304f`
+- APK SHA-256: `6c563c99b57c42cf2e5f8f035f9cd474d5a95dc98a906ee21e813cefc593ae74`
