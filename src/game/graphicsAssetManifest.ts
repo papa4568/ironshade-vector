@@ -189,6 +189,37 @@ export const ICE_MINE_ASSET_FAMILIES = {
   },
 } as const satisfies Record<'frostWall' | 'supportFrame' | 'serviceDeck' | 'icePillar' | 'cryoPump' | 'coolantManifold' | 'freezeCompressor', GraphicsAssetFamily>;
 
+export const SOLAR_YARD_ASSET_FAMILIES = {
+  ceramicDeck: {
+    id: 'solar-yard-ceramic-deck',
+    lods: {
+      1: createGraphicsAssetSpec('solar-yard-ceramic-deck-lod1', 'environment-module', '/assets/models/environments/solar-yard-ceramic-deck-lod1.glb', 1),
+      2: createGraphicsAssetSpec('solar-yard-ceramic-deck-lod2', 'environment-module', '/assets/models/environments/solar-yard-ceramic-deck-lod2.glb', 2),
+    },
+  },
+  trussFrame: {
+    id: 'solar-yard-truss-frame',
+    lods: {
+      1: createGraphicsAssetSpec('solar-yard-truss-frame-lod1', 'environment-module', '/assets/models/environments/solar-yard-truss-frame-lod1.glb', 1),
+      2: createGraphicsAssetSpec('solar-yard-truss-frame-lod2', 'environment-module', '/assets/models/environments/solar-yard-truss-frame-lod2.glb', 2),
+    },
+  },
+  radiatorTower: {
+    id: 'solar-yard-radiator-tower',
+    lods: {
+      1: createGraphicsAssetSpec('solar-yard-radiator-tower-lod1', 'environment-module', '/assets/models/environments/solar-yard-radiator-tower-lod1.glb', 1),
+      2: createGraphicsAssetSpec('solar-yard-radiator-tower-lod2', 'environment-module', '/assets/models/environments/solar-yard-radiator-tower-lod2.glb', 2),
+    },
+  },
+  reflectorPylon: {
+    id: 'solar-yard-reflector-pylon',
+    lods: {
+      1: createGraphicsAssetSpec('solar-yard-reflector-pylon-lod1', 'environment-module', '/assets/models/environments/solar-yard-reflector-pylon-lod1.glb', 1),
+      2: createGraphicsAssetSpec('solar-yard-reflector-pylon-lod2', 'environment-module', '/assets/models/environments/solar-yard-reflector-pylon-lod2.glb', 2),
+    },
+  },
+} as const satisfies Record<'ceramicDeck' | 'trussFrame' | 'radiatorTower' | 'reflectorPylon', GraphicsAssetFamily>;
+
 export const PARALLAX_ASSET_FAMILIES = {
   pylon: {
     id: 'parallax-baseline-pylon',
