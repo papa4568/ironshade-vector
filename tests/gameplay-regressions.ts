@@ -483,6 +483,8 @@ const perseidStage2State = createSimulation(perseidBuild);
 applyMissionSetup(perseidStage2State, perseidStage2);
 assert.deepEqual(perseidStage2State.sectors.map(sector => sector.label), ['OUTER DRUM', 'AGRICULTURAL RING', 'SEED VAULT'], 'Perseid stage 2 must read as the agricultural drum rather than generic Spin Habitat.');
 assert.equal(perseidStage2State.enemies.find(enemy => enemy.id === 6)?.label, 'Perseid Drum Warder', 'Perseid stage 2 must keep its guaranteed ship-specific elite.');
+assert.match(perseidStage2.megastructureTransitionRoute ?? '', /KEEL TRAM/, 'Perseid stage 2 must expose the authored physical transit route from the docking spine.');
+assert.match(perseidStage2.megastructureArrivalCue ?? '', /ROTATION SYNCED/, 'Perseid stage 2 must expose a destination-specific arrival cue.');
 
 const perseidStage3 = getMegastructureStageContract(perseidContract, 2);
 const perseidStage3State = createSimulation(perseidBuild);
@@ -530,6 +532,7 @@ const k91Stage4 = getMegastructureStageContract(k91Contract, 3);
 const k91Stage4State = createSimulation(perseidBuild);
 applyMissionSetup(k91Stage4State, k91Stage4);
 assert.deepEqual(k91Stage4State.sectors.map(sector => sector.label), ['BALLAST APPROACH', 'MASS VAULT', 'BLACKBOX WELL'], 'K-91 stage 4 must read as the ballast vault.');
+assert.match(k91Stage4.megastructureTransitionRoute ?? '', /BALLAST SERVICE TRUNK/, 'K-91 final transition must preserve the counterweight physical route into the ballast vault.');
 assert.equal(k91Stage4.megastructureBossTarget, undefined, 'K-91 Ballast Vault must finish through traversal and recovery, not an optional boss breach.');
 
 const k91Director = createDirector();
@@ -571,6 +574,7 @@ const orphelineStage4 = getMegastructureStageContract(orphelineContract, 3);
 const orphelineStage4State = createSimulation(perseidBuild);
 applyMissionSetup(orphelineStage4State, orphelineStage4);
 assert.deepEqual(orphelineStage4State.sectors.map(sector => sector.label), ['FOUNDERS APPROACH', 'CONTROL VAULT', 'WARDEN CHAMBER'], 'Orpheline stage 4 must read as the buried founding control vault.');
+assert.match(orphelineStage4.megastructureTransitionDetail ?? '', /founder shaft/i, 'Orpheline final transition must explain how the residential ring physically connects to the buried vault.');
 const orphelineWarden = orphelineStage4State.enemies.find(enemy => enemy.role === 'boss');
 assert.equal(orphelineWarden?.label, 'Orpheline Habitat Warden', 'Orpheline final deep target must retain its authored identity.');
 assert.equal(orphelineWarden?.variant, 'orphelineWarden', 'Orpheline Habitat Warden must use its dedicated boss behavior.');
@@ -604,6 +608,7 @@ const hecateStage3 = getMegastructureStageContract(hecateContract, 2);
 const hecateStage3State = createSimulation(perseidBuild);
 applyMissionSetup(hecateStage3State, hecateStage3);
 assert.deepEqual(hecateStage3State.sectors.map(sector => sector.label), ['WRECK FORE', 'OPEN TRANSIT', 'PRESSURE HULKS'], 'Hecate stage 3 must read as an exposed wreck-transit chain.');
+assert.match(hecateStage3.megastructureTransitionRoute ?? '', /OPEN PRESSURE BRIDGE/, 'Hecate stage 3 must expose the physical bridge from the cutter line into the wreck chain.');
 
 const hecateStage4 = getMegastructureStageContract(hecateContract, 3);
 const hecateStage4State = createSimulation(perseidBuild);
@@ -639,6 +644,10 @@ assert.notEqual(expeditionLootCarry, expeditionLootSource, 'stage transit should
 assert.notEqual(expeditionLootCarry[0], expeditionLootSource[0], 'stage transit should copy individual receipts so later mutation cannot rewrite earlier-stage recovery data');
 const gameCanvasSource = readFileSync('src/components/GameCanvas.tsx', 'utf8');
 assert.match(gameCanvasSource, /state\.collectedLoot = carryExpeditionLoot\(carry\.collectedLoot\);/, 'GameCanvas must carry collected expedition loot into each new megastructure stage');
+assert.match(gameCanvasSource, /const \[pendingTransit, setPendingTransit\] = useState<PendingMegastructureTransit>/, 'GameCanvas must stage megastructure travel through an explicit transit briefing instead of teleporting immediately.');
+assert.match(gameCanvasSource, /megastructureTransitionRoute/, 'The transit briefing must render authored physical route metadata.');
+assert.match(gameCanvasSource, /megastructureArrivalCue/, 'The transit briefing must render the destination arrival cue.');
+assert.match(gameCanvasSource, /completeMegastructureTransit/, 'The player must explicitly commit the staged transit before the next combat space is created.');
 
 failStorageWrites = true;
 assert.equal(saveCampaign(campaign), false, 'campaign persistence should report blocked storage without throwing');
