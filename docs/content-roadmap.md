@@ -225,7 +225,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 ### Solar Yard
 - [x] P3.7 Assets
 - [x] P3.8 Fabrication machinery
-- [ ] P3.9 Sun/shadow identity
+- [x] P3.9 Sun/shadow identity
 - [ ] P3.10 Thermal shutters
 - [ ] P3.11 Cranes/rails/motion
 - [ ] P3.12 HELIOS-9 presentation
@@ -307,7 +307,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1 and P2 are complete, **Ice Mine P3.1–P3.6** are delivered, and **Solar Yard P3.7–P3.8** are delivered. Continue in roadmap order with **P3.9 — Sun/shadow identity**, followed by P3.10–P3.13 to finish Solar Yard.
+P1 and P2 are complete, **Ice Mine P3.1–P3.6** are delivered, and **Solar Yard P3.7–P3.9** are delivered. Continue in roadmap order with **P3.10 — Thermal shutters**, followed by P3.11–P3.13 to finish Solar Yard.
+
+**P3.9 delivered:** Solar Yard now has a stable biome-specific luminance identity instead of relying on the shared player-following key light. A fixed sunward directional key creates consistent long shadows across the yard, a lower-intensity cool fill preserves readable shaded combat space, and three bounded sun patches / three cool shade masses reinforce the authored shade-deck → fabrication-spine → sunward-yard composition without adding heavy geometry. The existing live solar-shutter timing can still drive a short solar-surge state, but the authored shutter hardware remains reserved for P3.10. Runtime telemetry exposes the sun direction, hard-sun/cool-shade language, patch counts, active sun mode, tone treatment, and adaptive shadow budget; static graphics regression and desktop/mobile-landscape Browser E2E cover the identity. Thermal shutters, cranes/rails/motion, HELIOS-9 presentation, and the dedicated mobile optimization pass remain P3.10–P3.13.
 
 **P3.8 delivered:** Solar Yard fabrication is now represented by three authored machine families instead of generic service props: sinter forges, printer spindles, and feedstock presses. Seven machines are distributed across the shade deck, fabrication spine, and sunward work yard; the P3.7 ceramic decks, truss frames, radiator towers, and reflector pylons now load with them as one authored Solar Yard scene. Every family ships adaptive LOD1/LOD2 GLBs, the runtime preserves procedural fallback, coarse/mobile forces LOD2, and deterministic telemetry exposes the exact fabrication-machine budget for browser QA. Generated-content, static graphics, and desktop/mobile-landscape Browser E2E cover the complete P3.7–P3.8 yard foundation. Sun/shadow identity remains P3.9; thermal shutters, cranes/rails/motion, HELIOS-9 presentation, and the dedicated mobile optimization pass remain P3.10–P3.13.
 
