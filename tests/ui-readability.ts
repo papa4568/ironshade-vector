@@ -57,9 +57,11 @@ assert(parallaxDebt.includes("authoredContracts: 12") && parallaxDebt.includes("
 assert(scaling.includes("contract.campaignChapter === 'parallax-debt'") && scaling.includes("8 + Math.floor((contract.campaignStep ?? 0) / 3)"), 'Parallax Debt must retain late-game tier scaling across its LV15–18 phases.');
 
 assert(meta.includes("name: 'Void Ram'") && meta.includes("name: 'Breach Cascade'") && meta.includes("name: 'Counterfort'"), 'Vanguard capstone interaction definitions are incomplete.');
+assert(meta.includes("name: 'Induction Sink'") && meta.includes("name: 'Recursive Bus'") && meta.includes("name: 'Mesh Reflux'"), 'Systems capstone interaction definitions are incomplete.');
 assert(meta.includes("name: 'Thermal Shunter'") && meta.includes("specializationIds: ['grid-weaver', 'capacitor-conductor', 'thermal-shunter']") && sim.includes('systemsCrossfeed') && sim.includes('THERMAL CROSSFIRE'), 'P5.6 Systems third specialization is missing from class metadata or combat feedback.');
+assert(statsPanel.includes('capstoneInteractionFor') && statsPanel.includes('CAPSTONE ${activeCapstone.name}'), 'Build Stats does not surface active class capstone interactions.');
 assert(armory.includes('availableSpecializations.map'), 'Operator Network UI must render every class specialization from shared metadata.');
-assert(armory.includes('CAPSTONE LINK //') && armory.includes('vanguardCapstoneInteractionFor'), 'Build Skills UI does not surface active Vanguard specialization/evolution capstone links.');
+assert(armory.includes('CAPSTONE LINK //') && armory.includes('capstoneInteractionFor'), 'Build Skills UI does not surface active specialization/evolution capstone links.');
 assert(!armory.includes('Review faction doctrines'), 'Equipment Bay still advertises undiscovered faction doctrine targets.');
 assert(!armory.includes('2 PIECE'), 'Equipment Bay still exposes 2-piece set targets.');
 assert(!armory.includes('4 PIECE'), 'Equipment Bay still exposes 4-piece set targets.');
