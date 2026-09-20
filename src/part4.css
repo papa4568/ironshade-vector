@@ -80,11 +80,40 @@
 .debrief-grid small,.debrief-grid b { display: block; }
 .debrief-grid small { color: #647570; font-size: 8px; }
 .debrief-grid b { margin-top: 4px; color: #bfd0ca; }
+.expedition-debrief { margin: 16px 0; padding: 14px; border: 1px solid #38544e; border-radius: 13px; background: linear-gradient(145deg,rgba(18,35,31,.94),rgba(8,16,16,.96)); }
+.expedition-debrief.partial { border-color: #6b5a3e; }
+.expedition-debrief.deep { border-color: #608d7f; box-shadow: inset 0 0 0 1px rgba(128,183,170,.08); }
+.expedition-debrief-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.expedition-debrief-heading div,.expedition-debrief-heading small,.expedition-debrief-heading b,.expedition-debrief-heading strong { display: block; }
+.expedition-debrief-heading small,.expedition-debrief-stats small,.expedition-route small,.expedition-finale small,.expedition-continuity > small { color: #78948c; font-size: 8px; font-weight: 800; letter-spacing: .09em; }
+.expedition-debrief-heading b { margin-top: 4px; color: #d1ded9; font-size: 14px; }
+.expedition-debrief-heading strong { max-width: 44%; color: #b8d1c8; font-size: 10px; line-height: 1.35; text-align: right; letter-spacing: .07em; }
+.expedition-debrief > p { margin: 9px 0 10px; color: #91a49e; font-size: 10px; line-height: 1.5; }
+.expedition-debrief-stats { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 7px; margin-bottom: 9px; }
+.expedition-debrief-stats span { min-width: 0; padding: 8px 9px; border: 1px solid #2d403c; border-radius: 9px; background: rgba(8,18,16,.72); }
+.expedition-debrief-stats small,.expedition-debrief-stats b { display: block; }
+.expedition-debrief-stats b { margin-top: 3px; color: #d0ddd8; font-size: 13px; }
+.expedition-route { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 7px; }
+.expedition-route article { min-width: 0; padding: 9px; border: 1px solid #263734; border-radius: 9px; background: rgba(7,14,14,.66); }
+.expedition-route article.secured { border-color: #3b5d54; background: rgba(16,32,28,.8); }
+.expedition-route article.unreached { opacity: .52; }
+.expedition-route small,.expedition-route b,.expedition-route span,.expedition-route em { display: block; overflow-wrap: anywhere; }
+.expedition-route b { margin-top: 4px; color: #c2d2cc; font-size: 10px; line-height: 1.3; }
+.expedition-route span { margin-top: 4px; color: #748881; font-size: 8px; line-height: 1.35; }
+.expedition-route em { margin-top: 6px; color: #88afa3; font-size: 7px; line-height: 1.35; font-style: normal; text-transform: uppercase; }
+.expedition-finale { margin-top: 8px; padding: 10px; border-left: 2px solid #648b80; background: rgba(9,20,18,.68); }
+.expedition-finale small,.expedition-finale b,.expedition-finale span { display: block; }
+.expedition-finale b { margin-top: 3px; color: #c9d8d3; font-size: 11px; }
+.expedition-finale span { margin-top: 3px; color: #83968f; font-size: 9px; line-height: 1.45; }
+.expedition-continuity { margin-top: 8px; padding-top: 8px; border-top: 1px solid #263936; }
+.expedition-continuity > small,.expedition-continuity > span { display: block; }
+.expedition-continuity > span { margin-top: 5px; color: #7f928c; font-size: 8px; line-height: 1.45; }
+.expedition-continuity > span b { color: #a7bab4; }
 .debrief-actions { display: flex; gap: 8px; }
 .debrief-actions button { flex: 1; border: 1px solid #3b504b; border-radius: 10px; background: #14201e; color: #d7e2de; padding: 12px; cursor: pointer; font-weight: 800; }
 .debrief-actions button.primary { background: #d1e4c6; color: #0a100d; border-color: transparent; }
 @media (max-width: 800px) { .ship-hub { padding-left: max(14px,env(safe-area-inset-left)); padding-right: max(14px,env(safe-area-inset-right)); } .ship-header { align-items: stretch; flex-direction: column; } .resource-ribbon { grid-template-columns: repeat(3,1fr); } .contracts-layout { grid-template-columns: 1fr; } .contract-list { display: flex; overflow-x: auto; gap: 8px; scroll-snap-type: x mandatory; padding-bottom: 3px; } .contract-card { min-width: min(82vw,320px); scroll-snap-align: start; } .contract-inspector { padding: 18px; } .ship-systems-intro { align-items: stretch; flex-direction: column; } .cargo-panel { grid-template-columns: 1fr 1fr; } .upgrade-grid { grid-template-columns: 1fr; } .faction-copy { columns: 1; } .faction-card header { grid-template-columns: 1fr; gap: 8px; } .mission-chip { top: max(60px,calc(env(safe-area-inset-top) + 48px)); max-width: 44vw; } }
-@media (max-width: 520px) { .resource-ribbon { grid-template-columns: repeat(2,1fr); } .cargo-panel { grid-template-columns: 1fr; } .ship-tabs button { min-height: 42px; } .contract-card { min-width: 86vw; min-height: 140px; } .deploy-contract,.hub-build-button,.ship-systems-panel button,.cargo-ledger button { min-height: 48px; } .extraction-choice { grid-template-columns: 1fr; } .extraction-choice button { min-height: 66px; } .debrief-grid { grid-template-columns: 1fr 1fr; } .debrief-actions { flex-direction: column; } }
+@media (max-width: 520px) { .resource-ribbon { grid-template-columns: repeat(2,1fr); } .cargo-panel { grid-template-columns: 1fr; } .ship-tabs button { min-height: 42px; } .contract-card { min-width: 86vw; min-height: 140px; } .deploy-contract,.hub-build-button,.ship-systems-panel button,.cargo-ledger button { min-height: 48px; } .extraction-choice { grid-template-columns: 1fr; } .extraction-choice button { min-height: 66px; } .debrief-grid { grid-template-columns: 1fr 1fr; } .expedition-debrief-heading { flex-direction: column; gap: 6px; } .expedition-debrief-heading strong { max-width: none; text-align: left; } .expedition-route { grid-template-columns: 1fr 1fr; } .debrief-actions { flex-direction: column; } }
 .faction-armory-preview,.faction-armory-summary { margin-top: 12px; padding: 11px 12px; border: 1px solid #31443f; border-radius: 10px; background: rgba(13,24,21,.82); }
 .faction-armory-preview > small,.faction-armory-preview > b,.faction-armory-preview > p,.faction-armory-summary > b,.faction-armory-summary > span,.faction-armory-summary > small { display: block; }
 .faction-armory-preview > small,.faction-armory-summary > b { color: #8ca39b; font-size: 8px; letter-spacing: .08em; }
@@ -143,6 +172,12 @@
   .debrief-grid { margin: 10px 0; gap: 6px; }
   .debrief-grid div { padding: 8px; }
   .recovery-review { margin-top: 10px; padding: 9px; }
+  .expedition-debrief { margin: 10px 0; padding: 10px; }
+  .expedition-debrief > p { margin: 6px 0 7px; }
+  .expedition-debrief-stats { margin-bottom: 7px; }
+  .expedition-route { gap: 5px; }
+  .expedition-route article { padding: 7px; }
+  .expedition-continuity > span { margin-top: 3px; }
   .debrief-next, .anomaly-note { margin-top: 9px; }
   .debrief-actions { position: sticky; bottom: 0; z-index: 3; padding-top: 8px; padding-bottom: max(2px, env(safe-area-inset-bottom)); background: linear-gradient(180deg, transparent, #0a1112 28%); }
 }
