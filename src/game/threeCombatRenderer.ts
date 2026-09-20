@@ -10,7 +10,7 @@ import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality
 import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, SPIN_HABITAT_BOSS_ASSET_FAMILY, JOVIAN_HARVESTER_BOSS_ASSET_FAMILY, SPIN_HABITAT_ENEMY_ASSET_FAMILIES, SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES, OPERATOR_CLASS_ASSET_FAMILIES, JOVIAN_HARVESTER_ASSET_FAMILIES, JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, SPIN_HABITAT_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
 import { configureGraphicsAssetRenderer, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
 import { spinHabitatArchitectureState, spinHabitatRenderProfile, spinHabitatSpindownState } from './spinHabitatArchitecture';
-import { jovianHarvesterStormState } from './jovianHarvesterVisualLanguage';
+import { jovianHarvesterRenderProfile, jovianHarvesterStormState } from './jovianHarvesterVisualLanguage';
 
 const WORLD_SCALE = 0.02;
 const FLOOR_Y = 0;
@@ -954,11 +954,12 @@ export class ThreeCombatRenderer {
   private async loadAuthoredJovianHarvesterEnvironment(worldW: number, worldH: number, detailScale: number) {
     const generation = ++this.jovianHarvesterLoadGeneration;
     this.renderer.domElement.dataset.environmentVisual = 'authored-loading';
+    const profile = jovianHarvesterRenderProfile(detailScale, this.coarse);
     const loaded: Array<{ key: keyof typeof JOVIAN_HARVESTER_ASSET_FAMILIES; instance: GraphicsAssetInstance; lod: number }> = [];
 
     try {
       for (const key of Object.keys(JOVIAN_HARVESTER_ASSET_FAMILIES) as Array<keyof typeof JOVIAN_HARVESTER_ASSET_FAMILIES>) {
-        const spec = selectGraphicsAssetSpec(JOVIAN_HARVESTER_ASSET_FAMILIES[key], detailScale);
+        const spec = selectGraphicsAssetSpec(JOVIAN_HARVESTER_ASSET_FAMILIES[key], profile.assetDetailScale);
         if (!spec) throw new Error(`No authored Jovian Harvester asset available for ${key}`);
         const instance = await instantiateGraphicsAsset(spec);
         loaded.push({ key, instance, lod: spec.lod });
@@ -974,7 +975,7 @@ export class ThreeCombatRenderer {
       const width = scaled(worldW);
       const height = scaled(worldH);
 
-      const deckPlacements: EnvironmentPlacement[] = [
+      const deckPlacementsAll: EnvironmentPlacement[] = [
         [0.26, 0.26, 0], [0.50, 0.25, 0], [0.74, 0.26, 0],
         [0.28, 0.72, Math.PI], [0.52, 0.74, Math.PI], [0.76, 0.72, Math.PI],
       ].map(([x, z, rotationY]) => ({
@@ -982,6 +983,7 @@ export class ThreeCombatRenderer {
         rotationY,
         scale: 0.92,
       }));
+      const deckPlacements = deckPlacementsAll.filter((_, index) => profile.deckInstances === 6 || [0, 2, 3, 5].includes(index));
       const towerPlacements: EnvironmentPlacement[] = [
         [0.18, 0.38, 0.78], [0.34, 0.54, 0.92], [0.50, 0.42, 1.10], [0.66, 0.57, 0.96], [0.82, 0.40, 0.82],
       ].map(([x, z, scale]) => ({
@@ -989,14 +991,15 @@ export class ThreeCombatRenderer {
         rotationY: x < 0.5 ? Math.PI * 0.08 : -Math.PI * 0.08,
         scale,
       }));
-      const bridgePlacements: EnvironmentPlacement[] = [
+      const bridgePlacementsAll: EnvironmentPlacement[] = [
         [0.26, 0.46, 0], [0.42, 0.48, 0], [0.58, 0.49, 0], [0.74, 0.47, 0],
       ].map(([x, z, rotationY]) => ({
         position: new THREE.Vector3(width * x, 0, height * z),
         rotationY,
         scale: 0.88,
       }));
-      const ballastPlacements: EnvironmentPlacement[] = [
+      const bridgePlacements = bridgePlacementsAll.filter((_, index) => profile.bridgeInstances === 4 || index === 0 || index === 3);
+      const ballastPlacementsAll: EnvironmentPlacement[] = [
         [0.18, 0.22, Math.PI / 2], [0.82, 0.22, -Math.PI / 2],
         [0.20, 0.78, Math.PI / 2], [0.80, 0.78, -Math.PI / 2],
       ].map(([x, z, rotationY]) => ({
@@ -1004,12 +1007,13 @@ export class ThreeCombatRenderer {
         rotationY,
         scale: 0.86,
       }));
+      const ballastPlacements = ballastPlacementsAll.filter((_, index) => profile.ballastInstances === 4 || index === 0 || index === 3);
 
       let instances = 0;
-      instances += this.addInstancedEnvironmentAsset(byKey.get('deckSpan')!.instance, deckPlacements, 'jovian-harvester-deck-span');
-      instances += this.addInstancedEnvironmentAsset(byKey.get('skimmerTower')!.instance, towerPlacements, 'jovian-harvester-skimmer-tower');
-      instances += this.addInstancedEnvironmentAsset(byKey.get('transferBridge')!.instance, bridgePlacements, 'jovian-harvester-transfer-bridge');
-      instances += this.addInstancedEnvironmentAsset(byKey.get('ballastPod')!.instance, ballastPlacements, 'jovian-harvester-ballast-pod');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('deckSpan')!.instance, deckPlacements, 'jovian-harvester-deck-span', this.authoredEnvironmentRoot, profile.structureShadows);
+      instances += this.addInstancedEnvironmentAsset(byKey.get('skimmerTower')!.instance, towerPlacements, 'jovian-harvester-skimmer-tower', this.authoredEnvironmentRoot, profile.structureShadows);
+      instances += this.addInstancedEnvironmentAsset(byKey.get('transferBridge')!.instance, bridgePlacements, 'jovian-harvester-transfer-bridge', this.authoredEnvironmentRoot, profile.structureShadows);
+      instances += this.addInstancedEnvironmentAsset(byKey.get('ballastPod')!.instance, ballastPlacements, 'jovian-harvester-ballast-pod', this.authoredEnvironmentRoot, profile.structureShadows);
 
       this.proceduralRefineryVisuals.forEach(item => { item.visible = false; });
       const lods = [...new Set(loaded.map(item => item.lod))].sort();
@@ -1017,6 +1021,9 @@ export class ThreeCombatRenderer {
       this.renderer.domElement.dataset.environmentLod = lods.join(',');
       this.renderer.domElement.dataset.environmentKit = 'deck-span,skimmer-tower,transfer-bridge,ballast-pod';
       this.renderer.domElement.dataset.environmentInstances = String(instances);
+      this.renderer.domElement.dataset.environmentPerformanceProfile = `${profile.name}:lod${lods.join(',')}:structure-shadows-${profile.structureShadows ? 'on' : 'off'}`;
+      this.renderer.domElement.dataset.environmentInstanceBudget = `deck:${deckPlacements.length}+tower:${towerPlacements.length}+bridge:${bridgePlacements.length}+ballast:${ballastPlacements.length}`;
+      this.renderer.domElement.dataset.environmentShadowCasters = profile.structureShadows ? 'jovian-structures' : 'off';
       this.renderer.domElement.dataset.environmentLandmark = 'five-skimmer-tower-spine';
       this.renderer.domElement.dataset.environmentServiceDetails = `transfer-bridge:${bridgePlacements.length}+ballast-pod:${ballastPlacements.length}`;
       this.renderer.domElement.dataset.environmentSurfaceDetail = `deck-span:${deckPlacements.length}+skimmer-tower:${towerPlacements.length}`;
@@ -2189,10 +2196,20 @@ export class ThreeCombatRenderer {
       this.spinHabitatAmbientAxisHaze = axisHaze;
       this.proceduralRefineryVisuals.push(rotor, axisHub, axisCollar);
     } else if (location === 'jovian-harvester') {
+      const jovianProfile = jovianHarvesterRenderProfile(detailScale, this.coarse);
       const jovianVisuals: THREE.Object3D[] = [];
-      for (let i = -2; i <= 2; i += 1) jovianVisuals.push(addBox(cx + i * 7, cz + i * 1.5, 1.1, 1.1, 6 + Math.abs(i), structural));
-      jovianVisuals.push(addBox(cx, cz - 7, 34, 0.35, 0.35, emissive));
+      for (let i = -2; i <= 2; i += 1) {
+        const tower = addBox(cx + i * 7, cz + i * 1.5, 1.1, 1.1, 6 + Math.abs(i), structural);
+        tower.castShadow = jovianProfile.structureShadows;
+        jovianVisuals.push(tower);
+      }
+      const guide = addBox(cx, cz - 7, 34, 0.35, 0.35, emissive);
+      guide.castShadow = jovianProfile.structureShadows;
+      jovianVisuals.push(guide);
       this.proceduralRefineryVisuals.push(...jovianVisuals);
+      this.renderer.domElement.dataset.environmentPerformanceProfile = `${jovianProfile.name}:procedural:structure-shadows-${jovianProfile.structureShadows ? 'on' : 'off'}`;
+      this.renderer.domElement.dataset.environmentInstanceBudget = 'tower:5+guide:1';
+      this.renderer.domElement.dataset.environmentShadowCasters = jovianProfile.structureShadows ? 'jovian-structures' : 'off';
 
       const width = scaled(worldW);
       const height = scaled(worldH);

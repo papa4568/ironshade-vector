@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { AdaptiveRenderBudget } from '../src/game/renderQuality';
 import { spinHabitatArchitectureState, spinHabitatRenderProfile, spinHabitatSpindownState } from '../src/game/spinHabitatArchitecture';
-import { jovianHarvesterStormState } from '../src/game/jovianHarvesterVisualLanguage';
+import { jovianHarvesterRenderProfile, jovianHarvesterStormState } from '../src/game/jovianHarvesterVisualLanguage';
 
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
@@ -134,6 +134,32 @@ assert(rendererSource.includes("dataset.environmentStormDetail = reducedStormDet
 assert(rendererSource.includes("const atmosphereDensity = this.coarse || budget.vfxDensity < 0.55"), 'Jovian P2.15 atmosphere must enter its reduced profile on coarse/mobile rendering or the Performance VFX tier');
 assert(rendererSource.includes("dataset.environmentAmbientMotion = 'crosswind-drift+pressure-breath+charged-drift'"), 'Jovian P2.15 atmosphere must keep a persistent low-frequency motion language distinct from reactive storm VFX');
 assert(rendererSource.includes("dataset.environmentAmbientDetail = `${visibleClouds}-clouds+${visibleMotes}-motes+spine-haze`"), 'Jovian P2.15 runtime QA must expose adaptive cloud and particulate density');
+
+const fullJovianProfile = jovianHarvesterRenderProfile(1, false);
+assert(fullJovianProfile.name === 'full' && fullJovianProfile.assetDetailScale >= 0.9, 'desktop Jovian Harvester should keep the full authored environment profile');
+assert(fullJovianProfile.deckInstances === 6 && fullJovianProfile.towerInstances === 5 && fullJovianProfile.bridgeInstances === 4 && fullJovianProfile.ballastInstances === 4, 'full Jovian profile should preserve all 19 authored structural placements');
+assert(fullJovianProfile.structureShadows, 'full Jovian profile should preserve structural shadow casters');
+
+const mobileJovianProfile = jovianHarvesterRenderProfile(0.78, true);
+assert(mobileJovianProfile.name === 'mobile' && mobileJovianProfile.assetDetailScale < 0.62, 'coarse/mobile Jovian Harvester should force the LOD2 asset threshold');
+assert(mobileJovianProfile.deckInstances === 4 && mobileJovianProfile.towerInstances === 5 && mobileJovianProfile.bridgeInstances === 2 && mobileJovianProfile.ballastInstances === 2, 'mobile Jovian profile should trim to 13 structural placements while preserving the five-tower landmark');
+assert(!mobileJovianProfile.structureShadows, 'mobile Jovian profile should disable structural shadow casters');
+
+const balancedJovianProfile = jovianHarvesterRenderProfile(0.78, false);
+assert(balancedJovianProfile.name === 'balanced' && balancedJovianProfile.assetDetailScale === 0.78, 'desktop Balanced Jovian Harvester should retain LOD1 assets');
+assert(balancedJovianProfile.deckInstances === 4 && balancedJovianProfile.bridgeInstances === 2 && balancedJovianProfile.ballastInstances === 2, 'desktop Balanced Jovian Harvester should trim non-landmark structures');
+assert(!balancedJovianProfile.structureShadows, 'desktop Balanced Jovian Harvester should drop structural shadows');
+
+const performanceJovianProfile = jovianHarvesterRenderProfile(0.5, true);
+assert(performanceJovianProfile.name === 'performance' && performanceJovianProfile.assetDetailScale === 0.5, 'Jovian Harvester performance tier should remain on LOD2');
+assert(!performanceJovianProfile.structureShadows && performanceJovianProfile.towerInstances === 5, 'Jovian performance tier should preserve the landmark spine while removing structural shadows');
+
+assert(rendererSource.includes('const profile = jovianHarvesterRenderProfile(detailScale, this.coarse)'), 'Jovian authored environment must derive a dedicated mobile/performance profile');
+assert(rendererSource.includes('selectGraphicsAssetSpec(JOVIAN_HARVESTER_ASSET_FAMILIES[key], profile.assetDetailScale)'), 'Jovian mobile profile must drive authored environment LOD selection');
+assert(rendererSource.includes("dataset.environmentInstanceBudget = `deck:${deckPlacements.length}+tower:${towerPlacements.length}+bridge:${bridgePlacements.length}+ballast:${ballastPlacements.length}`"), 'Jovian runtime QA must expose its authored instance budget');
+assert(rendererSource.includes("dataset.environmentShadowCasters = profile.structureShadows ? 'jovian-structures' : 'off'"), 'Jovian runtime QA must expose its structural shadow budget');
+assert(rendererSource.includes('tower.castShadow = jovianProfile.structureShadows') && rendererSource.includes('guide.castShadow = jovianProfile.structureShadows'), 'Jovian procedural fallback must follow the dedicated mobile shadow budget');
+
 const sustainedMobile = new AdaptiveRenderBudget(true);
 let sustainedSnapshot = sustainedMobile.sample(16.7, 1);
 for (let index = 0; index < 60 * 10; index += 1) sustainedSnapshot = sustainedMobile.sample(18.2, 1);
