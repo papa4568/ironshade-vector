@@ -7,6 +7,7 @@ import { solarYardRenderProfile } from '../src/game/solarYardVisualProfile';
 import { perseidRenderProfile } from '../src/game/perseidCapstone';
 import { k91RenderProfile } from '../src/game/k91Capstone';
 import { orphelineRenderProfile } from '../src/game/orphelineCapstone';
+import { hecateRenderProfile } from '../src/game/hecateCapstone';
 
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
@@ -241,6 +242,22 @@ assert(rendererSource.includes('this.addOrphelineCapstoneScenery(mission, world.
 assert(rendererSource.includes("dataset.megastructureIdentity = 'hidden-habitat:orpheline'"), 'Orpheline runtime QA must expose the megastructure identity.');
 assert(rendererSource.includes("dataset.megastructureContinuity = 'rock-cut-spine+violet-utility-trunk+white-occupancy-marks'"), 'Orpheline runtime QA must expose its cross-stage continuity language.');
 assert(rendererSource.includes('ribs-${profile.rockRibs}:guides-${profile.utilityLights}'), 'Orpheline runtime QA must expose its adaptive mobile performance profile.');
+
+const fullHecateProfile = hecateRenderProfile(1, false);
+assert(fullHecateProfile.name === 'full' && fullHecateProfile.trussPairs === 7 && fullHecateProfile.cutterDatums === 10, 'desktop Hecate must preserve the complete shipbreaking-yard continuity frame.');
+assert(fullHecateProfile.stageProps === 8 && fullHecateProfile.castStructuralShadows, 'desktop Hecate must keep full clamp/cutter dressing and structural shadows.');
+
+const mobileHecateProfile = hecateRenderProfile(0.72, true);
+assert(mobileHecateProfile.name === 'mobile' && mobileHecateProfile.trussPairs === 4 && mobileHecateProfile.cutterDatums === 6, 'mobile Hecate must trim repeated salvage trusses and cutter datum markers.');
+assert(mobileHecateProfile.stageProps === 5 && !mobileHecateProfile.castStructuralShadows, 'mobile Hecate must preserve stage identity while removing structural shadow cost.');
+
+const performanceHecateProfile = hecateRenderProfile(0.5, true);
+assert(performanceHecateProfile.name === 'performance' && performanceHecateProfile.trussPairs === 3 && performanceHecateProfile.stageProps === 3, 'Hecate Performance mode must retain the minimum recognizable shipbreaking-yard silhouette.');
+assert(!performanceHecateProfile.castStructuralShadows, 'Hecate Performance mode must not restore structural shadows.');
+assert(rendererSource.includes('this.addHecateCapstoneScenery(mission, world.w, world.h, budget.detailScale)'), 'Hecate continuity scenery must layer over every reused stage biome.');
+assert(rendererSource.includes("dataset.megastructureIdentity = 'shipbreaking-yard:hecate'"), 'Hecate runtime QA must expose the megastructure identity.');
+assert(rendererSource.includes("dataset.megastructureContinuity = 'salvage-truss-spine+red-clamp-arms+yellow-cutter-datum'"), 'Hecate runtime QA must expose its cross-stage continuity language.');
+assert(rendererSource.includes('trusses-${profile.trussPairs}:guides-${profile.cutterDatums}'), 'Hecate runtime QA must expose its adaptive mobile performance profile.');
 
 const sustainedMobile = new AdaptiveRenderBudget(true);
 let sustainedSnapshot = sustainedMobile.sample(16.7, 1);
