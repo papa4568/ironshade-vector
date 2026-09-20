@@ -800,11 +800,11 @@ try {
   if (targetLocation === 'solar-yard') {
     await waitFor(`(() => {
       const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-solar-yard');
-      return canvas?.dataset.environmentKit === 'ceramic-deck,truss-frame,radiator-tower,reflector-pylon,sinter-forge,printer-spindle,feedstock-press,thermal-shutter'
+      return canvas?.dataset.environmentKit === 'ceramic-deck,truss-frame,radiator-tower,reflector-pylon,sinter-forge,printer-spindle,feedstock-press,transfer-rail,gantry-crane,thermal-shutter'
         && canvas?.dataset.environmentLandmark === 'gold-reflector-pylon-row'
         && canvas?.dataset.environmentComposition === 'shade-service-deck+fabrication-spine+sunward-work-yard'
-        && canvas?.dataset.environmentZoneIdentity === 'shade:ceramic-deck+radiator-towers+thermal-shutter|spine:truss-frames+sinter-forges|sunward:reflector-pylons+printer-spindles+feedstock-presses'
-        && canvas?.dataset.readabilityLanguage === 'hard-sun-edge+cool-shade-mass+gold-reflectors+amber-hot-work'
+        && canvas?.dataset.environmentZoneIdentity === 'shade:ceramic-deck+radiator-towers+thermal-shutter|spine:truss-frames+sinter-forges+transfer-rails+gantry-cranes|sunward:reflector-pylons+printer-spindles+feedstock-presses'
+        && canvas?.dataset.readabilityLanguage === 'hard-sun-edge+cool-shade-mass+gold-reflectors+amber-hot-work+moving-gantry-cues'
         && canvas?.dataset.environmentSunShadow === 'hard-sun+cool-shade+long-shadow'
         && canvas?.dataset.environmentSunDirection === 'fixed-sunward-east-to-west'
         && /^(hard-sun|solar-surge)$/.test(canvas?.dataset.environmentSunMode ?? '')
@@ -818,6 +818,9 @@ try {
         && canvas?.dataset.environmentThermalShutterControl === 'solar-shutter:state-linked'
         && (canvas?.dataset.environmentSurfaceDetail ?? '').includes('reflector-pylon:3')
         && canvas?.dataset.environmentMachineDetail === 'sinter-forge:2+printer-spindle:3+feedstock-press:2'
+        && canvas?.dataset.environmentTransport === 'transfer-rail:3+gantry-crane:2'
+        && canvas?.dataset.environmentCraneMotion === 'reciprocating-trolleys:2'
+        && /^-?\\d+\\.\\d{2},-?\\d+\\.\\d{2}$/.test(canvas?.dataset.environmentCraneOffsets ?? '')
         && Number(canvas?.dataset.environmentInstances) > 0
         && ['1', '2'].includes(canvas?.dataset.environmentLod ?? '');
     })()`, 'Solar Yard authored sun/shadow fabrication yard', 20_000);
@@ -831,6 +834,9 @@ try {
         service: canvas?.dataset.environmentServiceDetails ?? '',
         surface: canvas?.dataset.environmentSurfaceDetail ?? '',
         machinery: canvas?.dataset.environmentMachineDetail ?? '',
+        transport: canvas?.dataset.environmentTransport ?? '',
+        craneMotion: canvas?.dataset.environmentCraneMotion ?? '',
+        craneOffsets: canvas?.dataset.environmentCraneOffsets ?? '',
         materials: canvas?.dataset.environmentMaterials ?? '',
         lighting: canvas?.dataset.environmentLighting ?? '',
         sunShadow: canvas?.dataset.environmentSunShadow ?? '',
@@ -856,7 +862,16 @@ try {
     if (solarYardEnvironment?.thermalShutters !== 'authored:open' || solarYardEnvironment?.thermalControl !== 'solar-shutter:state-linked') {
       throw new Error(`Solar Yard P3.10 thermal shutter state linkage was not observable: ${JSON.stringify(solarYardEnvironment)}`);
     }
-    console.log(`BROWSER_SOLAR_YARD_PASS viewport=${viewportMode} lod=${solarYardEnvironment?.lod} instances=${solarYardEnvironment?.instances} kit=${solarYardEnvironment?.kit} composition=${solarYardEnvironment?.composition} service=${solarYardEnvironment?.service} surface=${solarYardEnvironment?.surface} machinery=${solarYardEnvironment?.machinery} shutters=${solarYardEnvironment?.thermalShutters}:${solarYardEnvironment?.thermalProtection}:${solarYardEnvironment?.thermalControl} materials=${solarYardEnvironment?.materials} lighting=${solarYardEnvironment?.lighting} sun=${solarYardEnvironment?.sunMode}:${solarYardEnvironment?.sunShadow}:${solarYardEnvironment?.sunDirection} patches=${solarYardEnvironment?.sunPatches} shadow=${solarYardEnvironment?.shadowBudget} tone=${solarYardEnvironment?.tone}`);
+    if (solarYardEnvironment?.transport !== 'transfer-rail:3+gantry-crane:2' || solarYardEnvironment?.craneMotion !== 'reciprocating-trolleys:2') {
+      throw new Error(`Solar Yard P3.11 transport telemetry was not observable: ${JSON.stringify(solarYardEnvironment)}`);
+    }
+    const initialCraneOffsets = solarYardEnvironment?.craneOffsets ?? '';
+    await sleep(750);
+    const laterCraneOffsets = await evaluate(`(() => [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-solar-yard')?.dataset.environmentCraneOffsets ?? '')()`);
+    if (!laterCraneOffsets || laterCraneOffsets === initialCraneOffsets) {
+      throw new Error(`Solar Yard P3.11 gantry trolleys did not visibly advance: initial=${initialCraneOffsets} later=${laterCraneOffsets}`);
+    }
+    console.log(`BROWSER_SOLAR_YARD_PASS viewport=${viewportMode} lod=${solarYardEnvironment?.lod} instances=${solarYardEnvironment?.instances} kit=${solarYardEnvironment?.kit} composition=${solarYardEnvironment?.composition} service=${solarYardEnvironment?.service} surface=${solarYardEnvironment?.surface} machinery=${solarYardEnvironment?.machinery} transport=${solarYardEnvironment?.transport}:${solarYardEnvironment?.craneMotion}:${solarYardEnvironment?.craneOffsets} shutters=${solarYardEnvironment?.thermalShutters}:${solarYardEnvironment?.thermalProtection}:${solarYardEnvironment?.thermalControl} materials=${solarYardEnvironment?.materials} lighting=${solarYardEnvironment?.lighting} sun=${solarYardEnvironment?.sunMode}:${solarYardEnvironment?.sunShadow}:${solarYardEnvironment?.sunDirection} patches=${solarYardEnvironment?.sunPatches} shadow=${solarYardEnvironment?.shadowBudget} tone=${solarYardEnvironment?.tone}`);
   }
 
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);
