@@ -25,6 +25,7 @@ import {
   setSpecialization,
   setSpecializationOverclock,
   specializationDefinitions,
+  vanguardCapstoneInteractionFor,
   setProfileSettings,
   unequipSlot,
   xpProgress,
@@ -284,10 +285,12 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
           <button className={!profile.abilityMods[ability] ? 'selected' : ''} onClick={() => onProfileChange(setAbilityMod(profile, ability, null))}><b>{operatorClassDefinition.name} Standard</b><span>Use the native {kitAbility.name} behavior with no additional lens tradeoff.</span></button>
           {compatibleMods.map(mod => {
             const locked = profile.level < (mod.minLevel ?? 1);
+            const capstone = vanguardCapstoneInteractionFor(profile, mod.id);
             return <button key={mod.id} disabled={locked} className={profile.abilityMods[ability] === mod.id ? 'selected' : ''} onClick={() => { onProfileChange(setAbilityMod(profile, ability, mod.id)); setMessage(`${mod.name} installed on ${kitAbility.name}.`); }}>
               <b>{mod.name}</b>
               <span>{locked ? `Unlocks at LV${mod.minLevel}. ${mod.description}` : mod.description}</span>
               <small>{mod.evolution ? `LV${mod.minLevel} ${operatorClassDefinition.name.toUpperCase()} EVOLUTION // ` : ''}TRADEOFF // {mod.tradeoff}</small>
+              {capstone && <small>CAPSTONE LINK // {capstone.name} // {capstone.description}</small>}
             </button>;
           })}
         </article>;
