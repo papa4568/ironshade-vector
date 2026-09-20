@@ -1129,6 +1129,34 @@ export class ThreeCombatRenderer {
         scale: 0.92,
       }));
 
+      const cryoPumpPlacements: EnvironmentPlacement[] = [
+        [0.36, 0.34, Math.PI / 2, 0.88],
+        [0.58, 0.66, -Math.PI / 2, 0.92],
+      ].map(([x, z, rotationY, scale]) => ({
+        position: new THREE.Vector3(width * x, 0, height * z),
+        rotationY,
+        scale,
+      }));
+
+      const coolantManifoldPlacements: EnvironmentPlacement[] = [
+        [0.46, 0.32, 0, 0.86],
+        [0.62, 0.50, Math.PI / 2, 0.90],
+        [0.74, 0.70, Math.PI, 0.84],
+      ].map(([x, z, rotationY, scale]) => ({
+        position: new THREE.Vector3(width * x, 0, height * z),
+        rotationY,
+        scale,
+      }));
+
+      const freezeCompressorPlacements: EnvironmentPlacement[] = [
+        [0.72, 0.34, Math.PI / 2, 0.94],
+        [0.80, 0.60, -Math.PI / 2, 0.90],
+      ].map(([x, z, rotationY, scale]) => ({
+        position: new THREE.Vector3(width * x, 0, height * z),
+        rotationY,
+        scale,
+      }));
+
       const icePillarPlacements: EnvironmentPlacement[] = [
         [0.82, 0.30, -0.18, 0.92], [0.87, 0.42, 0.12, 1.08], [0.90, 0.56, -0.10, 1.18],
         [0.84, 0.69, 0.20, 0.96], [0.76, 0.64, -0.22, 0.82],
@@ -1149,6 +1177,9 @@ export class ThreeCombatRenderer {
         this.iceMineBrittleSupportVisuals.set(support.id, root);
       }
       instances += this.addInstancedEnvironmentAsset(byKey.get('serviceDeck')!.instance, serviceDeckPlacements, 'ice-mine-service-deck');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('cryoPump')!.instance, cryoPumpPlacements, 'ice-mine-cryo-pump');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('coolantManifold')!.instance, coolantManifoldPlacements, 'ice-mine-coolant-manifold');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('freezeCompressor')!.instance, freezeCompressorPlacements, 'ice-mine-freeze-compressor');
       instances += this.addInstancedEnvironmentAsset(byKey.get('icePillar')!.instance, icePillarPlacements, 'ice-mine-ice-pillar');
 
       this.refineryAssetInstances.push(...loaded.map(item => item.instance));
@@ -1156,16 +1187,17 @@ export class ThreeCombatRenderer {
       const lods = [...new Set(loaded.map(item => item.lod))].sort();
       this.renderer.domElement.dataset.environmentVisual = 'authored-ice-mine';
       this.renderer.domElement.dataset.environmentLod = lods.join(',');
-      this.renderer.domElement.dataset.environmentKit = 'frost-wall,support-frame,service-deck,ice-pillar';
+      this.renderer.domElement.dataset.environmentKit = 'frost-wall,support-frame,service-deck,ice-pillar,cryo-pump,coolant-manifold,freeze-compressor';
       this.renderer.domElement.dataset.environmentInstances = String(instances);
       this.renderer.domElement.dataset.environmentLandmark = 'subglacial-vault-ice-pillars';
-      this.renderer.domElement.dataset.environmentServiceDetails = `support-frame:${supportFramePlacements.length + brittleSupportFramePlacements.length}+service-deck:${serviceDeckPlacements.length}`;
+      this.renderer.domElement.dataset.environmentServiceDetails = `support-frame:${supportFramePlacements.length + brittleSupportFramePlacements.length}+service-deck:${serviceDeckPlacements.length}+cryo-machinery:${cryoPumpPlacements.length + coolantManifoldPlacements.length + freezeCompressorPlacements.length}`;
+      this.renderer.domElement.dataset.environmentMachineDetail = `cryo-pump:${cryoPumpPlacements.length}+coolant-manifold:${coolantManifoldPlacements.length}+freeze-compressor:${freezeCompressorPlacements.length}`;
       this.renderer.domElement.dataset.environmentSurfaceDetail = `frost-wall:${frostWallPlacements.length}+ice-pillar:${icePillarPlacements.length}`;
       this.renderer.domElement.dataset.environmentComposition = 'access-bore+reinforced-extraction-tunnel+subglacial-vault';
       this.renderer.domElement.dataset.environmentTunnelSequence = 'access-bore>extraction-tunnel>subglacial-vault';
       this.renderer.domElement.dataset.environmentMaterials = 'frozen-rock+support-steel+frost-ice+cold-cyan';
-      this.renderer.domElement.dataset.environmentZoneIdentity = 'access-bore:frost-wall-cut|extraction-tunnel:steel-support-frames+service-deck|subglacial-vault:ice-pillar-cluster';
-      this.renderer.domElement.dataset.readabilityLanguage = 'frost-wall-corridor+support-frame-rhythm+cyan-service-deck+vault-pillars';
+      this.renderer.domElement.dataset.environmentZoneIdentity = 'access-bore:frost-wall-cut|extraction-tunnel:steel-support-frames+service-deck+cryo-pumps|subglacial-vault:ice-pillar-cluster+coolant-manifolds+freeze-compressors';
+      this.renderer.domElement.dataset.readabilityLanguage = 'frost-wall-corridor+support-frame-rhythm+cyan-service-deck+vault-pillars+cold-cyan-machinery';
     } catch (error) {
       loaded.forEach(item => item.instance.release());
       if (this.disposed || generation !== this.iceMineLoadGeneration) return;
@@ -1185,6 +1217,7 @@ export class ThreeCombatRenderer {
       delete this.renderer.domElement.dataset.environmentSurfaceDetail;
       delete this.renderer.domElement.dataset.environmentComposition;
       delete this.renderer.domElement.dataset.environmentTunnelSequence;
+      delete this.renderer.domElement.dataset.environmentMachineDetail;
       delete this.renderer.domElement.dataset.environmentBrittleSupports;
       delete this.renderer.domElement.dataset.environmentBrittleSupportState;
       delete this.renderer.domElement.dataset.environmentBrittleSupportIds;
