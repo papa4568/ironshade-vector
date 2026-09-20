@@ -204,6 +204,13 @@ assert(rendererSource.includes("dataset.environmentComposition = 'shade-service-
 assert(rendererSource.includes("dataset.environmentZoneIdentity = 'shade:ceramic-deck+radiator-towers|spine:truss-frames+sinter-forges|sunward:reflector-pylons+printer-spindles+feedstock-presses'"), 'Solar Yard P3.8 must keep fabrication machinery visually zoned');
 assert(rendererSource.includes("dataset.readabilityLanguage = 'ceramic-deck+black-radiators+gold-reflectors+amber-hot-work'"), 'Solar Yard P3.8 must preserve its screenshot-readable material and machinery identity');
 assert(rendererSource.includes('this.proceduralRefineryVisuals.push(...solarYardFallback)'), 'Solar Yard P3.8 must retain procedural scenery as an authored-load fallback');
+assert(rendererSource.includes("sunShadowRoot.name = 'solar-yard-sun-shadow-language'"), 'Solar Yard P3.9 must mount an explicit sun/shadow readability layer');
+assert(rendererSource.includes('solarYardSunPatches') && rendererSource.includes('solarYardShadePatches'), 'Solar Yard P3.9 must keep sun and shade regions independently tunable');
+assert(rendererSource.includes("dataset.environmentSunShadow = 'hard-sun+cool-shade+long-shadow'"), 'Solar Yard P3.9 must expose its hard-sun/cool-shade identity for runtime QA');
+assert(rendererSource.includes("dataset.environmentSunDirection = 'fixed-sunward-east-to-west'"), 'Solar Yard P3.9 must keep a stable sun direction instead of a player-following key');
+assert(rendererSource.includes("dataset.environmentSunPatches = \`sun:\${this.solarYardSunPatches.length}+shade:\${this.solarYardShadePatches.length}\`"), 'Solar Yard P3.9 must expose deterministic sun/shade patch counts');
+assert(rendererSource.includes('this.keyLight.position.set(scaled(world.w * 1.12), 30, scaled(world.h * 0.10))'), 'Solar Yard P3.9 must anchor the hard key light to the yard rather than the player');
+assert(rendererSource.includes("dataset.readabilityLanguage = 'hard-sun-edge+cool-shade-mass+gold-reflectors+amber-hot-work'"), 'Solar Yard P3.9 readability must combine luminance boundaries with the authored fabrication palette');
 
 assert(rendererSource.includes('ICE_MINE_ASSET_FAMILIES'), 'Ice Mine P3.2 must load the authored environment kit at runtime');
 assert(rendererSource.includes('loadAuthoredIceMineEnvironment(state, world.w, world.h, budget.detailScale)'), 'Ice Mine P3.2 must route combat rendering through authored bore/tunnel composition');
