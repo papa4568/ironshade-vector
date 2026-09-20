@@ -742,6 +742,9 @@ try {
         && canvas?.dataset.environmentMachineDetail === 'cryo-pump:2+coolant-manifold:3+freeze-compressor:2'
         && canvas?.dataset.environmentBrittleSupportIds === 'ice-brittle-gate-a,ice-brittle-gate-b'
         && /^(intact|damaged|partial|cleared)$/.test(canvas?.dataset.environmentBrittleSupportState ?? '')
+        && canvas?.dataset.environmentFractureVfx === 'support-cracks+shard-burst+frost-pulse'
+        && /^(idle|cracking|collapsing|settled)$/.test(canvas?.dataset.environmentFractureState ?? '')
+        && /^(4-shards\+2-cracks|8-shards\+3-cracks)\+frost-pulse$/.test(canvas?.dataset.environmentFractureDetail ?? '')
         && Number(canvas?.dataset.environmentInstances) > 0
         && ['1', '2'].includes(canvas?.dataset.environmentLod ?? '');
     })()`, 'Ice Mine authored bore/tunnel geometry', 20_000);
@@ -758,6 +761,10 @@ try {
         machinery: canvas?.dataset.environmentMachineDetail ?? '',
         brittle: canvas?.dataset.environmentBrittleSupports ?? '',
         brittleState: canvas?.dataset.environmentBrittleSupportState ?? '',
+        fractureVfx: canvas?.dataset.environmentFractureVfx ?? '',
+        fractureState: canvas?.dataset.environmentFractureState ?? '',
+        fractureDetail: canvas?.dataset.environmentFractureDetail ?? '',
+        fractureSupports: canvas?.dataset.environmentFractureSupports ?? '',
       };
     })()`);
     if (viewportMode === 'mobile-landscape' && iceMineEnvironment?.lod !== '2') {
@@ -769,7 +776,13 @@ try {
     if (!iceMineEnvironment?.brittle || !/^(intact|damaged|partial|cleared)$/.test(iceMineEnvironment?.brittleState ?? '')) {
       throw new Error(`Ice Mine brittle support runtime telemetry was not observable: ${JSON.stringify(iceMineEnvironment)}`);
     }
-    console.log(`BROWSER_ICE_MINE_PASS viewport=${viewportMode} lod=${iceMineEnvironment?.lod} instances=${iceMineEnvironment?.instances} kit=${iceMineEnvironment?.kit} composition=${iceMineEnvironment?.composition} sequence=${iceMineEnvironment?.sequence} service=${iceMineEnvironment?.service} surface=${iceMineEnvironment?.surface} machinery=${iceMineEnvironment?.machinery} brittle=${iceMineEnvironment?.brittleState}:${iceMineEnvironment?.brittle}`);
+    if (iceMineEnvironment?.fractureVfx !== 'support-cracks+shard-burst+frost-pulse' || !/^(idle|cracking|collapsing|settled)$/.test(iceMineEnvironment?.fractureState ?? '')) {
+      throw new Error(`Ice Mine fracture/collapse VFX telemetry was not observable: ${JSON.stringify(iceMineEnvironment)}`);
+    }
+    if (viewportMode === 'mobile-landscape' && iceMineEnvironment?.fractureDetail !== '4-shards+2-cracks+frost-pulse') {
+      throw new Error(`Ice Mine mobile fracture VFX did not reduce detail: ${JSON.stringify(iceMineEnvironment)}`);
+    }
+    console.log(`BROWSER_ICE_MINE_PASS viewport=${viewportMode} lod=${iceMineEnvironment?.lod} instances=${iceMineEnvironment?.instances} kit=${iceMineEnvironment?.kit} composition=${iceMineEnvironment?.composition} sequence=${iceMineEnvironment?.sequence} service=${iceMineEnvironment?.service} surface=${iceMineEnvironment?.surface} machinery=${iceMineEnvironment?.machinery} brittle=${iceMineEnvironment?.brittleState}:${iceMineEnvironment?.brittle} fracture=${iceMineEnvironment?.fractureState}:${iceMineEnvironment?.fractureDetail}:${iceMineEnvironment?.fractureSupports}`);
   }
 
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);
