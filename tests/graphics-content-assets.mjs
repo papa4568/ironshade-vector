@@ -447,8 +447,10 @@ for (const path of glbs) {
     for (const required of ['enemy-rig', 'hip', 'torso', 'helmet', 'arm-left', 'arm-right', 'leg-left', 'leg-right', 'backpack', 'weapon-socket']) {
       assert(nodeNames.has(required), `${relativePath}: authored enemy is missing required node ${required}`);
     }
-    const silhouetteMarker = filename.includes('jovian-harvester-stormline-foreman')
-      ? 'jovian-harvester-stormline-foreman-storm-cowl'
+    const silhouetteMarker = filename.includes('ice-mine-rhea-kade')
+      ? 'ice-mine-rhea-kade-bore-cowl'
+      : filename.includes('jovian-harvester-stormline-foreman')
+        ? 'jovian-harvester-stormline-foreman-storm-cowl'
       : filename.includes('spin-habitat-sable-voss')
         ? 'spin-habitat-sable-voss-counterspin-mantle'
       : filename.includes('spin-habitat-spoke-marksman')
@@ -509,6 +511,12 @@ for (const asset of ['spin-habitat-spoke-marksman', 'spin-habitat-spin-trim-spec
   const lod2 = reportByPath.get('bosses/jovian-harvester-stormline-foreman-lod2.glb');
   assert(lod1 && lod2, 'Stormline Foreman: authored Jovian Harvester boss LOD1/LOD2 pair missing');
   assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, 'Stormline Foreman: mobile boss LOD2 must reduce payload and draw surfaces');
+}
+{
+  const lod1 = reportByPath.get('bosses/ice-mine-rhea-kade-lod1.glb');
+  const lod2 = reportByPath.get('bosses/ice-mine-rhea-kade-lod2.glb');
+  assert(lod1 && lod2, 'Rhea Kade: authored Ice Mine boss LOD1/LOD2 pair missing');
+  assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, 'Rhea Kade: mobile boss LOD2 must reduce payload and draw surfaces');
 }
 for (const weapon of ['carbine', 'breacher', 'rail']) {
   const lod1 = reportByPath.get(`weapons/weapon-${weapon}-lod1.glb`);
