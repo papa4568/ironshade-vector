@@ -359,16 +359,16 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.174**
+- Android beta: **0.0.1-beta.175**
 - Package: `app.ironshade.vector`
-- Verified: Ice Mine P3.1–P3.6 complete, including authored bore/tunnel geometry, brittle support gameplay, cryogenic machinery, fracture/collapse effects, and Salvage Captain Rhea Kade's dedicated adaptive LOD1/LOD2 boss presentation. Rhea is scoped to the Ice Mine deep target, uses the bore-cowl/cryo-tank/fracture-ram silhouette and phase-aware frost-cyan → fracture-amber visual language, and preserves mobile LOD2. PR and merged-`main` full regression/production builds passed desktop + mobile-landscape Browser E2E; Level 15 beta smoke passed; Android beta.174 passed package/version/SDK/signature checks plus native emulator runtime smoke and Chapter 3 touch playthrough.
+- Verified: Solar Yard P3.7 authored static environment foundation with ceramic fabrication decks, scorched structural truss frames, black radiator towers, and gold reflector pylons; adaptive LOD1/LOD2 generation and manifest registration; ceramic / scorched-steel / black-radiator / solar-gold / heat-amber material identity; deterministic silhouette and mobile payload/draw-surface regression coverage. PR and merged-`main` full regression/production builds passed desktop + mobile-landscape Browser E2E; Level 15 beta smoke passed; Android beta.175 passed package/version/SDK/signature checks, native emulator runtime smoke, and Chapter 3 touch playthrough.
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P3.6 final implementation head: `58f652dcddbf4ebfea4c8a5ef245267357a08b86`
-- P3.6 merged main head / APK source: `740b1325a4600fbfa541d4afb31a1322545362b4`
-- PR Browser E2E run: `35491015036`
-- Browser E2E run: `35491088929`
-- Level 15 beta smoke run: `35491088970`
-- Android beta.174 run: `35491088926`
-- Android beta.174 artifact ID: `10599247658`
-- Android beta.174 artifact head: `740b1325a4600fbfa541d4afb31a1322545362b4`
-- APK SHA-256: `609bfcced4d87912c4383be1bea8533db90a89ff585b1851b63e235862c69d7b`
+- P3.7 final implementation head: `5686e9df4713ec7295b03d414aea23d160138db5`
+- P3.7 merged main head / APK source: `0d644a54747254107f5149c4c61ec353dee8759c`
+- PR Browser E2E run: `35491716487`
+- Browser E2E run: `35491790545`
+- Level 15 beta smoke run: `35491790460`
+- Android beta.175 run: `35491790537`
+- Android beta.175 artifact ID: `10599079024`
+- Android beta.175 artifact head: `0d644a54747254107f5149c4c61ec353dee8759c`
+- APK SHA-256: `2a446ecdea9d5cbb3d3e313a84d4aeb164a58a76dfc53991d3f576b9778be870`
