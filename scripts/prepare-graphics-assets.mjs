@@ -1105,6 +1105,102 @@ function jovianHarvesterNodes(kind, lod) {
   return nodes;
 }
 
+
+function iceMineMaterials() {
+  return [
+    {
+      name: 'ice-mine-frozen-rock',
+      pbrMetallicRoughness: { baseColorFactor: [0.16, 0.20, 0.24, 1], metallicFactor: 0.12, roughnessFactor: 0.82 },
+    },
+    {
+      name: 'ice-mine-support-steel',
+      pbrMetallicRoughness: { baseColorFactor: [0.29, 0.34, 0.38, 1], metallicFactor: 0.74, roughnessFactor: 0.46 },
+    },
+    {
+      name: 'ice-mine-service-deck',
+      pbrMetallicRoughness: { baseColorFactor: [0.22, 0.27, 0.30, 1], metallicFactor: 0.66, roughnessFactor: 0.52 },
+    },
+    {
+      name: 'ice-mine-frost-ice',
+      pbrMetallicRoughness: { baseColorFactor: [0.54, 0.76, 0.86, 1], metallicFactor: 0.08, roughnessFactor: 0.24 },
+    },
+    {
+      name: 'ice-mine-cold-emissive',
+      pbrMetallicRoughness: { baseColorFactor: [0.035, 0.15, 0.20, 1], metallicFactor: 0.22, roughnessFactor: 0.18 },
+      emissiveFactor: [0.16, 0.72, 0.92],
+    },
+  ];
+}
+
+function iceMineNodes(kind, lod) {
+  const detail = lod === 1;
+
+  if (kind === 'frostWall') {
+    const nodes = [
+      { name: 'ice-mine-frost-wall-rock', mesh: 0, translation: [0, 1.55, 0], scale: [2.75, 3.10, 0.62] },
+      { name: 'ice-mine-frost-wall-cap', mesh: 3, translation: [0, 2.94, 0.16], scale: [2.55, 0.34, 0.76] },
+      { name: 'ice-mine-frost-wall-seam', mesh: 4, translation: [0.72, 1.64, 0.36], scale: [0.08, 1.38, 0.06] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'ice-mine-frost-wall-ledge', mesh: 3, translation: [-0.84, 1.02, 0.44], scale: [1.08, 0.22, 0.44] },
+        { name: 'ice-mine-frost-wall-strata', mesh: 0, translation: [0.62, 0.50, 0.24], scale: [1.38, 0.18, 0.78] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  if (kind === 'supportFrame') {
+    const nodes = [
+      { name: 'ice-mine-support-frame-left', mesh: 1, translation: [0, 1.66, -2.12], scale: [0.38, 3.32, 0.42] },
+      { name: 'ice-mine-support-frame-right', mesh: 1, translation: [0, 1.66, 2.12], scale: [0.38, 3.32, 0.42] },
+      { name: 'ice-mine-support-frame-crown', mesh: 1, translation: [0, 3.12, 0], scale: [0.46, 0.40, 4.62] },
+      { name: 'ice-mine-support-frame-status', mesh: 4, translation: [0.25, 2.20, 1.82], scale: [0.06, 0.52, 0.10] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'ice-mine-support-frame-brace-left', mesh: 1, translation: [0.18, 1.08, -1.06], scale: [0.22, 1.72, 0.24] },
+        { name: 'ice-mine-support-frame-brace-right', mesh: 1, translation: [0.18, 1.08, 1.06], scale: [0.22, 1.72, 0.24] },
+        { name: 'ice-mine-support-frame-frost-sheath', mesh: 3, translation: [0.24, 0.52, -2.10], scale: [0.46, 0.74, 0.52] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  if (kind === 'serviceDeck') {
+    const nodes = [
+      { name: 'ice-mine-service-deck-main', mesh: 2, translation: [0, 0.18, 0], scale: [3.30, 0.36, 1.42] },
+      { name: 'ice-mine-service-deck-underbeam', mesh: 1, translation: [0, 0.46, 0], scale: [3.06, 0.18, 0.36] },
+      { name: 'ice-mine-service-deck-frost-strip', mesh: 3, translation: [0, 0.43, -1.18], scale: [2.76, 0.10, 0.12] },
+      { name: 'ice-mine-service-deck-marker', mesh: 4, translation: [2.34, 0.44, 1.10], scale: [0.34, 0.08, 0.06] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'ice-mine-service-deck-grate-left', mesh: 1, translation: [-1.28, 0.42, 0], scale: [0.10, 0.10, 1.12] },
+        { name: 'ice-mine-service-deck-grate-right', mesh: 1, translation: [1.28, 0.42, 0], scale: [0.10, 0.10, 1.12] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  const nodes = [
+    { name: 'ice-mine-ice-pillar-core', mesh: 3, translation: [0, 1.78, 0], scale: [1.04, 3.56, 1.04] },
+    { name: 'ice-mine-ice-pillar-rock-base', mesh: 0, translation: [0, 0.32, 0], scale: [1.62, 0.64, 1.52] },
+    { name: 'ice-mine-ice-pillar-cold-vein', mesh: 4, translation: [0.42, 2.10, 0.44], scale: [0.08, 1.52, 0.08] },
+  ];
+  if (detail) {
+    nodes.push(
+      { name: 'ice-mine-ice-pillar-shelf', mesh: 3, translation: [-0.52, 1.28, 0], scale: [0.76, 0.22, 0.88] },
+      { name: 'ice-mine-ice-pillar-shard', mesh: 3, translation: [0.52, 3.24, -0.22], scale: [0.28, 0.82, 0.34] },
+    );
+  }
+  nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+  return nodes;
+}
+
 function damagedVesselNodes(kind, lod) {
   const detail = lod === 1;
   if (kind === 'rib') {
@@ -1876,6 +1972,24 @@ for (const [kind, id] of jovianHarvesterProfiles) {
       `${id}-lod${lod}`,
       jovianHarvesterNodes(kind, lod),
       jovianHarvesterMaterials(),
+    ));
+  }
+}
+
+const iceMineProfiles = [
+  ['frostWall', 'ice-mine-frost-wall'],
+  ['supportFrame', 'ice-mine-support-frame'],
+  ['serviceDeck', 'ice-mine-service-deck'],
+  ['icePillar', 'ice-mine-ice-pillar'],
+];
+
+for (const [kind, id] of iceMineProfiles) {
+  for (const lod of [1, 2]) {
+    outputs.push(await writeAsset(
+      `environments/${id}-lod${lod}.glb`,
+      `${id}-lod${lod}`,
+      iceMineNodes(kind, lod),
+      iceMineMaterials(),
     ));
   }
 }
