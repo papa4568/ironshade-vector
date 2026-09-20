@@ -239,6 +239,20 @@ export const SOLAR_YARD_ASSET_FAMILIES = {
       2: createGraphicsAssetSpec('solar-yard-feedstock-press-lod2', 'environment-module', '/assets/models/environments/solar-yard-feedstock-press-lod2.glb', 2),
     },
   },
+  transferRail: {
+    id: 'solar-yard-transfer-rail',
+    lods: {
+      1: createGraphicsAssetSpec('solar-yard-transfer-rail-lod1', 'environment-module', '/assets/models/environments/solar-yard-transfer-rail-lod1.glb', 1),
+      2: createGraphicsAssetSpec('solar-yard-transfer-rail-lod2', 'environment-module', '/assets/models/environments/solar-yard-transfer-rail-lod2.glb', 2),
+    },
+  },
+  gantryCrane: {
+    id: 'solar-yard-gantry-crane',
+    lods: {
+      1: createGraphicsAssetSpec('solar-yard-gantry-crane-lod1', 'environment-module', '/assets/models/environments/solar-yard-gantry-crane-lod1.glb', 1),
+      2: createGraphicsAssetSpec('solar-yard-gantry-crane-lod2', 'environment-module', '/assets/models/environments/solar-yard-gantry-crane-lod2.glb', 2),
+    },
+  },
   thermalShutter: {
     id: 'solar-yard-thermal-shutter',
     lods: {
@@ -246,7 +260,7 @@ export const SOLAR_YARD_ASSET_FAMILIES = {
       2: createGraphicsAssetSpec('solar-yard-thermal-shutter-lod2', 'environment-module', '/assets/models/environments/solar-yard-thermal-shutter-lod2.glb', 2),
     },
   },
-} as const satisfies Record<'ceramicDeck' | 'trussFrame' | 'radiatorTower' | 'reflectorPylon' | 'sinterForge' | 'printerSpindle' | 'feedstockPress' | 'thermalShutter', GraphicsAssetFamily>;
+} as const satisfies Record<'ceramicDeck' | 'trussFrame' | 'radiatorTower' | 'reflectorPylon' | 'sinterForge' | 'printerSpindle' | 'feedstockPress' | 'transferRail' | 'gantryCrane' | 'thermalShutter', GraphicsAssetFamily>;
 
 export const PARALLAX_ASSET_FAMILIES = {
   pylon: {

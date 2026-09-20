@@ -1434,6 +1434,55 @@ function solarYardNodes(kind, lod) {
     return nodes;
   }
 
+  if (kind === 'transferRail') {
+    const nodes = [
+      { name: 'solar-yard-transfer-rail-left', mesh: 1, translation: [0, 0.16, -2.48], scale: [3.62, 0.20, 0.16] },
+      { name: 'solar-yard-transfer-rail-right', mesh: 1, translation: [0, 0.16, 2.48], scale: [3.62, 0.20, 0.16] },
+      { name: 'solar-yard-transfer-rail-sleeper-left', mesh: 0, translation: [-2.34, 0.08, 0], scale: [0.30, 0.12, 5.40] },
+      { name: 'solar-yard-transfer-rail-sleeper-center', mesh: 0, translation: [0, 0.08, 0], scale: [0.30, 0.12, 5.40] },
+      { name: 'solar-yard-transfer-rail-sleeper-right', mesh: 0, translation: [2.34, 0.08, 0], scale: [0.30, 0.12, 5.40] },
+      { name: 'solar-yard-transfer-rail-status', mesh: 4, translation: [2.86, 0.34, 0.96], scale: [0.22, 0.08, 0.08] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'solar-yard-transfer-rail-cable-channel', mesh: 2, translation: [0, 0.12, 2.84], scale: [3.20, 0.10, 0.12] },
+        { name: 'solar-yard-transfer-rail-gold-junction-left', mesh: 3, translation: [-1.20, 0.28, 0], scale: [0.26, 0.08, 2.74] },
+        { name: 'solar-yard-transfer-rail-gold-junction-right', mesh: 3, translation: [1.20, 0.28, 0], scale: [0.26, 0.08, 2.74] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  if (kind === 'gantryCrane') {
+    const nodes = [
+      { name: 'solar-yard-gantry-crane-foot-left', mesh: 1, translation: [0, 0.18, -2.48], scale: [1.04, 0.36, 0.76] },
+      { name: 'solar-yard-gantry-crane-foot-right', mesh: 1, translation: [0, 0.18, 2.48], scale: [1.04, 0.36, 0.76] },
+      { name: 'solar-yard-gantry-crane-leg-left', mesh: 1, translation: [0, 2.08, -2.48], scale: [0.48, 3.80, 0.52] },
+      { name: 'solar-yard-gantry-crane-leg-right', mesh: 1, translation: [0, 2.08, 2.48], scale: [0.48, 3.80, 0.52] },
+      { name: 'solar-yard-gantry-crane-beam', mesh: 1, translation: [0, 4.02, 0], scale: [0.42, 0.42, 5.46] },
+      { name: 'solar-yard-gantry-crane-status', mesh: 4, translation: [0.38, 4.30, 2.18], scale: [0.18, 0.16, 0.16] },
+      { name: 'solar-yard-gantry-crane-trolley-carriage', mesh: 3, translation: [0, 3.76, 0], scale: [0.76, 0.36, 0.70] },
+      { name: 'solar-yard-gantry-crane-hook', mesh: 1, translation: [0, 2.34, 0], scale: [0.18, 2.28, 0.18] },
+      { name: 'solar-yard-gantry-crane-loadbar', mesh: 0, translation: [0, 1.18, 0], scale: [0.92, 0.18, 0.52] },
+    ];
+    const rootChildren = [0, 1, 2, 3, 4, 5];
+    if (detail) {
+      const braceLeft = nodes.length;
+      nodes.push({ name: 'solar-yard-gantry-crane-brace-left', mesh: 1, translation: [0.18, 2.42, -1.72], scale: [0.22, 2.32, 0.22] });
+      const braceRight = nodes.length;
+      nodes.push({ name: 'solar-yard-gantry-crane-brace-right', mesh: 1, translation: [0.18, 2.42, 1.72], scale: [0.22, 2.32, 0.22] });
+      const cable = nodes.length;
+      nodes.push({ name: 'solar-yard-gantry-crane-cable-run', mesh: 2, translation: [0, 4.28, 0], scale: [0.12, 0.10, 4.76] });
+      rootChildren.push(braceLeft, braceRight, cable);
+    }
+    const trolley = nodes.length;
+    nodes.push({ name: 'solar-yard-gantry-crane-trolley', children: [6, 7, 8] });
+    rootChildren.push(trolley);
+    nodes.push({ name: 'environment-root', children: rootChildren });
+    return nodes;
+  }
+
   if (kind === 'thermalShutter') {
     const nodes = [
       { name: 'solar-yard-thermal-shutter-sill', mesh: 1, translation: [0, 0.16, 0], scale: [3.10, 0.32, 0.58] },
@@ -2288,6 +2337,8 @@ const solarYardProfiles = [
   ['sinterForge', 'solar-yard-sinter-forge'],
   ['printerSpindle', 'solar-yard-printer-spindle'],
   ['feedstockPress', 'solar-yard-feedstock-press'],
+  ['transferRail', 'solar-yard-transfer-rail'],
+  ['gantryCrane', 'solar-yard-gantry-crane'],
   ['thermalShutter', 'solar-yard-thermal-shutter'],
 ];
 
