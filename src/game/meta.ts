@@ -23,6 +23,7 @@ export type AbilityMod = { id: string; ability: AbilityId; name: string; descrip
 export type SpecializationDefinition = { id: SpecializationId; operatorClass: OperatorClassId; name: string; identity: string; description: string; tradeoff: string; overclock: string; overclockTradeoff: string };
 export type OperatorClassDefinition = { id: OperatorClassId; name: string; identity: string; description: string; trait: string; signatureName: string; signatureDescription: string; combatLoop: string; starterPair: string; branchAffinities: ProgressionNode['branch'][]; specializationIds: SpecializationId[]; resonanceTier1: string; resonanceTier2: string };
 export type GearResonanceState = { classId: OperatorClassId; count: number; tier: 0 | 1 | 2; nextAt: 2 | 4 | null; matchingItemIds: string[] };
+export type CapstoneInteractionDefinition = { specialization: SpecializationId; abilityMod: string; name: string; description: string };
 
 const STORAGE_KEY = 'ironshade-vector-profile-v3';
 const starterItems: Item[] = [
@@ -261,6 +262,17 @@ export const abilityMods: AbilityMod[] = [
   { id: 'mark-shear', ability: 'mark', name: 'Shear Map', description: 'Targets acquired by your second class skill expose weak armor paths and take much greater armor damage.', tradeoff: '+10% capacitor cost.' }, { id: 'mark-wideband', ability: 'mark', name: 'Wideband Echo', description: 'Your second class skill also acquires a nearby secondary target.', tradeoff: '+18% cooldown and shorter target marks.' }, { id: 'mark-execution', ability: 'mark', name: 'Execution Trace', description: 'A Rail Lance hit consumes a target mark to break a committed firing solution and leave a short Armor Breach window.', tradeoff: '+10% second-skill cooldown and substantially shorter marks.' },
   { id: 'arc-relay', ability: 'arc', name: 'Relay Drone', description: 'A microdrone periodically attacks targets disrupted by your third class skill.', tradeoff: '+20% third-skill capacitor cost.' }, { id: 'arc-ground', ability: 'arc', name: 'Ground Loop', description: 'Third-skill propagation through machinery restores capacitor charge.', tradeoff: '-15% third-skill direct damage.' }, { id: 'arc-cascade', ability: 'arc', name: 'Cascade Lattice', description: 'Routing your third class skill through machinery advances the first two skill slots, turning the environment into a combo router.', tradeoff: '+15% third-skill capacitor cost and -22% direct power.' },
 ];
+
+export const vanguardCapstoneInteractions: CapstoneInteractionDefinition[] = [
+  { specialization: 'pressure-diver', abilityMod: 'vanguard-siege-ram', name: 'Void Ram', description: 'Siege Ram armor contacts seed a short player-owned vacuum wake, pulling the breach lane back into Pressure Diver control.' },
+  { specialization: 'breach-vanguard', abilityMod: 'vanguard-faultline-tag', name: 'Breach Cascade', description: 'Faultline Tag strips deeper armor from both fracture targets; armor breaks count as Breach Guard breaks and can trigger the specialization overclock repair.' },
+  { specialization: 'bulkhead-warden', abilityMod: 'vanguard-reprisal-pulse', name: 'Counterfort', description: 'Reprisal contacts reinforce Breach Guard and convert the counter-pulse into additional armor repair; the Warden overclock also recycles capacitor.' },
+];
+
+export function vanguardCapstoneInteractionFor(profile: PlayerProfile, abilityMod: string | null) {
+  if (profile.level < 16 || operatorClassForProfile(profile) !== 'vanguard' || !profile.specialization || !abilityMod) return undefined;
+  return vanguardCapstoneInteractions.find(interaction => interaction.specialization === profile.specialization && interaction.abilityMod === abilityMod);
+}
 
 export const specializationDefinitions: SpecializationDefinition[] = [
   { id: 'pressure-diver', operatorClass: 'vanguard', name: 'Pressure Diver', identity: 'Pressure / vacuum manipulation', description: 'MAG below 45% pressure leaves a short player-owned vacuum wake, while ability use sheds accumulated vacuum exposure.', tradeoff: '-12 maximum armor.', overclock: 'Low-pressure wakes last longer and ability use clears more exposure.', overclockTradeoff: '+12% ability capacitor cost.' },
