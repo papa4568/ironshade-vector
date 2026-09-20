@@ -566,17 +566,29 @@ function thermalShunterSpecializationSmoke() {
     specialization: null,
     specializationOverclock: false,
   };
-  const shunterProfile = {
+  const baseShunterProfile = {
     ...baseProfile,
     specialization: 'thermal-shunter' as const,
+  };
+  const shunterProfile = {
+    ...baseShunterProfile,
     specializationOverclock: true,
   };
   const baseBuild = deriveCombatBuild(baseProfile);
+  const baseShunterBuild = deriveCombatBuild(baseShunterProfile);
   const shunterBuild = deriveCombatBuild(shunterProfile);
   assert.equal(shunterBuild.specialization, 'thermal-shunter');
   assert.equal(shunterBuild.specializationOverclock, true);
   assert.equal(shunterBuild.player.maxArmorAdd, baseBuild.player.maxArmorAdd - 10, 'Thermal Shunter should pay the authored maximum-armor tradeoff.');
   assert.ok(shunterBuild.weapon.carbine.heatPerShotMul > baseBuild.weapon.carbine.heatPerShotMul, 'Thermal Shunter overclock should increase weapon heat per shot.');
+
+  const baseState = createSimulation(baseShunterBuild);
+  for (const enemy of baseState.enemies) enemy.active = false;
+  baseState.player.currentWeapon = 'carbine';
+  baseState.player.weaponHeat.carbine = 0.5;
+  assert.equal(triggerAbility(baseState, 0), true);
+  assert.ok(baseState.player.weaponHeat.carbine <= 0.42, 'Base Thermal Shunter should route eight percent active-weapon heat on a warm cast.');
+  assert.ok(baseState.classState.systemsCrossfeed >= 2.59 && baseState.classState.systemsCrossfeed <= 2.61, 'Base Thermal Shunter should arm the authored 2.6-second crossfire bank.');
 
   const state = createSimulation(shunterBuild);
   for (const enemy of state.enemies) enemy.active = false;
