@@ -239,7 +239,14 @@ export const SOLAR_YARD_ASSET_FAMILIES = {
       2: createGraphicsAssetSpec('solar-yard-feedstock-press-lod2', 'environment-module', '/assets/models/environments/solar-yard-feedstock-press-lod2.glb', 2),
     },
   },
-} as const satisfies Record<'ceramicDeck' | 'trussFrame' | 'radiatorTower' | 'reflectorPylon' | 'sinterForge' | 'printerSpindle' | 'feedstockPress', GraphicsAssetFamily>;
+  thermalShutter: {
+    id: 'solar-yard-thermal-shutter',
+    lods: {
+      1: createGraphicsAssetSpec('solar-yard-thermal-shutter-lod1', 'environment-module', '/assets/models/environments/solar-yard-thermal-shutter-lod1.glb', 1),
+      2: createGraphicsAssetSpec('solar-yard-thermal-shutter-lod2', 'environment-module', '/assets/models/environments/solar-yard-thermal-shutter-lod2.glb', 2),
+    },
+  },
+} as const satisfies Record<'ceramicDeck' | 'trussFrame' | 'radiatorTower' | 'reflectorPylon' | 'sinterForge' | 'printerSpindle' | 'feedstockPress' | 'thermalShutter', GraphicsAssetFamily>;
 
 export const PARALLAX_ASSET_FAMILIES = {
   pylon: {
