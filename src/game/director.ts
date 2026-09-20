@@ -5,6 +5,7 @@ import { applyThreatBudget } from './scaling';
 import { perseidStageIdentity } from './perseidCapstone';
 import { k91StageIdentity } from './k91Capstone';
 import { orphelineStageIdentity } from './orphelineCapstone';
+import { hecateStageIdentity } from './hecateCapstone';
 import { getClassMechanicStatus, releaseBossGate, type EnemyRole, type EnemyVariant, type SimState } from './sim';
 
 export type DirectorRuntime = { elapsed: number; deepElapsed: number; deep: boolean; reinforcementsReleased: boolean; gridTriggered: boolean; defenseTriggered: boolean; pressureWarned: boolean; pressureTriggered: boolean; gravityTriggered: boolean; locationEventA: boolean; locationEventB: boolean; megastructureEventA: boolean; megastructureEventB: boolean; thermalPulseUntil: number; clearSweepElapsed: number; clearSweepWarned: boolean; environmental: EnvironmentalEventRuntime };
@@ -257,6 +258,25 @@ export function stepMissionDirector(state: SimState, runtime: DirectorRuntime, c
   if (orphelineStage && !runtime.megastructureEventB && runtime.elapsed >= 18) {
     runtime.megastructureEventB = true;
     event(state, objective.complete ? orphelineStage.eventB : `${orphelineStage.eventB} // HABITAT CONTROL STILL UNRESOLVED`, 3);
+  }
+
+  const hecateStage = hecateStageIdentity(contract);
+  if (hecateStage && !runtime.megastructureEventA && runtime.elapsed >= 7) {
+    runtime.megastructureEventA = true;
+    if (objective.complete) {
+      event(state, `${hecateStage.eventA} // PRIMARY CONTROL ALREADY STABLE`, 3);
+    } else {
+      const hazardKind = hecateStage.stage === 2 ? 'gravityWell' : hecateStage.stage === 4 ? 'shockGrid' : 'vectorWash';
+      const hazardX = hecateStage.stage === 1 ? 930 : hecateStage.stage === 2 ? 1180 : hecateStage.stage === 3 ? 1420 : 1880;
+      const hazardY = hecateStage.stage % 2 === 0 ? 660 : 380;
+      if (hecateStage.stage === 3) triggerServiceBreach(state);
+      deployHazard(state, hazardX, hazardY, hazardKind, hecateStage.stage === 4 ? 6.6 : 5.6);
+      event(state, `${hecateStage.eventA} // SHIPBREAK HAZARD LIVE`, 3.4);
+    }
+  }
+  if (hecateStage && !runtime.megastructureEventB && runtime.elapsed >= 18) {
+    runtime.megastructureEventB = true;
+    event(state, objective.complete ? hecateStage.eventB : `${hecateStage.eventB} // YARD CONTROL STILL UNRESOLVED`, 3);
   }
 
   const reinforcementTrigger = contract.encounterPattern === 'swarm' ? 1 : contract.encounterPattern === 'elite-led' ? 3 : 2;

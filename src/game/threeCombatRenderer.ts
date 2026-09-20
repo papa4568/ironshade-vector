@@ -15,6 +15,7 @@ import { solarYardRenderProfile } from './solarYardVisualProfile';
 import { perseidRenderProfile, perseidStageIdentity } from './perseidCapstone';
 import { k91RenderProfile, k91StageIdentity } from './k91Capstone';
 import { orphelineRenderProfile, orphelineStageIdentity } from './orphelineCapstone';
+import { hecateRenderProfile, hecateStageIdentity } from './hecateCapstone';
 
 const WORLD_SCALE = 0.02;
 const FLOOR_Y = 0;
@@ -2696,6 +2697,96 @@ export class ThreeCombatRenderer {
     this.renderer.domElement.dataset.megastructurePerformanceProfile = `${profile.name}:ribs-${profile.rockRibs}:guides-${profile.utilityLights}:props-${profile.stageProps}:shadows-${profile.castStructuralShadows ? 'on' : 'off'}`;
   }
 
+  private addHecateCapstoneScenery(mission: Contract, worldW: number, worldH: number, detailScale: number) {
+    const stage = hecateStageIdentity(mission);
+    if (!stage) return;
+    const profile = hecateRenderProfile(detailScale, this.coarse);
+    const cx = scaled(worldW * 0.5);
+    const cz = scaled(worldH * 0.5);
+    const width = scaled(worldW);
+    const height = scaled(worldH);
+    const truss = new THREE.MeshStandardMaterial({ color: 0x303438, metalness: 0.86, roughness: 0.38 });
+    const hull = new THREE.MeshStandardMaterial({ color: 0x777a78, metalness: 0.7, roughness: 0.5 });
+    const clamp = new THREE.MeshStandardMaterial({ color: 0xb64335, emissive: 0x5b1712, emissiveIntensity: 0.28, metalness: 0.66, roughness: 0.36 });
+    const cutter = new THREE.MeshStandardMaterial({ color: 0xe1b348, emissive: 0x8d5e12, emissiveIntensity: 0.56, metalness: 0.52, roughness: 0.28 });
+    const stageAccent = new THREE.MeshStandardMaterial({
+      color: stage.stage === 1 ? 0xd48442 : stage.stage === 2 ? 0x9e5141 : stage.stage === 3 ? 0x7a9ca4 : 0xc0a24c,
+      emissive: stage.stage === 1 ? 0x77370f : stage.stage === 2 ? 0x582019 : stage.stage === 3 ? 0x294b52 : 0x6c5414,
+      emissiveIntensity: 0.3,
+      metalness: 0.58,
+      roughness: 0.4,
+    });
+
+    const addMesh = (mesh: THREE.Mesh) => {
+      mesh.castShadow = profile.castStructuralShadows;
+      mesh.receiveShadow = true;
+      this.environmentRoot.add(mesh);
+      return mesh;
+    };
+
+    const salvageSpine = addMesh(new THREE.Mesh(new THREE.BoxGeometry(width * 0.74, 0.22, scaled(24)), truss));
+    salvageSpine.position.set(cx, 0.3, cz);
+    const cutterRail = addMesh(new THREE.Mesh(new THREE.BoxGeometry(width * 0.66, 0.08, scaled(7)), cutter));
+    cutterRail.position.set(cx, 0.47, cz + scaled(22));
+
+    for (let index = 0; index < profile.trussPairs; index += 1) {
+      const t = profile.trussPairs === 1 ? 0.5 : index / (profile.trussPairs - 1);
+      const x = width * (0.18 + t * 0.64);
+      const fore = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(16), 0.64, height * 0.17), index % 2 === 0 ? truss : hull));
+      fore.position.set(x, 0.36, height * 0.18);
+      const aft = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(16), 0.64, height * 0.17), index % 2 === 0 ? truss : hull));
+      aft.position.set(x, 0.36, height * 0.82);
+      if (index % 2 === 0) {
+        const foreClamp = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(8), 0.72, scaled(26)), clamp));
+        foreClamp.position.set(x, 0.48, height * 0.28);
+        const aftClamp = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(8), 0.72, scaled(26)), clamp));
+        aftClamp.position.set(x, 0.48, height * 0.72);
+      }
+    }
+
+    for (let index = 0; index < profile.cutterDatums; index += 1) {
+      const t = profile.cutterDatums === 1 ? 0.5 : index / (profile.cutterDatums - 1);
+      const marker = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(7), 0.055, scaled(4)), index % 3 === 0 ? clamp : cutter));
+      marker.position.set(width * (0.2 + t * 0.6), 0.51, cz);
+    }
+
+    const propCount = profile.stageProps;
+    if (stage.stage === 1) {
+      const clampRing = addMesh(new THREE.Mesh(new THREE.TorusGeometry(scaled(80), scaled(10), 8, 30), stageAccent));
+      clampRing.rotation.x = Math.PI / 2;
+      clampRing.position.set(width * 0.2, 0.7, cz);
+      for (let index = 0; index < propCount; index += 1) {
+        const jaw = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(20), 0.6, scaled(50)), index % 2 === 0 ? clamp : hull));
+        jaw.position.set(width * (0.29 + (index % 4) * 0.12), 0.43, height * (index < 4 ? 0.3 : 0.7));
+      }
+    } else if (stage.stage === 2) {
+      for (let index = 0; index < propCount; index += 1) {
+        const crusher = addMesh(new THREE.Mesh(new THREE.BoxGeometry(width * 0.105, 0.62, scaled(34)), index % 2 === 0 ? clamp : stageAccent));
+        crusher.position.set(width * (0.25 + (index % 4) * 0.16), 0.46, height * (index < 4 ? 0.3 : 0.7));
+      }
+    } else if (stage.stage === 3) {
+      for (let index = 0; index < propCount; index += 1) {
+        const wreck = addMesh(new THREE.Mesh(new THREE.CylinderGeometry(scaled(18), scaled(18), scaled(62), 10, 1, true), index % 2 === 0 ? hull : stageAccent));
+        wreck.rotation.z = Math.PI / 2;
+        wreck.position.set(width * (0.25 + (index % 4) * 0.16), 0.52, height * (index < 4 ? 0.29 : 0.71));
+      }
+    } else {
+      for (let index = 0; index < propCount; index += 1) {
+        const control = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(32), 0.9, scaled(50)), index % 2 === 0 ? clamp : truss));
+        control.position.set(width * (0.25 + (index % 4) * 0.16), 0.54, height * (index < 4 ? 0.29 : 0.71));
+      }
+      const crown = addMesh(new THREE.Mesh(new THREE.TorusGeometry(scaled(58), scaled(9), 8, 30), cutter));
+      crown.rotation.x = Math.PI / 2;
+      crown.position.set(width * 0.78, 0.82, cz);
+    }
+
+    this.renderer.domElement.dataset.megastructureIdentity = 'shipbreaking-yard:hecate';
+    this.renderer.domElement.dataset.megastructureStage = `${stage.stage}:${stage.code}:${stage.name.toLowerCase().replaceAll(' ', '-')}`;
+    this.renderer.domElement.dataset.megastructureContinuity = 'salvage-truss-spine+red-clamp-arms+yellow-cutter-datum';
+    this.renderer.domElement.dataset.megastructureStageKit = stage.kit.join('+');
+    this.renderer.domElement.dataset.megastructurePerformanceProfile = `${profile.name}:trusses-${profile.trussPairs}:guides-${profile.cutterDatums}:props-${profile.stageProps}:shadows-${profile.castStructuralShadows ? 'on' : 'off'}`;
+  }
+
   private ensureEnvironment(state: SimState, mission: Contract, budget: RenderBudgetSnapshot) {
     const signature = `${mission.location}:${mission.locationName}:${state.sectors.length}:${state.objects.length}:tier-${budget.tier}`;
     if (signature === this.environmentSignature) return;
@@ -2741,6 +2832,7 @@ export class ThreeCombatRenderer {
     this.addPerseidCapstoneScenery(mission, world.w, world.h, budget.detailScale);
     this.addK91CapstoneScenery(mission, world.w, world.h, budget.detailScale);
     this.addOrphelineCapstoneScenery(mission, world.w, world.h, budget.detailScale);
+    this.addHecateCapstoneScenery(mission, world.w, world.h, budget.detailScale);
     const artIdentity = locationArtIdentityFor(mission.location);
     this.renderer.domElement.dataset.locationArt = `${mission.location}:${artIdentity.silhouette}:${artIdentity.material}`;
     this.renderer.domElement.dataset.locationLighting = `${mission.location}:${artIdentity.lighting}`;

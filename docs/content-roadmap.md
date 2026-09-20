@@ -244,7 +244,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] P4.9 Orpheline hidden-habitat continuity layer
 - [x] P4.10 Orpheline stage-specific encounter/event identity
 - [x] P4.11 Orpheline Habitat Warden finale + adaptive render/regression coverage
-- [ ] P4.12–P4.14 Hecate
+- [x] P4.12 Hecate shipbreaking-yard continuity layer
+- [x] P4.13 Hecate stage-specific encounter/event identity
+- [x] P4.14 Hecate Yardmaster Null finale + adaptive render/regression coverage
 - [ ] P4.15 Stage transitions
 - [ ] P4.16 Environmental continuity
 - [ ] P4.17 Debrief improvements
@@ -315,7 +317,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1, P2, and P3 are complete, and **P4.1–P4.11 — Perseid + K-91 + Orpheline** is delivered. Continue in roadmap order with **P4.12–P4.14 — Hecate**.
+P1, P2, and P3 are complete, and **P4.1–P4.14 — Perseid + K-91 + Orpheline + Hecate** is delivered. Continue in roadmap order with **P4.15 — Stage transitions**.
+
+**P4.12–P4.14 delivered:** Abandoned Shipbreaking Yard Hecate now reads as one continuous dismantling complex instead of four unrelated reused biomes. A dedicated shipbreaking-yard capstone profile carries a black salvage-truss spine, red clamp arms, and yellow cutter datum through Sunward Clamp Field, Crusher Causeway, Wreck Transit, and Yard Control Crown while layering autonomous hull cradles, crusher jaws, stripped wreck frames, and master control pylons. Each space overrides generic sector naming and carries Hecate-specific shipbreak events with physical clamp-vector, crusher-mass, open-hull vacuum, and cutter-grid hazards; stage two fields the Hecate Crusher Foreman. Yard Control Crown culminates in Hecate Yardmaster Null, whose clamp-lock, thermal-cutter, and wreck-purge patterns turn the final gantry into a dedicated shipbreaking finale. Full/Balanced/mobile/Performance profiles trim repeated salvage trusses, cutter datum markers, stage props, and structural shadows without losing the yard silhouette. Gameplay and render regressions cover all four spaces, Yardmaster identity/phase behavior, stage events, continuity telemetry, and mobile performance profile. The next capstone work is P4.15 Stage transitions.
 
 **P4.9–P4.11 delivered:** Unregistered Asteroid Habitat Orpheline now reads as one buried settlement instead of four unrelated reused biomes. A dedicated hidden-habitat capstone profile carries a rock-cut spine, violet utility trunk, and white occupancy marks through Ice Access Bore, Industrial Commons, Residential Spin Ring, and Buried Control Vault while layering concealment shutters, improvised fabrication stalls, hab-pod stacks, and founding-archive walls. Each space overrides generic sector naming and carries Orpheline-specific habitat event language with physical venting, grid, and gravity hazards; stage two fields the Orpheline Commons Custodian. The Buried Control Vault culminates in a dedicated Orpheline Habitat Warden whose shelter-purge, spin-authority, and partition-fire patterns turn the founding archive into a distinct finale. Full/Balanced/mobile/Performance profiles trim repeated rock ribs, utility markers, stage props, and structural shadows without losing the habitat silhouette. Gameplay and render regressions cover all four spaces, the Warden identity, stage events, continuity telemetry, and mobile performance profile. The next capstone slice is P4.12–P4.14 Hecate.
 
