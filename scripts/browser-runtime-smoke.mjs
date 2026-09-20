@@ -810,6 +810,10 @@ try {
         && (canvas?.dataset.environmentServiceDetails ?? '').includes('radiator-tower:4')
         && (canvas?.dataset.environmentSurfaceDetail ?? '').includes('reflector-pylon:3')
         && canvas?.dataset.environmentMachineDetail === 'sinter-forge:2+printer-spindle:3+feedstock-press:2'
+        && canvas?.dataset.environmentLighting === 'solar-yard-low-angle-sun+cool-shade-rim+contact:player+enemy+shadow:key'
+        && canvas?.dataset.environmentSunDirection === 'sunward:+x,-z:low-angle'
+        && canvas?.dataset.environmentShadowLanguage === 'hard-truss-bands+deep-radiator-occlusion'
+        && ['sun-bands:4+hard-shadow-bands:4', 'sun-bands:6+hard-shadow-bands:6'].includes(canvas?.dataset.environmentSolarContrast ?? '')
         && Number(canvas?.dataset.environmentInstances) > 0
         && ['1', '2'].includes(canvas?.dataset.environmentLod ?? '');
     })()`, 'Solar Yard authored fabrication machinery kit', 20_000);
@@ -824,6 +828,11 @@ try {
         surface: canvas?.dataset.environmentSurfaceDetail ?? '',
         machinery: canvas?.dataset.environmentMachineDetail ?? '',
         materials: canvas?.dataset.environmentMaterials ?? '',
+        lighting: canvas?.dataset.environmentLighting ?? '',
+        sunDirection: canvas?.dataset.environmentSunDirection ?? '',
+        shadowLanguage: canvas?.dataset.environmentShadowLanguage ?? '',
+        solarContrast: canvas?.dataset.environmentSolarContrast ?? '',
+        tone: canvas?.dataset.environmentTone ?? '',
       };
     })()`);
     if (viewportMode === 'mobile-landscape' && solarYardEnvironment?.lod !== '2') {
@@ -832,7 +841,13 @@ try {
     if (solarYardEnvironment?.machinery !== 'sinter-forge:2+printer-spindle:3+feedstock-press:2') {
       throw new Error(`Solar Yard fabrication machinery runtime telemetry was not observable: ${JSON.stringify(solarYardEnvironment)}`);
     }
-    console.log(`BROWSER_SOLAR_YARD_PASS viewport=${viewportMode} lod=${solarYardEnvironment?.lod} instances=${solarYardEnvironment?.instances} kit=${solarYardEnvironment?.kit} composition=${solarYardEnvironment?.composition} service=${solarYardEnvironment?.service} surface=${solarYardEnvironment?.surface} machinery=${solarYardEnvironment?.machinery} materials=${solarYardEnvironment?.materials}`);
+    if (viewportMode === 'mobile-landscape' && solarYardEnvironment?.solarContrast !== 'sun-bands:4+hard-shadow-bands:4') {
+      throw new Error(`Solar Yard mobile sun/shadow language did not reduce overlay density: ${JSON.stringify(solarYardEnvironment)}`);
+    }
+    if (!/^aces-1\.[0-9]{2}$/.test(solarYardEnvironment?.tone ?? '')) {
+      throw new Error(`Solar Yard tone-mapping telemetry was not observable: ${JSON.stringify(solarYardEnvironment)}`);
+    }
+    console.log(`BROWSER_SOLAR_YARD_PASS viewport=${viewportMode} lod=${solarYardEnvironment?.lod} instances=${solarYardEnvironment?.instances} kit=${solarYardEnvironment?.kit} composition=${solarYardEnvironment?.composition} service=${solarYardEnvironment?.service} surface=${solarYardEnvironment?.surface} machinery=${solarYardEnvironment?.machinery} materials=${solarYardEnvironment?.materials} lighting=${solarYardEnvironment?.lighting} sun=${solarYardEnvironment?.sunDirection} shadow=${solarYardEnvironment?.shadowLanguage} contrast=${solarYardEnvironment?.solarContrast} tone=${solarYardEnvironment?.tone}`);
   }
 
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);

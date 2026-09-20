@@ -225,7 +225,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 ### Solar Yard
 - [x] P3.7 Assets
 - [x] P3.8 Fabrication machinery
-- [ ] P3.9 Sun/shadow identity
+- [x] P3.9 Sun/shadow identity
 - [ ] P3.10 Thermal shutters
 - [ ] P3.11 Cranes/rails/motion
 - [ ] P3.12 HELIOS-9 presentation
@@ -307,7 +307,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1 and P2 are complete, **Ice Mine P3.1–P3.6** are delivered, and **Solar Yard P3.7–P3.8** are delivered. Continue in roadmap order with **P3.9 — Sun/shadow identity**, followed by P3.10–P3.13 to finish Solar Yard.
+P1 and P2 are complete, **Ice Mine P3.1–P3.6** are delivered, and **Solar Yard P3.7–P3.9** are delivered. Continue in roadmap order with **P3.10 — Thermal shutters**, followed by P3.11–P3.13 to finish Solar Yard.
+
+**P3.9 delivered:** Solar Yard now has a dedicated solar-orbit lighting identity rather than only a warm palette. The renderer uses a lower-angle, stronger sunward key, a cool shade-side counter-rim, explicit bright floor bands, and deep hard-shadow bands aligned with the yard’s trusses/radiators. Coarse/mobile reduces the overlay count from six pairs to four while keeping the same directional read. Runtime telemetry exposes the sun direction, shadow language, contrast budget, and ACES tone state; desktop/mobile browser QA verifies the live lighting identity. Thermal shutters remain P3.10; cranes/rails/motion, HELIOS-9 presentation, and the dedicated mobile optimization pass remain P3.11–P3.13.
 
 **P3.8 delivered:** Solar Yard fabrication is now represented by three authored machine families instead of generic service props: sinter forges, printer spindles, and feedstock presses. Seven machines are distributed across the shade deck, fabrication spine, and sunward work yard; the P3.7 ceramic decks, truss frames, radiator towers, and reflector pylons now load with them as one authored Solar Yard scene. Every family ships adaptive LOD1/LOD2 GLBs, the runtime preserves procedural fallback, coarse/mobile forces LOD2, and deterministic telemetry exposes the exact fabrication-machine budget for browser QA. Generated-content, static graphics, and desktop/mobile-landscape Browser E2E cover the complete P3.7–P3.8 yard foundation. Sun/shadow identity remains P3.9; thermal shutters, cranes/rails/motion, HELIOS-9 presentation, and the dedicated mobile optimization pass remain P3.10–P3.13.
 

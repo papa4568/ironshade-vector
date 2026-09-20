@@ -205,6 +205,15 @@ assert(rendererSource.includes("dataset.environmentZoneIdentity = 'shade:ceramic
 assert(rendererSource.includes("dataset.readabilityLanguage = 'ceramic-deck+black-radiators+gold-reflectors+amber-hot-work'"), 'Solar Yard P3.8 must preserve its screenshot-readable material and machinery identity');
 assert(rendererSource.includes('this.proceduralRefineryVisuals.push(...solarYardFallback)'), 'Solar Yard P3.8 must retain procedural scenery as an authored-load fallback');
 
+assert(rendererSource.includes('solar-yard-sun-band-'), 'Solar Yard P3.9 must retain explicit sun-band floor language');
+assert(rendererSource.includes('solar-yard-hard-shadow-band-'), 'Solar Yard P3.9 must retain explicit hard shadow bands');
+assert(rendererSource.includes('const solarBandCount = this.coarse || detailScale < 0.65 ? 4 : 6'), 'Solar Yard P3.9 must reduce sun/shadow overlay density on coarse/mobile rendering');
+assert(rendererSource.includes("dataset.environmentLighting = 'solar-yard-low-angle-sun+cool-shade-rim+contact:player+enemy+shadow:key'"), 'Solar Yard P3.9 must expose its low-angle sun and cool shade lighting identity');
+assert(rendererSource.includes("dataset.environmentSunDirection = 'sunward:+x,-z:low-angle'"), 'Solar Yard P3.9 must preserve a deterministic sunward lighting direction');
+assert(rendererSource.includes("dataset.environmentShadowLanguage = 'hard-truss-bands+deep-radiator-occlusion'"), 'Solar Yard P3.9 must preserve hard structural shadow language');
+assert(rendererSource.includes('this.keyLight.position.set(px + 22, 17, pz - 19)'), 'Solar Yard P3.9 must use a low-angle sun key instead of the generic overhead key');
+assert(rendererSource.includes('this.rimLight.color.setHex(isSolarYard ? 0x7fa7b8 : lightingProfile.rimColor)'), 'Solar Yard P3.9 shade-side readability must use a cool counter-rim');
+
 assert(rendererSource.includes('ICE_MINE_ASSET_FAMILIES'), 'Ice Mine P3.2 must load the authored environment kit at runtime');
 assert(rendererSource.includes('loadAuthoredIceMineEnvironment(state, world.w, world.h, budget.detailScale)'), 'Ice Mine P3.2 must route combat rendering through authored bore/tunnel composition');
 assert(rendererSource.includes("dataset.environmentVisual = 'authored-ice-mine'"), 'Ice Mine P3.2 authored activation must remain observable');
