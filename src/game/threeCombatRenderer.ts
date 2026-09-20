@@ -7,7 +7,7 @@ import { getWorldSize, type CombatObject, type Enemy, type Player, type SimState
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, locationArtIdentityFor, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
 import { lootColor } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
-import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, SPIN_HABITAT_BOSS_ASSET_FAMILY, SPIN_HABITAT_ENEMY_ASSET_FAMILIES, SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES, OPERATOR_CLASS_ASSET_FAMILIES, JOVIAN_HARVESTER_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, SPIN_HABITAT_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
+import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, SPIN_HABITAT_BOSS_ASSET_FAMILY, SPIN_HABITAT_ENEMY_ASSET_FAMILIES, SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES, OPERATOR_CLASS_ASSET_FAMILIES, JOVIAN_HARVESTER_ASSET_FAMILIES, JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, SPIN_HABITAT_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
 import { configureGraphicsAssetRenderer, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
 import { spinHabitatArchitectureState, spinHabitatRenderProfile, spinHabitatSpindownState } from './spinHabitatArchitecture';
 
@@ -2330,7 +2330,19 @@ export class ThreeCombatRenderer {
               : object.kind === 'doorControl' || object.kind === 'sealControl'
                 ? SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES.pressureLock
                 : null;
+    const jovianHarvesterFamily = mission.location !== 'jovian-harvester'
+      ? null
+      : object.kind === 'powerControl'
+        ? JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES.stormBusIsolator
+        : object.kind === 'gravityControl'
+          ? JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES.deckMassTrim
+          : mission.objectiveMode === 'machinery-recovery' && object.id === 'salvage-node-a'
+            ? JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES.skimmerCompressor
+            : mission.objectiveMode === 'machinery-recovery' && object.id === 'salvage-node-b'
+              ? JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES.separatorPackage
+              : null;
     const family = spinHabitatFamily
+      ?? jovianHarvesterFamily
       ?? (object.kind === 'salvageNode'
         ? INTERACTABLE_ASSET_FAMILIES.salvage
         : panelObject(object)
@@ -2385,7 +2397,11 @@ export class ThreeCombatRenderer {
         this.renderer.domElement.dataset.interactableBiome = 'spin-habitat';
         this.renderer.domElement.dataset.interactableMode = 'spin-habitat-machinery+mission-controls';
         this.renderer.domElement.dataset.interactableKit = 'spin-bus-isolator+gravity-trim+bearing-control+attitude-flywheel+pressure-lock';
-      } else {
+      } else if (mission.location === 'jovian-harvester' && jovianHarvesterFamily) {
+        this.renderer.domElement.dataset.interactableBiome = 'jovian-harvester';
+        this.renderer.domElement.dataset.interactableMode = 'jovian-gas-machinery+mission-controls';
+        this.renderer.domElement.dataset.interactableKit = 'storm-bus-isolator+deck-mass-trim+skimmer-compressor+separator-package';
+      } else if (mission.location !== 'jovian-harvester') {
         delete this.renderer.domElement.dataset.interactableBiome;
         delete this.renderer.domElement.dataset.interactableKit;
         this.renderer.domElement.dataset.interactableMode = 'control-terminal+salvage-tag-node';
