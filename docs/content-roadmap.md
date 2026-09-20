@@ -204,7 +204,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 ### Jovian Harvester
 - [x] P2.10 Environment kit
 - [x] P2.11 Gas-harvester machinery
-- [ ] P2.12 Storm/pressure visual language
+- [x] P2.12 Storm/pressure visual language
 - [ ] P2.13 Pressure props/interactables
 - [ ] P2.14 Stormline Foreman presentation
 - [ ] P2.15 Atmospheric effects
@@ -307,7 +307,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1 is complete, **Spin Habitat P2.1–P2.9 is delivered**, and **Jovian Harvester P2.10–P2.11 is now implemented**. Continue in roadmap order with **P2.12 — Storm/pressure visual language**, then proceed through P2.16 before moving to Authored Biomes Pack II.
+P1 is complete, **Spin Habitat P2.1–P2.9 is delivered**, and **Jovian Harvester P2.10–P2.12 is now implemented**. Continue in roadmap order with **P2.13 — Pressure props/interactables**, then proceed through P2.16 before moving to Authored Biomes Pack II.
+
+**P2.12 delivered:** Jovian Harvester now has a gameplay-driven storm/pressure visual language layered over both authored and fallback environment geometry: electrostatic storm-charge sweeps, unequal-pressure shear bands, and a storm-relief manifold pulse. Visual state is derived from live sector pressures/pressure states, the service-breach state, and contract pressure/grid conditions rather than decorative randomness; venting shifts the language toward warning-red relief cues, while normal unequal-pressure operation retains the storm-orange/pressure-cyan identity. The effect scales through the existing transparency/VFX budget and trims secondary sweeps/bands for coarse pointers or Performance-tier rendering. Deterministic helper regression, static graphics assertions, full production regression/build, Level 15 beta smoke, desktop + mobile-landscape Browser E2E with live storm/shear telemetry, Android beta.164 package/version/SDK/signature verification, and native emulator runtime smoke are green on implementation head `971da635740eaf16d7302eb17b563d8432fc5ac7`. Pressure props/interactables, Stormline Foreman presentation, atmospheric effects, and the dedicated mobile performance pass remain scoped to P2.13–P2.16.
 
 **P2.11 delivered:** Jovian Harvester gameplay machinery now has four biome-local authored families bound to the existing mission systems: storm-bus isolators for live grid branches, deck mass-trim hardware for gravity calibration, and skimmer-compressor / separator-package recovery machines for machinery-recovery objectives. Every family ships adaptive LOD1/LOD2 GLBs with distinct silhouettes, state-readable status emitters, objective-beacon mounts on full-detail assets, runtime authored/fallback routing, and deterministic QA telemetry. Generated-content regression validates scale, silhouette markers, and mobile payload reduction; the full production regression/build, Level 15 beta smoke, desktop + mobile-landscape Browser E2E, Android beta.163 package/version/SDK/signature verification, and Android emulator runtime smoke are green on implementation head `8a9275289ce2f22689000574e158c8f711609bde`. Storm/pressure visual language, pressure interactables, Stormline Foreman presentation, atmospheric effects, and the dedicated mobile performance pass remain scoped to P2.12–P2.16.
 
@@ -341,13 +343,13 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.163**
+- Android beta: **0.0.1-beta.164**
 - Package: `app.ironshade.vector`
-- Verified: P2.11 Jovian Harvester gas-harvester machinery with adaptive LOD1/LOD2 storm-bus isolator, deck mass-trim, skimmer-compressor, and separator-package assets; live mission-object routing; state-readable authored machinery telemetry; generated-content/static pipeline regression coverage; full production regression/build; desktop + mobile-landscape Browser E2E with live Jovian machinery assertions; Level 15 beta smoke; Android beta.163 package/version/SDK/signature checks; Android emulator runtime smoke; and retained browser/Android QA artifacts
+- Verified: P2.12 Jovian Harvester gameplay-driven storm/pressure visual language with electrostatic storm-charge sweeps, unequal-pressure shear bands, storm-relief pulse, live sector-pressure/breach/condition routing, adaptive VFX detail reduction, deterministic render/static regression coverage, full production regression/build, desktop + mobile-landscape Browser E2E with live storm/shear assertions, Level 15 beta smoke, Android beta.164 package/version/SDK/signature checks, Android emulator runtime smoke, and retained browser/Android QA artifacts
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P2.11 final verified implementation head: `8a9275289ce2f22689000574e158c8f711609bde`
-- Browser E2E run: `35479330557`
-- Level 15 beta smoke run: `35479330558`
-- Android beta.163 run: `35479330531`
-- Android beta.163 artifact ID: `10595054535`
-- Android beta.163 artifact head: `8a9275289ce2f22689000574e158c8f711609bde`
+- P2.12 final verified implementation head: `971da635740eaf16d7302eb17b563d8432fc5ac7`
+- Browser E2E run: `35480286550`
+- Level 15 beta smoke run: `35480286530`
+- Android beta.164 run: `35480286542`
+- Android beta.164 artifact ID: `10595388544`
+- Android beta.164 artifact head: `971da635740eaf16d7302eb17b563d8432fc5ac7`
