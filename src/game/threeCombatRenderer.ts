@@ -2471,6 +2471,10 @@ export class ThreeCombatRenderer {
     delete this.renderer.domElement.dataset.interactableMode;
     delete this.renderer.domElement.dataset.interactableBiome;
     delete this.renderer.domElement.dataset.interactableKit;
+    delete this.renderer.domElement.dataset.interactablePressureKit;
+    delete this.renderer.domElement.dataset.interactablePressureSource;
+    delete this.renderer.domElement.dataset.interactablePressureState;
+    delete this.renderer.domElement.dataset.interactablePressureDoor;
   }
 
   private async loadAuthoredInteractable(object: CombatObject, mission: Contract) {
@@ -2498,7 +2502,11 @@ export class ThreeCombatRenderer {
             ? JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES.skimmerCompressor
             : mission.objectiveMode === 'machinery-recovery' && object.id === 'salvage-node-b'
               ? JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES.separatorPackage
-              : null;
+              : object.kind === 'doorControl'
+                ? JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES.stormPressureLock
+                : object.kind === 'sealControl'
+                  ? JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES.reliefManifold
+                  : null;
     const family = spinHabitatFamily
       ?? jovianHarvesterFamily
       ?? (object.kind === 'salvageNode'
@@ -2559,6 +2567,8 @@ export class ThreeCombatRenderer {
         this.renderer.domElement.dataset.interactableBiome = 'jovian-harvester';
         this.renderer.domElement.dataset.interactableMode = 'jovian-gas-machinery+mission-controls';
         this.renderer.domElement.dataset.interactableKit = 'storm-bus-isolator+deck-mass-trim+skimmer-compressor+separator-package';
+        this.renderer.domElement.dataset.interactablePressureKit = 'storm-pressure-lock+relief-manifold';
+        this.renderer.domElement.dataset.interactablePressureSource = 'live-pressure-links+breach-state+sector-pressure';
       } else if (mission.location !== 'jovian-harvester') {
         delete this.renderer.domElement.dataset.interactableBiome;
         delete this.renderer.domElement.dataset.interactableKit;
@@ -2625,16 +2635,40 @@ export class ThreeCombatRenderer {
         authored.root.position.set(scaled(objectCenterX), 0, scaled(objectCenterY));
         const footprintScale = THREE.MathUtils.clamp(scaled(Math.max(object.w, object.h)) * 0.82, 0.72, 1.08);
         authored.root.scale.setScalar(object.kind === 'salvageNode' ? Math.max(0.82, footprintScale) : footprintScale);
-        const statusColor = object.exposed ? 0x82c58c : objectColor(object);
+        let statusColor = object.exposed ? 0x82c58c : objectColor(object);
+        let statusIntensity = object.exposed ? 0.42 : 1.0 + Math.sin(state.time * 4.5 + objectCenterX * 0.01) * 0.16;
+        if (mission.location === 'jovian-harvester' && object.kind === 'doorControl') {
+          const pressureLink = state.links.find(link => link.id === 'door-ab');
+          statusColor = pressureLink?.open ? 0xf0aa55 : 0x79c8d1;
+          statusIntensity = pressureLink?.open ? 1.14 + Math.sin(state.time * 4.8) * 0.20 : 0.62;
+        } else if (mission.location === 'jovian-harvester' && object.kind === 'sealControl') {
+          const breachId = object.id === 'boss-seal' ? 'boss-breach' : 'service-breach';
+          const breach = state.breaches.find(item => item.id === breachId);
+          statusColor = breach?.active && !breach.sealed ? 0xff7048 : breach?.sealed || object.exposed ? 0x82c58c : 0x79c8d1;
+          statusIntensity = breach?.active && !breach.sealed ? 1.18 + Math.sin(state.time * 6.4) * 0.30 : 0.62;
+        }
         for (const material of authored.statusMaterials) {
           material.color.setHex(statusColor);
           material.emissive.setHex(statusColor);
-          material.emissiveIntensity = object.exposed ? 0.42 : 1.0 + Math.sin(state.time * 4.5 + objectCenterX * 0.01) * 0.16;
+          material.emissiveIntensity = statusIntensity;
         }
       }
     }
     for (const [id, mesh] of this.objectVisuals) if (!activeIds.has(id)) mesh.visible = false;
     for (const [id, visual] of this.authoredInteractables) if (!activeIds.has(id)) visual.root.visible = false;
+
+    if (mission.location === 'jovian-harvester') {
+      const serviceBreach = state.breaches.find(breach => breach.id === 'service-breach');
+      const pressureSector = state.sectors.find(sector => sector.id === 'B') ?? state.sectors[0];
+      const pressureDoor = state.links.find(link => link.id === 'door-ab');
+      this.renderer.domElement.dataset.interactablePressureState = serviceBreach?.active && !serviceBreach.sealed
+        ? 'venting'
+        : pressureSector?.pressureState ?? 'normal';
+      this.renderer.domElement.dataset.interactablePressureDoor = pressureDoor?.open ? 'open' : 'sealed';
+    } else {
+      delete this.renderer.domElement.dataset.interactablePressureState;
+      delete this.renderer.domElement.dataset.interactablePressureDoor;
+    }
   }
 
   private syncObjectiveBeacon(state: SimState, mission: Contract) {
