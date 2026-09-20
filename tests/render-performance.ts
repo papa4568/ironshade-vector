@@ -5,6 +5,7 @@ import { spinHabitatArchitectureState, spinHabitatRenderProfile, spinHabitatSpin
 import { jovianHarvesterRenderProfile, jovianHarvesterStormState } from '../src/game/jovianHarvesterVisualLanguage';
 import { solarYardRenderProfile } from '../src/game/solarYardVisualProfile';
 import { perseidRenderProfile } from '../src/game/perseidCapstone';
+import { k91RenderProfile } from '../src/game/k91Capstone';
 
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
@@ -206,6 +207,23 @@ assert(rendererSource.includes("dataset.megastructureIdentity = 'generation-ship
 assert(rendererSource.includes("dataset.megastructureContinuity = 'keel-spine+pressure-ribs+green-transit-datum'"), 'Perseid runtime QA must expose its cross-stage continuity language.');
 assert(rendererSource.includes('dataset.megastructureStageKit = stage.kit.join'), 'Perseid runtime QA must expose the active stage-specific visual kit.');
 assert(rendererSource.includes('dataset.megastructurePerformanceProfile'), 'Perseid runtime QA must expose its adaptive mobile performance profile.');
+
+const fullK91Profile = k91RenderProfile(1, false);
+assert(fullK91Profile.name === 'full' && fullK91Profile.railPairs === 6 && fullK91Profile.datumLights === 10, 'desktop K-91 must preserve the complete counterweight load frame.');
+assert(fullK91Profile.stageProps === 8 && fullK91Profile.castStructuralShadows, 'desktop K-91 must keep full stage dressing and structural shadows.');
+
+const mobileK91Profile = k91RenderProfile(0.72, true);
+assert(mobileK91Profile.name === 'mobile' && mobileK91Profile.railPairs === 4 && mobileK91Profile.datumLights === 6, 'mobile K-91 must trim repeated mass rails and inertial datum lights.');
+assert(mobileK91Profile.stageProps === 5 && !mobileK91Profile.castStructuralShadows, 'mobile K-91 must preserve stage identity while removing structural shadow cost.');
+
+const performanceK91Profile = k91RenderProfile(0.5, true);
+assert(performanceK91Profile.name === 'performance' && performanceK91Profile.railPairs === 3 && performanceK91Profile.stageProps === 3, 'K-91 Performance mode must retain the minimum recognizable counterweight silhouette.');
+assert(!performanceK91Profile.castStructuralShadows, 'K-91 Performance mode must not restore structural shadows.');
+assert(rendererSource.includes('this.addK91CapstoneScenery(mission, world.w, world.h, budget.detailScale)'), 'K-91 continuity scenery must layer over every reused stage biome.');
+assert(rendererSource.includes("dataset.megastructureIdentity = 'counterweight:k-91'"), 'K-91 runtime QA must expose the megastructure identity.');
+assert(rendererSource.includes("dataset.megastructureContinuity = 'load-spine+countermass-rails+amber-inertial-datum'"), 'K-91 runtime QA must expose its cross-stage continuity language.');
+assert(rendererSource.includes('dataset.megastructureStageKit = stage.kit.join'), 'K-91 runtime QA must expose the active stage-specific visual kit.');
+assert(rendererSource.includes('rails-${profile.railPairs}:guides-${profile.datumLights}'), 'K-91 runtime QA must expose its adaptive mobile performance profile.');
 
 const sustainedMobile = new AdaptiveRenderBudget(true);
 let sustainedSnapshot = sustainedMobile.sample(16.7, 1);
