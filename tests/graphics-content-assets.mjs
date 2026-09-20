@@ -241,6 +241,8 @@ for (const path of glbs) {
                                                                 ? 'solar-yard-printer-spindle-gantry'
                                                                 : filename.includes('solar-yard-feedstock-press')
                                                                   ? 'solar-yard-feedstock-press-body'
+                                                                  : filename.includes('solar-yard-thermal-shutter')
+                                                                    ? 'solar-yard-thermal-shutter-panel-left'
           : filename.includes('floor-panel')
             ? 'refinery-floor-panel'
             : filename.includes('floor-service-grate')
@@ -400,6 +402,13 @@ for (const path of glbs) {
       assert(nodeNames.has('solar-yard-feedstock-press-collection-tray'), `${relativePath}: Solar Yard feedstock press LOD1 is missing collection tray detail`);
       assert(materialForNode('solar-yard-feedstock-press-body') === 'solar-yard-ceramic-shell', `${relativePath}: Solar Yard feedstock press body lost its ceramic shell identity`);
       assert(materialForNode('solar-yard-feedstock-press-status') === 'solar-yard-amber-emissive', `${relativePath}: Solar Yard feedstock press status must remain heat amber`);
+    }
+    if (filename.includes('solar-yard-thermal-shutter') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('solar-yard-thermal-shutter-rib-left-a'), `${relativePath}: Solar Yard thermal shutter LOD1 is missing heat-rejection rib detail`);
+      assert(nodeNames.has('solar-yard-thermal-shutter-rib-right-b'), `${relativePath}: Solar Yard thermal shutter LOD1 is missing mirrored rib detail`);
+      assert(materialForNode('solar-yard-thermal-shutter-panel-left') === 'solar-yard-ceramic-shell', `${relativePath}: Solar Yard thermal shutter panel lost its ceramic shell identity`);
+      assert(materialForNode('solar-yard-thermal-shutter-actuator') === 'solar-yard-solar-gold', `${relativePath}: Solar Yard thermal shutter actuator must remain solar gold`);
+      assert(materialForNode('solar-yard-thermal-shutter-status') === 'solar-yard-amber-emissive', `${relativePath}: Solar Yard thermal shutter status must remain heat amber`);
     }
 
     if (filename.includes('parallax-baseline-pylon') && filename.endsWith('-lod1.glb')) {
@@ -644,6 +653,13 @@ for (const asset of ['solar-yard-sinter-forge', 'solar-yard-printer-spindle', 's
   const lod2 = reportByPath.get(`environments/${asset}-lod2.glb`);
   assert(lod1 && lod2, `${asset}: Solar Yard P3.8 machinery LOD1/LOD2 pair missing`);
   assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, `${asset}: Solar Yard mobile machinery LOD2 must reduce payload and draw surfaces`);
+}
+
+for (const asset of ['solar-yard-thermal-shutter']) {
+  const lod1 = reportByPath.get(`environments/${asset}-lod1.glb`);
+  const lod2 = reportByPath.get(`environments/${asset}-lod2.glb`);
+  assert(lod1 && lod2, `${asset}: Solar Yard P3.10 thermal shutter LOD1/LOD2 pair missing`);
+  assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, `${asset}: Solar Yard mobile thermal shutter LOD2 must reduce payload and draw surfaces`);
 }
 
 for (const asset of ['parallax-baseline-pylon', 'parallax-reference-frame', 'parallax-mass-carriage', 'parallax-shear-anchor', 'parallax-reference-console']) {
