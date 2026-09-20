@@ -621,7 +621,8 @@ assert.ok(hecateStage1State.hazards.some(hazard => hazard.active && hazard.kind 
 
 const hecateWreckDirector = createDirector();
 stepMissionDirector(hecateStage3State, hecateWreckDirector, hecateStage3, 7.1);
-assert.ok(hecateStage3State.hazards.some(hazard => hazard.active && hazard.kind === 'vacuumWake'), 'Hecate Wreck Transit must produce an open-hull pressure hazard.');
+assert.ok(hecateStage3State.breaches.some(breach => breach.id === 'service-breach' && breach.active), 'Hecate Wreck Transit must open a physical pressure breach.');
+assert.ok(hecateStage3State.hazards.some(hazard => hazard.active && hazard.kind === 'vectorWash'), 'Hecate Wreck Transit must expose a decompression vector across the wreck chain.');
 
 if (!hecateYardmaster) throw new Error('Hecate Yardmaster Null missing from final stage setup.');
 hecateYardmaster.active = true;
