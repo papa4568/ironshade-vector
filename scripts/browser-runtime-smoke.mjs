@@ -648,9 +648,15 @@ try {
         && canvas?.dataset.environmentComposition === 'elevated-skimmer-decks+five-tower-spine+transfer-bridges+ballast-pods'
         && canvas?.dataset.environmentZoneIdentity === 'deck:weathered-plate|tower:vertical-skimmer-spine|bridge:dark-transfer-truss|ballast:light-suspended-pod'
         && canvas?.dataset.readabilityLanguage === 'tower-height+bridge-lines+amber-wayfinding'
+        && canvas?.dataset.interactableBiome === 'jovian-harvester'
+        && canvas?.dataset.interactableMode === 'jovian-gas-machinery+mission-controls'
+        && canvas?.dataset.interactableKit === 'storm-bus-isolator+deck-mass-trim+skimmer-compressor+separator-package'
+        && canvas?.dataset.interactableVisual === 'authored'
+        && !(canvas?.dataset.interactableFallback ?? '')
+        && (canvas?.dataset.interactableAssets ?? '').includes('jovian-harvester-deck-mass-trim-lod')
         && Number(canvas?.dataset.environmentInstances) > 0
         && ['1', '2'].includes(canvas?.dataset.environmentLod ?? '');
-    })()`, 'Jovian Harvester authored environment kit', 20_000);
+    })()`, 'Jovian Harvester authored environment and gas machinery kit', 20_000);
     const jovianEnvironment = await evaluate(`(() => {
       const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-jovian-harvester');
       return {
@@ -658,9 +664,10 @@ try {
         instances: canvas?.dataset.environmentInstances ?? '',
         kit: canvas?.dataset.environmentKit ?? '',
         composition: canvas?.dataset.environmentComposition ?? '',
+        machinery: canvas?.dataset.interactableAssets ?? '',
       };
     })()`);
-    console.log(`BROWSER_JOVIAN_HARVESTER_PASS viewport=${viewportMode} lod=${jovianEnvironment?.lod} instances=${jovianEnvironment?.instances} kit=${jovianEnvironment?.kit} composition=${jovianEnvironment?.composition}`);
+    console.log(`BROWSER_JOVIAN_HARVESTER_PASS viewport=${viewportMode} lod=${jovianEnvironment?.lod} instances=${jovianEnvironment?.instances} kit=${jovianEnvironment?.kit} composition=${jovianEnvironment?.composition} machinery=${jovianEnvironment?.machinery}`);
   }
 
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);
