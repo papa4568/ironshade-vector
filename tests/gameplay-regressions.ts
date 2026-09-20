@@ -525,6 +525,7 @@ function sameClassBuildDiversitySmoke() {
   const momentumState = createSimulation(deriveCombatBuild(momentumProfile));
   for (const enemy of momentumState.enemies) enemy.active = false;
   momentumState.player.aim = { x: 1, y: 0 };
+  momentumState.player.currentWeapon = 'carbine';
   momentumState.player.dodgeCooldown = 1.2;
   momentumState.player.capacitor = Math.max(0, momentumState.player.maxCapacitor - 20);
   assert.equal(triggerAbility(momentumState, 0), true);
