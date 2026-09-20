@@ -2,10 +2,11 @@ import type { Contract } from './campaign';
 import { applyEncounterLayout, getMissionObjectiveStatus } from './encounters';
 import { createEnvironmentalEventRuntime, stepEnvironmentalEvents, type EnvironmentalEventRuntime } from './environmentalEvents';
 import { applyThreatBudget } from './scaling';
+import { perseidStageIdentity } from './perseidCapstone';
 import { getClassMechanicStatus, releaseBossGate, type EnemyRole, type EnemyVariant, type SimState } from './sim';
 
-export type DirectorRuntime = { elapsed: number; deepElapsed: number; deep: boolean; reinforcementsReleased: boolean; gridTriggered: boolean; defenseTriggered: boolean; pressureWarned: boolean; pressureTriggered: boolean; gravityTriggered: boolean; locationEventA: boolean; locationEventB: boolean; thermalPulseUntil: number; clearSweepElapsed: number; clearSweepWarned: boolean; environmental: EnvironmentalEventRuntime };
-export function createDirector(): DirectorRuntime { return { elapsed: 0, deepElapsed: 0, deep: false, reinforcementsReleased: false, gridTriggered: false, defenseTriggered: false, pressureWarned: false, pressureTriggered: false, gravityTriggered: false, locationEventA: false, locationEventB: false, thermalPulseUntil: 0, clearSweepElapsed: 0, clearSweepWarned: false, environmental: createEnvironmentalEventRuntime() }; }
+export type DirectorRuntime = { elapsed: number; deepElapsed: number; deep: boolean; reinforcementsReleased: boolean; gridTriggered: boolean; defenseTriggered: boolean; pressureWarned: boolean; pressureTriggered: boolean; gravityTriggered: boolean; locationEventA: boolean; locationEventB: boolean; megastructureEventA: boolean; megastructureEventB: boolean; thermalPulseUntil: number; clearSweepElapsed: number; clearSweepWarned: boolean; environmental: EnvironmentalEventRuntime };
+export function createDirector(): DirectorRuntime { return { elapsed: 0, deepElapsed: 0, deep: false, reinforcementsReleased: false, gridTriggered: false, defenseTriggered: false, pressureWarned: false, pressureTriggered: false, gravityTriggered: false, locationEventA: false, locationEventB: false, megastructureEventA: false, megastructureEventB: false, thermalPulseUntil: 0, clearSweepElapsed: 0, clearSweepWarned: false, environmental: createEnvironmentalEventRuntime() }; }
 function event(state: SimState, text: string, duration = 2.4) { state.eventText = text; state.eventT = duration; }
 function setRole(state: SimState, id: number, role: EnemyRole, label: string) { const enemy = state.enemies.find(item => item.id === id); if (!enemy) return; enemy.role = role; enemy.label = label; enemy.anchored = role === 'elite' || role === 'boss'; }
 function setTacticalEnemy(state: SimState, id: number, role: EnemyRole, variant: EnemyVariant, label: string, hp?: number, armor?: number) { const enemy = state.enemies.find(item => item.id === id); if (!enemy) return; enemy.role = role; enemy.variant = variant; enemy.label = label; enemy.anchored = role === 'elite'; if (typeof hp === 'number') { enemy.hp = hp; enemy.maxHp = hp; } if (typeof armor === 'number') { enemy.armor = armor; enemy.maxArmor = armor; } }
@@ -200,6 +201,24 @@ export function stepMissionDirector(state: SimState, runtime: DirectorRuntime, c
       for (const shutter of state.objects.filter(object => object.id.startsWith('lattice-shutter') && object.hp > 0)) shutter.active = true;
       event(state, 'KHEPRI REFERENCE INDEX // CALIBRATION SHUTTERS REPOSITIONED // FIRING LANES CHANGED', 3.2);
     }
+  }
+
+  const perseidStage = perseidStageIdentity(contract);
+  if (perseidStage && !runtime.megastructureEventA && runtime.elapsed >= 7) {
+    runtime.megastructureEventA = true;
+    if (objective.complete) {
+      event(state, `${perseidStage.eventA} // PRIMARY CONTROL ALREADY STABLE`, 3);
+    } else {
+      const hazardKind = perseidStage.stage === 2 ? 'gravityWell' : perseidStage.stage === 3 ? 'boiloffJet' : 'shockGrid';
+      const hazardX = perseidStage.stage === 1 ? 900 : perseidStage.stage === 2 ? 1080 : perseidStage.stage === 3 ? 1220 : 1460;
+      const hazardY = perseidStage.stage % 2 === 0 ? 620 : 420;
+      deployHazard(state, hazardX, hazardY, hazardKind, 5.2);
+      event(state, `${perseidStage.eventA} // LOCAL HAZARD LIVE`, 3.4);
+    }
+  }
+  if (perseidStage && !runtime.megastructureEventB && runtime.elapsed >= 18) {
+    runtime.megastructureEventB = true;
+    event(state, objective.complete ? perseidStage.eventB : `${perseidStage.eventB} // PRIMARY CONTROL STILL UNRESOLVED`, 3);
   }
 
   const reinforcementTrigger = contract.encounterPattern === 'swarm' ? 1 : contract.encounterPattern === 'elite-led' ? 3 : 2;
