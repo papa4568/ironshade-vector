@@ -319,7 +319,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 P1, P2, P3, and **P4 — Megastructure Capstone Pass** are complete. **P5.1–P5.6 class-capstone work** is complete. Continue in roadmap order with **P5.7 — Systems skill evolution**.
 
-**P5.6 delivered:** Systems now has a third LV15 specialization, **Thermal Shunter**, alongside Grid Weaver and Capacitor Conductor. Thermal Shunter creates a weapon/ability weaving loop: casting a Systems ability with at least 35% active-weapon heat shunts 8% heat (10% with the LV16 overclock) into a short crossfire bank; the next weapon shot gains 12% projectile velocity, 10% damage, +10 penetration, and returns 4 capacitor. The LV16 overclock extends the bank to 3 seconds, advances the ability that armed it by 0.5 seconds on discharge, and sheds another 5% weapon heat, balanced by +10% weapon heat per shot. The base specialization trades 10 maximum armor. Deterministic gameplay regression covers hot-vs-cold arming, heat routing, projectile bonuses, capacitor return, one-shot bank consumption, cooldown recycling, combat feedback, and both tradeoffs; UI regression verifies the third Systems path is sourced through the shared specialization metadata. **P5.7 — Systems skill evolution** is next.
+**P5.6 delivered:** Systems now has a third LV15 specialization, **Thermal Shunter**, alongside Grid Weaver and Capacitor Conductor. Thermal Shunter creates a weapon/ability weaving loop: casting a Systems ability with at least 35% active-weapon heat shunts 8% heat (10% with the LV16 overclock) into a short crossfire bank; the next weapon shot gains 12% projectile velocity, 10% damage, +10 penetration, and returns 4 capacitor. The LV16 overclock extends the bank to 3 seconds, advances the ability that armed it by 0.5 seconds on discharge, and sheds another 5% weapon heat, balanced by +10% weapon heat per shot. The base specialization trades 10 maximum armor. Deterministic gameplay regression covers hot-vs-cold arming, heat routing, projectile bonuses, capacitor return, one-shot bank consumption, cooldown recycling, combat feedback, and both tradeoffs; UI regression verifies the third Systems path is sourced through the shared specialization metadata. Merged-main desktop/mobile Browser E2E, Level 15 beta smoke, Android beta.196 package/version/SDK/signature verification, native emulator install/launch/resume smoke, Android touch/runtime smoke, and Chapter 3 touch playthrough all passed. **P5.7 — Systems skill evolution** is next.
 
 **P5.5 delivered:** Vector now has three LV16 class skill evolutions in the existing Skill Lens slots. **Slingshot Shift** turns Vector Shift into a longer route with an extended Slipstream bank and partial dodge recovery, balanced by +18% capacitor cost. **Triangulation Lock** opens a short Armor Breach firing window and advances Splitshot recovery, balanced by +18% Deadeye Lock cooldown. **Needle Fan** compresses Splitshot into a tighter 1,700-speed fan with +20 penetration and a reinforced center lane, balanced by +20% Splitshot cooldown. Class/LV16 gating, class-switch cleanup, build-stat visibility, tradeoffs, ballistic behavior, recovery routing, and explicit combat feedback are covered by deterministic regression. PR full regression/production build and browser player journey passed on both desktop and mobile-landscape in Browser E2E run `35539490995`. Merged-main desktop/mobile Browser E2E, Level 15 beta smoke, Android beta.195 package/version/SDK/signature verification, native emulator install/launch/resume smoke, Android touch/runtime smoke, and the Chapter 3 touch playthrough all passed. **P5.6 — Systems third specialization** is next.
 
@@ -407,16 +407,15 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.195**
+- Android beta: **0.0.1-beta.196**
 - Package: `app.ironshade.vector`
-- Verified: Class capstone **P5.5 — Vector skill evolutions** is complete. Vector now has three LV16 class-only evolutions in the existing Skill Lens slots: **Slingshot Shift** extends Vector Shift routing and Slipstream while recycling dodge recovery, **Triangulation Lock** opens a short Armor Breach and advances Splitshot recovery, and **Needle Fan** compresses Splitshot into a faster, deeper-penetrating precision fan with a reinforced center lane. Each evolution has an explicit cost/cooldown tradeoff, class/LV16 gating, class-switch cleanup, combat feedback, build-stat visibility, and deterministic regression coverage. PR desktop + mobile-landscape Browser E2E, merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.195 package/version/SDK/signature verification, native emulator install/launch/resume smoke, Android touch/runtime smoke, and Chapter 3 touch playthrough all passed. **The next roadmap slice is P5.6 — Systems third specialization.**
+- Verified: Class capstone **P5.6 — Systems third specialization** is complete. Systems now has three LV15 specialization paths: **Grid Weaver** for machinery-network Arc routing, **Capacitor Conductor** for deliberate MAG/MARK/ARC sequencing, and **Thermal Shunter** for weapon/ability thermal crossfeed. Thermal Shunter shunts heat from a warm active weapon into a short crossfire bank; the next shot gains projectile velocity, damage, penetration, and capacitor return. Its LV16 overclock also advances the arming ability and sheds additional heat, balanced by increased heat per shot; the base path trades maximum armor. Deterministic gameplay/UI regression, merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.196 package/version/SDK/signature verification, native emulator install/launch/resume smoke, Android touch/runtime smoke, and Chapter 3 touch playthrough all passed. **The next roadmap slice is P5.7 — Systems skill evolution.**
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P5.5 final PR head: `f5d5f038235e5a27c7e3078f30d5c3a8fd184012`
-- P5.5 merged main / APK source: `53a4ae6161e2a0275ebcd3bfa4a3bc85d4f1b93f`
-- P5.5 PR Browser E2E run: `35539490995`
-- Final Browser E2E run: `35539612664`
-- Level 15 beta smoke run: `35539612698`
-- Android beta.195 run: `35539612702`
-- Android beta.195 artifact ID: `10614406314`
-- Android beta.195 artifact head: `53a4ae6161e2a0275ebcd3bfa4a3bc85d4f1b93f`
-- APK SHA-256: `c117672640d5130de9f0f88e011086f6ee7bcb568a17634f9f7bbc4f5beda29a`
+- P5.6 final PR head: `098a5de5782f46571754c22ba7e0e4f634ffc1ec`
+- P5.6 merged main / APK source: `0537a4b700b95ff9653db91fbf2aa1fe29b17ee8`
+- Final Browser E2E run: `35540380144`
+- Level 15 beta smoke run: `35540380132`
+- Android beta.196 run: `35540380141`
+- Android beta.196 artifact ID: `10614079447`
+- Android beta.196 artifact head: `0537a4b700b95ff9653db91fbf2aa1fe29b17ee8`
+- APK SHA-256: `00fa88938d961e328a5d59a4e0de64eb01ea2d5638ff060366f99cef8b6ffcb6`
