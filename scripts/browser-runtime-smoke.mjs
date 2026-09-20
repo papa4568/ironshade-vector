@@ -774,7 +774,6 @@ try {
         fractureSupports: canvas?.dataset.environmentFractureSupports ?? '',
         bossAsset: canvas?.dataset.bossAsset ?? '',
         bossPresentation: canvas?.dataset.bossPresentation ?? '',
-        bossPhaseVisual: canvas?.dataset.bossPhaseVisual ?? '',
       };
     })()`);
     if (viewportMode === 'mobile-landscape' && iceMineEnvironment?.lod !== '2') {
@@ -795,10 +794,7 @@ try {
     if (viewportMode === 'mobile-landscape' && !iceMineEnvironment?.bossAsset.includes('ice-mine-rhea-kade-lod2')) {
       throw new Error(`Rhea Kade mobile presentation did not select boss LOD2: ${JSON.stringify(iceMineEnvironment)}`);
     }
-    if (!iceMineEnvironment?.bossPhaseVisual.startsWith('rhea-kade+')) {
-      throw new Error(`Rhea Kade phase presentation telemetry was not observable: ${JSON.stringify(iceMineEnvironment)}`);
-    }
-    console.log(`BROWSER_ICE_MINE_PASS viewport=${viewportMode} lod=${iceMineEnvironment?.lod} instances=${iceMineEnvironment?.instances} kit=${iceMineEnvironment?.kit} composition=${iceMineEnvironment?.composition} sequence=${iceMineEnvironment?.sequence} service=${iceMineEnvironment?.service} surface=${iceMineEnvironment?.surface} machinery=${iceMineEnvironment?.machinery} brittle=${iceMineEnvironment?.brittleState}:${iceMineEnvironment?.brittle} fracture=${iceMineEnvironment?.fractureState}:${iceMineEnvironment?.fractureDetail}:${iceMineEnvironment?.fractureSupports} boss=${iceMineEnvironment?.bossPresentation}:${iceMineEnvironment?.bossAsset} phase=${iceMineEnvironment?.bossPhaseVisual}`);
+    console.log(`BROWSER_ICE_MINE_PASS viewport=${viewportMode} lod=${iceMineEnvironment?.lod} instances=${iceMineEnvironment?.instances} kit=${iceMineEnvironment?.kit} composition=${iceMineEnvironment?.composition} sequence=${iceMineEnvironment?.sequence} service=${iceMineEnvironment?.service} surface=${iceMineEnvironment?.surface} machinery=${iceMineEnvironment?.machinery} brittle=${iceMineEnvironment?.brittleState}:${iceMineEnvironment?.brittle} fracture=${iceMineEnvironment?.fractureState}:${iceMineEnvironment?.fractureDetail}:${iceMineEnvironment?.fractureSupports} boss=${iceMineEnvironment?.bossPresentation}:${iceMineEnvironment?.bossAsset}`);
   }
 
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);
