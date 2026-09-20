@@ -1598,6 +1598,38 @@ function jovianHarvesterInteractableNodes(kind, lod) {
     return nodes;
   }
 
+  if (kind === 'stormPressureLock') {
+    const nodes = [
+      { name: 'jovian-harvester-storm-pressure-lock-base', mesh: 1, translation: [0, 0.10, 0], scale: [1.22, 0.20, 0.72] },
+      { name: 'jovian-harvester-storm-pressure-lock-frame', mesh: 0, translation: [-0.10, 0.74, 0], scale: [0.82, 1.20, 0.62] },
+      { name: 'jovian-harvester-storm-pressure-lock-wheel', mesh: 2, translation: [0.40, 0.78, 0], scale: [0.16, 0.50, 0.50] },
+      { name: 'jovian-harvester-pressure-status', mesh: 3, translation: [0.58, 1.18, 0], scale: [0.06, 0.22, 0.42] },
+    ];
+    if (detail) nodes.push(
+      { name: 'jovian-harvester-storm-pressure-lock-equalization-line', mesh: 1, translation: [-0.48, 1.10, 0], scale: [0.18, 0.68, 0.30] },
+      { name: 'jovian-harvester-storm-pressure-lock-gauge', mesh: 3, translation: [0.18, 1.42, 0], scale: [0.08, 0.18, 0.18] },
+      { name: 'objective-beacon-mount', mesh: 1, translation: [0, 1.72, 0], scale: [0.18, 0.08, 0.18] },
+    );
+    nodes.push({ name: 'interactable-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  if (kind === 'reliefManifold') {
+    const nodes = [
+      { name: 'jovian-harvester-relief-manifold-skid', mesh: 1, translation: [0, 0.10, 0], scale: [1.30, 0.20, 0.78] },
+      { name: 'jovian-harvester-relief-manifold-body', mesh: 0, translation: [-0.16, 0.58, 0], scale: [0.86, 0.78, 0.62] },
+      { name: 'jovian-harvester-relief-manifold-valve', mesh: 2, translation: [0.42, 0.72, 0], scale: [0.20, 0.56, 0.56] },
+      { name: 'jovian-harvester-pressure-status', mesh: 3, translation: [0.60, 1.02, 0], scale: [0.06, 0.22, 0.42] },
+    ];
+    if (detail) nodes.push(
+      { name: 'jovian-harvester-relief-manifold-riser', mesh: 0, translation: [-0.42, 1.18, 0], scale: [0.24, 0.72, 0.34] },
+      { name: 'jovian-harvester-relief-manifold-gauge', mesh: 3, translation: [0.14, 1.28, 0], scale: [0.08, 0.18, 0.18] },
+      { name: 'objective-beacon-mount', mesh: 1, translation: [0, 1.58, 0], scale: [0.18, 0.08, 0.18] },
+    );
+    nodes.push({ name: 'interactable-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
   const nodes = [
     { name: 'jovian-harvester-separator-package-skid', mesh: 1, translation: [0, 0.10, 0], scale: [1.34, 0.20, 0.82] },
     { name: 'jovian-harvester-separator-package-vessel', mesh: 0, translation: [-0.22, 0.66, 0], scale: [0.62, 1.08, 0.62] },
@@ -1732,6 +1764,8 @@ const jovianHarvesterInteractableProfiles = [
   ['deckMassTrim', 'jovian-harvester-deck-mass-trim'],
   ['skimmerCompressor', 'jovian-harvester-skimmer-compressor'],
   ['separatorPackage', 'jovian-harvester-separator-package'],
+  ['stormPressureLock', 'jovian-harvester-storm-pressure-lock'],
+  ['reliefManifold', 'jovian-harvester-relief-manifold'],
 ];
 
 for (const [kind, id] of jovianHarvesterInteractableProfiles) {
