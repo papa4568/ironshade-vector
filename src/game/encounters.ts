@@ -584,6 +584,41 @@ function configureMegastructureStage(state: SimState, contract: Contract) {
         boss.anchored = false;
       }
     }
+  } else if (contract.megastructure === 'shipbreaking-yard') {
+    if (contract.megastructureStage === 1) {
+      state.sectors[0].label = 'CLAMP APPROACH';
+      state.sectors[1].label = 'SUNWARD FIELD';
+      state.sectors[2].label = 'HULL CRADLE';
+      addObject(state, coverObject('hecate-clamp-arm-a', 'Hecate salvage clamp', 820, 300, 72, 168, 'industrial'));
+      addObject(state, coverObject('hecate-clamp-arm-b', 'Hecate salvage clamp', 1180, 710, 72, 168, 'industrial'));
+    } else if (contract.megastructureStage === 2) {
+      state.sectors[0].label = 'CUTTER RUN';
+      state.sectors[1].label = 'CRUSHER CAUSEWAY';
+      state.sectors[2].label = 'SCRAP PRESS';
+      addObject(state, coverObject('hecate-crusher-jaw-a', 'Hecate crusher jaw', 760, 290, 132, 64, 'industrial'));
+      addObject(state, coverObject('hecate-crusher-jaw-b', 'Hecate crusher jaw', 1260, 735, 132, 64, 'industrial'));
+    } else if (contract.megastructureStage === 3) {
+      state.sectors[0].label = 'WRECK FORE';
+      state.sectors[1].label = 'OPEN TRANSIT';
+      state.sectors[2].label = 'PRESSURE HULKS';
+      addObject(state, coverObject('hecate-wreck-frame-a', 'Stripped vessel frame', 790, 300, 112, 58, 'industrial'));
+      addObject(state, coverObject('hecate-wreck-frame-b', 'Stripped vessel frame', 1290, 710, 112, 58, 'industrial'));
+    } else if (contract.megastructureStage === 4) {
+      state.sectors[0].label = 'CROWN APPROACH';
+      state.sectors[1].label = 'YARD CONTROL';
+      state.sectors[2].label = 'NULL GANTRY';
+      addObject(state, coverObject('hecate-control-pylon-a', 'Hecate master clamp pylon', 1760, 315, 100, 166, 'industrial'));
+      addObject(state, coverObject('hecate-control-pylon-b', 'Hecate master clamp pylon', 2030, 690, 100, 166, 'industrial'));
+      const boss = state.enemies.find(enemy => enemy.role === 'boss');
+      if (boss) {
+        boss.variant = 'hecateYardmaster';
+        boss.hp = 790;
+        boss.maxHp = 790;
+        boss.armor = 275;
+        boss.maxArmor = 275;
+        boss.anchored = false;
+      }
+    }
   }
 
   if (contract.megastructureStage === 2) {
@@ -599,7 +634,9 @@ function configureMegastructureStage(state: SimState, contract: Contract) {
           ? 'K-91 Mass-Transit Warden'
           : contract.megastructure === 'hidden-habitat'
             ? 'Orpheline Commons Custodian'
-            : 'Derelict Security Exosuit';
+            : contract.megastructure === 'shipbreaking-yard'
+              ? 'Hecate Crusher Foreman'
+              : 'Derelict Security Exosuit';
       elite.hp = 190;
       elite.maxHp = 190;
       elite.armor = 145;
