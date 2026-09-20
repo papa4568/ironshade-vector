@@ -255,7 +255,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 ## P5 — Class Capstones
 
 - [x] P5.1 Vanguard third specialization
-- [ ] P5.2 Vanguard skill evolution
+- [x] P5.2 Vanguard skill evolution
 - [ ] P5.3 Vanguard capstone interactions
 - [ ] P5.4 Deepen Vector specializations
 - [ ] P5.5 Vector skill evolutions
@@ -317,9 +317,11 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1, P2, P3, and **P4 — Megastructure Capstone Pass** are complete. **P5.1 — Vanguard third specialization** is complete. Continue in roadmap order with **P5.2 — Vanguard skill evolution**.
+P1, P2, P3, and **P4 — Megastructure Capstone Pass** are complete. **P5.1 — Vanguard third specialization** and **P5.2 — Vanguard skill evolution** are complete. Continue in roadmap order with **P5.3 — Vanguard capstone interactions**.
 
-**P5.1 delivered:** Vanguard now has a third LV15 specialization, **Bulkhead Warden**, alongside Pressure Diver and Breach Vanguard. Bulkhead Warden turns Breach Guard into a defensive impact-recycling loop: guarded blockable damage receives additional mitigation and advances Bulwark Pulse recovery, while the LV16 overclock also returns capped capacitor from the absorbed impact. Bulwark Pulse repairs armor for each nearby contact and extends the Warden guard window, with an 8% direct weapon-output tradeoff and a +10% overclocked Bulwark capacitor-cost tradeoff. Deterministic gameplay regression covers mitigation, cooldown recycling, capacitor return, armor repair, extended guard duration, combat feedback, and both tradeoffs. PR desktop/mobile Browser E2E, merged-main desktop/mobile Browser E2E, Level 15 beta smoke, Android beta.191 package/version/SDK/signature verification, native emulator install/launch smoke, and Android touch smoke all passed. **P5.2 — Vanguard skill evolution** is next.
+**P5.2 delivered:** Vanguard now has three LV16 class skill evolutions in the existing Skill Lens slots. **Siege Ram** turns Breach Rush into an armor-cracking ram line that opens Armor Breach and feeds Breach Guard time, balanced by +20% Breach Rush cooldown. **Faultline Tag** relays Fracture Tag into a nearby secondary hostile to create a two-target Breacher lane, balanced by +18% Fracture Tag capacitor cost. **Reprisal Pulse** re-strikes already-breached Bulwark Pulse contacts and advances Breach Rush recovery per reprisal contact, balanced by +18% Bulwark Pulse cooldown. Evolutions are Vanguard-only, remain locked before LV16, share the existing per-skill selection slots with common Lenses, and are cleared safely when switching to an incompatible class while shared Lenses remain intact. Build UI exposes only class-compatible evolutions with unlock state, and player stats now report the actual class skill kit rather than generic MAG/MARK/ARC values. Deterministic gameplay regression covers level/class gating, all three tradeoffs, armor/guard/relay/recovery behavior, combat feedback, and class-switch cleanup. PR desktop/mobile Browser E2E, merged-main desktop/mobile Browser E2E, Level 15 beta smoke, Android beta.192 package/version/SDK/signature verification, native emulator install/launch smoke, and Android touch/runtime smoke all passed. **P5.3 — Vanguard capstone interactions** is next.
+
+**P5.1 delivered:** Vanguard now has a third LV15 specialization, **Bulkhead Warden**, alongside Pressure Diver and Breach Vanguard. Bulkhead Warden turns Breach Guard into a defensive impact-recycling loop: guarded blockable damage receives additional mitigation and advances Bulwark Pulse recovery, while the LV16 overclock also returns capped capacitor from the absorbed impact. Bulwark Pulse repairs armor for each nearby contact and extends the Warden guard window, with an 8% direct weapon-output tradeoff and a +10% overclocked Bulwark capacitor-cost tradeoff. Deterministic gameplay regression covers mitigation, cooldown recycling, capacitor return, armor repair, extended guard duration, combat feedback, and both tradeoffs. PR desktop/mobile Browser E2E, merged-main desktop/mobile Browser E2E, Level 15 beta smoke, Android beta.191 package/version/SDK/signature verification, native emulator install/launch smoke, and Android touch smoke all passed.
 
 **P4.18 delivered:** Megastructure mobile rendering now batches repeated Perseid ribs/guide lights, K-91 rails/inertial datum, Orpheline rock/utility continuity, and Hecate truss/clamp/cutter continuity through shared Three.js instanced draws instead of one mesh per repeated element. The existing mobile/performance profiles still preserve each capstone silhouette while trimming repeated density, and capstone overlays now stop receiving structural shadows whenever those profiles disable structural shadowing. Runtime QA exposes `instanced-continuity` batching plus per-family continuity draw-call ceilings (2 draws for Perseid/K-91, 4 for Orpheline, 5 for Hecate), and render-performance regression keeps both the visible mobile instance counts and the batching contract deterministic. P4 is complete; the next roadmap slice is P5.1 Vanguard third specialization.
 
@@ -397,16 +399,16 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.191**
+- Android beta: **0.0.1-beta.192**
 - Package: `app.ironshade.vector`
-- Verified: Class capstone **P5.1 — Vanguard third specialization** is complete. Vanguard now has **Bulkhead Warden** as a third LV15 specialization. Guarded blockable damage gains additional mitigation and recycles Bulwark Pulse recovery; the LV16 overclock also returns capped capacitor from recycled impact. Bulwark Pulse repairs armor per nearby contact and extends the Warden guard window, balanced by -8% direct weapon output and +10% overclocked Bulwark capacitor cost. Deterministic gameplay regression, PR desktop + mobile-landscape Browser E2E, merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.191 package/version/SDK/signature verification, native emulator install/launch smoke, and Android touch smoke all passed. **The next roadmap slice is P5.2 — Vanguard skill evolution.**
+- Verified: Class capstone **P5.2 — Vanguard skill evolution** is complete. Vanguard now has LV16 evolutions for all three class skills: **Siege Ram**, **Faultline Tag**, and **Reprisal Pulse**, each with a behavior-changing combat loop and explicit cooldown/capacitor tradeoff. Evolutions are class/level gated, share the existing Skill Lens slots, clean up safely on incompatible class changes, surface in Build with unlock state, and appear correctly in class-specific player telemetry. Deterministic gameplay regression, PR desktop + mobile-landscape Browser E2E, merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.192 package/version/SDK/signature verification, native emulator install/launch smoke, and Android touch/runtime smoke all passed. **The next roadmap slice is P5.3 — Vanguard capstone interactions.**
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P5.1 final implementation head: `f249ce00fde114873a301791df4a1f250718b25a`
-- P5.1 merged main / APK source: `b6cb04387ab1fb5b3f3d2d6000cf1e6f2ad9172b`
-- P5.1 PR Browser E2E run: `35534708179`
-- Final Browser E2E run: `35534843568`
-- Level 15 beta smoke run: `35534843561`
-- Android beta.191 run: `35534843572`
-- Android beta.191 artifact ID: `10612710739`
-- Android beta.191 artifact head: `b6cb04387ab1fb5b3f3d2d6000cf1e6f2ad9172b`
-- APK SHA-256: `85f6825fe58c571bf8d2bed8caf099bdf9698e07f78ff9ad6ee13fe4e5885d4c`
+- P5.2 final implementation head: `cbc3ab07a808b55f5a75dd11c1d1d1d63eacedcb`
+- P5.2 merged main / APK source: `c34d8301b1b0a090a3855a47553fe1b72388b20f`
+- P5.2 PR Browser E2E run: `35535678739`
+- Final Browser E2E run: `35535830059`
+- Level 15 beta smoke run: `35535830035`
+- Android beta.192 run: `35535830083`
+- Android beta.192 artifact ID: `10613281617`
+- Android beta.192 artifact head: `c34d8301b1b0a090a3855a47553fe1b72388b20f`
+- APK SHA-256: `6fe9220efcd469a2228123bd913ae5b4dde3578a25e50044d5f4f63d5314cd47`
