@@ -684,6 +684,9 @@ export class ThreeCombatRenderer {
     delete this.renderer.domElement.dataset.environmentMaterials;
     delete this.renderer.domElement.dataset.environmentVfx;
     delete this.renderer.domElement.dataset.environmentTone;
+    delete this.renderer.domElement.dataset.environmentSunDirection;
+    delete this.renderer.domElement.dataset.environmentShadowLanguage;
+    delete this.renderer.domElement.dataset.environmentSolarContrast;
     delete this.renderer.domElement.dataset.environmentStormLanguage;
     delete this.renderer.domElement.dataset.environmentStormMode;
     delete this.renderer.domElement.dataset.environmentStormIntensity;
@@ -2771,6 +2774,47 @@ export class ThreeCombatRenderer {
         solarYardFallback.push(panel);
       }
       this.proceduralRefineryVisuals.push(...solarYardFallback);
+
+      const solarBandCount = this.coarse || detailScale < 0.65 ? 4 : 6;
+      const sunBandMaterial = new THREE.MeshBasicMaterial({
+        color: 0xffb85f,
+        transparent: true,
+        opacity: this.coarse ? 0.075 : 0.105,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        toneMapped: false,
+      });
+      const shadowBandMaterial = new THREE.MeshBasicMaterial({
+        color: 0x090302,
+        transparent: true,
+        opacity: this.coarse ? 0.22 : 0.30,
+        depthWrite: false,
+        toneMapped: false,
+      });
+      const bandLength = scaled(worldH * 0.86);
+      const sunBandGeometry = new THREE.PlaneGeometry(2.4, bandLength);
+      const shadowBandGeometry = new THREE.PlaneGeometry(1.55, bandLength * 0.92);
+      for (let index = 0; index < solarBandCount; index += 1) {
+        const x = scaled(worldW * (0.18 + index * (0.64 / Math.max(1, solarBandCount - 1))));
+        const z = cz + (index % 2 === 0 ? -0.45 : 0.45);
+
+        const sunBand = new THREE.Mesh(sunBandGeometry, sunBandMaterial);
+        sunBand.name = `solar-yard-sun-band-${index}`;
+        sunBand.rotation.x = -Math.PI / 2;
+        sunBand.rotation.z = -0.18;
+        sunBand.position.set(x, 0.024, z);
+        sunBand.renderOrder = 2;
+        this.environmentRoot.add(sunBand);
+
+        const shadowBand = new THREE.Mesh(shadowBandGeometry, shadowBandMaterial);
+        shadowBand.name = `solar-yard-hard-shadow-band-${index}`;
+        shadowBand.rotation.x = -Math.PI / 2;
+        shadowBand.rotation.z = -0.18;
+        shadowBand.position.set(x + 1.72, 0.026, z + 0.36);
+        shadowBand.renderOrder = 3;
+        this.environmentRoot.add(shadowBand);
+      }
+      this.renderer.domElement.dataset.environmentSolarContrast = `sun-bands:${solarBandCount}+hard-shadow-bands:${solarBandCount}`;
     } else if (location === 'momentum-exchange') {
       for (const offset of [-9, 0, 9]) {
         const flywheel = new THREE.Mesh(new THREE.TorusGeometry(2.6, 0.48, 12, 48), structural);
@@ -4365,6 +4409,7 @@ export class ThreeCombatRenderer {
     const pz = scaled(state.player.y);
     const isRefinery = mission.location === 'asteroid-refinery';
     const isDamagedVessel = mission.location === 'damaged-vessel';
+    const isSolarYard = mission.location === 'solar-yard';
     const lightingProfile = LOCATION_LIGHTING_PROFILES[mission.location];
     const reducedEffects = budget.tier === 2 || quality < 0.55;
     const solarBoost = mission.location === 'solar-yard'
@@ -4428,9 +4473,17 @@ export class ThreeCombatRenderer {
     }
 
     this.keyLight.color.setHex(lightingProfile.keyColor);
-    this.rimLight.color.setHex(lightingProfile.rimColor);
-    this.keyLight.intensity = solarBoost ? Math.max(3.6, lightingProfile.keyIntensity) : lightingProfile.keyIntensity;
-    this.rimLight.intensity = lightingProfile.rimIntensity;
+    this.rimLight.color.setHex(isSolarYard ? 0x7fa7b8 : lightingProfile.rimColor);
+    if (isSolarYard) {
+      this.keyLight.position.set(px + 22, 17, pz - 19);
+      this.keyLight.target.position.set(px - 2.5, 0, pz + 3.5);
+    }
+    this.keyLight.intensity = solarBoost
+      ? Math.max(4.1, lightingProfile.keyIntensity)
+      : isSolarYard
+        ? Math.max(3.55, lightingProfile.keyIntensity)
+        : lightingProfile.keyIntensity;
+    this.rimLight.intensity = isSolarYard ? (reducedEffects ? 0.58 : 0.82) : lightingProfile.rimIntensity;
     const baseExposure = solarBoost ? Math.max(1.18, lightingProfile.exposure) : lightingProfile.exposure;
     this.renderer.toneMappingExposure = mission.conditions.includes('low-visibility') ? baseExposure * 1.04 : baseExposure;
     this.renderer.domElement.dataset.locationLighting = `${mission.location}:${lightingProfile.id}:aces-${this.renderer.toneMappingExposure.toFixed(2)}`;
@@ -4443,6 +4496,11 @@ export class ThreeCombatRenderer {
     } else if (isDamagedVessel) {
       const practicalCount = (firstPractical.visible ? 1 : 0) + (secondPractical.visible ? 1 : 0);
       this.renderer.domElement.dataset.environmentLighting = `damaged-vessel-emergency:breach+salvage+contact:player+enemy+practical:${practicalCount}+shadow:key`;
+      this.renderer.domElement.dataset.environmentTone = `aces-${this.renderer.toneMappingExposure.toFixed(2)}`;
+    } else if (isSolarYard) {
+      this.renderer.domElement.dataset.environmentLighting = 'solar-yard-low-angle-sun+cool-shade-rim+contact:player+enemy+shadow:key';
+      this.renderer.domElement.dataset.environmentSunDirection = 'sunward:+x,-z:low-angle';
+      this.renderer.domElement.dataset.environmentShadowLanguage = 'hard-truss-bands+deep-radiator-occlusion';
       this.renderer.domElement.dataset.environmentTone = `aces-${this.renderer.toneMappingExposure.toFixed(2)}`;
     }
   }
