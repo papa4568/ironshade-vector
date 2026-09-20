@@ -798,6 +798,56 @@ try {
   }
 
   if (targetLocation === 'solar-yard') {
+    const solarExpectedByProfile = {
+      full: {
+        profile: 'full:lod1:structure-shadows-on',
+        lod: '1',
+        instanceBudget: 'deck:6+truss:5+radiator:4+reflector:3+machines:7+rail:3+crane:2+shutter:1',
+        shadowCasters: 'solar-yard-structures+gameplay-actors',
+        service: 'ceramic-deck:6+truss-frame:5+radiator-tower:4+thermal-shutter:1',
+        surface: 'reflector-pylon:3+ceramic-deck:6',
+        machinery: 'sinter-forge:2+printer-spindle:3+feedstock-press:2',
+        transport: 'transfer-rail:3+gantry-crane:2',
+        sunPatches: 'sun:3+shade:3',
+        craneCount: 2,
+      },
+      balanced: {
+        profile: 'balanced:lod1:structure-shadows-off',
+        lod: '1',
+        instanceBudget: 'deck:4+truss:3+radiator:2+reflector:3+machines:4+rail:2+crane:2+shutter:1',
+        shadowCasters: 'gameplay-actors-only',
+        service: 'ceramic-deck:4+truss-frame:3+radiator-tower:2+thermal-shutter:1',
+        surface: 'reflector-pylon:3+ceramic-deck:4',
+        machinery: 'sinter-forge:1+printer-spindle:2+feedstock-press:1',
+        transport: 'transfer-rail:2+gantry-crane:2',
+        sunPatches: 'sun:2+shade:2',
+        craneCount: 2,
+      },
+      mobile: {
+        profile: 'mobile:lod2:structure-shadows-off',
+        lod: '2',
+        instanceBudget: 'deck:4+truss:3+radiator:2+reflector:3+machines:4+rail:2+crane:2+shutter:1',
+        shadowCasters: 'gameplay-actors-only',
+        service: 'ceramic-deck:4+truss-frame:3+radiator-tower:2+thermal-shutter:1',
+        surface: 'reflector-pylon:3+ceramic-deck:4',
+        machinery: 'sinter-forge:1+printer-spindle:2+feedstock-press:1',
+        transport: 'transfer-rail:2+gantry-crane:2',
+        sunPatches: 'sun:2+shade:2',
+        craneCount: 2,
+      },
+      performance: {
+        profile: 'performance:lod2:structure-shadows-off',
+        lod: '2',
+        instanceBudget: 'deck:4+truss:3+radiator:2+reflector:3+machines:4+rail:2+crane:1+shutter:1',
+        shadowCasters: 'gameplay-actors-only',
+        service: 'ceramic-deck:4+truss-frame:3+radiator-tower:2+thermal-shutter:1',
+        surface: 'reflector-pylon:3+ceramic-deck:4',
+        machinery: 'sinter-forge:1+printer-spindle:2+feedstock-press:1',
+        transport: 'transfer-rail:2+gantry-crane:1',
+        sunPatches: 'sun:1+shade:1',
+        craneCount: 1,
+      },
+    };
     await waitFor(`(() => {
       const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-solar-yard');
       return canvas?.dataset.environmentKit === 'ceramic-deck,truss-frame,radiator-tower,reflector-pylon,sinter-forge,printer-spindle,feedstock-press,transfer-rail,gantry-crane,thermal-shutter'
@@ -808,19 +858,19 @@ try {
         && canvas?.dataset.environmentSunShadow === 'hard-sun+cool-shade+long-shadow'
         && canvas?.dataset.environmentSunDirection === 'fixed-sunward-east-to-west'
         && /^(hard-sun|solar-surge)$/.test(canvas?.dataset.environmentSunMode ?? '')
-        && canvas?.dataset.environmentSunPatches === 'sun:3+shade:3'
-        && (canvas?.dataset.environmentServiceDetails ?? '').includes('ceramic-deck:6')
-        && (canvas?.dataset.environmentServiceDetails ?? '').includes('truss-frame:5')
-        && (canvas?.dataset.environmentServiceDetails ?? '').includes('radiator-tower:4')
+        && /^(sun:[123]\\+shade:[123])$/.test(canvas?.dataset.environmentSunPatches ?? '')
+        && /^(full|balanced|mobile|performance):lod[12]:structure-shadows-(on|off)$/.test(canvas?.dataset.environmentPerformanceProfile ?? '')
+        && (canvas?.dataset.environmentInstanceBudget ?? '').includes('reflector:3')
+        && ['solar-yard-structures+gameplay-actors', 'gameplay-actors-only'].includes(canvas?.dataset.environmentShadowCasters ?? '')
         && (canvas?.dataset.environmentServiceDetails ?? '').includes('thermal-shutter:1')
         && canvas?.dataset.environmentThermalShutters === 'authored:open'
         && /^(shutters-open|solar-surge-exposed)$/.test(canvas?.dataset.environmentThermalProtection ?? '')
         && canvas?.dataset.environmentThermalShutterControl === 'solar-shutter:state-linked'
         && (canvas?.dataset.environmentSurfaceDetail ?? '').includes('reflector-pylon:3')
-        && canvas?.dataset.environmentMachineDetail === 'sinter-forge:2+printer-spindle:3+feedstock-press:2'
-        && canvas?.dataset.environmentTransport === 'transfer-rail:3+gantry-crane:2'
-        && canvas?.dataset.environmentCraneMotion === 'reciprocating-trolleys:2'
-        && /^-?\\d+\\.\\d{2},-?\\d+\\.\\d{2}$/.test(canvas?.dataset.environmentCraneOffsets ?? '')
+        && (canvas?.dataset.environmentMachineDetail ?? '').includes('sinter-forge:')
+        && (canvas?.dataset.environmentTransport ?? '').includes('transfer-rail:')
+        && /^reciprocating-trolleys:[12]$/.test(canvas?.dataset.environmentCraneMotion ?? '')
+        && /^-?\\d+\\.\\d{2}(,-?\\d+\\.\\d{2})?$/.test(canvas?.dataset.environmentCraneOffsets ?? '')
         && canvas?.dataset.bossBiome === 'solar-yard'
         && canvas?.dataset.bossPresentation === 'helios-9'
         && canvas?.dataset.bossVisual === 'authored'
@@ -858,13 +908,32 @@ try {
         bossAsset: canvas?.dataset.bossAsset ?? '',
         bossPresentation: canvas?.dataset.bossPresentation ?? '',
         bossPhaseVisual: canvas?.dataset.bossPhaseVisual ?? '',
+        performanceProfile: canvas?.dataset.environmentPerformanceProfile ?? '',
+        instanceBudget: canvas?.dataset.environmentInstanceBudget ?? '',
+        shadowCasters: canvas?.dataset.environmentShadowCasters ?? '',
+        renderTier: canvas?.dataset.renderTier ?? '',
       };
     })()`);
-    if (viewportMode === 'mobile-landscape' && solarYardEnvironment?.lod !== '2') {
-      throw new Error(`Solar Yard mobile environment did not select LOD2: ${JSON.stringify(solarYardEnvironment)}`);
+    const profileName = solarYardEnvironment?.performanceProfile?.split(':')[0] ?? '';
+    const allowedProfiles = viewportMode === 'mobile-landscape' ? ['mobile', 'performance'] : ['full', 'balanced', 'mobile', 'performance'];
+    if (!allowedProfiles.includes(profileName)) {
+      throw new Error(`Solar Yard active profile is invalid for ${viewportMode}: ${JSON.stringify(solarYardEnvironment)}`);
     }
-    if (solarYardEnvironment?.machinery !== 'sinter-forge:2+printer-spindle:3+feedstock-press:2') {
-      throw new Error(`Solar Yard fabrication machinery runtime telemetry was not observable: ${JSON.stringify(solarYardEnvironment)}`);
+    const solarExpected = solarExpectedByProfile[profileName];
+    if (!solarExpected) {
+      throw new Error(`Solar Yard active profile has no QA contract: ${JSON.stringify(solarYardEnvironment)}`);
+    }
+    if (solarYardEnvironment?.lod !== solarExpected.lod || solarYardEnvironment?.performanceProfile !== solarExpected.profile) {
+      throw new Error(`Solar Yard P3.13 adaptive LOD/profile regressed: ${JSON.stringify(solarYardEnvironment)}`);
+    }
+    if (solarYardEnvironment?.machinery !== solarExpected.machinery || solarYardEnvironment?.service !== solarExpected.service || solarYardEnvironment?.surface !== solarExpected.surface) {
+      throw new Error(`Solar Yard adaptive authored budget was not observable: ${JSON.stringify(solarYardEnvironment)}`);
+    }
+    if (solarYardEnvironment?.instanceBudget !== solarExpected.instanceBudget || solarYardEnvironment?.shadowCasters !== solarExpected.shadowCasters) {
+      throw new Error(`Solar Yard P3.13 render profile telemetry was not observable: ${JSON.stringify(solarYardEnvironment)}`);
+    }
+    if (solarYardEnvironment?.sunPatches !== solarExpected.sunPatches) {
+      throw new Error(`Solar Yard P3.13 overlay density was not observable: ${JSON.stringify(solarYardEnvironment)}`);
     }
     if (solarYardEnvironment?.sunShadow !== 'hard-sun+cool-shade+long-shadow' || solarYardEnvironment?.sunDirection !== 'fixed-sunward-east-to-west') {
       throw new Error(`Solar Yard P3.9 sun/shadow identity was not observable: ${JSON.stringify(solarYardEnvironment)}`);
@@ -872,7 +941,8 @@ try {
     if (solarYardEnvironment?.thermalShutters !== 'authored:open' || solarYardEnvironment?.thermalControl !== 'solar-shutter:state-linked') {
       throw new Error(`Solar Yard P3.10 thermal shutter state linkage was not observable: ${JSON.stringify(solarYardEnvironment)}`);
     }
-    if (solarYardEnvironment?.transport !== 'transfer-rail:3+gantry-crane:2' || solarYardEnvironment?.craneMotion !== 'reciprocating-trolleys:2') {
+    const expectedCraneMotion = `reciprocating-trolleys:${solarExpected.craneCount}`;
+    if (solarYardEnvironment?.transport !== solarExpected.transport || solarYardEnvironment?.craneMotion !== expectedCraneMotion) {
       throw new Error(`Solar Yard P3.11 transport telemetry was not observable: ${JSON.stringify(solarYardEnvironment)}`);
     }
     const initialCraneOffsets = solarYardEnvironment?.craneOffsets ?? '';
@@ -884,7 +954,7 @@ try {
     if (viewportMode === 'mobile-landscape' && !solarYardEnvironment?.bossAsset.includes('solar-yard-helios-9-lod2')) {
       throw new Error(`HELIOS-9 mobile presentation did not select boss LOD2: ${JSON.stringify(solarYardEnvironment)}`);
     }
-    console.log(`BROWSER_SOLAR_YARD_PASS viewport=${viewportMode} lod=${solarYardEnvironment?.lod} instances=${solarYardEnvironment?.instances} kit=${solarYardEnvironment?.kit} composition=${solarYardEnvironment?.composition} service=${solarYardEnvironment?.service} surface=${solarYardEnvironment?.surface} machinery=${solarYardEnvironment?.machinery} transport=${solarYardEnvironment?.transport}:${solarYardEnvironment?.craneMotion}:${solarYardEnvironment?.craneOffsets} shutters=${solarYardEnvironment?.thermalShutters}:${solarYardEnvironment?.thermalProtection}:${solarYardEnvironment?.thermalControl} materials=${solarYardEnvironment?.materials} lighting=${solarYardEnvironment?.lighting} sun=${solarYardEnvironment?.sunMode}:${solarYardEnvironment?.sunShadow}:${solarYardEnvironment?.sunDirection} patches=${solarYardEnvironment?.sunPatches} shadow=${solarYardEnvironment?.shadowBudget} tone=${solarYardEnvironment?.tone} boss=${solarYardEnvironment?.bossPresentation}:${solarYardEnvironment?.bossAsset} phase=${solarYardEnvironment?.bossPhaseVisual}`);
+    console.log(`BROWSER_SOLAR_YARD_PASS viewport=${viewportMode} profile=${solarYardEnvironment?.performanceProfile} budget=${solarYardEnvironment?.instanceBudget} casters=${solarYardEnvironment?.shadowCasters} lod=${solarYardEnvironment?.lod} instances=${solarYardEnvironment?.instances} kit=${solarYardEnvironment?.kit} composition=${solarYardEnvironment?.composition} service=${solarYardEnvironment?.service} surface=${solarYardEnvironment?.surface} machinery=${solarYardEnvironment?.machinery} transport=${solarYardEnvironment?.transport}:${solarYardEnvironment?.craneMotion}:${solarYardEnvironment?.craneOffsets} shutters=${solarYardEnvironment?.thermalShutters}:${solarYardEnvironment?.thermalProtection}:${solarYardEnvironment?.thermalControl} materials=${solarYardEnvironment?.materials} lighting=${solarYardEnvironment?.lighting} sun=${solarYardEnvironment?.sunMode}:${solarYardEnvironment?.sunShadow}:${solarYardEnvironment?.sunDirection} patches=${solarYardEnvironment?.sunPatches} shadow=${solarYardEnvironment?.shadowBudget} tone=${solarYardEnvironment?.tone} boss=${solarYardEnvironment?.bossPresentation}:${solarYardEnvironment?.bossAsset} phase=${solarYardEnvironment?.bossPhaseVisual}`);
   }
 
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);

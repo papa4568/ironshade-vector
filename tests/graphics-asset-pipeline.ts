@@ -233,8 +233,8 @@ for (const asset of ['solar-yard-transfer-rail', 'solar-yard-gantry-crane']) {
 for (const marker of ['solar-yard-transfer-rail-left', 'solar-yard-transfer-rail-gold-junction-left', 'solar-yard-gantry-crane-beam', 'solar-yard-gantry-crane-trolley']) {
   assert(jovianAssetGeneratorSource.includes(`name: '${marker}'`), `Solar Yard P3.11 transport marker ${marker} must remain authored`);
 }
-assert(rendererSource.includes('const transferRailPlacements: EnvironmentPlacement[]'), 'Solar Yard P3.11 must keep authored transfer rails distributed across the fabrication spine');
-assert(rendererSource.includes('const gantryCranePlacements = ['), 'Solar Yard P3.11 must keep multiple authored gantry cranes');
+assert(rendererSource.includes('const transferRailPlacementsAll: EnvironmentPlacement[]') && rendererSource.includes('const transferRailPlacements = transferRailPlacementsAll.filter') && rendererSource.includes('profile.transferRailInstances === 3'), 'Solar Yard P3.11 must keep the full authored transfer-rail layout while allowing P3.13 adaptive trimming');
+assert(rendererSource.includes('const gantryCranePlacementsAll = [') && rendererSource.includes('profile.gantryCraneInstances === 2'), 'Solar Yard P3.11 must keep the paired authored gantry layout while allowing the Performance profile to trim secondary motion');
 assert(rendererSource.includes("dataset.environmentTransport = `transfer-rail:${transferRailPlacements.length}+gantry-crane:${gantryCranePlacements.length}`"), 'Solar Yard P3.11 must expose deterministic transport counts');
 assert(rendererSource.includes('Math.sin(state.time * speed + phase) * amplitude'), 'Solar Yard P3.11 crane motion must derive from simulation time');
 assert(rendererSource.includes('trolley.position.z = offset'), 'Solar Yard P3.11 must visibly move gantry trolley assemblies along their rails');
