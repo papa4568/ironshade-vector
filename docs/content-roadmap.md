@@ -227,7 +227,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] P3.8 Fabrication machinery
 - [x] P3.9 Sun/shadow identity
 - [x] P3.10 Thermal shutters
-- [ ] P3.11 Cranes/rails/motion
+- [x] P3.11 Cranes/rails/motion
 - [ ] P3.12 HELIOS-9 presentation
 - [ ] P3.13 Mobile optimization
 
@@ -307,7 +307,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1 and P2 are complete, **Ice Mine P3.1–P3.6** are delivered, and **Solar Yard P3.7–P3.10** are delivered. Continue in roadmap order with **P3.11 — Cranes/rails/motion**, followed by P3.12–P3.13 to finish Solar Yard.
+P1 and P2 are complete, **Ice Mine P3.1–P3.6** are delivered, and **Solar Yard P3.7–P3.11** are delivered. Continue in roadmap order with **P3.12 — HELIOS-9 presentation**, followed by **P3.13 — Mobile optimization** to finish Solar Yard.
+
+**P3.11 delivered:** Solar Yard now has an authored material-transfer system instead of a static fabrication floor: three paired transfer-rail spans cross the fabrication spine and two overhead gantry cranes carry independently phased trolley assemblies. Both transport families ship adaptive LOD1/LOD2 GLBs in the existing ceramic / scorched-steel / solar-gold / heat-amber language. The trolleys move deterministically from live simulation time rather than decorative randomness, and runtime telemetry exposes rail/crane counts, motion mode, and live trolley offsets. Generated-content/static regressions and desktop/mobile-landscape Browser E2E verify the authored families, mobile LOD reduction, runtime loading, and actual trolley movement. HELIOS-9 presentation and the dedicated Solar Yard mobile optimization pass remain P3.12–P3.13.
 
 **P3.10 delivered:** Solar Yard now has authored local thermal-shutter hardware tied directly to the existing `solar-shutter` gameplay control. The shutter family ships adaptive LOD1/LOD2 GLBs with ceramic thermal panels, scorched structural rails/posts, solar-gold actuation hardware, amber status lighting, and full-detail heat-rejection ribs. Runtime placement is anchored to the live encounter control, open/closed panel state follows the control's real `exposed` state, and the existing solar-surge logic remains the source of radiant-load protection rather than being duplicated in the renderer. Deterministic telemetry exposes authored shutter state, radiant-load protection, and the state-link contract; generated-content/static regressions and desktop/mobile-landscape Browser E2E verify the new asset family, mobile LOD reduction, authored loading, and live open-state linkage. Cranes/rails/motion, HELIOS-9 presentation, and the dedicated mobile optimization pass remain P3.11–P3.13.
 
