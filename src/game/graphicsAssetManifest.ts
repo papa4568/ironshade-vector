@@ -358,6 +358,15 @@ export const JOVIAN_HARVESTER_BOSS_ASSET_FAMILY: GraphicsAssetFamily = {
   },
 };
 
+
+export const ICE_MINE_BOSS_ASSET_FAMILY: GraphicsAssetFamily = {
+  id: 'ice-mine-rhea-kade',
+  lods: {
+    1: createGraphicsAssetSpec('ice-mine-rhea-kade-lod1', 'enemy', '/assets/models/bosses/ice-mine-rhea-kade-lod1.glb', 1),
+    2: createGraphicsAssetSpec('ice-mine-rhea-kade-lod2', 'enemy', '/assets/models/bosses/ice-mine-rhea-kade-lod2.glb', 2),
+  },
+};
+
 export const ENEMY_ASSET_FAMILIES = {
   assault: {
     id: 'enemy-assault',

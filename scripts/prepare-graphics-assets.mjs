@@ -548,6 +548,42 @@ function jovianHarvesterStormlineForemanNodes(lod) {
   return nodes;
 }
 
+
+function iceMineRheaKadeNodes(lod) {
+  const nodes = lod === 2 ? enemyMobileNodes('boss') : enemyNodes('boss');
+  const root = nodes.pop();
+  const torsoIndex = nodes.findIndex(node => node.name === 'torso');
+  const backpackIndex = nodes.findIndex(node => node.name === 'backpack');
+  const helmetIndex = nodes.findIndex(node => node.name === 'helmet');
+  const markers = lod === 2
+    ? [
+        { name: 'ice-mine-rhea-kade-bore-cowl', mesh: 1, translation: [-0.02, 0.30, 0], scale: [0.72, 0.18, 1.30] },
+        { name: 'ice-mine-rhea-kade-fracture-ram', mesh: 1, translation: [0.34, 0.12, 0.52], scale: [0.16, 0.70, 0.24] },
+        { name: 'ice-mine-rhea-kade-cryo-spine', mesh: 4, translation: [-0.38, 0.28, 0], scale: [0.12, 0.88, 0.48] },
+      ]
+    : [
+        { name: 'ice-mine-rhea-kade-bore-cowl', mesh: 1, translation: [-0.04, 0.30, 0], scale: [0.82, 0.20, 1.44] },
+        { name: 'ice-mine-rhea-kade-survey-visor', mesh: 4, translation: [0.16, 0.80, 0], scale: [0.10, 0.22, 0.62] },
+        { name: 'ice-mine-rhea-kade-fracture-ram', mesh: 1, translation: [0.38, 0.12, 0.56], scale: [0.18, 0.80, 0.28] },
+        { name: 'ice-mine-rhea-kade-cryo-tank-left', mesh: 2, translation: [-0.42, 0.24, 0.38], scale: [0.18, 0.86, 0.20] },
+        { name: 'ice-mine-rhea-kade-cryo-tank-right', mesh: 2, translation: [-0.42, 0.24, -0.38], scale: [0.18, 0.86, 0.20] },
+      ];
+
+  for (const marker of markers) {
+    const index = nodes.length;
+    nodes.push(marker);
+    const parentIndex = marker.name.includes('survey-visor')
+      ? helmetIndex
+      : marker.name.includes('cryo-')
+        ? backpackIndex
+        : torsoIndex;
+    nodes[parentIndex].children ??= [];
+    nodes[parentIndex].children.push(index);
+  }
+  nodes.push(root);
+  return nodes;
+}
+
 function weaponMobileNodes(id) {
   if (id === 'carbine') {
     return [
@@ -1899,6 +1935,16 @@ for (const lod of [1, 2]) {
     `jovian-harvester-stormline-foreman-lod${lod}`,
     jovianHarvesterStormlineForemanNodes(lod),
     materials([0.39, 0.29, 0.21, 1], [0.96, 0.63, 0.31]),
+  ));
+}
+
+
+for (const lod of [1, 2]) {
+  outputs.push(await writeAsset(
+    `bosses/ice-mine-rhea-kade-lod${lod}.glb`,
+    `ice-mine-rhea-kade-lod${lod}`,
+    iceMineRheaKadeNodes(lod),
+    materials([0.28, 0.35, 0.38, 1], [0.50, 0.86, 0.94]),
   ));
 }
 
