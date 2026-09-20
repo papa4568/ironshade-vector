@@ -2453,6 +2453,35 @@ export class ThreeCombatRenderer {
     ].join('+');
   }
 
+  private addMegastructureInstanceBatch(
+    label: string,
+    geometry: THREE.BufferGeometry,
+    material: THREE.Material,
+    placements: Array<{ position: [number, number, number]; rotation?: [number, number, number] }>,
+    castShadow: boolean,
+  ) {
+    if (placements.length === 0) {
+      geometry.dispose();
+      return null;
+    }
+    const mesh = new THREE.InstancedMesh(geometry, material, placements.length);
+    const transform = new THREE.Object3D();
+    placements.forEach((placement, index) => {
+      const [rx, ry, rz] = placement.rotation ?? [0, 0, 0];
+      transform.position.set(...placement.position);
+      transform.rotation.set(rx, ry, rz);
+      transform.updateMatrix();
+      mesh.setMatrixAt(index, transform.matrix);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.name = `megastructure-${label}`;
+    mesh.castShadow = castShadow;
+    mesh.receiveShadow = castShadow;
+    mesh.frustumCulled = true;
+    this.environmentRoot.add(mesh);
+    return mesh;
+  }
+
   private addPerseidCapstoneScenery(mission: Contract, worldW: number, worldH: number, detailScale: number) {
     const stage = perseidStageIdentity(mission);
     if (!stage) return;
@@ -2474,7 +2503,7 @@ export class ThreeCombatRenderer {
 
     const addMesh = (mesh: THREE.Mesh) => {
       mesh.castShadow = profile.castStructuralShadows;
-      mesh.receiveShadow = true;
+      mesh.receiveShadow = profile.castStructuralShadows;
       this.environmentRoot.add(mesh);
       return mesh;
     };
@@ -2482,20 +2511,35 @@ export class ThreeCombatRenderer {
     const keel = addMesh(new THREE.Mesh(new THREE.BoxGeometry(width * 0.72, 0.18, scaled(18)), structural));
     keel.position.set(cx, 0.28, cz);
 
+    const ribPlacements: Array<{ position: [number, number, number] }> = [];
     for (let index = 0; index < profile.ribPairs; index += 1) {
       const t = profile.ribPairs === 1 ? 0.5 : index / (profile.ribPairs - 1);
       const x = width * (0.18 + t * 0.64);
-      const fore = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(10), 0.72, height * 0.18), dark));
-      fore.position.set(x, 0.36, height * 0.17);
-      const aft = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(10), 0.72, height * 0.18), dark));
-      aft.position.set(x, 0.36, height * 0.83);
+      ribPlacements.push(
+        { position: [x, 0.36, height * 0.17] },
+        { position: [x, 0.36, height * 0.83] },
+      );
     }
+    this.addMegastructureInstanceBatch(
+      'perseid-ribs',
+      new THREE.BoxGeometry(scaled(10), 0.72, height * 0.18),
+      dark,
+      ribPlacements,
+      profile.castStructuralShadows,
+    );
 
+    const guidePlacements: Array<{ position: [number, number, number] }> = [];
     for (let index = 0; index < profile.guideLights; index += 1) {
       const t = profile.guideLights === 1 ? 0.5 : index / (profile.guideLights - 1);
-      const light = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(8), 0.06, scaled(3.5)), guide));
-      light.position.set(width * (0.2 + t * 0.6), 0.42, cz);
+      guidePlacements.push({ position: [width * (0.2 + t * 0.6), 0.42, cz] });
     }
+    this.addMegastructureInstanceBatch(
+      'perseid-guides',
+      new THREE.BoxGeometry(scaled(8), 0.06, scaled(3.5)),
+      guide,
+      guidePlacements,
+      profile.castStructuralShadows,
+    );
 
     const propCount = profile.stageProps;
     if (stage.stage === 1) {
@@ -2531,6 +2575,8 @@ export class ThreeCombatRenderer {
     this.renderer.domElement.dataset.megastructureStage = `${stage.stage}:${stage.code}:${stage.name.toLowerCase().replaceAll(' ', '-')}`;
     this.renderer.domElement.dataset.megastructureContinuity = 'keel-spine+pressure-ribs+green-transit-datum';
     this.renderer.domElement.dataset.megastructureStageKit = stage.kit.join('+');
+    this.renderer.domElement.dataset.megastructureBatching = 'instanced-continuity';
+    this.renderer.domElement.dataset.megastructureContinuityDrawCalls = '2';
     this.renderer.domElement.dataset.megastructurePerformanceProfile = `${profile.name}:ribs-${profile.ribPairs}:guides-${profile.guideLights}:props-${profile.stageProps}:shadows-${profile.castStructuralShadows ? 'on' : 'off'}`;
   }
 
@@ -2555,7 +2601,7 @@ export class ThreeCombatRenderer {
 
     const addMesh = (mesh: THREE.Mesh) => {
       mesh.castShadow = profile.castStructuralShadows;
-      mesh.receiveShadow = true;
+      mesh.receiveShadow = profile.castStructuralShadows;
       this.environmentRoot.add(mesh);
       return mesh;
     };
@@ -2563,20 +2609,35 @@ export class ThreeCombatRenderer {
     const spine = addMesh(new THREE.Mesh(new THREE.BoxGeometry(width * 0.74, 0.22, scaled(24)), structural));
     spine.position.set(cx, 0.3, cz);
 
+    const railPlacements: Array<{ position: [number, number, number] }> = [];
     for (let index = 0; index < profile.railPairs; index += 1) {
       const t = profile.railPairs === 1 ? 0.5 : index / (profile.railPairs - 1);
       const x = width * (0.2 + t * 0.6);
-      const fore = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(14), 0.42, scaled(38)), ballast));
-      fore.position.set(x, 0.38, height * 0.29);
-      const aft = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(14), 0.42, scaled(38)), ballast));
-      aft.position.set(x, 0.38, height * 0.71);
+      railPlacements.push(
+        { position: [x, 0.38, height * 0.29] },
+        { position: [x, 0.38, height * 0.71] },
+      );
     }
+    this.addMegastructureInstanceBatch(
+      'k91-rails',
+      new THREE.BoxGeometry(scaled(14), 0.42, scaled(38)),
+      ballast,
+      railPlacements,
+      profile.castStructuralShadows,
+    );
 
+    const datumPlacements: Array<{ position: [number, number, number] }> = [];
     for (let index = 0; index < profile.datumLights; index += 1) {
       const t = profile.datumLights === 1 ? 0.5 : index / (profile.datumLights - 1);
-      const marker = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(7), 0.07, scaled(4)), datum));
-      marker.position.set(width * (0.2 + t * 0.6), 0.46, cz);
+      datumPlacements.push({ position: [width * (0.2 + t * 0.6), 0.46, cz] });
     }
+    this.addMegastructureInstanceBatch(
+      'k91-datum',
+      new THREE.BoxGeometry(scaled(7), 0.07, scaled(4)),
+      datum,
+      datumPlacements,
+      profile.castStructuralShadows,
+    );
 
     const propCount = profile.stageProps;
     if (stage.stage === 1) {
@@ -2610,6 +2671,8 @@ export class ThreeCombatRenderer {
     this.renderer.domElement.dataset.megastructureStage = `${stage.stage}:${stage.code}:${stage.name.toLowerCase().replaceAll(' ', '-')}`;
     this.renderer.domElement.dataset.megastructureContinuity = 'load-spine+countermass-rails+amber-inertial-datum';
     this.renderer.domElement.dataset.megastructureStageKit = stage.kit.join('+');
+    this.renderer.domElement.dataset.megastructureBatching = 'instanced-continuity';
+    this.renderer.domElement.dataset.megastructureContinuityDrawCalls = '2';
     this.renderer.domElement.dataset.megastructurePerformanceProfile = `${profile.name}:rails-${profile.railPairs}:guides-${profile.datumLights}:props-${profile.stageProps}:shadows-${profile.castStructuralShadows ? 'on' : 'off'}`;
   }
 
@@ -2635,7 +2698,7 @@ export class ThreeCombatRenderer {
 
     const addMesh = (mesh: THREE.Mesh) => {
       mesh.castShadow = profile.castStructuralShadows;
-      mesh.receiveShadow = true;
+      mesh.receiveShadow = profile.castStructuralShadows;
       this.environmentRoot.add(mesh);
       return mesh;
     };
@@ -2645,20 +2708,29 @@ export class ThreeCombatRenderer {
     const utilityTrunk = addMesh(new THREE.Mesh(new THREE.BoxGeometry(width * 0.66, 0.09, scaled(7)), utility));
     utilityTrunk.position.set(cx, 0.46, cz + scaled(22));
 
+    const rockRibPlacements: Array<{ position: [number, number, number] }> = [];
+    const patchedRibPlacements: Array<{ position: [number, number, number] }> = [];
     for (let index = 0; index < profile.rockRibs; index += 1) {
       const t = profile.rockRibs === 1 ? 0.5 : index / (profile.rockRibs - 1);
       const x = width * (0.18 + t * 0.64);
-      const fore = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(16), 0.66, height * 0.16), index % 2 === 0 ? rock : patched));
-      fore.position.set(x, 0.36, height * 0.18);
-      const aft = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(16), 0.66, height * 0.16), index % 2 === 0 ? rock : patched));
-      aft.position.set(x, 0.36, height * 0.82);
+      const placements = index % 2 === 0 ? rockRibPlacements : patchedRibPlacements;
+      placements.push(
+        { position: [x, 0.36, height * 0.18] },
+        { position: [x, 0.36, height * 0.82] },
+      );
     }
+    this.addMegastructureInstanceBatch('orpheline-rock-ribs', new THREE.BoxGeometry(scaled(16), 0.66, height * 0.16), rock, rockRibPlacements, profile.castStructuralShadows);
+    this.addMegastructureInstanceBatch('orpheline-patched-ribs', new THREE.BoxGeometry(scaled(16), 0.66, height * 0.16), patched, patchedRibPlacements, profile.castStructuralShadows);
 
+    const occupancyPlacements: Array<{ position: [number, number, number] }> = [];
+    const utilityPlacements: Array<{ position: [number, number, number] }> = [];
     for (let index = 0; index < profile.utilityLights; index += 1) {
       const t = profile.utilityLights === 1 ? 0.5 : index / (profile.utilityLights - 1);
-      const marker = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(7), 0.055, scaled(4)), index % 3 === 0 ? occupancy : utility));
-      marker.position.set(width * (0.2 + t * 0.6), 0.5, cz);
+      const placements = index % 3 === 0 ? occupancyPlacements : utilityPlacements;
+      placements.push({ position: [width * (0.2 + t * 0.6), 0.5, cz] });
     }
+    this.addMegastructureInstanceBatch('orpheline-occupancy', new THREE.BoxGeometry(scaled(7), 0.055, scaled(4)), occupancy, occupancyPlacements, profile.castStructuralShadows);
+    this.addMegastructureInstanceBatch('orpheline-utility', new THREE.BoxGeometry(scaled(7), 0.055, scaled(4)), utility, utilityPlacements, profile.castStructuralShadows);
 
     const propCount = profile.stageProps;
     if (stage.stage === 1) {
@@ -2694,6 +2766,8 @@ export class ThreeCombatRenderer {
     this.renderer.domElement.dataset.megastructureStage = `${stage.stage}:${stage.code}:${stage.name.toLowerCase().replaceAll(' ', '-')}`;
     this.renderer.domElement.dataset.megastructureContinuity = 'rock-cut-spine+violet-utility-trunk+white-occupancy-marks';
     this.renderer.domElement.dataset.megastructureStageKit = stage.kit.join('+');
+    this.renderer.domElement.dataset.megastructureBatching = 'instanced-continuity';
+    this.renderer.domElement.dataset.megastructureContinuityDrawCalls = '4';
     this.renderer.domElement.dataset.megastructurePerformanceProfile = `${profile.name}:ribs-${profile.rockRibs}:guides-${profile.utilityLights}:props-${profile.stageProps}:shadows-${profile.castStructuralShadows ? 'on' : 'off'}`;
   }
 
@@ -2719,7 +2793,7 @@ export class ThreeCombatRenderer {
 
     const addMesh = (mesh: THREE.Mesh) => {
       mesh.castShadow = profile.castStructuralShadows;
-      mesh.receiveShadow = true;
+      mesh.receiveShadow = profile.castStructuralShadows;
       this.environmentRoot.add(mesh);
       return mesh;
     };
@@ -2729,26 +2803,37 @@ export class ThreeCombatRenderer {
     const cutterRail = addMesh(new THREE.Mesh(new THREE.BoxGeometry(width * 0.66, 0.08, scaled(7)), cutter));
     cutterRail.position.set(cx, 0.47, cz + scaled(22));
 
+    const trussPlacements: Array<{ position: [number, number, number] }> = [];
+    const hullPlacements: Array<{ position: [number, number, number] }> = [];
+    const clampPlacements: Array<{ position: [number, number, number] }> = [];
     for (let index = 0; index < profile.trussPairs; index += 1) {
       const t = profile.trussPairs === 1 ? 0.5 : index / (profile.trussPairs - 1);
       const x = width * (0.18 + t * 0.64);
-      const fore = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(16), 0.64, height * 0.17), index % 2 === 0 ? truss : hull));
-      fore.position.set(x, 0.36, height * 0.18);
-      const aft = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(16), 0.64, height * 0.17), index % 2 === 0 ? truss : hull));
-      aft.position.set(x, 0.36, height * 0.82);
+      const placements = index % 2 === 0 ? trussPlacements : hullPlacements;
+      placements.push(
+        { position: [x, 0.36, height * 0.18] },
+        { position: [x, 0.36, height * 0.82] },
+      );
       if (index % 2 === 0) {
-        const foreClamp = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(8), 0.72, scaled(26)), clamp));
-        foreClamp.position.set(x, 0.48, height * 0.28);
-        const aftClamp = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(8), 0.72, scaled(26)), clamp));
-        aftClamp.position.set(x, 0.48, height * 0.72);
+        clampPlacements.push(
+          { position: [x, 0.48, height * 0.28] },
+          { position: [x, 0.48, height * 0.72] },
+        );
       }
     }
+    this.addMegastructureInstanceBatch('hecate-trusses', new THREE.BoxGeometry(scaled(16), 0.64, height * 0.17), truss, trussPlacements, profile.castStructuralShadows);
+    this.addMegastructureInstanceBatch('hecate-hulls', new THREE.BoxGeometry(scaled(16), 0.64, height * 0.17), hull, hullPlacements, profile.castStructuralShadows);
+    this.addMegastructureInstanceBatch('hecate-clamps', new THREE.BoxGeometry(scaled(8), 0.72, scaled(26)), clamp, clampPlacements, profile.castStructuralShadows);
 
+    const clampDatumPlacements: Array<{ position: [number, number, number] }> = [];
+    const cutterDatumPlacements: Array<{ position: [number, number, number] }> = [];
     for (let index = 0; index < profile.cutterDatums; index += 1) {
       const t = profile.cutterDatums === 1 ? 0.5 : index / (profile.cutterDatums - 1);
-      const marker = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(7), 0.055, scaled(4)), index % 3 === 0 ? clamp : cutter));
-      marker.position.set(width * (0.2 + t * 0.6), 0.51, cz);
+      const placements = index % 3 === 0 ? clampDatumPlacements : cutterDatumPlacements;
+      placements.push({ position: [width * (0.2 + t * 0.6), 0.51, cz] });
     }
+    this.addMegastructureInstanceBatch('hecate-clamp-datum', new THREE.BoxGeometry(scaled(7), 0.055, scaled(4)), clamp, clampDatumPlacements, profile.castStructuralShadows);
+    this.addMegastructureInstanceBatch('hecate-cutter-datum', new THREE.BoxGeometry(scaled(7), 0.055, scaled(4)), cutter, cutterDatumPlacements, profile.castStructuralShadows);
 
     const propCount = profile.stageProps;
     if (stage.stage === 1) {
@@ -2784,6 +2869,8 @@ export class ThreeCombatRenderer {
     this.renderer.domElement.dataset.megastructureStage = `${stage.stage}:${stage.code}:${stage.name.toLowerCase().replaceAll(' ', '-')}`;
     this.renderer.domElement.dataset.megastructureContinuity = 'salvage-truss-spine+red-clamp-arms+yellow-cutter-datum';
     this.renderer.domElement.dataset.megastructureStageKit = stage.kit.join('+');
+    this.renderer.domElement.dataset.megastructureBatching = 'instanced-continuity';
+    this.renderer.domElement.dataset.megastructureContinuityDrawCalls = '5';
     this.renderer.domElement.dataset.megastructurePerformanceProfile = `${profile.name}:trusses-${profile.trussPairs}:guides-${profile.cutterDatums}:props-${profile.stageProps}:shadows-${profile.castStructuralShadows ? 'on' : 'off'}`;
   }
 
