@@ -7,7 +7,7 @@ import { getWorldSize, type CombatObject, type Enemy, type Player, type SimState
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, locationArtIdentityFor, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
 import { lootColor } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
-import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, SPIN_HABITAT_BOSS_ASSET_FAMILY, JOVIAN_HARVESTER_BOSS_ASSET_FAMILY, SPIN_HABITAT_ENEMY_ASSET_FAMILIES, SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES, OPERATOR_CLASS_ASSET_FAMILIES, JOVIAN_HARVESTER_ASSET_FAMILIES, JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, SPIN_HABITAT_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
+import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, SPIN_HABITAT_BOSS_ASSET_FAMILY, JOVIAN_HARVESTER_BOSS_ASSET_FAMILY, SPIN_HABITAT_ENEMY_ASSET_FAMILIES, SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES, OPERATOR_CLASS_ASSET_FAMILIES, JOVIAN_HARVESTER_ASSET_FAMILIES, JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES, ICE_MINE_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, SPIN_HABITAT_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
 import { configureGraphicsAssetRenderer, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
 import { spinHabitatArchitectureState, spinHabitatRenderProfile, spinHabitatSpindownState } from './spinHabitatArchitecture';
 import { jovianHarvesterRenderProfile, jovianHarvesterStormState } from './jovianHarvesterVisualLanguage';
@@ -296,6 +296,7 @@ export class ThreeCombatRenderer {
   private parallaxLoadGeneration = 0;
   private spinHabitatLoadGeneration = 0;
   private jovianHarvesterLoadGeneration = 0;
+  private iceMineLoadGeneration = 0;
   private jovianStormVisualRoot: THREE.Group | null = null;
   private readonly jovianStormChargeSweeps: Array<THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>> = [];
   private readonly jovianPressureShearBands: Array<THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>> = [];
@@ -545,6 +546,7 @@ export class ThreeCombatRenderer {
     this.parallaxLoadGeneration += 1;
     this.spinHabitatLoadGeneration += 1;
     this.jovianHarvesterLoadGeneration += 1;
+    this.iceMineLoadGeneration += 1;
     this.jovianStormVisualRoot = null;
     this.jovianStormChargeSweeps.length = 0;
     this.jovianPressureShearBands.length = 0;
@@ -635,6 +637,7 @@ export class ThreeCombatRenderer {
     delete this.renderer.domElement.dataset.environmentSurfaceDetail;
     delete this.renderer.domElement.dataset.environmentMachineDetail;
     delete this.renderer.domElement.dataset.environmentComposition;
+    delete this.renderer.domElement.dataset.environmentTunnelSequence;
     delete this.renderer.domElement.dataset.environmentZoneIdentity;
     delete this.renderer.domElement.dataset.environmentLighting;
     delete this.renderer.domElement.dataset.environmentMaterials;
@@ -1053,6 +1056,111 @@ export class ThreeCombatRenderer {
       delete this.renderer.domElement.dataset.environmentMaterials;
       delete this.renderer.domElement.dataset.readabilityLanguage;
       console.warn('Authored Jovian Harvester kit failed to load; keeping procedural scenery.', error);
+    }
+  }
+
+
+  private async loadAuthoredIceMineEnvironment(worldW: number, worldH: number, detailScale: number) {
+    const generation = ++this.iceMineLoadGeneration;
+    this.renderer.domElement.dataset.environmentVisual = 'authored-loading';
+    const assetDetailScale = this.coarse ? Math.min(detailScale, 0.55) : detailScale;
+    const loaded: Array<{ key: keyof typeof ICE_MINE_ASSET_FAMILIES; instance: GraphicsAssetInstance; lod: number }> = [];
+
+    try {
+      for (const key of Object.keys(ICE_MINE_ASSET_FAMILIES) as Array<keyof typeof ICE_MINE_ASSET_FAMILIES>) {
+        const spec = selectGraphicsAssetSpec(ICE_MINE_ASSET_FAMILIES[key], assetDetailScale);
+        if (!spec) throw new Error(`No authored Ice Mine asset available for ${key}`);
+        const instance = await instantiateGraphicsAsset(spec);
+        loaded.push({ key, instance, lod: spec.lod });
+      }
+
+      if (this.disposed || generation !== this.iceMineLoadGeneration) {
+        loaded.forEach(item => item.instance.release());
+        return;
+      }
+
+      const byKey = new Map(loaded.map(item => [item.key, item]));
+      const width = scaled(worldW);
+      const height = scaled(worldH);
+
+      const frostWallPlacements: EnvironmentPlacement[] = [
+        [0.12, 0.15, 0, 1.04], [0.28, 0.14, 0, 0.96], [0.46, 0.14, 0, 0.94], [0.64, 0.14, 0, 0.96], [0.82, 0.15, 0, 1.04],
+        [0.12, 0.85, Math.PI, 1.04], [0.28, 0.86, Math.PI, 0.96], [0.46, 0.86, Math.PI, 0.94], [0.64, 0.86, Math.PI, 0.96], [0.82, 0.85, Math.PI, 1.04],
+      ].map(([x, z, rotationY, scale]) => ({
+        position: new THREE.Vector3(width * x, 0, height * z),
+        rotationY,
+        scale,
+      }));
+
+      const supportFramePlacements: EnvironmentPlacement[] = [
+        [0.20, 0.50, 0.98], [0.32, 0.50, 0.94], [0.44, 0.50, 0.94],
+        [0.56, 0.50, 0.94], [0.68, 0.50, 0.94], [0.78, 0.50, 0.98],
+      ].map(([x, z, scale]) => ({
+        position: new THREE.Vector3(width * x, 0, height * z),
+        rotationY: 0,
+        scale,
+      }));
+
+      const serviceDeckPlacements: EnvironmentPlacement[] = [
+        [0.25, 0.50, 0], [0.40, 0.50, 0], [0.55, 0.50, 0], [0.70, 0.50, 0],
+      ].map(([x, z, rotationY]) => ({
+        position: new THREE.Vector3(width * x, 0.01, height * z),
+        rotationY,
+        scale: 0.92,
+      }));
+
+      const icePillarPlacements: EnvironmentPlacement[] = [
+        [0.82, 0.30, -0.18, 0.92], [0.87, 0.42, 0.12, 1.08], [0.90, 0.56, -0.10, 1.18],
+        [0.84, 0.69, 0.20, 0.96], [0.76, 0.64, -0.22, 0.82],
+      ].map(([x, z, rotationY, scale]) => ({
+        position: new THREE.Vector3(width * x, 0, height * z),
+        rotationY,
+        scale,
+      }));
+
+      let instances = 0;
+      instances += this.addInstancedEnvironmentAsset(byKey.get('frostWall')!.instance, frostWallPlacements, 'ice-mine-frost-wall');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('supportFrame')!.instance, supportFramePlacements, 'ice-mine-support-frame');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('serviceDeck')!.instance, serviceDeckPlacements, 'ice-mine-service-deck');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('icePillar')!.instance, icePillarPlacements, 'ice-mine-ice-pillar');
+
+      this.refineryAssetInstances.push(...loaded.map(item => item.instance));
+      this.proceduralRefineryVisuals.forEach(item => { item.visible = false; });
+      const lods = [...new Set(loaded.map(item => item.lod))].sort();
+      this.renderer.domElement.dataset.environmentVisual = 'authored-ice-mine';
+      this.renderer.domElement.dataset.environmentLod = lods.join(',');
+      this.renderer.domElement.dataset.environmentKit = 'frost-wall,support-frame,service-deck,ice-pillar';
+      this.renderer.domElement.dataset.environmentInstances = String(instances);
+      this.renderer.domElement.dataset.environmentLandmark = 'subglacial-vault-ice-pillars';
+      this.renderer.domElement.dataset.environmentServiceDetails = `support-frame:${supportFramePlacements.length}+service-deck:${serviceDeckPlacements.length}`;
+      this.renderer.domElement.dataset.environmentSurfaceDetail = `frost-wall:${frostWallPlacements.length}+ice-pillar:${icePillarPlacements.length}`;
+      this.renderer.domElement.dataset.environmentComposition = 'access-bore+reinforced-extraction-tunnel+subglacial-vault';
+      this.renderer.domElement.dataset.environmentTunnelSequence = 'access-bore>extraction-tunnel>subglacial-vault';
+      this.renderer.domElement.dataset.environmentMaterials = 'frozen-rock+support-steel+frost-ice+cold-cyan';
+      this.renderer.domElement.dataset.environmentZoneIdentity = 'access-bore:frost-wall-cut|extraction-tunnel:steel-support-frames+service-deck|subglacial-vault:ice-pillar-cluster';
+      this.renderer.domElement.dataset.readabilityLanguage = 'frost-wall-corridor+support-frame-rhythm+cyan-service-deck+vault-pillars';
+    } catch (error) {
+      loaded.forEach(item => item.instance.release());
+      if (this.disposed || generation !== this.iceMineLoadGeneration) return;
+      this.refineryInstancedMeshes.forEach(mesh => {
+        mesh.removeFromParent();
+        mesh.dispose();
+      });
+      this.refineryInstancedMeshes.length = 0;
+      this.refineryOwnedMaterials.forEach(material => material.dispose());
+      this.refineryOwnedMaterials.length = 0;
+      this.authoredEnvironmentRoot.clear();
+      this.proceduralRefineryVisuals.forEach(item => { item.visible = true; });
+      this.renderer.domElement.dataset.environmentVisual = 'procedural-fallback';
+      delete this.renderer.domElement.dataset.environmentLandmark;
+      delete this.renderer.domElement.dataset.environmentServiceDetails;
+      delete this.renderer.domElement.dataset.environmentSurfaceDetail;
+      delete this.renderer.domElement.dataset.environmentComposition;
+      delete this.renderer.domElement.dataset.environmentTunnelSequence;
+      delete this.renderer.domElement.dataset.environmentZoneIdentity;
+      delete this.renderer.domElement.dataset.environmentMaterials;
+      delete this.renderer.domElement.dataset.readabilityLanguage;
+      console.warn('Authored Ice Mine bore/tunnel kit failed to load; keeping procedural scenery.', error);
     }
   }
 
@@ -1986,6 +2094,8 @@ export class ThreeCombatRenderer {
       void this.loadAuthoredSpinHabitatEnvironment(world.w, world.h, budget.detailScale);
     } else if (mission.location === 'jovian-harvester') {
       void this.loadAuthoredJovianHarvesterEnvironment(world.w, world.h, budget.detailScale);
+    } else if (mission.location === 'ice-mine') {
+      void this.loadAuthoredIceMineEnvironment(world.w, world.h, budget.detailScale);
     } else {
       this.renderer.domElement.dataset.environmentVisual = 'procedural';
     }
@@ -2355,13 +2465,16 @@ export class ThreeCombatRenderer {
       this.jovianAtmosphereParticulate = particulate;
       this.jovianAtmosphereSpineHaze = spineHaze;
     } else if (location === 'ice-mine') {
+      const iceMineFallback: THREE.Object3D[] = [];
       for (let i = 0; i < 9; i += 1) {
         const crystal = new THREE.Mesh(new THREE.ConeGeometry(0.7 + (i % 3) * 0.3, 2.4 + (i % 4) * 0.8, 6), emissive);
         crystal.position.set(cx - 16 + i * 4, 1.4, cz + (i % 2 ? 7 : -7));
         crystal.rotation.z = (i - 4) * 0.04;
         crystal.castShadow = true;
         this.environmentRoot.add(crystal);
+        iceMineFallback.push(crystal);
       }
+      this.proceduralRefineryVisuals.push(...iceMineFallback);
     } else if (location === 'solar-yard') {
       for (let i = -3; i <= 3; i += 1) {
         const panel = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.18, 2.2), emissive);

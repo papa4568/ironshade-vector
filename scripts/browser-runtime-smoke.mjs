@@ -726,6 +726,40 @@ try {
     console.log(`BROWSER_JOVIAN_HARVESTER_PASS viewport=${viewportMode} lod=${jovianEnvironment?.lod} instances=${jovianEnvironment?.instances} performance=${jovianEnvironment?.profile}:${jovianEnvironment?.instanceBudget}:${jovianEnvironment?.shadows} kit=${jovianEnvironment?.kit} composition=${jovianEnvironment?.composition} machinery=${jovianEnvironment?.machinery} pressureKit=${jovianEnvironment?.pressureKit} boss=${jovianEnvironment?.bossPresentation}:${jovianEnvironment?.bossAsset} pressure=${jovianEnvironment?.pressureState} door=${jovianEnvironment?.pressureDoor} atmosphere=${jovianEnvironment?.atmosphereDetail}:${jovianEnvironment?.atmosphereIntensity.toFixed(2)} storm=${jovianEnvironment?.stormMode}:${jovianEnvironment?.stormIntensity.toFixed(2)} shear=${jovianEnvironment?.pressureShear.toFixed(2)} range=${jovianEnvironment?.pressureRange} detail=${jovianEnvironment?.stormDetail}`);
   }
 
+  if (targetLocation === 'ice-mine') {
+    await waitFor(`(() => {
+      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-ice-mine');
+      return canvas?.dataset.environmentKit === 'frost-wall,support-frame,service-deck,ice-pillar'
+        && canvas?.dataset.environmentLandmark === 'subglacial-vault-ice-pillars'
+        && canvas?.dataset.environmentComposition === 'access-bore+reinforced-extraction-tunnel+subglacial-vault'
+        && canvas?.dataset.environmentTunnelSequence === 'access-bore>extraction-tunnel>subglacial-vault'
+        && canvas?.dataset.environmentZoneIdentity === 'access-bore:frost-wall-cut|extraction-tunnel:steel-support-frames+service-deck|subglacial-vault:ice-pillar-cluster'
+        && canvas?.dataset.readabilityLanguage === 'frost-wall-corridor+support-frame-rhythm+cyan-service-deck+vault-pillars'
+        && (canvas?.dataset.environmentServiceDetails ?? '').includes('support-frame:6')
+        && (canvas?.dataset.environmentServiceDetails ?? '').includes('service-deck:4')
+        && (canvas?.dataset.environmentSurfaceDetail ?? '').includes('frost-wall:10')
+        && (canvas?.dataset.environmentSurfaceDetail ?? '').includes('ice-pillar:5')
+        && Number(canvas?.dataset.environmentInstances) > 0
+        && ['1', '2'].includes(canvas?.dataset.environmentLod ?? '');
+    })()`, 'Ice Mine authored bore/tunnel geometry', 20_000);
+    const iceMineEnvironment = await evaluate(`(() => {
+      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-ice-mine');
+      return {
+        lod: canvas?.dataset.environmentLod ?? '',
+        instances: canvas?.dataset.environmentInstances ?? '',
+        kit: canvas?.dataset.environmentKit ?? '',
+        composition: canvas?.dataset.environmentComposition ?? '',
+        sequence: canvas?.dataset.environmentTunnelSequence ?? '',
+        service: canvas?.dataset.environmentServiceDetails ?? '',
+        surface: canvas?.dataset.environmentSurfaceDetail ?? '',
+      };
+    })()`);
+    if (viewportMode === 'mobile-landscape' && iceMineEnvironment?.lod !== '2') {
+      throw new Error(`Ice Mine mobile environment did not select LOD2: ${JSON.stringify(iceMineEnvironment)}`);
+    }
+    console.log(`BROWSER_ICE_MINE_PASS viewport=${viewportMode} lod=${iceMineEnvironment?.lod} instances=${iceMineEnvironment?.instances} kit=${iceMineEnvironment?.kit} composition=${iceMineEnvironment?.composition} sequence=${iceMineEnvironment?.sequence} service=${iceMineEnvironment?.service} surface=${iceMineEnvironment?.surface}`);
+  }
+
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);
   const expectedCombatLod = coarseCombatSurface ? '2' : '1';
   await waitFor(`(() => {
