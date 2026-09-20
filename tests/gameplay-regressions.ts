@@ -684,6 +684,7 @@ function systemsCapstoneInteractionSmoke() {
   for (const enemy of meshState.enemies) enemy.active = false;
   const conduit = meshState.objects.find(object => object.kind === 'conduit' || object.kind === 'anchorNode');
   assert.ok(conduit, 'Mesh Reflux regression needs an available conduit or anchor node.');
+  for (const object of meshState.objects) if (object.kind === 'conduit' || object.kind === 'anchorNode') object.active = false;
   Object.assign(conduit, {
     active: true,
     exposed: true,
