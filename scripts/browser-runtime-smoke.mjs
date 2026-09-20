@@ -678,13 +678,19 @@ try {
         && canvas?.dataset.bossPalette === 'storm-orange+pressure-cyan+vent-red-phase-two'
         && !(canvas?.dataset.bossFallback ?? '')
         && Number(canvas?.dataset.environmentInstances) > 0
-        && ['1', '2'].includes(canvas?.dataset.environmentLod ?? '');
+        && ['1', '2'].includes(canvas?.dataset.environmentLod ?? '')
+        && /^(full|balanced|mobile|performance):lod[12]:structure-shadows-(on|off)$/.test(canvas?.dataset.environmentPerformanceProfile ?? '')
+        && (canvas?.dataset.environmentInstanceBudget ?? '').includes('tower:5')
+        && ['jovian-structures', 'off'].includes(canvas?.dataset.environmentShadowCasters ?? '');
     })()`, 'Jovian Harvester authored environment and gas machinery kit', 20_000);
     const jovianEnvironment = await evaluate(`(() => {
       const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-jovian-harvester');
       return {
         lod: canvas?.dataset.environmentLod ?? '',
         instances: canvas?.dataset.environmentInstances ?? '',
+        profile: canvas?.dataset.environmentPerformanceProfile ?? '',
+        instanceBudget: canvas?.dataset.environmentInstanceBudget ?? '',
+        shadows: canvas?.dataset.environmentShadowCasters ?? '',
         kit: canvas?.dataset.environmentKit ?? '',
         composition: canvas?.dataset.environmentComposition ?? '',
         machinery: canvas?.dataset.interactableAssets ?? '',
@@ -705,13 +711,19 @@ try {
     if (!Number.isFinite(jovianEnvironment?.stormIntensity) || !Number.isFinite(jovianEnvironment?.pressureShear) || !Number.isFinite(jovianEnvironment?.atmosphereIntensity)) {
       throw new Error(`Jovian Harvester storm/pressure/atmosphere state was not observable: ${JSON.stringify(jovianEnvironment)}`);
     }
-    if (viewportMode === 'mobile-landscape' && jovianEnvironment?.stormDetail !== '2-sweeps+2-bands+relief-pulse') {
-      throw new Error(`Jovian Harvester mobile storm/pressure detail did not reduce: ${JSON.stringify(jovianEnvironment)}`);
+    if (viewportMode === 'mobile-landscape') {
+      if (jovianEnvironment?.lod !== '2') throw new Error(`Jovian Harvester mobile environment did not select LOD2: ${JSON.stringify(jovianEnvironment)}`);
+      if (!/^(mobile|performance):lod2:structure-shadows-off$/.test(jovianEnvironment?.profile ?? '')) throw new Error(`Jovian Harvester mobile performance profile is invalid: ${JSON.stringify(jovianEnvironment)}`);
+      if (jovianEnvironment?.instanceBudget !== 'deck:4+tower:5+bridge:2+ballast:2') throw new Error(`Jovian Harvester mobile instance budget regressed: ${JSON.stringify(jovianEnvironment)}`);
+      if (jovianEnvironment?.shadows !== 'off') throw new Error(`Jovian Harvester mobile structural shadows were not suppressed: ${JSON.stringify(jovianEnvironment)}`);
+      if (jovianEnvironment?.stormDetail !== '2-sweeps+2-bands+relief-pulse') {
+        throw new Error(`Jovian Harvester mobile storm/pressure detail did not reduce: ${JSON.stringify(jovianEnvironment)}`);
+      }
     }
     if (viewportMode === 'mobile-landscape' && jovianEnvironment?.atmosphereDetail !== '2-clouds+20-motes+spine-haze') {
       throw new Error(`Jovian Harvester mobile atmosphere detail did not reduce: ${JSON.stringify(jovianEnvironment)}`);
     }
-    console.log(`BROWSER_JOVIAN_HARVESTER_PASS viewport=${viewportMode} lod=${jovianEnvironment?.lod} instances=${jovianEnvironment?.instances} kit=${jovianEnvironment?.kit} composition=${jovianEnvironment?.composition} machinery=${jovianEnvironment?.machinery} pressureKit=${jovianEnvironment?.pressureKit} boss=${jovianEnvironment?.bossPresentation}:${jovianEnvironment?.bossAsset} pressure=${jovianEnvironment?.pressureState} door=${jovianEnvironment?.pressureDoor} atmosphere=${jovianEnvironment?.atmosphereDetail}:${jovianEnvironment?.atmosphereIntensity.toFixed(2)} storm=${jovianEnvironment?.stormMode}:${jovianEnvironment?.stormIntensity.toFixed(2)} shear=${jovianEnvironment?.pressureShear.toFixed(2)} range=${jovianEnvironment?.pressureRange} detail=${jovianEnvironment?.stormDetail}`);
+    console.log(`BROWSER_JOVIAN_HARVESTER_PASS viewport=${viewportMode} lod=${jovianEnvironment?.lod} instances=${jovianEnvironment?.instances} performance=${jovianEnvironment?.profile}:${jovianEnvironment?.instanceBudget}:${jovianEnvironment?.shadows} kit=${jovianEnvironment?.kit} composition=${jovianEnvironment?.composition} machinery=${jovianEnvironment?.machinery} pressureKit=${jovianEnvironment?.pressureKit} boss=${jovianEnvironment?.bossPresentation}:${jovianEnvironment?.bossAsset} pressure=${jovianEnvironment?.pressureState} door=${jovianEnvironment?.pressureDoor} atmosphere=${jovianEnvironment?.atmosphereDetail}:${jovianEnvironment?.atmosphereIntensity.toFixed(2)} storm=${jovianEnvironment?.stormMode}:${jovianEnvironment?.stormIntensity.toFixed(2)} shear=${jovianEnvironment?.pressureShear.toFixed(2)} range=${jovianEnvironment?.pressureRange} detail=${jovianEnvironment?.stormDetail}`);
   }
 
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);
