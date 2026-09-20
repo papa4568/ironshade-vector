@@ -3243,9 +3243,7 @@ export class ThreeCombatRenderer {
                 ? enemy.bossPhase === 2 ? 0x8a4938 : 0x6d5138
                 : enemy.role === 'boss' && enemy.bossPhase === 2
                   ? 0xc76252
-                  : visual.authoredAssetId?.startsWith('spin-habitat-')
-                    ? spinHabitatEnemyColor(enemy)
-                    : roleColors[enemy.role],
+                  : visual.authoredAssetId?.startsWith('spin-habitat-') ? spinHabitatEnemyColor(enemy) : roleColors[enemy.role],
           );
           material.emissive.setHex(statusEmissive);
           material.emissiveIntensity = statusIntensity;
