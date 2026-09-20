@@ -539,6 +539,7 @@ assert.match(k91Stage1State.eventText, /K-91 TUMBLE SOLUTION/, 'K-91 stage 1 mus
 assert.ok(k91Stage1State.hazards.some(hazard => hazard.active), 'An unresolved K-91 stage event must produce a physical inertial hazard.');
 
 const k91FinalDirector = createDirector();
+// Asteroid Refinery may publish its own forecast after the K-91 event, so assert durable runtime state rather than the last alert string.
 stepMissionDirector(k91Stage4State, k91FinalDirector, k91Stage4, 7.1);
 assert.equal(k91FinalDirector.megastructureEventA, true, 'K-91 Ballast Vault must trigger its dedicated capstone event even when biome forecast text follows it.');
 assert.ok(k91Stage4State.hazards.some(hazard => hazard.active && hazard.kind === 'gravityWell'), 'K-91 final stage must preserve a bossless ballast-shift gravity hazard.');
