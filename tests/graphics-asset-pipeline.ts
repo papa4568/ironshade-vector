@@ -214,6 +214,15 @@ assert(rendererSource.includes('const crackBudget = reducedFractureDetail ? 2 : 
 assert(rendererSource.includes("dataset.environmentFractureState = collapsing > 0"), 'Ice Mine P3.5 must expose idle/cracking/collapsing/settled runtime state');
 assert(rendererSource.includes("this.iceMineCollapseStartedAt.set(id, state.time)"), 'Ice Mine P3.5 collapse animation must be driven by the live brittle-support transition');
 
+assert(manifestSource.includes("id: 'ice-mine-rhea-kade'"), 'Ice Mine P3.6 must register a dedicated Rhea Kade boss asset family');
+assert(manifestSource.includes('/assets/models/bosses/ice-mine-rhea-kade-lod1.glb') && manifestSource.includes('/assets/models/bosses/ice-mine-rhea-kade-lod2.glb'), 'Rhea Kade must preserve adaptive LOD1/LOD2 coverage');
+assert(rendererSource.includes("mission.deepTarget !== 'Salvage Captain Rhea Kade'"), 'Rhea Kade authored presentation must remain scoped to the Ice Mine deep target');
+assert(rendererSource.includes("dataset.bossPresentation = 'rhea-kade'"), 'Rhea Kade authored presentation must be observable for runtime QA');
+assert(rendererSource.includes("dataset.bossSilhouette = 'bore-cowl+cryo-tanks+fracture-ram'"), 'Rhea Kade must expose her authored mining/cryo silhouette');
+assert(rendererSource.includes("visual.authoredAssetId === 'ice-mine-rhea-kade'"), 'Rhea Kade must receive a dedicated phase-aware presentation palette');
+assert(jovianAssetGeneratorSource.includes("name: 'ice-mine-rhea-kade-bore-cowl'"), 'Rhea Kade P3.6 must preserve the authored bore-cowl silhouette marker');
+
+
 assert(rendererSource.includes('JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES'), 'Jovian Harvester P2.11 must select dedicated authored gas machinery families');
 for (const asset of ['jovian-harvester-storm-bus-isolator', 'jovian-harvester-deck-mass-trim', 'jovian-harvester-skimmer-compressor', 'jovian-harvester-separator-package']) {
   assert(manifestSource.includes(`${asset}-lod1.glb`) && manifestSource.includes(`${asset}-lod2.glb`), `Jovian Harvester P2.11 machinery asset ${asset} must preserve adaptive LOD1/LOD2 coverage`);
