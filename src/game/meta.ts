@@ -286,6 +286,7 @@ export const specializationDefinitions: SpecializationDefinition[] = [
   { id: 'breach-vanguard', operatorClass: 'vanguard', name: 'Breach Vanguard', identity: 'Close armor-breaking assault', description: 'Breacher hits inside 300 units gain a capped armor-damage conversion and armor breaks stagger the target.', tradeoff: '-5% movement speed and +10% Breacher heat per shot.', overclock: 'Close armor breaks rebuild a small amount of operator armor.', overclockTradeoff: '-8% Breacher direct-health conversion.' },
   { id: 'bulkhead-warden', operatorClass: 'vanguard', name: 'Bulkhead Warden', identity: 'Guard / impact recycling', description: 'Damage absorbed while Breach Guard is active is reduced further and recycles Bulwark Pulse recovery. Bulwark Pulse repairs armor for every enemy caught in the shockwave.', tradeoff: '-8% direct weapon output.', overclock: 'Guarded impacts also return capacitor and Bulwark Pulse repairs more armor per contact.', overclockTradeoff: '+10% Bulwark Pulse capacitor cost.' },
   { id: 'capacitor-conductor', operatorClass: 'systems', name: 'Capacitor Conductor', identity: 'Ability-cycle combo routing', description: 'Casting a different MAG/MARK/ARC ability within 3.4 seconds returns capped capacitor and rewards deliberate three-button sequencing.', tradeoff: '-12 maximum capacitor.', overclock: 'Completing the third link of a sequence raises the capped refund and cools the active weapon.', overclockTradeoff: '+10% ability capacitor cost.' },
+  { id: 'thermal-shunter', operatorClass: 'systems', name: 'Thermal Shunter', identity: 'Weapon / ability thermal crossfeed', description: 'Casting a Systems ability with a warm active weapon routes heat into a short crossfire bank. The next weapon shot leaves the bus faster and harder, gains penetration, and returns capacitor.', tradeoff: '-10 maximum armor.', overclock: 'Crossfed shots also advance the ability that armed the bank and shed additional weapon heat.', overclockTradeoff: '+10% weapon heat per shot.' },
 ];
 
 export const operatorClassDefinitions: OperatorClassDefinition[] = [
@@ -330,7 +331,7 @@ export const operatorClassDefinitions: OperatorClassDefinition[] = [
     combatLoop: 'Polarity Well groups the room → Relay Hack spreads control → Cascade Arc completes the network and Closed Loop cycle.',
     starterPair: 'Systems Rig + Implant',
     branchAffinities: ['Systems', 'Engineering'],
-    specializationIds: ['grid-weaver', 'capacitor-conductor'],
+    specializationIds: ['grid-weaver', 'capacitor-conductor', 'thermal-shunter'],
     resonanceTier1: '2 resonant frames // +8% capacitor regeneration, +6% weapon cooling, and stronger Closed Loop timing.',
     resonanceTier2: '4 resonant frames // +8 maximum capacitor, -6% ability cooldown, stronger link acceleration, and larger loop recycling.',
   },
@@ -947,6 +948,7 @@ export function deriveCombatBuild(profile: PlayerProfile): CombatBuild {
   if (specialization === 'breach-vanguard') { build.player.moveSpeedMul *= 0.95; build.weapon.breacher.heatPerShotMul *= 1.1; if (build.specializationOverclock) build.weapon.breacher.healthMultiplierMul *= 0.92; }
   if (specialization === 'bulkhead-warden') { for (const weapon of Object.values(build.weapon)) weapon.damageMul *= 0.92; if (build.specializationOverclock) build.abilities[2].costMul *= 1.1; }
   if (specialization === 'capacitor-conductor') { build.player.maxCapAdd -= 12; if (build.specializationOverclock) for (const ability of build.abilities) ability.costMul *= 1.1; }
+  if (specialization === 'thermal-shunter') { build.player.maxArmorAdd -= 10; if (build.specializationOverclock) for (const weapon of Object.values(build.weapon)) weapon.heatPerShotMul *= 1.1; }
   if (profile.abilityMods.mag === 'vanguard-siege-ram' && operatorClassForProfile(profile) === 'vanguard' && profile.level >= 16) { build.mechanics.vanguardSiegeRam = true; build.abilities[0].cooldownMul *= 1.2; }
   if (profile.abilityMods.mark === 'vanguard-faultline-tag' && operatorClassForProfile(profile) === 'vanguard' && profile.level >= 16) { build.mechanics.vanguardFaultlineTag = true; build.abilities[1].costMul *= 1.18; }
   if (profile.abilityMods.arc === 'vanguard-reprisal-pulse' && operatorClassForProfile(profile) === 'vanguard' && profile.level >= 16) { build.mechanics.vanguardReprisalPulse = true; build.abilities[2].cooldownMul *= 1.18; }
