@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { buildMegastructureDebrief, buyConsumable, createDefaultCampaign, generateContracts, getMegastructureStageContract, loadCampaign, saveCampaign } from '../src/game/campaign';
 import { aimAtMobileTarget, applyPlayerDamage, createSimulation, stepSimulation, triggerAbility, triggerConsumable, triggerDodge, triggerFire, weaponConfigs, type Telemetry } from '../src/game/sim';
 import { applyMissionSetup, createDirector, stepMissionDirector } from '../src/game/director';
-import { awardRecovery, createDefaultProfile, deriveCombatBuild, loadProfile, saveProfile } from '../src/game/meta';
+import { awardRecovery, createDefaultProfile, deriveCombatBuild, loadProfile, saveProfile, setAbilityMod, setOperatorClass } from '../src/game/meta';
 import { CAMPAIGN_STORAGE_KEY, GAME_STATE_STORAGE_KEY, prepareSaveRecovery, PROFILE_STORAGE_KEY } from '../src/game/saveRecovery';
 import { loadGameState, saveGameState } from '../src/game/gamePersistence';
 import { carryExpeditionLoot } from '../src/game/expeditionCarry';
@@ -405,6 +405,88 @@ function bulkheadWardenSpecializationSmoke() {
   assert.match(wardenState.eventText, /BULKHEAD WARDEN/, 'Bulkhead Warden should expose explicit combat feedback.');
 }
 bulkheadWardenSpecializationSmoke();
+
+function vanguardSkillEvolutionSmoke() {
+  const level15 = {
+    ...createDefaultProfile(),
+    xp: 7140,
+    level: 15,
+    operatorClass: 'vanguard' as const,
+    classSelectionComplete: true,
+    specialization: null,
+    specializationOverclock: false,
+  };
+  const level16 = { ...level15, xp: 8100, level: 16 };
+
+  const locked = setAbilityMod(level15, 'mag', 'vanguard-siege-ram');
+  assert.equal(locked.abilityMods.mag, null, 'Vanguard skill evolutions should remain locked before LV16.');
+
+  const siegeProfile = setAbilityMod(level16, 'mag', 'vanguard-siege-ram');
+  const siegeBuild = deriveCombatBuild(siegeProfile);
+  assert.equal(siegeBuild.mechanics.vanguardSiegeRam, true);
+  assert.ok(siegeBuild.abilities[0].cooldownMul > 1, 'Siege Ram should pay its Breach Rush cooldown tradeoff.');
+  const siegeState = createSimulation(siegeBuild);
+  for (const enemy of siegeState.enemies) enemy.active = false;
+  for (const [index, enemy] of siegeState.enemies.slice(0, 2).entries()) {
+    Object.assign(enemy, {
+      active: true,
+      dead: false,
+      variant: 'standard' as const,
+      role: 'assault' as const,
+      combatClass: 'standard' as const,
+      x: siegeState.player.x + 150 + index * 85,
+      y: siegeState.player.y + (index === 0 ? -22 : 26),
+    });
+    enemy.statuses.armorBreach = 0;
+  }
+  siegeState.player.aim = { x: 1, y: 0 };
+  assert.equal(triggerAbility(siegeState, 0), true, 'Siege Ram should cast through the Vanguard first-skill slot.');
+  assert.ok(siegeState.enemies.slice(0, 2).every(enemy => enemy.statuses.armorBreach >= 3.5), 'Siege Ram should open armor paths on contacts in the ram line.');
+  assert.ok(siegeState.classState.vanguardGuard > 4, 'Multiple Siege Ram contacts should extend Breach Guard beyond the standard window.');
+  assert.match(siegeState.eventText, /SIEGE RAM/, 'Siege Ram needs explicit combat feedback.');
+
+  const faultlineProfile = setAbilityMod(level16, 'mark', 'vanguard-faultline-tag');
+  const faultlineBuild = deriveCombatBuild(faultlineProfile);
+  assert.equal(faultlineBuild.mechanics.vanguardFaultlineTag, true);
+  assert.ok(faultlineBuild.abilities[1].costMul > 1, 'Faultline Tag should pay its capacitor tradeoff.');
+  const faultlineState = createSimulation(faultlineBuild);
+  for (const enemy of faultlineState.enemies) enemy.active = false;
+  const primary = faultlineState.enemies[0];
+  const relay = faultlineState.enemies[1];
+  Object.assign(primary, { active: true, dead: false, variant: 'standard' as const, role: 'assault' as const, combatClass: 'standard' as const, x: faultlineState.player.x + 230, y: faultlineState.player.y });
+  Object.assign(relay, { active: true, dead: false, variant: 'standard' as const, role: 'assault' as const, combatClass: 'standard' as const, x: faultlineState.player.x + 230, y: faultlineState.player.y + 170 });
+  primary.statuses.armorBreach = 0;
+  relay.statuses.armorBreach = 0;
+  const relayArmorBefore = relay.armor;
+  faultlineState.player.aim = { x: 1, y: 0 };
+  assert.equal(triggerAbility(faultlineState, 1), true, 'Faultline Tag should cast through the Vanguard second-skill slot.');
+  assert.ok(primary.statuses.armorBreach >= 4.7, 'Faultline Tag should preserve the primary Fracture Tag breach.');
+  assert.ok(relay.statuses.armorBreach >= 3.7 && relay.armor < relayArmorBefore, 'Faultline Tag should fracture a nearby secondary hostile.');
+  assert.match(faultlineState.eventText, /FAULTLINE TAG/, 'Faultline Tag needs explicit combat feedback.');
+
+  const reprisalProfile = setAbilityMod(level16, 'arc', 'vanguard-reprisal-pulse');
+  const reprisalBuild = deriveCombatBuild(reprisalProfile);
+  assert.equal(reprisalBuild.mechanics.vanguardReprisalPulse, true);
+  assert.ok(reprisalBuild.abilities[2].cooldownMul > 1, 'Reprisal Pulse should pay its Bulwark Pulse cooldown tradeoff.');
+  const reprisalState = createSimulation(reprisalBuild);
+  for (const enemy of reprisalState.enemies) enemy.active = false;
+  const breached = reprisalState.enemies[0];
+  Object.assign(breached, { active: true, dead: false, variant: 'standard' as const, role: 'assault' as const, combatClass: 'standard' as const, x: reprisalState.player.x + 130, y: reprisalState.player.y });
+  breached.statuses.armorBreach = 4;
+  reprisalState.player.abilityCooldowns[0] = 3;
+  const breachedArmorBefore = breached.armor;
+  assert.equal(triggerAbility(reprisalState, 2), true, 'Reprisal Pulse should cast through the Vanguard third-skill slot.');
+  assert.ok(breached.armor < breachedArmorBefore, 'Reprisal Pulse should strip additional armor from already-breached contacts.');
+  assert.ok(reprisalState.player.abilityCooldowns[0] < 3, 'Reprisal Pulse contacts should advance Breach Rush recovery.');
+  assert.match(reprisalState.eventText, /REPRISAL PULSE/, 'Reprisal Pulse needs explicit combat feedback.');
+
+  const switched = setOperatorClass(siegeProfile, 'vector').profile;
+  assert.equal(switched.abilityMods.mag, null, 'Switching class should clear an incompatible Vanguard evolution.');
+  const genericLens = setAbilityMod(level16, 'mark', 'mark-wideband');
+  const genericSwitched = setOperatorClass(genericLens, 'vector').profile;
+  assert.equal(genericSwitched.abilityMods.mark, 'mark-wideband', 'Switching class should preserve shared Skill Lenses.');
+}
+vanguardSkillEvolutionSmoke();
 
 function iceMineBrittleSupportSmoke() {
   const campaign = createDefaultCampaign();
