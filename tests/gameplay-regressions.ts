@@ -556,6 +556,72 @@ function bulkheadWardenSpecializationSmoke() {
 }
 bulkheadWardenSpecializationSmoke();
 
+function thermalShunterSpecializationSmoke() {
+  const baseProfile = {
+    ...createDefaultProfile(),
+    xp: 8100,
+    level: 16,
+    operatorClass: 'systems' as const,
+    classSelectionComplete: true,
+    specialization: null,
+    specializationOverclock: false,
+  };
+  const baseShunterProfile = {
+    ...baseProfile,
+    specialization: 'thermal-shunter' as const,
+  };
+  const shunterProfile = {
+    ...baseShunterProfile,
+    specializationOverclock: true,
+  };
+  const baseBuild = deriveCombatBuild(baseProfile);
+  const baseShunterBuild = deriveCombatBuild(baseShunterProfile);
+  const shunterBuild = deriveCombatBuild(shunterProfile);
+  assert.equal(shunterBuild.specialization, 'thermal-shunter');
+  assert.equal(shunterBuild.specializationOverclock, true);
+  assert.equal(shunterBuild.player.maxArmorAdd, baseBuild.player.maxArmorAdd - 10, 'Thermal Shunter should pay the authored maximum-armor tradeoff.');
+  assert.ok(shunterBuild.weapon.carbine.heatPerShotMul > baseBuild.weapon.carbine.heatPerShotMul, 'Thermal Shunter overclock should increase weapon heat per shot.');
+
+  const baseState = createSimulation(baseShunterBuild);
+  for (const enemy of baseState.enemies) enemy.active = false;
+  baseState.player.currentWeapon = 'carbine';
+  baseState.player.weaponHeat.carbine = 0.5;
+  assert.equal(triggerAbility(baseState, 0), true);
+  assert.ok(baseState.player.weaponHeat.carbine <= 0.42, 'Base Thermal Shunter should route eight percent active-weapon heat on a warm cast.');
+  assert.ok(baseState.classState.systemsCrossfeed >= 2.59 && baseState.classState.systemsCrossfeed <= 2.61, 'Base Thermal Shunter should arm the authored 2.6-second crossfire bank.');
+
+  const state = createSimulation(shunterBuild);
+  for (const enemy of state.enemies) enemy.active = false;
+  state.player.currentWeapon = 'carbine';
+  state.player.weaponHeat.carbine = 0.62;
+  state.player.capacitor = 70;
+  assert.equal(triggerAbility(state, 0), true, 'Thermal Shunter should cast Polarity Well from a warm weapon state.');
+  assert.ok(state.player.weaponHeat.carbine <= 0.52, 'A warm Systems ability cast should shunt active-weapon heat out of the weapon bus.');
+  assert.ok(state.classState.systemsCrossfeed >= 2.9, 'Thermal Shunter overclock should arm a three-second crossfire bank.');
+  assert.match(state.eventText, /THERMAL SHUNTER/, 'Thermal Shunter should expose heat-routing feedback when the bank is armed.');
+
+  state.player.capacitor = 40;
+  const cooldownBeforeShot = state.player.abilityCooldowns[0];
+  assert.equal(triggerFire(state), true, 'Thermal Shunter should discharge the armed bank through the next weapon shot.');
+  const crossfedShot = state.projectiles.find(projectile => projectile.active && projectile.owner === 'player' && projectile.weapon === 'carbine');
+  assert.ok(crossfedShot, 'Thermal Shunter crossfire should create the expected weapon projectile.');
+  assert.ok(Math.hypot(crossfedShot.vx, crossfedShot.vy) >= state.weapons.carbine.projectileSpeed * 1.11, 'Thermal crossfire should materially increase projectile velocity.');
+  assert.ok(crossfedShot.damage >= state.weapons.carbine.damage * 1.09, 'Thermal crossfire should materially increase shot damage.');
+  assert.ok(crossfedShot.penetration >= state.weapons.carbine.penetration + 10, 'Thermal crossfire should add the authored penetration bonus.');
+  assert.ok(state.player.capacitor >= 44, 'Thermal crossfire should recycle four capacitor on discharge.');
+  assert.ok(state.player.abilityCooldowns[0] <= cooldownBeforeShot - 0.49, 'Thermal Shunter overclock should advance the ability that armed the bank.');
+  assert.equal(state.classState.systemsCrossfeed, 0, 'Thermal crossfire should be consumed by one weapon shot.');
+  assert.match(state.eventText, /THERMAL CROSSFIRE/, 'Thermal Shunter should expose explicit discharge feedback.');
+
+  const coldState = createSimulation(shunterBuild);
+  for (const enemy of coldState.enemies) enemy.active = false;
+  coldState.player.currentWeapon = 'carbine';
+  coldState.player.weaponHeat.carbine = 0.2;
+  assert.equal(triggerAbility(coldState, 0), true);
+  assert.equal(coldState.classState.systemsCrossfeed, 0, 'Cold weapons should not arm Thermal Shunter crossfire for free.');
+}
+thermalShunterSpecializationSmoke();
+
 function vanguardSkillEvolutionSmoke() {
   const level15 = {
     ...createDefaultProfile(),
