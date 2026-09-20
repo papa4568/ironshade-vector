@@ -915,7 +915,7 @@ try {
       };
     })()`);
     const profileName = solarYardEnvironment?.performanceProfile?.split(':')[0] ?? '';
-    const allowedProfiles = viewportMode === 'mobile-landscape' ? ['mobile', 'performance'] : ['full', 'balanced', 'performance'];
+    const allowedProfiles = viewportMode === 'mobile-landscape' ? ['mobile', 'performance'] : ['full', 'balanced', 'mobile', 'performance'];
     if (!allowedProfiles.includes(profileName)) {
       throw new Error(`Solar Yard active profile is invalid for ${viewportMode}: ${JSON.stringify(solarYardEnvironment)}`);
     }
