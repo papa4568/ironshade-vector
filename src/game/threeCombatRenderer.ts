@@ -303,7 +303,6 @@ export class ThreeCombatRenderer {
   private jovianHarvesterLoadGeneration = 0;
   private iceMineLoadGeneration = 0;
   private solarYardLoadGeneration = 0;
-  private solarYardSunShadowRoot: THREE.Group | null = null;
   private readonly solarYardSunPatches: Array<THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>> = [];
   private readonly solarYardShadePatches: Array<THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>> = [];
   private readonly iceMineBrittleSupportVisuals = new Map<string, THREE.Object3D>();
@@ -577,7 +576,6 @@ export class ThreeCombatRenderer {
     this.jovianHarvesterLoadGeneration += 1;
     this.iceMineLoadGeneration += 1;
     this.solarYardLoadGeneration += 1;
-    this.solarYardSunShadowRoot = null;
     this.solarYardSunPatches.length = 0;
     this.solarYardShadePatches.length = 0;
     this.iceMineBrittleSupportVisuals.clear();
@@ -2785,14 +2783,14 @@ export class ThreeCombatRenderer {
 
       const sunShadowRoot = new THREE.Group();
       sunShadowRoot.name = 'solar-yard-sun-shadow-language';
-      const shadeMaterial = new THREE.MeshBasicMaterial({
+      const createShadeMaterial = () => new THREE.MeshBasicMaterial({
         color: 0x07141c,
         transparent: true,
         opacity: 0.17,
         depthWrite: false,
         side: THREE.DoubleSide,
       });
-      const sunMaterial = new THREE.MeshBasicMaterial({
+      const createSunMaterial = () => new THREE.MeshBasicMaterial({
         color: 0xffb45d,
         transparent: true,
         opacity: 0.075,
@@ -2806,7 +2804,7 @@ export class ThreeCombatRenderer {
         [0.52, 0.28, 0.13, 0.36, -0.10],
       ] as const;
       for (const [x, z, widthRatio, depthRatio, rotation] of shadePlacements) {
-        const shade = new THREE.Mesh(new THREE.PlaneGeometry(scaled(worldW * widthRatio), scaled(worldH * depthRatio)), shadeMaterial.clone());
+        const shade = new THREE.Mesh(new THREE.PlaneGeometry(scaled(worldW * widthRatio), scaled(worldH * depthRatio)), createShadeMaterial());
         shade.rotation.x = -Math.PI / 2;
         shade.rotation.z = rotation;
         shade.position.set(scaled(worldW * x), 0.028, scaled(worldH * z));
@@ -2820,7 +2818,7 @@ export class ThreeCombatRenderer {
         [0.64, 0.78, 0.16, 0.24, -0.10],
       ] as const;
       for (const [x, z, widthRatio, depthRatio, rotation] of sunPlacements) {
-        const sunPatch = new THREE.Mesh(new THREE.PlaneGeometry(scaled(worldW * widthRatio), scaled(worldH * depthRatio)), sunMaterial.clone());
+        const sunPatch = new THREE.Mesh(new THREE.PlaneGeometry(scaled(worldW * widthRatio), scaled(worldH * depthRatio)), createSunMaterial());
         sunPatch.rotation.x = -Math.PI / 2;
         sunPatch.rotation.z = rotation;
         sunPatch.position.set(scaled(worldW * x), 0.032, scaled(worldH * z));
@@ -2828,7 +2826,6 @@ export class ThreeCombatRenderer {
         sunShadowRoot.add(sunPatch);
         this.solarYardSunPatches.push(sunPatch);
       }
-      this.solarYardSunShadowRoot = sunShadowRoot;
       this.environmentRoot.add(sunShadowRoot);
     } else if (location === 'momentum-exchange') {
       for (const offset of [-9, 0, 9]) {
