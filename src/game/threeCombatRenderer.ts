@@ -297,6 +297,7 @@ export class ThreeCombatRenderer {
   private spinHabitatLoadGeneration = 0;
   private jovianHarvesterLoadGeneration = 0;
   private iceMineLoadGeneration = 0;
+  private readonly iceMineBrittleSupportVisuals = new Map<string, THREE.Object3D>();
   private jovianStormVisualRoot: THREE.Group | null = null;
   private readonly jovianStormChargeSweeps: Array<THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>> = [];
   private readonly jovianPressureShearBands: Array<THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>> = [];
@@ -461,6 +462,7 @@ export class ThreeCombatRenderer {
     this.ensureEnvironment(state, mission, budget);
     this.syncSpinHabitatArchitecture(state, mission, budget);
     this.syncJovianHarvesterVisualLanguage(state, mission, budget);
+    this.syncIceMineBrittleSupports(state, mission);
     syncHardSciFiEnvironment(this.environmentRoot, state, mission, budget.detailScale, budget.transparencyScale);
     this.syncSectors(state);
     this.syncObjects(state, mission);
@@ -547,6 +549,7 @@ export class ThreeCombatRenderer {
     this.spinHabitatLoadGeneration += 1;
     this.jovianHarvesterLoadGeneration += 1;
     this.iceMineLoadGeneration += 1;
+    this.iceMineBrittleSupportVisuals.clear();
     this.jovianStormVisualRoot = null;
     this.jovianStormChargeSweeps.length = 0;
     this.jovianPressureShearBands.length = 0;
@@ -638,6 +641,9 @@ export class ThreeCombatRenderer {
     delete this.renderer.domElement.dataset.environmentMachineDetail;
     delete this.renderer.domElement.dataset.environmentComposition;
     delete this.renderer.domElement.dataset.environmentTunnelSequence;
+    delete this.renderer.domElement.dataset.environmentBrittleSupports;
+    delete this.renderer.domElement.dataset.environmentBrittleSupportState;
+    delete this.renderer.domElement.dataset.environmentBrittleSupportIds;
     delete this.renderer.domElement.dataset.environmentZoneIdentity;
     delete this.renderer.domElement.dataset.environmentLighting;
     delete this.renderer.domElement.dataset.environmentMaterials;
@@ -1060,7 +1066,7 @@ export class ThreeCombatRenderer {
   }
 
 
-  private async loadAuthoredIceMineEnvironment(worldW: number, worldH: number, detailScale: number) {
+  private async loadAuthoredIceMineEnvironment(state: SimState, worldW: number, worldH: number, detailScale: number) {
     const generation = ++this.iceMineLoadGeneration;
     this.renderer.domElement.dataset.environmentVisual = 'authored-loading';
     const assetDetailScale = this.coarse ? Math.min(detailScale, 0.55) : detailScale;
@@ -1093,13 +1099,27 @@ export class ThreeCombatRenderer {
       }));
 
       const supportFramePlacements: EnvironmentPlacement[] = [
-        [0.20, 0.50, 0.98], [0.32, 0.50, 0.94], [0.44, 0.50, 0.94],
-        [0.56, 0.50, 0.94], [0.68, 0.50, 0.94], [0.78, 0.50, 0.98],
+        [0.20, 0.50, 0.98],
+        [0.44, 0.50, 0.94],
+        [0.68, 0.50, 0.94],
+        [0.78, 0.50, 0.98],
       ].map(([x, z, scale]) => ({
         position: new THREE.Vector3(width * x, 0, height * z),
         rotationY: 0,
         scale,
       }));
+      const brittleSupportFramePlacements = (['ice-brittle-gate-a', 'ice-brittle-gate-b'] as const).map((id, index) => {
+        const object = state.objects.find(item => item.id === id);
+        return {
+          id,
+          placement: {
+            position: object
+              ? new THREE.Vector3(scaled(object.x + object.w / 2), 0, scaled(object.y + object.h / 2))
+              : new THREE.Vector3(width * (index === 0 ? 0.32 : 0.56), 0, height * 0.45),
+            scale: 0.94,
+          } satisfies EnvironmentPlacement,
+        };
+      });
 
       const serviceDeckPlacements: EnvironmentPlacement[] = [
         [0.25, 0.50, 0], [0.40, 0.50, 0], [0.55, 0.50, 0], [0.70, 0.50, 0],
@@ -1121,6 +1141,13 @@ export class ThreeCombatRenderer {
       let instances = 0;
       instances += this.addInstancedEnvironmentAsset(byKey.get('frostWall')!.instance, frostWallPlacements, 'ice-mine-frost-wall');
       instances += this.addInstancedEnvironmentAsset(byKey.get('supportFrame')!.instance, supportFramePlacements, 'ice-mine-support-frame');
+      for (const support of brittleSupportFramePlacements) {
+        const root = new THREE.Group();
+        root.name = `ice-mine-brittle-support-${support.id}`;
+        this.authoredEnvironmentRoot.add(root);
+        instances += this.addInstancedEnvironmentAsset(byKey.get('supportFrame')!.instance, [support.placement], 'ice-mine-support-frame-brittle', root);
+        this.iceMineBrittleSupportVisuals.set(support.id, root);
+      }
       instances += this.addInstancedEnvironmentAsset(byKey.get('serviceDeck')!.instance, serviceDeckPlacements, 'ice-mine-service-deck');
       instances += this.addInstancedEnvironmentAsset(byKey.get('icePillar')!.instance, icePillarPlacements, 'ice-mine-ice-pillar');
 
@@ -1132,7 +1159,7 @@ export class ThreeCombatRenderer {
       this.renderer.domElement.dataset.environmentKit = 'frost-wall,support-frame,service-deck,ice-pillar';
       this.renderer.domElement.dataset.environmentInstances = String(instances);
       this.renderer.domElement.dataset.environmentLandmark = 'subglacial-vault-ice-pillars';
-      this.renderer.domElement.dataset.environmentServiceDetails = `support-frame:${supportFramePlacements.length}+service-deck:${serviceDeckPlacements.length}`;
+      this.renderer.domElement.dataset.environmentServiceDetails = `support-frame:${supportFramePlacements.length + brittleSupportFramePlacements.length}+service-deck:${serviceDeckPlacements.length}`;
       this.renderer.domElement.dataset.environmentSurfaceDetail = `frost-wall:${frostWallPlacements.length}+ice-pillar:${icePillarPlacements.length}`;
       this.renderer.domElement.dataset.environmentComposition = 'access-bore+reinforced-extraction-tunnel+subglacial-vault';
       this.renderer.domElement.dataset.environmentTunnelSequence = 'access-bore>extraction-tunnel>subglacial-vault';
@@ -1142,6 +1169,7 @@ export class ThreeCombatRenderer {
     } catch (error) {
       loaded.forEach(item => item.instance.release());
       if (this.disposed || generation !== this.iceMineLoadGeneration) return;
+      this.iceMineBrittleSupportVisuals.clear();
       this.refineryInstancedMeshes.forEach(mesh => {
         mesh.removeFromParent();
         mesh.dispose();
@@ -1157,6 +1185,9 @@ export class ThreeCombatRenderer {
       delete this.renderer.domElement.dataset.environmentSurfaceDetail;
       delete this.renderer.domElement.dataset.environmentComposition;
       delete this.renderer.domElement.dataset.environmentTunnelSequence;
+      delete this.renderer.domElement.dataset.environmentBrittleSupports;
+      delete this.renderer.domElement.dataset.environmentBrittleSupportState;
+      delete this.renderer.domElement.dataset.environmentBrittleSupportIds;
       delete this.renderer.domElement.dataset.environmentZoneIdentity;
       delete this.renderer.domElement.dataset.environmentMaterials;
       delete this.renderer.domElement.dataset.readabilityLanguage;
@@ -2095,7 +2126,7 @@ export class ThreeCombatRenderer {
     } else if (mission.location === 'jovian-harvester') {
       void this.loadAuthoredJovianHarvesterEnvironment(world.w, world.h, budget.detailScale);
     } else if (mission.location === 'ice-mine') {
-      void this.loadAuthoredIceMineEnvironment(world.w, world.h, budget.detailScale);
+      void this.loadAuthoredIceMineEnvironment(state, world.w, world.h, budget.detailScale);
     } else {
       this.renderer.domElement.dataset.environmentVisual = 'procedural';
     }
@@ -2590,6 +2621,42 @@ export class ThreeCombatRenderer {
     this.renderer.domElement.dataset.environmentVfx = 'spindown-brake-arcs+axis-warning-pulse';
   }
 
+  private syncIceMineBrittleSupports(state: SimState, mission: Contract) {
+    if (mission.location !== 'ice-mine') {
+      delete this.renderer.domElement.dataset.environmentBrittleSupports;
+      delete this.renderer.domElement.dataset.environmentBrittleSupportState;
+      delete this.renderer.domElement.dataset.environmentBrittleSupportIds;
+      return;
+    }
+
+    const supportIds = ['ice-brittle-gate-a', 'ice-brittle-gate-b'] as const;
+    let intact = 0;
+    let failed = 0;
+    let damaged = 0;
+    for (const id of supportIds) {
+      const object = state.objects.find(item => item.id === id);
+      const visual = this.iceMineBrittleSupportVisuals.get(id);
+      const active = Boolean(object?.active);
+      if (visual) visual.visible = active;
+      if (!active) {
+        failed += 1;
+      } else {
+        intact += 1;
+        if (object && object.maxHp > 0 && object.hp < object.maxHp) damaged += 1;
+      }
+    }
+
+    this.renderer.domElement.dataset.environmentBrittleSupports = `intact:${intact}+failed:${failed}+damaged:${damaged}`;
+    this.renderer.domElement.dataset.environmentBrittleSupportState = failed === supportIds.length
+      ? 'cleared'
+      : failed > 0
+        ? 'partial'
+        : damaged > 0
+          ? 'damaged'
+          : 'intact';
+    this.renderer.domElement.dataset.environmentBrittleSupportIds = supportIds.join(',');
+  }
+
   private syncJovianHarvesterVisualLanguage(state: SimState, mission: Contract, budget: RenderBudgetSnapshot) {
     if (mission.location !== 'jovian-harvester') return;
 
@@ -2885,7 +2952,8 @@ export class ThreeCombatRenderer {
       }
 
       const authored = this.authoredInteractables.get(object.id);
-      mesh.visible = object.active && !authored;
+      const authoredBrittleSupport = mission.location === 'ice-mine' && this.iceMineBrittleSupportVisuals.has(object.id);
+      mesh.visible = object.active && !authored && !authoredBrittleSupport;
       mesh.position.set(scaled(object.x + object.w / 2), mesh.geometry.parameters.height / 2, scaled(object.y + object.h / 2));
       mesh.material.color.setHex(objectColor(object));
       mesh.material.emissive.setHex(object.exposed ? 0xd69b4d : 0x000000);
