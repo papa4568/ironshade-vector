@@ -544,6 +544,44 @@ stepMissionDirector(k91Stage4State, k91FinalDirector, k91Stage4, 7.1);
 assert.equal(k91FinalDirector.megastructureEventA, true, 'K-91 Ballast Vault must trigger its dedicated capstone event even when biome forecast text follows it.');
 assert.ok(k91Stage4State.hazards.some(hazard => hazard.active && hazard.kind === 'gravityWell'), 'K-91 final stage must preserve a bossless ballast-shift gravity hazard.');
 
+const orphelineCampaign = { ...createDefaultCampaign(), cycle: 13, contractsCompleted: 3 };
+const orphelineContract = generateContracts(orphelineCampaign).find(contract => contract.megastructure === 'hidden-habitat');
+assert.ok(orphelineContract, 'P4 Orpheline must remain available as the third rare megastructure rotation.');
+assert.deepEqual(orphelineContract.megastructureZoneNames, ['Ice Access Bore', 'Industrial Commons', 'Residential Spin Ring', 'Buried Control Vault'], 'Orpheline must preserve its authored four-space hidden-habitat traverse.');
+assert.equal(orphelineContract.megastructureBossTarget, 'Orpheline Habitat Warden', 'Orpheline must retain the Habitat Warden as its deep finale.');
+
+const orphelineStage1 = getMegastructureStageContract(orphelineContract, 0);
+const orphelineStage1State = createSimulation(perseidBuild);
+applyMissionSetup(orphelineStage1State, orphelineStage1);
+assert.deepEqual(orphelineStage1State.sectors.map(sector => sector.label), ['SHADOW BORE', 'CUT TUNNEL', 'HABITAT HATCH'], 'Orpheline stage 1 must read as a concealed habitat access route rather than a generic ice mine.');
+assert.equal(orphelineStage1State.objects.find(object => object.id === 'mega-optional-cache')?.label, 'Unregistered transit ledger', 'Orpheline stage 1 must retain its bespoke optional recovery.');
+
+const orphelineStage2 = getMegastructureStageContract(orphelineContract, 1);
+const orphelineStage2State = createSimulation(perseidBuild);
+applyMissionSetup(orphelineStage2State, orphelineStage2);
+assert.deepEqual(orphelineStage2State.sectors.map(sector => sector.label), ['FABRICATOR ROW', 'INDUSTRIAL COMMONS', 'SERVICE MARKET'], 'Orpheline stage 2 must read as the improvised Industrial Commons.');
+assert.equal(orphelineStage2State.enemies.find(enemy => enemy.id === 6)?.label, 'Orpheline Commons Custodian', 'Orpheline stage 2 must keep a habitat-specific guaranteed elite.');
+
+const orphelineStage3 = getMegastructureStageContract(orphelineContract, 2);
+const orphelineStage3State = createSimulation(perseidBuild);
+applyMissionSetup(orphelineStage3State, orphelineStage3);
+assert.deepEqual(orphelineStage3State.sectors.map(sector => sector.label), ['OUTER HAB RING', 'RESIDENTIAL SPIN', 'SHELTER SPOKE'], 'Orpheline stage 3 must read as an occupied-scale residential ring.');
+
+const orphelineStage4 = getMegastructureStageContract(orphelineContract, 3);
+const orphelineStage4State = createSimulation(perseidBuild);
+applyMissionSetup(orphelineStage4State, orphelineStage4);
+assert.deepEqual(orphelineStage4State.sectors.map(sector => sector.label), ['FOUNDERS APPROACH', 'CONTROL VAULT', 'WARDEN CHAMBER'], 'Orpheline stage 4 must read as the buried founding control vault.');
+const orphelineWarden = orphelineStage4State.enemies.find(enemy => enemy.role === 'boss');
+assert.equal(orphelineWarden?.label, 'Orpheline Habitat Warden', 'Orpheline final deep target must retain its authored identity.');
+assert.equal(orphelineWarden?.variant, 'orphelineWarden', 'Orpheline Habitat Warden must use its dedicated boss behavior.');
+assert.equal(orphelineWarden?.maxHp, 770, 'Orpheline Habitat Warden must retain its capstone durability budget.');
+
+const orphelineDirector = createDirector();
+stepMissionDirector(orphelineStage1State, orphelineDirector, orphelineStage1, 7.1);
+assert.equal(orphelineDirector.megastructureEventA, true, 'Orpheline stage events must run independently of reused biome event slots.');
+assert.match(orphelineStage1State.eventText, /ORPHELINE ACCESS BORE/, 'Orpheline stage 1 must announce its concealed pressure-path event.');
+assert.ok(orphelineStage1State.hazards.some(hazard => hazard.active && hazard.kind === 'vectorWash'), 'An unresolved Orpheline access event must produce a physical venting hazard.');
+
 const expeditionLootSource = [{ id: 'stage-1-drop', enemyId: 7, enemyLabel: 'Stage One Elite', rarity: 'Prototype' as const, source: 'elite' as const, recoveryQualityFloor: 3 as const, recoveryLevel: 24, monsterLevel: 8 }];
 const expeditionLootCarry = carryExpeditionLoot(expeditionLootSource);
 assert.deepEqual(expeditionLootCarry, expeditionLootSource, 'megastructure stage transit should preserve every collected field-loot receipt');
