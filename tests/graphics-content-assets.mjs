@@ -235,6 +235,12 @@ for (const path of glbs) {
                                                           ? 'solar-yard-radiator-tower-spine'
                                                           : filename.includes('solar-yard-reflector-pylon')
                                                             ? 'solar-yard-reflector-pylon-face'
+                                                            : filename.includes('solar-yard-sinter-forge')
+                                                              ? 'solar-yard-sinter-forge-chamber'
+                                                              : filename.includes('solar-yard-printer-spindle')
+                                                                ? 'solar-yard-printer-spindle-gantry'
+                                                                : filename.includes('solar-yard-feedstock-press')
+                                                                  ? 'solar-yard-feedstock-press-body'
           : filename.includes('floor-panel')
             ? 'refinery-floor-panel'
             : filename.includes('floor-service-grate')
@@ -375,6 +381,25 @@ for (const path of glbs) {
       assert(nodeNames.has('solar-yard-reflector-pylon-rim-left'), `${relativePath}: Solar Yard reflector pylon LOD1 is missing ceramic rim detail`);
       assert(materialForNode('solar-yard-reflector-pylon-face') === 'solar-yard-solar-gold', `${relativePath}: Solar Yard reflector face lost its solar-gold identity`);
       assert(materialForNode('solar-yard-reflector-pylon-status') === 'solar-yard-amber-emissive', `${relativePath}: Solar Yard reflector status must remain heat amber`);
+    }
+
+    if (filename.includes('solar-yard-sinter-forge') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('solar-yard-sinter-forge-feed-hopper'), `${relativePath}: Solar Yard sinter forge LOD1 is missing feed hopper detail`);
+      assert(nodeNames.has('solar-yard-sinter-forge-ceramic-liner'), `${relativePath}: Solar Yard sinter forge LOD1 is missing ceramic liner detail`);
+      assert(materialForNode('solar-yard-sinter-forge-chamber') === 'solar-yard-ceramic-shell', `${relativePath}: Solar Yard sinter forge chamber lost its ceramic shell identity`);
+      assert(materialForNode('solar-yard-sinter-forge-hot-face') === 'solar-yard-amber-emissive', `${relativePath}: Solar Yard sinter forge hot face must remain heat amber`);
+    }
+    if (filename.includes('solar-yard-printer-spindle') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('solar-yard-printer-spindle-column-left'), `${relativePath}: Solar Yard printer spindle LOD1 is missing support columns`);
+      assert(nodeNames.has('solar-yard-printer-spindle-guide'), `${relativePath}: Solar Yard printer spindle LOD1 is missing gold guide detail`);
+      assert(materialForNode('solar-yard-printer-spindle-gantry') === 'solar-yard-scorched-steel', `${relativePath}: Solar Yard printer spindle gantry lost its scorched steel identity`);
+      assert(materialForNode('solar-yard-printer-spindle-head') === 'solar-yard-solar-gold', `${relativePath}: Solar Yard printer spindle head must remain solar gold`);
+    }
+    if (filename.includes('solar-yard-feedstock-press') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('solar-yard-feedstock-press-brace-left'), `${relativePath}: Solar Yard feedstock press LOD1 is missing structural bracing`);
+      assert(nodeNames.has('solar-yard-feedstock-press-collection-tray'), `${relativePath}: Solar Yard feedstock press LOD1 is missing collection tray detail`);
+      assert(materialForNode('solar-yard-feedstock-press-body') === 'solar-yard-ceramic-shell', `${relativePath}: Solar Yard feedstock press body lost its ceramic shell identity`);
+      assert(materialForNode('solar-yard-feedstock-press-status') === 'solar-yard-amber-emissive', `${relativePath}: Solar Yard feedstock press status must remain heat amber`);
     }
 
     if (filename.includes('parallax-baseline-pylon') && filename.endsWith('-lod1.glb')) {
@@ -612,6 +637,13 @@ for (const asset of ['solar-yard-ceramic-deck', 'solar-yard-truss-frame', 'solar
   const lod2 = reportByPath.get(`environments/${asset}-lod2.glb`);
   assert(lod1 && lod2, `${asset}: Solar Yard P3.7 LOD1/LOD2 pair missing`);
   assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, `${asset}: Solar Yard mobile LOD2 must reduce payload and draw surfaces`);
+}
+
+for (const asset of ['solar-yard-sinter-forge', 'solar-yard-printer-spindle', 'solar-yard-feedstock-press']) {
+  const lod1 = reportByPath.get(`environments/${asset}-lod1.glb`);
+  const lod2 = reportByPath.get(`environments/${asset}-lod2.glb`);
+  assert(lod1 && lod2, `${asset}: Solar Yard P3.8 machinery LOD1/LOD2 pair missing`);
+  assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, `${asset}: Solar Yard mobile machinery LOD2 must reduce payload and draw surfaces`);
 }
 
 for (const asset of ['parallax-baseline-pylon', 'parallax-reference-frame', 'parallax-mass-carriage', 'parallax-shear-anchor', 'parallax-reference-console']) {
