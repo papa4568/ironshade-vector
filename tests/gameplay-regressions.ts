@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { buildMegastructureDebrief, buyConsumable, createDefaultCampaign, generateContracts, getMegastructureStageContract, loadCampaign, saveCampaign } from '../src/game/campaign';
 import { aimAtMobileTarget, applyPlayerDamage, createSimulation, stepSimulation, triggerAbility, triggerConsumable, triggerDodge, triggerFire, weaponConfigs, type Telemetry } from '../src/game/sim';
 import { applyMissionSetup, createDirector, stepMissionDirector } from '../src/game/director';
-import { awardRecovery, createDefaultProfile, deriveCombatBuild, loadProfile, saveProfile, setAbilityMod, setOperatorClass, systemsCapstoneInteractionFor, vanguardCapstoneInteractionFor } from '../src/game/meta';
+import { awardRecovery, buildIdentity, createDefaultProfile, deriveCombatBuild, loadProfile, saveProfile, setAbilityMod, setOperatorClass, systemsCapstoneInteractionFor, vanguardCapstoneInteractionFor, vectorCapstoneInteractionFor } from '../src/game/meta';
 import { CAMPAIGN_STORAGE_KEY, GAME_STATE_STORAGE_KEY, prepareSaveRecovery, PROFILE_STORAGE_KEY } from '../src/game/saveRecovery';
 import { loadGameState, saveGameState } from '../src/game/gamePersistence';
 import { carryExpeditionLoot } from '../src/game/expeditionCarry';
@@ -497,6 +497,92 @@ function vectorSkillEvolutionSmoke() {
   assert.equal(genericSwitched.abilityMods.mark, 'mark-wideband', 'Switching class should preserve shared Skill Lenses after Vector evolution support.');
 }
 vectorSkillEvolutionSmoke();
+
+function sameClassBuildDiversitySmoke() {
+  const level16 = {
+    ...createDefaultProfile(),
+    xp: 8100,
+    level: 16,
+    operatorClass: 'vector' as const,
+    classSelectionComplete: true,
+    specializationOverclock: true,
+  };
+
+  const momentumProfile = setAbilityMod({ ...level16, specialization: 'momentum-broker' as const }, 'mag', 'vector-slingshot-shift');
+  const surveyProfile = setAbilityMod({ ...level16, specialization: 'survey-deadeye' as const }, 'mark', 'vector-triangulation-lock');
+  const redlineProfile = setAbilityMod({ ...level16, specialization: 'redline-pilot' as const }, 'arc', 'vector-needle-fan');
+
+  assert.equal(vectorCapstoneInteractionFor(momentumProfile, momentumProfile.abilityMods.mag)?.name, 'Inertial Dividend');
+  assert.equal(vectorCapstoneInteractionFor(surveyProfile, surveyProfile.abilityMods.mark)?.name, 'Reference Solution');
+  assert.equal(vectorCapstoneInteractionFor(redlineProfile, redlineProfile.abilityMods.arc)?.name, 'Redline Needle');
+
+  const identities = [buildIdentity(momentumProfile), buildIdentity(surveyProfile), buildIdentity(redlineProfile)];
+  assert.equal(new Set(identities).size, 3, 'LV16 Vector branches should expose distinct same-class build identities.');
+  assert.match(identities[0], /INERTIAL DIVIDEND/i);
+  assert.match(identities[1], /REFERENCE SOLUTION/i);
+  assert.match(identities[2], /REDLINE NEEDLE/i);
+
+  const momentumState = createSimulation(deriveCombatBuild(momentumProfile));
+  for (const enemy of momentumState.enemies) enemy.active = false;
+  momentumState.player.aim = { x: 1, y: 0 };
+  momentumState.player.dodgeCooldown = 1.2;
+  momentumState.player.capacitor = Math.max(0, momentumState.player.maxCapacitor - 20);
+  assert.equal(triggerAbility(momentumState, 0), true);
+  const momentumShiftCooldown = momentumState.player.abilityCooldowns[0];
+  const momentumDodgeCooldown = momentumState.player.dodgeCooldown;
+  const momentumCapBeforeShot = momentumState.player.capacitor;
+  assert.equal(triggerFire(momentumState), true);
+  assert.ok(momentumState.player.abilityCooldowns[0] < momentumShiftCooldown, 'Inertial Dividend should deepen Vector Shift recovery after spending Slingshot Slipstream.');
+  assert.ok(momentumState.player.dodgeCooldown < momentumDodgeCooldown, 'Inertial Dividend should deepen dodge recovery after the recoil route resolves.');
+  assert.ok(momentumState.player.capacitor > momentumCapBeforeShot, 'Inertial Dividend should return capacitor from the extended recoil route.');
+  assert.match(momentumState.eventText, /INERTIAL DIVIDEND/, 'Momentum Broker + Slingshot Shift needs its own capstone feedback.');
+
+  const surveyState = createSimulation(deriveCombatBuild(surveyProfile));
+  for (const enemy of surveyState.enemies) enemy.active = false;
+  const surveyTarget = surveyState.enemies[0];
+  Object.assign(surveyTarget, {
+    active: true,
+    dead: false,
+    variant: 'standard' as const,
+    role: 'assault' as const,
+    combatClass: 'standard' as const,
+    x: surveyState.player.x + 360,
+    y: surveyState.player.y,
+  });
+  surveyTarget.statuses.armorBreach = 0;
+  surveyState.player.aim = { x: 1, y: 0 };
+  surveyState.player.weaponHeat.rail = 0.22;
+  surveyState.player.abilityCooldowns[2] = 5;
+  assert.equal(triggerAbility(surveyState, 1), true);
+  assert.ok(surveyTarget.statuses.armorBreach >= 4.4, 'Reference Solution should deepen the Triangulation armor-breach window.');
+  assert.ok(surveyState.classState.vectorWindow >= 3.15, 'Reference Solution should hold a longer surveyed Slipstream firing solution.');
+  assert.ok(surveyState.player.abilityCooldowns[2] <= 3.2, 'Reference Solution should recycle Splitshot more aggressively than base Triangulation Lock.');
+  assert.match(surveyState.eventText, /REFERENCE SOLUTION/, 'Survey Deadeye + Triangulation Lock needs its own capstone feedback.');
+  surveyState.player.currentWeapon = 'rail';
+  surveyState.player.capacitor = surveyState.player.maxCapacitor;
+  surveyState.player.abilityCooldowns[2] = 4;
+  assert.equal(triggerFire(surveyState), true);
+  const referenceShot = surveyState.projectiles.find(projectile => projectile.active && projectile.owner === 'player' && projectile.weapon === 'rail')!;
+  assert.ok(referenceShot.penetration >= 165, 'Reference Solution should add meaningful precision penetration to the marked Slipstream shot.');
+  assert.ok(surveyState.player.abilityCooldowns[2] < 4, 'Reference Solution should recycle Splitshot when the marked firing solution is committed.');
+  assert.match(surveyState.eventText, /REFERENCE SOLUTION/, 'Reference Solution should remain readable when the precision shot is spent.');
+
+  const redlineState = createSimulation(deriveCombatBuild(redlineProfile));
+  for (const enemy of redlineState.enemies) enemy.active = false;
+  redlineState.player.aim = { x: 1, y: 0 };
+  redlineState.player.currentWeapon = 'carbine';
+  redlineState.player.weaponHeat.carbine = 0.82;
+  redlineState.player.dodgeCooldown = 1;
+  assert.equal(triggerAbility(redlineState, 2), true);
+  const redlineFan = redlineState.projectiles.filter(projectile => projectile.active && projectile.owner === 'player' && projectile.weapon === 'rail');
+  assert.equal(redlineFan.length, 3, 'Redline Needle should retain the authored three-lane Vector fan.');
+  assert.ok(redlineFan.every(projectile => Math.hypot(projectile.vx, projectile.vy) >= 1849), 'Redline Needle should push all three lanes beyond standard Needle Fan velocity.');
+  assert.ok(redlineFan.every(projectile => projectile.penetration >= 102), 'Redline Needle should add the hot-bus penetration premium.');
+  assert.ok(redlineState.player.weaponHeat.carbine <= 0.66, 'Redline Needle overclock should vent the active hot weapon bus.');
+  assert.ok(redlineState.player.dodgeCooldown <= 0.62, 'Redline Needle overclock should pull dodge recovery forward.');
+  assert.match(redlineState.eventText, /REDLINE NEEDLE/, 'Redline Pilot + Needle Fan needs its own capstone feedback.');
+}
+sameClassBuildDiversitySmoke();
 
 function systemsSkillEvolutionSmoke() {
   const level15 = {
