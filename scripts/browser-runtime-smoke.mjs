@@ -647,7 +647,13 @@ try {
         && canvas?.dataset.environmentLandmark === 'five-skimmer-tower-spine'
         && canvas?.dataset.environmentComposition === 'elevated-skimmer-decks+five-tower-spine+transfer-bridges+ballast-pods'
         && canvas?.dataset.environmentZoneIdentity === 'deck:weathered-plate|tower:vertical-skimmer-spine|bridge:dark-transfer-truss|ballast:light-suspended-pod'
-        && canvas?.dataset.readabilityLanguage === 'tower-height+bridge-lines+amber-wayfinding'
+        && canvas?.dataset.readabilityLanguage === 'tower-height+bridge-lines+amber-wayfinding+pressure-shear+storm-charge'
+        && canvas?.dataset.environmentStormLanguage === 'storm-charge-sweeps+pressure-shear-bands+relief-pulse'
+        && canvas?.dataset.environmentStormSource === 'live-sector-pressure+service-breach+contract-conditions'
+        && canvas?.dataset.environmentVfx === 'storm-charge-sweeps+pressure-shear-bands+relief-pulse'
+        && Number.isFinite(Number(canvas?.dataset.environmentStormIntensity))
+        && Number.isFinite(Number(canvas?.dataset.environmentPressureShear))
+        && ['2-sweeps+2-bands+relief-pulse', '4-sweeps+3-bands+relief-pulse'].includes(canvas?.dataset.environmentStormDetail ?? '')
         && canvas?.dataset.interactableBiome === 'jovian-harvester'
         && canvas?.dataset.interactableMode === 'jovian-gas-machinery+mission-controls'
         && canvas?.dataset.interactableKit === 'storm-bus-isolator+deck-mass-trim+skimmer-compressor+separator-package'
@@ -665,9 +671,20 @@ try {
         kit: canvas?.dataset.environmentKit ?? '',
         composition: canvas?.dataset.environmentComposition ?? '',
         machinery: canvas?.dataset.interactableAssets ?? '',
+        stormMode: canvas?.dataset.environmentStormMode ?? '',
+        stormIntensity: Number(canvas?.dataset.environmentStormIntensity),
+        pressureShear: Number(canvas?.dataset.environmentPressureShear),
+        pressureRange: canvas?.dataset.environmentPressureRange ?? '',
+        stormDetail: canvas?.dataset.environmentStormDetail ?? '',
       };
     })()`);
-    console.log(`BROWSER_JOVIAN_HARVESTER_PASS viewport=${viewportMode} lod=${jovianEnvironment?.lod} instances=${jovianEnvironment?.instances} kit=${jovianEnvironment?.kit} composition=${jovianEnvironment?.composition} machinery=${jovianEnvironment?.machinery}`);
+    if (!Number.isFinite(jovianEnvironment?.stormIntensity) || !Number.isFinite(jovianEnvironment?.pressureShear)) {
+      throw new Error(`Jovian Harvester storm/pressure state was not observable: ${JSON.stringify(jovianEnvironment)}`);
+    }
+    if (viewportMode === 'mobile-landscape' && jovianEnvironment?.stormDetail !== '2-sweeps+2-bands+relief-pulse') {
+      throw new Error(`Jovian Harvester mobile storm/pressure detail did not reduce: ${JSON.stringify(jovianEnvironment)}`);
+    }
+    console.log(`BROWSER_JOVIAN_HARVESTER_PASS viewport=${viewportMode} lod=${jovianEnvironment?.lod} instances=${jovianEnvironment?.instances} kit=${jovianEnvironment?.kit} composition=${jovianEnvironment?.composition} machinery=${jovianEnvironment?.machinery} storm=${jovianEnvironment?.stormMode}:${jovianEnvironment?.stormIntensity.toFixed(2)} shear=${jovianEnvironment?.pressureShear.toFixed(2)} range=${jovianEnvironment?.pressureRange} detail=${jovianEnvironment?.stormDetail}`);
   }
 
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);

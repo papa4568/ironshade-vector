@@ -10,6 +10,7 @@ import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality
 import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, SPIN_HABITAT_BOSS_ASSET_FAMILY, SPIN_HABITAT_ENEMY_ASSET_FAMILIES, SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES, OPERATOR_CLASS_ASSET_FAMILIES, JOVIAN_HARVESTER_ASSET_FAMILIES, JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, SPIN_HABITAT_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
 import { configureGraphicsAssetRenderer, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
 import { spinHabitatArchitectureState, spinHabitatRenderProfile, spinHabitatSpindownState } from './spinHabitatArchitecture';
+import { jovianHarvesterStormState } from './jovianHarvesterVisualLanguage';
 
 const WORLD_SCALE = 0.02;
 const FLOOR_Y = 0;
@@ -290,6 +291,10 @@ export class ThreeCombatRenderer {
   private parallaxLoadGeneration = 0;
   private spinHabitatLoadGeneration = 0;
   private jovianHarvesterLoadGeneration = 0;
+  private jovianStormVisualRoot: THREE.Group | null = null;
+  private readonly jovianStormChargeSweeps: Array<THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>> = [];
+  private readonly jovianPressureShearBands: Array<THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>> = [];
+  private jovianPressureReliefPulse: THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial> | null = null;
   private spinHabitatAuthoredRotor: THREE.Group | null = null;
   private spinHabitatProceduralRotor: THREE.Group | null = null;
   private spinHabitatSpindownVfx: THREE.Group | null = null;
@@ -445,6 +450,7 @@ export class ThreeCombatRenderer {
     this.resize(width, height, quality, budget);
     this.ensureEnvironment(state, mission, budget);
     this.syncSpinHabitatArchitecture(state, mission, budget);
+    this.syncJovianHarvesterVisualLanguage(state, mission, budget);
     syncHardSciFiEnvironment(this.environmentRoot, state, mission, budget.detailScale, budget.transparencyScale);
     this.syncSectors(state);
     this.syncObjects(state, mission);
@@ -530,6 +536,10 @@ export class ThreeCombatRenderer {
     this.parallaxLoadGeneration += 1;
     this.spinHabitatLoadGeneration += 1;
     this.jovianHarvesterLoadGeneration += 1;
+    this.jovianStormVisualRoot = null;
+    this.jovianStormChargeSweeps.length = 0;
+    this.jovianPressureShearBands.length = 0;
+    this.jovianPressureReliefPulse = null;
     this.spinHabitatAuthoredRotor = null;
     this.spinHabitatProceduralRotor = null;
     this.spinHabitatSpindownVfx = null;
@@ -617,6 +627,13 @@ export class ThreeCombatRenderer {
     delete this.renderer.domElement.dataset.environmentMaterials;
     delete this.renderer.domElement.dataset.environmentVfx;
     delete this.renderer.domElement.dataset.environmentTone;
+    delete this.renderer.domElement.dataset.environmentStormLanguage;
+    delete this.renderer.domElement.dataset.environmentStormMode;
+    delete this.renderer.domElement.dataset.environmentStormIntensity;
+    delete this.renderer.domElement.dataset.environmentPressureShear;
+    delete this.renderer.domElement.dataset.environmentPressureRange;
+    delete this.renderer.domElement.dataset.environmentStormSource;
+    delete this.renderer.domElement.dataset.environmentStormDetail;
     delete this.renderer.domElement.dataset.readabilityLanguage;
   }
 
@@ -993,7 +1010,7 @@ export class ThreeCombatRenderer {
       this.renderer.domElement.dataset.environmentComposition = 'elevated-skimmer-decks+five-tower-spine+transfer-bridges+ballast-pods';
       this.renderer.domElement.dataset.environmentMaterials = 'weathered-shell+dark-truss+amber-wayfinding+bright-ballast-shell';
       this.renderer.domElement.dataset.environmentZoneIdentity = 'deck:weathered-plate|tower:vertical-skimmer-spine|bridge:dark-transfer-truss|ballast:light-suspended-pod';
-      this.renderer.domElement.dataset.readabilityLanguage = 'tower-height+bridge-lines+amber-wayfinding';
+      this.renderer.domElement.dataset.readabilityLanguage = 'tower-height+bridge-lines+amber-wayfinding+pressure-shear+storm-charge';
     } catch (error) {
       loaded.forEach(item => item.instance.release());
       if (this.disposed || generation !== this.jovianHarvesterLoadGeneration) return;
@@ -2163,6 +2180,75 @@ export class ThreeCombatRenderer {
       for (let i = -2; i <= 2; i += 1) jovianVisuals.push(addBox(cx + i * 7, cz + i * 1.5, 1.1, 1.1, 6 + Math.abs(i), structural));
       jovianVisuals.push(addBox(cx, cz - 7, 34, 0.35, 0.35, emissive));
       this.proceduralRefineryVisuals.push(...jovianVisuals);
+
+      const width = scaled(worldW);
+      const height = scaled(worldH);
+      const stormRoot = new THREE.Group();
+      stormRoot.name = 'jovian-harvester-storm-pressure-language';
+
+      const chargeSweepGeometry = new THREE.BoxGeometry(width * 0.58, 0.018, 0.07);
+      for (let index = 0; index < 4; index += 1) {
+        const sweep = new THREE.Mesh(
+          chargeSweepGeometry,
+          new THREE.MeshBasicMaterial({
+            color: index % 2 === 0 ? 0xf0aa55 : 0xffd083,
+            transparent: true,
+            opacity: 0.08,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+            toneMapped: false,
+          }),
+        );
+        sweep.name = `jovian-harvester-storm-charge-sweep-${index}`;
+        sweep.position.set(width * 0.50, 0.048 + index * 0.004, height * (0.22 + index * 0.18));
+        sweep.rotation.y = index % 2 === 0 ? 0.06 : -0.06;
+        sweep.userData.baseZ = sweep.position.z;
+        sweep.renderOrder = 5;
+        stormRoot.add(sweep);
+        this.jovianStormChargeSweeps.push(sweep);
+      }
+
+      const pressureBandGeometry = new THREE.BoxGeometry(0.10, 0.02, height * 0.66);
+      for (let index = 0; index < 3; index += 1) {
+        const band = new THREE.Mesh(
+          pressureBandGeometry,
+          new THREE.MeshBasicMaterial({
+            color: 0x78c9d6,
+            transparent: true,
+            opacity: 0.07,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+            toneMapped: false,
+          }),
+        );
+        band.name = `jovian-harvester-pressure-shear-band-${index}`;
+        band.position.set(width * [0.33, 0.50, 0.67][index], 0.056 + index * 0.004, height * 0.50);
+        band.userData.baseX = band.position.x;
+        band.renderOrder = 6;
+        stormRoot.add(band);
+        this.jovianPressureShearBands.push(band);
+      }
+
+      const reliefPulse = new THREE.Mesh(
+        new THREE.TorusGeometry(1.42, 0.07, 6, 40),
+        new THREE.MeshBasicMaterial({
+          color: 0xff8a50,
+          transparent: true,
+          opacity: 0.08,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+          toneMapped: false,
+        }),
+      );
+      reliefPulse.name = 'jovian-harvester-relief-manifold-pulse';
+      reliefPulse.rotation.x = Math.PI / 2;
+      reliefPulse.position.set(scaled(1450), 0.07, scaled(220));
+      reliefPulse.renderOrder = 7;
+      stormRoot.add(reliefPulse);
+
+      this.environmentRoot.add(stormRoot);
+      this.jovianStormVisualRoot = stormRoot;
+      this.jovianPressureReliefPulse = reliefPulse;
     } else if (location === 'ice-mine') {
       for (let i = 0; i < 9; i += 1) {
         const crystal = new THREE.Mesh(new THREE.ConeGeometry(0.7 + (i % 3) * 0.3, 2.4 + (i % 4) * 0.8, 6), emissive);
@@ -2284,6 +2370,78 @@ export class ThreeCombatRenderer {
     this.renderer.domElement.dataset.environmentSpindownSource = 'sector-B-transfer-gravity';
     this.renderer.domElement.dataset.environmentSpindownDetail = reducedSpindownDetail ? '3-arcs+axis-pulse' : '6-arcs+axis-pulse';
     this.renderer.domElement.dataset.environmentVfx = 'spindown-brake-arcs+axis-warning-pulse';
+  }
+
+  private syncJovianHarvesterVisualLanguage(state: SimState, mission: Contract, budget: RenderBudgetSnapshot) {
+    if (mission.location !== 'jovian-harvester') return;
+
+    const serviceBreach = state.breaches.find(breach => breach.id === 'service-breach');
+    const storm = jovianHarvesterStormState(
+      state.sectors.map(sector => sector.pressure),
+      state.sectors.map(sector => sector.pressureState),
+      Boolean(serviceBreach?.active && !serviceBreach.sealed),
+      mission.conditions.includes('unstable-pressure'),
+      mission.conditions.includes('damaged-grid'),
+    );
+    const reducedStormDetail = this.coarse || budget.vfxDensity < 0.55;
+    const pulse = 0.5 + Math.sin(state.time * (2.6 + storm.intensity * 2.8)) * 0.5;
+
+    if (this.jovianStormVisualRoot) {
+      const sweepCount = reducedStormDetail ? 2 : 4;
+      const bandCount = reducedStormDetail ? 2 : 3;
+      for (let index = 0; index < this.jovianStormChargeSweeps.length; index += 1) {
+        const sweep = this.jovianStormChargeSweeps[index];
+        const visible = index < sweepCount;
+        const baseZ = Number(sweep.userData.baseZ ?? sweep.position.z);
+        sweep.visible = visible;
+        sweep.position.z = baseZ + Math.sin(state.time * (0.52 + storm.stormCharge * 0.72) + index * 1.61) * (0.16 + storm.intensity * 0.44);
+        sweep.material.opacity = visible
+          ? (0.035 + storm.stormCharge * 0.12 + pulse * 0.035) * budget.transparencyScale
+          : 0;
+        sweep.scale.x = 0.92 + storm.stormCharge * 0.16 + pulse * 0.025;
+      }
+
+      const bandColor = storm.venting ? 0xff7e52 : storm.pressureShear > 0.42 ? 0xe4aa62 : 0x78c9d6;
+      for (let index = 0; index < this.jovianPressureShearBands.length; index += 1) {
+        const band = this.jovianPressureShearBands[index];
+        const visible = index < bandCount;
+        const baseX = Number(band.userData.baseX ?? band.position.x);
+        band.visible = visible;
+        band.position.x = baseX + Math.sin(state.time * 1.1 + index * 2.2) * storm.pressureShear * 0.11;
+        band.material.color.setHex(bandColor);
+        band.material.opacity = visible
+          ? (0.025 + storm.pressureShear * 0.22 + (storm.venting ? 0.08 : 0)) * budget.transparencyScale
+          : 0;
+        band.scale.z = 0.94 + storm.pressureShear * 0.16 + pulse * storm.pressureShear * 0.04;
+      }
+
+      if (this.jovianPressureReliefPulse) {
+        this.jovianPressureReliefPulse.visible = true;
+        this.jovianPressureReliefPulse.material.color.setHex(storm.venting ? 0xff6f45 : 0xffa75f);
+        this.jovianPressureReliefPulse.material.opacity = (
+          storm.activeBreach
+            ? 0.18 + pulse * 0.40
+            : 0.035 + storm.intensity * 0.08 + pulse * 0.025
+        ) * budget.transparencyScale;
+        this.jovianPressureReliefPulse.scale.setScalar(
+          storm.activeBreach
+            ? 0.90 + storm.intensity * 0.18 + pulse * 0.14
+            : 0.92 + pulse * 0.05,
+        );
+        this.jovianPressureReliefPulse.rotation.z = state.time * (0.18 + storm.intensity * 0.44);
+      }
+    }
+
+    this.renderer.domElement.dataset.environmentStormLanguage = 'storm-charge-sweeps+pressure-shear-bands+relief-pulse';
+    this.renderer.domElement.dataset.environmentStormMode = storm.mode;
+    this.renderer.domElement.dataset.environmentStormIntensity = storm.intensity.toFixed(2);
+    this.renderer.domElement.dataset.environmentPressureShear = storm.pressureShear.toFixed(2);
+    this.renderer.domElement.dataset.environmentPressureRange = `${storm.minPressure.toFixed(2)}-${storm.maxPressure.toFixed(2)}`;
+    this.renderer.domElement.dataset.environmentStormSource = 'live-sector-pressure+service-breach+contract-conditions';
+    this.renderer.domElement.dataset.environmentStormDetail = reducedStormDetail ? '2-sweeps+2-bands+relief-pulse' : '4-sweeps+3-bands+relief-pulse';
+    this.renderer.domElement.dataset.environmentVfx = 'storm-charge-sweeps+pressure-shear-bands+relief-pulse';
+    this.renderer.domElement.dataset.environmentTone = storm.venting ? 'storm-orange+pressure-cyan+vent-red' : 'storm-orange+pressure-cyan';
+    this.renderer.domElement.dataset.readabilityLanguage = 'tower-height+bridge-lines+amber-wayfinding+pressure-shear+storm-charge';
   }
 
   private syncSectors(state: SimState) {

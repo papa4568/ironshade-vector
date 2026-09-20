@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { AdaptiveRenderBudget } from '../src/game/renderQuality';
 import { spinHabitatArchitectureState, spinHabitatRenderProfile, spinHabitatSpindownState } from '../src/game/spinHabitatArchitecture';
+import { jovianHarvesterStormState } from '../src/game/jovianHarvesterVisualLanguage';
 
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
@@ -109,6 +110,27 @@ assert(rendererSource.includes("dataset.environmentSpindownSource = 'sector-B-tr
 assert(rendererSource.includes("dataset.environmentVfx = 'spindown-brake-arcs+axis-warning-pulse'"), 'Spin Habitat must expose its authored spindown VFX language for runtime QA');
 assert(rendererSource.includes('const reducedSpindownDetail = this.coarse || budget.vfxDensity < 0.55'), 'Spin Habitat spindown VFX must reduce secondary arcs on mobile and under the performance VFX budget');
 
+const nominalJovianStorm = jovianHarvesterStormState(
+  [1, 0.88, 1],
+  ['normal', 'normal', 'normal'],
+  false,
+  false,
+  false,
+);
+const ventingJovianStorm = jovianHarvesterStormState(
+  [1, 0.42, 0.91],
+  ['normal', 'decompressing', 'leaking'],
+  true,
+  true,
+  true,
+);
+assert(nominalJovianStorm.mode === 'charged', 'Jovian unequal-pressure decks must expose a visible charged baseline storm state');
+assert(nominalJovianStorm.pressureSpread > 0.1 && nominalJovianStorm.pressureShear > 0, 'Jovian baseline pressure inequality must drive pressure-shear readability');
+assert(ventingJovianStorm.mode === 'venting' && ventingJovianStorm.activeBreach, 'Jovian service-breach activation must switch the storm language into venting mode');
+assert(ventingJovianStorm.intensity > nominalJovianStorm.intensity && ventingJovianStorm.pressureShear > nominalJovianStorm.pressureShear, 'Jovian venting must intensify both storm charge and pressure shear');
+assert(rendererSource.includes('private syncJovianHarvesterVisualLanguage(state: SimState, mission: Contract, budget: RenderBudgetSnapshot)'), 'Jovian P2.12 must have a per-frame gameplay-driven storm/pressure visual sync');
+assert(rendererSource.includes("dataset.environmentStormSource = 'live-sector-pressure+service-breach+contract-conditions'"), 'Jovian P2.12 runtime visual language must derive from live gameplay pressure and breach state');
+assert(rendererSource.includes("dataset.environmentStormDetail = reducedStormDetail ? '2-sweeps+2-bands+relief-pulse' : '4-sweeps+3-bands+relief-pulse'"), 'Jovian P2.12 must reduce secondary storm/pressure geometry for coarse pointers and the performance VFX budget');
 const sustainedMobile = new AdaptiveRenderBudget(true);
 let sustainedSnapshot = sustainedMobile.sample(16.7, 1);
 for (let index = 0; index < 60 * 10; index += 1) sustainedSnapshot = sustainedMobile.sample(18.2, 1);

@@ -183,6 +183,16 @@ for (const marker of ['jovian-harvester-storm-bus-isolator-knife', 'jovian-harve
   assert(jovianAssetGeneratorSource.includes(`name: '${marker}'`), `Jovian Harvester P2.11 machinery silhouette marker ${marker} must remain authored`);
 }
 
+assert(rendererSource.includes("from './jovianHarvesterVisualLanguage'"), 'Jovian P2.12 must derive its storm/pressure state through the dedicated gameplay visual helper');
+assert(rendererSource.includes("stormRoot.name = 'jovian-harvester-storm-pressure-language'"), 'Jovian P2.12 must keep storm/pressure geometry as an explicit biome visual layer');
+assert(rendererSource.includes('sweep.name = `jovian-harvester-storm-charge-sweep-${index}`'), 'Jovian P2.12 must preserve electrostatic storm-charge sweep markers');
+assert(rendererSource.includes('band.name = `jovian-harvester-pressure-shear-band-${index}`'), 'Jovian P2.12 must preserve unequal-pressure shear band markers');
+assert(rendererSource.includes("reliefPulse.name = 'jovian-harvester-relief-manifold-pulse'"), 'Jovian P2.12 must preserve a dedicated relief-manifold pulse marker');
+assert(rendererSource.includes("dataset.environmentStormLanguage = 'storm-charge-sweeps+pressure-shear-bands+relief-pulse'"), 'Jovian P2.12 storm/pressure language must remain explicit for runtime QA');
+assert(rendererSource.includes("dataset.environmentStormSource = 'live-sector-pressure+service-breach+contract-conditions'"), 'Jovian P2.12 must bind visual intensity to live mission state rather than decorative randomness');
+assert(rendererSource.includes("dataset.environmentVfx = 'storm-charge-sweeps+pressure-shear-bands+relief-pulse'"), 'Jovian P2.12 must expose its visual-language VFX identity');
+assert(rendererSource.includes("dataset.readabilityLanguage = 'tower-height+bridge-lines+amber-wayfinding+pressure-shear+storm-charge'"), 'Jovian P2.12 screenshot readability must include storm charge and pressure shear');
+
 assert(rendererSource.includes('SPIN_HABITAT_ASSET_FAMILIES'), 'Spin Habitat must load through authored environment asset families');
 for (const asset of ['spin-habitat-ring-segment', 'spin-habitat-spoke-truss', 'spin-habitat-axis-hub', 'spin-habitat-service-bay']) {
   assert(manifestSource.includes(`${asset}-lod1.glb`) && manifestSource.includes(`${asset}-lod2.glb`), `Spin Habitat asset ${asset} must preserve adaptive LOD1/LOD2 coverage`);
