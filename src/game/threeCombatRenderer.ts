@@ -300,6 +300,10 @@ export class ThreeCombatRenderer {
   private readonly jovianStormChargeSweeps: Array<THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>> = [];
   private readonly jovianPressureShearBands: Array<THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>> = [];
   private jovianPressureReliefPulse: THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial> | null = null;
+  private jovianAtmosphereRoot: THREE.Group | null = null;
+  private readonly jovianAtmosphereClouds: Array<THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>> = [];
+  private jovianAtmosphereParticulate: THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial> | null = null;
+  private jovianAtmosphereSpineHaze: THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial> | null = null;
   private spinHabitatAuthoredRotor: THREE.Group | null = null;
   private spinHabitatProceduralRotor: THREE.Group | null = null;
   private spinHabitatSpindownVfx: THREE.Group | null = null;
@@ -545,6 +549,10 @@ export class ThreeCombatRenderer {
     this.jovianStormChargeSweeps.length = 0;
     this.jovianPressureShearBands.length = 0;
     this.jovianPressureReliefPulse = null;
+    this.jovianAtmosphereRoot = null;
+    this.jovianAtmosphereClouds.length = 0;
+    this.jovianAtmosphereParticulate = null;
+    this.jovianAtmosphereSpineHaze = null;
     this.spinHabitatAuthoredRotor = null;
     this.spinHabitatProceduralRotor = null;
     this.spinHabitatSpindownVfx = null;
@@ -2251,9 +2259,84 @@ export class ThreeCombatRenderer {
       reliefPulse.renderOrder = 7;
       stormRoot.add(reliefPulse);
 
-      this.environmentRoot.add(stormRoot);
+      const atmosphereRoot = new THREE.Group();
+      atmosphereRoot.name = 'jovian-harvester-atmospheric-effects';
+
+      const cloudGeometry = new THREE.BoxGeometry(width * 0.50, 0.012, 0.42);
+      const cloudRows = [0.14, 0.31, 0.48, 0.66, 0.82];
+      for (let index = 0; index < cloudRows.length; index += 1) {
+        const cloud = new THREE.Mesh(
+          cloudGeometry,
+          new THREE.MeshBasicMaterial({
+            color: index % 2 === 0 ? 0xd7bd7d : 0x8fb8bd,
+            transparent: true,
+            opacity: 0.05,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+            toneMapped: false,
+          }),
+        );
+        cloud.name = `jovian-harvester-pressure-cloud-${index}`;
+        cloud.position.set(width * 0.50, 0.032 + index * 0.003, height * cloudRows[index]);
+        cloud.rotation.y = index % 2 === 0 ? 0.025 : -0.025;
+        cloud.userData.baseX = cloud.position.x;
+        cloud.userData.baseZ = cloud.position.z;
+        cloud.renderOrder = 4;
+        atmosphereRoot.add(cloud);
+        this.jovianAtmosphereClouds.push(cloud);
+      }
+
+      const particulateCount = 56;
+      const particulatePositions = new Float32Array(particulateCount * 3);
+      for (let index = 0; index < particulateCount; index += 1) {
+        const xPhase = ((index * 17) % 53) / 52;
+        const zPhase = ((index * 29) % 55) / 54;
+        particulatePositions[index * 3] = width * (0.16 + xPhase * 0.68);
+        particulatePositions[index * 3 + 1] = 0.10 + (((index * 11) % 9) / 8) * 0.22;
+        particulatePositions[index * 3 + 2] = height * (0.10 + zPhase * 0.80);
+      }
+      const particulateGeometry = new THREE.BufferGeometry();
+      particulateGeometry.setAttribute('position', new THREE.BufferAttribute(particulatePositions, 3));
+      const particulate = new THREE.Points(
+        particulateGeometry,
+        new THREE.PointsMaterial({
+          color: 0xe4c77f,
+          size: 0.075,
+          sizeAttenuation: true,
+          transparent: true,
+          opacity: 0.18,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+          toneMapped: false,
+        }),
+      );
+      particulate.name = 'jovian-harvester-charged-particulate';
+      particulate.renderOrder = 4;
+      atmosphereRoot.add(particulate);
+
+      const spineHaze = new THREE.Mesh(
+        new THREE.TorusGeometry(2.2, 0.10, 6, 48),
+        new THREE.MeshBasicMaterial({
+          color: 0xc8d8c2,
+          transparent: true,
+          opacity: 0.08,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+          toneMapped: false,
+        }),
+      );
+      spineHaze.name = 'jovian-harvester-skimmer-spine-haze';
+      spineHaze.rotation.x = Math.PI / 2;
+      spineHaze.position.set(width * 0.50, 0.055, height * 0.48);
+      spineHaze.renderOrder = 4;
+      atmosphereRoot.add(spineHaze);
+
+      this.environmentRoot.add(stormRoot, atmosphereRoot);
       this.jovianStormVisualRoot = stormRoot;
       this.jovianPressureReliefPulse = reliefPulse;
+      this.jovianAtmosphereRoot = atmosphereRoot;
+      this.jovianAtmosphereParticulate = particulate;
+      this.jovianAtmosphereSpineHaze = spineHaze;
     } else if (location === 'ice-mine') {
       for (let i = 0; i < 9; i += 1) {
         const crystal = new THREE.Mesh(new THREE.ConeGeometry(0.7 + (i % 3) * 0.3, 2.4 + (i % 4) * 0.8, 6), emissive);
@@ -2437,6 +2520,59 @@ export class ThreeCombatRenderer {
       }
     }
 
+    const atmosphereDensity = this.coarse || budget.vfxDensity < 0.55
+      ? 'reduced'
+      : budget.vfxDensity < 0.85
+        ? 'balanced'
+        : 'full';
+    const visibleClouds = atmosphereDensity === 'reduced' ? 2 : atmosphereDensity === 'balanced' ? 3 : 5;
+    const visibleMotes = atmosphereDensity === 'reduced' ? 20 : atmosphereDensity === 'balanced' ? 36 : 56;
+    const atmospherePulse = 0.5 + Math.sin(state.time * 0.42) * 0.5;
+    const atmosphereIntensity = (
+      0.38
+      + atmospherePulse * 0.12
+      + storm.stormCharge * 0.22
+      + storm.pressureShear * 0.12
+    ) * budget.transparencyScale;
+
+    if (this.jovianAtmosphereRoot) {
+      for (let index = 0; index < this.jovianAtmosphereClouds.length; index += 1) {
+        const cloud = this.jovianAtmosphereClouds[index];
+        const visible = index < visibleClouds;
+        const baseX = Number(cloud.userData.baseX ?? cloud.position.x);
+        const baseZ = Number(cloud.userData.baseZ ?? cloud.position.z);
+        cloud.visible = visible;
+        cloud.position.x = baseX + Math.sin(state.time * 0.09 + index * 1.4) * (0.14 + storm.pressureShear * 0.24);
+        cloud.position.z = baseZ + Math.cos(state.time * 0.07 + index * 1.8) * (0.08 + storm.pressureShear * 0.08);
+        cloud.material.opacity = visible
+          ? (0.024 + atmospherePulse * 0.020 + storm.stormCharge * 0.026) * budget.transparencyScale
+          : 0;
+        cloud.scale.x = 0.96 + atmospherePulse * 0.05 + storm.pressureShear * 0.04;
+      }
+      if (this.jovianAtmosphereParticulate) {
+        this.jovianAtmosphereParticulate.geometry.setDrawRange(0, visibleMotes);
+        this.jovianAtmosphereParticulate.rotation.y = state.time * (0.004 + storm.stormCharge * 0.006);
+        this.jovianAtmosphereParticulate.material.opacity = (
+          0.08
+          + atmospherePulse * 0.05
+          + storm.stormCharge * 0.08
+        ) * budget.transparencyScale;
+      }
+      if (this.jovianAtmosphereSpineHaze) {
+        this.jovianAtmosphereSpineHaze.material.opacity = (
+          0.035
+          + atmospherePulse * 0.040
+          + storm.pressureShear * 0.030
+        ) * budget.transparencyScale;
+        this.jovianAtmosphereSpineHaze.scale.setScalar(0.95 + atmospherePulse * 0.08 + storm.pressureShear * 0.04);
+        this.jovianAtmosphereSpineHaze.rotation.z = state.time * 0.018;
+      }
+    }
+
+    this.renderer.domElement.dataset.environmentAmbient = 'upper-haze+pressure-clouds+charged-particulate';
+    this.renderer.domElement.dataset.environmentAmbientMotion = 'crosswind-drift+pressure-breath+charged-drift';
+    this.renderer.domElement.dataset.environmentAmbientDetail = `${visibleClouds}-clouds+${visibleMotes}-motes+spine-haze`;
+    this.renderer.domElement.dataset.environmentAmbientIntensity = atmosphereIntensity.toFixed(2);
     this.renderer.domElement.dataset.environmentStormLanguage = 'storm-charge-sweeps+pressure-shear-bands+relief-pulse';
     this.renderer.domElement.dataset.environmentStormMode = storm.mode;
     this.renderer.domElement.dataset.environmentStormIntensity = storm.intensity.toFixed(2);
