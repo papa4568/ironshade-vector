@@ -1133,8 +1133,7 @@ export class ThreeCombatRenderer {
   private async loadAuthoredIceMineEnvironment(state: SimState, worldW: number, worldH: number, detailScale: number) {
     const generation = ++this.iceMineLoadGeneration;
     this.renderer.domElement.dataset.environmentVisual = 'authored-loading';
-    const profile = solarYardRenderProfile(detailScale, this.coarse);
-    const assetDetailScale = profile.assetDetailScale;
+    const assetDetailScale = this.coarse ? Math.min(detailScale, 0.55) : detailScale;
     const loaded: Array<{ key: keyof typeof ICE_MINE_ASSET_FAMILIES; instance: GraphicsAssetInstance; lod: number }> = [];
 
     try {
@@ -1345,7 +1344,8 @@ export class ThreeCombatRenderer {
   private async loadAuthoredSolarYardEnvironment(state: SimState, worldW: number, worldH: number, detailScale: number) {
     const generation = ++this.solarYardLoadGeneration;
     this.renderer.domElement.dataset.environmentVisual = 'authored-loading';
-    const assetDetailScale = this.coarse ? Math.min(detailScale, 0.55) : detailScale;
+    const profile = solarYardRenderProfile(detailScale, this.coarse);
+    const assetDetailScale = profile.assetDetailScale;
     const loaded: Array<{ key: keyof typeof SOLAR_YARD_ASSET_FAMILIES; instance: GraphicsAssetInstance; lod: number }> = [];
 
     try {
