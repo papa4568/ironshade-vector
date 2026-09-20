@@ -241,7 +241,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] P4.6 K-91 stage-specific encounter/event identity
 - [x] P4.7 K-91 bossless Ballast Vault traverse finale
 - [x] P4.8 K-91 adaptive render/regression coverage
-- [ ] P4.9–P4.11 Orpheline
+- [x] P4.9 Orpheline hidden-habitat continuity layer
+- [x] P4.10 Orpheline stage-specific encounter/event identity
+- [x] P4.11 Orpheline Habitat Warden finale + adaptive render/regression coverage
 - [ ] P4.12–P4.14 Hecate
 - [ ] P4.15 Stage transitions
 - [ ] P4.16 Environmental continuity
@@ -313,7 +315,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1, P2, and P3 are complete, and **P4.1–P4.8 — Perseid + K-91** is delivered. Continue in roadmap order with **P4.9–P4.11 — Orpheline**.
+P1, P2, and P3 are complete, and **P4.1–P4.11 — Perseid + K-91 + Orpheline** is delivered. Continue in roadmap order with **P4.12–P4.14 — Hecate**.
+
+**P4.9–P4.11 delivered:** Unregistered Asteroid Habitat Orpheline now reads as one buried settlement instead of four unrelated reused biomes. A dedicated hidden-habitat capstone profile carries a rock-cut spine, violet utility trunk, and white occupancy marks through Ice Access Bore, Industrial Commons, Residential Spin Ring, and Buried Control Vault while layering concealment shutters, improvised fabrication stalls, hab-pod stacks, and founding-archive walls. Each space overrides generic sector naming and carries Orpheline-specific habitat event language with physical venting, grid, and gravity hazards; stage two fields the Orpheline Commons Custodian. The Buried Control Vault culminates in a dedicated Orpheline Habitat Warden whose shelter-purge, spin-authority, and partition-fire patterns turn the founding archive into a distinct finale. Full/Balanced/mobile/Performance profiles trim repeated rock ribs, utility markers, stage props, and structural shadows without losing the habitat silhouette. Gameplay and render regressions cover all four spaces, the Warden identity, stage events, continuity telemetry, and mobile performance profile. The next capstone slice is P4.12–P4.14 Hecate.
 
 **P4.5–P4.8 delivered:** Orbital Elevator Counterweight K-91 now reads as one continuous tumbling mass instead of four unrelated reused biomes. A dedicated counterweight capstone profile carries the same load spine, paired countermass rails, and amber inertial datum through Capture Collar, Mass Transit Spine, Power Transfer Gallery, and Ballast Vault while layering stage-specific capture jaws, mass carriages, lift-bus hardware, and ballast restraints. Each space now overrides generic sector naming and carries K-91 inertial event language with physical vector/gravity/grid hazards; stage two fields the K-91 Mass-Transit Warden. The finale deliberately remains bossless: the Ballast Vault ends on a high-pressure ballast-shift survival/recovery beat, matching the site premise that the value is surviving the full traverse rather than hunting a command target. Full/Balanced/mobile/Performance profiles trim repeated rails, datum lights, props, and structural shadows without losing the counterweight silhouette. Gameplay and render regressions cover all four spaces, the bossless final contract, inertial events, runtime continuity telemetry, and mobile performance profile. The next capstone slice is P4.9–P4.11 Orpheline.
 

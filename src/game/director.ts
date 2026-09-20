@@ -4,6 +4,7 @@ import { createEnvironmentalEventRuntime, stepEnvironmentalEvents, type Environm
 import { applyThreatBudget } from './scaling';
 import { perseidStageIdentity } from './perseidCapstone';
 import { k91StageIdentity } from './k91Capstone';
+import { orphelineStageIdentity } from './orphelineCapstone';
 import { getClassMechanicStatus, releaseBossGate, type EnemyRole, type EnemyVariant, type SimState } from './sim';
 
 export type DirectorRuntime = { elapsed: number; deepElapsed: number; deep: boolean; reinforcementsReleased: boolean; gridTriggered: boolean; defenseTriggered: boolean; pressureWarned: boolean; pressureTriggered: boolean; gravityTriggered: boolean; locationEventA: boolean; locationEventB: boolean; megastructureEventA: boolean; megastructureEventB: boolean; thermalPulseUntil: number; clearSweepElapsed: number; clearSweepWarned: boolean; environmental: EnvironmentalEventRuntime };
@@ -238,6 +239,24 @@ export function stepMissionDirector(state: SimState, runtime: DirectorRuntime, c
   if (k91Stage && !runtime.megastructureEventB && runtime.elapsed >= 18) {
     runtime.megastructureEventB = true;
     event(state, objective.complete ? k91Stage.eventB : `${k91Stage.eventB} // TRAVERSE CONTROL STILL UNRESOLVED`, 3);
+  }
+
+  const orphelineStage = orphelineStageIdentity(contract);
+  if (orphelineStage && !runtime.megastructureEventA && runtime.elapsed >= 7) {
+    runtime.megastructureEventA = true;
+    if (objective.complete) {
+      event(state, `${orphelineStage.eventA} // PRIMARY CONTROL ALREADY STABLE`, 3);
+    } else {
+      const hazardKind = orphelineStage.stage === 1 ? 'vectorWash' : orphelineStage.stage === 2 || orphelineStage.stage === 4 ? 'shockGrid' : 'gravityWell';
+      const hazardX = orphelineStage.stage === 1 ? 870 : orphelineStage.stage === 2 ? 1120 : orphelineStage.stage === 3 ? 1370 : 1830;
+      const hazardY = orphelineStage.stage % 2 === 0 ? 650 : 390;
+      deployHazard(state, hazardX, hazardY, hazardKind, orphelineStage.stage === 4 ? 6.4 : 5.5);
+      event(state, `${orphelineStage.eventA} // HABITAT HAZARD LIVE`, 3.4);
+    }
+  }
+  if (orphelineStage && !runtime.megastructureEventB && runtime.elapsed >= 18) {
+    runtime.megastructureEventB = true;
+    event(state, objective.complete ? orphelineStage.eventB : `${orphelineStage.eventB} // HABITAT CONTROL STILL UNRESOLVED`, 3);
   }
 
   const reinforcementTrigger = contract.encounterPattern === 'swarm' ? 1 : contract.encounterPattern === 'elite-led' ? 3 : 2;

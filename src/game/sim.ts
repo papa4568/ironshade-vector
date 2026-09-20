@@ -11,7 +11,7 @@ export type PressureState = 'normal' | 'leaking' | 'decompressing' | 'vacuum';
 export type WeaponId = 'carbine' | 'breacher' | 'rail';
 export type SpecializationId = 'pressure-diver' | 'momentum-broker' | 'grid-weaver' | 'survey-deadeye' | 'redline-pilot' | 'breach-vanguard' | 'capacitor-conductor';
 export type EnemyRole = 'assault' | 'suppressor' | 'technician' | 'elite' | 'boss';
-export type EnemyVariant = 'standard' | 'vectorSkirmisher' | 'anchorEngineer' | 'barricadeTrooper' | 'pressureLockTech' | 'tetherRigger' | 'maintenanceDrone' | 'gravityDrone' | 'shieldBoarder' | 'tetherOperator' | 'droneCarrier' | 'coverBreacher' | 'marksman' | 'vacuumSaboteur' | 'repairDrone' | 'gravitySpecialist' | 'meleeExosuit' | 'salvageThief' | 'impulseRigger' | 'boiloffTech' | 'partitionRigger' | 'recoilBroker' | 'siphonTech' | 'purgeOrchestrator' | 'custodyPorter' | 'geometryTech' | 'orison' | 'foundryMarshal' | 'meridianCommander' | 'salvageCaptain' | 'yardmind' | 'pressureBroker' | 'bondArbiter' | 'forgeChorus' | 'cascadeCustodian' | 'perseidSteward' | 'latticeCustodian' | 'transferAdjudicator' | 'umbraMarshal' | 'custodyDirector' | 'parallaxSkirmisher' | 'referenceTech' | 'baselineMarksman' | 'baselineKeeper';
+export type EnemyVariant = 'standard' | 'vectorSkirmisher' | 'anchorEngineer' | 'barricadeTrooper' | 'pressureLockTech' | 'tetherRigger' | 'maintenanceDrone' | 'gravityDrone' | 'shieldBoarder' | 'tetherOperator' | 'droneCarrier' | 'coverBreacher' | 'marksman' | 'vacuumSaboteur' | 'repairDrone' | 'gravitySpecialist' | 'meleeExosuit' | 'salvageThief' | 'impulseRigger' | 'boiloffTech' | 'partitionRigger' | 'recoilBroker' | 'siphonTech' | 'purgeOrchestrator' | 'custodyPorter' | 'geometryTech' | 'orison' | 'foundryMarshal' | 'meridianCommander' | 'salvageCaptain' | 'yardmind' | 'pressureBroker' | 'bondArbiter' | 'forgeChorus' | 'cascadeCustodian' | 'perseidSteward' | 'orphelineWarden' | 'latticeCustodian' | 'transferAdjudicator' | 'umbraMarshal' | 'custodyDirector' | 'parallaxSkirmisher' | 'referenceTech' | 'baselineMarksman' | 'baselineKeeper';
 export type SingularTraitId = 'vacuumWake' | 'atlasDodgeCap' | 'redlineVelocity' | 'relayCrown' | 'palisadeDoctrine' | 'pressureMantle' | 'lockstepArc' | 'rheaBackblast' | 'tetherhand' | 'scraplineDodge' | 'thermalGovernor' | 'machineSight' | 'sunwardFracture' | 'arcspindle' | 'ghostline' | 'borecutter' | 'stormVentgun' | 'nullpoint' | 'glasswalker' | 'cryostack' | 'salvageDynamo' | 'deadreckon' | 'stormskin' | 'axisGhost' | 'pendulumBreach' | 'massTap' | 'boiloffSink' | 'cryolineRail' | 'inertiaSpool' | 'clutchstep' | 'recoilLedger' | 'coldStartBreach' | 'purgeWake' | 'gridReclaimer' | 'custodyShear' | 'shutterLine' | 'archiveRelay' | 'pressureReservoir' | 'recoilDynamo' | 'relayOrchard' | 'coldWitness' | 'redlineBulwark' | 'closeBreach' | 'abilityRosary' | 'pressureBallistics' | 'momentumMark' | 'scrapCircuit' | 'boiloffDash' | 'splitReference' | 'forkedSpool' | 'breachEcho' | 'railDoublet' | 'magBloom' | 'markCascade';
 export type Material = 'light' | 'industrial' | 'bulkhead' | 'system';
 
@@ -998,6 +998,57 @@ function stepPerseidStewardBoss(state: SimState, boss: Enemy, dt: number) {
   boss.telegraphAim = norm({ x: p.x - boss.x, y: p.y - boss.y });
 }
 
+function stepOrphelineWardenBoss(state: SimState, boss: Enemy, dt: number) {
+  const p = state.player;
+  if (!state.bossActive || p.dead) return;
+  boss.fireCooldown = Math.max(0, boss.fireCooldown - dt);
+  if (boss.bossPhase === 1 && boss.hp <= boss.maxHp * 0.5) {
+    boss.bossPhase = 2;
+    const arena = state.sectors.find(item => item.id === 'C');
+    if (arena) { arena.gravity = 0.08; arena.targetPressure = Math.min(arena.targetPressure, 0.42); }
+    activateBreach(state, 'boss-breach');
+    plantHazard(state, 1790, 330, 'shockGrid', 6);
+    plantHazard(state, 2090, 700, 'gravityWell', 5.4);
+    pushEvent(state, 'ORPHELINE WARDEN // FOUNDING CHARTER LOCKDOWN // SHELTER AUTHORITY ESCALATED', 3.5);
+  }
+  moveArenaBoss(state, boss, dt, 350, boss.bossPhase === 2 ? 600 : 470, boss.bossPhase === 2 ? 165 : 126, 0.28);
+  if (boss.telegraph > 0) {
+    boss.telegraph -= dt;
+    if (boss.telegraph > 0) return;
+    const aim = norm({ x: p.x - boss.x, y: p.y - boss.y });
+    if (boss.bossPattern === 'pressureCascade') {
+      activateBreach(state, 'boss-breach');
+      const arena = state.sectors.find(item => item.id === 'C');
+      if (arena) { arena.rapidTimer = Math.max(arena.rapidTimer, 4.5); arena.targetPressure = 0.1; }
+      pushEvent(state, 'WARDEN SHELTER PURGE // CONTROL VAULT PRESSURE ROUTE OPEN', 2.3);
+    } else if (boss.bossPattern === 'gravityOverride') {
+      const arena = state.sectors.find(item => item.id === 'C');
+      if (arena) arena.gravity = arena.gravity < 0.25 ? 0.66 : 0.08;
+      plantHazard(state, p.x + p.vx * 0.38, p.y + p.vy * 0.38, 'gravityWell', 4.6);
+      pushEvent(state, `WARDEN SPIN AUTHORITY // ${arena && arena.gravity < 0.25 ? 'SHELTER LOW-G' : 'LOCKDOWN HIGH-G'}`, 2.2);
+    } else if (boss.bossPattern === 'shutterGeometry') {
+      for (const angle of [-0.18, -0.09, 0, 0.09, 0.18]) {
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        addProjectile(state, boss.x, boss.y, { x: aim.x * cos - aim.y * sin, y: aim.x * sin + aim.y * cos }, 625, boss.bossPhase === 2 ? 22 : 18, 'enemy', { weapon: 'enemy', armorDamage: 0.8, radius: 7 });
+      }
+      plantHazard(state, p.x - aim.x * 120, p.y - aim.y * 120, 'shockGrid', boss.bossPhase === 2 ? 5.2 : 4.2);
+      pushEvent(state, 'FOUNDING ARCHIVE GEOMETRY // PARTITION FIRE LANES SEALED', 2.2);
+    }
+    boss.fireCooldown = boss.bossPhase === 2 ? 0.98 : 1.34;
+    boss.bossPattern = 'none';
+    return;
+  }
+  if (boss.fireCooldown > 0) return;
+  const patterns: Enemy['bossPattern'][] = boss.bossPhase === 2
+    ? ['shutterGeometry', 'pressureCascade', 'gravityOverride', 'shutterGeometry']
+    : ['pressureCascade', 'shutterGeometry', 'gravityOverride'];
+  boss.bossPattern = patterns[boss.patternIndex % patterns.length];
+  boss.patternIndex += 1;
+  boss.telegraph = boss.bossPattern === 'shutterGeometry' ? 0.9 : 1.06;
+  boss.telegraphAim = norm({ x: p.x - boss.x, y: p.y - boss.y });
+}
+
 function stepLatticeCustodianBoss(state: SimState, boss: Enemy, dt: number) {
   const p = state.player;
   if (!state.bossActive || p.dead) return;
@@ -1082,6 +1133,7 @@ function stepBoss(state: SimState, boss: Enemy, dt: number) {
   if (boss.variant === 'latticeCustodian') { stepLatticeCustodianBoss(state, boss, dt); return; }
   if (boss.variant === 'cascadeCustodian') { stepCascadeCustodianBoss(state, boss, dt); return; }
   if (boss.variant === 'perseidSteward') { stepPerseidStewardBoss(state, boss, dt); return; }
+  if (boss.variant === 'orphelineWarden') { stepOrphelineWardenBoss(state, boss, dt); return; }
   if (boss.variant === 'pressureBroker') { stepPressureBrokerBoss(state, boss, dt); return; }
   if (boss.variant === 'bondArbiter') { stepBondArbiterBoss(state, boss, dt); return; }
   if (boss.variant === 'forgeChorus') { stepForgeChorusBoss(state, boss, dt); return; }
