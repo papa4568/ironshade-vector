@@ -260,7 +260,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] P5.4 Deepen Vector specializations
 - [x] P5.5 Vector skill evolutions
 - [x] P5.6 Systems third specialization
-- [ ] P5.7 Systems skill evolution
+- [x] P5.7 Systems skill evolution
 - [ ] P5.8 Systems capstone interactions
 - [ ] P5.9 Same-class builds feel different at LV16+
 - [ ] P5.10 Specialization gear synergies
@@ -317,7 +317,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1, P2, P3, and **P4 — Megastructure Capstone Pass** are complete. **P5.1–P5.6 class-capstone work** is complete. Continue in roadmap order with **P5.7 — Systems skill evolution**.
+P1, P2, P3, and **P4 — Megastructure Capstone Pass** are complete. **P5.1–P5.7 class-capstone work** is complete. Continue in roadmap order with **P5.8 — Systems capstone interactions**.
+
+**P5.7 implemented:** Systems now has three LV16 class skill evolutions in the existing Skill Lens slots. **Anchor Lattice** turns Polarity Well into a conductive clustering tool that recycles Relay Hack recovery per caught node, balanced by +18% Polarity Well cooldown. **Recursive Intrusion** extends Relay Hack through one additional hostile, leaves propagated relays conductive, and advances Cascade Arc recovery, balanced by +18% Relay Hack capacitor cost. **Return Current** converts Cascade Arc network contacts into capped capacitor return and Polarity Well recovery, balanced by +20% Cascade Arc cooldown. Class/LV16 gating, class-switch cleanup, tradeoffs, network propagation, recovery routing, capacitor return, build-stat visibility, and explicit combat feedback are covered by deterministic regression. **P5.8 — Systems capstone interactions** is next after branch validation/merge.
 
 **P5.6 delivered:** Systems now has a third LV15 specialization, **Thermal Shunter**, alongside Grid Weaver and Capacitor Conductor. Thermal Shunter creates a weapon/ability weaving loop: casting a Systems ability with at least 35% active-weapon heat shunts 8% heat (10% with the LV16 overclock) into a short crossfire bank; the next weapon shot gains 12% projectile velocity, 10% damage, +10 penetration, and returns 4 capacitor. The LV16 overclock extends the bank to 3 seconds, advances the ability that armed it by 0.5 seconds on discharge, and sheds another 5% weapon heat, balanced by +10% weapon heat per shot. The base specialization trades 10 maximum armor. Deterministic gameplay regression covers hot-vs-cold arming, heat routing, projectile bonuses, capacitor return, one-shot bank consumption, cooldown recycling, combat feedback, and both tradeoffs; UI regression verifies the third Systems path is sourced through the shared specialization metadata. Merged-main desktop/mobile Browser E2E, Level 15 beta smoke, Android beta.196 package/version/SDK/signature verification, native emulator install/launch/resume smoke, Android touch/runtime smoke, and Chapter 3 touch playthrough all passed. **P5.7 — Systems skill evolution** is next.
 
