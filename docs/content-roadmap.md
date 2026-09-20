@@ -381,16 +381,16 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.183**
+- Android beta: **0.0.1-beta.184**
 - Package: `app.ironshade.vector`
-- Verified: Perseid **P4.1–P4.4** is complete. All four spaces now carry a shared generation-ship continuity layer (keel spine, pressure ribs, green transit datum) while retaining stage-specific Docking Spine, Agricultural Drum, Cryogenic Service Deck, and Reactor Choir dressing. Perseid-specific sector labels and ship events layer over the existing physical objective systems, stage two preserves a guaranteed Perseid Drum Warder elite, and the optional deep finale now uses the dedicated Perseid Steward Core boss behavior. Full/Balanced/Mobile/Performance profiles trim repeated ribs, guide lights, props, and structural shadows without removing stage identity. Gameplay/render regressions, PR desktop + mobile-landscape Browser E2E, merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.183 package/version/SDK/signature verification, native emulator install/launch smoke, and Chapter 3 touch playthrough all passed. The next roadmap slice is **P4.5–P4.8 — K-91**.
+- Verified: Counterweight K-91 **P4.5–P4.8** is complete. Capture Collar, Mass Transit Spine, Power Transfer Gallery, and Ballast Vault now share the same load spine, paired countermass rails, and amber inertial datum while retaining stage-specific capture, mass-transfer, power-bus, and ballast hardware. K-91-specific sector labels and inertial events layer over the existing physical objective systems, stage two preserves the K-91 Mass-Transit Warden elite, and the final Ballast Vault remains a deliberately bossless ballast-shift survival/recovery capstone. Full/Balanced/Mobile/Performance profiles trim repeated rails, datum lights, props, and structural shadows without removing the counterweight silhouette. Gameplay/render regressions, PR desktop + mobile-landscape Browser E2E, merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.184 package/version/SDK/signature verification, native emulator install/launch smoke, and Chapter 3 touch playthrough all passed. The next roadmap slice is **P4.9–P4.11 — Orpheline**.
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P4.1–P4.4 final implementation head: `c78cbb8be9d0e7e13b386a22c12bcc1d5a98a5cc`
-- P4.1–P4.4 merged main / APK source: `1245ba092457395d93722aba77efff02910581a7`
-- P4.1–P4.4 PR Browser E2E run: `35522201798`
-- Final Browser E2E run: `35522298800`
-- Level 15 beta smoke run: `35522298802`
-- Android beta.183 run: `35522298799`
-- Android beta.183 artifact ID: `10608562005`
-- Android beta.183 artifact head: `1245ba092457395d93722aba77efff02910581a7`
-- APK SHA-256: `59d3cc59e157e6a8b3475d7b2bb1f28e2402a4128db5ae92ac5385e4605964fa`
+- P4.5–P4.8 final implementation head: `7805f971806cc6eb655eb29d94db8565fda1a22d`
+- P4.5–P4.8 merged main / APK source: `5bdb746fd25bc640457eb8b1421627c79f88c2c4`
+- P4.5–P4.8 PR Browser E2E run: `35524489750`
+- Final Browser E2E run: `35524606724`
+- Level 15 beta smoke run: `35524606748`
+- Android beta.184 run: `35524606816`
+- Android beta.184 artifact ID: `10609785635`
+- Android beta.184 artifact head: `5bdb746fd25bc640457eb8b1421627c79f88c2c4`
+- APK SHA-256: `094e3b236921f8584639b302702f8f23e99bf1fe8ed52c26006755ffd9658824`
