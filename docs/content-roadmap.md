@@ -212,7 +212,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 **Gate:** recognizable from screenshots without HUD text.
 
-## P3 — Authored Biomes Pack II
+## P3 — Authored Biomes Pack II ✅ COMPLETE
 
 ### Ice Mine
 - [x] P3.1 Assets
@@ -229,7 +229,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] P3.10 Thermal shutters
 - [x] P3.11 Cranes/rails/motion
 - [x] P3.12 HELIOS-9 presentation
-- [ ] P3.13 Mobile optimization
+- [x] P3.13 Mobile optimization
 
 ## P4 — Megastructure Capstone Pass
 
@@ -307,7 +307,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1 and P2 are complete, **Ice Mine P3.1–P3.6** are delivered, and **Solar Yard P3.7–P3.12** are delivered. Continue in roadmap order with **P3.13 — Mobile optimization** to finish Solar Yard and complete P3.
+P1, P2, and P3 are complete. Continue in roadmap order with **P4.1–P4.4 — Perseid** to begin the Megastructure Capstone Pass.
+
+**P3.13 delivered:** Solar Yard now has a dedicated adaptive render profile instead of relying on LOD selection alone. Full desktop retains the complete authored yard, while Balanced/mobile trim secondary decks, trusses, radiators, fabrication machines, and transfer rails; mobile preserves all three reflector pylons, both moving gantry cranes, the gameplay-bound thermal shutter, and HELIOS-9 while forcing LOD2. Solar Yard structural shadow casters are disabled outside the Full profile, sun/shade overlays drop from 3+3 to 2+2 on mobile and 1+1 in Performance, and the procedural fallback follows the same panel/overlay/shadow budget. Deterministic render-profile regression plus desktop/mobile-landscape browser QA cover the authored instance budget, shadow policy, overlay density, transport motion, thermal shutter linkage, and boss LOD. P3 is complete; P4 begins with Perseid.
 
 **P3.12 delivered:** HELIOS-9 Yardmind now has a Solar Yard-specific authored boss presentation instead of the shared generic boss silhouette. Adaptive LOD1/LOD2 assets give the yardmind a broad sunshield crown, paired reflector wings, and fabrication/thermal core hardware in the existing ceramic / solar-gold / heat-amber language, shifting to overheat-red pressure cues in phase two while preserving the shared boss telegraph system. Runtime routing is restricted to Solar Yard contracts whose deep target is HELIOS-9 Yardmind; deterministic telemetry exposes boss identity, asset, silhouette, palette, and live phase presentation, while mobile-landscape selects the dedicated LOD2 asset. Generated-content, static graphics, and browser runtime regressions cover the new presentation. The dedicated Solar Yard mobile optimization pass remains P3.13.
 
