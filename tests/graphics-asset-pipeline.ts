@@ -167,6 +167,17 @@ for (const marker of ['jovian-harvester-deck-span-main', 'jovian-harvester-skimm
   assert(jovianAssetGeneratorSource.includes(`name: '${marker}'`), `Jovian Harvester P2.10 silhouette marker ${marker} must remain authored`);
 }
 
+assert(manifestSource.includes('ICE_MINE_ASSET_FAMILIES'), 'Ice Mine P3.1 must register a dedicated authored environment asset kit');
+for (const asset of ['ice-mine-frost-wall', 'ice-mine-support-frame', 'ice-mine-service-deck', 'ice-mine-ice-pillar']) {
+  assert(manifestSource.includes(`${asset}-lod1.glb`) && manifestSource.includes(`${asset}-lod2.glb`), `Ice Mine P3.1 asset ${asset} must preserve adaptive LOD1/LOD2 coverage`);
+}
+for (const material of ['ice-mine-frozen-rock', 'ice-mine-support-steel', 'ice-mine-service-deck', 'ice-mine-frost-ice', 'ice-mine-cold-emissive']) {
+  assert(jovianAssetGeneratorSource.includes(`name: '${material}'`), `Ice Mine P3.1 material identity ${material} must remain authored`);
+}
+for (const marker of ['ice-mine-frost-wall-rock', 'ice-mine-support-frame-crown', 'ice-mine-service-deck-main', 'ice-mine-ice-pillar-core']) {
+  assert(jovianAssetGeneratorSource.includes(`name: '${marker}'`), `Ice Mine P3.1 silhouette marker ${marker} must remain authored`);
+}
+
 assert(rendererSource.includes('JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES'), 'Jovian Harvester P2.11 must select dedicated authored gas machinery families');
 for (const asset of ['jovian-harvester-storm-bus-isolator', 'jovian-harvester-deck-mass-trim', 'jovian-harvester-skimmer-compressor', 'jovian-harvester-separator-package']) {
   assert(manifestSource.includes(`${asset}-lod1.glb`) && manifestSource.includes(`${asset}-lod2.glb`), `Jovian Harvester P2.11 machinery asset ${asset} must preserve adaptive LOD1/LOD2 coverage`);
