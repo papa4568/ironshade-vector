@@ -337,7 +337,7 @@ for (const path of glbs) {
         assert(nodeNames.has(required), `${relativePath}: salvage tag node is missing required node ${required}`);
       }
       if (filename.endsWith('-lod1.glb')) assert(nodeNames.has('interactable-salvage-tag-plate'), `${relativePath}: salvage LOD1 is missing tag plate detail`);
-    } else {
+    } else if (filename.includes('spin-habitat-')) {
       const marker = filename.includes('spin-bus-isolator')
         ? 'spin-habitat-spin-bus-isolator-knife'
         : filename.includes('gravity-trim')
@@ -350,6 +350,17 @@ for (const path of glbs) {
       assert(nodeNames.has(marker), `${relativePath}: Spin Habitat machinery silhouette marker ${marker} is missing`);
       assert(nodeNames.has('spin-habitat-interactable-status'), `${relativePath}: Spin Habitat machinery is missing its state-readable status emitter`);
       if (filename.endsWith('-lod1.glb')) assert(nodeNames.has('objective-beacon-mount'), `${relativePath}: Spin Habitat machinery LOD1 is missing objective beacon mount`);
+    } else {
+      const marker = filename.includes('storm-bus-isolator')
+        ? 'jovian-harvester-storm-bus-isolator-knife'
+        : filename.includes('deck-mass-trim')
+          ? 'jovian-harvester-deck-mass-trim-actuator'
+          : filename.includes('skimmer-compressor')
+            ? 'jovian-harvester-skimmer-compressor-intake'
+            : 'jovian-harvester-separator-package-vessel';
+      assert(nodeNames.has(marker), `${relativePath}: Jovian Harvester machinery silhouette marker ${marker} is missing`);
+      assert(nodeNames.has('jovian-harvester-interactable-status'), `${relativePath}: Jovian Harvester machinery is missing its state-readable status emitter`);
+      if (filename.endsWith('-lod1.glb')) assert(nodeNames.has('objective-beacon-mount'), `${relativePath}: Jovian Harvester machinery LOD1 is missing objective beacon mount`);
     }
   }
 
@@ -455,6 +466,13 @@ for (const interactableAsset of ['spin-habitat-spin-bus-isolator', 'spin-habitat
   const lod2 = reportByPath.get(`interactables/${interactableAsset}-lod2.glb`);
   assert(lod1 && lod2, `${interactableAsset}: Spin Habitat machinery LOD1/LOD2 pair missing`);
   assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, `${interactableAsset}: Spin Habitat mobile machinery LOD2 must reduce payload and draw surfaces`);
+}
+
+for (const interactableAsset of ['jovian-harvester-storm-bus-isolator', 'jovian-harvester-deck-mass-trim', 'jovian-harvester-skimmer-compressor', 'jovian-harvester-separator-package']) {
+  const lod1 = reportByPath.get(`interactables/${interactableAsset}-lod1.glb`);
+  const lod2 = reportByPath.get(`interactables/${interactableAsset}-lod2.glb`);
+  assert(lod1 && lod2, `${interactableAsset}: Jovian Harvester machinery LOD1/LOD2 pair missing`);
+  assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, `${interactableAsset}: Jovian Harvester mobile machinery LOD2 must reduce payload and draw surfaces`);
 }
 
 
