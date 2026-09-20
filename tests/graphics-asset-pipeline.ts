@@ -214,6 +214,15 @@ assert(rendererSource.includes("dataset.bossSilhouette = 'storm-cowl+pressure-cr
 assert(rendererSource.includes("visual.authoredAssetId === 'jovian-harvester-stormline-foreman'"), 'Stormline Foreman must receive a dedicated phase-aware presentation palette');
 assert(jovianAssetGeneratorSource.includes("name: 'jovian-harvester-stormline-foreman-storm-cowl'"), 'Stormline Foreman P2.14 must preserve the authored storm-cowl silhouette marker');
 
+assert(rendererSource.includes("atmosphereRoot.name = 'jovian-harvester-atmospheric-effects'"), 'Jovian P2.15 must retain a dedicated atmospheric effects layer');
+assert(rendererSource.includes('cloud.name = `jovian-harvester-pressure-cloud-${index}`'), 'Jovian P2.15 must retain broad pressure-cloud filaments');
+assert(rendererSource.includes("particulate.name = 'jovian-harvester-charged-particulate'"), 'Jovian P2.15 must retain persistent charged particulate');
+assert(rendererSource.includes("spineHaze.name = 'jovian-harvester-skimmer-spine-haze'"), 'Jovian P2.15 must retain the skimmer-spine atmosphere haze');
+assert(rendererSource.includes("dataset.environmentAmbient = 'upper-haze+pressure-clouds+charged-particulate'"), 'Jovian P2.15 ambient identity must remain observable for QA');
+assert(rendererSource.includes("dataset.environmentAmbientMotion = 'crosswind-drift+pressure-breath+charged-drift'"), 'Jovian P2.15 atmospheric motion language must remain explicit');
+assert(rendererSource.includes("visibleClouds = atmosphereDensity === 'reduced' ? 2 : atmosphereDensity === 'balanced' ? 3 : 5"), 'Jovian P2.15 cloud density must scale through the existing adaptive VFX budget');
+assert(rendererSource.includes("visibleMotes = atmosphereDensity === 'reduced' ? 20 : atmosphereDensity === 'balanced' ? 36 : 56"), 'Jovian P2.15 particulate density must scale through the existing adaptive VFX budget');
+
 assert(rendererSource.includes('SPIN_HABITAT_ASSET_FAMILIES'), 'Spin Habitat must load through authored environment asset families');
 for (const asset of ['spin-habitat-ring-segment', 'spin-habitat-spoke-truss', 'spin-habitat-axis-hub', 'spin-habitat-service-bay']) {
   assert(manifestSource.includes(`${asset}-lod1.glb`) && manifestSource.includes(`${asset}-lod2.glb`), `Spin Habitat asset ${asset} must preserve adaptive LOD1/LOD2 coverage`);
