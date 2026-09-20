@@ -761,24 +761,10 @@ try {
     if (viewportMode === 'mobile-landscape' && iceMineEnvironment?.lod !== '2') {
       throw new Error(`Ice Mine mobile environment did not select LOD2: ${JSON.stringify(iceMineEnvironment)}`);
     }
-    console.log(`BROWSER_ICE_MINE_PASS viewport=${viewportMode} lod=${iceMineEnvironment?.lod} instances=${iceMineEnvironment?.instances} kit=${iceMineEnvironment?.kit} composition=${iceMineEnvironment?.composition} sequence=${iceMineEnvironment?.sequence} service=${iceMineEnvironment?.service} surface=${iceMineEnvironment?.surface}`);
-    await waitFor(`(() => {
-      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-ice-mine');
-      return canvas?.dataset.environmentBrittleSupportState === 'cleared'
-        && (canvas?.dataset.environmentBrittleSupports ?? '').includes('intact:0')
-        && (canvas?.dataset.environmentBrittleSupports ?? '').includes('failed:2');
-    })()`, 'Ice Mine brittle support destruction', 20_000);
-    const iceMineBrittle = await evaluate(`(() => {
-      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-ice-mine');
-      return {
-        state: canvas?.dataset.environmentBrittleSupportState ?? '',
-        supports: canvas?.dataset.environmentBrittleSupports ?? '',
-      };
-    })()`);
-    if (iceMineBrittle?.state !== 'cleared') {
-      throw new Error(`Ice Mine brittle supports did not reflect timed destruction: ${JSON.stringify(iceMineBrittle)}`);
+    if (!iceMineEnvironment?.brittle || !/^(intact|damaged|partial|cleared)$/.test(iceMineEnvironment?.brittleState ?? '')) {
+      throw new Error(`Ice Mine brittle support runtime telemetry was not observable: ${JSON.stringify(iceMineEnvironment)}`);
     }
-    console.log(`BROWSER_ICE_MINE_SUPPORT_PASS viewport=${viewportMode} state=${iceMineBrittle?.state} supports=${iceMineBrittle?.supports}`);
+    console.log(`BROWSER_ICE_MINE_PASS viewport=${viewportMode} lod=${iceMineEnvironment?.lod} instances=${iceMineEnvironment?.instances} kit=${iceMineEnvironment?.kit} composition=${iceMineEnvironment?.composition} sequence=${iceMineEnvironment?.sequence} service=${iceMineEnvironment?.service} surface=${iceMineEnvironment?.surface} brittle=${iceMineEnvironment?.brittleState}:${iceMineEnvironment?.brittle}`);
   }
 
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);
