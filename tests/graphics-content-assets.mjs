@@ -351,16 +351,21 @@ for (const path of glbs) {
       assert(nodeNames.has('spin-habitat-interactable-status'), `${relativePath}: Spin Habitat machinery is missing its state-readable status emitter`);
       if (filename.endsWith('-lod1.glb')) assert(nodeNames.has('objective-beacon-mount'), `${relativePath}: Spin Habitat machinery LOD1 is missing objective beacon mount`);
     } else {
+      const pressureHardware = filename.includes('storm-pressure-lock') || filename.includes('relief-manifold');
       const marker = filename.includes('storm-bus-isolator')
         ? 'jovian-harvester-storm-bus-isolator-knife'
         : filename.includes('deck-mass-trim')
           ? 'jovian-harvester-deck-mass-trim-actuator'
           : filename.includes('skimmer-compressor')
             ? 'jovian-harvester-skimmer-compressor-intake'
-            : 'jovian-harvester-separator-package-vessel';
-      assert(nodeNames.has(marker), `${relativePath}: Jovian Harvester machinery silhouette marker ${marker} is missing`);
-      assert(nodeNames.has('jovian-harvester-interactable-status'), `${relativePath}: Jovian Harvester machinery is missing its state-readable status emitter`);
-      if (filename.endsWith('-lod1.glb')) assert(nodeNames.has('objective-beacon-mount'), `${relativePath}: Jovian Harvester machinery LOD1 is missing objective beacon mount`);
+            : filename.includes('storm-pressure-lock')
+              ? 'jovian-harvester-storm-pressure-lock-wheel'
+              : filename.includes('relief-manifold')
+                ? 'jovian-harvester-relief-manifold-valve'
+                : 'jovian-harvester-separator-package-vessel';
+      assert(nodeNames.has(marker), `${relativePath}: Jovian Harvester ${pressureHardware ? 'pressure hardware' : 'machinery' } silhouette marker ${marker} is missing`);
+      assert(nodeNames.has(pressureHardware ? 'jovian-harvester-pressure-status' : 'jovian-harvester-interactable-status'), `${relativePath}: Jovian Harvester ${pressureHardware ? 'pressure hardware' : 'machinery' } is missing its state-readable status emitter`);
+      if (filename.endsWith('-lod1.glb')) assert(nodeNames.has('objective-beacon-mount'), `${relativePath}: Jovian Harvester authored interactable LOD1 is missing objective beacon mount`);
     }
   }
 
@@ -468,7 +473,7 @@ for (const interactableAsset of ['spin-habitat-spin-bus-isolator', 'spin-habitat
   assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, `${interactableAsset}: Spin Habitat mobile machinery LOD2 must reduce payload and draw surfaces`);
 }
 
-for (const interactableAsset of ['jovian-harvester-storm-bus-isolator', 'jovian-harvester-deck-mass-trim', 'jovian-harvester-skimmer-compressor', 'jovian-harvester-separator-package']) {
+for (const interactableAsset of ['jovian-harvester-storm-bus-isolator', 'jovian-harvester-deck-mass-trim', 'jovian-harvester-skimmer-compressor', 'jovian-harvester-separator-package', 'jovian-harvester-storm-pressure-lock', 'jovian-harvester-relief-manifold']) {
   const lod1 = reportByPath.get(`interactables/${interactableAsset}-lod1.glb`);
   const lod2 = reportByPath.get(`interactables/${interactableAsset}-lod2.glb`);
   assert(lod1 && lod2, `${interactableAsset}: Jovian Harvester machinery LOD1/LOD2 pair missing`);
