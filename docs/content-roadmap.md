@@ -207,7 +207,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] P2.12 Storm/pressure visual language
 - [x] P2.13 Pressure props/interactables
 - [x] P2.14 Stormline Foreman presentation
-- [ ] P2.15 Atmospheric effects
+- [x] P2.15 Atmospheric effects
 - [ ] P2.16 Mobile LOD/performance
 
 **Gate:** recognizable from screenshots without HUD text.
@@ -307,9 +307,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1 is complete, **Spin Habitat P2.1–P2.9 is delivered**, and **Jovian Harvester P2.10–P2.14 is delivered**. Continue in roadmap order with **P2.15 — Atmospheric effects**, then complete P2.16 before moving to Authored Biomes Pack II.
+P1 is complete, **Spin Habitat P2.1–P2.9 is delivered**, and **Jovian Harvester P2.10–P2.15 is delivered**. Continue in roadmap order with **P2.16 — Mobile LOD/performance**, then move to Authored Biomes Pack II.
 
-**P2.14 delivered:** Stormline Foreman Ilex now has a dedicated Jovian Harvester boss presentation with adaptive LOD1/LOD2 assets, a pressure-work silhouette built around a storm cowl, pressure crown, relief stacks, and manifold pack, contract-scoped runtime routing, and a storm-orange / pressure-cyan / vent-red phase language. Static/generated-content regressions, the full production build, PR and merged-main desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.166 package/version/SDK/signature verification, and Android emulator runtime + Chapter 3 touch smoke are green. Runtime QA confirms `stormline-foreman-ilex` with the dedicated `jovian-harvester-stormline-foreman-lod2` asset in both browser viewports. Atmospheric effects and the dedicated mobile performance pass remain scoped to P2.15–P2.16.
+**P2.15 delivered:** Jovian Harvester now has a persistent atmospheric layer distinct from the reactive P2.12 storm/pressure effects: broad upper-atmosphere pressure-cloud filaments, slow charged particulate, and skimmer-spine haze. Ambient motion uses low-frequency crosswind drift / pressure breathing / charged drift and is subtly modulated by live storm charge and pressure shear without becoming event-only VFX. Density scales through the existing render budget (2/3/5 cloud bands and 20/36/56 motes) with deterministic coarse/mobile reduction. Static graphics and render-budget regressions, the full production build, PR and merged-main desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.167 package/version/SDK/signature verification, native emulator runtime smoke, and Chapter 3 touch playthrough are green. P2.16 remains the dedicated Jovian mobile LOD/performance pass.\n\n**P2.14 delivered:** Stormline Foreman Ilex now has a dedicated Jovian Harvester boss presentation with adaptive LOD1/LOD2 assets, a pressure-work silhouette built around a storm cowl, pressure crown, relief stacks, and manifold pack, contract-scoped runtime routing, and a storm-orange / pressure-cyan / vent-red phase language. Static/generated-content regressions, the full production build, PR and merged-main desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.166 package/version/SDK/signature verification, and Android emulator runtime + Chapter 3 touch smoke are green. Runtime QA confirms `stormline-foreman-ilex` with the dedicated `jovian-harvester-stormline-foreman-lod2` asset in both browser viewports. Atmospheric effects and the dedicated mobile performance pass remain scoped to P2.15–P2.16.
 
 **P2.13 delivered:** Jovian Harvester pressure gameplay now has biome-specific authored hardware instead of shared generic controls: a storm-rated pressure-lock family for live pressure doors/interlocks and a relief-manifold family for breach/seal controls. Both ship adaptive LOD1/LOD2 GLBs with distinct wheel/valve silhouettes, full-detail equalization/gauge/riser props, status emitters, and objective-beacon mounts. Runtime status color/intensity follows the real pressure-door link and service/boss breach state, while QA telemetry exposes the pressure kit, source, live pressure state, and door state. Generated-content and static graphics regressions, full production build, desktop + mobile-landscape Browser E2E on PR and merged `main`, Level 15 beta smoke, Android beta.165 package/version/SDK/signature verification, and Android emulator runtime + Chapter 3 touch smoke are green on implementation head `fd5840bf877b48fd490ae6d4991cb886724b725d`. Stormline Foreman presentation, atmospheric effects, and the dedicated mobile performance pass remain scoped to P2.14–P2.16.
 
@@ -347,16 +347,16 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.166**
+- Android beta: **0.0.1-beta.167**
 - Package: `app.ironshade.vector`
-- Verified: P2.14 Stormline Foreman Ilex authored Jovian Harvester boss presentation with adaptive LOD1/LOD2, pressure-work silhouette and phase palette, contract-scoped routing/fallback telemetry, generated-content/static graphics regression coverage, full production regression/build, desktop + mobile-landscape Browser E2E on PR and merged `main`, Level 15 beta smoke, Android beta.166 package/version/SDK/signature checks, Android emulator runtime smoke, Chapter 3 touch playthrough, and retained browser/Android QA artifacts
+- Verified: P2.15 persistent Jovian Harvester atmospheric effects (upper haze, pressure-cloud filaments, charged particulate, skimmer-spine haze), live storm/pressure modulation, adaptive mobile/render-budget density, static graphics/render-performance regression coverage, full production regression/build, desktop + mobile-landscape Browser E2E on PR and merged `main`, Level 15 beta smoke, Android beta.167 package/version/SDK/signature checks, Android emulator runtime smoke, Chapter 3 touch playthrough, and retained browser/Android QA artifacts
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P2.14 final verified implementation head: `bd443ea756badd151f5b233d8eb93b75f9f8047b`
-- P2.14 merged main head: `5be68be881f0ea77b800ffd641330a98eab32600`
-- PR Browser E2E run: `35481993446`
-- Browser E2E run: `35482081026`
-- Level 15 beta smoke run: `35482081035`
-- Android beta.166 run: `35482081091`
-- Android beta.166 artifact ID: `10596124023`
-- Android beta.166 artifact head: `5be68be881f0ea77b800ffd641330a98eab32600`
-- APK SHA-256: `a76171ee30e8e773aab181af03a608b2387f271dfd55134d7695cb68c66f9a8b`
+- P2.15 final verified implementation head: `f06d6a1cf9d725e43f13329e7013fe6b24b7eb4a`
+- P2.15 merged main head: `afc08577177149c7f2159c97939a6681716f08c5`
+- PR Browser E2E run: `35483564472`
+- Browser E2E run: `35483642307`
+- Level 15 beta smoke run: `35483642286`
+- Android beta.167 run: `35483642347`
+- Android beta.167 artifact ID: `10596726576`
+- Android beta.167 artifact head: `afc08577177149c7f2159c97939a6681716f08c5`
+- APK SHA-256: `282b92a25acf89280268c115c61f5a322a5f95e0399299c68a8ca4d77387da36`
