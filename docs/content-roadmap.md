@@ -261,7 +261,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] P5.5 Vector skill evolutions
 - [x] P5.6 Systems third specialization
 - [x] P5.7 Systems skill evolution
-- [ ] P5.8 Systems capstone interactions
+- [x] P5.8 Systems capstone interactions
 - [ ] P5.9 Same-class builds feel different at LV16+
 - [ ] P5.10 Specialization gear synergies
 - [ ] P5.11 Visual combat feedback
@@ -317,7 +317,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1, P2, P3, and **P4 — Megastructure Capstone Pass** are complete. **P5.1–P5.7 class-capstone work** is complete. Continue in roadmap order with **P5.8 — Systems capstone interactions**.
+P1, P2, P3, and **P4 — Megastructure Capstone Pass** are complete. **P5.1–P5.8 class-capstone work** is complete. Continue in roadmap order with **P5.9 — Same-class builds feel different at LV16+**.
+
+**P5.8 implemented:** Systems specialization/evolution pairs now form three explicit LV16+ capstone loops. **Induction Sink** links Thermal Shunter + Anchor Lattice so a hot multi-node Polarity Well routes additional heat into a longer overcharged crossfire bank; the next shot gains extra velocity, damage, penetration, capacitor return, and overclock recovery beyond standard Thermal Crossfire. **Recursive Bus** links Capacitor Conductor + Recursive Intrusion so propagated hack relays return capacitor directly and the overclock cools the active weapon as the intrusion spreads. **Mesh Reflux** links Grid Weaver + Return Current so machinery-routed remote marks become conductive return nodes and recycle Relay Hack recovery. Skills/Stats surface the active capstone links, and deterministic gameplay/UI regressions cover all three paired behaviors. **P5.9 — Same-class builds feel different at LV16+** is next after validation/merge.
 
 **P5.7 delivered:** Systems now has three LV16 class skill evolutions in the existing Skill Lens slots. **Anchor Lattice** turns Polarity Well into a conductive clustering tool that recycles Relay Hack recovery per caught node, balanced by +18% Polarity Well cooldown. **Recursive Intrusion** extends Relay Hack through one additional hostile, leaves propagated relays conductive, and advances Cascade Arc recovery, balanced by +18% Relay Hack capacitor cost. **Return Current** converts Cascade Arc network contacts into capped capacitor return and Polarity Well recovery, balanced by +20% Cascade Arc cooldown. Class/LV16 gating, class-switch cleanup, tradeoffs, network propagation, recovery routing, capacitor return, build-stat visibility, and explicit combat feedback are covered by deterministic regression. PR desktop/mobile Browser E2E and merged-main desktop/mobile Browser E2E both passed full regression, production build, and player-journey QA; merged-main Level 15 beta smoke passed; Android beta.197 passed package/version/SDK/signature verification, native emulator smoke, touch/runtime QA, and the Chapter 3 two-route touch playthrough. **P5.8 — Systems capstone interactions** is next.
 
