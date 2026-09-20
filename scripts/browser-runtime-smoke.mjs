@@ -821,6 +821,13 @@ try {
         && canvas?.dataset.environmentTransport === 'transfer-rail:3+gantry-crane:2'
         && canvas?.dataset.environmentCraneMotion === 'reciprocating-trolleys:2'
         && /^-?\\d+\\.\\d{2},-?\\d+\\.\\d{2}$/.test(canvas?.dataset.environmentCraneOffsets ?? '')
+        && canvas?.dataset.bossBiome === 'solar-yard'
+        && canvas?.dataset.bossPresentation === 'helios-9'
+        && canvas?.dataset.bossVisual === 'authored'
+        && (canvas?.dataset.bossAsset ?? '').includes('solar-yard-helios-9-lod')
+        && canvas?.dataset.bossSilhouette === 'sunshield-crown+reflector-wings+fabricator-core'
+        && canvas?.dataset.bossPalette === 'ceramic-white+solar-gold+heat-amber+overheat-red-phase-two'
+        && !(canvas?.dataset.bossFallback ?? '')
         && Number(canvas?.dataset.environmentInstances) > 0
         && ['1', '2'].includes(canvas?.dataset.environmentLod ?? '');
     })()`, 'Solar Yard authored sun/shadow fabrication yard', 20_000);
@@ -848,6 +855,9 @@ try {
         thermalControl: canvas?.dataset.environmentThermalShutterControl ?? '',
         shadowBudget: canvas?.dataset.environmentShadowBudget ?? '',
         tone: canvas?.dataset.environmentTone ?? '',
+        bossAsset: canvas?.dataset.bossAsset ?? '',
+        bossPresentation: canvas?.dataset.bossPresentation ?? '',
+        bossPhaseVisual: canvas?.dataset.bossPhaseVisual ?? '',
       };
     })()`);
     if (viewportMode === 'mobile-landscape' && solarYardEnvironment?.lod !== '2') {
@@ -871,7 +881,13 @@ try {
     if (!laterCraneOffsets || laterCraneOffsets === initialCraneOffsets) {
       throw new Error(`Solar Yard P3.11 gantry trolleys did not visibly advance: initial=${initialCraneOffsets} later=${laterCraneOffsets}`);
     }
-    console.log(`BROWSER_SOLAR_YARD_PASS viewport=${viewportMode} lod=${solarYardEnvironment?.lod} instances=${solarYardEnvironment?.instances} kit=${solarYardEnvironment?.kit} composition=${solarYardEnvironment?.composition} service=${solarYardEnvironment?.service} surface=${solarYardEnvironment?.surface} machinery=${solarYardEnvironment?.machinery} transport=${solarYardEnvironment?.transport}:${solarYardEnvironment?.craneMotion}:${solarYardEnvironment?.craneOffsets} shutters=${solarYardEnvironment?.thermalShutters}:${solarYardEnvironment?.thermalProtection}:${solarYardEnvironment?.thermalControl} materials=${solarYardEnvironment?.materials} lighting=${solarYardEnvironment?.lighting} sun=${solarYardEnvironment?.sunMode}:${solarYardEnvironment?.sunShadow}:${solarYardEnvironment?.sunDirection} patches=${solarYardEnvironment?.sunPatches} shadow=${solarYardEnvironment?.shadowBudget} tone=${solarYardEnvironment?.tone}`);
+    if (viewportMode === 'mobile-landscape' && !solarYardEnvironment?.bossAsset.includes('solar-yard-helios-9-lod2')) {
+      throw new Error(`HELIOS-9 mobile presentation did not select boss LOD2: ${JSON.stringify(solarYardEnvironment)}`);
+    }
+    if (!solarYardEnvironment?.bossPhaseVisual.startsWith('helios-9+')) {
+      throw new Error(`HELIOS-9 phase presentation telemetry was not observable: ${JSON.stringify(solarYardEnvironment)}`);
+    }
+    console.log(`BROWSER_SOLAR_YARD_PASS viewport=${viewportMode} lod=${solarYardEnvironment?.lod} instances=${solarYardEnvironment?.instances} kit=${solarYardEnvironment?.kit} composition=${solarYardEnvironment?.composition} service=${solarYardEnvironment?.service} surface=${solarYardEnvironment?.surface} machinery=${solarYardEnvironment?.machinery} transport=${solarYardEnvironment?.transport}:${solarYardEnvironment?.craneMotion}:${solarYardEnvironment?.craneOffsets} shutters=${solarYardEnvironment?.thermalShutters}:${solarYardEnvironment?.thermalProtection}:${solarYardEnvironment?.thermalControl} materials=${solarYardEnvironment?.materials} lighting=${solarYardEnvironment?.lighting} sun=${solarYardEnvironment?.sunMode}:${solarYardEnvironment?.sunShadow}:${solarYardEnvironment?.sunDirection} patches=${solarYardEnvironment?.sunPatches} shadow=${solarYardEnvironment?.shadowBudget} tone=${solarYardEnvironment?.tone} boss=${solarYardEnvironment?.bossPresentation}:${solarYardEnvironment?.bossAsset} phase=${solarYardEnvironment?.bossPhaseVisual}`);
   }
 
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);
