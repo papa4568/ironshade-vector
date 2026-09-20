@@ -191,7 +191,7 @@ assert(rendererSource.includes('this.coarse ? Math.min(detailScale, 0.55) : deta
 
 assert(rendererSource.includes('iceMineBrittleSupportVisuals = new Map'), 'Ice Mine P3.3 must keep authored brittle support visuals addressable by gameplay object id');
 assert(rendererSource.includes("this.iceMineBrittleSupportVisuals.set(support.id, root)"), 'Ice Mine P3.3 must bind brittle gameplay supports to authored support-frame roots');
-assert(rendererSource.includes('syncIceMineBrittleSupports(state, mission)'), 'Ice Mine P3.3 must synchronize authored support visibility from live simulation state');
+assert(rendererSource.includes('syncIceMineBrittleSupports(state, mission, budget)'), 'Ice Mine P3.3/P3.5 must synchronize authored support visibility and adaptive fracture detail from live simulation state');
 assert(rendererSource.includes('dataset.environmentBrittleSupports'), 'Ice Mine P3.3 support destruction must expose deterministic runtime QA telemetry');
 assert(rendererSource.includes('dataset.environmentBrittleSupportState'), 'Ice Mine P3.3 must expose intact/partial/cleared support state');
 assert(rendererSource.includes("mission.location === 'ice-mine' && this.iceMineBrittleSupportVisuals.has(object.id)"), 'Ice Mine P3.3 authored supports must suppress duplicate procedural collision-box visuals once loaded');
