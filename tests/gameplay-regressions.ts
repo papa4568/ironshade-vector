@@ -498,6 +498,110 @@ function vectorSkillEvolutionSmoke() {
 }
 vectorSkillEvolutionSmoke();
 
+function systemsSkillEvolutionSmoke() {
+  const level15 = {
+    ...createDefaultProfile(),
+    xp: 7140,
+    level: 15,
+    operatorClass: 'systems' as const,
+    classSelectionComplete: true,
+    specialization: null,
+    specializationOverclock: false,
+  };
+  const level16 = { ...level15, xp: 8100, level: 16 };
+
+  const locked = setAbilityMod(level15, 'mag', 'systems-anchor-lattice');
+  assert.equal(locked.abilityMods.mag, null, 'Systems skill evolutions should remain locked before LV16.');
+
+  const anchorProfile = setAbilityMod(level16, 'mag', 'systems-anchor-lattice');
+  const anchorBuild = deriveCombatBuild(anchorProfile);
+  assert.equal(anchorBuild.mechanics.systemsAnchorLattice, true);
+  assert.ok(anchorBuild.abilities[0].cooldownMul > 1, 'Anchor Lattice should pay its Polarity Well cooldown tradeoff.');
+  const anchorState = createSimulation(anchorBuild);
+  for (const enemy of anchorState.enemies) enemy.active = false;
+  for (const [index, enemy] of anchorState.enemies.slice(0, 2).entries()) {
+    Object.assign(enemy, {
+      active: true,
+      dead: false,
+      variant: 'standard' as const,
+      role: 'assault' as const,
+      combatClass: 'standard' as const,
+      x: anchorState.player.x + 150 + index * 80,
+      y: anchorState.player.y + (index === 0 ? -20 : 24),
+    });
+    enemy.statuses.conductive = 0;
+  }
+  anchorState.player.aim = { x: 1, y: 0 };
+  anchorState.player.abilityCooldowns[1] = 5;
+  assert.equal(triggerAbility(anchorState, 0), true, 'Anchor Lattice should cast through the Systems first-skill slot.');
+  assert.ok(anchorState.enemies.slice(0, 2).every(enemy => enemy.statuses.conductive >= 4.7), 'Anchor Lattice should latch collapsed targets into a conductive cluster.');
+  assert.ok(anchorState.player.abilityCooldowns[1] <= 4.3, 'Anchor Lattice should recycle Relay Hack recovery for caught nodes.');
+  assert.match(anchorState.eventText, /ANCHOR LATTICE/, 'Anchor Lattice needs explicit combat feedback.');
+
+  const recursiveProfile = setAbilityMod(level16, 'mark', 'systems-recursive-intrusion');
+  const recursiveBuild = deriveCombatBuild(recursiveProfile);
+  assert.equal(recursiveBuild.mechanics.systemsRecursiveIntrusion, true);
+  assert.ok(recursiveBuild.abilities[1].costMul > 1, 'Recursive Intrusion should pay its Relay Hack capacitor tradeoff.');
+  const recursiveState = createSimulation(recursiveBuild);
+  for (const enemy of recursiveState.enemies) enemy.active = false;
+  for (const [index, enemy] of recursiveState.enemies.slice(0, 4).entries()) {
+    Object.assign(enemy, {
+      active: true,
+      dead: false,
+      variant: 'standard' as const,
+      role: 'assault' as const,
+      combatClass: 'standard' as const,
+      x: recursiveState.player.x + 220 + index * 70,
+      y: recursiveState.player.y + (index % 2 === 0 ? -24 : 24),
+    });
+    enemy.statuses.marked = 0;
+    enemy.statuses.disrupted = 0;
+    enemy.statuses.conductive = 0;
+  }
+  recursiveState.player.aim = { x: 1, y: 0 };
+  recursiveState.player.abilityCooldowns[2] = 5;
+  assert.equal(triggerAbility(recursiveState, 1), true, 'Recursive Intrusion should cast through the Systems second-skill slot.');
+  const recursiveRelays = recursiveState.enemies.filter(enemy => enemy.active && enemy.statuses.conductive >= 4.7);
+  assert.ok(recursiveRelays.length >= 3, 'Recursive Intrusion should add an extra conductive relay beyond the base Relay Hack spread.');
+  assert.ok(recursiveState.player.abilityCooldowns[2] <= 3.65, 'Recursive Intrusion should recycle Cascade Arc recovery from the propagated intrusion.');
+  assert.match(recursiveState.eventText, /RECURSIVE INTRUSION/, 'Recursive Intrusion needs explicit combat feedback.');
+
+  const returnProfile = setAbilityMod(level16, 'arc', 'systems-return-current');
+  const returnBuild = deriveCombatBuild(returnProfile);
+  assert.equal(returnBuild.mechanics.systemsReturnCurrent, true);
+  assert.ok(returnBuild.abilities[2].cooldownMul > 1, 'Return Current should pay its Cascade Arc cooldown tradeoff.');
+  const returnState = createSimulation(returnBuild);
+  for (const enemy of returnState.enemies) enemy.active = false;
+  for (const object of returnState.objects) if (object.kind === 'conduit' || object.kind === 'anchorNode') object.active = false;
+  for (const [index, enemy] of returnState.enemies.slice(0, 2).entries()) {
+    Object.assign(enemy, {
+      active: true,
+      dead: false,
+      variant: 'standard' as const,
+      role: 'assault' as const,
+      combatClass: 'standard' as const,
+      x: returnState.player.x + 230 + index * 80,
+      y: returnState.player.y + (index === 0 ? 0 : 18),
+    });
+    enemy.statuses.marked = index === 0 ? 3 : 0;
+    enemy.statuses.conductive = 0;
+  }
+  returnState.player.aim = { x: 1, y: 0 };
+  returnState.player.capacitor = 40;
+  returnState.player.abilityCooldowns[0] = 4;
+  assert.equal(triggerAbility(returnState, 2), true, 'Return Current should cast through the Systems third-skill slot.');
+  assert.ok(returnState.player.capacitor >= 20, 'Return Current should return capacitor from the live Cascade Arc network.');
+  assert.ok(returnState.player.abilityCooldowns[0] <= 3.3, 'Return Current should recycle Polarity Well recovery from network contacts.');
+  assert.match(returnState.eventText, /RETURN CURRENT/, 'Return Current needs explicit combat feedback.');
+
+  const switched = setOperatorClass(anchorProfile, 'vector').profile;
+  assert.equal(switched.abilityMods.mag, null, 'Switching class should clear an incompatible Systems evolution.');
+  const genericLens = setAbilityMod(level16, 'arc', 'arc-ground');
+  const genericSwitched = setOperatorClass(genericLens, 'vector').profile;
+  assert.equal(genericSwitched.abilityMods.arc, 'arc-ground', 'Switching class should preserve shared Skill Lenses after Systems evolution support.');
+}
+systemsSkillEvolutionSmoke();
+
 function bulkheadWardenSpecializationSmoke() {
   const baseProfile = {
     ...createDefaultProfile(),
