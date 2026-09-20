@@ -1292,6 +1292,109 @@ function iceMineNodes(kind, lod) {
   return nodes;
 }
 
+
+function solarYardMaterials() {
+  return [
+    {
+      name: 'solar-yard-ceramic-shell',
+      pbrMetallicRoughness: { baseColorFactor: [0.66, 0.63, 0.56, 1], metallicFactor: 0.26, roughnessFactor: 0.60 },
+    },
+    {
+      name: 'solar-yard-scorched-steel',
+      pbrMetallicRoughness: { baseColorFactor: [0.12, 0.105, 0.095, 1], metallicFactor: 0.78, roughnessFactor: 0.44 },
+    },
+    {
+      name: 'solar-yard-radiator-black',
+      pbrMetallicRoughness: { baseColorFactor: [0.032, 0.038, 0.042, 1], metallicFactor: 0.42, roughnessFactor: 0.56 },
+    },
+    {
+      name: 'solar-yard-solar-gold',
+      pbrMetallicRoughness: { baseColorFactor: [0.72, 0.46, 0.12, 1], metallicFactor: 0.82, roughnessFactor: 0.28 },
+    },
+    {
+      name: 'solar-yard-amber-emissive',
+      pbrMetallicRoughness: { baseColorFactor: [0.26, 0.085, 0.025, 1], metallicFactor: 0.30, roughnessFactor: 0.22 },
+      emissiveFactor: [1.0, 0.34, 0.08],
+    },
+  ];
+}
+
+function solarYardNodes(kind, lod) {
+  const detail = lod === 1;
+
+  if (kind === 'ceramicDeck') {
+    const nodes = [
+      { name: 'solar-yard-ceramic-deck-main', mesh: 0, translation: [0, 0.20, 0], scale: [3.50, 0.40, 1.58] },
+      { name: 'solar-yard-ceramic-deck-underframe', mesh: 1, translation: [0, 0.52, 0], scale: [3.20, 0.18, 0.44] },
+      { name: 'solar-yard-ceramic-deck-radiator-strip', mesh: 2, translation: [0, 0.46, -1.30], scale: [2.88, 0.09, 0.12] },
+      { name: 'solar-yard-ceramic-deck-status', mesh: 4, translation: [2.52, 0.48, 1.24], scale: [0.34, 0.08, 0.06] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'solar-yard-ceramic-deck-edge-rail-left', mesh: 1, translation: [-2.86, 0.72, 0], scale: [0.16, 0.92, 1.34] },
+        { name: 'solar-yard-ceramic-deck-edge-rail-right', mesh: 1, translation: [2.86, 0.72, 0], scale: [0.16, 0.92, 1.34] },
+        { name: 'solar-yard-ceramic-deck-service-seam', mesh: 3, translation: [0.76, 0.44, 0], scale: [0.10, 0.08, 1.28] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  if (kind === 'trussFrame') {
+    const nodes = [
+      { name: 'solar-yard-truss-frame-left', mesh: 1, translation: [0, 1.92, -2.28], scale: [0.40, 3.84, 0.42] },
+      { name: 'solar-yard-truss-frame-right', mesh: 1, translation: [0, 1.92, 2.28], scale: [0.40, 3.84, 0.42] },
+      { name: 'solar-yard-truss-frame-crown', mesh: 1, translation: [0, 3.66, 0], scale: [0.48, 0.42, 5.02] },
+      { name: 'solar-yard-truss-frame-thermal-cap', mesh: 0, translation: [0.18, 3.92, 0], scale: [0.58, 0.18, 4.62] },
+      { name: 'solar-yard-truss-frame-status', mesh: 4, translation: [0.28, 2.56, 2.00], scale: [0.07, 0.62, 0.10] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'solar-yard-truss-frame-diagonal-left', mesh: 1, translation: [0.18, 1.38, -1.14], scale: [0.22, 2.18, 0.24] },
+        { name: 'solar-yard-truss-frame-diagonal-right', mesh: 1, translation: [0.18, 1.38, 1.14], scale: [0.22, 2.18, 0.24] },
+        { name: 'solar-yard-truss-frame-foil-tag', mesh: 3, translation: [0.30, 2.06, -2.00], scale: [0.08, 0.54, 0.14] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  if (kind === 'radiatorTower') {
+    const nodes = [
+      { name: 'solar-yard-radiator-tower-foot', mesh: 1, translation: [0, 0.24, 0], scale: [1.48, 0.48, 1.48] },
+      { name: 'solar-yard-radiator-tower-spine', mesh: 1, translation: [0, 2.38, 0], scale: [0.62, 4.28, 0.62] },
+      { name: 'solar-yard-radiator-tower-wing-left', mesh: 2, translation: [0, 2.62, -1.48], scale: [0.28, 3.20, 2.18] },
+      { name: 'solar-yard-radiator-tower-wing-right', mesh: 2, translation: [0, 2.62, 1.48], scale: [0.28, 3.20, 2.18] },
+      { name: 'solar-yard-radiator-tower-status', mesh: 4, translation: [0.48, 4.54, 0], scale: [0.10, 0.38, 0.10] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'solar-yard-radiator-tower-brace-left', mesh: 1, translation: [0.12, 1.88, -0.82], scale: [0.18, 2.80, 0.18] },
+        { name: 'solar-yard-radiator-tower-brace-right', mesh: 1, translation: [0.12, 1.88, 0.82], scale: [0.18, 2.80, 0.18] },
+        { name: 'solar-yard-radiator-tower-gold-baffle', mesh: 3, translation: [0.34, 4.18, 0], scale: [0.10, 0.20, 1.54] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  const nodes = [
+    { name: 'solar-yard-reflector-pylon-base', mesh: 1, translation: [0, 0.28, 0], scale: [1.66, 0.56, 1.34] },
+    { name: 'solar-yard-reflector-pylon-mast', mesh: 1, translation: [0, 2.04, 0], scale: [0.52, 3.52, 0.52] },
+    { name: 'solar-yard-reflector-pylon-face', mesh: 3, translation: [0.18, 4.12, 0], scale: [0.34, 1.62, 2.56] },
+    { name: 'solar-yard-reflector-pylon-status', mesh: 4, translation: [0.48, 3.14, 1.12], scale: [0.10, 0.46, 0.10] },
+  ];
+  if (detail) {
+    nodes.push(
+      { name: 'solar-yard-reflector-pylon-backplane', mesh: 2, translation: [-0.04, 4.12, 0], scale: [0.18, 1.46, 2.34] },
+      { name: 'solar-yard-reflector-pylon-rim-left', mesh: 0, translation: [0.36, 4.12, -1.30], scale: [0.16, 1.74, 0.16] },
+      { name: 'solar-yard-reflector-pylon-rim-right', mesh: 0, translation: [0.36, 4.12, 1.30], scale: [0.16, 1.74, 0.16] },
+    );
+  }
+  nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+  return nodes;
+}
+
 function damagedVesselNodes(kind, lod) {
   const detail = lod === 1;
   if (kind === 'rib') {
@@ -2094,6 +2197,24 @@ for (const [kind, id] of iceMineProfiles) {
       `${id}-lod${lod}`,
       iceMineNodes(kind, lod),
       iceMineMaterials(),
+    ));
+  }
+}
+
+const solarYardProfiles = [
+  ['ceramicDeck', 'solar-yard-ceramic-deck'],
+  ['trussFrame', 'solar-yard-truss-frame'],
+  ['radiatorTower', 'solar-yard-radiator-tower'],
+  ['reflectorPylon', 'solar-yard-reflector-pylon'],
+];
+
+for (const [kind, id] of solarYardProfiles) {
+  for (const lod of [1, 2]) {
+    outputs.push(await writeAsset(
+      `environments/${id}-lod${lod}.glb`,
+      `${id}-lod${lod}`,
+      solarYardNodes(kind, lod),
+      solarYardMaterials(),
     ));
   }
 }
