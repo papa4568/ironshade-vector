@@ -533,8 +533,10 @@ for (const path of glbs) {
     for (const required of ['enemy-rig', 'hip', 'torso', 'helmet', 'arm-left', 'arm-right', 'leg-left', 'leg-right', 'backpack', 'weapon-socket']) {
       assert(nodeNames.has(required), `${relativePath}: authored enemy is missing required node ${required}`);
     }
-    const silhouetteMarker = filename.includes('ice-mine-rhea-kade')
-      ? 'ice-mine-rhea-kade-bore-cowl'
+    const silhouetteMarker = filename.includes('solar-yard-helios-9')
+      ? 'solar-yard-helios-9-sunshield-crown'
+      : filename.includes('ice-mine-rhea-kade')
+        ? 'ice-mine-rhea-kade-bore-cowl'
       : filename.includes('jovian-harvester-stormline-foreman')
         ? 'jovian-harvester-stormline-foreman-storm-cowl'
       : filename.includes('spin-habitat-sable-voss')
