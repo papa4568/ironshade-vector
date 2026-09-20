@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { buyConsumable, createDefaultCampaign, generateContracts, loadCampaign, saveCampaign } from '../src/game/campaign';
+import { buyConsumable, createDefaultCampaign, generateContracts, getMegastructureStageContract, loadCampaign, saveCampaign } from '../src/game/campaign';
 import { aimAtMobileTarget, applyPlayerDamage, createSimulation, stepSimulation, triggerAbility, triggerConsumable, triggerDodge, triggerFire, weaponConfigs, type Telemetry } from '../src/game/sim';
 import { applyMissionSetup, createDirector, stepMissionDirector } from '../src/game/director';
 import { awardRecovery, createDefaultProfile, deriveCombatBuild, loadProfile, saveProfile } from '../src/game/meta';
@@ -465,6 +465,42 @@ assert.equal(armorPopup.kind, 'armor', 'armored hits should use the armor damage
 assert.ok(armorPopup.value >= 1, 'damage number should report actual applied durability loss');
 for (let index = 0; index < 50; index += 1) stepSimulation(damageNumberState, 1 / 60);
 assert.equal(damageNumberState.damageNumbers.some(item => item.active), false, 'floating damage numbers should expire instead of accumulating');
+
+const perseidCampaign = { ...createDefaultCampaign(), cycle: 3, contractsCompleted: 3 };
+const perseidContract = generateContracts(perseidCampaign).find(contract => contract.megastructure === 'generation-ship');
+assert.ok(perseidContract, 'P4 Perseid must remain available as the first rare megastructure rotation.');
+assert.deepEqual(perseidContract.megastructureZoneNames, ['Docking Spine', 'Agricultural Drum', 'Cryogenic Service Deck', 'Reactor Choir'], 'Perseid must preserve its authored four-space traverse.');
+
+const perseidBuild = deriveCombatBuild({ ...createDefaultProfile(), operatorClass: 'vanguard', classSelectionComplete: true });
+const perseidStage1 = getMegastructureStageContract(perseidContract, 0);
+const perseidStage1State = createSimulation(perseidBuild);
+applyMissionSetup(perseidStage1State, perseidStage1);
+assert.deepEqual(perseidStage1State.sectors.map(sector => sector.label), ['BERTH COLLAR', 'DOCKING SPINE', 'INNER AIRLOCK'], 'Perseid stage 1 must override the reused vessel labels with generation-ship compartments.');
+assert.equal(perseidStage1State.objects.find(object => object.id === 'mega-optional-cache')?.label, 'Crew archive canister', 'Perseid stage 1 must retain its bespoke optional recovery.');
+
+const perseidStage2 = getMegastructureStageContract(perseidContract, 1);
+const perseidStage2State = createSimulation(perseidBuild);
+applyMissionSetup(perseidStage2State, perseidStage2);
+assert.deepEqual(perseidStage2State.sectors.map(sector => sector.label), ['OUTER DRUM', 'AGRICULTURAL RING', 'SEED VAULT'], 'Perseid stage 2 must read as the agricultural drum rather than generic Spin Habitat.');
+assert.equal(perseidStage2State.enemies.find(enemy => enemy.id === 6)?.label, 'Perseid Drum Warder', 'Perseid stage 2 must keep its guaranteed ship-specific elite.');
+
+const perseidStage3 = getMegastructureStageContract(perseidContract, 2);
+const perseidStage3State = createSimulation(perseidBuild);
+applyMissionSetup(perseidStage3State, perseidStage3);
+assert.deepEqual(perseidStage3State.sectors.map(sector => sector.label), ['CRYOBANK FORE', 'SERVICE DECK', 'REGISTRY VAULT'], 'Perseid stage 3 must read as a cryogenic service deck.');
+
+const perseidStage4 = getMegastructureStageContract(perseidContract, 3);
+const perseidStage4State = createSimulation(perseidBuild);
+applyMissionSetup(perseidStage4State, perseidStage4);
+assert.deepEqual(perseidStage4State.sectors.map(sector => sector.label), ['REACTOR NAVE', 'CHOIR BUS', 'STEWARD APSE'], 'Perseid stage 4 must read as the Reactor Choir.');
+const perseidSteward = perseidStage4State.enemies.find(enemy => enemy.role === 'boss');
+assert.equal(perseidSteward?.label, 'Perseid Steward Core', 'Perseid final deep target must retain its authored identity.');
+assert.equal(perseidSteward?.variant, 'perseidSteward', 'Perseid Steward Core must use its dedicated boss behavior.');
+assert.equal(perseidSteward?.maxHp, 790, 'Perseid Steward Core must retain its capstone durability budget.');
+
+const perseidDirector = createDirector();
+stepMissionDirector(perseidStage1State, perseidDirector, perseidStage1, 7.1);
+assert.match(perseidStage1State.eventText, /PERSEID HULL FLEX/, 'Perseid stage events must layer generation-ship continuity over reused biome mechanics.');
 
 const expeditionLootSource = [{ id: 'stage-1-drop', enemyId: 7, enemyLabel: 'Stage One Elite', rarity: 'Prototype' as const, source: 'elite' as const, recoveryQualityFloor: 3 as const, recoveryLevel: 24, monsterLevel: 8 }];
 const expeditionLootCarry = carryExpeditionLoot(expeditionLootSource);
