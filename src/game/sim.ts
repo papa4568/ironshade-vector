@@ -1083,7 +1083,7 @@ function stepHecateYardmasterBoss(state: SimState, boss: Enemy, dt: number) {
       activateBreach(state, 'boss-breach');
       const arena = state.sectors.find(item => item.id === 'C');
       if (arena) { arena.rapidTimer = Math.max(arena.rapidTimer, 4.6); arena.targetPressure = 0.08; }
-      plantHazard(state, p.x + aim.x * 90, p.y + aim.y * 90, 'vacuumWake', 4.8);
+      plantHazard(state, p.x + aim.x * 90, p.y + aim.y * 90, 'vectorWash', 4.8, 'environment');
       pushEvent(state, 'YARDMASTER WRECK PURGE // CONTROL CROWN OPENED TO THE BREAKING FIELD', 2.3);
     }
     boss.fireCooldown = boss.bossPhase === 2 ? 0.96 : 1.32;
