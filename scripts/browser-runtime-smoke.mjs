@@ -946,7 +946,11 @@ try {
       throw new Error(`Solar Yard P3.11 transport telemetry was not observable: ${JSON.stringify(solarYardEnvironment)}`);
     }
     const initialCraneOffsets = solarYardEnvironment?.craneOffsets ?? '';
-    await sleep(750);
+    await waitFor(`(() => {
+      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-solar-yard');
+      const offsets = canvas?.dataset.environmentCraneOffsets ?? '';
+      return Boolean(offsets) && offsets !== ${JSON.stringify(initialCraneOffsets)};
+    })()`, 'Solar Yard gantry trolley motion', 5_000);
     const laterCraneOffsets = await evaluate(`(() => [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-solar-yard')?.dataset.environmentCraneOffsets ?? '')()`);
     if (!laterCraneOffsets || laterCraneOffsets === initialCraneOffsets) {
       throw new Error(`Solar Yard P3.11 gantry trolleys did not visibly advance: initial=${initialCraneOffsets} later=${laterCraneOffsets}`);
