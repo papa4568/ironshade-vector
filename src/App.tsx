@@ -118,7 +118,7 @@ function DebriefScreen({ result, onShip, onBuild, onRepeat, onDiscard }: { resul
           <div className="expedition-finale"><small>FINAL DISPOSITION</small><b>{expeditionDebrief.finaleLabel}</b><span>{expeditionDebrief.finaleDetail}</span></div>
           {expeditionDebrief.continuityNotes.length > 0 && <div className="expedition-continuity"><small>ENVIRONMENTAL CONTINUITY OBSERVED</small>{expeditionDebrief.continuityNotes.map(note => <span key={note.stageName}><b>{note.stageName}</b>{note.labels.length > 0 ? ` // ${note.labels.join(' + ')}` : ''} — {note.detail}</span>)}</div>}
         </section>}
-        {milestones.length > 0 && <div className="anomaly-note"><b>FACTION ACCESS EXPANDED</b>{milestones.map(milestone => <span key={milestone}>{milestone}</span>)}</div>
+        {milestones.length > 0 && <div className="anomaly-note"><b>FACTION ACCESS EXPANDED</b>{milestones.map(milestone => <span key={milestone}>{milestone}</span>)}</div>}
         <div className={`uplink-note ${result.uplinkStatus}`}><b>{uplinkCopy[0]}</b><span>{uplinkCopy[1]}</span></div>
         {newRecoveryCount > 0 && <section className="recovery-review" aria-label="Recovered equipment review">
           <header className="recovery-review-heading"><div><small>RECOVERED EQUIPMENT // REVIEW</small><b>Keep what matters. Discard what does not.</b></div><span>{keptRecoveryCount} kept · {discardedIds.length} discarded</span></header>
