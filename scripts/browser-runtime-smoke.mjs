@@ -651,6 +651,10 @@ try {
         && canvas?.dataset.environmentStormLanguage === 'storm-charge-sweeps+pressure-shear-bands+relief-pulse'
         && canvas?.dataset.environmentStormSource === 'live-sector-pressure+service-breach+contract-conditions'
         && canvas?.dataset.environmentVfx === 'storm-charge-sweeps+pressure-shear-bands+relief-pulse'
+        && canvas?.dataset.environmentAmbient === 'upper-haze+pressure-clouds+charged-particulate'
+        && canvas?.dataset.environmentAmbientMotion === 'crosswind-drift+pressure-breath+charged-drift'
+        && ['2-clouds+20-motes+spine-haze', '3-clouds+36-motes+spine-haze', '5-clouds+56-motes+spine-haze'].includes(canvas?.dataset.environmentAmbientDetail ?? '')
+        && Number.isFinite(Number(canvas?.dataset.environmentAmbientIntensity))
         && Number.isFinite(Number(canvas?.dataset.environmentStormIntensity))
         && Number.isFinite(Number(canvas?.dataset.environmentPressureShear))
         && ['2-sweeps+2-bands+relief-pulse', '4-sweeps+3-bands+relief-pulse'].includes(canvas?.dataset.environmentStormDetail ?? '')
@@ -692,17 +696,22 @@ try {
         pressureShear: Number(canvas?.dataset.environmentPressureShear),
         pressureRange: canvas?.dataset.environmentPressureRange ?? '',
         stormDetail: canvas?.dataset.environmentStormDetail ?? '',
+        atmosphereDetail: canvas?.dataset.environmentAmbientDetail ?? '',
+        atmosphereIntensity: Number(canvas?.dataset.environmentAmbientIntensity),
         bossAsset: canvas?.dataset.bossAsset ?? '',
         bossPresentation: canvas?.dataset.bossPresentation ?? '',
       };
     })()`);
-    if (!Number.isFinite(jovianEnvironment?.stormIntensity) || !Number.isFinite(jovianEnvironment?.pressureShear)) {
-      throw new Error(`Jovian Harvester storm/pressure state was not observable: ${JSON.stringify(jovianEnvironment)}`);
+    if (!Number.isFinite(jovianEnvironment?.stormIntensity) || !Number.isFinite(jovianEnvironment?.pressureShear) || !Number.isFinite(jovianEnvironment?.atmosphereIntensity)) {
+      throw new Error(`Jovian Harvester storm/pressure/atmosphere state was not observable: ${JSON.stringify(jovianEnvironment)}`);
     }
     if (viewportMode === 'mobile-landscape' && jovianEnvironment?.stormDetail !== '2-sweeps+2-bands+relief-pulse') {
       throw new Error(`Jovian Harvester mobile storm/pressure detail did not reduce: ${JSON.stringify(jovianEnvironment)}`);
     }
-    console.log(`BROWSER_JOVIAN_HARVESTER_PASS viewport=${viewportMode} lod=${jovianEnvironment?.lod} instances=${jovianEnvironment?.instances} kit=${jovianEnvironment?.kit} composition=${jovianEnvironment?.composition} machinery=${jovianEnvironment?.machinery} pressureKit=${jovianEnvironment?.pressureKit} boss=${jovianEnvironment?.bossPresentation}:${jovianEnvironment?.bossAsset} pressure=${jovianEnvironment?.pressureState} door=${jovianEnvironment?.pressureDoor} storm=${jovianEnvironment?.stormMode}:${jovianEnvironment?.stormIntensity.toFixed(2)} shear=${jovianEnvironment?.pressureShear.toFixed(2)} range=${jovianEnvironment?.pressureRange} detail=${jovianEnvironment?.stormDetail}`);
+    if (viewportMode === 'mobile-landscape' && jovianEnvironment?.atmosphereDetail !== '2-clouds+20-motes+spine-haze') {
+      throw new Error(`Jovian Harvester mobile atmosphere detail did not reduce: ${JSON.stringify(jovianEnvironment)}`);
+    }
+    console.log(`BROWSER_JOVIAN_HARVESTER_PASS viewport=${viewportMode} lod=${jovianEnvironment?.lod} instances=${jovianEnvironment?.instances} kit=${jovianEnvironment?.kit} composition=${jovianEnvironment?.composition} machinery=${jovianEnvironment?.machinery} pressureKit=${jovianEnvironment?.pressureKit} boss=${jovianEnvironment?.bossPresentation}:${jovianEnvironment?.bossAsset} pressure=${jovianEnvironment?.pressureState} door=${jovianEnvironment?.pressureDoor} atmosphere=${jovianEnvironment?.atmosphereDetail}:${jovianEnvironment?.atmosphereIntensity.toFixed(2)} storm=${jovianEnvironment?.stormMode}:${jovianEnvironment?.stormIntensity.toFixed(2)} shear=${jovianEnvironment?.pressureShear.toFixed(2)} range=${jovianEnvironment?.pressureRange} detail=${jovianEnvironment?.stormDetail}`);
   }
 
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);

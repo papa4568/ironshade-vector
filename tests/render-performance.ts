@@ -131,6 +131,9 @@ assert(ventingJovianStorm.intensity > nominalJovianStorm.intensity && ventingJov
 assert(rendererSource.includes('private syncJovianHarvesterVisualLanguage(state: SimState, mission: Contract, budget: RenderBudgetSnapshot)'), 'Jovian P2.12 must have a per-frame gameplay-driven storm/pressure visual sync');
 assert(rendererSource.includes("dataset.environmentStormSource = 'live-sector-pressure+service-breach+contract-conditions'"), 'Jovian P2.12 runtime visual language must derive from live gameplay pressure and breach state');
 assert(rendererSource.includes("dataset.environmentStormDetail = reducedStormDetail ? '2-sweeps+2-bands+relief-pulse' : '4-sweeps+3-bands+relief-pulse'"), 'Jovian P2.12 must reduce secondary storm/pressure geometry for coarse pointers and the performance VFX budget');
+assert(rendererSource.includes("const atmosphereDensity = this.coarse || budget.vfxDensity < 0.55"), 'Jovian P2.15 atmosphere must enter its reduced profile on coarse/mobile rendering or the Performance VFX tier');
+assert(rendererSource.includes("dataset.environmentAmbientMotion = 'crosswind-drift+pressure-breath+charged-drift'"), 'Jovian P2.15 atmosphere must keep a persistent low-frequency motion language distinct from reactive storm VFX');
+assert(rendererSource.includes("dataset.environmentAmbientDetail = `${visibleClouds}-clouds+${visibleMotes}-motes+spine-haze`"), 'Jovian P2.15 runtime QA must expose adaptive cloud and particulate density');
 const sustainedMobile = new AdaptiveRenderBudget(true);
 let sustainedSnapshot = sustainedMobile.sample(16.7, 1);
 for (let index = 0; index < 60 * 10; index += 1) sustainedSnapshot = sustainedMobile.sample(18.2, 1);
