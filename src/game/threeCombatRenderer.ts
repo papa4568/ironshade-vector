@@ -298,6 +298,18 @@ export class ThreeCombatRenderer {
   private jovianHarvesterLoadGeneration = 0;
   private iceMineLoadGeneration = 0;
   private readonly iceMineBrittleSupportVisuals = new Map<string, THREE.Object3D>();
+  private readonly iceMineFractureRoots = new Map<string, THREE.Group>();
+  private readonly iceMineFractureCracks = new Map<string, Array<THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>>>();
+  private readonly iceMineFractureShards = new Map<string, Array<THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial>>>();
+  private readonly iceMineFracturePulses = new Map<string, THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>>();
+  private readonly iceMineCollapseStartedAt = new Map<string, number>();
+  private readonly iceMineBrittleSupportLastActive = new Map<string, boolean>();
+  private readonly iceMineFractureCrackGeometry = new THREE.TorusGeometry(0.48, 0.035, 5, 20);
+  private readonly iceMineFracturePulseGeometry = new THREE.TorusGeometry(0.66, 0.05, 6, 28);
+  private readonly iceMineFractureShardGeometry = new THREE.BoxGeometry(0.16, 0.10, 0.32);
+  private readonly iceMineFractureCrackMaterial = new THREE.MeshBasicMaterial({ color: 0xb7f2ff, transparent: true, opacity: 0.62, depthWrite: false });
+  private readonly iceMineFracturePulseMaterial = new THREE.MeshBasicMaterial({ color: 0x85ddea, transparent: true, opacity: 0.34, depthWrite: false });
+  private readonly iceMineFractureShardMaterial = new THREE.MeshStandardMaterial({ color: 0xb9dce3, emissive: 0x6ab8c6, emissiveIntensity: 0.18, metalness: 0.14, roughness: 0.72 });
   private jovianStormVisualRoot: THREE.Group | null = null;
   private readonly jovianStormChargeSweeps: Array<THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>> = [];
   private readonly jovianPressureShearBands: Array<THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>> = [];
@@ -462,7 +474,7 @@ export class ThreeCombatRenderer {
     this.ensureEnvironment(state, mission, budget);
     this.syncSpinHabitatArchitecture(state, mission, budget);
     this.syncJovianHarvesterVisualLanguage(state, mission, budget);
-    this.syncIceMineBrittleSupports(state, mission);
+    this.syncIceMineBrittleSupports(state, mission, budget);
     syncHardSciFiEnvironment(this.environmentRoot, state, mission, budget.detailScale, budget.transparencyScale);
     this.syncSectors(state);
     this.syncObjects(state, mission);
@@ -538,6 +550,12 @@ export class ThreeCombatRenderer {
     }
     for (const visual of this.damageNumberPool) visual.texture.dispose();
     this.damageNumberPool.length = 0;
+    this.iceMineFractureCrackGeometry.dispose();
+    this.iceMineFracturePulseGeometry.dispose();
+    this.iceMineFractureShardGeometry.dispose();
+    this.iceMineFractureCrackMaterial.dispose();
+    this.iceMineFracturePulseMaterial.dispose();
+    this.iceMineFractureShardMaterial.dispose();
     disposeTree(this.scene);
     this.renderer.dispose();
   }
@@ -550,6 +568,12 @@ export class ThreeCombatRenderer {
     this.jovianHarvesterLoadGeneration += 1;
     this.iceMineLoadGeneration += 1;
     this.iceMineBrittleSupportVisuals.clear();
+    this.iceMineFractureRoots.clear();
+    this.iceMineFractureCracks.clear();
+    this.iceMineFractureShards.clear();
+    this.iceMineFracturePulses.clear();
+    this.iceMineCollapseStartedAt.clear();
+    this.iceMineBrittleSupportLastActive.clear();
     this.jovianStormVisualRoot = null;
     this.jovianStormChargeSweeps.length = 0;
     this.jovianPressureShearBands.length = 0;
@@ -644,6 +668,10 @@ export class ThreeCombatRenderer {
     delete this.renderer.domElement.dataset.environmentBrittleSupports;
     delete this.renderer.domElement.dataset.environmentBrittleSupportState;
     delete this.renderer.domElement.dataset.environmentBrittleSupportIds;
+    delete this.renderer.domElement.dataset.environmentFractureVfx;
+    delete this.renderer.domElement.dataset.environmentFractureState;
+    delete this.renderer.domElement.dataset.environmentFractureDetail;
+    delete this.renderer.domElement.dataset.environmentFractureSupports;
     delete this.renderer.domElement.dataset.environmentZoneIdentity;
     delete this.renderer.domElement.dataset.environmentLighting;
     delete this.renderer.domElement.dataset.environmentMaterials;
@@ -1169,12 +1197,55 @@ export class ThreeCombatRenderer {
       let instances = 0;
       instances += this.addInstancedEnvironmentAsset(byKey.get('frostWall')!.instance, frostWallPlacements, 'ice-mine-frost-wall');
       instances += this.addInstancedEnvironmentAsset(byKey.get('supportFrame')!.instance, supportFramePlacements, 'ice-mine-support-frame');
-      for (const support of brittleSupportFramePlacements) {
+      for (const [supportIndex, support] of brittleSupportFramePlacements.entries()) {
         const root = new THREE.Group();
         root.name = `ice-mine-brittle-support-${support.id}`;
         this.authoredEnvironmentRoot.add(root);
         instances += this.addInstancedEnvironmentAsset(byKey.get('supportFrame')!.instance, [support.placement], 'ice-mine-support-frame-brittle', root);
         this.iceMineBrittleSupportVisuals.set(support.id, root);
+
+        const fractureRoot = new THREE.Group();
+        fractureRoot.name = `ice-mine-fracture-vfx-${support.id}`;
+        fractureRoot.position.copy(support.placement.position);
+        const cracks: Array<THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>> = [];
+        for (let crackIndex = 0; crackIndex < 3; crackIndex += 1) {
+          const crack = new THREE.Mesh(this.iceMineFractureCrackGeometry, this.iceMineFractureCrackMaterial);
+          crack.name = `ice-mine-fracture-crack-${support.id}-${crackIndex}`;
+          crack.position.set((crackIndex - 1) * 0.14, 0.84 + crackIndex * 0.34, 0.02 * (crackIndex - 1));
+          crack.rotation.y = crackIndex % 2 === 0 ? 0.18 : -0.22;
+          crack.rotation.z = (crackIndex - 1) * 0.46;
+          crack.scale.set(0.72 + crackIndex * 0.10, 1.12 - crackIndex * 0.08, 1);
+          crack.visible = false;
+          fractureRoot.add(crack);
+          cracks.push(crack);
+        }
+
+        const pulse = new THREE.Mesh(this.iceMineFracturePulseGeometry, this.iceMineFracturePulseMaterial);
+        pulse.name = `ice-mine-collapse-frost-pulse-${support.id}`;
+        pulse.rotation.x = Math.PI / 2;
+        pulse.position.y = 0.06;
+        pulse.visible = false;
+        fractureRoot.add(pulse);
+
+        const shards: Array<THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial>> = [];
+        for (let shardIndex = 0; shardIndex < 8; shardIndex += 1) {
+          const shard = new THREE.Mesh(this.iceMineFractureShardGeometry, this.iceMineFractureShardMaterial);
+          shard.name = `ice-mine-collapse-shard-${support.id}-${shardIndex}`;
+          const angle = (shardIndex / 8) * Math.PI * 2 + supportIndex * 0.31;
+          const speed = 0.42 + (shardIndex % 3) * 0.13;
+          shard.userData.velocity = [Math.cos(angle) * speed, 0.78 + (shardIndex % 4) * 0.12, Math.sin(angle) * speed];
+          shard.position.set(0, 0.92, 0);
+          shard.rotation.set(shardIndex * 0.31, shardIndex * 0.47, shardIndex * 0.23);
+          shard.visible = false;
+          fractureRoot.add(shard);
+          shards.push(shard);
+        }
+
+        this.authoredEnvironmentRoot.add(fractureRoot);
+        this.iceMineFractureRoots.set(support.id, fractureRoot);
+        this.iceMineFractureCracks.set(support.id, cracks);
+        this.iceMineFracturePulses.set(support.id, pulse);
+        this.iceMineFractureShards.set(support.id, shards);
       }
       instances += this.addInstancedEnvironmentAsset(byKey.get('serviceDeck')!.instance, serviceDeckPlacements, 'ice-mine-service-deck');
       instances += this.addInstancedEnvironmentAsset(byKey.get('cryoPump')!.instance, cryoPumpPlacements, 'ice-mine-cryo-pump');
@@ -1202,6 +1273,12 @@ export class ThreeCombatRenderer {
       loaded.forEach(item => item.instance.release());
       if (this.disposed || generation !== this.iceMineLoadGeneration) return;
       this.iceMineBrittleSupportVisuals.clear();
+      this.iceMineFractureRoots.clear();
+      this.iceMineFractureCracks.clear();
+      this.iceMineFractureShards.clear();
+      this.iceMineFracturePulses.clear();
+      this.iceMineCollapseStartedAt.clear();
+      this.iceMineBrittleSupportLastActive.clear();
       this.refineryInstancedMeshes.forEach(mesh => {
         mesh.removeFromParent();
         mesh.dispose();
@@ -2654,28 +2731,101 @@ export class ThreeCombatRenderer {
     this.renderer.domElement.dataset.environmentVfx = 'spindown-brake-arcs+axis-warning-pulse';
   }
 
-  private syncIceMineBrittleSupports(state: SimState, mission: Contract) {
+  private syncIceMineBrittleSupports(state: SimState, mission: Contract, budget: RenderBudgetSnapshot) {
     if (mission.location !== 'ice-mine') {
       delete this.renderer.domElement.dataset.environmentBrittleSupports;
       delete this.renderer.domElement.dataset.environmentBrittleSupportState;
       delete this.renderer.domElement.dataset.environmentBrittleSupportIds;
+      delete this.renderer.domElement.dataset.environmentFractureVfx;
+      delete this.renderer.domElement.dataset.environmentFractureState;
+      delete this.renderer.domElement.dataset.environmentFractureDetail;
+      delete this.renderer.domElement.dataset.environmentFractureSupports;
       return;
     }
 
     const supportIds = ['ice-brittle-gate-a', 'ice-brittle-gate-b'] as const;
+    const reducedFractureDetail = this.coarse || budget.vfxDensity < 0.55;
+    const shardBudget = reducedFractureDetail ? 4 : 8;
+    const crackBudget = reducedFractureDetail ? 2 : 3;
     let intact = 0;
     let failed = 0;
     let damaged = 0;
+    let cracking = 0;
+    let collapsing = 0;
+    let settled = 0;
+
     for (const id of supportIds) {
       const object = state.objects.find(item => item.id === id);
       const visual = this.iceMineBrittleSupportVisuals.get(id);
       const active = Boolean(object?.active);
+      const previousActive = this.iceMineBrittleSupportLastActive.get(id);
+      if (previousActive === true && !active) this.iceMineCollapseStartedAt.set(id, state.time);
+      else if (previousActive === undefined && !active && !this.iceMineCollapseStartedAt.has(id)) this.iceMineCollapseStartedAt.set(id, state.time);
+      this.iceMineBrittleSupportLastActive.set(id, active);
       if (visual) visual.visible = active;
-      if (!active) {
-        failed += 1;
-      } else {
+
+      const hpRatio = object && object.maxHp > 0 ? THREE.MathUtils.clamp(object.hp / object.maxHp, 0, 1) : 1;
+      const supportDamaged = active && hpRatio < 0.999;
+      const cracks = this.iceMineFractureCracks.get(id) ?? [];
+      for (let index = 0; index < cracks.length; index += 1) {
+        const crack = cracks[index];
+        crack.visible = supportDamaged && index < crackBudget;
+        if (crack.visible) {
+          const severity = 1 - hpRatio;
+          const pulse = 0.96 + Math.sin(state.time * (4.2 + severity * 3.4) + index) * 0.045;
+          crack.scale.z = pulse;
+          crack.rotation.z += 0.0025 * (index % 2 === 0 ? 1 : -1);
+        }
+      }
+
+      const pulse = this.iceMineFracturePulses.get(id);
+      const shards = this.iceMineFractureShards.get(id) ?? [];
+      if (active) {
+        if (pulse) pulse.visible = false;
+        for (const shard of shards) shard.visible = false;
+        this.iceMineCollapseStartedAt.delete(id);
         intact += 1;
-        if (object && object.maxHp > 0 && object.hp < object.maxHp) damaged += 1;
+        if (supportDamaged) {
+          damaged += 1;
+          cracking += 1;
+        }
+      } else {
+        failed += 1;
+        const startedAt = this.iceMineCollapseStartedAt.get(id) ?? state.time;
+        const elapsed = Math.max(0, state.time - startedAt);
+        const inBurst = elapsed < 1.35;
+        if (inBurst) collapsing += 1;
+        else settled += 1;
+
+        if (pulse) {
+          pulse.visible = inBurst;
+          if (pulse.visible) {
+            const pulseScale = 0.72 + Math.min(1, elapsed / 0.85) * 1.9;
+            pulse.scale.setScalar(pulseScale);
+            pulse.rotation.z = state.time * 0.42;
+          }
+        }
+
+        for (let index = 0; index < shards.length; index += 1) {
+          const shard = shards[index];
+          const keepRubble = !inBurst && index < Math.min(2, shardBudget);
+          shard.visible = (inBurst && index < shardBudget) || keepRubble;
+          if (!shard.visible) continue;
+          const velocity = (shard.userData.velocity as [number, number, number] | undefined) ?? [0, 0.9, 0];
+          const travelT = Math.min(1.2, elapsed);
+          const groundY = 0.05 + (index % 2) * 0.025;
+          shard.position.set(
+            velocity[0] * travelT,
+            Math.max(groundY, 0.92 + velocity[1] * travelT - 2.25 * travelT * travelT),
+            velocity[2] * travelT,
+          );
+          shard.rotation.set(
+            index * 0.31 + travelT * (1.2 + index * 0.08),
+            index * 0.47 + travelT * (0.9 + index * 0.05),
+            index * 0.23 + travelT * (1.4 + index * 0.06),
+          );
+          shard.scale.setScalar(keepRubble ? 0.78 : 1);
+        }
       }
     }
 
@@ -2688,6 +2838,16 @@ export class ThreeCombatRenderer {
           ? 'damaged'
           : 'intact';
     this.renderer.domElement.dataset.environmentBrittleSupportIds = supportIds.join(',');
+    this.renderer.domElement.dataset.environmentFractureVfx = 'support-cracks+shard-burst+frost-pulse';
+    this.renderer.domElement.dataset.environmentFractureState = collapsing > 0
+      ? 'collapsing'
+      : cracking > 0
+        ? 'cracking'
+        : settled > 0
+          ? 'settled'
+          : 'idle';
+    this.renderer.domElement.dataset.environmentFractureDetail = `${shardBudget}-shards+${crackBudget}-cracks+frost-pulse`;
+    this.renderer.domElement.dataset.environmentFractureSupports = `cracking:${cracking}+collapsing:${collapsing}+settled:${settled}`;
   }
 
   private syncJovianHarvesterVisualLanguage(state: SimState, mission: Contract, budget: RenderBudgetSnapshot) {

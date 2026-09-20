@@ -191,7 +191,7 @@ assert(rendererSource.includes('this.coarse ? Math.min(detailScale, 0.55) : deta
 
 assert(rendererSource.includes('iceMineBrittleSupportVisuals = new Map'), 'Ice Mine P3.3 must keep authored brittle support visuals addressable by gameplay object id');
 assert(rendererSource.includes("this.iceMineBrittleSupportVisuals.set(support.id, root)"), 'Ice Mine P3.3 must bind brittle gameplay supports to authored support-frame roots');
-assert(rendererSource.includes('syncIceMineBrittleSupports(state, mission)'), 'Ice Mine P3.3 must synchronize authored support visibility from live simulation state');
+assert(rendererSource.includes('syncIceMineBrittleSupports(state, mission, budget)'), 'Ice Mine P3.3/P3.5 must synchronize authored support visibility and adaptive fracture detail from live simulation state');
 assert(rendererSource.includes('dataset.environmentBrittleSupports'), 'Ice Mine P3.3 support destruction must expose deterministic runtime QA telemetry');
 assert(rendererSource.includes('dataset.environmentBrittleSupportState'), 'Ice Mine P3.3 must expose intact/partial/cleared support state');
 assert(rendererSource.includes("mission.location === 'ice-mine' && this.iceMineBrittleSupportVisuals.has(object.id)"), 'Ice Mine P3.3 authored supports must suppress duplicate procedural collision-box visuals once loaded');
@@ -206,6 +206,13 @@ assert(rendererSource.includes('cryoPumpPlacements'), 'Ice Mine P3.4 must place 
 assert(rendererSource.includes('coolantManifoldPlacements'), 'Ice Mine P3.4 must place coolant manifolds through the machinery run');
 assert(rendererSource.includes('freezeCompressorPlacements'), 'Ice Mine P3.4 must place freeze compressors at the tunnel/vault transition');
 assert(rendererSource.includes('dataset.environmentMachineDetail'), 'Ice Mine P3.4 must expose deterministic machinery runtime telemetry');
+
+assert(rendererSource.includes('iceMineFractureRoots = new Map'), 'Ice Mine P3.5 must keep a dedicated authored fracture VFX layer per brittle support');
+assert(rendererSource.includes("dataset.environmentFractureVfx = 'support-cracks+shard-burst+frost-pulse'"), 'Ice Mine P3.5 must expose the authored fracture/collapse VFX identity');
+assert(rendererSource.includes('const shardBudget = reducedFractureDetail ? 4 : 8'), 'Ice Mine P3.5 must cut collapse shard density on coarse/mobile rendering');
+assert(rendererSource.includes('const crackBudget = reducedFractureDetail ? 2 : 3'), 'Ice Mine P3.5 must cut active crack detail on coarse/mobile rendering');
+assert(rendererSource.includes("dataset.environmentFractureState = collapsing > 0"), 'Ice Mine P3.5 must expose idle/cracking/collapsing/settled runtime state');
+assert(rendererSource.includes("this.iceMineCollapseStartedAt.set(id, state.time)"), 'Ice Mine P3.5 collapse animation must be driven by the live brittle-support transition');
 
 assert(rendererSource.includes('JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES'), 'Jovian Harvester P2.11 must select dedicated authored gas machinery families');
 for (const asset of ['jovian-harvester-storm-bus-isolator', 'jovian-harvester-deck-mass-trim', 'jovian-harvester-skimmer-compressor', 'jovian-harvester-separator-package']) {
