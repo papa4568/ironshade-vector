@@ -159,7 +159,7 @@ export function stepMissionDirector(state: SimState, runtime: DirectorRuntime, c
       runtime.locationEventA = true;
       const brittle = state.objects.filter(object => object.id === 'ice-brittle-gate-a' || object.id === 'ice-brittle-gate-b');
       const opened = brittle.filter(object => object.active).length;
-      for (const object of brittle) object.active = false;
+      for (const object of brittle) { object.active = false; object.hp = 0; }
       event(state, opened > 0 ? 'ICE SHEAR // BRITTLE SUPPORTS FAILED // NEW FIRING LANES OPEN' : 'ICE SHEAR // FRACTURE PATH ALREADY CLEARED', 3.2);
     }
   } else if (contract.location === 'solar-yard') {
