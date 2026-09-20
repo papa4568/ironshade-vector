@@ -339,13 +339,13 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.156**
+- Android beta: **0.0.1-beta.157**
 - Package: `app.ironshade.vector`
-- Verified: P2.9 Spin Habitat mobile rendering pass with coarse/mobile environment LOD2, 11-instance authored habitat budget, axis-only environment shadow casting, reduced procedural ring tessellation, mobile three-arc spindown VFX, deterministic performance telemetry, full production regression/build, desktop + mobile-landscape Browser E2E with live mobile performance assertions, Level 15 beta smoke, Android beta.156 package/version/SDK/signature checks, Android emulator runtime smoke, and retained browser/Android QA artifacts
+- Verified: P2.10 Jovian Harvester authored environment kit with adaptive LOD1/LOD2 deck spans, five-skimmer-tower architecture, transfer bridges, ballast pods, procedural fallback, deterministic screenshot/readability telemetry, generated-content/static pipeline regression coverage, full production regression/build, desktop + mobile-landscape Browser E2E with live Jovian Harvester authored-environment assertions, Level 15 beta smoke, Android beta.157 package/version/SDK/signature checks, Android emulator runtime smoke, and retained browser/Android QA artifacts
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P2.9 final verified head: `a8211b41a1548b14cfeef7f763a5bc809b02b173`
-- Browser E2E run: `35476633263`
-- Level 15 beta smoke run: `35476633270`
-- Android beta.156 run: `35476633254`
-- Android beta.156 artifact ID: `10594347277`
-- Android beta.156 artifact head: `a8211b41a1548b14cfeef7f763a5bc809b02b173`
+- P2.10 final verified head: `46eee0f6e92173b463c35a0c255407e929053913`
+- Browser E2E run: `35477480740`
+- Level 15 beta smoke run: `35477480664`
+- Android beta.157 run: `35477480663`
+- Android beta.157 artifact ID: `10594273936`
+- Android beta.157 artifact head: `46eee0f6e92173b463c35a0c255407e929053913`
