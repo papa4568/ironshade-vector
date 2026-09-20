@@ -32,6 +32,20 @@ export type MegastructureStage = {
 };
 export type MegastructureDefinition = { id: MegastructureId; title: string; siteName: string; sponsor: FactionId; archetype: ContractArchetype; briefing: string; deepTarget?: string; stages: MegastructureStage[]; rewardBase: Partial<SalvageWallet>; reputationGain: number };
 export type ExpeditionProgress = { zonesCompleted: number; optionalRecovered: number };
+export type MegastructureDebriefStage = { name: string; optionalLabel: string; secured: boolean; continuityLabels: string[]; continuityDetail: string | null };
+export type MegastructureDebrief = {
+  siteName: string;
+  zonesCompleted: number;
+  totalZones: number;
+  optionalRecovered: number;
+  completion: 'partial' | 'full' | 'deep';
+  outcomeLabel: string;
+  outcomeDetail: string;
+  finaleLabel: string;
+  finaleDetail: string;
+  stages: MegastructureDebriefStage[];
+  continuityNotes: Array<{ stageName: string; labels: string[]; detail: string }>;
+};
 export type DirectiveModifierId = 'compromised-shell' | 'unstable-mass' | 'overloaded-bus' | 'third-party-boarders' | 'scarce-safe-rooms' | 'elite-reinforcements' | 'repair-network' | 'event-cascade' | 'protocol-density';
 export type DirectiveTargetClass = 'elite-led' | 'command-target';
 export type OperationDirective = { id: string; seed: number; tier: number; location: LocationId; locationName: string; sponsor: FactionId; archetype: ContractArchetype; objectiveMode: ObjectiveMode; modifierIds: DirectiveModifierId[]; targetClass: DirectiveTargetClass; deepTarget: string; codename: string; sourceLabel: string };
@@ -303,6 +317,68 @@ export const megastructureDefinitions: MegastructureDefinition[] = [
     ],
   },
 ];
+
+export function buildMegastructureDebrief(contract: Contract, progress: ExpeditionProgress, depth: 'safe' | 'deep'): MegastructureDebrief | null {
+  if (!contract.megastructure) return null;
+  const definition = megastructureDefinitions.find(item => item.id === contract.megastructure);
+  if (!definition) return null;
+  const totalZones = definition.stages.length;
+  const zonesCompleted = Math.max(1, Math.min(totalZones, progress.zonesCompleted));
+  const optionalRecovered = Math.max(0, Math.min(zonesCompleted, progress.optionalRecovered));
+  const fullTraverse = zonesCompleted === totalZones;
+  const bossDefeated = fullTraverse && depth === 'deep' && !!definition.deepTarget;
+  const completion: MegastructureDebrief['completion'] = bossDefeated ? 'deep' : fullTraverse ? 'full' : 'partial';
+
+  let outcomeLabel = `EXPEDITION BANKED AFTER SPACE ${zonesCompleted}`;
+  let outcomeDetail = `${zonesCompleted}/${totalZones} connected spaces secured before extraction. The remaining internal route was left unresolved.`;
+  let finaleLabel = 'FINAL SPACE NOT REACHED';
+  let finaleDetail = definition.deepTarget
+    ? `${definition.deepTarget} remains beyond the banked route.`
+    : 'The final recovery space remains beyond the banked route.';
+
+  if (fullTraverse && definition.deepTarget && bossDefeated) {
+    outcomeLabel = 'COMMAND TARGET DEFEATED';
+    outcomeDetail = `All ${totalZones} connected spaces were secured and the sealed command zone was breached.`;
+    finaleLabel = definition.deepTarget.toUpperCase();
+    finaleDetail = 'Command target neutralized; the full expedition and deep-zone recovery were banked.';
+  } else if (fullTraverse && definition.deepTarget) {
+    outcomeLabel = 'FULL TRAVERSE BANKED';
+    outcomeDetail = `All ${totalZones} connected spaces were secured without taking the optional command-zone fight.`;
+    finaleLabel = 'COMMAND ZONE LEFT SEALED';
+    finaleDetail = `${definition.deepTarget} was not engaged; the four-space traverse remains fully banked.`;
+  } else if (fullTraverse) {
+    outcomeLabel = 'BOSSLESS TRAVERSE COMPLETE';
+    outcomeDetail = `All ${totalZones} connected spaces were secured. This site resolves through survival and recovery rather than a command target.`;
+    finaleLabel = 'FINAL RECOVERY SPACE SECURED';
+    finaleDetail = 'No command target was present; the capstone ended on the authored recovery-vault finale.';
+  }
+
+  const stages = definition.stages.map((stage, index): MegastructureDebriefStage => ({
+    name: stage.name,
+    optionalLabel: stage.optionalLabel,
+    secured: index < zonesCompleted,
+    continuityLabels: (stage.continuityConditions ?? []).map(condition => conditionLabel[condition]),
+    continuityDetail: stage.continuityDetail ?? null,
+  }));
+  const continuityNotes = stages
+    .slice(0, zonesCompleted)
+    .filter(stage => !!stage.continuityDetail)
+    .map(stage => ({ stageName: stage.name, labels: stage.continuityLabels, detail: stage.continuityDetail! }));
+
+  return {
+    siteName: definition.siteName,
+    zonesCompleted,
+    totalZones,
+    optionalRecovered,
+    completion,
+    outcomeLabel,
+    outcomeDetail,
+    finaleLabel,
+    finaleDetail,
+    stages,
+    continuityNotes,
+  };
+}
 
 function megastructureForCampaign(campaign: CampaignState) {
   if (campaign.contractsCompleted < 3 || campaign.cycle % 5 !== 3) return null;

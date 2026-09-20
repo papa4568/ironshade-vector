@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { buyConsumable, createDefaultCampaign, generateContracts, getMegastructureStageContract, loadCampaign, saveCampaign } from '../src/game/campaign';
+import { buildMegastructureDebrief, buyConsumable, createDefaultCampaign, generateContracts, getMegastructureStageContract, loadCampaign, saveCampaign } from '../src/game/campaign';
 import { aimAtMobileTarget, applyPlayerDamage, createSimulation, stepSimulation, triggerAbility, triggerConsumable, triggerDodge, triggerFire, weaponConfigs, type Telemetry } from '../src/game/sim';
 import { applyMissionSetup, createDirector, stepMissionDirector } from '../src/game/director';
 import { awardRecovery, createDefaultProfile, deriveCombatBuild, loadProfile, saveProfile } from '../src/game/meta';
@@ -470,6 +470,18 @@ const perseidCampaign = { ...createDefaultCampaign(), cycle: 3, contractsComplet
 const perseidContract = generateContracts(perseidCampaign).find(contract => contract.megastructure === 'generation-ship');
 assert.ok(perseidContract, 'P4 Perseid must remain available as the first rare megastructure rotation.');
 assert.deepEqual(perseidContract.megastructureZoneNames, ['Docking Spine', 'Agricultural Drum', 'Cryogenic Service Deck', 'Reactor Choir'], 'Perseid must preserve its authored four-space traverse.');
+const perseidPartialDebrief = buildMegastructureDebrief(perseidContract, { zonesCompleted: 2, optionalRecovered: 1 }, 'safe');
+assert.ok(perseidPartialDebrief, 'P4.17 must derive a megastructure after-action report from existing expedition state.');
+assert.equal(perseidPartialDebrief.completion, 'partial', 'A checkpoint extraction must remain visibly distinct from a full megastructure traverse.');
+assert.deepEqual(perseidPartialDebrief.stages.map(stage => stage.secured), [true, true, false, false], 'P4.17 route recap must show exactly which connected spaces were secured.');
+assert.match(perseidPartialDebrief.continuityNotes[0]?.detail ?? '', /pressure debt follows/i, 'P4.17 debrief must retain authored environmental continuity consequences.');
+assert.equal(perseidPartialDebrief.optionalRecovered, 1, 'P4.17 debrief must report banked optional recovery count without inventing per-stage recovery state.');
+
+const perseidSafeDebrief = buildMegastructureDebrief(perseidContract, { zonesCompleted: 4, optionalRecovered: 3 }, 'safe');
+assert.equal(perseidSafeDebrief?.finaleLabel, 'COMMAND ZONE LEFT SEALED', 'A full safe Perseid traverse must not imply that the optional boss was defeated.');
+const perseidDeepDebrief = buildMegastructureDebrief(perseidContract, { zonesCompleted: 4, optionalRecovered: 4 }, 'deep');
+assert.equal(perseidDeepDebrief?.completion, 'deep', 'A completed command-zone breach must receive the deep expedition outcome.');
+assert.equal(perseidDeepDebrief?.finaleLabel, 'PERSEID STEWARD CORE', 'Deep megastructure debrief must identify the defeated authored command target.');
 
 const perseidBuild = deriveCombatBuild({ ...createDefaultProfile(), operatorClass: 'vanguard', classSelectionComplete: true });
 const perseidStage1 = getMegastructureStageContract(perseidContract, 0);
@@ -510,6 +522,9 @@ const k91Contract = generateContracts(k91Campaign).find(contract => contract.meg
 assert.ok(k91Contract, 'P4 K-91 must remain available as the second rare megastructure rotation.');
 assert.deepEqual(k91Contract.megastructureZoneNames, ['Capture Collar', 'Mass Transit Spine', 'Power Transfer Gallery', 'Ballast Vault'], 'K-91 must preserve its authored four-space counterweight traverse.');
 assert.equal(k91Contract.megastructureBossTarget, undefined, 'K-91 must remain a bossless survival traverse rather than inheriting a generic command target.');
+const k91Debrief = buildMegastructureDebrief(k91Contract, { zonesCompleted: 4, optionalRecovered: 2 }, 'safe');
+assert.equal(k91Debrief?.outcomeLabel, 'BOSSLESS TRAVERSE COMPLETE', 'P4.17 must describe K-91 as a survival/recovery capstone rather than imply a missing boss.');
+assert.equal(k91Debrief?.finaleLabel, 'FINAL RECOVERY SPACE SECURED', 'K-91 debrief must resolve the authored Ballast Vault finale cleanly.');
 
 const k91Stage1 = getMegastructureStageContract(k91Contract, 0);
 const k91Stage1State = createSimulation(perseidBuild);
@@ -642,6 +657,12 @@ const expeditionLootCarry = carryExpeditionLoot(expeditionLootSource);
 assert.deepEqual(expeditionLootCarry, expeditionLootSource, 'megastructure stage transit should preserve every collected field-loot receipt');
 assert.notEqual(expeditionLootCarry, expeditionLootSource, 'stage transit should copy the receipt list instead of sharing the mutable array');
 assert.notEqual(expeditionLootCarry[0], expeditionLootSource[0], 'stage transit should copy individual receipts so later mutation cannot rewrite earlier-stage recovery data');
+const appSource = readFileSync('src/App.tsx', 'utf8');
+assert.match(appSource, /MEGASTRUCTURE EXPEDITION \/\/ AFTER-ACTION/, 'P4.17 must render a dedicated megastructure after-action surface in the mission debrief.');
+assert.match(appSource, /ENVIRONMENTAL CONTINUITY OBSERVED/, 'P4.17 debrief must expose inherited environmental consequences instead of reducing the expedition to a zone count.');
+const debriefCssSource = readFileSync('src/part4.css', 'utf8');
+assert.match(debriefCssSource, /\.expedition-route/, 'P4.17 must provide a responsive route recap layout for the megastructure debrief.');
+assert.match(debriefCssSource, /@media \(max-width: 520px\)[\s\S]*\.expedition-route \{ grid-template-columns: 1fr 1fr; \}/, 'P4.17 route recap must collapse for narrow mobile surfaces.');
 const gameCanvasSource = readFileSync('src/components/GameCanvas.tsx', 'utf8');
 assert.match(gameCanvasSource, /state\.collectedLoot = carryExpeditionLoot\(carry\.collectedLoot\);/, 'GameCanvas must carry collected expedition loot into each new megastructure stage');
 assert.match(gameCanvasSource, /const \[pendingTransit, setPendingTransit\] = useState<PendingMegastructureTransit>/, 'GameCanvas must stage megastructure travel through an explicit transit briefing instead of teleporting immediately.');

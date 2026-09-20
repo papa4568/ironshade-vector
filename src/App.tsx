@@ -4,7 +4,7 @@ import './equipmentBay.css';
 import './readability.css';
 import './consumables.css';
 import { advanceBlackLatticeAfterContract, getBlackLatticeContract } from './game/blackLattice';
-import { advanceEscalationAfterContract, applyShipBonuses, dailyOperationContract, factionDisplayName, generateContracts, generateEscalationContract, resourceLabels, settleContract, type CampaignReward, type CampaignState, type Contract, type ExpeditionProgress, type ResourceId } from './game/campaign';
+import { advanceEscalationAfterContract, applyShipBonuses, buildMegastructureDebrief, dailyOperationContract, factionDisplayName, generateContracts, generateEscalationContract, resourceLabels, settleContract, type CampaignReward, type CampaignState, type Contract, type ExpeditionProgress, type ResourceId } from './game/campaign';
 import { feedback } from './game/feedback';
 import { awardRecovery, buildIdentity, deriveCombatBuild, discardItem, dominantEquipmentFaction, operatorClassDefinitions, operatorClassForProfile, setOperatorClass, setProfileSettings, type OperatorClassId, type PlayerProfile, type ProfileSettings, type VictoryReward } from './game/meta';
 import { createTelemetryRequestId, isNetworkRequestError, loadOperationsSnapshot, networkFailureMessage, uploadRunTelemetry, type OperationsSnapshot } from './game/network';
@@ -70,6 +70,9 @@ function DebriefScreen({ result, onShip, onBuild, onRepeat, onDiscard }: { resul
     reputationBefore < 8 && reputationAfter >= 8 ? 'REP 8 // PRIORITY CONTRACTS UNLOCKED' : '',
     reputationBefore < 12 && reputationAfter >= 12 ? 'REP 12 // DEEPER SPECIALTY UPGRADE DISCOUNT UNLOCKED' : '',
   ].filter(Boolean);
+  const expeditionDebrief = result.expeditionProgress
+    ? buildMegastructureDebrief(result.contract, result.expeditionProgress, result.campaignReward.depth)
+    : null;
   const uplinkCopy = result.uplinkStatus === 'shared'
     ? ['RUN TRACE BANKED', 'Anonymous combat telemetry and replay checkpoints were added to the Operations network.']
     : result.uplinkStatus === 'sharing'
@@ -93,6 +96,28 @@ function DebriefScreen({ result, onShip, onBuild, onRepeat, onDiscard }: { resul
           <div><small>Operator level</small><b>LV {result.lootReward.profile.level}</b></div>
           {result.lootReward.levelsGained > 0 && <div><small>{result.lootReward.levelsGained === 1 ? 'Progression point earned' : 'Progression points earned'}</small><b>+{result.lootReward.levelsGained}</b></div>}
         </div>
+        {expeditionDebrief && <section className={`expedition-debrief ${expeditionDebrief.completion}`} aria-label="Megastructure expedition after-action">
+          <header className="expedition-debrief-heading">
+            <div><small>MEGASTRUCTURE EXPEDITION // AFTER-ACTION</small><b>{expeditionDebrief.siteName}</b></div>
+            <strong>{expeditionDebrief.outcomeLabel}</strong>
+          </header>
+          <p>{expeditionDebrief.outcomeDetail}</p>
+          <div className="expedition-debrief-stats">
+            <span><small>ROUTE SECURED</small><b>{expeditionDebrief.zonesCompleted}/{expeditionDebrief.totalZones}</b></span>
+            <span><small>OPTIONAL RECOVERIES</small><b>{expeditionDebrief.optionalRecovered}</b></span>
+            <span><small>EXTRACTION</small><b>{result.campaignReward.depth === 'deep' ? 'DEEP' : 'SAFE'}</b></span>
+          </div>
+          <div className="expedition-route" aria-label="Secured megastructure spaces">
+            {expeditionDebrief.stages.map((stage, index) => <article key={stage.name} className={stage.secured ? 'secured' : 'unreached'}>
+              <small>{stage.secured ? 'SECURED' : 'UNREACHED'} // SPACE {index + 1}</small>
+              <b>{stage.name}</b>
+              <span>{stage.optionalLabel}</span>
+              {stage.secured && stage.continuityLabels.length > 0 && <em>{stage.continuityLabels.join(' · ')}</em>}
+            </article>)}
+          </div>
+          <div className="expedition-finale"><small>FINAL DISPOSITION</small><b>{expeditionDebrief.finaleLabel}</b><span>{expeditionDebrief.finaleDetail}</span></div>
+          {expeditionDebrief.continuityNotes.length > 0 && <div className="expedition-continuity"><small>ENVIRONMENTAL CONTINUITY OBSERVED</small>{expeditionDebrief.continuityNotes.map(note => <span key={note.stageName}><b>{note.stageName}</b>{note.labels.length > 0 ? ` // ${note.labels.join(' + ')}` : ''} — {note.detail}</span>)}</div>}
+        </section>}
         {milestones.length > 0 && <div className="anomaly-note"><b>FACTION ACCESS EXPANDED</b>{milestones.map(milestone => <span key={milestone}>{milestone}</span>)}</div>}
         <div className={`uplink-note ${result.uplinkStatus}`}><b>{uplinkCopy[0]}</b><span>{uplinkCopy[1]}</span></div>
         {newRecoveryCount > 0 && <section className="recovery-review" aria-label="Recovered equipment review">
@@ -113,7 +138,7 @@ function DebriefScreen({ result, onShip, onBuild, onRepeat, onDiscard }: { resul
         {result.lootReward.levelsGained > 0 && result.lootReward.profile.level >= 16 && <div className="anomaly-note"><b>LV16 // SPECIALIZATION OVERCLOCK</b><span>Your active class specialization can take an optional second-stage rule with an additional explicit tradeoff. The three-button MAG/MARK/ARC combat language is unchanged.</span></div>}
         {result.escalationNote && <div className="anomaly-note"><b>ESCALATION UPDATED</b><span>{result.escalationNote}</span></div>}
         {result.directiveNote && <div className="anomaly-note"><b>DIRECTIVE ARRAY UPDATED</b><span>{result.directiveNote}</span></div>}
-        {result.contract.megastructure && result.expeditionProgress && <div className="anomaly-note"><b>DERELICT EXPEDITION BANKED</b><span>{result.expeditionProgress.zonesCompleted}/{result.contract.megastructureStageCount ?? 4} connected spaces secured · {result.expeditionProgress.optionalRecovered} optional recoveries banked.</span></div>}
+        
         <div className="debrief-actions">
           <button className="primary" onClick={onBuild}>{keptRecoveryCount > 0 ? `Inspect ${keptRecoveryCount} kept item${keptRecoveryCount === 1 ? '' : 's'}` : unspentPoints > 0 ? 'Spend progression points' : 'Open Build'}</button>
           {onRepeat && <button onClick={onRepeat}>Repeat contract</button>}
