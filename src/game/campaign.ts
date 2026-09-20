@@ -18,7 +18,16 @@ export type ParallaxDebtProgress = { status: 'locked' | 'active' | 'complete'; s
 export type StoryState = { arcs: Record<StoryArcId, StoryArcProgress>; latticeClues: number; lastBeat: string; blackLattice: BlackLatticeProgress; postKhepri: PostKhepriProgress; interdiction: InterdictionProgress; parallaxDebt: ParallaxDebtProgress };
 export type EscalationState = { status: 'idle' | 'active' | 'complete'; operationDate: string | null; seed: number; codename: string; sponsor: FactionId; stage: number; completed: string[]; lastBeat: string };
 export type MegastructureId = 'generation-ship' | 'counterweight' | 'hidden-habitat' | 'shipbreaking-yard';
-export type MegastructureStage = { name: string; location: LocationId; objectiveMode: ObjectiveMode; conditions: ConditionId[]; optionalLabel: string };
+export type MegastructureStage = {
+  name: string;
+  location: LocationId;
+  objectiveMode: ObjectiveMode;
+  conditions: ConditionId[];
+  optionalLabel: string;
+  transitionRoute?: string;
+  transitionDetail?: string;
+  arrivalCue?: string;
+};
 export type MegastructureDefinition = { id: MegastructureId; title: string; siteName: string; sponsor: FactionId; archetype: ContractArchetype; briefing: string; deepTarget?: string; stages: MegastructureStage[]; rewardBase: Partial<SalvageWallet>; reputationGain: number };
 export type ExpeditionProgress = { zonesCompleted: number; optionalRecovered: number };
 export type DirectiveModifierId = 'compromised-shell' | 'unstable-mass' | 'overloaded-bus' | 'third-party-boarders' | 'scarce-safe-rooms' | 'elite-reinforcements' | 'repair-network' | 'event-cascade' | 'protocol-density';
@@ -27,7 +36,7 @@ export type OperationDirective = { id: string; seed: number; tier: number; locat
 export type DirectiveState = { unlocked: boolean; inventory: OperationDirective[]; preparedId: string | null; completed: number; highestTier: number; lastBeat: string };
 export type CampaignState = { version: 1; cycle: number; contractsCompleted: number; resources: SalvageWallet; consumables: ConsumableInventory; reputation: Record<FactionId, number>; shipUpgrades: Record<ShipUpgradeId, number>; anomalyRecovered: boolean; dailyCompletedDate: string | null; lastOutcome: string; story: StoryState; escalation: EscalationState; directives: DirectiveState };
 export type FactionProfile = { id: FactionId; name: string; history: string; economy: string; culture: string; technology: string; goals: string; strengths: string; failures: string; divisions: string; unlocks: string[] };
-export type Contract = { id: string; sponsor: FactionId; archetype: ContractArchetype; location: LocationId; locationName: string; title: string; objective: string; objectiveMode: ObjectiveMode; objectiveSteps: string[]; briefing: string; conditions: ConditionId[]; conditionLabels: string[]; directorPreview: string; deepTarget: string; rewardBase: Partial<SalvageWallet>; reputationGain: number; contestedFaction?: FactionId; priority: boolean; anomalyOpportunity: boolean; daily?: boolean; operationDate?: string; seed: number; storyArc?: StoryArcId; storyStep?: number; storyFinale?: boolean; storyChapter?: string; storyClue?: boolean; storyAftermath?: string; campaignChapter?: 'black-lattice' | 'dead-reckoning' | 'dead-reckoning-interdiction' | 'parallax-debt'; campaignStep?: number; campaignFinale?: boolean; campaignEvidence?: string; campaignAftermath?: string; escalationStage?: number; escalationFinale?: boolean; escalationDate?: string; megastructure?: MegastructureId; megastructureStage?: number; megastructureStageCount?: number; megastructureZoneNames?: string[]; megastructureOptionalLabel?: string; megastructureBossTarget?: string; operationTier?: number; encounterRating?: number; threatBudget?: number; maxRecoveryLevel?: number; maxFrameGeneration?: 1 | 2 | 3 | 4 | 5 | 6; eliteProtocolSlots?: number; environmentalEventSlots?: number; combatEffectiveness?: number; monsterLevel?: number; monsterDamageScale?: number; operationRewardMultiplier?: number; chapterRewardMultiplier?: number; xpFloor?: number; encounterPressureBonus?: number; encounterPattern?: 'swarm' | 'mixed' | 'elite-led'; reserveCount?: number; directiveId?: string; directiveTier?: number; directiveModifierIds?: DirectiveModifierId[]; directiveTargetClass?: DirectiveTargetClass; directiveMaterialMultiplier?: number; directiveQualityBonus?: number; directiveSingularChanceBonus?: number; directiveRecoveryLevelBonus?: number; directiveEventBias?: string[]; directiveProtocolBias?: string[]; directiveThreatBonus?: number; directiveProtocolBonus?: number; directiveProtocolDensity?: number; directiveEventBonus?: number; directiveReserveBonus?: number; directiveRiskScore?: number; directiveSource?: string; commandTrace?: boolean };
+export type Contract = { id: string; sponsor: FactionId; archetype: ContractArchetype; location: LocationId; locationName: string; title: string; objective: string; objectiveMode: ObjectiveMode; objectiveSteps: string[]; briefing: string; conditions: ConditionId[]; conditionLabels: string[]; directorPreview: string; deepTarget: string; rewardBase: Partial<SalvageWallet>; reputationGain: number; contestedFaction?: FactionId; priority: boolean; anomalyOpportunity: boolean; daily?: boolean; operationDate?: string; seed: number; storyArc?: StoryArcId; storyStep?: number; storyFinale?: boolean; storyChapter?: string; storyClue?: boolean; storyAftermath?: string; campaignChapter?: 'black-lattice' | 'dead-reckoning' | 'dead-reckoning-interdiction' | 'parallax-debt'; campaignStep?: number; campaignFinale?: boolean; campaignEvidence?: string; campaignAftermath?: string; escalationStage?: number; escalationFinale?: boolean; escalationDate?: string; megastructure?: MegastructureId; megastructureStage?: number; megastructureStageCount?: number; megastructureZoneNames?: string[]; megastructureOptionalLabel?: string; megastructureBossTarget?: string; megastructureTransitionRoute?: string; megastructureTransitionDetail?: string; megastructureArrivalCue?: string; operationTier?: number; encounterRating?: number; threatBudget?: number; maxRecoveryLevel?: number; maxFrameGeneration?: 1 | 2 | 3 | 4 | 5 | 6; eliteProtocolSlots?: number; environmentalEventSlots?: number; combatEffectiveness?: number; monsterLevel?: number; monsterDamageScale?: number; operationRewardMultiplier?: number; chapterRewardMultiplier?: number; xpFloor?: number; encounterPressureBonus?: number; encounterPattern?: 'swarm' | 'mixed' | 'elite-led'; reserveCount?: number; directiveId?: string; directiveTier?: number; directiveModifierIds?: DirectiveModifierId[]; directiveTargetClass?: DirectiveTargetClass; directiveMaterialMultiplier?: number; directiveQualityBonus?: number; directiveSingularChanceBonus?: number; directiveRecoveryLevelBonus?: number; directiveEventBias?: string[]; directiveProtocolBias?: string[]; directiveThreatBonus?: number; directiveProtocolBonus?: number; directiveProtocolDensity?: number; directiveEventBonus?: number; directiveReserveBonus?: number; directiveRiskScore?: number; directiveSource?: string; commandTrace?: boolean };
 export type DailyOperationSpec = { date: string; seed: number; codename: string; sponsor: FactionId; archetype: ContractArchetype; objectiveMode: ObjectiveMode; location: LocationId; conditions: ConditionId[]; challenge: string; generatedAt: string };
 export type CampaignReward = { campaign: CampaignState; gained: SalvageWallet; reputationDelta: Partial<Record<FactionId, number>>; anomalyRecovered: boolean; depth: 'safe' | 'deep' };
 export type UpgradeDefinition = { id: ShipUpgradeId; name: string; area: 'Engineering' | 'Cargo' | 'Medical' | 'Fabrication'; description: string; benefits: [string, string]; costs: [Partial<SalvageWallet>, Partial<SalvageWallet>] };
@@ -236,9 +245,9 @@ export const megastructureDefinitions: MegastructureDefinition[] = [
     reputationGain: 4,
     stages: [
       { name: 'Docking Spine', location: 'damaged-vessel', objectiveMode: 'pressure-recovery', conditions: ['limited-atmosphere', 'unstable-pressure'], optionalLabel: 'Crew archive canister' },
-      { name: 'Agricultural Drum', location: 'spin-habitat', objectiveMode: 'gravity-stabilization', conditions: ['failing-gravity'], optionalLabel: 'Seed-vault control core' },
-      { name: 'Cryogenic Service Deck', location: 'orbital-station', objectiveMode: 'grid-isolation', conditions: ['damaged-grid', 'low-visibility'], optionalLabel: 'Cryobank registry' },
-      { name: 'Reactor Choir', location: 'solar-yard', objectiveMode: 'machinery-recovery', conditions: ['damaged-grid', 'automated-defense'], optionalLabel: 'Reactor harmonics recorder' },
+      { name: 'Agricultural Drum', location: 'spin-habitat', objectiveMode: 'gravity-stabilization', conditions: ['failing-gravity'], optionalLabel: 'Seed-vault control core', transitionRoute: 'INNER AIRLOCK → KEEL TRAM → AGRICULTURAL DRUM', transitionDetail: 'Pressure locks cycle while a keel tram follows the green transit datum into the rotating farm ring.', arrivalCue: 'PERSEID TRANSIT // AGRICULTURAL DRUM ROTATION SYNCED' },
+      { name: 'Cryogenic Service Deck', location: 'orbital-station', objectiveMode: 'grid-isolation', conditions: ['damaged-grid', 'low-visibility'], optionalLabel: 'Cryobank registry', transitionRoute: 'SEED SERVICE LATTICE → KEEL LIFT → CRYOGENIC SERVICE DECK', transitionDetail: 'The route leaves the drum through a fixed keel lift, with cold-bus markers replacing the farm ring rotation datum.', arrivalCue: 'PERSEID TRANSIT // CRYOBANK SERVICE BUS ACQUIRED' },
+      { name: 'Reactor Choir', location: 'solar-yard', objectiveMode: 'machinery-recovery', conditions: ['damaged-grid', 'automated-defense'], optionalLabel: 'Reactor harmonics recorder', transitionRoute: 'CRYOBANK SERVICE BUS → REACTOR TRUNK → REACTOR CHOIR', transitionDetail: 'The cold service run opens into the ship power trunk; the same keel datum terminates beneath the harmonic reactor arches.', arrivalCue: 'PERSEID TRANSIT // REACTOR CHOIR HARMONIC DATUM LIVE' },
     ],
   },
   {
@@ -252,9 +261,9 @@ export const megastructureDefinitions: MegastructureDefinition[] = [
     reputationGain: 4,
     stages: [
       { name: 'Capture Collar', location: 'orbital-station', objectiveMode: 'emergency-boarding', conditions: ['low-visibility'], optionalLabel: 'Tether-load recorder' },
-      { name: 'Mass Transit Spine', location: 'spin-habitat', objectiveMode: 'gravity-stabilization', conditions: ['failing-gravity', 'damaged-grid'], optionalLabel: 'Countermass calibration stack' },
-      { name: 'Power Transfer Gallery', location: 'solar-yard', objectiveMode: 'grid-isolation', conditions: ['damaged-grid', 'automated-defense'], optionalLabel: 'Lift-grid fault archive' },
-      { name: 'Ballast Vault', location: 'asteroid-refinery', objectiveMode: 'deep-salvage', conditions: ['limited-atmosphere'], optionalLabel: 'Ballast telemetry blackbox' },
+      { name: 'Mass Transit Spine', location: 'spin-habitat', objectiveMode: 'gravity-stabilization', conditions: ['failing-gravity', 'damaged-grid'], optionalLabel: 'Countermass calibration stack', transitionRoute: 'CAPTURE LOCK → COUNTERMASS RAIL → MASS TRANSIT SPINE', transitionDetail: 'Mag-clamps hand the operator from the capture collar onto the amber-datum countermass rail while K-91 continues to tumble.', arrivalCue: 'K-91 TRANSIT // COUNTERMASS RAIL PHASE LOCKED' },
+      { name: 'Power Transfer Gallery', location: 'solar-yard', objectiveMode: 'grid-isolation', conditions: ['damaged-grid', 'automated-defense'], optionalLabel: 'Lift-grid fault archive', transitionRoute: 'TRANSIT SPINE → LIFT-BUS CRAWL → POWER TRANSFER GALLERY', transitionDetail: 'The mass rail narrows into a shielded lift-bus crawl, preserving inertial reference while the power trunk comes into view.', arrivalCue: 'K-91 TRANSIT // LIFT-BUS REFERENCE STABLE' },
+      { name: 'Ballast Vault', location: 'asteroid-refinery', objectiveMode: 'deep-salvage', conditions: ['limited-atmosphere'], optionalLabel: 'Ballast telemetry blackbox', transitionRoute: 'ISOLATION GALLERY → BALLAST SERVICE TRUNK → BALLAST VAULT', transitionDetail: 'The isolated lift bus feeds a dense ballast service trunk where restraint frames replace open rails before the final mass lock.', arrivalCue: 'K-91 TRANSIT // BALLAST RESTRAINT DATUM ACQUIRED' },
     ],
   },
   {
@@ -269,9 +278,9 @@ export const megastructureDefinitions: MegastructureDefinition[] = [
     reputationGain: 4,
     stages: [
       { name: 'Ice Access Bore', location: 'ice-mine', objectiveMode: 'emergency-boarding', conditions: ['low-visibility'], optionalLabel: 'Unregistered transit ledger' },
-      { name: 'Industrial Commons', location: 'asteroid-refinery', objectiveMode: 'machinery-recovery', conditions: ['damaged-grid'], optionalLabel: 'Habitat fabrication key' },
-      { name: 'Residential Spin Ring', location: 'spin-habitat', objectiveMode: 'pressure-recovery', conditions: ['unstable-pressure', 'failing-gravity'], optionalLabel: 'Population registry shard' },
-      { name: 'Buried Control Vault', location: 'orbital-station', objectiveMode: 'grid-isolation', conditions: ['automated-defense', 'damaged-grid'], optionalLabel: 'Founding charter archive' },
+      { name: 'Industrial Commons', location: 'asteroid-refinery', objectiveMode: 'machinery-recovery', conditions: ['damaged-grid'], optionalLabel: 'Habitat fabrication key', transitionRoute: 'HABITAT HATCH → CONCEALED SERVICE THROAT → INDUSTRIAL COMMONS', transitionDetail: 'The bore closes behind a disguised pressure hatch; violet utility trunks continue through a cramped service throat into the commons.', arrivalCue: 'ORPHELINE TRANSIT // COMMONS UTILITY TRUNK LIVE' },
+      { name: 'Residential Spin Ring', location: 'spin-habitat', objectiveMode: 'pressure-recovery', conditions: ['unstable-pressure', 'failing-gravity'], optionalLabel: 'Population registry shard', transitionRoute: 'COMMONS SERVICE MARKET → SHELTER SPOKE → RESIDENTIAL SPIN RING', transitionDetail: 'Improvised market partitions give way to a shelter spoke where occupancy marks repeat toward the rotating residential ring.', arrivalCue: 'ORPHELINE TRANSIT // RESIDENTIAL SPIN REFERENCE ACQUIRED' },
+      { name: 'Buried Control Vault', location: 'orbital-station', objectiveMode: 'grid-isolation', conditions: ['automated-defense', 'damaged-grid'], optionalLabel: 'Founding charter archive', transitionRoute: 'RESIDENTIAL RING → FOUNDER ACCESS SHAFT → BURIED CONTROL VAULT', transitionDetail: 'A sealed founder shaft drops out of the occupied ring into older rock-cut control works carrying the same violet utility datum.', arrivalCue: 'ORPHELINE TRANSIT // FOUNDING VAULT AUTHORITY BUS DETECTED' },
     ],
   },
   {
@@ -286,9 +295,9 @@ export const megastructureDefinitions: MegastructureDefinition[] = [
     reputationGain: 4,
     stages: [
       { name: 'Sunward Clamp Field', location: 'solar-yard', objectiveMode: 'machinery-recovery', conditions: ['automated-defense'], optionalLabel: 'Clamp-control spindle' },
-      { name: 'Crusher Causeway', location: 'asteroid-refinery', objectiveMode: 'deep-salvage', conditions: ['damaged-grid'], optionalLabel: 'High-grade cutter head' },
-      { name: 'Wreck Transit', location: 'damaged-vessel', objectiveMode: 'pressure-recovery', conditions: ['limited-atmosphere', 'unstable-pressure'], optionalLabel: 'Recovered vessel registry' },
-      { name: 'Yard Control Crown', location: 'jovian-harvester', objectiveMode: 'grid-isolation', conditions: ['failing-gravity', 'damaged-grid'], optionalLabel: 'Master salvage ledger' },
+      { name: 'Crusher Causeway', location: 'asteroid-refinery', objectiveMode: 'deep-salvage', conditions: ['damaged-grid'], optionalLabel: 'High-grade cutter head', transitionRoute: 'HULL CRADLE → SALVAGE TRUSS → CRUSHER CAUSEWAY', transitionDetail: 'The sunward cradle releases onto Hecate’s black salvage truss, with red clamp marks guiding the route toward the crusher line.', arrivalCue: 'HECATE TRANSIT // CRUSHER TRUSS ROUTE LOCKED' },
+      { name: 'Wreck Transit', location: 'damaged-vessel', objectiveMode: 'pressure-recovery', conditions: ['limited-atmosphere', 'unstable-pressure'], optionalLabel: 'Recovered vessel registry', transitionRoute: 'CUTTER LINE → OPEN PRESSURE BRIDGE → WRECK TRANSIT', transitionDetail: 'Crusher shielding ends at an exposed pressure bridge; yellow cutter datum lights continue across stripped hulls into the wreck chain.', arrivalCue: 'HECATE TRANSIT // WRECK PRESSURE BRIDGE OPEN' },
+      { name: 'Yard Control Crown', location: 'jovian-harvester', objectiveMode: 'grid-isolation', conditions: ['failing-gravity', 'damaged-grid'], optionalLabel: 'Master salvage ledger', transitionRoute: 'WRECK REGISTRY CHAIN → MASTER TRUSS → YARD CONTROL CROWN', transitionDetail: 'The wreck chain reconnects to Hecate’s master salvage truss, carrying clamp scars and cutter datum directly beneath yard control.', arrivalCue: 'HECATE TRANSIT // YARD CONTROL CROWN DATUM LIVE' },
     ],
   },
 ];
@@ -350,6 +359,9 @@ export function getMegastructureStageContract(contract: Contract, requestedStage
     megastructureStage: stageIndex + 1,
     megastructureOptionalLabel: stage.optionalLabel,
     megastructureBossTarget: definition.deepTarget,
+    megastructureTransitionRoute: stage.transitionRoute,
+    megastructureTransitionDetail: stage.transitionDetail,
+    megastructureArrivalCue: stage.arrivalCue,
   };
 }
 
