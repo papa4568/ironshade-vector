@@ -584,6 +584,44 @@ function iceMineRheaKadeNodes(lod) {
   return nodes;
 }
 
+
+function solarYardHelios9Nodes(lod) {
+  const nodes = lod === 2 ? enemyMobileNodes('boss') : enemyNodes('boss');
+  const root = nodes.pop();
+  const torsoIndex = nodes.findIndex(node => node.name === 'torso');
+  const backpackIndex = nodes.findIndex(node => node.name === 'backpack');
+  const helmetIndex = nodes.findIndex(node => node.name === 'helmet');
+  const markers = lod === 2
+    ? [
+        { name: 'solar-yard-helios-9-sunshield-crown', mesh: 1, translation: [-0.02, 0.34, 0], scale: [0.76, 0.16, 1.34] },
+        { name: 'solar-yard-helios-9-reflector-wing-left', mesh: 3, translation: [-0.22, 0.24, 0.66], scale: [0.20, 0.72, 0.58] },
+        { name: 'solar-yard-helios-9-reflector-wing-right', mesh: 3, translation: [-0.22, 0.24, -0.66], scale: [0.20, 0.72, 0.58] },
+        { name: 'solar-yard-helios-9-thermal-core', mesh: 4, translation: [-0.40, 0.26, 0], scale: [0.16, 0.72, 0.44] },
+      ]
+    : [
+        { name: 'solar-yard-helios-9-sunshield-crown', mesh: 1, translation: [-0.04, 0.34, 0], scale: [0.86, 0.18, 1.48] },
+        { name: 'solar-yard-helios-9-command-lens', mesh: 4, translation: [0.18, 0.82, 0], scale: [0.10, 0.22, 0.66] },
+        { name: 'solar-yard-helios-9-reflector-wing-left', mesh: 3, translation: [-0.24, 0.26, 0.74], scale: [0.22, 0.84, 0.66] },
+        { name: 'solar-yard-helios-9-reflector-wing-right', mesh: 3, translation: [-0.24, 0.26, -0.74], scale: [0.22, 0.84, 0.66] },
+        { name: 'solar-yard-helios-9-fabricator-core', mesh: 2, translation: [-0.42, 0.18, 0], scale: [0.34, 0.70, 0.72] },
+        { name: 'solar-yard-helios-9-thermal-core', mesh: 4, translation: [-0.54, 0.28, 0], scale: [0.16, 0.82, 0.48] },
+      ];
+
+  for (const marker of markers) {
+    const index = nodes.length;
+    nodes.push(marker);
+    const parentIndex = marker.name.includes('command-lens')
+      ? helmetIndex
+      : marker.name.includes('thermal-core') || marker.name.includes('fabricator-core')
+        ? backpackIndex
+        : torsoIndex;
+    nodes[parentIndex].children ??= [];
+    nodes[parentIndex].children.push(index);
+  }
+  nodes.push(root);
+  return nodes;
+}
+
 function weaponMobileNodes(id) {
   if (id === 'carbine') {
     return [
@@ -2176,6 +2214,15 @@ for (const lod of [1, 2]) {
     `ice-mine-rhea-kade-lod${lod}`,
     iceMineRheaKadeNodes(lod),
     materials([0.28, 0.35, 0.38, 1], [0.50, 0.86, 0.94]),
+  ));
+}
+
+for (const lod of [1, 2]) {
+  outputs.push(await writeAsset(
+    `bosses/solar-yard-helios-9-lod${lod}.glb`,
+    `solar-yard-helios-9-lod${lod}`,
+    solarYardHelios9Nodes(lod),
+    materials([0.54, 0.49, 0.39, 1], [1.00, 0.70, 0.28]),
   ));
 }
 

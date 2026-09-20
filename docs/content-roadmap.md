@@ -228,7 +228,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] P3.9 Sun/shadow identity
 - [x] P3.10 Thermal shutters
 - [x] P3.11 Cranes/rails/motion
-- [ ] P3.12 HELIOS-9 presentation
+- [x] P3.12 HELIOS-9 presentation
 - [ ] P3.13 Mobile optimization
 
 ## P4 — Megastructure Capstone Pass
@@ -307,7 +307,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1 and P2 are complete, **Ice Mine P3.1–P3.6** are delivered, and **Solar Yard P3.7–P3.11** are delivered. Continue in roadmap order with **P3.12 — HELIOS-9 presentation**, followed by **P3.13 — Mobile optimization** to finish Solar Yard.
+P1 and P2 are complete, **Ice Mine P3.1–P3.6** are delivered, and **Solar Yard P3.7–P3.12** are delivered. Continue in roadmap order with **P3.13 — Mobile optimization** to finish Solar Yard and complete P3.
+
+**P3.12 delivered:** HELIOS-9 Yardmind now has a Solar Yard-specific authored boss presentation instead of the shared generic boss silhouette. Adaptive LOD1/LOD2 assets give the yardmind a broad sunshield crown, paired reflector wings, and fabrication/thermal core hardware in the existing ceramic / solar-gold / heat-amber language, shifting to overheat-red pressure cues in phase two while preserving the shared boss telegraph system. Runtime routing is restricted to Solar Yard contracts whose deep target is HELIOS-9 Yardmind; deterministic telemetry exposes boss identity, asset, silhouette, palette, and live phase presentation, while mobile-landscape selects the dedicated LOD2 asset. Generated-content, static graphics, and browser runtime regressions cover the new presentation. The dedicated Solar Yard mobile optimization pass remains P3.13.
 
 **P3.11 delivered:** Solar Yard now has an authored material-transfer system instead of a static fabrication floor: three paired transfer-rail spans cross the fabrication spine and two overhead gantry cranes carry independently phased trolley assemblies. Both transport families ship adaptive LOD1/LOD2 GLBs in the existing ceramic / scorched-steel / solar-gold / heat-amber language. The trolleys move deterministically from live simulation time rather than decorative randomness, and runtime telemetry exposes rail/crane counts, motion mode, and live trolley offsets. Generated-content/static regressions and desktop/mobile-landscape Browser E2E verify the authored families, mobile LOD reduction, runtime loading, and actual trolley movement. HELIOS-9 presentation and the dedicated Solar Yard mobile optimization pass remain P3.12–P3.13.
 

@@ -440,6 +440,14 @@ export const ICE_MINE_BOSS_ASSET_FAMILY: GraphicsAssetFamily = {
   },
 };
 
+export const SOLAR_YARD_BOSS_ASSET_FAMILY: GraphicsAssetFamily = {
+  id: 'solar-yard-helios-9',
+  lods: {
+    1: createGraphicsAssetSpec('solar-yard-helios-9-lod1', 'enemy', '/assets/models/bosses/solar-yard-helios-9-lod1.glb', 1),
+    2: createGraphicsAssetSpec('solar-yard-helios-9-lod2', 'enemy', '/assets/models/bosses/solar-yard-helios-9-lod2.glb', 2),
+  },
+};
+
 export const ENEMY_ASSET_FAMILIES = {
   assault: {
     id: 'enemy-assault',
