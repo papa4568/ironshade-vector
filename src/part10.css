@@ -12,5 +12,24 @@
 .mega-objective-chip.complete { border-color: rgba(175, 205, 137, .62); }
 .mega-objective-chip.complete b { color: #d1dfa7; }
 .mega-checkpoint { border-color: rgba(103, 169, 157, .72); box-shadow: 0 22px 80px rgba(0, 0, 0, .48); }
-@media (max-width: 650px), (pointer: coarse) { .mega-route { grid-template-columns: 1fr; } .mega-objective-chip { top: max(88px, calc(env(safe-area-inset-top) + 78px)); width: min(390px, 70vw); padding: 5px 8px; } .mega-objective-chip b { font-size: 9px; } }
+.mega-transit-card { width: min(650px, 94vw); }
+.mega-transit-route { margin-top: 10px; }
+.mega-transit-progress { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 12px; }
+.mega-transit-progress > span { min-width: 0; padding: 8px; border: 1px solid rgba(78, 103, 98, .55); border-radius: 8px; background: rgba(7, 16, 15, .78); }
+.mega-transit-progress small,.mega-transit-progress b { display: block; }
+.mega-transit-progress small { color: #647a74; font: 800 6px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .08em; }
+.mega-transit-progress b { margin-top: 4px; overflow: hidden; color: #8fa59f; font-size: 8px; line-height: 1.25; text-overflow: ellipsis; }
+.mega-transit-progress > span.secured { border-color: rgba(108, 146, 137, .64); background: rgba(14, 33, 29, .78); }
+.mega-transit-progress > span.next { border-color: rgba(195, 178, 117, .78); background: rgba(45, 38, 20, .68); }
+.mega-transit-progress > span.next small,.mega-transit-progress > span.next b { color: #d9c88a; }
+.mega-transit-carry { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 9px; }
+.mega-transit-carry > span { padding: 8px; border: 1px solid rgba(67, 92, 86, .5); border-radius: 8px; background: rgba(6, 14, 13, .72); }
+.mega-transit-carry small,.mega-transit-carry b { display: block; }
+.mega-transit-carry small { color: #647b75; font: 800 6px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .07em; }
+.mega-transit-carry b { margin-top: 4px; color: #b7c9c3; font-size: 9px; }
+.mega-transit-arrival { margin-top: 9px; padding: 9px 10px; border-left: 3px solid #6b9d92; background: rgba(13, 31, 27, .62); }
+.mega-transit-arrival small,.mega-transit-arrival b { display: block; }
+.mega-transit-arrival small { color: #719087; font: 800 6px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .08em; }
+.mega-transit-arrival b { margin-top: 4px; color: #bfd5ce; font-size: 9px; line-height: 1.35; }
+@media (max-width: 650px), (pointer: coarse) { .mega-route { grid-template-columns: 1fr; } .mega-objective-chip { top: max(88px, calc(env(safe-area-inset-top) + 78px)); width: min(390px, 70vw); padding: 5px 8px; } .mega-objective-chip b { font-size: 9px; } .mega-transit-card { max-height: min(92vh, 640px); overflow-y: auto; overscroll-behavior: contain; } .mega-transit-progress,.mega-transit-carry { grid-template-columns: repeat(2, minmax(0, 1fr)); } .mega-transit-card .overlay-actions button { min-height: 46px; } }
 @media (max-height: 540px) and (orientation: landscape) { .mega-objective-chip { top: max(66px, calc(env(safe-area-inset-top) + 58px)); width: min(360px, 58vw); } .mega-objective-chip span { display: none; } }
