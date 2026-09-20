@@ -215,7 +215,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 ## P3 — Authored Biomes Pack II
 
 ### Ice Mine
-- [ ] P3.1 Assets
+- [x] P3.1 Assets
 - [ ] P3.2 Bore/tunnel geometry
 - [ ] P3.3 Brittle support destruction
 - [ ] P3.4 Cryogenic machinery
@@ -307,9 +307,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1 and P2 are complete: **Spin Habitat P2.1–P2.9** and **Jovian Harvester P2.10–P2.16** are delivered. Continue in roadmap order with **P3.1 — Ice Mine assets**, then P3.2–P3.6 to finish the Ice Mine before starting Solar Yard.
+P1 and P2 are complete, and **Ice Mine P3.1 assets** are delivered. Continue in roadmap order with **P3.2 — Bore/tunnel geometry**, then P3.3–P3.6 to finish the Ice Mine before starting Solar Yard.
 
-**P2.16 delivered:** Jovian Harvester now has a dedicated adaptive biome render profile instead of inheriting the generic scene budget unchanged. Full desktop preserves the 19-piece authored structural composition; Balanced, coarse/mobile, and Performance profiles trim non-landmark deck/bridge/ballast placements to 13 pieces while preserving all five skimmer towers. Coarse/mobile forces authored environment LOD2, non-Full profiles disable structural shadow casters, and the procedural fallback follows the same shadow policy. Existing P2.12 storm-pressure and P2.15 atmosphere density reductions remain layered on top. Deterministic render-profile regressions and desktop/mobile-landscape browser runtime QA now assert the active LOD, structural instance budget, and shadow budget. P2 is complete; the next implementation target is P3.1 Ice Mine assets.
+**P3.1 delivered:** Ice Mine now has a reusable authored static environment asset kit with frost walls, structural support frames, service decks, and ice pillars. All four families generate adaptive LOD1/LOD2 GLBs with cold-rock, support-steel, frost-ice, and cyan-readability material identities plus deterministic silhouette markers. Generated-content and static asset-pipeline regressions verify the kit and mobile LOD reduction, and the PR full regression/production build is green. Bore/tunnel runtime composition remains P3.2; brittle support destruction, cryogenic machinery, collapse/fracture effects, and Rhea Kade presentation remain P3.3–P3.6.\n\n**P2.16 delivered:** Jovian Harvester now has a dedicated adaptive biome render profile instead of inheriting the generic scene budget unchanged. Full desktop preserves the 19-piece authored structural composition; Balanced, coarse/mobile, and Performance profiles trim non-landmark deck/bridge/ballast placements to 13 pieces while preserving all five skimmer towers. Coarse/mobile forces authored environment LOD2, non-Full profiles disable structural shadow casters, and the procedural fallback follows the same shadow policy. Existing P2.12 storm-pressure and P2.15 atmosphere density reductions remain layered on top. Deterministic render-profile regressions and desktop/mobile-landscape browser runtime QA now assert the active LOD, structural instance budget, and shadow budget. P2 is complete; the next implementation target is P3.1 Ice Mine assets.
 
 **P2.15 delivered:** Jovian Harvester now has a persistent atmospheric layer distinct from the reactive P2.12 storm/pressure effects: broad upper-atmosphere pressure-cloud filaments, slow charged particulate, and skimmer-spine haze. Ambient motion uses low-frequency crosswind drift / pressure breathing / charged drift and is subtly modulated by live storm charge and pressure shear without becoming event-only VFX. Density scales through the existing render budget (2/3/5 cloud bands and 20/36/56 motes) with deterministic coarse/mobile reduction. Static graphics and render-budget regressions, the full production build, PR and merged-main desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.167 package/version/SDK/signature verification, native emulator runtime smoke, and Chapter 3 touch playthrough are green. P2.16 remains the dedicated Jovian mobile LOD/performance pass.
 

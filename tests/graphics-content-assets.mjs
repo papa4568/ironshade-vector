@@ -213,6 +213,14 @@ for (const path of glbs) {
                                     ? 'jovian-harvester-transfer-bridge-main'
                                     : filename.includes('jovian-harvester-ballast-pod')
                                       ? 'jovian-harvester-ballast-pod-shell'
+                                      : filename.includes('ice-mine-frost-wall')
+                                        ? 'ice-mine-frost-wall-rock'
+                                        : filename.includes('ice-mine-support-frame')
+                                          ? 'ice-mine-support-frame-crown'
+                                          : filename.includes('ice-mine-service-deck')
+                                            ? 'ice-mine-service-deck-main'
+                                            : filename.includes('ice-mine-ice-pillar')
+                                              ? 'ice-mine-ice-pillar-core'
           : filename.includes('floor-panel')
             ? 'refinery-floor-panel'
             : filename.includes('floor-service-grate')
@@ -287,6 +295,29 @@ for (const path of glbs) {
       assert(nodeNames.has('jovian-harvester-ballast-pod-keel'), `${relativePath}: Jovian ballast pod LOD1 is missing keel detail`);
       assert(nodeNames.has('jovian-harvester-ballast-pod-strap'), `${relativePath}: Jovian ballast pod LOD1 is missing retention strap detail`);
       assert(materialForNode('jovian-harvester-ballast-pod-shell') === 'jovian-harvester-ballast-shell', `${relativePath}: Jovian ballast pod lost its bright shell identity`);
+    }
+
+    if (filename.includes('ice-mine-frost-wall') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('ice-mine-frost-wall-ledge'), `${relativePath}: Ice Mine frost wall LOD1 is missing frozen ledge detail`);
+      assert(nodeNames.has('ice-mine-frost-wall-strata'), `${relativePath}: Ice Mine frost wall LOD1 is missing rock strata detail`);
+      assert(materialForNode('ice-mine-frost-wall-rock') === 'ice-mine-frozen-rock', `${relativePath}: Ice Mine frost wall lost its frozen-rock identity`);
+      assert(materialForNode('ice-mine-frost-wall-cap') === 'ice-mine-frost-ice', `${relativePath}: Ice Mine frost wall cap must remain ice material`);
+    }
+    if (filename.includes('ice-mine-support-frame') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('ice-mine-support-frame-brace-left'), `${relativePath}: Ice Mine support frame LOD1 is missing brace detail`);
+      assert(nodeNames.has('ice-mine-support-frame-frost-sheath'), `${relativePath}: Ice Mine support frame LOD1 is missing frost sheath detail`);
+      assert(materialForNode('ice-mine-support-frame-crown') === 'ice-mine-support-steel', `${relativePath}: Ice Mine support frame lost its structural steel identity`);
+      assert(materialForNode('ice-mine-support-frame-status') === 'ice-mine-cold-emissive', `${relativePath}: Ice Mine support status must remain cold cyan`);
+    }
+    if (filename.includes('ice-mine-service-deck') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('ice-mine-service-deck-grate-left'), `${relativePath}: Ice Mine service deck LOD1 is missing grate detail`);
+      assert(materialForNode('ice-mine-service-deck-main') === 'ice-mine-service-deck', `${relativePath}: Ice Mine service deck lost its dedicated deck material`);
+      assert(materialForNode('ice-mine-service-deck-frost-strip') === 'ice-mine-frost-ice', `${relativePath}: Ice Mine service deck frost strip must remain ice material`);
+    }
+    if (filename.includes('ice-mine-ice-pillar') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('ice-mine-ice-pillar-shelf'), `${relativePath}: Ice Mine ice pillar LOD1 is missing shelf detail`);
+      assert(nodeNames.has('ice-mine-ice-pillar-shard'), `${relativePath}: Ice Mine ice pillar LOD1 is missing shard detail`);
+      assert(materialForNode('ice-mine-ice-pillar-core') === 'ice-mine-frost-ice', `${relativePath}: Ice Mine pillar lost its frozen core identity`);
     }
 
     if (filename.includes('parallax-baseline-pylon') && filename.endsWith('-lod1.glb')) {
@@ -502,6 +533,13 @@ for (const asset of ['jovian-harvester-deck-span', 'jovian-harvester-skimmer-tow
   const lod2 = reportByPath.get(`environments/${asset}-lod2.glb`);
   assert(lod1 && lod2, `${asset}: Jovian Harvester LOD1/LOD2 pair missing`);
   assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, `${asset}: Jovian Harvester mobile LOD2 must reduce payload and draw surfaces`);
+}
+
+for (const asset of ['ice-mine-frost-wall', 'ice-mine-support-frame', 'ice-mine-service-deck', 'ice-mine-ice-pillar']) {
+  const lod1 = reportByPath.get(`environments/${asset}-lod1.glb`);
+  const lod2 = reportByPath.get(`environments/${asset}-lod2.glb`);
+  assert(lod1 && lod2, `${asset}: Ice Mine P3.1 LOD1/LOD2 pair missing`);
+  assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, `${asset}: Ice Mine mobile LOD2 must reduce payload and draw surfaces`);
 }
 
 for (const asset of ['parallax-baseline-pylon', 'parallax-reference-frame', 'parallax-mass-carriage', 'parallax-shear-anchor', 'parallax-reference-console']) {
