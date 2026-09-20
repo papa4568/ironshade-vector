@@ -256,7 +256,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 - [x] P5.1 Vanguard third specialization
 - [x] P5.2 Vanguard skill evolution
-- [ ] P5.3 Vanguard capstone interactions
+- [x] P5.3 Vanguard capstone interactions
 - [ ] P5.4 Deepen Vector specializations
 - [ ] P5.5 Vector skill evolutions
 - [ ] P5.6 Systems third specialization
@@ -317,7 +317,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1, P2, P3, and **P4 — Megastructure Capstone Pass** are complete. **P5.1 — Vanguard third specialization** and **P5.2 — Vanguard skill evolution** are complete. Continue in roadmap order with **P5.3 — Vanguard capstone interactions**.
+P1, P2, P3, and **P4 — Megastructure Capstone Pass** are complete. **P5.1–P5.3 Vanguard class-capstone work** is complete. Continue in roadmap order with **P5.4 — Deepen Vector specializations**.
+
+**P5.3 delivered:** Vanguard specializations now form three explicit LV16+ capstone loops with the new skill evolutions. **Void Ram** links Pressure Diver + Siege Ram: ram contacts gain vacuum pressure, seed a player-owned vacuum wake at the breach line, and shed vacuum exposure. **Breach Cascade** links Breach Vanguard + Faultline Tag: both fracture targets take deeper armor stripping, armor breaks feed Breach Guard, and the LV16 overclock repairs armor from those breaks. **Counterfort** links Bulkhead Warden + Reprisal Pulse: reprisal contacts reinforce Breach Guard, add extra armor repair, and the LV16 overclock recycles capacitor. The Skills screen calls out active capstone links, the stats summary surfaces the active capstone, and deterministic gameplay/UI regressions prove the paired behavior rather than merely checking that both components are equipped. PR desktop/mobile Browser E2E, merged-main desktop/mobile Browser E2E, Level 15 beta smoke, Android beta.193 package/version/SDK/signature verification, native emulator install/launch smoke, and Android touch/runtime smoke all passed. **P5.4 — Deepen Vector specializations** is next.
 
 **P5.2 delivered:** Vanguard now has three LV16 class skill evolutions in the existing Skill Lens slots. **Siege Ram** turns Breach Rush into an armor-cracking ram line that opens Armor Breach and feeds Breach Guard time, balanced by +20% Breach Rush cooldown. **Faultline Tag** relays Fracture Tag into a nearby secondary hostile to create a two-target Breacher lane, balanced by +18% Fracture Tag capacitor cost. **Reprisal Pulse** re-strikes already-breached Bulwark Pulse contacts and advances Breach Rush recovery per reprisal contact, balanced by +18% Bulwark Pulse cooldown. Evolutions are Vanguard-only, remain locked before LV16, share the existing per-skill selection slots with common Lenses, and are cleared safely when switching to an incompatible class while shared Lenses remain intact. Build UI exposes only class-compatible evolutions with unlock state, and player stats now report the actual class skill kit rather than generic MAG/MARK/ARC values. Deterministic gameplay regression covers level/class gating, all three tradeoffs, armor/guard/relay/recovery behavior, combat feedback, and class-switch cleanup. PR desktop/mobile Browser E2E, merged-main desktop/mobile Browser E2E, Level 15 beta smoke, Android beta.192 package/version/SDK/signature verification, native emulator install/launch smoke, and Android touch/runtime smoke all passed. **P5.3 — Vanguard capstone interactions** is next.
 
@@ -399,16 +401,16 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.192**
+- Android beta: **0.0.1-beta.193**
 - Package: `app.ironshade.vector`
-- Verified: Class capstone **P5.2 — Vanguard skill evolution** is complete. Vanguard now has LV16 evolutions for all three class skills: **Siege Ram**, **Faultline Tag**, and **Reprisal Pulse**, each with a behavior-changing combat loop and explicit cooldown/capacitor tradeoff. Evolutions are class/level gated, share the existing Skill Lens slots, clean up safely on incompatible class changes, surface in Build with unlock state, and appear correctly in class-specific player telemetry. Deterministic gameplay regression, PR desktop + mobile-landscape Browser E2E, merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.192 package/version/SDK/signature verification, native emulator install/launch smoke, and Android touch/runtime smoke all passed. **The next roadmap slice is P5.3 — Vanguard capstone interactions.**
+- Verified: Class capstone **P5.3 — Vanguard capstone interactions** is complete. Pressure Diver + Siege Ram now forms **Void Ram**, Breach Vanguard + Faultline Tag forms **Breach Cascade**, and Bulkhead Warden + Reprisal Pulse forms **Counterfort**. These are runtime behavior links with their own guard/armor/vacuum/capacitor consequences and explicit combat feedback, not passive labels. Build Skills and player telemetry surface the active capstone relationship. Deterministic gameplay/UI regression, PR desktop + mobile-landscape Browser E2E, merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.193 package/version/SDK/signature verification, native emulator install/launch smoke, and Android touch/runtime smoke all passed. **The next roadmap slice is P5.4 — Deepen Vector specializations.**
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P5.2 final implementation head: `cbc3ab07a808b55f5a75dd11c1d1d1d63eacedcb`
-- P5.2 merged main / APK source: `c34d8301b1b0a090a3855a47553fe1b72388b20f`
-- P5.2 PR Browser E2E run: `35535678739`
-- Final Browser E2E run: `35535830059`
-- Level 15 beta smoke run: `35535830035`
-- Android beta.192 run: `35535830083`
-- Android beta.192 artifact ID: `10613281617`
-- Android beta.192 artifact head: `c34d8301b1b0a090a3855a47553fe1b72388b20f`
-- APK SHA-256: `6fe9220efcd469a2228123bd913ae5b4dde3578a25e50044d5f4f63d5314cd47`
+- P5.3 final implementation head: `d09b8d6a83c7ef86d4dc4af5e4c371add9a1f620`
+- P5.3 merged main / APK source: `a0c4f2b52c270ef11304376729fe3be4712ee8cc`
+- P5.3 PR Browser E2E run: `35536465134`
+- Final Browser E2E run: `35536560800`
+- Level 15 beta smoke run: `35536560749`
+- Android beta.193 run: `35536560746`
+- Android beta.193 artifact ID: `10613572343`
+- Android beta.193 artifact head: `a0c4f2b52c270ef11304376729fe3be4712ee8cc`
+- APK SHA-256: `3ebecb94d034e7f32aedff4748e5766827a3b92289f4634045af1dcc265e68c4`
