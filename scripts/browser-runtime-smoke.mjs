@@ -739,6 +739,8 @@ try {
         && (canvas?.dataset.environmentServiceDetails ?? '').includes('service-deck:4')
         && (canvas?.dataset.environmentSurfaceDetail ?? '').includes('frost-wall:10')
         && (canvas?.dataset.environmentSurfaceDetail ?? '').includes('ice-pillar:5')
+        && canvas?.dataset.environmentBrittleSupportIds === 'ice-brittle-gate-a,ice-brittle-gate-b'
+        && /^(intact|damaged|partial|cleared)$/.test(canvas?.dataset.environmentBrittleSupportState ?? '')
         && Number(canvas?.dataset.environmentInstances) > 0
         && ['1', '2'].includes(canvas?.dataset.environmentLod ?? '');
     })()`, 'Ice Mine authored bore/tunnel geometry', 20_000);
@@ -752,12 +754,31 @@ try {
         sequence: canvas?.dataset.environmentTunnelSequence ?? '',
         service: canvas?.dataset.environmentServiceDetails ?? '',
         surface: canvas?.dataset.environmentSurfaceDetail ?? '',
+        brittle: canvas?.dataset.environmentBrittleSupports ?? '',
+        brittleState: canvas?.dataset.environmentBrittleSupportState ?? '',
       };
     })()`);
     if (viewportMode === 'mobile-landscape' && iceMineEnvironment?.lod !== '2') {
       throw new Error(`Ice Mine mobile environment did not select LOD2: ${JSON.stringify(iceMineEnvironment)}`);
     }
     console.log(`BROWSER_ICE_MINE_PASS viewport=${viewportMode} lod=${iceMineEnvironment?.lod} instances=${iceMineEnvironment?.instances} kit=${iceMineEnvironment?.kit} composition=${iceMineEnvironment?.composition} sequence=${iceMineEnvironment?.sequence} service=${iceMineEnvironment?.service} surface=${iceMineEnvironment?.surface}`);
+    await waitFor(`(() => {
+      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-ice-mine');
+      return canvas?.dataset.environmentBrittleSupportState === 'cleared'
+        && (canvas?.dataset.environmentBrittleSupports ?? '').includes('intact:0')
+        && (canvas?.dataset.environmentBrittleSupports ?? '').includes('failed:2');
+    })()`, 'Ice Mine brittle support destruction', 20_000);
+    const iceMineBrittle = await evaluate(`(() => {
+      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-ice-mine');
+      return {
+        state: canvas?.dataset.environmentBrittleSupportState ?? '',
+        supports: canvas?.dataset.environmentBrittleSupports ?? '',
+      };
+    })()`);
+    if (iceMineBrittle?.state !== 'cleared') {
+      throw new Error(`Ice Mine brittle supports did not reflect timed destruction: ${JSON.stringify(iceMineBrittle)}`);
+    }
+    console.log(`BROWSER_ICE_MINE_SUPPORT_PASS viewport=${viewportMode} state=${iceMineBrittle?.state} supports=${iceMineBrittle?.supports}`);
   }
 
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);
