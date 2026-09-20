@@ -233,7 +233,10 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## P4 — Megastructure Capstone Pass
 
-- [ ] P4.1–P4.4 Perseid
+- [x] P4.1 Perseid generation-ship continuity layer
+- [x] P4.2 Perseid stage-specific encounter/event identity
+- [x] P4.3 Perseid Steward Core finale
+- [x] P4.4 Perseid adaptive render/regression coverage
 - [ ] P4.5–P4.8 K-91
 - [ ] P4.9–P4.11 Orpheline
 - [ ] P4.12–P4.14 Hecate
@@ -307,7 +310,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1, P2, and P3 are complete. Continue in roadmap order with **P4.1–P4.4 — Perseid** to begin the Megastructure Capstone Pass.
+P1, P2, and P3 are complete, and **P4.1–P4.4 — Perseid** is delivered. Continue in roadmap order with **P4.5–P4.8 — K-91**.
+
+**P4.1–P4.4 delivered:** Generation Ship Perseid now reads as one continuous derelict instead of four unrelated reused biomes. A dedicated capstone profile overlays the same keel spine, pressure ribs, and green transit datum across Docking Spine, Agricultural Drum, Cryogenic Service Deck, and Reactor Choir while adding stage-specific docking, agriculture, cryogenic, and harmonic-reactor dressing. Each space now overrides generic sector naming, carries its own Perseid event language and local hazard beat, preserves the stage-two guaranteed elite as the Perseid Drum Warder, and culminates in a dedicated Perseid Steward Core boss variant with pressure, gravity, and reactor-choir phase mechanics. The continuity layer has Full/Balanced/mobile/Performance budgets that trim repeated ribs, guide lights, props, and structural shadows without removing stage identity. Gameplay and render regressions cover the four-stage route, optional recovery, elite, Steward Core, ship events, runtime continuity telemetry, and mobile performance profile. The next capstone slice is P4.5–P4.8 K-91.
 
 **P3.13 delivered:** Solar Yard now has a dedicated adaptive render profile instead of relying on LOD selection alone. Full desktop retains the complete authored yard, while Balanced/mobile trim secondary decks, trusses, radiators, fabrication machines, and transfer rails; mobile preserves all three reflector pylons, both moving gantry cranes, the gameplay-bound thermal shutter, and HELIOS-9 while forcing LOD2. Solar Yard structural shadow casters are disabled outside the Full profile, sun/shade overlays drop from 3+3 to 2+2 on mobile and 1+1 in Performance, and the procedural fallback follows the same panel/overlay/shadow budget. Deterministic render-profile regression plus desktop/mobile-landscape browser QA cover the authored instance budget, shadow policy, overlay density, transport motion, thermal shutter linkage, and boss LOD. P3 is complete; P4 begins with Perseid.
 

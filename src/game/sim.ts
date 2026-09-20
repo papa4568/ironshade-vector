@@ -11,7 +11,7 @@ export type PressureState = 'normal' | 'leaking' | 'decompressing' | 'vacuum';
 export type WeaponId = 'carbine' | 'breacher' | 'rail';
 export type SpecializationId = 'pressure-diver' | 'momentum-broker' | 'grid-weaver' | 'survey-deadeye' | 'redline-pilot' | 'breach-vanguard' | 'capacitor-conductor';
 export type EnemyRole = 'assault' | 'suppressor' | 'technician' | 'elite' | 'boss';
-export type EnemyVariant = 'standard' | 'vectorSkirmisher' | 'anchorEngineer' | 'barricadeTrooper' | 'pressureLockTech' | 'tetherRigger' | 'maintenanceDrone' | 'gravityDrone' | 'shieldBoarder' | 'tetherOperator' | 'droneCarrier' | 'coverBreacher' | 'marksman' | 'vacuumSaboteur' | 'repairDrone' | 'gravitySpecialist' | 'meleeExosuit' | 'salvageThief' | 'impulseRigger' | 'boiloffTech' | 'partitionRigger' | 'recoilBroker' | 'siphonTech' | 'purgeOrchestrator' | 'custodyPorter' | 'geometryTech' | 'orison' | 'foundryMarshal' | 'meridianCommander' | 'salvageCaptain' | 'yardmind' | 'pressureBroker' | 'bondArbiter' | 'forgeChorus' | 'cascadeCustodian' | 'latticeCustodian' | 'transferAdjudicator' | 'umbraMarshal' | 'custodyDirector' | 'parallaxSkirmisher' | 'referenceTech' | 'baselineMarksman' | 'baselineKeeper';
+export type EnemyVariant = 'standard' | 'vectorSkirmisher' | 'anchorEngineer' | 'barricadeTrooper' | 'pressureLockTech' | 'tetherRigger' | 'maintenanceDrone' | 'gravityDrone' | 'shieldBoarder' | 'tetherOperator' | 'droneCarrier' | 'coverBreacher' | 'marksman' | 'vacuumSaboteur' | 'repairDrone' | 'gravitySpecialist' | 'meleeExosuit' | 'salvageThief' | 'impulseRigger' | 'boiloffTech' | 'partitionRigger' | 'recoilBroker' | 'siphonTech' | 'purgeOrchestrator' | 'custodyPorter' | 'geometryTech' | 'orison' | 'foundryMarshal' | 'meridianCommander' | 'salvageCaptain' | 'yardmind' | 'pressureBroker' | 'bondArbiter' | 'forgeChorus' | 'cascadeCustodian' | 'perseidSteward' | 'latticeCustodian' | 'transferAdjudicator' | 'umbraMarshal' | 'custodyDirector' | 'parallaxSkirmisher' | 'referenceTech' | 'baselineMarksman' | 'baselineKeeper';
 export type SingularTraitId = 'vacuumWake' | 'atlasDodgeCap' | 'redlineVelocity' | 'relayCrown' | 'palisadeDoctrine' | 'pressureMantle' | 'lockstepArc' | 'rheaBackblast' | 'tetherhand' | 'scraplineDodge' | 'thermalGovernor' | 'machineSight' | 'sunwardFracture' | 'arcspindle' | 'ghostline' | 'borecutter' | 'stormVentgun' | 'nullpoint' | 'glasswalker' | 'cryostack' | 'salvageDynamo' | 'deadreckon' | 'stormskin' | 'axisGhost' | 'pendulumBreach' | 'massTap' | 'boiloffSink' | 'cryolineRail' | 'inertiaSpool' | 'clutchstep' | 'recoilLedger' | 'coldStartBreach' | 'purgeWake' | 'gridReclaimer' | 'custodyShear' | 'shutterLine' | 'archiveRelay' | 'pressureReservoir' | 'recoilDynamo' | 'relayOrchard' | 'coldWitness' | 'redlineBulwark' | 'closeBreach' | 'abilityRosary' | 'pressureBallistics' | 'momentumMark' | 'scrapCircuit' | 'boiloffDash' | 'splitReference' | 'forkedSpool' | 'breachEcho' | 'railDoublet' | 'magBloom' | 'markCascade';
 export type Material = 'light' | 'industrial' | 'bulkhead' | 'system';
 
@@ -946,6 +946,58 @@ function stepCascadeCustodianBoss(state: SimState, boss: Enemy, dt: number) {
   boss.telegraphAim = norm({ x: p.x - boss.x, y: p.y - boss.y });
 }
 
+
+function stepPerseidStewardBoss(state: SimState, boss: Enemy, dt: number) {
+  const p = state.player;
+  if (!state.bossActive || p.dead) return;
+  boss.fireCooldown = Math.max(0, boss.fireCooldown - dt);
+  if (boss.bossPhase === 1 && boss.hp <= boss.maxHp * 0.52) {
+    boss.bossPhase = 2;
+    const arena = state.sectors.find(item => item.id === 'C');
+    if (arena) arena.gravity = 0.06;
+    activateBreach(state, 'boss-breach');
+    plantHazard(state, 1810, 320, 'shockGrid', 6.5);
+    plantHazard(state, 2110, 710, 'gravityWell', 5.5);
+    pushEvent(state, 'PERSEID STEWARD // REACTOR CHOIR AUTHORITY SPLIT // SHIP SAFETY MODEL OVERRIDDEN', 3.5);
+  }
+  moveArenaBoss(state, boss, dt, 360, boss.bossPhase === 2 ? 575 : 445, boss.bossPhase === 2 ? 160 : 124, 0.34);
+  if (boss.telegraph > 0) {
+    boss.telegraph -= dt;
+    if (boss.telegraph > 0) return;
+    if (boss.bossPattern === 'pressureCascade') {
+      activateBreach(state, 'boss-breach');
+      const arena = state.sectors.find(item => item.id === 'C');
+      if (arena) { arena.rapidTimer = Math.max(arena.rapidTimer, 4); arena.targetPressure = 0; }
+      pushEvent(state, 'STEWARD VENT ORDER // REACTOR NAVE PRESSURE PATH OPEN', 2.3);
+    } else if (boss.bossPattern === 'gravityOverride') {
+      const arena = state.sectors.find(item => item.id === 'C');
+      if (arena) arena.gravity = arena.gravity < 0.3 ? 0.78 : 0.06;
+      plantHazard(state, p.x + p.vx * 0.42, p.y + p.vy * 0.42, 'gravityWell', 4.4);
+      pushEvent(state, `STEWARD ROTATION AUTHORITY // ${arena && arena.gravity < 0.3 ? 'LOW-G' : 'HIGH-G'} DRUM REFERENCE`, 2.2);
+    } else if (boss.bossPattern === 'machineChoir') {
+      const aim = norm({ x: p.x - boss.x, y: p.y - boss.y });
+      for (const angle of [-0.2, -0.1, 0, 0.1, 0.2]) {
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        addProjectile(state, boss.x, boss.y, { x: aim.x * cos - aim.y * sin, y: aim.x * sin + aim.y * cos }, 600, boss.bossPhase === 2 ? 21 : 17, 'enemy', { weapon: 'enemy', armorDamage: 0.76, radius: 7 });
+      }
+      plantHazard(state, p.x + p.vx * 0.28, p.y + p.vy * 0.28, 'shockGrid', boss.bossPhase === 2 ? 5 : 4);
+      pushEvent(state, 'REACTOR CHOIR // FIVE HARMONIC BUSES FIRING IN PHASE', 2.2);
+    }
+    boss.fireCooldown = boss.bossPhase === 2 ? 1.0 : 1.36;
+    boss.bossPattern = 'none';
+    return;
+  }
+  if (boss.fireCooldown > 0) return;
+  const patterns: Enemy['bossPattern'][] = boss.bossPhase === 2
+    ? ['machineChoir', 'pressureCascade', 'gravityOverride', 'machineChoir']
+    : ['pressureCascade', 'machineChoir', 'gravityOverride'];
+  boss.bossPattern = patterns[boss.patternIndex % patterns.length];
+  boss.patternIndex += 1;
+  boss.telegraph = boss.bossPattern === 'machineChoir' ? 0.88 : 1.05;
+  boss.telegraphAim = norm({ x: p.x - boss.x, y: p.y - boss.y });
+}
+
 function stepLatticeCustodianBoss(state: SimState, boss: Enemy, dt: number) {
   const p = state.player;
   if (!state.bossActive || p.dead) return;
@@ -1029,6 +1081,7 @@ function stepBoss(state: SimState, boss: Enemy, dt: number) {
   if (boss.variant === 'custodyDirector') { stepCustodyDirectorBoss(state, boss, dt); return; }
   if (boss.variant === 'latticeCustodian') { stepLatticeCustodianBoss(state, boss, dt); return; }
   if (boss.variant === 'cascadeCustodian') { stepCascadeCustodianBoss(state, boss, dt); return; }
+  if (boss.variant === 'perseidSteward') { stepPerseidStewardBoss(state, boss, dt); return; }
   if (boss.variant === 'pressureBroker') { stepPressureBrokerBoss(state, boss, dt); return; }
   if (boss.variant === 'bondArbiter') { stepBondArbiterBoss(state, boss, dt); return; }
   if (boss.variant === 'forgeChorus') { stepForgeChorusBoss(state, boss, dt); return; }

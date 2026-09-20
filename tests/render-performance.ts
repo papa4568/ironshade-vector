@@ -4,6 +4,7 @@ import { AdaptiveRenderBudget } from '../src/game/renderQuality';
 import { spinHabitatArchitectureState, spinHabitatRenderProfile, spinHabitatSpindownState } from '../src/game/spinHabitatArchitecture';
 import { jovianHarvesterRenderProfile, jovianHarvesterStormState } from '../src/game/jovianHarvesterVisualLanguage';
 import { solarYardRenderProfile } from '../src/game/solarYardVisualProfile';
+import { perseidRenderProfile } from '../src/game/perseidCapstone';
 
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
@@ -189,6 +190,23 @@ assert(rendererSource.includes('selectGraphicsAssetSpec(SOLAR_YARD_ASSET_FAMILIE
 assert(rendererSource.includes("dataset.environmentShadowCasters = profile.environmentShadows ? 'solar-yard-structures+gameplay-actors' : 'gameplay-actors-only'"), 'Solar Yard runtime QA must expose structural shadow trimming');
 assert(rendererSource.includes('dataset.environmentInstanceBudget = `deck:${ceramicDeckPlacements.length}+truss:${trussFramePlacements.length}+radiator:${radiatorTowerPlacements.length}'), 'Solar Yard runtime QA must expose the authored instance budget');
 assert(rendererSource.includes('shadePlacements.slice(0, solarYardProfile.shadePatchInstances)') && rendererSource.includes('sunPlacements.slice(0, solarYardProfile.sunPatchInstances)'), 'Solar Yard procedural fallback must follow the adaptive overlay density');
+const fullPerseidProfile = perseidRenderProfile(1, false);
+assert(fullPerseidProfile.name === 'full' && fullPerseidProfile.ribPairs === 7 && fullPerseidProfile.guideLights === 10, 'desktop Perseid must preserve the complete generation-ship continuity frame.');
+assert(fullPerseidProfile.stageProps === 7 && fullPerseidProfile.castStructuralShadows, 'desktop Perseid must keep full stage dressing and structural shadows.');
+
+const mobilePerseidProfile = perseidRenderProfile(0.72, true);
+assert(mobilePerseidProfile.name === 'mobile' && mobilePerseidProfile.ribPairs === 4 && mobilePerseidProfile.guideLights === 6, 'mobile Perseid must trim repeated ship ribs and guide lights.');
+assert(mobilePerseidProfile.stageProps === 4 && !mobilePerseidProfile.castStructuralShadows, 'mobile Perseid must preserve stage identity while removing structural shadow cost.');
+
+const performancePerseidProfile = perseidRenderProfile(0.5, true);
+assert(performancePerseidProfile.name === 'performance' && performancePerseidProfile.ribPairs === 3 && performancePerseidProfile.stageProps === 3, 'Perseid Performance mode must retain the minimum recognizable ship silhouette.');
+assert(!performancePerseidProfile.castStructuralShadows, 'Perseid Performance mode must not restore structural shadows.');
+assert(rendererSource.includes('this.addPerseidCapstoneScenery(mission, world.w, world.h, budget.detailScale)'), 'Perseid continuity scenery must layer over every reused stage biome.');
+assert(rendererSource.includes("dataset.megastructureIdentity = 'generation-ship:perseid'"), 'Perseid runtime QA must expose the megastructure identity.');
+assert(rendererSource.includes("dataset.megastructureContinuity = 'keel-spine+pressure-ribs+green-transit-datum'"), 'Perseid runtime QA must expose its cross-stage continuity language.');
+assert(rendererSource.includes('dataset.megastructureStageKit = stage.kit.join'), 'Perseid runtime QA must expose the active stage-specific visual kit.');
+assert(rendererSource.includes('dataset.megastructurePerformanceProfile'), 'Perseid runtime QA must expose its adaptive mobile performance profile.');
+
 const sustainedMobile = new AdaptiveRenderBudget(true);
 let sustainedSnapshot = sustainedMobile.sample(16.7, 1);
 for (let index = 0; index < 60 * 10; index += 1) sustainedSnapshot = sustainedMobile.sample(18.2, 1);

@@ -12,6 +12,7 @@ import { configureGraphicsAssetRenderer, instantiateGraphicsAsset, selectGraphic
 import { spinHabitatArchitectureState, spinHabitatRenderProfile, spinHabitatSpindownState } from './spinHabitatArchitecture';
 import { jovianHarvesterRenderProfile, jovianHarvesterStormState } from './jovianHarvesterVisualLanguage';
 import { solarYardRenderProfile } from './solarYardVisualProfile';
+import { perseidRenderProfile, perseidStageIdentity } from './perseidCapstone';
 
 const WORLD_SCALE = 0.02;
 const FLOOR_Y = 0;
@@ -720,6 +721,11 @@ export class ThreeCombatRenderer {
     delete this.renderer.domElement.dataset.environmentTransport;
     delete this.renderer.domElement.dataset.environmentCraneMotion;
     delete this.renderer.domElement.dataset.environmentCraneOffsets;
+    delete this.renderer.domElement.dataset.megastructureIdentity;
+    delete this.renderer.domElement.dataset.megastructureStage;
+    delete this.renderer.domElement.dataset.megastructureContinuity;
+    delete this.renderer.domElement.dataset.megastructureStageKit;
+    delete this.renderer.domElement.dataset.megastructurePerformanceProfile;
     delete this.renderer.domElement.dataset.readabilityLanguage;
   }
 
@@ -2444,6 +2450,87 @@ export class ThreeCombatRenderer {
     ].join('+');
   }
 
+  private addPerseidCapstoneScenery(mission: Contract, worldW: number, worldH: number, detailScale: number) {
+    const stage = perseidStageIdentity(mission);
+    if (!stage) return;
+    const profile = perseidRenderProfile(detailScale, this.coarse);
+    const cx = scaled(worldW * 0.5);
+    const cz = scaled(worldH * 0.5);
+    const width = scaled(worldW);
+    const height = scaled(worldH);
+    const structural = new THREE.MeshStandardMaterial({ color: 0x43525a, metalness: 0.84, roughness: 0.38 });
+    const dark = new THREE.MeshStandardMaterial({ color: 0x111a1f, metalness: 0.76, roughness: 0.48 });
+    const guide = new THREE.MeshStandardMaterial({ color: 0x6aa88b, emissive: 0x4baf7f, emissiveIntensity: 0.5, metalness: 0.45, roughness: 0.28 });
+    const stageAccent = new THREE.MeshStandardMaterial({
+      color: stage.stage === 3 ? 0x75b7c8 : stage.stage === 4 ? 0xd2a35e : 0x6b927d,
+      emissive: stage.stage === 3 ? 0x2e778a : stage.stage === 4 ? 0x8a5c25 : 0x315f4a,
+      emissiveIntensity: 0.28,
+      metalness: 0.56,
+      roughness: 0.34,
+    });
+
+    const addMesh = (mesh: THREE.Mesh) => {
+      mesh.castShadow = profile.castStructuralShadows;
+      mesh.receiveShadow = true;
+      this.environmentRoot.add(mesh);
+      return mesh;
+    };
+
+    const keel = addMesh(new THREE.Mesh(new THREE.BoxGeometry(width * 0.72, 0.18, scaled(18)), structural));
+    keel.position.set(cx, 0.28, cz);
+
+    for (let index = 0; index < profile.ribPairs; index += 1) {
+      const t = profile.ribPairs === 1 ? 0.5 : index / (profile.ribPairs - 1);
+      const x = width * (0.18 + t * 0.64);
+      const fore = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(10), 0.72, height * 0.18), dark));
+      fore.position.set(x, 0.36, height * 0.17);
+      const aft = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(10), 0.72, height * 0.18), dark));
+      aft.position.set(x, 0.36, height * 0.83);
+    }
+
+    for (let index = 0; index < profile.guideLights; index += 1) {
+      const t = profile.guideLights === 1 ? 0.5 : index / (profile.guideLights - 1);
+      const light = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(8), 0.06, scaled(3.5)), guide));
+      light.position.set(width * (0.2 + t * 0.6), 0.42, cz);
+    }
+
+    const propCount = profile.stageProps;
+    if (stage.stage === 1) {
+      const collar = addMesh(new THREE.Mesh(new THREE.TorusGeometry(scaled(80), scaled(9), 8, 32), stageAccent));
+      collar.rotation.x = Math.PI / 2;
+      collar.position.set(width * 0.20, 0.62, cz);
+      for (let index = 0; index < propCount; index += 1) {
+        const rail = addMesh(new THREE.Mesh(new THREE.BoxGeometry(width * 0.12, 0.14, scaled(6)), stageAccent));
+        rail.position.set(width * (0.24 + index * 0.055), 0.34, cz + (index % 2 === 0 ? scaled(54) : -scaled(54)));
+      }
+    } else if (stage.stage === 2) {
+      for (let index = 0; index < propCount; index += 1) {
+        const row = addMesh(new THREE.Mesh(new THREE.BoxGeometry(width * 0.14, 0.2, scaled(18)), index % 2 === 0 ? guide : dark));
+        row.position.set(width * (0.26 + (index % 4) * 0.15), 0.3, height * (index < 4 ? 0.31 : 0.69));
+      }
+    } else if (stage.stage === 3) {
+      for (let index = 0; index < propCount; index += 1) {
+        const bank = addMesh(new THREE.Mesh(new THREE.CylinderGeometry(scaled(16), scaled(16), scaled(62), 10), stageAccent));
+        bank.rotation.z = Math.PI / 2;
+        bank.position.set(width * (0.26 + (index % 4) * 0.15), 0.5, height * (index < 4 ? 0.30 : 0.70));
+      }
+    } else {
+      for (let index = 0; index < propCount; index += 1) {
+        const pylon = addMesh(new THREE.Mesh(new THREE.CylinderGeometry(scaled(7), scaled(12), scaled(90), 8), stageAccent));
+        pylon.position.set(width * (0.28 + (index % 4) * 0.14), scaled(45), height * (index < 4 ? 0.29 : 0.71));
+      }
+      const seal = addMesh(new THREE.Mesh(new THREE.TorusGeometry(scaled(58), scaled(8), 8, 28), stageAccent));
+      seal.rotation.x = Math.PI / 2;
+      seal.position.set(width * 0.78, 0.78, cz);
+    }
+
+    this.renderer.domElement.dataset.megastructureIdentity = 'generation-ship:perseid';
+    this.renderer.domElement.dataset.megastructureStage = `${stage.stage}:${stage.code}:${stage.name.toLowerCase().replaceAll(' ', '-')}`;
+    this.renderer.domElement.dataset.megastructureContinuity = 'keel-spine+pressure-ribs+green-transit-datum';
+    this.renderer.domElement.dataset.megastructureStageKit = stage.kit.join('+');
+    this.renderer.domElement.dataset.megastructurePerformanceProfile = `${profile.name}:ribs-${profile.ribPairs}:guides-${profile.guideLights}:props-${profile.stageProps}:shadows-${profile.castStructuralShadows ? 'on' : 'off'}`;
+  }
+
   private ensureEnvironment(state: SimState, mission: Contract, budget: RenderBudgetSnapshot) {
     const signature = `${mission.location}:${mission.locationName}:${state.sectors.length}:${state.objects.length}:tier-${budget.tier}`;
     if (signature === this.environmentSignature) return;
@@ -2486,6 +2573,7 @@ export class ThreeCombatRenderer {
     this.addPerimeter(world.w, world.h, palette);
     this.addLocationScenery(mission.location, world.w, world.h, palette, budget.detailScale);
     buildHardSciFiEnvironment(this.environmentRoot, mission, scaled(world.w), scaled(world.h), palette);
+    this.addPerseidCapstoneScenery(mission, world.w, world.h, budget.detailScale);
     const artIdentity = locationArtIdentityFor(mission.location);
     this.renderer.domElement.dataset.locationArt = `${mission.location}:${artIdentity.silhouette}:${artIdentity.material}`;
     this.renderer.domElement.dataset.locationLighting = `${mission.location}:${artIdentity.lighting}`;

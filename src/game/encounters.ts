@@ -487,6 +487,44 @@ function configureMegastructureStage(state: SimState, contract: Contract) {
   const positions = [{ x: 610, y: 790 }, { x: 960, y: 250 }, { x: 1320, y: 760 }, { x: 1210, y: 270 }];
   const position = positions[(contract.megastructureStage - 1) % positions.length];
   addObject(state, systemObject('mega-optional-cache', contract.megastructureOptionalLabel ?? 'Optional derelict archive', 'salvageNode', position.x, position.y));
+
+  if (contract.megastructure === 'generation-ship') {
+    if (contract.megastructureStage === 1) {
+      state.sectors[0].label = 'BERTH COLLAR';
+      state.sectors[1].label = 'DOCKING SPINE';
+      state.sectors[2].label = 'INNER AIRLOCK';
+      addObject(state, coverObject('perseid-docking-brace-a', 'Perseid docking brace', 820, 300, 54, 164, 'industrial'));
+      addObject(state, coverObject('perseid-docking-brace-b', 'Perseid docking brace', 1180, 710, 54, 164, 'industrial'));
+    } else if (contract.megastructureStage === 2) {
+      state.sectors[0].label = 'OUTER DRUM';
+      state.sectors[1].label = 'AGRICULTURAL RING';
+      state.sectors[2].label = 'SEED VAULT';
+      addObject(state, coverObject('perseid-seed-bank-a', 'Dormant seed bank', 760, 290, 116, 54, 'industrial'));
+      addObject(state, coverObject('perseid-seed-bank-b', 'Dormant seed bank', 1260, 735, 116, 54, 'industrial'));
+    } else if (contract.megastructureStage === 3) {
+      state.sectors[0].label = 'CRYOBANK FORE';
+      state.sectors[1].label = 'SERVICE DECK';
+      state.sectors[2].label = 'REGISTRY VAULT';
+      addObject(state, coverObject('perseid-cryo-stack-a', 'Perseid cryobank stack', 780, 300, 62, 174, 'industrial'));
+      addObject(state, coverObject('perseid-cryo-stack-b', 'Perseid cryobank stack', 1290, 710, 62, 174, 'industrial'));
+    } else if (contract.megastructureStage === 4) {
+      state.sectors[0].label = 'REACTOR NAVE';
+      state.sectors[1].label = 'CHOIR BUS';
+      state.sectors[2].label = 'STEWARD APSE';
+      addObject(state, coverObject('perseid-choir-baffle-a', 'Reactor choir baffle', 1760, 315, 116, 50, 'industrial'));
+      addObject(state, coverObject('perseid-choir-baffle-b', 'Reactor choir baffle', 2030, 690, 116, 50, 'industrial'));
+      const boss = state.enemies.find(enemy => enemy.role === 'boss');
+      if (boss) {
+        boss.variant = 'perseidSteward';
+        boss.hp = 790;
+        boss.maxHp = 790;
+        boss.armor = 285;
+        boss.maxArmor = 285;
+        boss.anchored = false;
+      }
+    }
+  }
+
   if (contract.megastructureStage === 2) {
     const elite = state.enemies.find(enemy => enemy.id === 6);
     if (elite) {
@@ -494,7 +532,7 @@ function configureMegastructureStage(state: SimState, contract: Contract) {
       elite.dead = false;
       elite.role = 'elite';
       elite.variant = 'meleeExosuit';
-      elite.label = 'Derelict Security Exosuit';
+      elite.label = contract.megastructure === 'generation-ship' ? 'Perseid Drum Warder' : 'Derelict Security Exosuit';
       elite.hp = 190;
       elite.maxHp = 190;
       elite.armor = 145;
