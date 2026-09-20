@@ -247,7 +247,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] P4.12 Hecate shipbreaking-yard continuity layer
 - [x] P4.13 Hecate stage-specific encounter/event identity
 - [x] P4.14 Hecate Yardmaster Null finale + adaptive render/regression coverage
-- [ ] P4.15 Stage transitions
+- [x] P4.15 Stage transitions
 - [ ] P4.16 Environmental continuity
 - [ ] P4.17 Debrief improvements
 - [ ] P4.18 Mobile performance
@@ -317,7 +317,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1, P2, and P3 are complete, and **P4.1–P4.14 — Perseid + K-91 + Orpheline + Hecate** is delivered. Continue in roadmap order with **P4.15 — Stage transitions**.
+P1, P2, and P3 are complete, and **P4.1–P4.15 — Perseid + K-91 + Orpheline + Hecate + Stage transitions** is delivered. Continue in roadmap order with **P4.16 — Environmental continuity**.
+
+**P4.15 delivered:** Megastructure stage changes no longer jump instantly from one reused biome to the next. Every Perseid, K-91, Orpheline, and Hecate handoff now carries authored physical-route metadata, a continuity explanation, and a destination-specific arrival cue. Choosing Transit Deeper opens a dedicated internal-transit briefing that shows the secured/next-space route, current recovery tags, carried suit health/armor, the +12 capacitor service and 35% heat bleed already applied by expedition transit, plus the arrival cue before the next combat space is instantiated. The combat state remains frozen at the checkpoint until the player commits the transit, and mobile/coarse-pointer layouts collapse the route/carry grids into a scroll-safe two-column presentation. Gameplay regressions cover representative transition routes across all four capstones plus the staged GameCanvas handoff. The next capstone work is P4.16 Environmental continuity.
 
 **P4.12–P4.14 delivered:** Abandoned Shipbreaking Yard Hecate now reads as one continuous dismantling complex instead of four unrelated reused biomes. A dedicated shipbreaking-yard capstone profile carries a black salvage-truss spine, red clamp arms, and yellow cutter datum through Sunward Clamp Field, Crusher Causeway, Wreck Transit, and Yard Control Crown while layering autonomous hull cradles, crusher jaws, stripped wreck frames, and master control pylons. Each space overrides generic sector naming and carries Hecate-specific shipbreak events with physical clamp-vector, crusher-mass, open-hull vacuum, and cutter-grid hazards; stage two fields the Hecate Crusher Foreman. Yard Control Crown culminates in Hecate Yardmaster Null, whose clamp-lock, thermal-cutter, and wreck-purge patterns turn the final gantry into a dedicated shipbreaking finale. Full/Balanced/mobile/Performance profiles trim repeated salvage trusses, cutter datum markers, stage props, and structural shadows without losing the yard silhouette. Gameplay and render regressions cover all four spaces, Yardmaster identity/phase behavior, stage events, continuity telemetry, and mobile performance profile. The next capstone work is P4.15 Stage transitions.
 
