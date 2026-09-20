@@ -1461,7 +1461,7 @@ function solarYardNodes(kind, lod) {
       { name: 'solar-yard-gantry-crane-leg-left', mesh: 1, translation: [0, 2.08, -2.48], scale: [0.48, 3.80, 0.52] },
       { name: 'solar-yard-gantry-crane-leg-right', mesh: 1, translation: [0, 2.08, 2.48], scale: [0.48, 3.80, 0.52] },
       { name: 'solar-yard-gantry-crane-beam', mesh: 1, translation: [0, 4.02, 0], scale: [0.42, 0.42, 5.46] },
-      { name: 'solar-yard-gantry-crane-status', mesh: 4, translation: [3.46, 4.30, 2.18], scale: [0.18, 0.16, 0.16] },
+      { name: 'solar-yard-gantry-crane-status', mesh: 4, translation: [0.38, 4.30, 2.18], scale: [0.18, 0.16, 0.16] },
       { name: 'solar-yard-gantry-crane-trolley-carriage', mesh: 3, translation: [0, 3.76, 0], scale: [0.76, 0.36, 0.70] },
       { name: 'solar-yard-gantry-crane-hook', mesh: 1, translation: [0, 2.34, 0], scale: [0.18, 2.28, 0.18] },
       { name: 'solar-yard-gantry-crane-loadbar', mesh: 0, translation: [0, 1.18, 0], scale: [0.92, 0.18, 0.52] },
