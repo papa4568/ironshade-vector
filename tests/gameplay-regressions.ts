@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { buildMegastructureDebrief, buyConsumable, createDefaultCampaign, generateContracts, getMegastructureStageContract, loadCampaign, saveCampaign } from '../src/game/campaign';
 import { aimAtMobileTarget, applyPlayerDamage, createSimulation, stepSimulation, triggerAbility, triggerConsumable, triggerDodge, triggerFire, weaponConfigs, type Telemetry } from '../src/game/sim';
 import { applyMissionSetup, createDirector, stepMissionDirector } from '../src/game/director';
-import { awardRecovery, createDefaultProfile, deriveCombatBuild, loadProfile, saveProfile, setAbilityMod, setOperatorClass } from '../src/game/meta';
+import { awardRecovery, createDefaultProfile, deriveCombatBuild, loadProfile, saveProfile, setAbilityMod, setOperatorClass, vanguardCapstoneInteractionFor } from '../src/game/meta';
 import { CAMPAIGN_STORAGE_KEY, GAME_STATE_STORAGE_KEY, prepareSaveRecovery, PROFILE_STORAGE_KEY } from '../src/game/saveRecovery';
 import { loadGameState, saveGameState } from '../src/game/gamePersistence';
 import { carryExpeditionLoot } from '../src/game/expeditionCarry';
@@ -487,6 +487,72 @@ function vanguardSkillEvolutionSmoke() {
   assert.equal(genericSwitched.abilityMods.mark, 'mark-wideband', 'Switching class should preserve shared Skill Lenses.');
 }
 vanguardSkillEvolutionSmoke();
+
+function vanguardCapstoneInteractionSmoke() {
+  const baseProfile = {
+    ...createDefaultProfile(),
+    xp: 8100,
+    level: 16,
+    operatorClass: 'vanguard' as const,
+    classSelectionComplete: true,
+    specializationOverclock: true,
+  };
+
+  const pressureProfile = setAbilityMod({ ...baseProfile, specialization: 'pressure-diver' as const }, 'mag', 'vanguard-siege-ram');
+  assert.equal(vanguardCapstoneInteractionFor(pressureProfile, pressureProfile.abilityMods.mag)?.name, 'Void Ram');
+  const pressureState = createSimulation(deriveCombatBuild(pressureProfile));
+  for (const enemy of pressureState.enemies) enemy.active = false;
+  const pressureTarget = pressureState.enemies[0];
+  Object.assign(pressureTarget, { active: true, dead: false, x: pressureState.player.x + 170, y: pressureState.player.y, armor: 60, maxArmor: 60 });
+  pressureTarget.statuses.vacuum = 0;
+  pressureState.player.aim = { x: 1, y: 0 };
+  pressureState.player.vacuumExposure = 1.2;
+  assert.equal(triggerAbility(pressureState, 0), true, 'Void Ram should cast through Siege Ram.');
+  assert.ok(pressureTarget.statuses.vacuum >= 2.9, 'Void Ram should vacuum the ram contact.');
+  assert.ok(pressureState.hazards.some(hazard => hazard.active && hazard.kind === 'vacuumWake' && hazard.owner === 'player' && Math.hypot(hazard.x - pressureTarget.x, hazard.y - pressureTarget.y) < 20), 'Void Ram should seed a player-owned vacuum wake at the breach contact.');
+  assert.ok(pressureState.player.vacuumExposure < 1.2, 'Void Ram should recycle Pressure Diver exposure on contact.');
+  assert.match(pressureState.eventText, /VOID RAM/, 'Void Ram needs explicit combat feedback.');
+
+  const breachProfile = setAbilityMod({ ...baseProfile, specialization: 'breach-vanguard' as const }, 'mark', 'vanguard-faultline-tag');
+  assert.equal(vanguardCapstoneInteractionFor(breachProfile, breachProfile.abilityMods.mark)?.name, 'Breach Cascade');
+  const breachState = createSimulation(deriveCombatBuild(breachProfile));
+  for (const enemy of breachState.enemies) enemy.active = false;
+  const breachPrimary = breachState.enemies[0];
+  const breachRelay = breachState.enemies[1];
+  Object.assign(breachPrimary, { active: true, dead: false, x: breachState.player.x + 220, y: breachState.player.y, armor: 20, maxArmor: 20 });
+  Object.assign(breachRelay, { active: true, dead: false, x: breachState.player.x + 220, y: breachState.player.y + 150, armor: 20, maxArmor: 20 });
+  breachState.player.aim = { x: 1, y: 0 };
+  breachState.player.armor = Math.max(1, breachState.player.maxArmor - 20);
+  const breachArmorBefore = breachState.player.armor;
+  assert.equal(triggerAbility(breachState, 1), true, 'Breach Cascade should cast through Faultline Tag.');
+  assert.equal(breachPrimary.armor, 0, 'Breach Cascade should finish the primary armor break.');
+  assert.equal(breachRelay.armor, 0, 'Breach Cascade should finish the relayed armor break.');
+  assert.ok(breachState.classState.vanguardGuard >= 4.9, 'Breach Cascade armor breaks should feed Breach Guard.');
+  assert.ok(breachState.player.armor > breachArmorBefore, 'Breach Vanguard overclock should repair armor from capstone-tag armor breaks.');
+  assert.match(breachState.eventText, /BREACH CASCADE.*2 ARMOR BREAKS/, 'Breach Cascade needs explicit multi-break feedback.');
+
+  const standardWardenProfile = { ...baseProfile, specialization: 'bulkhead-warden' as const };
+  const counterfortProfile = setAbilityMod(standardWardenProfile, 'arc', 'vanguard-reprisal-pulse');
+  assert.equal(vanguardCapstoneInteractionFor(counterfortProfile, counterfortProfile.abilityMods.arc)?.name, 'Counterfort');
+  const baselineState = createSimulation(deriveCombatBuild(standardWardenProfile));
+  const counterfortState = createSimulation(deriveCombatBuild(counterfortProfile));
+  for (const state of [baselineState, counterfortState]) {
+    for (const enemy of state.enemies) enemy.active = false;
+    for (const [index, enemy] of state.enemies.slice(0, 2).entries()) {
+      Object.assign(enemy, { active: true, dead: false, x: state.player.x + 120 + index * 60, y: state.player.y + (index === 0 ? -35 : 35), armor: 42, maxArmor: 42 });
+      enemy.statuses.armorBreach = 4;
+    }
+    state.player.armor = Math.max(1, state.player.maxArmor - 36);
+    state.player.capacitor = 70;
+  }
+  assert.equal(triggerAbility(baselineState, 2), true, 'Bulkhead Warden baseline pulse should cast.');
+  assert.equal(triggerAbility(counterfortState, 2), true, 'Counterfort should cast through Reprisal Pulse.');
+  assert.ok(counterfortState.player.armor > baselineState.player.armor, 'Counterfort should repair additional armor beyond the normal Bulkhead Warden pulse.');
+  assert.ok(counterfortState.classState.vanguardGuard > baselineState.classState.vanguardGuard, 'Counterfort reprisal contacts should reinforce Breach Guard.');
+  assert.ok(counterfortState.player.capacitor > baselineState.player.capacitor, 'Bulkhead Warden overclock should recycle capacitor from Counterfort reprisal contacts.');
+  assert.match(counterfortState.eventText, /COUNTERFORT/, 'Counterfort needs explicit combat feedback.');
+}
+vanguardCapstoneInteractionSmoke();
 
 function iceMineBrittleSupportSmoke() {
   const campaign = createDefaultCampaign();
