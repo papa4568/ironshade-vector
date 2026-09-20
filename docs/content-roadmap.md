@@ -385,16 +385,16 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.184**
+- Android beta: **0.0.1-beta.185**
 - Package: `app.ironshade.vector`
-- Verified: Counterweight K-91 **P4.5–P4.8** is complete. Capture Collar, Mass Transit Spine, Power Transfer Gallery, and Ballast Vault now share the same load spine, paired countermass rails, and amber inertial datum while retaining stage-specific capture, mass-transfer, power-bus, and ballast hardware. K-91-specific sector labels and inertial events layer over the existing physical objective systems, stage two preserves the K-91 Mass-Transit Warden elite, and the final Ballast Vault remains a deliberately bossless ballast-shift survival/recovery capstone. Full/Balanced/Mobile/Performance profiles trim repeated rails, datum lights, props, and structural shadows without removing the counterweight silhouette. Gameplay/render regressions, PR desktop + mobile-landscape Browser E2E, merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.184 package/version/SDK/signature verification, native emulator install/launch smoke, and Chapter 3 touch playthrough all passed. The next roadmap slice is **P4.9–P4.11 — Orpheline**.
+- Verified: Unregistered Asteroid Habitat Orpheline **P4.9–P4.11** is complete. Ice Access Bore, Industrial Commons, Residential Spin Ring, and Buried Control Vault now read as one hidden settlement through a shared rock-cut spine, violet utility trunk, and white occupancy markings while retaining stage-specific concealment, fabrication, habitation, and founding-archive geometry. Orpheline-specific sector labels, physical habitat events, and the Commons Custodian elite distinguish the traverse, and the Buried Control Vault now culminates in a dedicated Orpheline Habitat Warden with shelter-purge, spin-authority, and partition-fire patterns. Full/Balanced/Mobile/Performance profiles preserve the habitat silhouette while reducing repeated ribs, utility markers, props, and structural shadows on constrained devices. Gameplay/render regressions, PR desktop + mobile-landscape Browser E2E, merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.185 package/version/SDK/signature verification, native emulator install/launch smoke, and the Chapter 3 touch playthrough all passed. The next roadmap slice is **P4.12–P4.14 — Hecate**.
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P4.5–P4.8 final implementation head: `7805f971806cc6eb655eb29d94db8565fda1a22d`
-- P4.5–P4.8 merged main / APK source: `5bdb746fd25bc640457eb8b1421627c79f88c2c4`
-- P4.5–P4.8 PR Browser E2E run: `35524489750`
-- Final Browser E2E run: `35524606724`
-- Level 15 beta smoke run: `35524606748`
-- Android beta.184 run: `35524606816`
-- Android beta.184 artifact ID: `10609785635`
-- Android beta.184 artifact head: `5bdb746fd25bc640457eb8b1421627c79f88c2c4`
-- APK SHA-256: `094e3b236921f8584639b302702f8f23e99bf1fe8ed52c26006755ffd9658824`
+- P4.9–P4.11 final implementation head: `a5763159f2ce95eb1bf6f8ca8a36bf8ab1478fbb`
+- P4.9–P4.11 merged main / APK source: `184abb9d11dea86c2192828ac7f2e6884cc71811`
+- P4.9–P4.11 PR Browser E2E run: `35526489332`
+- Final Browser E2E run: `35526587479`
+- Level 15 beta smoke run: `35526587472`
+- Android beta.185 run: `35526587447`
+- Android beta.185 artifact ID: `10609433808`
+- Android beta.185 artifact head: `184abb9d11dea86c2192828ac7f2e6884cc71811`
+- APK SHA-256: `1abd947f68723228ad63333765a392f730134d6508e001a9a70e29e476a51ed7`
