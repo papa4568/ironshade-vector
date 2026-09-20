@@ -227,6 +227,14 @@ for (const path of glbs) {
                                                   ? 'ice-mine-coolant-manifold-spine'
                                                   : filename.includes('ice-mine-freeze-compressor')
                                                     ? 'ice-mine-freeze-compressor-body'
+                                                    : filename.includes('solar-yard-ceramic-deck')
+                                                      ? 'solar-yard-ceramic-deck-main'
+                                                      : filename.includes('solar-yard-truss-frame')
+                                                        ? 'solar-yard-truss-frame-crown'
+                                                        : filename.includes('solar-yard-radiator-tower')
+                                                          ? 'solar-yard-radiator-tower-spine'
+                                                          : filename.includes('solar-yard-reflector-pylon')
+                                                            ? 'solar-yard-reflector-pylon-face'
           : filename.includes('floor-panel')
             ? 'refinery-floor-panel'
             : filename.includes('floor-service-grate')
@@ -342,6 +350,31 @@ for (const path of glbs) {
       assert(nodeNames.has('ice-mine-freeze-compressor-frost-trap'), `${relativePath}: Ice Mine freeze compressor LOD1 is missing frost trap detail`);
       assert(materialForNode('ice-mine-freeze-compressor-body') === 'ice-mine-support-steel', `${relativePath}: Ice Mine freeze compressor lost its steel body identity`);
       assert(materialForNode('ice-mine-freeze-compressor-status') === 'ice-mine-cold-emissive', `${relativePath}: Ice Mine freeze compressor status must remain cold cyan`);
+    }
+
+    if (filename.includes('solar-yard-ceramic-deck') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('solar-yard-ceramic-deck-edge-rail-left'), `${relativePath}: Solar Yard ceramic deck LOD1 is missing edge-rail detail`);
+      assert(nodeNames.has('solar-yard-ceramic-deck-service-seam'), `${relativePath}: Solar Yard ceramic deck LOD1 is missing service-seam detail`);
+      assert(materialForNode('solar-yard-ceramic-deck-main') === 'solar-yard-ceramic-shell', `${relativePath}: Solar Yard deck lost its ceramic thermal-shell identity`);
+      assert(materialForNode('solar-yard-ceramic-deck-status') === 'solar-yard-amber-emissive', `${relativePath}: Solar Yard deck status must remain heat amber`);
+    }
+    if (filename.includes('solar-yard-truss-frame') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('solar-yard-truss-frame-diagonal-left'), `${relativePath}: Solar Yard truss frame LOD1 is missing diagonal bracing`);
+      assert(nodeNames.has('solar-yard-truss-frame-foil-tag'), `${relativePath}: Solar Yard truss frame LOD1 is missing gold foil tagging`);
+      assert(materialForNode('solar-yard-truss-frame-crown') === 'solar-yard-scorched-steel', `${relativePath}: Solar Yard truss frame lost its scorched steel identity`);
+      assert(materialForNode('solar-yard-truss-frame-thermal-cap') === 'solar-yard-ceramic-shell', `${relativePath}: Solar Yard truss thermal cap must remain ceramic`);
+    }
+    if (filename.includes('solar-yard-radiator-tower') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('solar-yard-radiator-tower-brace-left'), `${relativePath}: Solar Yard radiator tower LOD1 is missing structural bracing`);
+      assert(nodeNames.has('solar-yard-radiator-tower-gold-baffle'), `${relativePath}: Solar Yard radiator tower LOD1 is missing gold baffle detail`);
+      assert(materialForNode('solar-yard-radiator-tower-wing-left') === 'solar-yard-radiator-black', `${relativePath}: Solar Yard radiator wing lost its black heat-rejection identity`);
+      assert(materialForNode('solar-yard-radiator-tower-gold-baffle') === 'solar-yard-solar-gold', `${relativePath}: Solar Yard radiator baffle must remain solar gold`);
+    }
+    if (filename.includes('solar-yard-reflector-pylon') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('solar-yard-reflector-pylon-backplane'), `${relativePath}: Solar Yard reflector pylon LOD1 is missing dark backplane detail`);
+      assert(nodeNames.has('solar-yard-reflector-pylon-rim-left'), `${relativePath}: Solar Yard reflector pylon LOD1 is missing ceramic rim detail`);
+      assert(materialForNode('solar-yard-reflector-pylon-face') === 'solar-yard-solar-gold', `${relativePath}: Solar Yard reflector face lost its solar-gold identity`);
+      assert(materialForNode('solar-yard-reflector-pylon-status') === 'solar-yard-amber-emissive', `${relativePath}: Solar Yard reflector status must remain heat amber`);
     }
 
     if (filename.includes('parallax-baseline-pylon') && filename.endsWith('-lod1.glb')) {
@@ -572,6 +605,13 @@ for (const asset of ['ice-mine-frost-wall', 'ice-mine-support-frame', 'ice-mine-
   const lod2 = reportByPath.get(`environments/${asset}-lod2.glb`);
   assert(lod1 && lod2, `${asset}: Ice Mine P3.1 LOD1/LOD2 pair missing`);
   assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, `${asset}: Ice Mine mobile LOD2 must reduce payload and draw surfaces`);
+}
+
+for (const asset of ['solar-yard-ceramic-deck', 'solar-yard-truss-frame', 'solar-yard-radiator-tower', 'solar-yard-reflector-pylon']) {
+  const lod1 = reportByPath.get(`environments/${asset}-lod1.glb`);
+  const lod2 = reportByPath.get(`environments/${asset}-lod2.glb`);
+  assert(lod1 && lod2, `${asset}: Solar Yard P3.7 LOD1/LOD2 pair missing`);
+  assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, `${asset}: Solar Yard mobile LOD2 must reduce payload and draw surfaces`);
 }
 
 for (const asset of ['parallax-baseline-pylon', 'parallax-reference-frame', 'parallax-mass-carriage', 'parallax-shear-anchor', 'parallax-reference-console']) {

@@ -223,7 +223,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] P3.6 Rhea Kade presentation
 
 ### Solar Yard
-- [ ] P3.7 Assets
+- [x] P3.7 Assets
 - [ ] P3.8 Fabrication machinery
 - [ ] P3.9 Sun/shadow identity
 - [ ] P3.10 Thermal shutters
@@ -307,7 +307,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1 and P2 are complete, and **Ice Mine P3.1–P3.6** are delivered. Continue in roadmap order with **P3.7 — Solar Yard assets** to start the second P3 biome.
+P1 and P2 are complete, **Ice Mine P3.1–P3.6** are delivered, and **Solar Yard P3.7 assets** are delivered. Continue in roadmap order with **P3.8 — Fabrication machinery**, followed by P3.9–P3.13 to finish Solar Yard.
+
+**P3.7 delivered:** Solar Yard now has a reusable authored static environment foundation with ceramic fabrication decks, scorched structural truss frames, black radiator towers, and gold reflector pylons. All four families generate adaptive LOD1/LOD2 GLBs, retain a ceramic / scorched-steel / black-radiator / solar-gold / heat-amber material language, and expose deterministic silhouette markers for asset QA. Generated-content and static asset-pipeline regressions verify the authored kit and mobile LOD reduction. Active fabrication machinery remains P3.8; sun/shadow identity, thermal shutters, cranes/rails/motion, HELIOS-9 presentation, and the dedicated mobile optimization pass remain P3.9–P3.13.
 
 **P3.6 delivered:** Salvage Captain Rhea Kade now has an Ice Mine-specific authored boss presentation instead of the shared generic boss silhouette. Adaptive LOD1/LOD2 assets give her a bore-cowl, cryogenic backpack hardware, a fracture-ram profile, and a mine-steel/frost-cyan palette that shifts to fracture-amber pressure in phase two while retaining the shared boss telegraph language. Runtime routing is restricted to Ice Mine contracts whose deep target is Rhea Kade; generated-content, static graphics, and browser QA cover the silhouette contract, mobile LOD2 selection, and phase telemetry. Ice Mine P3.1–P3.6 is complete; Solar Yard begins at P3.7.
 
