@@ -137,6 +137,37 @@ export const JOVIAN_HARVESTER_ASSET_FAMILIES = {
   },
 } as const satisfies Record<'deckSpan' | 'skimmerTower' | 'transferBridge' | 'ballastPod', GraphicsAssetFamily>;
 
+export const ICE_MINE_ASSET_FAMILIES = {
+  frostWall: {
+    id: 'ice-mine-frost-wall',
+    lods: {
+      1: createGraphicsAssetSpec('ice-mine-frost-wall-lod1', 'environment-module', '/assets/models/environments/ice-mine-frost-wall-lod1.glb', 1),
+      2: createGraphicsAssetSpec('ice-mine-frost-wall-lod2', 'environment-module', '/assets/models/environments/ice-mine-frost-wall-lod2.glb', 2),
+    },
+  },
+  supportFrame: {
+    id: 'ice-mine-support-frame',
+    lods: {
+      1: createGraphicsAssetSpec('ice-mine-support-frame-lod1', 'environment-module', '/assets/models/environments/ice-mine-support-frame-lod1.glb', 1),
+      2: createGraphicsAssetSpec('ice-mine-support-frame-lod2', 'environment-module', '/assets/models/environments/ice-mine-support-frame-lod2.glb', 2),
+    },
+  },
+  serviceDeck: {
+    id: 'ice-mine-service-deck',
+    lods: {
+      1: createGraphicsAssetSpec('ice-mine-service-deck-lod1', 'environment-module', '/assets/models/environments/ice-mine-service-deck-lod1.glb', 1),
+      2: createGraphicsAssetSpec('ice-mine-service-deck-lod2', 'environment-module', '/assets/models/environments/ice-mine-service-deck-lod2.glb', 2),
+    },
+  },
+  icePillar: {
+    id: 'ice-mine-ice-pillar',
+    lods: {
+      1: createGraphicsAssetSpec('ice-mine-ice-pillar-lod1', 'environment-module', '/assets/models/environments/ice-mine-ice-pillar-lod1.glb', 1),
+      2: createGraphicsAssetSpec('ice-mine-ice-pillar-lod2', 'environment-module', '/assets/models/environments/ice-mine-ice-pillar-lod2.glb', 2),
+    },
+  },
+} as const satisfies Record<'frostWall' | 'supportFrame' | 'serviceDeck' | 'icePillar', GraphicsAssetFamily>;
+
 export const PARALLAX_ASSET_FAMILIES = {
   pylon: {
     id: 'parallax-baseline-pylon',
