@@ -207,6 +207,13 @@ assert(rendererSource.includes('coolantManifoldPlacements'), 'Ice Mine P3.4 must
 assert(rendererSource.includes('freezeCompressorPlacements'), 'Ice Mine P3.4 must place freeze compressors at the tunnel/vault transition');
 assert(rendererSource.includes('dataset.environmentMachineDetail'), 'Ice Mine P3.4 must expose deterministic machinery runtime telemetry');
 
+assert(rendererSource.includes('iceMineFractureRoots = new Map'), 'Ice Mine P3.5 must keep a dedicated authored fracture VFX layer per brittle support');
+assert(rendererSource.includes("dataset.environmentFractureVfx = 'support-cracks+shard-burst+frost-pulse'"), 'Ice Mine P3.5 must expose the authored fracture/collapse VFX identity');
+assert(rendererSource.includes('const shardBudget = reducedFractureDetail ? 4 : 8'), 'Ice Mine P3.5 must cut collapse shard density on coarse/mobile rendering');
+assert(rendererSource.includes('const crackBudget = reducedFractureDetail ? 2 : 3'), 'Ice Mine P3.5 must cut active crack detail on coarse/mobile rendering');
+assert(rendererSource.includes("dataset.environmentFractureState = collapsing > 0"), 'Ice Mine P3.5 must expose idle/cracking/collapsing/settled runtime state');
+assert(rendererSource.includes("this.iceMineCollapseStartedAt.set(id, state.time)"), 'Ice Mine P3.5 collapse animation must be driven by the live brittle-support transition');
+
 assert(rendererSource.includes('JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES'), 'Jovian Harvester P2.11 must select dedicated authored gas machinery families');
 for (const asset of ['jovian-harvester-storm-bus-isolator', 'jovian-harvester-deck-mass-trim', 'jovian-harvester-skimmer-compressor', 'jovian-harvester-separator-package']) {
   assert(manifestSource.includes(`${asset}-lod1.glb`) && manifestSource.includes(`${asset}-lod2.glb`), `Jovian Harvester P2.11 machinery asset ${asset} must preserve adaptive LOD1/LOD2 coverage`);
