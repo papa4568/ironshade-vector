@@ -15,6 +15,7 @@ const mechanicLabels: Record<string, string> = {
   sensorPenetration: 'Sensor Penetration', widebandMark: 'Wideband MARK', magOverdriveKick: 'MAG Overdrive Kick', arcGroundLoop: 'ARC Ground Loop',
   magBoundarySink: 'MAG Boundary Sink', markExecutionTrace: 'MARK Execution Trace', arcCascadeLattice: 'ARC Cascade Lattice',
   vanguardSiegeRam: 'Vanguard Evolution // Siege Ram', vanguardFaultlineTag: 'Vanguard Evolution // Faultline Tag', vanguardReprisalPulse: 'Vanguard Evolution // Reprisal Pulse',
+  vectorSlingshotShift: 'Vector Evolution // Slingshot Shift', vectorTriangulationLock: 'Vector Evolution // Triangulation Lock', vectorNeedleFan: 'Vector Evolution // Needle Fan',
 };
 
 function pct(value: number) { return `${Math.round(value * 100)}%`; }
