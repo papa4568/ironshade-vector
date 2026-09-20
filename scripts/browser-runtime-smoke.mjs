@@ -797,6 +797,44 @@ try {
     console.log(`BROWSER_ICE_MINE_PASS viewport=${viewportMode} lod=${iceMineEnvironment?.lod} instances=${iceMineEnvironment?.instances} kit=${iceMineEnvironment?.kit} composition=${iceMineEnvironment?.composition} sequence=${iceMineEnvironment?.sequence} service=${iceMineEnvironment?.service} surface=${iceMineEnvironment?.surface} machinery=${iceMineEnvironment?.machinery} brittle=${iceMineEnvironment?.brittleState}:${iceMineEnvironment?.brittle} fracture=${iceMineEnvironment?.fractureState}:${iceMineEnvironment?.fractureDetail}:${iceMineEnvironment?.fractureSupports} boss=${iceMineEnvironment?.bossPresentation}:${iceMineEnvironment?.bossAsset}`);
   }
 
+  if (targetLocation === 'solar-yard') {
+    await waitFor(`(() => {
+      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-solar-yard');
+      return canvas?.dataset.environmentKit === 'ceramic-deck,truss-frame,radiator-tower,reflector-pylon,sinter-forge,printer-spindle,feedstock-press'
+        && canvas?.dataset.environmentLandmark === 'gold-reflector-pylon-row'
+        && canvas?.dataset.environmentComposition === 'shade-service-deck+fabrication-spine+sunward-work-yard'
+        && canvas?.dataset.environmentZoneIdentity === 'shade:ceramic-deck+radiator-towers|spine:truss-frames+sinter-forges|sunward:reflector-pylons+printer-spindles+feedstock-presses'
+        && canvas?.dataset.readabilityLanguage === 'ceramic-deck+black-radiators+gold-reflectors+amber-hot-work'
+        && (canvas?.dataset.environmentServiceDetails ?? '').includes('ceramic-deck:6')
+        && (canvas?.dataset.environmentServiceDetails ?? '').includes('truss-frame:5')
+        && (canvas?.dataset.environmentServiceDetails ?? '').includes('radiator-tower:4')
+        && (canvas?.dataset.environmentSurfaceDetail ?? '').includes('reflector-pylon:3')
+        && canvas?.dataset.environmentMachineDetail === 'sinter-forge:2+printer-spindle:3+feedstock-press:2'
+        && Number(canvas?.dataset.environmentInstances) > 0
+        && ['1', '2'].includes(canvas?.dataset.environmentLod ?? '');
+    })()`, 'Solar Yard authored fabrication machinery kit', 20_000);
+    const solarYardEnvironment = await evaluate(`(() => {
+      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-solar-yard');
+      return {
+        lod: canvas?.dataset.environmentLod ?? '',
+        instances: canvas?.dataset.environmentInstances ?? '',
+        kit: canvas?.dataset.environmentKit ?? '',
+        composition: canvas?.dataset.environmentComposition ?? '',
+        service: canvas?.dataset.environmentServiceDetails ?? '',
+        surface: canvas?.dataset.environmentSurfaceDetail ?? '',
+        machinery: canvas?.dataset.environmentMachineDetail ?? '',
+        materials: canvas?.dataset.environmentMaterials ?? '',
+      };
+    })()`);
+    if (viewportMode === 'mobile-landscape' && solarYardEnvironment?.lod !== '2') {
+      throw new Error(`Solar Yard mobile environment did not select LOD2: ${JSON.stringify(solarYardEnvironment)}`);
+    }
+    if (solarYardEnvironment?.machinery !== 'sinter-forge:2+printer-spindle:3+feedstock-press:2') {
+      throw new Error(`Solar Yard fabrication machinery runtime telemetry was not observable: ${JSON.stringify(solarYardEnvironment)}`);
+    }
+    console.log(`BROWSER_SOLAR_YARD_PASS viewport=${viewportMode} lod=${solarYardEnvironment?.lod} instances=${solarYardEnvironment?.instances} kit=${solarYardEnvironment?.kit} composition=${solarYardEnvironment?.composition} service=${solarYardEnvironment?.service} surface=${solarYardEnvironment?.surface} machinery=${solarYardEnvironment?.machinery} materials=${solarYardEnvironment?.materials}`);
+  }
+
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);
   const expectedCombatLod = coarseCombatSurface ? '2' : '1';
   await waitFor(`(() => {
