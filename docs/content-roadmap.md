@@ -248,7 +248,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] P4.13 Hecate stage-specific encounter/event identity
 - [x] P4.14 Hecate Yardmaster Null finale + adaptive render/regression coverage
 - [x] P4.15 Stage transitions
-- [ ] P4.16 Environmental continuity
+- [x] P4.16 Environmental continuity
 - [ ] P4.17 Debrief improvements
 - [ ] P4.18 Mobile performance
 
@@ -317,7 +317,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1, P2, and P3 are complete, and **P4.1–P4.15 — Perseid + K-91 + Orpheline + Hecate + Stage transitions** is delivered. Continue in roadmap order with **P4.16 — Environmental continuity**.
+P1, P2, and P3 are complete, and **P4.1–P4.16 — Perseid + K-91 + Orpheline + Hecate + Stage transitions + Environmental continuity** is delivered. Continue in roadmap order with **P4.17 — Debrief improvements**.
+
+**P4.16 delivered:** Megastructure spaces now inherit authored physical consequences from the connected space instead of resetting every environment at the handoff. Perseid carries pressure debt, gravity trim loss, and cryogenic visibility deeper through the ship; K-91 carries capture debris, inertial drift, and lift-bus grid damage; Orpheline carries bore dust, improvised-grid faults, and ring momentum loss; Hecate carries clamp-release gravity instability, crusher-grid damage, and wreck-chain atmosphere loss. Inherited conditions are merged without duplication into the existing mission condition system, so the normal pressure, gravity, damaged-grid, visibility, and director hazard behavior remains the single source of gameplay truth. Contract previews expose the continuity explanation, and a dedicated regression validates condition inheritance plus live pressure/gravity/arc effects across all four capstones. The next capstone work is P4.17 Debrief improvements.
 
 **P4.15 delivered:** Megastructure stage changes no longer jump instantly from one reused biome to the next. Every Perseid, K-91, Orpheline, and Hecate handoff now carries authored physical-route metadata, a continuity explanation, and a destination-specific arrival cue. Choosing Transit Deeper opens a dedicated internal-transit briefing that shows the secured/next-space route, current recovery tags, carried suit health/armor, the +12 capacitor service and 35% heat bleed already applied by expedition transit, plus the arrival cue before the next combat space is instantiated. The combat state remains frozen at the checkpoint until the player commits the transit, and mobile/coarse-pointer layouts collapse the route/carry grids into a scroll-safe two-column presentation. Gameplay regressions cover representative transition routes across all four capstones plus the staged GameCanvas handoff. The next capstone work is P4.16 Environmental continuity.
 
