@@ -376,18 +376,16 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.182**
+- Android beta: **0.0.1-beta.183**
 - Package: `app.ironshade.vector`
-- Verified: Solar Yard **P3.7–P3.13** is complete. P3.13 adds a dedicated Full/Balanced/Mobile/Performance render profile, preserves the three reflector-pylon landmark row and gameplay-bound thermal shutter, trims secondary structure/machinery/rail density on mobile, preserves paired moving gantries on Mobile, reduces Performance to one gantry, reduces sun/shade overlay density by tier, disables Solar Yard structural shadow casters outside Full, and applies the same adaptive budget to the procedural fallback. Deterministic render-profile regression, graphics-pipeline regression, PR desktop + mobile-landscape Browser E2E, final merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, and Android beta.182 package/version/SDK/signature + native emulator/touch/lifecycle/Chapter 3 QA all passed. P3 is complete; the next roadmap slice is **P4.1–P4.4 — Perseid**.
+- Verified: Perseid **P4.1–P4.4** is complete. All four spaces now carry a shared generation-ship continuity layer (keel spine, pressure ribs, green transit datum) while retaining stage-specific Docking Spine, Agricultural Drum, Cryogenic Service Deck, and Reactor Choir dressing. Perseid-specific sector labels and ship events layer over the existing physical objective systems, stage two preserves a guaranteed Perseid Drum Warder elite, and the optional deep finale now uses the dedicated Perseid Steward Core boss behavior. Full/Balanced/Mobile/Performance profiles trim repeated ribs, guide lights, props, and structural shadows without removing stage identity. Gameplay/render regressions, PR desktop + mobile-landscape Browser E2E, merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.183 package/version/SDK/signature verification, native emulator install/launch smoke, and Chapter 3 touch playthrough all passed. The next roadmap slice is **P4.5–P4.8 — K-91**.
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P3.13 final implementation head: `9822dc7b645e2b18c1d324cbb06a693be721a35d`
-- P3.13 motion-QA stabilization head: `9f99d79d18967777e830d488e7a62260e545ed84`
-- P3.13 merged main / APK source: `cff6e8299c8230e0647b6839582a18b114bbaab3`
-- P3.13 PR Browser E2E run: `35519890653`
-- Motion-QA PR Browser E2E run: `35520251966`
-- Final Browser E2E run: `35520351928`
-- Level 15 beta smoke run: `35520351910`
-- Android beta.182 run: `35520351924`
-- Android beta.182 artifact ID: `10608265563`
-- Android beta.182 artifact head: `cff6e8299c8230e0647b6839582a18b114bbaab3`
-- APK SHA-256: `5cb8121d6334742bbc3c861218096298c087e0a91e7d5d97b8714e3b0c8692c5`
+- P4.1–P4.4 final implementation head: `c78cbb8be9d0e7e13b386a22c12bcc1d5a98a5cc`
+- P4.1–P4.4 merged main / APK source: `1245ba092457395d93722aba77efff02910581a7`
+- P4.1–P4.4 PR Browser E2E run: `35522201798`
+- Final Browser E2E run: `35522298800`
+- Level 15 beta smoke run: `35522298802`
+- Android beta.183 run: `35522298799`
+- Android beta.183 artifact ID: `10608562005`
+- Android beta.183 artifact head: `1245ba092457395d93722aba77efff02910581a7`
+- APK SHA-256: `59d3cc59e157e6a8b3475d7b2bb1f28e2402a4128db5ae92ac5385e4605964fa`
