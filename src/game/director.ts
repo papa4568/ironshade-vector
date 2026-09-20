@@ -3,6 +3,7 @@ import { applyEncounterLayout, getMissionObjectiveStatus } from './encounters';
 import { createEnvironmentalEventRuntime, stepEnvironmentalEvents, type EnvironmentalEventRuntime } from './environmentalEvents';
 import { applyThreatBudget } from './scaling';
 import { perseidStageIdentity } from './perseidCapstone';
+import { k91StageIdentity } from './k91Capstone';
 import { getClassMechanicStatus, releaseBossGate, type EnemyRole, type EnemyVariant, type SimState } from './sim';
 
 export type DirectorRuntime = { elapsed: number; deepElapsed: number; deep: boolean; reinforcementsReleased: boolean; gridTriggered: boolean; defenseTriggered: boolean; pressureWarned: boolean; pressureTriggered: boolean; gravityTriggered: boolean; locationEventA: boolean; locationEventB: boolean; megastructureEventA: boolean; megastructureEventB: boolean; thermalPulseUntil: number; clearSweepElapsed: number; clearSweepWarned: boolean; environmental: EnvironmentalEventRuntime };
@@ -219,6 +220,24 @@ export function stepMissionDirector(state: SimState, runtime: DirectorRuntime, c
   if (perseidStage && !runtime.megastructureEventB && runtime.elapsed >= 18) {
     runtime.megastructureEventB = true;
     event(state, objective.complete ? perseidStage.eventB : `${perseidStage.eventB} // PRIMARY CONTROL STILL UNRESOLVED`, 3);
+  }
+
+  const k91Stage = k91StageIdentity(contract);
+  if (k91Stage && !runtime.megastructureEventA && runtime.elapsed >= 7) {
+    runtime.megastructureEventA = true;
+    if (objective.complete) {
+      event(state, `${k91Stage.eventA} // PRIMARY CONTROL ALREADY STABLE`, 3);
+    } else {
+      const hazardKind = k91Stage.stage === 1 ? 'vectorWash' : k91Stage.stage === 3 ? 'shockGrid' : 'gravityWell';
+      const hazardX = k91Stage.stage === 1 ? 920 : k91Stage.stage === 2 ? 1090 : k91Stage.stage === 3 ? 1320 : 1510;
+      const hazardY = k91Stage.stage % 2 === 0 ? 650 : 390;
+      deployHazard(state, hazardX, hazardY, hazardKind, k91Stage.stage === 4 ? 6.2 : 5.4);
+      event(state, `${k91Stage.eventA} // INERTIAL HAZARD LIVE`, 3.4);
+    }
+  }
+  if (k91Stage && !runtime.megastructureEventB && runtime.elapsed >= 18) {
+    runtime.megastructureEventB = true;
+    event(state, objective.complete ? k91Stage.eventB : `${k91Stage.eventB} // TRAVERSE CONTROL STILL UNRESOLVED`, 3);
   }
 
   const reinforcementTrigger = contract.encounterPattern === 'swarm' ? 1 : contract.encounterPattern === 'elite-led' ? 3 : 2;
