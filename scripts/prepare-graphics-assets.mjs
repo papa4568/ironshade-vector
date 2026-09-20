@@ -1434,6 +1434,29 @@ function solarYardNodes(kind, lod) {
     return nodes;
   }
 
+  if (kind === 'thermalShutter') {
+    const nodes = [
+      { name: 'solar-yard-thermal-shutter-sill', mesh: 1, translation: [0, 0.16, 0], scale: [3.10, 0.32, 0.58] },
+      { name: 'solar-yard-thermal-shutter-rail', mesh: 1, translation: [0, 2.82, 0], scale: [3.10, 0.28, 0.58] },
+      { name: 'solar-yard-thermal-shutter-post-left', mesh: 1, translation: [-2.74, 1.48, 0], scale: [0.28, 2.72, 0.44] },
+      { name: 'solar-yard-thermal-shutter-post-right', mesh: 1, translation: [2.74, 1.48, 0], scale: [0.28, 2.72, 0.44] },
+      { name: 'solar-yard-thermal-shutter-panel-left', mesh: 0, translation: [-1.34, 1.48, 0], scale: [1.30, 2.42, 0.22] },
+      { name: 'solar-yard-thermal-shutter-panel-right', mesh: 0, translation: [1.34, 1.48, 0], scale: [1.30, 2.42, 0.22] },
+      { name: 'solar-yard-thermal-shutter-actuator', mesh: 3, translation: [0, 2.82, 0.50], scale: [0.72, 0.18, 0.16] },
+      { name: 'solar-yard-thermal-shutter-status', mesh: 4, translation: [2.66, 2.50, 0.50], scale: [0.10, 0.48, 0.10] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'solar-yard-thermal-shutter-rib-left-a', mesh: 2, translation: [-1.34, 1.02, 0.26], scale: [1.12, 0.10, 0.08] },
+        { name: 'solar-yard-thermal-shutter-rib-left-b', mesh: 2, translation: [-1.34, 1.92, 0.26], scale: [1.12, 0.10, 0.08] },
+        { name: 'solar-yard-thermal-shutter-rib-right-a', mesh: 2, translation: [1.34, 1.02, 0.26], scale: [1.12, 0.10, 0.08] },
+        { name: 'solar-yard-thermal-shutter-rib-right-b', mesh: 2, translation: [1.34, 1.92, 0.26], scale: [1.12, 0.10, 0.08] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
   const nodes = [
     { name: 'solar-yard-reflector-pylon-base', mesh: 1, translation: [0, 0.28, 0], scale: [1.66, 0.56, 1.34] },
     { name: 'solar-yard-reflector-pylon-mast', mesh: 1, translation: [0, 2.04, 0], scale: [0.52, 3.52, 0.52] },
@@ -2265,6 +2288,7 @@ const solarYardProfiles = [
   ['sinterForge', 'solar-yard-sinter-forge'],
   ['printerSpindle', 'solar-yard-printer-spindle'],
   ['feedstockPress', 'solar-yard-feedstock-press'],
+  ['thermalShutter', 'solar-yard-thermal-shutter'],
 ];
 
 for (const [kind, id] of solarYardProfiles) {
