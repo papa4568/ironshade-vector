@@ -241,6 +241,14 @@ assert(rendererSource.includes('trolley.position.z = offset'), 'Solar Yard P3.11
 assert(rendererSource.includes("dataset.environmentCraneMotion = `reciprocating-trolleys:${this.solarYardGantryCraneTrolleys.length}`"), 'Solar Yard P3.11 must expose crane motion mode for runtime QA');
 assert(rendererSource.includes('dataset.environmentCraneOffsets = offsets.join'), 'Solar Yard P3.11 must expose live trolley offsets for motion verification');
 
+assert(manifestSource.includes("id: 'solar-yard-helios-9'"), 'Solar Yard P3.12 must register a dedicated HELIOS-9 boss asset family');
+assert(manifestSource.includes('/assets/models/bosses/solar-yard-helios-9-lod1.glb') && manifestSource.includes('/assets/models/bosses/solar-yard-helios-9-lod2.glb'), 'HELIOS-9 must preserve adaptive LOD1/LOD2 coverage');
+assert(rendererSource.includes("mission.deepTarget !== 'HELIOS-9 Yardmind'"), 'HELIOS-9 authored presentation must remain scoped to the Solar Yard deep target');
+assert(rendererSource.includes("dataset.bossPresentation = 'helios-9'"), 'HELIOS-9 authored presentation must be observable for runtime QA');
+assert(rendererSource.includes("dataset.bossSilhouette = 'sunshield-crown+reflector-wings+fabricator-core'"), 'HELIOS-9 must expose its authored yardmind silhouette');
+assert(rendererSource.includes("visual.authoredAssetId === 'solar-yard-helios-9'"), 'HELIOS-9 must receive a dedicated phase-aware presentation palette');
+assert(jovianAssetGeneratorSource.includes("name: 'solar-yard-helios-9-sunshield-crown'"), 'HELIOS-9 P3.12 must preserve the authored sunshield-crown silhouette marker');
+
 assert(rendererSource.includes('ICE_MINE_ASSET_FAMILIES'), 'Ice Mine P3.2 must load the authored environment kit at runtime');
 assert(rendererSource.includes('loadAuthoredIceMineEnvironment(state, world.w, world.h, budget.detailScale)'), 'Ice Mine P3.2 must route combat rendering through authored bore/tunnel composition');
 assert(rendererSource.includes("dataset.environmentVisual = 'authored-ice-mine'"), 'Ice Mine P3.2 authored activation must remain observable');
