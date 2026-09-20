@@ -218,7 +218,28 @@ export const SOLAR_YARD_ASSET_FAMILIES = {
       2: createGraphicsAssetSpec('solar-yard-reflector-pylon-lod2', 'environment-module', '/assets/models/environments/solar-yard-reflector-pylon-lod2.glb', 2),
     },
   },
-} as const satisfies Record<'ceramicDeck' | 'trussFrame' | 'radiatorTower' | 'reflectorPylon', GraphicsAssetFamily>;
+  sinterForge: {
+    id: 'solar-yard-sinter-forge',
+    lods: {
+      1: createGraphicsAssetSpec('solar-yard-sinter-forge-lod1', 'environment-module', '/assets/models/environments/solar-yard-sinter-forge-lod1.glb', 1),
+      2: createGraphicsAssetSpec('solar-yard-sinter-forge-lod2', 'environment-module', '/assets/models/environments/solar-yard-sinter-forge-lod2.glb', 2),
+    },
+  },
+  printerSpindle: {
+    id: 'solar-yard-printer-spindle',
+    lods: {
+      1: createGraphicsAssetSpec('solar-yard-printer-spindle-lod1', 'environment-module', '/assets/models/environments/solar-yard-printer-spindle-lod1.glb', 1),
+      2: createGraphicsAssetSpec('solar-yard-printer-spindle-lod2', 'environment-module', '/assets/models/environments/solar-yard-printer-spindle-lod2.glb', 2),
+    },
+  },
+  feedstockPress: {
+    id: 'solar-yard-feedstock-press',
+    lods: {
+      1: createGraphicsAssetSpec('solar-yard-feedstock-press-lod1', 'environment-module', '/assets/models/environments/solar-yard-feedstock-press-lod1.glb', 1),
+      2: createGraphicsAssetSpec('solar-yard-feedstock-press-lod2', 'environment-module', '/assets/models/environments/solar-yard-feedstock-press-lod2.glb', 2),
+    },
+  },
+} as const satisfies Record<'ceramicDeck' | 'trussFrame' | 'radiatorTower' | 'reflectorPylon' | 'sinterForge' | 'printerSpindle' | 'feedstockPress', GraphicsAssetFamily>;
 
 export const PARALLAX_ASSET_FAMILIES = {
   pylon: {

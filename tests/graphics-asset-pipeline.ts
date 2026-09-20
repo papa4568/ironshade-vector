@@ -189,6 +189,22 @@ for (const marker of ['solar-yard-ceramic-deck-main', 'solar-yard-truss-frame-cr
   assert(jovianAssetGeneratorSource.includes(`name: '${marker}'`), `Solar Yard P3.7 silhouette marker ${marker} must remain authored`);
 }
 
+for (const asset of ['solar-yard-sinter-forge', 'solar-yard-printer-spindle', 'solar-yard-feedstock-press']) {
+  assert(manifestSource.includes(`${asset}-lod1.glb`) && manifestSource.includes(`${asset}-lod2.glb`), `Solar Yard P3.8 machinery asset ${asset} must preserve adaptive LOD1/LOD2 coverage`);
+}
+for (const marker of ['solar-yard-sinter-forge-chamber', 'solar-yard-printer-spindle-gantry', 'solar-yard-feedstock-press-body']) {
+  assert(jovianAssetGeneratorSource.includes(`name: '${marker}'`), `Solar Yard P3.8 machinery silhouette marker ${marker} must remain authored`);
+}
+assert(rendererSource.includes('SOLAR_YARD_ASSET_FAMILIES'), 'Solar Yard P3.8 must load the authored environment and fabrication machinery kit at runtime');
+assert(rendererSource.includes('loadAuthoredSolarYardEnvironment(world.w, world.h, budget.detailScale)'), 'Solar Yard P3.8 must route combat rendering through the authored fabrication yard');
+assert(rendererSource.includes("dataset.environmentVisual = 'authored-solar-yard'"), 'Solar Yard P3.8 authored activation must remain observable');
+assert(rendererSource.includes("dataset.environmentKit = 'ceramic-deck,truss-frame,radiator-tower,reflector-pylon,sinter-forge,printer-spindle,feedstock-press'"), 'Solar Yard P3.8 runtime kit must include all fabrication machinery families');
+assert(rendererSource.includes('dataset.environmentMachineDetail'), 'Solar Yard P3.8 must expose deterministic fabrication machinery telemetry');
+assert(rendererSource.includes("dataset.environmentComposition = 'shade-service-deck+fabrication-spine+sunward-work-yard'"), 'Solar Yard P3.8 must preserve the three-zone fabrication yard composition');
+assert(rendererSource.includes("dataset.environmentZoneIdentity = 'shade:ceramic-deck+radiator-towers|spine:truss-frames+sinter-forges|sunward:reflector-pylons+printer-spindles+feedstock-presses'"), 'Solar Yard P3.8 must keep fabrication machinery visually zoned');
+assert(rendererSource.includes("dataset.readabilityLanguage = 'ceramic-deck+black-radiators+gold-reflectors+amber-hot-work'"), 'Solar Yard P3.8 must preserve its screenshot-readable material and machinery identity');
+assert(rendererSource.includes('this.proceduralRefineryVisuals.push(...solarYardFallback)'), 'Solar Yard P3.8 must retain procedural scenery as an authored-load fallback');
+
 assert(rendererSource.includes('ICE_MINE_ASSET_FAMILIES'), 'Ice Mine P3.2 must load the authored environment kit at runtime');
 assert(rendererSource.includes('loadAuthoredIceMineEnvironment(state, world.w, world.h, budget.detailScale)'), 'Ice Mine P3.2 must route combat rendering through authored bore/tunnel composition');
 assert(rendererSource.includes("dataset.environmentVisual = 'authored-ice-mine'"), 'Ice Mine P3.2 authored activation must remain observable');

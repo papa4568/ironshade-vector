@@ -1378,6 +1378,62 @@ function solarYardNodes(kind, lod) {
     return nodes;
   }
 
+  if (kind === 'sinterForge') {
+    const nodes = [
+      { name: 'solar-yard-sinter-forge-skid', mesh: 1, translation: [0, 0.18, 0], scale: [2.30, 0.36, 1.34] },
+      { name: 'solar-yard-sinter-forge-chamber', mesh: 0, translation: [0, 1.12, 0], scale: [1.48, 1.84, 1.08] },
+      { name: 'solar-yard-sinter-forge-hearth', mesh: 2, translation: [0.34, 1.38, 0], scale: [1.16, 0.34, 0.92] },
+      { name: 'solar-yard-sinter-forge-hot-face', mesh: 4, translation: [1.16, 1.26, 0], scale: [0.10, 0.72, 0.78] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'solar-yard-sinter-forge-feed-hopper', mesh: 3, translation: [-1.18, 1.34, 0], scale: [0.58, 1.04, 0.72] },
+        { name: 'solar-yard-sinter-forge-service-rail', mesh: 1, translation: [0, 2.18, 0], scale: [1.72, 0.14, 0.18] },
+        { name: 'solar-yard-sinter-forge-ceramic-liner', mesh: 0, translation: [0.42, 1.42, 0], scale: [1.02, 0.18, 0.80] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  if (kind === 'printerSpindle') {
+    const nodes = [
+      { name: 'solar-yard-printer-spindle-base', mesh: 1, translation: [0, 0.16, 0], scale: [2.54, 0.32, 1.20] },
+      { name: 'solar-yard-printer-spindle-gantry', mesh: 1, translation: [0, 1.58, 0], scale: [2.12, 0.26, 0.36] },
+      { name: 'solar-yard-printer-spindle-bed', mesh: 0, translation: [0, 0.62, 0], scale: [1.78, 0.20, 0.92] },
+      { name: 'solar-yard-printer-spindle-head', mesh: 3, translation: [0.56, 1.28, 0], scale: [0.42, 0.76, 0.48] },
+      { name: 'solar-yard-printer-spindle-status', mesh: 4, translation: [1.66, 1.66, 0.40], scale: [0.10, 0.42, 0.08] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'solar-yard-printer-spindle-column-left', mesh: 1, translation: [-1.54, 0.94, 0], scale: [0.22, 1.56, 0.24] },
+        { name: 'solar-yard-printer-spindle-column-right', mesh: 1, translation: [1.54, 0.94, 0], scale: [0.22, 1.56, 0.24] },
+        { name: 'solar-yard-printer-spindle-guide', mesh: 3, translation: [0, 1.82, 0], scale: [1.56, 0.08, 0.08] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  if (kind === 'feedstockPress') {
+    const nodes = [
+      { name: 'solar-yard-feedstock-press-base', mesh: 1, translation: [0, 0.18, 0], scale: [2.18, 0.36, 1.28] },
+      { name: 'solar-yard-feedstock-press-body', mesh: 0, translation: [0, 1.26, 0], scale: [1.42, 1.86, 1.00] },
+      { name: 'solar-yard-feedstock-press-ram', mesh: 1, translation: [0.82, 1.34, 0], scale: [0.66, 0.72, 0.68] },
+      { name: 'solar-yard-feedstock-press-hopper', mesh: 3, translation: [-1.04, 1.54, 0], scale: [0.54, 1.02, 0.76] },
+      { name: 'solar-yard-feedstock-press-status', mesh: 4, translation: [1.08, 1.72, 0.62], scale: [0.10, 0.50, 0.08] },
+    ];
+    if (detail) {
+      nodes.push(
+        { name: 'solar-yard-feedstock-press-brace-left', mesh: 1, translation: [0.12, 0.90, -0.82], scale: [0.18, 1.46, 0.18] },
+        { name: 'solar-yard-feedstock-press-brace-right', mesh: 1, translation: [0.12, 0.90, 0.82], scale: [0.18, 1.46, 0.18] },
+        { name: 'solar-yard-feedstock-press-collection-tray', mesh: 2, translation: [1.36, 0.48, 0], scale: [0.54, 0.16, 0.92] },
+      );
+    }
+    nodes.push({ name: 'environment-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
   const nodes = [
     { name: 'solar-yard-reflector-pylon-base', mesh: 1, translation: [0, 0.28, 0], scale: [1.66, 0.56, 1.34] },
     { name: 'solar-yard-reflector-pylon-mast', mesh: 1, translation: [0, 2.04, 0], scale: [0.52, 3.52, 0.52] },
@@ -2206,6 +2262,9 @@ const solarYardProfiles = [
   ['trussFrame', 'solar-yard-truss-frame'],
   ['radiatorTower', 'solar-yard-radiator-tower'],
   ['reflectorPylon', 'solar-yard-reflector-pylon'],
+  ['sinterForge', 'solar-yard-sinter-forge'],
+  ['printerSpindle', 'solar-yard-printer-spindle'],
+  ['feedstockPress', 'solar-yard-feedstock-press'],
 ];
 
 for (const [kind, id] of solarYardProfiles) {

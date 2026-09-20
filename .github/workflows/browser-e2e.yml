@@ -283,6 +283,50 @@ jobs:
           console.log('BROWSER_ICE_MINE_SEED_PASS cycle=3');
           NODE
           BROWSER_E2E_LOCATION=ice-mine BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-ice-mine.png node scripts/browser-runtime-smoke.mjs
+          node --input-type=module <<'NODE'
+          const targets = await (await fetch('http://127.0.0.1:9223/json')).json();
+          const target = targets.find(candidate => candidate.type === 'page' && candidate.webSocketDebuggerUrl);
+          if (!target) throw new Error('No Chrome page target available for Solar Yard QA seeding.');
+          const socket = new WebSocket(target.webSocketDebuggerUrl);
+          await new Promise((resolve, reject) => {
+            socket.addEventListener('open', resolve, { once: true });
+            socket.addEventListener('error', reject, { once: true });
+          });
+          let sequence = 0;
+          const evaluate = expression => new Promise((resolve, reject) => {
+            const id = ++sequence;
+            const onMessage = event => {
+              const message = JSON.parse(event.data);
+              if (message.id !== id) return;
+              socket.removeEventListener('message', onMessage);
+              if (message.error) reject(new Error(message.error.message));
+              else resolve(message.result);
+            };
+            socket.addEventListener('message', onMessage);
+            socket.send(JSON.stringify({ id, method: 'Runtime.evaluate', params: { expression, returnByValue: true } }));
+          });
+          const result = await evaluate(`(() => {
+            const stateKey = 'ironshade-vector-state-v1';
+            const campaignKey = 'ironshade-vector-campaign-v1';
+            const stateRaw = localStorage.getItem(stateKey);
+            if (stateRaw) {
+              const state = JSON.parse(stateRaw);
+              if (state?.campaign) state.campaign.cycle = 4;
+              localStorage.setItem(stateKey, JSON.stringify(state));
+            }
+            const campaignRaw = localStorage.getItem(campaignKey);
+            if (campaignRaw) {
+              const campaign = JSON.parse(campaignRaw);
+              campaign.cycle = 4;
+              localStorage.setItem(campaignKey, JSON.stringify(campaign));
+            }
+            return { state: Boolean(stateRaw), campaign: Boolean(campaignRaw) };
+          })()`);
+          socket.close();
+          if (result?.result?.exceptionDetails) throw new Error('Failed to seed Solar Yard QA campaign cycle.');
+          console.log('BROWSER_SOLAR_YARD_SEED_PASS cycle=4');
+          NODE
+          BROWSER_E2E_LOCATION=solar-yard BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-solar-yard.png node scripts/browser-runtime-smoke.mjs
           node scripts/browser-chapter3-playthrough.mjs
 
       - name: Upload browser QA evidence
@@ -300,6 +344,7 @@ jobs:
             browser-e2e-${{ matrix.viewport }}-spin-habitat.png
             browser-e2e-${{ matrix.viewport }}-jovian-harvester.png
             browser-e2e-${{ matrix.viewport }}-ice-mine.png
+            browser-e2e-${{ matrix.viewport }}-solar-yard.png
             browser-preview.log
             browser-chrome.log
           if-no-files-found: warn
