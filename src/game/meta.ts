@@ -280,6 +280,21 @@ export function vanguardCapstoneInteractionFor(profile: PlayerProfile, abilityMo
   return vanguardCapstoneInteractions.find(interaction => interaction.specialization === profile.specialization && interaction.abilityMod === abilityMod);
 }
 
+export const systemsCapstoneInteractions: CapstoneInteractionDefinition[] = [
+  { specialization: 'thermal-shunter', abilityMod: 'systems-anchor-lattice', name: 'Induction Sink', description: 'Anchor Lattice converts a hot Polarity Well into a deeper thermal sink, overcharging the next Thermal Crossfire shot with extra velocity, damage, penetration, and recovery.' },
+  { specialization: 'capacitor-conductor', abilityMod: 'systems-recursive-intrusion', name: 'Recursive Bus', description: 'Recursive Intrusion converts propagated relays into direct capacitor recovery; the Conductor overclock also cools the weapon bus while the intrusion spreads.' },
+  { specialization: 'grid-weaver', abilityMod: 'systems-return-current', name: 'Mesh Reflux', description: 'Machinery-routed Return Current wires Grid Weaver remote marks back into the conductive mesh, adding a return node and recycling Relay Hack recovery.' },
+];
+
+export function systemsCapstoneInteractionFor(profile: PlayerProfile, abilityMod: string | null) {
+  if (profile.level < 16 || operatorClassForProfile(profile) !== 'systems' || !profile.specialization || !abilityMod) return undefined;
+  return systemsCapstoneInteractions.find(interaction => interaction.specialization === profile.specialization && interaction.abilityMod === abilityMod);
+}
+
+export function capstoneInteractionFor(profile: PlayerProfile, abilityMod: string | null) {
+  return vanguardCapstoneInteractionFor(profile, abilityMod) ?? systemsCapstoneInteractionFor(profile, abilityMod);
+}
+
 export const specializationDefinitions: SpecializationDefinition[] = [
   { id: 'pressure-diver', operatorClass: 'vanguard', name: 'Pressure Diver', identity: 'Pressure / vacuum manipulation', description: 'MAG below 45% pressure leaves a short player-owned vacuum wake, while ability use sheds accumulated vacuum exposure.', tradeoff: '-12 maximum armor.', overclock: 'Low-pressure wakes last longer and ability use clears more exposure.', overclockTradeoff: '+12% ability capacitor cost.' },
   { id: 'momentum-broker', operatorClass: 'vector', name: 'Momentum Broker', identity: 'Recoil / capacitor conversion', description: 'Weapon recoil is treated as recoverable bus energy, returning capped capacitor per shot. Spending Slipstream on a shot also pulls Vector Shift and dodge recovery forward from the banked recoil.', tradeoff: '-15% passive capacitor regeneration.', overclock: 'Raises the per-shot recoil conversion ceiling from 8 to 10 capacitor and increases the Slipstream recovery dividend.', overclockTradeoff: '+12% weapon recoil.' },
