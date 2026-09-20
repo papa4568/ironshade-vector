@@ -389,16 +389,16 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.185**
+- Android beta: **0.0.1-beta.186**
 - Package: `app.ironshade.vector`
-- Verified: Unregistered Asteroid Habitat Orpheline **P4.9–P4.11** is complete. Ice Access Bore, Industrial Commons, Residential Spin Ring, and Buried Control Vault now read as one hidden settlement through a shared rock-cut spine, violet utility trunk, and white occupancy markings while retaining stage-specific concealment, fabrication, habitation, and founding-archive geometry. Orpheline-specific sector labels, physical habitat events, and the Commons Custodian elite distinguish the traverse, and the Buried Control Vault now culminates in a dedicated Orpheline Habitat Warden with shelter-purge, spin-authority, and partition-fire patterns. Full/Balanced/Mobile/Performance profiles preserve the habitat silhouette while reducing repeated ribs, utility markers, props, and structural shadows on constrained devices. Gameplay/render regressions, PR desktop + mobile-landscape Browser E2E, merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.185 package/version/SDK/signature verification, native emulator install/launch smoke, and the Chapter 3 touch playthrough all passed. The next roadmap slice is **P4.12–P4.14 — Hecate**.
+- Verified: Abandoned Shipbreaking Yard Hecate **P4.12–P4.14** is complete. Sunward Clamp Field, Crusher Causeway, Wreck Transit, and Yard Control Crown now read as one continuous dismantling complex through a shared salvage-truss spine, red clamp arms, and yellow cutter datum while retaining stage-specific clamp, crusher, stripped-hull, and control-crown geometry. Hecate-specific sector labels, physical shipbreaking events, and the Crusher Foreman elite distinguish the traverse, and Yard Control Crown culminates in Hecate Yardmaster Null with clamp-lock, thermal-cutter, and wreck-purge patterns. Full/Balanced/Mobile/Performance profiles preserve the shipbreaking-yard silhouette while reducing repeated trusses, cutter datum markers, props, and structural shadows on constrained devices. Gameplay/render regressions, PR desktop + mobile-landscape Browser E2E, merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.186 package/version/SDK/signature verification, native emulator install/launch smoke, and the Chapter 3 touch playthrough all passed. The next roadmap slice is **P4.15 — Stage transitions**.
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P4.9–P4.11 final implementation head: `a5763159f2ce95eb1bf6f8ca8a36bf8ab1478fbb`
-- P4.9–P4.11 merged main / APK source: `184abb9d11dea86c2192828ac7f2e6884cc71811`
-- P4.9–P4.11 PR Browser E2E run: `35526489332`
-- Final Browser E2E run: `35526587479`
-- Level 15 beta smoke run: `35526587472`
-- Android beta.185 run: `35526587447`
-- Android beta.185 artifact ID: `10609433808`
-- Android beta.185 artifact head: `184abb9d11dea86c2192828ac7f2e6884cc71811`
-- APK SHA-256: `1abd947f68723228ad63333765a392f730134d6508e001a9a70e29e476a51ed7`
+- P4.12–P4.14 final implementation head: `b33dcf52fa4c791a4d84218471368e7e0d26ad2c`
+- P4.12–P4.14 merged main / APK source: `b1ddb9d5cc4fbd52b1b8c1545f19d49f97d2c239`
+- P4.12–P4.14 PR Browser E2E run: `35527411603`
+- Final Browser E2E run: `35527520232`
+- Level 15 beta smoke run: `35527520270`
+- Android beta.186 run: `35527520256`
+- Android beta.186 artifact ID: `10609563264`
+- Android beta.186 artifact head: `b1ddb9d5cc4fbd52b1b8c1545f19d49f97d2c239`
+- APK SHA-256: `54a9b51abe1188129cb67c73d56c75f6b1fe2580f0ccb6760cc2007751539247`
