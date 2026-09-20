@@ -226,7 +226,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] P3.7 Assets
 - [x] P3.8 Fabrication machinery
 - [x] P3.9 Sun/shadow identity
-- [ ] P3.10 Thermal shutters
+- [x] P3.10 Thermal shutters
 - [ ] P3.11 Cranes/rails/motion
 - [ ] P3.12 HELIOS-9 presentation
 - [ ] P3.13 Mobile optimization
@@ -307,7 +307,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1 and P2 are complete, **Ice Mine P3.1–P3.6** are delivered, and **Solar Yard P3.7–P3.9** are delivered. Continue in roadmap order with **P3.10 — Thermal shutters**, followed by P3.11–P3.13 to finish Solar Yard.
+P1 and P2 are complete, **Ice Mine P3.1–P3.6** are delivered, and **Solar Yard P3.7–P3.10** are delivered. Continue in roadmap order with **P3.11 — Cranes/rails/motion**, followed by P3.12–P3.13 to finish Solar Yard.
+
+**P3.10 delivered:** Solar Yard now has authored local thermal-shutter hardware tied directly to the existing `solar-shutter` gameplay control. The shutter family ships adaptive LOD1/LOD2 GLBs with ceramic thermal panels, scorched structural rails/posts, solar-gold actuation hardware, amber status lighting, and full-detail heat-rejection ribs. Runtime placement is anchored to the live encounter control, open/closed panel state follows the control's real `exposed` state, and the existing solar-surge logic remains the source of radiant-load protection rather than being duplicated in the renderer. Deterministic telemetry exposes authored shutter state, radiant-load protection, and the state-link contract; generated-content/static regressions and desktop/mobile-landscape Browser E2E verify the new asset family, mobile LOD reduction, authored loading, and live open-state linkage. Cranes/rails/motion, HELIOS-9 presentation, and the dedicated mobile optimization pass remain P3.11–P3.13.
 
 **P3.9 delivered:** Solar Yard now has a stable biome-specific luminance identity instead of relying on the shared player-following key light. A fixed sunward directional key creates consistent long shadows across the yard, a lower-intensity cool fill preserves readable shaded combat space, and three bounded sun patches / three cool shade masses reinforce the authored shade-deck → fabrication-spine → sunward-yard composition without adding heavy geometry. The existing live solar-shutter timing can still drive a short solar-surge state, but the authored shutter hardware remains reserved for P3.10. Runtime telemetry exposes the sun direction, hard-sun/cool-shade language, patch counts, active sun mode, tone treatment, and adaptive shadow budget; static graphics regression and desktop/mobile-landscape Browser E2E cover the identity. Thermal shutters, cranes/rails/motion, HELIOS-9 presentation, and the dedicated mobile optimization pass remain P3.10–P3.13.
 
