@@ -178,6 +178,17 @@ for (const marker of ['ice-mine-frost-wall-rock', 'ice-mine-support-frame-crown'
   assert(jovianAssetGeneratorSource.includes(`name: '${marker}'`), `Ice Mine P3.1 silhouette marker ${marker} must remain authored`);
 }
 
+assert(rendererSource.includes('ICE_MINE_ASSET_FAMILIES'), 'Ice Mine P3.2 must load the authored environment kit at runtime');
+assert(rendererSource.includes('loadAuthoredIceMineEnvironment(world.w, world.h, budget.detailScale)'), 'Ice Mine P3.2 must route combat rendering through authored bore/tunnel composition');
+assert(rendererSource.includes("dataset.environmentVisual = 'authored-ice-mine'"), 'Ice Mine P3.2 authored activation must remain observable');
+assert(rendererSource.includes("dataset.environmentKit = 'frost-wall,support-frame,service-deck,ice-pillar'"), 'Ice Mine P3.2 runtime kit identity must remain explicit');
+assert(rendererSource.includes("dataset.environmentComposition = 'access-bore+reinforced-extraction-tunnel+subglacial-vault'"), 'Ice Mine P3.2 must preserve the three-zone mine composition');
+assert(rendererSource.includes("dataset.environmentTunnelSequence = 'access-bore>extraction-tunnel>subglacial-vault'"), 'Ice Mine P3.2 must preserve the authored bore-to-vault sequence');
+assert(rendererSource.includes("dataset.environmentZoneIdentity = 'access-bore:frost-wall-cut|extraction-tunnel:steel-support-frames+service-deck|subglacial-vault:ice-pillar-cluster'"), 'Ice Mine P3.2 zone silhouettes must remain explicit');
+assert(rendererSource.includes("dataset.readabilityLanguage = 'frost-wall-corridor+support-frame-rhythm+cyan-service-deck+vault-pillars'"), 'Ice Mine P3.2 screenshot readability language must remain explicit');
+assert(rendererSource.includes('this.proceduralRefineryVisuals.push(...iceMineFallback)'), 'Ice Mine P3.2 must retain procedural scenery as an authored-load fallback');
+assert(rendererSource.includes('this.coarse ? Math.min(detailScale, 0.55) : detailScale'), 'Ice Mine P3.2 coarse/mobile runtime must force the authored mobile LOD');
+
 assert(rendererSource.includes('JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES'), 'Jovian Harvester P2.11 must select dedicated authored gas machinery families');
 for (const asset of ['jovian-harvester-storm-bus-isolator', 'jovian-harvester-deck-mass-trim', 'jovian-harvester-skimmer-compressor', 'jovian-harvester-separator-package']) {
   assert(manifestSource.includes(`${asset}-lod1.glb`) && manifestSource.includes(`${asset}-lod2.glb`), `Jovian Harvester P2.11 machinery asset ${asset} must preserve adaptive LOD1/LOD2 coverage`);
