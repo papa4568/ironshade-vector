@@ -744,7 +744,7 @@ try {
         && /^(intact|damaged|partial|cleared)$/.test(canvas?.dataset.environmentBrittleSupportState ?? '')
         && canvas?.dataset.environmentFractureVfx === 'support-cracks+shard-burst+frost-pulse'
         && /^(idle|cracking|collapsing|settled)$/.test(canvas?.dataset.environmentFractureState ?? '')
-        && /^(4-shards\+2-cracks|8-shards\+3-cracks)\+frost-pulse$/.test(canvas?.dataset.environmentFractureDetail ?? '')
+        && ['4-shards+2-cracks+frost-pulse', '8-shards+3-cracks+frost-pulse'].includes(canvas?.dataset.environmentFractureDetail ?? '')
         && Number(canvas?.dataset.environmentInstances) > 0
         && ['1', '2'].includes(canvas?.dataset.environmentLod ?? '');
     })()`, 'Ice Mine authored bore/tunnel geometry', 20_000);
