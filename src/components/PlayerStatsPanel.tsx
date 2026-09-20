@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import '../classBuilds.css';
 import { applyShipBonuses, type CampaignState } from '../game/campaign';
 import { getAbilityKitForClass } from '../game/classSkills';
-import { buildIdentity, deriveCombatBuild, gearResonanceForProfile, operatorClassDefinitions, operatorClassForProfile, specializationDefinitions, vanguardCapstoneInteractionFor, xpProgress, type PlayerProfile } from '../game/meta';
+import { buildIdentity, capstoneInteractionFor, deriveCombatBuild, gearResonanceForProfile, operatorClassDefinitions, operatorClassForProfile, specializationDefinitions, xpProgress, type PlayerProfile } from '../game/meta';
 import { createSimulation, type WeaponId } from '../game/sim';
 
 type Props = { profile: PlayerProfile; campaign: CampaignState };
@@ -36,7 +36,7 @@ export default function PlayerStatsPanel({ profile, campaign }: Props) {
   const abilityKit = getAbilityKitForClass(operatorClass);
   const resonance = gearResonanceForProfile(profile, operatorClass);
   const specialization = specializationDefinitions.find(definition => definition.id === profile.specialization);
-  const activeCapstone = Object.values(profile.abilityMods).map(modId => vanguardCapstoneInteractionFor(profile, modId)).find(Boolean);
+  const activeCapstone = Object.values(profile.abilityMods).map(modId => capstoneInteractionFor(profile, modId)).find(Boolean);
   const survival: StatDatum[] = [
     { label: 'Health', value: number(sim.player.maxHp, 0), hint: 'Your life pool. Damage that gets through armor reduces health; reaching 0 ends the attempt.' },
     { label: 'Armor', value: number(sim.player.maxArmor, 0), hint: 'Protective plating that absorbs incoming hits before health. Armor can be broken and restored independently.' },
