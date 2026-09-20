@@ -582,6 +582,55 @@ assert.equal(orphelineDirector.megastructureEventA, true, 'Orpheline stage event
 // Ice Mine may publish its own forecast after the Orpheline event, so assert durable runtime state instead of the last alert string.
 assert.ok(orphelineStage1State.hazards.some(hazard => hazard.active && hazard.kind === 'vectorWash'), 'An unresolved Orpheline access event must produce a physical venting hazard.');
 
+const hecateCampaign = { ...createDefaultCampaign(), cycle: 18, contractsCompleted: 3 };
+const hecateContract = generateContracts(hecateCampaign).find(contract => contract.megastructure === 'shipbreaking-yard');
+assert.ok(hecateContract, 'P4 Hecate must remain available as the fourth rare megastructure rotation.');
+assert.deepEqual(hecateContract.megastructureZoneNames, ['Sunward Clamp Field', 'Crusher Causeway', 'Wreck Transit', 'Yard Control Crown'], 'Hecate must preserve its authored four-space shipbreaking-yard traverse.');
+assert.equal(hecateContract.megastructureBossTarget, 'Hecate Yardmaster Null', 'Hecate must retain Yardmaster Null as its deep finale.');
+
+const hecateStage1 = getMegastructureStageContract(hecateContract, 0);
+const hecateStage1State = createSimulation(perseidBuild);
+applyMissionSetup(hecateStage1State, hecateStage1);
+assert.deepEqual(hecateStage1State.sectors.map(sector => sector.label), ['CLAMP APPROACH', 'SUNWARD FIELD', 'HULL CRADLE'], 'Hecate stage 1 must read as the sunward clamp field rather than generic Solar Yard.');
+assert.equal(hecateStage1State.objects.find(object => object.id === 'mega-optional-cache')?.label, 'Clamp-control spindle', 'Hecate stage 1 must retain its bespoke optional recovery.');
+
+const hecateStage2 = getMegastructureStageContract(hecateContract, 1);
+const hecateStage2State = createSimulation(perseidBuild);
+applyMissionSetup(hecateStage2State, hecateStage2);
+assert.deepEqual(hecateStage2State.sectors.map(sector => sector.label), ['CUTTER RUN', 'CRUSHER CAUSEWAY', 'SCRAP PRESS'], 'Hecate stage 2 must read as the live crusher causeway.');
+assert.equal(hecateStage2State.enemies.find(enemy => enemy.id === 6)?.label, 'Hecate Crusher Foreman', 'Hecate stage 2 must keep a shipbreaking-specific guaranteed elite.');
+
+const hecateStage3 = getMegastructureStageContract(hecateContract, 2);
+const hecateStage3State = createSimulation(perseidBuild);
+applyMissionSetup(hecateStage3State, hecateStage3);
+assert.deepEqual(hecateStage3State.sectors.map(sector => sector.label), ['WRECK FORE', 'OPEN TRANSIT', 'PRESSURE HULKS'], 'Hecate stage 3 must read as an exposed wreck-transit chain.');
+
+const hecateStage4 = getMegastructureStageContract(hecateContract, 3);
+const hecateStage4State = createSimulation(perseidBuild);
+applyMissionSetup(hecateStage4State, hecateStage4);
+assert.deepEqual(hecateStage4State.sectors.map(sector => sector.label), ['CROWN APPROACH', 'YARD CONTROL', 'NULL GANTRY'], 'Hecate stage 4 must read as the yard control crown.');
+const hecateYardmaster = hecateStage4State.enemies.find(enemy => enemy.role === 'boss');
+assert.equal(hecateYardmaster?.label, 'Hecate Yardmaster Null', 'Hecate final deep target must retain its authored identity.');
+assert.equal(hecateYardmaster?.variant, 'hecateYardmaster', 'Hecate Yardmaster Null must use its dedicated boss behavior.');
+assert.equal(hecateYardmaster?.maxHp, 790, 'Hecate Yardmaster Null must retain its capstone durability budget.');
+
+const hecateDirector = createDirector();
+stepMissionDirector(hecateStage1State, hecateDirector, hecateStage1, 7.1);
+assert.equal(hecateDirector.megastructureEventA, true, 'Hecate stage events must run independently of reused biome event slots.');
+assert.ok(hecateStage1State.hazards.some(hazard => hazard.active && hazard.kind === 'vectorWash'), 'An unresolved Hecate clamp-field event must produce a physical hull-cradle sweep.');
+
+const hecateWreckDirector = createDirector();
+stepMissionDirector(hecateStage3State, hecateWreckDirector, hecateStage3, 7.1);
+assert.ok(hecateStage3State.hazards.some(hazard => hazard.active && hazard.kind === 'vacuumWake'), 'Hecate Wreck Transit must produce an open-hull pressure hazard.');
+
+if (!hecateYardmaster) throw new Error('Hecate Yardmaster Null missing from final stage setup.');
+hecateYardmaster.active = true;
+hecateStage4State.bossActive = true;
+hecateYardmaster.hp = hecateYardmaster.maxHp * 0.49;
+stepSimulation(hecateStage4State, 0.1);
+assert.equal(hecateYardmaster.bossPhase, 2, 'Hecate Yardmaster Null must enter its dedicated cutter-grid phase at half health.');
+assert.ok(hecateStage4State.hazards.some(hazard => hazard.active && (hazard.kind === 'shockGrid' || hazard.kind === 'vectorWash')), 'Hecate Yardmaster phase two must reshape the control crown with live shipbreaking hazards.');
+
 const expeditionLootSource = [{ id: 'stage-1-drop', enemyId: 7, enemyLabel: 'Stage One Elite', rarity: 'Prototype' as const, source: 'elite' as const, recoveryQualityFloor: 3 as const, recoveryLevel: 24, monsterLevel: 8 }];
 const expeditionLootCarry = carryExpeditionLoot(expeditionLootSource);
 assert.deepEqual(expeditionLootCarry, expeditionLootSource, 'megastructure stage transit should preserve every collected field-loot receipt');
