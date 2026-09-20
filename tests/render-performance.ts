@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { AdaptiveRenderBudget } from '../src/game/renderQuality';
 import { spinHabitatArchitectureState, spinHabitatRenderProfile, spinHabitatSpindownState } from '../src/game/spinHabitatArchitecture';
 import { jovianHarvesterRenderProfile, jovianHarvesterStormState } from '../src/game/jovianHarvesterVisualLanguage';
+import { solarYardRenderProfile } from '../src/game/solarYardVisualProfile';
 
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
@@ -160,6 +161,34 @@ assert(rendererSource.includes("dataset.environmentInstanceBudget = `deck:${deck
 assert(rendererSource.includes("dataset.environmentShadowCasters = profile.structureShadows ? 'jovian-structures' : 'off'"), 'Jovian runtime QA must expose its structural shadow budget');
 assert(rendererSource.includes('tower.castShadow = jovianProfile.structureShadows') && rendererSource.includes('guide.castShadow = jovianProfile.structureShadows'), 'Jovian procedural fallback must follow the dedicated mobile shadow budget');
 
+const fullSolarProfile = solarYardRenderProfile(1, false);
+assert(fullSolarProfile.name === 'full' && fullSolarProfile.assetDetailScale >= 0.9, 'desktop Solar Yard should keep the full authored environment profile');
+assert(fullSolarProfile.ceramicDeckInstances === 6 && fullSolarProfile.trussFrameInstances === 5 && fullSolarProfile.radiatorTowerInstances === 4, 'full Solar Yard profile should preserve structural placement density');
+assert(fullSolarProfile.sinterForgeInstances === 2 && fullSolarProfile.printerSpindleInstances === 3 && fullSolarProfile.feedstockPressInstances === 2, 'full Solar Yard profile should preserve fabrication machinery density');
+assert(fullSolarProfile.transferRailInstances === 3 && fullSolarProfile.gantryCraneInstances === 2 && fullSolarProfile.environmentShadows, 'full Solar Yard profile should preserve transport motion and structural shadows');
+
+const mobileSolarProfile = solarYardRenderProfile(0.78, true);
+assert(mobileSolarProfile.name === 'mobile' && mobileSolarProfile.assetDetailScale < 0.62, 'coarse/mobile Solar Yard should force the LOD2 asset threshold');
+assert(mobileSolarProfile.ceramicDeckInstances === 4 && mobileSolarProfile.trussFrameInstances === 3 && mobileSolarProfile.radiatorTowerInstances === 2, 'mobile Solar Yard should trim secondary structural instances');
+assert(mobileSolarProfile.reflectorPylonInstances === 3, 'mobile Solar Yard must preserve the three-pylon gold landmark row');
+assert(mobileSolarProfile.sinterForgeInstances === 1 && mobileSolarProfile.printerSpindleInstances === 2 && mobileSolarProfile.feedstockPressInstances === 1, 'mobile Solar Yard should reduce fabrication machinery while preserving all machine families');
+assert(mobileSolarProfile.transferRailInstances === 2 && mobileSolarProfile.gantryCraneInstances === 2, 'mobile Solar Yard should reduce rail density while preserving paired moving gantries');
+assert(mobileSolarProfile.sunPatchInstances === 2 && mobileSolarProfile.shadePatchInstances === 2 && !mobileSolarProfile.environmentShadows, 'mobile Solar Yard should reduce overlay density and disable structural shadow casters');
+
+const balancedSolarProfile = solarYardRenderProfile(0.78, false);
+assert(balancedSolarProfile.name === 'balanced' && balancedSolarProfile.assetDetailScale === 0.78, 'desktop Balanced Solar Yard should retain LOD1 while trimming scene cost');
+assert(!balancedSolarProfile.environmentShadows && balancedSolarProfile.transferRailInstances === 2, 'desktop Balanced Solar Yard should drop structural shadows and one secondary rail');
+
+const performanceSolarProfile = solarYardRenderProfile(0.5, true);
+assert(performanceSolarProfile.name === 'performance' && performanceSolarProfile.assetDetailScale === 0.5, 'Solar Yard performance tier should remain on LOD2');
+assert(performanceSolarProfile.gantryCraneInstances === 1 && performanceSolarProfile.sunPatchInstances === 1 && performanceSolarProfile.shadePatchInstances === 1, 'Solar Yard performance tier should collapse secondary motion and overlay density');
+assert(performanceSolarProfile.fallbackPanelInstances === 3 && !performanceSolarProfile.environmentShadows, 'Solar Yard performance fallback should use the smallest panel/shadow budget');
+
+assert(rendererSource.includes('const profile = solarYardRenderProfile(detailScale, this.coarse)'), 'Solar Yard authored environment must derive a dedicated adaptive profile');
+assert(rendererSource.includes('selectGraphicsAssetSpec(SOLAR_YARD_ASSET_FAMILIES[key], assetDetailScale)'), 'Solar Yard adaptive profile must drive authored environment LOD selection');
+assert(rendererSource.includes("dataset.environmentShadowCasters = profile.environmentShadows ? 'solar-yard-structures+gameplay-actors' : 'gameplay-actors-only'"), 'Solar Yard runtime QA must expose structural shadow trimming');
+assert(rendererSource.includes('dataset.environmentInstanceBudget = `deck:${ceramicDeckPlacements.length}+truss:${trussFramePlacements.length}+radiator:${radiatorTowerPlacements.length}'), 'Solar Yard runtime QA must expose the authored instance budget');
+assert(rendererSource.includes('shadePlacements.slice(0, solarYardProfile.shadePatchInstances)') && rendererSource.includes('sunPlacements.slice(0, solarYardProfile.sunPatchInstances)'), 'Solar Yard procedural fallback must follow the adaptive overlay density');
 const sustainedMobile = new AdaptiveRenderBudget(true);
 let sustainedSnapshot = sustainedMobile.sample(16.7, 1);
 for (let index = 0; index < 60 * 10; index += 1) sustainedSnapshot = sustainedMobile.sample(18.2, 1);
