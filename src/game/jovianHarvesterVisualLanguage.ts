@@ -12,8 +12,34 @@ export type JovianHarvesterStormState = {
   venting: boolean;
 };
 
+export type JovianHarvesterRenderProfileName = 'full' | 'balanced' | 'mobile' | 'performance';
+
+export type JovianHarvesterRenderProfile = {
+  name: JovianHarvesterRenderProfileName;
+  assetDetailScale: number;
+  deckInstances: 4 | 6;
+  towerInstances: 5;
+  bridgeInstances: 2 | 4;
+  ballastInstances: 2 | 4;
+  structureShadows: boolean;
+};
+
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
+}
+
+export function jovianHarvesterRenderProfile(detailScale: number, coarse: boolean): JovianHarvesterRenderProfile {
+  const safeDetail = Number.isFinite(detailScale) ? clamp(detailScale, 0.35, 1) : 0.5;
+  if (safeDetail < 0.62) {
+    return { name: 'performance', assetDetailScale: 0.5, deckInstances: 4, towerInstances: 5, bridgeInstances: 2, ballastInstances: 2, structureShadows: false };
+  }
+  if (coarse) {
+    return { name: 'mobile', assetDetailScale: Math.min(safeDetail, 0.58), deckInstances: 4, towerInstances: 5, bridgeInstances: 2, ballastInstances: 2, structureShadows: false };
+  }
+  if (safeDetail < 0.9) {
+    return { name: 'balanced', assetDetailScale: safeDetail, deckInstances: 4, towerInstances: 5, bridgeInstances: 2, ballastInstances: 2, structureShadows: false };
+  }
+  return { name: 'full', assetDetailScale: safeDetail, deckInstances: 6, towerInstances: 5, bridgeInstances: 4, ballastInstances: 4, structureShadows: true };
 }
 
 export function jovianHarvesterStormState(
