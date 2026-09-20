@@ -408,6 +408,37 @@ export const SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES = {
   },
 } as const satisfies Record<'spinBusIsolator' | 'gravityTrim' | 'bearingControl' | 'attitudeFlywheel' | 'pressureLock', GraphicsAssetFamily>;
 
+export const JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES = {
+  stormBusIsolator: {
+    id: 'jovian-harvester-storm-bus-isolator',
+    lods: {
+      1: createGraphicsAssetSpec('jovian-harvester-storm-bus-isolator-lod1', 'interactable', '/assets/models/interactables/jovian-harvester-storm-bus-isolator-lod1.glb', 1),
+      2: createGraphicsAssetSpec('jovian-harvester-storm-bus-isolator-lod2', 'interactable', '/assets/models/interactables/jovian-harvester-storm-bus-isolator-lod2.glb', 2),
+    },
+  },
+  deckMassTrim: {
+    id: 'jovian-harvester-deck-mass-trim',
+    lods: {
+      1: createGraphicsAssetSpec('jovian-harvester-deck-mass-trim-lod1', 'interactable', '/assets/models/interactables/jovian-harvester-deck-mass-trim-lod1.glb', 1),
+      2: createGraphicsAssetSpec('jovian-harvester-deck-mass-trim-lod2', 'interactable', '/assets/models/interactables/jovian-harvester-deck-mass-trim-lod2.glb', 2),
+    },
+  },
+  skimmerCompressor: {
+    id: 'jovian-harvester-skimmer-compressor',
+    lods: {
+      1: createGraphicsAssetSpec('jovian-harvester-skimmer-compressor-lod1', 'interactable', '/assets/models/interactables/jovian-harvester-skimmer-compressor-lod1.glb', 1),
+      2: createGraphicsAssetSpec('jovian-harvester-skimmer-compressor-lod2', 'interactable', '/assets/models/interactables/jovian-harvester-skimmer-compressor-lod2.glb', 2),
+    },
+  },
+  separatorPackage: {
+    id: 'jovian-harvester-separator-package',
+    lods: {
+      1: createGraphicsAssetSpec('jovian-harvester-separator-package-lod1', 'interactable', '/assets/models/interactables/jovian-harvester-separator-package-lod1.glb', 1),
+      2: createGraphicsAssetSpec('jovian-harvester-separator-package-lod2', 'interactable', '/assets/models/interactables/jovian-harvester-separator-package-lod2.glb', 2),
+    },
+  },
+} as const satisfies Record<'stormBusIsolator' | 'deckMassTrim' | 'skimmerCompressor' | 'separatorPackage', GraphicsAssetFamily>;
+
 export const INTERACTABLE_ASSET_FAMILIES = {
   control: {
     id: 'interactable-control-terminal',
