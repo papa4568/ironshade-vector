@@ -503,6 +503,47 @@ stepMissionDirector(perseidStage1State, perseidDirector, perseidStage1, 7.1);
 assert.equal(perseidDirector.megastructureEventA, true, 'Perseid stage events must run independently of reused biome event slots.');
 assert.ok(perseidStage1State.hazards.some(hazard => hazard.active), 'An unresolved Perseid stage event must produce a physical local hazard.');
 
+const k91Campaign = { ...createDefaultCampaign(), cycle: 8, contractsCompleted: 3 };
+const k91Contract = generateContracts(k91Campaign).find(contract => contract.megastructure === 'counterweight');
+assert.ok(k91Contract, 'P4 K-91 must remain available as the second rare megastructure rotation.');
+assert.deepEqual(k91Contract.megastructureZoneNames, ['Capture Collar', 'Mass Transit Spine', 'Power Transfer Gallery', 'Ballast Vault'], 'K-91 must preserve its authored four-space counterweight traverse.');
+assert.equal(k91Contract.megastructureBossTarget, undefined, 'K-91 must remain a bossless survival traverse rather than inheriting a generic command target.');
+
+const k91Stage1 = getMegastructureStageContract(k91Contract, 0);
+const k91Stage1State = createSimulation(perseidBuild);
+applyMissionSetup(k91Stage1State, k91Stage1);
+assert.deepEqual(k91Stage1State.sectors.map(sector => sector.label), ['CAPTURE RIM', 'TETHER THROAT', 'COLLAR LOCK'], 'K-91 stage 1 must read as a counterweight capture collar.');
+assert.equal(k91Stage1State.objects.find(object => object.id === 'mega-optional-cache')?.label, 'Tether-load recorder', 'K-91 stage 1 must retain its bespoke optional recovery.');
+
+const k91Stage2 = getMegastructureStageContract(k91Contract, 1);
+const k91Stage2State = createSimulation(perseidBuild);
+applyMissionSetup(k91Stage2State, k91Stage2);
+assert.deepEqual(k91Stage2State.sectors.map(sector => sector.label), ['FORE MASS RAIL', 'TRANSIT SPINE', 'COUNTERMASS BAY'], 'K-91 stage 2 must read as the mass transit spine rather than generic Spin Habitat.');
+assert.equal(k91Stage2State.enemies.find(enemy => enemy.id === 6)?.label, 'K-91 Mass-Transit Warden', 'K-91 stage 2 must keep a counterweight-specific guaranteed elite.');
+
+const k91Stage3 = getMegastructureStageContract(k91Contract, 2);
+const k91Stage3State = createSimulation(perseidBuild);
+applyMissionSetup(k91Stage3State, k91Stage3);
+assert.deepEqual(k91Stage3State.sectors.map(sector => sector.label), ['LIFT BUS FORE', 'POWER TRANSFER', 'ISOLATION GALLERY'], 'K-91 stage 3 must read as the power transfer gallery.');
+
+const k91Stage4 = getMegastructureStageContract(k91Contract, 3);
+const k91Stage4State = createSimulation(perseidBuild);
+applyMissionSetup(k91Stage4State, k91Stage4);
+assert.deepEqual(k91Stage4State.sectors.map(sector => sector.label), ['BALLAST APPROACH', 'MASS VAULT', 'BLACKBOX WELL'], 'K-91 stage 4 must read as the ballast vault.');
+assert.equal(k91Stage4.megastructureBossTarget, undefined, 'K-91 Ballast Vault must finish through traversal and recovery, not an optional boss breach.');
+
+const k91Director = createDirector();
+stepMissionDirector(k91Stage1State, k91Director, k91Stage1, 7.1);
+assert.equal(k91Director.megastructureEventA, true, 'K-91 stage events must run independently of reused biome event slots.');
+assert.match(k91Stage1State.eventText, /K-91 TUMBLE SOLUTION/, 'K-91 stage 1 must announce its counterweight tumble event.');
+assert.ok(k91Stage1State.hazards.some(hazard => hazard.active), 'An unresolved K-91 stage event must produce a physical inertial hazard.');
+
+const k91FinalDirector = createDirector();
+// Asteroid Refinery may publish its own forecast after the K-91 event, so assert durable runtime state rather than the last alert string.
+stepMissionDirector(k91Stage4State, k91FinalDirector, k91Stage4, 7.1);
+assert.equal(k91FinalDirector.megastructureEventA, true, 'K-91 Ballast Vault must trigger its dedicated capstone event even when biome forecast text follows it.');
+assert.ok(k91Stage4State.hazards.some(hazard => hazard.active && hazard.kind === 'gravityWell'), 'K-91 final stage must preserve a bossless ballast-shift gravity hazard.');
+
 const expeditionLootSource = [{ id: 'stage-1-drop', enemyId: 7, enemyLabel: 'Stage One Elite', rarity: 'Prototype' as const, source: 'elite' as const, recoveryQualityFloor: 3 as const, recoveryLevel: 24, monsterLevel: 8 }];
 const expeditionLootCarry = carryExpeditionLoot(expeditionLootSource);
 assert.deepEqual(expeditionLootCarry, expeditionLootSource, 'megastructure stage transit should preserve every collected field-loot receipt');

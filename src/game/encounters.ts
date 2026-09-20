@@ -523,6 +523,32 @@ function configureMegastructureStage(state: SimState, contract: Contract) {
         boss.anchored = false;
       }
     }
+  } else if (contract.megastructure === 'counterweight') {
+    if (contract.megastructureStage === 1) {
+      state.sectors[0].label = 'CAPTURE RIM';
+      state.sectors[1].label = 'TETHER THROAT';
+      state.sectors[2].label = 'COLLAR LOCK';
+      addObject(state, coverObject('k91-capture-jaw-a', 'K-91 capture jaw', 820, 300, 68, 164, 'industrial'));
+      addObject(state, coverObject('k91-capture-jaw-b', 'K-91 capture jaw', 1180, 710, 68, 164, 'industrial'));
+    } else if (contract.megastructureStage === 2) {
+      state.sectors[0].label = 'FORE MASS RAIL';
+      state.sectors[1].label = 'TRANSIT SPINE';
+      state.sectors[2].label = 'COUNTERMASS BAY';
+      addObject(state, coverObject('k91-mass-carriage-a', 'Countermass carriage', 760, 290, 136, 62, 'industrial'));
+      addObject(state, coverObject('k91-mass-carriage-b', 'Countermass carriage', 1260, 735, 136, 62, 'industrial'));
+    } else if (contract.megastructureStage === 3) {
+      state.sectors[0].label = 'LIFT BUS FORE';
+      state.sectors[1].label = 'POWER TRANSFER';
+      state.sectors[2].label = 'ISOLATION GALLERY';
+      addObject(state, coverObject('k91-bus-baffle-a', 'K-91 lift-bus baffle', 1760, 315, 116, 50, 'industrial'));
+      addObject(state, coverObject('k91-bus-baffle-b', 'K-91 lift-bus baffle', 2030, 690, 116, 50, 'industrial'));
+    } else if (contract.megastructureStage === 4) {
+      state.sectors[0].label = 'BALLAST APPROACH';
+      state.sectors[1].label = 'MASS VAULT';
+      state.sectors[2].label = 'BLACKBOX WELL';
+      addObject(state, coverObject('k91-ballast-stack-a', 'K-91 ballast stack', 790, 300, 94, 174, 'industrial'));
+      addObject(state, coverObject('k91-ballast-stack-b', 'K-91 ballast stack', 1290, 710, 94, 174, 'industrial'));
+    }
   }
 
   if (contract.megastructureStage === 2) {
@@ -532,7 +558,11 @@ function configureMegastructureStage(state: SimState, contract: Contract) {
       elite.dead = false;
       elite.role = 'elite';
       elite.variant = 'meleeExosuit';
-      elite.label = contract.megastructure === 'generation-ship' ? 'Perseid Drum Warder' : 'Derelict Security Exosuit';
+      elite.label = contract.megastructure === 'generation-ship'
+        ? 'Perseid Drum Warder'
+        : contract.megastructure === 'counterweight'
+          ? 'K-91 Mass-Transit Warden'
+          : 'Derelict Security Exosuit';
       elite.hp = 190;
       elite.maxHp = 190;
       elite.armor = 145;

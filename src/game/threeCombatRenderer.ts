@@ -13,6 +13,7 @@ import { spinHabitatArchitectureState, spinHabitatRenderProfile, spinHabitatSpin
 import { jovianHarvesterRenderProfile, jovianHarvesterStormState } from './jovianHarvesterVisualLanguage';
 import { solarYardRenderProfile } from './solarYardVisualProfile';
 import { perseidRenderProfile, perseidStageIdentity } from './perseidCapstone';
+import { k91RenderProfile, k91StageIdentity } from './k91Capstone';
 
 const WORLD_SCALE = 0.02;
 const FLOOR_Y = 0;
@@ -2531,6 +2532,85 @@ export class ThreeCombatRenderer {
     this.renderer.domElement.dataset.megastructurePerformanceProfile = `${profile.name}:ribs-${profile.ribPairs}:guides-${profile.guideLights}:props-${profile.stageProps}:shadows-${profile.castStructuralShadows ? 'on' : 'off'}`;
   }
 
+  private addK91CapstoneScenery(mission: Contract, worldW: number, worldH: number, detailScale: number) {
+    const stage = k91StageIdentity(mission);
+    if (!stage) return;
+    const profile = k91RenderProfile(detailScale, this.coarse);
+    const cx = scaled(worldW * 0.5);
+    const cz = scaled(worldH * 0.5);
+    const width = scaled(worldW);
+    const height = scaled(worldH);
+    const structural = new THREE.MeshStandardMaterial({ color: 0x4b555b, metalness: 0.86, roughness: 0.36 });
+    const ballast = new THREE.MeshStandardMaterial({ color: 0x252d31, metalness: 0.8, roughness: 0.46 });
+    const datum = new THREE.MeshStandardMaterial({ color: 0xd0a15f, emissive: 0xa76a26, emissiveIntensity: 0.58, metalness: 0.48, roughness: 0.28 });
+    const stageAccent = new THREE.MeshStandardMaterial({
+      color: stage.stage === 3 ? 0xc08b46 : stage.stage === 4 ? 0x8f735d : 0x87949a,
+      emissive: stage.stage === 3 ? 0x7e4f1e : stage.stage === 4 ? 0x4b3529 : 0x33484f,
+      emissiveIntensity: 0.26,
+      metalness: 0.62,
+      roughness: 0.36,
+    });
+
+    const addMesh = (mesh: THREE.Mesh) => {
+      mesh.castShadow = profile.castStructuralShadows;
+      mesh.receiveShadow = true;
+      this.environmentRoot.add(mesh);
+      return mesh;
+    };
+
+    const spine = addMesh(new THREE.Mesh(new THREE.BoxGeometry(width * 0.74, 0.22, scaled(24)), structural));
+    spine.position.set(cx, 0.3, cz);
+
+    for (let index = 0; index < profile.railPairs; index += 1) {
+      const t = profile.railPairs === 1 ? 0.5 : index / (profile.railPairs - 1);
+      const x = width * (0.2 + t * 0.6);
+      const fore = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(14), 0.42, scaled(38)), ballast));
+      fore.position.set(x, 0.38, height * 0.29);
+      const aft = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(14), 0.42, scaled(38)), ballast));
+      aft.position.set(x, 0.38, height * 0.71);
+    }
+
+    for (let index = 0; index < profile.datumLights; index += 1) {
+      const t = profile.datumLights === 1 ? 0.5 : index / (profile.datumLights - 1);
+      const marker = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(7), 0.07, scaled(4)), datum));
+      marker.position.set(width * (0.2 + t * 0.6), 0.46, cz);
+    }
+
+    const propCount = profile.stageProps;
+    if (stage.stage === 1) {
+      const collar = addMesh(new THREE.Mesh(new THREE.TorusGeometry(scaled(86), scaled(11), 8, 32), stageAccent));
+      collar.rotation.x = Math.PI / 2;
+      collar.position.set(width * 0.2, 0.7, cz);
+      for (let index = 0; index < propCount; index += 1) {
+        const jaw = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(18), 0.55, scaled(52)), index % 2 === 0 ? structural : ballast));
+        jaw.position.set(width * (0.28 + (index % 4) * 0.12), 0.45, height * (index < 4 ? 0.3 : 0.7));
+      }
+    } else if (stage.stage === 2) {
+      for (let index = 0; index < propCount; index += 1) {
+        const carriage = addMesh(new THREE.Mesh(new THREE.BoxGeometry(width * 0.11, 0.52, scaled(28)), index % 2 === 0 ? stageAccent : ballast));
+        carriage.position.set(width * (0.25 + (index % 4) * 0.16), 0.46, height * (index < 4 ? 0.3 : 0.7));
+      }
+    } else if (stage.stage === 3) {
+      for (let index = 0; index < propCount; index += 1) {
+        const bus = addMesh(new THREE.Mesh(new THREE.BoxGeometry(width * 0.13, 0.16, scaled(12)), index % 2 === 0 ? datum : stageAccent));
+        bus.position.set(width * (0.24 + (index % 4) * 0.16), 0.52, height * (index < 4 ? 0.31 : 0.69));
+      }
+    } else {
+      for (let index = 0; index < propCount; index += 1) {
+        const block = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(54), 0.72, scaled(42)), index % 2 === 0 ? ballast : stageAccent));
+        block.position.set(width * (0.25 + (index % 4) * 0.16), 0.5, height * (index < 4 ? 0.3 : 0.7));
+      }
+      const blackbox = addMesh(new THREE.Mesh(new THREE.BoxGeometry(scaled(40), 0.85, scaled(40)), datum));
+      blackbox.position.set(width * 0.78, 0.58, cz);
+    }
+
+    this.renderer.domElement.dataset.megastructureIdentity = 'counterweight:k-91';
+    this.renderer.domElement.dataset.megastructureStage = `${stage.stage}:${stage.code}:${stage.name.toLowerCase().replaceAll(' ', '-')}`;
+    this.renderer.domElement.dataset.megastructureContinuity = 'load-spine+countermass-rails+amber-inertial-datum';
+    this.renderer.domElement.dataset.megastructureStageKit = stage.kit.join('+');
+    this.renderer.domElement.dataset.megastructurePerformanceProfile = `${profile.name}:rails-${profile.railPairs}:guides-${profile.datumLights}:props-${profile.stageProps}:shadows-${profile.castStructuralShadows ? 'on' : 'off'}`;
+  }
+
   private ensureEnvironment(state: SimState, mission: Contract, budget: RenderBudgetSnapshot) {
     const signature = `${mission.location}:${mission.locationName}:${state.sectors.length}:${state.objects.length}:tier-${budget.tier}`;
     if (signature === this.environmentSignature) return;
@@ -2574,6 +2654,7 @@ export class ThreeCombatRenderer {
     this.addLocationScenery(mission.location, world.w, world.h, palette, budget.detailScale);
     buildHardSciFiEnvironment(this.environmentRoot, mission, scaled(world.w), scaled(world.h), palette);
     this.addPerseidCapstoneScenery(mission, world.w, world.h, budget.detailScale);
+    this.addK91CapstoneScenery(mission, world.w, world.h, budget.detailScale);
     const artIdentity = locationArtIdentityFor(mission.location);
     this.renderer.domElement.dataset.locationArt = `${mission.location}:${artIdentity.silhouette}:${artIdentity.material}`;
     this.renderer.domElement.dataset.locationLighting = `${mission.location}:${artIdentity.lighting}`;
