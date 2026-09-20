@@ -166,7 +166,28 @@ export const ICE_MINE_ASSET_FAMILIES = {
       2: createGraphicsAssetSpec('ice-mine-ice-pillar-lod2', 'environment-module', '/assets/models/environments/ice-mine-ice-pillar-lod2.glb', 2),
     },
   },
-} as const satisfies Record<'frostWall' | 'supportFrame' | 'serviceDeck' | 'icePillar', GraphicsAssetFamily>;
+  cryoPump: {
+    id: 'ice-mine-cryo-pump',
+    lods: {
+      1: createGraphicsAssetSpec('ice-mine-cryo-pump-lod1', 'environment-module', '/assets/models/environments/ice-mine-cryo-pump-lod1.glb', 1),
+      2: createGraphicsAssetSpec('ice-mine-cryo-pump-lod2', 'environment-module', '/assets/models/environments/ice-mine-cryo-pump-lod2.glb', 2),
+    },
+  },
+  coolantManifold: {
+    id: 'ice-mine-coolant-manifold',
+    lods: {
+      1: createGraphicsAssetSpec('ice-mine-coolant-manifold-lod1', 'environment-module', '/assets/models/environments/ice-mine-coolant-manifold-lod1.glb', 1),
+      2: createGraphicsAssetSpec('ice-mine-coolant-manifold-lod2', 'environment-module', '/assets/models/environments/ice-mine-coolant-manifold-lod2.glb', 2),
+    },
+  },
+  freezeCompressor: {
+    id: 'ice-mine-freeze-compressor',
+    lods: {
+      1: createGraphicsAssetSpec('ice-mine-freeze-compressor-lod1', 'environment-module', '/assets/models/environments/ice-mine-freeze-compressor-lod1.glb', 1),
+      2: createGraphicsAssetSpec('ice-mine-freeze-compressor-lod2', 'environment-module', '/assets/models/environments/ice-mine-freeze-compressor-lod2.glb', 2),
+    },
+  },
+} as const satisfies Record<'frostWall' | 'supportFrame' | 'serviceDeck' | 'icePillar' | 'cryoPump' | 'coolantManifold' | 'freezeCompressor', GraphicsAssetFamily>;
 
 export const PARALLAX_ASSET_FAMILIES = {
   pylon: {
