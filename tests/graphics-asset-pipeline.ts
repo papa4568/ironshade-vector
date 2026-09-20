@@ -178,6 +178,17 @@ for (const marker of ['ice-mine-frost-wall-rock', 'ice-mine-support-frame-crown'
   assert(jovianAssetGeneratorSource.includes(`name: '${marker}'`), `Ice Mine P3.1 silhouette marker ${marker} must remain authored`);
 }
 
+assert(manifestSource.includes('SOLAR_YARD_ASSET_FAMILIES'), 'Solar Yard P3.7 must register a dedicated authored environment asset kit');
+for (const asset of ['solar-yard-ceramic-deck', 'solar-yard-truss-frame', 'solar-yard-radiator-tower', 'solar-yard-reflector-pylon']) {
+  assert(manifestSource.includes(`${asset}-lod1.glb`) && manifestSource.includes(`${asset}-lod2.glb`), `Solar Yard P3.7 asset ${asset} must preserve adaptive LOD1/LOD2 coverage`);
+}
+for (const material of ['solar-yard-ceramic-shell', 'solar-yard-scorched-steel', 'solar-yard-radiator-black', 'solar-yard-solar-gold', 'solar-yard-amber-emissive']) {
+  assert(jovianAssetGeneratorSource.includes(`name: '${material}'`), `Solar Yard P3.7 material identity ${material} must remain authored`);
+}
+for (const marker of ['solar-yard-ceramic-deck-main', 'solar-yard-truss-frame-crown', 'solar-yard-radiator-tower-spine', 'solar-yard-reflector-pylon-face']) {
+  assert(jovianAssetGeneratorSource.includes(`name: '${marker}'`), `Solar Yard P3.7 silhouette marker ${marker} must remain authored`);
+}
+
 assert(rendererSource.includes('ICE_MINE_ASSET_FAMILIES'), 'Ice Mine P3.2 must load the authored environment kit at runtime');
 assert(rendererSource.includes('loadAuthoredIceMineEnvironment(state, world.w, world.h, budget.detailScale)'), 'Ice Mine P3.2 must route combat rendering through authored bore/tunnel composition');
 assert(rendererSource.includes("dataset.environmentVisual = 'authored-ice-mine'"), 'Ice Mine P3.2 authored activation must remain observable');
