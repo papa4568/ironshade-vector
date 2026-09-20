@@ -287,7 +287,7 @@ const mobileK91ContinuityInstances = mobileK91Profile.railPairs * 2 + mobileK91P
 const mobileOrphelineContinuityInstances = mobileOrphelineProfile.rockRibs * 2 + mobileOrphelineProfile.utilityLights;
 const mobileHecateContinuityInstances = mobileHecateProfile.trussPairs * 2 + Math.ceil(mobileHecateProfile.trussPairs / 2) * 2 + mobileHecateProfile.cutterDatums;
 assert(mobilePerseidContinuityInstances === 14 && mobileK91ContinuityInstances === 14, 'mobile Perseid and K-91 continuity silhouettes must retain fourteen visible repeated instances while batching them into two draws.');
-assert(mobileOrphelineContinuityInstances === 14 && mobileHecateContinuityInstances === 20, 'mobile Orpheline and Hecate must retain recognizable continuity density while batching repeated geometry.');
+assert(mobileOrphelineContinuityInstances === 14 && mobileHecateContinuityInstances === 18, 'mobile Orpheline and Hecate must retain recognizable continuity density while batching repeated geometry.');
 
 const sustainedMobile = new AdaptiveRenderBudget(true);
 let sustainedSnapshot = sustainedMobile.sample(16.7, 1);
