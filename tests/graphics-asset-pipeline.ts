@@ -206,6 +206,14 @@ for (const marker of ['jovian-harvester-storm-pressure-lock-wheel', 'jovian-harv
   assert(jovianAssetGeneratorSource.includes(`name: '${marker}'`), `Jovian Harvester P2.13 pressure silhouette marker ${marker} must remain authored`);
 }
 
+assert(manifestSource.includes("id: 'jovian-harvester-stormline-foreman'"), 'Jovian Harvester P2.14 must register a dedicated Stormline Foreman boss asset family');
+assert(manifestSource.includes('/assets/models/bosses/jovian-harvester-stormline-foreman-lod1.glb') && manifestSource.includes('/assets/models/bosses/jovian-harvester-stormline-foreman-lod2.glb'), 'Stormline Foreman must preserve adaptive LOD1/LOD2 coverage');
+assert(rendererSource.includes("mission.deepTarget !== 'Stormline Foreman Ilex'"), 'Stormline Foreman authored presentation must remain scoped to the Chapter 2 Jovian contract');
+assert(rendererSource.includes("dataset.bossPresentation = 'stormline-foreman-ilex'"), 'Stormline Foreman authored presentation must be observable for runtime QA');
+assert(rendererSource.includes("dataset.bossSilhouette = 'storm-cowl+pressure-crown+relief-stacks'"), 'Stormline Foreman must expose his authored pressure-work silhouette');
+assert(rendererSource.includes("visual.authoredAssetId === 'jovian-harvester-stormline-foreman'"), 'Stormline Foreman must receive a dedicated phase-aware presentation palette');
+assert(jovianAssetGeneratorSource.includes("name: 'jovian-harvester-stormline-foreman-storm-cowl'"), 'Stormline Foreman P2.14 must preserve the authored storm-cowl silhouette marker');
+
 assert(rendererSource.includes('SPIN_HABITAT_ASSET_FAMILIES'), 'Spin Habitat must load through authored environment asset families');
 for (const asset of ['spin-habitat-ring-segment', 'spin-habitat-spoke-truss', 'spin-habitat-axis-hub', 'spin-habitat-service-bay']) {
   assert(manifestSource.includes(`${asset}-lod1.glb`) && manifestSource.includes(`${asset}-lod2.glb`), `Spin Habitat asset ${asset} must preserve adaptive LOD1/LOD2 coverage`);
