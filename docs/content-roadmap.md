@@ -351,16 +351,16 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.167**
+- Android beta: **0.0.1-beta.168**
 - Package: `app.ironshade.vector`
-- Verified: P2.15 persistent Jovian Harvester atmospheric effects (upper haze, pressure-cloud filaments, charged particulate, skimmer-spine haze), live storm/pressure modulation, adaptive mobile/render-budget density, static graphics/render-performance regression coverage, full production regression/build, desktop + mobile-landscape Browser E2E on PR and merged `main`, Level 15 beta smoke, Android beta.167 package/version/SDK/signature checks, Android emulator runtime smoke, Chapter 3 touch playthrough, and retained browser/Android QA artifacts
+- Verified: P2.16 dedicated Jovian Harvester mobile/performance profile; coarse/mobile authored environment LOD2; 19-piece Full vs. 13-piece Balanced/mobile/Performance structural budgets while preserving all five skimmer towers; structural shadows disabled outside Full; procedural fallback shadow budgeting; existing storm-pressure and atmospheric density reductions; deterministic render-profile/static regression coverage; PR and merged-`main` desktop + mobile-landscape Browser E2E with live LOD/instance/shadow assertions; Level 15 beta smoke; Android beta.168 package/version/SDK/signature checks; native emulator runtime smoke; Chapter 3 touch playthrough; retained browser/Android QA artifacts
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P2.15 final verified implementation head: `f06d6a1cf9d725e43f13329e7013fe6b24b7eb4a`
-- P2.15 merged main head: `afc08577177149c7f2159c97939a6681716f08c5`
-- PR Browser E2E run: `35483564472`
-- Browser E2E run: `35483642307`
-- Level 15 beta smoke run: `35483642286`
-- Android beta.167 run: `35483642347`
-- Android beta.167 artifact ID: `10596726576`
-- Android beta.167 artifact head: `afc08577177149c7f2159c97939a6681716f08c5`
-- APK SHA-256: `282b92a25acf89280268c115c61f5a322a5f95e0399299c68a8ca4d77387da36`
+- P2.16 final verified implementation head: `e4d8bad59bd7dc67bba2671dc65c3cf297d7c29b`
+- P2.16 merged main head: `af819c9ef5fcb5af5b8f5546228c5ccab452f6ae`
+- PR Browser E2E run: `35484445455`
+- Browser E2E run: `35484521715`
+- Level 15 beta smoke run: `35484521720`
+- Android beta.168 run: `35484521732`
+- Android beta.168 artifact ID: `10597258123`
+- Android beta.168 artifact head: `af819c9ef5fcb5af5b8f5546228c5ccab452f6ae`
+- APK SHA-256: `9adc8d54862aa61954d5a47808dc73230a43c5d96600444e627ba1a4c7aa0614`
