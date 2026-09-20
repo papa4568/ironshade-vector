@@ -393,16 +393,16 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.188**
+- Android beta: **0.0.1-beta.189**
 - Package: `app.ironshade.vector`
-- Verified: Megastructure capstone **P4.15–P4.16** is complete. Stage handoffs now use explicit internal-transit briefings with authored route continuity, carried suit/telemetry state, service recovery, and destination arrival cues instead of instant biome swaps. Environmental continuity now layers authored consequences from each connected space into the existing mission-condition system: pressure debt, gravity trim loss, damaged-grid arc risk, and visibility degradation can persist deeper into Perseid, K-91, Orpheline, and Hecate without duplicating gameplay systems. Dedicated continuity regression, PR desktop + mobile-landscape Browser E2E, merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.188 package/version/SDK/signature verification, native emulator install/launch smoke, and the Chapter 3 touch playthrough all passed. The next roadmap slice is **P4.17 — Debrief improvements**.
+- Verified: Megastructure capstone **P4.17 — Debrief improvements** is complete. Megastructure extraction now produces a dedicated after-action report derived from existing expedition state: secured versus unreached spaces, optional-recovery count, safe/deep extraction state, authored finale disposition, and observed environmental-continuity consequences. The report distinguishes partial checkpoint extraction, full safe traversal with an optional command zone left sealed, K-91’s bossless Ballast Vault completion, and deep command-target defeat without adding save-schema state. Responsive route presentation is covered for narrow mobile surfaces. Deterministic gameplay regression, PR desktop + mobile-landscape Browser E2E, merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.189 package/version/SDK/signature verification, native emulator install/launch smoke, and Chapter 3 touch playthrough evidence all passed. The next roadmap slice is **P4.18 — Mobile performance**.
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P4.16 final implementation head: `65297f02e359c1d52ae01d77d59696016503e395`
-- P4.16 merged main / APK source: `59e0acb1cb03a8f30e1f638f134772631c16e0a1`
-- P4.16 PR Browser E2E run: `35529098234`
-- Final Browser E2E run: `35529205175`
-- Level 15 beta smoke run: `35529205261`
-- Android beta.188 run: `35529205255`
-- Android beta.188 artifact ID: `10610692350`
-- Android beta.188 artifact head: `59e0acb1cb03a8f30e1f638f134772631c16e0a1`
-- APK SHA-256: `9925f74bbe38dd7a7e45b606abcf17940cc400188d33b0cfb2abed2927c250af`
+- P4.17 final implementation head: `80ed318a08b6fdad47eef7a3224eb231130b6c6d`
+- P4.17 merged main / APK source: `cb2fb47f55d65b3c83a044b6e5cbf0d1c803f3cd`
+- P4.17 PR Browser E2E run: `35530093100`
+- Final Browser E2E run: `35530328196`
+- Level 15 beta smoke run: `35530328175`
+- Android beta.189 run: `35530328181`
+- Android beta.189 artifact ID: `10610539480`
+- Android beta.189 artifact head: `cb2fb47f55d65b3c83a044b6e5cbf0d1c803f3cd`
+- APK SHA-256: `90ae16b70318e5a34d9674d0738ce3f7d9e41f388e1f0826fca4b378e7a270be`
