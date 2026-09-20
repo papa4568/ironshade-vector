@@ -237,7 +237,10 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] P4.2 Perseid stage-specific encounter/event identity
 - [x] P4.3 Perseid Steward Core finale
 - [x] P4.4 Perseid adaptive render/regression coverage
-- [ ] P4.5–P4.8 K-91
+- [x] P4.5 K-91 counterweight continuity layer
+- [x] P4.6 K-91 stage-specific encounter/event identity
+- [x] P4.7 K-91 bossless Ballast Vault traverse finale
+- [x] P4.8 K-91 adaptive render/regression coverage
 - [ ] P4.9–P4.11 Orpheline
 - [ ] P4.12–P4.14 Hecate
 - [ ] P4.15 Stage transitions
@@ -310,7 +313,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1, P2, and P3 are complete, and **P4.1–P4.4 — Perseid** is delivered. Continue in roadmap order with **P4.5–P4.8 — K-91**.
+P1, P2, and P3 are complete, and **P4.1–P4.8 — Perseid + K-91** is delivered. Continue in roadmap order with **P4.9–P4.11 — Orpheline**.
+
+**P4.5–P4.8 delivered:** Orbital Elevator Counterweight K-91 now reads as one continuous tumbling mass instead of four unrelated reused biomes. A dedicated counterweight capstone profile carries the same load spine, paired countermass rails, and amber inertial datum through Capture Collar, Mass Transit Spine, Power Transfer Gallery, and Ballast Vault while layering stage-specific capture jaws, mass carriages, lift-bus hardware, and ballast restraints. Each space now overrides generic sector naming and carries K-91 inertial event language with physical vector/gravity/grid hazards; stage two fields the K-91 Mass-Transit Warden. The finale deliberately remains bossless: the Ballast Vault ends on a high-pressure ballast-shift survival/recovery beat, matching the site premise that the value is surviving the full traverse rather than hunting a command target. Full/Balanced/mobile/Performance profiles trim repeated rails, datum lights, props, and structural shadows without losing the counterweight silhouette. Gameplay and render regressions cover all four spaces, the bossless final contract, inertial events, runtime continuity telemetry, and mobile performance profile. The next capstone slice is P4.9–P4.11 Orpheline.
 
 **P4.1–P4.4 delivered:** Generation Ship Perseid now reads as one continuous derelict instead of four unrelated reused biomes. A dedicated capstone profile overlays the same keel spine, pressure ribs, and green transit datum across Docking Spine, Agricultural Drum, Cryogenic Service Deck, and Reactor Choir while adding stage-specific docking, agriculture, cryogenic, and harmonic-reactor dressing. Each space now overrides generic sector naming, carries its own Perseid event language and local hazard beat, preserves the stage-two guaranteed elite as the Perseid Drum Warder, and culminates in a dedicated Perseid Steward Core boss variant with pressure, gravity, and reactor-choir phase mechanics. The continuity layer has Full/Balanced/mobile/Performance budgets that trim repeated ribs, guide lights, props, and structural shadows without removing stage identity. Gameplay and render regressions cover the four-stage route, optional recovery, elite, Steward Core, ship events, runtime continuity telemetry, and mobile performance profile. The next capstone slice is P4.5–P4.8 K-91.
 
