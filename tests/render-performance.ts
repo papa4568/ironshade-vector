@@ -6,6 +6,7 @@ import { jovianHarvesterRenderProfile, jovianHarvesterStormState } from '../src/
 import { solarYardRenderProfile } from '../src/game/solarYardVisualProfile';
 import { perseidRenderProfile } from '../src/game/perseidCapstone';
 import { k91RenderProfile } from '../src/game/k91Capstone';
+import { orphelineRenderProfile } from '../src/game/orphelineCapstone';
 
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
@@ -224,6 +225,22 @@ assert(rendererSource.includes("dataset.megastructureIdentity = 'counterweight:k
 assert(rendererSource.includes("dataset.megastructureContinuity = 'load-spine+countermass-rails+amber-inertial-datum'"), 'K-91 runtime QA must expose its cross-stage continuity language.');
 assert(rendererSource.includes('dataset.megastructureStageKit = stage.kit.join'), 'K-91 runtime QA must expose the active stage-specific visual kit.');
 assert(rendererSource.includes('rails-${profile.railPairs}:guides-${profile.datumLights}'), 'K-91 runtime QA must expose its adaptive mobile performance profile.');
+
+const fullOrphelineProfile = orphelineRenderProfile(1, false);
+assert(fullOrphelineProfile.name === 'full' && fullOrphelineProfile.rockRibs === 7 && fullOrphelineProfile.utilityLights === 10, 'desktop Orpheline must preserve the complete hidden-habitat continuity frame.');
+assert(fullOrphelineProfile.stageProps === 8 && fullOrphelineProfile.castStructuralShadows, 'desktop Orpheline must keep full improvised habitat dressing and structural shadows.');
+
+const mobileOrphelineProfile = orphelineRenderProfile(0.72, true);
+assert(mobileOrphelineProfile.name === 'mobile' && mobileOrphelineProfile.rockRibs === 4 && mobileOrphelineProfile.utilityLights === 6, 'mobile Orpheline must trim repeated rock ribs and utility markers.');
+assert(mobileOrphelineProfile.stageProps === 5 && !mobileOrphelineProfile.castStructuralShadows, 'mobile Orpheline must preserve stage identity while removing structural shadow cost.');
+
+const performanceOrphelineProfile = orphelineRenderProfile(0.5, true);
+assert(performanceOrphelineProfile.name === 'performance' && performanceOrphelineProfile.rockRibs === 3 && performanceOrphelineProfile.stageProps === 3, 'Orpheline Performance mode must retain the minimum recognizable hidden-habitat silhouette.');
+assert(!performanceOrphelineProfile.castStructuralShadows, 'Orpheline Performance mode must not restore structural shadows.');
+assert(rendererSource.includes('this.addOrphelineCapstoneScenery(mission, world.w, world.h, budget.detailScale)'), 'Orpheline continuity scenery must layer over every reused stage biome.');
+assert(rendererSource.includes("dataset.megastructureIdentity = 'hidden-habitat:orpheline'"), 'Orpheline runtime QA must expose the megastructure identity.');
+assert(rendererSource.includes("dataset.megastructureContinuity = 'rock-cut-spine+violet-utility-trunk+white-occupancy-marks'"), 'Orpheline runtime QA must expose its cross-stage continuity language.');
+assert(rendererSource.includes('ribs-${profile.rockRibs}:guides-${profile.utilityLights}'), 'Orpheline runtime QA must expose its adaptive mobile performance profile.');
 
 const sustainedMobile = new AdaptiveRenderBudget(true);
 let sustainedSnapshot = sustainedMobile.sample(16.7, 1);
