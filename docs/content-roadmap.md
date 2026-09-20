@@ -309,7 +309,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 P1 and P2 are complete, and **Ice Mine P3.1 assets** are delivered. Continue in roadmap order with **P3.2 — Bore/tunnel geometry**, then P3.3–P3.6 to finish the Ice Mine before starting Solar Yard.
 
-**P3.1 delivered:** Ice Mine now has a reusable authored static environment asset kit with frost walls, structural support frames, service decks, and ice pillars. All four families generate adaptive LOD1/LOD2 GLBs with cold-rock, support-steel, frost-ice, and cyan-readability material identities plus deterministic silhouette markers. Generated-content and static asset-pipeline regressions verify the kit and mobile LOD reduction, and the PR full regression/production build is green. Bore/tunnel runtime composition remains P3.2; brittle support destruction, cryogenic machinery, collapse/fracture effects, and Rhea Kade presentation remain P3.3–P3.6.\n\n**P2.16 delivered:** Jovian Harvester now has a dedicated adaptive biome render profile instead of inheriting the generic scene budget unchanged. Full desktop preserves the 19-piece authored structural composition; Balanced, coarse/mobile, and Performance profiles trim non-landmark deck/bridge/ballast placements to 13 pieces while preserving all five skimmer towers. Coarse/mobile forces authored environment LOD2, non-Full profiles disable structural shadow casters, and the procedural fallback follows the same shadow policy. Existing P2.12 storm-pressure and P2.15 atmosphere density reductions remain layered on top. Deterministic render-profile regressions and desktop/mobile-landscape browser runtime QA now assert the active LOD, structural instance budget, and shadow budget. P2 is complete; the next implementation target is P3.1 Ice Mine assets.
+**P3.1 delivered:** Ice Mine now has a reusable authored static environment asset kit with frost walls, structural support frames, service decks, and ice pillars. All four families generate adaptive LOD1/LOD2 GLBs with cold-rock, support-steel, frost-ice, and cyan-readability material identities plus deterministic silhouette markers. Generated-content and static asset-pipeline regressions verify the kit and mobile LOD reduction, and the PR full regression/production build is green. Bore/tunnel runtime composition remains P3.2; brittle support destruction, cryogenic machinery, collapse/fracture effects, and Rhea Kade presentation remain P3.3–P3.6.
+
+**P2.16 delivered:** Jovian Harvester now has a dedicated adaptive biome render profile instead of inheriting the generic scene budget unchanged. Full desktop preserves the 19-piece authored structural composition; Balanced, coarse/mobile, and Performance profiles trim non-landmark deck/bridge/ballast placements to 13 pieces while preserving all five skimmer towers. Coarse/mobile forces authored environment LOD2, non-Full profiles disable structural shadow casters, and the procedural fallback follows the same shadow policy. Existing P2.12 storm-pressure and P2.15 atmosphere density reductions remain layered on top. Deterministic render-profile regressions and desktop/mobile-landscape browser runtime QA now assert the active LOD, structural instance budget, and shadow budget. P2 is complete; the next implementation target is P3.1 Ice Mine assets.
 
 **P2.15 delivered:** Jovian Harvester now has a persistent atmospheric layer distinct from the reactive P2.12 storm/pressure effects: broad upper-atmosphere pressure-cloud filaments, slow charged particulate, and skimmer-spine haze. Ambient motion uses low-frequency crosswind drift / pressure breathing / charged drift and is subtly modulated by live storm charge and pressure shear without becoming event-only VFX. Density scales through the existing render budget (2/3/5 cloud bands and 20/36/56 motes) with deterministic coarse/mobile reduction. Static graphics and render-budget regressions, the full production build, PR and merged-main desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.167 package/version/SDK/signature verification, native emulator runtime smoke, and Chapter 3 touch playthrough are green. P2.16 remains the dedicated Jovian mobile LOD/performance pass.
 
@@ -351,16 +353,16 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.168**
+- Android beta: **0.0.1-beta.169**
 - Package: `app.ironshade.vector`
-- Verified: P2.16 dedicated Jovian Harvester mobile/performance profile; coarse/mobile authored environment LOD2; 19-piece Full vs. 13-piece Balanced/mobile/Performance structural budgets while preserving all five skimmer towers; structural shadows disabled outside Full; procedural fallback shadow budgeting; existing storm-pressure and atmospheric density reductions; deterministic render-profile/static regression coverage; PR and merged-`main` desktop + mobile-landscape Browser E2E with live LOD/instance/shadow assertions; Level 15 beta smoke; Android beta.168 package/version/SDK/signature checks; native emulator runtime smoke; Chapter 3 touch playthrough; retained browser/Android QA artifacts
+- Verified: P3.1 Ice Mine authored static environment asset kit with frost walls, structural support frames, service decks, and ice pillars; adaptive LOD1/LOD2 generation and manifest registration for all four families; frozen-rock / support-steel / service-deck / frost-ice / cold-cyan material identity; deterministic silhouette and mobile payload/draw-surface regressions; PR and merged-`main` desktop + mobile-landscape Browser E2E; Level 15 beta smoke; Android beta.169 package/version/SDK/signature checks; native emulator runtime smoke; Chapter 3 touch playthrough; retained browser/Android QA artifacts. Runtime bore/tunnel composition remains P3.2.
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P2.16 final verified implementation head: `e4d8bad59bd7dc67bba2671dc65c3cf297d7c29b`
-- P2.16 merged main head: `af819c9ef5fcb5af5b8f5546228c5ccab452f6ae`
-- PR Browser E2E run: `35484445455`
-- Browser E2E run: `35484521715`
-- Level 15 beta smoke run: `35484521720`
-- Android beta.168 run: `35484521732`
-- Android beta.168 artifact ID: `10597258123`
-- Android beta.168 artifact head: `af819c9ef5fcb5af5b8f5546228c5ccab452f6ae`
-- APK SHA-256: `9adc8d54862aa61954d5a47808dc73230a43c5d96600444e627ba1a4c7aa0614`
+- P3.1 final implementation head: `a8679d3c9683bab032c8af55850f218c9b46230b`
+- P3.1 merged main head: `cac06486ca3cd330b371f8864d9a7f73af6f9517`
+- PR Browser E2E run: `35485679545`
+- Browser E2E run: `35485749066`
+- Level 15 beta smoke run: `35485749051`
+- Android beta.169 run: `35485749060`
+- Android beta.169 artifact ID: `10597875182`
+- Android beta.169 artifact head: `cac06486ca3cd330b371f8864d9a7f73af6f9517`
+- APK SHA-256: `6fb72d90de420946602ac2830627768d42a206c3a51b2aa863ea5a3a561d2bb4`
