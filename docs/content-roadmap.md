@@ -393,16 +393,16 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.189**
+- Android beta: **0.0.1-beta.190**
 - Package: `app.ironshade.vector`
-- Verified: Megastructure capstone **P4.17 — Debrief improvements** is complete. Megastructure extraction now produces a dedicated after-action report derived from existing expedition state: secured versus unreached spaces, optional-recovery count, safe/deep extraction state, authored finale disposition, and observed environmental-continuity consequences. The report distinguishes partial checkpoint extraction, full safe traversal with an optional command zone left sealed, K-91’s bossless Ballast Vault completion, and deep command-target defeat without adding save-schema state. Responsive route presentation is covered for narrow mobile surfaces. Deterministic gameplay regression, PR desktop + mobile-landscape Browser E2E, merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.189 package/version/SDK/signature verification, native emulator install/launch smoke, and Chapter 3 touch playthrough evidence all passed. The next roadmap slice is **P4.18 — Mobile performance**.
+- Verified: Megastructure capstone **P4.18 — Mobile performance** is complete. Repeated continuity scenery for Perseid, K-91, Orpheline, and Hecate now uses shared Three.js instanced batches instead of one mesh per repeated structural element, while the existing mobile/performance profiles preserve each capstone silhouette and trim density. Capstone overlays also stop receiving structural shadows whenever the active profile disables structural shadowing. Runtime QA exposes `instanced-continuity` batching plus continuity draw-call ceilings of 2 for Perseid/K-91, 4 for Orpheline, and 5 for Hecate. Deterministic render-performance regression, PR desktop + mobile-landscape Browser E2E, merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.190 package/version/SDK/signature verification, native emulator install/launch smoke, and Android touch smoke all passed. **P4 is complete; the next roadmap slice is P5.1 — Vanguard third specialization.**
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P4.17 final implementation head: `80ed318a08b6fdad47eef7a3224eb231130b6c6d`
-- P4.17 merged main / APK source: `cb2fb47f55d65b3c83a044b6e5cbf0d1c803f3cd`
-- P4.17 PR Browser E2E run: `35530093100`
-- Final Browser E2E run: `35530328196`
-- Level 15 beta smoke run: `35530328175`
-- Android beta.189 run: `35530328181`
-- Android beta.189 artifact ID: `10610539480`
-- Android beta.189 artifact head: `cb2fb47f55d65b3c83a044b6e5cbf0d1c803f3cd`
-- APK SHA-256: `90ae16b70318e5a34d9674d0738ce3f7d9e41f388e1f0826fca4b378e7a270be`
+- P4.18 final implementation head: `95b111d4c9869201e48bf2f2734d955274ab1e88`
+- P4.18 merged main / APK source: `e01fcabf0c9cf736f3b16ccbe74cc9544f50d612`
+- P4.18 PR Browser E2E run: `35531062412`
+- Final Browser E2E run: `35531158839`
+- Level 15 beta smoke run: `35531158789`
+- Android beta.190 run: `35531158853`
+- Android beta.190 artifact ID: `10611441358`
+- Android beta.190 artifact head: `e01fcabf0c9cf736f3b16ccbe74cc9544f50d612`
+- APK SHA-256: `cae453c3f30f05de39d68992e8cbefb0aa45caf0ba22311420fbcfd25c0992d1`
