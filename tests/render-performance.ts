@@ -259,6 +259,36 @@ assert(rendererSource.includes("dataset.megastructureIdentity = 'shipbreaking-ya
 assert(rendererSource.includes("dataset.megastructureContinuity = 'salvage-truss-spine+red-clamp-arms+yellow-cutter-datum'"), 'Hecate runtime QA must expose its cross-stage continuity language.');
 assert(rendererSource.includes('trusses-${profile.trussPairs}:guides-${profile.cutterDatums}'), 'Hecate runtime QA must expose its adaptive mobile performance profile.');
 
+const megastructureBatchLabels = [
+  'perseid-ribs',
+  'perseid-guides',
+  'k91-rails',
+  'k91-datum',
+  'orpheline-rock-ribs',
+  'orpheline-patched-ribs',
+  'orpheline-occupancy',
+  'orpheline-utility',
+  'hecate-trusses',
+  'hecate-hulls',
+  'hecate-clamps',
+  'hecate-clamp-datum',
+  'hecate-cutter-datum',
+];
+assert(rendererSource.includes('private addMegastructureInstanceBatch('), 'P4.18 must share one instanced continuity batching path across all four megastructures.');
+assert(rendererSource.includes('new THREE.InstancedMesh(geometry, material, placements.length)'), 'P4.18 continuity batching must reduce repeated capstone meshes to instanced draw calls.');
+assert(megastructureBatchLabels.every(label => rendererSource.includes(`'${label}'`)), 'P4.18 must batch every repeated Perseid, K-91, Orpheline, and Hecate continuity motif.');
+assert(rendererSource.includes('mesh.receiveShadow = castShadow'), 'P4.18 batched capstone scenery must drop shadow-receiver cost when the mobile/performance profile disables structural shadows.');
+assert((rendererSource.match(/dataset\.megastructureBatching = 'instanced-continuity'/g) ?? []).length === 4, 'all four megastructures must expose instanced-continuity runtime telemetry.');
+assert((rendererSource.match(/dataset\.megastructureContinuityDrawCalls/g) ?? []).length === 4, 'all four megastructures must expose their continuity draw-call budget.');
+assert(rendererSource.includes("dataset.megastructureContinuityDrawCalls = '2'") && rendererSource.includes("dataset.megastructureContinuityDrawCalls = '4'") && rendererSource.includes("dataset.megastructureContinuityDrawCalls = '5'"), 'P4.18 draw-call telemetry must preserve the 2/4/5 batch ceilings used by the capstone families.');
+
+const mobilePerseidContinuityInstances = mobilePerseidProfile.ribPairs * 2 + mobilePerseidProfile.guideLights;
+const mobileK91ContinuityInstances = mobileK91Profile.railPairs * 2 + mobileK91Profile.datumLights;
+const mobileOrphelineContinuityInstances = mobileOrphelineProfile.rockRibs * 2 + mobileOrphelineProfile.utilityLights;
+const mobileHecateContinuityInstances = mobileHecateProfile.trussPairs * 2 + Math.ceil(mobileHecateProfile.trussPairs / 2) * 2 + mobileHecateProfile.cutterDatums;
+assert(mobilePerseidContinuityInstances === 14 && mobileK91ContinuityInstances === 14, 'mobile Perseid and K-91 continuity silhouettes must retain fourteen visible repeated instances while batching them into two draws.');
+assert(mobileOrphelineContinuityInstances === 14 && mobileHecateContinuityInstances === 18, 'mobile Orpheline and Hecate must retain recognizable continuity density while batching repeated geometry.');
+
 const sustainedMobile = new AdaptiveRenderBudget(true);
 let sustainedSnapshot = sustainedMobile.sample(16.7, 1);
 for (let index = 0; index < 60 * 10; index += 1) sustainedSnapshot = sustainedMobile.sample(18.2, 1);
