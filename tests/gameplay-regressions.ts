@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { buyConsumable, createDefaultCampaign, loadCampaign, saveCampaign } from '../src/game/campaign';
+import { buyConsumable, createDefaultCampaign, generateContracts, loadCampaign, saveCampaign } from '../src/game/campaign';
 import { aimAtMobileTarget, applyPlayerDamage, createSimulation, stepSimulation, triggerAbility, triggerConsumable, triggerDodge, triggerFire, weaponConfigs, type Telemetry } from '../src/game/sim';
+import { applyMissionSetup, createDirector, stepMissionDirector } from '../src/game/director';
 import { awardRecovery, createDefaultProfile, deriveCombatBuild, loadProfile, saveProfile } from '../src/game/meta';
 import { CAMPAIGN_STORAGE_KEY, GAME_STATE_STORAGE_KEY, prepareSaveRecovery, PROFILE_STORAGE_KEY } from '../src/game/saveRecovery';
 import { loadGameState, saveGameState } from '../src/game/gamePersistence';
@@ -346,6 +347,58 @@ function parallaxSpecializationSmoke() {
   assert.equal(conductorState.hazards[0].active, false, 'Capacitor Conductor three-link sequence should short a nearby Parallax reference field.');
 }
 parallaxSpecializationSmoke();
+
+function iceMineBrittleSupportSmoke() {
+  const campaign = createDefaultCampaign();
+  campaign.cycle = 3;
+  const contract = generateContracts(campaign).find(candidate => candidate.location === 'ice-mine');
+  assert.ok(contract, 'Cycle 3 should expose an Ice Mine contract for brittle-support regression coverage.');
+
+  const playerOpened = createSimulation();
+  applyMissionSetup(playerOpened, contract);
+  const supportA = playerOpened.objects.find(object => object.id === 'ice-brittle-gate-a');
+  const supportB = playerOpened.objects.find(object => object.id === 'ice-brittle-gate-b');
+  assert.ok(supportA && supportB, 'Ice Mine must spawn both brittle support gates.');
+  assert.equal(supportA.material, 'light');
+  assert.equal(supportA.destructible, true);
+  assert.equal(supportA.active, true);
+  assert.equal(supportA.hp, 68);
+
+  for (const enemy of playerOpened.enemies) enemy.active = false;
+  for (const object of playerOpened.objects) object.active = object.id === supportA.id;
+  playerOpened.player.currentWeapon = 'rail';
+  for (let shot = 0; shot < 2; shot += 1) {
+    playerOpened.player.x = supportA.x - 160;
+    playerOpened.player.y = supportA.y + supportA.h / 2;
+    playerOpened.player.vx = 0;
+    playerOpened.player.vy = 0;
+    playerOpened.player.aim = { x: 1, y: 0 };
+    playerOpened.player.fireCooldown = 0;
+    playerOpened.player.reloadT = 0;
+    playerOpened.player.ventT = 0;
+    playerOpened.player.capacitor = playerOpened.player.maxCapacitor;
+    playerOpened.player.weaponHeat.rail = 0;
+    playerOpened.player.mags.rail = Math.max(1, playerOpened.player.mags.rail);
+    assert.equal(triggerFire(playerOpened), true, 'Rail fire should be able to damage an Ice Mine brittle support.');
+    for (let tick = 0; tick < 30; tick += 1) stepSimulation(playerOpened, 0.01);
+  }
+  assert.equal(supportA.hp, 0, 'Two direct rail impacts should fracture the light Ice Mine support.');
+  assert.equal(supportA.active, false, 'Player destruction must remove brittle support collision and open the firing lane.');
+  assert.match(playerOpened.eventText, /LINE OF FIRE OPEN/, 'Player-opened brittle support lane needs explicit combat feedback.');
+
+  const timedShear = createSimulation();
+  applyMissionSetup(timedShear, contract);
+  const timedSupports = timedShear.objects.filter(object => object.id === 'ice-brittle-gate-a' || object.id === 'ice-brittle-gate-b');
+  assert.equal(timedSupports.length, 2, 'Timed Ice Mine shear must address both brittle supports.');
+  timedSupports[0].active = false;
+  timedSupports[0].hp = 0;
+  const runtime = createDirector();
+  stepMissionDirector(timedShear, runtime, contract, 14);
+  assert.equal(runtime.locationEventA, true, 'Ice Mine shear event should fire at the authored 14 second mark.');
+  assert.equal(timedSupports.every(object => !object.active), true, 'Timed shear must collapse every brittle support that remains standing.');
+  assert.equal(timedSupports.filter(object => object.active).length, 0, 'Timed shear must deterministically leave both authored support lanes open even if a later director event replaces the HUD message.');
+}
+iceMineBrittleSupportSmoke();
 
 const healState = createSimulation();
 healState.player.hp = 25;

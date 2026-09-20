@@ -179,7 +179,7 @@ for (const marker of ['ice-mine-frost-wall-rock', 'ice-mine-support-frame-crown'
 }
 
 assert(rendererSource.includes('ICE_MINE_ASSET_FAMILIES'), 'Ice Mine P3.2 must load the authored environment kit at runtime');
-assert(rendererSource.includes('loadAuthoredIceMineEnvironment(world.w, world.h, budget.detailScale)'), 'Ice Mine P3.2 must route combat rendering through authored bore/tunnel composition');
+assert(rendererSource.includes('loadAuthoredIceMineEnvironment(state, world.w, world.h, budget.detailScale)'), 'Ice Mine P3.2 must route combat rendering through authored bore/tunnel composition');
 assert(rendererSource.includes("dataset.environmentVisual = 'authored-ice-mine'"), 'Ice Mine P3.2 authored activation must remain observable');
 assert(rendererSource.includes("dataset.environmentKit = 'frost-wall,support-frame,service-deck,ice-pillar'"), 'Ice Mine P3.2 runtime kit identity must remain explicit');
 assert(rendererSource.includes("dataset.environmentComposition = 'access-bore+reinforced-extraction-tunnel+subglacial-vault'"), 'Ice Mine P3.2 must preserve the three-zone mine composition');
@@ -188,6 +188,13 @@ assert(rendererSource.includes("dataset.environmentZoneIdentity = 'access-bore:f
 assert(rendererSource.includes("dataset.readabilityLanguage = 'frost-wall-corridor+support-frame-rhythm+cyan-service-deck+vault-pillars'"), 'Ice Mine P3.2 screenshot readability language must remain explicit');
 assert(rendererSource.includes('this.proceduralRefineryVisuals.push(...iceMineFallback)'), 'Ice Mine P3.2 must retain procedural scenery as an authored-load fallback');
 assert(rendererSource.includes('this.coarse ? Math.min(detailScale, 0.55) : detailScale'), 'Ice Mine P3.2 coarse/mobile runtime must force the authored mobile LOD');
+
+assert(rendererSource.includes('iceMineBrittleSupportVisuals = new Map'), 'Ice Mine P3.3 must keep authored brittle support visuals addressable by gameplay object id');
+assert(rendererSource.includes("this.iceMineBrittleSupportVisuals.set(support.id, root)"), 'Ice Mine P3.3 must bind brittle gameplay supports to authored support-frame roots');
+assert(rendererSource.includes('syncIceMineBrittleSupports(state, mission)'), 'Ice Mine P3.3 must synchronize authored support visibility from live simulation state');
+assert(rendererSource.includes('dataset.environmentBrittleSupports'), 'Ice Mine P3.3 support destruction must expose deterministic runtime QA telemetry');
+assert(rendererSource.includes('dataset.environmentBrittleSupportState'), 'Ice Mine P3.3 must expose intact/partial/cleared support state');
+assert(rendererSource.includes("mission.location === 'ice-mine' && this.iceMineBrittleSupportVisuals.has(object.id)"), 'Ice Mine P3.3 authored supports must suppress duplicate procedural collision-box visuals once loaded');
 
 assert(rendererSource.includes('JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES'), 'Jovian Harvester P2.11 must select dedicated authored gas machinery families');
 for (const asset of ['jovian-harvester-storm-bus-isolator', 'jovian-harvester-deck-mass-trim', 'jovian-harvester-skimmer-compressor', 'jovian-harvester-separator-package']) {
