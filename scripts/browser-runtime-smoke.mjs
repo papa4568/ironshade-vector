@@ -657,9 +657,15 @@ try {
         && canvas?.dataset.interactableBiome === 'jovian-harvester'
         && canvas?.dataset.interactableMode === 'jovian-gas-machinery+mission-controls'
         && canvas?.dataset.interactableKit === 'storm-bus-isolator+deck-mass-trim+skimmer-compressor+separator-package'
+        && canvas?.dataset.interactablePressureKit === 'storm-pressure-lock+relief-manifold'
+        && canvas?.dataset.interactablePressureSource === 'live-pressure-links+breach-state+sector-pressure'
+        && ['normal', 'leaking', 'decompressing', 'vacuum', 'venting'].includes(canvas?.dataset.interactablePressureState ?? '')
+        && ['open', 'sealed'].includes(canvas?.dataset.interactablePressureDoor ?? '')
         && canvas?.dataset.interactableVisual === 'authored'
         && !(canvas?.dataset.interactableFallback ?? '')
         && (canvas?.dataset.interactableAssets ?? '').includes('jovian-harvester-deck-mass-trim-lod')
+        && (canvas?.dataset.interactableAssets ?? '').includes('jovian-harvester-storm-pressure-lock-lod')
+        && (canvas?.dataset.interactableAssets ?? '').includes('jovian-harvester-relief-manifold-lod')
         && Number(canvas?.dataset.environmentInstances) > 0
         && ['1', '2'].includes(canvas?.dataset.environmentLod ?? '');
     })()`, 'Jovian Harvester authored environment and gas machinery kit', 20_000);
@@ -671,6 +677,9 @@ try {
         kit: canvas?.dataset.environmentKit ?? '',
         composition: canvas?.dataset.environmentComposition ?? '',
         machinery: canvas?.dataset.interactableAssets ?? '',
+        pressureKit: canvas?.dataset.interactablePressureKit ?? '',
+        pressureState: canvas?.dataset.interactablePressureState ?? '',
+        pressureDoor: canvas?.dataset.interactablePressureDoor ?? '',
         stormMode: canvas?.dataset.environmentStormMode ?? '',
         stormIntensity: Number(canvas?.dataset.environmentStormIntensity),
         pressureShear: Number(canvas?.dataset.environmentPressureShear),
@@ -684,7 +693,7 @@ try {
     if (viewportMode === 'mobile-landscape' && jovianEnvironment?.stormDetail !== '2-sweeps+2-bands+relief-pulse') {
       throw new Error(`Jovian Harvester mobile storm/pressure detail did not reduce: ${JSON.stringify(jovianEnvironment)}`);
     }
-    console.log(`BROWSER_JOVIAN_HARVESTER_PASS viewport=${viewportMode} lod=${jovianEnvironment?.lod} instances=${jovianEnvironment?.instances} kit=${jovianEnvironment?.kit} composition=${jovianEnvironment?.composition} machinery=${jovianEnvironment?.machinery} storm=${jovianEnvironment?.stormMode}:${jovianEnvironment?.stormIntensity.toFixed(2)} shear=${jovianEnvironment?.pressureShear.toFixed(2)} range=${jovianEnvironment?.pressureRange} detail=${jovianEnvironment?.stormDetail}`);
+    console.log(`BROWSER_JOVIAN_HARVESTER_PASS viewport=${viewportMode} lod=${jovianEnvironment?.lod} instances=${jovianEnvironment?.instances} kit=${jovianEnvironment?.kit} composition=${jovianEnvironment?.composition} machinery=${jovianEnvironment?.machinery} pressureKit=${jovianEnvironment?.pressureKit} pressure=${jovianEnvironment?.pressureState} door=${jovianEnvironment?.pressureDoor} storm=${jovianEnvironment?.stormMode}:${jovianEnvironment?.stormIntensity.toFixed(2)} shear=${jovianEnvironment?.pressureShear.toFixed(2)} range=${jovianEnvironment?.pressureRange} detail=${jovianEnvironment?.stormDetail}`);
   }
 
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);
