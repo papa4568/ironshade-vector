@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { buildMegastructureDebrief, buyConsumable, createDefaultCampaign, generateContracts, getMegastructureStageContract, loadCampaign, saveCampaign } from '../src/game/campaign';
 import { aimAtMobileTarget, applyPlayerDamage, createSimulation, stepSimulation, triggerAbility, triggerConsumable, triggerDodge, triggerFire, weaponConfigs, type Telemetry } from '../src/game/sim';
 import { applyMissionSetup, createDirector, stepMissionDirector } from '../src/game/director';
-import { awardRecovery, createDefaultProfile, deriveCombatBuild, loadProfile, saveProfile, setAbilityMod, setOperatorClass, vanguardCapstoneInteractionFor } from '../src/game/meta';
+import { awardRecovery, createDefaultProfile, deriveCombatBuild, loadProfile, saveProfile, setAbilityMod, setOperatorClass, systemsCapstoneInteractionFor, vanguardCapstoneInteractionFor } from '../src/game/meta';
 import { CAMPAIGN_STORAGE_KEY, GAME_STATE_STORAGE_KEY, prepareSaveRecovery, PROFILE_STORAGE_KEY } from '../src/game/saveRecovery';
 import { loadGameState, saveGameState } from '../src/game/gamePersistence';
 import { carryExpeditionLoot } from '../src/game/expeditionCarry';
@@ -601,6 +601,112 @@ function systemsSkillEvolutionSmoke() {
   assert.equal(genericSwitched.abilityMods.arc, 'arc-ground', 'Switching class should preserve shared Skill Lenses after Systems evolution support.');
 }
 systemsSkillEvolutionSmoke();
+
+function systemsCapstoneInteractionSmoke() {
+  const baseProfile = {
+    ...createDefaultProfile(),
+    xp: 8100,
+    level: 16,
+    operatorClass: 'systems' as const,
+    classSelectionComplete: true,
+    specializationOverclock: true,
+  };
+
+  const inductionProfile = setAbilityMod({ ...baseProfile, specialization: 'thermal-shunter' as const }, 'mag', 'systems-anchor-lattice');
+  assert.equal(systemsCapstoneInteractionFor(inductionProfile, inductionProfile.abilityMods.mag)?.name, 'Induction Sink');
+  const inductionState = createSimulation(deriveCombatBuild(inductionProfile));
+  for (const enemy of inductionState.enemies) enemy.active = false;
+  for (const [index, enemy] of inductionState.enemies.slice(0, 2).entries()) {
+    Object.assign(enemy, {
+      active: true,
+      dead: false,
+      variant: 'standard' as const,
+      role: 'assault' as const,
+      combatClass: 'standard' as const,
+      x: inductionState.player.x + 150 + index * 80,
+      y: inductionState.player.y + (index === 0 ? -18 : 22),
+    });
+  }
+  inductionState.player.currentWeapon = 'carbine';
+  inductionState.player.weaponHeat.carbine = 0.62;
+  inductionState.player.aim = { x: 1, y: 0 };
+  assert.equal(triggerAbility(inductionState, 0), true, 'Induction Sink should arm from a hot Anchor Lattice cast.');
+  assert.ok(inductionState.classState.systemsCrossfeed >= 3.9, 'Induction Sink should create the extended overcharged crossfire bank.');
+  assert.ok(inductionState.player.weaponHeat.carbine <= 0.48, 'Induction Sink should route additional heat for multiple lattice contacts.');
+  assert.match(inductionState.eventText, /INDUCTION SINK/, 'Induction Sink needs explicit arming feedback.');
+  inductionState.player.capacitor = 40;
+  const inductionCooldownBefore = inductionState.player.abilityCooldowns[0];
+  assert.equal(triggerFire(inductionState), true, 'Induction Sink should discharge through the next weapon shot.');
+  const inductionShot = inductionState.projectiles.find(projectile => projectile.active && projectile.owner === 'player' && projectile.weapon === 'carbine');
+  assert.ok(inductionShot, 'Induction Sink should produce the expected weapon projectile.');
+  assert.ok(Math.hypot(inductionShot.vx, inductionShot.vy) >= inductionState.weapons.carbine.projectileSpeed * 1.19, 'Induction Sink should exceed normal Thermal Crossfire projectile velocity.');
+  assert.ok(inductionShot.damage >= inductionState.weapons.carbine.damage * 1.18, 'Induction Sink should materially deepen the crossfed shot damage.');
+  assert.ok(inductionShot.penetration >= inductionState.weapons.carbine.penetration + 18, 'Induction Sink should add the combined penetration bonus.');
+  assert.ok(inductionState.player.capacitor >= 46, 'Induction Sink discharge should recycle six capacitor.');
+  assert.ok(inductionState.player.abilityCooldowns[0] <= inductionCooldownBefore - 0.69, 'Induction Sink overclock discharge should advance the arming ability further.');
+  assert.match(inductionState.eventText, /INDUCTION SINK/, 'Induction Sink needs explicit discharge feedback.');
+
+  const conductorBaseProfile = { ...baseProfile, specialization: 'capacitor-conductor' as const };
+  const recursiveProfile = setAbilityMod(conductorBaseProfile, 'mark', 'systems-recursive-intrusion');
+  assert.equal(systemsCapstoneInteractionFor(recursiveProfile, recursiveProfile.abilityMods.mark)?.name, 'Recursive Bus');
+  const conductorBaseline = createSimulation(deriveCombatBuild(conductorBaseProfile));
+  const recursiveState = createSimulation(deriveCombatBuild(recursiveProfile));
+  for (const state of [conductorBaseline, recursiveState]) {
+    for (const enemy of state.enemies) enemy.active = false;
+    for (const [index, enemy] of state.enemies.slice(0, 4).entries()) {
+      Object.assign(enemy, {
+        active: true,
+        dead: false,
+        variant: 'standard' as const,
+        role: 'assault' as const,
+        combatClass: 'standard' as const,
+        x: state.player.x + 220 + index * 70,
+        y: state.player.y + (index % 2 === 0 ? -24 : 24),
+      });
+      enemy.statuses.marked = 0;
+      enemy.statuses.disrupted = 0;
+      enemy.statuses.conductive = 0;
+    }
+    state.player.currentWeapon = 'carbine';
+    state.player.weaponHeat.carbine = 0.5;
+    state.player.capacitor = 70;
+    state.player.aim = { x: 1, y: 0 };
+  }
+  assert.equal(triggerAbility(conductorBaseline, 1), true, 'Capacitor Conductor baseline Relay Hack should cast.');
+  assert.equal(triggerAbility(recursiveState, 1), true, 'Recursive Bus should cast through Recursive Intrusion.');
+  assert.ok(recursiveState.player.capacitor > conductorBaseline.player.capacitor, 'Recursive Bus should convert propagated relays into additional capacitor recovery.');
+  assert.ok(recursiveState.player.weaponHeat.carbine < conductorBaseline.player.weaponHeat.carbine, 'Capacitor Conductor overclock should cool the weapon bus as Recursive Bus spreads.');
+  assert.match(recursiveState.eventText, /RECURSIVE BUS/, 'Recursive Bus needs explicit combat feedback.');
+
+  const meshProfile = setAbilityMod({ ...baseProfile, specialization: 'grid-weaver' as const }, 'arc', 'systems-return-current');
+  assert.equal(systemsCapstoneInteractionFor(meshProfile, meshProfile.abilityMods.arc)?.name, 'Mesh Reflux');
+  const meshState = createSimulation(deriveCombatBuild(meshProfile));
+  for (const enemy of meshState.enemies) enemy.active = false;
+  const conduit = meshState.objects.find(object => object.kind === 'conduit' || object.kind === 'anchorNode');
+  assert.ok(conduit, 'Mesh Reflux regression needs an available conduit or anchor node.');
+  Object.assign(conduit, {
+    active: true,
+    exposed: true,
+    x: meshState.player.x + 180,
+    y: meshState.player.y - conduit.h / 2,
+  });
+  const conduitX = conduit.x + conduit.w / 2;
+  const conduitY = conduit.y + conduit.h / 2;
+  const nearNode = meshState.enemies[0];
+  const remoteNode = meshState.enemies[1];
+  Object.assign(nearNode, { active: true, dead: false, x: conduitX + 80, y: conduitY, variant: 'standard' as const, role: 'assault' as const, combatClass: 'standard' as const });
+  Object.assign(remoteNode, { active: true, dead: false, x: conduitX + 360, y: conduitY + 20, variant: 'standard' as const, role: 'assault' as const, combatClass: 'standard' as const });
+  remoteNode.statuses.marked = 0;
+  remoteNode.statuses.conductive = 0;
+  meshState.player.aim = { x: 1, y: 0 };
+  meshState.player.abilityCooldowns[1] = 5;
+  meshState.player.capacitor = 40;
+  assert.equal(triggerAbility(meshState, 2), true, 'Mesh Reflux should cast Return Current through machinery.');
+  assert.ok(remoteNode.statuses.marked >= 4.1 && remoteNode.statuses.conductive >= 4.7, 'Mesh Reflux should wire the Grid Weaver remote mark into the conductive return network.');
+  assert.ok(meshState.player.abilityCooldowns[1] <= 4.5, 'Mesh Reflux should recycle Relay Hack recovery from the remote return node.');
+  assert.match(meshState.eventText, /MESH REFLUX/, 'Mesh Reflux needs explicit combat feedback.');
+}
+systemsCapstoneInteractionSmoke();
 
 function bulkheadWardenSpecializationSmoke() {
   const baseProfile = {
