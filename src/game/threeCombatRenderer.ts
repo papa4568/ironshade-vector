@@ -303,6 +303,9 @@ export class ThreeCombatRenderer {
   private jovianHarvesterLoadGeneration = 0;
   private iceMineLoadGeneration = 0;
   private solarYardLoadGeneration = 0;
+  private solarYardThermalShutterRoot: THREE.Group | null = null;
+  private solarYardThermalShutterLeft: THREE.Object3D | null = null;
+  private solarYardThermalShutterRight: THREE.Object3D | null = null;
   private readonly solarYardSunPatches: Array<THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>> = [];
   private readonly solarYardShadePatches: Array<THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>> = [];
   private readonly iceMineBrittleSupportVisuals = new Map<string, THREE.Object3D>();
@@ -576,6 +579,9 @@ export class ThreeCombatRenderer {
     this.jovianHarvesterLoadGeneration += 1;
     this.iceMineLoadGeneration += 1;
     this.solarYardLoadGeneration += 1;
+    this.solarYardThermalShutterRoot = null;
+    this.solarYardThermalShutterLeft = null;
+    this.solarYardThermalShutterRight = null;
     this.solarYardSunPatches.length = 0;
     this.solarYardShadePatches.length = 0;
     this.iceMineBrittleSupportVisuals.clear();
@@ -700,6 +706,9 @@ export class ThreeCombatRenderer {
     delete this.renderer.domElement.dataset.environmentSunMode;
     delete this.renderer.domElement.dataset.environmentSunPatches;
     delete this.renderer.domElement.dataset.environmentShadowBudget;
+    delete this.renderer.domElement.dataset.environmentThermalShutters;
+    delete this.renderer.domElement.dataset.environmentThermalProtection;
+    delete this.renderer.domElement.dataset.environmentThermalShutterControl;
     delete this.renderer.domElement.dataset.readabilityLanguage;
   }
 
@@ -1321,7 +1330,7 @@ export class ThreeCombatRenderer {
     }
   }
 
-  private async loadAuthoredSolarYardEnvironment(worldW: number, worldH: number, detailScale: number) {
+  private async loadAuthoredSolarYardEnvironment(state: SimState, worldW: number, worldH: number, detailScale: number) {
     const generation = ++this.solarYardLoadGeneration;
     this.renderer.domElement.dataset.environmentVisual = 'authored-loading';
     const assetDetailScale = this.coarse ? Math.min(detailScale, 0.55) : detailScale;
@@ -1407,7 +1416,32 @@ export class ThreeCombatRenderer {
         scale,
       }));
 
-      let instances = 0;
+      const thermalShutterControl = state.objects.find(object => object.id === 'solar-shutter');
+      if (!thermalShutterControl) throw new Error('Solar Yard thermal shutter control is missing from encounter state');
+      const thermalShutterRoot = byKey.get('thermalShutter')!.instance.root;
+      thermalShutterRoot.name = 'solar-yard-thermal-shutter-authored';
+      thermalShutterRoot.position.set(
+        scaled(thermalShutterControl.x + thermalShutterControl.w / 2),
+        0.02,
+        scaled(thermalShutterControl.y + thermalShutterControl.h / 2),
+      );
+      thermalShutterRoot.rotation.y = Math.PI / 2;
+      thermalShutterRoot.scale.setScalar(this.coarse ? 0.58 : 0.64);
+      thermalShutterRoot.traverse(child => {
+        const mesh = child as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+      });
+      this.authoredEnvironmentRoot.add(thermalShutterRoot);
+      this.solarYardThermalShutterRoot = thermalShutterRoot;
+      this.solarYardThermalShutterLeft = thermalShutterRoot.getObjectByName('solar-yard-thermal-shutter-panel-left') ?? null;
+      this.solarYardThermalShutterRight = thermalShutterRoot.getObjectByName('solar-yard-thermal-shutter-panel-right') ?? null;
+      if (!this.solarYardThermalShutterLeft || !this.solarYardThermalShutterRight) {
+        throw new Error('Authored Solar Yard thermal shutter is missing stateful panel nodes');
+      }
+
+      let instances = 1;
       instances += this.addInstancedEnvironmentAsset(byKey.get('ceramicDeck')!.instance, ceramicDeckPlacements, 'solar-yard-ceramic-deck');
       instances += this.addInstancedEnvironmentAsset(byKey.get('trussFrame')!.instance, trussFramePlacements, 'solar-yard-truss-frame');
       instances += this.addInstancedEnvironmentAsset(byKey.get('radiatorTower')!.instance, radiatorTowerPlacements, 'solar-yard-radiator-tower');
@@ -1421,15 +1455,15 @@ export class ThreeCombatRenderer {
       const lods = [...new Set(loaded.map(item => item.lod))].sort();
       this.renderer.domElement.dataset.environmentVisual = 'authored-solar-yard';
       this.renderer.domElement.dataset.environmentLod = lods.join(',');
-      this.renderer.domElement.dataset.environmentKit = 'ceramic-deck,truss-frame,radiator-tower,reflector-pylon,sinter-forge,printer-spindle,feedstock-press';
+      this.renderer.domElement.dataset.environmentKit = 'ceramic-deck,truss-frame,radiator-tower,reflector-pylon,sinter-forge,printer-spindle,feedstock-press,thermal-shutter';
       this.renderer.domElement.dataset.environmentInstances = String(instances);
       this.renderer.domElement.dataset.environmentLandmark = 'gold-reflector-pylon-row';
-      this.renderer.domElement.dataset.environmentServiceDetails = `ceramic-deck:${ceramicDeckPlacements.length}+truss-frame:${trussFramePlacements.length}+radiator-tower:${radiatorTowerPlacements.length}`;
+      this.renderer.domElement.dataset.environmentServiceDetails = `ceramic-deck:${ceramicDeckPlacements.length}+truss-frame:${trussFramePlacements.length}+radiator-tower:${radiatorTowerPlacements.length}+thermal-shutter:1`;
       this.renderer.domElement.dataset.environmentSurfaceDetail = `reflector-pylon:${reflectorPylonPlacements.length}+ceramic-deck:${ceramicDeckPlacements.length}`;
       this.renderer.domElement.dataset.environmentMachineDetail = `sinter-forge:${sinterForgePlacements.length}+printer-spindle:${printerSpindlePlacements.length}+feedstock-press:${feedstockPressPlacements.length}`;
       this.renderer.domElement.dataset.environmentComposition = 'shade-service-deck+fabrication-spine+sunward-work-yard';
       this.renderer.domElement.dataset.environmentMaterials = 'ceramic-shell+scorched-steel+black-radiator+solar-gold+heat-amber';
-      this.renderer.domElement.dataset.environmentZoneIdentity = 'shade:ceramic-deck+radiator-towers|spine:truss-frames+sinter-forges|sunward:reflector-pylons+printer-spindles+feedstock-presses';
+      this.renderer.domElement.dataset.environmentZoneIdentity = 'shade:ceramic-deck+radiator-towers+thermal-shutter|spine:truss-frames+sinter-forges|sunward:reflector-pylons+printer-spindles+feedstock-presses';
       this.renderer.domElement.dataset.readabilityLanguage = 'ceramic-deck+black-radiators+gold-reflectors+amber-hot-work';
     } catch (error) {
       loaded.forEach(item => item.instance.release());
@@ -1442,6 +1476,9 @@ export class ThreeCombatRenderer {
       this.refineryOwnedMaterials.forEach(material => material.dispose());
       this.refineryOwnedMaterials.length = 0;
       this.authoredEnvironmentRoot.clear();
+      this.solarYardThermalShutterRoot = null;
+      this.solarYardThermalShutterLeft = null;
+      this.solarYardThermalShutterRight = null;
       this.proceduralRefineryVisuals.forEach(item => { item.visible = true; });
       this.renderer.domElement.dataset.environmentVisual = 'procedural-fallback';
       delete this.renderer.domElement.dataset.environmentLandmark;
@@ -1451,6 +1488,9 @@ export class ThreeCombatRenderer {
       delete this.renderer.domElement.dataset.environmentComposition;
       delete this.renderer.domElement.dataset.environmentZoneIdentity;
       delete this.renderer.domElement.dataset.environmentMaterials;
+      delete this.renderer.domElement.dataset.environmentThermalShutters;
+      delete this.renderer.domElement.dataset.environmentThermalProtection;
+      delete this.renderer.domElement.dataset.environmentThermalShutterControl;
       delete this.renderer.domElement.dataset.readabilityLanguage;
       console.warn('Authored Solar Yard fabrication kit failed to load; keeping procedural scenery.', error);
     }
@@ -2389,7 +2429,7 @@ export class ThreeCombatRenderer {
     } else if (mission.location === 'ice-mine') {
       void this.loadAuthoredIceMineEnvironment(state, world.w, world.h, budget.detailScale);
     } else if (mission.location === 'solar-yard') {
-      void this.loadAuthoredSolarYardEnvironment(world.w, world.h, budget.detailScale);
+      void this.loadAuthoredSolarYardEnvironment(state, world.w, world.h, budget.detailScale);
     } else {
       this.renderer.domElement.dataset.environmentVisual = 'procedural';
     }
@@ -4494,6 +4534,17 @@ export class ThreeCombatRenderer {
     this.renderer.domElement.dataset.locationLighting = `${mission.location}:${lightingProfile.id}:aces-${this.renderer.toneMappingExposure.toFixed(2)}`;
 
     if (isSolarYard) {
+      const shutterClosed = !!solarShutter?.exposed;
+      if (this.solarYardThermalShutterRoot && this.solarYardThermalShutterLeft && this.solarYardThermalShutterRight) {
+        this.solarYardThermalShutterLeft.position.x = shutterClosed ? -1.34 : -2.22;
+        this.solarYardThermalShutterRight.position.x = shutterClosed ? 1.34 : 2.22;
+        this.renderer.domElement.dataset.environmentThermalShutters = `authored:${shutterClosed ? 'closed' : 'open'}`;
+        this.renderer.domElement.dataset.environmentThermalProtection = shutterClosed
+          ? 'radiant-load-cut'
+          : solarSurge ? 'solar-surge-exposed' : 'shutters-open';
+        this.renderer.domElement.dataset.environmentThermalShutterControl = 'solar-shutter:state-linked';
+      }
+
       this.keyLight.position.set(scaled(world.w * 1.12), 30, scaled(world.h * 0.10));
       this.keyLight.target.position.set(scaled(world.w * 0.48), 0, scaled(world.h * 0.58));
       if (!this.keyLight.target.parent) this.scene.add(this.keyLight.target);
