@@ -7,7 +7,7 @@ import { getWorldSize, type CombatObject, type Enemy, type Player, type SimState
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, locationArtIdentityFor, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
 import { lootColor } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
-import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, SPIN_HABITAT_BOSS_ASSET_FAMILY, SPIN_HABITAT_ENEMY_ASSET_FAMILIES, SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES, OPERATOR_CLASS_ASSET_FAMILIES, JOVIAN_HARVESTER_ASSET_FAMILIES, JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, SPIN_HABITAT_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
+import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, SPIN_HABITAT_BOSS_ASSET_FAMILY, JOVIAN_HARVESTER_BOSS_ASSET_FAMILY, SPIN_HABITAT_ENEMY_ASSET_FAMILIES, SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES, OPERATOR_CLASS_ASSET_FAMILIES, JOVIAN_HARVESTER_ASSET_FAMILIES, JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, SPIN_HABITAT_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
 import { configureGraphicsAssetRenderer, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
 import { spinHabitatArchitectureState, spinHabitatRenderProfile, spinHabitatSpindownState } from './spinHabitatArchitecture';
 import { jovianHarvesterStormState } from './jovianHarvesterVisualLanguage';
@@ -43,6 +43,11 @@ function spinHabitatEnemyColor(enemy: Enemy) {
 function spinHabitatBossAssetFamily(enemy: Enemy, mission: Contract) {
   if (mission.location !== 'spin-habitat' || enemy.role !== 'boss' || mission.deepTarget !== 'Recovery Commander Sable Voss') return null;
   return SPIN_HABITAT_BOSS_ASSET_FAMILY;
+}
+
+function jovianHarvesterBossAssetFamily(enemy: Enemy, mission: Contract) {
+  if (mission.location !== 'jovian-harvester' || enemy.role !== 'boss' || mission.deepTarget !== 'Stormline Foreman Ilex') return null;
+  return JOVIAN_HARVESTER_BOSS_ASSET_FAMILY;
 }
 
 const weaponColors: Record<WeaponId, number> = {
@@ -2961,7 +2966,8 @@ export class ThreeCombatRenderer {
   private async loadAuthoredEnemy(visual: EnemyVisual, enemy: Enemy, mission: Contract) {
     const spinHabitatFamily = spinHabitatEnemyAssetFamily(enemy, mission);
     const spinHabitatBossFamily = spinHabitatBossAssetFamily(enemy, mission);
-    const localFamily = spinHabitatBossFamily ?? spinHabitatFamily;
+    const jovianHarvesterBossFamily = jovianHarvesterBossAssetFamily(enemy, mission);
+    const localFamily = spinHabitatBossFamily ?? jovianHarvesterBossFamily ?? spinHabitatFamily;
     const family = localFamily ?? ENEMY_ASSET_FAMILIES[enemy.role];
     const spec = selectGraphicsAssetSpec(family, this.coarse ? 0.55 : 1);
     if (!spec) return;
@@ -3053,6 +3059,14 @@ export class ThreeCombatRenderer {
         this.renderer.domElement.dataset.bossSilhouette = 'counterspin-mantle+governor-towers+command-visor';
         this.renderer.domElement.dataset.bossPalette = 'recovery-green+cyan-command+amber-phase-two';
       }
+      if (jovianHarvesterBossFamily) {
+        this.renderer.domElement.dataset.bossBiome = 'jovian-harvester';
+        this.renderer.domElement.dataset.bossPresentation = 'stormline-foreman-ilex';
+        this.renderer.domElement.dataset.bossVisual = 'authored';
+        this.renderer.domElement.dataset.bossAsset = spec.id;
+        this.renderer.domElement.dataset.bossSilhouette = 'storm-cowl+pressure-crown+relief-stacks';
+        this.renderer.domElement.dataset.bossPalette = 'storm-orange+pressure-cyan+vent-red-phase-two';
+      }
       if (enemy.role === 'boss') {
         this.renderer.domElement.dataset.bossSignature = 'authored-boss+phase-ring+pylons';
         this.renderer.domElement.dataset.bossTelegraph = 'directional-wedge+phase-halo+pulse';
@@ -3070,6 +3084,9 @@ export class ThreeCombatRenderer {
       }
       if (spinHabitatBossFamily) {
         this.renderer.domElement.dataset.bossFallback = 'sable-voss';
+      }
+      if (jovianHarvesterBossFamily) {
+        this.renderer.domElement.dataset.bossFallback = 'stormline-foreman-ilex';
       }
       console.warn(`Authored ${localFamily?.id ?? enemy.role} enemy asset failed to load; keeping procedural fallback.`, error);
     }
@@ -3138,9 +3155,12 @@ export class ThreeCombatRenderer {
     const armorBroken = enemy.maxArmor > 0 && enemy.armor <= 0;
     const lowHp = hpRatio < 0.34;
     const sableVoss = visual.authoredAssetId === 'spin-habitat-sable-voss';
+    const stormlineIlex = visual.authoredAssetId === 'jovian-harvester-stormline-foreman';
     const phaseColor = sableVoss
       ? phaseTwo ? 0xffb15b : armorBroken ? 0xffd27a : 0x72f1d0
-      : phaseTwo ? 0xff8e68 : armorBroken ? 0xffc078 : 0x8ee8ff;
+      : stormlineIlex
+        ? phaseTwo ? 0xff7357 : armorBroken ? 0x7fd9e8 : 0xf0ae69
+        : phaseTwo ? 0xff8e68 : armorBroken ? 0xffc078 : 0x8ee8ff;
 
     if (phaseRing) {
       phaseRing.material.color.setHex(phaseColor);
@@ -3174,7 +3194,8 @@ export class ThreeCombatRenderer {
       pylon.scale.y = lowHp ? 0.8 + Math.sin(state.time * 8 + index) * 0.08 : 1;
     }
 
-    this.renderer.domElement.dataset.bossPhaseVisual = `${sableVoss ? 'sable-voss+' : ''}phase:${enemy.bossPhase}+pattern:${enemy.bossPattern}+telegraph:${enemy.telegraph > 0 ? 'active' : 'idle'}`;
+    const presentationPrefix = sableVoss ? 'sable-voss+' : stormlineIlex ? 'stormline-foreman-ilex+' : '';
+    this.renderer.domElement.dataset.bossPhaseVisual = `${presentationPrefix}phase:${enemy.bossPhase}+pattern:${enemy.bossPattern}+telegraph:${enemy.telegraph > 0 ? 'active' : 'idle'}`;
   }
 
   private syncEnemies(state: SimState, mission: Contract, mobileTargetId: number | null) {
@@ -3208,11 +3229,22 @@ export class ThreeCombatRenderer {
       if (visual.authoredRoot) {
         this.syncAuthoredEnemyAnimation(visual, enemy, state);
         const sableVoss = visual.authoredAssetId === 'spin-habitat-sable-voss';
-        const bossPhaseEmissive = enemy.role === 'boss' && enemy.bossPhase === 2 ? sableVoss ? 0x76521f : 0x7a2f24 : 0x000000;
+        const stormlineIlex = visual.authoredAssetId === 'jovian-harvester-stormline-foreman';
+        const bossPhaseEmissive = enemy.role === 'boss' && enemy.bossPhase === 2
+          ? sableVoss ? 0x76521f : stormlineIlex ? 0x8a3328 : 0x7a2f24
+          : 0x000000;
         const statusEmissive = enemy.statuses.disrupted > 0 ? 0x63508a : enemy.telegraph > 0 ? 0x7a3327 : bossPhaseEmissive;
         const statusIntensity = enemy.statuses.disrupted > 0 || enemy.telegraph > 0 ? 0.28 : bossPhaseEmissive ? 0.24 : 0;
         for (const material of visual.authoredMaterials) {
-          material.color.setHex(sableVoss ? enemy.bossPhase === 2 ? 0x79623f : 0x3f6b64 : enemy.role === 'boss' && enemy.bossPhase === 2 ? 0xc76252 : visual.authoredAssetId?.startsWith('spin-habitat-') ? spinHabitatEnemyColor(enemy) : roleColors[enemy.role]);
+          material.color.setHex(
+            sableVoss
+              ? enemy.bossPhase === 2 ? 0x79623f : 0x3f6b64
+              : stormlineIlex
+                ? enemy.bossPhase === 2 ? 0x8a4938 : 0x6d5138
+                : enemy.role === 'boss' && enemy.bossPhase === 2
+                  ? 0xc76252
+                  : visual.authoredAssetId?.startsWith('spin-habitat-') ? spinHabitatEnemyColor(enemy) : roleColors[enemy.role],
+          );
           material.emissive.setHex(statusEmissive);
           material.emissiveIntensity = statusIntensity;
         }

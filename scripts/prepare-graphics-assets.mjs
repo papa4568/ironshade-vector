@@ -513,6 +513,41 @@ function spinHabitatSableVossNodes(lod) {
   return nodes;
 }
 
+function jovianHarvesterStormlineForemanNodes(lod) {
+  const nodes = lod === 2 ? enemyMobileNodes('boss') : enemyNodes('boss');
+  const root = nodes.pop();
+  const torsoIndex = nodes.findIndex(node => node.name === 'torso');
+  const backpackIndex = nodes.findIndex(node => node.name === 'backpack');
+  const helmetIndex = nodes.findIndex(node => node.name === 'helmet');
+  const markers = lod === 2
+    ? [
+        { name: 'jovian-harvester-stormline-foreman-storm-cowl', mesh: 1, translation: [-0.02, 0.30, 0], scale: [0.70, 0.18, 1.24] },
+        { name: 'jovian-harvester-stormline-foreman-pressure-crown', mesh: 4, translation: [0.12, 0.70, 0], scale: [0.10, 0.22, 0.56] },
+        { name: 'jovian-harvester-stormline-foreman-relief-stack', mesh: 4, translation: [-0.38, 0.30, 0], scale: [0.12, 0.88, 0.48] },
+      ]
+    : [
+        { name: 'jovian-harvester-stormline-foreman-storm-cowl', mesh: 1, translation: [-0.04, 0.30, 0], scale: [0.80, 0.20, 1.40] },
+        { name: 'jovian-harvester-stormline-foreman-pressure-crown', mesh: 4, translation: [0.14, 0.82, 0], scale: [0.10, 0.24, 0.64] },
+        { name: 'jovian-harvester-stormline-foreman-relief-stack-left', mesh: 4, translation: [-0.42, 0.30, 0.38], scale: [0.12, 0.98, 0.12] },
+        { name: 'jovian-harvester-stormline-foreman-relief-stack-right', mesh: 4, translation: [-0.42, 0.30, -0.38], scale: [0.12, 0.98, 0.12] },
+        { name: 'jovian-harvester-stormline-foreman-manifold-pack', mesh: 2, translation: [-0.42, 0.18, 0], scale: [0.34, 0.68, 0.84] },
+      ];
+
+  for (const marker of markers) {
+    const index = nodes.length;
+    nodes.push(marker);
+    const parentIndex = marker.name.includes('pressure-crown')
+      ? helmetIndex
+      : marker.name.includes('relief-stack') || marker.name.includes('manifold-pack')
+        ? backpackIndex
+        : torsoIndex;
+    nodes[parentIndex].children ??= [];
+    nodes[parentIndex].children.push(index);
+  }
+  nodes.push(root);
+  return nodes;
+}
+
 function weaponMobileNodes(id) {
   if (id === 'carbine') {
     return [
@@ -1704,6 +1739,15 @@ for (const lod of [1, 2]) {
     `spin-habitat-sable-voss-lod${lod}`,
     spinHabitatSableVossNodes(lod),
     materials([0.25, 0.39, 0.36, 1], [0.55, 0.96, 0.82]),
+  ));
+}
+
+for (const lod of [1, 2]) {
+  outputs.push(await writeAsset(
+    `bosses/jovian-harvester-stormline-foreman-lod${lod}.glb`,
+    `jovian-harvester-stormline-foreman-lod${lod}`,
+    jovianHarvesterStormlineForemanNodes(lod),
+    materials([0.39, 0.29, 0.21, 1], [0.96, 0.63, 0.31]),
   ));
 }
 
