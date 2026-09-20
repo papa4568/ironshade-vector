@@ -549,6 +549,41 @@ function configureMegastructureStage(state: SimState, contract: Contract) {
       addObject(state, coverObject('k91-ballast-stack-a', 'K-91 ballast stack', 790, 300, 94, 174, 'industrial'));
       addObject(state, coverObject('k91-ballast-stack-b', 'K-91 ballast stack', 1290, 710, 94, 174, 'industrial'));
     }
+  } else if (contract.megastructure === 'hidden-habitat') {
+    if (contract.megastructureStage === 1) {
+      state.sectors[0].label = 'SHADOW BORE';
+      state.sectors[1].label = 'CUT TUNNEL';
+      state.sectors[2].label = 'HABITAT HATCH';
+      addObject(state, coverObject('orpheline-bore-partition-a', 'Orpheline concealment shutter', 820, 300, 58, 164, 'industrial'));
+      addObject(state, coverObject('orpheline-bore-partition-b', 'Orpheline concealment shutter', 1180, 710, 58, 164, 'industrial'));
+    } else if (contract.megastructureStage === 2) {
+      state.sectors[0].label = 'FABRICATOR ROW';
+      state.sectors[1].label = 'INDUSTRIAL COMMONS';
+      state.sectors[2].label = 'SERVICE MARKET';
+      addObject(state, coverObject('orpheline-stall-a', 'Improvised fabrication stall', 760, 290, 126, 58, 'industrial'));
+      addObject(state, coverObject('orpheline-stall-b', 'Improvised fabrication stall', 1260, 735, 126, 58, 'industrial'));
+    } else if (contract.megastructureStage === 3) {
+      state.sectors[0].label = 'OUTER HAB RING';
+      state.sectors[1].label = 'RESIDENTIAL SPIN';
+      state.sectors[2].label = 'SHELTER SPOKE';
+      addObject(state, coverObject('orpheline-hab-stack-a', 'Orpheline hab-pod stack', 790, 300, 82, 168, 'industrial'));
+      addObject(state, coverObject('orpheline-hab-stack-b', 'Orpheline hab-pod stack', 1280, 710, 82, 168, 'industrial'));
+    } else if (contract.megastructureStage === 4) {
+      state.sectors[0].label = 'FOUNDERS APPROACH';
+      state.sectors[1].label = 'CONTROL VAULT';
+      state.sectors[2].label = 'WARDEN CHAMBER';
+      addObject(state, coverObject('orpheline-archive-wall-a', 'Founding archive wall', 1760, 315, 118, 52, 'industrial'));
+      addObject(state, coverObject('orpheline-archive-wall-b', 'Founding archive wall', 2030, 690, 118, 52, 'industrial'));
+      const boss = state.enemies.find(enemy => enemy.role === 'boss');
+      if (boss) {
+        boss.variant = 'orphelineWarden';
+        boss.hp = 770;
+        boss.maxHp = 770;
+        boss.armor = 260;
+        boss.maxArmor = 260;
+        boss.anchored = false;
+      }
+    }
   }
 
   if (contract.megastructureStage === 2) {
@@ -562,7 +597,9 @@ function configureMegastructureStage(state: SimState, contract: Contract) {
         ? 'Perseid Drum Warder'
         : contract.megastructure === 'counterweight'
           ? 'K-91 Mass-Transit Warden'
-          : 'Derelict Security Exosuit';
+          : contract.megastructure === 'hidden-habitat'
+            ? 'Orpheline Commons Custodian'
+            : 'Derelict Security Exosuit';
       elite.hp = 190;
       elite.maxHp = 190;
       elite.armor = 145;
