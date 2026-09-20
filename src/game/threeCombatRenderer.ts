@@ -7,7 +7,7 @@ import { getWorldSize, type CombatObject, type Enemy, type Player, type SimState
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, locationArtIdentityFor, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
 import { lootColor } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
-import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, SPIN_HABITAT_BOSS_ASSET_FAMILY, JOVIAN_HARVESTER_BOSS_ASSET_FAMILY, ICE_MINE_BOSS_ASSET_FAMILY, SPIN_HABITAT_ENEMY_ASSET_FAMILIES, SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES, OPERATOR_CLASS_ASSET_FAMILIES, JOVIAN_HARVESTER_ASSET_FAMILIES, JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES, ICE_MINE_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, SPIN_HABITAT_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
+import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, SPIN_HABITAT_BOSS_ASSET_FAMILY, JOVIAN_HARVESTER_BOSS_ASSET_FAMILY, ICE_MINE_BOSS_ASSET_FAMILY, SPIN_HABITAT_ENEMY_ASSET_FAMILIES, SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES, OPERATOR_CLASS_ASSET_FAMILIES, JOVIAN_HARVESTER_ASSET_FAMILIES, JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES, ICE_MINE_ASSET_FAMILIES, SOLAR_YARD_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, SPIN_HABITAT_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
 import { configureGraphicsAssetRenderer, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
 import { spinHabitatArchitectureState, spinHabitatRenderProfile, spinHabitatSpindownState } from './spinHabitatArchitecture';
 import { jovianHarvesterRenderProfile, jovianHarvesterStormState } from './jovianHarvesterVisualLanguage';
@@ -302,6 +302,7 @@ export class ThreeCombatRenderer {
   private spinHabitatLoadGeneration = 0;
   private jovianHarvesterLoadGeneration = 0;
   private iceMineLoadGeneration = 0;
+  private solarYardLoadGeneration = 0;
   private readonly iceMineBrittleSupportVisuals = new Map<string, THREE.Object3D>();
   private readonly iceMineFractureRoots = new Map<string, THREE.Group>();
   private readonly iceMineFractureCracks = new Map<string, Array<THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>>>();
@@ -572,6 +573,7 @@ export class ThreeCombatRenderer {
     this.spinHabitatLoadGeneration += 1;
     this.jovianHarvesterLoadGeneration += 1;
     this.iceMineLoadGeneration += 1;
+    this.solarYardLoadGeneration += 1;
     this.iceMineBrittleSupportVisuals.clear();
     this.iceMineFractureRoots.clear();
     this.iceMineFractureCracks.clear();
@@ -1307,6 +1309,141 @@ export class ThreeCombatRenderer {
       delete this.renderer.domElement.dataset.environmentMaterials;
       delete this.renderer.domElement.dataset.readabilityLanguage;
       console.warn('Authored Ice Mine bore/tunnel kit failed to load; keeping procedural scenery.', error);
+    }
+  }
+
+  private async loadAuthoredSolarYardEnvironment(worldW: number, worldH: number, detailScale: number) {
+    const generation = ++this.solarYardLoadGeneration;
+    this.renderer.domElement.dataset.environmentVisual = 'authored-loading';
+    const assetDetailScale = this.coarse ? Math.min(detailScale, 0.55) : detailScale;
+    const loaded: Array<{ key: keyof typeof SOLAR_YARD_ASSET_FAMILIES; instance: GraphicsAssetInstance; lod: number }> = [];
+
+    try {
+      for (const key of Object.keys(SOLAR_YARD_ASSET_FAMILIES) as Array<keyof typeof SOLAR_YARD_ASSET_FAMILIES>) {
+        const spec = selectGraphicsAssetSpec(SOLAR_YARD_ASSET_FAMILIES[key], assetDetailScale);
+        if (!spec) throw new Error(`No authored Solar Yard asset available for ${key}`);
+        const instance = await instantiateGraphicsAsset(spec);
+        loaded.push({ key, instance, lod: spec.lod });
+      }
+
+      if (this.disposed || generation !== this.solarYardLoadGeneration) {
+        loaded.forEach(item => item.instance.release());
+        return;
+      }
+
+      const byKey = new Map(loaded.map(item => [item.key, item]));
+      const width = scaled(worldW);
+      const height = scaled(worldH);
+
+      const ceramicDeckPlacements: EnvironmentPlacement[] = [
+        [0.24, 0.27, 0, 0.94], [0.50, 0.27, 0, 0.96], [0.76, 0.27, 0, 0.94],
+        [0.26, 0.73, Math.PI, 0.94], [0.52, 0.73, Math.PI, 0.96], [0.78, 0.73, Math.PI, 0.94],
+      ].map(([x, z, rotationY, scale]) => ({
+        position: new THREE.Vector3(width * x, 0.01, height * z),
+        rotationY,
+        scale,
+      }));
+
+      const trussFramePlacements: EnvironmentPlacement[] = [
+        [0.18, 0.50, 0.92], [0.34, 0.50, 0.96], [0.50, 0.50, 1.04], [0.66, 0.50, 0.96], [0.82, 0.50, 0.92],
+      ].map(([x, z, scale]) => ({
+        position: new THREE.Vector3(width * x, 0, height * z),
+        rotationY: 0,
+        scale,
+      }));
+
+      const radiatorTowerPlacements: EnvironmentPlacement[] = [
+        [0.14, 0.22, 0.86], [0.14, 0.78, 0.86], [0.86, 0.22, 0.90], [0.86, 0.78, 0.90],
+      ].map(([x, z, scale]) => ({
+        position: new THREE.Vector3(width * x, 0, height * z),
+        rotationY: x < 0.5 ? Math.PI / 2 : -Math.PI / 2,
+        scale,
+      }));
+
+      const reflectorPylonPlacements: EnvironmentPlacement[] = [
+        [0.72, 0.22, Math.PI / 2, 0.90],
+        [0.82, 0.50, Math.PI / 2, 1.04],
+        [0.72, 0.78, Math.PI / 2, 0.90],
+      ].map(([x, z, rotationY, scale]) => ({
+        position: new THREE.Vector3(width * x, 0, height * z),
+        rotationY,
+        scale,
+      }));
+
+      const sinterForgePlacements: EnvironmentPlacement[] = [
+        [0.40, 0.38, Math.PI / 2, 0.90],
+        [0.58, 0.62, -Math.PI / 2, 0.94],
+      ].map(([x, z, rotationY, scale]) => ({
+        position: new THREE.Vector3(width * x, 0, height * z),
+        rotationY,
+        scale,
+      }));
+
+      const printerSpindlePlacements: EnvironmentPlacement[] = [
+        [0.26, 0.36, 0, 0.88],
+        [0.50, 0.50, 0, 0.94],
+        [0.74, 0.34, Math.PI, 0.90],
+      ].map(([x, z, rotationY, scale]) => ({
+        position: new THREE.Vector3(width * x, 0, height * z),
+        rotationY,
+        scale,
+      }));
+
+      const feedstockPressPlacements: EnvironmentPlacement[] = [
+        [0.34, 0.68, Math.PI / 2, 0.88],
+        [0.68, 0.70, -Math.PI / 2, 0.90],
+      ].map(([x, z, rotationY, scale]) => ({
+        position: new THREE.Vector3(width * x, 0, height * z),
+        rotationY,
+        scale,
+      }));
+
+      let instances = 0;
+      instances += this.addInstancedEnvironmentAsset(byKey.get('ceramicDeck')!.instance, ceramicDeckPlacements, 'solar-yard-ceramic-deck');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('trussFrame')!.instance, trussFramePlacements, 'solar-yard-truss-frame');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('radiatorTower')!.instance, radiatorTowerPlacements, 'solar-yard-radiator-tower');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('reflectorPylon')!.instance, reflectorPylonPlacements, 'solar-yard-reflector-pylon');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('sinterForge')!.instance, sinterForgePlacements, 'solar-yard-sinter-forge');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('printerSpindle')!.instance, printerSpindlePlacements, 'solar-yard-printer-spindle');
+      instances += this.addInstancedEnvironmentAsset(byKey.get('feedstockPress')!.instance, feedstockPressPlacements, 'solar-yard-feedstock-press');
+
+      this.refineryAssetInstances.push(...loaded.map(item => item.instance));
+      this.proceduralRefineryVisuals.forEach(item => { item.visible = false; });
+      const lods = [...new Set(loaded.map(item => item.lod))].sort();
+      this.renderer.domElement.dataset.environmentVisual = 'authored-solar-yard';
+      this.renderer.domElement.dataset.environmentLod = lods.join(',');
+      this.renderer.domElement.dataset.environmentKit = 'ceramic-deck,truss-frame,radiator-tower,reflector-pylon,sinter-forge,printer-spindle,feedstock-press';
+      this.renderer.domElement.dataset.environmentInstances = String(instances);
+      this.renderer.domElement.dataset.environmentLandmark = 'gold-reflector-pylon-row';
+      this.renderer.domElement.dataset.environmentServiceDetails = `ceramic-deck:${ceramicDeckPlacements.length}+truss-frame:${trussFramePlacements.length}+radiator-tower:${radiatorTowerPlacements.length}`;
+      this.renderer.domElement.dataset.environmentSurfaceDetail = `reflector-pylon:${reflectorPylonPlacements.length}+ceramic-deck:${ceramicDeckPlacements.length}`;
+      this.renderer.domElement.dataset.environmentMachineDetail = `sinter-forge:${sinterForgePlacements.length}+printer-spindle:${printerSpindlePlacements.length}+feedstock-press:${feedstockPressPlacements.length}`;
+      this.renderer.domElement.dataset.environmentComposition = 'shade-service-deck+fabrication-spine+sunward-work-yard';
+      this.renderer.domElement.dataset.environmentMaterials = 'ceramic-shell+scorched-steel+black-radiator+solar-gold+heat-amber';
+      this.renderer.domElement.dataset.environmentZoneIdentity = 'shade:ceramic-deck+radiator-towers|spine:truss-frames+sinter-forges|sunward:reflector-pylons+printer-spindles+feedstock-presses';
+      this.renderer.domElement.dataset.readabilityLanguage = 'ceramic-deck+black-radiators+gold-reflectors+amber-hot-work';
+    } catch (error) {
+      loaded.forEach(item => item.instance.release());
+      if (this.disposed || generation !== this.solarYardLoadGeneration) return;
+      this.refineryInstancedMeshes.forEach(mesh => {
+        mesh.removeFromParent();
+        mesh.dispose();
+      });
+      this.refineryInstancedMeshes.length = 0;
+      this.refineryOwnedMaterials.forEach(material => material.dispose());
+      this.refineryOwnedMaterials.length = 0;
+      this.authoredEnvironmentRoot.clear();
+      this.proceduralRefineryVisuals.forEach(item => { item.visible = true; });
+      this.renderer.domElement.dataset.environmentVisual = 'procedural-fallback';
+      delete this.renderer.domElement.dataset.environmentLandmark;
+      delete this.renderer.domElement.dataset.environmentServiceDetails;
+      delete this.renderer.domElement.dataset.environmentSurfaceDetail;
+      delete this.renderer.domElement.dataset.environmentMachineDetail;
+      delete this.renderer.domElement.dataset.environmentComposition;
+      delete this.renderer.domElement.dataset.environmentZoneIdentity;
+      delete this.renderer.domElement.dataset.environmentMaterials;
+      delete this.renderer.domElement.dataset.readabilityLanguage;
+      console.warn('Authored Solar Yard fabrication kit failed to load; keeping procedural scenery.', error);
     }
   }
 
@@ -2242,6 +2379,8 @@ export class ThreeCombatRenderer {
       void this.loadAuthoredJovianHarvesterEnvironment(world.w, world.h, budget.detailScale);
     } else if (mission.location === 'ice-mine') {
       void this.loadAuthoredIceMineEnvironment(state, world.w, world.h, budget.detailScale);
+    } else if (mission.location === 'solar-yard') {
+      void this.loadAuthoredSolarYardEnvironment(world.w, world.h, budget.detailScale);
     } else {
       this.renderer.domElement.dataset.environmentVisual = 'procedural';
     }
@@ -2622,13 +2761,16 @@ export class ThreeCombatRenderer {
       }
       this.proceduralRefineryVisuals.push(...iceMineFallback);
     } else if (location === 'solar-yard') {
+      const solarYardFallback: THREE.Object3D[] = [];
       for (let i = -3; i <= 3; i += 1) {
         const panel = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.18, 2.2), emissive);
         panel.position.set(cx + i * 5.2, 1.3 + Math.abs(i) * 0.08, cz + (i % 2 ? 6 : -6));
         panel.rotation.z = -0.16;
         panel.castShadow = true;
         this.environmentRoot.add(panel);
+        solarYardFallback.push(panel);
       }
+      this.proceduralRefineryVisuals.push(...solarYardFallback);
     } else if (location === 'momentum-exchange') {
       for (const offset of [-9, 0, 9]) {
         const flywheel = new THREE.Mesh(new THREE.TorusGeometry(2.6, 0.48, 12, 48), structural);
