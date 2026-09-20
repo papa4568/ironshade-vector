@@ -254,7 +254,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## P5 — Class Capstones
 
-- [ ] P5.1 Vanguard third specialization
+- [x] P5.1 Vanguard third specialization
 - [ ] P5.2 Vanguard skill evolution
 - [ ] P5.3 Vanguard capstone interactions
 - [ ] P5.4 Deepen Vector specializations
@@ -317,9 +317,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1, P2, P3, and **P4 — Megastructure Capstone Pass** are complete. Continue in roadmap order with **P5.1 — Vanguard third specialization**.
+P1, P2, P3, and **P4 — Megastructure Capstone Pass** are complete. **P5.1 — Vanguard third specialization** is complete. Continue in roadmap order with **P5.2 — Vanguard skill evolution**.
 
-**P4.18 delivered:** Megastructure mobile rendering now batches repeated Perseid ribs/guide lights, K-91 rails/inertial datum, Orpheline rock/utility continuity, and Hecate truss/clamp/cutter continuity through shared Three.js instanced draws instead of one mesh per repeated element. The existing mobile/performance profiles still preserve each capstone silhouette while trimming repeated density, and capstone overlays now stop receiving structural shadows whenever those profiles disable structural shadowing. Runtime QA exposes `instanced-continuity` batching plus per-family continuity draw-call ceilings (2 draws for Perseid/K-91, 4 for Orpheline, 5 for Hecate), and render-performance regression keeps both the visible mobile instance counts and the batching contract deterministic. P4 is complete; the next roadmap slice is P5.1 Vanguard third specialization.
+**P5.1 delivered:** Vanguard now has a third LV15 specialization, **Bulkhead Warden**, alongside Pressure Diver and Breach Vanguard. Bulkhead Warden turns Breach Guard into a defensive impact-recycling loop: guarded blockable damage receives additional mitigation and advances Bulwark Pulse recovery, while the LV16 overclock also returns capped capacitor from the absorbed impact. Bulwark Pulse repairs armor for each nearby contact and extends the Warden guard window, with an 8% direct weapon-output tradeoff and a +10% overclocked Bulwark capacitor-cost tradeoff. Deterministic gameplay regression covers mitigation, cooldown recycling, capacitor return, armor repair, extended guard duration, combat feedback, and both tradeoffs. PR desktop/mobile Browser E2E, merged-main desktop/mobile Browser E2E, Level 15 beta smoke, Android beta.191 package/version/SDK/signature verification, native emulator install/launch smoke, and Android touch smoke all passed. **P5.2 — Vanguard skill evolution** is next.\n\n**P4.18 delivered:** Megastructure mobile rendering now batches repeated Perseid ribs/guide lights, K-91 rails/inertial datum, Orpheline rock/utility continuity, and Hecate truss/clamp/cutter continuity through shared Three.js instanced draws instead of one mesh per repeated element. The existing mobile/performance profiles still preserve each capstone silhouette while trimming repeated density, and capstone overlays now stop receiving structural shadows whenever those profiles disable structural shadowing. Runtime QA exposes `instanced-continuity` batching plus per-family continuity draw-call ceilings (2 draws for Perseid/K-91, 4 for Orpheline, 5 for Hecate), and render-performance regression keeps both the visible mobile instance counts and the batching contract deterministic. P4 is complete; the next roadmap slice is P5.1 Vanguard third specialization.
 
 **P4.17 delivered:** Megastructure debriefs now resolve the expedition as an authored after-action report instead of a single generic banked-progress sentence. Perseid, K-91, Orpheline, and Hecate show the secured/unreached four-space route, optional-recovery total, safe/deep extraction state, finale disposition, and the environmental continuity consequences observed along the secured path. The report distinguishes partial extraction, full safe traversal with an optional command zone left sealed, K-91’s bossless Ballast Vault resolution, and deep command-target defeat without adding new save state. The route recap collapses cleanly on narrow mobile surfaces, and deterministic gameplay regression covers all outcome classes plus the responsive presentation contract. The next capstone work is P4.18 Mobile performance.\n\n**P4.16 delivered:** Megastructure spaces now inherit authored physical consequences from the connected space instead of resetting every environment at the handoff. Perseid carries pressure debt, gravity trim loss, and cryogenic visibility deeper through the ship; K-91 carries capture debris, inertial drift, and lift-bus grid damage; Orpheline carries bore dust, improvised-grid faults, and ring momentum loss; Hecate carries clamp-release gravity instability, crusher-grid damage, and wreck-chain atmosphere loss. Inherited conditions are merged without duplication into the existing mission condition system, so the normal pressure, gravity, damaged-grid, visibility, and director hazard behavior remains the single source of gameplay truth. Contract previews expose the continuity explanation, and a dedicated regression validates condition inheritance plus live pressure/gravity/arc effects across all four capstones. The next capstone work is P4.17 Debrief improvements.
 
@@ -395,16 +395,16 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.190**
+- Android beta: **0.0.1-beta.191**
 - Package: `app.ironshade.vector`
-- Verified: Megastructure capstone **P4.18 — Mobile performance** is complete. Repeated continuity scenery for Perseid, K-91, Orpheline, and Hecate now uses shared Three.js instanced batches instead of one mesh per repeated structural element, while the existing mobile/performance profiles preserve each capstone silhouette and trim density. Capstone overlays also stop receiving structural shadows whenever the active profile disables structural shadowing. Runtime QA exposes `instanced-continuity` batching plus continuity draw-call ceilings of 2 for Perseid/K-91, 4 for Orpheline, and 5 for Hecate. Deterministic render-performance regression, PR desktop + mobile-landscape Browser E2E, merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.190 package/version/SDK/signature verification, native emulator install/launch smoke, and Android touch smoke all passed. **P4 is complete; the next roadmap slice is P5.1 — Vanguard third specialization.**
+- Verified: Class capstone **P5.1 — Vanguard third specialization** is complete. Vanguard now has **Bulkhead Warden** as a third LV15 specialization. Guarded blockable damage gains additional mitigation and recycles Bulwark Pulse recovery; the LV16 overclock also returns capped capacitor from recycled impact. Bulwark Pulse repairs armor per nearby contact and extends the Warden guard window, balanced by -8% direct weapon output and +10% overclocked Bulwark capacitor cost. Deterministic gameplay regression, PR desktop + mobile-landscape Browser E2E, merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.191 package/version/SDK/signature verification, native emulator install/launch smoke, and Android touch smoke all passed. **The next roadmap slice is P5.2 — Vanguard skill evolution.**
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P4.18 final implementation head: `95b111d4c9869201e48bf2f2734d955274ab1e88`
-- P4.18 merged main / APK source: `e01fcabf0c9cf736f3b16ccbe74cc9544f50d612`
-- P4.18 PR Browser E2E run: `35531062412`
-- Final Browser E2E run: `35531158839`
-- Level 15 beta smoke run: `35531158789`
-- Android beta.190 run: `35531158853`
-- Android beta.190 artifact ID: `10611441358`
-- Android beta.190 artifact head: `e01fcabf0c9cf736f3b16ccbe74cc9544f50d612`
-- APK SHA-256: `cae453c3f30f05de39d68992e8cbefb0aa45caf0ba22311420fbcfd25c0992d1`
+- P5.1 final implementation head: `f249ce00fde114873a301791df4a1f250718b25a`
+- P5.1 merged main / APK source: `b6cb04387ab1fb5b3f3d2d6000cf1e6f2ad9172b`
+- P5.1 PR Browser E2E run: `35534708179`
+- Final Browser E2E run: `35534843568`
+- Level 15 beta smoke run: `35534843561`
+- Android beta.191 run: `35534843572`
+- Android beta.191 artifact ID: `10612710739`
+- Android beta.191 artifact head: `b6cb04387ab1fb5b3f3d2d6000cf1e6f2ad9172b`
+- APK SHA-256: `85f6825fe58c571bf8d2bed8caf099bdf9698e07f78ff9ad6ee13fe4e5885d4c`
