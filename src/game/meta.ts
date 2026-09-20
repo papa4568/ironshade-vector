@@ -266,6 +266,7 @@ export const specializationDefinitions: SpecializationDefinition[] = [
   { id: 'survey-deadeye', operatorClass: 'vector', name: 'Survey Deadeye', identity: 'Marked-target rail precision', description: 'Rail hits consume marks to break committed attacks and create a short Armor Breach window.', tradeoff: 'Sensor Spike marks are 20% shorter and recover 10% slower.', overclock: 'Consuming a mark pulls Sensor Spike back toward a 2.2 second recovery window.', overclockTradeoff: '+8% Rail Lance heat per shot.' },
   { id: 'redline-pilot', operatorClass: 'vector', name: 'Redline Pilot', identity: 'Heat / mobility decisions', description: 'Above 75% active-weapon heat, movement acceleration and maximum speed increase instead of encouraging immediate disengagement.', tradeoff: '-18% passive weapon cooling.', overclock: 'A high-heat dodge vents heat and emits a short stagger pulse.', overclockTradeoff: '-8 maximum armor; the high-heat pulse adds 0.18s dodge recovery.' },
   { id: 'breach-vanguard', operatorClass: 'vanguard', name: 'Breach Vanguard', identity: 'Close armor-breaking assault', description: 'Breacher hits inside 300 units gain a capped armor-damage conversion and armor breaks stagger the target.', tradeoff: '-5% movement speed and +10% Breacher heat per shot.', overclock: 'Close armor breaks rebuild a small amount of operator armor.', overclockTradeoff: '-8% Breacher direct-health conversion.' },
+  { id: 'bulkhead-warden', operatorClass: 'vanguard', name: 'Bulkhead Warden', identity: 'Guard / impact recycling', description: 'Damage absorbed while Breach Guard is active is reduced further and recycles Bulwark Pulse recovery. Bulwark Pulse repairs armor for every enemy caught in the shockwave.', tradeoff: '-8% direct weapon output.', overclock: 'Guarded impacts also return capacitor and Bulwark Pulse repairs more armor per contact.', overclockTradeoff: '+10% Bulwark Pulse capacitor cost.' },
   { id: 'capacitor-conductor', operatorClass: 'systems', name: 'Capacitor Conductor', identity: 'Ability-cycle combo routing', description: 'Casting a different MAG/MARK/ARC ability within 3.4 seconds returns capped capacitor and rewards deliberate three-button sequencing.', tradeoff: '-12 maximum capacitor.', overclock: 'Completing the third link of a sequence raises the capped refund and cools the active weapon.', overclockTradeoff: '+10% ability capacitor cost.' },
 ];
 
@@ -281,7 +282,7 @@ export const operatorClassDefinitions: OperatorClassDefinition[] = [
     combatLoop: 'Breach Rush into the lane → Fracture Tag the hard target → Bulwark Pulse when the room collapses on you.',
     starterPair: 'Breacher + Combat Suit',
     branchAffinities: ['Ballistics', 'Survival'],
-    specializationIds: ['pressure-diver', 'breach-vanguard'],
+    specializationIds: ['pressure-diver', 'breach-vanguard', 'bulkhead-warden'],
     resonanceTier1: '2 resonant frames // +6 maximum armor, +6% armor damage, and a stronger Breach Guard loop.',
     resonanceTier2: '4 resonant frames // +8 maximum armor, -8% weapon recoil, a longer Guard window, and stronger Guard mitigation.',
   },
@@ -909,6 +910,7 @@ export function deriveCombatBuild(profile: PlayerProfile): CombatBuild {
   if (specialization === 'survey-deadeye') { build.abilities[1].powerMul *= 0.8; build.abilities[1].cooldownMul *= 1.1; if (build.specializationOverclock) build.weapon.rail.heatPerShotMul *= 1.08; }
   if (specialization === 'redline-pilot') { for (const weapon of Object.values(build.weapon)) weapon.heatDissipationMul *= 0.82; if (build.specializationOverclock) build.player.maxArmorAdd -= 8; }
   if (specialization === 'breach-vanguard') { build.player.moveSpeedMul *= 0.95; build.weapon.breacher.heatPerShotMul *= 1.1; if (build.specializationOverclock) build.weapon.breacher.healthMultiplierMul *= 0.92; }
+  if (specialization === 'bulkhead-warden') { for (const weapon of Object.values(build.weapon)) weapon.damageMul *= 0.92; if (build.specializationOverclock) build.abilities[2].costMul *= 1.1; }
   if (specialization === 'capacitor-conductor') { build.player.maxCapAdd -= 12; if (build.specializationOverclock) for (const ability of build.abilities) ability.costMul *= 1.1; }
   if (profile.abilityMods.mag === 'mag-revector') { build.mechanics.magRedirect = true; build.mechanics.magRedirectScale = Math.max(build.mechanics.magRedirectScale, 1); build.abilities[0].costMul *= 1.25; build.abilities[0].cooldownMul *= 1.1; }
   if (profile.abilityMods.mag === 'mag-overdrive') { build.abilities[0].powerMul *= 1.45; build.mechanics.magOverdriveKick = true; }

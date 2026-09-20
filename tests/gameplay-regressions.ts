@@ -348,6 +348,64 @@ function parallaxSpecializationSmoke() {
 }
 parallaxSpecializationSmoke();
 
+function bulkheadWardenSpecializationSmoke() {
+  const baseProfile = {
+    ...createDefaultProfile(),
+    xp: 8100,
+    level: 16,
+    operatorClass: 'vanguard' as const,
+    classSelectionComplete: true,
+    specialization: null,
+    specializationOverclock: false,
+  };
+  const wardenProfile = {
+    ...baseProfile,
+    specialization: 'bulkhead-warden' as const,
+    specializationOverclock: true,
+  };
+  const baseBuild = deriveCombatBuild(baseProfile);
+  const wardenBuild = deriveCombatBuild(wardenProfile);
+  assert.equal(wardenBuild.specialization, 'bulkhead-warden');
+  assert.equal(wardenBuild.specializationOverclock, true);
+  assert.ok(wardenBuild.weapon.breacher.damageMul < baseBuild.weapon.breacher.damageMul, 'Bulkhead Warden should pay an offensive output tradeoff.');
+  assert.ok(wardenBuild.abilities[2].costMul > baseBuild.abilities[2].costMul, 'Bulkhead Warden overclock should increase Bulwark Pulse capacitor cost.');
+
+  const baselineState = createSimulation(baseBuild);
+  const wardenState = createSimulation(wardenBuild);
+  baselineState.classState.vanguardGuard = 5;
+  wardenState.classState.vanguardGuard = 5;
+  baselineState.player.abilityCooldowns[2] = 7;
+  wardenState.player.abilityCooldowns[2] = 7;
+  wardenState.player.capacitor = 40;
+  const baselineArmorBefore = baselineState.player.armor;
+  const wardenArmorBefore = wardenState.player.armor;
+  applyPlayerDamage(baselineState, 24, 0);
+  applyPlayerDamage(wardenState, 24, 0);
+  assert.ok(wardenArmorBefore - wardenState.player.armor < baselineArmorBefore - baselineState.player.armor, 'Bulkhead Warden should absorb more blockable damage while Breach Guard is active.');
+  assert.ok(wardenState.player.abilityCooldowns[2] < 7, 'Guarded impacts should recycle Bulwark Pulse recovery.');
+  assert.ok(wardenState.player.capacitor > 40, 'Bulkhead Warden overclock should return capacitor from recycled guarded impact.');
+
+  for (const enemy of wardenState.enemies) enemy.active = false;
+  const contacts = wardenState.enemies.slice(0, 3);
+  for (const [index, enemy] of contacts.entries()) {
+    Object.assign(enemy, {
+      active: true,
+      dead: false,
+      x: wardenState.player.x + 110 + index * 45,
+      y: wardenState.player.y + (index - 1) * 40,
+    });
+  }
+  wardenState.player.armor = Math.max(1, wardenState.player.maxArmor - 24);
+  wardenState.player.capacitor = wardenState.player.maxCapacitor;
+  wardenState.player.abilityCooldowns[2] = 0;
+  const armorBeforePulse = wardenState.player.armor;
+  assert.equal(triggerAbility(wardenState, 2), true, 'Bulkhead Warden should be able to cast Bulwark Pulse.');
+  assert.ok(wardenState.player.armor > armorBeforePulse, 'Bulkhead Warden Bulwark Pulse should repair armor when it catches enemies.');
+  assert.ok(wardenState.classState.vanguardGuard >= 6.9, 'Bulkhead Warden overclock should extend the Breach Guard window after Bulwark Pulse.');
+  assert.match(wardenState.eventText, /BULKHEAD WARDEN/, 'Bulkhead Warden should expose explicit combat feedback.');
+}
+bulkheadWardenSpecializationSmoke();
+
 function iceMineBrittleSupportSmoke() {
   const campaign = createDefaultCampaign();
   campaign.cycle = 3;

@@ -9,7 +9,7 @@ export type { AbilityMeta, OperatorClassId } from './classSkills';
 export type Vec2 = { x: number; y: number };
 export type PressureState = 'normal' | 'leaking' | 'decompressing' | 'vacuum';
 export type WeaponId = 'carbine' | 'breacher' | 'rail';
-export type SpecializationId = 'pressure-diver' | 'momentum-broker' | 'grid-weaver' | 'survey-deadeye' | 'redline-pilot' | 'breach-vanguard' | 'capacitor-conductor';
+export type SpecializationId = 'pressure-diver' | 'momentum-broker' | 'grid-weaver' | 'survey-deadeye' | 'redline-pilot' | 'breach-vanguard' | 'bulkhead-warden' | 'capacitor-conductor';
 export type EnemyRole = 'assault' | 'suppressor' | 'technician' | 'elite' | 'boss';
 export type EnemyVariant = 'standard' | 'vectorSkirmisher' | 'anchorEngineer' | 'barricadeTrooper' | 'pressureLockTech' | 'tetherRigger' | 'maintenanceDrone' | 'gravityDrone' | 'shieldBoarder' | 'tetherOperator' | 'droneCarrier' | 'coverBreacher' | 'marksman' | 'vacuumSaboteur' | 'repairDrone' | 'gravitySpecialist' | 'meleeExosuit' | 'salvageThief' | 'impulseRigger' | 'boiloffTech' | 'partitionRigger' | 'recoilBroker' | 'siphonTech' | 'purgeOrchestrator' | 'custodyPorter' | 'geometryTech' | 'orison' | 'foundryMarshal' | 'meridianCommander' | 'salvageCaptain' | 'yardmind' | 'pressureBroker' | 'bondArbiter' | 'forgeChorus' | 'cascadeCustodian' | 'perseidSteward' | 'orphelineWarden' | 'hecateYardmaster' | 'latticeCustodian' | 'transferAdjudicator' | 'umbraMarshal' | 'custodyDirector' | 'parallaxSkirmisher' | 'referenceTech' | 'baselineMarksman' | 'baselineKeeper';
 export type SingularTraitId = 'vacuumWake' | 'atlasDodgeCap' | 'redlineVelocity' | 'relayCrown' | 'palisadeDoctrine' | 'pressureMantle' | 'lockstepArc' | 'rheaBackblast' | 'tetherhand' | 'scraplineDodge' | 'thermalGovernor' | 'machineSight' | 'sunwardFracture' | 'arcspindle' | 'ghostline' | 'borecutter' | 'stormVentgun' | 'nullpoint' | 'glasswalker' | 'cryostack' | 'salvageDynamo' | 'deadreckon' | 'stormskin' | 'axisGhost' | 'pendulumBreach' | 'massTap' | 'boiloffSink' | 'cryolineRail' | 'inertiaSpool' | 'clutchstep' | 'recoilLedger' | 'coldStartBreach' | 'purgeWake' | 'gridReclaimer' | 'custodyShear' | 'shutterLine' | 'archiveRelay' | 'pressureReservoir' | 'recoilDynamo' | 'relayOrchard' | 'coldWitness' | 'redlineBulwark' | 'closeBreach' | 'abilityRosary' | 'pressureBallistics' | 'momentumMark' | 'scrapCircuit' | 'boiloffDash' | 'splitReference' | 'forkedSpool' | 'breachEcho' | 'railDoublet' | 'magBloom' | 'markCascade';
@@ -136,14 +136,22 @@ export function applyPlayerDamage(state: SimState, amount: number, armorPierce =
   const wasCritical = p.hp <= 1;
   const bypass = clamp(armorPierce, 0, 1);
   const directHealthDamage = amount * bypass;
-  const vanguardGuardScale = state.build.operatorClass === 'vanguard' && state.classState.vanguardGuard > 0 ? (state.build.classResonanceTier >= 2 ? 0.74 : state.build.classResonanceTier >= 1 ? 0.82 : 0.88) : 1;
-  const blockableDamage = Math.max(0, amount - directHealthDamage) * vanguardGuardScale;
+  const vanguardGuardActive = state.build.operatorClass === 'vanguard' && state.classState.vanguardGuard > 0;
+  const vanguardGuardScale = vanguardGuardActive ? (state.build.classResonanceTier >= 2 ? 0.74 : state.build.classResonanceTier >= 1 ? 0.82 : 0.88) : 1;
+  const bulkheadWardenScale = vanguardGuardActive && state.build.specialization === 'bulkhead-warden' ? 0.8 : 1;
+  const rawBlockableDamage = Math.max(0, amount - directHealthDamage);
+  const blockableDamage = rawBlockableDamage * vanguardGuardScale * bulkheadWardenScale;
   const armorTake = Math.min(p.armor, blockableDamage);
   p.armor -= armorTake;
   const healthDamage = directHealthDamage + Math.max(0, blockableDamage - armorTake);
   const appliedHealthDamage = Math.min(p.hp, Math.max(0, healthDamage));
   p.hp = Math.max(0, p.hp - appliedHealthDamage);
   state.telemetry.damageTaken += armorTake + appliedHealthDamage;
+  if (vanguardGuardActive && state.build.specialization === 'bulkhead-warden') {
+    const recycledImpact = Math.max(0, rawBlockableDamage - blockableDamage);
+    p.abilityCooldowns[2] = Math.max(0, p.abilityCooldowns[2] - Math.min(0.9, recycledImpact * 0.06));
+    if (state.build.specializationOverclock && recycledImpact > 0) p.capacitor = Math.min(p.maxCapacitor, p.capacitor + Math.min(7, recycledImpact * 0.55));
+  }
   if (p.hp <= 0 || wasCritical) { p.hp = 0; p.dead = true; p.vx *= 0.25; p.vy *= 0.25; state.telemetry.deaths += 1; }
 }
 
@@ -561,7 +569,8 @@ export function triggerAbility(state: SimState, index = 0) {
     else if (target && state.build.operatorClass === 'systems') pushEvent(state, `RELAY HACK // ${target.label.toUpperCase()} NETWORK COMPROMISED`, 1.35);
   } else if (state.build.operatorClass === 'vanguard') {
     state.pulse = 0.46;
-    state.classState.vanguardGuard = Math.max(state.classState.vanguardGuard, state.build.classResonanceTier >= 2 ? 6 : 5);
+    const bulkheadWarden = state.build.specialization === 'bulkhead-warden';
+    state.classState.vanguardGuard = Math.max(state.classState.vanguardGuard, bulkheadWarden ? (state.build.specializationOverclock ? 7 : 6.5) : state.build.classResonanceTier >= 2 ? 6 : 5);
     p.invulnerable = Math.max(p.invulnerable, 0.18);
     let hits = 0;
     for (const enemy of state.enemies) {
@@ -577,9 +586,13 @@ export function triggerAbility(state: SimState, index = 0) {
       hits += 1;
     }
     spawnEffect(state, p.x, p.y, 'pulse', 330, 0.6);
+    if (bulkheadWarden && hits > 0) {
+      const repair = Math.min(state.build.specializationOverclock ? 14 : 10, hits * (state.build.specializationOverclock ? 3.5 : 2.5));
+      p.armor = Math.min(p.maxArmor, p.armor + repair);
+    }
     if (state.build.mechanics.arcGroundLoop && hits > 0) p.capacitor = Math.min(p.maxCapacitor, p.capacitor + Math.min(14, 4 + hits * 2));
     if (state.build.mechanics.arcCascadeLattice) { p.abilityCooldowns[0] = Math.max(0, p.abilityCooldowns[0] - 0.45); p.abilityCooldowns[1] = Math.max(0, p.abilityCooldowns[1] - 0.45); }
-    pushEvent(state, `BULWARK PULSE // GUARD LOCKED // ${hits} CONTACT${hits === 1 ? '' : 'S'}`, 1.45);
+    pushEvent(state, bulkheadWarden ? `BULKHEAD WARDEN // IMPACT RECYCLED // ${hits} CONTACT${hits === 1 ? '' : 'S'}` : `BULWARK PULSE // GUARD LOCKED // ${hits} CONTACT${hits === 1 ? '' : 'S'}`, 1.45);
   } else if (state.build.operatorClass === 'vector') {
     const baseDir = norm(p.aim);
     for (const angle of [-0.13, 0, 0.13]) {
