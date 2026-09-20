@@ -205,7 +205,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] P2.10 Environment kit
 - [x] P2.11 Gas-harvester machinery
 - [x] P2.12 Storm/pressure visual language
-- [ ] P2.13 Pressure props/interactables
+- [x] P2.13 Pressure props/interactables
 - [ ] P2.14 Stormline Foreman presentation
 - [ ] P2.15 Atmospheric effects
 - [ ] P2.16 Mobile LOD/performance
@@ -307,7 +307,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1 is complete, **Spin Habitat P2.1–P2.9 is delivered**, and **Jovian Harvester P2.10–P2.12 is now implemented**. Continue in roadmap order with **P2.13 — Pressure props/interactables**, then proceed through P2.16 before moving to Authored Biomes Pack II.
+P1 is complete, **Spin Habitat P2.1–P2.9 is delivered**, and **Jovian Harvester P2.10–P2.13 is now implemented**. Continue in roadmap order with **P2.14 — Stormline Foreman presentation**, then proceed through P2.16 before moving to Authored Biomes Pack II.
+
+**P2.13 delivered:** Jovian Harvester pressure gameplay now has biome-specific authored hardware instead of shared generic controls: a storm-rated pressure-lock family for live pressure doors/interlocks and a relief-manifold family for breach/seal controls. Both ship adaptive LOD1/LOD2 GLBs with distinct wheel/valve silhouettes, full-detail equalization/gauge/riser props, status emitters, and objective-beacon mounts. Runtime status color/intensity follows the real pressure-door link and service/boss breach state, while QA telemetry exposes the pressure kit, source, live pressure state, and door state. Generated-content and static graphics regressions, full production build, desktop + mobile-landscape Browser E2E on PR and merged `main`, Level 15 beta smoke, Android beta.165 package/version/SDK/signature verification, and Android emulator runtime + Chapter 3 touch smoke are green on implementation head `fd5840bf877b48fd490ae6d4991cb886724b725d`. Stormline Foreman presentation, atmospheric effects, and the dedicated mobile performance pass remain scoped to P2.14–P2.16.
 
 **P2.12 delivered:** Jovian Harvester now has a gameplay-driven storm/pressure visual language layered over both authored and fallback environment geometry: electrostatic storm-charge sweeps, unequal-pressure shear bands, and a storm-relief manifold pulse. Visual state is derived from live sector pressures/pressure states, the service-breach state, and contract pressure/grid conditions rather than decorative randomness; venting shifts the language toward warning-red relief cues, while normal unequal-pressure operation retains the storm-orange/pressure-cyan identity. The effect scales through the existing transparency/VFX budget and trims secondary sweeps/bands for coarse pointers or Performance-tier rendering. Deterministic helper regression, static graphics assertions, full production regression/build, Level 15 beta smoke, desktop + mobile-landscape Browser E2E with live storm/shear telemetry, Android beta.164 package/version/SDK/signature verification, and native emulator runtime smoke are green on implementation head `971da635740eaf16d7302eb17b563d8432fc5ac7`. Pressure props/interactables, Stormline Foreman presentation, atmospheric effects, and the dedicated mobile performance pass remain scoped to P2.13–P2.16.
 
@@ -343,13 +345,13 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.164**
+- Android beta: **0.0.1-beta.165**
 - Package: `app.ironshade.vector`
-- Verified: P2.12 Jovian Harvester gameplay-driven storm/pressure visual language with electrostatic storm-charge sweeps, unequal-pressure shear bands, storm-relief pulse, live sector-pressure/breach/condition routing, adaptive VFX detail reduction, deterministic render/static regression coverage, full production regression/build, desktop + mobile-landscape Browser E2E with live storm/shear assertions, Level 15 beta smoke, Android beta.164 package/version/SDK/signature checks, Android emulator runtime smoke, and retained browser/Android QA artifacts
+- Verified: P2.13 Jovian Harvester authored storm-pressure locks + relief manifolds with adaptive LOD1/LOD2, live pressure-link/breach/sector status feedback, generated-content/static graphics regression coverage, full production regression/build, desktop + mobile-landscape Browser E2E on merged `main`, Level 15 beta smoke, Android beta.165 package/version/SDK/signature checks, Android emulator runtime smoke, Chapter 3 touch playthrough, and retained browser/Android QA artifacts
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P2.12 final verified implementation head: `971da635740eaf16d7302eb17b563d8432fc5ac7`
-- Browser E2E run: `35480286550`
-- Level 15 beta smoke run: `35480286530`
-- Android beta.164 run: `35480286542`
-- Android beta.164 artifact ID: `10595388544`
-- Android beta.164 artifact head: `971da635740eaf16d7302eb17b563d8432fc5ac7`
+- P2.13 final verified implementation head: `fd5840bf877b48fd490ae6d4991cb886724b725d`
+- Browser E2E run: `35481061053`
+- Level 15 beta smoke run: `35481061108`
+- Android beta.165 run: `35481061059`
+- Android beta.165 artifact ID: `10595753103`
+- Android beta.165 artifact head: `fd5840bf877b48fd490ae6d4991cb886724b725d`
