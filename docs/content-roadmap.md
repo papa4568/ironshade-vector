@@ -319,7 +319,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 P1, P2, P3, and **P4 — Megastructure Capstone Pass** are complete. **P5.1–P5.8 class-capstone work** is complete. Continue in roadmap order with **P5.9 — Same-class builds feel different at LV16+**.
 
-**P5.8 implemented:** Systems specialization/evolution pairs now form three explicit LV16+ capstone loops. **Induction Sink** links Thermal Shunter + Anchor Lattice so a hot multi-node Polarity Well routes additional heat into a longer overcharged crossfire bank; the next shot gains extra velocity, damage, penetration, capacitor return, and overclock recovery beyond standard Thermal Crossfire. **Recursive Bus** links Capacitor Conductor + Recursive Intrusion so propagated hack relays return capacitor directly and the overclock cools the active weapon as the intrusion spreads. **Mesh Reflux** links Grid Weaver + Return Current so machinery-routed remote marks become conductive return nodes and recycle Relay Hack recovery. Skills/Stats surface the active capstone links, and deterministic gameplay/UI regressions cover all three paired behaviors. **P5.9 — Same-class builds feel different at LV16+** is next after validation/merge.
+**P5.8 delivered:** Systems specialization/evolution pairs now form three explicit LV16+ capstone loops. **Induction Sink** links Thermal Shunter + Anchor Lattice so a hot multi-node Polarity Well routes additional heat into a longer overcharged crossfire bank; the next shot gains extra velocity, damage, penetration, capacitor return, and overclock recovery beyond standard Thermal Crossfire. **Recursive Bus** links Capacitor Conductor + Recursive Intrusion so propagated hack relays return capacitor directly and the overclock cools the active weapon as the intrusion spreads. **Mesh Reflux** links Grid Weaver + Return Current so machinery-routed remote marks become conductive return nodes and recycle Relay Hack recovery. Skills/Stats surface the active capstone links, and deterministic gameplay/UI regressions cover all three paired behaviors. PR Browser E2E run `35543600968` and merged-main Browser E2E run `35543698281` passed desktop/mobile full regression, production build, and player-journey QA; Level 15 beta smoke run `35543698279` passed; Android beta.198 run `35543698272` passed web regression/build, package/version/SDK/signature verification, native emulator install/launch/resume smoke, Android touch/runtime QA, and the Chapter 3 two-route touch playthrough. **P5.9 — Same-class builds feel different at LV16+** is next.
 
 **P5.7 delivered:** Systems now has three LV16 class skill evolutions in the existing Skill Lens slots. **Anchor Lattice** turns Polarity Well into a conductive clustering tool that recycles Relay Hack recovery per caught node, balanced by +18% Polarity Well cooldown. **Recursive Intrusion** extends Relay Hack through one additional hostile, leaves propagated relays conductive, and advances Cascade Arc recovery, balanced by +18% Relay Hack capacitor cost. **Return Current** converts Cascade Arc network contacts into capped capacitor return and Polarity Well recovery, balanced by +20% Cascade Arc cooldown. Class/LV16 gating, class-switch cleanup, tradeoffs, network propagation, recovery routing, capacitor return, build-stat visibility, and explicit combat feedback are covered by deterministic regression. PR desktop/mobile Browser E2E and merged-main desktop/mobile Browser E2E both passed full regression, production build, and player-journey QA; merged-main Level 15 beta smoke passed; Android beta.197 passed package/version/SDK/signature verification, native emulator smoke, touch/runtime QA, and the Chapter 3 two-route touch playthrough. **P5.8 — Systems capstone interactions** is next.
 
@@ -411,15 +411,15 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.197**
+- Android beta: **0.0.1-beta.198**
 - Package: `app.ironshade.vector`
-- Verified: Class capstone **P5.7 — Systems skill evolution** is complete. Systems now has three LV16 class skill evolutions: **Anchor Lattice** for conductive Polarity Well clustering and Relay Hack recovery, **Recursive Intrusion** for expanded conductive hack propagation and Cascade Arc recovery, and **Return Current** for converting Cascade Arc network contacts into capacitor return and Polarity Well recovery. Each evolution has an explicit cost/cooldown tradeoff, remains Systems-only and LV16-gated, cleans up safely on class switch, surfaces in build stats, and has deterministic gameplay regression. PR and merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.197 package/version/SDK/signature verification, native emulator smoke, Android touch/runtime smoke, and the Chapter 3 two-route touch playthrough all passed. **The next roadmap slice is P5.8 — Systems capstone interactions.**
+- Verified: Class capstone **P5.8 — Systems capstone interactions** is complete. Systems now has three explicit LV16+ specialization/evolution pairings: **Induction Sink** (Thermal Shunter + Anchor Lattice), **Recursive Bus** (Capacitor Conductor + Recursive Intrusion), and **Mesh Reflux** (Grid Weaver + Return Current). These pairings alter heat routing/crossfire output, relay capacitor/cooling recovery, and machinery-network return routing respectively; Skills/Stats expose active capstones and deterministic gameplay/UI regression covers all three. PR and merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.198 package/version/SDK/signature verification, native emulator smoke, Android touch/runtime smoke, and the Chapter 3 two-route touch playthrough all passed. **The next roadmap slice is P5.9 — Same-class builds feel different at LV16+.**
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P5.7 final PR head: `f4d70461664663273adbe0792c6ed3c666d5c699`
-- P5.7 merged main / APK source: `4435a81a9066769d881c7be303d0ed72cfa8a221`
-- Final Browser E2E run: `35542540309`
-- Level 15 beta smoke run: `35542540259`
-- Android beta.197 run: `35542540281`
-- Android beta.197 artifact ID: `10615143227`
-- Android beta.197 artifact head: `4435a81a9066769d881c7be303d0ed72cfa8a221`
-- APK SHA-256: `8d69e2915ac4fd02fbca19514956a79882bf6d96041888b437a9b945aab18fe4`
+- P5.8 final PR head: `d3cd13090756901932ef33c6d8292ec3f82e77f0`
+- P5.8 merged main / APK source: `df20bf7553f3bd0de162d73e30f0e4ef0136b298`
+- Final Browser E2E run: `35543698281`
+- Level 15 beta smoke run: `35543698279`
+- Android beta.198 run: `35543698272`
+- Android beta.198 artifact ID: `10615269972`
+- Android beta.198 artifact head: `df20bf7553f3bd0de162d73e30f0e4ef0136b298`
+- APK SHA-256: `c5b3752efd1791846da04f697d82794c12ac6c16f41c1602b8d66f7168e5cb6a`
