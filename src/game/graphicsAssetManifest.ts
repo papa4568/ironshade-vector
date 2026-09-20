@@ -437,7 +437,21 @@ export const JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES = {
       2: createGraphicsAssetSpec('jovian-harvester-separator-package-lod2', 'interactable', '/assets/models/interactables/jovian-harvester-separator-package-lod2.glb', 2),
     },
   },
-} as const satisfies Record<'stormBusIsolator' | 'deckMassTrim' | 'skimmerCompressor' | 'separatorPackage', GraphicsAssetFamily>;
+  stormPressureLock: {
+    id: 'jovian-harvester-storm-pressure-lock',
+    lods: {
+      1: createGraphicsAssetSpec('jovian-harvester-storm-pressure-lock-lod1', 'interactable', '/assets/models/interactables/jovian-harvester-storm-pressure-lock-lod1.glb', 1),
+      2: createGraphicsAssetSpec('jovian-harvester-storm-pressure-lock-lod2', 'interactable', '/assets/models/interactables/jovian-harvester-storm-pressure-lock-lod2.glb', 2),
+    },
+  },
+  reliefManifold: {
+    id: 'jovian-harvester-relief-manifold',
+    lods: {
+      1: createGraphicsAssetSpec('jovian-harvester-relief-manifold-lod1', 'interactable', '/assets/models/interactables/jovian-harvester-relief-manifold-lod1.glb', 1),
+      2: createGraphicsAssetSpec('jovian-harvester-relief-manifold-lod2', 'interactable', '/assets/models/interactables/jovian-harvester-relief-manifold-lod2.glb', 2),
+    },
+  },
+} as const satisfies Record<'stormBusIsolator' | 'deckMassTrim' | 'skimmerCompressor' | 'separatorPackage' | 'stormPressureLock' | 'reliefManifold', GraphicsAssetFamily>;
 
 export const INTERACTABLE_ASSET_FAMILIES = {
   control: {
