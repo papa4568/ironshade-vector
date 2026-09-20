@@ -196,12 +196,12 @@ for (const marker of ['solar-yard-sinter-forge-chamber', 'solar-yard-printer-spi
   assert(jovianAssetGeneratorSource.includes(`name: '${marker}'`), `Solar Yard P3.8 machinery silhouette marker ${marker} must remain authored`);
 }
 assert(rendererSource.includes('SOLAR_YARD_ASSET_FAMILIES'), 'Solar Yard P3.8 must load the authored environment and fabrication machinery kit at runtime');
-assert(rendererSource.includes('loadAuthoredSolarYardEnvironment(world.w, world.h, budget.detailScale)'), 'Solar Yard P3.8 must route combat rendering through the authored fabrication yard');
+assert(rendererSource.includes('loadAuthoredSolarYardEnvironment(state, world.w, world.h, budget.detailScale)'), 'Solar Yard authored environment must receive simulation state for stateful yard hardware');
 assert(rendererSource.includes("dataset.environmentVisual = 'authored-solar-yard'"), 'Solar Yard P3.8 authored activation must remain observable');
-assert(rendererSource.includes("dataset.environmentKit = 'ceramic-deck,truss-frame,radiator-tower,reflector-pylon,sinter-forge,printer-spindle,feedstock-press'"), 'Solar Yard P3.8 runtime kit must include all fabrication machinery families');
+assert(rendererSource.includes("dataset.environmentKit = 'ceramic-deck,truss-frame,radiator-tower,reflector-pylon,sinter-forge,printer-spindle,feedstock-press,thermal-shutter'"), 'Solar Yard runtime kit must include fabrication machinery and thermal shutters');
 assert(rendererSource.includes('dataset.environmentMachineDetail'), 'Solar Yard P3.8 must expose deterministic fabrication machinery telemetry');
 assert(rendererSource.includes("dataset.environmentComposition = 'shade-service-deck+fabrication-spine+sunward-work-yard'"), 'Solar Yard P3.8 must preserve the three-zone fabrication yard composition');
-assert(rendererSource.includes("dataset.environmentZoneIdentity = 'shade:ceramic-deck+radiator-towers|spine:truss-frames+sinter-forges|sunward:reflector-pylons+printer-spindles+feedstock-presses'"), 'Solar Yard P3.8 must keep fabrication machinery visually zoned');
+assert(rendererSource.includes("dataset.environmentZoneIdentity = 'shade:ceramic-deck+radiator-towers+thermal-shutter|spine:truss-frames+sinter-forges|sunward:reflector-pylons+printer-spindles+feedstock-presses'"), 'Solar Yard zone identity must place thermal shutters on the shade-side service deck');
 assert(rendererSource.includes("dataset.readabilityLanguage = 'ceramic-deck+black-radiators+gold-reflectors+amber-hot-work'"), 'Solar Yard P3.8 must preserve its screenshot-readable material and machinery identity');
 assert(rendererSource.includes('this.proceduralRefineryVisuals.push(...solarYardFallback)'), 'Solar Yard P3.8 must retain procedural scenery as an authored-load fallback');
 assert(rendererSource.includes("sunShadowRoot.name = 'solar-yard-sun-shadow-language'"), 'Solar Yard P3.9 must mount an explicit sun/shadow readability layer');
@@ -211,6 +211,21 @@ assert(rendererSource.includes("dataset.environmentSunDirection = 'fixed-sunward
 assert(rendererSource.includes("dataset.environmentSunPatches = \`sun:\${this.solarYardSunPatches.length}+shade:\${this.solarYardShadePatches.length}\`"), 'Solar Yard P3.9 must expose deterministic sun/shade patch counts');
 assert(rendererSource.includes('this.keyLight.position.set(scaled(world.w * 1.12), 30, scaled(world.h * 0.10))'), 'Solar Yard P3.9 must anchor the hard key light to the yard rather than the player');
 assert(rendererSource.includes("dataset.readabilityLanguage = 'hard-sun-edge+cool-shade-mass+gold-reflectors+amber-hot-work'"), 'Solar Yard P3.9 readability must combine luminance boundaries with the authored fabrication palette');
+
+for (const asset of ['solar-yard-thermal-shutter']) {
+  assert(manifestSource.includes(`${asset}-lod1.glb`) && manifestSource.includes(`${asset}-lod2.glb`), `Solar Yard P3.10 asset ${asset} must preserve adaptive LOD1/LOD2 coverage`);
+}
+for (const marker of ['solar-yard-thermal-shutter-panel-left', 'solar-yard-thermal-shutter-panel-right', 'solar-yard-thermal-shutter-actuator']) {
+  assert(jovianAssetGeneratorSource.includes(`name: '${marker}'`), `Solar Yard P3.10 thermal shutter marker ${marker} must remain authored`);
+}
+assert(rendererSource.includes("state.objects.find(object => object.id === 'solar-shutter')"), 'Solar Yard P3.10 authored shutter must bind to the live solar-shutter gameplay control');
+assert(rendererSource.includes("getObjectByName('solar-yard-thermal-shutter-panel-left')"), 'Solar Yard P3.10 must retain an addressable left shutter panel');
+assert(rendererSource.includes("getObjectByName('solar-yard-thermal-shutter-panel-right')"), 'Solar Yard P3.10 must retain an addressable right shutter panel');
+assert(rendererSource.includes("shutterClosed ? -1.34 : -2.22") && rendererSource.includes("shutterClosed ? 1.34 : 2.22"), 'Solar Yard P3.10 shutter panels must visibly change state with the gameplay control');
+assert(rendererSource.includes("dataset.environmentThermalShutters = \`authored:\${shutterClosed ? 'closed' : 'open'}\`"), 'Solar Yard P3.10 must expose open/closed shutter state for runtime QA');
+assert(rendererSource.includes("dataset.environmentThermalProtection = shutterClosed"), 'Solar Yard P3.10 must expose radiant-load protection state');
+assert(rendererSource.includes("dataset.environmentThermalShutterControl = 'solar-shutter:state-linked'"), 'Solar Yard P3.10 must expose the gameplay-to-art linkage');
+assert(rendererSource.includes('thermalShutterRoot.scale.setScalar(this.coarse ? 0.58 : 0.64)'), 'Solar Yard P3.10 thermal shutters must keep a mobile-specific authored scale path');
 
 assert(rendererSource.includes('ICE_MINE_ASSET_FAMILIES'), 'Ice Mine P3.2 must load the authored environment kit at runtime');
 assert(rendererSource.includes('loadAuthoredIceMineEnvironment(state, world.w, world.h, budget.detailScale)'), 'Ice Mine P3.2 must route combat rendering through authored bore/tunnel composition');
