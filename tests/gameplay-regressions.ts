@@ -540,7 +540,8 @@ assert.ok(k91Stage1State.hazards.some(hazard => hazard.active), 'An unresolved K
 
 const k91FinalDirector = createDirector();
 stepMissionDirector(k91Stage4State, k91FinalDirector, k91Stage4, 7.1);
-assert.match(k91Stage4State.eventText, /K-91 BALLAST SHIFT/, 'K-91 final stage must preserve a bossless ballast-shift capstone hazard.');
+assert.equal(k91FinalDirector.megastructureEventA, true, 'K-91 Ballast Vault must trigger its dedicated capstone event even when biome forecast text follows it.');
+assert.ok(k91Stage4State.hazards.some(hazard => hazard.active && hazard.kind === 'gravityWell'), 'K-91 final stage must preserve a bossless ballast-shift gravity hazard.');
 
 const expeditionLootSource = [{ id: 'stage-1-drop', enemyId: 7, enemyLabel: 'Stage One Elite', rarity: 'Prototype' as const, source: 'elite' as const, recoveryQualityFloor: 3 as const, recoveryLevel: 24, monsterLevel: 8 }];
 const expeditionLootCarry = carryExpeditionLoot(expeditionLootSource);
