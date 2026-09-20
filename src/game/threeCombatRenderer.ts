@@ -303,6 +303,9 @@ export class ThreeCombatRenderer {
   private jovianHarvesterLoadGeneration = 0;
   private iceMineLoadGeneration = 0;
   private solarYardLoadGeneration = 0;
+  private solarYardSunShadowRoot: THREE.Group | null = null;
+  private readonly solarYardSunPatches: Array<THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>> = [];
+  private readonly solarYardShadePatches: Array<THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>> = [];
   private readonly iceMineBrittleSupportVisuals = new Map<string, THREE.Object3D>();
   private readonly iceMineFractureRoots = new Map<string, THREE.Group>();
   private readonly iceMineFractureCracks = new Map<string, Array<THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>>>();
@@ -574,6 +577,9 @@ export class ThreeCombatRenderer {
     this.jovianHarvesterLoadGeneration += 1;
     this.iceMineLoadGeneration += 1;
     this.solarYardLoadGeneration += 1;
+    this.solarYardSunShadowRoot = null;
+    this.solarYardSunPatches.length = 0;
+    this.solarYardShadePatches.length = 0;
     this.iceMineBrittleSupportVisuals.clear();
     this.iceMineFractureRoots.clear();
     this.iceMineFractureCracks.clear();
@@ -691,6 +697,11 @@ export class ThreeCombatRenderer {
     delete this.renderer.domElement.dataset.environmentPressureRange;
     delete this.renderer.domElement.dataset.environmentStormSource;
     delete this.renderer.domElement.dataset.environmentStormDetail;
+    delete this.renderer.domElement.dataset.environmentSunShadow;
+    delete this.renderer.domElement.dataset.environmentSunDirection;
+    delete this.renderer.domElement.dataset.environmentSunMode;
+    delete this.renderer.domElement.dataset.environmentSunPatches;
+    delete this.renderer.domElement.dataset.environmentShadowBudget;
     delete this.renderer.domElement.dataset.readabilityLanguage;
   }
 
@@ -2771,6 +2782,54 @@ export class ThreeCombatRenderer {
         solarYardFallback.push(panel);
       }
       this.proceduralRefineryVisuals.push(...solarYardFallback);
+
+      const sunShadowRoot = new THREE.Group();
+      sunShadowRoot.name = 'solar-yard-sun-shadow-language';
+      const shadeMaterial = new THREE.MeshBasicMaterial({
+        color: 0x07141c,
+        transparent: true,
+        opacity: 0.17,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
+      const sunMaterial = new THREE.MeshBasicMaterial({
+        color: 0xffb45d,
+        transparent: true,
+        opacity: 0.075,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+      });
+      const shadePlacements = [
+        [0.18, 0.36, 0.26, 0.72, -0.10],
+        [0.36, 0.66, 0.18, 0.52, -0.10],
+        [0.52, 0.28, 0.13, 0.36, -0.10],
+      ] as const;
+      for (const [x, z, widthRatio, depthRatio, rotation] of shadePlacements) {
+        const shade = new THREE.Mesh(new THREE.PlaneGeometry(scaled(worldW * widthRatio), scaled(worldH * depthRatio)), shadeMaterial.clone());
+        shade.rotation.x = -Math.PI / 2;
+        shade.rotation.z = rotation;
+        shade.position.set(scaled(worldW * x), 0.028, scaled(worldH * z));
+        shade.renderOrder = 2;
+        sunShadowRoot.add(shade);
+        this.solarYardShadePatches.push(shade);
+      }
+      const sunPlacements = [
+        [0.68, 0.30, 0.20, 0.34, -0.10],
+        [0.78, 0.56, 0.17, 0.30, -0.10],
+        [0.64, 0.78, 0.16, 0.24, -0.10],
+      ] as const;
+      for (const [x, z, widthRatio, depthRatio, rotation] of sunPlacements) {
+        const sunPatch = new THREE.Mesh(new THREE.PlaneGeometry(scaled(worldW * widthRatio), scaled(worldH * depthRatio)), sunMaterial.clone());
+        sunPatch.rotation.x = -Math.PI / 2;
+        sunPatch.rotation.z = rotation;
+        sunPatch.position.set(scaled(worldW * x), 0.032, scaled(worldH * z));
+        sunPatch.renderOrder = 3;
+        sunShadowRoot.add(sunPatch);
+        this.solarYardSunPatches.push(sunPatch);
+      }
+      this.solarYardSunShadowRoot = sunShadowRoot;
+      this.environmentRoot.add(sunShadowRoot);
     } else if (location === 'momentum-exchange') {
       for (const offset of [-9, 0, 9]) {
         const flywheel = new THREE.Mesh(new THREE.TorusGeometry(2.6, 0.48, 12, 48), structural);
@@ -4365,12 +4424,14 @@ export class ThreeCombatRenderer {
     const pz = scaled(state.player.y);
     const isRefinery = mission.location === 'asteroid-refinery';
     const isDamagedVessel = mission.location === 'damaged-vessel';
+    const isSolarYard = mission.location === 'solar-yard';
     const lightingProfile = LOCATION_LIGHTING_PROFILES[mission.location];
     const reducedEffects = budget.tier === 2 || quality < 0.55;
-    const solarBoost = mission.location === 'solar-yard'
+    const solarShutter = isSolarYard ? state.objects.find(object => object.id === 'solar-shutter') : undefined;
+    const solarSurge = isSolarYard
       && state.time >= 10
       && state.time < 18
-      && !state.objects.find(object => object.id === 'solar-shutter')?.exposed;
+      && !solarShutter?.exposed;
 
     let readabilityX = px - 0.6;
     let readabilityZ = pz + 0.7;
@@ -4429,13 +4490,36 @@ export class ThreeCombatRenderer {
 
     this.keyLight.color.setHex(lightingProfile.keyColor);
     this.rimLight.color.setHex(lightingProfile.rimColor);
-    this.keyLight.intensity = solarBoost ? Math.max(3.6, lightingProfile.keyIntensity) : lightingProfile.keyIntensity;
-    this.rimLight.intensity = lightingProfile.rimIntensity;
-    const baseExposure = solarBoost ? Math.max(1.18, lightingProfile.exposure) : lightingProfile.exposure;
+    this.keyLight.intensity = isSolarYard ? (solarSurge ? 3.75 : 3.15) : lightingProfile.keyIntensity;
+    this.rimLight.intensity = isSolarYard ? (solarSurge ? 0.68 : 0.82) : lightingProfile.rimIntensity;
+    const baseExposure = isSolarYard ? (solarSurge ? 1.16 : 1.08) : lightingProfile.exposure;
     this.renderer.toneMappingExposure = mission.conditions.includes('low-visibility') ? baseExposure * 1.04 : baseExposure;
     this.renderer.domElement.dataset.locationLighting = `${mission.location}:${lightingProfile.id}:aces-${this.renderer.toneMappingExposure.toFixed(2)}`;
 
-    if (isRefinery) {
+    if (isSolarYard) {
+      this.keyLight.position.set(scaled(world.w * 1.12), 30, scaled(world.h * 0.10));
+      this.keyLight.target.position.set(scaled(world.w * 0.48), 0, scaled(world.h * 0.58));
+      if (!this.keyLight.target.parent) this.scene.add(this.keyLight.target);
+      this.rimLight.position.set(scaled(world.w * 0.08), 13.5, scaled(world.h * 0.88));
+
+      const shadeOpacity = (solarSurge ? 0.22 : 0.17) * (reducedEffects ? 0.82 : 1);
+      const sunOpacity = (solarSurge ? 0.12 : 0.075) * budget.transparencyScale;
+      for (const patch of this.solarYardShadePatches) {
+        patch.material.opacity = shadeOpacity;
+      }
+      for (const patch of this.solarYardSunPatches) {
+        patch.material.opacity = sunOpacity;
+      }
+
+      this.renderer.domElement.dataset.environmentLighting = `solar-yard-hard-key+cool-fill+contact:player+enemy+shadow:${budget.shadows ? budget.shadowMapSize : 0}`;
+      this.renderer.domElement.dataset.environmentSunShadow = 'hard-sun+cool-shade+long-shadow';
+      this.renderer.domElement.dataset.environmentSunDirection = 'fixed-sunward-east-to-west';
+      this.renderer.domElement.dataset.environmentSunMode = solarSurge ? 'solar-surge' : 'hard-sun';
+      this.renderer.domElement.dataset.environmentSunPatches = `sun:${this.solarYardSunPatches.length}+shade:${this.solarYardShadePatches.length}`;
+      this.renderer.domElement.dataset.environmentShadowBudget = budget.shadows ? `key:${budget.shadowMapSize}` : 'key:off';
+      this.renderer.domElement.dataset.environmentTone = `aces-${this.renderer.toneMappingExposure.toFixed(2)}+warm-sun+cool-shade`;
+      this.renderer.domElement.dataset.readabilityLanguage = 'hard-sun-edge+cool-shade-mass+gold-reflectors+amber-hot-work';
+    } else if (isRefinery) {
       const practicalCount = (firstPractical.visible ? 1 : 0) + (secondPractical.visible ? 1 : 0);
       this.renderer.domElement.dataset.environmentLighting = `refinery-key+rim+contact:player+enemy+practical:${practicalCount}+shadow:key`;
       this.renderer.domElement.dataset.environmentTone = `aces-${this.renderer.toneMappingExposure.toFixed(2)}`;
