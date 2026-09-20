@@ -193,6 +193,19 @@ assert(rendererSource.includes("dataset.environmentStormSource = 'live-sector-pr
 assert(rendererSource.includes("dataset.environmentVfx = 'storm-charge-sweeps+pressure-shear-bands+relief-pulse'"), 'Jovian P2.12 must expose its visual-language VFX identity');
 assert(rendererSource.includes("dataset.readabilityLanguage = 'tower-height+bridge-lines+amber-wayfinding+pressure-shear+storm-charge'"), 'Jovian P2.12 screenshot readability must include storm charge and pressure shear');
 
+for (const asset of ['jovian-harvester-storm-pressure-lock', 'jovian-harvester-relief-manifold']) {
+  assert(manifestSource.includes(`${asset}-lod1.glb`) && manifestSource.includes(`${asset}-lod2.glb`), `Jovian Harvester P2.13 pressure asset ${asset} must preserve adaptive LOD1/LOD2 coverage`);
+}
+assert(rendererSource.includes('JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES.stormPressureLock'), 'Jovian P2.13 pressure doors must use the storm-rated pressure-lock asset');
+assert(rendererSource.includes('JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES.reliefManifold'), 'Jovian P2.13 seal controls must use the relief-manifold asset');
+assert(rendererSource.includes("dataset.interactablePressureKit = 'storm-pressure-lock+relief-manifold'"), 'Jovian P2.13 pressure hardware kit must remain explicit for runtime QA');
+assert(rendererSource.includes("dataset.interactablePressureSource = 'live-pressure-links+breach-state+sector-pressure'"), 'Jovian P2.13 pressure hardware must expose its live gameplay state source');
+assert(rendererSource.includes("dataset.interactablePressureState = serviceBreach?.active && !serviceBreach.sealed"), 'Jovian P2.13 relief manifold state must follow the live service breach');
+assert(rendererSource.includes("dataset.interactablePressureDoor = pressureDoor?.open ? 'open' : 'sealed'"), 'Jovian P2.13 pressure-lock state must follow the live pressure link');
+for (const marker of ['jovian-harvester-storm-pressure-lock-wheel', 'jovian-harvester-relief-manifold-valve']) {
+  assert(jovianAssetGeneratorSource.includes(`name: '${marker}'`), `Jovian Harvester P2.13 pressure silhouette marker ${marker} must remain authored`);
+}
+
 assert(rendererSource.includes('SPIN_HABITAT_ASSET_FAMILIES'), 'Spin Habitat must load through authored environment asset families');
 for (const asset of ['spin-habitat-ring-segment', 'spin-habitat-spoke-truss', 'spin-habitat-axis-hub', 'spin-habitat-service-bay']) {
   assert(manifestSource.includes(`${asset}-lod1.glb`) && manifestSource.includes(`${asset}-lod2.glb`), `Spin Habitat asset ${asset} must preserve adaptive LOD1/LOD2 coverage`);
