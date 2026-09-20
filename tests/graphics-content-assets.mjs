@@ -221,6 +221,12 @@ for (const path of glbs) {
                                             ? 'ice-mine-service-deck-main'
                                             : filename.includes('ice-mine-ice-pillar')
                                               ? 'ice-mine-ice-pillar-core'
+                                              : filename.includes('ice-mine-cryo-pump')
+                                                ? 'ice-mine-cryo-pump-housing'
+                                                : filename.includes('ice-mine-coolant-manifold')
+                                                  ? 'ice-mine-coolant-manifold-spine'
+                                                  : filename.includes('ice-mine-freeze-compressor')
+                                                    ? 'ice-mine-freeze-compressor-body'
           : filename.includes('floor-panel')
             ? 'refinery-floor-panel'
             : filename.includes('floor-service-grate')
@@ -318,6 +324,24 @@ for (const path of glbs) {
       assert(nodeNames.has('ice-mine-ice-pillar-shelf'), `${relativePath}: Ice Mine ice pillar LOD1 is missing shelf detail`);
       assert(nodeNames.has('ice-mine-ice-pillar-shard'), `${relativePath}: Ice Mine ice pillar LOD1 is missing shard detail`);
       assert(materialForNode('ice-mine-ice-pillar-core') === 'ice-mine-frost-ice', `${relativePath}: Ice Mine pillar lost its frozen core identity`);
+    }
+    if (filename.includes('ice-mine-cryo-pump') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('ice-mine-cryo-pump-feed-left'), `${relativePath}: Ice Mine cryo pump LOD1 is missing feed-line detail`);
+      assert(nodeNames.has('ice-mine-cryo-pump-frost-collar'), `${relativePath}: Ice Mine cryo pump LOD1 is missing frost collar detail`);
+      assert(materialForNode('ice-mine-cryo-pump-housing') === 'ice-mine-support-steel', `${relativePath}: Ice Mine cryo pump housing lost its steel machinery identity`);
+      assert(materialForNode('ice-mine-cryo-pump-status') === 'ice-mine-cold-emissive', `${relativePath}: Ice Mine cryo pump status must remain cold cyan`);
+    }
+    if (filename.includes('ice-mine-coolant-manifold') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('ice-mine-coolant-manifold-branch-left'), `${relativePath}: Ice Mine coolant manifold LOD1 is missing branch detail`);
+      assert(nodeNames.has('ice-mine-coolant-manifold-frost-sump'), `${relativePath}: Ice Mine coolant manifold LOD1 is missing frost sump detail`);
+      assert(materialForNode('ice-mine-coolant-manifold-spine') === 'ice-mine-support-steel', `${relativePath}: Ice Mine coolant manifold lost its steel spine identity`);
+      assert(materialForNode('ice-mine-coolant-manifold-status') === 'ice-mine-cold-emissive', `${relativePath}: Ice Mine coolant manifold status must remain cold cyan`);
+    }
+    if (filename.includes('ice-mine-freeze-compressor') && filename.endsWith('-lod1.glb')) {
+      assert(nodeNames.has('ice-mine-freeze-compressor-drive'), `${relativePath}: Ice Mine freeze compressor LOD1 is missing drive detail`);
+      assert(nodeNames.has('ice-mine-freeze-compressor-frost-trap'), `${relativePath}: Ice Mine freeze compressor LOD1 is missing frost trap detail`);
+      assert(materialForNode('ice-mine-freeze-compressor-body') === 'ice-mine-support-steel', `${relativePath}: Ice Mine freeze compressor lost its steel body identity`);
+      assert(materialForNode('ice-mine-freeze-compressor-status') === 'ice-mine-cold-emissive', `${relativePath}: Ice Mine freeze compressor status must remain cold cyan`);
     }
 
     if (filename.includes('parallax-baseline-pylon') && filename.endsWith('-lod1.glb')) {
