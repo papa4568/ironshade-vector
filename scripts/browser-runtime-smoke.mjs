@@ -804,7 +804,11 @@ try {
         && canvas?.dataset.environmentLandmark === 'gold-reflector-pylon-row'
         && canvas?.dataset.environmentComposition === 'shade-service-deck+fabrication-spine+sunward-work-yard'
         && canvas?.dataset.environmentZoneIdentity === 'shade:ceramic-deck+radiator-towers|spine:truss-frames+sinter-forges|sunward:reflector-pylons+printer-spindles+feedstock-presses'
-        && canvas?.dataset.readabilityLanguage === 'ceramic-deck+black-radiators+gold-reflectors+amber-hot-work'
+        && canvas?.dataset.readabilityLanguage === 'hard-sun-edge+cool-shade-mass+gold-reflectors+amber-hot-work'
+        && canvas?.dataset.environmentSunShadow === 'hard-sun+cool-shade+long-shadow'
+        && canvas?.dataset.environmentSunDirection === 'fixed-sunward-east-to-west'
+        && /^(hard-sun|solar-surge)$/.test(canvas?.dataset.environmentSunMode ?? '')
+        && canvas?.dataset.environmentSunPatches === 'sun:3+shade:3'
         && (canvas?.dataset.environmentServiceDetails ?? '').includes('ceramic-deck:6')
         && (canvas?.dataset.environmentServiceDetails ?? '').includes('truss-frame:5')
         && (canvas?.dataset.environmentServiceDetails ?? '').includes('radiator-tower:4')
@@ -812,7 +816,7 @@ try {
         && canvas?.dataset.environmentMachineDetail === 'sinter-forge:2+printer-spindle:3+feedstock-press:2'
         && Number(canvas?.dataset.environmentInstances) > 0
         && ['1', '2'].includes(canvas?.dataset.environmentLod ?? '');
-    })()`, 'Solar Yard authored fabrication machinery kit', 20_000);
+    })()`, 'Solar Yard authored sun/shadow fabrication yard', 20_000);
     const solarYardEnvironment = await evaluate(`(() => {
       const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-solar-yard');
       return {
@@ -824,6 +828,13 @@ try {
         surface: canvas?.dataset.environmentSurfaceDetail ?? '',
         machinery: canvas?.dataset.environmentMachineDetail ?? '',
         materials: canvas?.dataset.environmentMaterials ?? '',
+        lighting: canvas?.dataset.environmentLighting ?? '',
+        sunShadow: canvas?.dataset.environmentSunShadow ?? '',
+        sunDirection: canvas?.dataset.environmentSunDirection ?? '',
+        sunMode: canvas?.dataset.environmentSunMode ?? '',
+        sunPatches: canvas?.dataset.environmentSunPatches ?? '',
+        shadowBudget: canvas?.dataset.environmentShadowBudget ?? '',
+        tone: canvas?.dataset.environmentTone ?? '',
       };
     })()`);
     if (viewportMode === 'mobile-landscape' && solarYardEnvironment?.lod !== '2') {
@@ -832,7 +843,10 @@ try {
     if (solarYardEnvironment?.machinery !== 'sinter-forge:2+printer-spindle:3+feedstock-press:2') {
       throw new Error(`Solar Yard fabrication machinery runtime telemetry was not observable: ${JSON.stringify(solarYardEnvironment)}`);
     }
-    console.log(`BROWSER_SOLAR_YARD_PASS viewport=${viewportMode} lod=${solarYardEnvironment?.lod} instances=${solarYardEnvironment?.instances} kit=${solarYardEnvironment?.kit} composition=${solarYardEnvironment?.composition} service=${solarYardEnvironment?.service} surface=${solarYardEnvironment?.surface} machinery=${solarYardEnvironment?.machinery} materials=${solarYardEnvironment?.materials}`);
+    if (solarYardEnvironment?.sunShadow !== 'hard-sun+cool-shade+long-shadow' || solarYardEnvironment?.sunDirection !== 'fixed-sunward-east-to-west') {
+      throw new Error(`Solar Yard P3.9 sun/shadow identity was not observable: ${JSON.stringify(solarYardEnvironment)}`);
+    }
+    console.log(`BROWSER_SOLAR_YARD_PASS viewport=${viewportMode} lod=${solarYardEnvironment?.lod} instances=${solarYardEnvironment?.instances} kit=${solarYardEnvironment?.kit} composition=${solarYardEnvironment?.composition} service=${solarYardEnvironment?.service} surface=${solarYardEnvironment?.surface} machinery=${solarYardEnvironment?.machinery} materials=${solarYardEnvironment?.materials} lighting=${solarYardEnvironment?.lighting} sun=${solarYardEnvironment?.sunMode}:${solarYardEnvironment?.sunShadow}:${solarYardEnvironment?.sunDirection} patches=${solarYardEnvironment?.sunPatches} shadow=${solarYardEnvironment?.shadowBudget} tone=${solarYardEnvironment?.tone}`);
   }
 
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);
