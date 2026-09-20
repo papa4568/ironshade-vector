@@ -369,16 +369,16 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.179**
+- Android beta: **0.0.1-beta.180**
 - Package: `app.ironshade.vector`
-- Verified: Solar Yard **P3.7–P3.11** is complete through authored fabrication, sun/shadow identity, gameplay-bound thermal shutters, and active material-transfer motion. P3.11 adds three adaptive LOD1/LOD2 transfer-rail spans and two authored gantry cranes with independently phased trolley assemblies driven deterministically from simulation time. Runtime QA exposes transport counts, motion mode, and live trolley offsets, and Browser E2E verifies those offsets advance on both desktop and mobile-landscape. PR and merged-`main` full regression/production builds passed; merged-`main` desktop + mobile-landscape Browser E2E passed; Level 15 beta smoke passed; Android beta.179 passed package/version/SDK/signature verification, native emulator runtime smoke, Chapter 3 touch playthrough, and artifact upload.
+- Verified: Solar Yard **P3.7–P3.12** is complete through authored fabrication, sun/shadow identity, gameplay-bound thermal shutters, active material-transfer motion, and the dedicated HELIOS-9 Yardmind presentation. P3.12 adds adaptive LOD1/LOD2 HELIOS-9 boss assets with a sunshield crown, reflector wings, fabrication/thermal core hardware, Solar Yard-only deep-target routing, and phase-aware solar-gold/overheat presentation. PR and merged-`main` full regression/production builds passed; merged-`main` desktop + mobile-landscape Browser E2E passed; Level 15 beta smoke passed; Android beta.180 passed package/version/SDK/signature verification, native emulator runtime smoke, touch controls, lifecycle resume, Chapter 3 touch playthrough, and artifact upload.
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P3.11 final implementation head: `e8d066b3d5229e334ef125ec3c8e0a47f391397a`
-- P3.11 merged main head / APK source: `2855bd38a612ad6e6394b6375d07007bb15ea285`
-- PR Browser E2E run: `35517609361`
-- Browser E2E run: `35517778952`
-- Level 15 beta smoke run: `35517778932`
-- Android beta.179 run: `35517778926`
-- Android beta.179 artifact ID: `10607955902`
-- Android beta.179 artifact head: `2855bd38a612ad6e6394b6375d07007bb15ea285`
-- APK SHA-256: `b54b249a3635e2b7931401b89ee8e6e37a7a36a1e582f7c2571259a0d051a2cb`
+- P3.12 final implementation head: `0168d9287b852632f90e8dd144b894cd74ea9396`
+- P3.12 merged main head / APK source: `d5b68e2fac1de209a16a69a9e4daf360f168848a`
+- PR Browser E2E run: `35518802191`
+- Browser E2E run: `35518909362`
+- Level 15 beta smoke run: `35518909357`
+- Android beta.180 run: `35518909372`
+- Android beta.180 artifact ID: `10607273801`
+- Android beta.180 artifact head: `d5b68e2fac1de209a16a69a9e4daf360f168848a`
+- APK SHA-256: `31c59fd000c4dda12a9a32f20c218d4500815862e750469ce071639f7c501d42`
