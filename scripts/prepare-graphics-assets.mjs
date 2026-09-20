@@ -1549,6 +1549,69 @@ function spinHabitatInteractableNodes(kind, lod) {
   return nodes;
 }
 
+
+function jovianHarvesterInteractableNodes(kind, lod) {
+  const detail = lod === 1;
+
+  if (kind === 'stormBusIsolator') {
+    const nodes = [
+      { name: 'jovian-harvester-storm-bus-isolator-base', mesh: 1, translation: [0, 0.10, 0], scale: [1.18, 0.20, 0.78] },
+      { name: 'jovian-harvester-storm-bus-isolator-bank', mesh: 0, translation: [-0.12, 0.58, 0], scale: [0.82, 0.88, 0.62] },
+      { name: 'jovian-harvester-storm-bus-isolator-knife', mesh: 2, translation: [0.38, 0.78, 0], scale: [0.12, 0.62, 0.22] },
+      { name: 'jovian-harvester-interactable-status', mesh: 3, translation: [0.58, 0.94, 0], scale: [0.06, 0.22, 0.44] },
+    ];
+    if (detail) nodes.push(
+      { name: 'jovian-harvester-storm-bus-isolator-capacitor', mesh: 0, translation: [-0.46, 1.02, 0], scale: [0.24, 0.42, 0.46] },
+      { name: 'objective-beacon-mount', mesh: 1, translation: [0, 1.44, 0], scale: [0.18, 0.08, 0.18] },
+    );
+    nodes.push({ name: 'interactable-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  if (kind === 'deckMassTrim') {
+    const nodes = [
+      { name: 'jovian-harvester-deck-mass-trim-skid', mesh: 1, translation: [0, 0.10, 0], scale: [1.34, 0.20, 0.82] },
+      { name: 'jovian-harvester-deck-mass-trim-carriage', mesh: 0, translation: [-0.16, 0.48, 0], scale: [0.94, 0.54, 0.66] },
+      { name: 'jovian-harvester-deck-mass-trim-actuator', mesh: 2, translation: [0.34, 0.62, 0], scale: [0.56, 0.18, 0.20] },
+      { name: 'jovian-harvester-interactable-status', mesh: 3, translation: [0.64, 0.68, 0], scale: [0.06, 0.22, 0.40] },
+    ];
+    if (detail) nodes.push(
+      { name: 'jovian-harvester-deck-mass-trim-counterweight', mesh: 0, translation: [-0.44, 0.88, 0], scale: [0.34, 0.42, 0.54] },
+      { name: 'objective-beacon-mount', mesh: 1, translation: [0, 1.20, 0], scale: [0.18, 0.08, 0.18] },
+    );
+    nodes.push({ name: 'interactable-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  if (kind === 'skimmerCompressor') {
+    const nodes = [
+      { name: 'jovian-harvester-skimmer-compressor-skid', mesh: 1, translation: [0, 0.10, 0], scale: [1.42, 0.20, 0.88] },
+      { name: 'jovian-harvester-skimmer-compressor-body', mesh: 0, translation: [-0.14, 0.54, 0], scale: [0.96, 0.72, 0.68] },
+      { name: 'jovian-harvester-skimmer-compressor-intake', mesh: 2, translation: [0.54, 0.56, 0], scale: [0.28, 0.48, 0.48] },
+      { name: 'jovian-harvester-interactable-status', mesh: 3, translation: [0.66, 0.88, 0], scale: [0.06, 0.20, 0.38] },
+    ];
+    if (detail) nodes.push(
+      { name: 'jovian-harvester-skimmer-compressor-bypass', mesh: 1, translation: [-0.28, 1.02, 0], scale: [0.54, 0.14, 0.46] },
+      { name: 'objective-beacon-mount', mesh: 1, translation: [0, 1.30, 0], scale: [0.18, 0.08, 0.18] },
+    );
+    nodes.push({ name: 'interactable-root', children: nodes.map((_, index) => index) });
+    return nodes;
+  }
+
+  const nodes = [
+    { name: 'jovian-harvester-separator-package-skid', mesh: 1, translation: [0, 0.10, 0], scale: [1.34, 0.20, 0.82] },
+    { name: 'jovian-harvester-separator-package-vessel', mesh: 0, translation: [-0.22, 0.66, 0], scale: [0.62, 1.08, 0.62] },
+    { name: 'jovian-harvester-separator-package-manifold', mesh: 2, translation: [0.34, 0.48, 0], scale: [0.58, 0.20, 0.46] },
+    { name: 'jovian-harvester-interactable-status', mesh: 3, translation: [0.58, 0.78, 0], scale: [0.06, 0.22, 0.40] },
+  ];
+  if (detail) nodes.push(
+    { name: 'jovian-harvester-separator-package-knockout-pot', mesh: 0, translation: [0.38, 0.92, 0], scale: [0.30, 0.52, 0.42] },
+    { name: 'objective-beacon-mount', mesh: 1, translation: [0, 1.44, 0], scale: [0.18, 0.08, 0.18] },
+  );
+  nodes.push({ name: 'interactable-root', children: nodes.map((_, index) => index) });
+  return nodes;
+}
+
 const outputs = [];
 outputs.push(await writeAsset(
   'operators/operator-field-suit-lod1.glb',
@@ -1659,6 +1722,24 @@ for (const [kind, id] of spinHabitatInteractableProfiles) {
       `interactables/${id}-lod${lod}.glb`,
       `${id}-lod${lod}`,
       spinHabitatInteractableNodes(kind, lod),
+      interactableMaterials(),
+    ));
+  }
+}
+
+const jovianHarvesterInteractableProfiles = [
+  ['stormBusIsolator', 'jovian-harvester-storm-bus-isolator'],
+  ['deckMassTrim', 'jovian-harvester-deck-mass-trim'],
+  ['skimmerCompressor', 'jovian-harvester-skimmer-compressor'],
+  ['separatorPackage', 'jovian-harvester-separator-package'],
+];
+
+for (const [kind, id] of jovianHarvesterInteractableProfiles) {
+  for (const lod of [1, 2]) {
+    outputs.push(await writeAsset(
+      `interactables/${id}-lod${lod}.glb`,
+      `${id}-lod${lod}`,
+      jovianHarvesterInteractableNodes(kind, lod),
       interactableMaterials(),
     ));
   }
