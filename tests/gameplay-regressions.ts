@@ -348,6 +348,78 @@ function parallaxSpecializationSmoke() {
 }
 parallaxSpecializationSmoke();
 
+function vectorSpecializationDepthSmoke() {
+  const baseProfile = {
+    ...createDefaultProfile(),
+    xp: 8100,
+    level: 16,
+    operatorClass: 'vector' as const,
+    classSelectionComplete: true,
+    specializationOverclock: true,
+  };
+
+  const momentumState = createSimulation(deriveCombatBuild({ ...baseProfile, specialization: 'momentum-broker' as const }));
+  for (const enemy of momentumState.enemies) enemy.active = false;
+  momentumState.player.currentWeapon = 'rail';
+  momentumState.player.capacitor = 70;
+  momentumState.player.abilityCooldowns[0] = 3;
+  momentumState.player.dodgeCooldown = 1;
+  momentumState.classState.vectorWindow = 1;
+  assert.equal(triggerFire(momentumState), true, 'Momentum Broker should be able to spend a primed Slipstream shot.');
+  assert.ok(momentumState.player.abilityCooldowns[0] < 3, 'Momentum Broker Slipstream should recycle Vector Shift recovery from banked recoil.');
+  assert.ok(momentumState.player.dodgeCooldown < 1, 'Momentum Broker Slipstream should recycle dodge recovery from banked recoil.');
+  assert.match(momentumState.eventText, /MOMENTUM DIVIDEND/, 'Momentum Broker should expose its recoil-recovery loop in combat feedback.');
+
+  const surveyState = createSimulation(deriveCombatBuild({ ...baseProfile, specialization: 'survey-deadeye' as const }));
+  for (const enemy of surveyState.enemies) enemy.active = false;
+  const surveyTarget = surveyState.enemies[0];
+  Object.assign(surveyTarget, {
+    active: true,
+    dead: false,
+    x: surveyState.player.x + 130,
+    y: surveyState.player.y,
+    hp: 500,
+    maxHp: 500,
+    armor: 180,
+    maxArmor: 180,
+    telegraph: 1,
+  });
+  surveyTarget.statuses.marked = 4;
+  surveyTarget.statuses.stagger = 4;
+  surveyState.player.currentWeapon = 'rail';
+  surveyState.player.aim = { x: 1, y: 0 };
+  surveyState.player.abilityCooldowns[1] = 5;
+  surveyState.classState.vectorWindow = 0;
+  assert.equal(triggerFire(surveyState), true, 'Survey Deadeye should be able to cash a marked rail firing solution.');
+  for (let tick = 0; tick < 20; tick += 1) stepSimulation(surveyState, 0.01);
+  assert.equal(surveyTarget.statuses.marked, 0, 'Survey Deadeye precision rail hit should consume the mark.');
+  assert.equal(surveyTarget.telegraph, 0, 'Survey Deadeye precision rail hit should break a committed attack.');
+  assert.ok(surveyTarget.statuses.armorBreach > 0, 'Survey Deadeye precision rail hit should open Armor Breach.');
+  assert.ok(surveyState.classState.vectorWindow > 1, 'Survey Deadeye precision trace should re-prime a meaningful Slipstream follow-through window.');
+  assert.ok(surveyState.player.abilityCooldowns[1] < 2, 'Survey Deadeye overclock should pull Deadeye Lock toward the 1.6 second recovery target.');
+  assert.match(surveyState.eventText, /SURVEY FOLLOWTHROUGH/, 'Survey Deadeye should expose the follow-through loop in combat feedback.');
+
+  const neutralState = createSimulation(deriveCombatBuild({ ...baseProfile, specialization: null, specializationOverclock: false }));
+  const redlineState = createSimulation(deriveCombatBuild({ ...baseProfile, specialization: 'redline-pilot' as const }));
+  for (const state of [neutralState, redlineState]) {
+    for (const enemy of state.enemies) enemy.active = false;
+    state.player.currentWeapon = 'rail';
+    state.player.weaponHeat.rail = 0.8;
+    state.player.dodgeCooldown = 0.8;
+    state.classState.vectorWindow = 1;
+  }
+  assert.equal(triggerFire(neutralState), true);
+  assert.equal(triggerFire(redlineState), true, 'Redline Pilot should be able to discharge a hot Slipstream shot.');
+  const neutralRail = neutralState.projectiles.find(projectile => projectile.active && projectile.owner === 'player' && projectile.weapon === 'rail')!;
+  const redlineRail = redlineState.projectiles.find(projectile => projectile.active && projectile.owner === 'player' && projectile.weapon === 'rail')!;
+  assert.ok(redlineRail.damage > neutralRail.damage * 1.1, 'Redline Pilot hot Slipstream should gain a material damage bonus.');
+  assert.ok(Math.hypot(redlineRail.vx, redlineRail.vy) > Math.hypot(neutralRail.vx, neutralRail.vy) * 1.07, 'Redline Pilot hot Slipstream should gain projectile velocity.');
+  assert.ok(redlineRail.penetration >= neutralRail.penetration + 12, 'Redline Pilot hot Slipstream should gain the authored penetration bonus.');
+  assert.ok(redlineState.player.dodgeCooldown < 0.8, 'Redline Pilot overclock hot Slipstream should recycle dodge recovery.');
+  assert.match(redlineState.eventText, /REDLINE VECTOR/, 'Redline Pilot should expose the hot-Slipstream loop in combat feedback.');
+}
+vectorSpecializationDepthSmoke();
+
 function bulkheadWardenSpecializationSmoke() {
   const baseProfile = {
     ...createDefaultProfile(),
