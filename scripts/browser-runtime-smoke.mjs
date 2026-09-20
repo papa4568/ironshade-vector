@@ -800,10 +800,10 @@ try {
   if (targetLocation === 'solar-yard') {
     await waitFor(`(() => {
       const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-solar-yard');
-      return canvas?.dataset.environmentKit === 'ceramic-deck,truss-frame,radiator-tower,reflector-pylon,sinter-forge,printer-spindle,feedstock-press'
+      return canvas?.dataset.environmentKit === 'ceramic-deck,truss-frame,radiator-tower,reflector-pylon,sinter-forge,printer-spindle,feedstock-press,thermal-shutter'
         && canvas?.dataset.environmentLandmark === 'gold-reflector-pylon-row'
         && canvas?.dataset.environmentComposition === 'shade-service-deck+fabrication-spine+sunward-work-yard'
-        && canvas?.dataset.environmentZoneIdentity === 'shade:ceramic-deck+radiator-towers|spine:truss-frames+sinter-forges|sunward:reflector-pylons+printer-spindles+feedstock-presses'
+        && canvas?.dataset.environmentZoneIdentity === 'shade:ceramic-deck+radiator-towers+thermal-shutter|spine:truss-frames+sinter-forges|sunward:reflector-pylons+printer-spindles+feedstock-presses'
         && canvas?.dataset.readabilityLanguage === 'hard-sun-edge+cool-shade-mass+gold-reflectors+amber-hot-work'
         && canvas?.dataset.environmentSunShadow === 'hard-sun+cool-shade+long-shadow'
         && canvas?.dataset.environmentSunDirection === 'fixed-sunward-east-to-west'
@@ -812,6 +812,10 @@ try {
         && (canvas?.dataset.environmentServiceDetails ?? '').includes('ceramic-deck:6')
         && (canvas?.dataset.environmentServiceDetails ?? '').includes('truss-frame:5')
         && (canvas?.dataset.environmentServiceDetails ?? '').includes('radiator-tower:4')
+        && (canvas?.dataset.environmentServiceDetails ?? '').includes('thermal-shutter:1')
+        && canvas?.dataset.environmentThermalShutters === 'authored:open'
+        && /^(shutters-open|solar-surge-exposed)$/.test(canvas?.dataset.environmentThermalProtection ?? '')
+        && canvas?.dataset.environmentThermalShutterControl === 'solar-shutter:state-linked'
         && (canvas?.dataset.environmentSurfaceDetail ?? '').includes('reflector-pylon:3')
         && canvas?.dataset.environmentMachineDetail === 'sinter-forge:2+printer-spindle:3+feedstock-press:2'
         && Number(canvas?.dataset.environmentInstances) > 0
@@ -833,6 +837,9 @@ try {
         sunDirection: canvas?.dataset.environmentSunDirection ?? '',
         sunMode: canvas?.dataset.environmentSunMode ?? '',
         sunPatches: canvas?.dataset.environmentSunPatches ?? '',
+        thermalShutters: canvas?.dataset.environmentThermalShutters ?? '',
+        thermalProtection: canvas?.dataset.environmentThermalProtection ?? '',
+        thermalControl: canvas?.dataset.environmentThermalShutterControl ?? '',
         shadowBudget: canvas?.dataset.environmentShadowBudget ?? '',
         tone: canvas?.dataset.environmentTone ?? '',
       };
@@ -846,7 +853,10 @@ try {
     if (solarYardEnvironment?.sunShadow !== 'hard-sun+cool-shade+long-shadow' || solarYardEnvironment?.sunDirection !== 'fixed-sunward-east-to-west') {
       throw new Error(`Solar Yard P3.9 sun/shadow identity was not observable: ${JSON.stringify(solarYardEnvironment)}`);
     }
-    console.log(`BROWSER_SOLAR_YARD_PASS viewport=${viewportMode} lod=${solarYardEnvironment?.lod} instances=${solarYardEnvironment?.instances} kit=${solarYardEnvironment?.kit} composition=${solarYardEnvironment?.composition} service=${solarYardEnvironment?.service} surface=${solarYardEnvironment?.surface} machinery=${solarYardEnvironment?.machinery} materials=${solarYardEnvironment?.materials} lighting=${solarYardEnvironment?.lighting} sun=${solarYardEnvironment?.sunMode}:${solarYardEnvironment?.sunShadow}:${solarYardEnvironment?.sunDirection} patches=${solarYardEnvironment?.sunPatches} shadow=${solarYardEnvironment?.shadowBudget} tone=${solarYardEnvironment?.tone}`);
+    if (solarYardEnvironment?.thermalShutters !== 'authored:open' || solarYardEnvironment?.thermalControl !== 'solar-shutter:state-linked') {
+      throw new Error(`Solar Yard P3.10 thermal shutter state linkage was not observable: ${JSON.stringify(solarYardEnvironment)}`);
+    }
+    console.log(`BROWSER_SOLAR_YARD_PASS viewport=${viewportMode} lod=${solarYardEnvironment?.lod} instances=${solarYardEnvironment?.instances} kit=${solarYardEnvironment?.kit} composition=${solarYardEnvironment?.composition} service=${solarYardEnvironment?.service} surface=${solarYardEnvironment?.surface} machinery=${solarYardEnvironment?.machinery} shutters=${solarYardEnvironment?.thermalShutters}:${solarYardEnvironment?.thermalProtection}:${solarYardEnvironment?.thermalControl} materials=${solarYardEnvironment?.materials} lighting=${solarYardEnvironment?.lighting} sun=${solarYardEnvironment?.sunMode}:${solarYardEnvironment?.sunShadow}:${solarYardEnvironment?.sunDirection} patches=${solarYardEnvironment?.sunPatches} shadow=${solarYardEnvironment?.shadowBudget} tone=${solarYardEnvironment?.tone}`);
   }
 
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);
