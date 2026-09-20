@@ -420,6 +420,84 @@ function vectorSpecializationDepthSmoke() {
 }
 vectorSpecializationDepthSmoke();
 
+function vectorSkillEvolutionSmoke() {
+  const level15 = {
+    ...createDefaultProfile(),
+    xp: 7140,
+    level: 15,
+    operatorClass: 'vector' as const,
+    classSelectionComplete: true,
+    specialization: null,
+    specializationOverclock: false,
+  };
+  const level16 = { ...level15, xp: 8100, level: 16 };
+
+  const locked = setAbilityMod(level15, 'mag', 'vector-slingshot-shift');
+  assert.equal(locked.abilityMods.mag, null, 'Vector skill evolutions should remain locked before LV16.');
+
+  const slingshotProfile = setAbilityMod(level16, 'mag', 'vector-slingshot-shift');
+  const slingshotBuild = deriveCombatBuild(slingshotProfile);
+  assert.equal(slingshotBuild.mechanics.vectorSlingshotShift, true);
+  assert.ok(slingshotBuild.abilities[0].costMul > 1, 'Slingshot Shift should pay its capacitor tradeoff.');
+  const slingshotState = createSimulation(slingshotBuild);
+  for (const enemy of slingshotState.enemies) enemy.active = false;
+  slingshotState.player.aim = { x: 1, y: 0 };
+  slingshotState.player.dodgeCooldown = 1;
+  assert.equal(triggerAbility(slingshotState, 0), true, 'Slingshot Shift should cast through the Vector first-skill slot.');
+  assert.ok(slingshotState.player.vx > 700, 'Slingshot Shift should produce a materially longer Vector Shift impulse.');
+  assert.ok(slingshotState.classState.vectorWindow >= 2.6, 'Slingshot Shift should bank an extended Slipstream window.');
+  assert.ok(slingshotState.player.dodgeCooldown < 1, 'Slingshot Shift should pull dodge recovery forward.');
+  assert.match(slingshotState.eventText, /SLINGSHOT SHIFT/, 'Slingshot Shift needs explicit combat feedback.');
+
+  const triangulationProfile = setAbilityMod(level16, 'mark', 'vector-triangulation-lock');
+  const triangulationBuild = deriveCombatBuild(triangulationProfile);
+  assert.equal(triangulationBuild.mechanics.vectorTriangulationLock, true);
+  assert.ok(triangulationBuild.abilities[1].cooldownMul > 1, 'Triangulation Lock should pay its cooldown tradeoff.');
+  const triangulationState = createSimulation(triangulationBuild);
+  for (const enemy of triangulationState.enemies) enemy.active = false;
+  const lockTarget = triangulationState.enemies[0];
+  Object.assign(lockTarget, {
+    active: true,
+    dead: false,
+    variant: 'standard' as const,
+    role: 'assault' as const,
+    combatClass: 'standard' as const,
+    x: triangulationState.player.x + 360,
+    y: triangulationState.player.y,
+  });
+  lockTarget.statuses.armorBreach = 0;
+  triangulationState.player.aim = { x: 1, y: 0 };
+  triangulationState.player.abilityCooldowns[2] = 5;
+  assert.equal(triggerAbility(triangulationState, 1), true, 'Triangulation Lock should cast through the Vector second-skill slot.');
+  assert.ok(lockTarget.statuses.armorBreach >= 2.7, 'Triangulation Lock should open a short Armor Breach firing window.');
+  assert.ok(triangulationState.player.abilityCooldowns[2] <= 3.8, 'Triangulation Lock should advance Splitshot recovery.');
+  assert.match(triangulationState.eventText, /TRIANGULATION LOCK/, 'Triangulation Lock needs explicit combat feedback.');
+
+  const needleProfile = setAbilityMod(level16, 'arc', 'vector-needle-fan');
+  const needleBuild = deriveCombatBuild(needleProfile);
+  assert.equal(needleBuild.mechanics.vectorNeedleFan, true);
+  assert.ok(needleBuild.abilities[2].cooldownMul > 1, 'Needle Fan should pay its Splitshot cooldown tradeoff.');
+  const needleState = createSimulation(needleBuild);
+  for (const enemy of needleState.enemies) enemy.active = false;
+  needleState.player.aim = { x: 1, y: 0 };
+  assert.equal(triggerAbility(needleState, 2), true, 'Needle Fan should cast through the Vector third-skill slot.');
+  const needleShots = needleState.projectiles.filter(projectile => projectile.active && projectile.owner === 'player' && projectile.weapon === 'rail');
+  assert.equal(needleShots.length, 3, 'Needle Fan should preserve the three-lane Splitshot identity.');
+  assert.ok(needleShots.every(projectile => Math.hypot(projectile.vx, projectile.vy) >= 1699), 'Needle Fan should convert all three lanes to hypervelocity rounds.');
+  assert.ok(needleShots.every(projectile => projectile.penetration >= 88), 'Needle Fan should add the authored penetration bonus.');
+  assert.ok(Math.max(...needleShots.map(projectile => projectile.damage)) > Math.min(...needleShots.map(projectile => projectile.damage)) * 1.25, 'Needle Fan centerline should carry a meaningful precision damage premium.');
+  const fanAngles = needleShots.map(projectile => Math.atan2(projectile.vy, projectile.vx));
+  assert.ok(Math.max(...fanAngles) - Math.min(...fanAngles) < 0.16, 'Needle Fan should compress Splitshot into a tighter firing fan.');
+  assert.match(needleState.eventText, /NEEDLE FAN/, 'Needle Fan needs explicit combat feedback.');
+
+  const switched = setOperatorClass(slingshotProfile, 'vanguard').profile;
+  assert.equal(switched.abilityMods.mag, null, 'Switching class should clear an incompatible Vector evolution.');
+  const genericLens = setAbilityMod(level16, 'mark', 'mark-wideband');
+  const genericSwitched = setOperatorClass(genericLens, 'vanguard').profile;
+  assert.equal(genericSwitched.abilityMods.mark, 'mark-wideband', 'Switching class should preserve shared Skill Lenses after Vector evolution support.');
+}
+vectorSkillEvolutionSmoke();
+
 function bulkheadWardenSpecializationSmoke() {
   const baseProfile = {
     ...createDefaultProfile(),

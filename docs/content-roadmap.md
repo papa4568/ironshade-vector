@@ -258,7 +258,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] P5.2 Vanguard skill evolution
 - [x] P5.3 Vanguard capstone interactions
 - [x] P5.4 Deepen Vector specializations
-- [ ] P5.5 Vector skill evolutions
+- [x] P5.5 Vector skill evolutions
 - [ ] P5.6 Systems third specialization
 - [ ] P5.7 Systems skill evolution
 - [ ] P5.8 Systems capstone interactions
@@ -317,7 +317,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1, P2, P3, and **P4 — Megastructure Capstone Pass** are complete. **P5.1–P5.4 class-capstone work** is complete. Continue in roadmap order with **P5.5 — Vector skill evolutions**.
+P1, P2, P3, and **P4 — Megastructure Capstone Pass** are complete. **P5.1–P5.5 class-capstone work** is complete. Continue in roadmap order with **P5.6 — Systems third specialization**.
+
+**P5.5 delivered:** Vector now has three LV16 class skill evolutions in the existing Skill Lens slots. **Slingshot Shift** turns Vector Shift into a longer route with an extended Slipstream bank and partial dodge recovery, balanced by +18% capacitor cost. **Triangulation Lock** opens a short Armor Breach firing window and advances Splitshot recovery, balanced by +18% Deadeye Lock cooldown. **Needle Fan** compresses Splitshot into a tighter 1,700-speed fan with +20 penetration and a reinforced center lane, balanced by +20% Splitshot cooldown. Class/LV16 gating, class-switch cleanup, build-stat visibility, tradeoffs, ballistic behavior, recovery routing, and explicit combat feedback are covered by deterministic regression. PR full regression/production build and browser player journey passed on both desktop and mobile-landscape in Browser E2E run `35539490995`. **P5.6 — Systems third specialization** is next.
 
 **P5.4 delivered:** Vector specializations now branch into three materially different combat loops instead of sharing the same Slipstream cadence. **Momentum Broker** turns a Slipstream shot's recovered recoil into Vector Shift and dodge cooldown recycling while retaining its capped capacitor return. **Survey Deadeye** now converts a marked Rail precision trace into a fresh Slipstream follow-through window, with the LV16 overclock pulling Deadeye Lock toward a 1.6 second recovery target. **Redline Pilot** now cashes 75%+ weapon heat into a hot Slipstream shot with extra projectile velocity, damage, and penetration; the overclock also vents a small amount of heat and recycles dodge recovery after the shot. Specialization copy now explains these loops, and deterministic gameplay regression covers each branch's distinct state/recovery/ballistic behavior and combat feedback. PR full regression/production build passed on both Browser E2E runners; a transient desktop Solar Yard telemetry miss passed on the targeted retry. Merged-main desktop/mobile Browser E2E, Level 15 beta smoke, Android beta.194 package/version/SDK/signature verification, native emulator install/launch/resume smoke, Android touch/runtime smoke, and Chapter 3 touch playthrough all passed. **P5.5 — Vector skill evolutions** is next.
 
