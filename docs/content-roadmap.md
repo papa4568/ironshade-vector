@@ -319,7 +319,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 P1, P2, P3, and **P4 — Megastructure Capstone Pass** are complete. **P5.1–P5.5 class-capstone work** is complete. Continue in roadmap order with **P5.6 — Systems third specialization**.
 
-**P5.5 delivered:** Vector now has three LV16 class skill evolutions in the existing Skill Lens slots. **Slingshot Shift** turns Vector Shift into a longer route with an extended Slipstream bank and partial dodge recovery, balanced by +18% capacitor cost. **Triangulation Lock** opens a short Armor Breach firing window and advances Splitshot recovery, balanced by +18% Deadeye Lock cooldown. **Needle Fan** compresses Splitshot into a tighter 1,700-speed fan with +20 penetration and a reinforced center lane, balanced by +20% Splitshot cooldown. Class/LV16 gating, class-switch cleanup, build-stat visibility, tradeoffs, ballistic behavior, recovery routing, and explicit combat feedback are covered by deterministic regression. PR full regression/production build and browser player journey passed on both desktop and mobile-landscape in Browser E2E run `35539490995`. **P5.6 — Systems third specialization** is next.
+**P5.5 delivered:** Vector now has three LV16 class skill evolutions in the existing Skill Lens slots. **Slingshot Shift** turns Vector Shift into a longer route with an extended Slipstream bank and partial dodge recovery, balanced by +18% capacitor cost. **Triangulation Lock** opens a short Armor Breach firing window and advances Splitshot recovery, balanced by +18% Deadeye Lock cooldown. **Needle Fan** compresses Splitshot into a tighter 1,700-speed fan with +20 penetration and a reinforced center lane, balanced by +20% Splitshot cooldown. Class/LV16 gating, class-switch cleanup, build-stat visibility, tradeoffs, ballistic behavior, recovery routing, and explicit combat feedback are covered by deterministic regression. PR full regression/production build and browser player journey passed on both desktop and mobile-landscape in Browser E2E run `35539490995`. Merged-main desktop/mobile Browser E2E, Level 15 beta smoke, Android beta.195 package/version/SDK/signature verification, native emulator install/launch/resume smoke, Android touch/runtime smoke, and the Chapter 3 touch playthrough all passed. **P5.6 — Systems third specialization** is next.
 
 **P5.4 delivered:** Vector specializations now branch into three materially different combat loops instead of sharing the same Slipstream cadence. **Momentum Broker** turns a Slipstream shot's recovered recoil into Vector Shift and dodge cooldown recycling while retaining its capped capacitor return. **Survey Deadeye** now converts a marked Rail precision trace into a fresh Slipstream follow-through window, with the LV16 overclock pulling Deadeye Lock toward a 1.6 second recovery target. **Redline Pilot** now cashes 75%+ weapon heat into a hot Slipstream shot with extra projectile velocity, damage, and penetration; the overclock also vents a small amount of heat and recycles dodge recovery after the shot. Specialization copy now explains these loops, and deterministic gameplay regression covers each branch's distinct state/recovery/ballistic behavior and combat feedback. PR full regression/production build passed on both Browser E2E runners; a transient desktop Solar Yard telemetry miss passed on the targeted retry. Merged-main desktop/mobile Browser E2E, Level 15 beta smoke, Android beta.194 package/version/SDK/signature verification, native emulator install/launch/resume smoke, Android touch/runtime smoke, and Chapter 3 touch playthrough all passed. **P5.5 — Vector skill evolutions** is next.
 
@@ -405,16 +405,16 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.193**
+- Android beta: **0.0.1-beta.195**
 - Package: `app.ironshade.vector`
-- Verified: Class capstone **P5.3 — Vanguard capstone interactions** is complete. Pressure Diver + Siege Ram now forms **Void Ram**, Breach Vanguard + Faultline Tag forms **Breach Cascade**, and Bulkhead Warden + Reprisal Pulse forms **Counterfort**. These are runtime behavior links with their own guard/armor/vacuum/capacitor consequences and explicit combat feedback, not passive labels. Build Skills and player telemetry surface the active capstone relationship. Deterministic gameplay/UI regression, PR desktop + mobile-landscape Browser E2E, merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.193 package/version/SDK/signature verification, native emulator install/launch smoke, and Android touch/runtime smoke all passed. **The next roadmap slice is P5.4 — Deepen Vector specializations.**
+- Verified: Class capstone **P5.5 — Vector skill evolutions** is complete. Vector now has three LV16 class-only evolutions in the existing Skill Lens slots: **Slingshot Shift** extends Vector Shift routing and Slipstream while recycling dodge recovery, **Triangulation Lock** opens a short Armor Breach and advances Splitshot recovery, and **Needle Fan** compresses Splitshot into a faster, deeper-penetrating precision fan with a reinforced center lane. Each evolution has an explicit cost/cooldown tradeoff, class/LV16 gating, class-switch cleanup, combat feedback, build-stat visibility, and deterministic regression coverage. PR desktop + mobile-landscape Browser E2E, merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.195 package/version/SDK/signature verification, native emulator install/launch/resume smoke, Android touch/runtime smoke, and Chapter 3 touch playthrough all passed. **The next roadmap slice is P5.6 — Systems third specialization.**
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P5.3 final implementation head: `d09b8d6a83c7ef86d4dc4af5e4c371add9a1f620`
-- P5.3 merged main / APK source: `a0c4f2b52c270ef11304376729fe3be4712ee8cc`
-- P5.3 PR Browser E2E run: `35536465134`
-- Final Browser E2E run: `35536560800`
-- Level 15 beta smoke run: `35536560749`
-- Android beta.193 run: `35536560746`
-- Android beta.193 artifact ID: `10613572343`
-- Android beta.193 artifact head: `a0c4f2b52c270ef11304376729fe3be4712ee8cc`
-- APK SHA-256: `3ebecb94d034e7f32aedff4748e5766827a3b92289f4634045af1dcc265e68c4`
+- P5.5 final PR head: `f5d5f038235e5a27c7e3078f30d5c3a8fd184012`
+- P5.5 merged main / APK source: `53a4ae6161e2a0275ebcd3bfa4a3bc85d4f1b93f`
+- P5.5 PR Browser E2E run: `35539490995`
+- Final Browser E2E run: `35539612664`
+- Level 15 beta smoke run: `35539612698`
+- Android beta.195 run: `35539612702`
+- Android beta.195 artifact ID: `10614406314`
+- Android beta.195 artifact head: `53a4ae6161e2a0275ebcd3bfa4a3bc85d4f1b93f`
+- APK SHA-256: `c117672640d5130de9f0f88e011086f6ee7bcb568a17634f9f7bbc4f5beda29a`
