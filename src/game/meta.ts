@@ -280,6 +280,17 @@ export function vanguardCapstoneInteractionFor(profile: PlayerProfile, abilityMo
   return vanguardCapstoneInteractions.find(interaction => interaction.specialization === profile.specialization && interaction.abilityMod === abilityMod);
 }
 
+export const vectorCapstoneInteractions: CapstoneInteractionDefinition[] = [
+  { specialization: 'momentum-broker', abilityMod: 'vector-slingshot-shift', name: 'Inertial Dividend', description: 'Slingshot Shift stores a longer recoil route; spending that Slipstream returns extra capacitor and pulls Vector Shift plus dodge recovery further forward.' },
+  { specialization: 'survey-deadeye', abilityMod: 'vector-triangulation-lock', name: 'Reference Solution', description: 'Triangulation Lock becomes a deeper survey solution: the firing window lasts longer, strips more armor, and the next marked Slipstream shot gains precision pressure while recycling Splitshot.' },
+  { specialization: 'redline-pilot', abilityMod: 'vector-needle-fan', name: 'Redline Needle', description: 'Needle Fan can discharge through a hot weapon bus for a faster, harder three-lane fan that vents heat and advances dodge recovery.' },
+];
+
+export function vectorCapstoneInteractionFor(profile: PlayerProfile, abilityMod: string | null) {
+  if (profile.level < 16 || operatorClassForProfile(profile) !== 'vector' || !profile.specialization || !abilityMod) return undefined;
+  return vectorCapstoneInteractions.find(interaction => interaction.specialization === profile.specialization && interaction.abilityMod === abilityMod);
+}
+
 export const systemsCapstoneInteractions: CapstoneInteractionDefinition[] = [
   { specialization: 'thermal-shunter', abilityMod: 'systems-anchor-lattice', name: 'Induction Sink', description: 'Anchor Lattice converts a hot Polarity Well into a deeper thermal sink, overcharging the next Thermal Crossfire shot with extra velocity, damage, penetration, and recovery.' },
   { specialization: 'capacitor-conductor', abilityMod: 'systems-recursive-intrusion', name: 'Recursive Bus', description: 'Recursive Intrusion converts propagated relays into direct capacitor recovery; the Conductor overclock also cools the weapon bus while the intrusion spreads.' },
@@ -292,7 +303,7 @@ export function systemsCapstoneInteractionFor(profile: PlayerProfile, abilityMod
 }
 
 export function capstoneInteractionFor(profile: PlayerProfile, abilityMod: string | null) {
-  return vanguardCapstoneInteractionFor(profile, abilityMod) ?? systemsCapstoneInteractionFor(profile, abilityMod);
+  return vanguardCapstoneInteractionFor(profile, abilityMod) ?? vectorCapstoneInteractionFor(profile, abilityMod) ?? systemsCapstoneInteractionFor(profile, abilityMod);
 }
 
 export const specializationDefinitions: SpecializationDefinition[] = [
@@ -987,6 +998,21 @@ export function deriveCombatBuild(profile: PlayerProfile): CombatBuild {
   if (profile.abilityMods.arc === 'arc-cascade') { build.mechanics.arcCascadeLattice = true; build.abilities[2].costMul *= 1.15; build.abilities[2].powerMul *= 0.78; }
   return build;
 }
-export function buildIdentity(profile: PlayerProfile) { const factionDoctrine = factionSetState(profile).sort((a, b) => b.count - a.count).find(state => state.count >= 4); const items = equippedItems(profile); const allModifiers = items.flatMap(item => item.modifiers.map(modifier => modifier.id)); const nodes = new Set(profile.allocatedNodes); const breacher = allModifiers.filter(id => ['overdrive', 'tungsten', 'breachPropulsion'].includes(id)).length + (nodes.has('ballistics-3') ? 2 : 0); const mobile = allModifiers.filter(id => ['countermass', 'servoWeave', 'dodgeVent'].includes(id)).length + (nodes.has('mobility-3') ? 2 : 0); const systems = allModifiers.filter(id => ['capacitorRecycler', 'magRedirect', 'markShear', 'arcDrone'].includes(id)).length + (nodes.has('systems-3') ? 2 : 0); const base = factionDoctrine ? factionDoctrine.definition.combatIdentity : systems >= breacher && systems >= mobile && systems > 0 ? 'Systems / Drone Specialist' : mobile >= breacher && mobile > 0 ? 'Mobile Gunfighter' : breacher > 0 ? 'Heavy Breacher' : 'Generalist Operator'; const classDefinition = operatorClassDefinitions.find(definition => definition.id === operatorClassForProfile(profile))!; const specialization = profile.level >= 15 ? specializationDefinitions.find(definition => definition.id === profile.specialization) : undefined; return specialization ? `${classDefinition.name} / ${specialization.name}${profile.level >= 16 && profile.specializationOverclock ? ' // OVERCLOCK' : ''} · ${base}` : `${classDefinition.name} · ${base}`; }
+export function buildIdentity(profile: PlayerProfile) {
+  const factionDoctrine = factionSetState(profile).sort((a, b) => b.count - a.count).find(state => state.count >= 4);
+  const items = equippedItems(profile);
+  const allModifiers = items.flatMap(item => item.modifiers.map(modifier => modifier.id));
+  const nodes = new Set(profile.allocatedNodes);
+  const breacher = allModifiers.filter(id => ['overdrive', 'tungsten', 'breachPropulsion'].includes(id)).length + (nodes.has('ballistics-3') ? 2 : 0);
+  const mobile = allModifiers.filter(id => ['countermass', 'servoWeave', 'dodgeVent'].includes(id)).length + (nodes.has('mobility-3') ? 2 : 0);
+  const systems = allModifiers.filter(id => ['capacitorRecycler', 'magRedirect', 'markShear', 'arcDrone'].includes(id)).length + (nodes.has('systems-3') ? 2 : 0);
+  const base = factionDoctrine ? factionDoctrine.definition.combatIdentity : systems >= breacher && systems >= mobile && systems > 0 ? 'Systems / Drone Specialist' : mobile >= breacher && mobile > 0 ? 'Mobile Gunfighter' : breacher > 0 ? 'Heavy Breacher' : 'Generalist Operator';
+  const classDefinition = operatorClassDefinitions.find(definition => definition.id === operatorClassForProfile(profile))!;
+  const specialization = profile.level >= 15 ? specializationDefinitions.find(definition => definition.id === profile.specialization) : undefined;
+  const capstone = profile.level >= 16 ? Object.values(profile.abilityMods).map(abilityMod => capstoneInteractionFor(profile, abilityMod)).find(Boolean) : undefined;
+  return specialization
+    ? `${classDefinition.name} / ${specialization.name}${profile.level >= 16 && profile.specializationOverclock ? ' // OVERCLOCK' : ''}${capstone ? ` // ${capstone.name}` : ''} · ${base}`
+    : `${classDefinition.name} · ${base}`;
+}
 export function comparisonSummary(item: Item, equipped: Item | undefined) { const summarize = (entry: Item | undefined) => entry?.modifiers.map(modifier => `${(modifier.family ?? modifierFamilyFor(modifier.id)).toUpperCase()} G${modifier.grade ?? 3} ${modifier.label}`).join(', ') || 'No special modifiers'; return { current: summarize(equipped), candidate: summarize(item) }; }
 export function itemForSlot(profile: PlayerProfile, slot: EquipmentSlot) { const id = profile.equipped[slot]; return id ? profile.inventory.find(item => item.id === id && item.slot === slot) : undefined; }

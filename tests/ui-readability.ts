@@ -57,7 +57,9 @@ assert(parallaxDebt.includes("authoredContracts: 12") && parallaxDebt.includes("
 assert(scaling.includes("contract.campaignChapter === 'parallax-debt'") && scaling.includes("8 + Math.floor((contract.campaignStep ?? 0) / 3)"), 'Parallax Debt must retain late-game tier scaling across its LV15–18 phases.');
 
 assert(meta.includes("name: 'Void Ram'") && meta.includes("name: 'Breach Cascade'") && meta.includes("name: 'Counterfort'"), 'Vanguard capstone interaction definitions are incomplete.');
+assert(meta.includes("name: 'Inertial Dividend'") && meta.includes("name: 'Reference Solution'") && meta.includes("name: 'Redline Needle'"), 'Vector same-class capstone interaction definitions are incomplete.');
 assert(meta.includes("name: 'Induction Sink'") && meta.includes("name: 'Recursive Bus'") && meta.includes("name: 'Mesh Reflux'"), 'Systems capstone interaction definitions are incomplete.');
+assert(meta.includes('vectorCapstoneInteractionFor') && meta.includes("capstone ? \` // \${capstone.name}\` : ''"), 'P5.9 build identity should surface the active LV16 capstone doctrine.');
 assert(meta.includes("name: 'Thermal Shunter'") && meta.includes("specializationIds: ['grid-weaver', 'capacitor-conductor', 'thermal-shunter']") && sim.includes('systemsCrossfeed') && sim.includes('THERMAL CROSSFIRE'), 'P5.6 Systems third specialization is missing from class metadata or combat feedback.');
 assert(statsPanel.includes('capstoneInteractionFor') && statsPanel.includes('CAPSTONE ${activeCapstone.name}'), 'Build Stats does not surface active class capstone interactions.');
 assert(armory.includes('availableSpecializations.map'), 'Operator Network UI must render every class specialization from shared metadata.');
