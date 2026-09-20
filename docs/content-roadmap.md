@@ -203,7 +203,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ### Jovian Harvester
 - [x] P2.10 Environment kit
-- [ ] P2.11 Gas-harvester machinery
+- [x] P2.11 Gas-harvester machinery
 - [ ] P2.12 Storm/pressure visual language
 - [ ] P2.13 Pressure props/interactables
 - [ ] P2.14 Stormline Foreman presentation
@@ -307,9 +307,11 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1 is complete, **Spin Habitat P2.1–P2.9 is delivered**, and **Jovian Harvester P2.10 is now implemented**. Continue in roadmap order with **P2.11 — Gas-harvester machinery**, then proceed through P2.16 before moving to Authored Biomes Pack II.
+P1 is complete, **Spin Habitat P2.1–P2.9 is delivered**, and **Jovian Harvester P2.10–P2.11 is now implemented**. Continue in roadmap order with **P2.12 — Storm/pressure visual language**, then proceed through P2.16 before moving to Authored Biomes Pack II.
 
-**P2.10 delivered:** Jovian Harvester now has a reusable authored structural environment foundation with weathered elevated deck spans, a five-skimmer-tower silhouette, dark transfer bridges, and suspended ballast pods. All four families generate adaptive LOD1/LOD2 GLBs, route through runtime authored placement with procedural fallback, expose deterministic screenshot/readability telemetry, and are covered by generated-content, static pipeline, and desktop/mobile-landscape browser runtime QA. Gas-harvester machinery, storm/pressure visual language, pressure interactables, Stormline Foreman presentation, atmospheric effects, and the dedicated mobile performance pass remain scoped to P2.11–P2.16.
+**P2.11 delivered:** Jovian Harvester gameplay machinery now has four biome-local authored families bound to the existing mission systems: storm-bus isolators for live grid branches, deck mass-trim hardware for gravity calibration, and skimmer-compressor / separator-package recovery machines for machinery-recovery objectives. Every family ships adaptive LOD1/LOD2 GLBs with distinct silhouettes, state-readable status emitters, objective-beacon mounts on full-detail assets, runtime authored/fallback routing, and deterministic QA telemetry. Generated-content regression validates scale, silhouette markers, and mobile payload reduction; the full production regression/build, Level 15 beta smoke, desktop + mobile-landscape Browser E2E, Android beta.163 package/version/SDK/signature verification, and Android emulator runtime smoke are green on implementation head `8a9275289ce2f22689000574e158c8f711609bde`. Storm/pressure visual language, pressure interactables, Stormline Foreman presentation, atmospheric effects, and the dedicated mobile performance pass remain scoped to P2.12–P2.16.
+
+**P2.10 delivered:** Jovian Harvester now has a reusable authored structural environment foundation with weathered elevated deck spans, a five-skimmer-tower silhouette, dark transfer bridges, and suspended ballast pods. All four families generate adaptive LOD1/LOD2 GLBs, route through runtime authored placement with procedural fallback, expose deterministic screenshot/readability telemetry, and are covered by generated-content, static pipeline, and desktop/mobile-landscape browser runtime QA. Storm/pressure visual language, pressure interactables, Stormline Foreman presentation, atmospheric effects, and the dedicated mobile performance pass remain scoped to P2.12–P2.16.
 
 **P2.9 delivered:** Spin Habitat now has a biome-specific adaptive render profile: coarse/mobile play forces authored environment LOD2, trims the rotating environment from 15 to 11 authored placements while preserving all four spokes and the stationary axis, disables rotating environment shadow casters outside the full desktop profile, lowers procedural rim tessellation, and uses the three-arc spindown presentation on mobile. Runtime telemetry exposes profile, instance budget, and shadow-caster mode. Full production regression/build, Level 15 beta smoke, desktop + mobile-landscape Browser E2E (including live mobile LOD2 / 11-instance / axis-only assertions), Android beta.156 package/version/SDK/signature verification, and Android emulator runtime smoke are green.
 
@@ -339,13 +341,13 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.157**
+- Android beta: **0.0.1-beta.163**
 - Package: `app.ironshade.vector`
-- Verified: P2.10 Jovian Harvester authored environment kit with adaptive LOD1/LOD2 deck spans, five-skimmer-tower architecture, transfer bridges, ballast pods, procedural fallback, deterministic screenshot/readability telemetry, generated-content/static pipeline regression coverage, full production regression/build, desktop + mobile-landscape Browser E2E with live Jovian Harvester authored-environment assertions, Level 15 beta smoke, Android beta.157 package/version/SDK/signature checks, Android emulator runtime smoke, and retained browser/Android QA artifacts
+- Verified: P2.11 Jovian Harvester gas-harvester machinery with adaptive LOD1/LOD2 storm-bus isolator, deck mass-trim, skimmer-compressor, and separator-package assets; live mission-object routing; state-readable authored machinery telemetry; generated-content/static pipeline regression coverage; full production regression/build; desktop + mobile-landscape Browser E2E with live Jovian machinery assertions; Level 15 beta smoke; Android beta.163 package/version/SDK/signature checks; Android emulator runtime smoke; and retained browser/Android QA artifacts
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P2.10 final verified head: `46eee0f6e92173b463c35a0c255407e929053913`
-- Browser E2E run: `35477480740`
-- Level 15 beta smoke run: `35477480664`
-- Android beta.157 run: `35477480663`
-- Android beta.157 artifact ID: `10594273936`
-- Android beta.157 artifact head: `46eee0f6e92173b463c35a0c255407e929053913`
+- P2.11 final verified implementation head: `8a9275289ce2f22689000574e158c8f711609bde`
+- Browser E2E run: `35479330557`
+- Level 15 beta smoke run: `35479330558`
+- Android beta.163 run: `35479330531`
+- Android beta.163 artifact ID: `10595054535`
+- Android beta.163 artifact head: `8a9275289ce2f22689000574e158c8f711609bde`
