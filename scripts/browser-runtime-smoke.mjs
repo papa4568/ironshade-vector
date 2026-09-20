@@ -951,10 +951,6 @@ try {
       const offsets = canvas?.dataset.environmentCraneOffsets ?? '';
       return Boolean(offsets) && offsets !== ${JSON.stringify(initialCraneOffsets)};
     })()`, 'Solar Yard gantry trolley motion', 5_000);
-    const laterCraneOffsets = await evaluate(`(() => [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-solar-yard')?.dataset.environmentCraneOffsets ?? '')()`);
-    if (!laterCraneOffsets || laterCraneOffsets === initialCraneOffsets) {
-      throw new Error(`Solar Yard P3.11 gantry trolleys did not visibly advance: initial=${initialCraneOffsets} later=${laterCraneOffsets}`);
-    }
     if (viewportMode === 'mobile-landscape' && !solarYardEnvironment?.bossAsset.includes('solar-yard-helios-9-lod2')) {
       throw new Error(`HELIOS-9 mobile presentation did not select boss LOD2: ${JSON.stringify(solarYardEnvironment)}`);
     }
