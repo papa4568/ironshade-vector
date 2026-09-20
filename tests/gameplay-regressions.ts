@@ -500,7 +500,8 @@ assert.equal(perseidSteward?.maxHp, 790, 'Perseid Steward Core must retain its c
 
 const perseidDirector = createDirector();
 stepMissionDirector(perseidStage1State, perseidDirector, perseidStage1, 7.1);
-assert.match(perseidStage1State.eventText, /PERSEID HULL FLEX/, 'Perseid stage events must layer generation-ship continuity over reused biome mechanics.');
+assert.equal(perseidDirector.megastructureEventA, true, 'Perseid stage events must run independently of reused biome event slots.');
+assert.ok(perseidStage1State.hazards.some(hazard => hazard.active), 'An unresolved Perseid stage event must produce a physical local hazard.');
 
 const expeditionLootSource = [{ id: 'stage-1-drop', enemyId: 7, enemyLabel: 'Stage One Elite', rarity: 'Prototype' as const, source: 'elite' as const, recoveryQualityFloor: 3 as const, recoveryLevel: 24, monsterLevel: 8 }];
 const expeditionLootCarry = carryExpeditionLoot(expeditionLootSource);
