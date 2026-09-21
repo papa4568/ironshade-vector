@@ -245,6 +245,7 @@ function t12StressVerification() {
 
   assert.ok(peakProjectiles <= poolSizes.projectiles, 'active projectile pressure must remain within the authored pool');
   assert.ok(peakHazards <= poolSizes.hazards, 'active hazard pressure must remain within the authored pool');
+  assert.ok(peakEffects <= poolSizes.effects, 'active combat effects must remain within the authored pool');
 
   return {
     contract: contract.title,
