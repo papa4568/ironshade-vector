@@ -14,6 +14,7 @@ import { enhancedProtocolVariantPresentationFor } from '../src/game/enhancedProt
 import { applyEnemyMutations, mutationFireCadenceScale, mutationHazardCadenceScale, mutationMobilityScale, mutationThreatCostForEnemy } from '../src/game/t9Mutations';
 import { mutationForecastForContract, mutationPresentationFor } from '../src/game/t9MutationPresentation';
 import { bossPhaseFireCadenceScale, bossPhaseMutationForecastForContract, bossPhaseMutationMinTier, chooseBossPhaseMutations, type BossPhaseMutationId } from '../src/game/bossPhaseMutations';
+import { commandTargetFireCadenceScale, commandTargetMutationForecastForContract, commandTargetMutationMinTier, chooseCommandTargetMutations } from '../src/game/commandTargetMutations';
 
 function exclusiveProtocolCombinationSmoke() {
   const baseContract = generateContracts(createDefaultCampaign())[0]!;
@@ -295,6 +296,69 @@ function bossPhaseMutationSmoke() {
   assert.match(hubSource, /BOSS PHASE \/\//, 'Tactical Forecast should disclose the deterministic boss phase mutation before deployment');
 }
 bossPhaseMutationSmoke();
+
+function commandTargetMutationSmoke() {
+  const baseContract = generateContracts(createDefaultCampaign())[0]!;
+  const base = {
+    ...baseContract,
+    seed: 926311,
+    location: 'lattice-annex' as const,
+    objectiveMode: 'gravity-stabilization' as const,
+    threatBudget: 82,
+    encounterPattern: 'elite-led' as const,
+    eliteProtocolSlots: 3,
+    reserveCount: 1,
+    environmentalEventSlots: 2,
+    combatEffectiveness: 1,
+  };
+
+  const eliteLed = { ...base, operationTier: 8, directiveTier: 8, directiveTargetClass: 'elite-led' as const };
+  assert.deepEqual(commandTargetMutationForecastForContract(eliteLed), [], 'elite-led directives must never receive whole-target command packages');
+
+  const t6Command = { ...base, operationTier: 6, directiveTier: 6, directiveTargetClass: 'command-target' as const };
+  const t6Forecast = commandTargetMutationForecastForContract(t6Command);
+  assert.equal(t6Forecast.length, 1, 'T6 command directives should arm one deterministic whole-target package');
+  assert.deepEqual(t6Forecast, chooseCommandTargetMutations(t6Command), 'command package forecast and runtime assignment must use the same resolver');
+  assert.ok(t6Forecast.every(id => commandTargetMutationMinTier(id) <= 6), 'command package resolver must respect tier legality');
+  assert.deepEqual(chooseCommandTargetMutations(t6Command), chooseCommandTargetMutations(t6Command), 'same command directive seed and tier must resolve the same package');
+
+  const commandContract = { ...base, operationTier: 8, directiveTier: 8, directiveTargetClass: 'command-target' as const };
+  const commandForecast = commandTargetMutationForecastForContract(commandContract);
+  const commandState = createSimulation();
+  applyThreatBudget(commandState.enemies, commandContract);
+  const commandBoss = commandState.enemies.find(enemy => enemy.role === 'boss')!;
+  assert.deepEqual(commandBoss.commandTargetMutations, commandForecast, 'threat scaling should assign the exact command package disclosed before deployment');
+  assert.equal(commandBoss.mutations.length, 0, 'command packages must stay separate from elite mutation storage');
+  assert.equal(commandBoss.bossPhaseMutations.length, 0, 'pre-T9 command packages must not leak into boss phase mutation storage');
+
+  const plainState = createSimulation();
+  applyThreatBudget(plainState.enemies, eliteLed);
+  const plainBoss = plainState.enemies.find(enemy => enemy.role === 'boss')!;
+  assert.ok(commandBoss.maxHp > plainBoss.maxHp || commandBoss.maxArmor > plainBoss.maxArmor, 'whole-target command packages should materially reinforce target durability');
+
+  assert.ok(commandTargetFireCadenceScale({ commandTargetMutations: ['pursuit-governor'] } as any) >= 1.12, 'Pursuit Governor should accelerate command attacks for the whole fight');
+
+  const pulseState = createSimulation();
+  for (const enemy of pulseState.enemies) if (enemy.role !== 'boss') enemy.active = false;
+  const pulseBoss = pulseState.enemies.find(enemy => enemy.role === 'boss')!;
+  pulseBoss.active = true;
+  pulseBoss.commandTargetMutations = ['countermass-interlock'];
+  pulseBoss.commandMutationCooldown = 0;
+  pulseBoss.fireCooldown = 2;
+  pulseState.bossActive = true;
+  stepSimulation(pulseState, 0.1);
+  assert.equal(pulseBoss.bossPhase, 1, 'command package regression should prove the package is active before phase two');
+  assert.ok(pulseState.hazards.some(hazard => hazard.active && hazard.kind === 'gravityWell'), 'Countermass Interlock should project recurring whole-fight mass denial');
+  assert.match(pulseState.eventText, /COMMAND PACKAGE/, 'whole-fight command package pulse should announce itself distinctly from phase mutations');
+
+  const combatSource = readFileSync('src/components/GameCanvas.tsx', 'utf8');
+  const hubSource = readFileSync('src/components/ShipHub.tsx', 'utf8');
+  const directiveSource = readFileSync('src/components/DirectivePanel.tsx', 'utf8');
+  assert.match(combatSource, /COMMAND PACKAGE \/\//, 'boss HUD should identify the active whole-fight command package');
+  assert.match(hubSource, /COMMAND PACKAGE \/\//, 'Tactical Forecast should disclose command packages before deployment');
+  assert.match(directiveSource, /COMMAND PACKAGE \/\//, 'Directive cards should preview command packages before preparation');
+}
+commandTargetMutationSmoke();
 
 function parallaxPacingTelemetry(): Telemetry {
   return {
