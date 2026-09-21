@@ -78,7 +78,7 @@ assert(!armory.includes('2 PIECE'), 'Equipment Bay still exposes 2-piece set tar
 assert(!armory.includes('4 PIECE'), 'Equipment Bay still exposes 4-piece set targets.');
 assert(!armory.includes('setName'), 'Equipment Bay still renders undiscovered set names.');
 assert(armory.includes('PRIMARY EFFECT'), 'Item inspector is missing plain-language quick read.');
-assert(rarity.includes("cue: 'RULE-CHANGER'") && armory.includes('rarityCue(item)'), 'Rarity meaning cues are missing from the shared contract or gear UI.');
+assert(rarity.includes("cue: 'RULE-CHANGER'") && armory.includes('rarityDisplayLabel(rarity)'), 'Rarity meaning cues are missing from the shared contract or gear UI.');
 assert(rarity.includes("export const rarityOrder = ['Field', 'Refined', 'Prototype', 'Singular'] as const") && rarity.includes('accessibleLabel') && rarity.includes('colorValue') && rarity.includes('shape:') && rarity.includes('icon:'), 'P7-A rarity contract is missing order, color, icon, shape, or accessible-text tokens.');
 assert(armory.includes('rarity-contract-legend') && armory.includes('Equipment rarity guide') && armory.includes('rarityDefinition(item.rarity).icon'), 'Build gear UI is not exposing the shared non-color rarity language.');
 assert(equipmentCss.includes('P7-A // shared rarity contract presentation') && equipmentCss.includes('.rarity-contract-legend') && equipmentCss.includes('.rarity-shape'), 'Rarity legend presentation is missing responsive shape-cue styling.');
