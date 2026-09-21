@@ -124,7 +124,7 @@ function enhancedProtocolVariantSmoke() {
   assert.match(runtimeSource, /protocol\.enhanced[\s\S]*CROSS-FAN/, 'named Penetrator Volley variant must retain its widened volley mechanical upgrade');
   const combatSource = readFileSync('src/components/GameCanvas.tsx', 'utf8');
   const hubSource = readFileSync('src/components/ShipHub.tsx', 'utf8');
-  assert.match(combatSource, /variantPresentation\\?\\.shortName/, 'combat HUD should render the authored enhanced variant short name instead of only a generic marker');
+  assert.match(combatSource, /variantPresentation\?\.shortName/, 'combat HUD should render the authored enhanced variant short name instead of only a generic marker');
   assert.match(hubSource, /VARIANT \/\//, 'contract tactical forecast should name legal enhanced variants before deployment');
 }
 enhancedProtocolVariantSmoke();
