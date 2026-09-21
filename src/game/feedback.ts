@@ -43,7 +43,8 @@ class FeedbackBus {
   private haptic(cue: FeedbackCue) {
     if (!this.settings?.haptics || typeof navigator === 'undefined') return;
     const vibration = cue === 'rail' ? 18
-      : cue === 'breacher' ? 10
+      : cue === 'breacher' ? 12
+      : cue === 'carbine' ? 4
       : cue === 'damage' ? 12
       : cue === 'dodge' ? 7
       : cue === 'breach' ? [18, 28, 22]
@@ -58,8 +59,8 @@ class FeedbackBus {
     const actuator = gamepad ? (gamepad as Gamepad & { vibrationActuator?: { playEffect?: (type: string, params: { duration: number; startDelay: number; strongMagnitude: number; weakMagnitude: number }) => Promise<unknown> } }).vibrationActuator : undefined;
     if (!actuator?.playEffect || !vibration) return;
     const duration = Array.isArray(vibration) ? vibration.reduce((total, value) => total + value, 0) : vibration;
-    const strongMagnitude = cue === 'breach' || cue === 'rail' || cue === 'damage' ? .46 : cue === 'targetLock' ? .12 : .24;
-    const weakMagnitude = cue === 'targetLock' ? .28 : .42;
+    const strongMagnitude = cue === 'breacher' ? .58 : cue === 'rail' ? .5 : cue === 'breach' || cue === 'damage' ? .46 : cue === 'carbine' ? .12 : cue === 'targetLock' ? .12 : .24;
+    const weakMagnitude = cue === 'carbine' ? .22 : cue === 'rail' ? .34 : cue === 'targetLock' ? .28 : .42;
     void actuator.playEffect('dual-rumble', { duration, startDelay: 0, strongMagnitude, weakMagnitude }).catch(() => undefined);
   }
 
