@@ -166,6 +166,18 @@ This file is the permanent archive for completed production work. The active exe
   - Android artifact `10652799934` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.224`, debug signing, and APK SHA-256 `f6afeb0ae0add10d9dfab2090eb8ba8b595ed041254b3837adc2bbfb6279223c`.
   - **Next: P8-G — Class-owned skill migration.**
 
+- [x] **P8-G Class-owned skill migration** — all three class kits now explicitly belong to the class-owned armament family and can inherit family-level build influence without binding a skill to a specific weapon item ID.
+  - Vanguard skills bind to Breacher, Vector skills to Rail Lance, and Systems skills to Carbine through the shared class-skill metadata contract; runtime ability configuration verifies the active family before applying family tuning.
+  - The equipped owned-family weapon contributes bounded class-skill power, range, control, armor pressure, recovery, cost, and chain influence from frame generation/identity, Equipment Quality, relevant affixes, and Singular status. Stowed or off-family weapon state cannot tune class skills.
+  - Selected Network nodes now influence the same family-skill layer for armor work, recoil/vector control, signal compression, quick-vent recovery, and predictive lead without creating a second per-item skill-binding system.
+  - Shared skill mechanics were migrated off weapon-specific assumptions: redirected projectiles use the active class family, and Execution Trace now consumes marked targets through the class-owned armament rather than being Rail-only.
+  - Deterministic gameplay coverage exercises all three classes, owned-family metadata, frame/affix/Singular tuning sources, off-family isolation, runtime family binding, and family-aware Execution Trace behavior. Source/UI regression guards the family contract and prevents item-ID binding from returning.
+  - PR #148 final Browser E2E `35630094749` passed desktop and mobile-landscape on exact head `e0a364a7d28ca1d296df06ebce8a4de9aa226ca5`, including the full deterministic regression suite, production build, and live player journeys.
+  - Merged gameplay source `266bb5072adbd1140b3c944ebc6612c3d3102b9c`; merged-main Browser E2E `35630330974` and Level 15 beta smoke `35630331136` both passed.
+  - Android beta.225 run `35630331086` passed full web regression/build, native Android generation, package/version/SDK/signature checks, installable debug APK assembly, native emulator install/runtime/touch/lifecycle smoke, authored operator/enemy/weapon/environment assets, and Chapter 3 mobile playthrough.
+  - Android artifact `10654129177` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.225`, debug signing, and APK SHA-256 `a43733c42a6047b10fbb5bfb8c69b0c0ad7b6b7806d5b737abb4408b288d4495`.
+  - **Next: P8-H — Skill UI + regression.**
+
 ## P0 — Foundation ✅ COMPLETE
 
 - [x] Three classes: Vanguard / Vector / Systems
