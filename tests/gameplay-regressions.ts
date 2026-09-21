@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { buildMegastructureDebrief, buyConsumable, createDefaultCampaign, generateContracts, getMegastructureStageContract, loadCampaign, saveCampaign } from '../src/game/campaign';
 import { abilityUsesTargetAcquisition, acquireCombatTarget, aimAtMobileTarget, applyPlayerDamage, createSimulation, createTargetControlMemory, cycleWeapon, resetTargetControlMemory, selectWeapon, stepSimulation, triggerAbility, triggerConsumable, triggerDodge, triggerFire, updateMobileTargetControl, weaponConfigs, type Telemetry } from '../src/game/sim';
 import { applyMissionSetup, createDirector, stepMissionDirector } from '../src/game/director';
-import { activeWeaponFamilyForProfile, awardRecovery, buildIdentity, createDefaultProfile, deriveCombatBuild, equipItem, loadProfile, materializeModifier, normalizeClassArmament, saveProfile, setAbilityMod, setOperatorClass, specializationGearSynergyDefinitions, specializationGearSynergyForProfile, systemsCapstoneInteractionFor, vanguardCapstoneInteractionFor, vectorCapstoneInteractionFor } from '../src/game/meta';
+import { activeWeaponFamilyForProfile, awardRecovery, awardVictory, buildIdentity, createDefaultProfile, deriveCombatBuild, equipItem, isItemClassCompatible, loadProfile, materializeModifier, normalizeClassArmament, saveProfile, setAbilityMod, setOperatorClass, specializationGearSynergyDefinitions, specializationGearSynergyForProfile, systemsCapstoneInteractionFor, vanguardCapstoneInteractionFor, vectorCapstoneInteractionFor } from '../src/game/meta';
 import { CAMPAIGN_STORAGE_KEY, GAME_STATE_STORAGE_KEY, prepareSaveRecovery, PROFILE_STORAGE_KEY } from '../src/game/saveRecovery';
 import { loadGameState, saveGameState } from '../src/game/gamePersistence';
 import { carryExpeditionLoot } from '../src/game/expeditionCarry';
@@ -678,6 +678,52 @@ function hardArsenalLockSmoke() {
   assert.equal(malformedBuild.weapon.carbine.damageMul, cleanBuild.weapon.carbine.damageMul, 'Direct malformed profiles must not apply off-class weapon modifiers to combat builds.');
 }
 hardArsenalLockSmoke();
+
+function classOwnedRecoverySmoke() {
+  const telemetry = parallaxPacingTelemetry();
+  const cases = [
+    { operatorClass: 'vanguard' as const, weapon: 'breacher' as const },
+    { operatorClass: 'vector' as const, weapon: 'rail' as const },
+    { operatorClass: 'systems' as const, weapon: 'carbine' as const },
+  ];
+
+  for (const testCase of cases) {
+    const selected = setOperatorClass(createDefaultProfile(), testCase.operatorClass).profile;
+    const onboardingProfile = { ...selected, runsCompleted: 0 };
+    const onboarding = awardRecovery(onboardingProfile, telemetry, false, 0, {
+      location: 'ice-mine',
+      locationName: 'Ice Mine',
+      operationTier: 1,
+      maxRecoveryLevel: 12,
+    });
+    assert.ok(onboarding.loot.some(item => item.slot === testCase.weapon), `${testCase.operatorClass} onboarding should recover its owned weapon family.`);
+    assert.ok(onboarding.loot.every(item => isItemClassCompatible(onboardingProfile, item)), `${testCase.operatorClass} onboarding should never produce an off-class weapon.`);
+
+    const legacyVictory = awardVictory({ ...selected, runsCompleted: 4 }, telemetry);
+    assert.ok(legacyVictory.loot.every(item => isItemClassCompatible(selected, item)), `${testCase.operatorClass} legacy victory recovery should respect class ownership.`);
+
+    for (let run = 1; run <= 8; run += 1) {
+      const profile = { ...selected, runsCompleted: run };
+      const deep = run % 2 === 0;
+      const recovery = awardRecovery(profile, telemetry, deep, 0, {
+        deepTarget: 'Recovery Commander Sable Voss',
+        location: 'spin-habitat',
+        locationName: 'Spin Habitat',
+        operationTier: 9,
+        maxRecoveryLevel: 40,
+        directiveTier: 9,
+        threatBudget: 96,
+        eliteProtocolCount: 3,
+        environmentalComplications: 2,
+        optionalObjectives: 1,
+        actualDepth: deep,
+      });
+      assert.ok(recovery.loot.length > 0, `${testCase.operatorClass} recovery should still award equipment.`);
+      assert.ok(recovery.loot.every(item => isItemClassCompatible(profile, item)), `${testCase.operatorClass} run ${run} produced an off-class weapon: ${recovery.loot.map(item => item.slot).join(', ')}`);
+    }
+  }
+}
+classOwnedRecoverySmoke();
 
 function parallaxBaseClassCounterSmoke() {
   const classProfile = (operatorClass: 'vanguard' | 'vector' | 'systems') => ({
