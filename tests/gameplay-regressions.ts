@@ -312,24 +312,28 @@ function commandTargetMutationSmoke() {
     combatEffectiveness: 1,
   };
 
-  const eliteLed = { ...base, operationTier: 8, directiveTier: 8, directiveTargetClass: 'elite-led' as const };
+  const eliteLed = { ...base, operationTier: 10, directiveTier: 10, directiveTargetClass: 'elite-led' as const };
   assert.deepEqual(commandTargetMutationForecastForContract(eliteLed), [], 'elite-led directives must never receive whole-target command packages');
 
-  const t6Command = { ...base, operationTier: 6, directiveTier: 6, directiveTargetClass: 'command-target' as const };
-  const t6Forecast = commandTargetMutationForecastForContract(t6Command);
-  assert.equal(t6Forecast.length, 1, 'T6 command directives should arm one deterministic whole-target package');
-  assert.deepEqual(t6Forecast, chooseCommandTargetMutations(t6Command), 'command package forecast and runtime assignment must use the same resolver');
-  assert.ok(t6Forecast.every(id => commandTargetMutationMinTier(id) <= 6), 'command package resolver must respect tier legality');
-  assert.deepEqual(chooseCommandTargetMutations(t6Command), chooseCommandTargetMutations(t6Command), 'same command directive seed and tier must resolve the same package');
+  const t8Command = { ...base, operationTier: 8, directiveTier: 8, directiveTargetClass: 'command-target' as const };
+  assert.deepEqual(commandTargetMutationForecastForContract(t8Command), [], 'whole-target command packages must remain locked below T9');
 
-  const commandContract = { ...base, operationTier: 8, directiveTier: 8, directiveTargetClass: 'command-target' as const };
+  const t9Command = { ...base, operationTier: 9, directiveTier: 9, directiveTargetClass: 'command-target' as const };
+  const t9Forecast = commandTargetMutationForecastForContract(t9Command);
+  assert.equal(t9Forecast.length, 1, 'T9 command directives should arm one deterministic whole-target package');
+  assert.deepEqual(t9Forecast, chooseCommandTargetMutations(t9Command), 'command package forecast and runtime assignment must use the same resolver');
+  assert.ok(t9Forecast.every(id => commandTargetMutationMinTier(id) <= 9), 'command package resolver must respect tier legality');
+  assert.deepEqual(chooseCommandTargetMutations(t9Command), chooseCommandTargetMutations(t9Command), 'same command directive seed and tier must resolve the same package');
+
+  const commandContract = { ...base, operationTier: 10, directiveTier: 10, directiveTargetClass: 'command-target' as const };
   const commandForecast = commandTargetMutationForecastForContract(commandContract);
   const commandState = createSimulation();
   applyThreatBudget(commandState.enemies, commandContract);
   const commandBoss = commandState.enemies.find(enemy => enemy.role === 'boss')!;
   assert.deepEqual(commandBoss.commandTargetMutations, commandForecast, 'threat scaling should assign the exact command package disclosed before deployment');
   assert.equal(commandBoss.mutations.length, 0, 'command packages must stay separate from elite mutation storage');
-  assert.equal(commandBoss.bossPhaseMutations.length, 0, 'pre-T9 command packages must not leak into boss phase mutation storage');
+  assert.ok(commandBoss.bossPhaseMutations.length > 0, 'T9+ Command Targets may also carry the separate boss phase mutation layer');
+  assert.notDeepEqual(commandBoss.commandTargetMutations, commandBoss.bossPhaseMutations, 'whole-target packages and boss phase mutations must retain distinct identities and storage');
 
   const plainState = createSimulation();
   applyThreatBudget(plainState.enemies, eliteLed);
