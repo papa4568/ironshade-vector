@@ -186,8 +186,10 @@ const chaseCatalog: SingularTemplate[] = [
 const directiveChaseIds = new Set(['sixth-vector-m12', 'backstep-kestrel-b9', 'cold-doublet-r7', 'falling-star-harness', 'bloom-vector-rig', 'cascade-sight-link']);
 const directiveChaseCatalog = chaseCatalog.filter(item => directiveChaseIds.has(item.baseId));
 
-export function directiveSingularNames(tier: number) {
-  return tier >= 9 ? directiveChaseCatalog.map(item => item.name) : [];
+export function directiveSingularNames(tier: number, profile?: Pick<PlayerProfile, 'operatorClass' | 'specialization' | 'allocatedNodes'>) {
+  if (tier < 9) return [];
+  const pool = profile ? directiveChaseCatalog.filter(item => isEquipmentSlotClassCompatible(profile, item.slot)) : directiveChaseCatalog;
+  return pool.map(item => item.name);
 }
 
 export function directiveChaseSingularChance(tier: number, deep: boolean) {
