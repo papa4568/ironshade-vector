@@ -11,6 +11,7 @@ import { advanceParallaxDebtAfterContract, chooseParallaxDebtBranch, getParallax
 import { applyThreatBudget, operationScalingFor } from '../src/game/scaling';
 import { chooseEnemyProtocols, enhancedProtocolVariantForecastForContract, exclusiveProtocolCombinationForEnemy, exclusiveProtocolCombinationForInstances, exclusiveProtocolCombinationForecastForContract, protocolDefinition, protocolRewardValue, protocolThreatCost, type EnhancedProtocolVariantId, type EnemyProtocolId } from '../src/game/eliteProtocols';
 import { enhancedProtocolVariantPresentationFor } from '../src/game/enhancedProtocolVariantPresentation';
+import { applyEnemyMutations, mutationDefinition, mutationFireCadenceScale, mutationForecastForContract, mutationHazardCadenceScale, mutationMobilityScale, mutationThreatCostForEnemy } from '../src/game/t9Mutations';
 
 function exclusiveProtocolCombinationSmoke() {
   const baseContract = generateContracts(createDefaultCampaign())[0]!;
@@ -131,6 +132,75 @@ function enhancedProtocolVariantSmoke() {
   assert.match(hubSource, /VARIANT \/\//, 'contract tactical forecast should name legal enhanced variants before deployment');
 }
 enhancedProtocolVariantSmoke();
+
+function t9MutationSmoke() {
+  const baseContract = generateContracts(createDefaultCampaign())[0]!;
+  const base = {
+    ...baseContract,
+    seed: 93461,
+    location: 'lattice-annex' as const,
+    objectiveMode: 'gravity-stabilization' as const,
+    threatBudget: 92,
+    encounterPattern: 'elite-led' as const,
+    eliteProtocolSlots: 3,
+    reserveCount: 1,
+    environmentalEventSlots: 2,
+    combatEffectiveness: 1,
+    directiveProtocolBias: ['breachmaker', 'magneticLock'],
+  };
+
+  const t8Contract = { ...base, operationTier: 8 };
+  assert.deepEqual(mutationForecastForContract(t8Contract), [], 'T9+ elite mutations must remain locked below T9');
+  const t8State = createSimulation();
+  applyThreatBudget(t8State.enemies, t8Contract);
+  assert.equal(t8State.enemies.some(enemy => enemy.mutations.length > 0), false, 'T8 encounters must not receive elite mutations');
+
+  const t9Contract = { ...base, operationTier: 9 };
+  const t9Forecast = mutationForecastForContract(t9Contract);
+  assert.ok(t9Forecast.length >= 3, 'T9 tactical forecast should disclose the legal mutation pool');
+  assert.ok(t9Forecast.every(id => mutationDefinition(id).minTier <= 9), 'T9 forecast must not leak later-tier mutation identities');
+
+  const first = createSimulation();
+  applyThreatBudget(first.enemies, t9Contract);
+  const mutated = first.enemies.filter(enemy => enemy.mutations.length > 0);
+  assert.ok(mutated.length > 0, 'T9 elite-led encounters should assign at least one mutation from the reserved mutation budget');
+  assert.ok(mutated.every(enemy => enemy.role !== 'boss' && (enemy.combatClass === 'elite' || enemy.combatClass === 'enhanced')), 'P6.3 mutations must stay on non-boss elite/enhanced enemies');
+  assert.equal(first.enemies.find(enemy => enemy.role === 'boss')?.mutations.length ?? 0, 0, 'bosses must remain mutation-free for the separate P6.4 boss-phase pass');
+  const t9MutationCost = mutated.reduce((total, enemy) => total + mutationThreatCostForEnemy(enemy), 0);
+  assert.ok(t9MutationCost > 0 && t9MutationCost <= 2, 'T9 mutations must consume only the explicit two-point mutation commitment');
+
+  const second = createSimulation();
+  applyThreatBudget(second.enemies, t9Contract);
+  assert.deepEqual(
+    first.enemies.map(enemy => [enemy.id, enemy.mutations]),
+    second.enemies.map(enemy => [enemy.id, enemy.mutations]),
+    'T9 mutation assignment must be deterministic for the same contract seed and encounter roster',
+  );
+
+  const statSample = createSimulation().enemies.find(enemy => enemy.role === 'elite');
+  assert.ok(statSample, 'mutation stat regression requires an authored elite sample');
+  const hpBefore = statSample!.maxHp;
+  const armorBefore = statSample!.maxArmor;
+  applyEnemyMutations(statSample!, ['reinforced-core', 'ablative-mantle']);
+  assert.ok(statSample!.maxHp > hpBefore, 'Reinforced Core must materially increase elite durability');
+  assert.ok(statSample!.maxArmor > armorBefore, 'Ablative Mantle must materially increase elite armor');
+  assert.equal(mutationMobilityScale({ mutations: ['hunter-servo'] } as any), 1.14, 'Hunter Servo must materially increase movement cadence');
+  assert.equal(mutationFireCadenceScale({ mutations: ['redline-bus'] } as any), 1.18, 'Redline Bus must materially increase firing cadence');
+  assert.equal(mutationHazardCadenceScale({ mutations: ['relay-reflex'] } as any), 1.22, 'Relay Reflex must materially increase technician/protocol cadence');
+
+  const t11Contract = { ...base, operationTier: 11 };
+  const t11State = createSimulation();
+  applyThreatBudget(t11State.enemies, t11Contract);
+  const t11MutationCost = t11State.enemies.reduce((total, enemy) => total + mutationThreatCostForEnemy(enemy), 0);
+  assert.ok(t11MutationCost > 0 && t11MutationCost <= 6, 'T11 mutation assignment must stay inside the six-point mutation commitment');
+  assert.ok(mutationForecastForContract(t11Contract).includes('relay-reflex'), 'T11 forecast should unlock the Relay Reflex mutation layer');
+
+  const combatSource = readFileSync('src/components/GameCanvas.tsx', 'utf8');
+  const hubSource = readFileSync('src/components/ShipHub.tsx', 'utf8');
+  assert.match(combatSource, /mutationTag\(enemy\)/, 'combat HUD should surface compact mutation identities above affected elites');
+  assert.match(hubSource, /MUTATION \/\//, 'Tactical Forecast should disclose legal T9+ mutations before deployment');
+}
+t9MutationSmoke();
 
 function parallaxPacingTelemetry(): Telemetry {
   return {
