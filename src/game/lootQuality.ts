@@ -1,7 +1,9 @@
+import type { ItemRarity } from './rarity';
+
 export type ModifierFamily = 'core' | 'systems';
 export type ModifierGrade = 1 | 2 | 3 | 4 | 5;
 export type RecoveryQualityGrade = 0 | 1 | 2 | 3 | 4 | 5;
-export type RecoverableRarity = 'Field' | 'Refined' | 'Prototype';
+export type RecoverableRarity = Exclude<ItemRarity, 'Singular'>;
 
 export type RecoveryQualitySource = {
   operationTier: number;

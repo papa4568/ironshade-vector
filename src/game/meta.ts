@@ -6,9 +6,10 @@ import { frameGenerationForRecovery, recoveryLevelForSource, type FrameGeneratio
 import { modifierCountForRarity, modifierFamilyFor, modifierPowerFactor, modifierTradeoffFactor, rollModifierGrade, rollRarityForQuality, rollRecoveryQuality, type ModifierFamily, type ModifierGrade, type RecoveryQualityGrade } from './lootQuality';
 import { applyAugments, applyFrameIdentity, augmentSlotCount, equipmentQualityForRecovery, factionFrameIdentity, frameImplicitDescription, inferFrameIdentity, normalizeAugments, rollFrameIdentity, singularFrameIdentity, type AugmentId, type FrameIdentityId } from './gearDepth';
 import type { GroundLootReceipt } from './fieldLoot';
+import type { ItemRarity } from './rarity';
 
 export type EquipmentSlot = WeaponId | 'suit' | 'rig' | 'implant';
-export type Rarity = 'Field' | 'Refined' | 'Prototype' | 'Singular';
+export type Rarity = ItemRarity;
 export type AbilityId = 'mag' | 'mark' | 'arc';
 export type MobileAimAssist = 'light' | 'balanced';
 export type AffixId = 'hypervelocity' | 'countermass' | 'overdrive' | 'cryoloop' | 'extendedFeed' | 'tungsten' | 'vacuumSeal' | 'servoWeave' | 'capacitorRecycler' | 'railFracture' | 'dodgeVent' | 'magRedirect' | 'breachPropulsion' | 'markShear' | 'arcDrone';

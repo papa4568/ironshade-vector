@@ -1,8 +1,9 @@
 import type { CombatBuild } from './sim';
 import type { FrameGeneration } from './scaling';
+import type { ItemRarity } from './rarity';
 
 export type GearSlot = 'carbine' | 'breacher' | 'rail' | 'suit' | 'rig' | 'implant';
-export type GearRarity = 'Field' | 'Refined' | 'Prototype' | 'Singular';
+export type GearRarity = ItemRarity;
 export type EquipmentFactionKey = 'meridian' | 'heliostat' | 'longarc';
 export type FrameIdentityId =
   | 'carbine-countermass' | 'carbine-hypervelocity' | 'carbine-feedline'

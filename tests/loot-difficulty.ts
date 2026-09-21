@@ -1,9 +1,10 @@
 import { createDefaultCampaign, generateContracts } from '../src/game/campaign';
-import { rollGroundLoot, type GroundLootReceipt } from '../src/game/fieldLoot';
+import { lootColor, lootLabel, rollGroundLoot, type GroundLootReceipt } from '../src/game/fieldLoot';
 import { modifierCountForRarity } from '../src/game/lootQuality';
 import { awardRecovery, createDefaultProfile, deriveCombatBuild, directiveChaseSingularChance, directiveSingularNames, levelRequirementForRecovery, locationSingularNames, maxOperatorLevel, parallaxDebtGearIdentities, type Item } from '../src/game/meta';
 import { applyThreatBudget, operationScalingFor, standardTierCapForOperator } from '../src/game/scaling';
 import { createSimulation, type Telemetry } from '../src/game/sim';
+import { compareRarity, rarityClassToken, rarityDefinition, rarityOrder } from '../src/game/rarity';
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -46,6 +47,14 @@ assert(levelRequirementForRecovery(40) > levelRequirementForRecovery(24), 'gear 
 assert(modifierCountForRarity('Field', 5, () => 0) === 0, 'Field items should remain clean bases without explicit modifiers');
 assert(modifierCountForRarity('Refined', 0, () => 0) === 2 && modifierCountForRarity('Refined', 0, () => 0.99) === 1, 'Refined items should have one or two modifiers');
 assert(modifierCountForRarity('Prototype', 0, () => 0) === 6 && modifierCountForRarity('Prototype', 0, () => 0.2) === 5 && modifierCountForRarity('Prototype', 0, () => 0.9) === 4, 'Prototype items should use the 4/5/6 modifier structure');
+const rarityDefinitions = rarityOrder.map(rarityDefinition);
+assert(rarityOrder.join('|') === 'Field|Refined|Prototype|Singular', 'rarity order must remain Field -> Refined -> Prototype -> Singular');
+assert(rarityDefinitions.every((definition, index) => definition.rank === index), 'rarity ranks must match the authored order');
+assert(new Set(rarityDefinitions.map(definition => definition.token)).size === 4 && new Set(rarityDefinitions.map(definition => definition.icon)).size === 4 && new Set(rarityDefinitions.map(definition => definition.shape)).size === 4, 'rarities need distinct token, icon, and shape cues');
+assert(rarityDefinitions.every(definition => definition.meaning.length >= 60 && definition.accessibleLabel.length >= 20), 'rarity contract needs plain-language meaning and accessible text');
+assert(compareRarity('Field', 'Singular') < 0 && compareRarity('Singular', 'Prototype') > 0, 'rarity comparison must respect contract order');
+assert(rarityClassToken('Prototype') === 'rarity-prototype', 'rarity CSS token drifted from the shared contract');
+assert(lootColor('Refined') === rarityDefinition('Refined').colorValue && lootLabel('Singular') === rarityDefinition('Singular').worldLabel, 'world loot presentation must use the shared rarity contract');
 
 function sequenceRandom(values: number[]) {
   let index = 0;
