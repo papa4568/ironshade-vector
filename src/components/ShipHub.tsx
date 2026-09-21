@@ -36,8 +36,7 @@ import { isNetworkRequestError, loadRunTrace, networkFailureMessage, type Operat
 import { chooseStoryBranch, getStoryChoicePrompt, latticeFindings, startStoryArc, storyArcDefinitions } from '../game/story';
 import { enhancedProtocolVariantForecastForContract, exclusiveProtocolCombinationForecastForContract, protocolForecastForContract, protocolTierSummary } from '../game/eliteProtocols';
 import { enhancedProtocolVariantPresentationFor } from '../game/enhancedProtocolVariantPresentation';
-import { mutationForecastForContract } from '../game/t9Mutations';
-import { mutationPresentationFor } from '../game/t9MutationPresentation';
+import { mutationForecastForContract, mutationPresentationFor } from '../game/t9MutationPresentation';
 import { directiveModifierName, directiveRewardPreview } from '../game/operationDirectives';
 import { choosePostKhepriBranch, getPostKhepriChoicePrompt, postKhepriChapter, postKhepriEvidence, startPostKhepriChapter } from '../game/postKhepri';
 import { chooseInterdictionBranch, getInterdictionChoicePrompt, interdictionChapter, interdictionEvidence, startInterdictionChapter } from '../game/postKhepriInterdiction';
