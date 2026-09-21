@@ -432,6 +432,124 @@ async function mobileCombatLayoutAudit() {
   return result;
 }
 
+async function targetFeedbackAudit(includeTouch) {
+  if (includeTouch) {
+    const touchStarted = await evaluate(`(() => {
+      const button = document.querySelector('.fire-button');
+      if (!button || button.disabled) return false;
+      button.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 71, pointerType: 'touch', isPrimary: true, buttons: 1 }));
+      return true;
+    })()`);
+    if (!touchStarted) throw new Error('P8-C touch target audit could not press FIRE.');
+    await waitFor(`(() => {
+      const canvas = document.querySelector('canvas');
+      const readout = document.querySelector('.target-readout[data-target-id]');
+      return Boolean(canvas?.dataset.assistedTargetId)
+        && readout?.dataset.targetId === canvas.dataset.assistedTargetId
+        && (document.querySelector('#target-lock-status')?.textContent ?? '').toLowerCase().includes('locked');
+    })()`, 'touch assisted target lock', 8_000);
+    await evaluate(`(() => {
+      const button = document.querySelector('.fire-button');
+      button?.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 71, pointerType: 'touch', isPrimary: true }));
+    })()`);
+    await waitFor(`(() => {
+      const canvas = document.querySelector('canvas');
+      return canvas?.dataset.assistedTargetId === '' && !document.querySelector('.target-readout[data-target-id]');
+    })()`, 'touch target release', 5_000);
+  }
+
+  const installed = await evaluate(`(() => {
+    if (!window.__p8cOriginalGetGamepads) window.__p8cOriginalGetGamepads = navigator.getGamepads?.bind(navigator);
+    window.__p8cTargetRumbleCount = 0;
+    window.__p8cQaGamepad = {
+      connected: true,
+      index: 0,
+      id: 'P8-C QA Gamepad',
+      mapping: 'standard',
+      timestamp: performance.now(),
+      axes: [0, 0, 0, 0],
+      buttons: Array.from({ length: 8 }, () => ({ pressed: false, touched: false, value: 0 })),
+      vibrationActuator: {
+        playEffect: () => {
+          window.__p8cTargetRumbleCount += 1;
+          return Promise.resolve('complete');
+        },
+      },
+    };
+    try {
+      Object.defineProperty(navigator, 'getGamepads', {
+        configurable: true,
+        value: () => [window.__p8cQaGamepad],
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  })()`);
+  if (!installed) throw new Error('P8-C controller target audit could not install the gamepad shim.');
+
+  try {
+    await waitFor(`document.querySelector('canvas')?.dataset.controllerInput === 'connected'`, 'controller polling', 5_000);
+    await evaluate(`(() => {
+      const button = window.__p8cQaGamepad.buttons[7];
+      button.pressed = true;
+      button.touched = true;
+      button.value = 1;
+      window.__p8cQaGamepad.timestamp = performance.now();
+    })()`);
+    await waitFor(`(() => {
+      const canvas = document.querySelector('canvas');
+      const readout = document.querySelector('.target-readout[data-target-id]');
+      return Boolean(canvas?.dataset.assistedTargetId)
+        && readout?.dataset.targetId === canvas.dataset.assistedTargetId;
+    })()`, 'controller RT assisted target lock', 8_000);
+
+    const controllerLock = await evaluate(`(() => ({
+      targetId: document.querySelector('canvas')?.dataset.assistedTargetId ?? '',
+      rumbleCount: window.__p8cTargetRumbleCount ?? 0,
+      liveText: document.querySelector('#target-lock-status')?.textContent ?? '',
+    }))()`);
+    if (!controllerLock.targetId || controllerLock.rumbleCount < 1 || !controllerLock.liveText.toLowerCase().includes('locked')) {
+      throw new Error(`Controller target acquisition feedback failed: ${JSON.stringify(controllerLock)}`);
+    }
+
+    await evaluate(`(() => {
+      window.__p8cQaGamepad.axes[2] = 0.8;
+      window.__p8cQaGamepad.timestamp = performance.now();
+    })()`);
+    await waitFor(`(() => {
+      const canvas = document.querySelector('canvas');
+      return canvas?.dataset.assistedTargetId === '' && !document.querySelector('.target-readout[data-target-id]');
+    })()`, 'controller manual-aim target release', 5_000);
+
+    const manualOverride = await evaluate(`document.querySelector('#target-lock-status')?.textContent ?? ''`);
+    if (!manualOverride.toLowerCase().includes('manual controller aim')) {
+      throw new Error(`Controller manual override was not announced: ${JSON.stringify(manualOverride)}`);
+    }
+
+    await evaluate(`(() => {
+      window.__p8cQaGamepad.axes[2] = 0;
+      const button = window.__p8cQaGamepad.buttons[7];
+      button.pressed = false;
+      button.touched = false;
+      button.value = 0;
+      window.__p8cQaGamepad.timestamp = performance.now();
+    })()`);
+    console.log(`BROWSER_TARGET_FEEDBACK_PASS touch=${includeTouch ? 'verified' : 'not-applicable'} controller=rt-assist+manual-override rumble=${controllerLock.rumbleCount}`);
+  } finally {
+    await evaluate(`(() => {
+      try {
+        if (window.__p8cOriginalGetGamepads) {
+          Object.defineProperty(navigator, 'getGamepads', { configurable: true, value: window.__p8cOriginalGetGamepads });
+        } else {
+          delete navigator.getGamepads;
+        }
+      } catch {}
+      delete window.__p8cQaGamepad;
+    })()`).catch(() => undefined);
+  }
+}
+
 async function keyboardActivateButton(label) {
   await call('Page.bringToFront');
   const focused = await evaluate(`(() => {
@@ -975,6 +1093,7 @@ try {
   }
   await accessibilityAudit('combat');
   if (viewportMode === 'mobile-landscape') await mobileCombatLayoutAudit();
+  await targetFeedbackAudit(viewportMode === 'mobile-landscape');
 
   if (pageExceptions.length > 0) {
     throw new Error(`Browser E2E observed uncaught page exceptions: ${JSON.stringify(pageExceptions)}`);

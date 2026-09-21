@@ -3,7 +3,7 @@ import type { ProfileSettings } from './meta';
 export type FeedbackCue =
   | 'ui' | 'loot' | 'rareLoot' | 'carbine' | 'breacher' | 'rail' | 'reload'
   | 'impact' | 'armor' | 'damage' | 'ability' | 'dodge' | 'breach' | 'gravity'
-  | 'enemy' | 'machinery';
+  | 'enemy' | 'machinery' | 'targetLock';
 
 type Tone = { frequency: number; duration: number; type: OscillatorType; sweep?: number };
 const tones: Record<FeedbackCue, Tone> = {
@@ -23,6 +23,7 @@ const tones: Record<FeedbackCue, Tone> = {
   gravity: { frequency: 145, duration: .15, type: 'sine', sweep: .72 },
   enemy: { frequency: 220, duration: .075, type: 'square', sweep: .82 },
   machinery: { frequency: 280, duration: .09, type: 'triangle', sweep: .9 },
+  targetLock: { frequency: 520, duration: .065, type: 'triangle', sweep: 1.16 },
 };
 
 class FeedbackBus {
@@ -40,15 +41,26 @@ class FeedbackBus {
   }
 
   private haptic(cue: FeedbackCue) {
-    if (!this.settings?.haptics || typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
-    if (cue === 'rail') navigator.vibrate(18);
-    else if (cue === 'breacher') navigator.vibrate(10);
-    else if (cue === 'damage') navigator.vibrate(12);
-    else if (cue === 'dodge') navigator.vibrate(7);
-    else if (cue === 'breach') navigator.vibrate([18, 28, 22]);
-    else if (cue === 'rareLoot') navigator.vibrate([8, 18, 12]);
-    else if (cue === 'loot') navigator.vibrate(5);
-    else if (cue === 'machinery') navigator.vibrate(6);
+    if (!this.settings?.haptics || typeof navigator === 'undefined') return;
+    const vibration = cue === 'rail' ? 18
+      : cue === 'breacher' ? 10
+      : cue === 'damage' ? 12
+      : cue === 'dodge' ? 7
+      : cue === 'breach' ? [18, 28, 22]
+      : cue === 'rareLoot' ? [8, 18, 12]
+      : cue === 'loot' ? 5
+      : cue === 'machinery' ? 6
+      : cue === 'targetLock' ? 8
+      : 0;
+    if (vibration && typeof navigator.vibrate === 'function') navigator.vibrate(vibration);
+
+    const gamepad = typeof navigator.getGamepads === 'function' ? [...navigator.getGamepads()].find(Boolean) : null;
+    const actuator = gamepad ? (gamepad as Gamepad & { vibrationActuator?: { playEffect?: (type: string, params: { duration: number; startDelay: number; strongMagnitude: number; weakMagnitude: number }) => Promise<unknown> } }).vibrationActuator : undefined;
+    if (!actuator?.playEffect || !vibration) return;
+    const duration = Array.isArray(vibration) ? vibration.reduce((total, value) => total + value, 0) : vibration;
+    const strongMagnitude = cue === 'breach' || cue === 'rail' || cue === 'damage' ? .46 : cue === 'targetLock' ? .12 : .24;
+    const weakMagnitude = cue === 'targetLock' ? .28 : .42;
+    void actuator.playEffect('dual-rumble', { duration, startDelay: 0, strongMagnitude, weakMagnitude }).catch(() => undefined);
   }
 
   private play(cue: FeedbackCue, volume: number) {
@@ -77,7 +89,7 @@ class FeedbackBus {
     this.haptic(cue);
     if (volume <= 0) return;
     this.unlock();
-    const scale = cue === 'rareLoot' ? .26 : cue === 'breacher' || cue === 'rail' || cue === 'breach' ? .2 : cue === 'damage' || cue === 'machinery' ? .16 : .12;
+    const scale = cue === 'rareLoot' ? .26 : cue === 'breacher' || cue === 'rail' || cue === 'breach' ? .2 : cue === 'damage' || cue === 'machinery' ? .16 : cue === 'targetLock' ? .1 : .12;
     this.play(cue, volume * scale);
   }
 }

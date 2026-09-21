@@ -507,7 +507,7 @@ export class ThreeCombatRenderer {
     void this.loadAuthoredWeapons();
   }
 
-  render(state: SimState, width: number, height: number, quality: number, mission: Contract, mobileTargetId: number | null, operatorFaction: EquipmentFaction | null) {
+  render(state: SimState, width: number, height: number, quality: number, mission: Contract, mobileTargetId: number | null, operatorFaction: EquipmentFaction | null, reducedTargetMotion = false) {
     const now = performance.now();
     const frameMs = this.lastFrameAt > 0 ? now - this.lastFrameAt : 1000 / 60;
     this.lastFrameAt = now;
@@ -526,7 +526,7 @@ export class ThreeCombatRenderer {
       void this.loadAuthoredOperator(state.build.operatorClass);
     }
     this.syncPlayer(state, operatorFaction);
-    this.syncEnemies(state, mission, mobileTargetId);
+    this.syncEnemies(state, mission, mobileTargetId, reducedTargetMotion);
     this.syncDamageNumbers(state);
     this.syncProjectiles(state, budget.transparencyScale);
     this.syncGroundLoot(state);
@@ -4535,7 +4535,7 @@ export class ThreeCombatRenderer {
     this.renderer.domElement.dataset.bossPhaseVisual = `${presentationPrefix}phase:${enemy.bossPhase}+pattern:${enemy.bossPattern}+telegraph:${enemy.telegraph > 0 ? 'active' : 'idle'}`;
   }
 
-  private syncEnemies(state: SimState, mission: Contract, mobileTargetId: number | null) {
+  private syncEnemies(state: SimState, mission: Contract, mobileTargetId: number | null, reducedTargetMotion: boolean) {
     const seen = new Set<number>();
     for (const enemy of state.enemies) {
       seen.add(enemy.id);
@@ -4556,7 +4556,14 @@ export class ThreeCombatRenderer {
       }
       const direction = enemy.telegraph > 0 ? enemy.telegraphAim : { x: enemy.vx, y: enemy.vy };
       if (Math.hypot(direction.x, direction.y) > 0.01) visual.root.rotation.y = Math.atan2(-direction.y, direction.x);
-      visual.targetRing.visible = !enemy.dead && enemy.id === mobileTargetId;
+      const targetLocked = !enemy.dead && enemy.id === mobileTargetId;
+      visual.targetRing.visible = targetLocked;
+      if (targetLocked) {
+        const targetPulse = reducedTargetMotion ? 1 : 1 + Math.sin(state.time * 8) * 0.08;
+        visual.targetRing.scale.setScalar(targetPulse);
+        visual.targetRing.rotation.z = reducedTargetMotion ? 0 : state.time * 1.35;
+        visual.targetRing.material.opacity = reducedTargetMotion ? 0.92 : 0.78 + Math.sin(state.time * 8) * 0.1;
+      }
       visual.protocolRing.visible = !enemy.dead && (enemy.combatClass === 'enhanced' || enemy.combatClass === 'elite' || enemy.protocolPulse > 0);
       visual.protocolRing.material.opacity = enemy.protocolPulse > 0 ? Math.min(0.86, 0.4 + enemy.protocolPulse * 0.42) : 0.38;
       visual.protocolRing.rotation.z = state.time * (enemy.combatClass === 'elite' ? 1.2 : 0.72);
