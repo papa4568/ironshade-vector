@@ -92,6 +92,19 @@ This file is the permanent archive for completed production work. The active exe
   - Android artifact `10624431236` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.215`, debug signing, and APK SHA-256 `b88e688f2ea4f69bcb70330ddc14c33d7c67784bd94017a95e5563caa195314d`.
   - **Next: P8-A — Target acquisition.**
 
+
+## P8 — Targeting & Class Arsenal Identity
+
+- [x] **P8-A Target acquisition** — FIRE and genuinely targeted skills now share one deterministic target-acquisition model before execution instead of each input path owning its own selection behavior.
+  - Legal filtering rejects inactive, dead, and out-of-range hostiles. Scoring combines aim alignment, range, visibility, active threat state, existing mark state, boss priority, and protocol penalties; equal scores resolve through stable visibility/distance/id tie-breaks so array order does not change the result.
+  - Assisted FIRE focuses the chosen hostile before spawning the projectile, while explicit pointer/right-stick/manual aim remains authoritative. Targeted skill execution routes through the same acquisition intent.
+  - Mobility, self-centered, projected ground/directional, and non-targeted fan skills remain explicit exceptions. A follow-up touch-routing fix centralized the targeted-skill policy so touch ability buttons cannot pre-bias Rush/Shift/Well/Guard/Splitshot toward a hostile before simulation-level exception handling.
+  - Deterministic gameplay regression covers legal filtering, LOS preference, mark/threat/boss weighting, stable tie resolution, focus-before-fire, manual aim preservation, targeted skill acquisition, explicit skill exceptions, and the GameCanvas touch-routing contract.
+  - PR #134 Browser E2E `35598501139` passed desktop and mobile-landscape. PR #135 Browser E2E `35599336973` passed desktop; its first mobile live-location pass hit an unrelated transient Solar Yard telemetry-empty failure after combat/layout checks passed, then the targeted failed-job retry passed without a gameplay code change.
+  - Verified on merged gameplay source `22efdce02b3d6d95efc08fa7beac63466f50ce5c`: Browser E2E `35599713378`, Level 15 beta smoke `35599713449`, and Android beta.217 `35599713483` all passed. Android verification includes full web regression/build, package/version/SDK/signature checks, native emulator install/launch/runtime smoke, lifecycle/touch QA, authored assets, and Chapter 3 playthrough.
+  - Android artifact `10637979892` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.217`, debug signing, and APK SHA-256 `e8d9af5150c440e7072483e2d21d0dbf365bccb7b768a667f3fde16b6298d939`.
+  - **Next: P8-B — Target control.**
+
 ## P0 — Foundation ✅ COMPLETE
 
 - [x] Three classes: Vanguard / Vector / Systems
