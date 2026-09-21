@@ -52,6 +52,23 @@ P7-A/P7-B/P7-C/P7-D/P7-E are archived after merge + verification.
 - [ ] **P8-G Class-owned skill migration** — family-aware skills without binding to a specific item; variants influence skills via frames/affixes/progression/Singulars
 - [ ] **P8-H Skill UI + regression** — Class Skill → Weapon Family → Lens/Evolution → Specialization/Capstone; verify saves/equipment/touch/campaign
 
+## P8.5 — Gear 2.0 // Build-Defining Itemization
+
+Goal: make equipment answer **“What could I build around this?”** instead of acting like a stack of overlapping gear-score multipliers. Preserve Ironshade's hard-sci-fi identity and existing strong concepts while consolidating them into one data-driven item system.
+
+- [ ] **P8.5-A Gear architecture audit + target schema** — inventory all current power axes and item logic across `meta.ts`, `gearDepth.ts`, `lootQuality.ts`, `rarity.ts`, `reconstruction.ts`, Armory UI, class skills, progression, faction gear, Singulars, combat derivation and tests; define one source of truth for bases, stats, affixes, augments, Singulars and build tags before refactoring
+- [ ] **P8.5-B Power-axis consolidation** — Recovery Level becomes item-level eligibility, Modifier Grade becomes affix strength, Equipment Quality affects inherent/base properties only, Recovery Quality primarily influences original drop quality/provenance, and Frame Generation becomes base-frame progression rather than another universal hidden multiplier
+- [ ] **P8.5-C Meaningful base-frame families** — author strategically distinct bases per slot with inherent stats/implicits, allowed pools, tags and tradeoffs; same-slot bases must support different builds and a higher-generation base must not automatically invalidate lower alternatives
+- [ ] **P8.5-D Stat registry + local/global scope + build tags** — centralize stat semantics and scope, define shared Ballistics/Penetration/Armor Break/Precision/Projectile/Recoil/Mobility/Low-G/Thermal/Heat/Venting/Capacitor/Cooldown/Systems/Disruption/Relay/Mark/Pressure/Vacuum/Defense-style tags, and make combat/UI/loot/crafting consume the same definitions
+- [ ] **P8.5-E Affix pools + conflicts + rarity budgets** — make slot/base-aware legal pools, mod groups/conflicts, minimum Recovery Level, grade tables, weights and tradeoffs; Field = clean base, Refined = up to 2 explicit mods, Prototype = up to 6, Singular = curated fixed package; eliminate mechanically nonsensical rolls
+- [ ] **P8.5-F Loot generation + anti-junk rules** — rebuild generation as slot → eligible base → Recovery Level → rarity/mod budget → compatible affixes/grades → augment sockets → source/faction bias → validation; reward elites/bosses/deep objectives with better opportunities instead of larger piles of disposable gear
+- [ ] **P8.5-G Class/specialization gear integration** — replace most exact-affix requirements with tag/threshold-driven preferences and multiple valid routes into each synergy; preserve occasional hard requirements only for genuinely exotic interactions; ensure Refined/Prototype/Singular gear can all support viable class builds
+- [ ] **P8.5-H Quality + Augment responsibility pass** — keep quality as limited base-frame improvement and Augments as controlled utility/specialization customization, generally 0–2 normal sockets; prevent either system from becoming another full affix stack or duplicating modifier progression
+- [ ] **P8.5-I Singular chase-item audit** — classify every Singular by Skill Transformer / Resource Loop / Movement Transformer / Projectile Transformer / Defense Transformer / Conditional Engine / Build Converter / Environmental Interaction; redesign stat-stick Singulars so their primary value changes rules, interactions or resource loops and usually carries a meaningful opportunity cost
+- [ ] **P8.5-J Mobile Armory + build-link comparison** — prioritize name/rarity → base/implicit → explicit mods → augments → generated BUILD LINKS → equipped comparison; move provenance/advanced metadata deeper; show gained/lost local stats, global stats, skill links, specialization links and Singular rules without adding a single gear-score number
+- [ ] **P8.5-K Save/data migration + compatibility** — migrate existing inventory/equipped items into the new schema without deleting valid gear, preserve old save recovery, normalize invalid legacy combinations safely, and keep current Android/web profiles loadable
+- [ ] **P8.5-L Balance/diversity/regression gate** — prove at least five same-slot items can serve meaningfully different build goals, a great Refined can beat a poor Prototype for a specific build, every meaningful stat connects to at least two build systems, and automated tests cover generation, stat application, invalid combinations, build links, crafting boundaries, Singular behavior, saves, touch UI and Android builds
+
 ## P9 — Progression 2.0 // Deep Operator Network
 
 Target roughly **120–180 authored nodes**, delivered in bounded waves.
@@ -138,11 +155,13 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Execution Order
 
-**P6 → P7 → P8 → P9 → P10 → P11 → P12 → P13 → P14 → P15 → P16 → P17**
+**P6 → P7 → P8 → P8.5 → P9 → P10 → P11 → P12 → P13 → P14 → P15 → P16 → P17**
 
 ## Immediate Queue
 
 **Next: P8-G — Class-owned skill migration.**
+
+Finish P8-G/P8-H first, then start **P8.5-A — Gear architecture audit + target schema** before P9/P10 so progression and crafting build on the finalized item model.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
