@@ -407,6 +407,8 @@ function environmentalRiskPackageSmoke() {
   const directiveSource = readFileSync('src/components/DirectivePanel.tsx', 'utf8');
   assert.match(hubSource, /ENV RISK \/\//, 'Tactical Forecast should disclose the environmental package and yield premium before deployment');
   assert.match(directiveSource, /ENV RISK \/\//, 'Directive cards should disclose the environmental package and yield premium before preparation');
+  assert.match(hubSource, /CHASE POOL \/\/ DIRECTIVE-ONLY SINGULAR/, 'contract inspection should disclose the exclusive high-tier Singular pool before deployment');
+  assert.match(directiveSource, /CHASE POOL \/\/ DIRECTIVE-ONLY SINGULAR/, 'Directive cards should disclose the exclusive high-tier Singular pool before preparation');
 }
 environmentalRiskPackageSmoke();
 
