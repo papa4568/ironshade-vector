@@ -4,9 +4,10 @@ export type { OperatorClassId } from './classSkills';
 import { factionFrames, factionGearChance, factionSetDefinitions, type EquipmentFaction } from './factionGear';
 import { frameGenerationForRecovery, recoveryLevelForSource, type FrameGeneration } from './scaling';
 import { modifierCountForRarity, modifierFamilyFor, modifierPowerFactor, modifierTradeoffFactor, rollModifierGrade, rollRarityForQuality, rollRecoveryQuality, type ModifierFamily, type ModifierGrade, type RecoveryQualityGrade } from './lootQuality';
-import { applyAugments, applyFrameIdentity, augmentSlotCount, factionFrameIdentity, frameImplicitDescription, inferFrameIdentity, normalizeAugments, rollEquipmentQuality, rollFrameIdentity, singularFrameIdentity, type AugmentId, type FrameIdentityId } from './gearDepth';
+import { applyAugments, applyFrameIdentity, augmentSlotCount, factionFrameIdentity, frameImplicitDescription, inferFrameIdentity, normalizeAugments, rollEquipmentQuality, singularFrameIdentity, type AugmentId, type FrameIdentityId } from './gearDepth';
 import type { GroundLootReceipt } from './fieldLoot';
 import type { ItemRarity } from './rarity';
+import { gearBaseForFrameIdentity, gearBasesForSlot, resolveGearBase, rollGearBase } from './gearBases';
 
 export type EquipmentSlot = WeaponId | 'suit' | 'rig' | 'implant';
 export type Rarity = ItemRarity;
@@ -77,26 +78,11 @@ function gradedDescription(id: AffixId, grade: ModifierGrade) {
 }
 export function materializeModifier(id: AffixId, grade: ModifierGrade = 3): ItemModifier { const base = affixes[id]; return { ...base, family: modifierFamilyFor(id), grade, description: gradedDescription(id, grade) }; }
 
-const frameGenerationNames: Record<EquipmentSlot, Record<FrameGeneration, string[]>> = {
-  carbine: { 1: ['Dockline M-7 Spine', 'Transit Burst Frame', 'Service Coil Cage'], 2: ['M-8 Countermass Cage', 'Transit M-8 Driver', 'Dockline M-8 Spine'], 3: ['M-9 Hypervelocity Receiver', 'Aster M-9 Coil Spine', 'M-9 Command Cage'], 4: ['M-10 Vector Carbine Spine', 'M-10 Dense-Flight Cage', 'M-10 Recoil-Balanced Driver'], 5: ['M-11 Residual-Flight Spine', 'M-11 Reference Driver', 'M-11 Momentum Cage'], 6: ['M-12 Cross-System Spine', 'M-12 Mature Reference Driver', 'M-12 Open-Bus Cage'] },
-  breacher: { 1: ['Kestrel Backblast Frame', 'Breachline B-4 Cage', 'Dockline Scatter Assembly'], 2: ['Kestrel B-5 Counterthrust', 'B-5 Pressure Cage', 'B-5 Dockbreaker Frame'], 3: ['Kestrel B-6 Redline Frame', 'B-6 Dense Scatter Cage', 'B-6 Vector Breacher'], 4: ['Kestrel B-7 Command Scatter', 'B-7 Countermass Breacher', 'B-7 Deep-Pressure Frame'], 5: ['Kestrel B-8 Pendulum Cage', 'B-8 Reference Breacher', 'B-8 Counter-Impulse Frame'], 6: ['Kestrel B-9 Crossfeed Cage', 'B-9 Mature Breacher', 'B-9 Open-Impulse Frame'] },
-  rail: { 1: ['Helix Split-Rail', 'Aster Penetrator Rails', 'Needleline Accelerator'], 2: ['Helix R-3 Dense Rails', 'R-3 Aster Accelerator', 'R-3 Needleline Pair'], 3: ['Helix R-4 Hypervelocity Rails', 'R-4 Survey Accelerator', 'R-4 Longline Pair'], 4: ['Helix R-5 Reference Rails', 'R-5 Null-Line Accelerator', 'R-5 Vector Lance Rails'], 5: ['Helix R-6 Cryoline Rails', 'R-6 Residual Accelerator', 'R-6 Cold-Reference Pair'], 6: ['Helix R-7 Split-Reference Rails', 'R-7 Mature Accelerator', 'R-7 Cross-System Pair'] },
-  suit: { 1: ['Kestrel Pressure Skin', 'Transit EVA Harness', 'Spinward Assault Suit'], 2: ['Mk II Pressure Harness', 'Reinforced Transit EVA', 'Spinward Mk II Suit'], 3: ['Mk III Vector Pressure Skin', 'Deep-Vacuum Mk III Harness', 'Mk III Assault Shell'], 4: ['Mk IV Recovery Pressure Skin', 'Mk IV Vector EVA', 'Mk IV Deep-Zone Shell'], 5: ['Mk V Residual Pressure Skin', 'Mk V Umbra EVA', 'Mk V Transfer Shell'], 6: ['Mk VI Cross-System Pressure Skin', 'Mk VI Mature EVA', 'Mk VI Open-Bus Shell'] },
-  rig: { 1: ['Closed-Loop Thermal Rig', 'Arc Capacitor Pack', 'Vector Utility Bus'], 2: ['Series II Thermal Bus', 'Series II Capacitor Rack', 'Series II Vector Rig'], 3: ['Series III Closed-Loop Rig', 'Series III Pulse Bus', 'Series III Recovery Rack'], 4: ['Series IV Vector Bus', 'Series IV Thermal Governor', 'Series IV Deep-Load Rig'], 5: ['Series V Residual Bus', 'Series V Boiloff Governor', 'Series V Countermass Rig'], 6: ['Series VI Crossfeed Bus', 'Series VI Mature Governor', 'Series VI Open-Route Rig'] },
-  implant: { 1: ['Shearline Sensor Link', 'Relay Cognition Node', 'Predictive Vector Implant'], 2: ['Gen II Shearline Link', 'Gen II Relay Node', 'Gen II Predictive Implant'], 3: ['Gen III Vector Cognition Node', 'Gen III Shear-Mapping Link', 'Gen III Relay Implant'], 4: ['Gen IV Reference Cognition Node', 'Gen IV Distributed Link', 'Gen IV Predictive Kernel'], 5: ['Gen V Residual Cognition Node', 'Gen V Mass-Return Link', 'Gen V Cold-Route Kernel'], 6: ['Gen VI Cross-System Node', 'Gen VI Mature Relay Link', 'Gen VI Open-Reference Kernel'] },
-};
 function frameImplicitFor(slot: EquipmentSlot, generation: FrameGeneration, identity?: FrameIdentityId, quality = 0) { const resolved = identity ?? inferFrameIdentity(slot, `${slot}:${generation}`); return frameImplicitDescription(resolved, generation, quality); }
 
-const baseNames: Record<EquipmentSlot, { baseId: string; equipmentClass: string; names: string[]; core: string; affixes: AffixId[] }> = {
-  carbine: { baseId: 'm7-frame', equipmentClass: 'Coil carbine assembly', names: ['Dockline M-7 Spine', 'Transit Burst Frame', 'Service Coil Cage'], core: 'Automatic coil assembly; alters the existing M-7 physical model.', affixes: ['hypervelocity', 'countermass', 'overdrive', 'cryoloop', 'extendedFeed', 'tungsten', 'magRedirect'] },
-  breacher: { baseId: 'b4-frame', equipmentClass: 'Breach scattergun assembly', names: ['Kestrel Backblast Frame', 'Breachline B-4 Cage', 'Dockline Scatter Assembly'], core: 'Close-range pressure weapon; trades stopping power, recoil, and heat.', affixes: ['overdrive', 'countermass', 'cryoloop', 'extendedFeed', 'tungsten', 'breachPropulsion', 'dodgeVent'] },
-  rail: { baseId: 'r2-frame', equipmentClass: 'Rail-lance assembly', names: ['Helix Split-Rail', 'Aster Penetrator Rails', 'Needleline Accelerator'], core: 'Precision electromagnetic assembly; emphasizes penetration, capacitor demand, and recoil.', affixes: ['hypervelocity', 'countermass', 'overdrive', 'cryoloop', 'tungsten', 'railFracture', 'markShear'] },
-  suit: { baseId: 'pressure-suit', equipmentClass: 'Combat pressure suit', names: ['Kestrel Pressure Skin', 'Transit EVA Harness', 'Spinward Assault Suit'], core: 'Layered protection and maneuvering package.', affixes: ['vacuumSeal', 'servoWeave', 'dodgeVent', 'capacitorRecycler'] },
-  rig: { baseId: 'power-rig', equipmentClass: 'Power and thermal rig', names: ['Closed-Loop Thermal Rig', 'Arc Capacitor Pack', 'Vector Utility Bus'], core: 'Routes heat, capacitor charge, and ability power.', affixes: ['cryoloop', 'capacitorRecycler', 'dodgeVent', 'magRedirect', 'arcDrone'] },
-  implant: { baseId: 'sensor-implant', equipmentClass: 'Neural systems implant', names: ['Shearline Sensor Link', 'Relay Cognition Node', 'Predictive Vector Implant'], core: 'Targeting and electronic-warfare augmentation.', affixes: ['markShear', 'arcDrone', 'magRedirect', 'capacitorRecycler', 'servoWeave'] },
-};
-
-export function affixPoolForSlot(slot: EquipmentSlot) { return [...baseNames[slot].affixes]; }
+export function affixPoolForSlot(slot: EquipmentSlot) {
+  return [...new Set(gearBasesForSlot(slot).flatMap(base => base.allowedAffixGroups))];
+}
 
 type SingularTemplate = Omit<Item, 'id' | 'levelRequirement'>;
 const singular = (template: SingularTemplate): SingularTemplate => template;
@@ -513,7 +499,7 @@ function cloneItem(item: Item): Item {
   const recoveryLevel = item.recoveryLevel ?? Math.max(1, Math.min(56, item.levelRequirement * 4));
   const frameGeneration = item.frameGeneration ?? 1;
   const recoveryQuality = item.recoveryQuality ?? 0;
-  const frameIdentity = item.frameIdentity ?? inferFrameIdentity(item.slot, `${item.baseId}:${item.name}`);
+  const frameIdentity = item.frameIdentity ?? resolveGearBase(item.slot, item.baseId)?.frameIdentity ?? inferFrameIdentity(item.slot, `${item.baseId}:${item.name}`);
   const equipmentQuality = Math.max(0, Math.min(20, item.equipmentQuality ?? 0));
   const augmentSlots = item.augmentSlots ?? augmentSlotCount(item.rarity, frameGeneration);
   return {
@@ -604,13 +590,13 @@ function rollModifierSet(pool: AffixId[], count: number, random: () => number, r
   return chosen.map(id => materializeModifier(id, forced.includes(id) ? 3 : rollModifierGrade(recoveryLevel, recoveryQuality, random)));
 }
 function makeFactionItem(slot: EquipmentSlot, index: number, level: number, random: () => number, faction: EquipmentFaction, recoveryLevel: number, recoveryQuality: RecoveryQualityGrade, recoverySource: string, frameOperatorLevel = level): Item {
-  const base = baseNames[slot];
   const frame = factionFrames[faction][slot];
   const rolledRarity = rollRarityForQuality(random, recoveryQuality);
   const rarity: Rarity = rolledRarity === 'Field' ? 'Refined' : rolledRarity;
   const count = modifierCountForRarity(rarity, recoveryQuality, random);
   const frameGeneration = frameGenerationForRecovery(recoveryLevel, frameOperatorLevel);
   const frameIdentity = factionFrameIdentity(faction, slot);
+  const base = gearBaseForFrameIdentity(slot, frameIdentity) ?? gearBasesForSlot(slot, frameGeneration)[0];
   const equipmentQuality = rollEquipmentQuality(random);
   const augmentSlots = augmentSlotCount(rarity, frameGeneration);
   return {
@@ -622,7 +608,7 @@ function makeFactionItem(slot: EquipmentSlot, index: number, level: number, rand
     rarity,
     levelRequirement: levelRequirementForRecovery(recoveryLevel),
     core: frame.core,
-    modifiers: rollModifierSet(base.affixes, count, random, recoveryLevel, recoveryQuality, frame.preferredAffixes),
+    modifiers: rollModifierSet(base.allowedAffixGroups, count, random, recoveryLevel, recoveryQuality, frame.preferredAffixes),
     faction,
     recoveryLevel,
     frameGeneration,
@@ -637,15 +623,34 @@ function makeFactionItem(slot: EquipmentSlot, index: number, level: number, rand
 }
 
 function makeItem(slot: EquipmentSlot, index: number, level: number, random: () => number, forcedAffixes: AffixId[] = [], recoveryLevel = 4, recoveryQuality: RecoveryQualityGrade = 0, recoverySource = 'Contract recovery', forcedCount?: number, frameOperatorLevel = level, forcedRarity?: Exclude<Rarity, 'Singular'>): Item {
-  const base = baseNames[slot];
   const rarity: Rarity = forcedRarity ?? (forcedAffixes.length > 0 ? 'Prototype' : rollRarityForQuality(random, recoveryQuality));
   const count = forcedCount ?? modifierCountForRarity(rarity, recoveryQuality, random);
   const frameGeneration = frameGenerationForRecovery(recoveryLevel, frameOperatorLevel);
-  const generationNames = frameGenerationNames[slot][frameGeneration];
-  const frameIdentity = rollFrameIdentity(slot, random);
+  const base = rollGearBase(slot, random, frameGeneration, forcedAffixes);
+  const frameIdentity = base.frameIdentity;
   const equipmentQuality = rollEquipmentQuality(random);
   const augmentSlots = augmentSlotCount(rarity, frameGeneration);
-  return { id: `loot-${Date.now().toString(36)}-${index}-${Math.floor(random() * 99999).toString(36)}`, baseId: base.baseId, name: generationNames[Math.floor(random() * generationNames.length)], slot, equipmentClass: base.equipmentClass, rarity, levelRequirement: levelRequirementForRecovery(recoveryLevel), core: base.core, modifiers: rollModifierSet(base.affixes, count, random, recoveryLevel, recoveryQuality, [], forcedAffixes), recoveryLevel, frameGeneration, frameIdentity, frameImplicit: frameImplicitFor(slot, frameGeneration, frameIdentity, equipmentQuality), equipmentQuality, augmentSlots, augments: [], recoveryQuality, recoverySource };
+  void random();
+  return {
+    id: `loot-${Date.now().toString(36)}-${index}-${Math.floor(random() * 99999).toString(36)}`,
+    baseId: base.id,
+    name: base.name,
+    slot,
+    equipmentClass: base.equipmentClass,
+    rarity,
+    levelRequirement: levelRequirementForRecovery(recoveryLevel),
+    core: `${base.core} Tradeoff: ${base.tradeoff}`,
+    modifiers: rollModifierSet(base.allowedAffixGroups, count, random, recoveryLevel, recoveryQuality, [], forcedAffixes),
+    recoveryLevel,
+    frameGeneration,
+    frameIdentity,
+    frameImplicit: frameImplicitFor(slot, frameGeneration, frameIdentity, equipmentQuality),
+    equipmentQuality,
+    augmentSlots,
+    augments: [],
+    recoveryQuality,
+    recoverySource,
+  };
 }
 
 export type ParallaxDebtGearIdentity = {

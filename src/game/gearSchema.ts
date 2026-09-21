@@ -32,9 +32,13 @@ export type GearBaseDefinition = {
   name: string;
   equipmentClass: string;
   generation: number;
+  generationRange: [number, number];
+  frameIdentity: FrameIdentityId;
+  core: string;
+  tradeoff: string;
   inherentStats: string[];
   implicitStats: string[];
-  allowedAffixGroups: string[];
+  allowedAffixGroups: AffixId[];
   buildTags: GearBuildTag[];
   faction?: EquipmentFaction;
 };
