@@ -47,7 +47,7 @@ P7-A/P7-B/P7-C/P7-D/P7-E are archived after merge + verification.
 - [x] **P8-B Target control** — archived after merge + verification
 - [x] **P8-C Target feedback/QA** — archived after merge + verification
 - [x] **P8-D Hard arsenal lock + migration** — archived after merge + verification
-- [ ] **P8-E Loot/UI/tutorial ownership** — prevent useless off-class weapon outcomes, explain compatibility, teach each family
+- [x] **P8-E Loot/UI/tutorial ownership** — archived after merge + verification
 - [ ] **P8-F Handling identity** — family-specific stance, recoil, reload/vent, muzzle behavior, movement interaction, camera response, stat budgets
 - [ ] **P8-G Class-owned skill migration** — family-aware skills without binding to a specific item; variants influence skills via frames/affixes/progression/Singulars
 - [ ] **P8-H Skill UI + regression** — Class Skill → Weapon Family → Lens/Evolution → Specialization/Capstone; verify saves/equipment/touch/campaign
@@ -142,23 +142,21 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P8-E — Loot/UI/tutorial ownership.**
+**Next: P8-F — Handling identity.**
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.220**
+- Android beta: **0.0.1-beta.222**
 - Package: `app.ironshade.vector`
-- Verified: **P8-D Hard arsenal lock + migration complete**
-- Gameplay source: `075b64fdb16e12ec9782bedeb8e249e0e392c528`
-- QA source: `f358602357dc4bd7410336ee485a5b6e224d11a7`
-- PR: `#141`
-- QA follow-up PR: `#142`
-- PR Browser E2E: `35612549638`
-- Merged-main Browser E2E: `35613944890`
-- Level 15 beta smoke: `35613944913`
-- Android beta.220: `35613944855`
-- APK artifact: `10645323083`
-- APK SHA-256: `61cdeaa2331c955f678586f94f733ba94d50169801e87cc577b4414aa5f6d97e`
+- Verified: **P8-E Loot/UI/tutorial ownership complete**
+- Gameplay source: `9ad0b9e40dc948a95c55dc05e8ee9c761c625e69`
+- PR: `#143`
+- PR Browser E2E: `35616428796`
+- Merged-main Browser E2E: `35616718020`
+- Level 15 beta smoke: `35616717994`
+- Android beta.222: `35616717976`
+- APK artifact: `10647375675`
+- APK SHA-256: `57c7ca02ec66ef610f30e4dfa0e8088f7e8eb184b0af5f8424a676ca098f6b40`
 - Signing: debug-signed beta; permanent signing is P17-A
