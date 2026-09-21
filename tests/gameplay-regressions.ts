@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buildMegastructureDebrief, buyConsumable, createDefaultCampaign, generateContracts, getMegastructureStageContract, loadCampaign, saveCampaign } from '../src/game/campaign';
-import { abilityUsesTargetAcquisition, acquireCombatTarget, aimAtMobileTarget, applyPlayerDamage, createSimulation, createTargetControlMemory, cycleWeapon, resetTargetControlMemory, selectWeapon, stepSimulation, triggerAbility, triggerConsumable, triggerDodge, triggerFire, triggerReload, triggerVent, updateMobileTargetControl, weaponConfigs, weaponHandlingProfiles, type Telemetry } from '../src/game/sim';
+import { abilityUsesTargetAcquisition, acquireCombatTarget, aimAtMobileTarget, applyPlayerDamage, createSimulation, createTargetControlMemory, cycleWeapon, getAbilityConfig, resetTargetControlMemory, selectWeapon, stepSimulation, triggerAbility, triggerConsumable, triggerDodge, triggerFire, triggerReload, triggerVent, updateMobileTargetControl, weaponConfigs, weaponHandlingProfiles, type Telemetry } from '../src/game/sim';
 import { applyMissionSetup, createDirector, stepMissionDirector } from '../src/game/director';
 import { activeWeaponFamilyForProfile, awardRecovery, awardVictory, buildIdentity, createDefaultProfile, deriveCombatBuild, equipItem, isItemClassCompatible, loadProfile, materializeModifier, normalizeClassArmament, saveProfile, setAbilityMod, setOperatorClass, specializationGearSynergyDefinitions, specializationGearSynergyForProfile, systemsCapstoneInteractionFor, vanguardCapstoneInteractionFor, vectorCapstoneInteractionFor } from '../src/game/meta';
 import { CAMPAIGN_STORAGE_KEY, GAME_STATE_STORAGE_KEY, prepareSaveRecovery, PROFILE_STORAGE_KEY } from '../src/game/saveRecovery';
@@ -9,6 +9,7 @@ import { loadGameState, saveGameState } from '../src/game/gamePersistence';
 import { carryExpeditionLoot } from '../src/game/expeditionCarry';
 import { advanceParallaxDebtAfterContract, chooseParallaxDebtBranch, getParallaxDebtChoicePrompt, getParallaxDebtContract, parallaxDebtChapter, parallaxDebtIntel, parallaxDebtNextRequiredLevel, syncParallaxDebtAccess } from '../src/game/parallaxDebt';
 import { applyThreatBudget, operationScalingFor } from '../src/game/scaling';
+import { classAbilityKits, operatorWeaponFamilyByClass, type OperatorClassId } from '../src/game/classSkills';
 import { chooseEnemyProtocols, enhancedProtocolVariantForecastForContract, exclusiveProtocolCombinationForEnemy, exclusiveProtocolCombinationForInstances, exclusiveProtocolCombinationForecastForContract, protocolDefinition, protocolRewardValue, protocolThreatCost, type EnhancedProtocolVariantId, type EnemyProtocolId } from '../src/game/eliteProtocols';
 import { enhancedProtocolVariantPresentationFor } from '../src/game/enhancedProtocolVariantPresentation';
 import { applyEnemyMutations, mutationFireCadenceScale, mutationHazardCadenceScale, mutationMobilityScale, mutationThreatCostForEnemy } from '../src/game/t9Mutations';
@@ -2420,3 +2421,97 @@ function weaponHandlingIdentitySmoke() {
   assert.ok(weaponHandlingProfiles.carbine.cameraKick < weaponHandlingProfiles.breacher.cameraKick && weaponHandlingProfiles.breacher.cameraKick < weaponHandlingProfiles.rail.cameraKick, 'camera response should escalate from Carbine to Breacher to Rail');
 }
 weaponHandlingIdentitySmoke();
+
+
+function classOwnedSkillMigrationSmoke() {
+  const classes = ['vanguard', 'vector', 'systems'] as const satisfies readonly OperatorClassId[];
+  const frameByFamily = {
+    breacher: 'breacher-dense',
+    rail: 'rail-hypervelocity',
+    carbine: 'carbine-feedline',
+  } as const;
+  const affixByFamily = {
+    breacher: 'tungsten',
+    rail: 'hypervelocity',
+    carbine: 'extendedFeed',
+  } as const;
+  const singularByFamily = {
+    breacher: 'rheaBackblast',
+    rail: 'cryolineRail',
+    carbine: 'palisadeDoctrine',
+  } as const;
+
+  for (const operatorClass of classes) {
+    const family = operatorWeaponFamilyByClass[operatorClass];
+    assert.ok(classAbilityKits[operatorClass].every(skill => skill.weaponFamily === family), `${operatorClass} skill kit should be explicitly owned by ${family}`);
+
+    let profile = setOperatorClass(createDefaultProfile(), operatorClass).profile;
+    profile = {
+      ...profile,
+      level: 16,
+      allocatedNodes: ['ballistics-1', 'ballistics-2', 'mobility-1', 'mobility-2', 'mobility-3', 'systems-1', 'systems-2', 'systems-3', 'engineering-1', 'engineering-2', 'awareness-1'],
+      inventory: profile.inventory.map(item => item.id === profile.equipped[family]
+        ? {
+          ...item,
+          frameGeneration: 4,
+          frameIdentity: frameByFamily[family],
+          equipmentQuality: 20,
+          modifiers: [materializeModifier(affixByFamily[family], 5)],
+          singularTrait: singularByFamily[family],
+        }
+        : item),
+    };
+
+    const tunedBuild = deriveCombatBuild(profile);
+    assert.equal(tunedBuild.classSkillFamily.family, family, `${operatorClass} skill family should follow its class arsenal`);
+    assert.equal(tunedBuild.classSkillFamily.frameIdentity, frameByFamily[family], `${operatorClass} skills should inherit active-family frame identity`);
+    assert.equal(tunedBuild.classSkillFamily.singularLinked, true, `${operatorClass} active-family Singular should influence class skills`);
+    assert.ok(tunedBuild.classSkillFamily.powerMul > 1, `${operatorClass} family frame should scale class-skill power`);
+    assert.ok(tunedBuild.classSkillFamily.recoveryMul > 1, `${operatorClass} family frame/progression should scale class-skill recovery`);
+    assert.ok(tunedBuild.classSkillFamily.sources.some(source => source.startsWith('frame:')) && tunedBuild.classSkillFamily.sources.some(source => source.startsWith('singular:')), `${operatorClass} family skill tuning should report frame and Singular sources`);
+
+    const sim = createSimulation(tunedBuild);
+    const firstAbility = getAbilityConfig(sim, 0);
+    assert.equal(firstAbility.familyBound, true, `${operatorClass} class skill should resolve as family-bound`);
+    assert.equal(firstAbility.weaponFamily, family, `${operatorClass} class skill metadata should expose the owned family`);
+    assert.ok(firstAbility.power > tunedBuild.abilities[0].powerMul, `${operatorClass} runtime skill config should consume family power tuning`);
+
+    const offFamily = family === 'breacher' ? 'rail' : 'breacher';
+    const offFamilyEquipped = {
+      ...profile,
+      equipped: { ...profile.equipped, [offFamily]: `starter-${offFamily}` },
+    };
+    const offFamilyBuild = deriveCombatBuild(offFamilyEquipped);
+    assert.deepEqual(offFamilyBuild.classSkillFamily, tunedBuild.classSkillFamily, `${operatorClass} stowed/off-family weapon state must not bind or tune class skills`);
+
+    const executionProfile = setAbilityMod(profile, 'mark', 'mark-execution');
+    const executionState = createSimulation(deriveCombatBuild(executionProfile));
+    const target = executionState.enemies.find(enemy => enemy.active && !enemy.dead)!;
+    target.statuses.marked = 4;
+    target.telegraph = 1;
+    target.hp = Math.max(target.hp, 80);
+    target.armor = Math.max(target.armor, 80);
+    executionState.projectiles.push({
+      active: true,
+      x: target.x,
+      y: target.y,
+      vx: 0,
+      vy: 0,
+      radius: 6,
+      damage: 1,
+      life: 1,
+      owner: 'player',
+      weapon: family,
+      penetration: 0,
+      armorDamage: 0.1,
+      healthMultiplier: 0.1,
+      knockback: 0,
+      lastObjectId: null,
+      lastObjectT: 0,
+    });
+    stepSimulation(executionState, 0.001);
+    assert.equal(target.statuses.marked, 0, `${operatorClass} Execution Trace should consume marks with its owned ${family} family`);
+    assert.equal(target.telegraph, 0, `${operatorClass} Execution Trace should interrupt committed firing solutions with its owned family`);
+  }
+}
+classOwnedSkillMigrationSmoke();
