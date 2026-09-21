@@ -11,7 +11,8 @@ import { advanceParallaxDebtAfterContract, chooseParallaxDebtBranch, getParallax
 import { applyThreatBudget, operationScalingFor } from '../src/game/scaling';
 import { chooseEnemyProtocols, enhancedProtocolVariantForecastForContract, exclusiveProtocolCombinationForEnemy, exclusiveProtocolCombinationForInstances, exclusiveProtocolCombinationForecastForContract, protocolDefinition, protocolRewardValue, protocolThreatCost, type EnhancedProtocolVariantId, type EnemyProtocolId } from '../src/game/eliteProtocols';
 import { enhancedProtocolVariantPresentationFor } from '../src/game/enhancedProtocolVariantPresentation';
-import { applyEnemyMutations, mutationDefinition, mutationFireCadenceScale, mutationForecastForContract, mutationHazardCadenceScale, mutationMobilityScale, mutationThreatCostForEnemy } from '../src/game/t9Mutations';
+import { applyEnemyMutations, mutationFireCadenceScale, mutationHazardCadenceScale, mutationMobilityScale, mutationThreatCostForEnemy } from '../src/game/t9Mutations';
+import { mutationForecastForContract, mutationPresentationFor } from '../src/game/t9MutationPresentation';
 
 function exclusiveProtocolCombinationSmoke() {
   const baseContract = generateContracts(createDefaultCampaign())[0]!;
@@ -158,7 +159,7 @@ function t9MutationSmoke() {
   const t9Contract = { ...base, operationTier: 9 };
   const t9Forecast = mutationForecastForContract(t9Contract);
   assert.ok(t9Forecast.length >= 3, 'T9 tactical forecast should disclose the legal mutation pool');
-  assert.ok(t9Forecast.every(id => mutationDefinition(id).minTier <= 9), 'T9 forecast must not leak later-tier mutation identities');
+  assert.ok(t9Forecast.every(id => mutationPresentationFor(id).minTier <= 9), 'T9 forecast must not leak later-tier mutation identities');
 
   const first = createSimulation();
   applyThreatBudget(first.enemies, t9Contract);
