@@ -640,7 +640,7 @@ try {
   await waitFor(`(() => {
     const text = document.body?.innerText ?? '';
     const labels = [...document.querySelectorAll('button')].map(button => (button.textContent || '').trim());
-    return text.includes('QUIET SIGNAL // OPERATOR BUILD') && labels.includes('Skills');
+    return document.querySelector('.build-header h1')?.textContent?.trim() === 'Build' && labels.includes('Skills');
   })()`, 'Build surface for skill hierarchy');
   await keyboardActivateButton('Skills');
   await waitFor(`(() => {
