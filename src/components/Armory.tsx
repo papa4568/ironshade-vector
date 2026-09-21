@@ -17,6 +17,8 @@ import {
   factionSetState,
   gearResonanceForProfile,
   itemBuildAffinities,
+  itemBuildTags,
+  itemStatDefinitions,
   itemMatchesSpecializationGearSynergy,
   itemForSlot,
   isItemClassCompatible,
@@ -86,7 +88,9 @@ function highestModifierGrade(item: Item) { return item.modifiers.reduce((highes
 function isBuildChangingItem(profile: PlayerProfile, item: Item) { return !!item.singularEffect || item.modifiers.some(modifier => modifier.mechanical) || itemMatchesSpecializationGearSynergy(profile, item); }
 function inventorySearchText(item: Item) {
   const augments = (item.augments ?? []).map(augmentDefinition);
-  return `${item.name} ${item.baseId} ${item.rarity} ${rarityDisplayLabel(item.rarity)} ${item.equipmentClass} ${item.core} ${item.recoverySource ?? ''} rl${item.recoveryLevel ?? 1} gen${item.frameGeneration ?? 1} q${item.equipmentQuality ?? 0} ${item.faction ?? ''} ${factionLabel(item.faction)} ${frameIdentityDefinition(frameIdentity(item)).name} ${item.modifiers.map(modifier => `g${modifier.grade ?? 3} ${modifier.label} ${modifier.description}`).join(' ')} ${augments.map(augment => `${augment.hardware} ${augment.name} ${augment.description}`).join(' ')}`.toLowerCase();
+  const semanticTags = itemBuildTags(item);
+  const semanticStats = itemStatDefinitions(item);
+  return `${item.name} ${item.baseId} ${item.rarity} ${rarityDisplayLabel(item.rarity)} ${item.equipmentClass} ${item.core} ${item.recoverySource ?? ''} rl${item.recoveryLevel ?? 1} gen${item.frameGeneration ?? 1} q${item.equipmentQuality ?? 0} ${item.faction ?? ''} ${factionLabel(item.faction)} ${frameIdentityDefinition(frameIdentity(item)).name} ${item.modifiers.map(modifier => `g${modifier.grade ?? 3} ${modifier.label} ${modifier.description}`).join(' ')} ${augments.map(augment => `${augment.hardware} ${augment.name} ${augment.description}`).join(' ')} ${semanticTags.join(' ')} ${semanticStats.map(stat => `${stat.label} ${stat.scope}`).join(' ')}`.toLowerCase();
 }
 
 function RarityLegend() {
@@ -143,6 +147,9 @@ function GearComparison({ profile, item, fabrication }: { profile: PlayerProfile
   const currentBuild = deriveCombatBuild(profile);
   const candidateBuild = deriveCombatBuild(proposed);
   const classAffinities = itemBuildAffinities(item);
+  const semanticTags = itemBuildTags(item);
+  const semanticStats = itemStatDefinitions(item);
+  const semanticScopes = [...new Set(semanticStats.map(stat => stat.scope))];
   const classMatched = classAffinities.includes(activeClassId);
   const currentGearSynergy = specializationGearSynergyForProfile(profile);
   const candidateGearSynergy = specializationGearSynergyForProfile(proposed);
@@ -175,6 +182,8 @@ function GearComparison({ profile, item, fabrication }: { profile: PlayerProfile
           <div><small>FRAME QUALITY</small><b>{item.equipmentQuality ?? 0}/20</b><span>{item.frameImplicit ?? 'Neutral service geometry.'}</span></div>
           <div><small>MODIFIERS</small><b>{item.modifiers.length ? `${item.modifiers.length} · PEAK G${topModifierGrade}` : 'CLEAN BASE'}</b><span>{item.modifiers.length ? 'Core + Systems grades shown below.' : 'No explicit modifiers installed.'}</span></div>
           <div><small>AUGMENTS</small><b>{augments.length}/{item.augmentSlots ?? 0} INSTALLED</b><span>{accessibleSockets}/{item.augmentSlots ?? 0} sockets accessible · {compatibleHardware.length} compatible hardware option{compatibleHardware.length === 1 ? '' : 's'}</span></div>
+          <div><small>BUILD TAGS</small><b>{semanticTags.length ? semanticTags.slice(0, 6).map(tag => tag.toUpperCase()).join(' · ') : 'UNCLASSIFIED'}</b><span>{semanticTags.length > 6 ? `+${semanticTags.length - 6} linked tags · ` : ''}Shared by combat, loot, and crafting.</span></div>
+          <div><small>STAT SCOPE</small><b>{semanticScopes.length ? semanticScopes.map(scope => scope.replace('-', ' ').toUpperCase()).join(' · ') : 'NONE'}</b><span>{semanticStats.length} registry-defined stat{semanticStats.length === 1 ? '' : 's'} on this base and modifier package.</span></div>
           <div><small>SOURCE</small><b>{item.recoverySource ?? 'Legacy recovery'}</b><span>Recovered identity remains attached through reconstruction.</span></div>
           <div className={equipReady ? 'compatible' : 'locked'}><small>COMPATIBILITY</small><b>{!classCompatible ? `${weaponOwner?.name.toUpperCase() ?? 'OTHER CLASS'} ARMAMENT` : equipLevelReady ? 'EQUIP NOW' : `REQUIRES LV ${item.levelRequirement}`}</b><span>{!classCompatible ? `${activeClass.name} owns ${slotLabels[activeWeaponFamily]}. This off-class legacy weapon stays in ship storage and cannot be equipped.` : classMatched ? `${activeClass.name} resonance active.` : 'Universal support slot; equip permission is independent of resonance.'}</span></div>
         </section>
