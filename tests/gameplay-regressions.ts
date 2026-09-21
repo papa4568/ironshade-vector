@@ -2466,8 +2466,15 @@ function classOwnedSkillMigrationSmoke() {
     assert.equal(tunedBuild.classSkillFamily.family, family, `${operatorClass} skill family should follow its class arsenal`);
     assert.equal(tunedBuild.classSkillFamily.frameIdentity, frameByFamily[family], `${operatorClass} skills should inherit active-family frame identity`);
     assert.equal(tunedBuild.classSkillFamily.singularLinked, true, `${operatorClass} active-family Singular should influence class skills`);
-    assert.ok(tunedBuild.classSkillFamily.powerMul > 1, `${operatorClass} family frame should scale class-skill power`);
-    assert.ok(tunedBuild.classSkillFamily.recoveryMul > 1, `${operatorClass} family frame/progression should scale class-skill recovery`);
+    if (operatorClass === 'vanguard') {
+      assert.ok(tunedBuild.classSkillFamily.powerMul > 1 && tunedBuild.classSkillFamily.armorMul > 1, 'Vanguard Dense-Choke identity should tune Breacher power and armor interaction.');
+    }
+    if (operatorClass === 'vector') {
+      assert.ok(tunedBuild.classSkillFamily.rangeMul > 1 && tunedBuild.classSkillFamily.armorMul > 1, 'Vector Hypervelocity identity should tune Rail range and armor interaction.');
+    }
+    if (operatorClass === 'systems') {
+      assert.ok(tunedBuild.classSkillFamily.recoveryMul > 1 && tunedBuild.classSkillFamily.chainBonus > 0, 'Systems Feedline identity should tune Carbine recovery and chaining.');
+    }
     assert.ok(tunedBuild.classSkillFamily.sources.some(source => source.startsWith('frame:')) && tunedBuild.classSkillFamily.sources.some(source => source.startsWith('singular:')), `${operatorClass} family skill tuning should report frame and Singular sources`);
 
     const sim = createSimulation(tunedBuild);
