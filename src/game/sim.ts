@@ -644,6 +644,11 @@ function findAimConduit(state: SimState, maxDistance: number) {
   return target;
 }
 
+export function abilityUsesTargetAcquisition(state: SimState, index: number) {
+  if (index === 1) return true;
+  return index === 2 && state.build.operatorClass !== 'vanguard' && state.build.operatorClass !== 'vector';
+}
+
 export function triggerAbility(state: SimState, index = 0, targetingIntent: TargetingIntent = 'manual') {
   const p = state.player; const meta = getAbilityConfig(state, index);
   let parallaxClassCounterEvent: string | null = null;

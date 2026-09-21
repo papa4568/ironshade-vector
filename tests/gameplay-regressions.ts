@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buildMegastructureDebrief, buyConsumable, createDefaultCampaign, generateContracts, getMegastructureStageContract, loadCampaign, saveCampaign } from '../src/game/campaign';
-import { acquireCombatTarget, aimAtMobileTarget, applyPlayerDamage, createSimulation, stepSimulation, triggerAbility, triggerConsumable, triggerDodge, triggerFire, weaponConfigs, type Telemetry } from '../src/game/sim';
+import { abilityUsesTargetAcquisition, acquireCombatTarget, aimAtMobileTarget, applyPlayerDamage, createSimulation, stepSimulation, triggerAbility, triggerConsumable, triggerDodge, triggerFire, weaponConfigs, type Telemetry } from '../src/game/sim';
 import { applyMissionSetup, createDirector, stepMissionDirector } from '../src/game/director';
 import { awardRecovery, buildIdentity, createDefaultProfile, deriveCombatBuild, loadProfile, materializeModifier, saveProfile, setAbilityMod, setOperatorClass, specializationGearSynergyDefinitions, specializationGearSynergyForProfile, systemsCapstoneInteractionFor, vanguardCapstoneInteractionFor, vectorCapstoneInteractionFor } from '../src/game/meta';
 import { CAMPAIGN_STORAGE_KEY, GAME_STATE_STORAGE_KEY, prepareSaveRecovery, PROFILE_STORAGE_KEY } from '../src/game/saveRecovery';
@@ -1782,6 +1782,20 @@ Object.assign(systemsExceptionTarget, { active: true, dead: false, x: systemsExc
 systemsExceptionState.player.aim = { x: -1, y: 0 };
 assert.equal(triggerAbility(systemsExceptionState, 0, 'acquire'), true, 'ground/formation skills should remain executable while acquisition is enabled');
 assert.ok(systemsExceptionState.player.aim.x < -0.99, 'Polarity Well must preserve its explicit projected direction instead of snapping to a hostile');
+
+assert.equal(abilityUsesTargetAcquisition(vanguardExceptionState, 0), false, 'Vanguard Rush is an explicit mobility action, not a targeted acquisition action');
+assert.equal(abilityUsesTargetAcquisition(vanguardExceptionState, 1), true, 'Vanguard Fracture Tag should acquire a hostile');
+assert.equal(abilityUsesTargetAcquisition(vanguardExceptionState, 2), false, 'Vanguard Bulwark Pulse is self-centered and must not acquire');
+assert.equal(abilityUsesTargetAcquisition(systemsExceptionState, 0), false, 'Systems Polarity Well is projected explicitly and must not acquire');
+assert.equal(abilityUsesTargetAcquisition(systemsExceptionState, 1), true, 'Systems Relay Hack should acquire a hostile');
+assert.equal(abilityUsesTargetAcquisition(systemsExceptionState, 2), true, 'Systems Cascade Arc should acquire a hostile before routing the arc');
+const neutralTargetPolicyState = createSimulation();
+assert.equal(abilityUsesTargetAcquisition(neutralTargetPolicyState, 0), false, 'neutral Magnetic Impulse should remain directional');
+assert.equal(abilityUsesTargetAcquisition(neutralTargetPolicyState, 1), true, 'neutral Sensor Spike should acquire');
+assert.equal(abilityUsesTargetAcquisition(neutralTargetPolicyState, 2), true, 'neutral Arc Tap should acquire');
+const targetingCanvasSource = readFileSync('src/components/GameCanvas.tsx', 'utf8');
+assert.match(targetingCanvasSource, /const assistedTargeting = !manualTargeting && abilityUsesTargetAcquisition\(state, index\)/, 'touch skill routing must gate acquisition through the explicit targeted-skill policy');
+assert.match(targetingCanvasSource, /triggerAbility\(state, index, assistedTargeting \? 'acquire' : 'manual'\)/, 'touch skill execution must preserve manual intent for explicit mobility, self, ground, and directional abilities');
 
 const damageNumberState = createSimulation();
 for (const enemy of damageNumberState.enemies) enemy.active = false;
