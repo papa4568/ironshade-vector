@@ -8,6 +8,7 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: false,
     manifest: true,
+    chunkSizeWarningLimit: Infinity,
     rollupOptions: {
       maxParallelFileOps: 128,
       output: {
