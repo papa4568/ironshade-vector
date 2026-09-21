@@ -1,5 +1,5 @@
 import { loadCampaign, type CampaignState } from './campaign';
-import { loadProfile, operatorClassForProfile, type PlayerProfile } from './meta';
+import { loadProfile, normalizeClassArmament, operatorClassForProfile, type PlayerProfile } from './meta';
 import { GAME_STATE_STORAGE_KEY, validateStoredCampaign, validateStoredProfile } from './saveRecovery';
 
 // Profile and campaign are committed atomically so readers never observe half of a progression update. APK verification follows each audited fix.
@@ -36,11 +36,11 @@ export function loadGameState(storage: StorageLike | null = browserStorage()): G
     if (parsed.version !== 1) return legacySnapshot();
     if (validateStoredProfile(parsed.profile) || validateStoredCampaign(parsed.campaign)) return legacySnapshot();
     const profile = parsed.profile as PlayerProfile;
-    const normalizedProfile: PlayerProfile = {
+    const normalizedProfile = normalizeClassArmament({
       ...profile,
       operatorClass: profile.operatorClass ?? operatorClassForProfile(profile),
       classSelectionComplete: typeof profile.classSelectionComplete === 'boolean' ? profile.classSelectionComplete : true,
-    };
+    });
     return { profile: normalizedProfile, campaign: parsed.campaign as CampaignState };
   } catch {
     return legacySnapshot();
@@ -51,7 +51,7 @@ export function loadGameState(storage: StorageLike | null = browserStorage()): G
 export function saveGameState(profile: PlayerProfile, campaign: CampaignState, storage: StorageLike | null = browserStorage()) {
   if (!storage) return typeof window === 'undefined';
   if (validateStoredProfile(profile) || validateStoredCampaign(campaign)) return false;
-  const envelope: PersistedGameState = { version: 1, profile, campaign, savedAt: new Date().toISOString() };
+  const envelope: PersistedGameState = { version: 1, profile: normalizeClassArmament(profile), campaign, savedAt: new Date().toISOString() };
   try {
     storage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify(envelope));
     return true;
