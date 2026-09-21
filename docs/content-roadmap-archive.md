@@ -118,6 +118,17 @@ This file is the permanent archive for completed production work. The active exe
   - Android artifact `10639383799` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.218`, debug signing, and APK SHA-256 `e57e511355264caef61f8bd42250a11d082672ccb9873d1d28a146d1a7d65e88`.
   - **Next: P8-C — Target feedback/QA.**
 
+- [x] **P8-C Target feedback/QA** — assisted target state now has a clear, accessible presentation layer and verified touch/controller behavior without changing the P8-A/P8-B selection rules.
+  - Canvas and Three.js targeting presentation use a stronger ASSIST LOCK reticle/readout tied to the retained target ID. Reduced-effects mode freezes reticle pulse/rotation while preserving high-contrast target identity.
+  - New lock feedback adds a short dedicated audio cue, optional phone vibration, and supported standard-gamepad rumble. Feedback fires on real acquisition/switch events instead of repeating every simulation frame.
+  - A polite screen-reader live region announces target acquisition, manual-aim takeover, and release without turning continuously changing HP/armor values into live-region chatter.
+  - Standard controller combat routing now covers left-stick movement, right-stick manual aim, RT assisted fire, A dodge, B weapon cycle, X interact, Y reload, and LB/RB/LT class abilities. Right-stick input remains authoritative and immediately clears assisted lock state.
+  - Deterministic regression now locks the shared target-feedback helper, visible/readout target identity, target audio/haptics, controller acquisition/manual override, reduced-motion behavior, and accessibility hooks. Browser E2E adds live touch acquisition/release plus controller RT acquisition/right-stick override using an observable gamepad QA shim.
+  - PR #139 Browser E2E `35606278955` passed desktop and mobile-landscape after a targeted UI-readability assertion update for the renamed assisted-lock readout.
+  - Verified on merged gameplay source `b4a179c4d278159b3b90efc1c5feb5a14d7dcabc`: Browser E2E `35606519039`, Level 15 beta smoke `35606519086`, and Android beta.219 `35606519023` all passed.
+  - Android verification includes full web regression/build, native project generation, package/version/SDK/signature checks, emulator install/launch/runtime smoke, touch controls, lifecycle resume, authored assets, and Chapter 3 touch playthrough. Artifact `10642866731` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.219`, debug signing, and APK SHA-256 `aab0c090167ac26f08fe76d0fb928a78008268d83b4187eca3fe67a135436e09`.
+  - **Next: P8-D — Hard arsenal lock + migration.**
+
 ## P0 — Foundation ✅ COMPLETE
 
 - [x] Three classes: Vanguard / Vector / Systems
