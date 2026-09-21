@@ -1,6 +1,7 @@
 import { protocolAimPenalty, protocolAnchorsEnemy, protocolCarriesObjective, protocolIgnoresPressureRetreat, protocolMobilityScale, protocolRewardForEnemy, protocolVacuumImmune, stepEnemyProtocols } from './eliteProtocolRuntime';
 import type { EnemyCombatClass, EnemyProtocolInstance } from './eliteProtocols';
 import { mutationFireCadenceScale, mutationHazardCadenceScale, mutationMobilityScale, type HighTierMutationId } from './t9Mutations';
+import { bossPhaseFireCadenceScale, bossPhasePulseDefinitions, type BossPhaseMutationId } from './bossPhaseMutations';
 import type { ConsumableId } from './consumables';
 import { lootLabel, rollGroundLoot, type GroundLootDrop, type GroundLootReceipt } from './fieldLoot';
 import { getAbilityKitForClass, type OperatorClassId } from './classSkills';
@@ -24,7 +25,7 @@ export type CombatObject = Rect & { id: string; label: string; kind: 'cover' | '
 export type PressureLink = { id: string; a: string; b: string; open: boolean; conductance: number };
 export type Breach = { id: string; sectorId: string; x: number; y: number; active: boolean; sealed: boolean; strength: number; radius: number; boss: boolean };
 export type Projectile = { active: boolean; x: number; y: number; vx: number; vy: number; radius: number; damage: number; life: number; owner: 'player' | 'enemy'; weapon: WeaponId | 'enemy'; penetration: number; armorDamage: number; healthMultiplier: number; knockback: number; lastObjectId: string | null; lastObjectT: number };
-export type Enemy = { id: number; role: EnemyRole; variant: EnemyVariant; combatClass: EnemyCombatClass; protocols: EnemyProtocolInstance[]; mutations: HighTierMutationId[]; protocolPulse: number; label: string; x: number; y: number; vx: number; vy: number; hp: number; maxHp: number; armor: number; maxArmor: number; effectiveness: number; fireCooldown: number; telegraph: number; telegraphAim: Vec2; strafeSign: number; dead: boolean; deathT: number; active: boolean; state: 'hold' | 'advance' | 'retreat' | 'cover' | 'attack'; hazardCooldown: number; burst: number; carriedObjectId: string | null; statuses: StatusTimers; bossPhase: 1 | 2; bossPattern: 'none' | 'coilFan' | 'massPulse' | 'craneLock' | 'forgeSweep' | 'gravityFlip' | 'anchorCast' | 'barricadeCommand' | 'pressureLock' | 'armorVolley' | 'tetherCast' | 'backblastRush' | 'scrapFan' | 'droneCommand' | 'doorCycle' | 'gravityOverride' | 'pressureCascade' | 'shutterDebt' | 'latticePulse' | 'certifiedVolley' | 'seizureWall' | 'auditPulse' | 'machineChoir' | 'phaseFork' | 'thermalCascade' | 'surveySweep' | 'referenceLock' | 'archivePurge' | 'brakeWave' | 'partitionSweep' | 'recoilVector' | 'purgeLance' | 'busSiphon' | 'busReroute' | 'shutterGeometry' | 'referenceVolley' | 'relayRecall' | 'parallaxSweep' | 'baselineFork' | 'shearCollapse'; patternIndex: number; anchored: boolean };
+export type Enemy = { id: number; role: EnemyRole; variant: EnemyVariant; combatClass: EnemyCombatClass; protocols: EnemyProtocolInstance[]; mutations: HighTierMutationId[]; bossPhaseMutations: BossPhaseMutationId[]; bossMutationCooldown: number; protocolPulse: number; label: string; x: number; y: number; vx: number; vy: number; hp: number; maxHp: number; armor: number; maxArmor: number; effectiveness: number; fireCooldown: number; telegraph: number; telegraphAim: Vec2; strafeSign: number; dead: boolean; deathT: number; active: boolean; state: 'hold' | 'advance' | 'retreat' | 'cover' | 'attack'; hazardCooldown: number; burst: number; carriedObjectId: string | null; statuses: StatusTimers; bossPhase: 1 | 2; bossPattern: 'none' | 'coilFan' | 'massPulse' | 'craneLock' | 'forgeSweep' | 'gravityFlip' | 'anchorCast' | 'barricadeCommand' | 'pressureLock' | 'armorVolley' | 'tetherCast' | 'backblastRush' | 'scrapFan' | 'droneCommand' | 'doorCycle' | 'gravityOverride' | 'pressureCascade' | 'shutterDebt' | 'latticePulse' | 'certifiedVolley' | 'seizureWall' | 'auditPulse' | 'machineChoir' | 'phaseFork' | 'thermalCascade' | 'surveySweep' | 'referenceLock' | 'archivePurge' | 'brakeWave' | 'partitionSweep' | 'recoilVector' | 'purgeLance' | 'busSiphon' | 'busReroute' | 'shutterGeometry' | 'referenceVolley' | 'relayRecall' | 'parallaxSweep' | 'baselineFork' | 'shearCollapse'; patternIndex: number; anchored: boolean };
 export type Player = { x: number; y: number; vx: number; vy: number; aim: Vec2; move: Vec2; hp: number; maxHp: number; armor: number; maxArmor: number; capacitor: number; maxCapacitor: number; fireCooldown: number; abilityCooldowns: [number, number, number]; dodgeCooldown: number; dodgeTime: number; lastDodgeAt: number; invulnerable: number; consumableCooldown: number; weaponHeat: Record<WeaponId, number>; mags: Record<WeaponId, number>; reloadT: number; reloadWeapon: WeaponId; ventT: number; dead: boolean; currentWeapon: WeaponId; vacuumExposure: number; disrupted: number };
 export type Hazard = { active: boolean; x: number; y: number; radius: number; life: number; kind: 'shockGrid' | 'gravityWell' | 'coolantJet' | 'vacuumWake' | 'vectorWash' | 'boiloffJet'; owner: 'enemy' | 'environment' | 'player' };
 export type Debris = { active: boolean; x: number; y: number; vx: number; vy: number; radius: number; sectorId: string };
@@ -280,7 +281,7 @@ function isAnchoredByElite(state: SimState, enemy: Enemy) {
 }
 function activeSquadCount(state: SimState) { let count = 0; for (const enemy of state.enemies) if (enemy.role !== 'boss' && enemy.active && !enemy.dead) count += 1; return count; }
 function findBoss(state: SimState) { return state.enemies.find(enemy => enemy.role === 'boss') ?? null; }
-function spawnEnemy(id: number, role: EnemyRole, label: string, x: number, y: number, hp: number, armor: number, sign: number, active = true, variant: EnemyVariant = 'standard'): Enemy { return { id, role, variant, combatClass: role === 'boss' ? 'command' : role === 'elite' ? 'elite' : 'standard', protocols: [], mutations: [], protocolPulse: 0, label, x, y, vx: 0, vy: 0, hp, maxHp: hp, armor, maxArmor: armor, effectiveness: 1, fireCooldown: 0.8 + id * 0.17, telegraph: 0, telegraphAim: { x: -1, y: 0 }, strafeSign: sign, dead: false, deathT: 0, active, state: 'hold', hazardCooldown: 2.5 + id * 0.4, burst: 0, carriedObjectId: null, statuses: blankStatuses(), bossPhase: 1, bossPattern: 'none', patternIndex: 0, anchored: role === 'elite' || role === 'boss' }; }
+function spawnEnemy(id: number, role: EnemyRole, label: string, x: number, y: number, hp: number, armor: number, sign: number, active = true, variant: EnemyVariant = 'standard'): Enemy { return { id, role, variant, combatClass: role === 'boss' ? 'command' : role === 'elite' ? 'elite' : 'standard', protocols: [], mutations: [], bossPhaseMutations: [], bossMutationCooldown: 0, protocolPulse: 0, label, x, y, vx: 0, vy: 0, hp, maxHp: hp, armor, maxArmor: armor, effectiveness: 1, fireCooldown: 0.8 + id * 0.17, telegraph: 0, telegraphAim: { x: -1, y: 0 }, strafeSign: sign, dead: false, deathT: 0, active, state: 'hold', hazardCooldown: 2.5 + id * 0.4, burst: 0, carriedObjectId: null, statuses: blankStatuses(), bossPhase: 1, bossPattern: 'none', patternIndex: 0, anchored: role === 'elite' || role === 'boss' }; }
 
 export function createSimulation(build: CombatBuild = neutralCombatBuild): SimState {
   seed = 0x5f3759df;
@@ -886,6 +887,54 @@ function pressureRetreatVector(state: SimState, enemy: Enemy) { const sector = c
 function findCoverPoint(state: SimState, enemy: Enemy) { const p = state.player; let best: Vec2 | null = null; let score = 99999; for (const object of state.objects) { if (!object.active || object.kind !== 'cover') continue; const cx = object.x + object.w / 2; const cy = object.y + object.h / 2; const dEnemy = Math.hypot(cx - enemy.x, cy - enemy.y); if (dEnemy > 430) continue; const fromPlayer = norm({ x: cx - p.x, y: cy - p.y }); const point = { x: cx + fromPlayer.x * (Math.max(object.w, object.h) * 0.65 + 40), y: cy + fromPlayer.y * (Math.max(object.w, object.h) * 0.65 + 40) }; const localScore = dEnemy - Math.hypot(point.x - p.x, point.y - p.y) * 0.12; if (localScore < score) { score = localScore; best = point; } } return best; }
 function fireEnemyShot(state: SimState, enemy: Enemy, speed: number, damage: number, spread = 0) { const count = spread > 0.05 ? 3 : 1; for (let i = 0; i < count; i += 1) { const angle = count === 1 ? 0 : (i - 1) * spread; const c = Math.cos(angle); const s = Math.sin(angle); const dir = { x: enemy.telegraphAim.x * c - enemy.telegraphAim.y * s, y: enemy.telegraphAim.x * s + enemy.telegraphAim.y * c }; addProjectile(state, enemy.x + dir.x * 26, enemy.y + dir.y * 26, dir, speed, damage, 'enemy', { weapon: 'enemy', armorDamage: 0.5, healthMultiplier: 1, radius: enemy.role === 'boss' ? 7 : 6 }); } }
 function plantHazard(state: SimState, x: number, y: number, kind: Hazard['kind'], life: number, owner?: Hazard['owner']) { const hazard = state.hazards.find(item => !item.active); if (!hazard) return; Object.assign(hazard, { active: true, x, y, radius: kind === 'gravityWell' ? 185 : kind === 'vectorWash' ? 210 : kind === 'boiloffJet' ? 170 : kind === 'vacuumWake' ? 165 : kind === 'coolantJet' ? 150 : 120, life, kind, owner: owner ?? (kind === 'vacuumWake' ? 'player' : kind === 'coolantJet' || kind === 'vectorWash' || kind === 'boiloffJet' ? 'environment' : 'enemy') }); }
+function stepBossPhaseMutations(state: SimState, boss: Enemy, dt: number, previousPhase: 1 | 2) {
+  if (!state.bossActive || boss.dead || boss.bossPhaseMutations.length === 0) return;
+  const transitioned = previousPhase === 1 && boss.bossPhase === 2;
+  const p = state.player;
+
+  if (transitioned) {
+    for (const id of boss.bossPhaseMutations) {
+      if (id === 'rupture-crown') {
+        const sector = currentSector(state, boss.x, boss.y);
+        sector.pressure = Math.max(0.24, sector.pressure - 0.2);
+        sector.targetPressure = Math.min(sector.targetPressure, 0.58);
+        sector.rapidTimer = Math.max(sector.rapidTimer, 2.8);
+        plantHazard(state, clamp(p.x + p.vx * 0.48, 150, world.w - 150), clamp(p.y + p.vy * 0.48, 205, world.h - 145), 'vectorWash', 4.8, 'environment');
+      } else if (id === 'redline-sequence') {
+        boss.fireCooldown = Math.min(boss.fireCooldown, 0.42);
+      } else if (id === 'countermass-halo') {
+        plantHazard(state, clamp(p.x + p.vx * 0.42, 150, world.w - 150), clamp(p.y + p.vy * 0.42, 205, world.h - 145), 'gravityWell', 5);
+      } else if (id === 'relay-tempest') {
+        plantHazard(state, clamp(p.x + p.vx * 0.34, 150, world.w - 150), clamp(p.y + p.vy * 0.34, 205, world.h - 145), 'shockGrid', 5.2);
+        plantHazard(state, clamp(p.x - 135, 150, world.w - 150), clamp(p.y + 80, 205, world.h - 145), 'shockGrid', 4.5);
+      }
+    }
+    const periodic = bossPhasePulseDefinitions(boss);
+    boss.bossMutationCooldown = periodic.length > 0 ? Math.min(...periodic.map(definition => definition.pulseInterval ?? 7)) * 0.62 : 999;
+    spawnEffect(state, boss.x, boss.y, 'pulse', 230, 0.7);
+    const inherited = state.eventT > 0 ? state.eventText : `${boss.label.toUpperCase()} // PHASE TWO`;
+    pushEvent(state, `${inherited} // PHASE MUTATION ONLINE`, Math.max(3.2, state.eventT));
+  }
+
+  if (boss.bossPhase !== 2) return;
+  const cadenceScale = bossPhaseFireCadenceScale(boss);
+  if (cadenceScale > 1) boss.fireCooldown = Math.max(0, boss.fireCooldown - dt * (cadenceScale - 1));
+
+  const periodic = bossPhasePulseDefinitions(boss);
+  if (periodic.length === 0) return;
+  boss.bossMutationCooldown = Math.max(0, boss.bossMutationCooldown - dt);
+  if (boss.bossMutationCooldown > 0) return;
+
+  periodic.slice(0, 2).forEach((definition, index) => {
+    if (!definition.pulseKind) return;
+    const side = index === 0 ? 1 : -1;
+    const x = clamp(p.x + p.vx * (definition.pulseLead ?? 0.35) + side * index * 125, 150, world.w - 150);
+    const y = clamp(p.y + p.vy * (definition.pulseLead ?? 0.35) - side * index * 70, 205, world.h - 145);
+    plantHazard(state, x, y, definition.pulseKind, definition.pulseKind === 'shockGrid' ? 4.6 : 4.3);
+  });
+  boss.bossMutationCooldown = Math.max(4.8, Math.min(...periodic.map(definition => definition.pulseInterval ?? 7)));
+  spawnEffect(state, boss.x, boss.y, 'pulse', 150, 0.45);
+}
 function isParallaxReferenceEnemy(enemy: Enemy) { return enemy.variant === 'parallaxSkirmisher' || enemy.variant === 'referenceTech' || enemy.variant === 'baselineMarksman' || enemy.variant === 'baselineKeeper'; }
 function activateBarrier(state: SimState, prefix: string, x?: number, y?: number) { const barrier = state.objects.find(object => object.id.startsWith(prefix) && !object.active && object.hp > 0); if (!barrier) return false; barrier.active = true; if (typeof x === 'number') barrier.x = clamp(x, 830, 1370); if (typeof y === 'number') barrier.y = clamp(y, 225, 820); return true; }
 function tetherForEnemy(state: SimState, enemy: Enemy) { return state.objects.find(object => object.id.startsWith('enemy-tether') && object.active && object.label.endsWith(`#${enemy.id}`)) ?? null; }
@@ -898,7 +947,7 @@ function breachNearestCover(state: SimState, enemy: Enemy) { const target = stat
 function stepEnemy(state: SimState, enemy: Enemy, dt: number) {
   if (!enemy.active) return; stepStatuses(enemy, dt);
   if (enemy.dead) { enemy.deathT = Math.max(0, enemy.deathT - dt); enemy.vx *= Math.pow(0.06, dt); enemy.vy *= Math.pow(0.06, dt); enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt; return; }
-  if (enemy.role === 'boss') { stepBoss(state, enemy, dt); return; }
+  if (enemy.role === 'boss') { const previousPhase = enemy.bossPhase; stepBoss(state, enemy, dt); stepBossPhaseMutations(state, enemy, dt, previousPhase); return; }
   const p = state.player; if (p.dead) return; enemy.fireCooldown = Math.max(0, enemy.fireCooldown - dt * mutationFireCadenceScale(enemy)); enemy.hazardCooldown = Math.max(0, enemy.hazardCooldown - dt * mutationHazardCadenceScale(enemy)); const sector = currentSector(state, enemy.x, enemy.y); const anchorProtected = enemy.combatClass === 'elite' || protocolAnchorsEnemy(enemy) || (isAnchoredByElite(state, enemy) && enemy.statuses.disrupted <= 0); applyPressureForce(state, enemy, sector.id, dt, anchorProtected ? 0.12 : 0.92);
   if (sector.pressure < 0.16 && !anchorProtected && enemy.variant !== 'vacuumSaboteur' && !protocolVacuumImmune(enemy)) { enemy.statuses.vacuum = 1.2; enemy.hp -= 4.3 * dt; if (enemy.hp <= 0) finishEnemyDeath(state, enemy); }
   if (enemy.statuses.stagger > 0) { enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt; return; }
