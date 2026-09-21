@@ -136,10 +136,10 @@ try {
       if (lastState.rig !== 'articulated' || lastState.socket !== 'weapon-socket') {
         throw new Error(`Authored operator rig/socket contract is not active: ${JSON.stringify(lastState)}`);
       }
-      if (!['idle', 'locomotion', 'recoil', 'reload', 'dodge', 'hit', 'down'].includes(lastState.animation)) {
+      if (!['idle', 'locomotion', 'recoil', 'reload', 'vent', 'dodge', 'hit', 'down'].includes(lastState.animation)) {
         throw new Error(`Unexpected authored operator animation state: ${JSON.stringify(lastState)}`);
       }
-      if (!/move:\d+\.\d+,recoil:\d+\.\d+,reload:\d+\.\d+,dodge:\d+\.\d+,hit:\d+\.\d+/.test(lastState.blend)) {
+      if (!/move:\d+\.\d+,recoil:\d+\.\d+,reload:\d+\.\d+,vent:\d+\.\d+,dodge:\d+\.\d+,hit:\d+\.\d+/.test(lastState.blend)) {
         throw new Error(`Authored operator animation blend telemetry is missing: ${JSON.stringify(lastState)}`);
       }
       if (!(lastState.width > 0 && lastState.height > 0)) {
