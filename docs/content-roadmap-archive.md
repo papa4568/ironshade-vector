@@ -129,6 +129,18 @@ This file is the permanent archive for completed production work. The active exe
   - Android verification includes full web regression/build, native project generation, package/version/SDK/signature checks, emulator install/launch/runtime smoke, touch controls, lifecycle resume, authored assets, and Chapter 3 touch playthrough. Artifact `10642866731` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.219`, debug signing, and APK SHA-256 `aab0c090167ac26f08fe76d0fb928a78008268d83b4187eca3fe67a135436e09`.
   - **Next: P8-D — Hard arsenal lock + migration.**
 
+- [x] **P8-D Hard arsenal lock + migration** — each class now owns exactly one runtime armament family: Vanguard → Breacher, Vector → Rail Lance, Systems → Carbine.
+  - Profile/save normalization equips only the active class family while preserving incompatible weapons in ship storage; if no usable class-family weapon exists, the matching starter is restored without deleting player inventory.
+  - Class recalibration swaps the active family safely, off-class weapon equip attempts are rejected with compatibility feedback, and combat rejects direct or cycle-based cross-family selection.
+  - Loadout presentation now shows one active class armament plus suit/rig/implant; desktop/mobile cross-family swap controls were removed and class intake copy now teaches weapon-family ownership.
+  - Combat build derivation ignores malformed/off-class equipped weapon modifiers, so legacy or hand-edited profiles cannot leak incompatible weapon stats into runtime.
+  - Regression coverage includes legacy multi-weapon migration, starter restoration, class switching, off-class equip rejection, runtime swap blocking, class resonance fixtures, UI ownership language, and class-specific beta smoke.
+  - PR #141 Browser E2E `35612549638` passed desktop and mobile-landscape after updating legacy fixtures for owned-family combat.
+  - Merged gameplay source `075b64fdb16e12ec9782bedeb8e249e0e392c528`; QA follow-up PR #142 updated Android runtime smoke to assert the removed weapon-cycle control is absent rather than tapping it.
+  - Verified on QA source `f358602357dc4bd7410336ee485a5b6e224d11a7`: merged-main Browser E2E `35613944890`, Level 15 beta smoke `35613944913`, and Android beta.220 `35613944855` all passed.
+  - Android artifact `10645323083` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.220`, debug signing, native emulator runtime/touch/asset/Chapter 3 QA, and APK SHA-256 `61cdeaa2331c955f678586f94f733ba94d50169801e87cc577b4414aa5f6d97e`.
+  - **Next: P8-E — Loot/UI/tutorial ownership.**
+
 ## P0 — Foundation ✅ COMPLETE
 
 - [x] Three classes: Vanguard / Vector / Systems
