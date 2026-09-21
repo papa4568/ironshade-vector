@@ -3,8 +3,8 @@ import type { EquipmentFaction } from './factionGear';
 import type { GearBaseDefinition } from './gearSchema';
 import type { ModifierGrade, RecoveryQualityGrade } from './lootQuality';
 import type { FrameGeneration } from './scaling';
-import { factionFrameIdentity, factionFrames } from './factionGear';
-import { augmentSlotCount, rollEquipmentQuality } from './gearDepth';
+import { factionFrames } from './factionGear';
+import { augmentSlotCount, factionFrameIdentity, rollEquipmentQuality } from './gearDepth';
 import { gearBaseForFrameIdentity, gearBasesForSlot } from './gearBases';
 import {
   affixGradeDefinition,
