@@ -78,12 +78,12 @@ export default function ClassSelectScreen({ profile, onConfirm }: Props) {
         <div>
           <span>QUIET SIGNAL // OPERATOR INTAKE</span>
           <h1>Pick your combat role</h1>
-          <p>Choose the way you want your first fights to feel. Your class gives you a starting skill kit and signature mechanic; weapons and gear stay open later.</p>
+          <p>Choose the way you want your first fights to feel. Your class gives you a starting skill kit, signature mechanic, and one owned weapon family; support gear stays open later.</p>
         </div>
         <aside>
           <small>GOOD TO KNOW</small>
-          <b>Gear is not class-locked</b>
-          <span>Weapons and equipment stay open after intake; class mainly changes skills, signature mechanics, and synergy.</span>
+          <b>One weapon family per class</b>
+          <span>Vanguard owns Breachers, Vector owns Rail Lances, and Systems owns Carbines. Other weapons stay safely in ship storage.</span>
         </aside>
       </header>
 
@@ -193,7 +193,7 @@ export default function ClassSelectScreen({ profile, onConfirm }: Props) {
           <div>
             <article>
               <small>GEAR RESONANCE</small>
-              <b>{resonance.count}/6 · {resonance.tier >= 1 ? 'TIER I ACTIVE' : 'BUILDING'}</b>
+              <b>{resonance.count}/4 · {resonance.tier >= 1 ? 'TIER I ACTIVE' : 'BUILDING'}</b>
               <span>{selected.resonanceTier1}</span>
             </article>
             <article>
@@ -204,7 +204,7 @@ export default function ClassSelectScreen({ profile, onConfirm }: Props) {
             <article>
               <small>BUILD FREEDOM</small>
               <b>{selected.branchAffinities.join(' + ')} affinity</b>
-              <span>These branches synergize naturally, but you can still use every weapon family and Development Network branch.</span>
+              <span>These branches synergize naturally, and every Development Network branch remains available. Your active weapon family follows your class.</span>
             </article>
           </div>
         </details>
@@ -213,7 +213,7 @@ export default function ClassSelectScreen({ profile, onConfirm }: Props) {
           <div>
             <small>STEP 3</small>
             <b>Ready to start as {selected.name}?</b>
-            <span>You can change gear freely later. Class recalibration remains available in Build → Progression.</span>
+            <span>You can change support gear freely later. Class recalibration in Build → Progression also changes your active weapon family without discarding stored weapons.</span>
           </div>
           <button className="class-confirm" type="button" aria-label={`Confirm ${selected.name}`} onClick={() => onConfirm(selectedId)}>
             <span>Play {selected.name}</span>
