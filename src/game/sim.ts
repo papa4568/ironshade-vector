@@ -1,7 +1,7 @@
 import { protocolAimPenalty, protocolAnchorsEnemy, protocolCarriesObjective, protocolIgnoresPressureRetreat, protocolMobilityScale, protocolRewardForEnemy, protocolVacuumImmune, stepEnemyProtocols } from './eliteProtocolRuntime';
 import type { EnemyCombatClass, EnemyProtocolInstance } from './eliteProtocols';
 import { mutationFireCadenceScale, mutationHazardCadenceScale, mutationMobilityScale, type HighTierMutationId } from './t9Mutations';
-import { bossPhaseFireCadenceScale, bossPhaseMutationDefinition, bossPhasePulseDefinitions, type BossPhaseMutationId } from './bossPhaseMutations';
+import { bossPhaseFireCadenceScale, bossPhasePulseDefinitions, type BossPhaseMutationId } from './bossPhaseMutations';
 import type { ConsumableId } from './consumables';
 import { lootLabel, rollGroundLoot, type GroundLootDrop, type GroundLootReceipt } from './fieldLoot';
 import { getAbilityKitForClass, type OperatorClassId } from './classSkills';
@@ -893,10 +893,7 @@ function stepBossPhaseMutations(state: SimState, boss: Enemy, dt: number, previo
   const p = state.player;
 
   if (transitioned) {
-    const transitionNames: string[] = [];
     for (const id of boss.bossPhaseMutations) {
-      const definition = bossPhaseMutationDefinition(id);
-      transitionNames.push(definition.shortName);
       if (id === 'rupture-crown') {
         const sector = currentSector(state, boss.x, boss.y);
         sector.pressure = Math.max(0.24, sector.pressure - 0.2);
@@ -916,7 +913,7 @@ function stepBossPhaseMutations(state: SimState, boss: Enemy, dt: number, previo
     boss.bossMutationCooldown = periodic.length > 0 ? Math.min(...periodic.map(definition => definition.pulseInterval ?? 7)) * 0.62 : 999;
     spawnEffect(state, boss.x, boss.y, 'pulse', 230, 0.7);
     const inherited = state.eventT > 0 ? state.eventText : `${boss.label.toUpperCase()} // PHASE TWO`;
-    pushEvent(state, `${inherited} // PHASE MUTATION ${transitionNames.join(' + ')}`, Math.max(3.2, state.eventT));
+    pushEvent(state, `${inherited} // PHASE MUTATION ONLINE`, Math.max(3.2, state.eventT));
   }
 
   if (boss.bossPhase !== 2) return;
