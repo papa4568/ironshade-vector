@@ -182,6 +182,20 @@ const chaseCatalog: SingularTemplate[] = [
   singular({ baseId: 'cascade-sight-link', name: 'Cascade Sight Link', slot: 'implant', equipmentClass: 'Kill-relay sensor cognition link', rarity: 'Singular', core: 'A narrowband target model refuses to hold one solution for long, but transfers the dying target state into the nearest live return.', modifiers: [{ ...affixes.markShear }, { ...affixes.arcDrone }, { ...affixes.capacitorRecycler }], singularTrait: 'markCascade', singularEffect: 'Killing a marked target relays a 4.2s mark to a nearby enemy. Initial Sensor Spike marks are shorter and Sensor Spike recovers 12% slower.' }),
 ];
 
+const directiveChaseIds = new Set(['sixth-vector-m12', 'backstep-kestrel-b9', 'cold-doublet-r7', 'falling-star-harness', 'bloom-vector-rig', 'cascade-sight-link']);
+const directiveChaseCatalog = chaseCatalog.filter(item => directiveChaseIds.has(item.baseId));
+
+export function directiveSingularNames(tier: number) {
+  return tier >= 9 ? directiveChaseCatalog.map(item => item.name) : [];
+}
+
+export function directiveChaseSingularChance(tier: number, deep: boolean) {
+  if (tier < 9) return 0;
+  const normalizedTier = Math.max(9, Math.min(12, Math.round(tier)));
+  const safeChance = 0.03 + (normalizedTier - 9) * 0.02;
+  return Math.min(0.18, deep ? safeChance * 2 : safeChance);
+}
+
 const locationChaseIds: Record<string, string[]> = {
   'orbital-station': ['arcspindle-m7', 'deadreckon-optics', 'palisade-breaker-b9', 'sixth-vector-m12', 'cascade-sight-link'],
   'damaged-vessel': ['vacuum-choir-rails', 'glasswalker-eva', 'salvage-dynamo-rig', 'breathless-choir-mantle', 'backstep-kestrel-b9'],
@@ -235,13 +249,18 @@ function makeBossSingular(deepTarget: string, index: number, level: number, rand
 const level15ChaseIds = new Set(['breathless-choir-mantle', 'vector-debt-m12', 'relay-orchard-node', 'cold-witness-r7', 'radiant-liability-kestrel', 'palisade-breaker-b9', 'capacitor-rosary-rig', 'vacuum-psalm-m12', 'falling-star-harness', 'scrap-circuit-rig', 'eventide-eva-skin', 'khepri-split-reference-link']);
 function locationPool(location: string, operatorLevel = 16) {
   const ids = new Set(locationChaseIds[location] ?? []);
-  return chaseCatalog.filter(item => ids.has(item.baseId) && (operatorLevel >= 15 || !level15ChaseIds.has(item.baseId)));
+  return chaseCatalog.filter(item => ids.has(item.baseId) && !directiveChaseIds.has(item.baseId) && (operatorLevel >= 15 || !level15ChaseIds.has(item.baseId)));
 }
 
 function makeLocationSingular(location: string, index: number, level: number, random: () => number, recoveryLevel: number, recoveryQuality: RecoveryQualityGrade, recoverySource: string, sourceOperatorLevel = level): Item | null {
   const pool = locationPool(location, sourceOperatorLevel);
   if (!pool.length) return null;
   return makeSingularItem(pool[Math.floor(random() * pool.length)], 'chase', index, level, random, recoveryLevel, recoveryQuality, recoverySource, sourceOperatorLevel);
+}
+
+function makeDirectiveSingular(tier: number, index: number, level: number, random: () => number, recoveryLevel: number, recoveryQuality: RecoveryQualityGrade, recoverySource: string, sourceOperatorLevel = level): Item | null {
+  if (tier < 9 || !directiveChaseCatalog.length) return null;
+  return makeSingularItem(directiveChaseCatalog[Math.floor(random() * directiveChaseCatalog.length)], 'directive-chase', index, level, random, recoveryLevel, recoveryQuality, recoverySource, sourceOperatorLevel);
 }
 
 export function bossSingularNames(deepTarget: string) { return (bossSingularPools[deepTarget] ?? []).map(item => item.name); }
@@ -738,7 +757,7 @@ function chooseRecoverySlots(profile: PlayerProfile, count: number, random: () =
   return chosen;
 }
 
-export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep: boolean, _fabricationLevel = 0, source: { deepTarget?: string; location?: string; locationName?: string; faction?: EquipmentFaction; factionReputation?: number; operationTier?: number; maxRecoveryLevel?: number; combatEffectiveness?: number; threatBudget?: number; eliteProtocolCount?: number; environmentalComplications?: number; optionalObjectives?: number; actualDepth?: boolean; xpFloor?: number; directiveQualityBonus?: number; directiveSingularChanceBonus?: number; directiveRecoveryLevelBonus?: number; campaignChapter?: CampaignGearChapter } = {}, fieldLoot?: GroundLootReceipt[]): VictoryReward {
+export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep: boolean, _fabricationLevel = 0, source: { deepTarget?: string; location?: string; locationName?: string; faction?: EquipmentFaction; factionReputation?: number; operationTier?: number; maxRecoveryLevel?: number; combatEffectiveness?: number; threatBudget?: number; eliteProtocolCount?: number; environmentalComplications?: number; optionalObjectives?: number; actualDepth?: boolean; xpFloor?: number; directiveQualityBonus?: number; directiveSingularChanceBonus?: number; directiveRecoveryLevelBonus?: number; directiveTier?: number; campaignChapter?: CampaignGearChapter } = {}, fieldLoot?: GroundLootReceipt[]): VictoryReward {
   const rawXp = (deep ? 250 : 145) + Math.min(deep ? 90 : 45, Math.round(telemetry.damageDealt / 22));
   const requestedXp = Math.max(Math.max(0, Math.round(source.xpFloor ?? 0)), Math.round(rawXp * (1 + Math.max(0, (source.combatEffectiveness ?? 1) - 1) * 0.65)));
   const cappedProfileXp = Math.max(0, Math.min(maxLevelXp, profile.xp));
@@ -784,7 +803,12 @@ export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep
   });
   const bossItem = actualDepth && !fieldMode ? makeBossSingular(source.deepTarget ?? '', 0, nextLevel, random, bossRecoveryLevel, rollQuality(true, 4), `Boss pool // ${source.deepTarget ?? 'deep target'}`, profile.level) : null;
   const fieldHasSingular = fieldItems.some(item => item.rarity === 'Singular');
-  const locationChance = fieldHasSingular ? 0 : Math.min(0.24, (deep ? (bossItem ? 0.06 : 0.08) : 0.02) + Math.max(0, source.directiveSingularChanceBonus ?? 0));
+  const directiveTier = source.directiveTier ?? 0;
+  const directiveChance = directiveChaseSingularChance(directiveTier, actualDepth);
+  const directiveItem = profile.runsCompleted > 0 && !fieldHasSingular && directiveChance > 0 && random() < directiveChance
+    ? makeDirectiveSingular(directiveTier, bossItem ? 1 : 0, nextLevel, random, actualDepth ? bossRecoveryLevel : locationRecoveryLevel, rollQuality(actualDepth, 4), `Directive chase // T${directiveTier}`, profile.level)
+    : null;
+  const locationChance = fieldHasSingular || directiveItem ? 0 : Math.min(0.24, (deep ? (bossItem ? 0.06 : 0.08) : 0.02) + Math.max(0, source.directiveSingularChanceBonus ?? 0));
   const locationItem = profile.runsCompleted > 0 && random() < locationChance ? makeLocationSingular(source.location ?? '', bossItem ? 1 : 0, nextLevel, random, locationRecoveryLevel, rollQuality(actualDepth, 3), `Location chase // ${locationName}`, profile.level) : null;
   let loot: Item[] = [];
 
@@ -795,11 +819,17 @@ export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep
       else loot.push(makeClassOnboardingRecoveryItem(profile, 1, nextLevel, random, ordinaryRecoveryLevel, Math.max(1, rollQuality(false)) as RecoveryQualityGrade, 'Quiet Signal onboarding recovery'));
     }
   } else if (deep && bossItem) {
-    if (locationItem) loot = [bossItem, locationItem];
+    if (directiveItem) loot = [bossItem, directiveItem];
+    else if (locationItem) loot = [bossItem, locationItem];
     else {
       const [slot] = chooseRecoverySlots(profile, 1, random);
       loot = [bossItem, makeRecoveredItem(slot, 1)];
     }
+  } else if (directiveItem) {
+    if (deep) {
+      const [slot] = chooseRecoverySlots(profile, 1, random);
+      loot = [directiveItem, makeRecoveredItem(slot, 1)];
+    } else loot = [directiveItem];
   } else if (locationItem) {
     if (deep) {
       const [slot] = chooseRecoverySlots(profile, 1, random);

@@ -1,5 +1,5 @@
 import type { CampaignState, Contract } from '../game/campaign';
-import type { PlayerProfile } from '../game/meta';
+import { directiveChaseSingularChance, directiveSingularNames, type PlayerProfile } from '../game/meta';
 import { directiveModifierName, directiveRewardPreview, directiveStats, prepareDirective } from '../game/operationDirectives';
 import { commandTargetMutationDefinition, commandTargetMutationForecastForContract } from '../game/commandTargetMutations';
 import { environmentalRiskPackageForContract } from '../game/environmentalRiskPackages';
@@ -46,12 +46,13 @@ export default function DirectivePanel({ profile, campaign, contracts, onCampaig
         const commandPackage = commandTargetMutationForecastForContract(directive)[0];
         const commandDefinition = commandPackage ? commandTargetMutationDefinition(commandPackage) : null;
         const environmentRisk = environmentalRiskPackageForContract(directive);
+        const chaseNames = directiveSingularNames(directive.tier);
         return <section key={directive.id} className={`directive-card ${selected ? 'prepared' : ''}`}>
           <div className="directive-card-top"><b>T{directive.tier} // {directive.codename}</b><span>{directive.targetClass === 'command-target' ? 'COMMAND TARGET' : 'ELITE-LED'}</span></div>
           <h3>{directive.locationName}</h3>
           <p>{directive.sourceLabel}</p>
           <div className="directive-mods">{directive.modifierIds.length ? directive.modifierIds.map(id => <span key={id}>{directiveModifierName(id)}</span>) : <span>NO ADDED COMPLICATIONS</span>}</div>
-          {commandDefinition && <div className="directive-risk"><span>COMMAND PACKAGE // {commandDefinition.name}</span><span>{commandDefinition.description}</span></div>}{environmentRisk && <div className="directive-risk"><span>ENV RISK // {environmentRisk.name} // +{Math.round((environmentRisk.rewardMultiplier - 1) * 100)}% YIELD</span><span>{environmentRisk.description}</span></div>}
+          {commandDefinition && <div className="directive-risk"><span>COMMAND PACKAGE // {commandDefinition.name}</span><span>{commandDefinition.description}</span></div>}{environmentRisk && <div className="directive-risk"><span>ENV RISK // {environmentRisk.name} // +{Math.round((environmentRisk.rewardMultiplier - 1) * 100)}% YIELD</span><span>{environmentRisk.description}</span></div>}{chaseNames.length > 0 && <div className="directive-risk"><span>CHASE POOL // DIRECTIVE-ONLY SINGULAR // {Math.round(directiveChaseSingularChance(directive.tier, false) * 100)}% SAFE / {Math.round(directiveChaseSingularChance(directive.tier, true) * 100)}% DEEP</span><span>{chaseNames.join(' · ')}</span></div>}
           <small>{directiveRewardPreview(directive, profile.level)}</small>
           <div className="directive-risk"><span>RISK {stats.riskScore}</span><span>{directive.deepTarget}</span></div>
           <button className={selected ? 'primary' : ''} onClick={() => onCampaignChange(prepareDirective(campaign, directive.id))}>{selected ? 'Prepared' : 'Prepare Directive'}</button>

@@ -1,7 +1,7 @@
 import { createDefaultCampaign, generateContracts } from '../src/game/campaign';
 import { rollGroundLoot, type GroundLootReceipt } from '../src/game/fieldLoot';
 import { modifierCountForRarity } from '../src/game/lootQuality';
-import { awardRecovery, createDefaultProfile, deriveCombatBuild, levelRequirementForRecovery, locationSingularNames, maxOperatorLevel, parallaxDebtGearIdentities, type Item } from '../src/game/meta';
+import { awardRecovery, createDefaultProfile, deriveCombatBuild, directiveChaseSingularChance, directiveSingularNames, levelRequirementForRecovery, locationSingularNames, maxOperatorLevel, parallaxDebtGearIdentities, type Item } from '../src/game/meta';
 import { applyThreatBudget, operationScalingFor, standardTierCapForOperator } from '../src/game/scaling';
 import { createSimulation, type Telemetry } from '../src/game/sim';
 
@@ -98,8 +98,13 @@ const bloomProfile = { ...profile, inventory: [...profile.inventory, bloom], equ
 const bloomBuild = deriveCombatBuild(bloomProfile);
 assert(bloomBuild.abilities[0].costMul >= 1.25 && bloomBuild.abilities[0].cooldownMul >= 1.08, 'MAG Bloom tradeoff should be active when equipped');
 
+const directiveChase = directiveSingularNames(12);
+assert(directiveSingularNames(8).length === 0, 'directive-only Singular pool must stay locked below T9');
+assert(directiveChase.length === 6, `high-tier directives should expose six exclusive Singulars, saw ${directiveChase.length}`);
+assert(directiveChase.includes('Sixth-Vector M-12') && directiveChase.includes('Backstep Kestrel B-9') && directiveChase.includes('Cold Doublet R-7') && directiveChase.includes('Falling Star Harness') && directiveChase.includes('Bloom Vector Rig') && directiveChase.includes('Cascade Sight Link'), 'directive pool should cover every equipment slot with the authored chase set');
+assert(directiveChaseSingularChance(9, false) === 0.03 && directiveChaseSingularChance(12, true) === 0.18, 'directive chase odds should scale from 3% safe at T9 to 18% deep at T12');
 const stationUniques = locationSingularNames('orbital-station', 20);
-assert(stationUniques.includes('Sixth-Vector M-12') && stationUniques.includes('Cascade Sight Link'), 'new skill-transform Singulars should be in chase pools');
+assert(!stationUniques.includes('Sixth-Vector M-12') && !stationUniques.includes('Cascade Sight Link'), 'directive-only Singulars must not leak back into ordinary location pools');
 
 const telemetry: Telemetry = { damageDealt: 8000, damageTaken: 60, deaths: 0, kills: 7, eliteKills: 1, eliteProtocolsDefeated: 2, killIntervalTotal: 15, killIntervalSamples: 6, lastKillAt: 20, protocolCombinations: {}, weaponShots: { carbine: 100, breacher: 10, rail: 5 }, abilityUses: [2, 2, 2], encounterStart: 0, bossStart: 20, duration: 40, trace: [], nextTraceAt: 0 };
 const receipt: GroundLootReceipt = { id: 'boss-ground', enemyId: 99, enemyLabel: 'Command Target', rarity: 'Singular', source: 'boss', recoveryQualityFloor: 5, recoveryLevel: 56, monsterLevel: 20 };
@@ -107,6 +112,15 @@ const recovered = awardRecovery(profile, telemetry, true, 0, { deepTarget: base.
 assert(recovered.loot.some(item => item.recoverySource?.startsWith('Ground drop //') && item.rarity === 'Singular'), 'collected boss Singular should materialize as Singular gear at extraction');
 
 const repeatProfile = { ...createDefaultProfile(), runsCompleted: 1 };
+let directiveHit: Item | undefined;
+for (let run = 1; run <= 120 && !directiveHit; run += 1) {
+  const candidateProfile = { ...createDefaultProfile(), level: 20, xp: 999999, runsCompleted: run };
+  const result = awardRecovery(candidateProfile, telemetry, true, 0, { location: 'orbital-station', locationName: 'Kestrel Station', operationTier: 12, directiveTier: 12, maxRecoveryLevel: 56, combatEffectiveness: high.combatEffectiveness, threatBudget: high.threatBudget, actualDepth: true });
+  directiveHit = result.loot.find(item => item.recoverySource?.startsWith('Directive chase //'));
+}
+assert(directiveHit, 'deterministic T12 sample should eventually materialize a directive-only Singular');
+assert(directiveHit.rarity === 'Singular' && directiveChase.includes(directiveHit.name), 'directive chase payout must materialize from the exclusive pool');
+
 const overflowReceipts: GroundLootReceipt[] = Array.from({ length: 14 }, (_, index) => ({ id: `ground-${index}`, enemyId: index + 1, enemyLabel: `Raider ${index + 1}`, rarity: 'Field', source: 'standard', recoveryQualityFloor: 1, recoveryLevel: 24, monsterLevel: 8 }));
 const overflowRecovery = awardRecovery(repeatProfile, telemetry, false, 0, { location: base.location, locationName: base.locationName, operationTier: 6, maxRecoveryLevel: 32, threatBudget: 52 }, overflowReceipts);
 assert(overflowRecovery.loot.filter(item => item.recoverySource?.startsWith('Ground drop //')).length === overflowReceipts.length, 'field loot must not be silently truncated at extraction');
