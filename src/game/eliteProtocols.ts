@@ -32,12 +32,30 @@ export type ExclusiveProtocolCombinationId =
   | 'arc-blackout'
   | 'vacuum-hunt';
 
+export type EnhancedProtocolVariantId =
+  | 'ablative-bloom'
+  | 'cutline-pair'
+  | 'twin-well-lock'
+  | 'anchor-singularity'
+  | 'wake-anchor'
+  | 'cascade-grid'
+  | 'overlink-mesh'
+  | 'dual-rack'
+  | 'cross-shutter'
+  | 'capacitor-scramble'
+  | 'coolant-redline'
+  | 'tech-bus-sync'
+  | 'cross-fan-volley'
+  | 'mass-theft'
+  | 'hard-lock-grid';
+
 export type EnemyProtocolInstance = {
   id: EnemyProtocolId;
   enhanced: boolean;
   cooldown: number;
   windup: number;
   combinationId?: ExclusiveProtocolCombinationId;
+  variantId?: EnhancedProtocolVariantId;
 };
 
 type ProtocolDefinition = {
@@ -78,6 +96,33 @@ export const eliteProtocolDefinitions: ProtocolDefinition[] = [
   { id: 'recoveryDenial', name: 'Recovery Denial', shortName: 'DENIAL', family: 'objective', threatCost: 4, rewardWeight: 2, tell: 'A denial grid forms around tagged objective hardware.', counter: 'Disrupt the projector, isolate the grid, or approach from another lane.', baseCooldown: 6.3, enhanceable: true, objectiveModes: ['machinery-recovery', 'deep-salvage'] },
 ];
 
+export type EnhancedProtocolVariantDefinition = {
+  id: EnhancedProtocolVariantId;
+  protocolId: EnemyProtocolId;
+  name: string;
+  shortName: string;
+  minTier: number;
+  effect: string;
+};
+
+export const enhancedProtocolVariants: EnhancedProtocolVariantDefinition[] = [
+  { id: 'ablative-bloom', protocolId: 'reactivePlating', name: 'Ablative Bloom', shortName: 'ABLATIVE', minTier: 10, effect: 'Re-knit armor also patches one nearby armored ally.' },
+  { id: 'cutline-pair', protocolId: 'breachmaker', name: 'Cutline Pair', shortName: 'CUTLINE', minTier: 10, effect: 'Demolition cycle can remove a second nearby cover lane.' },
+  { id: 'twin-well-lock', protocolId: 'magneticLock', name: 'Twin-Well Lock', shortName: 'TWIN-WELL', minTier: 10, effect: 'Mass lock projects a second offset gravity well.' },
+  { id: 'anchor-singularity', protocolId: 'gravityAnchor', name: 'Anchor Singularity', shortName: 'SINGULARITY', minTier: 10, effect: 'Close-range anchor cycles project a local gravity well.' },
+  { id: 'wake-anchor', protocolId: 'countermassMobility', name: 'Wake Anchor', shortName: 'WAKE-ANCHOR', minTier: 10, effect: 'Lateral vector bursts leave a short-lived gravity wake.' },
+  { id: 'cascade-grid', protocolId: 'arcConduit', name: 'Cascade Grid', shortName: 'CASCADE', minTier: 10, effect: 'Arc conduit energizes a second offset shock-grid path.' },
+  { id: 'overlink-mesh', protocolId: 'repairMesh', name: 'Overlink Mesh', shortName: 'OVERLINK', minTier: 10, effect: 'Repair cycles also patch one nearby armored ally.' },
+  { id: 'dual-rack', protocolId: 'droneEscort', name: 'Dual Rack', shortName: 'DUAL-RACK', minTier: 10, effect: 'Escort rack can launch a second finite support drone.' },
+  { id: 'cross-shutter', protocolId: 'emergencyShutters', name: 'Cross-Shutter', shortName: 'CROSS-SHUT', minTier: 10, effect: 'Portable shutters close a mirrored second firing lane.' },
+  { id: 'capacitor-scramble', protocolId: 'signalJammer', name: 'Capacitor Scramble', shortName: 'CAP-SCRAM', minTier: 10, effect: 'Jammer pulse also drains operator capacitor charge.' },
+  { id: 'coolant-redline', protocolId: 'thermalOverrun', name: 'Coolant Redline', shortName: 'COOLANT', minTier: 10, effect: 'Redline burst widens and leaves a coolant hazard on recovery.' },
+  { id: 'tech-bus-sync', protocolId: 'suppressionCoordinator', name: 'Tech Bus Sync', shortName: 'BUS-SYNC', minTier: 10, effect: 'Coordinated fire window also accelerates technician hazards.' },
+  { id: 'cross-fan-volley', protocolId: 'penetratorVolley', name: 'Cross-Fan Volley', shortName: 'CROSS-FAN', minTier: 10, effect: 'Penetrator volley widens and seeds a follow-up shock grid.' },
+  { id: 'mass-theft', protocolId: 'salvageInterdictor', name: 'Mass Theft', shortName: 'MASS-THEFT', minTier: 10, effect: 'Objective theft also projects a gravity well onto the operator lane.' },
+  { id: 'hard-lock-grid', protocolId: 'recoveryDenial', name: 'Hard Lock Grid', shortName: 'HARD-LOCK', minTier: 10, effect: 'Recovery denial also deploys a portable shutter.' },
+];
+
 export type ExclusiveProtocolCombinationDefinition = {
   id: ExclusiveProtocolCombinationId;
   name: string;
@@ -100,6 +145,13 @@ export const exclusiveProtocolCombinations: ExclusiveProtocolCombinationDefiniti
 
 const byId = new Map(eliteProtocolDefinitions.map(definition => [definition.id, definition]));
 const combinationById = new Map(exclusiveProtocolCombinations.map(definition => [definition.id, definition]));
+const enhancedVariantById = new Map(enhancedProtocolVariants.map(definition => [definition.id, definition]));
+const enhancedVariantsByProtocol = new Map<EnemyProtocolId, EnhancedProtocolVariantDefinition[]>();
+for (const definition of enhancedProtocolVariants) {
+  const variants = enhancedVariantsByProtocol.get(definition.protocolId) ?? [];
+  variants.push(definition);
+  enhancedVariantsByProtocol.set(definition.protocolId, variants);
+}
 const locationBias: Record<LocationId, EnemyProtocolId[]> = {
   'orbital-station': ['reactivePlating', 'emergencyShutters', 'suppressionCoordinator', 'magneticLock', 'arcConduit', 'penetratorVolley'],
   'damaged-vessel': ['pressureHunter', 'vacuumAdapted', 'breachmaker', 'emergencyShutters', 'reactivePlating'],
@@ -128,6 +180,8 @@ function hashText(value: string) {
 }
 
 export function protocolDefinition(id: EnemyProtocolId) { return byId.get(id)!; }
+export function enhancedProtocolVariantDefinition(id: EnhancedProtocolVariantId) { return enhancedVariantById.get(id)!; }
+export function enhancedProtocolVariantForInstance(instance: EnemyProtocolInstance) { return instance.variantId ? enhancedVariantById.get(instance.variantId) : undefined; }
 export function protocolThreatCost(instance: EnemyProtocolInstance) { return protocolDefinition(instance.id).threatCost + (instance.enhanced ? 1 : 0); }
 export function protocolRewardValue(instance: EnemyProtocolInstance) { return protocolDefinition(instance.id).rewardWeight + (instance.enhanced ? 1 : 0); }
 
@@ -195,9 +249,19 @@ export function chooseEnemyProtocols(contract: Contract, role: EnemyRole, varian
   const enhancedChance = tier >= 12 ? 42 : tier >= 10 ? 24 : 0;
   const createInstance = (definition: ProtocolDefinition, combinationId?: ExclusiveProtocolCombinationId) => {
     const roll = hash32(contract.seed ^ enemyId * 2654435761 ^ hashText(definition.id)) % 100;
-    const enhanced = !!definition.enhanceable && enhancedChance > 0 && roll < enhancedChance;
+    const variantCandidates = (enhancedVariantsByProtocol.get(definition.id) ?? []).filter(variant => tier >= variant.minTier);
+    const variant = !!definition.enhanceable && enhancedChance > 0 && roll < enhancedChance
+      ? [...variantCandidates].sort((a, b) => hash32(contract.seed ^ enemyId * 104729 ^ hashText(a.id)) - hash32(contract.seed ^ enemyId * 104729 ^ hashText(b.id)))[0]
+      : undefined;
     const cooldownJitter = (hash32(contract.seed ^ enemyId * 131 ^ result.length * 17) % 140) / 100;
-    return { id: definition.id, enhanced, cooldown: 1.6 + cooldownJitter, windup: 0, ...(combinationId ? { combinationId } : {}) } satisfies EnemyProtocolInstance;
+    return {
+      id: definition.id,
+      enhanced: !!variant,
+      cooldown: 1.6 + cooldownJitter,
+      windup: 0,
+      ...(combinationId ? { combinationId } : {}),
+      ...(variant ? { variantId: variant.id } : {}),
+    } satisfies EnemyProtocolInstance;
   };
 
   const exclusive = exclusiveProtocolCombinationForEnemy(contract, role, variant, count, enemyId);
@@ -215,6 +279,26 @@ export function chooseEnemyProtocols(contract: Contract, role: EnemyRole, varian
     result.push(createInstance(definition));
   }
   return result;
+}
+
+export function enhancedProtocolVariantForecastForContract(contract: Contract) {
+  const tier = contract.operationTier ?? contract.directiveTier ?? 1;
+  if (tier < 10) return [];
+  const directiveBias = (contract.directiveProtocolBias ?? []).filter(id => byId.has(id as EnemyProtocolId)) as EnemyProtocolId[];
+  const objectiveAdds: EnemyProtocolId[] = contract.objectiveMode === 'machinery-recovery' || contract.objectiveMode === 'deep-salvage' ? ['salvageInterdictor', 'recoveryDenial'] : [];
+  const candidates = [...directiveBias, ...(locationBias[contract.location] ?? []), ...objectiveAdds].filter((id, index, all) => all.indexOf(id) === index);
+  const names: string[] = [];
+  for (const id of candidates) {
+    const protocol = protocolDefinition(id);
+    if (!protocol.enhanceable) continue;
+    if (protocol.locations && !protocol.locations.includes(contract.location)) continue;
+    if (protocol.objectiveModes && !protocol.objectiveModes.includes(contract.objectiveMode)) continue;
+    const variant = (enhancedVariantsByProtocol.get(id) ?? []).find(item => tier >= item.minTier);
+    if (!variant) continue;
+    names.push(variant.name);
+    if (names.length >= 4) break;
+  }
+  return names;
 }
 
 export function protocolForecastForContract(contract: Contract) {
@@ -245,5 +329,5 @@ export function protocolTierSummary(operationTier: number, capacity: number) {
   if (operationTier <= 7) return 'Enhanced/Elite // 1–2 protocols';
   if (operationTier <= 8) return 'Elite packages // up to 3 protocols';
   if (operationTier === 9) return 'T9 Elite // exclusive 2–3 protocol packages online';
-  return 'High-tier Elite // exclusive packages · 2–4 protocols · Enhanced variants possible';
+  return 'High-tier Elite // exclusive packages · 2–4 protocols · named Enhanced variants';
 }
