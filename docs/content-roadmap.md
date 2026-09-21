@@ -60,7 +60,7 @@ Goal: make equipment answer **“What could I build around this?”** instead of
 - [x] **P8.5-B Power-axis consolidation** — archived after merge + verification
 - [x] **P8.5-C Meaningful base-frame families** — archived after merge + verification
 - [x] **P8.5-D Stat registry + local/global scope + build tags** — archived after merge + verification
-- [ ] **P8.5-E Affix pools + conflicts + rarity budgets** — make slot/base-aware legal pools, mod groups/conflicts, minimum Recovery Level, grade tables, weights and tradeoffs; Field = clean base, Refined = up to 2 explicit mods, Prototype = up to 6, Singular = curated fixed package; eliminate mechanically nonsensical rolls
+- [x] **P8.5-E Affix pools + conflicts + rarity budgets** — archived after merge + verification
 - [ ] **P8.5-F Loot generation + anti-junk rules** — rebuild generation as slot → eligible base → Recovery Level → rarity/mod budget → compatible affixes/grades → augment sockets → source/faction bias → validation; reward elites/bosses/deep objectives with better opportunities instead of larger piles of disposable gear
 - [ ] **P8.5-G Class/specialization gear integration** — replace most exact-affix requirements with tag/threshold-driven preferences and multiple valid routes into each synergy; preserve occasional hard requirements only for genuinely exotic interactions; ensure Refined/Prototype/Singular gear can all support viable class builds
 - [ ] **P8.5-H Quality + Augment responsibility pass** — keep quality as limited base-frame improvement and Augments as controlled utility/specialization customization, generally 0–2 normal sockets; prevent either system from becoming another full affix stack or duplicating modifier progression
@@ -159,21 +159,21 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P8.5-E — Affix pools + conflicts + rarity budgets.**
+**Next: P8.5-F — Loot generation + anti-junk rules.**
 
-Start **P8.5-E — Affix pools + conflicts + rarity budgets** so legal rolls, mod groups/conflicts, Recovery Level gates, rarity budgets, weights, grades, and tradeoffs are explicit and mechanically coherent.
+Start **P8.5-F — Loot generation + anti-junk rules** so item generation follows one validated pipeline from slot/base eligibility through rarity, compatible affixes/grades, sockets, source/faction bias, and anti-junk opportunity rules.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.234**
+- Android beta: **0.0.1-beta.235**
 - Package: `app.ironshade.vector`
-- Verified: **P8.5-D Stat registry + local/global scope + build tags complete**
-- Gameplay source: `30b907f2beaf6cb04b0b4e64dba55ab6fc3df852`
-- Browser E2E: `35662108587`
-- Level 15 beta smoke: `35662108589`
-- Android beta.234: `35662108576`
-- APK artifact: `10666859262`
-- APK SHA-256: `e04b42bb514f04b63dddc5f1e7d04f5338f4a0f0ee07e4418158acc4a3233854`
+- Verified: **P8.5-E Affix pools + conflicts + rarity budgets complete**
+- Gameplay source: `a0b9ed59cad21ab953b39912849f279c8ce37896`
+- Browser E2E: `35664177993`
+- Level 15 beta smoke: `35664177901`
+- Android beta.235: `35664178163`
+- APK artifact: `10668966622`
+- APK SHA-256: `7dc9d592b699fddb1d78ce3b09ea59b011838b0036d882663ab8d67560d6889a`
 - Signing: debug-signed beta; permanent signing is P17-A
