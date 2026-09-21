@@ -59,7 +59,7 @@ Goal: make equipment answer **“What could I build around this?”** instead of
 - [x] **P8.5-A Gear architecture audit + target schema** — archived after merge + verification
 - [x] **P8.5-B Power-axis consolidation** — archived after merge + verification
 - [x] **P8.5-C Meaningful base-frame families** — archived after merge + verification
-- [ ] **P8.5-D Stat registry + local/global scope + build tags** — centralize stat semantics and scope, define shared Ballistics/Penetration/Armor Break/Precision/Projectile/Recoil/Mobility/Low-G/Thermal/Heat/Venting/Capacitor/Cooldown/Systems/Disruption/Relay/Mark/Pressure/Vacuum/Defense-style tags, and make combat/UI/loot/crafting consume the same definitions
+- [x] **P8.5-D Stat registry + local/global scope + build tags** — archived after merge + verification
 - [ ] **P8.5-E Affix pools + conflicts + rarity budgets** — make slot/base-aware legal pools, mod groups/conflicts, minimum Recovery Level, grade tables, weights and tradeoffs; Field = clean base, Refined = up to 2 explicit mods, Prototype = up to 6, Singular = curated fixed package; eliminate mechanically nonsensical rolls
 - [ ] **P8.5-F Loot generation + anti-junk rules** — rebuild generation as slot → eligible base → Recovery Level → rarity/mod budget → compatible affixes/grades → augment sockets → source/faction bias → validation; reward elites/bosses/deep objectives with better opportunities instead of larger piles of disposable gear
 - [ ] **P8.5-G Class/specialization gear integration** — replace most exact-affix requirements with tag/threshold-driven preferences and multiple valid routes into each synergy; preserve occasional hard requirements only for genuinely exotic interactions; ensure Refined/Prototype/Singular gear can all support viable class builds
@@ -159,21 +159,21 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P8.5-D — Stat registry + local/global scope + build tags.**
+**Next: P8.5-E — Affix pools + conflicts + rarity budgets.**
 
-Start **P8.5-D — Stat registry + local/global scope + build tags** so combat, loot, crafting, and Armory presentation share one definition of stat meaning, scope, and build linkage.
+Start **P8.5-E — Affix pools + conflicts + rarity budgets** so legal rolls, mod groups/conflicts, Recovery Level gates, rarity budgets, weights, grades, and tradeoffs are explicit and mechanically coherent.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.233**
+- Android beta: **0.0.1-beta.234**
 - Package: `app.ironshade.vector`
-- Verified: **P8.5-C Meaningful base-frame families complete**
-- Gameplay source: `311855564d9e6381e15470a274e24db168d60f67`
-- Browser E2E: `35660219711`
-- Level 15 beta smoke: `35660219687`
-- Android beta.233: `35660219691`
-- APK artifact: `10667401598`
-- APK SHA-256: `af8f18d5097802e3ecd3ef3d4a26075da92033df0afdd43c132e0bcc796dd9a7`
+- Verified: **P8.5-D Stat registry + local/global scope + build tags complete**
+- Gameplay source: `30b907f2beaf6cb04b0b4e64dba55ab6fc3df852`
+- Browser E2E: `35662108587`
+- Level 15 beta smoke: `35662108589`
+- Android beta.234: `35662108576`
+- APK artifact: `10666859262`
+- APK SHA-256: `e04b42bb514f04b63dddc5f1e7d04f5338f4a0f0ee07e4418158acc4a3233854`
 - Signing: debug-signed beta; permanent signing is P17-A
