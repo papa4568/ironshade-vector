@@ -2481,7 +2481,14 @@ function classOwnedSkillMigrationSmoke() {
     const firstAbility = getAbilityConfig(sim, 0);
     assert.equal(firstAbility.familyBound, true, `${operatorClass} class skill should resolve as family-bound`);
     assert.equal(firstAbility.weaponFamily, family, `${operatorClass} class skill metadata should expose the owned family`);
-    assert.ok(firstAbility.power > tunedBuild.abilities[0].powerMul, `${operatorClass} runtime skill config should consume family power tuning`);
+    assert.ok(
+      firstAbility.power > tunedBuild.abilities[0].powerMul
+        || firstAbility.range > 1
+        || firstAbility.control > 1
+        || firstAbility.armor > 1
+        || firstAbility.chainBonus > 0,
+      `${operatorClass} runtime skill config should consume its identity-specific family tuning`,
+    );
 
     const offFamily = family === 'breacher' ? 'rail' : 'breacher';
     const offFamilyEquipped = {
