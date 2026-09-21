@@ -105,6 +105,19 @@ This file is the permanent archive for completed production work. The active exe
   - Android artifact `10637979892` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.217`, debug signing, and APK SHA-256 `e8d9af5150c440e7072483e2d21d0dbf365bccb7b768a667f3fde16b6298d939`.
   - **Next: P8-B — Target control.**
 
+
+- [x] **P8-B Target control** — assisted targeting now retains one authoritative hostile lock across touch FIRE and targeted skills instead of reevaluating a fresh winner at every execution point.
+  - Added deterministic target-control memory for current target, acquisition time, and last-visible time. Near-equal challengers cannot cause rapid lock flicker, while materially higher-priority visible threats can still take over.
+  - Brief LOS loss receives a bounded grace window; after that window an occluded hostile is released rather than being tracked indefinitely through cover. Dead and out-of-range hostiles invalidate immediately.
+  - The retained target ID is passed into FIRE and targeted skill execution, so the action cannot silently reacquire a different enemy after the HUD lock has already settled.
+  - Manual pointer/touch-drag and right-stick aim clear assisted lock state immediately. FIRE release, restart/transit, focus loss, and non-targeted ability paths also clear target-control memory.
+  - P8-A exceptions remain intact: self-centered, mobility, projected ground/directional, and other non-targeted abilities do not inherit assisted target control.
+  - Regression coverage locks stickiness, priority takeover, occlusion grace/expiry, death/range invalidation, manual reset, retained-target FIRE/skill execution, and the GameCanvas touch/manual override routing contract.
+  - PR #137 Browser E2E `35601768142` passed desktop and mobile-landscape including the full deterministic regression suite, production build, and live player journeys.
+  - Verified on merged gameplay source `0f3842a19542df286d3e996b52960fe72af6fa27`: Browser E2E `35601943572`, Level 15 beta smoke `35601943626`, and Android beta.218 `35601943603` all passed. Android verification includes full web regression/build, native project generation, package/version/SDK/signature checks, emulator install/launch/runtime smoke, touch/lifecycle coverage, authored assets, and Chapter 3 playthrough.
+  - Android artifact `10639383799` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.218`, debug signing, and APK SHA-256 `e57e511355264caef61f8bd42250a11d082672ccb9873d1d28a146d1a7d65e88`.
+  - **Next: P8-C — Target feedback/QA.**
+
 ## P0 — Foundation ✅ COMPLETE
 
 - [x] Three classes: Vanguard / Vector / Systems
