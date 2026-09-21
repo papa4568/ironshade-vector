@@ -39,7 +39,8 @@ P6.1–P6.3 and P6-A/P6-B/P6-C/P6-D/P6-E are archived.
 
 ## P7 — Loot Rarity & Equipment Presentation
 
-- [x] **P7-A Rarity contract** — one source of truth for Field/Refined/Prototype/Singular meaning, order, tokens, text/icon/shape accessibility
+P7-A is archived after merge + verification.
+
 - [ ] **P7-B World loot** — rarity-readable silhouette/beacon, distance readability, pickup feedback/audio
 - [ ] **P7-C Menu consistency** — equipped, storage, crafting, comparison, rewards, loot feed, debrief all use the same rarity language
 - [ ] **P7-D Inspector/tools** — frame/base identity, quality, recovery level, modifier grades, augments, compatibility, source, build-changing effects, filters/sorts
