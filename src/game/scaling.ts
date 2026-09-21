@@ -1,6 +1,6 @@
 import type { CampaignState, Contract } from './campaign';
 import { chooseEnemyProtocols, protocolThreatCost, type EnemyCombatClass } from './eliteProtocols';
-import { applyEnemyMutations, chooseEnemyMutations, mutationThreatCost, mutationThreatCostForEnemy } from './t9Mutations';
+import { applyEnemyMutations, chooseEnemyMutations, mutationThreatCost, mutationThreatCostForEnemy, type HighTierMutationId } from './t9Mutations';
 import type { Enemy, EnemyRole, EnemyVariant } from './sim';
 
 export type EncounterPattern = 'swarm' | 'mixed' | 'elite-led';
@@ -143,7 +143,7 @@ export function applyThreatBudget(enemies: Enemy[], contract: Contract) {
     .sort((a, b) => Number(b.combatClass === 'elite') - Number(a.combatClass === 'elite') || deterministicRank(contract, a) - deterministicRank(contract, b));
   for (const enemy of mutationCandidates) {
     if (mutationBudget <= 0) break;
-    const chosen = [];
+    const chosen: HighTierMutationId[] = [];
     for (const id of chooseEnemyMutations(contract, enemy, mutationLimit)) {
       const cost = mutationThreatCost(id);
       if (cost > mutationBudget) continue;
