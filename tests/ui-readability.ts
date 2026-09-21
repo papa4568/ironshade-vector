@@ -46,6 +46,10 @@ const browserWorkflow = read('.github/workflows/browser-e2e.yml');
 const androidWorkflow = read('.github/workflows/android-apk.yml');
 const parallaxDebt = read('src/game/parallaxDebt.ts');
 const scaling = read('src/game/scaling.ts');
+const rarity = read('src/game/rarity.ts');
+const fieldLoot = read('src/game/fieldLoot.ts');
+const lootQuality = read('src/game/lootQuality.ts');
+const gearDepth = read('src/game/gearDepth.ts');
 
 assert(shipHub.includes('PARALLAX INTEL // ROUTE RECONSTRUCTION // LV15–18') && shipHub.includes('parallaxDebtNextRequiredLevel'), 'Campaign UI must present the expanded LV15–18 Parallax Debt progression and its level gates.');
 assert(shipHub.includes('PARALLAX DEBT // CONTRACT') && shipHub.includes('parallaxChoice.choices.map') && shipHub.includes('chooseParallaxDebtBranch'), 'Contract and campaign surfaces must expose the Parallax Debt decision and closing branch.');
@@ -73,7 +77,12 @@ assert(!armory.includes('2 PIECE'), 'Equipment Bay still exposes 2-piece set tar
 assert(!armory.includes('4 PIECE'), 'Equipment Bay still exposes 4-piece set targets.');
 assert(!armory.includes('setName'), 'Equipment Bay still renders undiscovered set names.');
 assert(armory.includes('PRIMARY EFFECT'), 'Item inspector is missing plain-language quick read.');
-assert(armory.includes('RULE-CHANGER'), 'Rarity meaning cues are missing from gear UI.');
+assert(rarity.includes("cue: 'RULE-CHANGER'") && armory.includes('rarityCue(item)'), 'Rarity meaning cues are missing from the shared contract or gear UI.');
+assert(rarity.includes("export const rarityOrder = ['Field', 'Refined', 'Prototype', 'Singular'] as const") && rarity.includes('accessibleLabel') && rarity.includes('colorValue') && rarity.includes('shape:') && rarity.includes('icon:'), 'P7-A rarity contract is missing order, color, icon, shape, or accessible-text tokens.');
+assert(armory.includes('rarity-contract-legend') && armory.includes('Equipment rarity guide') && armory.includes('rarityDefinition(item.rarity).icon'), 'Build gear UI is not exposing the shared non-color rarity language.');
+assert(equipmentCss.includes('P7-A // shared rarity contract presentation') && equipmentCss.includes('.rarity-contract-legend') && equipmentCss.includes('.rarity-shape'), 'Rarity legend presentation is missing responsive shape-cue styling.');
+assert(fieldLoot.includes('rarityDefinition(rarity).colorValue') && fieldLoot.includes('rarityDefinition(rarity).worldLabel'), 'Ground loot still owns duplicate rarity colors or labels.');
+assert(meta.includes('export type Rarity = ItemRarity') && lootQuality.includes("Exclude<ItemRarity, 'Singular'>") && gearDepth.includes('export type GearRarity = ItemRarity'), 'Equipment systems still duplicate the rarity type contract.');
 assert(armory.includes('activeDoctrineStates'), 'Discovered-only loadout interactions are missing.');
 
 assert(combat.includes('HEALTH EXPOSED'), 'Combat UI does not explicitly call out broken armor and exposed health.');
