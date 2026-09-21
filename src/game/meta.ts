@@ -1,5 +1,5 @@
 import type { CombatBuild, SingularTraitId, SpecializationId, Telemetry, WeaponId } from './sim';
-import type { OperatorClassId } from './classSkills';
+import { operatorWeaponFamilyForClass, type OperatorClassId } from './classSkills';
 export type { OperatorClassId } from './classSkills';
 import { factionFrames, factionGearChance, factionSetDefinitions, type EquipmentFaction } from './factionGear';
 import { frameGenerationForRecovery, recoveryLevelForSource, type FrameGeneration } from './scaling';
@@ -394,7 +394,7 @@ export const operatorClassDefinitions: OperatorClassDefinition[] = [
     signatureName: 'Slipstream',
     signatureDescription: 'Dodging primes the next shot with greatly reduced recoil, increased projectile speed, and bonus penetration. Tier II adds a short damage spike.',
     combatLoop: 'Vector Shift or dodge to a new angle → Deadeye Lock a priority target → fire or Splitshot through the opening.',
-    starterPair: 'Carbine/Rail + mobility geometry',
+    starterPair: 'Rail Lance + mobility geometry',
     branchAffinities: ['Mobility', 'Awareness'],
     specializationIds: ['momentum-broker', 'survey-deadeye', 'redline-pilot'],
     resonanceTier1: '2 resonant frames // +4% move speed, improved low-g control, and a wider Slipstream firing window.',
@@ -409,7 +409,7 @@ export const operatorClassDefinitions: OperatorClassDefinition[] = [
     signatureName: 'Closed Loop',
     signatureDescription: 'Chaining different MAG, MARK, and ARC abilities advances the previous ability. Completing the three-link loop recycles capacitor and sheds weapon heat.',
     combatLoop: 'Polarity Well groups the room → Relay Hack spreads control → Cascade Arc completes the network and Closed Loop cycle.',
-    starterPair: 'Systems Rig + Implant',
+    starterPair: 'Carbine + Systems Rig',
     branchAffinities: ['Systems', 'Engineering'],
     specializationIds: ['grid-weaver', 'capacitor-conductor', 'thermal-shunter'],
     resonanceTier1: '2 resonant frames // +8% capacitor regeneration, +6% weapon cooling, and stronger Closed Loop timing.',
@@ -419,7 +419,7 @@ export const operatorClassDefinitions: OperatorClassDefinition[] = [
 
 const operatorClassIds = new Set<OperatorClassId>(operatorClassDefinitions.map(definition => definition.id));
 const slotClassAffinity: Record<EquipmentSlot, OperatorClassId> = {
-  carbine: 'vector',
+  carbine: 'systems',
   breacher: 'vanguard',
   rail: 'vector',
   suit: 'vanguard',
@@ -462,6 +462,37 @@ export function operatorClassForProfile(profile: Pick<PlayerProfile, 'operatorCl
   return best.id;
 }
 
+const weaponSlots: WeaponId[] = ['carbine', 'breacher', 'rail'];
+function isWeaponSlot(slot: EquipmentSlot): slot is WeaponId { return weaponSlots.includes(slot as WeaponId); }
+export function activeWeaponFamilyForProfile(profile: Pick<PlayerProfile, 'operatorClass' | 'specialization' | 'allocatedNodes'>): WeaponId {
+  return operatorWeaponFamilyForClass(operatorClassForProfile(profile));
+}
+
+export function normalizeClassArmament(profile: PlayerProfile): PlayerProfile {
+  const activeWeapon = activeWeaponFamilyForProfile(profile);
+  const activeEquippedId = profile.equipped[activeWeapon];
+  const activeEquipped = activeEquippedId ? profile.inventory.find(item => item.id === activeEquippedId && item.slot === activeWeapon && item.levelRequirement <= profile.level) : undefined;
+  let inventory = profile.inventory;
+  let equippedId = activeEquipped?.id ?? null;
+  if (!equippedId) {
+    const starter = starterItems.find(item => item.slot === activeWeapon)!;
+    const storedStarter = inventory.find(item => item.id === starter.id && item.slot === activeWeapon && item.levelRequirement <= profile.level);
+    const usableStored = inventory.find(item => item.slot === activeWeapon && item.levelRequirement <= profile.level);
+    if (storedStarter) equippedId = storedStarter.id;
+    else if (usableStored) equippedId = usableStored.id;
+    else {
+      const restoredStarter = cloneItem(starter);
+      inventory = [...inventory, restoredStarter];
+      equippedId = restoredStarter.id;
+    }
+  }
+  return {
+    ...profile,
+    inventory,
+    equipped: { ...profile.equipped, carbine: null, breacher: null, rail: null, [activeWeapon]: equippedId },
+  };
+}
+
 export function itemBuildAffinities(item: Item): OperatorClassId[] {
   const affinities = new Set<OperatorClassId>([slotClassAffinity[item.slot]]);
   if (item.faction) affinities.add(factionClassAffinity[item.faction]);
@@ -498,7 +529,7 @@ const maxLevelXp = levelThresholds[levelThresholds.length - 1];
 
 export function createDefaultProfile(): PlayerProfile {
   const inventory = starterItems.map(cloneItem);
-  return { version: 3, xp: 0, level: 1, progressionPoints: 0, allocatedNodes: [], abilityMods: { mag: null, mark: null, arc: null }, operatorClass: 'vanguard', classSelectionComplete: false, specialization: null, specializationOverclock: false, inventory, equipped: { carbine: 'starter-carbine', breacher: 'starter-breacher', rail: 'starter-rail', suit: 'starter-suit', rig: 'starter-rig', implant: 'starter-implant' }, settings: { aimAssist: 'balanced', rightStickFire: true, screenShake: true, effectIntensity: 'full', effectsVolume: 0.65, uiVolume: 0.45, haptics: true, telemetrySharing: false, tutorialComplete: false }, runsCompleted: 0 };
+  return { version: 3, xp: 0, level: 1, progressionPoints: 0, allocatedNodes: [], abilityMods: { mag: null, mark: null, arc: null }, operatorClass: 'vanguard', classSelectionComplete: false, specialization: null, specializationOverclock: false, inventory, equipped: { carbine: null, breacher: 'starter-breacher', rail: null, suit: 'starter-suit', rig: 'starter-rig', implant: 'starter-implant' }, settings: { aimAssist: 'balanced', rightStickFire: true, screenShake: true, effectIntensity: 'full', effectsVolume: 0.65, uiVolume: 0.45, haptics: true, telemetrySharing: false, tutorialComplete: false }, runsCompleted: 0 };
 }
 export function loadProfile(): PlayerProfile {
   if (typeof window === 'undefined') return createDefaultProfile();
@@ -522,7 +553,7 @@ export function loadProfile(): PlayerProfile {
     const specializationOverclock = normalizedLevel >= 16 && !!specialization && parsed.specializationOverclock === true;
     const operatorClass = operatorClassForProfile({ operatorClass: parsed.operatorClass, specialization, allocatedNodes });
     const classSelectionComplete = typeof parsed.classSelectionComplete === 'boolean' ? parsed.classSelectionComplete : true;
-    return {
+    return normalizeClassArmament({
       ...defaults,
       ...parsed,
       xp: normalizedXp,
@@ -537,12 +568,12 @@ export function loadProfile(): PlayerProfile {
       equipped: { ...defaults.equipped, ...parsed.equipped },
       inventory: parsed.inventory.map(item => cloneItem(item)),
       allocatedNodes,
-    } as PlayerProfile;
+    } as PlayerProfile);
   } catch {
     return createDefaultProfile();
   }
 }
-export function saveProfile(profile: PlayerProfile) { if (typeof window === 'undefined') return true; try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(profile)); return true; } catch { return false; } }
+export function saveProfile(profile: PlayerProfile) { if (typeof window === 'undefined') return true; try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizeClassArmament(profile))); return true; } catch { return false; } }
 function levelForXp(xp: number) { let level = 1; for (let index = 1; index < levelThresholds.length; index += 1) if (xp >= levelThresholds[index]) level = index + 1; return level; }
 export function xpProgress(profile: PlayerProfile) { if (profile.level >= levelThresholds.length) return { current: 1, needed: 1, maxed: true }; const current = levelThresholds[Math.min(profile.level - 1, levelThresholds.length - 1)] ?? 0; const next = levelThresholds[Math.min(profile.level, levelThresholds.length - 1)] ?? current; return { current: profile.xp - current, needed: Math.max(1, next - current), maxed: false }; }
 function seeded(seedValue: number) { let value = seedValue >>> 0; return () => { value ^= value << 13; value ^= value >>> 17; value ^= value << 5; return (value >>> 0) / 4294967296; }; }
@@ -853,8 +884,26 @@ export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep
   };
   return { profile: profileNext, xpGained, levelsGained, loot };
 }
-export function equipItem(profile: PlayerProfile, itemId: string): { profile: PlayerProfile; message: string } { const item = profile.inventory.find(entry => entry.id === itemId); if (!item) return { profile, message: 'Item is no longer in ship storage.' }; if (item.levelRequirement > profile.level) return { profile, message: `Requires operator level ${item.levelRequirement}.` }; return { profile: { ...profile, equipped: { ...profile.equipped, [item.slot]: item.id } }, message: `${item.name} equipped.` }; }
-export function unequipSlot(profile: PlayerProfile, slot: EquipmentSlot): { profile: PlayerProfile; message: string } { if (slot === 'carbine' || slot === 'breacher' || slot === 'rail') return { profile, message: 'A weapon assembly is required in every weapon family.' }; return { profile: { ...profile, equipped: { ...profile.equipped, [slot]: null } }, message: `${slot.toUpperCase()} slot cleared.` }; }
+export function equipItem(profile: PlayerProfile, itemId: string): { profile: PlayerProfile; message: string } {
+  const item = profile.inventory.find(entry => entry.id === itemId);
+  if (!item) return { profile, message: 'Item is no longer in ship storage.' };
+  if (item.levelRequirement > profile.level) return { profile, message: `Requires operator level ${item.levelRequirement}.` };
+  if (isWeaponSlot(item.slot)) {
+    const activeWeapon = activeWeaponFamilyForProfile(profile);
+    if (item.slot !== activeWeapon) {
+      const className = operatorClassDefinitions.find(definition => definition.id === operatorClassForProfile(profile))?.name ?? 'Operator';
+      return { profile, message: `${className} arsenal is locked to ${activeWeapon.toUpperCase()}; ${item.name} remains in ship storage.` };
+    }
+  }
+  return { profile: normalizeClassArmament({ ...profile, equipped: { ...profile.equipped, [item.slot]: item.id } }), message: `${item.name} equipped.` };
+}
+export function unequipSlot(profile: PlayerProfile, slot: EquipmentSlot): { profile: PlayerProfile; message: string } {
+  if (isWeaponSlot(slot)) {
+    const activeWeapon = activeWeaponFamilyForProfile(profile);
+    if (slot === activeWeapon) return { profile, message: `Your class arsenal requires an equipped ${activeWeapon.toUpperCase()} armament.` };
+  }
+  return { profile: { ...profile, equipped: { ...profile.equipped, [slot]: null } }, message: `${slot.toUpperCase()} slot cleared.` };
+}
 export function discardItem(profile: PlayerProfile, itemId: string): { profile: PlayerProfile; message: string } { const item = profile.inventory.find(entry => entry.id === itemId); if (!item) return { profile, message: 'Item not found.' }; if (Object.values(profile.equipped).includes(itemId)) return { profile, message: 'Unequip this item before discarding it.' }; return { profile: { ...profile, inventory: profile.inventory.filter(entry => entry.id !== itemId) }, message: `${item.name} discarded.` }; }
 export function allocateNode(profile: PlayerProfile, nodeId: string): { profile: PlayerProfile; message: string } { const node = progressionNodes.find(entry => entry.id === nodeId); if (!node) return { profile, message: 'Progression node unavailable.' }; if (profile.allocatedNodes.includes(nodeId)) return { profile, message: 'Node already allocated.' }; if (profile.progressionPoints <= 0) return { profile, message: 'Gain another level to earn a progression point.' }; if (node.requires && !profile.allocatedNodes.includes(node.requires)) return { profile, message: 'Allocate the previous node in this branch first.' }; return { profile: { ...profile, progressionPoints: profile.progressionPoints - 1, allocatedNodes: [...profile.allocatedNodes, nodeId] }, message: `${node.name} allocated.` }; }
 export function setAbilityMod(profile: PlayerProfile, ability: AbilityId, modId: string | null): PlayerProfile {
@@ -879,17 +928,17 @@ export function setOperatorClass(profile: PlayerProfile, operatorClass: Operator
       clearsClassEvolution = true;
     }
   }
-  const next: PlayerProfile = {
+  const next = normalizeClassArmament({
     ...profile,
     operatorClass,
     classSelectionComplete: true,
     specialization: clearsSpecialization ? null : profile.specialization,
     specializationOverclock: clearsSpecialization ? false : profile.specializationOverclock,
     abilityMods: nextAbilityMods,
-  };
+  });
   const name = operatorClassDefinitions.find(definition => definition.id === operatorClass)?.name ?? 'Operator';
   const cleared = [clearsSpecialization ? 'specialization' : '', clearsClassEvolution ? 'class skill evolution' : ''].filter(Boolean).join(' and ');
-  return { profile: next, message: cleared ? `${name} class active // incompatible ${cleared} cleared; progression nodes and equipment are unchanged.` : `${name} class active // progression nodes, lenses, and equipment remain available.` };
+  return { profile: next, message: cleared ? `${name} class active // incompatible ${cleared} cleared; ${activeWeaponFamilyForProfile(next).toUpperCase()} arsenal equipped and other weapons moved to storage.` : `${name} class active // ${activeWeaponFamilyForProfile(next).toUpperCase()} arsenal equipped; other weapon families remain in storage.` };
 }
 export function setSpecialization(profile: PlayerProfile, specialization: SpecializationId | null): PlayerProfile {
   if (profile.level < 15) return profile;
@@ -901,9 +950,10 @@ export function setSpecialization(profile: PlayerProfile, specialization: Specia
 export function setSpecializationOverclock(profile: PlayerProfile, enabled: boolean): PlayerProfile { if (profile.level < 16 || !profile.specialization) return profile; return { ...profile, specializationOverclock: enabled }; }
 export function setProfileSettings(profile: PlayerProfile, settings: Partial<ProfileSettings>): PlayerProfile { return { ...profile, settings: { ...profile.settings, ...settings } }; }
 function equippedItems(profile: PlayerProfile) {
+  const activeWeapon = activeWeaponFamilyForProfile(profile);
   return (Object.keys(profile.equipped) as EquipmentSlot[])
     .map(slot => itemForSlot(profile, slot))
-    .filter((item): item is Item => !!item);
+    .filter((item): item is Item => !!item && (!isWeaponSlot(item.slot) || item.slot === activeWeapon));
 }
 
 export function gearResonanceForProfile(profile: PlayerProfile, classId: OperatorClassId = operatorClassForProfile(profile)): GearResonanceState {
