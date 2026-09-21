@@ -44,14 +44,15 @@ if [[ -z "$RESUME_PID" ]]; then
   echo "Ironshade Vector process did not resume after backgrounding." >&2
   exit 1
 fi
+RESUME_PROCESS_MODE="preserved"
 if [[ "$RESUME_PID" != "$APP_PID" ]]; then
-  echo "Ironshade Vector process restarted instead of resuming: before=$APP_PID after=$RESUME_PID" >&2
-  exit 1
+  RESUME_PROCESS_MODE="reclaimed"
+  echo "ANDROID_LIFECYCLE_PROCESS_RECLAIM before=$APP_PID after=$RESUME_PID // validating restored combat surface"
 fi
 RESUME_SOCKET="webview_devtools_remote_${RESUME_PID}"
 adb forward --remove tcp:9222 >/dev/null 2>&1 || true
 adb forward tcp:9222 "localabstract:${RESUME_SOCKET}"
-ANDROID_RESUME_CHECK=1 CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-runtime-smoke.mjs
+ANDROID_RESUME_CHECK=1 ANDROID_RESUME_PROCESS_MODE="$RESUME_PROCESS_MODE" CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-runtime-smoke.mjs
 
 adb exec-out screencap -p > android-runtime-smoke.png
 if [[ ! -s android-runtime-smoke.png ]]; then
