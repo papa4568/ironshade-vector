@@ -35,9 +35,7 @@ Target: **premium console/PC-quality ARPG presentation on modern phones**.
 
 ## P6 — T9–T12 Directive Expansion
 
-P6.1–P6.3 and P6-A/P6-B/P6-C/P6-D are archived.
-
-- [ ] **P6-E Endgame verification** — deterministic encounter simulations + worst-case T12 stress/adaptive-quality testing
+P6.1–P6.3 and P6-A/P6-B/P6-C/P6-D/P6-E are archived.
 
 ## P7 — Loot Rarity & Equipment Presentation
 
@@ -148,20 +146,20 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P6-E — Endgame verification.**
+**Next: P7-A — Rarity contract.**
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.209**
+- Android beta: **0.0.1-beta.210**
 - Package: `app.ironshade.vector`
-- Verified: **P6-D Chase reward package complete**
-- Gameplay source: `18147504baeab95146f5d1fbfb53c8ec3fe1a49e`
-- PR Browser E2E: `35559001381`
-- Merged-main Browser E2E: `35559131881`
-- Level 15 beta smoke: `35559131901`
-- Android beta.209: `35559131902`
-- APK artifact: `10621546868`
-- APK SHA-256: `f465b97d1d17bd419734b413b5d81c130e2a03db8acfa3a4dc52f5c26e521602`
+- Verified: **P6-E Endgame verification complete**
+- Gameplay source: `d2e2448f2bc693df70684bcb5097c4b1fcfa31ba`
+- PR Browser E2E: `35560181053`
+- Merged-main Browser E2E: `35560310881`
+- Level 15 beta smoke: `35560310891`
+- Android beta.210: `35560310916`
+- APK artifact: `10621449019`
+- APK SHA-256: `bbd8a2e133be6793ba7c9ed74d1ba2131961adf475fa67cd13c26b86b4bc9d04`
 - Signing: debug-signed beta; permanent signing is P17-A
