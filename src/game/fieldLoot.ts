@@ -1,4 +1,6 @@
-export type GroundLootRarity = 'Field' | 'Refined' | 'Prototype' | 'Singular';
+import { rarityDefinition, type ItemRarity } from './rarity';
+
+export type GroundLootRarity = ItemRarity;
 export type GroundLootSource = 'standard' | 'enhanced' | 'elite' | 'boss';
 export type GroundLootCombatClass = 'standard' | 'enhanced' | 'elite' | 'command';
 export type GroundLootQualityFloor = 0 | 1 | 2 | 3 | 4 | 5;
@@ -132,15 +134,9 @@ export function rollGroundLoot(input: GroundLootRollInput, random: () => number)
 }
 
 export function lootColor(rarity: GroundLootRarity) {
-  if (rarity === 'Singular') return 0xf0a45b;
-  if (rarity === 'Prototype') return 0xc47ce8;
-  if (rarity === 'Refined') return 0x69aee8;
-  return 0xc3d0ca;
+  return rarityDefinition(rarity).colorValue;
 }
 
 export function lootLabel(rarity: GroundLootRarity) {
-  if (rarity === 'Singular') return 'SINGULAR RECOVERY';
-  if (rarity === 'Prototype') return 'PROTOTYPE RECOVERY';
-  if (rarity === 'Refined') return 'REFINED RECOVERY';
-  return 'FIELD RECOVERY';
+  return rarityDefinition(rarity).worldLabel;
 }
