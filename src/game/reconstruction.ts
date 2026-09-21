@@ -2,6 +2,7 @@ import type { SalvageWallet } from './campaign';
 import { availableAugments, augmentDefinition, frameImplicitDescription, resolveFrameIdentity, type AugmentId } from './gearDepth';
 import { modifierFamilyFor, modifierGradeCeilingForRecovery, type ModifierFamily, type ModifierGrade } from './lootQuality';
 import { affixPoolForSlot, materializeModifier, type AffixId, type Item, type PlayerProfile } from './meta';
+import { affixStatProfile } from './gearStats';
 
 export type ReconstructionAction =
   | { kind: 'quality' }
@@ -67,7 +68,7 @@ function hashText(text: string) {
 function candidateAffix(item: Item, family: ModifierFamily, excludeId: AffixId | null, salt: string) {
   const occupied = new Set(item.modifiers.map(modifier => modifier.id));
   if (excludeId) occupied.delete(excludeId);
-  const candidates = affixPoolForSlot(item.slot).filter(id => modifierFamilyFor(id) === family && !occupied.has(id) && id !== excludeId);
+  const candidates = affixPoolForSlot(item.slot).filter(id => affixStatProfile(id).stats.length > 0 && modifierFamilyFor(id) === family && !occupied.has(id) && id !== excludeId);
   if (candidates.length === 0) return null;
   return candidates[hashText(`${item.id}:${salt}`) % candidates.length];
 }
