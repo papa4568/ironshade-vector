@@ -4,27 +4,12 @@ import type { ModifierFamily, ModifierGrade, RecoveryQualityGrade } from './loot
 import type { FrameIdentityId, AugmentId } from './gearDepth';
 import type { EquipmentFaction } from './factionGear';
 import type { SingularTraitId } from './sim';
+import { gearBuildTags, validateGearStatRegistry, type GearBuildTag, type GearStatId } from './gearStats';
 
 export const gearSchemaVersion = 1 as const;
 
-export const gearBuildTags = [
-  'ballistics', 'penetration', 'armor-break', 'precision', 'projectile', 'recoil',
-  'mobility', 'low-g', 'thermal', 'heat', 'venting', 'capacitor', 'cooldown',
-  'systems', 'disruption', 'relay', 'mark', 'pressure', 'vacuum', 'defense',
-] as const;
-export type GearBuildTag = (typeof gearBuildTags)[number];
-
-export type GearStatScope = 'local-base' | 'local-affix' | 'global' | 'skill-family' | 'environment';
-export type GearStatValueKind = 'flat' | 'percent' | 'multiplier' | 'boolean' | 'rule';
-
-export type GearStatDefinition = {
-  id: string;
-  label: string;
-  scope: GearStatScope;
-  valueKind: GearStatValueKind;
-  tags: GearBuildTag[];
-  description: string;
-};
+export { gearBuildTags, gearStatDefinitions, gearStatDefinition, validateGearStatRegistry } from './gearStats';
+export type { GearBuildTag, GearStatDefinition, GearStatId, GearStatScope, GearStatValueKind } from './gearStats';
 
 export type GearBaseDefinition = {
   id: string;
@@ -36,8 +21,8 @@ export type GearBaseDefinition = {
   frameIdentity: FrameIdentityId;
   core: string;
   tradeoff: string;
-  inherentStats: string[];
-  implicitStats: string[];
+  inherentStats: GearStatId[];
+  implicitStats: GearStatId[];
   allowedAffixGroups: AffixId[];
   buildTags: GearBuildTag[];
   faction?: EquipmentFaction;
@@ -45,8 +30,8 @@ export type GearBaseDefinition = {
 
 export type GearAffixGrade = {
   grade: ModifierGrade;
-  stats: Record<string, number>;
-  tradeoffs?: Record<string, number>;
+  stats: Partial<Record<GearStatId, number>>;
+  tradeoffs?: Partial<Record<GearStatId, number>>;
 };
 
 export type GearAffixDefinition = {
@@ -66,8 +51,8 @@ export type GearAugmentDefinition = {
   name: string;
   slots: EquipmentSlot[];
   buildTags: GearBuildTag[];
-  stats: Record<string, number>;
-  tradeoffs?: Record<string, number>;
+  stats: Partial<Record<GearStatId, number>>;
+  tradeoffs?: Partial<Record<GearStatId, number>>;
 };
 
 export type GearSingularCategory =
@@ -218,6 +203,7 @@ export function validateGearSchemaContract() {
   if (tags.size !== gearBuildTags.length) return false;
   const axes = new Set(gearPowerAxisAudit.map(axis => axis.id));
   if (axes.size !== gearPowerAxisAudit.length) return false;
-  return Object.values(gearTargetOwnership).every(Boolean)
+  return validateGearStatRegistry()
+    && Object.values(gearTargetOwnership).every(Boolean)
     && gearPowerAxisAudit.every(axis => axis.currentOwners.length > 0 && axis.targetOwner && axis.targetRole);
 }
