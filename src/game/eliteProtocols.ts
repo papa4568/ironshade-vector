@@ -99,28 +99,25 @@ export const eliteProtocolDefinitions: ProtocolDefinition[] = [
 export type EnhancedProtocolVariantDefinition = {
   id: EnhancedProtocolVariantId;
   protocolId: EnemyProtocolId;
-  name: string;
-  shortName: string;
   minTier: number;
-  effect: string;
 };
 
 export const enhancedProtocolVariants: EnhancedProtocolVariantDefinition[] = [
-  { id: 'ablative-bloom', protocolId: 'reactivePlating', name: 'Ablative Bloom', shortName: 'ABLATIVE', minTier: 10, effect: 'Re-knit armor also patches one nearby armored ally.' },
-  { id: 'cutline-pair', protocolId: 'breachmaker', name: 'Cutline Pair', shortName: 'CUTLINE', minTier: 10, effect: 'Demolition cycle can remove a second nearby cover lane.' },
-  { id: 'twin-well-lock', protocolId: 'magneticLock', name: 'Twin-Well Lock', shortName: 'TWIN-WELL', minTier: 10, effect: 'Mass lock projects a second offset gravity well.' },
-  { id: 'anchor-singularity', protocolId: 'gravityAnchor', name: 'Anchor Singularity', shortName: 'SINGULARITY', minTier: 10, effect: 'Close-range anchor cycles project a local gravity well.' },
-  { id: 'wake-anchor', protocolId: 'countermassMobility', name: 'Wake Anchor', shortName: 'WAKE-ANCHOR', minTier: 10, effect: 'Lateral vector bursts leave a short-lived gravity wake.' },
-  { id: 'cascade-grid', protocolId: 'arcConduit', name: 'Cascade Grid', shortName: 'CASCADE', minTier: 10, effect: 'Arc conduit energizes a second offset shock-grid path.' },
-  { id: 'overlink-mesh', protocolId: 'repairMesh', name: 'Overlink Mesh', shortName: 'OVERLINK', minTier: 10, effect: 'Repair cycles also patch one nearby armored ally.' },
-  { id: 'dual-rack', protocolId: 'droneEscort', name: 'Dual Rack', shortName: 'DUAL-RACK', minTier: 10, effect: 'Escort rack can launch a second finite support drone.' },
-  { id: 'cross-shutter', protocolId: 'emergencyShutters', name: 'Cross-Shutter', shortName: 'CROSS-SHUT', minTier: 10, effect: 'Portable shutters close a mirrored second firing lane.' },
-  { id: 'capacitor-scramble', protocolId: 'signalJammer', name: 'Capacitor Scramble', shortName: 'CAP-SCRAM', minTier: 10, effect: 'Jammer pulse also drains operator capacitor charge.' },
-  { id: 'coolant-redline', protocolId: 'thermalOverrun', name: 'Coolant Redline', shortName: 'COOLANT', minTier: 10, effect: 'Redline burst widens and leaves a coolant hazard on recovery.' },
-  { id: 'tech-bus-sync', protocolId: 'suppressionCoordinator', name: 'Tech Bus Sync', shortName: 'BUS-SYNC', minTier: 10, effect: 'Coordinated fire window also accelerates technician hazards.' },
-  { id: 'cross-fan-volley', protocolId: 'penetratorVolley', name: 'Cross-Fan Volley', shortName: 'CROSS-FAN', minTier: 10, effect: 'Penetrator volley widens and seeds a follow-up shock grid.' },
-  { id: 'mass-theft', protocolId: 'salvageInterdictor', name: 'Mass Theft', shortName: 'MASS-THEFT', minTier: 10, effect: 'Objective theft also projects a gravity well onto the operator lane.' },
-  { id: 'hard-lock-grid', protocolId: 'recoveryDenial', name: 'Hard Lock Grid', shortName: 'HARD-LOCK', minTier: 10, effect: 'Recovery denial also deploys a portable shutter.' },
+  { id: 'ablative-bloom', protocolId: 'reactivePlating', minTier: 10 },
+  { id: 'cutline-pair', protocolId: 'breachmaker', minTier: 10 },
+  { id: 'twin-well-lock', protocolId: 'magneticLock', minTier: 10 },
+  { id: 'anchor-singularity', protocolId: 'gravityAnchor', minTier: 10 },
+  { id: 'wake-anchor', protocolId: 'countermassMobility', minTier: 10 },
+  { id: 'cascade-grid', protocolId: 'arcConduit', minTier: 10 },
+  { id: 'overlink-mesh', protocolId: 'repairMesh', minTier: 10 },
+  { id: 'dual-rack', protocolId: 'droneEscort', minTier: 10 },
+  { id: 'cross-shutter', protocolId: 'emergencyShutters', minTier: 10 },
+  { id: 'capacitor-scramble', protocolId: 'signalJammer', minTier: 10 },
+  { id: 'coolant-redline', protocolId: 'thermalOverrun', minTier: 10 },
+  { id: 'tech-bus-sync', protocolId: 'suppressionCoordinator', minTier: 10 },
+  { id: 'cross-fan-volley', protocolId: 'penetratorVolley', minTier: 10 },
+  { id: 'mass-theft', protocolId: 'salvageInterdictor', minTier: 10 },
+  { id: 'hard-lock-grid', protocolId: 'recoveryDenial', minTier: 10 },
 ];
 
 export type ExclusiveProtocolCombinationDefinition = {
@@ -145,7 +142,6 @@ export const exclusiveProtocolCombinations: ExclusiveProtocolCombinationDefiniti
 
 const byId = new Map(eliteProtocolDefinitions.map(definition => [definition.id, definition]));
 const combinationById = new Map(exclusiveProtocolCombinations.map(definition => [definition.id, definition]));
-const enhancedVariantById = new Map(enhancedProtocolVariants.map(definition => [definition.id, definition]));
 const enhancedVariantsByProtocol = new Map<EnemyProtocolId, EnhancedProtocolVariantDefinition[]>();
 for (const definition of enhancedProtocolVariants) {
   const variants = enhancedVariantsByProtocol.get(definition.protocolId) ?? [];
@@ -180,8 +176,8 @@ function hashText(value: string) {
 }
 
 export function protocolDefinition(id: EnemyProtocolId) { return byId.get(id)!; }
-export function enhancedProtocolVariantDefinition(id: EnhancedProtocolVariantId) { return enhancedVariantById.get(id)!; }
-export function enhancedProtocolVariantForInstance(instance: EnemyProtocolInstance) { return instance.variantId ? enhancedVariantById.get(instance.variantId) : undefined; }
+export function enhancedProtocolVariantDefinition(id: EnhancedProtocolVariantId) { return enhancedProtocolVariants.find(definition => definition.id === id)!; }
+export function enhancedProtocolVariantForInstance(instance: EnemyProtocolInstance) { return instance.variantId ? enhancedProtocolVariantDefinition(instance.variantId) : undefined; }
 export function protocolThreatCost(instance: EnemyProtocolInstance) { return protocolDefinition(instance.id).threatCost + (instance.enhanced ? 1 : 0); }
 export function protocolRewardValue(instance: EnemyProtocolInstance) { return protocolDefinition(instance.id).rewardWeight + (instance.enhanced ? 1 : 0); }
 
@@ -295,7 +291,7 @@ export function enhancedProtocolVariantForecastForContract(contract: Contract) {
     if (protocol.objectiveModes && !protocol.objectiveModes.includes(contract.objectiveMode)) continue;
     const variant = (enhancedVariantsByProtocol.get(id) ?? []).find(item => tier >= item.minTier);
     if (!variant) continue;
-    names.push(variant.name);
+    names.push(variant.id);
     if (names.length >= 4) break;
   }
   return names;
