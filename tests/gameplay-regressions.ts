@@ -997,10 +997,11 @@ function sameClassBuildDiversitySmoke() {
   const momentumShiftCooldown = momentumState.player.abilityCooldowns[0];
   const momentumDodgeCooldown = momentumState.player.dodgeCooldown;
   const momentumCapBeforeShot = momentumState.player.capacitor;
+  const momentumRailCost = momentumState.weapons.rail.capacitorCost;
   assert.equal(triggerFire(momentumState), true);
   assert.ok(momentumState.player.abilityCooldowns[0] < momentumShiftCooldown, 'Inertial Dividend should deepen Vector Shift recovery after spending Slingshot Slipstream.');
   assert.ok(momentumState.player.dodgeCooldown < momentumDodgeCooldown, 'Inertial Dividend should deepen dodge recovery after the recoil route resolves.');
-  assert.ok(momentumState.player.capacitor > momentumCapBeforeShot, 'Inertial Dividend should return capacitor from the extended recoil route.');
+  assert.ok(momentumState.player.capacitor > momentumCapBeforeShot - momentumRailCost, 'Inertial Dividend should return capacitor beyond the Rail Lance shot cost.');
   assert.match(momentumState.eventText, /INERTIAL DIVIDEND/, 'Momentum Broker + Slingshot Shift needs its own capstone feedback.');
   assert.ok(momentumState.effects.some(effect => effect.active && effect.kind === 'vector'), 'Inertial Dividend should emit the Vector capstone world cue.');
 
