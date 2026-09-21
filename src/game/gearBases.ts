@@ -2,12 +2,16 @@ import type { AffixId, EquipmentSlot } from './meta';
 import type { FrameIdentityId } from './gearDepth';
 import type { GearBaseDefinition } from './gearSchema';
 import type { FrameGeneration } from './scaling';
+import { buildTagsForStats, mergeBuildTags } from './gearStats';
 
 type BaseSpec = Omit<GearBaseDefinition, 'generationRange'> & {
   generationRange: [FrameGeneration, FrameGeneration];
 };
 
-const base = (definition: BaseSpec): BaseSpec => definition;
+const base = (definition: BaseSpec): BaseSpec => ({
+  ...definition,
+  buildTags: mergeBuildTags(definition.buildTags, buildTagsForStats([...definition.inherentStats, ...definition.implicitStats])),
+});
 
 export const gearBaseDefinitions: BaseSpec[] = [
   base({

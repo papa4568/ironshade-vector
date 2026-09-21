@@ -8,13 +8,14 @@ import { applyAugments, applyFrameIdentity, augmentSlotCount, factionFrameIdenti
 import type { GroundLootReceipt } from './fieldLoot';
 import type { ItemRarity } from './rarity';
 import { gearBaseForFrameIdentity, gearBasesForSlot, resolveGearBase, rollGearBase } from './gearBases';
+import { affixStatProfile, gearStatDefinition, mergeBuildTags, type GearAffixSemanticId, type GearBuildTag, type GearStatId } from './gearStats';
 
 export type EquipmentSlot = WeaponId | 'suit' | 'rig' | 'implant';
 export type Rarity = ItemRarity;
 export type AbilityId = 'mag' | 'mark' | 'arc';
 export type MobileAimAssist = 'light' | 'balanced';
-export type AffixId = 'hypervelocity' | 'countermass' | 'overdrive' | 'cryoloop' | 'extendedFeed' | 'tungsten' | 'vacuumSeal' | 'servoWeave' | 'capacitorRecycler' | 'railFracture' | 'dodgeVent' | 'magRedirect' | 'breachPropulsion' | 'markShear' | 'arcDrone';
-export type ItemModifier = { id: AffixId; label: string; description: string; mechanical: boolean; family?: ModifierFamily; grade?: ModifierGrade };
+export type AffixId = GearAffixSemanticId;
+export type ItemModifier = { id: AffixId; label: string; description: string; mechanical: boolean; family?: ModifierFamily; grade?: ModifierGrade; statIds?: GearStatId[]; tradeoffStatIds?: GearStatId[]; buildTags?: GearBuildTag[] };
 export type Item = { id: string; baseId: string; name: string; slot: EquipmentSlot; equipmentClass: string; rarity: Rarity; levelRequirement: number; core: string; modifiers: ItemModifier[]; faction?: EquipmentFaction; singularTrait?: SingularTraitId; singularEffect?: string; recoveryLevel?: number; frameGeneration?: FrameGeneration; frameIdentity?: FrameIdentityId; frameImplicit?: string; equipmentQuality?: number; augmentSlots?: number; augments?: AugmentId[]; recoveryQuality?: RecoveryQualityGrade; recoverySource?: string };
 export type EffectIntensity = 'full' | 'reduced';
 export type ProfileSettings = { aimAssist: MobileAimAssist; rightStickFire: boolean; screenShake: boolean; effectIntensity: EffectIntensity; effectsVolume: number; uiVolume: number; haptics: boolean; telemetrySharing: boolean; tutorialComplete: boolean };
@@ -76,7 +77,7 @@ function gradedDescription(id: AffixId, grade: ModifierGrade) {
   if (id === 'markShear') return `Marked targets expose weak armor paths; marked-hit amplification reaches ${gradePercent((0.18 + 0.16 * power) * 100)}%.`;
   return `A relay microdrone attacks disrupted targets for ${gradePercent(8 * power)} damage per cycle.`;
 }
-export function materializeModifier(id: AffixId, grade: ModifierGrade = 3): ItemModifier { const base = affixes[id]; return { ...base, family: modifierFamilyFor(id), grade, description: gradedDescription(id, grade) }; }
+export function materializeModifier(id: AffixId, grade: ModifierGrade = 3): ItemModifier { const base = affixes[id]; const semantics = affixStatProfile(id); return { ...base, family: modifierFamilyFor(id), grade, description: gradedDescription(id, grade), statIds: [...semantics.stats], tradeoffStatIds: [...semantics.tradeoffs], buildTags: [...semantics.buildTags] }; }
 
 function frameImplicitFor(slot: EquipmentSlot, generation: FrameGeneration, identity?: FrameIdentityId, quality = 0) { const resolved = identity ?? inferFrameIdentity(slot, `${slot}:${generation}`); return frameImplicitDescription(resolved, generation, quality); }
 
@@ -420,24 +421,6 @@ const factionClassAffinity: Record<EquipmentFaction, OperatorClassId> = {
   longarc: 'vector',
   heliostat: 'systems',
 };
-const modifierClassAffinity: Partial<Record<AffixId, OperatorClassId[]>> = {
-  overdrive: ['vanguard'],
-  tungsten: ['vanguard'],
-  vacuumSeal: ['vanguard'],
-  breachPropulsion: ['vanguard'],
-  hypervelocity: ['vector'],
-  countermass: ['vector'],
-  servoWeave: ['vector'],
-  dodgeVent: ['vector'],
-  markShear: ['vector'],
-  railFracture: ['vector'],
-  cryoloop: ['systems'],
-  capacitorRecycler: ['systems'],
-  magRedirect: ['systems'],
-  arcDrone: ['systems'],
-  extendedFeed: ['vanguard', 'systems'],
-};
-
 export function operatorClassForProfile(profile: Pick<PlayerProfile, 'operatorClass' | 'specialization' | 'allocatedNodes'>): OperatorClassId {
   if (profile.operatorClass && operatorClassIds.has(profile.operatorClass)) return profile.operatorClass;
   const specializationClass = specializationDefinitions.find(definition => definition.id === profile.specialization)?.operatorClass;
@@ -488,10 +471,27 @@ export function normalizeClassArmament(profile: PlayerProfile): PlayerProfile {
   };
 }
 
+export function itemBuildTags(item: Item): GearBuildTag[] {
+  const base = resolveGearBase(item.slot, item.baseId, item.frameIdentity);
+  const modifierTags = item.modifiers.flatMap(modifier => modifier.buildTags ?? affixStatProfile(modifier.id).buildTags);
+  return mergeBuildTags(base?.buildTags ?? [], modifierTags);
+}
+
+export function itemStatDefinitions(item: Item) {
+  const base = resolveGearBase(item.slot, item.baseId, item.frameIdentity);
+  const ids = new Set<GearStatId>([...(base?.inherentStats ?? []), ...(base?.implicitStats ?? [])]);
+  for (const modifier of item.modifiers) {
+    const semantics = affixStatProfile(modifier.id);
+    for (const statId of modifier.statIds ?? semantics.stats) ids.add(statId);
+    for (const statId of modifier.tradeoffStatIds ?? semantics.tradeoffs) ids.add(statId);
+  }
+  return [...ids].map(gearStatDefinition);
+}
+
 export function itemBuildAffinities(item: Item): OperatorClassId[] {
   const affinities = new Set<OperatorClassId>(slotClassAffinities[item.slot]);
   if (item.faction) affinities.add(factionClassAffinity[item.faction]);
-  for (const modifier of item.modifiers) for (const affinity of modifierClassAffinity[modifier.id] ?? []) affinities.add(affinity);
+  for (const modifier of item.modifiers) for (const affinity of affixStatProfile(modifier.id).classAffinities) affinities.add(affinity);
   return operatorClassDefinitions.map(definition => definition.id).filter(id => affinities.has(id));
 }
 
@@ -1121,7 +1121,7 @@ function applySpecializationGearSynergy(build: CombatBuild, profile: PlayerProfi
 }
 
 function freshBuild(): CombatBuild { const weapon = () => ({ damageMul: 1, speedMul: 1, penetrationAdd: 0, recoilMul: 1, heatPerShotMul: 1, heatDissipationMul: 1, magazineAdd: 0, reloadMul: 1, armorDamageMul: 1, healthMultiplierMul: 1, knockbackMul: 1 }); return { operatorClass: null, classResonanceTier: 0, classSkillFamily: { family: null, frameGeneration: 1, frameIdentity: null, singularLinked: false, powerMul: 1, rangeMul: 1, controlMul: 1, armorMul: 1, recoveryMul: 1, costMul: 1, chainBonus: 0, sources: [] }, weapon: { carbine: weapon(), breacher: weapon(), rail: weapon() }, player: { maxHpAdd: 0, maxArmorAdd: 0, maxCapAdd: 0, moveSpeedMul: 1, capRegenMul: 1, vacuumResistance: 0, lowGControl: 0, ventSpeedMul: 1 }, mechanics: { railFragment: false, railFragmentScale: 0, dodgeVent: false, dodgeVentScale: 0, magRedirect: false, magRedirectScale: 0, breacherPropulsion: false, breacherPropulsionScale: 0, markWeakArmor: false, markWeakArmorScale: 0, arcDrone: false, arcDroneScale: 0, recoilVectoring: false, breachDoctrine: false, sensorPenetration: false, widebandMark: false, magOverdriveKick: false, arcGroundLoop: false, magBoundarySink: false, markExecutionTrace: false, arcCascadeLattice: false, vanguardSiegeRam: false, vanguardFaultlineTag: false, vanguardReprisalPulse: false, vectorSlingshotShift: false, vectorTriangulationLock: false, vectorNeedleFan: false, systemsAnchorLattice: false, systemsRecursiveIntrusion: false, systemsReturnCurrent: false }, singularTraits: [], specialization: null, specializationOverclock: false, abilities: [{ costMul: 1, cooldownMul: 1, powerMul: 1 }, { costMul: 1, cooldownMul: 1, powerMul: 1 }, { costMul: 1, cooldownMul: 1, powerMul: 1 }] }; }
-function applyAffix(build: CombatBuild, item: Item, modifier: ItemModifier) { const id = modifier.id; const power = modifierPowerFactor(modifier.grade ?? 3); const tradeoff = modifierTradeoffFactor(modifier.grade ?? 3); const weapon = item.slot === 'carbine' || item.slot === 'breacher' || item.slot === 'rail' ? build.weapon[item.slot] : null; if (id === 'hypervelocity' && weapon) { weapon.speedMul *= 1 + 0.18 * power; weapon.penetrationAdd += Math.round(12 * power); weapon.recoilMul *= 1 + 0.1 * tradeoff; } if (id === 'countermass') { if (weapon) { weapon.recoilMul *= 1 - 0.22 * power; weapon.damageMul *= 1 - 0.07 * tradeoff; } else build.player.lowGControl += 0.12 * power; } if (id === 'overdrive' && weapon) { weapon.damageMul *= 1 + 0.14 * power; weapon.recoilMul *= 1 + 0.2 * tradeoff; weapon.heatPerShotMul *= 1 + 0.12 * tradeoff; } if (id === 'cryoloop') { if (weapon) { weapon.heatDissipationMul *= 1 + 0.3 * power; weapon.penetrationAdd -= Math.round(8 * tradeoff); } else for (const stats of Object.values(build.weapon)) stats.heatDissipationMul *= 1 + 0.15 * power; } if (id === 'extendedFeed' && weapon) { weapon.magazineAdd += Math.max(1, Math.round(6 * power)); weapon.reloadMul *= 1 + 0.12 * tradeoff; } if (id === 'tungsten' && weapon) { weapon.armorDamageMul *= 1 + 0.3 * power; weapon.penetrationAdd += Math.round(14 * power); weapon.heatPerShotMul *= 1 + 0.08 * tradeoff; } if (id === 'vacuumSeal') build.player.vacuumResistance = Math.min(0.8, build.player.vacuumResistance + 0.55 * power); if (id === 'servoWeave') { build.player.moveSpeedMul *= 1 + 0.08 * power; build.player.lowGControl += 0.22 * power; } if (id === 'capacitorRecycler') { build.player.capRegenMul *= 1 + 0.2 * power; for (const ability of build.abilities) ability.costMul *= 1 - 0.1 * power; } if (id === 'railFracture') { build.mechanics.railFragment = true; build.mechanics.railFragmentScale = Math.max(build.mechanics.railFragmentScale, power); } if (id === 'dodgeVent') { build.mechanics.dodgeVent = true; build.mechanics.dodgeVentScale = Math.max(build.mechanics.dodgeVentScale, power); } if (id === 'magRedirect') { build.mechanics.magRedirect = true; build.mechanics.magRedirectScale = Math.max(build.mechanics.magRedirectScale, power); } if (id === 'breachPropulsion') { build.mechanics.breacherPropulsion = true; build.mechanics.breacherPropulsionScale = Math.max(build.mechanics.breacherPropulsionScale, power); } if (id === 'markShear') { build.mechanics.markWeakArmor = true; build.mechanics.markWeakArmorScale = Math.max(build.mechanics.markWeakArmorScale, power); } if (id === 'arcDrone') { build.mechanics.arcDrone = true; build.mechanics.arcDroneScale = Math.max(build.mechanics.arcDroneScale, power); } }
+function applyAffix(build: CombatBuild, item: Item, modifier: ItemModifier) { const id = modifier.id; const semantics = affixStatProfile(id); const power = modifierPowerFactor(modifier.grade ?? 3); const tradeoff = modifierTradeoffFactor(modifier.grade ?? 3); const localAffix = [...semantics.stats, ...semantics.tradeoffs].some(statId => gearStatDefinition(statId).scope === 'local-affix'); const weaponSlot = item.slot === 'carbine' || item.slot === 'breacher' || item.slot === 'rail' ? item.slot : null; const weapon = localAffix && weaponSlot ? build.weapon[weaponSlot] : null; if (id === 'hypervelocity' && weapon) { weapon.speedMul *= 1 + 0.18 * power; weapon.penetrationAdd += Math.round(12 * power); weapon.recoilMul *= 1 + 0.1 * tradeoff; } if (id === 'countermass') { if (weapon) { weapon.recoilMul *= 1 - 0.22 * power; weapon.damageMul *= 1 - 0.07 * tradeoff; } else build.player.lowGControl += 0.12 * power; } if (id === 'overdrive' && weapon) { weapon.damageMul *= 1 + 0.14 * power; weapon.recoilMul *= 1 + 0.2 * tradeoff; weapon.heatPerShotMul *= 1 + 0.12 * tradeoff; } if (id === 'cryoloop') { if (weapon) { weapon.heatDissipationMul *= 1 + 0.3 * power; weapon.penetrationAdd -= Math.round(8 * tradeoff); } else for (const stats of Object.values(build.weapon)) stats.heatDissipationMul *= 1 + 0.15 * power; } if (id === 'extendedFeed' && weapon) { weapon.magazineAdd += Math.max(1, Math.round(6 * power)); weapon.reloadMul *= 1 + 0.12 * tradeoff; } if (id === 'tungsten' && weapon) { weapon.armorDamageMul *= 1 + 0.3 * power; weapon.penetrationAdd += Math.round(14 * power); weapon.heatPerShotMul *= 1 + 0.08 * tradeoff; } if (id === 'vacuumSeal') build.player.vacuumResistance = Math.min(0.8, build.player.vacuumResistance + 0.55 * power); if (id === 'servoWeave') { build.player.moveSpeedMul *= 1 + 0.08 * power; build.player.lowGControl += 0.22 * power; } if (id === 'capacitorRecycler') { build.player.capRegenMul *= 1 + 0.2 * power; for (const ability of build.abilities) ability.costMul *= 1 - 0.1 * power; } if (id === 'railFracture') { build.mechanics.railFragment = true; build.mechanics.railFragmentScale = Math.max(build.mechanics.railFragmentScale, power); } if (id === 'dodgeVent') { build.mechanics.dodgeVent = true; build.mechanics.dodgeVentScale = Math.max(build.mechanics.dodgeVentScale, power); } if (id === 'magRedirect') { build.mechanics.magRedirect = true; build.mechanics.magRedirectScale = Math.max(build.mechanics.magRedirectScale, power); } if (id === 'breachPropulsion') { build.mechanics.breacherPropulsion = true; build.mechanics.breacherPropulsionScale = Math.max(build.mechanics.breacherPropulsionScale, power); } if (id === 'markShear') { build.mechanics.markWeakArmor = true; build.mechanics.markWeakArmorScale = Math.max(build.mechanics.markWeakArmorScale, power); } if (id === 'arcDrone') { build.mechanics.arcDrone = true; build.mechanics.arcDroneScale = Math.max(build.mechanics.arcDroneScale, power); } }
 
 function applyClassSkillFamilyInfluence(build: CombatBuild, item: Item) {
   const family = build.classSkillFamily.family;
