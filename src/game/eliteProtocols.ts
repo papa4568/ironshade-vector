@@ -308,6 +308,6 @@ export function protocolTierSummary(operationTier: number, capacity: number) {
   if (operationTier <= 4) return 'Enhanced/Elite // normally 1 protocol';
   if (operationTier <= 7) return 'Enhanced/Elite // 1–2 protocols';
   if (operationTier <= 8) return 'Elite packages // up to 3 protocols';
-  if (operationTier === 9) return 'T9 Elite // exclusive 2–3 protocol packages online';
-  return 'High-tier Elite // exclusive packages · 2–4 protocols · named Enhanced variants';
+  if (operationTier === 9) return 'T9 Elite // exclusive packages · deterministic mutations online';
+  return 'High-tier Elite // exclusive packages · named Enhanced variants · mutation layer';
 }
