@@ -96,29 +96,23 @@ export const eliteProtocolDefinitions: ProtocolDefinition[] = [
   { id: 'recoveryDenial', name: 'Recovery Denial', shortName: 'DENIAL', family: 'objective', threatCost: 4, rewardWeight: 2, tell: 'A denial grid forms around tagged objective hardware.', counter: 'Disrupt the projector, isolate the grid, or approach from another lane.', baseCooldown: 6.3, enhanceable: true, objectiveModes: ['machinery-recovery', 'deep-salvage'] },
 ];
 
-export type EnhancedProtocolVariantDefinition = {
-  id: EnhancedProtocolVariantId;
-  protocolId: EnemyProtocolId;
-  minTier: number;
+const enhancedProtocolVariantByProtocol: Partial<Record<EnemyProtocolId, EnhancedProtocolVariantId>> = {
+  reactivePlating: 'ablative-bloom',
+  breachmaker: 'cutline-pair',
+  magneticLock: 'twin-well-lock',
+  gravityAnchor: 'anchor-singularity',
+  countermassMobility: 'wake-anchor',
+  arcConduit: 'cascade-grid',
+  repairMesh: 'overlink-mesh',
+  droneEscort: 'dual-rack',
+  emergencyShutters: 'cross-shutter',
+  signalJammer: 'capacitor-scramble',
+  thermalOverrun: 'coolant-redline',
+  suppressionCoordinator: 'tech-bus-sync',
+  penetratorVolley: 'cross-fan-volley',
+  salvageInterdictor: 'mass-theft',
+  recoveryDenial: 'hard-lock-grid',
 };
-
-export const enhancedProtocolVariants: EnhancedProtocolVariantDefinition[] = [
-  { id: 'ablative-bloom', protocolId: 'reactivePlating', minTier: 10 },
-  { id: 'cutline-pair', protocolId: 'breachmaker', minTier: 10 },
-  { id: 'twin-well-lock', protocolId: 'magneticLock', minTier: 10 },
-  { id: 'anchor-singularity', protocolId: 'gravityAnchor', minTier: 10 },
-  { id: 'wake-anchor', protocolId: 'countermassMobility', minTier: 10 },
-  { id: 'cascade-grid', protocolId: 'arcConduit', minTier: 10 },
-  { id: 'overlink-mesh', protocolId: 'repairMesh', minTier: 10 },
-  { id: 'dual-rack', protocolId: 'droneEscort', minTier: 10 },
-  { id: 'cross-shutter', protocolId: 'emergencyShutters', minTier: 10 },
-  { id: 'capacitor-scramble', protocolId: 'signalJammer', minTier: 10 },
-  { id: 'coolant-redline', protocolId: 'thermalOverrun', minTier: 10 },
-  { id: 'tech-bus-sync', protocolId: 'suppressionCoordinator', minTier: 10 },
-  { id: 'cross-fan-volley', protocolId: 'penetratorVolley', minTier: 10 },
-  { id: 'mass-theft', protocolId: 'salvageInterdictor', minTier: 10 },
-  { id: 'hard-lock-grid', protocolId: 'recoveryDenial', minTier: 10 },
-];
 
 export type ExclusiveProtocolCombinationDefinition = {
   id: ExclusiveProtocolCombinationId;
@@ -142,12 +136,6 @@ export const exclusiveProtocolCombinations: ExclusiveProtocolCombinationDefiniti
 
 const byId = new Map(eliteProtocolDefinitions.map(definition => [definition.id, definition]));
 const combinationById = new Map(exclusiveProtocolCombinations.map(definition => [definition.id, definition]));
-const enhancedVariantsByProtocol = new Map<EnemyProtocolId, EnhancedProtocolVariantDefinition[]>();
-for (const definition of enhancedProtocolVariants) {
-  const variants = enhancedVariantsByProtocol.get(definition.protocolId) ?? [];
-  variants.push(definition);
-  enhancedVariantsByProtocol.set(definition.protocolId, variants);
-}
 const locationBias: Record<LocationId, EnemyProtocolId[]> = {
   'orbital-station': ['reactivePlating', 'emergencyShutters', 'suppressionCoordinator', 'magneticLock', 'arcConduit', 'penetratorVolley'],
   'damaged-vessel': ['pressureHunter', 'vacuumAdapted', 'breachmaker', 'emergencyShutters', 'reactivePlating'],
@@ -176,8 +164,6 @@ function hashText(value: string) {
 }
 
 export function protocolDefinition(id: EnemyProtocolId) { return byId.get(id)!; }
-export function enhancedProtocolVariantDefinition(id: EnhancedProtocolVariantId) { return enhancedProtocolVariants.find(definition => definition.id === id)!; }
-export function enhancedProtocolVariantForInstance(instance: EnemyProtocolInstance) { return instance.variantId ? enhancedProtocolVariantDefinition(instance.variantId) : undefined; }
 export function protocolThreatCost(instance: EnemyProtocolInstance) { return protocolDefinition(instance.id).threatCost + (instance.enhanced ? 1 : 0); }
 export function protocolRewardValue(instance: EnemyProtocolInstance) { return protocolDefinition(instance.id).rewardWeight + (instance.enhanced ? 1 : 0); }
 
@@ -245,18 +231,16 @@ export function chooseEnemyProtocols(contract: Contract, role: EnemyRole, varian
   const enhancedChance = tier >= 12 ? 42 : tier >= 10 ? 24 : 0;
   const createInstance = (definition: ProtocolDefinition, combinationId?: ExclusiveProtocolCombinationId) => {
     const roll = hash32(contract.seed ^ enemyId * 2654435761 ^ hashText(definition.id)) % 100;
-    const variantCandidates = (enhancedVariantsByProtocol.get(definition.id) ?? []).filter(variant => tier >= variant.minTier);
-    const variant = !!definition.enhanceable && enhancedChance > 0 && roll < enhancedChance
-      ? [...variantCandidates].sort((a, b) => hash32(contract.seed ^ enemyId * 104729 ^ hashText(a.id)) - hash32(contract.seed ^ enemyId * 104729 ^ hashText(b.id)))[0]
-      : undefined;
+    const variantId = tier >= 10 ? enhancedProtocolVariantByProtocol[definition.id] : undefined;
+    const enhanced = !!definition.enhanceable && !!variantId && enhancedChance > 0 && roll < enhancedChance;
     const cooldownJitter = (hash32(contract.seed ^ enemyId * 131 ^ result.length * 17) % 140) / 100;
     return {
       id: definition.id,
-      enhanced: !!variant,
+      enhanced,
       cooldown: 1.6 + cooldownJitter,
       windup: 0,
       ...(combinationId ? { combinationId } : {}),
-      ...(variant ? { variantId: variant.id } : {}),
+      ...(enhanced ? { variantId } : {}),
     } satisfies EnemyProtocolInstance;
   };
 
@@ -289,9 +273,9 @@ export function enhancedProtocolVariantForecastForContract(contract: Contract) {
     if (!protocol.enhanceable) continue;
     if (protocol.locations && !protocol.locations.includes(contract.location)) continue;
     if (protocol.objectiveModes && !protocol.objectiveModes.includes(contract.objectiveMode)) continue;
-    const variant = (enhancedVariantsByProtocol.get(id) ?? []).find(item => tier >= item.minTier);
-    if (!variant) continue;
-    names.push(variant.id);
+    const variantId = enhancedProtocolVariantByProtocol[id];
+    if (!variantId) continue;
+    names.push(variantId);
     if (names.length >= 4) break;
   }
   return names;
