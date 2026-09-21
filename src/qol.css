@@ -398,7 +398,7 @@
   cursor: pointer;
 }
 .inventory-tools {
-  grid-template-columns: minmax(190px, 1fr) 180px auto;
+  grid-template-columns: minmax(190px, 1fr) 150px 180px auto;
 }
 .inventory-reset {
   min-height: 40px;
