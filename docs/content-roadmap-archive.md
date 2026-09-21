@@ -71,6 +71,17 @@ This file is the permanent archive for completed production work. The active exe
   - Android artifact `10623163424` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.213`, debug signing, and APK SHA-256 `ae391c5212cd32f939c01bb68ad0f74cdc01590c8b298f3ecd4331dacfcdf930`.
   - **Next: P7-D — Inspector/tools.**
 
+- [x] **P7-D Inspector/tools** — the equipment inspector now exposes base identity, frame identity/generation, Recovery Level and Recovery Quality, frame quality, explicit modifier count/peak grade, Augment occupancy/access/compatibility, recovery source, and equip/class compatibility before the deep technical section.
+  - Build-changing effects are called out explicitly: fixed Singular signatures, mechanical modifiers with grades, and active specialization gear-link candidates each receive a dedicated readable entry instead of being buried among generic modifiers.
+  - Ship Storage search now indexes base IDs, source text, Recovery Level, generation, frame quality, modifier grades/descriptions, and Augment hardware/name/description.
+  - Storage tooling now adds a rarity selector plus class-fit, augmented, and build-changing quick filters; sorting now includes rarity, top modifier grade, and Augments installed alongside existing quality/recovery/level/name ordering.
+  - Storage cards expose Recovery Level, peak modifier grade, frame quality, and Augment occupancy for fast scanning. Reset actions clear query, quick filter, rarity filter, and sort together.
+  - Responsive inspector telemetry uses a two-column identity grid that collapses to one column on narrow devices; compatibility states and build-changing panels remain visible without hover.
+  - PR #132 did not receive a GitHub pull-request workflow event despite reopen/synchronize attempts, so completion uses merged-main gates rather than treating an absent check as evidence.
+  - Verified on merged gameplay source `ca46720c37eee2adb568958e6b25d1a438546f0a`: Browser E2E `35564592351` passed desktop and mobile-landscape, Level 15 beta smoke `35564592312` passed, and Android beta.214 `35564592356` passed the full web regression/build, package/version/SDK/signature checks, emulator install/launch, mobile runtime/touch smoke, lifecycle resume, authored assets, and Chapter 3 mobile playthrough.
+  - Android artifact `10624176006` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.214`, debug signing, and APK SHA-256 `117ccad83f8304d2962e5c0c1862979abcd9fac449faf46eca49c55941817555`.
+  - **Next: P7-E — Singular + touch QA.**
+
 ## P0 — Foundation ✅ COMPLETE
 
 - [x] Three classes: Vanguard / Vector / Systems
