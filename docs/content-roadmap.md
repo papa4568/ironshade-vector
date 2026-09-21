@@ -252,7 +252,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] P4.17 Debrief improvements
 - [x] P4.18 Mobile performance
 
-## P5 — Class Capstones
+## P5 — Class Capstones ✅ COMPLETE
 
 - [x] P5.1 Vanguard third specialization
 - [x] P5.2 Vanguard skill evolution
@@ -264,9 +264,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] P5.8 Systems capstone interactions
 - [x] P5.9 Same-class builds feel different at LV16+
 - [x] P5.10 Specialization gear synergies
-- [ ] P5.11 Visual combat feedback
-- [ ] P5.12 Regression coverage
-- [ ] P5.13 Mobile playtesting
+- [x] P5.11 Visual combat feedback
+- [x] P5.12 Regression coverage
+- [x] P5.13 Mobile playtesting
 
 ## P6 — T9–T12 Directive Expansion
 
@@ -317,7 +317,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1, P2, P3, and **P4 — Megastructure Capstone Pass** are complete. **P5.1–P5.10 class-capstone work** is complete. Continue in roadmap order with **P5.11 — Visual combat feedback**.
+P1, P2, P3, **P4 — Megastructure Capstone Pass**, and **P5 — Class Capstones** are complete. Continue in roadmap order with **P6.1 — Exclusive protocol combinations**.
+
+**P5.11–P5.13 delivered:** the LV16+ class capstones now have distinct world-space combat language instead of sharing generic ability pulses. **Vanguard** capstones use a warm, braced shock-ring cue; **Vector** capstones use an elongated blue vector-sweep cue; **Systems** capstones use a violet rotating mesh pulse. The cues are emitted directly from all nine authored capstone interactions — Void Ram, Breach Cascade, Counterfort, Inertial Dividend, Reference Solution, Redline Needle, Induction Sink, Recursive Bus, and Mesh Reflux — without changing balance values or save data. Deterministic gameplay regression verifies all nine trigger paths, graphics regression locks the class-coded renderer contract and QA telemetry, PR Browser E2E run `35549019565` passed desktop/mobile-landscape full regression, production build, and player-journey QA, merged-main Browser E2E run `35549143093` passed both targets, and Level 15 beta smoke run `35549143109` passed. Android beta.201 run `35549143095` passed web regression/build, package/version/SDK/signature verification, native emulator install/launch/resume smoke, Android touch/runtime QA, and the Chapter 3 two-route touch playthrough; artifact `10617593551` was verified as debug-signed with APK SHA-256 `ab92800ca26af249bcba803b5c3e9b8f465c7c7ed3af4c16c4c121f85971e984`. **P5 is complete; P6.1 — Exclusive protocol combinations is next.**
 
 **P5.10 delivered:** every LV15 specialization now has one explicit gear link that activates from **Tier I class resonance plus a matching existing affix**, so specialization identity changes what recovered gear is worth without adding a parallel loot currency or class-locked equipment. Vanguard links are **Pressure Recirculator** (Pressure Diver + Layered vacuum seal), **Breach Stack** (Breach Vanguard + Tungsten penetrator stack), and **Counterfort Bracing** (Bulkhead Warden + Countermass buffer). Vector links are **Reaction Ledger** (Momentum Broker + Vector servo weave), **Survey Ballistics** (Survey Deadeye + Shear-map optics), and **Thermal Slip** (Redline Pilot + Kinetic heat shunt). Systems links are **Mesh Orchestra** (Grid Weaver + Relay microdrone), **Bus Harmonics** (Capacitor Conductor + Capacitor recycler), and **Heat Exchange** (Thermal Shunter + Cryogenic return loop). Each link produces a specialization-specific combat/stat effect, participates in build identity, appears in the specialization panel and Stats, and marks linked candidate gear in the Equipment Bay. Deterministic regression covers activation for all nine links plus representative Vanguard/Vector/Systems mechanical effects. PR Browser E2E run `35547738454` and merged-main Browser E2E run `35547831993` passed desktop/mobile full regression, production build, and player-journey QA; Level 15 beta smoke run `35547832057` passed; Android beta.200 run `35547832105` passed web regression/build, package/version/SDK/signature verification, native emulator install/launch/resume smoke, Android touch/runtime QA, and the Chapter 3 two-route touch playthrough. **P5.11 — Visual combat feedback** is next.
 
@@ -415,15 +417,16 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.200**
+- Android beta: **0.0.1-beta.201**
 - Package: `app.ironshade.vector`
-- Verified: Class capstone **P5.10 — Specialization gear synergies** is complete. All nine LV15 specializations now have an explicit gear link built from the existing class-resonance and affix systems: **Pressure Recirculator**, **Breach Stack**, **Counterfort Bracing**, **Reaction Ledger**, **Survey Ballistics**, **Thermal Slip**, **Mesh Orchestra**, **Bus Harmonics**, and **Heat Exchange**. Build identity, Equipment Bay specialization/candidate surfaces, and Stats expose the active link; deterministic gameplay/UI regression covers all nine activation paths plus representative Vanguard, Vector, and Systems effects. PR and merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.200 package/version/SDK/signature verification, native emulator smoke, Android touch/runtime smoke, and the Chapter 3 two-route touch playthrough all passed. **The next roadmap slice is P5.11 — Visual combat feedback.**
+- Verified: **P5 — Class Capstones is complete through P5.13.** All nine LV16+ capstone interactions now emit class-distinct world-space combat feedback with shape and motion differences in addition to class color, deterministic gameplay regression covers every capstone cue, and graphics regression protects the renderer/QA telemetry contract. PR and merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.201 package/version/SDK/signature verification, native emulator install/launch/resume smoke, Android touch/runtime QA, and the Chapter 3 two-route touch playthrough all passed. **The next roadmap slice is P6.1 — Exclusive protocol combinations.**
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P5.10 final PR head: `f67814f865dfb2c69c20494c99bf790a9a353320`
-- P5.10 merged main / APK source: `3797d046c2f3c7a91a6933d5f8e677572c182d52`
-- Final Browser E2E run: `35547831993`
-- Level 15 beta smoke run: `35547832057`
-- Android beta.200 run: `35547832105`
-- Android beta.200 artifact ID: `10616948017`
-- Android beta.200 artifact head: `3797d046c2f3c7a91a6933d5f8e677572c182d52`
-- APK SHA-256: `3191464a22b6e2cda9550403cbb986f2c1a6a006a0e930f9730480e8987e6534`
+- P5.11–P5.13 final PR head: `dd358437426c4c2c1d70cb7a896a7a3f5e92a161`
+- P5.11–P5.13 merged main / APK source: `12f01ffd4b3fd95d3b858c9277f04798227f587d`
+- PR Browser E2E run: `35549019565`
+- Final Browser E2E run: `35549143093`
+- Level 15 beta smoke run: `35549143109`
+- Android beta.201 run: `35549143095`
+- Android beta.201 artifact ID: `10617593551`
+- Android beta.201 artifact head: `12f01ffd4b3fd95d3b858c9277f04798227f587d`
+- APK SHA-256: `ab92800ca26af249bcba803b5c3e9b8f465c7c7ed3af4c16c4c121f85971e984`
