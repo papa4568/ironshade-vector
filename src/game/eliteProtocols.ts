@@ -32,12 +32,30 @@ export type ExclusiveProtocolCombinationId =
   | 'arc-blackout'
   | 'vacuum-hunt';
 
+export type EnhancedProtocolVariantId =
+  | 'ablative-bloom'
+  | 'cutline-pair'
+  | 'twin-well-lock'
+  | 'anchor-singularity'
+  | 'wake-anchor'
+  | 'cascade-grid'
+  | 'overlink-mesh'
+  | 'dual-rack'
+  | 'cross-shutter'
+  | 'capacitor-scramble'
+  | 'coolant-redline'
+  | 'tech-bus-sync'
+  | 'cross-fan-volley'
+  | 'mass-theft'
+  | 'hard-lock-grid';
+
 export type EnemyProtocolInstance = {
   id: EnemyProtocolId;
   enhanced: boolean;
   cooldown: number;
   windup: number;
   combinationId?: ExclusiveProtocolCombinationId;
+  variantId?: EnhancedProtocolVariantId;
 };
 
 type ProtocolDefinition = {
@@ -77,6 +95,24 @@ export const eliteProtocolDefinitions: ProtocolDefinition[] = [
   { id: 'salvageInterdictor', name: 'Salvage Interdictor', shortName: 'INTERDICT', family: 'objective', threatCost: 4, rewardWeight: 2, tell: 'Recovery-tag telemetry is copied to the hostile unit.', counter: 'Intercept the carrier; death restores the package tag.', baseCooldown: 5.4, enhanceable: true, objectiveModes: ['machinery-recovery', 'deep-salvage'], excludedVariants: ['salvageThief'] },
   { id: 'recoveryDenial', name: 'Recovery Denial', shortName: 'DENIAL', family: 'objective', threatCost: 4, rewardWeight: 2, tell: 'A denial grid forms around tagged objective hardware.', counter: 'Disrupt the projector, isolate the grid, or approach from another lane.', baseCooldown: 6.3, enhanceable: true, objectiveModes: ['machinery-recovery', 'deep-salvage'] },
 ];
+
+const enhancedProtocolVariantByProtocol: Partial<Record<EnemyProtocolId, EnhancedProtocolVariantId>> = {
+  reactivePlating: 'ablative-bloom',
+  breachmaker: 'cutline-pair',
+  magneticLock: 'twin-well-lock',
+  gravityAnchor: 'anchor-singularity',
+  countermassMobility: 'wake-anchor',
+  arcConduit: 'cascade-grid',
+  repairMesh: 'overlink-mesh',
+  droneEscort: 'dual-rack',
+  emergencyShutters: 'cross-shutter',
+  signalJammer: 'capacitor-scramble',
+  thermalOverrun: 'coolant-redline',
+  suppressionCoordinator: 'tech-bus-sync',
+  penetratorVolley: 'cross-fan-volley',
+  salvageInterdictor: 'mass-theft',
+  recoveryDenial: 'hard-lock-grid',
+};
 
 export type ExclusiveProtocolCombinationDefinition = {
   id: ExclusiveProtocolCombinationId;
@@ -195,9 +231,17 @@ export function chooseEnemyProtocols(contract: Contract, role: EnemyRole, varian
   const enhancedChance = tier >= 12 ? 42 : tier >= 10 ? 24 : 0;
   const createInstance = (definition: ProtocolDefinition, combinationId?: ExclusiveProtocolCombinationId) => {
     const roll = hash32(contract.seed ^ enemyId * 2654435761 ^ hashText(definition.id)) % 100;
-    const enhanced = !!definition.enhanceable && enhancedChance > 0 && roll < enhancedChance;
+    const variantId = tier >= 10 ? enhancedProtocolVariantByProtocol[definition.id] : undefined;
+    const enhanced = !!definition.enhanceable && !!variantId && enhancedChance > 0 && roll < enhancedChance;
     const cooldownJitter = (hash32(contract.seed ^ enemyId * 131 ^ result.length * 17) % 140) / 100;
-    return { id: definition.id, enhanced, cooldown: 1.6 + cooldownJitter, windup: 0, ...(combinationId ? { combinationId } : {}) } satisfies EnemyProtocolInstance;
+    return {
+      id: definition.id,
+      enhanced,
+      cooldown: 1.6 + cooldownJitter,
+      windup: 0,
+      ...(combinationId ? { combinationId } : {}),
+      ...(enhanced ? { variantId } : {}),
+    } satisfies EnemyProtocolInstance;
   };
 
   const exclusive = exclusiveProtocolCombinationForEnemy(contract, role, variant, count, enemyId);
@@ -215,6 +259,26 @@ export function chooseEnemyProtocols(contract: Contract, role: EnemyRole, varian
     result.push(createInstance(definition));
   }
   return result;
+}
+
+export function enhancedProtocolVariantForecastForContract(contract: Contract) {
+  const tier = contract.operationTier ?? contract.directiveTier ?? 1;
+  if (tier < 10) return [];
+  const directiveBias = (contract.directiveProtocolBias ?? []).filter(id => byId.has(id as EnemyProtocolId)) as EnemyProtocolId[];
+  const objectiveAdds: EnemyProtocolId[] = contract.objectiveMode === 'machinery-recovery' || contract.objectiveMode === 'deep-salvage' ? ['salvageInterdictor', 'recoveryDenial'] : [];
+  const candidates = [...directiveBias, ...(locationBias[contract.location] ?? []), ...objectiveAdds].filter((id, index, all) => all.indexOf(id) === index);
+  const names: EnhancedProtocolVariantId[] = [];
+  for (const id of candidates) {
+    const protocol = protocolDefinition(id);
+    if (!protocol.enhanceable) continue;
+    if (protocol.locations && !protocol.locations.includes(contract.location)) continue;
+    if (protocol.objectiveModes && !protocol.objectiveModes.includes(contract.objectiveMode)) continue;
+    const variantId = enhancedProtocolVariantByProtocol[id];
+    if (!variantId) continue;
+    names.push(variantId);
+    if (names.length >= 4) break;
+  }
+  return names;
 }
 
 export function protocolForecastForContract(contract: Contract) {
@@ -245,5 +309,5 @@ export function protocolTierSummary(operationTier: number, capacity: number) {
   if (operationTier <= 7) return 'Enhanced/Elite // 1–2 protocols';
   if (operationTier <= 8) return 'Elite packages // up to 3 protocols';
   if (operationTier === 9) return 'T9 Elite // exclusive 2–3 protocol packages online';
-  return 'High-tier Elite // exclusive packages · 2–4 protocols · Enhanced variants possible';
+  return 'High-tier Elite // exclusive packages · 2–4 protocols · named Enhanced variants';
 }

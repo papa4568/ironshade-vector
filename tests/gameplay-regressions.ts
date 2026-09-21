@@ -9,7 +9,8 @@ import { loadGameState, saveGameState } from '../src/game/gamePersistence';
 import { carryExpeditionLoot } from '../src/game/expeditionCarry';
 import { advanceParallaxDebtAfterContract, chooseParallaxDebtBranch, getParallaxDebtChoicePrompt, getParallaxDebtContract, parallaxDebtChapter, parallaxDebtIntel, parallaxDebtNextRequiredLevel, syncParallaxDebtAccess } from '../src/game/parallaxDebt';
 import { applyThreatBudget, operationScalingFor } from '../src/game/scaling';
-import { chooseEnemyProtocols, exclusiveProtocolCombinationForEnemy, exclusiveProtocolCombinationForInstances, exclusiveProtocolCombinationForecastForContract } from '../src/game/eliteProtocols';
+import { chooseEnemyProtocols, enhancedProtocolVariantForecastForContract, exclusiveProtocolCombinationForEnemy, exclusiveProtocolCombinationForInstances, exclusiveProtocolCombinationForecastForContract, protocolDefinition, protocolRewardValue, protocolThreatCost, type EnhancedProtocolVariantId, type EnemyProtocolId } from '../src/game/eliteProtocols';
+import { enhancedProtocolVariantPresentationFor } from '../src/game/enhancedProtocolVariantPresentation';
 
 function exclusiveProtocolCombinationSmoke() {
   const baseContract = generateContracts(createDefaultCampaign())[0]!;
@@ -74,6 +75,62 @@ function exclusiveProtocolCombinationSmoke() {
   assert.match(hubSource, /PACKAGE \/\//, 'contract tactical forecast should identify exclusive package names before deployment');
 }
 exclusiveProtocolCombinationSmoke();
+
+function enhancedProtocolVariantSmoke() {
+  const variantProtocols: Record<EnhancedProtocolVariantId, EnemyProtocolId> = {
+    'ablative-bloom': 'reactivePlating', 'cutline-pair': 'breachmaker', 'twin-well-lock': 'magneticLock', 'anchor-singularity': 'gravityAnchor', 'wake-anchor': 'countermassMobility',
+    'cascade-grid': 'arcConduit', 'overlink-mesh': 'repairMesh', 'dual-rack': 'droneEscort', 'cross-shutter': 'emergencyShutters', 'capacitor-scramble': 'signalJammer',
+    'coolant-redline': 'thermalOverrun', 'tech-bus-sync': 'suppressionCoordinator', 'cross-fan-volley': 'penetratorVolley', 'mass-theft': 'salvageInterdictor', 'hard-lock-grid': 'recoveryDenial',
+  };
+  const baseContract = generateContracts(createDefaultCampaign())[0]!;
+  const base = {
+    ...baseContract,
+    seed: 82177,
+    location: 'lattice-annex' as const,
+    objectiveMode: 'gravity-stabilization' as const,
+    eliteProtocolSlots: 3,
+    directiveProtocolBias: ['breachmaker', 'magneticLock'],
+  };
+  const t9Contract = { ...base, operationTier: 9 };
+  assert.deepEqual(enhancedProtocolVariantForecastForContract(t9Contract), [], 'named enhanced protocol variants must remain locked below T10');
+  for (let enemyId = 1; enemyId <= 48; enemyId += 1) {
+    const protocols = chooseEnemyProtocols(t9Contract, 'elite', 'standard', 3, enemyId);
+    assert.equal(protocols.some(protocol => protocol.enhanced || !!protocol.variantId), false, 'T9 enemies must not roll enhanced variants early');
+  }
+
+  const t10Contract = { ...base, operationTier: 10 };
+  const forecast = enhancedProtocolVariantForecastForContract(t10Contract);
+  assert.ok(forecast.includes('cutline-pair'), 'T10 Lattice Annex forecast should surface the Breachmaker enhanced variant');
+  assert.ok(forecast.includes('twin-well-lock'), 'T10 Lattice Annex forecast should surface the Magnetic Lock enhanced variant');
+  assert.equal(enhancedProtocolVariantPresentationFor('cutline-pair').name, 'Cutline Pair', 'lazy presentation metadata should resolve the authored full variant name');
+
+  const enhancedInstances = [];
+  for (let enemyId = 1; enemyId <= 96; enemyId += 1) {
+    enhancedInstances.push(...chooseEnemyProtocols(t10Contract, 'elite', 'standard', 3, enemyId).filter(protocol => protocol.enhanced));
+  }
+  assert.ok(enhancedInstances.length > 0, 'deterministic T10 sampling should produce named enhanced protocol variants');
+  for (const protocol of enhancedInstances) {
+    assert.ok(protocol.variantId, 'every enhanced protocol instance must carry an authored variant identity');
+    assert.equal(variantProtocols[protocol.variantId!], protocol.id, 'enhanced variant identity must belong to the protocol that rolled it');
+    assert.ok(enhancedProtocolVariantPresentationFor(protocol.variantId!).name.length > 0, 'enhanced variant identity must resolve to authored presentation metadata');
+    assert.equal(protocolThreatCost(protocol), protocolDefinition(protocol.id).threatCost + 1, 'enhanced variants must retain the existing +1 threat-budget premium');
+    assert.equal(protocolRewardValue(protocol), protocolDefinition(protocol.id).rewardWeight + 1, 'enhanced variants must retain the existing +1 reward premium');
+  }
+
+  const t12Contract = { ...base, operationTier: 12 };
+  const t12Enhanced = Array.from({ length: 96 }, (_, index) => chooseEnemyProtocols(t12Contract, 'elite', 'standard', 3, index + 1)).flat().filter(protocol => protocol.enhanced);
+  assert.ok(t12Enhanced.length > enhancedInstances.length, 'T12 deterministic sampling should use the higher authored enhanced-variant chance');
+
+  const runtimeSource = readFileSync('src/game/eliteProtocolRuntime.ts', 'utf8');
+  assert.match(runtimeSource, /protocol\.enhanced[\s\S]*ALLY PATCH/, 'named Reactive Plating variant must retain its ally-patch mechanical upgrade');
+  assert.match(runtimeSource, /protocol\.enhanced[\s\S]*PAIRED/, 'named Magnetic Lock variant must retain its paired gravity-well mechanical upgrade');
+  assert.match(runtimeSource, /protocol\.enhanced[\s\S]*CROSS-FAN/, 'named Penetrator Volley variant must retain its widened volley mechanical upgrade');
+  const combatSource = readFileSync('src/components/GameCanvas.tsx', 'utf8');
+  const hubSource = readFileSync('src/components/ShipHub.tsx', 'utf8');
+  assert.match(combatSource, /variantPresentation\?\.shortName/, 'combat HUD should render the authored enhanced variant short name instead of only a generic marker');
+  assert.match(hubSource, /VARIANT \/\//, 'contract tactical forecast should name legal enhanced variants before deployment');
+}
+enhancedProtocolVariantSmoke();
 
 function parallaxPacingTelemetry(): Telemetry {
   return {
