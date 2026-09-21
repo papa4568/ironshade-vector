@@ -43,7 +43,7 @@ P7-A/P7-B/P7-C/P7-D/P7-E are archived after merge + verification.
 
 ## P8 — Targeting & Class Arsenal Identity
 
-- [ ] **P8-A Target acquisition** — focus-before-fire/skill, legal target filtering, aim/range/visibility/threat/mark/boss scoring, deterministic resolution
+- [x] **P8-A Target acquisition** — archived after merge + verification
 - [ ] **P8-B Target control** — stickiness, occlusion grace, invalidation, manual override, self/ground/mobility exceptions
 - [ ] **P8-C Target feedback/QA** — reticle, audio/haptic cue, accessibility, touch/controller tests
 - [ ] **P8-D Hard arsenal lock + migration** — one active class-family armament slot; safely move incompatible equipped weapons to storage and guarantee a valid starter
@@ -142,21 +142,21 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P8-A — Target acquisition.**
+**Next: P8-B — Target control.**
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.215**
+- Android beta: **0.0.1-beta.217**
 - Package: `app.ironshade.vector`
-- Verified: **P7-E Singular + touch QA complete**
-- Gameplay source: `78f98fd006b1292409fa1e92fa544e7fc15ec5c8`
-- PR: `#133`
-- PR Browser E2E: `35565532206`
-- Merged-main Browser E2E: `35565674528`
-- Level 15 beta smoke: `35565674581`
-- Android beta.215: `35565674577`
-- APK artifact: `10624431236`
-- APK SHA-256: `b88e688f2ea4f69bcb70330ddc14c33d7c67784bd94017a95e5563caa195314d`
+- Verified: **P8-A Target acquisition complete**
+- Gameplay source: `22efdce02b3d6d95efc08fa7beac63466f50ce5c`
+- PRs: `#134` + `#135`
+- PR Browser E2E: `35599336973`
+- Merged-main Browser E2E: `35599713378`
+- Level 15 beta smoke: `35599713449`
+- Android beta.217: `35599713483`
+- APK artifact: `10637979892`
+- APK SHA-256: `e8d9af5150c440e7072483e2d21d0dbf365bccb7b768a667f3fde16b6298d939`
 - Signing: debug-signed beta; permanent signing is P17-A
