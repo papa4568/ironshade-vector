@@ -133,10 +133,40 @@ export function rollGroundLoot(input: GroundLootRollInput, random: () => number)
   };
 }
 
+export type GroundLootPresentation = {
+  color: number;
+  label: string;
+  icon: string;
+  shape: ReturnType<typeof rarityDefinition>['shape'];
+  rank: number;
+  markerScale: number;
+  ringScale: number;
+  beaconScale: number;
+  pickupCue: 'loot' | 'rareLoot';
+};
+
+export function groundLootPresentation(rarity: GroundLootRarity): GroundLootPresentation {
+  const definition = rarityDefinition(rarity);
+  const markerScale = [0.9, 1, 1.16, 1.34][definition.rank];
+  const ringScale = [0.9, 1, 1.2, 1.45][definition.rank];
+  const beaconScale = [0.68, 0.9, 1.18, 1.5][definition.rank];
+  return {
+    color: definition.colorValue,
+    label: definition.worldLabel,
+    icon: definition.icon,
+    shape: definition.shape,
+    rank: definition.rank,
+    markerScale,
+    ringScale,
+    beaconScale,
+    pickupCue: definition.rank >= 2 ? 'rareLoot' : 'loot',
+  };
+}
+
 export function lootColor(rarity: GroundLootRarity) {
-  return rarityDefinition(rarity).colorValue;
+  return groundLootPresentation(rarity).color;
 }
 
 export function lootLabel(rarity: GroundLootRarity) {
-  return rarityDefinition(rarity).worldLabel;
+  return groundLootPresentation(rarity).label;
 }
