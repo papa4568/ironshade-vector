@@ -242,6 +242,7 @@ function App() {
       directiveQualityBonus: selectedContract.directiveQualityBonus,
       directiveSingularChanceBonus: selectedContract.directiveSingularChanceBonus,
       directiveRecoveryLevelBonus: selectedContract.directiveRecoveryLevelBonus,
+      directiveTier: selectedContract.directiveTier,
     }, fieldLoot);
     const uplinkStatus: UplinkStatus = profile.settings.telemetrySharing ? 'sharing' : 'local';
     setCampaign(campaignReward.campaign);
