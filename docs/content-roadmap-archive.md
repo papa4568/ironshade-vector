@@ -61,6 +61,16 @@ This file is the permanent archive for completed production work. The active exe
   - Verified on merged gameplay source `6b4530f4ab28aedc06f79d2a6b51e12ec78f9ad4`: Browser E2E `35562379185` passed desktop and mobile-landscape, Level 15 beta smoke `35562379166` passed the full regression/production build, and Android beta.212 `35562379132` passed package/version/SDK/signature checks plus emulator install, mobile touch/runtime smoke, lifecycle resume, authored-asset verification, and the Chapter 3 touch playthrough. Artifact `10622443302` contains the debug-signed APK with SHA-256 `c3e6b1b04956be261ad654b0900cb4969b78e9ff9e6db0b3f5ecd1557282c768`.
   - **Next: P7-C — Menu consistency.**
 
+- [x] **P7-C Menu consistency** — equipped gear, ship storage, reconstruction/crafting, item comparison, contract reward previews, live combat pickup feed, and mission debrief now consume the same shared rarity wording instead of maintaining surface-specific labels.
+  - Added canonical menu/feed labels from the P7-A rarity contract: `FIELD · BASELINE`, `REFINED · UPGRADED`, `PROTOTYPE · HIGH-END`, and `SINGULAR · RULE-CHANGER`. Build surfaces render the same non-color rarity shape/icon through a shared `RarityText` component.
+  - Comparison rows now show current and candidate rarity with the same language; reconstruction lists, equipped slots, storage cards, inspector badges, debrief cards, reward rarity guidance, and combat pickup messages use the same formatter.
+  - Legacy Build/debrief rarity colors were aligned to the contract-owned Field/Refined/Prototype/Singular palette without changing loot odds, item generation, recovery quality, or reward balance.
+  - Existing Directive wording compatibility was preserved while adding the shared Singular descriptor. Regression coverage was updated to require the centralized formatter/icon path rather than stale local helpers.
+  - PR #131 verification: Browser E2E run `35563502326` passed desktop and mobile-landscape including full regression/production build plus browser player journeys. Earlier CI attempts correctly exposed three stale/compatibility assertions; each was fixed before the green run.
+  - Verified on merged gameplay source `d84fb598df17682499b48645bdc08b8fb7a0eeab`: Browser E2E `35563629622`, Level 15 beta smoke `35563629634`, and Android beta.213 `35563629631` all passed.
+  - Android artifact `10623163424` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.213`, debug signing, and APK SHA-256 `ae391c5212cd32f939c01bb68ad0f74cdc01590c8b298f3ecd4331dacfcdf930`.
+  - **Next: P7-D — Inspector/tools.**
+
 ## P0 — Foundation ✅ COMPLETE
 
 - [x] Three classes: Vanguard / Vector / Systems
