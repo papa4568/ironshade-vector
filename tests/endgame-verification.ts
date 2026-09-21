@@ -208,7 +208,8 @@ function t12StressVerification() {
   assert.ok(boss, 'T12 stress verification requires a command boss');
   boss!.active = true;
   boss!.dead = false;
-  boss!.hp = boss!.maxHp * 0.49;
+  boss!.hp = boss!.maxHp * 0.3;
+  boss!.armor = 0;
   state.bossActive = true;
 
   const poolSizes = {
@@ -236,8 +237,6 @@ function t12StressVerification() {
   assert.equal(runtime.environmental.fired.length, runtime.environmental.plan!.length, '60-second T12 stress trace should execute every scheduled Director event');
   assert.ok(peakProjectiles > 0, 'T12 stress trace should exercise hostile projectile pressure');
   assert.ok(peakHazards >= 2, 'T12 stress trace should exercise overlapping hazard pressure');
-  assert.ok(peakEffects >= 0, 'T12 stress trace should preserve the fixed effect pool');
-
   assert.equal(state.projectiles.length, poolSizes.projectiles, 'T12 stress must not grow the fixed projectile pool');
   assert.equal(state.hazards.length, poolSizes.hazards, 'T12 stress must not grow the fixed hazard pool');
   assert.equal(state.effects.length, poolSizes.effects, 'T12 stress must not grow the fixed effect pool');
