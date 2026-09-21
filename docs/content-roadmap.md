@@ -50,7 +50,7 @@ P7-A/P7-B/P7-C/P7-D/P7-E are archived after merge + verification.
 - [x] **P8-E Loot/UI/tutorial ownership** — archived after merge + verification
 - [x] **P8-F Handling identity** — archived after merge + verification
 - [x] **P8-G Class-owned skill migration** — archived after merge + verification
-- [ ] **P8-H Skill UI + regression** — Class Skill → Weapon Family → Lens/Evolution → Specialization/Capstone; verify saves/equipment/touch/campaign
+- [x] **P8-H Skill UI + regression** — archived after merge + verification
 
 ## P8.5 — Gear 2.0 // Build-Defining Itemization
 
@@ -159,9 +159,9 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P8-H — Skill UI + regression.**
+**Next: P8.5-A — Gear architecture audit + target schema.**
 
-Finish P8-G/P8-H first, then start **P8.5-A — Gear architecture audit + target schema** before P9/P10 so progression and crafting build on the finalized item model.
+Start **P8.5-A — Gear architecture audit + target schema** before P9/P10 so progression and crafting build on the finalized item model.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
