@@ -2525,7 +2525,11 @@ function skillHierarchyPersistenceSmoke() {
   ] as const;
 
   for (const testCase of cases) {
-    storage.clear();
+    let storedState: string | null = null;
+    const isolatedStorage = {
+      getItem: (key: string) => key === GAME_STATE_STORAGE_KEY ? storedState : null,
+      setItem: (key: string, value: string) => { if (key === GAME_STATE_STORAGE_KEY) storedState = value; },
+    };
     let profile = setOperatorClass(createDefaultProfile(), testCase.operatorClass).profile;
     profile = { ...profile, level: 16, xp: 9120, classSelectionComplete: true };
     profile = setSpecialization(profile, testCase.specialization);
@@ -2546,9 +2550,9 @@ function skillHierarchyPersistenceSmoke() {
     const campaign = createDefaultCampaign();
     campaign.shipUpgrades.sensors = 2;
     campaign.shipUpgrades.reactor = 1;
-    assert.equal(saveGameState(profile, campaign, localStorage), true, `${testCase.operatorClass} hierarchy should save atomically with campaign state`);
+    assert.equal(saveGameState(profile, campaign, isolatedStorage), true, `${testCase.operatorClass} hierarchy should save atomically with campaign state`);
 
-    const loaded = loadGameState(localStorage);
+    const loaded = loadGameState(isolatedStorage);
     assert.equal(loaded.profile.operatorClass, testCase.operatorClass, `${testCase.operatorClass} class should survive save/load`);
     assert.equal(loaded.profile.specialization, testCase.specialization, `${testCase.operatorClass} specialization should survive save/load`);
     assert.equal(loaded.profile.specializationOverclock, true, `${testCase.operatorClass} specialization overclock should survive save/load`);
@@ -2567,6 +2571,5 @@ function skillHierarchyPersistenceSmoke() {
     assert.equal(abilityConfig.familyBound, true, `${testCase.operatorClass} saved skill hierarchy should stay family-bound after campaign bonuses`);
   }
 
-  storage.clear();
 }
 skillHierarchyPersistenceSmoke();
