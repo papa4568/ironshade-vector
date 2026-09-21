@@ -9,6 +9,7 @@ import type { GroundLootReceipt } from './fieldLoot';
 import type { ItemRarity } from './rarity';
 import { gearBaseForFrameIdentity, gearBasesForSlot, resolveGearBase, rollGearBase } from './gearBases';
 import { affixStatProfile, gearStatDefinition, mergeBuildTags, type GearAffixSemanticId, type GearBuildTag, type GearStatId } from './gearStats';
+import { gearAffixDefinition, gearAffixDefinitions, isAffixEligibleForRoll, weightedAffixChoice } from './gearAffixes';
 
 export type EquipmentSlot = WeaponId | 'suit' | 'rig' | 'implant';
 export type Rarity = ItemRarity;
@@ -39,24 +40,6 @@ const starterItems: Item[] = [
   { id: 'starter-rig', baseId: 'utility-rig', name: 'QS Utility Rig', slot: 'rig', equipmentClass: 'Power and thermal rig', rarity: 'Field', levelRequirement: 1, core: 'Standard capacitor bus and thermal routing.', modifiers: [] },
   { id: 'starter-implant', baseId: 'operator-link', name: 'Operator Sensor Link', slot: 'implant', equipmentClass: 'Neural systems implant', rarity: 'Field', levelRequirement: 1, core: 'Basic targeting, telemetry, and electronic-control interface.', modifiers: [] },
 ];
-const affixes: Record<AffixId, ItemModifier> = {
-  hypervelocity: { id: 'hypervelocity', label: 'Hypervelocity rails', description: '+18% projectile velocity and +12 penetration, but +10% recoil.', mechanical: false },
-  countermass: { id: 'countermass', label: 'Countermass buffer', description: '-22% recoil, but -7% direct weapon damage.', mechanical: false },
-  overdrive: { id: 'overdrive', label: 'Open-coil overdrive', description: '+14% weapon damage, +20% recoil, and +12% heat per shot.', mechanical: false },
-  cryoloop: { id: 'cryoloop', label: 'Cryogenic return loop', description: '+30% heat dissipation, but -8 penetration.', mechanical: false },
-  extendedFeed: { id: 'extendedFeed', label: 'Extended feed geometry', description: '+6 magazine capacity, but +12% reload time.', mechanical: false },
-  tungsten: { id: 'tungsten', label: 'Tungsten penetrator stack', description: '+30% armor damage and +14 penetration, but +8% heat per shot.', mechanical: false },
-  vacuumSeal: { id: 'vacuumSeal', label: 'Layered vacuum seal', description: 'Strongly reduces vacuum exposure damage and decompression pull.', mechanical: false },
-  servoWeave: { id: 'servoWeave', label: 'Vector servo weave', description: '+8% movement speed and improved low-gravity braking.', mechanical: false },
-  capacitorRecycler: { id: 'capacitorRecycler', label: 'Capacitor recycler', description: '+20% capacitor regeneration and -10% ability power cost.', mechanical: false },
-  railFracture: { id: 'railFracture', label: 'Fracture cascade', description: 'Rail rounds fragment after penetrating a target, creating two lower-energy follow-up vectors.', mechanical: true },
-  dodgeVent: { id: 'dodgeVent', label: 'Kinetic heat shunt', description: 'Every dodge vents a portion of the current weapon heat.', mechanical: true },
-  magRedirect: { id: 'magRedirect', label: 'Revector field', description: 'Magnetic Impulse captures nearby hostile projectiles and redirects them into the fight.', mechanical: true },
-  breachPropulsion: { id: 'breachPropulsion', label: 'Backblast coupling', description: 'Breacher recoil becomes a stronger mobility impulse below 0.15g.', mechanical: true },
-  markShear: { id: 'markShear', label: 'Shear-map optics', description: 'Marked targets expose weak armor paths, greatly increasing armor damage against them.', mechanical: true },
-  arcDrone: { id: 'arcDrone', label: 'Relay microdrone', description: 'A microdrone periodically attacks electronically disrupted targets.', mechanical: true },
-};
-
 function gradePercent(value: number) { return Math.max(1, Math.round(value)); }
 function gradedDescription(id: AffixId, grade: ModifierGrade) {
   const power = modifierPowerFactor(grade);
@@ -77,7 +60,22 @@ function gradedDescription(id: AffixId, grade: ModifierGrade) {
   if (id === 'markShear') return `Marked targets expose weak armor paths; marked-hit amplification reaches ${gradePercent((0.18 + 0.16 * power) * 100)}%.`;
   return `A relay microdrone attacks disrupted targets for ${gradePercent(8 * power)} damage per cycle.`;
 }
-export function materializeModifier(id: AffixId, grade: ModifierGrade = 3): ItemModifier { const base = affixes[id]; const semantics = affixStatProfile(id); return { ...base, family: modifierFamilyFor(id), grade, description: gradedDescription(id, grade), statIds: [...semantics.stats], tradeoffStatIds: [...semantics.tradeoffs], buildTags: [...semantics.buildTags] }; }
+export function materializeModifier(id: AffixId, grade: ModifierGrade = 3): ItemModifier {
+  const definition = gearAffixDefinition(id);
+  const semantics = affixStatProfile(id);
+  return {
+    id,
+    label: definition.name,
+    description: gradedDescription(id, grade),
+    mechanical: !!definition.mechanicalHook,
+    family: definition.family,
+    grade,
+    statIds: [...semantics.stats],
+    tradeoffStatIds: [...semantics.tradeoffs],
+    buildTags: [...semantics.buildTags],
+  };
+}
+const affixes = Object.fromEntries(gearAffixDefinitions.map(definition => [definition.id, materializeModifier(definition.id, 3)])) as Record<AffixId, ItemModifier>;
 
 function frameImplicitFor(slot: EquipmentSlot, generation: FrameGeneration, identity?: FrameIdentityId, quality = 0) { const resolved = identity ?? inferFrameIdentity(slot, `${slot}:${generation}`); return frameImplicitDescription(resolved, generation, quality); }
 
@@ -572,22 +570,25 @@ export function saveProfile(profile: PlayerProfile) { if (typeof window === 'und
 function levelForXp(xp: number) { let level = 1; for (let index = 1; index < levelThresholds.length; index += 1) if (xp >= levelThresholds[index]) level = index + 1; return level; }
 export function xpProgress(profile: PlayerProfile) { if (profile.level >= levelThresholds.length) return { current: 1, needed: 1, maxed: true }; const current = levelThresholds[Math.min(profile.level - 1, levelThresholds.length - 1)] ?? 0; const next = levelThresholds[Math.min(profile.level, levelThresholds.length - 1)] ?? current; return { current: profile.xp - current, needed: Math.max(1, next - current), maxed: false }; }
 function seeded(seedValue: number) { let value = seedValue >>> 0; return () => { value ^= value << 13; value ^= value >>> 17; value ^= value << 5; return (value >>> 0) / 4294967296; }; }
-function rollModifierSet(pool: AffixId[], count: number, random: () => number, recoveryLevel: number, recoveryQuality: RecoveryQualityGrade, preferred: AffixId[] = [], forced: AffixId[] = []) {
+function rollModifierSet(slot: EquipmentSlot, pool: AffixId[], count: number, random: () => number, recoveryLevel: number, recoveryQuality: RecoveryQualityGrade, preferred: AffixId[] = [], forced: AffixId[] = []) {
   const chosen: AffixId[] = [];
-  for (const id of forced) if (pool.includes(id) && !chosen.includes(id)) chosen.push(id);
-  const target = Math.min(pool.length, Math.max(count, chosen.length));
+  for (const id of forced) {
+    if (isAffixEligibleForRoll(id, slot, recoveryLevel, pool, chosen)) chosen.push(id);
+  }
+  const target = Math.max(count, chosen.length);
   while (chosen.length < target) {
-    const remaining = pool.filter(id => !chosen.includes(id));
+    const remaining = pool.filter(id => isAffixEligibleForRoll(id, slot, recoveryLevel, pool, chosen));
+    if (remaining.length === 0) break;
     const wantedFamily: ModifierFamily = chosen.length % 2 === 0 ? 'core' : 'systems';
-    const familyCandidates = remaining.filter(id => modifierFamilyFor(id) === wantedFamily);
+    const familyCandidates = remaining.filter(id => gearAffixDefinition(id).family === wantedFamily);
     let candidates = familyCandidates.length > 0 ? familyCandidates : remaining;
     const preferredCandidates = candidates.filter(id => preferred.includes(id));
     if (preferredCandidates.length > 0 && random() < 0.78) candidates = preferredCandidates;
-    const candidate = candidates[Math.floor(random() * candidates.length)];
+    const candidate = weightedAffixChoice(candidates, random);
     if (!candidate) break;
     chosen.push(candidate);
   }
-  return chosen.map(id => materializeModifier(id, forced.includes(id) ? 3 : rollModifierGrade(recoveryLevel, recoveryQuality, random)));
+  return chosen.map(id => materializeModifier(id, rollModifierGrade(recoveryLevel, recoveryQuality, random)));
 }
 function makeFactionItem(slot: EquipmentSlot, index: number, level: number, random: () => number, faction: EquipmentFaction, recoveryLevel: number, recoveryQuality: RecoveryQualityGrade, recoverySource: string, frameOperatorLevel = level): Item {
   const frame = factionFrames[faction][slot];
@@ -608,7 +609,7 @@ function makeFactionItem(slot: EquipmentSlot, index: number, level: number, rand
     rarity,
     levelRequirement: levelRequirementForRecovery(recoveryLevel),
     core: frame.core,
-    modifiers: rollModifierSet(base.allowedAffixGroups, count, random, recoveryLevel, recoveryQuality, frame.preferredAffixes),
+    modifiers: rollModifierSet(slot, base.allowedAffixGroups, count, random, recoveryLevel, recoveryQuality, frame.preferredAffixes),
     faction,
     recoveryLevel,
     frameGeneration,
@@ -640,7 +641,7 @@ function makeItem(slot: EquipmentSlot, index: number, level: number, random: () 
     rarity,
     levelRequirement: levelRequirementForRecovery(recoveryLevel),
     core: `${base.core} Tradeoff: ${base.tradeoff}`,
-    modifiers: rollModifierSet(base.allowedAffixGroups, count, random, recoveryLevel, recoveryQuality, [], forcedAffixes),
+    modifiers: rollModifierSet(slot, base.allowedAffixGroups, count, random, recoveryLevel, recoveryQuality, [], forcedAffixes),
     recoveryLevel,
     frameGeneration,
     frameIdentity,
