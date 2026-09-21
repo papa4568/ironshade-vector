@@ -74,6 +74,20 @@
 .loot-radar b { display:flex; align-items:center; gap:6px; margin-top:4px; color:var(--loot-color,#d7e0dd); font:900 10px/1.1 ui-monospace,SFMono-Regular,Menlo,monospace; }
 .loot-radar > span { margin-top:4px; color:#a6b2ae; font:700 8px/1.25 ui-monospace,SFMono-Regular,Menlo,monospace; }
 .loot-radar-shape { display:inline-grid; min-width:18px; place-items:center; color:var(--loot-color,#d7e0dd); font-size:15px; line-height:1; filter:drop-shadow(0 0 5px var(--loot-color,#d7e0dd)); }
+.loot-radar.rarity-singular {
+  border-color: rgba(255,192,111,.86);
+  background:
+    radial-gradient(circle at 12% 22%, rgba(255,197,116,.14), transparent 35%),
+    rgba(18,12,7,.96);
+  box-shadow: inset 3px 0 0 #f0a45b, 0 0 24px rgba(240,164,91,.16);
+}
+.loot-radar.rarity-singular b { color:#ffd39e; }
+.loot-radar-signature {
+  color:#ffc477 !important;
+  font-size:7px !important;
+  font-weight:900 !important;
+  letter-spacing:.05em;
+}
 .loot-radar-meta { color:#d0dad6 !important; letter-spacing:.05em; }
 
 .boss-bars { height: 15px; border-width: 1px; }
@@ -260,6 +274,30 @@
 .recovery-review-card.rarity-refined { --gear-rarity:#69aee8; --gear-rarity-border:rgba(105,174,232,.82); --gear-rarity-wash:rgba(43,91,132,.24); }
 .recovery-review-card.rarity-prototype { --gear-rarity:#c47ce8; --gear-rarity-border:rgba(196,124,232,.9); --gear-rarity-wash:rgba(103,56,128,.27); }
 .recovery-review-card.rarity-singular { --gear-rarity:#f0a45b; --gear-rarity-border:rgba(240,164,91,.95); --gear-rarity-wash:rgba(143,87,25,.3); }
+.recovery-review-card.rarity-singular {
+  border-color:#ffc06f;
+  box-shadow: inset 4px 0 0 #f0a45b, inset 0 0 34px rgba(240,164,91,.11), 0 0 18px rgba(240,164,91,.08);
+}
+.singular-debrief-rule {
+  margin-top:7px;
+  padding:8px 9px;
+  border:1px solid rgba(255,192,111,.34);
+  border-radius:8px;
+  background:rgba(72,42,13,.2);
+}
+.singular-debrief-rule b,
+.singular-debrief-rule span { display:block; }
+.singular-debrief-rule b {
+  color:#ffc477;
+  font-size:7px;
+  letter-spacing:.08em;
+}
+.singular-debrief-rule span {
+  margin-top:4px;
+  color:#f0cfaa;
+  font-size:9px;
+  line-height:1.4;
+}
 .recovery-review-card[class*='rarity-'] { box-shadow: inset 4px 0 0 var(--gear-rarity), inset 0 0 28px var(--gear-rarity-wash); }
 .recovery-review-card[class*='rarity-'] .recovery-review-meta small,
 .recovery-review-card[class*='rarity-'] .recovery-review-copy h3 { color: var(--gear-rarity); }
