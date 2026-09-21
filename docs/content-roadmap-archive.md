@@ -82,6 +82,16 @@ This file is the permanent archive for completed production work. The active exe
   - Android artifact `10624176006` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.214`, debug signing, and APK SHA-256 `117ccad83f8304d2962e5c0c1862979abcd9fac449faf46eca49c55941817555`.
   - **Next: P7-E — Singular + touch QA.**
 
+
+- [x] **P7-E Singular + touch QA** — Singular equipment now has a premium, non-color-only identity and an always-visible fixed-rule read across equipped slots, Ship Storage, the full inspector, reconstruction, contract reward guidance, combat world-recovery guidance, and mission debrief.
+  - Loadout/storage/crafting surfaces expose the fixed Singular rule directly instead of making Singular a stronger-colored normal card. The inspector leads with a dedicated RULE-CHANGER hero panel, while debrief cards preserve the signature effect before discard decisions.
+  - Touch/coarse-pointer layouts expand fixed-rule callouts and preserve the existing single-scroller inspector escape path. Item meaning does not depend on hover/title data; exact Singular effects remain hidden before recovery while the combat radar identifies the drop as a chase recovery.
+  - Regression coverage locks the Singular treatment across every item surface, the premium reward/world/debrief styling, and the no-hover-only item-data rule without changing loot odds, equipment balance, or reconstruction legality.
+  - PR #133 Browser E2E `35565532206` passed desktop and mobile-landscape including the full regression/production build and browser player journeys.
+  - Verified on merged gameplay source `78f98fd006b1292409fa1e92fa544e7fc15ec5c8`: Browser E2E `35565674528` passed desktop and mobile-landscape, Level 15 beta smoke `35565674581` passed, and Android beta.215 `35565674577` passed the full web regression/build, package/version/SDK/signature checks, emulator install/launch, mobile runtime/touch smoke, lifecycle resume, authored assets, and Chapter 3 mobile playthrough.
+  - Android artifact `10624431236` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.215`, debug signing, and APK SHA-256 `b88e688f2ea4f69bcb70330ddc14c33d7c67784bd94017a95e5563caa195314d`.
+  - **Next: P8-A — Target acquisition.**
+
 ## P0 — Foundation ✅ COMPLETE
 
 - [x] Three classes: Vanguard / Vector / Systems
