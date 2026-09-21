@@ -9,7 +9,7 @@ import { loadGameState, saveGameState } from '../src/game/gamePersistence';
 import { carryExpeditionLoot } from '../src/game/expeditionCarry';
 import { advanceParallaxDebtAfterContract, chooseParallaxDebtBranch, getParallaxDebtChoicePrompt, getParallaxDebtContract, parallaxDebtChapter, parallaxDebtIntel, parallaxDebtNextRequiredLevel, syncParallaxDebtAccess } from '../src/game/parallaxDebt';
 import { applyThreatBudget, operationScalingFor } from '../src/game/scaling';
-import { chooseEnemyProtocols, enhancedProtocolVariantDefinition, enhancedProtocolVariantForecastForContract, enhancedProtocolVariantForInstance, exclusiveProtocolCombinationForEnemy, exclusiveProtocolCombinationForInstances, exclusiveProtocolCombinationForecastForContract, protocolDefinition, protocolRewardValue, protocolThreatCost } from '../src/game/eliteProtocols';
+import { chooseEnemyProtocols, enhancedProtocolVariantForecastForContract, exclusiveProtocolCombinationForEnemy, exclusiveProtocolCombinationForInstances, exclusiveProtocolCombinationForecastForContract, protocolDefinition, protocolRewardValue, protocolThreatCost, type EnhancedProtocolVariantId, type EnemyProtocolId } from '../src/game/eliteProtocols';
 import { enhancedProtocolVariantPresentationFor } from '../src/game/enhancedProtocolVariantPresentation';
 
 function exclusiveProtocolCombinationSmoke() {
@@ -77,6 +77,11 @@ function exclusiveProtocolCombinationSmoke() {
 exclusiveProtocolCombinationSmoke();
 
 function enhancedProtocolVariantSmoke() {
+  const variantProtocols: Record<EnhancedProtocolVariantId, EnemyProtocolId> = {
+    'ablative-bloom': 'reactivePlating', 'cutline-pair': 'breachmaker', 'twin-well-lock': 'magneticLock', 'anchor-singularity': 'gravityAnchor', 'wake-anchor': 'countermassMobility',
+    'cascade-grid': 'arcConduit', 'overlink-mesh': 'repairMesh', 'dual-rack': 'droneEscort', 'cross-shutter': 'emergencyShutters', 'capacitor-scramble': 'signalJammer',
+    'coolant-redline': 'thermalOverrun', 'tech-bus-sync': 'suppressionCoordinator', 'cross-fan-volley': 'penetratorVolley', 'mass-theft': 'salvageInterdictor', 'hard-lock-grid': 'recoveryDenial',
+  };
   const baseContract = generateContracts(createDefaultCampaign())[0]!;
   const base = {
     ...baseContract,
@@ -106,10 +111,8 @@ function enhancedProtocolVariantSmoke() {
   assert.ok(enhancedInstances.length > 0, 'deterministic T10 sampling should produce named enhanced protocol variants');
   for (const protocol of enhancedInstances) {
     assert.ok(protocol.variantId, 'every enhanced protocol instance must carry an authored variant identity');
-    const variant = enhancedProtocolVariantForInstance(protocol);
-    assert.ok(variant, 'enhanced variant identity must resolve to an authored definition');
-    assert.equal(variant!.protocolId, protocol.id, 'enhanced variant definition must belong to the protocol that rolled it');
-    assert.equal(enhancedProtocolVariantDefinition(protocol.variantId!).id, protocol.variantId, 'variant lookup should round-trip the stored variant id');
+    assert.equal(variantProtocols[protocol.variantId!], protocol.id, 'enhanced variant identity must belong to the protocol that rolled it');
+    assert.ok(enhancedProtocolVariantPresentationFor(protocol.variantId!).name.length > 0, 'enhanced variant identity must resolve to authored presentation metadata');
     assert.equal(protocolThreatCost(protocol), protocolDefinition(protocol.id).threatCost + 1, 'enhanced variants must retain the existing +1 threat-budget premium');
     assert.equal(protocolRewardValue(protocol), protocolDefinition(protocol.id).rewardWeight + 1, 'enhanced variants must retain the existing +1 reward premium');
   }
