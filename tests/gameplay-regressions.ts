@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { buildMegastructureDebrief, buyConsumable, createDefaultCampaign, generateContracts, getMegastructureStageContract, loadCampaign, saveCampaign } from '../src/game/campaign';
+import { applyShipBonuses, buildMegastructureDebrief, buyConsumable, createDefaultCampaign, generateContracts, getMegastructureStageContract, loadCampaign, saveCampaign } from '../src/game/campaign';
 import { abilityUsesTargetAcquisition, acquireCombatTarget, aimAtMobileTarget, applyPlayerDamage, createSimulation, createTargetControlMemory, cycleWeapon, getAbilityConfig, resetTargetControlMemory, selectWeapon, stepSimulation, triggerAbility, triggerConsumable, triggerDodge, triggerFire, triggerReload, triggerVent, updateMobileTargetControl, weaponConfigs, weaponHandlingProfiles, type Telemetry } from '../src/game/sim';
 import { applyMissionSetup, createDirector, stepMissionDirector } from '../src/game/director';
-import { activeWeaponFamilyForProfile, awardRecovery, awardVictory, buildIdentity, createDefaultProfile, deriveCombatBuild, equipItem, isItemClassCompatible, loadProfile, materializeModifier, normalizeClassArmament, saveProfile, setAbilityMod, setOperatorClass, specializationGearSynergyDefinitions, specializationGearSynergyForProfile, systemsCapstoneInteractionFor, vanguardCapstoneInteractionFor, vectorCapstoneInteractionFor } from '../src/game/meta';
+import { activeWeaponFamilyForProfile, awardRecovery, awardVictory, buildIdentity, capstoneInteractionFor, createDefaultProfile, deriveCombatBuild, equipItem, isItemClassCompatible, loadProfile, materializeModifier, normalizeClassArmament, saveProfile, setAbilityMod, setOperatorClass, setSpecialization, setSpecializationOverclock, specializationGearSynergyDefinitions, specializationGearSynergyForProfile, systemsCapstoneInteractionFor, vanguardCapstoneInteractionFor, vectorCapstoneInteractionFor } from '../src/game/meta';
 import { CAMPAIGN_STORAGE_KEY, GAME_STATE_STORAGE_KEY, prepareSaveRecovery, PROFILE_STORAGE_KEY } from '../src/game/saveRecovery';
 import { loadGameState, saveGameState } from '../src/game/gamePersistence';
 import { carryExpeditionLoot } from '../src/game/expeditionCarry';
@@ -2515,3 +2515,58 @@ function classOwnedSkillMigrationSmoke() {
   }
 }
 classOwnedSkillMigrationSmoke();
+
+
+function skillHierarchyPersistenceSmoke() {
+  const cases = [
+    { operatorClass: 'vanguard', specialization: 'pressure-diver', ability: 'mag', evolution: 'vanguard-siege-ram', capstone: 'Void Ram' },
+    { operatorClass: 'vector', specialization: 'momentum-broker', ability: 'mag', evolution: 'vector-slingshot-shift', capstone: 'Inertial Dividend' },
+    { operatorClass: 'systems', specialization: 'thermal-shunter', ability: 'mag', evolution: 'systems-anchor-lattice', capstone: 'Induction Sink' },
+  ] as const;
+
+  for (const testCase of cases) {
+    storage.clear();
+    let profile = setOperatorClass(createDefaultProfile(), testCase.operatorClass).profile;
+    profile = { ...profile, level: 16, xp: 9120, classSelectionComplete: true };
+    profile = setSpecialization(profile, testCase.specialization);
+    profile = setSpecializationOverclock(profile, true);
+    profile = setAbilityMod(profile, testCase.ability, testCase.evolution);
+
+    const family = activeWeaponFamilyForProfile(profile);
+    const equippedFamilyId = profile.equipped[family];
+    assert.ok(equippedFamilyId, `${testCase.operatorClass} hierarchy fixture requires its owned family equipped`);
+    assert.equal(profile.equipped[family], `starter-${family}`, `${testCase.operatorClass} should retain its normalized starter family before persistence`);
+    for (const otherFamily of ['carbine', 'breacher', 'rail'] as const) {
+      if (otherFamily !== family) assert.equal(profile.equipped[otherFamily], null, `${testCase.operatorClass} save fixture should not equip off-family ${otherFamily}`);
+    }
+
+    const capstoneBefore = capstoneInteractionFor(profile, profile.abilityMods[testCase.ability]);
+    assert.equal(capstoneBefore?.name, testCase.capstone, `${testCase.operatorClass} hierarchy fixture should form the intended capstone link`);
+
+    const campaign = createDefaultCampaign();
+    campaign.shipUpgrades.sensors = 2;
+    campaign.shipUpgrades.reactor = 1;
+    assert.equal(saveGameState(profile, campaign, localStorage), true, `${testCase.operatorClass} hierarchy should save atomically with campaign state`);
+
+    const loaded = loadGameState(localStorage);
+    assert.equal(loaded.profile.operatorClass, testCase.operatorClass, `${testCase.operatorClass} class should survive save/load`);
+    assert.equal(loaded.profile.specialization, testCase.specialization, `${testCase.operatorClass} specialization should survive save/load`);
+    assert.equal(loaded.profile.specializationOverclock, true, `${testCase.operatorClass} specialization overclock should survive save/load`);
+    assert.equal(loaded.profile.abilityMods[testCase.ability], testCase.evolution, `${testCase.operatorClass} class Evolution should survive save/load`);
+    assert.equal(activeWeaponFamilyForProfile(loaded.profile), family, `${testCase.operatorClass} owned family should survive save/load`);
+    assert.equal(loaded.profile.equipped[family], equippedFamilyId, `${testCase.operatorClass} equipped family item should survive save/load`);
+    assert.equal(capstoneInteractionFor(loaded.profile, loaded.profile.abilityMods[testCase.ability])?.name, testCase.capstone, `${testCase.operatorClass} capstone link should survive save/load`);
+    assert.equal(loaded.campaign.shipUpgrades.sensors, 2, `${testCase.operatorClass} campaign state should round-trip beside skill hierarchy state`);
+
+    const derived = deriveCombatBuild(loaded.profile);
+    const withShip = applyShipBonuses(derived, loaded.campaign);
+    assert.deepEqual(withShip.classSkillFamily, derived.classSkillFamily, `${testCase.operatorClass} campaign ship bonuses must preserve family-skill tuning and source provenance`);
+    const runtime = createSimulation(withShip);
+    const abilityConfig = getAbilityConfig(runtime, 0);
+    assert.equal(abilityConfig.weaponFamily, family, `${testCase.operatorClass} saved Evolution should still resolve through its owned family at runtime`);
+    assert.equal(abilityConfig.familyBound, true, `${testCase.operatorClass} saved skill hierarchy should stay family-bound after campaign bonuses`);
+  }
+
+  storage.clear();
+}
+skillHierarchyPersistenceSmoke();
