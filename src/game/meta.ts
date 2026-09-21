@@ -24,6 +24,8 @@ export type SpecializationDefinition = { id: SpecializationId; operatorClass: Op
 export type OperatorClassDefinition = { id: OperatorClassId; name: string; identity: string; description: string; trait: string; signatureName: string; signatureDescription: string; combatLoop: string; starterPair: string; branchAffinities: ProgressionNode['branch'][]; specializationIds: SpecializationId[]; resonanceTier1: string; resonanceTier2: string };
 export type GearResonanceState = { classId: OperatorClassId; count: number; tier: 0 | 1 | 2; nextAt: 2 | 4 | null; matchingItemIds: string[] };
 export type CapstoneInteractionDefinition = { specialization: SpecializationId; abilityMod: string; name: string; description: string };
+export type SpecializationGearSynergyDefinition = { specialization: SpecializationId; name: string; requiredAffix: AffixId; requirement: string; description: string };
+export type SpecializationGearSynergyState = { definition: SpecializationGearSynergyDefinition; active: boolean; resonanceTier: 0 | 1 | 2; matchingItemIds: string[] };
 
 const STORAGE_KEY = 'ironshade-vector-profile-v3';
 const starterItems: Item[] = [
@@ -304,6 +306,35 @@ export function systemsCapstoneInteractionFor(profile: PlayerProfile, abilityMod
 
 export function capstoneInteractionFor(profile: PlayerProfile, abilityMod: string | null) {
   return vanguardCapstoneInteractionFor(profile, abilityMod) ?? vectorCapstoneInteractionFor(profile, abilityMod) ?? systemsCapstoneInteractionFor(profile, abilityMod);
+}
+
+export const specializationGearSynergyDefinitions: SpecializationGearSynergyDefinition[] = [
+  { specialization: 'pressure-diver', name: 'Pressure Recirculator', requiredAffix: 'vacuumSeal', requirement: 'Tier I Vanguard resonance + Layered vacuum seal', description: 'Pressure-rated gear closes the Diver loop: +8% vacuum resistance and 4% faster class-skill recovery.' },
+  { specialization: 'breach-vanguard', name: 'Breach Stack', requiredAffix: 'tungsten', requirement: 'Tier I Vanguard resonance + Tungsten penetrator stack', description: 'Dense penetrator gear feeds the assault doctrine: Breacher gains +12% armor damage and +8 penetration.' },
+  { specialization: 'bulkhead-warden', name: 'Counterfort Bracing', requiredAffix: 'countermass', requirement: 'Tier I Vanguard resonance + Countermass buffer', description: 'Countermass hardware braces the defensive loop: +10 maximum armor and 6% faster Bulwark Pulse recovery.' },
+  { specialization: 'momentum-broker', name: 'Reaction Ledger', requiredAffix: 'servoWeave', requirement: 'Tier I Vector resonance + Vector servo weave', description: 'Maneuvering hardware turns motion into a better energy ledger: +6 maximum capacitor, +10% capacitor regeneration, and 5% faster Vector Shift recovery.' },
+  { specialization: 'survey-deadeye', name: 'Survey Ballistics', requiredAffix: 'markShear', requirement: 'Tier I Vector resonance + Shear-map optics', description: 'Shear-mapped gear completes the precision package: Rail Lance gains +18 penetration and Deadeye Lock recovers 5% faster.' },
+  { specialization: 'redline-pilot', name: 'Thermal Slip', requiredAffix: 'dodgeVent', requirement: 'Tier I Vector resonance + Kinetic heat shunt', description: 'Heat-shunt gear rewards the redline route: +3% movement speed and stronger dodge heat venting.' },
+  { specialization: 'grid-weaver', name: 'Mesh Orchestra', requiredAffix: 'arcDrone', requirement: 'Tier I Systems resonance + Relay microdrone', description: 'Relay hardware joins the machinery mesh: stronger microdrone routing and 5% faster Cascade Arc recovery.' },
+  { specialization: 'capacitor-conductor', name: 'Bus Harmonics', requiredAffix: 'capacitorRecycler', requirement: 'Tier I Systems resonance + Capacitor recycler', description: 'Recycler hardware stabilizes the combo bus: +8 maximum capacitor and 3% lower class-skill capacitor cost.' },
+  { specialization: 'thermal-shunter', name: 'Heat Exchange', requiredAffix: 'cryoloop', requirement: 'Tier I Systems resonance + Cryogenic return loop', description: 'Cryogenic gear deepens thermal crossfeed: +6 maximum capacitor and +10% weapon heat dissipation.' },
+];
+
+export function specializationGearSynergyForProfile(profile: PlayerProfile): SpecializationGearSynergyState | undefined {
+  if (profile.level < 15 || !profile.specialization) return undefined;
+  const definition = specializationGearSynergyDefinitions.find(entry => entry.specialization === profile.specialization);
+  if (!definition) return undefined;
+  const resonance = gearResonanceForProfile(profile);
+  const matchingItemIds = equippedItems(profile)
+    .filter(item => item.modifiers.some(modifier => modifier.id === definition.requiredAffix))
+    .map(item => item.id);
+  return { definition, active: resonance.tier >= 1 && matchingItemIds.length > 0, resonanceTier: resonance.tier, matchingItemIds };
+}
+
+export function itemMatchesSpecializationGearSynergy(profile: PlayerProfile, item: Item) {
+  if (!profile.specialization) return false;
+  const definition = specializationGearSynergyDefinitions.find(entry => entry.specialization === profile.specialization);
+  return !!definition && item.modifiers.some(modifier => modifier.id === definition.requiredAffix);
 }
 
 export const specializationDefinitions: SpecializationDefinition[] = [
@@ -949,6 +980,50 @@ function applyOperatorClassBonuses(build: CombatBuild, profile: PlayerProfile) {
   }
 }
 
+function applySpecializationGearSynergy(build: CombatBuild, profile: PlayerProfile) {
+  const synergy = specializationGearSynergyForProfile(profile);
+  if (!synergy?.active) return;
+  if (synergy.definition.specialization === 'pressure-diver') {
+    build.player.vacuumResistance = Math.min(0.9, build.player.vacuumResistance + 0.08);
+    for (const ability of build.abilities) ability.cooldownMul *= 0.96;
+  }
+  if (synergy.definition.specialization === 'breach-vanguard') {
+    build.weapon.breacher.armorDamageMul *= 1.12;
+    build.weapon.breacher.penetrationAdd += 8;
+  }
+  if (synergy.definition.specialization === 'bulkhead-warden') {
+    build.player.maxArmorAdd += 10;
+    build.abilities[2].cooldownMul *= 0.94;
+  }
+  if (synergy.definition.specialization === 'momentum-broker') {
+    build.player.maxCapAdd += 6;
+    build.player.capRegenMul *= 1.1;
+    build.abilities[0].cooldownMul *= 0.95;
+  }
+  if (synergy.definition.specialization === 'survey-deadeye') {
+    build.weapon.rail.penetrationAdd += 18;
+    build.abilities[1].cooldownMul *= 0.95;
+  }
+  if (synergy.definition.specialization === 'redline-pilot') {
+    build.player.moveSpeedMul *= 1.03;
+    build.mechanics.dodgeVent = true;
+    build.mechanics.dodgeVentScale = Math.max(build.mechanics.dodgeVentScale, 1.35);
+  }
+  if (synergy.definition.specialization === 'grid-weaver') {
+    build.mechanics.arcDrone = true;
+    build.mechanics.arcDroneScale = Math.max(build.mechanics.arcDroneScale, 1.35);
+    build.abilities[2].cooldownMul *= 0.95;
+  }
+  if (synergy.definition.specialization === 'capacitor-conductor') {
+    build.player.maxCapAdd += 8;
+    for (const ability of build.abilities) ability.costMul *= 0.97;
+  }
+  if (synergy.definition.specialization === 'thermal-shunter') {
+    build.player.maxCapAdd += 6;
+    for (const weapon of Object.values(build.weapon)) weapon.heatDissipationMul *= 1.1;
+  }
+}
+
 function freshBuild(): CombatBuild { const weapon = () => ({ damageMul: 1, speedMul: 1, penetrationAdd: 0, recoilMul: 1, heatPerShotMul: 1, heatDissipationMul: 1, magazineAdd: 0, reloadMul: 1, armorDamageMul: 1, healthMultiplierMul: 1, knockbackMul: 1 }); return { operatorClass: null, classResonanceTier: 0, weapon: { carbine: weapon(), breacher: weapon(), rail: weapon() }, player: { maxHpAdd: 0, maxArmorAdd: 0, maxCapAdd: 0, moveSpeedMul: 1, capRegenMul: 1, vacuumResistance: 0, lowGControl: 0, ventSpeedMul: 1 }, mechanics: { railFragment: false, railFragmentScale: 0, dodgeVent: false, dodgeVentScale: 0, magRedirect: false, magRedirectScale: 0, breacherPropulsion: false, breacherPropulsionScale: 0, markWeakArmor: false, markWeakArmorScale: 0, arcDrone: false, arcDroneScale: 0, recoilVectoring: false, breachDoctrine: false, sensorPenetration: false, widebandMark: false, magOverdriveKick: false, arcGroundLoop: false, magBoundarySink: false, markExecutionTrace: false, arcCascadeLattice: false, vanguardSiegeRam: false, vanguardFaultlineTag: false, vanguardReprisalPulse: false, vectorSlingshotShift: false, vectorTriangulationLock: false, vectorNeedleFan: false, systemsAnchorLattice: false, systemsRecursiveIntrusion: false, systemsReturnCurrent: false }, singularTraits: [], specialization: null, specializationOverclock: false, abilities: [{ costMul: 1, cooldownMul: 1, powerMul: 1 }, { costMul: 1, cooldownMul: 1, powerMul: 1 }, { costMul: 1, cooldownMul: 1, powerMul: 1 }] }; }
 function applyFrameGeneration(build: CombatBuild, item: Item) { const step = Math.min(4, Math.max(0, (item.frameGeneration ?? 1) - 1)); if (step <= 0) return; if (item.slot === 'carbine') { build.weapon.carbine.speedMul *= 1 + step * 0.025; build.weapon.carbine.penetrationAdd += step * 2; } else if (item.slot === 'breacher') { build.weapon.breacher.damageMul *= 1 + step * 0.025; build.weapon.breacher.knockbackMul *= 1 + step * 0.04; } else if (item.slot === 'rail') { build.weapon.rail.penetrationAdd += step * 4; build.weapon.rail.recoilMul *= 1 - step * 0.025; } else if (item.slot === 'suit') { build.player.maxArmorAdd += step * 4; build.player.vacuumResistance = Math.min(0.9, build.player.vacuumResistance + step * 0.025); } else if (item.slot === 'rig') { build.player.maxCapAdd += step * 4; build.player.capRegenMul *= 1 + step * 0.025; } else { for (const ability of build.abilities) ability.cooldownMul *= 1 - step * 0.02; } }
 function applyAffix(build: CombatBuild, item: Item, modifier: ItemModifier) { const id = modifier.id; const power = modifierPowerFactor(modifier.grade ?? 3); const tradeoff = modifierTradeoffFactor(modifier.grade ?? 3); const weapon = item.slot === 'carbine' || item.slot === 'breacher' || item.slot === 'rail' ? build.weapon[item.slot] : null; if (id === 'hypervelocity' && weapon) { weapon.speedMul *= 1 + 0.18 * power; weapon.penetrationAdd += Math.round(12 * power); weapon.recoilMul *= 1 + 0.1 * tradeoff; } if (id === 'countermass') { if (weapon) { weapon.recoilMul *= 1 - 0.22 * power; weapon.damageMul *= 1 - 0.07 * tradeoff; } else build.player.lowGControl += 0.12 * power; } if (id === 'overdrive' && weapon) { weapon.damageMul *= 1 + 0.14 * power; weapon.recoilMul *= 1 + 0.2 * tradeoff; weapon.heatPerShotMul *= 1 + 0.12 * tradeoff; } if (id === 'cryoloop') { if (weapon) { weapon.heatDissipationMul *= 1 + 0.3 * power; weapon.penetrationAdd -= Math.round(8 * tradeoff); } else for (const stats of Object.values(build.weapon)) stats.heatDissipationMul *= 1 + 0.15 * power; } if (id === 'extendedFeed' && weapon) { weapon.magazineAdd += Math.max(1, Math.round(6 * power)); weapon.reloadMul *= 1 + 0.12 * tradeoff; } if (id === 'tungsten' && weapon) { weapon.armorDamageMul *= 1 + 0.3 * power; weapon.penetrationAdd += Math.round(14 * power); weapon.heatPerShotMul *= 1 + 0.08 * tradeoff; } if (id === 'vacuumSeal') build.player.vacuumResistance = Math.min(0.8, build.player.vacuumResistance + 0.55 * power); if (id === 'servoWeave') { build.player.moveSpeedMul *= 1 + 0.08 * power; build.player.lowGControl += 0.22 * power; } if (id === 'capacitorRecycler') { build.player.capRegenMul *= 1 + 0.2 * power; for (const ability of build.abilities) ability.costMul *= 1 - 0.1 * power; } if (id === 'railFracture') { build.mechanics.railFragment = true; build.mechanics.railFragmentScale = Math.max(build.mechanics.railFragmentScale, power); } if (id === 'dodgeVent') { build.mechanics.dodgeVent = true; build.mechanics.dodgeVentScale = Math.max(build.mechanics.dodgeVentScale, power); } if (id === 'magRedirect') { build.mechanics.magRedirect = true; build.mechanics.magRedirectScale = Math.max(build.mechanics.magRedirectScale, power); } if (id === 'breachPropulsion') { build.mechanics.breacherPropulsion = true; build.mechanics.breacherPropulsionScale = Math.max(build.mechanics.breacherPropulsionScale, power); } if (id === 'markShear') { build.mechanics.markWeakArmor = true; build.mechanics.markWeakArmorScale = Math.max(build.mechanics.markWeakArmorScale, power); } if (id === 'arcDrone') { build.mechanics.arcDrone = true; build.mechanics.arcDroneScale = Math.max(build.mechanics.arcDroneScale, power); } }
@@ -978,6 +1053,7 @@ export function deriveCombatBuild(profile: PlayerProfile): CombatBuild {
   if (specialization === 'bulkhead-warden') { for (const weapon of Object.values(build.weapon)) weapon.damageMul *= 0.92; if (build.specializationOverclock) build.abilities[2].costMul *= 1.1; }
   if (specialization === 'capacitor-conductor') { build.player.maxCapAdd -= 12; if (build.specializationOverclock) for (const ability of build.abilities) ability.costMul *= 1.1; }
   if (specialization === 'thermal-shunter') { build.player.maxArmorAdd -= 10; if (build.specializationOverclock) for (const weapon of Object.values(build.weapon)) weapon.heatPerShotMul *= 1.1; }
+  applySpecializationGearSynergy(build, profile);
   if (profile.abilityMods.mag === 'vanguard-siege-ram' && operatorClassForProfile(profile) === 'vanguard' && profile.level >= 16) { build.mechanics.vanguardSiegeRam = true; build.abilities[0].cooldownMul *= 1.2; }
   if (profile.abilityMods.mark === 'vanguard-faultline-tag' && operatorClassForProfile(profile) === 'vanguard' && profile.level >= 16) { build.mechanics.vanguardFaultlineTag = true; build.abilities[1].costMul *= 1.18; }
   if (profile.abilityMods.arc === 'vanguard-reprisal-pulse' && operatorClassForProfile(profile) === 'vanguard' && profile.level >= 16) { build.mechanics.vanguardReprisalPulse = true; build.abilities[2].cooldownMul *= 1.18; }
@@ -1010,8 +1086,9 @@ export function buildIdentity(profile: PlayerProfile) {
   const classDefinition = operatorClassDefinitions.find(definition => definition.id === operatorClassForProfile(profile))!;
   const specialization = profile.level >= 15 ? specializationDefinitions.find(definition => definition.id === profile.specialization) : undefined;
   const capstone = profile.level >= 16 ? Object.values(profile.abilityMods).map(abilityMod => capstoneInteractionFor(profile, abilityMod)).find(Boolean) : undefined;
+  const gearSynergy = specializationGearSynergyForProfile(profile);
   return specialization
-    ? `${classDefinition.name} / ${specialization.name}${profile.level >= 16 && profile.specializationOverclock ? ' // OVERCLOCK' : ''}${capstone ? ` // ${capstone.name}` : ''} · ${base}`
+    ? `${classDefinition.name} / ${specialization.name}${profile.level >= 16 && profile.specializationOverclock ? ' // OVERCLOCK' : ''}${capstone ? ` // ${capstone.name}` : ''}${gearSynergy?.active ? ` // ${gearSynergy.definition.name}` : ''} · ${base}`
     : `${classDefinition.name} · ${base}`;
 }
 export function comparisonSummary(item: Item, equipped: Item | undefined) { const summarize = (entry: Item | undefined) => entry?.modifiers.map(modifier => `${(modifier.family ?? modifierFamilyFor(modifier.id)).toUpperCase()} G${modifier.grade ?? 3} ${modifier.label}`).join(', ') || 'No special modifiers'; return { current: summarize(equipped), candidate: summarize(item) }; }

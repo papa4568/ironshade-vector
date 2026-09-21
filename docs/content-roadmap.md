@@ -263,7 +263,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] P5.7 Systems skill evolution
 - [x] P5.8 Systems capstone interactions
 - [x] P5.9 Same-class builds feel different at LV16+
-- [ ] P5.10 Specialization gear synergies
+- [x] P5.10 Specialization gear synergies
 - [ ] P5.11 Visual combat feedback
 - [ ] P5.12 Regression coverage
 - [ ] P5.13 Mobile playtesting
@@ -317,7 +317,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1, P2, P3, and **P4 — Megastructure Capstone Pass** are complete. **P5.1–P5.9 class-capstone work** is complete. Continue in roadmap order with **P5.10 — Specialization gear synergies**.
+P1, P2, P3, and **P4 — Megastructure Capstone Pass** are complete. **P5.1–P5.10 class-capstone work** is complete. Continue in roadmap order with **P5.11 — Visual combat feedback**.
+
+**P5.10 implemented:** every LV15 specialization now has one explicit gear link that activates from **Tier I class resonance plus a matching existing affix**, so specialization identity changes what recovered gear is worth without adding a parallel loot currency or class-locked equipment. Vanguard links are **Pressure Recirculator** (Pressure Diver + Layered vacuum seal), **Breach Stack** (Breach Vanguard + Tungsten penetrator stack), and **Counterfort Bracing** (Bulkhead Warden + Countermass buffer). Vector links are **Reaction Ledger** (Momentum Broker + Vector servo weave), **Survey Ballistics** (Survey Deadeye + Shear-map optics), and **Thermal Slip** (Redline Pilot + Kinetic heat shunt). Systems links are **Mesh Orchestra** (Grid Weaver + Relay microdrone), **Bus Harmonics** (Capacitor Conductor + Capacitor recycler), and **Heat Exchange** (Thermal Shunter + Cryogenic return loop). Each link produces a specialization-specific combat/stat effect, participates in build identity, appears in the specialization panel and Stats, and marks linked candidate gear in the Equipment Bay. Deterministic regression covers activation for all nine links plus representative Vanguard/Vector/Systems mechanical effects. **P5.11 — Visual combat feedback** is next after validation/merge.
 
 **P5.9 delivered:** LV16+ Vector branches now form three explicit specialization/evolution doctrines so same-class builds have different resource loops, firing priorities, and recovery cadence instead of only different labels. **Inertial Dividend** links Momentum Broker + Slingshot Shift: the extended Slipstream converts recoil into a deeper Vector Shift/dodge recovery dividend plus extra capacitor return. **Reference Solution** links Survey Deadeye + Triangulation Lock: the lock holds a longer firing solution, opens a deeper Armor Breach, recycles Splitshot harder, and the marked Slipstream shot gains extra velocity, damage, penetration, and follow-up recovery. **Redline Needle** links Redline Pilot + Needle Fan: a 75%+ hot weapon bus overdrives the three-lane fan to higher velocity, damage, penetration, and armor pressure while venting heat and advancing dodge recovery. Build identity, Skills, and Stats surface the active doctrine through the shared capstone model, and deterministic gameplay/UI regressions cover all three pairings. PR Browser E2E run `35545564468` and merged-main Browser E2E run `35545672419` passed desktop/mobile full regression, production build, and player-journey QA; Level 15 beta smoke run `35545672492` passed; Android beta.199 run `35545672495` passed web regression/build, package/version/SDK/signature verification, native emulator install/launch/resume smoke, Android touch/runtime QA, and the Chapter 3 two-route touch playthrough. **P5.10 — Specialization gear synergies** is next.
 
