@@ -20,7 +20,7 @@ import { enhancedProtocolVariantPresentationFor } from '../game/enhancedProtocol
 import { mutationPresentationFor } from '../game/t9MutationPresentation';
 import { bossPhaseMutationPresentationFor } from '../game/bossPhaseMutationPresentation';
 import { commandTargetMutationName } from '../game/commandTargetMutations';
-import { lootColor, lootLabel, type GroundLootReceipt } from '../game/fieldLoot';
+import { groundLootPresentation, lootColor, lootLabel, type GroundLootReceipt } from '../game/fieldLoot';
 import { carryExpeditionLoot } from '../game/expeditionCarry';
 import { classSkillIconAssets, operatorClassIconAssets, weaponIconAssets } from '../game/mobileUiAssets';
 
@@ -36,6 +36,26 @@ function project(x: number, y: number, cx: number, cy: number, width: number, he
 function screenVectorToWorld(dx: number, dy: number): Vec2 { const wx = dx / (2 * isoScaleX) + dy / (2 * isoScaleY); const wy = dy / (2 * isoScaleY) - dx / (2 * isoScaleX); const l = Math.hypot(wx, wy); return l > 0.01 ? { x: wx / l, y: wy / l } : { x: 0, y: 0 }; }
 function objectiveScreenDirection(dx: number, dy: number) { const sx = (dx - dy) * isoScaleX; const sy = (dx + dy) * isoScaleY; const angle = Math.atan2(sy, sx); const octant = (Math.round(angle / (Math.PI / 4)) + 8) % 8; return ['RIGHT', 'DOWN-RIGHT', 'DOWN', 'DOWN-LEFT', 'LEFT', 'UP-LEFT', 'UP', 'UP-RIGHT'][octant]; }
 function drawDiamond(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, fill: string, stroke: string) { ctx.beginPath(); ctx.moveTo(x, y - h / 2); ctx.lineTo(x + w / 2, y); ctx.lineTo(x, y + h / 2); ctx.lineTo(x - w / 2, y); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = stroke; ctx.stroke(); }
+function drawGroundLootShape(ctx: CanvasRenderingContext2D, shape: ReturnType<typeof groundLootPresentation>['shape'], x: number, y: number, size: number) {
+  ctx.beginPath();
+  if (shape === 'diamond') {
+    ctx.moveTo(x, y - size); ctx.lineTo(x + size, y); ctx.lineTo(x, y + size); ctx.lineTo(x - size, y);
+  } else if (shape === 'bar') {
+    ctx.rect(x - size * 1.35, y - size * 0.42, size * 2.7, size * 0.84);
+  } else {
+    const points = shape === 'star' ? 10 : 6;
+    for (let index = 0; index < points; index += 1) {
+      const radius = shape === 'star' && index % 2 === 1 ? size * 0.45 : size;
+      const angle = -Math.PI / 2 + index * Math.PI * 2 / points;
+      const px = x + Math.cos(angle) * radius;
+      const py = y + Math.sin(angle) * radius;
+      if (index === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+}
 function objectColor(object: CombatObject) {
   if (object.kind === 'conduit') return object.exposed ? '#77542d' : '#293d39';
   if (object.kind === 'coolant') return '#2d5360';
@@ -233,7 +253,40 @@ function renderGame(ctx: CanvasRenderingContext2D, state: SimState, width: numbe
   renderPressureFlow(ctx, state, camX, camY, width, height, quality);
   for (const object of state.objects) { drawObject(ctx, object, camX, camY, width, height); drawObjectiveMarker(ctx, state, mission, object, camX, camY, width, height, state.time); }
   for (const hazard of state.hazards) { if (!hazard.active) continue; const pos = project(hazard.x, hazard.y, camX, camY, width, height); const pulse = 0.75 + Math.sin(state.time * 7) * 0.15; ctx.setLineDash(hazard.kind === 'shockGrid' ? [5, 5] : [10, 7]); ctx.strokeStyle = hazard.kind === 'shockGrid' ? `rgba(149,116,205,${pulse})` : hazard.kind === 'gravityWell' ? `rgba(95,153,185,${pulse})` : hazard.kind === 'vectorWash' ? `rgba(94,183,218,${pulse})` : hazard.kind === 'boiloffJet' ? `rgba(153,219,235,${pulse})` : `rgba(108,198,211,${pulse})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(pos.x, pos.y, hazard.radius * 1.35, hazard.radius * 0.72, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1; }
-  for (const drop of state.groundLoot) { if (!drop.active || drop.collected) continue; const pos = project(drop.x, drop.y, camX, camY, width, height); const color = `#${lootColor(drop.rarity).toString(16).padStart(6, '0')}`; ctx.strokeStyle = color; ctx.fillStyle = color; ctx.globalAlpha = 0.82 + Math.sin(state.time * 7 + drop.enemyId) * 0.12; ctx.lineWidth = drop.rarity === 'Singular' ? 3 : 2; ctx.beginPath(); ctx.arc(pos.x, pos.y - 8, drop.rarity === 'Singular' ? 18 : drop.rarity === 'Prototype' ? 14 : 10, 0, Math.PI * 2); ctx.stroke(); ctx.save(); ctx.translate(pos.x, pos.y - 22); ctx.rotate(Math.PI / 4); ctx.fillRect(-6, -6, 12, 12); ctx.restore(); ctx.globalAlpha = 1; ctx.lineWidth = 1; if (drop.rarity === 'Singular' || drop.rarity === 'Prototype') { ctx.fillStyle = 'rgba(5,8,9,.86)'; ctx.fillRect(pos.x - 52, pos.y - 47, 104, 14); ctx.fillStyle = color; ctx.font = '900 7px ui-monospace, monospace'; ctx.textAlign = 'center'; ctx.fillText(lootLabel(drop.rarity), pos.x, pos.y - 37); ctx.textAlign = 'left'; } }
+  for (const drop of state.groundLoot) {
+    if (!drop.active || drop.collected) continue;
+    const pos = project(drop.x, drop.y, camX, camY, width, height);
+    const presentation = groundLootPresentation(drop.rarity);
+    const color = `#${presentation.color.toString(16).padStart(6, '0')}`;
+    const pulse = 0.88 + Math.sin(state.time * 7 + drop.enemyId) * 0.12;
+    const markerSize = 7 * presentation.markerScale;
+    const ringRadius = 10 * presentation.ringScale;
+    const beaconHeight = 26 + 24 * presentation.beaconScale;
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 1.5 + presentation.rank * 0.5;
+    ctx.globalAlpha = 0.34 + presentation.rank * 0.08;
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y - 13);
+    ctx.lineTo(pos.x, pos.y - beaconHeight);
+    ctx.stroke();
+    ctx.globalAlpha = pulse;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y - 8, ringRadius, 0, Math.PI * 2);
+    ctx.stroke();
+    drawGroundLootShape(ctx, presentation.shape, pos.x, pos.y - 22, markerSize);
+    ctx.restore();
+    if (presentation.rank >= 2) {
+      ctx.fillStyle = 'rgba(5,8,9,.88)';
+      ctx.fillRect(pos.x - 54, pos.y - beaconHeight - 13, 108, 14);
+      ctx.fillStyle = color;
+      ctx.font = '900 7px ui-monospace, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(presentation.label, pos.x, pos.y - beaconHeight - 3);
+      ctx.textAlign = 'left';
+    }
+  }
   if (quality > 0.65) for (const debris of state.debris) { if (!debris.active) continue; const pos = project(debris.x, debris.y, camX, camY, width, height); ctx.fillStyle = '#66736f'; ctx.beginPath(); ctx.arc(pos.x, pos.y - 8, debris.radius, 0, Math.PI * 2); ctx.fill(); }
   for (const projectile of state.projectiles) { if (!projectile.active) continue; const pos = project(projectile.x, projectile.y, camX, camY, width, height); const playerShot = projectile.owner === 'player'; ctx.fillStyle = playerShot ? projectile.weapon === 'rail' ? '#b9e8ff' : projectile.weapon === 'breacher' ? '#ffddb3' : '#d9f3c6' : '#ef8a6e'; if (quality > 0.7) { ctx.shadowBlur = 10; ctx.shadowColor = ctx.fillStyle; } ctx.beginPath(); ctx.arc(pos.x, pos.y - 12, projectile.radius + 1, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0; }
   for (const effect of state.effects) { if (!effect.active) continue; const pos = project(effect.x, effect.y, camX, camY, width, height); const progress = 1 - effect.life / Math.max(0.01, effect.maxLife); const radius = effect.radius * (0.4 + progress * 0.8); ctx.strokeStyle = effect.kind === 'arc' ? `rgba(132,202,235,${1 - progress})` : effect.kind === 'breach' ? `rgba(240,125,77,${1 - progress})` : effect.kind === 'mark' ? `rgba(208,224,122,${1 - progress})` : `rgba(194,221,211,${0.72 * (1 - progress)})`; ctx.lineWidth = effect.kind === 'arc' ? 3 : 2; ctx.beginPath(); ctx.ellipse(pos.x, pos.y - 10, radius * 1.35, radius * 0.72, 0, 0, Math.PI * 2); ctx.stroke(); ctx.lineWidth = 1; }
@@ -280,15 +333,17 @@ function renderGame(ctx: CanvasRenderingContext2D, state: SimState, width: numbe
 function hudFrom(state: SimState): HudState { const sector = getPlayerSector(state); const p = state.player; const boss = getBoss(state); const context = getContextAction(state); const squadRemaining = getSquadRemaining(state); const classStatus = getClassMechanicStatus(state); return { classId: classStatus.id, classLabel: classStatus.label, classDetail: classStatus.detail, classActive: classStatus.active, hp: p.hp, maxHp: p.maxHp, armor: p.armor, maxArmor: p.maxArmor, capacitor: p.capacitor, maxCapacitor: p.maxCapacitor, mag: p.mags[p.currentWeapon], heat: p.weaponHeat[p.currentWeapon], weapon: p.currentWeapon, ability: [...p.abilityCooldowns] as [number, number, number], dodge: p.dodgeCooldown, reload: p.reloadT, venting: p.ventT > 0, dead: p.dead, complete: state.complete, kills: state.kills, squadRemaining, extractionReady: state.bossGateHold && squadRemaining === 0 && !state.bossActive && !state.complete, pressureState: sector.pressureState, pressure: sector.pressure, gravity: sector.gravity, eventText: state.eventText, eventT: state.eventT, contextLabel: context?.label ?? '', bossActive: state.bossActive && !!boss && !boss.dead, bossLabel: boss?.label ?? 'Deep-zone target', bossHp: boss?.hp ?? 0, bossMaxHp: boss?.maxHp ?? 1, bossArmor: boss?.armor ?? 0, bossMaxArmor: boss?.maxArmor ?? 1, bossPhase: boss?.bossPhase ?? 1, bossPattern: boss?.bossPattern ?? 'none', commandTargetMutationNames: boss?.commandTargetMutations.map(commandTargetMutationName) ?? [], bossPhaseMutationNames: boss?.bossPhaseMutations.map(id => bossPhaseMutationPresentationFor(id).shortName) ?? [], vacuumExposure: p.vacuumExposure, disrupted: p.disrupted, consumableCooldown: p.consumableCooldown, damageDealt: state.telemetry.damageDealt, damageTaken: state.telemetry.damageTaken, shots: { ...state.telemetry.weaponShots }, abilityUses: [...state.telemetry.abilityUses] as [number, number, number] }; }
 function useCoarsePointer() { const [coarse, setCoarse] = useState(() => typeof window !== 'undefined' && (window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900)); useEffect(() => { const update = () => setCoarse(window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900); window.addEventListener('resize', update); return () => window.removeEventListener('resize', update); }, []); return coarse; }
 function pct(value: number, max: number) { return `${Math.max(0, Math.min(100, value / Math.max(1, max) * 100))}%`; }
-type FeedbackSnapshot = { damageTaken: number; damageDealt: number; armor: number; reload: boolean; eventText: string; bossPattern: string };
+type FeedbackSnapshot = { damageTaken: number; damageDealt: number; armor: number; reload: boolean; eventText: string; bossPattern: string; collectedLoot: number };
 function syncCombatFeedback(state: SimState, previous: FeedbackSnapshot): FeedbackSnapshot {
   const boss = getBoss(state); const reload = state.player.reloadT > 0;
   if (state.telemetry.damageTaken > previous.damageTaken) feedback.cue('damage'); else if (state.player.armor < previous.armor) feedback.cue('armor');
   if (state.telemetry.damageDealt > previous.damageDealt) feedback.cue('impact');
   if (reload && !previous.reload) feedback.cue('reload');
   if (state.eventText !== previous.eventText) { const text = state.eventText.toUpperCase(); if (text.includes('BREACH') || text.includes('DECOMPRESS') || text.includes('PURGE') || text.includes('BOILOFF')) feedback.cue('breach'); else if (text.includes('GRAVITY') || text.includes('SPIN') || text.includes('COUNTERMASS') || text.includes('COUNTERFORCE') || text.includes('RECOIL VECTOR')) feedback.cue('gravity'); else if (text.includes('GRID') || text.includes('ANCHOR') || text.includes('INTERLOCK') || text.includes('MANIFOLD') || text.includes('RECOVERY TAG') || text.includes('SIPHON') || text.includes('PARTITION') || text.includes('SHUTTER') || text.includes('CUSTODY') || text.includes('RELAY') || text.includes('GEOMETRY')) feedback.cue('machinery'); }
+  const latestLoot = state.collectedLoot[state.collectedLoot.length - 1];
+  if (state.collectedLoot.length > previous.collectedLoot && latestLoot) feedback.cue(groundLootPresentation(latestLoot.rarity).pickupCue);
   const bossPattern = boss?.bossPattern ?? 'none'; if (bossPattern !== 'none' && bossPattern !== previous.bossPattern) feedback.cue('enemy');
-  return { damageTaken: state.telemetry.damageTaken, damageDealt: state.telemetry.damageDealt, armor: state.player.armor, reload, eventText: state.eventText, bossPattern };
+  return { damageTaken: state.telemetry.damageTaken, damageDealt: state.telemetry.damageDealt, armor: state.player.armor, reload, eventText: state.eventText, bossPattern, collectedLoot: state.collectedLoot.length };
 }
 
 export default function GameCanvas({ build, mission, profileSettings, consumables, buildLabel, operatorFaction, onProfileSettingsChange, onConsumablesChange, onMissionResolve, onAttemptFailed, onReturnToHub }: Props) {
@@ -317,7 +372,7 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
     }
     return state;
   }, [build]);
-  const canvasRef = useRef<HTMLCanvasElement>(null); const threeRendererRef = useRef<ThreeCombatRenderer | null>(null); const [initialMissionState] = useState(() => createMissionState(firstMission)); const stateRef = useRef<SimState>(initialMissionState); const [initialDirector] = useState(() => createDirector()); const directorRef = useRef<DirectorRuntime>(initialDirector); const keysRef = useRef(new Set<string>()); const fireSourcesRef = useRef({ mouse: false, aim: false, button: false }); const coarse = useCoarsePointer(); const [restartKey, setRestartKey] = useState(0); const [hud, setHud] = useState<HudState>(() => hudFrom(stateRef.current)); const moveStick = useRef<StickState>(null); const aimStick = useRef<StickState>(null); const mobileTargetRef = useRef<number | null>(null); const manualAimUntilRef = useRef(0); const manualAimPointerRef = useRef<number | null>(null); const tutorialStepRef = useRef(profileSettings.tutorialComplete ? 5 : 0); const [tutorialStep, setTutorialStep] = useState(tutorialStepRef.current); const feedbackSnapshotRef = useRef<FeedbackSnapshot>({ damageTaken: 0, damageDealt: 0, armor: stateRef.current.player.armor, reload: false, eventText: '', bossPattern: 'none' });
+  const canvasRef = useRef<HTMLCanvasElement>(null); const threeRendererRef = useRef<ThreeCombatRenderer | null>(null); const [initialMissionState] = useState(() => createMissionState(firstMission)); const stateRef = useRef<SimState>(initialMissionState); const [initialDirector] = useState(() => createDirector()); const directorRef = useRef<DirectorRuntime>(initialDirector); const keysRef = useRef(new Set<string>()); const fireSourcesRef = useRef({ mouse: false, aim: false, button: false }); const coarse = useCoarsePointer(); const [restartKey, setRestartKey] = useState(0); const [hud, setHud] = useState<HudState>(() => hudFrom(stateRef.current)); const moveStick = useRef<StickState>(null); const aimStick = useRef<StickState>(null); const mobileTargetRef = useRef<number | null>(null); const manualAimUntilRef = useRef(0); const manualAimPointerRef = useRef<number | null>(null); const tutorialStepRef = useRef(profileSettings.tutorialComplete ? 5 : 0); const [tutorialStep, setTutorialStep] = useState(tutorialStepRef.current); const feedbackSnapshotRef = useRef<FeedbackSnapshot>({ damageTaken: 0, damageDealt: 0, armor: stateRef.current.player.armor, reload: false, eventText: '', bossPattern: 'none', collectedLoot: stateRef.current.collectedLoot.length });
   const consumableStockRef = useRef<ConsumableInventory>({ ...consumables });
   const profileSettingsRef = useRef(profileSettings);
   const [consumableStock, setConsumableStock] = useState<ConsumableInventory>(() => ({ ...consumables }));
@@ -327,9 +382,9 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
     consumableStockRef.current = { ...consumables };
     setConsumableStock({ ...consumables });
   }, [consumables]);
-  const restart = useCallback(() => { const startMission = mission.megastructure ? getMegastructureStageContract(mission, 0) : mission; expeditionStageRef.current = 0; expeditionTagsRef.current = 0; expeditionOptionalRef.current = 0; setPendingTransit(null); activeMissionRef.current = startMission; setActiveMission(startMission); stateRef.current = createMissionState(startMission); directorRef.current = createDirector(); setHud(hudFrom(stateRef.current)); fireSourcesRef.current = { mouse: false, aim: false, button: false }; mobileTargetRef.current = null; manualAimUntilRef.current = 0; manualAimPointerRef.current = null; feedbackSnapshotRef.current = { damageTaken: 0, damageDealt: 0, armor: stateRef.current.player.armor, reload: false, eventText: '', bossPattern: 'none' }; setRestartKey(value => value + 1); }, [createMissionState, mission]);
+  const restart = useCallback(() => { const startMission = mission.megastructure ? getMegastructureStageContract(mission, 0) : mission; expeditionStageRef.current = 0; expeditionTagsRef.current = 0; expeditionOptionalRef.current = 0; setPendingTransit(null); activeMissionRef.current = startMission; setActiveMission(startMission); stateRef.current = createMissionState(startMission); directorRef.current = createDirector(); setHud(hudFrom(stateRef.current)); fireSourcesRef.current = { mouse: false, aim: false, button: false }; mobileTargetRef.current = null; manualAimUntilRef.current = 0; manualAimPointerRef.current = null; feedbackSnapshotRef.current = { damageTaken: 0, damageDealt: 0, armor: stateRef.current.player.armor, reload: false, eventText: '', bossPattern: 'none', collectedLoot: stateRef.current.collectedLoot.length }; setRestartKey(value => value + 1); }, [createMissionState, mission]);
   const beginMegastructureTransit = useCallback(() => { const current = stateRef.current; const optionalRecovered = current.objects.some(object => object.id === 'mega-optional-cache' && object.exposed) ? 1 : 0; const nextStage = expeditionStageRef.current + 1; const nextMission = getMegastructureStageContract(mission, nextStage); setPendingTransit({ nextStage, nextMission, optionalRecovered }); }, [mission]);
-  const completeMegastructureTransit = useCallback(() => { if (!pendingTransit) return; const current = stateRef.current; expeditionTagsRef.current += current.kills + pendingTransit.optionalRecovered * 2; expeditionOptionalRef.current += pendingTransit.optionalRecovered; const nextState = createMissionState(pendingTransit.nextMission, current); expeditionStageRef.current = pendingTransit.nextStage; activeMissionRef.current = pendingTransit.nextMission; setActiveMission(pendingTransit.nextMission); stateRef.current = nextState; directorRef.current = createDirector(); fireSourcesRef.current = { mouse: false, aim: false, button: false }; mobileTargetRef.current = null; setHud(hudFrom(nextState)); feedbackSnapshotRef.current = { damageTaken: nextState.telemetry.damageTaken, damageDealt: nextState.telemetry.damageDealt, armor: nextState.player.armor, reload: false, eventText: '', bossPattern: 'none' }; setPendingTransit(null); setRestartKey(value => value + 1); }, [createMissionState, pendingTransit]);
+  const completeMegastructureTransit = useCallback(() => { if (!pendingTransit) return; const current = stateRef.current; expeditionTagsRef.current += current.kills + pendingTransit.optionalRecovered * 2; expeditionOptionalRef.current += pendingTransit.optionalRecovered; const nextState = createMissionState(pendingTransit.nextMission, current); expeditionStageRef.current = pendingTransit.nextStage; activeMissionRef.current = pendingTransit.nextMission; setActiveMission(pendingTransit.nextMission); stateRef.current = nextState; directorRef.current = createDirector(); fireSourcesRef.current = { mouse: false, aim: false, button: false }; mobileTargetRef.current = null; setHud(hudFrom(nextState)); feedbackSnapshotRef.current = { damageTaken: nextState.telemetry.damageTaken, damageDealt: nextState.telemetry.damageDealt, armor: nextState.player.armor, reload: false, eventText: '', bossPattern: 'none', collectedLoot: nextState.collectedLoot.length }; setPendingTransit(null); setRestartKey(value => value + 1); }, [createMissionState, pendingTransit]);
   const advanceTutorial = useCallback((completedStep: number) => { if (tutorialStepRef.current !== completedStep) return; const next = completedStep + 1; tutorialStepRef.current = next; setTutorialStep(next); if (next >= 5) onProfileSettingsChange({ tutorialComplete: true }); }, [onProfileSettingsChange]);
   const fireCurrent = useCallback(() => { const state = stateRef.current; const fired = triggerFire(state); if (fired) { feedback.cue(state.player.currentWeapon); advanceTutorial(1); } return fired; }, [advanceTutorial]);
   const useAbility = useCallback((index: number) => { feedback.unlock(); if (coarse && performance.now() >= manualAimUntilRef.current) mobileTargetRef.current = aimAtMobileTarget(stateRef.current, profileSettings.aimAssist, mobileTargetRef.current); if (triggerAbility(stateRef.current, index)) { feedback.cue('ability'); advanceTutorial(2); } }, [advanceTutorial, coarse, profileSettings.aimAssist]);
@@ -385,6 +440,10 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
   const lockedHostile = mobileTargetRef.current == null ? null : stateRef.current.enemies.find(enemy => enemy.id === mobileTargetRef.current && enemy.active && !enemy.dead) ?? null;
   const focusEnemy = hud.bossActive ? null : lockedHostile;
   const nearbyLoot = stateRef.current.groundLoot.filter(drop => drop.active && !drop.collected).sort((a, b) => Math.hypot(a.x - stateRef.current.player.x, a.y - stateRef.current.player.y) - Math.hypot(b.x - stateRef.current.player.x, b.y - stateRef.current.player.y))[0] ?? null;
+  const nearbyLootDelta = nearbyLoot ? { x: nearbyLoot.x - stateRef.current.player.x, y: nearbyLoot.y - stateRef.current.player.y } : null;
+  const nearbyLootRange = nearbyLootDelta ? Math.round(Math.hypot(nearbyLootDelta.x, nearbyLootDelta.y)) : 0;
+  const nearbyLootDirection = nearbyLootDelta ? objectiveScreenDirection(nearbyLootDelta.x, nearbyLootDelta.y) : '';
+  const nearbyLootPresentation = nearbyLoot ? groundLootPresentation(nearbyLoot.rarity) : null;
   const extractionSweepActive = objectiveStatus.complete && hud.squadRemaining > 0 && !hud.bossActive;
   const hostileRoute = extractionSweepActive && nearestHostile ? findNavigationPath(stateRef.current, { x: nearestHostile.x, y: nearestHostile.y }) : null;
   const hostileWaypoint = hostileRoute?.complete && hostileRoute.points.length > 1 ? hostileRoute.points[1] : nearestHostile ? { x: nearestHostile.x, y: nearestHostile.y } : null;
@@ -404,7 +463,7 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
     <div className="hud-top"><div className="vitals"><div className="barline"><span>HEALTH</span><div className="bar"><i style={{ width: pct(hud.hp, hud.maxHp) }} /></div><b>{Math.ceil(hud.hp)}</b></div><div className="barline"><span>ARMOR</span><div className="bar armor"><i style={{ width: pct(hud.armor, hud.maxArmor) }} /></div><b>{Math.ceil(hud.armor)}</b></div><div className="barline"><span>CAP</span><div className="bar capacitor"><i style={{ width: pct(hud.capacitor, hud.maxCapacitor) }} /></div><b>{Math.ceil(hud.capacitor)}</b></div></div><div className="mission-card"><b>{hud.bossActive ? 'DEEP ZONE ENGAGED' : `${objectiveStatus.label.toUpperCase()} // ${objectiveStatus.progress}/${objectiveStatus.required}`}</b><span>{hud.bossActive ? `${hud.bossLabel.toUpperCase()} · PHASE ${hud.bossPhase}` : `${hud.squadRemaining} HOSTILE${hud.squadRemaining === 1 ? '' : 'S'}`} · {hud.pressureState.toUpperCase()} {(hud.pressure * 100).toFixed(0)}% · {hud.gravity.toFixed(2)}G</span></div></div>
     {hud.classId !== 'none' && !hud.dead && (!coarse || hud.classActive) && <div className={`class-mechanic-hud class-${hud.classId} ${hud.classActive ? 'active' : ''}`} aria-label="Class signature status"><img src={operatorClassIconAssets[hud.classId]} alt="" aria-hidden="true" /><div><small>{hud.classLabel}</small><b>{hud.classDetail}</b></div></div>}
     {focusEnemy && !hud.dead && <div className="target-readout" aria-label="Focused hostile status"><header><small>TARGET LOCK</small><b>{focusEnemy.label.toUpperCase()}</b></header><div className="target-health-track" aria-label="Hostile health"><i style={{ width: pct(focusEnemy.hp, focusEnemy.maxHp) }} /></div>{focusEnemy.armor > 0 && <div className="target-armor-track" aria-label="Hostile armor"><i style={{ width: pct(focusEnemy.armor, focusEnemy.maxArmor) }} /></div>}<div className="target-values"><span>HP {Math.ceil(focusEnemy.hp)} / {Math.ceil(focusEnemy.maxHp)}</span><span className={focusEnemy.maxArmor > 0 && focusEnemy.armor <= 0 ? 'armor-broken' : ''}>{focusEnemy.maxArmor <= 0 ? 'UNARMORED' : focusEnemy.armor > 0 ? `ARMOR ${Math.ceil(focusEnemy.armor)} / ${Math.ceil(focusEnemy.maxArmor)}` : 'ARMOR BROKEN · HEALTH EXPOSED'}</span></div></div>}
-    {nearbyLoot && !hud.dead && <div className="loot-radar" style={{ '--loot-color': `#${lootColor(nearbyLoot.rarity).toString(16).padStart(6, '0')}` } as React.CSSProperties} aria-label="Nearby equipment drop"><small>DROP ON DECK</small><b>{lootLabel(nearbyLoot.rarity)}</b><span>Walk over the marker to recover it · ML {nearbyLoot.monsterLevel}</span></div>}
+    {nearbyLoot && nearbyLootPresentation && !hud.dead && <div className="loot-radar" style={{ '--loot-color': `#${nearbyLootPresentation.color.toString(16).padStart(6, '0')}` } as React.CSSProperties} aria-label={`${nearbyLootPresentation.label}, ${nearbyLootDirection}, range ${nearbyLootRange}`}><small>DROP ON DECK</small><b><span className="loot-radar-shape" aria-hidden="true">{nearbyLootPresentation.icon}</span>{nearbyLootPresentation.label}</b><span className="loot-radar-meta">{nearbyLootDirection} · RANGE {nearbyLootRange} · ML {nearbyLoot.monsterLevel}</span><span className="loot-radar-instruction">Walk over the rarity-shaped beacon to recover it.</span></div>}
     {isMegastructure && !hud.dead && !hud.bossActive && <div className={`mega-objective-chip ${currentOptionalRecovered ? 'complete' : ''}`}><small>OPTIONAL RECOVERY</small><b>{activeMission.megastructureOptionalLabel ?? 'Derelict archive'}</b><span>{currentOptionalRecovered ? 'BANKED IF YOU EXTRACT' : 'ACT TO TAG · +OPTIONAL EXPEDITION YIELD'}</span></div>}
     {postClearObjective && !hud.dead && <div className="post-clear-objective" role="status"><small>HOSTILES CLEARED // CONTRACT NOT COMPLETE</small><b>{objectiveStatus.detail}</b><span>{objectiveTarget ? `NEXT ACT // ${objectiveTarget.label.toUpperCase()} // ${objectiveRouteMode} ${objectiveDirection} // RANGE ${objectiveRange}` : 'SYSTEM RECOVERY IN PROGRESS // HOLD THE ZONE'}</span></div>}
     {extractionSweepActive && !hud.dead && <div className="post-clear-objective" role="status"><small>PRIMARY OBJECTIVE SECURED // EXTRACTION SWEEP</small><b>{hud.squadRemaining} hostile{hud.squadRemaining === 1 ? '' : 's'} remain</b><span>{nearestHostile ? `NEAREST // ${nearestHostile.label.toUpperCase()} // ${hostileRouteMode} ${hostileDirection} // RANGE ${hostileRange}` : 'TACTICAL TRACKER ACQUIRING LAST CONTACT'}</span></div>}
