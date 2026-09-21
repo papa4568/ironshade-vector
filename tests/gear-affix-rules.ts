@@ -146,9 +146,10 @@ assert.ok(refinedResult.message.includes('2-modifier reconstruction limit'), 'Re
 assert.equal(maximumExplicitModifiersForRarity('Prototype'), 6, 'Reconstruction and loot must share the Prototype six-modifier ceiling.');
 
 const metaSource = readFileSync('src/game/meta.ts', 'utf8');
+const generationSource = readFileSync('src/game/gearGeneration.ts', 'utf8');
 const reconstructionSource = readFileSync('src/game/reconstruction.ts', 'utf8');
 const packageSource = readFileSync('package.json', 'utf8');
-assert.ok(metaSource.includes('isAffixEligibleForRoll') && metaSource.includes('weightedAffixChoice'), 'Live loot must consume legality, conflicts, Recovery Level gates, and weights.');
+assert.ok(generationSource.includes('isAffixEligibleForRoll') && generationSource.includes('weightedAffixChoice'), 'Live loot must consume legality, conflicts, Recovery Level gates, and weights through the centralized generator.');
 assert.ok(metaSource.includes('gearAffixDefinitions.map'), 'Singular and live modifier metadata should be sourced from the shared affix registry.');
 assert.ok(reconstructionSource.includes('maximumExplicitModifiersForRarity') && reconstructionSource.includes('resolveGearBase'), 'Reconstruction must share rarity budgets and base-aware legal pools.');
 assert.ok(packageSource.includes('test:gear-affix-rules'), 'Production build must gate on the P8.5-E affix regression.');
