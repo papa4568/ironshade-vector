@@ -122,6 +122,21 @@
 .reward-rarity-guide { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 5px; margin-top: 9px; }
 .reward-rarity-guide > span { min-width: 0; display: flex; align-items: center; padding: 6px 7px; border: 1px solid #30443e; border-radius: 8px; background: rgba(6,13,12,.72); color: #9db0aa; font-size: 7px; font-weight: 900; letter-spacing: .04em; line-height: 1.25; }
 .reward-rarity-guide .rarity-shape { margin-right: .45em; }
+.reward-rarity-guide .premium-rarity-guide {
+  position: relative;
+  border-color: rgba(255,192,111,.74);
+  background: linear-gradient(135deg,rgba(116,67,18,.32),rgba(10,12,11,.88));
+  color:#ffd39e;
+  box-shadow: inset 0 0 20px rgba(240,164,91,.08);
+}
+.reward-rarity-guide .premium-rarity-guide strong {
+  margin-left:auto;
+  padding-left:8px;
+  color:#ffc477;
+  font-size:6px;
+  letter-spacing:.08em;
+  white-space:nowrap;
+}
 .faction-armory-summary > span { margin-top: 5px; color: #a4b6b0; font-size: 9px; line-height: 1.45; }
 .faction-armory-summary > small { margin-top: 6px; color: #71837d; font-size: 8px; line-height: 1.5; overflow-wrap: anywhere; }
 .faction-armory-preview.faction-meridian,.faction-armory-summary.faction-meridian { border-color: rgba(112,142,134,.54); }
