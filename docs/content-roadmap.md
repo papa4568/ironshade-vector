@@ -57,7 +57,7 @@ P7-A/P7-B/P7-C/P7-D/P7-E are archived after merge + verification.
 Goal: make equipment answer **“What could I build around this?”** instead of acting like a stack of overlapping gear-score multipliers. Preserve Ironshade's hard-sci-fi identity and existing strong concepts while consolidating them into one data-driven item system.
 
 - [x] **P8.5-A Gear architecture audit + target schema** — archived after merge + verification
-- [ ] **P8.5-B Power-axis consolidation** — Recovery Level becomes item-level eligibility, Modifier Grade becomes affix strength, Equipment Quality affects inherent/base properties only, Recovery Quality primarily influences original drop quality/provenance, and Frame Generation becomes base-frame progression rather than another universal hidden multiplier
+- [x] **P8.5-B Power-axis consolidation** — archived after merge + verification
 - [ ] **P8.5-C Meaningful base-frame families** — author strategically distinct bases per slot with inherent stats/implicits, allowed pools, tags and tradeoffs; same-slot bases must support different builds and a higher-generation base must not automatically invalidate lower alternatives
 - [ ] **P8.5-D Stat registry + local/global scope + build tags** — centralize stat semantics and scope, define shared Ballistics/Penetration/Armor Break/Precision/Projectile/Recoil/Mobility/Low-G/Thermal/Heat/Venting/Capacitor/Cooldown/Systems/Disruption/Relay/Mark/Pressure/Vacuum/Defense-style tags, and make combat/UI/loot/crafting consume the same definitions
 - [ ] **P8.5-E Affix pools + conflicts + rarity budgets** — make slot/base-aware legal pools, mod groups/conflicts, minimum Recovery Level, grade tables, weights and tradeoffs; Field = clean base, Refined = up to 2 explicit mods, Prototype = up to 6, Singular = curated fixed package; eliminate mechanically nonsensical rolls
@@ -159,21 +159,21 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P8.5-B — Power-axis consolidation.**
+**Next: P8.5-C — Meaningful base-frame families.**
 
-Start **P8.5-B — Power-axis consolidation** so every later Gear 2.0 batch builds on non-overlapping power responsibilities.
+Start **P8.5-C — Meaningful base-frame families** so same-slot equipment creates strategic choices instead of a generation ladder.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.227**
+- Android beta: **0.0.1-beta.230**
 - Package: `app.ironshade.vector`
-- Verified: **P8.5-A Gear architecture audit + target schema complete**
-- Gameplay source: `19f34c21e48e2677ce2cc95a13522bf02cb9e4cf`
-- Browser E2E: `35638230023`
-- Level 15 beta smoke: `35638229810`
-- Android beta.227: `35638229940`
-- APK artifact: `10657786590`
-- APK SHA-256: `3a85a2554ba17a4986ef01ff18f16208e70fddd80afc01257b0bc380107ec211`
+- Verified: **P8.5-B Power-axis consolidation complete**
+- Gameplay source: `6cedda46a6611d838e63dc27f4f5a42674f958bd`
+- Browser E2E: `35658499659`
+- Level 15 beta smoke: `35658499723`
+- Android beta.230: `35658499694`
+- APK artifact: `10665749798`
+- APK SHA-256: `4ed04a5c15811b0cfe3c79a8b750c227cac5fea01d48a06d08b6dbd2f7d3a937`
 - Signing: debug-signed beta; permanent signing is P17-A
