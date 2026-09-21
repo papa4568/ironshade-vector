@@ -1,4 +1,4 @@
-import { rarityDefinition, type ItemRarity } from './rarity';
+import { rarityDefinition, rarityDisplayLabel, type ItemRarity } from './rarity';
 
 export type GroundLootRarity = ItemRarity;
 export type GroundLootSource = 'standard' | 'enhanced' | 'elite' | 'boss';
@@ -169,4 +169,8 @@ export function lootColor(rarity: GroundLootRarity) {
 
 export function lootLabel(rarity: GroundLootRarity) {
   return groundLootPresentation(rarity).label;
+}
+
+export function lootFeedLabel(rarity: GroundLootRarity) {
+  return rarityDisplayLabel(rarity);
 }

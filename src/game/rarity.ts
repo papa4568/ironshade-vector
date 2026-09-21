@@ -71,6 +71,12 @@ export function rarityDefinition(rarity: ItemRarity) {
   return rarityContract[rarity];
 }
 
+// Canonical wording for item menus, reward previews, debriefs, and pickup feed.
+export function rarityDisplayLabel(rarity: ItemRarity) {
+  const definition = rarityDefinition(rarity);
+  return `${rarity.toUpperCase()} · ${definition.cue}`;
+}
+
 export function rarityClassToken(rarity: ItemRarity) {
   return `rarity-${rarityContract[rarity].token}`;
 }

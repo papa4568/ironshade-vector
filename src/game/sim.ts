@@ -4,7 +4,7 @@ import { mutationFireCadenceScale, mutationHazardCadenceScale, mutationMobilityS
 import { bossPhaseFireCadenceScale, bossPhasePulseDefinitions, type BossPhaseMutationId } from './bossPhaseMutations';
 import { commandTargetFireCadenceScale, commandTargetMutationDefinition, commandTargetPulseDefinitions, type CommandTargetMutationId } from './commandTargetMutations';
 import type { ConsumableId } from './consumables';
-import { lootLabel, rollGroundLoot, type GroundLootDrop, type GroundLootReceipt } from './fieldLoot';
+import { lootFeedLabel, rollGroundLoot, type GroundLootDrop, type GroundLootReceipt } from './fieldLoot';
 import { getAbilityKitForClass, type OperatorClassId } from './classSkills';
 export { abilityMeta, classAbilityKits, getAbilityKitForClass } from './classSkills';
 export type { AbilityMeta, OperatorClassId } from './classSkills';
@@ -1496,7 +1496,7 @@ function stepGroundLoot(state: SimState, dt: number) {
     if (distance <= 58) {
       drop.collected = true; drop.active = false;
       state.collectedLoot.push({ id: drop.id, enemyId: drop.enemyId, enemyLabel: drop.enemyLabel, rarity: drop.rarity, source: drop.source, recoveryQualityFloor: drop.recoveryQualityFloor, recoveryLevel: drop.recoveryLevel, monsterLevel: drop.monsterLevel });
-      pushEvent(state, `${lootLabel(drop.rarity)} // ${drop.enemyLabel.toUpperCase()} // EXTRACT TO KEEP`, drop.rarity === 'Singular' ? 2.4 : 1.6);
+      pushEvent(state, `${lootFeedLabel(drop.rarity)} // ${drop.enemyLabel.toUpperCase()} // EXTRACT TO KEEP`, drop.rarity === 'Singular' ? 2.4 : 1.6);
     }
   }
   if (state.bossDefeated && !state.complete && !state.groundLoot.some(drop => drop.source === 'boss' && drop.active && !drop.collected)) { state.complete = true; pushEvent(state, 'COMMAND RECOVERY SECURED // DEEP EXTRACTION READY', 3.2); }

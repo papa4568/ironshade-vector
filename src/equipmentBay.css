@@ -492,10 +492,10 @@
 }
 
 /* Rarity is the primary gear color everywhere; Recovery Quality adds glow only. */
-.equipped-card.rarity-field,.inventory-card.rarity-field,.item-inspector.rarity-field,.reconstruct-storage button.rarity-field { --gear-rarity:#9aa7a3; --gear-rarity-border:rgba(145,160,155,.66); --gear-rarity-wash:rgba(99,115,110,.16); }
-.equipped-card.rarity-refined,.inventory-card.rarity-refined,.item-inspector.rarity-refined,.reconstruct-storage button.rarity-refined { --gear-rarity:#7bd0a4; --gear-rarity-border:rgba(91,183,137,.8); --gear-rarity-wash:rgba(39,120,79,.2); }
-.equipped-card.rarity-prototype,.inventory-card.rarity-prototype,.item-inspector.rarity-prototype,.reconstruct-storage button.rarity-prototype { --gear-rarity:#a8b8ff; --gear-rarity-border:rgba(112,137,222,.9); --gear-rarity-wash:rgba(55,72,155,.24); }
-.equipped-card.rarity-singular,.inventory-card.rarity-singular,.item-inspector.rarity-singular,.reconstruct-storage button.rarity-singular { --gear-rarity:#efb45f; --gear-rarity-border:rgba(226,157,66,.94); --gear-rarity-wash:rgba(139,84,24,.28); }
+.equipped-card.rarity-field,.inventory-card.rarity-field,.item-inspector.rarity-field,.reconstruct-storage button.rarity-field { --gear-rarity:#c3d0ca; --gear-rarity-border:rgba(195,208,202,.66); --gear-rarity-wash:rgba(99,115,110,.16); }
+.equipped-card.rarity-refined,.inventory-card.rarity-refined,.item-inspector.rarity-refined,.reconstruct-storage button.rarity-refined { --gear-rarity:#69aee8; --gear-rarity-border:rgba(105,174,232,.8); --gear-rarity-wash:rgba(43,91,132,.22); }
+.equipped-card.rarity-prototype,.inventory-card.rarity-prototype,.item-inspector.rarity-prototype,.reconstruct-storage button.rarity-prototype { --gear-rarity:#c47ce8; --gear-rarity-border:rgba(196,124,232,.88); --gear-rarity-wash:rgba(103,56,128,.24); }
+.equipped-card.rarity-singular,.inventory-card.rarity-singular,.item-inspector.rarity-singular,.reconstruct-storage button.rarity-singular { --gear-rarity:#f0a45b; --gear-rarity-border:rgba(240,164,91,.94); --gear-rarity-wash:rgba(139,84,24,.28); }
 .equipped-card[class*='rarity-'],.inventory-card[class*='rarity-'],.item-inspector[class*='rarity-'],.reconstruct-storage button[class*='rarity-'] { border-color:var(--gear-rarity-border); }
 .equipped-card[class*='rarity-'],.inventory-card[class*='rarity-'],.reconstruct-storage button[class*='rarity-'] { background:linear-gradient(145deg,var(--gear-rarity-wash),rgba(8,13,15,.96)); }
 .item-inspector[class*='rarity-'] { background:linear-gradient(155deg,var(--gear-rarity-wash),rgba(8,13,14,.975) 32%); }
