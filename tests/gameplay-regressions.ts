@@ -1701,6 +1701,18 @@ assert.equal(updateMobileTargetControl(occlusionControlState, 'balanced', occlus
 occlusionControlState.time += 0.5;
 assert.equal(updateMobileTargetControl(occlusionControlState, 'balanced', occlusionMemory), 212, 'a visible challenger should take over after the occlusion grace window expires');
 
+const occlusionDropState = prepareAcquisitionState();
+const occlusionDropTarget = occlusionDropState.enemies[0]!;
+Object.assign(occlusionDropTarget, { active: true, id: 213, x: 1240, y: 500, role: 'suppressor' as const });
+const occlusionDropMemory = createTargetControlMemory();
+assert.equal(updateMobileTargetControl(occlusionDropState, 'balanced', occlusionDropMemory), 213);
+const occlusionDropCover = occlusionDropState.objects[0]!;
+Object.assign(occlusionDropCover, { active: true, kind: 'cover' as const, x: 1080, y: 480, w: 55, h: 42 });
+occlusionDropState.time += 0.2;
+assert.equal(updateMobileTargetControl(occlusionDropState, 'balanced', occlusionDropMemory), 213, 'brief cover should retain the lock even when no alternative is visible');
+occlusionDropState.time += 0.5;
+assert.equal(updateMobileTargetControl(occlusionDropState, 'balanced', occlusionDropMemory), null, 'an occluded hostile must be released after grace instead of being tracked through cover indefinitely');
+
 const invalidationControlState = prepareAcquisitionState();
 const invalidPrimary = invalidationControlState.enemies[0]!;
 const invalidFallback = invalidationControlState.enemies[1]!;
