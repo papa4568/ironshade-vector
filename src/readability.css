@@ -68,10 +68,13 @@
   box-shadow: inset 3px 0 0 var(--loot-color, #c3d0ca), 0 9px 26px rgba(0,0,0,.28);
   pointer-events: none;
 }
-.loot-radar small,.loot-radar b,.loot-radar span { display:block; }
+/* P7-B // world-loot distance + non-color rarity readability */
+.loot-radar > small,.loot-radar > b,.loot-radar > span { display:block; }
 .loot-radar small { color:#83918d; font:800 7px/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.12em; }
-.loot-radar b { margin-top:4px; color:var(--loot-color,#d7e0dd); font:900 10px/1.1 ui-monospace,SFMono-Regular,Menlo,monospace; }
-.loot-radar span { margin-top:4px; color:#a6b2ae; font:700 8px/1.25 ui-monospace,SFMono-Regular,Menlo,monospace; }
+.loot-radar b { display:flex; align-items:center; gap:6px; margin-top:4px; color:var(--loot-color,#d7e0dd); font:900 10px/1.1 ui-monospace,SFMono-Regular,Menlo,monospace; }
+.loot-radar > span { margin-top:4px; color:#a6b2ae; font:700 8px/1.25 ui-monospace,SFMono-Regular,Menlo,monospace; }
+.loot-radar-shape { display:inline-grid; min-width:18px; place-items:center; color:var(--loot-color,#d7e0dd); font-size:15px; line-height:1; filter:drop-shadow(0 0 5px var(--loot-color,#d7e0dd)); }
+.loot-radar-meta { color:#d0dad6 !important; letter-spacing:.05em; }
 
 .boss-bars { height: 15px; border-width: 1px; }
 .boss-health { background: linear-gradient(90deg,#9f403a,#e16858); }
@@ -150,7 +153,8 @@
   .target-health-track { height:9px; margin-top:6px; }
   .target-values span { font-size:7px; }
   .loot-radar { left:max(8px,env(safe-area-inset-left)); bottom:max(102px,calc(env(safe-area-inset-bottom) + 102px)); width:min(255px,42vw); padding:7px 8px 7px 11px; }
-  .loot-radar span { display:none; }
+  .loot-radar-instruction { display:none !important; }
+  .loot-radar-shape { min-width:16px; font-size:13px; }
   .boss-bars { height:12px; }
   .gear-discovery-note { grid-template-columns:1fr; }
 }
