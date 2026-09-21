@@ -157,13 +157,13 @@ After each merged/verified batch: mark complete → archive detail/delivery note
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.205**
+- Android beta: **0.0.1-beta.206**
 - Package: `app.ironshade.vector`
-- Verified: **P6-A — Boss phase mutations complete**
-- Main source: `61c3f039be921153950a2cb536d985c987e23a3a`
-- Browser E2E: `35555532705`
-- Level 15 beta smoke: `35555532748`
-- Android beta.205: `35555532703`
-- APK artifact: `10620730413`
-- APK SHA-256: `713a76706a1e12475089f6896d11e7c97302dfabba06996078f951400f914745`
+- Verified: **P6-A complete + bundle-size cap fully removed**
+- Main source: `0a72842d4a4c76a64f600246fdcae96ae0c44711`
+- Browser E2E: `35556330981`
+- Level 15 beta smoke: `35556331013`
+- Android beta.206: `35556330989`
+- APK artifact: `10620835919`
+- APK SHA-256: `1638186f43f3add07bc3ae43a8489d1410b7e3c73261d2a0c1a9ba058a5e71b5`
 - Signing: debug-signed beta; permanent signing is P17-A
