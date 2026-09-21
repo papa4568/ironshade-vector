@@ -106,8 +106,23 @@ export function applyThreatBudget(enemies: Enemy[], contract: Contract) {
     const options = chooseEnemyProtocols(contract, enemy.role, enemy.variant, wantedCount, enemy.id);
     if (options.length === 0) return false;
     const classDelta = Math.max(0, combatClassThreat[combatClass] - combatClassThreat[enemy.combatClass]);
-    let localCost = classDelta; const accepted = [];
-    for (const option of options) { const nextCost = protocolThreatCost(option); if (localCost + nextCost > protocolBudget) continue; accepted.push(option); localCost += nextCost; }
+    let localCost = classDelta;
+    const accepted = [];
+    const combinationId = options.find(option => option.combinationId)?.combinationId;
+    if (combinationId) {
+      const bundle = options.filter(option => option.combinationId === combinationId);
+      const bundleCost = bundle.reduce((total, option) => total + protocolThreatCost(option), 0);
+      if (localCost + bundleCost > protocolBudget) return false;
+      accepted.push(...bundle);
+      localCost += bundleCost;
+    }
+    for (const option of options) {
+      if (option.combinationId) continue;
+      const nextCost = protocolThreatCost(option);
+      if (localCost + nextCost > protocolBudget) continue;
+      accepted.push(option);
+      localCost += nextCost;
+    }
     if (accepted.length === 0) return false;
     enemy.combatClass = combatClass; enemy.protocols = accepted; protocolBudget -= localCost; return true;
   };
