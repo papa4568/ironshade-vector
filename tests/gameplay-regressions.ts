@@ -10,6 +10,7 @@ import { carryExpeditionLoot } from '../src/game/expeditionCarry';
 import { advanceParallaxDebtAfterContract, chooseParallaxDebtBranch, getParallaxDebtChoicePrompt, getParallaxDebtContract, parallaxDebtChapter, parallaxDebtIntel, parallaxDebtNextRequiredLevel, syncParallaxDebtAccess } from '../src/game/parallaxDebt';
 import { applyThreatBudget, operationScalingFor } from '../src/game/scaling';
 import { chooseEnemyProtocols, enhancedProtocolVariantDefinition, enhancedProtocolVariantForecastForContract, enhancedProtocolVariantForInstance, exclusiveProtocolCombinationForEnemy, exclusiveProtocolCombinationForInstances, exclusiveProtocolCombinationForecastForContract, protocolDefinition, protocolRewardValue, protocolThreatCost } from '../src/game/eliteProtocols';
+import { enhancedProtocolVariantPresentationFor } from '../src/game/enhancedProtocolVariantPresentation';
 
 function exclusiveProtocolCombinationSmoke() {
   const baseContract = generateContracts(createDefaultCampaign())[0]!;
@@ -94,8 +95,9 @@ function enhancedProtocolVariantSmoke() {
 
   const t10Contract = { ...base, operationTier: 10 };
   const forecast = enhancedProtocolVariantForecastForContract(t10Contract);
-  assert.ok(forecast.includes('Cutline Pair'), 'T10 Lattice Annex forecast should surface the Breachmaker enhanced variant');
-  assert.ok(forecast.includes('Twin-Well Lock'), 'T10 Lattice Annex forecast should surface the Magnetic Lock enhanced variant');
+  assert.ok(forecast.includes('cutline-pair'), 'T10 Lattice Annex forecast should surface the Breachmaker enhanced variant');
+  assert.ok(forecast.includes('twin-well-lock'), 'T10 Lattice Annex forecast should surface the Magnetic Lock enhanced variant');
+  assert.equal(enhancedProtocolVariantPresentationFor('cutline-pair').name, 'Cutline Pair', 'lazy presentation metadata should resolve the authored full variant name');
 
   const enhancedInstances = [];
   for (let enemyId = 1; enemyId <= 96; enemyId += 1) {
@@ -122,7 +124,7 @@ function enhancedProtocolVariantSmoke() {
   assert.match(runtimeSource, /protocol\.enhanced[\s\S]*CROSS-FAN/, 'named Penetrator Volley variant must retain its widened volley mechanical upgrade');
   const combatSource = readFileSync('src/components/GameCanvas.tsx', 'utf8');
   const hubSource = readFileSync('src/components/ShipHub.tsx', 'utf8');
-  assert.match(combatSource, /variantDefinition\?\.shortName/, 'combat HUD should render the authored enhanced variant short name instead of only a generic marker');
+  assert.match(combatSource, /variantPresentation\\?\\.shortName/, 'combat HUD should render the authored enhanced variant short name instead of only a generic marker');
   assert.match(hubSource, /VARIANT \/\//, 'contract tactical forecast should name legal enhanced variants before deployment');
 }
 enhancedProtocolVariantSmoke();
