@@ -57,7 +57,7 @@ assert(rarityClassToken('Prototype') === 'rarity-prototype', 'rarity CSS token d
 assert(lootColor('Refined') === rarityDefinition('Refined').colorValue && lootLabel('Singular') === rarityDefinition('Singular').worldLabel, 'world loot presentation must use the shared rarity contract');
 const worldLootPresentations = rarityOrder.map(groundLootPresentation);
 assert(new Set(worldLootPresentations.map(presentation => presentation.shape)).size === 4, 'world loot must preserve all four non-color rarity silhouettes');
-assert(worldLootPresentations.every((presentation, index) => index === 0 || presentation.beaconScale > worldLootPresentations[index - 1].beaconScale), 'higher rarity world loot should receive a strictly stronger beacon hierarchy');
+assert(worldLootPresentations.every((presentation, index) => index === 0 || (presentation.beaconScale > worldLootPresentations[index - 1].beaconScale && presentation.ringScale > worldLootPresentations[index - 1].ringScale)), 'higher rarity world loot should receive a strictly stronger beacon and ground-ring hierarchy');
 assert(groundLootPresentation('Field').pickupCue === 'loot' && groundLootPresentation('Refined').pickupCue === 'loot' && groundLootPresentation('Prototype').pickupCue === 'rareLoot' && groundLootPresentation('Singular').pickupCue === 'rareLoot', 'pickup audio must distinguish ordinary from high-value recoveries');
 
 function sequenceRandom(values: number[]) {
