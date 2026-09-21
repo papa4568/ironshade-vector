@@ -3,6 +3,8 @@ import { availableAugments, augmentDefinition, frameImplicitDescription, resolve
 import { modifierFamilyFor, modifierGradeCeilingForRecovery, type ModifierFamily, type ModifierGrade } from './lootQuality';
 import { affixPoolForSlot, materializeModifier, type AffixId, type Item, type PlayerProfile } from './meta';
 import { affixStatProfile } from './gearStats';
+import { resolveGearBase } from './gearBases';
+import { gearAffixDefinition, isAffixEligibleForRoll, maximumExplicitModifiersForRarity } from './gearAffixes';
 
 export type ReconstructionAction =
   | { kind: 'quality' }
@@ -66,18 +68,22 @@ function hashText(text: string) {
 }
 
 function candidateAffix(item: Item, family: ModifierFamily, excludeId: AffixId | null, salt: string) {
-  const occupied = new Set(item.modifiers.map(modifier => modifier.id));
-  if (excludeId) occupied.delete(excludeId);
-  const candidates = affixPoolForSlot(item.slot).filter(id => affixStatProfile(id).stats.length > 0 && modifierFamilyFor(id) === family && !occupied.has(id) && id !== excludeId);
+  const occupied = item.modifiers.map(modifier => modifier.id).filter(id => id !== excludeId);
+  const base = resolveGearBase(item.slot, item.baseId, item.frameIdentity);
+  const pool = base?.allowedAffixGroups ?? affixPoolForSlot(item.slot);
+  const recoveryLevel = item.recoveryLevel ?? 1;
+  const candidates = pool.filter(id =>
+    affixStatProfile(id).stats.length > 0
+      && gearAffixDefinition(id).family === family
+      && id !== excludeId
+      && isAffixEligibleForRoll(id, item.slot, recoveryLevel, pool, occupied)
+  );
   if (candidates.length === 0) return null;
   return candidates[hashText(`${item.id}:${salt}`) % candidates.length];
 }
 
 function modifierLimit(item: Item) {
-  if (item.rarity === 'Field') return 1;
-  if (item.rarity === 'Refined') return 3;
-  if (item.rarity === 'Prototype') return 5;
-  return item.modifiers.length;
+  return maximumExplicitModifiersForRarity(item.rarity);
 }
 
 function replaceItem(profile: PlayerProfile, itemId: string, item: Item) {
