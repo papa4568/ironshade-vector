@@ -1,4 +1,4 @@
-import type { Contract, LocationId, ObjectiveMode } from './campaign';
+import type { LocationId, ObjectiveMode } from './campaign';
 import type { EnvironmentalEventId } from './environmentalEvents';
 
 export type EnvironmentalRiskPackageId =
