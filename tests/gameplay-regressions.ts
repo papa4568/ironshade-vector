@@ -1069,7 +1069,7 @@ function specializationGearSynergySmoke() {
 
   const activeProfiles = new Map<string, ReturnType<typeof createDefaultProfile>>();
   for (const entry of cases) {
-    const base = {
+    const base = normalizeClassArmament({
       ...createDefaultProfile(),
       xp: 8100,
       level: 16,
@@ -1077,7 +1077,7 @@ function specializationGearSynergySmoke() {
       classSelectionComplete: true,
       specialization: entry.specialization,
       specializationOverclock: true,
-    };
+    });
     const unlinked = specializationGearSynergyForProfile(base);
     assert.equal(unlinked?.active, false, `${entry.name} must not activate from specialization alone.`);
     assert.ok((unlinked?.resonanceTier ?? 0) >= 1, `${entry.name} fixture should already satisfy Tier I class resonance.`);
@@ -1099,13 +1099,13 @@ function specializationGearSynergySmoke() {
     activeProfiles.set(entry.specialization, profile);
   }
 
-  const breachBase = { ...createDefaultProfile(), xp: 8100, level: 16, operatorClass: 'vanguard' as const, classSelectionComplete: true, specialization: 'breach-vanguard' as const, specializationOverclock: true };
+  const breachBase = normalizeClassArmament({ ...createDefaultProfile(), xp: 8100, level: 16, operatorClass: 'vanguard' as const, classSelectionComplete: true, specialization: 'breach-vanguard' as const, specializationOverclock: true });
   const breachBaseline = deriveCombatBuild(breachBase);
   const breachLinked = deriveCombatBuild(activeProfiles.get('breach-vanguard')!);
   assert.ok(breachLinked.weapon.breacher.armorDamageMul > breachBaseline.weapon.breacher.armorDamageMul, 'Breach Stack should deepen Breacher armor pressure.');
   assert.ok(breachLinked.weapon.breacher.penetrationAdd >= breachBaseline.weapon.breacher.penetrationAdd + 8, 'Breach Stack should add the authored penetration bonus.');
 
-  const momentumBase = { ...createDefaultProfile(), xp: 8100, level: 16, operatorClass: 'vector' as const, classSelectionComplete: true, specialization: 'momentum-broker' as const, specializationOverclock: true };
+  const momentumBase = normalizeClassArmament({ ...createDefaultProfile(), xp: 8100, level: 16, operatorClass: 'vector' as const, classSelectionComplete: true, specialization: 'momentum-broker' as const, specializationOverclock: true });
   const momentumBaseline = deriveCombatBuild(momentumBase);
   const momentumLinked = deriveCombatBuild(activeProfiles.get('momentum-broker')!);
   assert.ok(momentumLinked.player.maxCapAdd >= momentumBaseline.player.maxCapAdd + 6, 'Reaction Ledger should expand the capacitor bank.');
@@ -1113,7 +1113,7 @@ function specializationGearSynergySmoke() {
   assert.ok(momentumLinked.abilities[0].cooldownMul < momentumBaseline.abilities[0].cooldownMul, 'Reaction Ledger should accelerate Vector Shift recovery.');
   assert.match(buildIdentity(activeProfiles.get('momentum-broker')!), /REACTION LEDGER/i, 'Active specialization gear links should surface in build identity.');
 
-  const conductorBase = { ...createDefaultProfile(), xp: 8100, level: 16, operatorClass: 'systems' as const, classSelectionComplete: true, specialization: 'capacitor-conductor' as const, specializationOverclock: true };
+  const conductorBase = normalizeClassArmament({ ...createDefaultProfile(), xp: 8100, level: 16, operatorClass: 'systems' as const, classSelectionComplete: true, specialization: 'capacitor-conductor' as const, specializationOverclock: true });
   const conductorBaseline = deriveCombatBuild(conductorBase);
   const conductorLinked = deriveCombatBuild(activeProfiles.get('capacitor-conductor')!);
   assert.ok(conductorLinked.player.maxCapAdd >= conductorBaseline.player.maxCapAdd + 8, 'Bus Harmonics should expand the Systems capacitor bank.');
