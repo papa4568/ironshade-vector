@@ -15,6 +15,7 @@ import type { EquipmentFaction } from '../game/factionGear';
 import { feedback } from '../game/feedback';
 import { ThreeCombatRenderer } from '../game/threeCombatRenderer';
 import { combatClassLabel, enhancedProtocolVariantForInstance, exclusiveProtocolCombinationForInstances, protocolDefinition } from '../game/eliteProtocols';
+import { enhancedProtocolVariantPresentationFor } from '../game/enhancedProtocolVariantPresentation';
 import { lootColor, lootLabel, type GroundLootReceipt } from '../game/fieldLoot';
 import { carryExpeditionLoot } from '../game/expeditionCarry';
 import { classSkillIconAssets, operatorClassIconAssets, weaponIconAssets } from '../game/mobileUiAssets';
@@ -146,7 +147,7 @@ function drawEnemyTelegraph(ctx: CanvasRenderingContext2D, state: SimState, enem
 }
 
 function tacticalRoleTag(enemy: Enemy) { const labels: Partial<Record<Enemy['variant'], string>> = { shieldBoarder: 'SHIELD', tetherOperator: 'TETHER', droneCarrier: 'CARRIER', coverBreacher: 'BREACHER', marksman: 'MARKSMAN', vacuumSaboteur: 'VACUUM', repairDrone: 'REPAIR', gravitySpecialist: 'GRAVITY', meleeExosuit: 'EXOSUIT', salvageThief: 'THIEF', impulseRigger: 'IMPULSE', boiloffTech: 'BOILOFF', partitionRigger: 'PARTITION', recoilBroker: 'RECOIL', siphonTech: 'SIPHON', purgeOrchestrator: 'PURGE', custodyPorter: 'CUSTODY', geometryTech: 'GEOMETRY' }; return labels[enemy.variant] ?? ''; }
-function protocolTag(enemy: Enemy) { const packageDefinition = exclusiveProtocolCombinationForInstances(enemy.protocols); const visible = enemy.protocols.slice(0, 2).map(protocol => { const variantDefinition = enhancedProtocolVariantForInstance(protocol); return `${variantDefinition ? '▲' : ''}${variantDefinition?.shortName ?? protocolDefinition(protocol.id).shortName}`; }); const hidden = Math.max(0, enemy.protocols.length - visible.length); const detail = `${visible.join(' · ')}${hidden > 0 ? ` · +${hidden}` : ''}`; return packageDefinition ? `${packageDefinition.shortName} // ${detail}` : detail; }
+function protocolTag(enemy: Enemy) { const packageDefinition = exclusiveProtocolCombinationForInstances(enemy.protocols); const visible = enemy.protocols.slice(0, 2).map(protocol => { const variantDefinition = enhancedProtocolVariantForInstance(protocol); const variantPresentation = variantDefinition ? enhancedProtocolVariantPresentationFor(variantDefinition.id) : undefined; return `${variantPresentation ? '▲' : ''}${variantPresentation?.shortName ?? protocolDefinition(protocol.id).shortName}`; }); const hidden = Math.max(0, enemy.protocols.length - visible.length); const detail = `${visible.join(' · ')}${hidden > 0 ? ` · +${hidden}` : ''}`; return packageDefinition ? `${packageDefinition.shortName} // ${detail}` : detail; }
 
 function drawEnemySilhouette(ctx: CanvasRenderingContext2D, enemy: Enemy, pos: Vec2) {
   const fill = roleColors[enemy.role]; const stroke = enemy.statuses.marked > 0 ? '#d9e778' : '#e0a27b'; ctx.fillStyle = fill; ctx.strokeStyle = stroke;
