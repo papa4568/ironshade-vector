@@ -1,5 +1,6 @@
 import type { CampaignState, Contract } from './campaign';
 import { chooseEnemyProtocols, protocolThreatCost, type EnemyCombatClass } from './eliteProtocols';
+import { applyEnemyMutations, chooseEnemyMutations, mutationThreatCost, mutationThreatCostForEnemy } from './t9Mutations';
 import type { Enemy, EnemyRole, EnemyVariant } from './sim';
 
 export type EncounterPattern = 'swarm' | 'mixed' | 'elite-led';
@@ -68,7 +69,7 @@ export function withOperationScaling(contract: Contract, campaign: CampaignState
 const roleThreat: Record<EnemyRole, number> = { assault: 6, suppressor: 7, technician: 7, elite: 14, boss: 0 };
 const combatClassThreat: Record<EnemyCombatClass, number> = { standard: 0, enhanced: 3, elite: 5, command: 0 };
 const variantThreat: Partial<Record<EnemyVariant, number>> = { shieldBoarder: 4, tetherOperator: 3, droneCarrier: 3, coverBreacher: 3, marksman: 3, vacuumSaboteur: 3, repairDrone: 2, gravitySpecialist: 3, meleeExosuit: 5, salvageThief: 2, vectorSkirmisher: 2, anchorEngineer: 5, barricadeTrooper: 3, pressureLockTech: 3, tetherRigger: 3, maintenanceDrone: 2, gravityDrone: 3, impulseRigger: 3, boiloffTech: 3, partitionRigger: 4, recoilBroker: 3, siphonTech: 4, purgeOrchestrator: 4, custodyPorter: 4, geometryTech: 4 };
-export function enemyThreatCost(enemy: Enemy) { return roleThreat[enemy.role] + (variantThreat[enemy.variant] ?? 0) + combatClassThreat[enemy.combatClass] + enemy.protocols.reduce((total, protocol) => total + protocolThreatCost(protocol), 0); }
+export function enemyThreatCost(enemy: Enemy) { return roleThreat[enemy.role] + (variantThreat[enemy.variant] ?? 0) + combatClassThreat[enemy.combatClass] + enemy.protocols.reduce((total, protocol) => total + protocolThreatCost(protocol), 0) + mutationThreatCostForEnemy(enemy); }
 function authoredEliteRequired(contract: Contract) { if (contract.megastructureStage === 2 || contract.storyFinale || contract.campaignFinale || contract.escalationFinale) return true; return ['Recovery Commander Sable Voss', 'Salvage Captain Rhea Kade', 'Foundry Marshal Cael', 'HELIOS-9 Yardmind', 'Transfer Adjudicator Iona Vale', 'Umbra Systems Marshal Oren Saal', 'Custody Director Mara Teth'].includes(contract.deepTarget); }
 function deterministicRank(contract: Contract, enemy: Enemy) { let value = (contract.seed ^ enemy.id * 7919 ^ (contract.operationTier ?? 1) * 104729) >>> 0; value ^= value << 13; value ^= value >>> 17; value ^= value << 5; return value >>> 0; }
 
@@ -79,7 +80,7 @@ export function applyThreatBudget(enemies: Enemy[], contract: Contract) {
   const tier = contract.operationTier ?? 1;
   const protocolCapacity = contract.eliteProtocolSlots ?? 0;
   const regular = enemies.filter(enemy => enemy.role !== 'boss' && enemy.id <= 8);
-  for (const enemy of enemies) { enemy.protocols = []; enemy.protocolPulse = 0; enemy.combatClass = enemy.role === 'boss' ? 'command' : enemy.role === 'elite' ? 'elite' : 'standard'; }
+  for (const enemy of enemies) { enemy.protocols = []; enemy.mutations = []; enemy.protocolPulse = 0; enemy.combatClass = enemy.role === 'boss' ? 'command' : enemy.role === 'elite' ? 'elite' : 'standard'; }
   for (const enemy of regular) { enemy.effectiveness = effectiveness; enemy.maxHp = Math.max(1, Math.round(enemy.maxHp * effectiveness)); enemy.hp = enemy.maxHp; enemy.maxArmor = Math.max(0, Math.round(enemy.maxArmor * effectiveness)); enemy.armor = enemy.maxArmor; }
   const boss = enemies.find(enemy => enemy.role === 'boss');
   if (boss) { const bossEffectiveness = Math.max(1, 1 + (effectiveness - 1) * 0.82); boss.effectiveness = bossEffectiveness; boss.maxHp = Math.max(1, Math.round(boss.maxHp * bossEffectiveness)); boss.hp = boss.maxHp; boss.maxArmor = Math.max(0, Math.round(boss.maxArmor * bossEffectiveness)); boss.armor = boss.maxArmor; }
@@ -87,7 +88,8 @@ export function applyThreatBudget(enemies: Enemy[], contract: Contract) {
   const reserveCommitment = (contract.reserveCount ?? 1) * 3;
   const environmentCommitment = (contract.environmentalEventSlots ?? 1) * 2;
   const protocolCommitment = protocolCapacity <= 0 ? 0 : Math.min(28, protocolCapacity * 4 + Math.max(0, tier - 5) + (contract.directiveProtocolDensity ?? 0) * 3);
-  const bodyBudget = Math.max(22, budget - reserveCommitment - environmentCommitment - protocolCommitment);
+  const mutationCommitment = tier < 9 ? 0 : tier === 9 ? 2 : tier === 10 ? 4 : tier === 11 ? 6 : 8;
+  const bodyBudget = Math.max(22, budget - reserveCommitment - environmentCommitment - protocolCommitment - mutationCommitment);
   const core = regular.filter(enemy => enemy.id <= 6);
   for (const enemy of core) enemy.active = false;
   const forcedElite = authoredEliteRequired(contract) ? core.find(enemy => enemy.role === 'elite') : undefined;
@@ -133,6 +135,23 @@ export function applyThreatBudget(enemies: Enemy[], contract: Contract) {
   const enhancedLimit = Math.min(3, (tier >= 9 ? 2 : protocolCapacity > 0 ? 1 : 0) + ((contract.directiveProtocolDensity ?? 0) > 0 ? 1 : 0)); let enhanced = 0;
   for (const enemy of candidates) { if (enemy.combatClass !== 'standard' || enhanced >= enhancedLimit) continue; const count = tier >= 7 ? Math.min(2, protocolCapacity) : 1; if (packageEnemy(enemy, 'enhanced', count)) enhanced += 1; }
   if (tier >= 6 && protocolBudget > 0) { const reserve = regular.filter(enemy => enemy.id >= 7).sort((a, b) => deterministicRank(contract, a) - deterministicRank(contract, b))[0]; if (reserve) packageEnemy(reserve, 'enhanced', 1); }
+
+  let mutationBudget = mutationCommitment;
+  const mutationLimit = tier >= 11 ? 2 : 1;
+  const mutationCandidates = active
+    .filter(enemy => enemy.role !== 'boss' && (enemy.combatClass === 'elite' || enemy.combatClass === 'enhanced'))
+    .sort((a, b) => Number(b.combatClass === 'elite') - Number(a.combatClass === 'elite') || deterministicRank(contract, a) - deterministicRank(contract, b));
+  for (const enemy of mutationCandidates) {
+    if (mutationBudget <= 0) break;
+    const chosen = [];
+    for (const id of chooseEnemyMutations(contract, enemy, mutationLimit)) {
+      const cost = mutationThreatCost(id);
+      if (cost > mutationBudget) continue;
+      chosen.push(id);
+      mutationBudget -= cost;
+    }
+    if (chosen.length > 0) applyEnemyMutations(enemy, chosen);
+  }
 }
 
 export function recoveryLevelForSource(maxRecoveryLevel: number, options: { deep: boolean; boss: boolean; eliteKills: number }) { const baseline = Math.max(1, maxRecoveryLevel - 5); const sourceBonus = (options.deep ? 2 : 0) + Math.min(2, Math.max(0, options.eliteKills)) + (options.boss ? 3 : 0); return Math.min(maxRecoveryLevel, baseline + sourceBonus); }
