@@ -41,14 +41,16 @@ assert.equal(new Set(augmentDefinitions.map(definition => definition.id)).size, 
 assert.deepEqual(rarityOrder, ['Field', 'Refined', 'Prototype', 'Singular'], 'Target schema assumes the current four-rarity contract.');
 
 const metaSource = readFileSync('src/game/meta.ts', 'utf8');
+const basesSource = readFileSync('src/game/gearBases.ts', 'utf8');
 const depthSource = readFileSync('src/game/gearDepth.ts', 'utf8');
 const qualitySource = readFileSync('src/game/lootQuality.ts', 'utf8');
 const reconstructionSource = readFileSync('src/game/reconstruction.ts', 'utf8');
 const auditSource = readFileSync('docs/gear-architecture-audit.md', 'utf8');
 
-for (const marker of ['const baseNames:', 'const affixes:', 'bossSingularPools', 'deriveCombatBuild']) {
+for (const marker of ['const affixes:', 'bossSingularPools', 'deriveCombatBuild']) {
   assert.ok(metaSource.includes(marker), `Architecture audit marker missing from current meta source: ${marker}`);
 }
+assert.ok(basesSource.includes('gearBaseDefinitions') && basesSource.includes('allowedAffixGroups') && basesSource.includes('generationRange'), 'P8.5-C base-family registry changed without updating the architecture audit gate.');
 assert.ok(depthSource.includes('frameIdentityDefinitions') && depthSource.includes('augmentDefinitions') && depthSource.includes('applyFrameIdentity') && depthSource.includes('applyAugments'), 'Gear-depth sources changed without updating the audit.');
 assert.ok(qualitySource.includes('ModifierGrade') && qualitySource.includes('RecoveryQualityGrade') && qualitySource.includes('rollRarityForQuality'), 'Loot-quality power axes changed without updating the audit.');
 assert.ok(reconstructionSource.includes('modifierLimit') && reconstructionSource.includes('candidateAffix') && reconstructionSource.includes('accessibleAugmentSlots'), 'Reconstruction responsibilities changed without updating the audit.');
