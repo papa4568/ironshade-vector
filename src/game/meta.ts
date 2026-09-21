@@ -4,7 +4,7 @@ export type { OperatorClassId } from './classSkills';
 import { factionFrames, factionGearChance, factionSetDefinitions, type EquipmentFaction } from './factionGear';
 import { frameGenerationForRecovery, recoveryLevelForSource, type FrameGeneration } from './scaling';
 import { modifierCountForRarity, modifierFamilyFor, modifierPowerFactor, modifierTradeoffFactor, rollModifierGrade, rollRarityForQuality, rollRecoveryQuality, type ModifierFamily, type ModifierGrade, type RecoveryQualityGrade } from './lootQuality';
-import { applyAugments, applyFrameIdentity, augmentSlotCount, equipmentQualityForRecovery, factionFrameIdentity, frameImplicitDescription, inferFrameIdentity, normalizeAugments, rollFrameIdentity, singularFrameIdentity, type AugmentId, type FrameIdentityId } from './gearDepth';
+import { applyAugments, applyFrameIdentity, augmentSlotCount, factionFrameIdentity, frameImplicitDescription, inferFrameIdentity, normalizeAugments, rollEquipmentQuality, rollFrameIdentity, singularFrameIdentity, type AugmentId, type FrameIdentityId } from './gearDepth';
 import type { GroundLootReceipt } from './fieldLoot';
 import type { ItemRarity } from './rarity';
 
@@ -223,7 +223,7 @@ function inferFactionFromBaseId(baseId: string): EquipmentFaction | undefined {
 function makeSingularItem(template: SingularTemplate, prefix: string, index: number, level: number, random: () => number, recoveryLevel: number, recoveryQuality: RecoveryQualityGrade, recoverySource: string, frameOperatorLevel = level): Item {
   const frameGeneration = frameGenerationForRecovery(recoveryLevel, frameOperatorLevel);
   const frameIdentity = singularFrameIdentity(template.slot, template.baseId);
-  const equipmentQuality = Math.max(4, equipmentQualityForRecovery(recoveryQuality, frameGeneration, 'Singular'));
+  const equipmentQuality = Math.max(4, rollEquipmentQuality(random));
   const augmentSlots = augmentSlotCount('Singular', frameGeneration);
   return {
     ...template,
@@ -514,7 +514,7 @@ function cloneItem(item: Item): Item {
   const frameGeneration = item.frameGeneration ?? 1;
   const recoveryQuality = item.recoveryQuality ?? 0;
   const frameIdentity = item.frameIdentity ?? inferFrameIdentity(item.slot, `${item.baseId}:${item.name}`);
-  const equipmentQuality = Math.max(0, Math.min(20, item.equipmentQuality ?? equipmentQualityForRecovery(recoveryQuality, frameGeneration, item.rarity)));
+  const equipmentQuality = Math.max(0, Math.min(20, item.equipmentQuality ?? 0));
   const augmentSlots = item.augmentSlots ?? augmentSlotCount(item.rarity, frameGeneration);
   return {
     ...item,
@@ -611,7 +611,7 @@ function makeFactionItem(slot: EquipmentSlot, index: number, level: number, rand
   const count = modifierCountForRarity(rarity, recoveryQuality, random);
   const frameGeneration = frameGenerationForRecovery(recoveryLevel, frameOperatorLevel);
   const frameIdentity = factionFrameIdentity(faction, slot);
-  const equipmentQuality = equipmentQualityForRecovery(recoveryQuality, frameGeneration, rarity);
+  const equipmentQuality = rollEquipmentQuality(random);
   const augmentSlots = augmentSlotCount(rarity, frameGeneration);
   return {
     id: `faction-${Date.now().toString(36)}-${index}-${Math.floor(random() * 99999).toString(36)}`,
@@ -643,7 +643,7 @@ function makeItem(slot: EquipmentSlot, index: number, level: number, random: () 
   const frameGeneration = frameGenerationForRecovery(recoveryLevel, frameOperatorLevel);
   const generationNames = frameGenerationNames[slot][frameGeneration];
   const frameIdentity = rollFrameIdentity(slot, random);
-  const equipmentQuality = equipmentQualityForRecovery(recoveryQuality, frameGeneration, rarity);
+  const equipmentQuality = rollEquipmentQuality(random);
   const augmentSlots = augmentSlotCount(rarity, frameGeneration);
   return { id: `loot-${Date.now().toString(36)}-${index}-${Math.floor(random() * 99999).toString(36)}`, baseId: base.baseId, name: generationNames[Math.floor(random() * generationNames.length)], slot, equipmentClass: base.equipmentClass, rarity, levelRequirement: levelRequirementForRecovery(recoveryLevel), core: base.core, modifiers: rollModifierSet(base.affixes, count, random, recoveryLevel, recoveryQuality, [], forcedAffixes), recoveryLevel, frameGeneration, frameIdentity, frameImplicit: frameImplicitFor(slot, frameGeneration, frameIdentity, equipmentQuality), equipmentQuality, augmentSlots, augments: [], recoveryQuality, recoverySource };
 }
@@ -1116,7 +1116,6 @@ function applySpecializationGearSynergy(build: CombatBuild, profile: PlayerProfi
 }
 
 function freshBuild(): CombatBuild { const weapon = () => ({ damageMul: 1, speedMul: 1, penetrationAdd: 0, recoilMul: 1, heatPerShotMul: 1, heatDissipationMul: 1, magazineAdd: 0, reloadMul: 1, armorDamageMul: 1, healthMultiplierMul: 1, knockbackMul: 1 }); return { operatorClass: null, classResonanceTier: 0, classSkillFamily: { family: null, frameGeneration: 1, frameIdentity: null, singularLinked: false, powerMul: 1, rangeMul: 1, controlMul: 1, armorMul: 1, recoveryMul: 1, costMul: 1, chainBonus: 0, sources: [] }, weapon: { carbine: weapon(), breacher: weapon(), rail: weapon() }, player: { maxHpAdd: 0, maxArmorAdd: 0, maxCapAdd: 0, moveSpeedMul: 1, capRegenMul: 1, vacuumResistance: 0, lowGControl: 0, ventSpeedMul: 1 }, mechanics: { railFragment: false, railFragmentScale: 0, dodgeVent: false, dodgeVentScale: 0, magRedirect: false, magRedirectScale: 0, breacherPropulsion: false, breacherPropulsionScale: 0, markWeakArmor: false, markWeakArmorScale: 0, arcDrone: false, arcDroneScale: 0, recoilVectoring: false, breachDoctrine: false, sensorPenetration: false, widebandMark: false, magOverdriveKick: false, arcGroundLoop: false, magBoundarySink: false, markExecutionTrace: false, arcCascadeLattice: false, vanguardSiegeRam: false, vanguardFaultlineTag: false, vanguardReprisalPulse: false, vectorSlingshotShift: false, vectorTriangulationLock: false, vectorNeedleFan: false, systemsAnchorLattice: false, systemsRecursiveIntrusion: false, systemsReturnCurrent: false }, singularTraits: [], specialization: null, specializationOverclock: false, abilities: [{ costMul: 1, cooldownMul: 1, powerMul: 1 }, { costMul: 1, cooldownMul: 1, powerMul: 1 }, { costMul: 1, cooldownMul: 1, powerMul: 1 }] }; }
-function applyFrameGeneration(build: CombatBuild, item: Item) { const step = Math.min(4, Math.max(0, (item.frameGeneration ?? 1) - 1)); if (step <= 0) return; if (item.slot === 'carbine') { build.weapon.carbine.speedMul *= 1 + step * 0.025; build.weapon.carbine.penetrationAdd += step * 2; } else if (item.slot === 'breacher') { build.weapon.breacher.damageMul *= 1 + step * 0.025; build.weapon.breacher.knockbackMul *= 1 + step * 0.04; } else if (item.slot === 'rail') { build.weapon.rail.penetrationAdd += step * 4; build.weapon.rail.recoilMul *= 1 - step * 0.025; } else if (item.slot === 'suit') { build.player.maxArmorAdd += step * 4; build.player.vacuumResistance = Math.min(0.9, build.player.vacuumResistance + step * 0.025); } else if (item.slot === 'rig') { build.player.maxCapAdd += step * 4; build.player.capRegenMul *= 1 + step * 0.025; } else { for (const ability of build.abilities) ability.cooldownMul *= 1 - step * 0.02; } }
 function applyAffix(build: CombatBuild, item: Item, modifier: ItemModifier) { const id = modifier.id; const power = modifierPowerFactor(modifier.grade ?? 3); const tradeoff = modifierTradeoffFactor(modifier.grade ?? 3); const weapon = item.slot === 'carbine' || item.slot === 'breacher' || item.slot === 'rail' ? build.weapon[item.slot] : null; if (id === 'hypervelocity' && weapon) { weapon.speedMul *= 1 + 0.18 * power; weapon.penetrationAdd += Math.round(12 * power); weapon.recoilMul *= 1 + 0.1 * tradeoff; } if (id === 'countermass') { if (weapon) { weapon.recoilMul *= 1 - 0.22 * power; weapon.damageMul *= 1 - 0.07 * tradeoff; } else build.player.lowGControl += 0.12 * power; } if (id === 'overdrive' && weapon) { weapon.damageMul *= 1 + 0.14 * power; weapon.recoilMul *= 1 + 0.2 * tradeoff; weapon.heatPerShotMul *= 1 + 0.12 * tradeoff; } if (id === 'cryoloop') { if (weapon) { weapon.heatDissipationMul *= 1 + 0.3 * power; weapon.penetrationAdd -= Math.round(8 * tradeoff); } else for (const stats of Object.values(build.weapon)) stats.heatDissipationMul *= 1 + 0.15 * power; } if (id === 'extendedFeed' && weapon) { weapon.magazineAdd += Math.max(1, Math.round(6 * power)); weapon.reloadMul *= 1 + 0.12 * tradeoff; } if (id === 'tungsten' && weapon) { weapon.armorDamageMul *= 1 + 0.3 * power; weapon.penetrationAdd += Math.round(14 * power); weapon.heatPerShotMul *= 1 + 0.08 * tradeoff; } if (id === 'vacuumSeal') build.player.vacuumResistance = Math.min(0.8, build.player.vacuumResistance + 0.55 * power); if (id === 'servoWeave') { build.player.moveSpeedMul *= 1 + 0.08 * power; build.player.lowGControl += 0.22 * power; } if (id === 'capacitorRecycler') { build.player.capRegenMul *= 1 + 0.2 * power; for (const ability of build.abilities) ability.costMul *= 1 - 0.1 * power; } if (id === 'railFracture') { build.mechanics.railFragment = true; build.mechanics.railFragmentScale = Math.max(build.mechanics.railFragmentScale, power); } if (id === 'dodgeVent') { build.mechanics.dodgeVent = true; build.mechanics.dodgeVentScale = Math.max(build.mechanics.dodgeVentScale, power); } if (id === 'magRedirect') { build.mechanics.magRedirect = true; build.mechanics.magRedirectScale = Math.max(build.mechanics.magRedirectScale, power); } if (id === 'breachPropulsion') { build.mechanics.breacherPropulsion = true; build.mechanics.breacherPropulsionScale = Math.max(build.mechanics.breacherPropulsionScale, power); } if (id === 'markShear') { build.mechanics.markWeakArmor = true; build.mechanics.markWeakArmorScale = Math.max(build.mechanics.markWeakArmorScale, power); } if (id === 'arcDrone') { build.mechanics.arcDrone = true; build.mechanics.arcDroneScale = Math.max(build.mechanics.arcDroneScale, power); } }
 
 function applyClassSkillFamilyInfluence(build: CombatBuild, item: Item) {
@@ -1124,16 +1123,14 @@ function applyClassSkillFamilyInfluence(build: CombatBuild, item: Item) {
   if (!family || item.slot !== family) return;
   const skill = build.classSkillFamily;
   const generation = Math.max(1, Math.min(6, item.frameGeneration ?? 1));
-  const quality = Math.max(0, Math.min(20, item.equipmentQuality ?? 0));
-  const frameDepth = (generation - 1) * 0.012 + quality * 0.0015;
   const identity = item.frameIdentity ?? inferFrameIdentity(item.slot, `${item.baseId}:${item.name}`);
   skill.frameGeneration = generation;
   skill.frameIdentity = identity;
-  skill.powerMul *= 1 + frameDepth;
-  skill.recoveryMul *= 1 + frameDepth * 0.55;
   skill.sources.push(`frame:${identity}`);
 
-  const identityScale = 1 + (generation - 1) * 0.07 + quality * 0.008;
+  // Frame Generation selects/progresses the base frame; class skills read the chosen identity,
+  // not an additional hidden generation/quality multiplier layered on top.
+  const identityScale = 1;
   if (identity === 'carbine-countermass') skill.controlMul *= 1 + 0.055 * identityScale;
   if (identity === 'carbine-hypervelocity') skill.rangeMul *= 1 + 0.07 * identityScale;
   if (identity === 'carbine-feedline') { skill.recoveryMul *= 1 + 0.055 * identityScale; skill.chainBonus += 1; }
@@ -1172,7 +1169,7 @@ export function deriveCombatBuild(profile: PlayerProfile): CombatBuild {
   const build = freshBuild();
   build.classSkillFamily.family = activeWeaponFamilyForProfile(profile);
   const equipped = equippedItems(profile);
-  for (const item of equipped) { applyFrameGeneration(build, item); applyFrameIdentity(build, item); applyAugments(build, item.slot, item.augments ?? []); for (const modifier of item.modifiers) applyAffix(build, item, modifier); if (item.singularTrait && !build.singularTraits.includes(item.singularTrait)) build.singularTraits.push(item.singularTrait); }
+  for (const item of equipped) { applyFrameIdentity(build, item); applyAugments(build, item.slot, item.augments ?? []); for (const modifier of item.modifiers) applyAffix(build, item, modifier); if (item.singularTrait && !build.singularTraits.includes(item.singularTrait)) build.singularTraits.push(item.singularTrait); }
   const familyItem = equipped.find(item => item.slot === build.classSkillFamily.family);
   if (familyItem) applyClassSkillFamilyInfluence(build, familyItem);
   if (build.singularTraits.includes('magBloom')) { build.abilities[0].costMul *= 1.25; build.abilities[0].cooldownMul *= 1.08; }

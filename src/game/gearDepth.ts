@@ -71,6 +71,11 @@ const qualityScale = (quality: number) => 1 + clampQuality(quality) * 0.02;
 const generationValue = (generation: FrameGeneration, values: [number, number, number, number]) => values[Math.min(values.length - 1, generation - 1)] * (generation >= 5 ? 1.12 : 1);
 const percent = (value: number) => Math.round(value * 100);
 
+export function rollEquipmentQuality(random: () => number) {
+  const roll = Math.max(0, Math.min(0.999999, random()));
+  return clampQuality(Math.floor(roll * 9));
+}
+
 function hashText(text: string) {
   let hash = 2166136261;
   for (let index = 0; index < text.length; index += 1) {
@@ -136,10 +141,9 @@ export function singularFrameIdentity(slot: GearSlot, baseId: string) {
   return inferFrameIdentity(slot, `singular:${baseId}`);
 }
 
-export function equipmentQualityForRecovery(recoveryQuality: number, generation: FrameGeneration, rarity: GearRarity) {
-  const rarityBonus = rarity === 'Singular' ? 3 : rarity === 'Prototype' ? 1 : 0;
-  const matureGenerationBonus = Math.min(4, Math.max(0, generation - 1));
-  return clampQuality(Math.min(12, recoveryQuality * 2 + matureGenerationBonus + rarityBonus));
+/** @deprecated P8.5-B compatibility shim for old callers. New drops use rollEquipmentQuality. */
+export function equipmentQualityForRecovery(_recoveryQuality: number, _generation: FrameGeneration, _rarity: GearRarity) {
+  return 0;
 }
 
 export function augmentSlotCount(rarity: GearRarity, generation: FrameGeneration) {
