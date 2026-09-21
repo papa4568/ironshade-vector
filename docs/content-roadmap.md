@@ -39,9 +39,8 @@ P6.1–P6.3 and P6-A/P6-B/P6-C/P6-D/P6-E are archived.
 
 ## P7 — Loot Rarity & Equipment Presentation
 
-P7-A is archived after merge + verification.
+P7-A/P7-B are archived after merge + verification.
 
-- [ ] **P7-B World loot** — rarity-readable silhouette/beacon, distance readability, pickup feedback/audio
 - [ ] **P7-C Menu consistency** — equipped, storage, crafting, comparison, rewards, loot feed, debrief all use the same rarity language
 - [ ] **P7-D Inspector/tools** — frame/base identity, quality, recovery level, modifier grades, augments, compatibility, source, build-changing effects, filters/sorts
 - [ ] **P7-E Singular + touch QA** — premium Singular treatment, no hover-only data, regression across every item surface
@@ -147,20 +146,20 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P7-B — World loot.**
+**Next: P7-C — Menu consistency.**
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.211**
+- Android beta: **0.0.1-beta.212**
 - Package: `app.ironshade.vector`
-- Verified: **P7-A Rarity contract complete**
-- Gameplay source: `0486cf45b17f2cd45bcb3d88385cd78e5c32b998`
-- PR Browser E2E: `35561188093`
-- Merged-main Browser E2E: `35561313627`
-- Level 15 beta smoke: `35561313621`
-- Android beta.211: `35561313599`
-- APK artifact: `10622107759`
-- APK SHA-256: `d42b0e563f2c8ebf1d3ff2a5dca5fdd7dea7b69d994e68ac11f335e0a2af1339`
+- Verified: **P7-B World loot complete**
+- Gameplay source: `6b4530f4ab28aedc06f79d2a6b51e12ec78f9ad4`
+- PR: `#130` (PR-event Browser E2E was not scheduled by GitHub for the API-created PR; merged-main gates are authoritative)
+- Merged-main Browser E2E: `35562379185`
+- Level 15 beta smoke: `35562379166`
+- Android beta.212: `35562379132`
+- APK artifact: `10622443302`
+- APK SHA-256: `c3e6b1b04956be261ad654b0900cb4969b78e9ff9e6db0b3f5ecd1557282c768`
 - Signing: debug-signed beta; permanent signing is P17-A
