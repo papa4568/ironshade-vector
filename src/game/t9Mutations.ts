@@ -11,8 +11,6 @@ export type HighTierMutationId =
 
 export type HighTierMutationDefinition = {
   id: HighTierMutationId;
-  name: string;
-  shortName: string;
   minTier: number;
   threatCost: number;
   hpScale?: number;
@@ -23,12 +21,12 @@ export type HighTierMutationDefinition = {
 };
 
 export const highTierMutationDefinitions: readonly HighTierMutationDefinition[] = [
-  { id: 'reinforced-core', name: 'Reinforced Core', shortName: 'CORE+', minTier: 9, threatCost: 2, hpScale: 1.24 },
-  { id: 'ablative-mantle', name: 'Ablative Mantle', shortName: 'MANTLE', minTier: 9, threatCost: 2, armorScale: 1.35 },
-  { id: 'hunter-servo', name: 'Hunter Servo', shortName: 'SERVO', minTier: 9, threatCost: 2, mobilityScale: 1.14 },
-  { id: 'redline-bus', name: 'Redline Bus', shortName: 'RED-BUS', minTier: 10, threatCost: 2, fireCadenceScale: 1.18 },
-  { id: 'countermass-rig', name: 'Countermass Rig', shortName: 'CM-RIG', minTier: 10, threatCost: 3, hpScale: 1.12, armorScale: 1.18, mobilityScale: 1.08 },
-  { id: 'relay-reflex', name: 'Relay Reflex', shortName: 'REFLEX', minTier: 11, threatCost: 3, fireCadenceScale: 1.1, hazardCadenceScale: 1.22 },
+  { id: 'reinforced-core', minTier: 9, threatCost: 2, hpScale: 1.24 },
+  { id: 'ablative-mantle', minTier: 9, threatCost: 2, armorScale: 1.35 },
+  { id: 'hunter-servo', minTier: 9, threatCost: 2, mobilityScale: 1.14 },
+  { id: 'redline-bus', minTier: 10, threatCost: 2, fireCadenceScale: 1.18 },
+  { id: 'countermass-rig', minTier: 10, threatCost: 3, hpScale: 1.12, armorScale: 1.18, mobilityScale: 1.08 },
+  { id: 'relay-reflex', minTier: 11, threatCost: 3, fireCadenceScale: 1.1, hazardCadenceScale: 1.22 },
 ];
 
 const byId = new Map(highTierMutationDefinitions.map(definition => [definition.id, definition]));
