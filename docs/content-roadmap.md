@@ -58,7 +58,7 @@ Goal: make equipment answer **“What could I build around this?”** instead of
 
 - [x] **P8.5-A Gear architecture audit + target schema** — archived after merge + verification
 - [x] **P8.5-B Power-axis consolidation** — archived after merge + verification
-- [ ] **P8.5-C Meaningful base-frame families** — author strategically distinct bases per slot with inherent stats/implicits, allowed pools, tags and tradeoffs; same-slot bases must support different builds and a higher-generation base must not automatically invalidate lower alternatives
+- [x] **P8.5-C Meaningful base-frame families** — archived after merge + verification
 - [ ] **P8.5-D Stat registry + local/global scope + build tags** — centralize stat semantics and scope, define shared Ballistics/Penetration/Armor Break/Precision/Projectile/Recoil/Mobility/Low-G/Thermal/Heat/Venting/Capacitor/Cooldown/Systems/Disruption/Relay/Mark/Pressure/Vacuum/Defense-style tags, and make combat/UI/loot/crafting consume the same definitions
 - [ ] **P8.5-E Affix pools + conflicts + rarity budgets** — make slot/base-aware legal pools, mod groups/conflicts, minimum Recovery Level, grade tables, weights and tradeoffs; Field = clean base, Refined = up to 2 explicit mods, Prototype = up to 6, Singular = curated fixed package; eliminate mechanically nonsensical rolls
 - [ ] **P8.5-F Loot generation + anti-junk rules** — rebuild generation as slot → eligible base → Recovery Level → rarity/mod budget → compatible affixes/grades → augment sockets → source/faction bias → validation; reward elites/bosses/deep objectives with better opportunities instead of larger piles of disposable gear
@@ -159,21 +159,21 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P8.5-C — Meaningful base-frame families.**
+**Next: P8.5-D — Stat registry + local/global scope + build tags.**
 
-Start **P8.5-C — Meaningful base-frame families** so same-slot equipment creates strategic choices instead of a generation ladder.
+Start **P8.5-D — Stat registry + local/global scope + build tags** so combat, loot, crafting, and Armory presentation share one definition of stat meaning, scope, and build linkage.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.230**
+- Android beta: **0.0.1-beta.233**
 - Package: `app.ironshade.vector`
-- Verified: **P8.5-B Power-axis consolidation complete**
-- Gameplay source: `6cedda46a6611d838e63dc27f4f5a42674f958bd`
-- Browser E2E: `35658499659`
-- Level 15 beta smoke: `35658499723`
-- Android beta.230: `35658499694`
-- APK artifact: `10665749798`
-- APK SHA-256: `4ed04a5c15811b0cfe3c79a8b750c227cac5fea01d48a06d08b6dbd2f7d3a937`
+- Verified: **P8.5-C Meaningful base-frame families complete**
+- Gameplay source: `311855564d9e6381e15470a274e24db168d60f67`
+- Browser E2E: `35660219711`
+- Level 15 beta smoke: `35660219687`
+- Android beta.233: `35660219691`
+- APK artifact: `10667401598`
+- APK SHA-256: `af8f18d5097802e3ecd3ef3d4a26075da92033df0afdd43c132e0bcc796dd9a7`
 - Signing: debug-signed beta; permanent signing is P17-A
