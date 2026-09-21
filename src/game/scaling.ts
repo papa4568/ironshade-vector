@@ -3,6 +3,7 @@ import { chooseEnemyProtocols, protocolThreatCost, type EnemyCombatClass } from 
 import { applyEnemyMutations, chooseEnemyMutations, mutationThreatCost, mutationThreatCostForEnemy, type HighTierMutationId } from './t9Mutations';
 import { chooseBossPhaseMutations } from './bossPhaseMutations';
 import { applyCommandTargetMutations, chooseCommandTargetMutations, commandTargetInitialCooldown } from './commandTargetMutations';
+import { environmentalRiskRewardMultiplierForContract } from './environmentalRiskPackages';
 import type { Enemy, EnemyRole, EnemyVariant } from './sim';
 
 export type EncounterPattern = 'swarm' | 'mixed' | 'elite-led';
@@ -61,7 +62,7 @@ export function operationScalingFor(contract: Contract, campaign: CampaignState,
   const directivePressure = Math.min(0.16, Math.max(0, contract.directiveRiskScore ?? 0) * 0.008);
   const combatEffectiveness = clamp(1 + (operationTier - 1) * 0.055 + levelDelta * 0.025 + directivePressure, 0.9, 1.85);
   const monsterDamageScale = clamp(1 + (operationTier - 1) * 0.035 + Math.max(0, levelDelta) * 0.02 + directivePressure * 0.45, 0.95, 1.55);
-  const operationRewardMultiplier = (1 + (operationTier - 1) * 0.04) * (contract.chapterRewardMultiplier ?? 1) * (contract.directiveMaterialMultiplier ?? 1);
+  const operationRewardMultiplier = (1 + (operationTier - 1) * 0.04) * (contract.chapterRewardMultiplier ?? 1) * (contract.directiveMaterialMultiplier ?? 1) * environmentalRiskRewardMultiplierForContract(contract);
   const baseReserveCount = contract.reserveCount ?? (encounterPattern === 'elite-led' ? 1 : encounterPattern === 'swarm' ? 2 : operationTier >= 4 ? 2 : 1);
   const reserveCount = Math.min(2, Math.max(0, baseReserveCount) + (contract.directiveReserveBonus ?? 0));
   return { operationTier, monsterLevel, encounterRating, threatBudget, maxRecoveryLevel, maxFrameGeneration: frameGenerationForRecovery(maxRecoveryLevel, operatorLevel), eliteProtocolSlots, environmentalEventSlots, combatEffectiveness, monsterDamageScale, operationRewardMultiplier, encounterPattern, reserveCount };
