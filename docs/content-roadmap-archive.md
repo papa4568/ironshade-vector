@@ -11,7 +11,7 @@ This file is the permanent archive for completed production work. The active exe
 - [x] **P6.3 T9+ mutations**
 - [x] **P6-A Boss phase mutations** — T9+ bosses now arm deterministic phase-two-only mutation identities; T12 combines two distinct mutations. The system is separate from elite mutation budgets and future whole-target command packages, discloses the armed mutation in Tactical Forecast and the boss HUD, and applies transition/runtime pressure through rupture/countermass/relay hazards plus bounded firing-cadence escalation.
   - Regression covers pre-T9 lockout, tier legality, deterministic forecast/runtime parity, T12 non-duplication, phase-one dormancy, phase transition effects, recurring phase-two effects, and UI disclosure.
-  - QA direction updated: raw/gzip bundle sizes remain reported, but hard byte caps no longer block builds; deferred Three.js/authored-loader isolation, dynamic entry splitting, and chunk-structure assertions remain mandatory.
+  - QA direction updated: the bundle-size budget and raw/gzip byte reporting are removed entirely; Vite's chunk-size warning ceiling is disabled, while deferred Three.js/authored-loader isolation, dynamic entry splitting, and chunk-structure assertions remain mandatory.
   - Verified on merged main `61c3f039be921153950a2cb536d985c987e23a3a`: Browser E2E `35555532705`, Level 15 beta smoke `35555532748`, Android beta.205 `35555532703`, artifact `10620730413`, APK SHA-256 `713a76706a1e12475089f6896d11e7c97302dfabba06996078f951400f914745`.
 
 ## P0 — Foundation ✅ COMPLETE
