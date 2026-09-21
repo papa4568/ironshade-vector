@@ -87,13 +87,15 @@ assert(meta.includes('export type Rarity = ItemRarity') && lootQuality.includes(
 assert(armory.includes('activeDoctrineStates'), 'Discovered-only loadout interactions are missing.');
 
 assert(combat.includes('HEALTH EXPOSED'), 'Combat UI does not explicitly call out broken armor and exposed health.');
-assert(combat.includes('Focused hostile status'), 'Focused hostile health readout is missing.');
+assert(combat.includes('data-target-id={focusEnemy.id}') && combat.includes('Assisted target locked: ${focusEnemy.label}') && combat.includes('<small>ASSIST LOCK</small>'), 'Assisted hostile health readout is missing or disconnected from the retained target.');
+assert(combat.includes('className="combat-sr-status"') && combat.includes('aria-live="polite"') && css.includes('.combat-sr-status') && css.includes('@media (prefers-reduced-motion: reduce)'), 'P8-C target lock accessibility or reduced-motion presentation is missing.');
+assert(css.includes('rgba(167,238,215,.68)') && css.includes('inset 3px 0 0 rgba(167,238,215,.7)'), 'P8-C target readout lacks its high-contrast assisted-lock treatment.');
 assert(combat.includes('DROP ON DECK'), 'Ground-loot explanation is missing from combat HUD.');
 assert(combat.includes('ctx.fillText(presentation.label'), 'High-value ground loot does not receive a readable world label.');
 assert(fieldLoot.includes('groundLootPresentation') && fieldLoot.includes("pickupCue: definition.rank >= 2 ? 'rareLoot' : 'loot'"), 'P7-B world loot is missing shared beacon scaling or rarity-aware pickup feedback.');
 assert(combat.includes('drawGroundLootShape') && combat.includes('nearbyLootRange') && combat.includes('nearbyLootDirection') && combat.includes('feedback.cue(groundLootPresentation(latestLoot.rarity).pickupCue)'), 'P7-B combat presentation is missing rarity-shaped markers, distance guidance, or pickup audio.');
 assert(renderer.includes('groundLootMarkerGeometries') && renderer.includes('visual.marker.geometry = this.groundLootMarkerGeometries[presentation.shape]') && renderer.includes('visual.beam.scale.y = presentation.beaconScale'), 'P7-B Three.js loot markers do not preserve non-color rarity shapes and beacon hierarchy.');
-assert(feedbackSource.includes("cue === 'rareLoot'") && feedbackSource.includes("cue === 'loot'") && feedbackSource.includes('navigator.vibrate([8, 18, 12])'), 'P7-B pickup feedback is missing distinct rare-loot audio/haptic treatment.');
+assert(feedbackSource.includes("cue === 'rareLoot' ? [8, 18, 12]") && feedbackSource.includes("cue === 'loot' ? 5") && feedbackSource.includes('navigator.vibrate(vibration)'), 'P7-B pickup feedback is missing distinct rare-loot audio/haptic treatment.');
 assert(rarity.includes('export function rarityDisplayLabel') && rarity.includes("${rarity.toUpperCase()} · ${definition.cue}"), 'P7-C is missing the shared menu/feed rarity label formatter.');
 assert(armory.includes('function RarityText') && armory.includes('rarityDisplayLabel(rarity)') && armory.includes('<RarityText rarity={equipped.rarity} />') && armory.includes('<RarityText rarity={selected.rarity} />') && !armory.includes('rarityCue(item)'), 'P7-C Build surfaces are not consistently using the shared rarity label.');
 assert(app.includes('rarityDisplayLabel(item.rarity)') && app.includes('rarityDefinition(item.rarity).icon') && !app.includes('debriefRarityCue'), 'P7-C debrief still owns duplicate rarity wording or lacks the shared non-color cue.');
