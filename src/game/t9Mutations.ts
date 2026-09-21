@@ -72,7 +72,7 @@ export function mutationForecastForContract(contract: Contract) {
   if (tier < 9) return [] as HighTierMutationId[];
   return highTierMutationDefinitions
     .filter(definition => tier >= definition.minTier)
-    .sort((a, b) => rank(contract, 0, a.id) - rank(contract, 0, b.id))
+    .sort((a, b) => b.minTier - a.minTier || rank(contract, 0, a.id) - rank(contract, 0, b.id))
     .slice(0, tier >= 11 ? 4 : 3)
     .map(definition => definition.id);
 }
