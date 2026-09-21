@@ -2,6 +2,7 @@ const cdpBase = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9222';
 const timeoutMs = Number(process.env.ANDROID_SMOKE_TIMEOUT_MS ?? 75_000);
 const startedAt = Date.now();
 const resumeOnly = process.env.ANDROID_RESUME_CHECK === '1';
+const resumeProcessMode = process.env.ANDROID_RESUME_PROCESS_MODE ?? 'preserved';
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 function validRenderBudget(value) {
@@ -265,6 +266,9 @@ async function tapButton(label, id = 1, holdMs = 90) {
 await call('Page.enable').catch(() => undefined);
 
 if (resumeOnly) {
+  if (!['preserved', 'reclaimed'].includes(resumeProcessMode)) {
+    throw new Error(`Unknown Android lifecycle process mode: ${resumeProcessMode}`);
+  }
   await waitFor(`document.readyState === 'complete' && document.title === 'Ironshade Vector'`, 'resumed Ironshade document', 45_000);
   await waitFor(`(() => {
     const canvas = document.querySelector('canvas[data-render-tier]');
@@ -296,7 +300,7 @@ if (resumeOnly) {
   if (!resumed.touch || resumed.canvases < 1) {
     throw new Error(`Android resume did not restore combat/touch surfaces: ${JSON.stringify(resumed)}`);
   }
-  console.log(`ANDROID_LIFECYCLE_RESUME_PASS tier=${resumed.tier} budget=${resumed.budget} environment=${resumed.environment} canvases=${resumed.canvases}`);
+  console.log(`ANDROID_LIFECYCLE_RESUME_PASS process=${resumeProcessMode} tier=${resumed.tier} budget=${resumed.budget} environment=${resumed.environment} canvases=${resumed.canvases}`);
   session.close();
   await sleep(100);
   process.exit(0);
