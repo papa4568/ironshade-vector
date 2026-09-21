@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buildMegastructureDebrief, buyConsumable, createDefaultCampaign, generateContracts, getMegastructureStageContract, loadCampaign, saveCampaign } from '../src/game/campaign';
-import { abilityUsesTargetAcquisition, acquireCombatTarget, aimAtMobileTarget, applyPlayerDamage, createSimulation, createTargetControlMemory, cycleWeapon, resetTargetControlMemory, selectWeapon, stepSimulation, triggerAbility, triggerConsumable, triggerDodge, triggerFire, updateMobileTargetControl, weaponConfigs, type Telemetry } from '../src/game/sim';
+import { abilityUsesTargetAcquisition, acquireCombatTarget, aimAtMobileTarget, applyPlayerDamage, createSimulation, createTargetControlMemory, cycleWeapon, resetTargetControlMemory, selectWeapon, stepSimulation, triggerAbility, triggerConsumable, triggerDodge, triggerFire, triggerReload, triggerVent, updateMobileTargetControl, weaponConfigs, weaponHandlingProfiles, type Telemetry } from '../src/game/sim';
 import { applyMissionSetup, createDirector, stepMissionDirector } from '../src/game/director';
 import { activeWeaponFamilyForProfile, awardRecovery, awardVictory, buildIdentity, createDefaultProfile, deriveCombatBuild, equipItem, isItemClassCompatible, loadProfile, materializeModifier, normalizeClassArmament, saveProfile, setAbilityMod, setOperatorClass, specializationGearSynergyDefinitions, specializationGearSynergyForProfile, systemsCapstoneInteractionFor, vanguardCapstoneInteractionFor, vectorCapstoneInteractionFor } from '../src/game/meta';
 import { CAMPAIGN_STORAGE_KEY, GAME_STATE_STORAGE_KEY, prepareSaveRecovery, PROFILE_STORAGE_KEY } from '../src/game/saveRecovery';
@@ -2384,3 +2384,39 @@ runSaveRecoveryRegressions()
     console.error(error);
     process.exitCode = 1;
   });
+
+function weaponHandlingIdentitySmoke() {
+  const families = ['carbine', 'breacher', 'rail'] as const;
+  const stances = new Set(families.map(id => weaponHandlingProfiles[id].stance));
+  assert.equal(stances.size, 3, 'each class-owned weapon family should have a unique handling stance');
+
+  for (const id of families) {
+    const handling = weaponHandlingProfiles[id];
+    const budgetTotal = Object.values(handling.budget).reduce((total, value) => total + value, 0);
+    assert.equal(budgetTotal, 100, `${id} handling budget should total 100`);
+
+    const reloadState = createSimulation();
+    reloadState.player.currentWeapon = id;
+    reloadState.player.mags[id] = Math.max(0, reloadState.weapons[id].magazine - 1);
+    assert.equal(triggerReload(reloadState), true, `${id} should enter its reload state`);
+    assert.ok(Math.abs(reloadState.player.reloadT - reloadState.weapons[id].reloadSeconds * handling.reloadDurationMul) < 0.0001, `${id} reload timing should use its handling profile`);
+
+    reloadState.player.reloadT = 0;
+    reloadState.player.weaponHeat[id] = 0.6;
+    assert.equal(triggerVent(reloadState), true, `${id} should enter its vent state`);
+    assert.ok(Math.abs(reloadState.player.ventT - handling.ventSeconds) < 0.0001, `${id} vent timing should use its handling profile`);
+  }
+
+  const postShotVelocity = Object.fromEntries(families.map(id => {
+    const state = createSimulation();
+    state.player.currentWeapon = id;
+    state.player.vx = 120;
+    state.player.vy = 0;
+    state.player.aim = { x: 1, y: 0 };
+    assert.equal(triggerFire(state), true, `${id} handling smoke should fire`);
+    return [id, state.player.vx];
+  })) as Record<(typeof families)[number], number>;
+  assert.ok(postShotVelocity.carbine > postShotVelocity.breacher && postShotVelocity.breacher > postShotVelocity.rail, 'family fire movement should separate mobile Carbine, backblast Breacher, and planted Rail handling');
+  assert.ok(weaponHandlingProfiles.carbine.cameraKick < weaponHandlingProfiles.breacher.cameraKick && weaponHandlingProfiles.breacher.cameraKick < weaponHandlingProfiles.rail.cameraKick, 'camera response should escalate from Carbine to Breacher to Rail');
+}
+weaponHandlingIdentitySmoke();
