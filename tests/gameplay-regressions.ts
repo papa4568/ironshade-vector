@@ -13,7 +13,7 @@ import { chooseEnemyProtocols, enhancedProtocolVariantForecastForContract, exclu
 import { enhancedProtocolVariantPresentationFor } from '../src/game/enhancedProtocolVariantPresentation';
 import { applyEnemyMutations, mutationFireCadenceScale, mutationHazardCadenceScale, mutationMobilityScale, mutationThreatCostForEnemy } from '../src/game/t9Mutations';
 import { mutationForecastForContract, mutationPresentationFor } from '../src/game/t9MutationPresentation';
-import { bossPhaseFireCadenceScale, bossPhaseMutationDefinition, bossPhaseMutationForecastForContract, chooseBossPhaseMutations, type BossPhaseMutationId } from '../src/game/bossPhaseMutations';
+import { bossPhaseFireCadenceScale, bossPhaseMutationForecastForContract, bossPhaseMutationMinTier, chooseBossPhaseMutations, type BossPhaseMutationId } from '../src/game/bossPhaseMutations';
 
 function exclusiveProtocolCombinationSmoke() {
   const baseContract = generateContracts(createDefaultCampaign())[0]!;
@@ -226,7 +226,7 @@ function bossPhaseMutationSmoke() {
   const t9Forecast = bossPhaseMutationForecastForContract(t9Contract);
   assert.equal(t9Forecast.length, 1, 'T9-T11 bosses should arm exactly one phase mutation');
   assert.deepEqual(t9Forecast, chooseBossPhaseMutations(t9Contract), 'boss mutation forecast and runtime selection must use the same deterministic resolver');
-  assert.ok(t9Forecast.every(id => bossPhaseMutationDefinition(id).minTier <= 9), 'T9 boss forecast must not leak later-tier identities');
+  assert.ok(t9Forecast.every(id => bossPhaseMutationMinTier(id) <= 9), 'T9 boss forecast must not leak later-tier identities');
   assert.deepEqual(chooseBossPhaseMutations(t9Contract), chooseBossPhaseMutations(t9Contract), 'same seed and tier must always resolve the same phase mutation');
 
   const t9State = createSimulation();
