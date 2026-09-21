@@ -272,7 +272,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 - [x] P6.1 Exclusive protocol combinations
 - [x] P6.2 Enhanced protocol variants
-- [ ] P6.3 T9+ mutations
+- [x] P6.3 T9+ mutations
 - [ ] P6.4 Boss phase mutations
 - [ ] P6.5 Command Target mutations
 - [ ] P6.6 Dangerous environmental combinations
@@ -317,7 +317,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1, P2, P3, **P4 — Megastructure Capstone Pass**, and **P5 — Class Capstones** are complete. **P6.1 — Exclusive protocol combinations** and **P6.2 — Enhanced protocol variants** are complete. Continue in roadmap order with **P6.3 — T9+ mutations**.
+P1, P2, P3, **P4 — Megastructure Capstone Pass**, and **P5 — Class Capstones** are complete. **P6.1 — Exclusive protocol combinations**, **P6.2 — Enhanced protocol variants**, and **P6.3 — T9+ mutations** are complete. Continue in roadmap order with **P6.4 — Boss phase mutations**.
+
+**P6.3 delivered:** T9+ elite-led encounters now add a deterministic whole-enemy mutation layer on top of protocol packages without consuming the separate boss/Command Target mutation work. Six authored mutations are available across T9–T12: **Reinforced Core**, **Ablative Mantle**, **Hunter Servo**, **Redline Bus**, **Countermass Rig**, and **Relay Reflex**. Mutations consume an explicit reserved threat budget that scales from 2 points at T9 to 8 at T12, remain restricted to elite/enhanced non-boss enemies, and materially change durability, armor, mobility, firing cadence, or hazard/protocol cadence. Tactical Forecast discloses the legal mutation pool before deployment, the combat HUD shows compact mutation tags, and deterministic regression covers the T8 gate, T9/T11 budget caps, boss exclusion, repeatable assignment, runtime stat/cadence effects, and UI visibility. PR Browser E2E run `35553253160` passed desktop/mobile-landscape full regression, production build, the 349.9 KiB boot-bundle gate, player-journey QA, and the Chapter 3 browser playthrough. **P6.4 — Boss phase mutations is next.**
 
 **P6.2 delivered:** T10+ elite protocols now resolve every enhanced roll into one of 15 deterministic, authored variants instead of a generic stronger flag: **Ablative Bloom**, **Cutline Pair**, **Twin-Well Lock**, **Anchor Singularity**, **Wake Anchor**, **Cascade Grid**, **Overlink Mesh**, **Dual Rack**, **Cross-Shutter**, **Capacitor Scramble**, **Coolant Redline**, **Tech Bus Sync**, **Cross-Fan Volley**, **Mass Theft**, and **Hard Lock Grid**. Each variant preserves the existing high-tier mechanical upgrade and +1 threat/reward premium, remains locked below T10, uses the existing 24% T10–T11 / 42% T12 enhanced cadence, and coexists with P6.1 exclusive protocol packages. Combat labels now show compact variant identities, Tactical Forecast names legal variants before deployment, and presentation metadata is lazy-loaded so the existing client boot-size budget remains intact. Deterministic regression covers the T9 gate, T10/T12 cadence, variant/protocol integrity, retained threat/reward accounting, representative runtime mechanics, and UI visibility. PR Browser E2E run `35551169484` passed desktop/mobile-landscape full regression, production build, boot-bundle budget, and player-journey QA. **P6.3 — T9+ mutations is next.**
 

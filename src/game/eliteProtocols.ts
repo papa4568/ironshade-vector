@@ -61,12 +61,9 @@ export type EnemyProtocolInstance = {
 type ProtocolDefinition = {
   id: EnemyProtocolId;
   name: string;
-  shortName: string;
   family: ProtocolFamily;
   threatCost: number;
   rewardWeight: number;
-  tell: string;
-  counter: string;
   baseCooldown: number;
   enhanceable?: boolean;
   locations?: LocationId[];
@@ -76,24 +73,24 @@ type ProtocolDefinition = {
 };
 
 export const eliteProtocolDefinitions: ProtocolDefinition[] = [
-  { id: 'reactivePlating', name: 'Reactive Plating', shortName: 'PLATING', family: 'defense', threatCost: 3, rewardWeight: 1, tell: 'Armor panels flash and re-knit between pressure cycles.', counter: 'Sustain armor pressure or disrupt the unit before the repair pulse.', baseCooldown: 7.2, enhanceable: true },
-  { id: 'pressureHunter', name: 'Pressure Hunter', shortName: 'PRESSURE', family: 'pressure', threatCost: 3, rewardWeight: 1, tell: 'Suit vents flare when local atmosphere drops.', counter: 'Repressurize the room, seal the breach, or stagger the pursuer.', baseCooldown: 7.8, locations: ['orbital-station', 'damaged-vessel', 'jovian-harvester'] },
-  { id: 'vacuumAdapted', name: 'Vacuum Adapted', shortName: 'VAC-ADAPT', family: 'pressure', threatCost: 3, rewardWeight: 1, tell: 'Hard-vac trim remains stable during decompression.', counter: 'Restore pressure or use Magnetic Impulse to break its line.', baseCooldown: 8.4, locations: ['damaged-vessel', 'jovian-harvester', 'ice-mine', 'solar-yard', 'cryo-reserve'] },
-  { id: 'breachmaker', name: 'Breachmaker', shortName: 'BREACH', family: 'pressure', threatCost: 4, rewardWeight: 1, tell: 'Demolition hardware locks onto nearby cover.', counter: 'Disrupt the carrier or reposition before the firing lane opens.', baseCooldown: 7.4, enhanceable: true, locations: ['orbital-station', 'damaged-vessel', 'asteroid-refinery', 'ice-mine', 'lattice-annex'] },
-  { id: 'magneticLock', name: 'Magnetic Lock', shortName: 'MAG-LOCK', family: 'mass', threatCost: 4, rewardWeight: 1, tell: 'A blue mass-reference reticle forms on the operator vector.', counter: 'Sensor Spike or Arc disruption prevents the lock; move clear of the well.', baseCooldown: 6.6, enhanceable: true, locations: ['orbital-station', 'spin-habitat', 'jovian-harvester', 'lattice-annex', 'momentum-exchange'] },
-  { id: 'gravityAnchor', name: 'Gravity Anchor', shortName: 'ANCHOR', family: 'mass', threatCost: 4, rewardWeight: 1, tell: 'Anchor vanes flare and the unit resists pressure and impulse.', counter: 'Arc Tap or Sensor Spike disables the anchor before Magnetic Impulse.', baseCooldown: 7.6, enhanceable: true, locations: ['asteroid-refinery', 'spin-habitat', 'solar-yard', 'lattice-annex', 'momentum-exchange'] },
-  { id: 'countermassMobility', name: 'Countermass Mobility', shortName: 'COUNTERMASS', family: 'mass', threatCost: 3, rewardWeight: 1, tell: 'Countermass pods precess before a lateral vector burst.', counter: 'Magnetic Impulse interrupts committed movement; walls limit the escape.', baseCooldown: 5.8, enhanceable: true, locations: ['spin-habitat', 'jovian-harvester', 'ice-mine', 'momentum-exchange'] },
-  { id: 'arcConduit', name: 'Arc Conduit', shortName: 'ARC-LINK', family: 'systems', threatCost: 4, rewardWeight: 1, tell: 'Visible arcs bridge the unit to floor hardware.', counter: 'Arc Tap turns the conductive network into a disruption path.', baseCooldown: 6.4, enhanceable: true, locations: ['orbital-station', 'asteroid-refinery', 'solar-yard', 'lattice-annex'] },
-  { id: 'repairMesh', name: 'Repair Mesh', shortName: 'REPAIR', family: 'systems', threatCost: 3, rewardWeight: 1, tell: 'Green repair tracers link damaged armor and machinery.', counter: 'Disrupt the mesh or destroy repaired hardware faster than it cycles.', baseCooldown: 6.8, enhanceable: true, locations: ['orbital-station', 'asteroid-refinery', 'solar-yard', 'lattice-annex', 'momentum-exchange', 'cryo-reserve'] },
-  { id: 'droneEscort', name: 'Drone Escort', shortName: 'ESCORT', family: 'systems', threatCost: 4, rewardWeight: 1, tell: 'Docking lights open on a limited support-drone rack.', counter: 'Kill the finite drones or disrupt the carrier before launch.', baseCooldown: 8.2, enhanceable: true, locations: ['orbital-station', 'asteroid-refinery', 'jovian-harvester', 'solar-yard', 'lattice-annex'], excludedVariants: ['droneCarrier'] },
-  { id: 'emergencyShutters', name: 'Emergency Shutters', shortName: 'SHUTTERS', family: 'control', threatCost: 4, rewardWeight: 1, tell: 'Amber lane markers illuminate before portable shutters rise.', counter: 'Destroy or penetrate the shutters, or reposition before closure.', baseCooldown: 8.8, enhanceable: true, locations: ['orbital-station', 'damaged-vessel', 'spin-habitat', 'lattice-annex', 'momentum-exchange', 'cryo-reserve'] },
-  { id: 'sensorGhost', name: 'Sensor Ghost', shortName: 'GHOST', family: 'control', threatCost: 3, rewardWeight: 1, tell: 'The silhouette doubles on assisted targeting returns.', counter: 'Sensor Spike resolves the true return; manual aim remains available.', baseCooldown: 8.1, locations: ['spin-habitat', 'ice-mine', 'lattice-annex'] },
-  { id: 'signalJammer', name: 'Signal Jammer', shortName: 'JAMMER', family: 'control', threatCost: 4, rewardWeight: 1, tell: 'A violet interference ring expands around the unit.', counter: 'Break range or Arc-disrupt the jammer before its pulse.', baseCooldown: 7.1, enhanceable: true, locations: ['orbital-station', 'jovian-harvester', 'solar-yard', 'lattice-annex'] },
-  { id: 'thermalOverrun', name: 'Thermal Overrun', shortName: 'REDLINE', family: 'fire', threatCost: 4, rewardWeight: 1, tell: 'Weapon coils glow before a committed burst and forced cooldown.', counter: 'Break line of sight or interrupt the telegraph, then punish self-stagger.', baseCooldown: 7.5, enhanceable: true, locations: ['asteroid-refinery', 'jovian-harvester', 'solar-yard', 'cryo-reserve'] },
-  { id: 'suppressionCoordinator', name: 'Suppression Coordinator', shortName: 'COORD', family: 'fire', threatCost: 4, rewardWeight: 1, tell: 'Squad firing markers synchronize around the coordinator.', counter: 'Disrupt or kill the coordinator to break the synchronized window.', baseCooldown: 8, enhanceable: true, locations: ['orbital-station', 'asteroid-refinery', 'spin-habitat', 'ice-mine'] },
-  { id: 'penetratorVolley', name: 'Penetrator Volley', shortName: 'PEN-VOLLEY', family: 'fire', threatCost: 4, rewardWeight: 1, tell: 'A long straight-line firing solution locks before the volley.', counter: 'Dodge the visible solution, use hard cover, or interrupt it.', baseCooldown: 7.2, enhanceable: true, locations: ['orbital-station', 'asteroid-refinery', 'ice-mine', 'lattice-annex', 'momentum-exchange', 'cryo-reserve'] },
-  { id: 'salvageInterdictor', name: 'Salvage Interdictor', shortName: 'INTERDICT', family: 'objective', threatCost: 4, rewardWeight: 2, tell: 'Recovery-tag telemetry is copied to the hostile unit.', counter: 'Intercept the carrier; death restores the package tag.', baseCooldown: 5.4, enhanceable: true, objectiveModes: ['machinery-recovery', 'deep-salvage'], excludedVariants: ['salvageThief'] },
-  { id: 'recoveryDenial', name: 'Recovery Denial', shortName: 'DENIAL', family: 'objective', threatCost: 4, rewardWeight: 2, tell: 'A denial grid forms around tagged objective hardware.', counter: 'Disrupt the projector, isolate the grid, or approach from another lane.', baseCooldown: 6.3, enhanceable: true, objectiveModes: ['machinery-recovery', 'deep-salvage'] },
+  { id: 'reactivePlating', name: 'Reactive Plating', family: 'defense', threatCost: 3, rewardWeight: 1, baseCooldown: 7.2, enhanceable: true },
+  { id: 'pressureHunter', name: 'Pressure Hunter', family: 'pressure', threatCost: 3, rewardWeight: 1, baseCooldown: 7.8, locations: ['orbital-station', 'damaged-vessel', 'jovian-harvester'] },
+  { id: 'vacuumAdapted', name: 'Vacuum Adapted', family: 'pressure', threatCost: 3, rewardWeight: 1, baseCooldown: 8.4, locations: ['damaged-vessel', 'jovian-harvester', 'ice-mine', 'solar-yard', 'cryo-reserve'] },
+  { id: 'breachmaker', name: 'Breachmaker', family: 'pressure', threatCost: 4, rewardWeight: 1, baseCooldown: 7.4, enhanceable: true, locations: ['orbital-station', 'damaged-vessel', 'asteroid-refinery', 'ice-mine', 'lattice-annex'] },
+  { id: 'magneticLock', name: 'Magnetic Lock', family: 'mass', threatCost: 4, rewardWeight: 1, baseCooldown: 6.6, enhanceable: true, locations: ['orbital-station', 'spin-habitat', 'jovian-harvester', 'lattice-annex', 'momentum-exchange'] },
+  { id: 'gravityAnchor', name: 'Gravity Anchor', family: 'mass', threatCost: 4, rewardWeight: 1, baseCooldown: 7.6, enhanceable: true, locations: ['asteroid-refinery', 'spin-habitat', 'solar-yard', 'lattice-annex', 'momentum-exchange'] },
+  { id: 'countermassMobility', name: 'Countermass Mobility', family: 'mass', threatCost: 3, rewardWeight: 1, baseCooldown: 5.8, enhanceable: true, locations: ['spin-habitat', 'jovian-harvester', 'ice-mine', 'momentum-exchange'] },
+  { id: 'arcConduit', name: 'Arc Conduit', family: 'systems', threatCost: 4, rewardWeight: 1, baseCooldown: 6.4, enhanceable: true, locations: ['orbital-station', 'asteroid-refinery', 'solar-yard', 'lattice-annex'] },
+  { id: 'repairMesh', name: 'Repair Mesh', family: 'systems', threatCost: 3, rewardWeight: 1, baseCooldown: 6.8, enhanceable: true, locations: ['orbital-station', 'asteroid-refinery', 'solar-yard', 'lattice-annex', 'momentum-exchange', 'cryo-reserve'] },
+  { id: 'droneEscort', name: 'Drone Escort', family: 'systems', threatCost: 4, rewardWeight: 1, baseCooldown: 8.2, enhanceable: true, locations: ['orbital-station', 'asteroid-refinery', 'jovian-harvester', 'solar-yard', 'lattice-annex'], excludedVariants: ['droneCarrier'] },
+  { id: 'emergencyShutters', name: 'Emergency Shutters', family: 'control', threatCost: 4, rewardWeight: 1, baseCooldown: 8.8, enhanceable: true, locations: ['orbital-station', 'damaged-vessel', 'spin-habitat', 'lattice-annex', 'momentum-exchange', 'cryo-reserve'] },
+  { id: 'sensorGhost', name: 'Sensor Ghost', family: 'control', threatCost: 3, rewardWeight: 1, baseCooldown: 8.1, locations: ['spin-habitat', 'ice-mine', 'lattice-annex'] },
+  { id: 'signalJammer', name: 'Signal Jammer', family: 'control', threatCost: 4, rewardWeight: 1, baseCooldown: 7.1, enhanceable: true, locations: ['orbital-station', 'jovian-harvester', 'solar-yard', 'lattice-annex'] },
+  { id: 'thermalOverrun', name: 'Thermal Overrun', family: 'fire', threatCost: 4, rewardWeight: 1, baseCooldown: 7.5, enhanceable: true, locations: ['asteroid-refinery', 'jovian-harvester', 'solar-yard', 'cryo-reserve'] },
+  { id: 'suppressionCoordinator', name: 'Suppression Coordinator', family: 'fire', threatCost: 4, rewardWeight: 1, baseCooldown: 8, enhanceable: true, locations: ['orbital-station', 'asteroid-refinery', 'spin-habitat', 'ice-mine'] },
+  { id: 'penetratorVolley', name: 'Penetrator Volley', family: 'fire', threatCost: 4, rewardWeight: 1, baseCooldown: 7.2, enhanceable: true, locations: ['orbital-station', 'asteroid-refinery', 'ice-mine', 'lattice-annex', 'momentum-exchange', 'cryo-reserve'] },
+  { id: 'salvageInterdictor', name: 'Salvage Interdictor', family: 'objective', threatCost: 4, rewardWeight: 2, baseCooldown: 5.4, enhanceable: true, objectiveModes: ['machinery-recovery', 'deep-salvage'], excludedVariants: ['salvageThief'] },
+  { id: 'recoveryDenial', name: 'Recovery Denial', family: 'objective', threatCost: 4, rewardWeight: 2, baseCooldown: 6.3, enhanceable: true, objectiveModes: ['machinery-recovery', 'deep-salvage'] },
 ];
 
 const enhancedProtocolVariantByProtocol: Partial<Record<EnemyProtocolId, EnhancedProtocolVariantId>> = {
@@ -308,6 +305,6 @@ export function protocolTierSummary(operationTier: number, capacity: number) {
   if (operationTier <= 4) return 'Enhanced/Elite // normally 1 protocol';
   if (operationTier <= 7) return 'Enhanced/Elite // 1–2 protocols';
   if (operationTier <= 8) return 'Elite packages // up to 3 protocols';
-  if (operationTier === 9) return 'T9 Elite // exclusive 2–3 protocol packages online';
-  return 'High-tier Elite // exclusive packages · 2–4 protocols · named Enhanced variants';
+  if (operationTier === 9) return 'T9 Elite // exclusive packages · deterministic mutations online';
+  return 'High-tier Elite // exclusive packages · named Enhanced variants · mutation layer';
 }
