@@ -268,6 +268,29 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [x] P5.12 Regression coverage
 - [x] P5.13 Mobile playtesting
 
+## AAA Production Standard — ACTIVE DIRECTION
+
+The target is no longer "good for mobile." The target is a **premium, console/PC-quality ARPG that happens to run on modern phones**. Mobile constraints should be handled with scalable rendering, asset/animation LODs, streaming, pooling, code splitting, dynamic quality, and measured budgets before cutting gameplay or presentation.
+
+### Production principles
+
+- [ ] Build the high-quality version first, then scale expensive presentation by device capability instead of designing to the weakest device.
+- [ ] Protect sustained frame pacing, input latency, memory stability, thermal behavior, save integrity, and readability as hard quality gates.
+- [ ] Do not relax bundle/runtime budgets just to make a feature fit; first split boot-critical code, lazy-load presentation data, stream assets, pool effects, instance repeated geometry, and reduce duplicate work.
+- [ ] Prefer visible world-state communication over HUD clutter: equipment rarity, enemy modifiers, boss phases, status effects, and interactables should read through silhouette, animation, material, audio, and VFX.
+- [ ] Preserve deterministic encounter generation and reproducible combat state for QA even as presentation becomes richer.
+- [ ] Every major combat action should have synchronized targeting, animation, audio, VFX, camera response, and haptics where supported.
+- [ ] New systems must be understandable on touch/controller without removing build depth.
+
+### Current design decisions
+
+- **Class weapons:** use a hard class-to-weapon-family identity. Vanguard = **Breacher**, Vector = **Rail Lance**, Systems = **Carbine**. Each family can contain multiple dramatically different weapons, but classes do not swap to another family in combat.
+- **Skill/weapon relationship:** do **not** copy PoE2's per-skill weapon-set assignment or automatic weapon swapping. Skills belong to the class kit; weapon-dependent skills validate the class weapon family, not a specific individual weapon item.
+- **Targeting:** FIRE and targeted skills acquire/focus a legal target first, then execute. Manual aim remains authoritative when deliberately aiming away or when a skill is ground/self-targeted.
+- **Progression inspiration:** borrow PoE2's layered depth—large passive graph, meaningful class starting identity, major nodes, specialization layers, build-defining tradeoffs, searchable planning—but keep one active combat weapon family per class.
+- **Crafting inspiration:** borrow the clarity of distinct crafting verbs, item bases, affix structure, modifier tiers, scarce high-control resources, and chase outcomes. Avoid making endgame crafting pure opaque gambling; expensive deterministic control should exist.
+- **Performance philosophy:** visual ambition is allowed to exceed mid-range mobile capability. Adaptive quality should remove secondary cost before changing core encounter design.
+
 ## P6 — T9–T12 Directive Expansion
 
 - [x] P6.1 Exclusive protocol combinations
@@ -280,44 +303,279 @@ Repository checklist for the current content plan. Keep this file synchronized w
 - [ ] P6.8 Risk/reward modifiers
 - [ ] P6.9 Reward previews
 - [ ] P6.10 Deterministic simulations
-- [ ] P6.11 Mobile worst-case stress testing
+- [ ] P6.11 High-tier worst-case stress testing + adaptive-quality escape hatches before cutting encounter design
 
-## P7 — Weapon Variety
+## P7 — Loot Rarity & Equipment Presentation
 
-- [ ] P7.1 Burst Carbine
-- [ ] P7.2 Precision Carbine
-- [ ] P7.3 Slug Breacher
-- [ ] P7.4 Rapid Breacher
-- [ ] P7.5 Charge Rail
-- [ ] P7.6 Repeater Rail
-- [ ] P7.7 Unique silhouettes
-- [ ] P7.8 Affix compatibility
-- [ ] P7.9 Class interactions
-- [ ] P7.10 Singular compatibility
-- [ ] P7.11 Mobile testing
-- [ ] P7.12 Variety playtest
-- [ ] P7.13 Decide whether weapon family #4 is actually needed
+- [ ] **P7.1 Canonical rarity contract** — Field / Refined / Prototype / Singular names, order, semantic meaning, and one source of truth
+- [ ] **P7.2 Shared rarity tokens** — consistent color, border, icon/shape, typography, glow intensity, and accessibility-safe text labels
+- [ ] **P7.3 World-drop presentation** — rarity-readable pickup silhouette, beacon/beam, audio sting, and distance readability
+- [ ] **P7.4 Inventory cards** — same hierarchy in storage, equipped slots, comparison, crafting, rewards, and debrief
+- [ ] **P7.5 Item inspector overhaul** — base/frame identity, rarity, quality, recovery level, modifier grades, augments, class compatibility, and source
+- [ ] **P7.6 Comparison clarity** — important deltas first, build-changing mechanics separated from small numeric changes
+- [ ] **P7.7 Sorting/filtering** — rarity, class compatibility, weapon family, build affinity, modifier family, quality, newest, and upgrade value
+- [ ] **P7.8 Singular presentation** — dedicated named-item treatment without making normal Prototype gear unreadable
+- [ ] **P7.9 Loot-feed/debrief consistency** — every screen uses the same rarity language and icons
+- [ ] **P7.10 Touch/controller QA** — no hover-only information and no rarity meaning conveyed by color alone
+- [ ] **P7.11 Regression coverage** — rarity order, class names, CSS/token use, filters, and all major item surfaces
 
-## P8 — External Beta / Delivery
+## P8 — Combat Targeting & Class Arsenal Identity
 
-- [ ] P8.1 Permanent signing credentials
-- [ ] P8.2 Persistent release-signed APK
-- [ ] P8.3 Verify upgrade path
-- [ ] P8.4 GitHub Release workflow
-- [ ] P8.5 Non-expiring releases
-- [ ] P8.6 Release notes/changelog
-- [ ] P8.7 Beta save policy
-- [ ] P8.8 Clean-install QA
-- [ ] P8.9 Upgrade-install QA
-- [ ] P8.10 External beta candidate
+### Target-before-action
+
+- [ ] **P8.1 FIRE acquisition** — pressing FIRE resolves/focuses the best legal target before the shot is spawned
+- [ ] **P8.2 Skill acquisition** — targeted skills focus their legal target before execution
+- [ ] **P8.3 Ground/self skill exceptions** — mobility, self-buff, area-placement, and explicit manual-ground skills never force an enemy lock
+- [ ] **P8.4 Target scoring** — screen-space aim intent, range, visibility, threat, mark state, boss/elite priority, and stickiness
+- [ ] **P8.5 Lock persistence** — keep focus through short occlusion/movement windows; break cleanly on death, invalid range, or explicit retarget
+- [ ] **P8.6 Manual aim authority** — deliberate stick/mouse aim can override assistance without fighting the player
+- [ ] **P8.7 Feedback** — subtle focus reticle, audio tick, haptic confirmation, and accessibility options
+- [ ] **P8.8 Deterministic targeting tests** — identical state/input resolves the same target
+
+### Hard class weapon families — DECISION
+
+- [ ] **P8.9 Vanguard = Breacher** — close-range authority, armor break, recoil-as-movement, stagger, and defensive firing windows
+- [ ] **P8.10 Vector = Rail Lance** — precision, mobility, line control, penetration, charge timing, and high-value target deletion
+- [ ] **P8.11 Systems = Carbine** — smart fire-control, relay/status propagation, sustained cadence, marks, Arc interactions, and battlefield control
+- [ ] **P8.12 Remove cross-family runtime swapping** — retire 1/2/3 weapon-family swapping for class-locked operators
+- [ ] **P8.13 One active class armament slot** — convert the current three weapon slots into one active family slot while preserving non-weapon suit/rig/implant slots
+- [ ] **P8.14 Safe save migration** — incompatible equipped weapons move to storage and a valid class starter weapon is guaranteed
+- [ ] **P8.15 Loot compatibility** — class-incompatible weapon drops are prevented or converted to useful salvage/reward choices
+- [ ] **P8.16 UI compatibility language** — inventory/crafting/reward screens clearly explain class weapon ownership
+- [ ] **P8.17 Class handling profiles** — unique stance, recoil, reload/vent cadence, muzzle behavior, movement penalties/bonuses, and camera response per family
+- [ ] **P8.18 Class-specific weapon stat budgets** — balance families around their intended combat loops instead of shared DPS normalization
+- [ ] **P8.19 Class weapon tutorials** — onboarding teaches one family deeply rather than three interchangeable guns
+
+### Skill relationship — DECISION
+
+- [ ] **P8.20 No per-item skill linking** — players never bind a skill to "this specific Breacher/Rail/Carbine"
+- [ ] **P8.21 Class-kit ownership** — skills remain class abilities and may require the class weapon family when mechanically appropriate
+- [ ] **P8.22 Weapon variants modify behavior indirectly** — frame identities, affixes, progression, and Singular traits alter skill interactions without changing which item owns the skill
+- [ ] **P8.23 Skill UI rewrite** — show Class Skill → Weapon Family Interaction → Lens/Evolution → Specialization/Capstone
+- [ ] **P8.24 Full migration/regression pass** — class selection, saves, equipment, skill execution, AI targeting, touch controls, and Chapter 3
+
+**Decision rationale:** hard class weapon families + class-owned skills is preferred over PoE2-style skill-to-weapon-set binding. It preserves deep buildcraft inside each family while producing stronger class silhouettes, simpler mobile controls, fewer hidden auto-swaps, cleaner balance, and less menu bookkeeping.
+
+## P9 — Progression 2.0 // Deep Operator Network
+
+- [ ] **P9.1 Replace the small branch grid with a true graph** — target 120–180 authored nodes with only a subset reachable by one build
+- [ ] **P9.2 Three class starting sectors** — Vanguard, Vector, Systems begin from visibly different regions and early decisions
+- [ ] **P9.3 Shared outer network** — classes can travel toward utility/defense/off-class mechanics at meaningful opportunity cost
+- [ ] **P9.4 Node hierarchy** — travel nodes, standard passives, Notables, Masteries, Keystones, and Capstones
+- [ ] **P9.5 Weapon-family sectors** — Breacher, Rail Lance, and Carbine branches reinforce each class arsenal without weapon-set swapping
+- [ ] **P9.6 Core combat sectors** — damage, penetration, heat, reload/vent, recoil, capacitor, movement, armor, pressure, recovery
+- [ ] **P9.7 Systems sectors** — mark, disruption, Arc, drone, hazard interaction, machinery, environmental control
+- [ ] **P9.8 Defensive identities** — armor, evasion/mobility, capacitor shielding, pressure resistance, recovery, stagger resistance
+- [ ] **P9.9 Build-defining Keystones** — large mechanical upside paired with a real constraint/tradeoff
+- [ ] **P9.10 Mastery choices** — completing a cluster unlocks one of several mutually exclusive micro-specializations
+- [ ] **P9.11 Specialization integration** — LV15 doctrines branch into dedicated subgraphs rather than living as isolated cards
+- [ ] **P9.12 LV16+ evolution integration** — evolved skills and capstone interactions unlock/transform nearby progression routes
+- [ ] **P9.13 Campaign/boss progression rewards** — major encounters grant special progression unlocks in addition to level points
+- [ ] **P9.14 Cross-system hooks** — crafted gear, faction equipment, Singulars, and ship systems can unlock/alter specific node interactions
+- [ ] **P9.15 Search** — name, mechanic, status, weapon family, class, defense, resource, and keyword filters
+- [ ] **P9.16 Path preview** — tap a distant node to preview required route, point cost, and resulting stat/mechanic deltas
+- [ ] **P9.17 Build planner mode** — plan future allocations without spending points; save at least three local plans
+- [ ] **P9.18 Refund/respec economy** — easy early experimentation, increasingly meaningful high-level rebuild cost, campaign-granted respec packages
+- [ ] **P9.19 Before/after math** — node inspector shows the important real combat changes, not only raw percentages
+- [ ] **P9.20 Mobile graph navigation** — pinch/zoom/pan, snap-to-node controller navigation, minimap, breadcrumbs, readable labels
+- [ ] **P9.21 Visual language** — class sectors, notable types, prerequisites, planned paths, allocated routes, and locked milestones are obvious at a glance
+- [ ] **P9.22 Save migration** — map existing allocations into equivalent starter routes and refund anything that cannot map safely
+- [ ] **P9.23 Deterministic build regression** — representative Vanguard/Vector/Systems trees through LV1, LV15, LV18, and endgame
+- [ ] **P9.24 Build diversity playtest** — same-class builds must produce meaningfully different moment-to-moment combat
+
+## P10 — Crafting 2.0 // Reconstruction Economy
+
+- [ ] **P10.1 Preserve the physical-item model** — frame identity, quality, recovery level, modifier grades, augments, factions, Singulars
+- [ ] **P10.2 Formal modifier structure** — clear Core / Systems affix slots, maximum counts by rarity, tier/grade ranges, and compatibility rules
+- [ ] **P10.3 Inspectable affix pools** — show which modifiers can legally roll before resources are spent
+- [ ] **P10.4 Distinct crafting verbs** — improve, add, remove, reroute, replace, lock, elevate, socket, extract, and risky overclock each have distinct resources/actions
+- [ ] **P10.5 Tiered crafting materials** — common salvage handles routine work; boss/Directive/chase materials enable precise high-end control
+- [ ] **P10.6 Deterministic expensive control** — players can guarantee a family/tier/outcome when they pay a sufficiently rare cost
+- [ ] **P10.7 Controlled-risk crafting** — optional high-upside actions can damage stability, lock future actions, downgrade a modifier, or permanently alter the item
+- [ ] **P10.8 Crafting stability/readiness** — surface how many invasive operations a frame can safely tolerate before a risky step
+- [ ] **P10.9 Base/frame chasing** — the right weapon/frame base matters before modifiers, so loot remains valuable even when crafting is strong
+- [ ] **P10.10 Quality overhaul** — quality meaningfully affects the physical frame and interacts with high-end crafting
+- [ ] **P10.11 Modifier elevation** — late-game path from a good modifier to a rare top-grade version with escalating cost
+- [ ] **P10.12 Family locking** — protect one valuable Core/Systems family while rerolling the other at premium cost
+- [ ] **P10.13 Targeted addition/removal** — separate low-control cheap actions from rare high-control actions
+- [ ] **P10.14 Augment extraction/install depth** — sockets, upgradeable augments, compatibility tags, and salvage consequences
+- [ ] **P10.15 Class weapon crafting pools** — Breacher/Rail/Carbine crafting strongly reinforces class identity
+- [ ] **P10.16 Specialization recipes** — endgame recipes that deliberately target specialization gear links
+- [ ] **P10.17 Singular rules** — named effects remain identity-locked while quality/augment/special Singular upgrade paths stay available
+- [ ] **P10.18 Crafting preview** — show cost, guaranteed effects, possible outcomes, exclusions, risk, and before/after item panel
+- [ ] **P10.19 Crafting history** — compact per-item reconstruction log for debugging and player trust
+- [ ] **P10.20 Salvage loop** — dismantling unwanted gear feeds crafting without making raw drops irrelevant
+- [ ] **P10.21 Economy simulation** — validate material income/sinks from campaign through T12
+- [ ] **P10.22 Touch/controller crafting QA** — complex crafting remains usable without precision mouse interaction
+
+## P11 — Ship Systems 2.0 // Long-Term Power Infrastructure
+
+Current two-tier systems are a prototype. The redesign target is an order-of-magnitude harder to finish and substantially more transformative.
+
+- [ ] **P11.1 Expand every ship system from 2 tiers to a long progression track** — target 6 major tiers with sub-milestones
+- [ ] **P11.2 Cost curve overhaul** — late tiers require dramatically more total value than current T2 and cannot be purchased after only a few normal contracts
+- [ ] **P11.3 Milestone gating** — campaign completion, faction reputation, boss components, Directive tier, and Quarantined Trace requirements
+- [ ] **P11.4 Dependency graph** — advanced systems require supporting ship infrastructure rather than eight independent upgrade buttons
+- [ ] **P11.5 Major benefit cadence** — every tier provides a noticeable gameplay/system unlock, not a tiny invisible percentage
+- [ ] **P11.6 Reactor Bus** — capacitor ceiling → regen architecture → combat overdrive → emergency power routing
+- [ ] **P11.7 Vector Drive** — mobility → low-g authority → dodge recovery → advanced inertia control
+- [ ] **P11.8 Armor Locker** — deployment armor → plate recovery → breach resistance → emergency auto-seal
+- [ ] **P11.9 Cargo Recovery Grid** — salvage yield → protected recoveries → deeper extraction capacity → high-value recovery insurance
+- [ ] **P11.10 Long-Baseline Sensors** — projectile solutions → target-focus quality → Tactical Forecast detail → elite/boss weakness telemetry
+- [ ] **P11.11 Microforge** — unlock the full P10 crafting ladder and its precision controls
+- [ ] **P11.12 Trauma Bay** — max HP → stabilization → post-failure mitigation → limited high-tier emergency recovery
+- [ ] **P11.13 Support Drone Rack** — relay helper → configurable combat role → advanced drone behavior → specialization synergy
+- [ ] **P11.14 System specialization choice** — at high tier choose one of two mutually exclusive advanced packages per system
+- [ ] **P11.15 Physical ship presentation** — upgraded hardware visibly appears in the hub with stronger animation/audio/state
+- [ ] **P11.16 Upgrade ceremony** — major tier purchases get authored feedback rather than a text-only number change
+- [ ] **P11.17 Benefit preview** — exact next-tier effect, prerequisites, downstream unlocks, and resource deficit
+- [ ] **P11.18 Existing-save migration** — current T1/T2 investments convert fairly into the new progression
+- [ ] **P11.19 Economy pacing test** — systems remain aspirational through campaign and deep endgame
+- [ ] **P11.20 Balance guard** — high-tier systems feel powerful without trivializing boss mechanics or class weaknesses
+
+## P12 — AAA Combat Feel // Audio, Animation, Camera & Haptics
+
+### Combat audio
+
+- [ ] **P12.1 Replace synthetic/generic weapon cues with layered authored combat sound**
+- [ ] **P12.2 Per-weapon-family firing stack** — mechanical action, primary discharge, muzzle pressure, tail, and low-frequency body
+- [ ] **P12.3 Distance layers** — near / mid / far report with believable attenuation
+- [ ] **P12.4 Environment response** — interior reflections, open-volume tails, pressure/vacuum filtering, machinery-space resonance
+- [ ] **P12.5 Impact material sets** — armor, flesh/soft target, machinery, ice, steel, glass/composite, shield/field
+- [ ] **P12.6 Reload/vent/mechanical Foley** — magazines, chambers, capacitors, latches, actuators, heat dump
+- [ ] **P12.7 Class skill audio identities** — Vanguard mass/impact, Vector precision/velocity, Systems relay/electrical
+- [ ] **P12.8 Enemy/boss attack tells** — danger can be recognized by sound without staring at HUD
+- [ ] **P12.9 Dynamic mix** — prioritize player fire, incoming lethal cues, boss tells, and dialogue over low-value ambience
+- [ ] **P12.10 Variation system** — pitch/timing/sample variation prevents repeated-fire fatigue without losing weapon identity
+
+### Combat animation
+
+- [ ] **P12.11 Class-specific locomotion stance**
+- [ ] **P12.12 Aim offsets / upper-body tracking**
+- [ ] **P12.13 Weapon-family recoil profiles**
+- [ ] **P12.14 Authored reload / charge / vent / overheat cycles**
+- [ ] **P12.15 Skill anticipation, action, recovery, and cancel windows**
+- [ ] **P12.16 Dodge start/loop/recovery with class-specific weight**
+- [ ] **P12.17 Hit reactions by impact direction and severity**
+- [ ] **P12.18 Stagger/armor-break reactions**
+- [ ] **P12.19 Enemy locomotion and attack anticipation pass**
+- [ ] **P12.20 Boss phase transition animation pass**
+- [ ] **P12.21 Additive animation layers** — status/modifier reactions can overlay locomotion and attacks
+- [ ] **P12.22 Camera response** — directional impulse, recoil kick, boss impact response, accessibility scaling
+- [ ] **P12.23 Haptic synchronization** — fire, heavy impacts, reload lock, skill confirmation, damage, boss events
+- [ ] **P12.24 Animation/audio frame-budget profiling** — scale secondary layers before deleting authored behavior
+
+## P13 — Enemy Modifier & Status Visual Language
+
+Players should be able to understand important monster state by looking at the monster, not reading tags.
+
+- [ ] **P13.1 Modifier presentation framework** — one additive animation/material/VFX/audio layer can be composed with the base enemy rig
+- [ ] **P13.2 Reinforced Core** — visible bracing/plate tension and heavier impact response
+- [ ] **P13.3 Ablative Mantle** — layered armor shell that visibly strips/sheds under damage
+- [ ] **P13.4 Hunter Servo** — aggressive actuator cadence, faster stride posture, servo audio
+- [ ] **P13.5 Redline Bus** — hot cabling, venting, thermal glow, unstable firing cadence
+- [ ] **P13.6 Countermass Rig** — stabilizer deployment and visible inertia-control pulses
+- [ ] **P13.7 Relay Reflex** — rapid sensor/relay movement, signal pulse, quick reaction animation
+- [ ] **P13.8 Elite protocol presentation** — every protocol gets a readable physical/animated tell
+- [ ] **P13.9 Enhanced variant presentation** — enhanced protocols visibly intensify/change the base protocol, not just add a label
+- [ ] **P13.10 Player-applied status layers** — mark, armor break, Arc/disruption, thermal, vacuum/pressure, stagger
+- [ ] **P13.11 Boss phase mutation presentation** — phase mechanics get transformation/transition cues
+- [ ] **P13.12 Spawn/readiness cues** — dangerous modifier combinations announce before becoming lethal
+- [ ] **P13.13 Death/disable persistence** — effects terminate or fail physically instead of simply vanishing
+- [ ] **P13.14 Mobile readability** — preserve silhouette and animation cues at LOD2/coarse rendering
+- [ ] **P13.15 HUD reduction pass** — remove redundant tags once world-state cues are proven readable
+- [ ] **P13.16 Screenshot/video QA** — every modifier/status recognizable in representative combat captures
+
+## P14 — Class Arsenal Expansion
+
+Weapon variety now expands **inside** the hard class weapon-family identities from P8.
+
+### Systems // Carbine
+
+- [ ] **P14.1 Burst Carbine** — controlled burst timing, relay/status reliability, medium-range lane control
+- [ ] **P14.2 Precision Carbine** — lower cadence, stronger weak-point/mark interaction, disciplined sustained fire
+
+### Vanguard // Breacher
+
+- [ ] **P14.3 Slug Breacher** — massive single discharge, armor/stagger authority, recoil movement
+- [ ] **P14.4 Rapid Breacher** — shorter cycle, close-range pressure, heat/reload management
+
+### Vector // Rail Lance
+
+- [ ] **P14.5 Charge Rail** — deliberate charge timing, extreme penetration, mobility commitment
+- [ ] **P14.6 Repeater Rail** — faster precision follow-up, lower per-shot authority, movement-friendly cadence
+
+### Arsenal integration
+
+- [ ] **P14.7 Unique silhouettes and authored animations**
+- [ ] **P14.8 Unique layered audio identities**
+- [ ] **P14.9 Dedicated progression clusters**
+- [ ] **P14.10 Crafting/affix compatibility**
+- [ ] **P14.11 Skill/class interaction tuning**
+- [ ] **P14.12 Singular compatibility and new chase variants**
+- [ ] **P14.13 Loot tables respect class ownership**
+- [ ] **P14.14 Mobile/thermal testing under sustained fire**
+- [ ] **P14.15 Variety playtest** — both variants in one family must support meaningfully different builds
+- [ ] **P14.16 Only add a fourth weapon family with a future class or a clearly distinct new combat role**
+
+## P15 — AAA UI / World / Cinematic Polish
+
+- [ ] **P15.1 Unified design-system audit** — spacing, typography, iconography, focus states, rarity tokens, buttons, panels, tooltips
+- [ ] **P15.2 Premium menu transitions** — fast, restrained, interruptible, no input-blocking flourish
+- [ ] **P15.3 Class selection final presentation** — playable fantasy, weapon identity, skills, difficulty/role, preview animation
+- [ ] **P15.4 3D equipment inspection** — high-value gear can be rotated/inspected without blocking fast comparison
+- [ ] **P15.5 Mission launch sequence** — contract → loadout readiness → deployment with biome-specific transition
+- [ ] **P15.6 Boss introductions/transitions** — short in-engine presentation that never compromises replay pacing
+- [ ] **P15.7 Debrief overhaul** — combat highlights, loot hierarchy, progression gains, system/crafting materials, next unlock
+- [ ] **P15.8 World interaction polish** — consoles, doors, machinery, pickups, hazards get authored state animation/audio
+- [ ] **P15.9 Lighting/material pass** — preserve hard-sci-fi readability while increasing depth, surface response, and atmosphere
+- [ ] **P15.10 Accessibility pass** — scalable text, contrast, reduced motion, shake/effect controls, audio cues, target-assist controls
+- [ ] **P15.11 Mobile safe-area/orientation pass**
+- [ ] **P15.12 Screenshot-quality review** — every major biome/menu/combat state must survive a no-explanation screenshot test
+
+## P16 — Performance Without Compromise
+
+- [ ] **P16.1 Establish device tiers** — flagship, performance Android, mid-range baseline, emulator reference
+- [ ] **P16.2 Frame-time budgets** — CPU simulation, render submission, GPU, UI, animation, audio, and GC measured separately
+- [ ] **P16.3 Dynamic resolution / render scale**
+- [ ] **P16.4 GPU instancing for repeated enemies/props/effects where applicable**
+- [ ] **P16.5 Effect pooling** — projectiles, impacts, particles, temporary lights, decals
+- [ ] **P16.6 Animation LOD** — preserve gameplay tells while reducing distant bone/update cost
+- [ ] **P16.7 Asset streaming/preload strategy** — avoid combat-time decode/upload spikes
+- [ ] **P16.8 Texture/material memory audit**
+- [ ] **P16.9 Audio voice budget / virtualization**
+- [ ] **P16.10 Boot architecture review** — split feature/presentation data and revise the boot-size gate only when architecture justifies it
+- [ ] **P16.11 Sustained 30-minute thermal soak tests**
+- [ ] **P16.12 Worst-case T12 stress scene** — boss + elites + mutations + hazards + max player VFX
+- [ ] **P16.13 Frame-pacing capture** — not just average FPS
+- [ ] **P16.14 Memory/leak soak**
+- [ ] **P16.15 Adaptive-quality priority order** — lower secondary particles/shadows/reflections/resolution before reducing enemy mechanics
+- [ ] **P16.16 Flagship quality mode** — allow modern high-end phones to run the richer target presentation
+- [ ] **P16.17 Performance mode** — preserve controls/telegraphs/simulation while scaling presentation
+- [ ] **P16.18 Final Android hands-on playthrough across device tiers**
+
+## P17 — External Beta / Delivery
+
+- [ ] **P17.1 Permanent signing credentials**
+- [ ] **P17.2 Persistent release-signed APK**
+- [ ] **P17.3 Verify upgrade path**
+- [ ] **P17.4 GitHub Release workflow**
+- [ ] **P17.5 Non-expiring releases**
+- [ ] **P17.6 Release notes/changelog**
+- [ ] **P17.7 Beta save policy**
+- [ ] **P17.8 Clean-install QA**
+- [ ] **P17.9 Upgrade-install QA**
+- [ ] **P17.10 External beta candidate**
 
 ## Current Execution Order
 
-**P1 → P2 → P3 → P4 → P5 → P6 → P7 → P8**
+**P6 → P7 → P8 → P9 → P10 → P11 → P12 → P13 → P14 → P15 → P16 → P17**
+
+The structural order is intentional: finish the current T9–T12 content layer, standardize loot presentation, lock targeting/class weapon architecture, then deepen progression/crafting/ship systems before the full audio-animation-modifier presentation pass and expanded class arsenals. Final visual polish and performance architecture happen before external beta.
 
 ## Immediate Queue
 
-P1, P2, P3, **P4 — Megastructure Capstone Pass**, and **P5 — Class Capstones** are complete. **P6.1 — Exclusive protocol combinations**, **P6.2 — Enhanced protocol variants**, and **P6.3 — T9+ mutations** are complete. Continue in roadmap order with **P6.4 — Boss phase mutations**.
+P1–P5 are complete. **P6.1 — Exclusive protocol combinations**, **P6.2 — Enhanced protocol variants**, and **P6.3 — T9+ mutations** are complete. Continue with **P6.4 — Boss phase mutations** through the remaining P6 high-tier content, then begin **P7 — Loot Rarity & Equipment Presentation**. The class/weapon architecture in P8 is now a locked design direction: Vanguard/Breacher, Vector/Rail Lance, Systems/Carbine; no cross-family runtime swapping and no per-item skill linking.
 
 **P6.3 delivered:** T9+ elite-led encounters now add a deterministic whole-enemy mutation layer on top of protocol packages without consuming the separate boss/Command Target mutation work. Six authored mutations are available across T9–T12: **Reinforced Core**, **Ablative Mantle**, **Hunter Servo**, **Redline Bus**, **Countermass Rig**, and **Relay Reflex**. Mutations consume an explicit reserved threat budget that scales from 2 points at T9 to 8 at T12, remain restricted to elite/enhanced non-boss enemies, and materially change durability, armor, mobility, firing cadence, or hazard/protocol cadence. Tactical Forecast discloses the legal mutation pool before deployment, the combat HUD shows compact mutation tags, and deterministic regression covers the T8 gate, T9/T11 budget caps, boss exclusion, repeatable assignment, runtime stat/cadence effects, and UI visibility. PR Browser E2E run `35553253160` passed desktop/mobile-landscape full regression, production build, the 349.9 KiB boot-bundle gate, player-journey QA, and the Chapter 3 browser playthrough. Merged-main Browser E2E run `35553418993` and Level 15 beta smoke run `35553418968` passed; Android beta.204 run `35553418964` passed the full web regression/build, package/version/SDK/signature verification, native emulator install/launch/resume smoke, and the two-route Chapter 3 Android touch playthrough. Artifact `10619296967` is debug-signed with APK SHA-256 `5c47a13db9815fddee05e9e1744f7403cdc3e44f3146f181624d11bce8e2b5f9`. **P6.4 — Boss phase mutations is next.**
 
@@ -423,16 +681,14 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.202**
+- Android beta: **0.0.1-beta.204**
 - Package: `app.ironshade.vector`
-- Verified: **P6.1 — Exclusive protocol combinations is complete.** T9+ elite packaging now includes seven deterministic named combinations — **Breach Lock**, **Mass Pursuit**, **Fortress Mesh**, **Recovery Lockdown**, **Kill Corridor**, **Arc Blackout**, and **Vacuum Hunt** — with Directive-aware selection, location/objective legality, atomic threat-budget acceptance, pre-deploy package forecasts, compact in-combat package labels, and deterministic regression coverage. PR and merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.202 package/version/SDK/signature verification, native emulator install/launch/resume smoke, Android touch/runtime QA, and the Chapter 3 two-route touch playthrough all passed. **The next roadmap slice is P6.2 — Enhanced protocol variants.**
-- Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P6.1 final PR head: `5e3d87b84851a1c9541993c9223df50ba3b6c185`
-- P6.1 merged main / APK source: `436ea1aad42f4d68a9cdcb66946adc7ad886df10`
-- PR Browser E2E run: `35549802656`
-- Final Browser E2E run: `35549914024`
-- Level 15 beta smoke run: `35549914124`
-- Android beta.202 run: `35549914181`
-- Android beta.202 artifact ID: `10617128757`
-- Android beta.202 artifact head: `436ea1aad42f4d68a9cdcb66946adc7ad886df10`
-- APK SHA-256: `20e6f176646ef746adb3e2d982c36870c45f9c42688005ee3bb1d1219a5efda4`
+- Verified: **P6.3 — T9+ mutations is complete.** Six deterministic T9–T12 elite/enhanced mutations are integrated with threat budgeting, Tactical Forecast, in-combat labels, real durability/mobility/fire/hazard cadence effects, and regression coverage. PR and merged-main desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android package/version/SDK/signature verification, native emulator install/launch/resume, touch/runtime QA, and the two-route Chapter 3 Android playthrough passed.
+- Signing: current beta is debug-signed; permanent release signing is now **P17**
+- P6.3 merged main / APK source: `ce02335ad307b2e4bae9897083080acc02482140`
+- Final Browser E2E run: `35553418993`
+- Level 15 beta smoke run: `35553418968`
+- Android beta.204 run: `35553418964`
+- Android beta.204 artifact ID: `10619296967`
+- APK SHA-256: `5c47a13db9815fddee05e9e1744f7403cdc3e44f3146f181624d11bce8e2b5f9`
+- Next implementation slice: **P6.4 — Boss phase mutations**
