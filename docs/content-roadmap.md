@@ -35,9 +35,8 @@ Target: **premium console/PC-quality ARPG presentation on modern phones**.
 
 ## P6 — T9–T12 Directive Expansion
 
-P6.1–P6.3 and P6-A/P6-B are archived.
+P6.1–P6.3 and P6-A/P6-B/P6-C are archived.
 
-- [ ] **P6-C Environmental risk package** — dangerous high-tier environmental combinations + explicit risk/reward scaling
 - [ ] **P6-D Chase reward package** — exclusive high-tier Singular pool + pre-deployment reward previews
 - [ ] **P6-E Endgame verification** — deterministic encounter simulations + worst-case T12 stress/adaptive-quality testing
 
@@ -150,20 +149,20 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P6-C — Environmental risk package.**
+**Next: P6-D — Chase reward package.**
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.207**
+- Android beta: **0.0.1-beta.208**
 - Package: `app.ironshade.vector`
-- Verified: **P6-B Command Target mutations complete**
-- Gameplay source: `2feaef5a529fd6f4032bb7074d2cf15302dbbd48`
-- PR Browser E2E: `35557209844`
-- Merged-main Browser E2E: `35557318517`
-- Level 15 beta smoke: `35557318419`
-- Android beta.207: `35557318413`
-- APK artifact: `10620214462`
-- APK SHA-256: `36260887f7d51de83d9fcc77467e582704202248c3c5d73dff1190d7be5c0a88`
+- Verified: **P6-C Environmental risk package complete**
+- Gameplay source: `2ff92ba5bade634e3fbf053cc2ddb13db3816a22`
+- PR Browser E2E: `35558132124`
+- Merged-main Browser E2E: `35558235262`
+- Level 15 beta smoke: `35558235264`
+- Android beta.208: `35558235240`
+- APK artifact: `10621705098`
+- APK SHA-256: `2572bb716ab6ffd375e16635ebf252182743b75ce3a7484061b992cf09ffad8a`
 - Signing: debug-signed beta; permanent signing is P17-A
