@@ -8,7 +8,72 @@ import { CAMPAIGN_STORAGE_KEY, GAME_STATE_STORAGE_KEY, prepareSaveRecovery, PROF
 import { loadGameState, saveGameState } from '../src/game/gamePersistence';
 import { carryExpeditionLoot } from '../src/game/expeditionCarry';
 import { advanceParallaxDebtAfterContract, chooseParallaxDebtBranch, getParallaxDebtChoicePrompt, getParallaxDebtContract, parallaxDebtChapter, parallaxDebtIntel, parallaxDebtNextRequiredLevel, syncParallaxDebtAccess } from '../src/game/parallaxDebt';
-import { operationScalingFor } from '../src/game/scaling';
+import { applyThreatBudget, operationScalingFor } from '../src/game/scaling';
+import { chooseEnemyProtocols, exclusiveProtocolCombinationForEnemy, exclusiveProtocolCombinationForInstances, exclusiveProtocolCombinationForecastForContract } from '../src/game/eliteProtocols';
+
+function exclusiveProtocolCombinationSmoke() {
+  const baseContract = generateContracts(createDefaultCampaign())[0]!;
+  const t8Contract = {
+    ...baseContract,
+    seed: 61091,
+    location: 'lattice-annex' as const,
+    objectiveMode: 'gravity-stabilization' as const,
+    operationTier: 8,
+    eliteProtocolSlots: 3,
+    directiveProtocolBias: ['breachmaker', 'magneticLock'],
+  };
+  const preT9 = chooseEnemyProtocols(t8Contract, 'elite', 'standard', 3, 6);
+  assert.equal(preT9.some(protocol => !!protocol.combinationId), false, 'exclusive protocol packages must remain locked below T9');
+  assert.deepEqual(exclusiveProtocolCombinationForecastForContract(t8Contract), [], 'pre-T9 tactical forecast must not advertise exclusive packages');
+
+  const breachLockContract = { ...t8Contract, operationTier: 9 };
+  const breachLock = exclusiveProtocolCombinationForEnemy(breachLockContract, 'elite', 'standard', 3, 6);
+  assert.equal(breachLock?.id, 'breach-lock', 'directive-biased T9 Lattice Annex elites should resolve the authored Breach Lock package');
+  const breachProtocols = chooseEnemyProtocols(breachLockContract, 'elite', 'standard', 3, 6);
+  assert.deepEqual(
+    breachProtocols.filter(protocol => protocol.combinationId === 'breach-lock').map(protocol => protocol.id),
+    ['breachmaker', 'magneticLock'],
+    'Breach Lock should land atomically before any ordinary filler protocol',
+  );
+  assert.ok(exclusiveProtocolCombinationForecastForContract(breachLockContract).includes('Breach Lock'), 'T9 tactical forecast should surface the legal exclusive package by name');
+
+  const recoveryContract = {
+    ...baseContract,
+    seed: 77123,
+    location: 'orbital-station' as const,
+    objectiveMode: 'machinery-recovery' as const,
+    operationTier: 9,
+    eliteProtocolSlots: 3,
+    directiveProtocolBias: ['salvageInterdictor', 'recoveryDenial'],
+  };
+  const recoveryLock = exclusiveProtocolCombinationForEnemy(recoveryContract, 'elite', 'standard', 3, 6);
+  assert.equal(recoveryLock?.id, 'recovery-lockdown', 'recovery directives should resolve the authored same-family Recovery Lockdown package');
+  const recoveryProtocols = chooseEnemyProtocols(recoveryContract, 'elite', 'standard', 3, 6);
+  const recoveryBundle = recoveryProtocols.filter(protocol => protocol.combinationId === 'recovery-lockdown');
+  assert.deepEqual(recoveryBundle.map(protocol => protocol.id), ['salvageInterdictor', 'recoveryDenial'], 'exclusive bundles should permit authored same-family pairings that ordinary protocol selection forbids');
+
+  const state = createSimulation();
+  const budgetedContract = {
+    ...breachLockContract,
+    threatBudget: 84,
+    encounterPattern: 'elite-led' as const,
+    reserveCount: 1,
+    environmentalEventSlots: 2,
+    combatEffectiveness: 1,
+  };
+  applyThreatBudget(state.enemies, budgetedContract);
+  const packagedEnemy = state.enemies.find(enemy => enemy.active && exclusiveProtocolCombinationForInstances(enemy.protocols));
+  assert.ok(packagedEnemy, 'T9 threat budgeting should preserve at least one authored exclusive elite package');
+  const packageDefinition = exclusiveProtocolCombinationForInstances(packagedEnemy!.protocols)!;
+  const acceptedBundle = packagedEnemy!.protocols.filter(protocol => protocol.combinationId === packageDefinition.id);
+  assert.equal(acceptedBundle.length, packageDefinition.protocols.length, 'threat budgeting must accept or reject an exclusive package atomically instead of silently truncating it');
+
+  const combatSource = readFileSync('src/components/GameCanvas.tsx', 'utf8');
+  const hubSource = readFileSync('src/components/ShipHub.tsx', 'utf8');
+  assert.match(combatSource, /packageDefinition\.shortName/, 'combat HUD should identify named exclusive protocol packages above elite enemies');
+  assert.match(hubSource, /PACKAGE \/\//, 'contract tactical forecast should identify exclusive package names before deployment');
+}
+exclusiveProtocolCombinationSmoke();
 
 function parallaxPacingTelemetry(): Telemetry {
   return {

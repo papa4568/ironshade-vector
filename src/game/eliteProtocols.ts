@@ -23,11 +23,21 @@ export type EnemyProtocolId =
   | 'salvageInterdictor'
   | 'recoveryDenial';
 
+export type ExclusiveProtocolCombinationId =
+  | 'breach-lock'
+  | 'mass-pursuit'
+  | 'fortress-mesh'
+  | 'recovery-lockdown'
+  | 'kill-corridor'
+  | 'arc-blackout'
+  | 'vacuum-hunt';
+
 export type EnemyProtocolInstance = {
   id: EnemyProtocolId;
   enhanced: boolean;
   cooldown: number;
   windup: number;
+  combinationId?: ExclusiveProtocolCombinationId;
 };
 
 type ProtocolDefinition = {
@@ -68,7 +78,28 @@ export const eliteProtocolDefinitions: ProtocolDefinition[] = [
   { id: 'recoveryDenial', name: 'Recovery Denial', shortName: 'DENIAL', family: 'objective', threatCost: 4, rewardWeight: 2, tell: 'A denial grid forms around tagged objective hardware.', counter: 'Disrupt the projector, isolate the grid, or approach from another lane.', baseCooldown: 6.3, enhanceable: true, objectiveModes: ['machinery-recovery', 'deep-salvage'] },
 ];
 
+export type ExclusiveProtocolCombinationDefinition = {
+  id: ExclusiveProtocolCombinationId;
+  name: string;
+  shortName: string;
+  minTier: number;
+  protocols: readonly EnemyProtocolId[];
+  locations?: LocationId[];
+  objectiveModes?: Contract['objectiveMode'][];
+};
+
+export const exclusiveProtocolCombinations: ExclusiveProtocolCombinationDefinition[] = [
+  { id: 'breach-lock', name: 'Breach Lock', shortName: 'BREACH LOCK', minTier: 9, protocols: ['breachmaker', 'magneticLock'] },
+  { id: 'mass-pursuit', name: 'Mass Pursuit', shortName: 'MASS HUNT', minTier: 9, protocols: ['magneticLock', 'countermassMobility'] },
+  { id: 'fortress-mesh', name: 'Fortress Mesh', shortName: 'FORTRESS', minTier: 9, protocols: ['reactivePlating', 'repairMesh'] },
+  { id: 'recovery-lockdown', name: 'Recovery Lockdown', shortName: 'RECOVERY LOCK', minTier: 9, protocols: ['salvageInterdictor', 'recoveryDenial'], objectiveModes: ['machinery-recovery', 'deep-salvage'] },
+  { id: 'kill-corridor', name: 'Kill Corridor', shortName: 'KILL LANE', minTier: 10, protocols: ['emergencyShutters', 'suppressionCoordinator', 'penetratorVolley'] },
+  { id: 'arc-blackout', name: 'Arc Blackout', shortName: 'BLACKOUT', minTier: 10, protocols: ['arcConduit', 'signalJammer', 'droneEscort'] },
+  { id: 'vacuum-hunt', name: 'Vacuum Hunt', shortName: 'VAC HUNT', minTier: 10, protocols: ['pressureHunter', 'vacuumAdapted', 'countermassMobility'] },
+];
+
 const byId = new Map(eliteProtocolDefinitions.map(definition => [definition.id, definition]));
+const combinationById = new Map(exclusiveProtocolCombinations.map(definition => [definition.id, definition]));
 const locationBias: Record<LocationId, EnemyProtocolId[]> = {
   'orbital-station': ['reactivePlating', 'emergencyShutters', 'suppressionCoordinator', 'magneticLock', 'arcConduit', 'penetratorVolley'],
   'damaged-vessel': ['pressureHunter', 'vacuumAdapted', 'breachmaker', 'emergencyShutters', 'reactivePlating'],
@@ -90,6 +121,11 @@ function hash32(value: number) {
   x ^= x << 5;
   return x >>> 0;
 }
+function hashText(value: string) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) hash = Math.imul(hash ^ value.charCodeAt(index), 16777619);
+  return hash >>> 0;
+}
 
 export function protocolDefinition(id: EnemyProtocolId) { return byId.get(id)!; }
 export function protocolThreatCost(instance: EnemyProtocolInstance) { return protocolDefinition(instance.id).threatCost + (instance.enhanced ? 1 : 0); }
@@ -102,6 +138,45 @@ function eligible(definition: ProtocolDefinition, contract: Contract, role: Enem
   if (definition.objectiveModes && !definition.objectiveModes.includes(contract.objectiveMode)) return false;
   return true;
 }
+function combinationEligible(definition: ExclusiveProtocolCombinationDefinition, contract: Contract, role: EnemyRole, variant: EnemyVariant, count: number) {
+  const tier = contract.operationTier ?? contract.directiveTier ?? 1;
+  if (tier < definition.minTier || definition.protocols.length > count) return false;
+  if (definition.locations && !definition.locations.includes(contract.location)) return false;
+  if (definition.objectiveModes && !definition.objectiveModes.includes(contract.objectiveMode)) return false;
+  return definition.protocols.every(id => eligible(protocolDefinition(id), contract, role, variant));
+}
+function forecastCombinationEligible(definition: ExclusiveProtocolCombinationDefinition, contract: Contract) {
+  const tier = contract.operationTier ?? contract.directiveTier ?? 1;
+  if (tier < definition.minTier) return false;
+  if (definition.locations && !definition.locations.includes(contract.location)) return false;
+  if (definition.objectiveModes && !definition.objectiveModes.includes(contract.objectiveMode)) return false;
+  return definition.protocols.every(id => {
+    const protocol = protocolDefinition(id);
+    if (protocol.locations && !protocol.locations.includes(contract.location)) return false;
+    if (protocol.objectiveModes && !protocol.objectiveModes.includes(contract.objectiveMode)) return false;
+    return true;
+  });
+}
+
+export function exclusiveProtocolCombinationForEnemy(contract: Contract, role: EnemyRole, variant: EnemyVariant, count: number, enemyId: number) {
+  if (count < 2) return undefined;
+  const bias = new Set((contract.directiveProtocolBias ?? []) as EnemyProtocolId[]);
+  const candidates = exclusiveProtocolCombinations.filter(definition => combinationEligible(definition, contract, role, variant, count));
+  candidates.sort((a, b) => {
+    const aBias = a.protocols.reduce((total, id) => total + Number(bias.has(id)), 0);
+    const bBias = b.protocols.reduce((total, id) => total + Number(bias.has(id)), 0);
+    if (aBias !== bBias) return bBias - aBias;
+    return hash32(contract.seed ^ enemyId * 2654435761 ^ hashText(a.id)) - hash32(contract.seed ^ enemyId * 2654435761 ^ hashText(b.id));
+  });
+  return candidates[0];
+}
+export function exclusiveProtocolCombinationForInstances(protocols: readonly EnemyProtocolInstance[]) {
+  const combinationId = protocols.find(protocol => protocol.combinationId)?.combinationId;
+  return combinationId ? combinationById.get(combinationId) : undefined;
+}
+export function exclusiveProtocolCombinationForecastForContract(contract: Contract) {
+  return exclusiveProtocolCombinations.filter(definition => forecastCombinationEligible(definition, contract)).map(definition => definition.name).slice(0, 3);
+}
 
 export function chooseEnemyProtocols(contract: Contract, role: EnemyRole, variant: EnemyVariant, count: number, enemyId: number) {
   const directiveBias = (contract.directiveProtocolBias ?? []).filter(id => byId.has(id as EnemyProtocolId)) as EnemyProtocolId[];
@@ -113,18 +188,31 @@ export function chooseEnemyProtocols(contract: Contract, role: EnemyRole, varian
     const aRank = aBias < 0 ? 99 : aBias;
     const bRank = bBias < 0 ? 99 : bBias;
     if (aRank !== bRank) return aRank - bRank;
-    return hash32(contract.seed ^ enemyId * 7919 ^ a.id.length * 104729) - hash32(contract.seed ^ enemyId * 7919 ^ b.id.length * 104729);
+    return hash32(contract.seed ^ enemyId * 7919 ^ hashText(a.id)) - hash32(contract.seed ^ enemyId * 7919 ^ hashText(b.id));
   });
   const result: EnemyProtocolInstance[] = [];
-  for (const definition of candidates) {
-    if (result.length >= count || chosenFamilies.has(definition.family)) continue;
-    chosenFamilies.add(definition.family);
-    const tier = contract.operationTier ?? 1;
-    const enhancedChance = tier >= 12 ? 42 : tier >= 10 ? 24 : 0;
-    const roll = hash32(contract.seed ^ enemyId * 2654435761 ^ definition.id.length * 31337) % 100;
+  const tier = contract.operationTier ?? contract.directiveTier ?? 1;
+  const enhancedChance = tier >= 12 ? 42 : tier >= 10 ? 24 : 0;
+  const createInstance = (definition: ProtocolDefinition, combinationId?: ExclusiveProtocolCombinationId) => {
+    const roll = hash32(contract.seed ^ enemyId * 2654435761 ^ hashText(definition.id)) % 100;
     const enhanced = !!definition.enhanceable && enhancedChance > 0 && roll < enhancedChance;
     const cooldownJitter = (hash32(contract.seed ^ enemyId * 131 ^ result.length * 17) % 140) / 100;
-    result.push({ id: definition.id, enhanced, cooldown: 1.6 + cooldownJitter, windup: 0 });
+    return { id: definition.id, enhanced, cooldown: 1.6 + cooldownJitter, windup: 0, ...(combinationId ? { combinationId } : {}) } satisfies EnemyProtocolInstance;
+  };
+
+  const exclusive = exclusiveProtocolCombinationForEnemy(contract, role, variant, count, enemyId);
+  if (exclusive) {
+    for (const id of exclusive.protocols) {
+      const definition = protocolDefinition(id);
+      result.push(createInstance(definition, exclusive.id));
+      chosenFamilies.add(definition.family);
+    }
+  }
+
+  for (const definition of candidates) {
+    if (result.length >= count || result.some(protocol => protocol.id === definition.id) || chosenFamilies.has(definition.family)) continue;
+    chosenFamilies.add(definition.family);
+    result.push(createInstance(definition));
   }
   return result;
 }
@@ -155,6 +243,7 @@ export function protocolTierSummary(operationTier: number, capacity: number) {
   if (capacity <= 0) return 'Standard classes only';
   if (operationTier <= 4) return 'Enhanced/Elite // normally 1 protocol';
   if (operationTier <= 7) return 'Enhanced/Elite // 1–2 protocols';
-  if (operationTier <= 9) return 'Elite packages // up to 3 protocols';
-  return 'High-tier Elite // 2–4 protocols · Enhanced variants possible';
+  if (operationTier <= 8) return 'Elite packages // up to 3 protocols';
+  if (operationTier === 9) return 'T9 Elite // exclusive 2–3 protocol packages online';
+  return 'High-tier Elite // exclusive packages · 2–4 protocols · Enhanced variants possible';
 }
