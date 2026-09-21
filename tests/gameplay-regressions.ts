@@ -13,6 +13,7 @@ import { chooseEnemyProtocols, enhancedProtocolVariantForecastForContract, exclu
 import { enhancedProtocolVariantPresentationFor } from '../src/game/enhancedProtocolVariantPresentation';
 import { applyEnemyMutations, mutationFireCadenceScale, mutationHazardCadenceScale, mutationMobilityScale, mutationThreatCostForEnemy } from '../src/game/t9Mutations';
 import { mutationForecastForContract, mutationPresentationFor } from '../src/game/t9MutationPresentation';
+import { bossPhaseFireCadenceScale, bossPhaseMutationDefinition, bossPhaseMutationForecastForContract, chooseBossPhaseMutations, type BossPhaseMutationId } from '../src/game/bossPhaseMutations';
 
 function exclusiveProtocolCombinationSmoke() {
   const baseContract = generateContracts(createDefaultCampaign())[0]!;
@@ -166,7 +167,7 @@ function t9MutationSmoke() {
   const mutated = first.enemies.filter(enemy => enemy.mutations.length > 0);
   assert.ok(mutated.length > 0, 'T9 elite-led encounters should assign at least one mutation from the reserved mutation budget');
   assert.ok(mutated.every(enemy => enemy.role !== 'boss' && (enemy.combatClass === 'elite' || enemy.combatClass === 'enhanced')), 'P6.3 mutations must stay on non-boss elite/enhanced enemies');
-  assert.equal(first.enemies.find(enemy => enemy.role === 'boss')?.mutations.length ?? 0, 0, 'bosses must remain mutation-free for the separate P6.4 boss-phase pass');
+  assert.equal(first.enemies.find(enemy => enemy.role === 'boss')?.mutations.length ?? 0, 0, 'bosses must remain outside the elite mutation namespace');
   const t9MutationCost = mutated.reduce((total, enemy) => total + mutationThreatCostForEnemy(enemy), 0);
   assert.ok(t9MutationCost > 0 && t9MutationCost <= 2, 'T9 mutations must consume only the explicit two-point mutation commitment');
 
@@ -202,6 +203,98 @@ function t9MutationSmoke() {
   assert.match(hubSource, /MUTATION \/\//, 'Tactical Forecast should disclose legal T9+ mutations before deployment');
 }
 t9MutationSmoke();
+
+function bossPhaseMutationSmoke() {
+  const baseContract = generateContracts(createDefaultCampaign())[0]!;
+  const base = {
+    ...baseContract,
+    seed: 771923,
+    location: 'lattice-annex' as const,
+    objectiveMode: 'gravity-stabilization' as const,
+    threatBudget: 96,
+    encounterPattern: 'elite-led' as const,
+    eliteProtocolSlots: 4,
+    reserveCount: 1,
+    environmentalEventSlots: 3,
+    combatEffectiveness: 1,
+  };
+
+  const t8Contract = { ...base, operationTier: 8 };
+  assert.deepEqual(bossPhaseMutationForecastForContract(t8Contract), [], 'boss phase mutations must remain locked below T9');
+
+  const t9Contract = { ...base, operationTier: 9 };
+  const t9Forecast = bossPhaseMutationForecastForContract(t9Contract);
+  assert.equal(t9Forecast.length, 1, 'T9-T11 bosses should arm exactly one phase mutation');
+  assert.deepEqual(t9Forecast, chooseBossPhaseMutations(t9Contract), 'boss mutation forecast and runtime selection must use the same deterministic resolver');
+  assert.ok(t9Forecast.every(id => bossPhaseMutationDefinition(id).minTier <= 9), 'T9 boss forecast must not leak later-tier identities');
+  assert.deepEqual(chooseBossPhaseMutations(t9Contract), chooseBossPhaseMutations(t9Contract), 'same seed and tier must always resolve the same phase mutation');
+
+  const t9State = createSimulation();
+  applyThreatBudget(t9State.enemies, t9Contract);
+  const t9Boss = t9State.enemies.find(enemy => enemy.role === 'boss');
+  assert.ok(t9Boss, 'boss phase mutation regression requires an authored command target');
+  assert.deepEqual(t9Boss!.bossPhaseMutations, t9Forecast, 'threat scaling should assign the exact mutation disclosed in Tactical Forecast');
+  assert.equal(t9Boss!.mutations.length, 0, 'boss phase mutations must stay separate from elite mutations');
+
+  const t12Contract = { ...base, operationTier: 12 };
+  const t12Forecast = bossPhaseMutationForecastForContract(t12Contract);
+  assert.equal(t12Forecast.length, 2, 'T12 bosses should combine two distinct phase mutations');
+  assert.equal(new Set(t12Forecast).size, t12Forecast.length, 'T12 phase mutations must not duplicate the same identity');
+
+  const cadence = bossPhaseFireCadenceScale({ bossPhase: 2, bossPhaseMutations: ['redline-sequence'] });
+  assert.ok(cadence >= 1.2, 'Redline Sequence must materially accelerate phase-two attack recovery');
+  assert.equal(bossPhaseFireCadenceScale({ bossPhase: 1, bossPhaseMutations: ['redline-sequence'] }), 1, 'boss mutations must not change phase-one cadence');
+
+  const transitionState = (id: BossPhaseMutationId) => {
+    const state = createSimulation();
+    for (const enemy of state.enemies) if (enemy.role !== 'boss') enemy.active = false;
+    const boss = state.enemies.find(enemy => enemy.role === 'boss')!;
+    boss.active = true;
+    boss.bossPhaseMutations = [id];
+    boss.bossMutationCooldown = 0;
+    boss.fireCooldown = 2;
+    boss.hp = boss.maxHp * 0.5;
+    state.bossActive = true;
+    stepSimulation(state, 0.1);
+    assert.equal(boss.bossPhase, 2, `${id} test target should cross into phase two`);
+    assert.match(state.eventText, /PHASE MUTATION/, `${id} transition should announce the armed phase mutation`);
+    return { state, boss };
+  };
+
+  const phaseOne = createSimulation();
+  for (const enemy of phaseOne.enemies) if (enemy.role !== 'boss') enemy.active = false;
+  const phaseOneBoss = phaseOne.enemies.find(enemy => enemy.role === 'boss')!;
+  phaseOneBoss.active = true;
+  phaseOneBoss.bossPhaseMutations = ['countermass-halo'];
+  phaseOneBoss.bossMutationCooldown = 0;
+  phaseOne.bossActive = true;
+  stepSimulation(phaseOne, 0.1);
+  assert.equal(phaseOneBoss.bossPhase, 1, 'healthy boss should remain in phase one');
+  assert.equal(phaseOne.hazards.some(hazard => hazard.active && hazard.kind === 'gravityWell'), false, 'phase mutations must remain dormant before the phase transition');
+
+  const rupture = transitionState('rupture-crown');
+  assert.ok(rupture.state.sectors.find(sector => sector.id === 'C')!.pressure <= 0.8, 'Rupture Crown should create an immediate pressure break on transition');
+  assert.ok(rupture.state.hazards.some(hazard => hazard.active && hazard.kind === 'vectorWash'), 'Rupture Crown should project countermass wash denial');
+
+  const redline = transitionState('redline-sequence');
+  assert.ok(redline.boss.fireCooldown <= 0.42, 'Redline Sequence should immediately compress the boss recovery window');
+
+  const halo = transitionState('countermass-halo');
+  assert.ok(halo.state.hazards.some(hazard => hazard.active && hazard.kind === 'gravityWell'), 'Countermass Halo should project a phase-transition mass well');
+  for (const hazard of halo.state.hazards) hazard.active = false;
+  halo.boss.bossMutationCooldown = 0;
+  stepSimulation(halo.state, 0.1);
+  assert.ok(halo.state.hazards.some(hazard => hazard.active && hazard.kind === 'gravityWell'), 'Countermass Halo should continue pulsing during phase two');
+
+  const tempest = transitionState('relay-tempest');
+  assert.ok(tempest.state.hazards.filter(hazard => hazard.active && hazard.kind === 'shockGrid').length >= 1, 'Relay Tempest should seed arc denial on phase transition');
+
+  const combatSource = readFileSync('src/components/GameCanvas.tsx', 'utf8');
+  const hubSource = readFileSync('src/components/ShipHub.tsx', 'utf8');
+  assert.match(combatSource, /PHASE MUTATION \/\//, 'boss HUD should identify armed and active phase mutations');
+  assert.match(hubSource, /BOSS PHASE \/\//, 'Tactical Forecast should disclose the deterministic boss phase mutation before deployment');
+}
+bossPhaseMutationSmoke();
 
 function parallaxPacingTelemetry(): Telemetry {
   return {
