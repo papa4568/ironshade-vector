@@ -990,7 +990,7 @@ function sameClassBuildDiversitySmoke() {
   const momentumState = createSimulation(deriveCombatBuild(momentumProfile));
   for (const enemy of momentumState.enemies) enemy.active = false;
   momentumState.player.aim = { x: 1, y: 0 };
-  momentumState.player.currentWeapon = 'carbine';
+  momentumState.player.currentWeapon = 'rail';
   momentumState.player.dodgeCooldown = 1.2;
   momentumState.player.capacitor = Math.max(0, momentumState.player.maxCapacitor - 20);
   assert.equal(triggerAbility(momentumState, 0), true);
@@ -1038,15 +1038,15 @@ function sameClassBuildDiversitySmoke() {
   const redlineState = createSimulation(deriveCombatBuild(redlineProfile));
   for (const enemy of redlineState.enemies) enemy.active = false;
   redlineState.player.aim = { x: 1, y: 0 };
-  redlineState.player.currentWeapon = 'carbine';
-  redlineState.player.weaponHeat.carbine = 0.82;
+  redlineState.player.currentWeapon = 'rail';
+  redlineState.player.weaponHeat.rail = 0.82;
   redlineState.player.dodgeCooldown = 1;
   assert.equal(triggerAbility(redlineState, 2), true);
   const redlineFan = redlineState.projectiles.filter(projectile => projectile.active && projectile.owner === 'player' && projectile.weapon === 'rail');
   assert.equal(redlineFan.length, 3, 'Redline Needle should retain the authored three-lane Vector fan.');
   assert.ok(redlineFan.every(projectile => Math.hypot(projectile.vx, projectile.vy) >= 1849), 'Redline Needle should push all three lanes beyond standard Needle Fan velocity.');
   assert.ok(redlineFan.every(projectile => projectile.penetration >= 102), 'Redline Needle should add the hot-bus penetration premium.');
-  assert.ok(redlineState.player.weaponHeat.carbine <= 0.66, 'Redline Needle overclock should vent the active hot weapon bus.');
+  assert.ok(redlineState.player.weaponHeat.rail <= 0.66, 'Redline Needle overclock should vent the active hot class weapon bus.');
   assert.ok(redlineState.player.dodgeCooldown <= 0.62, 'Redline Needle overclock should pull dodge recovery forward.');
   assert.match(redlineState.eventText, /REDLINE NEEDLE/, 'Redline Pilot + Needle Fan needs its own capstone feedback.');
   assert.ok(redlineState.effects.some(effect => effect.active && effect.kind === 'vector'), 'Redline Needle should emit the Vector capstone world cue.');
