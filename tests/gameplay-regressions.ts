@@ -537,6 +537,7 @@ function sameClassBuildDiversitySmoke() {
   assert.ok(momentumState.player.dodgeCooldown < momentumDodgeCooldown, 'Inertial Dividend should deepen dodge recovery after the recoil route resolves.');
   assert.ok(momentumState.player.capacitor > momentumCapBeforeShot, 'Inertial Dividend should return capacitor from the extended recoil route.');
   assert.match(momentumState.eventText, /INERTIAL DIVIDEND/, 'Momentum Broker + Slingshot Shift needs its own capstone feedback.');
+  assert.ok(momentumState.effects.some(effect => effect.active && effect.kind === 'vector'), 'Inertial Dividend should emit the Vector capstone world cue.');
 
   const surveyState = createSimulation(deriveCombatBuild(surveyProfile));
   for (const enemy of surveyState.enemies) enemy.active = false;
@@ -567,6 +568,7 @@ function sameClassBuildDiversitySmoke() {
   assert.ok(referenceShot.penetration >= 165, 'Reference Solution should add meaningful precision penetration to the marked Slipstream shot.');
   assert.ok(surveyState.player.abilityCooldowns[2] < 4, 'Reference Solution should recycle Splitshot when the marked firing solution is committed.');
   assert.match(surveyState.eventText, /REFERENCE SOLUTION/, 'Reference Solution should remain readable when the precision shot is spent.');
+  assert.ok(surveyState.effects.some(effect => effect.active && effect.kind === 'vector'), 'Reference Solution should emit the Vector capstone world cue.');
 
   const redlineState = createSimulation(deriveCombatBuild(redlineProfile));
   for (const enemy of redlineState.enemies) enemy.active = false;
@@ -582,6 +584,7 @@ function sameClassBuildDiversitySmoke() {
   assert.ok(redlineState.player.weaponHeat.carbine <= 0.66, 'Redline Needle overclock should vent the active hot weapon bus.');
   assert.ok(redlineState.player.dodgeCooldown <= 0.62, 'Redline Needle overclock should pull dodge recovery forward.');
   assert.match(redlineState.eventText, /REDLINE NEEDLE/, 'Redline Pilot + Needle Fan needs its own capstone feedback.');
+  assert.ok(redlineState.effects.some(effect => effect.active && effect.kind === 'vector'), 'Redline Needle should emit the Vector capstone world cue.');
 }
 sameClassBuildDiversitySmoke();
 
@@ -652,6 +655,13 @@ function specializationGearSynergySmoke() {
   assert.ok(conductorLinked.abilities.every((ability, index) => ability.costMul < conductorBaseline.abilities[index].costMul), 'Bus Harmonics should reduce all class-skill capacitor costs.');
 }
 specializationGearSynergySmoke();
+
+const capstoneRendererSource = readFileSync('src/game/threeCombatRenderer.ts', 'utf8');
+assert.match(capstoneRendererSource, /effect\.kind === 'vanguard'[\s\S]*0xbd8a64/, 'Vanguard capstone feedback should retain its authored warm class color.');
+assert.match(capstoneRendererSource, /effect\.kind === 'vector'[\s\S]*0x74a6c7/, 'Vector capstone feedback should retain its authored blue class color.');
+assert.match(capstoneRendererSource, /effect\.kind === 'systems'[\s\S]*0x9b87bd/, 'Systems capstone feedback should retain its authored violet class color.');
+assert.match(capstoneRendererSource, /dataset\.capstoneFx = lastCapstoneFx \|\| 'idle'/, 'Renderer QA telemetry should expose the active class capstone effect.');
+assert.match(capstoneRendererSource, /class-capstones/, 'Combat VFX telemetry should advertise class-capstone feedback support.');
 
 function systemsSkillEvolutionSmoke() {
   const level15 = {
@@ -800,6 +810,7 @@ function systemsCapstoneInteractionSmoke() {
   assert.ok(inductionState.player.capacitor >= 46, 'Induction Sink discharge should recycle six capacitor.');
   assert.ok(inductionState.player.abilityCooldowns[0] <= inductionCooldownBefore - 0.69, 'Induction Sink overclock discharge should advance the arming ability further.');
   assert.match(inductionState.eventText, /INDUCTION SINK/, 'Induction Sink needs explicit discharge feedback.');
+  assert.ok(inductionState.effects.some(effect => effect.active && effect.kind === 'systems'), 'Induction Sink should emit the Systems capstone world cue.');
 
   const conductorBaseProfile = { ...baseProfile, specialization: 'capacitor-conductor' as const };
   const recursiveProfile = setAbilityMod(conductorBaseProfile, 'mark', 'systems-recursive-intrusion');
@@ -832,6 +843,7 @@ function systemsCapstoneInteractionSmoke() {
   assert.ok(recursiveState.player.capacitor > conductorBaseline.player.capacitor, 'Recursive Bus should convert propagated relays into additional capacitor recovery.');
   assert.ok(recursiveState.player.weaponHeat.carbine < conductorBaseline.player.weaponHeat.carbine, 'Capacitor Conductor overclock should cool the weapon bus as Recursive Bus spreads.');
   assert.match(recursiveState.eventText, /RECURSIVE BUS/, 'Recursive Bus needs explicit combat feedback.');
+  assert.ok(recursiveState.effects.some(effect => effect.active && effect.kind === 'systems'), 'Recursive Bus should emit the Systems capstone world cue.');
 
   const meshProfile = setAbilityMod({ ...baseProfile, specialization: 'grid-weaver' as const }, 'arc', 'systems-return-current');
   assert.equal(systemsCapstoneInteractionFor(meshProfile, meshProfile.abilityMods.arc)?.name, 'Mesh Reflux');
@@ -861,6 +873,7 @@ function systemsCapstoneInteractionSmoke() {
   assert.ok(remoteNode.statuses.marked >= 4.1 && remoteNode.statuses.conductive >= 4.7, 'Mesh Reflux should wire the Grid Weaver remote mark into the conductive return network.');
   assert.ok(meshState.player.abilityCooldowns[1] <= 4.5, 'Mesh Reflux should recycle Relay Hack recovery from the remote return node.');
   assert.match(meshState.eventText, /MESH REFLUX/, 'Mesh Reflux needs explicit combat feedback.');
+  assert.ok(meshState.effects.some(effect => effect.active && effect.kind === 'systems'), 'Mesh Reflux should emit the Systems capstone world cue.');
 }
 systemsCapstoneInteractionSmoke();
 
@@ -1094,6 +1107,7 @@ function vanguardCapstoneInteractionSmoke() {
   assert.ok(pressureState.hazards.some(hazard => hazard.active && hazard.kind === 'vacuumWake' && hazard.owner === 'player' && Math.hypot(hazard.x - pressureTarget.x, hazard.y - pressureTarget.y) < 20), 'Void Ram should seed a player-owned vacuum wake at the breach contact.');
   assert.ok(pressureState.player.vacuumExposure < 1.2, 'Void Ram should recycle Pressure Diver exposure on contact.');
   assert.match(pressureState.eventText, /VOID RAM/, 'Void Ram needs explicit combat feedback.');
+  assert.ok(pressureState.effects.some(effect => effect.active && effect.kind === 'vanguard'), 'Void Ram should emit the Vanguard capstone world cue.');
 
   const breachProfile = setAbilityMod({ ...baseProfile, specialization: 'breach-vanguard' as const }, 'mark', 'vanguard-faultline-tag');
   assert.equal(vanguardCapstoneInteractionFor(breachProfile, breachProfile.abilityMods.mark)?.name, 'Breach Cascade');
@@ -1112,6 +1126,7 @@ function vanguardCapstoneInteractionSmoke() {
   assert.ok(breachState.classState.vanguardGuard >= 4.9, 'Breach Cascade armor breaks should feed Breach Guard.');
   assert.ok(breachState.player.armor > breachArmorBefore, 'Breach Vanguard overclock should repair armor from capstone-tag armor breaks.');
   assert.match(breachState.eventText, /BREACH CASCADE.*2 ARMOR BREAKS/, 'Breach Cascade needs explicit multi-break feedback.');
+  assert.ok(breachState.effects.some(effect => effect.active && effect.kind === 'vanguard'), 'Breach Cascade should emit the Vanguard capstone world cue.');
 
   const standardWardenProfile = { ...baseProfile, specialization: 'bulkhead-warden' as const };
   const counterfortProfile = setAbilityMod(standardWardenProfile, 'arc', 'vanguard-reprisal-pulse');
@@ -1133,6 +1148,7 @@ function vanguardCapstoneInteractionSmoke() {
   assert.ok(counterfortState.classState.vanguardGuard > baselineState.classState.vanguardGuard, 'Counterfort reprisal contacts should reinforce Breach Guard.');
   assert.ok(counterfortState.player.capacitor > baselineState.player.capacitor, 'Bulkhead Warden overclock should recycle capacitor from Counterfort reprisal contacts.');
   assert.match(counterfortState.eventText, /COUNTERFORT/, 'Counterfort needs explicit combat feedback.');
+  assert.ok(counterfortState.effects.some(effect => effect.active && effect.kind === 'vanguard'), 'Counterfort should emit the Vanguard capstone world cue.');
 }
 vanguardCapstoneInteractionSmoke();
 
