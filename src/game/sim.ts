@@ -140,6 +140,22 @@ export type TargetAcquisitionResult = {
   score: number;
 };
 
+export type TargetControlMemory = {
+  targetId: number | null;
+  lastVisibleAt: number;
+  acquiredAt: number;
+};
+
+export function createTargetControlMemory(): TargetControlMemory {
+  return { targetId: null, lastVisibleAt: Number.NEGATIVE_INFINITY, acquiredAt: Number.NEGATIVE_INFINITY };
+}
+
+export function resetTargetControlMemory(memory: TargetControlMemory) {
+  memory.targetId = null;
+  memory.lastVisibleAt = Number.NEGATIVE_INFINITY;
+  memory.acquiredAt = Number.NEGATIVE_INFINITY;
+}
+
 function evaluateCombatTarget(state: SimState, enemy: Enemy, request: TargetAcquisitionRequest): TargetAcquisitionResult | null {
   if (!enemy.active || enemy.dead) return null;
   const p = state.player;
@@ -199,6 +215,15 @@ export function acquireCombatTarget(state: SimState, request: TargetAcquisitionR
     if (!best || targetCandidatePrecedes(candidate, best)) best = candidate;
   }
   return best;
+}
+
+function acquirePreferredCombatTarget(state: SimState, request: TargetAcquisitionRequest, preferredTargetId: number | null) {
+  if (preferredTargetId != null) {
+    const preferred = state.enemies.find(enemy => enemy.id === preferredTargetId) ?? null;
+    const scored = preferred ? evaluateCombatTarget(state, preferred, request) : null;
+    if (scored) return scored;
+  }
+  return acquireCombatTarget(state, request);
 }
 
 function focusAcquiredTarget(state: SimState, target: TargetAcquisitionResult | null) {
@@ -453,7 +478,7 @@ export function setAim(state: SimState, aim: Vec2, touchAssist: boolean | number
   if (assist > 0 && len(desired) > 0.1) { let best: Enemy | null = null; let bestScore = 999; for (const enemy of state.enemies) { if (enemy.dead || !enemy.active) continue; const toEnemy = { x: enemy.x - state.player.x, y: enemy.y - state.player.y }; const distance = len(toEnemy); if (distance > 520) continue; const n = norm(toEnemy); const angleScore = 1 - (n.x * desired.x + n.y * desired.y); const score = angleScore + distance / 14000 + (enemy.statuses.marked > 0 ? -0.012 : 0); if (angleScore < 0.025 && score < bestScore) { best = enemy; bestScore = score; } } if (best) { const toTarget = norm({ x: best.x - state.player.x, y: best.y - state.player.y }); desired = norm({ x: desired.x * (1 - assist) + toTarget.x * assist, y: desired.y * (1 - assist) + toTarget.y * assist }); } }
   if (len(desired) > 0.1) state.player.aim = desired;
 }
-export function aimAtMobileTarget(state: SimState, mode: 'light' | 'balanced' = 'balanced', preferredId: number | null = null) {
+function mobileTargetControlConfig(state: SimState, mode: 'light' | 'balanced') {
   const p = state.player;
   const weapon = getWeaponConfig(state, p.currentWeapon);
   const maxDistance = p.currentWeapon === 'breacher'
@@ -461,56 +486,85 @@ export function aimAtMobileTarget(state: SimState, mode: 'light' | 'balanced' = 
     : p.currentWeapon === 'rail'
       ? (mode === 'balanced' ? 980 : 820)
       : (mode === 'balanced' ? 860 : 720);
-
-  const scoreEnemy = (enemy: Enemy) => {
-    if (!enemy.active || enemy.dead) return null;
-    const delta = { x: enemy.x - p.x, y: enemy.y - p.y };
-    const distance = len(delta);
-    if (distance > maxDistance || distance < 1) return null;
-
-    const rawDirection = norm(delta);
-    const angleScore = 1 - (rawDirection.x * p.aim.x + rawDirection.y * p.aim.y);
-    const closeThreat = distance < (enemy.role === 'assault' ? 380 : 270);
-    if (mode === 'light' && angleScore > 0.5) return null;
-    if (mode === 'balanced' && !closeThreat && enemy.role !== 'boss' && angleScore > 1.55) return null;
-
-    return evaluateCombatTarget(state, enemy, {
-      maxDistance,
-      projectileSpeed: weapon.projectileSpeed,
-      aimWeight: mode === 'balanced' ? 0.18 : 0.46,
-      rangeWeight: 0.44,
-      visibilityPenalty: p.currentWeapon === 'rail' ? 0.38 : mode === 'balanced' ? 0.68 : 0.92,
-      markWeight: 0.8,
-      protocolWeight: mode === 'balanced' ? 1 : 0.6,
-      leadScale: mode === 'balanced' ? 0.72 : 0.35,
-      maxLeadSeconds: mode === 'balanced' ? 0.38 : 0.2,
-    });
+  const request: TargetAcquisitionRequest = {
+    maxDistance,
+    projectileSpeed: weapon.projectileSpeed,
+    aimWeight: mode === 'balanced' ? 0.18 : 0.46,
+    rangeWeight: 0.44,
+    visibilityPenalty: p.currentWeapon === 'rail' ? 0.38 : mode === 'balanced' ? 0.68 : 0.92,
+    markWeight: 0.8,
+    protocolWeight: mode === 'balanced' ? 1 : 0.6,
+    leadScale: mode === 'balanced' ? 0.72 : 0.35,
+    maxLeadSeconds: mode === 'balanced' ? 0.38 : 0.2,
   };
+  return {
+    request,
+    stickiness: mode === 'balanced' ? 0.24 : 0.12,
+    occlusionGrace: mode === 'balanced' ? 0.45 : 0.24,
+    turnRate: mode === 'balanced' ? 0.14 : 0.18,
+  };
+}
 
-  let bestVisible: { enemy: Enemy; direction: Vec2; score: number } | null = null;
-  let bestAny: { enemy: Enemy; direction: Vec2; score: number } | null = null;
+function scoreMobileTarget(state: SimState, mode: 'light' | 'balanced', enemy: Enemy, request: TargetAcquisitionRequest) {
+  const p = state.player;
+  if (!enemy.active || enemy.dead) return null;
+  const delta = { x: enemy.x - p.x, y: enemy.y - p.y };
+  const distance = len(delta);
+  if (distance > request.maxDistance || distance < 1) return null;
+  const rawDirection = norm(delta);
+  const angleScore = 1 - (rawDirection.x * p.aim.x + rawDirection.y * p.aim.y);
+  const closeThreat = distance < (enemy.role === 'assault' ? 380 : 270);
+  if (mode === 'light' && angleScore > 0.5) return null;
+  if (mode === 'balanced' && !closeThreat && enemy.role !== 'boss' && angleScore > 1.55) return null;
+  return evaluateCombatTarget(state, enemy, request);
+}
+
+export function updateMobileTargetControl(state: SimState, mode: 'light' | 'balanced', memory: TargetControlMemory) {
+  const p = state.player;
+  const { request, stickiness, occlusionGrace, turnRate } = mobileTargetControlConfig(state, mode);
+  let bestVisible: TargetAcquisitionResult | null = null;
+  let bestAny: TargetAcquisitionResult | null = null;
+
   for (const enemy of state.enemies) {
-    const scored = scoreEnemy(enemy);
+    const scored = scoreMobileTarget(state, mode, enemy, request);
     if (!scored) continue;
-    const candidate = { enemy, direction: scored.direction, score: scored.score };
-    if (!bestAny || candidate.score < bestAny.score) bestAny = candidate;
-    if (scored.visible && (!bestVisible || candidate.score < bestVisible.score)) bestVisible = candidate;
+    if (!bestAny || targetCandidatePrecedes(scored, bestAny)) bestAny = scored;
+    if (scored.visible && (!bestVisible || targetCandidatePrecedes(scored, bestVisible))) bestVisible = scored;
   }
 
-  const best = bestVisible ?? bestAny;
-  const preferred = preferredId == null ? null : state.enemies.find(enemy => enemy.id === preferredId) ?? null;
-  if (preferred) {
-    const scored = scoreEnemy(preferred);
-    const stickiness = mode === 'balanced' ? 0.24 : 0.12;
-    if (scored && (scored.visible || !bestVisible) && (!best || scored.score <= best.score + stickiness)) {
-      p.aim = rotateAimToward(p.aim, scored.direction, mode === 'balanced' ? 0.14 : 0.18);
-      return preferred.id;
+  const currentEnemy = memory.targetId == null ? null : state.enemies.find(enemy => enemy.id === memory.targetId) ?? null;
+  const current = currentEnemy ? scoreMobileTarget(state, mode, currentEnemy, request) : null;
+  if (!current && memory.targetId != null) resetTargetControlMemory(memory);
+
+  if (current) {
+    if (current.visible) memory.lastVisibleAt = state.time;
+    const withinOcclusionGrace = !current.visible && state.time - memory.lastVisibleAt <= occlusionGrace;
+    const challenger = bestVisible ?? bestAny;
+    const visibilityPenalty = current.visible ? 0 : request.visibilityPenalty ?? 0;
+    const effectiveCurrentScore = current.score - (withinOcclusionGrace ? visibilityPenalty : 0);
+    if ((current.visible || withinOcclusionGrace) && (!challenger || effectiveCurrentScore <= challenger.score + stickiness)) {
+      p.aim = rotateAimToward(p.aim, current.direction, turnRate);
+      return current.enemy.id;
     }
   }
 
-  if (!best) return null;
-  p.aim = rotateAimToward(p.aim, best.direction, mode === 'balanced' ? 0.14 : 0.18);
-  return best.enemy.id;
+  const next = bestVisible ?? bestAny;
+  if (!next) {
+    resetTargetControlMemory(memory);
+    return null;
+  }
+
+  if (memory.targetId !== next.enemy.id) memory.acquiredAt = state.time;
+  memory.targetId = next.enemy.id;
+  memory.lastVisibleAt = next.visible ? state.time : Number.NEGATIVE_INFINITY;
+  p.aim = rotateAimToward(p.aim, next.direction, turnRate);
+  return next.enemy.id;
+}
+
+export function aimAtMobileTarget(state: SimState, mode: 'light' | 'balanced' = 'balanced', preferredId: number | null = null) {
+  const memory = createTargetControlMemory();
+  memory.targetId = preferredId;
+  return updateMobileTargetControl(state, mode, memory);
 }
 
 export function selectWeapon(state: SimState, weapon: WeaponId) { const p = state.player; if (p.dead || state.complete) return false; if (p.ventT > 0) { pushEvent(state, 'THERMAL VENT ACTIVE // WEAPON BUS LOCKED', 1.1); return false; } p.currentWeapon = weapon; p.reloadT = 0; p.fireCooldown = Math.max(p.fireCooldown, 0.12); pushEvent(state, `${weaponConfigs[weapon].shortName} SELECTED`, 1.2); return true; }
@@ -541,17 +595,17 @@ export function triggerConsumable(state: SimState, id: ConsumableId) {
   return true;
 }
 
-export function triggerFire(state: SimState, targetingIntent: TargetingIntent = 'manual') {
+export function triggerFire(state: SimState, targetingIntent: TargetingIntent = 'manual', preferredTargetId: number | null = null) {
   const p = state.player; const weapon = getWeaponConfig(state, p.currentWeapon);
   if (p.dead || state.complete || p.reloadT > 0 || p.fireCooldown > 0 || p.ventT > 0 || p.weaponHeat[p.currentWeapon] >= 0.98) { if (p.weaponHeat[p.currentWeapon] >= 0.98) pushEvent(state, 'WEAPON OVERHEAT // CEASE FIRE OR VENT', 1.1); return false; }
   if (p.mags[p.currentWeapon] <= 0) { triggerReload(state); return false; }
   if (p.capacitor < weapon.capacitorCost) { pushEvent(state, 'CAPACITOR LOW // RAIL LANCE INHIBITED', 1.1); return false; }
   if (targetingIntent === 'acquire') {
-    focusAcquiredTarget(state, acquireCombatTarget(state, {
+    focusAcquiredTarget(state, acquirePreferredCombatTarget(state, {
       maxDistance: weaponAcquisitionRange(p.currentWeapon),
       projectileSpeed: weapon.projectileSpeed,
       visibilityPenalty: p.currentWeapon === 'rail' ? 0.42 : 0.68,
-    }));
+    }, preferredTargetId));
   }
   const sector = currentSector(state, p.x, p.y); const speed = Math.hypot(p.vx, p.vy); const velocityDot = speed > 1 ? (p.vx * p.aim.x + p.vy * p.aim.y) / speed : 0;
   const markedTarget = (state.build.mechanics.sensorPenetration || state.build.specialization === 'survey-deadeye') ? targetInAimCone(state, 760, 0.12) : null;
@@ -649,7 +703,7 @@ export function abilityUsesTargetAcquisition(state: SimState, index: number) {
   return index === 2 && state.build.operatorClass !== 'vanguard' && state.build.operatorClass !== 'vector';
 }
 
-export function triggerAbility(state: SimState, index = 0, targetingIntent: TargetingIntent = 'manual') {
+export function triggerAbility(state: SimState, index = 0, targetingIntent: TargetingIntent = 'manual', preferredTargetId: number | null = null) {
   const p = state.player; const meta = getAbilityConfig(state, index);
   let parallaxClassCounterEvent: string | null = null;
   let vanguardCapstoneEvent: string | null = null;
@@ -742,12 +796,12 @@ export function triggerAbility(state: SimState, index = 0, targetingIntent: Targ
   } else if (index === 1) {
     const targetRange = state.build.operatorClass === 'vector' ? 930 : state.build.operatorClass === 'vanguard' ? 620 : 760;
     const acquiredTarget = targetingIntent === 'acquire'
-      ? acquireCombatTarget(state, {
+      ? acquirePreferredCombatTarget(state, {
         maxDistance: targetRange,
         aimWeight: state.build.operatorClass === 'vector' ? 0.5 : 0.38,
         rangeWeight: state.build.operatorClass === 'vanguard' ? 0.36 : 0.26,
         visibilityPenalty: 0.82,
-      })
+      }, preferredTargetId)
       : null;
     const target = targetingIntent === 'acquire'
       ? focusAcquiredTarget(state, acquiredTarget)
@@ -882,7 +936,7 @@ export function triggerAbility(state: SimState, index = 0, targetingIntent: Targ
   } else {
     const arcRange = state.build.operatorClass === 'systems' ? 560 : 430;
     const acquiredTarget = targetingIntent === 'acquire'
-      ? acquireCombatTarget(state, { maxDistance: arcRange, aimWeight: 0.4, rangeWeight: 0.3, visibilityPenalty: 0.88 })
+      ? acquirePreferredCombatTarget(state, { maxDistance: arcRange, aimWeight: 0.4, rangeWeight: 0.3, visibilityPenalty: 0.88 }, preferredTargetId)
       : null;
     if (acquiredTarget) p.aim = acquiredTarget.direction;
     const conduit = findAimConduit(state, 520); const target = acquiredTarget?.enemy ?? targetInAimCone(state, arcRange, 0.14);
