@@ -141,6 +141,18 @@ This file is the permanent archive for completed production work. The active exe
   - Android artifact `10645323083` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.220`, debug signing, native emulator runtime/touch/asset/Chapter 3 QA, and APK SHA-256 `61cdeaa2331c955f678586f94f733ba94d50169801e87cc577b4414aa5f6d97e`.
   - **Next: P8-E — Loot/UI/tutorial ownership.**
 
+- [x] **P8-E Loot/UI/tutorial ownership** — class ownership now governs the complete equipment-recovery and player-facing compatibility flow instead of only runtime equipping.
+  - Ordinary contract recoveries, field drops, legacy victory rewards, boss Singulars, location chase Singulars, and Directive chase Singulars now restrict weapon outcomes to the active class family while keeping Combat Suit, Systems Rig, and Implant universal.
+  - First-run onboarding rewards now teach the correct owned family: Vanguard receives Breacher, Vector receives Rail Lance, and Systems receives Carbine. Legacy off-class weapons remain preserved in ship storage for save safety but cannot be equipped.
+  - The Build inspector, usable-now filter, equip action, class/progression language, and storage guidance now distinguish weapon ownership from gear resonance. A compact three-family tutorial explains Vanguard close-pressure Breacher play, Vector precision Rail play, and Systems sustained-control Carbine play.
+  - Contract reward previews now disclose the active class-owned weapon family before deployment, and high-tier Directive chase previews filter candidate Singular names to items that the current class can actually receive.
+  - Regression coverage exercises all three classes across onboarding, legacy victory rewards, repeated safe/deep recoveries, class-compatible premium rewards, Build compatibility/actions, contract reward guidance, and stale “no class lock” wording.
+  - PR #143 Browser E2E `35616428796` passed desktop and mobile-landscape on exact head `3a88f7d8eb233b28512d14c8f40f22eaf1574449`, including the full deterministic regression suite, production build, and live player journeys.
+  - Merged gameplay source `9ad0b9e40dc948a95c55dc05e8ee9c761c625e69`; merged-main Browser E2E `35616718020` and Level 15 beta smoke `35616717994` both passed.
+  - Android beta.222 run `35616717976` passed full web regression/build, native Android generation, package/version/SDK/signature checks, installable debug APK assembly, native emulator install/runtime smoke, touch/lifecycle coverage, authored assets, and Chapter 3 mobile playthrough.
+  - Android artifact `10647375675` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.222`, debug signing, and APK SHA-256 `57c7ca02ec66ef610f30e4dfa0e8088f7e8eb184b0af5f8424a676ca098f6b40`.
+  - **Next: P8-F — Handling identity.**
+
 ## P0 — Foundation ✅ COMPLETE
 
 - [x] Three classes: Vanguard / Vector / Systems
