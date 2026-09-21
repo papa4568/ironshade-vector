@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buildMegastructureDebrief, buyConsumable, createDefaultCampaign, generateContracts, getMegastructureStageContract, loadCampaign, saveCampaign } from '../src/game/campaign';
-import { abilityUsesTargetAcquisition, acquireCombatTarget, aimAtMobileTarget, applyPlayerDamage, createSimulation, stepSimulation, triggerAbility, triggerConsumable, triggerDodge, triggerFire, weaponConfigs, type Telemetry } from '../src/game/sim';
+import { abilityUsesTargetAcquisition, acquireCombatTarget, aimAtMobileTarget, applyPlayerDamage, createSimulation, createTargetControlMemory, resetTargetControlMemory, stepSimulation, triggerAbility, triggerConsumable, triggerDodge, triggerFire, updateMobileTargetControl, weaponConfigs, type Telemetry } from '../src/game/sim';
 import { applyMissionSetup, createDirector, stepMissionDirector } from '../src/game/director';
 import { awardRecovery, buildIdentity, createDefaultProfile, deriveCombatBuild, loadProfile, materializeModifier, saveProfile, setAbilityMod, setOperatorClass, specializationGearSynergyDefinitions, specializationGearSynergyForProfile, systemsCapstoneInteractionFor, vanguardCapstoneInteractionFor, vectorCapstoneInteractionFor } from '../src/game/meta';
 import { CAMPAIGN_STORAGE_KEY, GAME_STATE_STORAGE_KEY, prepareSaveRecovery, PROFILE_STORAGE_KEY } from '../src/game/saveRecovery';
@@ -1675,6 +1675,86 @@ function prepareAcquisitionState() {
   return state;
 }
 
+const stickyTargetState = prepareAcquisitionState();
+const stickyPrimary = stickyTargetState.enemies[0]!;
+const stickyChallenger = stickyTargetState.enemies[1]!;
+Object.assign(stickyPrimary, { active: true, id: 201, x: 1240, y: 500, role: 'suppressor' as const });
+Object.assign(stickyChallenger, { active: true, id: 202, x: 1260, y: 535, role: 'suppressor' as const });
+const stickyMemory = createTargetControlMemory();
+assert.equal(updateMobileTargetControl(stickyTargetState, 'balanced', stickyMemory), 201, 'target control should acquire the best initial hostile');
+stickyChallenger.statuses.marked = 4;
+assert.equal(updateMobileTargetControl(stickyTargetState, 'balanced', stickyMemory), 201, 'a small score improvement should not steal a sticky lock');
+stickyChallenger.telegraph = 0.9;
+assert.equal(updateMobileTargetControl(stickyTargetState, 'balanced', stickyMemory), 202, 'a materially higher-priority challenger should still be allowed to steal the lock');
+
+const occlusionControlState = prepareAcquisitionState();
+const occlusionPrimary = occlusionControlState.enemies[0]!;
+const occlusionChallenger = occlusionControlState.enemies[1]!;
+Object.assign(occlusionPrimary, { active: true, id: 211, x: 1240, y: 500, role: 'suppressor' as const });
+Object.assign(occlusionChallenger, { active: true, id: 212, x: 1260, y: 620, role: 'suppressor' as const });
+const occlusionMemory = createTargetControlMemory();
+assert.equal(updateMobileTargetControl(occlusionControlState, 'balanced', occlusionMemory), 211, 'occlusion test should begin with the centerline target locked');
+const occlusionCover = occlusionControlState.objects[0]!;
+Object.assign(occlusionCover, { active: true, kind: 'cover' as const, x: 1080, y: 480, w: 55, h: 42 });
+occlusionControlState.time += 0.2;
+assert.equal(updateMobileTargetControl(occlusionControlState, 'balanced', occlusionMemory), 211, 'brief LOS loss should preserve the current lock inside the balanced occlusion grace window');
+occlusionControlState.time += 0.5;
+assert.equal(updateMobileTargetControl(occlusionControlState, 'balanced', occlusionMemory), 212, 'a visible challenger should take over after the occlusion grace window expires');
+
+const occlusionDropState = prepareAcquisitionState();
+const occlusionDropTarget = occlusionDropState.enemies[0]!;
+Object.assign(occlusionDropTarget, { active: true, id: 213, x: 1240, y: 500, role: 'suppressor' as const });
+const occlusionDropMemory = createTargetControlMemory();
+assert.equal(updateMobileTargetControl(occlusionDropState, 'balanced', occlusionDropMemory), 213);
+const occlusionDropCover = occlusionDropState.objects[0]!;
+Object.assign(occlusionDropCover, { active: true, kind: 'cover' as const, x: 1080, y: 480, w: 55, h: 42 });
+occlusionDropState.time += 0.2;
+assert.equal(updateMobileTargetControl(occlusionDropState, 'balanced', occlusionDropMemory), 213, 'brief cover should retain the lock even when no alternative is visible');
+occlusionDropState.time += 0.5;
+assert.equal(updateMobileTargetControl(occlusionDropState, 'balanced', occlusionDropMemory), null, 'an occluded hostile must be released after grace instead of being tracked through cover indefinitely');
+
+const invalidationControlState = prepareAcquisitionState();
+const invalidPrimary = invalidationControlState.enemies[0]!;
+const invalidFallback = invalidationControlState.enemies[1]!;
+Object.assign(invalidPrimary, { active: true, id: 221, x: 1220, y: 500, role: 'suppressor' as const });
+Object.assign(invalidFallback, { active: true, id: 222, x: 1260, y: 560, role: 'suppressor' as const });
+const invalidMemory = createTargetControlMemory();
+assert.equal(updateMobileTargetControl(invalidationControlState, 'balanced', invalidMemory), 221);
+invalidPrimary.dead = true;
+assert.equal(updateMobileTargetControl(invalidationControlState, 'balanced', invalidMemory), 222, 'dead targets must invalidate immediately without consuming occlusion grace');
+invalidFallback.x = invalidationControlState.player.x + 1200;
+assert.equal(updateMobileTargetControl(invalidationControlState, 'balanced', invalidMemory), null, 'out-of-range targets must invalidate the lock immediately');
+assert.equal(invalidMemory.targetId, null);
+
+const manualResetMemory = createTargetControlMemory();
+manualResetMemory.targetId = 777;
+manualResetMemory.lastVisibleAt = 12;
+manualResetMemory.acquiredAt = 10;
+resetTargetControlMemory(manualResetMemory);
+assert.equal(manualResetMemory.targetId, null, 'manual override reset must clear the retained target id');
+assert.equal(manualResetMemory.lastVisibleAt, Number.NEGATIVE_INFINITY, 'manual override reset must clear LOS grace history');
+assert.equal(manualResetMemory.acquiredAt, Number.NEGATIVE_INFINITY, 'manual override reset must clear acquisition history');
+
+const authoritativeFireState = prepareAcquisitionState();
+const authoritativeFireLock = authoritativeFireState.enemies[0]!;
+const authoritativeFireChallenger = authoritativeFireState.enemies[1]!;
+Object.assign(authoritativeFireLock, { active: true, id: 231, x: 1240, y: 500, role: 'suppressor' as const });
+Object.assign(authoritativeFireChallenger, { active: true, id: 232, x: 1210, y: 555, role: 'suppressor' as const, telegraph: 0.9 });
+authoritativeFireChallenger.statuses.marked = 5;
+authoritativeFireState.player.aim = { x: 1, y: 0 };
+assert.equal(triggerFire(authoritativeFireState, 'acquire', 231), true, 'FIRE should accept the retained target-control id');
+assert.ok(Math.abs(authoritativeFireState.player.aim.y) < 0.02 && authoritativeFireState.player.aim.x > 0.99, 'FIRE execution must keep the retained lock even when a challenger has a better fresh acquisition score');
+
+const authoritativeSkillState = prepareAcquisitionState();
+const authoritativeSkillLock = authoritativeSkillState.enemies[0]!;
+const authoritativeSkillChallenger = authoritativeSkillState.enemies[1]!;
+Object.assign(authoritativeSkillLock, { active: true, id: 241, x: 1240, y: 500, role: 'suppressor' as const });
+Object.assign(authoritativeSkillChallenger, { active: true, id: 242, x: 1200, y: 540, role: 'suppressor' as const, telegraph: 0.9 });
+authoritativeSkillChallenger.statuses.marked = 5;
+assert.equal(triggerAbility(authoritativeSkillState, 1, 'acquire', 241), true, 'targeted skills should accept the retained target-control id');
+assert.ok(authoritativeSkillLock.statuses.marked > 0, 'retained target should receive the targeted skill');
+assert.equal(authoritativeSkillChallenger.statuses.marked, 5, 'targeted skill must not silently reacquire the higher-scoring challenger');
+
 const legalTargetState = prepareAcquisitionState();
 const deadTarget = legalTargetState.enemies[0]!;
 const outOfRangeTarget = legalTargetState.enemies[1]!;
@@ -1795,7 +1875,11 @@ assert.equal(abilityUsesTargetAcquisition(neutralTargetPolicyState, 1), true, 'n
 assert.equal(abilityUsesTargetAcquisition(neutralTargetPolicyState, 2), true, 'neutral Arc Tap should acquire');
 const targetingCanvasSource = readFileSync('src/components/GameCanvas.tsx', 'utf8');
 assert.match(targetingCanvasSource, /const assistedTargeting = !manualTargeting && abilityUsesTargetAcquisition\(state, index\)/, 'touch skill routing must gate acquisition through the explicit targeted-skill policy');
-assert.match(targetingCanvasSource, /triggerAbility\(state, index, assistedTargeting \? 'acquire' : 'manual'\)/, 'touch skill execution must preserve manual intent for explicit mobility, self, ground, and directional abilities');
+assert.match(targetingCanvasSource, /triggerAbility\(state, index, assistedTargeting \? 'acquire' : 'manual', targetId\)/, 'touch skill execution must preserve manual intent while passing the retained id only for targeted abilities');
+assert.match(targetingCanvasSource, /updateMobileTargetControl\(state, profileSettings\.aimAssist, mobileTargetControlRef\.current\)/, 'targeted touch skills should reuse persistent target-control memory');
+assert.match(targetingCanvasSource, /fireCurrent\(manualTargeting \? 'manual' : 'acquire', targetId\)/, 'assisted FIRE must pass the retained target id into execution');
+assert.match(targetingCanvasSource, /manualTargeting \|\| !fireSourcesRef\.current\.button\) resetTargetControlMemory\(mobileTargetControlRef\.current\)/, 'manual aim or FIRE release must invalidate the assisted lock immediately');
+assert.match(targetingCanvasSource, /aimStick\.current = value; resetTargetControlMemory\(mobileTargetControlRef\.current\)/, 'right-stick takeover must clear assisted target control before manual aim updates');
 
 const damageNumberState = createSimulation();
 for (const enemy of damageNumberState.enemies) enemy.active = false;
