@@ -119,13 +119,16 @@
 .faction-armory-preview > small,.faction-armory-summary > b { color: #8ca39b; font-size: 8px; letter-spacing: .08em; }
 .faction-armory-preview > b { margin-top: 5px; color: #c0d2cc; font-size: 11px; line-height: 1.35; }
 .faction-armory-preview > p { margin: 5px 0 9px; color: #788b85; font-size: 9px; line-height: 1.5; }
+.reward-rarity-guide { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 5px; margin-top: 9px; }
+.reward-rarity-guide > span { min-width: 0; display: flex; align-items: center; padding: 6px 7px; border: 1px solid #30443e; border-radius: 8px; background: rgba(6,13,12,.72); color: #9db0aa; font-size: 7px; font-weight: 900; letter-spacing: .04em; line-height: 1.25; }
+.reward-rarity-guide .rarity-shape { margin-right: .45em; }
 .faction-armory-summary > span { margin-top: 5px; color: #a4b6b0; font-size: 9px; line-height: 1.45; }
 .faction-armory-summary > small { margin-top: 6px; color: #71837d; font-size: 8px; line-height: 1.5; overflow-wrap: anywhere; }
 .faction-armory-preview.faction-meridian,.faction-armory-summary.faction-meridian { border-color: rgba(112,142,134,.54); }
 .faction-armory-preview.faction-heliostat,.faction-armory-summary.faction-heliostat { border-color: rgba(151,126,86,.52); }
 .faction-armory-preview.faction-longarc,.faction-armory-summary.faction-longarc { border-color: rgba(94,139,122,.58); }
 @media (max-width: 800px) { .ship-tabs button { min-height: 44px; } .contract-card-top { flex-wrap: wrap; line-height: 1.3; } .faction-card { padding: 16px; } .faction-armory-preview,.faction-armory-summary { padding: 10px; } }
-@media (max-width: 520px) { .contract-inspector { padding: 15px; } .contract-inspector h2 { font-size: 26px; line-height: 1.05; } .condition-chips span { line-height: 1.25; } .faction-card { padding: 14px; } }
+@media (max-width: 520px) { .contract-inspector { padding: 15px; } .contract-inspector h2 { font-size: 26px; line-height: 1.05; } .condition-chips span { line-height: 1.25; } .faction-card { padding: 14px; } .reward-rarity-guide { grid-template-columns: 1fr; } }
 
 /* RESPONSIVE MISSION SURFACE RELIABILITY */
 .overlay {
