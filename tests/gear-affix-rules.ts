@@ -42,7 +42,7 @@ for (const definition of gearAffixDefinitions) {
   const semanticStats = new Set([...profile.stats, ...profile.tradeoffs]);
   for (const gradeValue of [1, 2, 3, 4, 5] as const) {
     const table = affixGradeDefinition(definition.id, gradeValue);
-    assert.equal(table.minimumRecoveryLevel, expectedGradeFloors[gradeValue], `${definition.id} G${gradeValue} Recovery Level floor drifted.`);
+    assert.equal(table.minimumRecoveryLevel, Math.max(definition.minimumRecoveryLevel, expectedGradeFloors[gradeValue]), `${definition.id} G${gradeValue} Recovery Level floor drifted.`);
     assert.ok(modifierGradeCeilingForRecovery(table.minimumRecoveryLevel) >= gradeValue, `${definition.id} G${gradeValue} must be legal at its authored floor.`);
     assert.ok(Object.keys(table.stats).length > 0, `${definition.id} G${gradeValue} needs an explicit stat table.`);
     for (const statId of [...Object.keys(table.stats), ...Object.keys(table.tradeoffs ?? {})]) {
