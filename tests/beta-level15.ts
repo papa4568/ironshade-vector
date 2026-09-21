@@ -3,7 +3,7 @@ import { createDefaultCampaign, generateContracts, loadCampaign, saveCampaign, s
 import { withOperationScaling, frameGenerationForRecovery } from '../src/game/scaling';
 import { applyMissionSetup, createDirector } from '../src/game/director';
 import { getMissionObjectiveStatus, getNextMissionObjectiveTarget } from '../src/game/encounters';
-import { applyPlayerDamage, createSimulation, selectWeapon, setAim, setMove, stepSimulation, triggerAbility, triggerDodge, triggerFire } from '../src/game/sim';
+import { applyPlayerDamage, createSimulation, setAim, setMove, stepSimulation, triggerAbility, triggerDodge, triggerFire } from '../src/game/sim';
 import { classAbilityKits } from '../src/game/classSkills';
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -48,13 +48,13 @@ function installStorage() {
 function combatSmoke() {
   const profile = createDefaultProfile();
   const state = createSimulation(deriveCombatBuild(profile));
-  selectWeapon(state, 'carbine');
   stepSimulation(state, 0.15);
-  const initialMag = state.player.mags.carbine;
+  const activeWeapon = state.player.currentWeapon;
+  const initialMag = state.player.mags[activeWeapon];
   setAim(state, { x: 1, y: 0 }, false);
-  assert(triggerFire(state), 'Carbine should fire from a fresh simulation.');
-  assert(state.player.mags.carbine === initialMag - 1, 'Firing should consume exactly one carbine round.');
-  assert(state.telemetry.weaponShots.carbine === 1, 'Firing should be represented in telemetry.');
+  assert(triggerFire(state), 'The class-owned armament should fire from a fresh simulation.');
+  assert(state.player.mags[activeWeapon] === initialMag - 1, 'Firing should consume exactly one class-armament round.');
+  assert(state.telemetry.weaponShots[activeWeapon] === 1, 'Firing should be represented in telemetry.');
   assert(triggerAbility(state, 0), 'MAG should activate with a full capacitor.');
   assert(state.telemetry.abilityUses[0] === 1, 'Ability activation should be represented in telemetry.');
   setMove(state, { x: 1, y: 0 });
