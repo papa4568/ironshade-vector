@@ -8,7 +8,7 @@ import { applyMissionSetup, continueIntoDeepZone, createDirector, stepMissionDir
 import { getMissionObjectiveStatus, getNextMissionObjectiveTarget } from '../game/encounters';
 import { findNavigationPath } from '../game/mapPathfinding';
 import { getMegastructureStageContract, type Contract, type ExpeditionProgress } from '../game/campaign';
-import { aimAtMobileTarget, createSimulation, cycleWeapon, getAbilityConfig, getAbilityKit, getBoss, getClassMechanicStatus, getContextAction, getPlayerSector, getSquadRemaining, getStatusLabels, getWeaponConfig, getWorldSize, selectWeapon, setAim, setMove, stepSimulation, triggerAbility, triggerDodge, triggerFire, triggerInteract, triggerReload, triggerVent, triggerConsumable, weaponConfigs, type CombatBuild, type CombatObject, type Enemy, type SimState, type Telemetry, type Vec2, type WeaponId } from '../game/sim';
+import { abilityUsesTargetAcquisition, aimAtMobileTarget, createSimulation, cycleWeapon, getAbilityConfig, getAbilityKit, getBoss, getClassMechanicStatus, getContextAction, getPlayerSector, getSquadRemaining, getStatusLabels, getWeaponConfig, getWorldSize, selectWeapon, setAim, setMove, stepSimulation, triggerAbility, triggerDodge, triggerFire, triggerInteract, triggerReload, triggerVent, triggerConsumable, weaponConfigs, type CombatBuild, type CombatObject, type Enemy, type SimState, type Telemetry, type Vec2, type WeaponId } from '../game/sim';
 import type { ProfileSettings } from '../game/meta';
 import { consumableDefinitions, type ConsumableId, type ConsumableInventory } from '../game/consumables';
 import type { EquipmentFaction } from '../game/factionGear';
@@ -389,9 +389,12 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
   const fireCurrent = useCallback((targetingIntent: 'manual' | 'acquire' = 'manual') => { const state = stateRef.current; const fired = triggerFire(state, targetingIntent); if (fired) { feedback.cue(state.player.currentWeapon); advanceTutorial(1); } return fired; }, [advanceTutorial]);
   const useAbility = useCallback((index: number) => {
     feedback.unlock();
+    const state = stateRef.current;
     const manualTargeting = !coarse || performance.now() < manualAimUntilRef.current || !!aimStick.current;
-    if (!manualTargeting) mobileTargetRef.current = aimAtMobileTarget(stateRef.current, profileSettings.aimAssist, mobileTargetRef.current);
-    if (triggerAbility(stateRef.current, index, manualTargeting ? 'manual' : 'acquire')) { feedback.cue('ability'); advanceTutorial(2); }
+    const assistedTargeting = !manualTargeting && abilityUsesTargetAcquisition(state, index);
+    if (assistedTargeting) mobileTargetRef.current = aimAtMobileTarget(state, profileSettings.aimAssist, mobileTargetRef.current);
+    else if (!abilityUsesTargetAcquisition(state, index)) mobileTargetRef.current = null;
+    if (triggerAbility(state, index, assistedTargeting ? 'acquire' : 'manual')) { feedback.cue('ability'); advanceTutorial(2); }
   }, [advanceTutorial, coarse, profileSettings.aimAssist]);
   const useDodge = useCallback(() => { feedback.unlock(); if (triggerDodge(stateRef.current)) { feedback.cue('dodge'); advanceTutorial(3); } }, [advanceTutorial]);
   const useInteract = useCallback(() => { feedback.unlock(); if (triggerInteract(stateRef.current)) advanceTutorial(4); }, [advanceTutorial]);
