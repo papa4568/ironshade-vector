@@ -20,7 +20,7 @@ import { enhancedProtocolVariantPresentationFor } from '../game/enhancedProtocol
 import { mutationPresentationFor } from '../game/t9MutationPresentation';
 import { bossPhaseMutationPresentationFor } from '../game/bossPhaseMutationPresentation';
 import { commandTargetMutationName } from '../game/commandTargetMutations';
-import { groundLootPresentation, lootColor, lootLabel, type GroundLootReceipt } from '../game/fieldLoot';
+import { groundLootPresentation, type GroundLootReceipt } from '../game/fieldLoot';
 import { carryExpeditionLoot } from '../game/expeditionCarry';
 import { classSkillIconAssets, operatorClassIconAssets, weaponIconAssets } from '../game/mobileUiAssets';
 
