@@ -83,7 +83,7 @@ export const gearBaseDefinitions: BaseSpec[] = [
     tradeoff: 'Higher direct output carries heavier recoil.',
     inherentStats: ['local.direct-output'],
     implicitStats: ['local.recoil-penalty'],
-    allowedAffixGroups: ['overdrive', 'tungsten', 'extendedFeed', 'breachPropulsion'],
+    allowedAffixGroups: ['overdrive', 'tungsten', 'extendedFeed', 'countermass'],
     buildTags: ['ballistics', 'armor-break', 'penetration', 'recoil'],
   }),
   base({
