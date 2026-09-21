@@ -5,10 +5,12 @@ import type { FrameIdentityId, AugmentId } from './gearDepth';
 import type { EquipmentFaction } from './factionGear';
 import type { SingularTraitId } from './sim';
 import { gearBuildTags, validateGearStatRegistry, type GearBuildTag, type GearStatId } from './gearStats';
+import { validateGearAffixRegistry } from './gearAffixes';
 
 export const gearSchemaVersion = 1 as const;
 
 export { gearBuildTags, gearStatDefinitions, gearStatDefinition, validateGearStatRegistry } from './gearStats';
+export { gearAffixDefinitions, gearRarityModifierBudgets, gearAffixDefinition, validateGearAffixRegistry } from './gearAffixes';
 export type { GearBuildTag, GearStatDefinition, GearStatId, GearStatScope, GearStatValueKind } from './gearStats';
 
 export type GearBaseDefinition = {
@@ -30,6 +32,7 @@ export type GearBaseDefinition = {
 
 export type GearAffixGrade = {
   grade: ModifierGrade;
+  minimumRecoveryLevel: number;
   stats: Partial<Record<GearStatId, number>>;
   tradeoffs?: Partial<Record<GearStatId, number>>;
 };
@@ -41,6 +44,8 @@ export type GearAffixDefinition = {
   group: string;
   allowedSlots: EquipmentSlot[];
   minimumRecoveryLevel: number;
+  weight: number;
+  conflicts: AffixId[];
   buildTags: GearBuildTag[];
   grades: GearAffixGrade[];
   mechanicalHook?: string;
@@ -204,6 +209,7 @@ export function validateGearSchemaContract() {
   const axes = new Set(gearPowerAxisAudit.map(axis => axis.id));
   if (axes.size !== gearPowerAxisAudit.length) return false;
   return validateGearStatRegistry()
+    && validateGearAffixRegistry()
     && Object.values(gearTargetOwnership).every(Boolean)
     && gearPowerAxisAudit.every(axis => axis.currentOwners.length > 0 && axis.targetOwner && axis.targetRole);
 }
