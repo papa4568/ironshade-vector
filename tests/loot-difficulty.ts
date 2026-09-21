@@ -96,15 +96,15 @@ const enhancedRates = sampleGroundLoot({ enemyId: 2, enemyLabel: 'Enhanced Raide
 const eliteRates = sampleGroundLoot({ enemyId: 3, enemyLabel: 'Elite Raider', role: 'elite', combatClass: 'elite', x: 0, y: 0, operationTier: 12, maxRecoveryLevel: 56, monsterLevel: 20, sequence: 0 });
 const bossRates = sampleGroundLoot({ enemyId: 4, enemyLabel: 'Command Target', role: 'boss', combatClass: 'command', x: 0, y: 0, operationTier: 12, maxRecoveryLevel: 56, monsterLevel: 20, sequence: 0 });
 const modifiedEnhancedRates = sampleGroundLoot({ enemyId: 5, enemyLabel: 'Modified Enhanced Raider', role: 'assault', combatClass: 'enhanced', x: 0, y: 0, operationTier: 12, maxRecoveryLevel: 56, monsterLevel: 20, modifierCount: 4, sequence: 0 });
-assert(standardRates.drops > 0.19 && standardRates.drops < 0.24, `standard T12 equipment rate drifted: ${standardRates.drops}`);
-assert(standardRates.Prototype > 0.008 && standardRates.Prototype < 0.017 && standardRates.Singular < 0.002, 'standard enemies are producing too many chase rarities');
-assert(enhancedRates.drops > 0.44 && enhancedRates.drops < 0.52, `enhanced T12 equipment rate drifted: ${enhancedRates.drops}`);
-assert(enhancedRates.Prototype > 0.075 && enhancedRates.Prototype < 0.115 && enhancedRates.Singular < 0.007, 'enhanced enemies are producing too many chase rarities');
-assert(eliteRates.drops > 0.95 && eliteRates.drops < 0.995, `elite T12 equipment rate drifted: ${eliteRates.drops}`);
-assert(eliteRates.Prototype > 0.49 && eliteRates.Prototype < 0.57 && eliteRates.Singular > 0.015 && eliteRates.Singular < 0.035, 'elite rarity bias drifted outside intended PoE2-style bands');
+assert(standardRates.drops > 0.13 && standardRates.drops < 0.16, `standard T12 equipment rate drifted: ${standardRates.drops}`);
+assert(standardRates.Prototype > 0.006 && standardRates.Prototype < 0.012 && standardRates.Singular < 0.0015, 'standard enemies are producing too many chase rarities');
+assert(enhancedRates.drops > 0.33 && enhancedRates.drops < 0.38, `enhanced T12 equipment rate drifted: ${enhancedRates.drops}`);
+assert(enhancedRates.Prototype > 0.07 && enhancedRates.Prototype < 0.095 && enhancedRates.Singular < 0.005, 'enhanced enemies are producing too many chase rarities');
+assert(eliteRates.drops > 0.74 && eliteRates.drops < 0.81, `elite T12 equipment rate drifted: ${eliteRates.drops}`);
+assert(eliteRates.Prototype > 0.46 && eliteRates.Prototype < 0.52 && eliteRates.Singular > 0.012 && eliteRates.Singular < 0.026, 'elite rarity bias drifted outside intended opportunity bands');
 assert(bossRates.drops === 1 && bossRates.Prototype > 0.82 && bossRates.Prototype < 0.89 && bossRates.Singular > 0.12 && bossRates.Singular < 0.18, 'bosses should guarantee Prototype-or-better while keeping Singular a chase outcome');
-assert(modifiedEnhancedRates.drops > enhancedRates.drops + 0.04, 'monster modifiers should materially increase item quantity pressure');
-assert(modifiedEnhancedRates.Prototype + modifiedEnhancedRates.Singular > enhancedRates.Prototype + enhancedRates.Singular + 0.02, 'monster modifiers should materially increase rarity pressure');
+assert(modifiedEnhancedRates.drops > enhancedRates.drops + 0.01 && modifiedEnhancedRates.drops < enhancedRates.drops + 0.035, 'monster modifiers should add only modest quantity pressure after the anti-junk pass');
+assert(modifiedEnhancedRates.Prototype + modifiedEnhancedRates.Singular > enhancedRates.Prototype + enhancedRates.Singular + 0.015, 'monster modifiers should spend most reward pressure on rarity opportunity');
 
 const profile = createDefaultProfile();
 const starterRig = profile.inventory.find(item => item.slot === 'rig')!;

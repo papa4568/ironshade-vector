@@ -3,13 +3,14 @@ import { operatorWeaponFamilyForClass, type OperatorClassId } from './classSkill
 export type { OperatorClassId } from './classSkills';
 import { factionFrames, factionGearChance, factionSetDefinitions, type EquipmentFaction } from './factionGear';
 import { frameGenerationForRecovery, recoveryLevelForSource, type FrameGeneration } from './scaling';
-import { modifierCountForRarity, modifierFamilyFor, modifierPowerFactor, modifierTradeoffFactor, rollModifierGrade, rollRarityForQuality, rollRecoveryQuality, type ModifierFamily, type ModifierGrade, type RecoveryQualityGrade } from './lootQuality';
+import { modifierFamilyFor, modifierPowerFactor, modifierTradeoffFactor, rollRecoveryQuality, type ModifierFamily, type ModifierGrade, type RecoveryQualityGrade } from './lootQuality';
 import { applyAugments, applyFrameIdentity, augmentSlotCount, factionFrameIdentity, frameImplicitDescription, inferFrameIdentity, normalizeAugments, rollEquipmentQuality, singularFrameIdentity, type AugmentId, type FrameIdentityId } from './gearDepth';
 import type { GroundLootReceipt } from './fieldLoot';
 import type { ItemRarity } from './rarity';
-import { gearBaseForFrameIdentity, gearBasesForSlot, resolveGearBase, rollGearBase } from './gearBases';
+import { gearBasesForSlot, resolveGearBase } from './gearBases';
 import { affixStatProfile, gearStatDefinition, mergeBuildTags, type GearAffixSemanticId, type GearBuildTag, type GearStatId } from './gearStats';
-import { gearAffixDefinition, gearAffixDefinitions, isAffixEligibleForRoll, weightedAffixChoice } from './gearAffixes';
+import { gearAffixDefinition, gearAffixDefinitions } from './gearAffixes';
+import { generateGearPlan, type GearGenerationOpportunity } from './gearGeneration';
 
 export type EquipmentSlot = WeaponId | 'suit' | 'rig' | 'implant';
 export type Rarity = ItemRarity;
@@ -570,36 +571,33 @@ export function saveProfile(profile: PlayerProfile) { if (typeof window === 'und
 function levelForXp(xp: number) { let level = 1; for (let index = 1; index < levelThresholds.length; index += 1) if (xp >= levelThresholds[index]) level = index + 1; return level; }
 export function xpProgress(profile: PlayerProfile) { if (profile.level >= levelThresholds.length) return { current: 1, needed: 1, maxed: true }; const current = levelThresholds[Math.min(profile.level - 1, levelThresholds.length - 1)] ?? 0; const next = levelThresholds[Math.min(profile.level, levelThresholds.length - 1)] ?? current; return { current: profile.xp - current, needed: Math.max(1, next - current), maxed: false }; }
 function seeded(seedValue: number) { let value = seedValue >>> 0; return () => { value ^= value << 13; value ^= value >>> 17; value ^= value << 5; return (value >>> 0) / 4294967296; }; }
-function rollModifierSet(slot: EquipmentSlot, pool: AffixId[], count: number, random: () => number, recoveryLevel: number, recoveryQuality: RecoveryQualityGrade, preferred: AffixId[] = [], forced: AffixId[] = []) {
-  const chosen: AffixId[] = [];
-  for (const id of forced) {
-    if (isAffixEligibleForRoll(id, slot, recoveryLevel, pool, chosen)) chosen.push(id);
-  }
-  const target = Math.max(count, chosen.length);
-  while (chosen.length < target) {
-    const remaining = pool.filter(id => isAffixEligibleForRoll(id, slot, recoveryLevel, pool, chosen));
-    if (remaining.length === 0) break;
-    const wantedFamily: ModifierFamily = chosen.length % 2 === 0 ? 'core' : 'systems';
-    const familyCandidates = remaining.filter(id => gearAffixDefinition(id).family === wantedFamily);
-    let candidates = familyCandidates.length > 0 ? familyCandidates : remaining;
-    const preferredCandidates = candidates.filter(id => preferred.includes(id));
-    if (preferredCandidates.length > 0 && random() < 0.78) candidates = preferredCandidates;
-    const candidate = weightedAffixChoice(candidates, random);
-    if (!candidate) break;
-    chosen.push(candidate);
-  }
-  return chosen.map(id => materializeModifier(id, rollModifierGrade(recoveryLevel, recoveryQuality, random)));
-}
-function makeFactionItem(slot: EquipmentSlot, index: number, level: number, random: () => number, faction: EquipmentFaction, recoveryLevel: number, recoveryQuality: RecoveryQualityGrade, recoverySource: string, frameOperatorLevel = level): Item {
+function makeFactionItem(slot: EquipmentSlot, index: number, level: number, random: () => number, faction: EquipmentFaction, recoveryLevel: number, recoveryQuality: RecoveryQualityGrade, recoverySource: string, frameOperatorLevel = level, opportunity: GearGenerationOpportunity = 'standard'): Item {
   const frame = factionFrames[faction][slot];
-  const rolledRarity = rollRarityForQuality(random, recoveryQuality);
-  const rarity: Rarity = rolledRarity === 'Field' ? 'Refined' : rolledRarity;
-  const count = modifierCountForRarity(rarity, recoveryQuality, random);
-  const frameGeneration = frameGenerationForRecovery(recoveryLevel, frameOperatorLevel);
+  const plan = generateGearPlan({
+    slot,
+    recoveryLevel,
+    recoveryQuality,
+    frameOperatorLevel,
+    random,
+    faction,
+    preferredAffixes: frame.preferredAffixes,
+    source: opportunity,
+  });
+  const rarity: Rarity = plan.rarity === 'Field' ? 'Refined' : plan.rarity;
+  const affixes = rarity === plan.rarity
+    ? plan.affixes
+    : generateGearPlan({
+      slot,
+      recoveryLevel,
+      recoveryQuality,
+      frameOperatorLevel,
+      random,
+      faction,
+      preferredAffixes: frame.preferredAffixes,
+      source: opportunity,
+      forcedRarity: 'Refined',
+    }).affixes;
   const frameIdentity = factionFrameIdentity(faction, slot);
-  const base = gearBaseForFrameIdentity(slot, frameIdentity) ?? gearBasesForSlot(slot, frameGeneration)[0];
-  const equipmentQuality = rollEquipmentQuality(random);
-  const augmentSlots = augmentSlotCount(rarity, frameGeneration);
   return {
     id: `faction-${Date.now().toString(36)}-${index}-${Math.floor(random() * 99999).toString(36)}`,
     baseId: frame.baseId,
@@ -609,45 +607,49 @@ function makeFactionItem(slot: EquipmentSlot, index: number, level: number, rand
     rarity,
     levelRequirement: levelRequirementForRecovery(recoveryLevel),
     core: frame.core,
-    modifiers: rollModifierSet(slot, base.allowedAffixGroups, count, random, recoveryLevel, recoveryQuality, frame.preferredAffixes),
+    modifiers: affixes.map(affix => materializeModifier(affix.id, affix.grade)),
     faction,
     recoveryLevel,
-    frameGeneration,
+    frameGeneration: plan.frameGeneration,
     frameIdentity,
-    frameImplicit: frameImplicitFor(slot, frameGeneration, frameIdentity, equipmentQuality),
-    equipmentQuality,
-    augmentSlots,
+    frameImplicit: frameImplicitFor(slot, plan.frameGeneration, frameIdentity, plan.equipmentQuality),
+    equipmentQuality: plan.equipmentQuality,
+    augmentSlots: augmentSlotCount(rarity, plan.frameGeneration),
     augments: [],
     recoveryQuality,
     recoverySource,
   };
 }
 
-function makeItem(slot: EquipmentSlot, index: number, level: number, random: () => number, forcedAffixes: AffixId[] = [], recoveryLevel = 4, recoveryQuality: RecoveryQualityGrade = 0, recoverySource = 'Contract recovery', forcedCount?: number, frameOperatorLevel = level, forcedRarity?: Exclude<Rarity, 'Singular'>): Item {
-  const rarity: Rarity = forcedRarity ?? (forcedAffixes.length > 0 ? 'Prototype' : rollRarityForQuality(random, recoveryQuality));
-  const count = forcedCount ?? modifierCountForRarity(rarity, recoveryQuality, random);
-  const frameGeneration = frameGenerationForRecovery(recoveryLevel, frameOperatorLevel);
-  const base = rollGearBase(slot, random, frameGeneration, forcedAffixes);
-  const frameIdentity = base.frameIdentity;
-  const equipmentQuality = rollEquipmentQuality(random);
-  const augmentSlots = augmentSlotCount(rarity, frameGeneration);
-  void random();
+function makeItem(slot: EquipmentSlot, index: number, level: number, random: () => number, forcedAffixes: AffixId[] = [], recoveryLevel = 4, recoveryQuality: RecoveryQualityGrade = 0, recoverySource = 'Contract recovery', forcedCount?: number, frameOperatorLevel = level, forcedRarity?: Exclude<Rarity, 'Singular'>, opportunity: GearGenerationOpportunity = 'standard'): Item {
+  const plan = generateGearPlan({
+    slot,
+    recoveryLevel,
+    recoveryQuality,
+    frameOperatorLevel,
+    random,
+    forcedAffixes,
+    forcedModifierCount: forcedCount,
+    forcedRarity: forcedRarity ?? (forcedAffixes.length > 0 ? 'Prototype' : undefined),
+    source: opportunity,
+  });
+  const base = plan.base;
   return {
     id: `loot-${Date.now().toString(36)}-${index}-${Math.floor(random() * 99999).toString(36)}`,
     baseId: base.id,
     name: base.name,
     slot,
     equipmentClass: base.equipmentClass,
-    rarity,
+    rarity: plan.rarity,
     levelRequirement: levelRequirementForRecovery(recoveryLevel),
     core: `${base.core} Tradeoff: ${base.tradeoff}`,
-    modifiers: rollModifierSet(slot, base.allowedAffixGroups, count, random, recoveryLevel, recoveryQuality, [], forcedAffixes),
+    modifiers: plan.affixes.map(affix => materializeModifier(affix.id, affix.grade)),
     recoveryLevel,
-    frameGeneration,
-    frameIdentity,
-    frameImplicit: frameImplicitFor(slot, frameGeneration, frameIdentity, equipmentQuality),
-    equipmentQuality,
-    augmentSlots,
+    frameGeneration: plan.frameGeneration,
+    frameIdentity: base.frameIdentity,
+    frameImplicit: frameImplicitFor(slot, plan.frameGeneration, base.frameIdentity, plan.equipmentQuality),
+    equipmentQuality: plan.equipmentQuality,
+    augmentSlots: plan.augmentSlots,
     augments: [],
     recoveryQuality,
     recoverySource,
@@ -756,7 +758,7 @@ export const operatorClassOnboardingRecovery: Record<OperatorClassId, [ClassOnbo
 
 function makeClassOnboardingRecoveryItem(profile: PlayerProfile, index: 0 | 1, level: number, random: () => number, recoveryLevel: number, recoveryQuality: RecoveryQualityGrade, recoverySource: string) {
   const template = operatorClassOnboardingRecovery[operatorClassForProfile(profile)][index];
-  const item = makeItem(template.slot, index, level, random, [...template.affixes], recoveryLevel, recoveryQuality, recoverySource, 2, profile.level);
+  const item = makeItem(template.slot, index, level, random, [...template.affixes], recoveryLevel, recoveryQuality, recoverySource, 2, profile.level, 'Refined');
   return { ...item, name: template.name };
 }
 
@@ -831,8 +833,8 @@ export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep
   const makeRecoveredItem = (slot: EquipmentSlot, index: number) => {
     const recoveryQuality = rollQuality(actualDepth);
     return source.faction && random() < sponsoredChance
-      ? makeFactionItem(slot, index, nextLevel, random, source.faction, ordinaryRecoveryLevel, recoveryQuality, `Sponsored recovery // ${factionName}`, profile.level)
-      : makeCampaignItem(slot, index, nextLevel, random, [], ordinaryRecoveryLevel, recoveryQuality, `${locationName} contract recovery`, undefined, profile.level);
+      ? makeFactionItem(slot, index, nextLevel, random, source.faction, ordinaryRecoveryLevel, recoveryQuality, `Sponsored recovery // ${factionName}`, profile.level, actualDepth ? 'deep' : 'standard')
+      : makeCampaignItem(slot, index, nextLevel, random, [], ordinaryRecoveryLevel, recoveryQuality, `${locationName} contract recovery`, undefined, profile.level, undefined, actualDepth ? 'deep' : 'standard');
   };
   const fieldDrops = fieldLoot ?? [];
   const fieldSlots = chooseRecoverySlots(profile, fieldDrops.filter(drop => drop.source !== 'boss' && drop.rarity !== 'Singular').length, random);
@@ -842,12 +844,12 @@ export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep
     const recoveryLevel = Math.max(1, Math.min(maxRecoveryLevel, drop.recoveryLevel));
     const recoverySource = `Ground drop // ${drop.enemyLabel}`;
     if (drop.rarity === 'Singular') {
-      if (drop.source === 'boss') return makeBossSingular(profile, source.deepTarget ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeLocationSingular(profile, source.location ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeCampaignItem(activeWeaponFamilyForProfile(profile), 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, 'Prototype');
-      return makeLocationSingular(profile, source.location ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeCampaignItem(recoverySlotOrderForProfile(profile)[(drop.enemyId + index) % recoverySlotOrderForProfile(profile).length], 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, 'Prototype');
+      if (drop.source === 'boss') return makeBossSingular(profile, source.deepTarget ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeLocationSingular(profile, source.location ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeCampaignItem(activeWeaponFamilyForProfile(profile), 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, 'Prototype', 'boss');
+      return makeLocationSingular(profile, source.location ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeCampaignItem(recoverySlotOrderForProfile(profile)[(drop.enemyId + index) % recoverySlotOrderForProfile(profile).length], 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, 'Prototype', drop.source === 'elite' ? 'elite' : 'enhanced');
     }
     const slot = fieldSlots[fieldSlotIndex++] ?? recoverySlotOrderForProfile(profile)[(drop.enemyId + index) % recoverySlotOrderForProfile(profile).length];
     const visibleRarity = drop.rarity as Exclude<Rarity, 'Singular'>;
-    return makeCampaignItem(slot, 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, visibleRarity);
+    return makeCampaignItem(slot, 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, visibleRarity, drop.source === 'elite' ? 'elite' : drop.source === 'enhanced' ? 'enhanced' : 'standard');
   });
   const bossItem = actualDepth && !fieldMode ? makeBossSingular(profile, source.deepTarget ?? '', 0, nextLevel, random, bossRecoveryLevel, rollQuality(true, 4), `Boss pool // ${source.deepTarget ?? 'deep target'}`, profile.level) : null;
   const fieldHasSingular = fieldItems.some(item => item.rarity === 'Singular');

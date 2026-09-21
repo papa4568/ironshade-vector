@@ -66,8 +66,11 @@ assert.ok(
 );
 
 const source = readFileSync('src/game/meta.ts', 'utf8');
-assert.ok(source.includes('rollGearBase(slot, random, frameGeneration, forcedAffixes)'), 'Live loot generation must choose an authored base family.');
-assert.ok(source.includes('base.allowedAffixGroups'), 'Live loot affixes must come from the selected base family.');
+const generationSource = readFileSync('src/game/gearGeneration.ts', 'utf8');
+assert.ok(source.includes('generateGearPlan({'), 'Live loot must route through the centralized gear generation pipeline.');
+assert.ok(generationSource.includes('gearBasesForSlot(slot, frameGeneration)'), 'Centralized loot generation must choose from authored base families.');
+assert.ok(generationSource.includes('base.allowedAffixGroups'), 'Live loot affixes must come from the selected base family.');
+assert.ok(generationSource.includes('validateGeneratedGearPlan'), 'Generated gear must pass centralized validation before materialization.');
 assert.ok(!source.includes('const frameGenerationNames:'), 'The old generation-name ladder should no longer own base identity.');
 assert.ok(!source.includes('const baseNames:'), 'The old one-base-per-slot table should be removed.');
 

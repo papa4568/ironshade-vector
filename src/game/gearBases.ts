@@ -72,7 +72,7 @@ export const gearBaseDefinitions: BaseSpec[] = [
     tradeoff: 'Extreme shove and mobility increase firing impulse.',
     inherentStats: ['local.knockback'],
     implicitStats: ['local.recoil-impulse-penalty'],
-    allowedAffixGroups: ['breachPropulsion', 'overdrive', 'dodgeVent', 'countermass'],
+    allowedAffixGroups: ['breachPropulsion', 'overdrive', 'dodgeVent', 'countermass', 'tungsten'],
     buildTags: ['ballistics', 'recoil', 'mobility', 'low-g'],
   }),
   base({
@@ -102,7 +102,7 @@ export const gearBaseDefinitions: BaseSpec[] = [
     tradeoff: 'Cooling and reload speed trade away a small amount of direct output.',
     inherentStats: ['local.heat-dissipation', 'local.reload-speed'],
     implicitStats: ['local.direct-output-penalty'],
-    allowedAffixGroups: ['cryoloop', 'dodgeVent', 'extendedFeed', 'countermass'],
+    allowedAffixGroups: ['cryoloop', 'dodgeVent', 'extendedFeed', 'countermass', 'tungsten'],
     buildTags: ['ballistics', 'thermal', 'heat', 'venting'],
   }),
 
@@ -225,7 +225,7 @@ export const gearBaseDefinitions: BaseSpec[] = [
     tradeoff: 'Better heat rejection reduces capacitor reserve.',
     inherentStats: ['local.heat-dissipation'],
     implicitStats: ['local.capacitor-reserve-penalty'],
-    allowedAffixGroups: ['cryoloop', 'capacitorRecycler', 'dodgeVent', 'arcDrone'],
+    allowedAffixGroups: ['cryoloop', 'capacitorRecycler', 'dodgeVent', 'arcDrone', 'magRedirect'],
     buildTags: ['thermal', 'heat', 'venting', 'systems'],
   }),
   base({
