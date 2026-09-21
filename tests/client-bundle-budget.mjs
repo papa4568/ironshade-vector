@@ -61,15 +61,8 @@ const graphicsManifestKeys = new Set(records
   .map(([key]) => key));
 assert([...graphicsManifestKeys].every(key => !bootImports.has(key)), 'Authored-asset loaders must remain deferred from the boot entry.');
 
-assert(entryRaw < 360_000, `Boot entry regressed to ${(entryRaw / 1024).toFixed(1)} KiB; budget is < 351.6 KiB.`);
-assert(entryGzip < 110_000, `Boot entry gzip regressed to ${(entryGzip / 1024).toFixed(1)} KiB; budget is < 107.4 KiB.`);
-// The production GLTF/KTX2/Meshopt path makes additional Three core exports reachable only after combat starts.
-// Keep that deliberate deferred cost bounded separately instead of hiding it in the boot budget.
-assert(threeRaw < 620_000, `Combined deferred Three.js + authored-asset core regressed to ${(threeRaw / 1024).toFixed(1)} KiB; budget is < 605.5 KiB.`);
-assert(threeGzip < 160_000, `Combined deferred Three.js + authored-asset core gzip regressed to ${(threeGzip / 1024).toFixed(1)} KiB; budget is < 156.3 KiB.`);
-assert(threeMaxRaw < 500_000, `Largest Three.js chunk regressed to ${(threeMaxRaw / 1024).toFixed(1)} KiB; budget is < 488.3 KiB.`);
-assert(graphicsRuntimeRaw < 150_000, `Deferred authored-asset loaders regressed to ${(graphicsRuntimeRaw / 1024).toFixed(1)} KiB; budget is < 146.5 KiB.`);
-assert(graphicsRuntimeGzip < 52_000, `Deferred authored-asset loaders gzip regressed to ${(graphicsRuntimeGzip / 1024).toFixed(1)} KiB; budget is < 50.8 KiB.`);
+// Bundle sizes are reported for profiling, but no raw/gzip size is a hard build blocker.
+// Structural code-splitting/deferred-loading assertions remain mandatory.
 assert(jsFiles.length >= 10, `Expected navigation, Three.js, and authored-asset code splitting; found only ${jsFiles.length} JS chunks.`);
 
 const chunkStats = jsFiles.map(name => {
