@@ -7,6 +7,7 @@ const slots: EquipmentSlot[] = ['carbine', 'breacher', 'rail', 'suit', 'rig', 'i
 
 assert.equal(gearBaseDefinitions.length, 18, 'P8.5-C should author three strategic bases for every equipment slot.');
 assert.equal(new Set(gearBaseDefinitions.map(base => base.id)).size, gearBaseDefinitions.length, 'Base IDs must be unique.');
+assert.equal(new Set(gearBaseDefinitions.map(base => base.name)).size, gearBaseDefinitions.length, 'Base family names must stay distinct in the Armory.');
 
 for (const slot of slots) {
   const families = gearBasesForSlot(slot);
