@@ -367,18 +367,18 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
           </div>
           <div className="skill-option-group">
             <small>STANDARD</small>
-            <button className={!selectedModId ? 'selected' : ''} aria-pressed={!selectedModId} onClick={() => onProfileChange(setAbilityMod(profile, ability, null))}><b>{operatorClassDefinition.name} Standard</b><span>Use the native {kitAbility.name} behavior with no additional lens tradeoff.</span></button>
+            <button data-skill-slot={ability} data-skill-mod="standard" className={!selectedModId ? 'selected' : ''} aria-pressed={!selectedModId} onClick={() => onProfileChange(setAbilityMod(profile, ability, null))}><b>{operatorClassDefinition.name} Standard</b><span>Use the native {kitAbility.name} behavior with no additional lens tradeoff.</span></button>
           </div>
           <div className="skill-option-group">
             <small>SHARED LENSES</small>
-            {sharedMods.map(mod => <button key={mod.id} className={selectedModId === mod.id ? 'selected' : ''} aria-pressed={selectedModId === mod.id} onClick={() => { onProfileChange(setAbilityMod(profile, ability, mod.id)); setMessage(`${mod.name} installed on ${kitAbility.name}.`); }}><b>{mod.name}</b><span>{mod.description}</span><small>SHARED LENS // TRADEOFF // {mod.tradeoff}</small></button>)}
+            {sharedMods.map(mod => <button key={mod.id} data-skill-slot={ability} data-skill-mod={mod.id} className={selectedModId === mod.id ? 'selected' : ''} aria-pressed={selectedModId === mod.id} onClick={() => { onProfileChange(setAbilityMod(profile, ability, mod.id)); setMessage(`${mod.name} installed on ${kitAbility.name}.`); }}><b>{mod.name}</b><span>{mod.description}</span><small>SHARED LENS // TRADEOFF // {mod.tradeoff}</small></button>)}
           </div>
           <div className="skill-option-group skill-evolution-group">
             <small>CLASS EVOLUTIONS</small>
             {evolutionMods.map(mod => {
               const locked = profile.level < (mod.minLevel ?? 1);
               const capstone = capstoneInteractionFor(profile, mod.id);
-              return <button key={mod.id} disabled={locked} className={selectedModId === mod.id ? 'selected' : ''} aria-pressed={selectedModId === mod.id} onClick={() => { onProfileChange(setAbilityMod(profile, ability, mod.id)); setMessage(`${mod.name} installed on ${kitAbility.name}.`); }}>
+              return <button key={mod.id} data-skill-slot={ability} data-skill-mod={mod.id} disabled={locked} className={selectedModId === mod.id ? 'selected' : ''} aria-pressed={selectedModId === mod.id} onClick={() => { onProfileChange(setAbilityMod(profile, ability, mod.id)); setMessage(`${mod.name} installed on ${kitAbility.name}.`); }}>
                 <b>{mod.name}</b>
                 <span>{locked ? `Unlocks at LV${mod.minLevel}. ${mod.description}` : mod.description}</span>
                 <small>LV{mod.minLevel} {operatorClassDefinition.name.toUpperCase()} EVOLUTION // TRADEOFF // {mod.tradeoff}</small>
