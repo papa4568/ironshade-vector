@@ -5,6 +5,7 @@ import '../part12.css';
 import '../menuOverhaul.css';
 import '../classBuilds.css';
 import { classAbilityKits, operatorWeaponFamilyForClass } from '../game/classSkills';
+import { classSkillIconAssets, weaponIconAssets } from '../game/mobileUiAssets';
 import {
   abilityMods,
   allocateNode,
@@ -239,10 +240,14 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
   const operatorClass = operatorClassForProfile(profile);
   const operatorClassDefinition = operatorClassDefinitions.find(definition => definition.id === operatorClass)!;
   const activeWeaponFamily = operatorWeaponFamilyForClass(operatorClass);
+  const activeWeaponItem = itemForSlot(profile, activeWeaponFamily);
   const loadoutSlots: EquipmentSlot[] = [activeWeaponFamily, 'suit', 'rig', 'implant'];
   const classResonance = gearResonanceForProfile(profile, operatorClass);
   const activeGearSynergy = specializationGearSynergyForProfile(profile);
   const activeAbilityKit = classAbilityKits[operatorClass];
+  const activeSkillBuild = deriveCombatBuild(profile).classSkillFamily;
+  const activeSpecializationDefinition = profile.level >= 15 ? specializationDefinitions.find(definition => definition.id === profile.specialization) : undefined;
+  const activeCapstoneCount = Object.values(profile.abilityMods).filter(modId => !!capstoneInteractionFor(profile, modId)).length;
   const availableSpecializations = specializationDefinitions.filter(definition => definition.operatorClass === operatorClass);
   const classBranchAffinities = new Set<string>(operatorClassDefinition.branchAffinities);
   const doctrineStates = factionSetState(profile);
@@ -335,24 +340,52 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
       <div className="network-grid">{[...groups.entries()].map(([branch, nodes]) => <article key={branch} className={`network-branch ${classBranchAffinities.has(branch) ? 'class-affinity' : ''}`}><h3>{branch}{classBranchAffinities.has(branch) && <small>{operatorClassDefinition.name} affinity</small>}</h3>{nodes.map(node => { const allocated = profile.allocatedNodes.includes(node.id); const locked = !!node.requires && !profile.allocatedNodes.includes(node.requires); return <button key={node.id} className={`${allocated ? 'allocated' : ''} ${node.major ? 'major' : ''}`} disabled={allocated || locked || profile.progressionPoints <= 0} onClick={() => applyResult(allocateNode(profile, node.id))}><span>{node.major ? 'MAJOR // ' : ''}{node.name}</span><small>{node.description}</small>{locked && <em>Requires previous node</em>}</button>; })}</article>)}</div>
     </section>}
     {tab === 'protocols' && <section className="protocol-panel">
-      <div className="section-copy"><h2>Skill Lenses</h2><p>Your three active skills are class-specific from level 1. Shared Lenses remain open to every class; LV16 class evolutions appear here when your active doctrine supports them.</p></div>
-      <div className="protocol-grid">{(['mag', 'mark', 'arc'] as AbilityId[]).map(ability => {
-        const kitAbility = activeAbilityKit[abilitySlotIndex[ability]];
+      <div className="section-copy"><h2>Class Skills</h2><p>Read every skill in the same order: Class Skill → Weapon Family → Lens/Evolution → Specialization/Capstone. The owned weapon family shapes skill tuning, while Lenses and class Evolutions change behavior without binding a skill to one specific weapon item.</p></div>
+      <section className="skill-path-overview" aria-label="Class skill hierarchy">
+        <article className="active"><small>1 // CLASS</small><b>{operatorClassDefinition.name}</b><span>{activeAbilityKit.map(ability => ability.shortName).join(' · ')}</span></article>
+        <article className="active"><small>2 // WEAPON FAMILY</small><b>{slotLabels[activeWeaponFamily]}</b><span>{activeWeaponItem?.name ?? 'Required class armament'} · family-linked skill tuning</span></article>
+        <article className={Object.values(profile.abilityMods).some(Boolean) ? 'active' : ''}><small>3 // LENS / EVOLUTION</small><b>{Object.values(profile.abilityMods).filter(Boolean).length}/3 modified</b><span>Shared Lenses or LV16 class Evolutions occupy each skill slot.</span></article>
+        <article className={activeSpecializationDefinition ? 'active' : ''}><small>4 // SPECIALIZATION / CAPSTONE</small><b>{activeSpecializationDefinition?.name ?? (profile.level < 15 ? 'Locked until LV15' : 'Not selected')}</b><span>{activeCapstoneCount > 0 ? `${activeCapstoneCount} capstone link${activeCapstoneCount === 1 ? '' : 's'} online` : profile.level >= 16 ? 'Pair a class Evolution with the matching specialization for a capstone link.' : 'Capstone links unlock from LV16 class Evolutions.'}</span></article>
+      </section>
+      <div className="protocol-grid skill-path-grid">{(['mag', 'mark', 'arc'] as AbilityId[]).map(ability => {
+        const slotIndex = abilitySlotIndex[ability];
+        const kitAbility = activeAbilityKit[slotIndex];
         const compatibleMods = abilityMods.filter(mod => mod.ability === ability && (!mod.operatorClass || mod.operatorClass === operatorClass));
-        return <article key={ability}>
-          <h3>{kitAbility.name} // {kitAbility.shortName}</h3>
-          <p className="protocol-skill-copy">{kitAbility.description}</p>
-          <button className={!profile.abilityMods[ability] ? 'selected' : ''} onClick={() => onProfileChange(setAbilityMod(profile, ability, null))}><b>{operatorClassDefinition.name} Standard</b><span>Use the native {kitAbility.name} behavior with no additional lens tradeoff.</span></button>
-          {compatibleMods.map(mod => {
-            const locked = profile.level < (mod.minLevel ?? 1);
-            const capstone = capstoneInteractionFor(profile, mod.id);
-            return <button key={mod.id} disabled={locked} className={profile.abilityMods[ability] === mod.id ? 'selected' : ''} onClick={() => { onProfileChange(setAbilityMod(profile, ability, mod.id)); setMessage(`${mod.name} installed on ${kitAbility.name}.`); }}>
-              <b>{mod.name}</b>
-              <span>{locked ? `Unlocks at LV${mod.minLevel}. ${mod.description}` : mod.description}</span>
-              <small>{mod.evolution ? `LV${mod.minLevel} ${operatorClassDefinition.name.toUpperCase()} EVOLUTION // ` : ''}TRADEOFF // {mod.tradeoff}</small>
-              {capstone && <small>CAPSTONE LINK // {capstone.name} // {capstone.description}</small>}
-            </button>;
-          })}
+        const sharedMods = compatibleMods.filter(mod => !mod.evolution);
+        const evolutionMods = compatibleMods.filter(mod => mod.evolution);
+        const selectedModId = profile.abilityMods[ability];
+        const selectedMod = compatibleMods.find(mod => mod.id === selectedModId);
+        const selectedCapstone = capstoneInteractionFor(profile, selectedModId);
+        const familyFrame = activeWeaponItem ? frameIdentityDefinition(frameIdentity(activeWeaponItem)).name : 'Class armament required';
+        return <article key={ability} className="skill-path-card" aria-label={`Skill hierarchy for ${kitAbility.name}`}>
+          <header className="skill-path-heading"><img src={classSkillIconAssets[operatorClass][slotIndex]} alt="" aria-hidden="true" /><div><small>{operatorClassDefinition.name.toUpperCase()} CLASS SKILL // SLOT {slotIndex + 1}</small><h3>{kitAbility.name} // {kitAbility.shortName}</h3><p className="protocol-skill-copy">{kitAbility.description}</p></div></header>
+          <div className="skill-hierarchy-grid">
+            <div className="active"><small>1 // CLASS SKILL</small><b>{kitAbility.name}</b><span>Native {operatorClassDefinition.name} behavior.</span></div>
+            <div className="active skill-family-stage"><img src={weaponIconAssets[activeWeaponFamily]} alt="" aria-hidden="true" /><div><small>2 // WEAPON FAMILY</small><b>{slotLabels[activeWeaponFamily]}</b><span>{familyFrame} · {activeSkillBuild.sources.length} family build source{activeSkillBuild.sources.length === 1 ? '' : 's'} active</span></div></div>
+            <div className={selectedMod ? 'active' : ''}><small>3 // LENS / EVOLUTION</small><b>{selectedMod ? `${selectedMod.evolution ? 'Evolution' : 'Lens'} · ${selectedMod.name}` : `${operatorClassDefinition.name} Standard`}</b><span>{selectedMod ? selectedMod.tradeoff : 'No additional lens tradeoff.'}</span></div>
+            <div className={selectedCapstone ? 'active capstone-stage' : activeSpecializationDefinition ? 'specialization-stage' : ''}><small>4 // SPECIALIZATION / CAPSTONE</small><b>{selectedCapstone ? selectedCapstone.name : activeSpecializationDefinition?.name ?? (profile.level < 15 ? 'Locked until LV15' : 'No specialization selected')}</b><span>{selectedCapstone ? selectedCapstone.description : activeSpecializationDefinition ? 'Specialization active. This skill selection does not form its capstone pairing.' : 'Choose a LV15 specialization; matching LV16 Evolutions can form capstone links.'}</span></div>
+          </div>
+          <div className="skill-option-group">
+            <small>STANDARD</small>
+            <button data-skill-slot={ability} data-skill-mod="standard" className={!selectedModId ? 'selected' : ''} aria-pressed={!selectedModId} onClick={() => onProfileChange(setAbilityMod(profile, ability, null))}><b>{operatorClassDefinition.name} Standard</b><span>Use the native {kitAbility.name} behavior with no additional lens tradeoff.</span></button>
+          </div>
+          <div className="skill-option-group">
+            <small>SHARED LENSES</small>
+            {sharedMods.map(mod => <button key={mod.id} data-skill-slot={ability} data-skill-mod={mod.id} className={selectedModId === mod.id ? 'selected' : ''} aria-pressed={selectedModId === mod.id} onClick={() => { onProfileChange(setAbilityMod(profile, ability, mod.id)); setMessage(`${mod.name} installed on ${kitAbility.name}.`); }}><b>{mod.name}</b><span>{mod.description}</span><small>SHARED LENS // TRADEOFF // {mod.tradeoff}</small></button>)}
+          </div>
+          <div className="skill-option-group skill-evolution-group">
+            <small>CLASS EVOLUTIONS</small>
+            {evolutionMods.map(mod => {
+              const locked = profile.level < (mod.minLevel ?? 1);
+              const capstone = capstoneInteractionFor(profile, mod.id);
+              return <button key={mod.id} data-skill-slot={ability} data-skill-mod={mod.id} disabled={locked} className={selectedModId === mod.id ? 'selected' : ''} aria-pressed={selectedModId === mod.id} onClick={() => { onProfileChange(setAbilityMod(profile, ability, mod.id)); setMessage(`${mod.name} installed on ${kitAbility.name}.`); }}>
+                <b>{mod.name}</b>
+                <span>{locked ? `Unlocks at LV${mod.minLevel}. ${mod.description}` : mod.description}</span>
+                <small>LV{mod.minLevel} {operatorClassDefinition.name.toUpperCase()} EVOLUTION // TRADEOFF // {mod.tradeoff}</small>
+                {capstone ? <small>CAPSTONE LINK // {capstone.name} // {capstone.description}</small> : activeSpecializationDefinition && !locked ? <small>SPECIALIZATION // {activeSpecializationDefinition.name} active · no capstone pairing on this Evolution</small> : null}
+              </button>;
+            })}
+          </div>
         </article>;
       })}</div>
     </section>}

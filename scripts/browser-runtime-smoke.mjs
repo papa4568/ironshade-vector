@@ -636,6 +636,45 @@ try {
   if (viewportMode === 'mobile-landscape') await mobileMenuLayoutAudit();
   await captureScreenshot(commandScreenshotPath);
 
+  await keyboardActivateButton('Equipment');
+  await waitFor(`(() => {
+    const text = document.body?.innerText ?? '';
+    const labels = [...document.querySelectorAll('button')].map(button => (button.textContent || '').trim());
+    return document.querySelector('.build-header h1')?.textContent?.trim() === 'Build' && labels.includes('Skills');
+  })()`, 'Build surface for skill hierarchy');
+  await keyboardActivateButton('Skills');
+  await waitFor(`(() => {
+    const text = document.body?.innerText ?? '';
+    const stages = [...document.querySelectorAll('.skill-path-overview > article')].map(node => (node.textContent || '').trim());
+    const cards = [...document.querySelectorAll('.skill-path-card')];
+    return text.includes('Class Skill → Weapon Family → Lens/Evolution → Specialization/Capstone')
+      && text.includes('SHARED LENSES')
+      && text.includes('CLASS EVOLUTIONS')
+      && stages.length === 4
+      && cards.length === 3
+      && cards.every(card => card.querySelectorAll('.skill-hierarchy-grid > div').length === 4);
+  })()`, 'P8-H skill hierarchy');
+  const hierarchyLayout = await evaluate(`(() => {
+    const viewport = { width: window.innerWidth, height: window.innerHeight };
+    const buttons = [...document.querySelectorAll('.skill-option-group > button')].filter(button => {
+      const rect = button.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    });
+    const undersized = buttons.filter(button => button.getBoundingClientRect().height < 40).map(button => (button.textContent || '').trim().slice(0, 40));
+    const horizontalOverflow = Math.max(0, document.documentElement.scrollWidth - viewport.width);
+    return { viewport, buttonCount: buttons.length, undersized, horizontalOverflow };
+  })()`);
+  if (hierarchyLayout.buttonCount < 9 || hierarchyLayout.undersized.length || hierarchyLayout.horizontalOverflow > 2) {
+    throw new Error(`P8-H skill hierarchy layout failed: ${JSON.stringify(hierarchyLayout)}`);
+  }
+  console.log(`BROWSER_SKILL_HIERARCHY_PASS viewport=${viewportMode} stages=4 skills=3 options=${hierarchyLayout.buttonCount}`);
+  await keyboardActivateButton('Return to ship');
+  await waitFor(`(() => {
+    const text = (document.body?.innerText ?? '').toLowerCase();
+    const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase());
+    return (text.includes('command ready') || text.includes('command deck')) && labels.includes('operations');
+  })()`, 'Command Deck after Build skill hierarchy');
+
   await keyboardActivateButton('Operations');
   await waitFor(`[...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'contracts')`, 'Operations navigation');
   await keyboardActivateButton('Contracts');

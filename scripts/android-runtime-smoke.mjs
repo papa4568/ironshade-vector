@@ -409,6 +409,54 @@ if (!commandLayout.landscape || !commandLayout.rail || !commandLayout.workspace 
 }
 console.log(`ANDROID_MOBILE_MENU_PASS viewport=${Math.round(commandLayout.viewport.width)}x${Math.round(commandLayout.viewport.height)} destinations=${commandLayout.primaryCount} safe=onscreen+separated overflow=${Math.max(0, commandLayout.verticalOverflow)}px`);
 
+await tapButton('Equipment', 31);
+await waitFor(`(() => {
+  const text = document.body?.innerText ?? '';
+  const buttons = [...document.querySelectorAll('button')].map(button => (button.textContent || '').trim());
+  return document.querySelector('.build-header h1')?.textContent?.trim() === 'Build' && buttons.includes('Skills');
+})()`, 'Android Build surface for skill hierarchy');
+await tapButton('Skills', 32);
+await waitFor(`(() => {
+  const text = document.body?.innerText ?? '';
+  const cards = [...document.querySelectorAll('.skill-path-card')];
+  return text.includes('Class Skill → Weapon Family → Lens/Evolution → Specialization/Capstone')
+    && text.includes('SHARED LENSES')
+    && text.includes('CLASS EVOLUTIONS')
+    && document.querySelectorAll('.skill-path-overview > article').length === 4
+    && cards.length === 3
+    && cards.every(card => card.querySelectorAll('.skill-hierarchy-grid > div').length === 4)
+    && Boolean(document.querySelector('button[data-skill-mod="mag-revector"]'))
+    && Boolean(document.querySelector('button[data-skill-slot="mag"][data-skill-mod="standard"]'));
+})()`, 'Android P8-H skill hierarchy', 20_000);
+const skillHierarchyLayout = await evaluate(`(() => {
+  const viewport = { width: window.innerWidth, height: window.innerHeight };
+  const buttons = [...document.querySelectorAll('.skill-option-group > button')];
+  const undersized = buttons.filter(button => {
+    const rect = button.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0 && rect.height < 40;
+  }).map(button => button.dataset.skillMod || (button.textContent || '').trim().slice(0, 32));
+  const horizontalOverflow = Math.max(0, document.documentElement.scrollWidth - viewport.width);
+  return { viewport, buttonCount: buttons.length, undersized, horizontalOverflow };
+})()`);
+if (skillHierarchyLayout.buttonCount < 9 || skillHierarchyLayout.undersized.length || skillHierarchyLayout.horizontalOverflow > 2) {
+  throw new Error(`Android P8-H skill hierarchy layout failed: ${JSON.stringify(skillHierarchyLayout)}`);
+}
+await evaluate(`document.querySelector('button[data-skill-mod="mag-revector"]')?.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' })`);
+await sleep(200);
+await tap('button[data-skill-mod="mag-revector"]', 33);
+await waitFor(`document.querySelector('button[data-skill-mod="mag-revector"]')?.getAttribute('aria-pressed') === 'true' && (document.querySelector('.skill-path-card')?.textContent ?? '').includes('Lens · Revector Lens')`, 'Android touch Lens selection');
+await evaluate(`document.querySelector('button[data-skill-slot="mag"][data-skill-mod="standard"]')?.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' })`);
+await sleep(200);
+await tap('button[data-skill-slot="mag"][data-skill-mod="standard"]', 34);
+await waitFor(`document.querySelector('button[data-skill-slot="mag"][data-skill-mod="standard"]')?.getAttribute('aria-pressed') === 'true'`, 'Android touch Lens restore');
+console.log(`ANDROID_SKILL_HIERARCHY_PASS stages=4 skills=3 options=${skillHierarchyLayout.buttonCount} touch=select+restore`);
+await tapButton('Return to ship', 35);
+await waitFor(`(() => {
+  const text = (document.body?.innerText ?? '').toLowerCase();
+  const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase());
+  return (text.includes('command ready') || text.includes('command deck')) && labels.includes('operations');
+})()`, 'Android Command Deck after skill hierarchy');
+
 await tapButton('Operations', 21);
 await waitFor(`[...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'contracts')`, 'Operations navigation');
 
