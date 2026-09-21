@@ -34,6 +34,13 @@ This file is the permanent archive for completed production work. The active exe
   - Verified on PR head `a314efb1741e4be0a2f9afaf4ac11a6993bc0d8d`: Browser E2E `35559001381` passed desktop and mobile-landscape including full regression/production build and browser journeys.
   - Verified on merged gameplay source `18147504baeab95146f5d1fbfb53c8ec3fe1a49e`: Browser E2E `35559131881`, Level 15 beta smoke `35559131901`, and Android beta.209 `35559131902` all passed. Artifact `10621546868` contains debug-signed APK SHA-256 `f465b97d1d17bd419734b413b5d81c130e2a03db8acfa3a4dc52f5c26e521602`.
 
+
+- [x] **P6-E Endgame verification** — release builds now gate on a deterministic T9–T12 encounter matrix plus a saturated T12 runtime stress pass and adaptive-quality recovery checks. The matrix replays six fixed seeds at every high-end tier and compares the resulting Directive modifiers, encounter budget, environmental plan, elite protocols, T9+ mutations, Command Target package, boss phase mutations, roster state, and boss durability signature.
+  - Worst-case T12 QA deterministically searches Command Target directives for the highest combined threat/risk/protocol/event pressure with a recurring command-package pulse, forces the encounter into its phase-two pressure window, and runs a 60-second / 600-step live simulation. The trace requires all scheduled Director events to fire, hostile projectiles and overlapping hazards to materialize, combat/physics values to remain finite and physically bounded, and the fixed pools to remain fixed at 112 projectiles / 12 hazards / 30 effects / 24 damage numbers / 16 debris objects.
+  - Adaptive render verification drives sustained worst-case frame pressure to Performance quality, asserts the authored low-cost shadow/detail/VFX/transparency budget, then proves recovery to High on desktop and the safe Balanced baseline on coarse/mobile devices.
+  - The first PR CI attempt correctly exposed an over-specific stress-harness assumption about boss phase thresholds; the harness was corrected to enter the universal low-health + armor-broken phase-two window without changing gameplay behavior. Verified PR head `91075455e4e09406b3ddc682c36e561c14bd2c35`: Browser E2E `35560181053` passed desktop and mobile-landscape including the full regression/production build.
+  - Verified on merged gameplay source `d2e2448f2bc693df70684bcb5097c4b1fcfa31ba`: Browser E2E `35560310881`, Level 15 beta smoke `35560310891`, and Android beta.210 `35560310916` all passed. Artifact `10621449019` contains debug-signed APK SHA-256 `bbd8a2e133be6793ba7c9ed74d1ba2131961adf475fa67cd13c26b86b4bc9d04`.
+
 ## P0 — Foundation ✅ COMPLETE
 
 - [x] Three classes: Vanguard / Vector / Systems
