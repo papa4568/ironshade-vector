@@ -413,7 +413,7 @@ await tapButton('Equipment', 31);
 await waitFor(`(() => {
   const text = document.body?.innerText ?? '';
   const buttons = [...document.querySelectorAll('button')].map(button => (button.textContent || '').trim());
-  return text.includes('QUIET SIGNAL // OPERATOR BUILD') && buttons.includes('Skills');
+  return document.querySelector('.build-header h1')?.textContent?.trim() === 'Build' && buttons.includes('Skills');
 })()`, 'Android Build surface for skill hierarchy');
 await tapButton('Skills', 32);
 await waitFor(`(() => {
