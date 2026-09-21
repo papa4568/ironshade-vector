@@ -122,13 +122,13 @@ export type ExclusiveProtocolCombinationDefinition = {
 };
 
 export const exclusiveProtocolCombinations: ExclusiveProtocolCombinationDefinition[] = [
-  { id: 'breach-lock', name: 'Breach Lock', minTier: 9, protocols: ['breachmaker', 'magneticLock'] },
-  { id: 'mass-pursuit', name: 'Mass Pursuit', minTier: 9, protocols: ['magneticLock', 'countermassMobility'] },
-  { id: 'fortress-mesh', name: 'Fortress Mesh', minTier: 9, protocols: ['reactivePlating', 'repairMesh'] },
-  { id: 'recovery-lockdown', name: 'Recovery Lockdown', minTier: 9, protocols: ['salvageInterdictor', 'recoveryDenial'], objectiveModes: ['machinery-recovery', 'deep-salvage'] },
-  { id: 'kill-corridor', name: 'Kill Corridor', minTier: 10, protocols: ['emergencyShutters', 'suppressionCoordinator', 'penetratorVolley'] },
-  { id: 'arc-blackout', name: 'Arc Blackout', minTier: 10, protocols: ['arcConduit', 'signalJammer', 'droneEscort'] },
-  { id: 'vacuum-hunt', name: 'Vacuum Hunt', minTier: 10, protocols: ['pressureHunter', 'vacuumAdapted', 'countermassMobility'] },
+  { id: 'breach-lock', name: 'Breach Lock', shortName: 'BREACH LOCK', minTier: 9, protocols: ['breachmaker', 'magneticLock'] },
+  { id: 'mass-pursuit', name: 'Mass Pursuit', shortName: 'MASS HUNT', minTier: 9, protocols: ['magneticLock', 'countermassMobility'] },
+  { id: 'fortress-mesh', name: 'Fortress Mesh', shortName: 'FORTRESS', minTier: 9, protocols: ['reactivePlating', 'repairMesh'] },
+  { id: 'recovery-lockdown', name: 'Recovery Lockdown', shortName: 'RECOVERY LOCK', minTier: 9, protocols: ['salvageInterdictor', 'recoveryDenial'], objectiveModes: ['machinery-recovery', 'deep-salvage'] },
+  { id: 'kill-corridor', name: 'Kill Corridor', shortName: 'KILL LANE', minTier: 10, protocols: ['emergencyShutters', 'suppressionCoordinator', 'penetratorVolley'] },
+  { id: 'arc-blackout', name: 'Arc Blackout', shortName: 'BLACKOUT', minTier: 10, protocols: ['arcConduit', 'signalJammer', 'droneEscort'] },
+  { id: 'vacuum-hunt', name: 'Vacuum Hunt', shortName: 'VAC HUNT', minTier: 10, protocols: ['pressureHunter', 'vacuumAdapted', 'countermassMobility'] },
 ];
 
 const byId = new Map(eliteProtocolDefinitions.map(definition => [definition.id, definition]));
