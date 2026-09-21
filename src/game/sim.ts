@@ -5,7 +5,7 @@ import { bossPhaseFireCadenceScale, bossPhasePulseDefinitions, type BossPhaseMut
 import { commandTargetFireCadenceScale, commandTargetMutationDefinition, commandTargetPulseDefinitions, type CommandTargetMutationId } from './commandTargetMutations';
 import type { ConsumableId } from './consumables';
 import { lootFeedLabel, rollGroundLoot, type GroundLootDrop, type GroundLootReceipt } from './fieldLoot';
-import { getAbilityKitForClass, type OperatorClassId } from './classSkills';
+import { getAbilityKitForClass, operatorWeaponFamilyForClass, type OperatorClassId } from './classSkills';
 export { abilityMeta, classAbilityKits, getAbilityKitForClass } from './classSkills';
 export type { AbilityMeta, OperatorClassId } from './classSkills';
 
@@ -408,6 +408,7 @@ function spawnEnemy(id: number, role: EnemyRole, label: string, x: number, y: nu
 
 export function createSimulation(build: CombatBuild = neutralCombatBuild): SimState {
   seed = 0x5f3759df;
+  const classWeapon = build.operatorClass ? operatorWeaponFamilyForClass(build.operatorClass) : 'carbine';
   const carbineConfig = resolveWeaponConfig(build, 'carbine'); const breacherConfig = resolveWeaponConfig(build, 'breacher'); const railConfig = resolveWeaponConfig(build, 'rail');
   const classBootText = build.operatorClass === 'vanguard'
     ? 'VANGUARD ONLINE // RUSH / BREAK / GUARD // BREACH LANE READY'
@@ -453,7 +454,7 @@ export function createSimulation(build: CombatBuild = neutralCombatBuild): SimSt
     collectedLoot: [],
     damageNumbers: Array.from({ length: 24 }, () => ({ active: false, serial: 0, x: 0, y: 0, value: 0, kind: 'health' as const, life: 0, maxLife: 0.78 })),
     damageNumberSerial: 0,
-    player: { x: 330, y: 590, vx: 0, vy: 0, aim: { x: 1, y: 0 }, move: { x: 0, y: 0 }, hp: 100 + build.player.maxHpAdd, maxHp: 100 + build.player.maxHpAdd, armor: 68 + build.player.maxArmorAdd, maxArmor: 68 + build.player.maxArmorAdd, capacitor: 100 + build.player.maxCapAdd, maxCapacitor: 100 + build.player.maxCapAdd, fireCooldown: 0, abilityCooldowns: [0, 0, 0], dodgeCooldown: 0, dodgeTime: 0, lastDodgeAt: -99, invulnerable: 0, consumableCooldown: 0, weaponHeat: { carbine: 0, breacher: 0, rail: 0 }, mags: { carbine: carbineConfig.magazine, breacher: breacherConfig.magazine, rail: railConfig.magazine }, reloadT: 0, reloadWeapon: build.operatorClass === 'vanguard' ? 'breacher' : build.operatorClass === 'vector' ? 'rail' : 'carbine', ventT: 0, dead: false, currentWeapon: build.operatorClass === 'vanguard' ? 'breacher' : build.operatorClass === 'vector' ? 'rail' : 'carbine', vacuumExposure: 0, disrupted: 0 },
+    player: { x: 330, y: 590, vx: 0, vy: 0, aim: { x: 1, y: 0 }, move: { x: 0, y: 0 }, hp: 100 + build.player.maxHpAdd, maxHp: 100 + build.player.maxHpAdd, armor: 68 + build.player.maxArmorAdd, maxArmor: 68 + build.player.maxArmorAdd, capacitor: 100 + build.player.maxCapAdd, maxCapacitor: 100 + build.player.maxCapAdd, fireCooldown: 0, abilityCooldowns: [0, 0, 0], dodgeCooldown: 0, dodgeTime: 0, lastDodgeAt: -99, invulnerable: 0, consumableCooldown: 0, weaponHeat: { carbine: 0, breacher: 0, rail: 0 }, mags: { carbine: carbineConfig.magazine, breacher: breacherConfig.magazine, rail: railConfig.magazine }, reloadT: 0, reloadWeapon: classWeapon, ventT: 0, dead: false, currentWeapon: classWeapon, vacuumExposure: 0, disrupted: 0 },
     enemies: [spawnEnemy(1, 'assault', 'Pressure Raider', 760, 500, 76, 38, 1), spawnEnemy(2, 'suppressor', 'Line Suppressor', 1030, 655, 82, 46, -1), spawnEnemy(3, 'technician', 'Systems Tech', 1140, 330, 70, 34, 1), spawnEnemy(4, 'assault', 'Pressure Raider', 1320, 540, 78, 40, -1), spawnEnemy(5, 'suppressor', 'Line Suppressor', 1370, 760, 84, 48, 1), spawnEnemy(6, 'elite', 'Anchor Marshal', 1270, 430, 140, 105, -1), spawnEnemy(7, 'assault', 'Reserve Raider', 1450, 300, 76, 38, 1, false), spawnEnemy(8, 'technician', 'Reserve Systems Tech', 1320, 790, 72, 36, -1, false), spawnEnemy(9, 'technician', 'Carrier Repair Drone', 0, 0, 52, 20, 1, false, 'repairDrone'), spawnEnemy(10, 'technician', 'Carrier Repair Drone', 0, 0, 52, 20, -1, false, 'repairDrone'), spawnEnemy(99, 'boss', 'Dock Warden Orison', 2070, 525, 560, 185, 1, false, 'orison')],
     projectiles: Array.from({ length: 112 }, () => ({ active: false, x: 0, y: 0, vx: 0, vy: 0, radius: 4, damage: 0, life: 0, owner: 'player' as const, weapon: 'carbine' as const, penetration: 0, armorDamage: 0.5, healthMultiplier: 1, knockback: 0.05, lastObjectId: null, lastObjectT: 0 })),
     objects,
@@ -567,8 +568,34 @@ export function aimAtMobileTarget(state: SimState, mode: 'light' | 'balanced' = 
   return updateMobileTargetControl(state, mode, memory);
 }
 
-export function selectWeapon(state: SimState, weapon: WeaponId) { const p = state.player; if (p.dead || state.complete) return false; if (p.ventT > 0) { pushEvent(state, 'THERMAL VENT ACTIVE // WEAPON BUS LOCKED', 1.1); return false; } p.currentWeapon = weapon; p.reloadT = 0; p.fireCooldown = Math.max(p.fireCooldown, 0.12); pushEvent(state, `${weaponConfigs[weapon].shortName} SELECTED`, 1.2); return true; }
-export function cycleWeapon(state: SimState) { const order: WeaponId[] = ['carbine', 'breacher', 'rail']; const index = order.indexOf(state.player.currentWeapon); return selectWeapon(state, order[(index + 1) % order.length]); }
+export function selectWeapon(state: SimState, weapon: WeaponId) {
+  const p = state.player;
+  if (p.dead || state.complete) return false;
+  if (state.build.operatorClass) {
+    const classWeapon = operatorWeaponFamilyForClass(state.build.operatorClass);
+    if (weapon !== classWeapon) {
+      pushEvent(state, `${weaponConfigs[classWeapon].shortName} // CLASS ARSENAL LOCK`, 1.1);
+      return false;
+    }
+  }
+  if (p.ventT > 0) { pushEvent(state, 'THERMAL VENT ACTIVE // WEAPON BUS LOCKED', 1.1); return false; }
+  p.currentWeapon = weapon;
+  p.reloadT = 0;
+  p.fireCooldown = Math.max(p.fireCooldown, 0.12);
+  pushEvent(state, `${weaponConfigs[weapon].shortName} SELECTED`, 1.2);
+  return true;
+}
+export function cycleWeapon(state: SimState) {
+  if (state.build.operatorClass) {
+    const classWeapon = operatorWeaponFamilyForClass(state.build.operatorClass);
+    if (state.player.currentWeapon !== classWeapon) return selectWeapon(state, classWeapon);
+    pushEvent(state, `${weaponConfigs[classWeapon].shortName} // CLASS ARSENAL LOCK`, 1.1);
+    return false;
+  }
+  const order: WeaponId[] = ['carbine', 'breacher', 'rail'];
+  const index = order.indexOf(state.player.currentWeapon);
+  return selectWeapon(state, order[(index + 1) % order.length]);
+}
 export function triggerReload(state: SimState) { const p = state.player; const weapon = getWeaponConfig(state, p.currentWeapon); if (!p.dead && p.reloadT <= 0 && p.mags[p.currentWeapon] < weapon.magazine) { p.reloadWeapon = p.currentWeapon; p.reloadT = weapon.reloadSeconds; return true; } return false; }
 export function triggerVent(state: SimState) { const p = state.player; if (p.dead || p.ventT > 0 || p.weaponHeat[p.currentWeapon] < 0.3) return false; p.ventT = 0.9 / Math.max(0.5, state.build.player.ventSpeedMul); const ventSector = currentSector(state, p.x, p.y); if (hasTrait(state, 'purgeWake') && ventSector.pressure < 0.45) { plantHazard(state, p.x + p.aim.x * 120, p.y + p.aim.y * 120, 'coolantJet', 3.8, 'player'); pushEvent(state, 'PURGEWAKE RIG // THERMAL VENT BECOMES THRUST PLUME', 1.5); } if (hasTrait(state, 'thermalGovernor')) { for (const id of ['carbine', 'breacher', 'rail'] as WeaponId[]) p.weaponHeat[id] = Math.max(0, p.weaponHeat[id] - 0.08); p.abilityCooldowns = p.abilityCooldowns.map(value => Math.max(0, value - 0.45)) as [number, number, number]; pushEvent(state, 'HELIOS GOVERNOR // THERMAL LOAD DISTRIBUTED // ABILITY CLOCKS ADVANCED', 1.5); } else pushEvent(state, 'THERMAL VENT // MOBILITY REDUCED // WEAPON BUS LOCKED', 1.2); return true; }
 

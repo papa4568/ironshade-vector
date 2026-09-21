@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buildMegastructureDebrief, buyConsumable, createDefaultCampaign, generateContracts, getMegastructureStageContract, loadCampaign, saveCampaign } from '../src/game/campaign';
-import { abilityUsesTargetAcquisition, acquireCombatTarget, aimAtMobileTarget, applyPlayerDamage, createSimulation, createTargetControlMemory, resetTargetControlMemory, stepSimulation, triggerAbility, triggerConsumable, triggerDodge, triggerFire, updateMobileTargetControl, weaponConfigs, type Telemetry } from '../src/game/sim';
+import { abilityUsesTargetAcquisition, acquireCombatTarget, aimAtMobileTarget, applyPlayerDamage, createSimulation, createTargetControlMemory, cycleWeapon, resetTargetControlMemory, selectWeapon, stepSimulation, triggerAbility, triggerConsumable, triggerDodge, triggerFire, updateMobileTargetControl, weaponConfigs, type Telemetry } from '../src/game/sim';
 import { applyMissionSetup, createDirector, stepMissionDirector } from '../src/game/director';
-import { awardRecovery, buildIdentity, createDefaultProfile, deriveCombatBuild, loadProfile, materializeModifier, saveProfile, setAbilityMod, setOperatorClass, specializationGearSynergyDefinitions, specializationGearSynergyForProfile, systemsCapstoneInteractionFor, vanguardCapstoneInteractionFor, vectorCapstoneInteractionFor } from '../src/game/meta';
+import { activeWeaponFamilyForProfile, awardRecovery, buildIdentity, createDefaultProfile, deriveCombatBuild, equipItem, loadProfile, materializeModifier, normalizeClassArmament, saveProfile, setAbilityMod, setOperatorClass, specializationGearSynergyDefinitions, specializationGearSynergyForProfile, systemsCapstoneInteractionFor, vanguardCapstoneInteractionFor, vectorCapstoneInteractionFor } from '../src/game/meta';
 import { CAMPAIGN_STORAGE_KEY, GAME_STATE_STORAGE_KEY, prepareSaveRecovery, PROFILE_STORAGE_KEY } from '../src/game/saveRecovery';
 import { loadGameState, saveGameState } from '../src/game/gamePersistence';
 import { carryExpeditionLoot } from '../src/game/expeditionCarry';
@@ -616,6 +616,69 @@ assert.equal(heldParallax.story.parallaxDebt.evidence.length, 12, 'The held-rout
 assert.match(heldParallax.story.parallaxDebt.lastBeat, /QUIET CUSTODY/, 'The held-route outcome should persist its distinct campaign resolution.');
 
 
+
+function hardArsenalLockSmoke() {
+  const defaultProfile = createDefaultProfile();
+  assert.equal(activeWeaponFamilyForProfile(defaultProfile), 'breacher', 'Fresh Vanguard profiles should own the Breacher family.');
+  assert.equal(defaultProfile.equipped.breacher, 'starter-breacher');
+  assert.equal(defaultProfile.equipped.carbine, null);
+  assert.equal(defaultProfile.equipped.rail, null);
+
+  const legacyVector = {
+    ...defaultProfile,
+    operatorClass: 'vector' as const,
+    classSelectionComplete: true,
+    equipped: { ...defaultProfile.equipped, carbine: 'starter-carbine', breacher: 'starter-breacher', rail: 'starter-rail' },
+  };
+  const migratedVector = normalizeClassArmament(legacyVector);
+  assert.equal(migratedVector.equipped.rail, 'starter-rail', 'Vector migration should keep its Rail Lance equipped.');
+  assert.equal(migratedVector.equipped.carbine, null, 'Vector migration should move Carbines to storage.');
+  assert.equal(migratedVector.equipped.breacher, null, 'Vector migration should move Breachers to storage.');
+  assert.ok(migratedVector.inventory.some(item => item.id === 'starter-carbine'), 'Migrated off-class weapons must remain in ship storage.');
+  assert.ok(migratedVector.inventory.some(item => item.id === 'starter-breacher'), 'Migration must never discard incompatible equipped weapons.');
+
+  const systemsWithoutCarbine = {
+    ...defaultProfile,
+    operatorClass: 'systems' as const,
+    classSelectionComplete: true,
+    inventory: defaultProfile.inventory.filter(item => item.slot !== 'carbine'),
+    equipped: { ...defaultProfile.equipped, carbine: null, breacher: null, rail: null },
+  };
+  const restoredSystems = normalizeClassArmament(systemsWithoutCarbine);
+  assert.equal(restoredSystems.equipped.carbine, 'starter-carbine', 'Systems migration should restore a valid starter Carbine when none exists.');
+  assert.ok(restoredSystems.inventory.some(item => item.id === 'starter-carbine'), 'Restored starter armaments must be persisted in inventory.');
+
+  const offClassBreacher = restoredSystems.inventory.find(item => item.id === 'starter-breacher')!;
+  const rejected = equipItem(restoredSystems, offClassBreacher.id);
+  assert.equal(rejected.profile, restoredSystems, 'Off-class weapon equip attempts should not mutate the profile.');
+  assert.match(rejected.message, /locked to CARBINE/, 'Off-class equip rejection should explain the owned arsenal family.');
+  const carbine = restoredSystems.inventory.find(item => item.id === 'starter-carbine')!;
+  assert.equal(equipItem(restoredSystems, carbine.id).profile.equipped.carbine, carbine.id, 'Owned-family weapon equips should remain valid.');
+
+  const switchedVector = setOperatorClass(defaultProfile, 'vector').profile;
+  assert.equal(switchedVector.equipped.rail, 'starter-rail', 'Class recalibration should equip the new class starter family.');
+  assert.equal(switchedVector.equipped.breacher, null, 'Class recalibration should stow the previous class weapon.');
+  assert.ok(switchedVector.inventory.some(item => item.id === 'starter-breacher'), 'Class recalibration must preserve the old weapon in storage.');
+
+  const vectorState = createSimulation(deriveCombatBuild(switchedVector));
+  assert.equal(vectorState.player.currentWeapon, 'rail', 'Vector combat should boot directly into its Rail Lance.');
+  assert.equal(selectWeapon(vectorState, 'carbine'), false, 'Class combat should reject cross-family direct weapon selection.');
+  assert.equal(vectorState.player.currentWeapon, 'rail', 'Rejected selection must not change the active weapon.');
+  assert.equal(cycleWeapon(vectorState), false, 'Class combat should have no cross-family cycle target.');
+  assert.equal(vectorState.player.currentWeapon, 'rail', 'Weapon cycling must leave the class armament active.');
+
+  const malformedVanguard = {
+    ...defaultProfile,
+    classSelectionComplete: true,
+    equipped: { ...defaultProfile.equipped, carbine: 'starter-carbine' },
+    inventory: defaultProfile.inventory.map(item => item.id === 'starter-carbine' ? { ...item, modifiers: [materializeModifier('overdrive', 5)] } : item),
+  };
+  const cleanBuild = deriveCombatBuild({ ...defaultProfile, classSelectionComplete: true });
+  const malformedBuild = deriveCombatBuild(malformedVanguard);
+  assert.equal(malformedBuild.weapon.carbine.damageMul, cleanBuild.weapon.carbine.damageMul, 'Direct malformed profiles must not apply off-class weapon modifiers to combat builds.');
+}
+hardArsenalLockSmoke();
+
 function parallaxBaseClassCounterSmoke() {
   const classProfile = (operatorClass: 'vanguard' | 'vector' | 'systems') => ({
     ...createDefaultProfile(),
@@ -927,17 +990,18 @@ function sameClassBuildDiversitySmoke() {
   const momentumState = createSimulation(deriveCombatBuild(momentumProfile));
   for (const enemy of momentumState.enemies) enemy.active = false;
   momentumState.player.aim = { x: 1, y: 0 };
-  momentumState.player.currentWeapon = 'carbine';
+  momentumState.player.currentWeapon = 'rail';
   momentumState.player.dodgeCooldown = 1.2;
   momentumState.player.capacitor = Math.max(0, momentumState.player.maxCapacitor - 20);
   assert.equal(triggerAbility(momentumState, 0), true);
   const momentumShiftCooldown = momentumState.player.abilityCooldowns[0];
   const momentumDodgeCooldown = momentumState.player.dodgeCooldown;
   const momentumCapBeforeShot = momentumState.player.capacitor;
+  const momentumRailCost = momentumState.weapons.rail.capacitorCost;
   assert.equal(triggerFire(momentumState), true);
   assert.ok(momentumState.player.abilityCooldowns[0] < momentumShiftCooldown, 'Inertial Dividend should deepen Vector Shift recovery after spending Slingshot Slipstream.');
   assert.ok(momentumState.player.dodgeCooldown < momentumDodgeCooldown, 'Inertial Dividend should deepen dodge recovery after the recoil route resolves.');
-  assert.ok(momentumState.player.capacitor > momentumCapBeforeShot, 'Inertial Dividend should return capacitor from the extended recoil route.');
+  assert.ok(momentumState.player.capacitor > momentumCapBeforeShot - momentumRailCost, 'Inertial Dividend should return capacitor beyond the Rail Lance shot cost.');
   assert.match(momentumState.eventText, /INERTIAL DIVIDEND/, 'Momentum Broker + Slingshot Shift needs its own capstone feedback.');
   assert.ok(momentumState.effects.some(effect => effect.active && effect.kind === 'vector'), 'Inertial Dividend should emit the Vector capstone world cue.');
 
@@ -975,15 +1039,15 @@ function sameClassBuildDiversitySmoke() {
   const redlineState = createSimulation(deriveCombatBuild(redlineProfile));
   for (const enemy of redlineState.enemies) enemy.active = false;
   redlineState.player.aim = { x: 1, y: 0 };
-  redlineState.player.currentWeapon = 'carbine';
-  redlineState.player.weaponHeat.carbine = 0.82;
+  redlineState.player.currentWeapon = 'rail';
+  redlineState.player.weaponHeat.rail = 0.82;
   redlineState.player.dodgeCooldown = 1;
   assert.equal(triggerAbility(redlineState, 2), true);
   const redlineFan = redlineState.projectiles.filter(projectile => projectile.active && projectile.owner === 'player' && projectile.weapon === 'rail');
   assert.equal(redlineFan.length, 3, 'Redline Needle should retain the authored three-lane Vector fan.');
   assert.ok(redlineFan.every(projectile => Math.hypot(projectile.vx, projectile.vy) >= 1849), 'Redline Needle should push all three lanes beyond standard Needle Fan velocity.');
   assert.ok(redlineFan.every(projectile => projectile.penetration >= 102), 'Redline Needle should add the hot-bus penetration premium.');
-  assert.ok(redlineState.player.weaponHeat.carbine <= 0.66, 'Redline Needle overclock should vent the active hot weapon bus.');
+  assert.ok(redlineState.player.weaponHeat.rail <= 0.66, 'Redline Needle overclock should vent the active hot class weapon bus.');
   assert.ok(redlineState.player.dodgeCooldown <= 0.62, 'Redline Needle overclock should pull dodge recovery forward.');
   assert.match(redlineState.eventText, /REDLINE NEEDLE/, 'Redline Pilot + Needle Fan needs its own capstone feedback.');
   assert.ok(redlineState.effects.some(effect => effect.active && effect.kind === 'vector'), 'Redline Needle should emit the Vector capstone world cue.');
@@ -1006,7 +1070,7 @@ function specializationGearSynergySmoke() {
 
   const activeProfiles = new Map<string, ReturnType<typeof createDefaultProfile>>();
   for (const entry of cases) {
-    const base = {
+    const base = normalizeClassArmament({
       ...createDefaultProfile(),
       xp: 8100,
       level: 16,
@@ -1014,7 +1078,7 @@ function specializationGearSynergySmoke() {
       classSelectionComplete: true,
       specialization: entry.specialization,
       specializationOverclock: true,
-    };
+    });
     const unlinked = specializationGearSynergyForProfile(base);
     assert.equal(unlinked?.active, false, `${entry.name} must not activate from specialization alone.`);
     assert.ok((unlinked?.resonanceTier ?? 0) >= 1, `${entry.name} fixture should already satisfy Tier I class resonance.`);
@@ -1036,13 +1100,13 @@ function specializationGearSynergySmoke() {
     activeProfiles.set(entry.specialization, profile);
   }
 
-  const breachBase = { ...createDefaultProfile(), xp: 8100, level: 16, operatorClass: 'vanguard' as const, classSelectionComplete: true, specialization: 'breach-vanguard' as const, specializationOverclock: true };
+  const breachBase = normalizeClassArmament({ ...createDefaultProfile(), xp: 8100, level: 16, operatorClass: 'vanguard' as const, classSelectionComplete: true, specialization: 'breach-vanguard' as const, specializationOverclock: true });
   const breachBaseline = deriveCombatBuild(breachBase);
   const breachLinked = deriveCombatBuild(activeProfiles.get('breach-vanguard')!);
   assert.ok(breachLinked.weapon.breacher.armorDamageMul > breachBaseline.weapon.breacher.armorDamageMul, 'Breach Stack should deepen Breacher armor pressure.');
   assert.ok(breachLinked.weapon.breacher.penetrationAdd >= breachBaseline.weapon.breacher.penetrationAdd + 8, 'Breach Stack should add the authored penetration bonus.');
 
-  const momentumBase = { ...createDefaultProfile(), xp: 8100, level: 16, operatorClass: 'vector' as const, classSelectionComplete: true, specialization: 'momentum-broker' as const, specializationOverclock: true };
+  const momentumBase = normalizeClassArmament({ ...createDefaultProfile(), xp: 8100, level: 16, operatorClass: 'vector' as const, classSelectionComplete: true, specialization: 'momentum-broker' as const, specializationOverclock: true });
   const momentumBaseline = deriveCombatBuild(momentumBase);
   const momentumLinked = deriveCombatBuild(activeProfiles.get('momentum-broker')!);
   assert.ok(momentumLinked.player.maxCapAdd >= momentumBaseline.player.maxCapAdd + 6, 'Reaction Ledger should expand the capacitor bank.');
@@ -1050,7 +1114,7 @@ function specializationGearSynergySmoke() {
   assert.ok(momentumLinked.abilities[0].cooldownMul < momentumBaseline.abilities[0].cooldownMul, 'Reaction Ledger should accelerate Vector Shift recovery.');
   assert.match(buildIdentity(activeProfiles.get('momentum-broker')!), /REACTION LEDGER/i, 'Active specialization gear links should surface in build identity.');
 
-  const conductorBase = { ...createDefaultProfile(), xp: 8100, level: 16, operatorClass: 'systems' as const, classSelectionComplete: true, specialization: 'capacitor-conductor' as const, specializationOverclock: true };
+  const conductorBase = normalizeClassArmament({ ...createDefaultProfile(), xp: 8100, level: 16, operatorClass: 'systems' as const, classSelectionComplete: true, specialization: 'capacitor-conductor' as const, specializationOverclock: true });
   const conductorBaseline = deriveCombatBuild(conductorBase);
   const conductorLinked = deriveCombatBuild(activeProfiles.get('capacitor-conductor')!);
   assert.ok(conductorLinked.player.maxCapAdd >= conductorBaseline.player.maxCapAdd + 8, 'Bus Harmonics should expand the Systems capacitor bank.');
@@ -2148,11 +2212,15 @@ preClassProfile.level = 15;
 preClassProfile.xp = 7140;
 preClassProfile.specialization = 'grid-weaver';
 const preClassCampaign = createDefaultCampaign();
+preClassProfile.equipped = { ...preClassProfile.equipped, carbine: 'starter-carbine', breacher: 'starter-breacher', rail: 'starter-rail' };
 localStorage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify({ version: 1, profile: preClassProfile, campaign: preClassCampaign, savedAt: '2026-09-18T00:00:00.000Z' }));
 const classMigrated = loadGameState(localStorage);
 assert.equal(classMigrated.profile.operatorClass, 'systems', 'Existing atomic saves should infer a compatible operator class from their specialization instead of resetting progress.');
 assert.equal(classMigrated.profile.specialization, 'grid-weaver', 'Class migration must preserve an existing specialization.');
 assert.equal(classMigrated.profile.classSelectionComplete, true, 'Existing atomic saves should not be forced back through first-run class intake.');
+assert.equal(classMigrated.profile.equipped.carbine, 'starter-carbine', 'Atomic save migration should equip the inferred Systems Carbine.');
+assert.equal(classMigrated.profile.equipped.breacher, null, 'Atomic save migration should move incompatible Breachers to storage.');
+assert.equal(classMigrated.profile.equipped.rail, null, 'Atomic save migration should move incompatible Rails to storage.');
 
 storage.clear();
 const legacyProfile = createDefaultProfile();

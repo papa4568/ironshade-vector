@@ -3,7 +3,7 @@ import { createDefaultCampaign, generateContracts, loadCampaign, saveCampaign, s
 import { withOperationScaling, frameGenerationForRecovery } from '../src/game/scaling';
 import { applyMissionSetup, createDirector } from '../src/game/director';
 import { getMissionObjectiveStatus, getNextMissionObjectiveTarget } from '../src/game/encounters';
-import { applyPlayerDamage, createSimulation, selectWeapon, setAim, setMove, stepSimulation, triggerAbility, triggerDodge, triggerFire } from '../src/game/sim';
+import { applyPlayerDamage, createSimulation, setAim, setMove, stepSimulation, triggerAbility, triggerDodge, triggerFire } from '../src/game/sim';
 import { classAbilityKits } from '../src/game/classSkills';
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -48,13 +48,13 @@ function installStorage() {
 function combatSmoke() {
   const profile = createDefaultProfile();
   const state = createSimulation(deriveCombatBuild(profile));
-  selectWeapon(state, 'carbine');
   stepSimulation(state, 0.15);
-  const initialMag = state.player.mags.carbine;
+  const activeWeapon = state.player.currentWeapon;
+  const initialMag = state.player.mags[activeWeapon];
   setAim(state, { x: 1, y: 0 }, false);
-  assert(triggerFire(state), 'Carbine should fire from a fresh simulation.');
-  assert(state.player.mags.carbine === initialMag - 1, 'Firing should consume exactly one carbine round.');
-  assert(state.telemetry.weaponShots.carbine === 1, 'Firing should be represented in telemetry.');
+  assert(triggerFire(state), 'The class-owned armament should fire from a fresh simulation.');
+  assert(state.player.mags[activeWeapon] === initialMag - 1, 'Firing should consume exactly one class-armament round.');
+  assert(state.telemetry.weaponShots[activeWeapon] === 1, 'Firing should be represented in telemetry.');
   assert(triggerAbility(state, 0), 'MAG should activate with a full capacitor.');
   assert(state.telemetry.abilityUses[0] === 1, 'Ability activation should be represented in telemetry.');
   setMove(state, { x: 1, y: 0 });
@@ -184,9 +184,11 @@ assert(starterVanguardResonance.count === 2 && starterVanguardResonance.tier ===
 const classProbe = setOperatorClass(profile, 'systems');
 assert(operatorClassForProfile(classProbe.profile) === 'systems', 'Operator class should be freely changeable aboard the ship.');
 assert(classProbe.profile.specialization === null, 'Changing an unspecialized class should keep specialization empty.');
-assert(JSON.stringify(classProbe.profile.equipped) === JSON.stringify(profile.equipped), 'Changing class must never rewrite the equipped loadout.');
+assert(classProbe.profile.equipped.carbine === 'starter-carbine' && classProbe.profile.equipped.breacher === null && classProbe.profile.equipped.rail === null, 'Changing class should swap only the active weapon family to the owned Systems Carbine.');
+assert(classProbe.profile.equipped.suit === profile.equipped.suit && classProbe.profile.equipped.rig === profile.equipped.rig && classProbe.profile.equipped.implant === profile.equipped.implant, 'Changing class must preserve support equipment.');
+assert(classProbe.profile.inventory.length === profile.inventory.length && classProbe.profile.inventory.some(item => item.id === 'starter-breacher'), 'Changing class must preserve stowed weapon inventory instead of deleting the previous armament.');
 const starterSystemsResonance = gearResonanceForProfile(classProbe.profile);
-assert(starterSystemsResonance.count === 2 && starterSystemsResonance.tier === 1, 'Starter Rig + Implant should activate Systems Tier I resonance.');
+assert(starterSystemsResonance.count === 3 && starterSystemsResonance.tier === 1, 'Starter Carbine + Rig + Implant should activate Systems Tier I resonance.');
 const vanguardBuild = deriveCombatBuild(profile);
 const systemsBuild = deriveCombatBuild(classProbe.profile);
 assert(vanguardBuild.player.maxArmorAdd > systemsBuild.player.maxArmorAdd, 'Vanguard class identity should materially favor armor.');

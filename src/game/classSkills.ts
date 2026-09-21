@@ -32,6 +32,18 @@ export const classAbilityKits: Record<OperatorClassId, readonly [AbilityMeta, Ab
   ],
 };
 
+export type OperatorWeaponFamily = 'carbine' | 'breacher' | 'rail';
+
+export const operatorWeaponFamilyByClass: Record<OperatorClassId, OperatorWeaponFamily> = {
+  vanguard: 'breacher',
+  vector: 'rail',
+  systems: 'carbine',
+};
+
+export function operatorWeaponFamilyForClass(operatorClass: OperatorClassId | null): OperatorWeaponFamily {
+  return operatorClass ? operatorWeaponFamilyByClass[operatorClass] : 'carbine';
+}
+
 export function getAbilityKitForClass(operatorClass: OperatorClassId | null) {
   return operatorClass ? classAbilityKits[operatorClass] : abilityMeta;
 }
