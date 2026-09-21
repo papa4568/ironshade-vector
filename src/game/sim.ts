@@ -115,6 +115,103 @@ function clearLine(state: SimState, ax: number, ay: number, bx: number, by: numb
   for (let i = 1; i < 20; i += 1) { const t = i / 20; const x = ax + (bx - ax) * t; const y = ay + (by - ay) * t; if (state.objects.some(object => isSolidObject(object) && pointInRect(x, y, object))) return false; }
   return true;
 }
+
+export type TargetingIntent = 'manual' | 'acquire';
+export type TargetAcquisitionRequest = {
+  maxDistance: number;
+  projectileSpeed?: number;
+  maxAngleScore?: number;
+  aimWeight?: number;
+  rangeWeight?: number;
+  visibilityPenalty?: number;
+  threatWeight?: number;
+  markWeight?: number;
+  bossWeight?: number;
+  protocolWeight?: number;
+  leadScale?: number;
+  maxLeadSeconds?: number;
+};
+export type TargetAcquisitionResult = {
+  enemy: Enemy;
+  direction: Vec2;
+  distance: number;
+  visible: boolean;
+  angleScore: number;
+  score: number;
+};
+
+function evaluateCombatTarget(state: SimState, enemy: Enemy, request: TargetAcquisitionRequest): TargetAcquisitionResult | null {
+  if (!enemy.active || enemy.dead) return null;
+  const p = state.player;
+  const delta = { x: enemy.x - p.x, y: enemy.y - p.y };
+  const distance = len(delta);
+  if (distance < 1 || distance > request.maxDistance) return null;
+
+  const rawDirection = norm(delta);
+  const angleScore = 1 - (rawDirection.x * p.aim.x + rawDirection.y * p.aim.y);
+  if (request.maxAngleScore != null && angleScore > request.maxAngleScore) return null;
+
+  const visible = clearLine(state, p.x, p.y, enemy.x, enemy.y);
+  const projectileSpeed = request.projectileSpeed ?? 0;
+  const leadScale = request.leadScale ?? 0.72;
+  const maxLeadSeconds = request.maxLeadSeconds ?? 0.38;
+  const leadSeconds = projectileSpeed > 0 ? Math.min(maxLeadSeconds, distance / Math.max(1, projectileSpeed) * leadScale) : 0;
+  const direction = norm({
+    x: enemy.x + enemy.vx * leadSeconds - p.x,
+    y: enemy.y + enemy.vy * leadSeconds - p.y,
+  });
+
+  const aimWeight = request.aimWeight ?? 0.42;
+  const rangeWeight = request.rangeWeight ?? 0.28;
+  const visibilityPenalty = request.visibilityPenalty ?? 0.7;
+  const threatWeight = request.threatWeight ?? 1;
+  const markWeight = request.markWeight ?? 1;
+  const bossWeight = request.bossWeight ?? 1;
+  const protocolWeight = request.protocolWeight ?? 1;
+
+  let score = angleScore * aimWeight + (distance / request.maxDistance) * rangeWeight;
+  if (!visible) score += visibilityPenalty;
+  if (enemy.telegraph > 0) score -= 0.2 * threatWeight;
+  if (enemy.role === 'assault' && distance < 380) score -= 0.16 * threatWeight;
+  if (enemy.role === 'suppressor' && state.squadSuppressing) score -= 0.08 * threatWeight;
+  if (enemy.role === 'technician' && enemy.hazardCooldown < 1.2) score -= 0.05 * threatWeight;
+  if (enemy.statuses.marked > 0) score -= 0.1 * markWeight;
+  if (state.bossActive && enemy.role === 'boss') score -= 0.16 * bossWeight;
+  score += protocolAimPenalty(enemy) * protocolWeight;
+
+  return { enemy, direction, distance, visible, angleScore, score };
+}
+
+function targetCandidatePrecedes(candidate: TargetAcquisitionResult, best: TargetAcquisitionResult) {
+  const scoreDelta = candidate.score - best.score;
+  if (Math.abs(scoreDelta) > 1e-9) return scoreDelta < 0;
+  if (candidate.visible !== best.visible) return candidate.visible;
+  const distanceDelta = candidate.distance - best.distance;
+  if (Math.abs(distanceDelta) > 1e-9) return distanceDelta < 0;
+  return candidate.enemy.id < best.enemy.id;
+}
+
+export function acquireCombatTarget(state: SimState, request: TargetAcquisitionRequest): TargetAcquisitionResult | null {
+  let best: TargetAcquisitionResult | null = null;
+  for (const enemy of state.enemies) {
+    const candidate = evaluateCombatTarget(state, enemy, request);
+    if (!candidate) continue;
+    if (!best || targetCandidatePrecedes(candidate, best)) best = candidate;
+  }
+  return best;
+}
+
+function focusAcquiredTarget(state: SimState, target: TargetAcquisitionResult | null) {
+  if (!target) return null;
+  state.player.aim = target.direction;
+  return target.enemy;
+}
+
+function weaponAcquisitionRange(weapon: WeaponId) {
+  if (weapon === 'breacher') return 680;
+  if (weapon === 'rail') return 980;
+  return 860;
+}
 function blankStatuses(): StatusTimers { return { armorBreach: 0, disrupted: 0, marked: 0, stagger: 0, conductive: 0, vacuum: 0 }; }
 function staggerDuration(enemy: Enemy, duration: number) { return duration / Math.max(1, enemy.effectiveness); }
 function spawnEffect(state: SimState, x: number, y: number, kind: Effect['kind'], radius: number, life = 0.45) { const effect = state.effects.find(item => !item.active); if (!effect) return; Object.assign(effect, { active: true, x, y, kind, radius, life, maxLife: life }); }
@@ -377,24 +474,17 @@ export function aimAtMobileTarget(state: SimState, mode: 'light' | 'balanced' = 
     if (mode === 'light' && angleScore > 0.5) return null;
     if (mode === 'balanced' && !closeThreat && enemy.role !== 'boss' && angleScore > 1.55) return null;
 
-    const visible = clearLine(state, p.x, p.y, enemy.x, enemy.y);
-    const leadFactor = mode === 'balanced' ? 0.72 : 0.35;
-    const leadSeconds = Math.min(mode === 'balanced' ? 0.38 : 0.2, distance / Math.max(1, weapon.projectileSpeed) * leadFactor);
-    const direction = norm({
-      x: enemy.x + enemy.vx * leadSeconds - p.x,
-      y: enemy.y + enemy.vy * leadSeconds - p.y,
+    return evaluateCombatTarget(state, enemy, {
+      maxDistance,
+      projectileSpeed: weapon.projectileSpeed,
+      aimWeight: mode === 'balanced' ? 0.18 : 0.46,
+      rangeWeight: 0.44,
+      visibilityPenalty: p.currentWeapon === 'rail' ? 0.38 : mode === 'balanced' ? 0.68 : 0.92,
+      markWeight: 0.8,
+      protocolWeight: mode === 'balanced' ? 1 : 0.6,
+      leadScale: mode === 'balanced' ? 0.72 : 0.35,
+      maxLeadSeconds: mode === 'balanced' ? 0.38 : 0.2,
     });
-
-    let score = distance / maxDistance * 0.44 + angleScore * (mode === 'balanced' ? 0.18 : 0.46);
-    if (!visible) score += p.currentWeapon === 'rail' ? 0.38 : mode === 'balanced' ? 0.68 : 0.92;
-    if (enemy.telegraph > 0) score -= 0.2;
-    if (enemy.role === 'assault' && distance < 380) score -= 0.16;
-    if (enemy.role === 'suppressor' && state.squadSuppressing) score -= 0.08;
-    if (enemy.role === 'technician' && enemy.hazardCooldown < 1.2) score -= 0.05;
-    if (enemy.statuses.marked > 0) score -= 0.08;
-    score += protocolAimPenalty(enemy) * (mode === 'balanced' ? 1 : 0.6);
-    if (state.bossActive && enemy.role === 'boss') score -= 0.16;
-    return { direction, score, visible };
   };
 
   let bestVisible: { enemy: Enemy; direction: Vec2; score: number } | null = null;
@@ -451,11 +541,18 @@ export function triggerConsumable(state: SimState, id: ConsumableId) {
   return true;
 }
 
-export function triggerFire(state: SimState) {
+export function triggerFire(state: SimState, targetingIntent: TargetingIntent = 'manual') {
   const p = state.player; const weapon = getWeaponConfig(state, p.currentWeapon);
   if (p.dead || state.complete || p.reloadT > 0 || p.fireCooldown > 0 || p.ventT > 0 || p.weaponHeat[p.currentWeapon] >= 0.98) { if (p.weaponHeat[p.currentWeapon] >= 0.98) pushEvent(state, 'WEAPON OVERHEAT // CEASE FIRE OR VENT', 1.1); return false; }
   if (p.mags[p.currentWeapon] <= 0) { triggerReload(state); return false; }
   if (p.capacitor < weapon.capacitorCost) { pushEvent(state, 'CAPACITOR LOW // RAIL LANCE INHIBITED', 1.1); return false; }
+  if (targetingIntent === 'acquire') {
+    focusAcquiredTarget(state, acquireCombatTarget(state, {
+      maxDistance: weaponAcquisitionRange(p.currentWeapon),
+      projectileSpeed: weapon.projectileSpeed,
+      visibilityPenalty: p.currentWeapon === 'rail' ? 0.42 : 0.68,
+    }));
+  }
   const sector = currentSector(state, p.x, p.y); const speed = Math.hypot(p.vx, p.vy); const velocityDot = speed > 1 ? (p.vx * p.aim.x + p.vy * p.aim.y) / speed : 0;
   const markedTarget = (state.build.mechanics.sensorPenetration || state.build.specialization === 'survey-deadeye') ? targetInAimCone(state, 760, 0.12) : null;
   const penetrationBonus = markedTarget?.statuses.marked ? 24 : 0; const redlineScale = weapon.id === 'breacher' && hasTrait(state, 'redlineVelocity') ? 1 + Math.min(0.6, speed / 350 * 0.6) : 1; const lateralSpool = weapon.id === 'carbine' && hasTrait(state, 'inertiaSpool') && speed > 180 && Math.abs(velocityDot) < 0.55; const pendulumBrake = weapon.id === 'breacher' && hasTrait(state, 'pendulumBreach') && speed > 150 && velocityDot < -0.35; const cryoline = weapon.id === 'rail' && hasTrait(state, 'cryolineRail') && p.weaponHeat.rail < 0.18; const coldStartBreach = weapon.id === 'breacher' && hasTrait(state, 'coldStartBreach') && p.weaponHeat.breacher < 0.18; const nearBreach = weapon.id === 'breacher' && hasTrait(state, 'stormVentgun') && state.breaches.some(breach => breach.active && breach.sectorId === sector.id && Math.hypot(breach.x - p.x, breach.y - p.y) < 420); const ghostline = weapon.id === 'carbine' && hasTrait(state, 'ghostline') && sector.pressure < 0.35; const pressurePsalm = weapon.id === 'carbine' && hasTrait(state, 'pressureBallistics'); const pressureVelocity = pressurePsalm ? (sector.pressure < 0.45 ? 1.22 : sector.pressure > 0.75 ? 0.92 : 1) : 1;
@@ -547,7 +644,7 @@ function findAimConduit(state: SimState, maxDistance: number) {
   return target;
 }
 
-export function triggerAbility(state: SimState, index = 0) {
+export function triggerAbility(state: SimState, index = 0, targetingIntent: TargetingIntent = 'manual') {
   const p = state.player; const meta = getAbilityConfig(state, index);
   let parallaxClassCounterEvent: string | null = null;
   let vanguardCapstoneEvent: string | null = null;
@@ -639,12 +736,22 @@ export function triggerAbility(state: SimState, index = 0) {
     pushEvent(state, parallaxClassCounterEvent ?? slotOneEvent, parallaxClassCounterEvent ? 1.6 : 1.2);
   } else if (index === 1) {
     const targetRange = state.build.operatorClass === 'vector' ? 930 : state.build.operatorClass === 'vanguard' ? 620 : 760;
-    const target = state.build.operatorClass === 'systems'
-      ? state.enemies.filter(enemy => enemy.active && !enemy.dead && Math.hypot(enemy.x - p.x, enemy.y - p.y) <= targetRange).sort((a, b) => {
-        const score = (enemy: Enemy) => { const delta = norm({ x: enemy.x - p.x, y: enemy.y - p.y }); return (1 - (delta.x * p.aim.x + delta.y * p.aim.y)) * 360 + Math.hypot(enemy.x - p.x, enemy.y - p.y); };
-        return score(a) - score(b);
-      })[0] ?? null
-      : targetInAimCone(state, targetRange, state.build.operatorClass === 'vector' ? 0.075 : 0.1);
+    const acquiredTarget = targetingIntent === 'acquire'
+      ? acquireCombatTarget(state, {
+        maxDistance: targetRange,
+        aimWeight: state.build.operatorClass === 'vector' ? 0.5 : 0.38,
+        rangeWeight: state.build.operatorClass === 'vanguard' ? 0.36 : 0.26,
+        visibilityPenalty: 0.82,
+      })
+      : null;
+    const target = targetingIntent === 'acquire'
+      ? focusAcquiredTarget(state, acquiredTarget)
+      : state.build.operatorClass === 'systems'
+        ? state.enemies.filter(enemy => enemy.active && !enemy.dead && Math.hypot(enemy.x - p.x, enemy.y - p.y) <= targetRange).sort((a, b) => {
+          const score = (enemy: Enemy) => { const delta = norm({ x: enemy.x - p.x, y: enemy.y - p.y }); return (1 - (delta.x * p.aim.x + delta.y * p.aim.y)) * 360 + Math.hypot(enemy.x - p.x, enemy.y - p.y); };
+          return score(a) - score(b) || a.id - b.id;
+        })[0] ?? null
+        : targetInAimCone(state, targetRange, state.build.operatorClass === 'vector' ? 0.075 : 0.1);
     const vanguardFaultlinePrimaryArmorBefore = target?.armor ?? 0;
     if (target) { target.statuses.marked = (state.build.operatorClass === 'vector' ? 10 : 7.5) * meta.power * (hasTrait(state, 'markCascade') ? 0.78 : 1); if (state.build.operatorClass === 'vanguard') { target.statuses.armorBreach = Math.max(target.statuses.armorBreach, 4.8); const towardOperator = norm({ x: p.x - target.x, y: p.y - target.y }); target.vx += towardOperator.x * 320; target.vy += towardOperator.y * 320; target.armor = Math.max(0, target.armor - 18 * meta.power); target.statuses.stagger = Math.max(target.statuses.stagger, staggerDuration(target, 0.55)); } if (state.build.operatorClass === 'vector') { state.classState.vectorWindow = Math.max(state.classState.vectorWindow, state.build.classResonanceTier >= 2 ? 2.6 : 2.1); p.weaponHeat.rail = Math.max(0, p.weaponHeat.rail - 0.06); } if (target.role === 'technician' || target.combatClass === 'elite' || target.role === 'boss' || target.protocols.length > 0) target.statuses.disrupted = Math.max(target.statuses.disrupted, 2.8); target.anchored = false; spawnEffect(state, target.x, target.y, 'mark', 64, 0.7); if (hasTrait(state, 'tetherhand')) plantHazard(state, target.x, target.y, 'gravityWell', 2.8); if (state.build.mechanics.widebandMark) { const secondary = state.enemies.find(enemy => enemy.active && !enemy.dead && enemy.id !== target.id && Math.hypot(enemy.x - target.x, enemy.y - target.y) < 260); if (secondary) { secondary.statuses.marked = 5.2 * meta.power; spawnEffect(state, secondary.x, secondary.y, 'mark', 48, 0.55); } } if (state.build.operatorClass === 'systems') { let relays = 0; const relayLimit = (state.build.classResonanceTier >= 2 ? 3 : 2) + (state.build.mechanics.systemsRecursiveIntrusion ? 1 : 0); const relayCandidates = state.enemies.filter(enemy => enemy.active && !enemy.dead && enemy.id !== target.id && Math.hypot(enemy.x - p.x, enemy.y - p.y) < 900).sort((a, b) => { const aTarget = Math.hypot(a.x - target.x, a.y - target.y); const bTarget = Math.hypot(b.x - target.x, b.y - target.y); return aTarget - bTarget || Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y); }); for (const secondary of relayCandidates) { secondary.statuses.marked = Math.max(secondary.statuses.marked, 4.6 * meta.power); secondary.statuses.disrupted = Math.max(secondary.statuses.disrupted, 2.2); if (state.build.mechanics.systemsRecursiveIntrusion) secondary.statuses.conductive = Math.max(secondary.statuses.conductive, 4.8); spawnEffect(state, secondary.x, secondary.y, 'mark', 42, 0.5); relays += 1; if (relays >= relayLimit) break; } if (state.build.mechanics.systemsRecursiveIntrusion && relays > 0) { systemsRecursiveRelays = relays; p.abilityCooldowns[2] = Math.max(0, p.abilityCooldowns[2] - Math.min(1.4, relays * 0.45)); if (state.build.specialization === 'capacitor-conductor') { const relayRefund = Math.min(state.build.specializationOverclock ? 8 : 6, relays * 2); p.capacitor = Math.min(p.maxCapacitor, p.capacitor + relayRefund); if (state.build.specializationOverclock) p.weaponHeat[p.currentWeapon] = Math.max(0, p.weaponHeat[p.currentWeapon] - Math.min(0.08, relays * 0.02)); systemsCapstoneEvent = `RECURSIVE BUS // ${relays} RELAY${relays === 1 ? '' : 'S'} // +${relayRefund} CAP`; spawnCapstoneEffect(state, 'systems', target.x, target.y, 158, 0.68); } } } if (hasTrait(state, 'custodyShear') && target.carriedObjectId) { dropCarriedObjective(state, target, true); p.abilityCooldowns[1] = Math.min(p.abilityCooldowns[1], 1.4); pushEvent(state, 'CUSTODY SHEAR // CARRIED MISSION HARDWARE RELEASED // TAG RESTORED', 1.6); } if (hasTrait(state, 'custodyShear')) { const hardware = state.objects.filter(object => object.active && object.kind === 'anchorNode' && (object.id.includes('custody-') || object.id.includes('siphon')) && Math.hypot(object.x + object.w / 2 - target.x, object.y + object.h / 2 - target.y) < 360).sort((a, b) => Math.hypot(a.x - target.x, a.y - target.y) - Math.hypot(b.x - target.x, b.y - target.y))[0]; if (hardware) { hardware.hp = 0; hardware.active = false; hardware.exposed = true; spawnEffect(state, hardware.x + hardware.w / 2, hardware.y + hardware.h / 2, 'arc', 80, 0.45); } } if (hasTrait(state, 'relayCrown')) { const relay = state.objects.find(object => object.active && (object.kind === 'conduit' || object.kind === 'anchorNode') && (object.exposed || object.kind === 'anchorNode') && Math.hypot(object.x + object.w / 2 - target.x, object.y + object.h / 2 - target.y) < 330); if (relay) { const cx = relay.x + relay.w / 2; const cy = relay.y + relay.h / 2; let jumped = 0; for (const enemy of state.enemies) { if (!enemy.active || enemy.dead || enemy.id === target.id || Math.hypot(enemy.x - cx, enemy.y - cy) > 310) continue; enemy.statuses.marked = Math.max(enemy.statuses.marked, 4.8 * meta.power); spawnEffect(state, enemy.x, enemy.y, 'mark', 42, 0.5); jumped += 1; if (jumped >= 2) break; } if (jumped > 0) pushEvent(state, `RELAY CROWN // SENSOR SPIKE JUMPED THROUGH ${relay.label.toUpperCase()}`, 1.7); else pushEvent(state, `SENSOR SPIKE // ${target.label.toUpperCase()} MARKED`, 1.4); } else pushEvent(state, `SENSOR SPIKE // ${target.label.toUpperCase()} MARKED`, 1.4); } else pushEvent(state, `SENSOR SPIKE // ${target.label.toUpperCase()} MARKED`, 1.4); }
     else { p.capacitor = Math.min(p.maxCapacitor, p.capacitor + meta.cost * 0.55); p.abilityCooldowns[index] = 1.2; pushEvent(state, state.build.operatorClass === 'vanguard' ? 'FRACTURE TAG // NO TARGET IN BREACH LANE' : state.build.operatorClass === 'vector' ? 'DEADEYE LOCK // NO FIRING SOLUTION' : state.build.operatorClass === 'systems' ? 'RELAY HACK // NO HOSTILE NODE FOUND' : 'SENSOR SPIKE // NO VALID RETURN', 1.1); }
@@ -768,7 +875,12 @@ export function triggerAbility(state: SimState, index = 0) {
     if (redlineNeedle) spawnCapstoneEffect(state, 'vector', p.x + baseDir.x * 72, p.y + baseDir.y * 72, 172, 0.6);
     pushEvent(state, redlineNeedle ? 'REDLINE NEEDLE // HOT HYPERVELOCITY FAN // HEAT VENTED' : needleFan ? 'NEEDLE FAN // HYPERVELOCITY CENTERLINE' : 'SPLITSHOT // THREE-LANE KINETIC FAN', 1.35);
   } else {
-    const conduit = findAimConduit(state, 520); const target = targetInAimCone(state, state.build.operatorClass === 'systems' ? 560 : 430, 0.14);
+    const arcRange = state.build.operatorClass === 'systems' ? 560 : 430;
+    const acquiredTarget = targetingIntent === 'acquire'
+      ? acquireCombatTarget(state, { maxDistance: arcRange, aimWeight: 0.4, rangeWeight: 0.3, visibilityPenalty: 0.88 })
+      : null;
+    if (acquiredTarget) p.aim = acquiredTarget.direction;
+    const conduit = findAimConduit(state, 520); const target = acquiredTarget?.enemy ?? targetInAimCone(state, arcRange, 0.14);
     if (conduit) { const cx = conduit.x + conduit.w / 2; const cy = conduit.y + conduit.h / 2; if (conduit.kind === 'anchorNode') { conduit.hp = Math.max(0, conduit.hp - 68 * meta.power); if (conduit.hp <= 0) { conduit.active = false; conduit.exposed = true; pushEvent(state, `${conduit.label.toUpperCase()} SHORTED // ANCHOR FIELD COLLAPSED`, 1.7); } } spawnEffect(state, cx, cy, 'arc', 260, 0.7); let hits = 0; for (const enemy of state.enemies) { if (enemy.dead || !enemy.active || Math.hypot(enemy.x - cx, enemy.y - cy) > 275) continue; enemy.statuses.disrupted = Math.max(enemy.statuses.disrupted, 4.2); enemy.statuses.conductive = Math.max(enemy.statuses.conductive, 5.5); enemy.anchored = false; dealEnemyDamage(state, enemy, 22 * meta.power, 0.75, 1.05); hits += 1; } if (hasTrait(state, 'machineSight')) { const extra = state.enemies.filter(enemy => enemy.active && !enemy.dead && enemy.statuses.disrupted > 0 && Math.hypot(enemy.x - cx, enemy.y - cy) > 275 && Math.hypot(enemy.x - cx, enemy.y - cy) < 560).sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy))[0]; if (extra) { extra.statuses.conductive = Math.max(extra.statuses.conductive, 4.5); dealEnemyDamage(state, extra, 18 * meta.power, 0.65, 1); spawnEffect(state, extra.x, extra.y, 'arc', 64, 0.5); hits += 1; } } let markCooldownAdvance = 0; let magCooldownAdvance = 0; if (state.build.specialization === 'grid-weaver') { const remote = state.enemies.filter(enemy => enemy.active && !enemy.dead && Math.hypot(enemy.x - cx, enemy.y - cy) > 275 && Math.hypot(enemy.x - cx, enemy.y - cy) < 520).sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy))[0]; if (remote) { remote.statuses.marked = Math.max(remote.statuses.marked, 4.2); if (state.build.mechanics.systemsReturnCurrent) { remote.statuses.disrupted = Math.max(remote.statuses.disrupted, 2.8); remote.statuses.conductive = Math.max(remote.statuses.conductive, 4.8); systemsGridReturnNodes = 1; markCooldownAdvance = Math.max(markCooldownAdvance, 0.5); } spawnEffect(state, remote.x, remote.y, 'mark', 42, 0.45); } if (state.build.specializationOverclock) markCooldownAdvance = Math.max(markCooldownAdvance, 0.8); const referenceShear = state.hazards.filter(hazard => hazard.active && hazard.owner !== 'player' && (hazard.kind === 'gravityWell' || hazard.kind === 'vectorWash') && Math.hypot(hazard.x - cx, hazard.y - cy) < 420).sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy))[0]; if (referenceShear) { referenceShear.active = false; p.capacitor = Math.min(p.maxCapacitor, p.capacitor + 4); spawnEffect(state, referenceShear.x, referenceShear.y, 'arc', referenceShear.radius, 0.45); } } if (hasTrait(state, 'relayOrchard')) { let marked = 0; for (const enemy of state.enemies.filter(enemy => enemy.active && !enemy.dead && Math.hypot(enemy.x - cx, enemy.y - cy) < 420).sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy))) { enemy.statuses.marked = Math.max(enemy.statuses.marked, 3.8); spawnEffect(state, enemy.x, enemy.y, 'mark', 38, 0.4); marked += 1; if (marked >= 2) break; } markCooldownAdvance = Math.max(markCooldownAdvance, 0.55); } if (state.build.mechanics.arcCascadeLattice) { magCooldownAdvance = Math.max(magCooldownAdvance, 0.65); markCooldownAdvance = Math.max(markCooldownAdvance, 0.65); } if (magCooldownAdvance > 0) p.abilityCooldowns[0] = Math.max(0, p.abilityCooldowns[0] - magCooldownAdvance); if (markCooldownAdvance > 0) p.abilityCooldowns[1] = Math.max(0, p.abilityCooldowns[1] - markCooldownAdvance); if (hasTrait(state, 'lockstepArc')) { p.armor = Math.min(p.maxArmor, p.armor + 14); p.capacitor = Math.min(p.maxCapacitor, p.capacitor + 10); } if (hasTrait(state, 'gridReclaimer')) { const hostileGrid = state.hazards.filter(hazard => hazard.active && hazard.kind === 'shockGrid' && Math.hypot(hazard.x - cx, hazard.y - cy) < 390).sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy))[0]; if (hostileGrid) { hostileGrid.active = false; p.capacitor = Math.min(p.maxCapacitor, p.capacitor + 10); p.weaponHeat[p.currentWeapon] = Math.max(0, p.weaponHeat[p.currentWeapon] - 0.08); pushEvent(state, 'GRID RECLAIMER // HOSTILE ARC FIELD REROUTED TO OPERATOR BUS', 1.5); } } if (state.build.mechanics.systemsReturnCurrent) systemsReturnNodes = hits + systemsGridReturnNodes; if (state.build.mechanics.arcGroundLoop) p.capacitor = Math.min(p.maxCapacitor, p.capacitor + 18); pushEvent(state, hits > 0 ? `${state.build.operatorClass === 'systems' ? 'CASCADE ARC' : 'ARC TAP'} // CONDUIT PROPAGATION // ${hits} TARGET${hits === 1 ? '' : 'S'}` : `${state.build.operatorClass === 'systems' ? 'CASCADE ARC' : 'ARC TAP'} // CONDUIT ENERGIZED // NO TARGET IN PATH`, 1.7); }
     else if (target) { const wasMarked = target.statuses.marked > 0; const bonus = wasMarked || target.statuses.conductive > 0; target.statuses.disrupted = Math.max(target.statuses.disrupted, bonus ? 4.5 : 2.2); target.statuses.conductive = Math.max(target.statuses.conductive, 4.5); target.anchored = false; dealEnemyDamage(state, target, (bonus ? 24 : 14) * meta.power, bonus ? 0.95 : 0.5, 1); if (state.build.operatorClass === 'systems') { let chainedTargets = 0; for (const secondary of state.enemies.filter(enemy => enemy.active && !enemy.dead && enemy.id !== target.id && Math.hypot(enemy.x - target.x, enemy.y - target.y) < 340).sort((a, b) => Math.hypot(a.x - target.x, a.y - target.y) - Math.hypot(b.x - target.x, b.y - target.y))) { secondary.statuses.disrupted = Math.max(secondary.statuses.disrupted, 3.2); secondary.statuses.conductive = Math.max(secondary.statuses.conductive, 4.2); dealEnemyDamage(state, secondary, 11 * meta.power, 0.62, 0.9); spawnEffect(state, secondary.x, secondary.y, 'arc', 58, 0.48); chainedTargets += 1; if (chainedTargets >= (state.build.classResonanceTier >= 2 ? 2 : 1)) break; } if (state.build.mechanics.systemsReturnCurrent) systemsReturnNodes = 1 + chainedTargets; } if (hasTrait(state, 'splitReference') && wasMarked && !target.dead) { const relay = state.objects.filter(object => object.active && (object.kind === 'conduit' || object.kind === 'anchorNode') && Math.hypot(object.x + object.w / 2 - target.x, object.y + object.h / 2 - target.y) < 300).sort((a, b) => Math.hypot(a.x - target.x, a.y - target.y) - Math.hypot(b.x - target.x, b.y - target.y))[0]; if (relay) { target.statuses.marked = 0; const cx = relay.x + relay.w / 2; const cy = relay.y + relay.h / 2; const second = state.enemies.filter(enemy => enemy.active && !enemy.dead && enemy.id !== target.id && Math.hypot(enemy.x - cx, enemy.y - cy) < 340).sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy))[0]; if (second) { second.statuses.disrupted = Math.max(second.statuses.disrupted, 3); second.statuses.conductive = Math.max(second.statuses.conductive, 4); dealEnemyDamage(state, second, 12, 0.55, 0.85); spawnEffect(state, second.x, second.y, 'arc', 56, 0.45); } } } spawnEffect(state, target.x, target.y, 'arc', 90, 0.55); pushEvent(state, state.build.operatorClass === 'systems' ? (bonus ? 'CASCADE ARC // STATUS NETWORK AMPLIFIED' : 'CASCADE ARC // HOSTILE NETWORK BRIDGED') : bonus ? 'ARC TAP // STATUS COUPLING AMPLIFIED' : 'ARC TAP // LOCAL DISRUPTION', 1.4); }
     else { p.capacitor = Math.min(p.maxCapacitor, p.capacitor + meta.cost * 0.55); p.abilityCooldowns[index] = 1.3; pushEvent(state, state.build.operatorClass === 'systems' ? 'CASCADE ARC // NO NETWORK PATH' : 'ARC TAP // NO CONDUCTIVE PATH', 1.1); }

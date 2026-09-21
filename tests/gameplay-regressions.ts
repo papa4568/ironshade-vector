@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buildMegastructureDebrief, buyConsumable, createDefaultCampaign, generateContracts, getMegastructureStageContract, loadCampaign, saveCampaign } from '../src/game/campaign';
-import { aimAtMobileTarget, applyPlayerDamage, createSimulation, stepSimulation, triggerAbility, triggerConsumable, triggerDodge, triggerFire, weaponConfigs, type Telemetry } from '../src/game/sim';
+import { acquireCombatTarget, aimAtMobileTarget, applyPlayerDamage, createSimulation, stepSimulation, triggerAbility, triggerConsumable, triggerDodge, triggerFire, weaponConfigs, type Telemetry } from '../src/game/sim';
 import { applyMissionSetup, createDirector, stepMissionDirector } from '../src/game/director';
 import { awardRecovery, buildIdentity, createDefaultProfile, deriveCombatBuild, loadProfile, materializeModifier, saveProfile, setAbilityMod, setOperatorClass, specializationGearSynergyDefinitions, specializationGearSynergyForProfile, systemsCapstoneInteractionFor, vanguardCapstoneInteractionFor, vectorCapstoneInteractionFor } from '../src/game/meta';
 import { CAMPAIGN_STORAGE_KEY, GAME_STATE_STORAGE_KEY, prepareSaveRecovery, PROFILE_STORAGE_KEY } from '../src/game/saveRecovery';
@@ -1653,6 +1653,135 @@ assert.equal(aimAtMobileTarget(aimState, 'balanced', target.id), target.id);
 assert.ok(aimState.player.aim.x > 0.95, 'first target-switch frame should turn toward the new target instead of snapping 180 degrees');
 for (let i = 0; i < 30; i += 1) aimAtMobileTarget(aimState, 'balanced', target.id);
 assert.ok(aimState.player.aim.x < -0.95, 'assisted aim should still converge fully on the target');
+
+function prepareAcquisitionState() {
+  const state = createSimulation();
+  state.player.x = 1000;
+  state.player.y = 500;
+  state.player.aim = { x: 1, y: 0 };
+  state.squadSuppressing = false;
+  state.bossActive = false;
+  for (const enemy of state.enemies) {
+    enemy.active = false;
+    enemy.dead = false;
+    enemy.vx = 0;
+    enemy.vy = 0;
+    enemy.telegraph = 0;
+    enemy.hazardCooldown = 9;
+    enemy.statuses.marked = 0;
+    enemy.protocols = [];
+  }
+  for (const object of state.objects) object.active = false;
+  return state;
+}
+
+const legalTargetState = prepareAcquisitionState();
+const deadTarget = legalTargetState.enemies[0]!;
+const outOfRangeTarget = legalTargetState.enemies[1]!;
+const legalTarget = legalTargetState.enemies[2]!;
+Object.assign(deadTarget, { active: true, dead: true, x: 1120, y: 500 });
+Object.assign(outOfRangeTarget, { active: true, dead: false, x: 1720, y: 500 });
+Object.assign(legalTarget, { active: true, dead: false, x: 1260, y: 500 });
+assert.equal(acquireCombatTarget(legalTargetState, { maxDistance: 520 })?.enemy.id, legalTarget.id, 'target acquisition must reject dead and out-of-range hostiles');
+legalTarget.active = false;
+assert.equal(acquireCombatTarget(legalTargetState, { maxDistance: 520 }), null, 'target acquisition should return null when no legal hostile exists');
+
+const visibilityTargetState = prepareAcquisitionState();
+const occludedTarget = visibilityTargetState.enemies[0]!;
+const visibleTarget = visibilityTargetState.enemies[1]!;
+Object.assign(occludedTarget, { active: true, x: 1200, y: 500, role: 'suppressor' as const });
+Object.assign(visibleTarget, { active: true, x: 1220, y: 620, role: 'suppressor' as const });
+const acquisitionCover = visibilityTargetState.objects[0]!;
+Object.assign(acquisitionCover, { active: true, kind: 'cover' as const, x: 1080, y: 480, w: 50, h: 40 });
+const visibilityPick = acquireCombatTarget(visibilityTargetState, { maxDistance: 520 });
+assert.equal(visibilityPick?.enemy.id, visibleTarget.id, 'visibility penalty should prefer a clear firing solution over a slightly better occluded aim line');
+assert.equal(visibilityPick?.visible, true, 'selected clear firing solution should expose visible=true');
+
+const markTargetState = prepareAcquisitionState();
+const unmarkedTarget = markTargetState.enemies[0]!;
+const markedTargetPriority = markTargetState.enemies[1]!;
+Object.assign(unmarkedTarget, { active: true, id: 40, x: 1240, y: 460, role: 'suppressor' as const });
+Object.assign(markedTargetPriority, { active: true, id: 50, x: 1240, y: 540, role: 'suppressor' as const });
+markedTargetPriority.statuses.marked = 4;
+assert.equal(acquireCombatTarget(markTargetState, { maxDistance: 520 })?.enemy.id, 50, 'marked hostiles should win otherwise equivalent acquisition scoring');
+
+const threatTargetState = prepareAcquisitionState();
+const quietTarget = threatTargetState.enemies[0]!;
+const telegraphTarget = threatTargetState.enemies[1]!;
+Object.assign(quietTarget, { active: true, id: 60, x: 1240, y: 460, role: 'suppressor' as const });
+Object.assign(telegraphTarget, { active: true, id: 70, x: 1240, y: 540, role: 'suppressor' as const, telegraph: 0.8 });
+assert.equal(acquireCombatTarget(threatTargetState, { maxDistance: 520 })?.enemy.id, 70, 'an actively telegraphing threat should outrank an otherwise equivalent idle hostile');
+
+const bossTargetState = prepareAcquisitionState();
+bossTargetState.bossActive = true;
+const standardTarget = bossTargetState.enemies[0]!;
+const bossTargetPriority = bossTargetState.enemies[1]!;
+Object.assign(standardTarget, { active: true, id: 80, x: 1240, y: 460, role: 'suppressor' as const });
+Object.assign(bossTargetPriority, { active: true, id: 90, x: 1240, y: 540, role: 'boss' as const });
+assert.equal(acquireCombatTarget(bossTargetState, { maxDistance: 520 })?.enemy.id, 90, 'an active boss should receive the authored acquisition priority bonus');
+
+const deterministicTargetState = prepareAcquisitionState();
+const deterministicHigh = deterministicTargetState.enemies[0]!;
+const deterministicLow = deterministicTargetState.enemies[1]!;
+Object.assign(deterministicHigh, { active: true, id: 120, x: 1240, y: 460, role: 'suppressor' as const });
+Object.assign(deterministicLow, { active: true, id: 110, x: 1240, y: 540, role: 'suppressor' as const });
+assert.equal(acquireCombatTarget(deterministicTargetState, { maxDistance: 520 })?.enemy.id, 110, 'equal-score acquisition must use stable enemy id as the final tie-breaker');
+deterministicTargetState.enemies.reverse();
+assert.equal(acquireCombatTarget(deterministicTargetState, { maxDistance: 520 })?.enemy.id, 110, 'target resolution must not depend on enemy array order');
+
+const acquiredFireState = prepareAcquisitionState();
+const acquiredFireTarget = acquiredFireState.enemies[0]!;
+Object.assign(acquiredFireTarget, { active: true, x: 1240, y: 500 });
+acquiredFireState.player.aim = { x: -1, y: 0 };
+assert.equal(triggerFire(acquiredFireState, 'acquire'), true, 'assisted FIRE should execute after target acquisition');
+assert.ok(acquiredFireState.player.aim.x > 0.99, 'assisted FIRE must focus the selected hostile before spawning the shot');
+assert.ok(acquiredFireState.projectiles.some(projectile => projectile.active && projectile.owner === 'player' && projectile.vx > 0), 'assisted FIRE projectile should travel toward the acquired hostile');
+
+const manualFireState = prepareAcquisitionState();
+const manualFireTarget = manualFireState.enemies[0]!;
+Object.assign(manualFireTarget, { active: true, x: 1240, y: 500 });
+manualFireState.player.aim = { x: -1, y: 0 };
+assert.equal(triggerFire(manualFireState, 'manual'), true, 'manual FIRE should remain valid without acquisition');
+assert.ok(manualFireState.player.aim.x < -0.99, 'manual FIRE must preserve explicit player aim');
+assert.ok(manualFireState.projectiles.some(projectile => projectile.active && projectile.owner === 'player' && projectile.vx < 0), 'manual FIRE projectile should preserve the explicit firing vector');
+
+const acquiredSkillState = prepareAcquisitionState();
+const acquiredSkillTarget = acquiredSkillState.enemies[0]!;
+Object.assign(acquiredSkillTarget, { active: true, x: 1240, y: 500 });
+acquiredSkillState.player.aim = { x: -1, y: 0 };
+assert.equal(triggerAbility(acquiredSkillState, 1, 'acquire'), true, 'targeted skills should be able to acquire before execution');
+assert.ok(acquiredSkillTarget.statuses.marked > 0, 'Sensor Spike should apply to the newly acquired hostile even when the previous aim vector pointed away');
+assert.ok(acquiredSkillState.player.aim.x > 0.99, 'targeted skill execution should focus the selected hostile');
+
+const vanguardExceptionProfile = createDefaultProfile();
+vanguardExceptionProfile.operatorClass = 'vanguard';
+vanguardExceptionProfile.classSelectionComplete = true;
+const vanguardExceptionState = createSimulation(deriveCombatBuild(vanguardExceptionProfile));
+for (const enemy of vanguardExceptionState.enemies) enemy.active = false;
+const vanguardExceptionTarget = vanguardExceptionState.enemies[0]!;
+Object.assign(vanguardExceptionTarget, { active: true, dead: false, x: vanguardExceptionState.player.x + 180, y: vanguardExceptionState.player.y });
+vanguardExceptionState.player.aim = { x: -1, y: 0 };
+assert.equal(triggerAbility(vanguardExceptionState, 0, 'acquire'), true, 'mobility skills should remain executable while acquisition is enabled');
+assert.ok(vanguardExceptionState.player.aim.x < -0.99 && vanguardExceptionState.player.vx < 0, 'Breach Rush must keep explicit directional aim instead of acquiring a hostile');
+
+const guardExceptionState = createSimulation(deriveCombatBuild(vanguardExceptionProfile));
+for (const enemy of guardExceptionState.enemies) enemy.active = false;
+const guardExceptionTarget = guardExceptionState.enemies[0]!;
+Object.assign(guardExceptionTarget, { active: true, dead: false, x: guardExceptionState.player.x + 180, y: guardExceptionState.player.y });
+guardExceptionState.player.aim = { x: -1, y: 0 };
+assert.equal(triggerAbility(guardExceptionState, 2, 'acquire'), true, 'self-centered skills should remain executable while acquisition is enabled');
+assert.ok(guardExceptionState.player.aim.x < -0.99, 'Bulwark Pulse must not steal aim from the player');
+
+const systemsExceptionProfile = createDefaultProfile();
+systemsExceptionProfile.operatorClass = 'systems';
+systemsExceptionProfile.classSelectionComplete = true;
+const systemsExceptionState = createSimulation(deriveCombatBuild(systemsExceptionProfile));
+for (const enemy of systemsExceptionState.enemies) enemy.active = false;
+const systemsExceptionTarget = systemsExceptionState.enemies[0]!;
+Object.assign(systemsExceptionTarget, { active: true, dead: false, x: systemsExceptionState.player.x + 180, y: systemsExceptionState.player.y });
+systemsExceptionState.player.aim = { x: -1, y: 0 };
+assert.equal(triggerAbility(systemsExceptionState, 0, 'acquire'), true, 'ground/formation skills should remain executable while acquisition is enabled');
+assert.ok(systemsExceptionState.player.aim.x < -0.99, 'Polarity Well must preserve its explicit projected direction instead of snapping to a hostile');
 
 const damageNumberState = createSimulation();
 for (const enemy of damageNumberState.enemies) enemy.active = false;
