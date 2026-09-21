@@ -1,5 +1,6 @@
 import { protocolDefinition, protocolRewardValue, type EnemyProtocolId } from './eliteProtocols';
 import type { CombatObject, Enemy, SimState, Vec2 } from './sim';
+import { mutationHazardCadenceScale } from './t9Mutations';
 
 const clamp = (value: number, minimum: number, maximum: number) => Math.max(minimum, Math.min(maximum, value));
 
@@ -92,7 +93,8 @@ function processWindup(state: SimState, enemy: Enemy, dt: number) {
 
 export function stepEnemyProtocols(state: SimState, enemy: Enemy, dt: number, distance: number, toward: Vec2, pressure: number) {
   enemy.protocolPulse = Math.max(0, enemy.protocolPulse - dt);
-  for (const protocol of enemy.protocols) protocol.cooldown = Math.max(0, protocol.cooldown - dt);
+  const mutationCadence = mutationHazardCadenceScale(enemy);
+  for (const protocol of enemy.protocols) protocol.cooldown = Math.max(0, protocol.cooldown - dt * mutationCadence);
   if (processWindup(state, enemy, dt) || enemy.statuses.disrupted > 0) return;
 
   for (const protocol of enemy.protocols) {
