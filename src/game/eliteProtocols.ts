@@ -283,7 +283,7 @@ export function enhancedProtocolVariantForecastForContract(contract: Contract) {
   const directiveBias = (contract.directiveProtocolBias ?? []).filter(id => byId.has(id as EnemyProtocolId)) as EnemyProtocolId[];
   const objectiveAdds: EnemyProtocolId[] = contract.objectiveMode === 'machinery-recovery' || contract.objectiveMode === 'deep-salvage' ? ['salvageInterdictor', 'recoveryDenial'] : [];
   const candidates = [...directiveBias, ...(locationBias[contract.location] ?? []), ...objectiveAdds].filter((id, index, all) => all.indexOf(id) === index);
-  const names: string[] = [];
+  const names: EnhancedProtocolVariantId[] = [];
   for (const id of candidates) {
     const protocol = protocolDefinition(id);
     if (!protocol.enhanceable) continue;
