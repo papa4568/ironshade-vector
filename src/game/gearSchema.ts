@@ -30,6 +30,7 @@ export type GearBaseDefinition = {
 
 export type GearAffixGrade = {
   grade: ModifierGrade;
+  minimumRecoveryLevel: number;
   stats: Partial<Record<GearStatId, number>>;
   tradeoffs?: Partial<Record<GearStatId, number>>;
 };
@@ -41,6 +42,8 @@ export type GearAffixDefinition = {
   group: string;
   allowedSlots: EquipmentSlot[];
   minimumRecoveryLevel: number;
+  weight: number;
+  conflicts: AffixId[];
   buildTags: GearBuildTag[];
   grades: GearAffixGrade[];
   mechanicalHook?: string;
