@@ -55,6 +55,9 @@
     grid-template-columns: 1fr;
   }
 }
+@media (max-width: 620px) {
+  .gear-identity-grid { grid-template-columns: 1fr; }
+}
 
 .loadout-heading {
   display: flex;
@@ -344,7 +347,7 @@
     position: sticky;
     z-index: 24;
     top: 49px;
-    grid-template-columns: minmax(190px, 1fr) 170px;
+    grid-template-columns: minmax(170px, 1fr) 145px 165px auto;
     gap: 5px;
     margin-bottom: 6px;
     padding: 5px 0;
@@ -795,6 +798,75 @@
   font-size: 11px;
   line-height: 1.5;
 }
+.gear-identity-grid {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 7px;
+}
+.gear-identity-grid > div {
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid #2c3e39;
+  border-radius: 10px;
+  background: rgba(7,14,13,.82);
+}
+.gear-identity-grid small,
+.gear-identity-grid b,
+.gear-identity-grid span { display: block; }
+.gear-identity-grid small {
+  color: #748981;
+  font: 900 7px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .11em;
+}
+.gear-identity-grid b {
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+  color: #c9d6d1;
+  font-size: 10px;
+}
+.gear-identity-grid span {
+  margin-top: 4px;
+  color: #82958e;
+  font-size: 8px;
+  line-height: 1.4;
+}
+.gear-identity-grid .compatible {
+  border-color: rgba(100,170,133,.54);
+  background: rgba(25,67,46,.18);
+}
+.gear-identity-grid .compatible b { color: #91d2aa; }
+.gear-identity-grid .locked {
+  border-color: rgba(175,108,82,.58);
+  background: rgba(91,43,29,.18);
+}
+.gear-identity-grid .locked b { color: #e1a28c; }
+.build-change-panel {
+  padding: 10px 11px;
+  border: 1px solid color-mix(in srgb,var(--gear-rarity,#6d8b82) 58%,#354640);
+  border-radius: 11px;
+  background: linear-gradient(145deg,var(--gear-rarity-wash,rgba(32,48,44,.18)),rgba(8,15,14,.92));
+}
+.build-change-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.build-change-panel header small,
+.build-change-panel header b {
+  color: var(--gear-rarity,#aebdb8);
+  font: 900 7px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .1em;
+}
+.build-change-panel > div {
+  display: grid;
+  gap: 3px;
+  padding: 7px 0;
+  border-top: 1px solid rgba(81,103,96,.22);
+}
+.build-change-panel > div b { color: #cdd9d5; font-size: 8px; letter-spacing: .05em; }
+.build-change-panel > div span { color: #93a59f; font-size: 8px; line-height: 1.45; }
 .loadout-impact { padding: 11px; }
 .loadout-impact-heading { margin-bottom: 8px; }
 .loadout-impact-heading > div small,
