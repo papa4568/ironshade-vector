@@ -17,6 +17,7 @@ import { advanceDirectivesAfterContract, preparedDirectiveContract, syncDirectiv
 import type { Telemetry } from './game/sim';
 import type { GroundLootReceipt } from './game/fieldLoot';
 import { loadGameState, saveGameState } from './game/gamePersistence';
+import { rarityDefinition, rarityDisplayLabel } from './game/rarity';
 import ClassSelectScreen from './components/ClassSelectScreen';
 
 const loadArmory = () => import('./components/Armory');
@@ -35,12 +36,6 @@ function SurfaceLoader({ screen }: { screen: Screen }) {
 }
 type Debrief = { runId: number; contract: Contract; campaignReward: CampaignReward; lootReward: VictoryReward; uplinkStatus: UplinkStatus; uplinkError: string | null; storyNote: string | null; chapterNote: string | null; postKhepriNote: string | null; interdictionNote: string | null; parallaxNote: string | null; escalationNote: string | null; directiveNote: string | null; protocolValue: number; expeditionProgress?: ExpeditionProgress };
 
-function debriefRarityCue(rarity: VictoryReward['loot'][number]['rarity']) {
-  if (rarity === 'Singular') return 'RULE-CHANGING';
-  if (rarity === 'Prototype') return 'HIGH-END';
-  if (rarity === 'Refined') return 'UPGRADED';
-  return 'BASELINE';
-}
 function debriefItemEffect(item: VictoryReward['loot'][number]) {
   if (item.singularEffect) return item.singularEffect;
   const mechanical = item.modifiers.find(modifier => modifier.mechanical);
@@ -122,7 +117,7 @@ function DebriefScreen({ result, onShip, onBuild, onRepeat, onDiscard }: { resul
         <div className={`uplink-note ${result.uplinkStatus}`}><b>{uplinkCopy[0]}</b><span>{uplinkCopy[1]}</span></div>
         {newRecoveryCount > 0 && <section className="recovery-review" aria-label="Recovered equipment review">
           <header className="recovery-review-heading"><div><small>RECOVERED EQUIPMENT // REVIEW</small><b>Keep what matters. Discard what does not.</b></div><span>{keptRecoveryCount} kept · {discardedIds.length} discarded</span></header>
-          <div className="recovery-review-grid">{result.lootReward.loot.map(item => { const discarded = discardedIds.includes(item.id); const confirming = confirmDiscardId === item.id; return <article key={item.id} className={`recovery-review-card quality-${item.recoveryQuality ?? 0} rarity-${item.rarity.toLowerCase()} ${discarded ? 'discarded' : ''}`}><div className="recovery-review-copy"><div className="recovery-review-meta"><small>{item.rarity.toUpperCase()} · {debriefRarityCue(item.rarity)} · {item.slot.toUpperCase()} · EQUIP LV {item.levelRequirement}</small><strong>{discarded ? 'DISCARDED' : 'KEPT IN STORAGE'}</strong></div><h3>{item.name}</h3><p>{debriefItemEffect(item)}</p></div><div className="recovery-review-actions">{confirming && !discarded && <button onClick={() => setConfirmDiscardId(null)}>Keep</button>}<button className={`danger ${confirming ? 'confirm' : ''}`} disabled={discarded} onClick={() => { if (!confirming) { setConfirmDiscardId(item.id); return; } onDiscard(item.id); setDiscardedIds(current => current.includes(item.id) ? current : [...current, item.id]); setConfirmDiscardId(null); }}>{discarded ? 'Discarded' : confirming ? 'Confirm discard' : 'Discard'}</button></div></article>; })}</div>
+          <div className="recovery-review-grid">{result.lootReward.loot.map(item => { const discarded = discardedIds.includes(item.id); const confirming = confirmDiscardId === item.id; return <article key={item.id} className={`recovery-review-card quality-${item.recoveryQuality ?? 0} rarity-${item.rarity.toLowerCase()} ${discarded ? 'discarded' : ''}`}><div className="recovery-review-copy"><div className="recovery-review-meta"><small aria-label={rarityDefinition(item.rarity).accessibleLabel}><span className="rarity-shape" aria-hidden="true" style={{ color: rarityDefinition(item.rarity).colorHex }}>{rarityDefinition(item.rarity).icon}</span>{rarityDisplayLabel(item.rarity)} · {item.slot.toUpperCase()} · EQUIP LV {item.levelRequirement}</small><strong>{discarded ? 'DISCARDED' : 'KEPT IN STORAGE'}</strong></div><h3>{item.name}</h3><p>{debriefItemEffect(item)}</p></div><div className="recovery-review-actions">{confirming && !discarded && <button onClick={() => setConfirmDiscardId(null)}>Keep</button>}<button className={`danger ${confirming ? 'confirm' : ''}`} disabled={discarded} onClick={() => { if (!confirming) { setConfirmDiscardId(item.id); return; } onDiscard(item.id); setDiscardedIds(current => current.includes(item.id) ? current : [...current, item.id]); setConfirmDiscardId(null); }}>{discarded ? 'Discarded' : confirming ? 'Confirm discard' : 'Discard'}</button></div></article>; })}</div>
         </section>}
         {nextActions.length > 0 && <div className="debrief-next"><small>NEXT ON QUIET SIGNAL</small>{nextActions.map(action => <span key={action}>{action}</span>)}</div>}
         {result.campaignReward.anomalyRecovered && <div className="anomaly-note"><b>QUARANTINED TRACE RECOVERED</b><span>The sample is physically stable but its non-reflective lattice does not match registered human industrial geometry. It has been isolated rather than integrated into normal equipment.</span></div>}
