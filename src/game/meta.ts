@@ -186,8 +186,10 @@ const chaseCatalog: SingularTemplate[] = [
 const directiveChaseIds = new Set(['sixth-vector-m12', 'backstep-kestrel-b9', 'cold-doublet-r7', 'falling-star-harness', 'bloom-vector-rig', 'cascade-sight-link']);
 const directiveChaseCatalog = chaseCatalog.filter(item => directiveChaseIds.has(item.baseId));
 
-export function directiveSingularNames(tier: number) {
-  return tier >= 9 ? directiveChaseCatalog.map(item => item.name) : [];
+export function directiveSingularNames(tier: number, profile?: Pick<PlayerProfile, 'operatorClass' | 'specialization' | 'allocatedNodes'>) {
+  if (tier < 9) return [];
+  const pool = profile ? directiveChaseCatalog.filter(item => isEquipmentSlotClassCompatible(profile, item.slot)) : directiveChaseCatalog;
+  return pool.map(item => item.name);
 }
 
 export function directiveChaseSingularChance(tier: number, deep: boolean) {
@@ -241,9 +243,9 @@ function makeSingularItem(template: SingularTemplate, prefix: string, index: num
   };
 }
 
-function makeBossSingular(deepTarget: string, index: number, level: number, random: () => number, recoveryLevel: number, recoveryQuality: RecoveryQualityGrade, recoverySource: string, frameOperatorLevel = level): Item | null {
-  const pool = bossSingularPools[deepTarget];
-  if (!pool?.length) return null;
+function makeBossSingular(profile: PlayerProfile, deepTarget: string, index: number, level: number, random: () => number, recoveryLevel: number, recoveryQuality: RecoveryQualityGrade, recoverySource: string, frameOperatorLevel = level): Item | null {
+  const pool = (bossSingularPools[deepTarget] ?? []).filter(item => isEquipmentSlotClassCompatible(profile, item.slot));
+  if (!pool.length) return null;
   return makeSingularItem(pool[Math.floor(random() * pool.length)], 'boss', index, level, random, recoveryLevel, recoveryQuality, recoverySource, frameOperatorLevel);
 }
 
@@ -253,15 +255,16 @@ function locationPool(location: string, operatorLevel = 16) {
   return chaseCatalog.filter(item => ids.has(item.baseId) && !directiveChaseIds.has(item.baseId) && (operatorLevel >= 15 || !level15ChaseIds.has(item.baseId)));
 }
 
-function makeLocationSingular(location: string, index: number, level: number, random: () => number, recoveryLevel: number, recoveryQuality: RecoveryQualityGrade, recoverySource: string, sourceOperatorLevel = level): Item | null {
-  const pool = locationPool(location, sourceOperatorLevel);
+function makeLocationSingular(profile: PlayerProfile, location: string, index: number, level: number, random: () => number, recoveryLevel: number, recoveryQuality: RecoveryQualityGrade, recoverySource: string, sourceOperatorLevel = level): Item | null {
+  const pool = locationPool(location, sourceOperatorLevel).filter(item => isEquipmentSlotClassCompatible(profile, item.slot));
   if (!pool.length) return null;
   return makeSingularItem(pool[Math.floor(random() * pool.length)], 'chase', index, level, random, recoveryLevel, recoveryQuality, recoverySource, sourceOperatorLevel);
 }
 
-function makeDirectiveSingular(tier: number, index: number, level: number, random: () => number, recoveryLevel: number, recoveryQuality: RecoveryQualityGrade, recoverySource: string, sourceOperatorLevel = level): Item | null {
-  if (tier < 9 || !directiveChaseCatalog.length) return null;
-  return makeSingularItem(directiveChaseCatalog[Math.floor(random() * directiveChaseCatalog.length)], 'directive-chase', index, level, random, recoveryLevel, recoveryQuality, recoverySource, sourceOperatorLevel);
+function makeDirectiveSingular(profile: PlayerProfile, tier: number, index: number, level: number, random: () => number, recoveryLevel: number, recoveryQuality: RecoveryQualityGrade, recoverySource: string, sourceOperatorLevel = level): Item | null {
+  const pool = directiveChaseCatalog.filter(item => isEquipmentSlotClassCompatible(profile, item.slot));
+  if (tier < 9 || !pool.length) return null;
+  return makeSingularItem(pool[Math.floor(random() * pool.length)], 'directive-chase', index, level, random, recoveryLevel, recoveryQuality, recoverySource, sourceOperatorLevel);
 }
 
 export function bossSingularNames(deepTarget: string) { return (bossSingularPools[deepTarget] ?? []).map(item => item.name); }
@@ -466,6 +469,12 @@ const weaponSlots: WeaponId[] = ['carbine', 'breacher', 'rail'];
 function isWeaponSlot(slot: EquipmentSlot): slot is WeaponId { return weaponSlots.includes(slot as WeaponId); }
 export function activeWeaponFamilyForProfile(profile: Pick<PlayerProfile, 'operatorClass' | 'specialization' | 'allocatedNodes'>): WeaponId {
   return operatorWeaponFamilyForClass(operatorClassForProfile(profile));
+}
+export function isEquipmentSlotClassCompatible(profile: Pick<PlayerProfile, 'operatorClass' | 'specialization' | 'allocatedNodes'>, slot: EquipmentSlot): boolean {
+  return !isWeaponSlot(slot) || slot === activeWeaponFamilyForProfile(profile);
+}
+export function isItemClassCompatible(profile: Pick<PlayerProfile, 'operatorClass' | 'specialization' | 'allocatedNodes'>, item: Pick<Item, 'slot'>): boolean {
+  return isEquipmentSlotClassCompatible(profile, item.slot);
 }
 
 export function normalizeClassArmament(profile: PlayerProfile): PlayerProfile {
@@ -730,12 +739,12 @@ export const operatorClassOnboardingRecovery: Record<OperatorClassId, [ClassOnbo
     { slot: 'suit', name: 'Bulkhead Pressure Skin', affixes: ['vacuumSeal', 'capacitorRecycler'] },
   ],
   vector: [
-    { slot: 'carbine', name: 'Slipstream M-7 Driver', affixes: ['hypervelocity', 'countermass'] },
+    { slot: 'rail', name: 'Needleline Survey Rails', affixes: ['hypervelocity', 'markShear'] },
     { slot: 'suit', name: 'Countermass EVA Harness', affixes: ['servoWeave', 'dodgeVent'] },
   ],
   systems: [
+    { slot: 'carbine', name: 'Relay M-7 Driver', affixes: ['extendedFeed', 'magRedirect'] },
     { slot: 'rig', name: 'Closed-Loop Thermal Rig', affixes: ['cryoloop', 'capacitorRecycler'] },
-    { slot: 'implant', name: 'Relay Cognition Node', affixes: ['arcDrone', 'magRedirect'] },
   ],
 };
 
@@ -761,18 +770,19 @@ export function awardVictory(profile: PlayerProfile, telemetry: Telemetry): Vict
       makeClassOnboardingRecoveryItem(profile, 1, nextLevel, random, 4, quality, 'Quiet Signal training recovery'),
     ];
   } else {
-    const slots: EquipmentSlot[] = ['carbine', 'breacher', 'rail', 'suit', 'rig', 'implant'];
-    const first = slots[Math.floor(random() * slots.length)];
-    let second = slots[Math.floor(random() * slots.length)];
-    if (second === first) second = slots[(slots.indexOf(first) + 2) % slots.length];
-    loot = [makeItem(first, 0, nextLevel, random, [], 4, quality, 'Legacy victory recovery'), makeItem(second, 1, nextLevel, random, [], 4, quality, 'Legacy victory recovery')];
+    const slots = chooseRecoverySlots(profile, 2, random);
+    loot = slots.map((slot, index) => makeItem(slot, index, nextLevel, random, [], 4, quality, 'Legacy victory recovery'));
   }
   const profileNext: PlayerProfile = { ...profile, xp: nextXp, level: nextLevel, progressionPoints: profile.progressionPoints + levelsGained, runsCompleted: profile.runsCompleted + 1, inventory: [...profile.inventory, ...loot] };
   return { profile: profileNext, xpGained, levelsGained, loot };
 }
-const recoverySlotOrder: EquipmentSlot[] = ['carbine', 'breacher', 'rail', 'suit', 'rig', 'implant'];
+const universalRecoverySlotOrder: EquipmentSlot[] = ['suit', 'rig', 'implant'];
+function recoverySlotOrderForProfile(profile: PlayerProfile): EquipmentSlot[] {
+  return [activeWeaponFamilyForProfile(profile), ...universalRecoverySlotOrder];
+}
 
 function chooseRecoverySlots(profile: PlayerProfile, count: number, random: () => number) {
+  const recoverySlotOrder = recoverySlotOrderForProfile(profile);
   const counts = Object.fromEntries(
     recoverySlotOrder.map(slot => [slot, profile.inventory.filter(item => item.slot === slot).length]),
   ) as Record<EquipmentSlot, number>;
@@ -826,22 +836,22 @@ export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep
     const recoveryLevel = Math.max(1, Math.min(maxRecoveryLevel, drop.recoveryLevel));
     const recoverySource = `Ground drop // ${drop.enemyLabel}`;
     if (drop.rarity === 'Singular') {
-      if (drop.source === 'boss') return makeBossSingular(source.deepTarget ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeLocationSingular(source.location ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeCampaignItem('rail', 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, 'Prototype');
-      return makeLocationSingular(source.location ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeCampaignItem(recoverySlotOrder[(drop.enemyId + index) % recoverySlotOrder.length], 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, 'Prototype');
+      if (drop.source === 'boss') return makeBossSingular(profile, source.deepTarget ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeLocationSingular(profile, source.location ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeCampaignItem(activeWeaponFamilyForProfile(profile), 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, 'Prototype');
+      return makeLocationSingular(profile, source.location ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeCampaignItem(recoverySlotOrderForProfile(profile)[(drop.enemyId + index) % recoverySlotOrderForProfile(profile).length], 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, 'Prototype');
     }
-    const slot = fieldSlots[fieldSlotIndex++] ?? recoverySlotOrder[(drop.enemyId + index) % recoverySlotOrder.length];
+    const slot = fieldSlots[fieldSlotIndex++] ?? recoverySlotOrderForProfile(profile)[(drop.enemyId + index) % recoverySlotOrderForProfile(profile).length];
     const visibleRarity = drop.rarity as Exclude<Rarity, 'Singular'>;
     return makeCampaignItem(slot, 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, visibleRarity);
   });
-  const bossItem = actualDepth && !fieldMode ? makeBossSingular(source.deepTarget ?? '', 0, nextLevel, random, bossRecoveryLevel, rollQuality(true, 4), `Boss pool // ${source.deepTarget ?? 'deep target'}`, profile.level) : null;
+  const bossItem = actualDepth && !fieldMode ? makeBossSingular(profile, source.deepTarget ?? '', 0, nextLevel, random, bossRecoveryLevel, rollQuality(true, 4), `Boss pool // ${source.deepTarget ?? 'deep target'}`, profile.level) : null;
   const fieldHasSingular = fieldItems.some(item => item.rarity === 'Singular');
   const directiveTier = source.directiveTier ?? 0;
   const directiveChance = directiveChaseSingularChance(directiveTier, actualDepth);
   const directiveItem = profile.runsCompleted > 0 && !fieldHasSingular && directiveChance > 0 && random() < directiveChance
-    ? makeDirectiveSingular(directiveTier, bossItem ? 1 : 0, nextLevel, random, actualDepth ? bossRecoveryLevel : locationRecoveryLevel, rollQuality(actualDepth, 4), `Directive chase // T${directiveTier}`, profile.level)
+    ? makeDirectiveSingular(profile, directiveTier, bossItem ? 1 : 0, nextLevel, random, actualDepth ? bossRecoveryLevel : locationRecoveryLevel, rollQuality(actualDepth, 4), `Directive chase // T${directiveTier}`, profile.level)
     : null;
   const locationChance = fieldHasSingular || directiveItem ? 0 : Math.min(0.24, (deep ? (bossItem ? 0.06 : 0.08) : 0.02) + Math.max(0, source.directiveSingularChanceBonus ?? 0));
-  const locationItem = profile.runsCompleted > 0 && random() < locationChance ? makeLocationSingular(source.location ?? '', bossItem ? 1 : 0, nextLevel, random, locationRecoveryLevel, rollQuality(actualDepth, 3), `Location chase // ${locationName}`, profile.level) : null;
+  const locationItem = profile.runsCompleted > 0 && random() < locationChance ? makeLocationSingular(profile, source.location ?? '', bossItem ? 1 : 0, nextLevel, random, locationRecoveryLevel, rollQuality(actualDepth, 3), `Location chase // ${locationName}`, profile.level) : null;
   let loot: Item[] = [];
 
   if (profile.runsCompleted === 0) {
