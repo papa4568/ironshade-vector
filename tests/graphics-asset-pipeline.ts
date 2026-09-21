@@ -474,7 +474,7 @@ assert(rendererSource.includes('this.proceduralRefineryVisuals.forEach'), 'proce
 assert(rendererSource.includes('playerReadabilityLight') && rendererSource.includes('nearestEnemyDistanceSq') && rendererSource.includes('refineryPracticalLights'), 'lighting pass must preserve player/enemy contact light and bounded practical lights');
 assert(rendererSource.includes('cloneRefineryMaterial') && rendererSource.includes("'pbr-bounded+emissive+decals:safety+grime+contact-darkening'"), 'refinery materials must use bounded PBR tuning plus controlled safety/grime/contact detail');
 assert(rendererSource.includes("'steam+sparse-sparks+debris+breach+objective'"), 'refinery VFX telemetry must cover atmosphere, impacts, debris, breaches, and objectives');
-assert(rendererSource.includes('impactSparkPool') && rendererSource.includes("'shape-coded+surface-impacts+ability-pulses'"), 'combat VFX must keep shape-coded impact/ability language');
+assert(rendererSource.includes('impactSparkPool') && rendererSource.includes("'shape-coded+surface-impacts+ability-pulses+class-capstones'"), 'combat VFX must keep shape-coded impact/ability language and advertise class-capstone cues');
 assert(rendererSource.includes("dataset.effectsMode = reducedEffects ? 'reduced' : 'full'"), 'reduced-effects mode must remain explicit for runtime QA');
 assert(rendererSource.includes("'shape+silhouette+luminance'"), 'gameplay-significant visual language must not rely on hue alone');
 assert(rendererSource.includes("'objective-chevron'"), 'objective effects must retain a shape-coded high-contrast beacon');

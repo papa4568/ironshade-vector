@@ -4844,10 +4844,12 @@ export class ThreeCombatRenderer {
     let sparkCount = 0;
     let impactOrdinal = 0;
     let lastImpactLanguage = '';
+    let lastCapstoneFx = '';
     const reducedEffects = detailLevel < 0.58 || vfxDensity < 0.55;
     for (const effect of state.effects) {
       if (!effect.active) continue;
-      let color = effect.kind === 'arc' ? 0x84caeb : effect.kind === 'breach' ? 0xf07d4d : effect.kind === 'mark' ? 0xd0e07a : effect.kind === 'pulse' ? 0x9debd8 : 0xc2ddd3;
+      let color = effect.kind === 'vanguard' ? 0xbd8a64 : effect.kind === 'vector' ? 0x74a6c7 : effect.kind === 'systems' ? 0x9b87bd : effect.kind === 'arc' ? 0x84caeb : effect.kind === 'breach' ? 0xf07d4d : effect.kind === 'mark' ? 0xd0e07a : effect.kind === 'pulse' ? 0x9debd8 : 0xc2ddd3;
+      if (effect.kind === 'vanguard' || effect.kind === 'vector' || effect.kind === 'systems') lastCapstoneFx = effect.kind;
       let impactScale = 1;
       if (effect.kind === 'impact') {
         let nearbyEnemy: Enemy | null = null;
@@ -4906,7 +4908,8 @@ export class ThreeCombatRenderer {
       const baseScale = Math.max(0.18, scaled(effect.radius) * (0.42 + progress * 0.85) * impactScale);
       ring.visible = true;
       ring.material.color.setHex(color);
-      ring.material.opacity = Math.max(0, (effect.kind === 'mark' ? 0.58 : 0.76) * (1 - progress) * Math.max(0.72, transparencyScale));
+      const capstoneOpacity = effect.kind === 'vanguard' || effect.kind === 'vector' || effect.kind === 'systems' ? 0.9 : effect.kind === 'mark' ? 0.58 : 0.76;
+      ring.material.opacity = Math.max(0, capstoneOpacity * (1 - progress) * Math.max(0.72, transparencyScale));
       ring.position.set(scaled(effect.x), 0.12 + progress * 0.35, scaled(effect.y));
       if (effect.kind === 'arc') {
         ring.scale.set(baseScale * 0.72, baseScale, baseScale * 1.28);
@@ -4917,6 +4920,16 @@ export class ThreeCombatRenderer {
       } else if (effect.kind === 'pulse') {
         ring.scale.set(baseScale * 1.2, baseScale, baseScale * 1.2);
         ring.rotation.z = progress * Math.PI * 0.5;
+      } else if (effect.kind === 'vanguard') {
+        ring.scale.set(baseScale * 1.38, baseScale * 0.82, baseScale * 0.88);
+        ring.rotation.z = progress * Math.PI * 0.18;
+      } else if (effect.kind === 'vector') {
+        ring.scale.set(baseScale * 1.62, baseScale * 0.72, baseScale * 0.58);
+        ring.rotation.z = -0.48 + progress * Math.PI * 0.72;
+      } else if (effect.kind === 'systems') {
+        const meshPulse = 0.86 + Math.sin((state.time + progress) * 18) * 0.12;
+        ring.scale.set(baseScale * meshPulse, baseScale * 1.18, baseScale * meshPulse);
+        ring.rotation.z = state.time * 1.8 + progress * Math.PI;
       } else {
         ring.scale.setScalar(baseScale);
         if (effect.kind === 'impact') ring.rotation.z = state.time * 2.2 + progress * Math.PI;
@@ -4937,8 +4950,9 @@ export class ThreeCombatRenderer {
     for (let index = count; index < this.effectPool.length; index += 1) this.effectPool[index].visible = false;
     for (let index = sparkCount; index < this.impactSparkPool.length; index += 1) this.impactSparkPool[index].visible = false;
     if (lastImpactLanguage) this.renderer.domElement.dataset.impactFx = lastImpactLanguage;
+    this.renderer.domElement.dataset.capstoneFx = lastCapstoneFx || 'idle';
     this.renderer.domElement.dataset.effectsMode = reducedEffects ? 'reduced' : 'full';
-    this.renderer.domElement.dataset.combatVfx = 'shape-coded+surface-impacts+ability-pulses';
+    this.renderer.domElement.dataset.combatVfx = 'shape-coded+surface-impacts+ability-pulses+class-capstones';
   }
 
   private syncBreaches(state: SimState) {
