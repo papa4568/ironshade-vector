@@ -20,6 +20,13 @@ This file is the permanent archive for completed production work. The active exe
   - Verified on PR head `881b25139036a79f9179992cf1ce969e69b27cf4`: Browser E2E `35557209844` passed desktop and mobile-landscape including full regression/production build and browser journey.
   - Verified on merged gameplay source `2feaef5a529fd6f4032bb7074d2cf15302dbbd48`: Browser E2E `35557318517`, Level 15 beta smoke `35557318419`, and Android beta.207 `35557318413` all passed. Artifact `10620214462` contains debug-signed APK SHA-256 `36260887f7d51de83d9fcc77467e582704202248c3c5d73dff1190d7be5c0a88`.
 
+- [x] **P6-C Environmental risk package** — T9–T12 Directives now resolve deterministic high-tier environmental packages that pair two authored Director events inside one overlapping danger window instead of merely increasing event count. Packages are tier/location/objective aware, preserve the four-event high-tier budget, and leave remaining event ecology/group selection intact.
+  - Eight authored package identities cover pressure + grid, breach + shutter, cargo + magnetic swing, gravity + defenses, habitat spin + grid, compressor + arc, solar thermal + machinery runaway, and ice-bore collapse + purge combinations.
+  - Every package carries a disclosed extraction-yield premium (8%–16%) that feeds the real operation settlement multiplier; Directive cards and Tactical Forecast display the package identity, physical risk description, and yield bonus before deployment.
+  - Regression covers pre-T9 lockout, deterministic package selection, exact two-event composition, overlapping schedule timing, both events firing in the shared danger window, reward-multiplier parity, preserved high-tier event budget, and UI disclosure.
+  - Verified on PR head `17fa6836b3746db616c99322c682d8532229bcb1`: Browser E2E `35558132124` passed desktop and mobile-landscape including full regression/production build and browser journeys. The initial CI attempt caught an unused type-only import; it was removed before the verified run.
+  - Verified on merged gameplay source `2ff92ba5bade634e3fbf053cc2ddb13db3816a22`: Browser E2E `35558235262`, Level 15 beta smoke `35558235264`, and Android beta.208 `35558235240` all passed. Artifact `10621705098` contains debug-signed APK SHA-256 `2572bb716ab6ffd375e16635ebf252182743b75ce3a7484061b992cf09ffad8a`.
+
 
 ## P0 — Foundation ✅ COMPLETE
 
