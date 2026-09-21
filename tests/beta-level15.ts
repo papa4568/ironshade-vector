@@ -184,9 +184,11 @@ assert(starterVanguardResonance.count === 2 && starterVanguardResonance.tier ===
 const classProbe = setOperatorClass(profile, 'systems');
 assert(operatorClassForProfile(classProbe.profile) === 'systems', 'Operator class should be freely changeable aboard the ship.');
 assert(classProbe.profile.specialization === null, 'Changing an unspecialized class should keep specialization empty.');
-assert(JSON.stringify(classProbe.profile.equipped) === JSON.stringify(profile.equipped), 'Changing class must never rewrite the equipped loadout.');
+assert(classProbe.profile.equipped.carbine === 'starter-carbine' && classProbe.profile.equipped.breacher === null && classProbe.profile.equipped.rail === null, 'Changing class should swap only the active weapon family to the owned Systems Carbine.');
+assert(classProbe.profile.equipped.suit === profile.equipped.suit && classProbe.profile.equipped.rig === profile.equipped.rig && classProbe.profile.equipped.implant === profile.equipped.implant, 'Changing class must preserve support equipment.');
+assert(classProbe.profile.inventory.length === profile.inventory.length && classProbe.profile.inventory.some(item => item.id === 'starter-breacher'), 'Changing class must preserve stowed weapon inventory instead of deleting the previous armament.');
 const starterSystemsResonance = gearResonanceForProfile(classProbe.profile);
-assert(starterSystemsResonance.count === 2 && starterSystemsResonance.tier === 1, 'Starter Rig + Implant should activate Systems Tier I resonance.');
+assert(starterSystemsResonance.count === 3 && starterSystemsResonance.tier === 1, 'Starter Carbine + Rig + Implant should activate Systems Tier I resonance.');
 const vanguardBuild = deriveCombatBuild(profile);
 const systemsBuild = deriveCombatBuild(classProbe.profile);
 assert(vanguardBuild.player.maxArmorAdd > systemsBuild.player.maxArmorAdd, 'Vanguard class identity should materially favor armor.');
