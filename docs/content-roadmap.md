@@ -134,7 +134,7 @@ Target roughly **6 major tiers per system** with sub-milestones.
 - [ ] **P16-A Measurement** — device tiers + separate CPU/render/GPU/UI/animation/audio/GC budgets
 - [ ] **P16-B Rendering scalability** — dynamic resolution, instancing, texture/material memory, shadow/reflection/effect priority
 - [ ] **P16-C Runtime scalability** — pooling, animation LOD, audio virtualization, asset streaming/preload
-- [ ] **P16-D Boot architecture** — split feature/presentation data; change boot budget only when architecture justifies it
+- [ ] **P16-D Boot architecture** — split feature/presentation data; track boot cost diagnostically without hard bundle/chunk byte-size caps
 - [ ] **P16-E Soak/stress QA** — 30-minute thermal soak, worst-case T12 scene, frame pacing, memory/leak soak
 - [ ] **P16-F Quality modes/device QA** — richer flagship mode, mechanics-preserving performance mode, Android device-tier playthrough
 
