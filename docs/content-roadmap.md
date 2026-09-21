@@ -56,7 +56,7 @@ P7-A/P7-B/P7-C/P7-D/P7-E are archived after merge + verification.
 
 Goal: make equipment answer **“What could I build around this?”** instead of acting like a stack of overlapping gear-score multipliers. Preserve Ironshade's hard-sci-fi identity and existing strong concepts while consolidating them into one data-driven item system.
 
-- [ ] **P8.5-A Gear architecture audit + target schema** — inventory all current power axes and item logic across `meta.ts`, `gearDepth.ts`, `lootQuality.ts`, `rarity.ts`, `reconstruction.ts`, Armory UI, class skills, progression, faction gear, Singulars, combat derivation and tests; define one source of truth for bases, stats, affixes, augments, Singulars and build tags before refactoring
+- [x] **P8.5-A Gear architecture audit + target schema** — archived after merge + verification
 - [ ] **P8.5-B Power-axis consolidation** — Recovery Level becomes item-level eligibility, Modifier Grade becomes affix strength, Equipment Quality affects inherent/base properties only, Recovery Quality primarily influences original drop quality/provenance, and Frame Generation becomes base-frame progression rather than another universal hidden multiplier
 - [ ] **P8.5-C Meaningful base-frame families** — author strategically distinct bases per slot with inherent stats/implicits, allowed pools, tags and tradeoffs; same-slot bases must support different builds and a higher-generation base must not automatically invalidate lower alternatives
 - [ ] **P8.5-D Stat registry + local/global scope + build tags** — centralize stat semantics and scope, define shared Ballistics/Penetration/Armor Break/Precision/Projectile/Recoil/Mobility/Low-G/Thermal/Heat/Venting/Capacitor/Cooldown/Systems/Disruption/Relay/Mark/Pressure/Vacuum/Defense-style tags, and make combat/UI/loot/crafting consume the same definitions
@@ -159,25 +159,21 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P8.5-A — Gear architecture audit + target schema.**
+**Next: P8.5-B — Power-axis consolidation.**
 
-Start **P8.5-A — Gear architecture audit + target schema** before P9/P10 so progression and crafting build on the finalized item model.
+Start **P8.5-B — Power-axis consolidation** so every later Gear 2.0 batch builds on non-overlapping power responsibilities.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.224**
+- Android beta: **0.0.1-beta.227**
 - Package: `app.ironshade.vector`
-- Verified: **P8-F Handling identity complete**
-- Gameplay source: `f7ccfc8f4d877abdacd399da2eaa9e35a0101b57`
-- QA source: `a871520223ad3e71d8f22f2d2636024a353d3e75`
-- Gameplay PR: `#145`
-- Android lifecycle QA PR: `#146`
-- Final PR Browser E2E: `35621771872`
-- Merged-main Browser E2E: `35627586557`
-- Level 15 beta smoke: `35627586625`
-- Android beta.224: `35627586668`
-- APK artifact: `10652799934`
-- APK SHA-256: `f6afeb0ae0add10d9dfab2090eb8ba8b595ed041254b3837adc2bbfb6279223c`
+- Verified: **P8.5-A Gear architecture audit + target schema complete**
+- Gameplay source: `19f34c21e48e2677ce2cc95a13522bf02cb9e4cf`
+- Browser E2E: `35638230023`
+- Level 15 beta smoke: `35638229810`
+- Android beta.227: `35638229940`
+- APK artifact: `10657786590`
+- APK SHA-256: `3a85a2554ba17a4986ef01ff18f16208e70fddd80afc01257b0bc380107ec211`
 - Signing: debug-signed beta; permanent signing is P17-A
