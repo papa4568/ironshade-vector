@@ -15,6 +15,8 @@ import { applyEnemyMutations, mutationFireCadenceScale, mutationHazardCadenceSca
 import { mutationForecastForContract, mutationPresentationFor } from '../src/game/t9MutationPresentation';
 import { bossPhaseFireCadenceScale, bossPhaseMutationForecastForContract, bossPhaseMutationMinTier, chooseBossPhaseMutations, type BossPhaseMutationId } from '../src/game/bossPhaseMutations';
 import { commandTargetFireCadenceScale, commandTargetMutationForecastForContract, commandTargetMutationMinTier, chooseCommandTargetMutations } from '../src/game/commandTargetMutations';
+import { createEnvironmentalEventRuntime, getEnvironmentalEventForecast, stepEnvironmentalEvents } from '../src/game/environmentalEvents';
+import { environmentalRiskPackageForContract, environmentalRiskRewardMultiplierForContract } from '../src/game/environmentalRiskPackages';
 
 function exclusiveProtocolCombinationSmoke() {
   const baseContract = generateContracts(createDefaultCampaign())[0]!;
@@ -363,6 +365,50 @@ function commandTargetMutationSmoke() {
   assert.match(directiveSource, /COMMAND PACKAGE \/\//, 'Directive cards should preview command packages before preparation');
 }
 commandTargetMutationSmoke();
+
+function environmentalRiskPackageSmoke() {
+  const baseContract = generateContracts(createDefaultCampaign())[0]!;
+  const base = {
+    ...baseContract,
+    seed: 481516,
+    location: 'orbital-station' as const,
+    objectiveMode: 'gravity-stabilization' as const,
+    environmentalEventSlots: 4,
+    directiveMaterialMultiplier: 1.2,
+  };
+
+  const t8 = { ...base, operationTier: 8, directiveTier: 8 };
+  assert.equal(environmentalRiskPackageForContract(t8), null, 'environment risk packages must remain locked below T9');
+
+  const t9 = { ...base, operationTier: 9, directiveTier: 9 };
+  const risk = environmentalRiskPackageForContract(t9);
+  assert.ok(risk, 'T9 directives should arm one deterministic environmental risk package');
+  assert.deepEqual(environmentalRiskPackageForContract(t9), risk, 'same directive seed and tier must resolve the same environmental risk package');
+  assert.equal(risk!.events.length, 2, 'environmental risk packages should combine exactly two authored Director events');
+  assert.ok(risk!.rewardMultiplier > 1, 'environmental risk packages must carry an explicit extraction-yield premium');
+  assert.equal(environmentalRiskRewardMultiplierForContract(t9), risk!.rewardMultiplier, 'reward scaling must resolve from the same package disclosed before deployment');
+
+  const forecast = getEnvironmentalEventForecast(t9);
+  assert.equal(forecast.length, 4, 'T9 environmental scheduling should preserve the four-event high-tier budget');
+
+  const runtime = createEnvironmentalEventRuntime();
+  const state = createSimulation();
+  stepEnvironmentalEvents(state, runtime, t9, 0.1, 20);
+  assert.ok(runtime.plan, 'environmental event runtime should materialize a deterministic plan');
+  assert.deepEqual(runtime.plan!.slice(0, 2).map(item => item.id), risk!.events, 'risk package events must be the first paired events in the Director plan');
+  assert.ok(runtime.plan![1]!.at - runtime.plan![0]!.at <= 3, 'risk package events should overlap inside one dangerous Director window');
+  assert.ok(risk!.events.every(id => runtime.fired.includes(id)), 'both environmental risk events should execute when their shared window is reached');
+
+  const scaling = operationScalingFor(t9, createDefaultCampaign(), 20);
+  const expectedReward = (1 + (9 - 1) * 0.04) * 1.2 * risk!.rewardMultiplier;
+  assert.ok(Math.abs(scaling.operationRewardMultiplier - expectedReward) < 1e-9, 'operation settlement multiplier must include the disclosed environmental risk premium');
+
+  const hubSource = readFileSync('src/components/ShipHub.tsx', 'utf8');
+  const directiveSource = readFileSync('src/components/DirectivePanel.tsx', 'utf8');
+  assert.match(hubSource, /ENV RISK \/\//, 'Tactical Forecast should disclose the environmental package and yield premium before deployment');
+  assert.match(directiveSource, /ENV RISK \/\//, 'Directive cards should disclose the environmental package and yield premium before preparation');
+}
+environmentalRiskPackageSmoke();
 
 function parallaxPacingTelemetry(): Telemetry {
   return {
