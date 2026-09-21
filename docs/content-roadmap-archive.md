@@ -560,3 +560,12 @@ This file is the permanent archive for completed production work. The active exe
 **P1.18 delivered:** Parallax Debt now has a dedicated LV15–18 phase timeline, evidence bank, route-decision/branch presentation, unresolved-evidence boundary, responsive mobile-landscape treatment, and regression coverage.
 
 Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-finale budget while Chapter 3 closing bosses retain the higher end-of-chapter durability budget.
+
+
+## P8.5 — Gear 2.0 // Build-Defining Itemization
+
+- [x] **P8.5-A Gear architecture audit + target schema** — inventoried the current equipment power axes and ownership across item generation, frame depth, loot quality, rarity, Reconstruction, faction gear, class-skill links, Singular runtime hooks, combat derivation, UI-facing item fields, and regressions. Added `src/game/gearSchema.ts` as the executable target vocabulary for bases, scoped stats, affixes, Augments, Singulars, build tags, and the future V2 item record; added `docs/gear-architecture-audit.md` plus the `test:gear-schema` release gate.
+  - The audit explicitly assigns Recovery Level to eligibility, Modifier Grade to affix strength, Equipment Quality to base/inherent improvement, Recovery Quality to drop provenance/quality bias, Frame Generation to base-frame progression, rarity to explicit-mod budgets, Augments to bounded utility customization, and Singulars to curated rule-changing packages.
+  - Verified on merged main `19f34c21e48e2677ce2cc95a13522bf02cb9e4cf`: Browser E2E `35638230023`, Level 15 beta smoke `35638229810`, and Android beta.227 `35638229940` all passed.
+  - Android artifact `10657786590` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.227`, debug signing, and APK SHA-256 `3a85a2554ba17a4986ef01ff18f16208e70fddd80afc01257b0bc380107ec211`.
+  - **Next: P8.5-B — Power-axis consolidation.**
