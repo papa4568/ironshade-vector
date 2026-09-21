@@ -256,10 +256,10 @@
 
 
 /* DEBRIEF RARITY COLORS */
-.recovery-review-card.rarity-field { --gear-rarity:#b8c4c0; --gear-rarity-border:rgba(149,166,160,.68); --gear-rarity-wash:rgba(87,105,99,.18); }
-.recovery-review-card.rarity-refined { --gear-rarity:#79d3a3; --gear-rarity-border:rgba(90,190,139,.82); --gear-rarity-wash:rgba(35,119,76,.22); }
-.recovery-review-card.rarity-prototype { --gear-rarity:#aebcff; --gear-rarity-border:rgba(116,143,232,.9); --gear-rarity-wash:rgba(54,72,159,.27); }
-.recovery-review-card.rarity-singular { --gear-rarity:#f0b75f; --gear-rarity-border:rgba(232,164,73,.95); --gear-rarity-wash:rgba(143,87,25,.3); }
+.recovery-review-card.rarity-field { --gear-rarity:#c3d0ca; --gear-rarity-border:rgba(195,208,202,.68); --gear-rarity-wash:rgba(87,105,99,.18); }
+.recovery-review-card.rarity-refined { --gear-rarity:#69aee8; --gear-rarity-border:rgba(105,174,232,.82); --gear-rarity-wash:rgba(43,91,132,.24); }
+.recovery-review-card.rarity-prototype { --gear-rarity:#c47ce8; --gear-rarity-border:rgba(196,124,232,.9); --gear-rarity-wash:rgba(103,56,128,.27); }
+.recovery-review-card.rarity-singular { --gear-rarity:#f0a45b; --gear-rarity-border:rgba(240,164,91,.95); --gear-rarity-wash:rgba(143,87,25,.3); }
 .recovery-review-card[class*='rarity-'] { box-shadow: inset 4px 0 0 var(--gear-rarity), inset 0 0 28px var(--gear-rarity-wash); }
 .recovery-review-card[class*='rarity-'] .recovery-review-meta small,
 .recovery-review-card[class*='rarity-'] .recovery-review-copy h3 { color: var(--gear-rarity); }
