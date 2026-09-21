@@ -270,7 +270,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## P6 — T9–T12 Directive Expansion
 
-- [ ] P6.1 Exclusive protocol combinations
+- [x] P6.1 Exclusive protocol combinations
 - [ ] P6.2 Enhanced protocol variants
 - [ ] P6.3 T9+ mutations
 - [ ] P6.4 Boss phase mutations
@@ -317,7 +317,9 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 ## Immediate Queue
 
-P1, P2, P3, **P4 — Megastructure Capstone Pass**, and **P5 — Class Capstones** are complete. Continue in roadmap order with **P6.1 — Exclusive protocol combinations**.
+P1, P2, P3, **P4 — Megastructure Capstone Pass**, and **P5 — Class Capstones** are complete. **P6.1 — Exclusive protocol combinations** is complete. Continue in roadmap order with **P6.2 — Enhanced protocol variants**.
+
+**P6.1 delivered:** T9+ elite packaging now uses seven deterministic, named high-tier combinations instead of only protocol-by-protocol assembly: **Breach Lock**, **Mass Pursuit**, **Fortress Mesh**, **Recovery Lockdown**, **Kill Corridor**, **Arc Blackout**, and **Vacuum Hunt**. Packages obey existing location/objective eligibility and Directive protocol bias, remain atomic under the threat budget, and can intentionally authorize combinations that normal family de-duplication forbids (notably Recovery Lockdown's Salvage Interdictor + Recovery Denial pairing). Contract Tactical Forecast shows legal package names before deployment, combat labels show the compact package identity above the enemy, and deterministic regression covers the T9 gate, package selection, same-family authorization, forecast visibility, and all-or-nothing threat-budget acceptance. PR Browser E2E run `35549802656` passed desktop/mobile-landscape full regression, production build, and player-journey QA. **P6.2 — Enhanced protocol variants is next.**
 
 **P5.11–P5.13 delivered:** the LV16+ class capstones now have distinct world-space combat language instead of sharing generic ability pulses. **Vanguard** capstones use a warm, braced shock-ring cue; **Vector** capstones use an elongated blue vector-sweep cue; **Systems** capstones use a violet rotating mesh pulse. The cues are emitted directly from all nine authored capstone interactions — Void Ram, Breach Cascade, Counterfort, Inertial Dividend, Reference Solution, Redline Needle, Induction Sink, Recursive Bus, and Mesh Reflux — without changing balance values or save data. Deterministic gameplay regression verifies all nine trigger paths, graphics regression locks the class-coded renderer contract and QA telemetry, PR Browser E2E run `35549019565` passed desktop/mobile-landscape full regression, production build, and player-journey QA, merged-main Browser E2E run `35549143093` passed both targets, and Level 15 beta smoke run `35549143109` passed. Android beta.201 run `35549143095` passed web regression/build, package/version/SDK/signature verification, native emulator install/launch/resume smoke, Android touch/runtime QA, and the Chapter 3 two-route touch playthrough; artifact `10617593551` was verified as debug-signed with APK SHA-256 `ab92800ca26af249bcba803b5c3e9b8f465c7c7ed3af4c16c4c121f85971e984`. **P5 is complete; P6.1 — Exclusive protocol combinations is next.**
 
