@@ -1,5 +1,6 @@
 import type { Contract, LocationId, ObjectiveMode } from './campaign';
 import type { SimState } from './sim';
+import { environmentalRiskPackageForContract } from './environmentalRiskPackages';
 
 export type EnvironmentalEventId =
   | 'debris-impact'
@@ -21,7 +22,7 @@ export type EnvironmentalEventId =
   | 'life-support-purge'
   | 'magnetic-load-swing';
 
-type PlannedEvent = { id: EnvironmentalEventId; at: number };
+export type PlannedEvent = { id: EnvironmentalEventId; at: number };
 type GravitySnapshot = { id: string; value: number; forced: number };
 type EnvironmentalEffect =
   | { kind: 'link'; remaining: number; id: string; previousOpen: boolean }
@@ -296,18 +297,38 @@ function appliesToContract(definition: EventDefinition, contract: Contract) {
 function buildPlan(contract: Contract): PlannedEvent[] {
   const desired = Math.max(1, Math.min(4, contract.environmentalEventSlots ?? (contract.megastructure || contract.escalationStage || contract.daily ? 3 : 2)));
   const directiveBias = contract.directiveEventBias ?? [];
+  const riskPackage = environmentalRiskPackageForContract(contract);
   const candidates = environmentalEvents
     .filter(definition => appliesToContract(definition, contract))
     .map((definition, index) => { const rank = directiveBias.indexOf(definition.id); return { definition, score: rank >= 0 ? rank : 100 + hash(contract.seed, index + 11) }; })
     .sort((a, b) => a.score - b.score);
   const selected: EventDefinition[] = [];
   const groups = new Set<string>();
+
+  if (riskPackage) {
+    for (const id of riskPackage.events) {
+      const definition = environmentalEvents.find(candidate => candidate.id === id && appliesToContract(candidate, contract));
+      if (!definition || selected.some(candidate => candidate.id === id)) continue;
+      selected.push(definition);
+      groups.add(definition.group);
+      if (selected.length >= desired) break;
+    }
+  }
+
   for (const candidate of candidates) {
+    if (selected.some(definition => definition.id === candidate.definition.id)) continue;
     if (groups.has(candidate.definition.group)) continue;
     selected.push(candidate.definition);
     groups.add(candidate.definition.group);
     if (selected.length >= desired) break;
   }
+
+  if (riskPackage && selected.length >= 2 && riskPackage.events.every(id => selected.slice(0, 2).some(definition => definition.id === id))) {
+    const offset = hash(contract.seed, 93) % 3;
+    const bases = [8 + offset, 10.5 + offset, 28 + hash(contract.seed, 95) % 4, 42 + hash(contract.seed, 97) % 4];
+    return selected.map((definition, index) => ({ id: definition.id, at: bases[index] ?? 45 }));
+  }
+
   const bases = [8, 19, 32, 45];
   return selected.map((definition, index) => ({ id: definition.id, at: bases[index] + hash(contract.seed, 70 + index) % 4 }));
 }
