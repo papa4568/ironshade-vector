@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { buildMegastructureDebrief, buyConsumable, createDefaultCampaign, generateContracts, getMegastructureStageContract, loadCampaign, saveCampaign } from '../src/game/campaign';
 import { aimAtMobileTarget, applyPlayerDamage, createSimulation, stepSimulation, triggerAbility, triggerConsumable, triggerDodge, triggerFire, weaponConfigs, type Telemetry } from '../src/game/sim';
 import { applyMissionSetup, createDirector, stepMissionDirector } from '../src/game/director';
-import { awardRecovery, buildIdentity, createDefaultProfile, deriveCombatBuild, loadProfile, saveProfile, setAbilityMod, setOperatorClass, systemsCapstoneInteractionFor, vanguardCapstoneInteractionFor, vectorCapstoneInteractionFor } from '../src/game/meta';
+import { awardRecovery, buildIdentity, createDefaultProfile, deriveCombatBuild, loadProfile, materializeModifier, saveProfile, setAbilityMod, setOperatorClass, specializationGearSynergyDefinitions, specializationGearSynergyForProfile, systemsCapstoneInteractionFor, vanguardCapstoneInteractionFor, vectorCapstoneInteractionFor } from '../src/game/meta';
 import { CAMPAIGN_STORAGE_KEY, GAME_STATE_STORAGE_KEY, prepareSaveRecovery, PROFILE_STORAGE_KEY } from '../src/game/saveRecovery';
 import { loadGameState, saveGameState } from '../src/game/gamePersistence';
 import { carryExpeditionLoot } from '../src/game/expeditionCarry';
@@ -584,6 +584,74 @@ function sameClassBuildDiversitySmoke() {
   assert.match(redlineState.eventText, /REDLINE NEEDLE/, 'Redline Pilot + Needle Fan needs its own capstone feedback.');
 }
 sameClassBuildDiversitySmoke();
+
+function specializationGearSynergySmoke() {
+  const cases = [
+    { specialization: 'pressure-diver', operatorClass: 'vanguard', slot: 'suit', name: 'Pressure Recirculator' },
+    { specialization: 'breach-vanguard', operatorClass: 'vanguard', slot: 'breacher', name: 'Breach Stack' },
+    { specialization: 'bulkhead-warden', operatorClass: 'vanguard', slot: 'breacher', name: 'Counterfort Bracing' },
+    { specialization: 'momentum-broker', operatorClass: 'vector', slot: 'suit', name: 'Reaction Ledger' },
+    { specialization: 'survey-deadeye', operatorClass: 'vector', slot: 'rail', name: 'Survey Ballistics' },
+    { specialization: 'redline-pilot', operatorClass: 'vector', slot: 'suit', name: 'Thermal Slip' },
+    { specialization: 'grid-weaver', operatorClass: 'systems', slot: 'implant', name: 'Mesh Orchestra' },
+    { specialization: 'capacitor-conductor', operatorClass: 'systems', slot: 'rig', name: 'Bus Harmonics' },
+    { specialization: 'thermal-shunter', operatorClass: 'systems', slot: 'rig', name: 'Heat Exchange' },
+  ] as const;
+  assert.equal(specializationGearSynergyDefinitions.length, 9, 'Every class specialization should have one authored gear link.');
+
+  const activeProfiles = new Map<string, ReturnType<typeof createDefaultProfile>>();
+  for (const entry of cases) {
+    const base = {
+      ...createDefaultProfile(),
+      xp: 8100,
+      level: 16,
+      operatorClass: entry.operatorClass,
+      classSelectionComplete: true,
+      specialization: entry.specialization,
+      specializationOverclock: true,
+    };
+    const unlinked = specializationGearSynergyForProfile(base);
+    assert.equal(unlinked?.active, false, `${entry.name} must not activate from specialization alone.`);
+    assert.ok((unlinked?.resonanceTier ?? 0) >= 1, `${entry.name} fixture should already satisfy Tier I class resonance.`);
+
+    const definition = specializationGearSynergyDefinitions.find(item => item.specialization === entry.specialization)!;
+    const sourceId = base.equipped[entry.slot]!;
+    const source = base.inventory.find(item => item.id === sourceId)!;
+    const linkedId = `p5-10-${entry.specialization}-${entry.slot}`;
+    const linked = { ...source, id: linkedId, modifiers: [...source.modifiers, materializeModifier(definition.requiredAffix, 3)] };
+    const profile = {
+      ...base,
+      inventory: base.inventory.map(item => item.id === source.id ? linked : item),
+      equipped: { ...base.equipped, [entry.slot]: linkedId },
+    };
+    const state = specializationGearSynergyForProfile(profile);
+    assert.equal(state?.active, true, `${entry.name} should activate from Tier I class resonance plus its linked modifier.`);
+    assert.equal(state?.definition.name, entry.name);
+    assert.ok(state?.matchingItemIds.includes(linkedId), `${entry.name} should report the equipped linked frame.`);
+    activeProfiles.set(entry.specialization, profile);
+  }
+
+  const breachBase = { ...createDefaultProfile(), xp: 8100, level: 16, operatorClass: 'vanguard' as const, classSelectionComplete: true, specialization: 'breach-vanguard' as const, specializationOverclock: true };
+  const breachBaseline = deriveCombatBuild(breachBase);
+  const breachLinked = deriveCombatBuild(activeProfiles.get('breach-vanguard')!);
+  assert.ok(breachLinked.weapon.breacher.armorDamageMul > breachBaseline.weapon.breacher.armorDamageMul, 'Breach Stack should deepen Breacher armor pressure.');
+  assert.ok(breachLinked.weapon.breacher.penetrationAdd >= breachBaseline.weapon.breacher.penetrationAdd + 8, 'Breach Stack should add the authored penetration bonus.');
+
+  const momentumBase = { ...createDefaultProfile(), xp: 8100, level: 16, operatorClass: 'vector' as const, classSelectionComplete: true, specialization: 'momentum-broker' as const, specializationOverclock: true };
+  const momentumBaseline = deriveCombatBuild(momentumBase);
+  const momentumLinked = deriveCombatBuild(activeProfiles.get('momentum-broker')!);
+  assert.ok(momentumLinked.player.maxCapAdd >= momentumBaseline.player.maxCapAdd + 6, 'Reaction Ledger should expand the capacitor bank.');
+  assert.ok(momentumLinked.player.capRegenMul > momentumBaseline.player.capRegenMul, 'Reaction Ledger should improve capacitor recovery.');
+  assert.ok(momentumLinked.abilities[0].cooldownMul < momentumBaseline.abilities[0].cooldownMul, 'Reaction Ledger should accelerate Vector Shift recovery.');
+  assert.match(buildIdentity(activeProfiles.get('momentum-broker')!), /REACTION LEDGER/i, 'Active specialization gear links should surface in build identity.');
+
+  const conductorBase = { ...createDefaultProfile(), xp: 8100, level: 16, operatorClass: 'systems' as const, classSelectionComplete: true, specialization: 'capacitor-conductor' as const, specializationOverclock: true };
+  const conductorBaseline = deriveCombatBuild(conductorBase);
+  const conductorLinked = deriveCombatBuild(activeProfiles.get('capacitor-conductor')!);
+  assert.ok(conductorLinked.player.maxCapAdd >= conductorBaseline.player.maxCapAdd + 8, 'Bus Harmonics should expand the Systems capacitor bank.');
+  assert.ok(conductorLinked.abilities.every((ability, index) => ability.costMul < conductorBaseline.abilities[index].costMul), 'Bus Harmonics should reduce all class-skill capacitor costs.');
+}
+specializationGearSynergySmoke();
 
 function systemsSkillEvolutionSmoke() {
   const level15 = {
