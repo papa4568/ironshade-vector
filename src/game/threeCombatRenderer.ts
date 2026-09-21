@@ -3,7 +3,7 @@ import type { Contract } from './campaign';
 import type { EquipmentFaction } from './factionGear';
 import { getNextMissionObjectiveTarget } from './encounters';
 import { findNavigationPath } from './mapPathfinding';
-import { getWorldSize, type CombatObject, type Enemy, type Player, type SimState, type WeaponId } from './sim';
+import { getWorldSize, weaponHandlingProfiles, type CombatObject, type Enemy, type Player, type SimState, type WeaponId } from './sim';
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, locationArtIdentityFor, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
 import { groundLootPresentation } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
@@ -2183,6 +2183,7 @@ export class ThreeCombatRenderer {
   private syncAuthoredWeapon(state: SimState, operatorFaction: EquipmentFaction | null) {
     const player = state.player;
     const current = this.authoredWeapons.get(player.currentWeapon) ?? null;
+    const handling = weaponHandlingProfiles[player.currentWeapon];
     for (const [id, visual] of this.authoredWeapons) {
       visual.root.visible = id === player.currentWeapon;
     }
@@ -2191,6 +2192,7 @@ export class ThreeCombatRenderer {
       this.playerWeapon.visible = true;
       this.renderer.domElement.dataset.weaponActive = `procedural-${player.currentWeapon}`;
       this.renderer.domElement.dataset.weaponAsset = '';
+      this.renderer.domElement.dataset.weaponHandling = `${handling.stance}:${handling.reloadStyle}:${handling.ventStyle}`;
       return;
     }
 
@@ -2225,18 +2227,17 @@ export class ThreeCombatRenderer {
     this.weaponPivot.worldToLocal(muzzleLocal);
     this.muzzleFlash.position.copy(muzzleLocal);
 
-    if (player.currentWeapon === 'breacher') {
-      this.muzzleFlash.scale.set(1.7 + flash * 0.8, 1.18 + flash * 0.35, 1.18 + flash * 0.35);
-    } else if (player.currentWeapon === 'rail') {
-      this.muzzleFlash.scale.set(2.3 + flash * 1.1, 0.52 + flash * 0.2, 0.52 + flash * 0.2);
-    } else {
-      this.muzzleFlash.scale.set(1.25 + flash * 0.55, 0.78 + flash * 0.25, 0.78 + flash * 0.25);
-    }
+    this.muzzleFlash.scale.set(
+      handling.muzzleLength * (1.05 + flash * 0.72),
+      handling.muzzleWidth * (0.92 + flash * 0.32),
+      handling.muzzleWidth * (0.92 + flash * 0.32),
+    );
 
     this.renderer.domElement.dataset.weaponActive = player.currentWeapon;
     this.renderer.domElement.dataset.weaponAsset = current.assetId;
     this.renderer.domElement.dataset.weaponHeat = heat.toFixed(2);
     this.renderer.domElement.dataset.weaponFx = player.currentWeapon === 'rail' ? 'lance' : player.currentWeapon === 'breacher' ? 'scatter' : 'tracer';
+    this.renderer.domElement.dataset.weaponHandling = `${handling.stance}:${handling.reloadStyle}:${handling.ventStyle}`;
   }
 
   private async loadAuthoredOperator(operatorClass: SimState['build']['operatorClass']) {
@@ -2332,7 +2333,7 @@ export class ThreeCombatRenderer {
       this.renderer.domElement.dataset.operatorClassAsset = operatorClass ?? 'generic';
       this.renderer.domElement.dataset.operatorAnimation = this.authoredOperatorRig ? 'idle' : 'static';
       this.renderer.domElement.dataset.operatorBlend = this.authoredOperatorRig
-        ? 'move:0.00,recoil:0.00,reload:0.00,dodge:0.00,hit:0.00'
+        ? 'move:0.00,recoil:0.00,reload:0.00,vent:0.00,dodge:0.00,hit:0.00'
         : '';
     } catch (error) {
       if (this.disposed) return;
@@ -2358,9 +2359,11 @@ export class ThreeCombatRenderer {
     const speed = THREE.MathUtils.clamp(Math.hypot(player.vx, player.vy) * 0.012, 0, 1);
     const gait = Math.sin(state.time * (8.5 + speed * 3)) * speed;
     const idleBreath = Math.sin(state.time * 2.4);
+    const handling = weaponHandlingProfiles[player.currentWeapon];
     const recoil = THREE.MathUtils.clamp(state.weaponFlash * 8, 0, 1);
-    const reloadDuration = Math.max(0.01, state.weapons[player.reloadWeapon].reloadSeconds);
+    const reloadDuration = Math.max(0.01, state.weapons[player.reloadWeapon].reloadSeconds * weaponHandlingProfiles[player.reloadWeapon].reloadDurationMul);
     const reload = player.reloadT > 0 ? THREE.MathUtils.clamp(player.reloadT / reloadDuration, 0, 1) : 0;
+    const vent = player.ventT > 0 ? THREE.MathUtils.clamp(player.ventT / Math.max(0.01, handling.ventSeconds), 0, 1) : 0;
     const dodge = player.dodgeTime > 0 ? THREE.MathUtils.clamp(player.dodgeTime / 0.3, 0, 1) : 0;
     const hit = state.time < this.operatorHitUntil
       ? THREE.MathUtils.clamp((this.operatorHitUntil - state.time) / 0.18, 0, 1)
@@ -2372,24 +2375,60 @@ export class ThreeCombatRenderer {
     rig.leftLeg.rotation.z += gait * 0.42;
     rig.rightLeg.rotation.z -= gait * 0.42;
 
-    // Aim-ready upper-body pose. The authored root owns yaw; limb motion is local and simulation-read-only.
-    rig.leftArm.rotation.z += -0.52 - gait * 0.09;
-    rig.rightArm.rotation.z += 0.42 + gait * 0.06;
+    // Family stance is authored independently from damage tuning so each arsenal reads differently at rest and in motion.
+    if (handling.stance === 'mobile') {
+      rig.leftArm.rotation.z += -0.42 - gait * 0.08;
+      rig.rightArm.rotation.z += 0.34 + gait * 0.08;
+      rig.torso.rotation.z -= 0.025;
+    } else if (handling.stance === 'breach') {
+      rig.leftArm.rotation.z += -0.64 - gait * 0.05;
+      rig.rightArm.rotation.z += 0.5 + gait * 0.04;
+      rig.torso.rotation.z -= 0.07;
+      rig.hip.position.x -= 0.025;
+    } else {
+      rig.leftArm.rotation.z += -0.72 - gait * 0.035;
+      rig.rightArm.rotation.z += 0.28 + gait * 0.03;
+      rig.torso.rotation.z += 0.035;
+      rig.helmet.rotation.z += 0.025;
+    }
     rig.leftArm.rotation.x += -0.12;
     rig.rightArm.rotation.x += 0.12;
 
     if (recoil > 0) {
-      rig.weaponSocket.position.x -= 0.1 * recoil;
-      rig.torso.rotation.z -= 0.055 * recoil;
-      rig.rightArm.rotation.z += 0.1 * recoil;
+      const kick = handling.recoilVisual * recoil;
+      rig.weaponSocket.position.x -= 0.1 * kick;
+      rig.torso.rotation.z -= 0.055 * kick;
+      rig.rightArm.rotation.z += 0.1 * kick;
+      if (handling.stance === 'precision') rig.hip.position.x -= 0.035 * kick;
     }
 
     if (reload > 0) {
       const cycle = Math.sin((1 - reload) * Math.PI);
-      rig.weaponSocket.rotation.z += 0.5 * cycle;
-      rig.weaponSocket.position.y -= 0.08 * cycle;
-      rig.leftArm.rotation.z += 0.58 * cycle;
-      rig.rightArm.rotation.z -= 0.22 * cycle;
+      if (handling.reloadStyle === 'mag-swap') {
+        rig.weaponSocket.rotation.z += 0.38 * cycle;
+        rig.weaponSocket.position.y -= 0.06 * cycle;
+        rig.leftArm.rotation.z += 0.46 * cycle;
+      } else if (handling.reloadStyle === 'chamber-feed') {
+        rig.weaponSocket.rotation.z += 0.58 * cycle;
+        rig.weaponSocket.position.x -= 0.07 * cycle;
+        rig.weaponSocket.position.y -= 0.11 * cycle;
+        rig.leftArm.rotation.z += 0.72 * cycle;
+        rig.rightArm.rotation.z -= 0.26 * cycle;
+      } else {
+        rig.weaponSocket.rotation.z += 0.76 * cycle;
+        rig.weaponSocket.position.y -= 0.15 * cycle;
+        rig.leftArm.rotation.z += 0.82 * cycle;
+        rig.rightArm.rotation.z -= 0.16 * cycle;
+        rig.torso.rotation.z += 0.08 * cycle;
+      }
+    }
+
+    if (vent > 0) {
+      const cycle = Math.sin((1 - vent) * Math.PI);
+      rig.weaponSocket.position.y -= 0.05 * cycle;
+      rig.weaponSocket.rotation.z -= (handling.ventStyle === 'coil-quench' ? 0.34 : handling.ventStyle === 'chamber-dump' ? 0.22 : 0.12) * cycle;
+      rig.backpack.rotation.z += (handling.ventStyle === 'fan-purge' ? 0.08 : 0.14) * cycle;
+      rig.torso.rotation.z += (handling.ventStyle === 'coil-quench' ? 0.1 : 0.045) * cycle;
     }
 
     if (dodge > 0) {
@@ -2424,9 +2463,11 @@ export class ThreeCombatRenderer {
         ? 'dodge'
         : hit > 0
           ? 'hit'
-          : player.reloadT > 0
-            ? 'reload'
-            : state.weaponFlash > 0
+          : player.ventT > 0
+            ? 'vent'
+            : player.reloadT > 0
+              ? 'reload'
+              : state.weaponFlash > 0
               ? 'recoil'
               : speed > 0.08
                 ? 'locomotion'
@@ -2436,6 +2477,7 @@ export class ThreeCombatRenderer {
       `move:${speed.toFixed(2)}`,
       `recoil:${recoil.toFixed(2)}`,
       `reload:${reload.toFixed(2)}`,
+      `vent:${vent.toFixed(2)}`,
       `dodge:${dodge.toFixed(2)}`,
       `hit:${hit.toFixed(2)}`,
     ].join(',');
@@ -4117,8 +4159,9 @@ export class ThreeCombatRenderer {
     this.syncAuthoredWeapon(state, operatorFaction);
     if (!this.authoredWeapons.has(player.currentWeapon)) {
       this.muzzleFlash.position.x = hardSciFiMuzzleOffset(this.weaponPivot, 1.45);
-      const flashScale = 0.7 + Math.min(1.7, state.weaponFlash * 8);
-      this.muzzleFlash.scale.setScalar(flashScale);
+      const handling = weaponHandlingProfiles[player.currentWeapon];
+      const flashScale = Math.min(1.7, state.weaponFlash * 8);
+      this.muzzleFlash.scale.set(handling.muzzleLength * (0.72 + flashScale), handling.muzzleWidth * (0.86 + flashScale * 0.34), handling.muzzleWidth * (0.86 + flashScale * 0.34));
     }
 
     this.pulseRing.visible = state.pulse > 0;
@@ -5183,7 +5226,7 @@ export class ThreeCombatRenderer {
     const narrow = aspect < 1.15;
     const cameraHeight = narrow ? 18 : this.coarse ? 14.8 : 12.8;
     const cameraOffset = narrow ? 13.2 : this.coarse ? 11.2 : 9.8;
-    const shake = state.weaponFlash > 0 ? (state.player.currentWeapon === 'rail' ? 0.13 : state.player.currentWeapon === 'breacher' ? 0.08 : 0.025) : 0;
+    const shake = state.weaponFlash > 0 ? weaponHandlingProfiles[state.player.currentWeapon].cameraKick * 0.04 : 0;
     this.camera.position.set(px + cameraOffset + Math.sin(state.time * 103) * shake, cameraHeight, pz + cameraOffset + Math.cos(state.time * 83) * shake);
     this.camera.lookAt(px + state.player.aim.x * 1.1, 0.62, pz + state.player.aim.y * 1.1);
     this.camera.updateMatrixWorld();
