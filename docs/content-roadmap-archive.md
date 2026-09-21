@@ -14,6 +14,12 @@ This file is the permanent archive for completed production work. The active exe
   - QA direction updated: the bundle-size budget and raw/gzip byte reporting are removed entirely; Vite's chunk-size warning ceiling is disabled, while deferred Three.js/authored-loader isolation, dynamic entry splitting, and chunk-structure assertions remain mandatory.
   - Cap-free verification: PR Browser E2E `35556215023` passed desktop/mobile-landscape; merged-main Browser E2E `35556330981`, Level 15 beta smoke `35556331013`, and Android beta.206 `35556330989` all passed. Artifact `10620835919` has APK SHA-256 `1638186f43f3add07bc3ae43a8489d1410b7e3c73261d2a0c1a9ba058a5e71b5`.
   - Verified on merged main `61c3f039be921153950a2cb536d985c987e23a3a`: Browser E2E `35555532705`, Level 15 beta smoke `35555532748`, Android beta.205 `35555532703`, artifact `10620730413`, APK SHA-256 `713a76706a1e12475089f6896d11e7c97302dfabba06996078f951400f914745`.
+- [x] **P6-B Command Target mutations** — T9–T12 Command Target directives now arm one deterministic whole-fight mutation package that is stored and executed separately from elite T9+ mutations and phase-two boss mutations. Four authored packages cover reinforced durability, faster pursuit recovery, recurring countermass denial, and recurring relay/shock-grid denial; the package remains active before and after the boss phase transition.
+  - Pre-deployment disclosure is present on Directive cards and Tactical Forecast; the combat boss HUD identifies the active whole-fight package independently of any armed/active phase mutation.
+  - Regression covers pre-T9 lockout, Command Target-only eligibility, tier legality, deterministic forecast/runtime parity, dedicated storage separation, durability changes, cadence changes, phase-one activity, recurring arena hazards, and UI disclosure.
+  - Verified on PR head `881b25139036a79f9179992cf1ce969e69b27cf4`: Browser E2E `35557209844` passed desktop and mobile-landscape including full regression/production build and browser journey.
+  - Verified on merged gameplay source `2feaef5a529fd6f4032bb7074d2cf15302dbbd48`: Browser E2E `35557318517`, Level 15 beta smoke `35557318419`, and Android beta.207 `35557318413` all passed. Artifact `10620214462` contains debug-signed APK SHA-256 `36260887f7d51de83d9fcc77467e582704202248c3c5d73dff1190d7be5c0a88`.
+
 
 ## P0 — Foundation ✅ COMPLETE
 
