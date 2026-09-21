@@ -319,7 +319,7 @@ Repository checklist for the current content plan. Keep this file synchronized w
 
 P1, P2, P3, **P4 — Megastructure Capstone Pass**, and **P5 — Class Capstones** are complete. **P6.1 — Exclusive protocol combinations** is complete. Continue in roadmap order with **P6.2 — Enhanced protocol variants**.
 
-**P6.1 delivered:** T9+ elite packaging now uses seven deterministic, named high-tier combinations instead of only protocol-by-protocol assembly: **Breach Lock**, **Mass Pursuit**, **Fortress Mesh**, **Recovery Lockdown**, **Kill Corridor**, **Arc Blackout**, and **Vacuum Hunt**. Packages obey existing location/objective eligibility and Directive protocol bias, remain atomic under the threat budget, and can intentionally authorize combinations that normal family de-duplication forbids (notably Recovery Lockdown's Salvage Interdictor + Recovery Denial pairing). Contract Tactical Forecast shows legal package names before deployment, combat labels show the compact package identity above the enemy, and deterministic regression covers the T9 gate, package selection, same-family authorization, forecast visibility, and all-or-nothing threat-budget acceptance. PR Browser E2E run `35549802656` passed desktop/mobile-landscape full regression, production build, and player-journey QA. **P6.2 — Enhanced protocol variants is next.**
+**P6.1 delivered:** T9+ elite packaging now uses seven deterministic, named high-tier combinations instead of only protocol-by-protocol assembly: **Breach Lock**, **Mass Pursuit**, **Fortress Mesh**, **Recovery Lockdown**, **Kill Corridor**, **Arc Blackout**, and **Vacuum Hunt**. Packages obey existing location/objective eligibility and Directive protocol bias, remain atomic under the threat budget, and can intentionally authorize combinations that normal family de-duplication forbids (notably Recovery Lockdown's Salvage Interdictor + Recovery Denial pairing). Contract Tactical Forecast shows legal package names before deployment, combat labels show the compact package identity above the enemy, and deterministic regression covers the T9 gate, package selection, same-family authorization, forecast visibility, and all-or-nothing threat-budget acceptance. PR Browser E2E run `35549802656` and merged-main Browser E2E run `35549914024` passed desktop/mobile-landscape full regression, production build, and player-journey QA; Level 15 beta smoke run `35549914124` passed; Android beta.202 run `35549914181` passed web regression/build, package/version/SDK/signature verification, native emulator install/launch/resume smoke, Android touch/runtime QA, and the Chapter 3 two-route touch playthrough. **P6.2 — Enhanced protocol variants is next.**
 
 **P5.11–P5.13 delivered:** the LV16+ class capstones now have distinct world-space combat language instead of sharing generic ability pulses. **Vanguard** capstones use a warm, braced shock-ring cue; **Vector** capstones use an elongated blue vector-sweep cue; **Systems** capstones use a violet rotating mesh pulse. The cues are emitted directly from all nine authored capstone interactions — Void Ram, Breach Cascade, Counterfort, Inertial Dividend, Reference Solution, Redline Needle, Induction Sink, Recursive Bus, and Mesh Reflux — without changing balance values or save data. Deterministic gameplay regression verifies all nine trigger paths, graphics regression locks the class-coded renderer contract and QA telemetry, PR Browser E2E run `35549019565` passed desktop/mobile-landscape full regression, production build, and player-journey QA, merged-main Browser E2E run `35549143093` passed both targets, and Level 15 beta smoke run `35549143109` passed. Android beta.201 run `35549143095` passed web regression/build, package/version/SDK/signature verification, native emulator install/launch/resume smoke, Android touch/runtime QA, and the Chapter 3 two-route touch playthrough; artifact `10617593551` was verified as debug-signed with APK SHA-256 `ab92800ca26af249bcba803b5c3e9b8f465c7c7ed3af4c16c4c121f85971e984`. **P5 is complete; P6.1 — Exclusive protocol combinations is next.**
 
@@ -419,16 +419,16 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.201**
+- Android beta: **0.0.1-beta.202**
 - Package: `app.ironshade.vector`
-- Verified: **P5 — Class Capstones is complete through P5.13.** All nine LV16+ capstone interactions now emit class-distinct world-space combat feedback with shape and motion differences in addition to class color, deterministic gameplay regression covers every capstone cue, and graphics regression protects the renderer/QA telemetry contract. PR and merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.201 package/version/SDK/signature verification, native emulator install/launch/resume smoke, Android touch/runtime QA, and the Chapter 3 two-route touch playthrough all passed. **The next roadmap slice is P6.1 — Exclusive protocol combinations.**
+- Verified: **P6.1 — Exclusive protocol combinations is complete.** T9+ elite packaging now includes seven deterministic named combinations — **Breach Lock**, **Mass Pursuit**, **Fortress Mesh**, **Recovery Lockdown**, **Kill Corridor**, **Arc Blackout**, and **Vacuum Hunt** — with Directive-aware selection, location/objective legality, atomic threat-budget acceptance, pre-deploy package forecasts, compact in-combat package labels, and deterministic regression coverage. PR and merged-`main` desktop + mobile-landscape Browser E2E, Level 15 beta smoke, Android beta.202 package/version/SDK/signature verification, native emulator install/launch/resume smoke, Android touch/runtime QA, and the Chapter 3 two-route touch playthrough all passed. **The next roadmap slice is P6.2 — Enhanced protocol variants.**
 - Signing: current beta is debug-signed; permanent release signing remains **P8**
-- P5.11–P5.13 final PR head: `dd358437426c4c2c1d70cb7a896a7a3f5e92a161`
-- P5.11–P5.13 merged main / APK source: `12f01ffd4b3fd95d3b858c9277f04798227f587d`
-- PR Browser E2E run: `35549019565`
-- Final Browser E2E run: `35549143093`
-- Level 15 beta smoke run: `35549143109`
-- Android beta.201 run: `35549143095`
-- Android beta.201 artifact ID: `10617593551`
-- Android beta.201 artifact head: `12f01ffd4b3fd95d3b858c9277f04798227f587d`
-- APK SHA-256: `ab92800ca26af249bcba803b5c3e9b8f465c7c7ed3af4c16c4c121f85971e984`
+- P6.1 final PR head: `5e3d87b84851a1c9541993c9223df50ba3b6c185`
+- P6.1 merged main / APK source: `436ea1aad42f4d68a9cdcb66946adc7ad886df10`
+- PR Browser E2E run: `35549802656`
+- Final Browser E2E run: `35549914024`
+- Level 15 beta smoke run: `35549914124`
+- Android beta.202 run: `35549914181`
+- Android beta.202 artifact ID: `10617128757`
+- Android beta.202 artifact head: `436ea1aad42f4d68a9cdcb66946adc7ad886df10`
+- APK SHA-256: `20e6f176646ef746adb3e2d982c36870c45f9c42688005ee3bb1d1219a5efda4`
