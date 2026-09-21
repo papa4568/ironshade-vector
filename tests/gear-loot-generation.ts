@@ -3,7 +3,8 @@ import {
   validateGeneratedGearPlan,
   type GeneratedGearPlan,
 } from '../src/game/gearGeneration';
-import { factionFrameIdentity, factionFrames } from '../src/game/factionGear';
+import { factionFrames } from '../src/game/factionGear';
+import { factionFrameIdentity } from '../src/game/gearDepth';
 import { gearBaseDefinitions } from '../src/game/gearBases';
 import { rarityModifierBudget } from '../src/game/gearAffixes';
 import type { EquipmentSlot } from '../src/game/meta';
