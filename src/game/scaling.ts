@@ -1,6 +1,7 @@
 import type { CampaignState, Contract } from './campaign';
 import { chooseEnemyProtocols, protocolThreatCost, type EnemyCombatClass } from './eliteProtocols';
 import { applyEnemyMutations, chooseEnemyMutations, mutationThreatCost, mutationThreatCostForEnemy, type HighTierMutationId } from './t9Mutations';
+import { chooseBossPhaseMutations } from './bossPhaseMutations';
 import type { Enemy, EnemyRole, EnemyVariant } from './sim';
 
 export type EncounterPattern = 'swarm' | 'mixed' | 'elite-led';
@@ -80,10 +81,10 @@ export function applyThreatBudget(enemies: Enemy[], contract: Contract) {
   const tier = contract.operationTier ?? 1;
   const protocolCapacity = contract.eliteProtocolSlots ?? 0;
   const regular = enemies.filter(enemy => enemy.role !== 'boss' && enemy.id <= 8);
-  for (const enemy of enemies) { enemy.protocols = []; enemy.mutations = []; enemy.protocolPulse = 0; enemy.combatClass = enemy.role === 'boss' ? 'command' : enemy.role === 'elite' ? 'elite' : 'standard'; }
+  for (const enemy of enemies) { enemy.protocols = []; enemy.mutations = []; enemy.bossPhaseMutations = []; enemy.bossMutationCooldown = 0; enemy.protocolPulse = 0; enemy.combatClass = enemy.role === 'boss' ? 'command' : enemy.role === 'elite' ? 'elite' : 'standard'; }
   for (const enemy of regular) { enemy.effectiveness = effectiveness; enemy.maxHp = Math.max(1, Math.round(enemy.maxHp * effectiveness)); enemy.hp = enemy.maxHp; enemy.maxArmor = Math.max(0, Math.round(enemy.maxArmor * effectiveness)); enemy.armor = enemy.maxArmor; }
   const boss = enemies.find(enemy => enemy.role === 'boss');
-  if (boss) { const bossEffectiveness = Math.max(1, 1 + (effectiveness - 1) * 0.82); boss.effectiveness = bossEffectiveness; boss.maxHp = Math.max(1, Math.round(boss.maxHp * bossEffectiveness)); boss.hp = boss.maxHp; boss.maxArmor = Math.max(0, Math.round(boss.maxArmor * bossEffectiveness)); boss.armor = boss.maxArmor; }
+  if (boss) { const bossEffectiveness = Math.max(1, 1 + (effectiveness - 1) * 0.82); boss.effectiveness = bossEffectiveness; boss.maxHp = Math.max(1, Math.round(boss.maxHp * bossEffectiveness)); boss.hp = boss.maxHp; boss.maxArmor = Math.max(0, Math.round(boss.maxArmor * bossEffectiveness)); boss.armor = boss.maxArmor; boss.bossPhaseMutations = chooseBossPhaseMutations(contract); }
 
   const reserveCommitment = (contract.reserveCount ?? 1) * 3;
   const environmentCommitment = (contract.environmentalEventSlots ?? 1) * 2;
