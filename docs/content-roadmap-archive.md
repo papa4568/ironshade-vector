@@ -27,6 +27,12 @@ This file is the permanent archive for completed production work. The active exe
   - Verified on PR head `17fa6836b3746db616c99322c682d8532229bcb1`: Browser E2E `35558132124` passed desktop and mobile-landscape including full regression/production build and browser journeys. The initial CI attempt caught an unused type-only import; it was removed before the verified run.
   - Verified on merged gameplay source `2ff92ba5bade634e3fbf053cc2ddb13db3816a22`: Browser E2E `35558235262`, Level 15 beta smoke `35558235264`, and Android beta.208 `35558235240` all passed. Artifact `10621705098` contains debug-signed APK SHA-256 `2572bb716ab6ffd375e16635ebf252182743b75ce3a7484061b992cf09ffad8a`.
 
+- [x] **P6-D Chase reward package** — T9–T12 Operation Directives now own a dedicated six-item Singular chase pool covering Carbine, Breacher, Rail Lance, suit, rig, and implant slots. Those six build-changing items are excluded from ordinary location chase pools so the endgame reward source is genuinely exclusive rather than another additive drop path.
+  - Directive chase odds scale visibly by tier from 3% safe / 6% deep at T9 to 9% safe / 18% deep at T12. Successful rolls replace the normal contract chase slot instead of increasing ordinary item spam; ground-drop Singulars suppress the extra Directive roll, while a deep boss recovery can still pair with one Directive chase item inside the existing two-reward contract budget.
+  - Directive cards and the prepared contract inspector disclose the exact six-item candidate pool and safe/deep odds before deployment. The normal Directive quality, source recovery-level, location-Singular pressure, environmental-yield, Command package, and boss-phase systems remain independent.
+  - Regression covers pre-T9 lockout, exact six-item membership, safe/deep odds, removal from ordinary location pools, deterministic materialization from the exclusive pool, and pre-deployment UI disclosure.
+  - Verified on PR head `a314efb1741e4be0a2f9afaf4ac11a6993bc0d8d`: Browser E2E `35559001381` passed desktop and mobile-landscape including full regression/production build and browser journeys.
+  - Verified on merged gameplay source `18147504baeab95146f5d1fbfb53c8ec3fe1a49e`: Browser E2E `35559131881`, Level 15 beta smoke `35559131901`, and Android beta.209 `35559131902` all passed. Artifact `10621546868` contains debug-signed APK SHA-256 `f465b97d1d17bd419734b413b5d81c130e2a03db8acfa3a4dc52f5c26e521602`.
 
 ## P0 — Foundation ✅ COMPLETE
 
