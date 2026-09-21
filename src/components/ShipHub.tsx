@@ -171,7 +171,7 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
   const ownedWeaponLabel = ownedWeaponFamily === 'rail' ? 'Rail Lance' : ownedWeaponFamily === 'breacher' ? 'Breacher' : 'Carbine';
   const environmentalForecast = selected ? getEnvironmentalEventForecast(selected) : [];
   const environmentalRiskForecast = selected ? environmentalRiskForecastForContract(selected) : [];
-  const selectedDirectiveChase = selected?.directiveTier ? directiveSingularNames(selected.directiveTier) : [];
+  const selectedDirectiveChase = selected?.directiveTier ? directiveSingularNames(selected.directiveTier, profile) : [];
   const protocolForecast = selected ? protocolForecastForContract(selected) : [];
   const protocolCombinationForecast = selected ? exclusiveProtocolCombinationForecastForContract(selected) : [];
   const enhancedProtocolVariantForecast = selected ? enhancedProtocolVariantForecastForContract(selected) : [];
