@@ -53,6 +53,10 @@ const defineAffix = (seed: AffixSeed): GearAffixDefinition => ({
   ...seed,
   conflicts: seed.conflicts ?? [],
   buildTags: [...affixStatProfile(seed.id).buildTags],
+  grades: seed.grades.map(entry => ({
+    ...entry,
+    minimumRecoveryLevel: Math.max(seed.minimumRecoveryLevel, entry.minimumRecoveryLevel),
+  })),
 });
 
 export const gearAffixDefinitions: GearAffixDefinition[] = [
