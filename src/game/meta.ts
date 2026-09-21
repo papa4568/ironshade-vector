@@ -418,13 +418,13 @@ export const operatorClassDefinitions: OperatorClassDefinition[] = [
 ];
 
 const operatorClassIds = new Set<OperatorClassId>(operatorClassDefinitions.map(definition => definition.id));
-const slotClassAffinity: Record<EquipmentSlot, OperatorClassId> = {
-  carbine: 'systems',
-  breacher: 'vanguard',
-  rail: 'vector',
-  suit: 'vanguard',
-  rig: 'systems',
-  implant: 'systems',
+const slotClassAffinities: Record<EquipmentSlot, OperatorClassId[]> = {
+  carbine: ['systems'],
+  breacher: ['vanguard'],
+  rail: ['vector'],
+  suit: ['vanguard', 'vector'],
+  rig: ['systems'],
+  implant: ['systems'],
 };
 const factionClassAffinity: Record<EquipmentFaction, OperatorClassId> = {
   meridian: 'vanguard',
@@ -494,7 +494,7 @@ export function normalizeClassArmament(profile: PlayerProfile): PlayerProfile {
 }
 
 export function itemBuildAffinities(item: Item): OperatorClassId[] {
-  const affinities = new Set<OperatorClassId>([slotClassAffinity[item.slot]]);
+  const affinities = new Set<OperatorClassId>(slotClassAffinities[item.slot]);
   if (item.faction) affinities.add(factionClassAffinity[item.faction]);
   for (const modifier of item.modifiers) for (const affinity of modifierClassAffinity[modifier.id] ?? []) affinities.add(affinity);
   return operatorClassDefinitions.map(definition => definition.id).filter(id => affinities.has(id));
