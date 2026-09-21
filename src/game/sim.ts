@@ -548,7 +548,7 @@ export function updateMobileTargetControl(state: SimState, mode: 'light' | 'bala
     }
   }
 
-  const next = bestVisible ?? bestAny;
+  const next = bestVisible;
   if (!next) {
     resetTargetControlMemory(memory);
     return null;
