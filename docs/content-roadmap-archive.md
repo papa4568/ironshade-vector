@@ -153,6 +153,19 @@ This file is the permanent archive for completed production work. The active exe
   - Android artifact `10647375675` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.222`, debug signing, and APK SHA-256 `57c7ca02ec66ef610f30e4dfa0e8088f7e8eb184b0af5f8424a676ca098f6b40`.
   - **Next: P8-F — Handling identity.**
 
+- [x] **P8-F Handling identity** — the three class-owned weapon families now differ through a shared mechanical and presentation handling layer instead of relying mainly on damage/rate tuning.
+  - A single `weaponHandlingProfiles` contract gives Carbine, Breacher, and Rail Lance unique mobile/breach/precision stances plus explicit 100-point mobility/control/recovery/thermal/impact budgets.
+  - Simulation handling now differentiates shot momentum retention, recoil impulse, post-shot movement, reload movement/timing, and vent movement/timing while preserving the P8-D class-family lock.
+  - Authored Three.js operators now use family-specific ready poses, recoil amplitudes, reload motions, vent motions, muzzle proportions, and camera response. The Canvas fallback reads the same profile for muzzle/camera behavior.
+  - Phone vibration and supported controller rumble are family-specific, so Carbine reads light/continuous, Breacher reads heavy/close-pressure, and Rail reads planted/high-impact.
+  - Deterministic gameplay coverage validates all handling budgets, reload/vent timing, and post-shot movement separation; UI/source regression guards the renderer, fallback, haptics, and new vent animation telemetry.
+  - PR #145 final Browser E2E `35621771872` passed desktop and mobile-landscape on exact head `8a26368ce123ba1c31da3a40bd2eb6b23cf1dd73`; gameplay merged as `f7ccfc8f4d877abdacd399da2eaa9e35a0101b57`.
+  - The first merged Android run exposed a QA false-negative: the emulator reclaimed the app process after HOME even though runtime/touch/authored-asset checks had passed. PR #146 changed the lifecycle gate to report preserved vs OS-reclaimed process mode while still requiring restored combat renderer, touch controls, and valid render-budget telemetry.
+  - Final QA source `a871520223ad3e71d8f22f2d2636024a353d3e75`: merged-main Browser E2E `35627586557`, Level 15 beta smoke `35627586625`, and Android beta.224 `35627586668` all passed.
+  - Android beta.224 verified full web regression/build, native project generation, package/version/SDK/signature checks, installable debug APK assembly, emulator install/runtime/touch/lifecycle recovery, authored operator/enemy/weapon/environment assets, and Chapter 3 mobile playthrough. Lifecycle verification reported `process=preserved` with the balanced mobile render budget restored.
+  - Android artifact `10652799934` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.224`, debug signing, and APK SHA-256 `f6afeb0ae0add10d9dfab2090eb8ba8b595ed041254b3837adc2bbfb6279223c`.
+  - **Next: P8-G — Class-owned skill migration.**
+
 ## P0 — Foundation ✅ COMPLETE
 
 - [x] Three classes: Vanguard / Vector / Systems
