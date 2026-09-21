@@ -581,9 +581,14 @@ if (!fireObserved) {
   throw new Error(`Android FIRE control did not change magazine/heat after retry; webview=${JSON.stringify(state)}`);
 }
 
-const weaponBefore = await evaluate(`document.querySelector('.weapon-cycle small')?.textContent ?? ''`);
-await tap('.weapon-cycle', 14);
-await waitFor(`(document.querySelector('.weapon-cycle small')?.textContent ?? '') !== ${JSON.stringify(weaponBefore)}`, 'weapon cycle response', 15_000);
+const arsenalLock = await evaluate(`({
+  mobileCycleAbsent: document.querySelector('.weapon-cycle') === null,
+  desktopSelectorAbsent: document.querySelector('.desktop-weapons') === null,
+  weapon: document.querySelector('.weapon-hud small')?.textContent ?? '',
+})`);
+if (!arsenalLock.mobileCycleAbsent || !arsenalLock.desktopSelectorAbsent || !/B-4|BREACH/i.test(arsenalLock.weapon)) {
+  throw new Error(`Android class arsenal lock mismatch: ${JSON.stringify(arsenalLock)}`);
+}
 
 await tap('.ability-button:not(:disabled)', 15);
 await waitFor(`(document.querySelector('.tutorial-coach')?.textContent ?? '').includes('FIELD COACH // 4/5')`, 'ability touch response', 15_000);
@@ -596,6 +601,6 @@ if (scrollAfter.x !== scrollBefore.x || scrollAfter.y !== scrollBefore.y) {
   throw new Error(`Android combat touch gestures moved the page: before=${JSON.stringify(scrollBefore)} after=${JSON.stringify(scrollAfter)}`);
 }
 
-console.log(`ANDROID_TOUCH_SMOKE_PASS move=drag aim=drag fire=hold ability=tap dodge=tap weapon=cycle scroll=${scrollAfter.x},${scrollAfter.y}`);
+console.log(`ANDROID_TOUCH_SMOKE_PASS move=drag aim=drag fire=hold ability=tap dodge=tap weapon=class-locked scroll=${scrollAfter.x},${scrollAfter.y}`);
 session.close();
 console.log(`ANDROID_RUNTIME_SMOKE_PASS title=${startup.title} route=ship>contracts>combat canvases=${combat.canvases}`);
