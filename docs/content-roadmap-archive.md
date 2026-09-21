@@ -41,6 +41,16 @@ This file is the permanent archive for completed production work. The active exe
   - The first PR CI attempt correctly exposed an over-specific stress-harness assumption about boss phase thresholds; the harness was corrected to enter the universal low-health + armor-broken phase-two window without changing gameplay behavior. Verified PR head `91075455e4e09406b3ddc682c36e561c14bd2c35`: Browser E2E `35560181053` passed desktop and mobile-landscape including the full regression/production build.
   - Verified on merged gameplay source `d2e2448f2bc693df70684bcb5097c4b1fcfa31ba`: Browser E2E `35560310881`, Level 15 beta smoke `35560310891`, and Android beta.210 `35560310916` all passed. Artifact `10621449019` contains debug-signed APK SHA-256 `bbd8a2e133be6793ba7c9ed74d1ba2131961adf475fa67cd13c26b86b4bc9d04`.
 
+
+## P7 — Loot Rarity & Equipment Presentation
+
+- [x] **P7-A Rarity contract** — Field, Refined, Prototype, and Singular now share one authored contract for order/rank, stable CSS token, plain-language meaning, world label/color, non-color icon/shape cue, and accessible text. Recovery rarity, ground-loot rarity, gear-depth rarity, and profile item rarity now derive from the shared `ItemRarity` type instead of maintaining duplicate unions.
+  - Ground-loot labels/colors resolve through the contract, equipment sorting uses the shared rank, and the Build equipment surface exposes a responsive rarity guide plus shape cues on equipped cards, storage cards, and the inspector so rarity is not color-only.
+  - Regression locks the exact Field → Refined → Prototype → Singular order, rank parity, unique tokens/icons/shapes, accessible descriptions, CSS token behavior, ground-loot presentation routing, and shared type ownership across loot/gear/profile systems.
+  - Verified on PR head `19662b466aa272450004a8be0f5683094f2fee92`: Browser E2E `35561188093` passed desktop and mobile-landscape including the full regression/production build and browser player journeys.
+  - Verified on merged gameplay source `0486cf45b17f2cd45bcb3d88385cd78e5c32b998`: Browser E2E `35561313627`, Level 15 beta smoke `35561313621`, and Android beta.211 `35561313599` all passed. Android verification includes package/version/SDK/signature checks plus native emulator install/launch/runtime smoke. Artifact `10622107759` contains the debug-signed APK with SHA-256 `d42b0e563f2c8ebf1d3ff2a5dca5fdd7dea7b69d994e68ac11f335e0a2af1339`.
+  - **Next: P7-B — World loot.**
+
 ## P0 — Foundation ✅ COMPLETE
 
 - [x] Three classes: Vanguard / Vector / Systems
