@@ -1863,7 +1863,7 @@ assert.equal(abilityUsesTargetAcquisition(neutralTargetPolicyState, 1), true, 'n
 assert.equal(abilityUsesTargetAcquisition(neutralTargetPolicyState, 2), true, 'neutral Arc Tap should acquire');
 const targetingCanvasSource = readFileSync('src/components/GameCanvas.tsx', 'utf8');
 assert.match(targetingCanvasSource, /const assistedTargeting = !manualTargeting && abilityUsesTargetAcquisition\(state, index\)/, 'touch skill routing must gate acquisition through the explicit targeted-skill policy');
-assert.match(targetingCanvasSource, /triggerAbility\(state, index, assistedTargeting \? 'acquire' : 'manual'\)/, 'touch skill execution must preserve manual intent for explicit mobility, self, ground, and directional abilities');
+assert.match(targetingCanvasSource, /triggerAbility\(state, index, assistedTargeting \? 'acquire' : 'manual', targetId\)/, 'touch skill execution must preserve manual intent while passing the retained id only for targeted abilities');
 assert.match(targetingCanvasSource, /updateMobileTargetControl\(state, profileSettings\.aimAssist, mobileTargetControlRef\.current\)/, 'targeted touch skills should reuse persistent target-control memory');
 assert.match(targetingCanvasSource, /fireCurrent\(manualTargeting \? 'manual' : 'acquire', targetId\)/, 'assisted FIRE must pass the retained target id into execution');
 assert.match(targetingCanvasSource, /manualTargeting \|\| !fireSourcesRef\.current\.button\) resetTargetControlMemory\(mobileTargetControlRef\.current\)/, 'manual aim or FIRE release must invalidate the assisted lock immediately');
