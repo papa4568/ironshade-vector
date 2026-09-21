@@ -1,4 +1,5 @@
 export type OperatorClassId = 'vanguard' | 'vector' | 'systems';
+export type OperatorWeaponFamily = 'carbine' | 'breacher' | 'rail';
 
 export type AbilityMeta = {
   name: string;
@@ -6,6 +7,7 @@ export type AbilityMeta = {
   cost: number;
   cooldown: number;
   description: string;
+  weaponFamily?: OperatorWeaponFamily;
 };
 
 export const abilityMeta: readonly [AbilityMeta, AbilityMeta, AbilityMeta] = [
@@ -16,23 +18,21 @@ export const abilityMeta: readonly [AbilityMeta, AbilityMeta, AbilityMeta] = [
 
 export const classAbilityKits: Record<OperatorClassId, readonly [AbilityMeta, AbilityMeta, AbilityMeta]> = {
   vanguard: [
-    { name: 'Breach Rush', shortName: 'RUSH', cost: 18, cooldown: 4.8, description: 'Drive forward behind a magnetic ram, stagger the lane, and immediately raise Breach Guard.' },
-    { name: 'Fracture Tag', shortName: 'BREAK', cost: 20, cooldown: 6.2, description: 'Tag one target, tear open its armor path, and drag it toward Breacher range.' },
-    { name: 'Bulwark Pulse', shortName: 'GUARD', cost: 28, cooldown: 8.2, description: 'Brace the suit and detonate a close defensive shockwave that staggers enemies around you.' },
+    { name: 'Breach Rush', shortName: 'RUSH', cost: 18, cooldown: 4.8, description: 'Drive forward behind a magnetic ram, stagger the lane, and immediately raise Breach Guard.', weaponFamily: 'breacher' },
+    { name: 'Fracture Tag', shortName: 'BREAK', cost: 20, cooldown: 6.2, description: 'Tag one target, tear open its armor path, and drag it toward Breacher range.', weaponFamily: 'breacher' },
+    { name: 'Bulwark Pulse', shortName: 'GUARD', cost: 28, cooldown: 8.2, description: 'Brace the suit and detonate a close defensive shockwave that staggers enemies around you.', weaponFamily: 'breacher' },
   ],
   vector: [
-    { name: 'Vector Shift', shortName: 'SHIFT', cost: 15, cooldown: 4.0, description: 'Burst along your aim vector and prime Slipstream without spending the dodge charge.' },
-    { name: 'Deadeye Lock', shortName: 'LOCK', cost: 18, cooldown: 5.8, description: 'Acquire a long-range precision lock and prime the next stabilized shot.' },
-    { name: 'Splitshot', shortName: 'SPLIT', cost: 24, cooldown: 6.5, description: 'Launch a three-lane high-velocity kinetic fan for mobile ranged pressure.' },
+    { name: 'Vector Shift', shortName: 'SHIFT', cost: 15, cooldown: 4.0, description: 'Burst along your aim vector and prime Slipstream without spending the dodge charge.', weaponFamily: 'rail' },
+    { name: 'Deadeye Lock', shortName: 'LOCK', cost: 18, cooldown: 5.8, description: 'Acquire a long-range precision lock and prime the next stabilized shot.', weaponFamily: 'rail' },
+    { name: 'Splitshot', shortName: 'SPLIT', cost: 24, cooldown: 6.5, description: 'Launch a three-lane high-velocity kinetic fan for mobile ranged pressure.', weaponFamily: 'rail' },
   ],
   systems: [
-    { name: 'Polarity Well', shortName: 'WELL', cost: 22, cooldown: 5.2, description: 'Collapse nearby targets toward a projected mass point and disrupt their formation.' },
-    { name: 'Relay Hack', shortName: 'HACK', cost: 20, cooldown: 6.3, description: 'Hack a priority target and propagate marks and disruption through nearby hostiles.' },
-    { name: 'Cascade Arc', shortName: 'CHAIN', cost: 28, cooldown: 7.0, description: 'Route an electrical cascade through enemies or machinery to keep Closed Loop cycling.' },
+    { name: 'Polarity Well', shortName: 'WELL', cost: 22, cooldown: 5.2, description: 'Collapse nearby targets toward a projected mass point and disrupt their formation.', weaponFamily: 'carbine' },
+    { name: 'Relay Hack', shortName: 'HACK', cost: 20, cooldown: 6.3, description: 'Hack a priority target and propagate marks and disruption through nearby hostiles.', weaponFamily: 'carbine' },
+    { name: 'Cascade Arc', shortName: 'CHAIN', cost: 28, cooldown: 7.0, description: 'Route an electrical cascade through enemies or machinery to keep Closed Loop cycling.', weaponFamily: 'carbine' },
   ],
 };
-
-export type OperatorWeaponFamily = 'carbine' | 'breacher' | 'rail';
 
 export const operatorWeaponFamilyByClass: Record<OperatorClassId, OperatorWeaponFamily> = {
   vanguard: 'breacher',
@@ -46,4 +46,12 @@ export function operatorWeaponFamilyForClass(operatorClass: OperatorClassId | nu
 
 export function getAbilityKitForClass(operatorClass: OperatorClassId | null) {
   return operatorClass ? classAbilityKits[operatorClass] : abilityMeta;
+}
+
+export function classSkillFamilyForClass(operatorClass: OperatorClassId | null): OperatorWeaponFamily | null {
+  return operatorClass ? operatorWeaponFamilyByClass[operatorClass] : null;
+}
+
+export function classSkillFamilyLabel(family: OperatorWeaponFamily | null) {
+  return family === 'breacher' ? 'Breacher' : family === 'rail' ? 'Rail Lance' : family === 'carbine' ? 'Carbine' : 'Unbound';
 }
