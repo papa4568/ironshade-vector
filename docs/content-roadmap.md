@@ -39,9 +39,7 @@ P6.1–P6.3 and P6-A/P6-B/P6-C/P6-D/P6-E are archived.
 
 ## P7 — Loot Rarity & Equipment Presentation
 
-P7-A/P7-B/P7-C/P7-D are archived after merge + verification.
-
-- [ ] **P7-E Singular + touch QA** — premium Singular treatment, no hover-only data, regression across every item surface
+P7-A/P7-B/P7-C/P7-D/P7-E are archived after merge + verification.
 
 ## P8 — Targeting & Class Arsenal Identity
 
@@ -144,20 +142,21 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P7-E — Singular + touch QA.**
+**Next: P8-A — Target acquisition.**
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.214**
+- Android beta: **0.0.1-beta.215**
 - Package: `app.ironshade.vector`
-- Verified: **P7-D Inspector/tools complete**
-- Gameplay source: `ca46720c37eee2adb568958e6b25d1a438546f0a`
-- PR: `#132` (GitHub did not schedule a PR-event workflow; merged-main gates are authoritative)
-- Merged-main Browser E2E: `35564592351`
-- Level 15 beta smoke: `35564592312`
-- Android beta.214: `35564592356`
-- APK artifact: `10624176006`
-- APK SHA-256: `117ccad83f8304d2962e5c0c1862979abcd9fac449faf46eca49c55941817555`
+- Verified: **P7-E Singular + touch QA complete**
+- Gameplay source: `78f98fd006b1292409fa1e92fa544e7fc15ec5c8`
+- PR: `#133`
+- PR Browser E2E: `35565532206`
+- Merged-main Browser E2E: `35565674528`
+- Level 15 beta smoke: `35565674581`
+- Android beta.215: `35565674577`
+- APK artifact: `10624431236`
+- APK SHA-256: `b88e688f2ea4f69bcb70330ddc14c33d7c67784bd94017a95e5563caa195314d`
 - Signing: debug-signed beta; permanent signing is P17-A
