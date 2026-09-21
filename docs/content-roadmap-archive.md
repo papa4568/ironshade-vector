@@ -178,6 +178,19 @@ This file is the permanent archive for completed production work. The active exe
   - Android artifact `10654129177` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.225`, debug signing, and APK SHA-256 `a43733c42a6047b10fbb5bfb8c69b0c0ad7b6b7806d5b737abb4408b288d4495`.
   - **Next: P8-H — Skill UI + regression.**
 
+- [x] **P8-H Skill UI + regression** — Build → Skills now teaches and exposes the complete class-owned skill hierarchy instead of mixing shared Lenses and class Evolutions into one flat option list.
+  - The Skills surface reads in a fixed order: **Class Skill → Weapon Family → Lens/Evolution → Specialization/Capstone**. Each of the three active class skills shows the owned weapon family, equipped family frame, current family-influence source count, selected modifier state, and live specialization/capstone relationship.
+  - Standard behavior, Shared Lenses, and LV16 Class Evolutions are visually separated, while existing class-skill and weapon SVG assets provide fast mobile parsing without adding a new asset family.
+  - The UI consumes the same P8-G derived family state used by combat. It does not create a new per-item binding path, and deterministic QA hooks expose each skill slot/modifier for touch/runtime validation.
+  - Coarse-pointer and mobile-landscape styling keeps the four-stage hierarchy readable, prevents horizontal overflow, and gives selectable skill options at least 52px touch height.
+  - Gameplay regression now round-trips Vanguard, Vector, and Systems through class, owned equipment family, LV15 specialization, LV16 overclock, class Evolution, capstone pairing, atomic save/load, campaign state, ship bonuses, and runtime family binding. The persistence fixture is isolated from the existing asynchronous save-recovery suite.
+  - Browser runtime QA opens Equipment → Skills before deployment and verifies four hierarchy stages, three skill cards, option density, no horizontal overflow, and the normal return-to-contract flow. Native Android QA additionally touch-selects Revector Lens, verifies live hierarchy state, restores Standard, then continues through the normal combat/lifecycle/Chapter 3 run.
+  - PR #150 final Browser E2E `35636084315` passed desktop and mobile-landscape on exact head `996f6d6dadf383ac989a4c1c9c45587c1827825c`, including the full deterministic regression suite, production build, and live player journeys.
+  - Merged gameplay/UI source `bbad384d53a741d7832342a9efb35bc8906d8a82`; merged-main Browser E2E `35636320051` and Level 15 beta smoke `35636320062` both passed.
+  - Android beta.226 run `35636320018` passed full web regression/build, package/version/SDK/signature checks, installable debug APK assembly, the new native touch skill-hierarchy journey, combat runtime/touch smoke, authored operator/enemy/weapon/environment assets, lifecycle recovery, and Chapter 3 mobile playthrough.
+  - Android artifact `10656103751` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.226`, debug signing, and APK SHA-256 `9490c12dc6f551103f029d8d2597b434dcff3eef92462a0fdd67ad4c133de884`.
+  - **Next: P8.5-A — Gear architecture audit + target schema.**
+
 ## P0 — Foundation ✅ COMPLETE
 
 - [x] Three classes: Vanguard / Vector / Systems
