@@ -1,10 +1,10 @@
 import { createDefaultCampaign, generateContracts } from '../src/game/campaign';
-import { groundLootPresentation, lootColor, lootLabel, rollGroundLoot, type GroundLootReceipt } from '../src/game/fieldLoot';
+import { groundLootPresentation, lootColor, lootFeedLabel, lootLabel, rollGroundLoot, type GroundLootReceipt } from '../src/game/fieldLoot';
 import { modifierCountForRarity } from '../src/game/lootQuality';
 import { awardRecovery, createDefaultProfile, deriveCombatBuild, directiveChaseSingularChance, directiveSingularNames, levelRequirementForRecovery, locationSingularNames, maxOperatorLevel, parallaxDebtGearIdentities, type Item } from '../src/game/meta';
 import { applyThreatBudget, operationScalingFor, standardTierCapForOperator } from '../src/game/scaling';
 import { createSimulation, type Telemetry } from '../src/game/sim';
-import { compareRarity, rarityClassToken, rarityDefinition, rarityOrder } from '../src/game/rarity';
+import { compareRarity, rarityClassToken, rarityDefinition, rarityDisplayLabel, rarityOrder } from '../src/game/rarity';
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -55,6 +55,8 @@ assert(rarityDefinitions.every(definition => definition.meaning.length >= 60 && 
 assert(compareRarity('Field', 'Singular') < 0 && compareRarity('Singular', 'Prototype') > 0, 'rarity comparison must respect contract order');
 assert(rarityClassToken('Prototype') === 'rarity-prototype', 'rarity CSS token drifted from the shared contract');
 assert(lootColor('Refined') === rarityDefinition('Refined').colorValue && lootLabel('Singular') === rarityDefinition('Singular').worldLabel, 'world loot presentation must use the shared rarity contract');
+assert(rarityOrder.map(rarityDisplayLabel).join('|') === 'FIELD · BASELINE|REFINED · UPGRADED|PROTOTYPE · HIGH-END|SINGULAR · RULE-CHANGER', 'P7-C menu rarity labels drifted from the shared contract');
+assert(rarityOrder.every(rarity => lootFeedLabel(rarity) === rarityDisplayLabel(rarity)), 'P7-C combat pickup feed must use the same rarity language as menus');
 const worldLootPresentations = rarityOrder.map(groundLootPresentation);
 assert(new Set(worldLootPresentations.map(presentation => presentation.shape)).size === 4, 'world loot must preserve all four non-color rarity silhouettes');
 assert(worldLootPresentations.every((presentation, index) => index === 0 || (presentation.beaconScale > worldLootPresentations[index - 1].beaconScale && presentation.ringScale > worldLootPresentations[index - 1].ringScale)), 'higher rarity world loot should receive a strictly stronger beacon and ground-ring hierarchy');
