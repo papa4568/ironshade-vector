@@ -5,7 +5,7 @@ import { getNextMissionObjectiveTarget } from './encounters';
 import { findNavigationPath } from './mapPathfinding';
 import { getWorldSize, type CombatObject, type Enemy, type Player, type SimState, type WeaponId } from './sim';
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, locationArtIdentityFor, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
-import { lootColor } from './fieldLoot';
+import { groundLootPresentation } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
 import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, SPIN_HABITAT_BOSS_ASSET_FAMILY, JOVIAN_HARVESTER_BOSS_ASSET_FAMILY, ICE_MINE_BOSS_ASSET_FAMILY, SOLAR_YARD_BOSS_ASSET_FAMILY, SPIN_HABITAT_ENEMY_ASSET_FAMILIES, SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES, OPERATOR_CLASS_ASSET_FAMILIES, JOVIAN_HARVESTER_ASSET_FAMILIES, JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES, ICE_MINE_ASSET_FAMILIES, SOLAR_YARD_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, SPIN_HABITAT_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
 import { configureGraphicsAssetRenderer, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
@@ -19,6 +19,19 @@ import { hecateRenderProfile, hecateStageIdentity } from './hecateCapstone';
 
 const WORLD_SCALE = 0.02;
 const FLOOR_Y = 0;
+
+function createGroundLootStarGeometry() {
+  const shape = new THREE.Shape();
+  for (let index = 0; index < 10; index += 1) {
+    const radius = index % 2 === 0 ? 0.24 : 0.1;
+    const angle = -Math.PI / 2 + index * Math.PI / 5;
+    const x = Math.cos(angle) * radius;
+    const y = Math.sin(angle) * radius;
+    if (index === 0) shape.moveTo(x, y); else shape.lineTo(x, y);
+  }
+  shape.closePath();
+  return new THREE.ShapeGeometry(shape);
+}
 
 const roleColors: Record<Enemy['role'], number> = {
   assault: 0xb35a4b,
@@ -155,6 +168,7 @@ type DebrisVisual = THREE.Mesh<THREE.IcosahedronGeometry, THREE.MeshStandardMate
 type GroundLootVisual = {
   root: THREE.Group;
   core: THREE.Mesh<THREE.OctahedronGeometry, THREE.MeshStandardMaterial>;
+  marker: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
   ring: THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>;
   beam: THREE.Mesh<THREE.CylinderGeometry, THREE.MeshBasicMaterial>;
   assetInstance: GraphicsAssetInstance | null;
@@ -362,6 +376,12 @@ export class ThreeCombatRenderer {
   private readonly projectileCoreGeometry = new THREE.SphereGeometry(0.11, 8, 6);
   private readonly projectileTrailGeometry = new THREE.BoxGeometry(0.62, 0.035, 0.035);
   private readonly groundLootCoreGeometry = new THREE.OctahedronGeometry(0.22, 0);
+  private readonly groundLootMarkerGeometries: Record<ReturnType<typeof groundLootPresentation>['shape'], THREE.BufferGeometry> = {
+    diamond: new THREE.OctahedronGeometry(0.18, 0),
+    bar: new THREE.BoxGeometry(0.46, 0.14, 0.14),
+    hexagon: new THREE.CylinderGeometry(0.22, 0.22, 0.14, 6),
+    star: createGroundLootStarGeometry(),
+  };
   private readonly groundLootRingGeometry = new THREE.TorusGeometry(0.48, 0.045, 6, 32);
   private readonly groundLootBeamGeometry = new THREE.CylinderGeometry(0.018, 0.055, 1.7, 6);
   private readonly effectRingGeometry = new THREE.TorusGeometry(1, 0.045, 6, 40);
@@ -4766,38 +4786,50 @@ export class ThreeCombatRenderer {
         const root = new THREE.Group();
         const core = new THREE.Mesh(this.groundLootCoreGeometry, new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1.2, metalness: 0.35, roughness: 0.22 }));
         core.position.y = 0.52;
+        const marker = new THREE.Mesh(this.groundLootMarkerGeometries.diamond, new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1.5, metalness: 0.1, roughness: 0.24, side: THREE.DoubleSide }));
+        marker.position.y = 1.16;
         const ring = new THREE.Mesh(this.groundLootRingGeometry, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, depthWrite: false })); ring.rotation.x = Math.PI / 2; ring.position.y = 0.06;
-        const beam = new THREE.Mesh(this.groundLootBeamGeometry, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.22, depthWrite: false })); beam.position.y = 0.9;
-        root.add(core, ring, beam);
+        const beam = new THREE.Mesh(this.groundLootBeamGeometry, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.22, depthWrite: false, depthTest: false })); beam.position.y = 0.9;
+        root.add(core, marker, ring, beam);
         this.dynamicRoot.add(root);
-        const visual: GroundLootVisual = { root, core, ring, beam, assetInstance: null, authoredRoot: null, accentMaterials: [], ownedMaterials: [], assetRequested: false };
+        const visual: GroundLootVisual = { root, core, marker, ring, beam, assetInstance: null, authoredRoot: null, accentMaterials: [], ownedMaterials: [], assetRequested: false };
         this.groundLootPool.push(visual);
         void this.loadAuthoredGroundLoot(visual);
       }
       const visual = this.groundLootPool[count++];
-      const color = lootColor(drop.rarity);
+      const presentation = groundLootPresentation(drop.rarity);
+      const color = presentation.color;
       visual.root.visible = true;
       visual.root.position.set(scaled(drop.x), 0, scaled(drop.y));
       visual.root.rotation.y = state.time * 0.8 + drop.enemyId;
       visual.core.visible = !visual.authoredRoot;
       visual.core.material.color.setHex(color);
       visual.core.material.emissive.setHex(color);
+      visual.marker.geometry = this.groundLootMarkerGeometries[presentation.shape];
+      visual.marker.material.color.setHex(color);
+      visual.marker.material.emissive.setHex(color);
+      visual.marker.material.emissiveIntensity = 1.35 + presentation.rank * 0.22;
       visual.ring.material.color.setHex(color);
       visual.beam.material.color.setHex(color);
       for (const material of visual.accentMaterials) {
         material.color.setHex(color);
         material.emissive.setHex(color);
-        material.emissiveIntensity = drop.rarity === 'Singular' ? 1.65 : drop.rarity === 'Prototype' ? 1.35 : 1.05;
+        material.emissiveIntensity = 1.05 + presentation.rank * 0.2;
       }
       const pulse = 1 + Math.sin(state.time * 7 + drop.enemyId) * 0.12;
-      visual.core.scale.setScalar(drop.rarity === 'Singular' ? 1.35 * pulse : drop.rarity === 'Prototype' ? 1.15 * pulse : pulse);
+      visual.core.scale.setScalar(presentation.markerScale * pulse);
+      visual.marker.scale.setScalar(presentation.markerScale * (0.96 + Math.sin(state.time * 6 + drop.enemyId) * 0.06));
+      visual.marker.position.y = 1.14 + Math.sin(state.time * 4.5 + drop.enemyId) * 0.08;
+      visual.marker.rotation.z = presentation.shape === 'bar' ? 0 : state.time * 0.55;
       if (visual.authoredRoot) {
-        const authoredScale = drop.rarity === 'Singular' ? 1.16 : drop.rarity === 'Prototype' ? 1.08 : 1;
+        const authoredScale = 1 + presentation.rank * 0.055;
         visual.authoredRoot.scale.setScalar(authoredScale * (0.98 + Math.sin(state.time * 5 + drop.enemyId) * 0.025));
         visual.authoredRoot.position.y = 0.10 + Math.sin(state.time * 4.5 + drop.enemyId) * 0.035;
       }
-      visual.ring.scale.setScalar(drop.rarity === 'Singular' ? 1.4 : drop.rarity === 'Prototype' ? 1.18 : 1);
-      visual.beam.material.opacity = drop.rarity === 'Singular' ? 0.48 : drop.rarity === 'Prototype' ? 0.34 : 0.2;
+      visual.ring.scale.setScalar(presentation.ringScale);
+      visual.beam.scale.y = presentation.beaconScale;
+      visual.beam.position.y = 0.85 * presentation.beaconScale;
+      visual.beam.material.opacity = 0.14 + presentation.rank * 0.11;
     }
     for (let index = count; index < this.groundLootPool.length; index += 1) this.groundLootPool[index].root.visible = false;
   }

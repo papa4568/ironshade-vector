@@ -48,6 +48,7 @@ const parallaxDebt = read('src/game/parallaxDebt.ts');
 const scaling = read('src/game/scaling.ts');
 const rarity = read('src/game/rarity.ts');
 const fieldLoot = read('src/game/fieldLoot.ts');
+const feedbackSource = read('src/game/feedback.ts');
 const lootQuality = read('src/game/lootQuality.ts');
 const gearDepth = read('src/game/gearDepth.ts');
 
@@ -81,14 +82,19 @@ assert(rarity.includes("cue: 'RULE-CHANGER'") && armory.includes('rarityCue(item
 assert(rarity.includes("export const rarityOrder = ['Field', 'Refined', 'Prototype', 'Singular'] as const") && rarity.includes('accessibleLabel') && rarity.includes('colorValue') && rarity.includes('shape:') && rarity.includes('icon:'), 'P7-A rarity contract is missing order, color, icon, shape, or accessible-text tokens.');
 assert(armory.includes('rarity-contract-legend') && armory.includes('Equipment rarity guide') && armory.includes('rarityDefinition(item.rarity).icon'), 'Build gear UI is not exposing the shared non-color rarity language.');
 assert(equipmentCss.includes('P7-A // shared rarity contract presentation') && equipmentCss.includes('.rarity-contract-legend') && equipmentCss.includes('.rarity-shape'), 'Rarity legend presentation is missing responsive shape-cue styling.');
-assert(fieldLoot.includes('rarityDefinition(rarity).colorValue') && fieldLoot.includes('rarityDefinition(rarity).worldLabel'), 'Ground loot still owns duplicate rarity colors or labels.');
+assert(fieldLoot.includes('const definition = rarityDefinition(rarity)') && fieldLoot.includes('color: definition.colorValue') && fieldLoot.includes('label: definition.worldLabel'), 'Ground loot presentation is not sourced from the shared rarity contract.');
 assert(meta.includes('export type Rarity = ItemRarity') && lootQuality.includes("Exclude<ItemRarity, 'Singular'>") && gearDepth.includes('export type GearRarity = ItemRarity'), 'Equipment systems still duplicate the rarity type contract.');
 assert(armory.includes('activeDoctrineStates'), 'Discovered-only loadout interactions are missing.');
 
 assert(combat.includes('HEALTH EXPOSED'), 'Combat UI does not explicitly call out broken armor and exposed health.');
 assert(combat.includes('Focused hostile status'), 'Focused hostile health readout is missing.');
 assert(combat.includes('DROP ON DECK'), 'Ground-loot explanation is missing from combat HUD.');
-assert(combat.includes('lootLabel(drop.rarity)'), 'High-value ground loot does not receive a readable world label.');
+assert(combat.includes('ctx.fillText(presentation.label'), 'High-value ground loot does not receive a readable world label.');
+assert(fieldLoot.includes('groundLootPresentation') && fieldLoot.includes("pickupCue: definition.rank >= 2 ? 'rareLoot' : 'loot'"), 'P7-B world loot is missing shared beacon scaling or rarity-aware pickup feedback.');
+assert(combat.includes('drawGroundLootShape') && combat.includes('nearbyLootRange') && combat.includes('nearbyLootDirection') && combat.includes('feedback.cue(groundLootPresentation(latestLoot.rarity).pickupCue)'), 'P7-B combat presentation is missing rarity-shaped markers, distance guidance, or pickup audio.');
+assert(renderer.includes('groundLootMarkerGeometries') && renderer.includes('visual.marker.geometry = this.groundLootMarkerGeometries[presentation.shape]') && renderer.includes('visual.beam.scale.y = presentation.beaconScale'), 'P7-B Three.js loot markers do not preserve non-color rarity shapes and beacon hierarchy.');
+assert(feedbackSource.includes("cue === 'rareLoot'") && feedbackSource.includes("cue === 'loot'") && feedbackSource.includes('navigator.vibrate([8, 18, 12])'), 'P7-B pickup feedback is missing distinct rare-loot audio/haptic treatment.');
+assert(css.includes('P7-B // world-loot distance + non-color rarity readability') && css.includes('.loot-radar-shape') && css.includes('.loot-radar-meta') && css.includes('.loot-radar-instruction'), 'P7-B loot radar styling is missing mobile-safe shape or distance readability.');
 assert(renderer.includes("enemy.role === 'elite' ? 2.2 : 1.9"), 'Three.js hostile bars are still too small for mobile readability.');
 assert(renderer.includes('0xff725f') && renderer.includes('0x8ee8ff') && renderer.includes('THREE.AdditiveBlending') && renderer.includes('toneMapped: false'), 'Three.js hostile bars are not using the bright mobile treatment.');
 assert(css.includes('.target-readout') && css.includes('.gear-quick-read') && css.includes('.loot-radar'), 'Readability stylesheet is incomplete.');

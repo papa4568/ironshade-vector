@@ -46,6 +46,8 @@ class FeedbackBus {
     else if (cue === 'damage') navigator.vibrate(12);
     else if (cue === 'dodge') navigator.vibrate(7);
     else if (cue === 'breach') navigator.vibrate([18, 28, 22]);
+    else if (cue === 'rareLoot') navigator.vibrate([8, 18, 12]);
+    else if (cue === 'loot') navigator.vibrate(5);
     else if (cue === 'machinery') navigator.vibrate(6);
   }
 

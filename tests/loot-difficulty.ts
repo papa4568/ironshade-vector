@@ -1,5 +1,5 @@
 import { createDefaultCampaign, generateContracts } from '../src/game/campaign';
-import { lootColor, lootLabel, rollGroundLoot, type GroundLootReceipt } from '../src/game/fieldLoot';
+import { groundLootPresentation, lootColor, lootLabel, rollGroundLoot, type GroundLootReceipt } from '../src/game/fieldLoot';
 import { modifierCountForRarity } from '../src/game/lootQuality';
 import { awardRecovery, createDefaultProfile, deriveCombatBuild, directiveChaseSingularChance, directiveSingularNames, levelRequirementForRecovery, locationSingularNames, maxOperatorLevel, parallaxDebtGearIdentities, type Item } from '../src/game/meta';
 import { applyThreatBudget, operationScalingFor, standardTierCapForOperator } from '../src/game/scaling';
@@ -55,6 +55,10 @@ assert(rarityDefinitions.every(definition => definition.meaning.length >= 60 && 
 assert(compareRarity('Field', 'Singular') < 0 && compareRarity('Singular', 'Prototype') > 0, 'rarity comparison must respect contract order');
 assert(rarityClassToken('Prototype') === 'rarity-prototype', 'rarity CSS token drifted from the shared contract');
 assert(lootColor('Refined') === rarityDefinition('Refined').colorValue && lootLabel('Singular') === rarityDefinition('Singular').worldLabel, 'world loot presentation must use the shared rarity contract');
+const worldLootPresentations = rarityOrder.map(groundLootPresentation);
+assert(new Set(worldLootPresentations.map(presentation => presentation.shape)).size === 4, 'world loot must preserve all four non-color rarity silhouettes');
+assert(worldLootPresentations.every((presentation, index) => index === 0 || (presentation.beaconScale > worldLootPresentations[index - 1].beaconScale && presentation.ringScale > worldLootPresentations[index - 1].ringScale)), 'higher rarity world loot should receive a strictly stronger beacon and ground-ring hierarchy');
+assert(groundLootPresentation('Field').pickupCue === 'loot' && groundLootPresentation('Refined').pickupCue === 'loot' && groundLootPresentation('Prototype').pickupCue === 'rareLoot' && groundLootPresentation('Singular').pickupCue === 'rareLoot', 'pickup audio must distinguish ordinary from high-value recoveries');
 
 function sequenceRandom(values: number[]) {
   let index = 0;
