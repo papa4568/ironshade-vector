@@ -75,7 +75,7 @@ export function materializeModifier(id: AffixId, grade: ModifierGrade = 3): Item
     buildTags: [...semantics.buildTags],
   };
 }
-const affixes = Object.fromEntries(gearAffixDefinitions.map(definition => [definition.id, materializeModifier(definition.id, 3)])) as Record<AffixId, ItemModifier>;
+const affixes: Record<AffixId, ItemModifier> = Object.fromEntries(gearAffixDefinitions.map(definition => [definition.id, materializeModifier(definition.id, 3)])) as Record<AffixId, ItemModifier>;
 
 function frameImplicitFor(slot: EquipmentSlot, generation: FrameGeneration, identity?: FrameIdentityId, quality = 0) { const resolved = identity ?? inferFrameIdentity(slot, `${slot}:${generation}`); return frameImplicitDescription(resolved, generation, quality); }
 
