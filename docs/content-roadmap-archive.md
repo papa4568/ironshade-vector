@@ -51,6 +51,16 @@ This file is the permanent archive for completed production work. The active exe
   - Verified on merged gameplay source `0486cf45b17f2cd45bcb3d88385cd78e5c32b998`: Browser E2E `35561313627`, Level 15 beta smoke `35561313621`, and Android beta.211 `35561313599` all passed. Android verification includes package/version/SDK/signature checks plus native emulator install/launch/runtime smoke. Artifact `10622107759` contains the debug-signed APK with SHA-256 `d42b0e563f2c8ebf1d3ff2a5dca5fdd7dea7b69d994e68ac11f335e0a2af1339`.
   - **Next: P7-B — World loot.**
 
+- [x] **P7-B World loot** — rarity is readable in the combat space through contract-owned color, icon, four distinct silhouettes, and a monotonic ring/beacon hierarchy instead of relying on color alone.
+  - `groundLootPresentation` now derives world color/label/icon/shape plus marker, ring, beacon, and pickup-cue hierarchy from the shared P7-A rarity definition without changing drop odds, magnet radii, recovery quality, or reward balance.
+  - Canvas fallback and Three.js both render Field diamond, Refined bar, Prototype hexagon, and Singular star language. The Three.js marker remains visible alongside authored recovery-capsule assets, while higher rarity increases marker/ring/beacon emphasis.
+  - The nearest-drop HUD now reports screen-relative direction, range, monster level, and rarity icon/label. Mobile/coarse-pointer layouts retain the direction/range read while hiding only the longer recovery instruction.
+  - Pickup completion now fires the existing `loot` / `rareLoot` audio cues and adds short distinct haptics for ordinary versus Prototype/Singular recoveries.
+  - Regression coverage locks all four non-color world shapes, strictly increasing beacon/ring hierarchy, ordinary/high-value pickup cue mapping, Canvas/Three.js wiring, mobile HUD readability, and haptic treatment.
+  - PR #130 merged as gameplay source `6b4530f4ab28aedc06f79d2a6b51e12ec78f9ad4`. The API-created PR did not receive a pull-request event run, so final validation was performed on the merged source rather than treating an unscheduled PR gate as evidence.
+  - Verified on merged gameplay source `6b4530f4ab28aedc06f79d2a6b51e12ec78f9ad4`: Browser E2E `35562379185` passed desktop and mobile-landscape, Level 15 beta smoke `35562379166` passed the full regression/production build, and Android beta.212 `35562379132` passed package/version/SDK/signature checks plus emulator install, mobile touch/runtime smoke, lifecycle resume, authored-asset verification, and the Chapter 3 touch playthrough. Artifact `10622443302` contains the debug-signed APK with SHA-256 `c3e6b1b04956be261ad654b0900cb4969b78e9ff9e6db0b3f5ecd1557282c768`.
+  - **Next: P7-C — Menu consistency.**
+
 ## P0 — Foundation ✅ COMPLETE
 
 - [x] Three classes: Vanguard / Vector / Systems
