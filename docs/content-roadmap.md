@@ -45,7 +45,7 @@ P7-A/P7-B/P7-C/P7-D/P7-E are archived after merge + verification.
 
 - [x] **P8-A Target acquisition** — archived after merge + verification
 - [x] **P8-B Target control** — archived after merge + verification
-- [ ] **P8-C Target feedback/QA** — reticle, audio/haptic cue, accessibility, touch/controller tests
+- [x] **P8-C Target feedback/QA** — archived after merge + verification
 - [ ] **P8-D Hard arsenal lock + migration** — one active class-family armament slot; safely move incompatible equipped weapons to storage and guarantee a valid starter
 - [ ] **P8-E Loot/UI/tutorial ownership** — prevent useless off-class weapon outcomes, explain compatibility, teach each family
 - [ ] **P8-F Handling identity** — family-specific stance, recoil, reload/vent, muzzle behavior, movement interaction, camera response, stat budgets
@@ -142,21 +142,21 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P8-C — Target feedback/QA.**
+**Next: P8-D — Hard arsenal lock + migration.**
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.218**
+- Android beta: **0.0.1-beta.219**
 - Package: `app.ironshade.vector`
-- Verified: **P8-B Target control complete**
-- Gameplay source: `0f3842a19542df286d3e996b52960fe72af6fa27`
-- PR: `#137`
-- PR Browser E2E: `35601768142`
-- Merged-main Browser E2E: `35601943572`
-- Level 15 beta smoke: `35601943626`
-- Android beta.218: `35601943603`
-- APK artifact: `10639383799`
-- APK SHA-256: `e57e511355264caef61f8bd42250a11d082672ccb9873d1d28a146d1a7d65e88`
+- Verified: **P8-C Target feedback/QA complete**
+- Gameplay source: `b4a179c4d278159b3b90efc1c5feb5a14d7dcabc`
+- PR: `#139`
+- PR Browser E2E: `35606278955`
+- Merged-main Browser E2E: `35606519039`
+- Level 15 beta smoke: `35606519086`
+- Android beta.219: `35606519023`
+- APK artifact: `10642866731`
+- APK SHA-256: `aab0c090167ac26f08fe76d0fb928a78008268d83b4187eca3fe67a135436e09`
 - Signing: debug-signed beta; permanent signing is P17-A
