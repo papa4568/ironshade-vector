@@ -71,6 +71,11 @@ export function rarityDefinition(rarity: ItemRarity) {
   return rarityContract[rarity];
 }
 
+export function rarityDisplayLabel(rarity: ItemRarity) {
+  const definition = rarityDefinition(rarity);
+  return `${rarity.toUpperCase()} · ${definition.cue}`;
+}
+
 export function rarityClassToken(rarity: ItemRarity) {
   return `rarity-${rarityContract[rarity].token}`;
 }
