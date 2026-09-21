@@ -39,7 +39,7 @@ P6.1–P6.3 and P6-A/P6-B/P6-C/P6-D/P6-E are archived.
 
 ## P7 — Loot Rarity & Equipment Presentation
 
-- [ ] **P7-A Rarity contract** — one source of truth for Field/Refined/Prototype/Singular meaning, order, tokens, text/icon/shape accessibility
+- [x] **P7-A Rarity contract** — one source of truth for Field/Refined/Prototype/Singular meaning, order, tokens, text/icon/shape accessibility
 - [ ] **P7-B World loot** — rarity-readable silhouette/beacon, distance readability, pickup feedback/audio
 - [ ] **P7-C Menu consistency** — equipped, storage, crafting, comparison, rewards, loot feed, debrief all use the same rarity language
 - [ ] **P7-D Inspector/tools** — frame/base identity, quality, recovery level, modifier grades, augments, compatibility, source, build-changing effects, filters/sorts
@@ -146,20 +146,20 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P7-A — Rarity contract.**
+**Next: P7-B — World loot.**
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.210**
+- Android beta: **0.0.1-beta.211**
 - Package: `app.ironshade.vector`
-- Verified: **P6-E Endgame verification complete**
-- Gameplay source: `d2e2448f2bc693df70684bcb5097c4b1fcfa31ba`
-- PR Browser E2E: `35560181053`
-- Merged-main Browser E2E: `35560310881`
-- Level 15 beta smoke: `35560310891`
-- Android beta.210: `35560310916`
-- APK artifact: `10621449019`
-- APK SHA-256: `bbd8a2e133be6793ba7c9ed74d1ba2131961adf475fa67cd13c26b86b4bc9d04`
+- Verified: **P7-A Rarity contract complete**
+- Gameplay source: `0486cf45b17f2cd45bcb3d88385cd78e5c32b998`
+- PR Browser E2E: `35561188093`
+- Merged-main Browser E2E: `35561313627`
+- Level 15 beta smoke: `35561313621`
+- Android beta.211: `35561313599`
+- APK artifact: `10622107759`
+- APK SHA-256: `d42b0e563f2c8ebf1d3ff2a5dca5fdd7dea7b69d994e68ac11f335e0a2af1339`
 - Signing: debug-signed beta; permanent signing is P17-A
