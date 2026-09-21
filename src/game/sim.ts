@@ -128,6 +128,8 @@ export type TargetAcquisitionRequest = {
   markWeight?: number;
   bossWeight?: number;
   protocolWeight?: number;
+  leadScale?: number;
+  maxLeadSeconds?: number;
 };
 export type TargetAcquisitionResult = {
   enemy: Enemy;
@@ -151,7 +153,9 @@ function evaluateCombatTarget(state: SimState, enemy: Enemy, request: TargetAcqu
 
   const visible = clearLine(state, p.x, p.y, enemy.x, enemy.y);
   const projectileSpeed = request.projectileSpeed ?? 0;
-  const leadSeconds = projectileSpeed > 0 ? Math.min(0.38, distance / Math.max(1, projectileSpeed) * 0.72) : 0;
+  const leadScale = request.leadScale ?? 0.72;
+  const maxLeadSeconds = request.maxLeadSeconds ?? 0.38;
+  const leadSeconds = projectileSpeed > 0 ? Math.min(maxLeadSeconds, distance / Math.max(1, projectileSpeed) * leadScale) : 0;
   const direction = norm({
     x: enemy.x + enemy.vx * leadSeconds - p.x,
     y: enemy.y + enemy.vy * leadSeconds - p.y,
@@ -478,6 +482,8 @@ export function aimAtMobileTarget(state: SimState, mode: 'light' | 'balanced' = 
       visibilityPenalty: p.currentWeapon === 'rail' ? 0.38 : mode === 'balanced' ? 0.68 : 0.92,
       markWeight: 0.8,
       protocolWeight: mode === 'balanced' ? 1 : 0.6,
+      leadScale: mode === 'balanced' ? 0.72 : 0.35,
+      maxLeadSeconds: mode === 'balanced' ? 0.38 : 0.2,
     });
   };
 
