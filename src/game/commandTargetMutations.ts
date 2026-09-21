@@ -24,7 +24,7 @@ const definitions: Record<CommandTargetMutationId, CommandTargetMutationDefiniti
     name: 'Siege Authority Core',
     shortName: 'SIEGE CORE',
     description: 'A hardened command core reinforces the target for the entire engagement instead of waiting for a phase transition.',
-    minTier: 6,
+    minTier: 9,
     hpScale: 1.16,
     armorScale: 1.28,
     fireCadenceScale: 1.02,
@@ -34,7 +34,7 @@ const definitions: Record<CommandTargetMutationId, CommandTargetMutationDefiniti
     name: 'Pursuit Governor',
     shortName: 'PURSUIT',
     description: 'A predictive pursuit governor accelerates command recovery and periodically vents countermass wash across the operator lane.',
-    minTier: 7,
+    minTier: 10,
     hpScale: 1.08,
     armorScale: 1.14,
     fireCadenceScale: 1.12,
@@ -47,7 +47,7 @@ const definitions: Record<CommandTargetMutationId, CommandTargetMutationDefiniti
     name: 'Countermass Interlock',
     shortName: 'MASS LOCK',
     description: 'An integrated mass-control interlock hardens the chassis and projects recurring gravity wells throughout the fight.',
-    minTier: 8,
+    minTier: 11,
     hpScale: 1.1,
     armorScale: 1.18,
     fireCadenceScale: 1.06,
@@ -60,7 +60,7 @@ const definitions: Record<CommandTargetMutationId, CommandTargetMutationDefiniti
     name: 'Relay Command Crown',
     shortName: 'RELAY CROWN',
     description: 'A command relay crown keeps firing logic hot while seeding recurring shock-grid denial around the operator.',
-    minTier: 9,
+    minTier: 12,
     hpScale: 1.08,
     armorScale: 1.16,
     fireCadenceScale: 1.08,
@@ -98,7 +98,7 @@ function targetClassFor(source: CommandTargetMutationSource) {
 
 export function chooseCommandTargetMutations(source: CommandTargetMutationSource): CommandTargetMutationId[] {
   const tier = tierFor(source);
-  if (targetClassFor(source) !== 'command-target' || tier < 6) return [];
+  if (targetClassFor(source) !== 'command-target' || tier < 9) return [];
   const legal = commandTargetMutationIds.filter(id => definitions[id].minTier <= tier);
   const index = ((source.seed ^ Math.imul(tier, 104729) ^ 0x51c3a7d9) >>> 0) % legal.length;
   return [legal[index]!];
