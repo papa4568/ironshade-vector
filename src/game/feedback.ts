@@ -34,6 +34,30 @@ export type AudioEnvironment = { space: 'interior' | 'open'; pressure: AudioPres
 export type AcousticTreatment = { gain: number; tailGain: number; lowpassHz: number; tailDelay: number };
 export type ImpactAudioProfile = { layers: WeaponAudioLayer[]; masterGain: number };
 
+export type SkillAudioClass = 'vanguard' | 'vector' | 'systems';
+export type FoleyAudioAction = 'reload' | 'vent';
+export type FoleyAudioPhase = 'start' | 'complete';
+export type ThreatAudioCue = 'enemy-telegraph' | 'elite-telegraph' | 'boss-telegraph' | 'boss-phase';
+export type AudioBusName = 'ui' | 'weapon' | 'impact' | 'foley' | 'skill' | 'threat' | 'utility';
+export type CombatAudioPriority = 'background' | 'normal' | 'important' | 'critical';
+export type FoleyAudioProfile = { start: WeaponAudioLayer[]; complete: WeaponAudioLayer[]; masterGain: number };
+export type SkillAudioProfile = { layers: WeaponAudioLayer[]; masterGain: number; priority: 'important' };
+export type ThreatAudioProfile = { layers: WeaponAudioLayer[]; masterGain: number; priority: 'important' | 'critical' };
+
+export const combatAudioBudget = {
+  maxVoices: 18,
+  criticalReserveVoices: 3,
+  maxTailVoices: 5,
+} as const;
+
+const unityBusGain: Record<AudioBusName, number> = { ui: 1, weapon: 1, impact: 1, foley: 1, skill: 1, threat: 1, utility: 1 };
+export const combatMixProfiles: Record<CombatAudioPriority, { holdSeconds: number; busGain: Record<AudioBusName, number> }> = {
+  background: { holdSeconds: 0, busGain: { ...unityBusGain } },
+  normal: { holdSeconds: 0, busGain: { ...unityBusGain } },
+  important: { holdSeconds: .18, busGain: { ui: 1, weapon: .72, impact: .76, foley: .94, skill: 1, threat: 1, utility: .86 } },
+  critical: { holdSeconds: .32, busGain: { ui: 1, weapon: .42, impact: .52, foley: .7, skill: .76, threat: 1, utility: .62 } },
+};
+
 const openAudioLocations = new Set(['asteroid-refinery', 'jovian-harvester', 'solar-yard', 'momentum-exchange']);
 const glassAudioLocations = new Set(['spin-habitat', 'solar-yard', 'parallax-array', 'lattice-annex']);
 const iceAudioLocations = new Set(['ice-mine', 'cryo-reserve']);
@@ -116,6 +140,113 @@ export const impactAudioProfiles: Record<ImpactSurface, ImpactAudioProfile> = {
       { frequency: 1180, duration: .07, type: 'triangle', gain: .2, sweep: 1.22, delay: .016, lowpassHz: 5200 },
     ],
     masterGain: .19,
+  },
+};
+
+export const foleyAudioProfiles: Record<WeaponCue, Record<FoleyAudioAction, FoleyAudioProfile>> = {
+  carbine: {
+    reload: {
+      start: [
+        { frequency: 1180, duration: .025, type: 'square', gain: .24, sweep: .72, lowpassHz: 4300 },
+        { frequency: 410, duration: .06, type: 'triangle', gain: .32, sweep: .66, delay: .018, lowpassHz: 2400 },
+      ],
+      complete: [
+        { frequency: 760, duration: .035, type: 'square', gain: .28, sweep: .82, lowpassHz: 3600 },
+        { frequency: 1320, duration: .024, type: 'triangle', gain: .18, sweep: 1.12, delay: .012, lowpassHz: 5200 },
+      ],
+      masterGain: .16,
+    },
+    vent: {
+      start: [
+        { frequency: 540, duration: .12, type: 'sawtooth', gain: .24, sweep: .54, lowpassHz: 2600 },
+        { frequency: 1860, duration: .09, type: 'sine', gain: .16, sweep: .76, delay: .02, lowpassHz: 5600 },
+      ],
+      complete: [{ frequency: 620, duration: .05, type: 'triangle', gain: .24, sweep: .72, lowpassHz: 3200 }],
+      masterGain: .14,
+    },
+  },
+  breacher: {
+    reload: {
+      start: [
+        { frequency: 330, duration: .07, type: 'square', gain: .38, sweep: .62, lowpassHz: 2100 },
+        { frequency: 118, duration: .095, type: 'triangle', gain: .32, sweep: .72, delay: .026, lowpassHz: 1200 },
+      ],
+      complete: [
+        { frequency: 470, duration: .055, type: 'square', gain: .36, sweep: .68, lowpassHz: 2600 },
+        { frequency: 164, duration: .075, type: 'triangle', gain: .26, sweep: .62, delay: .018, lowpassHz: 1500 },
+      ],
+      masterGain: .18,
+    },
+    vent: {
+      start: [
+        { frequency: 138, duration: .16, type: 'sawtooth', gain: .4, sweep: .48, lowpassHz: 1450 },
+        { frequency: 720, duration: .11, type: 'triangle', gain: .18, sweep: .62, delay: .024, lowpassHz: 3000 },
+      ],
+      complete: [{ frequency: 270, duration: .07, type: 'square', gain: .3, sweep: .66, lowpassHz: 1800 }],
+      masterGain: .17,
+    },
+  },
+  rail: {
+    reload: {
+      start: [
+        { frequency: 920, duration: .065, type: 'triangle', gain: .24, sweep: 1.24, lowpassHz: 4600 },
+        { frequency: 1520, duration: .075, type: 'sine', gain: .19, sweep: .78, delay: .018, lowpassHz: 6200 },
+      ],
+      complete: [
+        { frequency: 1260, duration: .055, type: 'triangle', gain: .23, sweep: .72, lowpassHz: 5200 },
+        { frequency: 520, duration: .07, type: 'sine', gain: .2, sweep: 1.28, delay: .018, lowpassHz: 3200 },
+      ],
+      masterGain: .16,
+    },
+    vent: {
+      start: [
+        { frequency: 1160, duration: .15, type: 'sine', gain: .22, sweep: .56, lowpassHz: 5200 },
+        { frequency: 240, duration: .14, type: 'triangle', gain: .28, sweep: .74, delay: .02, lowpassHz: 1900 },
+      ],
+      complete: [{ frequency: 860, duration: .075, type: 'sine', gain: .22, sweep: 1.18, lowpassHz: 4200 }],
+      masterGain: .15,
+    },
+  },
+};
+
+export const classSkillAudioProfiles: Record<SkillAudioClass, readonly [SkillAudioProfile, SkillAudioProfile, SkillAudioProfile]> = {
+  vanguard: [
+    { layers: [{ frequency: 164, duration: .11, type: 'square', gain: .42, sweep: .58, lowpassHz: 1700 }, { frequency: 520, duration: .07, type: 'triangle', gain: .24, sweep: .7, delay: .016, lowpassHz: 3000 }], masterGain: .2, priority: 'important' },
+    { layers: [{ frequency: 118, duration: .15, type: 'sawtooth', gain: .45, sweep: .52, lowpassHz: 1350 }, { frequency: 390, duration: .1, type: 'square', gain: .26, sweep: .66, delay: .022, lowpassHz: 2400 }], masterGain: .21, priority: 'important' },
+    { layers: [{ frequency: 210, duration: .13, type: 'triangle', gain: .4, sweep: .64, lowpassHz: 1900 }, { frequency: 680, duration: .09, type: 'square', gain: .22, sweep: 1.18, delay: .02, lowpassHz: 3600 }], masterGain: .2, priority: 'important' },
+  ],
+  vector: [
+    { layers: [{ frequency: 880, duration: .1, type: 'sine', gain: .3, sweep: 1.42, lowpassHz: 5200 }, { frequency: 1760, duration: .08, type: 'triangle', gain: .2, sweep: .7, delay: .018, lowpassHz: 6800 }], masterGain: .18, priority: 'important' },
+    { layers: [{ frequency: 620, duration: .13, type: 'triangle', gain: .32, sweep: 1.68, lowpassHz: 4600 }, { frequency: 1420, duration: .11, type: 'sine', gain: .22, sweep: .58, delay: .022, lowpassHz: 6400 }], masterGain: .19, priority: 'important' },
+    { layers: [{ frequency: 1040, duration: .12, type: 'sine', gain: .3, sweep: .62, lowpassHz: 5600 }, { frequency: 260, duration: .14, type: 'triangle', gain: .26, sweep: 1.3, delay: .018, lowpassHz: 2200 }], masterGain: .19, priority: 'important' },
+  ],
+  systems: [
+    { layers: [{ frequency: 460, duration: .09, type: 'square', gain: .28, sweep: 1.52, lowpassHz: 4200 }, { frequency: 980, duration: .07, type: 'sine', gain: .22, sweep: .74, delay: .018, lowpassHz: 5600 }], masterGain: .18, priority: 'important' },
+    { layers: [{ frequency: 340, duration: .11, type: 'triangle', gain: .3, sweep: .74, lowpassHz: 3200 }, { frequency: 1260, duration: .09, type: 'square', gain: .2, sweep: 1.34, delay: .02, lowpassHz: 6200 }], masterGain: .18, priority: 'important' },
+    { layers: [{ frequency: 720, duration: .12, type: 'sine', gain: .28, sweep: 1.26, lowpassHz: 4800 }, { frequency: 1480, duration: .08, type: 'triangle', gain: .2, sweep: .66, delay: .024, lowpassHz: 6800 }], masterGain: .19, priority: 'important' },
+  ],
+};
+
+export const threatAudioProfiles: Record<ThreatAudioCue, ThreatAudioProfile> = {
+  'enemy-telegraph': {
+    layers: [{ frequency: 310, duration: .09, type: 'square', gain: .3, sweep: .72, lowpassHz: 2800 }],
+    masterGain: .15,
+    priority: 'important',
+  },
+  'elite-telegraph': {
+    layers: [{ frequency: 250, duration: .12, type: 'square', gain: .34, sweep: .66, lowpassHz: 2400 }, { frequency: 720, duration: .08, type: 'triangle', gain: .2, sweep: .78, delay: .018, lowpassHz: 4200 }],
+    masterGain: .18,
+    priority: 'important',
+  },
+  'boss-telegraph': {
+    layers: [{ frequency: 184, duration: .17, type: 'sawtooth', gain: .42, sweep: .58, lowpassHz: 1900 }, { frequency: 520, duration: .13, type: 'square', gain: .26, sweep: .72, delay: .024, lowpassHz: 3200 }, { frequency: 1040, duration: .08, type: 'triangle', gain: .17, sweep: .64, delay: .045, lowpassHz: 5000 }],
+    masterGain: .2,
+    priority: 'critical',
+  },
+  'boss-phase': {
+    layers: [{ frequency: 96, duration: .24, type: 'sawtooth', gain: .48, sweep: .52, lowpassHz: 1250 }, { frequency: 360, duration: .18, type: 'square', gain: .3, sweep: 1.18, delay: .035, lowpassHz: 2600 }, { frequency: 880, duration: .12, type: 'triangle', gain: .2, sweep: .7, delay: .07, lowpassHz: 4800 }],
+    masterGain: .22,
+    priority: 'critical',
   },
 };
 
@@ -214,6 +345,11 @@ function isWeaponCue(cue: FeedbackCue): cue is WeaponCue {
 class FeedbackBus {
   private context: AudioContext | null = null;
   private output: DynamicsCompressorNode | null = null;
+  private buses: Partial<Record<AudioBusName, GainNode>> = {};
+  private activeVoices = 0;
+  private activeTailVoices = 0;
+  private mixPriority: CombatAudioPriority = 'normal';
+  private mixPriorityUntil = 0;
   private settings: ProfileSettings | null = null;
   private environment: AudioEnvironment = { space: 'interior', pressure: 'normal' };
   private weaponShotIndex: Record<WeaponCue, number> = { carbine: 0, breacher: 0, rail: 0 };
@@ -233,11 +369,38 @@ class FeedbackBus {
         this.output.attack.setValueAtTime(.003, this.context.currentTime);
         this.output.release.setValueAtTime(.12, this.context.currentTime);
         this.output.connect(this.context.destination);
+        for (const name of ['ui', 'weapon', 'impact', 'foley', 'skill', 'threat', 'utility'] as AudioBusName[]) {
+          const bus = this.context.createGain();
+          bus.gain.value = 1;
+          bus.connect(this.output);
+          this.buses[name] = bus;
+        }
       }
       if (this.context.state === 'suspended') void this.context.resume();
     } catch {
       this.output = null;
+      this.buses = {};
+      this.activeVoices = 0;
+      this.activeTailVoices = 0;
       this.context = null;
+    }
+  }
+
+  private applyPriorityMix(priority: CombatAudioPriority) {
+    const context = this.context;
+    if (!context || context.state !== 'running' || priority === 'background' || priority === 'normal') return;
+    const rank: Record<CombatAudioPriority, number> = { background: 0, normal: 1, important: 2, critical: 3 };
+    const now = context.currentTime;
+    if (now < this.mixPriorityUntil && rank[priority] < rank[this.mixPriority]) return;
+    const profile = combatMixProfiles[priority];
+    this.mixPriority = priority;
+    this.mixPriorityUntil = now + profile.holdSeconds;
+    for (const [name, target] of Object.entries(profile.busGain) as [AudioBusName, number][]) {
+      const bus = this.buses[name];
+      if (!bus) continue;
+      bus.gain.cancelScheduledValues(now);
+      bus.gain.setTargetAtTime(target, now, .008);
+      bus.gain.setTargetAtTime(1, now + profile.holdSeconds, .075);
     }
   }
 
@@ -265,9 +428,13 @@ class FeedbackBus {
     void actuator.playEffect('dual-rumble', { duration, startDelay: 0, strongMagnitude, weakMagnitude }).catch(() => undefined);
   }
 
-  private playLayer(layer: WeaponAudioLayer, volume: number, pitchCents = 0, gainMultiplier = 1, role: 'direct' | 'tail' = 'direct', applyAcoustics = true) {
+  private playLayer(layer: WeaponAudioLayer, volume: number, pitchCents = 0, gainMultiplier = 1, role: 'direct' | 'tail' = 'direct', applyAcoustics = true, busName: AudioBusName = 'utility', priority: CombatAudioPriority = 'normal') {
     const context = this.context;
     if (!context || context.state !== 'running') return;
+    const criticalCeiling = combatAudioBudget.maxVoices + combatAudioBudget.criticalReserveVoices;
+    if (this.activeVoices >= criticalCeiling) return;
+    if (this.activeVoices >= combatAudioBudget.maxVoices && priority !== 'critical') return;
+    if (role === 'tail' && this.activeTailVoices >= combatAudioBudget.maxTailVoices && priority !== 'critical') return;
 
     const treatment = applyAcoustics ? acousticTreatmentFor(this.environment) : null;
     const environmentalDelay = treatment && role === 'tail' ? treatment.tailDelay : 0;
@@ -301,12 +468,16 @@ class FeedbackBus {
     } else {
       oscillator.connect(gain);
     }
-    gain.connect(this.output ?? context.destination);
+    gain.connect(this.buses[busName] ?? this.output ?? context.destination);
+    this.activeVoices += 1;
+    if (role === 'tail') this.activeTailVoices += 1;
 
     oscillator.addEventListener('ended', () => {
       oscillator.disconnect();
       filter?.disconnect();
       gain.disconnect();
+      this.activeVoices = Math.max(0, this.activeVoices - 1);
+      if (role === 'tail') this.activeTailVoices = Math.max(0, this.activeTailVoices - 1);
     }, { once: true });
     oscillator.start(start);
     oscillator.stop(end + .01);
@@ -314,7 +485,7 @@ class FeedbackBus {
 
   private playTone(cue: UtilityCue, volume: number, applyAcoustics: boolean) {
     const tone = tones[cue];
-    this.playLayer({ ...tone, gain: 1 }, volume, 0, 1, 'direct', applyAcoustics);
+    this.playLayer({ ...tone, gain: 1 }, volume, 0, 1, 'direct', applyAcoustics, applyAcoustics ? 'utility' : 'ui');
   }
 
   private playWeapon(cue: WeaponCue, volume: number) {
@@ -323,12 +494,12 @@ class FeedbackBus {
     const variation = weaponRepeatVariation(cue, shotIndex);
     const weaponVolume = volume * profile.masterGain;
 
-    for (const layer of profile.mechanical) this.playLayer(layer, weaponVolume, variation.pitchCents * .65, variation.gainMultiplier);
-    for (const layer of profile.discharge) this.playLayer(layer, weaponVolume, variation.pitchCents, variation.gainMultiplier);
+    for (const layer of profile.mechanical) this.playLayer(layer, weaponVolume, variation.pitchCents * .65, variation.gainMultiplier, 'direct', true, 'weapon');
+    for (const layer of profile.discharge) this.playLayer(layer, weaponVolume, variation.pitchCents, variation.gainMultiplier, 'direct', true, 'weapon');
 
     for (const distance of ['near', 'mid', 'far'] as const) {
       if (shotIndex % profile.tailCadence[distance] !== 0) continue;
-      this.playLayer(profile.tails[distance], weaponVolume, variation.pitchCents * .45, variation.gainMultiplier, 'tail');
+      this.playLayer(profile.tails[distance], weaponVolume, variation.pitchCents * .45, variation.gainMultiplier, 'tail', true, 'weapon', 'background');
     }
   }
 
@@ -342,8 +513,42 @@ class FeedbackBus {
     const weight = heavy ? 1.15 : 1;
     profile.layers.forEach((layer, index) => {
       const role = index === profile.layers.length - 1 ? 'tail' : 'direct';
-      this.playLayer(layer, volume * profile.masterGain * weight, heavy ? -10 : 0, 1, role);
+      this.playLayer(layer, volume * profile.masterGain * weight, heavy ? -10 : 0, 1, role, true, 'impact');
     });
+  }
+
+  foley(action: FoleyAudioAction, weapon: WeaponCue, phase: FoleyAudioPhase = 'start') {
+    const settings = this.settings;
+    if (!settings) return;
+    const volume = Math.max(0, Math.min(1, settings.effectsVolume));
+    if (volume <= 0) return;
+    this.unlock();
+    const profile = foleyAudioProfiles[weapon][action];
+    const priority: CombatAudioPriority = action === 'vent' && phase === 'start' ? 'important' : 'normal';
+    if (priority === 'important') this.applyPriorityMix(priority);
+    for (const layer of profile[phase]) this.playLayer(layer, volume * profile.masterGain, 0, 1, 'direct', true, 'foley', priority);
+  }
+
+  skill(operatorClass: SkillAudioClass, index: number) {
+    const settings = this.settings;
+    if (!settings) return;
+    const profile = classSkillAudioProfiles[operatorClass][Math.max(0, Math.min(2, Math.floor(index)))]!;
+    const volume = Math.max(0, Math.min(1, settings.effectsVolume));
+    if (volume <= 0) return;
+    this.unlock();
+    this.applyPriorityMix(profile.priority);
+    for (const layer of profile.layers) this.playLayer(layer, volume * profile.masterGain, 0, 1, 'direct', true, 'skill', profile.priority);
+  }
+
+  threat(cue: ThreatAudioCue) {
+    const settings = this.settings;
+    if (!settings) return;
+    const profile = threatAudioProfiles[cue];
+    const volume = Math.max(0, Math.min(1, settings.effectsVolume));
+    if (volume <= 0) return;
+    this.unlock();
+    this.applyPriorityMix(profile.priority);
+    for (const layer of profile.layers) this.playLayer(layer, volume * profile.masterGain, 0, 1, 'direct', true, 'threat', profile.priority);
   }
 
   cue(cue: FeedbackCue) {
