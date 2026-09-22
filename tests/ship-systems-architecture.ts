@@ -177,7 +177,7 @@ function supportGateGraphSmoke() {
     ...base,
     contractsCompleted: 8,
     reputation: { ...base.reputation, longarc: 6, heliostat: 6, meridian: 6 },
-    shipUpgrades: { ...base.shipUpgrades, drive: 2, cargo: 2, armor: 2, sensors: 2 },
+    shipUpgrades: { ...base.shipUpgrades, drive: 2, cargo: 2, fabrication: 2, armor: 2, medical: 2, sensors: 2, drones: 2 },
   };
 
   const expectations: Array<[ShipUpgradeId, number]> = [
