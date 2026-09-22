@@ -630,3 +630,12 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Android artifact `10671063785` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.238`, debug signing, and APK SHA-256 `c4488312cd5f7f1be4a4c50d0163c400265371243b55faf6faf132b87c2ac253`.
   - **Next: P8.5-I — Singular chase-item audit.**
 
+- [x] **P8.5-I Singular chase-item audit** — audited all 60 current named Singulars and moved their chase identity into a data-driven registry covering all eight locked categories: Skill Transformer, Resource Loop, Movement Transformer, Projectile Transformer, Defense Transformer, Conditional Engine, Build Converter, and Environmental Interaction.
+  - The audit found 54 unique Singular runtime traits and verified every one is wired to an actual simulation hook; no remaining Singular was a pure stat-stick requiring a combat rewrite. Existing rule-changing behavior was preserved where it already met the chase-item standard instead of adding unnecessary balance churn.
+  - Added `src/game/gearSingulars.ts` as the authoritative chase metadata registry. Every Singular now carries a category, primary rule text, and explicit opportunity cost; `meta.ts` materializes that metadata onto runtime Singular items and `gearSchema.ts` validates the registry as part of the Gear 2.0 contract.
+  - Added `tests/gear-singular-audit.ts` and wired it into the production build. The gate enforces complete one-to-one coverage between runtime Singular definitions and audit rows, unique base IDs, all eight category buckets, meaningful opportunity-cost copy, and a simulation hook for every referenced Singular trait.
+  - Verification caught a TypeScript literal-union validator issue on the first CI attempt and fixed it in `43725ba8ec40cdacfa8fce5a35191c23ccdc8470`; no test or build gate was weakened.
+  - Verified on main `43725ba8ec40cdacfa8fce5a35191c23ccdc8470`: Browser E2E `35673509787`, Level 15 beta smoke `35673509664`, and Android beta.240 `35673509803` all passed. Android verification covered full production regression/build, package/version/SDK/signature checks, installable APK generation, emulator runtime/touch/lifecycle smoke, and the Chapter 3 touch playthrough.
+  - Android artifact `10672485894` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.240`, debug signing, and APK SHA-256 `533c9ad02399092fd5426be0989bb4d1969074d2f4bf0fb829eb8d721a68ef8a`.
+  - **Next: P8.5-J — Mobile Armory + build-link comparison.**
+

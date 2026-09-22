@@ -64,7 +64,7 @@ Goal: make equipment answer **“What could I build around this?”** instead of
 - [x] **P8.5-F Loot generation + anti-junk rules** — archived after merge + verification
 - [x] **P8.5-G Class/specialization gear integration** — archived after merge + verification
 - [x] **P8.5-H Quality + Augment responsibility pass** — archived after merge + verification
-- [ ] **P8.5-I Singular chase-item audit** — classify every Singular by Skill Transformer / Resource Loop / Movement Transformer / Projectile Transformer / Defense Transformer / Conditional Engine / Build Converter / Environmental Interaction; redesign stat-stick Singulars so their primary value changes rules, interactions or resource loops and usually carries a meaningful opportunity cost
+- [x] **P8.5-I Singular chase-item audit** — archived after merge + verification
 - [ ] **P8.5-J Mobile Armory + build-link comparison** — prioritize name/rarity → base/implicit → explicit mods → augments → generated BUILD LINKS → equipped comparison; move provenance/advanced metadata deeper; show gained/lost local stats, global stats, skill links, specialization links and Singular rules without adding a single gear-score number
 - [ ] **P8.5-K Save/data migration + compatibility** — migrate existing inventory/equipped items into the new schema without deleting valid gear, preserve old save recovery, normalize invalid legacy combinations safely, and keep current Android/web profiles loadable
 - [ ] **P8.5-L Balance/diversity/regression gate** — prove at least five same-slot items can serve meaningfully different build goals, a great Refined can beat a poor Prototype for a specific build, every meaningful stat connects to at least two build systems, and automated tests cover generation, stat application, invalid combinations, build links, crafting boundaries, Singular behavior, saves, touch UI and Android builds
@@ -159,21 +159,21 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P8.5-I — Singular chase-item audit.**
+**Next: P8.5-J — Mobile Armory + build-link comparison.**
 
-Start **P8.5-I — Singular chase-item audit** by classifying every Singular into its rule-changing category and redesigning any remaining stat-stick Singular so its primary value changes skills, resources, movement, projectiles, defense, build conversion, conditions, or environmental interaction with a meaningful opportunity cost.
+Start **P8.5-J — Mobile Armory + build-link comparison** by restructuring item inspection around name/rarity → base/implicit → explicit mods → augments → generated BUILD LINKS → equipped comparison, then surface gained/lost local stats, global stats, skill links, specialization links, and Singular rules without introducing a gear-score number.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.238**
+- Android beta: **0.0.1-beta.240**
 - Package: `app.ironshade.vector`
-- Verified: **P8.5-H Quality + Augment responsibility pass complete**
-- Gameplay source: `08a4e611cb1b343f6740d00304547bfc8324abab`
-- Browser E2E: `35672315575`
-- Level 15 beta smoke: `35672315474`
-- Android beta.238: `35672315510`
-- APK artifact: `10671063785`
-- APK SHA-256: `c4488312cd5f7f1be4a4c50d0163c400265371243b55faf6faf132b87c2ac253`
+- Verified: **P8.5-I Singular chase-item audit complete**
+- Gameplay source: `43725ba8ec40cdacfa8fce5a35191c23ccdc8470`
+- Browser E2E: `35673509787`
+- Level 15 beta smoke: `35673509664`
+- Android beta.240: `35673509803`
+- APK artifact: `10672485894`
+- APK SHA-256: `533c9ad02399092fd5426be0989bb4d1969074d2f4bf0fb829eb8d721a68ef8a`
 - Signing: debug-signed beta; permanent signing is P17-A
