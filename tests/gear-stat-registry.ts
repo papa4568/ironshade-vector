@@ -61,13 +61,14 @@ assert.ok(itemBuildAffinities(semanticItem).includes('vector'), 'Class build lin
 const metaSource = readFileSync('src/game/meta.ts', 'utf8');
 const baseSource = readFileSync('src/game/gearBases.ts', 'utf8');
 const reconstructionSource = readFileSync('src/game/reconstruction.ts', 'utf8');
+const craftingRulesSource = readFileSync('src/game/craftingRules.ts', 'utf8');
 const armorySource = readFileSync('src/components/Armory.tsx', 'utf8');
 const packageSource = readFileSync('package.json', 'utf8');
 
 assert.ok(metaSource.includes('affixStatProfile(id)') && metaSource.includes('gearStatDefinition(statId).scope'), 'Combat and loot must read shared affix/stat semantics.');
 assert.ok(metaSource.includes('itemBuildTags') && !metaSource.includes('modifierClassAffinity'), 'Build-link semantics should no longer depend on the old separate modifier affinity table.');
 assert.ok(baseSource.includes('buildTagsForStats') && baseSource.includes('mergeBuildTags'), 'Base families must merge registry-derived stat tags.');
-assert.ok(reconstructionSource.includes('affixStatProfile(id).stats.length > 0'), 'Crafting candidates must validate through the shared stat registry.');
+assert.ok(reconstructionSource.includes('legalCraftingAffixes') && craftingRulesSource.includes('affixStatProfile(id).stats.length > 0'), 'Crafting candidates must validate through the shared stat registry via the canonical P10-A rules contract.');
 assert.ok(armorySource.includes('BUILD TAGS') && armorySource.includes('STAT SCOPE') && armorySource.includes('itemStatDefinitions'), 'Armory must expose registry tags and stat scope.');
 assert.ok(packageSource.includes('test:gear-stat-registry'), 'Production build must gate on the P8.5-D registry regression.');
 
