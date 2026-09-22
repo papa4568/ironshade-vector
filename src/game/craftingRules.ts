@@ -45,6 +45,23 @@ export const craftingGradeDefinitions: ReadonlyArray<{ grade: ModifierGrade; lab
 
 export type CraftingVerbId = 'improve' | 'add' | 'remove' | 'reroute' | 'replace' | 'lock' | 'elevate' | 'socket' | 'extract';
 export type CraftingMaterialTier = 'common' | 'chase';
+export type CraftingControlMode = 'standard' | 'protected' | 'volatile';
+
+export const craftingStabilityContract = {
+  maximum: 100,
+  volatileDrain: 20,
+  controlledRecovery: 5,
+  protectedRecovery: 12,
+} as const;
+
+export function craftingStabilityForItem(item: Item) {
+  const value = item.craftStability ?? craftingStabilityContract.maximum;
+  return Math.max(0, Math.min(craftingStabilityContract.maximum, Math.round(value)));
+}
+
+export function craftingVolatileSuccessChance(item: Item) {
+  return Math.min(0.9, Math.max(0.6, 0.6 + craftingStabilityForItem(item) * 0.003));
+}
 
 export type CraftingMaterialDefinition = {
   resource: ResourceId;
@@ -66,7 +83,7 @@ export const craftingMaterialDefinitions: CraftingMaterialDefinition[] = [
   { resource: 'alloys', label: 'Frame Alloy', tier: 'common', role: 'Ordinary structural salvage for frame and Core-family work.' },
   { resource: 'electronics', label: 'Circuit Stock', tier: 'common', role: 'Ordinary electronic salvage for Systems-family routing and control work.' },
   { resource: 'components', label: 'Precision Components', tier: 'common', role: 'Scarcer ordinary salvage used when Reconstruction needs calibrated hardware.' },
-  { resource: 'rareTech', label: 'Quarantined Trace', tier: 'chase', role: 'Chase material reserved for protected replacement and Prime-grade elevation.' },
+  { resource: 'rareTech', label: 'Quarantined Trace', tier: 'chase', role: 'Chase material for precision targeting, protected replacement, and Prime-grade elevation.' },
 ];
 
 export const craftingVerbDefinitions: Record<CraftingVerbId, CraftingVerbDefinition> = {
@@ -81,10 +98,10 @@ export const craftingVerbDefinitions: Record<CraftingVerbId, CraftingVerbDefinit
   add: {
     id: 'add',
     label: 'ADD',
-    role: 'Install one legal Core or Systems modifier from the base-owned pool.',
+    role: 'Install one legal Core or Systems modifier from the base-owned pool; precision targeting can name the exact legal modifier.',
     commonMaterials: ['alloys', 'electronics', 'components'],
-    chaseMaterials: [],
-    gate: 'Requires Microforge T1, an open rarity-budget slot, Recovery access, and a legal frame pool candidate.',
+    chaseMaterials: ['rareTech'],
+    gate: 'Standard family Add requires Microforge T1. Precision Add requires T2 + one Quarantined Trace, an open rarity slot, Recovery access, and a legal frame target.',
   },
   remove: {
     id: 'remove',
@@ -105,10 +122,10 @@ export const craftingVerbDefinitions: Record<CraftingVerbId, CraftingVerbDefinit
   replace: {
     id: 'replace',
     label: 'REPLACE',
-    role: 'Swap one modifier for another legal modifier in the same family while the selected family lock is respected.',
+    role: 'Swap one modifier for another legal modifier in the same family while the selected family lock is respected; protected mode guarantees the named legal target.',
     commonMaterials: ['electronics', 'components'],
     chaseMaterials: ['rareTech'],
-    gate: 'Requires Microforge T2. Protected replacement spends one Quarantined Trace.',
+    gate: 'Requires Microforge T2. Protected replacement spends one Quarantined Trace; volatile replacement can waive the Trace but drains stability and can fail.',
   },
   lock: {
     id: 'lock',
@@ -121,10 +138,10 @@ export const craftingVerbDefinitions: Record<CraftingVerbId, CraftingVerbDefinit
   elevate: {
     id: 'elevate',
     label: 'ELEVATE',
-    role: 'Raise one modifier by exactly one grade without changing its identity.',
+    role: 'Raise one modifier without changing its identity; choose any legal grade up to the current ceiling.',
     commonMaterials: ['alloys', 'electronics', 'components'],
     chaseMaterials: ['rareTech'],
-    gate: 'Recovery Level and Microforge ceilings both apply; entering G5 Prime spends one Quarantined Trace.',
+    gate: 'Recovery Level and Microforge ceilings both apply; entering G5 Prime spends one Quarantined Trace. Volatile elevation is optional at T2 and drains stability.',
   },
   socket: {
     id: 'socket',
@@ -232,6 +249,8 @@ export function craftingRulesForItem(item: Item, fabricationLevel: number) {
     gradeCeiling,
     pool,
     familyCounts,
+    stability: craftingStabilityForItem(item),
+    volatileSuccessChance: craftingVolatileSuccessChance(item),
   };
 }
 
@@ -259,6 +278,7 @@ export function validateCraftingRulesFoundation() {
     && commonMaterials.length === 3
     && chaseMaterials.length === 1
     && chaseMaterials[0]?.resource === 'rareTech'
+    && craftingVerbDefinitions.add.chaseMaterials.includes('rareTech')
     && craftingVerbDefinitions.replace.chaseMaterials.includes('rareTech')
     && craftingVerbDefinitions.elevate.chaseMaterials.includes('rareTech')
     && familyIds.length === 2

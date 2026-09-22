@@ -47,7 +47,7 @@ import {
 } from '../game/meta';
 import { factionSetDefinition, type EquipmentFaction } from '../game/factionGear';
 import { weaponConfigs, type WeaponId } from '../game/sim';
-import { modifierFamilyFor, recoveryQualityLabel, type ModifierFamily } from '../game/lootQuality';
+import { modifierFamilyFor, recoveryQualityLabel, type ModifierFamily, type ModifierGrade } from '../game/lootQuality';
 import { augmentDefinition, frameIdentityDefinition, resolveFrameIdentity } from '../game/gearDepth';
 import { compareRarity, rarityClassToken, rarityDefinition, rarityDisplayLabel, rarityOrder, type ItemRarity } from '../game/rarity';
 import { accessibleAugmentSlots, compatibleAugments, reconstructItem, reconstructionCost, reconstructionGradeCap, reconstructionQualityCap, type ReconstructionAction } from '../game/reconstruction';
@@ -372,7 +372,7 @@ function ReconstructionBench({ item, profile, campaign, lockedFamily, onLockFami
           <article className="chase">
             <small>CHASE // PROTECTED CONTROL</small>
             <b>{craftingMaterialDefinitions.filter(material => material.tier === 'chase').map(material => material.label).join(' · ')}</b>
-            <span>Quarantined Trace is reserved for protected Replace and the step into G5 Prime.</span>
+            <span>Quarantined Trace buys exact Precision Add, protected Replace, and the step into G5 Prime. Volatile Replace waives the Trace but can fail.</span>
           </article>
         </div>
         <div className="crafting-verb-grid" aria-label="Reconstruction verbs">
@@ -383,33 +383,63 @@ function ReconstructionBench({ item, profile, campaign, lockedFamily, onLockFami
             <em>{verb.chaseMaterials.length > 0 ? 'CHASE MATERIAL PATH' : verb.commonMaterials.length > 0 ? 'COMMON SALVAGE PATH' : 'SERVICE / SELECTION VERB'}</em>
           </article>)}
         </div>
+        <section className="crafting-control-risk" aria-label="Crafting control and risk">
+          <div>
+            <small>P10-C // CONTROL VS RISK</small>
+            <b>STABILITY {rules.stability}%</b>
+            <span>Controlled work can restore stability. Volatile work drains 20 stability whether it lands or fails.</span>
+          </div>
+          <div>
+            <small>VOLATILE SUCCESS</small>
+            <b>{Math.round(rules.volatileSuccessChance * 100)}%</b>
+            <span>Current success chance is derived from this frame's persisted stability. Legality, Recovery, rarity budget, and grade ceilings still apply.</span>
+          </div>
+          <div>
+            <small>PREMIUM CONTROL</small>
+            <b>NAME THE LEGAL TARGET</b>
+            <span>Microforge T2 can spend one Quarantined Trace to Precision Add or guarantee a protected Replace into a selected legal modifier.</span>
+          </div>
+        </section>
         <div className="crafting-legal-pool">
           {familyOrder.map(family => {
             const entries = rules.pool.filter(entry => entry.family === family);
             const legalCount = entries.filter(entry => entry.status === 'legal').length;
             return <article key={family} className={'crafting-pool-family ' + family}>
               <header><div><small>{craftingFamilyDefinitions[family].label} LEGAL POOL</small><b>{legalCount} READY / {entries.length} FRAME OPTIONS</b></div><span>Base frame decides this list.</span></header>
-              <div>{entries.map(entry => <div key={entry.id} className={'crafting-pool-entry ' + entry.status}>
-                <small>{entry.group.toUpperCase()} · RL {entry.minimumRecoveryLevel}+</small>
-                <b>{entry.name}</b>
-                <span>{entry.reason}</span>
-                <em>{entry.eligibleGrades.length ? 'ACCESS // ' + entry.eligibleGrades.map(grade => 'G' + grade).join(' / ') : 'NO GRADE ACCESS'}</em>
-              </div>)}</div>
+              <div>{entries.map(entry => {
+                const precisionAdd: ReconstructionAction = { kind: 'add', family, targetAffixId: entry.id };
+                return <div key={entry.id} className={'crafting-pool-entry ' + entry.status}>
+                  <small>{entry.group.toUpperCase()} · RL {entry.minimumRecoveryLevel}+</small>
+                  <b>{entry.name}</b>
+                  <span>{entry.reason}</span>
+                  <em>{entry.eligibleGrades.length ? 'ACCESS // ' + entry.eligibleGrades.map(grade => 'G' + grade).join(' / ') : 'NO GRADE ACCESS'}</em>
+                  {entry.status === 'legal' && <button className="precision-target" disabled={fabrication < 2 || item.rarity === 'Singular' || item.modifiers.length >= modifierLimit} onClick={() => onRun(precisionAdd)}>Precision Add<small>{costLabel(reconstructionCost(item, precisionAdd, fabrication, profile))}</small></button>}
+                </div>;
+              })}</div>
             </article>;
           })}
         </div>
       </section>
       {specializationCraftingLink && <div className="bench-guard"><b>SPECIALIZATION FIELD LINK</b><span>This frame matches your active specialization route. Reconstruction resource costs are reduced by 12% while the field-integration node remains active.</span></div>}
       {item.rarity === 'Singular' && <div className="bench-guard"><b>FIXED SINGULAR PACKAGE</b><span>Signature and fixed modifiers cannot be added, removed, rerouted, replaced, or elevated. Improve and compatible Augment socket/extract remain available.</span></div>}
-      <div className="lock-row"><b>LOCK FAMILY</b><button className={lockedFamily === 'core' ? 'active' : ''} onClick={() => onLockFamily('core')}>Lock Core</button><button className={lockedFamily === 'systems' ? 'active' : ''} onClick={() => onLockFamily('systems')}>Lock Systems</button><span>Microforge T2 // Replace protects this family and spends 1 Quarantined Trace.</span></div>
+      <div className="lock-row"><b>LOCK FAMILY</b><button className={lockedFamily === 'core' ? 'active' : ''} onClick={() => onLockFamily('core')}>Lock Core</button><button className={lockedFamily === 'systems' ? 'active' : ''} onClick={() => onLockFamily('systems')}>Lock Systems</button><span>Microforge T2 // Protected Replace guarantees the chosen target for 1 Quarantined Trace. Volatile Replace preserves the lock, spends no Trace, drains stability, and can fail.</span></div>
       <div className="bench-modifiers">
         {item.modifiers.map(modifier => {
           const family = modifier.family ?? modifierFamilyFor(modifier.id);
+          const currentGrade = (modifier.grade ?? 3) as ModifierGrade;
           const gradeAction: ReconstructionAction = { kind: 'grade', modifierId: modifier.id };
+          const volatileGradeAction: ReconstructionAction = { kind: 'grade', modifierId: modifier.id, targetGrade: Math.min(rules.gradeCeiling, currentGrade + 1) as ModifierGrade, mode: 'volatile' };
           const rerouteAction: ReconstructionAction = { kind: 'reroute', modifierId: modifier.id };
           const removeAction: ReconstructionAction = { kind: 'remove', modifierId: modifier.id };
           const replaceAction: ReconstructionAction = { kind: 'recalibrate', modifierId: modifier.id, lockedFamily };
-          return <article key={modifier.id}><div><small>{family.toUpperCase()} // G{modifier.grade ?? 3}</small><b>{modifier.label}</b><span>{modifier.description}</span></div><div className="bench-actions"><button disabled={item.rarity === 'Singular' || (modifier.grade ?? 3) >= rules.gradeCeiling} onClick={() => onRun(gradeAction)}>Elevate<small>{costLabel(reconstructionCost(item, gradeAction, fabrication, profile))}</small></button><button disabled={fabrication < 1 || item.rarity === 'Singular'} onClick={() => onRun(rerouteAction)}>Reroute<small>{costLabel(reconstructionCost(item, rerouteAction, fabrication, profile))}</small></button><button disabled={fabrication < 2 || item.rarity === 'Singular' || family === lockedFamily} onClick={() => onRun(replaceAction)}>Replace<small>{costLabel(reconstructionCost(item, replaceAction, fabrication, profile))}</small></button><button className="destructive" disabled={item.rarity === 'Singular'} onClick={() => onRun(removeAction)}>Remove<small>{costLabel(reconstructionCost(item, removeAction, fabrication, profile))}</small></button></div></article>;
+          const elevationGrades = ([2, 3, 4, 5] as ModifierGrade[]).filter(grade => grade > currentGrade && grade <= rules.gradeCeiling);
+          const legalReplacements = rules.pool.filter(entry => entry.family === family && entry.status === 'legal');
+          return <article key={modifier.id}>
+            <div><small>{family.toUpperCase()} // G{currentGrade}</small><b>{modifier.label}</b><span>{modifier.description}</span></div>
+            <div className="bench-actions"><button disabled={item.rarity === 'Singular' || currentGrade >= rules.gradeCeiling} onClick={() => onRun(gradeAction)}>Elevate<small>{costLabel(reconstructionCost(item, gradeAction, fabrication, profile))}</small></button><button disabled={fabrication < 1 || item.rarity === 'Singular'} onClick={() => onRun(rerouteAction)}>Reroute<small>{costLabel(reconstructionCost(item, rerouteAction, fabrication, profile))}</small></button><button disabled={fabrication < 2 || item.rarity === 'Singular' || family === lockedFamily} onClick={() => onRun(replaceAction)}>Replace<small>{costLabel(reconstructionCost(item, replaceAction, fabrication, profile))}</small></button><button className="destructive" disabled={item.rarity === 'Singular'} onClick={() => onRun(removeAction)}>Remove<small>{costLabel(reconstructionCost(item, removeAction, fabrication, profile))}</small></button></div>
+            {elevationGrades.length > 0 && <div className="elevation-choice-row"><small>ELEVATION CHOICE</small>{elevationGrades.map(targetGrade => { const action: ReconstructionAction = { kind: 'grade', modifierId: modifier.id, targetGrade }; return <button key={targetGrade} disabled={item.rarity === 'Singular'} onClick={() => onRun(action)}>Controlled → G{targetGrade}<small>{costLabel(reconstructionCost(item, action, fabrication, profile))}</small></button>; })}{fabrication >= 2 && <button className="volatile" disabled={item.rarity === 'Singular' || currentGrade >= rules.gradeCeiling} onClick={() => onRun(volatileGradeAction)}>Volatile → G{Math.min(rules.gradeCeiling, currentGrade + 1)}<small>{Math.round(rules.volatileSuccessChance * 100)}% · {costLabel(reconstructionCost(item, volatileGradeAction, fabrication, profile))}</small></button>}</div>}
+            {fabrication >= 2 && family !== lockedFamily && legalReplacements.length > 0 && <div className="targeted-replace-row"><small>TARGETED REPLACE // {lockedFamily.toUpperCase()} LOCKED</small>{legalReplacements.map(entry => { const protectedAction: ReconstructionAction = { kind: 'recalibrate', modifierId: modifier.id, lockedFamily, targetAffixId: entry.id, mode: 'protected' }; const volatileAction: ReconstructionAction = { kind: 'recalibrate', modifierId: modifier.id, lockedFamily, targetAffixId: entry.id, mode: 'volatile' }; return <span key={entry.id}><b>{entry.name}</b><button disabled={item.rarity === 'Singular'} onClick={() => onRun(protectedAction)}>Protected<small>{costLabel(reconstructionCost(item, protectedAction, fabrication, profile))}</small></button><button className="volatile" disabled={item.rarity === 'Singular'} onClick={() => onRun(volatileAction)}>Risk Replace<small>{Math.round(rules.volatileSuccessChance * 100)}% · {costLabel(reconstructionCost(item, volatileAction, fabrication, profile))}</small></button></span>; })}</div>}
+          </article>;
         })}
       </div>
       <div className="add-mod-row"><b>ADD MODIFIER // {item.modifiers.length}/{modifierLimit}</b>{(['core', 'systems'] as ModifierFamily[]).map(family => { const action: ReconstructionAction = { kind: 'add', family }; return <button key={family} disabled={fabrication < 1 || item.rarity === 'Singular' || item.modifiers.length >= modifierLimit} onClick={() => onRun(action)}>Add {family}<small>{costLabel(reconstructionCost(item, action, fabrication, profile))}</small></button>; })}</div>

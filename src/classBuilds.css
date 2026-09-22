@@ -698,3 +698,104 @@
   .crafting-verb-grid { grid-template-columns: 1fr; }
   .crafting-verb-grid > article { padding: 9px 10px; }
 }
+
+
+/* P10-C // control vs risk */
+.crafting-control-risk {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 8px;
+}
+.crafting-control-risk > div,
+.elevation-choice-row,
+.targeted-replace-row {
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid #334c45;
+  border-radius: 8px;
+  background: rgba(7, 16, 14, .82);
+}
+.crafting-control-risk > div:first-child { border-left: 2px solid #6ca18f; }
+.crafting-control-risk > div:nth-child(2) { border-left: 2px solid #b17f61; }
+.crafting-control-risk > div:last-child { border-left: 2px solid #b99a62; }
+.crafting-control-risk small,
+.elevation-choice-row > small,
+.targeted-replace-row > small {
+  display: block;
+  color: #7ba095;
+  font-size: 6px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+.crafting-control-risk b {
+  display: block;
+  margin-top: 3px;
+  color: #d0ddd8;
+  font-size: 9px;
+}
+.crafting-control-risk span {
+  display: block;
+  margin-top: 4px;
+  color: #879b94;
+  font-size: 7px;
+  line-height: 1.4;
+}
+.crafting-pool-entry .precision-target {
+  width: 100%;
+  margin-top: 7px;
+}
+.elevation-choice-row,
+.targeted-replace-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 7px;
+}
+.elevation-choice-row > small,
+.targeted-replace-row > small { width: 100%; }
+.elevation-choice-row button,
+.targeted-replace-row button,
+.crafting-pool-entry .precision-target {
+  min-height: 38px;
+  border: 1px solid #44655b;
+  border-radius: 7px;
+  background: rgba(12, 27, 23, .9);
+  color: #c5d9d2;
+  font-size: 7px;
+  font-weight: 900;
+  padding: 6px 8px;
+}
+.elevation-choice-row button small,
+.targeted-replace-row button small,
+.crafting-pool-entry .precision-target small {
+  display: block;
+  margin-top: 3px;
+  color: #78998f;
+  font-size: 6px;
+}
+.elevation-choice-row button.volatile,
+.targeted-replace-row button.volatile {
+  border-color: #845f4b;
+  background: rgba(43, 27, 18, .82);
+  color: #d3b39e;
+}
+.targeted-replace-row > span {
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) repeat(2, minmax(86px, auto));
+  gap: 5px;
+  width: 100%;
+  align-items: center;
+}
+.targeted-replace-row > span > b {
+  color: #c8d7d2;
+  font-size: 7px;
+}
+
+@media (max-width: 900px) {
+  .crafting-control-risk { grid-template-columns: 1fr; }
+  .targeted-replace-row > span { grid-template-columns: 1fr; }
+  .elevation-choice-row button,
+  .targeted-replace-row button,
+  .crafting-pool-entry .precision-target { min-height: 44px; }
+}
