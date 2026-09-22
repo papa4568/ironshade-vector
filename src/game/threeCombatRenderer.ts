@@ -2578,7 +2578,7 @@ export class ThreeCombatRenderer {
       `dodge:${dodge.toFixed(2)}`,
       `hit:${hit.toFixed(2)}`,
     ].join(',');
-    this.renderer.domElement.dataset.operatorSkillAnimation = skill.profile ? `${skill.profile.id}:${skill.phase}` : 'idle';
+    this.renderer.domElement.dataset.operatorSkillAnimation = skill.profile && skill.phase !== 'idle' ? `${skill.profile.id}:${skill.phase}` : 'idle';
     this.renderer.domElement.dataset.operatorSkillBlend = `weight:${skill.weight.toFixed(2)},impulse:${skill.impulse.toFixed(2)},recovery:${skill.recovery.toFixed(2)},cancel:${skill.interrupted ? 'interrupted' : skill.cancelReady ? 'ready' : 'locked'}`;
   }
 
@@ -4328,7 +4328,7 @@ export class ThreeCombatRenderer {
         `dodge:${motion.dodge.toFixed(2)}`,
         `hit:${motion.hit.toFixed(2)}`,
       ].join(',');
-      this.renderer.domElement.dataset.operatorSkillAnimation = skill.profile ? `${skill.profile.id}:${skill.phase}` : 'idle';
+      this.renderer.domElement.dataset.operatorSkillAnimation = skill.profile && skill.phase !== 'idle' ? `${skill.profile.id}:${skill.phase}` : 'idle';
       this.renderer.domElement.dataset.operatorSkillBlend = `weight:${skill.weight.toFixed(2)},impulse:${skill.impulse.toFixed(2)},recovery:${skill.recovery.toFixed(2)},cancel:${skill.interrupted ? 'interrupted' : skill.cancelReady ? 'ready' : 'locked'}`;
     }
     this.muzzleFlash.material.color.setHex(weaponColor);
