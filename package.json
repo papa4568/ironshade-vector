@@ -16,7 +16,7 @@
     "test:gameplay": "vite build --ssr tests/gameplay-regressions.ts --outDir .gameplay-dist && node .gameplay-dist/gameplay-regressions.js",
     "test:megastructure-continuity": "vite build --ssr tests/megastructure-environmental-continuity.ts --outDir .megastructure-continuity-dist && node .megastructure-continuity-dist/megastructure-environmental-continuity.js",
     "test:chapter3": "vite build --ssr tests/chapter3-playthrough.ts --outDir .chapter3-dist && node .chapter3-dist/chapter3-playthrough.js",
-    "build": "npm run prepare:graphics-codecs && npm run prepare:graphics-assets && npm run test:beta && npm run test:gameplay && npm run test:endgame && npm run test:megastructure-continuity && npm run test:chapter3 && npm run test:network && npm run test:service && npm run test:maps && npm run test:loot && npm run test:gear-schema && npm run test:gear-power-axis && npm run test:gear-base-families && npm run test:gear-stat-registry && npm run test:gear-affix-rules && npm run test:gear-loot-generation && npm run test:gear-singular-audit && npm run test:ui && npm run test:render && npm run test:graphics && npm run test:graphics:content && vite build && npm run test:bundle:architecture && npm run test:graphics:dist",
+    "build": "npm run prepare:graphics-codecs && npm run prepare:graphics-assets && npm run test:beta && npm run test:gameplay && npm run test:endgame && npm run test:megastructure-continuity && npm run test:chapter3 && npm run test:network && npm run test:service && npm run test:maps && npm run test:loot && npm run test:gear-schema && npm run test:gear-power-axis && npm run test:gear-base-families && npm run test:gear-stat-registry && npm run test:gear-affix-rules && npm run test:gear-loot-generation && npm run test:gear-singular-audit && npm run test:save-migration && npm run test:ui && npm run test:render && npm run test:graphics && npm run test:graphics:content && vite build && npm run test:bundle:architecture && npm run test:graphics:dist",
     "preview": "vite preview",
     "test:maps": "vite build --ssr tests/map-navigation.ts --outDir .map-dist && node .map-dist/map-navigation.js",
     "test:loot": "vite build --ssr tests/loot-difficulty.ts --outDir .loot-dist && node .loot-dist/loot-difficulty.js",
@@ -37,7 +37,8 @@
     "test:network": "vite build --ssr tests/network-regressions.ts --outDir .network-dist && node .network-dist/network-regressions.js",
     "prepare:graphics-assets": "node scripts/prepare-graphics-assets.mjs",
     "test:endgame": "vite build --ssr tests/endgame-verification.ts --outDir .endgame-dist && node .endgame-dist/endgame-verification.js",
-    "test:gear-singular-audit": "vite build --ssr tests/gear-singular-audit.ts --outDir .gear-singular-audit-dist && node .gear-singular-audit-dist/gear-singular-audit.js"
+    "test:gear-singular-audit": "vite build --ssr tests/gear-singular-audit.ts --outDir .gear-singular-audit-dist && node .gear-singular-audit-dist/gear-singular-audit.js",
+    "test:save-migration": "vite build --ssr tests/save-data-migration.ts --outDir .save-migration-dist && node .save-migration-dist/save-data-migration.js"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.0",
