@@ -67,7 +67,7 @@ Goal: make equipment answer **“What could I build around this?”** instead of
 - [x] **P8.5-I Singular chase-item audit** — archived after merge + verification
 - [x] **P8.5-J Mobile Armory + build-link comparison** — archived after merge + verification
 - [x] **P8.5-K Save/data migration + compatibility** — versioned atomic saves to v2/Gear Schema 1, migrate legacy inventory in place without deleting item identities, normalize legacy rarity/affix/Augment/power-axis combinations, preserve the existing backup/quarantine recovery contract, and keep v1/current web + Android save paths loadable
-- [ ] **P8.5-L Balance/diversity/regression gate** — prove at least five same-slot items can serve meaningfully different build goals, a great Refined can beat a poor Prototype for a specific build, every meaningful stat connects to at least two build systems, and automated tests cover generation, stat application, invalid combinations, build links, crafting boundaries, Singular behavior, saves, touch UI and Android builds
+- [x] **P8.5-L Balance/diversity/regression gate** — five same-slot Rail build goals are runtime-verified, build-specific Refined-vs-Prototype value is enforced, every registered stat must connect through at least two semantic build systems, and one release gate now binds generation/stat application/invalid combinations/build links/crafting/Singular/save/touch/Android coverage
 
 ## P9 — Progression 2.0 // Deep Operator Network
 
@@ -159,9 +159,9 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P8.5-K — Save/data migration + compatibility.**
+**Verification in progress: P8.5-L — Balance/diversity/regression gate.**
 
-Start **P8.5-K — Save/data migration + compatibility** by migrating existing inventory/equipped items into the Gear 2.0 schema without deleting valid gear, preserving old save recovery, normalizing invalid legacy combinations safely, and keeping current Android/web profiles loadable.
+After the P8.5-L build, browser, touch, save, and Android gates pass on main, archive P8.5-K/P8.5-L and advance to **P9-A — Graph architecture**.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
