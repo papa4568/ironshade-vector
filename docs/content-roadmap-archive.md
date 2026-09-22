@@ -789,3 +789,16 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Android artifact `10700986301` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.257`, debug signing, and APK SHA-256 `a8021c5539e263b7b233ab0f5a20125b0f58b9cf50bf67f4b60435a2ad3e8a4f`.
   - **Next: P10-F — Economy + touch QA.**
 
+
+- [x] **P10-F Economy + touch QA** — closed Crafting 2.0 with a deterministic pacing/input gate instead of adding another crafting verb.
+  - Added a campaign-to-endgame economy regression that follows a crafting-oriented start through deep salvage, verifies Microforge T1 after one clear and T2 after two, confirms the first eligible anomaly banks exactly one Quarantined Trace, and verifies later ordinary settlement does not repeat that chase drop.
+  - Added fixed-risk T1–T12 Operation Directive simulation using the real scaling and settlement paths. Common material rewards stay non-decreasing through T12 while Quarantined Trace remains outside the ordinary Directive material multiplier.
+  - Reconstruction affordability is now release-gated against a representative three-action ordinary package. Verified P10-F output was `CRAFTING_ECONOMY_TOUCH_PASS microforge=T2 campaignTrace=1 guaranteedTraceBudget=6 t1Credits=474 t12Credits=792 ordinaryPackage=288cr input=dpad+a+b touch=48px`.
+  - Chase pressure is explicitly covered: the baseline guaranteed campaign supply is six deliberate Trace opportunities (one anomaly, three authored story finales, and +2 from The Black Lattice), while Precision Add, controlled G5 elevation, and protected Replace each continue to consume one Trace. Fixed-risk T1–T12 common-material clears mint zero Trace.
+  - Reconstruction now has menu-level controller support matching the Network planner: D-pad directions cycle enabled craft controls, A activates the focused action, and B backs out of a pending confirm-first review without spending salvage. Native button semantics remain intact for keyboard/touch.
+  - Added a compact **P10-F // TOUCH + CONTROLLER** contract to the Reconstruction surface, visible focus treatment, `touch-action: manipulation`, and 48px minimum coarse-pointer craft targets.
+  - The first CI attempt correctly exposed a QA-harness assumption that rotating salvage would always remain present after rare-derelict rotation began; the harness was corrected to validate a real non-anomaly post-anomaly contract without changing gameplay/economy values.
+  - Verified on main gameplay source `3849eeb3417e41523b59797708d4b5cb8f449670`: Browser E2E `35744622874` passed full regression/production build plus desktop and mobile-landscape journeys; Level 15 beta smoke `35744622858` passed; Android beta.259 `35744622900` passed production build, package/version/SDK/signature checks, native emulator runtime/touch smoke, and the Chapter 3 touch playthrough.
+  - Android artifact `10702833136` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.259`, debug signing, and APK SHA-256 `8bf25f6932ba01e74e2ea5629b55c8aea347b8c0630f6a83f22da747cfcc91d2`.
+  - **Next: P11-A — Architecture/migration.**
+
