@@ -18,6 +18,7 @@ import {
   type ShipUpgradeId,
 } from '../src/game/campaign';
 import { reconstructionCreditDiscountForTier } from '../src/game/reconstruction';
+import { shipHardwareState, shipSystemPresentation } from '../src/game/shipSystemPresentation';
 import { neutralCombatBuild } from '../src/game/sim';
 
 const systemIds: ShipUpgradeId[] = ['reactor', 'drive', 'armor', 'cargo', 'sensors', 'fabrication', 'medical', 'drones'];
@@ -323,6 +324,26 @@ function specializationEffectSmoke() {
   }
 }
 
+function physicalPresentationSmoke() {
+  assert.deepEqual(Object.keys(shipSystemPresentation).sort(), [...systemIds].sort(), 'P11-E must give every commissioned ship system a physical hardware presentation.');
+
+  const mechanisms = new Set<string>();
+  for (const id of systemIds) {
+    const presentation = shipSystemPresentation[id];
+    mechanisms.add(presentation.mechanism);
+    assert.ok(presentation.hardwareName.length >= 12, `${id} should expose a readable physical hardware identity.`);
+    assert.ok(presentation.location.length >= 8, `${id} should expose a ship-space location for physical legibility.`);
+    assert.equal(presentation.tierStates.length, SHIP_SYSTEM_MAX_TIER, `${id} should author one physical state for each major tier.`);
+    assert.equal(new Set(presentation.tierStates).size, SHIP_SYSTEM_MAX_TIER, `${id} physical tier states should remain visibly distinct.`);
+    assert.equal(shipHardwareState(id, 0), 'Uncommissioned frame', `${id} should expose a stable pre-installation frame state.`);
+    assert.equal(shipHardwareState(id, 1), presentation.tierStates[0], `${id} Tier 1 should resolve to its first authored hardware state.`);
+    assert.equal(shipHardwareState(id, 6), presentation.tierStates[5], `${id} Tier 6 should resolve to its fully realized hardware state.`);
+    assert.equal(shipHardwareState(id, 99), presentation.tierStates[5], `${id} presentation should clamp impossible future tiers safely.`);
+  }
+
+  assert.equal(mechanisms.size, systemIds.length, 'the eight ship systems should use distinct mechanism silhouettes in the physical systems bay.');
+}
+
 schemaSmoke();
 legacyMigrationSmoke();
 prototypeCompatibilitySmoke();
@@ -332,5 +353,6 @@ supportGateGraphSmoke();
 supportEffectSmoke();
 specializationGateAndCostSmoke();
 specializationEffectSmoke();
+physicalPresentationSmoke();
 
-console.log(`SHIP_SYSTEMS_ARCHITECTURE_PASS schema=${SHIP_SYSTEM_SCHEMA_VERSION} systems=${upgradeDefinitions.length} tiers=${SHIP_SYSTEM_MAX_TIER} migration=legacy-preserved engineering=P11-B support=P11-C specialization=P11-D`);
+console.log(`SHIP_SYSTEMS_ARCHITECTURE_PASS schema=${SHIP_SYSTEM_SCHEMA_VERSION} systems=${upgradeDefinitions.length} tiers=${SHIP_SYSTEM_MAX_TIER} migration=legacy-preserved engineering=P11-B support=P11-C specialization=P11-D physical=P11-E`);
