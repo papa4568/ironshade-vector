@@ -76,7 +76,7 @@ Target roughly **120–180 authored nodes**, delivered in bounded waves.
 - [x] **P9-A Graph architecture** — archived after merge + verification
 - [x] **P9-B Core node wave** — archived after merge + verification
 - [x] **P9-C Build-defining wave** — archived after merge + verification
-- [ ] **P9-D Specialization integration** — LV15/LV16+ subgraphs, campaign/boss unlocks, gear/crafting/faction/Singular hooks
+- [x] **P9-D Specialization integration** — archived after merge + verification
 - [ ] **P9-E Planner UX** — search, path preview, point cost, before/after math, planned builds, mobile navigation/controller support
 - [ ] **P9-F Respec/migration/diversity QA** — fair experimentation, high-level rebuild costs, safe old-node migration/refunds, representative builds
 
@@ -159,21 +159,21 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P9-D — Specialization integration.**
+**Next: P9-E — Planner UX.**
 
-Build **P9-D — Specialization integration** on the verified 93-node Network: connect LV15/LV16+ specialization subgraphs and campaign/boss unlocks to progression while preserving class-owned arsenals, save compatibility, mobile readability, and meaningful gear/crafting/faction/Singular hooks.
+Build **P9-E — Planner UX** on the verified 120-node Network: add search, path preview, total point cost, before/after math, planned-build state, and mobile/controller navigation without weakening current allocation gates or save compatibility.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.249**
+- Android beta: **0.0.1-beta.250**
 - Package: `app.ironshade.vector`
-- Verified: **P9-C Build-defining wave complete**
-- Gameplay source: `1ad3f866b05983897ed943ab8668b2e4cc4c614a`
-- Browser E2E: `35683161325`
-- Level 15 beta smoke: `35683161312`
-- Android beta.249: `35683161327`
-- APK artifact: `10675363272`
-- APK SHA-256: `30375484c164394ddc92bf9d1a6ef8ef167ddd09c0bf9c3d10e6b0cbca399f60`
+- Verified: **P9-D Specialization integration complete**
+- Gameplay source: `d13e347d1090415984ea1e41a9f030517683e424`
+- Browser E2E: `35684611813`
+- Level 15 beta smoke: `35684611806`
+- Android beta.250: `35684611817`
+- APK artifact: `10676052778`
+- APK SHA-256: `994ba1fb4b261a8dbc7b1e62b3de6c709e1cf344dab70d1a508873108d552bd4`
 - Signing: debug-signed beta; permanent signing is P17-A
