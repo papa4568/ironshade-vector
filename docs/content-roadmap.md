@@ -84,7 +84,7 @@ Target roughly **120–180 authored nodes**, delivered in bounded waves.
 
 - [x] **P10-A Rules foundation** — archived after merge + verification
 - [x] **P10-B Verbs/materials** — archived after merge + verification
-- [ ] **P10-C Control vs risk** — deterministic premium control, family locking, targeted edits, elevation, optional risky operations/stability
+- [x] **P10-C Control vs risk** — archived after merge + verification
 - [ ] **P10-D Build integration** — class-family pools, specialization recipes, quality, augments, Singular rules
 - [ ] **P10-E Crafting UX/trust** — exact costs, guaranteed/possible outcomes, exclusions/risk, before/after, history, salvage loop
 - [ ] **P10-F Economy + touch QA** — campaign-to-T12 material simulation and controller/mobile workflow
@@ -159,21 +159,21 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P10-C — Control vs risk.**
+**Next: P10-D — Build integration.**
 
-Build **P10-C — Control vs risk** on the verified P10-B verb/material contract: add premium deterministic control, targeted edits, family locking behavior, elevation choices, and optional risky/stability operations without bypassing base-owned pools, rarity budgets, Recovery Level gates, or visible legality.
+Build **P10-D — Build integration** on the verified P10-C control/risk contract: connect class-family pools, specialization recipes, Equipment Quality, Augments, and Singular rules so crafting reinforces build identity without weakening hard arsenal ownership, visible legality, or fixed Singular packages.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.254**
+- Android beta: **0.0.1-beta.255**
 - Package: `app.ironshade.vector`
-- Verified: **P10-B Verbs/materials complete**
-- Gameplay source: `93cacfac5073c7799ad5912da59bdfabe79c6345`
-- Browser E2E: `35720458948`
-- Level 15 beta smoke: `35720458990`
-- Android beta.254: `35720458933`
-- APK artifact: `10690709426`
-- APK SHA-256: `a87141dc6711335d00f6f772e6ad1cfef1a5b3a01e901d1c0540aaaeeee096e5`
+- Verified: **P10-C Control vs risk complete**
+- Gameplay source: `c9a2dcde2be6a3520f015f5397bde7de90a087e8`
+- Browser E2E: `35722602499`
+- Level 15 beta smoke: `35722602553`
+- Android beta.255: `35722602595`
+- APK artifact: `10691604398`
+- APK SHA-256: `bbc6047f49eca519daac4b78bc05e2342ebbc35b0ba831cd75ceda77191a537d`
 - Signing: debug-signed beta; permanent signing is P17-A
