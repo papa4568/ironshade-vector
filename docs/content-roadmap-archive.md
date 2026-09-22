@@ -828,3 +828,16 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Verified on merged gameplay source `ec2b554ef28cc6a3cfab63d8f8583b4b297f1e33`: Browser E2E `35755624362`, Level 15 beta smoke `35755624299`, and Android beta.261 `35755624320` all passed.
   - Android artifact `10708167462` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.261`, debug signing, package/version/SDK/signature verification, native emulator runtime/touch/lifecycle/Chapter 3 QA, and APK SHA-256 `062ec742343c74f90a849dea8a7e7bb62e716c6737c14eb6a628774609172582`.
   - **Next: P11-C — Support wave.**
+
+- [x] **P11-C Support wave** — commissioned Cargo Recovery Grid, Microforge, Trauma Bay, and Support Drone Rack Tier 3–6 on the verified Ship Systems 2.0 graph while preserving every Tier 1/2 cost, effect, dependency, and progression gate.
+  - Cargo Recovery Grid now extends the legacy +12%/+24% salvage yield into +36%, +48%, +60%, and +72% at T3–T6. The same settlement multiplier continues to apply only to ordinary salvage resources; Quarantined Trace remains outside the cargo-yield multiplier.
+  - Microforge keeps the existing T1/T2 reconstruction capability ceiling intact—quality, grade, targeting, recalibration, and socket legality do not silently expand past the authored Crafting 2.0 rules. T3–T6 instead improve reconstruction credit efficiency to 26%, 32%, 38%, and 45% discounts while retaining the T2 precision controls.
+  - Trauma Bay extends the preserved +8/+16 maximum-health prototype values to +24, +32, +40, and +48 maximum health at T3–T6 without changing enemy damage, boss mechanics, or armor behavior.
+  - Support Drone Rack preserves the T1 relay-drone activation and T2 Arc Tap cooldown behavior, then scales relay damage and Arc Tap support through T6. T6 reaches 2.2x relay damage, 22% Arc Tap cooldown reduction, and +20% Arc Tap power.
+  - The Systems hub now presents commissioned support-system field/economy payoff before purchase alongside the existing exact gates and discounted resource costs; no support tier is left behind placeholder blueprint copy.
+  - Expanded `SHIP_SYSTEMS_ARCHITECTURE_PASS` to cover P11-C commissioning state, no-placeholder payoff text, REP-discounted T3 support pricing, the existing dependency graph, preserved Cargo/Microforge/Trauma/Drone T1/T2 behavior, and concrete T6 support outcomes. The first PR run correctly exposed a test-fixture setup mistake where three support systems were still seeded at Tier 0; the fixture was corrected without changing gameplay values.
+  - PR #174 Browser E2E `35758926373` passed desktop + mobile-landscape, including the full regression/production build and player journeys, on tested head `846a73c8eb041ec63187d925c7c59fd656233c58`.
+  - Verified on merged gameplay source `6ab973b3be6c74c5fbbfa2771d5852fb9297d686`: Browser E2E `35759216315`, Level 15 beta smoke `35759216184`, and Android beta.262 `35759216303` all passed.
+  - Android artifact `10709637444` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.262`, debug signing, package/version/SDK/signature verification, native emulator runtime/touch/lifecycle/Chapter 3 QA, and APK SHA-256 `07e2aaa63c9215ba9c8d61672f7978c679ea9ae33294b8546588b6924d39eff2`.
+  - **Next: P11-D — Advanced specialization.**
+
