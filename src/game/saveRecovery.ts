@@ -1,5 +1,6 @@
 import { augmentDefinitions, frameIdentityDefinitions } from './gearDepth';
 import { gearSchemaVersion } from './gearSchema';
+import { isOperatorNetworkNodeId, operatorNetworkNode, OPERATOR_NETWORK_SCHEMA_VERSION } from './operatorNetwork';
 
 export const PROFILE_STORAGE_KEY = 'ironshade-vector-profile-v3';
 export const CAMPAIGN_STORAGE_KEY = 'ironshade-vector-campaign-v1';
@@ -100,6 +101,17 @@ function invalidProfileReason(value: unknown): string | null {
     optionalStringArrayReason(value, 'allocatedNodes', 256),
   ]) {
     if (reason) return reason;
+  }
+
+  if (value.operatorNetwork !== undefined) {
+    if (!isRecord(value.operatorNetwork)) return 'operatorNetwork is not an object';
+    const network = value.operatorNetwork;
+    if (network.schemaVersion !== OPERATOR_NETWORK_SCHEMA_VERSION) return 'operatorNetwork schema version is unsupported';
+    if (typeof network.startNodeId !== 'string' || operatorNetworkNode(network.startNodeId)?.kind !== 'class-start') return 'operatorNetwork start node is invalid';
+    if (!Array.isArray(network.allocatedNodeIds) || network.allocatedNodeIds.length > 512 || network.allocatedNodeIds.some(id => !isOperatorNetworkNodeId(id) || operatorNetworkNode(id)?.kind === 'class-start')) return 'operatorNetwork allocated nodes are invalid';
+    if (new Set(network.allocatedNodeIds).size !== network.allocatedNodeIds.length) return 'operatorNetwork contains duplicate allocated nodes';
+    const pointsReason = optionalNumberReason(network, 'unspentPoints', 0, 10_000, true);
+    if (pointsReason) return `operatorNetwork.${pointsReason}`;
   }
 
   if (value.settings !== undefined) {
@@ -259,8 +271,10 @@ export function validateStoredCampaign(value: unknown) { return invalidCampaignR
 
 function invalidGameStateReason(value: unknown): string | null {
   if (!isRecord(value)) return 'game-state root is not an object';
-  if (value.version !== 1 && value.version !== 2) return `unsupported game-state version ${String(value.version ?? 'missing')}`;
-  if (value.version === 2 && value.gearSchemaVersion !== gearSchemaVersion) return `unsupported gear schema version ${String(value.gearSchemaVersion ?? 'missing')}`;
+  if (value.version !== 1 && value.version !== 2 && value.version !== 3) return `unsupported game-state version ${String(value.version ?? 'missing')}`;
+  if ((value.version === 2 || value.version === 3) && value.gearSchemaVersion !== gearSchemaVersion) return `unsupported gear schema version ${String(value.gearSchemaVersion ?? 'missing')}`;
+  if (value.version === 3 && value.operatorNetworkSchemaVersion !== OPERATOR_NETWORK_SCHEMA_VERSION) return `unsupported operator network schema version ${String(value.operatorNetworkSchemaVersion ?? 'missing')}`;
+  if (value.version === 3 && (!isRecord(value.profile) || value.profile.operatorNetwork === undefined)) return 'current game-state is missing operator network data';
   if (value.savedAt !== undefined && (typeof value.savedAt !== 'string' || Number.isNaN(Date.parse(value.savedAt)))) return 'savedAt is not a valid timestamp';
   const profileReason = invalidProfileReason(value.profile);
   if (profileReason) return `profile: ${profileReason}`;

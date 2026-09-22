@@ -1,5 +1,6 @@
 import type { CombatBuild, SingularTraitId, SpecializationId, Telemetry, WeaponId } from './sim';
 import { operatorWeaponFamilyForClass, type OperatorClassId } from './classSkills';
+import { allocateOperatorNetworkNode, createOperatorNetworkState, legacyProgressionNodes, normalizeOperatorNetworkState, type OperatorNetworkState } from './operatorNetwork';
 export type { OperatorClassId } from './classSkills';
 import { factionFrames, factionGearChance, factionSetDefinitions, type EquipmentFaction } from './factionGear';
 import { frameGenerationForRecovery, recoveryLevelForSource, type FrameGeneration } from './scaling';
@@ -22,7 +23,7 @@ export type ItemModifier = { id: AffixId; label: string; description: string; me
 export type Item = { id: string; baseId: string; name: string; slot: EquipmentSlot; equipmentClass: string; rarity: Rarity; levelRequirement: number; core: string; modifiers: ItemModifier[]; faction?: EquipmentFaction; singularTrait?: SingularTraitId; singularEffect?: string; singularCategory?: GearSingularCategory; singularRule?: string; singularOpportunityCost?: string; recoveryLevel?: number; frameGeneration?: FrameGeneration; frameIdentity?: FrameIdentityId; frameImplicit?: string; equipmentQuality?: number; augmentSlots?: number; augments?: AugmentId[]; recoveryQuality?: RecoveryQualityGrade; recoverySource?: string };
 export type EffectIntensity = 'full' | 'reduced';
 export type ProfileSettings = { aimAssist: MobileAimAssist; rightStickFire: boolean; screenShake: boolean; effectIntensity: EffectIntensity; effectsVolume: number; uiVolume: number; haptics: boolean; telemetrySharing: boolean; tutorialComplete: boolean };
-export type PlayerProfile = { version: 3; xp: number; level: number; progressionPoints: number; allocatedNodes: string[]; abilityMods: Record<AbilityId, string | null>; operatorClass?: OperatorClassId; classSelectionComplete?: boolean; specialization: SpecializationId | null; specializationOverclock: boolean; inventory: Item[]; equipped: Record<EquipmentSlot, string | null>; settings: ProfileSettings; runsCompleted: number };
+export type PlayerProfile = { version: 3; xp: number; level: number; progressionPoints: number; allocatedNodes: string[]; operatorNetwork?: OperatorNetworkState; abilityMods: Record<AbilityId, string | null>; operatorClass?: OperatorClassId; classSelectionComplete?: boolean; specialization: SpecializationId | null; specializationOverclock: boolean; inventory: Item[]; equipped: Record<EquipmentSlot, string | null>; settings: ProfileSettings; runsCompleted: number };
 export type VictoryReward = { profile: PlayerProfile; xpGained: number; levelsGained: number; loot: Item[] };
 export type ProgressionNode = { id: string; branch: 'Ballistics' | 'Mobility' | 'Systems' | 'Survival' | 'Engineering' | 'Awareness'; name: string; description: string; major?: boolean; requires?: string };
 export type AbilityMod = { id: string; ability: AbilityId; name: string; description: string; tradeoff: string; operatorClass?: OperatorClassId; minLevel?: number; evolution?: boolean };
@@ -283,14 +284,7 @@ export function bossSingularNames(deepTarget: string) { return (bossSingularPool
 export function locationSingularNames(location: string, operatorLevel = 16) { return locationPool(location, operatorLevel).map(item => item.name); }
 export const namedSingularCount = Object.values(bossSingularPools).reduce((total, pool) => total + pool.length, 0) + chaseCatalog.length;
 
-export const progressionNodes: ProgressionNode[] = [
-  { id: 'ballistics-1', branch: 'Ballistics', name: 'Dense Flight', description: '+8 penetration to all player projectiles.' }, { id: 'ballistics-2', branch: 'Ballistics', name: 'Armor Work', description: '+15% armor damage.', requires: 'ballistics-1' }, { id: 'ballistics-3', branch: 'Ballistics', name: 'Breach Doctrine', description: 'Armor Breach lasts longer, but direct health damage is slightly reduced.', major: true, requires: 'ballistics-2' },
-  { id: 'mobility-1', branch: 'Mobility', name: 'Servo Timing', description: '+6% movement speed.' }, { id: 'mobility-2', branch: 'Mobility', name: 'Low-G Footwork', description: 'Improved stopping control below 0.35g.', requires: 'mobility-1' }, { id: 'mobility-3', branch: 'Mobility', name: 'Recoil Vectoring', description: 'While moving, 35% of weapon recoil is redirected into your chosen movement vector.', major: true, requires: 'mobility-2' },
-  { id: 'systems-1', branch: 'Systems', name: 'Efficient Bus', description: '+12% capacitor regeneration.' }, { id: 'systems-2', branch: 'Systems', name: 'Signal Compression', description: '-8% ability capacitor cost.', requires: 'systems-1' }, { id: 'systems-3', branch: 'Systems', name: 'Disruption Relay', description: 'Electronically disrupted targets can be serviced by a relay microdrone.', major: true, requires: 'systems-2' },
-  { id: 'survival-1', branch: 'Survival', name: 'Layered Plate', description: '+12 maximum armor.' }, { id: 'survival-2', branch: 'Survival', name: 'Pressure Discipline', description: 'Vacuum exposure builds more slowly.', requires: 'survival-1' }, { id: 'survival-3', branch: 'Survival', name: 'Hard Vacuum Familiarity', description: 'Greatly reduces vacuum damage and decompression pull.', major: true, requires: 'survival-2' },
-  { id: 'engineering-1', branch: 'Engineering', name: 'Thermal Routing', description: '+12% weapon heat dissipation.' }, { id: 'engineering-2', branch: 'Engineering', name: 'Quick Vent', description: 'Manual vent cycles complete faster.', requires: 'engineering-1' }, { id: 'engineering-3', branch: 'Engineering', name: 'Dodge Heat Shunt', description: 'Dodging vents weapon heat.', major: true, requires: 'engineering-2' },
-  { id: 'awareness-1', branch: 'Awareness', name: 'Predictive Lead', description: '+8% projectile velocity.' }, { id: 'awareness-2', branch: 'Awareness', name: 'Weak-Path Telemetry', description: 'Marked targets take more armor damage.', requires: 'awareness-1' }, { id: 'awareness-3', branch: 'Awareness', name: 'Penetration Optics', description: 'Sensor-marked targets expose penetration paths to all weapons.', major: true, requires: 'awareness-2' },
-];
+export const progressionNodes: ProgressionNode[] = legacyProgressionNodes.map(node => ({ ...node }));
 export const abilityMods: AbilityMod[] = [
   { id: 'vanguard-siege-ram', ability: 'mag', operatorClass: 'vanguard', minLevel: 16, evolution: true, name: 'Siege Ram', description: 'Breach Rush becomes an armor-cracking ram line. Targets caught in front lose extra armor, gain Armor Breach, and feed additional Breach Guard time.', tradeoff: '+20% Breach Rush cooldown.' },
   { id: 'vanguard-faultline-tag', ability: 'mark', operatorClass: 'vanguard', minLevel: 16, evolution: true, name: 'Faultline Tag', description: 'Fracture Tag propagates a weaker fracture to the nearest second hostile, opening a two-target Breacher lane.', tradeoff: '+18% Fracture Tag capacitor cost.' },
@@ -589,7 +583,7 @@ const maxLevelXp = levelThresholds[levelThresholds.length - 1];
 
 export function createDefaultProfile(): PlayerProfile {
   const inventory = starterItems.map(cloneItem);
-  return { version: 3, xp: 0, level: 1, progressionPoints: 0, allocatedNodes: [], abilityMods: { mag: null, mark: null, arc: null }, operatorClass: 'vanguard', classSelectionComplete: false, specialization: null, specializationOverclock: false, inventory, equipped: { carbine: null, breacher: 'starter-breacher', rail: null, suit: 'starter-suit', rig: 'starter-rig', implant: 'starter-implant' }, settings: { aimAssist: 'balanced', rightStickFire: true, screenShake: true, effectIntensity: 'full', effectsVolume: 0.65, uiVolume: 0.45, haptics: true, telemetrySharing: false, tutorialComplete: false }, runsCompleted: 0 };
+  return { version: 3, xp: 0, level: 1, progressionPoints: 0, allocatedNodes: [], operatorNetwork: createOperatorNetworkState('vanguard'), abilityMods: { mag: null, mark: null, arc: null }, operatorClass: 'vanguard', classSelectionComplete: false, specialization: null, specializationOverclock: false, inventory, equipped: { carbine: null, breacher: 'starter-breacher', rail: null, suit: 'starter-suit', rig: 'starter-rig', implant: 'starter-implant' }, settings: { aimAssist: 'balanced', rightStickFire: true, screenShake: true, effectIntensity: 'full', effectsVolume: 0.65, uiVolume: 0.45, haptics: true, telemetrySharing: false, tutorialComplete: false }, runsCompleted: 0 };
 }
 export function normalizeStoredProfile(parsed: Partial<PlayerProfile>): PlayerProfile {
   if (parsed.version !== 3 || !Array.isArray(parsed.inventory)) throw new Error('Unsupported profile save');
@@ -600,13 +594,20 @@ export function normalizeStoredProfile(parsed: Partial<PlayerProfile>): PlayerPr
   const storedLevel = Math.max(1, Math.min(levelThresholds.length, parsedLevel));
   const normalizedXp = Math.max(storedXp, levelThresholds[storedLevel - 1] ?? 0);
   const normalizedLevel = levelForXp(normalizedXp);
-  const allocatedNodes = Array.isArray(parsed.allocatedNodes) ? parsed.allocatedNodes : [];
-  const validAllocatedCount = new Set(allocatedNodes.filter(id => progressionNodes.some(node => node.id === id))).size;
+  const legacyAllocatedNodes = Array.isArray(parsed.allocatedNodes) ? parsed.allocatedNodes : [];
   const parsedPoints = typeof parsed.progressionPoints === 'number' && Number.isFinite(parsed.progressionPoints) ? Math.max(0, Math.floor(parsed.progressionPoints)) : defaults.progressionPoints;
-  const progressionPoints = Math.max(parsedPoints, Math.max(0, normalizedLevel - 1 - validAllocatedCount));
   const specialization = normalizedLevel >= 15 && specializationDefinitions.some(definition => definition.id === parsed.specialization) ? parsed.specialization as SpecializationId : null;
   const specializationOverclock = normalizedLevel >= 16 && !!specialization && parsed.specializationOverclock === true;
-  const operatorClass = operatorClassForProfile({ operatorClass: parsed.operatorClass, specialization, allocatedNodes });
+  const operatorClass = operatorClassForProfile({ operatorClass: parsed.operatorClass, specialization, allocatedNodes: legacyAllocatedNodes });
+  const operatorNetwork = normalizeOperatorNetworkState({
+    operatorClass,
+    level: normalizedLevel,
+    state: parsed.operatorNetwork,
+    legacyAllocatedNodes,
+    legacyUnspentPoints: parsedPoints,
+  });
+  const allocatedNodes = operatorNetwork.allocatedNodeIds;
+  const progressionPoints = operatorNetwork.unspentPoints;
   const classSelectionComplete = typeof parsed.classSelectionComplete === 'boolean' ? parsed.classSelectionComplete : true;
   const inventory = parsed.inventory.map(item => cloneItem(item));
   const requestedEquipped = { ...defaults.equipped, ...parsed.equipped };
@@ -621,6 +622,7 @@ export function normalizeStoredProfile(parsed: Partial<PlayerProfile>): PlayerPr
     xp: normalizedXp,
     level: normalizedLevel,
     progressionPoints,
+    operatorNetwork,
     operatorClass,
     classSelectionComplete,
     specialization,
@@ -857,7 +859,15 @@ export function awardVictory(profile: PlayerProfile, telemetry: Telemetry): Vict
     const slots = chooseRecoverySlots(profile, 2, random);
     loot = slots.map((slot, index) => makeItem(slot, index, nextLevel, random, [], 4, quality, 'Legacy victory recovery'));
   }
-  const profileNext: PlayerProfile = { ...profile, xp: nextXp, level: nextLevel, progressionPoints: profile.progressionPoints + levelsGained, runsCompleted: profile.runsCompleted + 1, inventory: [...profile.inventory, ...loot] };
+  const currentNetwork = normalizeOperatorNetworkState({
+    operatorClass: operatorClassForProfile(profile),
+    level: profile.level,
+    state: profile.operatorNetwork,
+    legacyAllocatedNodes: profile.allocatedNodes,
+    legacyUnspentPoints: profile.progressionPoints,
+  });
+  const nextNetwork = { ...currentNetwork, unspentPoints: currentNetwork.unspentPoints + levelsGained };
+  const profileNext: PlayerProfile = { ...profile, xp: nextXp, level: nextLevel, progressionPoints: nextNetwork.unspentPoints, allocatedNodes: nextNetwork.allocatedNodeIds, operatorNetwork: nextNetwork, runsCompleted: profile.runsCompleted + 1, inventory: [...profile.inventory, ...loot] };
   return { profile: profileNext, xpGained, levelsGained, loot };
 }
 const universalRecoverySlotOrder: EquipmentSlot[] = ['suit', 'rig', 'implant'];
@@ -968,11 +978,21 @@ export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep
 
   loot = [...fieldItems, ...loot];
 
+  const currentNetwork = normalizeOperatorNetworkState({
+    operatorClass: operatorClassForProfile(profile),
+    level: profile.level,
+    state: profile.operatorNetwork,
+    legacyAllocatedNodes: profile.allocatedNodes,
+    legacyUnspentPoints: profile.progressionPoints,
+  });
+  const nextNetwork = { ...currentNetwork, unspentPoints: currentNetwork.unspentPoints + levelsGained };
   const profileNext: PlayerProfile = {
     ...profile,
     xp: nextXp,
     level: nextLevel,
-    progressionPoints: profile.progressionPoints + levelsGained,
+    progressionPoints: nextNetwork.unspentPoints,
+    allocatedNodes: nextNetwork.allocatedNodeIds,
+    operatorNetwork: nextNetwork,
     runsCompleted: profile.runsCompleted + 1,
     inventory: [...profile.inventory, ...loot],
   };
@@ -999,7 +1019,33 @@ export function unequipSlot(profile: PlayerProfile, slot: EquipmentSlot): { prof
   return { profile: { ...profile, equipped: { ...profile.equipped, [slot]: null } }, message: `${slot.toUpperCase()} slot cleared.` };
 }
 export function discardItem(profile: PlayerProfile, itemId: string): { profile: PlayerProfile; message: string } { const item = profile.inventory.find(entry => entry.id === itemId); if (!item) return { profile, message: 'Item not found.' }; if (Object.values(profile.equipped).includes(itemId)) return { profile, message: 'Unequip this item before discarding it.' }; return { profile: { ...profile, inventory: profile.inventory.filter(entry => entry.id !== itemId) }, message: `${item.name} discarded.` }; }
-export function allocateNode(profile: PlayerProfile, nodeId: string): { profile: PlayerProfile; message: string } { const node = progressionNodes.find(entry => entry.id === nodeId); if (!node) return { profile, message: 'Progression node unavailable.' }; if (profile.allocatedNodes.includes(nodeId)) return { profile, message: 'Node already allocated.' }; if (profile.progressionPoints <= 0) return { profile, message: 'Gain another level to earn a progression point.' }; if (node.requires && !profile.allocatedNodes.includes(node.requires)) return { profile, message: 'Allocate the previous node in this branch first.' }; return { profile: { ...profile, progressionPoints: profile.progressionPoints - 1, allocatedNodes: [...profile.allocatedNodes, nodeId] }, message: `${node.name} allocated.` }; }
+export function allocateNode(profile: PlayerProfile, nodeId: string): { profile: PlayerProfile; message: string } {
+  const network = normalizeOperatorNetworkState({
+    operatorClass: operatorClassForProfile(profile),
+    level: profile.level,
+    state: profile.operatorNetwork,
+    legacyAllocatedNodes: profile.allocatedNodes,
+    legacyUnspentPoints: profile.progressionPoints,
+  });
+  const result = allocateOperatorNetworkNode(network, nodeId);
+  if (!result.allocated) {
+    if (result.reason === 'already-allocated') return { profile, message: 'Node already allocated.' };
+    if (result.reason === 'insufficient-points') return { profile, message: 'Gain another level to earn a progression point.' };
+    if (result.reason === 'missing-prerequisite') return { profile, message: 'Allocate the required node in this route first.' };
+    if (result.reason === 'not-connected') return { profile, message: 'Route through an adjacent node from your class start first.' };
+    return { profile, message: 'Progression node unavailable.' };
+  }
+  const node = progressionNodes.find(entry => entry.id === nodeId);
+  return {
+    profile: {
+      ...profile,
+      progressionPoints: result.state.unspentPoints,
+      allocatedNodes: result.state.allocatedNodeIds,
+      operatorNetwork: result.state,
+    },
+    message: `${node?.name ?? 'Network node'} allocated.`,
+  };
+}
 export function setAbilityMod(profile: PlayerProfile, ability: AbilityId, modId: string | null): PlayerProfile {
   if (modId) {
     const mod = abilityMods.find(entry => entry.id === modId && entry.ability === ability);
@@ -1022,9 +1068,19 @@ export function setOperatorClass(profile: PlayerProfile, operatorClass: Operator
       clearsClassEvolution = true;
     }
   }
+  const operatorNetwork = normalizeOperatorNetworkState({
+    operatorClass,
+    level: profile.level,
+    state: profile.operatorNetwork,
+    legacyAllocatedNodes: profile.allocatedNodes,
+    legacyUnspentPoints: profile.progressionPoints,
+  });
   const next = normalizeClassArmament({
     ...profile,
     operatorClass,
+    progressionPoints: operatorNetwork.unspentPoints,
+    allocatedNodes: operatorNetwork.allocatedNodeIds,
+    operatorNetwork,
     classSelectionComplete: true,
     specialization: clearsSpecialization ? null : profile.specialization,
     specializationOverclock: clearsSpecialization ? false : profile.specializationOverclock,
