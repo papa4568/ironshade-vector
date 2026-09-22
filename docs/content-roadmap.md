@@ -102,7 +102,7 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## P12 — AAA Combat Feel
 
-- [ ] **P12-A Weapon audio** — layered Breacher/Rail/Carbine mechanical action, discharge/body, near/mid/far tails, repeat variation
+- [x] **P12-A Weapon audio** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
 - [ ] **P12-B Impact/environment audio** — armor/machinery/ice/steel/glass/field impacts + interior/open/vacuum/pressure acoustics
 - [ ] **P12-C Information mix** — reload/vent Foley, class skill audio, enemy/boss tells, priority-aware dynamic mixing
 - [ ] **P12-D Player handling animation** — class stance, aim offsets, recoil, reload/charge/vent/overheat, dodge weight
@@ -159,22 +159,22 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P12-A — Weapon audio.**
+**Next: P12-B — Impact/environment audio.**
 
-Run **P12-A — Weapon audio** as the first AAA Combat Feel batch: build layered Breacher/Rail/Carbine mechanical action, discharge/body, near/mid/far tails, and bounded repeat variation while preserving mobile performance, class-owned weapon identity, and existing combat timing.
+Run **P12-B — Impact/environment audio** as the next AAA Combat Feel batch: author material-aware armor/machinery/ice/steel/glass/field impacts plus interior/open/vacuum/pressure acoustic treatment while keeping impact information readable and mobile audio cost bounded.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.268**
+- Android beta: **0.0.1-beta.269**
 - Package: `app.ironshade.vector`
-- Verified: **P11-F Ship Systems 2.0 Economy/balance QA complete**
-- Gameplay source: `640deaa68ec9ac3bbd6278f14d0170bb5a9517d7`
-- PR Browser E2E: `35770858765`
-- Browser E2E: `35771141433`
-- Level 15 beta smoke: `35771141431`
-- Android beta.268: `35771141425`
-- APK artifact: `10713994152`
-- APK SHA-256: `eea1152578dd1992c3fbfaa1b520a24fe518ec394b65ccb0befd505c147af925`
+- Verified: **P12-A AAA Combat Feel Weapon audio complete**
+- Gameplay source: `50ef94af14805eb9de6bda5c0129c12556817219`
+- PR Browser E2E: `35777398230`
+- Browser E2E: `35777684644`
+- Level 15 beta smoke: `35777684666`
+- Android beta.269: `35777684680`
+- APK artifact: `10716801744`
+- APK SHA-256: `172ffcd4d8c92ef5a8a34badb695295f7fc78a0c9d7a61340f4e0e31af6c3cc1`
 - Signing: debug-signed beta; permanent signing is P17-A
