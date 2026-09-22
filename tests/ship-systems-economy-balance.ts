@@ -207,4 +207,4 @@ affordabilitySmoke();
 identityAndDifficultySmoke();
 
 const fleetTraceCost = addCosts(upgradeDefinitions.flatMap(definition => definition.tiers.map(tier => tier.cost))).rareTech;
-console.log(`SHIP_SYSTEMS_ECONOMY_BALANCE_PASS systems=${upgradeDefinitions.length} fleetTraceCost=${fleetTraceCost} commandTrace=T6+deep-only maxRouteTrace=9 specializationTrace=bounded classIdentity=preserved bossScaling=unchanged`);
+console.log(`SHIP_SYSTEMS_ECONOMY_BALANCE_PASS systems=${upgradeDefinitions.length} fleetTraceCost=${fleetTraceCost} commandTrace=T6+deep-only maxRouteTrace=10 specializationTrace=bounded classIdentity=preserved bossScaling=unchanged`);
