@@ -57,7 +57,7 @@ for (const channel of channels) {
   assert(layered[channel].some(layer => layer.source === 'telegraph'), `${channel} must compose telegraph state`);
 }
 assert(layered.audio.some(layer => layer.key.includes('gravityAnchor') && layer.enhanced), 'enhanced protocol presentation must retain enhanced identity');
-assert.equal(layered.dominant, 'status:disrupted', 'highest-priority readable state should dominate QA telemetry');
+assert.equal(layered.dominant, 'telegraph:attack', 'strongest highest-priority readable state should dominate QA telemetry');
 
 const reorderedInput = base();
 reorderedInput.mutations = ['hunter-servo', 'reinforced-core', 'relay-reflex'];
