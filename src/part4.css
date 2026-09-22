@@ -211,3 +211,66 @@
   .debrief-next, .anomaly-note { margin-top: 9px; }
   .debrief-actions { position: sticky; bottom: 0; z-index: 3; padding-top: 8px; padding-bottom: max(2px, env(safe-area-inset-bottom)); background: linear-gradient(180deg, transparent, #0a1112 28%); }
 }
+
+
+/* P11-E physical ship-system payoff */
+.ship-hardware-bay { margin: 0 0 22px; padding: 16px; border: 1px solid #2b413b; border-radius: 15px; background: linear-gradient(180deg,rgba(10,19,18,.94),rgba(5,9,9,.78)); overflow: hidden; }
+.ship-hardware-heading { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin-bottom: 13px; }
+.ship-hardware-heading h2 { margin: 4px 0 0; color: #cddbd5; font-size: 18px; }
+.ship-hardware-heading > small { max-width: 430px; color: #738680; font-size: 8px; line-height: 1.45; text-align: right; }
+.ship-hardware-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 9px; }
+.ship-hardware-card { --module-accent:#6f9e8f; position: relative; min-width: 0; padding: 12px; border: 1px solid #263a35; border-radius: 12px; background: rgba(7,13,12,.86); overflow: hidden; }
+.ship-hardware-card > small,.ship-hardware-card > b,.ship-hardware-card > span,.ship-hardware-card > em { display: block; }
+.ship-hardware-card > small { margin-top: 10px; color: #70817c; font-size: 7px; letter-spacing: .08em; }
+.ship-hardware-card > b { margin-top: 3px; color: #d3dfdb; font-size: 10px; line-height: 1.25; }
+.ship-hardware-card > span { margin-top: 6px; min-height: 24px; color: #90a59e; font-size: 8px; line-height: 1.4; }
+.ship-hardware-card > em { margin-top: 7px; color: var(--module-accent); font-size: 7px; font-style: normal; font-weight: 900; letter-spacing: .08em; }
+.ship-hardware-visual,.ship-commission-hardware { display: grid; grid-template-columns: repeat(6,1fr); gap: 5px; align-items: end; height: 48px; padding: 8px; border: 1px solid color-mix(in srgb,var(--module-accent) 35%,#20302c); border-radius: 9px; background: linear-gradient(180deg,rgba(255,255,255,.025),rgba(0,0,0,.2)); }
+.ship-hardware-visual i,.ship-commission-hardware i { display: block; height: 45%; border: 1px solid color-mix(in srgb,var(--module-accent) 55%,#21332e); border-radius: 3px; background: color-mix(in srgb,var(--module-accent) 28%,#0a1110); opacity: .13; transform: translateY(5px) scaleY(.72); transform-origin: bottom; }
+.ship-hardware-card.tier-1 .ship-hardware-visual i:nth-child(-n+1),
+.ship-hardware-card.tier-2 .ship-hardware-visual i:nth-child(-n+2),
+.ship-hardware-card.tier-3 .ship-hardware-visual i:nth-child(-n+3),
+.ship-hardware-card.tier-4 .ship-hardware-visual i:nth-child(-n+4),
+.ship-hardware-card.tier-5 .ship-hardware-visual i:nth-child(-n+5),
+.ship-hardware-card.tier-6 .ship-hardware-visual i:nth-child(-n+6) { opacity: .9; transform: none; box-shadow: 0 0 10px color-mix(in srgb,var(--module-accent) 28%,transparent); }
+.ship-hardware-card.tier-0 { filter: saturate(.65); }
+.ship-hardware-card.tier-5,.ship-hardware-card.tier-6 { border-color: color-mix(in srgb,var(--module-accent) 48%,#263a35); }
+.ship-hardware-card.tier-6 .ship-hardware-visual { box-shadow: inset 0 0 24px color-mix(in srgb,var(--module-accent) 10%,transparent); }
+.ship-hardware-card.tier-4 .ship-hardware-visual i:nth-child(4),
+.ship-hardware-card.tier-5 .ship-hardware-visual i:nth-child(5),
+.ship-hardware-card.tier-6 .ship-hardware-visual i:nth-child(6) { animation: ship-hardware-cycle 1.9s ease-in-out infinite alternate; }
+.mechanism-power { --module-accent:#d39b62; }
+.mechanism-drive { --module-accent:#6f9dc0; }
+.mechanism-armor { --module-accent:#a7a99d; }
+.mechanism-cargo { --module-accent:#91a96f; }
+.mechanism-sensor { --module-accent:#70b6aa; }
+.mechanism-forge { --module-accent:#c48168; }
+.mechanism-medical { --module-accent:#91b59d; }
+.mechanism-drone { --module-accent:#8b92c4; }
+.mechanism-drive .ship-hardware-visual i,.mechanism-drive .ship-commission-hardware i { border-radius: 8px 8px 2px 2px; }
+.mechanism-armor .ship-hardware-visual i,.mechanism-armor .ship-commission-hardware i { height: 72%; border-radius: 2px; }
+.mechanism-sensor .ship-hardware-visual i,.mechanism-sensor .ship-commission-hardware i { border-radius: 50%; aspect-ratio: 1; height: auto; align-self: center; }
+.mechanism-forge .ship-hardware-visual i,.mechanism-forge .ship-commission-hardware i { transform-origin: center; }
+.mechanism-drone .ship-hardware-visual,.mechanism-drone .ship-commission-hardware { grid-template-columns: repeat(3,1fr); grid-auto-rows: 1fr; }
+.ship-commission-overlay { position: fixed; inset: 0; z-index: 140; display: grid; place-items: center; padding: max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left)); background: rgba(1,4,4,.83); backdrop-filter: blur(8px); animation: ship-commission-fade .2s ease-out both; }
+.ship-commission-card { --module-accent:#7ba696; width: min(520px,100%); padding: 22px; border: 1px solid color-mix(in srgb,var(--module-accent) 56%,#33433f); border-radius: 18px; background: radial-gradient(circle at 50% 0,color-mix(in srgb,var(--module-accent) 12%,#0c1513),#07100e 58%,#050909); box-shadow: 0 28px 80px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.025); text-align: center; animation: ship-commission-rise .34s cubic-bezier(.2,.8,.2,1) both; }
+.ship-commission-card .ship-commission-hardware { width: min(360px,92%); height: 74px; margin: 14px auto 12px; }
+.ship-commission-card .ship-commission-hardware i { opacity: .95; transform: none; animation: ship-commission-sequence .72s ease-in-out both; }
+.ship-commission-card .ship-commission-hardware i:nth-child(2) { animation-delay: .04s; }
+.ship-commission-card .ship-commission-hardware i:nth-child(3) { animation-delay: .08s; }
+.ship-commission-card .ship-commission-hardware i:nth-child(4) { animation-delay: .12s; }
+.ship-commission-card .ship-commission-hardware i:nth-child(5) { animation-delay: .16s; }
+.ship-commission-card .ship-commission-hardware i:nth-child(6) { animation-delay: .2s; }
+.ship-commission-card > small { display: block; color: var(--module-accent); font-size: 8px; font-weight: 900; letter-spacing: .12em; }
+.ship-commission-card h2 { margin: 8px 0 5px; color: #e2ece8; font-size: clamp(24px,5vw,36px); line-height: .95; letter-spacing: -.035em; text-transform: uppercase; }
+.ship-commission-card > strong { display: block; margin-top: 10px; color: #b5c7c1; font-size: 11px; }
+.ship-commission-card > p { margin: 8px auto 16px; max-width: 420px; color: #7f938c; font-size: 10px; line-height: 1.5; }
+.ship-commission-card > button { min-height: 48px; width: 100%; border-color: color-mix(in srgb,var(--module-accent) 50%,#3b504b); background: color-mix(in srgb,var(--module-accent) 14%,#14201e); }
+@keyframes ship-hardware-cycle { from { filter: brightness(.8); transform: translateY(1px) scaleY(.92); } to { filter: brightness(1.2); transform: translateY(-1px) scaleY(1.05); } }
+@keyframes ship-commission-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ship-commission-rise { from { opacity: 0; transform: translateY(18px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes ship-commission-sequence { 0% { opacity: .12; transform: translateY(8px) scaleY(.6); } 55% { opacity: 1; transform: translateY(-2px) scaleY(1.08); } 100% { opacity: .92; transform: none; } }
+@media (max-width: 900px) { .ship-hardware-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 800px) { .ship-hardware-heading { align-items: stretch; flex-direction: column; gap: 6px; } .ship-hardware-heading > small { max-width: none; text-align: left; } }
+@media (max-width: 520px) { .ship-hardware-bay { padding: 12px; } .ship-hardware-grid { grid-template-columns: 1fr 1fr; gap: 7px; } .ship-hardware-card { padding: 10px; } .ship-hardware-card > b { font-size: 9px; } .ship-hardware-visual { height: 42px; padding: 7px 6px; gap: 3px; } .ship-commission-card { padding: 18px 16px; } }
+@media (prefers-reduced-motion: reduce) { .ship-hardware-card .ship-hardware-visual i,.ship-commission-overlay,.ship-commission-card,.ship-commission-card .ship-commission-hardware i { animation: none !important; transition: none !important; } }
