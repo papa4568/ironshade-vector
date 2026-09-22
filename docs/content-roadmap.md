@@ -73,7 +73,7 @@ Goal: make equipment answer **“What could I build around this?”** instead of
 
 Target roughly **120–180 authored nodes**, delivered in bounded waves.
 
-- [ ] **P9-A Graph architecture** — data model, prerequisites, path cost, node hierarchy, three class starts, shared outer network, save schema
+- [x] **P9-A Graph architecture** — archived after merge + verification
 - [ ] **P9-B Core node wave** — travel/standard/Notable nodes, offense/defense/resource clusters, class weapon sectors
 - [ ] **P9-C Build-defining wave** — Masteries, Keystones, Capstones, major upside/downside mechanics
 - [ ] **P9-D Specialization integration** — LV15/LV16+ subgraphs, campaign/boss unlocks, gear/crafting/faction/Singular hooks
@@ -159,21 +159,21 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P9-A — Graph architecture.**
+**Next: P9-B — Core node wave.**
 
-Start **P9-A — Graph architecture** by defining the data model, prerequisites, routing/path-cost rules, node hierarchy, three class starts, shared outer network, and save-schema contract before authoring the larger node waves.
+Build **P9-B — Core node wave** on the verified graph foundation: authored travel/standard/Notable nodes, offense/defense/resource clusters, and class weapon sectors while preserving the P9-A routing/save contracts.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.246**
+- Android beta: **0.0.1-beta.247**
 - Package: `app.ironshade.vector`
-- Verified: **P8.5-L Balance/diversity/regression gate complete**
-- Gameplay source: `e1a8c68e175ef9dd4898f9398346d47b890cf720`
-- Browser E2E: `35679284960`
-- Level 15 beta smoke: `35679284967`
-- Android beta.246: `35679284995`
-- APK artifact: `10674990855`
-- APK SHA-256: `5f39de7be68f5b30308e0f3f0f7f5f7746d979505d555cd098d350c7f518972a`
+- Verified: **P9-A Graph architecture complete**
+- Gameplay source: `365e16170cf0a32285afb976affdb0489a13a396`
+- Browser E2E: `35680844787`
+- Level 15 beta smoke: `35680844866`
+- Android beta.247: `35680844822`
+- APK artifact: `10674272900`
+- APK SHA-256: `7796b02fba8638b24ba0d84c5d60a46edfce492fb5d0646147c5fc4ad3e80b37`
 - Signing: debug-signed beta; permanent signing is P17-A
