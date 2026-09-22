@@ -17,6 +17,7 @@ import { k91RenderProfile, k91StageIdentity } from './k91Capstone';
 import { orphelineRenderProfile, orphelineStageIdentity } from './orphelineCapstone';
 import { hecateRenderProfile, hecateStageIdentity } from './hecateCapstone';
 import { resolvePlayerHandlingAnimation } from './playerHandlingAnimation';
+import { resolveEnemyDamageAnimation, resolvePlayerSkillAnimation } from './skillDamageAnimation';
 
 const WORLD_SCALE = 0.02;
 const FLOOR_Y = 0;
@@ -146,6 +147,10 @@ type EnemyVisual = {
   authoredOwnedMaterials: THREE.Material[];
   authoredAssetId: string | null;
   rig: EnemyRig | null;
+  lastDurability: number;
+  impactUntil: number;
+  lastArmor: number;
+  armorBreakUntil: number;
 };
 
 type AuthoredWeaponVisual = {
@@ -2334,8 +2339,10 @@ export class ThreeCombatRenderer {
       this.renderer.domElement.dataset.operatorClassAsset = operatorClass ?? 'generic';
       this.renderer.domElement.dataset.operatorAnimation = this.authoredOperatorRig ? 'idle' : 'static';
       this.renderer.domElement.dataset.operatorBlend = this.authoredOperatorRig
-        ? 'move:0.00,recoil:0.00,reload:0.00,vent:0.00,dodge:0.00,hit:0.00'
+        ? 'move:0.00,aim:0.00,recoil:0.00,reload:0.00,charge:0.00,vent:0.00,overheat:0.00,dodge:0.00,hit:0.00'
         : '';
+      this.renderer.domElement.dataset.operatorSkillAnimation = this.authoredOperatorRig ? 'idle' : '';
+      this.renderer.domElement.dataset.operatorSkillBlend = this.authoredOperatorRig ? 'weight:0.00,impulse:0.00,recovery:0.00,cancel:locked' : '';
     } catch (error) {
       if (this.disposed) return;
       this.renderer.domElement.dataset.operatorVisual = 'procedural-fallback';
@@ -2385,6 +2392,16 @@ export class ThreeCombatRenderer {
       hit,
     });
     const { profile, speed, gait, idleBreath, aimOffset, aimForward, recoil, reload, charge, vent, overheat, dodge } = motion;
+    const skill = resolvePlayerSkillAnimation({
+      operatorClass: state.build.operatorClass,
+      abilityIndex: state.lastAbilityIndex,
+      elapsed: state.time - state.lastAbilityAt,
+      dodge: player.dodgeTime,
+      reload: player.reloadT,
+      vent: player.ventT,
+      hit,
+      dead: player.dead,
+    });
 
     rig.torso.position.y += idleBreath * 0.012;
     rig.backpack.position.y += idleBreath * 0.008;
@@ -2473,6 +2490,25 @@ export class ThreeCombatRenderer {
       rig.rightArm.rotation.z += tremor * strain * 0.16;
     }
 
+    if (skill.profile && skill.weight > 0) {
+      const pose = skill.profile;
+      const weight = skill.weight;
+      const impulse = skill.impulse;
+      rig.torso.rotation.z += pose.torsoLean * weight;
+      rig.torso.position.y += pose.torsoDip * weight;
+      rig.hip.position.x += pose.hipShift * weight;
+      rig.weaponSocket.position.x += pose.socketReach * weight * (0.72 + impulse * 0.28);
+      rig.weaponSocket.position.y += pose.socketLift * weight;
+      rig.weaponSocket.rotation.z += pose.socketRoll * weight;
+      rig.leftArm.rotation.z += pose.leftArm * weight;
+      rig.rightArm.rotation.z += pose.rightArm * weight;
+      rig.helmet.rotation.z -= pose.torsoLean * weight * 0.22;
+      if (skill.phase === 'action') {
+        rig.weaponSocket.position.x += pose.socketReach * impulse * 0.25;
+        rig.torso.rotation.x -= Math.abs(pose.torsoLean) * impulse * 0.16;
+      }
+    }
+
     if (dodge > 0) {
       const weightedDodge = dodge * profile.dodgeWeight;
       if (state.build.operatorClass === 'vanguard') {
@@ -2542,6 +2578,8 @@ export class ThreeCombatRenderer {
       `dodge:${dodge.toFixed(2)}`,
       `hit:${hit.toFixed(2)}`,
     ].join(',');
+    this.renderer.domElement.dataset.operatorSkillAnimation = skill.profile ? `${skill.profile.id}:${skill.phase}` : 'idle';
+    this.renderer.domElement.dataset.operatorSkillBlend = `weight:${skill.weight.toFixed(2)},impulse:${skill.impulse.toFixed(2)},recovery:${skill.recovery.toFixed(2)},cancel:${skill.interrupted ? 'interrupted' : skill.cancelReady ? 'ready' : 'locked'}`;
   }
 
   private resize(width: number, height: number, quality: number, budget: RenderBudgetSnapshot) {
@@ -4238,10 +4276,20 @@ export class ThreeCombatRenderer {
         dodgeTime: player.dodgeTime,
         hit,
       });
+      const skill = resolvePlayerSkillAnimation({
+        operatorClass: state.build.operatorClass,
+        abilityIndex: state.lastAbilityIndex,
+        elapsed: state.time - state.lastAbilityAt,
+        dodge: player.dodgeTime,
+        reload: player.reloadT,
+        vent: player.ventT,
+        hit,
+        dead: player.dead,
+      });
       const tremor = Math.sin(state.time * 27) * motion.overheat * motion.profile.overheatStrain;
       this.weaponPivot.position.set(
-        -0.045 * motion.recoil * motion.profile.recoilScale,
-        -0.035 * motion.reload + 0.025 * motion.charge - 0.02 * motion.overheat,
+        -0.045 * motion.recoil * motion.profile.recoilScale + (skill.profile?.socketReach ?? 0) * skill.weight * 0.32,
+        -0.035 * motion.reload + 0.025 * motion.charge - 0.02 * motion.overheat + (skill.profile?.socketLift ?? 0) * skill.weight * 0.45,
         0,
       );
       this.weaponPivot.rotation.y = Math.atan2(-player.aim.y, player.aim.x);
@@ -4249,7 +4297,8 @@ export class ThreeCombatRenderer {
         + motion.charge * motion.profile.chargeLean * 0.75
         - motion.vent * motion.profile.ventLean * 0.5
         - motion.dodge * motion.profile.dodgeWeight * 0.08
-        + tremor * 0.18;
+        + tremor * 0.18
+        + (skill.profile?.socketRoll ?? 0) * skill.weight * 0.45;
       this.renderer.domElement.dataset.operatorStance = motion.profile.id;
       this.renderer.domElement.dataset.operatorAnimation = player.dead
         ? 'down'
@@ -4279,6 +4328,8 @@ export class ThreeCombatRenderer {
         `dodge:${motion.dodge.toFixed(2)}`,
         `hit:${motion.hit.toFixed(2)}`,
       ].join(',');
+      this.renderer.domElement.dataset.operatorSkillAnimation = skill.profile ? `${skill.profile.id}:${skill.phase}` : 'idle';
+      this.renderer.domElement.dataset.operatorSkillBlend = `weight:${skill.weight.toFixed(2)},impulse:${skill.impulse.toFixed(2)},recovery:${skill.recovery.toFixed(2)},cancel:${skill.interrupted ? 'interrupted' : skill.cancelReady ? 'ready' : 'locked'}`;
     }
     this.muzzleFlash.material.color.setHex(weaponColor);
     this.muzzleFlash.visible = state.weaponFlash > 0;
@@ -4433,6 +4484,10 @@ export class ThreeCombatRenderer {
       authoredOwnedMaterials: [],
       authoredAssetId: null,
       rig: null,
+      lastDurability: enemy.hp + enemy.armor,
+      impactUntil: -1,
+      lastArmor: enemy.armor,
+      armorBreakUntil: -1,
     };
     this.enemyVisuals.set(enemy.id, visual);
     void this.loadAuthoredEnemy(visual, enemy, mission);
@@ -4608,7 +4663,13 @@ export class ThreeCombatRenderer {
     const idle = Math.sin(state.time * 2.1 + enemy.id * 0.37);
     const aim = THREE.MathUtils.clamp(enemy.telegraph * 1.8, 0, 1);
     const burst = enemy.burst > 0 && enemy.fireCooldown <= 0.78 ? 1 : 0;
-    const hit = THREE.MathUtils.clamp(enemy.statuses.stagger * 2, 0, 1);
+    const damageReaction = resolveEnemyDamageAnimation({
+      hit: state.time < visual.impactUntil ? THREE.MathUtils.clamp((visual.impactUntil - state.time) / 0.18, 0, 1) : 0,
+      staggerTimer: enemy.statuses.stagger,
+      armorBreak: state.time < visual.armorBreakUntil ? THREE.MathUtils.clamp((visual.armorBreakUntil - state.time) / 0.44, 0, 1) : 0,
+      dead: enemy.dead,
+    });
+    const hit = damageReaction.hit;
 
     rig.torso.position.y += idle * 0.01;
     rig.backpack.position.y += idle * 0.006;
@@ -4627,9 +4688,28 @@ export class ThreeCombatRenderer {
 
     if (hit > 0) {
       const side = enemy.id % 2 === 0 ? 1 : -1;
-      rig.torso.rotation.z += side * 0.18 * hit;
-      rig.helmet.rotation.z -= side * 0.12 * hit;
-      rig.hip.position.x -= 0.06 * hit;
+      rig.torso.rotation.z += side * 0.2 * damageReaction.torsoSnap;
+      rig.helmet.rotation.z -= side * 0.13 * hit;
+      rig.hip.position.x -= 0.065 * hit;
+    }
+
+    if (damageReaction.stagger > 0) {
+      const stagger = damageReaction.stagger;
+      rig.torso.rotation.x += 0.14 * stagger;
+      rig.torso.position.y -= 0.07 * stagger;
+      rig.leftArm.rotation.z += 0.1 * stagger;
+      rig.rightArm.rotation.z -= 0.08 * stagger;
+      rig.weaponSocket.position.y -= 0.04 * stagger;
+    }
+
+    if (damageReaction.armorBreak > 0) {
+      const fracture = damageReaction.armorBreak;
+      rig.torso.rotation.x -= 0.16 * fracture;
+      rig.torso.position.y += 0.04 * fracture;
+      rig.leftArm.rotation.z -= 0.24 * damageReaction.armFlare;
+      rig.rightArm.rotation.z += 0.24 * damageReaction.armFlare;
+      rig.weaponSocket.position.y += 0.07 * fracture;
+      rig.helmet.rotation.z += (enemy.id % 2 === 0 ? -1 : 1) * 0.08 * fracture;
     }
 
     if (enemy.dead) {
@@ -4712,8 +4792,25 @@ export class ThreeCombatRenderer {
       visual.root.visible = enemy.active;
       visual.barRoot.visible = enemy.active && !enemy.dead;
       if (!enemy.active) continue;
+      const durability = enemy.hp + enemy.armor;
+      if (!enemy.dead && durability < visual.lastDurability - 0.5) visual.impactUntil = state.time + 0.18;
+      if (!enemy.dead && visual.lastArmor > 0 && enemy.armor <= 0) visual.armorBreakUntil = state.time + 0.44;
+      visual.lastDurability = durability;
+      visual.lastArmor = enemy.armor;
+      const damageReaction = resolveEnemyDamageAnimation({
+        hit: state.time < visual.impactUntil ? THREE.MathUtils.clamp((visual.impactUntil - state.time) / 0.18, 0, 1) : 0,
+        staggerTimer: enemy.statuses.stagger,
+        armorBreak: state.time < visual.armorBreakUntil ? THREE.MathUtils.clamp((visual.armorBreakUntil - state.time) / 0.44, 0, 1) : 0,
+        dead: enemy.dead,
+      });
       visual.root.position.set(scaled(enemy.x), 0, scaled(enemy.y));
       syncEnemyVisual(visual.root, enemy, state);
+      if (!visual.authoredRoot && !enemy.dead) {
+        const side = enemy.id % 2 === 0 ? 1 : -1;
+        visual.body.rotation.z += side * (damageReaction.torsoSnap * 0.12 + damageReaction.armorBreak * 0.08);
+        visual.head.rotation.z -= side * (damageReaction.hit * 0.1 + damageReaction.stagger * 0.08);
+        visual.body.scale.y *= 1 - damageReaction.stagger * 0.06;
+      }
       if (enemy.dead) {
         visual.root.scale.set(1, Math.max(0.16, enemy.deathT * 0.32), 1);
         visual.body.material.opacity = 0.35;
