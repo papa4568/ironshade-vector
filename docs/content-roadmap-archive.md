@@ -841,3 +841,15 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Android artifact `10709637444` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.262`, debug signing, package/version/SDK/signature verification, native emulator runtime/touch/lifecycle/Chapter 3 QA, and APK SHA-256 `07e2aaa63c9215ba9c8d61672f7978c679ea9ae33294b8546588b6924d39eff2`.
   - **Next: P11-D — Advanced specialization.**
 
+
+- [x] **P11-D Advanced specialization** — added one mutually exclusive late-game ship doctrine slot on top of the verified six-tier Engineering + Support foundation, with explicit prerequisites, exact resource costs, before-install payoff previews, save migration, and bounded bonuses that supplement rather than replace class identity.
+  - Added three authored high-tier packages: Heliostat **Hot-Bus Mesh** (Reactor/Fabrication/Drone T5 route), Meridian **Continuity Bulkhead** (Armor/Medical T5 route), and Long Arc **Farline Recovery** (Drive/Cargo/Sensors T5 route). Each also requires its faction at REP 14 plus Directive Tier 6.
+  - Package installation is permanent and mutually exclusive for the save. The selected package spends the exact displayed Credits/materials/Quarantined Trace cost; all other packages become visibly locked.
+  - Package effects are intentionally narrow: Hot-Bus adds a small capacitor/skill-efficiency/relay layer, Continuity adds modest armor/health reserve, and Farline adds modest movement/projectile/penetration handling. None bypasses class-owned weapon families, boss mechanics, or the existing system dependency graph.
+  - Advanced specialization state is persisted in ship-system schema v3. Migration preserves schema-v2 Tier 3–6 purchases from P11-C, valid specialization IDs survive normalization, and unknown IDs safely clear to an empty slot.
+  - The Ship Systems screen now exposes all three package prerequisites, live satisfied/unsatisfied state, full install cost, payoff text, selected package, and mutual-exclusion lock state in a mobile-responsive package grid.
+  - Expanded `SHIP_SYSTEMS_ARCHITECTURE_PASS` with schema-v2 migration preservation, package uniqueness, prerequisite/cost gating, insufficient-resource handling, exact spend, mutual exclusion, and concrete combat-build effect assertions.
+  - Verified on gameplay source `318ad59bd9603a2a35d2219763bd05fa2ca236a2`: Browser E2E `35762002336` passed desktop + mobile-landscape full regression/production build and live player journeys; Level 15 beta smoke `35762002396` passed; Android beta.266 `35762002329` passed full web regression/build, native Android project generation, APK package/version/SDK/signature verification, emulator runtime/touch smoke, and the full Chapter 3 touch playthrough.
+  - Android artifact `10710637296` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.266`, debug signing, and APK SHA-256 `5114c19009cf30fe9809939f793a05b17465b30d924b2ddc5be2271d2f74b5f7`.
+  - **Next: P11-E — Physical payoff.**
+
