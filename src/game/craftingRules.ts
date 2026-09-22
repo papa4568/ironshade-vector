@@ -122,10 +122,10 @@ export const craftingVerbDefinitions: Record<CraftingVerbId, CraftingVerbDefinit
   replace: {
     id: 'replace',
     label: 'REPLACE',
-    role: 'Swap one modifier for another legal modifier in the same family while the selected family lock is respected; protected mode guarantees the named legal target.'
+    role: 'Swap one modifier for another legal modifier in the same family while the selected family lock is respected; protected mode guarantees the named legal target.',
     commonMaterials: ['electronics', 'components'],
     chaseMaterials: ['rareTech'],
-    gate: 'Requires Microforge T2. Protected replacement spends one Quarantined Trace; volatile replacement can waive the Trace but drains stability and can fail.'
+    gate: 'Requires Microforge T2. Protected replacement spends one Quarantined Trace; volatile replacement can waive the Trace but drains stability and can fail.',
   },
   lock: {
     id: 'lock',
@@ -138,10 +138,10 @@ export const craftingVerbDefinitions: Record<CraftingVerbId, CraftingVerbDefinit
   elevate: {
     id: 'elevate',
     label: 'ELEVATE',
-    role: 'Raise one modifier without changing its identity; choose any legal grade up to the current ceiling.'
+    role: 'Raise one modifier without changing its identity; choose any legal grade up to the current ceiling.',
     commonMaterials: ['alloys', 'electronics', 'components'],
     chaseMaterials: ['rareTech'],
-    gate: 'Recovery Level and Microforge ceilings both apply; entering G5 Prime spends one Quarantined Trace. Volatile elevation is optional at T2 and drains stability.'
+    gate: 'Recovery Level and Microforge ceilings both apply; entering G5 Prime spends one Quarantined Trace. Volatile elevation is optional at T2 and drains stability.',
   },
   socket: {
     id: 'socket',
