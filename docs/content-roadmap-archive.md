@@ -753,3 +753,12 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Verified on merged gameplay source `93cacfac5073c7799ad5912da59bdfabe79c6345`: Browser E2E `35720458948`, Level 15 beta smoke `35720458990`, and Android beta.254 `35720458933` all passed.
   - Android artifact `10690709426` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.254`, debug signing, native emulator runtime/touch/lifecycle/Chapter 3 QA, and APK SHA-256 `a87141dc6711335d00f6f772e6ad1cfef1a5b3a01e901d1c0540aaaeeee096e5`.
   - **Next: P10-C — Control vs risk.**
+
+- [x] **P10-C Control vs risk** — completed the deterministic-control/risk layer for Reconstruction while preserving base-pool, rarity, Recovery Level, Microforge, conflict, and Singular legality.
+  - Added persisted Craft Stability, exact Precision Add, family-locked targeted Replace, direct legal grade selection, and optional volatile Replace/Elevate paths. Volatile attempts always drain stability and can fail safely; G5 Prime still requires Quarantined Trace.
+  - Crafting UI exposes stability, success chance, exact legal targets, protected/risky choices, and responsive touch controls. Legacy saves normalize missing stability to 100%.
+  - Regression `CRAFTING_CONTROL_RISK_PASS` covers exact/illegal targets, family locks, grade ceilings, G5 cost, volatile outcomes, save persistence, and mobile UI.
+  - PR #168 Browser E2E `35722370046` passed desktop + mobile-landscape.
+  - Verified on merged gameplay source `c9a2dcde2be6a3520f015f5397bde7de90a087e8`: Browser E2E `35722602499`, Level 15 beta smoke `35722602553`, and Android beta.255 `35722602595` all passed.
+  - Android artifact `10691604398`: package `app.ironshade.vector`, version `0.0.1-beta.255`, debug signing, APK SHA-256 `bbc6047f49eca519daac4b78bc05e2342ebbc35b0ba831cd75ceda77191a537d`.
+  - **Next: P10-D — Build integration.**
