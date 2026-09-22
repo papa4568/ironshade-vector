@@ -66,7 +66,7 @@ Goal: make equipment answer **“What could I build around this?”** instead of
 - [x] **P8.5-H Quality + Augment responsibility pass** — archived after merge + verification
 - [x] **P8.5-I Singular chase-item audit** — archived after merge + verification
 - [x] **P8.5-J Mobile Armory + build-link comparison** — archived after merge + verification
-- [ ] **P8.5-K Save/data migration + compatibility** — migrate existing inventory/equipped items into the new schema without deleting valid gear, preserve old save recovery, normalize invalid legacy combinations safely, and keep current Android/web profiles loadable
+- [x] **P8.5-K Save/data migration + compatibility** — versioned atomic saves to v2/Gear Schema 1, migrate legacy inventory in place without deleting item identities, normalize legacy rarity/affix/Augment/power-axis combinations, preserve the existing backup/quarantine recovery contract, and keep v1/current web + Android save paths loadable
 - [ ] **P8.5-L Balance/diversity/regression gate** — prove at least five same-slot items can serve meaningfully different build goals, a great Refined can beat a poor Prototype for a specific build, every meaningful stat connects to at least two build systems, and automated tests cover generation, stat application, invalid combinations, build links, crafting boundaries, Singular behavior, saves, touch UI and Android builds
 
 ## P9 — Progression 2.0 // Deep Operator Network
