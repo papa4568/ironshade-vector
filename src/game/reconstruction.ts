@@ -1,7 +1,7 @@
 import type { SalvageWallet } from './campaign';
 import { augmentSocketCap, availableAugments, augmentDefinition, frameImplicitDescription, resolveFrameIdentity, type AugmentId } from './gearDepth';
 import { modifierFamilyFor, modifierGradeCeilingForRecovery, type ModifierFamily, type ModifierGrade } from './lootQuality';
-import { affixPoolForSlot, hasSpecializationNetworkHook, itemMatchesSpecializationGearSynergy, materializeModifier, type AffixId, type Item, type PlayerProfile } from './meta';
+import { hasSpecializationNetworkHook, itemMatchesSpecializationGearSynergy, materializeModifier, type AffixId, type Item, type PlayerProfile } from './meta';
 import { maximumExplicitModifiersForRarity } from './gearAffixes';
 import { craftingFabricationGradeCap, legalCraftingAffixes } from './craftingRules';
 
