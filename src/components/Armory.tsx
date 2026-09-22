@@ -134,6 +134,21 @@ function ModifierGroup({ item, family }: { item: Item; family: ModifierFamily })
   );
 }
 
+function BuildLinkDiff({ label, gained, lost, note }: { label: string; gained: string[]; lost: string[]; note?: string }) {
+  const changed = gained.length > 0 || lost.length > 0;
+  return (
+    <article className={'build-link-row ' + (changed ? 'changed' : 'steady')}>
+      <b>{label}</b>
+      <div className="build-link-diffs">
+        {gained.map(value => <span key={'gain:' + value} className="build-link-diff gain">GAIN // {value}</span>)}
+        {lost.map(value => <span key={'loss:' + value} className="build-link-diff loss">LOSE // {value}</span>)}
+        {!changed && <span className="build-link-diff steady">NO EQUIPPED CHANGE</span>}
+      </div>
+      {note && <small>{note}</small>}
+    </article>
+  );
+}
+
 function GearComparison({ profile, item, fabrication }: { profile: PlayerProfile; item: Item; fabrication: number }) {
   const equipped = itemForSlot(profile, item.slot);
   const summary = comparisonSummary(item, equipped);
@@ -150,7 +165,22 @@ function GearComparison({ profile, item, fabrication }: { profile: PlayerProfile
   const classAffinities = itemBuildAffinities(item);
   const semanticTags = itemBuildTags(item);
   const semanticStats = itemStatDefinitions(item);
+  const equippedStats = equipped ? itemStatDefinitions(equipped) : [];
   const semanticScopes = [...new Set(semanticStats.map(stat => stat.scope))];
+  const equippedStatIds = new Set(equippedStats.map(stat => stat.id));
+  const candidateStatIds = new Set(semanticStats.map(stat => stat.id));
+  const localCandidateStats = semanticStats.filter(stat => stat.scope === 'local-base' || stat.scope === 'local-affix');
+  const localEquippedStats = equippedStats.filter(stat => stat.scope === 'local-base' || stat.scope === 'local-affix');
+  const globalCandidateStats = semanticStats.filter(stat => stat.scope === 'global' || stat.scope === 'environment');
+  const globalEquippedStats = equippedStats.filter(stat => stat.scope === 'global' || stat.scope === 'environment');
+  const skillCandidateStats = semanticStats.filter(stat => stat.scope === 'skill-family');
+  const skillEquippedStats = equippedStats.filter(stat => stat.scope === 'skill-family');
+  const localGained = localCandidateStats.filter(stat => !equippedStatIds.has(stat.id)).map(stat => stat.label);
+  const localLost = localEquippedStats.filter(stat => !candidateStatIds.has(stat.id)).map(stat => stat.label);
+  const globalGained = globalCandidateStats.filter(stat => !equippedStatIds.has(stat.id)).map(stat => stat.label);
+  const globalLost = globalEquippedStats.filter(stat => !candidateStatIds.has(stat.id)).map(stat => stat.label);
+  const skillGained = skillCandidateStats.filter(stat => !equippedStatIds.has(stat.id)).map(stat => stat.label);
+  const skillLost = skillEquippedStats.filter(stat => !candidateStatIds.has(stat.id)).map(stat => stat.label);
   const classMatched = classAffinities.includes(activeClassId);
   const currentGearSynergy = specializationGearSynergyForProfile(profile);
   const candidateGearSynergy = specializationGearSynergyForProfile(proposed);
@@ -161,44 +191,102 @@ function GearComparison({ profile, item, fabrication }: { profile: PlayerProfile
   const compatibleHardware = compatibleAugments(item).filter(augment => !(item.augments ?? []).includes(augment.id));
   const equipLevelReady = item.levelRequirement <= profile.level;
   const equipReady = equipLevelReady && classCompatible;
-  const buildChangingEffects = [
-    ...(item.singularEffect ? [{ label: 'SINGULAR SIGNATURE', detail: item.singularEffect }] : []),
-    ...item.modifiers.filter(modifier => modifier.mechanical).map(modifier => ({ label: `MECHANICAL MOD // G${modifier.grade ?? 3} ${modifier.label.toUpperCase()}`, detail: modifier.description })),
-    ...(itemGearLinked && candidateGearSynergy ? [{ label: `SPECIALIZATION LINK // ${candidateGearSynergy.definition.name.toUpperCase()}`, detail: candidateGearSynergy.definition.description }] : []),
+
+  const currentSkillSources = new Set(currentBuild.classSkillFamily.sources);
+  const candidateSkillSources = new Set(candidateBuild.classSkillFamily.sources);
+  const gainedSkillSources = candidateBuild.classSkillFamily.sources.filter(source => !currentSkillSources.has(source)).map(source => source.replace(':', ' // ').replaceAll('-', ' ').toUpperCase());
+  const lostSkillSources = currentBuild.classSkillFamily.sources.filter(source => !candidateSkillSources.has(source)).map(source => source.replace(':', ' // ').replaceAll('-', ' ').toUpperCase());
+  const skillTuningChanges = [
+    ['POWER', currentBuild.classSkillFamily.powerMul, candidateBuild.classSkillFamily.powerMul, true],
+    ['RANGE', currentBuild.classSkillFamily.rangeMul, candidateBuild.classSkillFamily.rangeMul, true],
+    ['CONTROL', currentBuild.classSkillFamily.controlMul, candidateBuild.classSkillFamily.controlMul, true],
+    ['ARMOR', currentBuild.classSkillFamily.armorMul, candidateBuild.classSkillFamily.armorMul, true],
+    ['RECOVERY', currentBuild.classSkillFamily.recoveryMul, candidateBuild.classSkillFamily.recoveryMul, true],
+    ['COST', currentBuild.classSkillFamily.costMul, candidateBuild.classSkillFamily.costMul, true],
+    ['CHAIN', currentBuild.classSkillFamily.chainBonus, candidateBuild.classSkillFamily.chainBonus, false],
+  ].filter(([, current, candidate]) => Math.abs(Number(candidate) - Number(current)) > 0.0001).map(([label, current, candidate, percent]) => {
+    const delta = Number(candidate) - Number(current);
+    const value = percent ? (delta * 100).toFixed(1) + '%' : delta.toFixed(0);
+    return String(label) + ' ' + (delta > 0 ? '+' : '') + value;
+  });
+  const currentSpecializationName = currentGearSynergy?.active ? currentGearSynergy.definition.name : null;
+  const candidateSpecializationName = candidateGearSynergy?.active ? candidateGearSynergy.definition.name : null;
+  const specializationGained = candidateSpecializationName && candidateSpecializationName !== currentSpecializationName ? [candidateSpecializationName] : [];
+  const specializationLost = currentSpecializationName && currentSpecializationName !== candidateSpecializationName ? [currentSpecializationName] : [];
+  const specializationNote = itemGearLinked && candidateGearSynergy
+    ? (candidateGearSynergy.active ? 'Candidate satisfies the active tag route.' : 'Candidate matches the tag route; ' + candidateGearSynergy.definition.requirement + '.')
+    : (candidateGearSynergy?.active ? 'Current specialization link remains online.' : 'No active specialization gear link from this swap.');
+  const singularGained = item.singularEffect && item.singularEffect !== equipped?.singularEffect ? [item.singularEffect] : [];
+  const singularLost = equipped?.singularEffect && equipped.singularEffect !== item.singularEffect ? [equipped.singularEffect] : [];
+  const skillNoteParts = [
+    ...gainedSkillSources.map(source => 'source +' + source),
+    ...lostSkillSources.map(source => 'source -' + source),
+    ...skillTuningChanges,
   ];
+  const skillNote = skillNoteParts.length ? skillNoteParts.join(' · ') : 'No class-skill family tuning changes from this swap.';
+  const classAffinityNames = classAffinities.map(id => operatorClassDefinitions.find(definition => definition.id === id)?.name).filter(Boolean).join(' / ');
+
   const statCards = weaponSlot ? (() => {
     const current = effectiveWeapon(profile, weaponSlot);
     const candidate = effectiveWeapon(proposed, weaponSlot);
     return <div className="compare-stats impact-grid"><Delta label="DMG" current={current.damage} candidate={candidate.damage} /><Delta label="VEL" current={current.velocity} candidate={candidate.velocity} /><Delta label="PEN" current={current.penetration} candidate={candidate.penetration} /><Delta label="RECOIL" current={current.recoil} candidate={candidate.recoil} lowerIsBetter /><Delta label="HEAT/SHOT" current={current.heat * 100} candidate={candidate.heat * 100} lowerIsBetter /><Delta label="MAG" current={current.magazine} candidate={candidate.magazine} /></div>;
   })() : <div className="compare-stats impact-grid"><Delta label="ARMOR" current={currentBuild.player.maxArmorAdd} candidate={candidateBuild.player.maxArmorAdd} /><Delta label="MOVE %" current={(currentBuild.player.moveSpeedMul - 1) * 100} candidate={(candidateBuild.player.moveSpeedMul - 1) * 100} /><Delta label="CAP REGEN %" current={(currentBuild.player.capRegenMul - 1) * 100} candidate={(candidateBuild.player.capRegenMul - 1) * 100} /><Delta label="VAC RES %" current={currentBuild.player.vacuumResistance * 100} candidate={candidateBuild.player.vacuumResistance * 100} /></div>;
+
   return (
     <>
       <div className="gear-summary-grid">
         {item.rarity === 'Singular' && item.singularEffect && <section className="singular-hero" aria-label="Singular fixed rule"><div><small>✦ SINGULAR // RULE-CHANGER</small><b>{item.name}</b></div><p>{item.singularEffect}</p><span>Fixed identity. Reconstruction can improve frame quality and Augments, but cannot reroll the Singular package.</span></section>}
-        <section className="item-effect-panel"><header><small>PRIMARY EFFECT</small><span aria-label={rarityDefinition(item.rarity).accessibleLabel}><RarityText rarity={item.rarity} /></span></header><p>{primaryItemEffect(item)}</p><div className={`gear-class-fit ${classMatched ? 'matched' : ''}`}><small>CLASS RESONANCE</small><b>{classAffinities.map(id => operatorClassDefinitions.find(definition => definition.id === id)?.name).filter(Boolean).join(' / ')}</b><span>{classMatched ? `Counts toward ${activeClass.name} gear resonance.` : classCompatible ? `Compatible support gear; this frame currently resonates with another class path.` : `${weaponOwner?.name ?? 'Another class'} owns this weapon family; ${activeClass.name} cannot equip it.`}</span></div>{candidateGearSynergy && (itemGearLinked || currentGearSynergy?.active) && <div className={`gear-class-fit ${candidateGearSynergy.active ? 'matched' : ''}`}><small>SPECIALIZATION GEAR LINK</small><b>{candidateGearSynergy.definition.name}</b><span>{itemGearLinked ? (candidateGearSynergy.active ? `Equipping this frame activates or maintains ${candidateGearSynergy.definition.name}. ${candidateGearSynergy.definition.description}` : `Tag threshold met on this frame. ${candidateGearSynergy.definition.requirement} to activate.`) : (currentGearSynergy?.active && !candidateGearSynergy.active ? `Equipping this frame breaks ${currentGearSynergy.definition.name}; the matching tag route leaves the active loadout.` : `Current gear link remains active. ${candidateGearSynergy.definition.description}`)}</span></div>}</section>
-        <section className="gear-identity-grid" aria-label="Equipment identity and compatibility">
-          <div><small>BASE</small><b>{item.baseId}</b><span>{item.equipmentClass}</span></div>
-          <div><small>FRAME</small><b>{identity.name}</b><span>GEN {item.frameGeneration ?? 1} · {identity.philosophy}</span></div>
-          <div><small>RECOVERY</small><b>RL {item.recoveryLevel ?? 1}</b><span>Q{item.recoveryQuality ?? 0} · {recoveryQualityLabel(item.recoveryQuality ?? 0)}</span></div>
-          <div><small>FRAME QUALITY</small><b>{item.equipmentQuality ?? 0}/20</b><span>{item.frameImplicit ?? 'Neutral service geometry.'}</span></div>
-          <div><small>MODIFIERS</small><b>{item.modifiers.length ? `${item.modifiers.length} · PEAK G${topModifierGrade}` : 'CLEAN BASE'}</b><span>{item.modifiers.length ? 'Core + Systems grades shown below.' : 'No explicit modifiers installed.'}</span></div>
-          <div><small>AUGMENTS</small><b>{augments.length}/{item.augmentSlots ?? 0} INSTALLED</b><span>{accessibleSockets}/{item.augmentSlots ?? 0} sockets accessible · {compatibleHardware.length} compatible hardware option{compatibleHardware.length === 1 ? '' : 's'}</span></div>
-          <div><small>BUILD TAGS</small><b>{semanticTags.length ? semanticTags.slice(0, 6).map(tag => tag.toUpperCase()).join(' · ') : 'UNCLASSIFIED'}</b><span>{semanticTags.length > 6 ? `+${semanticTags.length - 6} linked tags · ` : ''}Shared by combat, loot, and crafting.</span></div>
-          <div><small>STAT SCOPE</small><b>{semanticScopes.length ? semanticScopes.map(scope => scope.replace('-', ' ').toUpperCase()).join(' · ') : 'NONE'}</b><span>{semanticStats.length} registry-defined stat{semanticStats.length === 1 ? '' : 's'} on this base and modifier package.</span></div>
-          <div><small>SOURCE</small><b>{item.recoverySource ?? 'Legacy recovery'}</b><span>Recovered identity remains attached through reconstruction.</span></div>
-          <div className={equipReady ? 'compatible' : 'locked'}><small>COMPATIBILITY</small><b>{!classCompatible ? `${weaponOwner?.name.toUpperCase() ?? 'OTHER CLASS'} ARMAMENT` : equipLevelReady ? 'EQUIP NOW' : `REQUIRES LV ${item.levelRequirement}`}</b><span>{!classCompatible ? `${activeClass.name} owns ${slotLabels[activeWeaponFamily]}. This off-class legacy weapon stays in ship storage and cannot be equipped.` : classMatched ? `${activeClass.name} resonance active.` : 'Universal support slot; equip permission is independent of resonance.'}</span></div>
+
+        <section className="item-layer-panel base-implicit-panel" aria-label="Base and implicit">
+          <header className="item-layer-heading"><div><small>BASE / IMPLICIT</small><b>{identity.name}</b></div><span>FRAME Q {item.equipmentQuality ?? 0}/20</span></header>
+          <div className="base-implicit-grid">
+            <div><small>BASE</small><b>{item.equipmentClass}</b><span>{item.core}</span></div>
+            <div><small>IMPLICIT</small><b>{item.frameImplicit ?? 'Neutral service geometry.'}</b><span>{identity.philosophy}</span></div>
+          </div>
         </section>
-        {buildChangingEffects.length > 0 && <section className="build-change-panel" aria-label="Build-changing equipment effects"><header><small>BUILD-CHANGING EFFECTS</small><b>{buildChangingEffects.length} detected</b></header>{buildChangingEffects.map(effect => <div key={effect.label}><b>{effect.label}</b><span>{effect.detail}</span></div>)}</section>}
+
+        <section className="item-layer-panel explicit-modifiers-panel" aria-label="Explicit modifiers">
+          <header className="item-layer-heading"><div><small>EXPLICIT MODIFIERS</small><b>{item.modifiers.length ? item.modifiers.length + ' INSTALLED' : 'CLEAN BASE'}</b></div><span>{item.modifiers.length ? 'PEAK G' + topModifierGrade : 'NO MODS'}</span></header>
+          <div className="modifier-columns"><ModifierGroup item={item} family="core" /><ModifierGroup item={item} family="systems" /></div>
+        </section>
+
+        <section className="item-layer-panel augment-layer-panel" aria-label="Augments">
+          <header className="item-layer-heading"><div><small>AUGMENTS</small><b>{augments.length}/{item.augmentSlots ?? 0} INSTALLED</b></div><span>{accessibleSockets}/{item.augmentSlots ?? 0} ACCESSIBLE</span></header>
+          <div className="augment-stack">
+            {augments.length === 0 ? <p>No hardware installed.</p> : augments.map(augment => <div key={augment.id}><b>{augment.hardware.toUpperCase()} // {augment.name}</b><span>{augment.description}</span><small>TRADEOFF // {augment.tradeoff}</small></div>)}
+            <small className="augment-availability">{compatibleHardware.length} compatible hardware option{compatibleHardware.length === 1 ? '' : 's'} remain for this frame.</small>
+          </div>
+        </section>
+
+        <section className="build-links-panel" aria-label="Generated build links">
+          <header><div><small>BUILD LINKS</small><b>What this frame connects to</b></div><span>Generated from shared item stat + tag registries</span></header>
+          <div className="build-link-tags">{semanticTags.length ? semanticTags.map(tag => <span key={tag}>{tag.toUpperCase()}</span>) : <span>UNCLASSIFIED</span>}</div>
+          <div className="build-link-grid">
+            <BuildLinkDiff label="LOCAL STATS" gained={localGained} lost={localLost} note="Base + explicit local properties compared with the currently equipped frame." />
+            <BuildLinkDiff label="GLOBAL STATS" gained={globalGained} lost={globalLost} note="Operator-wide and environment-facing stat links." />
+            <BuildLinkDiff label="SKILL LINKS" gained={skillGained} lost={skillLost} note={skillNote} />
+            <BuildLinkDiff label="SPECIALIZATION LINK" gained={specializationGained} lost={specializationLost} note={specializationNote} />
+            <BuildLinkDiff label="SINGULAR RULE" gained={singularGained} lost={singularLost} note={item.rarity === 'Singular' ? 'Fixed rule-changing package; reconstruction cannot reroll it.' : 'No candidate Singular rule.'} />
+          </div>
+        </section>
+
         <section className="loadout-impact"><header className="loadout-impact-heading"><div><small>LOADOUT IMPACT</small><b>{slotLabels[item.slot]}</b></div><span>{equipped ? 'VS EQUIPPED' : 'EMPTY SLOT'}</span></header><div className="compare-head"><div><small>CURRENT</small><b>{equipped?.name ?? 'Empty slot'}</b><span>{equipped ? <><RarityText rarity={equipped.rarity} /> · {summary.current}</> : summary.current}</span></div><div className="candidate-card"><small>CANDIDATE</small><b>{item.name}</b><span><RarityText rarity={item.rarity} /> · {summary.candidate}</span></div></div>{statCards}</section>
       </div>
-      <details className="gear-deep-details"><summary>Technical details & modifiers</summary>
-      <div className={'recovery-quality ' + qualityClass(item)}><b>RECOVERY QUALITY {item.recoveryQuality ?? 0} // {recoveryQualityLabel(item.recoveryQuality ?? 0).toUpperCase()}</b><span>SOURCE // {item.recoverySource ?? 'Legacy recovery'}</span></div>
-      <div className="frame-signature"><b>FRAME // {identity.name.toUpperCase()} // GEN {item.frameGeneration ?? 1}</b><span>{identity.philosophy}</span>{(item.frameGeneration ?? 1) >= 6 && <em>GEN VI // MATURE GEN V STAT BAND · EXPANDED AUGMENT BUS. Prototype/Singular frames can carry a third socket; full access requires Microforge T2.</em>}<strong>FRAME QUALITY {item.equipmentQuality ?? 0}/20</strong></div>
-      <div className="implicit-signature"><b>IMPLICIT PROPERTY</b><span>{item.frameImplicit ?? 'Service geometry // neutral frame behavior.'}</span></div>
-      <div className="augment-signature"><b>AUGMENTS // {augments.length}/{item.augmentSlots ?? 0}</b>{augments.length === 0 ? <span>No hardware installed.</span> : augments.map(augment => <span key={augment.id}>{augment.hardware.toUpperCase()} // {augment.name} — {augment.description} TRADEOFF // {augment.tradeoff}</span>)}</div>
-      {item.singularEffect && <div className="singular-signature"><b>SIGNATURE // FIXED SINGULAR RULE</b><span>{item.singularEffect}</span></div>}
-      {item.faction && <div className={'faction-signature faction-' + item.faction}><b>FACTION FRAME // {factionLabel(item.faction).toUpperCase()}</b><span>Recovered {factionLabel(item.faction)} construction. Multi-frame interactions are only revealed here after they become active in your equipped loadout.</span></div>}
-      <div className="modifier-columns"><ModifierGroup item={item} family="core" /><ModifierGroup item={item} family="systems" /></div>
+
+      <details className="gear-deep-details"><summary>Advanced metadata & provenance</summary>
+        <div className="gear-identity-grid advanced-identity-grid" aria-label="Advanced equipment metadata">
+          <div><small>BASE ID</small><b>{item.baseId}</b><span>{item.equipmentClass}</span></div>
+          <div><small>FRAME</small><b>{identity.name}</b><span>GEN {item.frameGeneration ?? 1} · FRAME Q {item.equipmentQuality ?? 0}/20</span></div>
+          <div><small>RECOVERY</small><b>RL {item.recoveryLevel ?? 1}</b><span>Q{item.recoveryQuality ?? 0} · {recoveryQualityLabel(item.recoveryQuality ?? 0)}</span></div>
+          <div><small>SOURCE / PROVENANCE</small><b>{item.recoverySource ?? 'Legacy recovery'}</b><span>Recovered identity remains attached through reconstruction.</span></div>
+          <div><small>CLASS RESONANCE</small><b>{classAffinityNames || 'UNIVERSAL'}</b><span>{classMatched ? activeClass.name + ' resonance active.' : classCompatible ? 'Compatible support gear; this frame currently resonates with another class path.' : (weaponOwner?.name ?? 'Another class') + ' owns this weapon family.'}</span></div>
+          <div><small>STAT SCOPE</small><b>{semanticScopes.length ? semanticScopes.map(scope => scope.replace('-', ' ').toUpperCase()).join(' · ') : 'NONE'}</b><span>{semanticStats.length} registry-defined stat{semanticStats.length === 1 ? '' : 's'} on this package.</span></div>
+          <div><small>BUILD TAGS</small><b>{semanticTags.length ? semanticTags.map(tag => tag.toUpperCase()).join(' · ') : 'UNCLASSIFIED'}</b><span>Shared by combat, loot, crafting, and specialization routes.</span></div>
+          <div className={equipReady ? 'compatible' : 'locked'}><small>COMPATIBILITY</small><b>{!classCompatible ? (weaponOwner?.name.toUpperCase() ?? 'OTHER CLASS') + ' ARMAMENT' : equipLevelReady ? 'EQUIP NOW' : 'REQUIRES LV ' + item.levelRequirement}</b><span>{!classCompatible ? activeClass.name + ' owns ' + slotLabels[activeWeaponFamily] + '. This legacy weapon stays in storage.' : classMatched ? activeClass.name + ' resonance active.' : 'Universal support slot; equip permission is independent of resonance.'}</span></div>
+        </div>
+        <div className={'recovery-quality ' + qualityClass(item)}><b>RECOVERY QUALITY {item.recoveryQuality ?? 0} // {recoveryQualityLabel(item.recoveryQuality ?? 0).toUpperCase()}</b><span>SOURCE // {item.recoverySource ?? 'Legacy recovery'}</span></div>
+        <div className="frame-signature"><b>FRAME // {identity.name.toUpperCase()} // GEN {item.frameGeneration ?? 1}</b><span>{identity.philosophy}</span>{(item.frameGeneration ?? 1) >= 6 && <em>GEN VI // MATURE GEN V STAT BAND · EXPANDED AUGMENT BUS. Prototype/Singular frames can carry a third socket; full access requires Microforge T2.</em>}<strong>FRAME QUALITY {item.equipmentQuality ?? 0}/20</strong></div>
+        {item.faction && <div className={'faction-signature faction-' + item.faction}><b>FACTION FRAME // {factionLabel(item.faction).toUpperCase()}</b><span>Recovered {factionLabel(item.faction)} construction. Multi-frame interactions are only revealed after they become active in your equipped loadout.</span></div>}
       </details>
     </>
   );
