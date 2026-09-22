@@ -28,6 +28,97 @@ export type WeaponAudioProfile = {
   masterGain: number;
 };
 
+export type ImpactSurface = 'armor' | 'machinery' | 'ice' | 'steel' | 'glass' | 'field';
+export type AudioPressureState = 'normal' | 'leaking' | 'decompressing' | 'vacuum';
+export type AudioEnvironment = { space: 'interior' | 'open'; pressure: AudioPressureState };
+export type AcousticTreatment = { gain: number; tailGain: number; lowpassHz: number; tailDelay: number };
+export type ImpactAudioProfile = { layers: WeaponAudioLayer[]; masterGain: number };
+
+const openAudioLocations = new Set(['asteroid-refinery', 'jovian-harvester', 'solar-yard', 'momentum-exchange']);
+const glassAudioLocations = new Set(['spin-habitat', 'solar-yard', 'parallax-array', 'lattice-annex']);
+const iceAudioLocations = new Set(['ice-mine', 'cryo-reserve']);
+const machineryKinds = new Set(['conduit', 'coolant', 'doorControl', 'gravityControl', 'sealControl', 'powerControl', 'salvageNode', 'anchorNode']);
+
+export function combatAudioEnvironment(location: string, pressure: AudioPressureState): AudioEnvironment {
+  return { space: openAudioLocations.has(location) ? 'open' : 'interior', pressure };
+}
+
+export function acousticTreatmentFor(environment: AudioEnvironment): AcousticTreatment {
+  const pressure = environment.pressure === 'vacuum'
+    ? { gain: .34, tail: .12, lowpassHz: 1200, delay: .002 }
+    : environment.pressure === 'decompressing'
+      ? { gain: .58, tail: .3, lowpassHz: 2450, delay: .006 }
+      : environment.pressure === 'leaking'
+        ? { gain: .8, tail: .62, lowpassHz: 4300, delay: .012 }
+        : { gain: 1, tail: 1, lowpassHz: 7800, delay: .018 };
+  const openGain = environment.space === 'open' ? .92 : 1;
+  const openTail = environment.space === 'open' ? .52 : 1;
+  return {
+    gain: pressure.gain * openGain,
+    tailGain: pressure.tail * openTail,
+    lowpassHz: pressure.lowpassHz,
+    tailDelay: pressure.delay * (environment.space === 'open' ? .55 : 1),
+  };
+}
+
+export function impactSurfaceForObject(material: string, kind: string, location: string): ImpactSurface {
+  if (machineryKinds.has(kind) || material === 'system') return 'machinery';
+  if (iceAudioLocations.has(location)) return 'ice';
+  if (material === 'light' && glassAudioLocations.has(location)) return 'glass';
+  return 'steel';
+}
+
+export const impactAudioProfiles: Record<ImpactSurface, ImpactAudioProfile> = {
+  armor: {
+    layers: [
+      { frequency: 860, duration: .028, type: 'triangle', gain: .5, sweep: .62, lowpassHz: 5200 },
+      { frequency: 176, duration: .075, type: 'square', gain: .38, sweep: .7, lowpassHz: 1900 },
+      { frequency: 1220, duration: .045, type: 'sine', gain: .18, sweep: .86, delay: .014, lowpassHz: 4600 },
+    ],
+    masterGain: .21,
+  },
+  machinery: {
+    layers: [
+      { frequency: 510, duration: .045, type: 'square', gain: .42, sweep: .7, lowpassHz: 3600 },
+      { frequency: 118, duration: .105, type: 'triangle', gain: .36, sweep: .76, lowpassHz: 1350 },
+      { frequency: 980, duration: .055, type: 'triangle', gain: .2, sweep: 1.24, delay: .018, lowpassHz: 4200 },
+    ],
+    masterGain: .2,
+  },
+  ice: {
+    layers: [
+      { frequency: 1780, duration: .032, type: 'triangle', gain: .4, sweep: .56, lowpassHz: 6500 },
+      { frequency: 640, duration: .065, type: 'sine', gain: .34, sweep: .62, lowpassHz: 4200 },
+      { frequency: 148, duration: .12, type: 'sine', gain: .22, sweep: .82, delay: .022, lowpassHz: 1250 },
+    ],
+    masterGain: .19,
+  },
+  steel: {
+    layers: [
+      { frequency: 930, duration: .03, type: 'square', gain: .44, sweep: .72, lowpassHz: 5600 },
+      { frequency: 205, duration: .085, type: 'triangle', gain: .4, sweep: .67, lowpassHz: 1700 },
+      { frequency: 1360, duration: .075, type: 'sine', gain: .19, sweep: .9, delay: .018, lowpassHz: 5400 },
+    ],
+    masterGain: .2,
+  },
+  glass: {
+    layers: [
+      { frequency: 2380, duration: .026, type: 'triangle', gain: .38, sweep: .66, lowpassHz: 7600 },
+      { frequency: 1460, duration: .06, type: 'sine', gain: .3, sweep: .74, delay: .008, lowpassHz: 6900 },
+      { frequency: 430, duration: .09, type: 'triangle', gain: .18, sweep: .7, delay: .026, lowpassHz: 3500 },
+    ],
+    masterGain: .18,
+  },
+  field: {
+    layers: [
+      { frequency: 760, duration: .055, type: 'sine', gain: .42, sweep: 1.72, lowpassHz: 5900 },
+      { frequency: 182, duration: .1, type: 'sine', gain: .34, sweep: .58, lowpassHz: 1800 },
+      { frequency: 1180, duration: .07, type: 'triangle', gain: .2, sweep: 1.22, delay: .016, lowpassHz: 5200 },
+    ],
+    masterGain: .19,
+  },
+};
+
 const tones: Record<UtilityCue, Tone> = {
   ui: { frequency: 460, duration: .045, type: 'sine' },
   loot: { frequency: 620, duration: .11, type: 'sine', sweep: 1.18 },
@@ -124,9 +215,11 @@ class FeedbackBus {
   private context: AudioContext | null = null;
   private output: DynamicsCompressorNode | null = null;
   private settings: ProfileSettings | null = null;
+  private environment: AudioEnvironment = { space: 'interior', pressure: 'normal' };
   private weaponShotIndex: Record<WeaponCue, number> = { carbine: 0, breacher: 0, rail: 0 };
 
   configure(settings: ProfileSettings) { this.settings = settings; }
+  setEnvironment(environment: AudioEnvironment) { this.environment = environment; }
 
   unlock() {
     if (typeof window === 'undefined') return;
@@ -172,22 +265,26 @@ class FeedbackBus {
     void actuator.playEffect('dual-rumble', { duration, startDelay: 0, strongMagnitude, weakMagnitude }).catch(() => undefined);
   }
 
-  private playLayer(layer: WeaponAudioLayer, volume: number, pitchCents = 0, gainMultiplier = 1) {
+  private playLayer(layer: WeaponAudioLayer, volume: number, pitchCents = 0, gainMultiplier = 1, role: 'direct' | 'tail' = 'direct', applyAcoustics = true) {
     const context = this.context;
     if (!context || context.state !== 'running') return;
 
-    const start = context.currentTime + (layer.delay ?? 0);
+    const treatment = applyAcoustics ? acousticTreatmentFor(this.environment) : null;
+    const environmentalDelay = treatment && role === 'tail' ? treatment.tailDelay : 0;
+    const start = context.currentTime + (layer.delay ?? 0) + environmentalDelay;
     const end = start + layer.duration;
     const oscillator = context.createOscillator();
     const gain = context.createGain();
-    const filter = layer.lowpassHz ? context.createBiquadFilter() : null;
+    const lowpassHz = Math.min(layer.lowpassHz ?? 24000, treatment?.lowpassHz ?? 24000);
+    const filter = lowpassHz < 22000 ? context.createBiquadFilter() : null;
 
     oscillator.type = layer.type;
     oscillator.frequency.setValueAtTime(layer.frequency, start);
     oscillator.detune.setValueAtTime(pitchCents, start);
     if (layer.sweep) oscillator.frequency.exponentialRampToValueAtTime(Math.max(36, layer.frequency * layer.sweep), end);
 
-    const peak = Math.max(.0001, volume * layer.gain * gainMultiplier);
+    const acousticGain = treatment ? (role === 'tail' ? treatment.tailGain : treatment.gain) : 1;
+    const peak = Math.max(.0001, volume * layer.gain * gainMultiplier * acousticGain);
     const attack = Math.min(layer.duration * .35, Math.max(0, layer.attack ?? 0));
     if (attack > 0) {
       gain.gain.setValueAtTime(.0001, start);
@@ -199,7 +296,7 @@ class FeedbackBus {
 
     if (filter) {
       filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(layer.lowpassHz!, start);
+      filter.frequency.setValueAtTime(lowpassHz, start);
       oscillator.connect(filter).connect(gain);
     } else {
       oscillator.connect(gain);
@@ -215,9 +312,9 @@ class FeedbackBus {
     oscillator.stop(end + .01);
   }
 
-  private playTone(cue: UtilityCue, volume: number) {
+  private playTone(cue: UtilityCue, volume: number, applyAcoustics: boolean) {
     const tone = tones[cue];
-    this.playLayer({ ...tone, gain: 1 }, volume);
+    this.playLayer({ ...tone, gain: 1 }, volume, 0, 1, 'direct', applyAcoustics);
   }
 
   private playWeapon(cue: WeaponCue, volume: number) {
@@ -231,8 +328,22 @@ class FeedbackBus {
 
     for (const distance of ['near', 'mid', 'far'] as const) {
       if (shotIndex % profile.tailCadence[distance] !== 0) continue;
-      this.playLayer(profile.tails[distance], weaponVolume, variation.pitchCents * .45, variation.gainMultiplier);
+      this.playLayer(profile.tails[distance], weaponVolume, variation.pitchCents * .45, variation.gainMultiplier, 'tail');
     }
+  }
+
+  impact(surface: ImpactSurface, heavy = false) {
+    const settings = this.settings;
+    if (!settings) return;
+    const volume = Math.max(0, Math.min(1, settings.effectsVolume));
+    if (volume <= 0) return;
+    this.unlock();
+    const profile = impactAudioProfiles[surface];
+    const weight = heavy ? 1.15 : 1;
+    profile.layers.forEach((layer, index) => {
+      const role = index === profile.layers.length - 1 ? 'tail' : 'direct';
+      this.playLayer(layer, volume * profile.masterGain * weight, heavy ? -10 : 0, 1, role);
+    });
   }
 
   cue(cue: FeedbackCue) {
@@ -249,7 +360,7 @@ class FeedbackBus {
       return;
     }
     const scale = cue === 'rareLoot' ? .26 : cue === 'breach' ? .2 : cue === 'damage' || cue === 'machinery' ? .16 : cue === 'targetLock' ? .1 : .12;
-    this.playTone(cue, volume * scale);
+    this.playTone(cue, volume * scale, !uiCue);
   }
 }
 
