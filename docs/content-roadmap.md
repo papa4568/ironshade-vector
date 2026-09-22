@@ -78,7 +78,7 @@ Target roughly **120–180 authored nodes**, delivered in bounded waves.
 - [x] **P9-C Build-defining wave** — archived after merge + verification
 - [x] **P9-D Specialization integration** — archived after merge + verification
 - [x] **P9-E Planner UX** — archived after merge + verification
-- [ ] **P9-F Respec/migration/diversity QA** — fair experimentation, high-level rebuild costs, safe old-node migration/refunds, representative builds
+- [x] **P9-F Respec/migration/diversity QA** — archived after merge + verification
 
 ## P10 — Crafting 2.0 // Reconstruction Economy
 
@@ -159,21 +159,21 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P9-F — Respec/migration/diversity QA.**
+**Next: P10-A — Rules foundation.**
 
-Build **P9-F — Respec/migration/diversity QA** on the verified 120-node Network: add fair experimentation/respec rules, high-level rebuild costs, safe old-node migration/refunds, and representative build-diversity QA without weakening class arsenal, specialization, or save-compatibility contracts.
+Build **P10-A — Rules foundation** on the verified Gear 2.0/Reconstruction stack: formalize Core/Systems crafting structure, rarity counts, tiers/grades, compatibility, visible legal pools, and base/frame importance before adding new crafting verbs or chase materials.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.251**
+- Android beta: **0.0.1-beta.252**
 - Package: `app.ironshade.vector`
-- Verified: **P9-E Planner UX complete**
-- Gameplay source: `79570330e822a802b01897f9e96e5d51542af188`
-- Browser E2E: `35711528022`
-- Level 15 beta smoke: `35711528019`
-- Android beta.251: `35711528052`
-- APK artifact: `10687108540`
-- APK SHA-256: `f190ec39d239f87401c34c0ec346a6a051e91ff481e1022fa892b25b7dd2e91c`
+- Verified: **P9-F Respec/migration/diversity QA complete**
+- Gameplay source: `8675c25f896c09c7fac0a78d181499ddf715d098`
+- Browser E2E: `35714819834`
+- Level 15 beta smoke: `35714819857`
+- Android beta.252: `35714819733`
+- APK artifact: `10689023882`
+- APK SHA-256: `d177a98ce8ce20a14e2acd30760206be2ef8bf555e3fe4df82a0e0943cdab5c8`
 - Signing: debug-signed beta; permanent signing is P17-A
