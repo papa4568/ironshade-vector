@@ -20,14 +20,18 @@ import {
   factions,
   factionDisplayName,
   getShipUpgradeStatus,
+  getShipSpecializationStatus,
   getUpgradeCost,
+  installShipSpecialization,
   resourceLabels,
   SHIP_SYSTEM_MAX_TIER,
+  shipSpecializationDefinitions,
   startEscalation,
   upgradeDefinitions,
   type CampaignState,
   type Contract,
   type ResourceId,
+  type ShipSpecializationId,
   type ShipUpgradeId,
 } from '../game/campaign';
 import { activeWeaponFamilyForProfile, buildIdentity, directiveChaseSingularChance, directiveSingularNames, type PlayerProfile } from '../game/meta';
@@ -257,8 +261,14 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
     for (const upgrade of upgradeDefinitions) map.set(upgrade.area, [...(map.get(upgrade.area) ?? []), upgrade]);
     return [...map.entries()];
   }, []);
+  const installedSpecialization = shipSpecializationDefinitions.find(item => item.id === campaign.shipSpecialization) ?? null;
   const buy = (id: ShipUpgradeId) => {
     const result = buyShipUpgrade(campaign, id);
+    onCampaignChange(result.campaign);
+    setMessage(result.message);
+  };
+  const installSpecialization = (id: ShipSpecializationId) => {
+    const result = installShipSpecialization(campaign, id);
     onCampaignChange(result.campaign);
     setMessage(result.message);
   };
@@ -454,7 +464,52 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
       {traceRecord && <article className="trace-inspector"><div><span className="card-kicker">RUN TRACE // {traceRecord.id.slice(0, 8).toUpperCase()}</span><h2>{traceRecord.contractTitle}</h2><p>{traceRecord.buildLabel} · OP T{traceRecord.operationTier} · LV {traceRecord.level} · {runOutcomeLabel(traceRecord)} · {traceRecord.duration.toFixed(1)}s · {traceRecord.trace.length} checkpoints</p></div><svg viewBox="0 0 2320 1040" role="img" aria-label="Anonymous operator path through the contract"><rect x="20" y="20" width="2280" height="1000" rx="50" /><polyline points={tracePolyline} />{traceRecord.trace[0] && <circle className="trace-start" cx={traceRecord.trace[0].x} cy={1040 - traceRecord.trace[0].y} r="22" />}{traceRecord.trace.at(-1) && <circle className="trace-end" cx={traceRecord.trace.at(-1)!.x} cy={1040 - traceRecord.trace.at(-1)!.y} r="22" />}</svg><div className="trace-stats"><span>DAMAGE DEALT <b>{traceRecord.damageDealt}</b></span><span>DAMAGE TAKEN <b>{traceRecord.damageTaken}</b></span><span>SALVAGE TAGS <b>{traceRecord.salvageTags}</b></span><span>BOSS <b>{traceRecord.bossDefeated ? 'DEFEATED' : 'NOT ENGAGED'}</b></span></div></article>}
     </section>}
 
-    {tab === 'ship' && <section className="ship-systems-panel"><div className="ship-systems-intro"><div><span className="card-kicker">QUIET SIGNAL // SYSTEMS</span><h2>Upgrade what changes the next deployment.</h2><p>Ship Systems 2.0 preserves every installed prototype tier while exposing the six-tier dependency route, resource curve, and access gates. Engineering and support systems now preview their commissioned Tier 3–6 field or economy payoff before purchase, including salvage yield, reconstruction efficiency, operator reserve, and relay-drone scaling.</p></div><button onClick={onOpenBuild}>Open Build</button></div>{upgradeGroups.map(([area, upgrades]) => <section key={area} className="upgrade-group"><h2>{area}</h2><div className="upgrade-grid">{upgrades.map(upgrade => { const status = getShipUpgradeStatus(campaign, upgrade.id)!; const level = status.level; const cost = getUpgradeCost(campaign, upgrade.id); const nextTier = status.nextTier; const currentBenefit = level > 0 ? upgrade.benefits[level - 1] : 'No major tier installed yet.'; const buttonLabel = cost ? `Upgrade // ${costText(cost)}` : !nextTier ? 'System fully realized' : status.implementationLocked ? `Tier ${nextTier.tier} blueprint queued` : `Tier ${nextTier.tier} gated`; return <article key={upgrade.id} className="upgrade-card"><div><small>{upgrade.name.toUpperCase()}</small><b>TIER {level} / {SHIP_SYSTEM_MAX_TIER}</b></div><p>{upgrade.description}</p><strong>{currentBenefit}</strong>{nextTier && <div className="upgrade-plan"><small>NEXT // TIER {nextTier.tier}</small><span>{nextTier.benefit}</span>{nextTier.gates.length > 0 && <em>{status.gateFailures.length > 0 ? `Gates: ${status.gateFailures.map(gate => gate.label).join(' · ')}` : 'All access gates satisfied'}</em>}</div>}<button disabled={!cost} onClick={() => buy(upgrade.id)}>{buttonLabel}</button></article>; })}</div></section>)}</section>}
+    {tab === 'ship' && <section className="ship-systems-panel">
+      <div className="ship-systems-intro">
+        <div>
+          <span className="card-kicker">QUIET SIGNAL // SYSTEMS</span>
+          <h2>Upgrade what changes the next deployment.</h2>
+          <p>Ship Systems 2.0 exposes the six-tier dependency route, exact resource curve, and late specialization packages. Base tiers remain permanent foundations; one advanced package can be installed after its Tier 5 prerequisites and then locks the other packages.</p>
+        </div>
+        <button onClick={onOpenBuild}>Open Build</button>
+      </div>
+      <section className="upgrade-group ship-specialization-group">
+        <div className="specialization-heading">
+          <div>
+            <span className="card-kicker">ADVANCED SPECIALIZATION // ONE SLOT</span>
+            <h2>{installedSpecialization ? `Installed: ${installedSpecialization.name}` : 'Choose a late-game ship doctrine'}</h2>
+          </div>
+          <small>{installedSpecialization ? 'Other packages are permanently locked for this save.' : 'Prerequisites and full install cost are previewed before commitment.'}</small>
+        </div>
+        <div className="upgrade-grid specialization-grid">
+          {shipSpecializationDefinitions.map(definition => {
+            const status = getShipSpecializationStatus(campaign, definition.id)!;
+            const buttonLabel = status.selected
+              ? 'Installed // specialization locked'
+              : status.lockedByOther
+                ? `Locked by ${installedSpecialization?.name ?? 'installed package'}`
+                : status.gateFailures.length > 0
+                  ? 'Prerequisites incomplete'
+                  : status.resourceFailures.length > 0
+                    ? 'Resources incomplete'
+                    : `Install // ${costText(definition.cost)}`;
+            return <article key={definition.id} className={`upgrade-card specialization-card${status.selected ? ' specialization-selected' : ''}`}>
+              <div><small>{factionDisplayName(definition.ownerFaction).toUpperCase()}</small><b>{status.selected ? 'INSTALLED' : 'PACKAGE'}</b></div>
+              <h3>{definition.name}</h3>
+              <p>{definition.description}</p>
+              <strong>{definition.benefit}</strong>
+              <div className="upgrade-plan">
+                <small>PREREQUISITES</small>
+                <span>{definition.gates.map(gate => `${status.gateFailures.includes(gate) ? '○' : '✓'} ${gate.label}`).join(' · ')}</span>
+                <em>COST // {costText(definition.cost)}</em>
+              </div>
+              <button disabled={!status.canInstall} onClick={() => installSpecialization(definition.id)}>{buttonLabel}</button>
+            </article>;
+          })}
+        </div>
+      </section>
+      {upgradeGroups.map(([area, upgrades]) => <section key={area} className="upgrade-group"><h2>{area}</h2><div className="upgrade-grid">{upgrades.map(upgrade => { const status = getShipUpgradeStatus(campaign, upgrade.id)!; const level = status.level; const cost = getUpgradeCost(campaign, upgrade.id); const nextTier = status.nextTier; const currentBenefit = level > 0 ? upgrade.benefits[level - 1] : 'No major tier installed yet.'; const buttonLabel = cost ? `Upgrade // ${costText(cost)}` : !nextTier ? 'System fully realized' : status.implementationLocked ? `Tier ${nextTier.tier} blueprint queued` : `Tier ${nextTier.tier} gated`; return <article key={upgrade.id} className="upgrade-card"><div><small>{upgrade.name.toUpperCase()}</small><b>TIER {level} / {SHIP_SYSTEM_MAX_TIER}</b></div><p>{upgrade.description}</p><strong>{currentBenefit}</strong>{nextTier && <div className="upgrade-plan"><small>NEXT // TIER {nextTier.tier}</small><span>{nextTier.benefit}</span>{nextTier.gates.length > 0 && <em>{status.gateFailures.length > 0 ? `Gates: ${status.gateFailures.map(gate => gate.label).join(' · ')}` : 'All access gates satisfied'}</em>}</div>}<button disabled={!cost} onClick={() => buy(upgrade.id)}>{buttonLabel}</button></article>; })}</div></section>)}
+    </section>}
 
     {tab === 'factions' && <section className="faction-panel">{factions.map(faction => <article key={faction.id} className="faction-card"><header><div><span className="card-kicker">{faction.name}</span><h2>Reputation {campaign.reputation[faction.id]}</h2></div><div className="rep-meter"><i style={{ width: `${Math.max(0, Math.min(100, (campaign.reputation[faction.id] + 10) / 30 * 100))}%` }} /></div></header><div className="faction-copy"><p><b>History.</b> {faction.history}</p><p><b>Economic foundation.</b> {faction.economy}</p><p><b>Culture.</b> {faction.culture}</p><p><b>Technology.</b> {faction.technology}</p><p><b>Political goals.</b> {faction.goals}</p><p><b>Strengths.</b> {faction.strengths}</p><p><b>Failures.</b> {faction.failures}</p><p><b>Internal divisions.</b> {faction.divisions}</p></div><div className="faction-unlocks">{faction.unlocks.map(unlock => <span key={unlock}>{unlock}</span>)}</div><div className={`faction-armory-summary faction-${faction.id}`}><b>SPONSORED EQUIPMENT ACCESS</b><span>Current normal-slot odds: {Math.round(factionGearChance(campaign.reputation[faction.id], false) * 100)}% safe · {Math.round(factionGearChance(campaign.reputation[faction.id], true) * 100)}% deep</span><small>Frame identities and interactions reveal only after recovery.</small></div></article>)}</section>}
 
