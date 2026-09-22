@@ -16,6 +16,7 @@ import { perseidRenderProfile, perseidStageIdentity } from './perseidCapstone';
 import { k91RenderProfile, k91StageIdentity } from './k91Capstone';
 import { orphelineRenderProfile, orphelineStageIdentity } from './orphelineCapstone';
 import { hecateRenderProfile, hecateStageIdentity } from './hecateCapstone';
+import { resolvePlayerHandlingAnimation } from './playerHandlingAnimation';
 
 const WORLD_SCALE = 0.02;
 const FLOOR_Y = 0;
@@ -507,7 +508,7 @@ export class ThreeCombatRenderer {
     void this.loadAuthoredWeapons();
   }
 
-  render(state: SimState, width: number, height: number, quality: number, mission: Contract, mobileTargetId: number | null, operatorFaction: EquipmentFaction | null, reducedTargetMotion = false) {
+  render(state: SimState, width: number, height: number, quality: number, mission: Contract, mobileTargetId: number | null, operatorFaction: EquipmentFaction | null, reducedTargetMotion = false, firingIntent = false) {
     const now = performance.now();
     const frameMs = this.lastFrameAt > 0 ? now - this.lastFrameAt : 1000 / 60;
     this.lastFrameAt = now;
@@ -525,7 +526,7 @@ export class ThreeCombatRenderer {
       this.operatorAssetRequested = true;
       void this.loadAuthoredOperator(state.build.operatorClass);
     }
-    this.syncPlayer(state, operatorFaction);
+    this.syncPlayer(state, operatorFaction, firingIntent);
     this.syncEnemies(state, mission, mobileTargetId, reducedTargetMotion);
     this.syncDamageNumbers(state);
     this.syncProjectiles(state, budget.transparencyScale);
@@ -2343,7 +2344,7 @@ export class ThreeCombatRenderer {
     }
   }
 
-  private syncAuthoredOperatorAnimation(state: SimState) {
+  private syncAuthoredOperatorAnimation(state: SimState, firingIntent: boolean) {
     const rig = this.authoredOperatorRig;
     if (!rig) return;
 
@@ -2356,18 +2357,34 @@ export class ThreeCombatRenderer {
       if (restRotation) node.rotation.copy(restRotation);
     }
 
-    const speed = THREE.MathUtils.clamp(Math.hypot(player.vx, player.vy) * 0.012, 0, 1);
-    const gait = Math.sin(state.time * (8.5 + speed * 3)) * speed;
-    const idleBreath = Math.sin(state.time * 2.4);
     const handling = weaponHandlingProfiles[player.currentWeapon];
-    const recoil = THREE.MathUtils.clamp(state.weaponFlash * 8, 0, 1);
     const reloadDuration = Math.max(0.01, state.weapons[player.reloadWeapon].reloadSeconds * weaponHandlingProfiles[player.reloadWeapon].reloadDurationMul);
-    const reload = player.reloadT > 0 ? THREE.MathUtils.clamp(player.reloadT / reloadDuration, 0, 1) : 0;
-    const vent = player.ventT > 0 ? THREE.MathUtils.clamp(player.ventT / Math.max(0.01, handling.ventSeconds), 0, 1) : 0;
-    const dodge = player.dodgeTime > 0 ? THREE.MathUtils.clamp(player.dodgeTime / 0.3, 0, 1) : 0;
     const hit = state.time < this.operatorHitUntil
       ? THREE.MathUtils.clamp((this.operatorHitUntil - state.time) / 0.18, 0, 1)
       : 0;
+    const motion = resolvePlayerHandlingAnimation({
+      operatorClass: state.build.operatorClass,
+      weapon: player.currentWeapon,
+      time: state.time,
+      vx: player.vx,
+      vy: player.vy,
+      aimX: player.aim.x,
+      aimY: player.aim.y,
+      moveX: player.move.x,
+      moveY: player.move.y,
+      weaponFlash: state.weaponFlash,
+      fireCooldown: player.fireCooldown,
+      weaponRate: state.weapons[player.currentWeapon].rate,
+      firingIntent,
+      reloadT: player.reloadT,
+      reloadDuration,
+      ventT: player.ventT,
+      ventDuration: Math.max(0.01, handling.ventSeconds),
+      heat: player.weaponHeat[player.currentWeapon] ?? 0,
+      dodgeTime: player.dodgeTime,
+      hit,
+    });
+    const { profile, speed, gait, idleBreath, aimOffset, aimForward, recoil, reload, charge, vent, overheat, dodge } = motion;
 
     rig.torso.position.y += idleBreath * 0.012;
     rig.backpack.position.y += idleBreath * 0.008;
@@ -2375,31 +2392,31 @@ export class ThreeCombatRenderer {
     rig.leftLeg.rotation.z += gait * 0.42;
     rig.rightLeg.rotation.z -= gait * 0.42;
 
-    // Family stance is authored independently from damage tuning so each arsenal reads differently at rest and in motion.
-    if (handling.stance === 'mobile') {
-      rig.leftArm.rotation.z += -0.42 - gait * 0.08;
-      rig.rightArm.rotation.z += 0.34 + gait * 0.08;
-      rig.torso.rotation.z -= 0.025;
-    } else if (handling.stance === 'breach') {
-      rig.leftArm.rotation.z += -0.64 - gait * 0.05;
-      rig.rightArm.rotation.z += 0.5 + gait * 0.04;
-      rig.torso.rotation.z -= 0.07;
-      rig.hip.position.x -= 0.025;
-    } else {
-      rig.leftArm.rotation.z += -0.72 - gait * 0.035;
-      rig.rightArm.rotation.z += 0.28 + gait * 0.03;
-      rig.torso.rotation.z += 0.035;
-      rig.helmet.rotation.z += 0.025;
-    }
+    // Class stance stays independent from gameplay tuning. The silhouette communicates class before UI text does.
+    rig.leftArm.rotation.z += profile.leftArm - gait * 0.075;
+    rig.rightArm.rotation.z += profile.rightArm + gait * 0.065;
+    rig.torso.rotation.z += profile.torsoLean + aimOffset * profile.aimLean;
+    rig.hip.position.x += profile.hipOffset - Math.max(0, -aimForward) * 0.012;
+    rig.helmet.rotation.z += aimOffset * profile.aimLean * 0.48;
+    rig.weaponSocket.rotation.z += aimOffset * profile.aimLean * 0.34;
+    rig.weaponSocket.position.y += profile.aimLift * (0.45 + Math.max(0, aimForward) * 0.55);
     rig.leftArm.rotation.x += -0.12;
     rig.rightArm.rotation.x += 0.12;
 
     if (recoil > 0) {
-      const kick = handling.recoilVisual * recoil;
+      const kick = handling.recoilVisual * profile.recoilScale * recoil;
       rig.weaponSocket.position.x -= 0.1 * kick;
       rig.torso.rotation.z -= 0.055 * kick;
       rig.rightArm.rotation.z += 0.1 * kick;
-      if (handling.stance === 'precision') rig.hip.position.x -= 0.035 * kick;
+      if (state.build.operatorClass === 'vanguard') {
+        rig.leftArm.rotation.z -= 0.045 * kick;
+        rig.hip.position.x -= 0.04 * kick;
+      } else if (state.build.operatorClass === 'vector') {
+        rig.hip.position.x -= 0.025 * kick;
+        rig.helmet.rotation.z += 0.02 * kick;
+      } else if (state.build.operatorClass === 'systems') {
+        rig.rightArm.rotation.z += 0.035 * kick;
+      }
     }
 
     if (reload > 0) {
@@ -2414,13 +2431,26 @@ export class ThreeCombatRenderer {
         rig.weaponSocket.position.y -= 0.11 * cycle;
         rig.leftArm.rotation.z += 0.72 * cycle;
         rig.rightArm.rotation.z -= 0.26 * cycle;
+        rig.hip.position.x -= 0.025 * cycle;
       } else {
         rig.weaponSocket.rotation.z += 0.76 * cycle;
         rig.weaponSocket.position.y -= 0.15 * cycle;
         rig.leftArm.rotation.z += 0.82 * cycle;
         rig.rightArm.rotation.z -= 0.16 * cycle;
         rig.torso.rotation.z += 0.08 * cycle;
+        rig.helmet.rotation.z += 0.035 * cycle;
       }
+    }
+
+    // Rail charge is presentation-only: held FIRE tightens the precision stance between committed shots.
+    if (charge > 0) {
+      const settle = Math.sin(charge * Math.PI * 0.5);
+      rig.weaponSocket.position.x -= 0.035 * settle;
+      rig.weaponSocket.position.y += 0.045 * settle;
+      rig.weaponSocket.rotation.z -= 0.1 * settle;
+      rig.torso.rotation.z += profile.chargeLean * settle;
+      rig.helmet.rotation.z -= profile.chargeLean * 0.34 * settle;
+      rig.leftArm.rotation.z -= 0.08 * settle;
     }
 
     if (vent > 0) {
@@ -2428,13 +2458,36 @@ export class ThreeCombatRenderer {
       rig.weaponSocket.position.y -= 0.05 * cycle;
       rig.weaponSocket.rotation.z -= (handling.ventStyle === 'coil-quench' ? 0.34 : handling.ventStyle === 'chamber-dump' ? 0.22 : 0.12) * cycle;
       rig.backpack.rotation.z += (handling.ventStyle === 'fan-purge' ? 0.08 : 0.14) * cycle;
-      rig.torso.rotation.z += (handling.ventStyle === 'coil-quench' ? 0.1 : 0.045) * cycle;
+      rig.torso.rotation.z += profile.ventLean * cycle;
+      if (state.build.operatorClass === 'systems') rig.leftArm.rotation.z += 0.12 * cycle;
+      if (state.build.operatorClass === 'vanguard') rig.hip.position.x -= 0.03 * cycle;
+    }
+
+    if (overheat > 0) {
+      const strain = overheat * profile.overheatStrain;
+      const tremor = Math.sin(state.time * 27 + (state.build.operatorClass === 'vector' ? 1.7 : state.build.operatorClass === 'systems' ? 3.1 : 0));
+      rig.torso.rotation.x += strain * 0.42;
+      rig.torso.position.y -= strain * 0.16;
+      rig.backpack.rotation.z += strain * (0.6 + tremor * 0.08);
+      rig.weaponSocket.rotation.z += tremor * strain * 0.22;
+      rig.rightArm.rotation.z += tremor * strain * 0.16;
     }
 
     if (dodge > 0) {
-      rig.torso.rotation.z -= 0.28 * dodge;
-      rig.hip.position.x += 0.1 * dodge;
-      rig.backpack.rotation.z += 0.16 * dodge;
+      const weightedDodge = dodge * profile.dodgeWeight;
+      if (state.build.operatorClass === 'vanguard') {
+        rig.torso.rotation.z -= 0.22 * weightedDodge;
+        rig.hip.position.x += 0.075 * weightedDodge;
+        rig.leftArm.rotation.z -= 0.08 * weightedDodge;
+      } else if (state.build.operatorClass === 'vector') {
+        rig.torso.rotation.z -= 0.34 * weightedDodge;
+        rig.hip.position.x += 0.13 * weightedDodge;
+        rig.helmet.rotation.z += 0.08 * weightedDodge;
+      } else {
+        rig.torso.rotation.z -= 0.28 * weightedDodge;
+        rig.hip.position.x += 0.1 * weightedDodge;
+        rig.backpack.rotation.z += 0.16 * weightedDodge;
+      }
     }
 
     if (hit > 0) {
@@ -2468,16 +2521,24 @@ export class ThreeCombatRenderer {
             : player.reloadT > 0
               ? 'reload'
               : state.weaponFlash > 0
-              ? 'recoil'
-              : speed > 0.08
-                ? 'locomotion'
-                : 'idle';
+                ? 'recoil'
+                : charge > 0.08
+                  ? 'charge'
+                  : overheat > 0.1
+                    ? 'overheat'
+                    : speed > 0.08
+                      ? 'locomotion'
+                      : 'idle';
+    this.renderer.domElement.dataset.operatorStance = profile.id;
     this.renderer.domElement.dataset.operatorAnimation = mode;
     this.renderer.domElement.dataset.operatorBlend = [
       `move:${speed.toFixed(2)}`,
+      `aim:${Math.abs(aimOffset).toFixed(2)}`,
       `recoil:${recoil.toFixed(2)}`,
       `reload:${reload.toFixed(2)}`,
+      `charge:${charge.toFixed(2)}`,
       `vent:${vent.toFixed(2)}`,
+      `overheat:${overheat.toFixed(2)}`,
       `dodge:${dodge.toFixed(2)}`,
       `hit:${hit.toFixed(2)}`,
     ].join(',');
@@ -4117,7 +4178,7 @@ export class ThreeCombatRenderer {
     this.objectiveGuideMesh.instanceMatrix.needsUpdate = true;
   }
 
-  private syncPlayer(state: SimState, operatorFaction: EquipmentFaction | null) {
+  private syncPlayer(state: SimState, operatorFaction: EquipmentFaction | null, firingIntent: boolean) {
     const player = state.player;
     const durability = player.hp + player.armor;
     if (Number.isFinite(this.lastPlayerDurability) && durability < this.lastPlayerDurability - 0.5 && !player.dead) {
@@ -4134,7 +4195,7 @@ export class ThreeCombatRenderer {
     this.playerBody.material.emissiveIntensity = operatorEmissiveIntensity;
     if (this.authoredOperatorRoot) {
       this.authoredOperatorRoot.rotation.y = Math.atan2(-player.aim.y, player.aim.x);
-      this.syncAuthoredOperatorAnimation(state);
+      this.syncAuthoredOperatorAnimation(state, firingIntent);
     }
     for (const material of this.authoredOperatorMaterials) {
       material.color.setHex(suitColor);
@@ -4152,7 +4213,72 @@ export class ThreeCombatRenderer {
         if (child.name.startsWith('hard-weapon-')) child.position.y = 0;
       }
     } else {
+      const handling = weaponHandlingProfiles[player.currentWeapon];
+      const reloadDuration = Math.max(0.01, state.weapons[player.reloadWeapon].reloadSeconds * weaponHandlingProfiles[player.reloadWeapon].reloadDurationMul);
+      const hit = state.time < this.operatorHitUntil ? THREE.MathUtils.clamp((this.operatorHitUntil - state.time) / 0.18, 0, 1) : 0;
+      const motion = resolvePlayerHandlingAnimation({
+        operatorClass: state.build.operatorClass,
+        weapon: player.currentWeapon,
+        time: state.time,
+        vx: player.vx,
+        vy: player.vy,
+        aimX: player.aim.x,
+        aimY: player.aim.y,
+        moveX: player.move.x,
+        moveY: player.move.y,
+        weaponFlash: state.weaponFlash,
+        fireCooldown: player.fireCooldown,
+        weaponRate: state.weapons[player.currentWeapon].rate,
+        firingIntent,
+        reloadT: player.reloadT,
+        reloadDuration,
+        ventT: player.ventT,
+        ventDuration: Math.max(0.01, handling.ventSeconds),
+        heat: player.weaponHeat[player.currentWeapon] ?? 0,
+        dodgeTime: player.dodgeTime,
+        hit,
+      });
+      const tremor = Math.sin(state.time * 27) * motion.overheat * motion.profile.overheatStrain;
+      this.weaponPivot.position.set(
+        -0.045 * motion.recoil * motion.profile.recoilScale,
+        -0.035 * motion.reload + 0.025 * motion.charge - 0.02 * motion.overheat,
+        0,
+      );
       this.weaponPivot.rotation.y = Math.atan2(-player.aim.y, player.aim.x);
+      this.weaponPivot.rotation.z = motion.aimOffset * motion.profile.aimLean * 0.7
+        + motion.charge * motion.profile.chargeLean * 0.75
+        - motion.vent * motion.profile.ventLean * 0.5
+        - motion.dodge * motion.profile.dodgeWeight * 0.08
+        + tremor * 0.18;
+      this.renderer.domElement.dataset.operatorStance = motion.profile.id;
+      this.renderer.domElement.dataset.operatorAnimation = player.dead
+        ? 'down'
+        : player.dodgeTime > 0
+          ? 'dodge'
+          : player.ventT > 0
+            ? 'vent'
+            : player.reloadT > 0
+              ? 'reload'
+              : state.weaponFlash > 0
+                ? 'recoil'
+                : motion.charge > 0.08
+                  ? 'charge'
+                  : motion.overheat > 0.1
+                    ? 'overheat'
+                    : motion.speed > 0.08
+                      ? 'locomotion'
+                      : 'idle';
+      this.renderer.domElement.dataset.operatorBlend = [
+        `move:${motion.speed.toFixed(2)}`,
+        `aim:${Math.abs(motion.aimOffset).toFixed(2)}`,
+        `recoil:${motion.recoil.toFixed(2)}`,
+        `reload:${motion.reload.toFixed(2)}`,
+        `charge:${motion.charge.toFixed(2)}`,
+        `vent:${motion.vent.toFixed(2)}`,
+        `overheat:${motion.overheat.toFixed(2)}`,
+        `dodge:${motion.dodge.toFixed(2)}`,
+        `hit:${motion.hit.toFixed(2)}`,
+      ].join(',');
     }
     this.muzzleFlash.material.color.setHex(weaponColor);
     this.muzzleFlash.visible = state.weaponFlash > 0;

@@ -121,7 +121,8 @@ assert(rendererSource.includes('this.proceduralOperatorVisuals.forEach'), 'proce
 assert(rendererSource.includes('material.color.setHex(suitColor)'), 'authored operator materials must preserve faction color identity');
 assert(rendererSource.includes('this.operatorAssetInstance?.release()'), 'combat renderer disposal must release the authored operator lease');
 assert(rendererSource.includes("root.getObjectByName('weapon-socket')"), 'authored operator integration must require the weapon socket');
-assert(rendererSource.includes('syncAuthoredOperatorAnimation(state)'), 'authored operator must receive simulation-driven animation poses');
+assert(rendererSource.includes('syncAuthoredOperatorAnimation(state, firingIntent)'), 'authored operator must receive simulation-driven animation poses and held-fire presentation intent');
+assert(rendererSource.includes("dataset.operatorStance") && rendererSource.includes('charge:') && rendererSource.includes('overheat:'), 'runtime QA must expose class stance, charge, and overheat animation channels');
 assert(rendererSource.includes("dataset.operatorRig = 'articulated'"), 'runtime QA must expose articulated-rig activation');
 assert(rendererSource.includes("dataset.operatorAnimation = mode"), 'runtime QA must expose the active animation state');
 assert(rendererSource.includes('operatorHitUntil'), 'authored operator must track visual-only hit reactions');
