@@ -108,7 +108,7 @@ Target roughly **6 major tiers per system** with sub-milestones.
 - [x] **P12-D Player handling animation** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
 - [x] **P12-E Skill/damage animation** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
 - [x] **P12-F Enemy/boss animation** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
-- [ ] **P12-G Camera/haptics/perf** — recoil/impact response, accessibility scaling, synchronized haptics, frame-budget profiling
+- [x] **P12-G Camera/haptics/perf** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
 
 ## P13 — Enemy Modifier & Status Visual Language
 
@@ -159,22 +159,22 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P12-G — Camera/haptics/perf.**
+**Next: P13-A — Presentation framework.**
 
-Run **P12-G — Camera/haptics/perf** as the final AAA Combat Feel batch: synchronize recoil/impact camera response and haptics with the authored combat presentation, add accessibility scaling, and profile the complete P12 stack against the mobile frame budget without altering deterministic combat.
+Run **P13-A — Presentation framework** as the first Enemy Modifier & Status Visual Language batch: define a composable presentation contract that maps deterministic enemy modifier/status state into animation, material, VFX, and audio channels without duplicating or changing combat simulation.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.275**
+- Android beta: **0.0.1-beta.276**
 - Package: `app.ironshade.vector`
-- Verified: **P12-F AAA Combat Feel Enemy/boss animation complete**
-- Gameplay source: `495f137df4c48f04947d9d994dc6d35cc549d1f0`
-- PR Browser E2E: `35794901686`
-- Browser E2E: `35795084217`
-- Level 15 beta smoke: `35795084206`
-- Android beta.275: `35795084203`
-- APK artifact: `10723588841`
-- APK SHA-256: `037681ace105f4d9feeff05042144599c30edf034fd7bce437db3319b6f6ef4c`
+- Verified: **P12-G AAA Combat Feel Camera/haptics/perf complete**
+- Gameplay source: `499000258a371d35320ca761feee5880bf963a0c`
+- PR Browser E2E: `35796896031`
+- Browser E2E: `35797107474`
+- Level 15 beta smoke: `35797107513`
+- Android beta.276: `35797107491`
+- APK artifact: `10724222054`
+- APK SHA-256: `715e099f360713b50b6cd7a23d3b97b74c55e8abbf14c035ef4cc70fcd28c885`
 - Signing: debug-signed beta; permanent signing is P17-A
