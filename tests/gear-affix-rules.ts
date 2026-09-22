@@ -148,10 +148,11 @@ assert.equal(maximumExplicitModifiersForRarity('Prototype'), 6, 'Reconstruction 
 const metaSource = readFileSync('src/game/meta.ts', 'utf8');
 const generationSource = readFileSync('src/game/gearGeneration.ts', 'utf8');
 const reconstructionSource = readFileSync('src/game/reconstruction.ts', 'utf8');
+const craftingRulesSource = readFileSync('src/game/craftingRules.ts', 'utf8');
 const packageSource = readFileSync('package.json', 'utf8');
 assert.ok(generationSource.includes('isAffixEligibleForRoll') && generationSource.includes('weightedAffixChoice'), 'Live loot must consume legality, conflicts, Recovery Level gates, and weights through the centralized generator.');
 assert.ok(metaSource.includes('gearAffixDefinitions.map'), 'Singular and live modifier metadata should be sourced from the shared affix registry.');
-assert.ok(reconstructionSource.includes('maximumExplicitModifiersForRarity') && reconstructionSource.includes('resolveGearBase'), 'Reconstruction must share rarity budgets and base-aware legal pools.');
+assert.ok(reconstructionSource.includes('maximumExplicitModifiersForRarity') && reconstructionSource.includes('legalCraftingAffixes') && craftingRulesSource.includes('rarityModifierBudget') && craftingRulesSource.includes('resolveGearBase'), 'Reconstruction must share rarity budgets and base-aware legal pools through the canonical P10-A rules contract.');
 assert.ok(packageSource.includes('test:gear-affix-rules'), 'Production build must gate on the P8.5-E affix regression.');
 
 console.log(`GEAR_AFFIX_RULES_PASS affixes=${gearAffixDefinitions.length} field=0 refined=2 prototype=6 conflicts=2`);
