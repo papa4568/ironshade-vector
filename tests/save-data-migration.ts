@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createDefaultCampaign } from '../src/game/campaign';
 import { GAME_STATE_VERSION, loadGameState, saveGameState } from '../src/game/gamePersistence';
 import { gearSchemaVersion } from '../src/game/gearSchema';
+import { OPERATOR_NETWORK_SCHEMA_VERSION } from '../src/game/operatorNetwork';
 import { createDefaultProfile } from '../src/game/meta';
 import { GAME_STATE_STORAGE_KEY, prepareSaveRecovery, validateStoredProfile } from '../src/game/saveRecovery';
 
@@ -66,12 +67,40 @@ function legacyStateMigrationSmoke() {
   const persisted = JSON.parse(storage.getItem(GAME_STATE_STORAGE_KEY)!) as any;
   assert.equal(persisted.version, GAME_STATE_VERSION, 'successful legacy loads should upgrade the atomic save envelope in place');
   assert.equal(persisted.gearSchemaVersion, gearSchemaVersion, 'upgraded saves should declare the Gear 2.0 schema version');
+  assert.equal(persisted.operatorNetworkSchemaVersion, OPERATOR_NETWORK_SCHEMA_VERSION, 'upgraded saves should declare the Operator Network schema version');
+  assert.equal(persisted.profile.operatorNetwork.schemaVersion, OPERATOR_NETWORK_SCHEMA_VERSION, 'legacy profiles should migrate into canonical Operator Network state');
+  assert.equal(persisted.profile.operatorNetwork.startNodeId, 'start-vanguard', 'legacy Vanguard saves should migrate from the Vanguard class origin');
+  assert.deepEqual(persisted.profile.allocatedNodes, persisted.profile.operatorNetwork.allocatedNodeIds, 'legacy allocatedNodes must mirror canonical network allocations after migration');
+  assert.equal(persisted.profile.progressionPoints, persisted.profile.operatorNetwork.unspentPoints, 'legacy progressionPoints must mirror canonical network points after migration');
   assert.equal(persisted.profile.inventory.some((candidate: any) => candidate.id === legacyItem.id), true, 'upgraded saves must persist the migrated item');
 
   assert.equal(saveGameState(migrated.profile, migrated.campaign, storage as any), true, 'migrated state should remain writable by the normal web/Android autosave path');
   const roundTrip = loadGameState(storage as any);
   assert.equal(roundTrip.profile.equipped.breacher, legacyItem.id, 'current-version state should round-trip after migration');
   assert.equal(validateStoredProfile(roundTrip.profile), null, 'round-tripped migrated profile should satisfy current save validation');
+}
+
+function versionTwoNetworkMigrationSmoke() {
+  const storage = new MemoryStorage();
+  const campaign = createDefaultCampaign();
+  const profile: any = { ...createDefaultProfile(), level: 4, xp: 540, progressionPoints: 1, allocatedNodes: ['ballistics-1', 'ballistics-2'] };
+  delete profile.operatorNetwork;
+  storage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify({
+    version: 2,
+    gearSchemaVersion,
+    profile,
+    campaign,
+    savedAt: '2026-09-20T12:00:00.000Z',
+  }));
+
+  const migrated = loadGameState(storage as any);
+  assert.equal(migrated.profile.operatorNetwork?.schemaVersion, OPERATOR_NETWORK_SCHEMA_VERSION, 'v2 saves should gain canonical P9-A network state.');
+  assert.deepEqual(migrated.profile.operatorNetwork?.allocatedNodeIds, ['ballistics-1', 'ballistics-2'], 'v2 migration should preserve legacy passive allocations.');
+  assert.equal(migrated.profile.operatorNetwork?.unspentPoints, 1, 'v2 migration should preserve valid unspent progression points.');
+
+  const persisted = JSON.parse(storage.getItem(GAME_STATE_STORAGE_KEY)!) as any;
+  assert.equal(persisted.version, GAME_STATE_VERSION, 'v2 saves should be upgraded to the current atomic envelope.');
+  assert.equal(persisted.operatorNetworkSchemaVersion, OPERATOR_NETWORK_SCHEMA_VERSION, 'v2 upgrades should persist the P9-A network schema.');
 }
 
 async function recoveryPreservationSmoke() {
@@ -100,8 +129,9 @@ async function recoveryPreservationSmoke() {
 }
 
 legacyStateMigrationSmoke();
+versionTwoNetworkMigrationSmoke();
 recoveryPreservationSmoke()
-  .then(() => console.log('SAVE_DATA_MIGRATION_PASS legacy=v1->v2 gearSchema=1 recovery=preserved'))
+  .then(() => console.log(`SAVE_DATA_MIGRATION_PASS legacy=v1/v2->v${GAME_STATE_VERSION} gearSchema=${gearSchemaVersion} networkSchema=${OPERATOR_NETWORK_SCHEMA_VERSION} recovery=preserved`))
   .catch(error => {
     console.error(error);
     process.exitCode = 1;
