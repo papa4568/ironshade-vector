@@ -504,39 +504,10 @@ export function normalizeOperatorNetworkState(input: {
     candidates.push(id);
   }
 
-  const accepted: string[] = [];
-  const pending = [...candidates];
-  const owned = new Set<string>([startNodeId]);
-  const migrationMilestoneActive = (nodeId: string, visiting = new Set<string>()): boolean => {
-    const node = operatorNetworkNode(nodeId);
-    if (!node) return false;
-    if (!node.milestone) return owned.has(nodeId);
-    if (visiting.has(nodeId)) return false;
-    visiting.add(nodeId);
-    const active = node.prerequisiteIds.every(requiredId => owned.has(requiredId) || migrationMilestoneActive(requiredId, visiting));
-    visiting.delete(nodeId);
-    return active;
-  };
-
-  let progressed = true;
-  while (pending.length > 0 && progressed) {
-    progressed = false;
-    for (let index = pending.length - 1; index >= 0; index -= 1) {
-      const id = pending[index]!;
-      const node = operatorNetworkNode(id)!;
-      const prerequisitesMet = node.prerequisiteIds.every(requiredId => owned.has(requiredId) || migrationMilestoneActive(requiredId));
-      if (!prerequisitesMet) continue;
-      const connected = operatorNetworkNeighbors(id).some(neighborId => owned.has(neighborId) || migrationMilestoneActive(neighborId));
-      if (!connected) continue;
-      owned.add(id);
-      accepted.unshift(id);
-      pending.splice(index, 1);
-      progressed = true;
-    }
-  }
-
-  const sourceOrder = new Map(uniqueSourceIds.map((id, index) => [id, index]));
-  const allocatedNodeIds = accepted.sort((left, right) => (sourceOrder.get(left) ?? 0) - (sourceOrder.get(right) ?? 0));
+  // Migration is intentionally conservative: preserve every still-authored shared allocation even if
+  // the player changed class or graph topology evolved around it. Only allocations that can no longer
+  // legally belong to this profile are removed/refunded above.
+  const allocatedNodeIds = candidates;
   const usedPoints = allocatedNodeIds.reduce((total, id) => total + (operatorNetworkNode(id)?.allocationCost ?? 0), 0);
 
   return {
