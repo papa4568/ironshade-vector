@@ -738,3 +738,18 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Verified on merged main `71de480d1aa46def072d37ef6555f51ac18e9f40`: Browser E2E `35717959748`, Level 15 beta smoke `35717959722`, and Android beta.253 `35717959724` all passed.
   - Android verification covered the full web regression/build, native Android project generation, installable debug APK build, package/version/SDK/signature checks, emulator runtime/touch/lifecycle smoke, authored-content checks, and the complete Chapter 3 touch playthrough. Artifact `10689668066` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.253`, debug signing, and APK SHA-256 `8f6960748754f9e07c867c432df63eaf5f500e07d56c83cf7c8e94def7c48dda`.
   - **Next: P10-B — Verbs/materials.**
+
+
+## P10 — Crafting 2.0 // Reconstruction Economy
+
+- [x] **P10-B Verbs/materials** — Reconstruction now has an explicit nine-verb contract: Improve, Add, Remove, Reroute, Replace, Lock, Elevate, Socket, and Extract.
+  - Added runtime **Remove** for explicit modifiers, reopening rarity budget without refunding crafting materials; fixed Singular packages reject removal.
+  - Split crafting resources into ordinary salvage (**Frame Alloy / Circuit Stock / Precision Components**) and one chase-control resource (**Quarantined Trace**) without introducing a parallel wallet or bypassing P10-A legality.
+  - **Replace** now clearly represents protected same-family recalibration and consumes one Quarantined Trace at Microforge T2 while the selected family remains locked.
+  - **Elevate** keeps normal lower-grade calibration on ordinary salvage, but the G4 → G5 Prime step consumes one Quarantined Trace.
+  - Crafting UI exposes common-vs-chase paths plus all nine verbs on the mobile Reconstruction screen; Augment install/remove language is now explicitly Socket/Extract.
+  - Deterministic regression covers the verb registry, material tiers, Prime elevation chase cost, protected Replace chase cost, runtime Remove, Singular rejection, and mobile Crafting vocabulary/layout.
+  - PR #166 Browser E2E `35720177872` passed desktop and mobile-landscape on head `e1b59f8ab3b6842053d1aac0835023c8c8212680`.
+  - Verified on merged gameplay source `93cacfac5073c7799ad5912da59bdfabe79c6345`: Browser E2E `35720458948`, Level 15 beta smoke `35720458990`, and Android beta.254 `35720458933` all passed.
+  - Android artifact `10690709426` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.254`, debug signing, native emulator runtime/touch/lifecycle/Chapter 3 QA, and APK SHA-256 `a87141dc6711335d00f6f772e6ad1cfef1a5b3a01e901d1c0540aaaeeee096e5`.
+  - **Next: P10-C — Control vs risk.**
