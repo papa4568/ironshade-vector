@@ -20,7 +20,7 @@ export type AbilityId = 'mag' | 'mark' | 'arc';
 export type MobileAimAssist = 'light' | 'balanced';
 export type AffixId = GearAffixSemanticId;
 export type ItemModifier = { id: AffixId; label: string; description: string; mechanical: boolean; family?: ModifierFamily; grade?: ModifierGrade; statIds?: GearStatId[]; tradeoffStatIds?: GearStatId[]; buildTags?: GearBuildTag[] };
-export type Item = { id: string; baseId: string; name: string; slot: EquipmentSlot; equipmentClass: string; rarity: Rarity; levelRequirement: number; core: string; modifiers: ItemModifier[]; faction?: EquipmentFaction; singularTrait?: SingularTraitId; singularEffect?: string; singularCategory?: GearSingularCategory; singularRule?: string; singularOpportunityCost?: string; recoveryLevel?: number; frameGeneration?: FrameGeneration; frameIdentity?: FrameIdentityId; frameImplicit?: string; equipmentQuality?: number; augmentSlots?: number; augments?: AugmentId[]; recoveryQuality?: RecoveryQualityGrade; recoverySource?: string };
+export type Item = { id: string; baseId: string; name: string; slot: EquipmentSlot; equipmentClass: string; rarity: Rarity; levelRequirement: number; core: string; modifiers: ItemModifier[]; faction?: EquipmentFaction; singularTrait?: SingularTraitId; singularEffect?: string; singularCategory?: GearSingularCategory; singularRule?: string; singularOpportunityCost?: string; recoveryLevel?: number; frameGeneration?: FrameGeneration; frameIdentity?: FrameIdentityId; frameImplicit?: string; equipmentQuality?: number; augmentSlots?: number; augments?: AugmentId[]; recoveryQuality?: RecoveryQualityGrade; recoverySource?: string; craftStability?: number };
 export type EffectIntensity = 'full' | 'reduced';
 export type ProfileSettings = { aimAssist: MobileAimAssist; rightStickFire: boolean; screenShake: boolean; effectIntensity: EffectIntensity; effectsVolume: number; uiVolume: number; haptics: boolean; telemetrySharing: boolean; tutorialComplete: boolean };
 export type PlayerProfile = { version: 3; xp: number; level: number; progressionPoints: number; allocatedNodes: string[]; operatorNetwork?: OperatorNetworkState; abilityMods: Record<AbilityId, string | null>; operatorClass?: OperatorClassId; classSelectionComplete?: boolean; specialization: SpecializationId | null; specializationOverclock: boolean; inventory: Item[]; equipped: Record<EquipmentSlot, string | null>; settings: ProfileSettings; runsCompleted: number };
@@ -249,6 +249,7 @@ function makeSingularItem(template: SingularTemplate, prefix: string, index: num
     frameIdentity,
     frameImplicit: frameImplicitFor(template.slot, frameGeneration, frameIdentity, equipmentQuality),
     equipmentQuality,
+    craftStability,
     augmentSlots,
     augments: [],
     recoveryQuality,
@@ -579,6 +580,7 @@ function cloneItem(item: Item): Item {
   const knownBase = resolveGearBase(item.slot, item.baseId);
   const frameIdentity = knownBase?.frameIdentity ?? resolveFrameIdentity(item.slot, item.frameIdentity, `${item.baseId}:${item.name}`);
   const equipmentQuality = normalizedInteger(item.equipmentQuality, 0, 0, 20);
+  const craftStability = normalizedInteger(item.craftStability, 100, 0, 100);
   const augmentSlots = augmentSlotCount(item.rarity, frameGeneration);
   const base = resolveGearBase(item.slot, item.baseId, frameIdentity);
   return {
