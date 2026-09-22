@@ -18,6 +18,7 @@ import { orphelineRenderProfile, orphelineStageIdentity } from './orphelineCapst
 import { hecateRenderProfile, hecateStageIdentity } from './hecateCapstone';
 import { resolvePlayerHandlingAnimation } from './playerHandlingAnimation';
 import { resolveEnemyDamageAnimation, resolvePlayerSkillAnimation } from './skillDamageAnimation';
+import { resolveEnemyBossAnimation, type EnemyBossAnimationSignals } from './enemyBossAnimation';
 
 const WORLD_SCALE = 0.02;
 const FLOOR_Y = 0;
@@ -151,6 +152,10 @@ type EnemyVisual = {
   impactUntil: number;
   lastArmor: number;
   armorBreakUntil: number;
+  lastTelegraph: number;
+  attackEventAt: number;
+  lastBossPhase: Enemy['bossPhase'];
+  bossPhaseEventAt: number;
 };
 
 type AuthoredWeaponVisual = {
@@ -4488,6 +4493,10 @@ export class ThreeCombatRenderer {
       impactUntil: -1,
       lastArmor: enemy.armor,
       armorBreakUntil: -1,
+      lastTelegraph: enemy.telegraph,
+      attackEventAt: -1,
+      lastBossPhase: enemy.bossPhase,
+      bossPhaseEventAt: -1,
     };
     this.enemyVisuals.set(enemy.id, visual);
     void this.loadAuthoredEnemy(visual, enemy, mission);
@@ -4647,7 +4656,7 @@ export class ThreeCombatRenderer {
     }
   }
 
-  private syncAuthoredEnemyAnimation(visual: EnemyVisual, enemy: Enemy, state: SimState) {
+  private syncAuthoredEnemyAnimation(visual: EnemyVisual, enemy: Enemy, state: SimState, motion: EnemyBossAnimationSignals) {
     const rig = visual.rig;
     if (!rig) return;
 
@@ -4658,39 +4667,105 @@ export class ThreeCombatRenderer {
       if (restRotation) node.rotation.copy(restRotation);
     }
 
-    const speed = THREE.MathUtils.clamp(Math.hypot(enemy.vx, enemy.vy) * 0.012, 0, 1);
-    const gait = Math.sin(state.time * (7.4 + speed * 2.8) + enemy.id * 0.71) * speed;
-    const idle = Math.sin(state.time * 2.1 + enemy.id * 0.37);
-    const aim = THREE.MathUtils.clamp(enemy.telegraph * 1.8, 0, 1);
-    const burst = enemy.burst > 0 && enemy.fireCooldown <= 0.78 ? 1 : 0;
+    const { profile } = motion;
+    const burst = enemy.burst > 0 && enemy.fireCooldown <= 0.78 ? 0.55 : 0;
+    const commit = Math.max(motion.commit, burst);
     const damageReaction = resolveEnemyDamageAnimation({
       hit: state.time < visual.impactUntil ? THREE.MathUtils.clamp((visual.impactUntil - state.time) / 0.18, 0, 1) : 0,
       staggerTimer: enemy.statuses.stagger,
       armorBreak: state.time < visual.armorBreakUntil ? THREE.MathUtils.clamp((visual.armorBreakUntil - state.time) / 0.44, 0, 1) : 0,
       dead: enemy.dead,
     });
-    const hit = damageReaction.hit;
 
-    rig.torso.position.y += idle * 0.01;
-    rig.backpack.position.y += idle * 0.006;
-    rig.helmet.rotation.z += idle * 0.01;
-    rig.leftLeg.rotation.z += gait * 0.34;
-    rig.rightLeg.rotation.z -= gait * 0.34;
-    rig.leftArm.rotation.z += -0.20 - gait * 0.07 - aim * 0.22;
-    rig.rightArm.rotation.z += 0.18 + gait * 0.05 + aim * 0.18;
-    rig.weaponSocket.rotation.z -= aim * 0.08;
+    // Role stance and locomotion are authored independently from combat tuning.
+    rig.torso.position.y += motion.idle;
+    rig.backpack.position.y += motion.idle * 0.62;
+    rig.helmet.rotation.z += motion.idle * 0.8;
+    rig.leftLeg.rotation.z += motion.gait;
+    rig.rightLeg.rotation.z -= motion.gait;
+    rig.leftArm.rotation.z += profile.leftArm - motion.gait * 0.22;
+    rig.rightArm.rotation.z += profile.rightArm + motion.gait * 0.18;
+    rig.torso.rotation.z += profile.torsoLean;
 
-    if (burst > 0) {
-      rig.weaponSocket.position.x -= 0.08;
-      rig.torso.rotation.z -= 0.04;
-      rig.rightArm.rotation.z += 0.08;
+    // Attack posing only reads the deterministic gameplay telegraph and tracked execution edge.
+    if (motion.tell > 0) {
+      rig.torso.rotation.z += profile.tellLean * motion.tell;
+      rig.torso.position.y += profile.tellLift * motion.tell * 0.32;
+      rig.weaponSocket.position.x += profile.tellReach * motion.tell;
+      rig.weaponSocket.position.y += profile.tellLift * motion.tell;
+      rig.weaponSocket.rotation.z -= profile.tellLean * motion.tell * 0.48;
+      rig.leftArm.rotation.z -= 0.16 * motion.tell;
+      rig.rightArm.rotation.z += 0.12 * motion.tell;
+      rig.helmet.rotation.z -= profile.tellLean * motion.tell * 0.24;
     }
 
-    if (hit > 0) {
+    if (commit > 0) {
+      rig.weaponSocket.position.x -= profile.commitKick * commit;
+      rig.weaponSocket.rotation.z += profile.commitKick * commit * 0.72;
+      rig.torso.rotation.z -= profile.commitKick * commit * 0.42;
+      rig.torso.position.y -= profile.commitKick * commit * 0.10;
+      rig.rightArm.rotation.z += profile.commitKick * commit * 0.8;
+      rig.backpack.rotation.z -= profile.commitKick * commit * 0.28;
+    } else if (motion.recovery > 0) {
+      rig.weaponSocket.position.x -= profile.commitKick * motion.recovery * 0.22;
+      rig.torso.rotation.z += profile.commitKick * motion.recovery * 0.12;
+      rig.rightArm.rotation.z += profile.commitKick * motion.recovery * 0.18;
+    }
+
+    // Boss phase changes get a body read in addition to the existing phase ring/halo.
+    if (motion.phaseTransition > 0) {
+      const transition = motion.phaseTransition;
+      rig.torso.position.y += profile.phaseRise * transition;
+      rig.torso.rotation.x -= 0.13 * transition;
+      rig.hip.position.y += profile.phaseRise * transition * 0.25;
+      rig.leftArm.rotation.z -= 0.34 * transition;
+      rig.rightArm.rotation.z += 0.34 * transition;
+      rig.weaponSocket.position.y -= 0.08 * transition;
+      rig.backpack.rotation.z += 0.18 * transition;
+      rig.helmet.rotation.x += 0.08 * transition;
+    }
+
+    // Modifier and status layers stay additive so they never replace attack or damage tells.
+    if (motion.modifier > 0) {
+      const wave = Math.sin(state.time * (8.5 + motion.modifier * 3.5) + enemy.id * 0.59) * motion.modifier;
+      rig.torso.rotation.x += wave * profile.modifierTension;
+      rig.backpack.rotation.z -= wave * profile.modifierTension * 1.25;
+      rig.leftArm.rotation.x += wave * profile.modifierTension * 0.75;
+      rig.rightArm.rotation.x -= wave * profile.modifierTension * 0.75;
+    }
+
+    if (motion.status.disrupted > 0) {
+      const jitter = Math.sin(state.time * 31 + enemy.id * 1.7) * motion.status.disrupted;
+      rig.torso.rotation.y += jitter * 0.055;
+      rig.weaponSocket.rotation.x -= jitter * 0.08;
+      rig.helmet.rotation.z += jitter * 0.035;
+    }
+    if (motion.status.conductive > 0) {
+      const arc = Math.sin(state.time * 18 + enemy.id) * motion.status.conductive;
+      rig.leftArm.rotation.x += arc * 0.06;
+      rig.rightArm.rotation.x -= arc * 0.06;
+      rig.backpack.rotation.y += arc * 0.05;
+    }
+    if (motion.status.vacuum > 0) {
+      const drift = Math.sin(state.time * 2.7 + enemy.id * 0.3) * motion.status.vacuum;
+      rig.hip.position.y += 0.035 * motion.status.vacuum + drift * 0.018;
+      rig.torso.rotation.x += drift * 0.035;
+    }
+    if (motion.status.marked > 0) {
+      rig.helmet.rotation.z -= 0.035 * motion.status.marked;
+      rig.weaponSocket.position.y += 0.025 * motion.status.marked;
+    }
+    if (motion.status.armorBreach > 0) {
+      rig.torso.rotation.x -= 0.07 * motion.status.armorBreach;
+      rig.leftArm.rotation.z -= 0.08 * motion.status.armorBreach;
+      rig.rightArm.rotation.z += 0.08 * motion.status.armorBreach;
+    }
+
+    if (damageReaction.hit > 0) {
       const side = enemy.id % 2 === 0 ? 1 : -1;
       rig.torso.rotation.z += side * 0.2 * damageReaction.torsoSnap;
-      rig.helmet.rotation.z -= side * 0.13 * hit;
-      rig.hip.position.x -= 0.065 * hit;
+      rig.helmet.rotation.z -= side * 0.13 * damageReaction.hit;
+      rig.hip.position.x -= 0.065 * damageReaction.hit;
     }
 
     if (damageReaction.stagger > 0) {
@@ -4786,6 +4861,7 @@ export class ThreeCombatRenderer {
 
   private syncEnemies(state: SimState, mission: Contract, mobileTargetId: number | null, reducedTargetMotion: boolean) {
     const seen = new Set<number>();
+    let animationTelemetry: { priority: number; enemy: Enemy; motion: EnemyBossAnimationSignals } | null = null;
     for (const enemy of state.enemies) {
       seen.add(enemy.id);
       const visual = this.enemyVisuals.get(enemy.id) ?? this.createEnemyVisual(enemy, mission);
@@ -4797,6 +4873,33 @@ export class ThreeCombatRenderer {
       if (!enemy.dead && visual.lastArmor > 0 && enemy.armor <= 0) visual.armorBreakUntil = state.time + 0.44;
       visual.lastDurability = durability;
       visual.lastArmor = enemy.armor;
+      if (visual.lastTelegraph > 0 && enemy.telegraph <= 0 && !enemy.dead && enemy.statuses.disrupted <= 0 && enemy.statuses.stagger <= 0) {
+        visual.attackEventAt = state.time;
+      }
+      visual.lastTelegraph = enemy.telegraph;
+      if (visual.lastBossPhase !== enemy.bossPhase) {
+        visual.lastBossPhase = enemy.bossPhase;
+        visual.bossPhaseEventAt = state.time;
+      }
+      const motion = resolveEnemyBossAnimation({
+        role: enemy.role,
+        id: enemy.id,
+        time: state.time,
+        vx: enemy.vx,
+        vy: enemy.vy,
+        telegraph: enemy.telegraph,
+        sinceAttack: visual.attackEventAt >= 0 ? state.time - visual.attackEventAt : -1,
+        sincePhaseChange: visual.bossPhaseEventAt >= 0 ? state.time - visual.bossPhaseEventAt : -1,
+        combatClass: enemy.combatClass,
+        protocolPulse: enemy.protocolPulse,
+        modifierCount: enemy.protocols.length + enemy.mutations.length + enemy.commandTargetMutations.length + enemy.bossPhaseMutations.length,
+        anchored: enemy.anchored,
+        statuses: enemy.statuses,
+        bossPhase: enemy.bossPhase,
+        dead: enemy.dead,
+      });
+      const animationPriority = enemy.role === 'boss' ? 3 : enemy.role === 'elite' ? 2 : 1;
+      if (!animationTelemetry || animationPriority > animationTelemetry.priority) animationTelemetry = { priority: animationPriority, enemy, motion };
       const damageReaction = resolveEnemyDamageAnimation({
         hit: state.time < visual.impactUntil ? THREE.MathUtils.clamp((visual.impactUntil - state.time) / 0.18, 0, 1) : 0,
         staggerTimer: enemy.statuses.stagger,
@@ -4807,20 +4910,30 @@ export class ThreeCombatRenderer {
       syncEnemyVisual(visual.root, enemy, state);
       if (!visual.authoredRoot && !enemy.dead) {
         const side = enemy.id % 2 === 0 ? 1 : -1;
+        visual.body.rotation.set(0, 0, motion.profile.torsoLean + motion.profile.tellLean * motion.tell);
+        visual.head.rotation.set(0, 0, -motion.profile.tellLean * motion.tell * 0.2);
+        visual.body.rotation.x -= motion.phaseTransition * 0.12;
         visual.body.rotation.z += side * (damageReaction.torsoSnap * 0.12 + damageReaction.armorBreak * 0.08);
         visual.head.rotation.z -= side * (damageReaction.hit * 0.1 + damageReaction.stagger * 0.08);
-        visual.body.scale.y *= 1 - damageReaction.stagger * 0.06;
+        visual.body.scale.set(1, 1 - damageReaction.stagger * 0.06 + motion.phaseTransition * 0.05, 1);
+        const fallbackWeapon = visual.root.getObjectByName('hard-enemy-weapon');
+        if (fallbackWeapon) {
+          fallbackWeapon.position.x += motion.profile.tellReach * motion.tell - motion.profile.commitKick * motion.commit * 0.65;
+          fallbackWeapon.position.y = 1.12 + motion.profile.tellLift * motion.tell + motion.phaseTransition * 0.08;
+          fallbackWeapon.position.z = 0.07;
+          fallbackWeapon.rotation.z = -motion.profile.tellLean * motion.tell * 0.45 + motion.profile.commitKick * motion.commit * 0.5;
+        }
       }
       if (enemy.dead) {
         visual.root.scale.set(1, Math.max(0.16, enemy.deathT * 0.32), 1);
         visual.body.material.opacity = 0.35;
         visual.body.material.transparent = true;
       } else {
-        visual.root.scale.setScalar(1);
+        visual.root.scale.setScalar(1 + motion.phaseTransition * 0.04);
         visual.body.material.opacity = 1;
         visual.body.material.transparent = false;
       }
-      const direction = enemy.telegraph > 0 ? enemy.telegraphAim : { x: enemy.vx, y: enemy.vy };
+      const direction = enemy.telegraph > 0 || motion.commit > 0 || motion.recovery > 0 ? enemy.telegraphAim : { x: enemy.vx, y: enemy.vy };
       if (Math.hypot(direction.x, direction.y) > 0.01) visual.root.rotation.y = Math.atan2(-direction.y, direction.x);
       const targetLocked = !enemy.dead && enemy.id === mobileTargetId;
       visual.targetRing.visible = targetLocked;
@@ -4837,7 +4950,7 @@ export class ThreeCombatRenderer {
       visual.body.material.emissive.setHex(enemy.statuses.disrupted > 0 ? 0x63508a : enemy.telegraph > 0 ? 0x7a3327 : 0x000000);
       visual.body.material.emissiveIntensity = enemy.statuses.disrupted > 0 || enemy.telegraph > 0 ? 0.34 : 0;
       if (visual.authoredRoot) {
-        this.syncAuthoredEnemyAnimation(visual, enemy, state);
+        this.syncAuthoredEnemyAnimation(visual, enemy, state, motion);
         const sableVoss = visual.authoredAssetId === 'spin-habitat-sable-voss';
         const stormlineIlex = visual.authoredAssetId === 'jovian-harvester-stormline-foreman';
         const rheaKade = visual.authoredAssetId === 'ice-mine-rhea-kade';
@@ -4879,6 +4992,38 @@ export class ThreeCombatRenderer {
       visual.armor.visible = enemy.maxArmor > 0 && enemy.armor > 0;
       visual.armor.scale.x = armorRatio;
       visual.armor.position.x = -barWidth * (1 - armorRatio) / 2;
+    }
+    if (animationTelemetry) {
+      const { enemy, motion } = animationTelemetry;
+      const statusWeight = Math.max(
+        motion.status.armorBreach,
+        motion.status.disrupted,
+        motion.status.marked,
+        motion.status.stagger,
+        motion.status.conductive,
+        motion.status.vacuum,
+      );
+      this.renderer.domElement.dataset.enemyAnimation = `${motion.profile.id}:${motion.phase}`;
+      this.renderer.domElement.dataset.enemyAnimationBlend = [
+        `move:${motion.speed.toFixed(2)}`,
+        `tell:${motion.tell.toFixed(2)}`,
+        `commit:${motion.commit.toFixed(2)}`,
+        `recovery:${motion.recovery.toFixed(2)}`,
+        `phase:${motion.phaseTransition.toFixed(2)}`,
+        `modifier:${motion.modifier.toFixed(2)}`,
+        `status:${statusWeight.toFixed(2)}`,
+      ].join(',');
+      this.renderer.domElement.dataset.enemyAnimationTarget = `${enemy.role}:${enemy.variant}`;
+      if (enemy.role === 'boss') {
+        this.renderer.domElement.dataset.bossPhaseAnimation = `phase:${enemy.bossPhase},transition:${motion.phaseTransition.toFixed(2)}`;
+      } else {
+        delete this.renderer.domElement.dataset.bossPhaseAnimation;
+      }
+    } else {
+      delete this.renderer.domElement.dataset.enemyAnimation;
+      delete this.renderer.domElement.dataset.enemyAnimationBlend;
+      delete this.renderer.domElement.dataset.enemyAnimationTarget;
+      delete this.renderer.domElement.dataset.bossPhaseAnimation;
     }
     for (const [id, visual] of this.enemyVisuals) if (!seen.has(id)) { visual.root.visible = false; visual.barRoot.visible = false; }
   }
