@@ -7,6 +7,7 @@ import { getWorldSize, weaponHandlingProfiles, type CombatObject, type Enemy, ty
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, locationArtIdentityFor, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
 import { groundLootPresentation } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
+import type { CombatCameraFeedbackSample } from './combatCameraFeedback';
 import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, SPIN_HABITAT_BOSS_ASSET_FAMILY, JOVIAN_HARVESTER_BOSS_ASSET_FAMILY, ICE_MINE_BOSS_ASSET_FAMILY, SOLAR_YARD_BOSS_ASSET_FAMILY, SPIN_HABITAT_ENEMY_ASSET_FAMILIES, SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES, OPERATOR_CLASS_ASSET_FAMILIES, JOVIAN_HARVESTER_ASSET_FAMILIES, JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES, ICE_MINE_ASSET_FAMILIES, SOLAR_YARD_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, SPIN_HABITAT_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
 import { configureGraphicsAssetRenderer, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
 import { spinHabitatArchitectureState, spinHabitatRenderProfile, spinHabitatSpindownState } from './spinHabitatArchitecture';
@@ -518,7 +519,7 @@ export class ThreeCombatRenderer {
     void this.loadAuthoredWeapons();
   }
 
-  render(state: SimState, width: number, height: number, quality: number, mission: Contract, mobileTargetId: number | null, operatorFaction: EquipmentFaction | null, reducedTargetMotion = false, firingIntent = false) {
+  render(state: SimState, width: number, height: number, quality: number, mission: Contract, mobileTargetId: number | null, operatorFaction: EquipmentFaction | null, reducedTargetMotion = false, firingIntent = false, cameraFeedback?: CombatCameraFeedbackSample) {
     const now = performance.now();
     const frameMs = this.lastFrameAt > 0 ? now - this.lastFrameAt : 1000 / 60;
     this.lastFrameAt = now;
@@ -548,7 +549,7 @@ export class ThreeCombatRenderer {
     this.syncDebris(state, quality * budget.detailScale * budget.vfxDensity);
     this.syncRefineryAtmospherics(state, quality * budget.detailScale, budget.vfxDensity, budget.transparencyScale);
     this.syncDamagedVesselAtmospherics(state, quality * budget.detailScale, budget.vfxDensity, budget.transparencyScale);
-    this.syncCamera(state, width / Math.max(1, height));
+    this.syncCamera(state, width / Math.max(1, height), cameraFeedback);
     this.syncLighting(state, mission, quality, budget);
     this.renderer.render(this.scene, this.camera);
   }
@@ -2610,6 +2611,8 @@ export class ThreeCombatRenderer {
       this.keyLight.shadow.map = null;
     }
     this.renderer.domElement.dataset.renderTier = budget.tierName;
+    this.renderer.domElement.dataset.renderFrameMs = budget.smoothedFrameMs.toFixed(2);
+    this.renderer.domElement.dataset.renderFrameBudget = `${budget.framePressure}:${budget.frameHeadroomMs.toFixed(2)}ms@${budget.targetFrameMs.toFixed(2)}ms`;
     this.renderer.domElement.dataset.renderBudget = [
       `pixel:${budget.pixelRatioScale.toFixed(2)}`,
       `shadow:${budget.shadows ? budget.shadowMapSize : 0}`,
@@ -5588,15 +5591,17 @@ export class ThreeCombatRenderer {
     }
   }
 
-  private syncCamera(state: SimState, aspect: number) {
+  private syncCamera(state: SimState, aspect: number, cameraFeedback?: CombatCameraFeedbackSample) {
     const px = scaled(state.player.x);
     const pz = scaled(state.player.y);
     const narrow = aspect < 1.15;
     const cameraHeight = narrow ? 18 : this.coarse ? 14.8 : 12.8;
     const cameraOffset = narrow ? 13.2 : this.coarse ? 11.2 : 9.8;
-    const shake = state.weaponFlash > 0 ? weaponHandlingProfiles[state.player.currentWeapon].cameraKick * 0.04 : 0;
-    this.camera.position.set(px + cameraOffset + Math.sin(state.time * 103) * shake, cameraHeight, pz + cameraOffset + Math.cos(state.time * 83) * shake);
-    this.camera.lookAt(px + state.player.aim.x * 1.1, 0.62, pz + state.player.aim.y * 1.1);
+    const offsetX = cameraFeedback?.worldOffsetX ?? 0;
+    const offsetZ = cameraFeedback?.worldOffsetZ ?? 0;
+    this.camera.position.set(px + cameraOffset + offsetX, cameraHeight, pz + cameraOffset + offsetZ);
+    this.camera.lookAt(px + state.player.aim.x * 1.1 - offsetX * 0.2, 0.62, pz + state.player.aim.y * 1.1 - offsetZ * 0.2);
+    this.renderer.domElement.dataset.cameraFeedback = cameraFeedback ? `${cameraFeedback.mode}:${cameraFeedback.magnitude.toFixed(2)}` : 'off:0.00';
     this.camera.updateMatrixWorld();
     this.keyLight.position.set(px + 15, 28, pz + 12);
     this.keyLight.target.position.set(px, 0, pz);
