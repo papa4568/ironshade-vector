@@ -625,3 +625,76 @@
   .crafting-rules-contract > header > span,
   .crafting-pool-family > header > span { text-align: left; }
 }
+
+
+/* P10-B // Reconstruction verbs + material tiers */
+.crafting-material-strip,
+.crafting-verb-grid {
+  display: grid;
+  gap: 7px;
+  margin-top: 8px;
+}
+.crafting-material-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.crafting-verb-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.crafting-material-strip > article,
+.crafting-verb-grid > article {
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid #2c413b;
+  border-radius: 8px;
+  background: rgba(6, 13, 12, .76);
+}
+.crafting-material-strip > article.common { border-left: 2px solid #70988b; }
+.crafting-material-strip > article.chase {
+  border-left: 2px solid #b99a62;
+  background: linear-gradient(145deg, rgba(34, 28, 18, .86), rgba(10, 15, 14, .9));
+}
+.crafting-material-strip small,
+.crafting-verb-grid small {
+  display: block;
+  color: #7ba095;
+  font-size: 6px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+.crafting-material-strip b,
+.crafting-verb-grid b {
+  display: block;
+  margin-top: 3px;
+  color: #d0ddd8;
+  font-size: 8px;
+  line-height: 1.3;
+}
+.crafting-material-strip span,
+.crafting-verb-grid span {
+  display: block;
+  margin-top: 4px;
+  color: #879b94;
+  font-size: 7px;
+  line-height: 1.4;
+}
+.crafting-verb-grid em {
+  display: block;
+  margin-top: 5px;
+  color: #76998e;
+  font-size: 6px;
+  font-style: normal;
+  font-weight: 900;
+}
+.crafting-material-strip > article.chase small,
+.crafting-material-strip > article.chase b,
+.crafting-verb-grid > article:has(small:first-child) em {
+  letter-spacing: .06em;
+}
+.bench-actions button.destructive {
+  border-color: #6c4540;
+}
+.bench-actions button.destructive:not(:disabled) {
+  color: #c9a59f;
+}
+
+@media (max-width: 900px) {
+  .crafting-material-strip,
+  .crafting-verb-grid { grid-template-columns: 1fr; }
+  .crafting-verb-grid > article { padding: 9px 10px; }
+}
