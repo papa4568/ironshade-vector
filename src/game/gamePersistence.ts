@@ -1,23 +1,26 @@
 import { loadCampaign, type CampaignState } from './campaign';
 import { gearSchemaVersion } from './gearSchema';
 import { loadProfile, normalizeStoredProfile, type PlayerProfile } from './meta';
+import { OPERATOR_NETWORK_SCHEMA_VERSION } from './operatorNetwork';
 import { GAME_STATE_STORAGE_KEY, validateStoredCampaign, validateStoredProfile } from './saveRecovery';
 
 // Profile and campaign are committed atomically so readers never observe half of a progression update. APK verification follows each audited fix.
 type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 
-export const GAME_STATE_VERSION = 2;
+export const GAME_STATE_VERSION = 3;
 
 export type PersistedGameState = {
   version: typeof GAME_STATE_VERSION;
   gearSchemaVersion: typeof gearSchemaVersion;
+  operatorNetworkSchemaVersion: typeof OPERATOR_NETWORK_SCHEMA_VERSION;
   profile: PlayerProfile;
   campaign: CampaignState;
   savedAt: string;
 };
 
-type LegacyPersistedGameState = Omit<PersistedGameState, 'version' | 'gearSchemaVersion'> & {
-  version: 1;
+type LegacyPersistedGameState = Omit<PersistedGameState, 'version' | 'gearSchemaVersion' | 'operatorNetworkSchemaVersion'> & {
+  version: 1 | 2;
+  gearSchemaVersion?: typeof gearSchemaVersion;
 };
 
 export type GameStateSnapshot = Pick<PersistedGameState, 'profile' | 'campaign'>;
@@ -39,6 +42,7 @@ function persistedEnvelope(profile: PlayerProfile, campaign: CampaignState): Per
   return {
     version: GAME_STATE_VERSION,
     gearSchemaVersion,
+    operatorNetworkSchemaVersion: OPERATOR_NETWORK_SCHEMA_VERSION,
     profile,
     campaign,
     savedAt: new Date().toISOString(),
@@ -51,17 +55,18 @@ export function loadGameState(storage: StorageLike | null = browserStorage()): G
     const raw = storage.getItem(GAME_STATE_STORAGE_KEY);
     if (!raw) return legacySnapshot();
     const parsed = JSON.parse(raw) as Partial<PersistedGameState | LegacyPersistedGameState>;
-    if (parsed.version !== 1 && parsed.version !== GAME_STATE_VERSION) return legacySnapshot();
-    if (parsed.version === GAME_STATE_VERSION && parsed.gearSchemaVersion !== gearSchemaVersion) return legacySnapshot();
+    if (parsed.version !== 1 && parsed.version !== 2 && parsed.version !== GAME_STATE_VERSION) return legacySnapshot();
+    if ((parsed.version === 2 || parsed.version === GAME_STATE_VERSION) && parsed.gearSchemaVersion !== gearSchemaVersion) return legacySnapshot();
+    if (parsed.version === GAME_STATE_VERSION && parsed.operatorNetworkSchemaVersion !== OPERATOR_NETWORK_SCHEMA_VERSION) return legacySnapshot();
     if (validateStoredProfile(parsed.profile) || validateStoredCampaign(parsed.campaign)) return legacySnapshot();
 
     const profile = normalizeStoredProfile(parsed.profile as Partial<PlayerProfile>);
     const campaign = parsed.campaign as CampaignState;
     if (validateStoredProfile(profile)) return legacySnapshot();
 
-    // Version-1 atomic saves predate Gear 2.0 normalization. A successful load upgrades them in place
+    // Legacy atomic saves predate either Gear 2.0 or the deep Operator Network. A successful load upgrades
     // only after the legacy payload has passed recovery validation and the migrated profile validates too.
-    if (parsed.version !== GAME_STATE_VERSION || parsed.gearSchemaVersion !== gearSchemaVersion) {
+    if (parsed.version !== GAME_STATE_VERSION || parsed.gearSchemaVersion !== gearSchemaVersion || parsed.operatorNetworkSchemaVersion !== OPERATOR_NETWORK_SCHEMA_VERSION) {
       try {
         storage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify(persistedEnvelope(profile, campaign)));
       } catch {
