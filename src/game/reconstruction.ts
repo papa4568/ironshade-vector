@@ -10,6 +10,7 @@ export type ReconstructionAction =
   | { kind: 'grade'; modifierId: AffixId }
   | { kind: 'reroute'; modifierId: AffixId }
   | { kind: 'add'; family: ModifierFamily }
+  | { kind: 'remove'; modifierId: AffixId }
   | { kind: 'recalibrate'; modifierId: AffixId; lockedFamily: ModifierFamily }
   | { kind: 'installAugment'; augmentId: AugmentId }
   | { kind: 'removeAugment'; augmentId: AugmentId };
@@ -45,11 +46,16 @@ export function reconstructionCost(item: Item, action: ReconstructionAction, fab
     const modifier = item.modifiers.find(entry => entry.id === action.modifierId);
     const grade = modifier?.grade ?? 3;
     const family = modifier?.family ?? modifierFamilyFor(action.modifierId);
-    return finalize({ credits: discountedCredits(70 + grade * 25, fabricationLevel), alloys: family === 'core' ? 2 : 0, electronics: family === 'systems' ? 2 : 0, components: grade >= 3 ? 1 : 0 });
+    return finalize({ credits: discountedCredits(70 + grade * 25, fabricationLevel), alloys: family === 'core' ? 2 : 0, electronics: family === 'systems' ? 2 : 0, components: grade >= 3 ? 1 : 0, rareTech: grade >= 4 ? 1 : 0 });
   }
   if (action.kind === 'reroute') return finalize({ credits: discountedCredits(120, fabricationLevel), alloys: 1, electronics: 1, components: 1 });
   if (action.kind === 'add') return finalize({ credits: discountedCredits(130, fabricationLevel), alloys: action.family === 'core' ? 2 : 0, electronics: action.family === 'systems' ? 2 : 0, components: 1 });
-  if (action.kind === 'recalibrate') return finalize({ credits: discountedCredits(95, fabricationLevel), electronics: 2, components: 1 });
+  if (action.kind === 'remove') {
+    const modifier = item.modifiers.find(entry => entry.id === action.modifierId);
+    const family = modifier?.family ?? (modifier ? modifierFamilyFor(modifier.id) : 'core');
+    return finalize({ credits: discountedCredits(55, fabricationLevel), alloys: family === 'core' ? 1 : 0, electronics: family === 'systems' ? 1 : 0, components: 1 });
+  }
+  if (action.kind === 'recalibrate') return finalize({ credits: discountedCredits(95, fabricationLevel), electronics: 2, components: 1, rareTech: 1 });
   if (action.kind === 'removeAugment') return finalize({ credits: discountedCredits(20, fabricationLevel) });
   const definition = augmentDefinition(action.augmentId);
   return finalize({ ...definition.cost, credits: discountedCredits(definition.cost.credits ?? 0, fabricationLevel) });
@@ -147,6 +153,15 @@ export function reconstructItem(profile: PlayerProfile, wallet: SalvageWallet, f
     successMessage = `Added a targeted ${action.family.toUpperCase()} modifier at G${grade}.`;
   }
 
+  if (action.kind === 'remove') {
+    if (item.rarity === 'Singular') return { profile, wallet, message: 'Named Singular modifier packages are fixed and cannot have explicit modifiers removed.' };
+    const index = item.modifiers.findIndex(modifier => modifier.id === action.modifierId);
+    if (index < 0) return { profile, wallet, message: 'Modifier is no longer present on this item.' };
+    const removed = item.modifiers[index];
+    nextItem = { ...item, modifiers: item.modifiers.filter((_, modifierIndex) => modifierIndex !== index) };
+    successMessage = `${removed.label} removed. One explicit modifier slot is open; removal does not refund crafting materials.`;
+  }
+
   if (action.kind === 'recalibrate') {
     if (fabrication < 2) return { profile, wallet, message: 'Microforge tier 2 is required for family-lock recalibration.' };
     if (item.rarity === 'Singular') return { profile, wallet, message: 'Named Singular modifier packages cannot be recalibrated.' };
@@ -159,7 +174,7 @@ export function reconstructItem(profile: PlayerProfile, wallet: SalvageWallet, f
     if (!replacement) return { profile, wallet, message: `No alternate ${family.toUpperCase()} modifier is available on this frame.` };
     const modifiers = item.modifiers.map((modifier, modifierIndex) => modifierIndex === index ? materializeModifier(replacement, current.grade ?? 3) : modifier);
     nextItem = { ...item, modifiers };
-    successMessage = `${current.label} recalibrated deterministically while ${action.lockedFamily.toUpperCase()} remained locked.`;
+    successMessage = `${current.label} replaced with a legal ${family.toUpperCase()} modifier while ${action.lockedFamily.toUpperCase()} remained locked.`;
   }
 
   if (action.kind === 'installAugment') {
