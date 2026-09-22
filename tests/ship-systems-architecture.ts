@@ -7,10 +7,14 @@ import {
   cargoRecoveryMultiplier,
   createDefaultCampaign,
   getShipUpgradeStatus,
+  getShipSpecializationStatus,
   getUpgradeCost,
+  installShipSpecialization,
   normalizeCampaignState,
+  shipSpecializationDefinitions,
   shipSystemGateSatisfied,
   upgradeDefinitions,
+  type ShipSpecializationId,
   type ShipUpgradeId,
 } from '../src/game/campaign';
 import { reconstructionCreditDiscountForTier } from '../src/game/reconstruction';
@@ -25,7 +29,7 @@ function approx(actual: number, expected: number, label: string) {
 }
 
 function schemaSmoke() {
-  assert.equal(SHIP_SYSTEM_SCHEMA_VERSION, 2, 'P11-A should own an explicit ship-system schema version.');
+  assert.equal(SHIP_SYSTEM_SCHEMA_VERSION, 3, 'P11-D should advance the ship-system schema without invalidating the six-tier P11 foundation.');
   assert.equal(SHIP_SYSTEM_MAX_TIER, 6, 'every major ship system should route through six major tiers.');
   assert.deepEqual(upgradeDefinitions.map(definition => definition.id).sort(), [...systemIds].sort(), 'all eight existing ship systems must migrate into the new schema without replacement IDs.');
 
@@ -55,6 +59,17 @@ function schemaSmoke() {
       assert.equal(dependency.tier, tier.tier - 1, `${definition.name} Tier ${tier.tier} should depend on the paired system's previous tier, avoiding same-tier cycles.`);
     }
   }
+
+  assert.equal(shipSpecializationDefinitions.length, 3, 'P11-D should expose three mutually exclusive high-tier package choices.');
+  assert.equal(new Set(shipSpecializationDefinitions.map(definition => definition.id)).size, shipSpecializationDefinitions.length, 'advanced package ids must be unique.');
+  for (const definition of shipSpecializationDefinitions) {
+    assert.ok((definition.cost.credits ?? 0) >= 2000, `${definition.name} should remain an aspirational late-game credit sink.`);
+    assert.ok((definition.cost.rareTech ?? 0) >= 2, `${definition.name} should consume quarantined traces rather than becoming a free power layer.`);
+    assert.equal(definition.gates.some(gate => gate.kind === 'directive' && gate.minimumTier >= 6), true, `${definition.name} should require mature Directive progress.`);
+    const systemGates = definition.gates.filter(gate => gate.kind === 'dependency');
+    assert.ok(systemGates.length >= 2, `${definition.name} should bind multiple existing systems into a specialization package.`);
+    assert.equal(systemGates.every(gate => gate.kind === 'dependency' && gate.tier === 5), true, `${definition.name} should specialize high-tier foundations without replacing Tier 6 progression.`);
+  }
 }
 
 function legacyMigrationSmoke() {
@@ -69,9 +84,21 @@ function legacyMigrationSmoke() {
   assert.equal(migrated.shipUpgrades.armor, 2, 'pre-schema values must never be interpreted as unearned future tiers.');
   assert.equal(migrated.shipUpgrades.cargo, 0, 'invalid negative legacy levels should normalize safely.');
 
+  const p11c: any = createDefaultCampaign();
+  p11c.shipSystemSchemaVersion = 2;
+  p11c.shipUpgrades.reactor = 6;
+  assert.equal(normalizeCampaignState(p11c).shipUpgrades.reactor, 6, 'P11-C schema-2 Tier 6 state must survive the P11-D schema migration.');
+
   const current: any = createDefaultCampaign();
   current.shipUpgrades.reactor = 6;
-  assert.equal(normalizeCampaignState(current).shipUpgrades.reactor, 6, 'current-schema Tier 6 state must survive canonical normalization.');
+  current.shipSpecialization = 'heliostat-hot-bus';
+  const normalizedCurrent = normalizeCampaignState(current);
+  assert.equal(normalizedCurrent.shipUpgrades.reactor, 6, 'current-schema Tier 6 state must survive canonical normalization.');
+  assert.equal(normalizedCurrent.shipSpecialization, 'heliostat-hot-bus', 'a valid P11-D specialization must survive canonical normalization.');
+
+  const invalidSpecialization: any = createDefaultCampaign();
+  invalidSpecialization.shipSpecialization = 'untrusted-package';
+  assert.equal(normalizeCampaignState(invalidSpecialization).shipSpecialization, null, 'unknown specialization ids must normalize to an empty slot.');
 }
 
 function prototypeCompatibilitySmoke() {
@@ -223,6 +250,79 @@ function supportEffectSmoke() {
   approx(dronesSix.abilities[2].powerMul, 1.2, 'Support Drone Rack Tier 6 Arc Tap power');
 }
 
+
+function specializationGateAndCostSmoke() {
+  const base = createDefaultCampaign();
+  const rich = {
+    ...base,
+    resources: { credits: 50_000, alloys: 200, electronics: 200, medstock: 200, components: 200, rareTech: 20 },
+    reputation: { meridian: 14, heliostat: 14, longarc: 14 },
+    directives: { ...base.directives, highestTier: 6 },
+    shipUpgrades: { reactor: 5, drive: 5, armor: 5, cargo: 5, sensors: 5, fabrication: 5, medical: 5, drones: 5 },
+  };
+
+  const ids = shipSpecializationDefinitions.map(definition => definition.id) as ShipSpecializationId[];
+  for (const id of ids) {
+    const status = getShipSpecializationStatus(rich, id);
+    assert.ok(status, `${id} should expose an install status.`);
+    assert.deepEqual(status?.gateFailures, [], `${id} should satisfy its authored prerequisites in the prepared late-game campaign.`);
+    assert.deepEqual(status?.resourceFailures, [], `${id} should report no resource shortages against a rich wallet.`);
+    assert.equal(status?.canInstall, true, `${id} should become installable when prerequisites and costs are satisfied.`);
+  }
+
+  const heliostatCost = shipSpecializationDefinitions.find(definition => definition.id === 'heliostat-hot-bus')!.cost;
+  const installed = installShipSpecialization(rich, 'heliostat-hot-bus');
+  assert.equal(installed.campaign.shipSpecialization, 'heliostat-hot-bus', 'installing a package should persist the selected specialization id.');
+  assert.equal(installed.campaign.resources.credits, rich.resources.credits - (heliostatCost.credits ?? 0), 'specialization installation should spend the exact previewed credit cost.');
+  assert.equal(installed.campaign.resources.rareTech, rich.resources.rareTech - (heliostatCost.rareTech ?? 0), 'specialization installation should spend the exact previewed trace cost.');
+
+  const meridianAfterLock = getShipSpecializationStatus(installed.campaign, 'meridian-continuity');
+  assert.equal(meridianAfterLock?.lockedByOther, true, 'a selected package must lock the other high-tier packages.');
+  assert.equal(meridianAfterLock?.canInstall, false, 'a mutually exclusive package must not remain installable after another package is selected.');
+  const blocked = installShipSpecialization(installed.campaign, 'meridian-continuity');
+  assert.equal(blocked.campaign, installed.campaign, 'attempting a second specialization must not mutate campaign state.');
+
+  const poor = { ...rich, resources: { ...rich.resources, credits: 0 } };
+  const poorStatus = getShipSpecializationStatus(poor, 'longarc-farline');
+  assert.equal(poorStatus?.resourceFailures.some(([key]) => key === 'credits'), true, 'resource preview should expose an insufficient credit wallet before installation.');
+  assert.equal(poorStatus?.canInstall, false, 'resource shortages must block specialization installation.');
+}
+
+function specializationEffectSmoke() {
+  const base = createDefaultCampaign();
+
+  const heliostatCampaign = {
+    ...base,
+    shipSpecialization: 'heliostat-hot-bus' as const,
+    shipUpgrades: { ...base.shipUpgrades, reactor: 5, fabrication: 5, drones: 5 },
+  };
+  const heliostat = applyShipBonuses(neutralCombatBuild, heliostatCampaign);
+  assert.equal(heliostat.player.maxCapAdd, 70, 'Hot-Bus Mesh should add a narrow +8 capacitor layer over Reactor Tier 5.');
+  approx(heliostat.abilities[0].costMul, 0.92 * 0.98, 'Hot-Bus Mesh class-skill capacitor cost');
+  approx(heliostat.mechanics.arcDroneScale, 1.8 * 1.1, 'Hot-Bus Mesh relay-drone damage');
+
+  const meridianCampaign = {
+    ...base,
+    shipSpecialization: 'meridian-continuity' as const,
+    shipUpgrades: { ...base.shipUpgrades, armor: 5, medical: 5 },
+  };
+  const meridian = applyShipBonuses(neutralCombatBuild, meridianCampaign);
+  assert.equal(meridian.player.maxArmorAdd, 72, 'Continuity Bulkhead should add +10 armor over Armor Tier 5.');
+  assert.equal(meridian.player.maxHpAdd, 48, 'Continuity Bulkhead should add +8 health over Trauma Bay Tier 5.');
+
+  const longarcCampaign = {
+    ...base,
+    shipSpecialization: 'longarc-farline' as const,
+    shipUpgrades: { ...base.shipUpgrades, drive: 5, cargo: 5, sensors: 5 },
+  };
+  const longarc = applyShipBonuses(neutralCombatBuild, longarcCampaign);
+  approx(longarc.player.moveSpeedMul, 1.18 * 1.03, 'Farline Recovery movement');
+  for (const weapon of Object.values(longarc.weapon)) {
+    approx(weapon.speedMul, 1.2 * 1.04, 'Farline Recovery projectile velocity');
+    assert.equal(weapon.penetrationAdd, 16, 'Farline Recovery should add only +4 penetration over Sensors Tier 5.');
+  }
+}
+
 schemaSmoke();
 legacyMigrationSmoke();
 prototypeCompatibilitySmoke();
@@ -230,5 +330,7 @@ gateGraphSmoke();
 engineeringEffectSmoke();
 supportGateGraphSmoke();
 supportEffectSmoke();
+specializationGateAndCostSmoke();
+specializationEffectSmoke();
 
-console.log(`SHIP_SYSTEMS_ARCHITECTURE_PASS schema=${SHIP_SYSTEM_SCHEMA_VERSION} systems=${upgradeDefinitions.length} tiers=${SHIP_SYSTEM_MAX_TIER} migration=legacy-preserved engineering=P11-B support=P11-C`);
+console.log(`SHIP_SYSTEMS_ARCHITECTURE_PASS schema=${SHIP_SYSTEM_SCHEMA_VERSION} systems=${upgradeDefinitions.length} tiers=${SHIP_SYSTEM_MAX_TIER} migration=legacy-preserved engineering=P11-B support=P11-C specialization=P11-D`);
