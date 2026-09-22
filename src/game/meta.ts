@@ -1,6 +1,6 @@
 import type { CombatBuild, SingularTraitId, SpecializationId, Telemetry, WeaponId } from './sim';
 import { operatorWeaponFamilyForClass, type OperatorClassId } from './classSkills';
-import { allocateOperatorNetworkNode, createOperatorNetworkState, legacyProgressionNodes, normalizeOperatorNetworkState, type OperatorNetworkState } from './operatorNetwork';
+import { allocateOperatorNetworkNode, createOperatorNetworkState, normalizeOperatorNetworkState, operatorNetworkNode, operatorNetworkNodes, type OperatorNetworkNodeKind, type OperatorNetworkSector, type OperatorNetworkState, type OperatorNetworkStatEffect } from './operatorNetwork';
 export type { OperatorClassId } from './classSkills';
 import { factionFrames, factionGearChance, factionSetDefinitions, type EquipmentFaction } from './factionGear';
 import { frameGenerationForRecovery, recoveryLevelForSource, type FrameGeneration } from './scaling';
@@ -25,7 +25,7 @@ export type EffectIntensity = 'full' | 'reduced';
 export type ProfileSettings = { aimAssist: MobileAimAssist; rightStickFire: boolean; screenShake: boolean; effectIntensity: EffectIntensity; effectsVolume: number; uiVolume: number; haptics: boolean; telemetrySharing: boolean; tutorialComplete: boolean };
 export type PlayerProfile = { version: 3; xp: number; level: number; progressionPoints: number; allocatedNodes: string[]; operatorNetwork?: OperatorNetworkState; abilityMods: Record<AbilityId, string | null>; operatorClass?: OperatorClassId; classSelectionComplete?: boolean; specialization: SpecializationId | null; specializationOverclock: boolean; inventory: Item[]; equipped: Record<EquipmentSlot, string | null>; settings: ProfileSettings; runsCompleted: number };
 export type VictoryReward = { profile: PlayerProfile; xpGained: number; levelsGained: number; loot: Item[] };
-export type ProgressionNode = { id: string; branch: 'Ballistics' | 'Mobility' | 'Systems' | 'Survival' | 'Engineering' | 'Awareness'; name: string; description: string; major?: boolean; requires?: string };
+export type ProgressionNode = { id: string; branch: 'Ballistics' | 'Mobility' | 'Systems' | 'Survival' | 'Engineering' | 'Awareness'; name: string; description: string; major?: boolean; requires?: string; kind: OperatorNetworkNodeKind; sector: OperatorNetworkSector; allocationCost: number; weaponFamily?: WeaponId };
 export type AbilityMod = { id: string; ability: AbilityId; name: string; description: string; tradeoff: string; operatorClass?: OperatorClassId; minLevel?: number; evolution?: boolean };
 export type SpecializationDefinition = { id: SpecializationId; operatorClass: OperatorClassId; name: string; identity: string; description: string; tradeoff: string; overclock: string; overclockTradeoff: string };
 export type OperatorClassDefinition = { id: OperatorClassId; name: string; identity: string; description: string; trait: string; signatureName: string; signatureDescription: string; combatLoop: string; starterPair: string; branchAffinities: ProgressionNode['branch'][]; specializationIds: SpecializationId[]; resonanceTier1: string; resonanceTier2: string };
@@ -284,7 +284,20 @@ export function bossSingularNames(deepTarget: string) { return (bossSingularPool
 export function locationSingularNames(location: string, operatorLevel = 16) { return locationPool(location, operatorLevel).map(item => item.name); }
 export const namedSingularCount = Object.values(bossSingularPools).reduce((total, pool) => total + pool.length, 0) + chaseCatalog.length;
 
-export const progressionNodes: ProgressionNode[] = legacyProgressionNodes.map(node => ({ ...node }));
+export const progressionNodes: ProgressionNode[] = operatorNetworkNodes
+  .filter(node => node.kind !== 'class-start')
+  .map(node => ({
+    id: node.id,
+    branch: node.branch as ProgressionNode['branch'],
+    name: node.name,
+    description: node.description,
+    major: node.kind === 'notable' || node.kind === 'mastery' || node.kind === 'keystone' || node.kind === 'capstone' || undefined,
+    requires: node.prerequisiteIds[0],
+    kind: node.kind,
+    sector: node.sector,
+    allocationCost: node.allocationCost,
+    weaponFamily: node.weaponFamily,
+  }));
 export const abilityMods: AbilityMod[] = [
   { id: 'vanguard-siege-ram', ability: 'mag', operatorClass: 'vanguard', minLevel: 16, evolution: true, name: 'Siege Ram', description: 'Breach Rush becomes an armor-cracking ram line. Targets caught in front lose extra armor, gain Armor Breach, and feed additional Breach Guard time.', tradeoff: '+20% Breach Rush cooldown.' },
   { id: 'vanguard-faultline-tag', ability: 'mark', operatorClass: 'vanguard', minLevel: 16, evolution: true, name: 'Faultline Tag', description: 'Fracture Tag propagates a weaker fracture to the nearest second hostile, opening a two-target Breacher lane.', tradeoff: '+18% Fracture Tag capacitor cost.' },
@@ -1033,6 +1046,7 @@ export function allocateNode(profile: PlayerProfile, nodeId: string): { profile:
     if (result.reason === 'insufficient-points') return { profile, message: 'Gain another level to earn a progression point.' };
     if (result.reason === 'missing-prerequisite') return { profile, message: 'Allocate the required node in this route first.' };
     if (result.reason === 'not-connected') return { profile, message: 'Route through an adjacent node from your class start first.' };
+    if (result.reason === 'wrong-arsenal') return { profile, message: 'That weapon sector belongs to a different operator class arsenal.' };
     return { profile, message: 'Progression node unavailable.' };
   }
   const node = progressionNodes.find(entry => entry.id === nodeId);
@@ -1305,6 +1319,45 @@ function applyClassSkillFamilyInfluence(build: CombatBuild, item: Item) {
     if (family === 'rail') { skill.rangeMul *= 1.06; skill.armorMul *= 1.07; }
   }
 }
+function applyOperatorNetworkStatEffect(build: CombatBuild, effect: OperatorNetworkStatEffect) {
+  const weaponTargets = effect.weapon ? [build.weapon[effect.weapon]] : Object.values(build.weapon);
+  if (effect.stat === 'weapon-damage-mul') for (const weapon of weaponTargets) weapon.damageMul *= effect.value;
+  if (effect.stat === 'weapon-projectile-speed-mul') for (const weapon of weaponTargets) weapon.speedMul *= effect.value;
+  if (effect.stat === 'weapon-penetration-add') for (const weapon of weaponTargets) weapon.penetrationAdd += effect.value;
+  if (effect.stat === 'weapon-recoil-mul') for (const weapon of weaponTargets) weapon.recoilMul *= effect.value;
+  if (effect.stat === 'weapon-heat-dissipation-mul') for (const weapon of weaponTargets) weapon.heatDissipationMul *= effect.value;
+  if (effect.stat === 'weapon-magazine-add') for (const weapon of weaponTargets) weapon.magazineAdd += effect.value;
+  if (effect.stat === 'weapon-reload-mul') for (const weapon of weaponTargets) weapon.reloadMul *= effect.value;
+  if (effect.stat === 'weapon-armor-damage-mul') for (const weapon of weaponTargets) weapon.armorDamageMul *= effect.value;
+  if (effect.stat === 'weapon-knockback-mul') for (const weapon of weaponTargets) weapon.knockbackMul *= effect.value;
+  if (effect.stat === 'player-max-hp-add') build.player.maxHpAdd += effect.value;
+  if (effect.stat === 'player-max-armor-add') build.player.maxArmorAdd += effect.value;
+  if (effect.stat === 'player-max-cap-add') build.player.maxCapAdd += effect.value;
+  if (effect.stat === 'player-move-speed-mul') build.player.moveSpeedMul *= effect.value;
+  if (effect.stat === 'player-cap-regen-mul') build.player.capRegenMul *= effect.value;
+  if (effect.stat === 'player-vacuum-resistance-add') build.player.vacuumResistance = Math.min(0.9, build.player.vacuumResistance + effect.value);
+  if (effect.stat === 'player-low-g-control-add') build.player.lowGControl += effect.value;
+  if (effect.stat === 'player-vent-speed-mul') build.player.ventSpeedMul *= effect.value;
+  if (effect.stat === 'ability-cost-mul') for (const ability of build.abilities) ability.costMul *= effect.value;
+  if (effect.stat === 'ability-cooldown-mul') for (const ability of build.abilities) ability.cooldownMul *= effect.value;
+  if (effect.stat === 'ability-power-mul') for (const ability of build.abilities) ability.powerMul *= effect.value;
+  if (effect.stat === 'class-skill-power-mul') build.classSkillFamily.powerMul *= effect.value;
+  if (effect.stat === 'class-skill-range-mul') build.classSkillFamily.rangeMul *= effect.value;
+  if (effect.stat === 'class-skill-control-mul') build.classSkillFamily.controlMul *= effect.value;
+  if (effect.stat === 'class-skill-armor-mul') build.classSkillFamily.armorMul *= effect.value;
+  if (effect.stat === 'class-skill-recovery-mul') build.classSkillFamily.recoveryMul *= effect.value;
+  if (effect.stat === 'class-skill-cost-mul') build.classSkillFamily.costMul *= effect.value;
+}
+
+function applyOperatorNetworkStatBonuses(build: CombatBuild, profile: PlayerProfile) {
+  for (const nodeId of profile.allocatedNodes) {
+    const node = operatorNetworkNode(nodeId);
+    if (!node?.effects?.length) continue;
+    for (const effect of node.effects) applyOperatorNetworkStatEffect(build, effect);
+    if (node.effects.some(effect => effect.stat.startsWith('class-skill-'))) build.classSkillFamily.sources.push(`network:${node.id}`);
+  }
+}
+
 export function deriveCombatBuild(profile: PlayerProfile): CombatBuild {
   const build = freshBuild();
   build.classSkillFamily.family = activeWeaponFamilyForProfile(profile);
@@ -1323,6 +1376,7 @@ export function deriveCombatBuild(profile: PlayerProfile): CombatBuild {
   if (nodes.has('survival-1')) build.player.maxArmorAdd += 12; if (nodes.has('survival-2')) build.player.vacuumResistance = Math.min(0.8, build.player.vacuumResistance + 0.2); if (nodes.has('survival-3')) build.player.vacuumResistance = Math.min(0.9, build.player.vacuumResistance + 0.5);
   if (nodes.has('engineering-1')) for (const weapon of Object.values(build.weapon)) weapon.heatDissipationMul *= 1.12; if (nodes.has('engineering-2')) { build.player.ventSpeedMul *= 1.25; build.classSkillFamily.recoveryMul *= 1.05; build.classSkillFamily.sources.push('network:quick-vent'); } if (nodes.has('engineering-3')) { build.mechanics.dodgeVent = true; build.mechanics.dodgeVentScale = Math.max(build.mechanics.dodgeVentScale, 1); }
   if (nodes.has('awareness-1')) { for (const weapon of Object.values(build.weapon)) weapon.speedMul *= 1.08; build.classSkillFamily.rangeMul *= 1.06; build.classSkillFamily.sources.push('network:predictive-lead'); } if (nodes.has('awareness-2')) build.mechanics.markWeakArmor = true; if (nodes.has('awareness-3')) build.mechanics.sensorPenetration = true;
+  applyOperatorNetworkStatBonuses(build, profile);
   const specialization = profile.level >= 15 ? profile.specialization : null;
   build.specialization = specialization;
   build.specializationOverclock = profile.level >= 16 && !!specialization && profile.specializationOverclock;

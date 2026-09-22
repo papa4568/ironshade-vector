@@ -119,6 +119,15 @@
 .network-branch button.major { border-color: rgba(170,126,77,.45); }
 .network-branch button.allocated { border-color: #587d70; background: #173027; }
 .network-branch button:disabled:not(.allocated) { opacity: .5; cursor: default; }
+.network-wave-summary { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; margin: 10px 0; }
+.network-wave-summary span { padding: 9px 10px; border: 1px solid #2b3c38; border-radius: 9px; background: rgba(8,14,13,.78); }
+.network-wave-summary small,.network-wave-summary b { display: block; }
+.network-wave-summary small { color: #718981; font-size: 6px; font-weight: 900; letter-spacing: .08em; }
+.network-wave-summary b { margin-top: 4px; color: #c5d3ce; font-size: 10px; }
+.network-branch button .network-node-meta { color: #688078; font-size: 6px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+.network-branch button.weapon-sector { border-left-width: 3px; }
+.network-branch button.owned-weapon-sector { border-color: #5a7e71; background: rgba(20,39,33,.78); }
+@media (max-width: 900px) { .network-wave-summary { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 .protocol-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
 .protocol-grid article { padding: 13px; border: 1px solid #263633; border-radius: 12px; background: rgba(10,15,16,.84); }
 .protocol-grid h3 { margin: 0 0 10px; font-size: 13px; }
