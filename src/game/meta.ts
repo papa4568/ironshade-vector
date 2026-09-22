@@ -25,7 +25,7 @@ export type EffectIntensity = 'full' | 'reduced';
 export type ProfileSettings = { aimAssist: MobileAimAssist; rightStickFire: boolean; screenShake: boolean; effectIntensity: EffectIntensity; effectsVolume: number; uiVolume: number; haptics: boolean; telemetrySharing: boolean; tutorialComplete: boolean };
 export type PlayerProfile = { version: 3; xp: number; level: number; progressionPoints: number; allocatedNodes: string[]; operatorNetwork?: OperatorNetworkState; abilityMods: Record<AbilityId, string | null>; operatorClass?: OperatorClassId; classSelectionComplete?: boolean; specialization: SpecializationId | null; specializationOverclock: boolean; inventory: Item[]; equipped: Record<EquipmentSlot, string | null>; settings: ProfileSettings; runsCompleted: number };
 export type VictoryReward = { profile: PlayerProfile; xpGained: number; levelsGained: number; loot: Item[] };
-export type ProgressionNode = { id: string; branch: 'Ballistics' | 'Mobility' | 'Systems' | 'Survival' | 'Engineering' | 'Awareness'; name: string; description: string; major?: boolean; requires?: string; kind: OperatorNetworkNodeKind; sector: OperatorNetworkSector; allocationCost: number; weaponFamily?: WeaponId };
+export type ProgressionNode = { id: string; branch: 'Ballistics' | 'Mobility' | 'Systems' | 'Survival' | 'Engineering' | 'Awareness'; name: string; description: string; major?: boolean; requires?: string; kind: OperatorNetworkNodeKind; sector: OperatorNetworkSector; allocationCost: number; weaponFamily?: WeaponId; exclusiveGroup?: string };
 export type AbilityMod = { id: string; ability: AbilityId; name: string; description: string; tradeoff: string; operatorClass?: OperatorClassId; minLevel?: number; evolution?: boolean };
 export type SpecializationDefinition = { id: SpecializationId; operatorClass: OperatorClassId; name: string; identity: string; description: string; tradeoff: string; overclock: string; overclockTradeoff: string };
 export type OperatorClassDefinition = { id: OperatorClassId; name: string; identity: string; description: string; trait: string; signatureName: string; signatureDescription: string; combatLoop: string; starterPair: string; branchAffinities: ProgressionNode['branch'][]; specializationIds: SpecializationId[]; resonanceTier1: string; resonanceTier2: string };
@@ -297,6 +297,7 @@ export const progressionNodes: ProgressionNode[] = operatorNetworkNodes
     sector: node.sector,
     allocationCost: node.allocationCost,
     weaponFamily: node.weaponFamily,
+    exclusiveGroup: node.exclusiveGroup,
   }));
 export const abilityMods: AbilityMod[] = [
   { id: 'vanguard-siege-ram', ability: 'mag', operatorClass: 'vanguard', minLevel: 16, evolution: true, name: 'Siege Ram', description: 'Breach Rush becomes an armor-cracking ram line. Targets caught in front lose extra armor, gain Armor Breach, and feed additional Breach Guard time.', tradeoff: '+20% Breach Rush cooldown.' },
@@ -1047,6 +1048,7 @@ export function allocateNode(profile: PlayerProfile, nodeId: string): { profile:
     if (result.reason === 'missing-prerequisite') return { profile, message: 'Allocate the required node in this route first.' };
     if (result.reason === 'not-connected') return { profile, message: 'Route through an adjacent node from your class start first.' };
     if (result.reason === 'wrong-arsenal') return { profile, message: 'That weapon sector belongs to a different operator class arsenal.' };
+    if (result.reason === 'exclusive-choice') return { profile, message: 'That Keystone conflicts with the Keystone already committed in this branch.' };
     return { profile, message: 'Progression node unavailable.' };
   }
   const node = progressionNodes.find(entry => entry.id === nodeId);
@@ -1326,6 +1328,8 @@ function applyOperatorNetworkStatEffect(build: CombatBuild, effect: OperatorNetw
   if (effect.stat === 'weapon-penetration-add') for (const weapon of weaponTargets) weapon.penetrationAdd += effect.value;
   if (effect.stat === 'weapon-recoil-mul') for (const weapon of weaponTargets) weapon.recoilMul *= effect.value;
   if (effect.stat === 'weapon-heat-dissipation-mul') for (const weapon of weaponTargets) weapon.heatDissipationMul *= effect.value;
+  if (effect.stat === 'weapon-heat-per-shot-mul') for (const weapon of weaponTargets) weapon.heatPerShotMul *= effect.value;
+  if (effect.stat === 'weapon-health-damage-mul') for (const weapon of weaponTargets) weapon.healthMultiplierMul *= effect.value;
   if (effect.stat === 'weapon-magazine-add') for (const weapon of weaponTargets) weapon.magazineAdd += effect.value;
   if (effect.stat === 'weapon-reload-mul') for (const weapon of weaponTargets) weapon.reloadMul *= effect.value;
   if (effect.stat === 'weapon-armor-damage-mul') for (const weapon of weaponTargets) weapon.armorDamageMul *= effect.value;
