@@ -82,7 +82,7 @@ Target roughly **120–180 authored nodes**, delivered in bounded waves.
 
 ## P10 — Crafting 2.0 // Reconstruction Economy
 
-- [ ] **P10-A Rules foundation** — Core/Systems structure, rarity counts, tiers/grades, compatibility, visible legal pools, base/frame importance
+- [x] **P10-A Rules foundation** — archived after merge + verification
 - [ ] **P10-B Verbs/materials** — improve/add/remove/reroute/replace/lock/elevate/socket/extract with distinct common vs chase resources
 - [ ] **P10-C Control vs risk** — deterministic premium control, family locking, targeted edits, elevation, optional risky operations/stability
 - [ ] **P10-D Build integration** — class-family pools, specialization recipes, quality, augments, Singular rules
@@ -159,21 +159,21 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P10-A — Rules foundation.**
+**Next: P10-B — Verbs/materials.**
 
-Build **P10-A — Rules foundation** on the verified Gear 2.0/Reconstruction stack: formalize Core/Systems crafting structure, rarity counts, tiers/grades, compatibility, visible legal pools, and base/frame importance before adding new crafting verbs or chase materials.
+Build **P10-B — Verbs/materials** on the verified P10-A crafting contract: formalize improve/add/remove/reroute/replace/lock/elevate/socket/extract as distinct Reconstruction verbs, then split ordinary salvage from chase resources without bypassing base pools, rarity budgets, Recovery Level gates, or visible legality.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.252**
+- Android beta: **0.0.1-beta.253**
 - Package: `app.ironshade.vector`
-- Verified: **P9-F Respec/migration/diversity QA complete**
-- Gameplay source: `8675c25f896c09c7fac0a78d181499ddf715d098`
-- Browser E2E: `35714819834`
-- Level 15 beta smoke: `35714819857`
-- Android beta.252: `35714819733`
-- APK artifact: `10689023882`
-- APK SHA-256: `d177a98ce8ce20a14e2acd30760206be2ef8bf555e3fe4df82a0e0943cdab5c8`
+- Verified: **P10-A Rules foundation complete**
+- Gameplay source: `71de480d1aa46def072d37ef6555f51ac18e9f40`
+- Browser E2E: `35717959748`
+- Level 15 beta smoke: `35717959722`
+- Android beta.253: `35717959724`
+- APK artifact: `10689668066`
+- APK SHA-256: `8f6960748754f9e07c867c432df63eaf5f500e07d56c83cf7c8e94def7c48dda`
 - Signing: debug-signed beta; permanent signing is P17-A
