@@ -51,7 +51,7 @@ import { modifierFamilyFor, recoveryQualityLabel, type ModifierFamily } from '..
 import { augmentDefinition, frameIdentityDefinition, resolveFrameIdentity } from '../game/gearDepth';
 import { compareRarity, rarityClassToken, rarityDefinition, rarityDisplayLabel, rarityOrder, type ItemRarity } from '../game/rarity';
 import { accessibleAugmentSlots, compatibleAugments, reconstructItem, reconstructionCost, reconstructionGradeCap, reconstructionQualityCap, type ReconstructionAction } from '../game/reconstruction';
-import { craftingFamilyDefinitions, craftingRulesForItem } from '../game/craftingRules';
+import { craftingFamilyDefinitions, craftingMaterialDefinitions, craftingRulesForItem, craftingVerbDefinitions } from '../game/craftingRules';
 import { resourceLabels, type CampaignState, type ResourceId, type SalvageWallet } from '../game/campaign';
 
 type Props = {
@@ -363,6 +363,26 @@ function ReconstructionBench({ item, profile, campaign, lockedFamily, onLockFami
         <div className="crafting-family-guide">
           {familyOrder.map(family => <article key={family}><small>{craftingFamilyDefinitions[family].label} FAMILY</small><span>{craftingFamilyDefinitions[family].role}</span><b>{rules.familyCounts[family]} INSTALLED</b></article>)}
         </div>
+        <div className="crafting-material-strip" aria-label="Reconstruction material tiers">
+          <article className="common">
+            <small>COMMON // ORDINARY SALVAGE</small>
+            <b>{craftingMaterialDefinitions.filter(material => material.tier === 'common').map(material => material.label).join(' · ')}</b>
+            <span>Routine Reconstruction consumes recovered structural, electronic, and precision stock.</span>
+          </article>
+          <article className="chase">
+            <small>CHASE // PROTECTED CONTROL</small>
+            <b>{craftingMaterialDefinitions.filter(material => material.tier === 'chase').map(material => material.label).join(' · ')}</b>
+            <span>Quarantined Trace is reserved for protected Replace and the step into G5 Prime.</span>
+          </article>
+        </div>
+        <div className="crafting-verb-grid" aria-label="Reconstruction verbs">
+          {Object.values(craftingVerbDefinitions).map(verb => <article key={verb.id}>
+            <small>{verb.label}</small>
+            <b>{verb.role}</b>
+            <span>{verb.gate}</span>
+            <em>{verb.chaseMaterials.length > 0 ? 'CHASE MATERIAL PATH' : verb.commonMaterials.length > 0 ? 'COMMON SALVAGE PATH' : 'SERVICE / SELECTION VERB'}</em>
+          </article>)}
+        </div>
         <div className="crafting-legal-pool">
           {familyOrder.map(family => {
             const entries = rules.pool.filter(entry => entry.family === family);
@@ -380,19 +400,20 @@ function ReconstructionBench({ item, profile, campaign, lockedFamily, onLockFami
         </div>
       </section>
       {specializationCraftingLink && <div className="bench-guard"><b>SPECIALIZATION FIELD LINK</b><span>This frame matches your active specialization route. Reconstruction resource costs are reduced by 12% while the field-integration node remains active.</span></div>}
-      {item.rarity === 'Singular' && <div className="bench-guard"><b>FIXED SINGULAR PACKAGE</b><span>Signature and fixed modifiers cannot be rerolled, rerouted, added to, or recalibrated. Frame quality and Augments remain available.</span></div>}
-      <div className="lock-row"><b>FAMILY LOCK</b><button className={lockedFamily === 'core' ? 'active' : ''} onClick={() => onLockFamily('core')}>Lock Core</button><button className={lockedFamily === 'systems' ? 'active' : ''} onClick={() => onLockFamily('systems')}>Lock Systems</button><span>Tier 2 recalibration protects the locked family.</span></div>
+      {item.rarity === 'Singular' && <div className="bench-guard"><b>FIXED SINGULAR PACKAGE</b><span>Signature and fixed modifiers cannot be added, removed, rerouted, replaced, or elevated. Improve and compatible Augment socket/extract remain available.</span></div>}
+      <div className="lock-row"><b>LOCK FAMILY</b><button className={lockedFamily === 'core' ? 'active' : ''} onClick={() => onLockFamily('core')}>Lock Core</button><button className={lockedFamily === 'systems' ? 'active' : ''} onClick={() => onLockFamily('systems')}>Lock Systems</button><span>Microforge T2 // Replace protects this family and spends 1 Quarantined Trace.</span></div>
       <div className="bench-modifiers">
         {item.modifiers.map(modifier => {
           const family = modifier.family ?? modifierFamilyFor(modifier.id);
           const gradeAction: ReconstructionAction = { kind: 'grade', modifierId: modifier.id };
           const rerouteAction: ReconstructionAction = { kind: 'reroute', modifierId: modifier.id };
-          const recalibrateAction: ReconstructionAction = { kind: 'recalibrate', modifierId: modifier.id, lockedFamily };
-          return <article key={modifier.id}><div><small>{family.toUpperCase()} // G{modifier.grade ?? 3}</small><b>{modifier.label}</b><span>{modifier.description}</span></div><div className="bench-actions"><button onClick={() => onRun(gradeAction)}>+ Grade<small>{costLabel(reconstructionCost(item, gradeAction, fabrication, profile))}</small></button><button disabled={fabrication < 1 || item.rarity === 'Singular'} onClick={() => onRun(rerouteAction)}>Reroute family<small>{costLabel(reconstructionCost(item, rerouteAction, fabrication, profile))}</small></button><button disabled={fabrication < 2 || item.rarity === 'Singular' || family === lockedFamily} onClick={() => onRun(recalibrateAction)}>Recalibrate<small>{costLabel(reconstructionCost(item, recalibrateAction, fabrication, profile))}</small></button></div></article>;
+          const removeAction: ReconstructionAction = { kind: 'remove', modifierId: modifier.id };
+          const replaceAction: ReconstructionAction = { kind: 'recalibrate', modifierId: modifier.id, lockedFamily };
+          return <article key={modifier.id}><div><small>{family.toUpperCase()} // G{modifier.grade ?? 3}</small><b>{modifier.label}</b><span>{modifier.description}</span></div><div className="bench-actions"><button disabled={item.rarity === 'Singular' || (modifier.grade ?? 3) >= rules.gradeCeiling} onClick={() => onRun(gradeAction)}>Elevate<small>{costLabel(reconstructionCost(item, gradeAction, fabrication, profile))}</small></button><button disabled={fabrication < 1 || item.rarity === 'Singular'} onClick={() => onRun(rerouteAction)}>Reroute<small>{costLabel(reconstructionCost(item, rerouteAction, fabrication, profile))}</small></button><button disabled={fabrication < 2 || item.rarity === 'Singular' || family === lockedFamily} onClick={() => onRun(replaceAction)}>Replace<small>{costLabel(reconstructionCost(item, replaceAction, fabrication, profile))}</small></button><button className="destructive" disabled={item.rarity === 'Singular'} onClick={() => onRun(removeAction)}>Remove<small>{costLabel(reconstructionCost(item, removeAction, fabrication, profile))}</small></button></div></article>;
         })}
       </div>
       <div className="add-mod-row"><b>ADD MODIFIER // {item.modifiers.length}/{modifierLimit}</b>{(['core', 'systems'] as ModifierFamily[]).map(family => { const action: ReconstructionAction = { kind: 'add', family }; return <button key={family} disabled={fabrication < 1 || item.rarity === 'Singular' || item.modifiers.length >= modifierLimit} onClick={() => onRun(action)}>Add {family}<small>{costLabel(reconstructionCost(item, action, fabrication, profile))}</small></button>; })}</div>
-      <section className="augment-bench"><header><b>AUGMENT HARDWARE // FIXED UTILITY</b><span>{installed.length}/{accessibleSockets} accessible sockets occupied · max 2 normal sockets · no grades</span></header>{installed.length > 0 && <div className="installed-augments">{installed.map(id => { const augment = augmentDefinition(id); const action: ReconstructionAction = { kind: 'removeAugment', augmentId: id }; return <article key={id}><div><small>{augment.hardware}</small><b>{augment.name}</b><span>{augment.description} TRADEOFF // {augment.tradeoff}</span></div><button onClick={() => onRun(action)}>Extract<small>{costLabel(reconstructionCost(item, action, fabrication, profile))}</small></button></article>; })}</div>}<div className="augment-options">{compatible.map(augment => { const action: ReconstructionAction = { kind: 'installAugment', augmentId: augment.id }; return <button key={augment.id} disabled={installed.length >= accessibleSockets} onClick={() => onRun(action)}><b>{augment.name}</b><span>{augment.description}</span><small>TRADEOFF // {augment.tradeoff}</small><em>{costLabel(reconstructionCost(item, action, fabrication, profile))}</em></button>; })}</div></section>
+      <section className="augment-bench"><header><b>AUGMENT HARDWARE // SOCKET / EXTRACT</b><span>{installed.length}/{accessibleSockets} accessible sockets occupied · max 2 normal sockets · no grades</span></header>{installed.length > 0 && <div className="installed-augments">{installed.map(id => { const augment = augmentDefinition(id); const action: ReconstructionAction = { kind: 'removeAugment', augmentId: id }; return <article key={id}><div><small>{augment.hardware}</small><b>{augment.name}</b><span>{augment.description} TRADEOFF // {augment.tradeoff}</span></div><button onClick={() => onRun(action)}>Extract<small>{costLabel(reconstructionCost(item, action, fabrication, profile))}</small></button></article>; })}</div>}<div className="augment-options">{compatible.map(augment => { const action: ReconstructionAction = { kind: 'installAugment', augmentId: augment.id }; return <button key={augment.id} disabled={installed.length >= accessibleSockets} onClick={() => onRun(action)}><small>SOCKET</small><b>{augment.name}</b><span>{augment.description}</span><small>TRADEOFF // {augment.tradeoff}</small><em>{costLabel(reconstructionCost(item, action, fabrication, profile))}</em></button>; })}</div></section>
     </section>
   );
 }
