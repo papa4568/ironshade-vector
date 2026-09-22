@@ -214,7 +214,7 @@ function GearComparison({ profile, item, fabrication }: { profile: PlayerProfile
   const specializationGained = candidateSpecializationName && candidateSpecializationName !== currentSpecializationName ? [candidateSpecializationName] : [];
   const specializationLost = currentSpecializationName && currentSpecializationName !== candidateSpecializationName ? [currentSpecializationName] : [];
   const specializationNote = itemGearLinked && candidateGearSynergy
-    ? (candidateGearSynergy.active ? 'Candidate satisfies the active tag route.' : 'Candidate matches the tag route; ' + candidateGearSynergy.definition.requirement + '.')
+    ? (candidateGearSynergy.active ? 'MATCHED FRAME // Tag threshold met on this frame. Candidate activates or maintains ' + candidateGearSynergy.definition.name + '.' : 'MATCHED FRAME // Tag threshold met on this frame. ' + candidateGearSynergy.definition.requirement + ' to activate.')
     : (candidateGearSynergy?.active ? 'Current specialization link remains online.' : 'No active specialization gear link from this swap.');
   const singularGained = item.singularEffect && item.singularEffect !== equipped?.singularEffect ? [item.singularEffect] : [];
   const singularLost = equipped?.singularEffect && equipped.singularEffect !== item.singularEffect ? [equipped.singularEffect] : [];
