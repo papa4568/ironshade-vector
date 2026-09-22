@@ -4,6 +4,9 @@ export type RenderBudgetSnapshot = {
   tier: AdaptiveRenderTier;
   tierName: 'high' | 'balanced' | 'performance';
   smoothedFrameMs: number;
+  targetFrameMs: number;
+  frameHeadroomMs: number;
+  framePressure: 'healthy' | 'watch' | 'over';
   pixelRatioScale: number;
   detailScale: number;
   shadows: boolean;
@@ -12,6 +15,7 @@ export type RenderBudgetSnapshot = {
   transparencyScale: number;
 };
 
+export const TARGET_FRAME_MS = 1000 / 60;
 const TIER_NAME: Record<AdaptiveRenderTier, RenderBudgetSnapshot['tierName']> = { 0: 'high', 1: 'balanced', 2: 'performance' };
 const PIXEL_RATIO_SCALE: Record<AdaptiveRenderTier, number> = { 0: 1, 1: 0.84, 2: 0.68 };
 const DETAIL_SCALE: Record<AdaptiveRenderTier, number> = { 0: 1, 1: 0.78, 2: 0.5 };
@@ -68,6 +72,9 @@ export class AdaptiveRenderBudget {
       tier,
       tierName: TIER_NAME[tier],
       smoothedFrameMs: this.smoothedFrameMs,
+      targetFrameMs: TARGET_FRAME_MS,
+      frameHeadroomMs: TARGET_FRAME_MS - this.smoothedFrameMs,
+      framePressure: this.smoothedFrameMs > 21.5 ? 'over' : this.smoothedFrameMs > 18 ? 'watch' : 'healthy',
       pixelRatioScale: PIXEL_RATIO_SCALE[tier],
       detailScale: DETAIL_SCALE[tier],
       shadows: requested > 0.62 && tier < 2,
