@@ -84,7 +84,7 @@ Target roughly **120–180 authored nodes**, delivered in bounded waves.
 
 - [x] **P10-A Rules foundation** — archived after merge + verification
 - [x] **P10-B Verbs/materials** — archived after merge + verification
-- [ ] **P10-C Control vs risk** — deterministic premium control, family locking, targeted edits, elevation, optional risky operations/stability
+- [x] **P10-C Control vs risk** — archived after merge + verification
 - [ ] **P10-D Build integration** — class-family pools, specialization recipes, quality, augments, Singular rules
 - [ ] **P10-E Crafting UX/trust** — exact costs, guaranteed/possible outcomes, exclusions/risk, before/after, history, salvage loop
 - [ ] **P10-F Economy + touch QA** — campaign-to-T12 material simulation and controller/mobile workflow
