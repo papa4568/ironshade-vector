@@ -17,7 +17,6 @@ import {
   equipItem,
   factionSetState,
   gearResonanceForProfile,
-  hasSpecializationNetworkHook,
   itemBuildAffinities,
   itemBuildTags,
   itemStatDefinitions,
