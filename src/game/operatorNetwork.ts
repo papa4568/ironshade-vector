@@ -610,6 +610,55 @@ export function operatorNetworkRouteToNode(state: OperatorNetworkState, targetNo
   return null;
 }
 
+export type OperatorNetworkPlan = {
+  targetNodeIds: string[];
+  nodeIds: string[];
+  pointCost: number;
+  unresolvedTargetIds: string[];
+};
+
+export function operatorNetworkPlan(state: OperatorNetworkState, targetNodeIds: readonly string[], context?: OperatorNetworkUnlockContext): OperatorNetworkPlan {
+  const targets = [...new Set(targetNodeIds)];
+  const plannedNodeIds: string[] = [];
+  const unresolvedTargetIds: string[] = [];
+  let pointCost = 0;
+  let virtualState: OperatorNetworkState = { ...state, allocatedNodeIds: [...state.allocatedNodeIds], unspentPoints: 1_000_000 };
+
+  for (const targetNodeId of targets) {
+    const route = operatorNetworkRouteToNode(virtualState, targetNodeId, context);
+    if (!route) {
+      unresolvedTargetIds.push(targetNodeId);
+      continue;
+    }
+
+    let targetState = virtualState;
+    const targetNodes: string[] = [];
+    let targetCost = 0;
+    let valid = true;
+    for (const nodeId of route.nodeIds) {
+      if (targetState.allocatedNodeIds.includes(nodeId)) continue;
+      const allocation = allocateOperatorNetworkNode(targetState, nodeId, context);
+      if (!allocation.allocated) {
+        valid = false;
+        break;
+      }
+      targetState = { ...allocation.state, unspentPoints: 1_000_000 };
+      targetNodes.push(nodeId);
+      targetCost += operatorNetworkNode(nodeId)?.allocationCost ?? 0;
+    }
+
+    if (!valid) {
+      unresolvedTargetIds.push(targetNodeId);
+      continue;
+    }
+    virtualState = targetState;
+    for (const nodeId of targetNodes) if (!plannedNodeIds.includes(nodeId)) plannedNodeIds.push(nodeId);
+    pointCost += targetCost;
+  }
+
+  return { targetNodeIds: targets, nodeIds: plannedNodeIds, pointCost, unresolvedTargetIds };
+}
+
 export const legacyProgressionNodes = legacyNodes.map(node => ({
   id: node.id,
   branch: node.branch as OperatorNetworkBranch,

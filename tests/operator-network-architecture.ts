@@ -8,6 +8,7 @@ import {
   operatorNetworkClassWeaponNodes,
   operatorNetworkMilestoneActive,
   operatorNetworkNodeGateReason,
+  operatorNetworkPlan,
   operatorNetworkSpecializationNodes,
   operatorNetworkCoreWaveNodes,
   operatorNetworkEdges,
@@ -79,6 +80,16 @@ assert.deepEqual(operatorNetworkRouteToNode(vanguard, 'mobility-1'), { nodeIds: 
 assert.deepEqual(operatorNetworkRouteToNode(vanguard, 'vanguard-breach-telemetry'), { nodeIds: ['vanguard-breach-entry', 'vanguard-breach-pressure', 'vanguard-breach-impulse', 'vanguard-breach-telemetry'], pointCost: 4 });
 assert.deepEqual(operatorNetworkRouteToNode(createOperatorNetworkState('vanguard', 12), 'ballistics-terminal-collapse-capstone'), { nodeIds: ['ballistics-1', 'ballistics-2', 'ballistics-3', 'ballistics-terminal-mastery', 'ballistics-overpenetration-keystone', 'ballistics-terminal-collapse-capstone'], pointCost: 8 }, 'Ballistics Capstone routing must require the existing branch spine, Mastery, one Keystone, then the Capstone.');
 assert.equal(operatorNetworkRouteToNode(vanguard, 'vector-rail-entry'), null, 'Class weapon sectors cannot be used as cross-class routing shortcuts.');
+
+const futurePlan = operatorNetworkPlan(createOperatorNetworkState('vanguard', 1), ['ballistics-3']);
+assert.deepEqual(futurePlan.nodeIds, ['ballistics-1', 'ballistics-2', 'ballistics-3'], 'Planner should preview a future legal route even when the current profile cannot afford every node yet.');
+assert.equal(futurePlan.pointCost, 3, 'Planner must report the total point cost of the route.');
+assert.deepEqual(futurePlan.unresolvedTargetIds, []);
+const sharedPlan = operatorNetworkPlan(createOperatorNetworkState('vanguard', 1), ['ballistics-3', 'mobility-1']);
+assert.deepEqual(sharedPlan.nodeIds, ['ballistics-1', 'ballistics-2', 'ballistics-3', 'mobility-1'], 'Multiple targets should reuse already-planned route nodes instead of double-counting them.');
+assert.equal(sharedPlan.pointCost, 4, 'Shared planned routes should count each node cost once.');
+const blockedPlan = operatorNetworkPlan(vanguard, ['vector-rail-entry']);
+assert.deepEqual(blockedPlan.unresolvedTargetIds, ['vector-rail-entry'], 'Planner must preserve class arsenal route locks.');
 
 let state = createOperatorNetworkState('vanguard', 3);
 let result = allocateOperatorNetworkNode(state, 'ballistics-2');

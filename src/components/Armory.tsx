@@ -5,7 +5,7 @@ import '../part12.css';
 import '../menuOverhaul.css';
 import '../classBuilds.css';
 import { classAbilityKits, operatorWeaponFamilyForClass } from '../game/classSkills';
-import { normalizeOperatorNetworkState, operatorNetworkMilestoneActive, operatorNetworkRouteToNode, type OperatorNetworkUnlockContext } from '../game/operatorNetwork';
+import { normalizeOperatorNetworkState, operatorNetworkMilestoneActive, operatorNetworkPlan, operatorNetworkRouteToNode, type OperatorNetworkUnlockContext } from '../game/operatorNetwork';
 import { classSkillIconAssets, weaponIconAssets } from '../game/mobileUiAssets';
 import {
   abilityMods,
@@ -358,6 +358,9 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
   const [gearFilter, setGearFilter] = useState<InventoryFilter>(newLootIds.length > 0 ? 'new' : 'all');
   const [gearSort, setGearSort] = useState<InventorySort>('recent');
   const [gearRarity, setGearRarity] = useState<RarityFilter>('all');
+  const [networkQuery, setNetworkQuery] = useState('');
+  const [networkFocusId, setNetworkFocusId] = useState<string | null>(null);
+  const [networkPlanTargets, setNetworkPlanTargets] = useState<string[]>([]);
   const buildRef = useRef<HTMLElement>(null);
   const selected = profile.inventory.find(item => item.id === selectedId) ?? null;
   const progress = xpProgress(profile);
@@ -370,7 +373,8 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
   const classResonance = gearResonanceForProfile(profile, operatorClass);
   const activeGearSynergy = specializationGearSynergyForProfile(profile);
   const activeAbilityKit = classAbilityKits[operatorClass];
-  const activeSkillBuild = deriveCombatBuild(profile).classSkillFamily;
+  const currentCombatBuild = useMemo(() => deriveCombatBuild(profile), [profile]);
+  const activeSkillBuild = currentCombatBuild.classSkillFamily;
   const activeSpecializationDefinition = profile.level >= 15 ? specializationDefinitions.find(definition => definition.id === profile.specialization) : undefined;
   const activeCapstoneCount = Object.values(profile.abilityMods).filter(modId => !!capstoneInteractionFor(profile, modId)).length;
   const availableSpecializations = specializationDefinitions.filter(definition => definition.operatorClass === operatorClass);
@@ -405,6 +409,33 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
   const operatorNetwork = useMemo(() => normalizeOperatorNetworkState({ operatorClass, level: profile.level, state: profile.operatorNetwork, legacyAllocatedNodes: profile.allocatedNodes, legacyUnspentPoints: profile.progressionPoints }), [operatorClass, profile.level, profile.operatorNetwork, profile.allocatedNodes, profile.progressionPoints]);
   const operatorNetworkContext = useMemo<OperatorNetworkUnlockContext>(() => ({ level: profile.level, specialization: profile.specialization, unlockKeys: specializationNetworkUnlockKeys(campaign) }), [profile.level, profile.specialization, campaign.story.blackLattice.status, campaign.story.postKhepri.status, campaign.story.interdiction.status, campaign.story.parallaxDebt.status, campaign.escalation.status, campaign.reputation.meridian, campaign.reputation.longarc, campaign.reputation.heliostat]);
   const specializationNetworkNodes = useMemo(() => progressionNodes.filter(node => node.specialization === profile.specialization), [profile.specialization]);
+  const networkSearchResults = useMemo(() => {
+    const query = networkQuery.trim().toLowerCase();
+    if (!query) return [];
+    return progressionNodes
+      .filter(node => (!node.specialization || node.specialization === profile.specialization) && (!node.weaponFamily || node.weaponFamily === activeWeaponFamily))
+      .filter(node => [node.name, node.description, node.branch, node.kind, node.sector, node.unlockLabel ?? ''].join(' ').toLowerCase().includes(query))
+      .slice(0, 8);
+  }, [networkQuery, profile.specialization, activeWeaponFamily]);
+  const networkFocusedNode = progressionNodes.find(node => node.id === networkFocusId) ?? null;
+  const networkFocusedRoute = networkFocusedNode ? operatorNetworkRouteToNode(operatorNetwork, networkFocusedNode.id, operatorNetworkContext) : null;
+  const networkPlan = useMemo(() => operatorNetworkPlan(operatorNetwork, networkPlanTargets, operatorNetworkContext), [operatorNetwork, networkPlanTargets, operatorNetworkContext]);
+  const networkPlannedProfile = useMemo<PlayerProfile>(() => {
+    const allocatedNodes = [...new Set([...profile.allocatedNodes, ...networkPlan.nodeIds])];
+    const unspentPoints = Math.max(0, profile.progressionPoints - networkPlan.pointCost);
+    return { ...profile, allocatedNodes, progressionPoints: unspentPoints, operatorNetwork: { ...operatorNetwork, allocatedNodeIds: allocatedNodes, unspentPoints } };
+  }, [profile, operatorNetwork, networkPlan.nodeIds, networkPlan.pointCost]);
+  const plannedCombatBuild = useMemo(() => deriveCombatBuild(networkPlannedProfile), [networkPlannedProfile]);
+  const networkPlanShortfall = Math.max(0, networkPlan.pointCost - profile.progressionPoints);
+  const networkPlanNodeNames = networkPlan.nodeIds.map(id => progressionNodes.find(node => node.id === id)?.name ?? id);
+  const networkPlannerMetrics = [
+    { label: 'Weapon output', before: `${Math.round((currentCombatBuild.weapon[activeWeaponFamily].damageMul - 1) * 100)}%`, after: `${Math.round((plannedCombatBuild.weapon[activeWeaponFamily].damageMul - 1) * 100)}%` },
+    { label: 'Armor bonus', before: `+${Math.round(currentCombatBuild.player.maxArmorAdd)}`, after: `+${Math.round(plannedCombatBuild.player.maxArmorAdd)}` },
+    { label: 'Movement', before: `${Math.round((currentCombatBuild.player.moveSpeedMul - 1) * 100)}%`, after: `${Math.round((plannedCombatBuild.player.moveSpeedMul - 1) * 100)}%` },
+    { label: 'Cap regen', before: `${Math.round((currentCombatBuild.player.capRegenMul - 1) * 100)}%`, after: `${Math.round((plannedCombatBuild.player.capRegenMul - 1) * 100)}%` },
+    { label: 'Class skill power', before: `${Math.round((currentCombatBuild.classSkillFamily.powerMul - 1) * 100)}%`, after: `${Math.round((plannedCombatBuild.classSkillFamily.powerMul - 1) * 100)}%` },
+    { label: 'Vacuum resist', before: `${Math.round(currentCombatBuild.player.vacuumResistance * 100)}%`, after: `${Math.round(plannedCombatBuild.player.vacuumResistance * 100)}%` },
+  ];
   const allocatedBuildDefiningNodes = progressionNodes.filter(node => (node.kind === 'mastery' || node.kind === 'keystone' || node.kind === 'capstone') && profile.allocatedNodes.includes(node.id)).length;
   const ownedWeaponSectorNodes = progressionNodes.filter(node => node.weaponFamily === activeWeaponFamily).length;
   const loadoutItems = useMemo(() => Object.fromEntries(loadoutSlots.map(slot => [slot, itemForSlot(profile, slot)])) as Record<EquipmentSlot, Item | undefined>, [profile.equipped, profile.inventory, operatorClass]);
@@ -431,12 +462,52 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
     if (value === 'reconstruct' && !selectedId && profile.inventory[0]) setSelectedId(profile.inventory[0].id);
     requestAnimationFrame(() => buildRef.current?.scrollTo({ top: 0, left: 0, behavior: 'auto' }));
   };
+  const toggleNetworkPlanTarget = (nodeId: string) => {
+    setNetworkPlanTargets(current => current.includes(nodeId) ? current.filter(id => id !== nodeId) : [...current, nodeId]);
+  };
+  const focusNetworkNodeByOffset = (offset: number, edge?: 'start' | 'end') => {
+    const buttons = [...(buildRef.current?.querySelectorAll<HTMLButtonElement>('[data-network-node="true"]') ?? [])];
+    if (!buttons.length) return;
+    const activeIndex = buttons.indexOf(document.activeElement as HTMLButtonElement);
+    const nextIndex = edge === 'start' ? 0 : edge === 'end' ? buttons.length - 1 : activeIndex < 0 ? (offset < 0 ? buttons.length - 1 : 0) : (activeIndex + offset + buttons.length) % buttons.length;
+    buttons[nextIndex]?.focus();
+    buttons[nextIndex]?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  };
+  const handleNetworkNavigation = (event: React.KeyboardEvent<HTMLElement>) => {
+    const target = event.target as HTMLElement;
+    if (target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement || target.isContentEditable) return;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') { event.preventDefault(); focusNetworkNodeByOffset(1); }
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') { event.preventDefault(); focusNetworkNodeByOffset(-1); }
+    if (event.key === 'Home') { event.preventDefault(); focusNetworkNodeByOffset(0, 'start'); }
+    if (event.key === 'End') { event.preventDefault(); focusNetworkNodeByOffset(0, 'end'); }
+  };
   useEffect(() => {
     if (!selectedId) return;
     const closeInspector = (event: KeyboardEvent) => { if (event.key === 'Escape') setSelectedId(null); };
     window.addEventListener('keydown', closeInspector);
     return () => window.removeEventListener('keydown', closeInspector);
   }, [selectedId]);
+  useEffect(() => {
+    setNetworkPlanTargets([]);
+    setNetworkFocusId(null);
+    setNetworkQuery('');
+  }, [operatorClass, profile.specialization]);
+  useEffect(() => {
+    if (tab !== 'network' || typeof navigator.getGamepads !== 'function') return;
+    let frame = 0;
+    let previousDirection = 0;
+    const poll = () => {
+      const pad = [...navigator.getGamepads()].find(Boolean);
+      let direction = 0;
+      if (pad?.buttons[12]?.pressed || pad?.buttons[14]?.pressed) direction = -1;
+      else if (pad?.buttons[13]?.pressed || pad?.buttons[15]?.pressed) direction = 1;
+      if (direction && direction !== previousDirection) focusNetworkNodeByOffset(direction);
+      previousDirection = direction;
+      frame = requestAnimationFrame(poll);
+    };
+    frame = requestAnimationFrame(poll);
+    return () => cancelAnimationFrame(frame);
+  }, [tab]);
   const runReconstruction = (action: ReconstructionAction) => {
     if (!selected) return;
     const result = reconstructItem(profile, campaign.resources, campaign.shipUpgrades.fabrication, selected.id, action);
@@ -455,8 +526,28 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
 
     {tab === 'reconstruct' && <section className="reconstruction-panel"><div className="reconstruction-top"><div><span className="card-kicker">QUIET SIGNAL // RECONSTRUCTION BENCH</span><h2>Controlled equipment work</h2><p>Frame Quality only improves the base frame property. Augments are fixed utility/specialization hardware with bounded sockets; explicit modifier strength stays in modifier grades.</p></div><div className="resource-ribbon">{(['credits', 'alloys', 'electronics', 'components'] as ResourceId[]).map(key => <span key={key}><small>{resourceLabels[key]}</small><b>{campaign.resources[key]}</b></span>)}</div></div><div className="reconstruct-layout"><aside className="reconstruct-storage">{profile.inventory.map(item => <button key={item.id} className={`${selectedId === item.id ? 'selected' : ''} ${rarityClass(item)} ${qualityClass(item)}`} onClick={() => setSelectedId(item.id)}><small>{slotLabels[item.slot]} · <RarityText rarity={item.rarity} /></small><b>{item.name}</b><span>{frameIdentityDefinition(frameIdentity(item)).name} · Q{item.equipmentQuality ?? 0} · {(item.augments ?? []).length}/{item.augmentSlots ?? 0} AUG</span>{item.rarity === 'Singular' && item.singularEffect && <span className="singular-surface-callout" aria-label="Singular fixed rule">{singularSurfaceRule(item)}</span>}</button>)}</aside>{selected ? <ReconstructionBench item={selected} profile={profile} campaign={campaign} lockedFamily={lockedFamily} onLockFamily={setLockedFamily} onRun={runReconstruction} /> : <div className="empty-inspector"><b>Select equipment</b><span>Choose an item from ship storage to open the reconstruction controls.</span></div>}</div></section>}
 
-    {tab === 'network' && <section className="network-panel">
+    {tab === 'network' && <section className="network-panel" onKeyDown={handleNetworkNavigation}>
       <div className="section-copy"><h2>Operator Class & Progression</h2><p>Your class owns one weapon family and establishes an early combat identity plus gear-resonance path. Progression branches, Skill Lenses, and support equipment remain open.</p></div>
+      <section className="network-planner" aria-label="Operator Network planner">
+        <header className="network-planner-heading">
+          <div><small>P9-E // ROUTE PLANNER</small><b>Search, preview, then commit</b><span>Planning never spends points. Preview legal routes and before / after build math, then allocate only when a node is immediately reachable.</span></div>
+          <div className="network-planner-search"><input type="search" value={networkQuery} onChange={event => setNetworkQuery(event.target.value)} placeholder="Search Operator Network" aria-label="Search Operator Network" />{networkQuery && <button onClick={() => setNetworkQuery('')}>Clear</button>}</div>
+          <div className="network-planner-nav" aria-label="Network navigation"><button onClick={() => focusNetworkNodeByOffset(-1)}>Previous node</button><button onClick={() => focusNetworkNodeByOffset(1)}>Next node</button></div>
+        </header>
+        {networkQuery && <div className="network-search-results" aria-label="Operator Network search results">{networkSearchResults.length ? networkSearchResults.map(node => <button key={node.id} className={networkFocusId === node.id ? 'selected' : ''} onClick={() => setNetworkFocusId(node.id)}><small>{node.branch} · {node.kind}</small><b>{node.name}</b><span>{node.description}</span></button>) : <span className="network-search-empty">No class-compatible Network nodes match “{networkQuery}”.</span>}</div>}
+        <div className="network-planner-body">
+          <article className="network-focus-card">
+            {networkFocusedNode ? <><small>FOCUSED NODE // {networkFocusedNode.branch.toUpperCase()}</small><h3>{networkFocusedNode.name}</h3><p>{networkFocusedNode.description}</p><div className="network-focus-route">{profile.allocatedNodes.includes(networkFocusedNode.id) ? <b>ALLOCATED // ACTIVE NOW</b> : networkFocusedNode.milestone ? <b>{operatorNetworkMilestoneActive(operatorNetwork, networkFocusedNode.id, operatorNetworkContext) ? 'MILESTONE ONLINE' : 'MILESTONE LOCKED'}</b> : networkFocusedRoute ? <><b>ROUTE PREVIEW // {networkFocusedRoute.pointCost} PT · {networkFocusedRoute.nodeIds.length} NODE{networkFocusedRoute.nodeIds.length === 1 ? '' : 'S'}</b><span>{networkFocusedRoute.nodeIds.map(id => progressionNodes.find(node => node.id === id)?.name ?? id).join(' → ')}</span></> : <b>NO LEGAL ROUTE FROM CURRENT BUILD</b>}</div><div className="network-focus-actions">{!networkFocusedNode.milestone && !profile.allocatedNodes.includes(networkFocusedNode.id) && networkFocusedRoute && <button className={networkPlanTargets.includes(networkFocusedNode.id) ? 'active' : ''} onClick={() => toggleNetworkPlanTarget(networkFocusedNode.id)}>{networkPlanTargets.includes(networkFocusedNode.id) ? 'Remove from plan' : 'Plan this route'}</button>}<button disabled={!!networkFocusedNode.milestone || profile.allocatedNodes.includes(networkFocusedNode.id) || !networkFocusedRoute || networkFocusedRoute.nodeIds.length !== 1 || profile.progressionPoints < networkFocusedNode.allocationCost} onClick={() => { applyResult(allocateNode(profile, networkFocusedNode.id, operatorNetworkContext)); setNetworkPlanTargets(current => current.filter(id => id !== networkFocusedNode.id)); }}>Allocate now</button></div></> : <><small>FOCUSED NODE</small><h3>Select a Network node</h3><p>Tap a node, use search, press the arrow keys, or use a controller D-pad to inspect it without spending a point.</p></>}
+          </article>
+          <article className="network-plan-card">
+            <div className="network-plan-heading"><div><small>PLANNED BUILD</small><b>{networkPlanTargets.length ? `${networkPlanTargets.length} target${networkPlanTargets.length === 1 ? '' : 's'}` : 'No targets yet'}</b></div>{networkPlanTargets.length > 0 && <button onClick={() => setNetworkPlanTargets([])}>Clear plan</button>}</div>
+            <div className="network-plan-summary"><span><small>TOTAL COST</small><b>{networkPlan.pointCost} PT</b></span><span><small>AVAILABLE NOW</small><b>{profile.progressionPoints} PT</b></span><span className={networkPlanShortfall > 0 ? 'shortfall' : 'ready'}><small>{networkPlanShortfall > 0 ? 'FUTURE POINTS NEEDED' : 'STATUS'}</small><b>{networkPlanShortfall > 0 ? networkPlanShortfall : networkPlan.pointCost > 0 ? 'AFFORDABLE' : 'READY'}</b></span><span><small>ROUTE NODES</small><b>{networkPlan.nodeIds.length}</b></span></div>
+            {networkPlanTargets.length > 0 && <div className="network-plan-targets">{networkPlanTargets.map(id => { const node = progressionNodes.find(entry => entry.id === id); const unresolved = networkPlan.unresolvedTargetIds.includes(id); return <button key={id} className={unresolved ? 'unresolved' : ''} onClick={() => { setNetworkFocusId(id); toggleNetworkPlanTarget(id); }}><b>{node?.name ?? id}</b><small>{unresolved ? 'UNRESOLVED · REMOVE' : 'PLANNED · REMOVE'}</small></button>; })}</div>}
+            <div className="network-route-preview"><small>AGGREGATE PATH</small><span>{networkPlanNodeNames.length ? networkPlanNodeNames.join(' → ') : 'Add a target to preview the lowest-cost legal path. Shared route nodes are counted once.'}</span></div>
+          </article>
+        </div>
+        <div className="network-stat-preview" aria-label="Planned build before and after math"><small className="network-stat-title">BEFORE / AFTER BUILD MATH</small>{networkPlannerMetrics.map(metric => <span key={metric.label} className={metric.before !== metric.after ? 'changed' : ''}><small>{metric.label}</small><b>{metric.before} <i>→</i> {metric.after}</b></span>)}</div>
+      </section>
       <section className="operator-class-panel" aria-label="Operator classes">
         <header className="operator-class-heading"><div><small>OPERATOR CLASS // FIELD DOCTRINE</small><b>{operatorClassDefinition.name} · {operatorClassDefinition.identity}</b><span>{operatorClassDefinition.description}</span></div><div className="resonance-meter"><small>GEAR RESONANCE</small><b>{classResonance.count}/4</b><span>{classResonance.tier === 2 ? 'TIER II ACTIVE' : classResonance.tier === 1 ? 'TIER I ACTIVE' : 'BUILDING'}</span></div></header>
         <div className="operator-class-grid">{operatorClassDefinitions.map(definition => { const active = definition.id === operatorClass; const resonance = gearResonanceForProfile(profile, definition.id); const kit = classAbilityKits[definition.id]; return <button key={definition.id} className={active ? 'selected' : ''} aria-pressed={active} onClick={() => applyResult(setOperatorClass(profile, definition.id))}><small>{definition.identity}</small><b>{definition.name}</b><span><strong>{definition.signatureName}</strong> // {definition.signatureDescription}</span><em>{definition.combatLoop}</em><strong>LV1 KIT // {kit.map(ability => ability.shortName).join(' · ')}</strong><strong>{definition.branchAffinities.join(' + ')} affinity · {resonance.count}/4 resonant frames</strong></button>; })}</div>
@@ -468,7 +559,7 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
         {profile.level < 15 ? <div className="specialization-lock"><b>REACH OPERATOR LEVEL 15</b><span>Your class, gear resonance, Lenses, and Network remain fully active before specialization unlocks.</span></div> : <><div className="specialization-grid">{availableSpecializations.map(definition => { const selectedSpec = profile.specialization === definition.id; const gearLink = specializationGearSynergyDefinitions.find(entry => entry.specialization === definition.id); return <article key={definition.id} className={selectedSpec ? 'selected' : ''}><button className="specialization-select" onClick={() => { onProfileChange(setSpecialization(profile, definition.id)); setMessage(`${definition.name} specialization active // ${definition.tradeoff}`); }}><small>{definition.identity}</small><b>{definition.name}</b><span>{definition.description}</span><em>TRADEOFF // {definition.tradeoff}</em></button>{selectedSpec && <div className="overclock-row"><div><b>LV16 OVERCLOCK</b><span>{profile.level >= 16 ? definition.overclock : 'Reach level 16 to unlock the optional overclock.'}</span><small>{profile.level >= 16 ? `TRADEOFF // ${definition.overclockTradeoff}` : 'LOCKED'}</small></div><button disabled={profile.level < 16} className={profile.specializationOverclock ? 'active' : ''} onClick={() => { const next = !profile.specializationOverclock; onProfileChange(setSpecializationOverclock(profile, next)); setMessage(`${definition.name} overclock ${next ? 'enabled' : 'disabled'}.`); }}>{profile.specializationOverclock ? 'Overclock on' : 'Enable overclock'}</button></div>}{selectedSpec && gearLink && <div className="overclock-row gear-link-row"><div><b>GEAR LINK // {gearLink.name}</b><span>{gearLink.description}</span><small>{activeGearSynergy?.active ? `ACTIVE // ${activeGearSynergy.matchingItemIds.length} MATCHED FRAME${activeGearSynergy.matchingItemIds.length === 1 ? '' : 'S'}` : `REQUIRES // ${gearLink.requirement}`}</small></div><strong>{activeGearSynergy?.active ? 'ONLINE' : 'BUILDING'}</strong></div>}</article>; })}</div>{profile.specialization && <div className="specialization-grid" aria-label="Specialization Operator Network route">{specializationNetworkNodes.map(node => { const milestoneActive = !!node.milestone && operatorNetworkMilestoneActive(operatorNetwork, node.id, operatorNetworkContext); const allocated = profile.allocatedNodes.includes(node.id); const route = operatorNetworkRouteToNode(operatorNetwork, node.id, operatorNetworkContext); const active = milestoneActive || allocated; const adjacent = !!route && route.nodeIds.length === 1; const lacksPoints = profile.progressionPoints < node.allocationCost; const locked = !!node.milestone || allocated || !adjacent || lacksPoints; return <article key={node.id} className={active ? 'selected' : ''}><div className="overclock-row gear-link-row"><div><b>{node.kind.replace('specialization-', '').toUpperCase()} // {node.name}</b><span>{node.description}</span><small>{node.unlockLabel ? `UNLOCK // ${node.unlockLabel}` : node.minLevel ? `MILESTONE // LV${node.minLevel} + prior Network node` : 'NETWORK ROUTE'}</small></div>{node.milestone ? <strong>{milestoneActive ? 'ONLINE' : 'LOCKED'}</strong> : <button disabled={locked} onClick={() => applyResult(allocateNode(profile, node.id, operatorNetworkContext))}>{allocated ? 'ALLOCATED' : route ? `Allocate ${node.allocationCost} pt` : 'LOCKED'}</button>}</div></article>; })}</div>}</>}
       </section>
       <div className="network-wave-summary" aria-label="Deep Operator Network core wave status"><span><small>AUTHORED NODES</small><b>{progressionNodes.length + 3}</b></span><span><small>ALLOCATED</small><b>{profile.allocatedNodes.length}</b></span><span><small>BUILD-DEFINING ONLINE</small><b>{allocatedBuildDefiningNodes}</b></span><span><small>{operatorClassDefinition.name.toUpperCase()} WEAPON SECTOR</small><b>{ownedWeaponSectorNodes} NODES</b></span></div>
-      <div className="network-grid">{[...groups.entries()].map(([branch, nodes]) => <article key={branch} className={`network-branch ${classBranchAffinities.has(branch) ? 'class-affinity' : ''}`}><h3>{branch}{classBranchAffinities.has(branch) && <small>{operatorClassDefinition.name} affinity</small>}</h3>{nodes.map(node => { const allocated = profile.allocatedNodes.includes(node.id); const route = operatorNetworkRouteToNode(operatorNetwork, node.id, operatorNetworkContext); const wrongArsenal = !!node.weaponFamily && node.weaponFamily !== activeWeaponFamily; const exclusiveChoice = !!node.exclusiveGroup && progressionNodes.some(other => other.id !== node.id && other.exclusiveGroup === node.exclusiveGroup && profile.allocatedNodes.includes(other.id)); const adjacent = !!route && route.nodeIds.length === 1; const lacksPoints = profile.progressionPoints < node.allocationCost; const locked = !allocated && (wrongArsenal || exclusiveChoice || !adjacent || lacksPoints); return <button key={node.id} className={`${allocated ? 'allocated' : ''} ${node.major ? 'major' : ''} ${node.weaponFamily ? 'weapon-sector' : ''} ${node.weaponFamily === activeWeaponFamily ? 'owned-weapon-sector' : ''}`} disabled={allocated || locked} onClick={() => applyResult(allocateNode(profile, node.id, operatorNetworkContext))}><span>{node.kind === 'standard' ? '' : `${node.kind.toUpperCase()} // `}{node.name}</span><small className="network-node-meta">{node.kind.toUpperCase()} · {node.weaponFamily ? `${slotLabels[node.weaponFamily].toUpperCase()} SECTOR` : `${node.sector.toUpperCase()} SECTOR`} · {node.allocationCost} PT</small><small>{node.description}</small>{exclusiveChoice ? <em>Alternative Keystone already committed in this branch</em> : wrongArsenal ? <em>{slotLabels[node.weaponFamily!]} belongs to another class arsenal</em> : !allocated && route && route.nodeIds.length > 1 ? <em>Route {route.pointCost} pts // {route.nodeIds.length} nodes away</em> : !allocated && !route ? <em>No legal route from current class origin</em> : lacksPoints ? <em>Gain another progression point</em> : null}</button>; })}</article>)}</div>
+      <div className="network-grid">{[...groups.entries()].map(([branch, nodes]) => <article key={branch} className={`network-branch ${classBranchAffinities.has(branch) ? 'class-affinity' : ''}`}><h3>{branch}{classBranchAffinities.has(branch) && <small>{operatorClassDefinition.name} affinity</small>}</h3>{nodes.map(node => { const allocated = profile.allocatedNodes.includes(node.id); const route = operatorNetworkRouteToNode(operatorNetwork, node.id, operatorNetworkContext); const wrongArsenal = !!node.weaponFamily && node.weaponFamily !== activeWeaponFamily; const exclusiveChoice = !!node.exclusiveGroup && progressionNodes.some(other => other.id !== node.id && other.exclusiveGroup === node.exclusiveGroup && profile.allocatedNodes.includes(other.id)); const lacksPoints = profile.progressionPoints < node.allocationCost; const focused = networkFocusId === node.id; const planned = networkPlan.nodeIds.includes(node.id); const previewed = !!networkFocusedRoute?.nodeIds.includes(node.id); return <button type="button" data-network-node="true" key={node.id} aria-pressed={focused} className={`${allocated ? 'allocated' : ''} ${focused ? 'focused' : ''} ${planned ? 'planned' : ''} ${previewed ? 'route-preview' : ''} ${node.major ? 'major' : ''} ${node.weaponFamily ? 'weapon-sector' : ''} ${node.weaponFamily === activeWeaponFamily ? 'owned-weapon-sector' : ''}`} onFocus={() => setNetworkFocusId(node.id)} onClick={() => setNetworkFocusId(node.id)}><span>{node.kind === 'standard' ? '' : `${node.kind.toUpperCase()} // `}{node.name}</span><small className="network-node-meta">{node.kind.toUpperCase()} · {node.weaponFamily ? `${slotLabels[node.weaponFamily].toUpperCase()} SECTOR` : `${node.sector.toUpperCase()} SECTOR`} · {node.allocationCost} PT</small><small>{node.description}</small>{allocated ? <em>Allocated · active now</em> : exclusiveChoice ? <em>Alternative Keystone already committed in this branch</em> : wrongArsenal ? <em>{slotLabels[node.weaponFamily!]} belongs to another class arsenal</em> : route && route.nodeIds.length > 1 ? <em>Route {route.pointCost} pts // {route.nodeIds.length} nodes away · select to plan</em> : !route ? <em>No legal route from current class origin</em> : lacksPoints ? <em>Ready route · gain another progression point</em> : <em>Ready to allocate · select for actions</em>}</button>; })}</article>)}</div>
     </section>}
     {tab === 'protocols' && <section className="protocol-panel">
       <div className="section-copy"><h2>Class Skills</h2><p>Read every skill in the same order: Class Skill → Weapon Family → Lens/Evolution → Specialization/Capstone. The owned weapon family shapes skill tuning, while Lenses and class Evolutions change behavior without binding a skill to one specific weapon item.</p></div>

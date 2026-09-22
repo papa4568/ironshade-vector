@@ -30,6 +30,7 @@ const rootCss = read('src/index.css');
 const mobileCombatCss = read('src/mobileCombatReadability.css');
 const qolCss = read('src/qol.css');
 const classBuildCss = read('src/classBuilds.css');
+const progressionCss = read('src/part3.css');
 const classSelect = read('src/components/ClassSelectScreen.tsx');
 const classSelectCss = read('src/classSelection.css');
 const mobileUiAssets = read('src/game/mobileUiAssets.ts');
@@ -76,6 +77,9 @@ assert(statsPanel.includes('specializationGearSynergyForProfile') && statsPanel.
 assert(meta.includes("name: 'Thermal Shunter'") && meta.includes("specializationIds: ['grid-weaver', 'capacitor-conductor', 'thermal-shunter']") && sim.includes('systemsCrossfeed') && sim.includes('THERMAL CROSSFIRE'), 'P5.6 Systems third specialization is missing from class metadata or combat feedback.');
 assert(statsPanel.includes('capstoneInteractionFor') && statsPanel.includes('CAPSTONE ${activeCapstone.name}'), 'Build Stats does not surface active class capstone interactions.');
 assert(armory.includes('availableSpecializations.map'), 'Operator Network UI must render every class specialization from shared metadata.');
+assert(armory.includes('Search Operator Network') && armory.includes('BEFORE / AFTER BUILD MATH') && armory.includes('networkPlanTargets') && armory.includes('operatorNetworkPlan'), 'P9-E planner UI must expose search, persistent in-session plan state, aggregate pathing, and before/after build math.');
+assert(armory.includes('handleNetworkNavigation') && armory.includes("event.key === 'ArrowRight'") && armory.includes('navigator.getGamepads()') && armory.includes('buttons[15]'), 'P9-E progression navigation must support keyboard/controller directional input in addition to touch.');
+assert(progressionCss.includes('P9-E // Operator Network planner') && progressionCss.includes('.network-branch button.planned') && progressionCss.includes('@media (max-width: 900px)'), 'P9-E planner presentation is missing planned-route cues or mobile responsive controls.');
 assert(armory.includes('CAPSTONE LINK //') && armory.includes('capstoneInteractionFor'), 'Build Skills UI does not surface active specialization/evolution capstone links.');
 assert(!armory.includes('Review faction doctrines'), 'Equipment Bay still advertises undiscovered faction doctrine targets.');
 assert(!armory.includes('2 PIECE'), 'Equipment Bay still exposes 2-piece set targets.');
