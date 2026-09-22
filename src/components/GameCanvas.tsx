@@ -343,9 +343,47 @@ function renderGame(ctx: CanvasRenderingContext2D, state: SimState, width: numbe
 function hudFrom(state: SimState): HudState { const sector = getPlayerSector(state); const p = state.player; const boss = getBoss(state); const context = getContextAction(state); const squadRemaining = getSquadRemaining(state); const classStatus = getClassMechanicStatus(state); return { classId: classStatus.id, classLabel: classStatus.label, classDetail: classStatus.detail, classActive: classStatus.active, hp: p.hp, maxHp: p.maxHp, armor: p.armor, maxArmor: p.maxArmor, capacitor: p.capacitor, maxCapacitor: p.maxCapacitor, mag: p.mags[p.currentWeapon], heat: p.weaponHeat[p.currentWeapon], weapon: p.currentWeapon, ability: [...p.abilityCooldowns] as [number, number, number], dodge: p.dodgeCooldown, reload: p.reloadT, venting: p.ventT > 0, dead: p.dead, complete: state.complete, kills: state.kills, squadRemaining, extractionReady: state.bossGateHold && squadRemaining === 0 && !state.bossActive && !state.complete, pressureState: sector.pressureState, pressure: sector.pressure, gravity: sector.gravity, eventText: state.eventText, eventT: state.eventT, contextLabel: context?.label ?? '', bossActive: state.bossActive && !!boss && !boss.dead, bossLabel: boss?.label ?? 'Deep-zone target', bossHp: boss?.hp ?? 0, bossMaxHp: boss?.maxHp ?? 1, bossArmor: boss?.armor ?? 0, bossMaxArmor: boss?.maxArmor ?? 1, bossPhase: boss?.bossPhase ?? 1, bossPattern: boss?.bossPattern ?? 'none', commandTargetMutationNames: boss?.commandTargetMutations.map(commandTargetMutationName) ?? [], bossPhaseMutationNames: boss?.bossPhaseMutations.map(id => bossPhaseMutationPresentationFor(id).shortName) ?? [], vacuumExposure: p.vacuumExposure, disrupted: p.disrupted, consumableCooldown: p.consumableCooldown, damageDealt: state.telemetry.damageDealt, damageTaken: state.telemetry.damageTaken, shots: { ...state.telemetry.weaponShots }, abilityUses: [...state.telemetry.abilityUses] as [number, number, number] }; }
 function useCoarsePointer() { const [coarse, setCoarse] = useState(() => typeof window !== 'undefined' && (window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900)); useEffect(() => { const update = () => setCoarse(window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900); window.addEventListener('resize', update); return () => window.removeEventListener('resize', update); }, []); return coarse; }
 function pct(value: number, max: number) { return `${Math.max(0, Math.min(100, value / Math.max(1, max) * 100))}%`; }
-type FeedbackSnapshot = { damageTaken: number; damageDealt: number; armor: number; reload: boolean; eventText: string; bossPattern: string; collectedLoot: number; impactSerial: number };
+type FeedbackSnapshot = {
+  damageTaken: number;
+  damageDealt: number;
+  armor: number;
+  reload: boolean;
+  reloadWeapon: WeaponId;
+  vent: boolean;
+  ventWeapon: WeaponId;
+  eventText: string;
+  bossPattern: string;
+  bossPhase: number;
+  telegraphToken: string;
+  collectedLoot: number;
+  impactSerial: number;
+};
+function activeTelegraphToken(state: SimState) {
+  return state.enemies.filter(enemy => enemy.active && !enemy.dead && enemy.telegraph > 0.01).map(enemy => enemy.id).sort((a, b) => a - b).join(',');
+}
+function feedbackSnapshotFrom(state: SimState): FeedbackSnapshot {
+  const boss = getBoss(state);
+  return {
+    damageTaken: state.telemetry.damageTaken,
+    damageDealt: state.telemetry.damageDealt,
+    armor: state.player.armor,
+    reload: state.player.reloadT > 0,
+    reloadWeapon: state.player.reloadWeapon,
+    vent: state.player.ventT > 0,
+    ventWeapon: state.player.currentWeapon,
+    eventText: state.eventText,
+    bossPattern: boss?.bossPattern ?? 'none',
+    bossPhase: boss?.bossPhase ?? 1,
+    telegraphToken: activeTelegraphToken(state),
+    collectedLoot: state.collectedLoot.length,
+    impactSerial: state.impactSerial,
+  };
+}
 function syncCombatFeedback(state: SimState, previous: FeedbackSnapshot, mission: Contract): FeedbackSnapshot {
-  const boss = getBoss(state); const reload = state.player.reloadT > 0; const sector = getPlayerSector(state);
+  const boss = getBoss(state);
+  const reload = state.player.reloadT > 0;
+  const vent = state.player.ventT > 0;
+  const sector = getPlayerSector(state);
   feedback.setEnvironment(combatAudioEnvironment(mission.location, sector.pressureState));
   if (state.telemetry.damageTaken > previous.damageTaken) feedback.cue('damage'); else if (state.player.armor < previous.armor) feedback.cue('armor');
   if (state.impactEvent && state.impactEvent.serial > previous.impactSerial) {
@@ -356,12 +394,35 @@ function syncCombatFeedback(state: SimState, previous: FeedbackSnapshot, mission
   } else if (state.telemetry.damageDealt > previous.damageDealt) {
     feedback.impact('field');
   }
-  if (reload && !previous.reload) feedback.cue('reload');
-  if (state.eventText !== previous.eventText) { const text = state.eventText.toUpperCase(); if (text.includes('BREACH') || text.includes('DECOMPRESS') || text.includes('PURGE') || text.includes('BOILOFF')) feedback.cue('breach'); else if (text.includes('GRAVITY') || text.includes('SPIN') || text.includes('COUNTERMASS') || text.includes('COUNTERFORCE') || text.includes('RECOIL VECTOR')) feedback.cue('gravity'); else if (text.includes('GRID') || text.includes('ANCHOR') || text.includes('INTERLOCK') || text.includes('MANIFOLD') || text.includes('RECOVERY TAG') || text.includes('SIPHON') || text.includes('PARTITION') || text.includes('SHUTTER') || text.includes('CUSTODY') || text.includes('RELAY') || text.includes('GEOMETRY')) feedback.cue('machinery'); }
+
+  if (reload && !previous.reload) feedback.foley('reload', state.player.reloadWeapon, 'start');
+  else if (!reload && previous.reload && state.player.currentWeapon === previous.reloadWeapon) feedback.foley('reload', previous.reloadWeapon, 'complete');
+  if (vent && !previous.vent) feedback.foley('vent', state.player.currentWeapon, 'start');
+  else if (!vent && previous.vent) feedback.foley('vent', previous.ventWeapon, 'complete');
+
+  if (state.eventText !== previous.eventText) {
+    const text = state.eventText.toUpperCase();
+    if (text.includes('BREACH') || text.includes('DECOMPRESS') || text.includes('PURGE') || text.includes('BOILOFF')) feedback.cue('breach');
+    else if (text.includes('GRAVITY') || text.includes('SPIN') || text.includes('COUNTERMASS') || text.includes('COUNTERFORCE') || text.includes('RECOIL VECTOR')) feedback.cue('gravity');
+    else if (text.includes('GRID') || text.includes('ANCHOR') || text.includes('INTERLOCK') || text.includes('MANIFOLD') || text.includes('RECOVERY TAG') || text.includes('SIPHON') || text.includes('PARTITION') || text.includes('SHUTTER') || text.includes('CUSTODY') || text.includes('RELAY') || text.includes('GEOMETRY')) feedback.cue('machinery');
+  }
+
   const latestLoot = state.collectedLoot[state.collectedLoot.length - 1];
   if (state.collectedLoot.length > previous.collectedLoot && latestLoot) feedback.cue(groundLootPresentation(latestLoot.rarity).pickupCue);
-  const bossPattern = boss?.bossPattern ?? 'none'; if (bossPattern !== 'none' && bossPattern !== previous.bossPattern) feedback.cue('enemy');
-  return { damageTaken: state.telemetry.damageTaken, damageDealt: state.telemetry.damageDealt, armor: state.player.armor, reload, eventText: state.eventText, bossPattern, collectedLoot: state.collectedLoot.length, impactSerial: state.impactSerial };
+
+  const bossPattern = boss?.bossPattern ?? 'none';
+  const bossPhase = boss?.bossPhase ?? 1;
+  const telegraphing = state.enemies.filter(enemy => enemy.active && !enemy.dead && enemy.telegraph > 0.01);
+  const previousTelegraphs = new Set(previous.telegraphToken.split(',').filter(Boolean));
+  const freshTelegraph = telegraphing
+    .filter(enemy => !previousTelegraphs.has(String(enemy.id)))
+    .sort((a, b) => (b.role === 'boss' ? 3 : b.role === 'elite' ? 2 : 1) - (a.role === 'boss' ? 3 : a.role === 'elite' ? 2 : 1))[0];
+
+  if (boss && bossPhase > previous.bossPhase) feedback.threat('boss-phase');
+  else if (bossPattern !== 'none' && bossPattern !== previous.bossPattern) feedback.threat('boss-telegraph');
+  else if (freshTelegraph) feedback.threat(freshTelegraph.role === 'boss' ? 'boss-telegraph' : freshTelegraph.role === 'elite' ? 'elite-telegraph' : 'enemy-telegraph');
+
+  return feedbackSnapshotFrom(state);
 }
 
 export default function GameCanvas({ build, mission, profileSettings, consumables, buildLabel, operatorFaction, onProfileSettingsChange, onConsumablesChange, onMissionResolve, onAttemptFailed, onReturnToHub }: Props) {
@@ -390,7 +451,7 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
     }
     return state;
   }, [build]);
-  const canvasRef = useRef<HTMLCanvasElement>(null); const threeRendererRef = useRef<ThreeCombatRenderer | null>(null); const [initialMissionState] = useState(() => createMissionState(firstMission)); const stateRef = useRef<SimState>(initialMissionState); const [initialDirector] = useState(() => createDirector()); const directorRef = useRef<DirectorRuntime>(initialDirector); const keysRef = useRef(new Set<string>()); const fireSourcesRef = useRef({ mouse: false, aim: false, button: false }); const coarse = useCoarsePointer(); const [restartKey, setRestartKey] = useState(0); const [hud, setHud] = useState<HudState>(() => hudFrom(stateRef.current)); const moveStick = useRef<StickState>(null); const aimStick = useRef<StickState>(null); const mobileTargetControlRef = useRef<TargetControlMemory>(createTargetControlMemory()); const manualAimUntilRef = useRef(0); const manualAimPointerRef = useRef<number | null>(null); const tutorialStepRef = useRef(profileSettings.tutorialComplete ? 5 : 0); const [tutorialStep, setTutorialStep] = useState(tutorialStepRef.current); const feedbackSnapshotRef = useRef<FeedbackSnapshot>({ damageTaken: 0, damageDealt: 0, armor: stateRef.current.player.armor, reload: false, eventText: '', bossPattern: 'none', collectedLoot: stateRef.current.collectedLoot.length, impactSerial: stateRef.current.impactSerial });
+  const canvasRef = useRef<HTMLCanvasElement>(null); const threeRendererRef = useRef<ThreeCombatRenderer | null>(null); const [initialMissionState] = useState(() => createMissionState(firstMission)); const stateRef = useRef<SimState>(initialMissionState); const [initialDirector] = useState(() => createDirector()); const directorRef = useRef<DirectorRuntime>(initialDirector); const keysRef = useRef(new Set<string>()); const fireSourcesRef = useRef({ mouse: false, aim: false, button: false }); const coarse = useCoarsePointer(); const [restartKey, setRestartKey] = useState(0); const [hud, setHud] = useState<HudState>(() => hudFrom(stateRef.current)); const moveStick = useRef<StickState>(null); const aimStick = useRef<StickState>(null); const mobileTargetControlRef = useRef<TargetControlMemory>(createTargetControlMemory()); const manualAimUntilRef = useRef(0); const manualAimPointerRef = useRef<number | null>(null); const tutorialStepRef = useRef(profileSettings.tutorialComplete ? 5 : 0); const [tutorialStep, setTutorialStep] = useState(tutorialStepRef.current); const feedbackSnapshotRef = useRef<FeedbackSnapshot>(feedbackSnapshotFrom(stateRef.current));
   const consumableStockRef = useRef<ConsumableInventory>({ ...consumables });
   const profileSettingsRef = useRef(profileSettings);
   const [consumableStock, setConsumableStock] = useState<ConsumableInventory>(() => ({ ...consumables }));
@@ -424,9 +485,9 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
     setTargetAnnouncement(`Assisted target locked: ${target?.label ?? 'hostile'}.`);
     return targetId;
   }, []);
-  const restart = useCallback(() => { const startMission = mission.megastructure ? getMegastructureStageContract(mission, 0) : mission; expeditionStageRef.current = 0; expeditionTagsRef.current = 0; expeditionOptionalRef.current = 0; setPendingTransit(null); activeMissionRef.current = startMission; setActiveMission(startMission); stateRef.current = createMissionState(startMission); directorRef.current = createDirector(); setHud(hudFrom(stateRef.current)); fireSourcesRef.current = { mouse: false, aim: false, button: false }; clearAssistedTarget(); manualAimUntilRef.current = 0; manualAimPointerRef.current = null; feedbackSnapshotRef.current = { damageTaken: 0, damageDealt: 0, armor: stateRef.current.player.armor, reload: false, eventText: '', bossPattern: 'none', collectedLoot: stateRef.current.collectedLoot.length, impactSerial: stateRef.current.impactSerial }; setRestartKey(value => value + 1); }, [clearAssistedTarget, createMissionState, mission]);
+  const restart = useCallback(() => { const startMission = mission.megastructure ? getMegastructureStageContract(mission, 0) : mission; expeditionStageRef.current = 0; expeditionTagsRef.current = 0; expeditionOptionalRef.current = 0; setPendingTransit(null); activeMissionRef.current = startMission; setActiveMission(startMission); stateRef.current = createMissionState(startMission); directorRef.current = createDirector(); setHud(hudFrom(stateRef.current)); fireSourcesRef.current = { mouse: false, aim: false, button: false }; clearAssistedTarget(); manualAimUntilRef.current = 0; manualAimPointerRef.current = null; feedbackSnapshotRef.current = feedbackSnapshotFrom(stateRef.current); setRestartKey(value => value + 1); }, [clearAssistedTarget, createMissionState, mission]);
   const beginMegastructureTransit = useCallback(() => { const current = stateRef.current; const optionalRecovered = current.objects.some(object => object.id === 'mega-optional-cache' && object.exposed) ? 1 : 0; const nextStage = expeditionStageRef.current + 1; const nextMission = getMegastructureStageContract(mission, nextStage); setPendingTransit({ nextStage, nextMission, optionalRecovered }); }, [mission]);
-  const completeMegastructureTransit = useCallback(() => { if (!pendingTransit) return; const current = stateRef.current; expeditionTagsRef.current += current.kills + pendingTransit.optionalRecovered * 2; expeditionOptionalRef.current += pendingTransit.optionalRecovered; const nextState = createMissionState(pendingTransit.nextMission, current); expeditionStageRef.current = pendingTransit.nextStage; activeMissionRef.current = pendingTransit.nextMission; setActiveMission(pendingTransit.nextMission); stateRef.current = nextState; directorRef.current = createDirector(); fireSourcesRef.current = { mouse: false, aim: false, button: false }; clearAssistedTarget(); setHud(hudFrom(nextState)); feedbackSnapshotRef.current = { damageTaken: nextState.telemetry.damageTaken, damageDealt: nextState.telemetry.damageDealt, armor: nextState.player.armor, reload: false, eventText: '', bossPattern: 'none', collectedLoot: nextState.collectedLoot.length, impactSerial: nextState.impactSerial }; setPendingTransit(null); setRestartKey(value => value + 1); }, [clearAssistedTarget, createMissionState, pendingTransit]);
+  const completeMegastructureTransit = useCallback(() => { if (!pendingTransit) return; const current = stateRef.current; expeditionTagsRef.current += current.kills + pendingTransit.optionalRecovered * 2; expeditionOptionalRef.current += pendingTransit.optionalRecovered; const nextState = createMissionState(pendingTransit.nextMission, current); expeditionStageRef.current = pendingTransit.nextStage; activeMissionRef.current = pendingTransit.nextMission; setActiveMission(pendingTransit.nextMission); stateRef.current = nextState; directorRef.current = createDirector(); fireSourcesRef.current = { mouse: false, aim: false, button: false }; clearAssistedTarget(); setHud(hudFrom(nextState)); feedbackSnapshotRef.current = feedbackSnapshotFrom(nextState); setPendingTransit(null); setRestartKey(value => value + 1); }, [clearAssistedTarget, createMissionState, pendingTransit]);
   const advanceTutorial = useCallback((completedStep: number) => { if (tutorialStepRef.current !== completedStep) return; const next = completedStep + 1; tutorialStepRef.current = next; setTutorialStep(next); if (next >= 5) onProfileSettingsChange({ tutorialComplete: true }); }, [onProfileSettingsChange]);
   const fireCurrent = useCallback((targetingIntent: 'manual' | 'acquire' = 'manual', preferredTargetId: number | null = null) => { const state = stateRef.current; const fired = triggerFire(state, targetingIntent, preferredTargetId); if (fired) { feedback.cue(state.player.currentWeapon); advanceTutorial(1); } return fired; }, [advanceTutorial]);
   const useAbility = useCallback((index: number, source: 'default' | 'gamepad' = 'default') => {
@@ -436,7 +497,7 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
     const assistedTargeting = !manualTargeting && abilityUsesTargetAcquisition(state, index);
     const targetId = assistedTargeting ? updateAssistedTarget(state, profileSettings.aimAssist) : null;
     if (!assistedTargeting) clearAssistedTarget();
-    if (triggerAbility(state, index, assistedTargeting ? 'acquire' : 'manual', targetId)) { feedback.cue('ability'); advanceTutorial(2); }
+    if (triggerAbility(state, index, assistedTargeting ? 'acquire' : 'manual', targetId)) { if (state.build.operatorClass) feedback.skill(state.build.operatorClass, index); else feedback.cue('ability'); advanceTutorial(2); }
   }, [advanceTutorial, clearAssistedTarget, coarse, profileSettings.aimAssist, updateAssistedTarget]);
   const useDodge = useCallback(() => { feedback.unlock(); if (triggerDodge(stateRef.current)) { feedback.cue('dodge'); advanceTutorial(3); } }, [advanceTutorial]);
   const useInteract = useCallback(() => { feedback.unlock(); if (triggerInteract(stateRef.current)) advanceTutorial(4); }, [advanceTutorial]);
@@ -453,7 +514,7 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
     return true;
   }, [onConsumablesChange]);
   useEffect(() => { const clearInputs = () => { keysRef.current.clear(); fireSourcesRef.current = { mouse: false, aim: false, button: false }; moveStick.current = null; aimStick.current = null; clearAssistedTarget(); gamepadButtonsRef.current = []; gamepadAimActiveRef.current = false; gamepadMoveActiveRef.current = false; manualAimPointerRef.current = null; setMove(stateRef.current, { x: 0, y: 0 }); document.querySelectorAll<HTMLElement>('.touch-stick').forEach(element => { element.style.setProperty('--knob-x', '0px'); element.style.setProperty('--knob-y', '0px'); }); }; const onVisibility = () => { if (document.hidden) clearInputs(); }; window.addEventListener('blur', clearInputs); document.addEventListener('visibilitychange', onVisibility); return () => { window.removeEventListener('blur', clearInputs); document.removeEventListener('visibilitychange', onVisibility); }; }, []);
-  useEffect(() => { const down = (event: KeyboardEvent) => { feedback.unlock(); keysRef.current.add(event.code); if (['KeyW','KeyA','KeyS','KeyD'].includes(event.code)) advanceTutorial(0); if (event.code === 'Space') { event.preventDefault(); useDodge(); } if (event.code === 'KeyQ') useAbility(0); if (event.code === 'KeyE') useAbility(1); if (event.code === 'KeyF') useAbility(2); if (event.code === 'KeyR' && triggerReload(stateRef.current)) feedback.cue('reload'); if (event.code === 'KeyV') triggerVent(stateRef.current); if (event.code === 'KeyX') useInteract(); if (event.code === 'Digit4') useConsumable('medGel'); if (event.code === 'Digit5') useConsumable('armorPatch'); if (event.code === 'Digit6') useConsumable('capacitorCell'); }; const up = (event: KeyboardEvent) => keysRef.current.delete(event.code); window.addEventListener('keydown', down); window.addEventListener('keyup', up); return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); }; }, [advanceTutorial, useAbility, useDodge, useInteract, useConsumable]);
+  useEffect(() => { const down = (event: KeyboardEvent) => { feedback.unlock(); keysRef.current.add(event.code); if (['KeyW','KeyA','KeyS','KeyD'].includes(event.code)) advanceTutorial(0); if (event.code === 'Space') { event.preventDefault(); useDodge(); } if (event.code === 'KeyQ') useAbility(0); if (event.code === 'KeyE') useAbility(1); if (event.code === 'KeyF') useAbility(2); if (event.code === 'KeyR') triggerReload(stateRef.current); if (event.code === 'KeyV') triggerVent(stateRef.current); if (event.code === 'KeyX') useInteract(); if (event.code === 'Digit4') useConsumable('medGel'); if (event.code === 'Digit5') useConsumable('armorPatch'); if (event.code === 'Digit6') useConsumable('capacitorCell'); }; const up = (event: KeyboardEvent) => keysRef.current.delete(event.code); window.addEventListener('keydown', down); window.addEventListener('keyup', up); return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); }; }, [advanceTutorial, useAbility, useDodge, useInteract, useConsumable]);
   useEffect(() => { const canvas = canvasRef.current; if (!canvas) return; let threeRenderer: ThreeCombatRenderer | null = null; if (ThreeCombatRenderer.isSupported()) { try { threeRenderer = new ThreeCombatRenderer(canvas, coarse); } catch (error) { console.warn('Three.js renderer unavailable; falling back to Canvas 2D.', error); } } threeRendererRef.current = threeRenderer; const ctx = threeRenderer ? null : canvas.getContext('2d'); if (!threeRenderer && !ctx) return; let frame = 0; let previous = performance.now(); let accumulator = 0; let hudTimer = 0; const fixed = 1 / 60; const loop = (now: number) => { const elapsed = Math.min(0.05, (now - previous) / 1000); previous = now; accumulator += elapsed; const state = stateRef.current; const keys = keysRef.current; const keyMove = { x: (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0), y: (keys.has('KeyS') ? 1 : 0) - (keys.has('KeyW') ? 1 : 0) };
       const gamepad = typeof navigator.getGamepads === 'function' ? Array.from(navigator.getGamepads()).find(candidate => candidate && candidate.connected !== false) ?? null : null;
       const axis = (index: number) => Math.abs(gamepad?.axes[index] ?? 0) >= 0.18 ? gamepad?.axes[index] ?? 0 : 0;
@@ -476,7 +537,7 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
       if (gamepad) {
         if (gamepadJustPressed(0)) useDodge();
         if (gamepadJustPressed(2)) useInteract();
-        if (gamepadJustPressed(3) && triggerReload(state)) feedback.cue('reload');
+        if (gamepadJustPressed(3)) triggerReload(state);
         if (gamepadJustPressed(4)) useAbility(0, 'gamepad');
         if (gamepadJustPressed(5)) useAbility(1, 'gamepad');
         if (gamepadJustPressed(6)) useAbility(2, 'gamepad');
