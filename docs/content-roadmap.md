@@ -93,7 +93,7 @@ Target roughly **120–180 authored nodes**, delivered in bounded waves.
 
 Target roughly **6 major tiers per system** with sub-milestones.
 
-- [ ] **P11-A Architecture/migration** — tier schema, dependency graph, steep cost curve, campaign/faction/boss/Directive/Trace gates, fair old-tier conversion
+- [x] **P11-A Architecture/migration** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
 - [ ] **P11-B Engineering wave** — Reactor, Vector Drive, Armor Locker, Long-Baseline Sensors
 - [ ] **P11-C Support wave** — Cargo Grid, Microforge, Trauma Bay, Support Drone Rack
 - [ ] **P11-D Advanced specialization** — mutually exclusive high-tier packages + prerequisite/resource previews
@@ -159,21 +159,22 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P11-A — Architecture/migration.**
+**Next: P11-B — Engineering wave.**
 
-Run **P11-A — Architecture/migration** on the verified P10 crafting economy: define the roughly six-tier ship-system schema, prerequisite/dependency graph, steep cost curve, campaign/faction/boss/Directive/Trace gates, and a fair conversion path for existing two-tier ship upgrades without invalidating current saves or making early upgrades worthless.
+Run **P11-B — Engineering wave** on the verified Ship Systems 2.0 schema: author the higher-tier Reactor, Vector Drive, Armor Locker, and Long-Baseline Sensors effects behind the P11-A dependency/resource/progression gates, preserve the existing Tier 1/2 value, and keep each engineering system's combat payoff readable before purchase.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.259**
+- Android beta: **0.0.1-beta.260**
 - Package: `app.ironshade.vector`
-- Verified: **P10-F Economy + touch QA complete**
-- Gameplay source: `3849eeb3417e41523b59797708d4b5cb8f449670`
-- Browser E2E: `35744622874`
-- Level 15 beta smoke: `35744622858`
-- Android beta.259: `35744622900`
-- APK artifact: `10702833136`
-- APK SHA-256: `8bf25f6932ba01e74e2ea5629b55c8aea347b8c0630f6a83f22da747cfcc91d2`
+- Verified: **P11-A Ship Systems 2.0 architecture/migration complete**
+- Gameplay source: `6b77b21207debed368242c22ebf0441f34014bd3`
+- PR Browser E2E: `35747372577`
+- Browser E2E: `35747683537`
+- Level 15 beta smoke: `35747683572`
+- Android beta.260: `35747683631`
+- APK artifact: `10703872967`
+- APK SHA-256: `b98802bf0476cd8aa96ad2ff333638c8a0a0fcd5dece25510845c3e8b3332453`
 - Signing: debug-signed beta; permanent signing is P17-A
