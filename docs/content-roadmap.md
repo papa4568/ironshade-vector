@@ -104,7 +104,7 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 - [x] **P12-A Weapon audio** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
 - [x] **P12-B Impact/environment audio** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
-- [ ] **P12-C Information mix** — reload/vent Foley, class skill audio, enemy/boss tells, priority-aware dynamic mixing
+- [x] **P12-C Information mix** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
 - [ ] **P12-D Player handling animation** — class stance, aim offsets, recoil, reload/charge/vent/overheat, dodge weight
 - [ ] **P12-E Skill/damage animation** — anticipation/action/recovery/cancel windows, hit/stagger/armor-break reactions
 - [ ] **P12-F Enemy/boss animation** — locomotion/attack tells, phase transitions, additive modifier/status layers
@@ -159,22 +159,22 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P12-C — Information mix.**
+**Next: P12-D — Player handling animation.**
 
-Run **P12-C — Information mix** as the next AAA Combat Feel batch: add reload/vent Foley, class skill audio, enemy/boss tells, and priority-aware dynamic mixing while preserving the verified P12-A/P12-B weapon, impact, and pressure-acoustic identities and keeping the mobile audio budget bounded.
+Run **P12-D — Player handling animation** as the next AAA Combat Feel batch: give each class a readable authored stance and aim-offset language, synchronize recoil with the verified weapon audio/handling identities, and add reload/charge/vent/overheat/dodge weight without changing combat timing or class ownership.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.270**
+- Android beta: **0.0.1-beta.271**
 - Package: `app.ironshade.vector`
-- Verified: **P12-B AAA Combat Feel Impact/environment audio complete**
-- Gameplay source: `6de3866c639738978913b5fa3de2c58e17c2f2a8`
-- PR Browser E2E: `35784774204`
-- Browser E2E: `35784924206`
-- Level 15 beta smoke: `35784924035`
-- Android beta.270: `35784924062`
-- APK artifact: `10719980945`
-- APK SHA-256: `f50a796365eaacf3ff1820799f29a7f040ee9c90b13ef34e1baa1237d49f7678`
+- Verified: **P12-C AAA Combat Feel Information mix complete**
+- Gameplay source: `744141a82507962ba9f87c827d3b93eb9f5e0e8a`
+- PR Browser E2E: `35786697567`
+- Browser E2E: `35786928547`
+- Level 15 beta smoke: `35786928506`
+- Android beta.271: `35786928605`
+- APK artifact: `10720707170`
+- APK SHA-256: `59a960c986cebe844e5c2236bf5f179a5e78917cd27b9f6127deb552f75244c8`
 - Signing: debug-signed beta; permanent signing is P17-A
