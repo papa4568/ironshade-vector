@@ -54,7 +54,7 @@ assert.equal(systems.aimOffset, 1);
 assert.notEqual(vanguard.profile.aimLean, vector.profile.aimLean);
 assert.notEqual(vector.profile.aimLean, systems.profile.aimLean);
 
-assert.equal(sample('vector', 'rail', { firingIntent: true, fireCooldown: 0.45 }).charge, 0, 'Rail charge starts after a committed shot');
+assert.equal(sample('vector', 'rail', { firingIntent: true, fireCooldown: 1.22 }).charge, 0, 'Rail charge starts after a committed shot');
 assert.ok(sample('vector', 'rail', { firingIntent: true, fireCooldown: 0.1 }).charge > 0.8, 'Rail charge should visibly rise between held-fire shots');
 assert.equal(sample('systems', 'carbine', { firingIntent: true, fireCooldown: 0.02 }).charge, 0, 'Carbine should not reuse rail charge posture');
 assert.equal(sample('vanguard', 'breacher', { firingIntent: true, fireCooldown: 0.1 }).charge, 0, 'Breacher should not reuse rail charge posture');
