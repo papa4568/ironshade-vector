@@ -802,3 +802,15 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Android artifact `10702833136` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.259`, debug signing, and APK SHA-256 `8bf25f6932ba01e74e2ea5629b55c8aea347b8c0630f6a83f22da747cfcc91d2`.
   - **Next: P11-A — Architecture/migration.**
 
+## P11 — Ship Systems 2.0
+
+- [x] **P11-A Architecture/migration** — replaced the old hard-coded two-tier prototype contract with an explicit Ship Systems 2.0 schema covering all eight existing systems across six major tiers while preserving every live Tier 1/2 cost and gameplay effect.
+  - Added schema version 2, six-tier records, per-system ownership/dependency metadata, steeply escalating resource curves, and explicit campaign/faction/boss/Operation Directive/Quarantined Trace gates. Higher tiers depend on the paired system's previous tier so the graph has no same-tier deadlocks.
+  - Reactor, Vector Drive, Armor Locker, Cargo Recovery Grid, Long-Baseline Sensors, Microforge, Trauma Bay, and Support Drone Rack keep their existing IDs and paid Tier 1/2 value. Tier 3–6 blueprints are visible but implementation-locked until P11-B/P11-C so architecture work cannot grant unfinished combat power.
+  - Legacy campaign and atomic saves without the ship-system schema marker normalize into schema v2, preserve valid paid Tier 1/2 levels, clamp impossible pre-schema levels back to the old ceiling, revalidate the canonical campaign, and rewrite the repaired atomic envelope without deleting player progression.
+  - The Systems hub now shows Tier X/6, current installed effect, the next mapped blueprint, and unmet gate labels; future tiers are disclosed as queued rather than masquerading as purchasable upgrades.
+  - Added the production regression gate `SHIP_SYSTEMS_ARCHITECTURE_PASS` plus save-migration assertions covering all eight systems, contiguous six-tier routes, escalating costs, dependency edges, campaign/faction/boss/Directive/Trace gates, exact Reactor Tier 1/2 price/effect compatibility, future-tier spend lockout, and legacy paid-tier preservation.
+  - PR #172 Browser E2E `35747372577` passed desktop and mobile-landscape, including the full regression/production build and player journeys, on tested head `b5f194f044a3e9b3ef3f5e869bc1cae7c9bf537d`.
+  - Verified on merged gameplay source `6b77b21207debed368242c22ebf0441f34014bd3`: Browser E2E `35747683537`, Level 15 beta smoke `35747683572`, and Android beta.260 `35747683631` all passed.
+  - Android artifact `10703872967` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.260`, debug signing, package/version/SDK/signature verification, native emulator runtime/touch/lifecycle/Chapter 3 QA, and APK SHA-256 `b98802bf0476cd8aa96ad2ff333638c8a0a0fcd5dece25510845c3e8b3332453`.
+  - **Next: P11-B — Engineering wave.**
