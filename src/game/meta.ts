@@ -23,7 +23,8 @@ export type ItemModifier = { id: AffixId; label: string; description: string; me
 export type Item = { id: string; baseId: string; name: string; slot: EquipmentSlot; equipmentClass: string; rarity: Rarity; levelRequirement: number; core: string; modifiers: ItemModifier[]; faction?: EquipmentFaction; singularTrait?: SingularTraitId; singularEffect?: string; singularCategory?: GearSingularCategory; singularRule?: string; singularOpportunityCost?: string; recoveryLevel?: number; frameGeneration?: FrameGeneration; frameIdentity?: FrameIdentityId; frameImplicit?: string; equipmentQuality?: number; augmentSlots?: number; augments?: AugmentId[]; recoveryQuality?: RecoveryQualityGrade; recoverySource?: string; craftStability?: number };
 export type EffectIntensity = 'full' | 'reduced';
 export type ProfileSettings = { aimAssist: MobileAimAssist; rightStickFire: boolean; screenShake: boolean; effectIntensity: EffectIntensity; effectsVolume: number; uiVolume: number; haptics: boolean; telemetrySharing: boolean; tutorialComplete: boolean };
-export type PlayerProfile = { version: 3; xp: number; level: number; progressionPoints: number; allocatedNodes: string[]; operatorNetwork?: OperatorNetworkState; abilityMods: Record<AbilityId, string | null>; operatorClass?: OperatorClassId; classSelectionComplete?: boolean; specialization: SpecializationId | null; specializationOverclock: boolean; inventory: Item[]; equipped: Record<EquipmentSlot, string | null>; settings: ProfileSettings; runsCompleted: number };
+export type CraftHistoryEntry = { id: string; createdAt: number; itemId: string; itemName: string; action: string; cost: string; outcome: string; before: string; after: string; volatile: boolean };
+export type PlayerProfile = { version: 3; xp: number; level: number; progressionPoints: number; allocatedNodes: string[]; operatorNetwork?: OperatorNetworkState; abilityMods: Record<AbilityId, string | null>; operatorClass?: OperatorClassId; classSelectionComplete?: boolean; specialization: SpecializationId | null; specializationOverclock: boolean; inventory: Item[]; equipped: Record<EquipmentSlot, string | null>; settings: ProfileSettings; runsCompleted: number; craftHistory?: CraftHistoryEntry[] };
 export type VictoryReward = { profile: PlayerProfile; xpGained: number; levelsGained: number; loot: Item[] };
 export type ProgressionNode = { id: string; branch: 'Ballistics' | 'Mobility' | 'Systems' | 'Survival' | 'Engineering' | 'Awareness'; name: string; description: string; major?: boolean; requires?: string; kind: OperatorNetworkNodeKind; sector: OperatorNetworkSector; allocationCost: number; weaponFamily?: WeaponId; exclusiveGroup?: string; specialization?: SpecializationId; minLevel?: number; milestone?: boolean; unlockKey?: string; unlockLabel?: string; integrationHooks?: OperatorNetworkIntegrationHook[] };
 export type AbilityMod = { id: string; ability: AbilityId; name: string; description: string; tradeoff: string; operatorClass?: OperatorClassId; minLevel?: number; evolution?: boolean };
@@ -605,7 +606,7 @@ const maxLevelXp = levelThresholds[levelThresholds.length - 1];
 
 export function createDefaultProfile(): PlayerProfile {
   const inventory = starterItems.map(cloneItem);
-  return { version: 3, xp: 0, level: 1, progressionPoints: 0, allocatedNodes: [], operatorNetwork: createOperatorNetworkState('vanguard'), abilityMods: { mag: null, mark: null, arc: null }, operatorClass: 'vanguard', classSelectionComplete: false, specialization: null, specializationOverclock: false, inventory, equipped: { carbine: null, breacher: 'starter-breacher', rail: null, suit: 'starter-suit', rig: 'starter-rig', implant: 'starter-implant' }, settings: { aimAssist: 'balanced', rightStickFire: true, screenShake: true, effectIntensity: 'full', effectsVolume: 0.65, uiVolume: 0.45, haptics: true, telemetrySharing: false, tutorialComplete: false }, runsCompleted: 0 };
+  return { version: 3, xp: 0, level: 1, progressionPoints: 0, allocatedNodes: [], operatorNetwork: createOperatorNetworkState('vanguard'), abilityMods: { mag: null, mark: null, arc: null }, operatorClass: 'vanguard', classSelectionComplete: false, specialization: null, specializationOverclock: false, inventory, equipped: { carbine: null, breacher: 'starter-breacher', rail: null, suit: 'starter-suit', rig: 'starter-rig', implant: 'starter-implant' }, settings: { aimAssist: 'balanced', rightStickFire: true, screenShake: true, effectIntensity: 'full', effectsVolume: 0.65, uiVolume: 0.45, haptics: true, telemetrySharing: false, tutorialComplete: false }, runsCompleted: 0, craftHistory: [] };
 }
 export function normalizeStoredProfile(parsed: Partial<PlayerProfile>): PlayerProfile {
   if (parsed.version !== 3 || !Array.isArray(parsed.inventory)) throw new Error('Unsupported profile save');
@@ -633,6 +634,20 @@ export function normalizeStoredProfile(parsed: Partial<PlayerProfile>): PlayerPr
   const progressionPoints = operatorNetwork.unspentPoints;
   const classSelectionComplete = typeof parsed.classSelectionComplete === 'boolean' ? parsed.classSelectionComplete : true;
   const inventory = parsed.inventory.map(item => cloneItem(item));
+  const craftHistory = Array.isArray(parsed.craftHistory) ? parsed.craftHistory.filter((entry): entry is CraftHistoryEntry => {
+    if (!entry || typeof entry !== 'object') return false;
+    const candidate = entry as Partial<CraftHistoryEntry>;
+    return typeof candidate.id === 'string'
+      && typeof candidate.createdAt === 'number' && Number.isFinite(candidate.createdAt)
+      && typeof candidate.itemId === 'string'
+      && typeof candidate.itemName === 'string'
+      && typeof candidate.action === 'string'
+      && typeof candidate.cost === 'string'
+      && typeof candidate.outcome === 'string'
+      && typeof candidate.before === 'string'
+      && typeof candidate.after === 'string'
+      && typeof candidate.volatile === 'boolean';
+  }).slice(0, 12) : [];
   const requestedEquipped = { ...defaults.equipped, ...parsed.equipped };
   const equipped = Object.fromEntries((Object.keys(defaults.equipped) as EquipmentSlot[]).map(slot => {
     const itemId = requestedEquipped[slot];
@@ -655,6 +670,7 @@ export function normalizeStoredProfile(parsed: Partial<PlayerProfile>): PlayerPr
     equipped,
     inventory,
     allocatedNodes,
+    craftHistory,
   } as PlayerProfile);
 }
 
