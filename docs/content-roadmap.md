@@ -74,7 +74,7 @@ Goal: make equipment answer **“What could I build around this?”** instead of
 Target roughly **120–180 authored nodes**, delivered in bounded waves.
 
 - [x] **P9-A Graph architecture** — archived after merge + verification
-- [ ] **P9-B Core node wave** — travel/standard/Notable nodes, offense/defense/resource clusters, class weapon sectors
+- [x] **P9-B Core node wave** — archived after merge + verification
 - [ ] **P9-C Build-defining wave** — Masteries, Keystones, Capstones, major upside/downside mechanics
 - [ ] **P9-D Specialization integration** — LV15/LV16+ subgraphs, campaign/boss unlocks, gear/crafting/faction/Singular hooks
 - [ ] **P9-E Planner UX** — search, path preview, point cost, before/after math, planned builds, mobile navigation/controller support
@@ -159,21 +159,21 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P9-B — Core node wave.**
+**Next: P9-C — Build-defining wave.**
 
-Build **P9-B — Core node wave** on the verified graph foundation: authored travel/standard/Notable nodes, offense/defense/resource clusters, and class weapon sectors while preserving the P9-A routing/save contracts.
+Build **P9-C — Build-defining wave** on the verified 69-node core: author Masteries, Keystones, Capstones, and explicit major upside/downside mechanics without weakening the P9-A/P9-B routing, save, class-arsenal, or mobile-readability contracts.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.247**
+- Android beta: **0.0.1-beta.248**
 - Package: `app.ironshade.vector`
-- Verified: **P9-A Graph architecture complete**
-- Gameplay source: `365e16170cf0a32285afb976affdb0489a13a396`
-- Browser E2E: `35680844787`
-- Level 15 beta smoke: `35680844866`
-- Android beta.247: `35680844822`
-- APK artifact: `10674272900`
-- APK SHA-256: `7796b02fba8638b24ba0d84c5d60a46edfce492fb5d0646147c5fc4ad3e80b37`
+- Verified: **P9-B Core node wave complete**
+- Gameplay source: `b00883375c3bab17131d1baf471d4d2271b4db2d`
+- Browser E2E: `35681851238`
+- Level 15 beta smoke: `35681851321`
+- Android beta.248: `35681851205`
+- APK artifact: `10675054964`
+- APK SHA-256: `4bf448363b8c141caf8e48d5bbd3cdfd7491ebbc696ec66d4dd6ffa932754fec`
 - Signing: debug-signed beta; permanent signing is P17-A
