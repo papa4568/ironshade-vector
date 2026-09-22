@@ -29,8 +29,21 @@ export type SpecializationDefinition = { id: SpecializationId; operatorClass: Op
 export type OperatorClassDefinition = { id: OperatorClassId; name: string; identity: string; description: string; trait: string; signatureName: string; signatureDescription: string; combatLoop: string; starterPair: string; branchAffinities: ProgressionNode['branch'][]; specializationIds: SpecializationId[]; resonanceTier1: string; resonanceTier2: string };
 export type GearResonanceState = { classId: OperatorClassId; count: number; tier: 0 | 1 | 2; nextAt: 2 | 4 | null; matchingItemIds: string[] };
 export type CapstoneInteractionDefinition = { specialization: SpecializationId; abilityMod: string; name: string; description: string };
-export type SpecializationGearSynergyDefinition = { specialization: SpecializationId; name: string; requiredAffix: AffixId; requirement: string; description: string };
-export type SpecializationGearSynergyState = { definition: SpecializationGearSynergyDefinition; active: boolean; resonanceTier: 0 | 1 | 2; matchingItemIds: string[] };
+export type SpecializationGearSynergyDefinition = {
+  specialization: SpecializationId;
+  name: string;
+  preferredTags: GearBuildTag[];
+  minimumTagMatches: number;
+  exoticAffix?: AffixId;
+  requirement: string;
+  description: string;
+};
+export type SpecializationGearSynergyState = {
+  definition: SpecializationGearSynergyDefinition;
+  active: boolean;
+  resonanceTier: 0 | 1 | 2;
+  matchingItemIds: string[];
+};
 
 const STORAGE_KEY = 'ironshade-vector-profile-v3';
 const starterItems: Item[] = [
@@ -318,16 +331,27 @@ export function capstoneInteractionFor(profile: PlayerProfile, abilityMod: strin
 }
 
 export const specializationGearSynergyDefinitions: SpecializationGearSynergyDefinition[] = [
-  { specialization: 'pressure-diver', name: 'Pressure Recirculator', requiredAffix: 'vacuumSeal', requirement: 'Tier I Vanguard resonance + Layered vacuum seal', description: 'Pressure-rated gear closes the Diver loop: +8% vacuum resistance and 4% faster class-skill recovery.' },
-  { specialization: 'breach-vanguard', name: 'Breach Stack', requiredAffix: 'tungsten', requirement: 'Tier I Vanguard resonance + Tungsten penetrator stack', description: 'Dense penetrator gear feeds the assault doctrine: Breacher gains +12% armor damage and +8 penetration.' },
-  { specialization: 'bulkhead-warden', name: 'Counterfort Bracing', requiredAffix: 'countermass', requirement: 'Tier I Vanguard resonance + Countermass buffer', description: 'Countermass hardware braces the defensive loop: +10 maximum armor and 6% faster Bulwark Pulse recovery.' },
-  { specialization: 'momentum-broker', name: 'Reaction Ledger', requiredAffix: 'servoWeave', requirement: 'Tier I Vector resonance + Vector servo weave', description: 'Maneuvering hardware turns motion into a better energy ledger: +6 maximum capacitor, +10% capacitor regeneration, and 5% faster Vector Shift recovery.' },
-  { specialization: 'survey-deadeye', name: 'Survey Ballistics', requiredAffix: 'markShear', requirement: 'Tier I Vector resonance + Shear-map optics', description: 'Shear-mapped gear completes the precision package: Rail Lance gains +18 penetration and Deadeye Lock recovers 5% faster.' },
-  { specialization: 'redline-pilot', name: 'Thermal Slip', requiredAffix: 'dodgeVent', requirement: 'Tier I Vector resonance + Kinetic heat shunt', description: 'Heat-shunt gear rewards the redline route: +3% movement speed and stronger dodge heat venting.' },
-  { specialization: 'grid-weaver', name: 'Mesh Orchestra', requiredAffix: 'arcDrone', requirement: 'Tier I Systems resonance + Relay microdrone', description: 'Relay hardware joins the machinery mesh: stronger microdrone routing and 5% faster Cascade Arc recovery.' },
-  { specialization: 'capacitor-conductor', name: 'Bus Harmonics', requiredAffix: 'capacitorRecycler', requirement: 'Tier I Systems resonance + Capacitor recycler', description: 'Recycler hardware stabilizes the combo bus: +8 maximum capacitor and 3% lower class-skill capacitor cost.' },
-  { specialization: 'thermal-shunter', name: 'Heat Exchange', requiredAffix: 'cryoloop', requirement: 'Tier I Systems resonance + Cryogenic return loop', description: 'Cryogenic gear deepens thermal crossfeed: +6 maximum capacitor and +10% weapon heat dissipation.' },
+  { specialization: 'pressure-diver', name: 'Pressure Recirculator', preferredTags: ['pressure', 'vacuum', 'defense'], minimumTagMatches: 2, requirement: 'Tier I Vanguard resonance + any 2 of Pressure / Vacuum / Defense on one equipped frame', description: 'Pressure-rated gear closes the Diver loop: +8% vacuum resistance and 4% faster class-skill recovery.' },
+  { specialization: 'breach-vanguard', name: 'Breach Stack', preferredTags: ['armor-break', 'penetration', 'ballistics'], minimumTagMatches: 2, requirement: 'Tier I Vanguard resonance + any 2 of Armor Break / Penetration / Ballistics on one equipped frame', description: 'Dense breach geometry feeds the assault doctrine: Breacher gains +12% armor damage and +8 penetration.' },
+  { specialization: 'bulkhead-warden', name: 'Counterfort Bracing', preferredTags: ['defense', 'recoil', 'pressure'], minimumTagMatches: 2, requirement: 'Tier I Vanguard resonance + any 2 of Defense / Recoil / Pressure on one equipped frame', description: 'Braced pressure hardware reinforces the defensive loop: +10 maximum armor and 6% faster Bulwark Pulse recovery.' },
+  { specialization: 'momentum-broker', name: 'Reaction Ledger', preferredTags: ['mobility', 'recoil', 'capacitor'], minimumTagMatches: 2, requirement: 'Tier I Vector resonance + any 2 of Mobility / Recoil / Capacitor on one equipped frame', description: 'Maneuvering and reaction-control hardware improves the energy ledger: +6 maximum capacitor, +10% capacitor regeneration, and 5% faster Vector Shift recovery.' },
+  { specialization: 'survey-deadeye', name: 'Survey Ballistics', preferredTags: ['precision', 'mark', 'penetration'], minimumTagMatches: 2, requirement: 'Tier I Vector resonance + any 2 of Precision / Mark / Penetration on one equipped frame', description: 'Survey and ballistic telemetry completes the precision package: Rail Lance gains +18 penetration and Deadeye Lock recovers 5% faster.' },
+  { specialization: 'redline-pilot', name: 'Thermal Slip', preferredTags: ['mobility', 'heat', 'venting'], minimumTagMatches: 2, requirement: 'Tier I Vector resonance + any 2 of Mobility / Heat / Venting on one equipped frame', description: 'Movement and heat-shunt hardware rewards the redline route: +3% movement speed and stronger dodge heat venting.' },
+  { specialization: 'grid-weaver', name: 'Mesh Orchestra', preferredTags: ['relay', 'disruption', 'systems'], minimumTagMatches: 2, requirement: 'Tier I Systems resonance + any 2 of Relay / Disruption / Systems on one equipped frame', description: 'Relay and disruption hardware joins the machinery mesh: stronger microdrone routing and 5% faster Cascade Arc recovery.' },
+  { specialization: 'capacitor-conductor', name: 'Bus Harmonics', preferredTags: ['capacitor', 'cooldown', 'systems'], minimumTagMatches: 2, requirement: 'Tier I Systems resonance + any 2 of Capacitor / Cooldown / Systems on one equipped frame', description: 'Power-bus hardware stabilizes the combo loop: +8 maximum capacitor and 3% lower class-skill capacitor cost.' },
+  { specialization: 'thermal-shunter', name: 'Heat Exchange', preferredTags: ['thermal', 'heat', 'systems'], minimumTagMatches: 2, requirement: 'Tier I Systems resonance + any 2 of Thermal / Heat / Systems on one equipped frame', description: 'Thermal-routing hardware deepens crossfeed: +6 maximum capacitor and +10% weapon heat dissipation.' },
 ];
+
+export function specializationGearMatchedTags(definition: SpecializationGearSynergyDefinition, item: Item): GearBuildTag[] {
+  const tags = new Set(itemBuildTags(item));
+  return definition.preferredTags.filter(tag => tags.has(tag));
+}
+
+export function itemMatchesSpecializationGearDefinition(definition: SpecializationGearSynergyDefinition, item: Item) {
+  const tagThresholdMet = specializationGearMatchedTags(definition, item).length >= definition.minimumTagMatches;
+  const exoticRequirementMet = !definition.exoticAffix || item.modifiers.some(modifier => modifier.id === definition.exoticAffix);
+  return tagThresholdMet && exoticRequirementMet;
+}
 
 export function specializationGearSynergyForProfile(profile: PlayerProfile): SpecializationGearSynergyState | undefined {
   if (profile.level < 15 || !profile.specialization) return undefined;
@@ -335,7 +359,7 @@ export function specializationGearSynergyForProfile(profile: PlayerProfile): Spe
   if (!definition) return undefined;
   const resonance = gearResonanceForProfile(profile);
   const matchingItemIds = equippedItems(profile)
-    .filter(item => item.modifiers.some(modifier => modifier.id === definition.requiredAffix))
+    .filter(item => itemMatchesSpecializationGearDefinition(definition, item))
     .map(item => item.id);
   return { definition, active: resonance.tier >= 1 && matchingItemIds.length > 0, resonanceTier: resonance.tier, matchingItemIds };
 }
@@ -343,7 +367,7 @@ export function specializationGearSynergyForProfile(profile: PlayerProfile): Spe
 export function itemMatchesSpecializationGearSynergy(profile: PlayerProfile, item: Item) {
   if (!profile.specialization) return false;
   const definition = specializationGearSynergyDefinitions.find(entry => entry.specialization === profile.specialization);
-  return !!definition && item.modifiers.some(modifier => modifier.id === definition.requiredAffix);
+  return !!definition && itemMatchesSpecializationGearDefinition(definition, item);
 }
 
 export const specializationDefinitions: SpecializationDefinition[] = [
