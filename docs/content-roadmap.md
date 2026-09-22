@@ -105,7 +105,7 @@ Target roughly **6 major tiers per system** with sub-milestones.
 - [x] **P12-A Weapon audio** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
 - [x] **P12-B Impact/environment audio** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
 - [x] **P12-C Information mix** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
-- [ ] **P12-D Player handling animation** — class stance, aim offsets, recoil, reload/charge/vent/overheat, dodge weight
+- [x] **P12-D Player handling animation** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
 - [ ] **P12-E Skill/damage animation** — anticipation/action/recovery/cancel windows, hit/stagger/armor-break reactions
 - [ ] **P12-F Enemy/boss animation** — locomotion/attack tells, phase transitions, additive modifier/status layers
 - [ ] **P12-G Camera/haptics/perf** — recoil/impact response, accessibility scaling, synchronized haptics, frame-budget profiling
@@ -159,22 +159,22 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P12-D — Player handling animation.**
+**Next: P12-E — Skill/damage animation.**
 
-Run **P12-D — Player handling animation** as the next AAA Combat Feel batch: give each class a readable authored stance and aim-offset language, synchronize recoil with the verified weapon audio/handling identities, and add reload/charge/vent/overheat/dodge weight without changing combat timing or class ownership.
+Run **P12-E — Skill/damage animation** as the next AAA Combat Feel batch: give class skills authored anticipation/action/recovery language, preserve readable cancel windows, and strengthen hit/stagger/armor-break reactions without changing combat timing, damage, or deterministic enemy state.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.271**
+- Android beta: **0.0.1-beta.272**
 - Package: `app.ironshade.vector`
-- Verified: **P12-C AAA Combat Feel Information mix complete**
-- Gameplay source: `744141a82507962ba9f87c827d3b93eb9f5e0e8a`
-- PR Browser E2E: `35786697567`
-- Browser E2E: `35786928547`
-- Level 15 beta smoke: `35786928506`
-- Android beta.271: `35786928605`
-- APK artifact: `10720707170`
-- APK SHA-256: `59a960c986cebe844e5c2236bf5f179a5e78917cd27b9f6127deb552f75244c8`
+- Verified: **P12-D AAA Combat Feel Player handling animation complete**
+- Gameplay source: `ddc032f44124137af34bb9c56260f08d04232e58`
+- PR Browser E2E: `35789334050`
+- Browser E2E: `35789553411`
+- Level 15 beta smoke: `35789553447`
+- Android beta.272: `35789553404`
+- APK artifact: `10721577180`
+- APK SHA-256: `308e014904ff88d52c696112909a865f9d158f1a748a1925b7b244c3c03974ec`
 - Signing: debug-signed beta; permanent signing is P17-A
