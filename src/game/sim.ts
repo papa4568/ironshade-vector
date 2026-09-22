@@ -20,6 +20,9 @@ export type Material = 'light' | 'industrial' | 'bulkhead' | 'system';
 export type ImpactEvent =
   | { serial: number; target: 'enemy'; surface: 'armor' | 'steel' | 'field'; heavy: boolean }
   | { serial: number; target: 'object'; material: Material; objectKind: CombatObject['kind']; heavy: boolean };
+type ImpactEventInput =
+  | Omit<Extract<ImpactEvent, { target: 'enemy' }>, 'serial'>
+  | Omit<Extract<ImpactEvent, { target: 'object' }>, 'serial'>;
 
 type Rect = { x: number; y: number; w: number; h: number };
 type StatusTimers = { armorBreach: number; disrupted: number; marked: number; stagger: number; conductive: number; vacuum: number };
@@ -392,7 +395,7 @@ function finishEnemyDeath(state: SimState, enemy: Enemy) {
   state.kills += 1;
 }
 
-function recordImpact(state: SimState, event: Omit<ImpactEvent, 'serial'>) {
+function recordImpact(state: SimState, event: ImpactEventInput) {
   state.impactSerial += 1;
   state.impactEvent = { ...event, serial: state.impactSerial } as ImpactEvent;
 }
