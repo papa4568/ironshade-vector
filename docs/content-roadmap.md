@@ -96,7 +96,7 @@ Target roughly **6 major tiers per system** with sub-milestones.
 - [x] **P11-A Architecture/migration** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
 - [x] **P11-B Engineering wave** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
 - [x] **P11-C Support wave** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
-- [ ] **P11-D Advanced specialization** — mutually exclusive high-tier packages + prerequisite/resource previews
+- [x] **P11-D Advanced specialization** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
 - [ ] **P11-E Physical payoff** — upgraded ship hardware, authored state animation/audio, major-upgrade ceremony
 - [ ] **P11-F Economy/balance QA** — aspirational pacing without trivializing class weaknesses or boss mechanics
 
@@ -159,22 +159,21 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P11-D — Advanced specialization.**
+**Next: P11-E — Physical payoff.**
 
-Run **P11-D — Advanced specialization** on the verified six-tier Engineering + Support foundation: author mutually exclusive high-tier ship packages with explicit prerequisites, resource costs, and before-purchase payoff previews; keep base system tiers useful without letting one package erase class weaknesses, boss mechanics, or the cross-system dependency graph.
+Run **P11-E — Physical payoff** on the verified six-tier systems + specialization foundation: make major ship upgrades physically legible through upgraded hardware states, authored system animation/audio, and a focused major-upgrade ceremony while keeping touch flow fast and preserving runtime/performance budgets.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.262**
+- Android beta: **0.0.1-beta.266**
 - Package: `app.ironshade.vector`
-- Verified: **P11-C Ship Systems 2.0 Support wave complete**
-- Gameplay source: `6ab973b3be6c74c5fbbfa2771d5852fb9297d686`
-- PR Browser E2E: `35758926373`
-- Browser E2E: `35759216315`
-- Level 15 beta smoke: `35759216184`
-- Android beta.262: `35759216303`
-- APK artifact: `10709637444`
-- APK SHA-256: `07e2aaa63c9215ba9c8d61672f7978c679ea9ae33294b8546588b6924d39eff2`
+- Verified: **P11-D Ship Systems 2.0 Advanced specialization complete**
+- Gameplay source: `318ad59bd9603a2a35d2219763bd05fa2ca236a2`
+- Browser E2E: `35762002336`
+- Level 15 beta smoke: `35762002396`
+- Android beta.266: `35762002329`
+- APK artifact: `10710637296`
+- APK SHA-256: `5114c19009cf30fe9809939f793a05b17465b30d924b2ddc5be2271d2f74b5f7`
 - Signing: debug-signed beta; permanent signing is P17-A
