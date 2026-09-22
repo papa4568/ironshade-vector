@@ -727,3 +727,14 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Android artifact `10689023882` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.252`, debug signing, and APK SHA-256 `d177a98ce8ce20a14e2acd30760206be2ef8bf555e3fe4df82a0e0943cdab5c8`.
   - **Next: P10-A — Rules foundation.**
 
+
+- [x] **P10-A Rules foundation** — completed the Crafting 2.0 legality/ownership pass on top of Gear 2.0 and the existing Reconstruction bench without adding new economy verbs yet.
+  - Added a canonical crafting rules contract that owns the two modifier families (Core and Systems), the five modifier grades and their Recovery Level gates, rarity explicit-modifier budgets, Microforge grade ceilings, and base-frame legal pools.
+  - Base frames now explicitly own the list of modifier candidates shown to players. Recovery Level and Microforge tier jointly determine the current grade ceiling, rarity owns the explicit-modifier count, conflicts/installed/locked states are visible, and Singular packages remain fixed-reference pools.
+  - Reconstruction add/reroute/recalibrate now consume the same canonical legality function used by the Crafting UI, so player-visible outcomes and runtime candidates cannot silently diverge.
+  - Added a mobile-readable **P10-A // CRAFTING CONTRACT** surface in the Crafting tab that explains Base → Pool, Rarity → Count, Recovery + Microforge → Grade, shows Core/Systems roles, and lists every frame option as ready, installed, conflicting, Recovery-locked, or fixed-package before salvage is spent.
+  - Added `CRAFTING_RULES_FOUNDATION_PASS families=2 grades=5 rarity=field/refined/prototype/singular pool=base-owned compatibility=visible` plus updates to the existing stat-registry and affix-ownership architecture gates so those tests follow the new canonical module instead of requiring legacy ownership inside `reconstruction.ts`.
+  - PR #164 Browser E2E `35717722624` passed full regression/production build plus desktop and mobile-landscape player journeys after CI caught and corrected two stale architecture assertions that still pointed at the pre-P10-A Reconstruction ownership path.
+  - Verified on merged main `71de480d1aa46def072d37ef6555f51ac18e9f40`: Browser E2E `35717959748`, Level 15 beta smoke `35717959722`, and Android beta.253 `35717959724` all passed.
+  - Android verification covered the full web regression/build, native Android project generation, installable debug APK build, package/version/SDK/signature checks, emulator runtime/touch/lifecycle smoke, authored-content checks, and the complete Chapter 3 touch playthrough. Artifact `10689668066` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.253`, debug signing, and APK SHA-256 `8f6960748754f9e07c867c432df63eaf5f500e07d56c83cf7c8e94def7c48dda`.
+  - **Next: P10-B — Verbs/materials.**
