@@ -63,7 +63,7 @@ Goal: make equipment answer **“What could I build around this?”** instead of
 - [x] **P8.5-E Affix pools + conflicts + rarity budgets** — archived after merge + verification
 - [x] **P8.5-F Loot generation + anti-junk rules** — archived after merge + verification
 - [x] **P8.5-G Class/specialization gear integration** — archived after merge + verification
-- [ ] **P8.5-H Quality + Augment responsibility pass** — keep quality as limited base-frame improvement and Augments as controlled utility/specialization customization, generally 0–2 normal sockets; prevent either system from becoming another full affix stack or duplicating modifier progression
+- [x] **P8.5-H Quality + Augment responsibility pass** — archived after merge + verification
 - [ ] **P8.5-I Singular chase-item audit** — classify every Singular by Skill Transformer / Resource Loop / Movement Transformer / Projectile Transformer / Defense Transformer / Conditional Engine / Build Converter / Environmental Interaction; redesign stat-stick Singulars so their primary value changes rules, interactions or resource loops and usually carries a meaningful opportunity cost
 - [ ] **P8.5-J Mobile Armory + build-link comparison** — prioritize name/rarity → base/implicit → explicit mods → augments → generated BUILD LINKS → equipped comparison; move provenance/advanced metadata deeper; show gained/lost local stats, global stats, skill links, specialization links and Singular rules without adding a single gear-score number
 - [ ] **P8.5-K Save/data migration + compatibility** — migrate existing inventory/equipped items into the new schema without deleting valid gear, preserve old save recovery, normalize invalid legacy combinations safely, and keep current Android/web profiles loadable
@@ -159,21 +159,21 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P8.5-H — Quality + Augment responsibility pass.**
+**Next: P8.5-I — Singular chase-item audit.**
 
-Start **P8.5-H — Quality + Augment responsibility pass** so Equipment Quality stays a limited base-frame improvement axis and Augments remain bounded utility/specialization customization instead of becoming another affix stack.
+Start **P8.5-I — Singular chase-item audit** by classifying every Singular into its rule-changing category and redesigning any remaining stat-stick Singular so its primary value changes skills, resources, movement, projectiles, defense, build conversion, conditions, or environmental interaction with a meaningful opportunity cost.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.237**
+- Android beta: **0.0.1-beta.238**
 - Package: `app.ironshade.vector`
-- Verified: **P8.5-G Class/specialization gear integration complete**
-- Gameplay source: `1d5ae5a91fbd00ce4522a091c382afddee219254`
-- Browser E2E: `35670423061`
-- Level 15 beta smoke: `35670423099`
-- Android beta.237: `35670423101`
-- APK artifact: `10671030427`
-- APK SHA-256: `36008e913795f0bb02f6f631ce43675db657726f7de48b825454032257f0067b`
+- Verified: **P8.5-H Quality + Augment responsibility pass complete**
+- Gameplay source: `08a4e611cb1b343f6740d00304547bfc8324abab`
+- Browser E2E: `35672315575`
+- Level 15 beta smoke: `35672315474`
+- Android beta.238: `35672315510`
+- APK artifact: `10671063785`
+- APK SHA-256: `c4488312cd5f7f1be4a4c50d0163c400265371243b55faf6faf132b87c2ac253`
 - Signing: debug-signed beta; permanent signing is P17-A
