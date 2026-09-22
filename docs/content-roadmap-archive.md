@@ -853,3 +853,15 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Android artifact `10710637296` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.266`, debug signing, and APK SHA-256 `5114c19009cf30fe9809939f793a05b17465b30d924b2ddc5be2271d2f74b5f7`.
   - **Next: P11-E — Physical payoff.**
 
+
+- [x] **P11-E Physical payoff** — major ship upgrades now read as physical changes to the Quiet Signal instead of only numerical tier increases: every system has a six-state hardware identity, active machinery animation, system-specific commissioning audio, and a focused skippable upgrade ceremony.
+  - Added a shared physical-presentation contract for all eight ship systems with authored ship location, hardware identity, mechanism silhouette, audio profile, and one distinct hardware state for every Tier 1–6 milestone; Tier 0 remains an explicit uncommissioned frame.
+  - The Systems screen now includes a mobile-responsive **Physical Systems Bay** where Reactor, Drive, Armor, Cargo, Sensors, Microforge, Trauma Bay, and Drone Rack visibly fill out their six-stage hardware stack as the save progresses. High tiers receive bounded active-machinery motion, and reduced-motion preferences disable those animations.
+  - Successful major-tier purchases trigger a short Web Audio commissioning sequence tuned per system family plus a touch-fast modal that identifies the installed hardware, ship location, new tier/state, and resulting payoff. Advanced specialization installs use the same ceremony language without adding a second persistent progression layer.
+  - No new asset dependency or runtime pool was introduced: physical states are lightweight CSS/DOM presentation and synthesized audio, keeping the existing mobile render/performance budgets intact.
+  - Expanded `SHIP_SYSTEMS_ARCHITECTURE_PASS` with exact eight-system presentation coverage, six unique physical states per system, stable Tier 0/Tier 1/Tier 6 resolution, future-tier clamping, and distinct mechanism silhouettes.
+  - PR #175 Browser E2E `35766126871` passed desktop + mobile-landscape full regression/production build and live player journeys on tested head `3ad3d31d13132b110cb2aa397b9be5a01331876a`.
+  - Verified on merged gameplay source `e2b876d95219e438f2c3ca7fb4a35e1d21c170a1`: Browser E2E `35766398218`, Level 15 beta smoke `35766398284`, and Android beta.267 `35766398195` all passed.
+  - Android artifact `10711899512` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.267`, debug signing, package/version/SDK/signature verification, native emulator install/launch/runtime/touch/lifecycle/authored-asset/Chapter 3 QA, and APK SHA-256 `bea8f7d2ca76ea500bfff384d81b48dd1593e6644f621c27b74d9a482ceb66f3`.
+  - **Next: P11-F — Economy/balance QA.**
+
