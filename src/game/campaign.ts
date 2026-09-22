@@ -709,6 +709,11 @@ export function generateContracts(campaign: CampaignState): Contract[] {
 }
 
 function walletAdd(target: SalvageWallet, source: Partial<SalvageWallet>, multiplier: number) { for (const key of Object.keys(target) as ResourceId[]) { if (key === 'rareTech') continue; target[key] += Math.max(0, Math.round((source[key] ?? 0) * multiplier)); } }
+
+export function directiveTraceRecovery(contract: Pick<Contract, 'directiveTier' | 'directiveTargetClass'>, depth: 'safe' | 'deep') {
+  return depth === 'deep' && (contract.directiveTier ?? 0) >= 6 && contract.directiveTargetClass === 'command-target' ? 1 : 0;
+}
+
 export function cargoRecoveryMultiplier(tier: number) {
   const level = Math.max(0, Math.min(SHIP_SYSTEM_MAX_TIER, Math.floor(tier || 0)));
   return 1 + level * 0.12;
@@ -726,7 +731,9 @@ export function settleContract(campaign: CampaignState, contract: Contract, dept
   const firstDailyCompletion = !!contract.daily && campaign.dailyCompletedDate !== contract.operationDate;
   const dailyMultiplier = firstDailyCompletion ? 1.15 : 1;
   walletAdd(gained, contract.rewardBase, depthMultiplier * tagMultiplier * cargoMultiplier * priorityMultiplier * dailyMultiplier * expeditionStageMultiplier * optionalMultiplier * (contract.operationRewardMultiplier ?? 1));
-  const anomalyRecovered = depth === 'deep' && contract.anomalyOpportunity && !campaign.anomalyRecovered; if (anomalyRecovered) gained.rareTech = 1; const expeditionReputation = contract.megastructure ? Math.max(0, zonesCompleted - 1) : 0;
+  const anomalyRecovered = depth === 'deep' && contract.anomalyOpportunity && !campaign.anomalyRecovered;
+  gained.rareTech = (anomalyRecovered ? 1 : 0) + directiveTraceRecovery(contract, depth);
+  const expeditionReputation = contract.megastructure ? Math.max(0, zonesCompleted - 1) : 0;
   const requestedReputationDelta: Partial<Record<FactionId, number>> = { [contract.sponsor]: contract.reputationGain + expeditionReputation + (depth === 'deep' ? 2 : 0) }; if (contract.contestedFaction && depth === 'deep') requestedReputationDelta[contract.contestedFaction] = -1; const reputation = { ...campaign.reputation }; const reputationDelta: Partial<Record<FactionId, number>> = {}; for (const [key, delta] of Object.entries(requestedReputationDelta) as Array<[FactionId, number]>) { const before = reputation[key]; const after = Math.max(-10, Math.min(20, before + delta)); reputation[key] = after; reputationDelta[key] = after - before; } const resources = { ...campaign.resources }; for (const key of Object.keys(resources) as ResourceId[]) resources[key] += gained[key]; const expeditionSummary = contract.megastructure ? ` // ${zonesCompleted}/${contract.megastructureStageCount ?? 4} spaces // ${optionalRecovered} optional recoveries` : '';
   return { campaign: { ...campaign, cycle: campaign.cycle + 1, contractsCompleted: campaign.contractsCompleted + 1, resources, reputation, anomalyRecovered: campaign.anomalyRecovered || anomalyRecovered, dailyCompletedDate: firstDailyCompletion ? contract.operationDate ?? campaign.dailyCompletedDate : campaign.dailyCompletedDate, lastOutcome: `${contract.title} // ${depth === 'deep' ? 'deep extraction' : 'safe extraction'} // ${salvageTags} salvage tags banked${expeditionSummary}` }, gained, reputationDelta, anomalyRecovered, depth };
 }

@@ -1,6 +1,7 @@
 import {
   conditionLabel,
   deepTargetForLocation,
+  directiveTraceRecovery,
   locationNameFor,
   missionObjectiveFor,
   type CampaignState,
@@ -110,7 +111,9 @@ export function directiveRewardPreview(directive: Pick<OperationDirective, 'tier
   const maxRecoveryLevel = 8 + directive.tier * 4;
   const maxFrame = frameGenerationForRecovery(maxRecoveryLevel, operatorLevel);
   const maxGrade = maxRecoveryLevel >= 43 ? 5 : maxRecoveryLevel >= 31 ? 4 : maxRecoveryLevel >= 19 ? 3 : 2;
-  return `+${Math.round((stats.materialMultiplier - 1) * 100)}% directive materials · +${stats.qualityBonus.toFixed(2)} RQ pressure · +${Math.round(stats.singularChanceBonus * 100)}% location Singular chance · +${stats.recoveryLevelBonus} source RL · ceiling RL ${maxRecoveryLevel} / Gen ${maxFrame} / G${maxGrade}`;
+  const traceRecovery = directiveTraceRecovery({ directiveTier: directive.tier, directiveTargetClass: directive.targetClass }, 'deep');
+  const tracePreview = traceRecovery > 0 ? ` · DEEP COMMAND +${traceRecovery} Quarantined Trace` : '';
+  return `+${Math.round((stats.materialMultiplier - 1) * 100)}% directive materials · +${stats.qualityBonus.toFixed(2)} RQ pressure · +${Math.round(stats.singularChanceBonus * 100)}% location Singular chance · +${stats.recoveryLevelBonus} source RL · ceiling RL ${maxRecoveryLevel} / Gen ${maxFrame} / G${maxGrade}${tracePreview}`;
 }
 
 export function generateDirective(campaign: CampaignState, tierInput: number, seed: number, sourceLabel: string): OperationDirective {
