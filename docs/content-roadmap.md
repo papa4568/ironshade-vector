@@ -66,8 +66,8 @@ Goal: make equipment answer **“What could I build around this?”** instead of
 - [x] **P8.5-H Quality + Augment responsibility pass** — archived after merge + verification
 - [x] **P8.5-I Singular chase-item audit** — archived after merge + verification
 - [x] **P8.5-J Mobile Armory + build-link comparison** — archived after merge + verification
-- [x] **P8.5-K Save/data migration + compatibility** — versioned atomic saves to v2/Gear Schema 1, migrate legacy inventory in place without deleting item identities, normalize legacy rarity/affix/Augment/power-axis combinations, preserve the existing backup/quarantine recovery contract, and keep v1/current web + Android save paths loadable
-- [x] **P8.5-L Balance/diversity/regression gate** — five same-slot Rail build goals are runtime-verified, build-specific Refined-vs-Prototype value is enforced, every registered stat must connect through at least two semantic build systems, and one release gate now binds generation/stat application/invalid combinations/build links/crafting/Singular/save/touch/Android coverage
+- [x] **P8.5-K Save/data migration + compatibility** — archived after merge + verification
+- [x] **P8.5-L Balance/diversity/regression gate** — archived after merge + verification
 
 ## P9 — Progression 2.0 // Deep Operator Network
 
@@ -159,21 +159,21 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Verification in progress: P8.5-L — Balance/diversity/regression gate.**
+**Next: P9-A — Graph architecture.**
 
-After the P8.5-L build, browser, touch, save, and Android gates pass on main, archive P8.5-K/P8.5-L and advance to **P9-A — Graph architecture**.
+Start **P9-A — Graph architecture** by defining the data model, prerequisites, routing/path-cost rules, node hierarchy, three class starts, shared outer network, and save-schema contract before authoring the larger node waves.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.244**
+- Android beta: **0.0.1-beta.246**
 - Package: `app.ironshade.vector`
-- Verified: **P8.5-J Mobile Armory + build-link comparison complete**
-- Gameplay source: `4c59505c043d2502a68a6c497ecaffd172ca90d5`
-- Browser E2E: `35674695661`
-- Level 15 beta smoke: `35674695652`
-- Android beta.244: `35674695713`
-- APK artifact: `10672632757`
-- APK SHA-256: `f0b6196464748b8c5a95303f31333c95de48f1305591ec5501be2fff17119829`
+- Verified: **P8.5-L Balance/diversity/regression gate complete**
+- Gameplay source: `e1a8c68e175ef9dd4898f9398346d47b890cf720`
+- Browser E2E: `35679284960`
+- Level 15 beta smoke: `35679284967`
+- Android beta.246: `35679284995`
+- APK artifact: `10674990855`
+- APK SHA-256: `5f39de7be68f5b30308e0f3f0f7f5f7746d979505d555cd098d350c7f518972a`
 - Signing: debug-signed beta; permanent signing is P17-A
