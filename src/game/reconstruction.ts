@@ -1,5 +1,5 @@
 import type { SalvageWallet } from './campaign';
-import { availableAugments, augmentDefinition, frameImplicitDescription, resolveFrameIdentity, type AugmentId } from './gearDepth';
+import { augmentSocketCap, availableAugments, augmentDefinition, frameImplicitDescription, resolveFrameIdentity, type AugmentId } from './gearDepth';
 import { modifierFamilyFor, modifierGradeCeilingForRecovery, type ModifierFamily, type ModifierGrade } from './lootQuality';
 import { affixPoolForSlot, materializeModifier, type AffixId, type Item, type PlayerProfile } from './meta';
 import { affixStatProfile } from './gearStats';
@@ -24,7 +24,7 @@ export type ReconstructionResult = {
 const clampFabrication = (level: number) => Math.max(0, Math.min(2, Math.round(level)));
 export const reconstructionQualityCap = (fabricationLevel: number) => [10, 16, 20][clampFabrication(fabricationLevel)];
 export const reconstructionGradeCap = (fabricationLevel: number) => [3, 4, 5][clampFabrication(fabricationLevel)] as ModifierGrade;
-export const accessibleAugmentSlots = (item: Item, fabricationLevel: number) => Math.min(item.augmentSlots ?? 0, 1 + clampFabrication(fabricationLevel));
+export const accessibleAugmentSlots = (item: Item, fabricationLevel: number) => Math.min(item.augmentSlots ?? 0, augmentSocketCap, 1 + clampFabrication(fabricationLevel));
 
 function discountedCredits(value: number, fabricationLevel: number) {
   return Math.max(1, Math.round(value * (1 - clampFabrication(fabricationLevel) * 0.1)));

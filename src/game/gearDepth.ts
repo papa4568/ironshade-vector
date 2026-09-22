@@ -66,8 +66,13 @@ const pools: Record<GearSlot, FrameIdentityId[]> = {
   implant: ['implant-sensor', 'implant-ballistic', 'implant-relay'],
 };
 
-const clampQuality = (quality: number) => Math.max(0, Math.min(20, Math.round(quality)));
-const qualityScale = (quality: number) => 1 + clampQuality(quality) * 0.02;
+export const equipmentQualityCap = 20;
+export const equipmentQualityPerPoint = 0.01;
+export const augmentSocketCap = 2;
+
+const clampQuality = (quality: number) => Math.max(0, Math.min(equipmentQualityCap, Math.round(quality)));
+export const equipmentQualityMultiplier = (quality: number) => 1 + clampQuality(quality) * equipmentQualityPerPoint;
+const qualityScale = equipmentQualityMultiplier;
 const generationValue = (generation: FrameGeneration, values: [number, number, number, number]) => values[Math.min(values.length - 1, generation - 1)] * (generation >= 5 ? 1.12 : 1);
 const percent = (value: number) => Math.round(value * 100);
 
@@ -146,15 +151,10 @@ export function equipmentQualityForRecovery(_recoveryQuality: number, _generatio
   return 0;
 }
 
-export function augmentSlotCount(rarity: GearRarity, generation: FrameGeneration) {
-  if (generation >= 6) {
-    if (rarity === 'Singular' || rarity === 'Prototype') return 3;
-    if (rarity === 'Refined') return 2;
-  }
-  if (rarity === 'Singular') return 2;
-  if (rarity === 'Prototype') return generation >= 3 ? 2 : 1;
+export function augmentSlotCount(rarity: GearRarity, _generation: FrameGeneration) {
+  if (rarity === 'Field') return 0;
   if (rarity === 'Refined') return 1;
-  return generation >= 2 ? 1 : 0;
+  return augmentSocketCap;
 }
 
 export function frameImplicitDescription(identity: FrameIdentityId, generation: FrameGeneration, quality: number) {

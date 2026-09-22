@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { augmentDefinitions, frameIdentityDefinitions } from '../src/game/gearDepth';
+import { augmentDefinitions, augmentSlotCount, augmentSocketCap, equipmentQualityCap, equipmentQualityMultiplier, frameIdentityDefinitions } from '../src/game/gearDepth';
 import { factionFrames } from '../src/game/factionGear';
 import { rarityOrder } from '../src/game/rarity';
 import {
@@ -38,6 +38,18 @@ for (const slot of slots) {
   assert.ok(Object.values(factionFrames).every(frames => !!frames[slot]), `${slot} must exist in every current faction frame registry.`);
 }
 assert.equal(new Set(augmentDefinitions.map(definition => definition.id)).size, augmentDefinitions.length, 'Current Augment IDs must be unique before migration.');
+assert.equal(augmentSocketCap, 2, 'P8.5-H caps normal Augment capacity at two sockets.');
+for (const generation of [1, 2, 3, 4, 5, 6] as const) {
+  assert.equal(augmentSlotCount('Field', generation), 0, `Field gear must not gain an Augment socket from frame generation G${generation}.`);
+  assert.equal(augmentSlotCount('Refined', generation), 1, `Refined gear must keep one fixed Augment socket at G${generation}.`);
+  assert.equal(augmentSlotCount('Prototype', generation), 2, `Prototype gear must keep two fixed Augment sockets at G${generation}.`);
+  assert.equal(augmentSlotCount('Singular', generation), 2, `Singular gear must remain bounded to two normal Augment sockets at G${generation}.`);
+}
+assert.ok(augmentDefinitions.every(definition => definition.description.length > 0 && definition.tradeoff.length > 0), 'Every Augment must remain a fixed effect with an explicit tradeoff instead of gaining modifier grades.');
+assert.equal(equipmentQualityCap, 20, 'Equipment Quality must remain a bounded 0-20 base-frame axis.');
+assert.equal(equipmentQualityMultiplier(0), 1, 'Zero Equipment Quality must not alter the base frame.');
+assert.equal(equipmentQualityMultiplier(20), 1.2, 'Maximum Equipment Quality may improve the base frame by at most 20%.');
+assert.equal(equipmentQualityMultiplier(99), 1.2, 'Equipment Quality scaling must clamp at the 20% base-frame ceiling.');
 assert.deepEqual(rarityOrder, ['Field', 'Refined', 'Prototype', 'Singular'], 'Target schema assumes the current four-rarity contract.');
 
 const metaSource = readFileSync('src/game/meta.ts', 'utf8');

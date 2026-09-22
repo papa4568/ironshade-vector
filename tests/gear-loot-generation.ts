@@ -55,6 +55,7 @@ for (const [slotIndex, slot] of slots.entries()) {
   });
   assert(validateGeneratedGearPlan(field), `${slot} Field plan should validate.`);
   assert(field.affixes.length === 0, `${slot} Field plan must remain a clean base.`);
+  assert(field.augmentSlots === 0, `${slot} Field plan must not gain Augment sockets from frame generation.`);
 
   const refined = generateGearPlan({
     slot,
@@ -67,6 +68,7 @@ for (const [slotIndex, slot] of slots.entries()) {
   });
   assert(validateGeneratedGearPlan(refined), `${slot} Refined plan should validate.`);
   assert(refined.affixes.length >= rarityModifierBudget('Refined').minGenerated && refined.affixes.length <= 2, `${slot} Refined plan must honor the one-to-two modifier budget.`);
+  assert(refined.augmentSlots === 1, `${slot} Refined plan must keep exactly one fixed Augment socket.`);
 
   const prototype = generateGearPlan({
     slot,
@@ -81,6 +83,7 @@ for (const [slotIndex, slot] of slots.entries()) {
   assert(prototype.affixes.length >= 4 && prototype.affixes.length <= 6, `${slot} Prototype plan must meet the 4-6 anti-junk modifier budget.`);
   assert(new Set(prototype.affixes.map(affix => affix.id)).size === prototype.affixes.length, `${slot} Prototype affixes must be unique.`);
   assert(prototype.affixes.every(affix => prototype.base.allowedAffixGroups.includes(affix.id)), `${slot} Prototype affixes must remain legal for the selected base.`);
+  assert(prototype.augmentSlots === 2, `${slot} Prototype plan must cap Augment customization at two fixed sockets.`);
 }
 
 for (let seed = 1; seed <= 120; seed += 1) {

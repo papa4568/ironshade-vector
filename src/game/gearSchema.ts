@@ -131,7 +131,7 @@ export const gearPowerAxisAudit = [
     currentOwners: ['gearDepth.ts', 'meta.ts', 'reconstruction.ts'],
     currentRole: 'Scales frame implicit effects and can be raised through Reconstruction.',
     targetOwner: 'item.equipmentQuality',
-    targetRole: 'Limited improvement to base/inherent properties only.',
+    targetRole: 'Limited improvement to base/inherent properties only; capped at +20% frame-effect scaling and never scales explicit modifiers or Augments.',
     implementationBatch: 'P8.5-B/P8.5-H',
   },
   {
@@ -163,7 +163,7 @@ export const gearPowerAxisAudit = [
     currentOwners: ['gearDepth.ts', 'reconstruction.ts', 'meta.ts'],
     currentRole: 'Adds controlled extra stats/tradeoffs through sockets whose count also grows with rarity/generation.',
     targetOwner: 'item.augments',
-    targetRole: 'Bounded utility/specialization customization, normally 0–2 sockets.',
+    targetRole: 'Rarity-bounded fixed-effect utility/specialization customization, normally 0–2 sockets; no grades and no generation-driven socket inflation.',
     implementationBatch: 'P8.5-H',
   },
   {
