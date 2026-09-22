@@ -1,7 +1,7 @@
 import type { SalvageWallet } from './campaign';
 import { augmentSocketCap, availableAugments, augmentDefinition, frameImplicitDescription, resolveFrameIdentity, type AugmentId } from './gearDepth';
 import { modifierFamilyFor, modifierGradeCeilingForRecovery, type ModifierFamily, type ModifierGrade } from './lootQuality';
-import { activeWeaponFamilyForProfile, hasSpecializationNetworkHook, isItemClassCompatible, itemMatchesSpecializationGearSynergy, materializeModifier, specializationGearSynergyDefinitions, type AffixId, type Item, type PlayerProfile } from './meta';
+import { activeWeaponFamilyForProfile, hasSpecializationNetworkHook, isItemClassCompatible, itemMatchesSpecializationGearSynergy, materializeModifier, specializationGearSynergyDefinitions, type AffixId, type CraftHistoryEntry, type Item, type PlayerProfile } from './meta';
 import { affixStatProfile } from './gearStats';
 import type { SpecializationId } from './sim';
 import { maximumExplicitModifiersForRarity } from './gearAffixes';
@@ -184,6 +184,158 @@ function replaceItem(profile: PlayerProfile, itemId: string, item: Item) {
   return { ...profile, inventory: profile.inventory.map(entry => entry.id === itemId ? item : entry) };
 }
 
+const resourceNames: Record<keyof SalvageWallet, string> = {
+  credits: 'Credits',
+  alloys: 'Frame Alloy',
+  electronics: 'Circuit Stock',
+  medstock: 'Medstock',
+  components: 'Precision Components',
+  rareTech: 'Quarantined Trace',
+};
+
+export type ReconstructionPreview = {
+  title: string;
+  cost: Partial<SalvageWallet>;
+  canAfford: boolean;
+  blockedReason: string | null;
+  guaranteed: string[];
+  possible: string[];
+  risk: string[];
+  exclusions: string[];
+  before: string;
+  after: string;
+  volatile: boolean;
+};
+
+function reconstructionCostText(cost: Partial<SalvageWallet>) {
+  const entries = (Object.entries(cost) as Array<[keyof SalvageWallet, number]>).filter(([, value]) => value > 0);
+  return entries.length ? entries.map(([key, value]) => `${value} ${resourceNames[key]}`).join(' · ') : 'No salvage cost';
+}
+
+function canAffordReconstruction(wallet: SalvageWallet, cost: Partial<SalvageWallet>) {
+  return (Object.entries(cost) as Array<[keyof SalvageWallet, number]>).every(([key, value]) => (wallet[key] ?? 0) >= value);
+}
+
+function reconstructionIsVolatile(action: ReconstructionAction) {
+  return (action.kind === 'grade' && action.mode === 'volatile') || (action.kind === 'recalibrate' && action.mode === 'volatile');
+}
+
+export function reconstructionActionLabel(item: Item, action: ReconstructionAction) {
+  if (action.kind === 'quality') return 'Improve frame quality';
+  if (action.kind === 'grade') {
+    const modifier = item.modifiers.find(entry => entry.id === action.modifierId);
+    const target = action.targetGrade ? ` → G${action.targetGrade}` : '';
+    return `${action.mode === 'volatile' ? 'Volatile' : 'Controlled'} Elevate // ${modifier?.label ?? action.modifierId}${target}`;
+  }
+  if (action.kind === 'reroute') return `Reroute // ${item.modifiers.find(entry => entry.id === action.modifierId)?.label ?? action.modifierId}`;
+  if (action.kind === 'add') return `${action.targetAffixId ? 'Precision Add' : 'Add'} // ${action.family.toUpperCase()}`;
+  if (action.kind === 'remove') return `Remove // ${item.modifiers.find(entry => entry.id === action.modifierId)?.label ?? action.modifierId}`;
+  if (action.kind === 'recalibrate') return `${action.mode === 'volatile' ? 'Risk Replace' : 'Protected Replace'} // ${item.modifiers.find(entry => entry.id === action.modifierId)?.label ?? action.modifierId}`;
+  if (action.kind === 'installAugment') return `Socket // ${augmentDefinition(action.augmentId).name}`;
+  return `Extract // ${augmentDefinition(action.augmentId).name}`;
+}
+
+export function reconstructionStateSummary(item: Item) {
+  const modifiers = item.modifiers.length
+    ? item.modifiers.map(modifier => `${modifier.label} G${modifier.grade ?? 3}`).join(', ')
+    : 'no explicit modifiers';
+  return `Q${item.equipmentQuality ?? 0}/20 · stability ${craftingStabilityForItem(item)}% · ${modifiers} · ${(item.augments ?? []).length}/${item.augmentSlots ?? 0} Augments`;
+}
+
+export function reconstructionPreview(profile: PlayerProfile, wallet: SalvageWallet, fabricationLevel: number, item: Item, action: ReconstructionAction): ReconstructionPreview {
+  const fabrication = clampFabrication(fabricationLevel);
+  const cost = reconstructionCost(item, action, fabrication, profile);
+  const volatile = reconstructionIsVolatile(action);
+  const richWallet: SalvageWallet = { credits: 999999, alloys: 999999, electronics: 999999, medstock: 999999, components: 999999, rareTech: 999999 };
+  const dry = reconstructItem(profile, richWallet, fabrication, item.id, action);
+  const blockedReason = dry.profile === profile && dry.wallet === richWallet ? dry.message : null;
+  const dryItem = dry.profile.inventory.find(entry => entry.id === item.id) ?? item;
+  const guaranteed: string[] = [];
+  const possible: string[] = [];
+  const risk: string[] = [];
+  const exclusions = ['Base pool, rarity budget, Recovery Level, Microforge tier, modifier conflicts, class ownership, and fixed Singular rules cannot be bypassed.'];
+  const before = reconstructionStateSummary(item);
+  let after = blockedReason ? before : reconstructionStateSummary(dryItem);
+
+  if (blockedReason) exclusions.unshift(blockedReason);
+  if (!canAffordReconstruction(wallet, cost)) exclusions.unshift(`Insufficient salvage: this action costs ${reconstructionCostText(cost)}.`);
+
+  if (action.kind === 'quality') {
+    const nextQuality = Math.min(reconstructionQualityCap(fabrication), (item.equipmentQuality ?? 0) + 2);
+    guaranteed.push(`Frame Quality ${item.equipmentQuality ?? 0} → ${nextQuality}; explicit modifier grades and Augments do not scale.`);
+    risk.push('No random failure. Confirmed salvage is consumed only when the craft is legal and affordable.');
+  } else if (action.kind === 'grade') {
+    const modifier = item.modifiers.find(entry => entry.id === action.modifierId);
+    const currentGrade = modifier?.grade ?? 3;
+    const targetGrade = action.targetGrade ?? Math.min(reconstructionGradeCap(fabrication), currentGrade + 1);
+    if (volatile) {
+      const chance = Math.round(craftingVolatileSuccessChance(item) * 100);
+      possible.push(`Success (${chance}%): ${modifier?.label ?? 'modifier'} advances G${currentGrade} → G${targetGrade}.`);
+      possible.push(`Failure (${100 - chance}%): modifier remains G${currentGrade}.`);
+      risk.push(`Craft Stability falls by ${craftingStabilityContract.volatileDrain} whether the attempt lands or fails.`);
+      after = `Success: G${targetGrade} · Failure: G${currentGrade} · stability ${Math.max(0, craftingStabilityForItem(item) - craftingStabilityContract.volatileDrain)}%`;
+    } else {
+      guaranteed.push(blockedReason ? 'No state change while this action is blocked.' : dry.message);
+      risk.push('Controlled elevation has no random failure and remains capped by Recovery Level and Microforge tier.');
+    }
+  } else if (action.kind === 'reroute') {
+    const modifier = item.modifiers.find(entry => entry.id === action.modifierId);
+    const currentFamily = modifier?.family ?? modifierFamilyFor(action.modifierId);
+    const targetFamily: ModifierFamily = currentFamily === 'core' ? 'systems' : 'core';
+    const candidates = legalCraftingAffixes(item, fabrication, targetFamily, action.modifierId, profile);
+    guaranteed.push(`Preserves the current grade while moving into one legal ${targetFamily.toUpperCase()} modifier.`);
+    possible.push(candidates.length ? `Possible targets: ${candidates.map(entry => entry.name).join(' · ')}` : 'No legal reroute target is currently available.');
+    risk.push('No random failure, but the exact untargeted result comes from the visible legal pool.');
+  } else if (action.kind === 'add') {
+    const candidates = legalCraftingAffixes(item, fabrication, action.family, null, profile);
+    if (action.targetAffixId) guaranteed.push(blockedReason ? 'Selected target cannot be installed while blocked.' : dry.message);
+    else {
+      guaranteed.push(`Adds one legal ${action.family.toUpperCase()} modifier without exceeding the rarity budget.`);
+      possible.push(candidates.length ? `Possible targets: ${candidates.map(entry => entry.name).join(' · ')}` : 'No legal target is currently available.');
+    }
+    risk.push(action.targetAffixId ? 'Precision Add is exact and has no random failure.' : 'Untargeted Add has no failure roll, but the specific modifier is selected from the visible legal pool.');
+  } else if (action.kind === 'remove') {
+    guaranteed.push(blockedReason ? 'Selected modifier cannot be removed while blocked.' : dry.message);
+    risk.push('Removal opens an explicit slot but never refunds the modifier or any crafting materials previously spent on it.');
+  } else if (action.kind === 'recalibrate') {
+    const current = item.modifiers.find(entry => entry.id === action.modifierId);
+    const family = current?.family ?? modifierFamilyFor(action.modifierId);
+    const candidates = legalCraftingAffixes(item, fabrication, family, action.modifierId, profile);
+    if (volatile) {
+      const chance = Math.round(craftingVolatileSuccessChance(item) * 100);
+      possible.push(`Success (${chance}%): selected legal ${family.toUpperCase()} replacement is installed at the same grade.`);
+      possible.push(`Failure (${100 - chance}%): ${current?.label ?? 'current modifier'} remains installed.`);
+      risk.push(`Craft Stability falls by ${craftingStabilityContract.volatileDrain}; the locked ${action.lockedFamily.toUpperCase()} family remains protected.`);
+      after = `Success: replacement installed · Failure: current modifier retained · stability ${Math.max(0, craftingStabilityForItem(item) - craftingStabilityContract.volatileDrain)}%`;
+    } else {
+      guaranteed.push(blockedReason ? 'Selected replacement cannot be installed while blocked.' : dry.message);
+      if (!action.targetAffixId) possible.push(candidates.length ? `Possible targets: ${candidates.map(entry => entry.name).join(' · ')}` : 'No legal replacement is currently available.');
+      risk.push('Protected Replace has no failure roll; the chosen family lock stays protected.');
+    }
+  } else if (action.kind === 'installAugment') {
+    guaranteed.push(blockedReason ? 'Selected Augment cannot be socketed while blocked.' : dry.message);
+    risk.push('Socketing never changes explicit modifier grades or the fixed Singular package.');
+  } else {
+    guaranteed.push(blockedReason ? 'Selected Augment cannot be extracted while blocked.' : dry.message);
+    risk.push('Extraction preserves the Augment hardware but does not refund earlier socketing materials.');
+  }
+
+  if (item.rarity === 'Singular') exclusions.push('Singular signature and fixed modifier packages cannot be edited; only frame Quality and compatible Augment socket/extract remain legal.');
+  return {
+    title: reconstructionActionLabel(item, action),
+    cost,
+    canAfford: canAffordReconstruction(wallet, cost),
+    blockedReason,
+    guaranteed,
+    possible,
+    risk,
+    exclusions,
+    before,
+    after,
+    volatile,
+  };
+}
+
 export function reconstructItem(profile: PlayerProfile, wallet: SalvageWallet, fabricationLevel: number, itemId: string, action: ReconstructionAction): ReconstructionResult {
   const item = profile.inventory.find(entry => entry.id === itemId);
   if (!item) return { profile, wallet, message: 'Reconstruction target is no longer in ship storage.' };
@@ -330,7 +482,25 @@ export function reconstructItem(profile: PlayerProfile, wallet: SalvageWallet, f
   if (!nextItem) return { profile, wallet, message: 'No reconstruction action was applied.' };
   const nextWallet = spend(wallet, cost);
   if (!nextWallet) return { profile, wallet, message: 'Insufficient salvage resources for this reconstruction action.' };
-  return { profile: replaceItem(profile, itemId, nextItem), wallet: nextWallet, message: successMessage };
+  const nextProfile = replaceItem(profile, itemId, nextItem);
+  const createdAt = Date.now();
+  const historyEntry: CraftHistoryEntry = {
+    id: `craft-${createdAt}-${hashText(`${item.id}:${reconstructionActionLabel(item, action)}:${successMessage}`).toString(16)}`,
+    createdAt,
+    itemId: item.id,
+    itemName: item.name,
+    action: reconstructionActionLabel(item, action),
+    cost: reconstructionCostText(cost),
+    outcome: successMessage,
+    before: reconstructionStateSummary(item),
+    after: reconstructionStateSummary(nextItem),
+    volatile: reconstructionIsVolatile(action),
+  };
+  return {
+    profile: { ...nextProfile, craftHistory: [historyEntry, ...(profile.craftHistory ?? [])].slice(0, 12) },
+    wallet: nextWallet,
+    message: successMessage,
+  };
 }
 
 export function compatibleAugments(item: Item, profile?: PlayerProfile) {
