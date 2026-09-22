@@ -110,6 +110,8 @@ try {
         animation: canvas.dataset.operatorAnimation ?? '',
         stance: canvas.dataset.operatorStance ?? '',
         blend: canvas.dataset.operatorBlend ?? '',
+        skillAnimation: canvas.dataset.operatorSkillAnimation ?? '',
+        skillBlend: canvas.dataset.operatorSkillBlend ?? '',
         canvases: document.querySelectorAll('canvas').length,
         width: rect.width,
         height: rect.height,
@@ -143,10 +145,13 @@ try {
       if (!lastState.stance || !/move:\d+\.\d+,aim:\d+\.\d+,recoil:\d+\.\d+,reload:\d+\.\d+,charge:\d+\.\d+,vent:\d+\.\d+,overheat:\d+\.\d+,dodge:\d+\.\d+,hit:\d+\.\d+/.test(lastState.blend)) {
         throw new Error(`Authored operator handling telemetry is missing: ${JSON.stringify(lastState)}`);
       }
+      if (!/^(?:idle|(?:vanguard|vector|systems)-[a-z0-9-]+:(?:anticipation|action|recovery))$/.test(lastState.skillAnimation) || !/^weight:\d+\.\d+,impulse:\d+\.\d+,recovery:\d+\.\d+,cancel:(?:locked|ready|interrupted)$/.test(lastState.skillBlend)) {
+        throw new Error(`Authored operator skill animation telemetry is missing: ${JSON.stringify(lastState)}`);
+      }
       if (!(lastState.width > 0 && lastState.height > 0)) {
         throw new Error(`Authored operator canvas is not visible: ${JSON.stringify(lastState)}`);
       }
-      console.log(`AUTHORED_OPERATOR_RUNTIME_PASS visual=${lastState.visual} asset=${lastState.asset} class=${lastState.operatorClass || 'generic'} rig=${lastState.rig} socket=${lastState.socket} stance=${lastState.stance} animation=${lastState.animation} blend=${lastState.blend} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
+      console.log(`AUTHORED_OPERATOR_RUNTIME_PASS visual=${lastState.visual} asset=${lastState.asset} class=${lastState.operatorClass || 'generic'} rig=${lastState.rig} socket=${lastState.socket} stance=${lastState.stance} animation=${lastState.animation} blend=${lastState.blend} skill=${lastState.skillAnimation} skillBlend=${lastState.skillBlend} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
       process.exitCode = 0;
       break;
     }
