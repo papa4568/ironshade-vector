@@ -100,6 +100,9 @@ async function recoveryPreservationSmoke() {
 }
 
 legacyStateMigrationSmoke();
-await recoveryPreservationSmoke();
-
-console.log('SAVE_DATA_MIGRATION_PASS legacy=v1->v2 gearSchema=1 recovery=preserved');
+recoveryPreservationSmoke()
+  .then(() => console.log('SAVE_DATA_MIGRATION_PASS legacy=v1->v2 gearSchema=1 recovery=preserved'))
+  .catch(error => {
+    console.error(error);
+    process.exitCode = 1;
+  });
