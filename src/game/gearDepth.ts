@@ -125,7 +125,8 @@ export function inferFrameIdentity(slot: GearSlot, key: string): FrameIdentityId
 }
 
 export function resolveFrameIdentity(slot: GearSlot, identity: FrameIdentityId | undefined, key: string) {
-  return identity && frameIdentityDefinition(identity).slot === slot ? identity : inferFrameIdentity(slot, key);
+  const definition = identity ? frameIdentityDefinitions.find(candidate => candidate.id === identity) : undefined;
+  return definition?.slot === slot ? identity! : inferFrameIdentity(slot, key);
 }
 
 export function rollFrameIdentity(slot: GearSlot, random: () => number) {
@@ -231,7 +232,10 @@ export function availableAugments(slot: GearSlot) {
 
 export function normalizeAugments(slot: GearSlot, ids: AugmentId[], limit: number) {
   const unique = new Set<AugmentId>();
-  for (const id of ids) if (augmentDefinition(id).slots.includes(slot)) unique.add(id);
+  for (const id of ids) {
+    const definition = augmentDefinitions.find(candidate => candidate.id === id);
+    if (definition?.slots.includes(slot)) unique.add(id);
+  }
   return [...unique].slice(0, Math.max(0, limit));
 }
 

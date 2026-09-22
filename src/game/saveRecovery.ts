@@ -1,4 +1,5 @@
 import { augmentDefinitions, frameIdentityDefinitions } from './gearDepth';
+import { gearSchemaVersion } from './gearSchema';
 
 export const PROFILE_STORAGE_KEY = 'ironshade-vector-profile-v3';
 export const CAMPAIGN_STORAGE_KEY = 'ironshade-vector-campaign-v1';
@@ -258,7 +259,8 @@ export function validateStoredCampaign(value: unknown) { return invalidCampaignR
 
 function invalidGameStateReason(value: unknown): string | null {
   if (!isRecord(value)) return 'game-state root is not an object';
-  if (value.version !== 1) return `unsupported game-state version ${String(value.version ?? 'missing')}`;
+  if (value.version !== 1 && value.version !== 2) return `unsupported game-state version ${String(value.version ?? 'missing')}`;
+  if (value.version === 2 && value.gearSchemaVersion !== gearSchemaVersion) return `unsupported gear schema version ${String(value.gearSchemaVersion ?? 'missing')}`;
   if (value.savedAt !== undefined && (typeof value.savedAt !== 'string' || Number.isNaN(Date.parse(value.savedAt)))) return 'savedAt is not a valid timestamp';
   const profileReason = invalidProfileReason(value.profile);
   if (profileReason) return `profile: ${profileReason}`;

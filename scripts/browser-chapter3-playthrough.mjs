@@ -145,7 +145,7 @@ async function seedCheckpoint({ level, step, status = 'active', choiceA = null, 
     const state = JSON.parse(localStorage.getItem(stateKey) || 'null');
     const profile = state?.profile;
     const campaign = state?.campaign;
-    if (state?.version !== 1 || !profile || !Array.isArray(profile.inventory) || !campaign?.story?.parallaxDebt || !campaign?.story?.interdiction) return false;
+    if (![1, 2].includes(state?.version) || !profile || !Array.isArray(profile.inventory) || !campaign?.story?.parallaxDebt || !campaign?.story?.interdiction) return false;
     Object.assign(profile, {
       xp: ${xpForLevel[level]},
       level: ${level},

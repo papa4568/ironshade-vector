@@ -4,12 +4,12 @@ export type { OperatorClassId } from './classSkills';
 import { factionFrames, factionGearChance, factionSetDefinitions, type EquipmentFaction } from './factionGear';
 import { frameGenerationForRecovery, recoveryLevelForSource, type FrameGeneration } from './scaling';
 import { modifierFamilyFor, modifierPowerFactor, modifierTradeoffFactor, rollRecoveryQuality, type ModifierFamily, type ModifierGrade, type RecoveryQualityGrade } from './lootQuality';
-import { applyAugments, applyFrameIdentity, augmentSlotCount, factionFrameIdentity, frameImplicitDescription, inferFrameIdentity, normalizeAugments, rollEquipmentQuality, singularFrameIdentity, type AugmentId, type FrameIdentityId } from './gearDepth';
+import { applyAugments, applyFrameIdentity, augmentSlotCount, factionFrameIdentity, frameImplicitDescription, inferFrameIdentity, normalizeAugments, resolveFrameIdentity, rollEquipmentQuality, singularFrameIdentity, type AugmentId, type FrameIdentityId } from './gearDepth';
 import type { GroundLootReceipt } from './fieldLoot';
 import type { ItemRarity } from './rarity';
 import { gearBasesForSlot, resolveGearBase } from './gearBases';
 import { affixStatProfile, gearStatDefinition, mergeBuildTags, type GearAffixSemanticId, type GearBuildTag, type GearStatId } from './gearStats';
-import { gearAffixDefinition, gearAffixDefinitions } from './gearAffixes';
+import { affixesConflict, gearAffixDefinition, gearAffixDefinitions, maximumExplicitModifiersForRarity } from './gearAffixes';
 import { singularChaseDefinition, type GearSingularCategory } from './gearSingulars';
 import { generateGearPlan, type GearGenerationOpportunity } from './gearGeneration';
 
@@ -531,13 +531,42 @@ export function itemBuildAffinities(item: Item): OperatorClassId[] {
   return operatorClassDefinitions.map(definition => definition.id).filter(id => affinities.has(id));
 }
 
+function normalizedInteger(value: unknown, fallback: number, minimum: number, maximum: number) {
+  const numeric = typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : fallback;
+  return Math.max(minimum, Math.min(maximum, numeric));
+}
+
+function normalizeLegacyModifiers(item: Item, allowedAffixes?: readonly AffixId[]) {
+  const source = Array.isArray(item.modifiers) ? item.modifiers : [];
+  const normalized: ItemModifier[] = [];
+  const seen = new Set<AffixId>();
+  const limit = item.rarity === 'Singular' ? source.length : maximumExplicitModifiersForRarity(item.rarity);
+  for (const modifier of source) {
+    const definition = gearAffixDefinitions.find(candidate => candidate.id === modifier.id);
+    if (!definition || seen.has(definition.id)) continue;
+    if (item.rarity !== 'Singular') {
+      if (!definition.allowedSlots.includes(item.slot)) continue;
+      if (allowedAffixes && !allowedAffixes.includes(definition.id)) continue;
+      if (normalized.some(existing => affixesConflict(existing.id, definition.id))) continue;
+      if (normalized.length >= limit) break;
+    }
+    seen.add(definition.id);
+    const grade = normalizedInteger(modifier.grade, 3, 1, 5) as ModifierGrade;
+    normalized.push(materializeModifier(definition.id, grade));
+  }
+  return normalized;
+}
+
 function cloneItem(item: Item): Item {
-  const recoveryLevel = item.recoveryLevel ?? Math.max(1, Math.min(56, item.levelRequirement * 4));
-  const frameGeneration = item.frameGeneration ?? 1;
-  const recoveryQuality = item.recoveryQuality ?? 0;
-  const frameIdentity = item.frameIdentity ?? resolveGearBase(item.slot, item.baseId)?.frameIdentity ?? inferFrameIdentity(item.slot, `${item.baseId}:${item.name}`);
-  const equipmentQuality = Math.max(0, Math.min(20, item.equipmentQuality ?? 0));
-  const augmentSlots = item.augmentSlots ?? augmentSlotCount(item.rarity, frameGeneration);
+  const fallbackRecoveryLevel = normalizedInteger(item.levelRequirement * 4, 4, 1, 56);
+  const recoveryLevel = normalizedInteger(item.recoveryLevel, fallbackRecoveryLevel, 1, 56);
+  const frameGeneration = normalizedInteger(item.frameGeneration, 1, 1, 6) as FrameGeneration;
+  const recoveryQuality = normalizedInteger(item.recoveryQuality, 0, 0, 5) as RecoveryQualityGrade;
+  const knownBase = resolveGearBase(item.slot, item.baseId);
+  const frameIdentity = knownBase?.frameIdentity ?? resolveFrameIdentity(item.slot, item.frameIdentity, `${item.baseId}:${item.name}`);
+  const equipmentQuality = normalizedInteger(item.equipmentQuality, 0, 0, 20);
+  const augmentSlots = augmentSlotCount(item.rarity, frameGeneration);
+  const base = resolveGearBase(item.slot, item.baseId, frameIdentity);
   return {
     ...item,
     faction: item.faction ?? inferFactionFromBaseId(item.baseId),
@@ -547,10 +576,10 @@ function cloneItem(item: Item): Item {
     frameImplicit: frameImplicitFor(item.slot, frameGeneration, frameIdentity, equipmentQuality),
     equipmentQuality,
     augmentSlots,
-    augments: normalizeAugments(item.slot, item.augments ?? [], augmentSlots),
+    augments: normalizeAugments(item.slot, Array.isArray(item.augments) ? item.augments : [], augmentSlots),
     recoveryQuality,
     recoverySource: item.recoverySource ?? 'Legacy recovery',
-    modifiers: item.modifiers.map(modifier => materializeModifier(modifier.id, modifier.grade ?? 3)),
+    modifiers: normalizeLegacyModifiers(item, base?.allowedAffixGroups),
   };
 }
 const levelThresholds = [0, 120, 300, 540, 840, 1200, 1620, 2100, 2640, 3240, 3900, 4620, 5400, 6240, 7140, 8100, 9120, 10200, 11340, 12540];
@@ -562,49 +591,59 @@ export function createDefaultProfile(): PlayerProfile {
   const inventory = starterItems.map(cloneItem);
   return { version: 3, xp: 0, level: 1, progressionPoints: 0, allocatedNodes: [], abilityMods: { mag: null, mark: null, arc: null }, operatorClass: 'vanguard', classSelectionComplete: false, specialization: null, specializationOverclock: false, inventory, equipped: { carbine: null, breacher: 'starter-breacher', rail: null, suit: 'starter-suit', rig: 'starter-rig', implant: 'starter-implant' }, settings: { aimAssist: 'balanced', rightStickFire: true, screenShake: true, effectIntensity: 'full', effectsVolume: 0.65, uiVolume: 0.45, haptics: true, telemetrySharing: false, tutorialComplete: false }, runsCompleted: 0 };
 }
+export function normalizeStoredProfile(parsed: Partial<PlayerProfile>): PlayerProfile {
+  if (parsed.version !== 3 || !Array.isArray(parsed.inventory)) throw new Error('Unsupported profile save');
+  const defaults = createDefaultProfile();
+  const parsedXp = typeof parsed.xp === 'number' && Number.isFinite(parsed.xp) ? parsed.xp : defaults.xp;
+  const parsedLevel = typeof parsed.level === 'number' && Number.isFinite(parsed.level) ? Math.round(parsed.level) : defaults.level;
+  const storedXp = Math.max(0, Math.min(maxLevelXp, parsedXp));
+  const storedLevel = Math.max(1, Math.min(levelThresholds.length, parsedLevel));
+  const normalizedXp = Math.max(storedXp, levelThresholds[storedLevel - 1] ?? 0);
+  const normalizedLevel = levelForXp(normalizedXp);
+  const allocatedNodes = Array.isArray(parsed.allocatedNodes) ? parsed.allocatedNodes : [];
+  const validAllocatedCount = new Set(allocatedNodes.filter(id => progressionNodes.some(node => node.id === id))).size;
+  const parsedPoints = typeof parsed.progressionPoints === 'number' && Number.isFinite(parsed.progressionPoints) ? Math.max(0, Math.floor(parsed.progressionPoints)) : defaults.progressionPoints;
+  const progressionPoints = Math.max(parsedPoints, Math.max(0, normalizedLevel - 1 - validAllocatedCount));
+  const specialization = normalizedLevel >= 15 && specializationDefinitions.some(definition => definition.id === parsed.specialization) ? parsed.specialization as SpecializationId : null;
+  const specializationOverclock = normalizedLevel >= 16 && !!specialization && parsed.specializationOverclock === true;
+  const operatorClass = operatorClassForProfile({ operatorClass: parsed.operatorClass, specialization, allocatedNodes });
+  const classSelectionComplete = typeof parsed.classSelectionComplete === 'boolean' ? parsed.classSelectionComplete : true;
+  const inventory = parsed.inventory.map(item => cloneItem(item));
+  const requestedEquipped = { ...defaults.equipped, ...parsed.equipped };
+  const equipped = Object.fromEntries((Object.keys(defaults.equipped) as EquipmentSlot[]).map(slot => {
+    const itemId = requestedEquipped[slot];
+    const item = itemId ? inventory.find(candidate => candidate.id === itemId && candidate.slot === slot && candidate.levelRequirement <= normalizedLevel) : undefined;
+    return [slot, item?.id ?? null];
+  })) as Record<EquipmentSlot, string | null>;
+  return normalizeClassArmament({
+    ...defaults,
+    ...parsed,
+    xp: normalizedXp,
+    level: normalizedLevel,
+    progressionPoints,
+    operatorClass,
+    classSelectionComplete,
+    specialization,
+    specializationOverclock,
+    settings: { ...defaults.settings, ...parsed.settings },
+    abilityMods: { ...defaults.abilityMods, ...parsed.abilityMods },
+    equipped,
+    inventory,
+    allocatedNodes,
+  } as PlayerProfile);
+}
+
 export function loadProfile(): PlayerProfile {
   if (typeof window === 'undefined') return createDefaultProfile();
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return createDefaultProfile();
-    const parsed = JSON.parse(raw) as Partial<PlayerProfile>;
-    if (parsed.version !== 3 || !Array.isArray(parsed.inventory)) return createDefaultProfile();
-    const defaults = createDefaultProfile();
-    const parsedXp = typeof parsed.xp === 'number' && Number.isFinite(parsed.xp) ? parsed.xp : defaults.xp;
-    const parsedLevel = typeof parsed.level === 'number' && Number.isFinite(parsed.level) ? Math.round(parsed.level) : defaults.level;
-    const storedXp = Math.max(0, Math.min(maxLevelXp, parsedXp));
-    const storedLevel = Math.max(1, Math.min(levelThresholds.length, parsedLevel));
-    const normalizedXp = Math.max(storedXp, levelThresholds[storedLevel - 1] ?? 0);
-    const normalizedLevel = levelForXp(normalizedXp);
-    const allocatedNodes = Array.isArray(parsed.allocatedNodes) ? parsed.allocatedNodes : [];
-    const validAllocatedCount = new Set(allocatedNodes.filter(id => progressionNodes.some(node => node.id === id))).size;
-    const parsedPoints = typeof parsed.progressionPoints === 'number' && Number.isFinite(parsed.progressionPoints) ? Math.max(0, Math.floor(parsed.progressionPoints)) : defaults.progressionPoints;
-    const progressionPoints = Math.max(parsedPoints, Math.max(0, normalizedLevel - 1 - validAllocatedCount));
-    const specialization = normalizedLevel >= 15 && specializationDefinitions.some(definition => definition.id === parsed.specialization) ? parsed.specialization as SpecializationId : null;
-    const specializationOverclock = normalizedLevel >= 16 && !!specialization && parsed.specializationOverclock === true;
-    const operatorClass = operatorClassForProfile({ operatorClass: parsed.operatorClass, specialization, allocatedNodes });
-    const classSelectionComplete = typeof parsed.classSelectionComplete === 'boolean' ? parsed.classSelectionComplete : true;
-    return normalizeClassArmament({
-      ...defaults,
-      ...parsed,
-      xp: normalizedXp,
-      level: normalizedLevel,
-      progressionPoints,
-      operatorClass,
-      classSelectionComplete,
-      specialization,
-      specializationOverclock,
-      settings: { ...defaults.settings, ...parsed.settings },
-      abilityMods: { ...defaults.abilityMods, ...parsed.abilityMods },
-      equipped: { ...defaults.equipped, ...parsed.equipped },
-      inventory: parsed.inventory.map(item => cloneItem(item)),
-      allocatedNodes,
-    } as PlayerProfile);
+    return normalizeStoredProfile(JSON.parse(raw) as Partial<PlayerProfile>);
   } catch {
     return createDefaultProfile();
   }
 }
-export function saveProfile(profile: PlayerProfile) { if (typeof window === 'undefined') return true; try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizeClassArmament(profile))); return true; } catch { return false; } }
+export function saveProfile(profile: PlayerProfile) { if (typeof window === 'undefined') return true; try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizeStoredProfile(profile))); return true; } catch { return false; } }
 function levelForXp(xp: number) { let level = 1; for (let index = 1; index < levelThresholds.length; index += 1) if (xp >= levelThresholds[index]) level = index + 1; return level; }
 export function xpProgress(profile: PlayerProfile) { if (profile.level >= levelThresholds.length) return { current: 1, needed: 1, maxed: true }; const current = levelThresholds[Math.min(profile.level - 1, levelThresholds.length - 1)] ?? 0; const next = levelThresholds[Math.min(profile.level, levelThresholds.length - 1)] ?? current; return { current: profile.xp - current, needed: Math.max(1, next - current), maxed: false }; }
 function seeded(seedValue: number) { let value = seedValue >>> 0; return () => { value ^= value << 13; value ^= value >>> 17; value ^= value << 5; return (value >>> 0) / 4294967296; }; }
