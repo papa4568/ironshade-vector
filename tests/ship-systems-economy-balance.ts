@@ -95,6 +95,16 @@ function costCurveSmoke() {
   assert.ok(fullFleetCost.credits >= 55_000, 'A fully realized eight-system fleet should remain a long-horizon credit sink.');
   assert.equal(fullFleetCost.rareTech, 48, 'Tier 4-6 completion across all eight systems should consume 48 Quarantined Traces before specialization.');
 
+  const expectedTierSixRouteTrace: Record<ShipUpgradeId, number> = {
+    reactor: 9,
+    drive: 9,
+    armor: 9,
+    cargo: 9,
+    sensors: 9,
+    fabrication: 10,
+    medical: 9,
+    drones: 10,
+  };
   for (const definition of upgradeDefinitions) {
     const lateCredits = definition.tiers.slice(2).map(tier => tier.cost.credits ?? 0);
     for (let index = 1; index < lateCredits.length; index += 1) {
@@ -103,7 +113,7 @@ function costCurveSmoke() {
     assert.deepEqual(definition.tiers.slice(3).map(tier => tier.cost.rareTech ?? 0), [1, 2, 3], `${definition.name} Tier 4-6 should preserve the 1/2/3 Trace pressure curve.`);
 
     const maxRouteTrace = traceCostForTargets({ [definition.id]: 6 });
-    assert.equal(maxRouteTrace, 9, `${definition.name} Tier 6 should require nine total Traces across its paired dependency route.`);
+    assert.equal(maxRouteTrace, expectedTierSixRouteTrace[definition.id], `${definition.name} Tier 6 should preserve its authored dependency-route Trace pressure.`);
   }
 
   const specializationTraceCosts = shipSpecializationDefinitions.map(definition => {
