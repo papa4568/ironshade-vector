@@ -126,11 +126,13 @@ assert(rendererSource.includes("dataset.operatorStance") && rendererSource.inclu
 assert(rendererSource.includes("dataset.operatorRig = 'articulated'"), 'runtime QA must expose articulated-rig activation');
 assert(rendererSource.includes("dataset.operatorAnimation = mode"), 'runtime QA must expose the active animation state');
 assert(rendererSource.includes('operatorHitUntil'), 'authored operator must track visual-only hit reactions');
+assert(rendererSource.includes('resolveEnemyBossAnimation') && rendererSource.includes('dataset.enemyAnimation') && rendererSource.includes('dataset.enemyAnimationBlend'), 'enemy and boss rigs must expose deterministic authored motion telemetry');
+assert(rendererSource.includes('bossPhaseEventAt') && rendererSource.includes('dataset.bossPhaseAnimation'), 'boss phase transitions must have a tracked body-animation window');
 assert(rendererSource.includes("dataset.operatorBlend"), 'operator animation blending telemetry must remain available for QA');
 
 assert(rendererSource.includes('ENEMY_ASSET_FAMILIES[enemy.role]'), 'enemy rendering must select authored assets by combat role');
 assert(rendererSource.includes('void this.loadAuthoredEnemy(visual, enemy, mission)'), 'enemy visuals must load authored assets while retaining procedural fallback');
-assert(rendererSource.includes('syncAuthoredEnemyAnimation(visual, enemy, state)'), 'enemy animation must derive from deterministic simulation state');
+assert(rendererSource.includes('syncAuthoredEnemyAnimation(visual, enemy, state, motion)'), 'enemy animation must derive from deterministic simulation state and resolved motion signals');
 assert(rendererSource.includes("dataset.enemyVisual = 'authored'"), 'runtime QA must expose authored enemy activation');
 assert(rendererSource.includes('visual.proceduralVisuals.forEach'), 'procedural enemy bodies must only hide after authored loading succeeds');
 assert(rendererSource.includes('WEAPON_ASSET_FAMILIES[id]'), 'player weapon loading must use authored weapon families');
