@@ -334,7 +334,7 @@ function ReconstructionBench({ item, profile, campaign, lockedFamily, onLockFami
   const preview = pendingAction ? reconstructionPreview(profile, campaign.resources, fabrication, item, pendingAction) : null;
   const craftHistory = profile.craftHistory ?? [];
   return (
-    <section className="reconstruction-bench">
+    <section className="reconstruction-bench" data-crafting-surface="true">
       <header className="bench-heading"><div><small>SELECTED FRAME</small><h2>{item.name}</h2><p>{identity.name} · GEN {item.frameGeneration ?? 1} · RL {item.recoveryLevel ?? 1} · <RarityText rarity={item.rarity} /></p></div><strong>MICROFORGE T{fabrication}</strong></header>
       <div className="bench-frame"><div><b>FRAME QUALITY // {item.equipmentQuality ?? 0}/{reconstructionQualityCap(fabrication)}</b><span>{item.frameImplicit}</span><small>BASE FRAME ONLY // Improves the inherent frame property; explicit modifier grades and Augments do not scale with quality.</small></div><button disabled={craftLocked} onClick={() => onPreview(qualityAction)}>Improve +2<small>{costLabel(reconstructionCost(item, qualityAction, fabrication, profile))}</small></button></div>
       <div className="bench-caps"><span>GRADE CONTROL // G{reconstructionGradeCap(fabrication)} MAX</span><span>AUGMENT ACCESS // {accessibleSockets}/{item.augmentSlots ?? 0} SOCKETS</span></div>
@@ -349,12 +349,15 @@ function ReconstructionBench({ item, profile, campaign, lockedFamily, onLockFami
             <article className="risk"><small>EXCLUSIONS / RISK</small>{preview.exclusions.map(line => <span key={line}>{line}</span>)}{preview.risk.map(line => <span key={line}>{line}</span>)}</article>
           </div>
           <div className="craft-before-after"><article><small>BEFORE</small><b>{preview.before}</b></article><article><small>AFTER</small><b>{preview.after}</b></article></div>
-          <div className="craft-review-actions"><button onClick={onCancelPreview}>Back to bench</button><button className="primary" disabled={!!preview.blockedReason || !preview.canAfford} onClick={() => pendingAction && onConfirm(pendingAction)}>{preview.blockedReason ? 'Action blocked' : !preview.canAfford ? 'Need more salvage' : 'Confirm craft'}</button></div>
+          <div className="craft-review-actions"><button type="button" data-crafting-back="true" onClick={onCancelPreview}>Back to bench</button><button type="button" data-crafting-confirm="true" className="primary" disabled={!!preview.blockedReason || !preview.canAfford} onClick={() => pendingAction && onConfirm(pendingAction)}>{preview.blockedReason ? 'Action blocked' : !preview.canAfford ? 'Need more salvage' : 'Confirm craft'}</button></div>
         </div>}
       </section>
       <section className="crafting-salvage-loop" aria-label="Crafting salvage loop">
         <div><small>P10-E // SALVAGE LOOP</small><b>Deploy → bank salvage → review → confirm → iterate</b><span>Ordinary reconstruction uses Credits, Frame Alloy, Circuit Stock, and Precision Components. Quarantined Trace buys exact premium control, protected Replace, and G5 Prime access. Removing or replacing work never refunds previously spent crafting materials.</span></div>
         <div className="salvage-loop-balances"><span><small>COMMON STOCK</small><b>{campaign.resources.alloys} Alloy · {campaign.resources.electronics} Circuit · {campaign.resources.components} Components</b></span><span><small>CHASE CONTROL</small><b>{campaign.resources.rareTech} Quarantined Trace</b></span></div>
+      </section>
+      <section className="crafting-input-contract" aria-label="Crafting input controls">
+        <div><small>P10-F // TOUCH + CONTROLLER</small><b>D-pad moves · A confirms · B backs out</b><span>Reconstruction controls keep native button semantics for keyboard and touch. Controller focus stays inside the crafting surface, A activates the focused legal action, and B returns from a pending craft review without spending salvage.</span></div>
       </section>
       <section className="crafting-rules-contract" aria-label="Crafting rules and legal modifier pool">
         <header>
@@ -620,6 +623,14 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
     buttons[nextIndex]?.focus();
     buttons[nextIndex]?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   };
+  const focusCraftControlByOffset = (offset: number, edge?: 'start' | 'end') => {
+    const buttons = [...(buildRef.current?.querySelectorAll<HTMLButtonElement>('[data-crafting-surface="true"] button:not(:disabled)') ?? [])];
+    if (!buttons.length) return;
+    const activeIndex = buttons.indexOf(document.activeElement as HTMLButtonElement);
+    const nextIndex = edge === 'start' ? 0 : edge === 'end' ? buttons.length - 1 : activeIndex < 0 ? (offset < 0 ? buttons.length - 1 : 0) : (activeIndex + offset + buttons.length) % buttons.length;
+    buttons[nextIndex]?.focus();
+    buttons[nextIndex]?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  };
   const handleNetworkNavigation = (event: React.KeyboardEvent<HTMLElement>) => {
     const target = event.target as HTMLElement;
     if (target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement || target.isContentEditable) return;
@@ -650,6 +661,36 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
       else if (pad?.buttons[13]?.pressed || pad?.buttons[15]?.pressed) direction = 1;
       if (direction && direction !== previousDirection) focusNetworkNodeByOffset(direction);
       previousDirection = direction;
+      frame = requestAnimationFrame(poll);
+    };
+    frame = requestAnimationFrame(poll);
+    return () => cancelAnimationFrame(frame);
+  }, [tab]);
+  useEffect(() => {
+    if (tab !== 'reconstruct' || typeof navigator.getGamepads !== 'function') return;
+    let frame = 0;
+    let previousDirection = 0;
+    let previousConfirm = false;
+    let previousBack = false;
+    const poll = () => {
+      const pad = [...navigator.getGamepads()].find(Boolean);
+      let direction = 0;
+      if (pad?.buttons[12]?.pressed || pad?.buttons[14]?.pressed) direction = -1;
+      else if (pad?.buttons[13]?.pressed || pad?.buttons[15]?.pressed) direction = 1;
+      if (direction && direction !== previousDirection) focusCraftControlByOffset(direction);
+      previousDirection = direction;
+
+      const confirm = !!pad?.buttons[0]?.pressed;
+      if (confirm && !previousConfirm) {
+        const active = document.activeElement;
+        if (active instanceof HTMLButtonElement && active.closest('[data-crafting-surface="true"]') && !active.disabled) active.click();
+        else focusCraftControlByOffset(1, 'start');
+      }
+      previousConfirm = confirm;
+
+      const back = !!pad?.buttons[1]?.pressed;
+      if (back && !previousBack) buildRef.current?.querySelector<HTMLButtonElement>('[data-crafting-back="true"]')?.click();
+      previousBack = back;
       frame = requestAnimationFrame(poll);
     };
     frame = requestAnimationFrame(poll);

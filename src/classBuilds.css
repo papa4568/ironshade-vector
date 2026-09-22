@@ -1039,3 +1039,48 @@
   .salvage-loop-balances { min-width: 0; }
   .craft-review-actions button { min-height: 44px; flex: 1; }
 }
+
+
+/* P10-F // economy + touch QA */
+.crafting-input-contract {
+  margin-top: 9px;
+  padding: 9px 10px;
+  border: 1px solid #3d564f;
+  border-radius: 9px;
+  background: rgba(7, 16, 14, .88);
+}
+.crafting-input-contract small,
+.crafting-input-contract b,
+.crafting-input-contract span {
+  display: block;
+}
+.crafting-input-contract small {
+  color: #80a79b;
+  font-size: 6px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+.crafting-input-contract b {
+  margin-top: 3px;
+  color: #d7e5e0;
+  font-size: 9px;
+}
+.crafting-input-contract span {
+  margin-top: 4px;
+  color: #8da099;
+  font-size: 7px;
+  line-height: 1.42;
+}
+.reconstruction-bench button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+@media (pointer: coarse) {
+  .reconstruction-bench button {
+    min-height: 48px;
+    touch-action: manipulation;
+  }
+  .craft-review-actions button {
+    min-height: 48px;
+  }
+}
