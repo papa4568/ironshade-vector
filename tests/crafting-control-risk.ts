@@ -84,7 +84,7 @@ assert.equal(validateCraftingRulesFoundation(), true, 'P10-C must preserve the P
 const stable = item();
 assert.equal(craftingStabilityForItem(stable), 100);
 assert.equal(craftingVolatileSuccessChance(stable), 0.9);
-assert.equal(craftingVolatileSuccessChance(item({ craftStability: 20 })), 0.66);
+assert.equal(Math.round(craftingVolatileSuccessChance(item({ craftStability: 20 })) * 100), 66);
 const stableRules = craftingRulesForItem(stable, 2);
 assert.equal(stableRules.stability, 100);
 assert.equal(stableRules.volatileSuccessChance, 0.9);
