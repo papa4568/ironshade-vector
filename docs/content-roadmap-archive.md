@@ -878,3 +878,18 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Android artifact `10713994152` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.268`, debug signing, package/version/SDK/signature verification, native emulator runtime/touch/lifecycle/Chapter 3 QA, and APK SHA-256 `eea1152578dd1992c3fbfaa1b520a24fe518ec394b65ccb0befd505c147af925`.
   - **Next: P12-A — Weapon audio.**
 
+
+
+## P12 — AAA Combat Feel
+
+- [x] **P12-A Weapon audio** — replaced the old single-oscillator weapon cues with distinct layered synthesized signatures for the three class-owned weapon families while preserving combat timing, weapon stats, input behavior, and the hard arsenal lock.
+  - **Systems / Carbine** now combines a sharp mechanical action, compact discharge/body, and short near/mid/far tails tuned for rapid repeat fire. Mid tails play every second shot and far tails every fourth shot to bound mobile audio-node pressure.
+  - **Vanguard / Breacher** now uses a heavier chamber/mechanical action, low-frequency body, and full near/mid/far tails on every shot so close-range fire reads as a large physical impulse.
+  - **Vector / Rail Lance** now uses a higher-frequency coil action, split electromagnetic/body discharge, and long near/mid/far tails on every shot for a precise high-energy signature.
+  - Added deterministic bounded repeat variation for pitch and gain so repeated shots avoid obvious identical playback without introducing nondeterministic QA behavior.
+  - Added a shared dynamics-compressor output stage and per-layer low-pass shaping. Each shot schedules at most seven lightweight Web Audio nodes; no downloadable audio asset pack or new runtime dependency was added.
+  - Added production regression gate `WEAPON_AUDIO_PASS families=3 maxLayers=7 tails=near/mid/far repeat=bounded carbine=decimated`, covering layer ownership, tail ordering, mobile node budget, bounded variation, deterministic cycling, distinct family signatures, and Carbine tail decimation.
+  - PR #178 Browser E2E `35777398230` passed desktop + mobile-landscape on tested head `e368fe3b3ab5d7d58efd97b37aa2d2a0d0f74c1c`.
+  - Verified on merged gameplay source `50ef94af14805eb9de6bda5c0129c12556817219`: Browser E2E `35777684644`, Level 15 beta smoke `35777684666`, and Android beta.269 `35777684680` all passed.
+  - Android artifact `10716801744` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.269`, debug signing, package/version/SDK/signature verification, native emulator runtime/touch/lifecycle/Chapter 3 QA, and APK SHA-256 `172ffcd4d8c92ef5a8a34badb695295f7fc78a0c9d7a61340f4e0e31af6c3cc1`.
+  - **Next: P12-B — Impact/environment audio.**
