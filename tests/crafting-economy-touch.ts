@@ -107,11 +107,9 @@ for (let clear = 0; clear < 3; clear += 1) {
 assert.equal(campaign.shipUpgrades.fabrication, 2);
 assert.equal(campaign.resources.rareTech, 1, 'The first eligible deep anomaly should add one Quarantined Trace.');
 
-const postAnomaly = withOperationScaling(
-  generateContracts(campaign).find(contract => contract.archetype === 'salvage' && !contract.megastructure)!,
-  campaign,
-  10,
-);
+const postAnomalyCandidate = generateContracts(campaign).find(contract => !contract.anomalyOpportunity) ?? generateContracts(campaign)[0];
+assert.ok(postAnomalyCandidate, 'Campaign must keep at least one post-anomaly contract available.');
+const postAnomaly = withOperationScaling(postAnomalyCandidate, campaign, 10);
 campaign = settleContract(campaign, postAnomaly, 'deep', 6).campaign;
 assert.equal(campaign.resources.rareTech, 1, 'Standard salvage must not turn the chase resource into a repeatable bulk drop.');
 
