@@ -84,6 +84,7 @@ type ShipSystemDefinitionInput = Omit<UpgradeDefinition, 'benefits' | 'costs' | 
   legacyCosts: [Partial<SalvageWallet>, Partial<SalvageWallet>];
   futureBenefits: [string, string, string, string];
   futureCosts: [Partial<SalvageWallet>, Partial<SalvageWallet>, Partial<SalvageWallet>, Partial<SalvageWallet>];
+  commissionedThroughTier?: ShipSystemTier;
 };
 
 function futureShipSystemGates(ownerFaction: FactionId, dependency: ShipUpgradeId, tier: 3 | 4 | 5 | 6): ShipSystemGate[] {
@@ -113,23 +114,24 @@ function futureShipSystemGates(ownerFaction: FactionId, dependency: ShipUpgradeI
 }
 
 function defineShipSystem(input: ShipSystemDefinitionInput): UpgradeDefinition {
+  const { commissionedThroughTier = 2, ...definition } = input;
   const tiers: ShipSystemTierDefinition[] = [
     { tier: 1, implemented: true, benefit: input.legacyBenefits[0], cost: input.legacyCosts[0], gates: [] },
     { tier: 2, implemented: true, benefit: input.legacyBenefits[1], cost: input.legacyCosts[1], gates: [] },
     ...input.futureBenefits.map((benefit, index) => {
       const tier = (index + 3) as 3 | 4 | 5 | 6;
-      return { tier, implemented: false, benefit, cost: input.futureCosts[index], gates: futureShipSystemGates(input.ownerFaction, input.dependency, tier) };
+      return { tier, implemented: tier <= commissionedThroughTier, benefit, cost: input.futureCosts[index], gates: futureShipSystemGates(input.ownerFaction, input.dependency, tier) };
     }),
   ];
-  return { ...input, benefits: tiers.map(tier => tier.benefit), costs: tiers.map(tier => tier.cost), tiers };
+  return { ...definition, benefits: tiers.map(tier => tier.benefit), costs: tiers.map(tier => tier.cost), tiers };
 }
 
 export const upgradeDefinitions: UpgradeDefinition[] = [
-  defineShipSystem({ id: 'reactor', name: 'Reactor Bus', area: 'Engineering', ownerFaction: 'heliostat', dependency: 'sensors', description: 'Improves deployment capacitor reserve and recharge headroom.', legacyBenefits: ['+12 max capacitor and +10% regeneration', '+24 max capacitor and +20% regeneration'], legacyCosts: [{ credits: 180, electronics: 3 }, { credits: 340, electronics: 6, components: 2 }], futureBenefits: ['High-load power conditioning blueprint', 'Thermal bus isolation blueprint', 'Combat reserve routing blueprint', 'Flagship reactor architecture blueprint'], futureCosts: [{ credits: 650, electronics: 9, components: 4 }, { credits: 1100, electronics: 14, components: 7, rareTech: 1 }, { credits: 1800, electronics: 20, components: 11, rareTech: 2 }, { credits: 2900, electronics: 28, components: 17, rareTech: 3 }] }),
-  defineShipSystem({ id: 'drive', name: 'Vector Drive', area: 'Engineering', ownerFaction: 'longarc', dependency: 'cargo', description: 'Improves suit-thruster calibration and low-g control data.', legacyBenefits: ['+4% movement speed and low-g braking', '+8% movement speed and stronger low-g braking'], legacyCosts: [{ credits: 170, alloys: 3 }, { credits: 320, alloys: 6, components: 1 }], futureBenefits: ['Vector-control governor blueprint', 'Countermass recovery blueprint', 'Long-burn navigation blueprint', 'Flagship drive architecture blueprint'], futureCosts: [{ credits: 620, alloys: 9, components: 4 }, { credits: 1050, alloys: 14, components: 7, rareTech: 1 }, { credits: 1750, alloys: 20, components: 11, rareTech: 2 }, { credits: 2800, alloys: 29, components: 17, rareTech: 3 }] }),
-  defineShipSystem({ id: 'armor', name: 'Deployment Armor Locker', area: 'Engineering', ownerFaction: 'meridian', dependency: 'medical', description: 'Adds better modular plates to every pressure-suit deployment.', legacyBenefits: ['+10 starting armor', '+20 starting armor'], legacyCosts: [{ credits: 190, alloys: 4 }, { credits: 360, alloys: 7, components: 1 }], futureBenefits: ['Pressure-shell reserve blueprint', 'Ablative deployment rack blueprint', 'Emergency plate cycling blueprint', 'Flagship armor logistics blueprint'], futureCosts: [{ credits: 680, alloys: 10, components: 4 }, { credits: 1150, alloys: 16, components: 7, rareTech: 1 }, { credits: 1850, alloys: 23, components: 11, rareTech: 2 }, { credits: 3000, alloys: 32, components: 18, rareTech: 3 }] }),
+  defineShipSystem({ id: 'reactor', name: 'Reactor Bus', area: 'Engineering', ownerFaction: 'heliostat', dependency: 'sensors', description: 'Improves deployment capacitor reserve and recharge headroom.', legacyBenefits: ['+12 max capacitor and +10% regeneration', '+24 max capacitor and +20% regeneration'], legacyCosts: [{ credits: 180, electronics: 3 }, { credits: 340, electronics: 6, components: 2 }], futureBenefits: ['+36 max capacitor and +28% regeneration', '+48 max capacitor, +36% regeneration, and -4% class-skill capacitor costs', '+62 max capacitor, +45% regeneration, and -8% class-skill capacitor costs', '+78 max capacitor, +56% regeneration, and -12% class-skill capacitor costs'], futureCosts: [{ credits: 650, electronics: 9, components: 4 }, { credits: 1100, electronics: 14, components: 7, rareTech: 1 }, { credits: 1800, electronics: 20, components: 11, rareTech: 2 }, { credits: 2900, electronics: 28, components: 17, rareTech: 3 }], commissionedThroughTier: 6 }),
+  defineShipSystem({ id: 'drive', name: 'Vector Drive', area: 'Engineering', ownerFaction: 'longarc', dependency: 'cargo', description: 'Improves suit-thruster calibration and low-g control data.', legacyBenefits: ['+4% movement speed and low-g braking', '+8% movement speed and stronger low-g braking'], legacyCosts: [{ credits: 170, alloys: 3 }, { credits: 320, alloys: 6, components: 1 }], futureBenefits: ['+12% movement speed and +36% low-g control', '+15% movement speed and +50% low-g control', '+18% movement speed and +64% low-g control', '+22% movement speed and +80% low-g control'], futureCosts: [{ credits: 620, alloys: 9, components: 4 }, { credits: 1050, alloys: 14, components: 7, rareTech: 1 }, { credits: 1750, alloys: 20, components: 11, rareTech: 2 }, { credits: 2800, alloys: 29, components: 17, rareTech: 3 }], commissionedThroughTier: 6 }),
+  defineShipSystem({ id: 'armor', name: 'Deployment Armor Locker', area: 'Engineering', ownerFaction: 'meridian', dependency: 'medical', description: 'Adds better modular plates to every pressure-suit deployment.', legacyBenefits: ['+10 starting armor', '+20 starting armor'], legacyCosts: [{ credits: 190, alloys: 4 }, { credits: 360, alloys: 7, components: 1 }], futureBenefits: ['+32 starting armor', '+46 starting armor', '+62 starting armor', '+80 starting armor'], futureCosts: [{ credits: 680, alloys: 10, components: 4 }, { credits: 1150, alloys: 16, components: 7, rareTech: 1 }, { credits: 1850, alloys: 23, components: 11, rareTech: 2 }, { credits: 3000, alloys: 32, components: 18, rareTech: 3 }], commissionedThroughTier: 6 }),
   defineShipSystem({ id: 'cargo', name: 'Cargo Recovery Grid', area: 'Cargo', ownerFaction: 'longarc', dependency: 'drive', description: 'Improves how much tagged salvage survives extraction and sorting.', legacyBenefits: ['+12% salvage yield', '+24% salvage yield'], legacyCosts: [{ credits: 150, alloys: 2, electronics: 1 }, { credits: 300, alloys: 4, electronics: 2 }], futureBenefits: ['Priority-sort lattice blueprint', 'Hardened recovery channel blueprint', 'Deep-extraction grid blueprint', 'Flagship cargo architecture blueprint'], futureCosts: [{ credits: 600, alloys: 7, electronics: 4, components: 3 }, { credits: 1000, alloys: 11, electronics: 7, components: 6, rareTech: 1 }, { credits: 1650, alloys: 16, electronics: 10, components: 10, rareTech: 2 }, { credits: 2650, alloys: 23, electronics: 14, components: 16, rareTech: 3 }] }),
-  defineShipSystem({ id: 'sensors', name: 'Long-Baseline Sensors', area: 'Engineering', ownerFaction: 'longarc', dependency: 'reactor', description: 'Improves pre-deployment firing solutions and mark telemetry.', legacyBenefits: ['+4% projectile velocity and stronger Sensor Spike', '+8% projectile velocity and stronger Sensor Spike'], legacyCosts: [{ credits: 180, electronics: 3 }, { credits: 350, electronics: 5, components: 2 }], futureBenefits: ['Predictive fire-control blueprint', 'Long-baseline fusion blueprint', 'Directive telemetry blueprint', 'Flagship sensor architecture blueprint'], futureCosts: [{ credits: 660, electronics: 9, components: 4 }, { credits: 1120, electronics: 15, components: 7, rareTech: 1 }, { credits: 1820, electronics: 21, components: 11, rareTech: 2 }, { credits: 2920, electronics: 30, components: 17, rareTech: 3 }] }),
+  defineShipSystem({ id: 'sensors', name: 'Long-Baseline Sensors', area: 'Engineering', ownerFaction: 'longarc', dependency: 'reactor', description: 'Improves pre-deployment firing solutions and mark telemetry.', legacyBenefits: ['+4% projectile velocity and stronger Sensor Spike', '+8% projectile velocity and stronger Sensor Spike'], legacyCosts: [{ credits: 180, electronics: 3 }, { credits: 350, electronics: 5, components: 2 }], futureBenefits: ['+12% projectile velocity and +24% Sensor Spike power', '+16% projectile velocity, +32% Sensor Spike power, and +6 penetration', '+20% projectile velocity, +40% Sensor Spike power, and +12 penetration', '+24% projectile velocity, +50% Sensor Spike power, and +20 penetration'], futureCosts: [{ credits: 660, electronics: 9, components: 4 }, { credits: 1120, electronics: 15, components: 7, rareTech: 1 }, { credits: 1820, electronics: 21, components: 11, rareTech: 2 }, { credits: 2920, electronics: 30, components: 17, rareTech: 3 }], commissionedThroughTier: 6 }),
   defineShipSystem({ id: 'fabrication', name: 'Microforge', area: 'Fabrication', ownerFaction: 'heliostat', dependency: 'cargo', description: 'Expands deterministic shipboard reconstruction rather than improving random drops.', legacyBenefits: ['Unlocks modifier-family rerouting/addition, quality 16, G4 calibration, second-socket access, and -10% reconstruction credit costs', 'Unlocks family-lock recalibration, quality 20, G5 calibration, full socket access, and -20% reconstruction credit costs'], legacyCosts: [{ credits: 210, alloys: 2, electronics: 2 }, { credits: 390, alloys: 4, electronics: 4, components: 2 }], futureBenefits: ['Precision feedstock blueprint', 'Closed-loop reconstruction blueprint', 'Trace-safe fabrication blueprint', 'Flagship microforge architecture blueprint'], futureCosts: [{ credits: 720, alloys: 6, electronics: 7, components: 5 }, { credits: 1220, alloys: 9, electronics: 11, components: 8, rareTech: 1 }, { credits: 1980, alloys: 13, electronics: 16, components: 13, rareTech: 2 }, { credits: 3200, alloys: 19, electronics: 23, components: 20, rareTech: 3 }] }),
   defineShipSystem({ id: 'medical', name: 'Trauma Bay', area: 'Medical', ownerFaction: 'meridian', dependency: 'armor', description: 'Improves deployment stabilization and operator reserve.', legacyBenefits: ['+8 maximum health', '+16 maximum health'], legacyCosts: [{ credits: 160, medstock: 3 }, { credits: 300, medstock: 6, electronics: 1 }], futureBenefits: ['Emergency perfusion blueprint', 'Trauma isolation blueprint', 'Deep-deployment reserve blueprint', 'Flagship trauma architecture blueprint'], futureCosts: [{ credits: 610, medstock: 9, electronics: 4, components: 3 }, { credits: 1040, medstock: 14, electronics: 6, components: 6, rareTech: 1 }, { credits: 1700, medstock: 20, electronics: 9, components: 10, rareTech: 2 }, { credits: 2750, medstock: 28, electronics: 13, components: 16, rareTech: 3 }] }),
   defineShipSystem({ id: 'drones', name: 'Support Drone Rack', area: 'Engineering', ownerFaction: 'heliostat', dependency: 'sensors', description: 'Adds a ship-linked relay drone to electronic combat packages.', legacyBenefits: ['Disrupted targets can be serviced by a relay drone', 'Faster Arc Tap cycling and relay support'], legacyCosts: [{ credits: 220, electronics: 4, components: 1 }, { credits: 420, electronics: 7, components: 3 }], futureBenefits: ['Relay coordination blueprint', 'Autonomous service-loop blueprint', 'Directive support-mesh blueprint', 'Flagship drone architecture blueprint'], futureCosts: [{ credits: 760, electronics: 10, components: 5 }, { credits: 1280, electronics: 16, components: 8, rareTech: 1 }, { credits: 2050, electronics: 23, components: 13, rareTech: 2 }, { credits: 3300, electronics: 32, components: 20, rareTech: 3 }] }),
@@ -718,4 +720,55 @@ export function buyShipUpgrade(campaign: CampaignState, id: ShipUpgradeId): { ca
   const nextLevel = status.nextTier.tier;
   return { campaign: { ...campaign, shipSystemSchemaVersion: SHIP_SYSTEM_SCHEMA_VERSION, resources, shipUpgrades: { ...campaign.shipUpgrades, [id]: nextLevel }, lastOutcome: `${status.definition.name} upgraded to tier ${nextLevel}.` }, message: `${status.definition.name} upgraded to tier ${nextLevel}: ${status.nextTier.benefit}` };
 }
-export function applyShipBonuses(build: CombatBuild, campaign: CampaignState): CombatBuild { const next: CombatBuild = { operatorClass: build.operatorClass, classResonanceTier: build.classResonanceTier, classSkillFamily: { ...build.classSkillFamily, sources: [...build.classSkillFamily.sources] }, weapon: { carbine: { ...build.weapon.carbine }, breacher: { ...build.weapon.breacher }, rail: { ...build.weapon.rail } }, player: { ...build.player }, mechanics: { ...build.mechanics }, singularTraits: [...build.singularTraits], specialization: build.specialization, specializationOverclock: build.specializationOverclock, abilities: build.abilities.map(ability => ({ ...ability })) as CombatBuild['abilities'] }; const upgrades = campaign.shipUpgrades; next.player.maxCapAdd += upgrades.reactor * 12; next.player.capRegenMul *= 1 + upgrades.reactor * 0.1; next.player.moveSpeedMul *= 1 + upgrades.drive * 0.04; next.player.lowGControl += upgrades.drive * 0.12; next.player.maxArmorAdd += upgrades.armor * 10; for (const weapon of Object.values(next.weapon)) weapon.speedMul *= 1 + upgrades.sensors * 0.04; next.abilities[1].powerMul *= 1 + upgrades.sensors * 0.08; next.player.maxHpAdd += upgrades.medical * 8; if (upgrades.drones >= 1) { next.mechanics.arcDrone = true; next.mechanics.arcDroneScale = Math.max(next.mechanics.arcDroneScale, 1); } if (upgrades.drones >= 2) next.abilities[2].cooldownMul *= 0.9; return next; }
+function shipTier(value: number) {
+  return Math.max(0, Math.min(SHIP_SYSTEM_MAX_TIER, Math.floor(value || 0)));
+}
+
+export function applyShipBonuses(build: CombatBuild, campaign: CampaignState): CombatBuild {
+  const next: CombatBuild = {
+    operatorClass: build.operatorClass,
+    classResonanceTier: build.classResonanceTier,
+    classSkillFamily: { ...build.classSkillFamily, sources: [...build.classSkillFamily.sources] },
+    weapon: { carbine: { ...build.weapon.carbine }, breacher: { ...build.weapon.breacher }, rail: { ...build.weapon.rail } },
+    player: { ...build.player },
+    mechanics: { ...build.mechanics },
+    singularTraits: [...build.singularTraits],
+    specialization: build.specialization,
+    specializationOverclock: build.specializationOverclock,
+    abilities: build.abilities.map(ability => ({ ...ability })) as CombatBuild['abilities'],
+  };
+  const upgrades = campaign.shipUpgrades;
+
+  const reactorTier = shipTier(upgrades.reactor);
+  const reactorCap = [0, 12, 24, 36, 48, 62, 78][reactorTier]!;
+  const reactorRegen = [0, 0.1, 0.2, 0.28, 0.36, 0.45, 0.56][reactorTier]!;
+  const reactorSkillCost = [1, 1, 1, 1, 0.96, 0.92, 0.88][reactorTier]!;
+  next.player.maxCapAdd += reactorCap;
+  next.player.capRegenMul *= 1 + reactorRegen;
+  for (const ability of next.abilities) ability.costMul *= reactorSkillCost;
+
+  const driveTier = shipTier(upgrades.drive);
+  next.player.moveSpeedMul *= [1, 1.04, 1.08, 1.12, 1.15, 1.18, 1.22][driveTier]!;
+  next.player.lowGControl += [0, 0.12, 0.24, 0.36, 0.5, 0.64, 0.8][driveTier]!;
+
+  const armorTier = shipTier(upgrades.armor);
+  next.player.maxArmorAdd += [0, 10, 20, 32, 46, 62, 80][armorTier]!;
+
+  const sensorTier = shipTier(upgrades.sensors);
+  const sensorVelocity = [0, 0.04, 0.08, 0.12, 0.16, 0.2, 0.24][sensorTier]!;
+  const sensorPower = [0, 0.08, 0.16, 0.24, 0.32, 0.4, 0.5][sensorTier]!;
+  const sensorPenetration = [0, 0, 0, 0, 6, 12, 20][sensorTier]!;
+  for (const weapon of Object.values(next.weapon)) {
+    weapon.speedMul *= 1 + sensorVelocity;
+    weapon.penetrationAdd += sensorPenetration;
+  }
+  next.abilities[1].powerMul *= 1 + sensorPower;
+
+  next.player.maxHpAdd += upgrades.medical * 8;
+  if (upgrades.drones >= 1) {
+    next.mechanics.arcDrone = true;
+    next.mechanics.arcDroneScale = Math.max(next.mechanics.arcDroneScale, 1);
+  }
+  if (upgrades.drones >= 2) next.abilities[2].cooldownMul *= 0.9;
+  return next;
+}
