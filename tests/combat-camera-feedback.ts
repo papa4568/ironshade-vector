@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import assert from 'node:assert/strict';
 import { CombatCameraFeedbackRuntime } from '../src/game/combatCameraFeedback';
 
@@ -60,4 +62,11 @@ for (let i = 0; i < 120; i += 1) {
 }
 assert(sample.impact < 0.01 && sample.damage < 0.01, 'impact and damage camera impulses must decay instead of becoming permanent');
 
-console.log('COMBAT_FEEL_PASS recoil+impact+damage+accessibility');
+const gameCanvasSource = readFileSync(resolve(process.cwd(), 'src/components/GameCanvas.tsx'), 'utf8');
+const rendererSource = readFileSync(resolve(process.cwd(), 'src/game/threeCombatRenderer.ts'), 'utf8');
+const feedbackSource = readFileSync(resolve(process.cwd(), 'src/game/feedback.ts'), 'utf8');
+assert(gameCanvasSource.includes('cameraFeedbackRef.current.sample') && gameCanvasSource.includes('syncCombatFeedback(state'), 'combat loop must sample camera and audio/haptics from the same frame');
+assert(gameCanvasSource.includes('firingIntent, cameraFeedback'), 'Three.js renderer must receive the shared combat-camera response');
+assert(rendererSource.includes('cameraFeedback?.worldOffsetX') && rendererSource.includes('dataset.cameraFeedback'), 'Three.js camera must consume and expose shared combat feedback');
+assert(feedbackSource.includes("this.haptic('impact', heavy ? 1 : .55)"), 'impact audio path must dispatch synchronized impact haptics');
+console.log('COMBAT_FEEL_PASS recoil+impact+damage+haptics+accessibility');
