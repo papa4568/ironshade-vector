@@ -5,14 +5,33 @@ export type FeedbackCue =
   | 'impact' | 'armor' | 'damage' | 'ability' | 'dodge' | 'breach' | 'gravity'
   | 'enemy' | 'machinery' | 'targetLock';
 
+export type WeaponCue = Extract<FeedbackCue, 'carbine' | 'breacher' | 'rail'>;
+type UtilityCue = Exclude<FeedbackCue, WeaponCue>;
+
 type Tone = { frequency: number; duration: number; type: OscillatorType; sweep?: number };
-const tones: Record<FeedbackCue, Tone> = {
+export type WeaponAudioLayer = {
+  frequency: number;
+  duration: number;
+  type: OscillatorType;
+  gain: number;
+  sweep?: number;
+  delay?: number;
+  attack?: number;
+  lowpassHz?: number;
+};
+export type WeaponAudioProfile = {
+  mechanical: WeaponAudioLayer[];
+  discharge: WeaponAudioLayer[];
+  tails: Record<'near' | 'mid' | 'far', WeaponAudioLayer>;
+  tailCadence: Record<'near' | 'mid' | 'far', number>;
+  repeat: { pitchCents: number; gainVariance: number };
+  masterGain: number;
+};
+
+const tones: Record<UtilityCue, Tone> = {
   ui: { frequency: 460, duration: .045, type: 'sine' },
   loot: { frequency: 620, duration: .11, type: 'sine', sweep: 1.18 },
   rareLoot: { frequency: 760, duration: .2, type: 'sine', sweep: 1.45 },
-  carbine: { frequency: 185, duration: .035, type: 'square', sweep: .78 },
-  breacher: { frequency: 105, duration: .09, type: 'sawtooth', sweep: .62 },
-  rail: { frequency: 310, duration: .12, type: 'sawtooth', sweep: 1.45 },
   reload: { frequency: 250, duration: .055, type: 'triangle' },
   impact: { frequency: 130, duration: .035, type: 'square', sweep: .72 },
   armor: { frequency: 540, duration: .055, type: 'triangle', sweep: .86 },
@@ -26,18 +45,107 @@ const tones: Record<FeedbackCue, Tone> = {
   targetLock: { frequency: 520, duration: .065, type: 'triangle', sweep: 1.16 },
 };
 
+export const weaponAudioProfiles: Record<WeaponCue, WeaponAudioProfile> = {
+  carbine: {
+    mechanical: [
+      { frequency: 1320, duration: .018, type: 'square', gain: .18, sweep: .76, lowpassHz: 4200 },
+      { frequency: 760, duration: .026, type: 'triangle', gain: .12, sweep: .68, delay: .009, lowpassHz: 3200 },
+    ],
+    discharge: [
+      { frequency: 210, duration: .045, type: 'square', gain: .48, sweep: .68, lowpassHz: 2100 },
+      { frequency: 420, duration: .032, type: 'triangle', gain: .2, sweep: .74, lowpassHz: 3000 },
+    ],
+    tails: {
+      near: { frequency: 145, duration: .075, type: 'sawtooth', gain: .2, sweep: .58, delay: .012, lowpassHz: 1500 },
+      mid: { frequency: 104, duration: .13, type: 'sine', gain: .13, sweep: .7, delay: .034, lowpassHz: 980 },
+      far: { frequency: 74, duration: .2, type: 'sine', gain: .075, sweep: .82, delay: .072, lowpassHz: 680 },
+    },
+    tailCadence: { near: 1, mid: 2, far: 4 },
+    repeat: { pitchCents: 22, gainVariance: .045 },
+    masterGain: .23,
+  },
+  breacher: {
+    mechanical: [
+      { frequency: 620, duration: .032, type: 'square', gain: .2, sweep: .7, lowpassHz: 2600 },
+      { frequency: 360, duration: .052, type: 'triangle', gain: .16, sweep: .56, delay: .016, lowpassHz: 1900 },
+    ],
+    discharge: [
+      { frequency: 92, duration: .105, type: 'sawtooth', gain: .68, sweep: .52, lowpassHz: 1250 },
+      { frequency: 178, duration: .072, type: 'square', gain: .31, sweep: .61, lowpassHz: 1750 },
+    ],
+    tails: {
+      near: { frequency: 78, duration: .14, type: 'sawtooth', gain: .3, sweep: .54, delay: .018, lowpassHz: 1000 },
+      mid: { frequency: 62, duration: .24, type: 'sine', gain: .2, sweep: .7, delay: .052, lowpassHz: 720 },
+      far: { frequency: 48, duration: .36, type: 'sine', gain: .12, sweep: .86, delay: .11, lowpassHz: 520 },
+    },
+    tailCadence: { near: 1, mid: 1, far: 1 },
+    repeat: { pitchCents: 16, gainVariance: .04 },
+    masterGain: .27,
+  },
+  rail: {
+    mechanical: [
+      { frequency: 1080, duration: .028, type: 'triangle', gain: .16, sweep: .82, lowpassHz: 4200 },
+      { frequency: 690, duration: .05, type: 'square', gain: .11, sweep: 1.18, delay: .014, lowpassHz: 3600 },
+    ],
+    discharge: [
+      { frequency: 520, duration: .105, type: 'sawtooth', gain: .45, sweep: .46, lowpassHz: 3300 },
+      { frequency: 152, duration: .13, type: 'sine', gain: .38, sweep: 1.82, attack: .006, lowpassHz: 2200 },
+    ],
+    tails: {
+      near: { frequency: 315, duration: .13, type: 'triangle', gain: .22, sweep: .62, delay: .02, lowpassHz: 2600 },
+      mid: { frequency: 210, duration: .23, type: 'sine', gain: .15, sweep: .74, delay: .058, lowpassHz: 1600 },
+      far: { frequency: 132, duration: .34, type: 'sine', gain: .095, sweep: .9, delay: .12, lowpassHz: 980 },
+    },
+    tailCadence: { near: 1, mid: 1, far: 1 },
+    repeat: { pitchCents: 12, gainVariance: .035 },
+    masterGain: .25,
+  },
+};
+
+const repeatSequence = [-1, -.42, .18, .72, -.68, .37, .91, -.16] as const;
+const weaponOffsets: Record<WeaponCue, number> = { carbine: 0, breacher: 3, rail: 5 };
+
+export function weaponRepeatVariation(cue: WeaponCue, shotIndex: number) {
+  const profile = weaponAudioProfiles[cue];
+  const index = Math.max(0, Math.floor(shotIndex));
+  const pitchUnit = repeatSequence[(index + weaponOffsets[cue]) % repeatSequence.length]!;
+  const gainUnit = repeatSequence[(index * 3 + weaponOffsets[cue] + 2) % repeatSequence.length]!;
+  return {
+    pitchCents: pitchUnit * profile.repeat.pitchCents,
+    gainMultiplier: 1 + gainUnit * profile.repeat.gainVariance,
+  };
+}
+
+function isWeaponCue(cue: FeedbackCue): cue is WeaponCue {
+  return cue === 'carbine' || cue === 'breacher' || cue === 'rail';
+}
+
 class FeedbackBus {
   private context: AudioContext | null = null;
+  private output: DynamicsCompressorNode | null = null;
   private settings: ProfileSettings | null = null;
+  private weaponShotIndex: Record<WeaponCue, number> = { carbine: 0, breacher: 0, rail: 0 };
 
   configure(settings: ProfileSettings) { this.settings = settings; }
 
   unlock() {
     if (typeof window === 'undefined') return;
     try {
-      if (!this.context) this.context = new AudioContext();
+      if (!this.context) {
+        this.context = new AudioContext({ latencyHint: 'interactive' });
+        this.output = this.context.createDynamicsCompressor();
+        this.output.threshold.setValueAtTime(-12, this.context.currentTime);
+        this.output.knee.setValueAtTime(12, this.context.currentTime);
+        this.output.ratio.setValueAtTime(4, this.context.currentTime);
+        this.output.attack.setValueAtTime(.003, this.context.currentTime);
+        this.output.release.setValueAtTime(.12, this.context.currentTime);
+        this.output.connect(this.context.destination);
+      }
       if (this.context.state === 'suspended') void this.context.resume();
-    } catch { this.context = null; }
+    } catch {
+      this.output = null;
+      this.context = null;
+    }
   }
 
   private haptic(cue: FeedbackCue) {
@@ -64,21 +172,67 @@ class FeedbackBus {
     void actuator.playEffect('dual-rumble', { duration, startDelay: 0, strongMagnitude, weakMagnitude }).catch(() => undefined);
   }
 
-  private play(cue: FeedbackCue, volume: number) {
+  private playLayer(layer: WeaponAudioLayer, volume: number, pitchCents = 0, gainMultiplier = 1) {
     const context = this.context;
     if (!context || context.state !== 'running') return;
-    const tone = tones[cue];
-    const start = context.currentTime;
+
+    const start = context.currentTime + (layer.delay ?? 0);
+    const end = start + layer.duration;
     const oscillator = context.createOscillator();
     const gain = context.createGain();
-    oscillator.type = tone.type;
-    oscillator.frequency.setValueAtTime(tone.frequency, start);
-    if (tone.sweep) oscillator.frequency.exponentialRampToValueAtTime(Math.max(40, tone.frequency * tone.sweep), start + tone.duration);
-    gain.gain.setValueAtTime(Math.max(.0001, volume), start);
-    gain.gain.exponentialRampToValueAtTime(.0001, start + tone.duration);
-    oscillator.connect(gain).connect(context.destination);
+    const filter = layer.lowpassHz ? context.createBiquadFilter() : null;
+
+    oscillator.type = layer.type;
+    oscillator.frequency.setValueAtTime(layer.frequency, start);
+    oscillator.detune.setValueAtTime(pitchCents, start);
+    if (layer.sweep) oscillator.frequency.exponentialRampToValueAtTime(Math.max(36, layer.frequency * layer.sweep), end);
+
+    const peak = Math.max(.0001, volume * layer.gain * gainMultiplier);
+    const attack = Math.min(layer.duration * .35, Math.max(0, layer.attack ?? 0));
+    if (attack > 0) {
+      gain.gain.setValueAtTime(.0001, start);
+      gain.gain.exponentialRampToValueAtTime(peak, start + attack);
+    } else {
+      gain.gain.setValueAtTime(peak, start);
+    }
+    gain.gain.exponentialRampToValueAtTime(.0001, end);
+
+    if (filter) {
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(layer.lowpassHz!, start);
+      oscillator.connect(filter).connect(gain);
+    } else {
+      oscillator.connect(gain);
+    }
+    gain.connect(this.output ?? context.destination);
+
+    oscillator.addEventListener('ended', () => {
+      oscillator.disconnect();
+      filter?.disconnect();
+      gain.disconnect();
+    }, { once: true });
     oscillator.start(start);
-    oscillator.stop(start + tone.duration + .01);
+    oscillator.stop(end + .01);
+  }
+
+  private playTone(cue: UtilityCue, volume: number) {
+    const tone = tones[cue];
+    this.playLayer({ ...tone, gain: 1 }, volume);
+  }
+
+  private playWeapon(cue: WeaponCue, volume: number) {
+    const profile = weaponAudioProfiles[cue];
+    const shotIndex = this.weaponShotIndex[cue]++;
+    const variation = weaponRepeatVariation(cue, shotIndex);
+    const weaponVolume = volume * profile.masterGain;
+
+    for (const layer of profile.mechanical) this.playLayer(layer, weaponVolume, variation.pitchCents * .65, variation.gainMultiplier);
+    for (const layer of profile.discharge) this.playLayer(layer, weaponVolume, variation.pitchCents, variation.gainMultiplier);
+
+    for (const distance of ['near', 'mid', 'far'] as const) {
+      if (shotIndex % profile.tailCadence[distance] !== 0) continue;
+      this.playLayer(profile.tails[distance], weaponVolume, variation.pitchCents * .45, variation.gainMultiplier);
+    }
   }
 
   cue(cue: FeedbackCue) {
@@ -90,8 +244,12 @@ class FeedbackBus {
     this.haptic(cue);
     if (volume <= 0) return;
     this.unlock();
-    const scale = cue === 'rareLoot' ? .26 : cue === 'breacher' || cue === 'rail' || cue === 'breach' ? .2 : cue === 'damage' || cue === 'machinery' ? .16 : cue === 'targetLock' ? .1 : .12;
-    this.play(cue, volume * scale);
+    if (isWeaponCue(cue)) {
+      this.playWeapon(cue, volume);
+      return;
+    }
+    const scale = cue === 'rareLoot' ? .26 : cue === 'breach' ? .2 : cue === 'damage' || cue === 'machinery' ? .16 : cue === 'targetLock' ? .1 : .12;
+    this.playTone(cue, volume * scale);
   }
 }
 
