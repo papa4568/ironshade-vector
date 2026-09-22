@@ -6,6 +6,8 @@ import type { EquipmentFaction } from './factionGear';
 import type { SingularTraitId } from './sim';
 import { gearBuildTags, validateGearStatRegistry, type GearBuildTag, type GearStatId } from './gearStats';
 import { validateGearAffixRegistry } from './gearAffixes';
+import { validateSingularChaseRegistry, type GearSingularCategory } from './gearSingulars';
+export type { GearSingularCategory } from './gearSingulars';
 
 export const gearSchemaVersion = 1 as const;
 
@@ -60,16 +62,6 @@ export type GearAugmentDefinition = {
   tradeoffs?: Partial<Record<GearStatId, number>>;
 };
 
-export type GearSingularCategory =
-  | 'skill-transformer'
-  | 'resource-loop'
-  | 'movement-transformer'
-  | 'projectile-transformer'
-  | 'defense-transformer'
-  | 'conditional-engine'
-  | 'build-converter'
-  | 'environmental-interaction';
-
 export type GearSingularDefinition = {
   id: string;
   baseId: string;
@@ -79,6 +71,7 @@ export type GearSingularDefinition = {
   fixedAffixes: AffixId[];
   fixedFrameIdentity?: FrameIdentityId;
   singularTrait: SingularTraitId;
+  rule: string;
   buildTags: GearBuildTag[];
   opportunityCost: string;
 };
@@ -210,6 +203,7 @@ export function validateGearSchemaContract() {
   if (axes.size !== gearPowerAxisAudit.length) return false;
   return validateGearStatRegistry()
     && validateGearAffixRegistry()
+    && validateSingularChaseRegistry()
     && Object.values(gearTargetOwnership).every(Boolean)
     && gearPowerAxisAudit.every(axis => axis.currentOwners.length > 0 && axis.targetOwner && axis.targetRole);
 }

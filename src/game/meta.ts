@@ -10,6 +10,7 @@ import type { ItemRarity } from './rarity';
 import { gearBasesForSlot, resolveGearBase } from './gearBases';
 import { affixStatProfile, gearStatDefinition, mergeBuildTags, type GearAffixSemanticId, type GearBuildTag, type GearStatId } from './gearStats';
 import { gearAffixDefinition, gearAffixDefinitions } from './gearAffixes';
+import { singularChaseDefinition, type GearSingularCategory } from './gearSingulars';
 import { generateGearPlan, type GearGenerationOpportunity } from './gearGeneration';
 
 export type EquipmentSlot = WeaponId | 'suit' | 'rig' | 'implant';
@@ -18,7 +19,7 @@ export type AbilityId = 'mag' | 'mark' | 'arc';
 export type MobileAimAssist = 'light' | 'balanced';
 export type AffixId = GearAffixSemanticId;
 export type ItemModifier = { id: AffixId; label: string; description: string; mechanical: boolean; family?: ModifierFamily; grade?: ModifierGrade; statIds?: GearStatId[]; tradeoffStatIds?: GearStatId[]; buildTags?: GearBuildTag[] };
-export type Item = { id: string; baseId: string; name: string; slot: EquipmentSlot; equipmentClass: string; rarity: Rarity; levelRequirement: number; core: string; modifiers: ItemModifier[]; faction?: EquipmentFaction; singularTrait?: SingularTraitId; singularEffect?: string; recoveryLevel?: number; frameGeneration?: FrameGeneration; frameIdentity?: FrameIdentityId; frameImplicit?: string; equipmentQuality?: number; augmentSlots?: number; augments?: AugmentId[]; recoveryQuality?: RecoveryQualityGrade; recoverySource?: string };
+export type Item = { id: string; baseId: string; name: string; slot: EquipmentSlot; equipmentClass: string; rarity: Rarity; levelRequirement: number; core: string; modifiers: ItemModifier[]; faction?: EquipmentFaction; singularTrait?: SingularTraitId; singularEffect?: string; singularCategory?: GearSingularCategory; singularRule?: string; singularOpportunityCost?: string; recoveryLevel?: number; frameGeneration?: FrameGeneration; frameIdentity?: FrameIdentityId; frameImplicit?: string; equipmentQuality?: number; augmentSlots?: number; augments?: AugmentId[]; recoveryQuality?: RecoveryQualityGrade; recoverySource?: string };
 export type EffectIntensity = 'full' | 'reduced';
 export type ProfileSettings = { aimAssist: MobileAimAssist; rightStickFire: boolean; screenShake: boolean; effectIntensity: EffectIntensity; effectsVolume: number; uiVolume: number; haptics: boolean; telemetrySharing: boolean; tutorialComplete: boolean };
 export type PlayerProfile = { version: 3; xp: number; level: number; progressionPoints: number; allocatedNodes: string[]; abilityMods: Record<AbilityId, string | null>; operatorClass?: OperatorClassId; classSelectionComplete?: boolean; specialization: SpecializationId | null; specializationOverclock: boolean; inventory: Item[]; equipped: Record<EquipmentSlot, string | null>; settings: ProfileSettings; runsCompleted: number };
@@ -98,7 +99,19 @@ export function affixPoolForSlot(slot: EquipmentSlot) {
 }
 
 type SingularTemplate = Omit<Item, 'id' | 'levelRequirement'>;
-const singular = (template: SingularTemplate): SingularTemplate => template;
+const singular = (template: SingularTemplate): SingularTemplate => {
+  if (!template.singularTrait || !template.singularEffect) throw new Error(`Singular ${template.baseId} is missing a runtime trait or rule text.`);
+  const definition = singularChaseDefinition(template.baseId);
+  if (!definition) throw new Error(`Singular ${template.baseId} is missing from the P8.5-I chase registry.`);
+  if (definition.singularTrait !== template.singularTrait) throw new Error(`Singular ${template.baseId} trait does not match the chase registry.`);
+  if (definition.rule !== template.singularEffect) throw new Error(`Singular ${template.baseId} rule text does not match the chase registry.`);
+  return {
+    ...template,
+    singularCategory: definition.category,
+    singularRule: definition.rule,
+    singularOpportunityCost: definition.opportunityCost,
+  };
+};
 
 const bossSingularPools: Record<string, SingularTemplate[]> = {
   'Recovery Commander Sable Voss': [
