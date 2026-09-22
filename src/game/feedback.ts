@@ -404,11 +404,15 @@ class FeedbackBus {
     }
   }
 
-  private haptic(cue: FeedbackCue) {
+  private haptic(cue: FeedbackCue, intensity = 1) {
     if (!this.settings?.haptics || typeof navigator === 'undefined') return;
+    const accessibilityScale = this.settings.effectIntensity === 'reduced' ? .55 : 1;
+    const hapticScale = Math.max(0, Math.min(1, intensity)) * accessibilityScale;
+    if (hapticScale <= 0) return;
     const vibration = cue === 'rail' ? 18
       : cue === 'breacher' ? 12
       : cue === 'carbine' ? 4
+      : cue === 'impact' ? 10
       : cue === 'damage' ? 12
       : cue === 'dodge' ? 7
       : cue === 'breach' ? [18, 28, 22]
@@ -417,15 +421,19 @@ class FeedbackBus {
       : cue === 'machinery' ? 6
       : cue === 'targetLock' ? 8
       : 0;
-    if (vibration && typeof navigator.vibrate === 'function') navigator.vibrate(vibration);
+    const scaledVibration = Array.isArray(vibration)
+      ? vibration.map(value => Math.max(1, Math.round(value * hapticScale)))
+      : Math.max(0, Math.round(vibration * hapticScale));
+    if (scaledVibration && typeof navigator.vibrate === 'function') navigator.vibrate(scaledVibration);
 
     const gamepad = typeof navigator.getGamepads === 'function' ? [...navigator.getGamepads()].find(Boolean) : null;
     const actuator = gamepad ? (gamepad as Gamepad & { vibrationActuator?: { playEffect?: (type: string, params: { duration: number; startDelay: number; strongMagnitude: number; weakMagnitude: number }) => Promise<unknown> } }).vibrationActuator : undefined;
     if (!actuator?.playEffect || !vibration) return;
-    const duration = Array.isArray(vibration) ? vibration.reduce((total, value) => total + value, 0) : vibration;
-    const strongMagnitude = cue === 'breacher' ? .58 : cue === 'rail' ? .5 : cue === 'breach' || cue === 'damage' ? .46 : cue === 'carbine' ? .12 : cue === 'targetLock' ? .12 : .24;
-    const weakMagnitude = cue === 'carbine' ? .22 : cue === 'rail' ? .34 : cue === 'targetLock' ? .28 : .42;
-    void actuator.playEffect('dual-rumble', { duration, startDelay: 0, strongMagnitude, weakMagnitude }).catch(() => undefined);
+    const durationBase = Array.isArray(vibration) ? vibration.reduce((total, value) => total + value, 0) : vibration;
+    const duration = Math.max(1, Math.round(durationBase * hapticScale));
+    const strongBase = cue === 'breacher' ? .58 : cue === 'rail' ? .5 : cue === 'breach' || cue === 'damage' ? .46 : cue === 'impact' ? .34 : cue === 'carbine' ? .12 : cue === 'targetLock' ? .12 : .24;
+    const weakBase = cue === 'carbine' ? .22 : cue === 'rail' ? .34 : cue === 'impact' ? .38 : cue === 'targetLock' ? .28 : .42;
+    void actuator.playEffect('dual-rumble', { duration, startDelay: 0, strongMagnitude: strongBase * hapticScale, weakMagnitude: weakBase * hapticScale }).catch(() => undefined);
   }
 
   private playLayer(layer: WeaponAudioLayer, volume: number, pitchCents = 0, gainMultiplier = 1, role: 'direct' | 'tail' = 'direct', applyAcoustics = true, busName: AudioBusName = 'utility', priority: CombatAudioPriority = 'normal') {
@@ -506,6 +514,7 @@ class FeedbackBus {
   impact(surface: ImpactSurface, heavy = false) {
     const settings = this.settings;
     if (!settings) return;
+    this.haptic('impact', heavy ? 1 : .55);
     const volume = Math.max(0, Math.min(1, settings.effectsVolume));
     if (volume <= 0) return;
     this.unlock();
