@@ -39,6 +39,8 @@ assert(snapshot.shadows, 'desktop full quality should keep shadows');
 assert(snapshot.shadowMapSize === 1024, 'high tier should use the 1024 shadow budget');
 assert(snapshot.vfxDensity === 1, 'high tier should keep full VFX density');
 assert(snapshot.transparencyScale === 1, 'high tier should keep full transparency budget');
+assert(Math.abs(snapshot.targetFrameMs - 1000 / 60) < 0.01, 'render profiling should target a 60 fps frame budget');
+assert(snapshot.framePressure === 'healthy', 'a 16.7 ms frame should report healthy frame pressure');
 
 for (let index = 0; index < 90; index += 1) snapshot = desktop.sample(30, 1);
 assert(snapshot.tier >= 1, 'sustained slow frames should lower render quality');
@@ -50,6 +52,7 @@ assert(snapshot.shadowMapSize === 256, 'performance tier should cap shadow-map a
 assert(snapshot.pixelRatioScale < 0.75, 'performance tier should reduce pixel density');
 assert(snapshot.vfxDensity === 0.45, 'performance tier should reduce secondary VFX density');
 assert(snapshot.transparencyScale === 0.4, 'performance tier should reduce transparency-heavy effects');
+assert(snapshot.framePressure === 'over' && snapshot.frameHeadroomMs < 0, 'sustained 30 ms frames must expose over-budget pressure and negative headroom');
 
 for (let index = 0; index < 700; index += 1) snapshot = desktop.sample(16.4, 1);
 assert(snapshot.tier === 0, 'sustained healthy frames should recover desktop quality');
@@ -72,6 +75,8 @@ assert(rendererSource.includes('budget.shadowMapSize'), 'renderer must apply the
 assert(rendererSource.includes('budget.vfxDensity'), 'renderer must apply the tier VFX density budget');
 assert(rendererSource.includes('budget.transparencyScale'), 'renderer must apply the tier transparency budget');
 assert(rendererSource.includes('dataset.renderTier = budget.tierName'), 'runtime QA must expose the active render tier');
+assert(rendererSource.includes('dataset.renderFrameMs = budget.smoothedFrameMs.toFixed(2)'), 'runtime QA must expose smoothed frame cost');
+assert(rendererSource.includes('dataset.renderFrameBudget'), 'runtime QA must expose 60 fps frame-budget headroom/pressure');
 assert(rendererSource.includes('tier-${budget.tier}'), 'environment signature must react to render-tier transitions so authored LOD can change');
 assert(rendererSource.includes('loadAuthoredRefineryEnvironment(state, world.w, world.h, budget.detailScale)'), 'refinery authored LOD selection must follow the active detail tier');
 
