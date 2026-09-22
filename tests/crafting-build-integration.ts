@@ -46,3 +46,36 @@ function profileFor(item: Item, operatorClass: 'vanguard' | 'vector' = 'vector')
     equipped: { carbine: null, breacher: null, rail: operatorClass === 'vector' ? item.id : null, suit: null, rig: null, implant: null },
   };
 }
+
+const owned = railItem();
+const vector = profileFor(owned);
+const rules = craftingRulesForItem(owned, 2, vector);
+assert.equal(rules.classOwnership.owned, true);
+assert.ok(rules.pool.some(entry => entry.status === 'legal'));
+
+const vanguard = profileFor(owned, 'vanguard');
+const locked = craftingRulesForItem(owned, 2, vanguard);
+assert.equal(locked.classOwnership.owned, false);
+assert.ok(locked.pool.length > 0 && locked.pool.every(entry => entry.status === 'class-locked'));
+const rejected = reconstructItem(vanguard, wallet, 2, owned.id, { kind: 'quality' });
+assert.equal(rejected.profile, vanguard);
+assert.equal(rejected.wallet, wallet);
+assert.match(rejected.message, /class-family lock/i);
+
+const integration = craftingBuildIntegration(vector, owned, 2);
+assert.equal(integration.specializationHookActive, true);
+assert.equal(integration.recipeName, 'Survey Ballistics');
+assert.ok(integration.recipeAffixIds.length > 0);
+for (const id of integration.recipeAffixIds) assert.ok(rules.pool.some(entry => entry.id === id && entry.status === 'legal'));
+
+const recipeTarget = integration.recipeAffixIds[0]!;
+const recipeFamily = rules.pool.find(entry => entry.id === recipeTarget)!.family;
+const recipeAction: ReconstructionAction = { kind: 'add', family: recipeFamily, targetAffixId: recipeTarget };
+const unlinked = { ...vector, allocatedNodes: [] };
+assert.ok((reconstructionCost(owned, recipeAction, 2, vector).credits ?? 0) < (reconstructionCost(owned, recipeAction, 2, unlinked).credits ?? 0));
+const crafted = reconstructItem(vector, wallet, 2, owned.id, recipeAction);
+assert.ok(crafted.profile.inventory[0].modifiers.some(modifier => modifier.id === recipeTarget));
+
+assert.ok(integration.recipeAugmentIds.includes('ferrite-coupler'));
+const socketAction: ReconstructionAction = { kind: 'installAugment', augmentId: 'ferrite-coupler' };
+assert.ok((reconstructionCost(owned, socketAction, 2, vector).credits ?? 0) < (reconstructionCost(owned, socketAction, 2, unlinked).credits ?? 0));
