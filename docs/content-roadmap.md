@@ -62,7 +62,7 @@ Goal: make equipment answer **“What could I build around this?”** instead of
 - [x] **P8.5-D Stat registry + local/global scope + build tags** — archived after merge + verification
 - [x] **P8.5-E Affix pools + conflicts + rarity budgets** — archived after merge + verification
 - [x] **P8.5-F Loot generation + anti-junk rules** — archived after merge + verification
-- [ ] **P8.5-G Class/specialization gear integration** — replace most exact-affix requirements with tag/threshold-driven preferences and multiple valid routes into each synergy; preserve occasional hard requirements only for genuinely exotic interactions; ensure Refined/Prototype/Singular gear can all support viable class builds
+- [x] **P8.5-G Class/specialization gear integration** — archived after merge + verification
 - [ ] **P8.5-H Quality + Augment responsibility pass** — keep quality as limited base-frame improvement and Augments as controlled utility/specialization customization, generally 0–2 normal sockets; prevent either system from becoming another full affix stack or duplicating modifier progression
 - [ ] **P8.5-I Singular chase-item audit** — classify every Singular by Skill Transformer / Resource Loop / Movement Transformer / Projectile Transformer / Defense Transformer / Conditional Engine / Build Converter / Environmental Interaction; redesign stat-stick Singulars so their primary value changes rules, interactions or resource loops and usually carries a meaningful opportunity cost
 - [ ] **P8.5-J Mobile Armory + build-link comparison** — prioritize name/rarity → base/implicit → explicit mods → augments → generated BUILD LINKS → equipped comparison; move provenance/advanced metadata deeper; show gained/lost local stats, global stats, skill links, specialization links and Singular rules without adding a single gear-score number
@@ -159,21 +159,21 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P8.5-G — Class/specialization gear integration.**
+**Next: P8.5-H — Quality + Augment responsibility pass.**
 
-Start **P8.5-G — Class/specialization gear integration** so class and specialization synergies prefer shared build tags/thresholds with multiple viable item routes instead of relying mostly on exact affix IDs.
+Start **P8.5-H — Quality + Augment responsibility pass** so Equipment Quality stays a limited base-frame improvement axis and Augments remain bounded utility/specialization customization instead of becoming another affix stack.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.236**
+- Android beta: **0.0.1-beta.237**
 - Package: `app.ironshade.vector`
-- Verified: **P8.5-F Loot generation + anti-junk rules complete**
-- Gameplay source: `1c27e56eaa6bf3239b42916f9c77f6d7360146cd`
-- Browser E2E: `35666584886`
-- Level 15 beta smoke: `35666584887`
-- Android beta.236: `35666584873`
-- APK artifact: `10668674754`
-- APK SHA-256: `05fb004697cf08f5846e0134b101919edbccc681108bd9a56df1b45b0daab626`
+- Verified: **P8.5-G Class/specialization gear integration complete**
+- Gameplay source: `1d5ae5a91fbd00ce4522a091c382afddee219254`
+- Browser E2E: `35670423061`
+- Level 15 beta smoke: `35670423099`
+- Android beta.237: `35670423101`
+- APK artifact: `10671030427`
+- APK SHA-256: `36008e913795f0bb02f6f631ce43675db657726f7de48b825454032257f0067b`
 - Signing: debug-signed beta; permanent signing is P17-A
