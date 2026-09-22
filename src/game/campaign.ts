@@ -9,6 +9,17 @@ export type ConditionId = 'unstable-pressure' | 'failing-gravity' | 'damaged-gri
 export type ShipUpgradeId = 'reactor' | 'drive' | 'armor' | 'cargo' | 'sensors' | 'fabrication' | 'medical' | 'drones';
 export type ResourceId = 'credits' | 'alloys' | 'electronics' | 'medstock' | 'components' | 'rareTech';
 export type SalvageWallet = Record<ResourceId, number>;
+export const SHIP_SYSTEM_SCHEMA_VERSION = 2 as const;
+export const SHIP_SYSTEM_MAX_TIER = 6 as const;
+export type ShipSystemTier = 1 | 2 | 3 | 4 | 5 | 6;
+export type ShipSystemGate =
+  | { kind: 'campaign'; minimumContracts: number; label: string }
+  | { kind: 'faction'; faction: FactionId; reputation: number; label: string }
+  | { kind: 'boss'; chapter: 'black-lattice' | 'interdiction'; label: string }
+  | { kind: 'directive'; minimumTier: number; label: string }
+  | { kind: 'trace'; minimum: number; label: string }
+  | { kind: 'dependency'; system: ShipUpgradeId; tier: ShipSystemTier; label: string };
+export type ShipSystemTierDefinition = { tier: ShipSystemTier; implemented: boolean; benefit: string; cost: Partial<SalvageWallet>; gates: ShipSystemGate[] };
 export type StoryArcId = 'vanishing-wake' | 'terms-of-survival' | 'cold-sun-protocol';
 export type StoryArcProgress = { status: 'available' | 'active' | 'complete'; step: number; choiceA: string | null; choiceB: string | null; completed: string[] };
 export type BlackLatticeProgress = { status: 'locked' | 'active' | 'complete'; step: number; choiceA: string | null; choiceB: string | null; choiceC: string | null; completed: string[]; evidence: string[]; lastBeat: string };
@@ -50,12 +61,12 @@ export type DirectiveModifierId = 'compromised-shell' | 'unstable-mass' | 'overl
 export type DirectiveTargetClass = 'elite-led' | 'command-target';
 export type OperationDirective = { id: string; seed: number; tier: number; location: LocationId; locationName: string; sponsor: FactionId; archetype: ContractArchetype; objectiveMode: ObjectiveMode; modifierIds: DirectiveModifierId[]; targetClass: DirectiveTargetClass; deepTarget: string; codename: string; sourceLabel: string };
 export type DirectiveState = { unlocked: boolean; inventory: OperationDirective[]; preparedId: string | null; completed: number; highestTier: number; lastBeat: string };
-export type CampaignState = { version: 1; cycle: number; contractsCompleted: number; resources: SalvageWallet; consumables: ConsumableInventory; reputation: Record<FactionId, number>; shipUpgrades: Record<ShipUpgradeId, number>; anomalyRecovered: boolean; dailyCompletedDate: string | null; lastOutcome: string; story: StoryState; escalation: EscalationState; directives: DirectiveState };
+export type CampaignState = { version: 1; shipSystemSchemaVersion: typeof SHIP_SYSTEM_SCHEMA_VERSION; cycle: number; contractsCompleted: number; resources: SalvageWallet; consumables: ConsumableInventory; reputation: Record<FactionId, number>; shipUpgrades: Record<ShipUpgradeId, number>; anomalyRecovered: boolean; dailyCompletedDate: string | null; lastOutcome: string; story: StoryState; escalation: EscalationState; directives: DirectiveState };
 export type FactionProfile = { id: FactionId; name: string; history: string; economy: string; culture: string; technology: string; goals: string; strengths: string; failures: string; divisions: string; unlocks: string[] };
 export type Contract = { id: string; sponsor: FactionId; archetype: ContractArchetype; location: LocationId; locationName: string; title: string; objective: string; objectiveMode: ObjectiveMode; objectiveSteps: string[]; briefing: string; conditions: ConditionId[]; conditionLabels: string[]; directorPreview: string; deepTarget: string; rewardBase: Partial<SalvageWallet>; reputationGain: number; contestedFaction?: FactionId; priority: boolean; anomalyOpportunity: boolean; daily?: boolean; operationDate?: string; seed: number; storyArc?: StoryArcId; storyStep?: number; storyFinale?: boolean; storyChapter?: string; storyClue?: boolean; storyAftermath?: string; campaignChapter?: 'black-lattice' | 'dead-reckoning' | 'dead-reckoning-interdiction' | 'parallax-debt'; campaignStep?: number; campaignFinale?: boolean; campaignEvidence?: string; campaignAftermath?: string; escalationStage?: number; escalationFinale?: boolean; escalationDate?: string; megastructure?: MegastructureId; megastructureStage?: number; megastructureStageCount?: number; megastructureZoneNames?: string[]; megastructureOptionalLabel?: string; megastructureBossTarget?: string; megastructureTransitionRoute?: string; megastructureTransitionDetail?: string; megastructureArrivalCue?: string; megastructureContinuityConditions?: ConditionId[]; megastructureContinuityDetail?: string; operationTier?: number; encounterRating?: number; threatBudget?: number; maxRecoveryLevel?: number; maxFrameGeneration?: 1 | 2 | 3 | 4 | 5 | 6; eliteProtocolSlots?: number; environmentalEventSlots?: number; combatEffectiveness?: number; monsterLevel?: number; monsterDamageScale?: number; operationRewardMultiplier?: number; chapterRewardMultiplier?: number; xpFloor?: number; encounterPressureBonus?: number; encounterPattern?: 'swarm' | 'mixed' | 'elite-led'; reserveCount?: number; directiveId?: string; directiveTier?: number; directiveModifierIds?: DirectiveModifierId[]; directiveTargetClass?: DirectiveTargetClass; directiveMaterialMultiplier?: number; directiveQualityBonus?: number; directiveSingularChanceBonus?: number; directiveRecoveryLevelBonus?: number; directiveEventBias?: string[]; directiveProtocolBias?: string[]; directiveThreatBonus?: number; directiveProtocolBonus?: number; directiveProtocolDensity?: number; directiveEventBonus?: number; directiveReserveBonus?: number; directiveRiskScore?: number; directiveSource?: string; commandTrace?: boolean };
 export type DailyOperationSpec = { date: string; seed: number; codename: string; sponsor: FactionId; archetype: ContractArchetype; objectiveMode: ObjectiveMode; location: LocationId; conditions: ConditionId[]; challenge: string; generatedAt: string };
 export type CampaignReward = { campaign: CampaignState; gained: SalvageWallet; reputationDelta: Partial<Record<FactionId, number>>; anomalyRecovered: boolean; depth: 'safe' | 'deep' };
-export type UpgradeDefinition = { id: ShipUpgradeId; name: string; area: 'Engineering' | 'Cargo' | 'Medical' | 'Fabrication'; description: string; benefits: [string, string]; costs: [Partial<SalvageWallet>, Partial<SalvageWallet>] };
+export type UpgradeDefinition = { id: ShipUpgradeId; name: string; area: 'Engineering' | 'Cargo' | 'Medical' | 'Fabrication'; ownerFaction: FactionId; dependency: ShipUpgradeId; description: string; benefits: string[]; costs: Partial<SalvageWallet>[]; tiers: ShipSystemTierDefinition[] };
 
 const STORAGE_KEY = 'ironshade-vector-campaign-v1';
 const zeroWallet = (): SalvageWallet => ({ credits: 0, alloys: 0, electronics: 0, medstock: 0, components: 0, rareTech: 0 });
@@ -68,15 +79,60 @@ export const factions: FactionProfile[] = [
   { id: 'longarc', name: 'Long Arc Assembly', history: 'Long Arc formed when remote convoys, itinerant repair crews, and small resource settlements created mutual-aid compacts to bargain against distant creditors and monopoly haulers.', economy: 'Salvage, distributed mining, repair services, convoy trade, reclaimed hardware, and difficult low-volume routes larger firms ignore.', culture: 'Practical autonomy, reciprocal favors, local decision making, and deep respect for people who can keep a failing system alive with limited parts.', technology: 'Low-mass drive work, field repair, improvised sensors, cargo systems, and rugged modifications built around parts availability rather than elegance.', goals: 'Keep remote communities economically viable and prevent essential transport, repair, and resource routes from being absorbed by monopoly control.', strengths: 'Adaptability, local knowledge, strong salvage culture, and excellent operation in low-support environments.', failures: 'Consensus is slow, local captains sometimes become unaccountable, and mutual-aid obligations can be selectively interpreted when resources are scarce.', divisions: 'Settlement delegates favor formal institutions while roaming captains fear that centralization would recreate the systems the Assembly was formed to escape.', unlocks: ['REP 6: discounts on Drive, Cargo, and Sensor upgrades', 'REP 8: Long Arc contracts become Priority contracts', 'REP 12: deeper upgrade discount'] },
 ];
 
+type ShipSystemDefinitionInput = Omit<UpgradeDefinition, 'benefits' | 'costs' | 'tiers'> & {
+  legacyBenefits: [string, string];
+  legacyCosts: [Partial<SalvageWallet>, Partial<SalvageWallet>];
+  futureBenefits: [string, string, string, string];
+  futureCosts: [Partial<SalvageWallet>, Partial<SalvageWallet>, Partial<SalvageWallet>, Partial<SalvageWallet>];
+};
+
+function futureShipSystemGates(ownerFaction: FactionId, dependency: ShipUpgradeId, tier: 3 | 4 | 5 | 6): ShipSystemGate[] {
+  if (tier === 3) return [
+    { kind: 'campaign', minimumContracts: 8, label: '8 banked contracts' },
+    { kind: 'faction', faction: ownerFaction, reputation: 6, label: `${factionDisplayName(ownerFaction)} REP 6` },
+    { kind: 'dependency', system: dependency, tier: 2, label: `${dependency.toUpperCase()} Tier 2` },
+  ];
+  if (tier === 4) return [
+    { kind: 'boss', chapter: 'black-lattice', label: 'Black Lattice command target defeated' },
+    { kind: 'faction', faction: ownerFaction, reputation: 8, label: `${factionDisplayName(ownerFaction)} REP 8` },
+    { kind: 'dependency', system: dependency, tier: 3, label: `${dependency.toUpperCase()} Tier 3` },
+  ];
+  if (tier === 5) return [
+    { kind: 'directive', minimumTier: 4, label: 'Directive Tier 4 cleared' },
+    { kind: 'trace', minimum: 1, label: '1 quarantined trace banked' },
+    { kind: 'faction', faction: ownerFaction, reputation: 12, label: `${factionDisplayName(ownerFaction)} REP 12` },
+    { kind: 'dependency', system: dependency, tier: 4, label: `${dependency.toUpperCase()} Tier 4` },
+  ];
+  return [
+    { kind: 'campaign', minimumContracts: 30, label: '30 banked contracts' },
+    { kind: 'boss', chapter: 'interdiction', label: 'Interdiction command network defeated' },
+    { kind: 'directive', minimumTier: 8, label: 'Directive Tier 8 cleared' },
+    { kind: 'trace', minimum: 3, label: '3 quarantined traces banked' },
+    { kind: 'dependency', system: dependency, tier: 5, label: `${dependency.toUpperCase()} Tier 5` },
+  ];
+}
+
+function defineShipSystem(input: ShipSystemDefinitionInput): UpgradeDefinition {
+  const tiers: ShipSystemTierDefinition[] = [
+    { tier: 1, implemented: true, benefit: input.legacyBenefits[0], cost: input.legacyCosts[0], gates: [] },
+    { tier: 2, implemented: true, benefit: input.legacyBenefits[1], cost: input.legacyCosts[1], gates: [] },
+    ...input.futureBenefits.map((benefit, index) => {
+      const tier = (index + 3) as 3 | 4 | 5 | 6;
+      return { tier, implemented: false, benefit, cost: input.futureCosts[index], gates: futureShipSystemGates(input.ownerFaction, input.dependency, tier) };
+    }),
+  ];
+  return { ...input, benefits: tiers.map(tier => tier.benefit), costs: tiers.map(tier => tier.cost), tiers };
+}
+
 export const upgradeDefinitions: UpgradeDefinition[] = [
-  { id: 'reactor', name: 'Reactor Bus', area: 'Engineering', description: 'Improves deployment capacitor reserve and recharge headroom.', benefits: ['+12 max capacitor and +10% regeneration', '+24 max capacitor and +20% regeneration'], costs: [{ credits: 180, electronics: 3 }, { credits: 340, electronics: 6, components: 2 }] },
-  { id: 'drive', name: 'Vector Drive', area: 'Engineering', description: 'Improves suit-thruster calibration and low-g control data.', benefits: ['+4% movement speed and low-g braking', '+8% movement speed and stronger low-g braking'], costs: [{ credits: 170, alloys: 3 }, { credits: 320, alloys: 6, components: 1 }] },
-  { id: 'armor', name: 'Deployment Armor Locker', area: 'Engineering', description: 'Adds better modular plates to every pressure-suit deployment.', benefits: ['+10 starting armor', '+20 starting armor'], costs: [{ credits: 190, alloys: 4 }, { credits: 360, alloys: 7, components: 1 }] },
-  { id: 'cargo', name: 'Cargo Recovery Grid', area: 'Cargo', description: 'Improves how much tagged salvage survives extraction and sorting.', benefits: ['+12% salvage yield', '+24% salvage yield'], costs: [{ credits: 150, alloys: 2, electronics: 1 }, { credits: 300, alloys: 4, electronics: 2 }] },
-  { id: 'sensors', name: 'Long-Baseline Sensors', area: 'Engineering', description: 'Improves pre-deployment firing solutions and mark telemetry.', benefits: ['+4% projectile velocity and stronger Sensor Spike', '+8% projectile velocity and stronger Sensor Spike'], costs: [{ credits: 180, electronics: 3 }, { credits: 350, electronics: 5, components: 2 }] },
-  { id: 'fabrication', name: 'Microforge', area: 'Fabrication', description: 'Expands deterministic shipboard reconstruction rather than improving random drops.', benefits: ['Unlocks modifier-family rerouting/addition, quality 16, G4 calibration, second-socket access, and -10% reconstruction credit costs', 'Unlocks family-lock recalibration, quality 20, G5 calibration, full socket access, and -20% reconstruction credit costs'], costs: [{ credits: 210, alloys: 2, electronics: 2 }, { credits: 390, alloys: 4, electronics: 4, components: 2 }] },
-  { id: 'medical', name: 'Trauma Bay', area: 'Medical', description: 'Improves deployment stabilization and operator reserve.', benefits: ['+8 maximum health', '+16 maximum health'], costs: [{ credits: 160, medstock: 3 }, { credits: 300, medstock: 6, electronics: 1 }] },
-  { id: 'drones', name: 'Support Drone Rack', area: 'Engineering', description: 'Adds a ship-linked relay drone to electronic combat packages.', benefits: ['Disrupted targets can be serviced by a relay drone', 'Faster Arc Tap cycling and relay support'], costs: [{ credits: 220, electronics: 4, components: 1 }, { credits: 420, electronics: 7, components: 3 }] },
+  defineShipSystem({ id: 'reactor', name: 'Reactor Bus', area: 'Engineering', ownerFaction: 'heliostat', dependency: 'sensors', description: 'Improves deployment capacitor reserve and recharge headroom.', legacyBenefits: ['+12 max capacitor and +10% regeneration', '+24 max capacitor and +20% regeneration'], legacyCosts: [{ credits: 180, electronics: 3 }, { credits: 340, electronics: 6, components: 2 }], futureBenefits: ['High-load power conditioning blueprint', 'Thermal bus isolation blueprint', 'Combat reserve routing blueprint', 'Flagship reactor architecture blueprint'], futureCosts: [{ credits: 650, electronics: 9, components: 4 }, { credits: 1100, electronics: 14, components: 7, rareTech: 1 }, { credits: 1800, electronics: 20, components: 11, rareTech: 2 }, { credits: 2900, electronics: 28, components: 17, rareTech: 3 }] }),
+  defineShipSystem({ id: 'drive', name: 'Vector Drive', area: 'Engineering', ownerFaction: 'longarc', dependency: 'cargo', description: 'Improves suit-thruster calibration and low-g control data.', legacyBenefits: ['+4% movement speed and low-g braking', '+8% movement speed and stronger low-g braking'], legacyCosts: [{ credits: 170, alloys: 3 }, { credits: 320, alloys: 6, components: 1 }], futureBenefits: ['Vector-control governor blueprint', 'Countermass recovery blueprint', 'Long-burn navigation blueprint', 'Flagship drive architecture blueprint'], futureCosts: [{ credits: 620, alloys: 9, components: 4 }, { credits: 1050, alloys: 14, components: 7, rareTech: 1 }, { credits: 1750, alloys: 20, components: 11, rareTech: 2 }, { credits: 2800, alloys: 29, components: 17, rareTech: 3 }] }),
+  defineShipSystem({ id: 'armor', name: 'Deployment Armor Locker', area: 'Engineering', ownerFaction: 'meridian', dependency: 'medical', description: 'Adds better modular plates to every pressure-suit deployment.', legacyBenefits: ['+10 starting armor', '+20 starting armor'], legacyCosts: [{ credits: 190, alloys: 4 }, { credits: 360, alloys: 7, components: 1 }], futureBenefits: ['Pressure-shell reserve blueprint', 'Ablative deployment rack blueprint', 'Emergency plate cycling blueprint', 'Flagship armor logistics blueprint'], futureCosts: [{ credits: 680, alloys: 10, components: 4 }, { credits: 1150, alloys: 16, components: 7, rareTech: 1 }, { credits: 1850, alloys: 23, components: 11, rareTech: 2 }, { credits: 3000, alloys: 32, components: 18, rareTech: 3 }] }),
+  defineShipSystem({ id: 'cargo', name: 'Cargo Recovery Grid', area: 'Cargo', ownerFaction: 'longarc', dependency: 'drive', description: 'Improves how much tagged salvage survives extraction and sorting.', legacyBenefits: ['+12% salvage yield', '+24% salvage yield'], legacyCosts: [{ credits: 150, alloys: 2, electronics: 1 }, { credits: 300, alloys: 4, electronics: 2 }], futureBenefits: ['Priority-sort lattice blueprint', 'Hardened recovery channel blueprint', 'Deep-extraction grid blueprint', 'Flagship cargo architecture blueprint'], futureCosts: [{ credits: 600, alloys: 7, electronics: 4, components: 3 }, { credits: 1000, alloys: 11, electronics: 7, components: 6, rareTech: 1 }, { credits: 1650, alloys: 16, electronics: 10, components: 10, rareTech: 2 }, { credits: 2650, alloys: 23, electronics: 14, components: 16, rareTech: 3 }] }),
+  defineShipSystem({ id: 'sensors', name: 'Long-Baseline Sensors', area: 'Engineering', ownerFaction: 'longarc', dependency: 'reactor', description: 'Improves pre-deployment firing solutions and mark telemetry.', legacyBenefits: ['+4% projectile velocity and stronger Sensor Spike', '+8% projectile velocity and stronger Sensor Spike'], legacyCosts: [{ credits: 180, electronics: 3 }, { credits: 350, electronics: 5, components: 2 }], futureBenefits: ['Predictive fire-control blueprint', 'Long-baseline fusion blueprint', 'Directive telemetry blueprint', 'Flagship sensor architecture blueprint'], futureCosts: [{ credits: 660, electronics: 9, components: 4 }, { credits: 1120, electronics: 15, components: 7, rareTech: 1 }, { credits: 1820, electronics: 21, components: 11, rareTech: 2 }, { credits: 2920, electronics: 30, components: 17, rareTech: 3 }] }),
+  defineShipSystem({ id: 'fabrication', name: 'Microforge', area: 'Fabrication', ownerFaction: 'heliostat', dependency: 'cargo', description: 'Expands deterministic shipboard reconstruction rather than improving random drops.', legacyBenefits: ['Unlocks modifier-family rerouting/addition, quality 16, G4 calibration, second-socket access, and -10% reconstruction credit costs', 'Unlocks family-lock recalibration, quality 20, G5 calibration, full socket access, and -20% reconstruction credit costs'], legacyCosts: [{ credits: 210, alloys: 2, electronics: 2 }, { credits: 390, alloys: 4, electronics: 4, components: 2 }], futureBenefits: ['Precision feedstock blueprint', 'Closed-loop reconstruction blueprint', 'Trace-safe fabrication blueprint', 'Flagship microforge architecture blueprint'], futureCosts: [{ credits: 720, alloys: 6, electronics: 7, components: 5 }, { credits: 1220, alloys: 9, electronics: 11, components: 8, rareTech: 1 }, { credits: 1980, alloys: 13, electronics: 16, components: 13, rareTech: 2 }, { credits: 3200, alloys: 19, electronics: 23, components: 20, rareTech: 3 }] }),
+  defineShipSystem({ id: 'medical', name: 'Trauma Bay', area: 'Medical', ownerFaction: 'meridian', dependency: 'armor', description: 'Improves deployment stabilization and operator reserve.', legacyBenefits: ['+8 maximum health', '+16 maximum health'], legacyCosts: [{ credits: 160, medstock: 3 }, { credits: 300, medstock: 6, electronics: 1 }], futureBenefits: ['Emergency perfusion blueprint', 'Trauma isolation blueprint', 'Deep-deployment reserve blueprint', 'Flagship trauma architecture blueprint'], futureCosts: [{ credits: 610, medstock: 9, electronics: 4, components: 3 }, { credits: 1040, medstock: 14, electronics: 6, components: 6, rareTech: 1 }, { credits: 1700, medstock: 20, electronics: 9, components: 10, rareTech: 2 }, { credits: 2750, medstock: 28, electronics: 13, components: 16, rareTech: 3 }] }),
+  defineShipSystem({ id: 'drones', name: 'Support Drone Rack', area: 'Engineering', ownerFaction: 'heliostat', dependency: 'sensors', description: 'Adds a ship-linked relay drone to electronic combat packages.', legacyBenefits: ['Disrupted targets can be serviced by a relay drone', 'Faster Arc Tap cycling and relay support'], legacyCosts: [{ credits: 220, electronics: 4, components: 1 }, { credits: 420, electronics: 7, components: 3 }], futureBenefits: ['Relay coordination blueprint', 'Autonomous service-loop blueprint', 'Directive support-mesh blueprint', 'Flagship drone architecture blueprint'], futureCosts: [{ credits: 760, electronics: 10, components: 5 }, { credits: 1280, electronics: 16, components: 8, rareTech: 1 }, { credits: 2050, electronics: 23, components: 13, rareTech: 2 }, { credits: 3300, electronics: 32, components: 20, rareTech: 3 }] }),
 ];
 
 function createDefaultStory(): StoryState {
@@ -89,41 +145,59 @@ function createDefaultEscalation(): EscalationState {
 function createDefaultDirectives(): DirectiveState {
   return { unlocked: false, inventory: [], preparedId: null, completed: 0, highestTier: 0, lastBeat: 'Directive Array locked // reach operator level 10 to begin endgame navigation recovery.' };
 }
-export function createDefaultCampaign(): CampaignState { return { version: 1, cycle: 0, contractsCompleted: 0, resources: { credits: 120, alloys: 1, electronics: 1, medstock: 1, components: 0, rareTech: 0 }, consumables: defaultConsumables(), reputation: { meridian: 0, heliostat: 0, longarc: 0 }, shipUpgrades: { reactor: 0, drive: 0, armor: 0, cargo: 0, sensors: 0, fabrication: 0, medical: 0, drones: 0 }, anomalyRecovered: false, dailyCompletedDate: null, lastOutcome: 'Quiet Signal ready for contract selection.', story: createDefaultStory(), escalation: createDefaultEscalation(), directives: createDefaultDirectives() }; }
+export function createDefaultCampaign(): CampaignState { return { version: 1, shipSystemSchemaVersion: SHIP_SYSTEM_SCHEMA_VERSION, cycle: 0, contractsCompleted: 0, resources: { credits: 120, alloys: 1, electronics: 1, medstock: 1, components: 0, rareTech: 0 }, consumables: defaultConsumables(), reputation: { meridian: 0, heliostat: 0, longarc: 0 }, shipUpgrades: { reactor: 0, drive: 0, armor: 0, cargo: 0, sensors: 0, fabrication: 0, medical: 0, drones: 0 }, anomalyRecovered: false, dailyCompletedDate: null, lastOutcome: 'Quiet Signal ready for contract selection.', story: createDefaultStory(), escalation: createDefaultEscalation(), directives: createDefaultDirectives() }; }
+
+function normalizeShipUpgradeLevels(parsed: Partial<CampaignState>, defaults: CampaignState) {
+  const sourceSchema = parsed.shipSystemSchemaVersion === SHIP_SYSTEM_SCHEMA_VERSION ? SHIP_SYSTEM_SCHEMA_VERSION : 1;
+  const maximum = sourceSchema === SHIP_SYSTEM_SCHEMA_VERSION ? SHIP_SYSTEM_MAX_TIER : 2;
+  const source = parsed.shipUpgrades as Partial<Record<ShipUpgradeId, number>> | undefined;
+  const normalized = { ...defaults.shipUpgrades };
+  for (const id of Object.keys(normalized) as ShipUpgradeId[]) {
+    const value = source?.[id];
+    if (typeof value === 'number' && Number.isFinite(value)) normalized[id] = Math.max(0, Math.min(maximum, Math.floor(value)));
+  }
+  return normalized;
+}
+
+export function normalizeCampaignState(parsed: Partial<CampaignState> | null | undefined): CampaignState {
+  const defaults = createDefaultCampaign();
+  if (!parsed || parsed.version !== 1) return defaults;
+  const parsedStory = parsed.story;
+  const parsedEscalation = parsed.escalation;
+  const parsedDirectives = parsed.directives;
+  return {
+    ...defaults,
+    ...parsed,
+    version: 1,
+    shipSystemSchemaVersion: SHIP_SYSTEM_SCHEMA_VERSION,
+    resources: { ...defaults.resources, ...parsed.resources },
+    consumables: { ...defaults.consumables, ...parsed.consumables },
+    reputation: { ...defaults.reputation, ...parsed.reputation },
+    shipUpgrades: normalizeShipUpgradeLevels(parsed, defaults),
+    story: {
+      ...defaults.story,
+      ...parsedStory,
+      arcs: {
+        'vanishing-wake': { ...defaults.story.arcs['vanishing-wake'], ...parsedStory?.arcs?.['vanishing-wake'] },
+        'terms-of-survival': { ...defaults.story.arcs['terms-of-survival'], ...parsedStory?.arcs?.['terms-of-survival'] },
+        'cold-sun-protocol': { ...defaults.story.arcs['cold-sun-protocol'], ...parsedStory?.arcs?.['cold-sun-protocol'] },
+      },
+      blackLattice: { ...defaults.story.blackLattice, ...parsedStory?.blackLattice, completed: parsedStory?.blackLattice?.completed ?? defaults.story.blackLattice.completed, evidence: parsedStory?.blackLattice?.evidence ?? defaults.story.blackLattice.evidence },
+      postKhepri: { ...defaults.story.postKhepri, ...parsedStory?.postKhepri, completed: parsedStory?.postKhepri?.completed ?? defaults.story.postKhepri.completed, evidence: parsedStory?.postKhepri?.evidence ?? defaults.story.postKhepri.evidence },
+      interdiction: { ...defaults.story.interdiction, ...parsedStory?.interdiction, completed: parsedStory?.interdiction?.completed ?? defaults.story.interdiction.completed, evidence: parsedStory?.interdiction?.evidence ?? defaults.story.interdiction.evidence, identifiedTargets: parsedStory?.interdiction?.identifiedTargets ?? defaults.story.interdiction.identifiedTargets },
+      parallaxDebt: { ...defaults.story.parallaxDebt, ...parsedStory?.parallaxDebt, completed: parsedStory?.parallaxDebt?.completed ?? defaults.story.parallaxDebt.completed, evidence: parsedStory?.parallaxDebt?.evidence ?? defaults.story.parallaxDebt.evidence },
+    },
+    escalation: { ...defaults.escalation, ...parsedEscalation, completed: parsedEscalation?.completed ?? defaults.escalation.completed },
+    directives: { ...defaults.directives, ...parsedDirectives, inventory: Array.isArray(parsedDirectives?.inventory) ? parsedDirectives.inventory : defaults.directives.inventory, preparedId: parsedDirectives?.preparedId ?? defaults.directives.preparedId },
+  };
+}
+
 export function loadCampaign(): CampaignState {
   if (typeof window === 'undefined') return createDefaultCampaign();
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return createDefaultCampaign();
-    const parsed = JSON.parse(raw) as Partial<CampaignState>;
-    const defaults = createDefaultCampaign();
-    if (parsed.version !== 1) return defaults;
-    const parsedStory = parsed.story;
-    const parsedEscalation = parsed.escalation;
-    const parsedDirectives = parsed.directives;
-    return {
-      ...defaults,
-      ...parsed,
-      resources: { ...defaults.resources, ...parsed.resources },
-      consumables: { ...defaults.consumables, ...parsed.consumables },
-      reputation: { ...defaults.reputation, ...parsed.reputation },
-      shipUpgrades: { ...defaults.shipUpgrades, ...parsed.shipUpgrades },
-      story: {
-        ...defaults.story,
-        ...parsedStory,
-        arcs: {
-          'vanishing-wake': { ...defaults.story.arcs['vanishing-wake'], ...parsedStory?.arcs?.['vanishing-wake'] },
-          'terms-of-survival': { ...defaults.story.arcs['terms-of-survival'], ...parsedStory?.arcs?.['terms-of-survival'] },
-          'cold-sun-protocol': { ...defaults.story.arcs['cold-sun-protocol'], ...parsedStory?.arcs?.['cold-sun-protocol'] },
-        },
-        blackLattice: { ...defaults.story.blackLattice, ...parsedStory?.blackLattice, completed: parsedStory?.blackLattice?.completed ?? defaults.story.blackLattice.completed, evidence: parsedStory?.blackLattice?.evidence ?? defaults.story.blackLattice.evidence },
-        postKhepri: { ...defaults.story.postKhepri, ...parsedStory?.postKhepri, completed: parsedStory?.postKhepri?.completed ?? defaults.story.postKhepri.completed, evidence: parsedStory?.postKhepri?.evidence ?? defaults.story.postKhepri.evidence },
-        interdiction: { ...defaults.story.interdiction, ...parsedStory?.interdiction, completed: parsedStory?.interdiction?.completed ?? defaults.story.interdiction.completed, evidence: parsedStory?.interdiction?.evidence ?? defaults.story.interdiction.evidence, identifiedTargets: parsedStory?.interdiction?.identifiedTargets ?? defaults.story.interdiction.identifiedTargets },
-        parallaxDebt: { ...defaults.story.parallaxDebt, ...parsedStory?.parallaxDebt, completed: parsedStory?.parallaxDebt?.completed ?? defaults.story.parallaxDebt.completed, evidence: parsedStory?.parallaxDebt?.evidence ?? defaults.story.parallaxDebt.evidence },
-      },
-      escalation: { ...defaults.escalation, ...parsedEscalation, completed: parsedEscalation?.completed ?? defaults.escalation.completed },
-      directives: { ...defaults.directives, ...parsedDirectives, inventory: Array.isArray(parsedDirectives?.inventory) ? parsedDirectives.inventory : defaults.directives.inventory, preparedId: parsedDirectives?.preparedId ?? defaults.directives.preparedId },
-    };
+    return normalizeCampaignState(JSON.parse(raw) as Partial<CampaignState>);
   } catch { return createDefaultCampaign(); }
 }
 export function saveCampaign(campaign: CampaignState) { if (typeof window === 'undefined') return true; try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(campaign)); return true; } catch { return false; } }
@@ -597,7 +671,51 @@ export function settleContract(campaign: CampaignState, contract: Contract, dept
   return { campaign: { ...campaign, cycle: campaign.cycle + 1, contractsCompleted: campaign.contractsCompleted + 1, resources, reputation, anomalyRecovered: campaign.anomalyRecovered || anomalyRecovered, dailyCompletedDate: firstDailyCompletion ? contract.operationDate ?? campaign.dailyCompletedDate : campaign.dailyCompletedDate, lastOutcome: `${contract.title} // ${depth === 'deep' ? 'deep extraction' : 'safe extraction'} // ${salvageTags} salvage tags banked${expeditionSummary}` }, gained, reputationDelta, anomalyRecovered, depth };
 }
 
-function discountForUpgrade(campaign: CampaignState, id: ShipUpgradeId) { let faction: FactionId | null = null; if (id === 'armor' || id === 'medical') faction = 'meridian'; else if (id === 'reactor' || id === 'fabrication' || id === 'drones') faction = 'heliostat'; else if (id === 'drive' || id === 'cargo' || id === 'sensors') faction = 'longarc'; if (!faction) return 1; const rep = campaign.reputation[faction]; return rep >= 12 ? 0.85 : rep >= 6 ? 0.92 : 1; }
-export function getUpgradeCost(campaign: CampaignState, id: ShipUpgradeId): Partial<SalvageWallet> | null { const definition = upgradeDefinitions.find(item => item.id === id); if (!definition) return null; const level = campaign.shipUpgrades[id]; if (level >= 2) return null; const base = definition.costs[level]; return { ...base, credits: Math.round((base.credits ?? 0) * discountForUpgrade(campaign, id)) }; }
-export function buyShipUpgrade(campaign: CampaignState, id: ShipUpgradeId): { campaign: CampaignState; message: string } { const definition = upgradeDefinitions.find(item => item.id === id); const cost = getUpgradeCost(campaign, id); if (!definition || !cost) return { campaign, message: 'This ship system is already at the current prototype limit.' }; for (const [key, value] of Object.entries(cost) as Array<[ResourceId, number]>) if (campaign.resources[key] < value) return { campaign, message: `Insufficient ${resourceLabels[key].toLowerCase()} for ${definition.name}.` }; const resources = { ...campaign.resources }; for (const [key, value] of Object.entries(cost) as Array<[ResourceId, number]>) resources[key] -= value; const nextLevel = campaign.shipUpgrades[id] + 1; return { campaign: { ...campaign, resources, shipUpgrades: { ...campaign.shipUpgrades, [id]: nextLevel }, lastOutcome: `${definition.name} upgraded to tier ${nextLevel}.` }, message: `${definition.name} upgraded to tier ${nextLevel}: ${definition.benefits[nextLevel - 1]}` }; }
+function discountForUpgrade(campaign: CampaignState, id: ShipUpgradeId) { const definition = upgradeDefinitions.find(item => item.id === id); if (!definition) return 1; const rep = campaign.reputation[definition.ownerFaction]; return rep >= 12 ? 0.85 : rep >= 6 ? 0.92 : 1; }
+
+export function shipSystemGateSatisfied(campaign: CampaignState, gate: ShipSystemGate) {
+  if (gate.kind === 'campaign') return campaign.contractsCompleted >= gate.minimumContracts;
+  if (gate.kind === 'faction') return campaign.reputation[gate.faction] >= gate.reputation;
+  if (gate.kind === 'boss') return gate.chapter === 'black-lattice' ? campaign.story.blackLattice.status === 'complete' : campaign.story.interdiction.status === 'complete';
+  if (gate.kind === 'directive') return campaign.directives.highestTier >= gate.minimumTier;
+  if (gate.kind === 'trace') return campaign.resources.rareTech >= gate.minimum;
+  return campaign.shipUpgrades[gate.system] >= gate.tier;
+}
+
+export function getShipUpgradeStatus(campaign: CampaignState, id: ShipUpgradeId) {
+  const definition = upgradeDefinitions.find(item => item.id === id);
+  if (!definition) return null;
+  const level = Math.max(0, Math.min(SHIP_SYSTEM_MAX_TIER, Math.floor(campaign.shipUpgrades[id] ?? 0)));
+  const nextTier = definition.tiers[level] ?? null;
+  const gateFailures = nextTier ? nextTier.gates.filter(gate => !shipSystemGateSatisfied(campaign, gate)) : [];
+  return {
+    definition,
+    level,
+    nextTier,
+    gateFailures,
+    implementationLocked: !!nextTier && !nextTier.implemented,
+    canPurchase: !!nextTier && nextTier.implemented && gateFailures.length === 0,
+  };
+}
+
+export function getUpgradeCost(campaign: CampaignState, id: ShipUpgradeId): Partial<SalvageWallet> | null {
+  const status = getShipUpgradeStatus(campaign, id);
+  if (!status?.canPurchase || !status.nextTier) return null;
+  const base = status.nextTier.cost;
+  return { ...base, credits: Math.round((base.credits ?? 0) * discountForUpgrade(campaign, id)) };
+}
+
+export function buyShipUpgrade(campaign: CampaignState, id: ShipUpgradeId): { campaign: CampaignState; message: string } {
+  const status = getShipUpgradeStatus(campaign, id);
+  if (!status) return { campaign, message: 'Unknown ship system.' };
+  if (!status.nextTier) return { campaign, message: `${status.definition.name} is fully realized at Tier ${SHIP_SYSTEM_MAX_TIER}.` };
+  if (status.implementationLocked) return { campaign, message: `${status.definition.name} Tier ${status.nextTier.tier} blueprint is mapped but its authored system wave is not commissioned yet.` };
+  if (status.gateFailures.length > 0) return { campaign, message: `${status.definition.name} Tier ${status.nextTier.tier} gated // ${status.gateFailures.map(gate => gate.label).join(' · ')}.` };
+  const cost = getUpgradeCost(campaign, id)!;
+  for (const [key, value] of Object.entries(cost) as Array<[ResourceId, number]>) if (campaign.resources[key] < value) return { campaign, message: `Insufficient ${resourceLabels[key].toLowerCase()} for ${status.definition.name}.` };
+  const resources = { ...campaign.resources };
+  for (const [key, value] of Object.entries(cost) as Array<[ResourceId, number]>) resources[key] -= value;
+  const nextLevel = status.nextTier.tier;
+  return { campaign: { ...campaign, shipSystemSchemaVersion: SHIP_SYSTEM_SCHEMA_VERSION, resources, shipUpgrades: { ...campaign.shipUpgrades, [id]: nextLevel }, lastOutcome: `${status.definition.name} upgraded to tier ${nextLevel}.` }, message: `${status.definition.name} upgraded to tier ${nextLevel}: ${status.nextTier.benefit}` };
+}
 export function applyShipBonuses(build: CombatBuild, campaign: CampaignState): CombatBuild { const next: CombatBuild = { operatorClass: build.operatorClass, classResonanceTier: build.classResonanceTier, classSkillFamily: { ...build.classSkillFamily, sources: [...build.classSkillFamily.sources] }, weapon: { carbine: { ...build.weapon.carbine }, breacher: { ...build.weapon.breacher }, rail: { ...build.weapon.rail } }, player: { ...build.player }, mechanics: { ...build.mechanics }, singularTraits: [...build.singularTraits], specialization: build.specialization, specializationOverclock: build.specializationOverclock, abilities: build.abilities.map(ability => ({ ...ability })) as CombatBuild['abilities'] }; const upgrades = campaign.shipUpgrades; next.player.maxCapAdd += upgrades.reactor * 12; next.player.capRegenMul *= 1 + upgrades.reactor * 0.1; next.player.moveSpeedMul *= 1 + upgrades.drive * 0.04; next.player.lowGControl += upgrades.drive * 0.12; next.player.maxArmorAdd += upgrades.armor * 10; for (const weapon of Object.values(next.weapon)) weapon.speedMul *= 1 + upgrades.sensors * 0.04; next.abilities[1].powerMul *= 1 + upgrades.sensors * 0.08; next.player.maxHpAdd += upgrades.medical * 8; if (upgrades.drones >= 1) { next.mechanics.arcDrone = true; next.mechanics.arcDroneScale = Math.max(next.mechanics.arcDroneScale, 1); } if (upgrades.drones >= 2) next.abilities[2].cooldownMul *= 0.9; return next; }

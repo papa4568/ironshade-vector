@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createDefaultCampaign } from '../src/game/campaign';
+import { SHIP_SYSTEM_SCHEMA_VERSION, createDefaultCampaign } from '../src/game/campaign';
 import { GAME_STATE_VERSION, loadGameState, saveGameState } from '../src/game/gamePersistence';
 import { gearSchemaVersion } from '../src/game/gearSchema';
 import { OPERATOR_NETWORK_SCHEMA_VERSION } from '../src/game/operatorNetwork';
@@ -25,6 +25,9 @@ class MemoryStorage {
 function legacyStateMigrationSmoke() {
   const storage = new MemoryStorage();
   const campaign = createDefaultCampaign();
+  delete (campaign as Partial<typeof campaign>).shipSystemSchemaVersion;
+  campaign.shipUpgrades.reactor = 2;
+  campaign.shipUpgrades.drive = 1;
   const profile = createDefaultProfile();
   const legacyItem = profile.inventory.find(item => item.id === 'starter-breacher')!;
   legacyItem.rarity = 'Refined';
@@ -63,6 +66,9 @@ function legacyStateMigrationSmoke() {
   assert.deepEqual(item.modifiers.map(modifier => [modifier.id, modifier.grade]), [['countermass', 5], ['tungsten', 4]], 'legacy affixes should dedupe, reject illegal base combinations, and obey the current rarity budget');
   assert.equal(item.recoverySource, 'Legacy recovery', 'migrated gear should retain explicit legacy provenance');
   assert.equal(migrated.profile.equipped.breacher, legacyItem.id, 'equipped identity must survive migration');
+  assert.equal(migrated.campaign.shipSystemSchemaVersion, SHIP_SYSTEM_SCHEMA_VERSION, 'legacy atomic saves should migrate into the Ship Systems 2.0 schema.');
+  assert.equal(migrated.campaign.shipUpgrades.reactor, 2, 'fully purchased legacy ship upgrades must retain their paid tier.');
+  assert.equal(migrated.campaign.shipUpgrades.drive, 1, 'partially purchased legacy ship upgrades must retain their paid tier.');
 
   const persisted = JSON.parse(storage.getItem(GAME_STATE_STORAGE_KEY)!) as any;
   assert.equal(persisted.version, GAME_STATE_VERSION, 'successful legacy loads should upgrade the atomic save envelope in place');
@@ -73,6 +79,8 @@ function legacyStateMigrationSmoke() {
   assert.deepEqual(persisted.profile.allocatedNodes, persisted.profile.operatorNetwork.allocatedNodeIds, 'legacy allocatedNodes must mirror canonical network allocations after migration');
   assert.equal(persisted.profile.progressionPoints, persisted.profile.operatorNetwork.unspentPoints, 'legacy progressionPoints must mirror canonical network points after migration');
   assert.equal(persisted.profile.inventory.some((candidate: any) => candidate.id === legacyItem.id), true, 'upgraded saves must persist the migrated item');
+  assert.equal(persisted.campaign.shipSystemSchemaVersion, SHIP_SYSTEM_SCHEMA_VERSION, 'upgraded saves must persist the Ship Systems 2.0 schema marker.');
+  assert.equal(persisted.campaign.shipUpgrades.reactor, 2, 'upgraded saves must persist legacy ship-system value exactly.');
 
   assert.equal(saveGameState(migrated.profile, migrated.campaign, storage as any), true, 'migrated state should remain writable by the normal web/Android autosave path');
   const roundTrip = loadGameState(storage as any);
@@ -83,6 +91,8 @@ function legacyStateMigrationSmoke() {
 function versionTwoNetworkMigrationSmoke() {
   const storage = new MemoryStorage();
   const campaign = createDefaultCampaign();
+  delete (campaign as Partial<typeof campaign>).shipSystemSchemaVersion;
+  campaign.shipUpgrades.armor = 2;
   const profile: any = { ...createDefaultProfile(), level: 4, xp: 540, progressionPoints: 1, allocatedNodes: ['ballistics-1', 'ballistics-2'] };
   delete profile.operatorNetwork;
   storage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify({
@@ -97,6 +107,8 @@ function versionTwoNetworkMigrationSmoke() {
   assert.equal(migrated.profile.operatorNetwork?.schemaVersion, OPERATOR_NETWORK_SCHEMA_VERSION, 'v2 saves should gain canonical P9-A network state.');
   assert.deepEqual(migrated.profile.operatorNetwork?.allocatedNodeIds, ['ballistics-1', 'ballistics-2'], 'v2 migration should preserve legacy passive allocations.');
   assert.equal(migrated.profile.operatorNetwork?.unspentPoints, 1, 'v2 migration should preserve valid unspent progression points.');
+  assert.equal(migrated.campaign.shipSystemSchemaVersion, SHIP_SYSTEM_SCHEMA_VERSION, 'v2 saves should gain canonical Ship Systems 2.0 state.');
+  assert.equal(migrated.campaign.shipUpgrades.armor, 2, 'v2 migration should preserve a paid Tier 2 ship system.');
 
   const persisted = JSON.parse(storage.getItem(GAME_STATE_STORAGE_KEY)!) as any;
   assert.equal(persisted.version, GAME_STATE_VERSION, 'v2 saves should be upgraded to the current atomic envelope.');

@@ -1,4 +1,4 @@
-import { loadCampaign, type CampaignState } from './campaign';
+import { loadCampaign, normalizeCampaignState, type CampaignState } from './campaign';
 import { gearSchemaVersion } from './gearSchema';
 import { loadProfile, normalizeStoredProfile, type PlayerProfile } from './meta';
 import { OPERATOR_NETWORK_SCHEMA_VERSION } from './operatorNetwork';
@@ -61,14 +61,15 @@ export function loadGameState(storage: StorageLike | null = browserStorage()): G
     if (validateStoredProfile(parsed.profile) || validateStoredCampaign(parsed.campaign)) return legacySnapshot();
 
     const profile = normalizeStoredProfile(parsed.profile as Partial<PlayerProfile>);
-    const campaign = parsed.campaign as CampaignState;
-    if (validateStoredProfile(profile)) return legacySnapshot();
+    const campaign = normalizeCampaignState(parsed.campaign as Partial<CampaignState>);
+    if (validateStoredProfile(profile) || validateStoredCampaign(campaign)) return legacySnapshot();
     const profileRepaired = JSON.stringify(parsed.profile) !== JSON.stringify(profile);
+    const campaignRepaired = JSON.stringify(parsed.campaign) !== JSON.stringify(campaign);
 
-    // Legacy atomic saves predate either Gear 2.0 or the deep Operator Network. Current saves can also
-    // require a bounded canonical repair when a retired Network node or old class/spec route is refunded.
-    // Persist only after both the original payload and repaired profile have passed recovery validation.
-    if (parsed.version !== GAME_STATE_VERSION || parsed.gearSchemaVersion !== gearSchemaVersion || parsed.operatorNetworkSchemaVersion !== OPERATOR_NETWORK_SCHEMA_VERSION || profileRepaired) {
+    // Legacy atomic saves predate Gear 2.0, the deep Operator Network, or Ship Systems 2.0. Current saves can
+    // also require a bounded canonical repair when retired progression data is refunded or normalized.
+    // Persist only after both the original payload and repaired state have passed recovery validation.
+    if (parsed.version !== GAME_STATE_VERSION || parsed.gearSchemaVersion !== gearSchemaVersion || parsed.operatorNetworkSchemaVersion !== OPERATOR_NETWORK_SCHEMA_VERSION || profileRepaired || campaignRepaired) {
       try {
         storage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify(persistedEnvelope(profile, campaign)));
       } catch {
