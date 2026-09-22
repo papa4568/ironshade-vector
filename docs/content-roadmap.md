@@ -77,7 +77,7 @@ Target roughly **120–180 authored nodes**, delivered in bounded waves.
 - [x] **P9-B Core node wave** — archived after merge + verification
 - [x] **P9-C Build-defining wave** — archived after merge + verification
 - [x] **P9-D Specialization integration** — archived after merge + verification
-- [ ] **P9-E Planner UX** — search, path preview, point cost, before/after math, planned builds, mobile navigation/controller support
+- [x] **P9-E Planner UX** — archived after merge + verification
 - [ ] **P9-F Respec/migration/diversity QA** — fair experimentation, high-level rebuild costs, safe old-node migration/refunds, representative builds
 
 ## P10 — Crafting 2.0 // Reconstruction Economy
@@ -159,21 +159,21 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P9-E — Planner UX.**
+**Next: P9-F — Respec/migration/diversity QA.**
 
-Build **P9-E — Planner UX** on the verified 120-node Network: add search, path preview, total point cost, before/after math, planned-build state, and mobile/controller navigation without weakening current allocation gates or save compatibility.
+Build **P9-F — Respec/migration/diversity QA** on the verified 120-node Network: add fair experimentation/respec rules, high-level rebuild costs, safe old-node migration/refunds, and representative build-diversity QA without weakening class arsenal, specialization, or save-compatibility contracts.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.250**
+- Android beta: **0.0.1-beta.251**
 - Package: `app.ironshade.vector`
-- Verified: **P9-D Specialization integration complete**
-- Gameplay source: `d13e347d1090415984ea1e41a9f030517683e424`
-- Browser E2E: `35684611813`
-- Level 15 beta smoke: `35684611806`
-- Android beta.250: `35684611817`
-- APK artifact: `10676052778`
-- APK SHA-256: `994ba1fb4b261a8dbc7b1e62b3de6c709e1cf344dab70d1a508873108d552bd4`
+- Verified: **P9-E Planner UX complete**
+- Gameplay source: `79570330e822a802b01897f9e96e5d51542af188`
+- Browser E2E: `35711528022`
+- Level 15 beta smoke: `35711528019`
+- Android beta.251: `35711528052`
+- APK artifact: `10687108540`
+- APK SHA-256: `f190ec39d239f87401c34c0ec346a6a051e91ff481e1022fa892b25b7dd2e91c`
 - Signing: debug-signed beta; permanent signing is P17-A
