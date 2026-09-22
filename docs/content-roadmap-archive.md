@@ -814,3 +814,17 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Verified on merged gameplay source `6b77b21207debed368242c22ebf0441f34014bd3`: Browser E2E `35747683537`, Level 15 beta smoke `35747683572`, and Android beta.260 `35747683631` all passed.
   - Android artifact `10703872967` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.260`, debug signing, package/version/SDK/signature verification, native emulator runtime/touch/lifecycle/Chapter 3 QA, and APK SHA-256 `b98802bf0476cd8aa96ad2ff333638c8a0a0fcd5dece25510845c3e8b3332453`.
   - **Next: P11-B — Engineering wave.**
+
+
+- [x] **P11-B Engineering wave** — commissioned the four Engineering branches from the P11-A six-tier schema: Reactor Bus, Vector Drive, Deployment Armor Locker, and Long-Baseline Sensors now have authored Tier 3–6 combat effects while preserving the exact live Tier 1/2 values and prices.
+  - Reactor scales from the legacy +24 capacitor/+20% regeneration ceiling into authored reserve/regeneration tiers, then adds controlled class-skill capacitor-cost reduction at T4–T6 rather than another generic damage multiplier.
+  - Vector Drive extends movement and low-g control on a bounded curve through T6, preserving the existing T1/T2 handling values and keeping its higher route dependent on Cargo Grid progress.
+  - Deployment Armor Locker grows starting armor from the legacy +20 ceiling to +80 at T6, improving deployment durability without changing health, enemy damage, or boss mechanics.
+  - Long-Baseline Sensors extends projectile velocity and Sensor Spike power through T6; late tiers add modest global penetration as a readable firing-solution payoff instead of raw weapon damage.
+  - Added per-system commissioning metadata so Engineering T3–T6 tiers are purchasable only when their existing P11-A gates are met, while Cargo Grid, Microforge, Trauma Bay, and Support Drone Rack T3–T6 remain implementation-locked for P11-C.
+  - Systems UI copy now explicitly distinguishes commissioned Engineering payoff from the still-mapped support wave, and each next-tier card continues to expose exact effect text, remaining gates, and discounted resource cost before purchase.
+  - Expanded `SHIP_SYSTEMS_ARCHITECTURE_PASS` to verify Engineering commissioning state, support-wave lockout, exact legacy compatibility, REP-discounted T3 pricing, cross-system dependencies, and concrete T2/T6 combat-build deltas for Reactor/Drive/Armor/Sensors.
+  - PR #173 Browser E2E `35752092613` passed desktop + mobile-landscape on tested head `0ba7a410d185ca5220bc1e4152ecd5b84cbf96ee`.
+  - Verified on merged gameplay source `ec2b554ef28cc6a3cfab63d8f8583b4b297f1e33`: Browser E2E `35755624362`, Level 15 beta smoke `35755624299`, and Android beta.261 `35755624320` all passed.
+  - Android artifact `10708167462` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.261`, debug signing, package/version/SDK/signature verification, native emulator runtime/touch/lifecycle/Chapter 3 QA, and APK SHA-256 `062ec742343c74f90a849dea8a7e7bb62e716c6737c14eb6a628774609172582`.
+  - **Next: P11-C — Support wave.**
