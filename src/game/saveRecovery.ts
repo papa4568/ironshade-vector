@@ -1,4 +1,4 @@
-import { augmentDefinitions, frameIdentityDefinitions } from './gearDepth';
+import { gearSchemaVersion } from './gearSchema';
 
 export const PROFILE_STORAGE_KEY = 'ironshade-vector-profile-v3';
 export const CAMPAIGN_STORAGE_KEY = 'ironshade-vector-campaign-v1';
@@ -15,8 +15,6 @@ const modifierIds = new Set([
   'vacuumSeal', 'servoWeave', 'capacitorRecycler', 'railFracture', 'dodgeVent',
   'magRedirect', 'breachPropulsion', 'markShear', 'arcDrone',
 ]);
-const frameIdentityById = new Map(frameIdentityDefinitions.map(definition => [definition.id, definition]));
-const augmentById = new Map(augmentDefinitions.map(definition => [definition.id, definition]));
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 type SaveKind = 'profile' | 'campaign' | 'state';
@@ -140,22 +138,23 @@ function invalidProfileReason(value: unknown): string | null {
     for (const modifier of item.modifiers) {
       if (!isRecord(modifier) || typeof modifier.id !== 'string' || !modifierIds.has(modifier.id)) return `inventory item ${index} contains an unknown modifier`;
       const grade = modifier.grade;
-      if (grade !== undefined && (typeof grade !== 'number' || !Number.isFinite(grade) || grade < 1 || grade > 5)) return `inventory item ${index} contains an invalid modifier grade`;
+      if (grade !== undefined && (typeof grade !== 'number' || !Number.isFinite(grade))) return `inventory item ${index} contains an invalid modifier grade`;
     }
 
-    if (item.frameIdentity !== undefined) {
-      if (typeof item.frameIdentity !== 'string') return `inventory item ${index} has an invalid frame identity`;
-      const frame = frameIdentityById.get(item.frameIdentity as never);
-      if (!frame || frame.slot !== item.slot) return `inventory item ${index} has an unknown or mismatched frame identity`;
+    if (item.frameIdentity !== undefined && (typeof item.frameIdentity !== 'string' || item.frameIdentity.length > 80)) {
+      return `inventory item ${index} has an invalid frame identity`;
     }
 
     if (item.augments !== undefined) {
       if (!Array.isArray(item.augments)) return `inventory item ${index} augments are not an array`;
       for (const augmentId of item.augments) {
-        if (typeof augmentId !== 'string') return `inventory item ${index} contains an invalid Augment id`;
-        const augment = augmentById.get(augmentId as never);
-        if (!augment || !augment.slots.includes(item.slot as never)) return `inventory item ${index} contains an unknown or incompatible Augment`;
+        if (typeof augmentId !== 'string' || augmentId.length > 80) return `inventory item ${index} contains an invalid Augment id`;
       }
+    }
+
+    for (const field of ['recoveryLevel', 'frameGeneration', 'equipmentQuality', 'augmentSlots', 'recoveryQuality']) {
+      const candidate = item[field];
+      if (candidate !== undefined && (typeof candidate !== 'number' || !Number.isFinite(candidate))) return `inventory item ${index} has an invalid ${field}`;
     }
   }
 
@@ -165,7 +164,6 @@ function invalidProfileReason(value: unknown): string | null {
       const equippedId = value.equipped[slot];
       if (equippedId === undefined || equippedId === null) continue;
       if (typeof equippedId !== 'string') return `equipped.${slot} is not an item id`;
-      if (inventoryById.get(equippedId) !== slot) return `equipped.${slot} points to a missing or mismatched item`;
     }
   }
 
@@ -258,7 +256,8 @@ export function validateStoredCampaign(value: unknown) { return invalidCampaignR
 
 function invalidGameStateReason(value: unknown): string | null {
   if (!isRecord(value)) return 'game-state root is not an object';
-  if (value.version !== 1) return `unsupported game-state version ${String(value.version ?? 'missing')}`;
+  if (value.version !== 1 && value.version !== 2) return `unsupported game-state version ${String(value.version ?? 'missing')}`;
+  if (value.version === 2 && value.gearSchemaVersion !== gearSchemaVersion) return `unsupported gear schema version ${String(value.gearSchemaVersion ?? 'missing')}`;
   if (value.savedAt !== undefined && (typeof value.savedAt !== 'string' || Number.isNaN(Date.parse(value.savedAt)))) return 'savedAt is not a valid timestamp';
   const profileReason = invalidProfileReason(value.profile);
   if (profileReason) return `profile: ${profileReason}`;
