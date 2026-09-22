@@ -52,6 +52,7 @@ import { choosePostKhepriBranch, getPostKhepriChoicePrompt, postKhepriChapter, p
 import { chooseInterdictionBranch, getInterdictionChoicePrompt, interdictionChapter, interdictionEvidence, startInterdictionChapter } from '../game/postKhepriInterdiction';
 import { chooseParallaxDebtBranch, getParallaxDebtChoicePrompt, parallaxDebtChapter, parallaxDebtEvidence, parallaxDebtIntel, parallaxDebtNextRequiredLevel } from '../game/parallaxDebt';
 import { rarityDefinition, rarityDisplayLabel, rarityOrder } from '../game/rarity';
+import { playShipCommissionAudio, shipHardwareState, shipSystemPresentation, type ShipHardwarePresentation } from '../game/shipSystemPresentation';
 
 type Props = {
   profile: PlayerProfile;
@@ -70,6 +71,7 @@ type Props = {
 };
 type Tab = 'overview' | 'contracts' | 'stats' | 'campaign' | 'stories' | 'operations' | 'ship' | 'factions' | 'cargo';
 type PrimaryArea = 'command' | 'operations' | 'operator' | 'ship' | 'intel';
+type ShipCommissionCeremony = { eyebrow: string; title: string; tierLabel: string; benefit: string; hardware: string; mechanism: ShipHardwarePresentation['mechanism'] };
 
 const areaTabs: Record<PrimaryArea, Tab[]> = {
   command: ['overview'],
@@ -164,6 +166,7 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
   const [contractFilter, setContractFilter] = useState<ContractFilter>('all');
   const [contractQuery, setContractQuery] = useState('');
   const [contractSort, setContractSort] = useState<ContractSort>('level-match');
+  const [commissionCeremony, setCommissionCeremony] = useState<ShipCommissionCeremony | null>(null);
   const hubRef = useRef<HTMLDivElement>(null);
   const traceRequestIdRef = useRef(0);
   const traceAbortRef = useRef<AbortController | null>(null);
@@ -263,12 +266,45 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
   }, []);
   const installedSpecialization = shipSpecializationDefinitions.find(item => item.id === campaign.shipSpecialization) ?? null;
   const buy = (id: ShipUpgradeId) => {
+    const previousTier = campaign.shipUpgrades[id] ?? 0;
     const result = buyShipUpgrade(campaign, id);
+    const nextTier = result.campaign.shipUpgrades[id] ?? previousTier;
+    if (nextTier > previousTier) {
+      const presentation = shipSystemPresentation[id];
+      playShipCommissionAudio(id, nextTier);
+      setCommissionCeremony({
+        eyebrow: presentation.location,
+        title: `${presentation.hardwareName} commissioned`,
+        tierLabel: `TIER ${nextTier} / ${SHIP_SYSTEM_MAX_TIER} ONLINE`,
+        benefit: result.campaign.lastOutcome,
+        hardware: shipHardwareState(id, nextTier),
+        mechanism: presentation.mechanism,
+      });
+    }
     onCampaignChange(result.campaign);
     setMessage(result.message);
   };
   const installSpecialization = (id: ShipSpecializationId) => {
     const result = installShipSpecialization(campaign, id);
+    if (result.campaign.shipSpecialization === id && campaign.shipSpecialization !== id) {
+      const anchor: Record<ShipSpecializationId, ShipUpgradeId> = {
+        'heliostat-hot-bus': 'reactor',
+        'meridian-continuity': 'armor',
+        'longarc-farline': 'drive',
+      };
+      const anchorId = anchor[id];
+      const presentation = shipSystemPresentation[anchorId];
+      const definition = shipSpecializationDefinitions.find(item => item.id === id)!;
+      playShipCommissionAudio(anchorId, 6);
+      setCommissionCeremony({
+        eyebrow: 'ADVANCED SHIP SPECIALIZATION',
+        title: `${definition.name} installed`,
+        tierLabel: 'SPECIALIZATION SLOT LOCKED',
+        benefit: definition.benefit,
+        hardware: definition.description,
+        mechanism: presentation.mechanism,
+      });
+    }
     onCampaignChange(result.campaign);
     setMessage(result.message);
   };
@@ -473,6 +509,25 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
         </div>
         <button onClick={onOpenBuild}>Open Build</button>
       </div>
+      <section className="ship-hardware-bay" aria-label="Physical ship hardware state">
+        <div className="ship-hardware-heading">
+          <div><span className="card-kicker">PHYSICAL SYSTEMS BAY</span><h2>The ship changes as its systems mature.</h2></div>
+          <small>Each installed tier adds visible hardware state. Motion is limited to active machinery and respects reduced-motion settings.</small>
+        </div>
+        <div className="ship-hardware-grid">
+          {upgradeDefinitions.map(upgrade => {
+            const level = Math.max(0, Math.min(SHIP_SYSTEM_MAX_TIER, campaign.shipUpgrades[upgrade.id] ?? 0));
+            const presentation = shipSystemPresentation[upgrade.id];
+            return <article key={upgrade.id} className={`ship-hardware-card tier-${level} mechanism-${presentation.mechanism}`}>
+              <div className="ship-hardware-visual" aria-hidden="true">{Array.from({ length: 6 }, (_, index) => <i key={index} />)}</div>
+              <small>{presentation.location}</small>
+              <b>{presentation.hardwareName}</b>
+              <span>{shipHardwareState(upgrade.id, level)}</span>
+              <em>TIER {level} / {SHIP_SYSTEM_MAX_TIER}</em>
+            </article>;
+          })}
+        </div>
+      </section>
       <section className="upgrade-group ship-specialization-group">
         <div className="specialization-heading">
           <div>
@@ -514,6 +569,17 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
     {tab === 'factions' && <section className="faction-panel">{factions.map(faction => <article key={faction.id} className="faction-card"><header><div><span className="card-kicker">{faction.name}</span><h2>Reputation {campaign.reputation[faction.id]}</h2></div><div className="rep-meter"><i style={{ width: `${Math.max(0, Math.min(100, (campaign.reputation[faction.id] + 10) / 30 * 100))}%` }} /></div></header><div className="faction-copy"><p><b>History.</b> {faction.history}</p><p><b>Economic foundation.</b> {faction.economy}</p><p><b>Culture.</b> {faction.culture}</p><p><b>Technology.</b> {faction.technology}</p><p><b>Political goals.</b> {faction.goals}</p><p><b>Strengths.</b> {faction.strengths}</p><p><b>Failures.</b> {faction.failures}</p><p><b>Internal divisions.</b> {faction.divisions}</p></div><div className="faction-unlocks">{faction.unlocks.map(unlock => <span key={unlock}>{unlock}</span>)}</div><div className={`faction-armory-summary faction-${faction.id}`}><b>SPONSORED EQUIPMENT ACCESS</b><span>Current normal-slot odds: {Math.round(factionGearChance(campaign.reputation[faction.id], false) * 100)}% safe · {Math.round(factionGearChance(campaign.reputation[faction.id], true) * 100)}% deep</span><small>Frame identities and interactions reveal only after recovery.</small></div></article>)}</section>}
 
     {tab === 'cargo' && <section className="cargo-panel"><article className="consumable-store"><span className="card-kicker">FIELD CONSUMABLES // SHIP STORE</span><h2>Spend Credits on deployment supplies</h2><p>Credits are the field currency. Supplies persist in Quiet Signal storage and are only consumed when an effect successfully activates in combat.</p><div className="consumable-credit-balance"><small>AVAILABLE CREDITS</small><b>{campaign.resources.credits}</b></div><div className="consumable-shop-grid">{consumableDefinitions.map(item => { const stock = campaign.consumables[item.id]; const full = stock >= item.maxStock; const affordable = campaign.resources.credits >= item.cost; return <div key={item.id} className="consumable-shop-card"><header><div><small>{item.hotkey} // {item.shortName}</small><b>{item.name}</b></div><strong>{stock}/{item.maxStock}</strong></header><p>{item.description}</p><span>{item.effect}</span><button disabled={full || !affordable} onClick={() => buySupply(item.id)}>{full ? 'Stock full' : `Buy // ${item.cost} Credits`}</button></div>; })}</div></article><article className="cargo-ledger"><span className="card-kicker">CARGO / SALVAGE LEDGER</span><h2>Banked resources</h2>{(Object.keys(campaign.resources) as ResourceId[]).map(key => <div key={key}><span>{resourceLabels[key]}</span><b>{campaign.resources[key]}</b></div>)}</article><article className="cargo-ledger"><span className="card-kicker">EQUIPMENT STORAGE</span><h2>{profile.inventory.length} equipment packages</h2><p>Equipment recovery remains sparse and meaningful. Cargo upgrades increase material yield, not item spam.</p><button onClick={onOpenBuild}>Inspect equipment</button></article><article className="cargo-ledger"><span className="card-kicker">LAST OPERATION</span><h2>Mission log</h2><p>{campaign.lastOutcome}</p>{campaign.resources.rareTech > 0 && <div className="anomaly-note"><b>QUARANTINED TRACE // {campaign.resources.rareTech}</b><span>Recovered lattice material occupies shielded sample storage. Its geometry has not been matched to normal human industrial methods; the Campaign dossier tracks what Quiet Signal can actually support from the evidence.</span></div>}</article></section>}
+      {commissionCeremony && <div className="ship-commission-overlay" role="dialog" aria-modal="true" aria-label="Ship system commissioned" onClick={() => setCommissionCeremony(null)}>
+        <article className={`ship-commission-card mechanism-${commissionCeremony.mechanism}`} onClick={event => event.stopPropagation()}>
+          <span className="card-kicker">{commissionCeremony.eyebrow}</span>
+          <div className="ship-commission-hardware" aria-hidden="true">{Array.from({ length: 6 }, (_, index) => <i key={index} />)}</div>
+          <small>{commissionCeremony.tierLabel}</small>
+          <h2>{commissionCeremony.title}</h2>
+          <strong>{commissionCeremony.hardware}</strong>
+          <p>{commissionCeremony.benefit}</p>
+          <button onClick={() => setCommissionCeremony(null)}>Return to systems</button>
+        </article>
+      </div>}
     </div>
   </main>;
 }
