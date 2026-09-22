@@ -106,7 +106,7 @@ Target roughly **6 major tiers per system** with sub-milestones.
 - [x] **P12-B Impact/environment audio** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
 - [x] **P12-C Information mix** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
 - [x] **P12-D Player handling animation** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
-- [ ] **P12-E Skill/damage animation** — anticipation/action/recovery/cancel windows, hit/stagger/armor-break reactions
+- [x] **P12-E Skill/damage animation** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
 - [ ] **P12-F Enemy/boss animation** — locomotion/attack tells, phase transitions, additive modifier/status layers
 - [ ] **P12-G Camera/haptics/perf** — recoil/impact response, accessibility scaling, synchronized haptics, frame-budget profiling
 
@@ -159,22 +159,22 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P12-E — Skill/damage animation.**
+**Next: P12-F — Enemy/boss animation.**
 
-Run **P12-E — Skill/damage animation** as the next AAA Combat Feel batch: give class skills authored anticipation/action/recovery language, preserve readable cancel windows, and strengthen hit/stagger/armor-break reactions without changing combat timing, damage, or deterministic enemy state.
+Run **P12-F — Enemy/boss animation** as the next AAA Combat Feel batch: give enemies and bosses authored locomotion and attack-tell language, strengthen phase transitions, and layer modifier/status motion additively without hiding deterministic mechanics or combat readability.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.272**
+- Android beta: **0.0.1-beta.274**
 - Package: `app.ironshade.vector`
-- Verified: **P12-D AAA Combat Feel Player handling animation complete**
-- Gameplay source: `ddc032f44124137af34bb9c56260f08d04232e58`
-- PR Browser E2E: `35789334050`
-- Browser E2E: `35789553411`
-- Level 15 beta smoke: `35789553447`
-- Android beta.272: `35789553404`
-- APK artifact: `10721577180`
-- APK SHA-256: `308e014904ff88d52c696112909a865f9d158f1a748a1925b7b244c3c03974ec`
+- Verified: **P12-E AAA Combat Feel Skill/damage animation complete**
+- Gameplay source: `3f9232d1181fdaba48c4305fa06126f6e6f3f03e`
+- PR Browser E2E: `35792852333`
+- Browser E2E: `35793094965`
+- Level 15 beta smoke: `35793094912`
+- Android beta.274: `35793094916`
+- APK artifact: `10722951806`
+- APK SHA-256: `705fc82bd31f3c8aadaf5e2c3b938db201a2fe009f5e27fac689d550e4fc904b`
 - Signing: debug-signed beta; permanent signing is P17-A
