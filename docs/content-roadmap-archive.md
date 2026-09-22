@@ -930,3 +930,16 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Verified on merged gameplay source `ddc032f44124137af34bb9c56260f08d04232e58`: Browser E2E `35789553411`, Level 15 beta smoke `35789553447`, and Android beta.272 `35789553404` all passed.
   - Android artifact `10721577180` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.272`, debug signing, package/version/SDK/signature verification, native emulator runtime/touch/lifecycle/authored-content/Chapter 3 QA, and APK SHA-256 `308e014904ff88d52c696112909a865f9d158f1a748a1925b7b244c3c03974ec`.
   - **Next: P12-E — Skill/damage animation.**
+
+- [x] **P12-E Skill/damage animation** — added authored class-skill motion language and stronger damage reactions as a presentation-only layer, preserving combat timing, damage, targeting, class ownership, and deterministic enemy state.
+  - Added nine data-driven skill animation profiles across Vanguard, Vector, and Systems. Every class-owned skill now has distinct anticipation, action, recovery, cancel-window, torso, arm, hip, and weapon-socket posing tuned for mobile readability and responsiveness.
+  - Soft visual cancels from dodge/reload/vent remain locked until the authored cancel window; hard hit/death reactions can interrupt immediately. These windows only control pose blending and do not delay, reschedule, or alter authoritative skill execution.
+  - Added direct-hit, sustained-stagger, and armor-break reaction signals for enemies. Authored rigs receive torso/arm/socket reactions, while procedural fallbacks receive bounded body/head response so combat feedback remains readable even when an authored asset is unavailable.
+  - Enemy reaction triggers are derived from already-authoritative durability, armor, stagger, and death state. No damage, AI, status, or encounter simulation rules were changed.
+  - Runtime QA telemetry now exposes active skill identity/phase plus weight, action impulse, recovery, and cancel state. A follow-up fix normalized completed skill timelines back to plain `idle`, matching the runtime telemetry contract.
+  - Added production regression gate `SKILL_DAMAGE_ANIMATION_PASS skills=9 phases=anticipation/action/recovery cancel=readable reactions=hit/stagger/armor-break`, covering all nine skill profiles, class silhouette separation, phase timing bounds, cancel behavior, hard-hit interruption, and hit/stagger/armor-break reaction separation.
+  - PR #182 Browser E2E `35791954906` passed on gameplay head `db8fc141569de20157b88fe39056cb8ae3c045a8`. Follow-up PR #183 Browser E2E `35792852333` passed on telemetry-fix head `a90704d6248d85677cd0f165b4201269d272d012`.
+  - Verified on merged gameplay source `3f9232d1181fdaba48c4305fa06126f6e6f3f03e`: Browser E2E `35793094965`, Level 15 beta smoke `35793094912`, and Android beta.274 `35793094916` all passed.
+  - Android artifact `10722951806` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.274`, debug signing, package/version/SDK/signature verification, native emulator runtime/touch/lifecycle/authored-content/Chapter 3 QA, and APK SHA-256 `705fc82bd31f3c8aadaf5e2c3b938db201a2fe009f5e27fac689d550e4fc904b`.
+  - **Next: P12-F — Enemy/boss animation.**
+
