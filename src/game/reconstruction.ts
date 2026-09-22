@@ -1,7 +1,7 @@
 import type { SalvageWallet } from './campaign';
 import { augmentSocketCap, availableAugments, augmentDefinition, frameImplicitDescription, resolveFrameIdentity, type AugmentId } from './gearDepth';
 import { modifierFamilyFor, modifierGradeCeilingForRecovery, type ModifierFamily, type ModifierGrade } from './lootQuality';
-import { affixPoolForSlot, materializeModifier, type AffixId, type Item, type PlayerProfile } from './meta';
+import { affixPoolForSlot, hasSpecializationNetworkHook, itemMatchesSpecializationGearSynergy, materializeModifier, type AffixId, type Item, type PlayerProfile } from './meta';
 import { affixStatProfile } from './gearStats';
 import { resolveGearBase } from './gearBases';
 import { gearAffixDefinition, isAffixEligibleForRoll, maximumExplicitModifiersForRarity } from './gearAffixes';
@@ -30,23 +30,30 @@ function discountedCredits(value: number, fabricationLevel: number) {
   return Math.max(1, Math.round(value * (1 - clampFabrication(fabricationLevel) * 0.1)));
 }
 
-export function reconstructionCost(item: Item, action: ReconstructionAction, fabricationLevel: number): Partial<SalvageWallet> {
+export function reconstructionCost(item: Item, action: ReconstructionAction, fabricationLevel: number, profile?: PlayerProfile): Partial<SalvageWallet> {
+  const linked = !!profile && hasSpecializationNetworkHook(profile, 'crafting') && itemMatchesSpecializationGearSynergy(profile, item);
+  const finalize = (cost: Partial<SalvageWallet>) => {
+    if (!linked) return cost;
+    const discounted: Partial<SalvageWallet> = {};
+    for (const [key, value] of Object.entries(cost) as Array<[keyof SalvageWallet, number]>) discounted[key] = value > 0 ? Math.max(1, Math.round(value * 0.88)) : value;
+    return discounted;
+  };
   if (action.kind === 'quality') {
     const quality = item.equipmentQuality ?? 0;
-    return { credits: discountedCredits(45 + quality * 4, fabricationLevel), alloys: 1 + (quality >= 12 ? 1 : 0), components: quality >= 10 ? 1 : 0 };
+    return finalize({ credits: discountedCredits(45 + quality * 4, fabricationLevel), alloys: 1 + (quality >= 12 ? 1 : 0), components: quality >= 10 ? 1 : 0 });
   }
   if (action.kind === 'grade') {
     const modifier = item.modifiers.find(entry => entry.id === action.modifierId);
     const grade = modifier?.grade ?? 3;
     const family = modifier?.family ?? modifierFamilyFor(action.modifierId);
-    return { credits: discountedCredits(70 + grade * 25, fabricationLevel), alloys: family === 'core' ? 2 : 0, electronics: family === 'systems' ? 2 : 0, components: grade >= 3 ? 1 : 0 };
+    return finalize({ credits: discountedCredits(70 + grade * 25, fabricationLevel), alloys: family === 'core' ? 2 : 0, electronics: family === 'systems' ? 2 : 0, components: grade >= 3 ? 1 : 0 });
   }
-  if (action.kind === 'reroute') return { credits: discountedCredits(120, fabricationLevel), alloys: 1, electronics: 1, components: 1 };
-  if (action.kind === 'add') return { credits: discountedCredits(130, fabricationLevel), alloys: action.family === 'core' ? 2 : 0, electronics: action.family === 'systems' ? 2 : 0, components: 1 };
-  if (action.kind === 'recalibrate') return { credits: discountedCredits(95, fabricationLevel), electronics: 2, components: 1 };
-  if (action.kind === 'removeAugment') return { credits: discountedCredits(20, fabricationLevel) };
+  if (action.kind === 'reroute') return finalize({ credits: discountedCredits(120, fabricationLevel), alloys: 1, electronics: 1, components: 1 });
+  if (action.kind === 'add') return finalize({ credits: discountedCredits(130, fabricationLevel), alloys: action.family === 'core' ? 2 : 0, electronics: action.family === 'systems' ? 2 : 0, components: 1 });
+  if (action.kind === 'recalibrate') return finalize({ credits: discountedCredits(95, fabricationLevel), electronics: 2, components: 1 });
+  if (action.kind === 'removeAugment') return finalize({ credits: discountedCredits(20, fabricationLevel) });
   const definition = augmentDefinition(action.augmentId);
-  return { ...definition.cost, credits: discountedCredits(definition.cost.credits ?? 0, fabricationLevel) };
+  return finalize({ ...definition.cost, credits: discountedCredits(definition.cost.credits ?? 0, fabricationLevel) });
 }
 
 function spend(wallet: SalvageWallet, cost: Partial<SalvageWallet>) {
@@ -94,7 +101,7 @@ export function reconstructItem(profile: PlayerProfile, wallet: SalvageWallet, f
   const item = profile.inventory.find(entry => entry.id === itemId);
   if (!item) return { profile, wallet, message: 'Reconstruction target is no longer in ship storage.' };
   const fabrication = clampFabrication(fabricationLevel);
-  const cost = reconstructionCost(item, action, fabrication);
+  const cost = reconstructionCost(item, action, fabrication, profile);
   let nextItem: Item | null = null;
   let successMessage = '';
 

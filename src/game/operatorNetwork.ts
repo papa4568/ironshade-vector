@@ -1,11 +1,12 @@
 import type { OperatorClassId } from './classSkills';
-import type { WeaponId } from './sim';
+import type { SpecializationId, WeaponId } from './sim';
 
-export const OPERATOR_NETWORK_SCHEMA_VERSION = 1 as const;
+export const OPERATOR_NETWORK_SCHEMA_VERSION = 2 as const;
 
 export const operatorNetworkBranches = ['Ballistics', 'Mobility', 'Systems', 'Survival', 'Engineering', 'Awareness'] as const;
 export type OperatorNetworkBranch = typeof operatorNetworkBranches[number];
-export type OperatorNetworkNodeKind = 'class-start' | 'travel' | 'standard' | 'notable' | 'mastery' | 'keystone' | 'capstone';
+export type OperatorNetworkNodeKind = 'class-start' | 'travel' | 'standard' | 'notable' | 'mastery' | 'keystone' | 'capstone' | 'specialization-entry' | 'specialization-stage' | 'specialization-hook';
+export type OperatorNetworkIntegrationHook = 'gear' | 'crafting' | 'faction' | 'singular';
 export type OperatorNetworkSector = 'origin' | 'core' | 'outer';
 
 export type OperatorNetworkStatId =
@@ -56,6 +57,12 @@ export type OperatorNetworkNode = {
   classStart?: OperatorClassId;
   weaponFamily?: WeaponId;
   exclusiveGroup?: string;
+  specialization?: SpecializationId;
+  minLevel?: number;
+  milestone?: boolean;
+  unlockKey?: string;
+  unlockLabel?: string;
+  integrationHooks?: OperatorNetworkIntegrationHook[];
   effects?: OperatorNetworkStatEffect[];
   legacyMajor?: boolean;
   legacyRequires?: string;
@@ -77,6 +84,12 @@ export type OperatorNetworkState = {
 export type OperatorNetworkRoute = {
   nodeIds: string[];
   pointCost: number;
+};
+
+export type OperatorNetworkUnlockContext = {
+  level: number;
+  specialization?: SpecializationId | null;
+  unlockKeys?: readonly string[];
 };
 
 const classStartNodeIds: Record<OperatorClassId, string> = {
@@ -184,6 +197,46 @@ const buildDefiningNodes: OperatorNetworkNode[] = [
 
 export const operatorNetworkBuildDefiningNodes = buildDefiningNodes;
 
+
+type SpecializationNetworkDefinition = {
+  specialization: SpecializationId;
+  branch: OperatorNetworkBranch;
+  anchorNodeId: string;
+  idPrefix: string;
+  entryName: string;
+  stageName: string;
+  hookName: string;
+  unlockKey: string;
+  unlockLabel: string;
+  hookDescription: string;
+  effects: OperatorNetworkStatEffect[];
+};
+
+const specializationNetworkDefinitions: SpecializationNetworkDefinition[] = [
+  { specialization: 'pressure-diver', branch: 'Survival', anchorNodeId: 'survival-shell-mastery', idPrefix: 'pressure-diver', entryName: 'Pressure Diver Route', stageName: 'Pressure Diver Integration', hookName: 'Abyssal Recirculation', unlockKey: 'boss:khepri', unlockLabel: 'Defeat Survey Custodian Veyra Senn / Khepri deep command target', hookDescription: 'Links pressure-rated gear, reconstruction, faction doctrine, and Singular hardware into the Diver loop.', effects: [{ stat: 'player-vacuum-resistance-add', value: 0.08 }, { stat: 'class-skill-recovery-mul', value: 1.05 }] },
+  { specialization: 'breach-vanguard', branch: 'Ballistics', anchorNodeId: 'ballistics-terminal-mastery', idPrefix: 'breach-vanguard', entryName: 'Breach Vanguard Route', stageName: 'Breach Vanguard Integration', hookName: 'Custody Breach Doctrine', unlockKey: 'campaign:dead-reckoning', unlockLabel: 'Complete Dead Reckoning', hookDescription: 'Turns recovered breach geometry into one shared gear, reconstruction, faction, and Singular pressure route.', effects: [{ stat: 'weapon-armor-damage-mul', value: 1.12, weapon: 'breacher' }, { stat: 'weapon-penetration-add', value: 8, weapon: 'breacher' }] },
+  { specialization: 'bulkhead-warden', branch: 'Survival', anchorNodeId: 'survival-shell-mastery', idPrefix: 'bulkhead-warden', entryName: 'Bulkhead Warden Route', stageName: 'Bulkhead Warden Integration', hookName: 'Meridian Counterfort', unlockKey: 'faction:meridian:6', unlockLabel: 'Reach Meridian Compact reputation 6', hookDescription: 'Binds Meridian pressure hardware and reconstruction into the Warden defense loop while preserving Singular behavior.', effects: [{ stat: 'player-max-armor-add', value: 10 }, { stat: 'class-skill-armor-mul', value: 1.06 }] },
+  { specialization: 'momentum-broker', branch: 'Mobility', anchorNodeId: 'mobility-inertial-mastery', idPrefix: 'momentum-broker', entryName: 'Momentum Broker Route', stageName: 'Momentum Broker Integration', hookName: 'ORO-7 Reaction Ledger', unlockKey: 'boss:oro-7', unlockLabel: 'Defeat Cascade Custodian ORO-7 in Escalation III', hookDescription: 'Connects reaction-control gear, reconstruction, faction sets, and Singular recoil hardware to the Broker ledger.', effects: [{ stat: 'player-move-speed-mul', value: 1.03 }, { stat: 'player-cap-regen-mul', value: 1.08 }] },
+  { specialization: 'survey-deadeye', branch: 'Awareness', anchorNodeId: 'awareness-solution-mastery', idPrefix: 'survey-deadeye', entryName: 'Survey Deadeye Route', stageName: 'Survey Deadeye Integration', hookName: 'Interdiction Reference Solution', unlockKey: 'campaign:interdiction', unlockLabel: 'Complete Dead Reckoning: Interdiction', hookDescription: 'Feeds survey gear and reconstruction telemetry into faction optics and Singular reference hardware.', effects: [{ stat: 'weapon-penetration-add', value: 14, weapon: 'rail' }, { stat: 'class-skill-range-mul', value: 1.06 }] },
+  { specialization: 'redline-pilot', branch: 'Mobility', anchorNodeId: 'mobility-inertial-mastery', idPrefix: 'redline-pilot', entryName: 'Redline Pilot Route', stageName: 'Redline Pilot Integration', hookName: 'Long Arc Thermal Slip', unlockKey: 'faction:longarc:6', unlockLabel: 'Reach Long Arc Assembly reputation 6', hookDescription: 'Couples Long Arc maneuver gear, reconstruction, faction doctrine, and Singular thermal hardware to the redline route.', effects: [{ stat: 'player-move-speed-mul', value: 1.03 }, { stat: 'weapon-heat-dissipation-mul', value: 1.12 }] },
+  { specialization: 'grid-weaver', branch: 'Systems', anchorNodeId: 'systems-power-mastery', idPrefix: 'grid-weaver', entryName: 'Grid Weaver Route', stageName: 'Grid Weaver Integration', hookName: 'Teth Custody Mesh', unlockKey: 'boss:teth', unlockLabel: 'Complete the Interdiction command-target finale', hookDescription: 'Makes relay gear, reconstruction, faction electronics, and Singular network hardware part of one persistent mesh.', effects: [{ stat: 'ability-power-mul', value: 1.06 }, { stat: 'class-skill-control-mul', value: 1.06 }] },
+  { specialization: 'capacitor-conductor', branch: 'Systems', anchorNodeId: 'systems-power-mastery', idPrefix: 'capacitor-conductor', entryName: 'Capacitor Conductor Route', stageName: 'Capacitor Conductor Integration', hookName: 'Parallax Bus Harmonics', unlockKey: 'campaign:parallax-debt', unlockLabel: 'Complete Parallax Debt', hookDescription: 'Routes late-campaign bus telemetry through gear, reconstruction, faction electronics, and Singular capacitor hardware.', effects: [{ stat: 'player-max-cap-add', value: 6 }, { stat: 'class-skill-cost-mul', value: 0.95 }] },
+  { specialization: 'thermal-shunter', branch: 'Engineering', anchorNodeId: 'engineering-service-mastery', idPrefix: 'thermal-shunter', entryName: 'Thermal Shunter Route', stageName: 'Thermal Shunter Integration', hookName: 'Heliostat Heat Exchange', unlockKey: 'faction:heliostat:6', unlockLabel: 'Reach Heliostat League reputation 6', hookDescription: 'Binds Heliostat thermal gear, reconstruction, faction doctrine, and Singular heat hardware into the Shunter exchange.', effects: [{ stat: 'weapon-heat-dissipation-mul', value: 1.15 }, { stat: 'player-vent-speed-mul', value: 1.12 }] },
+];
+
+const specializationIntegrationNodes: OperatorNetworkNode[] = specializationNetworkDefinitions.flatMap(definition => {
+  const entryId = `${definition.idPrefix}-network-entry`;
+  const stageId = `${definition.idPrefix}-network-stage`;
+  const hookId = `${definition.idPrefix}-network-hook`;
+  return [
+    { id: entryId, kind: 'specialization-entry', branch: definition.branch, name: definition.entryName, description: 'LV15 specialization milestone. Active when this specialization is selected and its anchor Mastery is allocated.', allocationCost: 0, prerequisiteIds: [definition.anchorNodeId], sector: 'outer', specialization: definition.specialization, minLevel: 15, milestone: true },
+    { id: stageId, kind: 'specialization-stage', branch: definition.branch, name: definition.stageName, description: 'LV16 specialization milestone. Opens the late-route field integration node without consuming a progression point.', allocationCost: 0, prerequisiteIds: [entryId], sector: 'outer', specialization: definition.specialization, minLevel: 16, milestone: true },
+    { id: hookId, kind: 'specialization-hook', branch: definition.branch, name: definition.hookName, description: definition.hookDescription, allocationCost: 1, prerequisiteIds: [stageId], sector: 'outer', specialization: definition.specialization, minLevel: 16, unlockKey: definition.unlockKey, unlockLabel: definition.unlockLabel, integrationHooks: ['gear', 'crafting', 'faction', 'singular'], effects: definition.effects },
+  ];
+});
+
+export const operatorNetworkSpecializationNodes = specializationIntegrationNodes;
+
 const legacyNodes: OperatorNetworkNode[] = [
   { id: 'ballistics-1', kind: 'standard', branch: 'Ballistics', name: 'Dense Flight', description: '+8 penetration to all player projectiles.', allocationCost: 1, prerequisiteIds: [], sector: 'core' },
   { id: 'ballistics-2', kind: 'standard', branch: 'Ballistics', name: 'Armor Work', description: '+15% armor damage.', allocationCost: 1, prerequisiteIds: ['ballistics-1'], sector: 'core', legacyRequires: 'ballistics-1' },
@@ -218,6 +271,7 @@ export const operatorNetworkNodes: OperatorNetworkNode[] = [
   ...coreWaveNodes,
   ...classWeaponNodes,
   ...buildDefiningNodes,
+  ...specializationIntegrationNodes,
 ];
 
 const coreWaveEdges: OperatorNetworkEdge[] = [
@@ -283,6 +337,17 @@ const classWeaponEdges: OperatorNetworkEdge[] = [
   { a: 'systems-carbine-drive', b: 'systems-carbine-loop', route: 'branch' },
   { a: 'systems-carbine-loop', b: 'systems-2', route: 'branch' },
 ];
+
+const specializationIntegrationEdges: OperatorNetworkEdge[] = specializationNetworkDefinitions.flatMap(definition => {
+  const entryId = `${definition.idPrefix}-network-entry`;
+  const stageId = `${definition.idPrefix}-network-stage`;
+  const hookId = `${definition.idPrefix}-network-hook`;
+  return [
+    { a: definition.anchorNodeId, b: entryId, route: 'branch' as const },
+    { a: entryId, b: stageId, route: 'branch' as const },
+    { a: stageId, b: hookId, route: 'branch' as const },
+  ];
+});
 
 const buildDefiningEdges: OperatorNetworkEdge[] = [
   { a: 'ballistics-3', b: 'ballistics-terminal-mastery', route: 'branch' },
@@ -352,6 +417,7 @@ export const operatorNetworkEdges: OperatorNetworkEdge[] = [
   ...coreWaveEdges,
   ...classWeaponEdges,
   ...buildDefiningEdges,
+  ...specializationIntegrationEdges,
 ];
 
 const weaponFamilyByStartNodeId: Record<string, WeaponId> = {
@@ -409,7 +475,7 @@ export function normalizeOperatorNetworkState(input: {
     : input.legacyAllocatedNodes ?? [];
   const allocatedNodeIds = [...new Set(sourceAllocated.filter(id => {
     const node = operatorNetworkNode(id);
-    return !!node && node.kind !== 'class-start';
+    return !!node && node.kind !== 'class-start' && !node.milestone;
   }))];
 
   const usedPoints = allocatedNodeIds.reduce((total, id) => total + (operatorNetworkNode(id)?.allocationCost ?? 0), 0);
@@ -437,46 +503,79 @@ export function operatorNetworkLegacyMirror(state: OperatorNetworkState) {
 export type OperatorNetworkAllocationResult = {
   state: OperatorNetworkState;
   allocated: boolean;
-  reason: 'allocated' | 'unknown-node' | 'class-start' | 'already-allocated' | 'insufficient-points' | 'missing-prerequisite' | 'not-connected' | 'wrong-arsenal' | 'exclusive-choice';
+  reason: 'allocated' | 'unknown-node' | 'class-start' | 'milestone-managed' | 'already-allocated' | 'insufficient-points' | 'missing-prerequisite' | 'not-connected' | 'wrong-arsenal' | 'exclusive-choice' | 'level-gate' | 'specialization-gate' | 'external-gate';
 };
 
-export function allocateOperatorNetworkNode(state: OperatorNetworkState, nodeId: string): OperatorNetworkAllocationResult {
+function operatorNetworkContextReason(node: OperatorNetworkNode, context?: OperatorNetworkUnlockContext) {
+  if (node.specialization && context?.specialization !== node.specialization) return 'specialization-gate' as const;
+  if (node.minLevel && (context?.level ?? 0) < node.minLevel) return 'level-gate' as const;
+  if (node.unlockKey && !context?.unlockKeys?.includes(node.unlockKey)) return 'external-gate' as const;
+  return null;
+}
+
+function milestoneActiveInternal(state: OperatorNetworkState, nodeId: string, context: OperatorNetworkUnlockContext | undefined, visiting: Set<string>): boolean {
+  const node = operatorNetworkNode(nodeId);
+  if (!node?.milestone || visiting.has(nodeId) || operatorNetworkContextReason(node, context)) return false;
+  visiting.add(nodeId);
+  const satisfied = node.prerequisiteIds.every(requiredId => {
+    if (state.allocatedNodeIds.includes(requiredId) || requiredId === state.startNodeId) return true;
+    return milestoneActiveInternal(state, requiredId, context, visiting);
+  });
+  visiting.delete(nodeId);
+  return satisfied;
+}
+
+export function operatorNetworkMilestoneActive(state: OperatorNetworkState, nodeId: string, context?: OperatorNetworkUnlockContext) {
+  return milestoneActiveInternal(state, nodeId, context, new Set());
+}
+
+export function operatorNetworkNodeGateReason(state: OperatorNetworkState, nodeId: string, context?: OperatorNetworkUnlockContext) {
+  const node = operatorNetworkNode(nodeId);
+  if (!node) return 'unknown-node' as const;
+  const contextReason = operatorNetworkContextReason(node, context);
+  if (contextReason) return contextReason;
+  if (node.milestone) return operatorNetworkMilestoneActive(state, nodeId, context) ? null : 'missing-prerequisite' as const;
+  const owned = operatorNetworkOwnedNodeIds(state, context);
+  if (node.prerequisiteIds.some(requiredId => !owned.has(requiredId))) return 'missing-prerequisite' as const;
+  return null;
+}
+
+function operatorNetworkOwnedNodeIds(state: OperatorNetworkState, context?: OperatorNetworkUnlockContext) {
+  const owned = new Set([state.startNodeId, ...state.allocatedNodeIds]);
+  for (const node of operatorNetworkNodes) if (node.milestone && operatorNetworkMilestoneActive(state, node.id, context)) owned.add(node.id);
+  return owned;
+}
+
+export function allocateOperatorNetworkNode(state: OperatorNetworkState, nodeId: string, context?: OperatorNetworkUnlockContext): OperatorNetworkAllocationResult {
   const node = operatorNetworkNode(nodeId);
   if (!node) return { state, allocated: false, reason: 'unknown-node' };
   if (node.kind === 'class-start') return { state, allocated: false, reason: 'class-start' };
+  if (node.milestone) return { state, allocated: false, reason: 'milestone-managed' };
   if (node.weaponFamily && weaponFamilyByStartNodeId[state.startNodeId] !== node.weaponFamily) return { state, allocated: false, reason: 'wrong-arsenal' };
   if (state.allocatedNodeIds.includes(nodeId)) return { state, allocated: false, reason: 'already-allocated' };
+  const contextReason = operatorNetworkContextReason(node, context);
+  if (contextReason) return { state, allocated: false, reason: contextReason };
   if (node.exclusiveGroup && state.allocatedNodeIds.some(id => id !== nodeId && operatorNetworkNode(id)?.exclusiveGroup === node.exclusiveGroup)) return { state, allocated: false, reason: 'exclusive-choice' };
   if (state.unspentPoints < node.allocationCost) return { state, allocated: false, reason: 'insufficient-points' };
 
-  const allocated = new Set(state.allocatedNodeIds);
-  if (node.prerequisiteIds.some(requiredId => !allocated.has(requiredId))) {
-    return { state, allocated: false, reason: 'missing-prerequisite' };
-  }
-
-  const connectedIds = new Set([state.startNodeId, ...state.allocatedNodeIds]);
-  const connected = operatorNetworkNeighbors(nodeId).some(neighborId => connectedIds.has(neighborId));
+  const owned = operatorNetworkOwnedNodeIds(state, context);
+  if (node.prerequisiteIds.some(requiredId => !owned.has(requiredId))) return { state, allocated: false, reason: 'missing-prerequisite' };
+  const connected = operatorNetworkNeighbors(nodeId).some(neighborId => owned.has(neighborId));
   if (!connected) return { state, allocated: false, reason: 'not-connected' };
 
-  return {
-    allocated: true,
-    reason: 'allocated',
-    state: {
-      ...state,
-      allocatedNodeIds: [...state.allocatedNodeIds, nodeId],
-      unspentPoints: state.unspentPoints - node.allocationCost,
-    },
-  };
+  return { allocated: true, reason: 'allocated', state: { ...state, allocatedNodeIds: [...state.allocatedNodeIds, nodeId], unspentPoints: state.unspentPoints - node.allocationCost } };
 }
 
-export function operatorNetworkRouteToNode(state: OperatorNetworkState, targetNodeId: string): OperatorNetworkRoute | null {
+export function operatorNetworkRouteToNode(state: OperatorNetworkState, targetNodeId: string, context?: OperatorNetworkUnlockContext): OperatorNetworkRoute | null {
   const target = operatorNetworkNode(targetNodeId);
   if (!target || target.kind === 'class-start') return null;
+  if (target.milestone) return operatorNetworkMilestoneActive(state, targetNodeId, context) ? { nodeIds: [], pointCost: 0 } : null;
+  if (operatorNetworkContextReason(target, context)) return null;
   if (state.allocatedNodeIds.includes(targetNodeId)) return { nodeIds: [], pointCost: 0 };
   if (target.exclusiveGroup && state.allocatedNodeIds.some(id => id !== targetNodeId && operatorNetworkNode(id)?.exclusiveGroup === target.exclusiveGroup)) return null;
 
   const allocated = new Set(state.allocatedNodeIds);
-  const owned = new Set([state.startNodeId, ...state.allocatedNodeIds]);
+  const owned = operatorNetworkOwnedNodeIds(state, context);
   const frontier: Array<{ nodeId: string; path: string[]; cost: number }> = [...owned].map(nodeId => ({ nodeId, path: [], cost: 0 }));
   const bestCost = new Map<string, number>([...owned].map(nodeId => [nodeId, 0]));
 
@@ -489,16 +588,17 @@ export function operatorNetworkRouteToNode(state: OperatorNetworkState, targetNo
       if (!neighbor) continue;
       if (neighbor.kind === 'class-start' && neighborId !== state.startNodeId) continue;
       if (neighbor.weaponFamily && weaponFamilyByStartNodeId[state.startNodeId] !== neighbor.weaponFamily) continue;
+      if (operatorNetworkContextReason(neighbor, context)) continue;
+      if (neighbor.milestone && !owned.has(neighborId)) continue;
 
-      const pathSet = new Set([...allocated, ...current.path]);
+      const pathSet = new Set([...allocated, ...owned, ...current.path]);
       if (neighbor.exclusiveGroup && [...pathSet].some(id => id !== neighborId && operatorNetworkNode(id)?.exclusiveGroup === neighbor.exclusiveGroup)) continue;
       if (neighbor.kind !== 'class-start' && neighbor.prerequisiteIds.some(requiredId => !pathSet.has(requiredId))) continue;
 
       const alreadyOwned = owned.has(neighborId);
       const alreadyInPath = current.path.includes(neighborId);
-      const nextPath = neighbor.kind === 'class-start' || alreadyOwned || alreadyInPath ? current.path : [...current.path, neighborId];
-      const nextCost = current.cost + (neighbor.kind === 'class-start' || alreadyOwned || alreadyInPath ? 0 : neighbor.allocationCost);
-
+      const nextPath = neighbor.kind === 'class-start' || neighbor.milestone || alreadyOwned || alreadyInPath ? current.path : [...current.path, neighborId];
+      const nextCost = current.cost + (neighbor.kind === 'class-start' || neighbor.milestone || alreadyOwned || alreadyInPath ? 0 : neighbor.allocationCost);
       if (neighborId === targetNodeId) return { nodeIds: nextPath, pointCost: nextCost };
 
       const priorCost = bestCost.get(neighborId);
@@ -507,7 +607,6 @@ export function operatorNetworkRouteToNode(state: OperatorNetworkState, targetNo
       frontier.push({ nodeId: neighborId, path: nextPath, cost: nextCost });
     }
   }
-
   return null;
 }
 

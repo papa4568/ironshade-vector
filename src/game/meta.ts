@@ -1,6 +1,6 @@
 import type { CombatBuild, SingularTraitId, SpecializationId, Telemetry, WeaponId } from './sim';
 import { operatorWeaponFamilyForClass, type OperatorClassId } from './classSkills';
-import { allocateOperatorNetworkNode, createOperatorNetworkState, normalizeOperatorNetworkState, operatorNetworkNode, operatorNetworkNodes, type OperatorNetworkNodeKind, type OperatorNetworkSector, type OperatorNetworkState, type OperatorNetworkStatEffect } from './operatorNetwork';
+import { allocateOperatorNetworkNode, createOperatorNetworkState, normalizeOperatorNetworkState, operatorNetworkNode, operatorNetworkNodes, type OperatorNetworkIntegrationHook, type OperatorNetworkNodeKind, type OperatorNetworkSector, type OperatorNetworkState, type OperatorNetworkStatEffect, type OperatorNetworkUnlockContext } from './operatorNetwork';
 export type { OperatorClassId } from './classSkills';
 import { factionFrames, factionGearChance, factionSetDefinitions, type EquipmentFaction } from './factionGear';
 import { frameGenerationForRecovery, recoveryLevelForSource, type FrameGeneration } from './scaling';
@@ -25,7 +25,7 @@ export type EffectIntensity = 'full' | 'reduced';
 export type ProfileSettings = { aimAssist: MobileAimAssist; rightStickFire: boolean; screenShake: boolean; effectIntensity: EffectIntensity; effectsVolume: number; uiVolume: number; haptics: boolean; telemetrySharing: boolean; tutorialComplete: boolean };
 export type PlayerProfile = { version: 3; xp: number; level: number; progressionPoints: number; allocatedNodes: string[]; operatorNetwork?: OperatorNetworkState; abilityMods: Record<AbilityId, string | null>; operatorClass?: OperatorClassId; classSelectionComplete?: boolean; specialization: SpecializationId | null; specializationOverclock: boolean; inventory: Item[]; equipped: Record<EquipmentSlot, string | null>; settings: ProfileSettings; runsCompleted: number };
 export type VictoryReward = { profile: PlayerProfile; xpGained: number; levelsGained: number; loot: Item[] };
-export type ProgressionNode = { id: string; branch: 'Ballistics' | 'Mobility' | 'Systems' | 'Survival' | 'Engineering' | 'Awareness'; name: string; description: string; major?: boolean; requires?: string; kind: OperatorNetworkNodeKind; sector: OperatorNetworkSector; allocationCost: number; weaponFamily?: WeaponId; exclusiveGroup?: string };
+export type ProgressionNode = { id: string; branch: 'Ballistics' | 'Mobility' | 'Systems' | 'Survival' | 'Engineering' | 'Awareness'; name: string; description: string; major?: boolean; requires?: string; kind: OperatorNetworkNodeKind; sector: OperatorNetworkSector; allocationCost: number; weaponFamily?: WeaponId; exclusiveGroup?: string; specialization?: SpecializationId; minLevel?: number; milestone?: boolean; unlockKey?: string; unlockLabel?: string; integrationHooks?: OperatorNetworkIntegrationHook[] };
 export type AbilityMod = { id: string; ability: AbilityId; name: string; description: string; tradeoff: string; operatorClass?: OperatorClassId; minLevel?: number; evolution?: boolean };
 export type SpecializationDefinition = { id: SpecializationId; operatorClass: OperatorClassId; name: string; identity: string; description: string; tradeoff: string; overclock: string; overclockTradeoff: string };
 export type OperatorClassDefinition = { id: OperatorClassId; name: string; identity: string; description: string; trait: string; signatureName: string; signatureDescription: string; combatLoop: string; starterPair: string; branchAffinities: ProgressionNode['branch'][]; specializationIds: SpecializationId[]; resonanceTier1: string; resonanceTier2: string };
@@ -298,6 +298,12 @@ export const progressionNodes: ProgressionNode[] = operatorNetworkNodes
     allocationCost: node.allocationCost,
     weaponFamily: node.weaponFamily,
     exclusiveGroup: node.exclusiveGroup,
+    specialization: node.specialization,
+    minLevel: node.minLevel,
+    milestone: node.milestone,
+    unlockKey: node.unlockKey,
+    unlockLabel: node.unlockLabel,
+    integrationHooks: node.integrationHooks,
   }));
 export const abilityMods: AbilityMod[] = [
   { id: 'vanguard-siege-ram', ability: 'mag', operatorClass: 'vanguard', minLevel: 16, evolution: true, name: 'Siege Ram', description: 'Breach Rush becomes an armor-cracking ram line. Targets caught in front lose extra armor, gain Armor Breach, and feed additional Breach Guard time.', tradeoff: '+20% Breach Rush cooldown.' },
@@ -1033,7 +1039,7 @@ export function unequipSlot(profile: PlayerProfile, slot: EquipmentSlot): { prof
   return { profile: { ...profile, equipped: { ...profile.equipped, [slot]: null } }, message: `${slot.toUpperCase()} slot cleared.` };
 }
 export function discardItem(profile: PlayerProfile, itemId: string): { profile: PlayerProfile; message: string } { const item = profile.inventory.find(entry => entry.id === itemId); if (!item) return { profile, message: 'Item not found.' }; if (Object.values(profile.equipped).includes(itemId)) return { profile, message: 'Unequip this item before discarding it.' }; return { profile: { ...profile, inventory: profile.inventory.filter(entry => entry.id !== itemId) }, message: `${item.name} discarded.` }; }
-export function allocateNode(profile: PlayerProfile, nodeId: string): { profile: PlayerProfile; message: string } {
+export function allocateNode(profile: PlayerProfile, nodeId: string, context?: OperatorNetworkUnlockContext): { profile: PlayerProfile; message: string } {
   const network = normalizeOperatorNetworkState({
     operatorClass: operatorClassForProfile(profile),
     level: profile.level,
@@ -1041,7 +1047,7 @@ export function allocateNode(profile: PlayerProfile, nodeId: string): { profile:
     legacyAllocatedNodes: profile.allocatedNodes,
     legacyUnspentPoints: profile.progressionPoints,
   });
-  const result = allocateOperatorNetworkNode(network, nodeId);
+  const result = allocateOperatorNetworkNode(network, nodeId, context);
   if (!result.allocated) {
     if (result.reason === 'already-allocated') return { profile, message: 'Node already allocated.' };
     if (result.reason === 'insufficient-points') return { profile, message: 'Gain another level to earn a progression point.' };
@@ -1049,6 +1055,10 @@ export function allocateNode(profile: PlayerProfile, nodeId: string): { profile:
     if (result.reason === 'not-connected') return { profile, message: 'Route through an adjacent node from your class start first.' };
     if (result.reason === 'wrong-arsenal') return { profile, message: 'That weapon sector belongs to a different operator class arsenal.' };
     if (result.reason === 'exclusive-choice') return { profile, message: 'That Keystone conflicts with the Keystone already committed in this branch.' };
+    if (result.reason === 'milestone-managed') return { profile, message: 'Specialization milestones activate automatically when their requirements are met.' };
+    if (result.reason === 'level-gate') return { profile, message: 'Reach the required operator level before routing this specialization node.' };
+    if (result.reason === 'specialization-gate') return { profile, message: 'This node belongs to a different specialization route.' };
+    if (result.reason === 'external-gate') return { profile, message: 'Complete the listed campaign, boss, or faction milestone before routing this node.' };
     return { profile, message: 'Progression node unavailable.' };
   }
   const node = progressionNodes.find(entry => entry.id === nodeId);
@@ -1353,10 +1363,25 @@ function applyOperatorNetworkStatEffect(build: CombatBuild, effect: OperatorNetw
   if (effect.stat === 'class-skill-cost-mul') build.classSkillFamily.costMul *= effect.value;
 }
 
+export function specializationNetworkHooksForProfile(profile: PlayerProfile): OperatorNetworkIntegrationHook[] {
+  if (profile.level < 16 || !profile.specialization) return [];
+  const hooks = new Set<OperatorNetworkIntegrationHook>();
+  for (const nodeId of profile.allocatedNodes) {
+    const node = operatorNetworkNode(nodeId);
+    if (!node?.integrationHooks?.length || (node.specialization && node.specialization !== profile.specialization)) continue;
+    for (const hook of node.integrationHooks) hooks.add(hook);
+  }
+  return [...hooks];
+}
+
+export function hasSpecializationNetworkHook(profile: PlayerProfile, hook: OperatorNetworkIntegrationHook) {
+  return specializationNetworkHooksForProfile(profile).includes(hook);
+}
+
 function applyOperatorNetworkStatBonuses(build: CombatBuild, profile: PlayerProfile) {
   for (const nodeId of profile.allocatedNodes) {
     const node = operatorNetworkNode(nodeId);
-    if (!node?.effects?.length) continue;
+    if (!node?.effects?.length || (node.specialization && node.specialization !== profile.specialization)) continue;
     for (const effect of node.effects) applyOperatorNetworkStatEffect(build, effect);
     if (node.effects.some(effect => effect.stat.startsWith('class-skill-'))) build.classSkillFamily.sources.push(`network:${node.id}`);
   }
@@ -1394,6 +1419,26 @@ export function deriveCombatBuild(profile: PlayerProfile): CombatBuild {
   if (specialization === 'capacitor-conductor') { build.player.maxCapAdd -= 12; if (build.specializationOverclock) for (const ability of build.abilities) ability.costMul *= 1.1; }
   if (specialization === 'thermal-shunter') { build.player.maxArmorAdd -= 10; if (build.specializationOverclock) for (const weapon of Object.values(build.weapon)) weapon.heatPerShotMul *= 1.1; }
   applySpecializationGearSynergy(build, profile);
+  const specializationHooks = new Set(specializationNetworkHooksForProfile(profile));
+  const specializationGearLink = specializationGearSynergyForProfile(profile);
+  if (specializationHooks.has('gear') && specializationGearLink?.active) {
+    build.classSkillFamily.powerMul *= 1.04;
+    build.classSkillFamily.recoveryMul *= 1.04;
+    build.classSkillFamily.sources.push(`network:spec-gear:${profile.specialization}`);
+  }
+  if (specializationHooks.has('faction')) {
+    const faction = dominantEquipmentFaction(profile);
+    if (faction) {
+      build.classSkillFamily.controlMul *= 1.04;
+      build.player.capRegenMul *= 1.04;
+      build.classSkillFamily.sources.push(`network:spec-faction:${faction}`);
+    }
+  }
+  if (specializationHooks.has('singular') && build.classSkillFamily.singularLinked) {
+    build.classSkillFamily.powerMul *= 1.05;
+    build.classSkillFamily.rangeMul *= 1.04;
+    build.classSkillFamily.sources.push(`network:spec-singular:${profile.specialization}`);
+  }
   if (profile.abilityMods.mag === 'vanguard-siege-ram' && operatorClassForProfile(profile) === 'vanguard' && profile.level >= 16) { build.mechanics.vanguardSiegeRam = true; build.abilities[0].cooldownMul *= 1.2; }
   if (profile.abilityMods.mark === 'vanguard-faultline-tag' && operatorClassForProfile(profile) === 'vanguard' && profile.level >= 16) { build.mechanics.vanguardFaultlineTag = true; build.abilities[1].costMul *= 1.18; }
   if (profile.abilityMods.arc === 'vanguard-reprisal-pulse' && operatorClassForProfile(profile) === 'vanguard' && profile.level >= 16) { build.mechanics.vanguardReprisalPulse = true; build.abilities[2].cooldownMul *= 1.18; }

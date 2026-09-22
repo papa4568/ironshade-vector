@@ -6,6 +6,9 @@ import {
   normalizeOperatorNetworkState,
   operatorNetworkBuildDefiningNodes,
   operatorNetworkClassWeaponNodes,
+  operatorNetworkMilestoneActive,
+  operatorNetworkNodeGateReason,
+  operatorNetworkSpecializationNodes,
   operatorNetworkCoreWaveNodes,
   operatorNetworkEdges,
   operatorNetworkNode,
@@ -19,16 +22,22 @@ import {
   createDefaultProfile,
   deriveCombatBuild,
   normalizeStoredProfile,
+  specializationNetworkHooksForProfile,
   setOperatorClass,
 } from '../src/game/meta';
 import { validateStoredProfile } from '../src/game/saveRecovery';
 
 const ids = operatorNetworkNodes.map(node => node.id);
 assert.equal(new Set(ids).size, ids.length, 'Operator Network node IDs must be unique.');
-assert.equal(operatorNetworkNodes.length, 93, 'P9-C should extend the verified 69-node core with 24 build-defining nodes.');
+assert.equal(operatorNetworkNodes.length, 120, 'P9-D should extend the verified 93-node Network with 27 specialization-integration nodes.');
 assert.equal(operatorNetworkCoreWaveNodes.length, 36, 'P9-B must retain six core nodes in each of the six branches.');
 assert.equal(operatorNetworkClassWeaponNodes.length, 12, 'P9-B must retain four owned-weapon nodes for each class.');
 assert.equal(operatorNetworkBuildDefiningNodes.length, 24, 'P9-C must author four build-defining nodes in each branch.');
+assert.equal(operatorNetworkSpecializationNodes.length, 27, 'P9-D must add three nodes for each of the nine class specializations.');
+assert.equal(operatorNetworkSpecializationNodes.filter(node => node.kind === 'specialization-entry').length, 9, 'Every specialization needs one LV15 Network entry milestone.');
+assert.equal(operatorNetworkSpecializationNodes.filter(node => node.kind === 'specialization-stage').length, 9, 'Every specialization needs one LV16 Network stage milestone.');
+assert.equal(operatorNetworkSpecializationNodes.filter(node => node.kind === 'specialization-hook').length, 9, 'Every specialization needs one campaign/boss/faction integration hook.');
+assert.equal(operatorNetworkSpecializationNodes.filter(node => node.kind === 'specialization-hook').every(node => node.allocationCost === 1 && (node.effects?.length ?? 0) > 0 && node.integrationHooks?.length === 4 && !!node.unlockKey), true, 'Every specialization hook must cost one point, change runtime state, and bind gear/crafting/faction/Singular integration to an authored milestone.');
 assert.equal(operatorNetworkNodes.filter(node => node.kind === 'travel').length, 15, 'P9-C must preserve P9-B travel routing.');
 assert.equal(operatorNetworkNodes.filter(node => node.kind === 'notable').length, 21, 'P9-C must preserve existing Notables.');
 assert.equal(operatorNetworkNodes.filter(node => node.kind === 'mastery').length, 6, 'P9-C must expose one Mastery per branch.');
@@ -102,6 +111,38 @@ const capstoneAllocation = allocateOperatorNetworkNode(buildDefiningState, 'ball
 assert.equal(capstoneAllocation.allocated, true, 'A committed Keystone must open its branch Capstone.');
 assert.equal(capstoneAllocation.state.unspentPoints, 4);
 
+const pressureNetworkState = { ...createOperatorNetworkState('vanguard', 2), allocatedNodeIds: ['survival-shell-mastery'] };
+const pressureLv15Context = { level: 15, specialization: 'pressure-diver' as const, unlockKeys: [] as string[] };
+assert.equal(operatorNetworkMilestoneActive(pressureNetworkState, 'pressure-diver-network-entry', pressureLv15Context), true, 'LV15 specialization entry must activate from the selected specialization plus its allocated anchor Mastery.');
+assert.equal(operatorNetworkMilestoneActive(pressureNetworkState, 'pressure-diver-network-stage', pressureLv15Context), false, 'LV16 specialization stage must stay locked at level 15.');
+const pressureLv16Context = { ...pressureLv15Context, level: 16 };
+assert.equal(operatorNetworkMilestoneActive(pressureNetworkState, 'pressure-diver-network-stage', pressureLv16Context), true, 'LV16 specialization stage must activate without consuming a progression point.');
+assert.equal(operatorNetworkRouteToNode(pressureNetworkState, 'pressure-diver-network-hook', pressureLv16Context), null, 'Campaign/boss/faction hook must not route before its external milestone is met.');
+assert.equal(operatorNetworkNodeGateReason(pressureNetworkState, 'pressure-diver-network-hook', pressureLv16Context), 'external-gate');
+const pressureUnlockedContext = { ...pressureLv16Context, unlockKeys: ['boss:khepri'] };
+assert.deepEqual(operatorNetworkRouteToNode(pressureNetworkState, 'pressure-diver-network-hook', pressureUnlockedContext), { nodeIds: ['pressure-diver-network-hook'], pointCost: 1 }, 'Unlocked specialization field hook should be one adjacent progression point from its LV16 milestone.');
+const pressureAllocation = allocateOperatorNetworkNode(pressureNetworkState, 'pressure-diver-network-hook', pressureUnlockedContext);
+assert.equal(pressureAllocation.allocated, true, 'Unlocked specialization field hook must allocate through the canonical graph API.');
+assert.equal(pressureAllocation.state.unspentPoints, 1);
+assert.equal(operatorNetworkRouteToNode(pressureNetworkState, 'pressure-diver-network-hook', { level: 16, specialization: 'breach-vanguard', unlockKeys: ['boss:khepri'] }), null, 'A selected specialization cannot route through a different specialization subgraph.');
+
+const pressureHookProfile = {
+  ...createDefaultProfile(),
+  level: 16,
+  xp: 8100,
+  classSelectionComplete: true,
+  specialization: 'pressure-diver' as const,
+  allocatedNodes: ['pressure-diver-network-hook'],
+  operatorNetwork: { ...createOperatorNetworkState('vanguard', 0), allocatedNodeIds: ['pressure-diver-network-hook'] },
+};
+const pressureHookBuild = deriveCombatBuild(pressureHookProfile);
+const pressureNoHookBuild = deriveCombatBuild({ ...pressureHookProfile, allocatedNodes: [], operatorNetwork: createOperatorNetworkState('vanguard', 0) });
+assert.ok(pressureHookBuild.player.vacuumResistance > pressureNoHookBuild.player.vacuumResistance, 'Active specialization hook must materially alter runtime combat state.');
+assert.deepEqual(new Set(specializationNetworkHooksForProfile(pressureHookProfile)), new Set(['gear', 'crafting', 'faction', 'singular']), 'Allocated active specialization hook must expose all four P9-D integration surfaces.');
+const switchedSpecializationBuild = deriveCombatBuild({ ...pressureHookProfile, specialization: 'breach-vanguard' as const });
+const switchedBaselineBuild = deriveCombatBuild({ ...pressureHookProfile, specialization: 'breach-vanguard' as const, allocatedNodes: [], operatorNetwork: createOperatorNetworkState('vanguard', 0) });
+assert.equal(switchedSpecializationBuild.player.vacuumResistance, switchedBaselineBuild.player.vacuumResistance, 'Stored specialization hook effects must become inactive when another specialization is selected, preserving safe class/spec switching.');
+
 let profile = { ...createDefaultProfile(), level: 4, xp: 540, progressionPoints: 3 };
 const first = allocateNode(profile, 'ballistics-1');
 assert.ok(first.profile.allocatedNodes.includes('ballistics-1'), 'Public allocation API should mirror canonical network state to legacy allocatedNodes.');
@@ -170,4 +211,4 @@ assert.equal(normalized.startNodeId, 'start-systems');
 assert.deepEqual(normalized.allocatedNodeIds, ['systems-1', 'systems-2']);
 assert.equal(normalized.unspentPoints, 3, 'Migration must refund level-earned points that are not represented by valid allocations.');
 
-console.log(`OPERATOR_NETWORK_ARCHITECTURE_PASS schema=${OPERATOR_NETWORK_SCHEMA_VERSION} nodes=${operatorNetworkNodes.length} edges=${operatorNetworkEdges.length} outer=6 starts=3 coreWave=${operatorNetworkCoreWaveNodes.length} classWeapon=${operatorNetworkClassWeaponNodes.length} buildDefining=${operatorNetworkBuildDefiningNodes.length}`);
+console.log(`OPERATOR_NETWORK_ARCHITECTURE_PASS schema=${OPERATOR_NETWORK_SCHEMA_VERSION} nodes=${operatorNetworkNodes.length} edges=${operatorNetworkEdges.length} outer=6 starts=3 coreWave=${operatorNetworkCoreWaveNodes.length} classWeapon=${operatorNetworkClassWeaponNodes.length} buildDefining=${operatorNetworkBuildDefiningNodes.length} specialization=${operatorNetworkSpecializationNodes.length}`);
