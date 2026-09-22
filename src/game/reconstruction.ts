@@ -24,6 +24,8 @@ export type ReconstructionResult = {
 };
 
 const clampFabrication = (level: number) => Math.max(0, Math.min(2, Math.round(level)));
+const clampFabricationSystemTier = (level: number) => Math.max(0, Math.min(6, Math.round(level)));
+export const reconstructionCreditDiscountForTier = (fabricationLevel: number) => [0, 0.1, 0.2, 0.26, 0.32, 0.38, 0.45][clampFabricationSystemTier(fabricationLevel)]!;
 export const reconstructionQualityCap = (fabricationLevel: number) => [10, 16, 20][clampFabrication(fabricationLevel)];
 export const reconstructionGradeCap = craftingFabricationGradeCap;
 export const reconstructionStability = craftingStabilityForItem;
@@ -92,7 +94,7 @@ function specializationCraftingDiscountApplies(profile: PlayerProfile, item: Ite
 }
 
 function discountedCredits(value: number, fabricationLevel: number) {
-  return Math.max(1, Math.round(value * (1 - clampFabrication(fabricationLevel) * 0.1)));
+  return Math.max(1, Math.round(value * (1 - reconstructionCreditDiscountForTier(fabricationLevel))));
 }
 
 export function reconstructionCost(item: Item, action: ReconstructionAction, fabricationLevel: number, profile?: PlayerProfile): Partial<SalvageWallet> {
@@ -244,10 +246,10 @@ export function reconstructionStateSummary(item: Item) {
 
 export function reconstructionPreview(profile: PlayerProfile, wallet: SalvageWallet, fabricationLevel: number, item: Item, action: ReconstructionAction): ReconstructionPreview {
   const fabrication = clampFabrication(fabricationLevel);
-  const cost = reconstructionCost(item, action, fabrication, profile);
+  const cost = reconstructionCost(item, action, fabricationLevel, profile);
   const volatile = reconstructionIsVolatile(action);
   const richWallet: SalvageWallet = { credits: 999999, alloys: 999999, electronics: 999999, medstock: 999999, components: 999999, rareTech: 999999 };
-  const dry = reconstructItem(profile, richWallet, fabrication, item.id, action);
+  const dry = reconstructItem(profile, richWallet, fabricationLevel, item.id, action);
   const blockedReason = dry.profile === profile && dry.wallet === richWallet ? dry.message : null;
   const dryItem = dry.profile.inventory.find(entry => entry.id === item.id) ?? item;
   const guaranteed: string[] = [];
@@ -344,7 +346,7 @@ export function reconstructItem(profile: PlayerProfile, wallet: SalvageWallet, f
     return { profile, wallet, message: `Class-family lock: ${activeWeaponFamily.toUpperCase()} is the active arsenal. ${item.slot.toUpperCase()} weapon reconstruction is unavailable; Augment extraction remains allowed.` };
   }
   const fabrication = clampFabrication(fabricationLevel);
-  const cost = reconstructionCost(item, action, fabrication, profile);
+  const cost = reconstructionCost(item, action, fabricationLevel, profile);
   let nextItem: Item | null = null;
   let successMessage = '';
 
