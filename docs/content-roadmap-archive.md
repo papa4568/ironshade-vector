@@ -906,3 +906,15 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Android artifact `10719980945` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.270`, debug signing, package/version/SDK/signature verification, native emulator runtime/touch/lifecycle/Chapter 3 QA, and APK SHA-256 `f50a796365eaacf3ff1820799f29a7f040ee9c90b13ef34e1baa1237d49f7678`.
   - **Next: P12-C — Information mix.**
 
+- [x] **P12-C Information mix** — expanded the existing P12-A/P12-B synthesized combat audio pipeline into a bounded priority-aware information mix without changing combat timing, damage, targeting, class ownership, or the verified pressure-acoustic model.
+  - Added class-family reload and vent Foley for Systems/Carbine, Vanguard/Breacher, and Vector/Rail Lance, including distinct start/completion signatures so weapon handling reads through sound rather than a shared generic cue.
+  - Added three authored skill-audio signatures per class. Vanguard skills bias toward heavy low mechanical impacts, Vector skills toward precise high-energy coil motion, and Systems skills toward compact electronic/control signatures while staying inside the same effects-volume and acoustic treatment path.
+  - Added enemy, elite, boss-telegraph, and boss-phase audio tiers. Boss telegraphs/phase transitions are critical-priority events; ordinary/elite attack tells are important-priority events.
+  - Added per-category Web Audio buses and short priority ducking windows. Important tells make room over weapons/impacts; critical boss information ducks them harder while leaving threat and UI confirmation at full mix gain.
+  - Added deterministic mobile voice protection: 18 normal concurrent voices, a 3-voice critical reserve, and at most 5 concurrent tail voices. Weapon tails are treated as background voices so lower-value ambience yields before combat information.
+  - Combat feedback now detects reload/vent start and completion, fresh hostile telegraphs, boss pattern changes, and boss phase transitions from authoritative simulation state. Class skill activation routes to the selected class's own audio family.
+  - Added production regression gate `INFORMATION_AUDIO_PASS`, covering distinct weapon Foley, all nine class-skill profiles, threat priorities, layer/gain bounds, voice budgets, and important/critical mix-ducking behavior.
+  - PR #180 Browser E2E `35786697567` passed desktop + mobile-landscape on tested head `ace8d6227f75511625c4c9f5994ce8f5911b8647`, including the full regression/production build.
+  - Verified on merged gameplay source `744141a82507962ba9f87c827d3b93eb9f5e0e8a`: Browser E2E `35786928547`, Level 15 beta smoke `35786928506`, and Android beta.271 `35786928605` all passed.
+  - Android artifact `10720707170` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.271`, debug signing, package/version/SDK/signature verification, native emulator runtime/touch/lifecycle/Chapter 3 QA, and APK SHA-256 `59a960c986cebe844e5c2236bf5f179a5e78917cd27b9f6127deb552f75244c8`.
+  - **Next: P12-D — Player handling animation.**
