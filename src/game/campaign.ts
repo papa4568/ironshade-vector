@@ -7,9 +7,10 @@ export type ObjectiveMode = 'pressure-recovery' | 'grid-isolation' | 'gravity-st
 export type LocationId = 'orbital-station' | 'damaged-vessel' | 'asteroid-refinery' | 'spin-habitat' | 'jovian-harvester' | 'ice-mine' | 'solar-yard' | 'lattice-annex' | 'momentum-exchange' | 'cryo-reserve' | 'parallax-array';
 export type ConditionId = 'unstable-pressure' | 'failing-gravity' | 'damaged-grid' | 'automated-defense' | 'limited-atmosphere' | 'low-visibility';
 export type ShipUpgradeId = 'reactor' | 'drive' | 'armor' | 'cargo' | 'sensors' | 'fabrication' | 'medical' | 'drones';
+export type ShipSpecializationId = 'heliostat-hot-bus' | 'meridian-continuity' | 'longarc-farline';
 export type ResourceId = 'credits' | 'alloys' | 'electronics' | 'medstock' | 'components' | 'rareTech';
 export type SalvageWallet = Record<ResourceId, number>;
-export const SHIP_SYSTEM_SCHEMA_VERSION = 2 as const;
+export const SHIP_SYSTEM_SCHEMA_VERSION = 3 as const;
 export const SHIP_SYSTEM_MAX_TIER = 6 as const;
 export type ShipSystemTier = 1 | 2 | 3 | 4 | 5 | 6;
 export type ShipSystemGate =
@@ -61,12 +62,13 @@ export type DirectiveModifierId = 'compromised-shell' | 'unstable-mass' | 'overl
 export type DirectiveTargetClass = 'elite-led' | 'command-target';
 export type OperationDirective = { id: string; seed: number; tier: number; location: LocationId; locationName: string; sponsor: FactionId; archetype: ContractArchetype; objectiveMode: ObjectiveMode; modifierIds: DirectiveModifierId[]; targetClass: DirectiveTargetClass; deepTarget: string; codename: string; sourceLabel: string };
 export type DirectiveState = { unlocked: boolean; inventory: OperationDirective[]; preparedId: string | null; completed: number; highestTier: number; lastBeat: string };
-export type CampaignState = { version: 1; shipSystemSchemaVersion: typeof SHIP_SYSTEM_SCHEMA_VERSION; cycle: number; contractsCompleted: number; resources: SalvageWallet; consumables: ConsumableInventory; reputation: Record<FactionId, number>; shipUpgrades: Record<ShipUpgradeId, number>; anomalyRecovered: boolean; dailyCompletedDate: string | null; lastOutcome: string; story: StoryState; escalation: EscalationState; directives: DirectiveState };
+export type CampaignState = { version: 1; shipSystemSchemaVersion: typeof SHIP_SYSTEM_SCHEMA_VERSION; cycle: number; contractsCompleted: number; resources: SalvageWallet; consumables: ConsumableInventory; reputation: Record<FactionId, number>; shipUpgrades: Record<ShipUpgradeId, number>; shipSpecialization: ShipSpecializationId | null; anomalyRecovered: boolean; dailyCompletedDate: string | null; lastOutcome: string; story: StoryState; escalation: EscalationState; directives: DirectiveState };
 export type FactionProfile = { id: FactionId; name: string; history: string; economy: string; culture: string; technology: string; goals: string; strengths: string; failures: string; divisions: string; unlocks: string[] };
 export type Contract = { id: string; sponsor: FactionId; archetype: ContractArchetype; location: LocationId; locationName: string; title: string; objective: string; objectiveMode: ObjectiveMode; objectiveSteps: string[]; briefing: string; conditions: ConditionId[]; conditionLabels: string[]; directorPreview: string; deepTarget: string; rewardBase: Partial<SalvageWallet>; reputationGain: number; contestedFaction?: FactionId; priority: boolean; anomalyOpportunity: boolean; daily?: boolean; operationDate?: string; seed: number; storyArc?: StoryArcId; storyStep?: number; storyFinale?: boolean; storyChapter?: string; storyClue?: boolean; storyAftermath?: string; campaignChapter?: 'black-lattice' | 'dead-reckoning' | 'dead-reckoning-interdiction' | 'parallax-debt'; campaignStep?: number; campaignFinale?: boolean; campaignEvidence?: string; campaignAftermath?: string; escalationStage?: number; escalationFinale?: boolean; escalationDate?: string; megastructure?: MegastructureId; megastructureStage?: number; megastructureStageCount?: number; megastructureZoneNames?: string[]; megastructureOptionalLabel?: string; megastructureBossTarget?: string; megastructureTransitionRoute?: string; megastructureTransitionDetail?: string; megastructureArrivalCue?: string; megastructureContinuityConditions?: ConditionId[]; megastructureContinuityDetail?: string; operationTier?: number; encounterRating?: number; threatBudget?: number; maxRecoveryLevel?: number; maxFrameGeneration?: 1 | 2 | 3 | 4 | 5 | 6; eliteProtocolSlots?: number; environmentalEventSlots?: number; combatEffectiveness?: number; monsterLevel?: number; monsterDamageScale?: number; operationRewardMultiplier?: number; chapterRewardMultiplier?: number; xpFloor?: number; encounterPressureBonus?: number; encounterPattern?: 'swarm' | 'mixed' | 'elite-led'; reserveCount?: number; directiveId?: string; directiveTier?: number; directiveModifierIds?: DirectiveModifierId[]; directiveTargetClass?: DirectiveTargetClass; directiveMaterialMultiplier?: number; directiveQualityBonus?: number; directiveSingularChanceBonus?: number; directiveRecoveryLevelBonus?: number; directiveEventBias?: string[]; directiveProtocolBias?: string[]; directiveThreatBonus?: number; directiveProtocolBonus?: number; directiveProtocolDensity?: number; directiveEventBonus?: number; directiveReserveBonus?: number; directiveRiskScore?: number; directiveSource?: string; commandTrace?: boolean };
 export type DailyOperationSpec = { date: string; seed: number; codename: string; sponsor: FactionId; archetype: ContractArchetype; objectiveMode: ObjectiveMode; location: LocationId; conditions: ConditionId[]; challenge: string; generatedAt: string };
 export type CampaignReward = { campaign: CampaignState; gained: SalvageWallet; reputationDelta: Partial<Record<FactionId, number>>; anomalyRecovered: boolean; depth: 'safe' | 'deep' };
 export type UpgradeDefinition = { id: ShipUpgradeId; name: string; area: 'Engineering' | 'Cargo' | 'Medical' | 'Fabrication'; ownerFaction: FactionId; dependency: ShipUpgradeId; description: string; benefits: string[]; costs: Partial<SalvageWallet>[]; tiers: ShipSystemTierDefinition[] };
+export type ShipSpecializationDefinition = { id: ShipSpecializationId; name: string; ownerFaction: FactionId; description: string; benefit: string; cost: Partial<SalvageWallet>; gates: ShipSystemGate[] };
 
 const STORAGE_KEY = 'ironshade-vector-campaign-v1';
 const zeroWallet = (): SalvageWallet => ({ credits: 0, alloys: 0, electronics: 0, medstock: 0, components: 0, rareTech: 0 });
@@ -137,6 +139,53 @@ export const upgradeDefinitions: UpgradeDefinition[] = [
   defineShipSystem({ id: 'drones', name: 'Support Drone Rack', area: 'Engineering', ownerFaction: 'heliostat', dependency: 'sensors', description: 'Adds a ship-linked relay drone to electronic combat packages.', legacyBenefits: ['Disrupted targets can be serviced by a relay drone', 'Faster Arc Tap cycling and relay support'], legacyCosts: [{ credits: 220, electronics: 4, components: 1 }, { credits: 420, electronics: 7, components: 3 }], futureBenefits: ['Relay drone +25% damage and Arc Tap cooldown -12%', 'Relay drone +50% damage, Arc Tap cooldown -15%, and +5% Arc Tap power', 'Relay drone +80% damage, Arc Tap cooldown -18%, and +10% Arc Tap power', 'Relay drone +120% damage, Arc Tap cooldown -22%, and +20% Arc Tap power'], futureCosts: [{ credits: 760, electronics: 10, components: 5 }, { credits: 1280, electronics: 16, components: 8, rareTech: 1 }, { credits: 2050, electronics: 23, components: 13, rareTech: 2 }, { credits: 3300, electronics: 32, components: 20, rareTech: 3 }], commissionedThroughTier: 6 }),
 ];
 
+export const shipSpecializationDefinitions: ShipSpecializationDefinition[] = [
+  {
+    id: 'heliostat-hot-bus',
+    name: 'Hot-Bus Mesh',
+    ownerFaction: 'heliostat',
+    description: 'Couples the reactor, forge controller, and relay rack into one high-load power package.',
+    benefit: '+8 max capacitor, -2% class-skill capacitor costs, and +10% relay-drone damage',
+    cost: { credits: 2400, electronics: 18, components: 12, rareTech: 2 },
+    gates: [
+      { kind: 'faction', faction: 'heliostat', reputation: 14, label: 'Heliostat League REP 14' },
+      { kind: 'directive', minimumTier: 6, label: 'Directive Tier 6 cleared' },
+      { kind: 'dependency', system: 'reactor', tier: 5, label: 'REACTOR Tier 5' },
+      { kind: 'dependency', system: 'fabrication', tier: 5, label: 'FABRICATION Tier 5' },
+      { kind: 'dependency', system: 'drones', tier: 5, label: 'DRONES Tier 5' },
+    ],
+  },
+  {
+    id: 'meridian-continuity',
+    name: 'Continuity Bulkhead',
+    ownerFaction: 'meridian',
+    description: 'Hardens the deployment shell and trauma reserve without replacing operator defense choices.',
+    benefit: '+10 starting armor and +8 maximum health',
+    cost: { credits: 2300, alloys: 18, medstock: 14, components: 12, rareTech: 2 },
+    gates: [
+      { kind: 'faction', faction: 'meridian', reputation: 14, label: 'Meridian Compact REP 14' },
+      { kind: 'directive', minimumTier: 6, label: 'Directive Tier 6 cleared' },
+      { kind: 'dependency', system: 'armor', tier: 5, label: 'ARMOR Tier 5' },
+      { kind: 'dependency', system: 'medical', tier: 5, label: 'MEDICAL Tier 5' },
+    ],
+  },
+  {
+    id: 'longarc-farline',
+    name: 'Farline Recovery',
+    ownerFaction: 'longarc',
+    description: 'Links drive, cargo, and long-baseline telemetry into a mobile firing-solution package.',
+    benefit: '+3% movement speed, +4% projectile velocity, and +4 penetration',
+    cost: { credits: 2350, alloys: 14, electronics: 14, components: 12, rareTech: 2 },
+    gates: [
+      { kind: 'faction', faction: 'longarc', reputation: 14, label: 'Long Arc Assembly REP 14' },
+      { kind: 'directive', minimumTier: 6, label: 'Directive Tier 6 cleared' },
+      { kind: 'dependency', system: 'drive', tier: 5, label: 'DRIVE Tier 5' },
+      { kind: 'dependency', system: 'cargo', tier: 5, label: 'CARGO Tier 5' },
+      { kind: 'dependency', system: 'sensors', tier: 5, label: 'SENSORS Tier 5' },
+    ],
+  },
+];
+
 function createDefaultStory(): StoryState {
   const progress = (): StoryArcProgress => ({ status: 'available', step: 0, choiceA: null, choiceB: null, completed: [] });
   return { arcs: { 'vanishing-wake': progress(), 'terms-of-survival': progress(), 'cold-sun-protocol': progress() }, latticeClues: 0, lastBeat: 'Three unresolved story operations are available from the Quiet Signal.', blackLattice: { status: 'locked', step: 0, choiceA: null, choiceB: null, choiceC: null, completed: [], evidence: [], lastBeat: 'Recover a quarantined trace or lattice finding to open the first major campaign chapter.' }, postKhepri: { status: 'locked', step: 0, choiceA: null, completed: [], evidence: [], lastBeat: 'Complete The Black Lattice and reach operator level 11 to open the post-Khepri investigation.' }, interdiction: { status: 'locked', step: 0, choiceA: null, completed: [], evidence: [], identifiedTargets: [], lastBeat: 'Complete Dead Reckoning and reach operator level 13 to expose the custody network defending the hidden cadence.' }, parallaxDebt: { status: 'locked', step: 0, choiceA: null, completed: [], evidence: [], lastBeat: 'Complete Interdiction and reach operator level 15 to compare the hidden route against an independent long-baseline reference.' } }; 
@@ -147,11 +196,11 @@ function createDefaultEscalation(): EscalationState {
 function createDefaultDirectives(): DirectiveState {
   return { unlocked: false, inventory: [], preparedId: null, completed: 0, highestTier: 0, lastBeat: 'Directive Array locked // reach operator level 10 to begin endgame navigation recovery.' };
 }
-export function createDefaultCampaign(): CampaignState { return { version: 1, shipSystemSchemaVersion: SHIP_SYSTEM_SCHEMA_VERSION, cycle: 0, contractsCompleted: 0, resources: { credits: 120, alloys: 1, electronics: 1, medstock: 1, components: 0, rareTech: 0 }, consumables: defaultConsumables(), reputation: { meridian: 0, heliostat: 0, longarc: 0 }, shipUpgrades: { reactor: 0, drive: 0, armor: 0, cargo: 0, sensors: 0, fabrication: 0, medical: 0, drones: 0 }, anomalyRecovered: false, dailyCompletedDate: null, lastOutcome: 'Quiet Signal ready for contract selection.', story: createDefaultStory(), escalation: createDefaultEscalation(), directives: createDefaultDirectives() }; }
+export function createDefaultCampaign(): CampaignState { return { version: 1, shipSystemSchemaVersion: SHIP_SYSTEM_SCHEMA_VERSION, cycle: 0, contractsCompleted: 0, resources: { credits: 120, alloys: 1, electronics: 1, medstock: 1, components: 0, rareTech: 0 }, consumables: defaultConsumables(), reputation: { meridian: 0, heliostat: 0, longarc: 0 }, shipUpgrades: { reactor: 0, drive: 0, armor: 0, cargo: 0, sensors: 0, fabrication: 0, medical: 0, drones: 0 }, shipSpecialization: null, anomalyRecovered: false, dailyCompletedDate: null, lastOutcome: 'Quiet Signal ready for contract selection.', story: createDefaultStory(), escalation: createDefaultEscalation(), directives: createDefaultDirectives() }; }
 
 function normalizeShipUpgradeLevels(parsed: Partial<CampaignState>, defaults: CampaignState) {
-  const sourceSchema = parsed.shipSystemSchemaVersion === SHIP_SYSTEM_SCHEMA_VERSION ? SHIP_SYSTEM_SCHEMA_VERSION : 1;
-  const maximum = sourceSchema === SHIP_SYSTEM_SCHEMA_VERSION ? SHIP_SYSTEM_MAX_TIER : 2;
+  const sourceSchema = typeof parsed.shipSystemSchemaVersion === 'number' ? parsed.shipSystemSchemaVersion : 1;
+  const maximum = sourceSchema >= 2 ? SHIP_SYSTEM_MAX_TIER : 2;
   const source = parsed.shipUpgrades as Partial<Record<ShipUpgradeId, number>> | undefined;
   const normalized = { ...defaults.shipUpgrades };
   for (const id of Object.keys(normalized) as ShipUpgradeId[]) {
@@ -159,6 +208,10 @@ function normalizeShipUpgradeLevels(parsed: Partial<CampaignState>, defaults: Ca
     if (typeof value === 'number' && Number.isFinite(value)) normalized[id] = Math.max(0, Math.min(maximum, Math.floor(value)));
   }
   return normalized;
+}
+
+function normalizeShipSpecialization(value: unknown): ShipSpecializationId | null {
+  return shipSpecializationDefinitions.some(definition => definition.id === value) ? value as ShipSpecializationId : null;
 }
 
 export function normalizeCampaignState(parsed: Partial<CampaignState> | null | undefined): CampaignState {
@@ -176,6 +229,7 @@ export function normalizeCampaignState(parsed: Partial<CampaignState> | null | u
     consumables: { ...defaults.consumables, ...parsed.consumables },
     reputation: { ...defaults.reputation, ...parsed.reputation },
     shipUpgrades: normalizeShipUpgradeLevels(parsed, defaults),
+    shipSpecialization: normalizeShipSpecialization(parsed.shipSpecialization),
     story: {
       ...defaults.story,
       ...parsedStory,
@@ -711,6 +765,45 @@ export function getUpgradeCost(campaign: CampaignState, id: ShipUpgradeId): Part
   return { ...base, credits: Math.round((base.credits ?? 0) * discountForUpgrade(campaign, id)) };
 }
 
+
+export function getShipSpecializationStatus(campaign: CampaignState, id: ShipSpecializationId) {
+  const definition = shipSpecializationDefinitions.find(item => item.id === id);
+  if (!definition) return null;
+  const gateFailures = definition.gates.filter(gate => !shipSystemGateSatisfied(campaign, gate));
+  const resourceFailures = (Object.entries(definition.cost) as Array<[ResourceId, number]>).filter(([key, value]) => campaign.resources[key] < value);
+  const selected = campaign.shipSpecialization === id;
+  const lockedByOther = campaign.shipSpecialization !== null && !selected;
+  return {
+    definition,
+    selected,
+    lockedByOther,
+    gateFailures,
+    resourceFailures,
+    canInstall: !selected && !lockedByOther && gateFailures.length === 0 && resourceFailures.length === 0,
+  };
+}
+
+export function installShipSpecialization(campaign: CampaignState, id: ShipSpecializationId): { campaign: CampaignState; message: string } {
+  const status = getShipSpecializationStatus(campaign, id);
+  if (!status) return { campaign, message: 'Unknown ship specialization package.' };
+  if (status.selected) return { campaign, message: `${status.definition.name} is already installed.` };
+  if (status.lockedByOther) {
+    const installed = shipSpecializationDefinitions.find(item => item.id === campaign.shipSpecialization)?.name ?? 'another package';
+    return { campaign, message: `${installed} already occupies the advanced specialization slot. High-tier packages are mutually exclusive.` };
+  }
+  if (status.gateFailures.length > 0) return { campaign, message: `${status.definition.name} prerequisites // ${status.gateFailures.map(gate => gate.label).join(' · ')}.` };
+  if (status.resourceFailures.length > 0) {
+    const [key] = status.resourceFailures[0]!;
+    return { campaign, message: `Insufficient ${resourceLabels[key].toLowerCase()} for ${status.definition.name}.` };
+  }
+  const resources = { ...campaign.resources };
+  for (const [key, value] of Object.entries(status.definition.cost) as Array<[ResourceId, number]>) resources[key] -= value;
+  return {
+    campaign: { ...campaign, shipSystemSchemaVersion: SHIP_SYSTEM_SCHEMA_VERSION, resources, shipSpecialization: id, lastOutcome: `${status.definition.name} advanced ship package installed.` },
+    message: `${status.definition.name} installed // ${status.definition.benefit}. Other high-tier packages are now locked.`,
+  };
+}
+
 export function buyShipUpgrade(campaign: CampaignState, id: ShipUpgradeId): { campaign: CampaignState; message: string } {
   const status = getShipUpgradeStatus(campaign, id);
   if (!status) return { campaign, message: 'Unknown ship system.' };
@@ -778,5 +871,20 @@ export function applyShipBonuses(build: CombatBuild, campaign: CampaignState): C
   }
   next.abilities[2].cooldownMul *= [1, 1, 0.9, 0.88, 0.85, 0.82, 0.78][droneTier]!;
   next.abilities[2].powerMul *= [1, 1, 1, 1, 1.05, 1.1, 1.2][droneTier]!;
+
+  if (campaign.shipSpecialization === 'heliostat-hot-bus') {
+    next.player.maxCapAdd += 8;
+    for (const ability of next.abilities) ability.costMul *= 0.98;
+    if (next.mechanics.arcDrone) next.mechanics.arcDroneScale *= 1.1;
+  } else if (campaign.shipSpecialization === 'meridian-continuity') {
+    next.player.maxArmorAdd += 10;
+    next.player.maxHpAdd += 8;
+  } else if (campaign.shipSpecialization === 'longarc-farline') {
+    next.player.moveSpeedMul *= 1.03;
+    for (const weapon of Object.values(next.weapon)) {
+      weapon.speedMul *= 1.04;
+      weapon.penetrationAdd += 4;
+    }
+  }
   return next;
 }
