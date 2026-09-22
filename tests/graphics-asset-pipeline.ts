@@ -126,6 +126,8 @@ assert(rendererSource.includes("dataset.operatorStance") && rendererSource.inclu
 assert(rendererSource.includes("dataset.operatorRig = 'articulated'"), 'runtime QA must expose articulated-rig activation');
 assert(rendererSource.includes("dataset.operatorAnimation = mode"), 'runtime QA must expose the active animation state');
 assert(rendererSource.includes('operatorHitUntil'), 'authored operator must track visual-only hit reactions');
+assert(rendererSource.includes('resolveEnemyBossAnimation') && rendererSource.includes('dataset.enemyAnimation') && rendererSource.includes('dataset.enemyAnimationBlend'), 'enemy and boss rigs must expose deterministic authored motion telemetry');
+assert(rendererSource.includes('bossPhaseEventAt') && rendererSource.includes('dataset.bossPhaseAnimation'), 'boss phase transitions must have a tracked body-animation window');
 assert(rendererSource.includes("dataset.operatorBlend"), 'operator animation blending telemetry must remain available for QA');
 
 assert(rendererSource.includes('ENEMY_ASSET_FAMILIES[enemy.role]'), 'enemy rendering must select authored assets by combat role');
