@@ -14,6 +14,8 @@ export type OperatorNetworkStatId =
   | 'weapon-penetration-add'
   | 'weapon-recoil-mul'
   | 'weapon-heat-dissipation-mul'
+  | 'weapon-heat-per-shot-mul'
+  | 'weapon-health-damage-mul'
   | 'weapon-magazine-add'
   | 'weapon-reload-mul'
   | 'weapon-armor-damage-mul'
@@ -53,6 +55,7 @@ export type OperatorNetworkNode = {
   sector: OperatorNetworkSector;
   classStart?: OperatorClassId;
   weaponFamily?: WeaponId;
+  exclusiveGroup?: string;
   effects?: OperatorNetworkStatEffect[];
   legacyMajor?: boolean;
   legacyRequires?: string;
@@ -147,6 +150,40 @@ const classWeaponNodes: OperatorNetworkNode[] = [
 
 export const operatorNetworkClassWeaponNodes = classWeaponNodes;
 
+const buildDefiningNodes: OperatorNetworkNode[] = [
+  { id: 'ballistics-terminal-mastery', kind: 'mastery', branch: 'Ballistics', name: 'Terminal Calculus', description: '+8 penetration and +8% armor damage. Opens one mutually exclusive Ballistics Keystone.', allocationCost: 1, prerequisiteIds: ['ballistics-3'], sector: 'outer', effects: [{ stat: 'weapon-penetration-add', value: 8 }, { stat: 'weapon-armor-damage-mul', value: 1.08 }] },
+  { id: 'ballistics-overpenetration-keystone', kind: 'keystone', branch: 'Ballistics', name: 'Overpenetration Doctrine', description: 'Projectiles gain +18% velocity and +18 penetration, but recoil and heat per shot rise by 16% and 12%.', allocationCost: 2, prerequisiteIds: ['ballistics-terminal-mastery'], sector: 'outer', exclusiveGroup: 'ballistics-keystone', effects: [{ stat: 'weapon-projectile-speed-mul', value: 1.18 }, { stat: 'weapon-penetration-add', value: 18 }, { stat: 'weapon-recoil-mul', value: 1.16 }, { stat: 'weapon-heat-per-shot-mul', value: 1.12 }] },
+  { id: 'ballistics-breach-economy-keystone', kind: 'keystone', branch: 'Ballistics', name: 'Breach Economy', description: '+30% armor damage and +10% class-skill armor pressure, but direct health damage is reduced by 12%.', allocationCost: 2, prerequisiteIds: ['ballistics-terminal-mastery'], sector: 'outer', exclusiveGroup: 'ballistics-keystone', effects: [{ stat: 'weapon-armor-damage-mul', value: 1.30 }, { stat: 'class-skill-armor-mul', value: 1.10 }, { stat: 'weapon-health-damage-mul', value: 0.88 }] },
+  { id: 'ballistics-terminal-collapse-capstone', kind: 'capstone', branch: 'Ballistics', name: 'Terminal Collapse', description: '+10% weapon damage, +10 penetration, and +12% class-skill armor pressure after committing to a Ballistics Keystone.', allocationCost: 2, prerequisiteIds: [], sector: 'outer', effects: [{ stat: 'weapon-damage-mul', value: 1.10 }, { stat: 'weapon-penetration-add', value: 10 }, { stat: 'class-skill-armor-mul', value: 1.12 }] },
+
+  { id: 'mobility-inertial-mastery', kind: 'mastery', branch: 'Mobility', name: 'Inertial Authority', description: '+4% movement speed, +10% low-g control, and 6% less recoil. Opens one mutually exclusive Mobility Keystone.', allocationCost: 1, prerequisiteIds: ['mobility-3'], sector: 'outer', effects: [{ stat: 'player-move-speed-mul', value: 1.04 }, { stat: 'player-low-g-control-add', value: 0.10 }, { stat: 'weapon-recoil-mul', value: 0.94 }] },
+  { id: 'mobility-redline-keystone', kind: 'keystone', branch: 'Mobility', name: 'Redline Transit', description: '+12% movement speed and 8% faster reloads, but maximum armor is reduced by 16.', allocationCost: 2, prerequisiteIds: ['mobility-inertial-mastery'], sector: 'outer', exclusiveGroup: 'mobility-keystone', effects: [{ stat: 'player-move-speed-mul', value: 1.12 }, { stat: 'weapon-reload-mul', value: 0.92 }, { stat: 'player-max-armor-add', value: -16 }] },
+  { id: 'mobility-countermass-keystone', kind: 'keystone', branch: 'Mobility', name: 'Countermass Priority', description: '28% less recoil and +22% low-g control, but weapon damage is reduced by 8%.', allocationCost: 2, prerequisiteIds: ['mobility-inertial-mastery'], sector: 'outer', exclusiveGroup: 'mobility-keystone', effects: [{ stat: 'weapon-recoil-mul', value: 0.72 }, { stat: 'player-low-g-control-add', value: 0.22 }, { stat: 'weapon-damage-mul', value: 0.92 }] },
+  { id: 'mobility-vector-priority-capstone', kind: 'capstone', branch: 'Mobility', name: 'Vector Priority', description: '+7% movement speed, 6% faster ability recovery, and +10% class-skill control after committing to a Mobility Keystone.', allocationCost: 2, prerequisiteIds: [], sector: 'outer', effects: [{ stat: 'player-move-speed-mul', value: 1.07 }, { stat: 'ability-cooldown-mul', value: 0.94 }, { stat: 'class-skill-control-mul', value: 1.10 }] },
+
+  { id: 'systems-power-mastery', kind: 'mastery', branch: 'Systems', name: 'Power Budget Authority', description: '+6 maximum capacitor and +10% capacitor regeneration. Opens one mutually exclusive Systems Keystone.', allocationCost: 1, prerequisiteIds: ['systems-3'], sector: 'outer', effects: [{ stat: 'player-max-cap-add', value: 6 }, { stat: 'player-cap-regen-mul', value: 1.10 }] },
+  { id: 'systems-open-bus-keystone', kind: 'keystone', branch: 'Systems', name: 'Open Bus', description: 'Abilities cost 20% less capacitor, but their cooldowns are 14% longer.', allocationCost: 2, prerequisiteIds: ['systems-power-mastery'], sector: 'outer', exclusiveGroup: 'systems-keystone', effects: [{ stat: 'ability-cost-mul', value: 0.80 }, { stat: 'ability-cooldown-mul', value: 1.14 }] },
+  { id: 'systems-burst-conduction-keystone', kind: 'keystone', branch: 'Systems', name: 'Burst Conduction', description: '+24% ability power, but abilities cost 16% more capacitor.', allocationCost: 2, prerequisiteIds: ['systems-power-mastery'], sector: 'outer', exclusiveGroup: 'systems-keystone', effects: [{ stat: 'ability-power-mul', value: 1.24 }, { stat: 'ability-cost-mul', value: 1.16 }] },
+  { id: 'systems-closed-loop-capstone', kind: 'capstone', branch: 'Systems', name: 'Closed Loop Authority', description: '8% faster ability recovery, +10% class-skill recovery, and +10% capacitor regeneration after committing to a Systems Keystone.', allocationCost: 2, prerequisiteIds: [], sector: 'outer', effects: [{ stat: 'ability-cooldown-mul', value: 0.92 }, { stat: 'class-skill-recovery-mul', value: 1.10 }, { stat: 'player-cap-regen-mul', value: 1.10 }] },
+
+  { id: 'survival-shell-mastery', kind: 'mastery', branch: 'Survival', name: 'Layered Survival Authority', description: '+12 maximum health and +10 maximum armor. Opens one mutually exclusive Survival Keystone.', allocationCost: 1, prerequisiteIds: ['survival-3'], sector: 'outer', effects: [{ stat: 'player-max-hp-add', value: 12 }, { stat: 'player-max-armor-add', value: 10 }] },
+  { id: 'survival-pressure-fortress-keystone', kind: 'keystone', branch: 'Survival', name: 'Pressure Fortress', description: '+28 maximum armor and +15% vacuum resistance, but movement speed is reduced by 8%.', allocationCost: 2, prerequisiteIds: ['survival-shell-mastery'], sector: 'outer', exclusiveGroup: 'survival-keystone', effects: [{ stat: 'player-max-armor-add', value: 28 }, { stat: 'player-vacuum-resistance-add', value: 0.15 }, { stat: 'player-move-speed-mul', value: 0.92 }] },
+  { id: 'survival-ablative-reserve-keystone', kind: 'keystone', branch: 'Survival', name: 'Ablative Reserve', description: '+34 maximum health, but maximum armor is reduced by 16.', allocationCost: 2, prerequisiteIds: ['survival-shell-mastery'], sector: 'outer', exclusiveGroup: 'survival-keystone', effects: [{ stat: 'player-max-hp-add', value: 34 }, { stat: 'player-max-armor-add', value: -16 }] },
+  { id: 'survival-redundant-life-support-capstone', kind: 'capstone', branch: 'Survival', name: 'Redundant Life Support', description: '+18 maximum health, +16 maximum armor, and +10% vacuum resistance after committing to a Survival Keystone.', allocationCost: 2, prerequisiteIds: [], sector: 'outer', effects: [{ stat: 'player-max-hp-add', value: 18 }, { stat: 'player-max-armor-add', value: 16 }, { stat: 'player-vacuum-resistance-add', value: 0.10 }] },
+
+  { id: 'engineering-service-mastery', kind: 'mastery', branch: 'Engineering', name: 'Service Authority', description: '+12% heat dissipation and +12% manual vent speed. Opens one mutually exclusive Engineering Keystone.', allocationCost: 1, prerequisiteIds: ['engineering-3'], sector: 'outer', effects: [{ stat: 'weapon-heat-dissipation-mul', value: 1.12 }, { stat: 'player-vent-speed-mul', value: 1.12 }] },
+  { id: 'engineering-hot-feed-keystone', kind: 'keystone', branch: 'Engineering', name: 'Hot Feed', description: '+4 magazine capacity and +14% weapon damage, but heat per shot rises 20% and reloads are 8% slower.', allocationCost: 2, prerequisiteIds: ['engineering-service-mastery'], sector: 'outer', exclusiveGroup: 'engineering-keystone', effects: [{ stat: 'weapon-magazine-add', value: 4 }, { stat: 'weapon-damage-mul', value: 1.14 }, { stat: 'weapon-heat-per-shot-mul', value: 1.20 }, { stat: 'weapon-reload-mul', value: 1.08 }] },
+  { id: 'engineering-cold-cycle-keystone', kind: 'keystone', branch: 'Engineering', name: 'Cold Cycle', description: '+35% heat dissipation and +25% manual vent speed, but weapon damage is reduced by 10%.', allocationCost: 2, prerequisiteIds: ['engineering-service-mastery'], sector: 'outer', exclusiveGroup: 'engineering-keystone', effects: [{ stat: 'weapon-heat-dissipation-mul', value: 1.35 }, { stat: 'player-vent-speed-mul', value: 1.25 }, { stat: 'weapon-damage-mul', value: 0.90 }] },
+  { id: 'engineering-service-supremacy-capstone', kind: 'capstone', branch: 'Engineering', name: 'Service Supremacy', description: '+3 magazine capacity, 10% faster reloads, and +15% heat dissipation after committing to an Engineering Keystone.', allocationCost: 2, prerequisiteIds: [], sector: 'outer', effects: [{ stat: 'weapon-magazine-add', value: 3 }, { stat: 'weapon-reload-mul', value: 0.90 }, { stat: 'weapon-heat-dissipation-mul', value: 1.15 }] },
+
+  { id: 'awareness-solution-mastery', kind: 'mastery', branch: 'Awareness', name: 'Solution Authority', description: '+10% projectile velocity and +10 penetration. Opens one mutually exclusive Awareness Keystone.', allocationCost: 1, prerequisiteIds: ['awareness-3'], sector: 'outer', effects: [{ stat: 'weapon-projectile-speed-mul', value: 1.10 }, { stat: 'weapon-penetration-add', value: 10 }] },
+  { id: 'awareness-perfect-solution-keystone', kind: 'keystone', branch: 'Awareness', name: 'Perfect Solution', description: '+22% projectile velocity and +24 penetration, but reloads are 14% slower.', allocationCost: 2, prerequisiteIds: ['awareness-solution-mastery'], sector: 'outer', exclusiveGroup: 'awareness-keystone', effects: [{ stat: 'weapon-projectile-speed-mul', value: 1.22 }, { stat: 'weapon-penetration-add', value: 24 }, { stat: 'weapon-reload-mul', value: 1.14 }] },
+  { id: 'awareness-wide-mesh-keystone', kind: 'keystone', branch: 'Awareness', name: 'Wide Mesh', description: '+18% class-skill range and +12% class-skill control, but weapon damage is reduced by 8%.', allocationCost: 2, prerequisiteIds: ['awareness-solution-mastery'], sector: 'outer', exclusiveGroup: 'awareness-keystone', effects: [{ stat: 'class-skill-range-mul', value: 1.18 }, { stat: 'class-skill-control-mul', value: 1.12 }, { stat: 'weapon-damage-mul', value: 0.92 }] },
+  { id: 'awareness-predictive-dominance-capstone', kind: 'capstone', branch: 'Awareness', name: 'Predictive Dominance', description: '+8% weapon damage, +10% class-skill range, and +8% class-skill control after committing to an Awareness Keystone.', allocationCost: 2, prerequisiteIds: [], sector: 'outer', effects: [{ stat: 'weapon-damage-mul', value: 1.08 }, { stat: 'class-skill-range-mul', value: 1.10 }, { stat: 'class-skill-control-mul', value: 1.08 }] },
+];
+
+export const operatorNetworkBuildDefiningNodes = buildDefiningNodes;
+
 const legacyNodes: OperatorNetworkNode[] = [
   { id: 'ballistics-1', kind: 'standard', branch: 'Ballistics', name: 'Dense Flight', description: '+8 penetration to all player projectiles.', allocationCost: 1, prerequisiteIds: [], sector: 'core' },
   { id: 'ballistics-2', kind: 'standard', branch: 'Ballistics', name: 'Armor Work', description: '+15% armor damage.', allocationCost: 1, prerequisiteIds: ['ballistics-1'], sector: 'core', legacyRequires: 'ballistics-1' },
@@ -180,6 +217,7 @@ export const operatorNetworkNodes: OperatorNetworkNode[] = [
   ...legacyNodes,
   ...coreWaveNodes,
   ...classWeaponNodes,
+  ...buildDefiningNodes,
 ];
 
 const coreWaveEdges: OperatorNetworkEdge[] = [
@@ -246,6 +284,44 @@ const classWeaponEdges: OperatorNetworkEdge[] = [
   { a: 'systems-carbine-loop', b: 'systems-2', route: 'branch' },
 ];
 
+const buildDefiningEdges: OperatorNetworkEdge[] = [
+  { a: 'ballistics-3', b: 'ballistics-terminal-mastery', route: 'branch' },
+  { a: 'ballistics-terminal-mastery', b: 'ballistics-overpenetration-keystone', route: 'branch' },
+  { a: 'ballistics-terminal-mastery', b: 'ballistics-breach-economy-keystone', route: 'branch' },
+  { a: 'ballistics-overpenetration-keystone', b: 'ballistics-terminal-collapse-capstone', route: 'branch' },
+  { a: 'ballistics-breach-economy-keystone', b: 'ballistics-terminal-collapse-capstone', route: 'branch' },
+
+  { a: 'mobility-3', b: 'mobility-inertial-mastery', route: 'branch' },
+  { a: 'mobility-inertial-mastery', b: 'mobility-redline-keystone', route: 'branch' },
+  { a: 'mobility-inertial-mastery', b: 'mobility-countermass-keystone', route: 'branch' },
+  { a: 'mobility-redline-keystone', b: 'mobility-vector-priority-capstone', route: 'branch' },
+  { a: 'mobility-countermass-keystone', b: 'mobility-vector-priority-capstone', route: 'branch' },
+
+  { a: 'systems-3', b: 'systems-power-mastery', route: 'branch' },
+  { a: 'systems-power-mastery', b: 'systems-open-bus-keystone', route: 'branch' },
+  { a: 'systems-power-mastery', b: 'systems-burst-conduction-keystone', route: 'branch' },
+  { a: 'systems-open-bus-keystone', b: 'systems-closed-loop-capstone', route: 'branch' },
+  { a: 'systems-burst-conduction-keystone', b: 'systems-closed-loop-capstone', route: 'branch' },
+
+  { a: 'survival-3', b: 'survival-shell-mastery', route: 'branch' },
+  { a: 'survival-shell-mastery', b: 'survival-pressure-fortress-keystone', route: 'branch' },
+  { a: 'survival-shell-mastery', b: 'survival-ablative-reserve-keystone', route: 'branch' },
+  { a: 'survival-pressure-fortress-keystone', b: 'survival-redundant-life-support-capstone', route: 'branch' },
+  { a: 'survival-ablative-reserve-keystone', b: 'survival-redundant-life-support-capstone', route: 'branch' },
+
+  { a: 'engineering-3', b: 'engineering-service-mastery', route: 'branch' },
+  { a: 'engineering-service-mastery', b: 'engineering-hot-feed-keystone', route: 'branch' },
+  { a: 'engineering-service-mastery', b: 'engineering-cold-cycle-keystone', route: 'branch' },
+  { a: 'engineering-hot-feed-keystone', b: 'engineering-service-supremacy-capstone', route: 'branch' },
+  { a: 'engineering-cold-cycle-keystone', b: 'engineering-service-supremacy-capstone', route: 'branch' },
+
+  { a: 'awareness-3', b: 'awareness-solution-mastery', route: 'branch' },
+  { a: 'awareness-solution-mastery', b: 'awareness-perfect-solution-keystone', route: 'branch' },
+  { a: 'awareness-solution-mastery', b: 'awareness-wide-mesh-keystone', route: 'branch' },
+  { a: 'awareness-perfect-solution-keystone', b: 'awareness-predictive-dominance-capstone', route: 'branch' },
+  { a: 'awareness-wide-mesh-keystone', b: 'awareness-predictive-dominance-capstone', route: 'branch' },
+];
+
 export const operatorNetworkEdges: OperatorNetworkEdge[] = [
   { a: 'start-vanguard', b: 'ballistics-1', route: 'class-start' },
   { a: 'start-vanguard', b: 'survival-1', route: 'class-start' },
@@ -275,6 +351,7 @@ export const operatorNetworkEdges: OperatorNetworkEdge[] = [
   { a: 'survival-3', b: 'ballistics-1', route: 'outer-ring' },
   ...coreWaveEdges,
   ...classWeaponEdges,
+  ...buildDefiningEdges,
 ];
 
 const weaponFamilyByStartNodeId: Record<string, WeaponId> = {
@@ -360,7 +437,7 @@ export function operatorNetworkLegacyMirror(state: OperatorNetworkState) {
 export type OperatorNetworkAllocationResult = {
   state: OperatorNetworkState;
   allocated: boolean;
-  reason: 'allocated' | 'unknown-node' | 'class-start' | 'already-allocated' | 'insufficient-points' | 'missing-prerequisite' | 'not-connected' | 'wrong-arsenal';
+  reason: 'allocated' | 'unknown-node' | 'class-start' | 'already-allocated' | 'insufficient-points' | 'missing-prerequisite' | 'not-connected' | 'wrong-arsenal' | 'exclusive-choice';
 };
 
 export function allocateOperatorNetworkNode(state: OperatorNetworkState, nodeId: string): OperatorNetworkAllocationResult {
@@ -369,6 +446,7 @@ export function allocateOperatorNetworkNode(state: OperatorNetworkState, nodeId:
   if (node.kind === 'class-start') return { state, allocated: false, reason: 'class-start' };
   if (node.weaponFamily && weaponFamilyByStartNodeId[state.startNodeId] !== node.weaponFamily) return { state, allocated: false, reason: 'wrong-arsenal' };
   if (state.allocatedNodeIds.includes(nodeId)) return { state, allocated: false, reason: 'already-allocated' };
+  if (node.exclusiveGroup && state.allocatedNodeIds.some(id => id !== nodeId && operatorNetworkNode(id)?.exclusiveGroup === node.exclusiveGroup)) return { state, allocated: false, reason: 'exclusive-choice' };
   if (state.unspentPoints < node.allocationCost) return { state, allocated: false, reason: 'insufficient-points' };
 
   const allocated = new Set(state.allocatedNodeIds);
@@ -395,6 +473,7 @@ export function operatorNetworkRouteToNode(state: OperatorNetworkState, targetNo
   const target = operatorNetworkNode(targetNodeId);
   if (!target || target.kind === 'class-start') return null;
   if (state.allocatedNodeIds.includes(targetNodeId)) return { nodeIds: [], pointCost: 0 };
+  if (target.exclusiveGroup && state.allocatedNodeIds.some(id => id !== targetNodeId && operatorNetworkNode(id)?.exclusiveGroup === target.exclusiveGroup)) return null;
 
   const allocated = new Set(state.allocatedNodeIds);
   const owned = new Set([state.startNodeId, ...state.allocatedNodeIds]);
@@ -412,6 +491,7 @@ export function operatorNetworkRouteToNode(state: OperatorNetworkState, targetNo
       if (neighbor.weaponFamily && weaponFamilyByStartNodeId[state.startNodeId] !== neighbor.weaponFamily) continue;
 
       const pathSet = new Set([...allocated, ...current.path]);
+      if (neighbor.exclusiveGroup && [...pathSet].some(id => id !== neighborId && operatorNetworkNode(id)?.exclusiveGroup === neighbor.exclusiveGroup)) continue;
       if (neighbor.kind !== 'class-start' && neighbor.prerequisiteIds.some(requiredId => !pathSet.has(requiredId))) continue;
 
       const alreadyOwned = owned.has(neighborId);

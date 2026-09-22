@@ -4,6 +4,7 @@ import {
   createOperatorNetworkState,
   legacyProgressionNodes,
   normalizeOperatorNetworkState,
+  operatorNetworkBuildDefiningNodes,
   operatorNetworkClassWeaponNodes,
   operatorNetworkCoreWaveNodes,
   operatorNetworkEdges,
@@ -24,13 +25,25 @@ import { validateStoredProfile } from '../src/game/saveRecovery';
 
 const ids = operatorNetworkNodes.map(node => node.id);
 assert.equal(new Set(ids).size, ids.length, 'Operator Network node IDs must be unique.');
-assert.equal(operatorNetworkNodes.length, 69, 'P9-B should expose 3 class starts, 18 migrated passives, 36 core-cluster nodes, and 12 class weapon-sector nodes.');
-assert.equal(operatorNetworkCoreWaveNodes.length, 36, 'P9-B must author six new core nodes in each of the six branches.');
-assert.equal(operatorNetworkClassWeaponNodes.length, 12, 'P9-B must author four owned-weapon nodes for each class.');
-assert.equal(operatorNetworkNodes.filter(node => node.kind === 'travel').length, 15, 'P9-B travel routing count should remain explicit.');
-assert.equal(operatorNetworkNodes.filter(node => node.kind === 'notable').length, 21, 'P9-B notable count should cover legacy, branch-cluster, and class-sector payoffs.');
-assert.equal(operatorNetworkCoreWaveNodes.every(node => (node.effects?.length ?? 0) > 0), true, 'Every P9-B core node must change runtime combat state.');
-assert.equal(operatorNetworkClassWeaponNodes.every(node => !!node.weaponFamily && (node.effects?.length ?? 0) > 0), true, 'Every class weapon-sector node must be family-owned and mechanically active.');
+assert.equal(operatorNetworkNodes.length, 93, 'P9-C should extend the verified 69-node core with 24 build-defining nodes.');
+assert.equal(operatorNetworkCoreWaveNodes.length, 36, 'P9-B must retain six core nodes in each of the six branches.');
+assert.equal(operatorNetworkClassWeaponNodes.length, 12, 'P9-B must retain four owned-weapon nodes for each class.');
+assert.equal(operatorNetworkBuildDefiningNodes.length, 24, 'P9-C must author four build-defining nodes in each branch.');
+assert.equal(operatorNetworkNodes.filter(node => node.kind === 'travel').length, 15, 'P9-C must preserve P9-B travel routing.');
+assert.equal(operatorNetworkNodes.filter(node => node.kind === 'notable').length, 21, 'P9-C must preserve existing Notables.');
+assert.equal(operatorNetworkNodes.filter(node => node.kind === 'mastery').length, 6, 'P9-C must expose one Mastery per branch.');
+assert.equal(operatorNetworkNodes.filter(node => node.kind === 'keystone').length, 12, 'P9-C must expose two Keystone choices per branch.');
+assert.equal(operatorNetworkNodes.filter(node => node.kind === 'capstone').length, 6, 'P9-C must expose one Capstone per branch.');
+assert.equal(operatorNetworkCoreWaveNodes.every(node => (node.effects?.length ?? 0) > 0), true, 'Every P9-B core node must remain mechanically active.');
+assert.equal(operatorNetworkClassWeaponNodes.every(node => !!node.weaponFamily && (node.effects?.length ?? 0) > 0), true, 'Every class weapon-sector node must remain family-owned and mechanically active.');
+assert.equal(operatorNetworkBuildDefiningNodes.every(node => (node.effects?.length ?? 0) > 0), true, 'Every P9-C node must change runtime combat state.');
+for (const branch of ['Ballistics', 'Mobility', 'Systems', 'Survival', 'Engineering', 'Awareness'] as const) {
+  const branchNodes = operatorNetworkBuildDefiningNodes.filter(node => node.branch === branch);
+  assert.equal(branchNodes.filter(node => node.kind === 'mastery').length, 1, `${branch} must have one P9-C Mastery.`);
+  assert.equal(branchNodes.filter(node => node.kind === 'keystone').length, 2, `${branch} must have two P9-C Keystones.`);
+  assert.equal(branchNodes.filter(node => node.kind === 'capstone').length, 1, `${branch} must have one P9-C Capstone.`);
+  assert.equal(new Set(branchNodes.filter(node => node.kind === 'keystone').map(node => node.exclusiveGroup)).size, 1, `${branch} Keystones must share one exclusive choice group.`);
+}
 assert.equal(legacyProgressionNodes.length, 18, 'Legacy passive mechanics must remain represented during P9-A migration.');
 
 for (const edge of operatorNetworkEdges) {
@@ -55,6 +68,7 @@ assert.deepEqual(operatorNetworkRouteToNode(vanguard, 'ballistics-1'), { nodeIds
 assert.deepEqual(operatorNetworkRouteToNode(vanguard, 'ballistics-3'), { nodeIds: ['ballistics-1', 'ballistics-2', 'ballistics-3'], pointCost: 3 });
 assert.deepEqual(operatorNetworkRouteToNode(vanguard, 'mobility-1'), { nodeIds: ['ballistics-1', 'ballistics-2', 'ballistics-3', 'mobility-1'], pointCost: 4 });
 assert.deepEqual(operatorNetworkRouteToNode(vanguard, 'vanguard-breach-telemetry'), { nodeIds: ['vanguard-breach-entry', 'vanguard-breach-pressure', 'vanguard-breach-impulse', 'vanguard-breach-telemetry'], pointCost: 4 });
+assert.deepEqual(operatorNetworkRouteToNode(createOperatorNetworkState('vanguard', 12), 'ballistics-terminal-collapse-capstone'), { nodeIds: ['ballistics-1', 'ballistics-2', 'ballistics-3', 'ballistics-terminal-mastery', 'ballistics-overpenetration-keystone', 'ballistics-terminal-collapse-capstone'], pointCost: 8 }, 'Ballistics Capstone routing must require the existing branch spine, Mastery, one Keystone, then the Capstone.');
 assert.equal(operatorNetworkRouteToNode(vanguard, 'vector-rail-entry'), null, 'Class weapon sectors cannot be used as cross-class routing shortcuts.');
 
 let state = createOperatorNetworkState('vanguard', 3);
@@ -73,6 +87,20 @@ assert.equal(state.unspentPoints, 1);
 const vectorWeaponGate = allocateOperatorNetworkNode(createOperatorNetworkState('vector', 3), 'vanguard-breach-entry');
 assert.equal(vectorWeaponGate.allocated, false);
 assert.equal(vectorWeaponGate.reason, 'wrong-arsenal');
+
+let buildDefiningState = createOperatorNetworkState('vanguard', 12);
+for (const nodeId of ['ballistics-1', 'ballistics-2', 'ballistics-3', 'ballistics-terminal-mastery', 'ballistics-overpenetration-keystone']) {
+  const allocation = allocateOperatorNetworkNode(buildDefiningState, nodeId);
+  assert.equal(allocation.allocated, true, `Expected P9-C route allocation to succeed: ${nodeId}`);
+  buildDefiningState = allocation.state;
+}
+const exclusiveKeystone = allocateOperatorNetworkNode(buildDefiningState, 'ballistics-breach-economy-keystone');
+assert.equal(exclusiveKeystone.allocated, false, 'A branch cannot hold both mutually exclusive P9-C Keystones.');
+assert.equal(exclusiveKeystone.reason, 'exclusive-choice');
+assert.equal(operatorNetworkRouteToNode(buildDefiningState, 'ballistics-breach-economy-keystone'), null, 'Route preview must respect an already-committed Keystone choice.');
+const capstoneAllocation = allocateOperatorNetworkNode(buildDefiningState, 'ballistics-terminal-collapse-capstone');
+assert.equal(capstoneAllocation.allocated, true, 'A committed Keystone must open its branch Capstone.');
+assert.equal(capstoneAllocation.state.unspentPoints, 4);
 
 let profile = { ...createDefaultProfile(), level: 4, xp: 540, progressionPoints: 3 };
 const first = allocateNode(profile, 'ballistics-1');
@@ -113,6 +141,24 @@ assert.ok(runtimeBuild.weapon.breacher.knockbackMul > runtimeBuild.weapon.rail.k
 assert.ok(runtimeBuild.classSkillFamily.armorMul > 1, 'Class weapon-sector Notables must feed class-skill identity.');
 assert.ok(runtimeBuild.classSkillFamily.sources.includes('network:vanguard-breach-telemetry'), 'Class-skill effects must expose their Operator Network source.');
 
+const baselineBuild = deriveCombatBuild(createDefaultProfile());
+const overpenetrationProfile = createDefaultProfile();
+overpenetrationProfile.allocatedNodes = ['ballistics-terminal-mastery', 'ballistics-overpenetration-keystone', 'ballistics-terminal-collapse-capstone'];
+overpenetrationProfile.operatorNetwork = { ...createOperatorNetworkState('vanguard', 0), allocatedNodeIds: [...overpenetrationProfile.allocatedNodes] };
+const overpenetrationBuild = deriveCombatBuild(overpenetrationProfile);
+assert.ok(overpenetrationBuild.weapon.breacher.speedMul > baselineBuild.weapon.breacher.speedMul, 'Overpenetration must materially increase projectile velocity.');
+assert.ok(overpenetrationBuild.weapon.breacher.penetrationAdd >= baselineBuild.weapon.breacher.penetrationAdd + 36, 'Mastery, Keystone, and Capstone penetration must stack.');
+assert.ok(overpenetrationBuild.weapon.breacher.recoilMul > baselineBuild.weapon.breacher.recoilMul, 'Overpenetration tradeoff must increase recoil.');
+assert.ok(overpenetrationBuild.weapon.breacher.heatPerShotMul > baselineBuild.weapon.breacher.heatPerShotMul, 'Overpenetration tradeoff must increase heat per shot.');
+assert.ok(overpenetrationBuild.classSkillFamily.armorMul > baselineBuild.classSkillFamily.armorMul, 'Ballistics Capstone must feed class-skill armor pressure.');
+
+const breachEconomyProfile = createDefaultProfile();
+breachEconomyProfile.allocatedNodes = ['ballistics-terminal-mastery', 'ballistics-breach-economy-keystone'];
+breachEconomyProfile.operatorNetwork = { ...createOperatorNetworkState('vanguard', 0), allocatedNodeIds: [...breachEconomyProfile.allocatedNodes] };
+const breachEconomyBuild = deriveCombatBuild(breachEconomyProfile);
+assert.ok(breachEconomyBuild.weapon.breacher.armorDamageMul > baselineBuild.weapon.breacher.armorDamageMul, 'Breach Economy must increase armor damage.');
+assert.ok(breachEconomyBuild.weapon.breacher.healthMultiplierMul < baselineBuild.weapon.breacher.healthMultiplierMul, 'Breach Economy tradeoff must reduce direct health damage.');
+
 const normalized = normalizeOperatorNetworkState({
   operatorClass: 'systems',
   level: 6,
@@ -124,4 +170,4 @@ assert.equal(normalized.startNodeId, 'start-systems');
 assert.deepEqual(normalized.allocatedNodeIds, ['systems-1', 'systems-2']);
 assert.equal(normalized.unspentPoints, 3, 'Migration must refund level-earned points that are not represented by valid allocations.');
 
-console.log(`OPERATOR_NETWORK_ARCHITECTURE_PASS schema=${OPERATOR_NETWORK_SCHEMA_VERSION} nodes=${operatorNetworkNodes.length} edges=${operatorNetworkEdges.length} outer=6 starts=3 coreWave=${operatorNetworkCoreWaveNodes.length} classWeapon=${operatorNetworkClassWeaponNodes.length}`);
+console.log(`OPERATOR_NETWORK_ARCHITECTURE_PASS schema=${OPERATOR_NETWORK_SCHEMA_VERSION} nodes=${operatorNetworkNodes.length} edges=${operatorNetworkEdges.length} outer=6 starts=3 coreWave=${operatorNetworkCoreWaveNodes.length} classWeapon=${operatorNetworkClassWeaponNodes.length} buildDefining=${operatorNetworkBuildDefiningNodes.length}`);
