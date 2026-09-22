@@ -9,6 +9,7 @@ import {
   operatorNetworkMilestoneActive,
   operatorNetworkNodeGateReason,
   operatorNetworkPlan,
+  operatorNetworkRespecCreditCost,
   operatorNetworkSpecializationNodes,
   operatorNetworkCoreWaveNodes,
   operatorNetworkEdges,
@@ -16,6 +17,8 @@ import {
   operatorNetworkNodes,
   operatorNetworkRouteToNode,
   operatorNetworkStartNodeForClass,
+  rebuildOperatorNetworkState,
+  refundOperatorNetworkNode,
   OPERATOR_NETWORK_SCHEMA_VERSION,
 } from '../src/game/operatorNetwork';
 import {
@@ -214,6 +217,7 @@ assert.ok(breachEconomyBuild.weapon.breacher.healthMultiplierMul < baselineBuild
 const normalized = normalizeOperatorNetworkState({
   operatorClass: 'systems',
   level: 6,
+  specialization: null,
   state: null,
   legacyAllocatedNodes: ['systems-1', 'systems-2', 'unknown-node'],
   legacyUnspentPoints: 1,
@@ -222,4 +226,78 @@ assert.equal(normalized.startNodeId, 'start-systems');
 assert.deepEqual(normalized.allocatedNodeIds, ['systems-1', 'systems-2']);
 assert.equal(normalized.unspentPoints, 3, 'Migration must refund level-earned points that are not represented by valid allocations.');
 
-console.log(`OPERATOR_NETWORK_ARCHITECTURE_PASS schema=${OPERATOR_NETWORK_SCHEMA_VERSION} nodes=${operatorNetworkNodes.length} edges=${operatorNetworkEdges.length} outer=6 starts=3 coreWave=${operatorNetworkCoreWaveNodes.length} classWeapon=${operatorNetworkClassWeaponNodes.length} buildDefining=${operatorNetworkBuildDefiningNodes.length} specialization=${operatorNetworkSpecializationNodes.length}`);
+assert.equal(operatorNetworkRespecCreditCost(8, 1), 0, 'Early experimentation must remain free through level 8.');
+assert.equal(operatorNetworkRespecCreditCost(9, 1), 6, 'Post-field-trial node refunds must begin with a modest credit cost.');
+assert.equal(operatorNetworkRespecCreditCost(16, 1), 14, 'High-level single-node recalibration must carry a meaningful credit cost.');
+assert.equal(operatorNetworkRespecCreditCost(16, 8, 'rebuild'), 90, 'High-level full rebuilds should scale with build size while retaining the rebuild discount.');
+
+const refundSource = { ...createOperatorNetworkState('vanguard', 0), allocatedNodeIds: ['ballistics-1', 'ballistics-2'], unspentPoints: 1 };
+const blockedRefund = refundOperatorNetworkNode(refundSource, 'ballistics-1');
+assert.equal(blockedRefund.refunded, false, 'An upstream node cannot be removed while a downstream allocation depends on it.');
+assert.equal(blockedRefund.reason, 'dependent-node');
+const leafRefund = refundOperatorNetworkNode(refundSource, 'ballistics-2');
+assert.equal(leafRefund.refunded, true, 'A legal leaf node must be individually refundable.');
+assert.equal(leafRefund.refundedPoints, 1);
+assert.deepEqual(leafRefund.state.allocatedNodeIds, ['ballistics-1']);
+assert.equal(leafRefund.state.unspentPoints, 2, 'Individual refunds must return the exact progression-point cost.');
+
+const rebuildSource = { ...createOperatorNetworkState('vanguard', 0), allocatedNodeIds: ['ballistics-1', 'ballistics-2', 'ballistics-3'], unspentPoints: 2 };
+const rebuilt = rebuildOperatorNetworkState(rebuildSource);
+assert.deepEqual(rebuilt.state.allocatedNodeIds, [], 'Full rebuild must clear every paid allocation.');
+assert.equal(rebuilt.refundedPoints, 3);
+assert.equal(rebuilt.state.unspentPoints, 5, 'Full rebuild must return every spent progression point without loss.');
+
+const retiredNodeMigration = normalizeOperatorNetworkState({
+  operatorClass: 'vanguard',
+  level: 4,
+  specialization: null,
+  state: { ...createOperatorNetworkState('vanguard', 0), allocatedNodeIds: ['ballistics-1', 'retired-network-node'], unspentPoints: 0 },
+});
+assert.deepEqual(retiredNodeMigration.allocatedNodeIds, ['ballistics-1'], 'Removed Network node IDs must be repaired out of a current save.');
+assert.ok(retiredNodeMigration.unspentPoints >= 2, 'Removed Network node IDs must refund their point budget instead of deleting progression value.');
+
+const classMigration = normalizeOperatorNetworkState({
+  operatorClass: 'vector',
+  level: 16,
+  specialization: null,
+  state: { ...createOperatorNetworkState('vanguard', 0), allocatedNodeIds: ['vanguard-breach-entry'], unspentPoints: 0 },
+});
+assert.equal(classMigration.startNodeId, 'start-vector');
+assert.equal(classMigration.allocatedNodeIds.includes('vanguard-breach-entry'), false, 'A class migration must remove old weapon-family sector allocations.');
+assert.ok(classMigration.unspentPoints >= 1, 'A class migration must refund old weapon-family sector points.');
+
+const specializationMigration = normalizeOperatorNetworkState({
+  operatorClass: 'vanguard',
+  level: 16,
+  specialization: null,
+  state: { ...createOperatorNetworkState('vanguard', 0), allocatedNodeIds: ['pressure-diver-network-hook'], unspentPoints: 0 },
+});
+assert.equal(specializationMigration.allocatedNodeIds.includes('pressure-diver-network-hook'), false, 'Clearing a specialization must repair incompatible specialization allocations.');
+assert.ok(specializationMigration.unspentPoints >= 1, 'Specialization migration must refund removed specialization allocation value.');
+
+const vanguardRepresentative = setOperatorClass(createDefaultProfile(), 'vanguard').profile;
+vanguardRepresentative.allocatedNodes = ['vanguard-breach-entry', 'vanguard-breach-pressure', 'vanguard-breach-impulse', 'vanguard-breach-telemetry'];
+vanguardRepresentative.operatorNetwork = { ...createOperatorNetworkState('vanguard', 0), allocatedNodeIds: [...vanguardRepresentative.allocatedNodes] };
+const vanguardRepresentativeBuild = deriveCombatBuild(vanguardRepresentative);
+
+const vectorRepresentative = setOperatorClass(createDefaultProfile(), 'vector').profile;
+vectorRepresentative.allocatedNodes = ['vector-rail-entry', 'vector-rail-brace', 'vector-rail-bore', 'vector-rail-solution'];
+vectorRepresentative.operatorNetwork = { ...createOperatorNetworkState('vector', 0), allocatedNodeIds: [...vectorRepresentative.allocatedNodes] };
+const vectorRepresentativeBuild = deriveCombatBuild(vectorRepresentative);
+
+const systemsRepresentative = setOperatorClass(createDefaultProfile(), 'systems').profile;
+systemsRepresentative.allocatedNodes = ['systems-carbine-entry', 'systems-carbine-thermal', 'systems-carbine-drive', 'systems-carbine-loop'];
+systemsRepresentative.operatorNetwork = { ...createOperatorNetworkState('systems', 0), allocatedNodeIds: [...systemsRepresentative.allocatedNodes] };
+const systemsRepresentativeBuild = deriveCombatBuild(systemsRepresentative);
+
+assert.ok(vanguardRepresentativeBuild.weapon.breacher.armorDamageMul > vanguardRepresentativeBuild.weapon.rail.armorDamageMul, 'Representative Vanguard routing must preserve Breacher armor-pressure identity.');
+assert.ok(vectorRepresentativeBuild.weapon.rail.speedMul > vectorRepresentativeBuild.weapon.breacher.speedMul, 'Representative Vector routing must preserve Rail projectile-velocity identity.');
+assert.ok(systemsRepresentativeBuild.weapon.carbine.magazineAdd > systemsRepresentativeBuild.weapon.rail.magazineAdd, 'Representative Systems routing must preserve Carbine sustain identity.');
+const diversitySignatures = new Set([
+  `vanguard:${vanguardRepresentativeBuild.weapon.breacher.armorDamageMul.toFixed(4)}:${vanguardRepresentativeBuild.classSkillFamily.armorMul.toFixed(4)}`,
+  `vector:${vectorRepresentativeBuild.weapon.rail.speedMul.toFixed(4)}:${vectorRepresentativeBuild.classSkillFamily.rangeMul.toFixed(4)}`,
+  `systems:${systemsRepresentativeBuild.weapon.carbine.magazineAdd}:${systemsRepresentativeBuild.classSkillFamily.recoveryMul.toFixed(4)}`,
+]);
+assert.equal(diversitySignatures.size, 3, 'Representative class builds must remain mechanically distinct after P9-F migration/respec changes.');
+
+console.log(`OPERATOR_NETWORK_ARCHITECTURE_PASS schema=${OPERATOR_NETWORK_SCHEMA_VERSION} nodes=${operatorNetworkNodes.length} edges=${operatorNetworkEdges.length} outer=6 starts=3 coreWave=${operatorNetworkCoreWaveNodes.length} classWeapon=${operatorNetworkClassWeaponNodes.length} buildDefining=${operatorNetworkBuildDefiningNodes.length} specialization=${operatorNetworkSpecializationNodes.length} p9f=respec+migration+diversity`);

@@ -63,10 +63,12 @@ export function loadGameState(storage: StorageLike | null = browserStorage()): G
     const profile = normalizeStoredProfile(parsed.profile as Partial<PlayerProfile>);
     const campaign = parsed.campaign as CampaignState;
     if (validateStoredProfile(profile)) return legacySnapshot();
+    const profileRepaired = JSON.stringify(parsed.profile) !== JSON.stringify(profile);
 
-    // Legacy atomic saves predate either Gear 2.0 or the deep Operator Network. A successful load upgrades
-    // only after the legacy payload has passed recovery validation and the migrated profile validates too.
-    if (parsed.version !== GAME_STATE_VERSION || parsed.gearSchemaVersion !== gearSchemaVersion || parsed.operatorNetworkSchemaVersion !== OPERATOR_NETWORK_SCHEMA_VERSION) {
+    // Legacy atomic saves predate either Gear 2.0 or the deep Operator Network. Current saves can also
+    // require a bounded canonical repair when a retired Network node or old class/spec route is refunded.
+    // Persist only after both the original payload and repaired profile have passed recovery validation.
+    if (parsed.version !== GAME_STATE_VERSION || parsed.gearSchemaVersion !== gearSchemaVersion || parsed.operatorNetworkSchemaVersion !== OPERATOR_NETWORK_SCHEMA_VERSION || profileRepaired) {
       try {
         storage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify(persistedEnvelope(profile, campaign)));
       } catch {

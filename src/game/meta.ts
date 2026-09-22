@@ -1,6 +1,6 @@
 import type { CombatBuild, SingularTraitId, SpecializationId, Telemetry, WeaponId } from './sim';
 import { operatorWeaponFamilyForClass, type OperatorClassId } from './classSkills';
-import { allocateOperatorNetworkNode, createOperatorNetworkState, normalizeOperatorNetworkState, operatorNetworkNode, operatorNetworkNodes, type OperatorNetworkIntegrationHook, type OperatorNetworkNodeKind, type OperatorNetworkSector, type OperatorNetworkState, type OperatorNetworkStatEffect, type OperatorNetworkUnlockContext } from './operatorNetwork';
+import { allocateOperatorNetworkNode, createOperatorNetworkState, normalizeOperatorNetworkState, operatorNetworkNode, operatorNetworkNodes, rebuildOperatorNetworkState, refundOperatorNetworkNode, type OperatorNetworkIntegrationHook, type OperatorNetworkNodeKind, type OperatorNetworkSector, type OperatorNetworkState, type OperatorNetworkStatEffect, type OperatorNetworkUnlockContext } from './operatorNetwork';
 export type { OperatorClassId } from './classSkills';
 import { factionFrames, factionGearChance, factionSetDefinitions, type EquipmentFaction } from './factionGear';
 import { frameGenerationForRecovery, recoveryLevelForSource, type FrameGeneration } from './scaling';
@@ -622,6 +622,7 @@ export function normalizeStoredProfile(parsed: Partial<PlayerProfile>): PlayerPr
   const operatorNetwork = normalizeOperatorNetworkState({
     operatorClass,
     level: normalizedLevel,
+    specialization,
     state: parsed.operatorNetwork,
     legacyAllocatedNodes,
     legacyUnspentPoints: parsedPoints,
@@ -882,6 +883,7 @@ export function awardVictory(profile: PlayerProfile, telemetry: Telemetry): Vict
   const currentNetwork = normalizeOperatorNetworkState({
     operatorClass: operatorClassForProfile(profile),
     level: profile.level,
+    specialization: profile.specialization,
     state: profile.operatorNetwork,
     legacyAllocatedNodes: profile.allocatedNodes,
     legacyUnspentPoints: profile.progressionPoints,
@@ -1001,6 +1003,7 @@ export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep
   const currentNetwork = normalizeOperatorNetworkState({
     operatorClass: operatorClassForProfile(profile),
     level: profile.level,
+    specialization: profile.specialization,
     state: profile.operatorNetwork,
     legacyAllocatedNodes: profile.allocatedNodes,
     legacyUnspentPoints: profile.progressionPoints,
@@ -1043,6 +1046,7 @@ export function allocateNode(profile: PlayerProfile, nodeId: string, context?: O
   const network = normalizeOperatorNetworkState({
     operatorClass: operatorClassForProfile(profile),
     level: profile.level,
+    specialization: profile.specialization,
     state: profile.operatorNetwork,
     legacyAllocatedNodes: profile.allocatedNodes,
     legacyUnspentPoints: profile.progressionPoints,
@@ -1072,6 +1076,59 @@ export function allocateNode(profile: PlayerProfile, nodeId: string, context?: O
     message: `${node?.name ?? 'Network node'} allocated.`,
   };
 }
+export function refundNode(profile: PlayerProfile, nodeId: string, context?: OperatorNetworkUnlockContext): { profile: PlayerProfile; message: string; refundedPoints: number } {
+  const network = normalizeOperatorNetworkState({
+    operatorClass: operatorClassForProfile(profile),
+    level: profile.level,
+    specialization: profile.specialization,
+    state: profile.operatorNetwork,
+    legacyAllocatedNodes: profile.allocatedNodes,
+    legacyUnspentPoints: profile.progressionPoints,
+  });
+  const result = refundOperatorNetworkNode(network, nodeId, context);
+  if (!result.refunded) {
+    if (result.reason === 'not-allocated') return { profile, message: 'That Network node is not allocated.', refundedPoints: 0 };
+    if (result.reason === 'dependent-node') return { profile, message: 'Refund downstream nodes first so the remaining Network route stays valid.', refundedPoints: 0 };
+    if (result.reason === 'milestone-managed') return { profile, message: 'Specialization milestones do not spend progression points.', refundedPoints: 0 };
+    return { profile, message: 'That Network node cannot be refunded.', refundedPoints: 0 };
+  }
+  const node = progressionNodes.find(entry => entry.id === nodeId);
+  return {
+    profile: {
+      ...profile,
+      progressionPoints: result.state.unspentPoints,
+      allocatedNodes: result.state.allocatedNodeIds,
+      operatorNetwork: result.state,
+    },
+    message: `${node?.name ?? 'Network node'} refunded // ${result.refundedPoints} progression point${result.refundedPoints === 1 ? '' : 's'} returned.`,
+    refundedPoints: result.refundedPoints,
+  };
+}
+
+export function rebuildOperatorNetwork(profile: PlayerProfile): { profile: PlayerProfile; message: string; refundedPoints: number; refundedNodeIds: string[] } {
+  const network = normalizeOperatorNetworkState({
+    operatorClass: operatorClassForProfile(profile),
+    level: profile.level,
+    specialization: profile.specialization,
+    state: profile.operatorNetwork,
+    legacyAllocatedNodes: profile.allocatedNodes,
+    legacyUnspentPoints: profile.progressionPoints,
+  });
+  const result = rebuildOperatorNetworkState(network);
+  return {
+    profile: {
+      ...profile,
+      progressionPoints: result.state.unspentPoints,
+      allocatedNodes: result.state.allocatedNodeIds,
+      operatorNetwork: result.state,
+    },
+    message: result.refundedNodeIds.length > 0
+      ? `Operator Network rebuilt // ${result.refundedPoints} progression point${result.refundedPoints === 1 ? '' : 's'} returned.`
+      : 'Operator Network already clear.',
+    refundedPoints: result.refundedPoints,
+    refundedNodeIds: result.refundedNodeIds,
+  };
+}
 export function setAbilityMod(profile: PlayerProfile, ability: AbilityId, modId: string | null): PlayerProfile {
   if (modId) {
     const mod = abilityMods.find(entry => entry.id === modId && entry.ability === ability);
@@ -1097,6 +1154,7 @@ export function setOperatorClass(profile: PlayerProfile, operatorClass: Operator
   const operatorNetwork = normalizeOperatorNetworkState({
     operatorClass,
     level: profile.level,
+    specialization: clearsSpecialization ? null : profile.specialization,
     state: profile.operatorNetwork,
     legacyAllocatedNodes: profile.allocatedNodes,
     legacyUnspentPoints: profile.progressionPoints,
@@ -1119,9 +1177,25 @@ export function setOperatorClass(profile: PlayerProfile, operatorClass: Operator
 export function setSpecialization(profile: PlayerProfile, specialization: SpecializationId | null): PlayerProfile {
   if (profile.level < 15) return profile;
   const definition = specialization ? specializationDefinitions.find(entry => entry.id === specialization) : undefined;
-  if (specialization && (!definition || definition.operatorClass !== operatorClassForProfile(profile))) return profile;
+  const operatorClass = operatorClassForProfile(profile);
+  if (specialization && (!definition || definition.operatorClass !== operatorClass)) return profile;
   const specializationOverclock = specialization && specialization === profile.specialization && profile.level >= 16 ? profile.specializationOverclock : false;
-  return { ...profile, specialization, specializationOverclock };
+  const operatorNetwork = normalizeOperatorNetworkState({
+    operatorClass,
+    level: profile.level,
+    specialization,
+    state: profile.operatorNetwork,
+    legacyAllocatedNodes: profile.allocatedNodes,
+    legacyUnspentPoints: profile.progressionPoints,
+  });
+  return {
+    ...profile,
+    specialization,
+    specializationOverclock,
+    progressionPoints: operatorNetwork.unspentPoints,
+    allocatedNodes: operatorNetwork.allocatedNodeIds,
+    operatorNetwork,
+  };
 }
 export function setSpecializationOverclock(profile: PlayerProfile, enabled: boolean): PlayerProfile { if (profile.level < 16 || !profile.specialization) return profile; return { ...profile, specializationOverclock: enabled }; }
 export function setProfileSettings(profile: PlayerProfile, settings: Partial<ProfileSettings>): PlayerProfile { return { ...profile, settings: { ...profile.settings, ...settings } }; }

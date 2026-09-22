@@ -466,6 +466,7 @@ export function createOperatorNetworkState(operatorClass: OperatorClassId, unspe
 export function normalizeOperatorNetworkState(input: {
   operatorClass: OperatorClassId;
   level: number;
+  specialization?: SpecializationId | null;
   state?: Partial<OperatorNetworkState> | null;
   legacyAllocatedNodes?: readonly string[];
   legacyUnspentPoints?: number;
@@ -473,23 +474,47 @@ export function normalizeOperatorNetworkState(input: {
   const sourceAllocated = input.state?.schemaVersion === OPERATOR_NETWORK_SCHEMA_VERSION && Array.isArray(input.state.allocatedNodeIds)
     ? input.state.allocatedNodeIds
     : input.legacyAllocatedNodes ?? [];
-  const allocatedNodeIds = [...new Set(sourceAllocated.filter(id => {
-    const node = operatorNetworkNode(id);
-    return !!node && node.kind !== 'class-start' && !node.milestone;
-  }))];
+  const uniqueSourceIds = [...new Set(sourceAllocated.filter((id): id is string => typeof id === 'string' && id.length > 0))];
+  const startNodeId = operatorNetworkStartNodeForClass(input.operatorClass);
+  const ownedWeaponFamily = weaponFamilyByStartNodeId[startNodeId];
 
-  const usedPoints = allocatedNodeIds.reduce((total, id) => total + (operatorNetworkNode(id)?.allocationCost ?? 0), 0);
-  const earnedLevelPoints = Math.max(0, Math.floor(input.level) - 1);
+  const sourcePointEstimate = uniqueSourceIds.reduce((total, id) => {
+    const node = operatorNetworkNode(id);
+    if (node?.kind === 'class-start' || node?.milestone) return total;
+    return total + (node?.allocationCost ?? 1);
+  }, 0);
   const storedUnspent = input.state?.schemaVersion === OPERATOR_NETWORK_SCHEMA_VERSION
     ? normalizedPointCount(input.state.unspentPoints)
     : normalizedPointCount(input.legacyUnspentPoints);
-  const minimumUnspent = Math.max(0, earnedLevelPoints - usedPoints);
+  const earnedLevelPoints = Math.max(0, Math.floor(input.level) - 1);
+  const totalBudget = Math.max(earnedLevelPoints, storedUnspent + sourcePointEstimate);
+
+  const candidates: string[] = [];
+  const exclusiveGroups = new Set<string>();
+  for (const id of uniqueSourceIds) {
+    const node = operatorNetworkNode(id);
+    if (!node || node.kind === 'class-start' || node.milestone) continue;
+    if (node.weaponFamily && node.weaponFamily !== ownedWeaponFamily) continue;
+    if (node.minLevel && input.level < node.minLevel) continue;
+    if (input.specialization !== undefined && node.specialization && node.specialization !== input.specialization) continue;
+    if (node.exclusiveGroup) {
+      if (exclusiveGroups.has(node.exclusiveGroup)) continue;
+      exclusiveGroups.add(node.exclusiveGroup);
+    }
+    candidates.push(id);
+  }
+
+  // Migration is intentionally conservative: preserve every still-authored shared allocation even if
+  // the player changed class or graph topology evolved around it. Only allocations that can no longer
+  // legally belong to this profile are removed/refunded above.
+  const allocatedNodeIds = candidates;
+  const usedPoints = allocatedNodeIds.reduce((total, id) => total + (operatorNetworkNode(id)?.allocationCost ?? 0), 0);
 
   return {
     schemaVersion: OPERATOR_NETWORK_SCHEMA_VERSION,
-    startNodeId: operatorNetworkStartNodeForClass(input.operatorClass),
+    startNodeId,
     allocatedNodeIds,
-    unspentPoints: Math.max(storedUnspent, minimumUnspent),
+    unspentPoints: Math.max(0, totalBudget - usedPoints),
   };
 }
 
@@ -564,6 +589,96 @@ export function allocateOperatorNetworkNode(state: OperatorNetworkState, nodeId:
   if (!connected) return { state, allocated: false, reason: 'not-connected' };
 
   return { allocated: true, reason: 'allocated', state: { ...state, allocatedNodeIds: [...state.allocatedNodeIds, nodeId], unspentPoints: state.unspentPoints - node.allocationCost } };
+}
+
+export type OperatorNetworkRefundResult = {
+  state: OperatorNetworkState;
+  refunded: boolean;
+  refundedPoints: number;
+  reason: 'refunded' | 'unknown-node' | 'class-start' | 'milestone-managed' | 'not-allocated' | 'dependent-node';
+};
+
+export type OperatorNetworkRebuildResult = {
+  state: OperatorNetworkState;
+  refundedNodeIds: string[];
+  refundedPoints: number;
+};
+
+export function operatorNetworkRespecCreditCost(level: number, nodeCount: number, mode: 'node' | 'rebuild' = 'node') {
+  const count = Math.max(0, Math.floor(nodeCount));
+  if (count === 0 || level <= 8) return 0;
+  const perNode = level <= 12 ? 6 : level <= 15 ? 10 : 14;
+  const multiplier = mode === 'rebuild' ? 0.8 : 1;
+  return Math.max(1, Math.ceil(perNode * count * multiplier));
+}
+
+function operatorNetworkValidationContext(nodeIds: readonly string[], context?: OperatorNetworkUnlockContext): OperatorNetworkUnlockContext {
+  if (context) return context;
+  const specialization = nodeIds.map(id => operatorNetworkNode(id)?.specialization).find((value): value is SpecializationId => !!value);
+  return {
+    level: Number.MAX_SAFE_INTEGER,
+    specialization,
+    unlockKeys: operatorNetworkNodes.map(node => node.unlockKey).filter((value): value is string => !!value),
+  };
+}
+
+function operatorNetworkUnresolvedAllocations(state: OperatorNetworkState, nodeIds: readonly string[], context?: OperatorNetworkUnlockContext) {
+  let virtualState: OperatorNetworkState = { ...state, allocatedNodeIds: [], unspentPoints: 1_000_000 };
+  const pending = [...nodeIds];
+  const validationContext = operatorNetworkValidationContext(nodeIds, context);
+  let progressed = true;
+  while (pending.length > 0 && progressed) {
+    progressed = false;
+    for (let index = 0; index < pending.length;) {
+      const allocation = allocateOperatorNetworkNode(virtualState, pending[index]!, validationContext);
+      if (!allocation.allocated) {
+        index += 1;
+        continue;
+      }
+      virtualState = { ...allocation.state, unspentPoints: 1_000_000 };
+      pending.splice(index, 1);
+      progressed = true;
+    }
+  }
+  return pending;
+}
+
+export function refundOperatorNetworkNode(state: OperatorNetworkState, nodeId: string, context?: OperatorNetworkUnlockContext): OperatorNetworkRefundResult {
+  const node = operatorNetworkNode(nodeId);
+  if (!node) return { state, refunded: false, refundedPoints: 0, reason: 'unknown-node' };
+  if (node.kind === 'class-start') return { state, refunded: false, refundedPoints: 0, reason: 'class-start' };
+  if (node.milestone) return { state, refunded: false, refundedPoints: 0, reason: 'milestone-managed' };
+  if (!state.allocatedNodeIds.includes(nodeId)) return { state, refunded: false, refundedPoints: 0, reason: 'not-allocated' };
+
+  const remainingNodeIds = state.allocatedNodeIds.filter(id => id !== nodeId);
+  if (operatorNetworkUnresolvedAllocations(state, remainingNodeIds, context).length > 0) {
+    return { state, refunded: false, refundedPoints: 0, reason: 'dependent-node' };
+  }
+
+  return {
+    refunded: true,
+    refundedPoints: node.allocationCost,
+    reason: 'refunded',
+    state: {
+      ...state,
+      allocatedNodeIds: remainingNodeIds,
+      unspentPoints: state.unspentPoints + node.allocationCost,
+    },
+  };
+}
+
+export function rebuildOperatorNetworkState(state: OperatorNetworkState): OperatorNetworkRebuildResult {
+  const refundedNodeIds = [...state.allocatedNodeIds];
+  const refundedPoints = refundedNodeIds.reduce((total, id) => total + (operatorNetworkNode(id)?.allocationCost ?? 0), 0);
+  return {
+    refundedNodeIds,
+    refundedPoints,
+    state: {
+      ...state,
+      allocatedNodeIds: [],
+      unspentPoints: state.unspentPoints + refundedPoints,
+    },
+  };
 }
 
 export function operatorNetworkRouteToNode(state: OperatorNetworkState, targetNodeId: string, context?: OperatorNetworkUnlockContext): OperatorNetworkRoute | null {

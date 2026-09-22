@@ -103,6 +103,44 @@ function versionTwoNetworkMigrationSmoke() {
   assert.equal(persisted.operatorNetworkSchemaVersion, OPERATOR_NETWORK_SCHEMA_VERSION, 'v2 upgrades should persist the P9-A network schema.');
 }
 
+function currentNetworkRepairSmoke() {
+  const storage = new MemoryStorage();
+  const campaign = createDefaultCampaign();
+  const profile: any = {
+    ...createDefaultProfile(),
+    level: 4,
+    xp: 540,
+    progressionPoints: 0,
+    allocatedNodes: ['ballistics-1', 'retired-network-node'],
+    operatorNetwork: {
+      schemaVersion: OPERATOR_NETWORK_SCHEMA_VERSION,
+      startNodeId: 'start-vanguard',
+      allocatedNodeIds: ['ballistics-1', 'retired-network-node'],
+      unspentPoints: 0,
+    },
+  };
+  storage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify({
+    version: GAME_STATE_VERSION,
+    gearSchemaVersion,
+    operatorNetworkSchemaVersion: OPERATOR_NETWORK_SCHEMA_VERSION,
+    profile,
+    campaign,
+    savedAt: '2026-09-22T10:00:00.000Z',
+  }));
+
+  assert.equal(validateStoredProfile(profile), null, 'structurally safe retired Network IDs must reach canonical migration instead of recovery quarantine');
+  const repaired = loadGameState(storage as any);
+  assert.deepEqual(repaired.profile.allocatedNodes, ['ballistics-1'], 'current-version migration must remove retired Network node IDs.');
+  assert.deepEqual(repaired.profile.operatorNetwork?.allocatedNodeIds, ['ballistics-1'], 'canonical Network state must match the repaired legacy mirror.');
+  assert.equal(repaired.profile.progressionPoints, 2, 'retired Network node value plus level-earned slack must be refunded safely.');
+  assert.equal(repaired.profile.operatorNetwork?.unspentPoints, 2, 'canonical Network refunds must mirror progressionPoints.');
+
+  const persisted = JSON.parse(storage.getItem(GAME_STATE_STORAGE_KEY)!) as any;
+  assert.deepEqual(persisted.profile.operatorNetwork.allocatedNodeIds, ['ballistics-1'], 'repaired current-version Network state must be atomically rewritten during load.');
+  assert.equal(persisted.profile.operatorNetwork.unspentPoints, 2, 'persisted repair must keep refunded progression value.');
+  assert.equal(persisted.profile.allocatedNodes.includes('retired-network-node'), false, 'retired node IDs must not survive the rewritten profile mirror.');
+}
+
 async function recoveryPreservationSmoke() {
   const storage = new MemoryStorage();
   const campaign = createDefaultCampaign();
@@ -130,8 +168,9 @@ async function recoveryPreservationSmoke() {
 
 legacyStateMigrationSmoke();
 versionTwoNetworkMigrationSmoke();
+currentNetworkRepairSmoke();
 recoveryPreservationSmoke()
-  .then(() => console.log(`SAVE_DATA_MIGRATION_PASS legacy=v1/v2->v${GAME_STATE_VERSION} gearSchema=${gearSchemaVersion} networkSchema=${OPERATOR_NETWORK_SCHEMA_VERSION} recovery=preserved`))
+  .then(() => console.log(`SAVE_DATA_MIGRATION_PASS legacy=v1/v2->v${GAME_STATE_VERSION} gearSchema=${gearSchemaVersion} networkSchema=${OPERATOR_NETWORK_SCHEMA_VERSION} currentNetworkRepair=refunded recovery=preserved`))
   .catch(error => {
     console.error(error);
     process.exitCode = 1;
