@@ -639,3 +639,12 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Android artifact `10672485894` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.240`, debug signing, and APK SHA-256 `533c9ad02399092fd5426be0989bb4d1969074d2f4bf0fb829eb8d721a68ef8a`.
   - **Next: P8.5-J — Mobile Armory + build-link comparison.**
 
+
+
+- [x] **P8.5-J Mobile Armory + build-link comparison** — rebuilt item inspection around the Gear 2.0 decision hierarchy: name/rarity → base/implicit → explicit modifiers → Augments → generated BUILD LINKS → equipped loadout impact, with recovery/source/provenance and other advanced telemetry moved behind the expandable metadata layer.
+  - BUILD LINKS now derive directly from the shared stat/tag registries and current-vs-candidate combat build. The comparison surfaces gained/lost local stats, global/environment stats, class-skill links and tuning sources, specialization gear-link activation/breakage, and Singular rule changes without introducing a composite gear-score number.
+  - Preserved existing quick-read and discovery contracts inside the new hierarchy: PRIMARY EFFECT remains tap-visible, build-changing effects still call out mechanical modifiers/Singular signatures/specialization links, rarity and class-resonance language remains intact, and the established mobile inspector escape/scroll behavior is unchanged.
+  - Added P8.5-J UI regression gates for hierarchy order, registry-driven gain/loss categories, advanced provenance placement, no-gear-score enforcement, and responsive gain/loss styling. Verification caught two compatibility regressions from the first restructure (legacy specialization-link wording and identity/provenance labels); both were restored without weakening the previous tests.
+  - Verified on main `4c59505c043d2502a68a6c497ecaffd172ca90d5`: Browser E2E `35674695661`, Level 15 beta smoke `35674695652`, and Android beta.244 `35674695713` all passed. Android verification covered the full production regression/build, package/version/SDK/signature checks, installable APK generation, emulator runtime/touch/lifecycle smoke, and the Chapter 3 touch playthrough.
+  - Android artifact `10672632757` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.244`, debug signing, and APK SHA-256 `f0b6196464748b8c5a95303f31333c95de48f1305591ec5501be2fff17119829`.
+  - **Next: P8.5-K — Save/data migration + compatibility.**
