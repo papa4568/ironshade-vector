@@ -1,6 +1,7 @@
 import { augmentDefinitions, frameIdentityDefinitions } from './gearDepth';
 import { gearSchemaVersion } from './gearSchema';
 import { OPERATOR_NETWORK_SCHEMA_VERSION } from './operatorNetwork';
+import { SHIP_SYSTEM_MAX_TIER, SHIP_SYSTEM_SCHEMA_VERSION } from './campaign';
 
 export const PROFILE_STORAGE_KEY = 'ironshade-vector-profile-v3';
 export const CAMPAIGN_STORAGE_KEY = 'ironshade-vector-campaign-v1';
@@ -214,13 +215,14 @@ function invalidCampaignReason(value: unknown): string | null {
   for (const reason of [
     optionalNumberReason(value, 'cycle', 0, 10_000_000, true),
     optionalNumberReason(value, 'contractsCompleted', 0, 10_000_000, true),
+    optionalNumberReason(value, 'shipSystemSchemaVersion', 1, SHIP_SYSTEM_SCHEMA_VERSION, true),
     optionalBooleanReason(value, 'anomalyRecovered'),
     optionalStringOrNullReason(value, 'dailyCompletedDate', 40),
     optionalStringOrNullReason(value, 'lastOutcome', 2_000),
     numericMapReason(value.resources, 'resources', 0, 1_000_000_000),
     numericMapReason(value.consumables, 'consumables', 0, 100_000, true),
     numericMapReason(value.reputation, 'reputation', -1_000_000, 1_000_000),
-    numericMapReason(value.shipUpgrades, 'shipUpgrades', 0, 2, true),
+    numericMapReason(value.shipUpgrades, 'shipUpgrades', 0, SHIP_SYSTEM_MAX_TIER, true),
   ]) {
     if (reason) return reason;
   }
