@@ -191,6 +191,11 @@ function GearComparison({ profile, item, fabrication }: { profile: PlayerProfile
   const compatibleHardware = compatibleAugments(item).filter(augment => !(item.augments ?? []).includes(augment.id));
   const equipLevelReady = item.levelRequirement <= profile.level;
   const equipReady = equipLevelReady && classCompatible;
+  const buildChangingEffects = [
+    ...(item.singularEffect ? [{ label: 'SINGULAR SIGNATURE', detail: item.singularEffect }] : []),
+    ...item.modifiers.filter(modifier => modifier.mechanical).map(modifier => ({ label: `MECHANICAL MOD // G${modifier.grade ?? 3} ${modifier.label.toUpperCase()}`, detail: modifier.description })),
+    ...(itemGearLinked && candidateGearSynergy ? [{ label: `SPECIALIZATION GEAR LINK // ${candidateGearSynergy.definition.name.toUpperCase()}`, detail: candidateGearSynergy.definition.description }] : []),
+  ];
 
   const currentSkillSources = new Set(currentBuild.classSkillFamily.sources);
   const candidateSkillSources = new Set(candidateBuild.classSkillFamily.sources);
@@ -243,6 +248,7 @@ function GearComparison({ profile, item, fabrication }: { profile: PlayerProfile
             <div><small>BASE</small><b>{item.equipmentClass}</b><span>{item.core}</span></div>
             <div><small>IMPLICIT</small><b>{item.frameImplicit ?? 'Neutral service geometry.'}</b><span>{identity.philosophy}</span></div>
           </div>
+          <div className="primary-effect-inline"><small>PRIMARY EFFECT</small><p>{primaryItemEffect(item)}</p></div>
         </section>
 
         <section className="item-layer-panel explicit-modifiers-panel" aria-label="Explicit modifiers">
@@ -265,9 +271,10 @@ function GearComparison({ profile, item, fabrication }: { profile: PlayerProfile
             <BuildLinkDiff label="LOCAL STATS" gained={localGained} lost={localLost} note="Base + explicit local properties compared with the currently equipped frame." />
             <BuildLinkDiff label="GLOBAL STATS" gained={globalGained} lost={globalLost} note="Operator-wide and environment-facing stat links." />
             <BuildLinkDiff label="SKILL LINKS" gained={skillGained} lost={skillLost} note={skillNote} />
-            <BuildLinkDiff label="SPECIALIZATION LINK" gained={specializationGained} lost={specializationLost} note={specializationNote} />
+            <BuildLinkDiff label="SPECIALIZATION GEAR LINK" gained={specializationGained} lost={specializationLost} note={specializationNote} />
             <BuildLinkDiff label="SINGULAR RULE" gained={singularGained} lost={singularLost} note={item.rarity === 'Singular' ? 'Fixed rule-changing package; reconstruction cannot reroll it.' : 'No candidate Singular rule.'} />
           </div>
+          {buildChangingEffects.length > 0 && <section className="build-change-panel" aria-label="Build-changing equipment effects"><header><small>BUILD-CHANGING EFFECTS</small><b>{buildChangingEffects.length} detected</b></header>{buildChangingEffects.map(effect => <div key={effect.label}><b>{effect.label}</b><span>{effect.detail}</span></div>)}</section>}
         </section>
 
         <section className="loadout-impact"><header className="loadout-impact-heading"><div><small>LOADOUT IMPACT</small><b>{slotLabels[item.slot]}</b></div><span>{equipped ? 'VS EQUIPPED' : 'EMPTY SLOT'}</span></header><div className="compare-head"><div><small>CURRENT</small><b>{equipped?.name ?? 'Empty slot'}</b><span>{equipped ? <><RarityText rarity={equipped.rarity} /> · {summary.current}</> : summary.current}</span></div><div className="candidate-card"><small>CANDIDATE</small><b>{item.name}</b><span><RarityText rarity={item.rarity} /> · {summary.candidate}</span></div></div>{statCards}</section>
@@ -275,10 +282,13 @@ function GearComparison({ profile, item, fabrication }: { profile: PlayerProfile
 
       <details className="gear-deep-details"><summary>Advanced metadata & provenance</summary>
         <div className="gear-identity-grid advanced-identity-grid" aria-label="Advanced equipment metadata">
-          <div><small>BASE ID</small><b>{item.baseId}</b><span>{item.equipmentClass}</span></div>
-          <div><small>FRAME</small><b>{identity.name}</b><span>GEN {item.frameGeneration ?? 1} · FRAME Q {item.equipmentQuality ?? 0}/20</span></div>
+          <div><small>BASE</small><b>{item.baseId}</b><span>{item.equipmentClass}</span></div>
+          <div><small>FRAME</small><b>{identity.name}</b><span>GEN {item.frameGeneration ?? 1} · {identity.philosophy}</span></div>
           <div><small>RECOVERY</small><b>RL {item.recoveryLevel ?? 1}</b><span>Q{item.recoveryQuality ?? 0} · {recoveryQualityLabel(item.recoveryQuality ?? 0)}</span></div>
-          <div><small>SOURCE / PROVENANCE</small><b>{item.recoverySource ?? 'Legacy recovery'}</b><span>Recovered identity remains attached through reconstruction.</span></div>
+          <div><small>FRAME QUALITY</small><b>{item.equipmentQuality ?? 0}/20</b><span>Improves the base/inherent frame only.</span></div>
+          <div><small>MODIFIERS</small><b>{item.modifiers.length ? item.modifiers.length + ' · PEAK G' + topModifierGrade : 'CLEAN BASE'}</b><span>Explicit strength remains owned by modifier grade.</span></div>
+          <div><small>AUGMENTS</small><b>{augments.length}/{item.augmentSlots ?? 0} INSTALLED</b><span>Bounded utility/specialization hardware.</span></div>
+          <div><small>SOURCE</small><b>{item.recoverySource ?? 'Legacy recovery'}</b><span>PROVENANCE // recovered identity remains attached through reconstruction.</span></div>
           <div><small>CLASS RESONANCE</small><b>{classAffinityNames || 'UNIVERSAL'}</b><span>{classMatched ? activeClass.name + ' resonance active.' : classCompatible ? 'Compatible support gear; this frame currently resonates with another class path.' : (weaponOwner?.name ?? 'Another class') + ' owns this weapon family.'}</span></div>
           <div><small>STAT SCOPE</small><b>{semanticScopes.length ? semanticScopes.map(scope => scope.replace('-', ' ').toUpperCase()).join(' · ') : 'NONE'}</b><span>{semanticStats.length} registry-defined stat{semanticStats.length === 1 ? '' : 's'} on this package.</span></div>
           <div><small>BUILD TAGS</small><b>{semanticTags.length ? semanticTags.map(tag => tag.toUpperCase()).join(' · ') : 'UNCLASSIFIED'}</b><span>Shared by combat, loot, crafting, and specialization routes.</span></div>
