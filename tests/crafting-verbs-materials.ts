@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   craftingMaterialDefinitions,
   craftingMaterialsByTier,
@@ -100,5 +101,16 @@ const singular = item({ rarity: 'Singular' });
 const singularRemoval = reconstructItem(profile(singular), wallet, 2, singular.id, remove);
 assert.equal(singularRemoval.profile.inventory[0].modifiers.length, singular.modifiers.length, 'Fixed Singular packages must reject Remove.');
 assert.equal(singularRemoval.wallet.components, wallet.components, 'Rejected Singular Remove must not spend materials.');
+
+const armorySource = readFileSync(new URL('../src/components/Armory.tsx', import.meta.url), 'utf8');
+const craftingCss = readFileSync(new URL('../src/classBuilds.css', import.meta.url), 'utf8');
+for (const label of ['Improve +2', 'Elevate', 'Reroute', 'Replace', 'Remove', 'Lock Core', 'Lock Systems', 'SOCKET', 'Extract']) {
+  assert.equal(armorySource.includes(label), true, `Crafting UI must expose the ${label} verb.`);
+}
+assert.equal(armorySource.includes('COMMON // ORDINARY SALVAGE'), true);
+assert.equal(armorySource.includes('CHASE // PROTECTED CONTROL'), true);
+assert.equal(armorySource.includes('Quarantined Trace'), true);
+assert.equal(craftingCss.includes('P10-B // Reconstruction verbs + material tiers'), true);
+assert.equal(craftingCss.includes('@media (max-width: 900px)'), true, 'P10-B contract must retain a mobile single-column layout.');
 
 console.log('CRAFTING_VERBS_MATERIALS_PASS verbs=9 common=3 chase=trace remove=runtime prime=elevation replace=protected');
