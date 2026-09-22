@@ -9,6 +9,7 @@ import {
 } from './gearAffixes';
 import { modifierGradeCeilingForRecovery, type ModifierFamily, type ModifierGrade } from './lootQuality';
 import { affixStatProfile } from './gearStats';
+import type { ResourceId } from './campaign';
 
 export type CraftingPoolStatus = 'legal' | 'installed' | 'conflict' | 'recovery-locked' | 'fixed-package';
 
@@ -41,6 +42,110 @@ export const craftingGradeDefinitions: ReadonlyArray<{ grade: ModifierGrade; lab
   { grade: 4, label: 'G4 Prototype', minimumRecoveryLevel: 31 },
   { grade: 5, label: 'G5 Prime', minimumRecoveryLevel: 43 },
 ];
+
+export type CraftingVerbId = 'improve' | 'add' | 'remove' | 'reroute' | 'replace' | 'lock' | 'elevate' | 'socket' | 'extract';
+export type CraftingMaterialTier = 'common' | 'chase';
+
+export type CraftingMaterialDefinition = {
+  resource: ResourceId;
+  label: string;
+  tier: CraftingMaterialTier;
+  role: string;
+};
+
+export type CraftingVerbDefinition = {
+  id: CraftingVerbId;
+  label: string;
+  role: string;
+  commonMaterials: ResourceId[];
+  chaseMaterials: ResourceId[];
+  gate: string;
+};
+
+export const craftingMaterialDefinitions: CraftingMaterialDefinition[] = [
+  { resource: 'alloys', label: 'Frame Alloy', tier: 'common', role: 'Ordinary structural salvage for frame and Core-family work.' },
+  { resource: 'electronics', label: 'Circuit Stock', tier: 'common', role: 'Ordinary electronic salvage for Systems-family routing and control work.' },
+  { resource: 'components', label: 'Precision Components', tier: 'common', role: 'Scarcer ordinary salvage used when Reconstruction needs calibrated hardware.' },
+  { resource: 'rareTech', label: 'Quarantined Trace', tier: 'chase', role: 'Chase material reserved for protected replacement and Prime-grade elevation.' },
+];
+
+export const craftingVerbDefinitions: Record<CraftingVerbId, CraftingVerbDefinition> = {
+  improve: {
+    id: 'improve',
+    label: 'IMPROVE',
+    role: 'Raise base-frame Equipment Quality without changing explicit modifiers.',
+    commonMaterials: ['alloys', 'components'],
+    chaseMaterials: [],
+    gate: 'Bounded by the current Microforge quality cap.',
+  },
+  add: {
+    id: 'add',
+    label: 'ADD',
+    role: 'Install one legal Core or Systems modifier from the base-owned pool.',
+    commonMaterials: ['alloys', 'electronics', 'components'],
+    chaseMaterials: [],
+    gate: 'Requires Microforge T1, an open rarity-budget slot, Recovery access, and a legal frame pool candidate.',
+  },
+  remove: {
+    id: 'remove',
+    label: 'REMOVE',
+    role: 'Delete one explicit modifier to reopen rarity budget and resolve a build conflict.',
+    commonMaterials: ['components'],
+    chaseMaterials: [],
+    gate: 'Unavailable on fixed Singular packages. Removed modifiers do not refund crafting materials.',
+  },
+  reroute: {
+    id: 'reroute',
+    label: 'REROUTE',
+    role: 'Move one modifier into the opposite Core/Systems family while preserving grade.',
+    commonMaterials: ['alloys', 'electronics', 'components'],
+    chaseMaterials: [],
+    gate: 'Requires Microforge T1 and a legal opposite-family candidate on the same base frame.',
+  },
+  replace: {
+    id: 'replace',
+    label: 'REPLACE',
+    role: 'Swap one modifier for another legal modifier in the same family while the selected family lock is respected.',
+    commonMaterials: ['electronics', 'components'],
+    chaseMaterials: ['rareTech'],
+    gate: 'Requires Microforge T2. Protected replacement spends one Quarantined Trace.',
+  },
+  lock: {
+    id: 'lock',
+    label: 'LOCK',
+    role: 'Select the Core or Systems family protected during a Replace operation.',
+    commonMaterials: [],
+    chaseMaterials: ['rareTech'],
+    gate: 'Requires Microforge T2. The Trace is spent by Replace, not when changing the selected lock.',
+  },
+  elevate: {
+    id: 'elevate',
+    label: 'ELEVATE',
+    role: 'Raise one modifier by exactly one grade without changing its identity.',
+    commonMaterials: ['alloys', 'electronics', 'components'],
+    chaseMaterials: ['rareTech'],
+    gate: 'Recovery Level and Microforge ceilings both apply; entering G5 Prime spends one Quarantined Trace.',
+  },
+  socket: {
+    id: 'socket',
+    label: 'SOCKET',
+    role: 'Install a compatible fixed-utility Augment into an accessible hardware socket.',
+    commonMaterials: ['alloys', 'electronics', 'components'],
+    chaseMaterials: [],
+    gate: 'Requires an accessible socket and the Augment-specific material cost.',
+  },
+  extract: {
+    id: 'extract',
+    label: 'EXTRACT',
+    role: 'Remove an installed Augment intact from the frame.',
+    commonMaterials: [],
+    chaseMaterials: [],
+    gate: 'No crafting-material refund; only the extraction service cost is charged.',
+  },
+};
+
+export const craftingMaterialsByTier = (tier: CraftingMaterialTier) =>
+  craftingMaterialDefinitions.filter(material => material.tier === tier);
 
 const clampFabrication = (level: number) => Math.max(0, Math.min(2, Math.round(level)));
 
@@ -145,7 +250,18 @@ export function validateCraftingRulesFoundation() {
     Singular: rarityModifierBudget('Singular'),
   };
 
-  return familyIds.length === 2
+  const verbIds = Object.keys(craftingVerbDefinitions);
+  const commonMaterials = craftingMaterialsByTier('common');
+  const chaseMaterials = craftingMaterialsByTier('chase');
+
+  return verbIds.length === 9
+    && ['improve', 'add', 'remove', 'reroute', 'replace', 'lock', 'elevate', 'socket', 'extract'].every(id => verbIds.includes(id))
+    && commonMaterials.length === 3
+    && chaseMaterials.length === 1
+    && chaseMaterials[0]?.resource === 'rareTech'
+    && craftingVerbDefinitions.replace.chaseMaterials.includes('rareTech')
+    && craftingVerbDefinitions.elevate.chaseMaterials.includes('rareTech')
+    && familyIds.length === 2
     && familyIds.includes('core')
     && familyIds.includes('systems')
     && gradeIds.size === 5
