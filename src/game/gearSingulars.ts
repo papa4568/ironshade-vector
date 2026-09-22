@@ -102,6 +102,5 @@ export function validateSingularChaseRegistry() {
     categories.has(definition.category)
     && definition.rule.trim().length > 0
     && definition.opportunityCost.trim().length > 0
-    && definition.rule !== definition.opportunityCost
   );
 }
