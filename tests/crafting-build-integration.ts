@@ -79,3 +79,40 @@ assert.ok(crafted.profile.inventory[0].modifiers.some(modifier => modifier.id ==
 assert.ok(integration.recipeAugmentIds.includes('ferrite-coupler'));
 const socketAction: ReconstructionAction = { kind: 'installAugment', augmentId: 'ferrite-coupler' };
 assert.ok((reconstructionCost(owned, socketAction, 2, vector).credits ?? 0) < (reconstructionCost(owned, socketAction, 2, unlinked).credits ?? 0));
+
+const singular = railItem({
+  id: 'p10-d-singular',
+  rarity: 'Singular',
+  modifiers: [materializeModifier('hypervelocity', 5)],
+  singularTrait: 'nullpoint',
+  singularEffect: 'Fixed P10-D rule.',
+  singularRule: 'Fixed authored package.',
+  singularOpportunityCost: 'No random explicit edits.',
+});
+const singularProfile = profileFor(singular);
+const singularIntegration = craftingBuildIntegration(singularProfile, singular, 2);
+assert.deepEqual(singularIntegration.recipeAffixIds, []);
+assert.match(singularIntegration.singularRule ?? '', /fixed singular/i);
+
+const qualityResult = reconstructItem(singularProfile, wallet, 2, singular.id, { kind: 'quality' });
+assert.equal(qualityResult.profile.inventory[0].equipmentQuality, 2);
+assert.deepEqual(qualityResult.profile.inventory[0].modifiers.map(modifier => [modifier.id, modifier.grade]), [['hypervelocity', 5]]);
+
+const singularAdd = reconstructItem(singularProfile, wallet, 2, singular.id, { kind: 'add', family: 'core', targetAffixId: 'tungsten' });
+assert.equal(singularAdd.profile, singularProfile);
+assert.equal(singularAdd.wallet, wallet);
+
+const singularSocket = reconstructItem(singularProfile, wallet, 2, singular.id, socketAction);
+assert.ok(singularSocket.profile.inventory[0].augments?.includes('ferrite-coupler'));
+
+const stored = railItem({ augments: ['ferrite-coupler'] });
+const switched = profileFor(stored, 'vanguard');
+const extracted = reconstructItem(switched, wallet, 2, stored.id, { kind: 'removeAugment', augmentId: 'ferrite-coupler' });
+assert.deepEqual(extracted.profile.inventory[0].augments, []);
+
+const armory = readFileSync(new URL('../src/components/Armory.tsx', import.meta.url), 'utf8');
+for (const required of ['P10-D // BUILD INTEGRATION', 'CLASS-FAMILY POOL', 'SPECIALIZATION RECIPE', 'FIXED SINGULAR PACKAGE', 'CLASS-FAMILY RECONSTRUCTION LOCK']) {
+  assert.ok(armory.includes(required), `Missing P10-D UI contract: ${required}`);
+}
+
+console.log(`CRAFTING_BUILD_INTEGRATION_PASS class=owned recipes=${integration.recipeAffixIds.length} augments=${integration.recipeAugmentIds.length} quality=frame singular=fixed`);
