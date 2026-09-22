@@ -4,6 +4,7 @@ import {
   SHIP_SYSTEM_SCHEMA_VERSION,
   applyShipBonuses,
   buyShipUpgrade,
+  cargoRecoveryMultiplier,
   createDefaultCampaign,
   getShipUpgradeStatus,
   getUpgradeCost,
@@ -12,10 +13,12 @@ import {
   upgradeDefinitions,
   type ShipUpgradeId,
 } from '../src/game/campaign';
+import { reconstructionCreditDiscountForTier } from '../src/game/reconstruction';
 import { neutralCombatBuild } from '../src/game/sim';
 
 const systemIds: ShipUpgradeId[] = ['reactor', 'drive', 'armor', 'cargo', 'sensors', 'fabrication', 'medical', 'drones'];
 const engineeringIds = new Set<ShipUpgradeId>(['reactor', 'drive', 'armor', 'sensors']);
+const supportIds = new Set<ShipUpgradeId>(['cargo', 'fabrication', 'medical', 'drones']);
 
 function approx(actual: number, expected: number, label: string) {
   assert.ok(Math.abs(actual - expected) < 1e-9, `${label}: expected ${expected}, got ${actual}`);
@@ -33,11 +36,12 @@ function schemaSmoke() {
     assert.equal(definition.tiers[1]?.implemented, true, `${definition.name} Tier 2 must preserve the live prototype effect.`);
 
     if (engineeringIds.has(definition.id)) {
-      assert.equal(definition.tiers.slice(2).every(tier => tier.implemented), true, `${definition.name} Tier 3-6 must be commissioned in P11-B.`);
-      assert.equal(definition.tiers.slice(2).every(tier => !/blueprint/i.test(tier.benefit)), true, `${definition.name} commissioned tiers must preview real combat payoff, not placeholder blueprint text.`);
+      assert.equal(definition.tiers.slice(2).every(tier => tier.implemented), true, `${definition.name} Tier 3-6 must remain commissioned from P11-B.`);
     } else {
-      assert.equal(definition.tiers.slice(2).every(tier => !tier.implemented), true, `${definition.name} Tier 3+ must remain implementation-locked until P11-C.`);
+      assert.equal(supportIds.has(definition.id), true, `${definition.name} must belong to the P11-C support wave.`);
+      assert.equal(definition.tiers.slice(2).every(tier => tier.implemented), true, `${definition.name} Tier 3-6 must be commissioned in P11-C.`);
     }
+    assert.equal(definition.tiers.slice(2).every(tier => !/blueprint/i.test(tier.benefit)), true, `${definition.name} commissioned tiers must preview real field or economy payoff, not placeholder blueprint text.`);
 
     const credits = definition.tiers.map(tier => tier.cost.credits ?? 0);
     for (let index = 1; index < credits.length; index += 1) {
@@ -167,10 +171,64 @@ function engineeringEffectSmoke() {
   approx(sensorsSix.abilities[1].powerMul, 1.5, 'Sensors Tier 6 Sensor Spike power');
 }
 
+function supportGateGraphSmoke() {
+  const base = createDefaultCampaign();
+  const campaign = {
+    ...base,
+    contractsCompleted: 8,
+    reputation: { ...base.reputation, longarc: 6, heliostat: 6, meridian: 6 },
+    shipUpgrades: { ...base.shipUpgrades, drive: 2, cargo: 2, fabrication: 2, armor: 2, medical: 2, sensors: 2, drones: 2 },
+  };
+
+  const expectations: Array<[ShipUpgradeId, number]> = [
+    ['cargo', 552],
+    ['fabrication', 662],
+    ['medical', 561],
+    ['drones', 699],
+  ];
+  for (const [id, credits] of expectations) {
+    const status = getShipUpgradeStatus(campaign, id);
+    assert.equal(status?.nextTier?.tier, 3, `${id} should expose its Tier 3 support route.`);
+    assert.equal(status?.implementationLocked, false, `${id} Tier 3 should be commissioned in P11-C.`);
+    assert.deepEqual(status?.gateFailures, [], `${id} Tier 3 should honor the existing access graph when its gates are satisfied.`);
+    assert.equal(status?.canPurchase, true, `${id} Tier 3 should become purchasable when its gates are satisfied.`);
+    assert.equal(getUpgradeCost(campaign, id)?.credits, credits, `${id} Tier 3 should keep the P11-A cost curve and REP 6 discount.`);
+  }
+}
+
+function supportEffectSmoke() {
+  const base = createDefaultCampaign();
+
+  approx(cargoRecoveryMultiplier(2), 1.24, 'Cargo Grid Tier 2 salvage yield');
+  approx(cargoRecoveryMultiplier(6), 1.72, 'Cargo Grid Tier 6 salvage yield');
+
+  approx(reconstructionCreditDiscountForTier(1), 0.1, 'Microforge Tier 1 credit discount');
+  approx(reconstructionCreditDiscountForTier(2), 0.2, 'Microforge Tier 2 credit discount');
+  approx(reconstructionCreditDiscountForTier(6), 0.45, 'Microforge Tier 6 credit discount');
+
+  const medicalTwo = applyShipBonuses(neutralCombatBuild, { ...base, shipUpgrades: { ...base.shipUpgrades, medical: 2 } });
+  assert.equal(medicalTwo.player.maxHpAdd, 16, 'Trauma Bay Tier 2 must preserve +16 maximum health.');
+  const medicalSix = applyShipBonuses(neutralCombatBuild, { ...base, shipUpgrades: { ...base.shipUpgrades, medical: 6 } });
+  assert.equal(medicalSix.player.maxHpAdd, 48, 'Trauma Bay Tier 6 should deliver +48 maximum health.');
+
+  const dronesTwo = applyShipBonuses(neutralCombatBuild, { ...base, shipUpgrades: { ...base.shipUpgrades, drones: 2 } });
+  assert.equal(dronesTwo.mechanics.arcDrone, true, 'Support Drone Rack Tier 2 must preserve relay drone support.');
+  approx(dronesTwo.mechanics.arcDroneScale, 1, 'Support Drone Rack Tier 2 relay damage');
+  approx(dronesTwo.abilities[2].cooldownMul, 0.9, 'Support Drone Rack Tier 2 Arc Tap cooldown');
+  approx(dronesTwo.abilities[2].powerMul, 1, 'Support Drone Rack Tier 2 Arc Tap power');
+
+  const dronesSix = applyShipBonuses(neutralCombatBuild, { ...base, shipUpgrades: { ...base.shipUpgrades, drones: 6 } });
+  approx(dronesSix.mechanics.arcDroneScale, 2.2, 'Support Drone Rack Tier 6 relay damage');
+  approx(dronesSix.abilities[2].cooldownMul, 0.78, 'Support Drone Rack Tier 6 Arc Tap cooldown');
+  approx(dronesSix.abilities[2].powerMul, 1.2, 'Support Drone Rack Tier 6 Arc Tap power');
+}
+
 schemaSmoke();
 legacyMigrationSmoke();
 prototypeCompatibilitySmoke();
 gateGraphSmoke();
 engineeringEffectSmoke();
+supportGateGraphSmoke();
+supportEffectSmoke();
 
-console.log(`SHIP_SYSTEMS_ARCHITECTURE_PASS schema=${SHIP_SYSTEM_SCHEMA_VERSION} systems=${upgradeDefinitions.length} tiers=${SHIP_SYSTEM_MAX_TIER} migration=legacy-preserved engineering=P11-B support=P11-C-locked`);
+console.log(`SHIP_SYSTEMS_ARCHITECTURE_PASS schema=${SHIP_SYSTEM_SCHEMA_VERSION} systems=${upgradeDefinitions.length} tiers=${SHIP_SYSTEM_MAX_TIER} migration=legacy-preserved engineering=P11-B support=P11-C`);
