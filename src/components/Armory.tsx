@@ -281,14 +281,14 @@ function GearComparison({ profile, item, fabrication }: { profile: PlayerProfile
       </div>
 
       <details className="gear-deep-details"><summary>Advanced metadata & provenance</summary>
-        <div className="gear-identity-grid advanced-identity-grid" aria-label="Advanced equipment metadata">
+        <div className="gear-identity-grid advanced-identity-grid" aria-label="Equipment identity and compatibility">
           <div><small>BASE</small><b>{item.baseId}</b><span>{item.equipmentClass}</span></div>
           <div><small>FRAME</small><b>{identity.name}</b><span>GEN {item.frameGeneration ?? 1} · {identity.philosophy}</span></div>
           <div><small>RECOVERY</small><b>RL {item.recoveryLevel ?? 1}</b><span>Q{item.recoveryQuality ?? 0} · {recoveryQualityLabel(item.recoveryQuality ?? 0)}</span></div>
           <div><small>FRAME QUALITY</small><b>{item.equipmentQuality ?? 0}/20</b><span>Improves the base/inherent frame only.</span></div>
           <div><small>MODIFIERS</small><b>{item.modifiers.length ? item.modifiers.length + ' · PEAK G' + topModifierGrade : 'CLEAN BASE'}</b><span>Explicit strength remains owned by modifier grade.</span></div>
           <div><small>AUGMENTS</small><b>{augments.length}/{item.augmentSlots ?? 0} INSTALLED</b><span>Bounded utility/specialization hardware.</span></div>
-          <div><small>SOURCE</small><b>{item.recoverySource ?? 'Legacy recovery'}</b><span>PROVENANCE // recovered identity remains attached through reconstruction.</span></div>
+          <div><small>SOURCE</small><b>{item.recoverySource ?? 'Legacy recovery'}</b><span>SOURCE / PROVENANCE // recovered identity remains attached through reconstruction.</span></div>
           <div><small>CLASS RESONANCE</small><b>{classAffinityNames || 'UNIVERSAL'}</b><span>{classMatched ? activeClass.name + ' resonance active.' : classCompatible ? 'Compatible support gear; this frame currently resonates with another class path.' : (weaponOwner?.name ?? 'Another class') + ' owns this weapon family.'}</span></div>
           <div><small>STAT SCOPE</small><b>{semanticScopes.length ? semanticScopes.map(scope => scope.replace('-', ' ').toUpperCase()).join(' · ') : 'NONE'}</b><span>{semanticStats.length} registry-defined stat{semanticStats.length === 1 ? '' : 's'} on this package.</span></div>
           <div><small>BUILD TAGS</small><b>{semanticTags.length ? semanticTags.map(tag => tag.toUpperCase()).join(' · ') : 'UNCLASSIFIED'}</b><span>Shared by combat, loot, crafting, and specialization routes.</span></div>
