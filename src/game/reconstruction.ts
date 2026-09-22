@@ -1,7 +1,9 @@
 import type { SalvageWallet } from './campaign';
 import { augmentSocketCap, availableAugments, augmentDefinition, frameImplicitDescription, resolveFrameIdentity, type AugmentId } from './gearDepth';
 import { modifierFamilyFor, modifierGradeCeilingForRecovery, type ModifierFamily, type ModifierGrade } from './lootQuality';
-import { hasSpecializationNetworkHook, itemMatchesSpecializationGearSynergy, materializeModifier, type AffixId, type Item, type PlayerProfile } from './meta';
+import { activeWeaponFamilyForProfile, hasSpecializationNetworkHook, isItemClassCompatible, itemMatchesSpecializationGearSynergy, materializeModifier, specializationGearSynergyDefinitions, type AffixId, type Item, type PlayerProfile } from './meta';
+import { affixStatProfile } from './gearStats';
+import type { SpecializationId } from './sim';
 import { maximumExplicitModifiersForRarity } from './gearAffixes';
 import { craftingAffixPool, craftingFabricationGradeCap, craftingStabilityContract, craftingStabilityForItem, craftingVolatileSuccessChance, legalCraftingAffixes } from './craftingRules';
 
@@ -28,12 +30,73 @@ export const reconstructionStability = craftingStabilityForItem;
 export const reconstructionVolatileSuccessChance = craftingVolatileSuccessChance;
 export const accessibleAugmentSlots = (item: Item, fabricationLevel: number) => Math.min(item.augmentSlots ?? 0, augmentSocketCap, 1 + clampFabrication(fabricationLevel));
 
+const specializationAugmentRecipes: Record<SpecializationId, AugmentId[]> = {
+  'pressure-diver': ['pressure-baffle-insert', 'servo-damper-insert'],
+  'breach-vanguard': ['ferrite-coupler', 'countermass-coupler'],
+  'bulkhead-warden': ['pressure-baffle-insert', 'countermass-coupler'],
+  'momentum-broker': ['countermass-coupler', 'cap-buffer-board'],
+  'survey-deadeye': ['ferrite-coupler', 'predictive-kernel', 'shear-kernel'],
+  'redline-pilot': ['coolant-coupler', 'eva-flex-insert', 'thermal-shunt-board'],
+  'grid-weaver': ['relay-daughterboard', 'signal-filter-kernel'],
+  'capacitor-conductor': ['cap-buffer-board', 'signal-filter-kernel'],
+  'thermal-shunter': ['coolant-coupler', 'thermal-shunt-board'],
+};
+
+export function craftingBuildIntegration(profile: PlayerProfile, item: Item, fabricationLevel: number) {
+  const activeWeaponFamily = activeWeaponFamilyForProfile(profile);
+  const classOwned = isItemClassCompatible(profile, item);
+  const specialization = profile.specialization
+    ? specializationGearSynergyDefinitions.find(definition => definition.specialization === profile.specialization)
+    : undefined;
+  const specializationHookActive = !!specialization && hasSpecializationNetworkHook(profile, 'crafting');
+  const legal = classOwned && item.rarity !== 'Singular'
+    ? legalCraftingAffixes(item, fabricationLevel, undefined, null, profile)
+    : [];
+  const recipeAffixIds = specializationHookActive
+    ? legal
+      .filter(entry => affixStatProfile(entry.id).buildTags.some(tag => specialization!.preferredTags.includes(tag)))
+      .map(entry => entry.id)
+    : [];
+  const recipeAugmentIds = specializationHookActive && classOwned
+    ? availableAugments(item.slot)
+      .filter(augment => specializationAugmentRecipes[profile.specialization!].includes(augment.id))
+      .map(augment => augment.id)
+    : [];
+  return {
+    activeWeaponFamily,
+    classOwned,
+    classRule: classOwned
+      ? item.slot === activeWeaponFamily
+        ? `${activeWeaponFamily.toUpperCase()} is this class's owned weapon family; the base-owned pool is craftable.`
+        : 'Universal support hardware is craftable by every class.'
+      : `${item.slot.toUpperCase()} is not the active ${activeWeaponFamily.toUpperCase()} class weapon family; reconstruction is locked except Augment extraction.`,
+    specializationHookActive,
+    recipeName: specialization?.name ?? null,
+    recipeRequirement: specialization?.requirement ?? null,
+    recipeAffixIds,
+    recipeAugmentIds,
+    qualityRule: 'Equipment Quality scales the inherent frame identity only; explicit modifiers and Augments keep their own strength.',
+    singularRule: item.rarity === 'Singular'
+      ? 'Fixed Singular signature/modifier packages cannot be edited. Equipment Quality and compatible utility Augments remain legal.'
+      : null,
+  };
+}
+
+function specializationCraftingDiscountApplies(profile: PlayerProfile, item: Item, action: ReconstructionAction, fabricationLevel: number) {
+  const integration = craftingBuildIntegration(profile, item, fabricationLevel);
+  if (!integration.specializationHookActive || !integration.classOwned) return false;
+  if (itemMatchesSpecializationGearSynergy(profile, item)) return true;
+  if (action.kind === 'add' && action.targetAffixId) return integration.recipeAffixIds.includes(action.targetAffixId);
+  if (action.kind === 'installAugment') return integration.recipeAugmentIds.includes(action.augmentId);
+  return false;
+}
+
 function discountedCredits(value: number, fabricationLevel: number) {
   return Math.max(1, Math.round(value * (1 - clampFabrication(fabricationLevel) * 0.1)));
 }
 
 export function reconstructionCost(item: Item, action: ReconstructionAction, fabricationLevel: number, profile?: PlayerProfile): Partial<SalvageWallet> {
-  const linked = !!profile && hasSpecializationNetworkHook(profile, 'crafting') && itemMatchesSpecializationGearSynergy(profile, item);
+  const linked = !!profile && specializationCraftingDiscountApplies(profile, item, action, fabricationLevel);
   const finalize = (cost: Partial<SalvageWallet>) => {
     if (!linked) return cost;
     const discounted: Partial<SalvageWallet> = {};
@@ -90,8 +153,8 @@ function hashText(text: string) {
   return hash >>> 0;
 }
 
-function candidateAffix(item: Item, family: ModifierFamily, excludeId: AffixId | null, salt: string, fabricationLevel: number) {
-  const candidates = legalCraftingAffixes(item, fabricationLevel, family, excludeId)
+function candidateAffix(item: Item, family: ModifierFamily, excludeId: AffixId | null, salt: string, fabricationLevel: number, profile: PlayerProfile) {
+  const candidates = legalCraftingAffixes(item, fabricationLevel, family, excludeId, profile)
     .map(entry => entry.id)
     .filter(id => id !== excludeId);
   if (candidates.length === 0) return null;
@@ -124,6 +187,10 @@ function replaceItem(profile: PlayerProfile, itemId: string, item: Item) {
 export function reconstructItem(profile: PlayerProfile, wallet: SalvageWallet, fabricationLevel: number, itemId: string, action: ReconstructionAction): ReconstructionResult {
   const item = profile.inventory.find(entry => entry.id === itemId);
   if (!item) return { profile, wallet, message: 'Reconstruction target is no longer in ship storage.' };
+  if (!isItemClassCompatible(profile, item) && action.kind !== 'removeAugment') {
+    const activeWeaponFamily = activeWeaponFamilyForProfile(profile);
+    return { profile, wallet, message: `Class-family lock: ${activeWeaponFamily.toUpperCase()} is the active arsenal. ${item.slot.toUpperCase()} weapon reconstruction is unavailable; Augment extraction remains allowed.` };
+  }
   const fabrication = clampFabrication(fabricationLevel);
   const cost = reconstructionCost(item, action, fabrication, profile);
   let nextItem: Item | null = null;
@@ -149,7 +216,7 @@ export function reconstructItem(profile: PlayerProfile, wallet: SalvageWallet, f
     const grade = current.grade ?? 3;
     const targetGrade = (action.targetGrade ?? Math.min(ceiling, grade + 1)) as ModifierGrade;
     if (targetGrade <= grade || targetGrade > ceiling) return { profile, wallet, message: `Choose an elevation grade above G${grade} and no higher than the current G${ceiling} ceiling.` };
-    const affixRule = craftingAffixPool(item, fabrication, current.id).find(entry => entry.id === current.id);
+    const affixRule = craftingAffixPool(item, fabrication, current.id, profile).find(entry => entry.id === current.id);
     if (!affixRule?.eligibleGrades.includes(targetGrade)) return { profile, wallet, message: `${current.label} cannot legally reach G${targetGrade} at this Recovery Level.` };
     if (action.mode === 'volatile') {
       const attempt = volatileAttempt(item, `elevate:${current.id}:G${targetGrade}`);
@@ -176,10 +243,10 @@ export function reconstructItem(profile: PlayerProfile, wallet: SalvageWallet, f
     const current = item.modifiers[index];
     const currentFamily = current.family ?? modifierFamilyFor(current.id);
     const targetFamily: ModifierFamily = currentFamily === 'core' ? 'systems' : 'core';
-    const legalTargets = legalCraftingAffixes(item, fabrication, targetFamily, current.id);
+    const legalTargets = legalCraftingAffixes(item, fabrication, targetFamily, current.id, profile);
     const replacement = action.targetAffixId
       ? legalTargets.find(entry => entry.id === action.targetAffixId)?.id ?? null
-      : candidateAffix(item, targetFamily, current.id, `reroute:${current.id}`, fabrication);
+      : candidateAffix(item, targetFamily, current.id, `reroute:${current.id}`, fabrication, profile);
     if (!replacement) return { profile, wallet, message: action.targetAffixId ? 'Selected reroute target is not legal for this base frame, family, or Recovery Level.' : `No compatible ${targetFamily.toUpperCase()} modifier is available on this frame.` };
     const modifiers = item.modifiers.map((modifier, modifierIndex) => modifierIndex === index ? materializeModifier(replacement, current.grade ?? 3) : modifier);
     nextItem = { ...item, modifiers };
@@ -192,10 +259,10 @@ export function reconstructItem(profile: PlayerProfile, wallet: SalvageWallet, f
     const limit = modifierLimit(item);
     if (item.modifiers.length >= limit) return { profile, wallet, message: `${item.rarity} equipment is already at its ${limit}-modifier reconstruction limit.` };
     if (action.targetAffixId && fabrication < 2) return { profile, wallet, message: 'Microforge tier 2 is required for precision Add.' };
-    const legalTargets = legalCraftingAffixes(item, fabrication, action.family);
+    const legalTargets = legalCraftingAffixes(item, fabrication, action.family, null, profile);
     const replacement = action.targetAffixId
       ? legalTargets.find(entry => entry.id === action.targetAffixId)?.id ?? null
-      : candidateAffix(item, action.family, null, `add:${action.family}:${item.modifiers.length}`, fabrication);
+      : candidateAffix(item, action.family, null, `add:${action.family}:${item.modifiers.length}`, fabrication, profile);
     if (!replacement) return { profile, wallet, message: action.targetAffixId ? 'Selected precision Add target is not legal for this base frame, family, or Recovery Level.' : `No unused ${action.family.toUpperCase()} modifier is compatible with this frame.` };
     const grade = Math.min(2, modifierGradeCeilingForRecovery(item.recoveryLevel ?? 1), reconstructionGradeCap(fabrication)) as ModifierGrade;
     nextItem = { ...item, modifiers: [...item.modifiers, materializeModifier(replacement, grade)] };
@@ -219,10 +286,10 @@ export function reconstructItem(profile: PlayerProfile, wallet: SalvageWallet, f
     const current = item.modifiers[index];
     const family = current.family ?? modifierFamilyFor(current.id);
     if (family === action.lockedFamily) return { profile, wallet, message: `${family.toUpperCase()} family is locked and protected from recalibration.` };
-    const legalTargets = legalCraftingAffixes(item, fabrication, family, current.id);
+    const legalTargets = legalCraftingAffixes(item, fabrication, family, current.id, profile);
     const replacement = action.targetAffixId
       ? legalTargets.find(entry => entry.id === action.targetAffixId)?.id ?? null
-      : candidateAffix(item, family, current.id, `recalibrate:${current.id}:${action.lockedFamily}`, fabrication);
+      : candidateAffix(item, family, current.id, `recalibrate:${current.id}:${action.lockedFamily}`, fabrication, profile);
     if (!replacement) return { profile, wallet, message: action.targetAffixId ? 'Selected Replace target is not legal for this base frame, family, or Recovery Level.' : `No alternate ${family.toUpperCase()} modifier is available on this frame.` };
     if (action.mode === 'volatile') {
       const attempt = volatileAttempt(item, `replace:${current.id}:${replacement}:${action.lockedFamily}`);
@@ -266,6 +333,7 @@ export function reconstructItem(profile: PlayerProfile, wallet: SalvageWallet, f
   return { profile: replaceItem(profile, itemId, nextItem), wallet: nextWallet, message: successMessage };
 }
 
-export function compatibleAugments(item: Item) {
+export function compatibleAugments(item: Item, profile?: PlayerProfile) {
+  if (profile && !isItemClassCompatible(profile, item)) return [];
   return availableAugments(item.slot);
 }

@@ -1,4 +1,4 @@
-import type { AffixId, Item } from './meta';
+import { activeWeaponFamilyForProfile, type AffixId, type Item, type PlayerProfile } from './meta';
 import { resolveGearBase } from './gearBases';
 import {
   affixesConflict,
@@ -11,7 +11,27 @@ import { modifierGradeCeilingForRecovery, type ModifierFamily, type ModifierGrad
 import { affixStatProfile } from './gearStats';
 import type { ResourceId } from './campaign';
 
-export type CraftingPoolStatus = 'legal' | 'installed' | 'conflict' | 'recovery-locked' | 'fixed-package';
+export type CraftingPoolStatus = 'legal' | 'installed' | 'conflict' | 'recovery-locked' | 'fixed-package' | 'class-locked';
+
+export type CraftingProfileContext = Pick<PlayerProfile, 'operatorClass' | 'specialization' | 'allocatedNodes'>;
+
+const craftingWeaponFamilies = ['carbine', 'breacher', 'rail'] as const;
+
+export function craftingClassFamilyAccess(item: Item, profile?: CraftingProfileContext) {
+  const weaponFamily = craftingWeaponFamilies.includes(item.slot as typeof craftingWeaponFamilies[number])
+    ? item.slot as typeof craftingWeaponFamilies[number]
+    : null;
+  const activeWeaponFamily = profile ? activeWeaponFamilyForProfile(profile) : null;
+  const owned = !weaponFamily || !activeWeaponFamily || weaponFamily === activeWeaponFamily;
+  return {
+    weaponFamily,
+    activeWeaponFamily,
+    owned,
+    reason: owned
+      ? weaponFamily ? `${activeWeaponFamily?.toUpperCase() ?? weaponFamily.toUpperCase()} arsenal ownership permits reconstruction on this weapon family.` : 'Universal support hardware is craftable by every operator class.'
+      : `${activeWeaponFamily!.toUpperCase()} is the active class weapon family; ${weaponFamily!.toUpperCase()} reconstruction is class-locked.`,
+  };
+}
 
 export type CraftingPoolEntry = {
   id: AffixId;
@@ -179,8 +199,9 @@ function framePool(item: Item) {
   };
 }
 
-export function craftingAffixPool(item: Item, fabricationLevel: number, ignoreModifierId: AffixId | null = null): CraftingPoolEntry[] {
+export function craftingAffixPool(item: Item, fabricationLevel: number, ignoreModifierId: AffixId | null = null, profile?: CraftingProfileContext): CraftingPoolEntry[] {
   const { ids } = framePool(item);
+  const classAccess = craftingClassFamilyAccess(item, profile);
   const recoveryLevel = item.recoveryLevel ?? 1;
   const recoveryGradeCap = modifierGradeCeilingForRecovery(recoveryLevel);
   const forgeGradeCap = craftingFabricationGradeCap(fabricationLevel);
@@ -195,7 +216,10 @@ export function craftingAffixPool(item: Item, fabricationLevel: number, ignoreMo
     let status: CraftingPoolStatus = 'legal';
     let reason = 'Legal on this frame at the current Recovery Level.';
 
-    if (item.rarity === 'Singular') {
+    if (!classAccess.owned) {
+      status = 'class-locked';
+      reason = classAccess.reason;
+    } else if (item.rarity === 'Singular') {
       status = 'fixed-package';
       reason = 'Singular modifier packages are fixed; this pool is reference-only.';
     } else if (installed.includes(id)) {
@@ -225,14 +249,15 @@ export function craftingAffixPool(item: Item, fabricationLevel: number, ignoreMo
   });
 }
 
-export function craftingRulesForItem(item: Item, fabricationLevel: number) {
+export function craftingRulesForItem(item: Item, fabricationLevel: number, profile?: CraftingProfileContext) {
   const { base } = framePool(item);
   const rarity: GearRarityModifierBudget = rarityModifierBudget(item.rarity);
   const recoveryLevel = item.recoveryLevel ?? 1;
   const recoveryGradeCap = modifierGradeCeilingForRecovery(recoveryLevel);
   const forgeGradeCap = craftingFabricationGradeCap(fabricationLevel);
   const gradeCeiling = Math.min(recoveryGradeCap, forgeGradeCap) as ModifierGrade;
-  const pool = craftingAffixPool(item, fabricationLevel);
+  const classOwnership = craftingClassFamilyAccess(item, profile);
+  const pool = craftingAffixPool(item, fabricationLevel, null, profile);
   const familyCounts: Record<ModifierFamily, number> = { core: 0, systems: 0 };
   for (const modifier of item.modifiers) familyCounts[gearAffixDefinition(modifier.id).family] += 1;
 
@@ -248,14 +273,15 @@ export function craftingRulesForItem(item: Item, fabricationLevel: number) {
     forgeGradeCap,
     gradeCeiling,
     pool,
+    classOwnership,
     familyCounts,
     stability: craftingStabilityForItem(item),
     volatileSuccessChance: craftingVolatileSuccessChance(item),
   };
 }
 
-export function legalCraftingAffixes(item: Item, fabricationLevel: number, family?: ModifierFamily, ignoreModifierId: AffixId | null = null) {
-  return craftingAffixPool(item, fabricationLevel, ignoreModifierId)
+export function legalCraftingAffixes(item: Item, fabricationLevel: number, family?: ModifierFamily, ignoreModifierId: AffixId | null = null, profile?: CraftingProfileContext) {
+  return craftingAffixPool(item, fabricationLevel, ignoreModifierId, profile)
     .filter(entry => entry.status === 'legal' && (!family || entry.family === family));
 }
 
