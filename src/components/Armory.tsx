@@ -51,7 +51,7 @@ import { modifierFamilyFor, recoveryQualityLabel, type ModifierFamily } from '..
 import { augmentDefinition, frameIdentityDefinition, resolveFrameIdentity } from '../game/gearDepth';
 import { compareRarity, rarityClassToken, rarityDefinition, rarityDisplayLabel, rarityOrder, type ItemRarity } from '../game/rarity';
 import { accessibleAugmentSlots, compatibleAugments, reconstructItem, reconstructionCost, reconstructionGradeCap, reconstructionQualityCap, type ReconstructionAction } from '../game/reconstruction';
-import { maximumExplicitModifiersForRarity } from '../game/gearAffixes';
+import { craftingFamilyDefinitions, craftingRulesForItem } from '../game/craftingRules';
 import { resourceLabels, type CampaignState, type ResourceId, type SalvageWallet } from '../game/campaign';
 
 type Props = {
@@ -322,17 +322,63 @@ function GearComparison({ profile, item, fabrication }: { profile: PlayerProfile
 function ReconstructionBench({ item, profile, campaign, lockedFamily, onLockFamily, onRun }: { item: Item; profile: PlayerProfile; campaign: CampaignState; lockedFamily: ModifierFamily; onLockFamily: (family: ModifierFamily) => void; onRun: (action: ReconstructionAction) => void }) {
   const fabrication = campaign.shipUpgrades.fabrication;
   const identity = frameIdentityDefinition(frameIdentity(item));
+  const rules = craftingRulesForItem(item, fabrication);
+  const familyOrder: ModifierFamily[] = ['core', 'systems'];
   const qualityAction: ReconstructionAction = { kind: 'quality' };
   const installed = item.augments ?? [];
   const accessibleSockets = accessibleAugmentSlots(item, fabrication);
   const compatible = compatibleAugments(item).filter(augment => !installed.includes(augment.id));
-  const modifierLimit = maximumExplicitModifiersForRarity(item.rarity);
+  const modifierLimit = rules.rarity.maxExplicit;
   const specializationCraftingLink = hasSpecializationNetworkHook(profile, 'crafting') && itemMatchesSpecializationGearSynergy(profile, item);
   return (
     <section className="reconstruction-bench">
       <header className="bench-heading"><div><small>SELECTED FRAME</small><h2>{item.name}</h2><p>{identity.name} · GEN {item.frameGeneration ?? 1} · RL {item.recoveryLevel ?? 1} · <RarityText rarity={item.rarity} /></p></div><strong>MICROFORGE T{fabrication}</strong></header>
       <div className="bench-frame"><div><b>FRAME QUALITY // {item.equipmentQuality ?? 0}/{reconstructionQualityCap(fabrication)}</b><span>{item.frameImplicit}</span><small>BASE FRAME ONLY // Improves the inherent frame property; explicit modifier grades and Augments do not scale with quality.</small></div><button onClick={() => onRun(qualityAction)}>Improve +2<small>{costLabel(reconstructionCost(item, qualityAction, fabrication, profile))}</small></button></div>
       <div className="bench-caps"><span>GRADE CONTROL // G{reconstructionGradeCap(fabrication)} MAX</span><span>AUGMENT ACCESS // {accessibleSockets}/{item.augmentSlots ?? 0} SOCKETS</span></div>
+      <section className="crafting-rules-contract" aria-label="Crafting rules and legal modifier pool">
+        <header>
+          <div><small>P10-A // CRAFTING CONTRACT</small><b>Know the result space before spending</b></div>
+          <span>BASE → POOL · RARITY → COUNT · RECOVERY + MICROFORGE → GRADE</span>
+        </header>
+        <div className="crafting-rule-grid">
+          <article>
+            <small>BASE FRAME // POOL OWNER</small>
+            <b>{rules.base?.name ?? item.name}</b>
+            <span>{rules.base?.core ?? item.core}</span>
+            <em>{rules.base?.tradeoff ? 'TRADEOFF // ' + rules.base.tradeoff : 'FIXED / LEGACY FRAME CONTRACT'}</em>
+          </article>
+          <article>
+            <small>RARITY // EXPLICIT BUDGET</small>
+            <b>{rules.rarity.currentExplicit}/{rules.rarity.maxExplicit} MODIFIERS</b>
+            <span>{item.rarity === 'Singular' ? 'Curated fixed package. Random modifier crafting is disabled.' : rules.rarity.remainingExplicit + ' open explicit slot' + (rules.rarity.remainingExplicit === 1 ? '' : 's') + ' remain.'}</span>
+            <em>{item.rarity === 'Singular' ? 'SIGNATURE PACKAGE' : 'DROP CONTRACT // ' + rules.rarity.minGenerated + '–' + rules.rarity.maxExplicit + ' EXPLICIT'}</em>
+          </article>
+          <article>
+            <small>GRADE ACCESS</small>
+            <b>G{rules.gradeCeiling} CURRENT CEILING</b>
+            <span>Recovery RL {rules.recoveryLevel} permits through G{rules.recoveryGradeCap}; Microforge T{fabrication} permits through G{rules.forgeGradeCap}.</span>
+            <em>LOWER CEILING WINS</em>
+          </article>
+        </div>
+        <div className="crafting-family-guide">
+          {familyOrder.map(family => <article key={family}><small>{craftingFamilyDefinitions[family].label} FAMILY</small><span>{craftingFamilyDefinitions[family].role}</span><b>{rules.familyCounts[family]} INSTALLED</b></article>)}
+        </div>
+        <div className="crafting-legal-pool">
+          {familyOrder.map(family => {
+            const entries = rules.pool.filter(entry => entry.family === family);
+            const legalCount = entries.filter(entry => entry.status === 'legal').length;
+            return <article key={family} className={'crafting-pool-family ' + family}>
+              <header><div><small>{craftingFamilyDefinitions[family].label} LEGAL POOL</small><b>{legalCount} READY / {entries.length} FRAME OPTIONS</b></div><span>Base frame decides this list.</span></header>
+              <div>{entries.map(entry => <div key={entry.id} className={'crafting-pool-entry ' + entry.status}>
+                <small>{entry.group.toUpperCase()} · RL {entry.minimumRecoveryLevel}+</small>
+                <b>{entry.name}</b>
+                <span>{entry.reason}</span>
+                <em>{entry.eligibleGrades.length ? 'ACCESS // ' + entry.eligibleGrades.map(grade => 'G' + grade).join(' / ') : 'NO GRADE ACCESS'}</em>
+              </div>)}</div>
+            </article>;
+          })}
+        </div>
+      </section>
       {specializationCraftingLink && <div className="bench-guard"><b>SPECIALIZATION FIELD LINK</b><span>This frame matches your active specialization route. Reconstruction resource costs are reduced by 12% while the field-integration node remains active.</span></div>}
       {item.rarity === 'Singular' && <div className="bench-guard"><b>FIXED SINGULAR PACKAGE</b><span>Signature and fixed modifiers cannot be rerolled, rerouted, added to, or recalibrated. Frame quality and Augments remain available.</span></div>}
       <div className="lock-row"><b>FAMILY LOCK</b><button className={lockedFamily === 'core' ? 'active' : ''} onClick={() => onLockFamily('core')}>Lock Core</button><button className={lockedFamily === 'systems' ? 'active' : ''} onClick={() => onLockFamily('systems')}>Lock Systems</button><span>Tier 2 recalibration protects the locked family.</span></div>

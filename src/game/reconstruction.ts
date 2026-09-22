@@ -1,10 +1,9 @@
 import type { SalvageWallet } from './campaign';
 import { augmentSocketCap, availableAugments, augmentDefinition, frameImplicitDescription, resolveFrameIdentity, type AugmentId } from './gearDepth';
 import { modifierFamilyFor, modifierGradeCeilingForRecovery, type ModifierFamily, type ModifierGrade } from './lootQuality';
-import { affixPoolForSlot, hasSpecializationNetworkHook, itemMatchesSpecializationGearSynergy, materializeModifier, type AffixId, type Item, type PlayerProfile } from './meta';
-import { affixStatProfile } from './gearStats';
-import { resolveGearBase } from './gearBases';
-import { gearAffixDefinition, isAffixEligibleForRoll, maximumExplicitModifiersForRarity } from './gearAffixes';
+import { hasSpecializationNetworkHook, itemMatchesSpecializationGearSynergy, materializeModifier, type AffixId, type Item, type PlayerProfile } from './meta';
+import { maximumExplicitModifiersForRarity } from './gearAffixes';
+import { craftingFabricationGradeCap, legalCraftingAffixes } from './craftingRules';
 
 export type ReconstructionAction =
   | { kind: 'quality' }
@@ -23,7 +22,7 @@ export type ReconstructionResult = {
 
 const clampFabrication = (level: number) => Math.max(0, Math.min(2, Math.round(level)));
 export const reconstructionQualityCap = (fabricationLevel: number) => [10, 16, 20][clampFabrication(fabricationLevel)];
-export const reconstructionGradeCap = (fabricationLevel: number) => [3, 4, 5][clampFabrication(fabricationLevel)] as ModifierGrade;
+export const reconstructionGradeCap = craftingFabricationGradeCap;
 export const accessibleAugmentSlots = (item: Item, fabricationLevel: number) => Math.min(item.augmentSlots ?? 0, augmentSocketCap, 1 + clampFabrication(fabricationLevel));
 
 function discountedCredits(value: number, fabricationLevel: number) {
@@ -74,17 +73,10 @@ function hashText(text: string) {
   return hash >>> 0;
 }
 
-function candidateAffix(item: Item, family: ModifierFamily, excludeId: AffixId | null, salt: string) {
-  const occupied = item.modifiers.map(modifier => modifier.id).filter(id => id !== excludeId);
-  const base = resolveGearBase(item.slot, item.baseId, item.frameIdentity);
-  const pool = base?.allowedAffixGroups ?? affixPoolForSlot(item.slot);
-  const recoveryLevel = item.recoveryLevel ?? 1;
-  const candidates = pool.filter(id =>
-    affixStatProfile(id).stats.length > 0
-      && gearAffixDefinition(id).family === family
-      && id !== excludeId
-      && isAffixEligibleForRoll(id, item.slot, recoveryLevel, pool, occupied)
-  );
+function candidateAffix(item: Item, family: ModifierFamily, excludeId: AffixId | null, salt: string, fabricationLevel: number) {
+  const candidates = legalCraftingAffixes(item, fabricationLevel, family, excludeId)
+    .map(entry => entry.id)
+    .filter(id => id !== excludeId);
   if (candidates.length === 0) return null;
   return candidates[hashText(`${item.id}:${salt}`) % candidates.length];
 }
@@ -136,7 +128,7 @@ export function reconstructItem(profile: PlayerProfile, wallet: SalvageWallet, f
     const current = item.modifiers[index];
     const currentFamily = current.family ?? modifierFamilyFor(current.id);
     const targetFamily: ModifierFamily = currentFamily === 'core' ? 'systems' : 'core';
-    const replacement = candidateAffix(item, targetFamily, current.id, `reroute:${current.id}`);
+    const replacement = candidateAffix(item, targetFamily, current.id, `reroute:${current.id}`, fabrication);
     if (!replacement) return { profile, wallet, message: `No compatible ${targetFamily.toUpperCase()} modifier is available on this frame.` };
     const modifiers = item.modifiers.map((modifier, modifierIndex) => modifierIndex === index ? materializeModifier(replacement, current.grade ?? 3) : modifier);
     nextItem = { ...item, modifiers };
@@ -148,7 +140,7 @@ export function reconstructItem(profile: PlayerProfile, wallet: SalvageWallet, f
     if (item.rarity === 'Singular') return { profile, wallet, message: 'Named Singular modifier packages are fixed and cannot accept random modifier additions.' };
     const limit = modifierLimit(item);
     if (item.modifiers.length >= limit) return { profile, wallet, message: `${item.rarity} equipment is already at its ${limit}-modifier reconstruction limit.` };
-    const replacement = candidateAffix(item, action.family, null, `add:${action.family}:${item.modifiers.length}`);
+    const replacement = candidateAffix(item, action.family, null, `add:${action.family}:${item.modifiers.length}`, fabrication);
     if (!replacement) return { profile, wallet, message: `No unused ${action.family.toUpperCase()} modifier is compatible with this frame.` };
     const grade = Math.min(2, modifierGradeCeilingForRecovery(item.recoveryLevel ?? 1), reconstructionGradeCap(fabrication)) as ModifierGrade;
     nextItem = { ...item, modifiers: [...item.modifiers, materializeModifier(replacement, grade)] };
@@ -163,7 +155,7 @@ export function reconstructItem(profile: PlayerProfile, wallet: SalvageWallet, f
     const current = item.modifiers[index];
     const family = current.family ?? modifierFamilyFor(current.id);
     if (family === action.lockedFamily) return { profile, wallet, message: `${family.toUpperCase()} family is locked and protected from recalibration.` };
-    const replacement = candidateAffix(item, family, current.id, `recalibrate:${current.id}:${action.lockedFamily}`);
+    const replacement = candidateAffix(item, family, current.id, `recalibrate:${current.id}:${action.lockedFamily}`, fabrication);
     if (!replacement) return { profile, wallet, message: `No alternate ${family.toUpperCase()} modifier is available on this frame.` };
     const modifiers = item.modifiers.map((modifier, modifierIndex) => modifierIndex === index ? materializeModifier(replacement, current.grade ?? 3) : modifier);
     nextItem = { ...item, modifiers };

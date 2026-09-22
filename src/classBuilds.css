@@ -509,3 +509,119 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* P10-A // Crafting rules foundation */
+.crafting-rules-contract {
+  margin: 10px 0;
+  padding: 10px;
+  border: 1px solid #355149;
+  border-radius: 10px;
+  background: linear-gradient(160deg, rgba(16, 31, 27, .94), rgba(7, 14, 13, .98));
+}
+.crafting-rules-contract > header,
+.crafting-pool-family > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.crafting-rules-contract > header small,
+.crafting-rule-grid small,
+.crafting-family-guide small,
+.crafting-pool-family small {
+  display: block;
+  color: #7ba095;
+  font-size: 6px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+.crafting-rules-contract > header b {
+  display: block;
+  margin-top: 3px;
+  color: #dbe8e3;
+  font-size: 11px;
+}
+.crafting-rules-contract > header > span,
+.crafting-pool-family > header > span {
+  color: #789087;
+  font-size: 7px;
+  text-align: right;
+}
+.crafting-rule-grid,
+.crafting-family-guide,
+.crafting-legal-pool {
+  display: grid;
+  gap: 7px;
+  margin-top: 8px;
+}
+.crafting-rule-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.crafting-family-guide,
+.crafting-legal-pool { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.crafting-rule-grid > article,
+.crafting-family-guide > article,
+.crafting-pool-family {
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid #2c413b;
+  border-radius: 8px;
+  background: rgba(6, 13, 12, .72);
+}
+.crafting-rule-grid b,
+.crafting-family-guide b,
+.crafting-pool-family header b,
+.crafting-pool-entry b {
+  display: block;
+  margin-top: 3px;
+  color: #d0ddd8;
+  font-size: 8px;
+}
+.crafting-rule-grid span,
+.crafting-family-guide span,
+.crafting-pool-entry span {
+  display: block;
+  margin-top: 3px;
+  color: #879b94;
+  font-size: 7px;
+  line-height: 1.36;
+}
+.crafting-rule-grid em,
+.crafting-pool-entry em {
+  display: block;
+  margin-top: 5px;
+  color: #76998e;
+  font-size: 6px;
+  font-style: normal;
+  font-weight: 900;
+}
+.crafting-family-guide > article:first-child { border-left: 2px solid #9ab6ae; }
+.crafting-family-guide > article:last-child { border-left: 2px solid #7fa9ff; }
+.crafting-pool-family > div {
+  display: grid;
+  gap: 5px;
+  margin-top: 7px;
+}
+.crafting-pool-entry {
+  padding: 7px 8px;
+  border: 1px solid #2b3d38;
+  border-radius: 7px;
+  background: rgba(9, 17, 15, .84);
+}
+.crafting-pool-entry.legal { border-color: #4d7467; background: rgba(19, 39, 32, .82); }
+.crafting-pool-entry.installed { border-color: #5f6780; background: rgba(28, 31, 48, .76); }
+.crafting-pool-entry.conflict { border-color: #74514d; opacity: .76; }
+.crafting-pool-entry.recovery-locked,
+.crafting-pool-entry.fixed-package { opacity: .62; }
+.crafting-pool-entry.legal > em { color: #8fd0b9; }
+.crafting-pool-entry.conflict > em,
+.crafting-pool-entry.recovery-locked > em { color: #b08b7f; }
+
+@media (max-width: 900px) {
+  .crafting-rule-grid,
+  .crafting-family-guide,
+  .crafting-legal-pool { grid-template-columns: 1fr; }
+  .crafting-rules-contract > header,
+  .crafting-pool-family > header { align-items: stretch; flex-direction: column; }
+  .crafting-rules-contract > header > span,
+  .crafting-pool-family > header > span { text-align: left; }
+}
