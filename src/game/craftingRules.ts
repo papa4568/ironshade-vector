@@ -8,6 +8,7 @@ import {
   type GearRarityModifierBudget,
 } from './gearAffixes';
 import { modifierGradeCeilingForRecovery, type ModifierFamily, type ModifierGrade } from './lootQuality';
+import { affixStatProfile } from './gearStats';
 
 export type CraftingPoolStatus = 'legal' | 'installed' | 'conflict' | 'recovery-locked' | 'fixed-package';
 
@@ -64,7 +65,7 @@ export function craftingAffixPool(item: Item, fabricationLevel: number, ignoreMo
   const gradeCap = Math.min(recoveryGradeCap, forgeGradeCap) as ModifierGrade;
   const installed = item.modifiers.map(modifier => modifier.id).filter(id => id !== ignoreModifierId);
 
-  return ids.map(id => {
+  return ids.filter(id => affixStatProfile(id).stats.length > 0).map(id => {
     const definition = gearAffixDefinition(id);
     const eligibleGrades = definition.grades
       .filter(entry => entry.grade <= gradeCap && recoveryLevel >= entry.minimumRecoveryLevel)
