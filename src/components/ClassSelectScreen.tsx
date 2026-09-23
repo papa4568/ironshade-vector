@@ -71,10 +71,10 @@ export default function ClassSelectScreen({ profile, onConfirm }: Props) {
     .map(id => specializationDefinitions.find(definition => definition.id === id)?.name)
     .filter((name): name is string => !!name);
 
-  return <main className="class-intake" aria-label="Operator class selection">
+  return <main className="class-intake iv-view" aria-label="Operator class selection">
     <div className="class-intake-backdrop" aria-hidden="true" />
     <section className="class-intake-shell">
-      <header className="class-intake-header">
+      <header className="class-intake-header iv-panel iv-panel--glass">
         <div>
           <span>QUIET SIGNAL // OPERATOR INTAKE</span>
           <h1>Pick your combat role</h1>
@@ -87,7 +87,7 @@ export default function ClassSelectScreen({ profile, onConfirm }: Props) {
         </aside>
       </header>
 
-      <section className="class-choice-section" aria-labelledby="class-choice-heading">
+      <section className="class-choice-section iv-panel" aria-labelledby="class-choice-heading">
         <div className="class-choice-section-head">
           <div>
             <small>STEP 1</small>
@@ -104,7 +104,7 @@ export default function ClassSelectScreen({ profile, onConfirm }: Props) {
             return <button
               key={definition.id}
               type="button"
-              className={`class-choice-card class-${definition.id} ${active ? 'selected' : ''}`}
+              className={`class-choice-card iv-panel class-${definition.id} ${active ? 'selected' : ''}`}
               aria-label={`Select ${definition.name} class`}
               aria-pressed={active}
               onClick={() => setSelectedId(definition.id)}
@@ -130,7 +130,7 @@ export default function ClassSelectScreen({ profile, onConfirm }: Props) {
         </div>
       </section>
 
-      <section className={`class-selected-panel class-${selectedId}`} aria-live="polite">
+      <section className={`class-selected-panel iv-panel class-${selectedId}`} aria-live="polite">
         <div className="class-selected-overview">
           <div className="class-selected-heading">
             <div className="class-selected-title">
