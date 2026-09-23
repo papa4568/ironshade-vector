@@ -70,7 +70,8 @@ assert(
   browserSmoke.includes('BROWSER_P15_MISSION_PRESENTATION_PASS')
     && browserSmoke.includes("style?.pointerEvents ?? ''")
     && androidSmoke.includes('ANDROID_P15_MISSION_PRESENTATION_PASS')
-    && androidSmoke.includes("style?.pointerEvents ?? ''"),
+    && androidSmoke.includes('window.__ironshadeP15MissionPresentation = sample')
+    && androidSmoke.includes("sample.pointerEvents === 'none'"),
   'Browser and Android smoke must verify the live deployment cue remains non-blocking and onscreen.',
 );
 
