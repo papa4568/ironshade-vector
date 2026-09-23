@@ -892,6 +892,7 @@ export class ThreeCombatRenderer {
   private lastFrameAt = 0;
   private graphicsBudgetSignature = '';
   private runtimePreloadSignature = '';
+  private readonly runtimeStartedAt = performance.now();
   private animationFrame = 0;
 
   constructor(canvas: HTMLCanvasElement, coarse: boolean) {
@@ -1002,7 +1003,7 @@ export class ThreeCombatRenderer {
     this.animationFrame += 1;
     this.resize(width, height, quality, budget);
     this.ensureEnvironment(state, mission, budget);
-    this.scheduleRuntimeAssetPreload(state, mission, budget, runtimeProfile);
+    this.scheduleRuntimeAssetPreload(state, mission, budget, runtimeProfile, Math.max(0, (now - this.runtimeStartedAt) / 1000));
     this.syncSpinHabitatArchitecture(state, mission, budget);
     this.syncJovianHarvesterVisualLanguage(state, mission, budget);
     this.syncIceMineBrittleSupports(state, mission, budget);
@@ -1111,8 +1112,8 @@ export class ThreeCombatRenderer {
     this.renderer.dispose();
   }
 
-  private scheduleRuntimeAssetPreload(state: SimState, mission: Contract, budget: RenderBudgetSnapshot, profile: RuntimeScalabilityProfile) {
-    if (!runtimeAssetPreloadReady(state.time, profile)) {
+  private scheduleRuntimeAssetPreload(state: SimState, mission: Contract, budget: RenderBudgetSnapshot, profile: RuntimeScalabilityProfile, runtimeElapsedSeconds: number) {
+    if (!runtimeAssetPreloadReady(runtimeElapsedSeconds, profile)) {
       this.renderer.domElement.dataset.assetStreaming = `startup-deferred:${profile.preloadDelaySeconds.toFixed(1)}s@${profile.preloadConcurrency}`;
       this.renderer.domElement.dataset.assetPreloadStatus = 'deferred';
       return;
