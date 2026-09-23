@@ -1263,3 +1263,17 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Android artifact `10757623555` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.300` (300), debug signing, min SDK 24 / target SDK 36, and APK SHA-256 `4d9ff17898fa9c9b7af69ea8cfc1b29fa414fe919997641de8ca6960c7b2fc50`.
   - **Next: P16-B — Rendering scalability.**
 
+
+## 2026-09-23 — P16-B Performance Without Compromise // Rendering scalability
+
+- [x] **P16-B Rendering scalability** — verified tiered render-cost scaling across dynamic resolution/LOD, shared instancing, texture/material residency, shadows, reflections, transparency, and secondary VFX while preserving gameplay-critical cues.
+  - Extended `AdaptiveRenderBudget` with explicit reflection, secondary-effect, texture-anisotropy, graphics-cache, and invariant gameplay-cue budgets. High/Balanced/Performance now scale raster density, authored detail, shadows, transparency, reflections, secondary effects, texture sampling, and cached compressed asset residency together.
+  - Added runtime graphics-asset memory controls: cached GLTF entries retain asset byte budgets and recency, texture anisotropy is capped by quality tier/device capability, and over-budget eviction reclaims only idle least-recently-used cached assets while preserving active instances. Existing shared geometry/material/texture disposal and KTX2/Meshopt paths remain intact.
+  - Preserved existing shared `THREE.InstancedMesh` batching for repeated megastructure continuity motifs and objective/environment batches; the render regression continues to enforce those draw-call ceilings.
+  - Reflection/material response now degrades by render tier, and secondary impact sparks/effects are reduced independently from gameplay-critical hazard shapes, enemy telegraphs, and class ability cues. Runtime telemetry exposes render priority plus cache/texture budgets for QA.
+  - Expanded `tests/render-performance.ts` with a deterministic worst-case pressure regression: Performance must reduce pixel/detail/shadow/reflection/secondary/memory cost while `gameplayCueScale` remains 1.0 and hazard/telegraph readability stays present.
+  - Verification caught stale source/runtime QA contracts that expected the older effect call and five-field render-budget telemetry. Updated `tests/graphics-asset-pipeline.ts`, authored refinery/damaged-vessel verifiers, and Android runtime smoke validation to enforce the seven-field budget without weakening the checks.
+  - Final implementation source `91651b25f07d170bc006299cbdfb177491140b4c` passed Level 15 beta smoke `35881901596` (run 542) and Browser E2E `35881901722` (run 677) on desktop + mobile-landscape.
+  - Android beta.304 run `35881901769` passed the full production regression/build, native project generation, debug APK build, package/version/min-SDK/target-SDK/signature verification, emulator install/cold launch, mobile/touch/runtime/lifecycle QA, authored-content checks, and Chapter 3 touch playthrough.
+  - Android artifact `10760834319` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.304` (304), debug signing, min SDK 24 / target SDK 36, and APK SHA-256 `6c3040cb914e8eb466185308fd1a8e05b1f76f50e5d49ccdfb4a927d22fdc89b`.
+  - **Next: P16-C — Runtime scalability.**
