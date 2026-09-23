@@ -61,7 +61,7 @@
     "test:combat-feel": "vite build --ssr tests/combat-camera-feedback.ts --outDir .combat-feel-dist && node .combat-feel-dist/combat-camera-feedback.js",
     "test:enemy-protocol-visuals": "vite build --ssr tests/enemy-protocol-visuals.ts --outDir .enemy-protocol-visuals-dist && node .enemy-protocol-visuals-dist/enemy-protocol-visuals.js",
     "test:status-visuals": "vite build --ssr tests/status-visuals.ts --outDir .status-visuals-dist && node .status-visuals-dist/status-visuals.js",
-    "test:enemy-lifecycle-visuals": "tsx tests/enemy-lifecycle-visuals.ts"
+    "test:enemy-lifecycle-visuals": "vite build --ssr tests/enemy-lifecycle-visuals.ts --outDir .enemy-lifecycle-visuals-dist && node .enemy-lifecycle-visuals-dist/enemy-lifecycle-visuals.js"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.0",
