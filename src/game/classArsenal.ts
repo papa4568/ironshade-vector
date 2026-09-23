@@ -1,7 +1,28 @@
+import type { GearAffixSemanticId } from './gearStats';
+
 export type CarbineVariantId = 'carbine-burst' | 'carbine-precision';
 export type BreacherVariantId = 'breacher-slug' | 'breacher-rapid';
 export type RailVariantId = 'rail-charge' | 'rail-repeater';
 export type WeaponVariantId = CarbineVariantId | BreacherVariantId | RailVariantId;
+
+export type WeaponVariantSkillTuning = {
+  powerMul?: number;
+  rangeMul?: number;
+  controlMul?: number;
+  armorMul?: number;
+  recoveryMul?: number;
+  costMul?: number;
+  chainBonus?: number;
+};
+
+export type WeaponVariantBuildIntegration = {
+  id: WeaponVariantId;
+  family: 'carbine' | 'breacher' | 'rail';
+  progressionNodeIds: readonly string[];
+  preferredAffixes: readonly GearAffixSemanticId[];
+  skill: WeaponVariantSkillTuning;
+  singular: WeaponVariantSkillTuning;
+};
 
 export type WeaponVariantPresentation = {
   silhouetteScaleX: number;
@@ -277,6 +298,66 @@ export const railVariantDefinitions: readonly RailVariantDefinition[] = [
   },
 ] as const;
 
+
+export const weaponVariantBuildIntegrations: readonly WeaponVariantBuildIntegration[] = [
+  {
+    id: 'carbine-burst',
+    family: 'carbine',
+    progressionNodeIds: ['systems-carbine-entry', 'systems-carbine-thermal', 'systems-carbine-drive', 'systems-carbine-loop'],
+    preferredAffixes: ['extendedFeed', 'cryoloop', 'magRedirect'],
+    skill: { recoveryMul: 1.03, controlMul: 1.02, chainBonus: 1 },
+    singular: { controlMul: 1.03, recoveryMul: 1.02 },
+  },
+  {
+    id: 'carbine-precision',
+    family: 'carbine',
+    progressionNodeIds: ['systems-carbine-entry', 'systems-carbine-thermal', 'systems-carbine-drive', 'systems-carbine-loop'],
+    preferredAffixes: ['hypervelocity', 'countermass', 'magRedirect'],
+    skill: { rangeMul: 1.04, armorMul: 1.02, controlMul: 1.02 },
+    singular: { rangeMul: 1.03, armorMul: 1.02 },
+  },
+  {
+    id: 'breacher-slug',
+    family: 'breacher',
+    progressionNodeIds: ['vanguard-breach-entry', 'vanguard-breach-pressure', 'vanguard-breach-impulse', 'vanguard-breach-telemetry'],
+    preferredAffixes: ['overdrive', 'tungsten', 'countermass'],
+    skill: { powerMul: 1.04, armorMul: 1.03, costMul: 1.02 },
+    singular: { armorMul: 1.04, powerMul: 1.02 },
+  },
+  {
+    id: 'breacher-rapid',
+    family: 'breacher',
+    progressionNodeIds: ['vanguard-breach-entry', 'vanguard-breach-pressure', 'vanguard-breach-impulse', 'vanguard-breach-telemetry'],
+    preferredAffixes: ['extendedFeed', 'cryoloop', 'breachPropulsion'],
+    skill: { recoveryMul: 1.04, controlMul: 1.03 },
+    singular: { recoveryMul: 1.03, controlMul: 1.02 },
+  },
+  {
+    id: 'rail-charge',
+    family: 'rail',
+    progressionNodeIds: ['vector-rail-entry', 'vector-rail-brace', 'vector-rail-bore', 'vector-rail-solution'],
+    preferredAffixes: ['hypervelocity', 'tungsten', 'markShear'],
+    skill: { rangeMul: 1.04, armorMul: 1.04, costMul: 1.02 },
+    singular: { armorMul: 1.04, rangeMul: 1.02 },
+  },
+  {
+    id: 'rail-repeater',
+    family: 'rail',
+    progressionNodeIds: ['vector-rail-entry', 'vector-rail-brace', 'vector-rail-bore', 'vector-rail-solution'],
+    preferredAffixes: ['cryoloop', 'countermass', 'railFracture'],
+    skill: { recoveryMul: 1.04, controlMul: 1.02, costMul: 0.98 },
+    singular: { recoveryMul: 1.03, controlMul: 1.02 },
+  },
+] as const;
+
+const weaponVariantBuildIntegrationById = new Map<WeaponVariantId, WeaponVariantBuildIntegration>(
+  weaponVariantBuildIntegrations.map(integration => [integration.id, integration] as const),
+);
+
+export function weaponVariantBuildIntegration(id: WeaponVariantId) {
+  return weaponVariantBuildIntegrationById.get(id)!;
+}
+
 const carbineVariantById = new Map<CarbineVariantId, CarbineVariantDefinition>(
   carbineVariantDefinitions.map(definition => [definition.id, definition] as const),
 );
@@ -325,6 +406,15 @@ export function resolveRailVariant(item: { baseId: string; name: string; frameId
   if (/thermal|reference|repeater|sustain|cycle|cool/.test(key) || item.frameIdentity === 'rail-thermal') return 'rail-repeater';
   if (/hyper|needle|null|helios|khepri|counter|bondhouse|stabilized|charge/.test(key) || item.frameIdentity === 'rail-hypervelocity' || item.frameIdentity === 'rail-countermass') return 'rail-charge';
   return 'rail-charge';
+}
+
+export function resolveWeaponVariant(
+  family: 'carbine' | 'breacher' | 'rail',
+  item: { baseId: string; name: string; frameIdentity?: string | null },
+): WeaponVariantId {
+  if (family === 'carbine') return resolveCarbineVariant(item);
+  if (family === 'breacher') return resolveBreacherVariant(item);
+  return resolveRailVariant(item);
 }
 
 export function weaponVariantPresentation(id: WeaponVariantId | null | undefined) {
