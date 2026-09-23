@@ -15,7 +15,7 @@ const [, entry] = entryRecord;
 
 const dynamic = records.filter(([, record]) => record.isDynamicEntry);
 const dynamicKeys = dynamic.map(([key]) => key);
-for (const expected of ['src/App.tsx', 'src/game/saveRecovery.ts', 'src/components/ShipHub.tsx', 'src/components/Armory.tsx', 'src/components/GameCanvas.tsx']) {
+for (const expected of ['src/components/ShipHub.tsx', 'src/components/Armory.tsx', 'src/components/GameCanvas.tsx']) {
   assert(dynamicKeys.includes(expected), `${expected} is no longer emitted as a dynamic entry.`);
 }
 
@@ -31,9 +31,12 @@ const threeManifestKeys = new Set(records
   .map(([key]) => key));
 const bootImports = new Set(entry.imports ?? []);
 const bootDynamicImports = new Set(entry.dynamicImports ?? []);
-for (const staged of ['src/game/saveRecovery.ts', 'src/App.tsx']) {
-  assert(bootDynamicImports.has(staged), `${staged} is no longer directly staged from the boot entry.`);
-  assert(!bootImports.has(staged), `${staged} leaked back into the synchronous boot graph.`);
+for (const [label, prefix] of [['save recovery', 'saveRecovery-'], ['app', 'App-']]) {
+  const stagedRecord = records.find(([, record]) => basename(record.file).startsWith(prefix));
+  assert(stagedRecord, `The staged ${label} chunk was not emitted.`);
+  const [stagedKey] = stagedRecord;
+  assert(bootDynamicImports.has(stagedKey), `The ${label} chunk is no longer directly staged from the boot entry.`);
+  assert(!bootImports.has(stagedKey), `The ${label} chunk leaked back into the synchronous boot graph.`);
 }
 assert([...threeManifestKeys].every(key => !bootImports.has(key)), 'Three.js runtime is no longer deferred from the boot entry.');
 
