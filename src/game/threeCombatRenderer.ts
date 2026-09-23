@@ -27,7 +27,7 @@ import { resolveEnemyHudReadability } from './enemyMobileReadability';
 import { enhancedProtocolVisualSpecFor, protocolVisualIds, protocolVisualSpecFor } from './protocolVisualLanguage';
 import { dominantEnemyStatusVisual, enemyStatusVisualIds, enemyStatusVisualSpecFor, playerStatusVisualSpecFor, resolvePlayerStatusVisuals } from './statusVisualLanguage';
 import { biomeWorldState, hazardWorldPresentation, interactableWorldPresentation, materialWorldResponse, worldMaterialQualityProfile } from './worldMaterialPolish';
-import { runtimeAnimationStride, runtimePoolTrimTarget, runtimeScalabilityProfile, type RuntimeScalabilityProfile } from './runtimeScalability';
+import { runtimeAnimationStride, runtimeAssetPreloadReady, runtimePoolTrimTarget, runtimeScalabilityProfile, type RuntimeScalabilityProfile } from './runtimeScalability';
 
 const WORLD_SCALE = 0.02;
 const FLOOR_Y = 0;
@@ -1112,6 +1112,11 @@ export class ThreeCombatRenderer {
   }
 
   private scheduleRuntimeAssetPreload(state: SimState, mission: Contract, budget: RenderBudgetSnapshot, profile: RuntimeScalabilityProfile) {
+    if (!runtimeAssetPreloadReady(state.time, profile)) {
+      this.renderer.domElement.dataset.assetStreaming = `startup-deferred:${profile.preloadDelaySeconds.toFixed(1)}s@${profile.preloadConcurrency}`;
+      this.renderer.domElement.dataset.assetPreloadStatus = 'deferred';
+      return;
+    }
     const detailScale = this.coarse ? Math.min(budget.detailScale, 0.55) : budget.detailScale;
     const requested: GraphicsAssetSpec[] = [];
     const addFamily = (family: GraphicsAssetFamily | null | undefined, scale = detailScale) => {
