@@ -6,7 +6,7 @@ import { commandTargetFireCadenceScale, commandTargetMutationDefinition, command
 import type { ConsumableId } from './consumables';
 import { lootFeedLabel, rollGroundLoot, type GroundLootDrop, type GroundLootReceipt } from './fieldLoot';
 import { getAbilityKitForClass, operatorWeaponFamilyForClass, type OperatorClassId } from './classSkills';
-import { carbineVariantDefinition, type CarbineVariantId } from './classArsenal';
+import { weaponVariantDefinition, type WeaponVariantId } from './classArsenal';
 export { abilityMeta, classAbilityKits, getAbilityKitForClass } from './classSkills';
 export type { AbilityMeta, OperatorClassId } from './classSkills';
 
@@ -43,12 +43,12 @@ export type RunTracePoint = { t: number; x: number; y: number; hp: number; armor
 export type Telemetry = { damageDealt: number; damageTaken: number; deaths: number; kills: number; eliteKills: number; eliteProtocolsDefeated: number; killIntervalTotal: number; killIntervalSamples: number; lastKillAt: number; protocolCombinations: Record<string, number>; weaponShots: Record<WeaponId, number>; abilityUses: [number, number, number]; encounterStart: number; bossStart: number; duration: number; trace: RunTracePoint[]; nextTraceAt: number };
 export type ClassRuntimeState = { vanguardGuard: number; vectorWindow: number; systemsLinks: number; systemsCrossfeed: number };
 export type SimState = { time: number; build: CombatBuild; weapons: Record<WeaponId, WeaponConfig>; droneTick: number; lastAbilityIndex: number; lastAbilityAt: number; abilityChain: number; classState: ClassRuntimeState; bossGateHold: boolean; operationTier: number; monsterLevel: number; maxRecoveryLevel: number; monsterDamageScale: number; groundLoot: GroundLootDrop[]; collectedLoot: GroundLootReceipt[]; player: Player; enemies: Enemy[]; projectiles: Projectile[]; objects: CombatObject[]; sectors: Sector[]; links: PressureLink[]; breaches: Breach[]; hazards: Hazard[]; debris: Debris[]; effects: Effect[]; damageNumbers: DamageNumber[]; damageNumberSerial: number; impactEvent: ImpactEvent | null; impactSerial: number; complete: boolean; bossActive: boolean; bossDefeated: boolean; pulse: number; weaponFlash: number; kills: number; squadSuppressing: boolean; eventText: string; eventT: number; telemetry: Telemetry };
-export type WeaponConfig = { id: WeaponId; name: string; shortName: string; variantId: CarbineVariantId | null; roundsPerTrigger: number; damage: number; rate: number; projectileSpeed: number; penetration: number; recoil: number; spread: number; heatPerShot: number; heatDissipation: number; magazine: number; reloadSeconds: number; armorDamage: number; healthMultiplier: number; knockback: number; pellets: number; capacitorCost: number };
+export type WeaponConfig = { id: WeaponId; name: string; shortName: string; variantId: WeaponVariantId | null; roundsPerTrigger: number; damage: number; rate: number; projectileSpeed: number; penetration: number; recoil: number; spread: number; heatPerShot: number; heatDissipation: number; magazine: number; reloadSeconds: number; armorDamage: number; healthMultiplier: number; knockback: number; pellets: number; capacitorCost: number };
 export type ClassSkillFamilyBuild = {
   family: WeaponId | null;
   frameGeneration: number;
   frameIdentity: string | null;
-  weaponVariant: CarbineVariantId | null;
+  weaponVariant: WeaponVariantId | null;
   singularLinked: boolean;
   powerMul: number;
   rangeMul: number;
@@ -93,9 +93,10 @@ export function getAbilityKit(state: Pick<SimState, 'build'>) { return getAbilit
 export const neutralCombatBuild: CombatBuild = { operatorClass: null, classResonanceTier: 0, classSkillFamily: { family: null, frameGeneration: 1, frameIdentity: null, weaponVariant: null, singularLinked: false, powerMul: 1, rangeMul: 1, controlMul: 1, armorMul: 1, recoveryMul: 1, costMul: 1, chainBonus: 0, sources: [] }, weapon: { carbine: { damageMul: 1, speedMul: 1, penetrationAdd: 0, recoilMul: 1, heatPerShotMul: 1, heatDissipationMul: 1, magazineAdd: 0, reloadMul: 1, armorDamageMul: 1, healthMultiplierMul: 1, knockbackMul: 1 }, breacher: { damageMul: 1, speedMul: 1, penetrationAdd: 0, recoilMul: 1, heatPerShotMul: 1, heatDissipationMul: 1, magazineAdd: 0, reloadMul: 1, armorDamageMul: 1, healthMultiplierMul: 1, knockbackMul: 1 }, rail: { damageMul: 1, speedMul: 1, penetrationAdd: 0, recoilMul: 1, heatPerShotMul: 1, heatDissipationMul: 1, magazineAdd: 0, reloadMul: 1, armorDamageMul: 1, healthMultiplierMul: 1, knockbackMul: 1 } }, player: { maxHpAdd: 0, maxArmorAdd: 0, maxCapAdd: 0, moveSpeedMul: 1, capRegenMul: 1, vacuumResistance: 0, lowGControl: 0, ventSpeedMul: 1 }, mechanics: { railFragment: false, railFragmentScale: 0, dodgeVent: false, dodgeVentScale: 0, magRedirect: false, magRedirectScale: 0, breacherPropulsion: false, breacherPropulsionScale: 0, markWeakArmor: false, markWeakArmorScale: 0, arcDrone: false, arcDroneScale: 0, recoilVectoring: false, breachDoctrine: false, sensorPenetration: false, widebandMark: false, magOverdriveKick: false, arcGroundLoop: false, magBoundarySink: false, markExecutionTrace: false, arcCascadeLattice: false, vanguardSiegeRam: false, vanguardFaultlineTag: false, vanguardReprisalPulse: false, vectorSlingshotShift: false, vectorTriangulationLock: false, vectorNeedleFan: false, systemsAnchorLattice: false, systemsRecursiveIntrusion: false, systemsReturnCurrent: false }, singularTraits: [], specialization: null, specializationOverclock: false, abilities: [{ costMul: 1, cooldownMul: 1, powerMul: 1 }, { costMul: 1, cooldownMul: 1, powerMul: 1 }, { costMul: 1, cooldownMul: 1, powerMul: 1 }] };
 function resolveWeaponConfig(build: CombatBuild, id: WeaponId): WeaponConfig {
   const base = weaponConfigs[id];
-  const variant = id === 'carbine' && build.classSkillFamily.family === 'carbine' && build.classSkillFamily.weaponVariant
-    ? carbineVariantDefinition(build.classSkillFamily.weaponVariant)
+  const requestedVariant = build.classSkillFamily.family === id && build.classSkillFamily.weaponVariant
+    ? weaponVariantDefinition(build.classSkillFamily.weaponVariant)
     : null;
+  const variant = requestedVariant?.family === id ? requestedVariant : null;
   const authoredBase: WeaponConfig = variant
     ? { ...base, ...variant.stats, name: variant.name, shortName: variant.shortName, variantId: variant.id }
     : base;
@@ -780,7 +781,7 @@ export function triggerFire(state: SimState, targetingIntent: TargetingIntent = 
       if (state.build.specializationOverclock) { p.weaponHeat[p.currentWeapon] = Math.max(0, p.weaponHeat[p.currentWeapon] - 0.04); p.dodgeCooldown = Math.max(0, p.dodgeCooldown - 0.2); }
       pushEvent(state, `REDLINE VECTOR // HOT ${weapon.shortName} SLIPSTREAM DISCHARGED`, 1.25);
     } else pushEvent(state, `VECTOR SLIPSTREAM // ${weapon.shortName} STABILIZED`, 1.15);
-  } if (weapon.id === 'breacher' && hasTrait(state, 'rheaBackblast')) p.dodgeCooldown = Math.max(0, p.dodgeCooldown - 0.22); if (pendulumBrake) { p.vx *= 0.55; p.vy *= 0.55; pushEvent(state, 'PENDULUM KESTREL // COUNTER-IMPULSE BANKED', 1.2); } state.weaponFlash = weapon.variantId === 'carbine-burst' ? 0.11 : weapon.variantId === 'carbine-precision' ? 0.075 : 0.07; state.telemetry.weaponShots[p.currentWeapon] += 1; if (p.mags[p.currentWeapon] === 0) triggerReload(state); return true;
+  } if (weapon.id === 'breacher' && hasTrait(state, 'rheaBackblast')) p.dodgeCooldown = Math.max(0, p.dodgeCooldown - 0.22); if (pendulumBrake) { p.vx *= 0.55; p.vy *= 0.55; pushEvent(state, 'PENDULUM KESTREL // COUNTER-IMPULSE BANKED', 1.2); } state.weaponFlash = weapon.variantId === 'carbine-burst' ? 0.11 : weapon.variantId === 'carbine-precision' ? 0.075 : weapon.variantId === 'breacher-slug' ? 0.13 : weapon.variantId === 'breacher-rapid' ? 0.085 : 0.07; state.telemetry.weaponShots[p.currentWeapon] += 1; if (p.mags[p.currentWeapon] === 0) triggerReload(state); return true;
 }
 export function triggerDodge(state: SimState) {
   const p = state.player; if (p.dead || state.complete || p.dodgeCooldown > 0) return false;
