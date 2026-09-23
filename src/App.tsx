@@ -56,6 +56,8 @@ function DebriefScreen({ result, onShip, onBuild, onRepeat, onDiscard }: { resul
   const newRecoveryCount = result.lootReward.loot.length;
   const keptRecoveryCount = result.lootReward.loot.filter(item => !discardedIds.includes(item.id)).length;
   const unspentPoints = result.lootReward.profile.progressionPoints;
+  const featuredRecovery = result.lootReward.loot.find(item => !discardedIds.includes(item.id) && item.rarity === 'Singular')
+    ?? result.lootReward.loot.filter(item => !discardedIds.includes(item.id)).sort((left, right) => (right.recoveryQuality ?? 0) - (left.recoveryQuality ?? 0))[0];
   const nextActions: string[] = [];
   if (keptRecoveryCount > 0) nextActions.push(`${keptRecoveryCount} recovered equipment package${keptRecoveryCount === 1 ? '' : 's'} kept in ship storage.`);
   if (unspentPoints > 0) nextActions.push(`${unspentPoints} unspent progression point${unspentPoints === 1 ? '' : 's'} available in the Vector Development Network.`);
@@ -65,6 +67,15 @@ function DebriefScreen({ result, onShip, onBuild, onRepeat, onDiscard }: { resul
     reputationBefore < 8 && reputationAfter >= 8 ? 'REP 8 // PRIORITY CONTRACTS UNLOCKED' : '',
     reputationBefore < 12 && reputationAfter >= 12 ? 'REP 12 // DEEPER SPECIALTY UPGRADE DISCOUNT UNLOCKED' : '',
   ].filter(Boolean);
+  const nextReputationUnlock = [6, 8, 12].find(threshold => reputationAfter < threshold);
+  const unlockHighlight = milestones[0]
+    ?? (result.lootReward.profile.level >= 15 && !result.lootReward.profile.specialization
+      ? `LV15 // ${resultClass.name.toUpperCase()} SPECIALIZATION READY`
+      : nextReputationUnlock
+        ? `${factionDisplayName(sponsor).toUpperCase()} REP ${nextReputationUnlock} // ${nextReputationUnlock - reputationAfter} REP TO NEXT SPONSOR UNLOCK`
+        : unspentPoints > 0
+          ? `VECTOR DEVELOPMENT NETWORK // ${unspentPoints} UNSPENT POINT${unspentPoints === 1 ? '' : 'S'} READY`
+          : 'NO NEW UNLOCK // CONTINUE CONTRACT AND NETWORK PROGRESSION');
   const expeditionDebrief = result.expeditionProgress
     ? buildMegastructureDebrief(result.contract, result.expeditionProgress, result.campaignReward.depth)
     : null;
@@ -77,11 +88,30 @@ function DebriefScreen({ result, onShip, onBuild, onRepeat, onDiscard }: { resul
         : ['LOCAL RUN ONLY', 'Anonymous telemetry sharing is disabled in Build → Settings. No run data was uploaded.'];
 
   return (
-    <main className="debrief-shell">
-      <section className="debrief-card">
+    <main className="debrief-shell iv-view" data-presentation="mission-debrief">
+      <section className="debrief-card iv-panel iv-panel--glass">
         <span className="card-kicker">QUIET SIGNAL // MISSION DEBRIEF</span>
         <h1>{result.campaignReward.depth === 'deep' ? 'Deep extraction complete' : 'Safe extraction complete'}</h1>
         <p>{result.contract.title} · {result.contract.locationName}</p>
+        <section className="debrief-highlights iv-panel iv-panel--glass" aria-label="Mission highlights" data-presentation="debrief-highlights">
+          <header><small>AFTER-ACTION // HIGHLIGHTS</small><b>What changed this run</b></header>
+          <div className="debrief-highlight-grid">
+            <article className="debrief-highlight iv-panel" data-highlight="loot">
+              <small>TOP RECOVERY</small>
+              {featuredRecovery ? <><b>{featuredRecovery.name}</b><span>{rarityDisplayLabel(featuredRecovery.rarity)} · {featuredRecovery.slot} · {debriefItemEffect(featuredRecovery)}</span></> : <><b>No equipment recovery</b><span>Material, reputation, and XP gains were still banked.</span></>}
+            </article>
+            <article className="debrief-highlight iv-panel" data-highlight="progression">
+              <small>PROGRESSION</small>
+              <b>{result.lootReward.levelsGained > 0 ? `+${result.lootReward.levelsGained} progression point${result.lootReward.levelsGained === 1 ? '' : 's'}` : unspentPoints > 0 ? `${unspentPoints} point${unspentPoints === 1 ? '' : 's'} ready` : `LV ${result.lootReward.profile.level}`}</b>
+              <span>+{result.lootReward.xpGained} XP banked · LV {result.lootReward.profile.level}</span>
+            </article>
+            <article className="debrief-highlight iv-panel" data-highlight="unlock">
+              <small>NEXT UNLOCK</small>
+              <b>{unlockHighlight}</b>
+              <span>{milestones.length > 0 ? 'New access is active now.' : 'The next actionable progression gate is surfaced here before the full log.'}</span>
+            </article>
+          </div>
+        </section>
         <div className="debrief-grid">
           {gained.map(([key, value]) => <div key={key}><small>{resourceLabels[key]}</small><b>+{value}</b></div>)}
           <div><small>XP</small><b>+{result.lootReward.xpGained}</b></div>
