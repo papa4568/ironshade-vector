@@ -10,7 +10,7 @@ import { groundLootPresentation } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
 import type { CombatCameraFeedbackSample } from './combatCameraFeedback';
 import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, SPIN_HABITAT_BOSS_ASSET_FAMILY, JOVIAN_HARVESTER_BOSS_ASSET_FAMILY, ICE_MINE_BOSS_ASSET_FAMILY, SOLAR_YARD_BOSS_ASSET_FAMILY, SPIN_HABITAT_ENEMY_ASSET_FAMILIES, SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES, OPERATOR_CLASS_ASSET_FAMILIES, JOVIAN_HARVESTER_ASSET_FAMILIES, JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES, ICE_MINE_ASSET_FAMILIES, SOLAR_YARD_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, SPIN_HABITAT_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
-import { configureGraphicsAssetRenderer, configureGraphicsAssetRuntimeBudget, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
+import { configureGraphicsAssetRenderer, configureGraphicsAssetRuntimeBudget, instantiateGraphicsAsset, preloadGraphicsAssets, selectGraphicsAssetSpec, type GraphicsAssetFamily, type GraphicsAssetInstance, type GraphicsAssetSpec } from './graphicsAssets';
 import { spinHabitatArchitectureState, spinHabitatRenderProfile, spinHabitatSpindownState } from './spinHabitatArchitecture';
 import { jovianHarvesterRenderProfile, jovianHarvesterStormState } from './jovianHarvesterVisualLanguage';
 import { solarYardRenderProfile } from './solarYardVisualProfile';
@@ -27,6 +27,7 @@ import { resolveEnemyHudReadability } from './enemyMobileReadability';
 import { enhancedProtocolVisualSpecFor, protocolVisualIds, protocolVisualSpecFor } from './protocolVisualLanguage';
 import { dominantEnemyStatusVisual, enemyStatusVisualIds, enemyStatusVisualSpecFor, playerStatusVisualSpecFor, resolvePlayerStatusVisuals } from './statusVisualLanguage';
 import { biomeWorldState, hazardWorldPresentation, interactableWorldPresentation, materialWorldResponse, worldMaterialQualityProfile } from './worldMaterialPolish';
+import { runtimeAnimationStride, runtimePoolTrimTarget, runtimeScalabilityProfile, type RuntimeScalabilityProfile } from './runtimeScalability';
 
 const WORLD_SCALE = 0.02;
 const FLOOR_Y = 0;
@@ -890,6 +891,8 @@ export class ThreeCombatRenderer {
   private pixelRatio = 1;
   private lastFrameAt = 0;
   private graphicsBudgetSignature = '';
+  private runtimePreloadSignature = '';
+  private animationFrame = 0;
 
   constructor(canvas: HTMLCanvasElement, coarse: boolean) {
     this.coarse = coarse;
@@ -995,8 +998,11 @@ export class ThreeCombatRenderer {
     const frameMs = this.lastFrameAt > 0 ? now - this.lastFrameAt : 1000 / 60;
     this.lastFrameAt = now;
     const budget = this.renderBudget.sample(frameMs, quality);
+    const runtimeProfile = runtimeScalabilityProfile(budget.tierName);
+    this.animationFrame += 1;
     this.resize(width, height, quality, budget);
     this.ensureEnvironment(state, mission, budget);
+    this.scheduleRuntimeAssetPreload(state, mission, budget, runtimeProfile);
     this.syncSpinHabitatArchitecture(state, mission, budget);
     this.syncJovianHarvesterVisualLanguage(state, mission, budget);
     this.syncIceMineBrittleSupports(state, mission, budget);
@@ -1009,20 +1015,26 @@ export class ThreeCombatRenderer {
       void this.loadAuthoredOperator(state.build.operatorClass);
     }
     this.syncPlayer(state, operatorFaction, firingIntent, reducedTargetMotion);
-    this.syncEnemies(state, mission, mobileTargetId, reducedTargetMotion);
-    this.syncDamageNumbers(state);
+    this.syncEnemies(state, mission, mobileTargetId, reducedTargetMotion, budget);
+    this.syncDamageNumbers(state, runtimeProfile);
     this.syncProjectiles(state, budget.transparencyScale);
     this.syncGroundLoot(state, budget);
     this.syncHazards(state, budget);
     this.syncWorldMaterialPolish(state, mission, budget);
-    this.syncEffects(state, quality * budget.detailScale, budget.vfxDensity, budget.transparencyScale, budget.secondaryEffectScale);
+    this.syncEffects(state, quality * budget.detailScale, budget.vfxDensity, budget.transparencyScale, budget.secondaryEffectScale, runtimeProfile);
     this.syncBreaches(state);
     syncHardSciFiBreaches(this.dynamicRoot, state, WORLD_SCALE, quality * budget.vfxDensity);
-    this.syncDebris(state, quality * budget.detailScale * budget.vfxDensity);
+    this.syncDebris(state, quality * budget.detailScale * budget.vfxDensity, runtimeProfile);
     this.syncRefineryAtmospherics(state, quality * budget.detailScale, budget.vfxDensity, budget.transparencyScale);
     this.syncDamagedVesselAtmospherics(state, quality * budget.detailScale, budget.vfxDensity, budget.transparencyScale);
     this.syncCamera(state, width / Math.max(1, height), cameraFeedback);
     this.syncLighting(state, mission, quality, budget);
+    this.renderer.domElement.dataset.runtimePools = [
+      `damage:${this.damageNumberPool.length}/${runtimeProfile.poolRetention.damageNumbers}`,
+      `effects:${this.effectPool.length}/${runtimeProfile.poolRetention.effects}`,
+      `sparks:${this.impactSparkPool.length}/${runtimeProfile.poolRetention.impactSparks}`,
+      `debris:${this.debrisPool.length}/${runtimeProfile.poolRetention.debris}`,
+    ].join('|');
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -1097,6 +1109,54 @@ export class ThreeCombatRenderer {
     this.iceMineFractureShardMaterial.dispose();
     disposeTree(this.scene);
     this.renderer.dispose();
+  }
+
+  private scheduleRuntimeAssetPreload(state: SimState, mission: Contract, budget: RenderBudgetSnapshot, profile: RuntimeScalabilityProfile) {
+    const detailScale = this.coarse ? Math.min(budget.detailScale, 0.55) : budget.detailScale;
+    const requested: GraphicsAssetSpec[] = [];
+    const addFamily = (family: GraphicsAssetFamily | null | undefined, scale = detailScale) => {
+      if (!family) return;
+      const spec = selectGraphicsAssetSpec(family, scale);
+      if (spec) requested.push(spec);
+    };
+    const addFamilies = (families: readonly GraphicsAssetFamily[]) => {
+      for (const family of families) addFamily(family);
+    };
+
+    const prioritizedEnemies = [...state.enemies].sort((a, b) => {
+      const rank = (enemy: Enemy) => enemy.role === 'boss' ? 3 : enemy.role === 'elite' ? 2 : 1;
+      return rank(b) - rank(a);
+    });
+    for (const enemy of prioritizedEnemies) {
+      const localFamily = spinHabitatBossAssetFamily(enemy, mission)
+        ?? jovianHarvesterBossAssetFamily(enemy, mission)
+        ?? iceMineBossAssetFamily(enemy, mission)
+        ?? solarYardBossAssetFamily(enemy, mission)
+        ?? spinHabitatEnemyAssetFamily(enemy, mission);
+      addFamily(localFamily ?? ENEMY_ASSET_FAMILIES[enemy.role]);
+    }
+    addFamily(PICKUP_ASSET_FAMILY);
+
+    if (mission.location === 'asteroid-refinery') addFamilies(Object.values(REFINERY_ASSET_FAMILIES));
+    else if (mission.location === 'damaged-vessel') addFamilies(Object.values(DAMAGED_VESSEL_ASSET_FAMILIES));
+    else if (mission.location === 'spin-habitat') addFamilies(Object.values(SPIN_HABITAT_ASSET_FAMILIES));
+    else if (mission.location === 'jovian-harvester') addFamilies(Object.values(JOVIAN_HARVESTER_ASSET_FAMILIES));
+    else if (mission.location === 'ice-mine') addFamilies(Object.values(ICE_MINE_ASSET_FAMILIES));
+    else if (mission.location === 'solar-yard') addFamilies(Object.values(SOLAR_YARD_ASSET_FAMILIES));
+    else if (mission.location === 'parallax-array') addFamilies(Object.values(PARALLAX_ASSET_FAMILIES));
+
+    const selected = [...new Map(requested.map(spec => [spec.url, spec])).values()].slice(0, profile.preloadAssetLimit);
+    const signature = `${mission.location}:${mission.deepTarget ?? 'standard'}:tier-${budget.tier}:${selected.map(spec => spec.id).join(',')}`;
+    if (signature === this.runtimePreloadSignature) return;
+    this.runtimePreloadSignature = signature;
+    this.renderer.domElement.dataset.assetStreaming = `bounded-preload:${selected.length}@${profile.preloadConcurrency}`;
+    this.renderer.domElement.dataset.assetPreloadStatus = selected.length > 0 ? 'loading' : 'idle';
+    if (selected.length === 0) return;
+
+    void preloadGraphicsAssets(selected, profile.preloadConcurrency).then(result => {
+      if (this.disposed || this.runtimePreloadSignature !== signature) return;
+      this.renderer.domElement.dataset.assetPreloadStatus = `ready:${result.loaded}/${result.requested}:failed-${result.failed}`;
+    });
   }
 
   private clearInteractableCueVisuals() {
@@ -6013,13 +6073,15 @@ export class ThreeCombatRenderer {
     this.renderer.domElement.dataset.bossPhaseVisual = `${presentationPrefix}phase:${enemy.bossPhase}+pattern:${enemy.bossPattern}+telegraph:${enemy.telegraph > 0 ? 'active' : 'idle'}`;
   }
 
-  private syncEnemies(state: SimState, mission: Contract, mobileTargetId: number | null, reducedTargetMotion: boolean) {
+  private syncEnemies(state: SimState, mission: Contract, mobileTargetId: number | null, reducedTargetMotion: boolean, budget: RenderBudgetSnapshot) {
     const seen = new Set<number>();
     let animationTelemetry: { priority: number; enemy: Enemy; motion: EnemyBossAnimationSignals } | null = null;
     let statusTelemetry: { priority: number; enemy: Enemy; presentation: EnemyPresentationContract } | null = null;
     let protocolTelemetry: { priority: number; enemy: Enemy; presentation: EnemyPresentationContract } | null = null;
     let mutationTelemetry: { priority: number; enemy: Enemy; presentation: EnemyPresentationContract } | null = null;
     let lifecycleTelemetry: { priority: number; enemy: Enemy; lifecycle: EnemyLifecycleSignals; presentation: EnemyPresentationContract } | null = null;
+    let deferredAuthoredAnimations = 0;
+    let maxAnimationStride = 1;
     for (const enemy of state.enemies) {
       seen.add(enemy.id);
       const visual = this.enemyVisuals.get(enemy.id) ?? this.createEnemyVisual(enemy, mission);
@@ -6195,7 +6257,32 @@ export class ThreeCombatRenderer {
       visual.body.material.emissive.setHex(enemy.telegraph > 0 ? 0x7a3327 : dominantStatusSpec?.accent ?? lifecycleEmissive);
       visual.body.material.emissiveIntensity = enemy.telegraph > 0 ? 0.34 : dominantStatus ? 0.2 + Math.min(0.18, enemy.statuses[dominantStatus] * 0.12) : lifecycleEmissive ? 0.18 + Math.max(lifecycle.spawn, lifecycle.phaseTransition, lifecycle.dangerousReadiness) * 0.2 : 0;
       if (visual.authoredRoot) {
-        this.syncAuthoredEnemyAnimation(visual, enemy, state, motion);
+        const activeStatus = Object.values(enemy.statuses).some(value => typeof value === 'number' && value > 0);
+        const criticalAnimationCue = enemy.telegraph > 0
+          || motion.tell > 0
+          || motion.commit > 0
+          || motion.recovery > 0
+          || motion.phaseTransition > 0
+          || lifecycle.spawn > 0
+          || lifecycle.dangerousReadiness > 0
+          || lifecycle.persistentDisabled > 0
+          || activeStatus
+          || enemy.dead
+          || state.time < visual.impactUntil
+          || state.time < visual.armorBreakUntil;
+        const animationStride = runtimeAnimationStride({
+          tier: budget.tierName,
+          role: enemy.role,
+          distance: Math.hypot(enemy.x - state.player.x, enemy.y - state.player.y),
+          targeted: enemy.id === mobileTargetId,
+          criticalCue: criticalAnimationCue,
+        });
+        maxAnimationStride = Math.max(maxAnimationStride, animationStride);
+        if (animationStride === 1 || (this.animationFrame + enemy.id) % animationStride === 0) {
+          this.syncAuthoredEnemyAnimation(visual, enemy, state, motion);
+        } else {
+          deferredAuthoredAnimations += 1;
+        }
         const sableVoss = visual.authoredAssetId === 'spin-habitat-sable-voss';
         const stormlineIlex = visual.authoredAssetId === 'jovian-harvester-stormline-foreman';
         const rheaKade = visual.authoredAssetId === 'ice-mine-rhea-kade';
@@ -6239,6 +6326,7 @@ export class ThreeCombatRenderer {
       visual.armor.scale.x = armorRatio;
       visual.armor.position.x = -barWidth * (1 - armorRatio) / 2;
     }
+    this.renderer.domElement.dataset.runtimeAnimationLod = `${budget.tierName}:max-stride-${maxAnimationStride}:deferred-${deferredAuthoredAnimations}`;
     if (animationTelemetry) {
       const { enemy, motion } = animationTelemetry;
       const statusWeight = Math.max(
@@ -6379,7 +6467,7 @@ export class ThreeCombatRenderer {
     texture.needsUpdate = true;
   }
 
-  private syncDamageNumbers(state: SimState) {
+  private syncDamageNumbers(state: SimState, profile: RuntimeScalabilityProfile) {
     let count = 0;
     for (const popup of state.damageNumbers) {
       if (!popup.active) continue;
@@ -6397,6 +6485,14 @@ export class ThreeCombatRenderer {
       visual.sprite.scale.set(1.85 * heavyScale, 0.84 * heavyScale, 1);
     }
     for (let index = count; index < this.damageNumberPool.length; index += 1) this.damageNumberPool[index].sprite.visible = false;
+    const target = runtimePoolTrimTarget(this.damageNumberPool.length, count, profile.poolRetention.damageNumbers);
+    while (this.damageNumberPool.length > target) {
+      const visual = this.damageNumberPool.pop();
+      if (!visual) break;
+      this.dynamicRoot.remove(visual.sprite);
+      visual.sprite.material.dispose();
+      visual.texture.dispose();
+    }
     this.renderer.domElement.dataset.damageNumbers = count > 0 ? 'active' : 'idle';
   }
 
@@ -6648,7 +6744,7 @@ export class ThreeCombatRenderer {
     return this.impactSparkPool[index];
   }
 
-  private syncEffects(state: SimState, detailLevel: number, vfxDensity: number, transparencyScale: number, secondaryEffectScale: number) {
+  private syncEffects(state: SimState, detailLevel: number, vfxDensity: number, transparencyScale: number, secondaryEffectScale: number, profile: RuntimeScalabilityProfile) {
     let count = 0;
     let sparkCount = 0;
     let impactOrdinal = 0;
@@ -6758,6 +6854,20 @@ export class ThreeCombatRenderer {
     }
     for (let index = count; index < this.effectPool.length; index += 1) this.effectPool[index].visible = false;
     for (let index = sparkCount; index < this.impactSparkPool.length; index += 1) this.impactSparkPool[index].visible = false;
+    const effectTarget = runtimePoolTrimTarget(this.effectPool.length, count, profile.poolRetention.effects);
+    while (this.effectPool.length > effectTarget) {
+      const ring = this.effectPool.pop();
+      if (!ring) break;
+      this.dynamicRoot.remove(ring);
+      ring.material.dispose();
+    }
+    const sparkTarget = runtimePoolTrimTarget(this.impactSparkPool.length, sparkCount, profile.poolRetention.impactSparks);
+    while (this.impactSparkPool.length > sparkTarget) {
+      const spark = this.impactSparkPool.pop();
+      if (!spark) break;
+      this.dynamicRoot.remove(spark);
+      spark.material.dispose();
+    }
     if (lastImpactLanguage) this.renderer.domElement.dataset.impactFx = lastImpactLanguage;
     this.renderer.domElement.dataset.capstoneFx = lastCapstoneFx || 'idle';
     this.renderer.domElement.dataset.effectsMode = reducedEffects ? 'reduced' : 'full';
@@ -6792,7 +6902,7 @@ export class ThreeCombatRenderer {
     return this.debrisPool[index];
   }
 
-  private syncDebris(state: SimState, quality: number) {
+  private syncDebris(state: SimState, quality: number, profile: RuntimeScalabilityProfile) {
     let count = 0;
     if (quality > 0.55) {
       for (const debris of state.debris) {
@@ -6813,6 +6923,13 @@ export class ThreeCombatRenderer {
       }
     }
     for (let index = count; index < this.debrisPool.length; index += 1) this.debrisPool[index].visible = false;
+    const target = runtimePoolTrimTarget(this.debrisPool.length, count, profile.poolRetention.debris);
+    while (this.debrisPool.length > target) {
+      const mesh = this.debrisPool.pop();
+      if (!mesh) break;
+      this.dynamicRoot.remove(mesh);
+      mesh.material.dispose();
+    }
   }
 
   private syncLighting(state: SimState, mission: Contract, quality: number, budget: RenderBudgetSnapshot) {

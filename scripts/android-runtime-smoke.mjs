@@ -565,14 +565,25 @@ if (!(combat.text ?? '').toLowerCase().includes('field coach') || combat.canvase
 
 await waitFor(`(() => {
   const canvas = document.querySelector('canvas[data-render-tier]');
-  return Boolean(canvas?.dataset.renderTier && canvas?.dataset.renderBudget);
-})()`, 'Android render tier telemetry', 20_000);
+  return Boolean(
+    canvas?.dataset.renderTier
+    && canvas?.dataset.renderBudget
+    && canvas?.dataset.runtimeAnimationLod
+    && canvas?.dataset.runtimePools
+    && canvas?.dataset.assetStreaming
+    && canvas?.dataset.audioVirtualization
+  );
+})()`, 'Android runtime scalability telemetry', 20_000);
 
 const renderTier = await evaluate(`(() => {
   const canvas = document.querySelector('canvas[data-render-tier]');
   return {
     tier: canvas?.dataset.renderTier ?? '',
     budget: canvas?.dataset.renderBudget ?? '',
+    animationLod: canvas?.dataset.runtimeAnimationLod ?? '',
+    pools: canvas?.dataset.runtimePools ?? '',
+    assetStreaming: canvas?.dataset.assetStreaming ?? '',
+    audioVirtualization: canvas?.dataset.audioVirtualization ?? '',
   };
 })()`);
 if (!['balanced', 'performance'].includes(renderTier.tier)) {
@@ -582,6 +593,19 @@ if (!validRenderBudget(renderTier.budget)) {
   throw new Error(`Android render budget telemetry is malformed: ${JSON.stringify(renderTier)}`);
 }
 console.log(`ANDROID_RENDER_TIER_PASS tier=${renderTier.tier} budget=${renderTier.budget}`);
+if (!/^(balanced|performance):max-stride-[123]:deferred-\d+$/.test(renderTier.animationLod)) {
+  throw new Error(`Android runtime animation LOD telemetry is malformed: ${JSON.stringify(renderTier)}`);
+}
+if (!/^damage:\d+\/\d+\|effects:\d+\/\d+\|sparks:\d+\/\d+\|debris:\d+\/\d+$/.test(renderTier.pools)) {
+  throw new Error(`Android runtime pool telemetry is malformed: ${JSON.stringify(renderTier)}`);
+}
+if (!/^bounded-preload:\d+@[12]$/.test(renderTier.assetStreaming)) {
+  throw new Error(`Android bounded asset streaming telemetry is malformed: ${JSON.stringify(renderTier)}`);
+}
+if (!/^active:\d+\/18\+tails:\d+\/5\+virtualized:\d+\+tail-virtualized:\d+\+reason:[a-z-]+$/.test(renderTier.audioVirtualization)) {
+  throw new Error(`Android audio virtualization telemetry is malformed: ${JSON.stringify(renderTier)}`);
+}
+console.log(`ANDROID_RUNTIME_SCALABILITY_PASS animation=${renderTier.animationLod} pools=${renderTier.pools} assets=${renderTier.assetStreaming} audio=${renderTier.audioVirtualization}`);
 
 const mobileLayout = await evaluate(`(() => {
   const viewport = {
