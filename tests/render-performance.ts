@@ -19,6 +19,7 @@ assert(gameCanvasSource.includes('useState(() => createMissionState(firstMission
 assert(gameCanvasSource.includes('profileSettingsRef.current.effectIntensity') && gameCanvasSource.includes('profileSettingsRef.current.screenShake'), 'combat render loop must read live profile settings');
 
 const rendererSource = readFileSync(resolve(process.cwd(), 'src/game/threeCombatRenderer.ts'), 'utf8');
+const graphicsAssetsSource = readFileSync(resolve(process.cwd(), 'src/game/graphicsAssets.ts'), 'utf8');
 const bossSyncStart = rendererSource.indexOf('private syncBossSignature');
 const enemySyncStart = rendererSource.indexOf('private syncEnemies');
 assert(bossSyncStart > 0 && enemySyncStart > bossSyncStart, 'boss signature sync path must exist before enemy iteration');
@@ -39,6 +40,9 @@ assert(snapshot.shadows, 'desktop full quality should keep shadows');
 assert(snapshot.shadowMapSize === 1024, 'high tier should use the 1024 shadow budget');
 assert(snapshot.vfxDensity === 1, 'high tier should keep full VFX density');
 assert(snapshot.transparencyScale === 1, 'high tier should keep full transparency budget');
+assert(snapshot.reflectionScale === 1 && snapshot.secondaryEffectScale === 1, 'high tier should keep full reflection and secondary presentation');
+assert(snapshot.gameplayCueScale === 1, 'gameplay-critical cues must stay full strength at every render tier');
+assert(snapshot.textureAnisotropy === 4 && snapshot.assetCacheCompressedByteBudget === 64 * 1024 * 1024, 'high tier should keep the flagship texture/cache budget');
 assert(Math.abs(snapshot.targetFrameMs - 1000 / 60) < 0.01, 'render profiling should target a 60 fps frame budget');
 assert(snapshot.framePressure === 'healthy', 'a 16.7 ms frame should report healthy frame pressure');
 
@@ -52,6 +56,9 @@ assert(snapshot.shadowMapSize === 256, 'performance tier should cap shadow-map a
 assert(snapshot.pixelRatioScale < 0.75, 'performance tier should reduce pixel density');
 assert(snapshot.vfxDensity === 0.45, 'performance tier should reduce secondary VFX density');
 assert(snapshot.transparencyScale === 0.4, 'performance tier should reduce transparency-heavy effects');
+assert(snapshot.reflectionScale === 0.38 && snapshot.secondaryEffectScale === 0.42, 'performance tier should shed reflections and secondary effects before critical cues');
+assert(snapshot.gameplayCueScale === 1, 'performance tier must not scale gameplay-critical cue strength');
+assert(snapshot.textureAnisotropy === 1 && snapshot.assetCacheCompressedByteBudget === 24 * 1024 * 1024, 'performance tier should enforce the minimum texture/cache budget');
 assert(snapshot.framePressure === 'over' && snapshot.frameHeadroomMs < 0, 'sustained 30 ms frames must expose over-budget pressure and negative headroom');
 
 for (let index = 0; index < 700; index += 1) snapshot = desktop.sample(16.4, 1);
@@ -74,6 +81,11 @@ assert(snapshot.vfxDensity === 0.45 && snapshot.transparencyScale === 0.4, 'redu
 assert(rendererSource.includes('budget.shadowMapSize'), 'renderer must apply the tier shadow-map budget');
 assert(rendererSource.includes('budget.vfxDensity'), 'renderer must apply the tier VFX density budget');
 assert(rendererSource.includes('budget.transparencyScale'), 'renderer must apply the tier transparency budget');
+assert(rendererSource.includes('configureGraphicsAssetRuntimeBudget({'), 'renderer must apply the tier texture/material cache budget');
+assert(rendererSource.includes('budget.reflectionScale') && rendererSource.includes('budget.secondaryEffectScale'), 'renderer must apply reflection and secondary-effect priority budgets');
+assert(rendererSource.includes("dataset.effectPriority = `critical:hazards+telegraphs+class-cues@1.00"), 'runtime QA must expose preserved critical cues ahead of secondary effects');
+assert(graphicsAssetsSource.includes('enforceGraphicsAssetCacheBudget') && graphicsAssetsSource.includes('entry.activeInstances === 0'), 'graphics runtime must evict only idle cached assets under memory pressure');
+assert(graphicsAssetsSource.includes('materials.forEach(material => collectMaterialTextures(material, textures))') && graphicsAssetsSource.includes('materials.forEach(material => material.dispose())'), 'graphics cache eviction must reclaim shared material/texture resources');
 assert(rendererSource.includes('dataset.renderTier = budget.tierName'), 'runtime QA must expose the active render tier');
 assert(rendererSource.includes('dataset.renderFrameMs = budget.smoothedFrameMs.toFixed(2)'), 'runtime QA must expose smoothed frame cost');
 assert(rendererSource.includes('dataset.renderFrameBudget'), 'runtime QA must expose 60 fps frame-budget headroom/pressure');
@@ -303,4 +315,14 @@ assert(sustainedSnapshot.tier === 2, 'sustained thermal-like slow frames should 
 for (let index = 0; index < 320; index += 1) sustainedSnapshot = sustainedMobile.sample(16.4, 1);
 assert(sustainedSnapshot.tier === 1, 'recovered mobile frame pacing should climb only to the coarse-pointer Balanced baseline');
 
-console.log('RENDER_PERFORMANCE_PASS sustained=stable+degrade+recover');
+const worstCase = new AdaptiveRenderBudget(true);
+let worstSnapshot = worstCase.sample(16.7, 1);
+for (let index = 0; index < 180; index += 1) worstSnapshot = worstCase.sample(45, 1);
+assert(worstSnapshot.tier === 2, 'worst-case rendering pressure must settle on the Performance tier');
+assert(worstSnapshot.pixelRatioScale <= 0.68 && worstSnapshot.detailScale <= 0.5, 'worst-case rendering must reduce raster and authored detail cost together');
+assert(worstSnapshot.assetCacheCompressedByteBudget <= 24 * 1024 * 1024 && worstSnapshot.textureAnisotropy === 1, 'worst-case rendering must clamp texture/material residency and sampling cost');
+assert(!worstSnapshot.shadows && worstSnapshot.reflectionScale < 0.5 && worstSnapshot.secondaryEffectScale < 0.5, 'worst-case rendering must shed shadows, reflections, and secondary effects');
+assert(worstSnapshot.gameplayCueScale === 1, 'worst-case rendering must preserve gameplay-critical information');
+assert(rendererSource.includes("telegraph.visible = enemy.telegraph > 0") && rendererSource.includes("dataset.hazardReadability = 'shape-coded+floor-bound+quality-safe'"), 'critical enemy telegraphs and hazard readability must remain independent of secondary render scaling');
+
+console.log('RENDER_PERFORMANCE_PASS sustained=stable+degrade+recover worst-case=p16-b');

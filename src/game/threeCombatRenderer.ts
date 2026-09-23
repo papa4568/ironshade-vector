@@ -10,7 +10,7 @@ import { groundLootPresentation } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
 import type { CombatCameraFeedbackSample } from './combatCameraFeedback';
 import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, SPIN_HABITAT_BOSS_ASSET_FAMILY, JOVIAN_HARVESTER_BOSS_ASSET_FAMILY, ICE_MINE_BOSS_ASSET_FAMILY, SOLAR_YARD_BOSS_ASSET_FAMILY, SPIN_HABITAT_ENEMY_ASSET_FAMILIES, SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES, OPERATOR_CLASS_ASSET_FAMILIES, JOVIAN_HARVESTER_ASSET_FAMILIES, JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES, ICE_MINE_ASSET_FAMILIES, SOLAR_YARD_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, SPIN_HABITAT_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
-import { configureGraphicsAssetRenderer, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
+import { configureGraphicsAssetRenderer, configureGraphicsAssetRuntimeBudget, instantiateGraphicsAsset, selectGraphicsAssetSpec, type GraphicsAssetInstance } from './graphicsAssets';
 import { spinHabitatArchitectureState, spinHabitatRenderProfile, spinHabitatSpindownState } from './spinHabitatArchitecture';
 import { jovianHarvesterRenderProfile, jovianHarvesterStormState } from './jovianHarvesterVisualLanguage';
 import { solarYardRenderProfile } from './solarYardVisualProfile';
@@ -889,6 +889,7 @@ export class ThreeCombatRenderer {
   private height = 1;
   private pixelRatio = 1;
   private lastFrameAt = 0;
+  private graphicsBudgetSignature = '';
 
   constructor(canvas: HTMLCanvasElement, coarse: boolean) {
     this.coarse = coarse;
@@ -1014,7 +1015,7 @@ export class ThreeCombatRenderer {
     this.syncGroundLoot(state, budget);
     this.syncHazards(state, budget);
     this.syncWorldMaterialPolish(state, mission, budget);
-    this.syncEffects(state, quality * budget.detailScale, budget.vfxDensity, budget.transparencyScale);
+    this.syncEffects(state, quality * budget.detailScale, budget.vfxDensity, budget.transparencyScale, budget.secondaryEffectScale);
     this.syncBreaches(state);
     syncHardSciFiBreaches(this.dynamicRoot, state, WORLD_SCALE, quality * budget.vfxDensity);
     this.syncDebris(state, quality * budget.detailScale * budget.vfxDensity);
@@ -3108,6 +3109,14 @@ export class ThreeCombatRenderer {
       this.camera.aspect = this.width / this.height;
       this.camera.updateProjectionMatrix();
     }
+    const graphicsBudgetSignature = `${budget.assetCacheCompressedByteBudget}:${budget.textureAnisotropy}`;
+    if (graphicsBudgetSignature !== this.graphicsBudgetSignature) {
+      this.graphicsBudgetSignature = graphicsBudgetSignature;
+      configureGraphicsAssetRuntimeBudget({
+        maxCachedCompressedBytes: budget.assetCacheCompressedByteBudget,
+        maxTextureAnisotropy: budget.textureAnisotropy,
+      });
+    }
     this.keyLight.castShadow = budget.shadows;
     const shadowSize = budget.shadowMapSize;
     if (this.keyLight.shadow.mapSize.x !== shadowSize || this.keyLight.shadow.mapSize.y !== shadowSize) {
@@ -3123,8 +3132,12 @@ export class ThreeCombatRenderer {
       `shadow:${budget.shadows ? budget.shadowMapSize : 0}`,
       `vfx:${budget.vfxDensity.toFixed(2)}`,
       `transparency:${budget.transparencyScale.toFixed(2)}`,
+      `reflection:${budget.reflectionScale.toFixed(2)}`,
+      `secondary:${budget.secondaryEffectScale.toFixed(2)}`,
       `detail:${budget.detailScale.toFixed(2)}`,
     ].join('+');
+    this.renderer.domElement.dataset.renderMemoryBudget = `asset-cache:${Math.round(budget.assetCacheCompressedByteBudget / (1024 * 1024))}mb+anisotropy:${budget.textureAnisotropy}x+materials:shared-cache`;
+    this.renderer.domElement.dataset.renderPriority = `critical-cues:${budget.gameplayCueScale.toFixed(2)}+secondary:${budget.secondaryEffectScale.toFixed(2)}+reflection:${budget.reflectionScale.toFixed(2)}`;
   }
 
   private addMegastructureInstanceBatch(
@@ -6607,13 +6620,15 @@ export class ThreeCombatRenderer {
     const worldQuality = worldMaterialQualityProfile(budget.tierName);
     const biomeState = biomeWorldState(mission.location, state);
     if (this.worldFloorMaterial) {
-      this.worldFloorMaterial.metalness = 0.64 + 0.08 * worldQuality.materialDepthScale;
-      this.worldFloorMaterial.roughness = 0.5 - biomeState.severity * 0.045 * worldQuality.materialDepthScale;
+      const fullMetalness = 0.64 + 0.08 * worldQuality.materialDepthScale;
+      const fullRoughness = 0.5 - biomeState.severity * 0.045 * worldQuality.materialDepthScale;
+      this.worldFloorMaterial.metalness = THREE.MathUtils.lerp(0.44, fullMetalness, budget.reflectionScale);
+      this.worldFloorMaterial.roughness = THREE.MathUtils.clamp(fullRoughness + (1 - budget.reflectionScale) * 0.16, 0, 1);
       this.worldFloorMaterial.emissive.setHex(biomeState.color);
       this.worldFloorMaterial.emissiveIntensity = biomeState.severity * 0.04 * worldQuality.materialDepthScale;
     }
     this.renderer.domElement.dataset.worldReadability = 'interactables:shape+state|hazards:shape+motion|loot:shape+rarity';
-    this.renderer.domElement.dataset.worldMaterialDepth = `${budget.tierName}:material-response+contact-shadow+state-emissive`;
+    this.renderer.domElement.dataset.worldMaterialDepth = `${budget.tierName}:material-response+contact-shadow+state-emissive+reflection-${budget.reflectionScale.toFixed(2)}`;
     this.renderer.domElement.dataset.biomeState = biomeState.id;
     this.renderer.domElement.dataset.biomeStateSeverity = biomeState.severity.toFixed(2);
     this.renderer.domElement.dataset.biomeStateAnimation = biomeState.motionHz > 0
@@ -6633,13 +6648,13 @@ export class ThreeCombatRenderer {
     return this.impactSparkPool[index];
   }
 
-  private syncEffects(state: SimState, detailLevel: number, vfxDensity: number, transparencyScale: number) {
+  private syncEffects(state: SimState, detailLevel: number, vfxDensity: number, transparencyScale: number, secondaryEffectScale: number) {
     let count = 0;
     let sparkCount = 0;
     let impactOrdinal = 0;
     let lastImpactLanguage = '';
     let lastCapstoneFx = '';
-    const reducedEffects = detailLevel < 0.58 || vfxDensity < 0.55;
+    const reducedEffects = detailLevel < 0.58 || vfxDensity < 0.55 || secondaryEffectScale < 0.6;
     for (const effect of state.effects) {
       if (!effect.active) continue;
       let color = effect.kind === 'vanguard' ? 0xbd8a64 : effect.kind === 'vector' ? 0x74a6c7 : effect.kind === 'systems' ? 0x9b87bd : effect.kind === 'arc' ? 0x84caeb : effect.kind === 'breach' ? 0xf07d4d : effect.kind === 'mark' ? 0xd0e07a : effect.kind === 'pulse' ? 0x9debd8 : 0xc2ddd3;
@@ -6730,7 +6745,7 @@ export class ThreeCombatRenderer {
       }
 
       if (effect.kind === 'impact') impactOrdinal += 1;
-      const sparkStride = vfxDensity >= 0.95 ? 1 : vfxDensity >= 0.65 ? 2 : 3;
+      const sparkStride = secondaryEffectScale >= 0.95 ? 1 : secondaryEffectScale >= 0.65 ? 2 : 4;
       if (effect.kind === 'impact' && !reducedEffects && impactOrdinal % sparkStride === 0) {
         const spark = this.ensureImpactSpark(sparkCount++, color);
         spark.visible = true;
@@ -6746,6 +6761,7 @@ export class ThreeCombatRenderer {
     if (lastImpactLanguage) this.renderer.domElement.dataset.impactFx = lastImpactLanguage;
     this.renderer.domElement.dataset.capstoneFx = lastCapstoneFx || 'idle';
     this.renderer.domElement.dataset.effectsMode = reducedEffects ? 'reduced' : 'full';
+    this.renderer.domElement.dataset.effectPriority = `critical:hazards+telegraphs+class-cues@1.00|secondary:sparks+debris+atmosphere@${secondaryEffectScale.toFixed(2)}`;
     this.renderer.domElement.dataset.combatVfx = 'shape-coded+surface-impacts+ability-pulses+class-capstones';
   }
 

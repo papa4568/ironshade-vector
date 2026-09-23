@@ -13,6 +13,11 @@ export type RenderBudgetSnapshot = {
   shadowMapSize: 1024 | 512 | 256;
   vfxDensity: number;
   transparencyScale: number;
+  reflectionScale: number;
+  secondaryEffectScale: number;
+  gameplayCueScale: 1;
+  textureAnisotropy: 1 | 2 | 4;
+  assetCacheCompressedByteBudget: number;
 };
 
 export const TARGET_FRAME_MS = 1000 / 60;
@@ -22,6 +27,14 @@ const DETAIL_SCALE: Record<AdaptiveRenderTier, number> = { 0: 1, 1: 0.78, 2: 0.5
 const SHADOW_MAP_SIZE: Record<AdaptiveRenderTier, 1024 | 512 | 256> = { 0: 1024, 1: 512, 2: 256 };
 const VFX_DENSITY: Record<AdaptiveRenderTier, number> = { 0: 1, 1: 0.72, 2: 0.45 };
 const TRANSPARENCY_SCALE: Record<AdaptiveRenderTier, number> = { 0: 1, 1: 0.68, 2: 0.4 };
+const REFLECTION_SCALE: Record<AdaptiveRenderTier, number> = { 0: 1, 1: 0.7, 2: 0.38 };
+const SECONDARY_EFFECT_SCALE: Record<AdaptiveRenderTier, number> = { 0: 1, 1: 0.68, 2: 0.42 };
+const TEXTURE_ANISOTROPY: Record<AdaptiveRenderTier, 1 | 2 | 4> = { 0: 4, 1: 2, 2: 1 };
+const ASSET_CACHE_COMPRESSED_BYTE_BUDGET: Record<AdaptiveRenderTier, number> = {
+  0: 64 * 1024 * 1024,
+  1: 40 * 1024 * 1024,
+  2: 24 * 1024 * 1024,
+};
 
 function qualityFloorTier(requestedQuality: number): AdaptiveRenderTier {
   if (requestedQuality < 0.55) return 2;
@@ -81,6 +94,11 @@ export class AdaptiveRenderBudget {
       shadowMapSize: SHADOW_MAP_SIZE[tier],
       vfxDensity: VFX_DENSITY[tier],
       transparencyScale: TRANSPARENCY_SCALE[tier],
+      reflectionScale: REFLECTION_SCALE[tier],
+      secondaryEffectScale: SECONDARY_EFFECT_SCALE[tier],
+      gameplayCueScale: 1,
+      textureAnisotropy: TEXTURE_ANISOTROPY[tier],
+      assetCacheCompressedByteBudget: ASSET_CACHE_COMPRESSED_BYTE_BUDGET[tier],
     };
   }
 }

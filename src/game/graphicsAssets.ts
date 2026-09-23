@@ -26,10 +26,17 @@ export type GraphicsAssetInstance = {
 };
 
 type GraphicsAssetCacheEntry = {
+  spec: GraphicsAssetSpec;
   promise: Promise<GLTF>;
   activeInstances: number;
   pendingDispose: boolean;
   disposePromise: Promise<void> | null;
+  lastUsedOrdinal: number;
+};
+
+export type GraphicsAssetRuntimeBudget = {
+  maxCachedCompressedBytes: number;
+  maxTextureAnisotropy: 1 | 2 | 4;
 };
 
 export const GRAPHICS_ASSET_STANDARDS = {
@@ -65,6 +72,12 @@ export const GRAPHICS_ASSET_STANDARDS = {
 } as const;
 
 const gltfCache = new Map<string, GraphicsAssetCacheEntry>();
+const DEFAULT_GRAPHICS_ASSET_RUNTIME_BUDGET: GraphicsAssetRuntimeBudget = {
+  maxCachedCompressedBytes: 64 * 1024 * 1024,
+  maxTextureAnisotropy: 4,
+};
+let graphicsAssetRuntimeBudget = { ...DEFAULT_GRAPHICS_ASSET_RUNTIME_BUDGET };
+let graphicsAssetAccessOrdinal = 0;
 let graphicsRenderer: WebGLRenderer | null = null;
 let rendererGeneration = 0;
 let sharedKtx2Loader: KTX2Loader | null = null;
@@ -174,20 +187,29 @@ function assertValidSpec(spec: GraphicsAssetSpec) {
 function getOrCreateCacheEntry(spec: GraphicsAssetSpec) {
   assertValidSpec(spec);
   const cached = gltfCache.get(spec.url);
-  if (cached && !cached.pendingDispose) return cached;
+  if (cached && !cached.pendingDispose) {
+    cached.lastUsedOrdinal = ++graphicsAssetAccessOrdinal;
+    return cached;
+  }
 
   let entry: GraphicsAssetCacheEntry;
   const promise = createConfiguredGltfLoader()
     .then(loader => loader.loadAsync(spec.url))
+    .then(gltf => {
+      applyTextureRuntimeBudget(gltf);
+      return gltf;
+    })
     .catch(error => {
       if (gltfCache.get(spec.url) === entry) gltfCache.delete(spec.url);
       throw error;
     });
   entry = {
+    spec,
     promise,
     activeInstances: 0,
     pendingDispose: false,
     disposePromise: null,
+    lastUsedOrdinal: ++graphicsAssetAccessOrdinal,
   };
   gltfCache.set(spec.url, entry);
   return entry;
@@ -199,6 +221,27 @@ function collectMaterialTextures(material: Material, textures: Set<Texture>) {
     const texture = value as Texture;
     if (texture.isTexture) textures.add(texture);
   }
+}
+
+function applyTextureRuntimeBudget(gltf: GLTF) {
+  const materials = new Set<Material>();
+  const textures = new Set<Texture>();
+  const roots: Object3D[] = gltf.scenes.length > 0 ? gltf.scenes : [gltf.scene];
+  for (const root of roots) {
+    root.traverse(child => {
+      const material = (child as Object3D & { material?: Material | Material[] }).material;
+      if (Array.isArray(material)) material.forEach(item => materials.add(item));
+      else if (material) materials.add(material);
+    });
+  }
+  materials.forEach(material => collectMaterialTextures(material, textures));
+  const rendererLimit = graphicsRenderer?.capabilities.getMaxAnisotropy() ?? graphicsAssetRuntimeBudget.maxTextureAnisotropy;
+  const anisotropy = Math.max(1, Math.min(graphicsAssetRuntimeBudget.maxTextureAnisotropy, rendererLimit));
+  textures.forEach(texture => {
+    if (texture.anisotropy === anisotropy) return;
+    texture.anisotropy = anisotropy;
+    texture.needsUpdate = true;
+  });
 }
 
 function disposeLoadedGltf(gltf: GLTF) {
@@ -249,9 +292,44 @@ function finalizeCacheEntry(entry: GraphicsAssetCacheEntry) {
   return entry.disposePromise;
 }
 
+async function enforceGraphicsAssetCacheBudget() {
+  let estimatedCompressedBytes = [...gltfCache.values()]
+    .reduce((sum, entry) => sum + entry.spec.compressedByteBudget, 0);
+  if (estimatedCompressedBytes <= graphicsAssetRuntimeBudget.maxCachedCompressedBytes) return;
+
+  const idleEntries = [...gltfCache.entries()]
+    .filter(([, entry]) => entry.activeInstances === 0 && !entry.pendingDispose)
+    .sort((a, b) => a[1].lastUsedOrdinal - b[1].lastUsedOrdinal);
+
+  for (const [url, entry] of idleEntries) {
+    if (estimatedCompressedBytes <= graphicsAssetRuntimeBudget.maxCachedCompressedBytes) break;
+    if (gltfCache.get(url) !== entry) continue;
+    gltfCache.delete(url);
+    entry.pendingDispose = true;
+    estimatedCompressedBytes -= entry.spec.compressedByteBudget;
+    await finalizeCacheEntry(entry);
+  }
+}
+
+export function configureGraphicsAssetRuntimeBudget(budget: GraphicsAssetRuntimeBudget) {
+  const maxCachedCompressedBytes = Math.max(8 * 1024 * 1024, Math.floor(budget.maxCachedCompressedBytes));
+  const maxTextureAnisotropy: 1 | 2 | 4 = budget.maxTextureAnisotropy >= 4 ? 4 : budget.maxTextureAnisotropy >= 2 ? 2 : 1;
+  if (
+    graphicsAssetRuntimeBudget.maxCachedCompressedBytes === maxCachedCompressedBytes
+    && graphicsAssetRuntimeBudget.maxTextureAnisotropy === maxTextureAnisotropy
+  ) return;
+
+  graphicsAssetRuntimeBudget = { maxCachedCompressedBytes, maxTextureAnisotropy };
+  for (const entry of gltfCache.values()) {
+    void entry.promise.then(applyTextureRuntimeBudget).catch(() => undefined);
+  }
+  void enforceGraphicsAssetCacheBudget();
+}
+
 function releaseCacheEntry(entry: GraphicsAssetCacheEntry) {
   entry.activeInstances = Math.max(0, entry.activeInstances - 1);
   if (entry.pendingDispose && entry.activeInstances === 0) void finalizeCacheEntry(entry);
+  else if (entry.activeInstances === 0) void enforceGraphicsAssetCacheBudget();
 }
 
 export async function loadGraphicsAsset(spec: GraphicsAssetSpec): Promise<GLTF> {
