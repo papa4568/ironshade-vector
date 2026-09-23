@@ -685,6 +685,22 @@ try {
     const labels = [...document.querySelectorAll('button')].map(button => (button.textContent || '').trim());
     return document.querySelector('.build-header h1')?.textContent?.trim() === 'Build' && labels.includes('Skills');
   })()`, 'Build surface for skill hierarchy');
+  await waitFor(`Boolean(document.querySelector('.build-bay.iv-view') && document.querySelector('.build-header.iv-panel.iv-panel--glass') && document.querySelector('.build-tabs button[aria-current="page"]'))`, 'P15-B shared Build shell');
+  await keyboardActivateButton('Crafting');
+  await waitFor(`Boolean(document.querySelector('.reconstruction-panel .reconstruction-top.iv-panel.iv-panel--glass') && document.querySelector('.reconstruct-storage.iv-panel') && document.querySelector('.build-tabs button[aria-current="page"]')?.textContent?.includes('Crafting'))`, 'P15-B Crafting surface');
+  await keyboardActivateButton('Progression');
+  await waitFor(`Boolean(document.querySelector('.network-panel .section-copy.iv-panel.iv-panel--glass') && document.querySelector('.network-planner.iv-panel') && document.querySelector('.operator-class-panel.iv-panel') && document.querySelector('.specialization-panel.iv-panel') && document.querySelector('.build-tabs button[aria-current="page"]')?.textContent?.includes('Progression'))`, 'P15-B Progression surface');
+  const p15BuildLayout = await evaluate(`(() => {
+    const buttons = [...document.querySelectorAll('.build-tabs button')];
+    return {
+      horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
+      tabCount: buttons.length,
+      minTabHeight: Math.min(...buttons.map(button => button.getBoundingClientRect().height)),
+    };
+  })()`);
+  if (p15BuildLayout.horizontalOverflow > 2 || p15BuildLayout.tabCount !== 5 || (viewportMode === 'mobile-landscape' && p15BuildLayout.minTabHeight < 40)) {
+    throw new Error(`P15-B Build/Crafting/Progression layout failed: ${JSON.stringify(p15BuildLayout)}`);
+  }
   await keyboardActivateButton('Skills');
   await waitFor(`(() => {
     const text = document.body?.innerText ?? '';
