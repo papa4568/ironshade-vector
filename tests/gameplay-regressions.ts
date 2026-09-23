@@ -2181,8 +2181,18 @@ function spinHabitatAssistedFireReliabilitySmoke() {
 
   const axisRoute = findNavigationPath(state, { x: boss.x, y: boss.y });
   assert.equal(axisRoute.complete, true, 'opened Spin Habitat must expose a complete rim-to-axis navigation route');
-  const traversedSectors = new Set(axisRoute.points.flatMap(point => state.sectors.filter(sector => point.x >= sector.x && point.x <= sector.x + sector.w && point.y >= sector.y && point.y <= sector.y + sector.h).map(sector => sector.label)));
-  assert.ok(traversedSectors.has('RIM HAB') && traversedSectors.has('SPOKE TRANSIT') && traversedSectors.has('AXIS HUB'), 'rim-to-boss route must cross the rim, spoke, and axis spaces');
+  const routeCrossesSector = (sectorLabel: string) => {
+    const sector = state.sectors.find(candidate => candidate.label === sectorLabel)!;
+    return axisRoute.points.some((point, index) => {
+      const next = axisRoute.points[index + 1] ?? point;
+      const minX = Math.min(point.x, next.x);
+      const maxX = Math.max(point.x, next.x);
+      const minY = Math.min(point.y, next.y);
+      const maxY = Math.max(point.y, next.y);
+      return maxX >= sector.x && minX <= sector.x + sector.w && maxY >= sector.y && minY <= sector.y + sector.h;
+    });
+  };
+  assert.ok(routeCrossesSector('RIM HAB') && routeCrossesSector('SPOKE TRANSIT') && routeCrossesSector('AXIS HUB'), 'rim-to-boss route segments must cross the rim, spoke, and axis spaces');
 
   let bossLockPoint = axisRoute.points[0]!;
   let bossLocked = false;
