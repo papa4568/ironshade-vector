@@ -122,7 +122,7 @@ try {
       throw new Error(`Authored operator entered procedural fallback: ${JSON.stringify(lastState)}`);
     }
     if (lastState?.visual?.startsWith('authored-')) {
-      const mobileViewport = lastState.width <= 900 && lastState.height <= 500;
+      const mobileViewport = process.env.BROWSER_E2E_VIEWPORT === 'mobile-landscape';
       const expectedLod = mobileViewport ? 2 : 1;
       const validAssets = new Set([
         `operator-field-suit-lod${expectedLod}`,
