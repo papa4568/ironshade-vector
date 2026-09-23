@@ -21,6 +21,7 @@ import { resolvePlayerHandlingAnimation } from './playerHandlingAnimation';
 import { resolveEnemyDamageAnimation, resolvePlayerSkillAnimation } from './skillDamageAnimation';
 import { resolveEnemyBossAnimation, type EnemyBossAnimationSignals } from './enemyBossAnimation';
 import { resolveEnemyPresentation, type EnemyPresentationContract } from './enemyPresentation';
+import { resolveEnemyLifecyclePresentation, type EnemyLifecycleSignals } from './enemyLifecyclePresentation';
 import { enhancedProtocolVisualSpecFor, protocolVisualIds, protocolVisualSpecFor } from './protocolVisualLanguage';
 import { dominantEnemyStatusVisual, enemyStatusVisualIds, enemyStatusVisualSpecFor, playerStatusVisualSpecFor, resolvePlayerStatusVisuals } from './statusVisualLanguage';
 
@@ -601,6 +602,10 @@ type EnemyVisual = {
   attackEventAt: number;
   lastBossPhase: Enemy['bossPhase'];
   bossPhaseEventAt: number;
+  lastActive: boolean;
+  activationEventAt: number;
+  lastDead: boolean;
+  deathEventAt: number;
 };
 
 type AuthoredWeaponVisual = {
@@ -4983,6 +4988,10 @@ export class ThreeCombatRenderer {
       attackEventAt: -1,
       lastBossPhase: enemy.bossPhase,
       bossPhaseEventAt: -1,
+      lastActive: false,
+      activationEventAt: -1,
+      lastDead: false,
+      deathEventAt: -1,
     };
     this.enemyVisuals.set(enemy.id, visual);
     void this.loadAuthoredEnemy(visual, enemy, mission);
@@ -5142,9 +5151,15 @@ export class ThreeCombatRenderer {
     }
   }
 
-  private syncAuthoredEnemyAnimation(visual: EnemyVisual, enemy: Enemy, state: SimState, motion: EnemyBossAnimationSignals) {
+  private syncAuthoredEnemyAnimation(
+    visual: EnemyVisual,
+    enemy: Enemy,
+    state: SimState,
+    motion: EnemyBossAnimationSignals,
+    presentation: EnemyPresentationContract,
+    lifecycle: EnemyLifecycleSignals,
+  ) {
     const rig = visual.rig;
-    const presentation = resolveEnemyPresentation(enemy);
     if (!rig) return;
 
     for (const node of [rig.hip, rig.torso, rig.helmet, rig.leftArm, rig.rightArm, rig.leftLeg, rig.rightLeg, rig.backpack, rig.weaponSocket]) {
@@ -5210,6 +5225,29 @@ export class ThreeCombatRenderer {
       rig.weaponSocket.position.y -= 0.08 * transition;
       rig.backpack.rotation.z += 0.18 * transition;
       rig.helmet.rotation.x += 0.08 * transition;
+    }
+
+    // Lifecycle presentation is presentation-only and yields to attack/status animation.
+    const lifecyclePoseSuppression = THREE.MathUtils.clamp(1 - Math.max(
+      motion.tell,
+      motion.commit,
+      motion.status.disrupted,
+      motion.status.stagger,
+      motion.status.armorBreach,
+    ) * 0.9, 0.08, 1);
+    if (lifecycle.spawn > 0) {
+      rig.hip.position.y -= 0.16 * lifecycle.spawn;
+      rig.torso.position.y -= 0.08 * lifecycle.spawn;
+      rig.leftArm.rotation.z += 0.12 * lifecycle.spawn;
+      rig.rightArm.rotation.z -= 0.12 * lifecycle.spawn;
+    }
+    if (lifecycle.dangerousReadiness > 0) {
+      const ready = lifecycle.dangerousReadiness * lifecyclePoseSuppression;
+      rig.torso.rotation.x -= 0.075 * ready;
+      rig.leftArm.rotation.z -= 0.11 * ready;
+      rig.rightArm.rotation.z += 0.11 * ready;
+      rig.weaponSocket.position.x += 0.045 * ready;
+      rig.backpack.rotation.z += Math.sin(state.time * 6.2 + enemy.id * 0.4) * 0.025 * ready;
     }
 
     // Modifier and status layers stay additive so they never replace attack or damage tells.
@@ -5698,6 +5736,107 @@ export class ThreeCombatRenderer {
     }
   }
 
+  private syncEnemyLifecyclePresentation(
+    visual: EnemyVisual,
+    enemy: Enemy,
+    state: SimState,
+    lifecycle: EnemyLifecycleSignals,
+    reducedEffects: boolean,
+  ) {
+    let root = visual.root.getObjectByName('enemy-lifecycle-presentation') as THREE.Group | undefined;
+    if (!root) {
+      root = new THREE.Group();
+      root.name = 'enemy-lifecycle-presentation';
+
+      const core = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.28, 0.36, 0.22, 8),
+        new THREE.MeshStandardMaterial({ color: 0x61736f, emissive: 0x000000, metalness: 0.72, roughness: 0.38, transparent: true, opacity: 0.88 }),
+      );
+      core.name = 'enemy-lifecycle-core';
+      core.position.y = 0.58;
+      root.add(core);
+
+      const makeRing = (name: string, radius: number, color: number) => {
+        const ring = new THREE.Mesh(
+          new THREE.TorusGeometry(radius, 0.035, 8, 40),
+          new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }),
+        );
+        ring.name = name;
+        ring.rotation.x = Math.PI / 2;
+        ring.visible = false;
+        root!.add(ring);
+        return ring;
+      };
+      const spawnRing = makeRing('enemy-activation-ring', enemy.role === 'boss' ? 1.55 : 1.05, 0x7ee0d5);
+      spawnRing.position.y = 0.08;
+      const phaseRing = makeRing('enemy-phase-transition-ring', enemy.role === 'boss' ? 1.9 : 1.25, 0xffb15b);
+      phaseRing.position.y = 0.14;
+      const dangerRing = makeRing('enemy-danger-readiness-crown', enemy.role === 'boss' ? 1.05 : 0.78, 0xff7452);
+      dangerRing.position.y = enemy.role === 'boss' ? 3.05 : enemy.role === 'elite' ? 2.5 : 2.15;
+      const disabledRing = makeRing('enemy-disabled-residual-ring', enemy.role === 'boss' ? 1.48 : 1.0, 0xc46b54);
+      disabledRing.position.y = 0.06;
+    }
+
+    const core = root.getObjectByName('enemy-lifecycle-core') as THREE.Mesh<THREE.CylinderGeometry, THREE.MeshStandardMaterial>;
+    const spawnRing = root.getObjectByName('enemy-activation-ring') as THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>;
+    const phaseRing = root.getObjectByName('enemy-phase-transition-ring') as THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>;
+    const dangerRing = root.getObjectByName('enemy-danger-readiness-crown') as THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>;
+    const disabledRing = root.getObjectByName('enemy-disabled-residual-ring') as THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>;
+    const hasLifecycleRead = lifecycle.spawn > 0 || lifecycle.phaseTransition > 0 || lifecycle.dangerousReadiness > 0 || lifecycle.persistentDisabled > 0;
+    root.visible = enemy.active && hasLifecycleRead;
+    if (!root.visible) return;
+
+    core.visible = hasLifecycleRead;
+    core.material.opacity = enemy.dead ? 0.58 : 0.86;
+    const materialColor = enemy.dead
+      ? 0x5d4944
+      : lifecycle.dangerousReadiness > 0
+        ? 0x8f493c
+        : lifecycle.phaseTransition > 0
+          ? 0x8a6336
+          : 0x52766f;
+    const materialEmissive = enemy.dead
+      ? 0x321510
+      : lifecycle.dangerousReadiness > 0
+        ? 0x8c271b
+        : lifecycle.phaseTransition > 0
+          ? 0x7a461f
+          : 0x1e665e;
+    core.material.color.setHex(materialColor);
+    core.material.emissive.setHex(materialEmissive);
+    core.material.emissiveIntensity = enemy.dead ? 0.12 : 0.22 + Math.max(lifecycle.spawn, lifecycle.phaseTransition, lifecycle.dangerousReadiness) * 0.38;
+    core.scale.setScalar(enemy.role === 'boss' ? 1.28 : 1);
+
+    spawnRing.visible = lifecycle.spawn > 0;
+    if (spawnRing.visible) {
+      const expansion = 0.82 + (1 - lifecycle.spawn) * 0.48;
+      spawnRing.scale.setScalar(expansion);
+      spawnRing.material.opacity = 0.22 + lifecycle.spawn * 0.66;
+      spawnRing.rotation.z = reducedEffects ? 0 : state.time * 1.3;
+    }
+
+    phaseRing.visible = lifecycle.phaseTransition > 0;
+    if (phaseRing.visible) {
+      phaseRing.scale.setScalar(0.88 + lifecycle.phaseTransition * 0.34);
+      phaseRing.material.opacity = 0.3 + lifecycle.phaseTransition * 0.58;
+      phaseRing.rotation.z = reducedEffects ? 0 : -state.time * 1.6;
+    }
+
+    dangerRing.visible = lifecycle.dangerousReadiness > 0 && !enemy.dead;
+    if (dangerRing.visible) {
+      dangerRing.scale.setScalar(0.94 + lifecycle.dangerousReadiness * 0.16);
+      dangerRing.material.opacity = 0.38 + lifecycle.dangerousReadiness * 0.5;
+      dangerRing.rotation.z = reducedEffects ? 0 : state.time * (1.7 + lifecycle.dangerousReadiness);
+    }
+
+    disabledRing.visible = lifecycle.persistentDisabled > 0;
+    if (disabledRing.visible) {
+      disabledRing.scale.setScalar(0.92 + lifecycle.disable * 0.18);
+      disabledRing.material.opacity = 0.34 + lifecycle.disable * 0.28;
+      disabledRing.rotation.z = reducedEffects ? 0 : state.time * 0.18;
+    }
+  }
+
   private syncBossSignature(visual: EnemyVisual, enemy: Enemy, state: SimState) {
     const signature = visual.bossSignature;
     if (!signature) return;
@@ -5767,9 +5906,14 @@ export class ThreeCombatRenderer {
     let statusTelemetry: { priority: number; enemy: Enemy; presentation: EnemyPresentationContract } | null = null;
     let protocolTelemetry: { priority: number; enemy: Enemy; presentation: EnemyPresentationContract } | null = null;
     let mutationTelemetry: { priority: number; enemy: Enemy; presentation: EnemyPresentationContract } | null = null;
+    let lifecycleTelemetry: { priority: number; enemy: Enemy; lifecycle: EnemyLifecycleSignals; presentation: EnemyPresentationContract } | null = null;
     for (const enemy of state.enemies) {
       seen.add(enemy.id);
       const visual = this.enemyVisuals.get(enemy.id) ?? this.createEnemyVisual(enemy, mission);
+      if (enemy.active && !visual.lastActive) visual.activationEventAt = state.time;
+      visual.lastActive = enemy.active;
+      if (enemy.dead && !visual.lastDead) visual.deathEventAt = state.time;
+      visual.lastDead = enemy.dead;
       visual.root.visible = enemy.active;
       visual.barRoot.visible = enemy.active && !enemy.dead;
       if (!enemy.active) continue;
@@ -5786,7 +5930,12 @@ export class ThreeCombatRenderer {
         visual.lastBossPhase = enemy.bossPhase;
         visual.bossPhaseEventAt = state.time;
       }
-      const presentation = resolveEnemyPresentation(enemy);
+      const lifecycle = resolveEnemyLifecyclePresentation(enemy, {
+        sinceActivated: visual.activationEventAt >= 0 ? state.time - visual.activationEventAt : -1,
+        sincePhaseChange: visual.bossPhaseEventAt >= 0 ? state.time - visual.bossPhaseEventAt : -1,
+        sinceDeath: visual.deathEventAt >= 0 ? state.time - visual.deathEventAt : -1,
+      });
+      const presentation = resolveEnemyPresentation(enemy, lifecycle);
       const motion = resolveEnemyBossAnimation({
         role: enemy.role,
         id: enemy.id,
@@ -5818,6 +5967,10 @@ export class ThreeCombatRenderer {
       if (hasPresentedMutation && (!mutationTelemetry || animationPriority > mutationTelemetry.priority)) {
         mutationTelemetry = { priority: animationPriority, enemy, presentation };
       }
+      const hasLifecyclePresentation = lifecycle.spawn > 0 || lifecycle.phaseTransition > 0 || lifecycle.dangerousReadiness > 0 || lifecycle.persistentDisabled > 0;
+      if (hasLifecyclePresentation && (!lifecycleTelemetry || animationPriority > lifecycleTelemetry.priority)) {
+        lifecycleTelemetry = { priority: animationPriority, enemy, lifecycle, presentation };
+      }
       const damageReaction = resolveEnemyDamageAnimation({
         hit: state.time < visual.impactUntil ? THREE.MathUtils.clamp((visual.impactUntil - state.time) / 0.18, 0, 1) : 0,
         staggerTimer: enemy.statuses.stagger,
@@ -5828,12 +5981,18 @@ export class ThreeCombatRenderer {
       syncEnemyVisual(visual.root, enemy, state);
       if (!visual.authoredRoot && !enemy.dead) {
         const side = enemy.id % 2 === 0 ? 1 : -1;
+        visual.root.position.y -= lifecycle.spawn * 0.16;
         visual.body.rotation.set(0, 0, motion.profile.torsoLean + motion.profile.tellLean * motion.tell);
         visual.head.rotation.set(0, 0, -motion.profile.tellLean * motion.tell * 0.2);
         visual.body.rotation.x -= motion.phaseTransition * 0.12;
         visual.body.rotation.z += side * (damageReaction.torsoSnap * 0.12 + damageReaction.armorBreak * 0.08);
         visual.head.rotation.z -= side * (damageReaction.hit * 0.1 + damageReaction.stagger * 0.08);
-        visual.body.scale.set(1, 1 - damageReaction.stagger * 0.06 + motion.phaseTransition * 0.05, 1);
+        visual.body.scale.set(1, 1 - damageReaction.stagger * 0.06 + motion.phaseTransition * 0.05 - lifecycle.spawn * 0.08, 1);
+        if (lifecycle.dangerousReadiness > 0) {
+          const readySuppression = THREE.MathUtils.clamp(1 - Math.max(motion.tell, motion.commit, motion.status.disrupted, motion.status.stagger) * 0.9, 0.08, 1);
+          visual.body.rotation.x -= 0.06 * lifecycle.dangerousReadiness * readySuppression;
+          visual.head.rotation.x += 0.035 * lifecycle.dangerousReadiness * readySuppression;
+        }
         const mutationPoseSuppression = THREE.MathUtils.clamp(1 - Math.max(
           motion.tell,
           motion.commit,
@@ -5912,15 +6071,17 @@ export class ThreeCombatRenderer {
       visual.protocolRing.material.opacity = enemy.protocolPulse > 0 ? Math.min(0.86, 0.4 + enemy.protocolPulse * 0.42) : 0.38;
       visual.protocolRing.rotation.z = reducedTargetMotion ? 0 : state.time * (enemy.combatClass === 'elite' ? 1.2 : 0.72);
       if (enemy.role === 'boss') this.syncBossSignature(visual, enemy, state);
+      this.syncEnemyLifecyclePresentation(visual, enemy, state, lifecycle, reducedTargetMotion);
       this.syncEnemyProtocolPresentation(visual, enemy, state, presentation, reducedTargetMotion);
       this.syncEnemyMutationPresentation(visual, enemy, state, presentation, reducedTargetMotion);
       this.syncEnemyStatusPresentation(visual, enemy, state, presentation, reducedTargetMotion);
       const dominantStatus = dominantEnemyStatusVisual(enemy);
       const dominantStatusSpec = dominantStatus ? enemyStatusVisualSpecFor(dominantStatus) : null;
-      visual.body.material.emissive.setHex(enemy.telegraph > 0 ? 0x7a3327 : dominantStatusSpec?.accent ?? 0x000000);
-      visual.body.material.emissiveIntensity = enemy.telegraph > 0 ? 0.34 : dominantStatus ? 0.2 + Math.min(0.18, enemy.statuses[dominantStatus] * 0.12) : 0;
+      const lifecycleEmissive = lifecycle.dangerousReadiness > 0 ? 0x8c271b : lifecycle.phaseTransition > 0 ? 0x7a461f : lifecycle.spawn > 0 ? 0x1e665e : enemy.dead ? 0x321510 : 0x000000;
+      visual.body.material.emissive.setHex(enemy.telegraph > 0 ? 0x7a3327 : dominantStatusSpec?.accent ?? lifecycleEmissive);
+      visual.body.material.emissiveIntensity = enemy.telegraph > 0 ? 0.34 : dominantStatus ? 0.2 + Math.min(0.18, enemy.statuses[dominantStatus] * 0.12) : lifecycleEmissive ? 0.18 + Math.max(lifecycle.spawn, lifecycle.phaseTransition, lifecycle.dangerousReadiness) * 0.2 : 0;
       if (visual.authoredRoot) {
-        this.syncAuthoredEnemyAnimation(visual, enemy, state, motion);
+        this.syncAuthoredEnemyAnimation(visual, enemy, state, motion, presentation, lifecycle);
         const sableVoss = visual.authoredAssetId === 'spin-habitat-sable-voss';
         const stormlineIlex = visual.authoredAssetId === 'jovian-harvester-stormline-foreman';
         const rheaKade = visual.authoredAssetId === 'ice-mine-rhea-kade';
@@ -5928,8 +6089,9 @@ export class ThreeCombatRenderer {
         const bossPhaseEmissive = enemy.role === 'boss' && enemy.bossPhase === 2
           ? sableVoss ? 0x76521f : stormlineIlex ? 0x8a3328 : rheaKade ? 0x7a5428 : helios9 ? 0x8f3222 : 0x7a2f24
           : 0x000000;
-        const statusEmissive = enemy.telegraph > 0 ? 0x7a3327 : dominantStatusSpec?.accent ?? bossPhaseEmissive;
-        const statusIntensity = enemy.telegraph > 0 ? 0.28 : dominantStatus ? 0.2 + Math.min(0.12, enemy.statuses[dominantStatus] * 0.08) : bossPhaseEmissive ? 0.24 : 0;
+        const authoredLifecycleEmissive = lifecycle.dangerousReadiness > 0 ? 0x8c271b : lifecycle.phaseTransition > 0 ? 0x7a461f : lifecycle.spawn > 0 ? 0x1e665e : enemy.dead ? 0x321510 : bossPhaseEmissive;
+        const statusEmissive = enemy.telegraph > 0 ? 0x7a3327 : dominantStatusSpec?.accent ?? authoredLifecycleEmissive;
+        const statusIntensity = enemy.telegraph > 0 ? 0.28 : dominantStatus ? 0.2 + Math.min(0.12, enemy.statuses[dominantStatus] * 0.08) : authoredLifecycleEmissive ? 0.2 + Math.max(lifecycle.spawn, lifecycle.phaseTransition, lifecycle.dangerousReadiness) * 0.16 : 0;
         for (const material of visual.authoredMaterials) {
           material.color.setHex(
             sableVoss
@@ -5994,6 +6156,22 @@ export class ThreeCombatRenderer {
       delete this.renderer.domElement.dataset.enemyAnimationBlend;
       delete this.renderer.domElement.dataset.enemyAnimationTarget;
       delete this.renderer.domElement.dataset.bossPhaseAnimation;
+    }
+    if (lifecycleTelemetry) {
+      const { enemy, lifecycle, presentation } = lifecycleTelemetry;
+      this.renderer.domElement.dataset.enemyLifecyclePresentation = [
+        lifecycle.spawn > 0 ? 'spawn' : '',
+        lifecycle.phaseTransition > 0 ? 'phase' : '',
+        lifecycle.dangerousReadiness > 0 ? 'readiness' : '',
+        lifecycle.persistentDisabled > 0 ? 'disabled' : '',
+      ].filter(Boolean).join('+');
+      this.renderer.domElement.dataset.enemyLifecycleTarget = `${enemy.role}:${enemy.variant}`;
+      this.renderer.domElement.dataset.enemyLifecycleReducedEffects = reducedTargetMotion ? 'preserved' : 'full';
+      this.renderer.domElement.dataset.enemyPresentationDominant = presentation.dominant ?? 'none';
+    } else {
+      delete this.renderer.domElement.dataset.enemyLifecyclePresentation;
+      delete this.renderer.domElement.dataset.enemyLifecycleTarget;
+      delete this.renderer.domElement.dataset.enemyLifecycleReducedEffects;
     }
     if (statusTelemetry) {
       const { enemy, presentation } = statusTelemetry;
