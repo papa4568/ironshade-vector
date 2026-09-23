@@ -7,6 +7,10 @@ export const PROFILE_STORAGE_KEY = 'ironshade-vector-profile-v3';
 export const CAMPAIGN_STORAGE_KEY = 'ironshade-vector-campaign-v1';
 export const GAME_STATE_STORAGE_KEY = 'ironshade-vector-state-v1';
 
+export const GAME_STATE_VERSION = 3;
+export const SUPPORTED_GAME_STATE_VERSIONS = [1, 2, GAME_STATE_VERSION] as const;
+const supportedGameStateVersions = new Set<number>(SUPPORTED_GAME_STATE_VERSIONS);
+
 const RECOVERY_DATABASE = 'ironshade-vector-recovery';
 const RECOVERY_STORE = 'backups';
 const PROFILE_VERSION = 3;
@@ -274,16 +278,37 @@ export function validateStoredCampaign(value: unknown) { return invalidCampaignR
 
 function invalidGameStateReason(value: unknown): string | null {
   if (!isRecord(value)) return 'game-state root is not an object';
-  if (value.version !== 1 && value.version !== 2 && value.version !== 3) return `unsupported game-state version ${String(value.version ?? 'missing')}`;
-  if ((value.version === 2 || value.version === 3) && value.gearSchemaVersion !== gearSchemaVersion) return `unsupported gear schema version ${String(value.gearSchemaVersion ?? 'missing')}`;
-  if (value.version === 3 && value.operatorNetworkSchemaVersion !== OPERATOR_NETWORK_SCHEMA_VERSION) return `unsupported operator network schema version ${String(value.operatorNetworkSchemaVersion ?? 'missing')}`;
-  if (value.version === 3 && (!isRecord(value.profile) || value.profile.operatorNetwork === undefined)) return 'current game-state is missing operator network data';
+  if (typeof value.version !== 'number' || !supportedGameStateVersions.has(value.version)) return `unsupported game-state version ${String(value.version ?? 'missing')}`;
+  if ((value.version === 2 || value.version === GAME_STATE_VERSION) && value.gearSchemaVersion !== gearSchemaVersion) return `unsupported gear schema version ${String(value.gearSchemaVersion ?? 'missing')}`;
+  if (value.version === GAME_STATE_VERSION && value.operatorNetworkSchemaVersion !== OPERATOR_NETWORK_SCHEMA_VERSION) return `unsupported operator network schema version ${String(value.operatorNetworkSchemaVersion ?? 'missing')}`;
+  if (value.version === GAME_STATE_VERSION && (!isRecord(value.profile) || value.profile.operatorNetwork === undefined)) return 'current game-state is missing operator network data';
   if (value.savedAt !== undefined && (typeof value.savedAt !== 'string' || Number.isNaN(Date.parse(value.savedAt)))) return 'savedAt is not a valid timestamp';
   const profileReason = invalidProfileReason(value.profile);
   if (profileReason) return `profile: ${profileReason}`;
   const campaignReason = invalidCampaignReason(value.campaign);
   if (campaignReason) return `campaign: ${campaignReason}`;
   return null;
+}
+
+function incompatibleGameStateReason(value: unknown): string | null {
+  if (!isRecord(value)) return null;
+  if (typeof value.version === 'number' && !supportedGameStateVersions.has(value.version)) {
+    return `game-state version ${value.version} is not readable by this release (current v${GAME_STATE_VERSION})`;
+  }
+  if ((value.version === 2 || value.version === GAME_STATE_VERSION) && value.gearSchemaVersion !== gearSchemaVersion) {
+    return `gear schema ${String(value.gearSchemaVersion ?? 'missing')} is not readable by this release`;
+  }
+  if (value.version === GAME_STATE_VERSION && value.operatorNetworkSchemaVersion !== OPERATOR_NETWORK_SCHEMA_VERSION) {
+    return `operator network schema ${String(value.operatorNetworkSchemaVersion ?? 'missing')} is not readable by this release`;
+  }
+  return null;
+}
+
+function migrationGameStateReason(value: unknown): string | null {
+  if (!isRecord(value) || typeof value.version !== 'number') return null;
+  if (value.version === GAME_STATE_VERSION || !supportedGameStateVersions.has(value.version)) return null;
+  if (invalidGameStateReason(value)) return null;
+  return `supported game-state v${value.version} requires migration to v${GAME_STATE_VERSION}`;
 }
 
 function browserStorage(): StorageLike | null {
@@ -358,6 +383,73 @@ async function preserveRawSave(storage: StorageLike, indexedDb: IDBFactory | nul
   return null;
 }
 
+async function inspectGameState(storage: StorageLike, indexedDb: IDBFactory | null, createdAt: string, suffix: string) {
+  let raw: string | null;
+  try {
+    raw = storage.getItem(GAME_STATE_STORAGE_KEY);
+  } catch {
+    return { blocked: true, notice: 'STATE SAVE RECOVERY LOCK // existing browser storage could not be read, so the game was not started and no save was overwritten.', backup: null as SaveRecoveryBackup | null };
+  }
+  if (!raw) return { blocked: false, notice: null as string | null, backup: null as SaveRecoveryBackup | null };
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    parsed = null;
+  }
+
+  const incompatibleReason = incompatibleGameStateReason(parsed);
+  if (incompatibleReason) {
+    const backup = await preserveRawSave(storage, indexedDb, GAME_STATE_STORAGE_KEY, 'state', raw, incompatibleReason, createdAt, suffix);
+    const backupNotice = backup ? ` A verified copy was also preserved in ${backup.medium} as ${backup.backupKey}.` : '';
+    return {
+      blocked: true,
+      notice: `STATE SAVE COMPATIBILITY LOCK // ${incompatibleReason}. The original save remains untouched.${backupNotice} Install a release that supports this save before continuing.`,
+      backup,
+    };
+  }
+
+  const invalidReason = invalidGameStateReason(parsed);
+  if (invalidReason) {
+    const backup = await preserveRawSave(storage, indexedDb, GAME_STATE_STORAGE_KEY, 'state', raw, invalidReason, createdAt, suffix);
+    if (!backup) {
+      return { blocked: true, notice: `STATE SAVE RECOVERY LOCK // ${invalidReason}. The original save remains untouched because a verified backup could not be created.`, backup: null as SaveRecoveryBackup | null };
+    }
+
+    try {
+      storage.removeItem(GAME_STATE_STORAGE_KEY);
+      if (storage.getItem(GAME_STATE_STORAGE_KEY) !== null) throw new Error('save key still present');
+    } catch {
+      return { blocked: true, notice: `STATE SAVE RECOVERY LOCK // ${invalidReason}. A backup was preserved in ${backup.medium}, but the unsafe primary save could not be detached, so startup was stopped.`, backup };
+    }
+
+    return {
+      blocked: false,
+      notice: `STATE SAVE RECOVERY // ${invalidReason}. The original raw save was preserved in ${backup.medium} as ${backup.backupKey} before a clean save was allowed to start.`,
+      backup,
+    };
+  }
+
+  const migrationReason = migrationGameStateReason(parsed);
+  if (!migrationReason) return { blocked: false, notice: null as string | null, backup: null as SaveRecoveryBackup | null };
+
+  const backup = await preserveRawSave(storage, indexedDb, GAME_STATE_STORAGE_KEY, 'state', raw, migrationReason, createdAt, suffix);
+  if (!backup) {
+    return {
+      blocked: true,
+      notice: `STATE SAVE MIGRATION LOCK // ${migrationReason}. The original save remains untouched because a verified pre-migration rollback snapshot could not be created.`,
+      backup: null as SaveRecoveryBackup | null,
+    };
+  }
+
+  return {
+    blocked: false,
+    notice: `STATE SAVE MIGRATION // ${migrationReason}. The exact pre-migration save was preserved in ${backup.medium} as ${backup.backupKey} before the upgrade proceeds.`,
+    backup,
+  };
+}
+
 async function inspectSave(storage: StorageLike, indexedDb: IDBFactory | null, sourceKey: string, kind: SaveKind, validator: (value: unknown) => string | null, createdAt: string, suffix: string) {
   let raw: string | null;
   try {
@@ -405,7 +497,7 @@ export async function prepareSaveRecovery(environment: RecoveryEnvironment = {})
   const now = (environment.now ?? (() => new Date()))();
   const createdAt = now.toISOString();
   const makeId = environment.id ?? randomId;
-  const state = await inspectSave(storage, indexedDb ?? null, GAME_STATE_STORAGE_KEY, 'state', invalidGameStateReason, createdAt, makeId());
+  const state = await inspectGameState(storage, indexedDb ?? null, createdAt, makeId());
   const profile = await inspectSave(storage, indexedDb ?? null, PROFILE_STORAGE_KEY, 'profile', invalidProfileReason, createdAt, makeId());
   const campaign = await inspectSave(storage, indexedDb ?? null, CAMPAIGN_STORAGE_KEY, 'campaign', invalidCampaignReason, createdAt, makeId());
   const backups = [state.backup, profile.backup, campaign.backup].filter((backup): backup is SaveRecoveryBackup => !!backup);

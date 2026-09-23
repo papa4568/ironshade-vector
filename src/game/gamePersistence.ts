@@ -2,12 +2,12 @@ import { loadCampaign, normalizeCampaignState, type CampaignState } from './camp
 import { gearSchemaVersion } from './gearSchema';
 import { loadProfile, normalizeStoredProfile, type PlayerProfile } from './meta';
 import { OPERATOR_NETWORK_SCHEMA_VERSION } from './operatorNetwork';
-import { GAME_STATE_STORAGE_KEY, validateStoredCampaign, validateStoredProfile } from './saveRecovery';
+import { GAME_STATE_STORAGE_KEY, GAME_STATE_VERSION, validateStoredCampaign, validateStoredProfile } from './saveRecovery';
 
 // Profile and campaign are committed atomically so readers never observe half of a progression update. APK verification follows each audited fix.
 type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 
-export const GAME_STATE_VERSION = 3;
+export { GAME_STATE_VERSION } from './saveRecovery';
 
 export type PersistedGameState = {
   version: typeof GAME_STATE_VERSION;

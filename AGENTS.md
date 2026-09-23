@@ -9,6 +9,7 @@ Keep always-on context small. Read only the documents relevant to the current ta
 - `docs/product-constraints.md` — stable product, design, platform, and performance constraints.
 - `docs/design-system.md` — shared UI rules for presentation work.
 - `docs/android-release-signing.md` — release-signing guidance when Android signing/distribution is relevant.
+- `docs/save-release-policy.md` — save compatibility, migration, recovery, and rollback rules for external releases.
 - `package.json` — authoritative build and test scripts.
 
 ## Execution
