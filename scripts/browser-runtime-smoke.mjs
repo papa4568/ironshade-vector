@@ -592,6 +592,15 @@ if (viewportMode === 'mobile-landscape') {
     screenOrientation: { type: 'landscapePrimary', angle: 90 },
   });
   await call('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+} else {
+  await call('Emulation.setDeviceMetricsOverride', {
+    width: 1280,
+    height: 720,
+    deviceScaleFactor: 1,
+    mobile: false,
+    screenWidth: 1280,
+    screenHeight: 720,
+  });
 }
 
 await call('Page.navigate', { url: appUrl });
@@ -620,6 +629,30 @@ try {
       return (text.includes('command ready') || text.includes('command deck')) && labels.includes('operations');
     })()`, 'Command Deck after class selection');
     console.log(`BROWSER_CLASS_SELECTION_PASS viewport=${viewportMode} class=Vanguard`);
+  }
+
+  if (viewportMode === 'mobile-landscape') {
+    const reducedEffectsSeed = await evaluate(`(() => {
+      const key = 'ironshade-vector-profile-v3';
+      const raw = localStorage.getItem(key);
+      if (!raw) return { found: false, changed: false };
+      const profile = JSON.parse(raw);
+      profile.settings = { ...(profile.settings ?? {}), effectIntensity: 'reduced' };
+      const changed = JSON.parse(raw)?.settings?.effectIntensity !== 'reduced';
+      localStorage.setItem(key, JSON.stringify(profile));
+      return { found: true, changed };
+    })()`);
+    if (!reducedEffectsSeed?.found) throw new Error('Mobile Reduced Effects QA could not find the persisted profile.');
+    if (reducedEffectsSeed.changed) {
+      await call('Page.reload', { ignoreCache: true });
+      await waitFor(`document.readyState === 'complete' && document.title === 'Ironshade Vector'`, 'Ironshade document after Reduced Effects seed');
+      await waitFor(`(() => {
+        const text = (document.body?.innerText ?? '').toLowerCase();
+        const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase());
+        return (text.includes('command ready') || text.includes('command deck')) && labels.includes('operations');
+      })()`, 'Command Deck after Reduced Effects seed');
+    }
+    console.log(`BROWSER_REDUCED_EFFECTS_QA_PASS viewport=${viewportMode} changed=${reducedEffectsSeed.changed}`);
   }
 
   const startup = await snapshot();
@@ -1117,7 +1150,10 @@ try {
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);
   const enemyHudReadability = await evaluate(`document.querySelector('canvas')?.dataset.enemyHudReadability ?? ''`);
   const expectedHudTier = coarseCombatSurface ? 'mobile-lod2|priority-bars+focused-tags' : 'desktop|full-bars+full-tags';
-  if (!enemyHudReadability.startsWith(expectedHudTier) || !enemyHudReadability.includes('tells:telegraph+protocol+mutation+status+lifecycle')) {
+  const expectedEffectsMarker = viewportMode === 'mobile-landscape' ? 'reduced-effects:identity-preserved' : 'effects:full';
+  if (!enemyHudReadability.startsWith(expectedHudTier)
+    || !enemyHudReadability.includes('tells:telegraph+protocol+mutation+status+lifecycle')
+    || !enemyHudReadability.includes(expectedEffectsMarker)) {
     throw new Error(`P13-G enemy HUD readability telemetry regressed for ${viewportMode}: ${enemyHudReadability}`);
   }
   console.log(`BROWSER_P13G_READABILITY_PASS viewport=${viewportMode} coarse=${coarseCombatSurface} policy=${enemyHudReadability}`);
