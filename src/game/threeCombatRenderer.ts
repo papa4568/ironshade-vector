@@ -1025,6 +1025,11 @@ export class ThreeCombatRenderer {
     this.renderer.render(this.scene, this.camera);
   }
 
+  performanceStats() {
+    const render = this.renderer.info.render;
+    return { drawCalls: render.calls, triangles: render.triangles };
+  }
+
   screenDirection(clientX: number, clientY: number, rect: DOMRect, player: Player) {
     if (rect.width <= 0 || rect.height <= 0) return null;
     const pointer = new THREE.Vector2(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);

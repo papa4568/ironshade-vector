@@ -10,6 +10,7 @@ const screenshotPath = process.env.BROWSER_E2E_SCREENSHOT ?? 'browser-e2e-smoke.
 const commandScreenshotPath = process.env.BROWSER_E2E_COMMAND_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-command.png');
 const classScreenshotPath = process.env.BROWSER_E2E_CLASS_SCREENSHOT ?? commandScreenshotPath.replace(/command/i, 'class');
 const accessibilityScreenshotPath = process.env.BROWSER_E2E_ACCESSIBILITY_SCREENSHOT ?? commandScreenshotPath.replace(/command/i, 'accessibility');
+const performanceReportPath = process.env.BROWSER_E2E_PERFORMANCE_REPORT ?? screenshotPath.replace(/\.png$/i, '.performance.json');
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 if (typeof WebSocket !== 'function') {
@@ -204,6 +205,41 @@ async function accessibilityAudit(surface) {
 
   if (result.issues.length) throw new Error(`Accessibility audit failed on ${surface}: ${JSON.stringify(result)}`);
   console.log(`BROWSER_A11Y_PASS surface=${surface} controls=${result.interactiveCount} forms=${result.formControlCount} canvases=${result.canvasCount} smallTargets=${result.tinyTargets.length}`);
+  return result;
+}
+
+async function performanceDiagnosticsAudit() {
+  await waitFor(`(() => {
+    const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.performanceReport);
+    return Number(canvas?.dataset.performanceSampleCount ?? 0) >= 45 && Boolean(canvas?.dataset.performanceBudgetVersion);
+  })()`, 'P16-A performance baseline samples', 20_000);
+  const result = await evaluate(`(() => {
+    const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.performanceReport);
+    if (!canvas?.dataset.performanceReport) return null;
+    return {
+      budgetVersion: canvas.dataset.performanceBudgetVersion ?? '',
+      deviceTier: canvas.dataset.performanceDeviceTier ?? '',
+      scenario: canvas.dataset.performanceScenario ?? '',
+      sampleCount: Number(canvas.dataset.performanceSampleCount ?? 0),
+      status: canvas.dataset.performanceStatus ?? '',
+      regressions: canvas.dataset.performanceRegressions ?? '',
+      report: JSON.parse(canvas.dataset.performanceReport),
+    };
+  })()`);
+  if (!result?.report || result.budgetVersion !== 'p16-a-v1' || result.sampleCount < 45) {
+    throw new Error(`P16-A performance diagnostics unavailable: ${JSON.stringify(result)}`);
+  }
+  const categoryKeys = Object.keys(result.report.categories ?? {}).sort().join(',');
+  if (categoryKeys !== 'animation,audio,cpu,gc,gpu,render,ui') {
+    throw new Error(`P16-A performance categories incomplete: ${JSON.stringify(result.report.categories ?? {})}`);
+  }
+  await writeFile(performanceReportPath, JSON.stringify({
+    viewport: viewportMode,
+    location: targetLocation,
+    capturedAt: new Date().toISOString(),
+    ...result,
+  }, null, 2));
+  console.log(`BROWSER_PERFORMANCE_BASELINE_PASS viewport=${viewportMode} location=${targetLocation} tier=${result.deviceTier} samples=${result.sampleCount} status=${result.status} regressions=${result.regressions} report=${performanceReportPath}`);
   return result;
 }
 
@@ -884,6 +920,7 @@ try {
     };
   })()`);
   console.log(`BROWSER_P15_WORLD_POLISH_PASS viewport=${viewportMode} location=${targetLocation} state=${p15WorldPolish.biomeState} depth=${p15WorldPolish.materialDepth}`);
+  if (targetLocation === 'asteroid-refinery') await performanceDiagnosticsAudit();
   await waitFor(`(() => {
     const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || '').trim());
     return ['Breach Rush', 'Fracture Tag', 'Bulwark Pulse'].every(label => labels.includes(label));

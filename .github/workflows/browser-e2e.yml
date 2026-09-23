@@ -349,6 +349,7 @@ jobs:
             browser-chapter3-${{ matrix.viewport }}.json
             browser-command-${{ matrix.viewport }}.png
             browser-e2e-${{ matrix.viewport }}.png
+            browser-e2e-${{ matrix.viewport }}*.performance.json
             browser-e2e-${{ matrix.viewport }}-damaged-vessel.png
             browser-e2e-${{ matrix.viewport }}-spin-habitat.png
             browser-e2e-${{ matrix.viewport }}-jovian-harvester.png
