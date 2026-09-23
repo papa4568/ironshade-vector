@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { Contract } from './campaign';
 import type { EquipmentFaction } from './factionGear';
 import { getNextMissionObjectiveTarget } from './encounters';
-import { carbineVariantPresentation } from './classArsenal';
+import { weaponVariantPresentation } from './classArsenal';
 import { findNavigationPath } from './mapPathfinding';
 import { getPlayerSector, getWorldSize, weaponHandlingProfiles, type CombatObject, type Enemy, type Player, type SimState, type WeaponId } from './sim';
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, locationArtIdentityFor, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
@@ -2663,7 +2663,7 @@ export class ThreeCombatRenderer {
     const player = state.player;
     const current = this.authoredWeapons.get(player.currentWeapon) ?? null;
     const handling = weaponHandlingProfiles[player.currentWeapon];
-    const carbinePresentation = player.currentWeapon === 'carbine' ? carbineVariantPresentation(state.weapons.carbine.variantId) : null;
+    const variantPresentation = weaponVariantPresentation(state.weapons[player.currentWeapon].variantId);
     for (const [id, visual] of this.authoredWeapons) {
       visual.root.visible = id === player.currentWeapon;
     }
@@ -2677,7 +2677,7 @@ export class ThreeCombatRenderer {
     }
 
     this.playerWeapon.visible = false;
-    current.root.scale.set(current.baseScale.x * (carbinePresentation?.silhouetteScaleX ?? 1), current.baseScale.y, current.baseScale.z);
+    current.root.scale.set(current.baseScale.x * (variantPresentation?.silhouetteScaleX ?? 1), current.baseScale.y, current.baseScale.z);
     for (const child of this.weaponPivot.children) {
       if (child.name.startsWith('hard-weapon-')) child.visible = false;
     }
@@ -2709,15 +2709,15 @@ export class ThreeCombatRenderer {
     this.muzzleFlash.position.copy(muzzleLocal);
 
     this.muzzleFlash.scale.set(
-      handling.muzzleLength * (carbinePresentation?.muzzleLengthMul ?? 1) * (1.05 + flash * 0.72),
-      handling.muzzleWidth * (carbinePresentation?.muzzleWidthMul ?? 1) * (0.92 + flash * 0.32),
-      handling.muzzleWidth * (carbinePresentation?.muzzleWidthMul ?? 1) * (0.92 + flash * 0.32),
+      handling.muzzleLength * (variantPresentation?.muzzleLengthMul ?? 1) * (1.05 + flash * 0.72),
+      handling.muzzleWidth * (variantPresentation?.muzzleWidthMul ?? 1) * (0.92 + flash * 0.32),
+      handling.muzzleWidth * (variantPresentation?.muzzleWidthMul ?? 1) * (0.92 + flash * 0.32),
     );
 
     this.renderer.domElement.dataset.weaponActive = player.currentWeapon;
     this.renderer.domElement.dataset.weaponAsset = current.assetId;
     this.renderer.domElement.dataset.weaponHeat = heat.toFixed(2);
-    this.renderer.domElement.dataset.weaponFx = player.currentWeapon === 'rail' ? 'lance' : player.currentWeapon === 'breacher' ? 'scatter' : state.weapons.carbine.variantId === 'carbine-burst' ? 'burst-tracer' : state.weapons.carbine.variantId === 'carbine-precision' ? 'precision-tracer' : 'tracer';
+    this.renderer.domElement.dataset.weaponFx = player.currentWeapon === 'rail' ? 'lance' : state.weapons.breacher.variantId === 'breacher-slug' ? 'slug-impact' : state.weapons.breacher.variantId === 'breacher-rapid' ? 'rapid-scatter' : player.currentWeapon === 'breacher' ? 'scatter' : state.weapons.carbine.variantId === 'carbine-burst' ? 'burst-tracer' : state.weapons.carbine.variantId === 'carbine-precision' ? 'precision-tracer' : 'tracer';
     this.renderer.domElement.dataset.weaponVariant = state.weapons[player.currentWeapon].variantId ?? 'family-service';
     this.renderer.domElement.dataset.weaponHandling = `${handling.stance}:${handling.reloadStyle}:${handling.ventStyle}`;
   }
@@ -2841,7 +2841,7 @@ export class ThreeCombatRenderer {
     }
 
     const handling = weaponHandlingProfiles[player.currentWeapon];
-    const carbinePresentation = player.currentWeapon === 'carbine' ? carbineVariantPresentation(state.weapons.carbine.variantId) : null;
+    const variantPresentation = weaponVariantPresentation(state.weapons[player.currentWeapon].variantId);
     const reloadDuration = Math.max(0.01, state.weapons[player.reloadWeapon].reloadSeconds * weaponHandlingProfiles[player.reloadWeapon].reloadDurationMul);
     const hit = state.time < this.operatorHitUntil
       ? THREE.MathUtils.clamp((this.operatorHitUntil - state.time) / 0.18, 0, 1)
@@ -2893,12 +2893,12 @@ export class ThreeCombatRenderer {
     rig.hip.position.x += profile.hipOffset - Math.max(0, -aimForward) * 0.012;
     rig.helmet.rotation.z += aimOffset * profile.aimLean * 0.48;
     rig.weaponSocket.rotation.z += aimOffset * profile.aimLean * 0.34;
-    rig.weaponSocket.position.y += profile.aimLift * (0.45 + Math.max(0, aimForward) * 0.55) + (carbinePresentation?.aimLift ?? 0);
+    rig.weaponSocket.position.y += profile.aimLift * (0.45 + Math.max(0, aimForward) * 0.55) + (variantPresentation?.aimLift ?? 0);
     rig.leftArm.rotation.x += -0.12;
     rig.rightArm.rotation.x += 0.12;
 
     if (recoil > 0) {
-      const kick = handling.recoilVisual * (carbinePresentation?.recoilVisualMul ?? 1) * profile.recoilScale * recoil;
+      const kick = handling.recoilVisual * (variantPresentation?.recoilVisualMul ?? 1) * profile.recoilScale * recoil;
       rig.weaponSocket.position.x -= 0.1 * kick;
       rig.torso.rotation.z -= 0.055 * kick;
       rig.rightArm.rotation.z += 0.1 * kick;
@@ -4732,8 +4732,8 @@ export class ThreeCombatRenderer {
     const weaponColor = weaponColors[player.currentWeapon];
     this.playerWeapon.material.color.setHex(weaponColor);
     this.playerWeapon.material.emissive.setHex(weaponColor);
-    const carbinePresentation = player.currentWeapon === 'carbine' ? carbineVariantPresentation(state.weapons.carbine.variantId) : null;
-    this.playerWeapon.scale.x = player.currentWeapon === 'rail' ? 1.28 : player.currentWeapon === 'breacher' ? 0.9 : (carbinePresentation?.silhouetteScaleX ?? 1);
+    const variantPresentation = weaponVariantPresentation(state.weapons[player.currentWeapon].variantId);
+    this.playerWeapon.scale.x = (player.currentWeapon === 'rail' ? 1.28 : player.currentWeapon === 'breacher' ? 0.9 : 1) * (variantPresentation?.silhouetteScaleX ?? 1);
     if (this.authoredOperatorRig) {
       this.weaponPivot.rotation.y = 0;
       for (const child of this.weaponPivot.children) {
@@ -4777,8 +4777,8 @@ export class ThreeCombatRenderer {
       });
       const tremor = Math.sin(state.time * 27) * motion.overheat * motion.profile.overheatStrain;
       this.weaponPivot.position.set(
-        -0.045 * motion.recoil * motion.profile.recoilScale * (carbinePresentation?.recoilVisualMul ?? 1) + (skill.profile?.socketReach ?? 0) * skill.weight * 0.32,
-        -0.035 * motion.reload + 0.025 * motion.charge - 0.02 * motion.overheat + (skill.profile?.socketLift ?? 0) * skill.weight * 0.45 + (carbinePresentation?.aimLift ?? 0),
+        -0.045 * motion.recoil * motion.profile.recoilScale * (variantPresentation?.recoilVisualMul ?? 1) + (skill.profile?.socketReach ?? 0) * skill.weight * 0.32,
+        -0.035 * motion.reload + 0.025 * motion.charge - 0.02 * motion.overheat + (skill.profile?.socketLift ?? 0) * skill.weight * 0.45 + (variantPresentation?.aimLift ?? 0),
         0,
       );
       this.weaponPivot.rotation.y = Math.atan2(-player.aim.y, player.aim.x);
@@ -4827,9 +4827,9 @@ export class ThreeCombatRenderer {
     if (!this.authoredWeapons.has(player.currentWeapon)) {
       this.muzzleFlash.position.x = hardSciFiMuzzleOffset(this.weaponPivot, 1.45);
       const handling = weaponHandlingProfiles[player.currentWeapon];
-      const carbineMuzzlePresentation = player.currentWeapon === 'carbine' ? carbineVariantPresentation(state.weapons.carbine.variantId) : null;
+      const variantMuzzlePresentation = weaponVariantPresentation(state.weapons[player.currentWeapon].variantId);
       const flashScale = Math.min(1.7, state.weaponFlash * 8);
-      this.muzzleFlash.scale.set(handling.muzzleLength * (carbineMuzzlePresentation?.muzzleLengthMul ?? 1) * (0.72 + flashScale), handling.muzzleWidth * (carbineMuzzlePresentation?.muzzleWidthMul ?? 1) * (0.86 + flashScale * 0.34), handling.muzzleWidth * (carbineMuzzlePresentation?.muzzleWidthMul ?? 1) * (0.86 + flashScale * 0.34));
+      this.muzzleFlash.scale.set(handling.muzzleLength * (variantMuzzlePresentation?.muzzleLengthMul ?? 1) * (0.72 + flashScale), handling.muzzleWidth * (variantMuzzlePresentation?.muzzleWidthMul ?? 1) * (0.86 + flashScale * 0.34), handling.muzzleWidth * (variantMuzzlePresentation?.muzzleWidthMul ?? 1) * (0.86 + flashScale * 0.34));
     }
 
     this.pulseRing.visible = state.pulse > 0;

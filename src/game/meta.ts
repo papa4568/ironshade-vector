@@ -1,6 +1,6 @@
 import type { CombatBuild, SingularTraitId, SpecializationId, Telemetry, WeaponId } from './sim';
 import { operatorWeaponFamilyForClass, type OperatorClassId } from './classSkills';
-import { resolveCarbineVariant } from './classArsenal';
+import { resolveBreacherVariant, resolveCarbineVariant } from './classArsenal';
 import { allocateOperatorNetworkNode, createOperatorNetworkState, normalizeOperatorNetworkState, operatorNetworkNode, operatorNetworkNodes, rebuildOperatorNetworkState, refundOperatorNetworkNode, type OperatorNetworkIntegrationHook, type OperatorNetworkNodeKind, type OperatorNetworkSector, type OperatorNetworkState, type OperatorNetworkStatEffect, type OperatorNetworkUnlockContext } from './operatorNetwork';
 export type { OperatorClassId } from './classSkills';
 import { factionFrames, factionGearChance, factionSetDefinitions, type EquipmentFaction } from './factionGear';
@@ -1385,7 +1385,11 @@ function applyClassSkillFamilyInfluence(build: CombatBuild, item: Item) {
   const identity = item.frameIdentity ?? inferFrameIdentity(item.slot, `${item.baseId}:${item.name}`);
   skill.frameGeneration = generation;
   skill.frameIdentity = identity;
-  skill.weaponVariant = family === 'carbine' ? resolveCarbineVariant({ baseId: item.baseId, name: item.name, frameIdentity: identity }) : null;
+  skill.weaponVariant = family === 'carbine'
+    ? resolveCarbineVariant({ baseId: item.baseId, name: item.name, frameIdentity: identity })
+    : family === 'breacher'
+      ? resolveBreacherVariant({ baseId: item.baseId, name: item.name, frameIdentity: identity })
+      : null;
   if (skill.weaponVariant) skill.sources.push(`variant:${skill.weaponVariant}`);
   skill.sources.push(`frame:${identity}`);
 
