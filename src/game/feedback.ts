@@ -1,3 +1,4 @@
+import { weaponVariantPresentation, type WeaponVariantId } from './classArsenal';
 import type { ProfileSettings } from './meta';
 import type { HighTierMutationId } from './t9Mutations';
 import type { Enemy } from './sim';
@@ -486,6 +487,16 @@ export function weaponRepeatVariation(cue: WeaponCue, shotIndex: number) {
   };
 }
 
+export function weaponVariantAudioTuning(id: WeaponVariantId | null | undefined) {
+  const presentation = weaponVariantPresentation(id);
+  return {
+    pitchCents: presentation?.audioPitchCents ?? 0,
+    gainMultiplier: presentation?.audioGainMul ?? 1,
+    mechanicalGainMultiplier: presentation?.mechanicalGainMul ?? 1,
+    tailGainMultiplier: presentation?.tailGainMul ?? 1,
+  };
+}
+
 function isWeaponCue(cue: FeedbackCue): cue is WeaponCue {
   return cue === 'carbine' || cue === 'breacher' || cue === 'rail';
 }
@@ -644,18 +655,22 @@ class FeedbackBus {
     this.playLayer({ ...tone, gain: 1 }, volume, 0, 1, 'direct', applyAcoustics, applyAcoustics ? 'utility' : 'ui');
   }
 
-  private playWeapon(cue: WeaponCue, volume: number) {
+  private playWeapon(cue: WeaponCue, volume: number, variantId?: WeaponVariantId | null) {
     const profile = weaponAudioProfiles[cue];
     const shotIndex = this.weaponShotIndex[cue]++;
     const variation = weaponRepeatVariation(cue, shotIndex);
-    const weaponVolume = volume * profile.masterGain;
+    const variant = weaponVariantAudioTuning(variantId);
+    const weaponVolume = volume * profile.masterGain * variant.gainMultiplier;
+    const pitchCents = variation.pitchCents + variant.pitchCents;
 
-    for (const layer of profile.mechanical) this.playLayer(layer, weaponVolume, variation.pitchCents * .65, variation.gainMultiplier, 'direct', true, 'weapon');
-    for (const layer of profile.discharge) this.playLayer(layer, weaponVolume, variation.pitchCents, variation.gainMultiplier, 'direct', true, 'weapon');
+    for (const layer of profile.mechanical) {
+      this.playLayer(layer, weaponVolume * variant.mechanicalGainMultiplier, pitchCents * .65, variation.gainMultiplier, 'direct', true, 'weapon');
+    }
+    for (const layer of profile.discharge) this.playLayer(layer, weaponVolume, pitchCents, variation.gainMultiplier, 'direct', true, 'weapon');
 
     for (const distance of ['near', 'mid', 'far'] as const) {
       if (shotIndex % profile.tailCadence[distance] !== 0) continue;
-      this.playLayer(profile.tails[distance], weaponVolume, variation.pitchCents * .45, variation.gainMultiplier, 'tail', true, 'weapon', 'background');
+      this.playLayer(profile.tails[distance], weaponVolume * variant.tailGainMultiplier, pitchCents * .45, variation.gainMultiplier, 'tail', true, 'weapon', 'background');
     }
   }
 
@@ -742,7 +757,7 @@ class FeedbackBus {
     for (const layer of profile.layers) this.playLayer(layer, volume * profile.masterGain, 0, 1, 'direct', true, 'utility', profile.priority);
   }
 
-  cue(cue: FeedbackCue) {
+  cue(cue: FeedbackCue, variantId?: WeaponVariantId | null) {
     const settings = this.settings;
     if (!settings) return;
     const uiCue = cue === 'ui' || cue === 'loot' || cue === 'rareLoot';
@@ -752,7 +767,7 @@ class FeedbackBus {
     if (volume <= 0) return;
     this.unlock();
     if (isWeaponCue(cue)) {
-      this.playWeapon(cue, volume);
+      this.playWeapon(cue, volume, variantId);
       return;
     }
     const scale = cue === 'rareLoot' ? .26 : cue === 'breach' ? .2 : cue === 'damage' || cue === 'machinery' ? .16 : cue === 'targetLock' ? .1 : .12;
