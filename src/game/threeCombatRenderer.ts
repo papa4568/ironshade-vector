@@ -4792,8 +4792,9 @@ export class ThreeCombatRenderer {
     }
   }
 
-  private syncAuthoredEnemyAnimation(visual: EnemyVisual, enemy: Enemy, state: SimState, motion: EnemyBossAnimationSignals, presentation: EnemyPresentationContract) {
+  private syncAuthoredEnemyAnimation(visual: EnemyVisual, enemy: Enemy, state: SimState, motion: EnemyBossAnimationSignals) {
     const rig = visual.rig;
+    const presentation = resolveEnemyPresentation(enemy);
     if (!rig) return;
 
     for (const node of [rig.hip, rig.torso, rig.helmet, rig.leftArm, rig.rightArm, rig.leftLeg, rig.rightLeg, rig.backpack, rig.weaponSocket]) {
@@ -5243,7 +5244,7 @@ export class ThreeCombatRenderer {
       visual.body.material.emissive.setHex(enemy.statuses.disrupted > 0 ? 0x63508a : enemy.telegraph > 0 ? 0x7a3327 : 0x000000);
       visual.body.material.emissiveIntensity = enemy.statuses.disrupted > 0 || enemy.telegraph > 0 ? 0.34 : 0;
       if (visual.authoredRoot) {
-        this.syncAuthoredEnemyAnimation(visual, enemy, state, motion, presentation);
+        this.syncAuthoredEnemyAnimation(visual, enemy, state, motion);
         const sableVoss = visual.authoredAssetId === 'spin-habitat-sable-voss';
         const stormlineIlex = visual.authoredAssetId === 'jovian-harvester-stormline-foreman';
         const rheaKade = visual.authoredAssetId === 'ice-mine-rhea-kade';
