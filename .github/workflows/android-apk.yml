@@ -168,6 +168,41 @@ jobs:
           grep -q "versionName \"${ANDROID_VERSION_NAME}\"" android/app/build.gradle
           grep -q 'CapacitorHttp' android/app/src/main/assets/capacitor.config.json
 
+      - name: Build signed upgrade baseline APK
+        if: steps.signing.outputs.mode == 'release'
+        shell: bash
+        env:
+          ANDROID_SIGNING_STORE_FILE: ${{ steps.signing.outputs.keystore }}
+          ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
+          ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
+          ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          final_version_code="$ANDROID_VERSION_CODE"
+          final_version_name="$ANDROID_VERSION_NAME"
+          base_version_code=$((final_version_code - 1))
+          if [[ "$base_version_code" -lt 1 ]]; then
+            echo "::error::ANDROID_VERSION_CODE must be at least 2 to verify an in-place upgrade."
+            exit 1
+          fi
+          base_version_name="${final_version_name}-upgrade-base"
+
+          ANDROID_VERSION_CODE="$base_version_code" ANDROID_VERSION_NAME="$base_version_name" node scripts/configure-android.mjs
+          (
+            cd android
+            chmod +x gradlew
+            ./gradlew assembleRelease --no-daemon --stacktrace
+          )
+          cp android/app/build/outputs/apk/release/app-release.apk Ironshade-Vector-Android-Upgrade-Base.apk
+          test -s Ironshade-Vector-Android-Upgrade-Base.apk
+
+          echo "ANDROID_UPGRADE_BASE_VERSION_CODE=$base_version_code" >> "$GITHUB_ENV"
+          echo "ANDROID_UPGRADE_BASE_VERSION_NAME=$base_version_name" >> "$GITHUB_ENV"
+
+          ANDROID_VERSION_CODE="$final_version_code" ANDROID_VERSION_NAME="$final_version_name" node scripts/configure-android.mjs
+          grep -q "versionCode ${final_version_code}" android/app/build.gradle
+          grep -q "versionName \"${final_version_name}\"" android/app/build.gradle
+
       - name: Build persistent-signed release APK
         if: steps.signing.outputs.mode == 'release'
         working-directory: android
@@ -227,6 +262,25 @@ jobs:
 
           "$APKSIGNER" verify --verbose --print-certs "$APK" | tee android-apk-signing.txt
           grep -q 'Signer #1 certificate SHA-256 digest:' android-apk-signing.txt
+
+          if [[ "$SIGNING_MODE" == "release" ]]; then
+            BASE_APK='Ironshade-Vector-Android-Upgrade-Base.apk'
+            test -s "$BASE_APK"
+            "$APKSIGNER" verify --verbose --print-certs "$BASE_APK" | tee android-upgrade-base-signing.txt
+            grep -q 'Signer #1 certificate SHA-256 digest:' android-upgrade-base-signing.txt
+            candidate_signer="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' android-apk-signing.txt | head -n 1)"
+            baseline_signer="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' android-upgrade-base-signing.txt | head -n 1)"
+            test -n "$candidate_signer"
+            test "$candidate_signer" = "$baseline_signer"
+            {
+              printf 'baseline_version_code=%s\n' "$ANDROID_UPGRADE_BASE_VERSION_CODE"
+              printf 'baseline_version_name=%s\n' "$ANDROID_UPGRADE_BASE_VERSION_NAME"
+              printf 'candidate_version_code=%s\n' "$ANDROID_VERSION_CODE"
+              printf 'candidate_version_name=%s\n' "$ANDROID_VERSION_NAME"
+              printf 'signer_sha256=%s\n' "$candidate_signer"
+            } | tee android-apk-upgrade.txt
+          fi
+
           printf 'signing_mode=%s\nversion_code=%s\nversion_name=%s\n' "$SIGNING_MODE" "$ANDROID_VERSION_CODE" "$ANDROID_VERSION_NAME" | tee android-apk-signing-mode.txt
 
           cp "$APK" Ironshade-Vector-Android-Beta.apk
@@ -249,7 +303,11 @@ jobs:
           profile: pixel_7_pro
           emulator-boot-timeout: 300
           disable-animations: true
-          script: bash scripts/android-runtime-smoke.sh
+          script: |
+            if [[ "${{ steps.signing.outputs.mode }}" == "release" ]]; then
+              bash scripts/android-upgrade-smoke.sh
+            fi
+            bash scripts/android-runtime-smoke.sh
 
       - name: Upload APK and QA evidence
         uses: actions/upload-artifact@v7
@@ -261,6 +319,12 @@ jobs:
             android-apk-badging.txt
             android-apk-signing.txt
             android-apk-signing-mode.txt
+            Ironshade-Vector-Android-Upgrade-Base.apk
+            android-upgrade-base-signing.txt
+            android-apk-upgrade.txt
+            android-upgrade-smoke.txt
+            android-upgrade-logcat.txt
+            android-upgrade-smoke.png
             android-runtime-logcat.txt
             android-runtime-smoke.png
             android-chapter3-playthrough.png

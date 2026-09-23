@@ -40,6 +40,18 @@ Normal push CI may continue to produce the verified debug-signed fallback when n
 
 For a distributable release candidate, run **Build Android APK** manually and enable `require_release_signing`. That run fails during signing-mode resolution unless all four persistent signing secrets are present and the configured keystore/alias can be opened. This prevents a release-candidate run from succeeding with an ephemeral debug signer.
 
+## Automated upgrade proof
+
+When persistent release signing is configured, the workflow now creates a release-signed baseline with the immediately preceding version code and the release candidate with the current version code. It verifies both APKs use the same signer certificate, then uses a root-capable Android emulator to:
+
+1. clean-install the signed baseline,
+2. launch it and write a sentinel into the app's private data directory,
+3. install the candidate with Android's in-place upgrade path,
+4. verify the package UID, data directory, first-install timestamp, and sentinel are unchanged, and
+5. launch the upgraded candidate and reject runtime crashes.
+
+This upgrade probe is intentionally separate from the debug WebView smoke test. The candidate APK remains a normal non-debuggable release build; the emulator uses root only to inspect private data for CI evidence.
+
 ## Workflow verification
 
 Every Android build now records:
@@ -47,6 +59,7 @@ Every Android build now records:
 - package ID, minimum SDK and target SDK via `aapt`
 - APK signature verification and signer certificate SHA-256 digest via `apksigner`
 - whether the artifact was `release` or fallback `debug` signed
+- release-only baseline/candidate signer continuity and in-place private-data preservation evidence
 - APK SHA-256 checksum
 
 The workflow uploads these reports beside `Ironshade-Vector-Android-Beta.apk` so the signer can be compared across releases.
