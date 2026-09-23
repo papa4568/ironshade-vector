@@ -415,7 +415,23 @@ await waitFor(`(() => {
   const buttons = [...document.querySelectorAll('button')].map(button => (button.textContent || '').trim());
   return document.querySelector('.build-header h1')?.textContent?.trim() === 'Build' && buttons.includes('Skills');
 })()`, 'Android Build surface for skill hierarchy');
-await tapButton('Skills', 32);
+await waitFor(`Boolean(document.querySelector('.build-bay.iv-view') && document.querySelector('.build-header.iv-panel.iv-panel--glass') && document.querySelector('.build-tabs button[aria-current="page"]'))`, 'Android P15-B shared Build shell');
+await tapButton('Crafting', 32);
+await waitFor(`Boolean(document.querySelector('.reconstruction-panel .reconstruction-top.iv-panel.iv-panel--glass') && document.querySelector('.reconstruct-storage.iv-panel') && document.querySelector('.build-tabs button[aria-current="page"]')?.textContent?.includes('Crafting'))`, 'Android P15-B Crafting surface');
+await tapButton('Progression', 33);
+await waitFor(`Boolean(document.querySelector('.network-panel .section-copy.iv-panel.iv-panel--glass') && document.querySelector('.network-planner.iv-panel') && document.querySelector('.operator-class-panel.iv-panel') && document.querySelector('.specialization-panel.iv-panel') && document.querySelector('.build-tabs button[aria-current="page"]')?.textContent?.includes('Progression'))`, 'Android P15-B Progression surface');
+const p15BuildLayout = await evaluate(`(() => {
+  const buttons = [...document.querySelectorAll('.build-tabs button')];
+  return {
+    horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
+    tabCount: buttons.length,
+    minTabHeight: Math.min(...buttons.map(button => button.getBoundingClientRect().height)),
+  };
+})()`);
+if (p15BuildLayout.horizontalOverflow > 2 || p15BuildLayout.tabCount !== 5 || p15BuildLayout.minTabHeight < 40) {
+  throw new Error(`Android P15-B Build/Crafting/Progression layout failed: ${JSON.stringify(p15BuildLayout)}`);
+}
+await tapButton('Skills', 34);
 await waitFor(`(() => {
   const text = document.body?.innerText ?? '';
   const cards = [...document.querySelectorAll('.skill-path-card')];
@@ -443,14 +459,14 @@ if (skillHierarchyLayout.buttonCount < 9 || skillHierarchyLayout.undersized.leng
 }
 await evaluate(`document.querySelector('button[data-skill-mod="mag-revector"]')?.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' })`);
 await sleep(200);
-await tap('button[data-skill-mod="mag-revector"]', 33);
+await tap('button[data-skill-mod="mag-revector"]', 35);
 await waitFor(`document.querySelector('button[data-skill-mod="mag-revector"]')?.getAttribute('aria-pressed') === 'true' && (document.querySelector('.skill-path-card')?.textContent ?? '').includes('Lens · Revector Lens')`, 'Android touch Lens selection');
 await evaluate(`document.querySelector('button[data-skill-slot="mag"][data-skill-mod="standard"]')?.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' })`);
 await sleep(200);
-await tap('button[data-skill-slot="mag"][data-skill-mod="standard"]', 34);
+await tap('button[data-skill-slot="mag"][data-skill-mod="standard"]', 36);
 await waitFor(`document.querySelector('button[data-skill-slot="mag"][data-skill-mod="standard"]')?.getAttribute('aria-pressed') === 'true'`, 'Android touch Lens restore');
 console.log(`ANDROID_SKILL_HIERARCHY_PASS stages=4 skills=3 options=${skillHierarchyLayout.buttonCount} touch=select+restore`);
-await tapButton('Return to ship', 35);
+await tapButton('Return to ship', 37);
 await waitFor(`(() => {
   const text = (document.body?.innerText ?? '').toLowerCase();
   const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase());
