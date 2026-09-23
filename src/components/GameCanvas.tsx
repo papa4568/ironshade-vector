@@ -11,6 +11,7 @@ import { getMegastructureStageContract, type Contract, type ExpeditionProgress }
 import { abilityUsesTargetAcquisition, createSimulation, createTargetControlMemory, getAbilityConfig, getAbilityKit, getBoss, getClassMechanicStatus, getContextAction, getPlayerSector, getSquadRemaining, getStatusLabels, getWeaponConfig, getWorldSize, resetTargetControlMemory, setAim, setMove, stepSimulation, triggerAbility, triggerDodge, triggerFire, triggerInteract, triggerReload, triggerVent, triggerConsumable, updateMobileTargetControl, weaponHandlingProfiles, type CombatBuild, type CombatObject, type Enemy, type SimState, type TargetControlMemory, type Telemetry, type Vec2, type WeaponId } from '../game/sim';
 import type { ProfileSettings } from '../game/meta';
 import { consumableDefinitions, type ConsumableId, type ConsumableInventory } from '../game/consumables';
+import { carbineVariantPresentation } from '../game/classArsenal';
 import type { EquipmentFaction } from '../game/factionGear';
 import { combatAudioEnvironment, feedback, impactSurfaceForObject } from '../game/feedback';
 import { CombatCameraFeedbackRuntime } from '../game/combatCameraFeedback';
@@ -828,7 +829,8 @@ function drawOperatorSilhouette(ctx: CanvasRenderingContext2D, state: SimState, 
   else if (faction === 'heliostat') { ctx.strokeStyle = '#d7a75e'; ctx.beginPath(); ctx.moveTo(pos.x - 18, pos.y - 8); ctx.lineTo(pos.x - 27, pos.y + 11); ctx.moveTo(pos.x + 18, pos.y - 8); ctx.lineTo(pos.x + 27, pos.y + 11); ctx.stroke(); }
   else if (faction === 'longarc') { ctx.fillStyle = '#596044'; ctx.fillRect(pos.x - 24, pos.y - 12, 9, 25); ctx.strokeStyle = '#c4b476'; ctx.beginPath(); ctx.moveTo(pos.x + 16, pos.y - 4); ctx.lineTo(pos.x + 25, pos.y + 16); ctx.stroke(); }
   else { ctx.fillStyle = '#536f68'; ctx.fillRect(pos.x - 22, pos.y - 10, 7, 25); }
-  const weaponLength = player.currentWeapon === 'rail' ? 34 : player.currentWeapon === 'breacher' ? 26 : 30;
+  const carbinePresentation = player.currentWeapon === 'carbine' ? carbineVariantPresentation(state.weapons.carbine.variantId) : null;
+  const weaponLength = player.currentWeapon === 'rail' ? 34 : player.currentWeapon === 'breacher' ? 26 : 30 * (carbinePresentation?.silhouetteScaleX ?? 1);
   ctx.strokeStyle = player.currentWeapon === 'rail' ? '#9ec8d7' : player.currentWeapon === 'breacher' ? '#c9a178' : '#9fbba8';
   ctx.lineWidth = player.currentWeapon === 'rail' ? 5 : 4;
   ctx.beginPath(); ctx.moveTo(pos.x + 10, pos.y - 14); ctx.lineTo(pos.x + 10 + player.aim.x * weaponLength, pos.y - 14 + player.aim.y * weaponLength * 0.55); ctx.stroke(); ctx.lineWidth = 1;
@@ -955,7 +957,7 @@ function renderGame(ctx: CanvasRenderingContext2D, state: SimState, width: numbe
   }
   const playerPos = project(p.x, p.y, camX, camY, width, height); const aimEnd = project(p.x + p.aim.x * 96, p.y + p.aim.y * 96, camX, camY, width, height); ctx.strokeStyle = '#b5d6ca'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(playerPos.x, playerPos.y - 18); ctx.lineTo(aimEnd.x, aimEnd.y - 18); ctx.stroke(); ctx.lineWidth = 1; drawOperatorSilhouette(ctx, state, playerPos, operatorFaction);
   drawOperatorStatusPresentation(ctx, state, playerPos, reducedTargetMotion);
-  if (state.weaponFlash > 0) { const handling = weaponHandlingProfiles[p.currentWeapon]; const flash = Math.min(1, state.weaponFlash * 8); ctx.save(); ctx.fillStyle = p.currentWeapon === 'rail' ? '#b8edff' : p.currentWeapon === 'breacher' ? '#fff1c7' : '#efffc7'; if (quality > 0.7) { ctx.shadowBlur = 18 + handling.cameraKick * 2; ctx.shadowColor = ctx.fillStyle; } ctx.translate(aimEnd.x, aimEnd.y - 18); ctx.rotate(Math.atan2(p.aim.y, p.aim.x)); ctx.beginPath(); ctx.ellipse(0, 0, (6 + flash * 5) * handling.muzzleLength, (5 + flash * 2) * handling.muzzleWidth, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+  if (state.weaponFlash > 0) { const handling = weaponHandlingProfiles[p.currentWeapon]; const carbinePresentation = p.currentWeapon === 'carbine' ? carbineVariantPresentation(state.weapons.carbine.variantId) : null; const flash = Math.min(1, state.weaponFlash * 8); ctx.save(); ctx.fillStyle = p.currentWeapon === 'rail' ? '#b8edff' : p.currentWeapon === 'breacher' ? '#fff1c7' : '#efffc7'; if (quality > 0.7) { ctx.shadowBlur = 18 + handling.cameraKick * 2; ctx.shadowColor = ctx.fillStyle; } ctx.translate(aimEnd.x, aimEnd.y - 18); ctx.rotate(Math.atan2(p.aim.y, p.aim.x)); ctx.beginPath(); ctx.ellipse(0, 0, (6 + flash * 5) * handling.muzzleLength * (carbinePresentation?.muzzleLengthMul ?? 1), (5 + flash * 2) * handling.muzzleWidth * (carbinePresentation?.muzzleWidthMul ?? 1), 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
   if (state.pulse > 0) { const radius = (0.36 - state.pulse) / 0.36 * 285; ctx.strokeStyle = `rgba(139,220,205,${state.pulse / 0.36})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(playerPos.x, playerPos.y - 10, radius * 1.4, radius * 0.76, 0, 0, Math.PI * 2); ctx.stroke(); ctx.lineWidth = 1; }
   if (mission.location === 'solar-yard' && state.time >= 10 && state.time < 18 && !state.objects.find(object => object.id === 'solar-shutter')?.exposed) { const pulse = 0.035 + Math.sin(state.time * 5) * 0.012; ctx.fillStyle = `rgba(245,142,62,${pulse})`; ctx.fillRect(0, 0, width, height); }
   if (mission.conditions.includes('low-visibility')) { ctx.fillStyle = 'rgba(9,12,12,.16)'; ctx.fillRect(0, 0, width, height); }
@@ -1295,6 +1297,7 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
       canvas.dataset.assistedTargetId = mobileTargetControlRef.current.targetId == null ? '' : String(mobileTargetControlRef.current.targetId);
       canvas.dataset.targetFeedbackMotion = profileSettingsRef.current.effectIntensity === 'reduced' ? 'reduced' : 'full';
       canvas.dataset.cameraFeedback = `${cameraFeedback.mode}:${cameraFeedback.magnitude.toFixed(2)}`;
+      canvas.dataset.weaponVariant = state.weapons[state.player.currentWeapon].variantId ?? 'family-service';
       const qaSector = getPlayerSector(state);
       canvas.dataset.playerStatusPresentation = resolvePlayerStatusVisuals({
         heat: state.player.weaponHeat[state.player.currentWeapon] ?? 0,
