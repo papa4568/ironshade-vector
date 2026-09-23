@@ -13,7 +13,7 @@ Only active/future executable work lives here. Completed and verified work belon
 
 ## P17 — External Beta / Delivery
 
-- [ ] **P17-A — Signing/upgrade path** — establish permanent Android signing credentials/process and verify clean install plus upgrade. **Done when:** a release-signed build installs cleanly, upgrades an existing supported build without data loss, signing identity is verified, and the documented process is reproducible.
+- [ ] **P17-A — Provision permanent signing + upgrade proof** — create and securely back up the permanent Android release keystore, configure all four signing secrets documented in `docs/android-release-signing.md`, then run **Build Android APK** with `require_release_signing=true`. **Done when:** that release-required run succeeds, its release-signed APK clean-installs, its signed baseline upgrades in place without data loss, and the recorded signer SHA-256 identity is retained for future release continuity.
 - [ ] **P17-B — Durable distribution** — create the GitHub Release workflow for a non-expiring APK plus release notes/changelog. **Done when:** a tagged release produces the intended durable downloadable APK and release metadata through the repository workflow.
 - [ ] **P17-C — Save/release policy** — define and implement migration, rollback, recovery, and compatibility expectations for external releases. **Done when:** supported upgrade/recovery paths are documented and covered by the relevant save/migration verification.
 - [ ] **P17-D — External beta candidate** — perform final install/upgrade/package/runtime/touch/campaign QA on the release candidate. **Done when:** all release gates pass on the candidate artifact and no unresolved release-blocking defects remain.
