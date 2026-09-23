@@ -127,7 +127,7 @@ Target roughly **6 major tiers per system** with sub-milestones.
 - [x] **P14-C Vector Rail pair** — completed and verified; Charge + Repeater Rail delivered with deterministic same-family gameplay, explicit capacitor/thermal/penetration tradeoffs, distinct handling/FX presentation, and regression coverage. Delivery detail is archived in `docs/content-roadmap-archive.md`.
 - [x] **P14-D Build integration** — completed and verified; all six class-owned arsenal variants now integrate with owned-family progression, legal Reconstruction/affix preferences, class-skill tuning, Singular interactions, and class-owned loot bias while preserving hard family locks and save compatibility. Delivery detail is archived in `docs/content-roadmap-archive.md`.
 - [x] **P14-E Presentation/playtest** — completed and verified; all six class-owned arsenal variants now have distinct handling motion, layered-audio tuning, authored thermal warning/critical presentation, and sustained-fire same-family QA while preserving the P14-D build integration. Delivery detail is archived in `docs/content-roadmap-archive.md`.
-- [ ] **P14-F Fourth-family gate** — add only with a future class or genuinely distinct combat role
+- [x] **P14-F Fourth-family gate** — completed and verified; the shipped Systems/Carbine, Vanguard/Breacher, and Vector/Rail Lance one-to-one model remains the full arsenal, with a production regression gate preventing a fourth family until a future class or genuinely distinct combat role justifies it. Delivery detail is archived in `docs/content-roadmap-archive.md`.
 
 ## P15 — AAA UI / World / Cinematic Polish
 
@@ -159,23 +159,23 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P14-F — Fourth-family gate.**
+**Next: P15-A — Design system.**
 
-Run **P14-F — Fourth-family gate** as the next Class Arsenal Expansion decision gate: add another weapon family only if a future class or genuinely distinct combat role justifies it; otherwise close P14 with the verified Carbine/Breacher/Rail arsenal and advance to P15-A.
+Run **P15-A — Design system** as the next AAA UI / World / Cinematic Polish batch: establish the shared typography, spacing, iconography, focus, rarity-token, panel/tooltip, and responsive rules that the remaining P15 presentation work will reuse.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.290**
+- Android beta: **0.0.1-beta.291**
 - Package: `app.ironshade.vector`
-- Verified: **P14-E Presentation/playtest complete**
-- Gameplay source: `a4baed89b4e5f29248022b2763ad7aa4a6f10d7d`
-- Delivery/QA source: `a4baed89b4e5f29248022b2763ad7aa4a6f10d7d`
-- PR Browser E2E: `35848749371`
-- Browser E2E: `35849018181`
-- Level 15 beta smoke: `35849018278`
-- Android beta.290: `35849018125`
-- APK artifact: `10744404734`
-- APK SHA-256: `b27dd144f25a0284ffc8c9dfa7d84c852709ac2e343d83121dab0500b5d6ded3`
+- Verified: **P14-F Fourth-family gate complete**
+- Gameplay/test source: `5098b11eab9dd998d5ca30ce7bda0ecabfa8bbdb`
+- Delivery/QA source: `5098b11eab9dd998d5ca30ce7bda0ecabfa8bbdb`
+- PR Browser E2E: `35850980615`
+- Browser E2E: `35851255575`
+- Level 15 beta smoke: `35851255591`
+- Android beta.291: `35851255605`
+- APK artifact: `10745671957`
+- APK SHA-256: `7d7ef186f1e2b6bc93486e44338e73a60b7aa758608c173d9bad04539e984e5f`
 - Signing: debug-signed beta; permanent signing remains P17-A
