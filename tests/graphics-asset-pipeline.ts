@@ -496,7 +496,7 @@ assert(rendererSource.includes('dataset.renderTier = budget.tierName') && render
 assert(rendererSource.includes('budget.shadowMapSize') && rendererSource.includes('budget.vfxDensity') && rendererSource.includes('budget.transparencyScale'), 'renderer must apply explicit shadow, VFX-density, and transparency budgets');
 assert(rendererSource.includes('syncHardSciFiEnvironment(this.environmentRoot, state, mission, budget.detailScale, budget.transparencyScale)'), 'environment atmosphere must follow detail/transparency budgets');
 assert(rendererSource.includes('this.syncProjectiles(state, budget.transparencyScale)'), 'projectile trails must follow the transparency budget');
-assert(rendererSource.includes('this.syncEffects(state, quality * budget.detailScale, budget.vfxDensity, budget.transparencyScale, budget.secondaryEffectScale)'), 'combat effects must follow detail, VFX-density, transparency, and secondary-effect priority budgets');
+assert(rendererSource.includes('this.syncEffects(state, quality * budget.detailScale, budget.vfxDensity, budget.transparencyScale, budget.secondaryEffectScale, runtimeProfile)'), 'combat effects must follow detail, VFX-density, transparency, secondary-effect, and runtime-pool budgets');
 
 
 
