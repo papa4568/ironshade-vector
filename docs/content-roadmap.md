@@ -123,7 +123,7 @@ Target roughly **6 major tiers per system** with sub-milestones.
 ## P14 — Class Arsenal Expansion
 
 - [x] **P14-A Systems Carbine pair** — completed and verified; Burst + Precision Carbine delivered with deterministic same-family gameplay, authored/fallback handling presentation, and regression coverage. Delivery detail is archived in `docs/content-roadmap-archive.md`.
-- [ ] **P14-B Vanguard Breacher pair** — Slug + Rapid Breacher
+- [x] **P14-B Vanguard Breacher pair** — completed and verified; Slug + Rapid Breacher delivered with deterministic same-family gameplay, distinct projectile/handling presentation, and regression coverage. Delivery detail is archived in `docs/content-roadmap-archive.md`.
 - [ ] **P14-C Vector Rail pair** — Charge + Repeater Rail
 - [ ] **P14-D Build integration** — progression, crafting/affixes, skills, Singulars, class-owned loot
 - [ ] **P14-E Presentation/playtest** — silhouettes, handling animation, layered audio, sustained-fire thermal QA, same-family variety
@@ -159,24 +159,24 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P14-B — Vanguard Breacher pair.**
+**Next: P14-C — Vector Rail pair.**
 
-Run **P14-B — Vanguard Breacher pair** as the next Class Arsenal Expansion batch: add the Slug + Rapid Breacher variants as a coherent Vanguard-owned same-family pair, preserve the established Vanguard breach identity, and carry them through distinct gameplay/handling presentation plus deterministic regression before expanding to the Vector Rail pair.
+Run **P14-C — Vector Rail pair** as the next Class Arsenal Expansion batch: add the Charge + Repeater Rail variants as a coherent Vector-owned same-family pair, preserve the established Vector precision/momentum identity, and carry them through distinct gameplay/handling presentation plus deterministic regression before the broader build-integration pass.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.286**
+- Android beta: **0.0.1-beta.287**
 - Package: `app.ironshade.vector`
-- Verified: **P14-A Systems Carbine pair complete**
-- Gameplay source: `961036e65bd544eef8437d8c026088b526db230a`
-- Delivery/QA source: `961036e65bd544eef8437d8c026088b526db230a`
-- PR Browser E2E: `35816472065`
-- Browser E2E: `35816730328`
-- Level 15 beta smoke: `35816730270`
-- Android beta.286: `35816730475`
-- APK artifact: `10732231158`
-- APK SHA-256: `de0bca17f8b8622e478f0459247c3868d7674a9129df3b156efebbc452595d7f`
+- Verified: **P14-B Vanguard Breacher pair complete**
+- Gameplay source: `3154b300c0a8ed166814bae5bd6876a3df7ea25d`
+- Delivery/QA source: `3154b300c0a8ed166814bae5bd6876a3df7ea25d`
+- PR Browser E2E: `35818531057`
+- Browser E2E: `35818754105`
+- Level 15 beta smoke: `35818754120`
+- Android beta.287: `35818754101`
+- APK artifact: `10732995607`
+- APK SHA-256: `168902b73aa890ecb730d68e0394e4c69f08ab3df16cecbc1119c37d91df55ea`
 - Signing: debug-signed beta; permanent signing remains P17-A
 
