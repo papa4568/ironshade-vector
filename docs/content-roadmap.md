@@ -167,14 +167,15 @@ After each merged/verified batch: mark complete → archive detail/delivery note
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.282**
+- Android beta: **0.0.1-beta.285**
 - Package: `app.ironshade.vector`
-- Verified: **P13-F Enemy Modifier & Status Visual Language boss/spawn/death language complete**
-- Gameplay source: `b2e93a3e9b838247ca30c5671478434f792c073c`
-- PR Browser E2E: `35808188156`
-- Browser E2E: `35808378456`
-- Level 15 beta smoke: `35808378476`
-- Android beta.282: `35808378501`
-- APK artifact: `10728758630`
-- APK SHA-256: `c98510b7df5fb0c5f410c408400a7c07bc4d3e5456fa90a128d21d8c18b79e53`
+- Verified: **P13-G Enemy Modifier & Status Visual Language mobile readability/HUD reduction complete**
+- Gameplay source: `4161a2d8817d4e289e92f1743fd0e20f8989b873`
+- Delivery/QA source: `16a43e937438f3f21174e8294b59133aa74b5f36`
+- PR Browser E2E: `35812479953`
+- Browser E2E: `35814794239`
+- Level 15 beta smoke: `35814794287`
+- Android beta.285: `35814794169`
+- APK artifact: `10731058432`
+- APK SHA-256: `fbe2c348d331c363c51c7c572669ea439c0dc472c3addec4b358e8f21f4446e6`
 - Signing: debug-signed beta; permanent signing is P17-A
