@@ -11,10 +11,6 @@ Only active/future executable work lives here. Completed and verified work belon
 - After verified completion, move the completion detail/evidence to the archive and remove the item from this file.
 - If repository evidence shows an active item is already complete, verify that evidence before archiving it. If only part is complete, rewrite the item around the remaining work.
 
-## P16 — Performance Without Compromise
-
-- [ ] **P16-F — Quality modes/device QA** — finalize richer flagship mode and mechanics-preserving performance mode, then verify across representative Android device tiers. **Done when:** quality modes visibly differ, performance scaling preserves mechanics/readability, settings persist correctly, and device-tier playthrough QA passes.
-
 ## P17 — External Beta / Delivery
 
 - [ ] **P17-A — Signing/upgrade path** — establish permanent Android signing credentials/process and verify clean install plus upgrade. **Done when:** a release-signed build installs cleanly, upgrades an existing supported build without data loss, signing identity is verified, and the documented process is reproducible.
