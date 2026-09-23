@@ -191,6 +191,26 @@ async function waitFor(predicateExpression, label, timeout = 45_000) {
   throw new Error(`Timed out waiting for ${label}; webview=${JSON.stringify(state)}${suffix}`);
 }
 
+async function waitForValue(expression, label, ready, timeout = 45_000) {
+  const deadline = Date.now() + timeout;
+  let lastValue = null;
+  let lastEvaluationError = null;
+  while (Date.now() < deadline) {
+    try {
+      const remaining = Math.max(500, deadline - Date.now());
+      lastValue = await evaluate(expression, Math.min(5_000, remaining));
+      if (ready(lastValue)) return lastValue;
+      lastEvaluationError = null;
+    } catch (error) {
+      lastEvaluationError = error;
+    }
+    await sleep(150);
+  }
+  const state = await snapshot().catch(error => ({ snapshotError: String(error) }));
+  const suffix = lastEvaluationError ? ` lastEvaluationError=${String(lastEvaluationError)}` : '';
+  throw new Error(`Timed out waiting for ${label}; lastValue=${JSON.stringify(lastValue)} webview=${JSON.stringify(state)}${suffix}`);
+}
+
 async function elementMetrics(selector) {
   const encoded = JSON.stringify(selector);
   return evaluate(`(() => {
@@ -505,27 +525,49 @@ await tap('button[data-location="asteroid-refinery"]', 23);
 await waitFor(`document.querySelector('button[data-location="asteroid-refinery"]')?.classList.contains('selected') === true`, 'Asteroid Refinery contract selection');
 
 await tapButton('Deploy selected contract', 24, 120);
-await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('field coach') && document.querySelectorAll('canvas').length > 0`, 'Combat surface', 45_000);
-await waitFor(`Boolean(document.querySelector('[data-presentation="deployment"]') && document.querySelector('.game-root[data-mission-presentation="non-blocking-cues"]'))`, 'P15-C deployment presentation');
-const p15MissionPresentation = await evaluate(`(() => {
+const p15MissionPresentation = await waitForValue(`(() => {
+  const root = document.querySelector('.game-root[data-mission-presentation="non-blocking-cues"]');
   const cue = document.querySelector('[data-presentation="deployment"]');
-  const rect = cue?.getBoundingClientRect();
-  const style = cue ? getComputedStyle(cue) : null;
+  if (!root || !cue) return null;
+  const rect = cue.getBoundingClientRect();
+  const style = getComputedStyle(cue);
   return {
-    pointerEvents: style?.pointerEvents ?? '',
-    title: cue?.querySelector('b')?.textContent?.trim() ?? '',
-    left: rect?.left ?? -1,
-    right: rect?.right ?? -1,
-    top: rect?.top ?? -1,
-    bottom: rect?.bottom ?? -1,
+    pointerEvents: style.pointerEvents,
+    title: cue.querySelector('b')?.textContent?.trim() ?? '',
+    left: rect.left,
+    right: rect.right,
+    top: rect.top,
+    bottom: rect.bottom,
     viewportWidth: window.innerWidth,
     viewportHeight: window.innerHeight,
   };
-})()`);
+})()`, 'P15-C deployment presentation capture', value => Boolean(value), 45_000);
 if (p15MissionPresentation.pointerEvents !== 'none' || !p15MissionPresentation.title || p15MissionPresentation.left < 0 || p15MissionPresentation.right > p15MissionPresentation.viewportWidth || p15MissionPresentation.top < 0 || p15MissionPresentation.bottom > p15MissionPresentation.viewportHeight) {
   throw new Error(`P15-C Android deployment presentation blocks touch or leaves the viewport: ${JSON.stringify(p15MissionPresentation)}`);
 }
 console.log(`ANDROID_P15_MISSION_PRESENTATION_PASS deployment=non-blocking title=${p15MissionPresentation.title}`);
+await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('field coach') && document.querySelectorAll('canvas').length > 0`, 'Combat surface', 45_000);
+const p15WorldPolish = await waitForValue(`(() => {
+  const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.worldReadability);
+  if (!canvas) return null;
+  return {
+    readability: canvas.dataset.worldReadability ?? '',
+    materialDepth: canvas.dataset.worldMaterialDepth ?? '',
+    biomeState: canvas.dataset.biomeState ?? '',
+    biomeAnimation: canvas.dataset.biomeStateAnimation ?? '',
+    biomeAudio: canvas.dataset.biomeStateAudio ?? '',
+    interactables: canvas.dataset.interactableReadability ?? '',
+    hazards: canvas.dataset.hazardReadability ?? '',
+  };
+})()`, 'P15-D Android world material readability', value => Boolean(value
+  && value.readability === 'interactables:shape+state|hazards:shape+motion|loot:shape+rarity'
+  && value.interactables === 'shape-coded+state-emissive+floor-cue:quality-safe'
+  && value.hazards === 'shape-coded+floor-bound+quality-safe'
+  && value.materialDepth.includes('material-response')
+  && value.biomeState
+  && value.biomeAnimation
+  && value.biomeAudio), 20_000);
+console.log(`ANDROID_P15_WORLD_POLISH_PASS state=${p15WorldPolish.biomeState} depth=${p15WorldPolish.materialDepth} readability=${p15WorldPolish.readability}`);
 await waitFor(`(() => {
   const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || '').trim());
   return ['Breach Rush', 'Fracture Tag', 'Bulwark Pulse'].every(label => labels.includes(label));
