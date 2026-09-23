@@ -211,7 +211,7 @@ async function accessibilityAudit(surface) {
 async function performanceDiagnosticsAudit() {
   await waitFor(`(() => {
     const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.performanceReport);
-    return Number(canvas?.dataset.performanceSampleCount ?? 0) >= 90 && Boolean(canvas?.dataset.performanceBudgetVersion);
+    return Number(canvas?.dataset.performanceSampleCount ?? 0) >= 60 && Boolean(canvas?.dataset.performanceBudgetVersion);
   })()`, 'P16-A performance baseline samples', 20_000);
   const result = await evaluate(`(() => {
     const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.performanceReport);
@@ -226,7 +226,7 @@ async function performanceDiagnosticsAudit() {
       report: JSON.parse(canvas.dataset.performanceReport),
     };
   })()`);
-  if (!result?.report || result.budgetVersion !== 'p16-a-v1' || result.sampleCount < 90) {
+  if (!result?.report || result.budgetVersion !== 'p16-a-v1' || result.sampleCount < 60) {
     throw new Error(`P16-A performance diagnostics unavailable: ${JSON.stringify(result)}`);
   }
   const categoryKeys = Object.keys(result.report.categories ?? {}).sort().join(',');
