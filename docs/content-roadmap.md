@@ -13,7 +13,6 @@ Only active/future executable work lives here. Completed and verified work belon
 
 ## P16 — Performance Without Compromise
 
-- [x] **P16-C — Runtime scalability** — improve pooling, animation LOD, audio virtualization, and asset streaming/preload. **Done when:** worst-case runtime pressure stays within established budgets without changing encounter mechanics and regression/Android QA pass.
 - [ ] **P16-D — Boot architecture** — split feature/presentation data where useful and track boot cost diagnostically without arbitrary bundle/chunk byte caps. **Done when:** startup work is measurably staged/deferred, required gameplay data remains correct, and boot/build regressions pass.
 - [ ] **P16-E — Soak/stress QA** — run 30-minute thermal soak, worst-case T12 stress, frame-pacing, memory, and leak checks. **Done when:** the defined stress scenarios complete without unacceptable thermal/memory/frame-pacing degradation or unresolved leaks/crashes.
 - [ ] **P16-F — Quality modes/device QA** — finalize richer flagship mode and mechanics-preserving performance mode, then verify across representative Android device tiers. **Done when:** quality modes visibly differ, performance scaling preserves mechanics/readability, settings persist correctly, and device-tier playthrough QA passes.
