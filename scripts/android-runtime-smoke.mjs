@@ -289,14 +289,15 @@ if (resumeOnly) {
     const canvas = document.querySelector('canvas[data-render-tier]');
     return {
       tier: canvas?.dataset.renderTier ?? '',
+      qualityMode: canvas?.dataset.graphicsQuality ?? '',
       budget: canvas?.dataset.renderBudget ?? '',
       environment: canvas?.dataset.environmentVisual ?? '',
       canvases: document.querySelectorAll('canvas').length,
       touch: Boolean(document.querySelector('[aria-label="Touch combat controls"]') && document.querySelector('.move-stick') && document.querySelector('.fire-button') && document.querySelector('.dodge-button')),
     };
   })()`);
-  if (!['balanced', 'performance'].includes(resumed.tier)) {
-    throw new Error(`Android resume did not restore a mobile render tier: ${JSON.stringify(resumed)}`);
+  if (resumed.qualityMode !== 'performance' || resumed.tier !== 'performance') {
+    throw new Error(`Android resume did not preserve Performance graphics mode: ${JSON.stringify(resumed)}`);
   }
   if (!validRenderBudget(resumed.budget)) {
     throw new Error(`Android resume render budget telemetry is malformed: ${JSON.stringify(resumed)}`);
@@ -304,7 +305,7 @@ if (resumeOnly) {
   if (!resumed.touch || resumed.canvases < 1) {
     throw new Error(`Android resume did not restore combat/touch surfaces: ${JSON.stringify(resumed)}`);
   }
-  console.log(`ANDROID_LIFECYCLE_RESUME_PASS process=${resumeProcessMode} tier=${resumed.tier} budget=${resumed.budget} environment=${resumed.environment} canvases=${resumed.canvases}`);
+  console.log(`ANDROID_LIFECYCLE_RESUME_PASS process=${resumeProcessMode} mode=${resumed.qualityMode} tier=${resumed.tier} budget=${resumed.budget} environment=${resumed.environment} canvases=${resumed.canvases}`);
   session.close();
   await sleep(100);
   process.exit(0);
@@ -435,6 +436,19 @@ const p15BuildLayout = await evaluate(`(() => {
 if (p15BuildLayout.horizontalOverflow > 2 || p15BuildLayout.tabCount !== 5 || p15BuildLayout.minTabHeight < 40) {
   throw new Error(`Android P15-B Build/Crafting/Progression layout failed: ${JSON.stringify(p15BuildLayout)}`);
 }
+await tapButton('Settings', 64);
+await waitFor(`Boolean(document.querySelector('select[aria-label="Graphics quality"]'))`, 'Android graphics quality setting');
+const graphicsModeChanged = await evaluate(`(() => {
+  const select = document.querySelector('select[aria-label="Graphics quality"]');
+  if (!(select instanceof HTMLSelectElement)) return false;
+  const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set;
+  if (!setter) return false;
+  setter.call(select, 'performance');
+  select.dispatchEvent(new Event('change', { bubbles: true }));
+  return true;
+})()`);
+if (!graphicsModeChanged) throw new Error('Android could not select Performance graphics mode.');
+await waitFor(`document.querySelector('select[aria-label="Graphics quality"]')?.value === 'performance'`, 'Android Performance graphics selection');
 await tapButton('Skills', 34);
 await waitFor(`(() => {
   const text = document.body?.innerText ?? '';
@@ -470,6 +484,9 @@ await sleep(200);
 await tap('button[data-skill-slot="mag"][data-skill-mod="standard"]', 36);
 await waitFor(`document.querySelector('button[data-skill-slot="mag"][data-skill-mod="standard"]')?.getAttribute('aria-pressed') === 'true'`, 'Android touch Lens restore');
 console.log(`ANDROID_SKILL_HIERARCHY_PASS stages=4 skills=3 options=${skillHierarchyLayout.buttonCount} touch=select+restore`);
+await tapButton('Settings', 65);
+await waitFor(`document.querySelector('select[aria-label="Graphics quality"]')?.value === 'performance'`, 'Android graphics setting persistence across Build tabs');
+console.log('ANDROID_QUALITY_SETTING_PASS mode=performance persisted=build-navigation');
 await tapButton('Return to ship', 37);
 await waitFor(`(() => {
   const text = (document.body?.innerText ?? '').toLowerCase();
@@ -567,6 +584,7 @@ await waitFor(`(() => {
   const canvas = document.querySelector('canvas[data-render-tier]');
   return Boolean(
     canvas?.dataset.renderTier
+    && canvas?.dataset.graphicsQuality
     && canvas?.dataset.renderBudget
     && canvas?.dataset.runtimeAnimationLod
     && canvas?.dataset.runtimePools
@@ -579,6 +597,7 @@ const renderTier = await evaluate(`(() => {
   const canvas = document.querySelector('canvas[data-render-tier]');
   return {
     tier: canvas?.dataset.renderTier ?? '',
+    qualityMode: canvas?.dataset.graphicsQuality ?? '',
     budget: canvas?.dataset.renderBudget ?? '',
     animationLod: canvas?.dataset.runtimeAnimationLod ?? '',
     pools: canvas?.dataset.runtimePools ?? '',
@@ -586,13 +605,13 @@ const renderTier = await evaluate(`(() => {
     audioVirtualization: canvas?.dataset.audioVirtualization ?? '',
   };
 })()`);
-if (!['balanced', 'performance'].includes(renderTier.tier)) {
-  throw new Error(`Android coarse/mobile renderer started outside Balanced/Performance: ${JSON.stringify(renderTier)}`);
+if (renderTier.qualityMode !== 'performance' || renderTier.tier !== 'performance') {
+  throw new Error(`Android renderer did not honor Performance graphics mode: ${JSON.stringify(renderTier)}`);
 }
 if (!validRenderBudget(renderTier.budget)) {
   throw new Error(`Android render budget telemetry is malformed: ${JSON.stringify(renderTier)}`);
 }
-console.log(`ANDROID_RENDER_TIER_PASS tier=${renderTier.tier} budget=${renderTier.budget}`);
+console.log(`ANDROID_RENDER_TIER_PASS mode=${renderTier.qualityMode} tier=${renderTier.tier} budget=${renderTier.budget}`);
 if (!/^(balanced|performance):max-stride-[123]:deferred-\d+$/.test(renderTier.animationLod)) {
   throw new Error(`Android runtime animation LOD telemetry is malformed: ${JSON.stringify(renderTier)}`);
 }
