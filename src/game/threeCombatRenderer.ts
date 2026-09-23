@@ -21,6 +21,7 @@ import { resolvePlayerHandlingAnimation } from './playerHandlingAnimation';
 import { resolveEnemyDamageAnimation, resolvePlayerSkillAnimation } from './skillDamageAnimation';
 import { resolveEnemyBossAnimation, type EnemyBossAnimationSignals } from './enemyBossAnimation';
 import { resolveEnemyPresentation, type EnemyPresentationContract } from './enemyPresentation';
+import { enhancedProtocolVisualSpecFor, protocolVisualIds, protocolVisualSpecFor } from './protocolVisualLanguage';
 
 const WORLD_SCALE = 0.02;
 const FLOOR_Y = 0;
@@ -48,6 +49,106 @@ const roleColors: Record<Enemy['role'], number> = {
 
 function enemyMutationCueActive(contract: EnemyPresentationContract, cue: string) {
   return contract.animation.some(layer => layer.source === 'mutation' && layer.cue === cue);
+}
+
+function createEnemyProtocolVisuals(scale: number) {
+  const root = new THREE.Group();
+  root.name = 'enemy-protocol-p13d';
+  const materials: THREE.Material[] = [];
+  const keep = <T extends THREE.Material>(material: T) => { materials.push(material); return material; };
+  const dimensions: Record<ReturnType<typeof protocolVisualSpecFor>['signature'], readonly [number, number, number]> = {
+    split: [0.72, 0.16, 0.18],
+    crown: [0.6, 0.18, 0.16],
+    rails: [0.82, 0.1, 0.14],
+    ring: [0.34, 0.28, 0.16],
+    fork: [0.58, 0.12, 0.16],
+    clamp: [0.7, 0.2, 0.14],
+    grid: [0.62, 0.25, 0.12],
+    fan: [0.84, 0.1, 0.13],
+    beacon: [0.34, 0.34, 0.14],
+  };
+
+  for (const id of protocolVisualIds) {
+    const spec = protocolVisualSpecFor(id);
+    const group = new THREE.Group();
+    group.name = `protocol-${id}`;
+    const [width, height, depth] = dimensions[spec.signature];
+    const hardwareMaterial = keep(new THREE.MeshStandardMaterial({
+      color: spec.primary,
+      emissive: spec.accent,
+      emissiveIntensity: 0.24,
+      metalness: 0.76,
+      roughness: 0.32,
+      transparent: true,
+    }));
+    const fieldMaterial = keep(new THREE.MeshBasicMaterial({
+      color: spec.accent,
+      transparent: true,
+      opacity: 0.42,
+      depthWrite: false,
+      toneMapped: false,
+    }));
+    const housing = new THREE.Mesh(
+      new THREE.BoxGeometry(width * scale, height * scale, depth * scale),
+      hardwareMaterial,
+    );
+    housing.name = 'protocol-housing';
+    housing.position.y = spec.height * scale;
+    housing.rotation.z = spec.signature === 'fork'
+      ? -0.18
+      : spec.signature === 'fan'
+        ? 0.24
+        : spec.signature === 'crown'
+          ? -0.1
+          : 0;
+    group.add(housing);
+
+    for (let node = 0; node < spec.nodeCount; node += 1) {
+      const angle = -Math.PI * 0.76 + (node / Math.max(1, spec.nodeCount - 1)) * Math.PI * 1.52;
+      const point = new THREE.Mesh(new THREE.SphereGeometry(0.055 * scale, 7, 6), hardwareMaterial);
+      point.name = `protocol-node-${node}`;
+      point.position.set(
+        Math.cos(angle) * spec.radius * scale,
+        (spec.height + Math.sin(angle) * spec.radius * 0.34) * scale,
+        0.19 * scale,
+      );
+      group.add(point);
+    }
+
+    const field = new THREE.Mesh(
+      new THREE.TorusGeometry(spec.radius * scale, 0.018 * scale, 5, 28),
+      fieldMaterial,
+    );
+    field.name = 'protocol-field';
+    field.position.set(0, spec.height * scale, 0.2 * scale);
+    field.rotation.x = spec.signature === 'rails' || spec.signature === 'clamp' ? Math.PI / 2 : 0;
+    group.add(field);
+
+    const enhancedRing = new THREE.Mesh(
+      new THREE.TorusGeometry(spec.radius * 1.18 * scale, 0.025 * scale, 5, 30),
+      fieldMaterial,
+    );
+    enhancedRing.name = 'protocol-enhanced-ring';
+    enhancedRing.position.set(0, spec.height * scale, 0.22 * scale);
+    enhancedRing.visible = false;
+    group.add(enhancedRing);
+
+    for (let spoke = 0; spoke < 4; spoke += 1) {
+      const marker = new THREE.Mesh(
+        new THREE.BoxGeometry(spec.radius * 0.58 * scale, 0.016 * scale, 0.018 * scale),
+        fieldMaterial,
+      );
+      marker.name = `protocol-enhanced-spoke-${spoke}`;
+      marker.position.set(0, spec.height * scale, 0.23 * scale);
+      marker.visible = false;
+      group.add(marker);
+    }
+
+    group.visible = false;
+    root.add(group);
+  }
+
+  return { root, materials };
 }
 
 function createEnemyMutationVisuals(scale: number) {
@@ -381,6 +482,8 @@ type EnemyVisual = {
   armor: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
   targetRing: THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>;
   protocolRing: THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>;
+  protocolRoot: THREE.Group;
+  protocolMaterials: THREE.Material[];
   mutationRoot: THREE.Group;
   mutationMaterials: THREE.Material[];
   bossSignature: THREE.Group | null;
@@ -836,6 +939,8 @@ export class ThreeCombatRenderer {
       visual.authoredOwnedMaterials.forEach(material => material.dispose());
       visual.authoredOwnedMaterials = [];
       visual.authoredMaterials = [];
+      visual.protocolMaterials.forEach(material => material.dispose());
+      visual.protocolMaterials = [];
       visual.mutationMaterials.forEach(material => material.dispose());
       visual.mutationMaterials = [];
     }
@@ -4637,6 +4742,9 @@ export class ThreeCombatRenderer {
     protocolRing.position.y = 0.08;
     root.add(protocolRing);
 
+    const protocolVisuals = createEnemyProtocolVisuals(bossScale);
+    root.add(protocolVisuals.root);
+
     const mutationVisuals = createEnemyMutationVisuals(bossScale);
     root.add(mutationVisuals.root);
 
@@ -4731,6 +4839,8 @@ export class ThreeCombatRenderer {
       armor,
       targetRing,
       protocolRing,
+      protocolRoot: protocolVisuals.root,
+      protocolMaterials: protocolVisuals.materials,
       mutationRoot: mutationVisuals.root,
       mutationMaterials: mutationVisuals.materials,
       bossSignature,
@@ -5108,6 +5218,110 @@ export class ThreeCombatRenderer {
   }
 
 
+  private syncEnemyProtocolPresentation(
+    visual: EnemyVisual,
+    enemy: Enemy,
+    state: SimState,
+    presentation: EnemyPresentationContract,
+    reducedEffects: boolean,
+  ) {
+    for (const id of protocolVisualIds) {
+      const group = visual.protocolRoot.getObjectByName(`protocol-${id}`) as THREE.Group | undefined;
+      if (group) group.visible = false;
+    }
+
+    const active = enemy.active && !enemy.dead ? enemy.protocols.slice(0, 3) : [];
+    visual.protocolRoot.visible = active.length > 0;
+    if (active.length === 0) return;
+
+    const materialLead = presentation.material[0];
+    const vfxLead = presentation.vfx[0];
+    const materialReadability = materialLead && materialLead.source !== 'protocol' && materialLead.priority > 2 ? 0.32 : 1;
+    const vfxReadability = vfxLead && vfxLead.source !== 'protocol' && vfxLead.priority > 2 ? 0.24 : 1;
+    const motionScale = reducedEffects ? 0.35 : 1;
+
+    active.forEach((protocol, index) => {
+      const spec = protocolVisualSpecFor(protocol.id);
+      const group = visual.protocolRoot.getObjectByName(`protocol-${protocol.id}`) as THREE.Group | undefined;
+      if (!group) return;
+      group.visible = true;
+      const slot = (index - (active.length - 1) / 2) * 0.46;
+      const windup = protocol.windup > 0 ? THREE.MathUtils.clamp(0.65 + protocol.windup * 0.45, 0, 1) : THREE.MathUtils.clamp(0.45 + enemy.protocolPulse * 0.4, 0, 1);
+      const pulse = reducedEffects ? 0.78 : 0.72 + Math.sin(state.time * (3.2 + spec.phase * 0.08) + enemy.id * 0.31 + spec.phase) * 0.16;
+      group.position.x = slot;
+      group.position.z = index * -0.025;
+      group.rotation.y = reducedEffects
+        ? 0
+        : spec.motion === 'orbit'
+          ? state.time * 0.5 + spec.phase
+          : spec.motion === 'scan'
+            ? Math.sin(state.time * 2.2 + spec.phase) * 0.16
+            : spec.motion === 'aim'
+              ? Math.sin(state.time * 1.8 + spec.phase) * 0.08
+              : 0;
+      group.rotation.z = reducedEffects
+        ? 0
+        : spec.motion === 'vent'
+          ? Math.sin(state.time * 5.2 + spec.phase) * 0.045
+          : spec.motion === 'heat'
+            ? Math.sin(state.time * 7.4 + spec.phase) * 0.032
+            : 0;
+
+      const housing = group.getObjectByName('protocol-housing') as THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial> | undefined;
+      if (housing) {
+        housing.material.opacity = 0.96 * materialReadability;
+        housing.material.emissiveIntensity = (0.16 + pulse * 0.28 + windup * 0.18) * materialReadability;
+        housing.scale.setScalar(0.96 + windup * 0.07 * motionScale);
+      }
+
+      const field = group.getObjectByName('protocol-field') as THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial> | undefined;
+      if (field) {
+        field.material.opacity = (0.18 + pulse * 0.28 + windup * 0.12) * vfxReadability;
+        field.rotation.z = reducedEffects ? 0 : state.time * (spec.motion === 'scan' ? -1.25 : spec.motion === 'orbit' ? 0.85 : 0.28) + spec.phase;
+        field.scale.setScalar(0.94 + windup * 0.13 * motionScale);
+      }
+
+      for (let node = 0; node < spec.nodeCount; node += 1) {
+        const point = group.getObjectByName(`protocol-node-${node}`) as THREE.Mesh<THREE.SphereGeometry, THREE.MeshStandardMaterial> | undefined;
+        if (!point) continue;
+        point.material.opacity = 0.96 * materialReadability;
+        point.material.emissiveIntensity = (0.2 + pulse * 0.34 + windup * 0.12) * materialReadability;
+        const nodePulse = reducedEffects ? 1 : 1 + Math.sin(state.time * 4.6 + spec.phase + node * 0.9) * 0.08 * motionScale;
+        point.scale.setScalar(nodePulse);
+      }
+
+      const enhanced = protocol.enhanced && !!protocol.variantId;
+      const enhancedRing = group.getObjectByName('protocol-enhanced-ring') as THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial> | undefined;
+      if (enhancedRing) enhancedRing.visible = enhanced;
+      if (!enhanced || !protocol.variantId) {
+        for (let spoke = 0; spoke < 4; spoke += 1) {
+          const marker = group.getObjectByName(`protocol-enhanced-spoke-${spoke}`);
+          if (marker) marker.visible = false;
+        }
+        return;
+      }
+
+      const variant = enhancedProtocolVisualSpecFor(protocol.variantId);
+      if (enhancedRing) {
+        enhancedRing.material.opacity = (0.3 + pulse * 0.4) * vfxReadability;
+        enhancedRing.scale.setScalar(variant.scale * (0.96 + windup * 0.08 * motionScale));
+        enhancedRing.rotation.z = reducedEffects ? variant.phase : state.time * 0.62 + variant.phase;
+      }
+      const spokeCount = reducedEffects ? Math.min(2, variant.spokes) : variant.spokes;
+      for (let spoke = 0; spoke < 4; spoke += 1) {
+        const marker = group.getObjectByName(`protocol-enhanced-spoke-${spoke}`) as THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial> | undefined;
+        if (!marker) continue;
+        marker.visible = spoke < spokeCount;
+        if (!marker.visible) continue;
+        const angle = variant.phase + spoke * (Math.PI * 2 / Math.max(1, spokeCount)) + (reducedEffects ? 0 : state.time * 0.38);
+        marker.rotation.z = angle;
+        marker.position.x = Math.cos(angle) * spec.radius * 0.68;
+        marker.position.y = spec.height + Math.sin(angle) * spec.radius * 0.28;
+        marker.material.opacity = (0.32 + pulse * 0.4) * vfxReadability;
+      }
+    });
+  }
+
   private syncEnemyMutationPresentation(
     visual: EnemyVisual,
     enemy: Enemy,
@@ -5325,6 +5539,7 @@ export class ThreeCombatRenderer {
   private syncEnemies(state: SimState, mission: Contract, mobileTargetId: number | null, reducedTargetMotion: boolean) {
     const seen = new Set<number>();
     let animationTelemetry: { priority: number; enemy: Enemy; motion: EnemyBossAnimationSignals } | null = null;
+    let protocolTelemetry: { priority: number; enemy: Enemy; presentation: EnemyPresentationContract } | null = null;
     let mutationTelemetry: { priority: number; enemy: Enemy; presentation: EnemyPresentationContract } | null = null;
     for (const enemy of state.enemies) {
       seen.add(enemy.id);
@@ -5365,6 +5580,10 @@ export class ThreeCombatRenderer {
       });
       const animationPriority = enemy.role === 'boss' ? 3 : enemy.role === 'elite' ? 2 : 1;
       if (!animationTelemetry || animationPriority > animationTelemetry.priority) animationTelemetry = { priority: animationPriority, enemy, motion };
+      const hasPresentedProtocol = presentation.animation.some(layer => layer.source === 'protocol');
+      if (hasPresentedProtocol && (!protocolTelemetry || animationPriority > protocolTelemetry.priority)) {
+        protocolTelemetry = { priority: animationPriority, enemy, presentation };
+      }
       const hasPresentedMutation = presentation.animation.some(layer => layer.source === 'mutation');
       if (hasPresentedMutation && (!mutationTelemetry || animationPriority > mutationTelemetry.priority)) {
         mutationTelemetry = { priority: animationPriority, enemy, presentation };
@@ -5461,8 +5680,9 @@ export class ThreeCombatRenderer {
       }
       visual.protocolRing.visible = !enemy.dead && (enemy.combatClass === 'enhanced' || enemy.combatClass === 'elite' || enemy.protocolPulse > 0);
       visual.protocolRing.material.opacity = enemy.protocolPulse > 0 ? Math.min(0.86, 0.4 + enemy.protocolPulse * 0.42) : 0.38;
-      visual.protocolRing.rotation.z = state.time * (enemy.combatClass === 'elite' ? 1.2 : 0.72);
+      visual.protocolRing.rotation.z = reducedTargetMotion ? 0 : state.time * (enemy.combatClass === 'elite' ? 1.2 : 0.72);
       if (enemy.role === 'boss') this.syncBossSignature(visual, enemy, state);
+      this.syncEnemyProtocolPresentation(visual, enemy, state, presentation, reducedTargetMotion);
       this.syncEnemyMutationPresentation(visual, enemy, state, presentation, reducedTargetMotion);
       visual.body.material.emissive.setHex(enemy.statuses.disrupted > 0 ? 0x63508a : enemy.telegraph > 0 ? 0x7a3327 : 0x000000);
       visual.body.material.emissiveIntensity = enemy.statuses.disrupted > 0 || enemy.telegraph > 0 ? 0.34 : 0;
@@ -5541,6 +5761,23 @@ export class ThreeCombatRenderer {
       delete this.renderer.domElement.dataset.enemyAnimationBlend;
       delete this.renderer.domElement.dataset.enemyAnimationTarget;
       delete this.renderer.domElement.dataset.bossPhaseAnimation;
+    }
+    if (protocolTelemetry) {
+      const { enemy, presentation } = protocolTelemetry;
+      const keys = presentation.animation
+        .filter(layer => layer.source === 'protocol')
+        .map(layer => layer.key);
+      this.renderer.domElement.dataset.enemyProtocolPresentation = keys.join('+');
+      this.renderer.domElement.dataset.enemyProtocolEnhanced = enemy.protocols
+        .filter(protocol => protocol.enhanced && protocol.variantId)
+        .map(protocol => protocol.variantId)
+        .join('+');
+      this.renderer.domElement.dataset.enemyProtocolTarget = `${enemy.role}:${enemy.variant}`;
+      this.renderer.domElement.dataset.enemyPresentationDominant = presentation.dominant ?? 'none';
+    } else {
+      delete this.renderer.domElement.dataset.enemyProtocolPresentation;
+      delete this.renderer.domElement.dataset.enemyProtocolEnhanced;
+      delete this.renderer.domElement.dataset.enemyProtocolTarget;
     }
     if (mutationTelemetry) {
       const { enemy, presentation } = mutationTelemetry;
