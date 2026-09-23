@@ -2717,7 +2717,7 @@ export class ThreeCombatRenderer {
     this.renderer.domElement.dataset.weaponActive = player.currentWeapon;
     this.renderer.domElement.dataset.weaponAsset = current.assetId;
     this.renderer.domElement.dataset.weaponHeat = heat.toFixed(2);
-    this.renderer.domElement.dataset.weaponFx = player.currentWeapon === 'rail' ? 'lance' : state.weapons.breacher.variantId === 'breacher-slug' ? 'slug-impact' : state.weapons.breacher.variantId === 'breacher-rapid' ? 'rapid-scatter' : player.currentWeapon === 'breacher' ? 'scatter' : state.weapons.carbine.variantId === 'carbine-burst' ? 'burst-tracer' : state.weapons.carbine.variantId === 'carbine-precision' ? 'precision-tracer' : 'tracer';
+    this.renderer.domElement.dataset.weaponFx = state.weapons.rail.variantId === 'rail-charge' ? 'charge-lance' : state.weapons.rail.variantId === 'rail-repeater' ? 'repeater-lance' : player.currentWeapon === 'rail' ? 'lance' : state.weapons.breacher.variantId === 'breacher-slug' ? 'slug-impact' : state.weapons.breacher.variantId === 'breacher-rapid' ? 'rapid-scatter' : player.currentWeapon === 'breacher' ? 'scatter' : state.weapons.carbine.variantId === 'carbine-burst' ? 'burst-tracer' : state.weapons.carbine.variantId === 'carbine-precision' ? 'precision-tracer' : 'tracer';
     this.renderer.domElement.dataset.weaponVariant = state.weapons[player.currentWeapon].variantId ?? 'family-service';
     this.renderer.domElement.dataset.weaponHandling = `${handling.stance}:${handling.reloadStyle}:${handling.ventStyle}`;
   }

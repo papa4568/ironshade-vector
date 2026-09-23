@@ -127,11 +127,13 @@ try {
       if (lastState.asset !== `weapon-${lastState.active}-lod${expectedLod}`) {
         throw new Error(`Unexpected authored weapon asset id for LOD${expectedLod}: ${JSON.stringify(lastState)}`);
       }
-      const expectedFx = lastState.variant === 'breacher-slug' ? 'slug-impact'
-        : lastState.variant === 'breacher-rapid' ? 'rapid-scatter'
-          : lastState.variant === 'carbine-burst' ? 'burst-tracer'
-            : lastState.variant === 'carbine-precision' ? 'precision-tracer'
-              : lastState.active === 'rail' ? 'lance'
+      const expectedFx = lastState.variant === 'rail-charge' ? 'charge-lance'
+        : lastState.variant === 'rail-repeater' ? 'repeater-lance'
+          : lastState.variant === 'breacher-slug' ? 'slug-impact'
+            : lastState.variant === 'breacher-rapid' ? 'rapid-scatter'
+              : lastState.variant === 'carbine-burst' ? 'burst-tracer'
+                : lastState.variant === 'carbine-precision' ? 'precision-tracer'
+                  : lastState.active === 'rail' ? 'lance'
                 : lastState.active === 'breacher' ? 'scatter'
                   : 'tracer';
       if (lastState.fx !== expectedFx) {
