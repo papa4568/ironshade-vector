@@ -1,8 +1,9 @@
 import { protocolDefinition, type ProtocolFamily } from './eliteProtocols';
 import type { Enemy } from './sim';
 import type { HighTierMutationId } from './t9Mutations';
+import type { EnemyLifecycleSignals } from './enemyLifecyclePresentation';
 
-export type EnemyPresentationSource = 'mutation' | 'protocol' | 'status' | 'telegraph' | 'boss' | 'death';
+export type EnemyPresentationSource = 'mutation' | 'protocol' | 'status' | 'telegraph' | 'spawn' | 'readiness' | 'boss' | 'death';
 export type EnemyPresentationPriority = 1 | 2 | 3 | 4;
 
 export type EnemyPresentationLayer = {
@@ -73,6 +74,30 @@ const telegraphPresentation: PresentationBundle = {
   priority: 4,
 };
 
+const spawnPresentation: PresentationBundle = {
+  animation: 'activation-rise',
+  material: 'activation-powerup',
+  vfx: 'activation-lock-ring',
+  audio: 'activation-lock',
+  priority: 3,
+};
+
+const dangerousReadinessPresentation: PresentationBundle = {
+  animation: 'stacked-threat-brace',
+  material: 'stacked-threat-hot',
+  vfx: 'stacked-threat-crown',
+  audio: 'stacked-threat-warning',
+  priority: 4,
+};
+
+const bossPhaseTransitionPresentation: PresentationBundle = {
+  animation: 'boss-phase-break',
+  material: 'boss-phase-surge',
+  vfx: 'boss-phase-shock-ring',
+  audio: 'boss-phase-stinger',
+  priority: 4,
+};
+
 const bossPhasePresentation: PresentationBundle = {
   animation: 'boss-phase-rise',
   material: 'boss-phase-hot',
@@ -87,6 +112,13 @@ const deathPresentation: PresentationBundle = {
   vfx: 'death-discharge',
   audio: 'death-collapse',
   priority: 4,
+};
+
+const persistentDisabledPresentation: Omit<PresentationBundle, 'audio'> = {
+  animation: 'disabled-settle',
+  material: 'disabled-cold-hardware',
+  vfx: 'disabled-residual-marker',
+  priority: 2,
 };
 
 const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
@@ -115,6 +147,28 @@ function pushBundle(
   }
 }
 
+function pushVisualBundle(
+  contract: Omit<EnemyPresentationContract, 'dominant' | 'signature'>,
+  source: EnemyPresentationSource,
+  key: string,
+  bundle: Omit<PresentationBundle, 'audio'>,
+  intensity: number,
+  sustained: boolean,
+) {
+  const normalized = clamp01(intensity);
+  if (normalized <= 0) return;
+  for (const channel of ['animation', 'material', 'vfx'] as const) {
+    contract[channel].push({
+      key,
+      cue: bundle[channel],
+      source,
+      priority: bundle.priority,
+      intensity: normalized,
+      sustained,
+    });
+  }
+}
+
 function sortLayers(layers: EnemyPresentationLayer[]) {
   layers.sort((a, b) =>
     b.priority - a.priority
@@ -132,7 +186,7 @@ function signatureFor(contract: Omit<EnemyPresentationContract, 'dominant' | 'si
   return `a[${encode('animation')}]|m[${encode('material')}]|v[${encode('vfx')}]|s[${encode('audio')}]`;
 }
 
-export function resolveEnemyPresentation(input: EnemyPresentationInput): EnemyPresentationContract {
+export function resolveEnemyPresentation(input: EnemyPresentationInput, lifecycle?: EnemyLifecycleSignals): EnemyPresentationContract {
   const contract: Omit<EnemyPresentationContract, 'dominant' | 'signature'> = {
     animation: [],
     material: [],
@@ -171,13 +225,29 @@ export function resolveEnemyPresentation(input: EnemyPresentationInput): EnemyPr
     pushBundle(contract, 'telegraph', 'telegraph:attack', telegraphPresentation, clamp01(0.55 + input.telegraph * 0.45), false);
   }
 
+  if (lifecycle?.spawn) {
+    pushBundle(contract, 'spawn', 'spawn:activation', spawnPresentation, lifecycle.spawn, false);
+  }
+
+  if (lifecycle?.dangerousReadiness) {
+    pushBundle(contract, 'readiness', 'readiness:stacked-threat', dangerousReadinessPresentation, lifecycle.dangerousReadiness, true);
+  }
+
+  if (input.role === 'boss' && lifecycle?.phaseTransition) {
+    pushBundle(contract, 'boss', 'boss:phase-transition', bossPhaseTransitionPresentation, lifecycle.phaseTransition, false);
+  }
+
   if (input.role === 'boss' && input.bossPhase === 2) {
     pushBundle(contract, 'boss', 'boss:phase-2', bossPhasePresentation, 1, true);
   }
 
   if (input.dead) {
-    pushBundle(contract, 'death', 'death:disabled', deathPresentation, 1, false);
-    contract.audio = contract.audio.filter(layer => layer.source === 'death');
+    const disableIntensity = lifecycle ? lifecycle.disable : 1;
+    if (disableIntensity > 0) pushBundle(contract, 'death', 'death:disabled', deathPresentation, disableIntensity, false);
+    if (lifecycle?.persistentDisabled) {
+      pushVisualBundle(contract, 'death', 'death:persistent', persistentDisabledPresentation, lifecycle.persistentDisabled, true);
+    }
+    contract.audio = contract.audio.filter(layer => layer.key === 'death:disabled');
   }
 
   sortLayers(contract.animation);
