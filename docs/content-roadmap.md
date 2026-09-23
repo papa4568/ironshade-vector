@@ -11,10 +11,6 @@ Only active/future executable work lives here. Completed and verified work belon
 - After verified completion, move the completion detail/evidence to the archive and remove the item from this file.
 - If repository evidence shows an active item is already complete, verify that evidence before archiving it. If only part is complete, rewrite the item around the remaining work.
 
-## P15 — AAA UI / World / Cinematic Polish
-
-- [x] **P15-E — Accessibility/mobile/screenshot gate** — add scalable text, contrast, reduced motion, effect/audio/assist controls, safe-area/orientation coverage, and final presentation QA. **Done when:** supported accessibility controls persist and affect the intended systems, mobile layouts remain usable across target orientations/safe areas, screenshot/readability checks pass, and Android builds/QA pass.
-
 ## P16 — Performance Without Compromise
 
 - [ ] **P16-A — Measurement** — establish device tiers and separate CPU/render/GPU/UI/animation/audio/GC budgets with reproducible measurement. **Done when:** representative scenarios produce comparable diagnostics/baselines and regressions can be identified against explicit budgets.
