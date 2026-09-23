@@ -114,7 +114,7 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 - [x] **P13-A Presentation framework** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
 - [x] **P13-B T9 visuals I** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
-- [ ] **P13-C T9 visuals II** — Redline Bus, Countermass Rig, Relay Reflex
+- [x] **P13-C T9 visuals II** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
 - [ ] **P13-D Protocol visuals** — physical/animated tells for elite protocols + enhanced variants
 - [ ] **P13-E Player statuses** — mark, armor break, Arc/disruption, thermal, vacuum/pressure, stagger
 - [ ] **P13-F Boss/spawn/death language** — phase transitions, dangerous-combo readiness cues, disable/death persistence
@@ -159,22 +159,22 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P13-C — T9 visuals II.**
+**Next: P13-D — Protocol visuals.**
 
-Run **P13-C — T9 visuals II** as the next Enemy Modifier & Status Visual Language batch: use the P13-A presentation contract to give Redline Bus, Countermass Rig, and Relay Reflex distinct authored/fallback animation, material, VFX, and audio reads while preserving attack/status tell priority and mobile readability.
+Run **P13-D — Protocol visuals** as the next Enemy Modifier & Status Visual Language batch: use the P13-A presentation contract to give elite protocols and enhanced variants distinct physical/animated tells across authored rigs and fallback rendering while preserving attack/status priority, protocol-combination readability, reduced-effects behavior, and mobile legibility.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.278**
+- Android beta: **0.0.1-beta.279**
 - Package: `app.ironshade.vector`
-- Verified: **P13-B Enemy Modifier & Status Visual Language T9 visuals I complete**
-- Gameplay source: `2ec4374fc99100ba5c7d2bd6fbaa1d81707bfda2`
-- PR Browser E2E: `35801722190` (caught stale graphics integration assertion before final merge)
-- Browser E2E: `35802067788`
-- Level 15 beta smoke: `35802067844`
-- Android beta.278: `35802067794`
-- APK artifact: `10726617221`
-- APK SHA-256: `2255ea57332bd34153ca8659a8c7aced7d351b816cf5bcba21075ab1150cdb73`
+- Verified: **P13-C Enemy Modifier & Status Visual Language T9 visuals II complete**
+- Gameplay source: `e2f6d03b9e410af76419d3deb721603dd9ccd977`
+- PR Browser E2E: `35803286835`
+- Browser E2E: `35803492357`
+- Level 15 beta smoke: `35803492317`
+- Android beta.279: `35803492333`
+- APK artifact: `10726844612`
+- APK SHA-256: `ee6d00c748367a44ba7b0c6d7109a24d1842a660a15ee26d4f44ec9f5f03854a`
 - Signing: debug-signed beta; permanent signing is P17-A
