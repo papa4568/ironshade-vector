@@ -734,6 +734,21 @@ try {
     return (text.includes('command ready') || text.includes('command deck')) && labels.includes('operations');
   })()`, 'Command Deck after Build skill hierarchy');
 
+  await keyboardActivateButton('Ship');
+  await waitFor(`Boolean(document.querySelector('.ship-hub.iv-view.area-ship') && document.querySelector('.tactical-header.iv-panel.iv-panel--glass') && document.querySelector('.ship-systems-intro.iv-panel.iv-panel--glass') && document.querySelector('.ship-hardware-bay.iv-panel') && document.querySelectorAll('.ship-systems-panel .upgrade-card.iv-panel').length >= 6)`, 'P15-B Ship Systems surface');
+  const p15ShipLayout = await evaluate(`(() => {
+    const tabs = [...document.querySelectorAll('.section-tabs button')].filter(button => button.getBoundingClientRect().height > 0);
+    return {
+      horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
+      visibleTabs: tabs.length,
+      minTabHeight: tabs.length ? Math.min(...tabs.map(button => button.getBoundingClientRect().height)) : 0,
+    };
+  })()`);
+  if (p15ShipLayout.horizontalOverflow > 2 || p15ShipLayout.visibleTabs < 2 || (viewportMode === 'mobile-landscape' && p15ShipLayout.minTabHeight < 40)) {
+    throw new Error(`P15-B Ship Systems layout failed: ${JSON.stringify(p15ShipLayout)}`);
+  }
+  console.log(`BROWSER_P15_MENU_PRESENTATION_PASS viewport=${viewportMode} input=keyboard flows=class+crafting+progression+ship-systems shared=iv-panel transition=iv-view`);
+
   await keyboardActivateButton('Operations');
   await waitFor(`[...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'contracts')`, 'Operations navigation');
   await keyboardActivateButton('Contracts');
