@@ -16,6 +16,7 @@ import { combatAudioEnvironment, feedback, impactSurfaceForObject } from '../gam
 import { CombatCameraFeedbackRuntime } from '../game/combatCameraFeedback';
 import { ThreeCombatRenderer } from '../game/threeCombatRenderer';
 import { combatClassLabel, exclusiveProtocolCombinationForInstances } from '../game/eliteProtocols';
+import { enhancedProtocolVisualSpecFor, protocolVisualCss, protocolVisualSpecFor } from '../game/protocolVisualLanguage';
 import { protocolPresentationFor } from '../game/eliteProtocolPresentation';
 import { enhancedProtocolVariantPresentationFor } from '../game/enhancedProtocolVariantPresentation';
 import { mutationPresentationFor } from '../game/t9MutationPresentation';
@@ -185,6 +186,168 @@ function drawEnemyTelegraph(ctx: CanvasRenderingContext2D, state: SimState, enem
 function tacticalRoleTag(enemy: Enemy) { const labels: Partial<Record<Enemy['variant'], string>> = { shieldBoarder: 'SHIELD', tetherOperator: 'TETHER', droneCarrier: 'CARRIER', coverBreacher: 'BREACHER', marksman: 'MARKSMAN', vacuumSaboteur: 'VACUUM', repairDrone: 'REPAIR', gravitySpecialist: 'GRAVITY', meleeExosuit: 'EXOSUIT', salvageThief: 'THIEF', impulseRigger: 'IMPULSE', boiloffTech: 'BOILOFF', partitionRigger: 'PARTITION', recoilBroker: 'RECOIL', siphonTech: 'SIPHON', purgeOrchestrator: 'PURGE', custodyPorter: 'CUSTODY', geometryTech: 'GEOMETRY' }; return labels[enemy.variant] ?? ''; }
 function protocolTag(enemy: Enemy) { const packageDefinition = exclusiveProtocolCombinationForInstances(enemy.protocols); const visible = enemy.protocols.slice(0, 2).map(protocol => { const variantPresentation = protocol.variantId ? enhancedProtocolVariantPresentationFor(protocol.variantId) : undefined; return `${variantPresentation ? '▲' : ''}${variantPresentation?.shortName ?? protocolPresentationFor(protocol.id).shortName}`; }); const hidden = Math.max(0, enemy.protocols.length - visible.length); const detail = `${visible.join(' · ')}${hidden > 0 ? ` · +${hidden}` : ''}`; return packageDefinition ? `${packageDefinition.shortName} // ${detail}` : detail; }
 function mutationTag(enemy: Enemy) { return enemy.mutations.map(id => `MUT:${mutationPresentationFor(id).shortName}`).join(' · '); }
+
+function drawEnemyProtocolPresentation(ctx: CanvasRenderingContext2D, state: SimState, enemy: Enemy, pos: Vec2, reducedEffects: boolean) {
+  if (enemy.protocols.length === 0) return;
+  const presentation = resolveEnemyPresentation(enemy);
+  const lead = presentation.vfx[0];
+  const readability = lead && lead.source !== 'protocol' && lead.priority > 2 ? 0.28 : 1;
+  const visible = enemy.protocols.slice(0, 3);
+  ctx.save();
+  ctx.globalAlpha *= readability;
+
+  visible.forEach((protocol, index) => {
+    const spec = protocolVisualSpecFor(protocol.id);
+    const slot = (index - (visible.length - 1) / 2) * 22;
+    const windup = protocol.windup > 0 ? Math.min(1, 0.6 + protocol.windup * 0.5) : Math.min(1, 0.45 + enemy.protocolPulse * 0.4);
+    const pulse = reducedEffects ? 0.78 : 0.72 + Math.sin(state.time * (3.2 + spec.phase * 0.08) + enemy.id * 0.31 + spec.phase) * 0.16;
+    const radius = 10 + spec.radius * 18;
+    const anchorY = pos.y - 22 - (spec.height - 0.75) * 20;
+    const motion = reducedEffects ? 0 : 1;
+    const drift = spec.motion === 'orbit'
+      ? Math.sin(state.time * 2.1 + spec.phase) * 3 * motion
+      : spec.motion === 'vent'
+        ? Math.sin(state.time * 5.4 + spec.phase) * 2 * motion
+        : spec.motion === 'scan'
+          ? Math.sin(state.time * 4.2 + spec.phase) * 2.5 * motion
+          : spec.motion === 'heat'
+            ? Math.sin(state.time * 7.2 + spec.phase) * 1.8 * motion
+            : 0;
+    const x = pos.x + slot + drift;
+    const y = anchorY;
+    const primary = protocolVisualCss(spec.primary, 0.82);
+    const accent = protocolVisualCss(spec.accent, 0.42 + pulse * 0.34);
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(spec.scale, spec.scale);
+    ctx.strokeStyle = accent;
+    ctx.fillStyle = primary;
+    ctx.lineWidth = 2.2;
+
+    ctx.beginPath();
+    ctx.ellipse(0, 4, radius * (0.9 + windup * 0.08), radius * 0.42, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    if (spec.signature === 'split') {
+      ctx.fillRect(-radius - 5, -9, 8, 24);
+      ctx.fillRect(radius - 3, -9, 8, 24);
+      ctx.beginPath();
+      ctx.moveTo(-radius + 3, -5);
+      ctx.lineTo(radius - 3, -5);
+      ctx.stroke();
+    } else if (spec.signature === 'crown') {
+      ctx.beginPath();
+      ctx.moveTo(-radius, 7);
+      ctx.lineTo(-radius * 0.52, -9);
+      ctx.lineTo(0, 1);
+      ctx.lineTo(radius * 0.52, -9);
+      ctx.lineTo(radius, 7);
+      ctx.stroke();
+    } else if (spec.signature === 'rails') {
+      for (const dy of [-6, 5]) {
+        ctx.beginPath();
+        ctx.moveTo(-radius, dy);
+        ctx.lineTo(radius, dy);
+        ctx.stroke();
+      }
+      ctx.fillRect(-4, -12, 8, 25);
+    } else if (spec.signature === 'ring') {
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 0.66, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 0.28, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (spec.signature === 'fork') {
+      ctx.beginPath();
+      ctx.moveTo(0, 12);
+      ctx.lineTo(0, -8);
+      ctx.moveTo(0, -3);
+      ctx.lineTo(-radius * 0.72, -11);
+      ctx.moveTo(0, -3);
+      ctx.lineTo(radius * 0.72, -11);
+      ctx.stroke();
+    } else if (spec.signature === 'clamp') {
+      ctx.beginPath();
+      ctx.moveTo(-radius, -10);
+      ctx.lineTo(-radius, 12);
+      ctx.lineTo(-radius * 0.48, 12);
+      ctx.moveTo(radius, -10);
+      ctx.lineTo(radius, 12);
+      ctx.lineTo(radius * 0.48, 12);
+      ctx.stroke();
+    } else if (spec.signature === 'grid') {
+      ctx.strokeRect(-radius * 0.72, -10, radius * 1.44, 22);
+      ctx.beginPath();
+      ctx.moveTo(-radius * 0.72, 1);
+      ctx.lineTo(radius * 0.72, 1);
+      ctx.moveTo(0, -10);
+      ctx.lineTo(0, 12);
+      ctx.stroke();
+    } else if (spec.signature === 'fan') {
+      for (const angle of [-0.55, -0.18, 0.18, 0.55]) {
+        ctx.beginPath();
+        ctx.moveTo(0, 8);
+        ctx.lineTo(Math.sin(angle) * radius * 1.15, -Math.cos(angle) * radius);
+        ctx.stroke();
+      }
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(0, -radius);
+      ctx.lineTo(radius * 0.68, 0);
+      ctx.lineTo(0, radius * 0.58);
+      ctx.lineTo(-radius * 0.68, 0);
+      ctx.closePath();
+      ctx.stroke();
+    }
+
+    for (let node = 0; node < spec.nodeCount; node += 1) {
+      const angle = -Math.PI * 0.8 + (node / Math.max(1, spec.nodeCount - 1)) * Math.PI * 1.6;
+      const nodeRadius = radius * 0.78;
+      const nx = Math.cos(angle) * nodeRadius;
+      const ny = Math.sin(angle) * nodeRadius * 0.5;
+      ctx.beginPath();
+      ctx.arc(nx, ny, 2.6 + windup * 0.7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    if (protocol.enhanced && protocol.variantId) {
+      const variant = enhancedProtocolVisualSpecFor(protocol.variantId);
+      const markerCount = reducedEffects ? Math.min(2, variant.spokes) : variant.spokes;
+      ctx.strokeStyle = protocolVisualCss(spec.accent, 0.62 + pulse * 0.28);
+      ctx.lineWidth = 2.6;
+      const markerRadius = radius * variant.scale;
+      ctx.beginPath();
+      ctx.ellipse(0, 2, markerRadius, markerRadius * 0.48, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      for (let spoke = 0; spoke < markerCount; spoke += 1) {
+        const angle = variant.phase + spoke * (Math.PI * 2 / Math.max(1, markerCount)) + (reducedEffects ? 0 : state.time * 0.35);
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(angle) * markerRadius * 0.66, Math.sin(angle) * markerRadius * 0.31);
+        ctx.lineTo(Math.cos(angle) * markerRadius, Math.sin(angle) * markerRadius * 0.48);
+        ctx.stroke();
+      }
+      if (variant.marker === 'cross' || variant.marker === 'grid' || variant.marker === 'mesh') {
+        ctx.beginPath();
+        ctx.moveTo(-markerRadius * 0.58, -markerRadius * 0.25);
+        ctx.lineTo(markerRadius * 0.58, markerRadius * 0.25);
+        ctx.moveTo(markerRadius * 0.58, -markerRadius * 0.25);
+        ctx.lineTo(-markerRadius * 0.58, markerRadius * 0.25);
+        ctx.stroke();
+      } else if (variant.marker === 'twin' || variant.marker === 'double') {
+        ctx.beginPath();
+        ctx.ellipse(0, 2, markerRadius * 0.72, markerRadius * 0.32, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
+    ctx.restore();
+  });
+
+  ctx.restore();
+}
 
 function drawEnemyMutationPresentation(ctx: CanvasRenderingContext2D, state: SimState, enemy: Enemy, pos: Vec2, reducedEffects: boolean) {
   const presentation = resolveEnemyPresentation(enemy);
@@ -433,6 +596,7 @@ function renderGame(ctx: CanvasRenderingContext2D, state: SimState, width: numbe
   for (const enemy of state.enemies) { if (!enemy.active) continue; const pos = project(enemy.x, enemy.y, camX, camY, width, height); if (enemy.variant === 'tetherOperator' && !enemy.dead) { const tether = state.objects.find(object => object.id.startsWith('enemy-tether') && object.active && object.label.endsWith(`#${enemy.id}`)); if (tether) { const tetherPos = project(tether.x + tether.w / 2, tether.y + tether.h / 2, camX, camY, width, height); ctx.strokeStyle = 'rgba(112,181,214,.7)'; ctx.setLineDash([7, 5]); ctx.beginPath(); ctx.moveTo(pos.x, pos.y - 10); ctx.lineTo(tetherPos.x, tetherPos.y - 8); ctx.stroke(); ctx.setLineDash([]); } } if (!enemy.dead && enemy.id === mobileTargetId) drawMobileTargetLock(ctx, enemy, pos, state.time, reducedTargetMotion); if (enemy.dead) { ctx.globalAlpha = 0.3 + enemy.deathT * 0.35; ctx.fillStyle = '#6c3532'; ctx.beginPath(); ctx.ellipse(pos.x, pos.y, enemy.role === 'boss' ? 34 : 24, 11, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; continue; }
     if ((enemy.combatClass === 'enhanced' || enemy.combatClass === 'elite') && enemy.statuses.disrupted <= 0) { ctx.strokeStyle = enemy.combatClass === 'elite' ? 'rgba(207,107,139,.42)' : 'rgba(126,177,196,.32)'; ctx.setLineDash(enemy.combatClass === 'enhanced' ? [7, 5] : []); ctx.beginPath(); ctx.ellipse(pos.x, pos.y, enemy.combatClass === 'elite' ? 96 : 78, enemy.combatClass === 'elite' ? 48 : 39, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
     if (enemy.protocolPulse > 0) { ctx.strokeStyle = `rgba(198,221,168,${Math.min(0.8, enemy.protocolPulse * 0.62)})`; ctx.beginPath(); ctx.ellipse(pos.x, pos.y - 8, 54 + enemy.protocolPulse * 10, 28 + enemy.protocolPulse * 5, 0, 0, Math.PI * 2); ctx.stroke(); }
+    drawEnemyProtocolPresentation(ctx, state, enemy, pos, reducedTargetMotion);
     drawEnemyMutationPresentation(ctx, state, enemy, pos, reducedTargetMotion);
     drawEnemySilhouette(ctx, enemy, pos);
     if (enemy.telegraph > 0) drawEnemyTelegraph(ctx, state, enemy, pos, camX, camY, width, height);
