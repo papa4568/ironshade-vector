@@ -22,6 +22,13 @@ class MemoryStorage {
   }
 }
 
+class MigrationBackupFailingStorage extends MemoryStorage {
+  setItem(key: string, value: string) {
+    if (key.includes('-recovery-')) throw new Error('simulated rollback backup failure');
+    super.setItem(key, value);
+  }
+}
+
 function legacyStateMigrationSmoke() {
   const storage = new MemoryStorage();
   const campaign = createDefaultCampaign();
@@ -163,6 +170,86 @@ function graphicsQualityPersistenceSmoke() {
   }
 }
 
+async function migrationRollbackSnapshotSmoke() {
+  const storage = new MemoryStorage();
+  const raw = JSON.stringify({
+    version: 2,
+    gearSchemaVersion,
+    profile: createDefaultProfile(),
+    campaign: createDefaultCampaign(),
+    savedAt: '2026-09-20T12:00:00.000Z',
+  });
+  storage.setItem(GAME_STATE_STORAGE_KEY, raw);
+
+  const recovery = await prepareSaveRecovery({
+    storage: storage as any,
+    indexedDb: null,
+    now: () => new Date('2026-09-23T12:00:00.000Z'),
+    id: () => 'rollback-snapshot',
+  });
+
+  assert.equal(recovery.blocked, false, 'supported legacy saves should proceed only after a verified rollback snapshot is created');
+  assert.equal(recovery.backups.length, 1, 'legacy atomic saves should create exactly one pre-migration rollback snapshot');
+  assert.equal(storage.getItem(GAME_STATE_STORAGE_KEY), raw, 'preflight must leave the primary legacy save untouched until migration runs');
+  assert.equal(storage.getItem(recovery.backups[0]!.backupKey), raw, 'rollback snapshot must preserve the exact pre-migration bytes');
+
+  const migrated = loadGameState(storage as any);
+  const persisted = JSON.parse(storage.getItem(GAME_STATE_STORAGE_KEY)!) as any;
+  assert.equal(persisted.version, GAME_STATE_VERSION, 'normal loading should migrate the primary save after rollback protection succeeds');
+  assert.equal(migrated.profile.version, createDefaultProfile().version, 'migrated state should remain playable after protected upgrade');
+  assert.equal(storage.getItem(recovery.backups[0]!.backupKey), raw, 'migration must not overwrite the rollback snapshot');
+}
+
+async function incompatibleFutureSaveLockSmoke() {
+  const storage = new MemoryStorage();
+  const raw = JSON.stringify({
+    version: GAME_STATE_VERSION + 1,
+    gearSchemaVersion,
+    operatorNetworkSchemaVersion: OPERATOR_NETWORK_SCHEMA_VERSION,
+    profile: createDefaultProfile(),
+    campaign: createDefaultCampaign(),
+    savedAt: '2026-09-24T12:00:00.000Z',
+  });
+  storage.setItem(GAME_STATE_STORAGE_KEY, raw);
+
+  const recovery = await prepareSaveRecovery({
+    storage: storage as any,
+    indexedDb: null,
+    now: () => new Date('2026-09-23T12:05:00.000Z'),
+    id: () => 'future-version',
+  });
+
+  assert.equal(recovery.blocked, true, 'a release must refuse to start when it sees a newer incompatible save');
+  assert.equal(storage.getItem(GAME_STATE_STORAGE_KEY), raw, 'rollback compatibility lock must leave the newer primary save untouched');
+  assert.equal(recovery.backups.length, 1, 'compatibility lock should preserve a second exact copy when storage permits');
+  assert.equal(storage.getItem(recovery.backups[0]!.backupKey), raw, 'compatibility backup must preserve exact future-save bytes');
+  assert.match(recovery.notices.join(' '), /Install a release that supports this save/, 'compatibility lock should tell the player how to recover');
+}
+
+async function migrationBackupFailureLockSmoke() {
+  const storage = new MigrationBackupFailingStorage();
+  const raw = JSON.stringify({
+    version: 2,
+    gearSchemaVersion,
+    profile: createDefaultProfile(),
+    campaign: createDefaultCampaign(),
+    savedAt: '2026-09-20T12:00:00.000Z',
+  });
+  storage.setItem(GAME_STATE_STORAGE_KEY, raw);
+
+  const recovery = await prepareSaveRecovery({
+    storage: storage as any,
+    indexedDb: null,
+    now: () => new Date('2026-09-23T12:10:00.000Z'),
+    id: () => 'backup-failure',
+  });
+
+  assert.equal(recovery.blocked, true, 'migration must stop if no verified rollback snapshot can be created');
+  assert.equal(storage.getItem(GAME_STATE_STORAGE_KEY), raw, 'failed rollback protection must leave the primary save untouched');
+  assert.equal(recovery.backups.length, 0, 'failed rollback protection must not report an unverified backup');
+  assert.match(recovery.notices.join(' '), /pre-migration rollback snapshot could not be created/, 'migration lock should explain why startup stopped');
+}
+
 async function recoveryPreservationSmoke() {
   const storage = new MemoryStorage();
   const campaign = createDefaultCampaign();
@@ -188,13 +275,19 @@ async function recoveryPreservationSmoke() {
   assert.equal(storage.getItem(recovery.backups[0]!.backupKey), raw, 'recovery backup must preserve the original raw bytes exactly');
 }
 
-legacyStateMigrationSmoke();
-versionTwoNetworkMigrationSmoke();
-currentNetworkRepairSmoke();
-graphicsQualityPersistenceSmoke();
-recoveryPreservationSmoke()
-  .then(() => console.log(`SAVE_DATA_MIGRATION_PASS legacy=v1/v2->v${GAME_STATE_VERSION} gearSchema=${gearSchemaVersion} networkSchema=${OPERATOR_NETWORK_SCHEMA_VERSION} currentNetworkRepair=refunded graphicsQuality=adaptive+flagship+performance recovery=preserved`))
-  .catch(error => {
-    console.error(error);
-    process.exitCode = 1;
-  });
+async function main() {
+  legacyStateMigrationSmoke();
+  versionTwoNetworkMigrationSmoke();
+  currentNetworkRepairSmoke();
+  graphicsQualityPersistenceSmoke();
+  await migrationRollbackSnapshotSmoke();
+  await incompatibleFutureSaveLockSmoke();
+  await migrationBackupFailureLockSmoke();
+  await recoveryPreservationSmoke();
+  console.log(`SAVE_DATA_MIGRATION_PASS legacy=v1/v2->v${GAME_STATE_VERSION} gearSchema=${gearSchemaVersion} networkSchema=${OPERATOR_NETWORK_SCHEMA_VERSION} currentNetworkRepair=refunded graphicsQuality=adaptive+flagship+performance migrationRollback=preserved incompatibleSave=blocked recovery=preserved`);
+}
+
+main().catch(error => {
+  console.error(error);
+  process.exitCode = 1;
+});
