@@ -21,6 +21,7 @@ assert(high.preloadAssetLimit > balanced.preloadAssetLimit && balanced.preloadAs
 assert(high.preloadDelaySeconds < balanced.preloadDelaySeconds && balanced.preloadDelaySeconds < performance.preloadDelaySeconds, 'preload startup deferral must grow with runtime pressure');
 assert(!runtimeAssetPreloadReady(3.6, balanced) && runtimeAssetPreloadReady(4.0, balanced), 'balanced/mobile preload must yield through the 3.6s deployment presentation window');
 assert(!runtimeAssetPreloadReady(4.0, performance) && runtimeAssetPreloadReady(4.5, performance), 'performance preload must defer longer than balanced');
+assert(runtimeAssetPreloadReady(4.2, balanced), 'wall-clock preload readiness must not depend on simulation progress');
 assert(high.poolRetention.effects > balanced.poolRetention.effects && balanced.poolRetention.effects > performance.poolRetention.effects, 'secondary visual pool retention must shrink by runtime tier');
 assert(performance.poolRetention.damageNumbers >= 20, 'performance mode must retain enough pooled damage-number capacity for combat readability');
 
@@ -49,7 +50,7 @@ const androidSmokeSource = readFileSync(resolve(process.cwd(), 'scripts/android-
 
 assert(rendererSource.includes('runtimeAnimationStride({') && rendererSource.includes('dataset.runtimeAnimationLod'), 'renderer must apply and expose authored enemy animation LOD');
 assert(rendererSource.includes('runtimePoolTrimTarget(') && rendererSource.includes('dataset.runtimePools'), 'renderer must trim and expose burst-grown secondary pools');
-assert(rendererSource.includes('runtimeAssetPreloadReady(state.time, profile)') && rendererSource.includes('dataset.assetStreaming = `startup-deferred:'), 'renderer must defer noncritical preload during combat startup');
+assert(rendererSource.includes('runtimeAssetPreloadReady(runtimeSeconds, profile)') && rendererSource.includes('runtimeStartedAt') && rendererSource.includes('dataset.assetStreaming = `startup-deferred:'), 'renderer must defer noncritical preload by renderer wall-clock uptime during combat startup');
 assert(rendererSource.includes('preloadGraphicsAssets(') && rendererSource.includes('dataset.assetStreaming'), 'renderer must run bounded mission asset preload/streaming');
 assert(graphicsSource.includes('export async function preloadGraphicsAssets') && graphicsSource.includes('workerCount'), 'graphics runtime must implement bounded-concurrency preload');
 assert(canvasSource.includes('feedback.performanceStats()') && canvasSource.includes('dataset.audioVirtualization'), 'runtime QA must expose audio virtualization pressure');
