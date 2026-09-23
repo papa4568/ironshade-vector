@@ -6,6 +6,7 @@ import { affixStatProfile } from './gearStats';
 import type { SpecializationId } from './sim';
 import { maximumExplicitModifiersForRarity } from './gearAffixes';
 import { craftingAffixPool, craftingFabricationGradeCap, craftingStabilityContract, craftingStabilityForItem, craftingVolatileSuccessChance, legalCraftingAffixes } from './craftingRules';
+import { resolveWeaponVariant, weaponVariantBuildIntegration } from './classArsenal';
 
 export type ReconstructionAction =
   | { kind: 'quality' }
@@ -54,6 +55,13 @@ export function craftingBuildIntegration(profile: PlayerProfile, item: Item, fab
   const legal = classOwned && item.rarity !== 'Singular'
     ? legalCraftingAffixes(item, fabricationLevel, undefined, null, profile)
     : [];
+  const weaponVariant = classOwned && item.slot === activeWeaponFamily
+    ? resolveWeaponVariant(activeWeaponFamily, { baseId: item.baseId, name: item.name, frameIdentity: item.frameIdentity })
+    : null;
+  const variantIntegration = weaponVariant ? weaponVariantBuildIntegration(weaponVariant) : null;
+  const variantAffixIds = variantIntegration
+    ? legal.filter(entry => variantIntegration.preferredAffixes.includes(entry.id)).map(entry => entry.id)
+    : [];
   const recipeAffixIds = specializationHookActive
     ? legal
       .filter(entry => affixStatProfile(entry.id).buildTags.some(tag => specialization!.preferredTags.includes(tag)))
@@ -67,6 +75,13 @@ export function craftingBuildIntegration(profile: PlayerProfile, item: Item, fab
   return {
     activeWeaponFamily,
     classOwned,
+    weaponVariant,
+    variantAffixIds,
+    variantRule: variantIntegration
+      ? item.rarity === 'Singular'
+        ? `${weaponVariant!.toUpperCase()} keeps its authored variant interaction, while the Singular modifier package remains fixed.`
+        : `${weaponVariant!.toUpperCase()} reconstruction highlights ${variantAffixIds.length} legal affix hooks for this firing package.`
+      : null,
     classRule: classOwned
       ? item.slot === activeWeaponFamily
         ? `${activeWeaponFamily.toUpperCase()} is this class's owned weapon family; the base-owned pool is craftable.`

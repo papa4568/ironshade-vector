@@ -1,6 +1,6 @@
 import type { CombatBuild, SingularTraitId, SpecializationId, Telemetry, WeaponId } from './sim';
 import { operatorWeaponFamilyForClass, type OperatorClassId } from './classSkills';
-import { resolveBreacherVariant, resolveCarbineVariant, resolveRailVariant } from './classArsenal';
+import { resolveWeaponVariant, weaponVariantBuildIntegration, type WeaponVariantSkillTuning } from './classArsenal';
 import { allocateOperatorNetworkNode, createOperatorNetworkState, normalizeOperatorNetworkState, operatorNetworkNode, operatorNetworkNodes, rebuildOperatorNetworkState, refundOperatorNetworkNode, type OperatorNetworkIntegrationHook, type OperatorNetworkNodeKind, type OperatorNetworkSector, type OperatorNetworkState, type OperatorNetworkStatEffect, type OperatorNetworkUnlockContext } from './operatorNetwork';
 export type { OperatorClassId } from './classSkills';
 import { factionFrames, factionGearChance, factionSetDefinitions, type EquipmentFaction } from './factionGear';
@@ -739,7 +739,18 @@ function makeFactionItem(slot: EquipmentSlot, index: number, level: number, rand
   };
 }
 
-function makeItem(slot: EquipmentSlot, index: number, level: number, random: () => number, forcedAffixes: AffixId[] = [], recoveryLevel = 4, recoveryQuality: RecoveryQualityGrade = 0, recoverySource = 'Contract recovery', forcedCount?: number, frameOperatorLevel = level, forcedRarity?: Exclude<Rarity, 'Singular'>, opportunity: GearGenerationOpportunity = 'standard'): Item {
+export function classArsenalRecoveryAffixPreferences(profile: PlayerProfile, slot: EquipmentSlot): AffixId[] {
+  const family = activeWeaponFamilyForProfile(profile);
+  if (slot !== family) return [];
+  const equippedId = profile.equipped[family];
+  const item = equippedId ? profile.inventory.find(entry => entry.id === equippedId) : undefined;
+  if (!item) return [];
+  const frameIdentity = item.frameIdentity ?? inferFrameIdentity(item.slot, `${item.baseId}:${item.name}`);
+  const variant = resolveWeaponVariant(family, { baseId: item.baseId, name: item.name, frameIdentity });
+  return [...weaponVariantBuildIntegration(variant).preferredAffixes];
+}
+
+function makeItem(slot: EquipmentSlot, index: number, level: number, random: () => number, forcedAffixes: AffixId[] = [], recoveryLevel = 4, recoveryQuality: RecoveryQualityGrade = 0, recoverySource = 'Contract recovery', forcedCount?: number, frameOperatorLevel = level, forcedRarity?: Exclude<Rarity, 'Singular'>, opportunity: GearGenerationOpportunity = 'standard', preferredAffixes: AffixId[] = []): Item {
   const plan = generateGearPlan({
     slot,
     recoveryLevel,
@@ -749,6 +760,7 @@ function makeItem(slot: EquipmentSlot, index: number, level: number, random: () 
     forcedAffixes,
     forcedModifierCount: forcedCount,
     forcedRarity: forcedRarity ?? (forcedAffixes.length > 0 ? 'Prototype' : undefined),
+    preferredAffixes,
     source: opportunity,
   });
   const base = plan.base;
@@ -897,7 +909,7 @@ export function awardVictory(profile: PlayerProfile, telemetry: Telemetry): Vict
     ];
   } else {
     const slots = chooseRecoverySlots(profile, 2, random);
-    loot = slots.map((slot, index) => makeItem(slot, index, nextLevel, random, [], 4, quality, 'Legacy victory recovery'));
+    loot = slots.map((slot, index) => makeItem(slot, index, nextLevel, random, [], 4, quality, 'Legacy victory recovery', undefined, profile.level, undefined, 'standard', classArsenalRecoveryAffixPreferences(profile, slot)));
   }
   const currentNetwork = normalizeOperatorNetworkState({
     operatorClass: operatorClassForProfile(profile),
@@ -961,7 +973,7 @@ export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep
     const recoveryQuality = rollQuality(actualDepth);
     return source.faction && random() < sponsoredChance
       ? makeFactionItem(slot, index, nextLevel, random, source.faction, ordinaryRecoveryLevel, recoveryQuality, `Sponsored recovery // ${factionName}`, profile.level, actualDepth ? 'deep' : 'standard')
-      : makeCampaignItem(slot, index, nextLevel, random, [], ordinaryRecoveryLevel, recoveryQuality, `${locationName} contract recovery`, undefined, profile.level, undefined, actualDepth ? 'deep' : 'standard');
+      : makeCampaignItem(slot, index, nextLevel, random, [], ordinaryRecoveryLevel, recoveryQuality, `${locationName} contract recovery`, undefined, profile.level, undefined, actualDepth ? 'deep' : 'standard', classArsenalRecoveryAffixPreferences(profile, slot));
   };
   const fieldDrops = fieldLoot ?? [];
   const fieldSlots = chooseRecoverySlots(profile, fieldDrops.filter(drop => drop.source !== 'boss' && drop.rarity !== 'Singular').length, random);
@@ -971,12 +983,12 @@ export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep
     const recoveryLevel = Math.max(1, Math.min(maxRecoveryLevel, drop.recoveryLevel));
     const recoverySource = `Ground drop // ${drop.enemyLabel}`;
     if (drop.rarity === 'Singular') {
-      if (drop.source === 'boss') return makeBossSingular(profile, source.deepTarget ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeLocationSingular(profile, source.location ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeCampaignItem(activeWeaponFamilyForProfile(profile), 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, 'Prototype', 'boss');
+      if (drop.source === 'boss') return makeBossSingular(profile, source.deepTarget ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeLocationSingular(profile, source.location ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeCampaignItem(activeWeaponFamilyForProfile(profile), 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, 'Prototype', 'boss', classArsenalRecoveryAffixPreferences(profile, activeWeaponFamilyForProfile(profile)));
       return makeLocationSingular(profile, source.location ?? '', 100 + index, nextLevel, random, recoveryLevel, recoveryQuality, recoverySource, profile.level) ?? makeCampaignItem(recoverySlotOrderForProfile(profile)[(drop.enemyId + index) % recoverySlotOrderForProfile(profile).length], 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, 'Prototype', drop.source === 'elite' ? 'elite' : 'enhanced');
     }
     const slot = fieldSlots[fieldSlotIndex++] ?? recoverySlotOrderForProfile(profile)[(drop.enemyId + index) % recoverySlotOrderForProfile(profile).length];
     const visibleRarity = drop.rarity as Exclude<Rarity, 'Singular'>;
-    return makeCampaignItem(slot, 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, visibleRarity, drop.source === 'elite' ? 'elite' : drop.source === 'enhanced' ? 'enhanced' : 'standard');
+    return makeCampaignItem(slot, 100 + index, nextLevel, random, [], recoveryLevel, recoveryQuality, recoverySource, undefined, profile.level, visibleRarity, drop.source === 'elite' ? 'elite' : drop.source === 'enhanced' ? 'enhanced' : 'standard', classArsenalRecoveryAffixPreferences(profile, slot));
   });
   const bossItem = actualDepth && !fieldMode ? makeBossSingular(profile, source.deepTarget ?? '', 0, nextLevel, random, bossRecoveryLevel, rollQuality(true, 4), `Boss pool // ${source.deepTarget ?? 'deep target'}`, profile.level) : null;
   const fieldHasSingular = fieldItems.some(item => item.rarity === 'Singular');
@@ -1377,6 +1389,16 @@ function applySpecializationGearSynergy(build: CombatBuild, profile: PlayerProfi
 function freshBuild(): CombatBuild { const weapon = () => ({ damageMul: 1, speedMul: 1, penetrationAdd: 0, recoilMul: 1, heatPerShotMul: 1, heatDissipationMul: 1, magazineAdd: 0, reloadMul: 1, armorDamageMul: 1, healthMultiplierMul: 1, knockbackMul: 1 }); return { operatorClass: null, classResonanceTier: 0, classSkillFamily: { family: null, frameGeneration: 1, frameIdentity: null, weaponVariant: null, singularLinked: false, powerMul: 1, rangeMul: 1, controlMul: 1, armorMul: 1, recoveryMul: 1, costMul: 1, chainBonus: 0, sources: [] }, weapon: { carbine: weapon(), breacher: weapon(), rail: weapon() }, player: { maxHpAdd: 0, maxArmorAdd: 0, maxCapAdd: 0, moveSpeedMul: 1, capRegenMul: 1, vacuumResistance: 0, lowGControl: 0, ventSpeedMul: 1 }, mechanics: { railFragment: false, railFragmentScale: 0, dodgeVent: false, dodgeVentScale: 0, magRedirect: false, magRedirectScale: 0, breacherPropulsion: false, breacherPropulsionScale: 0, markWeakArmor: false, markWeakArmorScale: 0, arcDrone: false, arcDroneScale: 0, recoilVectoring: false, breachDoctrine: false, sensorPenetration: false, widebandMark: false, magOverdriveKick: false, arcGroundLoop: false, magBoundarySink: false, markExecutionTrace: false, arcCascadeLattice: false, vanguardSiegeRam: false, vanguardFaultlineTag: false, vanguardReprisalPulse: false, vectorSlingshotShift: false, vectorTriangulationLock: false, vectorNeedleFan: false, systemsAnchorLattice: false, systemsRecursiveIntrusion: false, systemsReturnCurrent: false }, singularTraits: [], specialization: null, specializationOverclock: false, abilities: [{ costMul: 1, cooldownMul: 1, powerMul: 1 }, { costMul: 1, cooldownMul: 1, powerMul: 1 }, { costMul: 1, cooldownMul: 1, powerMul: 1 }] }; }
 function applyAffix(build: CombatBuild, item: Item, modifier: ItemModifier) { const id = modifier.id; const semantics = affixStatProfile(id); const power = modifierPowerFactor(modifier.grade ?? 3); const tradeoff = modifierTradeoffFactor(modifier.grade ?? 3); const localAffix = [...semantics.stats, ...semantics.tradeoffs].some(statId => gearStatDefinition(statId).scope === 'local-affix'); const weaponSlot = item.slot === 'carbine' || item.slot === 'breacher' || item.slot === 'rail' ? item.slot : null; const weapon = localAffix && weaponSlot ? build.weapon[weaponSlot] : null; if (id === 'hypervelocity' && weapon) { weapon.speedMul *= 1 + 0.18 * power; weapon.penetrationAdd += Math.round(12 * power); weapon.recoilMul *= 1 + 0.1 * tradeoff; } if (id === 'countermass') { if (weapon) { weapon.recoilMul *= 1 - 0.22 * power; weapon.damageMul *= 1 - 0.07 * tradeoff; } else build.player.lowGControl += 0.12 * power; } if (id === 'overdrive' && weapon) { weapon.damageMul *= 1 + 0.14 * power; weapon.recoilMul *= 1 + 0.2 * tradeoff; weapon.heatPerShotMul *= 1 + 0.12 * tradeoff; } if (id === 'cryoloop') { if (weapon) { weapon.heatDissipationMul *= 1 + 0.3 * power; weapon.penetrationAdd -= Math.round(8 * tradeoff); } else for (const stats of Object.values(build.weapon)) stats.heatDissipationMul *= 1 + 0.15 * power; } if (id === 'extendedFeed' && weapon) { weapon.magazineAdd += Math.max(1, Math.round(6 * power)); weapon.reloadMul *= 1 + 0.12 * tradeoff; } if (id === 'tungsten' && weapon) { weapon.armorDamageMul *= 1 + 0.3 * power; weapon.penetrationAdd += Math.round(14 * power); weapon.heatPerShotMul *= 1 + 0.08 * tradeoff; } if (id === 'vacuumSeal') build.player.vacuumResistance = Math.min(0.8, build.player.vacuumResistance + 0.55 * power); if (id === 'servoWeave') { build.player.moveSpeedMul *= 1 + 0.08 * power; build.player.lowGControl += 0.22 * power; } if (id === 'capacitorRecycler') { build.player.capRegenMul *= 1 + 0.2 * power; for (const ability of build.abilities) ability.costMul *= 1 - 0.1 * power; } if (id === 'railFracture') { build.mechanics.railFragment = true; build.mechanics.railFragmentScale = Math.max(build.mechanics.railFragmentScale, power); } if (id === 'dodgeVent') { build.mechanics.dodgeVent = true; build.mechanics.dodgeVentScale = Math.max(build.mechanics.dodgeVentScale, power); } if (id === 'magRedirect') { build.mechanics.magRedirect = true; build.mechanics.magRedirectScale = Math.max(build.mechanics.magRedirectScale, power); } if (id === 'breachPropulsion') { build.mechanics.breacherPropulsion = true; build.mechanics.breacherPropulsionScale = Math.max(build.mechanics.breacherPropulsionScale, power); } if (id === 'markShear') { build.mechanics.markWeakArmor = true; build.mechanics.markWeakArmorScale = Math.max(build.mechanics.markWeakArmorScale, power); } if (id === 'arcDrone') { build.mechanics.arcDrone = true; build.mechanics.arcDroneScale = Math.max(build.mechanics.arcDroneScale, power); } }
 
+function applyWeaponVariantSkillTuning(skill: CombatBuild['classSkillFamily'], tuning: WeaponVariantSkillTuning) {
+  skill.powerMul *= tuning.powerMul ?? 1;
+  skill.rangeMul *= tuning.rangeMul ?? 1;
+  skill.controlMul *= tuning.controlMul ?? 1;
+  skill.armorMul *= tuning.armorMul ?? 1;
+  skill.recoveryMul *= tuning.recoveryMul ?? 1;
+  skill.costMul *= tuning.costMul ?? 1;
+  skill.chainBonus += tuning.chainBonus ?? 0;
+}
+
 function applyClassSkillFamilyInfluence(build: CombatBuild, item: Item) {
   const family = build.classSkillFamily.family;
   if (!family || item.slot !== family) return;
@@ -1385,14 +1407,12 @@ function applyClassSkillFamilyInfluence(build: CombatBuild, item: Item) {
   const identity = item.frameIdentity ?? inferFrameIdentity(item.slot, `${item.baseId}:${item.name}`);
   skill.frameGeneration = generation;
   skill.frameIdentity = identity;
-  skill.weaponVariant = family === 'carbine'
-    ? resolveCarbineVariant({ baseId: item.baseId, name: item.name, frameIdentity: identity })
-    : family === 'breacher'
-      ? resolveBreacherVariant({ baseId: item.baseId, name: item.name, frameIdentity: identity })
-      : family === 'rail'
-        ? resolveRailVariant({ baseId: item.baseId, name: item.name, frameIdentity: identity })
-        : null;
-  if (skill.weaponVariant) skill.sources.push(`variant:${skill.weaponVariant}`);
+  skill.weaponVariant = resolveWeaponVariant(family, { baseId: item.baseId, name: item.name, frameIdentity: identity });
+  if (skill.weaponVariant) {
+    const integration = weaponVariantBuildIntegration(skill.weaponVariant);
+    applyWeaponVariantSkillTuning(skill, integration.skill);
+    skill.sources.push(`variant:${skill.weaponVariant}`, `variant-build:${skill.weaponVariant}`);
+  }
   skill.sources.push(`frame:${identity}`);
 
   // Frame Generation selects/progresses the base frame; class skills read the chosen identity,
@@ -1430,6 +1450,10 @@ function applyClassSkillFamilyInfluence(build: CombatBuild, item: Item) {
     if (family === 'carbine') { skill.recoveryMul *= 1.05; skill.chainBonus += 1; }
     if (family === 'breacher') { skill.controlMul *= 1.07; skill.armorMul *= 1.06; }
     if (family === 'rail') { skill.rangeMul *= 1.06; skill.armorMul *= 1.07; }
+    if (skill.weaponVariant) {
+      applyWeaponVariantSkillTuning(skill, weaponVariantBuildIntegration(skill.weaponVariant).singular);
+      skill.sources.push(`variant-singular:${skill.weaponVariant}`);
+    }
   }
 }
 function applyOperatorNetworkStatEffect(build: CombatBuild, effect: OperatorNetworkStatEffect) {
