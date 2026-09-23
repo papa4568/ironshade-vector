@@ -116,7 +116,7 @@ Target roughly **6 major tiers per system** with sub-milestones.
 - [x] **P13-B T9 visuals I** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
 - [x] **P13-C T9 visuals II** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
 - [x] **P13-D Protocol visuals** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
-- [ ] **P13-E Player statuses** — mark, armor break, Arc/disruption, thermal, vacuum/pressure, stagger
+- [x] **P13-E Player statuses** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
 - [ ] **P13-F Boss/spawn/death language** — phase transitions, dangerous-combo readiness cues, disable/death persistence
 - [ ] **P13-G Mobile readability/HUD reduction** — preserve tells at LOD2; remove redundant tags only after screenshot/video QA
 
@@ -159,22 +159,22 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P13-E — Player statuses.**
+**Next: P13-F — Boss/spawn/death language.**
 
-Run **P13-E — Player statuses** as the next Enemy Modifier & Status Visual Language batch: use the P13-A presentation contract to give mark, armor break, Arc/disruption, thermal, vacuum/pressure, and stagger distinct readable physical/material/VFX/audio states across authored rigs and fallback rendering while preserving attack/protocol/mutation priority, reduced-effects behavior, and mobile legibility.
+Run **P13-F — Boss/spawn/death language** as the next Enemy Modifier & Status Visual Language batch: use the P13-A presentation contract to make boss phase transitions, dangerous-combination readiness, hostile spawn/activation, disable/death, and persistent post-disable state readable through authored animation/material/VFX/audio across primary and fallback rendering while preserving combat timing, deterministic state, reduced-effects behavior, and mobile legibility.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.280**
+- Android beta: **0.0.1-beta.281**
 - Package: `app.ironshade.vector`
-- Verified: **P13-D Enemy Modifier & Status Visual Language protocol visuals complete**
-- Gameplay source: `6f70d6c374c06a12bc60106c3a2fd39b8149521e`
-- PR Browser E2E: `35804886161`
-- Browser E2E: `35805099892`
-- Level 15 beta smoke: `35805100010`
-- Android beta.280: `35805099886`
-- APK artifact: `10727917127`
-- APK SHA-256: `091c18662157b5b8ea88852f65f3fc8040a549791e943aa09b092f4eacdb3904`
+- Verified: **P13-E Enemy Modifier & Status Visual Language player statuses complete**
+- Gameplay source: `5c1fe36ace40f9793229d90305c466e57d2b5c0b`
+- PR Browser E2E: `35806180843`
+- Browser E2E: `35806387196`
+- Level 15 beta smoke: `35806387144`
+- Android beta.281: `35806387149`
+- APK artifact: `10728780020`
+- APK SHA-256: `dd2145a08e665c6acfc831c329375a1493ec416f65c217e7efe0576b09cc1113`
 - Signing: debug-signed beta; permanent signing is P17-A
