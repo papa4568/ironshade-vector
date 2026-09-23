@@ -111,12 +111,19 @@ jobs:
         shell: bash
         env:
           CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
+          BROWSER_E2E_VIEWPORT: ${{ matrix.viewport }}
         run: |
           set -euo pipefail
+          if [[ "$BROWSER_E2E_VIEWPORT" == "mobile-landscape" ]]; then
+            chrome_window_size="851,360"
+          else
+            chrome_window_size="1280,720"
+          fi
           "$CHROME_PATH" \
             --headless=new \
             --no-sandbox \
             --disable-dev-shm-usage \
+            --window-size="$chrome_window_size" \
             --remote-debugging-address=127.0.0.1 \
             --remote-debugging-port=9223 \
             --user-data-dir="$RUNNER_TEMP/ironshade-browser-e2e" \
