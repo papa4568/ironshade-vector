@@ -86,6 +86,30 @@
   --iv-safe-left: max(var(--iv-space-4), env(safe-area-inset-left));
 }
 
+/* P15-E // Persisted accessibility presentation overrides.
+ * These are profile-owned so they work independently of OS/browser preferences.
+ */
+:root[data-text-scale='large'] {
+  font-size: 112.5%;
+}
+
+:root[data-contrast='high'] {
+  --iv-surface-void: #000;
+  --iv-surface-base: #030505;
+  --iv-surface-raised: #08100e;
+  --iv-surface-overlay: #000;
+  --iv-surface-glass: rgba(2, 6, 5, 0.97);
+  --iv-border-subtle: rgba(222, 247, 238, 0.64);
+  --iv-border-strong: rgba(243, 255, 251, 0.92);
+  --iv-text-primary: #fff;
+  --iv-text-secondary: #dfeae6;
+  --iv-text-muted: #c2d1cc;
+  --iv-accent: #c9ffe9;
+  --iv-accent-strong: #fff;
+  --iv-focus: #fff;
+  --iv-focus-shadow: rgba(255, 255, 255, 0.42);
+}
+
 :where(body) {
   font-family: var(--iv-font-body);
   color: var(--iv-text-primary);
@@ -343,6 +367,14 @@
     border-color 140ms ease,
     box-shadow 140ms ease,
     background-color 140ms ease;
+}
+
+:root[data-reduced-motion='true'] *,
+:root[data-reduced-motion='true'] *::before,
+:root[data-reduced-motion='true'] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
