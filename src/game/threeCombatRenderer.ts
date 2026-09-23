@@ -22,6 +22,7 @@ import { resolveEnemyDamageAnimation, resolvePlayerSkillAnimation } from './skil
 import { resolveEnemyBossAnimation, type EnemyBossAnimationSignals } from './enemyBossAnimation';
 import { resolveEnemyPresentation, type EnemyPresentationContract } from './enemyPresentation';
 import { resolveEnemyLifecyclePresentation, type EnemyLifecycleSignals } from './enemyLifecyclePresentation';
+import { resolveEnemyHudReadability } from './enemyMobileReadability';
 import { enhancedProtocolVisualSpecFor, protocolVisualIds, protocolVisualSpecFor } from './protocolVisualLanguage';
 import { dominantEnemyStatusVisual, enemyStatusVisualIds, enemyStatusVisualSpecFor, playerStatusVisualSpecFor, resolvePlayerStatusVisuals } from './statusVisualLanguage';
 
@@ -5914,7 +5915,8 @@ export class ThreeCombatRenderer {
       if (enemy.dead && !visual.lastDead) visual.deathEventAt = state.time;
       visual.lastDead = enemy.dead;
       visual.root.visible = enemy.active;
-      visual.barRoot.visible = enemy.active && !enemy.dead;
+      const hudReadability = resolveEnemyHudReadability(enemy, this.coarse, enemy.id === mobileTargetId);
+      visual.barRoot.visible = enemy.active && hudReadability.showHealthBar;
       if (!enemy.active) continue;
       const durability = enemy.hp + enemy.armor;
       if (!enemy.dead && durability < visual.lastDurability - 0.5) visual.impactUntil = state.time + 0.18;
