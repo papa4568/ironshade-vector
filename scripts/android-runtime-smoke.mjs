@@ -506,26 +506,35 @@ await waitFor(`document.querySelector('button[data-location="asteroid-refinery"]
 
 await tapButton('Deploy selected contract', 24, 120);
 await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('field coach') && document.querySelectorAll('canvas').length > 0`, 'Combat surface', 45_000);
-await waitFor(`Boolean(document.querySelector('[data-presentation="deployment"]') && document.querySelector('.game-root[data-mission-presentation="non-blocking-cues"]'))`, 'P15-C deployment presentation');
-const p15MissionPresentation = await evaluate(`(() => {
+await waitFor(`(() => {
+  const root = document.querySelector('.game-root[data-mission-presentation="non-blocking-cues"]');
   const cue = document.querySelector('[data-presentation="deployment"]');
-  const rect = cue?.getBoundingClientRect();
-  const style = cue ? getComputedStyle(cue) : null;
-  return {
-    pointerEvents: style?.pointerEvents ?? '',
-    title: cue?.querySelector('b')?.textContent?.trim() ?? '',
-    left: rect?.left ?? -1,
-    right: rect?.right ?? -1,
-    top: rect?.top ?? -1,
-    bottom: rect?.bottom ?? -1,
+  if (!root || !cue) return false;
+  const rect = cue.getBoundingClientRect();
+  const style = getComputedStyle(cue);
+  const sample = {
+    pointerEvents: style.pointerEvents,
+    title: cue.querySelector('b')?.textContent?.trim() ?? '',
+    left: rect.left,
+    right: rect.right,
+    top: rect.top,
+    bottom: rect.bottom,
     viewportWidth: window.innerWidth,
     viewportHeight: window.innerHeight,
   };
-})()`);
-if (p15MissionPresentation.pointerEvents !== 'none' || !p15MissionPresentation.title || p15MissionPresentation.left < 0 || p15MissionPresentation.right > p15MissionPresentation.viewportWidth || p15MissionPresentation.top < 0 || p15MissionPresentation.bottom > p15MissionPresentation.viewportHeight) {
-  throw new Error(`P15-C Android deployment presentation blocks touch or leaves the viewport: ${JSON.stringify(p15MissionPresentation)}`);
+  window.__ironshadeP15MissionPresentation = sample;
+  return sample.pointerEvents === 'none'
+    && Boolean(sample.title)
+    && sample.left >= 0
+    && sample.right <= sample.viewportWidth
+    && sample.top >= 0
+    && sample.bottom <= sample.viewportHeight;
+})()`, 'P15-C deployment presentation', 20_000);
+const p15MissionPresentation = await evaluate(`window.__ironshadeP15MissionPresentation ?? null`);
+if (!p15MissionPresentation) {
+  throw new Error('P15-C Android deployment presentation was not captured while visible.');
 }
-console.log(`ANDROID_P15_MISSION_PRESENTATION_PASS deployment=non-blocking title=${p15MissionPresentation.title}`);
+console.log(`ANDROID_P15_MISSION_PRESENTATION_PASS deployment=non-blocking+onscreen title=${p15MissionPresentation.title}`);
 await waitFor(`(() => {
   const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || '').trim());
   return ['Breach Rush', 'Fracture Tag', 'Bulwark Pulse'].every(label => labels.includes(label));
