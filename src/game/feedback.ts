@@ -1,5 +1,7 @@
 import type { ProfileSettings } from './meta';
 import type { HighTierMutationId } from './t9Mutations';
+import type { Enemy } from './sim';
+import type { PlayerStatusVisualId } from './statusVisualLanguage';
 
 export type FeedbackCue =
   | 'ui' | 'loot' | 'rareLoot' | 'carbine' | 'breacher' | 'rail' | 'reload'
@@ -46,6 +48,9 @@ export type SkillAudioProfile = { layers: WeaponAudioLayer[]; masterGain: number
 export type ThreatAudioProfile = { layers: WeaponAudioLayer[]; masterGain: number; priority: 'important' | 'critical' };
 export type EnemyMutationAudioCue = HighTierMutationId;
 export type EnemyMutationAudioProfile = { layers: WeaponAudioLayer[]; masterGain: number; priority: 'background' | 'normal' };
+export type EnemyStatusAudioCue = keyof Enemy['statuses'];
+export type PlayerStatusAudioCue = PlayerStatusVisualId;
+export type StatusAudioProfile = { layers: WeaponAudioLayer[]; masterGain: number; priority: 'background' | 'normal' | 'important' };
 
 export const combatAudioBudget = {
   maxVoices: 18,
@@ -304,6 +309,62 @@ export const enemyMutationAudioProfiles: Record<EnemyMutationAudioCue, EnemyMuta
     ],
     masterGain: .064,
     priority: 'background',
+  },
+};
+
+export const enemyStatusAudioProfiles: Record<EnemyStatusAudioCue, StatusAudioProfile> = {
+  armorBreach: {
+    layers: [{ frequency: 410, duration: .07, type: 'square', gain: .28, sweep: .54, lowpassHz: 2500 }, { frequency: 1180, duration: .04, type: 'triangle', gain: .16, sweep: .64, delay: .018, lowpassHz: 4300 }],
+    masterGain: .09,
+    priority: 'normal',
+  },
+  disrupted: {
+    layers: [{ frequency: 920, duration: .07, type: 'square', gain: .22, sweep: 1.7, lowpassHz: 5200 }, { frequency: 1480, duration: .045, type: 'triangle', gain: .16, sweep: .55, delay: .026, lowpassHz: 6500 }],
+    masterGain: .085,
+    priority: 'important',
+  },
+  marked: {
+    layers: [{ frequency: 760, duration: .045, type: 'sine', gain: .2, sweep: 1.34, lowpassHz: 4900 }, { frequency: 1140, duration: .032, type: 'triangle', gain: .14, sweep: .82, delay: .035, lowpassHz: 6200 }],
+    masterGain: .07,
+    priority: 'background',
+  },
+  stagger: {
+    layers: [{ frequency: 122, duration: .09, type: 'square', gain: .35, sweep: .58, lowpassHz: 1400 }, { frequency: 360, duration: .06, type: 'triangle', gain: .2, sweep: .66, delay: .014, lowpassHz: 2500 }],
+    masterGain: .1,
+    priority: 'important',
+  },
+  conductive: {
+    layers: [{ frequency: 1280, duration: .06, type: 'square', gain: .22, sweep: 1.45, lowpassHz: 6100 }, { frequency: 640, duration: .08, type: 'sine', gain: .18, sweep: .72, delay: .022, lowpassHz: 4200 }],
+    masterGain: .078,
+    priority: 'normal',
+  },
+  vacuum: {
+    layers: [{ frequency: 220, duration: .16, type: 'sine', gain: .2, sweep: .58, lowpassHz: 1800 }, { frequency: 1280, duration: .09, type: 'triangle', gain: .12, sweep: .72, delay: .03, lowpassHz: 4500 }],
+    masterGain: .07,
+    priority: 'normal',
+  },
+};
+
+export const playerStatusAudioProfiles: Record<PlayerStatusAudioCue, StatusAudioProfile> = {
+  thermal: {
+    layers: [{ frequency: 180, duration: .15, type: 'sawtooth', gain: .24, sweep: 1.32, lowpassHz: 2200 }, { frequency: 720, duration: .08, type: 'triangle', gain: .14, sweep: .72, delay: .025, lowpassHz: 3900 }],
+    masterGain: .085,
+    priority: 'normal',
+  },
+  disrupted: {
+    layers: [{ frequency: 1020, duration: .08, type: 'square', gain: .24, sweep: 1.62, lowpassHz: 5600 }, { frequency: 360, duration: .1, type: 'triangle', gain: .16, sweep: .58, delay: .02, lowpassHz: 2800 }],
+    masterGain: .095,
+    priority: 'important',
+  },
+  'pressure-loss': {
+    layers: [{ frequency: 320, duration: .18, type: 'sine', gain: .2, sweep: .62, lowpassHz: 2100 }, { frequency: 980, duration: .08, type: 'triangle', gain: .12, sweep: .76, delay: .04, lowpassHz: 4300 }],
+    masterGain: .075,
+    priority: 'normal',
+  },
+  vacuum: {
+    layers: [{ frequency: 148, duration: .22, type: 'sine', gain: .24, sweep: .52, lowpassHz: 1300 }, { frequency: 620, duration: .11, type: 'triangle', gain: .12, sweep: .68, delay: .035, lowpassHz: 3100 }],
+    masterGain: .085,
+    priority: 'important',
   },
 };
 
@@ -627,6 +688,28 @@ class FeedbackBus {
     for (const layer of profile.layers) {
       this.playLayer(layer, volume * profile.masterGain, 0, 1, 'direct', true, 'utility', profile.priority);
     }
+  }
+
+  status(cue: EnemyStatusAudioCue) {
+    const settings = this.settings;
+    if (!settings) return;
+    const volume = Math.max(0, Math.min(1, settings.effectsVolume));
+    if (volume <= 0) return;
+    this.unlock();
+    const profile = enemyStatusAudioProfiles[cue];
+    this.applyPriorityMix(profile.priority);
+    for (const layer of profile.layers) this.playLayer(layer, volume * profile.masterGain, 0, 1, 'direct', true, 'utility', profile.priority);
+  }
+
+  playerStatus(cue: PlayerStatusAudioCue) {
+    const settings = this.settings;
+    if (!settings) return;
+    const volume = Math.max(0, Math.min(1, settings.effectsVolume));
+    if (volume <= 0) return;
+    this.unlock();
+    const profile = playerStatusAudioProfiles[cue];
+    this.applyPriorityMix(profile.priority);
+    for (const layer of profile.layers) this.playLayer(layer, volume * profile.masterGain, 0, 1, 'direct', true, 'utility', profile.priority);
   }
 
   cue(cue: FeedbackCue) {
