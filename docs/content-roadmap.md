@@ -13,7 +13,6 @@ Only active/future executable work lives here. Completed and verified work belon
 
 ## P15 — AAA UI / World / Cinematic Polish
 
-- [ ] **P15-C — Mission/boss/debrief** — improve deployment presentation, concise in-engine boss transitions, and debrief highlights for loot/progression/next unlock. **Done when:** the mission presentation loop is coherent end to end, transitions do not interrupt control/state, relevant regression passes, and Android builds/QA pass.
 - [ ] **P15-D — World/material polish** — improve consoles, doors, machinery, pickups, hazards, lighting/material depth, and biome state animation/audio. **Done when:** priority interactables and biome states are readable in-world across quality levels without obscuring combat information, relevant visual/runtime regression passes, and Android builds/QA pass.
 - [ ] **P15-E — Accessibility/mobile/screenshot gate** — add scalable text, contrast, reduced motion, effect/audio/assist controls, safe-area/orientation coverage, and final presentation QA. **Done when:** supported accessibility controls persist and affect the intended systems, mobile layouts remain usable across target orientations/safe areas, screenshot/readability checks pass, and Android builds/QA pass.
 
