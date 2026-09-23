@@ -1188,3 +1188,18 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Android beta.292 run `35853095916` passed the full web regression/build, native project generation, debug APK build, package/version/min-SDK/target-SDK/signature verification, Android emulator install/cold launch/touch/runtime/lifecycle QA, authored-content checks, and the Chapter 3 touch playthrough.
   - Android artifact `10745978662` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.292`, debug signing, min SDK 24 / target SDK 36, and APK SHA-256 `b4f990cc478a1b0a64ee27839787fcb26979ad67b95786afb6508bc4ccf7155f`.
   - **Next: P15-B — Build/menu presentation.**
+
+## 2026-09-23 — P15-B AAA UI / World / Cinematic Polish // Build/menu presentation
+
+- [x] **P15-B Build/menu presentation** — brought class intake, operator Build/Crafting/Progression, and Ship Systems onto the shared P15-A presentation language while preserving mobile readability and input behavior.
+  - Composed the primary menu flows with the shared `.iv-view`, `.iv-panel`, and glass-panel primitives instead of adding another screen-local foundation; feature art direction remains layered on the centralized P15-A tokens.
+  - Added one shared 180 ms menu-entry transition with a reduced-motion override, plus shared border/radius/spacing use in the Build and Ship presentation bridge.
+  - Added active-page semantics to Build tabs and retained the existing class `aria-pressed`, ship `aria-current`, Operator Network keyboard/controller navigation, and native touch controls. Coarse-pointer Build/Ship section tabs are held to 44 px minimum targets.
+  - Kept gear inspection DOM-based after evaluation: the existing base/implicit → explicit modifiers → augments → build links → loadout-impact comparison hierarchy and Android single-scroller inspector provide more actionable inspection on phones than a new 3D viewport, without adding renderer/memory/thermal cost.
+  - Added `tests/menu-presentation.ts`, wired `test:menu-presentation` into the production build, and expanded browser + Android runtime smoke to navigate Crafting, Progression, Skills, and Ship Systems with keyboard/touch while checking shared primitives, horizontal fit, and mobile target sizing.
+  - PR #205 Browser E2E `35857080245` passed desktop + mobile-landscape full regression/production build and live player journeys on tested head `db2eeac2b49a75f4b4624ecc029a24ef37537615`.
+  - Merged source `ae7e2ee34a31d0d8d94042c98b122a4ab81049c9` passed post-merge Browser E2E `35857457487` and Level 15 beta smoke `35857457471`.
+  - Android beta.293 run `35857457403` passed the full web regression/build, native project generation, debug APK build, package/version/min-SDK/target-SDK/signature verification, Android emulator install/cold launch/touch/runtime/lifecycle QA, authored-content checks, and the Chapter 3 touch playthrough.
+  - Android artifact `10748014619` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.293`, debug signing, min SDK 24 / target SDK 36, and APK SHA-256 `bef5d9d9792673ebc8f0fe75510b6fffdfa3c21a2816ff34349fdf1b16ed3392`.
+  - **Next: P15-C — Mission/boss/debrief.**
+
