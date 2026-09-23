@@ -741,10 +741,12 @@ try {
     return ['Breach Rush', 'Fracture Tag', 'Bulwark Pulse'].every(label => labels.includes(label));
   })()`, 'Vanguard level-one skill kit');
   console.log(`BROWSER_CLASS_KIT_PASS viewport=${viewportMode} kit=RUSH/BREAK/GUARD`);
-  await waitFor(`(() => {
-    const icons = [...document.querySelectorAll('img[src*="/assets/ui/skills/"], img[src*="/assets/ui/weapons/"]')];
-    return icons.length >= 4 && icons.every(image => image.complete && image.naturalWidth > 0);
-  })()`, 'Mobile combat SVG assets', 20_000);
+  if (viewportMode === 'mobile-landscape') {
+    await waitFor(`(() => {
+      const icons = [...document.querySelectorAll('img[src*="/assets/ui/skills/"], img[src*="/assets/ui/weapons/"]')];
+      return icons.length >= 4 && icons.every(image => image.complete && image.naturalWidth > 0);
+    })()`, 'Mobile combat SVG assets', 20_000);
+  }
   if (targetLocation === 'spin-habitat') {
     await waitFor(`(() => {
       const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-spin-habitat');
