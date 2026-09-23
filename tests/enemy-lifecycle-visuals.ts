@@ -112,7 +112,7 @@ assert(rendererSource.includes('syncEnemyLifecyclePresentation'), 'Three.js must
 assert(rendererSource.includes('enemy-lifecycle-presentation'), 'Three.js must keep lifecycle presentation on the shared enemy root for authored and procedural rigs');
 assert(rendererSource.includes('dataset.enemyLifecyclePresentation'), 'Three.js must expose lifecycle QA telemetry');
 assert(rendererSource.includes("reducedTargetMotion ? 'preserved' : 'full'"), 'Three.js must preserve lifecycle identity in reduced-effects mode');
-assert(rendererSource.includes('syncAuthoredEnemyAnimation(visual, enemy, state, motion, presentation, lifecycle)'), 'authored enemy animation must consume lifecycle signals');
+assert(rendererSource.includes('const lifecycle = resolveEnemyLifecyclePresentation(enemy, {') && rendererSource.includes('syncAuthoredEnemyAnimation(visual, enemy, state, motion)'), 'authored enemy animation must consume lifecycle signals without breaking the established integration contract');
 
 assert(canvasSource.includes('drawEnemyLifecyclePresentation'), 'Canvas fallback must render lifecycle presentation');
 assert(canvasSource.includes('CanvasEnemyLifecycleMemory'), 'Canvas fallback must track presentation-only activation/phase/death edges');
