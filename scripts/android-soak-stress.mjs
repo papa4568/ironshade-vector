@@ -4,7 +4,7 @@ const cdpBase = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9222';
 const soakMinutes = Number(process.env.ANDROID_SOAK_MINUTES ?? 30);
 const durationMs = Math.max(1, soakMinutes) * 60_000;
 const sampleEveryMs = 5_000;
-const startedAt = Date.now();
+const runnerStartedAt = Date.now();
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 if (typeof WebSocket !== 'function') throw new Error('Node WebSocket support is required for Android soak QA.');
@@ -191,7 +191,8 @@ let nextSampleAt = Date.now();
 let nextInputAt = Date.now();
 let lastMinuteLogged = -1;
 
-while (Date.now() - startedAt < durationMs) {
+const soakStartedAt = Date.now();
+while (Date.now() - soakStartedAt < durationMs) {
   const now = Date.now();
   if (now >= nextInputAt) {
     const action = await evaluate(`(() => {
@@ -231,7 +232,7 @@ while (Date.now() - startedAt < durationMs) {
       try { report = JSON.parse(canvas.dataset.performanceReport || 'null'); } catch {}
       const memory = performance.memory;
       return {
-        atMs: ${now} - ${startedAt},
+        atMs: ${now} - ${soakStartedAt},
         mission: document.querySelector('.mission-chip')?.textContent ?? '',
         tier: canvas.dataset.renderTier ?? '',
         frameMs: Number(canvas.dataset.renderFrameMs || 0),
@@ -249,7 +250,7 @@ while (Date.now() - startedAt < durationMs) {
     nextSampleAt = now + sampleEveryMs;
   }
 
-  const minute = Math.floor((now - startedAt) / 60_000);
+  const minute = Math.floor((now - soakStartedAt) / 60_000);
   if (minute !== lastMinuteLogged) {
     lastMinuteLogged = minute;
     const latest = samples.at(-1);
@@ -281,7 +282,8 @@ const heapRegressed = heapBaseline != null && heapFinal != null && heapFinal - h
 const summary = {
   version: 'p16-e-v1',
   requestedMinutes: soakMinutes,
-  elapsedSeconds: Math.round((Date.now() - startedAt) / 1000),
+  elapsedSeconds: Math.round((Date.now() - soakStartedAt) / 1000),
+  setupSeconds: Math.round((soakStartedAt - runnerStartedAt) / 1000),
   sampleCount: samples.length,
   t12: { directive: 'Thermal Crown', location: 'solar-yard', modifiers: 6, targetClass: 'command-target' },
   activity: { restarts, completedRuns, deepTransitions, inputBursts },
