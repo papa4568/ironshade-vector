@@ -323,11 +323,7 @@ jobs:
           profile: pixel_7_pro
           emulator-boot-timeout: 300
           disable-animations: true
-          script: |
-            if [ "${{ steps.signing.outputs.mode }}" = "release" ]; then
-              bash scripts/android-upgrade-smoke.sh
-            fi
-            bash scripts/android-runtime-smoke.sh
+          script: bash -lc 'if [[ "${{ steps.signing.outputs.mode }}" == "release" ]]; then bash scripts/android-upgrade-smoke.sh; fi; bash scripts/android-runtime-smoke.sh'
 
       - name: Upload APK and QA evidence
         uses: actions/upload-artifact@v7
