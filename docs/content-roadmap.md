@@ -10,7 +10,3 @@ Only active/future executable work lives here. Completed and verified work belon
 - An item is complete only when its requested behavior works, relevant regression checks pass, the production build succeeds, and the Android deliverable is verified as required by the repository workflow.
 - After verified completion, move the completion detail/evidence to the archive and remove the item from this file.
 - If repository evidence shows an active item is already complete, verify that evidence before archiving it. If only part is complete, rewrite the item around the remaining work.
-
-## P17 — External Beta / Delivery
-
-- [ ] **P17-C — Save/release policy** — define and implement migration, rollback, recovery, and compatibility expectations for external releases. **Done when:** supported upgrade/recovery paths are documented and covered by the relevant save/migration verification.
