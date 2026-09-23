@@ -3,7 +3,7 @@ import type { Contract } from './campaign';
 import type { EquipmentFaction } from './factionGear';
 import { getNextMissionObjectiveTarget } from './encounters';
 import { findNavigationPath } from './mapPathfinding';
-import { getWorldSize, weaponHandlingProfiles, type CombatObject, type Enemy, type Player, type SimState, type WeaponId } from './sim';
+import { getPlayerSector, getWorldSize, weaponHandlingProfiles, type CombatObject, type Enemy, type Player, type SimState, type WeaponId } from './sim';
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, locationArtIdentityFor, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
 import { groundLootPresentation } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
@@ -22,6 +22,7 @@ import { resolveEnemyDamageAnimation, resolvePlayerSkillAnimation } from './skil
 import { resolveEnemyBossAnimation, type EnemyBossAnimationSignals } from './enemyBossAnimation';
 import { resolveEnemyPresentation, type EnemyPresentationContract } from './enemyPresentation';
 import { enhancedProtocolVisualSpecFor, protocolVisualIds, protocolVisualSpecFor } from './protocolVisualLanguage';
+import { dominantEnemyStatusVisual, enemyStatusVisualIds, enemyStatusVisualSpecFor, playerStatusVisualSpecFor, resolvePlayerStatusVisuals } from './statusVisualLanguage';
 
 const WORLD_SCALE = 0.02;
 const FLOOR_Y = 0;
@@ -49,6 +50,101 @@ const roleColors: Record<Enemy['role'], number> = {
 
 function enemyMutationCueActive(contract: EnemyPresentationContract, cue: string) {
   return contract.animation.some(layer => layer.source === 'mutation' && layer.cue === cue);
+}
+
+function createEnemyStatusVisuals(scale: number) {
+  const root = new THREE.Group();
+  root.name = 'enemy-status-p13e';
+  const materials: THREE.Material[] = [];
+  const keep = <T extends THREE.Material>(material: T) => { materials.push(material); return material; };
+
+  for (const id of enemyStatusVisualIds) {
+    const spec = enemyStatusVisualSpecFor(id);
+    const group = new THREE.Group();
+    group.name = `status-${id}`;
+    const hardware = keep(new THREE.MeshStandardMaterial({
+      color: spec.primary,
+      emissive: spec.accent,
+      emissiveIntensity: 0.32,
+      metalness: 0.52,
+      roughness: 0.42,
+      transparent: true,
+    }));
+    const fieldMaterial = keep(new THREE.MeshBasicMaterial({
+      color: spec.accent,
+      transparent: true,
+      opacity: 0.42,
+      depthWrite: false,
+      toneMapped: false,
+    }));
+
+    const field = new THREE.Mesh(new THREE.TorusGeometry(0.54 * spec.scale * scale, 0.025 * scale, 5, 28), fieldMaterial);
+    field.name = 'status-field';
+    field.position.set(0, 0.82 * scale, 0.24 * scale);
+    group.add(field);
+
+    const markerGeometry = spec.signature === 'reticle'
+      ? new THREE.RingGeometry(0.18 * scale, 0.24 * scale, 16)
+      : spec.signature === 'arc'
+        ? new THREE.OctahedronGeometry(0.18 * scale, 0)
+        : spec.signature === 'frost'
+          ? new THREE.ConeGeometry(0.17 * scale, 0.38 * scale, 5)
+          : new THREE.BoxGeometry(0.34 * scale, spec.signature === 'fracture' ? 0.1 * scale : 0.17 * scale, 0.12 * scale);
+    const marker = new THREE.Mesh(markerGeometry, hardware);
+    marker.name = 'status-marker';
+    marker.position.set(0, 1.15 * scale, 0.27 * scale);
+    marker.rotation.z = spec.signature === 'fracture' ? 0.44 : spec.signature === 'impact' ? -0.32 : 0;
+    group.add(marker);
+
+    for (let index = 0; index < spec.nodeCount; index += 1) {
+      const angle = index * (Math.PI * 2 / spec.nodeCount);
+      const node = new THREE.Mesh(new THREE.SphereGeometry(0.045 * scale, 6, 5), hardware);
+      node.name = `status-node-${index}`;
+      node.position.set(Math.cos(angle) * 0.48 * scale, (0.86 + Math.sin(angle) * 0.24) * scale, 0.28 * scale);
+      group.add(node);
+    }
+
+    group.visible = false;
+    root.add(group);
+  }
+  return { root, materials };
+}
+
+function createPlayerStatusVisuals() {
+  const root = new THREE.Group();
+  root.name = 'player-status-p13e';
+  const materials: THREE.Material[] = [];
+  const keep = <T extends THREE.Material>(material: T) => { materials.push(material); return material; };
+  for (const id of ['thermal', 'disrupted', 'pressure-loss', 'vacuum'] as const) {
+    const spec = playerStatusVisualSpecFor(id);
+    const group = new THREE.Group();
+    group.name = `player-status-${id}`;
+    const fieldMaterial = keep(new THREE.MeshBasicMaterial({
+      color: spec.accent,
+      transparent: true,
+      opacity: 0.42,
+      depthWrite: false,
+      toneMapped: false,
+    }));
+    const field = new THREE.Mesh(new THREE.TorusGeometry(id === 'vacuum' ? 0.72 : 0.61, 0.03, 5, 30), fieldMaterial);
+    field.name = 'player-status-field';
+    field.position.y = id === 'thermal' ? 1.05 : 0.72;
+    field.rotation.x = id === 'pressure-loss' || id === 'vacuum' ? Math.PI / 2 : 0;
+    group.add(field);
+    for (let index = 0; index < (id === 'disrupted' ? 4 : 3); index += 1) {
+      const marker = new THREE.Mesh(
+        new THREE.BoxGeometry(id === 'thermal' ? 0.08 : 0.16, id === 'vacuum' ? 0.34 : 0.08, 0.04),
+        fieldMaterial,
+      );
+      marker.name = `player-status-marker-${index}`;
+      marker.position.set((index - 1.5) * 0.22, 1.12 + (index % 2) * 0.18, 0.24);
+      marker.rotation.z = id === 'disrupted' ? (index % 2 === 0 ? 0.55 : -0.55) : id === 'thermal' ? 0.18 : 0;
+      group.add(marker);
+    }
+    group.visible = false;
+    root.add(group);
+  }
+  return { root, materials };
 }
 
 function createEnemyProtocolVisuals(scale: number) {
@@ -484,6 +580,8 @@ type EnemyVisual = {
   protocolRing: THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>;
   protocolRoot: THREE.Group;
   protocolMaterials: THREE.Material[];
+  statusRoot: THREE.Group;
+  statusMaterials: THREE.Material[];
   mutationRoot: THREE.Group;
   mutationMaterials: THREE.Material[];
   bossSignature: THREE.Group | null;
@@ -648,6 +746,8 @@ export class ThreeCombatRenderer {
   private readonly playerBody: THREE.Mesh<THREE.CylinderGeometry, THREE.MeshStandardMaterial>;
   private readonly playerHead: THREE.Mesh<THREE.SphereGeometry, THREE.MeshStandardMaterial>;
   private readonly playerWeapon: THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial>;
+  private readonly playerStatusRoot: THREE.Group;
+  private readonly playerStatusMaterials: THREE.Material[];
   private readonly muzzleFlash: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>;
   private readonly pulseRing: RingVisual;
   private readonly aimLine: THREE.Line<THREE.BufferGeometry, THREE.LineBasicMaterial>;
@@ -842,6 +942,11 @@ export class ThreeCombatRenderer {
     this.playerRoot.add(this.playerHead);
     this.proceduralOperatorVisuals.push(...this.playerRoot.children);
 
+    const playerStatusVisuals = createPlayerStatusVisuals();
+    this.playerStatusRoot = playerStatusVisuals.root;
+    this.playerStatusMaterials = playerStatusVisuals.materials;
+    this.playerRoot.add(this.playerStatusRoot);
+
     this.playerWeapon = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.14, 0.16), new THREE.MeshStandardMaterial({ color: weaponColors.carbine, metalness: 0.8, roughness: 0.23, emissive: weaponColors.carbine, emissiveIntensity: 0.12 }));
     this.playerWeapon.position.set(0.72, 1.02, 0);
     this.playerWeapon.castShadow = true;
@@ -883,7 +988,7 @@ export class ThreeCombatRenderer {
       this.operatorAssetRequested = true;
       void this.loadAuthoredOperator(state.build.operatorClass);
     }
-    this.syncPlayer(state, operatorFaction, firingIntent);
+    this.syncPlayer(state, operatorFaction, firingIntent, reducedTargetMotion);
     this.syncEnemies(state, mission, mobileTargetId, reducedTargetMotion);
     this.syncDamageNumbers(state);
     this.syncProjectiles(state, budget.transparencyScale);
@@ -926,6 +1031,7 @@ export class ThreeCombatRenderer {
     this.authoredOperatorOwnedMaterials.forEach(material => material.dispose());
     this.authoredOperatorOwnedMaterials = [];
     this.authoredOperatorMaterials = [];
+    this.playerStatusMaterials.forEach(material => material.dispose());
     for (const visual of this.authoredWeapons.values()) {
       visual.instance.release();
       visual.ownedMaterials.forEach(material => material.dispose());
@@ -939,6 +1045,8 @@ export class ThreeCombatRenderer {
       visual.authoredOwnedMaterials.forEach(material => material.dispose());
       visual.authoredOwnedMaterials = [];
       visual.authoredMaterials = [];
+      visual.statusMaterials.forEach(material => material.dispose());
+      visual.statusMaterials = [];
       visual.protocolMaterials.forEach(material => material.dispose());
       visual.protocolMaterials = [];
       visual.mutationMaterials.forEach(material => material.dispose());
@@ -4574,7 +4682,7 @@ export class ThreeCombatRenderer {
     this.objectiveGuideMesh.instanceMatrix.needsUpdate = true;
   }
 
-  private syncPlayer(state: SimState, operatorFaction: EquipmentFaction | null, firingIntent: boolean) {
+  private syncPlayer(state: SimState, operatorFaction: EquipmentFaction | null, firingIntent: boolean, reducedEffects: boolean) {
     const player = state.player;
     const durability = player.hp + player.armor;
     if (Number.isFinite(this.lastPlayerDurability) && durability < this.lastPlayerDurability - 0.5 && !player.dead) {
@@ -4584,8 +4692,17 @@ export class ThreeCombatRenderer {
     this.playerRoot.position.set(scaled(player.x), 0, scaled(player.y));
     syncOperatorVisual(this.playerRoot, this.weaponPivot, state, operatorFaction);
     const suitColor = operatorFaction ? factionColors[operatorFaction] : 0x8aa89d;
-    const operatorEmissive = player.disrupted > 0 ? 0x7655a0 : player.vacuumExposure > 0.55 ? 0x6b8794 : 0x000000;
-    const operatorEmissiveIntensity = player.disrupted > 0 || player.vacuumExposure > 0.55 ? 0.25 : 0;
+    const sector = getPlayerSector(state);
+    const activePlayerStatuses = resolvePlayerStatusVisuals({
+      heat: player.weaponHeat[player.currentWeapon] ?? 0,
+      disrupted: player.disrupted,
+      vacuumExposure: player.vacuumExposure,
+      pressureState: sector.pressureState,
+      pressure: sector.pressure,
+    });
+    const playerStatusSpec = activePlayerStatuses[0] ? playerStatusVisualSpecFor(activePlayerStatuses[0].id) : null;
+    const operatorEmissive = playerStatusSpec?.accent ?? 0x000000;
+    const operatorEmissiveIntensity = activePlayerStatuses[0] ? 0.14 + activePlayerStatuses[0].intensity * 0.16 : 0;
     this.playerBody.material.color.setHex(suitColor);
     this.playerBody.material.emissive.setHex(operatorEmissive);
     this.playerBody.material.emissiveIntensity = operatorEmissiveIntensity;
@@ -4689,6 +4806,7 @@ export class ThreeCombatRenderer {
       this.renderer.domElement.dataset.operatorSkillAnimation = skill.profile && skill.phase !== 'idle' ? `${skill.profile.id}:${skill.phase}` : 'idle';
       this.renderer.domElement.dataset.operatorSkillBlend = `weight:${skill.weight.toFixed(2)},impulse:${skill.impulse.toFixed(2)},recovery:${skill.recovery.toFixed(2)},cancel:${skill.interrupted ? 'interrupted' : skill.cancelReady ? 'ready' : 'locked'}`;
     }
+    this.syncPlayerStatusPresentation(state, reducedEffects);
     this.muzzleFlash.material.color.setHex(weaponColor);
     this.muzzleFlash.visible = state.weaponFlash > 0;
     this.syncAuthoredWeapon(state, operatorFaction);
@@ -4744,6 +4862,9 @@ export class ThreeCombatRenderer {
 
     const protocolVisuals = createEnemyProtocolVisuals(bossScale);
     root.add(protocolVisuals.root);
+
+    const statusVisuals = createEnemyStatusVisuals(bossScale);
+    root.add(statusVisuals.root);
 
     const mutationVisuals = createEnemyMutationVisuals(bossScale);
     root.add(mutationVisuals.root);
@@ -4841,6 +4962,8 @@ export class ThreeCombatRenderer {
       protocolRing,
       protocolRoot: protocolVisuals.root,
       protocolMaterials: protocolVisuals.materials,
+      statusRoot: statusVisuals.root,
+      statusMaterials: statusVisuals.materials,
       mutationRoot: mutationVisuals.root,
       mutationMaterials: mutationVisuals.materials,
       bossSignature,
@@ -5218,6 +5341,108 @@ export class ThreeCombatRenderer {
   }
 
 
+  private syncEnemyStatusPresentation(
+    visual: EnemyVisual,
+    enemy: Enemy,
+    state: SimState,
+    presentation: EnemyPresentationContract,
+    reducedEffects: boolean,
+  ) {
+    for (const id of enemyStatusVisualIds) {
+      const group = visual.statusRoot.getObjectByName(`status-${id}`) as THREE.Group | undefined;
+      if (group) group.visible = false;
+    }
+    const active = enemyStatusVisualIds.filter(id => enemy.active && !enemy.dead && enemy.statuses[id] > 0);
+    visual.statusRoot.visible = active.length > 0;
+    if (active.length === 0) return;
+
+    const lead = presentation.vfx[0];
+    const motionScale = reducedEffects ? 0.28 : 1;
+    active.forEach((id, index) => {
+      const spec = enemyStatusVisualSpecFor(id);
+      const group = visual.statusRoot.getObjectByName(`status-${id}`) as THREE.Group | undefined;
+      if (!group) return;
+      group.visible = true;
+      const intensity = THREE.MathUtils.clamp(0.4 + enemy.statuses[id] * 0.6, 0, 1);
+      const readability = lead && lead.source !== 'status' && lead.priority > spec.priority ? 0.26 : 1;
+      const pulse = reducedEffects ? 0.78 : 0.72 + Math.sin(state.time * (id === 'disrupted' ? 11 : id === 'marked' ? 6.2 : 4.2) + enemy.id * 0.47 + index) * 0.16;
+      group.position.x = id === 'disrupted' ? Math.sin(state.time * 18 + enemy.id) * 0.045 * motionScale : 0;
+      group.rotation.z = id === 'stagger'
+        ? Math.sin(state.time * 16 + enemy.id) * 0.06 * motionScale
+        : id === 'marked'
+          ? (reducedEffects ? 0 : state.time * 0.22)
+          : 0;
+
+      const field = group.getObjectByName('status-field') as THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial> | undefined;
+      if (field) {
+        field.material.opacity = (0.2 + intensity * 0.36) * readability;
+        field.rotation.z = reducedEffects ? 0 : state.time * (id === 'conductive' ? 1.25 : id === 'marked' ? -0.7 : 0.35);
+        field.scale.setScalar(0.96 + pulse * 0.08 * motionScale);
+      }
+      const marker = group.getObjectByName('status-marker') as THREE.Mesh<THREE.BufferGeometry, THREE.Material> | undefined;
+      if (marker) {
+        const material = marker.material as THREE.MeshStandardMaterial;
+        material.opacity = 0.94 * readability;
+        material.emissiveIntensity = (0.18 + intensity * 0.42) * readability;
+        marker.scale.setScalar(0.94 + intensity * 0.12 + pulse * 0.04 * motionScale);
+      }
+      const nodeCount = reducedEffects ? Math.min(3, spec.nodeCount) : spec.nodeCount;
+      for (let nodeIndex = 0; nodeIndex < spec.nodeCount; nodeIndex += 1) {
+        const node = group.getObjectByName(`status-node-${nodeIndex}`) as THREE.Mesh<THREE.SphereGeometry, THREE.MeshStandardMaterial> | undefined;
+        if (!node) continue;
+        node.visible = nodeIndex < nodeCount;
+        node.material.opacity = 0.9 * readability;
+        node.material.emissiveIntensity = (0.2 + pulse * 0.36) * readability;
+        if (!reducedEffects && (id === 'conductive' || id === 'vacuum')) {
+          node.position.z = (0.24 + Math.sin(state.time * 6 + nodeIndex) * 0.035) * (enemy.role === 'boss' ? 1.18 : 1);
+        }
+      }
+    });
+  }
+
+  private syncPlayerStatusPresentation(state: SimState, reducedEffects: boolean) {
+    const sector = getPlayerSector(state);
+    const active = resolvePlayerStatusVisuals({
+      heat: state.player.weaponHeat[state.player.currentWeapon] ?? 0,
+      disrupted: state.player.disrupted,
+      vacuumExposure: state.player.vacuumExposure,
+      pressureState: sector.pressureState,
+      pressure: sector.pressure,
+    });
+    for (const id of ['thermal', 'disrupted', 'pressure-loss', 'vacuum'] as const) {
+      const group = this.playerStatusRoot.getObjectByName(`player-status-${id}`) as THREE.Group | undefined;
+      if (group) group.visible = false;
+    }
+    this.playerStatusRoot.visible = active.length > 0;
+    const motionScale = reducedEffects ? 0.25 : 1;
+    active.forEach((entry, index) => {
+      const group = this.playerStatusRoot.getObjectByName(`player-status-${entry.id}`) as THREE.Group | undefined;
+      if (!group) return;
+      group.visible = true;
+      const pulse = reducedEffects ? 0.8 : 0.76 + Math.sin(state.time * (entry.id === 'disrupted' ? 12 : entry.id === 'thermal' ? 7.5 : 4.2) + index) * 0.16;
+      group.position.x = entry.id === 'disrupted' ? Math.sin(state.time * 20) * 0.035 * motionScale : 0;
+      group.rotation.y = entry.id === 'pressure-loss' || entry.id === 'vacuum'
+        ? (reducedEffects ? 0 : state.time * 0.28)
+        : 0;
+      const field = group.getObjectByName('player-status-field') as THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial> | undefined;
+      if (field) {
+        field.material.opacity = 0.2 + entry.intensity * 0.42;
+        field.scale.setScalar(0.96 + pulse * 0.08 * motionScale);
+        field.rotation.z = reducedEffects ? 0 : state.time * (entry.id === 'disrupted' ? -1.2 : 0.42);
+      }
+      const markerCount = reducedEffects ? 2 : entry.id === 'disrupted' ? 4 : 3;
+      for (let markerIndex = 0; markerIndex < 4; markerIndex += 1) {
+        const marker = group.getObjectByName(`player-status-marker-${markerIndex}`) as THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial> | undefined;
+        if (!marker) continue;
+        marker.visible = markerIndex < markerCount;
+        marker.material.opacity = 0.22 + entry.intensity * 0.5;
+        marker.position.y = 1.12 + (markerIndex % 2) * 0.18 + (!reducedEffects && (entry.id === 'thermal' || entry.id === 'vacuum') ? Math.sin(state.time * 4.5 + markerIndex) * 0.025 * motionScale : 0);
+      }
+    });
+    this.renderer.domElement.dataset.playerStatusPresentation = active.map(entry => entry.id).join('+');
+    this.renderer.domElement.dataset.playerStatusDominant = active[0]?.id ?? 'none';
+  }
+
   private syncEnemyProtocolPresentation(
     visual: EnemyVisual,
     enemy: Enemy,
@@ -5539,6 +5764,7 @@ export class ThreeCombatRenderer {
   private syncEnemies(state: SimState, mission: Contract, mobileTargetId: number | null, reducedTargetMotion: boolean) {
     const seen = new Set<number>();
     let animationTelemetry: { priority: number; enemy: Enemy; motion: EnemyBossAnimationSignals } | null = null;
+    let statusTelemetry: { priority: number; enemy: Enemy; presentation: EnemyPresentationContract } | null = null;
     let protocolTelemetry: { priority: number; enemy: Enemy; presentation: EnemyPresentationContract } | null = null;
     let mutationTelemetry: { priority: number; enemy: Enemy; presentation: EnemyPresentationContract } | null = null;
     for (const enemy of state.enemies) {
@@ -5580,6 +5806,10 @@ export class ThreeCombatRenderer {
       });
       const animationPriority = enemy.role === 'boss' ? 3 : enemy.role === 'elite' ? 2 : 1;
       if (!animationTelemetry || animationPriority > animationTelemetry.priority) animationTelemetry = { priority: animationPriority, enemy, motion };
+      const hasPresentedStatus = presentation.animation.some(layer => layer.source === 'status');
+      if (hasPresentedStatus && (!statusTelemetry || animationPriority > statusTelemetry.priority)) {
+        statusTelemetry = { priority: animationPriority, enemy, presentation };
+      }
       const hasPresentedProtocol = presentation.animation.some(layer => layer.source === 'protocol');
       if (hasPresentedProtocol && (!protocolTelemetry || animationPriority > protocolTelemetry.priority)) {
         protocolTelemetry = { priority: animationPriority, enemy, presentation };
@@ -5684,8 +5914,11 @@ export class ThreeCombatRenderer {
       if (enemy.role === 'boss') this.syncBossSignature(visual, enemy, state);
       this.syncEnemyProtocolPresentation(visual, enemy, state, presentation, reducedTargetMotion);
       this.syncEnemyMutationPresentation(visual, enemy, state, presentation, reducedTargetMotion);
-      visual.body.material.emissive.setHex(enemy.statuses.disrupted > 0 ? 0x63508a : enemy.telegraph > 0 ? 0x7a3327 : 0x000000);
-      visual.body.material.emissiveIntensity = enemy.statuses.disrupted > 0 || enemy.telegraph > 0 ? 0.34 : 0;
+      this.syncEnemyStatusPresentation(visual, enemy, state, presentation, reducedTargetMotion);
+      const dominantStatus = dominantEnemyStatusVisual(enemy);
+      const dominantStatusSpec = dominantStatus ? enemyStatusVisualSpecFor(dominantStatus) : null;
+      visual.body.material.emissive.setHex(enemy.telegraph > 0 ? 0x7a3327 : dominantStatusSpec?.accent ?? 0x000000);
+      visual.body.material.emissiveIntensity = enemy.telegraph > 0 ? 0.34 : dominantStatus ? 0.2 + Math.min(0.18, enemy.statuses[dominantStatus] * 0.12) : 0;
       if (visual.authoredRoot) {
         this.syncAuthoredEnemyAnimation(visual, enemy, state, motion);
         const sableVoss = visual.authoredAssetId === 'spin-habitat-sable-voss';
@@ -5695,8 +5928,8 @@ export class ThreeCombatRenderer {
         const bossPhaseEmissive = enemy.role === 'boss' && enemy.bossPhase === 2
           ? sableVoss ? 0x76521f : stormlineIlex ? 0x8a3328 : rheaKade ? 0x7a5428 : helios9 ? 0x8f3222 : 0x7a2f24
           : 0x000000;
-        const statusEmissive = enemy.statuses.disrupted > 0 ? 0x63508a : enemy.telegraph > 0 ? 0x7a3327 : bossPhaseEmissive;
-        const statusIntensity = enemy.statuses.disrupted > 0 || enemy.telegraph > 0 ? 0.28 : bossPhaseEmissive ? 0.24 : 0;
+        const statusEmissive = enemy.telegraph > 0 ? 0x7a3327 : dominantStatusSpec?.accent ?? bossPhaseEmissive;
+        const statusIntensity = enemy.telegraph > 0 ? 0.28 : dominantStatus ? 0.2 + Math.min(0.12, enemy.statuses[dominantStatus] * 0.08) : bossPhaseEmissive ? 0.24 : 0;
         for (const material of visual.authoredMaterials) {
           material.color.setHex(
             sableVoss
@@ -5761,6 +5994,18 @@ export class ThreeCombatRenderer {
       delete this.renderer.domElement.dataset.enemyAnimationBlend;
       delete this.renderer.domElement.dataset.enemyAnimationTarget;
       delete this.renderer.domElement.dataset.bossPhaseAnimation;
+    }
+    if (statusTelemetry) {
+      const { enemy, presentation } = statusTelemetry;
+      this.renderer.domElement.dataset.enemyStatusPresentation = presentation.animation
+        .filter(layer => layer.source === 'status')
+        .map(layer => layer.key)
+        .join('+');
+      this.renderer.domElement.dataset.enemyStatusTarget = `${enemy.role}:${enemy.variant}`;
+      this.renderer.domElement.dataset.enemyPresentationDominant = presentation.dominant ?? 'none';
+    } else {
+      delete this.renderer.domElement.dataset.enemyStatusPresentation;
+      delete this.renderer.domElement.dataset.enemyStatusTarget;
     }
     if (protocolTelemetry) {
       const { enemy, presentation } = protocolTelemetry;
