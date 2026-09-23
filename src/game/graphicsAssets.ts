@@ -336,6 +336,38 @@ export async function loadGraphicsAsset(spec: GraphicsAssetSpec): Promise<GLTF> 
   return getOrCreateCacheEntry(spec).promise;
 }
 
+export type GraphicsAssetPreloadResult = {
+  requested: number;
+  loaded: number;
+  failed: number;
+  workerCount: number;
+};
+
+export async function preloadGraphicsAssets(specs: readonly GraphicsAssetSpec[], maxConcurrency = 2): Promise<GraphicsAssetPreloadResult> {
+  const uniqueSpecs = [...new Map(specs.map(spec => [spec.url, spec])).values()];
+  const workerCount = Math.min(uniqueSpecs.length, Math.max(1, Math.min(4, Math.floor(maxConcurrency) || 1)));
+  let cursor = 0;
+  let loaded = 0;
+  let failed = 0;
+
+  const worker = async () => {
+    while (cursor < uniqueSpecs.length) {
+      const spec = uniqueSpecs[cursor++];
+      if (!spec) continue;
+      try {
+        await loadGraphicsAsset(spec);
+        loaded += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+  };
+
+  if (workerCount > 0) await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  await enforceGraphicsAssetCacheBudget();
+  return { requested: uniqueSpecs.length, loaded, failed, workerCount };
+}
+
 export async function instantiateGraphicsAsset(spec: GraphicsAssetSpec): Promise<GraphicsAssetInstance> {
   const entry = getOrCreateCacheEntry(spec);
   entry.activeInstances += 1;
