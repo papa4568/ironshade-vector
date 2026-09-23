@@ -4,7 +4,7 @@ import type { EquipmentFaction } from './factionGear';
 import { getNextMissionObjectiveTarget } from './encounters';
 import { weaponVariantPresentation, weaponVariantThermalCue } from './classArsenal';
 import { findNavigationPath } from './mapPathfinding';
-import { getPlayerSector, getWorldSize, weaponHandlingProfiles, type CombatObject, type Enemy, type Player, type SimState, type WeaponId } from './sim';
+import { getPlayerSector, getWorldSize, weaponHandlingProfiles, type CombatObject, type Enemy, type Hazard, type Player, type SimState, type WeaponId } from './sim';
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, locationArtIdentityFor, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
 import { groundLootPresentation } from './fieldLoot';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
@@ -26,6 +26,7 @@ import { resolveEnemyLifecyclePresentation, type EnemyLifecycleSignals } from '.
 import { resolveEnemyHudReadability } from './enemyMobileReadability';
 import { enhancedProtocolVisualSpecFor, protocolVisualIds, protocolVisualSpecFor } from './protocolVisualLanguage';
 import { dominantEnemyStatusVisual, enemyStatusVisualIds, enemyStatusVisualSpecFor, playerStatusVisualSpecFor, resolvePlayerStatusVisuals } from './statusVisualLanguage';
+import { biomeWorldState, hazardWorldPresentation, interactableWorldPresentation, materialWorldResponse, worldMaterialQualityProfile } from './worldMaterialPolish';
 
 const WORLD_SCALE = 0.02;
 const FLOOR_Y = 0;
@@ -628,6 +629,12 @@ type ProjectileVisual = {
 };
 
 type RingVisual = THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>;
+type WorldCueVisual = {
+  root: THREE.Group;
+  ring: RingVisual;
+  glyph: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
+};
+type HazardVisual = WorldCueVisual;
 type DebrisVisual = THREE.Mesh<THREE.IcosahedronGeometry, THREE.MeshStandardMaterial>;
 type GroundLootVisual = {
   root: THREE.Group;
@@ -768,6 +775,7 @@ export class ThreeCombatRenderer {
     new THREE.PointLight(0x6edce7, 8, 10, 2),
   ];
   private readonly objectVisuals = new Map<string, THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial>>();
+  private readonly interactableCueVisuals = new Map<string, WorldCueVisual>();
   private readonly authoredInteractables = new Map<string, AuthoredInteractableVisual>();
   private readonly authoredInteractableRequests = new Set<string>();
   private readonly sectorVisuals = new Map<string, THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>>();
@@ -833,7 +841,7 @@ export class ThreeCombatRenderer {
   private spinHabitatLastSimTime = Number.NaN;
   private interactableLoadGeneration = 0;
   private readonly projectilePool: ProjectileVisual[] = [];
-  private readonly hazardPool: RingVisual[] = [];
+  private readonly hazardPool: HazardVisual[] = [];
   private readonly effectPool: RingVisual[] = [];
   private readonly breachPool: RingVisual[] = [];
   private readonly debrisPool: DebrisVisual[] = [];
@@ -862,6 +870,7 @@ export class ThreeCombatRenderer {
   private readonly objectiveGuideTransform = new THREE.Object3D();
   private readonly renderBudget: AdaptiveRenderBudget;
   private readonly coarse: boolean;
+  private worldFloorMaterial: THREE.MeshStandardMaterial | null = null;
   private readonly proceduralOperatorVisuals: THREE.Object3D[] = [];
   private operatorAssetInstance: GraphicsAssetInstance | null = null;
   private authoredOperatorRoot: THREE.Group | null = null;
@@ -889,6 +898,8 @@ export class ThreeCombatRenderer {
     this.renderer.domElement.dataset.operatorVisual = 'procedural-loading';
     this.renderer.domElement.dataset.interactableVisual = 'procedural-loading';
     this.renderer.domElement.dataset.lootVisual = 'procedural-ready';
+    this.renderer.domElement.dataset.worldReadability = 'loading';
+    this.renderer.domElement.dataset.worldMaterialDepth = 'loading';
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.08;
@@ -990,7 +1001,7 @@ export class ThreeCombatRenderer {
     this.syncIceMineBrittleSupports(state, mission, budget);
     syncHardSciFiEnvironment(this.environmentRoot, state, mission, budget.detailScale, budget.transparencyScale);
     this.syncSectors(state);
-    this.syncObjects(state, mission);
+    this.syncObjects(state, mission, budget);
     this.syncObjectiveBeacon(state, mission);
     if (!this.operatorAssetRequested) {
       this.operatorAssetRequested = true;
@@ -1000,8 +1011,9 @@ export class ThreeCombatRenderer {
     this.syncEnemies(state, mission, mobileTargetId, reducedTargetMotion);
     this.syncDamageNumbers(state);
     this.syncProjectiles(state, budget.transparencyScale);
-    this.syncGroundLoot(state);
-    this.syncHazards(state);
+    this.syncGroundLoot(state, budget);
+    this.syncHazards(state, budget);
+    this.syncWorldMaterialPolish(state, mission, budget);
     this.syncEffects(state, quality * budget.detailScale, budget.vfxDensity, budget.transparencyScale);
     this.syncBreaches(state);
     syncHardSciFiBreaches(this.dynamicRoot, state, WORLD_SCALE, quality * budget.vfxDensity);
@@ -1029,6 +1041,7 @@ export class ThreeCombatRenderer {
     this.disposed = true;
     this.clearAuthoredRefineryEnvironment();
     this.clearAuthoredInteractables();
+    this.clearInteractableCueVisuals();
     if (this.authoredOperatorRig && this.weaponPivot.parent === this.authoredOperatorRig.weaponSocket) {
       this.playerRoot.add(this.weaponPivot);
     }
@@ -1078,6 +1091,16 @@ export class ThreeCombatRenderer {
     this.iceMineFractureShardMaterial.dispose();
     disposeTree(this.scene);
     this.renderer.dispose();
+  }
+
+  private clearInteractableCueVisuals() {
+    for (const visual of this.interactableCueVisuals.values()) {
+      this.dynamicRoot.remove(visual.root);
+      visual.ring.geometry.dispose();
+      visual.ring.material.dispose();
+      visual.glyph.material.dispose();
+    }
+    this.interactableCueVisuals.clear();
   }
 
   private clearAuthoredRefineryEnvironment() {
@@ -3530,6 +3553,8 @@ export class ThreeCombatRenderer {
     this.proceduralRefineryVisuals.length = 0;
     disposeTree(this.environmentRoot);
     this.environmentRoot.clear();
+    this.worldFloorMaterial = null;
+    this.clearInteractableCueVisuals();
     disposeTree(this.objectRoot);
     this.objectRoot.clear();
     this.objectVisuals.clear();
@@ -3544,10 +3569,12 @@ export class ThreeCombatRenderer {
     this.emergencyLight.color.setHex(lightingProfile.emergencyColor);
 
     const world = getWorldSize();
+    const floorMaterial = new THREE.MeshStandardMaterial({ color: palette.floor, metalness: 0.64, roughness: 0.5 });
     const floor = new THREE.Mesh(
       new THREE.BoxGeometry(scaled(world.w), 0.35, scaled(world.h)),
-      new THREE.MeshStandardMaterial({ color: palette.floor, metalness: 0.64, roughness: 0.5 }),
+      floorMaterial,
     );
+    this.worldFloorMaterial = floorMaterial;
     floor.position.set(scaled(world.w / 2), -0.2, scaled(world.h / 2));
     floor.receiveShadow = true;
     this.environmentRoot.add(floor);
@@ -4521,8 +4548,38 @@ export class ThreeCombatRenderer {
     }
   }
 
-  private syncObjects(state: SimState, mission: Contract) {
+  private ensureInteractableCue(object: CombatObject) {
+    const presentation = interactableWorldPresentation(object.kind);
+    if (!presentation) return null;
+    const existing = this.interactableCueVisuals.get(object.id);
+    if (existing) {
+      existing.glyph.geometry = this.groundLootMarkerGeometries[presentation.shape];
+      return existing;
+    }
+
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(0.5, 0.035, 6, 28),
+      new THREE.MeshBasicMaterial({ color: presentation.color, transparent: true, opacity: 0.24, depthWrite: false }),
+    );
+    ring.rotation.x = Math.PI / 2;
+    ring.position.y = 0.035;
+    const glyph = new THREE.Mesh(
+      this.groundLootMarkerGeometries[presentation.shape],
+      new THREE.MeshBasicMaterial({ color: presentation.color, transparent: true, opacity: 0.72, depthWrite: false }),
+    );
+    glyph.position.y = 0.92;
+    const root = new THREE.Group();
+    root.name = `world-interactable-cue-${object.id}`;
+    root.add(ring, glyph);
+    this.dynamicRoot.add(root);
+    const visual = { root, ring, glyph };
+    this.interactableCueVisuals.set(object.id, visual);
+    return visual;
+  }
+
+  private syncObjects(state: SimState, mission: Contract, budget: RenderBudgetSnapshot) {
     const activeIds = new Set<string>();
+    const worldQuality = worldMaterialQualityProfile(budget.tierName);
     for (const object of state.objects) {
       activeIds.add(object.id);
       let mesh = this.objectVisuals.get(object.id);
@@ -4555,6 +4612,9 @@ export class ThreeCombatRenderer {
       mesh.visible = object.active && !authored && !authoredBrittleSupport;
       mesh.position.set(scaled(object.x + object.w / 2), mesh.geometry.parameters.height / 2, scaled(object.y + object.h / 2));
       mesh.material.color.setHex(objectColor(object));
+      const materialResponse = materialWorldResponse(object.material);
+      mesh.material.metalness = THREE.MathUtils.lerp(0.62, materialResponse.metalness, worldQuality.materialDepthScale);
+      mesh.material.roughness = THREE.MathUtils.lerp(0.5, materialResponse.roughness, worldQuality.materialDepthScale);
       mesh.material.emissive.setHex(object.exposed ? 0xd69b4d : 0x000000);
       mesh.material.emissiveIntensity = object.exposed ? 0.32 : 0;
       const objectCenterX = object.x + object.w / 2;
@@ -4567,6 +4627,24 @@ export class ThreeCombatRenderer {
       if (footprint) footprint.material.opacity = object.active ? (object.material === 'bulkhead' ? 0.48 : 0.3) : 0;
       const hpRatio = object.maxHp > 0 ? THREE.MathUtils.clamp(object.hp / object.maxHp, 0.18, 1) : 1;
       mesh.scale.y = object.destructible && object.maxHp < 9000 ? 0.72 + hpRatio * 0.28 : 1;
+
+      const cue = this.ensureInteractableCue(object);
+      const cuePresentation = interactableWorldPresentation(object.kind);
+      if (cue && cuePresentation) {
+        const footprintScale = THREE.MathUtils.clamp(scaled(Math.max(object.w, object.h)) * 0.78, 0.68, 1.18);
+        const statusColor = object.exposed ? 0x8bd29a : cuePresentation.color;
+        const pulse = 0.88 + Math.sin(state.time * cuePresentation.pulseHz + objectCenterX * 0.012) * 0.12 * worldQuality.stateMotionScale;
+        cue.root.visible = object.active;
+        cue.root.position.set(scaled(objectCenterX), 0, scaled(objectCenterY));
+        cue.ring.material.color.setHex(statusColor);
+        cue.ring.material.opacity = (0.18 + (object.exposed ? 0.09 : 0.04)) * worldQuality.interactableCueOpacity;
+        cue.ring.scale.set(footprintScale * cuePresentation.scaleX * pulse, footprintScale * cuePresentation.scaleZ * pulse, 1);
+        cue.glyph.geometry = this.groundLootMarkerGeometries[cuePresentation.shape];
+        cue.glyph.material.color.setHex(statusColor);
+        cue.glyph.material.opacity = worldQuality.interactableCueOpacity;
+        cue.glyph.scale.setScalar(0.86 + (object.exposed ? 0.08 : 0));
+        cue.glyph.rotation.y = state.time * 0.22 * worldQuality.stateMotionScale;
+      }
 
       if (authored) {
         authored.root.visible = object.active;
@@ -4594,6 +4672,8 @@ export class ThreeCombatRenderer {
     }
     for (const [id, mesh] of this.objectVisuals) if (!activeIds.has(id)) mesh.visible = false;
     for (const [id, visual] of this.authoredInteractables) if (!activeIds.has(id)) visual.root.visible = false;
+    for (const [id, visual] of this.interactableCueVisuals) if (!activeIds.has(id)) visual.root.visible = false;
+    this.renderer.domElement.dataset.interactableReadability = 'shape-coded+state-emissive+floor-cue:quality-safe';
 
     if (mission.location === 'jovian-harvester') {
       const serviceBreach = state.breaches.find(breach => breach.id === 'service-breach');
@@ -6402,7 +6482,8 @@ export class ThreeCombatRenderer {
     }
   }
 
-  private syncGroundLoot(state: SimState) {
+  private syncGroundLoot(state: SimState, budget: RenderBudgetSnapshot) {
+    const worldQuality = worldMaterialQualityProfile(budget.tierName);
     let count = 0;
     for (const drop of state.groundLoot) {
       if (!drop.active || drop.collected) continue;
@@ -6453,7 +6534,7 @@ export class ThreeCombatRenderer {
       visual.ring.scale.setScalar(presentation.ringScale);
       visual.beam.scale.y = presentation.beaconScale;
       visual.beam.position.y = 0.85 * presentation.beaconScale;
-      visual.beam.material.opacity = 0.14 + presentation.rank * 0.11;
+      visual.beam.material.opacity = (0.14 + presentation.rank * 0.11) * worldQuality.pickupBeamScale;
     }
     for (let index = count; index < this.groundLootPool.length; index += 1) this.groundLootPool[index].root.visible = false;
   }
@@ -6468,20 +6549,72 @@ export class ThreeCombatRenderer {
     return pool[index];
   }
 
-  private syncHazards(state: SimState) {
+  private ensureHazard(index: number, kind: Hazard['kind']) {
+    while (this.hazardPool.length <= index) {
+      const presentation = hazardWorldPresentation(kind);
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(1, 0.045, 6, 40),
+        new THREE.MeshBasicMaterial({ color: presentation.color, transparent: true, opacity: 0.62, depthWrite: false }),
+      );
+      ring.rotation.x = Math.PI / 2;
+      const glyph = new THREE.Mesh(
+        this.groundLootMarkerGeometries[presentation.shape],
+        new THREE.MeshBasicMaterial({ color: presentation.color, transparent: true, opacity: 0.76, depthWrite: false }),
+      );
+      glyph.position.y = 0.13;
+      const root = new THREE.Group();
+      root.add(ring, glyph);
+      this.dynamicRoot.add(root);
+      this.hazardPool.push({ root, ring, glyph });
+    }
+    const visual = this.hazardPool[index];
+    const presentation = hazardWorldPresentation(kind);
+    visual.glyph.geometry = this.groundLootMarkerGeometries[presentation.shape];
+    return visual;
+  }
+
+  private syncHazards(state: SimState, budget: RenderBudgetSnapshot) {
+    const worldQuality = worldMaterialQualityProfile(budget.tierName);
     let count = 0;
     for (const hazard of state.hazards) {
       if (!hazard.active) continue;
-      const color = hazard.kind === 'shockGrid' ? 0x9574cd : hazard.kind === 'gravityWell' ? 0x5f99b9 : hazard.kind === 'vectorWash' ? 0x5eb7da : hazard.kind === 'boiloffJet' ? 0x99dbeb : 0x6cc6d3;
-      const ring = this.ensureRing(this.hazardPool, count++, color);
-      ring.visible = true;
-      ring.material.color.setHex(color);
-      ring.material.opacity = 0.42 + Math.sin(state.time * 7) * 0.12;
-      ring.position.set(scaled(hazard.x), 0.08, scaled(hazard.y));
-      ring.scale.setScalar(Math.max(0.2, scaled(hazard.radius)));
-      ring.rotation.z = state.time * (hazard.kind === 'gravityWell' ? -0.8 : 0.55);
+      const presentation = hazardWorldPresentation(hazard.kind);
+      const visual = this.ensureHazard(count++, hazard.kind);
+      const radius = Math.max(0.2, scaled(hazard.radius));
+      const pulse = 1 + Math.sin(state.time * presentation.pulseHz) * 0.08 * worldQuality.stateMotionScale;
+      visual.root.visible = true;
+      visual.root.position.set(scaled(hazard.x), 0.08, scaled(hazard.y));
+      visual.ring.material.color.setHex(presentation.color);
+      visual.ring.material.opacity = (0.4 + Math.sin(state.time * presentation.pulseHz) * 0.1) * worldQuality.hazardCueOpacity;
+      visual.ring.scale.set(radius * presentation.scaleX * pulse, radius * presentation.scaleZ * pulse, 1);
+      visual.ring.rotation.z = state.time * presentation.rotationSpeed * worldQuality.stateMotionScale;
+      visual.glyph.material.color.setHex(presentation.color);
+      visual.glyph.material.opacity = worldQuality.hazardCueOpacity;
+      const glyphScale = THREE.MathUtils.clamp(radius * 0.28, 0.34, 0.86);
+      visual.glyph.scale.set(glyphScale * presentation.scaleX, glyphScale, glyphScale * presentation.scaleZ);
+      visual.glyph.rotation.y = state.time * presentation.rotationSpeed * 0.7 * worldQuality.stateMotionScale;
     }
-    for (let index = count; index < this.hazardPool.length; index += 1) this.hazardPool[index].visible = false;
+    for (let index = count; index < this.hazardPool.length; index += 1) this.hazardPool[index].root.visible = false;
+    this.renderer.domElement.dataset.hazardReadability = 'shape-coded+floor-bound+quality-safe';
+  }
+
+  private syncWorldMaterialPolish(state: SimState, mission: Contract, budget: RenderBudgetSnapshot) {
+    const worldQuality = worldMaterialQualityProfile(budget.tierName);
+    const biomeState = biomeWorldState(mission.location, state);
+    if (this.worldFloorMaterial) {
+      this.worldFloorMaterial.metalness = 0.64 + 0.08 * worldQuality.materialDepthScale;
+      this.worldFloorMaterial.roughness = 0.5 - biomeState.severity * 0.045 * worldQuality.materialDepthScale;
+      this.worldFloorMaterial.emissive.setHex(biomeState.color);
+      this.worldFloorMaterial.emissiveIntensity = biomeState.severity * 0.04 * worldQuality.materialDepthScale;
+    }
+    this.renderer.domElement.dataset.worldReadability = 'interactables:shape+state|hazards:shape+motion|loot:shape+rarity';
+    this.renderer.domElement.dataset.worldMaterialDepth = `${budget.tierName}:material-response+contact-shadow+state-emissive`;
+    this.renderer.domElement.dataset.biomeState = biomeState.id;
+    this.renderer.domElement.dataset.biomeStateSeverity = biomeState.severity.toFixed(2);
+    this.renderer.domElement.dataset.biomeStateAnimation = biomeState.motionHz > 0
+      ? `state-coupled:${(biomeState.motionHz * worldQuality.stateMotionScale).toFixed(2)}hz`
+      : 'nominal-static';
+    this.renderer.domElement.dataset.biomeStateAudio = biomeState.audioCue ?? 'nominal';
   }
 
   private ensureImpactSpark(index: number, color: number) {
