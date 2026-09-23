@@ -1329,3 +1329,16 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Android artifact `10771660796` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.314` (314), debug signing, min SDK 24 / target SDK 36, and APK SHA-256 `363109b3ec88e5902c3e75f65c81bc4e8b4133c7a3a52a655c0724a39af42cf1`.
   - **Next: P17-A — Signing/upgrade path.**
 
+## 2026-09-23 — P17-C External Beta / Delivery // Save/release policy
+
+- [x] **P17-C — Save/release policy** — defined and implemented migration, rollback, recovery, and compatibility expectations for external releases, with verified save/migration coverage and Android delivery.
+  - Added `docs/save-release-policy.md` as the durable release contract: the atomic `GAME_STATE_VERSION` is the compatibility boundary; the current release writes v3 and supports v1/v2/v3; incompatible/newer versions or subsystem schemas must never be silently rewritten.
+  - Startup now preserves the exact raw bytes of every valid supported pre-v3 atomic save before migration. Migration is blocked if that rollback snapshot cannot be verified, and the primary save remains untouched until protection succeeds.
+  - A build encountering a newer/incompatible save now enters a compatibility lock: startup stops, the primary save remains byte-for-byte untouched, and a second exact recovery copy is retained when storage permits. Existing corrupt-known-format recovery remains backup-then-quarantine rather than being conflated with compatibility failure.
+  - Documented rollback behavior: app rollback ships as a higher-versionCode APK containing previous known-good code; same-schema rollback is supported, while cross-schema save downgrade is intentionally blocked until a compatible release or explicit tested recovery path is used.
+  - Centralized `GAME_STATE_VERSION` in the recovery/compatibility layer and added regression coverage for exact pre-migration snapshot preservation, failed-backup migration lock, future/incompatible-save lock without mutation, corrupt-save quarantine, v1/v2 migrations, current-version repair, and normal round-trip persistence.
+  - PR #219 head `ada45d9e4ee88d13466f00fe985e1e2aba003e81` passed Browser E2E run `35915985353` (run 701) on desktop + mobile-landscape, including the full production regression/build.
+  - Merged source `850973c23277a7070c4985340e2177d2666c4fe2` passed post-merge Browser E2E `35916396292` (run 702), Level 15 beta smoke `35916396409` (run 570), and Android beta.319 `35916396374`.
+  - Android beta.319 passed the full web regression/build, `SAVE_DATA_MIGRATION_PASS ... migrationRollback=preserved incompatibleSave=blocked recovery=preserved`, native project generation, debug APK build, package/version/min-SDK/target-SDK/signature verification, emulator install/cold launch, touch/runtime/lifecycle QA, authored-content checks, and the Chapter 3 touch playthrough. Runtime evidence ended with `ANDROID_CHAPTER3_PLAYTHROUGH_PASS` and `ANDROID_EMULATOR_PASS`.
+  - Android artifact `10775885749` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.319` (319), debug signing, min SDK 24 / target SDK 36, and APK SHA-256 `59cb0043aa35e929dcf5475d22fce0ca1f575f381a01949fd29622d5f6c651d6`.
+
