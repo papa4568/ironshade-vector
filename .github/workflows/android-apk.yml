@@ -294,6 +294,26 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      - name: Preinstall Android emulator system image
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$(find "$SDK_ROOT" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          test -n "$SDKMANAGER"
+          package='system-images;android-35;google_apis;x86_64'
+          for attempt in 1 2 3; do
+            if "$SDKMANAGER" --install "$package"; then
+              exit 0
+            fi
+            if [[ "$attempt" -lt 3 ]]; then
+              echo "::warning::Android emulator system image install attempt $attempt failed; clearing partial download state and retrying."
+              rm -rf "$SDK_ROOT/.temp" "$SDK_ROOT/system-images/android-35/google_apis/x86_64"
+              sleep $((attempt * 5))
+            fi
+          done
+          exit 1
+
       - name: Smoke test APK on Android emulator
         uses: ReactiveCircus/android-emulator-runner@v2.38.0
         with:
