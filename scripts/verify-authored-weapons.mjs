@@ -94,7 +94,7 @@ try {
   while (Date.now() - startedAt < timeoutMs) {
     lastState = await evaluate(`(() => {
       const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.weaponVisual);
-      if (!canvas) return { visual: '', roles: '', fallback: '', active: '', asset: '', fx: '', canvases: document.querySelectorAll('canvas').length };
+      if (!canvas) return { visual: '', roles: '', fallback: '', active: '', asset: '', variant: '', fx: '', canvases: document.querySelectorAll('canvas').length };
       const rect = canvas.getBoundingClientRect();
       return {
         visual: canvas.dataset.weaponVisual ?? '',
@@ -102,6 +102,7 @@ try {
         fallback: canvas.dataset.weaponFallback ?? '',
         active: canvas.dataset.weaponActive ?? '',
         asset: canvas.dataset.weaponAsset ?? '',
+        variant: canvas.dataset.weaponVariant ?? '',
         fx: canvas.dataset.weaponFx ?? '',
         heat: canvas.dataset.weaponHeat ?? '',
         canvases: document.querySelectorAll('canvas').length,
@@ -126,7 +127,13 @@ try {
       if (lastState.asset !== `weapon-${lastState.active}-lod${expectedLod}`) {
         throw new Error(`Unexpected authored weapon asset id for LOD${expectedLod}: ${JSON.stringify(lastState)}`);
       }
-      const expectedFx = lastState.active === 'rail' ? 'lance' : lastState.active === 'breacher' ? 'scatter' : 'tracer';
+      const expectedFx = lastState.variant === 'breacher-slug' ? 'slug-impact'
+        : lastState.variant === 'breacher-rapid' ? 'rapid-scatter'
+          : lastState.variant === 'carbine-burst' ? 'burst-tracer'
+            : lastState.variant === 'carbine-precision' ? 'precision-tracer'
+              : lastState.active === 'rail' ? 'lance'
+                : lastState.active === 'breacher' ? 'scatter'
+                  : 'tracer';
       if (lastState.fx !== expectedFx) {
         throw new Error(`Unexpected authored weapon FX language: ${JSON.stringify(lastState)}`);
       }
