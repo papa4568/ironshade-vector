@@ -169,7 +169,7 @@ After each merged/verified batch: mark complete → archive detail/delivery note
 
 - Android beta: **0.0.1-beta.282**
 - Package: `app.ironshade.vector`
-- Verified: **P13-F Boss/spawn/death language complete**
+- Verified: **P13-F Enemy Modifier & Status Visual Language boss/spawn/death language complete**
 - Gameplay source: `b2e93a3e9b838247ca30c5671478434f792c073c`
 - PR Browser E2E: `35808188156`
 - Browser E2E: `35808378456`
