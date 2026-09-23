@@ -788,6 +788,29 @@ try {
   }
   console.log(`BROWSER_P15_MISSION_PRESENTATION_PASS viewport=${viewportMode} deployment=non-blocking title=${p15MissionPresentation.title}`);
   await waitFor(`(() => {
+    const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.worldReadability);
+    return canvas?.dataset.worldReadability === 'interactables:shape+state|hazards:shape+motion|loot:shape+rarity'
+      && canvas?.dataset.interactableReadability === 'shape-coded+state-emissive+floor-cue:quality-safe'
+      && canvas?.dataset.hazardReadability === 'shape-coded+floor-bound+quality-safe'
+      && (canvas?.dataset.worldMaterialDepth ?? '').includes('material-response')
+      && Boolean(canvas?.dataset.biomeState)
+      && Boolean(canvas?.dataset.biomeStateAnimation)
+      && Boolean(canvas?.dataset.biomeStateAudio);
+  })()`, 'P15-D world material readability', 20_000);
+  const p15WorldPolish = await evaluate(`(() => {
+    const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.worldReadability);
+    return {
+      readability: canvas?.dataset.worldReadability ?? '',
+      materialDepth: canvas?.dataset.worldMaterialDepth ?? '',
+      biomeState: canvas?.dataset.biomeState ?? '',
+      biomeAnimation: canvas?.dataset.biomeStateAnimation ?? '',
+      biomeAudio: canvas?.dataset.biomeStateAudio ?? '',
+      interactables: canvas?.dataset.interactableReadability ?? '',
+      hazards: canvas?.dataset.hazardReadability ?? '',
+    };
+  })()`);
+  console.log(`BROWSER_P15_WORLD_POLISH_PASS viewport=${viewportMode} location=${targetLocation} state=${p15WorldPolish.biomeState} depth=${p15WorldPolish.materialDepth}`);
+  await waitFor(`(() => {
     const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || '').trim());
     return ['Breach Rush', 'Fracture Tag', 'Bulwark Pulse'].every(label => labels.includes(label));
   })()`, 'Vanguard level-one skill kit');
