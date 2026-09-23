@@ -13,7 +13,7 @@ Only active/future executable work lives here. Completed and verified work belon
 
 ## P15 — AAA UI / World / Cinematic Polish
 
-- [ ] **P15-E — Accessibility/mobile/screenshot gate** — add scalable text, contrast, reduced motion, effect/audio/assist controls, safe-area/orientation coverage, and final presentation QA. **Done when:** supported accessibility controls persist and affect the intended systems, mobile layouts remain usable across target orientations/safe areas, screenshot/readability checks pass, and Android builds/QA pass.
+- [x] **P15-E — Accessibility/mobile/screenshot gate** — add scalable text, contrast, reduced motion, effect/audio/assist controls, safe-area/orientation coverage, and final presentation QA. **Done when:** supported accessibility controls persist and affect the intended systems, mobile layouts remain usable across target orientations/safe areas, screenshot/readability checks pass, and Android builds/QA pass.
 
 ## P16 — Performance Without Compromise
 
