@@ -1173,3 +1173,18 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Android beta.291 run `35851255605` passed the full web regression/build, native project generation, debug APK build, package/version/min-SDK/target-SDK/signature verification, Android emulator install/cold launch/touch/runtime QA, and the Chapter 3 touch playthrough.
   - Android artifact `10745671957` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.291`, debug signing, min SDK 24 / target SDK 36, and APK SHA-256 `7d7ef186f1e2b6bc93486e44338e73a60b7aa758608c173d9bad04539e984e5f`.
   - **Next: P15-A — Design system.**
+
+## 2026-09-23 — P15-A AAA UI / World / Cinematic Polish // Design system
+
+- [x] **P15-A Design system** — established one shared UI foundation for the remaining P15 presentation work instead of adding another screen-specific styling layer.
+  - Added `src/designSystem.css` with centralized typography, a 4px spacing rhythm, normalized icon sizing/stroke weight, shared surfaces/borders/text colors, safe-area layout variables, and responsive coarse-pointer rules.
+  - Added a global visible `:focus-visible` language plus reusable `.iv-panel`, glass-panel, tooltip, stack/cluster/grid/content, and icon primitives so class selection, progression, crafting, systems, debrief, and accessibility work can converge on the same presentation grammar.
+  - Bound Field / Refined / Prototype / Singular UI rarity tokens directly to the canonical Gear 2.0 contract in `src/game/rarity.ts`, preserving the existing rarity colors while adding non-color shape cues.
+  - Wired the design system into the client root and moved the root font/text/background shell onto shared semantic tokens without changing gameplay behavior or save data.
+  - Added `tests/design-system.ts` and wired `test:design-system` into the production build. The gate checks typography/spacing/icon/focus/panel/tooltip/responsive primitives and prevents rarity-token drift from the canonical rarity contract.
+  - Added `docs/design-system.md` as the concise reuse contract for subsequent P15 batches.
+  - PR #204 Browser E2E `35852741516` passed desktop + mobile-landscape full regression/production build and live player journeys on tested head `961a71ae4f355341f9f541972e5ec7998c0e769e`.
+  - Merged source `4d7e38851d0112c4969a0181aa5d450ecba26ca7` passed post-merge Browser E2E `35853095774` and Level 15 beta smoke `35853095964`.
+  - Android beta.292 run `35853095916` passed the full web regression/build, native project generation, debug APK build, package/version/min-SDK/target-SDK/signature verification, Android emulator install/cold launch/touch/runtime/lifecycle QA, authored-content checks, and the Chapter 3 touch playthrough.
+  - Android artifact `10745978662` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.292`, debug signing, min SDK 24 / target SDK 36, and APK SHA-256 `b4f990cc478a1b0a64ee27839787fcb26979ad67b95786afb6508bc4ccf7155f`.
+  - **Next: P15-B — Build/menu presentation.**
