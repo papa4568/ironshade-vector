@@ -1203,3 +1203,16 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Android artifact `10748014619` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.293`, debug signing, min SDK 24 / target SDK 36, and APK SHA-256 `bef5d9d9792673ebc8f0fe75510b6fffdfa3c21a2816ff34349fdf1b16ed3392`.
   - **Next: P15-C — Mission/boss/debrief.**
 
+## 2026-09-23 — P15-C AAA UI / World / Cinematic Polish // Mission/boss/debrief
+
+- [x] **P15-C Mission/boss/debrief** — polished the mission presentation loop end to end without changing combat, extraction, reward, or save-state behavior.
+  - Added non-blocking in-engine deployment callouts with operation tier, monster level, contract title, location, objective, and condition/director context. The presentation is pointer-transparent, safe-area-aware, coarse-pointer responsive, and reduced-motion-safe so movement, aim, fire, abilities, and touch controls remain live.
+  - Added concise command-target contact and boss phase-shift callouts driven by the existing boss-active/phase state and mutation labels; transitions clear automatically and never insert a modal or pause state into combat.
+  - Promoted debrief highlights for the top kept recovery, XP/progression outcome, and the next actionable unlock or newly crossed reputation milestone while preserving the existing detailed reward, expedition, loot review, telemetry, and story update surfaces.
+  - Added `src/missionPresentation.css`, `tests/mission-presentation.ts`, and the `test:mission-presentation` production-build gate. Browser and Android smoke now verify the live deployment treatment is onscreen and `pointer-events: none`.
+  - PR #206 Browser E2E `35860082406` passed desktop + mobile-landscape full regression/production build and live player journeys on tested head `07d131de048d1ed1db9e039b162da4f3d71d5655`.
+  - Merged source `2df0fa9027be5aeff7d3ca339f85030a114a0894` passed post-merge Browser E2E `35860497636` and Level 15 beta smoke `35860497630`.
+  - Android beta.294 run `35860497769` passed the full web regression/build, native project generation, debug APK build, package/version/min-SDK/target-SDK/signature verification, Android emulator install/cold launch/touch/runtime/lifecycle QA, authored-content checks, and the Chapter 3 touch playthrough.
+  - Android artifact `10749689022` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.294`, debug signing, min SDK 24 / target SDK 36, and APK SHA-256 `2f4707c2b2abfa826185c0341fc10c37ed9518ac7c40b827750bd1874dc921d9`.
+  - **Next: P15-D — World/material polish.**
+
