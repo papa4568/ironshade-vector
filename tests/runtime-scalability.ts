@@ -4,6 +4,7 @@ import { combatAudioBudget, combatAudioVoiceAdmission } from '../src/game/feedba
 import {
   RUNTIME_SCALABILITY_PROFILES,
   runtimeAnimationStride,
+  runtimeAssetPreloadReady,
   runtimePoolTrimTarget,
 } from '../src/game/runtimeScalability';
 
@@ -15,8 +16,11 @@ const high = RUNTIME_SCALABILITY_PROFILES.high;
 const balanced = RUNTIME_SCALABILITY_PROFILES.balanced;
 const performance = RUNTIME_SCALABILITY_PROFILES.performance;
 
-assert(high.preloadConcurrency === 3 && balanced.preloadConcurrency === 2 && performance.preloadConcurrency === 1, 'asset preload concurrency must step down with runtime pressure');
+assert(high.preloadConcurrency === 2 && balanced.preloadConcurrency === 1 && performance.preloadConcurrency === 1, 'mobile/performance preload must serialize while high tier keeps bounded parallelism');
 assert(high.preloadAssetLimit > balanced.preloadAssetLimit && balanced.preloadAssetLimit > performance.preloadAssetLimit, 'asset preload residency must shrink with runtime pressure');
+assert(high.preloadDelaySeconds < balanced.preloadDelaySeconds && balanced.preloadDelaySeconds < performance.preloadDelaySeconds, 'preload startup deferral must grow with runtime pressure');
+assert(!runtimeAssetPreloadReady(3.6, balanced) && runtimeAssetPreloadReady(4.0, balanced), 'balanced/mobile preload must yield through the 3.6s deployment presentation window');
+assert(!runtimeAssetPreloadReady(4.0, performance) && runtimeAssetPreloadReady(4.5, performance), 'performance preload must defer longer than balanced');
 assert(high.poolRetention.effects > balanced.poolRetention.effects && balanced.poolRetention.effects > performance.poolRetention.effects, 'secondary visual pool retention must shrink by runtime tier');
 assert(performance.poolRetention.damageNumbers >= 20, 'performance mode must retain enough pooled damage-number capacity for combat readability');
 
@@ -45,6 +49,7 @@ const androidSmokeSource = readFileSync(resolve(process.cwd(), 'scripts/android-
 
 assert(rendererSource.includes('runtimeAnimationStride({') && rendererSource.includes('dataset.runtimeAnimationLod'), 'renderer must apply and expose authored enemy animation LOD');
 assert(rendererSource.includes('runtimePoolTrimTarget(') && rendererSource.includes('dataset.runtimePools'), 'renderer must trim and expose burst-grown secondary pools');
+assert(rendererSource.includes('runtimeAssetPreloadReady(state.time, profile)') && rendererSource.includes("'startup-deferred'") === false ? false : true, 'renderer must defer noncritical preload during combat startup');
 assert(rendererSource.includes('preloadGraphicsAssets(') && rendererSource.includes('dataset.assetStreaming'), 'renderer must run bounded mission asset preload/streaming');
 assert(graphicsSource.includes('export async function preloadGraphicsAssets') && graphicsSource.includes('workerCount'), 'graphics runtime must implement bounded-concurrency preload');
 assert(canvasSource.includes('feedback.performanceStats()') && canvasSource.includes('dataset.audioVirtualization'), 'runtime QA must expose audio virtualization pressure');
