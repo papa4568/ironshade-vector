@@ -9,6 +9,7 @@ const targetLocation = process.env.BROWSER_E2E_LOCATION ?? 'asteroid-refinery';
 const screenshotPath = process.env.BROWSER_E2E_SCREENSHOT ?? 'browser-e2e-smoke.png';
 const commandScreenshotPath = process.env.BROWSER_E2E_COMMAND_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-command.png');
 const classScreenshotPath = process.env.BROWSER_E2E_CLASS_SCREENSHOT ?? commandScreenshotPath.replace(/command/i, 'class');
+const accessibilityScreenshotPath = process.env.BROWSER_E2E_ACCESSIBILITY_SCREENSHOT ?? commandScreenshotPath.replace(/command/i, 'accessibility');
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 if (typeof WebSocket !== 'function') {
@@ -701,6 +702,79 @@ try {
   if (p15BuildLayout.horizontalOverflow > 2 || p15BuildLayout.tabCount !== 5 || (viewportMode === 'mobile-landscape' && p15BuildLayout.minTabHeight < 40)) {
     throw new Error(`P15-B Build/Crafting/Progression layout failed: ${JSON.stringify(p15BuildLayout)}`);
   }
+  await keyboardActivateButton('Settings');
+  await waitFor(`Boolean(document.querySelector('.settings-panel') && document.querySelector('.build-tabs button[aria-current="page"]')?.textContent?.includes('Settings'))`, 'P15-E accessibility settings surface');
+  const textScaleChanged = await evaluate(`(() => {
+    const control = document.querySelector('select[aria-label="Interface text size"]');
+    if (!(control instanceof HTMLSelectElement)) return false;
+    const valueSetter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set;
+    if (!valueSetter) return false;
+    valueSetter.call(control, 'large');
+    control.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
+  })()`);
+  if (!textScaleChanged) throw new Error('P15-E interface text-size control unavailable.');
+  await waitFor(`document.documentElement.dataset.textScale === 'large'`, 'P15-E large text setting');
+
+  const contrastChanged = await evaluate(`(() => {
+    const control = document.querySelector('input[aria-label="High contrast"]');
+    if (!(control instanceof HTMLInputElement)) return false;
+    if (!control.checked) control.click();
+    return true;
+  })()`);
+  if (!contrastChanged) throw new Error('P15-E high-contrast control unavailable.');
+  await waitFor(`document.documentElement.dataset.contrast === 'high'`, 'P15-E high contrast setting');
+
+  const motionChanged = await evaluate(`(() => {
+    const control = document.querySelector('input[aria-label="Reduce motion"]');
+    if (!(control instanceof HTMLInputElement)) return false;
+    if (!control.checked) control.click();
+    return true;
+  })()`);
+  if (!motionChanged) throw new Error('P15-E reduced-motion control unavailable.');
+  await waitFor(`document.documentElement.dataset.reducedMotion === 'true'`, 'P15-E reduced motion setting');
+  await waitFor(`(() => {
+    const raw = localStorage.getItem('ironshade-vector-state-v1');
+    if (!raw) return false;
+    const settings = JSON.parse(raw)?.profile?.settings;
+    return settings?.textScale === 'large' && settings?.contrast === 'high' && settings?.reducedMotion === true;
+  })()`, 'P15-E persisted accessibility settings');
+
+  const accessibilityLayout = await evaluate(`(() => {
+    const panel = document.querySelector('.settings-panel');
+    const view = document.querySelector('.build-bay.iv-view');
+    const rootStyle = getComputedStyle(document.documentElement);
+    const viewStyle = view ? getComputedStyle(view) : null;
+    return {
+      horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
+      panelVisible: Boolean(panel && panel.getBoundingClientRect().width > 0 && panel.getBoundingClientRect().height > 0),
+      rootFontSize: Number.parseFloat(rootStyle.fontSize),
+      contrastText: rootStyle.getPropertyValue('--iv-text-secondary').trim().toLowerCase(),
+      animationName: viewStyle?.animationName ?? '',
+      transitionDuration: viewStyle?.transitionDuration ?? '',
+      settings: {
+        textScale: document.documentElement.dataset.textScale,
+        contrast: document.documentElement.dataset.contrast,
+        reducedMotion: document.documentElement.dataset.reducedMotion,
+      },
+    };
+  })()`);
+  if (
+    accessibilityLayout.horizontalOverflow > 2
+    || !accessibilityLayout.panelVisible
+    || accessibilityLayout.rootFontSize < 17.5
+    || accessibilityLayout.contrastText !== '#dfeae6'
+    || accessibilityLayout.animationName !== 'none'
+    || accessibilityLayout.settings.textScale !== 'large'
+    || accessibilityLayout.settings.contrast !== 'high'
+    || accessibilityLayout.settings.reducedMotion !== 'true'
+  ) {
+    throw new Error(`P15-E accessibility presentation gate failed: ${JSON.stringify(accessibilityLayout)}`);
+  }
+  await accessibilityAudit('settings-accessibility');
+  await captureScreenshot(accessibilityScreenshotPath);
+  console.log(`BROWSER_P15_ACCESSIBILITY_PASS viewport=${viewportMode} text=large contrast=high motion=reduced persisted=true screenshot=${accessibilityScreenshotPath}`);
+
   await keyboardActivateButton('Skills');
   await waitFor(`(() => {
     const text = document.body?.innerText ?? '';
