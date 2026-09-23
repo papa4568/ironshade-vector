@@ -969,3 +969,17 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Verified on merged gameplay source `499000258a371d35320ca761feee5880bf963a0c`: Browser E2E `35797107474`, Level 15 beta smoke `35797107513`, and Android beta.276 `35797107491` all passed.
   - Android artifact `10724222054` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.276`, debug signing, package/version/SDK/signature verification, native emulator runtime/touch/lifecycle/authored-content/Chapter 3 QA, balanced mobile render-tier verification, and APK SHA-256 `715e099f360713b50b6cd7a23d3b97b74c55e8abbf14c035ef4cc70fcd28c885`.
   - **Next: P13-A — Presentation framework.**
+
+## 2026-09-22 — P13-A Enemy Modifier & Status Visual Language // Presentation framework
+
+- [x] **P13-A Presentation framework**
+  - Added `src/game/enemyPresentation.ts` as a presentation-only resolver that reads deterministic enemy mutation, protocol, status, attack-telegraph, boss-phase, and death state without mutating combat simulation.
+  - The contract composes four independent channels — animation, material, VFX, and audio — so later P13 batches can add concrete presentation layers without replacing higher-priority combat tells or duplicating gameplay logic.
+  - All six T9–T11 mutation identities now have stable presentation cue tokens, protocol presentation is family-driven with enhanced-variant identity preserved, and armor breach/disruption/mark/stagger/conductive/vacuum statuses publish the same four-channel contract.
+  - Added stable priority ordering, intensity normalization, deterministic QA signatures, boss phase-two and death/powerdown layers, plus death-time audio suppression so sustained combat presentation cannot leak after an enemy is disabled.
+  - Added `tests/enemy-presentation-framework.ts` and wired `test:enemy-presentation` into the full production build. Coverage verifies all four channels, composability, enhanced protocol identity, deterministic ordering across mutation storage order, status coverage, boss/death behavior, and the no-simulation-mutation boundary.
+  - PR #186 Browser E2E `35799184240` passed desktop + mobile-landscape, including the full regression/production build and live player journeys.
+  - Merged gameplay source `9059fc12f115e43fdd3d87f9332d39484b6f9c1c` passed Browser E2E `35799405651`, Level 15 beta smoke `35799405627`, and Android beta.277 `35799405655`.
+  - Android artifact `10725795522` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.277`, debug signing, package/version/SDK/signature verification, native emulator runtime/touch/lifecycle/Chapter 3 QA, and APK SHA-256 `30f7228bafffaf2cd204437e9b5f9d6fcc83e1e69fae60a9de723e575dac6612`.
+  - **Next: P13-B — T9 visuals I (Reinforced Core, Ablative Mantle, Hunter Servo).**
+
