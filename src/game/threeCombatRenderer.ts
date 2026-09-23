@@ -7,7 +7,7 @@ import { findNavigationPath } from './mapPathfinding';
 import { getPlayerSector, getWorldSize, weaponHandlingProfiles, type CombatObject, type Enemy, type Hazard, type Player, type SimState, type WeaponId } from './sim';
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, locationArtIdentityFor, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
 import { groundLootPresentation } from './fieldLoot';
-import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
+import { AdaptiveRenderBudget, type GraphicsQualityMode, type RenderBudgetSnapshot } from './renderQuality';
 import type { CombatCameraFeedbackSample } from './combatCameraFeedback';
 import { DAMAGED_VESSEL_ASSET_FAMILIES, ENEMY_ASSET_FAMILIES, INTERACTABLE_ASSET_FAMILIES, OPERATOR_ASSET_FAMILY, SPIN_HABITAT_BOSS_ASSET_FAMILY, JOVIAN_HARVESTER_BOSS_ASSET_FAMILY, ICE_MINE_BOSS_ASSET_FAMILY, SOLAR_YARD_BOSS_ASSET_FAMILY, SPIN_HABITAT_ENEMY_ASSET_FAMILIES, SPIN_HABITAT_INTERACTABLE_ASSET_FAMILIES, OPERATOR_CLASS_ASSET_FAMILIES, JOVIAN_HARVESTER_ASSET_FAMILIES, JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES, ICE_MINE_ASSET_FAMILIES, SOLAR_YARD_ASSET_FAMILIES, PARALLAX_ASSET_FAMILIES, PICKUP_ASSET_FAMILY, REFINERY_ASSET_FAMILIES, SPIN_HABITAT_ASSET_FAMILIES, WEAPON_ASSET_FAMILIES } from './graphicsAssetManifest';
 import { configureGraphicsAssetRenderer, configureGraphicsAssetRuntimeBudget, instantiateGraphicsAsset, preloadGraphicsAssets, selectGraphicsAssetSpec, type GraphicsAssetFamily, type GraphicsAssetInstance, type GraphicsAssetSpec } from './graphicsAssets';
@@ -994,11 +994,11 @@ export class ThreeCombatRenderer {
     void this.loadAuthoredWeapons();
   }
 
-  render(state: SimState, width: number, height: number, quality: number, mission: Contract, mobileTargetId: number | null, operatorFaction: EquipmentFaction | null, reducedTargetMotion = false, firingIntent = false, cameraFeedback?: CombatCameraFeedbackSample) {
+  render(state: SimState, width: number, height: number, quality: number, qualityMode: GraphicsQualityMode, mission: Contract, mobileTargetId: number | null, operatorFaction: EquipmentFaction | null, reducedTargetMotion = false, firingIntent = false, cameraFeedback?: CombatCameraFeedbackSample) {
     const now = performance.now();
     const frameMs = this.lastFrameAt > 0 ? now - this.lastFrameAt : 1000 / 60;
     this.lastFrameAt = now;
-    const budget = this.renderBudget.sample(frameMs, quality);
+    const budget = this.renderBudget.sample(frameMs, quality, qualityMode);
     const runtimeProfile = runtimeScalabilityProfile(budget.tierName);
     this.animationFrame += 1;
     this.resize(width, height, quality, budget);
@@ -3191,6 +3191,7 @@ export class ThreeCombatRenderer {
       this.keyLight.shadow.map = null;
     }
     this.renderer.domElement.dataset.renderTier = budget.tierName;
+    this.renderer.domElement.dataset.graphicsQuality = budget.qualityMode;
     this.renderer.domElement.dataset.renderFrameMs = budget.smoothedFrameMs.toFixed(2);
     this.renderer.domElement.dataset.renderFrameBudget = `${budget.framePressure}:${budget.frameHeadroomMs.toFixed(2)}ms@${budget.targetFrameMs.toFixed(2)}ms`;
     this.renderer.domElement.dataset.renderBudget = [
