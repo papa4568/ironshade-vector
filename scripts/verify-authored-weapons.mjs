@@ -142,7 +142,7 @@ try {
 
   const roles = new Set(String(lastState?.roles ?? '').split(',').filter(Boolean));
   const activeWeapon = ['carbine', 'breacher', 'rail'].includes(lastState?.active) ? lastState.active : null;
-  const expectedLod = process.env.BROWSER_E2E_VIEWPORT === 'mobile-landscape' ? 2 : 1;
+  const expectedLod = ['mobile-landscape', 'android-emulator'].includes(process.env.BROWSER_E2E_VIEWPORT ?? '') ? 2 : 1;
   const activeAuthored = activeWeapon && lastState?.asset === `weapon-${activeWeapon}-lod${expectedLod}`;
   if (lastState?.visual !== 'authored' || !['carbine', 'breacher', 'rail'].every(role => roles.has(role)) || !activeAuthored) {
     throw new Error(`Timed out waiting for active authored weapon asset: ${JSON.stringify(lastState)}`);
