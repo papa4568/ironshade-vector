@@ -17,6 +17,7 @@ import { CombatCameraFeedbackRuntime } from '../game/combatCameraFeedback';
 import { ThreeCombatRenderer } from '../game/threeCombatRenderer';
 import { combatClassLabel, exclusiveProtocolCombinationForInstances } from '../game/eliteProtocols';
 import { enhancedProtocolVisualSpecFor, protocolVisualCss, protocolVisualSpecFor } from '../game/protocolVisualLanguage';
+import { enemyStatusVisualIds, enemyStatusVisualSpecFor, playerStatusVisualSpecFor, resolvePlayerStatusVisuals, statusVisualCss } from '../game/statusVisualLanguage';
 import { protocolPresentationFor } from '../game/eliteProtocolPresentation';
 import { enhancedProtocolVariantPresentationFor } from '../game/enhancedProtocolVariantPresentation';
 import { mutationPresentationFor } from '../game/t9MutationPresentation';
@@ -477,6 +478,111 @@ function drawEnemyMutationPresentation(ctx: CanvasRenderingContext2D, state: Sim
   ctx.restore();
 }
 
+function drawEnemyStatusPresentation(ctx: CanvasRenderingContext2D, state: SimState, enemy: Enemy, pos: Vec2, reducedEffects: boolean) {
+  const presentation = resolveEnemyPresentation(enemy);
+  const active = enemyStatusVisualIds.filter(id => enemy.statuses[id] > 0);
+  if (active.length === 0) return;
+
+  ctx.save();
+  for (const id of active) {
+    const spec = enemyStatusVisualSpecFor(id);
+    const intensity = Math.min(1, 0.4 + enemy.statuses[id] * 0.6);
+    const leading = presentation.vfx[0];
+    const readability = leading && leading.source !== 'status' && leading.priority > spec.priority ? 0.28 : 1;
+    const motion = reducedEffects ? 0 : 1;
+    const pulse = reducedEffects ? 0.78 : 0.72 + Math.sin(state.time * (id === 'disrupted' ? 11 : id === 'marked' ? 6.2 : 4.2) + enemy.id * 0.47) * 0.16;
+    const radius = (enemy.role === 'boss' ? 40 : enemy.role === 'elite' ? 31 : 26) * spec.scale;
+    ctx.globalAlpha = readability;
+    ctx.strokeStyle = statusVisualCss(spec.accent, 0.38 + intensity * 0.42);
+    ctx.fillStyle = statusVisualCss(spec.primary, 0.38 + intensity * 0.34);
+    ctx.lineWidth = spec.priority >= 4 ? 2.6 : 2;
+
+    if (spec.signature === 'fracture') {
+      const crackCount = reducedEffects ? 2 : 4;
+      for (let index = 0; index < crackCount; index += 1) {
+        const side = index % 2 === 0 ? -1 : 1;
+        const y = pos.y - 38 + index * 10;
+        ctx.beginPath();
+        ctx.moveTo(pos.x + side * 10, y);
+        ctx.lineTo(pos.x + side * (22 + index * 2), y + 5);
+        ctx.lineTo(pos.x + side * (29 + index * 2), y - 1);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y - 10, radius * (0.78 + pulse * 0.08 * motion), -0.9, 0.9);
+      ctx.stroke();
+    } else if (spec.signature === 'jitter') {
+      const jitter = Math.sin(state.time * 18 + enemy.id) * 4 * motion;
+      ctx.setLineDash(reducedEffects ? [7, 6] : [4, 4]);
+      ctx.strokeRect(pos.x - radius + jitter, pos.y - 42, radius * 2, 50);
+      ctx.setLineDash([]);
+      const arcCount = reducedEffects ? 2 : 4;
+      for (let index = 0; index < arcCount; index += 1) {
+        const side = index % 2 === 0 ? -1 : 1;
+        const y = pos.y - 34 + index * 11;
+        ctx.beginPath();
+        ctx.moveTo(pos.x + side * 7, y);
+        ctx.lineTo(pos.x + side * 17, y - 5);
+        ctx.lineTo(pos.x + side * 28, y + 2);
+        ctx.stroke();
+      }
+    } else if (spec.signature === 'reticle') {
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y - 18, radius * (0.78 + pulse * 0.06 * motion), 0, Math.PI * 2);
+      ctx.stroke();
+      for (const [dx, dy] of [[-radius, 0], [radius, 0], [0, -radius * 0.72], [0, radius * 0.72]] as const) {
+        ctx.beginPath();
+        ctx.moveTo(pos.x + dx * 0.68, pos.y - 18 + dy * 0.68);
+        ctx.lineTo(pos.x + dx, pos.y - 18 + dy);
+        ctx.stroke();
+      }
+    } else if (spec.signature === 'impact') {
+      const kick = Math.sin(state.time * 20 + enemy.id) * 3 * motion;
+      for (let index = 0; index < 3; index += 1) {
+        const angle = -0.7 + index * 0.7;
+        ctx.beginPath();
+        ctx.moveTo(pos.x + kick, pos.y - 12);
+        ctx.lineTo(pos.x + Math.cos(angle) * radius, pos.y - 12 + Math.sin(angle) * radius * 0.72);
+        ctx.stroke();
+      }
+    } else if (spec.signature === 'arc') {
+      const nodeCount = reducedEffects ? Math.min(3, spec.nodeCount) : spec.nodeCount;
+      const nodes: Array<{ x: number; y: number }> = [];
+      for (let index = 0; index < nodeCount; index += 1) {
+        const angle = index * (Math.PI * 2 / nodeCount) + (reducedEffects ? 0 : state.time * 0.4);
+        const node = { x: pos.x + Math.cos(angle) * radius, y: pos.y - 17 + Math.sin(angle) * radius * 0.48 };
+        nodes.push(node);
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      for (let index = 0; index < nodes.length; index += 1) {
+        const next = nodes[(index + 1) % nodes.length]!;
+        const current = nodes[index]!;
+        ctx.beginPath();
+        ctx.moveTo(current.x, current.y);
+        ctx.lineTo((current.x + next.x) / 2 + Math.sin(state.time * 9 + index) * 3 * motion, (current.y + next.y) / 2);
+        ctx.lineTo(next.x, next.y);
+        ctx.stroke();
+      }
+    } else {
+      ctx.beginPath();
+      ctx.ellipse(pos.x, pos.y - 12, radius, radius * 0.52, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      const ventCount = reducedEffects ? 2 : 4;
+      for (let index = 0; index < ventCount; index += 1) {
+        const side = index % 2 === 0 ? -1 : 1;
+        const offset = Math.floor(index / 2) * 10;
+        ctx.beginPath();
+        ctx.moveTo(pos.x + side * (12 + offset), pos.y - 34);
+        ctx.lineTo(pos.x + side * (23 + offset), pos.y - 43 - pulse * 3 * motion);
+        ctx.stroke();
+      }
+    }
+  }
+  ctx.restore();
+}
+
 function drawEnemySilhouette(ctx: CanvasRenderingContext2D, enemy: Enemy, pos: Vec2) {
   const fill = roleColors[enemy.role]; const stroke = enemy.statuses.marked > 0 ? '#d9e778' : '#e0a27b'; ctx.fillStyle = fill; ctx.strokeStyle = stroke;
   if (enemy.variant === 'shieldBoarder') { ctx.beginPath(); ctx.roundRect(pos.x - 22, pos.y - 34, 44, 55, 7); ctx.fill(); ctx.stroke(); ctx.strokeStyle = '#a9c9be'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(pos.x + 8, pos.y - 8, 32, -1.15, 1.15); ctx.stroke(); ctx.lineWidth = 1; return; }
@@ -518,6 +624,71 @@ function drawEnemySilhouette(ctx: CanvasRenderingContext2D, enemy: Enemy, pos: V
   if (enemy.role === 'technician') { ctx.beginPath(); ctx.moveTo(pos.x, pos.y - 35); ctx.lineTo(pos.x + 21, pos.y - 10); ctx.lineTo(pos.x, pos.y + 24); ctx.lineTo(pos.x - 21, pos.y - 10); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#21192b'; ctx.fillRect(pos.x - 9, pos.y - 17, 18, 7); return; }
   ctx.beginPath(); ctx.moveTo(pos.x, pos.y - 34); ctx.lineTo(pos.x + 20, pos.y - 14); ctx.lineTo(pos.x + 15, pos.y + 22); ctx.lineTo(pos.x - 15, pos.y + 22); ctx.lineTo(pos.x - 20, pos.y - 14); ctx.closePath(); ctx.fill(); ctx.stroke();
   if (enemy.variant === 'vectorSkirmisher') { ctx.strokeStyle = '#d8b081'; ctx.beginPath(); ctx.moveTo(pos.x - 25, pos.y + 20); ctx.lineTo(pos.x - 34, pos.y + 28); ctx.moveTo(pos.x + 25, pos.y + 20); ctx.lineTo(pos.x + 34, pos.y + 28); ctx.stroke(); }
+}
+
+function drawOperatorStatusPresentation(ctx: CanvasRenderingContext2D, state: SimState, pos: Vec2, reducedEffects: boolean) {
+  const player = state.player;
+  const sector = getPlayerSector(state);
+  const active = resolvePlayerStatusVisuals({
+    heat: player.weaponHeat[player.currentWeapon] ?? 0,
+    disrupted: player.disrupted,
+    vacuumExposure: player.vacuumExposure,
+    pressureState: sector.pressureState,
+    pressure: sector.pressure,
+  });
+  if (active.length === 0) return;
+
+  ctx.save();
+  active.forEach((entry, index) => {
+    const spec = playerStatusVisualSpecFor(entry.id);
+    const motion = reducedEffects ? 0 : 1;
+    const pulse = reducedEffects ? 0.8 : 0.76 + Math.sin(state.time * (entry.id === 'disrupted' ? 12 : entry.id === 'thermal' ? 7.5 : 4.2) + index) * 0.16;
+    const radius = 30 + index * 6;
+    ctx.strokeStyle = statusVisualCss(spec.accent, 0.34 + entry.intensity * 0.44);
+    ctx.fillStyle = statusVisualCss(spec.primary, 0.2 + entry.intensity * 0.28);
+    ctx.lineWidth = entry.priority >= 4 ? 2.5 : 2;
+
+    if (spec.signature === 'heat') {
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y - 14, radius * (0.9 + pulse * 0.08 * motion), Math.PI * 0.12, Math.PI * 0.88);
+      ctx.stroke();
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(pos.x + side * 14, pos.y - 35);
+        ctx.lineTo(pos.x + side * (22 + pulse * 3 * motion), pos.y - 48);
+        ctx.stroke();
+      }
+    } else if (spec.signature === 'jitter') {
+      const jitter = Math.sin(state.time * 20) * 3 * motion;
+      ctx.setLineDash(reducedEffects ? [7, 6] : [4, 3]);
+      ctx.strokeRect(pos.x - 26 + jitter, pos.y - 48, 52, 58);
+      ctx.setLineDash([]);
+    } else if (spec.signature === 'pressure') {
+      ctx.beginPath();
+      ctx.ellipse(pos.x, pos.y - 12, radius, radius * 0.52, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(pos.x - 22, pos.y - 29);
+      ctx.lineTo(pos.x - 34 - pulse * 4 * motion, pos.y - 38);
+      ctx.moveTo(pos.x + 22, pos.y - 29);
+      ctx.lineTo(pos.x + 34 + pulse * 4 * motion, pos.y - 38);
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.ellipse(pos.x, pos.y - 12, radius + 4, (radius + 4) * 0.5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      const streamCount = reducedEffects ? 2 : 4;
+      for (let stream = 0; stream < streamCount; stream += 1) {
+        const side = stream % 2 === 0 ? -1 : 1;
+        const height = 34 + Math.floor(stream / 2) * 8;
+        ctx.beginPath();
+        ctx.moveTo(pos.x + side * (10 + stream * 3), pos.y - 31);
+        ctx.lineTo(pos.x + side * (27 + stream * 3), pos.y - height - pulse * 4 * motion);
+        ctx.stroke();
+      }
+    }
+  });
+  ctx.restore();
 }
 
 function drawOperatorSilhouette(ctx: CanvasRenderingContext2D, state: SimState, pos: Vec2, faction: EquipmentFaction | null) {
@@ -599,6 +770,7 @@ function renderGame(ctx: CanvasRenderingContext2D, state: SimState, width: numbe
     drawEnemyProtocolPresentation(ctx, state, enemy, pos, reducedTargetMotion);
     drawEnemyMutationPresentation(ctx, state, enemy, pos, reducedTargetMotion);
     drawEnemySilhouette(ctx, enemy, pos);
+    drawEnemyStatusPresentation(ctx, state, enemy, pos, reducedTargetMotion);
     if (enemy.telegraph > 0) drawEnemyTelegraph(ctx, state, enemy, pos, camX, camY, width, height);
     const hpWidth = enemy.role === 'boss' ? 96 : enemy.role === 'elite' ? 66 : 54; const hpPct = enemy.hp / enemy.maxHp; const armorPct = enemy.maxArmor > 0 ? enemy.armor / enemy.maxArmor : 0; const healthY = pos.y - 54; ctx.fillStyle = 'rgba(8,11,12,.94)'; ctx.fillRect(pos.x - hpWidth / 2 - 1, healthY - 1, hpWidth + 2, 9); ctx.fillStyle = enemy.armor <= 0 && enemy.maxArmor > 0 ? '#ff8069' : '#dc6758'; ctx.fillRect(pos.x - hpWidth / 2, healthY, hpWidth * hpPct, 7); ctx.strokeStyle = 'rgba(239,244,242,.34)'; ctx.strokeRect(pos.x - hpWidth / 2 - .5, healthY - .5, hpWidth + 1, 8); if (enemy.armor > 0) { ctx.fillStyle = 'rgba(8,11,12,.94)'; ctx.fillRect(pos.x - hpWidth / 2 - 1, pos.y - 63, hpWidth + 2, 6); ctx.fillStyle = '#72bde2'; ctx.fillRect(pos.x - hpWidth / 2, pos.y - 62, hpWidth * armorPct, 4); }
     const statuses = getStatusLabels(enemy); if (statuses.length > 0) { ctx.font = '8px ui-monospace, monospace'; ctx.fillStyle = '#d6e0bb'; ctx.textAlign = 'center'; ctx.fillText(statuses.slice(0, 2).join(' · '), pos.x, pos.y - 66); ctx.textAlign = 'left'; }
@@ -630,6 +802,7 @@ function renderGame(ctx: CanvasRenderingContext2D, state: SimState, width: numbe
     ctx.restore();
   }
   const playerPos = project(p.x, p.y, camX, camY, width, height); const aimEnd = project(p.x + p.aim.x * 96, p.y + p.aim.y * 96, camX, camY, width, height); ctx.strokeStyle = '#b5d6ca'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(playerPos.x, playerPos.y - 18); ctx.lineTo(aimEnd.x, aimEnd.y - 18); ctx.stroke(); ctx.lineWidth = 1; drawOperatorSilhouette(ctx, state, playerPos, operatorFaction);
+  drawOperatorStatusPresentation(ctx, state, playerPos, reducedTargetMotion);
   if (state.weaponFlash > 0) { const handling = weaponHandlingProfiles[p.currentWeapon]; const flash = Math.min(1, state.weaponFlash * 8); ctx.save(); ctx.fillStyle = p.currentWeapon === 'rail' ? '#b8edff' : p.currentWeapon === 'breacher' ? '#fff1c7' : '#efffc7'; if (quality > 0.7) { ctx.shadowBlur = 18 + handling.cameraKick * 2; ctx.shadowColor = ctx.fillStyle; } ctx.translate(aimEnd.x, aimEnd.y - 18); ctx.rotate(Math.atan2(p.aim.y, p.aim.x)); ctx.beginPath(); ctx.ellipse(0, 0, (6 + flash * 5) * handling.muzzleLength, (5 + flash * 2) * handling.muzzleWidth, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
   if (state.pulse > 0) { const radius = (0.36 - state.pulse) / 0.36 * 285; ctx.strokeStyle = `rgba(139,220,205,${state.pulse / 0.36})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(playerPos.x, playerPos.y - 10, radius * 1.4, radius * 0.76, 0, 0, Math.PI * 2); ctx.stroke(); ctx.lineWidth = 1; }
   if (mission.location === 'solar-yard' && state.time >= 10 && state.time < 18 && !state.objects.find(object => object.id === 'solar-shutter')?.exposed) { const pulse = 0.035 + Math.sin(state.time * 5) * 0.012; ctx.fillStyle = `rgba(245,142,62,${pulse})`; ctx.fillRect(0, 0, width, height); }
@@ -654,6 +827,8 @@ type FeedbackSnapshot = {
   collectedLoot: number;
   impactSerial: number;
   mutationToken: string;
+  statusToken: string;
+  playerStatusToken: string;
 };
 const presentationMutationAudioIds = ['reinforced-core', 'ablative-mantle', 'hunter-servo', 'redline-bus', 'countermass-rig', 'relay-reflex'] as const;
 type PresentationMutationAudioId = (typeof presentationMutationAudioIds)[number];
@@ -667,6 +842,23 @@ function activeMutationToken(state: SimState) {
 }
 function activeTelegraphToken(state: SimState) {
   return state.enemies.filter(enemy => enemy.active && !enemy.dead && enemy.telegraph > 0.01).map(enemy => enemy.id).sort((a, b) => a - b).join(',');
+}
+function activeEnemyStatusToken(state: SimState) {
+  return state.enemies
+    .filter(enemy => enemy.active && !enemy.dead)
+    .flatMap(enemy => enemyStatusVisualIds.filter(id => enemy.statuses[id] > 0).map(id => `${enemy.id}:${id}`))
+    .sort()
+    .join(',');
+}
+function activePlayerStatusToken(state: SimState) {
+  const sector = getPlayerSector(state);
+  return resolvePlayerStatusVisuals({
+    heat: state.player.weaponHeat[state.player.currentWeapon] ?? 0,
+    disrupted: state.player.disrupted,
+    vacuumExposure: state.player.vacuumExposure,
+    pressureState: sector.pressureState,
+    pressure: sector.pressure,
+  }).map(entry => entry.id).sort().join(',');
 }
 function feedbackSnapshotFrom(state: SimState): FeedbackSnapshot {
   const boss = getBoss(state);
@@ -685,6 +877,8 @@ function feedbackSnapshotFrom(state: SimState): FeedbackSnapshot {
     collectedLoot: state.collectedLoot.length,
     impactSerial: state.impactSerial,
     mutationToken: activeMutationToken(state),
+    statusToken: activeEnemyStatusToken(state),
+    playerStatusToken: activePlayerStatusToken(state),
   };
 }
 function syncCombatFeedback(state: SimState, previous: FeedbackSnapshot, mission: Contract): FeedbackSnapshot {
@@ -726,6 +920,27 @@ function syncCombatFeedback(state: SimState, previous: FeedbackSnapshot, mission
     .flatMap(enemy => enemy.mutations.filter(isPresentationMutationAudioId).map(cue => ({ token: `${enemy.id}:${cue}`, cue })))
     .find(entry => !previousMutations.has(entry.token));
   if (freshMutation) feedback.mutation(freshMutation.cue);
+
+  const previousStatuses = new Set(previous.statusToken.split(',').filter(Boolean));
+  const freshStatus = state.enemies
+    .filter(enemy => enemy.active && !enemy.dead)
+    .flatMap(enemy => enemyStatusVisualIds
+      .filter(cue => enemy.statuses[cue] > 0)
+      .map(cue => ({ token: `${enemy.id}:${cue}`, cue, priority: enemyStatusVisualSpecFor(cue).priority, role: enemy.role })))
+    .filter(entry => !previousStatuses.has(entry.token))
+    .sort((a, b) => b.priority - a.priority || (b.role === 'boss' ? 3 : b.role === 'elite' ? 2 : 1) - (a.role === 'boss' ? 3 : a.role === 'elite' ? 2 : 1))[0];
+  if (freshStatus) feedback.status(freshStatus.cue);
+
+  const previousPlayerStatuses = new Set(previous.playerStatusToken.split(',').filter(Boolean));
+  const sectorStatus = getPlayerSector(state);
+  const freshPlayerStatus = resolvePlayerStatusVisuals({
+    heat: state.player.weaponHeat[state.player.currentWeapon] ?? 0,
+    disrupted: state.player.disrupted,
+    vacuumExposure: state.player.vacuumExposure,
+    pressureState: sectorStatus.pressureState,
+    pressure: sectorStatus.pressure,
+  }).find(entry => !previousPlayerStatuses.has(entry.id));
+  if (freshPlayerStatus) feedback.playerStatus(freshPlayerStatus.id);
 
   const telegraphing = state.enemies.filter(enemy => enemy.active && !enemy.dead && enemy.telegraph > 0.01);
   const previousTelegraphs = new Set(previous.telegraphToken.split(',').filter(Boolean));
@@ -893,6 +1108,19 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
       canvas.dataset.assistedTargetId = mobileTargetControlRef.current.targetId == null ? '' : String(mobileTargetControlRef.current.targetId);
       canvas.dataset.targetFeedbackMotion = profileSettingsRef.current.effectIntensity === 'reduced' ? 'reduced' : 'full';
       canvas.dataset.cameraFeedback = `${cameraFeedback.mode}:${cameraFeedback.magnitude.toFixed(2)}`;
+      const qaSector = getPlayerSector(state);
+      canvas.dataset.playerStatusPresentation = resolvePlayerStatusVisuals({
+        heat: state.player.weaponHeat[state.player.currentWeapon] ?? 0,
+        disrupted: state.player.disrupted,
+        vacuumExposure: state.player.vacuumExposure,
+        pressureState: qaSector.pressureState,
+        pressure: qaSector.pressure,
+      }).map(entry => entry.id).join('+');
+      canvas.dataset.enemyStatusPresentation = state.enemies
+        .filter(enemy => enemy.active && !enemy.dead)
+        .flatMap(enemy => enemyStatusVisualIds.filter(id => enemy.statuses[id] > 0).map(id => `${enemy.id}:${id}`))
+        .sort()
+        .join('+');
       const rect = canvas.getBoundingClientRect(); const baseQuality = coarse || rect.width < 700 || rect.height < 500 ? 0.72 : 1; const visualQuality = profileSettingsRef.current.effectIntensity === 'reduced' ? baseQuality * 0.62 : baseQuality; if (threeRenderer) { const firingIntent = fireSourcesRef.current.mouse || fireSourcesRef.current.aim || fireSourcesRef.current.button; threeRenderer.render(state, rect.width, rect.height, visualQuality, activeMissionRef.current, mobileTargetControlRef.current.targetId, operatorFaction, profileSettingsRef.current.effectIntensity === 'reduced', firingIntent, cameraFeedback); } else if (ctx) { const dpr = Math.min(2, window.devicePixelRatio || 1); const targetW = Math.max(1, Math.floor(rect.width * dpr)); const targetH = Math.max(1, Math.floor(rect.height * dpr)); if (canvas.width !== targetW || canvas.height !== targetH) { canvas.width = targetW; canvas.height = targetH; } ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.translate(cameraFeedback.canvasOffsetX, cameraFeedback.canvasOffsetY); renderGame(ctx, state, rect.width, rect.height, visualQuality, activeMissionRef.current, mobileTargetControlRef.current.targetId, operatorFaction, profileSettingsRef.current.effectIntensity === 'reduced'); } hudTimer += elapsed; if (hudTimer >= 0.075) { setHud(hudFrom(state)); hudTimer = 0; } frame = requestAnimationFrame(loop); }; frame = requestAnimationFrame(loop); return () => { cancelAnimationFrame(frame); threeRenderer?.dispose(); if (threeRendererRef.current === threeRenderer) threeRendererRef.current = null; }; }, [activeMission, advanceTutorial, clearAssistedTarget, coarse, fireCurrent, operatorFaction, restartKey, updateAssistedTarget, useAbility, useDodge, useInteract]);
   const updateAimFromPointer = (clientX: number, clientY: number) => { const canvas = canvasRef.current; if (!canvas) return; const rect = canvas.getBoundingClientRect(); const threeDirection = threeRendererRef.current?.screenDirection(clientX, clientY, rect, stateRef.current.player); setAim(stateRef.current, threeDirection ?? screenVectorToWorld(clientX - (rect.left + rect.width / 2), clientY - (rect.top + rect.height / 2)), false); };
   const onCanvasPointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => { if (coarse) { if (manualAimPointerRef.current !== event.pointerId) return; updateAimFromPointer(event.clientX, event.clientY); manualAimUntilRef.current = performance.now() + 1600; clearAssistedTarget('Manual aim active; assisted target released.'); return; } updateAimFromPointer(event.clientX, event.clientY); };
