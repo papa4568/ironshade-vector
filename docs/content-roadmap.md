@@ -1,181 +1,35 @@
 # Ironshade Vector — Active Production Roadmap
 
-Only active/future work lives here. Completed work is moved to [content-roadmap-archive.md](./content-roadmap-archive.md) after merge + verification.
+Only active/future executable work lives here. Completed and verified work belongs in [content-roadmap-archive.md](./content-roadmap-archive.md). Stable product rules live in [product-constraints.md](./product-constraints.md).
 
-## Execution Rules
+## Execution contract
 
-- **One checkbox = one realistic implementation/test/merge cycle.**
-- **Combine small tasks** when they touch the same system/files and can be verified together without turning into a long-running task.
-- **Split long tasks first.** If a task spans several major systems, large asset work, or independent QA cycles, divide it into smaller batches before coding.
-- **Archive on completion.** Move completed checklist detail and delivery notes to `docs/content-roadmap-archive.md`; keep this file lean.
-- **Research when uncertain.** If the best path is unclear after inspecting Ironshade's existing code/patterns, do focused **Path of Exile 2** research for inspiration before choosing a direction. Prefer current official/first-party sources when available, supplement with strong community analysis when useful, adapt the design lesson instead of copying it, and stop researching once the implementation question is answered.
-- Build the premium version first; solve device differences with adaptive quality, LODs, pooling, streaming, code splitting, and measured budgets before cutting mechanics.
-- Protect frame pacing, input latency, memory/thermal stability, save integrity, deterministic QA, readable combat tells, and touch/controller usability.
-
-## AAA Production Standard
-
-Target: **premium console/PC-quality ARPG presentation on modern phones**.
-
-- World state should communicate rarity, modifiers, status, boss phases, hazards, and interactions through model/animation/material/VFX/audio before HUD text.
-- Major combat actions synchronize targeting, animation, sound, VFX, camera response, and haptics where supported.
-- Performance scaling removes secondary cost before enemy mechanics, class identity, boss complexity, or encounter density.
-- High-end devices get a visibly richer quality mode.
-
-## Locked Design Decisions
-
-- Vanguard = **Breacher**
-- Vector = **Rail Lance**
-- Systems = **Carbine**
-- No cross-family runtime weapon swapping.
-- No per-item skill linking; skills belong to the class kit.
-- FIRE and targeted skills acquire/focus first, then execute; manual aim and explicit ground/self/mobility skills remain authoritative exceptions.
-- Progression becomes a large layered graph with routing costs, major tradeoffs, specialization integration, planning/search tools, and build-defining nodes.
-- Crafting uses visible affix rules, meaningful bases, distinct verbs, escalating control, rare deterministic options, and optional high-risk operations.
-- Current two-tier ship systems are prototypes; final systems are much harder to finish and much more beneficial.
-
-## P6 — T9–T12 Directive Expansion
-
-P6.1–P6.3 and P6-A/P6-B/P6-C/P6-D/P6-E are archived.
-
-## P7 — Loot Rarity & Equipment Presentation
-
-P7-A/P7-B/P7-C/P7-D/P7-E are archived after merge + verification.
-
-## P8 — Targeting & Class Arsenal Identity
-
-- [x] **P8-A Target acquisition** — archived after merge + verification
-- [x] **P8-B Target control** — archived after merge + verification
-- [x] **P8-C Target feedback/QA** — archived after merge + verification
-- [x] **P8-D Hard arsenal lock + migration** — archived after merge + verification
-- [x] **P8-E Loot/UI/tutorial ownership** — archived after merge + verification
-- [x] **P8-F Handling identity** — archived after merge + verification
-- [x] **P8-G Class-owned skill migration** — archived after merge + verification
-- [x] **P8-H Skill UI + regression** — archived after merge + verification
-
-## P8.5 — Gear 2.0 // Build-Defining Itemization
-
-Goal: make equipment answer **“What could I build around this?”** instead of acting like a stack of overlapping gear-score multipliers. Preserve Ironshade's hard-sci-fi identity and existing strong concepts while consolidating them into one data-driven item system.
-
-- [x] **P8.5-A Gear architecture audit + target schema** — archived after merge + verification
-- [x] **P8.5-B Power-axis consolidation** — archived after merge + verification
-- [x] **P8.5-C Meaningful base-frame families** — archived after merge + verification
-- [x] **P8.5-D Stat registry + local/global scope + build tags** — archived after merge + verification
-- [x] **P8.5-E Affix pools + conflicts + rarity budgets** — archived after merge + verification
-- [x] **P8.5-F Loot generation + anti-junk rules** — archived after merge + verification
-- [x] **P8.5-G Class/specialization gear integration** — archived after merge + verification
-- [x] **P8.5-H Quality + Augment responsibility pass** — archived after merge + verification
-- [x] **P8.5-I Singular chase-item audit** — archived after merge + verification
-- [x] **P8.5-J Mobile Armory + build-link comparison** — archived after merge + verification
-- [x] **P8.5-K Save/data migration + compatibility** — archived after merge + verification
-- [x] **P8.5-L Balance/diversity/regression gate** — archived after merge + verification
-
-## P9 — Progression 2.0 // Deep Operator Network
-
-Target roughly **120–180 authored nodes**, delivered in bounded waves.
-
-- [x] **P9-A Graph architecture** — archived after merge + verification
-- [x] **P9-B Core node wave** — archived after merge + verification
-- [x] **P9-C Build-defining wave** — archived after merge + verification
-- [x] **P9-D Specialization integration** — archived after merge + verification
-- [x] **P9-E Planner UX** — archived after merge + verification
-- [x] **P9-F Respec/migration/diversity QA** — archived after merge + verification
-
-## P10 — Crafting 2.0 // Reconstruction Economy
-
-- [x] **P10-A Rules foundation** — archived after merge + verification
-- [x] **P10-B Verbs/materials** — archived after merge + verification
-- [x] **P10-C Control vs risk** — archived after merge + verification
-- [x] **P10-D Build integration** — archived after merge + verification
-- [x] **P10-E Crafting UX/trust** — completed and verified; confirm-first exact-cost/outcome/risk review, before/after state, persistent craft receipts, and salvage-loop context are archived in `docs/content-roadmap-archive.md`.
-- [x] **P10-F Economy + touch QA** — completed and verified; campaign-to-T12 material pacing, chase-resource pressure, Reconstruction affordability, D-pad/A/B crafting navigation, and 48px coarse-pointer targets are archived in `docs/content-roadmap-archive.md`.
-
-## P11 — Ship Systems 2.0
-
-Target roughly **6 major tiers per system** with sub-milestones.
-
-- [x] **P11-A Architecture/migration** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
-- [x] **P11-B Engineering wave** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
-- [x] **P11-C Support wave** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
-- [x] **P11-D Advanced specialization** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
-- [x] **P11-E Physical payoff** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
-- [x] **P11-F Economy/balance QA** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
-
-## P12 — AAA Combat Feel
-
-- [x] **P12-A Weapon audio** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
-- [x] **P12-B Impact/environment audio** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
-- [x] **P12-C Information mix** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
-- [x] **P12-D Player handling animation** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
-- [x] **P12-E Skill/damage animation** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
-- [x] **P12-F Enemy/boss animation** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
-- [x] **P12-G Camera/haptics/perf** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
-
-## P13 — Enemy Modifier & Status Visual Language
-
-- [x] **P13-A Presentation framework** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
-- [x] **P13-B T9 visuals I** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
-- [x] **P13-C T9 visuals II** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
-- [x] **P13-D Protocol visuals** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
-- [x] **P13-E Player statuses** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
-- [x] **P13-F Boss/spawn/death language** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
-- [x] **P13-G Mobile readability/HUD reduction** — completed and verified; mobile LOD2 keeps critical world tells while priority durability bars + focused diagnostics replace redundant always-on enemy tag stacks; desktop retains the full information layer. Delivery detail is archived in `docs/content-roadmap-archive.md`.
-
-## P14 — Class Arsenal Expansion
-
-- [x] **P14-A Systems Carbine pair** — completed and verified; Burst + Precision Carbine delivered with deterministic same-family gameplay, authored/fallback handling presentation, and regression coverage. Delivery detail is archived in `docs/content-roadmap-archive.md`.
-- [x] **P14-B Vanguard Breacher pair** — completed and verified; Slug + Rapid Breacher delivered with deterministic same-family gameplay, distinct projectile/handling presentation, and regression coverage. Delivery detail is archived in `docs/content-roadmap-archive.md`.
-- [x] **P14-C Vector Rail pair** — completed and verified; Charge + Repeater Rail delivered with deterministic same-family gameplay, explicit capacitor/thermal/penetration tradeoffs, distinct handling/FX presentation, and regression coverage. Delivery detail is archived in `docs/content-roadmap-archive.md`.
-- [x] **P14-D Build integration** — completed and verified; all six class-owned arsenal variants now integrate with owned-family progression, legal Reconstruction/affix preferences, class-skill tuning, Singular interactions, and class-owned loot bias while preserving hard family locks and save compatibility. Delivery detail is archived in `docs/content-roadmap-archive.md`.
-- [x] **P14-E Presentation/playtest** — completed and verified; all six class-owned arsenal variants now have distinct handling motion, layered-audio tuning, authored thermal warning/critical presentation, and sustained-fire same-family QA while preserving the P14-D build integration. Delivery detail is archived in `docs/content-roadmap-archive.md`.
-- [x] **P14-F Fourth-family gate** — completed and verified; the shipped Systems/Carbine, Vanguard/Breacher, and Vector/Rail Lance one-to-one model remains the full arsenal, with a production regression gate preventing a fourth family until a future class or genuinely distinct combat role justifies it. Delivery detail is archived in `docs/content-roadmap-archive.md`.
+- Execute top to bottom. The **first unchecked top-level item is next** unless the user explicitly changes priority.
+- One checkbox should fit one realistic **implement → test → build → APK verification** cycle.
+- Split an item before coding if it spans independent systems or verification cycles; combine tiny changes when they touch the same system and can be verified together.
+- An item is complete only when its requested behavior works, relevant regression checks pass, the production build succeeds, and the Android deliverable is verified as required by the repository workflow.
+- After verified completion, move the completion detail/evidence to the archive and remove the item from this file.
+- If repository evidence shows an active item is already complete, verify that evidence before archiving it. If only part is complete, rewrite the item around the remaining work.
 
 ## P15 — AAA UI / World / Cinematic Polish
 
-- [x] **P15-A Design system** — completed and verified; shared typography, spacing, iconography, focus, canonical rarity tokens, panel/tooltip primitives, and responsive/safe-area rules are archived in `docs/content-roadmap-archive.md`.
-- [ ] **P15-B Build/menu presentation** — class selection, progression/crafting/systems coherence, fast transitions, optional 3D gear inspection
-- [ ] **P15-C Mission/boss/debrief** — deployment sequence, concise in-engine boss transitions, highlights/loot/progression/next unlock
-- [ ] **P15-D World/material polish** — consoles/doors/machinery/pickups/hazards, lighting/material depth, biome state animation/audio
-- [ ] **P15-E Accessibility/mobile/screenshot gate** — scalable text, contrast, reduced motion, effect/audio/assist controls, safe areas/orientation
+- [ ] **P15-B — Build/menu presentation** — bring class selection, progression, crafting, and ship systems onto the shared P15-A design language; tighten transitions; evaluate 3D gear inspection only if it improves inspection without harming mobile readability/performance. **Done when:** the primary build/menu flows consistently use shared primitives, navigation works across supported inputs/layouts, relevant UI regression passes, and Android builds/QA pass.
+- [ ] **P15-C — Mission/boss/debrief** — improve deployment presentation, concise in-engine boss transitions, and debrief highlights for loot/progression/next unlock. **Done when:** the mission presentation loop is coherent end to end, transitions do not interrupt control/state, relevant regression passes, and Android builds/QA pass.
+- [ ] **P15-D — World/material polish** — improve consoles, doors, machinery, pickups, hazards, lighting/material depth, and biome state animation/audio. **Done when:** priority interactables and biome states are readable in-world across quality levels without obscuring combat information, relevant visual/runtime regression passes, and Android builds/QA pass.
+- [ ] **P15-E — Accessibility/mobile/screenshot gate** — add scalable text, contrast, reduced motion, effect/audio/assist controls, safe-area/orientation coverage, and final presentation QA. **Done when:** supported accessibility controls persist and affect the intended systems, mobile layouts remain usable across target orientations/safe areas, screenshot/readability checks pass, and Android builds/QA pass.
 
 ## P16 — Performance Without Compromise
 
-- [ ] **P16-A Measurement** — device tiers + separate CPU/render/GPU/UI/animation/audio/GC budgets
-- [ ] **P16-B Rendering scalability** — dynamic resolution, instancing, texture/material memory, shadow/reflection/effect priority
-- [ ] **P16-C Runtime scalability** — pooling, animation LOD, audio virtualization, asset streaming/preload
-- [ ] **P16-D Boot architecture** — split feature/presentation data; track boot cost diagnostically without hard bundle/chunk byte-size caps
-- [ ] **P16-E Soak/stress QA** — 30-minute thermal soak, worst-case T12 scene, frame pacing, memory/leak soak
-- [ ] **P16-F Quality modes/device QA** — richer flagship mode, mechanics-preserving performance mode, Android device-tier playthrough
+- [ ] **P16-A — Measurement** — establish device tiers and separate CPU/render/GPU/UI/animation/audio/GC budgets with reproducible measurement. **Done when:** representative scenarios produce comparable diagnostics/baselines and regressions can be identified against explicit budgets.
+- [ ] **P16-B — Rendering scalability** — implement/verify dynamic resolution, instancing, texture/material memory controls, and shadow/reflection/effect priority. **Done when:** render cost scales by device/quality tier without removing gameplay-critical information and worst-case rendering regression passes.
+- [ ] **P16-C — Runtime scalability** — improve pooling, animation LOD, audio virtualization, and asset streaming/preload. **Done when:** worst-case runtime pressure stays within established budgets without changing encounter mechanics and regression/Android QA pass.
+- [ ] **P16-D — Boot architecture** — split feature/presentation data where useful and track boot cost diagnostically without arbitrary bundle/chunk byte caps. **Done when:** startup work is measurably staged/deferred, required gameplay data remains correct, and boot/build regressions pass.
+- [ ] **P16-E — Soak/stress QA** — run 30-minute thermal soak, worst-case T12 stress, frame-pacing, memory, and leak checks. **Done when:** the defined stress scenarios complete without unacceptable thermal/memory/frame-pacing degradation or unresolved leaks/crashes.
+- [ ] **P16-F — Quality modes/device QA** — finalize richer flagship mode and mechanics-preserving performance mode, then verify across representative Android device tiers. **Done when:** quality modes visibly differ, performance scaling preserves mechanics/readability, settings persist correctly, and device-tier playthrough QA passes.
 
 ## P17 — External Beta / Delivery
 
-- [ ] **P17-A Signing/upgrade path** — permanent credentials, release-signed APK, clean/upgrade verification
-- [ ] **P17-B Durable distribution** — GitHub Release workflow, non-expiring APK, release notes/changelog
-- [ ] **P17-C Save/release policy** — migration/rollback/recovery expectations
-- [ ] **P17-D External beta candidate** — final install/upgrade/package/runtime/touch/campaign QA
-
-## Execution Order
-
-**P6 → P7 → P8 → P8.5 → P9 → P10 → P11 → P12 → P13 → P14 → P15 → P16 → P17**
-
-## Immediate Queue
-
-**Next: P15-B — Build/menu presentation.**
-
-Run **P15-B — Build/menu presentation** as the next AAA UI / World / Cinematic Polish batch: bring class selection, progression, crafting, and ship systems onto the shared P15-A design language, tighten menu transitions, and evaluate optional 3D gear inspection without compromising mobile readability or performance.
-
-After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
-
-## Latest Verified Delivery
-
-- Android beta: **0.0.1-beta.292**
-- Package: `app.ironshade.vector`
-- Verified: **P15-A Design system complete**
-- Gameplay/test source: `4d7e38851d0112c4969a0181aa5d450ecba26ca7`
-- Delivery/QA source: `4d7e38851d0112c4969a0181aa5d450ecba26ca7`
-- PR Browser E2E: `35852741516`
-- Browser E2E: `35853095774`
-- Level 15 beta smoke: `35853095964`
-- Android beta.292: `35853095916`
-- APK artifact: `10745978662`
-- APK SHA-256: `b4f990cc478a1b0a64ee27839787fcb26979ad67b95786afb6508bc4ccf7155f`
-- Signing: debug-signed beta; permanent signing remains P17-A
+- [ ] **P17-A — Signing/upgrade path** — establish permanent Android signing credentials/process and verify clean install plus upgrade. **Done when:** a release-signed build installs cleanly, upgrades an existing supported build without data loss, signing identity is verified, and the documented process is reproducible.
+- [ ] **P17-B — Durable distribution** — create the GitHub Release workflow for a non-expiring APK plus release notes/changelog. **Done when:** a tagged release produces the intended durable downloadable APK and release metadata through the repository workflow.
+- [ ] **P17-C — Save/release policy** — define and implement migration, rollback, recovery, and compatibility expectations for external releases. **Done when:** supported upgrade/recovery paths are documented and covered by the relevant save/migration verification.
+- [ ] **P17-D — External beta candidate** — perform final install/upgrade/package/runtime/touch/campaign QA on the release candidate. **Done when:** all release gates pass on the candidate artifact and no unresolved release-blocking defects remain.
