@@ -15,26 +15,30 @@ export type RuntimeScalabilityProfile = {
   };
   preloadConcurrency: 1 | 2 | 3;
   preloadAssetLimit: number;
+  preloadDelaySeconds: number;
 };
 
 export const RUNTIME_SCALABILITY_PROFILES: Record<RuntimeScalabilityTier, RuntimeScalabilityProfile> = {
   high: {
     animation: { nearDistance: 18, farDistance: 30, standardFarStride: 1, eliteFarStride: 1 },
     poolRetention: { damageNumbers: 48, effects: 72, impactSparks: 24, debris: 64 },
-    preloadConcurrency: 3,
-    preloadAssetLimit: 12,
+    preloadConcurrency: 2,
+    preloadAssetLimit: 10,
+    preloadDelaySeconds: 1,
   },
   balanced: {
     animation: { nearDistance: 16, farDistance: 27, standardFarStride: 2, eliteFarStride: 1 },
     poolRetention: { damageNumbers: 36, effects: 54, impactSparks: 16, debris: 48 },
-    preloadConcurrency: 2,
-    preloadAssetLimit: 8,
+    preloadConcurrency: 1,
+    preloadAssetLimit: 6,
+    preloadDelaySeconds: 4,
   },
   performance: {
     animation: { nearDistance: 14, farDistance: 24, standardFarStride: 3, eliteFarStride: 2 },
     poolRetention: { damageNumbers: 24, effects: 36, impactSparks: 10, debris: 32 },
     preloadConcurrency: 1,
-    preloadAssetLimit: 5,
+    preloadAssetLimit: 4,
+    preloadDelaySeconds: 4.5,
   },
 };
 
@@ -66,6 +70,10 @@ export function runtimeAnimationStride(request: RuntimeAnimationRequest): 1 | 2 
 
   if (request.distance <= profile.animation.farDistance) return request.tier === 'performance' ? 2 : 1;
   return profile.animation.standardFarStride;
+}
+
+export function runtimeAssetPreloadReady(simulationSeconds: number, profile: RuntimeScalabilityProfile) {
+  return Number.isFinite(simulationSeconds) && simulationSeconds >= profile.preloadDelaySeconds;
 }
 
 export function runtimePoolTrimTarget(allocated: number, active: number, retainedIdleCapacity: number) {
