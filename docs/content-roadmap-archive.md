@@ -1216,3 +1216,20 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Android artifact `10749689022` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.294`, debug signing, min SDK 24 / target SDK 36, and APK SHA-256 `2f4707c2b2abfa826185c0341fc10c37ed9518ac7c40b827750bd1874dc921d9`.
   - **Next: P15-D — World/material polish.**
 
+## 2026-09-23 — P15-D AAA UI / World / Cinematic Polish // World/material polish
+
+- [x] **P15-D World/material polish** — improved in-world interactable, hazard, pickup, material-depth, and biome-state readability through one adaptive presentation contract while preserving combat information and performance scaling.
+  - Added `src/game/worldMaterialPolish.ts` as the shared presentation contract for priority interactables, hazards, material response, adaptive world quality, and derived biome world states.
+  - Priority consoles/controls and salvage nodes now carry shape-coded floor/status cues in the Three.js renderer, with shared Canvas fallback cues. State changes remain distinguishable without relying on color alone.
+  - Hazards now use distinct shape/footprint/motion signatures while preserving their floor-bound read; Performance mode reduces secondary motion/material depth before reducing critical interactable or hazard cue opacity.
+  - Procedural world objects now use material-specific metalness/roughness response, the world floor receives subtle state-linked emissive depth, and pickup beams scale down independently from the persistent rarity/shape marker.
+  - Biome/world conditions now derive explicit runtime states such as pressure-critical, Solar Yard surge, Spin Habitat imbalance, Jovian storm shear, and Ice Mine bore fracture, with coupled animation telemetry and transition audio cues that avoid duplicating same-frame environment audio.
+  - Added `tests/world-material-polish.ts`, wired `test:world-material-polish` into the production build, and extended browser runtime QA to require interactable/hazard/loot readability plus material-depth and biome-state telemetry.
+  - PR #207 Browser E2E `35863304853` passed desktop + mobile-landscape full regression/production build and live player journeys on tested head `7cfc06cd2c60db09bcb86522e66523137997bf63`.
+  - Merged gameplay source `c5a31cb8cbe18f7ff87de679adf1aa495f439126` passed post-merge Browser E2E `35863645708` and Level 15 beta smoke `35863645735`. Android beta.295 built and passed package/version/SDK/signature verification but exposed a smoke-harness race where the transient P15-C deployment cue disappeared between two DOM reads, so P15-D remained open.
+  - Follow-up main commits `e84a2c2c5349f42427ab441462dd36f5e80d6b11` and `7e0abd2e94eff09607700ec42c127d4186d1ae87` made the Android deployment-cue assertion atomic and aligned the mission-presentation regression with that verification without changing gameplay behavior.
+  - Final main verification passed Browser E2E `35864833185` on desktop + mobile-landscape, Level 15 beta smoke `35864833158`, and Android beta.297 run `35864833087`.
+  - Android beta.297 passed the full web regression/build, native project generation, debug APK build, package/version/min-SDK/target-SDK/signature verification, emulator install/cold launch, class/menu/skill/touch/runtime QA, authored-content checks, and Chapter 3 touch playthrough. The repaired deployment check reported `deployment=non-blocking+onscreen`.
+  - Android artifact `10752462773` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.297`, debug signing, min SDK 24 / target SDK 36, and APK SHA-256 `adaa90a95c1365e837ff0b65328ee68a650458960d84a0b1178c83db171881ee`.
+  - **Next: P15-E — Accessibility/mobile/screenshot gate.**
+
