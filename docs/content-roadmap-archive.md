@@ -1081,3 +1081,21 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Final post-merge verification passed Browser E2E `35814794239` (desktop + Reduced Effects mobile-landscape), Level 15 beta smoke `35814794287`, and Android beta.285 `35814794169`.
   - Android artifact `10731058432` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.285`, debug signing, package/version/SDK/signature verification, native Android install/launch/touch/lifecycle/authored-content/Chapter 3 QA, and APK SHA-256 `fbe2c348d331c363c51c7c572669ea439c0dc472c3addec4b358e8f21f4446e6`.
   - **Next: P14-A — Systems Carbine pair.**
+
+## 2026-09-22 — P14-A Class Arsenal Expansion // Systems Carbine pair
+
+- [x] **P14-A Systems Carbine pair** — authored Burst + Precision Carbine as a coherent Systems-owned same-family pair while preserving the established class arsenal lock and existing save compatibility.
+  - Added `src/game/classArsenal.ts` with stable `carbine-burst` and `carbine-precision` identities, explicit stat/handling tradeoffs, deterministic equipped-frame resolution, and shared presentation tuning.
+  - **M-7B Burst Carbine** commits a deterministic three-round coil packet with a compact silhouette, broader muzzle signature, larger 42-round feed, faster thermal recovery, and lower per-round penetration/precision.
+  - **M-7P Precision Carbine** commits deliberate single shots with a longer silhouette, tighter muzzle signature, 42 penetration, 0.006 spread, and stronger per-round damage at the cost of a 20-round magazine and hotter individual shots.
+  - Raw authored DPS remains intentionally near-parity (Burst 101.43 vs Precision 101.25) so the pair separates through cadence, ammo, thermal behavior, penetration, grouping, and handling rather than a hidden dominant damage choice.
+  - Variant identity is derived into the ephemeral `CombatBuild` from the equipped Carbine frame; no profile/save schema migration was required. Deeper progression, crafting/affix, Singular, skill, and class-owned loot integration remains explicitly owned by **P14-D**.
+  - `triggerFire` now supports authored rounds-per-trigger. Burst spends/emits all committed rounds with deterministic packet separation and per-round heat accounting; Precision remains one projectile/one round per fire cycle. Existing telemetry and Carbine-family trait semantics remain trigger-cycle based.
+  - Canvas fallback, authored Three.js weapons, procedural Three.js weapons, and hard-sci-fi fallback geometry now expose distinct Carbine proportions, muzzle dimensions, recoil weight, aim lift, FX identity, and `weaponVariant` runtime QA telemetry.
+  - Added `tests/systems-carbine-variants.ts` and production gate `test:class-arsenal`. Coverage locks exact pair ownership, deterministic Burst packets, ammo/heat accounting, same-family Systems ownership, DPS parity, Precision penetration/grouping, feed/thermal tradeoffs, and presentation separation.
+  - PR #198 Browser E2E `35816472065` passed desktop + mobile-landscape full regression/production build and live player journeys on tested head `8cbdfd7c94241d44780f94d6519ce21b2b2bdef4`.
+  - Merged gameplay source `961036e65bd544eef8437d8c026088b526db230a` passed post-merge Browser E2E `35816730328` and Level 15 beta smoke `35816730270`.
+  - Android beta.286 run `35816730475` passed the full web regression/build, native project generation, debug APK build, package/version/min-SDK/target-SDK/signature verification, Android emulator install/cold launch, class selection/menu/skill hierarchy/class kit/mobile asset/render tier/touch combat/runtime lifecycle QA, authored operator/enemy/weapon/refinery verification, and Chapter 3 touch playthrough.
+  - Android artifact `10732231158` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.286`, debug signing, min SDK 24 / target SDK 36, and APK SHA-256 `de0bca17f8b8622e478f0459247c3868d7674a9129df3b156efebbc452595d7f`.
+  - **Next: P14-B — Vanguard Breacher pair (Slug + Rapid Breacher).**
+
