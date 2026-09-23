@@ -28,7 +28,7 @@ assert(!bossSyncSource.includes('new THREE.Mesh(') && !bossSyncSource.includes('
 assert(rendererSource.includes("this.playerReadabilityLight.distance = reducedEffects ? 5.8 : 7.5"), 'reduced-effects mode must retain combat readability lighting');
 assert(rendererSource.includes("telegraph.visible = enemy.telegraph > 0"), 'boss telegraph geometry must remain available independent of particle density');
 assert(rendererSource.includes('private readonly damageNumberPool: DamageNumberVisual[] = []'), 'Three.js damage numbers must use a reusable visual pool');
-assert(rendererSource.includes("sprite.name = 'enemy-damage-number'") && rendererSource.includes('private syncDamageNumbers(state: SimState)'), 'Three.js combat renderer is missing floating enemy damage numbers');
+assert(rendererSource.includes("sprite.name = 'enemy-damage-number'") && rendererSource.includes('private syncDamageNumbers(state: SimState'), 'Three.js combat renderer is missing floating enemy damage numbers');
 assert(rendererSource.includes("dataset.damageNumbers = count > 0 ? 'active' : 'idle'"), 'runtime QA must expose floating damage-number activity');
 assert(gameCanvasSource.includes('for (const popup of state.damageNumbers)') && gameCanvasSource.includes("popup.kind === 'armor' ? '#8ee8ff'"), 'Canvas fallback is missing readable floating damage numbers');
 
