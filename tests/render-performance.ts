@@ -14,9 +14,12 @@ function assert(condition: unknown, message: string) {
 }
 
 const gameCanvasSource = readFileSync(resolve(process.cwd(), 'src/components/GameCanvas.tsx'), 'utf8');
+const armorySource = readFileSync(resolve(process.cwd(), 'src/components/Armory.tsx'), 'utf8');
 assert(!gameCanvasSource.includes('useRef<SimState>(createMissionState(firstMission))'), 'GameCanvas must not construct a new simulation on every React render');
 assert(gameCanvasSource.includes('useState(() => createMissionState(firstMission))'), 'GameCanvas initial simulation should use a lazy one-time initializer');
 assert(gameCanvasSource.includes('profileSettingsRef.current.effectIntensity') && gameCanvasSource.includes('profileSettingsRef.current.screenShake'), 'combat render loop must read live profile settings');
+assert(gameCanvasSource.includes('profileSettingsRef.current.graphicsQuality') && gameCanvasSource.includes('canvas.dataset.graphicsQuality = selectedQuality'), 'combat render loop must consume and expose the persisted graphics quality mode');
+assert(armorySource.includes('aria-label="Graphics quality"') && armorySource.includes('<option value="flagship">Flagship</option>') && armorySource.includes('<option value="performance">Performance</option>'), 'Build settings must expose explicit Flagship and Performance graphics modes');
 
 const rendererSource = readFileSync(resolve(process.cwd(), 'src/game/threeCombatRenderer.ts'), 'utf8');
 const graphicsAssetsSource = readFileSync(resolve(process.cwd(), 'src/game/graphicsAssets.ts'), 'utf8');
@@ -71,6 +74,16 @@ assert(snapshot.tierName === 'balanced', 'coarse/mobile should expose balanced t
 assert(snapshot.shadowMapSize === 512, 'balanced tier should cap shadows at 512');
 assert(snapshot.vfxDensity === 0.72, 'balanced tier should reduce secondary VFX density');
 assert(snapshot.transparencyScale === 0.68, 'balanced tier should reduce transparency cost');
+
+const mobileFlagship = new AdaptiveRenderBudget(true);
+const flagshipSnapshot = mobileFlagship.sample(16.7, 1, 'flagship');
+assert(flagshipSnapshot.qualityMode === 'flagship' && flagshipSnapshot.tier === 0, 'Flagship mode must opt a healthy Android/coarse device into the full high-quality presentation tier');
+assert(flagshipSnapshot.shadows && flagshipSnapshot.shadowMapSize === 1024 && flagshipSnapshot.reflectionScale === 1 && flagshipSnapshot.vfxDensity === 1, 'Flagship mode must retain full shadows, reflections, and VFX');
+const mobilePerformance = new AdaptiveRenderBudget(true);
+const performanceSnapshot = mobilePerformance.sample(16.7, 1, 'performance');
+assert(performanceSnapshot.qualityMode === 'performance' && performanceSnapshot.tier === 2, 'Performance mode must start at the low-cost render tier on Android/coarse devices');
+assert(!performanceSnapshot.shadows && performanceSnapshot.pixelRatioScale < flagshipSnapshot.pixelRatioScale && performanceSnapshot.detailScale < flagshipSnapshot.detailScale, 'Performance mode must visibly reduce presentation cost relative to Flagship');
+assert(performanceSnapshot.gameplayCueScale === 1 && flagshipSnapshot.gameplayCueScale === 1, 'quality mode selection must never scale gameplay-critical cue strength');
 
 const reducedEffects = new AdaptiveRenderBudget(false);
 snapshot = reducedEffects.sample(16.7, 0.45);
@@ -325,4 +338,4 @@ assert(!worstSnapshot.shadows && worstSnapshot.reflectionScale < 0.5 && worstSna
 assert(worstSnapshot.gameplayCueScale === 1, 'worst-case rendering must preserve gameplay-critical information');
 assert(rendererSource.includes("telegraph.visible = enemy.telegraph > 0") && rendererSource.includes("dataset.hazardReadability = 'shape-coded+floor-bound+quality-safe'"), 'critical enemy telegraphs and hazard readability must remain independent of secondary render scaling');
 
-console.log('RENDER_PERFORMANCE_PASS sustained=stable+degrade+recover worst-case=p16-b');
+console.log('RENDER_PERFORMANCE_PASS sustained=stable+degrade+recover worst-case=p16-b quality-modes=flagship+performance+p16-f');

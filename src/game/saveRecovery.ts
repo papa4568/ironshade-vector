@@ -119,6 +119,7 @@ function invalidProfileReason(value: unknown): string | null {
     if (!isRecord(value.settings)) return 'settings is not an object';
     const settings = value.settings;
     if (settings.aimAssist !== undefined && settings.aimAssist !== 'light' && settings.aimAssist !== 'balanced') return 'settings.aimAssist is invalid';
+    if (settings.graphicsQuality !== undefined && settings.graphicsQuality !== 'adaptive' && settings.graphicsQuality !== 'flagship' && settings.graphicsQuality !== 'performance') return 'settings.graphicsQuality is invalid';
     if (settings.effectIntensity !== undefined && settings.effectIntensity !== 'full' && settings.effectIntensity !== 'reduced') return 'settings.effectIntensity is invalid';
     for (const field of ['rightStickFire', 'screenShake', 'haptics', 'telemetrySharing', 'tutorialComplete']) {
       const reason = optionalBooleanReason(settings, field);

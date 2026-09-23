@@ -3,7 +3,7 @@ import { SHIP_SYSTEM_SCHEMA_VERSION, createDefaultCampaign } from '../src/game/c
 import { GAME_STATE_VERSION, loadGameState, saveGameState } from '../src/game/gamePersistence';
 import { gearSchemaVersion } from '../src/game/gearSchema';
 import { OPERATOR_NETWORK_SCHEMA_VERSION } from '../src/game/operatorNetwork';
-import { createDefaultProfile } from '../src/game/meta';
+import { createDefaultProfile, setProfileSettings } from '../src/game/meta';
 import { GAME_STATE_STORAGE_KEY, prepareSaveRecovery, validateStoredProfile } from '../src/game/saveRecovery';
 
 class MemoryStorage {
@@ -153,6 +153,16 @@ function currentNetworkRepairSmoke() {
   assert.equal(persisted.profile.allocatedNodes.includes('retired-network-node'), false, 'retired node IDs must not survive the rewritten profile mirror.');
 }
 
+function graphicsQualityPersistenceSmoke() {
+  for (const mode of ['adaptive', 'flagship', 'performance'] as const) {
+    const storage = new MemoryStorage();
+    const profile = setProfileSettings(createDefaultProfile(), { graphicsQuality: mode });
+    assert.equal(saveGameState(profile, createDefaultCampaign(), storage as any), true, `graphics quality ${mode} should save atomically`);
+    const restored = loadGameState(storage as any);
+    assert.equal(restored.profile.settings.graphicsQuality, mode, `graphics quality ${mode} should survive save/load normalization`);
+  }
+}
+
 async function recoveryPreservationSmoke() {
   const storage = new MemoryStorage();
   const campaign = createDefaultCampaign();
@@ -181,8 +191,9 @@ async function recoveryPreservationSmoke() {
 legacyStateMigrationSmoke();
 versionTwoNetworkMigrationSmoke();
 currentNetworkRepairSmoke();
+graphicsQualityPersistenceSmoke();
 recoveryPreservationSmoke()
-  .then(() => console.log(`SAVE_DATA_MIGRATION_PASS legacy=v1/v2->v${GAME_STATE_VERSION} gearSchema=${gearSchemaVersion} networkSchema=${OPERATOR_NETWORK_SCHEMA_VERSION} currentNetworkRepair=refunded recovery=preserved`))
+  .then(() => console.log(`SAVE_DATA_MIGRATION_PASS legacy=v1/v2->v${GAME_STATE_VERSION} gearSchema=${gearSchemaVersion} networkSchema=${OPERATOR_NETWORK_SCHEMA_VERSION} currentNetworkRepair=refunded graphicsQuality=adaptive+flagship+performance recovery=preserved`))
   .catch(error => {
     console.error(error);
     process.exitCode = 1;
