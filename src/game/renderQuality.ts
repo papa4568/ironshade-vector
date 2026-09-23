@@ -1,8 +1,10 @@
 export type AdaptiveRenderTier = 0 | 1 | 2;
+export type GraphicsQualityMode = 'adaptive' | 'flagship' | 'performance';
 
 export type RenderBudgetSnapshot = {
   tier: AdaptiveRenderTier;
   tierName: 'high' | 'balanced' | 'performance';
+  qualityMode: GraphicsQualityMode;
   smoothedFrameMs: number;
   targetFrameMs: number;
   frameHeadroomMs: number;
@@ -51,10 +53,10 @@ export class AdaptiveRenderBudget {
 
   constructor(coarse: boolean) {
     this.baselineTier = coarse ? 1 : 0;
-    this.runtimeTier = this.baselineTier;
+    this.runtimeTier = 0;
   }
 
-  sample(frameMs: number, requestedQuality: number): RenderBudgetSnapshot {
+  sample(frameMs: number, requestedQuality: number, qualityMode: GraphicsQualityMode = 'adaptive'): RenderBudgetSnapshot {
     if (Number.isFinite(frameMs) && frameMs >= 4 && frameMs <= 80) {
       this.smoothedFrameMs = this.smoothedFrameMs * 0.92 + frameMs * 0.08;
       if (this.smoothedFrameMs > 21.5) {
@@ -72,7 +74,7 @@ export class AdaptiveRenderBudget {
         this.runtimeTier = (this.runtimeTier + 1) as AdaptiveRenderTier;
         this.slowSamples = 0;
         this.fastSamples = 0;
-      } else if (this.fastSamples >= 240 && this.runtimeTier > this.baselineTier) {
+      } else if (this.fastSamples >= 240 && this.runtimeTier > 0) {
         this.runtimeTier = (this.runtimeTier - 1) as AdaptiveRenderTier;
         this.slowSamples = 0;
         this.fastSamples = 0;
@@ -80,10 +82,12 @@ export class AdaptiveRenderBudget {
     }
 
     const requested = Math.max(0.35, Math.min(1, requestedQuality));
-    const tier = Math.max(this.runtimeTier, qualityFloorTier(requested)) as AdaptiveRenderTier;
+    const modeFloor: AdaptiveRenderTier = qualityMode === 'performance' ? 2 : qualityMode === 'flagship' ? 0 : this.baselineTier;
+    const tier = Math.max(this.runtimeTier, modeFloor, qualityFloorTier(requested)) as AdaptiveRenderTier;
     return {
       tier,
       tierName: TIER_NAME[tier],
+      qualityMode,
       smoothedFrameMs: this.smoothedFrameMs,
       targetFrameMs: TARGET_FRAME_MS,
       frameHeadroomMs: TARGET_FRAME_MS - this.smoothedFrameMs,
