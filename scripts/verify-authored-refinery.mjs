@@ -182,7 +182,7 @@ try {
       if (!['high', 'balanced', 'performance'].includes(lastState.renderTier)) {
         throw new Error(`Adaptive render tier telemetry is missing: ${JSON.stringify(lastState)}`);
       }
-      if (!/^pixel:\d+\.\d{2}\+shadow:\d+\+vfx:\d+\.\d{2}\+transparency:\d+\.\d{2}\+detail:\d+\.\d{2}$/.test(lastState.renderBudget)) {
+      if (!/^pixel:\d+\.\d{2}\+shadow:\d+\+vfx:\d+\.\d{2}\+transparency:\d+\.\d{2}\+reflection:\d+\.\d{2}\+secondary:\d+\.\d{2}\+detail:\d+\.\d{2}$/.test(lastState.renderBudget)) {
         throw new Error(`Adaptive render budget telemetry is malformed: ${JSON.stringify(lastState)}`);
       }
       if (!String(lastState.tone).startsWith('aces-')) {
