@@ -120,7 +120,7 @@ try {
       if (!['carbine', 'breacher', 'rail'].includes(lastState.active)) {
         throw new Error(`Unexpected active authored weapon: ${JSON.stringify(lastState)}`);
       }
-      const mobileViewport = lastState.width <= 900 && lastState.height <= 500;
+      const mobileViewport = process.env.BROWSER_E2E_VIEWPORT === 'mobile-landscape';
       const expectedLod = mobileViewport ? 2 : 1;
       if (lastState.asset !== `weapon-${lastState.active}-lod${expectedLod}`) {
         throw new Error(`Unexpected authored weapon asset id for LOD${expectedLod}: ${JSON.stringify(lastState)}`);
