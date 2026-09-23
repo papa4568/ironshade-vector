@@ -215,6 +215,13 @@ function App() {
   useEffect(() => { setCampaign(current => syncParallaxDebtAccess(current, profile.level)); }, [profile.level, campaign.story.interdiction.status]);
   useEffect(() => feedback.configure(profile.settings), [profile.settings]);
   useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    root.dataset.textScale = profile.settings.textScale;
+    root.dataset.contrast = profile.settings.contrast;
+    root.dataset.reducedMotion = profile.settings.reducedMotion ? 'true' : 'false';
+  }, [profile.settings.textScale, profile.settings.contrast, profile.settings.reducedMotion]);
+  useEffect(() => {
     let active = true;
     const controller = new AbortController();
     loadOperationsSnapshot({ signal: controller.signal })
