@@ -1099,3 +1099,19 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Android artifact `10732231158` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.286`, debug signing, min SDK 24 / target SDK 36, and APK SHA-256 `de0bca17f8b8622e478f0459247c3868d7674a9129df3b156efebbc452595d7f`.
   - **Next: P14-B — Vanguard Breacher pair (Slug + Rapid Breacher).**
 
+
+## 2026-09-22 — P14-B Class Arsenal Expansion // Vanguard Breacher pair
+
+- [x] **P14-B Vanguard Breacher pair** — authored Slug + Rapid Breacher as a coherent Vanguard-owned same-family pair while preserving the hard Breacher arsenal lock and existing save compatibility.
+  - Extended `src/game/classArsenal.ts` with stable `breacher-slug` and `breacher-rapid` identities plus shared weapon-variant presentation/runtime resolution. Existing Dense-Choke frames resolve to Slug; Backblast Thruster and Cryo-Cycle frames resolve to Rapid without adding a save-schema field.
+  - **B-4S Slug Breacher** converts the Breacher into one dense projectile with 56 penetration, 0.012 spread, heavier recoil/heat, a longer narrow silhouette, and stronger per-projectile armor transfer.
+  - **B-4R Rapid Breacher** keeps a compact five-pellet scatter packet but doubles down on repeated breach pressure through 2.6 fire rate, a 10-round magazine, lower recoil, faster thermal recovery, a shorter silhouette, and broader muzzle language.
+  - Raw authored DPS remains intentionally near-parity (Slug 69.85 vs Rapid 70.20) so the pair separates through projectile model, cadence, reach, penetration, recoil, magazine depth, thermal behavior, and handling rather than a hidden damage winner.
+  - Variant identity is derived into the ephemeral `CombatBuild` from equipped Breacher frame identity. Vanguard remains locked to the Breacher family; deeper progression, crafting/affix, Singular, skill, and class-owned loot integration remains explicitly owned by **P14-D**.
+  - Canvas fallback, authored Three.js weapons, procedural Three.js weapons, and hard-sci-fi fallback geometry now consume the active weapon variant presentation generically, covering Slug/Rapid silhouette, muzzle dimensions, recoil weight, aim lift, FX identity, and `weaponVariant` runtime QA telemetry alongside the P14-A Carbine variants.
+  - Added `tests/vanguard-breacher-variants.ts` to the production `test:class-arsenal` gate. Coverage locks exact pair ownership, frame resolution, same-family Vanguard ownership, DPS parity, single-projectile Slug behavior, deterministic Rapid scatter, ammo/heat accounting, penetration/recoil/thermal tradeoffs, and presentation separation.
+  - Browser QA caught the authored-weapon verifier still hard-coding Breacher FX as `scatter`; the verifier was updated to validate `slug-impact` / `rapid-scatter` plus the existing Carbine variant FX. PR #199 final Browser E2E `35818531057` then passed desktop + mobile-landscape full regression/production build and live player journeys on tested head `b9cff993e8a21cf2e8e09dd4d7d16144f69b487b`.
+  - Merged gameplay source `3154b300c0a8ed166814bae5bd6876a3df7ea25d` passed post-merge Browser E2E `35818754105` and Level 15 beta smoke `35818754120`.
+  - Android beta.287 run `35818754101` passed the full web regression/build, native project generation, debug APK build, package/version/min-SDK/target-SDK/signature verification, Android emulator install/cold launch/touch/runtime QA, authored-content verification, and Chapter 3 touch playthrough.
+  - Android artifact `10732995607` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.287`, debug signing, min SDK 24 / target SDK 36, and APK SHA-256 `168902b73aa890ecb730d68e0394e4c69f08ab3df16cecbc1119c37d91df55ea`.
+  - **Next: P14-C — Vector Rail pair (Charge + Repeater Rail).**
