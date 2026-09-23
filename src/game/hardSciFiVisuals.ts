@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { Contract, LocationId } from './campaign';
 import type { EquipmentFaction } from './factionGear';
-import { carbineVariantPresentation } from './classArsenal';
+import { weaponVariantPresentation } from './classArsenal';
 import type { Enemy, SimState, WeaponId } from './sim';
 import { buildMapVisualOverhaul, syncMapVisualOverhaul } from './mapVisuals';
 
@@ -359,15 +359,15 @@ export function syncOperatorVisual(root: THREE.Group, weaponPivot: THREE.Group, 
   rig.rightBoot.material.emissiveIntensity = gravity > 0.78 ? 0.12 : 0;
 
   const details = ensureWeaponDetails(weaponPivot);
-  const carbinePresentation = player.currentWeapon === 'carbine' ? carbineVariantPresentation(state.weapons.carbine.variantId) : null;
+  const variantPresentation = weaponVariantPresentation(state.weapons[player.currentWeapon].variantId);
   for (const [id, detail] of Object.entries(details) as [WeaponId, WeaponDetail][]) {
     detail.root.visible = id === player.currentWeapon;
-    detail.root.scale.x = id === 'carbine' ? (carbinePresentation?.silhouetteScaleX ?? 1) : 1;
+    detail.root.scale.x = id === player.currentWeapon ? (variantPresentation?.silhouetteScaleX ?? 1) : 1;
     detail.glow.forEach(material => {
       material.emissiveIntensity = id === player.currentWeapon && state.weaponFlash > 0 ? 0.9 : 0.38;
     });
   }
-  weaponPivot.userData.hardMuzzleX = details[player.currentWeapon].muzzleX * (carbinePresentation?.silhouetteScaleX ?? 1);
+  weaponPivot.userData.hardMuzzleX = details[player.currentWeapon].muzzleX * (variantPresentation?.silhouetteScaleX ?? 1);
 }
 
 export function syncEnemyVisual(root: THREE.Group, enemy: Enemy, state: SimState) {
