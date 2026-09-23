@@ -1147,6 +1147,9 @@ function syncCombatFeedback(state: SimState, previous: FeedbackSnapshot, mission
 export default function GameCanvas({ build, mission, profileSettings, consumables, buildLabel, operatorFaction, onProfileSettingsChange, onConsumablesChange, onMissionResolve, onAttemptFailed, onReturnToHub }: Props) {
   const firstMission = mission.megastructure ? getMegastructureStageContract(mission, 0) : mission;
   const [activeMission, setActiveMission] = useState<Contract>(firstMission);
+  const [deploymentCueVisible, setDeploymentCueVisible] = useState(true);
+  const [bossTransitionCue, setBossTransitionCue] = useState<{ key: string; kicker: string; title: string; detail: string } | null>(null);
+  const bossPresentationRef = useRef({ active: false, phase: 1 });
   const activeMissionRef = useRef<Contract>(firstMission);
   const expeditionStageRef = useRef(0);
   const expeditionTagsRef = useRef(0);
@@ -1381,7 +1384,42 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
   const finalMegastructureStage = isMegastructure && expeditionStageRef.current + 1 >= megastructureStageCount;
   const megastructureHasBoss = !!mission.megastructureBossTarget;
   const expeditionProgress: ExpeditionProgress = { zonesCompleted: expeditionStageRef.current + 1, optionalRecovered: expeditionOptionalRef.current + currentOptionalRecovered };
-  return <div className={`game-root class-${hud.classId}`} onContextMenu={event => event.preventDefault()}>
+  useEffect(() => {
+    setDeploymentCueVisible(true);
+    setBossTransitionCue(null);
+    bossPresentationRef.current = { active: false, phase: 1 };
+    const timer = window.setTimeout(() => setDeploymentCueVisible(false), 3600);
+    return () => window.clearTimeout(timer);
+  }, [activeMission.id]);
+
+  const bossMutationSignature = hud.bossPhaseMutationNames.join(' + ');
+  useEffect(() => {
+    const previous = bossPresentationRef.current;
+    const phaseShift = previous.active && hud.bossActive && hud.bossPhase > previous.phase;
+    if (hud.bossActive && (!previous.active || phaseShift)) {
+      setBossTransitionCue({
+        key: `${activeMission.id}:${hud.bossLabel}:${hud.bossPhase}`,
+        kicker: phaseShift ? 'COMMAND TARGET // PHASE SHIFT' : 'COMMAND TARGET // CONTACT',
+        title: phaseShift ? `${hud.bossLabel} // phase ${hud.bossPhase}` : hud.bossLabel,
+        detail: bossMutationSignature
+          ? `${bossMutationSignature} // attack profile changed; control remains live.`
+          : phaseShift
+            ? 'Attack profile reconfigured // control remains live.'
+            : 'Deep-zone command signal acquired // weapons remain live.',
+      });
+    }
+    bossPresentationRef.current = { active: hud.bossActive, phase: hud.bossPhase };
+  }, [activeMission.id, bossMutationSignature, hud.bossActive, hud.bossLabel, hud.bossPhase]);
+
+  useEffect(() => {
+    if (!bossTransitionCue) return;
+    const timer = window.setTimeout(() => setBossTransitionCue(null), 2400);
+    return () => window.clearTimeout(timer);
+  }, [bossTransitionCue?.key]);
+
+  return <div className={`game-root class-${hud.classId}`} data-mission-presentation="non-blocking-cues" onContextMenu={event => event.preventDefault()}>
+    {deploymentCueVisible && !hud.dead && !hud.complete && <div className={`mission-cinematic deployment-cue ${profileSettings.effectIntensity === 'reduced' ? 'reduced-motion' : ''}`} data-presentation="deployment" role="status" aria-live="polite" aria-atomic="true"><small>DROP VECTOR // OP T{activeMission.operationTier ?? 1} · ML {activeMission.monsterLevel ?? 1}</small><b>{activeMission.title}</b><span>{activeMission.locationName} // {activeMission.objective}</span><em>{activeMission.conditionLabels.slice(0, 2).join(' · ') || activeMission.directorPreview}</em></div>}
+    {bossTransitionCue && !hud.dead && !hud.complete && <div className={`mission-cinematic boss-transition-cue ${profileSettings.effectIntensity === 'reduced' ? 'reduced-motion' : ''}`} data-presentation="boss-transition" role="status" aria-live="polite" aria-atomic="true"><small>{bossTransitionCue.kicker}</small><b>{bossTransitionCue.title}</b><span>{bossTransitionCue.detail}</span></div>}
     <div className="mission-chip">OP T{activeMission.operationTier ?? 1} // ML {activeMission.monsterLevel ?? 1} // {activeMission.locationName.toUpperCase()} <span className="mission-build-label">// {buildLabel.toUpperCase()}</span></div>
     <canvas ref={canvasRef} className="game-canvas" aria-label="Vector Combat contract field" aria-describedby="target-lock-status" onPointerMove={onCanvasPointerMove} onPointerDown={onCanvasPointerDown} onPointerUp={onCanvasPointerUp} onPointerCancel={onCanvasPointerUp} onPointerLeave={() => { if (!coarse) fireSourcesRef.current.mouse = false; }} />
     <div id="target-lock-status" className="combat-sr-status" role="status" aria-live="polite" aria-atomic="true">{targetAnnouncement}</div>
