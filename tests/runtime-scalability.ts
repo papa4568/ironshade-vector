@@ -49,7 +49,7 @@ const androidSmokeSource = readFileSync(resolve(process.cwd(), 'scripts/android-
 
 assert(rendererSource.includes('runtimeAnimationStride({') && rendererSource.includes('dataset.runtimeAnimationLod'), 'renderer must apply and expose authored enemy animation LOD');
 assert(rendererSource.includes('runtimePoolTrimTarget(') && rendererSource.includes('dataset.runtimePools'), 'renderer must trim and expose burst-grown secondary pools');
-assert(rendererSource.includes('runtimeAssetPreloadReady(state.time, profile)') && rendererSource.includes("'startup-deferred'") === false ? false : true, 'renderer must defer noncritical preload during combat startup');
+assert(rendererSource.includes('runtimeAssetPreloadReady(state.time, profile)') && rendererSource.includes('dataset.assetStreaming = `startup-deferred:'), 'renderer must defer noncritical preload during combat startup');
 assert(rendererSource.includes('preloadGraphicsAssets(') && rendererSource.includes('dataset.assetStreaming'), 'renderer must run bounded mission asset preload/streaming');
 assert(graphicsSource.includes('export async function preloadGraphicsAssets') && graphicsSource.includes('workerCount'), 'graphics runtime must implement bounded-concurrency preload');
 assert(canvasSource.includes('feedback.performanceStats()') && canvasSource.includes('dataset.audioVirtualization'), 'runtime QA must expose audio virtualization pressure');
