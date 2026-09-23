@@ -1132,3 +1132,18 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Android artifact `10742788131` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.288`, debug signing, min SDK 24 / target SDK 36, and APK SHA-256 `b0433b0a03211fd8e9bb3b6197ac7eb9b643f5fff807510442a62db01f3f2711`.
   - **Next: P14-D — Build integration.**
 
+## 2026-09-23 — P14-D Class Arsenal Expansion // Build integration
+
+- [x] **P14-D Build integration** — carried the complete six-variant Carbine/Breacher/Rail arsenal through progression, crafting/affixes, class skills, Singular interactions, and class-owned loot without creating a second progression or loot system.
+  - Added one data-driven build-integration row for every variant in `src/game/classArsenal.ts`. Each row binds the variant to its existing four-node owned-family progression lane, a legal preferred-affix set, class-skill tuning, and an additional Singular-linked class-skill payoff.
+  - Existing progression remains family-owned and save-safe: Burst/Precision consume the Systems Carbine lane, Slug/Rapid consume the Vanguard Breacher lane, and Charge/Repeater consume the Vector Rail lane. No Operator Network schema bump or profile migration was required.
+  - Class-skill derivation now records `variant-build:<variant>` and applies pair-specific tuning so the firing package changes the active skill economy rather than existing only as weapon stat presentation. Variant-aware Singular links add a second authored payoff while preserving each Singular's fixed chase-item rules.
+  - Reconstruction now exposes the active firing package and its legal preferred affixes through the existing crafting build-integration surface. Singulars remain non-editable fixed packages; ordinary weapon frames continue to use the centralized affix legality/conflict/rarity rules.
+  - Class-owned ordinary recoveries now pass the active variant's preferred legal affixes into the centralized gear generator for victory, contract, and field recovery paths. Universal support slots remain unbiased, and hard class-family loot ownership remains unchanged.
+  - Added `tests/class-arsenal-build-integration.ts` to the production `test:class-arsenal` gate. Coverage checks all six variants across owned-family progression, legal crafting preferences, live class-skill sources, Singular interaction, and class-owned loot routing.
+  - PR #201 Browser E2E `35846424229` passed the full desktop + mobile-landscape regression/production build on tested head `eb2485de4cc41aa117dd598fa95aed34f637710a`.
+  - Merged gameplay source `b005092cf4bf761640bb37b6d5d530b71bebb289` passed post-merge Browser E2E `35846732274` and Level 15 beta smoke `35846732264`.
+  - Android beta.289 run `35846732260` passed the full production regression/build, native project generation, debug APK build, package/version/min-SDK/target-SDK/signature verification, Android emulator install/cold launch/touch/runtime/lifecycle QA, authored-content checks, and the Chapter 3 touch playthrough.
+  - Android artifact `10743144568` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.289`, debug signing, min SDK 24 / target SDK 36, and APK SHA-256 `faeb0b6ee0393a1f4d6996794da76508c7edb154739f2dc21ca6d06045033c76`.
+  - **Next: P14-E — Presentation/playtest.**
+
