@@ -890,6 +890,7 @@ export class ThreeCombatRenderer {
   private height = 1;
   private pixelRatio = 1;
   private lastFrameAt = 0;
+  private runtimeStartedAt = 0;
   private graphicsBudgetSignature = '';
   private runtimePreloadSignature = '';
   private animationFrame = 0;
@@ -995,6 +996,8 @@ export class ThreeCombatRenderer {
 
   render(state: SimState, width: number, height: number, quality: number, mission: Contract, mobileTargetId: number | null, operatorFaction: EquipmentFaction | null, reducedTargetMotion = false, firingIntent = false, cameraFeedback?: CombatCameraFeedbackSample) {
     const now = performance.now();
+    if (this.runtimeStartedAt <= 0) this.runtimeStartedAt = now;
+    const runtimeSeconds = Math.max(0, (now - this.runtimeStartedAt) / 1000);
     const frameMs = this.lastFrameAt > 0 ? now - this.lastFrameAt : 1000 / 60;
     this.lastFrameAt = now;
     const budget = this.renderBudget.sample(frameMs, quality);
@@ -1002,7 +1005,7 @@ export class ThreeCombatRenderer {
     this.animationFrame += 1;
     this.resize(width, height, quality, budget);
     this.ensureEnvironment(state, mission, budget);
-    this.scheduleRuntimeAssetPreload(state, mission, budget, runtimeProfile);
+    this.scheduleRuntimeAssetPreload(runtimeSeconds, state, mission, budget, runtimeProfile);
     this.syncSpinHabitatArchitecture(state, mission, budget);
     this.syncJovianHarvesterVisualLanguage(state, mission, budget);
     this.syncIceMineBrittleSupports(state, mission, budget);
@@ -1111,8 +1114,8 @@ export class ThreeCombatRenderer {
     this.renderer.dispose();
   }
 
-  private scheduleRuntimeAssetPreload(state: SimState, mission: Contract, budget: RenderBudgetSnapshot, profile: RuntimeScalabilityProfile) {
-    if (!runtimeAssetPreloadReady(state.time, profile)) {
+  private scheduleRuntimeAssetPreload(runtimeSeconds: number, state: SimState, mission: Contract, budget: RenderBudgetSnapshot, profile: RuntimeScalabilityProfile) {
+    if (!runtimeAssetPreloadReady(runtimeSeconds, profile)) {
       this.renderer.domElement.dataset.assetStreaming = `startup-deferred:${profile.preloadDelaySeconds.toFixed(1)}s@${profile.preloadConcurrency}`;
       this.renderer.domElement.dataset.assetPreloadStatus = 'deferred';
       return;
