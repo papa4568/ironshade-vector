@@ -112,7 +112,7 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## P13 — Enemy Modifier & Status Visual Language
 
-- [ ] **P13-A Presentation framework** — composable animation/material/VFX/audio tied to deterministic enemy state
+- [x] **P13-A Presentation framework** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
 - [ ] **P13-B T9 visuals I** — Reinforced Core, Ablative Mantle, Hunter Servo
 - [ ] **P13-C T9 visuals II** — Redline Bus, Countermass Rig, Relay Reflex
 - [ ] **P13-D Protocol visuals** — physical/animated tells for elite protocols + enhanced variants
@@ -159,22 +159,22 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P13-A — Presentation framework.**
+**Next: P13-B — T9 visuals I.**
 
-Run **P13-A — Presentation framework** as the first Enemy Modifier & Status Visual Language batch: define a composable presentation contract that maps deterministic enemy modifier/status state into animation, material, VFX, and audio channels without duplicating or changing combat simulation.
+Run **P13-B — T9 visuals I** as the next Enemy Modifier & Status Visual Language batch: use the P13-A presentation contract to give Reinforced Core, Ablative Mantle, and Hunter Servo distinct authored/fallback animation, material, VFX, and audio reads while preserving attack/status tell priority and mobile readability.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.276**
+- Android beta: **0.0.1-beta.277**
 - Package: `app.ironshade.vector`
-- Verified: **P12-G AAA Combat Feel Camera/haptics/perf complete**
-- Gameplay source: `499000258a371d35320ca761feee5880bf963a0c`
-- PR Browser E2E: `35796896031`
-- Browser E2E: `35797107474`
-- Level 15 beta smoke: `35797107513`
-- Android beta.276: `35797107491`
-- APK artifact: `10724222054`
-- APK SHA-256: `715e099f360713b50b6cd7a23d3b97b74c55e8abbf14c035ef4cc70fcd28c885`
+- Verified: **P13-A Enemy Modifier & Status Visual Language Presentation framework complete**
+- Gameplay source: `9059fc12f115e43fdd3d87f9332d39484b6f9c1c`
+- PR Browser E2E: `35799184240`
+- Browser E2E: `35799405651`
+- Level 15 beta smoke: `35799405627`
+- Android beta.277: `35799405655`
+- APK artifact: `10725795522`
+- APK SHA-256: `30f7228bafffaf2cd204437e9b5f9d6fcc83e1e69fae60a9de723e575dac6612`
 - Signing: debug-signed beta; permanent signing is P17-A
