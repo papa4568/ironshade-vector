@@ -32,27 +32,42 @@ BROWSER_E2E_VIEWPORT=android-emulator CDP_ENDPOINT=http://127.0.0.1:9222 node sc
 BROWSER_E2E_VIEWPORT=android-emulator CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/verify-authored-weapons.mjs
 BROWSER_E2E_VIEWPORT=android-emulator CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/verify-authored-refinery.mjs
 
-adb shell input keyevent KEYCODE_HOME
-sleep 2
-# Bring the existing MainActivity back to the foreground instead of launching a
-# fresh activity instance, so this gate exercises Android pause/resume rather
-# than a cold navigation reset.
-adb shell am start -W --activity-reorder-to-front -n "$ACTIVITY"
-timeout 30 bash -c 'until [[ -n "$(adb shell pidof app.ironshade.vector 2>/dev/null | tr -d "\r")" ]]; do sleep 1; done'
-RESUME_PID="$(adb shell pidof "$PACKAGE" | tr -d '\r')"
-if [[ -z "$RESUME_PID" ]]; then
-  echo "Ironshade Vector process did not resume after backgrounding." >&2
-  exit 1
-fi
-RESUME_PROCESS_MODE="preserved"
-if [[ "$RESUME_PID" != "$APP_PID" ]]; then
-  RESUME_PROCESS_MODE="reclaimed"
-  echo "ANDROID_LIFECYCLE_PROCESS_RECLAIM before=$APP_PID after=$RESUME_PID // validating restored combat surface"
-fi
-RESUME_SOCKET="webview_devtools_remote_${RESUME_PID}"
+LIFECYCLE_ATTEMPT=1
+while true; do
+  adb shell input keyevent KEYCODE_HOME
+  sleep 2
+  # Bring the existing MainActivity back to the foreground instead of launching a
+  # fresh activity instance, so this gate exercises Android pause/resume rather
+  # than a cold navigation reset.
+  adb shell am start -W --activity-reorder-to-front -n "$ACTIVITY"
+  timeout 30 bash -c 'until [[ -n "$(adb shell pidof app.ironshade.vector 2>/dev/null | tr -d "\r")" ]]; do sleep 1; done'
+  RESUME_PID="$(adb shell pidof "$PACKAGE" | tr -d '\r')"
+  if [[ -z "$RESUME_PID" ]]; then
+    echo "Ironshade Vector process did not resume after backgrounding." >&2
+    exit 1
+  fi
+  if [[ "$RESUME_PID" == "$APP_PID" ]]; then
+    break
+  fi
+
+  echo "ANDROID_LIFECYCLE_PROCESS_RECLAIM before=$APP_PID after=$RESUME_PID attempt=$LIFECYCLE_ATTEMPT // re-establishing combat before retrying pause/resume"
+  if [[ "$LIFECYCLE_ATTEMPT" -ge 2 ]]; then
+    echo "Ironshade Vector process was reclaimed during two consecutive pause/resume attempts." >&2
+    exit 1
+  fi
+
+  APP_PID="$RESUME_PID"
+  RESUME_SOCKET="webview_devtools_remote_$APP_PID"
+  adb forward --remove tcp:9222 >/dev/null 2>&1 || true
+  adb forward tcp:9222 "localabstract:$RESUME_SOCKET"
+  CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-runtime-smoke.mjs
+  LIFECYCLE_ATTEMPT=$((LIFECYCLE_ATTEMPT + 1))
+done
+
+RESUME_SOCKET="webview_devtools_remote_$RESUME_PID"
 adb forward --remove tcp:9222 >/dev/null 2>&1 || true
-adb forward tcp:9222 "localabstract:${RESUME_SOCKET}"
-ANDROID_RESUME_CHECK=1 ANDROID_RESUME_PROCESS_MODE="$RESUME_PROCESS_MODE" CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-runtime-smoke.mjs
+adb forward tcp:9222 "localabstract:$RESUME_SOCKET"
+ANDROID_RESUME_CHECK=1 ANDROID_RESUME_PROCESS_MODE=preserved CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-runtime-smoke.mjs
 
 adb exec-out screencap -p > android-runtime-smoke.png
 if [[ ! -s android-runtime-smoke.png ]]; then
