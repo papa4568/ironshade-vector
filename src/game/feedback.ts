@@ -57,7 +57,37 @@ export const combatAudioBudget = {
   maxVoices: 18,
   criticalReserveVoices: 3,
   maxTailVoices: 5,
+  backgroundVoiceCeiling: 12,
+  normalVoiceCeiling: 15,
 } as const;
+
+export type CombatAudioVoiceAdmission = {
+  admitted: boolean;
+  reason: 'available' | 'background-pressure' | 'normal-pressure' | 'tail-pressure' | 'main-ceiling' | 'absolute-ceiling';
+};
+
+export function combatAudioVoiceAdmission(
+  activeVoices: number,
+  activeTailVoices: number,
+  role: 'direct' | 'tail',
+  priority: CombatAudioPriority,
+): CombatAudioVoiceAdmission {
+  const criticalCeiling = combatAudioBudget.maxVoices + combatAudioBudget.criticalReserveVoices;
+  if (activeVoices >= criticalCeiling) return { admitted: false, reason: 'absolute-ceiling' };
+  if (role === 'tail' && activeTailVoices >= combatAudioBudget.maxTailVoices && priority !== 'critical') {
+    return { admitted: false, reason: 'tail-pressure' };
+  }
+  if (priority === 'background' && activeVoices >= combatAudioBudget.backgroundVoiceCeiling) {
+    return { admitted: false, reason: 'background-pressure' };
+  }
+  if (priority === 'normal' && activeVoices >= combatAudioBudget.normalVoiceCeiling) {
+    return { admitted: false, reason: 'normal-pressure' };
+  }
+  if (priority !== 'critical' && activeVoices >= combatAudioBudget.maxVoices) {
+    return { admitted: false, reason: 'main-ceiling' };
+  }
+  return { admitted: true, reason: 'available' };
+}
 
 const unityBusGain: Record<AudioBusName, number> = { ui: 1, weapon: 1, impact: 1, foley: 1, skill: 1, threat: 1, utility: 1 };
 export const combatMixProfiles: Record<CombatAudioPriority, { holdSeconds: number; busGain: Record<AudioBusName, number> }> = {
@@ -507,6 +537,9 @@ class FeedbackBus {
   private buses: Partial<Record<AudioBusName, GainNode>> = {};
   private activeVoices = 0;
   private activeTailVoices = 0;
+  private virtualizedVoices = 0;
+  private virtualizedTailVoices = 0;
+  private lastVirtualizationReason: CombatAudioVoiceAdmission['reason'] = 'available';
   private mixPriority: CombatAudioPriority = 'normal';
   private mixPriorityUntil = 0;
   private settings: ProfileSettings | null = null;
@@ -598,10 +631,13 @@ class FeedbackBus {
   private playLayer(layer: WeaponAudioLayer, volume: number, pitchCents = 0, gainMultiplier = 1, role: 'direct' | 'tail' = 'direct', applyAcoustics = true, busName: AudioBusName = 'utility', priority: CombatAudioPriority = 'normal') {
     const context = this.context;
     if (!context || context.state !== 'running') return;
-    const criticalCeiling = combatAudioBudget.maxVoices + combatAudioBudget.criticalReserveVoices;
-    if (this.activeVoices >= criticalCeiling) return;
-    if (this.activeVoices >= combatAudioBudget.maxVoices && priority !== 'critical') return;
-    if (role === 'tail' && this.activeTailVoices >= combatAudioBudget.maxTailVoices && priority !== 'critical') return;
+    const admission = combatAudioVoiceAdmission(this.activeVoices, this.activeTailVoices, role, priority);
+    if (!admission.admitted) {
+      this.virtualizedVoices += 1;
+      if (role === 'tail') this.virtualizedTailVoices += 1;
+      this.lastVirtualizationReason = admission.reason;
+      return;
+    }
 
     const treatment = applyAcoustics ? acousticTreatmentFor(this.environment) : null;
     const environmentalDelay = treatment && role === 'tail' ? treatment.tailDelay : 0;
@@ -755,6 +791,16 @@ class FeedbackBus {
     const profile = playerStatusAudioProfiles[cue];
     this.applyPriorityMix(profile.priority);
     for (const layer of profile.layers) this.playLayer(layer, volume * profile.masterGain, 0, 1, 'direct', true, 'utility', profile.priority);
+  }
+
+  performanceStats() {
+    return {
+      activeVoices: this.activeVoices,
+      activeTailVoices: this.activeTailVoices,
+      virtualizedVoices: this.virtualizedVoices,
+      virtualizedTailVoices: this.virtualizedTailVoices,
+      lastVirtualizationReason: this.lastVirtualizationReason,
+    };
   }
 
   cue(cue: FeedbackCue, variantId?: WeaponVariantId | null) {
