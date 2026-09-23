@@ -27,10 +27,10 @@ SOCKET="webview_devtools_remote_${APP_PID}"
 adb forward --remove tcp:9222 >/dev/null 2>&1 || true
 adb forward tcp:9222 "localabstract:${SOCKET}"
 node scripts/android-runtime-smoke.mjs
-CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/verify-authored-operator.mjs
-CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/verify-authored-enemies.mjs
-CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/verify-authored-weapons.mjs
-CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/verify-authored-refinery.mjs
+BROWSER_E2E_VIEWPORT=android-emulator CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/verify-authored-operator.mjs
+BROWSER_E2E_VIEWPORT=android-emulator CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/verify-authored-enemies.mjs
+BROWSER_E2E_VIEWPORT=android-emulator CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/verify-authored-weapons.mjs
+BROWSER_E2E_VIEWPORT=android-emulator CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/verify-authored-refinery.mjs
 
 adb shell input keyevent KEYCODE_HOME
 sleep 2
