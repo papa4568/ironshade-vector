@@ -13,7 +13,7 @@ Only active/future executable work lives here. Completed and verified work belon
 
 ## P16 — Performance Without Compromise
 
-- [ ] **P16-E — Soak/stress QA** — run 30-minute thermal soak, worst-case T12 stress, frame-pacing, memory, and leak checks. **Done when:** the defined stress scenarios complete without unacceptable thermal/memory/frame-pacing degradation or unresolved leaks/crashes.
+- [ ] **P16-E — Physical-device soak/stress QA** — complete the remaining representative-device 30-minute T12 thermal/GPU frame-pacing soak. Automated CI already covers sustained T12 stress, crash/ANR survival, JS heap/PSS growth, and relative frame-pacing stability; emulator thermals and SwiftShader GPU timing are non-representative. **Done when:** representative physical Android hardware completes the 30-minute T12 scenario without unacceptable thermal throttling, GPU/frame-pacing degradation, memory growth, leaks, or crashes.
 - [ ] **P16-F — Quality modes/device QA** — finalize richer flagship mode and mechanics-preserving performance mode, then verify across representative Android device tiers. **Done when:** quality modes visibly differ, performance scaling preserves mechanics/readability, settings persist correctly, and device-tier playthrough QA passes.
 
 ## P17 — External Beta / Delivery
