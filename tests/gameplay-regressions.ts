@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { applyShipBonuses, buildMegastructureDebrief, buyConsumable, createDefaultCampaign, generateContracts, getMegastructureStageContract, loadCampaign, saveCampaign } from '../src/game/campaign';
+import { applyShipBonuses, buildMegastructureDebrief, buyConsumable, createDefaultCampaign, deepTargetForLocation, generateContracts, getMegastructureStageContract, loadCampaign, locationNameFor, missionObjectiveFor, saveCampaign, type Contract } from '../src/game/campaign';
 import { abilityUsesTargetAcquisition, acquireCombatTarget, aimAtMobileTarget, applyPlayerDamage, createSimulation, createTargetControlMemory, cycleWeapon, getAbilityConfig, resetTargetControlMemory, selectWeapon, stepSimulation, triggerAbility, triggerConsumable, triggerDodge, triggerFire, triggerReload, triggerVent, updateMobileTargetControl, weaponConfigs, weaponHandlingProfiles, type Telemetry } from '../src/game/sim';
-import { applyMissionSetup, createDirector, stepMissionDirector } from '../src/game/director';
+import { applyMissionSetup, continueIntoDeepZone, createDirector, stepMissionDirector } from '../src/game/director';
+import { findNavigationPath } from '../src/game/mapPathfinding';
 import { activeWeaponFamilyForProfile, awardRecovery, awardVictory, buildIdentity, capstoneInteractionFor, createDefaultProfile, deriveCombatBuild, equipItem, isItemClassCompatible, loadProfile, materializeModifier, normalizeClassArmament, saveProfile, setAbilityMod, setOperatorClass, setSpecialization, setSpecializationOverclock, specializationGearSynergyDefinitions, specializationGearSynergyForProfile, systemsCapstoneInteractionFor, vanguardCapstoneInteractionFor, vectorCapstoneInteractionFor } from '../src/game/meta';
 import { CAMPAIGN_STORAGE_KEY, GAME_STATE_STORAGE_KEY, prepareSaveRecovery, PROFILE_STORAGE_KEY } from '../src/game/saveRecovery';
 import { loadGameState, saveGameState } from '../src/game/gamePersistence';
@@ -1971,9 +1972,41 @@ const acquiredFireState = prepareAcquisitionState();
 const acquiredFireTarget = acquiredFireState.enemies[0]!;
 Object.assign(acquiredFireTarget, { active: true, x: 1240, y: 500 });
 acquiredFireState.player.aim = { x: -1, y: 0 };
-assert.equal(triggerFire(acquiredFireState, 'acquire'), true, 'assisted FIRE should execute after target acquisition');
-assert.ok(acquiredFireState.player.aim.x > 0.99, 'assisted FIRE must focus the selected hostile before spawning the shot');
-assert.ok(acquiredFireState.projectiles.some(projectile => projectile.active && projectile.owner === 'player' && projectile.vx > 0), 'assisted FIRE projectile should travel toward the acquired hostile');
+const acquiredFireMemory = createTargetControlMemory();
+assert.equal(updateMobileTargetControl(acquiredFireState, 'balanced', acquiredFireMemory), acquiredFireTarget.id, 'assisted FIRE should first acquire through smooth target control');
+const earlyAssistedAim = { ...acquiredFireState.player.aim };
+assert.ok(earlyAssistedAim.x < -0.95, 'first assisted target-control step must not snap a 180-degree aim change');
+assert.equal(triggerFire(acquiredFireState, 'acquire', acquiredFireTarget.id), false, 'assisted FIRE must wait until the retained target-control solution converges');
+assert.deepEqual(acquiredFireState.player.aim, earlyAssistedAim, 'blocked assisted FIRE must not mutate aim at shot time');
+assert.equal(acquiredFireState.projectiles.some(projectile => projectile.active && projectile.owner === 'player'), false, 'an unconverged assisted shot must not create a projectile');
+for (let i = 0; i < 30; i += 1) updateMobileTargetControl(acquiredFireState, 'balanced', acquiredFireMemory);
+const convergedAssistedAim = { ...acquiredFireState.player.aim };
+assert.equal(triggerFire(acquiredFireState, 'acquire', acquiredFireTarget.id), true, 'assisted FIRE should execute once smooth target control has converged');
+assert.deepEqual(acquiredFireState.player.aim, convergedAssistedAim, 'assisted FIRE must preserve the smoothly converged aim instead of assigning a shot-time vector');
+assert.ok(acquiredFireState.projectiles.some(projectile => projectile.active && projectile.owner === 'player' && projectile.vx > 0), 'converged assisted FIRE projectile should travel toward the retained hostile');
+
+const assistedOcclusionFireState = prepareAcquisitionState();
+const assistedOcclusionTarget = assistedOcclusionFireState.enemies[0]!;
+Object.assign(assistedOcclusionTarget, { active: true, id: 251, x: 1240, y: 500, role: 'suppressor' as const });
+const assistedOcclusionMemory = createTargetControlMemory();
+assert.equal(updateMobileTargetControl(assistedOcclusionFireState, 'balanced', assistedOcclusionMemory), 251);
+const assistedOcclusionCover = assistedOcclusionFireState.objects[0]!;
+Object.assign(assistedOcclusionCover, { active: true, kind: 'cover' as const, x: 1080, y: 480, w: 55, h: 42 });
+assistedOcclusionFireState.time += 0.2;
+assert.equal(updateMobileTargetControl(assistedOcclusionFireState, 'balanced', assistedOcclusionMemory), 251, 'brief LOS loss may retain the visual lock during occlusion grace');
+assert.equal(triggerFire(assistedOcclusionFireState, 'acquire', 251), false, 'assisted FIRE must not commit through cover even while the visual lock is still inside occlusion grace');
+
+const bossGateTargetState = prepareAcquisitionState();
+const gatedBoss = bossGateTargetState.enemies.find(enemy => enemy.role === 'boss')!;
+Object.assign(gatedBoss, { active: true, dead: false, x: 1240, y: 500 });
+bossGateTargetState.bossGateHold = true;
+bossGateTargetState.bossActive = false;
+const bossGateMemory = createTargetControlMemory();
+bossGateMemory.targetId = gatedBoss.id;
+bossGateMemory.lastVisibleAt = bossGateTargetState.time;
+assert.equal(updateMobileTargetControl(bossGateTargetState, 'balanced', bossGateMemory), null, 'boss locks must be released while the deep-zone gate is unavailable');
+assert.equal(bossGateMemory.targetId, null, 'boss-gate invalidation must clear retained target memory');
+assert.equal(triggerFire(bossGateTargetState, 'acquire', gatedBoss.id), false, 'assisted FIRE must reject a stale boss id while the boss gate is held');
 
 const manualFireState = prepareAcquisitionState();
 const manualFireTarget = manualFireState.enemies[0]!;
@@ -2042,6 +2075,7 @@ assert.match(targetingCanvasSource, /Assisted target locked:/, 'assisted target 
 assert.match(targetingCanvasSource, /className="combat-sr-status" role="status" aria-live="polite"/, 'combat must expose lock-state changes through a polite live region without making health updates live');
 assert.match(targetingCanvasSource, /data-target-id=\{focusEnemy\.id\}/, 'the visible target readout must identify the same retained target used for execution');
 assert.match(targetingCanvasSource, /fireCurrent\(manualTargeting \? 'manual' : 'acquire', targetId\)/, 'assisted FIRE must pass the retained target id into execution');
+assert.match(targetingCanvasSource, /checkpoint && mobileTargetControlRef\.current\.targetId != null[\s\S]*Boss gate locked; assisted target released\./, 'boss-gate checkpoint transitions must release any retained assisted target instead of leaving a stale lock');
 assert.match(targetingCanvasSource, /gamepadTriggerFire[\s\S]*updateAssistedTarget\(state, profileSettingsRef\.current\.aimAssist\)/, 'controller RT should share assisted acquisition when manual aim is inactive');
 assert.match(targetingCanvasSource, /gamepadAimActive[\s\S]*clearAssistedTarget\('Manual controller aim active; assisted target released\.'\)/, 'controller right-stick takeover must invalidate assisted target control immediately');
 assert.match(targetingCanvasSource, /canvas\.dataset\.controllerInput = gamepad \? 'connected' : 'none'/, 'browser QA must be able to observe controller activation deterministically');
@@ -2051,6 +2085,136 @@ assert.match(targetingFeedbackSource, /cue === 'targetLock' \? 8/, 'target acqui
 assert.match(targetingFeedbackSource, /playEffect\('dual-rumble'/, 'supported controllers should receive target feedback through their rumble actuator');
 assert.match(targetingRendererSource, /reducedTargetMotion \? 1 : 1 \+ Math\.sin\(state\.time \* 8\) \* 0\.08/, 'reduced effects must freeze the 3D target-ring scale while full effects retain restrained motion');
 assert.match(targetingCanvasSource, /const pulse = reducedMotion \? 0\.9 : 0\.78 \+ Math\.sin\(time \* 8\) \* 0\.1/, 'Canvas target feedback must also remove pulsing in reduced-effects mode');
+
+function spinHabitatAssistedFireReliabilitySmoke() {
+  const objective = missionObjectiveFor('gravity-stabilization', 'spin-habitat');
+  const contract: Contract = {
+    id: 'p18-a-spin-habitat',
+    sponsor: 'longarc',
+    archetype: 'stabilization',
+    location: 'spin-habitat',
+    locationName: locationNameFor('spin-habitat'),
+    title: 'P18-A rotating habitat targeting audit',
+    objective: objective.objective,
+    objectiveMode: 'gravity-stabilization',
+    objectiveSteps: objective.steps,
+    briefing: 'Deterministic assisted-fire reliability audit.',
+    conditions: [],
+    conditionLabels: [],
+    directorPreview: '',
+    deepTarget: deepTargetForLocation('spin-habitat'),
+    rewardBase: { credits: 100 },
+    reputationGain: 1,
+    priority: false,
+    anomalyOpportunity: false,
+    seed: 1818,
+  };
+  const state = createSimulation();
+  applyMissionSetup(state, contract);
+  const director = createDirector();
+  for (const enemy of state.enemies) {
+    enemy.active = false;
+    enemy.dead = false;
+    enemy.vx = 0;
+    enemy.vy = 0;
+  }
+  const assistedMemory = createTargetControlMemory();
+
+  const fireAndDamage = (enemyId: number, playerX: number, playerY: number, enemyX: number, enemyY: number, label: string) => {
+    const enemy = state.enemies.find(candidate => candidate.id === enemyId)!;
+    state.player.x = playerX;
+    state.player.y = playerY;
+    state.player.vx = 0;
+    state.player.vy = 0;
+    const dx = enemyX - playerX;
+    const dy = enemyY - playerY;
+    const distance = Math.hypot(dx, dy);
+    state.player.aim = { x: dx / distance, y: dy / distance };
+    state.player.fireCooldown = 0;
+    state.player.reloadT = 0;
+    state.player.ventT = 0;
+    state.player.mags[state.player.currentWeapon] = Math.max(3, state.player.mags[state.player.currentWeapon]);
+    Object.assign(enemy, { active: true, dead: false, x: enemyX, y: enemyY, vx: 0, vy: 0, anchored: true });
+    resetTargetControlMemory(assistedMemory);
+    assert.equal(updateMobileTargetControl(state, 'balanced', assistedMemory), enemy.id, label + ' should acquire a visible retained target');
+    const aimBeforeShot = { ...state.player.aim };
+    const durabilityBefore = enemy.hp + enemy.armor;
+    assert.equal(triggerFire(state, 'acquire', enemy.id), true, label + ' should commit an aligned assisted shot');
+    assert.deepEqual(state.player.aim, aimBeforeShot, label + ' should not receive a shot-time aim assignment');
+    assert.ok(state.projectiles.some(projectile => projectile.active && projectile.owner === 'player'), label + ' should create a player projectile');
+    for (let step = 0; step < 90 && enemy.hp + enemy.armor >= durabilityBefore; step += 1) stepSimulation(state, 1 / 120);
+    assert.ok(enemy.hp + enemy.armor < durabilityBefore, label + ' projectile should damage the retained hostile');
+    enemy.active = false;
+    enemy.dead = true;
+    for (const projectile of state.projectiles) if (projectile.owner === 'player') projectile.active = false;
+  };
+
+  assert.deepEqual(state.sectors.map(sector => sector.label), ['RIM HAB', 'SPOKE TRANSIT', 'AXIS HUB'], 'Spin Habitat must expose the authored rim/spoke/axis route');
+  fireAndDamage(6, 420, 590, 610, 590, 'Rim pre-spindown fire');
+
+  director.elapsed = 9.99;
+  stepMissionDirector(state, director, contract, 0.02);
+  assert.deepEqual(state.sectors.map(sector => sector.gravity), [0.08, 0.03, 0.01], '10s emergency spindown must apply the deterministic rim/spoke/axis gravity state');
+  fireAndDamage(5, 900, 590, 1090, 590, 'Spoke emergency-spindown fire');
+
+  director.elapsed = 21.99;
+  stepMissionDirector(state, director, contract, 0.02);
+  assert.deepEqual(state.sectors.map(sector => sector.gravity), [0.86, 0.36, 0.05], '22s recovery must restore the deterministic Spin Habitat gravity state');
+  fireAndDamage(2, 1260, 700, 1430, 700, 'Spoke recovery fire');
+
+  for (const enemy of state.enemies) {
+    if (enemy.role !== 'boss') {
+      enemy.active = false;
+      enemy.dead = true;
+    }
+  }
+  for (const object of state.objects) {
+    if (object.id === 'gravity-control-a' || object.id === 'gravity-control-b') object.exposed = true;
+  }
+  state.player.x = 420;
+  state.player.y = 590;
+  continueIntoDeepZone(state, director);
+  const boss = state.enemies.find(enemy => enemy.role === 'boss')!;
+  assert.equal(state.bossGateHold, false, 'deep-zone transition must release the Spin Habitat boss gate');
+  assert.equal(state.bossActive, true, 'Spin Habitat boss should become available after the deep-zone transition');
+  assert.equal(boss.active, true, 'boss entity should be active once the gate opens');
+
+  const axisRoute = findNavigationPath(state, { x: boss.x, y: boss.y });
+  assert.equal(axisRoute.complete, true, 'opened Spin Habitat must expose a complete rim-to-axis navigation route');
+  const traversedSectors = new Set(axisRoute.points.flatMap(point => state.sectors.filter(sector => point.x >= sector.x && point.x <= sector.x + sector.w && point.y >= sector.y && point.y <= sector.y + sector.h).map(sector => sector.label)));
+  assert.ok(traversedSectors.has('RIM HAB') && traversedSectors.has('SPOKE TRANSIT') && traversedSectors.has('AXIS HUB'), 'rim-to-boss route must cross the rim, spoke, and axis spaces');
+
+  let bossLockPoint = axisRoute.points[0]!;
+  let bossLocked = false;
+  for (let index = axisRoute.points.length - 2; index >= 0; index -= 1) {
+    const point = axisRoute.points[index]!;
+    state.player.x = point.x;
+    state.player.y = point.y;
+    const dx = boss.x - point.x;
+    const dy = boss.y - point.y;
+    const distance = Math.hypot(dx, dy);
+    if (distance < 1) continue;
+    state.player.aim = { x: dx / distance, y: dy / distance };
+    resetTargetControlMemory(assistedMemory);
+    if (updateMobileTargetControl(state, 'balanced', assistedMemory) === boss.id) {
+      bossLockPoint = point;
+      bossLocked = true;
+      break;
+    }
+  }
+  assert.equal(bossLocked, true, 'assisted targeting should reacquire the boss only after the gate opens');
+  const bossDurabilityBefore = boss.hp + boss.armor;
+  state.player.x = bossLockPoint.x;
+  state.player.y = bossLockPoint.y;
+  state.player.fireCooldown = 0;
+  const bossAimBefore = { ...state.player.aim };
+  assert.equal(triggerFire(state, 'acquire', boss.id), true, 'aligned assisted FIRE should remain reliable after boss availability');
+  assert.deepEqual(state.player.aim, bossAimBefore, 'post-gate boss fire must preserve smooth target-control aim');
+  assert.ok(state.projectiles.some(projectile => projectile.active && projectile.owner === 'player'), 'post-gate boss fire should create a player projectile');
+  for (let step = 0; step < 120 && boss.hp + boss.armor >= bossDurabilityBefore; step += 1) stepSimulation(state, 1 / 120);
+  assert.ok(boss.hp + boss.armor < bossDurabilityBefore, 'post-gate assisted projectile should damage the Spin Habitat boss');
+}
+spinHabitatAssistedFireReliabilitySmoke();
 
 const damageNumberState = createSimulation();
 for (const enemy of damageNumberState.enemies) enemy.active = false;

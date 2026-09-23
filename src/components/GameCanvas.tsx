@@ -1280,6 +1280,7 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
       let steps = 0;
       while (accumulator >= fixed && steps < 5) {
         const checkpoint = state.bossGateHold && getSquadRemaining(state) === 0 && getMissionObjectiveStatus(state, activeMissionRef.current).complete && !state.bossActive;
+        if (checkpoint && mobileTargetControlRef.current.targetId != null) clearAssistedTarget('Boss gate locked; assisted target released.');
         if (!checkpoint) {
           const desktopPointerManual = !coarse && !gamepad;
           const manualTargeting = desktopPointerManual || fireSourcesRef.current.mouse || fireSourcesRef.current.aim || gamepadAimActive || now < manualAimUntilRef.current || !!aimStick.current;

@@ -592,6 +592,7 @@ function mobileTargetControlConfig(state: SimState, mode: 'light' | 'balanced') 
 function scoreMobileTarget(state: SimState, mode: 'light' | 'balanced', enemy: Enemy, request: TargetAcquisitionRequest) {
   const p = state.player;
   if (!enemy.active || enemy.dead) return null;
+  if (enemy.role === 'boss' && (state.bossGateHold || !state.bossActive)) return null;
   const delta = { x: enemy.x - p.x, y: enemy.y - p.y };
   const distance = len(delta);
   if (distance > request.maxDistance || distance < 1) return null;
@@ -720,11 +721,18 @@ export function triggerFire(state: SimState, targetingIntent: TargetingIntent = 
   const roundsToFire = Math.min(weapon.roundsPerTrigger, p.mags[p.currentWeapon]);
   if (p.capacitor < weapon.capacitorCost * roundsToFire) { pushEvent(state, 'CAPACITOR LOW // RAIL LANCE INHIBITED', 1.1); return false; }
   if (targetingIntent === 'acquire') {
-    focusAcquiredTarget(state, acquirePreferredCombatTarget(state, {
+    if (preferredTargetId == null) return false;
+    const assistedEnemy = state.enemies.find(enemy => enemy.id === preferredTargetId) ?? null;
+    if (!assistedEnemy || (assistedEnemy.role === 'boss' && (state.bossGateHold || !state.bossActive))) return false;
+    const assistedTarget = evaluateCombatTarget(state, assistedEnemy, {
       maxDistance: weaponAcquisitionRange(p.currentWeapon),
       projectileSpeed: weapon.projectileSpeed,
       visibilityPenalty: p.currentWeapon === 'rail' ? 0.42 : 0.68,
-    }, preferredTargetId));
+    });
+    if (!assistedTarget?.visible) return false;
+    const convergence = 1 - (assistedTarget.direction.x * p.aim.x + assistedTarget.direction.y * p.aim.y);
+    const maxConvergence = 1 - Math.cos(10 * Math.PI / 180);
+    if (convergence > maxConvergence) return false;
   }
   const sector = currentSector(state, p.x, p.y); const speed = Math.hypot(p.vx, p.vy); const velocityDot = speed > 1 ? (p.vx * p.aim.x + p.vy * p.aim.y) / speed : 0;
   const markedTarget = (state.build.mechanics.sensorPenetration || state.build.specialization === 'survey-deadeye') ? targetInAimCone(state, 760, 0.12) : null;
