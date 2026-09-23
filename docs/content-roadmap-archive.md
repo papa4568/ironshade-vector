@@ -1147,3 +1147,18 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Android artifact `10743144568` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.289`, debug signing, min SDK 24 / target SDK 36, and APK SHA-256 `faeb0b6ee0393a1f4d6996794da76508c7edb154739f2dc21ca6d06045033c76`.
   - **Next: P14-E — Presentation/playtest.**
 
+## 2026-09-23 — P14-E Class Arsenal Expansion // Presentation/playtest
+
+- [x] **P14-E Presentation/playtest** — polished the complete six-variant class arsenal through variant-owned handling motion, layered weapon audio, thermal presentation, and sustained-fire QA while preserving P14-D progression/crafting/skill/Singular/loot integration and the hard class-family locks.
+  - Expanded the shared weapon-variant presentation contract with independent recoil/charge/vent handling multipliers, audio pitch/direct/mechanical/tail mix tuning, and authored thermal warning/critical thresholds for Burst + Precision Carbine, Slug + Rapid Breacher, and Charge + Repeater Rail.
+  - Live fire now routes the equipped variant identity into the existing feedback system. Family-level weapon audio remains the base, while each variant applies a bounded pitch/mix signature so same-family alternatives sound different without introducing a second audio path.
+  - Player handling animation now consumes the active variant identity for recoil, rail charge, vent, and thermal-strain signals. Charge Rail receives the strongest spool/bracing read while Repeater Rail keeps the lighter rapid-follow-up response; the Carbine and Breacher pairs likewise retain distinct recoil/vent behavior.
+  - Authored Three.js weapon thermal presentation now uses variant-specific warning/critical timing instead of a single fixed threshold, exposes a deterministic `weaponThermalCue` runtime QA state, and preserves the existing silhouette/muzzle/recoil/aim-lift separation.
+  - Added `tests/class-arsenal-presentation-playtest.ts` to the production `test:class-arsenal` gate. It locks six distinct visual/handling/audio signatures, same-family separation, warning/critical semantics, and a 14-second isolated sustained-fire cycle per variant using live fire cooldowns, reloads, heat dissipation, critical cues, and vent behavior.
+  - The first PR CI run `35848629637` correctly caught a test-state mistake where Rail charge was sampled while the weapon was venting; the playtest was corrected to sample charge and vent independently rather than weakening game behavior to satisfy the assertion.
+  - PR #202 final Browser E2E `35848749371` passed desktop + mobile-landscape full regression/production build and live player journeys on tested head `2a1bc18ebeb0eb4f17ebc85f16fc0d420bb221eb`.
+  - Merged gameplay source `a4baed89b4e5f29248022b2763ad7aa4a6f10d7d` passed post-merge Browser E2E `35849018181`, Level 15 beta smoke `35849018278`, and Android beta.290 `35849018125`.
+  - Android beta.290 passed the full web regression/build, native project generation, debug APK build, package/version/min-SDK/target-SDK/signature verification, Android emulator install/cold launch/touch/runtime/lifecycle QA, authored-content checks, and the Chapter 3 touch playthrough.
+  - Android artifact `10744404734` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.290`, debug signing, min SDK 24 / target SDK 36, and APK SHA-256 `b27dd144f25a0284ffc8c9dfa7d84c852709ac2e343d83121dab0500b5d6ded3`.
+  - **Next: P14-F — Fourth-family gate.**
+
