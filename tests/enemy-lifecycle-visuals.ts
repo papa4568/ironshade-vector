@@ -71,10 +71,7 @@ for (const channel of channels) {
 }
 assert.equal(dangerContract.animation[0]?.priority, 4, 'danger readiness must remain in the top combat-information priority band');
 
-const boss = lifecycleEnemy();
-boss.role = 'boss';
-boss.combatClass = 'command';
-boss.bossPhase = 2;
+const boss = { ...lifecycleEnemy(), role: 'boss' as const, combatClass: 'command' as const, bossPhase: 2 as const };
 const phaseSignals = resolveEnemyLifecyclePresentation(boss, { sinceActivated: 3, sincePhaseChange: 0.55, sinceDeath: -1 });
 assert(phaseSignals.phaseTransition > 0.99, 'boss phase transition must peak independently from HUD text');
 const bossInput = basePresentation();
