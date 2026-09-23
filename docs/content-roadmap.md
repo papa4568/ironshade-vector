@@ -131,7 +131,7 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## P15 — AAA UI / World / Cinematic Polish
 
-- [ ] **P15-A Design system** — typography, spacing, iconography, focus, rarity tokens, panels/tooltips, responsive rules
+- [x] **P15-A Design system** — completed and verified; shared typography, spacing, iconography, focus, canonical rarity tokens, panel/tooltip primitives, and responsive/safe-area rules are archived in `docs/content-roadmap-archive.md`.
 - [ ] **P15-B Build/menu presentation** — class selection, progression/crafting/systems coherence, fast transitions, optional 3D gear inspection
 - [ ] **P15-C Mission/boss/debrief** — deployment sequence, concise in-engine boss transitions, highlights/loot/progression/next unlock
 - [ ] **P15-D World/material polish** — consoles/doors/machinery/pickups/hazards, lighting/material depth, biome state animation/audio
@@ -159,23 +159,23 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P15-A — Design system.**
+**Next: P15-B — Build/menu presentation.**
 
-Run **P15-A — Design system** as the next AAA UI / World / Cinematic Polish batch: establish the shared typography, spacing, iconography, focus, rarity-token, panel/tooltip, and responsive rules that the remaining P15 presentation work will reuse.
+Run **P15-B — Build/menu presentation** as the next AAA UI / World / Cinematic Polish batch: bring class selection, progression, crafting, and ship systems onto the shared P15-A design language, tighten menu transitions, and evaluate optional 3D gear inspection without compromising mobile readability or performance.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.291**
+- Android beta: **0.0.1-beta.292**
 - Package: `app.ironshade.vector`
-- Verified: **P14-F Fourth-family gate complete**
-- Gameplay/test source: `5098b11eab9dd998d5ca30ce7bda0ecabfa8bbdb`
-- Delivery/QA source: `5098b11eab9dd998d5ca30ce7bda0ecabfa8bbdb`
-- PR Browser E2E: `35850980615`
-- Browser E2E: `35851255575`
-- Level 15 beta smoke: `35851255591`
-- Android beta.291: `35851255605`
-- APK artifact: `10745671957`
-- APK SHA-256: `7d7ef186f1e2b6bc93486e44338e73a60b7aa758608c173d9bad04539e984e5f`
+- Verified: **P15-A Design system complete**
+- Gameplay/test source: `4d7e38851d0112c4969a0181aa5d450ecba26ca7`
+- Delivery/QA source: `4d7e38851d0112c4969a0181aa5d450ecba26ca7`
+- PR Browser E2E: `35852741516`
+- Browser E2E: `35853095774`
+- Level 15 beta smoke: `35853095964`
+- Android beta.292: `35853095916`
+- APK artifact: `10745978662`
+- APK SHA-256: `b4f990cc478a1b0a64ee27839787fcb26979ad67b95786afb6508bc4ccf7155f`
 - Signing: debug-signed beta; permanent signing remains P17-A
