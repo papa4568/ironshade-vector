@@ -30,6 +30,16 @@ const threeManifestKeys = new Set(records
   .filter(([, record]) => threeChunks.includes(basename(record.file)))
   .map(([key]) => key));
 const bootImports = new Set(entry.imports ?? []);
+const mainSource = readFileSync(resolve(root, 'src/main.tsx'), 'utf8');
+const runtimeStaticImports = mainSource.split('\n').filter(line => { const trimmed = line.trim(); return trimmed.startsWith('import ') && !trimmed.startsWith('import type '); }).join('\n');
+for (const [label, sourcePath, prefix] of [['save recovery', './game/saveRecovery', 'saveRecovery-'], ['app', './App', 'App-']]) {
+  assert(mainSource.includes(`import('${sourcePath}')`), `The ${label} module is no longer dynamically imported during staged boot.`);
+  assert(!runtimeStaticImports.includes(`from '${sourcePath}'`), `The ${label} module leaked back into a static boot import.`);
+  const stagedRecord = records.find(([, record]) => basename(record.file).startsWith(prefix));
+  assert(stagedRecord, `The staged ${label} chunk was not emitted.`);
+  const [stagedKey] = stagedRecord;
+  assert(!bootImports.has(stagedKey), `The ${label} chunk leaked back into the synchronous boot graph.`);
+}
 assert([...threeManifestKeys].every(key => !bootImports.has(key)), 'Three.js runtime is no longer deferred from the boot entry.');
 
 const graphicsRuntimePrefixes = ['GLTFLoader-', 'KTX2Loader-', 'meshopt_decoder.module-', 'SkeletonUtils-'];
@@ -41,7 +51,7 @@ const graphicsManifestKeys = new Set(records
   .map(([key]) => key));
 assert([...graphicsManifestKeys].every(key => !bootImports.has(key)), 'Authored-asset loaders must remain deferred from the boot entry.');
 
-// Architecture-only guardrail: this verifies intentional code splitting and deferred loading.
+// Architecture-only guardrail: this verifies intentional code splitting and staged boot loading.
 // It does not measure, compare, warn on, or cap bundle/chunk byte sizes.
 assert(jsFiles.length >= 10, `Expected navigation, Three.js, and authored-asset code splitting; found only ${jsFiles.length} JS chunks.`);
 
