@@ -1305,3 +1305,14 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Android beta.309 run `35894842112` passed the full production regression/build, native project generation, debug APK build, package/version/min-SDK/target-SDK/signature verification, emulator install/cold launch, mobile layout/touch/runtime/lifecycle QA, authored-content checks, and Chapter 3 touch playthrough. Runtime evidence included `BOOT_ARCHITECTURE_PASS version=p16-d-v1 totalMs=64 stages=6`, `ANDROID_RUNTIME_SCALABILITY_PASS`, `ANDROID_LIFECYCLE_RESUME_PASS`, `ANDROID_CHAPTER3_PLAYTHROUGH_PASS`, and `ANDROID_EMULATOR_PASS`.
   - Android artifact `10765934872` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.309` (309), debug signing, min SDK 24 / target SDK 36, and APK SHA-256 `78602ee9f3b51310c962dc57119e6a4321c3f094a9d5e0d527105ea6d2171cde`.
   - **Next: P16-E — Soak/stress QA.**
+
+## 2026-09-23 — P16-E Performance Without Compromise // Physical-device soak/stress QA
+
+- [x] **P16-E Physical-device soak/stress QA** — closed the sustained-stress gate with automated emulator evidence plus explicit representative physical-device acceptance.
+  - GitHub Actions run `35898430306` completed the full regression/production build and a 30-minute T12 Command Target soak on the API 35 Pixel 7 Pro emulator. The run held the app process through 1,800 seconds, 345 WebView telemetry samples, and 819 sustained combat input bursts without crash/ANR failure.
+  - Automated memory evidence remained bounded: performance-diagnostics JS heap p95 stayed at 12.112 MB and Android PSS moved from a 105.2 MB baseline median to 112.4 MB final median (+7.2 MB), below the configured leak-growth gate. Relative frame p95 remained 50 ms from baseline to final sampling windows.
+  - Emulator thermal/GPU readings were excluded from physical acceptance because SwiftShader and the emulator thermal HAL are non-representative.
+  - On 2026-09-23, the user reported completing the representative physical-device test and explicitly accepted the gate with the instruction to pass it and move on. That supplies the remaining physical-device thermal/GPU/frame-pacing acceptance required by P16-E.
+  - Soak artifact `10768934719` contains the exercised APK and evidence; APK SHA-256 `5f304c03f8e07b77dc79fdae0f20340f8d49f0aae0767abad9ca5eacd32e59fa`.
+  - **Next: P16-F — Quality modes/device QA.**
+
