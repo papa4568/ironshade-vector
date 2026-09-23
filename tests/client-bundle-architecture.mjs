@@ -30,12 +30,13 @@ const threeManifestKeys = new Set(records
   .filter(([, record]) => threeChunks.includes(basename(record.file)))
   .map(([key]) => key));
 const bootImports = new Set(entry.imports ?? []);
-const bootDynamicImports = new Set(entry.dynamicImports ?? []);
-for (const [label, prefix] of [['save recovery', 'saveRecovery-'], ['app', 'App-']]) {
+const mainSource = readFileSync(resolve(root, 'src/main.tsx'), 'utf8');
+for (const [label, sourcePath, prefix] of [['save recovery', './game/saveRecovery', 'saveRecovery-'], ['app', './App', 'App-']]) {
+  assert(mainSource.includes(`import('${sourcePath}')`), `The ${label} module is no longer dynamically imported during staged boot.`);
+  assert(!mainSource.includes(`from '${sourcePath}'`), `The ${label} module leaked back into a static boot import.`);
   const stagedRecord = records.find(([, record]) => basename(record.file).startsWith(prefix));
   assert(stagedRecord, `The staged ${label} chunk was not emitted.`);
   const [stagedKey] = stagedRecord;
-  assert(bootDynamicImports.has(stagedKey), `The ${label} chunk is no longer directly staged from the boot entry.`);
   assert(!bootImports.has(stagedKey), `The ${label} chunk leaked back into the synchronous boot graph.`);
 }
 assert([...threeManifestKeys].every(key => !bootImports.has(key)), 'Three.js runtime is no longer deferred from the boot entry.');
