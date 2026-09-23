@@ -1114,6 +1114,13 @@ try {
     console.log(`BROWSER_SOLAR_YARD_PASS viewport=${viewportMode} profile=${solarYardEnvironment?.performanceProfile} budget=${solarYardEnvironment?.instanceBudget} casters=${solarYardEnvironment?.shadowCasters} lod=${solarYardEnvironment?.lod} instances=${solarYardEnvironment?.instances} kit=${solarYardEnvironment?.kit} composition=${solarYardEnvironment?.composition} service=${solarYardEnvironment?.service} surface=${solarYardEnvironment?.surface} machinery=${solarYardEnvironment?.machinery} transport=${solarYardEnvironment?.transport}:${solarYardEnvironment?.craneMotion}:${solarYardEnvironment?.craneOffsets} shutters=${solarYardEnvironment?.thermalShutters}:${solarYardEnvironment?.thermalProtection}:${solarYardEnvironment?.thermalControl} materials=${solarYardEnvironment?.materials} lighting=${solarYardEnvironment?.lighting} sun=${solarYardEnvironment?.sunMode}:${solarYardEnvironment?.sunShadow}:${solarYardEnvironment?.sunDirection} patches=${solarYardEnvironment?.sunPatches} shadow=${solarYardEnvironment?.shadowBudget} tone=${solarYardEnvironment?.tone} boss=${solarYardEnvironment?.bossPresentation}:${solarYardEnvironment?.bossAsset} phase=${solarYardEnvironment?.bossPhaseVisual}`);
   }
 
+  const enemyHudReadability = await evaluate(`document.querySelector('canvas')?.dataset.enemyHudReadability ?? ''`);
+  const expectedHudTier = viewportMode === 'mobile-landscape' ? 'mobile-lod2|priority-bars+focused-tags' : 'desktop|full-bars+full-tags';
+  if (!enemyHudReadability.startsWith(expectedHudTier) || !enemyHudReadability.includes('tells:telegraph+protocol+mutation+status+lifecycle')) {
+    throw new Error(`P13-G enemy HUD readability telemetry regressed for ${viewportMode}: ${enemyHudReadability}`);
+  }
+  console.log(`BROWSER_P13G_READABILITY_PASS viewport=${viewportMode} policy=${enemyHudReadability}`);
+
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);
   const expectedCombatLod = coarseCombatSurface ? '2' : '1';
   await waitFor(`(() => {
