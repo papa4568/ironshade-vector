@@ -1031,6 +1031,7 @@ export class ThreeCombatRenderer {
     this.authoredOperatorOwnedMaterials.forEach(material => material.dispose());
     this.authoredOperatorOwnedMaterials = [];
     this.authoredOperatorMaterials = [];
+    this.playerStatusMaterials.forEach(material => material.dispose());
     for (const visual of this.authoredWeapons.values()) {
       visual.instance.release();
       visual.ownedMaterials.forEach(material => material.dispose());
@@ -5435,7 +5436,7 @@ export class ThreeCombatRenderer {
         if (!marker) continue;
         marker.visible = markerIndex < markerCount;
         marker.material.opacity = 0.22 + entry.intensity * 0.5;
-        if (!reducedEffects && (entry.id === 'thermal' || entry.id === 'vacuum')) marker.position.y += Math.sin(state.time * 4.5 + markerIndex) * 0.002;
+        marker.position.y = 1.12 + (markerIndex % 2) * 0.18 + (!reducedEffects && (entry.id === 'thermal' || entry.id === 'vacuum') ? Math.sin(state.time * 4.5 + markerIndex) * 0.025 * motionScale : 0);
       }
     });
     this.renderer.domElement.dataset.playerStatusPresentation = active.map(entry => entry.id).join('+');
