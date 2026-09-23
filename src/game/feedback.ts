@@ -40,7 +40,7 @@ export type ImpactAudioProfile = { layers: WeaponAudioLayer[]; masterGain: numbe
 export type SkillAudioClass = 'vanguard' | 'vector' | 'systems';
 export type FoleyAudioAction = 'reload' | 'vent';
 export type FoleyAudioPhase = 'start' | 'complete';
-export type ThreatAudioCue = 'enemy-telegraph' | 'elite-telegraph' | 'boss-telegraph' | 'boss-phase';
+export type ThreatAudioCue = 'enemy-telegraph' | 'elite-telegraph' | 'boss-telegraph' | 'boss-phase' | 'enemy-spawn' | 'elite-spawn' | 'boss-spawn' | 'danger-ready' | 'enemy-disable' | 'boss-disable';
 export type AudioBusName = 'ui' | 'weapon' | 'impact' | 'foley' | 'skill' | 'threat' | 'utility';
 export type CombatAudioPriority = 'background' | 'normal' | 'important' | 'critical';
 export type FoleyAudioProfile = { start: WeaponAudioLayer[]; complete: WeaponAudioLayer[]; masterGain: number };
@@ -254,6 +254,36 @@ export const threatAudioProfiles: Record<ThreatAudioCue, ThreatAudioProfile> = {
   'boss-phase': {
     layers: [{ frequency: 96, duration: .24, type: 'sawtooth', gain: .48, sweep: .52, lowpassHz: 1250 }, { frequency: 360, duration: .18, type: 'square', gain: .3, sweep: 1.18, delay: .035, lowpassHz: 2600 }, { frequency: 880, duration: .12, type: 'triangle', gain: .2, sweep: .7, delay: .07, lowpassHz: 4800 }],
     masterGain: .22,
+    priority: 'critical',
+  },
+  'enemy-spawn': {
+    layers: [{ frequency: 220, duration: .11, type: 'triangle', gain: .3, sweep: 1.48, lowpassHz: 2400 }, { frequency: 660, duration: .08, type: 'sine', gain: .16, sweep: 1.2, delay: .026, lowpassHz: 4200 }],
+    masterGain: .13,
+    priority: 'important',
+  },
+  'elite-spawn': {
+    layers: [{ frequency: 154, duration: .16, type: 'sawtooth', gain: .34, sweep: 1.38, lowpassHz: 1900 }, { frequency: 520, duration: .11, type: 'triangle', gain: .2, sweep: 1.28, delay: .03, lowpassHz: 3600 }],
+    masterGain: .17,
+    priority: 'important',
+  },
+  'boss-spawn': {
+    layers: [{ frequency: 82, duration: .28, type: 'sawtooth', gain: .48, sweep: 1.32, lowpassHz: 1200 }, { frequency: 246, duration: .2, type: 'square', gain: .28, sweep: 1.18, delay: .04, lowpassHz: 2300 }, { frequency: 740, duration: .13, type: 'triangle', gain: .17, sweep: .88, delay: .08, lowpassHz: 4300 }],
+    masterGain: .21,
+    priority: 'critical',
+  },
+  'danger-ready': {
+    layers: [{ frequency: 132, duration: .2, type: 'square', gain: .4, sweep: 1.42, lowpassHz: 1700 }, { frequency: 396, duration: .13, type: 'sawtooth', gain: .24, sweep: .76, delay: .035, lowpassHz: 2900 }, { frequency: 940, duration: .08, type: 'triangle', gain: .16, sweep: .64, delay: .07, lowpassHz: 4700 }],
+    masterGain: .19,
+    priority: 'critical',
+  },
+  'enemy-disable': {
+    layers: [{ frequency: 260, duration: .12, type: 'triangle', gain: .28, sweep: .48, lowpassHz: 2100 }, { frequency: 110, duration: .18, type: 'sine', gain: .24, sweep: .62, delay: .03, lowpassHz: 1000 }],
+    masterGain: .12,
+    priority: 'important',
+  },
+  'boss-disable': {
+    layers: [{ frequency: 118, duration: .26, type: 'sawtooth', gain: .42, sweep: .42, lowpassHz: 1300 }, { frequency: 55, duration: .34, type: 'sine', gain: .34, sweep: .58, delay: .04, lowpassHz: 760 }, { frequency: 420, duration: .12, type: 'triangle', gain: .17, sweep: .5, delay: .08, lowpassHz: 2600 }],
+    masterGain: .2,
     priority: 'critical',
   },
 };
