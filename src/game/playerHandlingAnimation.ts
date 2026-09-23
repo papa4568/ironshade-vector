@@ -1,3 +1,4 @@
+import { weaponVariantPresentation, type WeaponVariantId } from './classArsenal';
 import type { WeaponId } from './sim';
 
 export type HandlingOperatorClass = 'vanguard' | 'vector' | 'systems' | null;
@@ -21,6 +22,7 @@ export type PlayerHandlingAnimationProfile = {
 export type PlayerHandlingAnimationInput = {
   operatorClass: HandlingOperatorClass;
   weapon: WeaponId;
+  weaponVariantId?: WeaponVariantId | null;
   time: number;
   vx: number;
   vy: number;
@@ -136,6 +138,7 @@ function normalized(x: number, y: number) {
 
 export function resolvePlayerHandlingAnimation(input: PlayerHandlingAnimationInput): PlayerHandlingAnimationSignals {
   const profile = playerHandlingAnimationProfile(input.operatorClass);
+  const variantPresentation = weaponVariantPresentation(input.weaponVariantId);
   const speed = clamp01(Math.hypot(input.vx, input.vy) * 0.012);
   const gait = Math.sin(input.time * (8.5 + speed * 3)) * speed * profile.gaitScale;
   const idleBreath = Math.sin(input.time * 2.4);
@@ -149,17 +152,21 @@ export function resolvePlayerHandlingAnimation(input: PlayerHandlingAnimationInp
     ? Math.max(-1, Math.min(1, move.x * aim.x + move.y * aim.y))
     : 1;
 
-  const recoil = clamp01(input.weaponFlash * 8);
+  const recoil = clamp01(input.weaponFlash * 8 * (variantPresentation?.handlingRecoilMul ?? 1));
   const reload = input.reloadT > 0 ? clamp01(input.reloadT / Math.max(0.01, input.reloadDuration)) : 0;
-  const vent = input.ventT > 0 ? clamp01(input.ventT / Math.max(0.01, input.ventDuration)) : 0;
-  const overheat = clamp01((input.heat - 0.72) / 0.26);
+  const vent = input.ventT > 0
+    ? clamp01((input.ventT / Math.max(0.01, input.ventDuration)) * (variantPresentation?.handlingVentMul ?? 1))
+    : 0;
+  const thermalWarningAt = variantPresentation?.thermalWarningAt ?? 0.72;
+  const thermalCriticalAt = variantPresentation?.thermalCriticalAt ?? 0.98;
+  const overheat = clamp01((input.heat - thermalWarningAt) / Math.max(0.04, thermalCriticalAt - thermalWarningAt));
   const dodge = input.dodgeTime > 0 ? clamp01(input.dodgeTime / 0.18) : 0;
   const hit = clamp01(input.hit);
 
   // Rail charge is a presentation layer only. It rises between committed shots while FIRE remains held;
   // simulation cadence, projectile timing, heat, and class ownership remain unchanged.
   const charge = input.weapon === 'rail' && input.firingIntent && reload === 0 && vent === 0
-    ? clamp01(1 - input.fireCooldown * Math.max(0.01, input.weaponRate))
+    ? clamp01((1 - input.fireCooldown * Math.max(0.01, input.weaponRate)) * (variantPresentation?.handlingChargeMul ?? 1))
     : 0;
 
   return {

@@ -30,6 +30,15 @@ export type WeaponVariantPresentation = {
   muzzleWidthMul: number;
   recoilVisualMul: number;
   aimLift: number;
+  handlingRecoilMul: number;
+  handlingChargeMul: number;
+  handlingVentMul: number;
+  audioPitchCents: number;
+  audioGainMul: number;
+  mechanicalGainMul: number;
+  tailGainMul: number;
+  thermalWarningAt: number;
+  thermalCriticalAt: number;
 };
 
 type WeaponVariantStats = {
@@ -121,6 +130,15 @@ export const carbineVariantDefinitions: readonly CarbineVariantDefinition[] = [
       muzzleWidthMul: 1.18,
       recoilVisualMul: 1.14,
       aimLift: -0.012,
+      handlingRecoilMul: 1.08,
+      handlingChargeMul: 1,
+      handlingVentMul: 1.05,
+      audioPitchCents: 35,
+      audioGainMul: 0.96,
+      mechanicalGainMul: 1.12,
+      tailGainMul: 0.9,
+      thermalWarningAt: 0.76,
+      thermalCriticalAt: 0.96,
     },
   },
   {
@@ -154,6 +172,15 @@ export const carbineVariantDefinitions: readonly CarbineVariantDefinition[] = [
       muzzleWidthMul: 0.78,
       recoilVisualMul: 0.86,
       aimLift: 0.025,
+      handlingRecoilMul: 0.9,
+      handlingChargeMul: 1,
+      handlingVentMul: 0.94,
+      audioPitchCents: -55,
+      audioGainMul: 1.06,
+      mechanicalGainMul: 0.88,
+      tailGainMul: 1.12,
+      thermalWarningAt: 0.68,
+      thermalCriticalAt: 0.91,
     },
   },
 ] as const;
@@ -190,6 +217,15 @@ export const breacherVariantDefinitions: readonly BreacherVariantDefinition[] = 
       muzzleWidthMul: 0.72,
       recoilVisualMul: 1.24,
       aimLift: 0.018,
+      handlingRecoilMul: 1.16,
+      handlingChargeMul: 1,
+      handlingVentMul: 0.92,
+      audioPitchCents: -90,
+      audioGainMul: 1.14,
+      mechanicalGainMul: 1.08,
+      tailGainMul: 1.18,
+      thermalWarningAt: 0.64,
+      thermalCriticalAt: 0.88,
     },
   },
   {
@@ -223,6 +259,15 @@ export const breacherVariantDefinitions: readonly BreacherVariantDefinition[] = 
       muzzleWidthMul: 1.16,
       recoilVisualMul: 0.78,
       aimLift: -0.014,
+      handlingRecoilMul: 0.82,
+      handlingChargeMul: 1,
+      handlingVentMul: 1.12,
+      audioPitchCents: 65,
+      audioGainMul: 0.92,
+      mechanicalGainMul: 1.16,
+      tailGainMul: 0.78,
+      thermalWarningAt: 0.8,
+      thermalCriticalAt: 0.98,
     },
   },
 ] as const;
@@ -260,6 +305,15 @@ export const railVariantDefinitions: readonly RailVariantDefinition[] = [
       muzzleWidthMul: 0.82,
       recoilVisualMul: 1.18,
       aimLift: 0.028,
+      handlingRecoilMul: 1.1,
+      handlingChargeMul: 1.22,
+      handlingVentMul: 0.88,
+      audioPitchCents: -120,
+      audioGainMul: 1.12,
+      mechanicalGainMul: 0.9,
+      tailGainMul: 1.24,
+      thermalWarningAt: 0.58,
+      thermalCriticalAt: 0.82,
     },
   },
   {
@@ -294,6 +348,15 @@ export const railVariantDefinitions: readonly RailVariantDefinition[] = [
       muzzleWidthMul: 1.08,
       recoilVisualMul: 0.72,
       aimLift: -0.012,
+      handlingRecoilMul: 0.76,
+      handlingChargeMul: 0.82,
+      handlingVentMul: 1.15,
+      audioPitchCents: 80,
+      audioGainMul: 0.9,
+      mechanicalGainMul: 1.12,
+      tailGainMul: 0.82,
+      thermalWarningAt: 0.78,
+      thermalCriticalAt: 0.97,
     },
   },
 ] as const;
@@ -419,6 +482,16 @@ export function resolveWeaponVariant(
 
 export function weaponVariantPresentation(id: WeaponVariantId | null | undefined) {
   return id ? weaponVariantDefinition(id).presentation : null;
+}
+
+export type WeaponVariantThermalCue = 'nominal' | 'warning' | 'critical';
+
+export function weaponVariantThermalCue(id: WeaponVariantId | null | undefined, heat: number): WeaponVariantThermalCue {
+  const presentation = weaponVariantPresentation(id);
+  if (!presentation) return heat >= 0.98 ? 'critical' : heat >= 0.72 ? 'warning' : 'nominal';
+  if (heat >= presentation.thermalCriticalAt) return 'critical';
+  if (heat >= presentation.thermalWarningAt) return 'warning';
+  return 'nominal';
 }
 
 export function carbineVariantPresentation(id: CarbineVariantId | null | undefined) {
