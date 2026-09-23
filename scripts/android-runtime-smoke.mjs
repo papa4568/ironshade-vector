@@ -599,13 +599,23 @@ if (!/^(balanced|performance):max-stride-[123]:deferred-\d+$/.test(renderTier.an
 if (!/^damage:\d+\/\d+\|effects:\d+\/\d+\|sparks:\d+\/\d+\|debris:\d+\/\d+$/.test(renderTier.pools)) {
   throw new Error(`Android runtime pool telemetry is malformed: ${JSON.stringify(renderTier)}`);
 }
-if (!/^bounded-preload:\d+@[12]$/.test(renderTier.assetStreaming)) {
-  throw new Error(`Android bounded asset streaming telemetry is malformed: ${JSON.stringify(renderTier)}`);
+const startupStreamingValid = /^startup-deferred:\d+(?:\.\d+)?s@[12]$/.test(renderTier.assetStreaming)
+  || /^bounded-preload:\d+@[12]$/.test(renderTier.assetStreaming);
+if (!startupStreamingValid) {
+  throw new Error(`Android startup asset streaming telemetry is malformed: ${JSON.stringify(renderTier)}`);
 }
 if (!/^active:\d+\/18\+tails:\d+\/5\+virtualized:\d+\+tail-virtualized:\d+\+reason:[a-z-]+$/.test(renderTier.audioVirtualization)) {
   throw new Error(`Android audio virtualization telemetry is malformed: ${JSON.stringify(renderTier)}`);
 }
-console.log(`ANDROID_RUNTIME_SCALABILITY_PASS animation=${renderTier.animationLod} pools=${renderTier.pools} assets=${renderTier.assetStreaming} audio=${renderTier.audioVirtualization}`);
+
+if (renderTier.assetStreaming.startsWith('startup-deferred:')) {
+  await waitFor(`document.querySelector('canvas[data-render-tier]')?.dataset.assetStreaming?.startsWith('bounded-preload:') === true`, 'Android bounded asset streaming activation', 15_000);
+}
+const activeAssetStreaming = await evaluate(`document.querySelector('canvas[data-render-tier]')?.dataset.assetStreaming ?? ''`);
+if (!/^bounded-preload:\d+@[12]$/.test(activeAssetStreaming)) {
+  throw new Error(`Android bounded asset streaming never activated: startup=${renderTier.assetStreaming} active=${activeAssetStreaming}`);
+}
+console.log(`ANDROID_RUNTIME_SCALABILITY_PASS animation=${renderTier.animationLod} pools=${renderTier.pools} assets=${activeAssetStreaming} startupAssets=${renderTier.assetStreaming} audio=${renderTier.audioVirtualization}`);
 
 const mobileLayout = await evaluate(`(() => {
   const viewport = {
