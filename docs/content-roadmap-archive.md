@@ -1162,3 +1162,14 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Android artifact `10744404734` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.290`, debug signing, min SDK 24 / target SDK 36, and APK SHA-256 `b27dd144f25a0284ffc8c9dfa7d84c852709ac2e343d83121dab0500b5d6ded3`.
   - **Next: P14-F — Fourth-family gate.**
 
+## 2026-09-23 — P14-F Class Arsenal Expansion // Fourth-family gate
+
+- [x] **P14-F Fourth-family gate** — closed the Class Arsenal Expansion without adding a redundant fourth weapon family. The shipped class/arsenal model remains the intentional one-to-one set: Systems → Carbine, Vanguard → Breacher, Vector → Rail Lance.
+  - Audited the live class/arsenal architecture: `OperatorClassId` and `OperatorWeaponFamily` each contain exactly three shipped identities, every class ability kit stays inside its owned family, and the six P14 variants already provide two distinct firing packages per family.
+  - Added `tests/class-arsenal-fourth-family-gate.ts` and wired it into the production `test:class-arsenal` gate. The regression locks the three shipped classes/families, one-to-one ownership, three family-owned skills per class, exactly two variants per family, six total variant definitions, and six build-integration rows.
+  - The gate deliberately requires a future explicit class or genuinely distinct combat-role decision before a fourth family can be introduced; ordinary same-role stat variation must stay inside the existing Carbine/Breacher/Rail families.
+  - PR #203 Browser E2E `35850980615` passed desktop + mobile-landscape full regression/production build and live player journeys on tested head `b1a99eea4349570935b40a161e6cecd5f6280805`.
+  - Merged gameplay/test source `5098b11eab9dd998d5ca30ce7bda0ecabfa8bbdb` passed post-merge Browser E2E `35851255575` and Level 15 beta smoke `35851255591`.
+  - Android beta.291 run `35851255605` passed the full web regression/build, native project generation, debug APK build, package/version/min-SDK/target-SDK/signature verification, Android emulator install/cold launch/touch/runtime QA, and the Chapter 3 touch playthrough.
+  - Android artifact `10745671957` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.291`, debug signing, min SDK 24 / target SDK 36, and APK SHA-256 `7d7ef186f1e2b6bc93486e44338e73a60b7aa758608c173d9bad04539e984e5f`.
+  - **Next: P15-A — Design system.**
