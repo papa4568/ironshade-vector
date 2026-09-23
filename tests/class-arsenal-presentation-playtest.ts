@@ -82,9 +82,32 @@ function handlingSignature(entry: VariantCase) {
     dodgeTime: 0,
     hit: 0,
   });
+  const chargeSample = resolvePlayerHandlingAnimation({
+    operatorClass: entry.operatorClass,
+    weapon: entry.family,
+    weaponVariantId: entry.id,
+    time: 2.35,
+    vx: 180,
+    vy: 40,
+    aimX: 1,
+    aimY: 0,
+    moveX: 0.8,
+    moveY: 0.2,
+    weaponFlash: 0.05,
+    fireCooldown: entry.family === 'rail' ? 0.2 : 0.05,
+    weaponRate: weapon.stats.rate,
+    firingIntent: true,
+    reloadT: 0,
+    reloadDuration: weapon.stats.reloadSeconds,
+    ventT: 0,
+    ventDuration: 1,
+    heat: Math.min(0.99, presentation.thermalWarningAt + 0.08),
+    dodgeTime: 0,
+    hit: 0,
+  });
   return {
     recoil: Number(sample.recoil.toFixed(4)),
-    charge: Number(sample.charge.toFixed(4)),
+    charge: Number(chargeSample.charge.toFixed(4)),
     vent: Number(sample.vent.toFixed(4)),
     overheat: Number(sample.overheat.toFixed(4)),
   };
