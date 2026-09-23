@@ -138,7 +138,7 @@ export type PerformanceDiagnosticsSnapshot = {
 };
 
 const WINDOW_SIZE = 240;
-const MIN_BASELINE_SAMPLES = 60;
+const MIN_BASELINE_SAMPLES = 45;
 const GC_DROP_THRESHOLD_MB = 1;
 
 function finite(value: number | undefined) {
