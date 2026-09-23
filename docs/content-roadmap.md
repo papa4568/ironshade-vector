@@ -124,7 +124,7 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 - [x] **P14-A Systems Carbine pair** — completed and verified; Burst + Precision Carbine delivered with deterministic same-family gameplay, authored/fallback handling presentation, and regression coverage. Delivery detail is archived in `docs/content-roadmap-archive.md`.
 - [x] **P14-B Vanguard Breacher pair** — completed and verified; Slug + Rapid Breacher delivered with deterministic same-family gameplay, distinct projectile/handling presentation, and regression coverage. Delivery detail is archived in `docs/content-roadmap-archive.md`.
-- [ ] **P14-C Vector Rail pair** — Charge + Repeater Rail
+- [x] **P14-C Vector Rail pair** — completed and verified; Charge + Repeater Rail delivered with deterministic same-family gameplay, explicit capacitor/thermal/penetration tradeoffs, distinct handling/FX presentation, and regression coverage. Delivery detail is archived in `docs/content-roadmap-archive.md`.
 - [ ] **P14-D Build integration** — progression, crafting/affixes, skills, Singulars, class-owned loot
 - [ ] **P14-E Presentation/playtest** — silhouettes, handling animation, layered audio, sustained-fire thermal QA, same-family variety
 - [ ] **P14-F Fourth-family gate** — add only with a future class or genuinely distinct combat role
@@ -159,24 +159,24 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P14-C — Vector Rail pair.**
+**Next: P14-D — Build integration.**
 
-Run **P14-C — Vector Rail pair** as the next Class Arsenal Expansion batch: add the Charge + Repeater Rail variants as a coherent Vector-owned same-family pair, preserve the established Vector precision/momentum identity, and carry them through distinct gameplay/handling presentation plus deterministic regression before the broader build-integration pass.
+Run **P14-D — Build integration** as the next Class Arsenal Expansion batch: carry the completed Carbine, Breacher, and Rail variant pairs through progression, crafting/affix hooks, class skills, Singular interactions, and class-owned loot while preserving the hard family locks, save compatibility, and the intentional same-family tradeoffs already verified in P14-A/P14-B/P14-C.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.287**
+- Android beta: **0.0.1-beta.288**
 - Package: `app.ironshade.vector`
-- Verified: **P14-B Vanguard Breacher pair complete**
-- Gameplay source: `3154b300c0a8ed166814bae5bd6876a3df7ea25d`
-- Delivery/QA source: `3154b300c0a8ed166814bae5bd6876a3df7ea25d`
-- PR Browser E2E: `35818531057`
-- Browser E2E: `35818754105`
-- Level 15 beta smoke: `35818754120`
-- Android beta.287: `35818754101`
-- APK artifact: `10732995607`
-- APK SHA-256: `168902b73aa890ecb730d68e0394e4c69f08ab3df16cecbc1119c37d91df55ea`
+- Verified: **P14-C Vector Rail pair complete**
+- Gameplay source: `86ecc2e20a55a4d2749a31783e7dbf360cdae20f`
+- Delivery/QA source: `86ecc2e20a55a4d2749a31783e7dbf360cdae20f`
+- PR Browser E2E: `35843961110`
+- Browser E2E: `35844330501`
+- Level 15 beta smoke: `35844330380`
+- Android beta.288: `35844330691`
+- APK artifact: `10742788131`
+- APK SHA-256: `b0433b0a03211fd8e9bb3b6197ac7eb9b643f5fff807510442a62db01f3f2711`
 - Signing: debug-signed beta; permanent signing remains P17-A
 
