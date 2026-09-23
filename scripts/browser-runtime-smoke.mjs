@@ -704,26 +704,35 @@ try {
   }
   await keyboardActivateButton('Settings');
   await waitFor(`Boolean(document.querySelector('.settings-panel') && document.querySelector('.build-tabs button[aria-current="page"]')?.textContent?.includes('Settings'))`, 'P15-E accessibility settings surface');
-  const accessibilityControls = await evaluate(`(() => {
-    const textScale = document.querySelector('select[aria-label="Interface text size"]');
-    if (!(textScale instanceof HTMLSelectElement)) return { ready: false, reason: 'text-scale' };
+  const textScaleChanged = await evaluate(`(() => {
+    const control = document.querySelector('select[aria-label="Interface text size"]');
+    if (!(control instanceof HTMLSelectElement)) return false;
     const valueSetter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set;
-    if (!valueSetter) return { ready: false, reason: 'select-setter' };
-    valueSetter.call(textScale, 'large');
-    textScale.dispatchEvent(new Event('change', { bubbles: true }));
-
-    const contrast = document.querySelector('input[aria-label="High contrast"]');
-    if (!(contrast instanceof HTMLInputElement)) return { ready: false, reason: 'contrast' };
-    if (!contrast.checked) contrast.click();
-
-    const motion = document.querySelector('input[aria-label="Reduce motion"]');
-    if (!(motion instanceof HTMLInputElement)) return { ready: false, reason: 'motion' };
-    if (!motion.checked) motion.click();
-
-    return { ready: true };
+    if (!valueSetter) return false;
+    valueSetter.call(control, 'large');
+    control.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
   })()`);
-  if (!accessibilityControls?.ready) throw new Error(`P15-E accessibility controls unavailable: ${JSON.stringify(accessibilityControls)}`);
-  await waitFor(`document.documentElement.dataset.textScale === 'large' && document.documentElement.dataset.contrast === 'high' && document.documentElement.dataset.reducedMotion === 'true'`, 'P15-E accessibility presentation settings');
+  if (!textScaleChanged) throw new Error('P15-E interface text-size control unavailable.');
+  await waitFor(`document.documentElement.dataset.textScale === 'large'`, 'P15-E large text setting');
+
+  const contrastChanged = await evaluate(`(() => {
+    const control = document.querySelector('input[aria-label="High contrast"]');
+    if (!(control instanceof HTMLInputElement)) return false;
+    if (!control.checked) control.click();
+    return true;
+  })()`);
+  if (!contrastChanged) throw new Error('P15-E high-contrast control unavailable.');
+  await waitFor(`document.documentElement.dataset.contrast === 'high'`, 'P15-E high contrast setting');
+
+  const motionChanged = await evaluate(`(() => {
+    const control = document.querySelector('input[aria-label="Reduce motion"]');
+    if (!(control instanceof HTMLInputElement)) return false;
+    if (!control.checked) control.click();
+    return true;
+  })()`);
+  if (!motionChanged) throw new Error('P15-E reduced-motion control unavailable.');
+  await waitFor(`document.documentElement.dataset.reducedMotion === 'true'`, 'P15-E reduced motion setting');
   await waitFor(`(() => {
     const raw = localStorage.getItem('ironshade-vector-state-v1');
     if (!raw) return false;
