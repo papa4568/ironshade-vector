@@ -983,3 +983,17 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Android artifact `10725795522` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.277`, debug signing, package/version/SDK/signature verification, native emulator runtime/touch/lifecycle/Chapter 3 QA, and APK SHA-256 `30f7228bafffaf2cd204437e9b5f9d6fcc83e1e69fae60a9de723e575dac6612`.
   - **Next: P13-B — T9 visuals I (Reinforced Core, Ablative Mantle, Hunter Servo).**
 
+## 2026-09-22 — P13-B Enemy Modifier & Status Visual Language // T9 visuals I
+
+- [x] **P13-B T9 visuals I** — gave Reinforced Core, Ablative Mantle, and Hunter Servo distinct authored/fallback animation, material, VFX, and audio reads through the P13-A presentation contract without changing mutation combat stats, AI, targeting, or encounter simulation.
+  - **Reinforced Core** now reads as a load-bearing defensive package: paired external core braces, pressure/core glow, a visibly braced authored/procedural stance, and a low mechanical load-bearing hum.
+  - **Ablative Mantle** now reads as sacrificial armor rather than generic durability: layered ceramic mantle plates, bounded shed-spark debris, a settling/weight animation layer, and a short ceramic-rattle audio signature.
+  - **Hunter Servo** now reads as mobility/tracking hardware: rear servo housing, active tracking reticle/streaks, a forward ready/tracking pose that also shifts the fallback weapon, and a rising servo-whine signature.
+  - Three.js authored rigs and procedural enemy fallbacks consume the same deterministic mutation cue identities. Canvas fallback gained equivalent brace/plate/reticle language so device/render-path fallback does not erase mutation identity.
+  - Attack/status readability stays authoritative: mutation posing is damped while telegraph/commit/high-priority status reads are active, mutation material/VFX intensity is reduced when higher-priority P13-A layers lead, and Canvas draws attack telegraphs after mutation effects/silhouettes.
+  - Reduced-effects mode preserves the identifying hardware while trimming secondary motion, mantle spark count, reticle rotation, and tracking streak density.
+  - Added layered one-shot mutation audio on the low-priority utility path. These cues remain duckable under existing important/critical threat mix behavior and trigger only when a new P13-B mutation becomes active.
+  - Added production regression gate `T9_VISUALS_I_PASS mutations=3 channels=animation+material+vfx+audio priority=tells-first authored+fallback=1` and wired `test:enemy-t9-visuals-i` into the full build. Coverage verifies distinct four-channel cue identities, tell/status priority, both renderer paths, audio priority, runtime QA telemetry, and the presentation-only simulation boundary.
+  - PR #187 initial Browser E2E `35801722190` caught a stale graphics source-pattern assertion during the integration pass; the final merged source `2ec4374fc99100ba5c7d2bd6fbaa1d81707bfda2` then passed Browser E2E `35802067788`, Level 15 beta smoke `35802067844`, and Android beta.278 `35802067794`.
+  - Android artifact `10726617221` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.278`, debug signing, min SDK 24 / target SDK 36 package/signature verification, native emulator runtime/touch/lifecycle/Chapter 3 QA, and APK SHA-256 `2255ea57332bd34153ca8659a8c7aced7d351b816cf5bcba21075ab1150cdb73`.
+  - **Next: P13-C — T9 visuals II (Redline Bus, Countermass Rig, Relay Reflex).**
