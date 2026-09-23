@@ -997,3 +997,19 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - PR #187 initial Browser E2E `35801722190` caught a stale graphics source-pattern assertion during the integration pass; the final merged source `2ec4374fc99100ba5c7d2bd6fbaa1d81707bfda2` then passed Browser E2E `35802067788`, Level 15 beta smoke `35802067844`, and Android beta.278 `35802067794`.
   - Android artifact `10726617221` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.278`, debug signing, min SDK 24 / target SDK 36 package/signature verification, native emulator runtime/touch/lifecycle/Chapter 3 QA, and APK SHA-256 `2255ea57332bd34153ca8659a8c7aced7d351b816cf5bcba21075ab1150cdb73`.
   - **Next: P13-C — T9 visuals II (Redline Bus, Countermass Rig, Relay Reflex).**
+
+## 2026-09-22 — P13-C Enemy Modifier & Status Visual Language // T9 visuals II
+
+- [x] **P13-C T9 visuals II** — gave Redline Bus, Countermass Rig, and Relay Reflex distinct authored/fallback animation, material, VFX, and audio reads through the P13-A presentation contract without changing mutation combat stats, AI, targeting, or encounter simulation.
+  - **Redline Bus** now reads as an overdriven power package: a hot rear bus spine with paired power rails/cross-bridges, fast emissive pressure pulses, a tense forward-biased authored/procedural pose, and a rising power-bus audio signature.
+  - **Countermass Rig** now reads as stabilization hardware: paired mass pods on visible support arms, a bounded mass-field/orbit read, a counter-rotating balance pose, and a low mass-thrum signature.
+  - **Relay Reflex** now reads as reflex/sensor hardware: relay housing plus a three-node sensor crown, fast scan/snap VFX, high-frequency head/weapon tracking snaps, and a short relay-click signature.
+  - Three.js authored rigs and procedural enemy fallbacks consume the same deterministic mutation cue identities. Canvas fallback gained equivalent redline rails, countermass pods/field, and relay node/scan language so render-path fallback preserves identity.
+  - Attack/status readability remains authoritative: all P13-C motion stays additive and suppressed by higher-priority telegraph/commit/status layers; material/VFX reads are attenuated when higher-priority P13-A layers dominate; Canvas still draws attack telegraphs after mutation effects/silhouettes.
+  - Reduced-effects mode preserves identifying hardware while stopping Countermass secondary orbit motion and reducing Relay snap density/secondary motion; Redline keeps a static readable bus/pulse silhouette.
+  - Extended the low-priority utility mutation-audio path to all six T9 mutations. P13-C cues remain duckable under important/critical threat mix behavior and trigger only on newly active mutation identities.
+  - Added production regression gate `T9_VISUALS_II_PASS mutations=3 channels=animation+material+vfx+audio priority=tells-first authored+fallback=1 reduced-effects=preserved` and wired `test:enemy-t9-visuals-ii` into the full build.
+  - PR #188 Browser E2E `35803286835` passed desktop + mobile-landscape full regression/build and live player journeys. Final merged gameplay source `e2f6d03b9e410af76419d3deb721603dd9ccd977` passed Browser E2E `35803492357`, Level 15 beta smoke `35803492317`, and Android beta.279 `35803492333`.
+  - Android artifact `10726844612` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.279`, debug signing, min SDK 24 / target SDK 36 package/version/signature verification, native Android emulator runtime/touch/lifecycle/Chapter 3 QA, and APK SHA-256 `ee6d00c748367a44ba7b0c6d7109a24d1842a660a15ee26d4f44ec9f5f03854a`.
+  - **Next: P13-D — Protocol visuals (physical/animated tells for elite protocols + enhanced variants).**
+
