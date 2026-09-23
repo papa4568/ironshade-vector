@@ -633,14 +633,24 @@ try {
 
   if (viewportMode === 'mobile-landscape') {
     const reducedEffectsSeed = await evaluate(`(() => {
-      const key = 'ironshade-vector-profile-v3';
-      const raw = localStorage.getItem(key);
-      if (!raw) return { found: false, changed: false };
-      const profile = JSON.parse(raw);
+      const stateKey = 'ironshade-vector-state-v1';
+      const profileKey = 'ironshade-vector-profile-v3';
+      const stateRaw = localStorage.getItem(stateKey);
+      if (stateRaw) {
+        const state = JSON.parse(stateRaw);
+        if (!state?.profile) return { found: false, changed: false, source: 'state' };
+        const changed = state.profile.settings?.effectIntensity !== 'reduced';
+        state.profile.settings = { ...(state.profile.settings ?? {}), effectIntensity: 'reduced' };
+        localStorage.setItem(stateKey, JSON.stringify(state));
+        return { found: true, changed, source: 'state' };
+      }
+      const profileRaw = localStorage.getItem(profileKey);
+      if (!profileRaw) return { found: false, changed: false, source: 'none' };
+      const profile = JSON.parse(profileRaw);
+      const changed = profile.settings?.effectIntensity !== 'reduced';
       profile.settings = { ...(profile.settings ?? {}), effectIntensity: 'reduced' };
-      const changed = JSON.parse(raw)?.settings?.effectIntensity !== 'reduced';
-      localStorage.setItem(key, JSON.stringify(profile));
-      return { found: true, changed };
+      localStorage.setItem(profileKey, JSON.stringify(profile));
+      return { found: true, changed, source: 'legacy-profile' };
     })()`);
     if (!reducedEffectsSeed?.found) throw new Error('Mobile Reduced Effects QA could not find the persisted profile.');
     if (reducedEffectsSeed.changed) {
@@ -652,7 +662,7 @@ try {
         return (text.includes('command ready') || text.includes('command deck')) && labels.includes('operations');
       })()`, 'Command Deck after Reduced Effects seed');
     }
-    console.log(`BROWSER_REDUCED_EFFECTS_QA_PASS viewport=${viewportMode} changed=${reducedEffectsSeed.changed}`);
+    console.log(`BROWSER_REDUCED_EFFECTS_QA_PASS viewport=${viewportMode} source=${reducedEffectsSeed.source} changed=${reducedEffectsSeed.changed}`);
   }
 
   const startup = await snapshot();
