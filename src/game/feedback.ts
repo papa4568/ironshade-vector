@@ -44,7 +44,7 @@ export type CombatAudioPriority = 'background' | 'normal' | 'important' | 'criti
 export type FoleyAudioProfile = { start: WeaponAudioLayer[]; complete: WeaponAudioLayer[]; masterGain: number };
 export type SkillAudioProfile = { layers: WeaponAudioLayer[]; masterGain: number; priority: 'important' };
 export type ThreatAudioProfile = { layers: WeaponAudioLayer[]; masterGain: number; priority: 'important' | 'critical' };
-export type EnemyMutationAudioCue = Extract<HighTierMutationId, 'reinforced-core' | 'ablative-mantle' | 'hunter-servo'>;
+export type EnemyMutationAudioCue = HighTierMutationId;
 export type EnemyMutationAudioProfile = { layers: WeaponAudioLayer[]; masterGain: number; priority: 'background' | 'normal' };
 
 export const combatAudioBudget = {
@@ -277,6 +277,32 @@ export const enemyMutationAudioProfiles: Record<EnemyMutationAudioCue, EnemyMuta
       { frequency: 1040, duration: .1, type: 'triangle', gain: .16, sweep: .78, delay: .025, lowpassHz: 5200 },
     ],
     masterGain: .072,
+    priority: 'background',
+  },
+  'redline-bus': {
+    layers: [
+      { frequency: 146, duration: .22, type: 'sawtooth', gain: .28, sweep: 1.5, attack: .025, lowpassHz: 2100 },
+      { frequency: 584, duration: .12, type: 'triangle', gain: .18, sweep: 1.22, delay: .03, lowpassHz: 3600 },
+      { frequency: 292, duration: .16, type: 'square', gain: .12, sweep: .82, delay: .065, lowpassHz: 2600 },
+    ],
+    masterGain: .074,
+    priority: 'background',
+  },
+  'countermass-rig': {
+    layers: [
+      { frequency: 74, duration: .34, type: 'sine', gain: .38, sweep: .92, attack: .045, lowpassHz: 760 },
+      { frequency: 222, duration: .22, type: 'triangle', gain: .2, sweep: .78, delay: .04, lowpassHz: 1450 },
+    ],
+    masterGain: .078,
+    priority: 'background',
+  },
+  'relay-reflex': {
+    layers: [
+      { frequency: 1320, duration: .038, type: 'square', gain: .2, sweep: 1.32, lowpassHz: 5400 },
+      { frequency: 1760, duration: .032, type: 'triangle', gain: .16, sweep: .72, delay: .035, lowpassHz: 6800 },
+      { frequency: 880, duration: .052, type: 'sine', gain: .14, sweep: 1.44, delay: .07, lowpassHz: 4700 },
+    ],
+    masterGain: .064,
     priority: 'background',
   },
 };

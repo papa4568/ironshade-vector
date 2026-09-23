@@ -52,7 +52,7 @@ function enemyMutationCueActive(contract: EnemyPresentationContract, cue: string
 
 function createEnemyMutationVisuals(scale: number) {
   const root = new THREE.Group();
-  root.name = 'enemy-mutation-p13b';
+  root.name = 'enemy-mutation-p13';
   const materials: THREE.Material[] = [];
   const keep = <T extends THREE.Material>(material: T) => { materials.push(material); return material; };
 
@@ -165,6 +165,123 @@ function createEnemyMutationVisuals(scale: number) {
   }
   hunter.visible = false;
   root.add(hunter);
+
+  const redline = new THREE.Group();
+  redline.name = 'mutation-redline-bus';
+  const redlineBusMaterial = keep(new THREE.MeshStandardMaterial({
+    color: 0x71392f,
+    emissive: 0xd34b2f,
+    emissiveIntensity: 0.52,
+    metalness: 0.78,
+    roughness: 0.3,
+    transparent: true,
+  }));
+  const redlinePulseMaterial = keep(new THREE.MeshBasicMaterial({
+    color: 0xff7855,
+    transparent: true,
+    opacity: 0.48,
+    depthWrite: false,
+    toneMapped: false,
+  }));
+  const redlineSpine = new THREE.Mesh(new THREE.BoxGeometry(0.12 * scale, 0.82 * scale, 0.12 * scale), redlineBusMaterial);
+  redlineSpine.name = 'mutation-redline-spine';
+  redlineSpine.position.set(0, 0.96 * scale, -0.31 * scale);
+  redline.add(redlineSpine);
+  for (const side of [-1, 1]) {
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.08 * scale, 0.68 * scale, 0.08 * scale), redlineBusMaterial);
+    rail.name = `mutation-redline-rail-${side < 0 ? 'left' : 'right'}`;
+    rail.position.set(side * 0.34 * scale, 0.96 * scale, -0.2 * scale);
+    rail.rotation.z = side * -0.08;
+    redline.add(rail);
+  }
+  for (const [index, y] of [0.76, 1.14].entries()) {
+    const bridge = new THREE.Mesh(new THREE.BoxGeometry(0.68 * scale, 0.055 * scale, 0.06 * scale), redlineBusMaterial);
+    bridge.name = `mutation-redline-bridge-${index}`;
+    bridge.position.set(0, y * scale, -0.22 * scale);
+    redline.add(bridge);
+  }
+  const redlinePulse = new THREE.Mesh(new THREE.RingGeometry(0.24 * scale, 0.31 * scale, 24), redlinePulseMaterial);
+  redlinePulse.name = 'mutation-redline-pulse';
+  redlinePulse.position.set(0, 1.02 * scale, 0.31 * scale);
+  redline.add(redlinePulse);
+  redline.visible = false;
+  root.add(redline);
+
+  const countermass = new THREE.Group();
+  countermass.name = 'mutation-countermass-rig';
+  const countermassMaterial = keep(new THREE.MeshStandardMaterial({
+    color: 0x455165,
+    emissive: 0x435e8d,
+    emissiveIntensity: 0.28,
+    metalness: 0.92,
+    roughness: 0.22,
+    transparent: true,
+  }));
+  const countermassFieldMaterial = keep(new THREE.MeshBasicMaterial({
+    color: 0x91a9df,
+    transparent: true,
+    opacity: 0.36,
+    depthWrite: false,
+    toneMapped: false,
+  }));
+  for (const side of [-1, 1]) {
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.54 * scale, 0.055 * scale, 0.06 * scale), countermassMaterial);
+    arm.name = `mutation-countermass-arm-${side < 0 ? 'left' : 'right'}`;
+    arm.position.set(side * 0.38 * scale, 0.76 * scale, -0.08 * scale);
+    arm.rotation.z = side * 0.08;
+    countermass.add(arm);
+    const pod = new THREE.Mesh(new THREE.SphereGeometry(0.13 * scale, 10, 8), countermassMaterial);
+    pod.name = `mutation-countermass-pod-${side < 0 ? 'left' : 'right'}`;
+    pod.position.set(side * 0.67 * scale, 0.76 * scale, -0.08 * scale);
+    countermass.add(pod);
+  }
+  const countermassField = new THREE.Mesh(new THREE.TorusGeometry(0.64 * scale, 0.022 * scale, 5, 30), countermassFieldMaterial);
+  countermassField.name = 'mutation-countermass-field';
+  countermassField.rotation.x = Math.PI / 2;
+  countermassField.position.y = 0.76 * scale;
+  countermass.add(countermassField);
+  countermass.visible = false;
+  root.add(countermass);
+
+  const relay = new THREE.Group();
+  relay.name = 'mutation-relay-reflex';
+  const relayMaterial = keep(new THREE.MeshStandardMaterial({
+    color: 0x3f5260,
+    emissive: 0x5b9ca5,
+    emissiveIntensity: 0.42,
+    metalness: 0.74,
+    roughness: 0.3,
+    transparent: true,
+  }));
+  const relaySignalMaterial = keep(new THREE.MeshBasicMaterial({
+    color: 0x9ef2ef,
+    transparent: true,
+    opacity: 0.46,
+    depthWrite: false,
+    toneMapped: false,
+  }));
+  const relayHousing = new THREE.Mesh(new THREE.BoxGeometry(0.42 * scale, 0.13 * scale, 0.13 * scale), relayMaterial);
+  relayHousing.name = 'mutation-relay-housing';
+  relayHousing.position.set(0, 1.3 * scale, -0.24 * scale);
+  relay.add(relayHousing);
+  for (const [index, x] of [-0.3, 0, 0.3].entries()) {
+    const node = new THREE.Mesh(new THREE.SphereGeometry(0.065 * scale, 8, 6), relayMaterial);
+    node.name = `mutation-relay-node-${index}`;
+    node.position.set(x * scale, (1.35 + (index === 1 ? 0.15 : 0)) * scale, 0.18 * scale);
+    relay.add(node);
+  }
+  const relayScan = new THREE.Mesh(new THREE.TorusGeometry(0.3 * scale, 0.018 * scale, 5, 24), relaySignalMaterial);
+  relayScan.name = 'mutation-relay-scan';
+  relayScan.position.set(0, 1.45 * scale, 0.2 * scale);
+  relay.add(relayScan);
+  for (const side of [-1, 1]) {
+    const snap = new THREE.Mesh(new THREE.BoxGeometry(0.34 * scale, 0.016 * scale, 0.02 * scale), relaySignalMaterial);
+    snap.name = `mutation-relay-snap-${side < 0 ? 'left' : 'right'}`;
+    snap.position.set(side * 0.39 * scale, 1.2 * scale, 0.21 * scale);
+    relay.add(snap);
+  }
+  relay.visible = false;
+  root.add(relay);
 
   return { root, materials };
 }
@@ -4904,6 +5021,30 @@ export class ThreeCombatRenderer {
       rig.weaponSocket.rotation.y -= 0.055 * tracking;
     }
 
+    if (enemyMutationCueActive(presentation, 'redline-tension')) {
+      const tension = (0.78 + Math.sin(state.time * 8.4 + enemy.id * 0.43) * 0.08) * mutationSuppression;
+      rig.torso.rotation.x -= 0.045 * tension;
+      rig.backpack.rotation.z += Math.sin(state.time * 6.2 + enemy.id) * 0.025 * tension;
+      rig.weaponSocket.position.x += 0.045 * tension;
+      rig.leftArm.rotation.z -= 0.045 * tension;
+      rig.rightArm.rotation.z += 0.045 * tension;
+    }
+    if (enemyMutationCueActive(presentation, 'countermass-ready')) {
+      const counter = Math.sin(state.time * 2.6 + enemy.id * 0.31) * 0.045 * mutationSuppression;
+      rig.hip.rotation.y -= counter;
+      rig.torso.rotation.y += counter * 0.72;
+      rig.leftArm.rotation.x -= 0.04 * mutationSuppression;
+      rig.rightArm.rotation.x += 0.04 * mutationSuppression;
+      rig.backpack.position.y -= 0.025 * mutationSuppression;
+    }
+    if (enemyMutationCueActive(presentation, 'relay-ready')) {
+      const snap = Math.sin(state.time * 12.5 + enemy.id * 0.83) * 0.032 * mutationSuppression;
+      rig.helmet.rotation.y += snap;
+      rig.weaponSocket.rotation.y -= snap * 1.25;
+      rig.torso.rotation.z += snap * 0.32;
+      rig.weaponSocket.position.y += 0.025 * mutationSuppression;
+    }
+
     if (motion.status.disrupted > 0) {
       const jitter = Math.sin(state.time * 31 + enemy.id * 1.7) * motion.status.disrupted;
       rig.torso.rotation.y += jitter * 0.055;
@@ -4977,15 +5118,24 @@ export class ThreeCombatRenderer {
     const reinforced = visual.mutationRoot.getObjectByName('mutation-reinforced-core') as THREE.Group | undefined;
     const mantle = visual.mutationRoot.getObjectByName('mutation-ablative-mantle') as THREE.Group | undefined;
     const hunter = visual.mutationRoot.getObjectByName('mutation-hunter-servo') as THREE.Group | undefined;
+    const redline = visual.mutationRoot.getObjectByName('mutation-redline-bus') as THREE.Group | undefined;
+    const countermass = visual.mutationRoot.getObjectByName('mutation-countermass-rig') as THREE.Group | undefined;
+    const relay = visual.mutationRoot.getObjectByName('mutation-relay-reflex') as THREE.Group | undefined;
     const alive = enemy.active && !enemy.dead;
     const coreActive = alive && enemyMutationCueActive(presentation, 'core-braced');
     const mantleActive = alive && enemyMutationCueActive(presentation, 'mantle-settle');
     const hunterActive = alive && enemyMutationCueActive(presentation, 'hunter-ready');
+    const redlineActive = alive && enemyMutationCueActive(presentation, 'redline-tension');
+    const countermassActive = alive && enemyMutationCueActive(presentation, 'countermass-ready');
+    const relayActive = alive && enemyMutationCueActive(presentation, 'relay-ready');
 
     if (reinforced) reinforced.visible = coreActive;
     if (mantle) mantle.visible = mantleActive;
     if (hunter) hunter.visible = hunterActive;
-    visual.mutationRoot.visible = coreActive || mantleActive || hunterActive;
+    if (redline) redline.visible = redlineActive;
+    if (countermass) countermass.visible = countermassActive;
+    if (relay) relay.visible = relayActive;
+    visual.mutationRoot.visible = coreActive || mantleActive || hunterActive || redlineActive || countermassActive || relayActive;
     if (!visual.mutationRoot.visible) return;
 
     const materialLead = presentation.material[0];
@@ -5051,6 +5201,60 @@ export class ThreeCombatRenderer {
         streak.visible = !reducedEffects || side > 0;
         streak.material.opacity = (0.18 + tracking * 0.26) * vfxReadability;
         streak.position.x = side * (0.36 + tracking * 0.08 * motionScale);
+      }
+    }
+
+    if (redlineActive) {
+      const pulse = redline?.getObjectByName('mutation-redline-pulse') as THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial> | undefined;
+      const heat = reducedEffects ? 0.78 : 0.74 + Math.sin(state.time * 8.6 + enemy.id * 0.49) * 0.18;
+      if (pulse) {
+        pulse.material.opacity = (0.28 + heat * 0.34) * vfxReadability;
+        pulse.scale.setScalar(0.92 + heat * 0.13 * motionScale);
+      }
+      for (const name of ['mutation-redline-spine', 'mutation-redline-rail-left', 'mutation-redline-rail-right', 'mutation-redline-bridge-0', 'mutation-redline-bridge-1']) {
+        const bus = redline?.getObjectByName(name) as THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial> | undefined;
+        if (!bus) continue;
+        bus.material.opacity = 0.96 * materialReadability;
+        bus.material.emissiveIntensity = (0.32 + heat * 0.42) * materialReadability;
+      }
+    }
+
+    if (countermassActive) {
+      const field = countermass?.getObjectByName('mutation-countermass-field') as THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial> | undefined;
+      const balance = reducedEffects ? 0.72 : 0.68 + Math.sin(state.time * 2.4 + enemy.id * 0.37) * 0.16;
+      if (countermass) countermass.rotation.y = reducedEffects ? 0 : state.time * 0.45;
+      if (field) {
+        field.material.opacity = (0.22 + balance * 0.28) * vfxReadability;
+        field.scale.setScalar(0.96 + balance * 0.08 * motionScale);
+      }
+      for (const name of ['mutation-countermass-pod-left', 'mutation-countermass-pod-right', 'mutation-countermass-arm-left', 'mutation-countermass-arm-right']) {
+        const part = countermass?.getObjectByName(name) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial> | undefined;
+        if (!part) continue;
+        part.material.opacity = 0.96 * materialReadability;
+        part.material.emissiveIntensity = (0.2 + balance * 0.22) * materialReadability;
+      }
+    }
+
+    if (relayActive) {
+      const scan = relay?.getObjectByName('mutation-relay-scan') as THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial> | undefined;
+      const snapPulse = reducedEffects ? 0.76 : Math.max(0.18, Math.sin(state.time * 13.5 + enemy.id * 0.73) * 0.5 + 0.5);
+      if (scan) {
+        scan.material.opacity = (0.2 + snapPulse * 0.34) * vfxReadability;
+        scan.rotation.z = reducedEffects ? 0 : -state.time * 1.8;
+        scan.scale.setScalar(0.94 + snapPulse * 0.1 * motionScale);
+      }
+      for (let index = 0; index < 3; index += 1) {
+        const node = relay?.getObjectByName(`mutation-relay-node-${index}`) as THREE.Mesh<THREE.SphereGeometry, THREE.MeshStandardMaterial> | undefined;
+        if (!node) continue;
+        node.material.opacity = 0.96 * materialReadability;
+        node.material.emissiveIntensity = (0.24 + snapPulse * 0.38) * materialReadability;
+      }
+      for (const [name, side] of [['mutation-relay-snap-left', -1], ['mutation-relay-snap-right', 1]] as const) {
+        const snap = relay?.getObjectByName(name) as THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial> | undefined;
+        if (!snap) continue;
+        snap.visible = !reducedEffects || side > 0;
+        snap.material.opacity = (0.16 + snapPulse * 0.4) * vfxReadability;
+        snap.position.x = side * (0.35 + snapPulse * 0.08 * motionScale);
       }
     }
   }
@@ -5161,10 +5365,8 @@ export class ThreeCombatRenderer {
       });
       const animationPriority = enemy.role === 'boss' ? 3 : enemy.role === 'elite' ? 2 : 1;
       if (!animationTelemetry || animationPriority > animationTelemetry.priority) animationTelemetry = { priority: animationPriority, enemy, motion };
-      const hasP13BMutation = presentation.animation.some(layer =>
-        layer.source === 'mutation' && (layer.cue === 'core-braced' || layer.cue === 'mantle-settle' || layer.cue === 'hunter-ready'),
-      );
-      if (hasP13BMutation && (!mutationTelemetry || animationPriority > mutationTelemetry.priority)) {
+      const hasPresentedMutation = presentation.animation.some(layer => layer.source === 'mutation');
+      if (hasPresentedMutation && (!mutationTelemetry || animationPriority > mutationTelemetry.priority)) {
         mutationTelemetry = { priority: animationPriority, enemy, presentation };
       }
       const damageReaction = resolveEnemyDamageAnimation({
@@ -5205,6 +5407,18 @@ export class ThreeCombatRenderer {
           visual.body.rotation.x -= 0.06 * mutationPoseSuppression;
           visual.head.rotation.y += 0.08 * mutationPoseSuppression;
         }
+        if (enemyMutationCueActive(presentation, 'redline-tension')) {
+          visual.body.rotation.x -= 0.055 * mutationPoseSuppression;
+          visual.body.scale.x *= 1.04;
+        }
+        if (enemyMutationCueActive(presentation, 'countermass-ready')) {
+          visual.body.scale.x *= 1.1;
+          visual.body.rotation.y += Math.sin(state.time * 2.6 + enemy.id * 0.31) * 0.04 * mutationPoseSuppression;
+        }
+        if (enemyMutationCueActive(presentation, 'relay-ready')) {
+          visual.head.rotation.y += Math.sin(state.time * 12.5 + enemy.id * 0.83) * 0.055 * mutationPoseSuppression;
+          visual.body.rotation.z += Math.sin(state.time * 12.5 + enemy.id * 0.83) * 0.012 * mutationPoseSuppression;
+        }
         const fallbackWeapon = visual.root.getObjectByName('hard-enemy-weapon');
         if (fallbackWeapon) {
           fallbackWeapon.position.x += motion.profile.tellReach * motion.tell - motion.profile.commitKick * motion.commit * 0.65;
@@ -5214,6 +5428,15 @@ export class ThreeCombatRenderer {
           if (enemyMutationCueActive(presentation, 'hunter-ready')) {
             fallbackWeapon.position.x += 0.07 * mutationPoseSuppression;
             fallbackWeapon.rotation.y -= 0.055 * mutationPoseSuppression;
+          }
+          if (enemyMutationCueActive(presentation, 'redline-tension')) {
+            fallbackWeapon.position.x += 0.05 * mutationPoseSuppression;
+          }
+          if (enemyMutationCueActive(presentation, 'countermass-ready')) {
+            fallbackWeapon.position.y -= 0.025 * mutationPoseSuppression;
+          }
+          if (enemyMutationCueActive(presentation, 'relay-ready')) {
+            fallbackWeapon.rotation.y -= Math.sin(state.time * 12.5 + enemy.id * 0.83) * 0.045 * mutationPoseSuppression;
           }
         }
       }
@@ -5322,7 +5545,7 @@ export class ThreeCombatRenderer {
     if (mutationTelemetry) {
       const { enemy, presentation } = mutationTelemetry;
       const cues = presentation.animation
-        .filter(layer => layer.source === 'mutation' && (layer.cue === 'core-braced' || layer.cue === 'mantle-settle' || layer.cue === 'hunter-ready'))
+        .filter(layer => layer.source === 'mutation')
         .map(layer => layer.cue);
       this.renderer.domElement.dataset.enemyMutationPresentation = cues.join('+');
       this.renderer.domElement.dataset.enemyPresentationDominant = presentation.dominant ?? 'none';
