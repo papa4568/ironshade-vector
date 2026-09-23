@@ -685,6 +685,22 @@ try {
     const labels = [...document.querySelectorAll('button')].map(button => (button.textContent || '').trim());
     return document.querySelector('.build-header h1')?.textContent?.trim() === 'Build' && labels.includes('Skills');
   })()`, 'Build surface for skill hierarchy');
+  await waitFor(`Boolean(document.querySelector('.build-bay.iv-view') && document.querySelector('.build-header.iv-panel.iv-panel--glass') && document.querySelector('.build-tabs button[aria-current="page"]'))`, 'P15-B shared Build shell');
+  await keyboardActivateButton('Crafting');
+  await waitFor(`Boolean(document.querySelector('.reconstruction-panel .reconstruction-top.iv-panel.iv-panel--glass') && document.querySelector('.reconstruct-storage.iv-panel') && document.querySelector('.build-tabs button[aria-current="page"]')?.textContent?.includes('Crafting'))`, 'P15-B Crafting surface');
+  await keyboardActivateButton('Progression');
+  await waitFor(`Boolean(document.querySelector('.network-panel .section-copy.iv-panel.iv-panel--glass') && document.querySelector('.network-planner.iv-panel') && document.querySelector('.operator-class-panel.iv-panel') && document.querySelector('.specialization-panel.iv-panel') && document.querySelector('.build-tabs button[aria-current="page"]')?.textContent?.includes('Progression'))`, 'P15-B Progression surface');
+  const p15BuildLayout = await evaluate(`(() => {
+    const buttons = [...document.querySelectorAll('.build-tabs button')];
+    return {
+      horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
+      tabCount: buttons.length,
+      minTabHeight: Math.min(...buttons.map(button => button.getBoundingClientRect().height)),
+    };
+  })()`);
+  if (p15BuildLayout.horizontalOverflow > 2 || p15BuildLayout.tabCount !== 5 || (viewportMode === 'mobile-landscape' && p15BuildLayout.minTabHeight < 40)) {
+    throw new Error(`P15-B Build/Crafting/Progression layout failed: ${JSON.stringify(p15BuildLayout)}`);
+  }
   await keyboardActivateButton('Skills');
   await waitFor(`(() => {
     const text = document.body?.innerText ?? '';
@@ -717,6 +733,21 @@ try {
     const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase());
     return (text.includes('command ready') || text.includes('command deck')) && labels.includes('operations');
   })()`, 'Command Deck after Build skill hierarchy');
+
+  await keyboardActivateButton('Ship');
+  await waitFor(`Boolean(document.querySelector('.ship-hub.iv-view.area-ship') && document.querySelector('.tactical-header.iv-panel.iv-panel--glass') && document.querySelector('.ship-systems-intro.iv-panel.iv-panel--glass') && document.querySelector('.ship-hardware-bay.iv-panel') && document.querySelectorAll('.ship-systems-panel .upgrade-card.iv-panel').length >= 6)`, 'P15-B Ship Systems surface');
+  const p15ShipLayout = await evaluate(`(() => {
+    const tabs = [...document.querySelectorAll('.section-tabs button')].filter(button => button.getBoundingClientRect().height > 0);
+    return {
+      horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
+      visibleTabs: tabs.length,
+      minTabHeight: tabs.length ? Math.min(...tabs.map(button => button.getBoundingClientRect().height)) : 0,
+    };
+  })()`);
+  if (p15ShipLayout.horizontalOverflow > 2 || p15ShipLayout.visibleTabs < 2 || (viewportMode === 'mobile-landscape' && p15ShipLayout.minTabHeight < 40)) {
+    throw new Error(`P15-B Ship Systems layout failed: ${JSON.stringify(p15ShipLayout)}`);
+  }
+  console.log(`BROWSER_P15_MENU_PRESENTATION_PASS viewport=${viewportMode} input=keyboard flows=class+crafting+progression+ship-systems shared=iv-panel transition=iv-view`);
 
   await keyboardActivateButton('Operations');
   await waitFor(`[...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'contracts')`, 'Operations navigation');
