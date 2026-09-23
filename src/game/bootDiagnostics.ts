@@ -70,6 +70,6 @@ export function publishBootDiagnostics(report: BootDiagnosticReport) {
   }
 
   if (typeof window !== 'undefined') {
-    (window as Window & { __IRONSHadeBootDiagnostics?: BootDiagnosticReport }).__IRONSHadeBootDiagnostics = report;
+    (window as Window & { __IRONSHADE_BOOT_DIAGNOSTICS__?: BootDiagnosticReport }).__IRONSHADE_BOOT_DIAGNOSTICS__ = report;
   }
 }
