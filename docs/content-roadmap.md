@@ -125,7 +125,7 @@ Target roughly **6 major tiers per system** with sub-milestones.
 - [x] **P14-A Systems Carbine pair** — completed and verified; Burst + Precision Carbine delivered with deterministic same-family gameplay, authored/fallback handling presentation, and regression coverage. Delivery detail is archived in `docs/content-roadmap-archive.md`.
 - [x] **P14-B Vanguard Breacher pair** — completed and verified; Slug + Rapid Breacher delivered with deterministic same-family gameplay, distinct projectile/handling presentation, and regression coverage. Delivery detail is archived in `docs/content-roadmap-archive.md`.
 - [x] **P14-C Vector Rail pair** — completed and verified; Charge + Repeater Rail delivered with deterministic same-family gameplay, explicit capacitor/thermal/penetration tradeoffs, distinct handling/FX presentation, and regression coverage. Delivery detail is archived in `docs/content-roadmap-archive.md`.
-- [ ] **P14-D Build integration** — progression, crafting/affixes, skills, Singulars, class-owned loot
+- [x] **P14-D Build integration** — completed and verified; all six class-owned arsenal variants now integrate with owned-family progression, legal Reconstruction/affix preferences, class-skill tuning, Singular interactions, and class-owned loot bias while preserving hard family locks and save compatibility. Delivery detail is archived in `docs/content-roadmap-archive.md`.
 - [ ] **P14-E Presentation/playtest** — silhouettes, handling animation, layered audio, sustained-fire thermal QA, same-family variety
 - [ ] **P14-F Fourth-family gate** — add only with a future class or genuinely distinct combat role
 
@@ -159,24 +159,23 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P14-D — Build integration.**
+**Next: P14-E — Presentation/playtest.**
 
-Run **P14-D — Build integration** as the next Class Arsenal Expansion batch: carry the completed Carbine, Breacher, and Rail variant pairs through progression, crafting/affix hooks, class skills, Singular interactions, and class-owned loot while preserving the hard family locks, save compatibility, and the intentional same-family tradeoffs already verified in P14-A/P14-B/P14-C.
+Run **P14-E — Presentation/playtest** as the next Class Arsenal Expansion batch: polish the six completed Carbine/Breacher/Rail variants through silhouette separation, handling animation, layered weapon audio, sustained-fire thermal QA, and same-family playtest variety while preserving the P14-D build hooks and class-owned family locks.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.288**
+- Android beta: **0.0.1-beta.289**
 - Package: `app.ironshade.vector`
-- Verified: **P14-C Vector Rail pair complete**
-- Gameplay source: `86ecc2e20a55a4d2749a31783e7dbf360cdae20f`
-- Delivery/QA source: `86ecc2e20a55a4d2749a31783e7dbf360cdae20f`
-- PR Browser E2E: `35843961110`
-- Browser E2E: `35844330501`
-- Level 15 beta smoke: `35844330380`
-- Android beta.288: `35844330691`
-- APK artifact: `10742788131`
-- APK SHA-256: `b0433b0a03211fd8e9bb3b6197ac7eb9b643f5fff807510442a62db01f3f2711`
+- Verified: **P14-D Build integration complete**
+- Gameplay source: `b005092cf4bf761640bb37b6d5d530b71bebb289`
+- Delivery/QA source: `b005092cf4bf761640bb37b6d5d530b71bebb289`
+- PR Browser E2E: `35846424229`
+- Browser E2E: `35846732274`
+- Level 15 beta smoke: `35846732264`
+- Android beta.289: `35846732260`
+- APK artifact: `10743144568`
+- APK SHA-256: `faeb0b6ee0393a1f4d6996794da76508c7edb154739f2dc21ca6d06045033c76`
 - Signing: debug-signed beta; permanent signing remains P17-A
-
