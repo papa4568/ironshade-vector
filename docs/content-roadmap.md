@@ -13,7 +13,7 @@ Only active/future executable work lives here. Completed and verified work belon
 
 ## P16 — Performance Without Compromise
 
-- [ ] **P16-A — Measurement** — establish device tiers and separate CPU/render/GPU/UI/animation/audio/GC budgets with reproducible measurement. **Done when:** representative scenarios produce comparable diagnostics/baselines and regressions can be identified against explicit budgets.
+- [x] **P16-A — Measurement** — establish device tiers and separate CPU/render/GPU/UI/animation/audio/GC budgets with reproducible measurement. **Done when:** representative scenarios produce comparable diagnostics/baselines and regressions can be identified against explicit budgets.
 - [ ] **P16-B — Rendering scalability** — implement/verify dynamic resolution, instancing, texture/material memory controls, and shadow/reflection/effect priority. **Done when:** render cost scales by device/quality tier without removing gameplay-critical information and worst-case rendering regression passes.
 - [ ] **P16-C — Runtime scalability** — improve pooling, animation LOD, audio virtualization, and asset streaming/preload. **Done when:** worst-case runtime pressure stays within established budgets without changing encounter mechanics and regression/Android QA pass.
 - [ ] **P16-D — Boot architecture** — split feature/presentation data where useful and track boot cost diagnostically without arbitrary bundle/chunk byte caps. **Done when:** startup work is measurably staged/deferred, required gameplay data remains correct, and boot/build regressions pass.
