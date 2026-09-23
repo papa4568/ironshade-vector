@@ -117,7 +117,7 @@ try {
       throw new Error(`Authored loot pickup entered procedural fallback: ${JSON.stringify(lastState)}`);
     }
 
-    const mobileViewport = lastState?.width <= 900 && lastState?.height <= 500;
+    const mobileViewport = process.env.BROWSER_E2E_VIEWPORT === 'mobile-landscape';
     const expectedLod = mobileViewport ? 2 : 1;
     const assets = new Set(String(lastState?.assets ?? '').split(',').filter(Boolean));
     const controlAsset = `interactable-control-terminal-lod${expectedLod}`;
@@ -141,7 +141,7 @@ try {
     await sleep(200);
   }
 
-  const mobileViewport = lastState?.width <= 900 && lastState?.height <= 500;
+  const mobileViewport = process.env.BROWSER_E2E_VIEWPORT === 'mobile-landscape';
   const expectedLod = mobileViewport ? 2 : 1;
   const assets = new Set(String(lastState?.assets ?? '').split(',').filter(Boolean));
   if (lastState?.visual !== 'authored' || !assets.has(`interactable-control-terminal-lod${expectedLod}`)) {
