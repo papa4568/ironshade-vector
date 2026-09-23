@@ -15,7 +15,7 @@ const [, entry] = entryRecord;
 
 const dynamic = records.filter(([, record]) => record.isDynamicEntry);
 const dynamicKeys = dynamic.map(([key]) => key);
-for (const expected of ['src/components/ShipHub.tsx', 'src/components/Armory.tsx', 'src/components/GameCanvas.tsx']) {
+for (const expected of ['src/App.tsx', 'src/game/saveRecovery.ts', 'src/components/ShipHub.tsx', 'src/components/Armory.tsx', 'src/components/GameCanvas.tsx']) {
   assert(dynamicKeys.includes(expected), `${expected} is no longer emitted as a dynamic entry.`);
 }
 
@@ -30,6 +30,11 @@ const threeManifestKeys = new Set(records
   .filter(([, record]) => threeChunks.includes(basename(record.file)))
   .map(([key]) => key));
 const bootImports = new Set(entry.imports ?? []);
+const bootDynamicImports = new Set(entry.dynamicImports ?? []);
+for (const staged of ['src/game/saveRecovery.ts', 'src/App.tsx']) {
+  assert(bootDynamicImports.has(staged), `${staged} is no longer directly staged from the boot entry.`);
+  assert(!bootImports.has(staged), `${staged} leaked back into the synchronous boot graph.`);
+}
 assert([...threeManifestKeys].every(key => !bootImports.has(key)), 'Three.js runtime is no longer deferred from the boot entry.');
 
 const graphicsRuntimePrefixes = ['GLTFLoader-', 'KTX2Loader-', 'meshopt_decoder.module-', 'SkeletonUtils-'];
@@ -41,7 +46,7 @@ const graphicsManifestKeys = new Set(records
   .map(([key]) => key));
 assert([...graphicsManifestKeys].every(key => !bootImports.has(key)), 'Authored-asset loaders must remain deferred from the boot entry.');
 
-// Architecture-only guardrail: this verifies intentional code splitting and deferred loading.
+// Architecture-only guardrail: this verifies intentional code splitting and staged boot loading.
 // It does not measure, compare, warn on, or cap bundle/chunk byte sizes.
 assert(jsFiles.length >= 10, `Expected navigation, Three.js, and authored-asset code splitting; found only ${jsFiles.length} JS chunks.`);
 
