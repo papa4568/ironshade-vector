@@ -54,5 +54,6 @@ assert(rendererSource.includes('preloadGraphicsAssets(') && rendererSource.inclu
 assert(graphicsSource.includes('export async function preloadGraphicsAssets') && graphicsSource.includes('workerCount'), 'graphics runtime must implement bounded-concurrency preload');
 assert(canvasSource.includes('feedback.performanceStats()') && canvasSource.includes('dataset.audioVirtualization'), 'runtime QA must expose audio virtualization pressure');
 assert(androidSmokeSource.includes('runtimeAnimationLod') && androidSmokeSource.includes('audioVirtualization') && androidSmokeSource.includes('assetStreaming') && androidSmokeSource.includes('runtimePools'), 'Android smoke must verify P16-C runtime telemetry');
+assert(androidSmokeSource.includes('startup-deferred:') && androidSmokeSource.includes('Android bounded asset streaming activation') && androidSmokeSource.includes('activeAssetStreaming'), 'Android smoke must prove asset streaming defers during startup and activates afterward');
 
 console.log('RUNTIME_SCALABILITY_PASS pools=bounded animation=lod audio=virtualized assets=preloaded mechanics=preserved');
