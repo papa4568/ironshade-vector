@@ -192,7 +192,10 @@ function drawEnemyMutationPresentation(ctx: CanvasRenderingContext2D, state: Sim
   const reinforced = mutationCues.has('core-braced');
   const mantle = mutationCues.has('mantle-settle');
   const hunter = mutationCues.has('hunter-ready');
-  if (!reinforced && !mantle && !hunter) return;
+  const redline = mutationCues.has('redline-tension');
+  const countermass = mutationCues.has('countermass-ready');
+  const relay = mutationCues.has('relay-ready');
+  if (!reinforced && !mantle && !hunter && !redline && !countermass && !relay) return;
 
   const lead = presentation.vfx[0];
   const readability = lead && lead.source !== 'mutation' && lead.priority > 2 ? 0.3 : 1;
@@ -244,6 +247,68 @@ function drawEnemyMutationPresentation(ctx: CanvasRenderingContext2D, state: Sim
     ctx.lineTo(pos.x + 38 + pulse * 4, pos.y - 13);
     ctx.stroke();
     ctx.setLineDash([]);
+  }
+
+  if (redline) {
+    const heat = reducedEffects ? 0.78 : 0.74 + Math.sin(state.time * 8.6 + enemy.id * 0.49) * 0.18;
+    ctx.strokeStyle = `rgba(255,112,76,${0.42 + heat * 0.32})`;
+    ctx.fillStyle = `rgba(120,49,39,${0.76 + heat * 0.14})`;
+    ctx.lineWidth = 3;
+    for (const x of [-14, 0, 14]) ctx.fillRect(pos.x + x - 3, pos.y - 38, 6, 34);
+    ctx.beginPath();
+    ctx.moveTo(pos.x - 18, pos.y - 31);
+    ctx.lineTo(pos.x + 18, pos.y - 31);
+    ctx.moveTo(pos.x - 18, pos.y - 14);
+    ctx.lineTo(pos.x + 18, pos.y - 14);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y - 23, 14 + heat * 2 * motion, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  if (countermass) {
+    const swing = reducedEffects ? 0 : Math.sin(state.time * 2.4 + enemy.id * 0.37) * 4;
+    ctx.strokeStyle = 'rgba(147,171,224,.66)';
+    ctx.fillStyle = 'rgba(70,82,104,.92)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.ellipse(pos.x, pos.y - 10, 34, 13, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    for (const side of [-1, 1]) {
+      const px = pos.x + side * (31 + swing);
+      ctx.beginPath();
+      ctx.moveTo(pos.x + side * 10, pos.y - 10);
+      ctx.lineTo(px, pos.y - 10);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(px, pos.y - 10, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+
+  if (relay) {
+    const snap = reducedEffects ? 0.76 : Math.max(0.18, Math.sin(state.time * 13.5 + enemy.id * 0.73) * 0.5 + 0.5);
+    ctx.strokeStyle = `rgba(158,242,239,${0.34 + snap * 0.36})`;
+    ctx.fillStyle = 'rgba(70,102,108,.92)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y - 34, 11 + snap * 2 * motion, 0, Math.PI * 2);
+    ctx.stroke();
+    for (const x of [-13, 0, 13]) {
+      ctx.beginPath();
+      ctx.arc(pos.x + x, pos.y - 38 - (x === 0 ? 5 : 0), 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    const snapCount = reducedEffects ? 1 : 2;
+    for (let index = 0; index < snapCount; index += 1) {
+      const side = index === 0 ? 1 : -1;
+      ctx.beginPath();
+      ctx.moveTo(pos.x + side * 12, pos.y - 24);
+      ctx.lineTo(pos.x + side * (29 + snap * 5), pos.y - 24);
+      ctx.stroke();
+    }
   }
 
   ctx.restore();
@@ -426,13 +491,13 @@ type FeedbackSnapshot = {
   impactSerial: number;
   mutationToken: string;
 };
-const p13BMutationIds = ['reinforced-core', 'ablative-mantle', 'hunter-servo'] as const;
-type P13BMutationId = (typeof p13BMutationIds)[number];
-function isP13BMutationId(id: Enemy['mutations'][number]): id is P13BMutationId { return p13BMutationIds.some(candidate => candidate === id); }
+const presentationMutationAudioIds = ['reinforced-core', 'ablative-mantle', 'hunter-servo', 'redline-bus', 'countermass-rig', 'relay-reflex'] as const;
+type PresentationMutationAudioId = (typeof presentationMutationAudioIds)[number];
+function isPresentationMutationAudioId(id: Enemy['mutations'][number]): id is PresentationMutationAudioId { return presentationMutationAudioIds.some(candidate => candidate === id); }
 function activeMutationToken(state: SimState) {
   return state.enemies
     .filter(enemy => enemy.active && !enemy.dead)
-    .flatMap(enemy => enemy.mutations.filter(isP13BMutationId).map(id => `${enemy.id}:${id}`))
+    .flatMap(enemy => enemy.mutations.filter(isPresentationMutationAudioId).map(id => `${enemy.id}:${id}`))
     .sort()
     .join(',');
 }
@@ -494,7 +559,7 @@ function syncCombatFeedback(state: SimState, previous: FeedbackSnapshot, mission
   const previousMutations = new Set(previous.mutationToken.split(',').filter(Boolean));
   const freshMutation = state.enemies
     .filter(enemy => enemy.active && !enemy.dead)
-    .flatMap(enemy => enemy.mutations.filter(isP13BMutationId).map(cue => ({ token: `${enemy.id}:${cue}`, cue })))
+    .flatMap(enemy => enemy.mutations.filter(isPresentationMutationAudioId).map(cue => ({ token: `${enemy.id}:${cue}`, cue })))
     .find(entry => !previousMutations.has(entry.token));
   if (freshMutation) feedback.mutation(freshMutation.cue);
 
