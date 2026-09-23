@@ -1316,3 +1316,16 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Soak artifact `10768934719` contains the exercised APK and evidence; APK SHA-256 `5f304c03f8e07b77dc79fdae0f20340f8d49f0aae0767abad9ca5eacd32e59fa`.
   - **Next: P16-F — Quality modes/device QA.**
 
+## 2026-09-23 — P16-F Performance Without Compromise // Quality modes/device QA
+
+- [x] **P16-F Quality modes/device QA** — finalized persisted Adaptive, Flagship, and Performance graphics modes on the existing adaptive renderer/runtime scalability system and verified mechanics-preserving Android behavior.
+  - Added a persisted `graphicsQuality` profile setting with Adaptive, Flagship, and Performance choices in Build → Settings. Save normalization/recovery validates the setting and legacy profiles default safely to Adaptive.
+  - Flagship mode can start healthy coarse/mobile hardware at the full High presentation budget: 1024 shadows, full VFX/transparency/reflections/secondary effects, 4x anisotropy, and the largest graphics cache. Performance mode starts at the low-cost tier: reduced pixel/detail/VFX/transparency/reflection/secondary budgets, shadows disabled, 1x anisotropy, and the smallest graphics cache.
+  - Quality selection does not change combat mechanics. The shared render budget keeps `gameplayCueScale === 1`; telegraphs, hazard shape coding, targeted/critical animation cadence, and simulation timing remain independent of secondary presentation scaling.
+  - Added deterministic regression coverage for Flagship/Performance divergence, gameplay-cue invariants, player-facing settings integration, and round-trip persistence through the atomic save envelope.
+  - PR #218 head `ab7ebcf9f7807de68d3979bfe5a42505f26dea4b` passed Browser E2E `35905716395` (run 698, desktop + mobile-landscape). Merged source `5cb5d6b5750af77c5cf4dd3c64d5b2966153ffc7` passed post-merge Browser E2E `35906066518` (run 699) and Level 15 beta smoke `35906066775` (run 561).
+  - Android beta.314 run `35906066655` passed the full web regression/build, native project generation, debug APK build, package/version/min-SDK/target-SDK/signature verification, emulator install/cold launch, quality-setting touch QA, runtime scalability telemetry, lifecycle recovery, authored-content checks, and Chapter 3 touch playthrough.
+  - Native quality evidence included `ANDROID_QUALITY_SETTING_PASS mode=performance persisted=build-navigation`, `ANDROID_RENDER_TIER_PASS mode=performance tier=performance budget=pixel:0.68+shadow:0+vfx:0.45+transparency:0.40+reflection:0.38+secondary:0.42+detail:0.50`, `ANDROID_RUNTIME_SCALABILITY_PASS`, `ANDROID_LIFECYCLE_RESUME_PASS process=preserved mode=performance tier=performance`, `ANDROID_CHAPTER3_PLAYTHROUGH_PASS`, and `ANDROID_EMULATOR_PASS`.
+  - Android artifact `10771660796` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.314` (314), debug signing, min SDK 24 / target SDK 36, and APK SHA-256 `363109b3ec88e5902c3e75f65c81bc4e8b4133c7a3a52a655c0724a39af42cf1`.
+  - **Next: P17-A — Signing/upgrade path.**
+
