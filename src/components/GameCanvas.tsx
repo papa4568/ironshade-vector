@@ -19,6 +19,7 @@ import { combatClassLabel, exclusiveProtocolCombinationForInstances } from '../g
 import { protocolPresentationFor } from '../game/eliteProtocolPresentation';
 import { enhancedProtocolVariantPresentationFor } from '../game/enhancedProtocolVariantPresentation';
 import { mutationPresentationFor } from '../game/t9MutationPresentation';
+import { resolveEnemyPresentation } from '../game/enemyPresentation';
 import { bossPhaseMutationPresentationFor } from '../game/bossPhaseMutationPresentation';
 import { commandTargetMutationName } from '../game/commandTargetMutations';
 import { groundLootPresentation, type GroundLootReceipt } from '../game/fieldLoot';
@@ -185,6 +186,69 @@ function tacticalRoleTag(enemy: Enemy) { const labels: Partial<Record<Enemy['var
 function protocolTag(enemy: Enemy) { const packageDefinition = exclusiveProtocolCombinationForInstances(enemy.protocols); const visible = enemy.protocols.slice(0, 2).map(protocol => { const variantPresentation = protocol.variantId ? enhancedProtocolVariantPresentationFor(protocol.variantId) : undefined; return `${variantPresentation ? '▲' : ''}${variantPresentation?.shortName ?? protocolPresentationFor(protocol.id).shortName}`; }); const hidden = Math.max(0, enemy.protocols.length - visible.length); const detail = `${visible.join(' · ')}${hidden > 0 ? ` · +${hidden}` : ''}`; return packageDefinition ? `${packageDefinition.shortName} // ${detail}` : detail; }
 function mutationTag(enemy: Enemy) { return enemy.mutations.map(id => `MUT:${mutationPresentationFor(id).shortName}`).join(' · '); }
 
+function drawEnemyMutationPresentation(ctx: CanvasRenderingContext2D, state: SimState, enemy: Enemy, pos: Vec2, reducedEffects: boolean) {
+  const presentation = resolveEnemyPresentation(enemy);
+  const mutationCues = new Set(presentation.animation.filter(layer => layer.source === 'mutation').map(layer => layer.cue));
+  const reinforced = mutationCues.has('core-braced');
+  const mantle = mutationCues.has('mantle-settle');
+  const hunter = mutationCues.has('hunter-ready');
+  if (!reinforced && !mantle && !hunter) return;
+
+  const lead = presentation.vfx[0];
+  const readability = lead && lead.source !== 'mutation' && lead.priority > 2 ? 0.3 : 1;
+  const motion = reducedEffects ? 0 : 1;
+  ctx.save();
+  ctx.globalAlpha *= readability;
+
+  if (reinforced) {
+    const pulse = reducedEffects ? 0.78 : 0.72 + Math.sin(state.time * 3.1 + enemy.id) * 0.16;
+    ctx.strokeStyle = `rgba(111,209,197,${0.36 + pulse * 0.26})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(pos.x, pos.y - 14, 26 + pulse * 3, 15 + pulse * 2, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(82,102,107,.9)';
+    ctx.fillRect(pos.x - 24, pos.y - 32, 7, 35);
+    ctx.fillRect(pos.x + 17, pos.y - 32, 7, 35);
+  }
+
+  if (mantle) {
+    ctx.fillStyle = 'rgba(186,172,139,.88)';
+    ctx.strokeStyle = 'rgba(239,198,132,.68)';
+    for (const [dx, dy, w, h] of [[-25, -31, 16, 10], [9, -31, 16, 10], [-22, -14, 13, 9], [9, -14, 13, 9], [-8, -39, 16, 8]] as const) {
+      ctx.fillRect(pos.x + dx, pos.y + dy, w, h);
+      ctx.strokeRect(pos.x + dx, pos.y + dy, w, h);
+    }
+    const sparkCount = reducedEffects ? 2 : 4;
+    ctx.fillStyle = 'rgba(255,185,105,.78)';
+    for (let index = 0; index < sparkCount; index += 1) {
+      const phase = state.time * (1.5 + index * 0.12) + enemy.id * 0.37 + index * 1.8;
+      const sx = pos.x + Math.sin(phase * 1.7) * (22 + index * 3);
+      const sy = pos.y - 7 + ((phase * 9) % 28) * motion;
+      ctx.fillRect(sx - 1.5, sy - 1.5, 3, 3);
+    }
+  }
+
+  if (hunter) {
+    const pulse = reducedEffects ? 0.82 : 0.78 + Math.sin(state.time * 7.1 + enemy.id * 0.61) * 0.14;
+    ctx.strokeStyle = `rgba(126,229,228,${0.38 + pulse * 0.28})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y - 31, 12 + pulse * 2, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash(reducedEffects ? [] : [6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(pos.x - 38 - pulse * 4, pos.y - 13);
+    ctx.lineTo(pos.x - 14, pos.y - 13);
+    ctx.moveTo(pos.x + 14, pos.y - 13);
+    ctx.lineTo(pos.x + 38 + pulse * 4, pos.y - 13);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  ctx.restore();
+}
+
 function drawEnemySilhouette(ctx: CanvasRenderingContext2D, enemy: Enemy, pos: Vec2) {
   const fill = roleColors[enemy.role]; const stroke = enemy.statuses.marked > 0 ? '#d9e778' : '#e0a27b'; ctx.fillStyle = fill; ctx.strokeStyle = stroke;
   if (enemy.variant === 'shieldBoarder') { ctx.beginPath(); ctx.roundRect(pos.x - 22, pos.y - 34, 44, 55, 7); ctx.fill(); ctx.stroke(); ctx.strokeStyle = '#a9c9be'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(pos.x + 8, pos.y - 8, 32, -1.15, 1.15); ctx.stroke(); ctx.lineWidth = 1; return; }
@@ -302,10 +366,12 @@ function renderGame(ctx: CanvasRenderingContext2D, state: SimState, width: numbe
   for (const projectile of state.projectiles) { if (!projectile.active) continue; const pos = project(projectile.x, projectile.y, camX, camY, width, height); const playerShot = projectile.owner === 'player'; ctx.fillStyle = playerShot ? projectile.weapon === 'rail' ? '#b9e8ff' : projectile.weapon === 'breacher' ? '#ffddb3' : '#d9f3c6' : '#ef8a6e'; if (quality > 0.7) { ctx.shadowBlur = 10; ctx.shadowColor = ctx.fillStyle; } ctx.beginPath(); ctx.arc(pos.x, pos.y - 12, projectile.radius + 1, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0; }
   for (const effect of state.effects) { if (!effect.active) continue; const pos = project(effect.x, effect.y, camX, camY, width, height); const progress = 1 - effect.life / Math.max(0.01, effect.maxLife); const radius = effect.radius * (0.4 + progress * 0.8); ctx.strokeStyle = effect.kind === 'arc' ? `rgba(132,202,235,${1 - progress})` : effect.kind === 'breach' ? `rgba(240,125,77,${1 - progress})` : effect.kind === 'mark' ? `rgba(208,224,122,${1 - progress})` : `rgba(194,221,211,${0.72 * (1 - progress)})`; ctx.lineWidth = effect.kind === 'arc' ? 3 : 2; ctx.beginPath(); ctx.ellipse(pos.x, pos.y - 10, radius * 1.35, radius * 0.72, 0, 0, Math.PI * 2); ctx.stroke(); ctx.lineWidth = 1; }
   for (const enemy of state.enemies) { if (!enemy.active) continue; const pos = project(enemy.x, enemy.y, camX, camY, width, height); if (enemy.variant === 'tetherOperator' && !enemy.dead) { const tether = state.objects.find(object => object.id.startsWith('enemy-tether') && object.active && object.label.endsWith(`#${enemy.id}`)); if (tether) { const tetherPos = project(tether.x + tether.w / 2, tether.y + tether.h / 2, camX, camY, width, height); ctx.strokeStyle = 'rgba(112,181,214,.7)'; ctx.setLineDash([7, 5]); ctx.beginPath(); ctx.moveTo(pos.x, pos.y - 10); ctx.lineTo(tetherPos.x, tetherPos.y - 8); ctx.stroke(); ctx.setLineDash([]); } } if (!enemy.dead && enemy.id === mobileTargetId) drawMobileTargetLock(ctx, enemy, pos, state.time, reducedTargetMotion); if (enemy.dead) { ctx.globalAlpha = 0.3 + enemy.deathT * 0.35; ctx.fillStyle = '#6c3532'; ctx.beginPath(); ctx.ellipse(pos.x, pos.y, enemy.role === 'boss' ? 34 : 24, 11, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; continue; }
-    if (enemy.telegraph > 0) drawEnemyTelegraph(ctx, state, enemy, pos, camX, camY, width, height);
     if ((enemy.combatClass === 'enhanced' || enemy.combatClass === 'elite') && enemy.statuses.disrupted <= 0) { ctx.strokeStyle = enemy.combatClass === 'elite' ? 'rgba(207,107,139,.42)' : 'rgba(126,177,196,.32)'; ctx.setLineDash(enemy.combatClass === 'enhanced' ? [7, 5] : []); ctx.beginPath(); ctx.ellipse(pos.x, pos.y, enemy.combatClass === 'elite' ? 96 : 78, enemy.combatClass === 'elite' ? 48 : 39, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
     if (enemy.protocolPulse > 0) { ctx.strokeStyle = `rgba(198,221,168,${Math.min(0.8, enemy.protocolPulse * 0.62)})`; ctx.beginPath(); ctx.ellipse(pos.x, pos.y - 8, 54 + enemy.protocolPulse * 10, 28 + enemy.protocolPulse * 5, 0, 0, Math.PI * 2); ctx.stroke(); }
-    drawEnemySilhouette(ctx, enemy, pos); const hpWidth = enemy.role === 'boss' ? 96 : enemy.role === 'elite' ? 66 : 54; const hpPct = enemy.hp / enemy.maxHp; const armorPct = enemy.maxArmor > 0 ? enemy.armor / enemy.maxArmor : 0; const healthY = pos.y - 54; ctx.fillStyle = 'rgba(8,11,12,.94)'; ctx.fillRect(pos.x - hpWidth / 2 - 1, healthY - 1, hpWidth + 2, 9); ctx.fillStyle = enemy.armor <= 0 && enemy.maxArmor > 0 ? '#ff8069' : '#dc6758'; ctx.fillRect(pos.x - hpWidth / 2, healthY, hpWidth * hpPct, 7); ctx.strokeStyle = 'rgba(239,244,242,.34)'; ctx.strokeRect(pos.x - hpWidth / 2 - .5, healthY - .5, hpWidth + 1, 8); if (enemy.armor > 0) { ctx.fillStyle = 'rgba(8,11,12,.94)'; ctx.fillRect(pos.x - hpWidth / 2 - 1, pos.y - 63, hpWidth + 2, 6); ctx.fillStyle = '#72bde2'; ctx.fillRect(pos.x - hpWidth / 2, pos.y - 62, hpWidth * armorPct, 4); }
+    drawEnemyMutationPresentation(ctx, state, enemy, pos, reducedTargetMotion);
+    drawEnemySilhouette(ctx, enemy, pos);
+    if (enemy.telegraph > 0) drawEnemyTelegraph(ctx, state, enemy, pos, camX, camY, width, height);
+    const hpWidth = enemy.role === 'boss' ? 96 : enemy.role === 'elite' ? 66 : 54; const hpPct = enemy.hp / enemy.maxHp; const armorPct = enemy.maxArmor > 0 ? enemy.armor / enemy.maxArmor : 0; const healthY = pos.y - 54; ctx.fillStyle = 'rgba(8,11,12,.94)'; ctx.fillRect(pos.x - hpWidth / 2 - 1, healthY - 1, hpWidth + 2, 9); ctx.fillStyle = enemy.armor <= 0 && enemy.maxArmor > 0 ? '#ff8069' : '#dc6758'; ctx.fillRect(pos.x - hpWidth / 2, healthY, hpWidth * hpPct, 7); ctx.strokeStyle = 'rgba(239,244,242,.34)'; ctx.strokeRect(pos.x - hpWidth / 2 - .5, healthY - .5, hpWidth + 1, 8); if (enemy.armor > 0) { ctx.fillStyle = 'rgba(8,11,12,.94)'; ctx.fillRect(pos.x - hpWidth / 2 - 1, pos.y - 63, hpWidth + 2, 6); ctx.fillStyle = '#72bde2'; ctx.fillRect(pos.x - hpWidth / 2, pos.y - 62, hpWidth * armorPct, 4); }
     const statuses = getStatusLabels(enemy); if (statuses.length > 0) { ctx.font = '8px ui-monospace, monospace'; ctx.fillStyle = '#d6e0bb'; ctx.textAlign = 'center'; ctx.fillText(statuses.slice(0, 2).join(' · '), pos.x, pos.y - 66); ctx.textAlign = 'left'; }
     const roleTag = tacticalRoleTag(enemy); const classTag = enemy.combatClass === 'enhanced' || enemy.combatClass === 'elite' ? `${combatClassLabel(enemy.combatClass)} // ${enemy.label.toUpperCase()}` : ''; const protocols = [mutationTag(enemy), protocolTag(enemy)].filter(Boolean).join(' // '); const tagY = pos.y - (statuses.length > 0 ? 76 : 67);
     if (roleTag) { ctx.font = '800 7px ui-monospace, monospace'; ctx.fillStyle = '#a9bbb5'; ctx.textAlign = 'center'; ctx.fillText(roleTag, pos.x, tagY); ctx.textAlign = 'left'; }
@@ -358,7 +424,18 @@ type FeedbackSnapshot = {
   telegraphToken: string;
   collectedLoot: number;
   impactSerial: number;
+  mutationToken: string;
 };
+const p13BMutationIds = ['reinforced-core', 'ablative-mantle', 'hunter-servo'] as const;
+type P13BMutationId = (typeof p13BMutationIds)[number];
+function isP13BMutationId(id: Enemy['mutations'][number]): id is P13BMutationId { return p13BMutationIds.some(candidate => candidate === id); }
+function activeMutationToken(state: SimState) {
+  return state.enemies
+    .filter(enemy => enemy.active && !enemy.dead)
+    .flatMap(enemy => enemy.mutations.filter(isP13BMutationId).map(id => `${enemy.id}:${id}`))
+    .sort()
+    .join(',');
+}
 function activeTelegraphToken(state: SimState) {
   return state.enemies.filter(enemy => enemy.active && !enemy.dead && enemy.telegraph > 0.01).map(enemy => enemy.id).sort((a, b) => a - b).join(',');
 }
@@ -378,6 +455,7 @@ function feedbackSnapshotFrom(state: SimState): FeedbackSnapshot {
     telegraphToken: activeTelegraphToken(state),
     collectedLoot: state.collectedLoot.length,
     impactSerial: state.impactSerial,
+    mutationToken: activeMutationToken(state),
   };
 }
 function syncCombatFeedback(state: SimState, previous: FeedbackSnapshot, mission: Contract): FeedbackSnapshot {
@@ -413,6 +491,13 @@ function syncCombatFeedback(state: SimState, previous: FeedbackSnapshot, mission
 
   const bossPattern = boss?.bossPattern ?? 'none';
   const bossPhase = boss?.bossPhase ?? 1;
+  const previousMutations = new Set(previous.mutationToken.split(',').filter(Boolean));
+  const freshMutation = state.enemies
+    .filter(enemy => enemy.active && !enemy.dead)
+    .flatMap(enemy => enemy.mutations.filter(isP13BMutationId).map(cue => ({ token: `${enemy.id}:${cue}`, cue })))
+    .find(entry => !previousMutations.has(entry.token));
+  if (freshMutation) feedback.mutation(freshMutation.cue);
+
   const telegraphing = state.enemies.filter(enemy => enemy.active && !enemy.dead && enemy.telegraph > 0.01);
   const previousTelegraphs = new Set(previous.telegraphToken.split(',').filter(Boolean));
   const freshTelegraph = telegraphing

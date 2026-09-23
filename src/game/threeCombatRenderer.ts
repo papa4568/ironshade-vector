@@ -20,6 +20,7 @@ import { hecateRenderProfile, hecateStageIdentity } from './hecateCapstone';
 import { resolvePlayerHandlingAnimation } from './playerHandlingAnimation';
 import { resolveEnemyDamageAnimation, resolvePlayerSkillAnimation } from './skillDamageAnimation';
 import { resolveEnemyBossAnimation, type EnemyBossAnimationSignals } from './enemyBossAnimation';
+import { resolveEnemyPresentation, type EnemyPresentationContract } from './enemyPresentation';
 
 const WORLD_SCALE = 0.02;
 const FLOOR_Y = 0;
@@ -44,6 +45,129 @@ const roleColors: Record<Enemy['role'], number> = {
   elite: 0xc34f6e,
   boss: 0xd04c46,
 };
+
+function enemyMutationCueActive(contract: EnemyPresentationContract, cue: string) {
+  return contract.animation.some(layer => layer.source === 'mutation' && layer.cue === cue);
+}
+
+function createEnemyMutationVisuals(scale: number) {
+  const root = new THREE.Group();
+  root.name = 'enemy-mutation-p13b';
+  const materials: THREE.Material[] = [];
+  const keep = <T extends THREE.Material>(material: T) => { materials.push(material); return material; };
+
+  const reinforced = new THREE.Group();
+  reinforced.name = 'mutation-reinforced-core';
+  const corePlateMaterial = keep(new THREE.MeshStandardMaterial({
+    color: 0x52666b,
+    emissive: 0x245d5b,
+    emissiveIntensity: 0.24,
+    metalness: 0.9,
+    roughness: 0.24,
+    transparent: true,
+  }));
+  const coreGlowMaterial = keep(new THREE.MeshBasicMaterial({
+    color: 0x78d8ca,
+    transparent: true,
+    opacity: 0.46,
+    depthWrite: false,
+    toneMapped: false,
+  }));
+  for (const side of [-1, 1]) {
+    const brace = new THREE.Mesh(
+      new THREE.BoxGeometry(0.16 * scale, 0.62 * scale, 0.18 * scale),
+      corePlateMaterial,
+    );
+    brace.name = `mutation-core-brace-${side < 0 ? 'left' : 'right'}`;
+    brace.position.set(side * 0.43 * scale, 0.9 * scale, 0.01);
+    brace.rotation.z = side * -0.16;
+    brace.castShadow = true;
+    reinforced.add(brace);
+  }
+  const coreGlow = new THREE.Mesh(new THREE.TorusGeometry(0.43 * scale, 0.035 * scale, 6, 28), coreGlowMaterial);
+  coreGlow.name = 'mutation-core-glow';
+  coreGlow.rotation.x = Math.PI / 2;
+  coreGlow.position.y = 0.92 * scale;
+  reinforced.add(coreGlow);
+  reinforced.visible = false;
+  root.add(reinforced);
+
+  const mantle = new THREE.Group();
+  mantle.name = 'mutation-ablative-mantle';
+  const mantleMaterial = keep(new THREE.MeshStandardMaterial({
+    color: 0xb6aa8c,
+    emissive: 0x493827,
+    emissiveIntensity: 0.12,
+    metalness: 0.38,
+    roughness: 0.74,
+    transparent: true,
+  }));
+  const mantleSparkMaterial = keep(new THREE.MeshBasicMaterial({
+    color: 0xffbd71,
+    transparent: true,
+    opacity: 0.5,
+    depthWrite: false,
+    toneMapped: false,
+  }));
+  const mantlePlacements = [
+    [-0.46, 1.16, 0.02, -0.22],
+    [0.46, 1.16, 0.02, 0.22],
+    [-0.38, 0.72, 0.17, -0.1],
+    [0.38, 0.72, 0.17, 0.1],
+    [0, 1.32, -0.18, 0],
+  ] as const;
+  mantlePlacements.forEach(([x, y, z, rz], index) => {
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(0.34 * scale, 0.23 * scale, 0.14 * scale), mantleMaterial);
+    plate.name = `mutation-mantle-plate-${index}`;
+    plate.position.set(x * scale, y * scale, z * scale);
+    plate.rotation.z = rz;
+    plate.castShadow = true;
+    mantle.add(plate);
+  });
+  for (let index = 0; index < 4; index += 1) {
+    const spark = new THREE.Mesh(new THREE.TetrahedronGeometry(0.045 * scale, 0), mantleSparkMaterial);
+    spark.name = `mutation-mantle-spark-${index}`;
+    mantle.add(spark);
+  }
+  mantle.visible = false;
+  root.add(mantle);
+
+  const hunter = new THREE.Group();
+  hunter.name = 'mutation-hunter-servo';
+  const servoMaterial = keep(new THREE.MeshStandardMaterial({
+    color: 0x425d61,
+    emissive: 0x2c858a,
+    emissiveIntensity: 0.36,
+    metalness: 0.82,
+    roughness: 0.28,
+    transparent: true,
+  }));
+  const trackingMaterial = keep(new THREE.MeshBasicMaterial({
+    color: 0x7ee5e4,
+    transparent: true,
+    opacity: 0.48,
+    depthWrite: false,
+    toneMapped: false,
+  }));
+  const servoHousing = new THREE.Mesh(new THREE.BoxGeometry(0.54 * scale, 0.14 * scale, 0.16 * scale), servoMaterial);
+  servoHousing.name = 'mutation-hunter-servo-housing';
+  servoHousing.position.set(0, 1.18 * scale, -0.28 * scale);
+  hunter.add(servoHousing);
+  const trackingRing = new THREE.Mesh(new THREE.TorusGeometry(0.31 * scale, 0.026 * scale, 5, 24), trackingMaterial);
+  trackingRing.name = 'mutation-hunter-reticle';
+  trackingRing.position.set(0, 1.43 * scale, 0.25 * scale);
+  hunter.add(trackingRing);
+  for (const side of [-1, 1]) {
+    const streak = new THREE.Mesh(new THREE.BoxGeometry(0.42 * scale, 0.018 * scale, 0.025 * scale), trackingMaterial);
+    streak.name = `mutation-hunter-streak-${side < 0 ? 'left' : 'right'}`;
+    streak.position.set(side * 0.42 * scale, 1.06 * scale, 0.27 * scale);
+    hunter.add(streak);
+  }
+  hunter.visible = false;
+  root.add(hunter);
+
+  return { root, materials };
+}
 
 function spinHabitatEnemyAssetFamily(enemy: Enemy, mission: Contract) {
   if (mission.location !== 'spin-habitat' || enemy.role === 'boss') return null;
@@ -140,6 +264,8 @@ type EnemyVisual = {
   armor: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
   targetRing: THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>;
   protocolRing: THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>;
+  mutationRoot: THREE.Group;
+  mutationMaterials: THREE.Material[];
   bossSignature: THREE.Group | null;
   role: Enemy['role'];
   proceduralVisuals: THREE.Object3D[];
@@ -593,6 +719,8 @@ export class ThreeCombatRenderer {
       visual.authoredOwnedMaterials.forEach(material => material.dispose());
       visual.authoredOwnedMaterials = [];
       visual.authoredMaterials = [];
+      visual.mutationMaterials.forEach(material => material.dispose());
+      visual.mutationMaterials = [];
     }
     for (const visual of this.groundLootPool) {
       visual.assetInstance?.release();
@@ -4392,6 +4520,9 @@ export class ThreeCombatRenderer {
     protocolRing.position.y = 0.08;
     root.add(protocolRing);
 
+    const mutationVisuals = createEnemyMutationVisuals(bossScale);
+    root.add(mutationVisuals.root);
+
     let bossSignature: THREE.Group | null = null;
     if (enemy.role === 'boss') {
       bossSignature = new THREE.Group();
@@ -4483,6 +4614,8 @@ export class ThreeCombatRenderer {
       armor,
       targetRing,
       protocolRing,
+      mutationRoot: mutationVisuals.root,
+      mutationMaterials: mutationVisuals.materials,
       bossSignature,
       role: enemy.role,
       proceduralVisuals,
@@ -4659,7 +4792,7 @@ export class ThreeCombatRenderer {
     }
   }
 
-  private syncAuthoredEnemyAnimation(visual: EnemyVisual, enemy: Enemy, state: SimState, motion: EnemyBossAnimationSignals) {
+  private syncAuthoredEnemyAnimation(visual: EnemyVisual, enemy: Enemy, state: SimState, motion: EnemyBossAnimationSignals, presentation: EnemyPresentationContract) {
     const rig = visual.rig;
     if (!rig) return;
 
@@ -4737,6 +4870,39 @@ export class ThreeCombatRenderer {
       rig.rightArm.rotation.x -= wave * profile.modifierTension * 0.75;
     }
 
+    // P13-B authored mutation poses are intentionally damped by higher-priority attack/status reads.
+    const mutationSuppression = THREE.MathUtils.clamp(1 - Math.max(
+      motion.tell,
+      motion.commit,
+      motion.phaseTransition,
+      motion.status.armorBreach,
+      motion.status.disrupted,
+      motion.status.stagger,
+      motion.status.conductive,
+      motion.status.vacuum,
+    ) * 0.88, 0.12, 1);
+    if (enemyMutationCueActive(presentation, 'core-braced')) {
+      rig.torso.position.y -= 0.025 * mutationSuppression;
+      rig.torso.rotation.x -= 0.045 * mutationSuppression;
+      rig.leftArm.rotation.z -= 0.085 * mutationSuppression;
+      rig.rightArm.rotation.z += 0.085 * mutationSuppression;
+      rig.backpack.position.y -= 0.018 * mutationSuppression;
+    }
+    if (enemyMutationCueActive(presentation, 'mantle-settle')) {
+      const settle = (0.65 + Math.sin(state.time * 1.7 + enemy.id * 0.3) * 0.12) * mutationSuppression;
+      rig.backpack.position.y -= 0.04 * settle;
+      rig.leftArm.rotation.x -= 0.055 * settle;
+      rig.rightArm.rotation.x += 0.055 * settle;
+      rig.torso.rotation.x += 0.025 * settle;
+    }
+    if (enemyMutationCueActive(presentation, 'hunter-ready')) {
+      const tracking = (0.72 + Math.sin(state.time * 5.4 + enemy.id * 0.7) * 0.1) * mutationSuppression;
+      rig.torso.rotation.x -= 0.035 * tracking;
+      rig.helmet.rotation.y += 0.065 * tracking;
+      rig.weaponSocket.position.x += 0.055 * tracking;
+      rig.weaponSocket.rotation.y -= 0.055 * tracking;
+    }
+
     if (motion.status.disrupted > 0) {
       const jitter = Math.sin(state.time * 31 + enemy.id * 1.7) * motion.status.disrupted;
       rig.torso.rotation.y += jitter * 0.055;
@@ -4796,6 +4962,95 @@ export class ThreeCombatRenderer {
       rig.torso.rotation.z = (enemy.id % 2 === 0 ? -1 : 1) * 1.1 * fall;
       rig.leftArm.rotation.z = -0.15;
       rig.rightArm.rotation.z = 0.12;
+    }
+  }
+
+
+  private syncEnemyMutationPresentation(
+    visual: EnemyVisual,
+    enemy: Enemy,
+    state: SimState,
+    presentation: EnemyPresentationContract,
+    reducedEffects: boolean,
+  ) {
+    const reinforced = visual.mutationRoot.getObjectByName('mutation-reinforced-core') as THREE.Group | undefined;
+    const mantle = visual.mutationRoot.getObjectByName('mutation-ablative-mantle') as THREE.Group | undefined;
+    const hunter = visual.mutationRoot.getObjectByName('mutation-hunter-servo') as THREE.Group | undefined;
+    const alive = enemy.active && !enemy.dead;
+    const coreActive = alive && enemyMutationCueActive(presentation, 'core-braced');
+    const mantleActive = alive && enemyMutationCueActive(presentation, 'mantle-settle');
+    const hunterActive = alive && enemyMutationCueActive(presentation, 'hunter-ready');
+
+    if (reinforced) reinforced.visible = coreActive;
+    if (mantle) mantle.visible = mantleActive;
+    if (hunter) hunter.visible = hunterActive;
+    visual.mutationRoot.visible = coreActive || mantleActive || hunterActive;
+    if (!visual.mutationRoot.visible) return;
+
+    const materialLead = presentation.material[0];
+    const vfxLead = presentation.vfx[0];
+    const materialReadability = materialLead && materialLead.source !== 'mutation' && materialLead.priority > 2 ? 0.34 : 1;
+    const vfxReadability = vfxLead && vfxLead.source !== 'mutation' && vfxLead.priority > 2 ? 0.26 : 1;
+    const motionScale = reducedEffects ? 0.45 : 1;
+
+    if (coreActive) {
+      const coreGlow = reinforced?.getObjectByName('mutation-core-glow') as THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial> | undefined;
+      const corePulse = reducedEffects ? 0.76 : 0.74 + Math.sin(state.time * 3.1 + enemy.id) * 0.16;
+      if (coreGlow) {
+        coreGlow.material.opacity = (0.34 + corePulse * 0.18) * vfxReadability;
+        coreGlow.scale.setScalar(0.96 + corePulse * 0.08 * motionScale);
+        coreGlow.rotation.z = reducedEffects ? 0 : state.time * 0.32;
+      }
+      for (const name of ['mutation-core-brace-left', 'mutation-core-brace-right']) {
+        const brace = reinforced?.getObjectByName(name) as THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial> | undefined;
+        if (!brace) continue;
+        brace.material.opacity = 0.96 * materialReadability;
+        brace.material.emissiveIntensity = (0.18 + corePulse * 0.16) * materialReadability;
+      }
+    }
+
+    if (mantleActive) {
+      const mantlePulse = reducedEffects ? 0.72 : 0.68 + Math.sin(state.time * 2.2 + enemy.id * 0.51) * 0.14;
+      for (let index = 0; index < 5; index += 1) {
+        const plate = mantle?.getObjectByName(`mutation-mantle-plate-${index}`) as THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial> | undefined;
+        if (!plate) continue;
+        plate.material.opacity = 0.94 * materialReadability;
+        plate.material.emissiveIntensity = (0.08 + mantlePulse * 0.08) * materialReadability;
+      }
+      for (let index = 0; index < 4; index += 1) {
+        const spark = mantle?.getObjectByName(`mutation-mantle-spark-${index}`) as THREE.Mesh<THREE.TetrahedronGeometry, THREE.MeshBasicMaterial> | undefined;
+        if (!spark) continue;
+        const phase = state.time * (1.4 + index * 0.17) + enemy.id * 0.41 + index * 1.7;
+        spark.visible = !reducedEffects || index < 2;
+        spark.position.set(
+          Math.sin(phase * 1.7) * (0.38 + index * 0.05),
+          0.62 + ((phase * 0.24) % 0.72),
+          Math.cos(phase * 1.2) * 0.28,
+        );
+        spark.material.opacity = (0.2 + mantlePulse * 0.28) * vfxReadability;
+      }
+    }
+
+    if (hunterActive) {
+      const reticle = hunter?.getObjectByName('mutation-hunter-reticle') as THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial> | undefined;
+      const housing = hunter?.getObjectByName('mutation-hunter-servo-housing') as THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial> | undefined;
+      const tracking = reducedEffects ? 0.82 : 0.78 + Math.sin(state.time * 7.2 + enemy.id * 0.67) * 0.14;
+      if (housing) {
+        housing.material.opacity = 0.96 * materialReadability;
+        housing.material.emissiveIntensity = (0.22 + tracking * 0.34) * materialReadability;
+      }
+      if (reticle) {
+        reticle.material.opacity = (0.3 + tracking * 0.24) * vfxReadability;
+        reticle.rotation.z = reducedEffects ? 0 : -state.time * 1.15;
+        reticle.scale.setScalar(0.94 + tracking * 0.08 * motionScale);
+      }
+      for (const [name, side] of [['mutation-hunter-streak-left', -1], ['mutation-hunter-streak-right', 1]] as const) {
+        const streak = hunter?.getObjectByName(name) as THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial> | undefined;
+        if (!streak) continue;
+        streak.visible = !reducedEffects || side > 0;
+        streak.material.opacity = (0.18 + tracking * 0.26) * vfxReadability;
+        streak.position.x = side * (0.36 + tracking * 0.08 * motionScale);
+      }
     }
   }
 
@@ -4865,6 +5120,7 @@ export class ThreeCombatRenderer {
   private syncEnemies(state: SimState, mission: Contract, mobileTargetId: number | null, reducedTargetMotion: boolean) {
     const seen = new Set<number>();
     let animationTelemetry: { priority: number; enemy: Enemy; motion: EnemyBossAnimationSignals } | null = null;
+    let mutationTelemetry: { priority: number; enemy: Enemy; presentation: EnemyPresentationContract } | null = null;
     for (const enemy of state.enemies) {
       seen.add(enemy.id);
       const visual = this.enemyVisuals.get(enemy.id) ?? this.createEnemyVisual(enemy, mission);
@@ -4884,6 +5140,7 @@ export class ThreeCombatRenderer {
         visual.lastBossPhase = enemy.bossPhase;
         visual.bossPhaseEventAt = state.time;
       }
+      const presentation = resolveEnemyPresentation(enemy);
       const motion = resolveEnemyBossAnimation({
         role: enemy.role,
         id: enemy.id,
@@ -4903,6 +5160,12 @@ export class ThreeCombatRenderer {
       });
       const animationPriority = enemy.role === 'boss' ? 3 : enemy.role === 'elite' ? 2 : 1;
       if (!animationTelemetry || animationPriority > animationTelemetry.priority) animationTelemetry = { priority: animationPriority, enemy, motion };
+      const hasP13BMutation = presentation.animation.some(layer =>
+        layer.source === 'mutation' && (layer.cue === 'core-braced' || layer.cue === 'mantle-settle' || layer.cue === 'hunter-ready'),
+      );
+      if (hasP13BMutation && (!mutationTelemetry || animationPriority > mutationTelemetry.priority)) {
+        mutationTelemetry = { priority: animationPriority, enemy, presentation };
+      }
       const damageReaction = resolveEnemyDamageAnimation({
         hit: state.time < visual.impactUntil ? THREE.MathUtils.clamp((visual.impactUntil - state.time) / 0.18, 0, 1) : 0,
         staggerTimer: enemy.statuses.stagger,
@@ -4919,12 +5182,38 @@ export class ThreeCombatRenderer {
         visual.body.rotation.z += side * (damageReaction.torsoSnap * 0.12 + damageReaction.armorBreak * 0.08);
         visual.head.rotation.z -= side * (damageReaction.hit * 0.1 + damageReaction.stagger * 0.08);
         visual.body.scale.set(1, 1 - damageReaction.stagger * 0.06 + motion.phaseTransition * 0.05, 1);
+        const mutationPoseSuppression = THREE.MathUtils.clamp(1 - Math.max(
+          motion.tell,
+          motion.commit,
+          motion.status.armorBreach,
+          motion.status.disrupted,
+          motion.status.stagger,
+          motion.status.conductive,
+          motion.status.vacuum,
+        ) * 0.88, 0.12, 1);
+        if (enemyMutationCueActive(presentation, 'core-braced')) {
+          visual.body.scale.x *= 1.12;
+          visual.body.rotation.x -= 0.045 * mutationPoseSuppression;
+        }
+        if (enemyMutationCueActive(presentation, 'mantle-settle')) {
+          visual.body.scale.x *= 1.07;
+          visual.body.scale.z *= 1.08;
+          visual.body.rotation.x += 0.025 * mutationPoseSuppression;
+        }
+        if (enemyMutationCueActive(presentation, 'hunter-ready')) {
+          visual.body.rotation.x -= 0.06 * mutationPoseSuppression;
+          visual.head.rotation.y += 0.08 * mutationPoseSuppression;
+        }
         const fallbackWeapon = visual.root.getObjectByName('hard-enemy-weapon');
         if (fallbackWeapon) {
           fallbackWeapon.position.x += motion.profile.tellReach * motion.tell - motion.profile.commitKick * motion.commit * 0.65;
           fallbackWeapon.position.y = 1.12 + motion.profile.tellLift * motion.tell + motion.phaseTransition * 0.08;
           fallbackWeapon.position.z = 0.07;
           fallbackWeapon.rotation.z = -motion.profile.tellLean * motion.tell * 0.45 + motion.profile.commitKick * motion.commit * 0.5;
+          if (enemyMutationCueActive(presentation, 'hunter-ready')) {
+            fallbackWeapon.position.x += 0.07 * mutationPoseSuppression;
+            fallbackWeapon.rotation.y -= 0.055 * mutationPoseSuppression;
+          }
         }
       }
       if (enemy.dead) {
@@ -4950,10 +5239,11 @@ export class ThreeCombatRenderer {
       visual.protocolRing.material.opacity = enemy.protocolPulse > 0 ? Math.min(0.86, 0.4 + enemy.protocolPulse * 0.42) : 0.38;
       visual.protocolRing.rotation.z = state.time * (enemy.combatClass === 'elite' ? 1.2 : 0.72);
       if (enemy.role === 'boss') this.syncBossSignature(visual, enemy, state);
+      this.syncEnemyMutationPresentation(visual, enemy, state, presentation, reducedTargetMotion);
       visual.body.material.emissive.setHex(enemy.statuses.disrupted > 0 ? 0x63508a : enemy.telegraph > 0 ? 0x7a3327 : 0x000000);
       visual.body.material.emissiveIntensity = enemy.statuses.disrupted > 0 || enemy.telegraph > 0 ? 0.34 : 0;
       if (visual.authoredRoot) {
-        this.syncAuthoredEnemyAnimation(visual, enemy, state, motion);
+        this.syncAuthoredEnemyAnimation(visual, enemy, state, motion, presentation);
         const sableVoss = visual.authoredAssetId === 'spin-habitat-sable-voss';
         const stormlineIlex = visual.authoredAssetId === 'jovian-harvester-stormline-foreman';
         const rheaKade = visual.authoredAssetId === 'ice-mine-rhea-kade';
@@ -5027,6 +5317,19 @@ export class ThreeCombatRenderer {
       delete this.renderer.domElement.dataset.enemyAnimationBlend;
       delete this.renderer.domElement.dataset.enemyAnimationTarget;
       delete this.renderer.domElement.dataset.bossPhaseAnimation;
+    }
+    if (mutationTelemetry) {
+      const { enemy, presentation } = mutationTelemetry;
+      const cues = presentation.animation
+        .filter(layer => layer.source === 'mutation' && (layer.cue === 'core-braced' || layer.cue === 'mantle-settle' || layer.cue === 'hunter-ready'))
+        .map(layer => layer.cue);
+      this.renderer.domElement.dataset.enemyMutationPresentation = cues.join('+');
+      this.renderer.domElement.dataset.enemyPresentationDominant = presentation.dominant ?? 'none';
+      this.renderer.domElement.dataset.enemyMutationTarget = `${enemy.role}:${enemy.variant}`;
+    } else {
+      delete this.renderer.domElement.dataset.enemyMutationPresentation;
+      delete this.renderer.domElement.dataset.enemyPresentationDominant;
+      delete this.renderer.domElement.dataset.enemyMutationTarget;
     }
     for (const [id, visual] of this.enemyVisuals) if (!seen.has(id)) { visual.root.visible = false; visual.barRoot.visible = false; }
   }

@@ -1,4 +1,5 @@
 import type { ProfileSettings } from './meta';
+import type { HighTierMutationId } from './t9Mutations';
 
 export type FeedbackCue =
   | 'ui' | 'loot' | 'rareLoot' | 'carbine' | 'breacher' | 'rail' | 'reload'
@@ -43,6 +44,8 @@ export type CombatAudioPriority = 'background' | 'normal' | 'important' | 'criti
 export type FoleyAudioProfile = { start: WeaponAudioLayer[]; complete: WeaponAudioLayer[]; masterGain: number };
 export type SkillAudioProfile = { layers: WeaponAudioLayer[]; masterGain: number; priority: 'important' };
 export type ThreatAudioProfile = { layers: WeaponAudioLayer[]; masterGain: number; priority: 'important' | 'critical' };
+export type EnemyMutationAudioCue = Extract<HighTierMutationId, 'reinforced-core' | 'ablative-mantle' | 'hunter-servo'>;
+export type EnemyMutationAudioProfile = { layers: WeaponAudioLayer[]; masterGain: number; priority: 'background' | 'normal' };
 
 export const combatAudioBudget = {
   maxVoices: 18,
@@ -247,6 +250,34 @@ export const threatAudioProfiles: Record<ThreatAudioCue, ThreatAudioProfile> = {
     layers: [{ frequency: 96, duration: .24, type: 'sawtooth', gain: .48, sweep: .52, lowpassHz: 1250 }, { frequency: 360, duration: .18, type: 'square', gain: .3, sweep: 1.18, delay: .035, lowpassHz: 2600 }, { frequency: 880, duration: .12, type: 'triangle', gain: .2, sweep: .7, delay: .07, lowpassHz: 4800 }],
     masterGain: .22,
     priority: 'critical',
+  },
+};
+
+export const enemyMutationAudioProfiles: Record<EnemyMutationAudioCue, EnemyMutationAudioProfile> = {
+  'reinforced-core': {
+    layers: [
+      { frequency: 92, duration: .32, type: 'sine', gain: .34, sweep: .94, attack: .05, lowpassHz: 820 },
+      { frequency: 184, duration: .2, type: 'triangle', gain: .18, sweep: .82, delay: .035, lowpassHz: 1250 },
+    ],
+    masterGain: .075,
+    priority: 'background',
+  },
+  'ablative-mantle': {
+    layers: [
+      { frequency: 720, duration: .055, type: 'triangle', gain: .28, sweep: .68, lowpassHz: 3100 },
+      { frequency: 1180, duration: .045, type: 'square', gain: .16, sweep: .72, delay: .028, lowpassHz: 4200 },
+      { frequency: 430, duration: .08, type: 'triangle', gain: .2, sweep: .62, delay: .054, lowpassHz: 2400 },
+    ],
+    masterGain: .068,
+    priority: 'background',
+  },
+  'hunter-servo': {
+    layers: [
+      { frequency: 520, duration: .16, type: 'sine', gain: .26, sweep: 1.62, attack: .018, lowpassHz: 3800 },
+      { frequency: 1040, duration: .1, type: 'triangle', gain: .16, sweep: .78, delay: .025, lowpassHz: 5200 },
+    ],
+    masterGain: .072,
+    priority: 'background',
   },
 };
 
@@ -558,6 +589,18 @@ class FeedbackBus {
     this.unlock();
     this.applyPriorityMix(profile.priority);
     for (const layer of profile.layers) this.playLayer(layer, volume * profile.masterGain, 0, 1, 'direct', true, 'threat', profile.priority);
+  }
+
+  mutation(cue: EnemyMutationAudioCue) {
+    const settings = this.settings;
+    if (!settings) return;
+    const volume = Math.max(0, Math.min(1, settings.effectsVolume));
+    if (volume <= 0) return;
+    this.unlock();
+    const profile = enemyMutationAudioProfiles[cue];
+    for (const layer of profile.layers) {
+      this.playLayer(layer, volume * profile.masterGain, 0, 1, 'direct', true, 'utility', profile.priority);
+    }
   }
 
   cue(cue: FeedbackCue) {
