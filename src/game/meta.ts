@@ -5,6 +5,7 @@ import { allocateOperatorNetworkNode, createOperatorNetworkState, normalizeOpera
 export type { OperatorClassId } from './classSkills';
 import { factionFrames, factionGearChance, factionSetDefinitions, type EquipmentFaction } from './factionGear';
 import { frameGenerationForRecovery, recoveryLevelForSource, type FrameGeneration } from './scaling';
+import type { GraphicsQualityMode } from './renderQuality';
 import { modifierFamilyFor, modifierPowerFactor, modifierTradeoffFactor, rollRecoveryQuality, type ModifierFamily, type ModifierGrade, type RecoveryQualityGrade } from './lootQuality';
 import { applyAugments, applyFrameIdentity, augmentSlotCount, factionFrameIdentity, frameImplicitDescription, inferFrameIdentity, normalizeAugments, resolveFrameIdentity, rollEquipmentQuality, singularFrameIdentity, type AugmentId, type FrameIdentityId } from './gearDepth';
 import type { GroundLootReceipt } from './fieldLoot';
@@ -25,7 +26,7 @@ export type Item = { id: string; baseId: string; name: string; slot: EquipmentSl
 export type EffectIntensity = 'full' | 'reduced';
 export type TextScale = 'default' | 'large';
 export type ContrastMode = 'standard' | 'high';
-export type ProfileSettings = { textScale: TextScale; contrast: ContrastMode; reducedMotion: boolean; aimAssist: MobileAimAssist; rightStickFire: boolean; screenShake: boolean; effectIntensity: EffectIntensity; effectsVolume: number; uiVolume: number; haptics: boolean; telemetrySharing: boolean; tutorialComplete: boolean };
+export type ProfileSettings = { graphicsQuality: GraphicsQualityMode; textScale: TextScale; contrast: ContrastMode; reducedMotion: boolean; aimAssist: MobileAimAssist; rightStickFire: boolean; screenShake: boolean; effectIntensity: EffectIntensity; effectsVolume: number; uiVolume: number; haptics: boolean; telemetrySharing: boolean; tutorialComplete: boolean };
 export type CraftHistoryEntry = { id: string; createdAt: number; itemId: string; itemName: string; action: string; cost: string; outcome: string; before: string; after: string; volatile: boolean };
 export type PlayerProfile = { version: 3; xp: number; level: number; progressionPoints: number; allocatedNodes: string[]; operatorNetwork?: OperatorNetworkState; abilityMods: Record<AbilityId, string | null>; operatorClass?: OperatorClassId; classSelectionComplete?: boolean; specialization: SpecializationId | null; specializationOverclock: boolean; inventory: Item[]; equipped: Record<EquipmentSlot, string | null>; settings: ProfileSettings; runsCompleted: number; craftHistory?: CraftHistoryEntry[] };
 export type VictoryReward = { profile: PlayerProfile; xpGained: number; levelsGained: number; loot: Item[] };
@@ -609,7 +610,7 @@ const maxLevelXp = levelThresholds[levelThresholds.length - 1];
 
 export function createDefaultProfile(): PlayerProfile {
   const inventory = starterItems.map(cloneItem);
-  return { version: 3, xp: 0, level: 1, progressionPoints: 0, allocatedNodes: [], operatorNetwork: createOperatorNetworkState('vanguard'), abilityMods: { mag: null, mark: null, arc: null }, operatorClass: 'vanguard', classSelectionComplete: false, specialization: null, specializationOverclock: false, inventory, equipped: { carbine: null, breacher: 'starter-breacher', rail: null, suit: 'starter-suit', rig: 'starter-rig', implant: 'starter-implant' }, settings: { textScale: 'default', contrast: 'standard', reducedMotion: false, aimAssist: 'balanced', rightStickFire: true, screenShake: true, effectIntensity: 'full', effectsVolume: 0.65, uiVolume: 0.45, haptics: true, telemetrySharing: false, tutorialComplete: false }, runsCompleted: 0, craftHistory: [] };
+  return { version: 3, xp: 0, level: 1, progressionPoints: 0, allocatedNodes: [], operatorNetwork: createOperatorNetworkState('vanguard'), abilityMods: { mag: null, mark: null, arc: null }, operatorClass: 'vanguard', classSelectionComplete: false, specialization: null, specializationOverclock: false, inventory, equipped: { carbine: null, breacher: 'starter-breacher', rail: null, suit: 'starter-suit', rig: 'starter-rig', implant: 'starter-implant' }, settings: { graphicsQuality: 'adaptive', textScale: 'default', contrast: 'standard', reducedMotion: false, aimAssist: 'balanced', rightStickFire: true, screenShake: true, effectIntensity: 'full', effectsVolume: 0.65, uiVolume: 0.45, haptics: true, telemetrySharing: false, tutorialComplete: false }, runsCompleted: 0, craftHistory: [] };
 }
 export function normalizeStoredProfile(parsed: Partial<PlayerProfile>): PlayerProfile {
   if (parsed.version !== 3 || !Array.isArray(parsed.inventory)) throw new Error('Unsupported profile save');
