@@ -19,6 +19,16 @@ Every graphics release candidate must pass:
 
 The automated Android gate uses an API 35 Google APIs x86_64 Pixel 7 Pro emulator in sensor-landscape mode. It is useful for package, WebView, touch, lifecycle, layout, and deterministic authored-graphics assertions, but it is not a substitute for thermal/GPU profiling on physical devices.
 
+## P16-E sustained emulator stress evidence
+
+GitHub Actions run `35898430306` (`P16-E Android Soak Stress`) passed a 30-minute API 35 Pixel 7 Pro emulator T12 soak using a prepared six-modifier Command Target Directive on Solar Fabrication Yard.
+
+- The WebView stress loop ran for exactly 1,800 seconds with 345 telemetry samples and 819 sustained combat input bursts. The app process survived unchanged and the crash/ANR scan was clean.
+- Performance-diagnostics JS heap p95 remained 12.112 MB from baseline to final sample. Android process PSS moved from a 105.2 MB baseline median to 112.4 MB final median (+7.2 MB), below the 128 MB leak-growth gate.
+- The relative sustained-frame gate did not degrade during the run: frame p95 was 50 ms at both baseline and final sampling windows.
+- Absolute emulator frame timing is not acceptance evidence for device performance. SwiftShader reported the workload over budget and `gfxinfo` reported 100% janky frames; the emulator thermal HAL also exposed a fixed test sensor at 30.8 °C before and after the soak. Physical-device thermal/GPU evidence therefore remains required before P16-E can close.
+- Artifact `10768934719` contains the exercised APK and soak evidence. APK SHA-256: `5f304c03f8e07b77dc79fdae0f20340f8d49f0aae0767abad9ca5eacd32e59fa`.
+
 ## Known limitations requiring physical-device evidence
 
 - Sustained thermals, battery impact, GPU frame timing, texture-memory pressure, and driver-specific behavior still require representative physical Android hardware.
