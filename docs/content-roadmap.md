@@ -122,7 +122,7 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## P14 — Class Arsenal Expansion
 
-- [ ] **P14-A Systems Carbine pair** — Burst + Precision Carbine
+- [x] **P14-A Systems Carbine pair** — completed and verified; Burst + Precision Carbine delivered with deterministic same-family gameplay, authored/fallback handling presentation, and regression coverage. Delivery detail is archived in `docs/content-roadmap-archive.md`.
 - [ ] **P14-B Vanguard Breacher pair** — Slug + Rapid Breacher
 - [ ] **P14-C Vector Rail pair** — Charge + Repeater Rail
 - [ ] **P14-D Build integration** — progression, crafting/affixes, skills, Singulars, class-owned loot
@@ -159,23 +159,24 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P14-A — Systems Carbine pair.**
+**Next: P14-B — Vanguard Breacher pair.**
 
-Run **P14-A — Systems Carbine pair** as the next Class Arsenal Expansion batch: add the Burst + Precision Carbine variants as a coherent same-family pair, preserve the established Systems-class combat identity, and carry them through authored handling/presentation plus deterministic gameplay regression before expanding the rest of P14.
+Run **P14-B — Vanguard Breacher pair** as the next Class Arsenal Expansion batch: add the Slug + Rapid Breacher variants as a coherent Vanguard-owned same-family pair, preserve the established Vanguard breach identity, and carry them through distinct gameplay/handling presentation plus deterministic regression before expanding to the Vector Rail pair.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
 ## Latest Verified Delivery
 
-- Android beta: **0.0.1-beta.285**
+- Android beta: **0.0.1-beta.286**
 - Package: `app.ironshade.vector`
-- Verified: **P13-G Enemy Modifier & Status Visual Language mobile readability/HUD reduction complete**
-- Gameplay source: `4161a2d8817d4e289e92f1743fd0e20f8989b873`
-- Delivery/QA source: `16a43e937438f3f21174e8294b59133aa74b5f36`
-- PR Browser E2E: `35812479953`
-- Browser E2E: `35814794239`
-- Level 15 beta smoke: `35814794287`
-- Android beta.285: `35814794169`
-- APK artifact: `10731058432`
-- APK SHA-256: `fbe2c348d331c363c51c7c572669ea439c0dc472c3addec4b358e8f21f4446e6`
-- Signing: debug-signed beta; permanent signing is P17-A
+- Verified: **P14-A Systems Carbine pair complete**
+- Gameplay source: `961036e65bd544eef8437d8c026088b526db230a`
+- Delivery/QA source: `961036e65bd544eef8437d8c026088b526db230a`
+- PR Browser E2E: `35816472065`
+- Browser E2E: `35816730328`
+- Level 15 beta smoke: `35816730270`
+- Android beta.286: `35816730475`
+- APK artifact: `10732231158`
+- APK SHA-256: `de0bca17f8b8622e478f0459247c3868d7674a9129df3b156efebbc452595d7f`
+- Signing: debug-signed beta; permanent signing remains P17-A
+
