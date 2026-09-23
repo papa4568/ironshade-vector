@@ -132,7 +132,7 @@ assert(rendererSource.includes("dataset.operatorBlend"), 'operator animation ble
 
 assert(rendererSource.includes('ENEMY_ASSET_FAMILIES[enemy.role]'), 'enemy rendering must select authored assets by combat role');
 assert(rendererSource.includes('void this.loadAuthoredEnemy(visual, enemy, mission)'), 'enemy visuals must load authored assets while retaining procedural fallback');
-assert(rendererSource.includes('syncAuthoredEnemyAnimation(visual, enemy, state, motion)'), 'enemy animation must derive from deterministic simulation state and resolved motion signals');
+assert(rendererSource.includes('syncAuthoredEnemyAnimation(visual, enemy, state, motion, presentation)') && rendererSource.includes('const presentation = resolveEnemyPresentation(enemy);'), 'enemy animation must derive from deterministic simulation state, resolved motion signals, and the deterministic presentation contract');
 assert(rendererSource.includes("dataset.enemyVisual = 'authored'"), 'runtime QA must expose authored enemy activation');
 assert(rendererSource.includes('visual.proceduralVisuals.forEach'), 'procedural enemy bodies must only hide after authored loading succeeds');
 assert(rendererSource.includes('WEAPON_ASSET_FAMILIES[id]'), 'player weapon loading must use authored weapon families');
