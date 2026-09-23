@@ -1302,12 +1302,13 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
         weapon: state.player.currentWeapon,
         impactEvent: state.impactEvent,
         damageTaken: state.telemetry.damageTaken,
-        screenShake: profileSettingsRef.current.screenShake,
+        screenShake: profileSettingsRef.current.screenShake && !profileSettingsRef.current.reducedMotion,
         effectIntensity: profileSettingsRef.current.effectIntensity,
       });
       canvas.dataset.controllerInput = gamepad ? 'connected' : 'none';
       canvas.dataset.assistedTargetId = mobileTargetControlRef.current.targetId == null ? '' : String(mobileTargetControlRef.current.targetId);
-      canvas.dataset.targetFeedbackMotion = profileSettingsRef.current.effectIntensity === 'reduced' ? 'reduced' : 'full';
+      canvas.dataset.targetFeedbackMotion = profileSettingsRef.current.effectIntensity === 'reduced' || profileSettingsRef.current.reducedMotion ? 'reduced' : 'full';
+      canvas.dataset.reducedMotion = profileSettingsRef.current.reducedMotion ? 'true' : 'false';
       canvas.dataset.cameraFeedback = `${cameraFeedback.mode}:${cameraFeedback.magnitude.toFixed(2)}`;
       canvas.dataset.weaponVariant = state.weapons[state.player.currentWeapon].variantId ?? 'family-service';
       const qaSector = getPlayerSector(state);
