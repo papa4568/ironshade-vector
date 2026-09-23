@@ -1062,3 +1062,19 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Verified on merged gameplay source `b2e93a3e9b838247ca30c5671478434f792c073c`: Browser E2E `35808378456`, Level 15 beta smoke `35808378476`, and Android beta.282 `35808378501` all passed.
   - Android artifact `10728758630` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.282`, debug signing, min SDK 24 / target SDK 36 package/version/signature verification, native emulator runtime/touch/lifecycle/authored-content/Chapter 3 QA, and APK SHA-256 `c98510b7df5fb0c5f410c408400a7c07bc4d3e5456fa90a128d21d8c18b79e53`.
   - **Next: P13-G — Mobile readability/HUD reduction.**
+
+
+## 2026-09-22 — P13-G Enemy Modifier & Status Visual Language // Mobile readability/HUD reduction
+
+- [x] **P13-G Mobile readability/HUD reduction** — reduced redundant enemy HUD pressure on coarse/mobile combat surfaces while preserving the authored world-space tell hierarchy and leaving desktop presentation intact.
+  - Added shared `src/game/enemyMobileReadability.ts` policy consumed by both Three.js and Canvas fallback rendering. Desktop keeps full durability/status/role/class/modifier presentation; mobile LOD2 switches to a bounded priority information budget instead of applying one-off renderer exceptions.
+  - Mobile durability bars now remain for bosses/elites, the focused target, armor-break urgency, or enemies at/below 50% health. Pristine untargeted common enemies no longer carry always-on durability bars.
+  - Untargeted mobile role/status/modifier text stacks are removed because silhouette, attack telegraphs, protocol hardware, mutation language, status presentation, and lifecycle presentation already communicate those states in-world. Focused targets can still expose diagnostic class/modifier/status text; boss pattern text remains owned by the boss HUD/world telegraph rather than a duplicate nameplate line.
+  - Critical world channels remain explicitly preserved at LOD2: **telegraph + protocol + mutation + status + lifecycle**. Reduced Effects keeps those identities while trimming secondary motion/detail instead of removing the tell.
+  - Canvas fallback and authored Three.js paths consume the same policy; authored mobile hostile/operator/weapon/interactable/environment assets remain on LOD2 while desktop remains LOD1.
+  - Added `tests/enemy-mobile-readability.ts` and wired `test:enemy-mobile-readability` into the production build gate. Coverage locks desktop parity, mobile priority bars, focused diagnostics, critical-tell preservation, Reduced Effects telemetry, and Canvas/Three integration.
+  - Browser QA now publishes `enemyHudReadability` telemetry, seeds Reduced Effects through the atomic `ironshade-vector-state-v1` envelope, launches Chrome at the actual matrix viewport, and keeps authored-asset verifiers aligned with the matrix rather than inferring device tier from combat-canvas CSS size.
+  - PR #195 final Browser E2E `35812479953` passed desktop **1280×720** and mobile-landscape **851×360** full regression/production build plus live player journeys across Asteroid Refinery, Damaged Vessel, Spin Habitat, Jovian Harvester, Ice Mine, and Solar Yard.
+  - Final telemetry verified desktop `desktop|full-bars+full-tags|tells:telegraph+protocol+mutation+status+lifecycle|effects:full` and Reduced Effects mobile `mobile-lod2|priority-bars+focused-tags|tells:telegraph+protocol+mutation+status+lifecycle|reduced-effects:identity-preserved`.
+  - Screenshot review of the final mobile captures confirmed redundant enemy text stacks are absent while focused/priority durability and physical threat cues remain readable in dense combat; desktop captures retain the full authored information layer.
+  - **Next: P14-A — Systems Carbine pair.**

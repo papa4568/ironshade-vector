@@ -592,6 +592,15 @@ if (viewportMode === 'mobile-landscape') {
     screenOrientation: { type: 'landscapePrimary', angle: 90 },
   });
   await call('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+} else {
+  await call('Emulation.setDeviceMetricsOverride', {
+    width: 1280,
+    height: 720,
+    deviceScaleFactor: 1,
+    mobile: false,
+    screenWidth: 1280,
+    screenHeight: 720,
+  });
 }
 
 await call('Page.navigate', { url: appUrl });
@@ -620,6 +629,40 @@ try {
       return (text.includes('command ready') || text.includes('command deck')) && labels.includes('operations');
     })()`, 'Command Deck after class selection');
     console.log(`BROWSER_CLASS_SELECTION_PASS viewport=${viewportMode} class=Vanguard`);
+  }
+
+  if (viewportMode === 'mobile-landscape') {
+    const reducedEffectsSeed = await evaluate(`(() => {
+      const stateKey = 'ironshade-vector-state-v1';
+      const profileKey = 'ironshade-vector-profile-v3';
+      const stateRaw = localStorage.getItem(stateKey);
+      if (stateRaw) {
+        const state = JSON.parse(stateRaw);
+        if (!state?.profile) return { found: false, changed: false, source: 'state' };
+        const changed = state.profile.settings?.effectIntensity !== 'reduced';
+        state.profile.settings = { ...(state.profile.settings ?? {}), effectIntensity: 'reduced' };
+        localStorage.setItem(stateKey, JSON.stringify(state));
+        return { found: true, changed, source: 'state' };
+      }
+      const profileRaw = localStorage.getItem(profileKey);
+      if (!profileRaw) return { found: false, changed: false, source: 'none' };
+      const profile = JSON.parse(profileRaw);
+      const changed = profile.settings?.effectIntensity !== 'reduced';
+      profile.settings = { ...(profile.settings ?? {}), effectIntensity: 'reduced' };
+      localStorage.setItem(profileKey, JSON.stringify(profile));
+      return { found: true, changed, source: 'legacy-profile' };
+    })()`);
+    if (!reducedEffectsSeed?.found) throw new Error('Mobile Reduced Effects QA could not find the persisted profile.');
+    if (reducedEffectsSeed.changed) {
+      await call('Page.reload', { ignoreCache: true });
+      await waitFor(`document.readyState === 'complete' && document.title === 'Ironshade Vector'`, 'Ironshade document after Reduced Effects seed');
+      await waitFor(`(() => {
+        const text = (document.body?.innerText ?? '').toLowerCase();
+        const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase());
+        return (text.includes('command ready') || text.includes('command deck')) && labels.includes('operations');
+      })()`, 'Command Deck after Reduced Effects seed');
+    }
+    console.log(`BROWSER_REDUCED_EFFECTS_QA_PASS viewport=${viewportMode} source=${reducedEffectsSeed.source} changed=${reducedEffectsSeed.changed}`);
   }
 
   const startup = await snapshot();
@@ -698,10 +741,12 @@ try {
     return ['Breach Rush', 'Fracture Tag', 'Bulwark Pulse'].every(label => labels.includes(label));
   })()`, 'Vanguard level-one skill kit');
   console.log(`BROWSER_CLASS_KIT_PASS viewport=${viewportMode} kit=RUSH/BREAK/GUARD`);
-  await waitFor(`(() => {
-    const icons = [...document.querySelectorAll('img[src*="/assets/ui/skills/"], img[src*="/assets/ui/weapons/"]')];
-    return icons.length >= 4 && icons.every(image => image.complete && image.naturalWidth > 0);
-  })()`, 'Mobile combat SVG assets', 20_000);
+  if (viewportMode === 'mobile-landscape') {
+    await waitFor(`(() => {
+      const icons = [...document.querySelectorAll('img[src*="/assets/ui/skills/"], img[src*="/assets/ui/weapons/"]')];
+      return icons.length >= 4 && icons.every(image => image.complete && image.naturalWidth > 0);
+    })()`, 'Mobile combat SVG assets', 20_000);
+  }
   if (targetLocation === 'spin-habitat') {
     await waitFor(`(() => {
       const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-spin-habitat');
@@ -1115,6 +1160,16 @@ try {
   }
 
   const coarseCombatSurface = await evaluate(`window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900`);
+  const enemyHudReadability = await evaluate(`document.querySelector('canvas')?.dataset.enemyHudReadability ?? ''`);
+  const expectedHudTier = coarseCombatSurface ? 'mobile-lod2|priority-bars+focused-tags' : 'desktop|full-bars+full-tags';
+  const expectedEffectsMarker = viewportMode === 'mobile-landscape' ? 'reduced-effects:identity-preserved' : 'effects:full';
+  if (!enemyHudReadability.startsWith(expectedHudTier)
+    || !enemyHudReadability.includes('tells:telegraph+protocol+mutation+status+lifecycle')
+    || !enemyHudReadability.includes(expectedEffectsMarker)) {
+    throw new Error(`P13-G enemy HUD readability telemetry regressed for ${viewportMode}: ${enemyHudReadability}`);
+  }
+  console.log(`BROWSER_P13G_READABILITY_PASS viewport=${viewportMode} coarse=${coarseCombatSurface} policy=${enemyHudReadability}`);
+
   const expectedCombatLod = coarseCombatSurface ? '2' : '1';
   await waitFor(`(() => {
     const canvas = document.querySelector('canvas');
