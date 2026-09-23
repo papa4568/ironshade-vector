@@ -123,6 +123,7 @@ function edgeMedian(values, atEnd = false) {
 const session = await waitForSession();
 const { call, evaluate } = session;
 await call('Page.enable').catch(() => undefined);
+await waitFor(evaluate, `Boolean(localStorage.getItem('ironshade-vector-state-v1'))`, 'initial persisted game state', 60_000);
 
 const seeded = await evaluate(`(() => {
   const key = 'ironshade-vector-state-v1';
