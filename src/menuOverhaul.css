@@ -1841,3 +1841,43 @@
     font-size: 7px;
   }
 }
+
+
+/* P15-B // Build/menu surfaces compose the P15-A primitives.
+   Feature art direction stays local; shared borders, radii, spacing and touch sizing
+   come from the design-system contract. */
+.build-header.iv-panel,
+.tactical-header.iv-panel,
+.reconstruction-top.iv-panel,
+.network-panel .section-copy.iv-panel,
+.ship-systems-intro.iv-panel {
+  border-color: var(--iv-border-subtle);
+  border-radius: var(--iv-radius-lg);
+}
+
+.build-header.iv-panel,
+.tactical-header.iv-panel {
+  padding-inline: var(--iv-space-4);
+}
+
+.reconstruction-top.iv-panel,
+.network-panel .section-copy.iv-panel,
+.ship-systems-intro.iv-panel,
+.ship-hardware-bay.iv-panel {
+  padding: var(--iv-space-4);
+}
+
+.network-planner.iv-panel,
+.operator-class-panel.iv-panel,
+.specialization-panel.iv-panel,
+.reconstruct-storage.iv-panel,
+.upgrade-card.iv-panel {
+  border-color: var(--iv-border-subtle);
+}
+
+@media (pointer: coarse), (max-width: 900px) {
+  .build-bay .build-tabs button,
+  .ship-hub .section-tabs button {
+    min-height: 44px;
+  }
+}
