@@ -31,9 +31,10 @@ const threeManifestKeys = new Set(records
   .map(([key]) => key));
 const bootImports = new Set(entry.imports ?? []);
 const mainSource = readFileSync(resolve(root, 'src/main.tsx'), 'utf8');
+const runtimeStaticImports = mainSource.split('\n').filter(line => { const trimmed = line.trim(); return trimmed.startsWith('import ') && !trimmed.startsWith('import type '); }).join('\n');
 for (const [label, sourcePath, prefix] of [['save recovery', './game/saveRecovery', 'saveRecovery-'], ['app', './App', 'App-']]) {
   assert(mainSource.includes(`import('${sourcePath}')`), `The ${label} module is no longer dynamically imported during staged boot.`);
-  assert(!mainSource.includes(`from '${sourcePath}'`), `The ${label} module leaked back into a static boot import.`);
+  assert(!runtimeStaticImports.includes(`from '${sourcePath}'`), `The ${label} module leaked back into a static boot import.`);
   const stagedRecord = records.find(([, record]) => basename(record.file).startsWith(prefix));
   assert(stagedRecord, `The staged ${label} chunk was not emitted.`);
   const [stagedKey] = stagedRecord;
