@@ -5151,15 +5151,14 @@ export class ThreeCombatRenderer {
     }
   }
 
-  private syncAuthoredEnemyAnimation(
-    visual: EnemyVisual,
-    enemy: Enemy,
-    state: SimState,
-    motion: EnemyBossAnimationSignals,
-    presentation: EnemyPresentationContract,
-    lifecycle: EnemyLifecycleSignals,
-  ) {
+  private syncAuthoredEnemyAnimation(visual: EnemyVisual, enemy: Enemy, state: SimState, motion: EnemyBossAnimationSignals) {
     const rig = visual.rig;
+    const lifecycle = resolveEnemyLifecyclePresentation(enemy, {
+      sinceActivated: visual.activationEventAt >= 0 ? state.time - visual.activationEventAt : -1,
+      sincePhaseChange: visual.bossPhaseEventAt >= 0 ? state.time - visual.bossPhaseEventAt : -1,
+      sinceDeath: visual.deathEventAt >= 0 ? state.time - visual.deathEventAt : -1,
+    });
+    const presentation = resolveEnemyPresentation(enemy, lifecycle);
     if (!rig) return;
 
     for (const node of [rig.hip, rig.torso, rig.helmet, rig.leftArm, rig.rightArm, rig.leftLeg, rig.rightLeg, rig.backpack, rig.weaponSocket]) {
@@ -6081,7 +6080,7 @@ export class ThreeCombatRenderer {
       visual.body.material.emissive.setHex(enemy.telegraph > 0 ? 0x7a3327 : dominantStatusSpec?.accent ?? lifecycleEmissive);
       visual.body.material.emissiveIntensity = enemy.telegraph > 0 ? 0.34 : dominantStatus ? 0.2 + Math.min(0.18, enemy.statuses[dominantStatus] * 0.12) : lifecycleEmissive ? 0.18 + Math.max(lifecycle.spawn, lifecycle.phaseTransition, lifecycle.dangerousReadiness) * 0.2 : 0;
       if (visual.authoredRoot) {
-        this.syncAuthoredEnemyAnimation(visual, enemy, state, motion, presentation, lifecycle);
+        this.syncAuthoredEnemyAnimation(visual, enemy, state, motion);
         const sableVoss = visual.authoredAssetId === 'spin-habitat-sable-voss';
         const stormlineIlex = visual.authoredAssetId === 'jovian-harvester-stormline-foreman';
         const rheaKade = visual.authoredAssetId === 'ice-mine-rhea-kade';
