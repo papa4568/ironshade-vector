@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { Contract } from './campaign';
 import type { EquipmentFaction } from './factionGear';
 import { getNextMissionObjectiveTarget } from './encounters';
-import { weaponVariantPresentation } from './classArsenal';
+import { weaponVariantPresentation, weaponVariantThermalCue } from './classArsenal';
 import { findNavigationPath } from './mapPathfinding';
 import { getPlayerSector, getWorldSize, weaponHandlingProfiles, type CombatObject, type Enemy, type Player, type SimState, type WeaponId } from './sim';
 import { buildHardSciFiEnvironment, decorateEnemy, decorateOperator, hardSciFiMuzzleOffset, locationArtIdentityFor, syncEnemyVisual, syncHardSciFiBreaches, syncHardSciFiEnvironment, syncOperatorVisual } from './hardSciFiVisuals';
@@ -2685,6 +2685,10 @@ export class ThreeCombatRenderer {
     const shellColor = operatorFaction ? factionColors[operatorFaction] : 0x64716f;
     const weaponColor = weaponColors[player.currentWeapon];
     const heat = THREE.MathUtils.clamp(player.weaponHeat[player.currentWeapon] ?? 0, 0, 1);
+    const thermalCue = weaponVariantThermalCue(state.weapons[player.currentWeapon].variantId, heat);
+    const thermalWarningAt = variantPresentation?.thermalWarningAt ?? 0.72;
+    const thermalCriticalAt = variantPresentation?.thermalCriticalAt ?? 0.98;
+    const thermalLoad = THREE.MathUtils.clamp((heat - thermalWarningAt) / Math.max(0.04, thermalCriticalAt - thermalWarningAt), 0, 1);
     const reloadDuration = Math.max(0.01, state.weapons[player.currentWeapon].reloadSeconds);
     const reload = player.reloadT > 0 && player.reloadWeapon === player.currentWeapon
       ? THREE.MathUtils.clamp(player.reloadT / reloadDuration, 0, 1)
@@ -2694,8 +2698,8 @@ export class ThreeCombatRenderer {
 
     current.shellMaterials.forEach(material => {
       material.color.setHex(shellColor);
-      material.emissive.setHex(heat > 0.72 ? 0x7a2f18 : 0x000000);
-      material.emissiveIntensity = heat > 0.72 ? 0.15 + heat * 0.22 : 0;
+      material.emissive.setHex(thermalCue === 'nominal' ? 0x000000 : thermalCue === 'critical' ? 0xb3431d : 0x7a2f18);
+      material.emissiveIntensity = thermalCue === 'nominal' ? 0 : 0.14 + thermalLoad * 0.34;
     });
     current.accentMaterials.forEach(material => {
       material.color.setHex(weaponColor);
@@ -2717,6 +2721,7 @@ export class ThreeCombatRenderer {
     this.renderer.domElement.dataset.weaponActive = player.currentWeapon;
     this.renderer.domElement.dataset.weaponAsset = current.assetId;
     this.renderer.domElement.dataset.weaponHeat = heat.toFixed(2);
+    this.renderer.domElement.dataset.weaponThermalCue = thermalCue;
     this.renderer.domElement.dataset.weaponFx = state.weapons.rail.variantId === 'rail-charge' ? 'charge-lance' : state.weapons.rail.variantId === 'rail-repeater' ? 'repeater-lance' : player.currentWeapon === 'rail' ? 'lance' : state.weapons.breacher.variantId === 'breacher-slug' ? 'slug-impact' : state.weapons.breacher.variantId === 'breacher-rapid' ? 'rapid-scatter' : player.currentWeapon === 'breacher' ? 'scatter' : state.weapons.carbine.variantId === 'carbine-burst' ? 'burst-tracer' : state.weapons.carbine.variantId === 'carbine-precision' ? 'precision-tracer' : 'tracer';
     this.renderer.domElement.dataset.weaponVariant = state.weapons[player.currentWeapon].variantId ?? 'family-service';
     this.renderer.domElement.dataset.weaponHandling = `${handling.stance}:${handling.reloadStyle}:${handling.ventStyle}`;
@@ -2849,6 +2854,7 @@ export class ThreeCombatRenderer {
     const motion = resolvePlayerHandlingAnimation({
       operatorClass: state.build.operatorClass,
       weapon: player.currentWeapon,
+      weaponVariantId: state.weapons[player.currentWeapon].variantId,
       time: state.time,
       vx: player.vx,
       vy: player.vy,
