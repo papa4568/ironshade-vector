@@ -141,7 +141,7 @@ assert(rendererSource.includes('void this.loadAuthoredWeapons()'), 'authored pla
 assert(rendererSource.includes("root.getObjectByName('muzzle-socket')"), 'authored weapons must expose muzzle sockets');
 assert(rendererSource.includes('syncAuthoredWeapon(state, operatorFaction)'), 'authored weapons must receive visual-only simulation state');
 assert(rendererSource.includes("dataset.weaponVisual = loaded.length === 3 ? 'authored'"), 'runtime QA must expose authored weapon readiness');
-assert(rendererSource.includes("dataset.weaponFx = player.currentWeapon === 'rail' ? 'lance'"), 'weapon-specific combat readability language must remain explicit');
+assert(rendererSource.includes("state.weapons.rail.variantId === 'rail-charge' ? 'charge-lance'") && rendererSource.includes("state.weapons.rail.variantId === 'rail-repeater' ? 'repeater-lance'") && rendererSource.includes("player.currentWeapon === 'rail' ? 'lance'"), 'weapon-specific combat readability language must remain explicit');
 assert(rendererSource.includes("'armor-spark'") && rendererSource.includes("'metal-spark'") && rendererSource.includes("'electrical-flash'"), 'impact effects must preserve target/surface-specific visual language');
 assert(rendererSource.includes('dataset.impactFx'), 'impact FX classification must remain observable for runtime QA');
 assert(rendererSource.includes('PICKUP_ASSET_FAMILY') && rendererSource.includes('loadAuthoredGroundLoot'), 'ground loot must use the authored recovery pickup family');
