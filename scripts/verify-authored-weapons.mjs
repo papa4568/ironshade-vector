@@ -118,7 +118,8 @@ try {
     const allRoles = ['carbine', 'breacher', 'rail'].every(role => roles.has(role));
     if (lastState?.visual === 'authored' && allRoles) {
       if (!['carbine', 'breacher', 'rail'].includes(lastState.active)) {
-        throw new Error(`Unexpected active authored weapon: ${JSON.stringify(lastState)}`);
+        await sleep(200);
+        continue;
       }
       const mobileViewport = process.env.BROWSER_E2E_VIEWPORT === 'mobile-landscape';
       const expectedLod = mobileViewport ? 2 : 1;
@@ -140,8 +141,11 @@ try {
   }
 
   const roles = new Set(String(lastState?.roles ?? '').split(',').filter(Boolean));
-  if (lastState?.visual !== 'authored' || !['carbine', 'breacher', 'rail'].every(role => roles.has(role))) {
-    throw new Error(`Timed out waiting for all authored weapon assets: ${JSON.stringify(lastState)}`);
+  const activeWeapon = ['carbine', 'breacher', 'rail'].includes(lastState?.active) ? lastState.active : null;
+  const expectedLod = process.env.BROWSER_E2E_VIEWPORT === 'mobile-landscape' ? 2 : 1;
+  const activeAuthored = activeWeapon && lastState?.asset === `weapon-${activeWeapon}-lod${expectedLod}`;
+  if (lastState?.visual !== 'authored' || !['carbine', 'breacher', 'rail'].every(role => roles.has(role)) || !activeAuthored) {
+    throw new Error(`Timed out waiting for active authored weapon asset: ${JSON.stringify(lastState)}`);
   }
 } finally {
   socket.close();
