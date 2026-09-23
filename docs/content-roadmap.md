@@ -118,7 +118,7 @@ Target roughly **6 major tiers per system** with sub-milestones.
 - [x] **P13-D Protocol visuals** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
 - [x] **P13-E Player statuses** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
 - [x] **P13-F Boss/spawn/death language** — completed, merged, verified, and archived in `docs/content-roadmap-archive.md`
-- [ ] **P13-G Mobile readability/HUD reduction** — preserve tells at LOD2; remove redundant tags only after screenshot/video QA
+- [x] **P13-G Mobile readability/HUD reduction** — completed and verified; mobile LOD2 keeps critical world tells while priority durability bars + focused diagnostics replace redundant always-on enemy tag stacks; desktop retains the full information layer. Delivery detail is archived in `docs/content-roadmap-archive.md`.
 
 ## P14 — Class Arsenal Expansion
 
@@ -159,9 +159,9 @@ Target roughly **6 major tiers per system** with sub-milestones.
 
 ## Immediate Queue
 
-**Next: P13-G — Mobile readability/HUD reduction.**
+**Next: P14-A — Systems Carbine pair.**
 
-Run **P13-G — Mobile readability/HUD reduction** as the next Enemy Modifier & Status Visual Language batch: preserve critical attack/modifier/status/lifecycle tells at mobile LOD2, then remove redundant enemy HUD tags only where desktop + mobile-landscape screenshot/video QA proves the authored world presentation remains readable under stacked combat, Reduced Effects, and dense boss encounters.
+Run **P14-A — Systems Carbine pair** as the next Class Arsenal Expansion batch: add the Burst + Precision Carbine variants as a coherent same-family pair, preserve the established Systems-class combat identity, and carry them through authored handling/presentation plus deterministic gameplay regression before expanding the rest of P14.
 
 After each merged/verified batch: mark complete → archive detail/delivery note → advance to the next smallest coherent batch.
 
