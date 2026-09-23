@@ -72,8 +72,8 @@ export function runtimeAnimationStride(request: RuntimeAnimationRequest): 1 | 2 
   return profile.animation.standardFarStride;
 }
 
-export function runtimeAssetPreloadReady(simulationSeconds: number, profile: RuntimeScalabilityProfile) {
-  return Number.isFinite(simulationSeconds) && simulationSeconds >= profile.preloadDelaySeconds;
+export function runtimeAssetPreloadReady(runtimeSeconds: number, profile: RuntimeScalabilityProfile) {
+  return Number.isFinite(runtimeSeconds) && runtimeSeconds >= profile.preloadDelaySeconds;
 }
 
 export function runtimePoolTrimTarget(allocated: number, active: number, retainedIdleCapacity: number) {
