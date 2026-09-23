@@ -2045,7 +2045,7 @@ assert.match(targetingCanvasSource, /fireCurrent\(manualTargeting \? 'manual' : 
 assert.match(targetingCanvasSource, /gamepadTriggerFire[\s\S]*updateAssistedTarget\(state, profileSettingsRef\.current\.aimAssist\)/, 'controller RT should share assisted acquisition when manual aim is inactive');
 assert.match(targetingCanvasSource, /gamepadAimActive[\s\S]*clearAssistedTarget\('Manual controller aim active; assisted target released\.'\)/, 'controller right-stick takeover must invalidate assisted target control immediately');
 assert.match(targetingCanvasSource, /canvas\.dataset\.controllerInput = gamepad \? 'connected' : 'none'/, 'browser QA must be able to observe controller activation deterministically');
-assert.match(targetingCanvasSource, /targetFeedbackMotion = profileSettingsRef\.current\.effectIntensity === 'reduced' \? 'reduced' : 'full'/, 'combat should expose reduced target-feedback motion mode for QA');
+assert.match(targetingCanvasSource, /targetFeedbackMotion = profileSettingsRef\.current\.effectIntensity === 'reduced' \|\| profileSettingsRef\.current\.reducedMotion \? 'reduced' : 'full'/, 'combat should expose reduced target-feedback motion for either reduced-effects or reduced-motion accessibility modes');
 assert.match(targetingFeedbackSource, /targetLock: \{ frequency: 520, duration: \.065, type: 'triangle', sweep: 1\.16 \}/, 'target acquisition needs its own short audio cue');
 assert.match(targetingFeedbackSource, /cue === 'targetLock' \? 8/, 'target acquisition needs a short phone haptic when haptics are enabled');
 assert.match(targetingFeedbackSource, /playEffect\('dual-rumble'/, 'supported controllers should receive target feedback through their rumble actuator');
