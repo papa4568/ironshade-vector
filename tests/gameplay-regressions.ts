@@ -1838,12 +1838,15 @@ const neutralCadenceState = createSimulation();
 assert.equal(neutralCadenceState.build.attackSpeedMul, 1, 'neutral combat builds must keep Attack Speed at the canonical 1.0x baseline');
 assert.equal(neutralCadenceState.weapons.carbine.rate, weaponConfigs.carbine.rate, '1.0x Attack Speed must preserve authored weapon cadence');
 
+const attackSpeedBaselineProfile = createDefaultProfile();
+const attackSpeedBaselineBuild = deriveCombatBuild(attackSpeedBaselineProfile);
+const attackSpeedBaselineState = createSimulation(attackSpeedBaselineBuild);
 const attackSpeedProfile = createDefaultProfile();
 attackSpeedProfile.allocatedNodes = ['awareness-track-fusion'];
 const attackSpeedBuild = deriveCombatBuild(attackSpeedProfile);
 assert.ok(Math.abs(attackSpeedBuild.attackSpeedMul - 1.03) < 1e-9, 'Track Fusion should author an attainable +3% Attack Speed source through the Operator Network');
 const attackSpeedFireState = createSimulation(attackSpeedBuild);
-assert.ok(Math.abs(attackSpeedFireState.weapons.breacher.rate / weaponConfigs.breacher.rate - attackSpeedBuild.attackSpeedMul) < 1e-9, 'Attack Speed must multiply weapon shots-per-second directly');
+assert.ok(Math.abs(attackSpeedFireState.weapons.breacher.rate / attackSpeedBaselineState.weapons.breacher.rate - attackSpeedBuild.attackSpeedMul / attackSpeedBaselineBuild.attackSpeedMul) < 1e-9, 'Attack Speed must multiply weapon shots-per-second directly without conflating weapon-variant cadence');
 attackSpeedFireState.player.currentWeapon = 'breacher';
 assert.equal(triggerFire(attackSpeedFireState), true, 'Attack Speed cadence test should fire the class-owned Breacher');
 assert.ok(Math.abs(attackSpeedFireState.player.fireCooldown - 1 / attackSpeedFireState.weapons.breacher.rate) < 1e-9, 'shot cooldown must be derived from the Attack Speed-adjusted weapon rate');
