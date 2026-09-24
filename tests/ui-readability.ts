@@ -197,7 +197,14 @@ assert(menuOverhaulCss.includes('UI SIMPLIFICATION // PRIORITY-FIRST COMMAND + C
 assert(shipHub.includes("overview: 'Overview'") && shipHub.includes("const pageTitle = tab === 'overview' ? 'Overview'"), 'Command overview still repeats Command/Tasking language instead of using a neutral overview page title.');
 assert(combat.includes('visibleConsumables') && combat.includes("consumableDefinitions.filter(item => consumableStock[item.id] > 0)") && mobileCombatCss.includes('max-width: min(360px, 30vw)'), 'Mobile combat still reserves persistent HUD space for empty consumables or oversized mission alerts.');
 assert(browserSmoke.includes("keyboardActivateButton('Operations')") && browserSmoke.includes("keyboardActivateButton('Contracts')"), 'Browser E2E does not follow the new Command > Operations > Contracts hierarchy.');
-assert(browserSmoke.includes('BROWSER_MOBILE_MENU_PASS') && browserSmoke.includes('primaryCount !== 5'), 'Browser E2E is missing mobile Tactical Command rail layout coverage.');
+assert(
+  browserSmoke.includes('BROWSER_P19B_COMMAND_NAV_PASS')
+    && browserSmoke.includes("value.layout !== 'dock'")
+    && browserSmoke.includes("result.layout !== 'rail'")
+    && browserSmoke.includes('value.minTargetHeight < 48')
+    && browserSmoke.includes('value.minLabelFontSize < 10'),
+  'Browser E2E is missing adaptive P19-B Command dock/rail layout coverage.',
+);
 assert(armory.includes("import '../menuOverhaul.css';"), 'Equipment surface is not using the Tactical Command visual system.');
 assert(!shipHub.includes('No urgent ship tasks'), 'Empty priority chrome is still rendered when nothing needs attention.');
 assert(!shipHub.includes('command-nav-grid'), 'Overview still duplicates the full tab navigation.');
