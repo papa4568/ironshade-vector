@@ -680,6 +680,16 @@ if (p18RestoredViewport.width <= p18RestoredViewport.height || Math.abs(p18Resto
 }
 await tapButton('Crafting', 32);
 await waitFor(`Boolean(document.querySelector('.reconstruction-panel .reconstruction-top.iv-panel.iv-panel--glass') && document.querySelector('.reconstruct-storage.iv-panel') && document.querySelector('.build-tabs button[aria-current="page"]')?.textContent?.includes('Crafting'))`, 'Android P15-B Crafting surface');
+await waitFor(`(() => {
+  const requirement = document.querySelector('.reconstruction-bench > .iv-requirement[data-requirement-state]');
+  const help = [...document.querySelectorAll('button')].find(button => (button.textContent || '').trim() === 'How Reconstruction rules work');
+  if (!requirement || !help) return false;
+  const state = requirement.getAttribute('data-requirement-state');
+  const text = requirement.textContent ?? '';
+  return ['ready', 'blocked'].includes(state ?? '')
+    && (state !== 'blocked' || (text.includes('Why blocked:') && text.includes('Next:')));
+})()`, 'Android P18-F Crafting requirement state');
+console.log('ANDROID_P18F_CRAFTING_REQUIREMENT_PASS state=explicit classFamily=visible microforge=visible sockets=visible help=shared-sheet');
 await tapButton('Progression', 33);
 await waitFor(`Boolean(document.querySelector('.network-panel .section-copy.iv-panel.iv-panel--glass') && document.querySelector('.network-planner.iv-panel') && document.querySelector('.operator-class-panel.iv-panel') && document.querySelector('.specialization-panel.iv-panel') && document.querySelector('.build-tabs button[aria-current="page"]')?.textContent?.includes('Progression'))`, 'Android P15-B Progression surface');
 const p15BuildLayout = await evaluate(`(() => {
@@ -693,6 +703,10 @@ const p15BuildLayout = await evaluate(`(() => {
 if (p15BuildLayout.horizontalOverflow > 2 || p15BuildLayout.tabCount !== 5 || p15BuildLayout.minTabHeight < 40) {
   throw new Error(`Android P15-B Build/Crafting/Progression layout failed: ${JSON.stringify(p15BuildLayout)}`);
 }
+await tapButton('View planned build math', 96);
+await waitFor(`Boolean(document.querySelector('.iv-disclosure-sheet .network-stat-preview[aria-label="Planned build before and after math"]'))`, 'Android P18-F planned build math disclosure');
+await tapButton('Close details', 97);
+await waitFor(`!document.querySelector('.iv-disclosure-sheet')`, 'Android P18-F planned build math close');
 
 const plannerTargets = [
   ['ballistics-3', 'Breach Doctrine', 71],
@@ -721,7 +735,7 @@ for (let index = 0; index < plannerTargets.length; index += 1) {
         && text.includes('Why blocked:')
         && text.includes('Next:');
     })()`, 'Android P18-D explicit blocked requirement state');
-    console.log('ANDROID_P18_REQUIREMENT_PASS state=blocked reason=visible next=visible');
+    console.log('ANDROID_P18F_PROGRESSION_REQUIREMENT_PASS state=blocked reason=visible next=visible math=shared-sheet');
   }
   await tapButton('Plan this route', touchId + 10);
 
@@ -791,6 +805,28 @@ await waitFor(`(() => {
     && Boolean(document.querySelector('button[data-skill-mod="mag-revector"]'))
     && Boolean(document.querySelector('button[data-skill-slot="mag"][data-skill-mod="standard"]'));
 })()`, 'Android P8-H skill hierarchy', 20_000);
+const p18fSkillRequirements = await evaluate(`(() => {
+  const evolutions = [...document.querySelectorAll('.skill-evolution-group > button[data-skill-mod]')];
+  const help = [...document.querySelectorAll('button')].some(button => (button.textContent || '').trim() === 'How Skills progression works');
+  const states = evolutions.map(button => {
+    const requirement = button.nextElementSibling;
+    return {
+      disabled: button instanceof HTMLButtonElement ? button.disabled : false,
+      state: requirement?.getAttribute('data-requirement-state') ?? '',
+      copy: requirement?.textContent ?? '',
+    };
+  });
+  return {
+    count: evolutions.length,
+    help,
+    allExplicit: states.every(entry => ['ready', 'active', 'blocked'].includes(entry.state)),
+    disabledExplained: states.filter(entry => entry.disabled).every(entry => entry.state === 'blocked' && entry.copy.includes('Why blocked:') && entry.copy.includes('Next:')),
+  };
+})()`);
+if (!p18fSkillRequirements.help || p18fSkillRequirements.count < 3 || !p18fSkillRequirements.allExplicit || !p18fSkillRequirements.disabledExplained) {
+  throw new Error(`Android P18-F Skills requirement-state failed: ${JSON.stringify(p18fSkillRequirements)}`);
+}
+console.log(`ANDROID_P18F_SKILLS_REQUIREMENT_PASS evolutions=${p18fSkillRequirements.count} states=ready+active+blocked levelBlocker=explained help=shared-sheet`);
 const skillHierarchyLayout = await evaluate(`(() => {
   const viewport = { width: window.innerWidth, height: window.innerHeight };
   const buttons = [...document.querySelectorAll('.skill-option-group > button')];
