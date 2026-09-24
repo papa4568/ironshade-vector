@@ -682,6 +682,69 @@ const p18RestoredViewport = await evaluate(`({ width: window.visualViewport?.wid
 if (p18RestoredViewport.width <= p18RestoredViewport.height || Math.abs(p18RestoredViewport.width - p18NativeViewport.width) > 4 || Math.abs(p18RestoredViewport.height - p18NativeViewport.height) > 4) {
   throw new Error(`Android P18-D viewport restoration failed native=${JSON.stringify(p18NativeViewport)} restored=${JSON.stringify(p18RestoredViewport)}`);
 }
+const p19GuideMetrics = async () => evaluate(`(() => {
+  const root = document.querySelector('.guide-panel');
+  const section = document.querySelector('[data-guide-section="equipment-rarity"]');
+  const navButtons = [...document.querySelectorAll('.guide-section-nav button')].filter(button => button.getBoundingClientRect().width > 0);
+  const copy = [...document.querySelectorAll('.guide-topic p, .guide-topic li')].filter(element => element.getBoundingClientRect().width > 0);
+  if (!root || !section || !navButtons.length || !copy.length) return null;
+  const rootRect = root.getBoundingClientRect();
+  const viewport = { width: window.visualViewport?.width ?? innerWidth, height: window.visualViewport?.height ?? innerHeight };
+  return {
+    viewport,
+    root: { left: rootRect.left, top: rootRect.top, right: rootRect.right, bottom: rootRect.bottom },
+    horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - viewport.width),
+    minNavHeight: Math.min(...navButtons.map(button => button.getBoundingClientRect().height)),
+    minCopyFont: Math.min(...copy.map(element => Number.parseFloat(getComputedStyle(element).fontSize))),
+  };
+})()`);
+const assertP19GuideMetrics = (value, label) => {
+  if (!value
+    || value.horizontalOverflow > 2
+    || value.root.left < -2
+    || value.root.right > value.viewport.width + 2
+    || value.minNavHeight < 40
+    || value.minCopyFont < 11.5) {
+    throw new Error('Android P19-C Guide layout failed (' + label + '): ' + JSON.stringify(value));
+  }
+};
+
+await tapButton('Open Guide // Equipment & Rarity', 86);
+await waitFor(`Boolean(document.querySelector('.ship-hub.area-intel') && document.querySelector('.section-tabs button[aria-current="page"]')?.textContent?.includes('Guide') && document.querySelector('[data-guide-section="equipment-rarity"]'))`, 'Android P19-C Equipment Guide deep-link');
+const p19GuideLandscape = await p19GuideMetrics();
+assertP19GuideMetrics(p19GuideLandscape, 'native landscape');
+
+await evaluate(`(() => { const root = document.documentElement; globalThis.__p19GuideTextScale = root.dataset.textScale ?? ''; root.dataset.textScale = 'large'; return true; })()`);
+await sleep(120);
+const p19GuideLarge = await p19GuideMetrics();
+assertP19GuideMetrics(p19GuideLarge, 'large text');
+if (p19GuideLarge.minCopyFont <= p19GuideLandscape.minCopyFont) throw new Error('Android P19-C Guide Large text did not increase readable copy size.');
+
+await call('Emulation.setDeviceMetricsOverride', {
+  width: 412,
+  height: 915,
+  deviceScaleFactor: 2.5,
+  mobile: true,
+  screenWidth: 412,
+  screenHeight: 915,
+  screenOrientation: { type: 'portraitPrimary', angle: 0 },
+});
+await sleep(220);
+const p19GuidePortrait = await p19GuideMetrics();
+assertP19GuideMetrics(p19GuidePortrait, 'portrait');
+
+await call('Emulation.clearDeviceMetricsOverride');
+await sleep(220);
+await evaluate(`(() => { const root = document.documentElement; const previous = globalThis.__p19GuideTextScale; if (previous) root.dataset.textScale = previous; else delete root.dataset.textScale; delete globalThis.__p19GuideTextScale; return true; })()`);
+await evaluate(`history.back()`);
+await waitFor(`(() => {
+  const active = document.activeElement;
+  return Boolean(document.querySelector('.build-bay.iv-view'))
+    && active instanceof HTMLButtonElement
+    && active.getAttribute('data-guide-link') === 'equipment-rarity';
+})()`, 'Android P19-C Guide history-back and Build focus restore');
+console.log('ANDROID_P19_GUIDE_DEEPLINK_PASS section=equipment-rarity touch=link back=history+focus text=large rotation=landscape+portrait safe=onscreen');
+
 await tapButton('Crafting', 32);
 await waitFor(`Boolean(document.querySelector('.reconstruction-panel .reconstruction-top.iv-panel.iv-panel--glass') && document.querySelector('.reconstruct-storage.iv-panel') && document.querySelector('.build-tabs button[aria-current="page"]')?.textContent?.includes('Crafting'))`, 'Android P15-B Crafting surface');
 await waitFor(`(() => {

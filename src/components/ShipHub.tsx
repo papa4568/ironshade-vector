@@ -8,6 +8,7 @@ import '../part11.css';
 import '../part12.css';
 import '../commandHub.css';
 import '../menuOverhaul.css';
+import '../guide.css';
 import DirectivePanel from './DirectivePanel';
 import CommandHubVisual from './CommandHubVisual';
 import PlayerStatsPanel from './PlayerStatsPanel';
@@ -53,6 +54,7 @@ import { chooseInterdictionBranch, getInterdictionChoicePrompt, interdictionChap
 import { chooseParallaxDebtBranch, getParallaxDebtChoicePrompt, parallaxDebtChapter, parallaxDebtEvidence, parallaxDebtIntel, parallaxDebtNextRequiredLevel } from '../game/parallaxDebt';
 import { rarityDefinition, rarityDisplayLabel, rarityOrder } from '../game/rarity';
 import { playShipCommissionAudio, shipHardwareState, shipSystemPresentation, type ShipHardwarePresentation } from '../game/shipSystemPresentation';
+import { guideSection, guideSections, type GuideSectionId } from '../game/guideContent';
 
 type Props = {
   profile: PlayerProfile;
@@ -64,12 +66,14 @@ type Props = {
   telemetrySharing: boolean;
   selectedContractId: string;
   statusMessage: string;
+  guideRequest: { section: GuideSectionId; requestId: number } | null;
+  onGuideBack: (section: GuideSectionId) => void;
   onSelectContract: (id: string) => void;
   onDeploy: () => void;
   onOpenBuild: () => void;
   onCampaignChange: (campaign: CampaignState) => void;
 };
-type Tab = 'overview' | 'contracts' | 'stats' | 'campaign' | 'stories' | 'operations' | 'ship' | 'factions' | 'cargo';
+type Tab = 'overview' | 'contracts' | 'stats' | 'campaign' | 'stories' | 'operations' | 'ship' | 'factions' | 'cargo' | 'guide';
 type PrimaryArea = 'command' | 'operations' | 'operator' | 'ship' | 'intel';
 type ShipCommissionCeremony = { eyebrow: string; title: string; tierLabel: string; benefit: string; hardware: string; mechanism: ShipHardwarePresentation['mechanism'] };
 
@@ -78,7 +82,7 @@ const areaTabs: Record<PrimaryArea, Tab[]> = {
   operations: ['contracts', 'operations'],
   operator: ['stats'],
   ship: ['ship', 'cargo'],
-  intel: ['campaign', 'stories', 'factions'],
+  intel: ['campaign', 'stories', 'factions', 'guide'],
 };
 const areaLabels: Record<PrimaryArea, string> = {
   command: 'Command',
@@ -92,7 +96,7 @@ const areaDescriptions: Record<PrimaryArea, string> = {
   operations: 'Contracts and shared operations',
   operator: 'Build, progression and combat stats',
   ship: 'Systems, supplies and cargo',
-  intel: 'Campaign, stories, factions and evidence',
+  intel: 'Campaign, stories, factions, evidence and Guide',
 };
 const tabLabels: Record<Tab, string> = {
   overview: 'Overview',
@@ -104,6 +108,7 @@ const tabLabels: Record<Tab, string> = {
   ship: 'Systems',
   factions: 'Factions',
   cargo: 'Cargo',
+  guide: 'Guide',
 };
 function primaryAreaForTab(tab: Tab): PrimaryArea {
   if (tab === 'overview') return 'command';
@@ -158,8 +163,10 @@ function contractReadiness(contract: Contract, operatorLevel: number): { tone: C
   return { tone: 'matched', label: 'LEVEL-APPROPRIATE' };
 }
 
-export default function ShipHub({ profile, campaign, contracts, operations, operationsStatus, operationsError, telemetrySharing, selectedContractId, statusMessage, onSelectContract, onDeploy, onOpenBuild, onCampaignChange }: Props) {
+export default function ShipHub({ profile, campaign, contracts, operations, operationsStatus, operationsError, telemetrySharing, selectedContractId, statusMessage, guideRequest, onGuideBack, onSelectContract, onDeploy, onOpenBuild, onCampaignChange }: Props) {
   const [tab, setTab] = useState<Tab>('overview');
+  const [guideSectionId, setGuideSectionId] = useState<GuideSectionId>('combat-controls');
+  const guidePushedRequestRef = useRef<number | null>(null);
   const [message, setMessage] = useState(campaign.lastOutcome);
   const [traceRecord, setTraceRecord] = useState<RunTraceRecord | null>(null);
   const [traceMessage, setTraceMessage] = useState('');
@@ -175,6 +182,11 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
   const switchTab = (next: Tab) => {
     setTab(next);
     requestAnimationFrame(() => hubRef.current?.scrollTo({ top: 0, left: 0, behavior: 'auto' }));
+  };
+  const openGuideSection = (section: GuideSectionId) => {
+    setGuideSectionId(section);
+    switchTab('guide');
+    requestAnimationFrame(() => hubRef.current?.querySelector<HTMLElement>('[data-guide-section="' + section + '"]')?.focus());
   };
   const selected = contracts.find(contract => contract.id === selectedContractId) ?? contracts[0];
   const ownedWeaponFamily = activeWeaponFamilyForProfile(profile);
@@ -372,6 +384,7 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
   const tracePolyline = traceRecord?.trace.map(point => `${point.x},${1040 - point.y}`).join(' ') ?? '';
   const displayedStatusMessage = statusMessage || (message && message !== campaign.lastOutcome ? message : '');
   const primaryArea = primaryAreaForTab(tab);
+  const activeGuideSection = guideSection(guideSectionId);
   const primaryAreas: Array<{ id: PrimaryArea; icon: typeof RadioTower }> = [
     { id: 'command', icon: RadioTower },
     { id: 'operations', icon: Crosshair },
@@ -397,12 +410,35 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
     button?.focus();
     return button;
   };
+  const returnFromGuideContext = () => {
+    if (!guideRequest) return;
+    const marker = 'guide:' + guideRequest.requestId;
+    if (window.history.state?.__ironshadeGuide === marker) window.history.back();
+    else onGuideBack(guideRequest.section);
+  };
+  useEffect(() => {
+    if (!guideRequest) return;
+    const marker = 'guide:' + guideRequest.requestId;
+    setGuideSectionId(guideRequest.section);
+    setTab('guide');
+    requestAnimationFrame(() => hubRef.current?.querySelector<HTMLElement>('[data-guide-section="' + guideRequest.section + '"]')?.focus());
+    if (guidePushedRequestRef.current !== guideRequest.requestId) {
+      window.history.pushState({ ...window.history.state, __ironshadeGuide: marker }, '');
+      guidePushedRequestRef.current = guideRequest.requestId;
+    }
+    const handlePopState = () => onGuideBack(guideRequest.section);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [guideRequest?.requestId]);
   const handlePrimaryNavigationKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
     if (event.key === 'ArrowRight' || event.key === 'ArrowDown') { event.preventDefault(); focusPrimaryByOffset(1); }
     if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') { event.preventDefault(); focusPrimaryByOffset(-1); }
     if (event.key === 'Home') { event.preventDefault(); focusPrimaryByOffset(0, 'start'); }
     if (event.key === 'End') { event.preventDefault(); focusPrimaryByOffset(0, 'end'); }
-    if (event.key === 'Escape' && primaryArea !== 'command') {
+    if (event.key === 'Escape' && guideRequest && tab === 'guide') {
+      event.preventDefault();
+      returnFromGuideContext();
+    } else if (event.key === 'Escape' && primaryArea !== 'command') {
       event.preventDefault();
       openPrimaryArea('command');
       requestAnimationFrame(() => focusPrimaryArea('command'));
@@ -434,7 +470,9 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
       previousConfirm = confirm;
 
       const back = !modalOpen && !!pad?.buttons[1]?.pressed;
-      if (back && !previousBack && primaryArea !== 'command') {
+      if (back && !previousBack && guideRequest && tab === 'guide') {
+        returnFromGuideContext();
+      } else if (back && !previousBack && primaryArea !== 'command') {
         openPrimaryArea('command');
         requestAnimationFrame(() => focusPrimaryArea('command'));
       }
@@ -443,7 +481,7 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
     };
     frame = requestAnimationFrame(poll);
     return () => cancelAnimationFrame(frame);
-  }, [primaryArea]);
+  }, [primaryArea, tab, guideRequest?.requestId]);
   const pageTitle = tab === 'overview' ? 'Overview' : areaLabels[primaryArea];
 
   return <main className={`ship-hub area-${primaryArea} iv-view`}>
@@ -545,7 +583,7 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
       <article className="operations-escalation">
         <span className="card-kicker">OPTIONAL ESCALATION // {escalationCodename.toUpperCase()}</span>
         <h2>Three contracts. Failures accumulate.</h2>
-        <p>The sequence is seeded from the Daily Operations Board but runs independently of the normal Daily contract. Each banked stage preserves the previous physical failure and adds another; there are no hidden enemy-damage multipliers.</p>
+        <p>Each banked stage preserves the previous physical failure and adds another. Current stage, complications, and rewards stay on this board.</p><button className="guide-context-link" onClick={() => openGuideSection('ship-operations')}>Open Guide // Ship & Operations</button>
         <div className="escalation-chain">{escalationStages.map((stage, index) => { const done = escalationStatus === 'complete' || escalationStage > index; const current = escalationStatus === 'active' && escalationStage === index; return <div key={stage.title} className={`escalation-stage ${done ? 'complete' : ''} ${current ? 'current' : ''}`}><small>CONTRACT {index + 1}</small><b>{stage.complication}</b><span>{stage.description}</span></div>; })}</div>
         <div className="escalation-state-note"><b>{escalationStatus === 'active' ? `STAGE ${campaign.escalation.stage + 1}/3 ACTIVE` : escalationStatus === 'complete' ? 'SEQUENCE CLEARED' : 'OPTIONAL SEQUENCE READY'}</b><span>{displaySavedEscalation ? campaign.escalation.lastBeat : operation ? `Start a new three-contract sequence from Operation ${operation.codename}.` : 'A live Daily Operations record is required to seed a new escalation. Any previously active sequence remains locally playable.'}</span></div>
         {escalationStatus === 'active' && escalationContract ? <button onClick={openEscalation}>Open Escalation {campaign.escalation.stage + 1} contract</button> : escalationStatus === 'complete' ? <button disabled>Escalation cleared for this Daily seed</button> : operation ? <button onClick={startCurrentEscalation}>Start three-contract escalation</button> : <button disabled>Operations link unavailable</button>}
@@ -565,14 +603,33 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
       {traceRecord && <article className="trace-inspector"><div><span className="card-kicker">RUN TRACE // {traceRecord.id.slice(0, 8).toUpperCase()}</span><h2>{traceRecord.contractTitle}</h2><p>{traceRecord.buildLabel} · OP T{traceRecord.operationTier} · LV {traceRecord.level} · {runOutcomeLabel(traceRecord)} · {traceRecord.duration.toFixed(1)}s · {traceRecord.trace.length} checkpoints</p></div><svg viewBox="0 0 2320 1040" role="img" aria-label="Anonymous operator path through the contract"><rect x="20" y="20" width="2280" height="1000" rx="50" /><polyline points={tracePolyline} />{traceRecord.trace[0] && <circle className="trace-start" cx={traceRecord.trace[0].x} cy={1040 - traceRecord.trace[0].y} r="22" />}{traceRecord.trace.at(-1) && <circle className="trace-end" cx={traceRecord.trace.at(-1)!.x} cy={1040 - traceRecord.trace.at(-1)!.y} r="22" />}</svg><div className="trace-stats"><span>DAMAGE DEALT <b>{traceRecord.damageDealt}</b></span><span>DAMAGE TAKEN <b>{traceRecord.damageTaken}</b></span><span>SALVAGE TAGS <b>{traceRecord.salvageTags}</b></span><span>BOSS <b>{traceRecord.bossDefeated ? 'DEFEATED' : 'NOT ENGAGED'}</b></span></div></article>}
     </section>}
 
+
+    {tab === 'guide' && <section className="guide-panel" aria-label="Intel Guide" onKeyDown={event => { if (event.key === 'Escape' && guideRequest) { event.preventDefault(); returnFromGuideContext(); } }}>
+      <header className="guide-heading iv-panel iv-panel--glass">
+        <div><span className="card-kicker">QUIET SIGNAL // INTEL GUIDE</span><h2>Canonical field reference</h2><p>Reusable teaching lives here once. Live costs, tradeoffs, warnings, blockers, combat tells, and transient onboarding remain beside the action that needs them.</p></div>
+        {guideRequest && <button type="button" className="guide-return-button" onClick={returnFromGuideContext}>Back to Equipment</button>}
+      </header>
+      <div className="guide-layout">
+        <nav className="guide-section-nav iv-panel" aria-label="Guide sections">
+          {guideSections.map(section => <button key={section.id} type="button" aria-current={guideSectionId === section.id ? 'page' : undefined} onClick={() => { setGuideSectionId(section.id); requestAnimationFrame(() => hubRef.current?.querySelector<HTMLElement>('[data-guide-section="' + section.id + '"]')?.focus()); }}>{section.label}</button>)}
+        </nav>
+        <article className="guide-section iv-panel iv-panel--glass" data-guide-section={activeGuideSection.id} tabIndex={-1}>
+          <small>{activeGuideSection.eyebrow}</small>
+          <h2>{activeGuideSection.label}</h2>
+          <p>{activeGuideSection.summary}</p>
+          <div className="guide-topic-grid">{activeGuideSection.topics.map(topic => <section key={topic.id} className="guide-topic"><h3>{topic.title}</h3><p>{topic.body}</p>{topic.points?.length ? <ul>{topic.points.map(point => <li key={point}>{point}</li>)}</ul> : null}</section>)}</div>
+        </article>
+      </div>
+    </section>}
+
     {tab === 'ship' && <section className="ship-systems-panel">
       <div className="ship-systems-intro iv-panel iv-panel--glass">
         <div>
           <span className="card-kicker">QUIET SIGNAL // SYSTEMS</span>
           <h2>Upgrade what changes the next deployment.</h2>
-          <p>Ship Systems 2.0 exposes the six-tier dependency route, exact resource curve, and late specialization packages. Base tiers remain permanent foundations; one advanced package can be installed after its Tier 5 prerequisites and then locks the other packages.</p>
+          <p>Exact next benefits, prerequisites, resource costs, and specialization lock-in stay on this Systems surface.</p>
         </div>
-        <button onClick={onOpenBuild}>Open Build</button>
+        <div className="guide-inline-actions"><button onClick={onOpenBuild}>Open Build</button><button className="guide-context-link" onClick={() => openGuideSection('ship-operations')}>Open Guide // Ship & Operations</button></div>
       </div>
       <section className="ship-hardware-bay iv-panel" aria-label="Physical ship hardware state">
         <div className="ship-hardware-heading">

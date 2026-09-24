@@ -18,6 +18,7 @@ import type { Telemetry } from './game/sim';
 import type { GroundLootReceipt } from './game/fieldLoot';
 import { loadGameState, saveGameState } from './game/gamePersistence';
 import { rarityDefinition, rarityDisplayLabel } from './game/rarity';
+import type { GuideSectionId } from './game/guideContent';
 import ClassSelectScreen from './components/ClassSelectScreen';
 
 const loadArmory = () => import('./components/Armory');
@@ -182,6 +183,9 @@ function App() {
   const [operationsStatus, setOperationsStatus] = useState<'loading' | 'online' | 'offline'>('loading');
   const [operationsError, setOperationsError] = useState('');
   const [screen, setScreen] = useState<Screen>(() => initialGameState.profile.classSelectionComplete ? 'ship' : 'class');
+  const guideRequestIdRef = useRef(0);
+  const [guideRequest, setGuideRequest] = useState<{ section: GuideSectionId; requestId: number } | null>(null);
+  const [guideReturnFocus, setGuideReturnFocus] = useState<GuideSectionId | null>(null);
   const contracts = useMemo(() => {
     const story = generateStoryContracts(campaign);
     const chapter = getBlackLatticeContract(campaign);
@@ -301,6 +305,17 @@ function App() {
   const changeProfileSettings = (settings: Partial<ProfileSettings>) => setProfile(current => setProfileSettings(current, settings));
 
   const openBuild = () => { void loadArmory(); setScreen('build'); };
+  const openGuideFromBuild = (section: GuideSectionId) => {
+    void loadShipHub();
+    setGuideRequest({ section, requestId: ++guideRequestIdRef.current });
+    setScreen('ship');
+  };
+  const returnFromGuideToBuild = (section: GuideSectionId) => {
+    void loadArmory();
+    setGuideRequest(null);
+    setGuideReturnFocus(section);
+    setScreen('build');
+  };
   const confirmOperatorClass = (operatorClass: OperatorClassId) => {
     const result = setOperatorClass(profile, operatorClass);
     const definition = operatorClassDefinitions.find(entry => entry.id === operatorClass) ?? operatorClassDefinitions[0];
@@ -313,8 +328,8 @@ function App() {
   return <div className="app-shell" data-client-architecture="split-v1" onPointerDownCapture={() => feedback.unlock()} onClickCapture={event => { const target = event.target as HTMLElement; if (target.closest('button') && !target.closest('.game-root')) feedback.cue('ui'); }}>
     <Suspense fallback={<SurfaceLoader screen={screen} />}>
       {screen === 'class' && <ClassSelectScreen profile={profile} onConfirm={confirmOperatorClass} />}
-      {screen === 'ship' && <ShipHub profile={profile} campaign={campaign} contracts={contracts} operations={operations} operationsStatus={operationsStatus} operationsError={operationsError} telemetrySharing={profile.settings.telemetrySharing} selectedContractId={selectedContract?.id ?? ''} statusMessage={statusMessage} onSelectContract={setSelectedContractId} onDeploy={openCombat} onOpenBuild={openBuild} onCampaignChange={setCampaign} />}
-      {screen === 'build' && <Armory profile={profile} campaign={campaign} newLootIds={newLootIds} onProfileChange={setProfile} onCampaignChange={setCampaign} onClose={() => { setNewLootIds([]); setScreen('ship'); }} />}
+      {screen === 'ship' && <ShipHub profile={profile} campaign={campaign} contracts={contracts} operations={operations} operationsStatus={operationsStatus} operationsError={operationsError} telemetrySharing={profile.settings.telemetrySharing} selectedContractId={selectedContract?.id ?? ''} statusMessage={statusMessage} guideRequest={guideRequest} onGuideBack={returnFromGuideToBuild} onSelectContract={setSelectedContractId} onDeploy={openCombat} onOpenBuild={openBuild} onCampaignChange={setCampaign} />}
+      {screen === 'build' && <Armory profile={profile} campaign={campaign} newLootIds={newLootIds} guideReturnFocus={guideReturnFocus} onGuideFocusRestored={() => setGuideReturnFocus(null)} onOpenGuide={openGuideFromBuild} onProfileChange={setProfile} onCampaignChange={setCampaign} onClose={() => { setNewLootIds([]); setScreen('ship'); }} />}
       {screen === 'combat' && selectedContract && <GameCanvas key={selectedContract.id} build={combatBuild} mission={selectedContract} profileSettings={profile.settings} consumables={campaign.consumables} buildLabel={buildIdentity(profile)} operatorFaction={dominantEquipmentFaction(profile)} onProfileSettingsChange={changeProfileSettings} onConsumablesChange={consumables => setCampaign(current => ({ ...current, consumables }))} onMissionResolve={finishMission} onAttemptFailed={reportFailedAttempt} onReturnToHub={abandonMission} />}
       {screen === 'debrief' && debrief && <DebriefScreen result={debrief} onShip={() => { setNewLootIds([]); setScreen('ship'); }} onBuild={openBuild} onDiscard={discardRecoveredItem} onRepeat={contracts.some(contract => contract.id === debrief.contract.id) ? () => { void loadGameCanvas(); setScreen('combat'); } : undefined} />}
     </Suspense>
