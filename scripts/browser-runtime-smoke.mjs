@@ -799,7 +799,20 @@ try {
   await primaryNavigationInputAudit();
   await captureScreenshot(commandScreenshotPath);
 
-  await keyboardActivateButton('Equipment');
+  const equipmentShortcutVisible = await evaluate(`(() => {
+    const button = [...document.querySelectorAll('button')].find(candidate => (candidate.getAttribute('aria-label') || candidate.textContent || '').trim().toLowerCase() === 'equipment');
+    if (!button) return false;
+    const style = getComputedStyle(button);
+    const rect = button.getBoundingClientRect();
+    return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+  })()`);
+  if (equipmentShortcutVisible) {
+    await keyboardActivateButton('Equipment');
+  } else {
+    await keyboardActivateButton('Operator');
+    await waitFor(`Boolean(document.querySelector('.ship-hub.area-operator') && [...document.querySelectorAll('.operator-section-tabs button')].some(button => (button.textContent || '').trim() === 'Build'))`, 'compact Operator build route');
+    await keyboardActivateButton('Build');
+  }
   await waitFor(`(() => {
     const text = document.body?.innerText ?? '';
     const labels = [...document.querySelectorAll('button')].map(button => (button.textContent || '').trim());
