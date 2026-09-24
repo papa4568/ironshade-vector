@@ -1393,5 +1393,5 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
 
 - **Superseded: P18-F — Progression, Skills + Crafting action clarity pass.** The implementation is present on main across `fd7bca53c78cf61e2df324216b0283994b2c07a1`, `35acf12aac8d2696387c988f39bcd12a5749b705`, `6f543278c4bab89848ce4f0a5fc101159a2fd3c9`, `e1f8f9adb37cfb07c0c691f8e84972229d9554ce`, `b3863ade2b116114a404509efa99951169cac4df`, and `caad8dfa0cdcb49e849ef91296016816b758c729`, and current Android smoke source contains explicit P18-F Crafting, Progression, and Skills requirement/disclosure assertions. However, the repository did not preserve standalone production-build/APK run evidence for those final P18-F commits before the next UI priority was introduced.
   - Do **not** treat P18-F as independently completed from the old checkbox marker `de83637800ad5272fbc24e1da4b93901e9c7e5c4`.
-  - Its remaining verification and the overlapping compact-phone hierarchy work are absorbed by **P19-D**, which must preserve the existing P18-F behavior while completing the new Glance-First management pass and APK verification.
+  - Its remaining verification and the overlapping compact-phone hierarchy work are absorbed by **P19-E**, which must preserve the existing P18-F behavior while completing the new Glance-First management pass and APK verification.
 
