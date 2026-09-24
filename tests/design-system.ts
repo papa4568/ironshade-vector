@@ -70,4 +70,22 @@ assert(css.includes('.iv-disclosure-backdrop') && css.includes('.iv-disclosure-s
 assert(armory.includes('<ProgressiveDisclosure triggerLabel="How equipment discovery works"') && armory.includes('<ActionRequirement presentation={focusedAllocationRequirement} />') && armory.includes("focusedAllocationRequirement?.state !== 'ready'"), 'P18-D Build proving ground must reuse the shared disclosure and eligibility primitives instead of a bespoke details shell or disabled-only allocation cue.');
 assert(androidSmoke.includes('ANDROID_P18_DISCLOSURE_LANDSCAPE_PASS') && androidSmoke.includes('ANDROID_P18_DISCLOSURE_PORTRAIT_PASS') && androidSmoke.includes('ANDROID_P18_DISCLOSURE_BACK_PASS') && androidSmoke.includes('Emulation.setDeviceMetricsOverride') && androidSmoke.includes('history.back()'), 'P18-D Android smoke must cover landscape/portrait touch layout and browser-history back dismissal.');
 
+assert(
+  armory.includes('craftingAccessRequirement')
+    && armory.includes('Missing salvage')
+    && armory.includes('How Reconstruction rules work')
+    && armory.includes('networkRequirementFor')
+    && armory.includes('Exclusive Keystone choice already active')
+    && armory.includes('View planned build math')
+    && armory.includes('How Skills progression works')
+    && armory.includes('skillEvolutionRequirement'),
+  'P18-F must apply shared requirement/disclosure primitives across Crafting, Progression, and Skills blockers.',
+);
+assert(
+  androidSmoke.includes('ANDROID_P18F_CRAFTING_REQUIREMENT_PASS')
+    && androidSmoke.includes('ANDROID_P18F_PROGRESSION_REQUIREMENT_PASS')
+    && androidSmoke.includes('ANDROID_P18F_SKILLS_REQUIREMENT_PASS'),
+  'P18-F Android smoke must verify Crafting, Progression, and Skills requirement states on-device.',
+);
+
 console.log('DESIGN_SYSTEM_PASS typography=shared spacing=4px iconography=normalized focus=visible rarity=canonical panel=shared tooltip=shared disclosure=accessible requirement=explicit responsive=coarse+safe-area');
