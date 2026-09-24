@@ -1,7 +1,7 @@
 import type { CombatBuild, SingularTraitId, SpecializationId, Telemetry, WeaponId } from './sim';
 import { operatorWeaponFamilyForClass, type OperatorClassId } from './classSkills';
 import { resolveWeaponVariant, weaponVariantBuildIntegration, type WeaponVariantSkillTuning } from './classArsenal';
-import { allocateOperatorNetworkNode, createOperatorNetworkState, normalizeOperatorNetworkState, operatorNetworkNode, operatorNetworkNodes, rebuildOperatorNetworkState, refundOperatorNetworkNode, type OperatorNetworkIntegrationHook, type OperatorNetworkNodeKind, type OperatorNetworkSector, type OperatorNetworkState, type OperatorNetworkStatEffect, type OperatorNetworkUnlockContext } from './operatorNetwork';
+import { allocateOperatorNetworkNode, createOperatorNetworkState, normalizeOperatorNetworkState, operatorNetworkNode, operatorNetworkNodes, rebuildOperatorNetworkState, refundOperatorNetworkNode, setOperatorNetworkPlanTargets as setOperatorNetworkStatePlanTargets, type OperatorNetworkIntegrationHook, type OperatorNetworkNodeKind, type OperatorNetworkSector, type OperatorNetworkState, type OperatorNetworkStatEffect, type OperatorNetworkUnlockContext } from './operatorNetwork';
 export type { OperatorClassId } from './classSkills';
 import { factionFrames, factionGearChance, factionSetDefinitions, type EquipmentFaction } from './factionGear';
 import { frameGenerationForRecovery, recoveryLevelForSource, type FrameGeneration } from './scaling';
@@ -1076,6 +1076,27 @@ export function unequipSlot(profile: PlayerProfile, slot: EquipmentSlot): { prof
   return { profile: { ...profile, equipped: { ...profile.equipped, [slot]: null } }, message: `${slot.toUpperCase()} slot cleared.` };
 }
 export function discardItem(profile: PlayerProfile, itemId: string): { profile: PlayerProfile; message: string } { const item = profile.inventory.find(entry => entry.id === itemId); if (!item) return { profile, message: 'Item not found.' }; if (Object.values(profile.equipped).includes(itemId)) return { profile, message: 'Unequip this item before discarding it.' }; return { profile: { ...profile, inventory: profile.inventory.filter(entry => entry.id !== itemId) }, message: `${item.name} discarded.` }; }
+export function setOperatorNetworkPlanTargets(profile: PlayerProfile, targetNodeIds: readonly string[], context?: OperatorNetworkUnlockContext): PlayerProfile {
+  const network = normalizeOperatorNetworkState({
+    operatorClass: operatorClassForProfile(profile),
+    level: profile.level,
+    specialization: profile.specialization,
+    state: profile.operatorNetwork,
+    legacyAllocatedNodes: profile.allocatedNodes,
+    legacyUnspentPoints: profile.progressionPoints,
+  });
+  const nextNetwork = setOperatorNetworkStatePlanTargets(network, targetNodeIds, {
+    ...context,
+    level: profile.level,
+    specialization: profile.specialization,
+  });
+  return {
+    ...profile,
+    progressionPoints: nextNetwork.unspentPoints,
+    allocatedNodes: nextNetwork.allocatedNodeIds,
+    operatorNetwork: nextNetwork,
+  };
+}
 export function allocateNode(profile: PlayerProfile, nodeId: string, context?: OperatorNetworkUnlockContext): { profile: PlayerProfile; message: string } {
   const network = normalizeOperatorNetworkState({
     operatorClass: operatorClassForProfile(profile),
@@ -1193,6 +1214,7 @@ export function setOperatorClass(profile: PlayerProfile, operatorClass: Operator
     legacyAllocatedNodes: profile.allocatedNodes,
     legacyUnspentPoints: profile.progressionPoints,
   });
+  operatorNetwork.plannedTargetNodeIds = [];
   const next = normalizeClassArmament({
     ...profile,
     operatorClass,
@@ -1222,6 +1244,7 @@ export function setSpecialization(profile: PlayerProfile, specialization: Specia
     legacyAllocatedNodes: profile.allocatedNodes,
     legacyUnspentPoints: profile.progressionPoints,
   });
+  operatorNetwork.plannedTargetNodeIds = [];
   return {
     ...profile,
     specialization,
