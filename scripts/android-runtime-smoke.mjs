@@ -469,6 +469,126 @@ await waitFor(`(() => {
   return document.querySelector('.build-header h1')?.textContent?.trim() === 'Build' && buttons.includes('Skills');
 })()`, 'Android Build surface for skill hierarchy');
 await waitFor(`Boolean(document.querySelector('.build-bay.iv-view') && document.querySelector('.build-header.iv-panel.iv-panel--glass') && document.querySelector('.build-tabs button[aria-current="page"]'))`, 'Android P15-B shared Build shell');
+
+const p18GearStorageCandidate = await evaluate(`(() => {
+  const card = [...document.querySelectorAll('.inventory-card')].find(candidate => {
+    const slot = candidate.querySelector('small')?.textContent ?? '';
+    return slot.includes('Carbine') || slot.includes('Rail Lance');
+  });
+  if (!(card instanceof HTMLButtonElement)) return null;
+  card.dataset.p18GearStorageCandidate = 'true';
+  card.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+  return card.textContent?.trim() ?? '';
+})()`);
+if (!p18GearStorageCandidate) throw new Error('Android P18-E could not find an off-class weapon in ship storage.');
+await sleep(180);
+await tap('button[data-p18-gear-storage-candidate="true"]', 87);
+await waitFor(`(() => {
+  const requirement = document.querySelector('.item-inspector .iv-requirement--blocked');
+  const action = document.querySelector('.item-inspector .inspector-actions .primary');
+  const text = requirement?.textContent ?? '';
+  return Boolean(
+    document.querySelector('.item-inspector.open')
+    && document.querySelector('.gear-quick-read')
+    && document.querySelector('.quick-loadout-impact .impact-grid--quick')
+    && requirement
+    && text.includes('Class-family armament locked')
+    && text.includes('Why blocked:')
+    && text.includes('Next:')
+    && action instanceof HTMLButtonElement
+    && action.disabled
+  );
+})()`, 'Android P18-E blocked storage comparison');
+const p18GearDecisionLayout = await evaluate(`(() => {
+  const scroll = document.querySelector('.item-inspector .inspector-scroll');
+  const requirement = document.querySelector('.item-inspector .iv-requirement');
+  const effect = document.querySelector('.item-inspector .gear-quick-read');
+  const firstStat = document.querySelector('.item-inspector .impact-grid--quick .impact-stat');
+  const action = document.querySelector('.item-inspector .inspector-actions .primary');
+  if (!scroll || !requirement || !effect || !firstStat || !(action instanceof HTMLButtonElement)) return null;
+  const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+  const scrollRect = scroll.getBoundingClientRect();
+  const requirementRect = requirement.getBoundingClientRect();
+  const effectRect = effect.getBoundingClientRect();
+  const statRect = firstStat.getBoundingClientRect();
+  const actionRect = action.getBoundingClientRect();
+  return {
+    scrollTop: scroll.scrollTop,
+    requirementVisible: requirementRect.top >= scrollRect.top - 2 && requirementRect.bottom <= scrollRect.bottom + 2,
+    effectVisible: effectRect.top < scrollRect.bottom - 2 && effectRect.bottom > scrollRect.top + 2,
+    firstStatVisible: statRect.top < scrollRect.bottom - 2 && statRect.bottom > scrollRect.top + 2,
+    actionVisible: actionRect.top >= -1 && actionRect.bottom <= viewportHeight + 1,
+    expertMounted: Boolean(document.querySelector('.item-inspector .explicit-modifiers-panel') || document.querySelector('.item-inspector .augment-layer-panel') || document.querySelector('.item-inspector .advanced-identity-grid')),
+  };
+})()`);
+if (!p18GearDecisionLayout || p18GearDecisionLayout.scrollTop !== 0 || !p18GearDecisionLayout.requirementVisible || !p18GearDecisionLayout.effectVisible || !p18GearDecisionLayout.firstStatVisible || !p18GearDecisionLayout.actionVisible || p18GearDecisionLayout.expertMounted) {
+  throw new Error(`Android P18-E decision-first layout failed: ${JSON.stringify(p18GearDecisionLayout)}`);
+}
+await tapButton('Details', 88);
+await waitFor(`(() => {
+  const sheet = document.querySelector('.iv-disclosure-sheet.gear-details-sheet[role="dialog"][aria-modal="true"]');
+  const text = sheet?.textContent ?? '';
+  return Boolean(
+    sheet
+    && text.includes('EXPLICIT MODIFIERS')
+    && text.includes('AUGMENTS')
+    && text.includes('GENERATED BUILD LINKS')
+    && text.includes('PROVENANCE / REGISTRY')
+    && document.querySelector('.gear-details-sheet .advanced-identity-grid')
+  );
+})()`, 'Android P18-E expert gear Details sheet');
+await tapButton('Close details', 89);
+await waitFor(`!document.querySelector('.iv-disclosure-sheet.gear-details-sheet')`, 'Android P18-E Details close');
+await tapButton('Back to ship storage', 90);
+await waitFor(`!document.querySelector('.item-inspector.open')`, 'Android P18-E storage return');
+
+const p18GearEquippedSuit = await evaluate(`(() => {
+  const card = [...document.querySelectorAll('.equipped-card')].find(candidate => (candidate.querySelector('small')?.textContent ?? '').trim() === 'Combat Suit');
+  if (!(card instanceof HTMLButtonElement)) return null;
+  card.dataset.p18GearEquippedSuit = 'true';
+  card.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+  return card.querySelector('b')?.textContent?.trim() ?? '';
+})()`);
+if (!p18GearEquippedSuit || p18GearEquippedSuit === 'Empty') throw new Error('Android P18-E could not find the equipped Combat Suit.');
+await sleep(180);
+await tap('button[data-p18-gear-equipped-suit="true"]', 91);
+await waitFor(`(() => {
+  const requirement = document.querySelector('.item-inspector .iv-requirement--active');
+  const unequip = [...document.querySelectorAll('.item-inspector .inspector-actions button')].find(button => (button.textContent || '').trim() === 'Unequip');
+  return Boolean(requirement && (requirement.textContent ?? '').includes('Equipped in Combat Suit') && unequip);
+})()`, 'Android P18-E active Combat Suit decision');
+await tapButton('Unequip', 92);
+await waitFor(`(() => {
+  const requirement = document.querySelector('.item-inspector .iv-requirement--ready');
+  const equip = [...document.querySelectorAll('.item-inspector .inspector-actions button')].find(button => (button.textContent || '').trim() === 'Equip Combat Suit');
+  return Boolean(requirement && (requirement.textContent ?? '').includes('Ready to equip Combat Suit') && equip && !equip.disabled);
+})()`, 'Android P18-E unequipped Combat Suit ready state');
+
+const p18GearRestoreCard = await evaluate(`(() => {
+  const expectedName = ${JSON.stringify(p18GearEquippedSuit)};
+  const card = [...document.querySelectorAll('.inventory-card')].find(candidate => {
+    const slot = candidate.querySelector('small')?.textContent ?? '';
+    const name = candidate.querySelector('b')?.textContent?.trim() ?? '';
+    return slot.includes('Combat Suit') && name === expectedName;
+  });
+  if (!(card instanceof HTMLButtonElement)) return null;
+  card.dataset.p18GearRestoreCard = 'true';
+  card.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+  return card.textContent?.trim() ?? '';
+})()`);
+if (!p18GearRestoreCard) throw new Error('Android P18-E unequipped Combat Suit did not return to ship storage.');
+await sleep(180);
+await tap('button[data-p18-gear-restore-card="true"]', 93);
+await tapButton('Equip Combat Suit', 94);
+await waitFor(`(() => {
+  const requirement = document.querySelector('.item-inspector .iv-requirement--active');
+  const unequip = [...document.querySelectorAll('.item-inspector .inspector-actions button')].find(button => (button.textContent || '').trim() === 'Unequip');
+  const equippedBadge = document.querySelector('.item-inspector .equipped-badge');
+  return Boolean(requirement && unequip && equippedBadge);
+})()`, 'Android P18-E Combat Suit re-equip');
+console.log(`ANDROID_P18_GEAR_INSPECTOR_PASS storage=off-class compare=quick-read blocker=class-family details=shared-sheet equip=support-slot-restored viewportDecision=top-level candidate=${JSON.stringify(p18GearStorageCandidate)}`);
+await tapButton('Back to ship storage', 95);
+await waitFor(`!document.querySelector('.item-inspector.open')`, 'Android P18-E inspector close after equip restore');
 await waitFor(`[...document.querySelectorAll('button')].some(button => (button.textContent || '').trim() === 'How equipment discovery works')`, 'Android P18-D disclosure trigger');
 const p18NativeViewport = await evaluate(`({ width: window.visualViewport?.width ?? window.innerWidth, height: window.visualViewport?.height ?? window.innerHeight })`);
 await tapButton('How equipment discovery works', 83);
