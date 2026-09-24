@@ -69,6 +69,19 @@ adb forward --remove tcp:9222 >/dev/null 2>&1 || true
 adb forward tcp:9222 "localabstract:$RESUME_SOCKET"
 ANDROID_RESUME_CHECK=1 ANDROID_RESUME_PROCESS_MODE=preserved CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-runtime-smoke.mjs
 
+adb shell am force-stop "$PACKAGE"
+adb shell am start -W -n "$ACTIVITY"
+timeout 30 bash -c 'until [[ -n "$(adb shell pidof app.ironshade.vector 2>/dev/null | tr -d "\\r")" ]]; do sleep 1; done'
+PLANNER_PID="$(adb shell pidof "$PACKAGE" | tr -d '\r')"
+if [[ -z "$PLANNER_PID" ]]; then
+  echo "Ironshade Vector process did not cold-relaunch for planner persistence verification." >&2
+  exit 1
+fi
+PLANNER_SOCKET="webview_devtools_remote_${PLANNER_PID}"
+adb forward --remove tcp:9222 >/dev/null 2>&1 || true
+adb forward tcp:9222 "localabstract:${PLANNER_SOCKET}"
+ANDROID_PLANNER_PERSISTENCE_CHECK=1 CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-runtime-smoke.mjs
+
 adb exec-out screencap -p > android-runtime-smoke.png
 if [[ ! -s android-runtime-smoke.png ]]; then
   echo 'Android runtime screenshot was not captured.' >&2
