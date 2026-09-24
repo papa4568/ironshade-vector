@@ -521,7 +521,7 @@ function ReconstructionBench({ item, profile, campaign, lockedFamily, onLockFami
         </div>}
       </section>
       <section className="crafting-salvage-loop" aria-label="Crafting salvage loop">
-        <div><small>P10-E // SALVAGE LOOP</small><b>Deploy → bank salvage → review → confirm → iterate</b><span>Ordinary reconstruction uses Credits, Frame Alloy, Circuit Stock, and Precision Components. Quarantined Trace buys exact premium control, protected Replace, and G5 Prime access. Removing or replacing work never refunds previously spent crafting materials.</span></div>
+        <div><small>P10-E // SALVAGE LOOP</small><b>Deploy → bank salvage → review → confirm → iterate</b><span>Current material stock stays local. Select an action for its exact cost and result space; durable material, control, and stability rules live in Intel → Guide.</span></div>
         <div className="salvage-loop-balances"><span><small>COMMON STOCK</small><b>{campaign.resources.alloys} Alloy · {campaign.resources.electronics} Circuit · {campaign.resources.components} Components</b></span><span><small>CHASE CONTROL</small><b>{campaign.resources.rareTech} Quarantined Trace</b></span></div>
       </section>
       <section className="crafting-input-contract" aria-label="Crafting input controls">

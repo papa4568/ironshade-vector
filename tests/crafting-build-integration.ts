@@ -111,8 +111,11 @@ const extracted = reconstructItem(switched, wallet, 2, stored.id, { kind: 'remov
 assert.deepEqual(extracted.profile.inventory[0].augments, []);
 
 const armory = readFileSync(new URL('../src/components/Armory.tsx', import.meta.url), 'utf8');
-for (const required of ['P10-D // BUILD INTEGRATION', 'CLASS-FAMILY POOL', 'SPECIALIZATION RECIPE', 'FIXED SINGULAR PACKAGE', 'CLASS-FAMILY RECONSTRUCTION LOCK']) {
-  assert.ok(armory.includes(required), `Missing P10-D UI contract: ${required}`);
+const guide = readFileSync(new URL('../src/game/guideContent.ts', import.meta.url), 'utf8');
+for (const required of ['SPECIALIZATION RECIPE LINK', 'FIXED SINGULAR PACKAGE', 'CLASS-FAMILY RECONSTRUCTION LOCK', 'Base frame + class-family ownership decide this list.']) {
+  assert.ok(armory.includes(required), `Missing decision-critical P10-D UI contract: ${required}`);
 }
+assert.ok(guide.includes('active specialization field-integration links can discount matching legal recipe targets'), 'P19-C Guide must own reusable crafting/build-integration teaching.');
+assert.equal(armory.includes('P10-D // BUILD INTEGRATION'), false, 'P19-C must not duplicate migrated build-integration teaching in Armory.');
 
 console.log(`CRAFTING_BUILD_INTEGRATION_PASS class=owned recipes=${integration.recipeAffixIds.length} augments=${integration.recipeAugmentIds.length} quality=frame singular=fixed`);

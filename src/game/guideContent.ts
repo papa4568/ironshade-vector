@@ -137,6 +137,7 @@ export const guideSections: GuideSection[] = [
           'Credits, Frame Alloy, Circuit Stock, and Precision Components fund ordinary work.',
           'Quarantined Trace funds premium deterministic control such as exact Precision Add, protected Replace, and G5 Prime access where legal.',
           'Microforge T2 unlocks the protected-control tier; exact current gates remain beside the action.',
+          'Class-family ownership still gates the pool, and active specialization field-integration links can discount matching legal recipe targets without bypassing base legality.',
           'Removing or replacing work does not refund materials already spent.',
         ],
       },

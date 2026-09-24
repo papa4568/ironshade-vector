@@ -192,9 +192,13 @@ assert.equal(legacyNormalized.inventory.find(entry => entry.id === 'p10-c-test')
 
 const armorySource = readFileSync(new URL('../src/components/Armory.tsx', import.meta.url), 'utf8');
 const craftingCss = readFileSync(new URL('../src/classBuilds.css', import.meta.url), 'utf8');
-for (const label of ['P10-C // CONTROL VS RISK', 'Precision Add', 'ELEVATION CHOICE', 'Protected', 'Risk Replace', 'VOLATILE SUCCESS']) {
-  assert.equal(armorySource.includes(label), true, `Crafting UI must expose P10-C control: ${label}.`);
+const guideSource = readFileSync(new URL('../src/game/guideContent.ts', import.meta.url), 'utf8');
+for (const label of ['Precision Add', 'ELEVATION CHOICE', 'Protected', 'Risk Replace']) {
+  assert.equal(armorySource.includes(label), true, `Crafting UI must keep decision-critical P10-C control local: ${label}.`);
 }
+assert.equal(guideSource.includes('Control, stability & volatile work'), true, 'P19-C must own reusable control-vs-risk teaching in Intel Guide.');
+assert.equal(guideSource.includes('Volatile work consumes stability whether it succeeds or fails.'), true, 'P19-C Guide must retain the volatile stability rule.');
+assert.equal(armorySource.includes('P10-C // CONTROL VS RISK'), false, 'P19-C must not duplicate migrated control-vs-risk teaching in Armory.');
 assert.equal(craftingCss.includes('P10-C // control vs risk'), true);
 assert.equal(craftingCss.includes('@media (max-width: 900px)'), true, 'P10-C controls must retain a mobile layout.');
 
