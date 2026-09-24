@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { SHIP_SYSTEM_SCHEMA_VERSION, createDefaultCampaign } from '../src/game/campaign';
 import { GAME_STATE_VERSION, loadGameState, saveGameState } from '../src/game/gamePersistence';
 import { gearSchemaVersion } from '../src/game/gearSchema';
-import { OPERATOR_NETWORK_SCHEMA_VERSION } from '../src/game/operatorNetwork';
+import { OPERATOR_NETWORK_SCHEMA_VERSION, createOperatorNetworkState } from '../src/game/operatorNetwork';
 import { createDefaultProfile, setProfileSettings } from '../src/game/meta';
 import { GAME_STATE_STORAGE_KEY, prepareSaveRecovery, validateStoredProfile } from '../src/game/saveRecovery';
 
@@ -122,6 +122,77 @@ function versionTwoNetworkMigrationSmoke() {
   assert.equal(persisted.operatorNetworkSchemaVersion, OPERATOR_NETWORK_SCHEMA_VERSION, 'v2 upgrades should persist the P9-A network schema.');
 }
 
+function versionThreePlannerMigrationSmoke() {
+  const storage = new MemoryStorage();
+  const profile: any = {
+    ...createDefaultProfile(),
+    level: 4,
+    xp: 540,
+    progressionPoints: 1,
+    allocatedNodes: ['ballistics-1', 'ballistics-2'],
+    operatorNetwork: {
+      schemaVersion: 2,
+      startNodeId: 'start-vanguard',
+      allocatedNodeIds: ['ballistics-1', 'ballistics-2'],
+      unspentPoints: 1,
+    },
+  };
+  storage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify({
+    version: 3,
+    gearSchemaVersion,
+    operatorNetworkSchemaVersion: 2,
+    profile,
+    campaign: createDefaultCampaign(),
+    savedAt: '2026-09-23T12:00:00.000Z',
+  }));
+
+  assert.equal(validateStoredProfile(profile), null, 'released Network schema 2 profiles must remain eligible for migration');
+  const migrated = loadGameState(storage as any);
+  assert.equal(migrated.profile.operatorNetwork?.schemaVersion, OPERATOR_NETWORK_SCHEMA_VERSION, 'v3 saves must migrate into the persisted-planner Network schema.');
+  assert.deepEqual(migrated.profile.operatorNetwork?.allocatedNodeIds, ['ballistics-1', 'ballistics-2'], 'v3 migration must preserve existing allocations.');
+  assert.equal(migrated.profile.operatorNetwork?.unspentPoints, 1, 'v3 migration must preserve unspent progression points.');
+  assert.deepEqual(migrated.profile.operatorNetwork?.plannedTargetNodeIds, [], 'v3 migration must initialize an empty planner without inventing targets.');
+
+  const persisted = JSON.parse(storage.getItem(GAME_STATE_STORAGE_KEY)!) as any;
+  assert.equal(persisted.version, GAME_STATE_VERSION, 'v3 saves should be upgraded to the current atomic envelope.');
+  assert.equal(persisted.operatorNetworkSchemaVersion, OPERATOR_NETWORK_SCHEMA_VERSION, 'v3 upgrades should persist the current Operator Network schema.');
+  assert.deepEqual(persisted.profile.allocatedNodes, ['ballistics-1', 'ballistics-2'], 'v3 migration must not lose the legacy allocation mirror.');
+  assert.equal(persisted.profile.progressionPoints, 1, 'v3 migration must not lose the legacy point mirror.');
+}
+
+function plannerPersistenceSmoke() {
+  const storage = new MemoryStorage();
+  const profile = createDefaultProfile();
+  profile.operatorNetwork = {
+    ...createOperatorNetworkState('vanguard', 0),
+    plannedTargetNodeIds: ['ballistics-3', 'mobility-1'],
+  };
+  assert.equal(saveGameState(profile, createDefaultCampaign(), storage as any), true, 'multi-target progression plans should save through the atomic game-state path');
+
+  const restored = loadGameState(storage as any);
+  assert.deepEqual(restored.profile.operatorNetwork?.plannedTargetNodeIds, ['ballistics-3', 'mobility-1'], 'multi-target progression plans must survive a full save/load round trip');
+  assert.deepEqual(restored.profile.allocatedNodes, [], 'planning must never allocate nodes');
+  assert.equal(restored.profile.progressionPoints, 0, 'planning must never spend progression points');
+
+  const staleProfile: any = {
+    ...createDefaultProfile(),
+    level: 4,
+    xp: 540,
+    progressionPoints: 2,
+    allocatedNodes: ['ballistics-1'],
+    operatorNetwork: {
+      ...createOperatorNetworkState('vanguard', 2),
+      allocatedNodeIds: ['ballistics-1'],
+      plannedTargetNodeIds: ['ballistics-3', 'mobility-1', 'ballistics-1', 'vector-rail-entry', 'retired-network-node'],
+    },
+  };
+  assert.equal(saveGameState(staleProfile, createDefaultCampaign(), storage as any), true, 'stale planner state should normalize instead of blocking a safe save');
+  const normalized = loadGameState(storage as any);
+  assert.deepEqual(normalized.profile.operatorNetwork?.plannedTargetNodeIds, ['ballistics-3', 'mobility-1'], 'removed, wrong-class, and already-satisfied planner targets must be pruned deterministically');
+  assert.deepEqual(normalized.profile.allocatedNodes, ['ballistics-1'], 'planner cleanup must preserve valid allocations');
+  assert.equal(normalized.profile.progressionPoints, 2, 'planner cleanup must preserve the progression-point budget');
+}
+
 function currentNetworkRepairSmoke() {
   const storage = new MemoryStorage();
   const campaign = createDefaultCampaign();
@@ -136,6 +207,7 @@ function currentNetworkRepairSmoke() {
       startNodeId: 'start-vanguard',
       allocatedNodeIds: ['ballistics-1', 'retired-network-node'],
       unspentPoints: 0,
+      plannedTargetNodeIds: [],
     },
   };
   storage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify({
@@ -278,13 +350,15 @@ async function recoveryPreservationSmoke() {
 async function main() {
   legacyStateMigrationSmoke();
   versionTwoNetworkMigrationSmoke();
+  versionThreePlannerMigrationSmoke();
+  plannerPersistenceSmoke();
   currentNetworkRepairSmoke();
   graphicsQualityPersistenceSmoke();
   await migrationRollbackSnapshotSmoke();
   await incompatibleFutureSaveLockSmoke();
   await migrationBackupFailureLockSmoke();
   await recoveryPreservationSmoke();
-  console.log(`SAVE_DATA_MIGRATION_PASS legacy=v1/v2->v${GAME_STATE_VERSION} gearSchema=${gearSchemaVersion} networkSchema=${OPERATOR_NETWORK_SCHEMA_VERSION} currentNetworkRepair=refunded graphicsQuality=adaptive+flagship+performance migrationRollback=preserved incompatibleSave=blocked recovery=preserved`);
+  console.log(`SAVE_DATA_MIGRATION_PASS legacy=v1/v2/v3->v${GAME_STATE_VERSION} gearSchema=${gearSchemaVersion} networkSchema=${OPERATOR_NETWORK_SCHEMA_VERSION} plannerPersistence=roundtrip+pruned currentNetworkRepair=refunded graphicsQuality=adaptive+flagship+performance migrationRollback=preserved incompatibleSave=blocked recovery=preserved`);
 }
 
 main().catch(error => {

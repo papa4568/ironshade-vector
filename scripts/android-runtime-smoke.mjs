@@ -2,6 +2,7 @@ const cdpBase = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9222';
 const timeoutMs = Number(process.env.ANDROID_SMOKE_TIMEOUT_MS ?? 75_000);
 const startedAt = Date.now();
 const resumeOnly = process.env.ANDROID_RESUME_CHECK === '1';
+const plannerPersistenceOnly = process.env.ANDROID_PLANNER_PERSISTENCE_CHECK === '1';
 const resumeProcessMode = process.env.ANDROID_RESUME_PROCESS_MODE ?? 'preserved';
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -269,6 +270,45 @@ async function tapButton(label, id = 1, holdMs = 90) {
 
 await call('Page.enable').catch(() => undefined);
 
+if (plannerPersistenceOnly) {
+  await waitFor(`document.readyState === 'complete' && document.title === 'Ironshade Vector'`, 'cold-relaunched Ironshade document', 45_000);
+  await waitFor(`(() => {
+    const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+    const targets = state?.profile?.operatorNetwork?.plannedTargetNodeIds;
+    return state?.version === 4
+      && state?.operatorNetworkSchemaVersion === 3
+      && Array.isArray(targets)
+      && targets.length === 2
+      && targets[0] === 'ballistics-3'
+      && targets[1] === 'mobility-1'
+      && !state.profile.operatorNetwork.allocatedNodeIds.includes('ballistics-3')
+      && !state.profile.operatorNetwork.allocatedNodeIds.includes('mobility-1');
+  })()`, 'persisted Operator Network plan after cold relaunch', 45_000);
+
+  await waitFor(`[...document.querySelectorAll('button')].some(button => (button.textContent || '').trim().toLowerCase() === 'equipment')`, 'Command Deck after cold relaunch');
+  await tapButton('Equipment', 81);
+  await waitFor(`document.querySelector('.build-header h1')?.textContent?.trim() === 'Build'`, 'Build after cold relaunch');
+  await tapButton('Progression', 82);
+  await waitFor(`(() => {
+    const text = document.querySelector('.network-plan-card')?.textContent ?? '';
+    return text.includes('2 targets') && text.includes('Breach Doctrine') && text.includes('Servo Timing');
+  })()`, 'restored multi-target plan UI after cold relaunch', 20_000);
+
+  const persisted = await evaluate(`(() => {
+    const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+    return {
+      version: state?.version,
+      networkSchema: state?.operatorNetworkSchemaVersion,
+      targets: state?.profile?.operatorNetwork?.plannedTargetNodeIds ?? [],
+      allocated: state?.profile?.operatorNetwork?.allocatedNodeIds ?? [],
+    };
+  })()`);
+  console.log(`ANDROID_NETWORK_PLANNER_PERSISTENCE_PASS version=${persisted.version} schema=${persisted.networkSchema} targets=${persisted.targets.join('+')} relaunch=cold ui=restored nonDestructive=${persisted.allocated.includes('ballistics-3') || persisted.allocated.includes('mobility-1') ? 'false' : 'true'}`);
+  session.close();
+  await sleep(100);
+  process.exit(0);
+}
+
 if (resumeOnly) {
   if (!['preserved', 'reclaimed'].includes(resumeProcessMode)) {
     throw new Error(`Unknown Android lifecycle process mode: ${resumeProcessMode}`);
@@ -436,6 +476,49 @@ const p15BuildLayout = await evaluate(`(() => {
 if (p15BuildLayout.horizontalOverflow > 2 || p15BuildLayout.tabCount !== 5 || p15BuildLayout.minTabHeight < 40) {
   throw new Error(`Android P15-B Build/Crafting/Progression layout failed: ${JSON.stringify(p15BuildLayout)}`);
 }
+
+for (const [nodeId, nodeName, touchId] of [['ballistics-3', 'Breach Doctrine', 71], ['mobility-1', 'Servo Timing', 72]]) {
+  const marked = await evaluate(`(() => {
+    const nodeName = ${JSON.stringify(nodeName)};
+    const nodeId = ${JSON.stringify(nodeId)};
+    const button = [...document.querySelectorAll('button[data-network-node="true"]')].find(candidate => (candidate.textContent ?? '').includes(nodeName));
+    if (!button) return false;
+    button.dataset.p18PlanNode = nodeId;
+    button.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+    return true;
+  })()`);
+  if (!marked) throw new Error(`Android could not find Network planner target ${nodeName}.`);
+  await sleep(180);
+  await tap(`button[data-p18-plan-node="${nodeId}"]`, touchId);
+  await waitFor(`[...document.querySelectorAll('button')].some(button => (button.textContent || '').trim() === 'Plan this route')`, `plan action for ${nodeName}`);
+  await tapButton('Plan this route', touchId + 10);
+}
+
+await waitFor(`(() => {
+  const text = document.querySelector('.network-plan-card')?.textContent ?? '';
+  const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+  const targets = state?.profile?.operatorNetwork?.plannedTargetNodeIds;
+  return text.includes('2 targets')
+    && text.includes('Breach Doctrine')
+    && text.includes('Servo Timing')
+    && state?.version === 4
+    && state?.operatorNetworkSchemaVersion === 3
+    && Array.isArray(targets)
+    && targets.join(',') === 'ballistics-3,mobility-1'
+    && !state.profile.operatorNetwork.allocatedNodeIds.includes('ballistics-3')
+    && !state.profile.operatorNetwork.allocatedNodeIds.includes('mobility-1');
+})()`, 'persisted multi-target Operator Network plan', 20_000);
+await tapButton('Return to ship', 75);
+await waitFor(`[...document.querySelectorAll('button')].some(button => (button.textContent || '').trim().toLowerCase() === 'equipment')`, 'Command Deck after planner close');
+await tapButton('Equipment', 76);
+await waitFor(`document.querySelector('.build-header h1')?.textContent?.trim() === 'Build'`, 'Build reopened after planner close');
+await tapButton('Progression', 77);
+await waitFor(`(() => {
+  const text = document.querySelector('.network-plan-card')?.textContent ?? '';
+  return text.includes('2 targets') && text.includes('Breach Doctrine') && text.includes('Servo Timing');
+})()`, 'multi-target plan after closing and reopening Build', 20_000);
+console.log('ANDROID_NETWORK_PLANNER_CLOSE_REOPEN_PASS targets=ballistics-3+mobility-1 nonDestructive=true');
+
 await tapButton('Settings', 64);
 await waitFor(`Boolean(document.querySelector('select[aria-label="Graphics quality"]'))`, 'Android graphics quality setting');
 const graphicsModeChanged = await evaluate(`(() => {

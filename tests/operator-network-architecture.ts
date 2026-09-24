@@ -95,6 +95,26 @@ assert.equal(sharedPlan.pointCost, 4, 'Shared planned routes should count each n
 const blockedPlan = operatorNetworkPlan(vanguard, ['vector-rail-entry']);
 assert.deepEqual(blockedPlan.unresolvedTargetIds, ['vector-rail-entry'], 'Planner must preserve class arsenal route locks.');
 
+const persistedPlanState = normalizeOperatorNetworkState({
+  operatorClass: 'vanguard',
+  level: 4,
+  specialization: null,
+  state: {
+    ...createOperatorNetworkState('vanguard', 2),
+    allocatedNodeIds: ['ballistics-1'],
+    plannedTargetNodeIds: ['ballistics-3', 'mobility-1', 'ballistics-1', 'vector-rail-entry', 'retired-network-node'],
+  },
+});
+assert.deepEqual(persistedPlanState.plannedTargetNodeIds, ['ballistics-3', 'mobility-1'], 'Persisted planner normalization must retain legal future targets while pruning satisfied, wrong-class, and removed targets deterministically.');
+const persistedPlan = operatorNetworkPlan(persistedPlanState, persistedPlanState.plannedTargetNodeIds);
+assert.deepEqual(persistedPlan.nodeIds, ['ballistics-2', 'ballistics-3', 'mobility-1'], 'A normalized persisted multi-target plan must restore the same aggregate route after reload.');
+assert.equal(persistedPlan.pointCost, 3, 'Restored planner routes must remain non-destructive and report only the remaining point cost.');
+
+const planAllocationSource = { ...createOperatorNetworkState('vanguard', 4), plannedTargetNodeIds: ['ballistics-1', 'ballistics-3'] };
+const planAllocation = allocateOperatorNetworkNode(planAllocationSource, 'ballistics-1');
+assert.equal(planAllocation.allocated, true);
+assert.deepEqual(planAllocation.state.plannedTargetNodeIds, ['ballistics-3'], 'Allocating a planned target must prune only the now-satisfied target from persisted planner state.');
+
 let state = createOperatorNetworkState('vanguard', 3);
 let result = allocateOperatorNetworkNode(state, 'ballistics-2');
 assert.equal(result.allocated, false);
@@ -186,6 +206,21 @@ assert.equal(migrated.progressionPoints, 1);
 assert.deepEqual(migrated.allocatedNodes, migrated.operatorNetwork?.allocatedNodeIds);
 assert.equal(validateStoredProfile(migrated), null, 'Canonical network profile should pass save validation.');
 
+const schemaTwoProfile: any = {
+  ...migrated,
+  operatorNetwork: {
+    schemaVersion: 2,
+    startNodeId: 'start-vanguard',
+    allocatedNodeIds: ['ballistics-1', 'ballistics-2'],
+    unspentPoints: 1,
+  },
+};
+const schemaThreeMigration = normalizeStoredProfile(schemaTwoProfile);
+assert.equal(schemaThreeMigration.operatorNetwork?.schemaVersion, OPERATOR_NETWORK_SCHEMA_VERSION, 'Network schema 2 profiles must migrate into the persisted-planner schema.');
+assert.deepEqual(schemaThreeMigration.operatorNetwork?.allocatedNodeIds, ['ballistics-1', 'ballistics-2'], 'Network schema migration must preserve existing allocations.');
+assert.equal(schemaThreeMigration.operatorNetwork?.unspentPoints, 1, 'Network schema migration must preserve unspent progression points.');
+assert.deepEqual(schemaThreeMigration.operatorNetwork?.plannedTargetNodeIds, [], 'Network schema 2 profiles should gain an empty persisted plan without inventing targets.');
+
 const runtimeProfile = createDefaultProfile();
 runtimeProfile.allocatedNodes = ['ballistics-vectoring-lane', 'ballistics-bore-map', 'vanguard-breach-entry', 'vanguard-breach-pressure', 'vanguard-breach-impulse', 'vanguard-breach-telemetry'];
 runtimeProfile.operatorNetwork = { ...createOperatorNetworkState('vanguard', 0), allocatedNodeIds: [...runtimeProfile.allocatedNodes] };
@@ -242,11 +277,12 @@ assert.equal(leafRefund.refundedPoints, 1);
 assert.deepEqual(leafRefund.state.allocatedNodeIds, ['ballistics-1']);
 assert.equal(leafRefund.state.unspentPoints, 2, 'Individual refunds must return the exact progression-point cost.');
 
-const rebuildSource = { ...createOperatorNetworkState('vanguard', 0), allocatedNodeIds: ['ballistics-1', 'ballistics-2', 'ballistics-3'], unspentPoints: 2 };
+const rebuildSource = { ...createOperatorNetworkState('vanguard', 0), allocatedNodeIds: ['ballistics-1', 'ballistics-2', 'ballistics-3'], unspentPoints: 2, plannedTargetNodeIds: ['mobility-1'] };
 const rebuilt = rebuildOperatorNetworkState(rebuildSource);
 assert.deepEqual(rebuilt.state.allocatedNodeIds, [], 'Full rebuild must clear every paid allocation.');
 assert.equal(rebuilt.refundedPoints, 3);
 assert.equal(rebuilt.state.unspentPoints, 5, 'Full rebuild must return every spent progression point without loss.');
+assert.deepEqual(rebuilt.state.plannedTargetNodeIds, [], 'Full rebuild must preserve the existing planner behavior of clearing the planned route.');
 
 const retiredNodeMigration = normalizeOperatorNetworkState({
   operatorClass: 'vanguard',
@@ -301,4 +337,4 @@ const diversitySignatures = new Set([
 ]);
 assert.equal(diversitySignatures.size, 3, 'Representative class builds must remain mechanically distinct after P9-F migration/respec changes.');
 
-console.log(`OPERATOR_NETWORK_ARCHITECTURE_PASS schema=${OPERATOR_NETWORK_SCHEMA_VERSION} nodes=${operatorNetworkNodes.length} edges=${operatorNetworkEdges.length} outer=6 starts=3 coreWave=${operatorNetworkCoreWaveNodes.length} classWeapon=${operatorNetworkClassWeaponNodes.length} buildDefining=${operatorNetworkBuildDefiningNodes.length} specialization=${operatorNetworkSpecializationNodes.length} p9f=respec+migration+diversity`);
+console.log(`OPERATOR_NETWORK_ARCHITECTURE_PASS schema=${OPERATOR_NETWORK_SCHEMA_VERSION} planner=persisted nodes=${operatorNetworkNodes.length} edges=${operatorNetworkEdges.length} outer=6 starts=3 coreWave=${operatorNetworkCoreWaveNodes.length} classWeapon=${operatorNetworkClassWeaponNodes.length} buildDefining=${operatorNetworkBuildDefiningNodes.length} specialization=${operatorNetworkSpecializationNodes.length} p9f=respec+migration+diversity`);

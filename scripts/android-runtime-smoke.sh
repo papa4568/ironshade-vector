@@ -88,10 +88,28 @@ test -s android-chapter3-playthrough.png
 test -s android-chapter3-playthrough.json
 grep -q '"result": "PASS"' android-chapter3-playthrough.json
 
+# P18-C requires a true process restart, not only Activity pause/resume. The persisted
+# Operator Network plan is seeded through touch UI in the main smoke and verified again
+# in both storage and the Progression UI after this cold relaunch.
+adb shell am force-stop "$PACKAGE"
+adb shell am start -W -n "$ACTIVITY"
+timeout 30 bash -c 'until [[ -n "$(adb shell pidof app.ironshade.vector 2>/dev/null | tr -d "\r")" ]]; do sleep 1; done'
+PLANNER_PID="$(adb shell pidof "$PACKAGE" | tr -d '\r')"
+if [[ -z "$PLANNER_PID" ]]; then
+  echo "Ironshade Vector process did not restart for planner persistence verification." >&2
+  exit 1
+fi
+PLANNER_SOCKET="webview_devtools_remote_$PLANNER_PID"
+adb forward --remove tcp:9222 >/dev/null 2>&1 || true
+adb forward tcp:9222 "localabstract:$PLANNER_SOCKET"
+ANDROID_PLANNER_PERSISTENCE_CHECK=1 CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-runtime-smoke.mjs
+adb exec-out screencap -p > android-network-planner-persistence.png
+test -s android-network-planner-persistence.png
+
 adb logcat -d > android-runtime-logcat.txt
 if grep -E 'FATAL EXCEPTION|Process: app\.ironshade\.vector' android-runtime-logcat.txt; then
   echo 'Android runtime crash detected.' >&2
   exit 1
 fi
 
-echo "ANDROID_EMULATOR_PASS pid=${APP_PID} resumePid=${RESUME_PID} route=ship>contracts>combat lifecycle=resume chapter3=touch-playthrough authoredOperator=verified authoredEnemies=verified authoredWeapons=verified authoredRefinery=verified"
+echo "ANDROID_EMULATOR_PASS pid=${APP_PID} resumePid=${RESUME_PID} plannerRelaunchPid=${PLANNER_PID} route=ship>contracts>combat lifecycle=resume plannerPersistence=cold-relaunch chapter3=touch-playthrough authoredOperator=verified authoredEnemies=verified authoredWeapons=verified authoredRefinery=verified"

@@ -1,14 +1,14 @@
 import { augmentDefinitions, frameIdentityDefinitions } from './gearDepth';
 import { gearSchemaVersion } from './gearSchema';
-import { OPERATOR_NETWORK_SCHEMA_VERSION } from './operatorNetwork';
+import { OPERATOR_NETWORK_SCHEMA_VERSION, isSupportedOperatorNetworkSchemaVersion } from './operatorNetwork';
 import { SHIP_SYSTEM_MAX_TIER, SHIP_SYSTEM_SCHEMA_VERSION } from './campaign';
 
 export const PROFILE_STORAGE_KEY = 'ironshade-vector-profile-v3';
 export const CAMPAIGN_STORAGE_KEY = 'ironshade-vector-campaign-v1';
 export const GAME_STATE_STORAGE_KEY = 'ironshade-vector-state-v1';
 
-export const GAME_STATE_VERSION = 3;
-export const SUPPORTED_GAME_STATE_VERSIONS = [1, 2, GAME_STATE_VERSION] as const;
+export const GAME_STATE_VERSION = 4;
+export const SUPPORTED_GAME_STATE_VERSIONS = [1, 2, 3, GAME_STATE_VERSION] as const;
 const supportedGameStateVersions = new Set<number>(SUPPORTED_GAME_STATE_VERSIONS);
 
 const RECOVERY_DATABASE = 'ironshade-vector-recovery';
@@ -111,12 +111,16 @@ function invalidProfileReason(value: unknown): string | null {
   if (value.operatorNetwork !== undefined) {
     if (!isRecord(value.operatorNetwork)) return 'operatorNetwork is not an object';
     const network = value.operatorNetwork;
-    if (network.schemaVersion !== OPERATOR_NETWORK_SCHEMA_VERSION) return 'operatorNetwork schema version is unsupported';
+    if (!isSupportedOperatorNetworkSchemaVersion(network.schemaVersion)) return 'operatorNetwork schema version is unsupported';
     if (typeof network.startNodeId !== 'string' || network.startNodeId.length === 0 || network.startNodeId.length > 128) return 'operatorNetwork start node is invalid';
     if (!Array.isArray(network.allocatedNodeIds) || network.allocatedNodeIds.length > 512 || network.allocatedNodeIds.some(id => typeof id !== 'string' || id.length === 0 || id.length > 128)) return 'operatorNetwork allocated nodes are invalid';
     if (new Set(network.allocatedNodeIds).size !== network.allocatedNodeIds.length) return 'operatorNetwork contains duplicate allocated nodes';
     const pointsReason = optionalNumberReason(network, 'unspentPoints', 0, 10_000, true);
     if (pointsReason) return `operatorNetwork.${pointsReason}`;
+    if (network.schemaVersion === OPERATOR_NETWORK_SCHEMA_VERSION && !Array.isArray(network.plannedTargetNodeIds)) return 'operatorNetwork planned targets are missing';
+    const plannedTargetsReason = optionalStringArrayReason(network, 'plannedTargetNodeIds', 128);
+    if (plannedTargetsReason) return `operatorNetwork.${plannedTargetsReason}`;
+    if (Array.isArray(network.plannedTargetNodeIds) && new Set(network.plannedTargetNodeIds).size !== network.plannedTargetNodeIds.length) return 'operatorNetwork contains duplicate planned targets';
   }
 
   if (value.settings !== undefined) {
@@ -279,9 +283,11 @@ export function validateStoredCampaign(value: unknown) { return invalidCampaignR
 function invalidGameStateReason(value: unknown): string | null {
   if (!isRecord(value)) return 'game-state root is not an object';
   if (typeof value.version !== 'number' || !supportedGameStateVersions.has(value.version)) return `unsupported game-state version ${String(value.version ?? 'missing')}`;
-  if ((value.version === 2 || value.version === GAME_STATE_VERSION) && value.gearSchemaVersion !== gearSchemaVersion) return `unsupported gear schema version ${String(value.gearSchemaVersion ?? 'missing')}`;
+  if ((value.version === 2 || value.version === 3 || value.version === GAME_STATE_VERSION) && value.gearSchemaVersion !== gearSchemaVersion) return `unsupported gear schema version ${String(value.gearSchemaVersion ?? 'missing')}`;
+  if (value.version === 3 && !isSupportedOperatorNetworkSchemaVersion(value.operatorNetworkSchemaVersion)) return `unsupported operator network schema version ${String(value.operatorNetworkSchemaVersion ?? 'missing')}`;
   if (value.version === GAME_STATE_VERSION && value.operatorNetworkSchemaVersion !== OPERATOR_NETWORK_SCHEMA_VERSION) return `unsupported operator network schema version ${String(value.operatorNetworkSchemaVersion ?? 'missing')}`;
-  if (value.version === GAME_STATE_VERSION && (!isRecord(value.profile) || value.profile.operatorNetwork === undefined)) return 'current game-state is missing operator network data';
+  if ((value.version === 3 || value.version === GAME_STATE_VERSION) && (!isRecord(value.profile) || value.profile.operatorNetwork === undefined)) return 'game-state is missing operator network data';
+  if (value.version === GAME_STATE_VERSION && isRecord(value.profile) && isRecord(value.profile.operatorNetwork) && value.profile.operatorNetwork.schemaVersion !== OPERATOR_NETWORK_SCHEMA_VERSION) return 'current game-state profile operator network schema is stale';
   if (value.savedAt !== undefined && (typeof value.savedAt !== 'string' || Number.isNaN(Date.parse(value.savedAt)))) return 'savedAt is not a valid timestamp';
   const profileReason = invalidProfileReason(value.profile);
   if (profileReason) return `profile: ${profileReason}`;
@@ -295,8 +301,11 @@ function incompatibleGameStateReason(value: unknown): string | null {
   if (typeof value.version === 'number' && !supportedGameStateVersions.has(value.version)) {
     return `game-state version ${value.version} is not readable by this release (current v${GAME_STATE_VERSION})`;
   }
-  if ((value.version === 2 || value.version === GAME_STATE_VERSION) && value.gearSchemaVersion !== gearSchemaVersion) {
+  if ((value.version === 2 || value.version === 3 || value.version === GAME_STATE_VERSION) && value.gearSchemaVersion !== gearSchemaVersion) {
     return `gear schema ${String(value.gearSchemaVersion ?? 'missing')} is not readable by this release`;
+  }
+  if (value.version === 3 && !isSupportedOperatorNetworkSchemaVersion(value.operatorNetworkSchemaVersion)) {
+    return `operator network schema ${String(value.operatorNetworkSchemaVersion ?? 'missing')} is not readable by this release`;
   }
   if (value.version === GAME_STATE_VERSION && value.operatorNetworkSchemaVersion !== OPERATOR_NETWORK_SCHEMA_VERSION) {
     return `operator network schema ${String(value.operatorNetworkSchemaVersion ?? 'missing')} is not readable by this release`;
