@@ -280,7 +280,17 @@ assert(browserWorkflow.includes('mobile-landscape') && browserWorkflow.includes(
 assert(androidWorkflow.includes('require_release_signing') && androidWorkflow.includes('REQUIRE_RELEASE_SIGNING') && androidWorkflow.includes('Release signing is required for this run'), 'Manual Android release-candidate runs must fail closed when persistent release signing is required but unavailable');
 assert(browserSmoke.includes('BROWSER_MOBILE_LAYOUT_PASS') && browserSmoke.includes('moveDockOverlap') && browserSmoke.includes('undersized'), 'Browser mobile E2E is missing safe-area/touch-target layout assertions');
 assert(androidSmoke.includes('ANDROID_MOBILE_LAYOUT_PASS') && androidSmoke.includes('moveDockOverlap') && androidSmoke.includes('undersized'), 'Android smoke is missing safe-area/touch-target layout assertions');
-assert(androidSmoke.includes('ANDROID_MOBILE_MENU_PASS') && androidSmoke.includes("=== 'operations'") && androidSmoke.includes('primaryCount !== 5') && androidSmoke.includes('verticalOverflow > 2'), 'Android smoke is not validating the Tactical Command navigation hierarchy, mobile rail, and no-scroll fit.');
+assert(
+  androidSmoke.includes('ANDROID_P19B_DOCK_PASS')
+    && androidSmoke.includes('ANDROID_P19B_TOUCH_PASS')
+    && androidSmoke.includes('ANDROID_P19B_CONTROLLER_PASS')
+    && androidSmoke.includes('ANDROID_P19B_BREAKPOINT_PASS')
+    && androidSmoke.includes("layout.layout !== expected")
+    && androidSmoke.includes('layout.minTargetHeight < 48')
+    && androidSmoke.includes('layout.minLabelFontSize < 10')
+    && androidSmoke.includes('history.length'),
+  'Android smoke is not validating P19-B shared routing, compact dock, controller/touch input, history stability, and dock/rail breakpoints.',
+);
 assert(androidSmoke.includes('ANDROID_LIFECYCLE_RESUME_PASS'), 'Android lifecycle pause/resume validation is missing');
 assert(androidResumeGate.includes("canvas[data-render-tier]") && androidResumeGate.includes('[aria-label="Touch combat controls"]') && androidResumeGate.includes('.move-stick') && !androidResumeGate.includes("text.includes('field coach')"), 'Android lifecycle resume gate must detect the restored combat renderer/controls without depending on tutorial coach text');
 assert(androidSmokeShell.includes('--activity-reorder-to-front') && androidSmokeShell.includes('RESUME_PID') && androidSmokeShell.includes('ANDROID_LIFECYCLE_PROCESS_RECLAIM') && androidSmokeShell.includes('LIFECYCLE_ATTEMPT') && androidSmokeShell.includes('re-establishing combat before retrying pause/resume') && androidSmokeShell.includes('ANDROID_RESUME_PROCESS_MODE=preserved'), 'Android lifecycle smoke must recover from an incidental process reclaim, retry pause/resume, and require a preserved-process combat resume before passing');
