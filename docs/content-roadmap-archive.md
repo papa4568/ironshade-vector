@@ -1368,3 +1368,30 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Android artifact `10813500031` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.331` (331), debug signing, min SDK 24 / target SDK 36, and APK SHA-256 `08de108327c2d1759648661701298c4a79625bb9c346760cfd9b071d74201115`.
   - **Next: P18-F — Progression, Skills + Crafting action clarity pass.**
 
+## 2026-09-24 — P18-B Beta Combat Reliability & UI Clarity // Attack Speed cadence reconciliation
+
+- [x] **P18-B — Attack Speed owns tracking + firing cadence** — reconciled as implemented and verified before the Glance-First UI phase.
+  - Implementation commit `f332d645268efc3ba85b2350cba1de3f92fb4a51` introduced the shared Attack Speed cadence across combat/build/stat sources and added gameplay, gear-registry, Operator Network, and Android smoke coverage; follow-up commits `5b7ed92c2054d8b667c88a5a7a5c79ac7114a323` and `c731137186e963f7c8857cf3bb5f9c70857c0fc6` corrected the ship-bonus clone and regression baseline without changing the product contract.
+  - The later beta.331 verification on merged source `5db6042616f878b51c7dcacc24c560c4d8433210` ran the repository's full production regression/build after P18-B landed, including gameplay, gear-stat-registry, Operator Network, and Android touch/controller combat coverage; Android beta.331 run `36011491476` completed the established APK/runtime smoke suite.
+  - Completion marker commit: `571081d1a76c97a802cfc681512f616950160183`.
+
+## 2026-09-24 — P18-C Beta Combat Reliability & UI Clarity // Persisted progression plans reconciliation
+
+- [x] **P18-C — Persist planned progression paths** — reconciled as implemented and verified before the Glance-First UI phase.
+  - Implementation commit `2d5da5402e583dea564bd987d7948b5928aef20e` moved normalized planner targets into persisted Network/save state and added migration plus Android relaunch coverage; follow-ups `23de2aee36e0cbb031fcc1eb60c56557a2b5aa01` and `79daf2a1c0bf8ac5ecc0e4eaf71a9b20448d8828` stabilized the real touch/relaunch QA path.
+  - The later beta.331 gate ran the full save/operator-network regression/build and explicitly passed cold-relaunch planner persistence in the Android smoke on run `36011491476`, after the P18-C commits were on main.
+  - Completion marker commit: `094791a12d10e7b414286284cf8c29854e977ed4`.
+
+## 2026-09-24 — P18-D Beta Combat Reliability & UI Clarity // Shared clarity primitives reconciliation
+
+- [x] **P18-D — Shared progressive-disclosure + requirement-state UI primitives** — reconciled as implemented and verified before the Glance-First UI phase.
+  - Implementation commit `36b5fd3064b6689a96ac26e0c6f537fa0db56859` added reusable disclosure/requirement primitives in `UiPrimitives.tsx`, shared design-system styling, focused Build adoption, regression coverage, and Android smoke checks.
+  - The later beta.331 APK run `36011491476` explicitly exercised disclosure and requirement-state behavior on the verified merged source, including phone-safe sheet layout plus touch/controller navigation, while the full production build remained green.
+  - Completion marker commit: `2b04530e6329024dab8463303afbbbe4813defe1`.
+
+## 2026-09-24 — P18-F Beta Combat Reliability & UI Clarity // Superseded verification closure
+
+- **Superseded: P18-F — Progression, Skills + Crafting action clarity pass.** The implementation is present on main across `fd7bca53c78cf61e2df324216b0283994b2c07a1`, `35acf12aac8d2696387c988f39bcd12a5749b705`, `6f543278c4bab89848ce4f0a5fc101159a2fd3c9`, `e1f8f9adb37cfb07c0c691f8e84972229d9554ce`, `b3863ade2b116114a404509efa99951169cac4df`, and `caad8dfa0cdcb49e849ef91296016816b758c729`, and current Android smoke source contains explicit P18-F Crafting, Progression, and Skills requirement/disclosure assertions. However, the repository did not preserve standalone production-build/APK run evidence for those final P18-F commits before the next UI priority was introduced.
+  - Do **not** treat P18-F as independently completed from the old checkbox marker `de83637800ad5272fbc24e1da4b93901e9c7e5c4`.
+  - Its remaining verification and the overlapping compact-phone hierarchy work are absorbed by **P19-D**, which must preserve the existing P18-F behavior while completing the new Glance-First management pass and APK verification.
+
