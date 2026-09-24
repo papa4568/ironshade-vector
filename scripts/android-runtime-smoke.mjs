@@ -469,6 +469,95 @@ await waitFor(`(() => {
   return document.querySelector('.build-header h1')?.textContent?.trim() === 'Build' && buttons.includes('Skills');
 })()`, 'Android Build surface for skill hierarchy');
 await waitFor(`Boolean(document.querySelector('.build-bay.iv-view') && document.querySelector('.build-header.iv-panel.iv-panel--glass') && document.querySelector('.build-tabs button[aria-current="page"]'))`, 'Android P15-B shared Build shell');
+await waitFor(`[...document.querySelectorAll('button')].some(button => (button.textContent || '').trim() === 'How equipment discovery works')`, 'Android P18-D disclosure trigger');
+const p18NativeViewport = await evaluate(`({ width: window.visualViewport?.width ?? window.innerWidth, height: window.visualViewport?.height ?? window.innerHeight })`);
+await tapButton('How equipment discovery works', 83);
+await waitFor(`Boolean(document.querySelector('.iv-disclosure-sheet[role="dialog"][aria-modal="true"]') && document.querySelector('.iv-disclosure-sheet__close'))`, 'Android P18-D landscape disclosure');
+const p18LandscapeDisclosure = await evaluate(`(() => {
+  const sheet = document.querySelector('.iv-disclosure-sheet');
+  const close = document.querySelector('.iv-disclosure-sheet__close');
+  if (!sheet || !close) return null;
+  const sheetRect = sheet.getBoundingClientRect();
+  const closeRect = close.getBoundingClientRect();
+  const width = window.visualViewport?.width ?? window.innerWidth;
+  const height = window.visualViewport?.height ?? window.innerHeight;
+  return {
+    width,
+    height,
+    sheet: { left: sheetRect.left, top: sheetRect.top, right: sheetRect.right, bottom: sheetRect.bottom },
+    close: { width: closeRect.width, height: closeRect.height },
+    horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - width),
+  };
+})()`);
+if (!p18LandscapeDisclosure
+  || p18LandscapeDisclosure.width <= p18LandscapeDisclosure.height
+  || p18LandscapeDisclosure.sheet.left < -2
+  || p18LandscapeDisclosure.sheet.top < -2
+  || p18LandscapeDisclosure.sheet.right > p18LandscapeDisclosure.width + 2
+  || p18LandscapeDisclosure.sheet.bottom > p18LandscapeDisclosure.height + 2
+  || p18LandscapeDisclosure.close.width < 40
+  || p18LandscapeDisclosure.close.height < 40
+  || p18LandscapeDisclosure.horizontalOverflow > 2) {
+  throw new Error(`Android P18-D landscape disclosure layout failed: ${JSON.stringify(p18LandscapeDisclosure)}`);
+}
+console.log(`ANDROID_P18_DISCLOSURE_LANDSCAPE_PASS viewport=${Math.round(p18LandscapeDisclosure.width)}x${Math.round(p18LandscapeDisclosure.height)} touch=trigger+close safe=onscreen`);
+await tapButton('Close details', 84);
+await waitFor(`!document.querySelector('.iv-disclosure-sheet')`, 'Android P18-D landscape disclosure close');
+
+await call('Emulation.setDeviceMetricsOverride', {
+  width: 720,
+  height: 1080,
+  deviceScaleFactor: 1,
+  mobile: true,
+  screenWidth: 720,
+  screenHeight: 1080,
+  screenOrientation: { type: 'portraitPrimary', angle: 0 },
+});
+await sleep(220);
+await tapButton('How equipment discovery works', 85);
+await waitFor(`Boolean(document.querySelector('.iv-disclosure-sheet[role="dialog"][aria-modal="true"]'))`, 'Android P18-D portrait disclosure');
+const p18PortraitDisclosure = await evaluate(`(() => {
+  const sheet = document.querySelector('.iv-disclosure-sheet');
+  const close = document.querySelector('.iv-disclosure-sheet__close');
+  if (!sheet || !close) return null;
+  const sheetRect = sheet.getBoundingClientRect();
+  const closeRect = close.getBoundingClientRect();
+  const width = window.visualViewport?.width ?? window.innerWidth;
+  const height = window.visualViewport?.height ?? window.innerHeight;
+  return {
+    width,
+    height,
+    sheet: { left: sheetRect.left, top: sheetRect.top, right: sheetRect.right, bottom: sheetRect.bottom },
+    close: { width: closeRect.width, height: closeRect.height },
+    horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - width),
+  };
+})()`);
+if (!p18PortraitDisclosure
+  || p18PortraitDisclosure.width >= p18PortraitDisclosure.height
+  || p18PortraitDisclosure.sheet.left < -2
+  || p18PortraitDisclosure.sheet.top < -2
+  || p18PortraitDisclosure.sheet.right > p18PortraitDisclosure.width + 2
+  || p18PortraitDisclosure.sheet.bottom > p18PortraitDisclosure.height + 2
+  || p18PortraitDisclosure.close.width < 40
+  || p18PortraitDisclosure.close.height < 40
+  || p18PortraitDisclosure.horizontalOverflow > 2) {
+  throw new Error(`Android P18-D portrait disclosure layout failed: ${JSON.stringify(p18PortraitDisclosure)}`);
+}
+console.log(`ANDROID_P18_DISCLOSURE_PORTRAIT_PASS viewport=${Math.round(p18PortraitDisclosure.width)}x${Math.round(p18PortraitDisclosure.height)} touch=trigger safe=onscreen`);
+await evaluate(`history.back()`);
+await waitFor(`(() => {
+  const active = document.activeElement;
+  return !document.querySelector('.iv-disclosure-sheet')
+    && active instanceof HTMLButtonElement
+    && (active.textContent || '').trim() === 'How equipment discovery works';
+})()`, 'Android P18-D history-back dismissal and focus restore');
+console.log('ANDROID_P18_DISCLOSURE_BACK_PASS navigation=history-back focus=restored');
+await call('Emulation.clearDeviceMetricsOverride');
+await sleep(220);
+const p18RestoredViewport = await evaluate(`({ width: window.visualViewport?.width ?? window.innerWidth, height: window.visualViewport?.height ?? window.innerHeight })`);
+if (p18RestoredViewport.width <= p18RestoredViewport.height || Math.abs(p18RestoredViewport.width - p18NativeViewport.width) > 4 || Math.abs(p18RestoredViewport.height - p18NativeViewport.height) > 4) {
+  throw new Error(`Android P18-D viewport restoration failed native=${JSON.stringify(p18NativeViewport)} restored=${JSON.stringify(p18RestoredViewport)}`);
+}
 await tapButton('Crafting', 32);
 await waitFor(`Boolean(document.querySelector('.reconstruction-panel .reconstruction-top.iv-panel.iv-panel--glass') && document.querySelector('.reconstruct-storage.iv-panel') && document.querySelector('.build-tabs button[aria-current="page"]')?.textContent?.includes('Crafting'))`, 'Android P15-B Crafting surface');
 await tapButton('Progression', 33);
@@ -504,6 +593,16 @@ for (let index = 0; index < plannerTargets.length; index += 1) {
   await sleep(180);
   await tap(`button[data-p18-plan-node="${nodeId}"]`, touchId);
   await waitFor(`[...document.querySelectorAll('button')].some(button => (button.textContent || '').trim() === 'Plan this route')`, `plan action for ${nodeName}`);
+  if (index === 0) {
+    await waitFor(`(() => {
+      const requirement = document.querySelector('.iv-requirement[data-requirement-state]');
+      const text = requirement?.textContent ?? '';
+      return requirement?.getAttribute('data-requirement-state') === 'blocked'
+        && text.includes('Why blocked:')
+        && text.includes('Next:');
+    })()`, 'Android P18-D explicit blocked requirement state');
+    console.log('ANDROID_P18_REQUIREMENT_PASS state=blocked reason=visible next=visible');
+  }
   await tapButton('Plan this route', touchId + 10);
 
   const expectedIds = plannerTargets.slice(0, index + 1).map(([id]) => id);

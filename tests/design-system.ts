@@ -13,6 +13,9 @@ const css = read('src/designSystem.css');
 const main = read('src/main.tsx');
 const rootCss = read('src/index.css');
 const rarity = read('src/game/rarity.ts');
+const primitives = read('src/components/UiPrimitives.tsx');
+const armory = read('src/components/Armory.tsx');
+const androidSmoke = read('scripts/android-runtime-smoke.mjs');
 const pkg = JSON.parse(read('package.json')) as { scripts?: Record<string, string> };
 
 for (const token of [
@@ -59,4 +62,12 @@ assert(rootCss.includes('font-family: var(--iv-font-body);') && rootCss.includes
 assert(pkg.scripts?.['test:design-system']?.includes('tests/design-system.ts'), 'P15-A regression test script is missing.');
 assert(pkg.scripts?.build?.includes('npm run test:design-system'), 'Full production build must gate on the P15-A design-system regression.');
 
-console.log('DESIGN_SYSTEM_PASS typography=shared spacing=4px iconography=normalized focus=visible rarity=canonical panel=shared tooltip=shared responsive=coarse+safe-area');
+
+assert(primitives.includes("export function ProgressiveDisclosure") && primitives.includes('createPortal') && primitives.includes('role="dialog"') && primitives.includes('aria-modal="true"') && primitives.includes('aria-haspopup="dialog"'), 'P18-D must provide one reusable, portal-backed progressive-disclosure dialog pattern.');
+assert(primitives.includes("event.key === 'Escape'") && primitives.includes("event.key !== 'Tab'") && primitives.includes("window.history.pushState") && primitives.includes("window.addEventListener('popstate'") && primitives.includes('focusTarget?.focus()'), 'P18-D disclosure must trap focus, support Escape/back dismissal, and restore the trigger focus.');
+assert(primitives.includes("export type RequirementPresentation") && primitives.includes("state: 'ready'") && primitives.includes("state: 'active'") && primitives.includes("state: 'blocked'") && primitives.includes('Why blocked:') && primitives.includes('Next:'), 'P18-D requirement state must expose ready/active/blocked semantics with blocker reason and next requirement.');
+assert(css.includes('.iv-disclosure-backdrop') && css.includes('.iv-disclosure-sheet') && css.includes('.iv-requirement--blocked') && css.includes('var(--iv-safe-top)') && css.includes('max-height: min(88dvh') && css.includes('@media (max-width: 620px)'), 'P18-D shared clarity primitives must use design-system tokens, safe areas, and a mobile sheet layout.');
+assert(armory.includes('<ProgressiveDisclosure triggerLabel="How equipment discovery works"') && armory.includes('<ActionRequirement presentation={focusedAllocationRequirement} />') && armory.includes("focusedAllocationRequirement?.state !== 'ready'"), 'P18-D Build proving ground must reuse the shared disclosure and eligibility primitives instead of a bespoke details shell or disabled-only allocation cue.');
+assert(androidSmoke.includes('ANDROID_P18_DISCLOSURE_LANDSCAPE_PASS') && androidSmoke.includes('ANDROID_P18_DISCLOSURE_PORTRAIT_PASS') && androidSmoke.includes('ANDROID_P18_DISCLOSURE_BACK_PASS') && androidSmoke.includes('Emulation.setDeviceMetricsOverride') && androidSmoke.includes('history.back()'), 'P18-D Android smoke must cover landscape/portrait touch layout and browser-history back dismissal.');
+
+console.log('DESIGN_SYSTEM_PASS typography=shared spacing=4px iconography=normalized focus=visible rarity=canonical panel=shared tooltip=shared disclosure=accessible requirement=explicit responsive=coarse+safe-area');
