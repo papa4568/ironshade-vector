@@ -796,7 +796,8 @@ await tapButton('Skills', 34);
 await waitFor(`(() => {
   const text = document.body?.innerText ?? '';
   const cards = [...document.querySelectorAll('.skill-path-card')];
-  return text.includes('Class Skill → Weapon Family → Lens/Evolution → Specialization/Capstone')
+  return text.includes('Choose Standard, a Lens, or a class Evolution for each skill.')
+    && [...document.querySelectorAll('button')].some(button => (button.textContent || '').trim() === 'How Skills progression works')
     && text.includes('SHARED LENSES')
     && text.includes('CLASS EVOLUTIONS')
     && document.querySelectorAll('.skill-path-overview > article').length === 4
