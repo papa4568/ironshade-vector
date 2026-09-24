@@ -892,7 +892,7 @@ await tap('button[data-location="asteroid-refinery"]', 23);
 await waitFor(`document.querySelector('button[data-location="asteroid-refinery"]')?.classList.contains('selected') === true`, 'Asteroid Refinery contract selection');
 
 await tapButton('Deploy selected contract', 24, 120);
-await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('field coach') && document.querySelectorAll('canvas').length > 0`, 'Combat surface', 45_000);
+await waitFor(`Boolean(document.querySelectorAll('canvas').length > 0 && (document.querySelector('[data-presentation="deployment"]') || document.querySelector('.transient-alert-lane[data-hud-layer="transient"]')))`, 'Combat surface', 45_000);
 await waitFor(`(() => {
   const root = document.querySelector('.game-root[data-mission-presentation="non-blocking-cues"]');
   const cue = document.querySelector('[data-presentation="deployment"]');
@@ -942,8 +942,9 @@ console.log('ANDROID_MOBILE_ASSET_PASS icons=loaded operatorLod=2 weaponLod=2');
 console.log('ANDROID_CLASS_ASSET_PASS operator=vanguard');
 
 const combat = await snapshot();
-if (!(combat.text ?? '').toLowerCase().includes('field coach') || combat.canvases < 1) {
-  throw new Error(`Android combat surface failed smoke validation: ${JSON.stringify(combat)}`);
+const combatGuidanceVisible = await evaluate(`Boolean(document.querySelector('.transient-alert-lane[data-hud-layer="transient"]'))`);
+if (!combatGuidanceVisible || combat.canvases < 1) {
+  throw new Error(`Android combat surface failed smoke validation: ${JSON.stringify({ ...combat, combatGuidanceVisible })}`);
 }
 
 await waitFor(`(() => {
