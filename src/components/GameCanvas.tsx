@@ -4,6 +4,7 @@ import '../part4.css';
 import '../part5.css';
 import '../part6.css';
 import '../part7.css';
+import '../combatHudGlance.css';
 import { applyMissionSetup, continueIntoDeepZone, createDirector, stepMissionDirector, type DirectorRuntime } from '../game/director';
 import { getMissionObjectiveStatus, getNextMissionObjectiveTarget } from '../game/encounters';
 import { findNavigationPath } from '../game/mapPathfinding';
@@ -1481,13 +1482,14 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
     {!coarse && hud.eventT > 0 && <div className="combat-alert">{hud.eventText}</div>}
     {!coarse && statusItems.length > 0 && <div className="status-rack" aria-label="Combat status">{statusItems.map(item => <span key={item}>{item}</span>)}</div>}
     <div className="weapon-hud"><small>{weapon.name}</small><strong>{hud.reload > 0 ? 'RLD' : `${hud.mag} / ${weapon.magazine}`}</strong><div className="heat-track"><i style={{ width: `${hud.heat * 100}%` }} /></div><span>{hud.venting ? 'VENTING' : hud.heat >= 0.98 ? 'OVERHEAT · V' : 'HEAT'}</span></div>
-    {visibleConsumables.length > 0 && <div className="combat-consumables" aria-label="Field consumables">{visibleConsumables.map(item => <button key={item.id} aria-label={item.name} disabled={!consumableReady || consumableStock[item.id] <= 0} onClick={() => useConsumable(item.id)}><small>{item.hotkey}</small><b>{item.shortName}</b><span>x{consumableStock[item.id]}</span></button>)}</div>}
+    {!coarse && visibleConsumables.length > 0 && <div className="combat-consumables" aria-label="Field consumables">{visibleConsumables.map(item => <button key={item.id} aria-label={item.name} disabled={!consumableReady || consumableStock[item.id] <= 0} onClick={() => useConsumable(item.id)}><small>{item.hotkey}</small><b>{item.shortName}</b><span>x{consumableStock[item.id]}</span></button>)}</div>}
     <div className="desktop-actions">{abilityKit.map((ability, index) => <button key={ability.shortName} className="action-chip" aria-label={ability.name} title={ability.description} disabled={!abilityReady[index]} onClick={() => useAbility(index)}>{skillIcons && <img src={skillIcons[index]} alt="" aria-hidden="true" />}<b>{['Q', 'E', 'F'][index]} · {ability.shortName}</b><span>{abilityReady[index] ? `${abilityConfigs[index].cost} CAP` : `${hud.ability[index].toFixed(1)}s`}</span></button>)}<button className="action-chip" disabled={!dodgeReady} onClick={useDodge}><b>SPACE · DODGE</b><span>{dodgeReady ? 'READY' : `${hud.dodge.toFixed(1)}s`}</span></button></div>
     {hud.contextLabel && <button className="context-action" onClick={useInteract}><b>X</b> {hud.contextLabel}</button>}
     {coarse && <div className="touch-ui" aria-label="Touch combat controls">
       <div className="touch-stick move-stick" aria-label="Movement stick" onPointerDown={event => beginStick('move', event)} onPointerMove={event => updateStick('move', event)} onPointerUp={event => endStick('move', event)} onPointerCancel={event => endStick('move', event)} onLostPointerCapture={event => endStick('move', event)} />
 
-      <div className="touch-utility-rail" aria-label="Weapon utilities">
+      <div className="touch-utility-rail" aria-label="Field utilities">
+        {visibleConsumables.map(item => <button key={item.id} className="touch-button consumable-button" aria-label={item.name} disabled={!consumableReady || consumableStock[item.id] <= 0} onPointerDown={() => useConsumable(item.id)}><span>{item.shortName}</span><small>x{consumableStock[item.id]}</small></button>)}
         {hud.heat > 0.55 && <button className="touch-button vent-button" onPointerDown={() => triggerVent(stateRef.current)}><span>VENT</span><small>{hud.heat >= 0.88 ? 'CRITICAL' : 'HOT'}</small></button>}
       </div>
       <div className="combat-dock" aria-label="Combat actions">
