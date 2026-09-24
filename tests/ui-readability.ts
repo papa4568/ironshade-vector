@@ -28,6 +28,7 @@ const missionCss = read('src/part4.css');
 const objectiveCss = read('src/part7.css');
 const rootCss = read('src/index.css');
 const mobileCombatCss = read('src/mobileCombatReadability.css');
+const combatGlanceCss = read('src/combatHudGlance.css');
 const qolCss = read('src/qol.css');
 const classBuildCss = read('src/classBuilds.css');
 const progressionCss = read('src/part3.css');
@@ -98,6 +99,16 @@ assert(equipmentCss.includes('P7-A // shared rarity contract presentation') && e
 assert(fieldLoot.includes('const definition = rarityDefinition(rarity)') && fieldLoot.includes('color: definition.colorValue') && fieldLoot.includes('label: definition.worldLabel'), 'Ground loot presentation is not sourced from the shared rarity contract.');
 assert(meta.includes('export type Rarity = ItemRarity') && lootQuality.includes("Exclude<ItemRarity, 'Singular'>") && gearDepth.includes('export type GearRarity = ItemRarity'), 'Equipment systems still duplicate the rarity type contract.');
 assert(armory.includes('activeDoctrineStates'), 'Discovered-only loadout interactions are missing.');
+
+assert(combat.includes("data-hud-layer=\"core\"") && combat.includes("data-hud-layer=\"context\"") && combat.includes("data-hud-layer=\"transient\""), 'P19-A combat HUD must expose fixed core, contextual, and shared transient information layers.');
+assert(combat.includes('const transientCue = bossTransitionCue') && combat.includes("statusItems.slice(0, 3).join(' · ')") && combat.includes('className={\`transient-alert-lane \${transientCue.kind}\`}'), 'P19-A compact warnings, events, status, and tutorial guidance must converge on one transient-alert lane.');
+assert(combat.includes('aria-label="Current combat objective"') && combat.includes('objectiveStatus.detail') && !combat.includes("hud.pressureState.toUpperCase()} {(hud.pressure * 100).toFixed(0)}% · {hud.gravity.toFixed(2)}G"), 'P19-A fixed objective HUD must prioritize the current decision instead of pressure/gravity telemetry.');
+assert(combat.includes('className="boss-technical"') && combat.includes('className="boss-tell"') && combatGlanceCss.includes('.boss-hud .boss-technical') && combatGlanceCss.includes('display: none'), 'P19-A compact boss HUD must suppress mutation explanations while retaining critical boss tells.');
+assert(combat.includes("hud.heat >= 0.88 ? 'CRITICAL' : 'HOT'") && combat.includes("hud.heat >= 0.75 ? \`HOT · \${hud.mag}\` : \`ASSIST · \${hud.mag}\`"), 'P19-A touch actions must use actionable heat states instead of technical percentages.');
+assert(combat.includes('className="touch-button consumable-button"') && combat.includes('aria-label="Field utilities"'), 'P19-A compact consumables must live with contextual field utilities instead of occupying a permanent top-right HUD lane.');
+assert(combatGlanceCss.includes('P19-A — glance-first compact combat HUD') && combatGlanceCss.includes('.transient-alert-lane') && combatGlanceCss.includes('font-size: 12px') && combatGlanceCss.includes('font-size: 14px') && combatGlanceCss.includes('.combat-dock .fire-button span'), 'P19-A compact combat stylesheet is missing the shared alert lane or 12/14px readability hierarchy.');
+assert(combatGlanceCss.includes('.game-root:has(.boss-hud) .target-readout') && combatGlanceCss.includes('.game-root:has(.post-clear-objective) .mega-objective-chip'), 'P19-A context lifecycle must avoid simultaneous target/boss and duplicate optional/post-clear HUD surfaces.');
+assert(androidSmoke.includes('ANDROID_COMBAT_HUD_PASS') && androidSmoke.includes('tinyText') && androidSmoke.includes('contextControlOverlap') && androidSmoke.includes('transientOverlap'), 'P19-A Android smoke must reject undersized live combat text and HUD/control overlap.');
 
 assert(combat.includes('HEALTH EXPOSED'), 'Combat UI does not explicitly call out broken armor and exposed health.');
 assert(combat.includes('data-target-id={focusEnemy.id}') && combat.includes('Assisted target locked: ${focusEnemy.label}') && combat.includes('<small>ASSIST LOCK</small>'), 'Assisted hostile health readout is missing or disconnected from the retained target.');
