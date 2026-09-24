@@ -207,6 +207,7 @@ function currentNetworkRepairSmoke() {
       startNodeId: 'start-vanguard',
       allocatedNodeIds: ['ballistics-1', 'retired-network-node'],
       unspentPoints: 0,
+      plannedTargetNodeIds: [],
     },
   };
   storage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify({
