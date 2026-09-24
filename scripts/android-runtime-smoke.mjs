@@ -288,7 +288,15 @@ if (plannerPersistenceOnly) {
   await waitFor(`[...document.querySelectorAll('button')].some(button => (button.textContent || '').trim().toLowerCase() === 'equipment')`, 'Command Deck after cold relaunch');
   await tapButton('Equipment', 81);
   await waitFor(`document.querySelector('.build-header h1')?.textContent?.trim() === 'Build'`, 'Build after cold relaunch');
-  await tapButton('Progression', 82);
+  const progressionTabMarked = await evaluate(`(() => {
+    const button = [...document.querySelectorAll('.build-tabs button')].find(candidate => (candidate.textContent || '').trim().toLowerCase().startsWith('progression'));
+    if (!button) return false;
+    button.dataset.p18ProgressionTab = 'true';
+    button.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+    return true;
+  })()`);
+  if (!progressionTabMarked) throw new Error('Android cold relaunch could not find the Progression tab.');
+  await tap('button[data-p18-progression-tab="true"]', 82);
   await waitFor(`(() => {
     const text = document.querySelector('.network-plan-card')?.textContent ?? '';
     return text.includes('2 targets') && text.includes('Breach Doctrine') && text.includes('Servo Timing');
