@@ -12,6 +12,7 @@ on:
     branches:
       - main
       - android/capacitor-apk
+      - p19b-adaptive-command-dock
     paths:
       - 'src/**'
       - 'tests/**'
