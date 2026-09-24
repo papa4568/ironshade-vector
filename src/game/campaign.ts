@@ -833,6 +833,7 @@ export function applyShipBonuses(build: CombatBuild, campaign: CampaignState): C
     operatorClass: build.operatorClass,
     classResonanceTier: build.classResonanceTier,
     classSkillFamily: { ...build.classSkillFamily, sources: [...build.classSkillFamily.sources] },
+    attackSpeedMul: build.attackSpeedMul,
     weapon: { carbine: { ...build.weapon.carbine }, breacher: { ...build.weapon.breacher }, rail: { ...build.weapon.rail } },
     player: { ...build.player },
     mechanics: { ...build.mechanics },
