@@ -104,12 +104,15 @@ assert.equal(singularRemoval.wallet.components, wallet.components, 'Rejected Sin
 
 const armorySource = readFileSync(new URL('../src/components/Armory.tsx', import.meta.url), 'utf8');
 const craftingCss = readFileSync(new URL('../src/classBuilds.css', import.meta.url), 'utf8');
+const guideSource = readFileSync(new URL('../src/game/guideContent.ts', import.meta.url), 'utf8');
 for (const label of ['Improve +2', 'Elevate', 'Reroute', 'Replace', 'Remove', 'Lock Core', 'Lock Systems', 'SOCKET', 'Extract']) {
   assert.equal(armorySource.includes(label), true, `Crafting UI must expose the ${label} verb.`);
 }
-assert.equal(armorySource.includes('COMMON // ORDINARY SALVAGE'), true);
-assert.equal(armorySource.includes('CHASE // PROTECTED CONTROL'), true);
-assert.equal(armorySource.includes('Quarantined Trace'), true);
+assert.equal(guideSource.includes("id: 'crafting'"), true, 'P19-C must keep reusable Reconstruction teaching in the canonical Guide.');
+assert.equal(guideSource.includes('Frame Alloy, Circuit Stock, and Precision Components'), true, 'Canonical Guide must explain ordinary crafting material tiers.');
+assert.equal(guideSource.includes('Quarantined Trace funds premium deterministic control'), true, 'Canonical Guide must explain chase-material control.');
+assert.equal(armorySource.includes('COMMON // ORDINARY SALVAGE'), false, 'P19-C must not duplicate migrated material-tier prose in Armory.');
+assert.equal(armorySource.includes('Quarantined Trace'), true, 'Decision-critical live crafting costs and balances must remain local.');
 assert.equal(craftingCss.includes('P10-B // Reconstruction verbs + material tiers'), true);
 assert.equal(craftingCss.includes('@media (max-width: 900px)'), true, 'P10-B contract must retain a mobile single-column layout.');
 
