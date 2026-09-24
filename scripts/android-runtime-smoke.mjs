@@ -304,6 +304,8 @@ if (plannerPersistenceOnly) {
     };
   })()`);
   console.log(`ANDROID_NETWORK_PLANNER_PERSISTENCE_PASS version=${persisted.version} schema=${persisted.networkSchema} targets=${persisted.targets.join('+')} relaunch=cold ui=restored nonDestructive=${persisted.allocated.includes('ballistics-3') || persisted.allocated.includes('mobility-1') ? 'false' : 'true'}`);
+  await tapButton('Return to ship', 83);
+  await waitFor(`[...document.querySelectorAll('button')].some(button => (button.textContent || '').trim().toLowerCase() === 'operations')`, 'Command Deck after persisted plan verification');
   session.close();
   await sleep(100);
   process.exit(0);
