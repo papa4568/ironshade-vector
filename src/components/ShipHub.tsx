@@ -168,6 +168,7 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
   const [contractSort, setContractSort] = useState<ContractSort>('level-match');
   const [commissionCeremony, setCommissionCeremony] = useState<ShipCommissionCeremony | null>(null);
   const hubRef = useRef<HTMLDivElement>(null);
+  const commandNavRef = useRef<HTMLElement>(null);
   const traceRequestIdRef = useRef(0);
   const traceAbortRef = useRef<AbortController | null>(null);
   useEffect(() => () => traceAbortRef.current?.abort(), []);
@@ -379,13 +380,77 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
     { id: 'intel', icon: Database },
   ];
   const openPrimaryArea = (area: PrimaryArea) => switchTab(areaTabs[area][0]);
+  const focusPrimaryByOffset = (offset: number, edge?: 'start' | 'end') => {
+    const buttons = [...(commandNavRef.current?.querySelectorAll<HTMLButtonElement>('button[data-primary-area]') ?? [])];
+    if (!buttons.length) return null;
+    const activeIndex = buttons.indexOf(document.activeElement as HTMLButtonElement);
+    const selectedIndex = buttons.findIndex(button => button.getAttribute('aria-current') === 'page');
+    const baseIndex = activeIndex >= 0 ? activeIndex : selectedIndex >= 0 ? selectedIndex : offset < 0 ? buttons.length - 1 : 0;
+    const nextIndex = edge === 'start' ? 0 : edge === 'end' ? buttons.length - 1 : (baseIndex + offset + buttons.length) % buttons.length;
+    const next = buttons[nextIndex] ?? null;
+    next?.focus();
+    next?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    return next;
+  };
+  const focusPrimaryArea = (area: PrimaryArea) => {
+    const button = commandNavRef.current?.querySelector<HTMLButtonElement>(`button[data-primary-area="${area}"]`) ?? null;
+    button?.focus();
+    return button;
+  };
+  const handlePrimaryNavigationKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') { event.preventDefault(); focusPrimaryByOffset(1); }
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') { event.preventDefault(); focusPrimaryByOffset(-1); }
+    if (event.key === 'Home') { event.preventDefault(); focusPrimaryByOffset(0, 'start'); }
+    if (event.key === 'End') { event.preventDefault(); focusPrimaryByOffset(0, 'end'); }
+    if (event.key === 'Escape' && primaryArea !== 'command') {
+      event.preventDefault();
+      openPrimaryArea('command');
+      requestAnimationFrame(() => focusPrimaryArea('command'));
+    }
+  };
+  useEffect(() => {
+    if (typeof navigator.getGamepads !== 'function') return;
+    let frame = 0;
+    let previousDirection = 0;
+    let previousConfirm = false;
+    let previousBack = false;
+    const poll = () => {
+      const modalOpen = Boolean(document.querySelector('[role="dialog"][aria-modal="true"]'));
+      const pad = [...navigator.getGamepads()].find(Boolean);
+      const horizontalAxis = pad?.axes?.[0] ?? 0;
+      const verticalAxis = pad?.axes?.[1] ?? 0;
+      let direction = 0;
+      if (!modalOpen && (pad?.buttons[12]?.pressed || pad?.buttons[14]?.pressed || horizontalAxis < -.55 || verticalAxis < -.55)) direction = -1;
+      else if (!modalOpen && (pad?.buttons[13]?.pressed || pad?.buttons[15]?.pressed || horizontalAxis > .55 || verticalAxis > .55)) direction = 1;
+      if (direction && direction !== previousDirection) focusPrimaryByOffset(direction);
+      previousDirection = direction;
+
+      const confirm = !modalOpen && !!pad?.buttons[0]?.pressed;
+      if (confirm && !previousConfirm) {
+        const active = document.activeElement;
+        if (active instanceof HTMLButtonElement && active.matches('.command-rail-nav button[data-primary-area]')) active.click();
+        else focusPrimaryArea(primaryArea);
+      }
+      previousConfirm = confirm;
+
+      const back = !modalOpen && !!pad?.buttons[1]?.pressed;
+      if (back && !previousBack && primaryArea !== 'command') {
+        openPrimaryArea('command');
+        requestAnimationFrame(() => focusPrimaryArea('command'));
+      }
+      previousBack = back;
+      frame = requestAnimationFrame(poll);
+    };
+    frame = requestAnimationFrame(poll);
+    return () => cancelAnimationFrame(frame);
+  }, [primaryArea]);
   const pageTitle = tab === 'overview' ? 'Overview' : areaLabels[primaryArea];
 
   return <main className={`ship-hub area-${primaryArea} iv-view`}>
     <aside className="command-rail" aria-label="Primary navigation">
       <div className="command-rail-brand"><span>IV</span><div><b>QUIET SIGNAL</b><small>VECTOR COMMAND</small></div></div>
-      <nav className="command-rail-nav">
-        {primaryAreas.map(({ id, icon: Icon }) => <button key={id} aria-label={areaLabels[id]} className={`nav-${id} ${primaryArea === id ? 'selected' : ''}`} aria-current={primaryArea === id ? 'page' : undefined} onClick={() => openPrimaryArea(id)}><Icon aria-hidden="true" size={18} strokeWidth={1.7} /><span><b>{areaLabels[id]}</b><small>{areaDescriptions[id]}</small></span></button>)}
+      <nav ref={commandNavRef} className="command-rail-nav" onKeyDown={handlePrimaryNavigationKeyDown}>
+        {primaryAreas.map(({ id, icon: Icon }) => <button key={id} data-primary-area={id} aria-label={areaLabels[id]} className={`nav-${id} ${primaryArea === id ? 'selected' : ''}`} aria-current={primaryArea === id ? 'page' : undefined} onClick={() => openPrimaryArea(id)}><Icon aria-hidden="true" size={18} strokeWidth={1.7} /><span><b>{areaLabels[id]}</b><small>{areaDescriptions[id]}</small></span></button>)}
       </nav>
       <button className="command-rail-equipment" onClick={onOpenBuild}><Settings2 aria-hidden="true" size={17} /><span>Equipment</span></button>
       <div className="command-rail-status"><i /><span>LOCAL CORE</span><b>ONLINE</b></div>

@@ -84,6 +84,43 @@ assert(
   'P15-B/P18-E gear inspection must retain a readable decision-first DOM hierarchy with shared deep details on mobile.',
 );
 
+
+assert(
+  shipHub.includes('const commandNavRef = useRef<HTMLElement>(null)')
+    && shipHub.includes('onKeyDown={handlePrimaryNavigationKeyDown}')
+    && shipHub.includes('data-primary-area={id}')
+    && shipHub.includes('navigator.getGamepads()')
+    && shipHub.includes("pad?.buttons[0]?.pressed")
+    && shipHub.includes("pad?.buttons[1]?.pressed"),
+  'P19-B primary Command navigation must preserve one destination model across keyboard/controller/touch input.',
+);
+
+assert(
+  menuCss.includes('P19-B // Compact phones use a five-item bottom Command dock')
+    && menuCss.includes('(orientation: landscape) and (max-width: 1000px) and (max-height: 500px)')
+    && menuCss.includes('grid-template-columns: repeat(5, minmax(0, 1fr))')
+    && menuCss.includes('min-height: 52px')
+    && menuCss.includes('font-size: 12px')
+    && menuCss.includes('var(--command-safe-right)')
+    && menuCss.includes('var(--command-safe-bottom)'),
+  'P19-B compact phones must use a safe-area-aware five-item bottom dock with readable 48px-class targets.',
+);
+
+assert(
+  browserSmoke.includes('BROWSER_P19_COMMAND_NAV_PASS')
+    && browserSmoke.includes('BROWSER_P19_COMMAND_INPUT_PASS')
+    && browserSmoke.includes('__p19CommandGamepad'),
+  'P19-B browser QA must verify dock/rail breakpoint layout plus keyboard/controller navigation.',
+);
+
+assert(
+  androidSmoke.includes('ANDROID_P19_COMMAND_NAV_PASS')
+    && androidSmoke.includes('__p19CommandGamepad')
+    && androidSmoke.includes('Emulation.setDeviceMetricsOverride')
+    && androidSmoke.includes('Emulation.clearDeviceMetricsOverride'),
+  'P19-B Android QA must verify touch/controller/back/rotation and dock/rail breakpoint behavior.',
+);
+
 assert(
   browserSmoke.includes('BROWSER_P15_MENU_PRESENTATION_PASS')
     && browserSmoke.includes("keyboardActivateButton('Crafting')")

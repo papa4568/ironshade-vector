@@ -860,6 +860,150 @@ await waitFor(`(() => {
   return (text.includes('command ready') || text.includes('command deck')) && labels.includes('operations');
 })()`, 'Android Command Deck after skill hierarchy');
 
+
+function assertP19CommandNavMetrics(value, expectedComposition, label) {
+  const invalid = !value?.rail
+    || !value?.workspace
+    || value.primaryCount !== 5
+    || value.offscreen.length
+    || value.navOverflow.length
+    || value.overlap
+    || value.horizontalOverflow > 2
+    || value.composition !== expectedComposition;
+  if (invalid) throw new Error(`Android P19-B ${label} navigation failed: ${JSON.stringify(value)}`);
+  if (expectedComposition === 'dock' && (value.undersized.length || value.minTargetHeight < 48 || value.minLabelFontSize < 11.5)) {
+    throw new Error(`Android P19-B ${label} dock failed glance/touch checks: ${JSON.stringify(value)}`);
+  }
+}
+
+async function p19CommandNavMetrics() {
+  return evaluate(`(() => {
+    const viewport = { width: window.visualViewport?.width ?? window.innerWidth, height: window.visualViewport?.height ?? window.innerHeight };
+    const visible = element => {
+      if (!element) return false;
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0 && rect.width > 0 && rect.height > 0;
+    };
+    const bounds = element => {
+      if (!visible(element)) return null;
+      const rect = element.getBoundingClientRect();
+      return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
+    };
+    const intersects = (left, right) => !!left && !!right
+      && !(left.right <= right.left + 1 || right.right <= left.left + 1 || left.bottom <= right.top + 1 || right.bottom <= left.top + 1);
+    const rail = bounds(document.querySelector('.command-rail'));
+    const workspace = bounds(document.querySelector('.tactical-workspace'));
+    const buttons = [...document.querySelectorAll('.command-rail-nav button[data-primary-area]')].filter(visible).map(button => ({
+      label: button.getAttribute('aria-label') || button.textContent?.trim() || '',
+      labelFontSize: Number.parseFloat(getComputedStyle(button.querySelector('b') ?? button).fontSize),
+      rect: bounds(button),
+    }));
+    const offscreen = buttons.filter(item => item.rect && (
+      item.rect.left < -1 || item.rect.top < -1 || item.rect.right > viewport.width + 1 || item.rect.bottom > viewport.height + 1
+    )).map(item => item.label);
+    const undersized = buttons.filter(item => item.rect && item.rect.height < 48).map(item => item.label);
+    const navOverflow = buttons.filter(item => item.rect && rail && (
+      item.rect.left < rail.left - 1 || item.rect.top < rail.top - 1 || item.rect.right > rail.right + 1 || item.rect.bottom > rail.bottom + 1
+    )).map(item => item.label);
+    return {
+      viewport,
+      rail,
+      workspace,
+      composition: rail && workspace && rail.top >= workspace.bottom - 2 ? 'dock' : 'rail',
+      primaryCount: buttons.length,
+      offscreen,
+      undersized,
+      navOverflow,
+      overlap: intersects(rail, workspace),
+      minTargetHeight: buttons.length ? Math.min(...buttons.map(item => item.rect?.height ?? 0)) : 0,
+      minLabelFontSize: buttons.length ? Math.min(...buttons.map(item => item.labelFontSize)) : 0,
+      horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - viewport.width),
+    };
+  })()`);
+}
+
+const p19NativeViewport = await evaluate(`({ width: window.visualViewport?.width ?? window.innerWidth, height: window.visualViewport?.height ?? window.innerHeight })`);
+const p19NativeNav = await p19CommandNavMetrics();
+assertP19CommandNavMetrics(p19NativeNav, 'dock', 'native landscape');
+
+await tapButton('Intel', 96);
+await waitFor(`document.querySelector('.ship-hub.area-intel') !== null`, 'Android P19-B Intel touch navigation');
+await tapButton('Command', 97);
+await waitFor(`document.querySelector('.ship-hub.area-command') !== null`, 'Android P19-B Command touch navigation');
+
+await evaluate(`(() => {
+  globalThis.__p19OriginalGetGamepads = typeof navigator.getGamepads === 'function' ? navigator.getGamepads.bind(navigator) : null;
+  globalThis.__p19CommandGamepad = {
+    connected: true,
+    axes: [0, 0, 0, 0],
+    buttons: Array.from({ length: 16 }, () => ({ pressed: false, value: 0 })),
+  };
+  Object.defineProperty(navigator, 'getGamepads', { configurable: true, value: () => [globalThis.__p19CommandGamepad] });
+  document.querySelector('.command-rail-nav button[data-primary-area="command"]')?.focus();
+  return true;
+})()`);
+const pressP19Gamepad = async index => {
+  await evaluate(`(() => { const button = globalThis.__p19CommandGamepad?.buttons?.[${index}]; if (button) { button.pressed = true; button.value = 1; } })()`);
+  await sleep(160);
+  await evaluate(`(() => { const button = globalThis.__p19CommandGamepad?.buttons?.[${index}]; if (button) { button.pressed = false; button.value = 0; } })()`);
+  await sleep(80);
+};
+try {
+  await sleep(120);
+  await pressP19Gamepad(15);
+  await waitFor(`document.activeElement?.getAttribute('aria-label') === 'Operations'`, 'Android P19-B controller focus');
+  await pressP19Gamepad(0);
+  await waitFor(`document.querySelector('.ship-hub.area-operations') !== null`, 'Android P19-B controller activation');
+  await pressP19Gamepad(1);
+  await waitFor(`document.querySelector('.ship-hub.area-command') !== null && document.activeElement?.getAttribute('aria-label') === 'Command'`, 'Android P19-B controller back');
+} finally {
+  await evaluate(`(() => {
+    const original = globalThis.__p19OriginalGetGamepads;
+    if (original) Object.defineProperty(navigator, 'getGamepads', { configurable: true, value: original });
+    else delete navigator.getGamepads;
+    delete globalThis.__p19OriginalGetGamepads;
+    delete globalThis.__p19CommandGamepad;
+    return true;
+  })()`).catch(() => undefined);
+}
+
+await call('Emulation.setDeviceMetricsOverride', {
+  width: 1280,
+  height: 720,
+  deviceScaleFactor: 2,
+  mobile: true,
+  screenWidth: 1280,
+  screenHeight: 720,
+  screenOrientation: { type: 'landscapePrimary', angle: 90 },
+});
+await sleep(220);
+const p19WideNav = await p19CommandNavMetrics();
+assertP19CommandNavMetrics(p19WideNav, 'rail', 'wide landscape breakpoint');
+
+await call('Emulation.setDeviceMetricsOverride', {
+  width: 412,
+  height: 915,
+  deviceScaleFactor: 2.5,
+  mobile: true,
+  screenWidth: 412,
+  screenHeight: 915,
+  screenOrientation: { type: 'portraitPrimary', angle: 0 },
+});
+await sleep(220);
+const p19PortraitNav = await p19CommandNavMetrics();
+assertP19CommandNavMetrics(p19PortraitNav, 'dock', 'portrait rotation');
+
+await call('Emulation.clearDeviceMetricsOverride');
+await sleep(220);
+const p19RestoredViewport = await evaluate(`({ width: window.visualViewport?.width ?? window.innerWidth, height: window.visualViewport?.height ?? window.innerHeight })`);
+const p19RestoredNav = await p19CommandNavMetrics();
+assertP19CommandNavMetrics(p19RestoredNav, 'dock', 'restored landscape');
+if (Math.abs(p19RestoredViewport.width - p19NativeViewport.width) > 4 || Math.abs(p19RestoredViewport.height - p19NativeViewport.height) > 4) {
+  throw new Error(`Android P19-B native viewport did not restore after rotation/breakpoint QA: native=${JSON.stringify(p19NativeViewport)} restored=${JSON.stringify(p19RestoredViewport)}`);
+}
+console.log(`ANDROID_P19_COMMAND_NAV_PASS destinations=5 touch=command+intel controller=dpad+a+b back=controller-b breakpoint=dock+rail rotation=portrait+landscape native=${Math.round(p19NativeViewport.width)}x${Math.round(p19NativeViewport.height)}`);
+
 await tapButton('Ship', 38);
 await waitFor(`Boolean(document.querySelector('.ship-hub.iv-view.area-ship') && document.querySelector('.tactical-header.iv-panel.iv-panel--glass') && document.querySelector('.ship-systems-intro.iv-panel.iv-panel--glass') && document.querySelector('.ship-hardware-bay.iv-panel') && document.querySelectorAll('.ship-systems-panel .upgrade-card.iv-panel').length >= 6)`, 'Android P15-B Ship Systems surface');
 const p15ShipLayout = await evaluate(`(() => {

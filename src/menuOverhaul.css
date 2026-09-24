@@ -4,6 +4,8 @@
 
 .ship-hub {
   --command-safe-left: env(safe-area-inset-left, 0px);
+  --command-safe-right: env(safe-area-inset-right, 0px);
+  --command-safe-bottom: env(safe-area-inset-bottom, 0px);
   height: 100%;
   overflow: hidden;
   padding: 0;
@@ -1881,3 +1883,75 @@
     min-height: 44px;
   }
 }
+
+/* P19-B // Compact phones use a five-item bottom Command dock.
+   The destination model is unchanged; only composition adapts at phone-sized windows. */
+@media (max-width: 620px) and (orientation: portrait),
+       (orientation: landscape) and (max-width: 1000px) and (max-height: 500px) {
+  .ship-hub {
+    display: flex;
+    flex-direction: column;
+  }
+  .tactical-workspace {
+    order: 1;
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+    padding-right: max(10px, var(--command-safe-right));
+    padding-bottom: 10px;
+    padding-left: max(10px, var(--command-safe-left));
+  }
+  .command-rail {
+    order: 2;
+    flex: 0 0 auto;
+    height: auto;
+    display: block;
+    gap: 0;
+    padding:
+      6px
+      max(8px, var(--command-safe-right))
+      max(6px, var(--command-safe-bottom))
+      max(8px, var(--command-safe-left));
+    border-top: 1px solid #294039;
+    border-right: 0;
+    box-shadow: 0 -12px 32px rgba(0, 0, 0, .24);
+  }
+  .command-rail::after,
+  .command-rail-brand,
+  .command-rail-equipment,
+  .command-rail-status {
+    display: none;
+  }
+  .command-rail-nav {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .command-rail-nav button {
+    min-height: 52px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    padding: 5px 4px;
+    text-align: center;
+    transform: none;
+  }
+  .command-rail-nav button:hover {
+    transform: none;
+  }
+  .command-rail-nav button b {
+    font-size: 12px;
+    line-height: 1.1;
+    letter-spacing: 0;
+  }
+  .command-rail-nav button small {
+    display: none;
+  }
+  .command-rail-nav button.selected {
+    box-shadow:
+      inset 0 -3px var(--nav-accent),
+      inset 0 0 24px color-mix(in srgb, var(--nav-accent) 7%, transparent),
+      0 0 18px color-mix(in srgb, var(--nav-accent) 8%, transparent);
+  }
+}
+
