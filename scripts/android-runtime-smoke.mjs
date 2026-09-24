@@ -492,6 +492,14 @@ for (const [nodeId, nodeName, touchId] of [['ballistics-3', 'Breach Doctrine', 7
   await tap(`button[data-p18-plan-node="${nodeId}"]`, touchId);
   await waitFor(`[...document.querySelectorAll('button')].some(button => (button.textContent || '').trim() === 'Plan this route')`, `plan action for ${nodeName}`);
   await tapButton('Plan this route', touchId + 10);
+  await waitFor(`(() => {
+    const nodeId = ${JSON.stringify(nodeId)};
+    const nodeName = ${JSON.stringify(nodeName)};
+    const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+    const targets = state?.profile?.operatorNetwork?.plannedTargetNodeIds;
+    const text = document.querySelector('.network-plan-card')?.textContent ?? '';
+    return Array.isArray(targets) && targets.includes(nodeId) && text.includes(nodeName);
+  })()`, `persisted planner target ${nodeName}`);
 }
 
 await waitFor(`(() => {
