@@ -1327,3 +1327,112 @@
 .gear-layout .item-inspector.open {
   display: grid;
 }
+
+/* P18-E // Gear inspector quick-read + shared expert Details sheet */
+.gear-summary-grid.gear-summary-grid--quick {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+.gear-summary-grid--quick > .iv-requirement,
+.gear-summary-grid--quick > .gear-quick-read,
+.gear-summary-grid--quick > .loadout-impact,
+.gear-summary-grid--quick > .gear-build-change-quick,
+.gear-summary-grid--quick > .iv-disclosure-trigger {
+  min-width: 0;
+}
+.gear-summary-grid--quick .gear-quick-read {
+  margin: 0;
+}
+.gear-summary-grid--quick > .iv-disclosure-trigger {
+  width: 100%;
+  min-height: 44px;
+  justify-self: stretch;
+}
+.quick-loadout-impact .impact-grid--quick {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.gear-build-change-quick {
+  margin: 0;
+}
+.gear-build-change-quick > header {
+  margin-bottom: 7px;
+}
+.gear-details-sheet {
+  width: min(54rem, 100%);
+}
+.gear-details-sheet .iv-disclosure-sheet__body {
+  gap: 12px;
+}
+.gear-details-sheet .item-layer-panel,
+.gear-details-sheet .build-links-panel,
+.gear-details-sheet .loadout-impact,
+.gear-details-sheet .gear-expert-section {
+  width: 100%;
+  box-sizing: border-box;
+}
+.gear-details-sheet .gear-details-impact {
+  padding: 11px 12px;
+}
+.gear-details-sheet .impact-grid--full {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.gear-expert-section {
+  padding: 11px 12px 12px;
+  border: 1px solid #2b3d38;
+  border-radius: 12px;
+  background: rgba(8,16,15,.88);
+}
+.gear-details-label {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.gear-details-label small,
+.gear-details-label b {
+  display: block;
+}
+.gear-details-label small {
+  color: #748981;
+  font: 900 7px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .12em;
+}
+.gear-details-label b {
+  max-width: 70%;
+  color: #d1ddd8;
+  font-size: 10px;
+  line-height: 1.35;
+  text-align: right;
+}
+.gear-details-sheet .advanced-identity-grid {
+  margin-top: 9px;
+}
+.gear-details-sheet .advanced-identity-grid + .recovery-quality {
+  margin-top: 9px;
+}
+
+@media (min-width: 700px) {
+  .gear-summary-grid.gear-summary-grid--quick {
+    grid-template-columns: minmax(0, .86fr) minmax(0, 1.3fr);
+  }
+  .gear-summary-grid--quick > .iv-requirement,
+  .gear-summary-grid--quick > .gear-build-change-quick,
+  .gear-summary-grid--quick > .iv-disclosure-trigger {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 620px) {
+  .quick-loadout-impact .impact-grid--quick,
+  .gear-details-sheet .impact-grid--full {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .gear-details-label {
+    display: grid;
+  }
+  .gear-details-label b {
+    max-width: none;
+    text-align: left;
+  }
+}
+
