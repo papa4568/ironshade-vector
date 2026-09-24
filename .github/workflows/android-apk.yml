@@ -24,6 +24,20 @@ on:
       - 'vite.config.ts'
       - 'index.html'
       - '.github/workflows/android-apk.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'capacitor.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.nvmrc'
+      - 'vite.config.ts'
+      - 'index.html'
+      - '.github/workflows/android-apk.yml'
 
 permissions:
   contents: read
