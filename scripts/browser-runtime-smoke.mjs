@@ -877,13 +877,15 @@ try {
   await waitFor(`[...document.querySelectorAll('button[data-location]')].some(button => button.dataset.location === ${JSON.stringify(targetLocation)} && button.classList.contains('selected'))`, `${targetLocation} contract selection`);
 
   await keyboardActivateButton('Deploy Selected Contract');
-  await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('field coach') && document.querySelectorAll('canvas').length > 0`, 'Combat surface');
-  await waitFor(`Boolean(document.querySelector('[data-presentation="deployment"]') && document.querySelector('.game-root[data-mission-presentation="non-blocking-cues"]'))`, 'P15-C deployment presentation');
+  await waitFor(`Boolean(document.querySelectorAll('canvas').length > 0 && (document.querySelector('[data-presentation="deployment"]') || document.querySelector('.transient-alert-lane.event')))`, 'Combat surface');
+  await waitFor(`Boolean(document.querySelector('.game-root[data-mission-presentation="non-blocking-cues"]') && (document.querySelector('[data-presentation="deployment"]') || document.querySelector('.transient-alert-lane.event')))`, 'P15-C deployment presentation');
   const p15MissionPresentation = await evaluate(`(() => {
-    const cue = document.querySelector('[data-presentation="deployment"]');
+    const compact = ${JSON.stringify(viewportMode)} === 'mobile-landscape';
+    const cue = compact ? document.querySelector('.transient-alert-lane.event .combat-alert') : document.querySelector('[data-presentation="deployment"]');
     const rect = cue?.getBoundingClientRect();
     const style = cue ? getComputedStyle(cue) : null;
     return {
+      mode: compact ? 'shared-transient' : 'cinematic',
       pointerEvents: style?.pointerEvents ?? '',
       title: cue?.querySelector('b')?.textContent?.trim() ?? '',
       left: rect?.left ?? -1,
@@ -897,7 +899,7 @@ try {
   if (p15MissionPresentation.pointerEvents !== 'none' || !p15MissionPresentation.title || p15MissionPresentation.left < 0 || p15MissionPresentation.right > p15MissionPresentation.viewportWidth || p15MissionPresentation.top < 0 || p15MissionPresentation.bottom > p15MissionPresentation.viewportHeight) {
     throw new Error(`P15-C deployment presentation blocks input or leaves the viewport: ${JSON.stringify(p15MissionPresentation)}`);
   }
-  console.log(`BROWSER_P15_MISSION_PRESENTATION_PASS viewport=${viewportMode} deployment=non-blocking title=${p15MissionPresentation.title}`);
+  console.log(`BROWSER_P15_MISSION_PRESENTATION_PASS viewport=${viewportMode} deployment=non-blocking mode=${p15MissionPresentation.mode} title=${p15MissionPresentation.title}`);
   await waitFor(`(() => {
     const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.worldReadability);
     return canvas?.dataset.worldReadability === 'interactables:shape+state|hazards:shape+motion|loot:shape+rarity'
