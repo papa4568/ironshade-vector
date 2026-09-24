@@ -314,8 +314,8 @@ async function commandHubViewportAudit() {
   return result;
 }
 
-async function mobileMenuLayoutAudit() {
-  const audit = async syntheticSafeLeft => evaluate(`(() => {
+async function adaptiveCommandNavigationAudit() {
+  const audit = async syntheticCutout => evaluate(`(() => {
     const viewport = {
       width: window.visualViewport?.width ?? window.innerWidth,
       height: window.visualViewport?.height ?? window.innerHeight,
@@ -331,69 +331,78 @@ async function mobileMenuLayoutAudit() {
       const rect = element.getBoundingClientRect();
       return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
     };
-    const hub = document.querySelector('.ship-hub');
     const railElement = document.querySelector('.command-rail');
-    const previousSafeLeft = hub?.style.getPropertyValue('--command-safe-left') ?? '';
-    const previousRailPaddingLeft = railElement?.style.paddingLeft ?? '';
-    if (${syntheticSafeLeft ? 'true' : 'false'}) {
-      hub?.style.setProperty('--command-safe-left', '48px');
-      if (railElement) railElement.style.paddingLeft = '48px';
+    const workspaceElement = document.querySelector('.tactical-workspace');
+    const previousPaddingLeft = railElement?.style.paddingLeft ?? '';
+    const previousPaddingRight = railElement?.style.paddingRight ?? '';
+    if (${syntheticCutout ? 'true' : 'false'} && railElement) {
+      railElement.style.paddingLeft = '48px';
+      railElement.style.paddingRight = '48px';
     }
 
     const rail = bounds(railElement);
-    const workspace = bounds(document.querySelector('.tactical-workspace'));
-    const primaryButtons = [...document.querySelectorAll('.command-rail-nav button')].filter(visible).map(button => ({
-      label: button.textContent?.trim() ?? '',
-      rect: bounds(button),
-    }));
-    const contentSurfaces = [
-      ['header', bounds(document.querySelector('.tactical-header'))],
-      ['resources', bounds(document.querySelector('.hub-resource-ribbon'))],
-      ['priority', bounds(document.querySelector('.qol-priority-strip'))],
-      ['status', bounds(document.querySelector('.ship-status'))],
-      ['overview', bounds(document.querySelector('.command-overview'))],
-    ].filter(([, rect]) => rect);
-    const offscreen = primaryButtons.filter(item => item.rect && (item.rect.left < -1 || item.rect.top < -1 || item.rect.right > viewport.width + 1 || item.rect.bottom > viewport.height + 1)).map(item => item.label);
-    const undersized = primaryButtons.filter(item => item.rect && item.rect.height < 40).map(item => item.label);
-    const railOverflow = primaryButtons.filter(item => item.rect && rail && (item.rect.left < rail.left - 1 || item.rect.right > rail.right + 1)).map(item => item.label);
-    const overlap = !!rail && !!workspace && !(rail.right <= workspace.left || workspace.right <= rail.left || rail.bottom <= workspace.top || workspace.bottom <= rail.top);
-    const contentOverlap = rail ? contentSurfaces.filter(([, rect]) => rect && rect.left < rail.right - 1).map(([label]) => label) : [];
-    const buildButton = document.querySelector('.tactical-header .hub-build-button');
-    const deployButton = document.querySelector('.command-card.primary-card button');
-    const buildFontSize = buildButton ? Number.parseFloat(getComputedStyle(buildButton).fontSize) : 0;
-    const deployFontSize = deployButton ? Number.parseFloat(getComputedStyle(deployButton).fontSize) : 0;
+    const workspace = bounds(workspaceElement);
+    const buttons = [...document.querySelectorAll('.command-rail-nav button')].filter(visible).map(button => {
+      const rect = bounds(button);
+      const label = button.querySelector('b');
+      return {
+        label: button.getAttribute('aria-label') || button.textContent?.trim() || '',
+        rect,
+        fontSize: label ? Number.parseFloat(getComputedStyle(label).fontSize) : 0,
+      };
+    });
+    const horizontalOverflow = Math.max(0, document.documentElement.scrollWidth - viewport.width);
+    const offscreen = buttons.filter(item => item.rect && (item.rect.left < -1 || item.rect.top < -1 || item.rect.right > viewport.width + 1 || item.rect.bottom > viewport.height + 1)).map(item => item.label);
+    const overlap = !!rail && !!workspace && !(rail.right <= workspace.left + 1 || workspace.right <= rail.left + 1 || rail.bottom <= workspace.top + 1 || workspace.bottom <= rail.top + 1);
+    const layout = !rail || !workspace
+      ? 'unknown'
+      : rail.width > rail.height && rail.top >= workspace.bottom - 2
+        ? 'dock'
+        : rail.height > rail.width && rail.right <= workspace.left + 2
+          ? 'rail'
+          : 'unknown';
 
-    if (hub) {
-      if (previousSafeLeft) hub.style.setProperty('--command-safe-left', previousSafeLeft);
-      else hub.style.removeProperty('--command-safe-left');
+    if (railElement) {
+      railElement.style.paddingLeft = previousPaddingLeft;
+      railElement.style.paddingRight = previousPaddingRight;
     }
-    if (railElement) railElement.style.paddingLeft = previousRailPaddingLeft;
 
     return {
       viewport,
       rail,
       workspace,
-      primaryCount: primaryButtons.length,
+      layout,
+      primaryCount: buttons.length,
+      labels: buttons.map(item => item.label),
+      minTargetHeight: buttons.length ? Math.min(...buttons.map(item => item.rect?.height ?? 0)) : 0,
+      minLabelFontSize: buttons.length ? Math.min(...buttons.map(item => item.fontSize)) : 0,
       offscreen,
-      undersized,
-      railOverflow,
       overlap,
-      contentOverlap,
-      buildFontSize,
-      deployFontSize,
-      syntheticSafeLeft: ${syntheticSafeLeft ? 'true' : 'false'},
-      landscape: viewport.width > viewport.height,
+      horizontalOverflow,
+      syntheticCutout: ${syntheticCutout ? 'true' : 'false'},
     };
   })()`);
 
   const result = await audit(false);
-  const cutoutResult = await audit(true);
-
-  const invalid = value => !value.rail || !value.workspace || value.primaryCount !== 5 || value.offscreen.length || value.undersized.length || value.railOverflow.length || value.overlap || value.contentOverlap.length || value.buildFontSize > 11 || value.deployFontSize > 11;
-  if (!result.landscape || result.viewport.width > 900) throw new Error(`Mobile command audit did not run in the expected landscape viewport: ${JSON.stringify(result)}`);
-  if (invalid(result)) throw new Error(`Mobile Tactical Command navigation failed viewport/touch checks: ${JSON.stringify(result)}`);
-  if (invalid(cutoutResult)) throw new Error(`Mobile Tactical Command safe-area simulation failed: ${JSON.stringify(cutoutResult)}`);
-  console.log(`BROWSER_MOBILE_MENU_PASS viewport=${Math.round(result.viewport.width)}x${Math.round(result.viewport.height)} destinations=${result.primaryCount} safe=onscreen+separated cutout=48px`);
+  const compact = viewportMode === 'mobile-landscape';
+  if (result.primaryCount !== 5 || result.offscreen.length || result.overlap || result.horizontalOverflow > 2) {
+    throw new Error(`P19-B Command navigation geometry failed: ${JSON.stringify(result)}`);
+  }
+  if (compact) {
+    const cutout = await audit(true);
+    const compactInvalid = value => value.layout !== 'dock'
+      || value.primaryCount !== 5
+      || value.minTargetHeight < 48
+      || value.minLabelFontSize < 10
+      || value.offscreen.length
+      || value.overlap
+      || value.horizontalOverflow > 2;
+    if (compactInvalid(result)) throw new Error(`P19-B compact Command dock failed: ${JSON.stringify(result)}`);
+    if (compactInvalid(cutout)) throw new Error(`P19-B compact Command dock safe-area simulation failed: ${JSON.stringify(cutout)}`);
+  } else if (result.layout !== 'rail') {
+    throw new Error(`P19-B wide Command rail regressed: ${JSON.stringify(result)}`);
+  }
+  console.log(`BROWSER_P19B_COMMAND_NAV_PASS viewport=${Math.round(result.viewport.width)}x${Math.round(result.viewport.height)} layout=${result.layout} destinations=${result.primaryCount} target=${Math.round(result.minTargetHeight)}px label=${result.minLabelFontSize}px`);
   return result;
 }
 
@@ -713,10 +722,23 @@ try {
   }
   await accessibilityAudit('command-deck');
   await commandHubViewportAudit();
-  if (viewportMode === 'mobile-landscape') await mobileMenuLayoutAudit();
+  await adaptiveCommandNavigationAudit();
   await captureScreenshot(commandScreenshotPath);
 
-  await keyboardActivateButton('Equipment');
+  for (const destination of ['Command', 'Operations', 'Operator', 'Ship', 'Intel']) {
+    await keyboardActivateButton(destination);
+    await waitFor(`Boolean(document.querySelector('.command-rail-nav button[aria-label="${destination}"][aria-current="page"]'))`, `P19-B ${destination} primary navigation`);
+  }
+  console.log(`BROWSER_P19B_ROUTE_PASS viewport=${viewportMode} destinations=5 input=keyboard routing=shared`);
+  await keyboardActivateButton('Command');
+
+  if (viewportMode === 'mobile-landscape') {
+    await keyboardActivateButton('Operator');
+    await waitFor(`Boolean(document.querySelector('.operator-section-tabs'))`, 'P19-B compact Operator sections');
+    await keyboardActivateButton('Build');
+  } else {
+    await keyboardActivateButton('Equipment');
+  }
   await waitFor(`(() => {
     const text = document.body?.innerText ?? '';
     const labels = [...document.querySelectorAll('button')].map(button => (button.textContent || '').trim());
