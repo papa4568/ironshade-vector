@@ -1370,8 +1370,11 @@ try {
   console.log(`BROWSER_CLASS_ASSET_PASS viewport=${viewportMode} operator=vanguard`);
 
   const combat = await snapshot();
-  if (!(combat.text ?? '').toLowerCase().includes('field coach') || combat.canvases < 1) {
-    throw new Error(`Browser combat surface failed E2E validation: ${JSON.stringify(combat)}`);
+  const combatGuidanceVisible = coarseCombatSurface
+    ? await evaluate(`Boolean(document.querySelector('.transient-alert-lane[data-hud-layer="transient"]'))`)
+    : (combat.text ?? '').toLowerCase().includes('field coach');
+  if (!combatGuidanceVisible || combat.canvases < 1) {
+    throw new Error(`Browser combat surface failed E2E validation: ${JSON.stringify({ ...combat, combatGuidanceVisible })}`);
   }
   await accessibilityAudit('combat');
   if (viewportMode === 'mobile-landscape') await mobileCombatLayoutAudit();
