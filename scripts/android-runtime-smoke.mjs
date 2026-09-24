@@ -1030,10 +1030,33 @@ const mobileLayout = await evaluate(`(() => {
   const fire = rect(document.querySelector('.fire-button'));
   const dodge = rect(document.querySelector('.dodge-button'));
   const hud = rect(document.querySelector('.hud-top'));
+  const vitals = rect(document.querySelector('.vitals'));
+  const objective = rect(document.querySelector('.mission-card'));
+  const transient = rect(document.querySelector('.transient-alert-lane'));
+  const contextSelectors = ['.target-readout', '.boss-hud', '.loot-radar', '.mega-objective-chip', '.post-clear-objective', '.class-mechanic-hud'];
+  const contexts = contextSelectors.map(selector => ({ selector, rect: rect(document.querySelector(selector)) })).filter(item => item.rect);
   const touchButtons = [...document.querySelectorAll('.touch-button')].filter(visible).map(button => ({
     label: button.getAttribute('aria-label') || button.textContent?.trim().slice(0, 40) || button.className,
     rect: rect(button),
   }));
+  const readableText = [...document.querySelectorAll([
+    '.vitals .barline > span', '.vitals .barline > b',
+    '.mission-card b', '.mission-card span',
+    '.touch-button span', '.touch-button small',
+    '.transient-alert-lane small', '.transient-alert-lane b', '.transient-alert-lane span',
+    '.target-readout header small', '.target-readout header b', '.target-values span',
+    '.boss-title span', '.boss-title b', '.boss-values span', '.boss-hud .boss-tell',
+    '.loot-radar > small', '.loot-radar > b', '.loot-radar > span',
+    '.mega-objective-chip small', '.mega-objective-chip b', '.mega-objective-chip span',
+    '.post-clear-objective small', '.post-clear-objective b', '.post-clear-objective span',
+    '.class-mechanic-hud small', '.class-mechanic-hud b',
+  ].join(','))].filter(element => visible(element) && (element.textContent || '').trim());
+  const tinyText = readableText
+    .map(element => ({ text: (element.textContent || '').trim().slice(0, 48), size: Number.parseFloat(getComputedStyle(element).fontSize) }))
+    .filter(item => Number.isFinite(item.size) && item.size < 11.5);
+  const coreOverlap = intersects(vitals, objective) || intersects(vitals, dock) || intersects(objective, dock);
+  const transientOverlap = intersects(transient, move) || intersects(transient, dock) || intersects(transient, vitals) || intersects(transient, objective);
+  const contextControlOverlap = contexts.filter(item => intersects(item.rect, move) || intersects(item.rect, dock)).map(item => item.selector);
   return {
     viewport,
     canvas,
@@ -1042,13 +1065,22 @@ const mobileLayout = await evaluate(`(() => {
     fire,
     dodge,
     hud,
+    vitals,
+    objective,
+    transient,
+    contexts,
     landscape: viewport.width > viewport.height,
     offscreen: [
-      ['canvas', canvas], ['move', move], ['dock', dock], ['fire', fire], ['dodge', dodge], ['hud', hud],
+      ['canvas', canvas], ['move', move], ['dock', dock], ['fire', fire], ['dodge', dodge], ['hud', hud], ['vitals', vitals], ['objective', objective], ['transient', transient],
+      ...contexts.map(item => [item.selector, item.rect]),
       ...touchButtons.map(item => [item.label, item.rect]),
     ].filter(([, value]) => !within(value)).map(([label]) => label),
     undersized: touchButtons.filter(item => item.rect && (item.rect.width < 40 || item.rect.height < 40)).map(item => item.label),
     moveDockOverlap: intersects(move, dock),
+    coreOverlap,
+    transientOverlap,
+    contextControlOverlap,
+    tinyText,
     touchButtons: touchButtons.length,
   };
 })()`);
@@ -1058,7 +1090,11 @@ if (!mobileLayout.landscape || !mobileLayout.canvas || mobileLayout.canvas.width
 if (mobileLayout.offscreen.length || mobileLayout.undersized.length || mobileLayout.moveDockOverlap) {
   throw new Error(`Android combat controls failed safe-area/touch-target checks: ${JSON.stringify(mobileLayout)}`);
 }
+if (!mobileLayout.vitals || !mobileLayout.objective || mobileLayout.coreOverlap || mobileLayout.transientOverlap || mobileLayout.contextControlOverlap.length || mobileLayout.tinyText.length) {
+  throw new Error(`Android glance-first combat HUD failed overlap/type-floor checks: ${JSON.stringify(mobileLayout)}`);
+}
 console.log(`ANDROID_MOBILE_LAYOUT_PASS viewport=${Math.round(mobileLayout.viewport.width)}x${Math.round(mobileLayout.viewport.height)} touchButtons=${mobileLayout.touchButtons} safe=onscreen+separated`);
+console.log(`ANDROID_COMBAT_HUD_PASS layers=core+context+transient typeFloor=12px overlaps=none touch=clear`);
 
 await waitFor(`Boolean(document.querySelector('[aria-label="Touch combat controls"]') && document.querySelector('.move-stick') && document.querySelector('.fire-button') && document.querySelector('.dodge-button'))`, 'Android touch controls');
 const scrollBefore = await evaluate(`({ x: window.scrollX, y: window.scrollY })`);
