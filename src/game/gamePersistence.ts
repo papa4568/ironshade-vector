@@ -1,7 +1,7 @@
 import { loadCampaign, normalizeCampaignState, type CampaignState } from './campaign';
 import { gearSchemaVersion } from './gearSchema';
 import { loadProfile, normalizeStoredProfile, type PlayerProfile } from './meta';
-import { OPERATOR_NETWORK_SCHEMA_VERSION } from './operatorNetwork';
+import { OPERATOR_NETWORK_SCHEMA_VERSION, isSupportedOperatorNetworkSchemaVersion } from './operatorNetwork';
 import { GAME_STATE_STORAGE_KEY, GAME_STATE_VERSION, validateStoredCampaign, validateStoredProfile } from './saveRecovery';
 
 // Profile and campaign are committed atomically so readers never observe half of a progression update. APK verification follows each audited fix.
@@ -19,8 +19,9 @@ export type PersistedGameState = {
 };
 
 type LegacyPersistedGameState = Omit<PersistedGameState, 'version' | 'gearSchemaVersion' | 'operatorNetworkSchemaVersion'> & {
-  version: 1 | 2;
+  version: 1 | 2 | 3;
   gearSchemaVersion?: typeof gearSchemaVersion;
+  operatorNetworkSchemaVersion?: number;
 };
 
 export type GameStateSnapshot = Pick<PersistedGameState, 'profile' | 'campaign'>;
@@ -55,8 +56,9 @@ export function loadGameState(storage: StorageLike | null = browserStorage()): G
     const raw = storage.getItem(GAME_STATE_STORAGE_KEY);
     if (!raw) return legacySnapshot();
     const parsed = JSON.parse(raw) as Partial<PersistedGameState | LegacyPersistedGameState>;
-    if (parsed.version !== 1 && parsed.version !== 2 && parsed.version !== GAME_STATE_VERSION) return legacySnapshot();
-    if ((parsed.version === 2 || parsed.version === GAME_STATE_VERSION) && parsed.gearSchemaVersion !== gearSchemaVersion) return legacySnapshot();
+    if (parsed.version !== 1 && parsed.version !== 2 && parsed.version !== 3 && parsed.version !== GAME_STATE_VERSION) return legacySnapshot();
+    if ((parsed.version === 2 || parsed.version === 3 || parsed.version === GAME_STATE_VERSION) && parsed.gearSchemaVersion !== gearSchemaVersion) return legacySnapshot();
+    if (parsed.version === 3 && !isSupportedOperatorNetworkSchemaVersion(parsed.operatorNetworkSchemaVersion)) return legacySnapshot();
     if (parsed.version === GAME_STATE_VERSION && parsed.operatorNetworkSchemaVersion !== OPERATOR_NETWORK_SCHEMA_VERSION) return legacySnapshot();
     if (validateStoredProfile(parsed.profile) || validateStoredCampaign(parsed.campaign)) return legacySnapshot();
 
