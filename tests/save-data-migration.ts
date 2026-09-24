@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { SHIP_SYSTEM_SCHEMA_VERSION, createDefaultCampaign } from '../src/game/campaign';
 import { GAME_STATE_VERSION, loadGameState, saveGameState } from '../src/game/gamePersistence';
 import { gearSchemaVersion } from '../src/game/gearSchema';
-import { OPERATOR_NETWORK_SCHEMA_VERSION } from '../src/game/operatorNetwork';
+import { OPERATOR_NETWORK_SCHEMA_VERSION, createOperatorNetworkState } from '../src/game/operatorNetwork';
 import { createDefaultProfile, setProfileSettings } from '../src/game/meta';
 import { GAME_STATE_STORAGE_KEY, prepareSaveRecovery, validateStoredProfile } from '../src/game/saveRecovery';
 
