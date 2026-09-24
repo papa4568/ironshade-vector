@@ -1106,8 +1106,8 @@ await dispatchTouch('touchStart', move.x, move.y, 11);
 await dispatchTouch('touchMove', move.x + Math.min(36, move.width * 0.3), move.y - Math.min(18, move.height * 0.15), 11);
 await waitFor(`(() => {
   const stick = document.querySelector('.move-stick');
-  const coach = document.querySelector('.tutorial-coach')?.textContent ?? '';
-  return Boolean(stick && stick.style.getPropertyValue('--knob-x') && stick.style.getPropertyValue('--knob-x') !== '0px' && coach.includes('FIELD COACH // 2/5'));
+  const tutorialStep = document.querySelector('.game-root')?.getAttribute('data-tutorial-step') ?? '';
+  return Boolean(stick && stick.style.getPropertyValue('--knob-x') && stick.style.getPropertyValue('--knob-x') !== '0px' && tutorialStep === '1');
 })()`, 'movement touch response', 15_000);
 await dispatchTouch('touchEnd', move.x, move.y, 11);
 await waitFor(`document.querySelector('.move-stick')?.style.getPropertyValue('--knob-x') === '0px' && document.querySelector('.move-stick')?.style.getPropertyValue('--knob-y') === '0px'`, 'movement stick release', 10_000);
@@ -1122,7 +1122,7 @@ await dispatchTouch('touchStart', aimStartX, aimStartY, 12);
 await dispatchTouch('touchMove', aimEndX, aimEndY, 12);
 await sleep(120);
 await dispatchTouch('touchEnd', aimEndX, aimEndY, 12);
-await waitFor(`(document.querySelector('.tutorial-coach')?.textContent ?? '').includes('FIELD COACH // 3/5')`, 'manual aim touch response', 15_000);
+await waitFor(`document.querySelector('.game-root')?.getAttribute('data-tutorial-step') === '2'`, 'manual aim touch response', 15_000);
 
 // Manual aim can fire the class-preferred weapon immediately before this check.
 // Vanguard begins on the slower Breacher and authored mobile asset loading can
@@ -1202,10 +1202,10 @@ if (!arsenalLock.mobileCycleAbsent || !arsenalLock.desktopSelectorAbsent || !/B-
 }
 
 await tap('.ability-button:not(:disabled)', 15);
-await waitFor(`(document.querySelector('.tutorial-coach')?.textContent ?? '').includes('FIELD COACH // 4/5')`, 'ability touch response', 15_000);
+await waitFor(`document.querySelector('.game-root')?.getAttribute('data-tutorial-step') === '3'`, 'ability touch response', 15_000);
 
 await tap('.dodge-button:not(:disabled)', 16);
-await waitFor(`document.querySelector('.dodge-button')?.disabled === true`, 'dodge touch response', 15_000);
+await waitFor(`document.querySelector('.dodge-button')?.disabled === true && document.querySelector('.game-root')?.getAttribute('data-tutorial-step') === '4'`, 'dodge touch response', 15_000);
 
 const scrollAfter = await evaluate(`({ x: window.scrollX, y: window.scrollY })`);
 if (scrollAfter.x !== scrollBefore.x || scrollAfter.y !== scrollBefore.y) {
