@@ -479,7 +479,7 @@ export function normalizeOperatorNetworkState(input: {
   legacyAllocatedNodes?: readonly string[];
   legacyUnspentPoints?: number;
 }): OperatorNetworkState {
-  const sourceAllocated = input.state?.schemaVersion === OPERATOR_NETWORK_SCHEMA_VERSION && Array.isArray(input.state.allocatedNodeIds)
+  const sourceAllocated = isSupportedOperatorNetworkSchemaVersion(input.state?.schemaVersion) && Array.isArray(input.state?.allocatedNodeIds)
     ? input.state.allocatedNodeIds
     : input.legacyAllocatedNodes ?? [];
   const uniqueSourceIds = [...new Set(sourceAllocated.filter((id): id is string => typeof id === 'string' && id.length > 0))];
@@ -491,8 +491,8 @@ export function normalizeOperatorNetworkState(input: {
     if (node?.kind === 'class-start' || node?.milestone) return total;
     return total + (node?.allocationCost ?? 1);
   }, 0);
-  const storedUnspent = input.state?.schemaVersion === OPERATOR_NETWORK_SCHEMA_VERSION
-    ? normalizedPointCount(input.state.unspentPoints)
+  const storedUnspent = isSupportedOperatorNetworkSchemaVersion(input.state?.schemaVersion)
+    ? normalizedPointCount(input.state?.unspentPoints)
     : normalizedPointCount(input.legacyUnspentPoints);
   const earnedLevelPoints = Math.max(0, Math.floor(input.level) - 1);
   const totalBudget = Math.max(earnedLevelPoints, storedUnspent + sourcePointEstimate);
