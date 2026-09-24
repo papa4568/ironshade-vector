@@ -53,7 +53,7 @@ import { modifierFamilyFor, recoveryQualityLabel, type ModifierFamily, type Modi
 import { augmentDefinition, frameIdentityDefinition, resolveFrameIdentity } from '../game/gearDepth';
 import { compareRarity, rarityClassToken, rarityDefinition, rarityDisplayLabel, rarityOrder, type ItemRarity } from '../game/rarity';
 import { accessibleAugmentSlots, compatibleAugments, craftingBuildIntegration, reconstructItem, reconstructionCost, reconstructionGradeCap, reconstructionPreview, reconstructionQualityCap, type ReconstructionAction } from '../game/reconstruction';
-import { craftingFamilyDefinitions, craftingMaterialDefinitions, craftingRulesForItem, craftingVerbDefinitions } from '../game/craftingRules';
+import { craftingFamilyDefinitions, craftingRulesForItem } from '../game/craftingRules';
 import { resourceLabels, type CampaignState, type ResourceId, type SalvageWallet } from '../game/campaign';
 import type { GuideSectionId } from '../game/guideContent';
 
