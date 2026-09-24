@@ -1,7 +1,12 @@
 import type { OperatorClassId } from './classSkills';
 import type { SpecializationId, WeaponId } from './sim';
 
-export const OPERATOR_NETWORK_SCHEMA_VERSION = 2 as const;
+export const OPERATOR_NETWORK_SCHEMA_VERSION = 3 as const;
+export const SUPPORTED_OPERATOR_NETWORK_SCHEMA_VERSIONS = [1, 2, OPERATOR_NETWORK_SCHEMA_VERSION] as const;
+
+export function isSupportedOperatorNetworkSchemaVersion(value: unknown): value is typeof SUPPORTED_OPERATOR_NETWORK_SCHEMA_VERSIONS[number] {
+  return typeof value === 'number' && (SUPPORTED_OPERATOR_NETWORK_SCHEMA_VERSIONS as readonly number[]).includes(value);
+}
 
 export const operatorNetworkBranches = ['Ballistics', 'Mobility', 'Systems', 'Survival', 'Engineering', 'Awareness'] as const;
 export type OperatorNetworkBranch = typeof operatorNetworkBranches[number];
@@ -80,6 +85,7 @@ export type OperatorNetworkState = {
   startNodeId: string;
   allocatedNodeIds: string[];
   unspentPoints: number;
+  plannedTargetNodeIds: string[];
 };
 
 export type OperatorNetworkRoute = {
@@ -461,6 +467,7 @@ export function createOperatorNetworkState(operatorClass: OperatorClassId, unspe
     startNodeId: operatorNetworkStartNodeForClass(operatorClass),
     allocatedNodeIds: [],
     unspentPoints: normalizedPointCount(unspentPoints),
+    plannedTargetNodeIds: [],
   };
 }
 
@@ -511,12 +518,24 @@ export function normalizeOperatorNetworkState(input: {
   const allocatedNodeIds = candidates;
   const usedPoints = allocatedNodeIds.reduce((total, id) => total + (operatorNetworkNode(id)?.allocationCost ?? 0), 0);
 
-  return {
+  const normalizedState: OperatorNetworkState = {
     schemaVersion: OPERATOR_NETWORK_SCHEMA_VERSION,
     startNodeId,
     allocatedNodeIds,
     unspentPoints: Math.max(0, totalBudget - usedPoints),
+    plannedTargetNodeIds: [],
   };
+  const sourcePlanTargets = input.state?.schemaVersion === OPERATOR_NETWORK_SCHEMA_VERSION && Array.isArray(input.state.plannedTargetNodeIds)
+    ? input.state.plannedTargetNodeIds
+    : [];
+  normalizedState.plannedTargetNodeIds = normalizeOperatorNetworkPlanTargets(normalizedState, sourcePlanTargets, {
+    level: input.level,
+    specialization: input.specialization,
+    // Campaign unlocks are monotonic. Profile-only save normalization keeps an authored target
+    // if it is otherwise legal; the live planner still applies the actual campaign unlock context.
+    unlockKeys: operatorNetworkNodes.map(node => node.unlockKey).filter((value): value is string => !!value),
+  });
+  return normalizedState;
 }
 
 export function operatorNetworkLegacyMirror(state: OperatorNetworkState) {
@@ -589,7 +608,9 @@ export function allocateOperatorNetworkNode(state: OperatorNetworkState, nodeId:
   const connected = operatorNetworkNeighbors(nodeId).some(neighborId => owned.has(neighborId));
   if (!connected) return { state, allocated: false, reason: 'not-connected' };
 
-  return { allocated: true, reason: 'allocated', state: { ...state, allocatedNodeIds: [...state.allocatedNodeIds, nodeId], unspentPoints: state.unspentPoints - node.allocationCost } };
+  const nextState: OperatorNetworkState = { ...state, allocatedNodeIds: [...state.allocatedNodeIds, nodeId], unspentPoints: state.unspentPoints - node.allocationCost };
+  nextState.plannedTargetNodeIds = normalizeOperatorNetworkPlanTargets(nextState, state.plannedTargetNodeIds, context);
+  return { allocated: true, reason: 'allocated', state: nextState };
 }
 
 export type OperatorNetworkRefundResult = {
@@ -678,6 +699,7 @@ export function rebuildOperatorNetworkState(state: OperatorNetworkState): Operat
       ...state,
       allocatedNodeIds: [],
       unspentPoints: state.unspentPoints + refundedPoints,
+      plannedTargetNodeIds: [],
     },
   };
 }
@@ -724,6 +746,32 @@ export function operatorNetworkRouteToNode(state: OperatorNetworkState, targetNo
     }
   }
   return null;
+}
+
+export function normalizeOperatorNetworkPlanTargets(state: OperatorNetworkState, targetNodeIds: readonly string[], context?: OperatorNetworkUnlockContext) {
+  const targets = [...new Set(targetNodeIds.filter((id): id is string => typeof id === 'string' && id.length > 0))];
+  const validationContext = operatorNetworkValidationContext([...state.allocatedNodeIds, ...targets], context);
+  const normalized: string[] = [];
+
+  for (const targetNodeId of targets) {
+    const node = operatorNetworkNode(targetNodeId);
+    if (!node || node.kind === 'class-start' || node.milestone) continue;
+    if (state.allocatedNodeIds.includes(targetNodeId)) continue;
+    if (node.weaponFamily && weaponFamilyByStartNodeId[state.startNodeId] !== node.weaponFamily) continue;
+    if (node.exclusiveGroup && state.allocatedNodeIds.some(id => id !== targetNodeId && operatorNetworkNode(id)?.exclusiveGroup === node.exclusiveGroup)) continue;
+    if (operatorNetworkContextReason(node, validationContext)) continue;
+    if (!operatorNetworkRouteToNode(state, targetNodeId, validationContext)) continue;
+    normalized.push(targetNodeId);
+  }
+
+  return normalized;
+}
+
+export function setOperatorNetworkPlanTargets(state: OperatorNetworkState, targetNodeIds: readonly string[], context?: OperatorNetworkUnlockContext): OperatorNetworkState {
+  return {
+    ...state,
+    plannedTargetNodeIds: normalizeOperatorNetworkPlanTargets(state, targetNodeIds, context),
+  };
 }
 
 export type OperatorNetworkPlan = {
