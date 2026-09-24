@@ -477,7 +477,12 @@ if (p15BuildLayout.horizontalOverflow > 2 || p15BuildLayout.tabCount !== 5 || p1
   throw new Error(`Android P15-B Build/Crafting/Progression layout failed: ${JSON.stringify(p15BuildLayout)}`);
 }
 
-for (const [nodeId, nodeName, touchId] of [['ballistics-3', 'Breach Doctrine', 71], ['mobility-1', 'Servo Timing', 72]]) {
+const plannerTargets = [
+  ['ballistics-3', 'Breach Doctrine', 71],
+  ['mobility-1', 'Servo Timing', 72],
+];
+for (let index = 0; index < plannerTargets.length; index += 1) {
+  const [nodeId, nodeName, touchId] = plannerTargets[index];
   const marked = await evaluate(`(() => {
     const nodeName = ${JSON.stringify(nodeName)};
     const nodeId = ${JSON.stringify(nodeId)};
@@ -492,6 +497,20 @@ for (const [nodeId, nodeName, touchId] of [['ballistics-3', 'Breach Doctrine', 7
   await tap(`button[data-p18-plan-node="${nodeId}"]`, touchId);
   await waitFor(`[...document.querySelectorAll('button')].some(button => (button.textContent || '').trim() === 'Plan this route')`, `plan action for ${nodeName}`);
   await tapButton('Plan this route', touchId + 10);
+
+  const expectedIds = plannerTargets.slice(0, index + 1).map(([id]) => id);
+  const expectedNames = plannerTargets.slice(0, index + 1).map(([, name]) => name);
+  await waitFor(`(() => {
+    const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+    const targets = state?.profile?.operatorNetwork?.plannedTargetNodeIds;
+    const planText = document.querySelector('.network-plan-card')?.textContent ?? '';
+    return state?.version === 4
+      && state?.operatorNetworkSchemaVersion === 3
+      && Array.isArray(targets)
+      && targets.join(',') === ${JSON.stringify(expectedIds.join(','))}
+      && planText.includes(${JSON.stringify(`${index + 1} target${index === 0 ? '' : 's'}`)})
+      && ${JSON.stringify(expectedNames)}.every(name => planText.includes(name));
+  })()`, `planner commit ${index + 1}/${plannerTargets.length} after ${nodeName}`, 20_000);
 }
 
 await waitFor(`(() => {
