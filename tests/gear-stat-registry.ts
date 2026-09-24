@@ -21,6 +21,7 @@ assert.deepEqual([...gearBuildTags], requiredTags, 'P8.5-D must keep the shared 
 assert.equal(validateGearStatRegistry(), true, 'Shared gear stat registry should be internally valid.');
 assert.equal(new Set(gearStatDefinitions.map(definition => definition.id)).size, gearStatDefinitions.length, 'Gear stat IDs must be unique.');
 assert.ok(gearStatDefinitions.length >= 50, 'P8.5-D should cover base, affix, global, skill-family, environment, and rule semantics.');
+assert.equal(gearStatDefinition('global.attack-speed').label, 'Attack Speed', 'Attack Speed must live in the shared gear/stat registry instead of a parallel progression table.');
 
 for (const definition of gearStatDefinitions) {
   assert.equal(gearStatDefinition(definition.id).id, definition.id, `Stat lookup failed for ${definition.id}.`);

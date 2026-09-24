@@ -21,6 +21,7 @@ export type OperatorNetworkStatId =
   | 'weapon-reload-mul'
   | 'weapon-armor-damage-mul'
   | 'weapon-knockback-mul'
+  | 'attack-speed-mul'
   | 'player-max-hp-add'
   | 'player-max-armor-add'
   | 'player-max-cap-add'
@@ -138,7 +139,7 @@ const coreWaveNodes: OperatorNetworkNode[] = [
   { id: 'awareness-fire-solution', kind: 'standard', branch: 'Awareness', name: 'Fire Solution', description: '+3% ability power.', allocationCost: 1, prerequisiteIds: ['awareness-trace-lane'], sector: 'core', effects: [{ stat: 'ability-power-mul', value: 1.03 }] },
   { id: 'awareness-range-table', kind: 'notable', branch: 'Awareness', name: 'Range Table', description: '+6 penetration and +3% class-skill range.', allocationCost: 1, prerequisiteIds: ['awareness-fire-solution'], sector: 'core', effects: [{ stat: 'weapon-penetration-add', value: 6 }, { stat: 'class-skill-range-mul', value: 1.03 }] },
   { id: 'awareness-sensor-lane', kind: 'travel', branch: 'Awareness', name: 'Sensor Lane', description: '+4 projectile penetration.', allocationCost: 1, prerequisiteIds: [], sector: 'core', effects: [{ stat: 'weapon-penetration-add', value: 4 }] },
-  { id: 'awareness-track-fusion', kind: 'standard', branch: 'Awareness', name: 'Track Fusion', description: '+3% class-skill control.', allocationCost: 1, prerequisiteIds: ['awareness-sensor-lane'], sector: 'core', effects: [{ stat: 'class-skill-control-mul', value: 1.03 }] },
+  { id: 'awareness-track-fusion', kind: 'standard', branch: 'Awareness', name: 'Track Fusion', description: '+3% Attack Speed and +3% class-skill control.', allocationCost: 1, prerequisiteIds: ['awareness-sensor-lane'], sector: 'core', effects: [{ stat: 'attack-speed-mul', value: 1.03 }, { stat: 'class-skill-control-mul', value: 1.03 }] },
   { id: 'awareness-predictive-window', kind: 'notable', branch: 'Awareness', name: 'Predictive Window', description: '+6% projectile velocity and +4% class-skill power.', allocationCost: 1, prerequisiteIds: ['awareness-track-fusion'], sector: 'core', effects: [{ stat: 'weapon-projectile-speed-mul', value: 1.06 }, { stat: 'class-skill-power-mul', value: 1.04 }] },
 ];
 

@@ -43,6 +43,7 @@ export default function PlayerStatsPanel({ profile, campaign }: Props) {
     { label: 'Armor', value: number(sim.player.maxArmor, 0), hint: 'Protective plating that absorbs incoming hits before health. Armor can be broken and restored independently.' },
     { label: 'Capacitor', value: number(sim.player.maxCapacitor, 0), hint: 'Energy available for MAG, MARK, ARC and Rail Lance capacitor costs.' },
     { label: 'Move speed', value: signedPct(build.player.moveSpeedMul), hint: 'Movement modifier from equipped gear, ship systems and progression. 0% is the standard operator pace.' },
+    { label: 'Attack Speed', value: signedPct(build.attackSpeedMul), hint: 'Raises weapon shots per second and assisted FIRE tracking turn speed together. 0% keeps both at the standard cadence.' },
     { label: 'Cap recharge', value: signedPct(build.player.capRegenMul), hint: 'How quickly capacitor energy comes back relative to the standard recharge rate.' },
     { label: 'Vacuum resistance', value: pct(build.player.vacuumResistance), hint: 'Reduces exposure damage and decompression danger. Higher values make damaged pressure environments safer.' },
     { label: 'Low-G control', value: `+${Math.round(build.player.lowGControl * 100)}%`, hint: 'Improves braking and directional control in low gravity, where momentum otherwise carries you farther.' },

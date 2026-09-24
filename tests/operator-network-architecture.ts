@@ -48,6 +48,7 @@ assert.equal(operatorNetworkNodes.filter(node => node.kind === 'mastery').length
 assert.equal(operatorNetworkNodes.filter(node => node.kind === 'keystone').length, 12, 'P9-C must expose two Keystone choices per branch.');
 assert.equal(operatorNetworkNodes.filter(node => node.kind === 'capstone').length, 6, 'P9-C must expose one Capstone per branch.');
 assert.equal(operatorNetworkCoreWaveNodes.every(node => (node.effects?.length ?? 0) > 0), true, 'Every P9-B core node must remain mechanically active.');
+assert.ok(operatorNetworkNode('awareness-track-fusion')?.effects?.some(effect => effect.stat === 'attack-speed-mul' && effect.value === 1.03), 'Track Fusion must provide the authored Operator Network source for canonical Attack Speed.');
 assert.equal(operatorNetworkClassWeaponNodes.every(node => !!node.weaponFamily && (node.effects?.length ?? 0) > 0), true, 'Every class weapon-sector node must remain family-owned and mechanically active.');
 assert.equal(operatorNetworkBuildDefiningNodes.every(node => (node.effects?.length ?? 0) > 0), true, 'Every P9-C node must change runtime combat state.');
 for (const branch of ['Ballistics', 'Mobility', 'Systems', 'Survival', 'Engineering', 'Awareness'] as const) {

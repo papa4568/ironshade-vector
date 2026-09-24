@@ -750,6 +750,45 @@ if (!fireObserved) {
   throw new Error(`Android FIRE control did not change magazine/heat after retry; webview=${JSON.stringify(state)}`);
 }
 
+await sleep(1_800);
+const controllerBefore = await evaluate(`document.querySelector('.fire-button small')?.textContent ?? ''`);
+const controllerSetup = await evaluate(`(() => {
+  const original = typeof navigator.getGamepads === 'function' ? navigator.getGamepads.bind(navigator) : null;
+  globalThis.__ironshadeSmokeOriginalGetGamepads = original;
+  globalThis.__ironshadeSmokeGamepad = {
+    connected: true,
+    axes: [0, 0, 0, 0],
+    buttons: Array.from({ length: 16 }, () => ({ pressed: false, value: 0 })),
+  };
+  Object.defineProperty(navigator, 'getGamepads', {
+    configurable: true,
+    value: () => [globalThis.__ironshadeSmokeGamepad],
+  });
+  return typeof navigator.getGamepads === 'function';
+})()`);
+if (!controllerSetup) throw new Error('Android controller smoke could not install a synthetic connected gamepad.');
+await waitFor(`document.querySelector('canvas')?.dataset.controllerInput === 'connected'`, 'controller connection', 10_000);
+await evaluate(`(() => {
+  const button = globalThis.__ironshadeSmokeGamepad?.buttons?.[7];
+  if (!button) return false;
+  button.pressed = true;
+  button.value = 1;
+  return true;
+})()`);
+await waitFor(`Boolean(document.querySelector('canvas')?.dataset.assistedTargetId)`, 'controller assisted target acquisition', 10_000);
+await waitFor(`(document.querySelector('.fire-button small')?.textContent ?? '') !== ${JSON.stringify(controllerBefore)}`, 'controller assisted FIRE response', 12_000);
+const controllerTargetId = await evaluate(`document.querySelector('canvas')?.dataset.assistedTargetId ?? ''`);
+await evaluate(`(() => {
+  const button = globalThis.__ironshadeSmokeGamepad?.buttons?.[7];
+  if (button) { button.pressed = false; button.value = 0; }
+  const original = globalThis.__ironshadeSmokeOriginalGetGamepads;
+  if (original) Object.defineProperty(navigator, 'getGamepads', { configurable: true, value: original });
+  delete globalThis.__ironshadeSmokeGamepad;
+  delete globalThis.__ironshadeSmokeOriginalGetGamepads;
+  return true;
+})()`);
+console.log(`ANDROID_CONTROLLER_TARGETING_SMOKE_PASS target=${controllerTargetId} trigger=R2 acquisition=assisted fire=confirmed`);
+
 const arsenalLock = await evaluate(`({
   mobileCycleAbsent: document.querySelector('.weapon-cycle') === null,
   desktopSelectorAbsent: document.querySelector('.desktop-weapons') === null,

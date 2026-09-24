@@ -1834,6 +1834,49 @@ function prepareAcquisitionState() {
   return state;
 }
 
+const neutralCadenceState = createSimulation();
+assert.equal(neutralCadenceState.build.attackSpeedMul, 1, 'neutral combat builds must keep Attack Speed at the canonical 1.0x baseline');
+assert.equal(neutralCadenceState.weapons.carbine.rate, weaponConfigs.carbine.rate, '1.0x Attack Speed must preserve authored weapon cadence');
+
+const attackSpeedProfile = createDefaultProfile();
+attackSpeedProfile.allocatedNodes = ['awareness-track-fusion'];
+const attackSpeedBuild = deriveCombatBuild(attackSpeedProfile);
+assert.ok(Math.abs(attackSpeedBuild.attackSpeedMul - 1.03) < 1e-9, 'Track Fusion should author an attainable +3% Attack Speed source through the Operator Network');
+const attackSpeedFireState = createSimulation(attackSpeedBuild);
+assert.ok(Math.abs(attackSpeedFireState.weapons.breacher.rate / weaponConfigs.breacher.rate - attackSpeedBuild.attackSpeedMul) < 1e-9, 'Attack Speed must multiply weapon shots-per-second directly');
+attackSpeedFireState.player.currentWeapon = 'breacher';
+assert.equal(triggerFire(attackSpeedFireState), true, 'Attack Speed cadence test should fire the class-owned Breacher');
+assert.ok(Math.abs(attackSpeedFireState.player.fireCooldown - 1 / attackSpeedFireState.weapons.breacher.rate) < 1e-9, 'shot cooldown must be derived from the Attack Speed-adjusted weapon rate');
+
+function assistedTurnAfterOneStep(mode: 'light' | 'balanced', attackSpeedMul: number, unrelatedTuning = false) {
+  const state = prepareAcquisitionState();
+  state.build.attackSpeedMul = attackSpeedMul;
+  state.player.currentWeapon = 'breacher';
+  if (unrelatedTuning) {
+    state.weapons.breacher.projectileSpeed *= 2.5;
+    state.weapons.breacher.reloadSeconds *= 0.4;
+  }
+  const target = state.enemies[0]!;
+  Object.assign(target, {
+    active: true,
+    id: 199,
+    x: state.player.x + Math.cos(0.4) * 240,
+    y: state.player.y + Math.sin(0.4) * 240,
+    role: 'suppressor' as const,
+  });
+  const memory = createTargetControlMemory();
+  assert.equal(updateMobileTargetControl(state, mode, memory), 199, `${mode} assist should acquire the cadence test target`);
+  return Math.abs(Math.atan2(state.player.aim.y, state.player.aim.x));
+}
+
+const balancedBaselineTurn = assistedTurnAfterOneStep('balanced', 1);
+const lightBaselineTurn = assistedTurnAfterOneStep('light', 1);
+const attackSpeedTurn = assistedTurnAfterOneStep('balanced', attackSpeedBuild.attackSpeedMul);
+const unrelatedTurn = assistedTurnAfterOneStep('balanced', 1, true);
+assert.ok(Math.abs(balancedBaselineTurn - lightBaselineTurn) < 1e-9, 'Light and Balanced assist may change target selection, but not assisted tracking turn speed');
+assert.ok(Math.abs(unrelatedTurn - balancedBaselineTurn) < 1e-9, 'projectile velocity and reload tuning must not speed up assisted tracking');
+assert.ok(Math.abs(attackSpeedTurn / balancedBaselineTurn - attackSpeedBuild.attackSpeedMul) < 1e-9, 'Attack Speed must scale assisted lock-on rotation by the same multiplier used for firing cadence');
+
 const stickyTargetState = prepareAcquisitionState();
 const stickyPrimary = stickyTargetState.enemies[0]!;
 const stickyChallenger = stickyTargetState.enemies[1]!;
