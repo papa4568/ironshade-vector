@@ -285,8 +285,10 @@ if (plannerPersistenceOnly) {
       && !state.profile.operatorNetwork.allocatedNodeIds.includes('mobility-1');
   })()`, 'persisted Operator Network plan after cold relaunch', 45_000);
 
-  await waitFor(`[...document.querySelectorAll('button')].some(button => (button.textContent || '').trim().toLowerCase() === 'equipment')`, 'Command Deck after cold relaunch');
-  await tapButton('Equipment', 81);
+  await waitFor(`[...document.querySelectorAll('button[data-primary-area]')].some(button => (button.getAttribute('aria-label') || '').trim().toLowerCase() === 'operator')`, 'Command Deck after cold relaunch');
+  await tapButton('Operator', 81);
+  await waitFor(`[...document.querySelectorAll('.operator-section-tabs button')].some(button => (button.textContent || '').trim().toLowerCase() === 'build')`, 'Operator build route after cold relaunch');
+  await tapButton('Build', 82);
   await waitFor(`document.querySelector('.build-header h1')?.textContent?.trim() === 'Build'`, 'Build after cold relaunch');
   const progressionTabMarked = await evaluate(`(() => {
     const button = [...document.querySelectorAll('.build-tabs button')].find(candidate => (candidate.textContent || '').trim().toLowerCase().startsWith('progression'));
@@ -462,7 +464,9 @@ if (!commandLayout.landscape || !commandLayout.rail || !commandLayout.workspace 
 }
 console.log(`ANDROID_MOBILE_MENU_PASS viewport=${Math.round(commandLayout.viewport.width)}x${Math.round(commandLayout.viewport.height)} destinations=${commandLayout.primaryCount} safe=onscreen+separated overflow=${Math.max(0, commandLayout.verticalOverflow)}px`);
 
-await tapButton('Equipment', 31);
+await tapButton('Operator', 31);
+await waitFor(`Boolean(document.querySelector('.ship-hub.area-operator') && [...document.querySelectorAll('.operator-section-tabs button')].some(button => (button.textContent || '').trim() === 'Build'))`, 'Android compact Operator build route');
+await tapButton('Build', 32);
 await waitFor(`(() => {
   const text = document.body?.innerText ?? '';
   const buttons = [...document.querySelectorAll('button')].map(button => (button.textContent || '').trim());
@@ -769,8 +773,10 @@ await waitFor(`(() => {
     && !state.profile.operatorNetwork.allocatedNodeIds.includes('mobility-1');
 })()`, 'persisted multi-target Operator Network plan', 20_000);
 await tapButton('Return to ship', 75);
-await waitFor(`[...document.querySelectorAll('button')].some(button => (button.textContent || '').trim().toLowerCase() === 'equipment')`, 'Command Deck after planner close');
-await tapButton('Equipment', 76);
+await waitFor(`[...document.querySelectorAll('button[data-primary-area]')].some(button => (button.getAttribute('aria-label') || '').trim().toLowerCase() === 'operator')`, 'Command Deck after planner close');
+await tapButton('Operator', 76);
+await waitFor(`[...document.querySelectorAll('.operator-section-tabs button')].some(button => (button.textContent || '').trim().toLowerCase() === 'build')`, 'Operator build route after planner close');
+await tapButton('Build', 77);
 await waitFor(`document.querySelector('.build-header h1')?.textContent?.trim() === 'Build'`, 'Build reopened after planner close');
 await tapButton('Progression', 77);
 await waitFor(`(() => {
