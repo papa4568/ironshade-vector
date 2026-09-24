@@ -77,9 +77,11 @@ assert(
 assert(
   armory.includes('aria-label="Item comparison"')
     && armory.includes('className="inspector-scroll" tabIndex={0}')
-    && armory.includes('BASE / IMPLICIT')
-    && armory.includes('LOADOUT IMPACT'),
-  'P15-B gear inspection must retain the readable DOM comparison hierarchy on mobile.',
+    && armory.includes('PRIMARY EFFECT')
+    && armory.includes('KEY LOADOUT CHANGES')
+    && armory.includes('<ActionRequirement presentation={equipRequirement} />')
+    && armory.includes('<ProgressiveDisclosure triggerLabel="Details"'),
+  'P15-B/P18-E gear inspection must retain a readable decision-first DOM hierarchy with shared deep details on mobile.',
 );
 
 assert(
