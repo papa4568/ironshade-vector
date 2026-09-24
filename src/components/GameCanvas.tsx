@@ -1464,7 +1464,7 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
             ? { kind: 'tutorial', ...tutorialCue }
             : null;
 
-  return <div className={`game-root class-${hud.classId}`} data-mission-presentation="non-blocking-cues" onContextMenu={event => event.preventDefault()}>
+  return <div className={`game-root class-${hud.classId}`} data-mission-presentation="non-blocking-cues" data-tutorial-step={tutorialStep} onContextMenu={event => event.preventDefault()}>
     {!coarse && deploymentCueVisible && !hud.dead && !hud.complete && <div className={`mission-cinematic deployment-cue ${profileSettings.effectIntensity === 'reduced' ? 'reduced-motion' : ''}`} data-presentation="deployment" role="status" aria-live="polite" aria-atomic="true"><small>DROP VECTOR // OP T{activeMission.operationTier ?? 1} · ML {activeMission.monsterLevel ?? 1}</small><b>{activeMission.title}</b><span>{activeMission.locationName} // {activeMission.objective}</span><em>{activeMission.conditionLabels.slice(0, 2).join(' · ') || activeMission.directorPreview}</em></div>}
     {!coarse && bossTransitionCue && !hud.dead && !hud.complete && <div className={`mission-cinematic boss-transition-cue ${profileSettings.effectIntensity === 'reduced' ? 'reduced-motion' : ''}`} data-presentation="boss-transition" role="status" aria-live="polite" aria-atomic="true"><small>{bossTransitionCue.kicker}</small><b>{bossTransitionCue.title}</b><span>{bossTransitionCue.detail}</span></div>}
     <div className="mission-chip">OP T{activeMission.operationTier ?? 1} // ML {activeMission.monsterLevel ?? 1} // {activeMission.locationName.toUpperCase()} <span className="mission-build-label">// {buildLabel.toUpperCase()}</span></div>
