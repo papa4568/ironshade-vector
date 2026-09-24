@@ -37,6 +37,7 @@ import {
   specializationGearSynergyForProfile,
   capstoneInteractionFor,
   setProfileSettings,
+  setOperatorNetworkPlanTargets,
   unequipSlot,
   xpProgress,
   type AbilityId,
@@ -507,7 +508,6 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
   const [gearRarity, setGearRarity] = useState<RarityFilter>('all');
   const [networkQuery, setNetworkQuery] = useState('');
   const [networkFocusId, setNetworkFocusId] = useState<string | null>(null);
-  const [networkPlanTargets, setNetworkPlanTargets] = useState<string[]>([]);
   const buildRef = useRef<HTMLElement>(null);
   const selected = profile.inventory.find(item => item.id === selectedId) ?? null;
   const progress = xpProgress(profile);
@@ -554,6 +554,7 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
   }, [profile, profile.inventory, profile.equipped, profile.level, operatorClass, newLootIds, gearQuery, gearFilter, gearRarity, gearSort]);
   const groups = useMemo(() => { const result = new Map<string, typeof progressionNodes>(); for (const node of progressionNodes.filter(entry => !entry.specialization)) result.set(node.branch, [...(result.get(node.branch) ?? []), node]); return result; }, []);
   const operatorNetwork = useMemo(() => normalizeOperatorNetworkState({ operatorClass, level: profile.level, specialization: profile.specialization, state: profile.operatorNetwork, legacyAllocatedNodes: profile.allocatedNodes, legacyUnspentPoints: profile.progressionPoints }), [operatorClass, profile.level, profile.specialization, profile.operatorNetwork, profile.allocatedNodes, profile.progressionPoints]);
+  const networkPlanTargets = operatorNetwork.plannedTargetNodeIds;
   const operatorNetworkContext = useMemo<OperatorNetworkUnlockContext>(() => ({ level: profile.level, specialization: profile.specialization, unlockKeys: specializationNetworkUnlockKeys(campaign) }), [profile.level, profile.specialization, campaign.story.blackLattice.status, campaign.story.postKhepri.status, campaign.story.interdiction.status, campaign.story.parallaxDebt.status, campaign.escalation.status, campaign.reputation.meridian, campaign.reputation.longarc, campaign.reputation.heliostat]);
   const specializationNetworkNodes = useMemo(() => progressionNodes.filter(node => node.specialization === profile.specialization), [profile.specialization]);
   const networkSearchResults = useMemo(() => {
@@ -613,6 +614,24 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
     if (value === 'reconstruct' && !selectedId && profile.inventory[0]) setSelectedId(profile.inventory[0].id);
     requestAnimationFrame(() => buildRef.current?.scrollTo({ top: 0, left: 0, behavior: 'auto' }));
   };
+  const setNetworkPlanTargets = (next: string[] | ((current: string[]) => string[])) => {
+    onProfileChange(current => {
+      const currentNetwork = normalizeOperatorNetworkState({
+        operatorClass: operatorClassForProfile(current),
+        level: current.level,
+        specialization: current.specialization,
+        state: current.operatorNetwork,
+        legacyAllocatedNodes: current.allocatedNodes,
+        legacyUnspentPoints: current.progressionPoints,
+      });
+      const nextTargets = typeof next === 'function' ? next(currentNetwork.plannedTargetNodeIds) : next;
+      return setOperatorNetworkPlanTargets(current, nextTargets, {
+        ...operatorNetworkContext,
+        level: current.level,
+        specialization: current.specialization,
+      });
+    });
+  };
   const toggleNetworkPlanTarget = (nodeId: string) => {
     setNetworkPlanTargets(current => current.includes(nodeId) ? current.filter(id => id !== nodeId) : [...current, nodeId]);
   };
@@ -647,7 +666,6 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
     return () => window.removeEventListener('keydown', closeInspector);
   }, [selectedId]);
   useEffect(() => {
-    setNetworkPlanTargets([]);
     setNetworkFocusId(null);
     setNetworkQuery('');
   }, [operatorClass, profile.specialization]);
@@ -728,7 +746,6 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
     const outcome = `${result.message}${cost > 0 ? ` // ${cost} credits consumed.` : ' // Field-trial recalibration is free.'}`;
     onProfileChange(result.profile);
     spendNetworkRecalibrationCredits(cost, outcome);
-    setNetworkPlanTargets(current => current.filter(id => id !== nodeId));
     setMessage(outcome);
   };
   const runNetworkRebuild = () => {
@@ -748,7 +765,6 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
     const outcome = `${result.message}${networkRebuildCost > 0 ? ` // ${networkRebuildCost} credits consumed.` : ' // Field-trial rebuild is free.'}`;
     onProfileChange(result.profile);
     spendNetworkRecalibrationCredits(networkRebuildCost, outcome);
-    setNetworkPlanTargets([]);
     setNetworkFocusId(null);
     setMessage(outcome);
   };
@@ -774,7 +790,7 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
         {networkQuery && <div className="network-search-results" aria-label="Operator Network search results">{networkSearchResults.length ? networkSearchResults.map(node => <button key={node.id} className={networkFocusId === node.id ? 'selected' : ''} onClick={() => setNetworkFocusId(node.id)}><small>{node.branch} · {node.kind}</small><b>{node.name}</b><span>{node.description}</span></button>) : <span className="network-search-empty">No class-compatible Network nodes match “{networkQuery}”.</span>}</div>}
         <div className="network-planner-body">
           <article className="network-focus-card">
-            {networkFocusedNode ? <><small>FOCUSED NODE // {networkFocusedNode.branch.toUpperCase()}</small><h3>{networkFocusedNode.name}</h3><p>{networkFocusedNode.description}</p><div className="network-focus-route">{profile.allocatedNodes.includes(networkFocusedNode.id) ? <b>ALLOCATED // ACTIVE NOW</b> : networkFocusedNode.milestone ? <b>{operatorNetworkMilestoneActive(operatorNetwork, networkFocusedNode.id, operatorNetworkContext) ? 'MILESTONE ONLINE' : 'MILESTONE LOCKED'}</b> : networkFocusedRoute ? <><b>ROUTE PREVIEW // {networkFocusedRoute.pointCost} PT · {networkFocusedRoute.nodeIds.length} NODE{networkFocusedRoute.nodeIds.length === 1 ? '' : 'S'}</b><span>{networkFocusedRoute.nodeIds.map(id => progressionNodes.find(node => node.id === id)?.name ?? id).join(' → ')}</span></> : <b>NO LEGAL ROUTE FROM CURRENT BUILD</b>}</div><div className="network-focus-actions">{!networkFocusedNode.milestone && !profile.allocatedNodes.includes(networkFocusedNode.id) && networkFocusedRoute && <button className={networkPlanTargets.includes(networkFocusedNode.id) ? 'active' : ''} onClick={() => toggleNetworkPlanTarget(networkFocusedNode.id)}>{networkPlanTargets.includes(networkFocusedNode.id) ? 'Remove from plan' : 'Plan this route'}</button>}{profile.allocatedNodes.includes(networkFocusedNode.id) && !networkFocusedNode.milestone && <button disabled={campaign.resources.credits < focusedRefundCost} onClick={() => runNetworkRefund(networkFocusedNode.id)}>Refund node · {focusedRefundCost > 0 ? `${focusedRefundCost} cr` : 'FREE'}</button>}<button disabled={!!networkFocusedNode.milestone || profile.allocatedNodes.includes(networkFocusedNode.id) || !networkFocusedRoute || networkFocusedRoute.nodeIds.length !== 1 || profile.progressionPoints < networkFocusedNode.allocationCost} onClick={() => { applyResult(allocateNode(profile, networkFocusedNode.id, operatorNetworkContext)); setNetworkPlanTargets(current => current.filter(id => id !== networkFocusedNode.id)); }}>Allocate now</button></div></> : <><small>FOCUSED NODE</small><h3>Select a Network node</h3><p>Tap a node, use search, press the arrow keys, or use a controller D-pad to inspect it without spending a point.</p></>}
+            {networkFocusedNode ? <><small>FOCUSED NODE // {networkFocusedNode.branch.toUpperCase()}</small><h3>{networkFocusedNode.name}</h3><p>{networkFocusedNode.description}</p><div className="network-focus-route">{profile.allocatedNodes.includes(networkFocusedNode.id) ? <b>ALLOCATED // ACTIVE NOW</b> : networkFocusedNode.milestone ? <b>{operatorNetworkMilestoneActive(operatorNetwork, networkFocusedNode.id, operatorNetworkContext) ? 'MILESTONE ONLINE' : 'MILESTONE LOCKED'}</b> : networkFocusedRoute ? <><b>ROUTE PREVIEW // {networkFocusedRoute.pointCost} PT · {networkFocusedRoute.nodeIds.length} NODE{networkFocusedRoute.nodeIds.length === 1 ? '' : 'S'}</b><span>{networkFocusedRoute.nodeIds.map(id => progressionNodes.find(node => node.id === id)?.name ?? id).join(' → ')}</span></> : <b>NO LEGAL ROUTE FROM CURRENT BUILD</b>}</div><div className="network-focus-actions">{!networkFocusedNode.milestone && !profile.allocatedNodes.includes(networkFocusedNode.id) && networkFocusedRoute && <button className={networkPlanTargets.includes(networkFocusedNode.id) ? 'active' : ''} onClick={() => toggleNetworkPlanTarget(networkFocusedNode.id)}>{networkPlanTargets.includes(networkFocusedNode.id) ? 'Remove from plan' : 'Plan this route'}</button>}{profile.allocatedNodes.includes(networkFocusedNode.id) && !networkFocusedNode.milestone && <button disabled={campaign.resources.credits < focusedRefundCost} onClick={() => runNetworkRefund(networkFocusedNode.id)}>Refund node · {focusedRefundCost > 0 ? `${focusedRefundCost} cr` : 'FREE'}</button>}<button disabled={!!networkFocusedNode.milestone || profile.allocatedNodes.includes(networkFocusedNode.id) || !networkFocusedRoute || networkFocusedRoute.nodeIds.length !== 1 || profile.progressionPoints < networkFocusedNode.allocationCost} onClick={() => applyResult(allocateNode(profile, networkFocusedNode.id, operatorNetworkContext))}>Allocate now</button></div></> : <><small>FOCUSED NODE</small><h3>Select a Network node</h3><p>Tap a node, use search, press the arrow keys, or use a controller D-pad to inspect it without spending a point.</p></>}
           </article>
           <article className="network-plan-card">
             <div className="network-plan-heading"><div><small>PLANNED BUILD</small><b>{networkPlanTargets.length ? `${networkPlanTargets.length} target${networkPlanTargets.length === 1 ? '' : 's'}` : 'No targets yet'}</b></div>{networkPlanTargets.length > 0 && <button onClick={() => setNetworkPlanTargets([])}>Clear plan</button>}</div>
