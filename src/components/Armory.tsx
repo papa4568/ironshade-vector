@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import '../part3.css';
 import '../part11.css';
 import '../part12.css';
@@ -395,11 +395,115 @@ function ReconstructionBench({ item, profile, campaign, lockedFamily, onLockFami
   const specializationCraftingLink = buildIntegration.specializationHookActive && (itemMatchesSpecializationGearSynergy(profile, item) || buildIntegration.recipeAffixIds.length > 0 || buildIntegration.recipeAugmentIds.length > 0);
   const preview = pendingAction ? reconstructionPreview(profile, campaign.resources, fabrication, item, pendingAction) : null;
   const craftHistory = profile.craftHistory ?? [];
+  const craftingAccessRequirement: RequirementPresentation = craftLocked
+    ? {
+        state: 'blocked',
+        label: 'Class-family Reconstruction unavailable',
+        reason: buildIntegration.classRule,
+        nextRequirement: `Select ${slotLabels[buildIntegration.activeWeaponFamily]} or class-compatible support equipment before using modifier Reconstruction. Augment extraction remains available.`,
+      }
+    : {
+        state: 'ready',
+        label: 'Frame ready for Reconstruction',
+        detail: 'Choose an action to review its exact cost, outcome, and risk before any salvage is spent.',
+      };
+  const controlTierRequirement: RequirementPresentation = fabrication >= 2
+    ? {
+        state: 'active',
+        label: 'Microforge T2 control online',
+        detail: 'Precision Add, protected Replace, and volatile control are available when the frame rules allow them.',
+      }
+    : {
+        state: 'blocked',
+        label: 'Protected control requires Microforge T2',
+        reason: `Microforge T${fabrication} cannot use Precision Add, protected Replace, or volatile control.`,
+        nextRequirement: 'Upgrade the ship Microforge to tier 2 for deterministic premium control.',
+      };
+  const modifierCapacityRequirement: RequirementPresentation = item.rarity === 'Singular'
+    ? {
+        state: 'blocked',
+        label: 'Singular modifier package is fixed',
+        reason: 'Singular explicit modifiers cannot be added, removed, rerouted, replaced, or elevated.',
+        nextRequirement: 'Use frame Improve or compatible Augment socket/extract, or choose a non-Singular frame for modifier work.',
+      }
+    : fabrication < 1
+      ? {
+          state: 'blocked',
+          label: 'Adding modifiers requires Microforge T1',
+          reason: 'The current Microforge cannot add or reroute explicit modifiers.',
+          nextRequirement: 'Upgrade the ship Microforge to tier 1.',
+        }
+      : item.modifiers.length >= modifierLimit
+        ? {
+            state: 'blocked',
+            label: 'Explicit modifier capacity full',
+            reason: `${item.rarity} equipment is at its ${modifierLimit}-modifier Reconstruction limit.`,
+            nextRequirement: 'Remove or replace an explicit modifier before adding another.',
+          }
+        : {
+            state: 'ready',
+            label: 'Modifier slot available',
+            detail: `${modifierLimit - item.modifiers.length} explicit modifier slot${modifierLimit - item.modifiers.length === 1 ? '' : 's'} remain on this frame.`,
+          };
+  const augmentSocketRequirement: RequirementPresentation = craftLocked
+    ? {
+        state: 'blocked',
+        label: 'Augment installation is class-family locked',
+        reason: buildIntegration.classRule,
+        nextRequirement: 'Use class-compatible equipment to install Augments. Installed Augments may still be extracted.',
+      }
+    : installed.length >= accessibleSockets
+      ? {
+          state: 'blocked',
+          label: 'No open Augment socket',
+          reason: `${installed.length}/${accessibleSockets} currently accessible sockets are occupied.`,
+          nextRequirement: accessibleSockets < (item.augmentSlots ?? 0) && fabrication < 2
+            ? `Extract an installed Augment or upgrade the Microforge to unlock another socket.`
+            : 'Extract an installed Augment before installing another.',
+        }
+      : {
+          state: 'ready',
+          label: 'Augment socket available',
+          detail: `${accessibleSockets - installed.length} of ${accessibleSockets} accessible socket${accessibleSockets === 1 ? '' : 's'} available now.`,
+        };
+  const craftingPreviewRequirement: RequirementPresentation | null = preview
+    ? preview.blockedReason
+      ? {
+          state: 'blocked',
+          label: 'Selected craft is blocked',
+          reason: preview.blockedReason,
+          nextRequirement: /microforge tier 2/i.test(preview.blockedReason)
+            ? 'Upgrade the ship Microforge to tier 2, then review this action again.'
+            : /microforge tier 1/i.test(preview.blockedReason)
+              ? 'Upgrade the ship Microforge to tier 1, then review this action again.'
+              : /socket/i.test(preview.blockedReason)
+                ? 'Free or unlock the required Augment socket, then review this action again.'
+                : /recovery level/i.test(preview.blockedReason)
+                  ? 'Choose a legal lower grade/target or recover a higher-Recovery-Level frame.'
+                  : /class-family/i.test(preview.blockedReason)
+                    ? 'Use class-compatible equipment for this Reconstruction action.'
+                    : 'Resolve the listed restriction, then review this action again.',
+        }
+      : !preview.canAfford
+        ? {
+            state: 'blocked',
+            label: 'Missing salvage',
+            reason: `This craft costs ${costLabel(preview.cost)}, and current stock cannot cover it.`,
+            nextRequirement: `Recover enough salvage to cover ${costLabel(preview.cost)} before confirming.`,
+          }
+        : {
+            state: 'active',
+            label: 'Selected for review',
+            detail: `Exact cost: ${costLabel(preview.cost)}. Nothing is spent until you confirm.`,
+          }
+    : null;
   return (
     <section className="reconstruction-bench" data-crafting-surface="true">
       <header className="bench-heading"><div><small>SELECTED FRAME</small><h2>{item.name}</h2><p>{identity.name} · GEN {item.frameGeneration ?? 1} · RL {item.recoveryLevel ?? 1} · <RarityText rarity={item.rarity} /></p></div><strong>MICROFORGE T{fabrication}</strong></header>
+      <ActionRequirement presentation={craftingAccessRequirement} />
       <div className="bench-frame"><div><b>FRAME QUALITY // {item.equipmentQuality ?? 0}/{reconstructionQualityCap(fabrication)}</b><span>{item.frameImplicit}</span><small>BASE FRAME ONLY // Improves the inherent frame property; explicit modifier grades and Augments do not scale with quality.</small></div><button disabled={craftLocked} onClick={() => onPreview(qualityAction)}>Improve +2<small>{costLabel(reconstructionCost(item, qualityAction, fabrication, profile))}</small></button></div>
       <div className="bench-caps"><span>GRADE CONTROL // G{reconstructionGradeCap(fabrication)} MAX</span><span>AUGMENT ACCESS // {accessibleSockets}/{item.augmentSlots ?? 0} SOCKETS</span></div>
+      <ActionRequirement presentation={controlTierRequirement} />
       <section className="craft-trust-contract" aria-label="Crafting trust review">
         <header><div><small>P10-E // CRAFT REVIEW</small><b>Review first. Salvage spends only after confirmation.</b></div><span>EXACT COST · RESULT SPACE · BEFORE / AFTER</span></header>
         {!preview && <div className="craft-review-empty"><b>Select any crafting action to review it.</b><span>The bench will show exact costs, guaranteed and possible outcomes, exclusions, risk, and the resulting frame state before anything is spent.</span></div>}
@@ -411,6 +515,7 @@ function ReconstructionBench({ item, profile, campaign, lockedFamily, onLockFami
             <article className="risk"><small>EXCLUSIONS / RISK</small>{preview.exclusions.map(line => <span key={line}>{line}</span>)}{preview.risk.map(line => <span key={line}>{line}</span>)}</article>
           </div>
           <div className="craft-before-after"><article><small>BEFORE</small><b>{preview.before}</b></article><article><small>AFTER</small><b>{preview.after}</b></article></div>
+          {craftingPreviewRequirement && <ActionRequirement presentation={craftingPreviewRequirement} />}
           <div className="craft-review-actions"><button type="button" data-crafting-back="true" onClick={onCancelPreview}>Back to bench</button><button type="button" data-crafting-confirm="true" className="primary" disabled={!!preview.blockedReason || !preview.canAfford} onClick={() => pendingAction && onConfirm(pendingAction)}>{preview.blockedReason ? 'Action blocked' : !preview.canAfford ? 'Need more salvage' : 'Confirm craft'}</button></div>
         </div>}
       </section>
@@ -449,6 +554,7 @@ function ReconstructionBench({ item, profile, campaign, lockedFamily, onLockFami
         <div className="crafting-family-guide">
           {familyOrder.map(family => <article key={family}><small>{craftingFamilyDefinitions[family].label} FAMILY</small><span>{craftingFamilyDefinitions[family].role}</span><b>{rules.familyCounts[family]} INSTALLED</b></article>)}
         </div>
+        <ProgressiveDisclosure triggerLabel="How Reconstruction rules work" eyebrow="Reconstruction help" heading="Reconstruction rules, materials & control tiers" className="crafting-help-sheet">
         <div className="crafting-material-strip" aria-label="Reconstruction material tiers">
           <article className="common">
             <small>COMMON // ORDINARY SALVAGE</small>
@@ -503,6 +609,7 @@ function ReconstructionBench({ item, profile, campaign, lockedFamily, onLockFami
             <span>{item.rarity === 'Singular' ? buildIntegration.singularRule : buildIntegration.qualityRule + ' Augments remain fixed-utility hardware with their own slot compatibility.'}</span>
           </div>
         </section>
+        </ProgressiveDisclosure>
         <div className="crafting-legal-pool">
           {familyOrder.map(family => {
             const entries = rules.pool.filter(entry => entry.family === family);
@@ -547,7 +654,9 @@ function ReconstructionBench({ item, profile, campaign, lockedFamily, onLockFami
           </article>;
         })}
       </div>
+      <ActionRequirement presentation={modifierCapacityRequirement} />
       <div className="add-mod-row"><b>ADD MODIFIER // {item.modifiers.length}/{modifierLimit}</b>{(['core', 'systems'] as ModifierFamily[]).map(family => { const action: ReconstructionAction = { kind: 'add', family }; return <button key={family} disabled={craftLocked || fabrication < 1 || item.rarity === 'Singular' || item.modifiers.length >= modifierLimit} onClick={() => onPreview(action)}>Add {family}<small>{costLabel(reconstructionCost(item, action, fabrication, profile))}</small></button>; })}</div>
+      <ActionRequirement presentation={augmentSocketRequirement} />
       <section className="augment-bench"><header><b>AUGMENT HARDWARE // SOCKET / EXTRACT</b><span>{installed.length}/{accessibleSockets} accessible sockets occupied · max 2 normal sockets · no grades</span></header>{installed.length > 0 && <div className="installed-augments">{installed.map(id => { const augment = augmentDefinition(id); const action: ReconstructionAction = { kind: 'removeAugment', augmentId: id }; return <article key={id}><div><small>{augment.hardware}</small><b>{augment.name}</b><span>{augment.description} TRADEOFF // {augment.tradeoff}</span></div><button onClick={() => onPreview(action)}>Extract<small>{costLabel(reconstructionCost(item, action, fabrication, profile))}</small></button></article>; })}</div>}<div className="augment-options">{compatible.map(augment => { const action: ReconstructionAction = { kind: 'installAugment', augmentId: augment.id }; return <button key={augment.id} disabled={craftLocked || installed.length >= accessibleSockets} onClick={() => onPreview(action)}><small>{buildIntegration.recipeAugmentIds.includes(augment.id) ? 'SPECIALIZATION RECIPE' : 'SOCKET'}</small><b>{augment.name}</b><span>{augment.description}</span><small>TRADEOFF // {augment.tradeoff}</small><em>{costLabel(reconstructionCost(item, action, fabrication, profile))}</em></button>; })}</div></section>
       <section className="craft-history" aria-label="Craft history">
         <header><div><small>P10-E // CRAFT HISTORY</small><b>Last {Math.min(12, craftHistory.length)} confirmed action{craftHistory.length === 1 ? '' : 's'}</b></div><span>Receipts persist with the operator save.</span></header>
@@ -647,23 +756,52 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
     { label: 'Vacuum resist', before: `${Math.round(currentCombatBuild.player.vacuumResistance * 100)}%`, after: `${Math.round(plannedCombatBuild.player.vacuumResistance * 100)}%` },
   ];
   const focusedRefundCost = networkFocusedNode && profile.allocatedNodes.includes(networkFocusedNode.id) ? operatorNetworkRespecCreditCost(profile.level, 1, 'node') : 0;
-  const focusedAllocationRequirement: RequirementPresentation | null = (() => {
-    if (!networkFocusedNode) return null;
-    if (networkFocusedNode.milestone) {
-      const active = operatorNetworkMilestoneActive(operatorNetwork, networkFocusedNode.id, operatorNetworkContext);
+  const networkRequirementFor = (node: (typeof progressionNodes)[number], route: ReturnType<typeof operatorNetworkRouteToNode>): RequirementPresentation => {
+    if (node.milestone) {
+      const active = operatorNetworkMilestoneActive(operatorNetwork, node.id, operatorNetworkContext);
       return active
         ? { state: 'active', label: 'Milestone online', detail: 'This milestone condition is satisfied and its effect is active now.' }
         : {
             state: 'blocked',
-            label: 'Milestone locked',
+            label: 'Milestone condition not met',
             reason: 'Milestones activate through their authored unlock condition instead of spending a progression point.',
-            nextRequirement: networkFocusedNode.unlockLabel ? `Meet ${networkFocusedNode.unlockLabel}.` : 'Meet the listed milestone condition and required Network route.',
+            nextRequirement: node.unlockLabel ? `Meet ${node.unlockLabel}.` : 'Meet the listed milestone condition and required Network route.',
           };
     }
-    if (profile.allocatedNodes.includes(networkFocusedNode.id)) {
+    if (profile.allocatedNodes.includes(node.id)) {
       return { state: 'active', label: 'Node allocated', detail: 'This node is part of the active Operator Network build.' };
     }
-    if (!networkFocusedRoute) {
+    if (node.minLevel && profile.level < node.minLevel) {
+      return {
+        state: 'blocked',
+        label: `Requires operator level ${node.minLevel}`,
+        reason: `This node requires LV ${node.minLevel}; the current operator is LV ${profile.level}.`,
+        nextRequirement: `Reach operator level ${node.minLevel}.`,
+      };
+    }
+    if (node.weaponFamily && node.weaponFamily !== activeWeaponFamily) {
+      const owner = operatorClassDefinitions.find(definition => operatorWeaponFamilyForClass(definition.id) === node.weaponFamily);
+      return {
+        state: 'blocked',
+        label: `${slotLabels[node.weaponFamily]} belongs to another class family`,
+        reason: `${operatorClassDefinition.name} owns ${slotLabels[activeWeaponFamily]}, not the ${slotLabels[node.weaponFamily]} sector.`,
+        nextRequirement: owner
+          ? `Switch operator class to ${owner.name}, or choose a ${slotLabels[activeWeaponFamily]} / universal Network route.`
+          : `Choose a ${slotLabels[activeWeaponFamily]} or universal Network route.`,
+      };
+    }
+    if (node.exclusiveGroup) {
+      const committedAlternative = progressionNodes.find(other => other.id !== node.id && other.exclusiveGroup === node.exclusiveGroup && profile.allocatedNodes.includes(other.id));
+      if (committedAlternative) {
+        return {
+          state: 'blocked',
+          label: 'Exclusive Keystone choice already active',
+          reason: `${committedAlternative.name} already occupies this exclusive Keystone choice.`,
+          nextRequirement: `Refund ${committedAlternative.name} or rebuild the Operator Network before allocating ${node.name}.`,
+        };
+      }
+    }
+    if (!route) {
       return {
         state: 'blocked',
         label: 'No legal route',
@@ -671,33 +809,55 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
         nextRequirement: 'Choose a class-compatible adjacent node that extends the route toward this target.',
       };
     }
-    if (networkFocusedRoute.nodeIds.length !== 1) {
-      const nextNodeId = networkFocusedRoute.nodeIds[0];
-      const nextNode = progressionNodes.find(node => node.id === nextNodeId);
+    if (route.nodeIds.length !== 1) {
+      const nextNodeId = route.nodeIds[0];
+      const nextNode = progressionNodes.find(candidate => candidate.id === nextNodeId);
       return {
         state: 'blocked',
         label: 'Route not adjacent',
-        reason: `This target is ${networkFocusedRoute.nodeIds.length} nodes away and cannot be allocated directly.`,
+        reason: `This target is ${route.nodeIds.length} nodes away and cannot be allocated directly.`,
         nextRequirement: nextNode ? `Allocate ${nextNode.name} next, or keep this target in the planner.` : 'Allocate the next node in the previewed route, or keep this target in the planner.',
       };
     }
-    const pointShortfall = Math.max(0, networkFocusedNode.allocationCost - profile.progressionPoints);
+    const pointShortfall = Math.max(0, node.allocationCost - profile.progressionPoints);
     if (pointShortfall > 0) {
       return {
         state: 'blocked',
         label: 'More progression points needed',
-        reason: `${networkFocusedNode.allocationCost} pt required · ${profile.progressionPoints} pt available.`,
+        reason: `${node.allocationCost} pt required · ${profile.progressionPoints} pt available.`,
         nextRequirement: `Gain ${pointShortfall} more progression point${pointShortfall === 1 ? '' : 's'}.`,
       };
     }
     return {
       state: 'ready',
       label: 'Ready to allocate',
-      detail: `Spend ${networkFocusedNode.allocationCost} progression point${networkFocusedNode.allocationCost === 1 ? '' : 's'} to activate this node now.`,
+      detail: `Spend ${node.allocationCost} progression point${node.allocationCost === 1 ? '' : 's'} to activate this node now.`,
     };
-  })();
+  };
+  const focusedAllocationRequirement: RequirementPresentation | null = networkFocusedNode
+    ? networkRequirementFor(networkFocusedNode, networkFocusedRoute)
+    : null;
   const networkRebuildCost = operatorNetworkRespecCreditCost(profile.level, operatorNetwork.allocatedNodeIds.length, 'rebuild');
   const experimentationIsFree = profile.level <= 8;
+  const networkRebuildRequirement: RequirementPresentation = operatorNetwork.allocatedNodeIds.length === 0
+    ? {
+        state: 'blocked',
+        label: 'Operator Network already clear',
+        reason: 'There are no allocated nodes to refund.',
+        nextRequirement: 'Allocate at least one progression node before using a full rebuild.',
+      }
+    : campaign.resources.credits < networkRebuildCost
+      ? {
+          state: 'blocked',
+          label: 'More credits needed for rebuild',
+          reason: `${networkRebuildCost} credits required · ${campaign.resources.credits} available.`,
+          nextRequirement: `Recover ${networkRebuildCost - campaign.resources.credits} more credits before rebuilding.`,
+        }
+      : {
+          state: 'ready',
+          label: 'Full rebuild ready',
+          detail: networkRebuildCost > 0 ? `Spend ${networkRebuildCost} credits to refund every allocated progression node.` : 'Field-trial rebuild is free at this level.',
+        };
   const allocatedBuildDefiningNodes = progressionNodes.filter(node => (node.kind === 'mastery' || node.kind === 'keystone' || node.kind === 'capstone') && profile.allocatedNodes.includes(node.id)).length;
   const ownedWeaponSectorNodes = progressionNodes.filter(node => node.weaponFamily === activeWeaponFamily).length;
   const loadoutItems = useMemo(() => Object.fromEntries(loadoutSlots.map(slot => [slot, itemForSlot(profile, slot)])) as Record<EquipmentSlot, Item | undefined>, [profile.equipped, profile.inventory, operatorClass]);
@@ -932,10 +1092,11 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
             <div className="network-route-preview"><small>AGGREGATE PATH</small><span>{networkPlanNodeNames.length ? networkPlanNodeNames.join(' → ') : 'Add a target to preview the lowest-cost legal path. Shared route nodes are counted once.'}</span></div>
           </article>
         </div>
-        <div className="network-stat-preview" aria-label="Planned build before and after math"><small className="network-stat-title">BEFORE / AFTER BUILD MATH</small>{networkPlannerMetrics.map(metric => <span key={metric.label} className={metric.before !== metric.after ? 'changed' : ''}><small>{metric.label}</small><b>{metric.before} <i>→</i> {metric.after}</b></span>)}</div>
+        <ProgressiveDisclosure triggerLabel="View planned build math" eyebrow="Progression details" heading="Planned build before / after math"><div className="network-stat-preview" aria-label="Planned build before and after math"><small className="network-stat-title">BEFORE / AFTER BUILD MATH</small>{networkPlannerMetrics.map(metric => <span key={metric.label} className={metric.before !== metric.after ? 'changed' : ''}><small>{metric.label}</small><b>{metric.before} <i>→</i> {metric.after}</b></span>)}</div><p>Planner math is a preview only. Points are spent only by an eligible Allocate action.</p></ProgressiveDisclosure>
         <section className="network-recalibration" aria-label="Operator Network recalibration">
           <div><small>P9-F // RECALIBRATION</small><b>{experimentationIsFree ? 'Field trials are free through level 8' : 'High-level rebuilds consume credits'}</b><span>Refunding a node is allowed only when every remaining allocation still has a legal connected route. A full rebuild returns every spent progression point without changing class, gear, skills, or campaign unlocks.</span></div>
-          <div className="network-recalibration-actions"><span><small>CREDITS</small><b>{campaign.resources.credits}</b></span><span><small>ALLOCATED</small><b>{operatorNetwork.allocatedNodeIds.length}</b></span><span><small>FULL REBUILD</small><b>{networkRebuildCost > 0 ? `${networkRebuildCost} cr` : 'FREE'}</b></span><button disabled={operatorNetwork.allocatedNodeIds.length === 0 || campaign.resources.credits < networkRebuildCost} onClick={runNetworkRebuild}>Rebuild Operator Network</button></div>
+          <ActionRequirement presentation={networkRebuildRequirement} />
+          <div className="network-recalibration-actions"><span><small>CREDITS</small><b>{campaign.resources.credits}</b></span><span><small>ALLOCATED</small><b>{operatorNetwork.allocatedNodeIds.length}</b></span><span><small>FULL REBUILD</small><b>{networkRebuildCost > 0 ? `${networkRebuildCost} cr` : 'FREE'}</b></span><button disabled={networkRebuildRequirement.state !== 'ready'} onClick={runNetworkRebuild}>Rebuild Operator Network</button></div>
         </section>
       </section>
       <section className="operator-class-panel iv-panel" aria-label="Operator classes">
@@ -946,13 +1107,13 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
       </section>
       <section className={`specialization-panel iv-panel ${profile.level < 15 ? 'locked' : ''}`}>
         <header><div><small>LV15+ // {operatorClassDefinition.name.toUpperCase()} SPECIALIZATIONS</small><b>Choose a deep class path with an explicit tradeoff</b><span>Specializations deepen your active class while the wider progression tree and universal support gear stay open. Switching operator class clears an incompatible specialization, stows the previous class armament, and restores the newly owned weapon family without rewriting progression nodes.</span></div>{profile.specialization && profile.level >= 15 && <button onClick={() => { onProfileChange(setSpecialization(profile, null)); setMessage('Specialization cleared; class, Network allocations, and equipment are unchanged.'); }}>Clear specialization</button>}</header>
-        {profile.level < 15 ? <div className="specialization-lock"><b>REACH OPERATOR LEVEL 15</b><span>Your class, gear resonance, Lenses, and Network remain fully active before specialization unlocks.</span></div> : <><div className="specialization-grid">{availableSpecializations.map(definition => { const selectedSpec = profile.specialization === definition.id; const gearLink = specializationGearSynergyDefinitions.find(entry => entry.specialization === definition.id); return <article key={definition.id} className={selectedSpec ? 'selected' : ''}><button className="specialization-select" onClick={() => { onProfileChange(setSpecialization(profile, definition.id)); setMessage(`${definition.name} specialization active // ${definition.tradeoff}`); }}><small>{definition.identity}</small><b>{definition.name}</b><span>{definition.description}</span><em>TRADEOFF // {definition.tradeoff}</em></button>{selectedSpec && <div className="overclock-row"><div><b>LV16 OVERCLOCK</b><span>{profile.level >= 16 ? definition.overclock : 'Reach level 16 to unlock the optional overclock.'}</span><small>{profile.level >= 16 ? `TRADEOFF // ${definition.overclockTradeoff}` : 'LOCKED'}</small></div><button disabled={profile.level < 16} className={profile.specializationOverclock ? 'active' : ''} onClick={() => { const next = !profile.specializationOverclock; onProfileChange(setSpecializationOverclock(profile, next)); setMessage(`${definition.name} overclock ${next ? 'enabled' : 'disabled'}.`); }}>{profile.specializationOverclock ? 'Overclock on' : 'Enable overclock'}</button></div>}{selectedSpec && gearLink && <div className="overclock-row gear-link-row"><div><b>GEAR LINK // {gearLink.name}</b><span>{gearLink.description}</span><small>{activeGearSynergy?.active ? `ACTIVE // ${activeGearSynergy.matchingItemIds.length} MATCHED FRAME${activeGearSynergy.matchingItemIds.length === 1 ? '' : 'S'}` : `REQUIRES // ${gearLink.requirement}`}</small></div><strong>{activeGearSynergy?.active ? 'ONLINE' : 'BUILDING'}</strong></div>}</article>; })}</div>{profile.specialization && <div className="specialization-grid" aria-label="Specialization Operator Network route">{specializationNetworkNodes.map(node => { const milestoneActive = !!node.milestone && operatorNetworkMilestoneActive(operatorNetwork, node.id, operatorNetworkContext); const allocated = profile.allocatedNodes.includes(node.id); const route = operatorNetworkRouteToNode(operatorNetwork, node.id, operatorNetworkContext); const active = milestoneActive || allocated; const adjacent = !!route && route.nodeIds.length === 1; const lacksPoints = profile.progressionPoints < node.allocationCost; const locked = !!node.milestone || allocated || !adjacent || lacksPoints; return <article key={node.id} className={active ? 'selected' : ''}><div className="overclock-row gear-link-row"><div><b>{node.kind.replace('specialization-', '').toUpperCase()} // {node.name}</b><span>{node.description}</span><small>{node.unlockLabel ? `UNLOCK // ${node.unlockLabel}` : node.minLevel ? `MILESTONE // LV${node.minLevel} + prior Network node` : 'NETWORK ROUTE'}</small></div>{node.milestone ? <strong>{milestoneActive ? 'ONLINE' : 'LOCKED'}</strong> : <button disabled={locked} onClick={() => applyResult(allocateNode(profile, node.id, operatorNetworkContext))}>{allocated ? 'ALLOCATED' : route ? `Allocate ${node.allocationCost} pt` : 'LOCKED'}</button>}</div></article>; })}</div>}</>}
+        {profile.level < 15 ? <div className="specialization-lock"><ActionRequirement presentation={{ state: 'blocked', label: 'Specializations require operator level 15', reason: `Current operator is LV ${profile.level}.`, nextRequirement: 'Reach operator level 15. Your class, gear resonance, Lenses, and Network remain active while leveling.' }} /></div> : <><div className="specialization-grid">{availableSpecializations.map(definition => { const selectedSpec = profile.specialization === definition.id; const gearLink = specializationGearSynergyDefinitions.find(entry => entry.specialization === definition.id); return <article key={definition.id} className={selectedSpec ? 'selected' : ''}><button className="specialization-select" onClick={() => { onProfileChange(setSpecialization(profile, definition.id)); setMessage(`${definition.name} specialization active // ${definition.tradeoff}`); }}><small>{definition.identity}</small><b>{definition.name}</b><span>{definition.description}</span><em>TRADEOFF // {definition.tradeoff}</em></button>{selectedSpec && <div className="overclock-row"><div><b>LV16 OVERCLOCK</b><span>{profile.level >= 16 ? definition.overclock : 'Reach level 16 to unlock the optional overclock.'}</span><small>{profile.level >= 16 ? `TRADEOFF // ${definition.overclockTradeoff}` : 'LOCKED'}</small></div><button disabled={profile.level < 16} className={profile.specializationOverclock ? 'active' : ''} onClick={() => { const next = !profile.specializationOverclock; onProfileChange(setSpecializationOverclock(profile, next)); setMessage(`${definition.name} overclock ${next ? 'enabled' : 'disabled'}.`); }}>{profile.specializationOverclock ? 'Overclock on' : 'Enable overclock'}</button></div>}{selectedSpec && gearLink && <div className="overclock-row gear-link-row"><div><b>GEAR LINK // {gearLink.name}</b><span>{gearLink.description}</span><small>{activeGearSynergy?.active ? `ACTIVE // ${activeGearSynergy.matchingItemIds.length} MATCHED FRAME${activeGearSynergy.matchingItemIds.length === 1 ? '' : 'S'}` : `REQUIRES // ${gearLink.requirement}`}</small></div><strong>{activeGearSynergy?.active ? 'ONLINE' : 'BUILDING'}</strong></div>}</article>; })}</div>{profile.specialization && <div className="specialization-grid" aria-label="Specialization Operator Network route">{specializationNetworkNodes.map(node => { const milestoneActive = !!node.milestone && operatorNetworkMilestoneActive(operatorNetwork, node.id, operatorNetworkContext); const allocated = profile.allocatedNodes.includes(node.id); const route = operatorNetworkRouteToNode(operatorNetwork, node.id, operatorNetworkContext); const active = milestoneActive || allocated; const requirement = networkRequirementFor(node, route); return <article key={node.id} className={active ? 'selected' : ''}><div className="overclock-row gear-link-row"><div><b>{node.kind.replace('specialization-', '').toUpperCase()} // {node.name}</b><span>{node.description}</span><small>{node.unlockLabel ? `UNLOCK // ${node.unlockLabel}` : node.minLevel ? `MILESTONE // LV${node.minLevel} + prior Network node` : 'NETWORK ROUTE'}</small></div>{node.milestone ? <strong>{milestoneActive ? 'ONLINE' : 'CONDITION PENDING'}</strong> : <button disabled={requirement.state !== 'ready'} onClick={() => applyResult(allocateNode(profile, node.id, operatorNetworkContext))}>{allocated ? 'Allocated' : `Allocate ${node.allocationCost} pt`}</button>}</div><ActionRequirement presentation={requirement} /></article>; })}</div>}</>}
       </section>
       <div className="network-wave-summary" aria-label="Deep Operator Network core wave status"><span><small>AUTHORED NODES</small><b>{progressionNodes.length + 3}</b></span><span><small>ALLOCATED</small><b>{profile.allocatedNodes.length}</b></span><span><small>BUILD-DEFINING ONLINE</small><b>{allocatedBuildDefiningNodes}</b></span><span><small>{operatorClassDefinition.name.toUpperCase()} WEAPON SECTOR</small><b>{ownedWeaponSectorNodes} NODES</b></span></div>
       <div className="network-grid">{[...groups.entries()].map(([branch, nodes]) => <article key={branch} className={`network-branch ${classBranchAffinities.has(branch) ? 'class-affinity' : ''}`}><h3>{branch}{classBranchAffinities.has(branch) && <small>{operatorClassDefinition.name} affinity</small>}</h3>{nodes.map(node => { const allocated = profile.allocatedNodes.includes(node.id); const route = operatorNetworkRouteToNode(operatorNetwork, node.id, operatorNetworkContext); const wrongArsenal = !!node.weaponFamily && node.weaponFamily !== activeWeaponFamily; const exclusiveChoice = !!node.exclusiveGroup && progressionNodes.some(other => other.id !== node.id && other.exclusiveGroup === node.exclusiveGroup && profile.allocatedNodes.includes(other.id)); const lacksPoints = profile.progressionPoints < node.allocationCost; const focused = networkFocusId === node.id; const planned = networkPlan.nodeIds.includes(node.id); const previewed = !!networkFocusedRoute?.nodeIds.includes(node.id); return <button type="button" data-network-node="true" key={node.id} aria-pressed={focused} className={`${allocated ? 'allocated' : ''} ${focused ? 'focused' : ''} ${planned ? 'planned' : ''} ${previewed ? 'route-preview' : ''} ${node.major ? 'major' : ''} ${node.weaponFamily ? 'weapon-sector' : ''} ${node.weaponFamily === activeWeaponFamily ? 'owned-weapon-sector' : ''}`} onFocus={() => setNetworkFocusId(node.id)} onClick={() => setNetworkFocusId(node.id)}><span>{node.kind === 'standard' ? '' : `${node.kind.toUpperCase()} // `}{node.name}</span><small className="network-node-meta">{node.kind.toUpperCase()} · {node.weaponFamily ? `${slotLabels[node.weaponFamily].toUpperCase()} SECTOR` : `${node.sector.toUpperCase()} SECTOR`} · {node.allocationCost} PT</small><small>{node.description}</small>{allocated ? <em>Allocated · active now</em> : exclusiveChoice ? <em>Alternative Keystone already committed in this branch</em> : wrongArsenal ? <em>{slotLabels[node.weaponFamily!]} belongs to another class arsenal</em> : route && route.nodeIds.length > 1 ? <em>Route {route.pointCost} pts // {route.nodeIds.length} nodes away · select to plan</em> : !route ? <em>No legal route from current class origin</em> : lacksPoints ? <em>Ready route · gain another progression point</em> : <em>Ready to allocate · select for actions</em>}</button>; })}</article>)}</div>
     </section>}
     {tab === 'protocols' && <section className="protocol-panel">
-      <div className="section-copy"><h2>Class Skills</h2><p>Read every skill in the same order: Class Skill → Weapon Family → Lens/Evolution → Specialization/Capstone. The owned weapon family shapes skill tuning, while Lenses and class Evolutions change behavior without binding a skill to one specific weapon item.</p></div>
+      <div className="section-copy"><h2>Class Skills</h2><p>Choose Standard, a Lens, or a class Evolution for each skill. Immediate tradeoffs stay on the option; level and capstone requirements appear beside the action.</p><ProgressiveDisclosure triggerLabel="How Skills progression works" eyebrow="Skills help" heading="Class Skills progression"><p>Each skill reads Class Skill → Weapon Family → Lens/Evolution → Specialization/Capstone. The owned weapon family shapes skill tuning, while Lenses and class Evolutions change behavior without binding a skill to one specific weapon item.</p><p>Standard and shared Lenses are immediately selectable. Class Evolutions require their listed operator level; matching Evolutions and specializations can form capstone links.</p></ProgressiveDisclosure></div>
       <section className="skill-path-overview" aria-label="Class skill hierarchy">
         <article className="active"><small>1 // CLASS</small><b>{operatorClassDefinition.name}</b><span>{activeAbilityKit.map(ability => ability.shortName).join(' · ')}</span></article>
         <article className="active"><small>2 // WEAPON FAMILY</small><b>{slotLabels[activeWeaponFamily]}</b><span>{activeWeaponItem?.name ?? 'Required class armament'} · family-linked skill tuning</span></article>
@@ -979,23 +1140,34 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
           </div>
           <div className="skill-option-group">
             <small>STANDARD</small>
-            <button data-skill-slot={ability} data-skill-mod="standard" className={!selectedModId ? 'selected' : ''} aria-pressed={!selectedModId} onClick={() => onProfileChange(setAbilityMod(profile, ability, null))}><b>{operatorClassDefinition.name} Standard</b><span>Use the native {kitAbility.name} behavior with no additional lens tradeoff.</span></button>
+            <button data-skill-slot={ability} data-skill-mod="standard" className={!selectedModId ? 'selected' : ''} aria-pressed={!selectedModId} onClick={() => onProfileChange(setAbilityMod(profile, ability, null))}><b>{operatorClassDefinition.name} Standard</b><span>Use the native {kitAbility.name} behavior with no additional lens tradeoff.</span><small>{!selectedModId ? 'ACTIVE NOW' : 'READY NOW'}</small></button>
           </div>
           <div className="skill-option-group">
             <small>SHARED LENSES</small>
-            {sharedMods.map(mod => <button key={mod.id} data-skill-slot={ability} data-skill-mod={mod.id} className={selectedModId === mod.id ? 'selected' : ''} aria-pressed={selectedModId === mod.id} onClick={() => { onProfileChange(setAbilityMod(profile, ability, mod.id)); setMessage(`${mod.name} installed on ${kitAbility.name}.`); }}><b>{mod.name}</b><span>{mod.description}</span><small>SHARED LENS // TRADEOFF // {mod.tradeoff}</small></button>)}
+            {sharedMods.map(mod => <button key={mod.id} data-skill-slot={ability} data-skill-mod={mod.id} className={selectedModId === mod.id ? 'selected' : ''} aria-pressed={selectedModId === mod.id} onClick={() => { onProfileChange(setAbilityMod(profile, ability, mod.id)); setMessage(`${mod.name} installed on ${kitAbility.name}.`); }}><b>{mod.name}</b><span>{mod.description}</span><small>{selectedModId === mod.id ? 'ACTIVE NOW' : 'READY NOW'} · SHARED LENS // TRADEOFF // {mod.tradeoff}</small></button>)}
           </div>
           <div className="skill-option-group skill-evolution-group">
             <small>CLASS EVOLUTIONS</small>
             {evolutionMods.map(mod => {
-              const locked = profile.level < (mod.minLevel ?? 1);
+              const requiredLevel = mod.minLevel ?? 1;
+              const locked = profile.level < requiredLevel;
               const capstone = capstoneInteractionFor(profile, mod.id);
-              return <button key={mod.id} data-skill-slot={ability} data-skill-mod={mod.id} disabled={locked} className={selectedModId === mod.id ? 'selected' : ''} aria-pressed={selectedModId === mod.id} onClick={() => { onProfileChange(setAbilityMod(profile, ability, mod.id)); setMessage(`${mod.name} installed on ${kitAbility.name}.`); }}>
+              const skillEvolutionRequirement: RequirementPresentation = selectedModId === mod.id
+                ? { state: 'active', label: `${mod.name} active`, detail: `${kitAbility.name} is using this class Evolution now.` }
+                : locked
+                  ? {
+                      state: 'blocked',
+                      label: `Requires operator level ${requiredLevel}`,
+                      reason: `${mod.name} requires LV ${requiredLevel}; the current operator is LV ${profile.level}.`,
+                      nextRequirement: `Reach operator level ${requiredLevel} to install this Evolution.`,
+                    }
+                  : { state: 'ready', label: `${mod.name} ready`, detail: `Install this Evolution on ${kitAbility.name}. Its tradeoff remains visible above.` };
+              return <Fragment key={mod.id}><button data-skill-slot={ability} data-skill-mod={mod.id} disabled={locked} className={selectedModId === mod.id ? 'selected' : ''} aria-pressed={selectedModId === mod.id} onClick={() => { onProfileChange(setAbilityMod(profile, ability, mod.id)); setMessage(`${mod.name} installed on ${kitAbility.name}.`); }}>
                 <b>{mod.name}</b>
-                <span>{locked ? `Unlocks at LV${mod.minLevel}. ${mod.description}` : mod.description}</span>
-                <small>LV{mod.minLevel} {operatorClassDefinition.name.toUpperCase()} EVOLUTION // TRADEOFF // {mod.tradeoff}</small>
+                <span>{mod.description}</span>
+                <small>LV{requiredLevel} {operatorClassDefinition.name.toUpperCase()} EVOLUTION // TRADEOFF // {mod.tradeoff}</small>
                 {capstone ? <small>CAPSTONE LINK // {capstone.name} // {capstone.description}</small> : activeSpecializationDefinition && !locked ? <small>SPECIALIZATION // {activeSpecializationDefinition.name} active · no capstone pairing on this Evolution</small> : null}
-              </button>;
+              </button><ActionRequirement presentation={skillEvolutionRequirement} /></Fragment>;
             })}
           </div>
         </article>;
