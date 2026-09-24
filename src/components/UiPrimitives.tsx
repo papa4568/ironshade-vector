@@ -46,7 +46,7 @@ export function ActionRequirement({ presentation }: { presentation: RequirementP
 
 type ProgressiveDisclosureProps = {
   triggerLabel: string;
-  title: string;
+  heading: string;
   eyebrow?: string;
   children: ReactNode;
   className?: string;
@@ -58,7 +58,7 @@ function focusableElements(container: HTMLElement) {
   )].filter(element => !element.hasAttribute('hidden') && element.getAttribute('aria-hidden') !== 'true');
 }
 
-export function ProgressiveDisclosure({ triggerLabel, title, eyebrow = 'Details', children, className = '' }: ProgressiveDisclosureProps) {
+export function ProgressiveDisclosure({ triggerLabel, heading, eyebrow = 'Details', children, className = '' }: ProgressiveDisclosureProps) {
   const [open, setOpen] = useState(false);
   const labelId = useId();
   const historyMarker = useId();
@@ -151,7 +151,7 @@ export function ProgressiveDisclosure({ triggerLabel, title, eyebrow = 'Details'
         <header className="iv-disclosure-sheet__header">
           <div>
             <small className="iv-label">{eyebrow}</small>
-            <h2 id={labelId}>{title}</h2>
+            <h2 id={labelId}>{heading}</h2>
           </div>
           <button type="button" className="iv-disclosure-sheet__close" aria-label="Close details" onClick={dismiss}>Close</button>
         </header>
