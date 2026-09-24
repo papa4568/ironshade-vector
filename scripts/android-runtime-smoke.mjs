@@ -285,8 +285,10 @@ if (plannerPersistenceOnly) {
       && !state.profile.operatorNetwork.allocatedNodeIds.includes('mobility-1');
   })()`, 'persisted Operator Network plan after cold relaunch', 45_000);
 
-  await waitFor(`[...document.querySelectorAll('button')].some(button => (button.textContent || '').trim().toLowerCase() === 'equipment')`, 'Command Deck after cold relaunch');
-  await tapButton('Equipment', 81);
+  await waitFor(`Boolean(document.querySelector('.command-rail-nav button[aria-label="Operator"]'))`, 'Command Deck after cold relaunch');
+  await tapButton('Operator', 81);
+  await waitFor(`Boolean(document.querySelector('.operator-section-tabs'))`, 'Operator sections after cold relaunch');
+  await tapButton('Build', 82);
   await waitFor(`document.querySelector('.build-header h1')?.textContent?.trim() === 'Build'`, 'Build after cold relaunch');
   const progressionTabMarked = await evaluate(`(() => {
     const button = [...document.querySelectorAll('.build-tabs button')].find(candidate => (candidate.textContent || '').trim().toLowerCase().startsWith('progression'));
@@ -907,10 +909,12 @@ await waitFor(`(() => {
     && !state.profile.operatorNetwork.allocatedNodeIds.includes('mobility-1');
 })()`, 'persisted multi-target Operator Network plan', 20_000);
 await tapButton('Return to ship', 75);
-await waitFor(`[...document.querySelectorAll('button')].some(button => (button.textContent || '').trim().toLowerCase() === 'equipment')`, 'Command Deck after planner close');
-await tapButton('Equipment', 76);
+await waitFor(`Boolean(document.querySelector('.command-rail-nav button[aria-label="Operator"]'))`, 'Command Deck after planner close');
+await tapButton('Operator', 76);
+await waitFor(`Boolean(document.querySelector('.operator-section-tabs'))`, 'Operator sections after planner close');
+await tapButton('Build', 77);
 await waitFor(`document.querySelector('.build-header h1')?.textContent?.trim() === 'Build'`, 'Build reopened after planner close');
-await tapButton('Progression', 77);
+await tapButton('Progression', 78);
 await waitFor(`(() => {
   const text = document.querySelector('.network-plan-card')?.textContent ?? '';
   return text.includes('2 targets') && text.includes('Breach Doctrine') && text.includes('Servo Timing');
