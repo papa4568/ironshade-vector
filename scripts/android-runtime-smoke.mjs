@@ -421,50 +421,188 @@ if (startup.title !== 'Ironshade Vector' || !(startupText.toLowerCase().includes
   throw new Error(`Unexpected Android startup surface: ${JSON.stringify(startup)}`);
 }
 
-const commandLayout = await evaluate(`(() => {
-  const viewport = {
-    width: window.visualViewport?.width ?? window.innerWidth,
-    height: window.visualViewport?.height ?? window.innerHeight,
-  };
-  const visible = element => {
-    if (!element) return false;
-    const style = getComputedStyle(element);
-    const rect = element.getBoundingClientRect();
-    return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0 && rect.width > 0 && rect.height > 0;
-  };
-  const bounds = element => {
-    if (!visible(element)) return null;
-    const rect = element.getBoundingClientRect();
-    return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
-  };
-  const rail = bounds(document.querySelector('.command-rail'));
-  const workspaceElement = document.querySelector('.tactical-workspace');
-  const workspace = bounds(workspaceElement);
-  const overview = bounds(document.querySelector('.command-overview'));
-  const primaryButtons = [...document.querySelectorAll('.command-rail-nav button')].filter(visible).map(button => ({
-    label: button.getAttribute('aria-label') || button.textContent?.trim() || '',
-    rect: bounds(button),
-  }));
-  const offscreen = primaryButtons.filter(item => item.rect && (item.rect.left < -1 || item.rect.top < -1 || item.rect.right > viewport.width + 1 || item.rect.bottom > viewport.height + 1)).map(item => item.label);
-  const undersized = primaryButtons.filter(item => item.rect && item.rect.height < 40).map(item => item.label);
-  const overlap = !!rail && !!workspace && !(rail.right <= workspace.left || workspace.right <= rail.left || rail.bottom <= workspace.top || workspace.bottom <= rail.top);
-  const verticalOverflow = workspaceElement ? workspaceElement.scrollHeight - workspaceElement.clientHeight : null;
-  const scrollTop = workspaceElement?.scrollTop ?? null;
-  return { viewport, rail, workspace, overview, primaryCount: primaryButtons.length, offscreen, undersized, overlap, verticalOverflow, scrollTop, landscape: viewport.width > viewport.height };
-})()`);
-const commandDoesNotFit = commandLayout.verticalOverflow === null
-  || commandLayout.verticalOverflow > 2
-  || commandLayout.scrollTop !== 0
-  || !commandLayout.overview
-  || commandLayout.overview.bottom > commandLayout.workspace.bottom + 2;
-if (!commandLayout.landscape || !commandLayout.rail || !commandLayout.workspace || commandLayout.primaryCount !== 5 || commandLayout.offscreen.length || commandLayout.undersized.length || commandLayout.overlap || commandDoesNotFit) {
-  throw new Error(`Android Tactical Command navigation/fit failed viewport checks: ${JSON.stringify(commandLayout)}`);
+async function p19bCommandLayout() {
+  return evaluate(`(() => {
+    const viewport = {
+      width: window.visualViewport?.width ?? window.innerWidth,
+      height: window.visualViewport?.height ?? window.innerHeight,
+    };
+    const visible = element => {
+      if (!element) return false;
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0 && rect.width > 0 && rect.height > 0;
+    };
+    const bounds = element => {
+      if (!visible(element)) return null;
+      const rect = element.getBoundingClientRect();
+      return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
+    };
+    const rail = bounds(document.querySelector('.command-rail'));
+    const workspace = bounds(document.querySelector('.tactical-workspace'));
+    const buttons = [...document.querySelectorAll('.command-rail-nav button')].filter(visible).map(button => {
+      const label = button.querySelector('b');
+      return {
+        label: button.getAttribute('aria-label') || button.textContent?.trim() || '',
+        rect: bounds(button),
+        fontSize: label ? Number.parseFloat(getComputedStyle(label).fontSize) : 0,
+      };
+    });
+    const layout = !rail || !workspace
+      ? 'unknown'
+      : rail.width > rail.height && rail.top >= workspace.bottom - 2
+        ? 'dock'
+        : rail.height > rail.width && rail.right <= workspace.left + 2
+          ? 'rail'
+          : 'unknown';
+    const offscreen = buttons.filter(item => item.rect && (item.rect.left < -1 || item.rect.top < -1 || item.rect.right > viewport.width + 1 || item.rect.bottom > viewport.height + 1)).map(item => item.label);
+    const overlap = !!rail && !!workspace && !(rail.right <= workspace.left + 1 || workspace.right <= rail.left + 1 || rail.bottom <= workspace.top + 1 || workspace.bottom <= rail.top + 1);
+    return {
+      viewport,
+      rail,
+      workspace,
+      layout,
+      primaryCount: buttons.length,
+      labels: buttons.map(item => item.label),
+      minTargetHeight: buttons.length ? Math.min(...buttons.map(item => item.rect?.height ?? 0)) : 0,
+      minLabelFontSize: buttons.length ? Math.min(...buttons.map(item => item.fontSize)) : 0,
+      offscreen,
+      overlap,
+      horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - viewport.width),
+    };
+  })()`);
 }
-console.log(`ANDROID_MOBILE_MENU_PASS viewport=${Math.round(commandLayout.viewport.width)}x${Math.round(commandLayout.viewport.height)} destinations=${commandLayout.primaryCount} safe=onscreen+separated overflow=${Math.max(0, commandLayout.verticalOverflow)}px`);
 
-await tapButton('Equipment', 31);
+const assertP19bLayout = (layout, expected) => {
+  if (!layout
+    || layout.layout !== expected
+    || layout.primaryCount !== 5
+    || layout.offscreen.length
+    || layout.overlap
+    || layout.horizontalOverflow > 2
+    || (expected === 'dock' && (layout.minTargetHeight < 48 || layout.minLabelFontSize < 10))) {
+    throw new Error(`Android P19-B Command ${expected} layout failed: ${JSON.stringify(layout)}`);
+  }
+};
+
+const p19bHistoryLength = await evaluate(`history.length`);
+await call('Emulation.setDeviceMetricsOverride', {
+  width: 851,
+  height: 360,
+  deviceScaleFactor: 2.5,
+  mobile: true,
+  screenWidth: 851,
+  screenHeight: 360,
+  screenOrientation: { type: 'landscapePrimary', angle: 90 },
+});
+await call('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+await sleep(220);
+const p19bCompactLandscape = await p19bCommandLayout();
+assertP19bLayout(p19bCompactLandscape, 'dock');
+console.log(`ANDROID_P19B_DOCK_PASS viewport=${Math.round(p19bCompactLandscape.viewport.width)}x${Math.round(p19bCompactLandscape.viewport.height)} destinations=5 target=${Math.round(p19bCompactLandscape.minTargetHeight)}px label=${p19bCompactLandscape.minLabelFontSize}px safe=bottom-dock`);
+
+let p19bTouchId = 130;
+for (const destination of ['Command', 'Operations', 'Operator', 'Ship', 'Intel']) {
+  await tapButton(destination, p19bTouchId++);
+  await waitFor(`Boolean(document.querySelector('.command-rail-nav button[aria-label="${destination}"][aria-current="page"]'))`, `Android P19-B touch ${destination}`);
+}
+const p19bHistoryAfterTouch = await evaluate(`history.length`);
+if (p19bHistoryAfterTouch !== p19bHistoryLength) {
+  throw new Error(`Android P19-B primary navigation changed browser history length: before=${p19bHistoryLength} after=${p19bHistoryAfterTouch}`);
+}
+console.log('ANDROID_P19B_TOUCH_PASS destinations=5 routing=shared history=stable');
+
+await tapButton('Command', p19bTouchId++);
+const p19bControllerSetup = await evaluate(`(() => {
+  globalThis.__p19bOriginalGetGamepadsOwn = Object.getOwnPropertyDescriptor(navigator, 'getGamepads') ?? null;
+  globalThis.__p19bGamepad = {
+    connected: true,
+    axes: [0, 0, 0, 0],
+    buttons: Array.from({ length: 16 }, () => ({ pressed: false, value: 0 })),
+  };
+  Object.defineProperty(navigator, 'getGamepads', {
+    configurable: true,
+    value: () => [globalThis.__p19bGamepad],
+  });
+  document.activeElement instanceof HTMLElement && document.activeElement.blur();
+  return typeof navigator.getGamepads === 'function';
+})()`);
+if (!p19bControllerSetup) throw new Error('Android P19-B could not install synthetic menu gamepad.');
+
+const setP19bGamepadButton = async (index, pressed) => {
+  await evaluate(`(() => {
+    const button = globalThis.__p19bGamepad?.buttons?.[${index}];
+    if (!button) return false;
+    button.pressed = ${pressed ? 'true' : 'false'};
+    button.value = ${pressed ? '1' : '0'};
+    return true;
+  })()`);
+  await sleep(90);
+};
+
+await setP19bGamepadButton(15, true);
+await setP19bGamepadButton(15, false);
+await waitFor(`document.activeElement?.getAttribute?.('aria-label') === 'Command'`, 'Android P19-B controller focuses active Command destination');
+await setP19bGamepadButton(15, true);
+await setP19bGamepadButton(15, false);
+await waitFor(`document.activeElement?.getAttribute?.('aria-label') === 'Operations'`, 'Android P19-B controller moves to Operations');
+await setP19bGamepadButton(0, true);
+await setP19bGamepadButton(0, false);
+await waitFor(`document.querySelector('.command-rail-nav button[aria-label="Operations"]')?.getAttribute('aria-current') === 'page'`, 'Android P19-B controller activates Operations');
+await evaluate(`(() => {
+  const own = globalThis.__p19bOriginalGetGamepadsOwn;
+  if (own) Object.defineProperty(navigator, 'getGamepads', own);
+  else delete navigator.getGamepads;
+  delete globalThis.__p19bOriginalGetGamepadsOwn;
+  delete globalThis.__p19bGamepad;
+})()`);
+console.log('ANDROID_P19B_CONTROLLER_PASS dpad=focus+move confirm=A routing=shared');
+
+await call('Emulation.setDeviceMetricsOverride', {
+  width: 412,
+  height: 851,
+  deviceScaleFactor: 2.5,
+  mobile: true,
+  screenWidth: 412,
+  screenHeight: 851,
+  screenOrientation: { type: 'portraitPrimary', angle: 0 },
+});
+await sleep(220);
+const p19bPortrait = await p19bCommandLayout();
+assertP19bLayout(p19bPortrait, 'dock');
+
+await call('Emulation.setDeviceMetricsOverride', {
+  width: 1280,
+  height: 720,
+  deviceScaleFactor: 1,
+  mobile: false,
+  screenWidth: 1280,
+  screenHeight: 720,
+});
+await sleep(220);
+const p19bWide = await p19bCommandLayout();
+assertP19bLayout(p19bWide, 'rail');
+
+await call('Emulation.setDeviceMetricsOverride', {
+  width: 851,
+  height: 360,
+  deviceScaleFactor: 2.5,
+  mobile: true,
+  screenWidth: 851,
+  screenHeight: 360,
+  screenOrientation: { type: 'landscapePrimary', angle: 90 },
+});
+await sleep(220);
+const p19bRotatedBack = await p19bCommandLayout();
+assertP19bLayout(p19bRotatedBack, 'dock');
+console.log(`ANDROID_P19B_BREAKPOINT_PASS compactLandscape=${p19bCompactLandscape.layout} portrait=${p19bPortrait.layout} wide=${p19bWide.layout} rotatedBack=${p19bRotatedBack.layout}`);
+
+await call('Emulation.clearDeviceMetricsOverride');
+await sleep(220);
+await tapButton('Operator', 31);
+await waitFor(`Boolean(document.querySelector('.operator-section-tabs'))`, 'Android P19-B compact Operator sections');
+await tapButton('Build', 32);
 await waitFor(`(() => {
-  const text = document.body?.innerText ?? '';
   const buttons = [...document.querySelectorAll('button')].map(button => (button.textContent || '').trim());
   return document.querySelector('.build-header h1')?.textContent?.trim() === 'Build' && buttons.includes('Skills');
 })()`, 'Android Build surface for skill hierarchy');
