@@ -197,7 +197,14 @@ assert(menuOverhaulCss.includes('UI SIMPLIFICATION // PRIORITY-FIRST COMMAND + C
 assert(shipHub.includes("overview: 'Overview'") && shipHub.includes("const pageTitle = tab === 'overview' ? 'Overview'"), 'Command overview still repeats Command/Tasking language instead of using a neutral overview page title.');
 assert(combat.includes('visibleConsumables') && combat.includes("consumableDefinitions.filter(item => consumableStock[item.id] > 0)") && mobileCombatCss.includes('max-width: min(360px, 30vw)'), 'Mobile combat still reserves persistent HUD space for empty consumables or oversized mission alerts.');
 assert(browserSmoke.includes("keyboardActivateButton('Operations')") && browserSmoke.includes("keyboardActivateButton('Contracts')"), 'Browser E2E does not follow the new Command > Operations > Contracts hierarchy.');
-assert(browserSmoke.includes('BROWSER_MOBILE_MENU_PASS') && browserSmoke.includes('primaryCount !== 5'), 'Browser E2E is missing mobile Tactical Command rail layout coverage.');
+assert(
+  browserSmoke.includes('BROWSER_P19B_COMMAND_NAV_PASS')
+    && browserSmoke.includes("value.layout !== 'dock'")
+    && browserSmoke.includes("result.layout !== 'rail'")
+    && browserSmoke.includes('value.minTargetHeight < 48')
+    && browserSmoke.includes('value.minLabelFontSize < 10'),
+  'Browser E2E is missing adaptive P19-B Command dock/rail layout coverage.',
+);
 assert(armory.includes("import '../menuOverhaul.css';"), 'Equipment surface is not using the Tactical Command visual system.');
 assert(!shipHub.includes('No urgent ship tasks'), 'Empty priority chrome is still rendered when nothing needs attention.');
 assert(!shipHub.includes('command-nav-grid'), 'Overview still duplicates the full tab navigation.');
@@ -273,7 +280,17 @@ assert(browserWorkflow.includes('mobile-landscape') && browserWorkflow.includes(
 assert(androidWorkflow.includes('require_release_signing') && androidWorkflow.includes('REQUIRE_RELEASE_SIGNING') && androidWorkflow.includes('Release signing is required for this run'), 'Manual Android release-candidate runs must fail closed when persistent release signing is required but unavailable');
 assert(browserSmoke.includes('BROWSER_MOBILE_LAYOUT_PASS') && browserSmoke.includes('moveDockOverlap') && browserSmoke.includes('undersized'), 'Browser mobile E2E is missing safe-area/touch-target layout assertions');
 assert(androidSmoke.includes('ANDROID_MOBILE_LAYOUT_PASS') && androidSmoke.includes('moveDockOverlap') && androidSmoke.includes('undersized'), 'Android smoke is missing safe-area/touch-target layout assertions');
-assert(androidSmoke.includes('ANDROID_MOBILE_MENU_PASS') && androidSmoke.includes("=== 'operations'") && androidSmoke.includes('primaryCount !== 5') && androidSmoke.includes('verticalOverflow > 2'), 'Android smoke is not validating the Tactical Command navigation hierarchy, mobile rail, and no-scroll fit.');
+assert(
+  androidSmoke.includes('ANDROID_P19B_DOCK_PASS')
+    && androidSmoke.includes('ANDROID_P19B_TOUCH_PASS')
+    && androidSmoke.includes('ANDROID_P19B_CONTROLLER_PASS')
+    && androidSmoke.includes('ANDROID_P19B_BREAKPOINT_PASS')
+    && androidSmoke.includes("layout.layout !== expected")
+    && androidSmoke.includes('layout.minTargetHeight < 48')
+    && androidSmoke.includes('layout.minLabelFontSize < 10')
+    && androidSmoke.includes('history.length'),
+  'Android smoke is not validating P19-B shared routing, compact dock, controller/touch input, history stability, and dock/rail breakpoints.',
+);
 assert(androidSmoke.includes('ANDROID_LIFECYCLE_RESUME_PASS'), 'Android lifecycle pause/resume validation is missing');
 assert(androidResumeGate.includes("canvas[data-render-tier]") && androidResumeGate.includes('[aria-label="Touch combat controls"]') && androidResumeGate.includes('.move-stick') && !androidResumeGate.includes("text.includes('field coach')"), 'Android lifecycle resume gate must detect the restored combat renderer/controls without depending on tutorial coach text');
 assert(androidSmokeShell.includes('--activity-reorder-to-front') && androidSmokeShell.includes('RESUME_PID') && androidSmokeShell.includes('ANDROID_LIFECYCLE_PROCESS_RECLAIM') && androidSmokeShell.includes('LIFECYCLE_ATTEMPT') && androidSmokeShell.includes('re-establishing combat before retrying pause/resume') && androidSmokeShell.includes('ANDROID_RESUME_PROCESS_MODE=preserved'), 'Android lifecycle smoke must recover from an incidental process reclaim, retry pause/resume, and require a preserved-process combat resume before passing');

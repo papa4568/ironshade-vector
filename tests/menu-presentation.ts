@@ -100,6 +100,38 @@ assert(
   'P15-B Android QA must navigate Crafting, Progression, and Ship Systems by touch.',
 );
 
+assert(
+  shipHub.includes('ref={commandNavRef}')
+    && shipHub.includes('data-primary-area={id}')
+    && shipHub.includes('onKeyDown={handlePrimaryNavigation}')
+    && shipHub.includes('navigator.getGamepads()')
+    && shipHub.includes('focusPrimaryAreaByOffset')
+    && shipHub.includes('openPrimaryArea(id)'),
+  'P19-B must keep one shared five-destination navigation model with keyboard/gamepad focus and the existing routing path.',
+);
+
+assert(
+  menuCss.includes('P19-B // Adaptive five-item Command dock')
+    && menuCss.includes('(max-width: 900px) and (max-height: 650px)')
+    && menuCss.includes('grid-template-columns: repeat(5, minmax(0, 1fr))')
+    && menuCss.includes('min-height: 54px')
+    && menuCss.includes('font-size: 10px')
+    && menuCss.includes('env(safe-area-inset-left)')
+    && menuCss.includes('env(safe-area-inset-right)')
+    && menuCss.includes('env(safe-area-inset-bottom)'),
+  'P19-B compact Command navigation must become a safe-area-aware five-item dock with readable 48px-class targets.',
+);
+
+assert(
+  browserSmoke.includes('BROWSER_P19B_COMMAND_NAV_PASS')
+    && browserSmoke.includes('BROWSER_P19B_ROUTE_PASS')
+    && androidSmoke.includes('ANDROID_P19B_DOCK_PASS')
+    && androidSmoke.includes('ANDROID_P19B_TOUCH_PASS')
+    && androidSmoke.includes('ANDROID_P19B_CONTROLLER_PASS')
+    && androidSmoke.includes('ANDROID_P19B_BREAKPOINT_PASS'),
+  'P19-B browser/Android QA must cover dock/rail geometry plus shared keyboard, touch, controller, rotation, and breakpoint behavior.',
+);
+
 assert(pkg.scripts?.['test:menu-presentation']?.includes('tests/menu-presentation.ts'), 'P15-B menu-presentation test script is missing.');
 assert(pkg.scripts?.build?.includes('npm run test:menu-presentation'), 'Full production build must gate on the P15-B menu-presentation regression.');
 
