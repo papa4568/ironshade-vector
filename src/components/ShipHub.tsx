@@ -168,6 +168,7 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
   const [contractSort, setContractSort] = useState<ContractSort>('level-match');
   const [commissionCeremony, setCommissionCeremony] = useState<ShipCommissionCeremony | null>(null);
   const hubRef = useRef<HTMLDivElement>(null);
+  const commandNavRef = useRef<HTMLElement>(null);
   const traceRequestIdRef = useRef(0);
   const traceAbortRef = useRef<AbortController | null>(null);
   useEffect(() => () => traceAbortRef.current?.abort(), []);
@@ -378,14 +379,63 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
     { id: 'ship', icon: Gauge },
     { id: 'intel', icon: Database },
   ];
+  const focusPrimaryAreaByOffset = (offset: number, edge?: 'start' | 'end') => {
+    const buttons = [...(commandNavRef.current?.querySelectorAll<HTMLButtonElement>('button[data-primary-area]') ?? [])];
+    if (!buttons.length) return;
+    const activeIndex = buttons.indexOf(document.activeElement as HTMLButtonElement);
+    const selectedIndex = Math.max(0, buttons.findIndex(button => button.dataset.primaryArea === primaryArea));
+    const nextIndex = edge === 'start'
+      ? 0
+      : edge === 'end'
+        ? buttons.length - 1
+        : activeIndex < 0
+          ? selectedIndex
+          : (activeIndex + offset + buttons.length) % buttons.length;
+    buttons[nextIndex]?.focus();
+  };
+  const handlePrimaryNavigation = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') { event.preventDefault(); focusPrimaryAreaByOffset(1); }
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') { event.preventDefault(); focusPrimaryAreaByOffset(-1); }
+    if (event.key === 'Home') { event.preventDefault(); focusPrimaryAreaByOffset(0, 'start'); }
+    if (event.key === 'End') { event.preventDefault(); focusPrimaryAreaByOffset(0, 'end'); }
+  };
   const openPrimaryArea = (area: PrimaryArea) => switchTab(areaTabs[area][0]);
+  useEffect(() => {
+    if (typeof navigator.getGamepads !== 'function') return;
+    let frame = 0;
+    let previousDirection = 0;
+    let previousConfirm = false;
+    const poll = () => {
+      const pad = [...navigator.getGamepads()].find(Boolean);
+      let direction = 0;
+      if (pad?.buttons[12]?.pressed || pad?.buttons[14]?.pressed) direction = -1;
+      else if (pad?.buttons[13]?.pressed || pad?.buttons[15]?.pressed) direction = 1;
+      if (direction && direction !== previousDirection) {
+        const active = document.activeElement;
+        if (active instanceof HTMLButtonElement && commandNavRef.current?.contains(active)) focusPrimaryAreaByOffset(direction);
+        else commandNavRef.current?.querySelector<HTMLButtonElement>(`button[data-primary-area="${primaryArea}"]`)?.focus();
+      }
+      previousDirection = direction;
+
+      const confirm = !!pad?.buttons[0]?.pressed;
+      if (confirm && !previousConfirm) {
+        const active = document.activeElement;
+        if (active instanceof HTMLButtonElement && commandNavRef.current?.contains(active)) active.click();
+        else commandNavRef.current?.querySelector<HTMLButtonElement>(`button[data-primary-area="${primaryArea}"]`)?.focus();
+      }
+      previousConfirm = confirm;
+      frame = requestAnimationFrame(poll);
+    };
+    frame = requestAnimationFrame(poll);
+    return () => cancelAnimationFrame(frame);
+  }, [primaryArea]);
   const pageTitle = tab === 'overview' ? 'Overview' : areaLabels[primaryArea];
 
   return <main className={`ship-hub area-${primaryArea} iv-view`}>
     <aside className="command-rail" aria-label="Primary navigation">
       <div className="command-rail-brand"><span>IV</span><div><b>QUIET SIGNAL</b><small>VECTOR COMMAND</small></div></div>
-      <nav className="command-rail-nav">
-        {primaryAreas.map(({ id, icon: Icon }) => <button key={id} aria-label={areaLabels[id]} className={`nav-${id} ${primaryArea === id ? 'selected' : ''}`} aria-current={primaryArea === id ? 'page' : undefined} onClick={() => openPrimaryArea(id)}><Icon aria-hidden="true" size={18} strokeWidth={1.7} /><span><b>{areaLabels[id]}</b><small>{areaDescriptions[id]}</small></span></button>)}
+      <nav ref={commandNavRef} className="command-rail-nav" onKeyDown={handlePrimaryNavigation}>
+        {primaryAreas.map(({ id, icon: Icon }) => <button key={id} data-primary-area={id} aria-label={areaLabels[id]} className={`nav-${id} ${primaryArea === id ? 'selected' : ''}`} aria-current={primaryArea === id ? 'page' : undefined} onClick={() => openPrimaryArea(id)}><Icon aria-hidden="true" size={18} strokeWidth={1.7} /><span><b>{areaLabels[id]}</b><small>{areaDescriptions[id]}</small></span></button>)}
       </nav>
       <button className="command-rail-equipment" onClick={onOpenBuild}><Settings2 aria-hidden="true" size={17} /><span>Equipment</span></button>
       <div className="command-rail-status"><i /><span>LOCAL CORE</span><b>ONLINE</b></div>
