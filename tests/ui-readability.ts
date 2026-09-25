@@ -305,12 +305,15 @@ assert(equipmentCss.includes('P8.5-J MOBILE ARMORY BUILD LINKS') && equipmentCss
 
 assert(
   equipmentCss.includes('P19-H // Viewport-anchored wide Armory inspector.')
-    && equipmentCss.includes('@media (min-width: 1101px) and (pointer: fine)')
+    && equipmentCss.includes('@media (min-width: 1101px)')
     && equipmentCss.includes('.gear-layout.has-selection .item-inspector-backdrop')
     && equipmentCss.includes('.gear-layout .item-inspector.open')
     && equipmentCss.includes('width: min(46vw, 640px)')
-    && equipmentCss.includes('grid-template-columns: repeat(3, minmax(0, 1fr))'),
-  'P19-H wide Armory selection must use the established viewport-anchored inspector without shrinking Ship Storage.',
+    && equipmentCss.includes('grid-template-columns: repeat(3, minmax(0, 1fr))')
+    && mobileInspectorCss.includes('@media (pointer: coarse), (max-width: 1100px)')
+    && mobileInspectorCss.includes('.build-bay.iv-view.armory-inspector-open')
+    && armory.includes("selected ? 'armory-inspector-open' : ''"),
+  'P19-H wide Armory selection must use the established viewport-anchored inspector without shrinking Ship Storage or leaking the Android single-scroller rule onto wide desktop.',
 );
 assert(
   browserSmoke.includes('async function armoryInspectorViewportAudit()')
