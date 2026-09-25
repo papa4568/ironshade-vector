@@ -2295,3 +2295,10 @@
     white-space: nowrap;
   }
 }
+
+/* P19-G // Ultra-short compact Command keeps redundant drill-ins in primary navigation. */
+@media (orientation: landscape) and (max-width: 1000px) and (max-height: 380px) {
+  .ship-hub.area-command .command-side .command-action-row {
+    display: none;
+  }
+}
