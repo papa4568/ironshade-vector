@@ -1470,7 +1470,7 @@
 
 
 /* P19-H // Viewport-anchored wide Armory inspector. */
-@media (min-width: 1101px) and (pointer: fine) {
+@media (min-width: 1101px) {
   .gear-layout,
   .gear-layout.has-selection {
     grid-template-columns: minmax(0, 1fr);
@@ -1528,5 +1528,13 @@
 
   .gear-layout .item-inspector.open {
     display: grid;
+  }
+}
+
+
+/* P19-H // Preserve the established coarse-pointer storage density on wide touch hardware. */
+@media (min-width: 1101px) and (pointer: coarse) {
+  .gear-layout .inventory-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
