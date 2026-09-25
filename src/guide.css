@@ -170,3 +170,11 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* P19-G // Lazy Guide chunk preserves the compact-phone secondary type floor. */
+@media (max-width: 620px) and (orientation: portrait),
+       (orientation: landscape) and (max-width: 1000px) and (max-height: 500px) {
+  .guide-heading .card-kicker {
+    font-size: var(--p19-compact-type-secondary, max(12px, .75rem));
+  }
+}
