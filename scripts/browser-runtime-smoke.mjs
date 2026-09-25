@@ -1057,7 +1057,14 @@ try {
   await waitFor(`[...document.querySelectorAll('.operator-section-tabs button')].some(button => (button.textContent || '').trim() === 'Build')`, 'P20-B Operator build route');
   await keyboardActivateButton('Build');
   await waitFor(`document.querySelector('.build-header h1')?.textContent?.trim() === 'Build'`, 'P20-B Build after seed');
-  await keyboardActivateButton('Progression');
+  const p20bProgressionOpened = await evaluate(`(() => {
+    const button = [...document.querySelectorAll('.build-tabs button')].find(candidate => (candidate.textContent || '').trim().toLowerCase().startsWith('progression'));
+    if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+    button.focus();
+    button.click();
+    return true;
+  })()`);
+  if (!p20bProgressionOpened) throw new Error('P20-B could not open the Progression tab after seeding points.');
   await waitFor(`Boolean(document.querySelector('.network-planner.iv-panel'))`, 'P20-B Progression planner after seed');
 
   const p20bTargets = [
