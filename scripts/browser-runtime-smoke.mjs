@@ -993,6 +993,37 @@ try {
   await commandHubViewportAudit();
   await commandNavigationLayoutAudit();
   await primaryNavigationInputAudit();
+
+  const p20CommandScale = await evaluate(`(() => {
+    const root = document.documentElement;
+    const previous = root.dataset.interfaceSize ?? '';
+    const measure = size => {
+      root.dataset.interfaceSize = size;
+      const card = document.querySelector('.command-card.primary-card');
+      const style = card ? getComputedStyle(card) : null;
+      const rect = card?.getBoundingClientRect();
+      return {
+        size,
+        paddingLeft: Number.parseFloat(style?.paddingLeft ?? '0'),
+        height: Number((rect?.height ?? 0).toFixed(3)),
+        horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
+      };
+    };
+    const compact = measure('compact');
+    const baseline = measure('default');
+    const large = measure('large');
+    if (previous) root.dataset.interfaceSize = previous;
+    else delete root.dataset.interfaceSize;
+    return { compact, baseline, large };
+  })()`);
+  if (!(p20CommandScale.compact.paddingLeft < p20CommandScale.baseline.paddingLeft
+    && p20CommandScale.baseline.paddingLeft < p20CommandScale.large.paddingLeft)
+    || p20CommandScale.compact.horizontalOverflow > 2
+    || p20CommandScale.baseline.horizontalOverflow > 2
+    || p20CommandScale.large.horizontalOverflow > 2) {
+    throw new Error(`P20-A Command surface did not visibly reflow across Interface Size: ${JSON.stringify(p20CommandScale)}`);
+  }
+  console.log(`BROWSER_P20_COMMAND_SCALE_PASS viewport=${viewportMode} padding=${p20CommandScale.compact.paddingLeft}/${p20CommandScale.baseline.paddingLeft}/${p20CommandScale.large.paddingLeft} overflow=none`);
   await captureScreenshot(commandScreenshotPath);
 
   const equipmentShortcutVisible = await evaluate(`(() => {
@@ -1031,6 +1062,53 @@ try {
   if (p15BuildLayout.horizontalOverflow > 2 || p15BuildLayout.tabCount !== 5 || (viewportMode === 'mobile-landscape' && p15BuildLayout.minTabHeight < 40)) {
     throw new Error(`P15-B Build/Crafting/Progression layout failed: ${JSON.stringify(p15BuildLayout)}`);
   }
+
+  const p20BuildPreviousInterfaceSize = await evaluate(`document.documentElement.dataset.interfaceSize ?? 'default'`);
+  async function p20BuildSurfaceMetric(size, tab, selector, property) {
+    await evaluate(`document.documentElement.dataset.interfaceSize = ${JSON.stringify(size)}; true`);
+    await keyboardActivateButton(tab);
+    await waitFor(`Boolean(document.querySelector(${JSON.stringify(selector)}))`, `P20-A ${size} ${tab} representative surface`);
+    await sleep(80);
+    return await evaluate(`(() => {
+      const element = document.querySelector(${JSON.stringify(selector)});
+      if (!element) return null;
+      const style = getComputedStyle(element);
+      return {
+        value: Number.parseFloat(style[${JSON.stringify(property)}] || '0'),
+        horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
+      };
+    })()`);
+  }
+
+  const p20BuildScale = {};
+  for (const size of ['compact', 'default', 'large']) {
+    const loadout = await p20BuildSurfaceMetric(size, 'Loadout', '.equipment-slots', 'columnGap');
+    const crafting = await p20BuildSurfaceMetric(size, 'Crafting', '.reconstruct-layout', 'columnGap');
+    const progression = await p20BuildSurfaceMetric(size, 'Progression', '.network-planner', 'paddingLeft');
+    const skills = await p20BuildSurfaceMetric(size, 'Skills', '.skill-path-overview', 'columnGap');
+    const settings = await p20BuildSurfaceMetric(size, 'Settings', '.settings-panel label', 'paddingLeft');
+    const tabs = await p20BuildSurfaceMetric(size, 'Loadout', '.build-tabs', 'columnGap');
+    p20BuildScale[size] = {
+      loadout: loadout?.value ?? 0,
+      crafting: crafting?.value ?? 0,
+      progression: progression?.value ?? 0,
+      skills: skills?.value ?? 0,
+      settings: settings?.value ?? 0,
+      tabs: tabs?.value ?? 0,
+      horizontalOverflow: Math.max(loadout?.horizontalOverflow ?? 0, crafting?.horizontalOverflow ?? 0, progression?.horizontalOverflow ?? 0, skills?.horizontalOverflow ?? 0, settings?.horizontalOverflow ?? 0, tabs?.horizontalOverflow ?? 0),
+    };
+  }
+  await evaluate(`document.documentElement.dataset.interfaceSize = ${JSON.stringify(p20BuildPreviousInterfaceSize)}; true`);
+  for (const metric of ['loadout', 'crafting', 'progression', 'skills', 'settings', 'tabs']) {
+    if (!(p20BuildScale.compact[metric] < p20BuildScale.default[metric]
+      && p20BuildScale.default[metric] < p20BuildScale.large[metric])) {
+      throw new Error(`P20-A rendered ${metric} geometry is not ordered Compact < Default < Large: ${JSON.stringify(p20BuildScale)}`);
+    }
+  }
+  if (p20BuildScale.compact.horizontalOverflow > 2 || p20BuildScale.default.horizontalOverflow > 2 || p20BuildScale.large.horizontalOverflow > 2) {
+    throw new Error(`P20-A Build surface overflow across Interface Size: ${JSON.stringify(p20BuildScale)}`);
+  }
+  console.log(`BROWSER_P20_BUILD_SCALE_PASS viewport=${viewportMode} loadout+crafting+progression+skills+settings+tabs=ordered overflow=none`);
 
   const p20bPreviousTimeOrigin = await evaluate('performance.timeOrigin');
   const p20bSeeded = await evaluate(`(() => {
@@ -1150,9 +1228,18 @@ try {
       const panel = document.querySelector('.settings-panel');
       const rootStyle = getComputedStyle(document.documentElement);
       const panelRect = panel?.getBoundingClientRect();
+      const row = document.querySelector('.settings-panel label');
+      const select = document.querySelector('.settings-panel select');
+      const tabs = document.querySelector('.build-tabs');
+      const rowStyle = row ? getComputedStyle(row) : null;
+      const selectStyle = select ? getComputedStyle(select) : null;
+      const tabsStyle = tabs ? getComputedStyle(tabs) : null;
       return {
         size: document.documentElement.dataset.interfaceSize ?? '',
         rootFontSize: Number.parseFloat(rootStyle.fontSize),
+        rowPadding: Number.parseFloat(rowStyle?.paddingLeft ?? '0'),
+        selectPadding: Number.parseFloat(selectStyle?.paddingLeft ?? '0'),
+        tabGap: Number.parseFloat(tabsStyle?.columnGap ?? '0'),
         horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
         panelVisible: Boolean(panelRect && panelRect.width > 0 && panelRect.height > 0),
       };
@@ -1164,7 +1251,10 @@ try {
   const p20InterfaceLarge = await setP20InterfaceSize('large');
   if (!p20InterfaceCompact.panelVisible || !p20InterfaceDefault.panelVisible || !p20InterfaceLarge.panelVisible
     || p20InterfaceCompact.horizontalOverflow > 2 || p20InterfaceDefault.horizontalOverflow > 2 || p20InterfaceLarge.horizontalOverflow > 2
-    || !(p20InterfaceCompact.rootFontSize < p20InterfaceDefault.rootFontSize && p20InterfaceDefault.rootFontSize < p20InterfaceLarge.rootFontSize)) {
+    || !(p20InterfaceCompact.rootFontSize < p20InterfaceDefault.rootFontSize && p20InterfaceDefault.rootFontSize < p20InterfaceLarge.rootFontSize)
+    || !(p20InterfaceCompact.rowPadding < p20InterfaceDefault.rowPadding && p20InterfaceDefault.rowPadding < p20InterfaceLarge.rowPadding)
+    || !(p20InterfaceCompact.selectPadding < p20InterfaceDefault.selectPadding && p20InterfaceDefault.selectPadding < p20InterfaceLarge.selectPadding)
+    || !(p20InterfaceCompact.tabGap < p20InterfaceDefault.tabGap && p20InterfaceDefault.tabGap < p20InterfaceLarge.tabGap)) {
     throw new Error(`P20-A Interface Size reflow failed: ${JSON.stringify({ compact: p20InterfaceCompact, default: p20InterfaceDefault, large: p20InterfaceLarge })}`);
   }
   await setP20InterfaceSize('default');
