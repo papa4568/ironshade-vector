@@ -270,6 +270,114 @@ async function tapButton(label, id = 1, holdMs = 90) {
 
 await call('Page.enable').catch(() => undefined);
 
+
+const p19TypographyAcceptance = {};
+
+async function p19CompactTypographyScan(label, rootSelector) {
+  const selectorLiteral = JSON.stringify(rootSelector);
+  const previousScale = await evaluate(`document.documentElement.dataset.textScale ?? ''`);
+  const scanAtScale = async scale => {
+    const scaleLiteral = JSON.stringify(scale);
+    await evaluate(`(() => {
+      const root = document.documentElement;
+      const scale = ${scaleLiteral};
+      if (scale) root.dataset.textScale = scale;
+      else delete root.dataset.textScale;
+      return root.dataset.textScale ?? '';
+    })()`);
+    await sleep(140);
+    return evaluate(`(() => {
+      const root = document.querySelector(${selectorLiteral});
+      if (!root) return null;
+      const viewport = {
+        width: window.visualViewport?.width ?? window.innerWidth,
+        height: window.visualViewport?.height ?? window.innerHeight,
+      };
+      const visible = element => {
+        if (!(element instanceof Element)) return false;
+        if (element.closest('[aria-hidden="true"]')) return false;
+        const style = getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return style.display !== 'none'
+          && style.visibility !== 'hidden'
+          && Number(style.opacity || 1) > 0
+          && rect.width > 0
+          && rect.height > 0;
+      };
+      const ownText = element => [...element.childNodes]
+        .filter(node => node.nodeType === Node.TEXT_NODE)
+        .map(node => node.textContent || '')
+        .join(' ')
+        .replace(/\\s+/g, ' ')
+        .trim();
+      const candidates = [root, ...root.querySelectorAll('small,p,span,b,strong,em,label,button,summary,li,dt,dd')];
+      const text = candidates
+        .filter(visible)
+        .map(element => ({
+          text: ownText(element).slice(0, 72),
+          size: Number.parseFloat(getComputedStyle(element).fontSize),
+        }))
+        .filter(item => item.text && Number.isFinite(item.size));
+      const tinyText = text.filter(item => item.size < 11.5).slice(0, 24);
+      const rootRect = root.getBoundingClientRect();
+      const interactive = [...root.querySelectorAll('button,[role="button"],select,input')].filter(visible);
+      const thumbHotspots = interactive
+        .map(element => {
+          const rect = element.getBoundingClientRect();
+          return {
+            label: (element.getAttribute('aria-label') || ownText(element) || element.textContent || '').trim().slice(0, 48),
+            width: rect.width,
+            height: rect.height,
+          };
+        })
+        .filter(item => item.width < 40 || item.height < 40)
+        .slice(0, 20);
+      return {
+        viewport,
+        root: { left: rootRect.left, right: rootRect.right, width: rootRect.width },
+        textCount: text.length,
+        minFont: text.length ? Math.min(...text.map(item => item.size)) : 0,
+        tinyText,
+        horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - viewport.width),
+        thumbHotspots,
+      };
+    })()`);
+  };
+
+  let defaultMetrics;
+  let largeMetrics;
+  try {
+    defaultMetrics = await scanAtScale('default');
+    largeMetrics = await scanAtScale('large');
+  } finally {
+    const previousLiteral = JSON.stringify(previousScale);
+    await evaluate(`(() => {
+      const root = document.documentElement;
+      const previous = ${previousLiteral};
+      if (previous) root.dataset.textScale = previous;
+      else delete root.dataset.textScale;
+      return root.dataset.textScale ?? '';
+    })()`).catch(() => undefined);
+    await sleep(120);
+  }
+
+  for (const [scale, metrics] of [['default', defaultMetrics], ['large', largeMetrics]]) {
+    if (!metrics
+      || !metrics.textCount
+      || metrics.tinyText.length
+      || metrics.horizontalOverflow > 2
+      || metrics.root.left < -2
+      || metrics.root.right > metrics.viewport.width + 2) {
+      throw new Error(`Android P19-G ${label} typography failed (${scale}): ${JSON.stringify(metrics)}`);
+    }
+  }
+
+  p19TypographyAcceptance[label] = { default: defaultMetrics, large: largeMetrics };
+  console.log(`ANDROID_P19_TYPOGRAPHY_SURFACE_PASS surface=${label} default=${defaultMetrics.minFont.toFixed(1)}px large=${largeMetrics.minFont.toFixed(1)}px overflow=none thumbHotspots=${defaultMetrics.thumbHotspots.length}`);
+  return p19TypographyAcceptance[label];
+}
+
+
 if (plannerPersistenceOnly) {
   await waitFor(`document.readyState === 'complete' && document.title === 'Ironshade Vector'`, 'cold-relaunched Ironshade document', 45_000);
   await waitFor(`(() => {
@@ -507,6 +615,8 @@ if (!commandLayout.landscape || !commandLayout.rail || !commandLayout.workspace 
 }
 console.log(`ANDROID_MOBILE_MENU_PASS viewport=${Math.round(commandLayout.viewport.width)}x${Math.round(commandLayout.viewport.height)} destinations=${commandLayout.primaryCount} safe=onscreen+separated overflow=${Math.max(0, commandLayout.verticalOverflow)}px`);
 
+await p19CompactTypographyScan('command', '.ship-hub.area-command');
+
 await tapButton('Operator', 31);
 await waitFor(`Boolean(document.querySelector('.ship-hub.area-operator') && [...document.querySelectorAll('.operator-section-tabs button')].some(button => (button.textContent || '').trim() === 'Build'))`, 'Android compact Operator build route');
 await tapButton('Build', 32);
@@ -516,6 +626,8 @@ await waitFor(`(() => {
   return document.querySelector('.build-header h1')?.textContent?.trim() === 'Build' && buttons.includes('Skills');
 })()`, 'Android Build surface for skill hierarchy');
 await waitFor(`Boolean(document.querySelector('.build-bay.iv-view') && document.querySelector('.build-header.iv-panel.iv-panel--glass') && document.querySelector('.build-tabs button[aria-current="page"]'))`, 'Android P15-B shared Build shell');
+
+await p19CompactTypographyScan('armory', '.build-bay');
 
 const p19ArmoryCardScan = await evaluate(`(() => {
   const storageCards = [...document.querySelectorAll('.inventory-card')].filter(card => card.getBoundingClientRect().width > 0);
@@ -799,6 +911,8 @@ await waitFor(`Boolean(document.querySelector('.ship-hub.area-intel') && documen
 const p19GuideLandscape = await p19GuideMetrics();
 assertP19GuideMetrics(p19GuideLandscape, 'native landscape');
 
+await p19CompactTypographyScan('guide', '.guide-panel');
+
 await evaluate(`(() => { const root = document.documentElement; globalThis.__p19GuideTextScale = root.dataset.textScale ?? ''; root.dataset.textScale = 'large'; return true; })()`);
 await sleep(120);
 const p19GuideLarge = await p19GuideMetrics();
@@ -922,6 +1036,8 @@ console.log(`ANDROID_P19_HUD_LAYOUT_SETTINGS_PASS presets=standard+large+left-ha
 
 await tapButton('Crafting', 32);
 await waitFor(`Boolean(document.querySelector('.reconstruction-panel .reconstruction-top.iv-panel.iv-panel--glass') && document.querySelector('.reconstruct-storage.iv-panel') && document.querySelector('.build-tabs button[aria-current="page"]')?.textContent?.includes('Crafting'))`, 'Android P15-B Crafting surface');
+
+await p19CompactTypographyScan('crafting', '[data-management-surface="crafting"]');
 const p19CraftingHierarchy = await evaluate(`(() => {
   const root = document.querySelector('[data-management-surface="crafting"]');
   const requirement = root?.querySelector('.reconstruction-bench > .iv-requirement[data-requirement-state]');
@@ -1037,6 +1153,8 @@ const p15BuildLayout = await evaluate(`(() => {
 if (p15BuildLayout.horizontalOverflow > 2 || p15BuildLayout.tabCount !== 5 || p15BuildLayout.minTabHeight < 40) {
   throw new Error(`Android P15-B Build/Crafting/Progression layout failed: ${JSON.stringify(p15BuildLayout)}`);
 }
+
+await p19CompactTypographyScan('progression', '[data-management-surface="progression"]');
 const p19ProgressionHierarchy = await evaluate(`(() => {
   const root = document.querySelector('[data-management-surface="progression"]');
   const visible = element => {
@@ -1196,6 +1314,8 @@ await waitFor(`(() => {
     && Boolean(document.querySelector('button[data-skill-mod="mag-revector"]'))
     && Boolean(document.querySelector('button[data-skill-slot="mag"][data-skill-mod="standard"]'));
 })()`, 'Android P19-E decision-first skill hierarchy', 20_000);
+
+await p19CompactTypographyScan('skills', '[data-management-surface="skills"]');
 const p18fSkillRequirements = await evaluate(`(() => {
   const root = document.querySelector('[data-management-surface="skills"]');
   const evolutions = [...(root?.querySelectorAll('.skill-evolution-group > button[data-skill-mod]') ?? [])];
@@ -1355,6 +1475,8 @@ assertP19CommandNavMetrics(p19NativeNav, 'dock', 'native landscape');
 
 await tapButton('Intel', 96);
 await waitFor(`document.querySelector('.ship-hub.area-intel') !== null`, 'Android P19-B Intel touch navigation');
+
+await p19CompactTypographyScan('intel', '.ship-hub.area-intel');
 await tapButton('Command', 97);
 await waitFor(`document.querySelector('.ship-hub.area-command') !== null`, 'Android P19-B Command touch navigation');
 
@@ -1432,6 +1554,8 @@ console.log(`ANDROID_P19_COMMAND_NAV_PASS destinations=5 touch=command+intel con
 
 await tapButton('Ship', 38);
 await waitFor(`Boolean(document.querySelector('.ship-hub.iv-view.area-ship') && document.querySelector('.tactical-header.iv-panel.iv-panel--glass') && document.querySelector('.ship-systems-intro.iv-panel.iv-panel--glass') && document.querySelector('.ship-hardware-bay.iv-panel') && document.querySelectorAll('.ship-systems-panel .upgrade-card.iv-panel').length >= 6)`, 'Android P15-B Ship Systems surface');
+
+await p19CompactTypographyScan('ship', '.ship-hub.area-ship');
 const p15ShipLayout = await evaluate(`(() => {
   const tabs = [...document.querySelectorAll('.section-tabs button')].filter(button => button.getBoundingClientRect().height > 0);
   return {
@@ -1666,6 +1790,17 @@ if (!mobileLayout.vitals || !mobileLayout.objective || mobileLayout.coreOverlap 
 }
 console.log(`ANDROID_MOBILE_LAYOUT_PASS viewport=${Math.round(mobileLayout.viewport.width)}x${Math.round(mobileLayout.viewport.height)} touchButtons=${mobileLayout.touchButtons} safe=onscreen+separated`);
 console.log(`ANDROID_COMBAT_HUD_PASS layers=core+context+transient typeFloor=12px overlaps=none touch=clear`);
+
+await p19CompactTypographyScan('combat', '#root');
+const p19RequiredTypographySurfaces = ['command', 'armory', 'progression', 'skills', 'crafting', 'ship', 'intel', 'guide', 'combat'];
+const p19MissingTypographySurfaces = p19RequiredTypographySurfaces.filter(label => !p19TypographyAcceptance[label]);
+if (p19MissingTypographySurfaces.length) {
+  throw new Error(`Android P19-G acceptance missed required surfaces: ${p19MissingTypographySurfaces.join(', ')}`);
+}
+const p19DefaultFloor = Math.min(...p19RequiredTypographySurfaces.map(label => p19TypographyAcceptance[label].default.minFont));
+const p19LargeFloor = Math.min(...p19RequiredTypographySurfaces.map(label => p19TypographyAcceptance[label].large.minFont));
+const p19SecondaryThumbHotspots = p19RequiredTypographySurfaces.reduce((total, label) => total + p19TypographyAcceptance[label].default.thumbHotspots.length, 0);
+console.log(`ANDROID_P19_TYPOGRAPHY_ACCEPTANCE_PASS device=pixel_7_pro-6.7in-class surfaces=${p19RequiredTypographySurfaces.join('+')} defaultFloor=${p19DefaultFloor.toFixed(1)}px largeFloor=${p19LargeFloor.toFixed(1)}px overflow=none safe=horizontal thumbReach=critical-controls-gated secondaryHotspots=${p19SecondaryThumbHotspots} playfieldOcclusion=none eyeTravelHotspots=scrolling-intel+ship-detail`);
 
 const p19HudLayoutSnapshot = async () => evaluate(`(() => {
   const viewport = { width: window.visualViewport?.width ?? window.innerWidth, height: window.visualViewport?.height ?? window.innerHeight };

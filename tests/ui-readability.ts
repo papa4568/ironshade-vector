@@ -302,4 +302,42 @@ assert(armory.includes('LOCAL STATS') && armory.includes('GLOBAL STATS') && armo
 assert(armory.includes('PROVENANCE / REGISTRY') && armory.includes('SOURCE / PROVENANCE') && armory.includes('gear-details-sheet') && !armory.includes('GEAR SCORE') && !armory.includes('gear score'), 'P8.5-J/P18-E must keep provenance and advanced telemetry in shared deep detail without introducing a gear-score number.');
 assert(equipmentCss.includes('P8.5-J MOBILE ARMORY BUILD LINKS') && equipmentCss.includes('.build-links-panel') && equipmentCss.includes('.build-link-diff.gain') && equipmentCss.includes('.build-link-diff.loss'), 'P8.5-J build-link comparison styling is missing gain/loss and mobile layout treatment.');
 
+
+assert(
+  menuOverhaulCss.includes('P19-G // Compact-phone typography sweep + device acceptance')
+    && menuOverhaulCss.includes('--p19-compact-type-secondary: max(12px, .75rem)')
+    && menuOverhaulCss.includes('--p19-compact-type-decision: max(14px, .875rem)')
+    && menuOverhaulCss.includes('Reclaim compact-landscape room through disclosure, not smaller type')
+    && menuOverhaulCss.includes('(max-width: 1000px) and (max-height: 500px)'),
+  'P19-G compact-phone typography sweep is missing the shared type floor or compact-only scope.',
+);
+assert(
+  css.includes('P19-G // Compact-phone readability floor')
+    && css.includes('var(--p19-compact-type-secondary, max(12px, .75rem))')
+    && css.includes('.gear-deep-details > summary')
+    && css.includes('.item-inspector.open .inspector-actions button'),
+  'P19-G readability closure must promote legacy gear/combat detail instead of shrinking compact text.',
+);
+assert(
+  classBuildCss.includes('P19-G // Build-surface compact typography closure')
+    && classBuildCss.includes('var(--p19-compact-type-decision, max(14px, .875rem))'),
+  'P19-G Build surfaces must close legacy compact 5–9px labels without changing wide-layout density.',
+);
+assert(
+  androidSmoke.includes('async function p19CompactTypographyScan')
+    && androidSmoke.includes("p19CompactTypographyScan('command'")
+    && androidSmoke.includes("p19CompactTypographyScan('armory'")
+    && androidSmoke.includes("p19CompactTypographyScan('progression'")
+    && androidSmoke.includes("p19CompactTypographyScan('skills'")
+    && androidSmoke.includes("p19CompactTypographyScan('crafting'")
+    && androidSmoke.includes("p19CompactTypographyScan('ship'")
+    && androidSmoke.includes("p19CompactTypographyScan('intel'")
+    && androidSmoke.includes("p19CompactTypographyScan('guide'")
+    && androidSmoke.includes("p19CompactTypographyScan('combat'")
+    && androidSmoke.includes('ANDROID_P19_TYPOGRAPHY_ACCEPTANCE_PASS')
+    && androidSmoke.includes('pixel_7_pro-6.7in-class')
+    && androidSmoke.includes("scanAtScale('large')"),
+  'P19-G Android acceptance must verify every targeted surface at default/Large text on the representative 6–7 inch profile.',
+);
+
 console.log('UI_READABILITY_PASS discovery=hidden contractGear=unidentified targetHp=strong missionLoot=reviewable hierarchy=polished mobile=desktop+landscape-safe');
