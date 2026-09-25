@@ -689,7 +689,10 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
   const [gearSort, setGearSort] = useState<InventorySort>('recent');
   const [gearRarity, setGearRarity] = useState<RarityFilter>('all');
   const [networkQuery, setNetworkQuery] = useState('');
-  const [networkFocusId, setNetworkFocusId] = useState<string | null>(null);
+  const [networkFocusId, setNetworkFocusId] = useState<string | null>(() => {
+    const initialWeaponFamily = operatorWeaponFamilyForClass(operatorClassForProfile(profile));
+    return progressionNodes.find(node => !node.specialization && (!node.weaponFamily || node.weaponFamily === initialWeaponFamily))?.id ?? null;
+  });
   const buildRef = useRef<HTMLElement>(null);
   const selected = profile.inventory.find(item => item.id === selectedId) ?? null;
   const progress = xpProgress(profile);
@@ -948,9 +951,10 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
     return () => window.removeEventListener('keydown', closeInspector);
   }, [selectedId]);
   useEffect(() => {
-    setNetworkFocusId(null);
+    const nextFocus = progressionNodes.find(node => !node.specialization && (!node.weaponFamily || node.weaponFamily === activeWeaponFamily));
+    setNetworkFocusId(nextFocus?.id ?? null);
     setNetworkQuery('');
-  }, [operatorClass, profile.specialization]);
+  }, [operatorClass, profile.specialization, activeWeaponFamily]);
   useEffect(() => {
     if (tab !== 'network' || typeof navigator.getGamepads !== 'function') return;
     let frame = 0;

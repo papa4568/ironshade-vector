@@ -1103,6 +1103,13 @@
     line-height: 1.4;
   }
 
+  .network-panel .network-focus-card :is(p, small, span),
+  .network-panel .network-plan-card :is(small, span),
+  .network-panel .network-grid button :is(small, em) {
+    font-size: var(--p19-management-secondary);
+    line-height: 1.4;
+  }
+
   .reconstruction-panel :is(button, input, select),
   .network-panel :is(button, input, select),
   .protocol-panel :is(button, input, select) {
