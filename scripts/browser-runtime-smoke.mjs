@@ -1032,6 +1032,7 @@ try {
     throw new Error(`P15-B Build/Crafting/Progression layout failed: ${JSON.stringify(p15BuildLayout)}`);
   }
 
+  const p20bPreviousTimeOrigin = await evaluate('performance.timeOrigin');
   const p20bSeeded = await evaluate(`(() => {
     const stateKey = 'ironshade-vector-state-v1';
     const state = JSON.parse(localStorage.getItem(stateKey) || 'null');
@@ -1049,6 +1050,7 @@ try {
     return true;
   })()`);
   if (!p20bSeeded) throw new Error('P20-B could not seed a two-point Operator Network profile.');
+  await waitFor(`performance.timeOrigin !== ${JSON.stringify(p20bPreviousTimeOrigin)}`, 'P20-B browser document reload');
   await waitFor(`(() => {
     const operatorButton = [...document.querySelectorAll('button[data-primary-area]')].find(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase() === 'operator');
     return document.readyState === 'complete' && operatorButton instanceof HTMLButtonElement && !operatorButton.disabled;
