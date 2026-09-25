@@ -43,12 +43,12 @@ const pkg = JSON.parse(read('package.json')) as { scripts?: Record<string, strin
 
 assert(meta.includes("export type TextScale = 'default' | 'large'") && meta.includes("export type ContrastMode = 'standard' | 'high'"), 'P15-E must type persisted text-scale and contrast preferences.');
 assert(meta.includes('reducedMotion: boolean') && meta.includes("textScale: 'default'") && meta.includes("contrast: 'standard'") && meta.includes('reducedMotion: false'), 'P15-E accessibility preferences need save-safe defaults.');
-assert(meta.includes('settings: { ...defaults.settings, ...parsed.settings, ...normalizeHudLayoutSettings(parsed.settings) }'), 'P15-E settings must normalize old saves without a profile-version reset while allowing additive normalized preferences.');
+assert(meta.includes('settings: { ...defaults.settings, ...parsed.settings, interfaceSize: normalizeInterfaceSize(parsed.settings?.interfaceSize), ...normalizeHudLayoutSettings(parsed.settings) }'), 'P15-E/P20-A settings must normalize old saves without a profile-version reset while allowing additive normalized preferences.');
 
-for (const control of ['Interface text size', 'High contrast', 'Reduce motion', 'Touch aim assistance', 'Assisted fire tracking', 'Effect intensity', 'Combat effects volume', 'Interface volume', 'Mobile haptics']) {
+for (const control of ['Interface size', 'Interface text size', 'High contrast', 'Reduce motion', 'Touch aim assistance', 'Assisted fire tracking', 'Effect intensity', 'Combat effects volume', 'Interface volume', 'Mobile haptics']) {
   assert(armory.includes(control), `Build settings are missing the ${control} accessibility/feedback control.`);
 }
-assert(app.includes('root.dataset.textScale = profile.settings.textScale') && app.includes('root.dataset.contrast = profile.settings.contrast') && app.includes("root.dataset.reducedMotion = profile.settings.reducedMotion ? 'true' : 'false'"), 'Persisted accessibility settings must drive the global presentation root.');
+assert(app.includes('root.dataset.interfaceSize = profile.settings.interfaceSize') && app.includes('root.dataset.textScale = profile.settings.textScale') && app.includes('root.dataset.contrast = profile.settings.contrast') && app.includes("root.dataset.reducedMotion = profile.settings.reducedMotion ? 'true' : 'false'"), 'Persisted accessibility/interface settings must drive the global presentation root.');
 assert(feedback.includes('settings.effectsVolume') && feedback.includes('settings.uiVolume') && feedback.includes('this.settings?.haptics'), 'Audio and haptic controls must continue to affect the feedback buses.');
 assert(combat.includes('profileSettings.aimAssist') && combat.includes('profileSettings.rightStickFire'), 'Assist settings must continue to affect touch/controller targeting.');
 assert(combat.includes('profileSettingsRef.current.screenShake && !profileSettingsRef.current.reducedMotion') && combat.includes("canvas.dataset.reducedMotion = profileSettingsRef.current.reducedMotion ? 'true' : 'false'"), 'Reduced motion must suppress combat camera shake and expose runtime QA state.');
