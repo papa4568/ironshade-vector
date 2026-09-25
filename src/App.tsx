@@ -185,8 +185,8 @@ function App() {
   const [operationsError, setOperationsError] = useState('');
   const [screen, setScreen] = useState<Screen>(() => initialGameState.profile.classSelectionComplete ? 'ship' : 'class');
   const guideRequestIdRef = useRef(0);
-  const [guideRequest, setGuideRequest] = useState<{ section: GuideSectionId; requestId: number; returnTab: BuildTab } | null>(null);
-  const [guideReturnFocus, setGuideReturnFocus] = useState<{ section: GuideSectionId; tab: BuildTab } | null>(null);
+  const [guideRequest, setGuideRequest] = useState<{ section: GuideSectionId; requestId: number; returnTab: BuildTab; selectedItemId: string | null } | null>(null);
+  const [guideReturnFocus, setGuideReturnFocus] = useState<{ section: GuideSectionId; tab: BuildTab; selectedItemId: string | null } | null>(null);
   const contracts = useMemo(() => {
     const story = generateStoryContracts(campaign);
     const chapter = getBlackLatticeContract(campaign);
@@ -306,16 +306,17 @@ function App() {
   const changeProfileSettings = (settings: Partial<ProfileSettings>) => setProfile(current => setProfileSettings(current, settings));
 
   const openBuild = () => { void loadArmory(); setScreen('build'); };
-  const openGuideFromBuild = (section: GuideSectionId, returnTab: BuildTab) => {
+  const openGuideFromBuild = (section: GuideSectionId, returnTab: BuildTab, selectedItemId: string | null) => {
     void loadShipHub();
-    setGuideRequest({ section, requestId: ++guideRequestIdRef.current, returnTab });
+    setGuideRequest({ section, requestId: ++guideRequestIdRef.current, returnTab, selectedItemId });
     setScreen('ship');
   };
   const returnFromGuideToBuild = (section: GuideSectionId) => {
     const returnTab = guideRequest?.returnTab ?? 'gear';
+    const selectedItemId = guideRequest?.selectedItemId ?? null;
     void loadArmory();
     setGuideRequest(null);
-    setGuideReturnFocus({ section, tab: returnTab });
+    setGuideReturnFocus({ section, tab: returnTab, selectedItemId });
     setScreen('build');
   };
   const confirmOperatorClass = (operatorClass: OperatorClassId) => {
