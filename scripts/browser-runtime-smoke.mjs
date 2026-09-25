@@ -551,32 +551,51 @@ async function mobileCombatLayoutAudit() {
   const interfaceInvariant = await evaluate(`(() => {
     const root = document.documentElement;
     const previous = root.dataset.interfaceSize ?? '';
-    const snapshot = () => {
-      const rect = element => {
-        if (!element) return null;
-        const value = element.getBoundingClientRect();
-        return [value.left, value.top, value.width, value.height].map(number => Number(number.toFixed(3)));
-      };
+    const rect = element => {
+      if (!element) return null;
+      const value = element.getBoundingClientRect();
+      return [value.left, value.top, value.width, value.height].map(number => Number(number.toFixed(3)));
+    };
+    const controlSnapshot = () => ({
+      move: rect(document.querySelector('.move-stick')),
+      dock: rect(document.querySelector('.combat-dock')),
+      controls: [...document.querySelectorAll('.touch-button')].map((button, index) => ({
+        key: button.getAttribute('aria-label') || button.className || String(index),
+        rect: rect(button),
+      })),
+    });
+    const hudSnapshot = () => {
+      const vitals = document.querySelector('.vitals');
+      const mission = document.querySelector('.mission-card');
+      const vitalsStyle = vitals ? getComputedStyle(vitals) : null;
+      const missionStyle = mission ? getComputedStyle(mission) : null;
       return {
-        move: rect(document.querySelector('.move-stick')),
-        dock: rect(document.querySelector('.combat-dock')),
-        controls: [...document.querySelectorAll('.touch-button')].map((button, index) => ({
-          key: button.getAttribute('aria-label') || button.className || String(index),
-          rect: rect(button),
-        })),
+        vitalsPadding: Number.parseFloat(vitalsStyle?.paddingLeft ?? '0'),
+        missionPadding: Number.parseFloat(missionStyle?.paddingLeft ?? '0'),
       };
     };
     root.dataset.interfaceSize = 'compact';
-    const compact = snapshot();
+    const compact = controlSnapshot();
+    const compactHud = hudSnapshot();
+    root.dataset.interfaceSize = 'default';
+    const baselineHud = hudSnapshot();
     root.dataset.interfaceSize = 'large';
-    const large = snapshot();
+    const large = controlSnapshot();
+    const largeHud = hudSnapshot();
     if (previous) root.dataset.interfaceSize = previous;
     else delete root.dataset.interfaceSize;
-    return { compact, large, restored: root.dataset.interfaceSize ?? '' };
+    return { compact, large, hud: { compact: compactHud, baseline: baselineHud, large: largeHud }, restored: root.dataset.interfaceSize ?? '' };
   })()`);
   if (JSON.stringify(interfaceInvariant.compact) !== JSON.stringify(interfaceInvariant.large)) {
     throw new Error(`P20-A changed combat-control geometry across Interface Size values: ${JSON.stringify(interfaceInvariant)}`);
   }
+  if (!(interfaceInvariant.hud.compact.vitalsPadding < interfaceInvariant.hud.baseline.vitalsPadding
+    && interfaceInvariant.hud.baseline.vitalsPadding < interfaceInvariant.hud.large.vitalsPadding)
+    || !(interfaceInvariant.hud.compact.missionPadding < interfaceInvariant.hud.baseline.missionPadding
+      && interfaceInvariant.hud.baseline.missionPadding < interfaceInvariant.hud.large.missionPadding)) {
+    throw new Error(`P20-A informational HUD chrome did not scale while controls stayed fixed: ${JSON.stringify(interfaceInvariant)}`);
+  }
+  console.log(`BROWSER_P20_HUD_SCALE_PASS viewport=${viewportMode} vitalsPadding=${interfaceInvariant.hud.compact.vitalsPadding}/${interfaceInvariant.hud.baseline.vitalsPadding}/${interfaceInvariant.hud.large.vitalsPadding} missionPadding=${interfaceInvariant.hud.compact.missionPadding}/${interfaceInvariant.hud.baseline.missionPadding}/${interfaceInvariant.hud.large.missionPadding}`);
   console.log(`BROWSER_P20_COMBAT_CONTROL_INVARIANT_PASS viewport=${viewportMode} controls=${interfaceInvariant.compact.controls.length} compact=large geometry=identical`);
   console.log(`BROWSER_MOBILE_LAYOUT_PASS viewport=${Math.round(result.viewport.width)}x${Math.round(result.viewport.height)} touchButtons=${result.touchButtons} safe=onscreen+separated`);
   return result;
