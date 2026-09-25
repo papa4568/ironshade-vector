@@ -1692,5 +1692,30 @@
     min-height: 0;
     border-radius: 12px;
   }
+
+  .armory-item-modal .gear-summary-grid.gear-summary-grid--quick {
+    grid-template-columns: minmax(0, .82fr) minmax(0, 1.4fr);
+    gap: 8px;
+  }
+
+  .armory-item-modal .gear-summary-grid--quick > .iv-requirement {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .armory-item-modal .gear-summary-grid--quick > .gear-quick-read {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .armory-item-modal .gear-summary-grid--quick > .quick-loadout-impact {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .armory-item-modal .gear-summary-grid--quick > .gear-build-change-quick,
+  .armory-item-modal .gear-summary-grid--quick > .iv-disclosure-trigger {
+    grid-column: 1 / -1;
+  }
 }
 
