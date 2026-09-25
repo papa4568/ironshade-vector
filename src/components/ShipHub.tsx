@@ -447,9 +447,16 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
   useEffect(() => {
     if (typeof navigator.getGamepads !== 'function') return;
     let frame = 0;
-    let previousDirection = 0;
-    let previousConfirm = false;
-    let previousBack = false;
+    const initialPad = [...navigator.getGamepads()].find(Boolean);
+    const initialHorizontalAxis = initialPad?.axes?.[0] ?? 0;
+    const initialVerticalAxis = initialPad?.axes?.[1] ?? 0;
+    let previousDirection = initialPad?.buttons[12]?.pressed || initialPad?.buttons[14]?.pressed || initialHorizontalAxis < -.55 || initialVerticalAxis < -.55
+      ? -1
+      : initialPad?.buttons[13]?.pressed || initialPad?.buttons[15]?.pressed || initialHorizontalAxis > .55 || initialVerticalAxis > .55
+        ? 1
+        : 0;
+    let previousConfirm = !!initialPad?.buttons[0]?.pressed;
+    let previousBack = !!initialPad?.buttons[1]?.pressed;
     const poll = () => {
       const modalOpen = Boolean(document.querySelector('[role="dialog"][aria-modal="true"]'));
       const pad = [...navigator.getGamepads()].find(Boolean);
