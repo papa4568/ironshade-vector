@@ -274,3 +274,22 @@
 @media (max-width: 800px) { .ship-hardware-heading { align-items: stretch; flex-direction: column; gap: 6px; } .ship-hardware-heading > small { max-width: none; text-align: left; } }
 @media (max-width: 520px) { .ship-hardware-bay { padding: 12px; } .ship-hardware-grid { grid-template-columns: 1fr 1fr; gap: 7px; } .ship-hardware-card { padding: 10px; } .ship-hardware-card > b { font-size: 9px; } .ship-hardware-visual { height: 42px; padding: 7px 6px; gap: 3px; } .ship-commission-card { padding: 18px 16px; } }
 @media (prefers-reduced-motion: reduce) { .ship-hardware-card .ship-hardware-visual i,.ship-commission-overlay,.ship-commission-card,.ship-commission-card .ship-commission-hardware i { animation: none !important; transition: none !important; } }
+
+
+/* P19-G // Ship compact-phone acceptance closure.
+   Systems copy and current/next values stay readable on phone without changing
+   the wider Ship layout or collapsing the decision hierarchy. */
+@media (max-width: 620px) and (orientation: portrait),
+       (orientation: landscape) and (max-width: 1000px) and (max-height: 500px) {
+  .ship-hub.area-ship .ship-systems-panel
+    :is(p, small, span, em) {
+    font-size: var(--p19-compact-type-secondary, max(12px, .75rem));
+    line-height: 1.4;
+  }
+
+  .ship-hub.area-ship .ship-systems-panel
+    :is(b, strong) {
+    font-size: var(--p19-compact-type-decision, max(14px, .875rem));
+    line-height: 1.25;
+  }
+}
