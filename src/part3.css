@@ -596,3 +596,38 @@
   .network-recalibration-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .network-recalibration-actions > span:last-of-type { grid-column: 1 / -1; }
 }
+
+/* P19-G // Armory compact-phone acceptance closure.
+   This lives in the lazy Armory stylesheet so legacy mobile rules cannot reload
+   after the shared menu floor and reintroduce 8–10px labels or sub-40px filters. */
+@media (max-width: 620px) and (orientation: portrait),
+       (orientation: landscape) and (max-width: 1000px) and (max-height: 500px) {
+  .build-bay {
+    --p19-armory-secondary: max(12px, .75rem);
+    --p19-armory-decision: max(14px, .875rem);
+  }
+
+  .build-bay .build-header p,
+  .build-bay .close-build,
+  .build-bay .xp-strip,
+  .build-bay .build-message,
+  .build-bay .storage-heading span,
+  .build-bay .inventory-filter-scroll button {
+    font-size: var(--p19-armory-secondary);
+  }
+
+  .build-bay .build-tabs button {
+    font-size: var(--p19-armory-decision);
+  }
+
+  .build-bay .close-build,
+  .build-bay .build-tabs button {
+    min-height: 44px;
+  }
+
+  .build-bay .inventory-tools input,
+  .build-bay .inventory-tools select,
+  .build-bay .inventory-filter-scroll button {
+    min-height: 40px;
+  }
+}
