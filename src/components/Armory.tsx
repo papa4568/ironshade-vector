@@ -1057,7 +1057,7 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
     setMessage(outcome);
   };
 
-  return <main ref={buildRef} className="build-bay iv-view">
+  return <main ref={buildRef} className={`build-bay iv-view ${selected ? 'armory-inspector-open' : ''}`.trim()}>
     <header className="build-header iv-panel iv-panel--glass"><div><span className="card-kicker">QUIET SIGNAL // OPERATOR BUILD</span><h1>Build</h1><p>{identity} · Level {profile.level} · {profile.progressionPoints} unspent progression point{profile.progressionPoints === 1 ? '' : 's'}</p></div><button className="close-build" onClick={onClose}>Return to ship</button></header>
     <section className="xp-strip" aria-label="Experience progress"><span>LV {profile.level}</span><div><i style={{ width: `${Math.min(100, progress.current / progress.needed * 100)}%` }} /></div><b>{progress.maxed ? 'MAX LEVEL' : `${Math.round(progress.current)} / ${progress.needed} XP`}</b></section>
     <nav className="build-tabs" aria-label="Build sections">{(['gear', 'reconstruct', 'network', 'protocols', 'settings'] as Tab[]).map(value => { const badge = value === 'gear' ? newLootIds.length : value === 'network' ? profile.progressionPoints : 0; return <button key={value} className={tab === value ? 'selected' : ''} aria-current={tab === value ? 'page' : undefined} onClick={() => selectTab(value)}>{tabLabels[value]}{badge > 0 && <span className="tab-badge">{badge}</span>}</button>; })}</nav>
