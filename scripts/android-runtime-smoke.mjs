@@ -1279,6 +1279,7 @@ await waitFor(`Boolean(document.querySelector('.iv-disclosure-sheet .network-sta
 await tapButton('Close details', 97);
 await waitFor(`!document.querySelector('.iv-disclosure-sheet')`, 'Android P18-F planned build math close');
 
+const p20bPreviousTimeOrigin = await evaluate('performance.timeOrigin');
 const p20bSeeded = await evaluate(`(() => {
   const stateKey = 'ironshade-vector-state-v1';
   const state = JSON.parse(localStorage.getItem(stateKey) || 'null');
@@ -1296,6 +1297,7 @@ const p20bSeeded = await evaluate(`(() => {
   return true;
 })()`);
 if (!p20bSeeded) throw new Error('Android P20-B could not seed a two-point Operator Network profile.');
+await waitFor(`performance.timeOrigin !== ${JSON.stringify(p20bPreviousTimeOrigin)}`, 'Android P20-B document reload', 45_000);
 await waitFor(`(() => {
   const operatorButton = [...document.querySelectorAll('button[data-primary-area]')].find(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase() === 'operator');
   return document.readyState === 'complete' && operatorButton instanceof HTMLButtonElement && !operatorButton.disabled;
