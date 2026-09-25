@@ -1698,7 +1698,7 @@
     display: none;
   }
   .ship-hub.area-command .command-overview {
-    max-height: calc(100dvh - 88px);
+    max-height: calc(100dvh - 88px - var(--command-safe-bottom));
   }
   .ship-hub.area-command .command-visual.command-bridge.command-bridge-compact {
     min-height: 204px;
