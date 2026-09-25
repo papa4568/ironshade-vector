@@ -45,7 +45,7 @@
 
 
 /* ANDROID ITEM INSPECTOR SINGLE SCROLLER */
-@media (pointer: coarse), (max-width: 1100px), (orientation: landscape) and (max-height: 900px) {
+@media (pointer: coarse), (max-width: 1100px) {
   .gear-layout .item-inspector.open {
     display: block;
     position: fixed;
@@ -115,3 +115,4 @@
     min-height: 42px;
   }
 }
+

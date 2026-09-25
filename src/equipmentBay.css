@@ -1467,3 +1467,121 @@
     font-size: 14px;
   }
 }
+
+
+/* P19-H // Viewport-anchored wide Armory inspector. */
+@media (min-width: 1101px) {
+  .gear-layout,
+  .gear-layout.has-selection {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .gear-layout .inventory-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .gear-layout.has-selection::before {
+    content: '';
+    position: fixed;
+    z-index: 59;
+    inset: 0;
+    background: rgba(0, 0, 0, .58);
+    backdrop-filter: blur(2px);
+  }
+
+  .gear-layout.has-selection .item-inspector-backdrop {
+    display: block;
+    position: fixed;
+    z-index: 60;
+    inset: 0;
+    width: 100vw;
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    appearance: none;
+    background: transparent;
+    cursor: default;
+  }
+
+  .gear-layout .item-inspector,
+  .gear-layout:not(.has-selection) .item-inspector {
+    display: none;
+    position: fixed;
+    z-index: 70;
+    top: max(12px, env(safe-area-inset-top));
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(12px, env(safe-area-inset-bottom));
+    left: auto;
+    width: min(46vw, 640px);
+    max-width: calc(100vw - max(24px, env(safe-area-inset-left)) - max(24px, env(safe-area-inset-right)));
+    height: auto;
+    max-height: none;
+    min-height: 0;
+    padding: 0;
+    overflow: hidden;
+    border-color: #678b80;
+    border-radius: 15px;
+    background: #07100e;
+    box-shadow: -24px 0 90px rgba(0, 0, 0, .82);
+  }
+
+  .gear-layout .item-inspector.open {
+    display: grid;
+  }
+}
+
+
+/* P19-H // Preserve the established coarse-pointer storage density on wide touch hardware. */
+@media (min-width: 1101px) and (pointer: coarse) {
+  .gear-layout .inventory-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+
+/* P19-H // Wide inspector portal escapes the scrolling Build surface. */
+.armory-inspector-portal {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+  pointer-events: none;
+}
+
+.armory-inspector-portal .item-inspector-backdrop {
+  display: block;
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  appearance: none;
+  pointer-events: auto;
+  background: rgba(0, 0, 0, .58);
+  backdrop-filter: blur(2px);
+}
+
+.armory-inspector-portal .item-inspector.open {
+  display: grid;
+  position: fixed;
+  z-index: 1;
+  top: max(12px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  left: auto;
+  width: min(46vw, 640px);
+  max-width: calc(100vw - max(24px, env(safe-area-inset-left)) - max(24px, env(safe-area-inset-right)));
+  height: auto;
+  max-height: none;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  pointer-events: auto;
+  border-color: #678b80;
+  border-radius: 15px;
+  background: #07100e;
+  box-shadow: -24px 0 90px rgba(0, 0, 0, .82);
+}

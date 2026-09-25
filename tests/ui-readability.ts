@@ -304,6 +304,34 @@ assert(equipmentCss.includes('P8.5-J MOBILE ARMORY BUILD LINKS') && equipmentCss
 
 
 assert(
+  equipmentCss.includes('P19-H // Viewport-anchored wide Armory inspector.')
+    && equipmentCss.includes('@media (min-width: 1101px)')
+    && equipmentCss.includes('.gear-layout.has-selection .item-inspector-backdrop')
+    && equipmentCss.includes('.gear-layout .item-inspector.open')
+    && equipmentCss.includes('width: min(46vw, 640px)')
+    && equipmentCss.includes('grid-template-columns: repeat(3, minmax(0, 1fr))')
+    && equipmentCss.includes('.armory-inspector-portal .item-inspector.open')
+    && equipmentCss.includes('.armory-inspector-portal .item-inspector-backdrop')
+    && mobileInspectorCss.includes('@media (pointer: coarse), (max-width: 1100px)')
+    && armory.includes("import { createPortal } from 'react-dom'")
+    && armory.includes('wideInspectorPortal')
+    && armory.includes('armory-inspector-portal')
+    && armory.includes("window.matchMedia('(pointer: coarse)')"),
+  'P19-H wide Armory selection must use the established viewport-anchored inspector without shrinking Ship Storage or leaking the Android single-scroller rule onto wide desktop.',
+);
+assert(
+  browserSmoke.includes('async function armoryInspectorViewportAudit()')
+    && browserSmoke.includes('data-p19-armory-viewport-candidate')
+    && browserSmoke.includes('BROWSER_P19_ARMORY_INSPECTOR_PASS')
+    && browserSmoke.includes('headerOnscreen')
+    && browserSmoke.includes('quickReadOnscreen')
+    && browserSmoke.includes('actionsOnscreen')
+    && browserSmoke.includes('storageKeepsWidth')
+    && browserSmoke.includes('context=preserved'),
+  'P19-H desktop Browser E2E must prove inspector visibility, stable storage geometry, and preserved scroll context.',
+);
+
+assert(
   menuOverhaulCss.includes('P19-G // Compact-phone typography sweep + device acceptance')
     && menuOverhaulCss.includes('--p19-compact-type-secondary: max(12px, .75rem)')
     && menuOverhaulCss.includes('--p19-compact-type-decision: max(14px, .875rem)')
