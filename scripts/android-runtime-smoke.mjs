@@ -391,6 +391,7 @@ if (plannerPersistenceOnly) {
       && targets[1] === 'mobility-1'
       && !state.profile.operatorNetwork.allocatedNodeIds.includes('ballistics-3')
       && !state.profile.operatorNetwork.allocatedNodeIds.includes('mobility-1')
+      && state?.profile?.settings?.interfaceSize === 'large'
       && state?.profile?.settings?.hudLayoutPreset === 'left-handed'
       && Math.abs(state.profile.settings.movementClusterInset - 0.35) < 0.001
       && Math.abs(state.profile.settings.movementClusterLift - 0.4) < 0.001
@@ -426,6 +427,7 @@ if (plannerPersistenceOnly) {
       networkSchema: state?.operatorNetworkSchemaVersion,
       targets: state?.profile?.operatorNetwork?.plannedTargetNodeIds ?? [],
       allocated: state?.profile?.operatorNetwork?.allocatedNodeIds ?? [],
+      interfaceSize: state?.profile?.settings?.interfaceSize ?? '',
       hudLayout: state?.profile?.settings ? {
         preset: state.profile.settings.hudLayoutPreset,
         movementInset: state.profile.settings.movementClusterInset,
@@ -438,6 +440,7 @@ if (plannerPersistenceOnly) {
     };
   })()`);
   console.log(`ANDROID_NETWORK_PLANNER_PERSISTENCE_PASS version=${persisted.version} schema=${persisted.networkSchema} targets=${persisted.targets.join('+')} relaunch=cold ui=restored nonDestructive=${persisted.allocated.includes('ballistics-3') || persisted.allocated.includes('mobility-1') ? 'false' : 'true'}`);
+  console.log(`ANDROID_P20_INTERFACE_SIZE_RELAUNCH_PASS size=${persisted.interfaceSize} relaunch=cold`);
   console.log(`ANDROID_P19_HUD_LAYOUT_RELAUNCH_PASS preset=${persisted.hudLayout?.preset} movement=${persisted.hudLayout?.movementInset}/${persisted.hudLayout?.movementLift}/${persisted.hudLayout?.movementScale} action=${persisted.hudLayout?.actionInset}/${persisted.hudLayout?.actionLift}/${persisted.hudLayout?.actionScale} relaunch=cold`);
   session.close();
   await sleep(100);
@@ -975,12 +978,53 @@ console.log('ANDROID_P19_GUIDE_DEEPLINK_PASS section=equipment-rarity touch=link
 console.log(`ANDROID_P19_ARMORY_CARD_PASS storage=${p19ArmoryCardScan.storageCount} equipped=${p19ArmoryCardScan.equippedCount} blocked=${p19ArmoryCardScan.blockedStorageCount} fontFloor=${p19ArmoryCardScan.minReadableFont.toFixed(1)}px compare=quick-read details=shared-sheet equip=restored guide=equipment-rarity`);
 
 await tapButton('Settings', 98);
-await waitFor(`Boolean(document.querySelector('.settings-panel select[aria-label="Combat layout preset"]') && document.querySelector('button[data-hud-layout-reset]'))`, 'P19-F HUD layout settings');
+await waitFor(`Boolean(document.querySelector('.settings-panel select[aria-label="Combat layout preset"]') && document.querySelector('select[aria-label="Interface size"]') && document.querySelector('button[data-hud-layout-reset]'))`, 'P19-F/P20-A layout settings');
+
+async function setP20InterfaceSize(value) {
+  const applied = await evaluate(`(() => {
+    const control = document.querySelector('select[aria-label="Interface size"]');
+    if (!(control instanceof HTMLSelectElement)) return false;
+    const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set;
+    if (!setter) return false;
+    setter.call(control, '${value}');
+    control.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
+  })()`);
+  if (!applied) throw new Error(`Android P20-A could not change Interface Size to ${value}.`);
+  await waitFor(`(() => {
+    const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+    return state?.profile?.settings?.interfaceSize === '${value}' && document.documentElement.dataset.interfaceSize === '${value}';
+  })()`, `persisted ${value} Interface Size`);
+  await sleep(140);
+  return await evaluate(`(() => {
+    const viewport = { width: window.visualViewport?.width ?? window.innerWidth, height: window.visualViewport?.height ?? window.innerHeight };
+    const panel = document.querySelector('.settings-panel');
+    const rect = panel?.getBoundingClientRect();
+    return {
+      size: document.documentElement.dataset.interfaceSize ?? '',
+      rootFontSize: Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
+      horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - viewport.width),
+      panelVisible: Boolean(rect && rect.width > 0 && rect.height > 0),
+      panelWithinViewport: Boolean(rect && rect.left >= -2 && rect.right <= viewport.width + 2),
+    };
+  })()`);
+}
+
+const p20InterfaceCompact = await setP20InterfaceSize('compact');
+const p20InterfaceDefault = await setP20InterfaceSize('default');
+const p20InterfaceLarge = await setP20InterfaceSize('large');
+if (!p20InterfaceCompact.panelVisible || !p20InterfaceDefault.panelVisible || !p20InterfaceLarge.panelVisible
+  || !p20InterfaceCompact.panelWithinViewport || !p20InterfaceDefault.panelWithinViewport || !p20InterfaceLarge.panelWithinViewport
+  || p20InterfaceCompact.horizontalOverflow > 2 || p20InterfaceDefault.horizontalOverflow > 2 || p20InterfaceLarge.horizontalOverflow > 2
+  || !(p20InterfaceCompact.rootFontSize < p20InterfaceDefault.rootFontSize && p20InterfaceDefault.rootFontSize < p20InterfaceLarge.rootFontSize)) {
+  throw new Error(`Android P20-A Interface Size reflow failed: ${JSON.stringify({ compact: p20InterfaceCompact, default: p20InterfaceDefault, large: p20InterfaceLarge })}`);
+}
+console.log(`ANDROID_P20_INTERFACE_SIZE_PASS compact=${p20InterfaceCompact.rootFontSize}px default=${p20InterfaceDefault.rootFontSize}px large=${p20InterfaceLarge.rootFontSize}px overflow=none persisted=large`);
 
 const p19AccessibilityBefore = await evaluate(`(() => {
   const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
   const settings = state?.profile?.settings;
-  return settings ? { textScale: settings.textScale, contrast: settings.contrast, reducedMotion: settings.reducedMotion } : null;
+  return settings ? { interfaceSize: settings.interfaceSize, textScale: settings.textScale, contrast: settings.contrast, reducedMotion: settings.reducedMotion } : null;
 })()`);
 if (!p19AccessibilityBefore) throw new Error('Android P19-F could not capture baseline accessibility settings.');
 
@@ -1055,7 +1099,7 @@ const p19SettingsResult = await evaluate(`(() => {
     preset: s.hudLayoutPreset,
     movement: [s.movementClusterInset, s.movementClusterLift, s.movementClusterScale],
     action: [s.actionClusterInset, s.actionClusterLift, s.actionClusterScale],
-    accessibility: { textScale: s.textScale, contrast: s.contrast, reducedMotion: s.reducedMotion },
+    accessibility: { interfaceSize: s.interfaceSize, textScale: s.textScale, contrast: s.contrast, reducedMotion: s.reducedMotion },
   } : null;
 })()`);
 if (!p19SettingsResult || JSON.stringify(p19SettingsResult.accessibility) !== JSON.stringify(p19AccessibilityBefore)) {
@@ -1919,6 +1963,37 @@ await call('Emulation.clearDeviceMetricsOverride');
 await sleep(260);
 const p19HudRestored = await p19HudLayoutSnapshot();
 assertP19HudLayoutSnapshot(p19HudRestored, 'restored landscape');
+
+const p20ControlInvariant = await evaluate(`(() => {
+  const root = document.documentElement;
+  const previous = root.dataset.interfaceSize ?? '';
+  const snapshot = () => {
+    const rect = element => {
+      if (!element) return null;
+      const value = element.getBoundingClientRect();
+      return [value.left, value.top, value.width, value.height].map(number => Number(number.toFixed(3)));
+    };
+    return {
+      move: rect(document.querySelector('.move-stick')),
+      dock: rect(document.querySelector('.combat-dock')),
+      controls: [...document.querySelectorAll('.touch-button')].map((button, index) => ({
+        key: button.getAttribute('aria-label') || button.className || String(index),
+        rect: rect(button),
+      })),
+    };
+  };
+  root.dataset.interfaceSize = 'compact';
+  const compact = snapshot();
+  root.dataset.interfaceSize = 'large';
+  const large = snapshot();
+  if (previous) root.dataset.interfaceSize = previous;
+  else delete root.dataset.interfaceSize;
+  return { compact, large, restored: root.dataset.interfaceSize ?? '' };
+})()`);
+if (JSON.stringify(p20ControlInvariant.compact) !== JSON.stringify(p20ControlInvariant.large)) {
+  throw new Error(`Android P20-A changed combat-control geometry across Interface Size values: ${JSON.stringify(p20ControlInvariant)}`);
+}
+console.log(`ANDROID_P20_COMBAT_CONTROL_INVARIANT_PASS controls=${p20ControlInvariant.compact.controls.length} compact=large geometry=identical restored=${p20ControlInvariant.restored}`);
 console.log(`ANDROID_P19_HUD_LAYOUT_PASS presets=standard+large+left-handed custom=left-handed movement=.35/.4/1.04 action=.3/.25/.96 safe=onscreen+separated hit=tracks-visible rotation=landscape+portrait+landscape fixed=hud+objective accessibility=${p19HudRestored.accessibility.textScale}+${p19HudRestored.accessibility.contrast}+motion-${p19HudRestored.accessibility.reducedMotion}`);
 
 await waitFor(`Boolean(document.querySelector('[aria-label="Touch combat controls"]') && document.querySelector('.move-stick') && document.querySelector('.fire-button') && document.querySelector('.dodge-button'))`, 'Android touch controls');
