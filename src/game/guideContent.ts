@@ -42,6 +42,8 @@ export const guideSections: GuideSection[] = [
         points: [
           'Desktop: WASD moves, mouse aims, left mouse fires, Q/E/F use MAG/MARK/ARC, Space dodges, X interacts, R reloads, and V vents.',
           'Mobile: left stick moves; hold FIRE for assisted tracking; drag the right battlefield for precision aim; use MAG/MARK/ARC, DODGE, ACT, reload/vent prompts as they become relevant.',
+          'Touch layout: Standard keeps movement on the left and combat actions on the right; Large enlarges both clusters; Left-Handed swaps those sides. Settings can lift, inset, and scale each cluster, and Reset reapplies the selected preset.',
+          'Mission-critical vitals, objectives, alerts, target/boss state, and transient combat tells stay fixed outside the movable touch clusters. Portrait temporarily suspends horizontal inset so movement and actions remain separated; the saved landscape offset is preserved.',
           'Controller: movement/aim use the sticks; focused UI actions use the platform confirm/back convention. Menus preserve native focus order so D-pad/stick navigation remains visible.',
         ],
       },
@@ -206,6 +208,7 @@ export const guideSections: GuideSection[] = [
           'Large text scales rem-based interface typography while responsive layouts reflow around it.',
           'High Contrast strengthens text, borders, surfaces, and focus cues while keeping rarity shape coding.',
           'Reduce Motion disables interface transitions and combat camera shake; critical gameplay timing stays unchanged.',
+          'Touch layout presets and custom cluster positions remain compatible with Large text, High Contrast, and Reduce Motion because those settings do not alter combat input semantics.',
         ],
       },
       {
