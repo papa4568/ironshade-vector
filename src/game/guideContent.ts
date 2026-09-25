@@ -198,17 +198,19 @@ export const guideSections: GuideSection[] = [
     id: 'accessibility-settings',
     label: 'Accessibility / Settings',
     eyebrow: 'CLIENT CONFIGURATION',
-    summary: 'Readable text, contrast, motion, aiming assistance, effects, audio, haptics, and privacy controls that persist with the local operator profile.',
+    summary: 'Interface size, readable text, contrast, motion, aiming assistance, effects, audio, haptics, and privacy controls that persist with the local operator profile.',
     topics: [
       {
         id: 'accessibility',
         title: 'Readability & motion',
-        body: 'Interface Text Size, High Contrast, and Reduce Motion change presentation without changing combat timing or simulation rules.',
+        body: 'Interface Size, Interface Text Size, High Contrast, and Reduce Motion change presentation without changing combat timing or simulation rules.',
         points: [
-          'Large text scales rem-based interface typography while responsive layouts reflow around it.',
+          'Interface Size scales shared non-combat menu, panel, spacing, icon, and informational UI tokens. Compact fits more management UI; Large increases overall interface presence.',
+          'Combat movement, FIRE, DODGE, class-skill, ACT, and other touch-control geometry remain owned only by Combat Layout Preset and cluster controls.',
+          'Large text composes with Interface Size so rem-based typography grows independently while responsive layouts reflow around both choices.',
           'High Contrast strengthens text, borders, surfaces, and focus cues while keeping rarity shape coding.',
           'Reduce Motion disables interface transitions and combat camera shake; critical gameplay timing stays unchanged.',
-          'Touch layout presets and custom cluster positions remain compatible with Large text, High Contrast, and Reduce Motion because those settings do not alter combat input semantics.',
+          'Touch layout presets and custom cluster positions remain compatible with Interface Size, Large text, High Contrast, and Reduce Motion because general interface presentation does not alter combat input geometry or semantics.',
         ],
       },
       {
