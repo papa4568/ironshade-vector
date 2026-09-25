@@ -1297,8 +1297,8 @@ const p20bSeeded = await evaluate(`(() => {
 })()`);
 if (!p20bSeeded) throw new Error('Android P20-B could not seed a two-point Operator Network profile.');
 await waitFor(`(() => {
-  const text = document.body?.innerText ?? '';
-  return document.readyState === 'complete' && (text.toLowerCase().includes('command ready') || text.toLowerCase().includes('command deck'));
+  const operatorButton = [...document.querySelectorAll('button[data-primary-area]')].find(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase() === 'operator');
+  return document.readyState === 'complete' && operatorButton instanceof HTMLButtonElement && !operatorButton.disabled;
 })()`, 'Android P20-B seeded Command Deck after reload', 45_000);
 await tapButton('Operator', 68);
 await waitFor(`[...document.querySelectorAll('.operator-section-tabs button')].some(button => (button.textContent || '').trim().toLowerCase() === 'build')`, 'Android P20-B Operator build route');
