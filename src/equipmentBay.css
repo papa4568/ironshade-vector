@@ -1436,3 +1436,34 @@
   }
 }
 
+
+/* P19-D // Compact-phone Armory card composition. */
+.inventory-card > b,
+.equipped-card > b {
+  display:block;
+  margin:6px 0 4px;
+  font-size:14px;
+  line-height:1.2;
+}
+@media (orientation: landscape) and (max-height: 650px) {
+  .equipment-slots {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .equipped-card {
+    min-height: 112px;
+    padding: 10px;
+  }
+  .inventory-grid,
+  .gear-layout:not(.has-selection) .inventory-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .inventory-card {
+    min-height: 136px;
+    padding: 11px 12px;
+  }
+  .inventory-card > b,
+  .equipped-card > b {
+    font-size: 14px;
+  }
+}

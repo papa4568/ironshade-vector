@@ -84,6 +84,15 @@ assert(
   'P15-B/P18-E gear inspection must retain a readable decision-first DOM hierarchy with shared deep details on mobile.',
 );
 
+assert(
+  armory.includes('inventory-card-decision')
+    && armory.includes('inventory-card-delta')
+    && armory.includes('data-requirement-state={requirement.state}')
+    && !armory.includes('item-depth-line')
+    && androidSmoke.includes('ANDROID_P19_ARMORY_CARD_PASS'),
+  'P19-D Armory cards must keep equip/compare state ahead of inspection while expert metadata stays behind Details.',
+);
+
 
 assert(
   shipHub.includes('const commandNavRef = useRef<HTMLElement>(null)')

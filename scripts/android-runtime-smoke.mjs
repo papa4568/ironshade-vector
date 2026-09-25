@@ -474,6 +474,48 @@ await waitFor(`(() => {
 })()`, 'Android Build surface for skill hierarchy');
 await waitFor(`Boolean(document.querySelector('.build-bay.iv-view') && document.querySelector('.build-header.iv-panel.iv-panel--glass') && document.querySelector('.build-tabs button[aria-current="page"]'))`, 'Android P15-B shared Build shell');
 
+const p19ArmoryCardScan = await evaluate(`(() => {
+  const storageCards = [...document.querySelectorAll('.inventory-card')].filter(card => card.getBoundingClientRect().width > 0);
+  const equippedCards = [...document.querySelectorAll('.equipped-card')].filter(card => card.getBoundingClientRect().width > 0);
+  if (!storageCards.length || !equippedCards.length) return null;
+  const readableSize = element => element ? Number.parseFloat(getComputedStyle(element).fontSize) : 0;
+  const storage = storageCards.map(card => ({
+    state: card.getAttribute('data-requirement-state'),
+    hasRarity: Boolean(card.querySelector('.rarity-pill')),
+    hasEffect: Boolean(card.querySelector('.item-effect-preview')),
+    hasDecision: Boolean(card.querySelector('.inventory-card-decision[data-requirement-state]')),
+    hasDelta: Boolean(card.querySelector('.inventory-card-delta')),
+    hasDepthStack: Boolean(card.querySelector('.item-depth-line')),
+    effectFont: readableSize(card.querySelector('.item-effect-preview')),
+    decisionFont: readableSize(card.querySelector('.inventory-card-decision > span')),
+    deltaFont: readableSize(card.querySelector('.inventory-card-delta')),
+  }));
+  const equipped = equippedCards.filter(card => card.querySelector('.rarity-pill')).map(card => ({
+    state: card.getAttribute('data-requirement-state'),
+    hasEffect: Boolean(card.querySelector('.item-effect-preview')),
+    hasDecision: Boolean(card.querySelector('.inventory-card-decision[data-requirement-state]')),
+    hasDelta: Boolean(card.querySelector('.inventory-card-delta')),
+    effectFont: readableSize(card.querySelector('.item-effect-preview')),
+    decisionFont: readableSize(card.querySelector('.inventory-card-decision > span')),
+  }));
+  return {
+    storageCount: storage.length,
+    equippedCount: equipped.length,
+    blockedStorageCount: storage.filter(card => card.state === 'blocked').length,
+    storageDecisionFirst: storage.every(card => card.hasRarity && card.hasEffect && card.hasDecision && card.hasDelta && !card.hasDepthStack),
+    equippedDecisionFirst: equipped.length > 0 && equipped.every(card => card.state === 'active' && card.hasEffect && card.hasDecision && card.hasDelta),
+    minReadableFont: Math.min(...storage.flatMap(card => [card.effectFont, card.decisionFont, card.deltaFont]), ...equipped.flatMap(card => [card.effectFont, card.decisionFont])),
+  };
+})()`);
+if (!p19ArmoryCardScan
+  || !p19ArmoryCardScan.storageDecisionFirst
+  || !p19ArmoryCardScan.equippedDecisionFirst
+  || p19ArmoryCardScan.blockedStorageCount < 1
+  || p19ArmoryCardScan.minReadableFont < 11.5) {
+  throw new Error(`Android P19-D decision-first Armory card scan failed: ${JSON.stringify(p19ArmoryCardScan)}`);
+}
+
+
 const p18GearStorageCandidate = await evaluate(`(() => {
   const card = [...document.querySelectorAll('.inventory-card')].find(candidate => {
     const slot = candidate.querySelector('small')?.textContent ?? '';
@@ -744,6 +786,7 @@ await waitFor(`(() => {
     && active.getAttribute('data-guide-link') === 'equipment-rarity';
 })()`, 'Android P19-C Guide history-back and Build focus restore');
 console.log('ANDROID_P19_GUIDE_DEEPLINK_PASS section=equipment-rarity touch=link back=history+focus text=large rotation=landscape+portrait safe=onscreen');
+console.log(`ANDROID_P19_ARMORY_CARD_PASS storage=${p19ArmoryCardScan.storageCount} equipped=${p19ArmoryCardScan.equippedCount} blocked=${p19ArmoryCardScan.blockedStorageCount} fontFloor=${p19ArmoryCardScan.minReadableFont.toFixed(1)}px compare=quick-read details=shared-sheet equip=restored guide=equipment-rarity`);
 
 await tapButton('Crafting', 32);
 await waitFor(`Boolean(document.querySelector('.reconstruction-panel .reconstruction-top.iv-panel.iv-panel--glass') && document.querySelector('.reconstruct-storage.iv-panel') && document.querySelector('.build-tabs button[aria-current="page"]')?.textContent?.includes('Crafting'))`, 'Android P15-B Crafting surface');
