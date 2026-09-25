@@ -912,14 +912,21 @@ try {
     const text = document.body?.innerText ?? '';
     const stages = [...document.querySelectorAll('.skill-path-overview > article')].map(node => (node.textContent || '').trim());
     const cards = [...document.querySelectorAll('.skill-path-card')];
-    return text.includes('Choose Standard, a Lens, or a class Evolution for each skill.')
-      && [...document.querySelectorAll('button')].some(button => (button.textContent || '').trim() === 'How Skills progression works')
+    const details = [...document.querySelectorAll('.skill-path-card .iv-disclosure-trigger')].filter(button => (button.textContent || '').trim() === 'View current skill path');
+    return text.includes('Choose Standard, a Lens, or a class Evolution.')
+      && Boolean(document.querySelector('button[data-guide-link="builds-progression"]'))
+      && !text.includes('How Skills progression works')
       && text.includes('SHARED LENSES')
       && text.includes('CLASS EVOLUTIONS')
       && stages.length === 4
       && cards.length === 3
-      && cards.every(card => card.querySelectorAll('.skill-hierarchy-grid > div').length === 4);
-  })()`, 'P8-H skill hierarchy');
+      && details.length === 3
+      && cards.every(card => card.querySelector('.skill-hierarchy-grid') === null);
+  })()`, 'P19-E decision-first skill hierarchy');
+  await keyboardActivateButton('View current skill path');
+  await waitFor(`document.querySelectorAll('.iv-disclosure-sheet .skill-hierarchy-grid > div').length === 4`, 'P19-E current skill path Details');
+  await keyboardActivateButton('Close details');
+  await waitFor(`!document.querySelector('.iv-disclosure-sheet')`, 'P19-E current skill path Details close');
   const hierarchyLayout = await evaluate(`(() => {
     const viewport = { width: window.innerWidth, height: window.innerHeight };
     const buttons = [...document.querySelectorAll('.skill-option-group > button')].filter(button => {
@@ -933,7 +940,7 @@ try {
   if (hierarchyLayout.buttonCount < 9 || hierarchyLayout.undersized.length || hierarchyLayout.horizontalOverflow > 2) {
     throw new Error(`P8-H skill hierarchy layout failed: ${JSON.stringify(hierarchyLayout)}`);
   }
-  console.log(`BROWSER_SKILL_HIERARCHY_PASS viewport=${viewportMode} stages=4 skills=3 options=${hierarchyLayout.buttonCount}`);
+  console.log(`BROWSER_SKILL_HIERARCHY_PASS viewport=${viewportMode} stages=4 skills=3 options=${hierarchyLayout.buttonCount} details=shared-sheet guide=builds-progression`);
   await keyboardActivateButton('Return to ship');
   await waitFor(`(() => {
     const text = (document.body?.innerText ?? '').toLowerCase();
