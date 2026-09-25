@@ -25,6 +25,7 @@ export type ItemModifier = { id: AffixId; label: string; description: string; me
 export type Item = { id: string; baseId: string; name: string; slot: EquipmentSlot; equipmentClass: string; rarity: Rarity; levelRequirement: number; core: string; modifiers: ItemModifier[]; faction?: EquipmentFaction; singularTrait?: SingularTraitId; singularEffect?: string; singularCategory?: GearSingularCategory; singularRule?: string; singularOpportunityCost?: string; recoveryLevel?: number; frameGeneration?: FrameGeneration; frameIdentity?: FrameIdentityId; frameImplicit?: string; equipmentQuality?: number; augmentSlots?: number; augments?: AugmentId[]; recoveryQuality?: RecoveryQualityGrade; recoverySource?: string; craftStability?: number };
 export type EffectIntensity = 'full' | 'reduced';
 export type TextScale = 'default' | 'large';
+export type InterfaceSize = 'compact' | 'default' | 'large';
 export type ContrastMode = 'standard' | 'high';
 export type HudLayoutPreset = 'standard' | 'large' | 'left-handed';
 export type HudLayoutSettings = {
@@ -36,7 +37,7 @@ export type HudLayoutSettings = {
   actionClusterLift: number;
   actionClusterScale: number;
 };
-export type ProfileSettings = HudLayoutSettings & { graphicsQuality: GraphicsQualityMode; textScale: TextScale; contrast: ContrastMode; reducedMotion: boolean; aimAssist: MobileAimAssist; rightStickFire: boolean; screenShake: boolean; effectIntensity: EffectIntensity; effectsVolume: number; uiVolume: number; haptics: boolean; telemetrySharing: boolean; tutorialComplete: boolean };
+export type ProfileSettings = HudLayoutSettings & { graphicsQuality: GraphicsQualityMode; interfaceSize: InterfaceSize; textScale: TextScale; contrast: ContrastMode; reducedMotion: boolean; aimAssist: MobileAimAssist; rightStickFire: boolean; screenShake: boolean; effectIntensity: EffectIntensity; effectsVolume: number; uiVolume: number; haptics: boolean; telemetrySharing: boolean; tutorialComplete: boolean };
 
 const HUD_LAYOUT_PRESETS: Record<HudLayoutPreset, HudLayoutSettings> = {
   standard: { hudLayoutPreset: 'standard', movementClusterInset: 0, movementClusterLift: 0, movementClusterScale: 1, actionClusterInset: 0, actionClusterLift: 0, actionClusterScale: 1 },
@@ -44,6 +45,7 @@ const HUD_LAYOUT_PRESETS: Record<HudLayoutPreset, HudLayoutSettings> = {
   'left-handed': { hudLayoutPreset: 'left-handed', movementClusterInset: 0, movementClusterLift: 0, movementClusterScale: 1, actionClusterInset: 0, actionClusterLift: 0, actionClusterScale: 1 },
 };
 export function hudLayoutPresetPatch(preset: HudLayoutPreset): HudLayoutSettings { return { ...HUD_LAYOUT_PRESETS[preset] }; }
+export function normalizeInterfaceSize(value: unknown): InterfaceSize { return value === 'compact' || value === 'large' ? value : 'default'; }
 function normalizedHudLayoutNumber(value: unknown, minimum: number, maximum: number, fallback: number) {
   return typeof value === 'number' && Number.isFinite(value) ? Math.max(minimum, Math.min(maximum, value)) : fallback;
 }
@@ -643,7 +645,7 @@ const maxLevelXp = levelThresholds[levelThresholds.length - 1];
 
 export function createDefaultProfile(): PlayerProfile {
   const inventory = starterItems.map(cloneItem);
-  return { version: 3, xp: 0, level: 1, progressionPoints: 0, allocatedNodes: [], operatorNetwork: createOperatorNetworkState('vanguard'), abilityMods: { mag: null, mark: null, arc: null }, operatorClass: 'vanguard', classSelectionComplete: false, specialization: null, specializationOverclock: false, inventory, equipped: { carbine: null, breacher: 'starter-breacher', rail: null, suit: 'starter-suit', rig: 'starter-rig', implant: 'starter-implant' }, settings: { ...hudLayoutPresetPatch('standard'), graphicsQuality: 'adaptive', textScale: 'default', contrast: 'standard', reducedMotion: false, aimAssist: 'balanced', rightStickFire: true, screenShake: true, effectIntensity: 'full', effectsVolume: 0.65, uiVolume: 0.45, haptics: true, telemetrySharing: false, tutorialComplete: false }, runsCompleted: 0, craftHistory: [] };
+  return { version: 3, xp: 0, level: 1, progressionPoints: 0, allocatedNodes: [], operatorNetwork: createOperatorNetworkState('vanguard'), abilityMods: { mag: null, mark: null, arc: null }, operatorClass: 'vanguard', classSelectionComplete: false, specialization: null, specializationOverclock: false, inventory, equipped: { carbine: null, breacher: 'starter-breacher', rail: null, suit: 'starter-suit', rig: 'starter-rig', implant: 'starter-implant' }, settings: { ...hudLayoutPresetPatch('standard'), graphicsQuality: 'adaptive', interfaceSize: 'default', textScale: 'default', contrast: 'standard', reducedMotion: false, aimAssist: 'balanced', rightStickFire: true, screenShake: true, effectIntensity: 'full', effectsVolume: 0.65, uiVolume: 0.45, haptics: true, telemetrySharing: false, tutorialComplete: false }, runsCompleted: 0, craftHistory: [] };
 }
 export function normalizeStoredProfile(parsed: Partial<PlayerProfile>): PlayerProfile {
   if (parsed.version !== 3 || !Array.isArray(parsed.inventory)) throw new Error('Unsupported profile save');
@@ -702,7 +704,7 @@ export function normalizeStoredProfile(parsed: Partial<PlayerProfile>): PlayerPr
     classSelectionComplete,
     specialization,
     specializationOverclock,
-    settings: { ...defaults.settings, ...parsed.settings, ...normalizeHudLayoutSettings(parsed.settings) },
+    settings: { ...defaults.settings, ...parsed.settings, interfaceSize: normalizeInterfaceSize(parsed.settings?.interfaceSize), ...normalizeHudLayoutSettings(parsed.settings) },
     abilityMods: { ...defaults.abilityMods, ...parsed.abilityMods },
     equipped,
     inventory,
@@ -1288,7 +1290,7 @@ export function setSpecialization(profile: PlayerProfile, specialization: Specia
   };
 }
 export function setSpecializationOverclock(profile: PlayerProfile, enabled: boolean): PlayerProfile { if (profile.level < 16 || !profile.specialization) return profile; return { ...profile, specializationOverclock: enabled }; }
-export function setProfileSettings(profile: PlayerProfile, settings: Partial<ProfileSettings>): PlayerProfile { const next = { ...profile.settings, ...settings }; return { ...profile, settings: { ...next, ...normalizeHudLayoutSettings(next) } }; }
+export function setProfileSettings(profile: PlayerProfile, settings: Partial<ProfileSettings>): PlayerProfile { const next = { ...profile.settings, ...settings }; return { ...profile, settings: { ...next, interfaceSize: normalizeInterfaceSize(next.interfaceSize), ...normalizeHudLayoutSettings(next) } }; }
 function equippedItems(profile: PlayerProfile) {
   const activeWeapon = activeWeaponFamilyForProfile(profile);
   return (Object.keys(profile.equipped) as EquipmentSlot[])
