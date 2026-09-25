@@ -36,6 +36,20 @@
 .inventory-card > .equipment-card-heading > em { color: #d3e3a8; font-size: 12px; line-height: 1; }
 .inventory-card > b { display: block; margin: 7px 0; color: #dce6e2; font-size: 14px; }
 .inventory-card > .item-effect-preview { display: -webkit-box; color: #7e8d89; font-size: 12px; line-height: 1.35; }
+/* P19-D // Keep decision-first card text above the compact-phone type floor after Armory lazy CSS loads. */
+.build-bay .gear-layout .inventory-card > .item-effect-preview,
+.build-bay .gear-layout .equipped-card > .item-effect-preview,
+.build-bay .gear-layout .inventory-card > .inventory-card-delta,
+.build-bay .gear-layout .equipped-card > .inventory-card-delta {
+  font-size: 12px;
+}
+.build-bay .gear-layout .inventory-card > .inventory-card-decision > span,
+.build-bay .gear-layout .inventory-card > .inventory-card-decision > small,
+.build-bay .gear-layout .equipped-card > .inventory-card-decision > span,
+.build-bay .gear-layout .equipped-card > .inventory-card-decision > small {
+  font-size: 12px;
+  line-height: 1.25;
+}
 .item-inspector { position: sticky; top: 0; min-height: 520px; padding: 20px; border: 1px solid #30423e; border-radius: 14px; background: rgba(8,13,14,.96); box-shadow: 0 18px 60px rgba(0,0,0,.28); }
 .item-inspector h2 { margin: 8px 0 7px; font-size: 25px; }
 .item-inspector > p { margin: 0 0 14px; color: #82928d; font-size: 11px; line-height: 1.45; }
