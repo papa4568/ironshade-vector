@@ -865,7 +865,7 @@ export function autoAllocateOperatorNetworkPlan(state: OperatorNetworkState, tar
     const beforePoints = nextState.unspentPoints;
     const allocation = allocateOperatorNetworkNode(nextState, nodeId, context);
     if (!allocation.allocated) {
-      nextBlocker = { nodeId, reason: allocation.reason };
+      nextBlocker = { nodeId, reason: allocation.reason as OperatorNetworkAutoAllocationBlocker['reason'] };
       break;
     }
     nextState = allocation.state;
