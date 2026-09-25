@@ -1667,6 +1667,96 @@ if (!mobileLayout.vitals || !mobileLayout.objective || mobileLayout.coreOverlap 
 console.log(`ANDROID_MOBILE_LAYOUT_PASS viewport=${Math.round(mobileLayout.viewport.width)}x${Math.round(mobileLayout.viewport.height)} touchButtons=${mobileLayout.touchButtons} safe=onscreen+separated`);
 console.log(`ANDROID_COMBAT_HUD_PASS layers=core+context+transient typeFloor=12px overlaps=none touch=clear`);
 
+const p19HudLayoutSnapshot = async () => evaluate(`(() => {
+  const viewport = { width: window.visualViewport?.width ?? window.innerWidth, height: window.visualViewport?.height ?? window.innerHeight };
+  const rect = element => {
+    if (!element) return null;
+    const value = element.getBoundingClientRect();
+    return { left: value.left, top: value.top, right: value.right, bottom: value.bottom, width: value.width, height: value.height };
+  };
+  const within = value => !!value && value.left >= -1 && value.top >= -1 && value.right <= viewport.width + 1 && value.bottom <= viewport.height + 1;
+  const intersects = (a, b) => !!a && !!b && !(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top);
+  const hit = (element, selector) => {
+    const box = rect(element);
+    if (!box) return false;
+    const target = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+    return Boolean(target?.closest?.(selector));
+  };
+  const ui = document.querySelector('.touch-ui');
+  const moveElement = document.querySelector('.move-stick');
+  const dockElement = document.querySelector('.combat-dock');
+  const fireElement = document.querySelector('.fire-button');
+  const move = rect(moveElement);
+  const dock = rect(dockElement);
+  const fire = rect(fireElement);
+  const hud = rect(document.querySelector('.hud-top'));
+  const objective = rect(document.querySelector('.mission-card'));
+  return {
+    viewport,
+    preset: ui?.dataset.layoutPreset ?? '',
+    movementInset: Number(ui?.dataset.movementInset ?? NaN),
+    movementLift: Number(ui?.dataset.movementLift ?? NaN),
+    movementScale: Number(ui?.dataset.movementScale ?? NaN),
+    actionInset: Number(ui?.dataset.actionInset ?? NaN),
+    actionLift: Number(ui?.dataset.actionLift ?? NaN),
+    actionScale: Number(ui?.dataset.actionScale ?? NaN),
+    move, dock, fire, hud, objective,
+    moveDockOverlap: intersects(move, dock),
+    onscreen: [move, dock, fire, hud, objective].every(within),
+    moveHit: hit(moveElement, '.move-stick'),
+    fireHit: hit(fireElement, '.fire-button'),
+    accessibility: {
+      textScale: document.documentElement.dataset.textScale ?? '',
+      contrast: document.documentElement.dataset.contrast ?? '',
+      reducedMotion: document.documentElement.dataset.reducedMotion ?? '',
+    },
+  };
+})()`);
+
+function assertP19HudLayoutSnapshot(snapshot, label) {
+  if (snapshot.preset !== 'left-handed'
+    || Math.abs(snapshot.movementInset - 0.35) > 0.001
+    || Math.abs(snapshot.movementLift - 0.4) > 0.001
+    || Math.abs(snapshot.movementScale - 1.04) > 0.001
+    || Math.abs(snapshot.actionInset - 0.3) > 0.001
+    || Math.abs(snapshot.actionLift - 0.25) > 0.001
+    || Math.abs(snapshot.actionScale - 0.96) > 0.001
+    || snapshot.moveDockOverlap
+    || !snapshot.onscreen
+    || !snapshot.moveHit
+    || !snapshot.fireHit) {
+    throw new Error(`Android P19-F HUD layout failed ${label}: ${JSON.stringify(snapshot)}`);
+  }
+}
+
+const p19HudLandscape = await p19HudLayoutSnapshot();
+assertP19HudLayoutSnapshot(p19HudLandscape, 'native landscape');
+if (!(p19HudLandscape.dock.right < p19HudLandscape.move.left)) {
+  throw new Error(`Android P19-F Left-Handed anchors did not swap in landscape: ${JSON.stringify(p19HudLandscape)}`);
+}
+
+await call('Emulation.setDeviceMetricsOverride', {
+  width: 412,
+  height: 915,
+  deviceScaleFactor: 2.5,
+  mobile: true,
+  screenWidth: 412,
+  screenHeight: 915,
+  screenOrientation: { type: 'portraitPrimary', angle: 0 },
+});
+await sleep(260);
+const p19HudPortrait = await p19HudLayoutSnapshot();
+assertP19HudLayoutSnapshot(p19HudPortrait, 'portrait rotation');
+if (!(p19HudPortrait.dock.right < p19HudPortrait.move.left)) {
+  throw new Error(`Android P19-F Left-Handed anchors overlapped after portrait rotation: ${JSON.stringify(p19HudPortrait)}`);
+}
+
+await call('Emulation.clearDeviceMetricsOverride');
+await sleep(260);
+const p19HudRestored = await p19HudLayoutSnapshot();
+assertP19HudLayoutSnapshot(p19HudRestored, 'restored landscape');
+console.log(`ANDROID_P19_HUD_LAYOUT_PASS presets=standard+large+left-handed custom=left-handed movement=.35/.4/1.04 action=.3/.25/.96 safe=onscreen+separated hit=tracks-visible rotation=landscape+portrait+landscape fixed=hud+objective accessibility=${p19HudRestored.accessibility.textScale}+${p19HudRestored.accessibility.contrast}+motion-${p19HudRestored.accessibility.reducedMotion}`);
+
 await waitFor(`Boolean(document.querySelector('[aria-label="Touch combat controls"]') && document.querySelector('.move-stick') && document.querySelector('.fire-button') && document.querySelector('.dodge-button'))`, 'Android touch controls');
 const scrollBefore = await evaluate(`({ x: window.scrollX, y: window.scrollY })`);
 
