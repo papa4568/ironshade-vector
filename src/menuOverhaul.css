@@ -2277,6 +2277,9 @@
   .ship-hub.area-command .command-visual-tags {
     display: none;
   }
+  .ship-hub.area-command .command-bridge-copy .card-kicker {
+    font-size: var(--p19-compact-type-secondary);
+  }
   .ship-hub.area-command .command-card.primary-card span {
     display: -webkit-box;
     overflow: hidden;
