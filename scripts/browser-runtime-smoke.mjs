@@ -1050,8 +1050,8 @@ try {
   })()`);
   if (!p20bSeeded) throw new Error('P20-B could not seed a two-point Operator Network profile.');
   await waitFor(`(() => {
-    const text = document.body?.innerText ?? '';
-    return document.readyState === 'complete' && (text.toLowerCase().includes('command ready') || text.toLowerCase().includes('command deck'));
+    const operatorButton = [...document.querySelectorAll('button[data-primary-area]')].find(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase() === 'operator');
+    return document.readyState === 'complete' && operatorButton instanceof HTMLButtonElement && !operatorButton.disabled;
   })()`, 'P20-B seeded Command Deck after reload');
   await keyboardActivateButton('Operator');
   await waitFor(`[...document.querySelectorAll('.operator-section-tabs button')].some(button => (button.textContent || '').trim() === 'Build')`, 'P20-B Operator build route');
