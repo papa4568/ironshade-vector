@@ -15,6 +15,12 @@ const rootCss = read('src/index.css');
 const rarity = read('src/game/rarity.ts');
 const primitives = read('src/components/UiPrimitives.tsx');
 const armory = read('src/components/Armory.tsx');
+const app = read('src/App.tsx');
+const meta = read('src/game/meta.ts');
+const guide = read('src/game/guideContent.ts');
+const combatHud = read('src/combatHudGlance.css');
+const combatLayout = read('src/combatHudLayout.css');
+const browserSmoke = read('scripts/browser-runtime-smoke.mjs');
 const androidSmoke = read('scripts/android-runtime-smoke.mjs');
 const pkg = JSON.parse(read('package.json')) as { scripts?: Record<string, string> };
 
@@ -62,6 +68,18 @@ assert(rootCss.includes('font-family: var(--iv-font-body);') && rootCss.includes
 assert(pkg.scripts?.['test:design-system']?.includes('tests/design-system.ts'), 'P15-A regression test script is missing.');
 assert(pkg.scripts?.build?.includes('npm run test:design-system'), 'Full production build must gate on the P15-A design-system regression.');
 
+assert(meta.includes("export type InterfaceSize = 'compact' | 'default' | 'large'") && meta.includes("interfaceSize: 'default'") && meta.includes('normalizeInterfaceSize'), 'P20-A profile settings must persist and normalize Compact/Default/Large Interface Size.');
+assert(app.includes('root.dataset.interfaceSize = profile.settings.interfaceSize') && app.includes('profile.settings.interfaceSize'), 'P20-A must apply the saved Interface Size at the shared document root.');
+assert(armory.includes('aria-label="Interface size"') && armory.includes('<option value="compact">Compact</option>') && armory.includes('<option value="large">Large</option>'), 'P20-A Settings must expose Compact/Default/Large Interface Size.');
+for (const selector of ["data-interface-size='compact'", "data-interface-size='default'", "data-interface-size='large'", "data-interface-size='compact'][data-text-scale='large'", "data-interface-size='large'][data-text-scale='large'"]) {
+  assert(css.includes(selector), `P20-A shared interface-size selector missing: ${selector}`);
+}
+assert(css.includes('--iv-interface-scale') && css.includes('font-size: 93.75%') && css.includes('font-size: 126.5625%'), 'P20-A shared root scale must compose Interface Size with Interface Text Size.');
+assert(!css.includes('.touch-ui') && !css.includes('.combat-dock') && !css.includes('.fire-button') && !css.includes('.move-stick'), 'P20-A general interface scaling must not add combat-control selectors to the shared design system.');
+assert(!combatHud.includes('rem') && !combatLayout.match(/\d+(?:\.\d+)?rem\b/), 'P20-A combat-control geometry must remain fixed-pixel and independent of root rem scaling.');
+assert(guide.includes('Interface Size scales shared non-combat menu') && guide.includes('Combat movement, FIRE, DODGE, class-skill, ACT'), 'P20-A Guide must explain non-combat scaling and combat-control ownership.');
+assert(browserSmoke.includes('BROWSER_P20_INTERFACE_SIZE_PASS') && browserSmoke.includes('BROWSER_P20_COMBAT_CONTROL_INVARIANT_PASS'), 'P20-A Browser E2E must verify interface reflow and combat-control geometry invariance.');
+assert(androidSmoke.includes('ANDROID_P20_INTERFACE_SIZE_PASS') && androidSmoke.includes('ANDROID_P20_COMBAT_CONTROL_INVARIANT_PASS'), 'P20-A Android smoke must verify interface reflow/persistence and combat-control geometry invariance.');
 
 assert(primitives.includes("export function ProgressiveDisclosure") && primitives.includes('createPortal') && primitives.includes('role="dialog"') && primitives.includes('aria-modal="true"') && primitives.includes('aria-haspopup="dialog"'), 'P18-D must provide one reusable, portal-backed progressive-disclosure dialog pattern.');
 assert(primitives.includes("event.key === 'Escape'") && primitives.includes("event.key !== 'Tab'") && primitives.includes("window.history.pushState") && primitives.includes("window.addEventListener('popstate'") && primitives.includes('focusTarget?.focus()'), 'P18-D disclosure must trap focus, support Escape/back dismissal, and restore the trigger focus.');
@@ -91,4 +109,4 @@ assert(
   'P18-F Android smoke must verify Crafting, Progression, and Skills requirement states on-device.',
 );
 
-console.log('DESIGN_SYSTEM_PASS typography=shared spacing=4px iconography=normalized focus=visible rarity=canonical panel=shared tooltip=shared disclosure=accessible requirement=explicit responsive=coarse+safe-area');
+console.log('DESIGN_SYSTEM_PASS typography=shared spacing=4px iconography=normalized focus=visible rarity=canonical panel=shared tooltip=shared disclosure=accessible requirement=explicit responsive=coarse+safe-area interfaceSize=compact+default+large combatControls=isolated');
