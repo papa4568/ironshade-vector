@@ -19,6 +19,7 @@ import type { GroundLootReceipt } from './game/fieldLoot';
 import { loadGameState, saveGameState } from './game/gamePersistence';
 import { rarityDefinition, rarityDisplayLabel } from './game/rarity';
 import type { GuideSectionId } from './game/guideContent';
+import type { BuildTab } from './components/Armory';
 import ClassSelectScreen from './components/ClassSelectScreen';
 
 const loadArmory = () => import('./components/Armory');
@@ -184,8 +185,8 @@ function App() {
   const [operationsError, setOperationsError] = useState('');
   const [screen, setScreen] = useState<Screen>(() => initialGameState.profile.classSelectionComplete ? 'ship' : 'class');
   const guideRequestIdRef = useRef(0);
-  const [guideRequest, setGuideRequest] = useState<{ section: GuideSectionId; requestId: number } | null>(null);
-  const [guideReturnFocus, setGuideReturnFocus] = useState<GuideSectionId | null>(null);
+  const [guideRequest, setGuideRequest] = useState<{ section: GuideSectionId; requestId: number; returnTab: BuildTab } | null>(null);
+  const [guideReturnFocus, setGuideReturnFocus] = useState<{ section: GuideSectionId; tab: BuildTab } | null>(null);
   const contracts = useMemo(() => {
     const story = generateStoryContracts(campaign);
     const chapter = getBlackLatticeContract(campaign);
@@ -305,15 +306,16 @@ function App() {
   const changeProfileSettings = (settings: Partial<ProfileSettings>) => setProfile(current => setProfileSettings(current, settings));
 
   const openBuild = () => { void loadArmory(); setScreen('build'); };
-  const openGuideFromBuild = (section: GuideSectionId) => {
+  const openGuideFromBuild = (section: GuideSectionId, returnTab: BuildTab) => {
     void loadShipHub();
-    setGuideRequest({ section, requestId: ++guideRequestIdRef.current });
+    setGuideRequest({ section, requestId: ++guideRequestIdRef.current, returnTab });
     setScreen('ship');
   };
   const returnFromGuideToBuild = (section: GuideSectionId) => {
+    const returnTab = guideRequest?.returnTab ?? 'gear';
     void loadArmory();
     setGuideRequest(null);
-    setGuideReturnFocus(section);
+    setGuideReturnFocus({ section, tab: returnTab });
     setScreen('build');
   };
   const confirmOperatorClass = (operatorClass: OperatorClassId) => {
