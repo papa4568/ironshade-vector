@@ -1566,7 +1566,7 @@
 
 .armory-inspector-portal .item-inspector.open {
   display: grid;
-  position: absolute;
+  position: fixed;
   z-index: 1;
   top: max(12px, env(safe-area-inset-top));
   right: max(12px, env(safe-area-inset-right));
