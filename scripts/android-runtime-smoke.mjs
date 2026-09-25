@@ -1304,7 +1304,15 @@ await tapButton('Operator', 68);
 await waitFor(`[...document.querySelectorAll('.operator-section-tabs button')].some(button => (button.textContent || '').trim().toLowerCase() === 'build')`, 'Android P20-B Operator build route');
 await tapButton('Build', 69);
 await waitFor(`document.querySelector('.build-header h1')?.textContent?.trim() === 'Build'`, 'Android P20-B Build after seed');
-await tapButton('Progression', 69);
+const p20bProgressionMarked = await evaluate(`(() => {
+  const button = [...document.querySelectorAll('.build-tabs button')].find(candidate => (candidate.textContent || '').trim().toLowerCase().startsWith('progression'));
+  if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+  button.dataset.p20bProgressionTab = 'true';
+  button.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+  return true;
+})()`);
+if (!p20bProgressionMarked) throw new Error('Android P20-B could not find the badged Progression tab after seeding points.');
+await tap('button[data-p20b-progression-tab="true"]', 69);
 await waitFor(`Boolean(document.querySelector('.network-planner.iv-panel'))`, 'Android P20-B Progression planner after seed');
 
 const preExistingPlannerTargets = await evaluate(`(() => {
