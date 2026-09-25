@@ -1677,12 +1677,28 @@
   .ship-hub.area-command .hub-resource-ribbon {
     display: none;
   }
+  .ship-hub.area-command .tactical-workspace {
+    padding-top: max(6px, var(--command-safe-top));
+    padding-bottom: 4px;
+  }
   .ship-hub.area-command .tactical-header {
-    min-height: 32px;
-    margin-bottom: 4px;
+    min-height: 0;
+    margin-bottom: 2px;
+    padding-block: 0;
+  }
+  .ship-hub.area-command .tactical-header .card-kicker {
+    font-size: 6px;
+  }
+  .ship-hub.area-command .tactical-header h1 {
+    margin: 1px 0 0;
+    font-size: 18px;
+    line-height: 1;
+  }
+  .ship-hub.area-command .tactical-header p {
+    display: none;
   }
   .ship-hub.area-command .command-overview {
-    max-height: calc(100dvh - 104px);
+    max-height: calc(100dvh - 88px);
   }
   .ship-hub.area-command .command-visual.command-bridge.command-bridge-compact {
     min-height: 204px;
