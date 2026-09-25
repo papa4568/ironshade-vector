@@ -698,6 +698,156 @@ async function keyboardActivateButton(label) {
   });
 }
 
+
+async function armoryInspectorViewportAudit() {
+  if (viewportMode !== 'desktop') return;
+
+  const prepared = await evaluate(`(() => {
+    const build = document.querySelector('.build-bay');
+    const layout = document.querySelector('.gear-layout');
+    const storage = document.querySelector('.gear-storage');
+    const grid = document.querySelector('.inventory-grid');
+    const cards = [...document.querySelectorAll('.inventory-card')].filter(card => {
+      const rect = card.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    });
+    const card = cards[0];
+    if (!(build instanceof HTMLElement) || !layout || !storage || !grid || !(card instanceof HTMLButtonElement)) return null;
+
+    card.dataset.p19ArmoryViewportCandidate = 'true';
+    card.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
+
+    const cardRect = card.getBoundingClientRect();
+    const storageRect = storage.getBoundingClientRect();
+    const layoutRect = layout.getBoundingClientRect();
+    const gridColumns = getComputedStyle(grid).gridTemplateColumns.trim().split(/\\s+/).filter(Boolean).length;
+    return {
+      item: card.querySelector('b')?.textContent?.trim() ?? '',
+      scrollTop: build.scrollTop,
+      maxScroll: Math.max(0, build.scrollHeight - build.clientHeight),
+      cardTop: cardRect.top,
+      cardBottom: cardRect.bottom,
+      storageWidth: storageRect.width,
+      layoutWidth: layoutRect.width,
+      gridColumns,
+    };
+  })()`);
+
+  if (!prepared || !prepared.item || prepared.maxScroll <= 20 || prepared.scrollTop <= 20 || prepared.gridColumns < 2) {
+    throw new Error(`P19-H could not establish a scrolled Ship Storage context: ${JSON.stringify(prepared)}`);
+  }
+
+  const openedCandidate = await evaluate(`(() => {
+    const card = document.querySelector('button[data-p19-armory-viewport-candidate="true"]');
+    if (!(card instanceof HTMLButtonElement)) return false;
+    card.click();
+    return true;
+  })()`);
+  if (!openedCandidate) throw new Error('P19-H Ship Storage candidate could not be selected.');
+
+  await waitFor(`Boolean(
+    document.querySelector('.item-inspector.open')
+    && document.querySelector('.item-inspector .inspector-header')
+    && document.querySelector('.item-inspector .gear-quick-read')
+    && document.querySelector('.item-inspector .inspector-actions')
+  )`, 'P19-H desktop Armory inspector');
+
+  const opened = await evaluate(`(() => {
+    const viewport = { width: window.innerWidth, height: window.innerHeight };
+    const build = document.querySelector('.build-bay');
+    const layout = document.querySelector('.gear-layout');
+    const storage = document.querySelector('.gear-storage');
+    const grid = document.querySelector('.inventory-grid');
+    const card = document.querySelector('button[data-p19-armory-viewport-candidate="true"]');
+    const inspector = document.querySelector('.item-inspector.open');
+    const header = inspector?.querySelector('.inspector-header');
+    const quickRead = inspector?.querySelector('.gear-quick-read');
+    const actions = inspector?.querySelector('.inspector-actions');
+    if (!(build instanceof HTMLElement) || !layout || !storage || !grid || !card || !inspector || !header || !quickRead || !actions) return null;
+
+    const rect = element => {
+      const value = element.getBoundingClientRect();
+      return { left: value.left, top: value.top, right: value.right, bottom: value.bottom, width: value.width, height: value.height };
+    };
+    const inspectorRect = rect(inspector);
+    const headerRect = rect(header);
+    const quickReadRect = rect(quickRead);
+    const actionsRect = rect(actions);
+    const storageRect = rect(storage);
+    const layoutRect = rect(layout);
+    const cardRect = rect(card);
+    const gridColumns = getComputedStyle(grid).gridTemplateColumns.trim().split(/\\s+/).filter(Boolean).length;
+    return {
+      viewport,
+      scrollTop: build.scrollTop,
+      inspectorPosition: getComputedStyle(inspector).position,
+      inspectorRect,
+      headerRect,
+      quickReadRect,
+      actionsRect,
+      storageWidth: storageRect.width,
+      layoutWidth: layoutRect.width,
+      gridColumns,
+      cardTop: cardRect.top,
+      selectedCard: card.classList.contains('selected'),
+      headerOnscreen: headerRect.top >= -1 && headerRect.bottom <= viewport.height + 1,
+      quickReadOnscreen: quickReadRect.top >= -1 && quickReadRect.bottom <= viewport.height + 1,
+      actionsOnscreen: actionsRect.top >= -1 && actionsRect.bottom <= viewport.height + 1,
+      storageKeepsWidth: storageRect.width >= layoutRect.width * 0.98,
+    };
+  })()`);
+
+  if (!opened
+    || opened.inspectorPosition !== 'fixed'
+    || Math.abs(opened.scrollTop - prepared.scrollTop) > 2
+    || Math.abs(opened.storageWidth - prepared.storageWidth) > 2
+    || opened.gridColumns !== prepared.gridColumns
+    || !opened.selectedCard
+    || !opened.headerOnscreen
+    || !opened.quickReadOnscreen
+    || !opened.actionsOnscreen
+    || !opened.storageKeepsWidth) {
+    throw new Error(`P19-H desktop Armory inspector did not open in-place: before=${JSON.stringify(prepared)} open=${JSON.stringify(opened)}`);
+  }
+
+  const closedInspector = await evaluate(`(() => {
+    const button = document.querySelector('.item-inspector .sheet-close[aria-label="Back to ship storage"]');
+    if (!(button instanceof HTMLButtonElement)) return false;
+    button.click();
+    return true;
+  })()`);
+  if (!closedInspector) throw new Error('P19-H Back to storage control could not close the inspector.');
+  await waitFor(`!document.querySelector('.item-inspector.open')`, 'P19-H Armory inspector dismissal');
+
+  const closed = await evaluate(`(() => {
+    const build = document.querySelector('.build-bay');
+    const storage = document.querySelector('.gear-storage');
+    const grid = document.querySelector('.inventory-grid');
+    const card = document.querySelector('button[data-p19-armory-viewport-candidate="true"]');
+    if (!(build instanceof HTMLElement) || !storage || !grid || !card) return null;
+    const cardRect = card.getBoundingClientRect();
+    return {
+      scrollTop: build.scrollTop,
+      storageWidth: storage.getBoundingClientRect().width,
+      gridColumns: getComputedStyle(grid).gridTemplateColumns.trim().split(/\\s+/).filter(Boolean).length,
+      cardTop: cardRect.top,
+      cardBottom: cardRect.bottom,
+      cardStillVisible: cardRect.bottom > 0 && cardRect.top < window.innerHeight,
+    };
+  })()`);
+
+  if (!closed
+    || Math.abs(closed.scrollTop - prepared.scrollTop) > 2
+    || Math.abs(closed.storageWidth - prepared.storageWidth) > 2
+    || closed.gridColumns !== prepared.gridColumns
+    || Math.abs(closed.cardTop - prepared.cardTop) > 2
+    || !closed.cardStillVisible) {
+    throw new Error(`P19-H Armory dismissal did not preserve Ship Storage context: before=${JSON.stringify(prepared)} closed=${JSON.stringify(closed)}`);
+  }
+
+  console.log(`BROWSER_P19_ARMORY_INSPECTOR_PASS viewport=${viewportMode} item=${JSON.stringify(prepared.item)} scroll=${Math.round(prepared.scrollTop)}px grid=${prepared.gridColumns} header=onscreen quick=onscreen actions=onscreen context=preserved`);
+}
+
 await call('Runtime.enable');
 await call('Page.enable');
 if (viewportMode === 'mobile-landscape') {
@@ -819,6 +969,7 @@ try {
     return document.querySelector('.build-header h1')?.textContent?.trim() === 'Build' && labels.includes('Skills');
   })()`, 'Build surface for skill hierarchy');
   await waitFor(`Boolean(document.querySelector('.build-bay.iv-view') && document.querySelector('.build-header.iv-panel.iv-panel--glass') && document.querySelector('.build-tabs button[aria-current="page"]'))`, 'P15-B shared Build shell');
+  await armoryInspectorViewportAudit();
   await keyboardActivateButton('Crafting');
   await waitFor(`Boolean(document.querySelector('.reconstruction-panel .reconstruction-top.iv-panel.iv-panel--glass') && document.querySelector('.reconstruct-storage.iv-panel') && document.querySelector('.build-tabs button[aria-current="page"]')?.textContent?.includes('Crafting'))`, 'P15-B Crafting surface');
   await keyboardActivateButton('Progression');
