@@ -282,8 +282,15 @@ if (plannerPersistenceOnly) {
       && targets[0] === 'ballistics-3'
       && targets[1] === 'mobility-1'
       && !state.profile.operatorNetwork.allocatedNodeIds.includes('ballistics-3')
-      && !state.profile.operatorNetwork.allocatedNodeIds.includes('mobility-1');
-  })()`, 'persisted Operator Network plan after cold relaunch', 45_000);
+      && !state.profile.operatorNetwork.allocatedNodeIds.includes('mobility-1')
+      && state?.profile?.settings?.hudLayoutPreset === 'left-handed'
+      && Math.abs(state.profile.settings.movementClusterInset - 0.35) < 0.001
+      && Math.abs(state.profile.settings.movementClusterLift - 0.4) < 0.001
+      && Math.abs(state.profile.settings.movementClusterScale - 1.04) < 0.001
+      && Math.abs(state.profile.settings.actionClusterInset - 0.3) < 0.001
+      && Math.abs(state.profile.settings.actionClusterLift - 0.25) < 0.001
+      && Math.abs(state.profile.settings.actionClusterScale - 0.96) < 0.001;
+  })()`, 'persisted Operator Network plan and P19-F HUD layout after cold relaunch', 45_000);
 
   await waitFor(`[...document.querySelectorAll('button[data-primary-area]')].some(button => (button.getAttribute('aria-label') || '').trim().toLowerCase() === 'operator')`, 'Command Deck after cold relaunch');
   await tapButton('Operator', 81);
@@ -311,9 +318,19 @@ if (plannerPersistenceOnly) {
       networkSchema: state?.operatorNetworkSchemaVersion,
       targets: state?.profile?.operatorNetwork?.plannedTargetNodeIds ?? [],
       allocated: state?.profile?.operatorNetwork?.allocatedNodeIds ?? [],
+      hudLayout: state?.profile?.settings ? {
+        preset: state.profile.settings.hudLayoutPreset,
+        movementInset: state.profile.settings.movementClusterInset,
+        movementLift: state.profile.settings.movementClusterLift,
+        movementScale: state.profile.settings.movementClusterScale,
+        actionInset: state.profile.settings.actionClusterInset,
+        actionLift: state.profile.settings.actionClusterLift,
+        actionScale: state.profile.settings.actionClusterScale,
+      } : null,
     };
   })()`);
   console.log(`ANDROID_NETWORK_PLANNER_PERSISTENCE_PASS version=${persisted.version} schema=${persisted.networkSchema} targets=${persisted.targets.join('+')} relaunch=cold ui=restored nonDestructive=${persisted.allocated.includes('ballistics-3') || persisted.allocated.includes('mobility-1') ? 'false' : 'true'}`);
+  console.log(`ANDROID_P19_HUD_LAYOUT_RELAUNCH_PASS preset=${persisted.hudLayout?.preset} movement=${persisted.hudLayout?.movementInset}/${persisted.hudLayout?.movementLift}/${persisted.hudLayout?.movementScale} action=${persisted.hudLayout?.actionInset}/${persisted.hudLayout?.actionLift}/${persisted.hudLayout?.actionScale} relaunch=cold`);
   session.close();
   await sleep(100);
   process.exit(0);
