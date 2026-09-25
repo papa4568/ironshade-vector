@@ -500,3 +500,113 @@
     width: min(360px, 64vw);
   }
 }
+
+
+/* P20-A // Interface Size owns informational combat HUD chrome only.
+   Do not place movement/action cluster selectors in this block: those hit regions
+   remain fixed-pixel and are owned by combatHudLayout.css + combat layout presets. */
+@media (pointer: coarse), (max-width: 900px) {
+  .game-root .hud-top {
+    top: max(.5rem, env(safe-area-inset-top));
+    left: max(.5rem, env(safe-area-inset-left));
+    right: max(.5rem, env(safe-area-inset-right));
+    gap: .75rem;
+  }
+  .game-root .vitals {
+    width: min(16.875rem, 30vw);
+    min-width: 13.75rem;
+    padding: .5rem .625rem;
+  }
+  .game-root .barline {
+    grid-template-columns: 3.375rem minmax(4.5rem, 1fr) 2.625rem;
+    gap: .4375rem;
+    margin: .1875rem 0;
+    font-size: max(12px, .75rem);
+  }
+  .game-root .barline > b {
+    font-size: max(16px, 1rem);
+  }
+  .game-root .bar {
+    height: .5rem;
+  }
+  .game-root .mission-card {
+    width: min(22.5rem, 36vw);
+    max-width: min(22.5rem, 36vw);
+    min-width: 15.625rem;
+    padding: .5625rem .6875rem;
+  }
+  .game-root .mission-card b {
+    font-size: max(14px, .875rem);
+  }
+  .game-root .mission-card span {
+    margin-top: .25rem;
+    font-size: max(12px, .75rem);
+  }
+  .game-root .target-readout {
+    top: max(5.5rem, calc(env(safe-area-inset-top) + 4.875rem));
+    right: max(.5rem, env(safe-area-inset-right));
+    width: min(18.75rem, 31vw);
+    padding: .5625rem .625rem;
+  }
+  .game-root .target-readout header small,
+  .game-root .target-values span {
+    font-size: max(12px, .75rem);
+  }
+  .game-root .target-readout header b {
+    font-size: max(14px, .875rem);
+  }
+  .game-root .target-health-track {
+    height: .625rem;
+    margin-top: .4375rem;
+  }
+  .game-root .target-armor-track {
+    height: .375rem;
+  }
+  .game-root .loot-radar {
+    left: max(.5rem, env(safe-area-inset-left));
+    width: min(17.8125rem, 29vw);
+    padding: .5625rem .625rem .5625rem .75rem;
+  }
+}
+
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 560px) {
+  .game-root .vitals {
+    width: min(15.625rem, 29vw);
+    min-width: 13.125rem;
+  }
+  .game-root .mission-card {
+    width: min(20.625rem, 34vw);
+    max-width: min(20.625rem, 34vw);
+    min-width: 14.6875rem;
+  }
+  .game-root .target-readout {
+    top: max(5.125rem, calc(env(safe-area-inset-top) + 4.5rem));
+    width: min(17.8125rem, 30vw);
+  }
+  .game-root .boss-hud {
+    top: max(6.125rem, calc(env(safe-area-inset-top) + 5.5rem));
+    width: min(24.375rem, 41vw);
+  }
+  .game-root .loot-radar {
+    width: min(16.875rem, 28vw);
+  }
+}
+
+@media (pointer: coarse) and (orientation: portrait) {
+  .game-root .hud-top {
+    gap: .5rem;
+  }
+  .game-root .vitals {
+    min-width: 0;
+    width: 48vw;
+  }
+  .game-root .mission-card {
+    min-width: 0;
+    width: 44vw;
+    max-width: 44vw;
+  }
+  .game-root .target-readout {
+    top: max(7rem, calc(env(safe-area-inset-top) + 6.25rem));
+    width: min(20.625rem, 70vw);
+  }
+}
