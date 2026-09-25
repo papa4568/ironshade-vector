@@ -26,7 +26,40 @@ export type Item = { id: string; baseId: string; name: string; slot: EquipmentSl
 export type EffectIntensity = 'full' | 'reduced';
 export type TextScale = 'default' | 'large';
 export type ContrastMode = 'standard' | 'high';
-export type ProfileSettings = { graphicsQuality: GraphicsQualityMode; textScale: TextScale; contrast: ContrastMode; reducedMotion: boolean; aimAssist: MobileAimAssist; rightStickFire: boolean; screenShake: boolean; effectIntensity: EffectIntensity; effectsVolume: number; uiVolume: number; haptics: boolean; telemetrySharing: boolean; tutorialComplete: boolean };
+export type HudLayoutPreset = 'standard' | 'large' | 'left-handed';
+export type HudLayoutSettings = {
+  hudLayoutPreset: HudLayoutPreset;
+  movementClusterInset: number;
+  movementClusterLift: number;
+  movementClusterScale: number;
+  actionClusterInset: number;
+  actionClusterLift: number;
+  actionClusterScale: number;
+};
+export type ProfileSettings = HudLayoutSettings & { graphicsQuality: GraphicsQualityMode; textScale: TextScale; contrast: ContrastMode; reducedMotion: boolean; aimAssist: MobileAimAssist; rightStickFire: boolean; screenShake: boolean; effectIntensity: EffectIntensity; effectsVolume: number; uiVolume: number; haptics: boolean; telemetrySharing: boolean; tutorialComplete: boolean };
+
+const HUD_LAYOUT_PRESETS: Record<HudLayoutPreset, HudLayoutSettings> = {
+  standard: { hudLayoutPreset: 'standard', movementClusterInset: 0, movementClusterLift: 0, movementClusterScale: 1, actionClusterInset: 0, actionClusterLift: 0, actionClusterScale: 1 },
+  large: { hudLayoutPreset: 'large', movementClusterInset: 0, movementClusterLift: 0, movementClusterScale: 1.08, actionClusterInset: 0, actionClusterLift: 0, actionClusterScale: 1.08 },
+  'left-handed': { hudLayoutPreset: 'left-handed', movementClusterInset: 0, movementClusterLift: 0, movementClusterScale: 1, actionClusterInset: 0, actionClusterLift: 0, actionClusterScale: 1 },
+};
+export function hudLayoutPresetPatch(preset: HudLayoutPreset): HudLayoutSettings { return { ...HUD_LAYOUT_PRESETS[preset] }; }
+function normalizedHudLayoutNumber(value: unknown, minimum: number, maximum: number, fallback: number) {
+  return typeof value === 'number' && Number.isFinite(value) ? Math.max(minimum, Math.min(maximum, value)) : fallback;
+}
+export function normalizeHudLayoutSettings(settings: Partial<HudLayoutSettings> | undefined | null): HudLayoutSettings {
+  const preset: HudLayoutPreset = settings?.hudLayoutPreset === 'large' || settings?.hudLayoutPreset === 'left-handed' ? settings.hudLayoutPreset : 'standard';
+  const defaults = hudLayoutPresetPatch(preset);
+  return {
+    hudLayoutPreset: preset,
+    movementClusterInset: normalizedHudLayoutNumber(settings?.movementClusterInset, 0, 1, defaults.movementClusterInset),
+    movementClusterLift: normalizedHudLayoutNumber(settings?.movementClusterLift, 0, 1, defaults.movementClusterLift),
+    movementClusterScale: normalizedHudLayoutNumber(settings?.movementClusterScale, 0.9, 1.08, defaults.movementClusterScale),
+    actionClusterInset: normalizedHudLayoutNumber(settings?.actionClusterInset, 0, 1, defaults.actionClusterInset),
+    actionClusterLift: normalizedHudLayoutNumber(settings?.actionClusterLift, 0, 1, defaults.actionClusterLift),
+    actionClusterScale: normalizedHudLayoutNumber(settings?.actionClusterScale, 0.9, 1.08, defaults.actionClusterScale),
+  };
+}
 export type CraftHistoryEntry = { id: string; createdAt: number; itemId: string; itemName: string; action: string; cost: string; outcome: string; before: string; after: string; volatile: boolean };
 export type PlayerProfile = { version: 3; xp: number; level: number; progressionPoints: number; allocatedNodes: string[]; operatorNetwork?: OperatorNetworkState; abilityMods: Record<AbilityId, string | null>; operatorClass?: OperatorClassId; classSelectionComplete?: boolean; specialization: SpecializationId | null; specializationOverclock: boolean; inventory: Item[]; equipped: Record<EquipmentSlot, string | null>; settings: ProfileSettings; runsCompleted: number; craftHistory?: CraftHistoryEntry[] };
 export type VictoryReward = { profile: PlayerProfile; xpGained: number; levelsGained: number; loot: Item[] };
@@ -610,7 +643,7 @@ const maxLevelXp = levelThresholds[levelThresholds.length - 1];
 
 export function createDefaultProfile(): PlayerProfile {
   const inventory = starterItems.map(cloneItem);
-  return { version: 3, xp: 0, level: 1, progressionPoints: 0, allocatedNodes: [], operatorNetwork: createOperatorNetworkState('vanguard'), abilityMods: { mag: null, mark: null, arc: null }, operatorClass: 'vanguard', classSelectionComplete: false, specialization: null, specializationOverclock: false, inventory, equipped: { carbine: null, breacher: 'starter-breacher', rail: null, suit: 'starter-suit', rig: 'starter-rig', implant: 'starter-implant' }, settings: { graphicsQuality: 'adaptive', textScale: 'default', contrast: 'standard', reducedMotion: false, aimAssist: 'balanced', rightStickFire: true, screenShake: true, effectIntensity: 'full', effectsVolume: 0.65, uiVolume: 0.45, haptics: true, telemetrySharing: false, tutorialComplete: false }, runsCompleted: 0, craftHistory: [] };
+  return { version: 3, xp: 0, level: 1, progressionPoints: 0, allocatedNodes: [], operatorNetwork: createOperatorNetworkState('vanguard'), abilityMods: { mag: null, mark: null, arc: null }, operatorClass: 'vanguard', classSelectionComplete: false, specialization: null, specializationOverclock: false, inventory, equipped: { carbine: null, breacher: 'starter-breacher', rail: null, suit: 'starter-suit', rig: 'starter-rig', implant: 'starter-implant' }, settings: { ...hudLayoutPresetPatch('standard'), graphicsQuality: 'adaptive', textScale: 'default', contrast: 'standard', reducedMotion: false, aimAssist: 'balanced', rightStickFire: true, screenShake: true, effectIntensity: 'full', effectsVolume: 0.65, uiVolume: 0.45, haptics: true, telemetrySharing: false, tutorialComplete: false }, runsCompleted: 0, craftHistory: [] };
 }
 export function normalizeStoredProfile(parsed: Partial<PlayerProfile>): PlayerProfile {
   if (parsed.version !== 3 || !Array.isArray(parsed.inventory)) throw new Error('Unsupported profile save');
@@ -669,7 +702,7 @@ export function normalizeStoredProfile(parsed: Partial<PlayerProfile>): PlayerPr
     classSelectionComplete,
     specialization,
     specializationOverclock,
-    settings: { ...defaults.settings, ...parsed.settings },
+    settings: { ...defaults.settings, ...parsed.settings, ...normalizeHudLayoutSettings(parsed.settings) },
     abilityMods: { ...defaults.abilityMods, ...parsed.abilityMods },
     equipped,
     inventory,
@@ -1255,7 +1288,7 @@ export function setSpecialization(profile: PlayerProfile, specialization: Specia
   };
 }
 export function setSpecializationOverclock(profile: PlayerProfile, enabled: boolean): PlayerProfile { if (profile.level < 16 || !profile.specialization) return profile; return { ...profile, specializationOverclock: enabled }; }
-export function setProfileSettings(profile: PlayerProfile, settings: Partial<ProfileSettings>): PlayerProfile { return { ...profile, settings: { ...profile.settings, ...settings } }; }
+export function setProfileSettings(profile: PlayerProfile, settings: Partial<ProfileSettings>): PlayerProfile { const next = { ...profile.settings, ...settings }; return { ...profile, settings: { ...next, ...normalizeHudLayoutSettings(next) } }; }
 function equippedItems(profile: PlayerProfile) {
   const activeWeapon = activeWeaponFamilyForProfile(profile);
   return (Object.keys(profile.equipped) as EquipmentSlot[])
