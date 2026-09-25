@@ -790,16 +790,77 @@ console.log(`ANDROID_P19_ARMORY_CARD_PASS storage=${p19ArmoryCardScan.storageCou
 
 await tapButton('Crafting', 32);
 await waitFor(`Boolean(document.querySelector('.reconstruction-panel .reconstruction-top.iv-panel.iv-panel--glass') && document.querySelector('.reconstruct-storage.iv-panel') && document.querySelector('.build-tabs button[aria-current="page"]')?.textContent?.includes('Crafting'))`, 'Android P15-B Crafting surface');
+const p19CraftingHierarchy = await evaluate(`(() => {
+  const root = document.querySelector('[data-management-surface="crafting"]');
+  const requirement = root?.querySelector('.reconstruction-bench > .iv-requirement[data-requirement-state]');
+  const guide = root?.querySelector('button[data-guide-link="crafting"]');
+  const oldHelp = [...(root?.querySelectorAll('button') ?? [])].some(button => (button.textContent || '').trim() === 'How Reconstruction rules work');
+  const visible = element => {
+    if (!element) return false;
+    const rect = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+  };
+  const copy = [...(root?.querySelectorAll('.iv-requirement__state small, .iv-requirement__copy span, .bench-actions button small, .precision-target small') ?? [])].filter(visible);
+  const costLabels = [...(root?.querySelectorAll('.bench-actions button small, .precision-target small, .add-mod-row button small, .augment-bench button small') ?? [])].filter(visible);
+  const state = requirement?.getAttribute('data-requirement-state') ?? '';
+  const requirementText = requirement?.textContent ?? '';
+  return {
+    root: Boolean(root),
+    guide: Boolean(guide),
+    oldHelp,
+    state,
+    blockerExplained: state !== 'blocked' || (requirementText.includes('Why blocked:') && requirementText.includes('Next:')),
+    costVisible: costLabels.some(label => /\\d|no salvage cost|credit|alloy|circuit|component|trace/i.test(label.textContent ?? '')),
+    minFont: copy.length ? Math.min(...copy.map(element => Number.parseFloat(getComputedStyle(element).fontSize))) : 0,
+    horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
+  };
+})()`);
+if (!p19CraftingHierarchy.root
+  || !p19CraftingHierarchy.guide
+  || p19CraftingHierarchy.oldHelp
+  || !['ready', 'blocked'].includes(p19CraftingHierarchy.state)
+  || !p19CraftingHierarchy.blockerExplained
+  || !p19CraftingHierarchy.costVisible
+  || p19CraftingHierarchy.minFont < 11.5
+  || p19CraftingHierarchy.horizontalOverflow > 2) {
+  throw new Error(`Android P19-E Crafting hierarchy failed: ${JSON.stringify(p19CraftingHierarchy)}`);
+}
+console.log(`ANDROID_P18F_CRAFTING_REQUIREMENT_PASS state=${p19CraftingHierarchy.state} classFamily=visible microforge=visible sockets=visible guide=crafting`);
+
+const p19ManagementControllerSetup = await evaluate(`(() => {
+  const original = typeof navigator.getGamepads === 'function' ? navigator.getGamepads.bind(navigator) : null;
+  globalThis.__p19ManagementOriginalGetGamepads = original;
+  globalThis.__p19ManagementGamepad = {
+    connected: true,
+    axes: [0, 0, 0, 0],
+    buttons: Array.from({ length: 16 }, () => ({ pressed: false, value: 0 })),
+  };
+  Object.defineProperty(navigator, 'getGamepads', { configurable: true, value: () => [globalThis.__p19ManagementGamepad] });
+  return true;
+})()`);
+if (!p19ManagementControllerSetup) throw new Error('Android P19-E could not install management controller.');
+await evaluate(`(() => { const button = globalThis.__p19ManagementGamepad.buttons[13]; button.pressed = true; button.value = 1; return true; })()`);
+await waitFor(`Boolean(document.activeElement?.closest?.('[data-crafting-surface="true"]'))`, 'Android P19-E Crafting controller D-pad focus');
+await evaluate(`(() => { const button = globalThis.__p19ManagementGamepad.buttons[13]; button.pressed = false; button.value = 0; return true; })()`);
+await sleep(120);
+await evaluate(`(() => { const button = globalThis.__p19ManagementGamepad.buttons[0]; button.pressed = true; button.value = 1; return true; })()`);
+await waitFor(`Boolean(document.querySelector('.craft-review'))`, 'Android P19-E Crafting controller confirm opens review');
+await evaluate(`(() => { const button = globalThis.__p19ManagementGamepad.buttons[0]; button.pressed = false; button.value = 0; return true; })()`);
+await sleep(120);
+await evaluate(`(() => { const button = globalThis.__p19ManagementGamepad.buttons[1]; button.pressed = true; button.value = 1; return true; })()`);
+await waitFor(`!document.querySelector('.craft-review')`, 'Android P19-E Crafting controller back');
+await evaluate(`(() => { const button = globalThis.__p19ManagementGamepad.buttons[1]; button.pressed = false; button.value = 0; return true; })()`);
+
+await tapButton('Open Guide // Crafting', 98);
+await waitFor(`Boolean(document.querySelector('.ship-hub.area-intel') && document.querySelector('[data-guide-section="crafting"]'))`, 'Android P19-E Crafting Guide deep-link');
+await evaluate(`history.back()`);
 await waitFor(`(() => {
-  const requirement = document.querySelector('.reconstruction-bench > .iv-requirement[data-requirement-state]');
-  const help = [...document.querySelectorAll('button')].find(button => (button.textContent || '').trim() === 'How Reconstruction rules work');
-  if (!requirement || !help) return false;
-  const state = requirement.getAttribute('data-requirement-state');
-  const text = requirement.textContent ?? '';
-  return ['ready', 'blocked'].includes(state ?? '')
-    && (state !== 'blocked' || (text.includes('Why blocked:') && text.includes('Next:')));
-})()`, 'Android P18-F Crafting requirement state');
-console.log('ANDROID_P18F_CRAFTING_REQUIREMENT_PASS state=explicit classFamily=visible microforge=visible sockets=visible help=shared-sheet');
+  const active = document.activeElement;
+  return Boolean(document.querySelector('[data-management-surface="crafting"]'))
+    && active instanceof HTMLButtonElement
+    && active.getAttribute('data-guide-link') === 'crafting';
+})()`, 'Android P19-E Crafting Guide history-back focus');
 await tapButton('Progression', 33);
 await waitFor(`Boolean(document.querySelector('.network-panel .section-copy.iv-panel.iv-panel--glass') && document.querySelector('.network-planner.iv-panel') && document.querySelector('.operator-class-panel.iv-panel') && document.querySelector('.specialization-panel.iv-panel') && document.querySelector('.build-tabs button[aria-current="page"]')?.textContent?.includes('Progression'))`, 'Android P15-B Progression surface');
 const p15BuildLayout = await evaluate(`(() => {
@@ -813,6 +874,42 @@ const p15BuildLayout = await evaluate(`(() => {
 if (p15BuildLayout.horizontalOverflow > 2 || p15BuildLayout.tabCount !== 5 || p15BuildLayout.minTabHeight < 40) {
   throw new Error(`Android P15-B Build/Crafting/Progression layout failed: ${JSON.stringify(p15BuildLayout)}`);
 }
+const p19ProgressionHierarchy = await evaluate(`(() => {
+  const root = document.querySelector('[data-management-surface="progression"]');
+  const visible = element => {
+    if (!element) return false;
+    const rect = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+  };
+  const copy = [...(root?.querySelectorAll('.network-focus-card p, .network-focus-card small, .network-focus-card span, .network-plan-card small, .network-plan-card span, .network-grid button small, .network-grid button em') ?? [])].filter(visible);
+  const focusRequirement = root?.querySelector('.network-focus-card .iv-requirement[data-requirement-state]');
+  const guide = root?.querySelector('button[data-guide-link="builds-progression"]');
+  const math = [...(root?.querySelectorAll('.iv-disclosure-trigger') ?? [])].some(button => (button.textContent || '').trim() === 'View planned build math');
+  const summary = root?.querySelector('.network-plan-summary')?.textContent ?? '';
+  return {
+    root: Boolean(root),
+    guide: Boolean(guide),
+    math,
+    requirementState: focusRequirement?.getAttribute('data-requirement-state') ?? '',
+    costVisible: summary.includes('TOTAL COST') && summary.includes('AVAILABLE NOW'),
+    minFont: copy.length ? Math.min(...copy.map(element => Number.parseFloat(getComputedStyle(element).fontSize))) : 0,
+    horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
+  };
+})()`);
+if (!p19ProgressionHierarchy.root
+  || !p19ProgressionHierarchy.guide
+  || !p19ProgressionHierarchy.math
+  || !['ready', 'active', 'blocked'].includes(p19ProgressionHierarchy.requirementState)
+  || !p19ProgressionHierarchy.costVisible
+  || p19ProgressionHierarchy.minFont < 11.5
+  || p19ProgressionHierarchy.horizontalOverflow > 2) {
+  throw new Error(`Android P19-E Progression hierarchy failed: ${JSON.stringify(p19ProgressionHierarchy)}`);
+}
+await evaluate(`(() => { const button = globalThis.__p19ManagementGamepad.buttons[13]; button.pressed = true; button.value = 1; return true; })()`);
+await waitFor(`document.activeElement?.matches?.('button[data-network-node="true"]') === true`, 'Android P19-E Progression controller D-pad focus');
+const p19NetworkControllerNode = await evaluate(`document.activeElement?.textContent?.trim()?.slice(0, 80) ?? ''`);
+await evaluate(`(() => { const button = globalThis.__p19ManagementGamepad.buttons[13]; button.pressed = false; button.value = 0; return true; })()`);
 await tapButton('View planned build math', 96);
 await waitFor(`Boolean(document.querySelector('.iv-disclosure-sheet .network-stat-preview[aria-label="Planned build before and after math"]'))`, 'Android P18-F planned build math disclosure');
 await tapButton('Close details', 97);
@@ -908,38 +1005,62 @@ await tapButton('Skills', 34);
 await waitFor(`(() => {
   const text = document.body?.innerText ?? '';
   const cards = [...document.querySelectorAll('.skill-path-card')];
-  return text.includes('Choose Standard, a Lens, or a class Evolution for each skill.')
-    && [...document.querySelectorAll('button')].some(button => (button.textContent || '').trim() === 'How Skills progression works')
+  const details = [...document.querySelectorAll('.skill-path-card .iv-disclosure-trigger')].filter(button => (button.textContent || '').trim() === 'View current skill path');
+  return text.includes('Choose Standard, a Lens, or a class Evolution.')
+    && Boolean(document.querySelector('button[data-guide-link="builds-progression"]'))
+    && !text.includes('How Skills progression works')
     && text.includes('SHARED LENSES')
     && text.includes('CLASS EVOLUTIONS')
     && document.querySelectorAll('.skill-path-overview > article').length === 4
     && cards.length === 3
-    && cards.every(card => card.querySelectorAll('.skill-hierarchy-grid > div').length === 4)
+    && details.length === 3
+    && cards.every(card => card.querySelector('.skill-hierarchy-grid') === null)
     && Boolean(document.querySelector('button[data-skill-mod="mag-revector"]'))
     && Boolean(document.querySelector('button[data-skill-slot="mag"][data-skill-mod="standard"]'));
-})()`, 'Android P8-H skill hierarchy', 20_000);
+})()`, 'Android P19-E decision-first skill hierarchy', 20_000);
 const p18fSkillRequirements = await evaluate(`(() => {
-  const evolutions = [...document.querySelectorAll('.skill-evolution-group > button[data-skill-mod]')];
-  const help = [...document.querySelectorAll('button')].some(button => (button.textContent || '').trim() === 'How Skills progression works');
+  const root = document.querySelector('[data-management-surface="skills"]');
+  const evolutions = [...(root?.querySelectorAll('.skill-evolution-group > button[data-skill-mod]') ?? [])];
+  const guide = Boolean(root?.querySelector('button[data-guide-link="builds-progression"]'));
+  const details = [...(root?.querySelectorAll('.skill-path-card .iv-disclosure-trigger') ?? [])].filter(button => (button.textContent || '').trim() === 'View current skill path');
+  const visible = element => {
+    if (!element) return false;
+    const rect = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+  };
+  const copy = [...(root?.querySelectorAll('.protocol-skill-copy, .skill-option-group > small, .skill-option-group > button span, .skill-option-group > button small, .iv-requirement__copy span') ?? [])].filter(visible);
   const states = evolutions.map(button => {
     const requirement = button.nextElementSibling;
     return {
       disabled: button instanceof HTMLButtonElement ? button.disabled : false,
       state: requirement?.getAttribute('data-requirement-state') ?? '',
       copy: requirement?.textContent ?? '',
+      tradeoff: /TRADEOFF/i.test(button.textContent ?? ''),
     };
   });
   return {
     count: evolutions.length,
-    help,
+    guide,
+    detailCount: details.length,
     allExplicit: states.every(entry => ['ready', 'active', 'blocked'].includes(entry.state)),
+    allTradeoffsVisible: states.every(entry => entry.tradeoff),
     disabledExplained: states.filter(entry => entry.disabled).every(entry => entry.state === 'blocked' && entry.copy.includes('Why blocked:') && entry.copy.includes('Next:')),
+    minFont: copy.length ? Math.min(...copy.map(element => Number.parseFloat(getComputedStyle(element).fontSize))) : 0,
+    horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
   };
 })()`);
-if (!p18fSkillRequirements.help || p18fSkillRequirements.count < 3 || !p18fSkillRequirements.allExplicit || !p18fSkillRequirements.disabledExplained) {
-  throw new Error(`Android P18-F Skills requirement-state failed: ${JSON.stringify(p18fSkillRequirements)}`);
+if (!p18fSkillRequirements.guide
+  || p18fSkillRequirements.detailCount !== 3
+  || p18fSkillRequirements.count < 3
+  || !p18fSkillRequirements.allExplicit
+  || !p18fSkillRequirements.allTradeoffsVisible
+  || !p18fSkillRequirements.disabledExplained
+  || p18fSkillRequirements.minFont < 11.5
+  || p18fSkillRequirements.horizontalOverflow > 2) {
+  throw new Error(`Android P18-F/P19-E Skills requirement-state failed: ${JSON.stringify(p18fSkillRequirements)}`);
 }
-console.log(`ANDROID_P18F_SKILLS_REQUIREMENT_PASS evolutions=${p18fSkillRequirements.count} states=ready+active+blocked levelBlocker=explained help=shared-sheet`);
+console.log(`ANDROID_P18F_SKILLS_REQUIREMENT_PASS evolutions=${p18fSkillRequirements.count} states=ready+active+blocked levelBlocker=explained guide=builds-progression details=shared-sheet`);
 const skillHierarchyLayout = await evaluate(`(() => {
   const viewport = { width: window.innerWidth, height: window.innerHeight };
   const buttons = [...document.querySelectorAll('.skill-option-group > button')];
@@ -956,12 +1077,27 @@ if (skillHierarchyLayout.buttonCount < 9 || skillHierarchyLayout.undersized.leng
 await evaluate(`document.querySelector('button[data-skill-mod="mag-revector"]')?.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' })`);
 await sleep(200);
 await tap('button[data-skill-mod="mag-revector"]', 35);
-await waitFor(`document.querySelector('button[data-skill-mod="mag-revector"]')?.getAttribute('aria-pressed') === 'true' && (document.querySelector('.skill-path-card')?.textContent ?? '').includes('Lens · Revector Lens')`, 'Android touch Lens selection');
+await waitFor(`document.querySelector('button[data-skill-mod="mag-revector"]')?.getAttribute('aria-pressed') === 'true'`, 'Android touch Lens selection');
+await tapButton('View current skill path', 99);
+await waitFor(`(() => {
+  const sheet = document.querySelector('.iv-disclosure-sheet');
+  return Boolean(sheet?.querySelector('.skill-hierarchy-grid')) && (sheet?.textContent ?? '').includes('Lens · Revector Lens');
+})()`, 'Android P19-E current skill path Details selection state');
+await tapButton('Close details', 100);
+await waitFor(`!document.querySelector('.iv-disclosure-sheet')`, 'Android P19-E current skill path Details close');
 await evaluate(`document.querySelector('button[data-skill-slot="mag"][data-skill-mod="standard"]')?.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' })`);
 await sleep(200);
 await tap('button[data-skill-slot="mag"][data-skill-mod="standard"]', 36);
 await waitFor(`document.querySelector('button[data-skill-slot="mag"][data-skill-mod="standard"]')?.getAttribute('aria-pressed') === 'true'`, 'Android touch Lens restore');
-console.log(`ANDROID_SKILL_HIERARCHY_PASS stages=4 skills=3 options=${skillHierarchyLayout.buttonCount} touch=select+restore`);
+console.log(`ANDROID_SKILL_HIERARCHY_PASS stages=4 skills=3 options=${skillHierarchyLayout.buttonCount} touch=select+restore details=shared-sheet guide=builds-progression`);
+await evaluate(`(() => {
+  const original = globalThis.__p19ManagementOriginalGetGamepads;
+  if (original) Object.defineProperty(navigator, 'getGamepads', { configurable: true, value: original });
+  delete globalThis.__p19ManagementGamepad;
+  delete globalThis.__p19ManagementOriginalGetGamepads;
+  return true;
+})()`);
+console.log(`ANDROID_P19_MANAGEMENT_HIERARCHY_PASS crafting=decision+cost+requirement progression=decision+cost+requirement skills=tradeoff+requirement fontFloor=12px guide=crafting+builds-progression details=planner+skill-path controller=craft-dpad+a+b+network-dpad networkNode=${p19NetworkControllerNode}`);
 await tapButton('Settings', 65);
 await waitFor(`document.querySelector('select[aria-label="Graphics quality"]')?.value === 'performance'`, 'Android graphics setting persistence across Build tabs');
 console.log('ANDROID_QUALITY_SETTING_PASS mode=performance persisted=build-navigation');
