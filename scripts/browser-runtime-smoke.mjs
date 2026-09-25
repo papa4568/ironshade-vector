@@ -619,15 +619,21 @@ async function targetFeedbackAudit(includeTouch) {
     await waitFor(`(() => {
       const canvas = document.querySelector('canvas');
       const readout = document.querySelector('.target-readout[data-target-id]');
-      return Boolean(canvas?.dataset.assistedTargetId)
-        && readout?.dataset.targetId === canvas.dataset.assistedTargetId;
+      const targetId = canvas?.dataset.assistedTargetId ?? '';
+      if (!targetId || readout?.dataset.targetId !== targetId) return false;
+      window.__p8cControllerLockEvidence = {
+        targetId,
+        rumbleCount: window.__p8cTargetRumbleCount ?? 0,
+        liveText: document.querySelector('#target-lock-status')?.textContent ?? '',
+      };
+      return true;
     })()`, 'controller RT assisted target lock', 8_000);
 
-    const controllerLock = await evaluate(`(() => ({
+    const controllerLock = await evaluate(`window.__p8cControllerLockEvidence ?? ({
       targetId: document.querySelector('canvas')?.dataset.assistedTargetId ?? '',
       rumbleCount: window.__p8cTargetRumbleCount ?? 0,
       liveText: document.querySelector('#target-lock-status')?.textContent ?? '',
-    }))()`);
+    })`);
     if (!controllerLock.targetId || controllerLock.rumbleCount < 1 || !controllerLock.liveText.toLowerCase().includes('locked')) {
       throw new Error(`Controller target acquisition feedback failed: ${JSON.stringify(controllerLock)}`);
     }
