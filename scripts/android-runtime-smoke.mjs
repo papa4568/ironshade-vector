@@ -1010,9 +1010,18 @@ async function setP20InterfaceSize(value) {
     const viewport = { width: window.visualViewport?.width ?? window.innerWidth, height: window.visualViewport?.height ?? window.innerHeight };
     const panel = document.querySelector('.settings-panel');
     const rect = panel?.getBoundingClientRect();
+    const row = document.querySelector('.settings-panel label');
+    const select = document.querySelector('.settings-panel select');
+    const tabs = document.querySelector('.build-tabs');
+    const rowStyle = row ? getComputedStyle(row) : null;
+    const selectStyle = select ? getComputedStyle(select) : null;
+    const tabsStyle = tabs ? getComputedStyle(tabs) : null;
     return {
       size: document.documentElement.dataset.interfaceSize ?? '',
       rootFontSize: Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
+      rowPadding: Number.parseFloat(rowStyle?.paddingLeft ?? '0'),
+      selectPadding: Number.parseFloat(selectStyle?.paddingLeft ?? '0'),
+      tabGap: Number.parseFloat(tabsStyle?.columnGap ?? '0'),
       horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - viewport.width),
       panelVisible: Boolean(rect && rect.width > 0 && rect.height > 0),
       panelWithinViewport: Boolean(rect && rect.left >= -2 && rect.right <= viewport.width + 2),
@@ -1026,10 +1035,13 @@ const p20InterfaceLarge = await setP20InterfaceSize('large');
 if (!p20InterfaceCompact.panelVisible || !p20InterfaceDefault.panelVisible || !p20InterfaceLarge.panelVisible
   || !p20InterfaceCompact.panelWithinViewport || !p20InterfaceDefault.panelWithinViewport || !p20InterfaceLarge.panelWithinViewport
   || p20InterfaceCompact.horizontalOverflow > 2 || p20InterfaceDefault.horizontalOverflow > 2 || p20InterfaceLarge.horizontalOverflow > 2
-  || !(p20InterfaceCompact.rootFontSize < p20InterfaceDefault.rootFontSize && p20InterfaceDefault.rootFontSize < p20InterfaceLarge.rootFontSize)) {
+  || !(p20InterfaceCompact.rootFontSize < p20InterfaceDefault.rootFontSize && p20InterfaceDefault.rootFontSize < p20InterfaceLarge.rootFontSize)
+  || !(p20InterfaceCompact.rowPadding < p20InterfaceDefault.rowPadding && p20InterfaceDefault.rowPadding < p20InterfaceLarge.rowPadding)
+  || !(p20InterfaceCompact.selectPadding < p20InterfaceDefault.selectPadding && p20InterfaceDefault.selectPadding < p20InterfaceLarge.selectPadding)
+  || !(p20InterfaceCompact.tabGap < p20InterfaceDefault.tabGap && p20InterfaceDefault.tabGap < p20InterfaceLarge.tabGap)) {
   throw new Error(`Android P20-A Interface Size reflow failed: ${JSON.stringify({ compact: p20InterfaceCompact, default: p20InterfaceDefault, large: p20InterfaceLarge })}`);
 }
-console.log(`ANDROID_P20_INTERFACE_SIZE_PASS compact=${p20InterfaceCompact.rootFontSize}px default=${p20InterfaceDefault.rootFontSize}px large=${p20InterfaceLarge.rootFontSize}px overflow=none persisted=large`);
+console.log(`ANDROID_P20_INTERFACE_SIZE_PASS compact=${p20InterfaceCompact.rootFontSize}px default=${p20InterfaceDefault.rootFontSize}px large=${p20InterfaceLarge.rootFontSize}px rows=${p20InterfaceCompact.rowPadding}/${p20InterfaceDefault.rowPadding}/${p20InterfaceLarge.rowPadding} tabs=${p20InterfaceCompact.tabGap}/${p20InterfaceDefault.tabGap}/${p20InterfaceLarge.tabGap} overflow=none persisted=large`);
 
 const p19AccessibilityBefore = await evaluate(`(() => {
   const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
@@ -2056,32 +2068,51 @@ assertP19HudLayoutSnapshot(p19HudRestored, 'restored landscape');
 const p20ControlInvariant = await evaluate(`(() => {
   const root = document.documentElement;
   const previous = root.dataset.interfaceSize ?? '';
-  const snapshot = () => {
-    const rect = element => {
-      if (!element) return null;
-      const value = element.getBoundingClientRect();
-      return [value.left, value.top, value.width, value.height].map(number => Number(number.toFixed(3)));
-    };
+  const rect = element => {
+    if (!element) return null;
+    const value = element.getBoundingClientRect();
+    return [value.left, value.top, value.width, value.height].map(number => Number(number.toFixed(3)));
+  };
+  const controlSnapshot = () => ({
+    move: rect(document.querySelector('.move-stick')),
+    dock: rect(document.querySelector('.combat-dock')),
+    controls: [...document.querySelectorAll('.touch-button')].map((button, index) => ({
+      key: button.getAttribute('aria-label') || button.className || String(index),
+      rect: rect(button),
+    })),
+  });
+  const hudSnapshot = () => {
+    const vitals = document.querySelector('.vitals');
+    const mission = document.querySelector('.mission-card');
+    const vitalsStyle = vitals ? getComputedStyle(vitals) : null;
+    const missionStyle = mission ? getComputedStyle(mission) : null;
     return {
-      move: rect(document.querySelector('.move-stick')),
-      dock: rect(document.querySelector('.combat-dock')),
-      controls: [...document.querySelectorAll('.touch-button')].map((button, index) => ({
-        key: button.getAttribute('aria-label') || button.className || String(index),
-        rect: rect(button),
-      })),
+      vitalsPadding: Number.parseFloat(vitalsStyle?.paddingLeft ?? '0'),
+      missionPadding: Number.parseFloat(missionStyle?.paddingLeft ?? '0'),
     };
   };
   root.dataset.interfaceSize = 'compact';
-  const compact = snapshot();
+  const compact = controlSnapshot();
+  const compactHud = hudSnapshot();
+  root.dataset.interfaceSize = 'default';
+  const baselineHud = hudSnapshot();
   root.dataset.interfaceSize = 'large';
-  const large = snapshot();
+  const large = controlSnapshot();
+  const largeHud = hudSnapshot();
   if (previous) root.dataset.interfaceSize = previous;
   else delete root.dataset.interfaceSize;
-  return { compact, large, restored: root.dataset.interfaceSize ?? '' };
+  return { compact, large, hud: { compact: compactHud, baseline: baselineHud, large: largeHud }, restored: root.dataset.interfaceSize ?? '' };
 })()`);
 if (JSON.stringify(p20ControlInvariant.compact) !== JSON.stringify(p20ControlInvariant.large)) {
   throw new Error(`Android P20-A changed combat-control geometry across Interface Size values: ${JSON.stringify(p20ControlInvariant)}`);
 }
+if (!(p20ControlInvariant.hud.compact.vitalsPadding < p20ControlInvariant.hud.baseline.vitalsPadding
+  && p20ControlInvariant.hud.baseline.vitalsPadding < p20ControlInvariant.hud.large.vitalsPadding)
+  || !(p20ControlInvariant.hud.compact.missionPadding < p20ControlInvariant.hud.baseline.missionPadding
+    && p20ControlInvariant.hud.baseline.missionPadding < p20ControlInvariant.hud.large.missionPadding)) {
+  throw new Error(`Android P20-A informational HUD chrome did not scale while controls stayed fixed: ${JSON.stringify(p20ControlInvariant)}`);
+}
+console.log(`ANDROID_P20_HUD_SCALE_PASS vitalsPadding=${p20ControlInvariant.hud.compact.vitalsPadding}/${p20ControlInvariant.hud.baseline.vitalsPadding}/${p20ControlInvariant.hud.large.vitalsPadding} missionPadding=${p20ControlInvariant.hud.compact.missionPadding}/${p20ControlInvariant.hud.baseline.missionPadding}/${p20ControlInvariant.hud.large.missionPadding}`);
 console.log(`ANDROID_P20_COMBAT_CONTROL_INVARIANT_PASS controls=${p20ControlInvariant.compact.controls.length} compact=large geometry=identical restored=${p20ControlInvariant.restored}`);
 console.log(`ANDROID_P19_HUD_LAYOUT_PASS presets=standard+large+left-handed custom=left-handed movement=.35/.4/1.04 action=.3/.25/.96 safe=onscreen+separated hit=tracks-visible rotation=landscape+portrait+landscape fixed=hud+objective accessibility=${p19HudRestored.accessibility.textScale}+${p19HudRestored.accessibility.contrast}+motion-${p19HudRestored.accessibility.reducedMotion}`);
 
