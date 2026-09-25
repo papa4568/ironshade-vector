@@ -287,6 +287,7 @@
     line-height: 1.4;
   }
 
+  .ship-hub.area-ship .hub-resource-ribbon b,
   .ship-hub.area-ship .ship-systems-panel
     :is(b, strong) {
     font-size: var(--p19-compact-type-decision, max(14px, .875rem));
