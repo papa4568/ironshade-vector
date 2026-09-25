@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import '../part2.css';
 import '../part4.css';
 import '../part5.css';
 import '../part6.css';
 import '../part7.css';
 import '../combatHudGlance.css';
+import '../combatHudLayout.css';
 import { applyMissionSetup, continueIntoDeepZone, createDirector, stepMissionDirector, type DirectorRuntime } from '../game/director';
 import { getMissionObjectiveStatus, getNextMissionObjectiveTarget } from '../game/encounters';
 import { findNavigationPath } from '../game/mapPathfinding';
@@ -38,6 +39,19 @@ type Props = { build: CombatBuild; mission: Contract; profileSettings: ProfileSe
 type HudState = { classId: 'vanguard' | 'vector' | 'systems' | 'none'; classLabel: string; classDetail: string; classActive: boolean; hp: number; maxHp: number; armor: number; maxArmor: number; capacitor: number; maxCapacitor: number; mag: number; heat: number; weapon: WeaponId; ability: [number, number, number]; dodge: number; reload: number; venting: boolean; dead: boolean; complete: boolean; kills: number; squadRemaining: number; extractionReady: boolean; pressureState: string; pressure: number; gravity: number; eventText: string; eventT: number; contextLabel: string; bossActive: boolean; bossLabel: string; bossHp: number; bossMaxHp: number; bossArmor: number; bossMaxArmor: number; bossPhase: number; bossPattern: string; commandTargetMutationNames: string[]; bossPhaseMutationNames: string[]; vacuumExposure: number; disrupted: number; consumableCooldown: number; damageDealt: number; damageTaken: number; shots: Record<WeaponId, number>; abilityUses: [number, number, number] };
 type StickState = { pointerId: number; originX: number; originY: number; x: number; y: number } | null;
 type PendingMegastructureTransit = { nextStage: number; nextMission: Contract; optionalRecovered: number } | null;
+
+function touchClusterStyle(settings: ProfileSettings, cluster: 'movement' | 'action'): CSSProperties {
+  const leftHanded = settings.hudLayoutPreset === 'left-handed';
+  const anchoredLeft = cluster === 'movement' ? !leftHanded : leftHanded;
+  const inset = cluster === 'movement' ? settings.movementClusterInset : settings.actionClusterInset;
+  const lift = cluster === 'movement' ? settings.movementClusterLift : settings.actionClusterLift;
+  const scale = cluster === 'movement' ? settings.movementClusterScale : settings.actionClusterScale;
+  return {
+    '--iv-cluster-x': `${Math.round(inset * 48) * (anchoredLeft ? 1 : -1)}px`,
+    '--iv-cluster-y': `-${Math.round(lift * 64)}px`,
+    '--iv-cluster-scale': String(scale),
+  } as CSSProperties;
+}
 const isoScaleX = 0.72;
 const isoScaleY = 0.39;
 const roleColors: Record<Enemy['role'], string> = { assault: '#b35a4b', suppressor: '#b67850', technician: '#7d6daf', elite: '#c34f6e', boss: '#d04c46' };
@@ -1485,20 +1499,23 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
     {!coarse && visibleConsumables.length > 0 && <div className="combat-consumables" aria-label="Field consumables">{visibleConsumables.map(item => <button key={item.id} aria-label={item.name} disabled={!consumableReady || consumableStock[item.id] <= 0} onClick={() => useConsumable(item.id)}><small>{item.hotkey}</small><b>{item.shortName}</b><span>x{consumableStock[item.id]}</span></button>)}</div>}
     <div className="desktop-actions">{abilityKit.map((ability, index) => <button key={ability.shortName} className="action-chip" aria-label={ability.name} title={ability.description} disabled={!abilityReady[index]} onClick={() => useAbility(index)}>{skillIcons && <img src={skillIcons[index]} alt="" aria-hidden="true" />}<b>{['Q', 'E', 'F'][index]} · {ability.shortName}</b><span>{abilityReady[index] ? `${abilityConfigs[index].cost} CAP` : `${hud.ability[index].toFixed(1)}s`}</span></button>)}<button className="action-chip" disabled={!dodgeReady} onClick={useDodge}><b>SPACE · DODGE</b><span>{dodgeReady ? 'READY' : `${hud.dodge.toFixed(1)}s`}</span></button></div>
     {hud.contextLabel && <button className="context-action" onClick={useInteract}><b>X</b> {hud.contextLabel}</button>}
-    {coarse && <div className="touch-ui" aria-label="Touch combat controls">
-      <div className="touch-stick move-stick" aria-label="Movement stick" onPointerDown={event => beginStick('move', event)} onPointerMove={event => updateStick('move', event)} onPointerUp={event => endStick('move', event)} onPointerCancel={event => endStick('move', event)} onLostPointerCapture={event => endStick('move', event)} />
-
-      <div className="touch-utility-rail" aria-label="Field utilities">
-        {visibleConsumables.map(item => <button key={item.id} className="touch-button consumable-button" aria-label={item.name} disabled={!consumableReady || consumableStock[item.id] <= 0} onPointerDown={() => useConsumable(item.id)}><span>{item.shortName}</span><small>x{consumableStock[item.id]}</small></button>)}
-        {hud.heat > 0.55 && <button className="touch-button vent-button" onPointerDown={() => triggerVent(stateRef.current)}><span>VENT</span><small>{hud.heat >= 0.88 ? 'CRITICAL' : 'HOT'}</small></button>}
-      </div>
-      <div className="combat-dock" aria-label="Combat actions">
-        <div className="touch-ability-fan">
-          {abilityKit.map((ability, index) => <button key={ability.shortName} className={`touch-button ability-button ability-${index}`} aria-label={ability.name} title={ability.description} disabled={!abilityReady[index]} onPointerDown={() => useAbility(index)}>{skillIcons && <img src={skillIcons[index]} alt="" aria-hidden="true" />}<span>{ability.shortName}</span><small>{abilityReady[index] ? 'READY' : `${hud.ability[index].toFixed(0)}s`}</small></button>)}
+    {coarse && <div className="touch-ui" aria-label="Touch combat controls" data-layout-preset={profileSettings.hudLayoutPreset} data-movement-inset={profileSettings.movementClusterInset} data-movement-lift={profileSettings.movementClusterLift} data-movement-scale={profileSettings.movementClusterScale} data-action-inset={profileSettings.actionClusterInset} data-action-lift={profileSettings.actionClusterLift} data-action-scale={profileSettings.actionClusterScale}>
+      <div className="touch-control-cluster movement-control-cluster" data-control-cluster="movement" style={touchClusterStyle(profileSettings, 'movement')}>
+        <div className="touch-stick move-stick" aria-label="Movement stick" onPointerDown={event => beginStick('move', event)} onPointerMove={event => updateStick('move', event)} onPointerUp={event => endStick('move', event)} onPointerCancel={event => endStick('move', event)} onLostPointerCapture={event => endStick('move', event)} />
+        <div className="touch-utility-rail" aria-label="Field utilities">
+          {visibleConsumables.map(item => <button key={item.id} className="touch-button consumable-button" aria-label={item.name} disabled={!consumableReady || consumableStock[item.id] <= 0} onPointerDown={() => useConsumable(item.id)}><span>{item.shortName}</span><small>x{consumableStock[item.id]}</small></button>)}
+          {hud.heat > 0.55 && <button className="touch-button vent-button" onPointerDown={() => triggerVent(stateRef.current)}><span>VENT</span><small>{hud.heat >= 0.88 ? 'CRITICAL' : 'HOT'}</small></button>}
         </div>
-        <button className="touch-button dodge-button" aria-label="Dodge" disabled={!dodgeReady} onPointerDown={useDodge}><span>DODGE</span><small>{dodgeReady ? 'READY' : `${hud.dodge.toFixed(1)}s`}</small></button>
-        <button className="touch-button fire-button" aria-label="Hold to fire with assisted targeting" onPointerDown={() => { feedback.unlock(); fireSourcesRef.current.button = true; const manualTargeting = performance.now() < manualAimUntilRef.current || !!aimStick.current; const targetId = manualTargeting ? null : updateAssistedTarget(stateRef.current, profileSettings.aimAssist); if (manualTargeting) clearAssistedTarget(); advanceTutorial(1); fireCurrent(manualTargeting ? 'manual' : 'acquire', targetId); }} onPointerUp={() => { fireSourcesRef.current.button = false; clearAssistedTarget(); }} onPointerCancel={() => { fireSourcesRef.current.button = false; clearAssistedTarget(); }} onPointerLeave={() => { fireSourcesRef.current.button = false; clearAssistedTarget(); }}><span>FIRE</span><small>{hud.reload > 0 ? 'RELOAD' : hud.heat >= 0.98 ? 'OVERHEAT' : hud.heat >= 0.75 ? `HOT · ${hud.mag}` : `ASSIST · ${hud.mag}`}</small></button>
-        {hud.contextLabel && <button className="touch-button interact-button" onPointerDown={useInteract}><span>ACT</span><small>NEARBY</small></button>}
+      </div>
+      <div className="touch-control-cluster action-control-cluster" data-control-cluster="action" style={touchClusterStyle(profileSettings, 'action')}>
+        <div className="combat-dock" aria-label="Combat actions">
+          <div className="touch-ability-fan">
+            {abilityKit.map((ability, index) => <button key={ability.shortName} className={`touch-button ability-button ability-${index}`} aria-label={ability.name} title={ability.description} disabled={!abilityReady[index]} onPointerDown={() => useAbility(index)}>{skillIcons && <img src={skillIcons[index]} alt="" aria-hidden="true" />}<span>{ability.shortName}</span><small>{abilityReady[index] ? 'READY' : `${hud.ability[index].toFixed(0)}s`}</small></button>)}
+          </div>
+          <button className="touch-button dodge-button" aria-label="Dodge" disabled={!dodgeReady} onPointerDown={useDodge}><span>DODGE</span><small>{dodgeReady ? 'READY' : `${hud.dodge.toFixed(1)}s`}</small></button>
+          <button className="touch-button fire-button" aria-label="Hold to fire with assisted targeting" onPointerDown={() => { feedback.unlock(); fireSourcesRef.current.button = true; const manualTargeting = performance.now() < manualAimUntilRef.current || !!aimStick.current; const targetId = manualTargeting ? null : updateAssistedTarget(stateRef.current, profileSettings.aimAssist); if (manualTargeting) clearAssistedTarget(); advanceTutorial(1); fireCurrent(manualTargeting ? 'manual' : 'acquire', targetId); }} onPointerUp={() => { fireSourcesRef.current.button = false; clearAssistedTarget(); }} onPointerCancel={() => { fireSourcesRef.current.button = false; clearAssistedTarget(); }} onPointerLeave={() => { fireSourcesRef.current.button = false; clearAssistedTarget(); }}><span>FIRE</span><small>{hud.reload > 0 ? 'RELOAD' : hud.heat >= 0.98 ? 'OVERHEAT' : hud.heat >= 0.75 ? `HOT · ${hud.mag}` : `ASSIST · ${hud.mag}`}</small></button>
+          {hud.contextLabel && <button className="touch-button interact-button" onPointerDown={useInteract}><span>ACT</span><small>NEARBY</small></button>}
+        </div>
       </div>
     </div>}
     <div className="rotate-note">LANDSCAPE RECOMMENDED<span>Controls remain active in portrait; rotate for the clearest combat view.</span></div>
