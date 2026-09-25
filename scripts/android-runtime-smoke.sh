@@ -75,19 +75,6 @@ if [[ ! -s android-runtime-smoke.png ]]; then
   exit 1
 fi
 
-CHAPTER3_INTERACTION_MODE=touch \
-CHAPTER3_TARGET_TITLE='Ironshade Vector' \
-CDP_ENDPOINT=http://127.0.0.1:9222 \
-BROWSER_E2E_APP_URL=https://localhost/ \
-BROWSER_E2E_VIEWPORT=android-emulator \
-BROWSER_E2E_CHAPTER3_SCREENSHOT=android-chapter3-playthrough.png \
-BROWSER_E2E_CHAPTER3_REPORT=android-chapter3-playthrough.json \
-node scripts/browser-chapter3-playthrough.mjs
-
-test -s android-chapter3-playthrough.png
-test -s android-chapter3-playthrough.json
-grep -q '"result": "PASS"' android-chapter3-playthrough.json
-
 # P18-C requires a true process restart, not only Activity pause/resume. The persisted
 # Operator Network plan is seeded through touch UI in the main smoke and verified again
 # in both storage and the Progression UI after this cold relaunch.
@@ -105,6 +92,21 @@ adb forward tcp:9222 "localabstract:$PLANNER_SOCKET"
 ANDROID_PLANNER_PERSISTENCE_CHECK=1 CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-runtime-smoke.mjs
 adb exec-out screencap -p > android-network-planner-persistence.png
 test -s android-network-planner-persistence.png
+
+# Chapter 3 QA mutates the operator to LV15–18 checkpoints, so run it only after
+# the P20-B partial-plan cold-relaunch persistence gate has captured its evidence.
+CHAPTER3_INTERACTION_MODE=touch \
+CHAPTER3_TARGET_TITLE='Ironshade Vector' \
+CDP_ENDPOINT=http://127.0.0.1:9222 \
+BROWSER_E2E_APP_URL=https://localhost/ \
+BROWSER_E2E_VIEWPORT=android-emulator \
+BROWSER_E2E_CHAPTER3_SCREENSHOT=android-chapter3-playthrough.png \
+BROWSER_E2E_CHAPTER3_REPORT=android-chapter3-playthrough.json \
+node scripts/browser-chapter3-playthrough.mjs
+
+test -s android-chapter3-playthrough.png
+test -s android-chapter3-playthrough.json
+grep -q '"result": "PASS"' android-chapter3-playthrough.json
 
 adb logcat -d > android-runtime-logcat.txt
 if grep -E 'FATAL EXCEPTION|Process: app\.ironshade\.vector' android-runtime-logcat.txt; then
