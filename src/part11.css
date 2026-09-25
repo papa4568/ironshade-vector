@@ -96,3 +96,24 @@
   .parallax-operation { padding:5px; }
   .parallax-route-grid,.parallax-bank-grid { gap:6px; margin-top:8px; }
 }
+
+
+/* P19-G // Intel compact-phone acceptance closure.
+   Campaign/parallax detail can stay dense on wide screens, but the phone surface
+   must not fall back to legacy 7–11px text after the shared compact sweep. */
+@media (max-width: 620px) and (orientation: portrait),
+       (orientation: landscape) and (max-width: 1000px) and (max-height: 500px) {
+  .ship-hub.area-intel .hub-resource-ribbon b {
+    font-size: var(--p19-compact-type-decision, max(14px, .875rem));
+  }
+
+  .ship-hub.area-intel .campaign-panel :is(p, small, span, em, li) {
+    font-size: var(--p19-compact-type-secondary, max(12px, .75rem));
+    line-height: 1.4;
+  }
+
+  .ship-hub.area-intel .campaign-panel :is(b, strong) {
+    font-size: var(--p19-compact-type-decision, max(14px, .875rem));
+    line-height: 1.25;
+  }
+}
