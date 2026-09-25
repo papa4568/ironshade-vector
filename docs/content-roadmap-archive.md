@@ -1488,3 +1488,13 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Native Android evidence retained `ANDROID_P18_GEAR_INSPECTOR_PASS`, `ANDROID_P19_ARMORY_CARD_PASS ... compare=quick-read details=shared-sheet equip=restored guide=equipment-rarity`, `ANDROID_RUNTIME_SMOKE_PASS`, and final `ANDROID_EMULATOR_PASS`.
   - Android artifact `10882904502` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.391` (391), debug signing, min SDK 24 / target SDK 36, APK SHA-256 `2c7177ee4a883a0e93ddba75a2d3a4ab25f26e6d9f59f05925f840e103eb834c`, and artifact digest `5ff3aa3748e69c67c540e5c0b6e2fe4156688b2fd8184da2e7bac21c99d84954`.
   - **Next:** no unchecked executable item remains in the active roadmap after P19-H verification.
+
+## 2026-09-25 — P19-I Glance-First Adaptive UI // Dedicated item info popup
+
+- [x] **P19-I — Dedicated item info popup** — moved Loadout and Ship Storage comparison/details into a dedicated Armory modal with its own backdrop while preserving quick comparison, Details disclosure, equip/unequip/discard actions, requirement states, dismissal, and storage context across desktop and compact/coarse-pointer layouts.
+  - Implementation began in commit `8139799819fd34d9a2d1d80fb43434df4775749b`; regression fixes followed in `6490d664479494296742eab62854ca31407d5567`, `44d51669e318063dd9404b4c6ff2630d77f0a746`, and final Android-landscape fix `b880c8253a61b9dc77033d2ea95c902f510a8281`.
+  - Browser E2E run `36186381057` (run 797) passed both desktop and mobile-landscape jobs on the final code SHA, including the full regression/production build and browser player journey.
+  - Level 15 beta smoke run `36186380958` (run 667) passed on the same final code SHA.
+  - Android beta.395 run `36186381015` passed full web regression/production build, native Android generation, installable debug APK build, package/version/SDK/signature verification, emulator smoke, and artifact upload. Artifact `10886422013` (`ironshade-vector-android-apk`) was retained with digest `sha256:860a99ba96bbc77e92ffe2584e2b7fabdf89de9fd89cae9b008a51938ddb5c65`.
+  - Roadmap completion was recorded in docs-only commit `2892de14f0ed77de217aa7aa272bb2840ebe3c65`.
+
