@@ -2296,9 +2296,25 @@
   }
 }
 
-/* P19-G // Ultra-short compact Command keeps redundant drill-ins in primary navigation. */
+/* P19-G // Ultra-short compact Command keeps redundant drill-ins in primary navigation
+   and drops decorative bridge art before sacrificing readable type. */
 @media (orientation: landscape) and (max-width: 1000px) and (max-height: 380px) {
   .ship-hub.area-command .command-side .command-action-row {
     display: none;
+  }
+  .ship-hub.area-command .command-visual.command-bridge.command-bridge-compact {
+    min-height: 0;
+  }
+  .ship-hub.area-command .command-bridge-compact {
+    grid-template-columns: minmax(145px, .82fr) minmax(0, 1.18fr);
+    grid-template-rows: auto;
+    grid-template-areas: "copy readiness";
+    align-items: center;
+  }
+  .ship-hub.area-command .command-bridge-schematic {
+    display: none;
+  }
+  .ship-hub.area-command .bridge-compact-readiness {
+    align-self: center;
   }
 }
