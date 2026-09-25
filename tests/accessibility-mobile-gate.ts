@@ -43,7 +43,7 @@ const pkg = JSON.parse(read('package.json')) as { scripts?: Record<string, strin
 
 assert(meta.includes("export type TextScale = 'default' | 'large'") && meta.includes("export type ContrastMode = 'standard' | 'high'"), 'P15-E must type persisted text-scale and contrast preferences.');
 assert(meta.includes('reducedMotion: boolean') && meta.includes("textScale: 'default'") && meta.includes("contrast: 'standard'") && meta.includes('reducedMotion: false'), 'P15-E accessibility preferences need save-safe defaults.');
-assert(meta.includes('settings: { ...defaults.settings, ...parsed.settings }'), 'P15-E settings must normalize old saves without a profile-version reset.');
+assert(meta.includes('settings: { ...defaults.settings, ...parsed.settings, ...normalizeHudLayoutSettings(parsed.settings) }'), 'P15-E settings must normalize old saves without a profile-version reset while allowing additive normalized preferences.');
 
 for (const control of ['Interface text size', 'High contrast', 'Reduce motion', 'Touch aim assistance', 'Assisted fire tracking', 'Effect intensity', 'Combat effects volume', 'Interface volume', 'Mobile haptics']) {
   assert(armory.includes(control), `Build settings are missing the ${control} accessibility/feedback control.`);
