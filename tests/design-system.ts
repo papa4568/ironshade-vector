@@ -73,13 +73,16 @@ assert(androidSmoke.includes('ANDROID_P18_DISCLOSURE_LANDSCAPE_PASS') && android
 assert(
   armory.includes('craftingAccessRequirement')
     && armory.includes('Missing salvage')
-    && armory.includes('How Reconstruction rules work')
+    && armory.includes('GuideLink section="crafting"')
     && armory.includes('networkRequirementFor')
     && armory.includes('Exclusive Keystone choice already active')
     && armory.includes('View planned build math')
-    && armory.includes('How Skills progression works')
-    && armory.includes('skillEvolutionRequirement'),
-  'P18-F must apply shared requirement/disclosure primitives across Crafting, Progression, and Skills blockers.',
+    && armory.includes('GuideLink section="builds-progression"')
+    && armory.includes('View current skill path')
+    && armory.includes('skillEvolutionRequirement')
+    && !armory.includes('How Reconstruction rules work')
+    && !armory.includes('How Skills progression works'),
+  'P18-F/P19-E must preserve shared requirement states across Crafting, Progression, and Skills while routing durable teaching to Guide and decision-specific previews to shared Details.',
 );
 assert(
   androidSmoke.includes('ANDROID_P18F_CRAFTING_REQUIREMENT_PASS')
