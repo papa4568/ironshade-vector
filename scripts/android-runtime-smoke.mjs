@@ -946,6 +946,21 @@ await waitFor(`Boolean(document.querySelector('.iv-disclosure-sheet .network-sta
 await tapButton('Close details', 97);
 await waitFor(`!document.querySelector('.iv-disclosure-sheet')`, 'Android P18-F planned build math close');
 
+const preExistingPlannerTargets = await evaluate(`(() => {
+  const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+  const targets = state?.profile?.operatorNetwork?.plannedTargetNodeIds;
+  return Array.isArray(targets) ? targets : [];
+})()`);
+if (preExistingPlannerTargets.length > 0) {
+  await tapButton('Clear plan', 70);
+  await waitFor(`(() => {
+    const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+    const targets = state?.profile?.operatorNetwork?.plannedTargetNodeIds;
+    const planText = document.querySelector('.network-plan-card')?.textContent ?? '';
+    return Array.isArray(targets) && targets.length === 0 && planText.includes('No targets yet');
+  })()`, 'clear pre-existing QA planner targets');
+}
+
 const plannerTargets = [
   ['ballistics-3', 'Breach Doctrine', 71],
   ['mobility-1', 'Servo Timing', 72],
