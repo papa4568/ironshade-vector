@@ -307,31 +307,27 @@ assert(equipmentCss.includes('P8.5-J MOBILE ARMORY BUILD LINKS') && equipmentCss
 
 
 assert(
-  equipmentCss.includes('P19-H // Viewport-anchored wide Armory inspector.')
-    && equipmentCss.includes('@media (min-width: 1101px)')
-    && equipmentCss.includes('.gear-layout.has-selection .item-inspector-backdrop')
-    && equipmentCss.includes('.gear-layout .item-inspector.open')
-    && equipmentCss.includes('width: min(46vw, 640px)')
-    && equipmentCss.includes('grid-template-columns: repeat(3, minmax(0, 1fr))')
-    && equipmentCss.includes('.armory-inspector-portal .item-inspector.open')
-    && equipmentCss.includes('.armory-inspector-portal .item-inspector-backdrop')
-    && mobileInspectorCss.includes('@media (pointer: coarse), (max-width: 1100px)')
+  equipmentCss.includes('P19-I // Every Loadout / Ship Storage card opens a dedicated item-details window.')
+    && equipmentCss.includes('.armory-item-modal > .item-inspector.open')
+    && equipmentCss.includes('place-items: center')
+    && equipmentCss.includes('backdrop-filter: blur(5px)')
     && armory.includes("import { createPortal } from 'react-dom'")
-    && armory.includes('wideInspectorPortal')
-    && armory.includes('armory-inspector-portal')
-    && armory.includes("window.matchMedia('(pointer: coarse)')"),
-  'P19-H wide Armory selection must use the established viewport-anchored inspector without shrinking Ship Storage or leaking the Android single-scroller rule onto wide desktop.',
+    && armory.includes('className="armory-item-modal"')
+    && armory.includes('role="dialog"')
+    && armory.includes('aria-modal="true"')
+    && !armory.includes('wideInspectorPortal'),
+  'P19-I Armory selection must open a dedicated modal item window instead of an inline or side inspector.',
 );
 assert(
   browserSmoke.includes('async function armoryInspectorViewportAudit()')
     && browserSmoke.includes('data-p19-armory-viewport-candidate')
-    && browserSmoke.includes('BROWSER_P19_ARMORY_INSPECTOR_PASS')
-    && browserSmoke.includes('headerOnscreen')
-    && browserSmoke.includes('quickReadOnscreen')
-    && browserSmoke.includes('actionsOnscreen')
-    && browserSmoke.includes('storageKeepsWidth')
+    && browserSmoke.includes('BROWSER_P19_ITEM_MODAL_PASS')
+    && browserSmoke.includes('detachedFromLayout')
+    && browserSmoke.includes('dialogSemantics')
+    && browserSmoke.includes('backdropVisible')
+    && browserSmoke.includes('windowCentered')
     && browserSmoke.includes('context=preserved'),
-  'P19-H desktop Browser E2E must prove inspector visibility, stable storage geometry, and preserved scroll context.',
+  'P19-I Browser E2E must prove dedicated modal presentation and preserved storage context.',
 );
 
 assert(
