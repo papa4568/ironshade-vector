@@ -63,8 +63,8 @@ type Props = {
   newLootIds: string[];
   onProfileChange: (profile: PlayerProfile | ((current: PlayerProfile) => PlayerProfile)) => void;
   onCampaignChange: (campaign: CampaignState) => void;
-  onOpenGuide: (section: GuideSectionId, returnTab: BuildTab) => void;
-  guideReturnFocus?: { section: GuideSectionId; tab: BuildTab } | null;
+  onOpenGuide: (section: GuideSectionId, returnTab: BuildTab, selectedItemId: string | null) => void;
+  guideReturnFocus?: { section: GuideSectionId; tab: BuildTab; selectedItemId: string | null } | null;
   onGuideFocusRestored?: () => void;
   onClose: () => void;
 };
@@ -666,17 +666,21 @@ function ReconstructionBench({ item, profile, campaign, lockedFamily, onLockFami
 
 export default function Armory({ profile, campaign, newLootIds, onProfileChange, onCampaignChange, onOpenGuide, guideReturnFocus, onGuideFocusRestored, onClose }: Props) {
   const [tab, setTab] = useState<Tab>('gear');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   useEffect(() => {
     if (!guideReturnFocus) return;
     setTab(guideReturnFocus.tab);
+    setSelectedId(guideReturnFocus.selectedItemId);
+  }, [guideReturnFocus]);
+  useEffect(() => {
+    if (!guideReturnFocus || tab !== guideReturnFocus.tab || selectedId !== guideReturnFocus.selectedItemId) return;
     const frame = requestAnimationFrame(() => {
       const target = document.querySelector<HTMLButtonElement>('button[data-guide-link="' + guideReturnFocus.section + '"]');
       target?.focus();
       onGuideFocusRestored?.();
     });
     return () => cancelAnimationFrame(frame);
-  }, [guideReturnFocus, onGuideFocusRestored]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  }, [guideReturnFocus, onGuideFocusRestored, selectedId, tab]);
   const [lockedFamily, setLockedFamily] = useState<ModifierFamily>('core');
   const [pendingCraft, setPendingCraft] = useState<ReconstructionAction | null>(null);
   const [message, setMessage] = useState(newLootIds.length > 0 ? `${newLootIds.length} recovered equipment packages added to ship storage.` : '');
@@ -1026,7 +1030,7 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
     spendNetworkRecalibrationCredits(cost, outcome);
     setMessage(outcome);
   };
-  const openGuide = (section: GuideSectionId) => onOpenGuide(section, tab);
+  const openGuide = (section: GuideSectionId) => onOpenGuide(section, tab, selectedId);
   const runNetworkRebuild = () => {
     if (operatorNetwork.allocatedNodeIds.length === 0) {
       setMessage('Operator Network already clear.');
