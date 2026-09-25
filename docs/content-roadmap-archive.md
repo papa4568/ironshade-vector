@@ -1430,3 +1430,16 @@ Sera Nox tuning is now phase-aware: Blind Meridian uses the lighter opening-fina
   - Native P19-C evidence included `ANDROID_P19_GUIDE_DEEPLINK_PASS section=equipment-rarity touch=link back=history+focus text=large rotation=landscape+portrait safe=onscreen`; the same run also retained the five-destination Command fit gate and inherited P18 requirement/disclosure smoke coverage.
   - Android artifact `10849650298` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.361` (361), debug signing, min SDK 24 / target SDK 36, and APK SHA-256 `44d86ffa5cbfab3b09d06d95ec2b113713de1bd740590c92ebf51f3d16fdfb2e`.
   - **Next: P19-D — Armory inventory cards become decision-first.**
+
+## 2026-09-25 — P19-D Glance-First Adaptive UI // Armory inventory cards become decision-first
+
+- [x] **P19-D — Armory inventory cards become decision-first** — reduced stored and equipped equipment cards to the glance-first decision set while preserving sorting/filtering, rarity identity, class-family restrictions, equip actions, underlying item data, and full expert metadata through the existing inspector/Details flow.
+  - Implementation commit `7404492010c0d5376134aeea064b5137dff1c760` added explicit ready/active/blocked card state, concise current-vs-candidate/build-fit deltas, one defining effect, Guide ownership for durable equipment/rarity teaching, and Android P19-D card/Guide smoke coverage. Follow-up `c49c652827e2ec652461174cd430e20b5f609bba` aligned the class-fit readability regression.
+  - Initial Android beta.363 run `36102277146` built and verified the APK but correctly failed the new P19-D emulator gate because one Armory card field rendered at 8px on the 851×412 compact-landscape viewport.
+  - Fix commit `fb60289e55dbef3e0885d92587d16c9ee26cb9eb` added an Armory lazy-stylesheet typography-floor guard so effect, decision, and delta copy remains 12px after late CSS loading without changing item logic or the card information contract.
+  - Final source `fb60289e55dbef3e0885d92587d16c9ee26cb9eb` passed Level 15 beta smoke run `36103213771` and Browser E2E run `36103213819` on desktop + mobile-landscape. The repeated Android production regression/build also passed `UI_READABILITY_PASS`, `DESIGN_SYSTEM_PASS`, `GUIDE_CONTENT_PASS`, and `MENU_PRESENTATION_PASS`.
+  - Android beta.365 run `36103213691` passed the full web regression/production build, native Android generation, debug APK build, package/version/min-SDK/target-SDK/signature verification, API 35 emulator install/cold launch, storage/compare/equip + inspector/Details + Guide drilldown smoke, touch/controller combat QA, lifecycle/persistence checks, Chapter 3 touch playthrough, and artifact upload.
+  - Native P19-D evidence included `ANDROID_P19_ARMORY_CARD_PASS storage=2 equipped=4 blocked=2 fontFloor=12.0px compare=quick-read details=shared-sheet equip=restored guide=equipment-rarity`, alongside `ANDROID_P18_GEAR_INSPECTOR_PASS` and `ANDROID_P19_GUIDE_DEEPLINK_PASS`.
+  - Android artifact `10849854231` contains `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.365` (365), debug signing, min SDK 24 / target SDK 36, and APK SHA-256 `7a5d3ea1f66cb68e13791cdfff2bf909fb1fe641462b88d5f5de99285f582a98`.
+  - **Next: P19-E — Build management hierarchy + P18-F verification closure.**
+
