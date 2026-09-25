@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   allocateOperatorNetworkNode,
+  autoAllocateOperatorNetworkPlan,
   createOperatorNetworkState,
   legacyProgressionNodes,
   normalizeOperatorNetworkState,
@@ -23,6 +24,7 @@ import {
 } from '../src/game/operatorNetwork';
 import {
   allocateNode,
+  autoAllocatePlannedOperatorNetwork,
   createDefaultProfile,
   deriveCombatBuild,
   normalizeStoredProfile,
@@ -115,6 +117,55 @@ const planAllocation = allocateOperatorNetworkNode(planAllocationSource, 'ballis
 assert.equal(planAllocation.allocated, true);
 assert.deepEqual(planAllocation.state.plannedTargetNodeIds, ['ballistics-3'], 'Allocating a planned target must prune only the now-satisfied target from persisted planner state.');
 
+const autoFullSource = { ...createOperatorNetworkState('vanguard', 4), plannedTargetNodeIds: ['ballistics-3'] };
+const autoFull = autoAllocateOperatorNetworkPlan(autoFullSource, autoFullSource.plannedTargetNodeIds);
+assert.deepEqual(autoFull.allocatedNodeIds, ['ballistics-1', 'ballistics-2', 'ballistics-3'], 'Auto Allocate must commit a fully funded route in canonical dependency order.');
+assert.equal(autoFull.pointsSpent, 3);
+assert.equal(autoFull.pointsRemaining, 1);
+assert.deepEqual(autoFull.remainingTargetNodeIds, []);
+assert.equal(autoFull.futurePointsNeeded, 0);
+assert.equal(autoFull.nextBlocker, null);
+
+const autoPartialSource = { ...createOperatorNetworkState('vanguard', 2), plannedTargetNodeIds: ['ballistics-3', 'mobility-1'] };
+const autoPartial = autoAllocateOperatorNetworkPlan(autoPartialSource, autoPartialSource.plannedTargetNodeIds);
+assert.deepEqual(autoPartial.allocatedNodeIds, ['ballistics-1', 'ballistics-2'], 'Auto Allocate must spend only the progression points currently available.');
+assert.equal(autoPartial.pointsSpent, 2);
+assert.equal(autoPartial.pointsRemaining, 0);
+assert.deepEqual(autoPartial.remainingTargetNodeIds, ['ballistics-3', 'mobility-1'], 'Partial Auto Allocate must preserve every still-unfunded planned target.');
+assert.equal(autoPartial.futurePointsNeeded, 2, 'Partial Auto Allocate must report the future points needed to finish the remaining shared route.');
+assert.deepEqual(autoPartial.nextBlocker, { nodeId: 'ballistics-3', reason: 'insufficient-points' });
+const autoPartialReload = normalizeOperatorNetworkState({ operatorClass: 'vanguard', level: 3, specialization: null, state: autoPartial.state });
+assert.deepEqual(autoPartialReload.allocatedNodeIds, ['ballistics-1', 'ballistics-2'], 'Partial Auto Allocate allocations must survive profile reload normalization.');
+assert.deepEqual(autoPartialReload.plannedTargetNodeIds, ['ballistics-3', 'mobility-1'], 'Partial Auto Allocate remaining targets must survive reload.');
+assert.equal(autoPartialReload.unspentPoints, 0);
+
+const autoInsufficientSource = { ...createOperatorNetworkState('vanguard', 0), plannedTargetNodeIds: ['ballistics-1'] };
+const autoInsufficient = autoAllocateOperatorNetworkPlan(autoInsufficientSource, autoInsufficientSource.plannedTargetNodeIds);
+assert.deepEqual(autoInsufficient.allocatedNodeIds, [], 'Auto Allocate must be a no-op when the first legal route node is unfunded.');
+assert.deepEqual(autoInsufficient.remainingTargetNodeIds, ['ballistics-1']);
+assert.equal(autoInsufficient.futurePointsNeeded, 1);
+assert.deepEqual(autoInsufficient.nextBlocker, { nodeId: 'ballistics-1', reason: 'insufficient-points' });
+
+const autoUnresolvedSource = { ...createOperatorNetworkState('vanguard', 3), plannedTargetNodeIds: ['retired-network-node'] };
+const autoUnresolved = autoAllocateOperatorNetworkPlan(autoUnresolvedSource, autoUnresolvedSource.plannedTargetNodeIds);
+assert.deepEqual(autoUnresolved.allocatedNodeIds, [], 'An unresolved planned target must never spend points.');
+assert.deepEqual(autoUnresolved.remainingTargetNodeIds, ['retired-network-node']);
+assert.deepEqual(autoUnresolved.nextBlocker, { nodeId: 'retired-network-node', reason: 'unknown-node' });
+
+const autoProfileSource = {
+  ...createDefaultProfile(),
+  level: 3,
+  xp: 270,
+  progressionPoints: 2,
+  allocatedNodes: [],
+  operatorNetwork: autoPartialSource,
+};
+const autoProfileResult = autoAllocatePlannedOperatorNetwork(autoProfileSource);
+assert.deepEqual(autoProfileResult.profile.allocatedNodes, ['ballistics-1', 'ballistics-2'], 'Public Auto Allocate API must mirror canonical allocations into the profile.');
+assert.equal(autoProfileResult.profile.progressionPoints, 0);
+assert.match(autoProfileResult.message, /2 nodes allocated · 2 pt spent · 0 pt remaining/);
+assert.match(autoProfileResult.message, /2 future points needed/);
+
 let state = createOperatorNetworkState('vanguard', 3);
 let result = allocateOperatorNetworkNode(state, 'ballistics-2');
 assert.equal(result.allocated, false);
@@ -142,6 +193,11 @@ const exclusiveKeystone = allocateOperatorNetworkNode(buildDefiningState, 'balli
 assert.equal(exclusiveKeystone.allocated, false, 'A branch cannot hold both mutually exclusive P9-C Keystones.');
 assert.equal(exclusiveKeystone.reason, 'exclusive-choice');
 assert.equal(operatorNetworkRouteToNode(buildDefiningState, 'ballistics-breach-economy-keystone'), null, 'Route preview must respect an already-committed Keystone choice.');
+const autoExclusiveSource = { ...buildDefiningState, plannedTargetNodeIds: ['ballistics-breach-economy-keystone'] };
+const autoExclusive = autoAllocateOperatorNetworkPlan(autoExclusiveSource, autoExclusiveSource.plannedTargetNodeIds);
+assert.deepEqual(autoExclusive.allocatedNodeIds, [], 'Auto Allocate must not bypass Keystone exclusivity.');
+assert.deepEqual(autoExclusive.nextBlocker, { nodeId: 'ballistics-breach-economy-keystone', reason: 'exclusive-choice' });
+assert.deepEqual(autoExclusive.remainingTargetNodeIds, ['ballistics-breach-economy-keystone']);
 const capstoneAllocation = allocateOperatorNetworkNode(buildDefiningState, 'ballistics-terminal-collapse-capstone');
 assert.equal(capstoneAllocation.allocated, true, 'A committed Keystone must open its branch Capstone.');
 assert.equal(capstoneAllocation.state.unspentPoints, 4);
@@ -154,6 +210,11 @@ const pressureLv16Context = { ...pressureLv15Context, level: 16 };
 assert.equal(operatorNetworkMilestoneActive(pressureNetworkState, 'pressure-diver-network-stage', pressureLv16Context), true, 'LV16 specialization stage must activate without consuming a progression point.');
 assert.equal(operatorNetworkRouteToNode(pressureNetworkState, 'pressure-diver-network-hook', pressureLv16Context), null, 'Campaign/boss/faction hook must not route before its external milestone is met.');
 assert.equal(operatorNetworkNodeGateReason(pressureNetworkState, 'pressure-diver-network-hook', pressureLv16Context), 'external-gate');
+const autoGatedSource = { ...pressureNetworkState, plannedTargetNodeIds: ['pressure-diver-network-hook'] };
+const autoGated = autoAllocateOperatorNetworkPlan(autoGatedSource, autoGatedSource.plannedTargetNodeIds, pressureLv16Context);
+assert.deepEqual(autoGated.allocatedNodeIds, [], 'Auto Allocate must not bypass authored campaign, boss, or faction gates.');
+assert.deepEqual(autoGated.nextBlocker, { nodeId: 'pressure-diver-network-hook', reason: 'external-gate' });
+assert.deepEqual(autoGated.remainingTargetNodeIds, ['pressure-diver-network-hook']);
 const pressureUnlockedContext = { ...pressureLv16Context, unlockKeys: ['boss:khepri'] };
 assert.deepEqual(operatorNetworkRouteToNode(pressureNetworkState, 'pressure-diver-network-hook', pressureUnlockedContext), { nodeIds: ['pressure-diver-network-hook'], pointCost: 1 }, 'Unlocked specialization field hook should be one adjacent progression point from its LV16 milestone.');
 const pressureAllocation = allocateOperatorNetworkNode(pressureNetworkState, 'pressure-diver-network-hook', pressureUnlockedContext);

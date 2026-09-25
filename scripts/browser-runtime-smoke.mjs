@@ -1031,6 +1031,99 @@ try {
   if (p15BuildLayout.horizontalOverflow > 2 || p15BuildLayout.tabCount !== 5 || (viewportMode === 'mobile-landscape' && p15BuildLayout.minTabHeight < 40)) {
     throw new Error(`P15-B Build/Crafting/Progression layout failed: ${JSON.stringify(p15BuildLayout)}`);
   }
+
+  const p20bSeeded = await evaluate(`(() => {
+    const stateKey = 'ironshade-vector-state-v1';
+    const state = JSON.parse(localStorage.getItem(stateKey) || 'null');
+    if (!state?.profile) return false;
+    const operatorClass = state.profile.operatorClass || 'vanguard';
+    const startNodeId = { vanguard: 'start-vanguard', vector: 'start-vector', systems: 'start-systems' }[operatorClass] || 'start-vanguard';
+    state.profile.level = 3;
+    state.profile.xp = Math.max(Number(state.profile.xp || 0), 270);
+    state.profile.progressionPoints = 2;
+    state.profile.allocatedNodes = [];
+    state.profile.operatorNetwork = { schemaVersion: 3, startNodeId, allocatedNodeIds: [], unspentPoints: 2, plannedTargetNodeIds: [] };
+    state.operatorNetworkSchemaVersion = 3;
+    localStorage.setItem(stateKey, JSON.stringify(state));
+    location.reload();
+    return true;
+  })()`);
+  if (!p20bSeeded) throw new Error('P20-B could not seed a two-point Operator Network profile.');
+  await waitFor(`(() => {
+    const operatorButton = [...document.querySelectorAll('button[data-primary-area]')].find(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase() === 'operator');
+    return document.readyState === 'complete' && operatorButton instanceof HTMLButtonElement && !operatorButton.disabled;
+  })()`, 'P20-B seeded Command Deck after reload');
+  await keyboardActivateButton('Operator');
+  await waitFor(`[...document.querySelectorAll('.operator-section-tabs button')].some(button => (button.textContent || '').trim() === 'Build')`, 'P20-B Operator build route');
+  await keyboardActivateButton('Build');
+  await waitFor(`document.querySelector('.build-header h1')?.textContent?.trim() === 'Build'`, 'P20-B Build after seed');
+  const p20bProgressionOpened = await evaluate(`(() => {
+    const button = [...document.querySelectorAll('.build-tabs button')].find(candidate => (candidate.textContent || '').trim().toLowerCase().startsWith('progression'));
+    if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+    button.focus();
+    button.click();
+    return true;
+  })()`);
+  if (!p20bProgressionOpened) throw new Error('P20-B could not open the Progression tab after seeding points.');
+  await waitFor(`Boolean(document.querySelector('.network-planner.iv-panel'))`, 'P20-B Progression planner after seed');
+
+  const p20bTargets = [
+    ['ballistics-3', 'Breach Doctrine'],
+    ['mobility-1', 'Servo Timing'],
+  ];
+  for (let index = 0; index < p20bTargets.length; index += 1) {
+    const [nodeId, nodeName] = p20bTargets[index];
+    const selected = await evaluate(`(() => {
+      const name = ${JSON.stringify(nodeName)};
+      const button = [...document.querySelectorAll('button[data-network-node="true"]')].find(candidate => (candidate.textContent || '').includes(name));
+      if (!button) return false;
+      button.focus();
+      button.click();
+      return true;
+    })()`);
+    if (!selected) throw new Error(`P20-B could not focus planned target ${nodeName}.`);
+    await waitFor(`[...document.querySelectorAll('button')].some(button => (button.textContent || '').trim() === 'Plan this route')`, `P20-B plan action for ${nodeName}`);
+    await keyboardActivateButton('Plan this route');
+    const expectedIds = p20bTargets.slice(0, index + 1).map(([id]) => id);
+    await waitFor(`(() => {
+      const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+      const targets = state?.profile?.operatorNetwork?.plannedTargetNodeIds;
+      return Array.isArray(targets) && targets.join(',') === ${JSON.stringify(expectedIds.join(','))};
+    })()`, `P20-B persisted planned target ${nodeName}`);
+  }
+
+  await waitFor(`(() => {
+    const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+    const button = [...document.querySelectorAll('button')].find(candidate => (candidate.textContent || '').trim() === 'Auto Allocate');
+    return state?.profile?.progressionPoints === 2
+      && state?.profile?.operatorNetwork?.allocatedNodeIds?.length === 0
+      && button instanceof HTMLButtonElement
+      && !button.disabled;
+  })()`, 'P20-B actionable Auto Allocate button');
+  await keyboardActivateButton('Auto Allocate');
+  await waitFor(`(() => {
+    const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+    const network = state?.profile?.operatorNetwork;
+    const targets = network?.plannedTargetNodeIds;
+    const autoButton = [...document.querySelectorAll('button')].find(candidate => (candidate.textContent || '').trim() === 'Auto Allocate');
+    const report = document.querySelector('.network-auto-allocate-report')?.textContent ?? '';
+    const planText = document.querySelector('.network-plan-card')?.textContent ?? '';
+    return Array.isArray(network?.allocatedNodeIds)
+      && network.allocatedNodeIds.join(',') === 'ballistics-1,ballistics-2'
+      && network.unspentPoints === 0
+      && Array.isArray(targets)
+      && targets.join(',') === 'ballistics-3,mobility-1'
+      && autoButton instanceof HTMLButtonElement
+      && autoButton.disabled
+      && report.includes('2 nodes allocated')
+      && report.includes('2 pt spent')
+      && report.includes('0 pt remaining')
+      && report.includes('2 future points needed')
+      && planText.includes('FUTURE POINTS NEEDED')
+      && planText.includes('2');
+  })()`, 'P20-B partial Auto Allocate and remaining plan state', 20_000);
+  console.log(`BROWSER_P20B_AUTO_ALLOCATE_PASS viewport=${viewportMode} allocated=ballistics-1+ballistics-2 spent=2 remaining=0 targets=ballistics-3+mobility-1 futurePoints=2 button=disabled`);
+
   await keyboardActivateButton('Settings');
   await waitFor(`Boolean(document.querySelector('.settings-panel') && document.querySelector('.build-tabs button[aria-current="page"]')?.textContent?.includes('Settings'))`, 'P15-E accessibility settings surface');
 

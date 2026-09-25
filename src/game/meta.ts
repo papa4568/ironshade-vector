@@ -1,7 +1,7 @@
 import type { CombatBuild, SingularTraitId, SpecializationId, Telemetry, WeaponId } from './sim';
 import { operatorWeaponFamilyForClass, type OperatorClassId } from './classSkills';
 import { resolveWeaponVariant, weaponVariantBuildIntegration, type WeaponVariantSkillTuning } from './classArsenal';
-import { allocateOperatorNetworkNode, createOperatorNetworkState, normalizeOperatorNetworkState, operatorNetworkNode, operatorNetworkNodes, rebuildOperatorNetworkState, refundOperatorNetworkNode, setOperatorNetworkPlanTargets as setOperatorNetworkStatePlanTargets, type OperatorNetworkIntegrationHook, type OperatorNetworkNodeKind, type OperatorNetworkSector, type OperatorNetworkState, type OperatorNetworkStatEffect, type OperatorNetworkUnlockContext } from './operatorNetwork';
+import { allocateOperatorNetworkNode, autoAllocateOperatorNetworkPlan as autoAllocateOperatorNetworkStatePlan, createOperatorNetworkState, normalizeOperatorNetworkState, operatorNetworkNode, operatorNetworkNodes, rebuildOperatorNetworkState, refundOperatorNetworkNode, setOperatorNetworkPlanTargets as setOperatorNetworkStatePlanTargets, type OperatorNetworkIntegrationHook, type OperatorNetworkNodeKind, type OperatorNetworkSector, type OperatorNetworkState, type OperatorNetworkStatEffect, type OperatorNetworkUnlockContext } from './operatorNetwork';
 export type { OperatorClassId } from './classSkills';
 import { factionFrames, factionGearChance, factionSetDefinitions, type EquipmentFaction } from './factionGear';
 import { frameGenerationForRecovery, recoveryLevelForSource, type FrameGeneration } from './scaling';
@@ -1132,6 +1132,54 @@ export function setOperatorNetworkPlanTargets(profile: PlayerProfile, targetNode
     operatorNetwork: nextNetwork,
   };
 }
+export function autoAllocatePlannedOperatorNetwork(profile: PlayerProfile, context?: OperatorNetworkUnlockContext) {
+  const network = normalizeOperatorNetworkState({
+    operatorClass: operatorClassForProfile(profile),
+    level: profile.level,
+    specialization: profile.specialization,
+    state: profile.operatorNetwork,
+    legacyAllocatedNodes: profile.allocatedNodes,
+    legacyUnspentPoints: profile.progressionPoints,
+  });
+  const liveContext: OperatorNetworkUnlockContext = {
+    ...context,
+    level: profile.level,
+    specialization: profile.specialization,
+  };
+  const result = autoAllocateOperatorNetworkStatePlan(network, network.plannedTargetNodeIds, liveContext);
+  const blockerNode = result.nextBlocker ? operatorNetworkNode(result.nextBlocker.nodeId) : undefined;
+  const blockerName = blockerNode?.name ?? result.nextBlocker?.nodeId ?? 'planned route';
+  const blockerDetail = (() => {
+    if (!result.nextBlocker) return result.remainingTargetNodeIds.length === 0 ? 'Planned build complete.' : 'Planned targets remain queued.';
+    if (result.nextBlocker.reason === 'insufficient-points') {
+      const needed = Math.max(1, result.futurePointsNeeded);
+      return `${needed} future point${needed === 1 ? '' : 's'} needed; next allocation is ${blockerName}.`;
+    }
+    if (result.nextBlocker.reason === 'external-gate') return `Stopped at ${blockerName}: complete its listed campaign, boss, or faction milestone.`;
+    if (result.nextBlocker.reason === 'level-gate') return `Stopped at ${blockerName}: reach its required operator level.`;
+    if (result.nextBlocker.reason === 'specialization-gate') return `Stopped at ${blockerName}: select its required specialization.`;
+    if (result.nextBlocker.reason === 'exclusive-choice') return `Stopped at ${blockerName}: another Keystone in this exclusive branch is already committed.`;
+    if (result.nextBlocker.reason === 'wrong-arsenal') return `Stopped at ${blockerName}: that weapon sector belongs to another class arsenal.`;
+    if (result.nextBlocker.reason === 'missing-prerequisite') return `Stopped at ${blockerName}: a required prerequisite is not active.`;
+    if (result.nextBlocker.reason === 'not-connected') return `Stopped at ${blockerName}: no legal connected route is currently available.`;
+    if (result.nextBlocker.reason === 'milestone-managed') return `Stopped at ${blockerName}: this milestone activates from its authored condition instead of spending a point.`;
+    if (result.nextBlocker.reason === 'already-allocated') return `Stopped at ${blockerName}: the node is already allocated.`;
+    if (result.nextBlocker.reason === 'class-start') return `Stopped at ${blockerName}: class origins do not consume progression points.`;
+    return `Stopped at ${blockerName}: the planned target is no longer available.`;
+  })();
+  const allocatedCount = result.allocatedNodeIds.length;
+  return {
+    ...result,
+    profile: {
+      ...profile,
+      progressionPoints: result.state.unspentPoints,
+      allocatedNodes: result.state.allocatedNodeIds,
+      operatorNetwork: result.state,
+    },
+    message: `Auto Allocate: ${allocatedCount} node${allocatedCount === 1 ? '' : 's'} allocated · ${result.pointsSpent} pt spent · ${result.pointsRemaining} pt remaining. ${blockerDetail}`,
+  };
+}
+
 export function allocateNode(profile: PlayerProfile, nodeId: string, context?: OperatorNetworkUnlockContext): { profile: PlayerProfile; message: string } {
   const network = normalizeOperatorNetworkState({
     operatorClass: operatorClassForProfile(profile),

@@ -389,6 +389,9 @@ if (plannerPersistenceOnly) {
       && targets.length === 2
       && targets[0] === 'ballistics-3'
       && targets[1] === 'mobility-1'
+      && state.profile.operatorNetwork.allocatedNodeIds.join(',') === 'ballistics-1,ballistics-2'
+      && state.profile.operatorNetwork.unspentPoints === 0
+      && state.profile.progressionPoints === 0
       && !state.profile.operatorNetwork.allocatedNodeIds.includes('ballistics-3')
       && !state.profile.operatorNetwork.allocatedNodeIds.includes('mobility-1')
       && state?.profile?.settings?.interfaceSize === 'large'
@@ -417,8 +420,14 @@ if (plannerPersistenceOnly) {
   await tap('button[data-p18-progression-tab="true"]', 82);
   await waitFor(`(() => {
     const text = document.querySelector('.network-plan-card')?.textContent ?? '';
-    return text.includes('2 targets') && text.includes('Breach Doctrine') && text.includes('Servo Timing');
-  })()`, 'restored multi-target plan UI after cold relaunch', 20_000);
+    const autoButton = [...document.querySelectorAll('button')].find(candidate => (candidate.textContent || '').trim() === 'Auto Allocate');
+    return text.includes('2 targets')
+      && text.includes('Breach Doctrine')
+      && text.includes('Servo Timing')
+      && text.includes('FUTURE POINTS NEEDED')
+      && autoButton instanceof HTMLButtonElement
+      && autoButton.disabled;
+  })()`, 'restored partial Auto Allocate plan UI after cold relaunch', 20_000);
 
   const persisted = await evaluate(`(() => {
     const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
@@ -427,6 +436,7 @@ if (plannerPersistenceOnly) {
       networkSchema: state?.operatorNetworkSchemaVersion,
       targets: state?.profile?.operatorNetwork?.plannedTargetNodeIds ?? [],
       allocated: state?.profile?.operatorNetwork?.allocatedNodeIds ?? [],
+      unspentPoints: state?.profile?.operatorNetwork?.unspentPoints,
       interfaceSize: state?.profile?.settings?.interfaceSize ?? '',
       hudLayout: state?.profile?.settings ? {
         preset: state.profile.settings.hudLayoutPreset,
@@ -439,7 +449,7 @@ if (plannerPersistenceOnly) {
       } : null,
     };
   })()`);
-  console.log(`ANDROID_NETWORK_PLANNER_PERSISTENCE_PASS version=${persisted.version} schema=${persisted.networkSchema} targets=${persisted.targets.join('+')} relaunch=cold ui=restored nonDestructive=${persisted.allocated.includes('ballistics-3') || persisted.allocated.includes('mobility-1') ? 'false' : 'true'}`);
+  console.log(`ANDROID_NETWORK_PLANNER_PERSISTENCE_PASS version=${persisted.version} schema=${persisted.networkSchema} targets=${persisted.targets.join('+')} allocated=${persisted.allocated.join('+')} unspent=${persisted.unspentPoints} relaunch=cold ui=restored autoAllocate=partial`);
   console.log(`ANDROID_P20_INTERFACE_SIZE_RELAUNCH_PASS size=${persisted.interfaceSize} relaunch=cold`);
   console.log(`ANDROID_P19_HUD_LAYOUT_RELAUNCH_PASS preset=${persisted.hudLayout?.preset} movement=${persisted.hudLayout?.movementInset}/${persisted.hudLayout?.movementLift}/${persisted.hudLayout?.movementScale} action=${persisted.hudLayout?.actionInset}/${persisted.hudLayout?.actionLift}/${persisted.hudLayout?.actionScale} relaunch=cold`);
   session.close();
@@ -1269,6 +1279,42 @@ await waitFor(`Boolean(document.querySelector('.iv-disclosure-sheet .network-sta
 await tapButton('Close details', 97);
 await waitFor(`!document.querySelector('.iv-disclosure-sheet')`, 'Android P18-F planned build math close');
 
+const p20bSeeded = await evaluate(`(() => {
+  const stateKey = 'ironshade-vector-state-v1';
+  const state = JSON.parse(localStorage.getItem(stateKey) || 'null');
+  if (!state?.profile) return false;
+  const operatorClass = state.profile.operatorClass || 'vanguard';
+  const startNodeId = { vanguard: 'start-vanguard', vector: 'start-vector', systems: 'start-systems' }[operatorClass] || 'start-vanguard';
+  state.profile.level = 3;
+  state.profile.xp = Math.max(Number(state.profile.xp || 0), 270);
+  state.profile.progressionPoints = 2;
+  state.profile.allocatedNodes = [];
+  state.profile.operatorNetwork = { schemaVersion: 3, startNodeId, allocatedNodeIds: [], unspentPoints: 2, plannedTargetNodeIds: [] };
+  state.operatorNetworkSchemaVersion = 3;
+  localStorage.setItem(stateKey, JSON.stringify(state));
+  location.reload();
+  return true;
+})()`);
+if (!p20bSeeded) throw new Error('Android P20-B could not seed a two-point Operator Network profile.');
+await waitFor(`(() => {
+  const operatorButton = [...document.querySelectorAll('button[data-primary-area]')].find(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase() === 'operator');
+  return document.readyState === 'complete' && operatorButton instanceof HTMLButtonElement && !operatorButton.disabled;
+})()`, 'Android P20-B seeded Command Deck after reload', 45_000);
+await tapButton('Operator', 68);
+await waitFor(`[...document.querySelectorAll('.operator-section-tabs button')].some(button => (button.textContent || '').trim().toLowerCase() === 'build')`, 'Android P20-B Operator build route');
+await tapButton('Build', 69);
+await waitFor(`document.querySelector('.build-header h1')?.textContent?.trim() === 'Build'`, 'Android P20-B Build after seed');
+const p20bProgressionMarked = await evaluate(`(() => {
+  const button = [...document.querySelectorAll('.build-tabs button')].find(candidate => (candidate.textContent || '').trim().toLowerCase().startsWith('progression'));
+  if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+  button.dataset.p20bProgressionTab = 'true';
+  button.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+  return true;
+})()`);
+if (!p20bProgressionMarked) throw new Error('Android P20-B could not find the badged Progression tab after seeding points.');
+await tap('button[data-p20b-progression-tab="true"]', 69);
+await waitFor(`Boolean(document.querySelector('.network-planner.iv-panel'))`, 'Android P20-B Progression planner after seed');
+
 const preExistingPlannerTargets = await evaluate(`(() => {
   const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
   const targets = state?.profile?.operatorNetwork?.plannedTargetNodeIds;
@@ -1344,6 +1390,37 @@ await waitFor(`(() => {
     && !state.profile.operatorNetwork.allocatedNodeIds.includes('ballistics-3')
     && !state.profile.operatorNetwork.allocatedNodeIds.includes('mobility-1');
 })()`, 'persisted multi-target Operator Network plan', 20_000);
+await waitFor(`(() => {
+  const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+  const button = [...document.querySelectorAll('button')].find(candidate => (candidate.textContent || '').trim() === 'Auto Allocate');
+  return state?.profile?.progressionPoints === 2
+    && state?.profile?.operatorNetwork?.allocatedNodeIds?.length === 0
+    && button instanceof HTMLButtonElement
+    && !button.disabled;
+})()`, 'Android P20-B actionable Auto Allocate button');
+await tapButton('Auto Allocate', 74);
+await waitFor(`(() => {
+  const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+  const network = state?.profile?.operatorNetwork;
+  const targets = network?.plannedTargetNodeIds;
+  const autoButton = [...document.querySelectorAll('button')].find(candidate => (candidate.textContent || '').trim() === 'Auto Allocate');
+  const report = document.querySelector('.network-auto-allocate-report')?.textContent ?? '';
+  const planText = document.querySelector('.network-plan-card')?.textContent ?? '';
+  return Array.isArray(network?.allocatedNodeIds)
+    && network.allocatedNodeIds.join(',') === 'ballistics-1,ballistics-2'
+    && network.unspentPoints === 0
+    && state?.profile?.progressionPoints === 0
+    && Array.isArray(targets)
+    && targets.join(',') === 'ballistics-3,mobility-1'
+    && autoButton instanceof HTMLButtonElement
+    && autoButton.disabled
+    && report.includes('2 nodes allocated')
+    && report.includes('2 pt spent')
+    && report.includes('0 pt remaining')
+    && report.includes('2 future points needed')
+    && planText.includes('FUTURE POINTS NEEDED');
+})()`, 'Android P20-B partial Auto Allocate and remaining plan state', 20_000);
+console.log('ANDROID_P20B_AUTO_ALLOCATE_PASS allocated=ballistics-1+ballistics-2 spent=2 remaining=0 targets=ballistics-3+mobility-1 futurePoints=2 button=disabled touch=true');
 await tapButton('Return to ship', 75);
 await waitFor(`[...document.querySelectorAll('button[data-primary-area]')].some(button => (button.getAttribute('aria-label') || '').trim().toLowerCase() === 'operator')`, 'Command Deck after planner close');
 await tapButton('Operator', 76);
@@ -1353,9 +1430,19 @@ await waitFor(`document.querySelector('.build-header h1')?.textContent?.trim() =
 await tapButton('Progression', 77);
 await waitFor(`(() => {
   const text = document.querySelector('.network-plan-card')?.textContent ?? '';
-  return text.includes('2 targets') && text.includes('Breach Doctrine') && text.includes('Servo Timing');
-})()`, 'multi-target plan after closing and reopening Build', 20_000);
-console.log('ANDROID_NETWORK_PLANNER_CLOSE_REOPEN_PASS targets=ballistics-3+mobility-1 nonDestructive=true');
+  const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+  const network = state?.profile?.operatorNetwork;
+  const autoButton = [...document.querySelectorAll('button')].find(candidate => (candidate.textContent || '').trim() === 'Auto Allocate');
+  return text.includes('2 targets')
+    && text.includes('Breach Doctrine')
+    && text.includes('Servo Timing')
+    && Array.isArray(network?.allocatedNodeIds)
+    && network.allocatedNodeIds.join(',') === 'ballistics-1,ballistics-2'
+    && network.unspentPoints === 0
+    && autoButton instanceof HTMLButtonElement
+    && autoButton.disabled;
+})()`, 'partial Auto Allocate state after closing and reopening Build', 20_000);
+console.log('ANDROID_NETWORK_PLANNER_CLOSE_REOPEN_PASS targets=ballistics-3+mobility-1 allocated=ballistics-1+ballistics-2 remainingPoints=0');
 
 await tapButton('Settings', 64);
 await waitFor(`Boolean(document.querySelector('select[aria-label="Graphics quality"]'))`, 'Android graphics quality setting');

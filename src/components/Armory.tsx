@@ -8,11 +8,12 @@ import '../classBuilds.css';
 import '../guide.css';
 import { ActionRequirement, ProgressiveDisclosure, type RequirementPresentation } from './UiPrimitives';
 import { classAbilityKits, operatorWeaponFamilyForClass } from '../game/classSkills';
-import { normalizeOperatorNetworkState, operatorNetworkMilestoneActive, operatorNetworkPlan, operatorNetworkRespecCreditCost, operatorNetworkRouteToNode, type OperatorNetworkUnlockContext } from '../game/operatorNetwork';
+import { autoAllocateOperatorNetworkPlan, normalizeOperatorNetworkState, operatorNetworkMilestoneActive, operatorNetworkPlan, operatorNetworkRespecCreditCost, operatorNetworkRouteToNode, type OperatorNetworkUnlockContext } from '../game/operatorNetwork';
 import { classSkillIconAssets, weaponIconAssets } from '../game/mobileUiAssets';
 import {
   abilityMods,
   allocateNode,
+  autoAllocatePlannedOperatorNetwork,
   buildIdentity,
   comparisonSummary,
   deriveCombatBuild,
@@ -691,6 +692,7 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
   const [gearSort, setGearSort] = useState<InventorySort>('recent');
   const [gearRarity, setGearRarity] = useState<RarityFilter>('all');
   const [networkQuery, setNetworkQuery] = useState('');
+  const [networkAutoAllocateReport, setNetworkAutoAllocateReport] = useState('');
   const [networkFocusId, setNetworkFocusId] = useState<string | null>(() => {
     const initialWeaponFamily = operatorWeaponFamilyForClass(operatorClassForProfile(profile));
     return progressionNodes.find(node => !node.specialization && (!node.weaponFamily || node.weaponFamily === initialWeaponFamily))?.id ?? null;
@@ -755,6 +757,8 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
   const networkFocusedNode = progressionNodes.find(node => node.id === networkFocusId) ?? null;
   const networkFocusedRoute = networkFocusedNode ? operatorNetworkRouteToNode(operatorNetwork, networkFocusedNode.id, operatorNetworkContext) : null;
   const networkPlan = useMemo(() => operatorNetworkPlan(operatorNetwork, networkPlanTargets, operatorNetworkContext), [operatorNetwork, networkPlanTargets, operatorNetworkContext]);
+  const networkAutoAllocationPreview = useMemo(() => autoAllocateOperatorNetworkPlan(operatorNetwork, networkPlanTargets, operatorNetworkContext), [operatorNetwork, networkPlanTargets, operatorNetworkContext]);
+  const networkAutoAllocateEnabled = networkAutoAllocationPreview.allocatedNodeIds.length > 0;
   const networkPlannedProfile = useMemo<PlayerProfile>(() => {
     const allocatedNodes = [...new Set([...profile.allocatedNodes, ...networkPlan.nodeIds])];
     const unspentPoints = Math.max(0, profile.progressionPoints - networkPlan.pointCost);
@@ -902,6 +906,7 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
     requestAnimationFrame(() => buildRef.current?.scrollTo({ top: 0, left: 0, behavior: 'auto' }));
   };
   const setNetworkPlanTargets = (next: string[] | ((current: string[]) => string[])) => {
+    setNetworkAutoAllocateReport('');
     onProfileChange(current => {
       const currentNetwork = normalizeOperatorNetworkState({
         operatorClass: operatorClassForProfile(current),
@@ -921,6 +926,13 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
   };
   const toggleNetworkPlanTarget = (nodeId: string) => {
     setNetworkPlanTargets(current => current.includes(nodeId) ? current.filter(id => id !== nodeId) : [...current, nodeId]);
+  };
+  const runNetworkAutoAllocate = () => {
+    const result = autoAllocatePlannedOperatorNetwork(profile, operatorNetworkContext);
+    if (result.allocatedNodeIds.length === 0) return;
+    onProfileChange(result.profile);
+    setMessage(result.message);
+    setNetworkAutoAllocateReport(result.message);
   };
   const focusNetworkNodeByOffset = (offset: number, edge?: 'start' | 'end') => {
     const buttons = [...(buildRef.current?.querySelectorAll<HTMLButtonElement>('[data-network-node="true"]') ?? [])];
@@ -1080,7 +1092,7 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
       <div className="section-copy iv-panel iv-panel--glass"><h2>Operator Class & Progression</h2><p>Focus a node to see its route, point cost, tradeoff, eligibility, blocker, and next requirement. Planning stays free until an eligible Allocate action is used.</p><GuideLink section="builds-progression" label="Builds & Progression" onOpenGuide={openGuide} /></div>
       <section className="network-planner iv-panel" aria-label="Operator Network planner">
         <header className="network-planner-heading">
-          <div><small>P9-E // ROUTE PLANNER</small><b>Search, preview, then commit</b><span>PLAN PREVIEW // No points spent · Allocate now is the commit action.</span></div>
+          <div><small>P20-B // ROUTE PLANNER</small><b>Search, preview, then commit</b><span>PLAN PREVIEW // No points spent until Allocate now or Auto Allocate is used.</span></div>
           <div className="network-planner-search"><input type="search" value={networkQuery} onChange={event => setNetworkQuery(event.target.value)} placeholder="Search Operator Network" aria-label="Search Operator Network" />{networkQuery && <button onClick={() => setNetworkQuery('')}>Clear</button>}</div>
           <div className="network-planner-nav" aria-label="Network navigation"><button onClick={() => focusNetworkNodeByOffset(-1)}>Previous node</button><button onClick={() => focusNetworkNodeByOffset(1)}>Next node</button></div>
         </header>
@@ -1113,13 +1125,14 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
             </>}
           </article>
           <article className="network-plan-card">
-            <div className="network-plan-heading"><div><small>PLANNED BUILD</small><b>{networkPlanTargets.length ? `${networkPlanTargets.length} target${networkPlanTargets.length === 1 ? '' : 's'}` : 'No targets yet'}</b></div>{networkPlanTargets.length > 0 && <button onClick={() => setNetworkPlanTargets([])}>Clear plan</button>}</div>
+            <div className="network-plan-heading"><div><small>PLANNED BUILD</small><b>{networkPlanTargets.length ? `${networkPlanTargets.length} target${networkPlanTargets.length === 1 ? '' : 's'}` : 'No targets yet'}</b></div><div className="network-plan-actions"><button disabled={!networkAutoAllocateEnabled} onClick={runNetworkAutoAllocate}>Auto Allocate</button>{networkPlanTargets.length > 0 && <button onClick={() => setNetworkPlanTargets([])}>Clear plan</button>}</div></div>
             <div className="network-plan-summary"><span><small>TOTAL COST</small><b>{networkPlan.pointCost} PT</b></span><span><small>AVAILABLE NOW</small><b>{profile.progressionPoints} PT</b></span><span className={networkPlanShortfall > 0 ? 'shortfall' : 'ready'}><small>{networkPlanShortfall > 0 ? 'FUTURE POINTS NEEDED' : 'STATUS'}</small><b>{networkPlanShortfall > 0 ? networkPlanShortfall : networkPlan.pointCost > 0 ? 'AFFORDABLE' : 'READY'}</b></span><span><small>ROUTE NODES</small><b>{networkPlan.nodeIds.length}</b></span></div>
             {networkPlanTargets.length > 0 && <div className="network-plan-targets">{networkPlanTargets.map(id => { const node = progressionNodes.find(entry => entry.id === id); const unresolved = networkPlan.unresolvedTargetIds.includes(id); return <button key={id} className={unresolved ? 'unresolved' : ''} onClick={() => { setNetworkFocusId(id); toggleNetworkPlanTarget(id); }}><b>{node?.name ?? id}</b><small>{unresolved ? 'UNRESOLVED · REMOVE' : 'PLANNED · REMOVE'}</small></button>; })}</div>}
             <div className="network-route-preview"><small>AGGREGATE PATH</small><span>{networkPlanNodeNames.length ? networkPlanNodeNames.join(' → ') : 'Add a target to preview the lowest-cost legal path. Shared route nodes are counted once.'}</span></div>
+            {networkAutoAllocateReport && <div className="network-auto-allocate-report" role="status">{networkAutoAllocateReport}</div>}
           </article>
         </div>
-        <ProgressiveDisclosure triggerLabel="View planned build math" eyebrow="Progression details" heading="Planned build before / after math"><div className="network-stat-preview" aria-label="Planned build before and after math"><small className="network-stat-title">BEFORE / AFTER BUILD MATH</small>{networkPlannerMetrics.map(metric => <span key={metric.label} className={metric.before !== metric.after ? 'changed' : ''}><small>{metric.label}</small><b>{metric.before} <i>→</i> {metric.after}</b></span>)}</div><p>Planner math is a preview only. Points are spent only by an eligible Allocate action.</p></ProgressiveDisclosure>
+        <ProgressiveDisclosure triggerLabel="View planned build math" eyebrow="Progression details" heading="Planned build before / after math"><div className="network-stat-preview" aria-label="Planned build before and after math"><small className="network-stat-title">BEFORE / AFTER BUILD MATH</small>{networkPlannerMetrics.map(metric => <span key={metric.label} className={metric.before !== metric.after ? 'changed' : ''}><small>{metric.label}</small><b>{metric.before} <i>→</i> {metric.after}</b></span>)}</div><p>Planner math is a preview only. Points are spent only by Allocate now or Auto Allocate.</p></ProgressiveDisclosure>
         <section className="network-recalibration" aria-label="Operator Network recalibration">
           <div><small>P9-F // RECALIBRATION</small><b>{experimentationIsFree ? 'Field trials are free through level 8' : 'High-level rebuilds consume credits'}</b><span>Current legality, exact rebuild cost, and any blocker stay beside the rebuild action.</span></div>
           <ActionRequirement presentation={networkRebuildRequirement} />

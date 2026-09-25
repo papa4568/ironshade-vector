@@ -427,6 +427,16 @@
 .network-plan-heading b { display: block; }
 .network-plan-heading small { color: #73958a; font-size: 7px; font-weight: 900; }
 .network-plan-heading b { margin-top: 3px; color: #cbdad5; font-size: 11px; }
+.network-plan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.network-plan-actions button:disabled {
+  opacity: .42;
+  cursor: default;
+}
 .network-plan-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -475,6 +485,16 @@
 .network-route-preview span { display: block; }
 .network-route-preview small { color: #708b82; font-size: 6px; font-weight: 900; }
 .network-route-preview span { margin-top: 4px; color: #82978f; font-size: 7px; line-height: 1.45; }
+.network-auto-allocate-report {
+  margin-top: 8px;
+  padding: 8px 9px;
+  border: 1px solid #416d5e;
+  border-radius: 8px;
+  background: #10231d;
+  color: #afc8bf;
+  font-size: 7px;
+  line-height: 1.45;
+}
 .network-stat-preview {
   display: grid;
   grid-template-columns: auto repeat(6, minmax(0, 1fr));
