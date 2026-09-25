@@ -15,6 +15,7 @@ Target **premium console/PC-quality ARPG presentation on modern phones** while p
 
 ## Locked design decisions
 
+- General interface size/accessibility scaling must not resize, reposition, or change touch hit regions for movement, FIRE, DODGE, class skills, ACT, or other combat controls. Combat-control geometry remains owned exclusively by the dedicated Combat layout preset and movement/action cluster settings.
 - Vanguard = **Breacher**
 - Vector = **Rail Lance**
 - Systems = **Carbine**
