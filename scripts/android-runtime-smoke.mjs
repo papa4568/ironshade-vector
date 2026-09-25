@@ -1462,11 +1462,11 @@ await tap('button[data-location="asteroid-refinery"]', 23);
 await waitFor(`document.querySelector('button[data-location="asteroid-refinery"]')?.classList.contains('selected') === true`, 'Asteroid Refinery contract selection');
 
 await tapButton('Deploy selected contract', 24, 120);
-await waitFor(`Boolean(document.querySelectorAll('canvas').length > 0 && (document.querySelector('[data-presentation="deployment"]') || document.querySelector('.transient-alert-lane[data-hud-layer="transient"]')))`, 'Combat surface', 45_000);
 await waitFor(`(() => {
+  const canvas = document.querySelector('canvas');
   const root = document.querySelector('.game-root[data-mission-presentation="non-blocking-cues"]');
   const cue = document.querySelector('[data-presentation="deployment"]');
-  if (!root || !cue) return false;
+  if (!canvas || !root || !cue) return false;
   const rect = cue.getBoundingClientRect();
   const style = getComputedStyle(cue);
   const sample = {
@@ -1486,7 +1486,7 @@ await waitFor(`(() => {
     && sample.right <= sample.viewportWidth
     && sample.top >= 0
     && sample.bottom <= sample.viewportHeight;
-})()`, 'P15-C deployment presentation', 20_000);
+})()`, 'Combat surface and P15-C deployment presentation', 45_000);
 const p15MissionPresentation = await evaluate(`window.__ironshadeP15MissionPresentation ?? null`);
 if (!p15MissionPresentation) {
   throw new Error('P15-C Android deployment presentation was not captured while visible.');
