@@ -631,3 +631,44 @@ button {
     bottom: max(112px, calc(env(safe-area-inset-bottom) + 112px));
   }
 }
+
+
+/* P20-A // Informational HUD chrome scales with Interface Size.
+   Combat input clusters remain fixed-pixel in combatHudLayout.css and touch-control rules. */
+.hud-top {
+  top: max(.875rem, env(safe-area-inset-top));
+  left: max(.875rem, env(safe-area-inset-left));
+  right: max(.875rem, env(safe-area-inset-right));
+  gap: .875rem;
+}
+.vitals {
+  width: min(22.5rem, 42vw);
+  border-radius: .75rem;
+  padding: .625rem .75rem;
+}
+.barline {
+  grid-template-columns: 3.25rem 1fr 3rem;
+  gap: .5rem;
+  font-size: .625rem;
+  margin: .25rem 0;
+}
+.bar {
+  height: .375rem;
+}
+.mission-card {
+  padding: .625rem .75rem;
+  border-radius: .75rem;
+}
+.mission-card b {
+  font-size: .6875rem;
+}
+.mission-card span {
+  font-size: .625rem;
+}
+.weapon-hud {
+  right: max(1.125rem, env(safe-area-inset-right));
+  bottom: max(1.125rem, env(safe-area-inset-bottom));
+  min-width: 11.875rem;
+  padding: .75rem .875rem;
+  border-radius: .75rem;
+}
