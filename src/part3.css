@@ -631,3 +631,26 @@
     min-height: 40px;
   }
 }
+
+/* P19-G // Management surfaces load with Armory and must outrank legacy 5–11px rules.
+   Keep secondary/support copy readable while preserving stronger decision values/actions. */
+@media (max-width: 620px) and (orientation: portrait),
+       (orientation: landscape) and (max-width: 1000px) and (max-height: 500px) {
+  .build-bay.iv-view :is(.reconstruction-panel, .network-panel, .protocol-panel)
+    :is(p, small, span, em, label, summary, li, dt, dd) {
+    font-size: var(--p19-armory-secondary, max(12px, .75rem));
+    line-height: 1.4;
+  }
+
+  .build-bay.iv-view :is(.reconstruction-panel, .network-panel, .protocol-panel)
+    :is(b, strong) {
+    font-size: var(--p19-armory-decision, max(14px, .875rem));
+    line-height: 1.25;
+  }
+
+  .build-bay.iv-view :is(.reconstruction-panel, .network-panel, .protocol-panel)
+    :is(button, input, select) {
+    min-height: 44px;
+    font-size: var(--p19-armory-secondary, max(12px, .75rem));
+  }
+}
