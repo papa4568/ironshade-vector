@@ -310,9 +310,13 @@ assert(
     && equipmentCss.includes('.gear-layout .item-inspector.open')
     && equipmentCss.includes('width: min(46vw, 640px)')
     && equipmentCss.includes('grid-template-columns: repeat(3, minmax(0, 1fr))')
+    && equipmentCss.includes('.armory-inspector-portal .item-inspector.open')
+    && equipmentCss.includes('.armory-inspector-portal .item-inspector-backdrop')
     && mobileInspectorCss.includes('@media (pointer: coarse), (max-width: 1100px)')
-    && mobileInspectorCss.includes('.build-bay.iv-view.armory-inspector-open')
-    && armory.includes("selected ? 'armory-inspector-open' : ''"),
+    && armory.includes("import { createPortal } from 'react-dom'")
+    && armory.includes('wideInspectorPortal')
+    && armory.includes('armory-inspector-portal')
+    && armory.includes("window.matchMedia('(pointer: coarse)')"),
   'P19-H wide Armory selection must use the established viewport-anchored inspector without shrinking Ship Storage or leaking the Android single-scroller rule onto wide desktop.',
 );
 assert(
