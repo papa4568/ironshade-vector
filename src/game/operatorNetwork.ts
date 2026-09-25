@@ -823,6 +823,76 @@ export function operatorNetworkPlan(state: OperatorNetworkState, targetNodeIds: 
   return { targetNodeIds: targets, nodeIds: plannedNodeIds, pointCost, unresolvedTargetIds };
 }
 
+export type OperatorNetworkAutoAllocationBlocker = {
+  nodeId: string;
+  reason: Exclude<OperatorNetworkAllocationResult['reason'], 'allocated'>;
+};
+
+export type OperatorNetworkAutoAllocationResult = {
+  state: OperatorNetworkState;
+  allocatedNodeIds: string[];
+  pointsSpent: number;
+  pointsRemaining: number;
+  remainingTargetNodeIds: string[];
+  futurePointsNeeded: number;
+  nextBlocker: OperatorNetworkAutoAllocationBlocker | null;
+};
+
+function operatorNetworkPlanBlockerReason(state: OperatorNetworkState, nodeId: string, context?: OperatorNetworkUnlockContext): OperatorNetworkAutoAllocationBlocker['reason'] {
+  const node = operatorNetworkNode(nodeId);
+  if (!node) return 'unknown-node';
+  if (node.kind === 'class-start') return 'class-start';
+  if (node.milestone) return 'milestone-managed';
+  if (node.weaponFamily && weaponFamilyByStartNodeId[state.startNodeId] !== node.weaponFamily) return 'wrong-arsenal';
+  if (state.allocatedNodeIds.includes(nodeId)) return 'already-allocated';
+  const contextReason = operatorNetworkContextReason(node, context);
+  if (contextReason) return contextReason;
+  if (node.exclusiveGroup && state.allocatedNodeIds.some(id => id !== nodeId && operatorNetworkNode(id)?.exclusiveGroup === node.exclusiveGroup)) return 'exclusive-choice';
+  const gateReason = operatorNetworkNodeGateReason(state, nodeId, context);
+  if (gateReason) return gateReason;
+  return 'not-connected';
+}
+
+export function autoAllocateOperatorNetworkPlan(state: OperatorNetworkState, targetNodeIds: readonly string[], context?: OperatorNetworkUnlockContext): OperatorNetworkAutoAllocationResult {
+  const targets = [...new Set(targetNodeIds)];
+  let nextState: OperatorNetworkState = { ...state, plannedTargetNodeIds: [...targets] };
+  const plan = operatorNetworkPlan(nextState, targets, context);
+  const allocatedNodeIds: string[] = [];
+  let pointsSpent = 0;
+  let nextBlocker: OperatorNetworkAutoAllocationBlocker | null = null;
+
+  for (const nodeId of plan.nodeIds) {
+    const beforePoints = nextState.unspentPoints;
+    const allocation = allocateOperatorNetworkNode(nextState, nodeId, context);
+    if (!allocation.allocated) {
+      nextBlocker = { nodeId, reason: allocation.reason };
+      break;
+    }
+    nextState = allocation.state;
+    allocatedNodeIds.push(nodeId);
+    pointsSpent += beforePoints - nextState.unspentPoints;
+  }
+
+  if (!nextBlocker && plan.unresolvedTargetIds.length > 0) {
+    const nodeId = plan.unresolvedTargetIds[0]!;
+    nextBlocker = { nodeId, reason: operatorNetworkPlanBlockerReason(nextState, nodeId, context) };
+  }
+
+  const remainingTargetNodeIds = [...nextState.plannedTargetNodeIds];
+  const remainingPlan = operatorNetworkPlan(nextState, remainingTargetNodeIds, context);
+  const futurePointsNeeded = Math.max(0, remainingPlan.pointCost - nextState.unspentPoints);
+
+  return {
+    state: nextState,
+    allocatedNodeIds,
+    pointsSpent,
+    pointsRemaining: nextState.unspentPoints,
+    remainingTargetNodeIds,
+    futurePointsNeeded,
+    nextBlocker,
+  };
+}
+
 export const legacyProgressionNodes = legacyNodes.map(node => ({
   id: node.id,
   branch: node.branch as OperatorNetworkBranch,
