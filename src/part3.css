@@ -674,3 +674,104 @@
     font-size: var(--p19-armory-secondary, max(12px, .75rem));
   }
 }
+
+
+/* P20-A // Effective interface-size geometry for Armory management surfaces.
+   Default rem values preserve the existing pixel baseline at 16px; Compact/Large
+   now reflow real cards, panel spacing, controls, and chrome through root sizing. */
+.inventory-grid {
+  gap: .5rem;
+}
+.inventory-card {
+  min-height: 6.5rem;
+  padding: .8125rem;
+  border-radius: .6875rem;
+}
+.equipment-slots {
+  gap: .5rem;
+  margin-bottom: 1.0625rem;
+}
+.equipped-card {
+  min-height: 5.125rem;
+  padding: .75rem;
+  border-radius: .75rem;
+}
+.settings-panel label {
+  gap: 1.125rem;
+  margin-top: .5rem;
+  padding: .9375rem;
+  border-radius: .625rem;
+}
+.settings-panel select {
+  min-width: 8.125rem;
+  padding: .5rem;
+  border-radius: .5rem;
+}
+.settings-panel input[type='checkbox'] {
+  width: 1.375rem;
+  height: 1.375rem;
+}
+.reconstruction-top {
+  gap: 1.125rem;
+  margin-bottom: .75rem;
+}
+.reconstruction-top .resource-ribbon span {
+  padding: .5rem .5625rem;
+  border-radius: .5625rem;
+}
+.reconstruct-layout {
+  gap: .75rem;
+}
+.reconstruction-bench {
+  padding: 1rem;
+  border-radius: .8125rem;
+}
+.reconstruction-panel button {
+  border-radius: .5625rem;
+  padding: .5625rem .625rem;
+}
+.network-planner {
+  margin-bottom: 1rem;
+  padding: .8125rem;
+  border-radius: .8125rem;
+}
+.network-planner-heading {
+  gap: .625rem;
+}
+.network-planner-search,
+.network-planner-nav,
+.network-search-results {
+  gap: .375rem;
+}
+.network-search-results {
+  margin-top: .625rem;
+}
+.network-search-results button {
+  min-height: 4.25rem;
+  border-radius: .5rem;
+  padding: .5rem .5625rem;
+}
+.network-branch {
+  padding: .8125rem;
+  border-radius: .75rem;
+}
+
+@media (max-width: 900px) {
+  .build-bay {
+    padding-top: max(1rem, env(safe-area-inset-top));
+    padding-left: max(.875rem, env(safe-area-inset-left));
+    padding-right: max(.875rem, env(safe-area-inset-right));
+  }
+  .network-branch {
+    padding: .625rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .settings-panel label {
+    gap: .625rem;
+  }
+  .settings-panel select {
+    min-width: 7rem;
+  }
+}
