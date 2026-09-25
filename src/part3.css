@@ -679,7 +679,7 @@
 /* P20-A // Effective interface-size geometry for Armory management surfaces.
    Default rem values preserve the existing pixel baseline at 16px; Compact/Large
    now reflow real cards, panel spacing, controls, and chrome through root sizing. */
-.build-tabs {
+.build-bay.iv-view .build-tabs {
   gap: .375rem;
 }
 .inventory-grid {
