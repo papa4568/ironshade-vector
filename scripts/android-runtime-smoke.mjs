@@ -844,13 +844,44 @@ await evaluate(`(() => { const button = globalThis.__p19ManagementGamepad.button
 await waitFor(`Boolean(document.activeElement?.closest?.('[data-crafting-surface="true"]'))`, 'Android P19-E Crafting controller D-pad focus');
 await evaluate(`(() => { const button = globalThis.__p19ManagementGamepad.buttons[13]; button.pressed = false; button.value = 0; return true; })()`);
 await sleep(120);
-await evaluate(`(() => { const button = globalThis.__p19ManagementGamepad.buttons[0]; button.pressed = true; button.value = 1; return true; })()`);
-await waitFor(`Boolean(document.querySelector('.craft-review'))`, 'Android P19-E Crafting controller confirm opens review');
-await evaluate(`(() => { const button = globalThis.__p19ManagementGamepad.buttons[0]; button.pressed = false; button.value = 0; return true; })()`);
-await sleep(120);
-await evaluate(`(() => { const button = globalThis.__p19ManagementGamepad.buttons[1]; button.pressed = true; button.value = 1; return true; })()`);
-await waitFor(`!document.querySelector('.craft-review')`, 'Android P19-E Crafting controller back');
-await evaluate(`(() => { const button = globalThis.__p19ManagementGamepad.buttons[1]; button.pressed = false; button.value = 0; return true; })()`);
+if (p19CraftingHierarchy.state === 'blocked') {
+  const guideFocused = await evaluate(`(() => {
+    const guide = document.querySelector('[data-crafting-surface="true"] button[data-guide-link="crafting"]');
+    if (!(guide instanceof HTMLButtonElement)) return false;
+    guide.focus();
+    return document.activeElement === guide;
+  })()`);
+  if (!guideFocused) throw new Error('Android P19-E blocked Crafting state could not focus the contextual Guide action.');
+  await evaluate(`(() => { const button = globalThis.__p19ManagementGamepad.buttons[0]; button.pressed = true; button.value = 1; return true; })()`);
+  await waitFor(`Boolean(document.querySelector('.ship-hub.area-intel') && document.querySelector('[data-guide-section="crafting"]'))`, 'Android P19-E Crafting controller A opens Guide');
+  await evaluate(`(() => { const button = globalThis.__p19ManagementGamepad.buttons[0]; button.pressed = false; button.value = 0; return true; })()`);
+  await sleep(120);
+  await evaluate(`(() => { const button = globalThis.__p19ManagementGamepad.buttons[1]; button.pressed = true; button.value = 1; return true; })()`);
+  await waitFor(`(() => {
+    const active = document.activeElement;
+    return Boolean(document.querySelector('[data-management-surface="crafting"]'))
+      && active instanceof HTMLButtonElement
+      && active.getAttribute('data-guide-link') === 'crafting';
+  })()`, 'Android P19-E Crafting controller B returns from Guide');
+  await evaluate(`(() => { const button = globalThis.__p19ManagementGamepad.buttons[1]; button.pressed = false; button.value = 0; return true; })()`);
+  await sleep(120);
+} else {
+  const previewFocused = await evaluate(`(() => {
+    const action = document.querySelector('[data-crafting-surface="true"] .bench-frame button:not(:disabled)');
+    if (!(action instanceof HTMLButtonElement)) return false;
+    action.focus();
+    return document.activeElement === action;
+  })()`);
+  if (!previewFocused) throw new Error('Android P19-E ready Crafting state could not focus a legal preview action.');
+  await evaluate(`(() => { const button = globalThis.__p19ManagementGamepad.buttons[0]; button.pressed = true; button.value = 1; return true; })()`);
+  await waitFor(`Boolean(document.querySelector('.craft-review'))`, 'Android P19-E Crafting controller A opens review');
+  await evaluate(`(() => { const button = globalThis.__p19ManagementGamepad.buttons[0]; button.pressed = false; button.value = 0; return true; })()`);
+  await sleep(120);
+  await evaluate(`(() => { const button = globalThis.__p19ManagementGamepad.buttons[1]; button.pressed = true; button.value = 1; return true; })()`);
+  await waitFor(`!document.querySelector('.craft-review')`, 'Android P19-E Crafting controller B closes review');
+  await evaluate(`(() => { const button = globalThis.__p19ManagementGamepad.buttons[1]; button.pressed = false; button.value = 0; return true; })()`);
+  await sleep(120);
+}
 
 await tapButton('Open Guide // Crafting', 98);
 await waitFor(`Boolean(document.querySelector('.ship-hub.area-intel') && document.querySelector('[data-guide-section="crafting"]'))`, 'Android P19-E Crafting Guide deep-link');
