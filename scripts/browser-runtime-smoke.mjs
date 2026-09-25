@@ -547,6 +547,37 @@ async function mobileCombatLayoutAudit() {
   if (result.offscreen.length || result.undersized.length || result.moveDockOverlap) {
     throw new Error(`Mobile combat controls/HUD failed viewport or touch-target checks: ${JSON.stringify(result)}`);
   }
+
+  const interfaceInvariant = await evaluate(`(() => {
+    const root = document.documentElement;
+    const previous = root.dataset.interfaceSize ?? '';
+    const snapshot = () => {
+      const rect = element => {
+        if (!element) return null;
+        const value = element.getBoundingClientRect();
+        return [value.left, value.top, value.width, value.height].map(number => Number(number.toFixed(3)));
+      };
+      return {
+        move: rect(document.querySelector('.move-stick')),
+        dock: rect(document.querySelector('.combat-dock')),
+        controls: [...document.querySelectorAll('.touch-button')].map((button, index) => ({
+          key: button.getAttribute('aria-label') || button.className || String(index),
+          rect: rect(button),
+        })),
+      };
+    };
+    root.dataset.interfaceSize = 'compact';
+    const compact = snapshot();
+    root.dataset.interfaceSize = 'large';
+    const large = snapshot();
+    if (previous) root.dataset.interfaceSize = previous;
+    else delete root.dataset.interfaceSize;
+    return { compact, large, restored: root.dataset.interfaceSize ?? '' };
+  })()`);
+  if (JSON.stringify(interfaceInvariant.compact) !== JSON.stringify(interfaceInvariant.large)) {
+    throw new Error(`P20-A changed combat-control geometry across Interface Size values: ${JSON.stringify(interfaceInvariant)}`);
+  }
+  console.log(`BROWSER_P20_COMBAT_CONTROL_INVARIANT_PASS viewport=${viewportMode} controls=${interfaceInvariant.compact.controls.length} compact=large geometry=identical`);
   console.log(`BROWSER_MOBILE_LAYOUT_PASS viewport=${Math.round(result.viewport.width)}x${Math.round(result.viewport.height)} touchButtons=${result.touchButtons} safe=onscreen+separated`);
   return result;
 }
@@ -1002,6 +1033,48 @@ try {
   }
   await keyboardActivateButton('Settings');
   await waitFor(`Boolean(document.querySelector('.settings-panel') && document.querySelector('.build-tabs button[aria-current="page"]')?.textContent?.includes('Settings'))`, 'P15-E accessibility settings surface');
+
+  async function setP20InterfaceSize(value) {
+    const changed = await evaluate(`(() => {
+      const control = document.querySelector('select[aria-label="Interface size"]');
+      if (!(control instanceof HTMLSelectElement)) return false;
+      const valueSetter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set;
+      if (!valueSetter) return false;
+      valueSetter.call(control, '${value}');
+      control.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    })()`);
+    if (!changed) throw new Error(`P20-A Interface Size control unavailable for ${value}.`);
+    await waitFor(`(() => {
+      const raw = localStorage.getItem('ironshade-vector-state-v1');
+      const settings = raw ? JSON.parse(raw)?.profile?.settings : null;
+      return settings?.interfaceSize === '${value}' && document.documentElement.dataset.interfaceSize === '${value}';
+    })()`, `P20-A persisted ${value} Interface Size`);
+    await sleep(100);
+    return await evaluate(`(() => {
+      const panel = document.querySelector('.settings-panel');
+      const rootStyle = getComputedStyle(document.documentElement);
+      const panelRect = panel?.getBoundingClientRect();
+      return {
+        size: document.documentElement.dataset.interfaceSize ?? '',
+        rootFontSize: Number.parseFloat(rootStyle.fontSize),
+        horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
+        panelVisible: Boolean(panelRect && panelRect.width > 0 && panelRect.height > 0),
+      };
+    })()`);
+  }
+
+  const p20InterfaceCompact = await setP20InterfaceSize('compact');
+  const p20InterfaceDefault = await setP20InterfaceSize('default');
+  const p20InterfaceLarge = await setP20InterfaceSize('large');
+  if (!p20InterfaceCompact.panelVisible || !p20InterfaceDefault.panelVisible || !p20InterfaceLarge.panelVisible
+    || p20InterfaceCompact.horizontalOverflow > 2 || p20InterfaceDefault.horizontalOverflow > 2 || p20InterfaceLarge.horizontalOverflow > 2
+    || !(p20InterfaceCompact.rootFontSize < p20InterfaceDefault.rootFontSize && p20InterfaceDefault.rootFontSize < p20InterfaceLarge.rootFontSize)) {
+    throw new Error(`P20-A Interface Size reflow failed: ${JSON.stringify({ compact: p20InterfaceCompact, default: p20InterfaceDefault, large: p20InterfaceLarge })}`);
+  }
+  await setP20InterfaceSize('default');
+  console.log(`BROWSER_P20_INTERFACE_SIZE_PASS viewport=${viewportMode} compact=${p20InterfaceCompact.rootFontSize}px default=${p20InterfaceDefault.rootFontSize}px large=${p20InterfaceLarge.rootFontSize}px overflow=none persisted=true`);
+
   const textScaleChanged = await evaluate(`(() => {
     const control = document.querySelector('select[aria-label="Interface text size"]');
     if (!(control instanceof HTMLSelectElement)) return false;

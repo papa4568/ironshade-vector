@@ -66,6 +66,25 @@ assert(close(customized.settings.actionClusterInset, 0.3) && close(customized.se
 const reset = setProfileSettings(customized, hudLayoutPresetPatch('left-handed'));
 assert(reset.settings.hudLayoutPreset === 'left-handed' && reset.settings.movementClusterInset === 0 && reset.settings.actionClusterInset === 0 && reset.settings.movementClusterScale === 1 && reset.settings.actionClusterScale === 1, 'P19-F preset reset must clear custom offsets/scales.');
 
+const interfaceLarge = setProfileSettings(customized, { interfaceSize: 'large' });
+assert(interfaceLarge.settings.interfaceSize === 'large', 'P20-A Interface Size did not persist through profile settings.');
+assert(interfaceLarge.settings.hudLayoutPreset === customized.settings.hudLayoutPreset
+  && close(interfaceLarge.settings.movementClusterInset, customized.settings.movementClusterInset)
+  && close(interfaceLarge.settings.movementClusterLift, customized.settings.movementClusterLift)
+  && close(interfaceLarge.settings.movementClusterScale, customized.settings.movementClusterScale)
+  && close(interfaceLarge.settings.actionClusterInset, customized.settings.actionClusterInset)
+  && close(interfaceLarge.settings.actionClusterLift, customized.settings.actionClusterLift)
+  && close(interfaceLarge.settings.actionClusterScale, customized.settings.actionClusterScale),
+'P20-A Interface Size must not mutate combat layout geometry settings.');
+
+const legacyInterface: any = JSON.parse(JSON.stringify(defaults));
+delete legacyInterface.settings.interfaceSize;
+assert(normalizeStoredProfile(legacyInterface).settings.interfaceSize === 'default', 'P20-A legacy profiles must restore Default Interface Size.');
+
+const malformedInterface: any = JSON.parse(JSON.stringify(defaults));
+malformedInterface.settings.interfaceSize = 'giant';
+assert(normalizeStoredProfile(malformedInterface).settings.interfaceSize === 'default', 'P20-A invalid Interface Size must normalize to Default.');
+
 const combat = read('src/components/GameCanvas.tsx');
 const layoutCss = read('src/combatHudLayout.css');
 const armory = read('src/components/Armory.tsx');
@@ -98,4 +117,4 @@ assert(androidSmoke.includes('ANDROID_P19_HUD_LAYOUT_SETTINGS_PASS') && androidS
 assert(pkg.scripts?.['test:hud-layout']?.includes('tests/hud-layout-presets.ts'), 'P19-F focused HUD layout regression script is missing.');
 assert(pkg.scripts?.build?.includes('npm run test:hud-layout'), 'Full production build must gate on P19-F HUD layout regressions.');
 
-console.log('HUD_LAYOUT_PRESETS_PASS presets=standard+large+left-handed persistence=legacy+bounded controls=movement+action input=manual+assisted safe=portrait+landscape guide=canonical accessibility=compatible android=launch+resume+rotation+relaunch');
+console.log('HUD_LAYOUT_PRESETS_PASS presets=standard+large+left-handed persistence=legacy+bounded controls=movement+action input=manual+assisted safe=portrait+landscape guide=canonical accessibility=compatible interfaceSize=isolated android=launch+resume+rotation+relaunch');
