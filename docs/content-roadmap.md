@@ -11,6 +11,6 @@ Only active/future executable work lives here. Completed and verified work belon
 - After verified completion, move the completion detail/evidence to the archive and remove the item from this file.
 - If repository evidence shows an active item is already complete, verify that evidence before archiving it. If only part is complete, rewrite the item around the remaining work.
 
-## Active work
+## P19 — Glance-First Adaptive UI
 
-_No unchecked executable items remain._
+- [ ] **P19-I — Dedicated item info popup** — Make every Loadout and Ship Storage item card open its comparison/details in a dedicated modal window layered above the Armory instead of an inline or side inspector. The modal must be visibly separate from the storage layout, include its own backdrop, preserve the existing quick comparison, Details disclosure, equip/unequip/discard actions, requirement states, Escape/Back to storage dismissal, and restore the player's storage context after closing. Use the same popup model on desktop and compact/coarse-pointer Android layouts. **Done when:** tapping/clicking an item always opens an immediately visible dedicated item-info popup, Browser E2E verifies modal/dialog semantics and preserved context on desktop + mobile-landscape, existing Android inspector behavior passes with explicit modal verification, production build passes, and a verified APK is delivered.

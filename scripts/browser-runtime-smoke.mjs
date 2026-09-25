@@ -700,8 +700,6 @@ async function keyboardActivateButton(label) {
 
 
 async function armoryInspectorViewportAudit() {
-  if (viewportMode !== 'desktop') return;
-
   const prepared = await evaluate(`(() => {
     const build = document.querySelector('.build-bay');
     const layout = document.querySelector('.gear-layout');
@@ -733,8 +731,8 @@ async function armoryInspectorViewportAudit() {
     };
   })()`);
 
-  if (!prepared || !prepared.item || prepared.maxScroll <= 20 || prepared.scrollTop <= 20 || prepared.gridColumns < 2) {
-    throw new Error(`P19-H could not establish a scrolled Ship Storage context: ${JSON.stringify(prepared)}`);
+  if (!prepared || !prepared.item || prepared.gridColumns < 1) {
+    throw new Error(`P19-I could not establish a Ship Storage item context: ${JSON.stringify(prepared)}`);
   }
 
   const openedCandidate = await evaluate(`(() => {
@@ -743,81 +741,93 @@ async function armoryInspectorViewportAudit() {
     card.click();
     return true;
   })()`);
-  if (!openedCandidate) throw new Error('P19-H Ship Storage candidate could not be selected.');
+  if (!openedCandidate) throw new Error('P19-I Ship Storage candidate could not be selected.');
 
   await waitFor(`Boolean(
-    document.querySelector('.item-inspector.open')
-    && document.querySelector('.item-inspector .inspector-header')
-    && document.querySelector('.item-inspector .gear-quick-read')
-    && document.querySelector('.item-inspector .inspector-actions')
-  )`, 'P19-H desktop Armory inspector');
+    document.querySelector('.armory-item-modal')
+    && document.querySelector('.armory-item-modal .item-inspector.open[role="dialog"][aria-modal="true"]')
+    && document.querySelector('.armory-item-modal .item-inspector .inspector-header')
+    && document.querySelector('.armory-item-modal .item-inspector .gear-quick-read')
+    && document.querySelector('.armory-item-modal .item-inspector .inspector-actions')
+  )`, 'P19-I dedicated Armory item modal');
 
   const opened = await evaluate(`(() => {
-    const viewport = { width: window.innerWidth, height: window.innerHeight };
+    const width = window.visualViewport?.width ?? window.innerWidth;
+    const height = window.visualViewport?.height ?? window.innerHeight;
     const build = document.querySelector('.build-bay');
     const layout = document.querySelector('.gear-layout');
     const storage = document.querySelector('.gear-storage');
     const grid = document.querySelector('.inventory-grid');
     const card = document.querySelector('button[data-p19-armory-viewport-candidate="true"]');
-    const inspector = document.querySelector('.item-inspector.open');
+    const modal = document.querySelector('.armory-item-modal');
+    const backdrop = modal?.querySelector('.item-inspector-backdrop');
+    const inspector = modal?.querySelector('.item-inspector.open');
     const header = inspector?.querySelector('.inspector-header');
     const quickRead = inspector?.querySelector('.gear-quick-read');
     const actions = inspector?.querySelector('.inspector-actions');
-    if (!(build instanceof HTMLElement) || !layout || !storage || !grid || !card || !inspector || !header || !quickRead || !actions) return null;
+    if (!(build instanceof HTMLElement) || !layout || !storage || !grid || !card || !modal || !backdrop || !inspector || !header || !quickRead || !actions) return null;
 
     const rect = element => {
       const value = element.getBoundingClientRect();
       return { left: value.left, top: value.top, right: value.right, bottom: value.bottom, width: value.width, height: value.height };
     };
+    const modalRect = rect(modal);
     const inspectorRect = rect(inspector);
     const headerRect = rect(header);
     const quickReadRect = rect(quickRead);
     const actionsRect = rect(actions);
     const storageRect = rect(storage);
     const layoutRect = rect(layout);
-    const cardRect = rect(card);
     const gridColumns = getComputedStyle(grid).gridTemplateColumns.trim().split(/\\s+/).filter(Boolean).length;
     return {
-      viewport,
+      width,
+      height,
       scrollTop: build.scrollTop,
+      modalPosition: getComputedStyle(modal).position,
       inspectorPosition: getComputedStyle(inspector).position,
-      inspectorRect,
-      headerRect,
-      quickReadRect,
-      actionsRect,
+      modalCoversViewport: modalRect.left <= 1 && modalRect.top <= 1 && modalRect.right >= width - 1 && modalRect.bottom >= height - 1,
+      detachedFromLayout: !inspector.closest('.gear-layout'),
+      dialogSemantics: inspector.getAttribute('role') === 'dialog' && inspector.getAttribute('aria-modal') === 'true',
+      backdropVisible: getComputedStyle(backdrop).display !== 'none',
+      windowWithinViewport: inspectorRect.left >= -1 && inspectorRect.top >= -1 && inspectorRect.right <= width + 1 && inspectorRect.bottom <= height + 1,
+      windowCentered: Math.abs((inspectorRect.left + inspectorRect.right) / 2 - width / 2) <= 3,
+      headerOnscreen: headerRect.top >= -1 && headerRect.bottom <= height + 1,
+      quickReadOnscreen: quickReadRect.top < inspectorRect.bottom && quickReadRect.bottom > inspectorRect.top,
+      actionsOnscreen: actionsRect.top >= -1 && actionsRect.bottom <= height + 1,
       storageWidth: storageRect.width,
       layoutWidth: layoutRect.width,
       gridColumns,
-      cardTop: cardRect.top,
       selectedCard: card.classList.contains('selected'),
-      headerOnscreen: headerRect.top >= -1 && headerRect.bottom <= viewport.height + 1,
-      quickReadOnscreen: quickReadRect.top >= -1 && quickReadRect.bottom <= viewport.height + 1,
-      actionsOnscreen: actionsRect.top >= -1 && actionsRect.bottom <= viewport.height + 1,
-      storageKeepsWidth: storageRect.width >= layoutRect.width * 0.98,
     };
   })()`);
 
   if (!opened
-    || opened.inspectorPosition !== 'fixed'
+    || opened.modalPosition !== 'fixed'
+    || opened.inspectorPosition !== 'relative'
     || Math.abs(opened.scrollTop - prepared.scrollTop) > 2
     || Math.abs(opened.storageWidth - prepared.storageWidth) > 2
     || opened.gridColumns !== prepared.gridColumns
+    || !opened.modalCoversViewport
+    || !opened.detachedFromLayout
+    || !opened.dialogSemantics
+    || !opened.backdropVisible
+    || !opened.windowWithinViewport
+    || !opened.windowCentered
     || !opened.selectedCard
     || !opened.headerOnscreen
     || !opened.quickReadOnscreen
-    || !opened.actionsOnscreen
-    || !opened.storageKeepsWidth) {
-    throw new Error(`P19-H desktop Armory inspector did not open in-place: before=${JSON.stringify(prepared)} open=${JSON.stringify(opened)}`);
+    || !opened.actionsOnscreen) {
+    throw new Error(`P19-I item details did not open as a dedicated modal: before=${JSON.stringify(prepared)} open=${JSON.stringify(opened)}`);
   }
 
   const closedInspector = await evaluate(`(() => {
-    const button = document.querySelector('.item-inspector .sheet-close[aria-label="Back to ship storage"]');
+    const button = document.querySelector('.armory-item-modal .item-inspector .sheet-close[aria-label="Back to ship storage"]');
     if (!(button instanceof HTMLButtonElement)) return false;
     button.click();
     return true;
   })()`);
-  if (!closedInspector) throw new Error('P19-H Back to storage control could not close the inspector.');
-  await waitFor(`!document.querySelector('.item-inspector.open')`, 'P19-H Armory inspector dismissal');
+  if (!closedInspector) throw new Error('P19-I Back to storage control could not close the item modal.');
+  await waitFor(`!document.querySelector('.armory-item-modal') && !document.querySelector('.item-inspector.open')`, 'P19-I item modal dismissal');
 
   const closed = await evaluate(`(() => {
     const build = document.querySelector('.build-bay');
@@ -831,7 +841,6 @@ async function armoryInspectorViewportAudit() {
       storageWidth: storage.getBoundingClientRect().width,
       gridColumns: getComputedStyle(grid).gridTemplateColumns.trim().split(/\\s+/).filter(Boolean).length,
       cardTop: cardRect.top,
-      cardBottom: cardRect.bottom,
       cardStillVisible: cardRect.bottom > 0 && cardRect.top < window.innerHeight,
     };
   })()`);
@@ -842,10 +851,10 @@ async function armoryInspectorViewportAudit() {
     || closed.gridColumns !== prepared.gridColumns
     || Math.abs(closed.cardTop - prepared.cardTop) > 2
     || !closed.cardStillVisible) {
-    throw new Error(`P19-H Armory dismissal did not preserve Ship Storage context: before=${JSON.stringify(prepared)} closed=${JSON.stringify(closed)}`);
+    throw new Error(`P19-I item modal dismissal did not preserve Ship Storage context: before=${JSON.stringify(prepared)} closed=${JSON.stringify(closed)}`);
   }
 
-  console.log(`BROWSER_P19_ARMORY_INSPECTOR_PASS viewport=${viewportMode} item=${JSON.stringify(prepared.item)} scroll=${Math.round(prepared.scrollTop)}px grid=${prepared.gridColumns} header=onscreen quick=onscreen actions=onscreen context=preserved`);
+  console.log(`BROWSER_P19_ITEM_MODAL_PASS viewport=${viewportMode} item=${JSON.stringify(prepared.item)} grid=${prepared.gridColumns} dialog=modal popup=centered context=preserved`);
 }
 
 await call('Runtime.enable');

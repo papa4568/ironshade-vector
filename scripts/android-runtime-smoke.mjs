@@ -725,6 +725,35 @@ const p18GearDecisionLayout = await evaluate(`(() => {
 if (!p18GearDecisionLayout || p18GearDecisionLayout.scrollTop !== 0 || !p18GearDecisionLayout.requirementVisible || !p18GearDecisionLayout.effectVisible || !p18GearDecisionLayout.firstStatVisible || !p18GearDecisionLayout.actionVisible || p18GearDecisionLayout.expertMounted) {
   throw new Error(`Android P18-E decision-first layout failed: ${JSON.stringify(p18GearDecisionLayout)}`);
 }
+
+const p19ItemModalLayout = await evaluate(`(() => {
+  const width = window.visualViewport?.width ?? window.innerWidth;
+  const height = window.visualViewport?.height ?? window.innerHeight;
+  const modal = document.querySelector('.armory-item-modal');
+  const backdrop = modal?.querySelector('.item-inspector-backdrop');
+  const inspector = modal?.querySelector('.item-inspector.open');
+  if (!modal || !backdrop || !inspector) return null;
+  const modalRect = modal.getBoundingClientRect();
+  const inspectorRect = inspector.getBoundingClientRect();
+  return {
+    modalPosition: getComputedStyle(modal).position,
+    modalCoversViewport: modalRect.left <= 1 && modalRect.top <= 1 && modalRect.right >= width - 1 && modalRect.bottom >= height - 1,
+    dialogSemantics: inspector.getAttribute('role') === 'dialog' && inspector.getAttribute('aria-modal') === 'true',
+    detachedFromLayout: !inspector.closest('.gear-layout'),
+    backdropVisible: getComputedStyle(backdrop).display !== 'none',
+    windowWithinViewport: inspectorRect.left >= -1 && inspectorRect.top >= -1 && inspectorRect.right <= width + 1 && inspectorRect.bottom <= height + 1,
+  };
+})()`);
+if (!p19ItemModalLayout
+  || p19ItemModalLayout.modalPosition !== 'fixed'
+  || !p19ItemModalLayout.modalCoversViewport
+  || !p19ItemModalLayout.dialogSemantics
+  || !p19ItemModalLayout.detachedFromLayout
+  || !p19ItemModalLayout.backdropVisible
+  || !p19ItemModalLayout.windowWithinViewport) {
+  throw new Error(`Android P19-I dedicated item modal failed: ${JSON.stringify(p19ItemModalLayout)}`);
+}
+console.log('ANDROID_P19_ITEM_MODAL_PASS trigger=inventory-card dialog=modal popup=dedicated backdrop=visible safe=onscreen');
 await tapButton('Details', 88);
 await waitFor(`(() => {
   const sheet = document.querySelector('.iv-disclosure-sheet.gear-details-sheet[role="dialog"][aria-modal="true"]');
