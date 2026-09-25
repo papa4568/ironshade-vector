@@ -2299,12 +2299,8 @@
   }
 }
 
-/* P19-G // Ultra-short compact Command keeps redundant drill-ins in primary navigation
-   and drops decorative bridge art before sacrificing readable type. */
-@media (orientation: landscape) and (max-width: 1000px) and (max-height: 380px) {
-  .ship-hub.area-command .command-side .command-action-row {
-    display: none;
-  }
+/* P19-G // Short compact Command drops decorative bridge art before sacrificing readable type. */
+@media (orientation: landscape) and (max-width: 1000px) and (max-height: 430px) {
   .ship-hub.area-command .command-visual.command-bridge.command-bridge-compact {
     min-height: 0;
   }
@@ -2319,5 +2315,12 @@
   }
   .ship-hub.area-command .bridge-compact-readiness {
     align-self: center;
+  }
+}
+
+/* Ultra-short landscapes can also drop redundant drill-ins retained in primary navigation. */
+@media (orientation: landscape) and (max-width: 1000px) and (max-height: 380px) {
+  .ship-hub.area-command .command-side .command-action-row {
+    display: none;
   }
 }
