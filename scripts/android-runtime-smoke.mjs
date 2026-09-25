@@ -361,6 +361,20 @@ if (resumeOnly) {
       environment: canvas?.dataset.environmentVisual ?? '',
       canvases: document.querySelectorAll('canvas').length,
       touch: Boolean(document.querySelector('[aria-label="Touch combat controls"]') && document.querySelector('.move-stick') && document.querySelector('.fire-button') && document.querySelector('.dodge-button')),
+      hudLayout: (() => {
+        const ui = document.querySelector('.touch-ui');
+        const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+        return {
+          preset: ui?.dataset.layoutPreset ?? '',
+          movementInset: Number(ui?.dataset.movementInset ?? NaN),
+          movementLift: Number(ui?.dataset.movementLift ?? NaN),
+          movementScale: Number(ui?.dataset.movementScale ?? NaN),
+          actionInset: Number(ui?.dataset.actionInset ?? NaN),
+          actionLift: Number(ui?.dataset.actionLift ?? NaN),
+          actionScale: Number(ui?.dataset.actionScale ?? NaN),
+          savedPreset: state?.profile?.settings?.hudLayoutPreset ?? '',
+        };
+      })(),
     };
   })()`);
   if (resumed.qualityMode !== 'performance' || resumed.tier !== 'performance') {
@@ -372,6 +386,18 @@ if (resumeOnly) {
   if (!resumed.touch || resumed.canvases < 1) {
     throw new Error(`Android resume did not restore combat/touch surfaces: ${JSON.stringify(resumed)}`);
   }
+  const resumedLayout = resumed.hudLayout;
+  if (resumedLayout.preset !== 'left-handed'
+    || resumedLayout.savedPreset !== 'left-handed'
+    || Math.abs(resumedLayout.movementInset - 0.35) > 0.001
+    || Math.abs(resumedLayout.movementLift - 0.4) > 0.001
+    || Math.abs(resumedLayout.movementScale - 1.04) > 0.001
+    || Math.abs(resumedLayout.actionInset - 0.3) > 0.001
+    || Math.abs(resumedLayout.actionLift - 0.25) > 0.001
+    || Math.abs(resumedLayout.actionScale - 0.96) > 0.001) {
+    throw new Error(`Android resume did not preserve the customized P19-F HUD layout: ${JSON.stringify(resumedLayout)}`);
+  }
+  console.log(`ANDROID_P19_HUD_LAYOUT_RESUME_PASS preset=${resumedLayout.preset} movement=${resumedLayout.movementInset}/${resumedLayout.movementLift}/${resumedLayout.movementScale} action=${resumedLayout.actionInset}/${resumedLayout.actionLift}/${resumedLayout.actionScale} process=${resumeProcessMode}`);
   console.log(`ANDROID_LIFECYCLE_RESUME_PASS process=${resumeProcessMode} mode=${resumed.qualityMode} tier=${resumed.tier} budget=${resumed.budget} environment=${resumed.environment} canvases=${resumed.canvases}`);
   session.close();
   await sleep(100);
