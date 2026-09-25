@@ -831,6 +831,95 @@ await waitFor(`(() => {
 console.log('ANDROID_P19_GUIDE_DEEPLINK_PASS section=equipment-rarity touch=link back=history+focus text=large rotation=landscape+portrait safe=onscreen');
 console.log(`ANDROID_P19_ARMORY_CARD_PASS storage=${p19ArmoryCardScan.storageCount} equipped=${p19ArmoryCardScan.equippedCount} blocked=${p19ArmoryCardScan.blockedStorageCount} fontFloor=${p19ArmoryCardScan.minReadableFont.toFixed(1)}px compare=quick-read details=shared-sheet equip=restored guide=equipment-rarity`);
 
+await tapButton('Settings', 98);
+await waitFor(`Boolean(document.querySelector('.settings-panel select[aria-label="Combat layout preset"]') && document.querySelector('button[data-hud-layout-reset]'))`, 'P19-F HUD layout settings');
+
+const p19AccessibilityBefore = await evaluate(`(() => {
+  const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+  const settings = state?.profile?.settings;
+  return settings ? { textScale: settings.textScale, contrast: settings.contrast, reducedMotion: settings.reducedMotion } : null;
+})()`);
+if (!p19AccessibilityBefore) throw new Error('Android P19-F could not capture baseline accessibility settings.');
+
+async function setP19HudControl(label, value) {
+  const applied = await evaluate(`(() => {
+    const control = document.querySelector(${JSON.stringify(`[aria-label="${label}"]`)});
+    if (!(control instanceof HTMLSelectElement) && !(control instanceof HTMLInputElement)) return false;
+    const proto = control instanceof HTMLSelectElement ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
+    const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+    if (!setter) return false;
+    setter.call(control, ${JSON.stringify(String(value))});
+    if (control instanceof HTMLInputElement) control.dispatchEvent(new Event('input', { bubbles: true }));
+    control.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
+  })()`);
+  if (!applied) throw new Error(`Android P19-F could not change ${label} to ${value}.`);
+  await sleep(160);
+}
+
+for (const [preset, expectedScale] of [['standard', 1], ['large', 1.08], ['left-handed', 1]]) {
+  await setP19HudControl('Combat layout preset', preset);
+  await waitFor(`(() => {
+    const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+    return state?.profile?.settings?.hudLayoutPreset === '${preset}';
+  })()`, `persisted ${preset} HUD preset`);
+  await setP19HudControl('Movement cluster height', 0.55);
+  await waitFor(`(() => {
+    const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+    return Math.abs((state?.profile?.settings?.movementClusterLift ?? -1) - 0.55) < 0.001;
+  })()`, `customized ${preset} movement cluster`);
+  const resetClicked = await evaluate(`document.querySelector('button[data-hud-layout-reset]')?.click(); true`);
+  if (!resetClicked) throw new Error(`Android P19-F could not reset ${preset} layout.`);
+  await waitFor(`(() => {
+    const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+    const settings = state?.profile?.settings;
+    return settings?.hudLayoutPreset === '${preset}'
+      && settings.movementClusterInset === 0
+      && settings.movementClusterLift === 0
+      && Math.abs(settings.movementClusterScale - ${expectedScale}) < 0.001
+      && settings.actionClusterInset === 0
+      && settings.actionClusterLift === 0
+      && Math.abs(settings.actionClusterScale - ${expectedScale}) < 0.001;
+  })()`, `reset ${preset} HUD preset`);
+}
+
+await setP19HudControl('Combat layout preset', 'left-handed');
+for (const [label, value] of [
+  ['Movement cluster inset', 0.35],
+  ['Movement cluster height', 0.4],
+  ['Movement cluster size', 1.04],
+  ['Action cluster inset', 0.3],
+  ['Action cluster height', 0.25],
+  ['Action cluster size', 0.96],
+]) await setP19HudControl(label, value);
+
+await waitFor(`(() => {
+  const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+  const s = state?.profile?.settings;
+  return s?.hudLayoutPreset === 'left-handed'
+    && Math.abs(s.movementClusterInset - 0.35) < 0.001
+    && Math.abs(s.movementClusterLift - 0.4) < 0.001
+    && Math.abs(s.movementClusterScale - 1.04) < 0.001
+    && Math.abs(s.actionClusterInset - 0.3) < 0.001
+    && Math.abs(s.actionClusterLift - 0.25) < 0.001
+    && Math.abs(s.actionClusterScale - 0.96) < 0.001;
+})()`, 'persisted customized left-handed HUD layout');
+
+const p19SettingsResult = await evaluate(`(() => {
+  const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+  const s = state?.profile?.settings;
+  return s ? {
+    preset: s.hudLayoutPreset,
+    movement: [s.movementClusterInset, s.movementClusterLift, s.movementClusterScale],
+    action: [s.actionClusterInset, s.actionClusterLift, s.actionClusterScale],
+    accessibility: { textScale: s.textScale, contrast: s.contrast, reducedMotion: s.reducedMotion },
+  } : null;
+})()`);
+if (!p19SettingsResult || JSON.stringify(p19SettingsResult.accessibility) !== JSON.stringify(p19AccessibilityBefore)) {
+  throw new Error(`Android P19-F changed unrelated accessibility settings: before=${JSON.stringify(p19AccessibilityBefore)} after=${JSON.stringify(p19SettingsResult)}`);
+}
+console.log(`ANDROID_P19_HUD_LAYOUT_SETTINGS_PASS presets=standard+large+left-handed reset=all custom=${p19SettingsResult.preset}:${p19SettingsResult.movement.join('/')};${p19SettingsResult.action.join('/')} accessibility=preserved`);
+
 await tapButton('Crafting', 32);
 await waitFor(`Boolean(document.querySelector('.reconstruction-panel .reconstruction-top.iv-panel.iv-panel--glass') && document.querySelector('.reconstruct-storage.iv-panel') && document.querySelector('.build-tabs button[aria-current="page"]')?.textContent?.includes('Crafting'))`, 'Android P15-B Crafting surface');
 const p19CraftingHierarchy = await evaluate(`(() => {
