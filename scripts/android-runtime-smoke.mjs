@@ -389,6 +389,9 @@ if (plannerPersistenceOnly) {
       && targets.length === 2
       && targets[0] === 'ballistics-3'
       && targets[1] === 'mobility-1'
+      && state.profile.operatorNetwork.allocatedNodeIds.join(',') === 'ballistics-1,ballistics-2'
+      && state.profile.operatorNetwork.unspentPoints === 0
+      && state.profile.progressionPoints === 0
       && !state.profile.operatorNetwork.allocatedNodeIds.includes('ballistics-3')
       && !state.profile.operatorNetwork.allocatedNodeIds.includes('mobility-1')
       && state?.profile?.settings?.interfaceSize === 'large'
@@ -417,8 +420,14 @@ if (plannerPersistenceOnly) {
   await tap('button[data-p18-progression-tab="true"]', 82);
   await waitFor(`(() => {
     const text = document.querySelector('.network-plan-card')?.textContent ?? '';
-    return text.includes('2 targets') && text.includes('Breach Doctrine') && text.includes('Servo Timing');
-  })()`, 'restored multi-target plan UI after cold relaunch', 20_000);
+    const autoButton = [...document.querySelectorAll('button')].find(candidate => (candidate.textContent || '').trim() === 'Auto Allocate');
+    return text.includes('2 targets')
+      && text.includes('Breach Doctrine')
+      && text.includes('Servo Timing')
+      && text.includes('FUTURE POINTS NEEDED')
+      && autoButton instanceof HTMLButtonElement
+      && autoButton.disabled;
+  })()`, 'restored partial Auto Allocate plan UI after cold relaunch', 20_000);
 
   const persisted = await evaluate(`(() => {
     const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
@@ -427,6 +436,7 @@ if (plannerPersistenceOnly) {
       networkSchema: state?.operatorNetworkSchemaVersion,
       targets: state?.profile?.operatorNetwork?.plannedTargetNodeIds ?? [],
       allocated: state?.profile?.operatorNetwork?.allocatedNodeIds ?? [],
+      unspentPoints: state?.profile?.operatorNetwork?.unspentPoints,
       interfaceSize: state?.profile?.settings?.interfaceSize ?? '',
       hudLayout: state?.profile?.settings ? {
         preset: state.profile.settings.hudLayoutPreset,
@@ -439,7 +449,7 @@ if (plannerPersistenceOnly) {
       } : null,
     };
   })()`);
-  console.log(`ANDROID_NETWORK_PLANNER_PERSISTENCE_PASS version=${persisted.version} schema=${persisted.networkSchema} targets=${persisted.targets.join('+')} relaunch=cold ui=restored nonDestructive=${persisted.allocated.includes('ballistics-3') || persisted.allocated.includes('mobility-1') ? 'false' : 'true'}`);
+  console.log(`ANDROID_NETWORK_PLANNER_PERSISTENCE_PASS version=${persisted.version} schema=${persisted.networkSchema} targets=${persisted.targets.join('+')} allocated=${persisted.allocated.join('+')} unspent=${persisted.unspentPoints} relaunch=cold ui=restored autoAllocate=partial`);
   console.log(`ANDROID_P20_INTERFACE_SIZE_RELAUNCH_PASS size=${persisted.interfaceSize} relaunch=cold`);
   console.log(`ANDROID_P19_HUD_LAYOUT_RELAUNCH_PASS preset=${persisted.hudLayout?.preset} movement=${persisted.hudLayout?.movementInset}/${persisted.hudLayout?.movementLift}/${persisted.hudLayout?.movementScale} action=${persisted.hudLayout?.actionInset}/${persisted.hudLayout?.actionLift}/${persisted.hudLayout?.actionScale} relaunch=cold`);
   session.close();
