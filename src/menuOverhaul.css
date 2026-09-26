@@ -2528,13 +2528,17 @@
   }
 
   :root[data-interface-size='compact'] .ship-hub.area-command .command-bridge-compact .command-bridge-copy h2 {
-    margin: .2rem 0;
+    margin: 0;
     font-size: clamp(17px, 1.45rem, 20px);
     line-height: 1;
   }
 
+  /* Compact phone density: keep actionable readiness, drop redundant identity/decorative copy
+     that is already available in the surrounding Command shell and dedicated Operator views. */
+  :root[data-interface-size='compact'] .ship-hub.area-command .command-bridge-copy .card-kicker,
+  :root[data-interface-size='compact'] .ship-hub.area-command .command-bridge-copy > p,
   :root[data-interface-size='compact'] .ship-hub.area-command .command-visual-tags {
-    margin-top: .3rem;
+    display: none;
   }
 
   :root[data-interface-size='compact'] .ship-hub.area-command .bridge-compact-readiness {
