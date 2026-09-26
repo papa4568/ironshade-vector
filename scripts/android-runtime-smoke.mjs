@@ -2753,14 +2753,20 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
       }
       const pursuitDirection = state.objectiveComplete && state.extractionHostileDirection ? state.extractionHostileDirection : state.hostileDirection;
       const pursuitRange = state.objectiveComplete && state.extractionHostileRange > 0 ? state.extractionHostileRange : state.hostileRange;
-      await p20eGamepadCombat(pursuitRange > 220 ? pursuitDirection : '', pursuitRange > 620 ? 1300 : pursuitRange > 340 ? 1050 : pursuitRange > 220 ? 850 : 1450);
-      if (iteration % 4 === 0) {
-        const offense = await elementMetrics('.ability-button.ability-0:not(:disabled)');
-        if (offense) {
-          await dispatchTouch('touchStart', offense.x, offense.y, idBase + 8000 + iteration);
-          await sleep(90);
-          await dispatchTouch('touchEnd', offense.x, offense.y, idBase + 8000 + iteration);
-          await sleep(120);
+      if (pursuitDirection && pursuitRange > 260) {
+        const closeMs = pursuitRange > 700 ? 1200 : pursuitRange > 480 ? 900 : 560;
+        await p20eMove(pursuitDirection, idBase + 9000 + iteration, closeMs);
+        await sleep(120);
+      } else {
+        await p20eGamepadCombat('', 1500);
+        if (iteration % 2 === 0) {
+          const offense = await elementMetrics('.ability-button.ability-0:not(:disabled)');
+          if (offense) {
+            await dispatchTouch('touchStart', offense.x, offense.y, idBase + 8000 + iteration);
+            await sleep(90);
+            await dispatchTouch('touchEnd', offense.x, offense.y, idBase + 8000 + iteration);
+            await sleep(120);
+          }
         }
       }
     } else if (!state.objectiveComplete) {
