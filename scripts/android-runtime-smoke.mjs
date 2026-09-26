@@ -2764,6 +2764,13 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
           await sleep(100);
         }
       }
+      const vent = await elementMetrics('.vent-button:not(:disabled)');
+      if (vent) {
+        await dispatchTouch('touchStart', vent.x, vent.y, idBase + 7500 + iteration);
+        await sleep(90);
+        await dispatchTouch('touchEnd', vent.x, vent.y, idBase + 7500 + iteration);
+        await sleep(180);
+      }
       const pursuitDirection = state.extractionHostileDirection || state.hostileDirection;
       const pursuitRange = state.extractionHostileRange > 0 ? state.extractionHostileRange : state.hostileRange;
       if (pursuitDirection && pursuitRange > 220) {
