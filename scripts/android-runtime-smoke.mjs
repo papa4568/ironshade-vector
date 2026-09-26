@@ -1757,6 +1757,35 @@ await evaluate(`(() => {
 })()`);
 await sleep(300);
 await tap('button[data-location="asteroid-refinery"]', 23);
+await sleep(220);
+const p20ContractSelected = await evaluate(`document.querySelector('button[data-location="asteroid-refinery"]')?.classList.contains('selected') === true`);
+if (!p20ContractSelected) {
+  const retryPoint = await evaluate(`(() => {
+    const target = document.querySelector('button[data-location="asteroid-refinery"]');
+    if (!(target instanceof HTMLButtonElement)) return null;
+    const rect = target.getBoundingClientRect();
+    const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
+    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    const inset = 10;
+    const candidates = [
+      [rect.left + rect.width * .5, rect.top + rect.height * .5],
+      [rect.left + rect.width * .5, rect.top + Math.min(34, rect.height * .25)],
+      [rect.left + rect.width * .5, rect.bottom - Math.min(34, rect.height * .25)],
+      [rect.left + Math.min(34, rect.width * .2), rect.top + rect.height * .5],
+    ];
+    for (const [x, y] of candidates) {
+      if (x < inset || y < inset || x > viewportWidth - inset || y > viewportHeight - inset) continue;
+      const hit = document.elementFromPoint(x, y);
+      if (hit && (hit === target || target.contains(hit))) return { x, y, hit: hit.tagName };
+    }
+    return null;
+  })()`);
+  if (!retryPoint) throw new Error('Android contract card had no unobscured visible touch point after Interface Size QA.');
+  await dispatchTouch('touchStart', retryPoint.x, retryPoint.y, 123);
+  await sleep(120);
+  await dispatchTouch('touchEnd', retryPoint.x, retryPoint.y, 123);
+  console.log(`ANDROID_CONTRACT_TOUCH_RETRY_PASS target=asteroid-refinery hit=${retryPoint.hit}`);
+}
 await waitFor(`document.querySelector('button[data-location="asteroid-refinery"]')?.classList.contains('selected') === true`, 'Asteroid Refinery contract selection');
 
 await tapButton('Deploy selected contract', 24, 120);
