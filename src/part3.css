@@ -778,3 +778,57 @@
     min-width: 7rem;
   }
 }
+
+
+/* P20-A // Real Settings-flow Compact fallback for Build management geometry.
+   This binds directly to the rendered Build shell profile state and does not depend
+   on document-root rem propagation. Touch decisions keep their existing minimums. */
+.build-bay[data-interface-size='compact'] {
+  padding-top: max(8px, env(safe-area-inset-top));
+  padding-right: max(8px, env(safe-area-inset-right));
+  padding-left: max(8px, env(safe-area-inset-left));
+}
+.build-bay[data-interface-size='compact'] .build-header {
+  margin-bottom: 5px;
+  padding-block: 2px 5px;
+}
+.build-bay[data-interface-size='compact'] .build-tabs {
+  gap: 4px;
+  margin-bottom: 5px;
+}
+.build-bay[data-interface-size='compact'] .build-tabs button {
+  min-height: 44px;
+  padding: 5px 8px;
+}
+.build-bay[data-interface-size='compact'] .settings-panel label {
+  gap: 9px;
+  margin-top: 4px;
+  padding: 8px;
+  border-radius: 8px;
+}
+.build-bay[data-interface-size='compact'] .settings-panel select {
+  min-width: 104px;
+  padding: 5px 7px;
+  border-radius: 7px;
+}
+.build-bay[data-interface-size='compact'] .inventory-grid,
+.build-bay[data-interface-size='compact'] .equipment-slots,
+.build-bay[data-interface-size='compact'] .reconstruct-layout {
+  gap: 6px;
+}
+.build-bay[data-interface-size='compact'] .inventory-card {
+  min-height: 82px;
+  padding: 8px;
+  border-radius: 8px;
+}
+.build-bay[data-interface-size='compact'] .equipped-card {
+  min-height: 68px;
+  padding: 8px;
+  border-radius: 8px;
+}
+.build-bay[data-interface-size='compact'] .network-planner,
+.build-bay[data-interface-size='compact'] .network-branch,
+.build-bay[data-interface-size='compact'] .reconstruction-bench {
+  padding: 8px;
+  border-radius: 8px;
+}
