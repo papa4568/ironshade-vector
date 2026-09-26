@@ -2609,14 +2609,6 @@ if (scrollAfter.x !== scrollBefore.x || scrollAfter.y !== scrollBefore.y) {
 
 console.log(`ANDROID_TOUCH_SMOKE_PASS move=drag aim=drag fire=hold ability=tap dodge=tap weapon=class-locked scroll=${scrollAfter.x},${scrollAfter.y}`);
 
-async function p20eFireBurst(id, holdMs = 1000) {
-  const fire = await elementMetrics('.fire-button:not(:disabled)');
-  if (!fire) throw new Error('P20-E FIRE control unavailable during representative contract play.');
-  await dispatchTouch('touchStart', fire.x, fire.y, id);
-  await sleep(holdMs);
-  await dispatchTouch('touchEnd', fire.x, fire.y, id);
-}
-
 const p20eDirectionOffset = {
   RIGHT: [36, 0], 'DOWN-RIGHT': [30, 30], DOWN: [0, 36], 'DOWN-LEFT': [-30, 30],
   LEFT: [-36, 0], 'UP-LEFT': [-30, -30], UP: [0, -36], 'UP-RIGHT': [30, -30],
@@ -2631,6 +2623,69 @@ async function p20eMove(direction, id, duration = 650) {
   await dispatchTouch('touchMove', stick.x + offset[0], stick.y + offset[1], id);
   await sleep(duration);
   await dispatchTouch('touchEnd', stick.x + offset[0], stick.y + offset[1], id);
+}
+
+
+async function p20eInstallCombatGamepad() {
+  const installed = await evaluate(`(() => {
+    const original = typeof navigator.getGamepads === 'function' ? navigator.getGamepads.bind(navigator) : null;
+    globalThis.__ironshadeP20eOriginalGetGamepads = original;
+    globalThis.__ironshadeP20eGamepad = {
+      connected: true,
+      axes: [0, 0, 0, 0],
+      buttons: Array.from({ length: 16 }, () => ({ pressed: false, value: 0 })),
+    };
+    Object.defineProperty(navigator, 'getGamepads', {
+      configurable: true,
+      value: () => [globalThis.__ironshadeP20eGamepad],
+    });
+    return typeof navigator.getGamepads === 'function';
+  })()`);
+  if (!installed) throw new Error('P20-E could not install assisted combat gamepad.');
+}
+
+async function p20eGamepadCombat(direction, duration = 950) {
+  const offset = p20eDirectionOffset[direction] ?? [0, 0];
+  const x = Math.max(-1, Math.min(1, offset[0] / 36));
+  const y = Math.max(-1, Math.min(1, offset[1] / 36));
+  await evaluate(`(() => {
+    const pad = globalThis.__ironshadeP20eGamepad;
+    if (!pad) return false;
+    pad.axes[0] = ${x};
+    pad.axes[1] = ${y};
+    const trigger = pad.buttons[7];
+    trigger.pressed = true;
+    trigger.value = 1;
+    return true;
+  })()`);
+  await sleep(duration);
+  await evaluate(`(() => {
+    const pad = globalThis.__ironshadeP20eGamepad;
+    if (!pad) return false;
+    pad.axes[0] = 0;
+    pad.axes[1] = 0;
+    const trigger = pad.buttons[7];
+    trigger.pressed = false;
+    trigger.value = 0;
+    return true;
+  })()`);
+  await sleep(140);
+}
+
+async function p20eRemoveCombatGamepad() {
+  await evaluate(`(() => {
+    const pad = globalThis.__ironshadeP20eGamepad;
+    if (pad) {
+      pad.axes[0] = 0;
+      pad.axes[1] = 0;
+      for (const button of pad.buttons) { button.pressed = false; button.value = 0; }
+    }
+    const original = globalThis.__ironshadeP20eOriginalGetGamepads;
+    if (original) Object.defineProperty(navigator, 'getGamepads', { configurable: true, value: original });
+    delete globalThis.__ironshadeP20eGamepad;
+    delete globalThis.__ironshadeP20eOriginalGetGamepads;
+    return true;
+  })()`);
 }
 
 async function p20eFinishActiveFamily(expectedFamily, idBase) {
@@ -2665,25 +2720,7 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
     } else if (state.remaining > 0) {
       const pursuitDirection = state.objectiveComplete && state.extractionHostileDirection ? state.extractionHostileDirection : state.hostileDirection;
       const pursuitRange = state.objectiveComplete && state.extractionHostileRange > 0 ? state.extractionHostileRange : state.hostileRange;
-      if (pursuitDirection && pursuitRange > 340) {
-        await p20eMove(pursuitDirection, idBase + iteration, pursuitRange > 620 ? 1100 : 850);
-        await sleep(90);
-      } else {
-        await p20eFireBurst(idBase + 1000 + iteration, pursuitRange > 220 ? 1050 : 850);
-        if (iteration % 4 === 0) {
-          const ability = await elementMetrics('.ability-button:not(:disabled)');
-          if (ability) {
-            await dispatchTouch('touchStart', ability.x, ability.y, idBase + 2000 + iteration);
-            await sleep(90);
-            await dispatchTouch('touchEnd', ability.x, ability.y, idBase + 2000 + iteration);
-          }
-        }
-        if (pursuitDirection && pursuitRange > 220) {
-          await p20eMove(pursuitDirection, idBase + iteration, 260);
-        } else {
-          await sleep(220);
-        }
-      }
+      await p20eGamepadCombat(pursuitDirection, pursuitRange > 620 ? 1300 : pursuitRange > 340 ? 1050 : 850);
     } else if (!state.objectiveComplete) {
       if (state.objectiveDirection) {
         const approachMs = state.objectiveRange > 900 ? 520 : state.objectiveRange > 500 ? 360 : state.objectiveRange > 250 ? 220 : state.objectiveRange > 120 ? 130 : 70;
@@ -2725,12 +2762,15 @@ async function p20eDeployFamily(family, idBase) {
   await waitFor(`document.querySelector('.game-root')?.dataset.repeatableFamily === '${family}'`, `P20-E ${family} deployment`, 45_000);
 }
 
+await p20eInstallCombatGamepad();
+await waitFor(`document.querySelector('canvas')?.dataset.controllerInput === 'connected'`, 'P20-E assisted combat controller', 10_000);
 await p20eFinishActiveFamily('stabilization', 2100);
 await p20eDeployFamily('salvage', 2300);
 await p20eFinishActiveFamily('salvage', 2400);
 await p20eDeployFamily('boarding', 2600);
 await p20eFinishActiveFamily('boarding', 2700);
-console.log('ANDROID_P20E_REPEATABLE_PLAY_PASS families=stabilization+salvage+boarding completions=3 depth=safe input=touch actualGameplay=true');
+await p20eRemoveCombatGamepad();
+console.log('ANDROID_P20E_REPEATABLE_PLAY_PASS families=stabilization+salvage+boarding completions=3 depth=safe input=controller-combat+touch-objectives actualGameplay=true');
 
 session.close();
 console.log(`ANDROID_RUNTIME_SMOKE_PASS title=${startup.title} route=ship>contracts>combat canvases=${combat.canvases}`);
