@@ -2647,6 +2647,7 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
         hostileDirection: root?.dataset.nearestHostileDirection ?? '',
         objectiveComplete: root?.dataset.objectiveComplete === 'true',
         objectiveDirection: root?.dataset.objectiveDirection ?? '',
+        objectiveRange: Number((document.querySelector('.post-clear-objective span')?.textContent?.match(/RANGE (\\d+)/)?.[1]) ?? '0'),
         extractionReady: root?.dataset.extractionReady === 'true',
         interact: Boolean(document.querySelector('.interact-button:not(:disabled)')),
       };
@@ -2666,7 +2667,9 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
       await p20eSyntheticFire(false);
     } else if (!state.objectiveComplete) {
       if (state.objectiveDirection) {
-        await p20eMove(state.objectiveDirection, idBase + iteration, 520);
+        const approachMs = state.objectiveRange > 900 ? 520 : state.objectiveRange > 500 ? 360 : state.objectiveRange > 250 ? 220 : state.objectiveRange > 120 ? 130 : 70;
+        await p20eMove(state.objectiveDirection, idBase + iteration, approachMs);
+        await sleep(state.objectiveRange > 250 ? 90 : 180);
       } else {
         await sleep(350);
       }
