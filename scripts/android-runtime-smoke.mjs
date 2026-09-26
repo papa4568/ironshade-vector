@@ -1865,15 +1865,12 @@ async function p20cLoadClassCombat(operatorClass, family, kit, singularTrait = n
   })()`);
   if (!seeded || seeded.operatorClass !== operatorClass) throw new Error(`Android P20-C could not seed ${operatorClass} combat profile.`);
   await waitFor(`performance.timeOrigin !== ${JSON.stringify(previousTimeOrigin)}`, `Android P20-C ${operatorClass} reload`, 45_000);
-  await waitFor(`(() => {
-    const button = [...document.querySelectorAll('button')].find(candidate => (candidate.textContent || '').trim().toLowerCase() === 'operations');
-    return document.readyState === 'complete' && Boolean(button) && !button.disabled;
-  })()`, `Android P20-C ${operatorClass} Command Deck`, 45_000);
+  await waitFor(`document.readyState === 'complete' && Boolean(document.querySelector('button[data-primary-area="operations"]'))`, `Android P20-C ${operatorClass} Command Deck`, 45_000);
   if (!deploy) return;
 
   const openedOperations = await evaluate(`(() => {
-    const button = [...document.querySelectorAll('button')].find(candidate => (candidate.textContent || '').trim().toLowerCase() === 'operations');
-    if (!button || button.disabled) return false;
+    const button = document.querySelector('button[data-primary-area="operations"]');
+    if (!button) return false;
     button.click();
     return true;
   })()`);
