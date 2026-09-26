@@ -108,10 +108,15 @@ test -s android-chapter3-playthrough.png
 test -s android-chapter3-playthrough.json
 grep -q '"result": "PASS"' android-chapter3-playthrough.json
 
+# Black-box settings beta pass. This deliberately clears the app after all stateful
+# gameplay gates above, then drives only visible Android UI with adb input and
+# UiAutomator observation. It must not use CDP/DOM/localStorage shortcuts.
+python3 scripts/android-settings-playtest.py
+
 adb logcat -d > android-runtime-logcat.txt
 if grep -E 'FATAL EXCEPTION|Process: app\.ironshade\.vector' android-runtime-logcat.txt; then
   echo 'Android runtime crash detected.' >&2
   exit 1
 fi
 
-echo "ANDROID_EMULATOR_PASS pid=${APP_PID} resumePid=${RESUME_PID} plannerRelaunchPid=${PLANNER_PID} route=ship>contracts>combat lifecycle=resume plannerPersistence=cold-relaunch chapter3=touch-playthrough authoredOperator=verified authoredEnemies=verified authoredWeapons=verified authoredRefinery=verified"
+echo "ANDROID_EMULATOR_PASS pid=${APP_PID} resumePid=${RESUME_PID} plannerRelaunchPid=${PLANNER_PID} route=ship>contracts>combat lifecycle=resume plannerPersistence=cold-relaunch chapter3=touch-playthrough settings=black-box-playtest authoredOperator=verified authoredEnemies=verified authoredWeapons=verified authoredRefinery=verified"
