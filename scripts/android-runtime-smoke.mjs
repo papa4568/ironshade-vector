@@ -2813,8 +2813,13 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
 }
 
 async function p20eDeployFamily(family, idBase) {
-  await tapButton('Return to contract hub', idBase);
-  await waitFor(`Boolean(document.querySelector('button[data-primary-area="operations"]'))`, `P20-E ${family} command deck`);
+  const onDebrief = await evaluate(`Boolean(document.querySelector('[data-presentation="mission-debrief"]'))`);
+  if (onDebrief) {
+    await tapButton('Return to contract hub', idBase);
+    await waitFor(`Boolean(document.querySelector('button[data-primary-area="operations"]'))`, `P20-E ${family} command deck`);
+  } else {
+    await waitFor(`Boolean(document.querySelector('button[data-primary-area="operations"]'))`, `P20-E ${family} command deck`);
+  }
   await tapButton('Operations', idBase + 1);
   await waitFor(`[...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'contracts')`, `P20-E ${family} Operations`);
   await tapButton('Contracts', idBase + 2);
@@ -2831,6 +2836,12 @@ async function p20eDeployFamily(family, idBase) {
   await waitFor(`document.querySelector('.game-root')?.dataset.repeatableFamily === '${family}'`, `P20-E ${family} deployment`, 45_000);
 }
 
+await p20cLoadClassCombat('systems', 'carbine', [
+  { name: 'Polarity Well', short: 'WELL' },
+  { name: 'Relay Hack', short: 'HACK' },
+  { name: 'Cascade Arc', short: 'CHAIN' },
+], null, false);
+await p20eDeployFamily('stabilization', 2000);
 await p20eInstallCombatGamepad();
 await waitFor(`document.querySelector('canvas')?.dataset.controllerInput === 'connected'`, 'P20-E assisted combat controller', 10_000);
 await p20eFinishActiveFamily('stabilization', 2100);
@@ -2839,7 +2850,7 @@ await p20eFinishActiveFamily('salvage', 2400);
 await p20eDeployFamily('boarding', 2600);
 await p20eFinishActiveFamily('boarding', 2700);
 await p20eRemoveCombatGamepad();
-console.log('ANDROID_P20E_REPEATABLE_PLAY_PASS families=stabilization+salvage+boarding completions=3 depth=safe input=controller-combat+touch-objectives actualGameplay=true');
+console.log('ANDROID_P20E_REPEATABLE_PLAY_PASS families=stabilization+salvage+boarding completions=3 depth=safe class=systems weapon=carbine input=controller-combat+touch-objectives actualGameplay=true');
 
 session.close();
 console.log(`ANDROID_RUNTIME_SMOKE_PASS title=${startup.title} route=ship>contracts>combat canvases=${combat.canvases}`);
