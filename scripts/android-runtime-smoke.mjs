@@ -2608,5 +2608,107 @@ if (scrollAfter.x !== scrollBefore.x || scrollAfter.y !== scrollBefore.y) {
 }
 
 console.log(`ANDROID_TOUCH_SMOKE_PASS move=drag aim=drag fire=hold ability=tap dodge=tap weapon=class-locked scroll=${scrollAfter.x},${scrollAfter.y}`);
+
+async function p20eSyntheticFire(active) {
+  await evaluate(`(() => {
+    const button = document.querySelector('.fire-button');
+    if (!(button instanceof HTMLButtonElement)) return false;
+    button.dispatchEvent(new PointerEvent('${active ? 'pointerdown' : 'pointerup'}', { bubbles: true, pointerId: 1901, pointerType: 'touch', isPrimary: true }));
+    return true;
+  })()`);
+}
+
+const p20eDirectionOffset = {
+  RIGHT: [36, 0], 'DOWN-RIGHT': [30, 30], DOWN: [0, 36], 'DOWN-LEFT': [-30, 30],
+  LEFT: [-36, 0], 'UP-LEFT': [-30, -30], UP: [0, -36], 'UP-RIGHT': [30, -30],
+};
+
+async function p20eMove(direction, id, duration = 650) {
+  const offset = p20eDirectionOffset[direction];
+  if (!offset) { await sleep(220); return; }
+  const stick = await elementMetrics('.move-stick');
+  if (!stick) throw new Error('P20-E movement stick unavailable during representative contract play.');
+  await dispatchTouch('touchStart', stick.x, stick.y, id);
+  await dispatchTouch('touchMove', stick.x + offset[0], stick.y + offset[1], id);
+  await sleep(duration);
+  await dispatchTouch('touchEnd', stick.x + offset[0], stick.y + offset[1], id);
+}
+
+async function p20eFinishActiveFamily(expectedFamily, idBase) {
+  await waitFor(`document.querySelector('.game-root')?.dataset.repeatableFamily === '${expectedFamily}'`, `P20-E ${expectedFamily} combat family`, 30_000);
+  const combatDeadline = Date.now() + 90_000;
+  let iteration = 0;
+  while (Date.now() < combatDeadline) {
+    const state = await evaluate(`(() => {
+      const root = document.querySelector('.game-root');
+      return {
+        dead: Boolean(document.querySelector('[aria-label="Operator down"]')),
+        remaining: Number(root?.dataset.squadRemaining ?? '999'),
+        hostileDirection: root?.dataset.nearestHostileDirection ?? '',
+        objectiveComplete: root?.dataset.objectiveComplete === 'true',
+        objectiveDirection: root?.dataset.objectiveDirection ?? '',
+        extractionReady: root?.dataset.extractionReady === 'true',
+        interact: Boolean(document.querySelector('.interact-button:not(:disabled)')),
+      };
+    })()`);
+    if (state.dead) throw new Error(`P20-E ${expectedFamily} representative play ended with operator down.`);
+
+    if (state.remaining > 0) {
+      await p20eSyntheticFire(true);
+      if (iteration % 4 === 0) {
+        await evaluate(`document.querySelector('.ability-button:not(:disabled)')?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1902, pointerType: 'touch' }))`);
+      }
+      if (state.hostileDirection) await p20eMove(state.hostileDirection, idBase + iteration, 520);
+      else await sleep(700);
+      await p20eSyntheticFire(false);
+    } else if (!state.objectiveComplete) {
+      if (state.interact) {
+        await tap('.interact-button:not(:disabled)', idBase + 500 + iteration, 100);
+        await sleep(420);
+      } else if (state.objectiveDirection) {
+        await p20eMove(state.objectiveDirection, idBase + iteration, 520);
+      } else {
+        await sleep(350);
+      }
+    } else if (state.extractionReady) {
+      break;
+    } else {
+      await sleep(350);
+    }
+    iteration += 1;
+  }
+
+  await waitFor(`Boolean(document.querySelector('[aria-label="Extraction decision"] .extraction-choice button.safe'))`, `P20-E ${expectedFamily} safe extraction choice`, 20_000);
+  await tap('[aria-label="Extraction decision"] .extraction-choice button.safe', idBase + 900, 120);
+  await waitFor(`document.querySelector('[data-presentation="mission-debrief"] h1')?.textContent?.includes('Safe extraction complete') === true`, `P20-E ${expectedFamily} debrief`, 30_000);
+  console.log(`ANDROID_P20E_REPEATABLE_FAMILY_PASS family=${expectedFamily} completion=safe actualGameplay=touch+combat+objective`);
+}
+
+async function p20eDeployFamily(family, idBase) {
+  await tapButton('Return to contract hub', idBase);
+  await waitFor(`Boolean(document.querySelector('button[data-primary-area="operations"]'))`, `P20-E ${family} command deck`);
+  await tapButton('Operations', idBase + 1);
+  await waitFor(`[...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'contracts')`, `P20-E ${family} Operations`);
+  await tapButton('Contracts', idBase + 2);
+  await waitFor(`Boolean(document.querySelector('button[data-contract-id$="-${family}"]'))`, `P20-E ${family} contract card`);
+  const selected = await evaluate(`(() => {
+    const button = document.querySelector('button[data-contract-id$="-${family}"]');
+    if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+    button.click();
+    return true;
+  })()`);
+  if (!selected) throw new Error(`P20-E could not select ${family} representative contract.`);
+  await waitFor(`document.querySelector('button[data-contract-id$="-${family}"]')?.classList.contains('selected') === true && Boolean(document.querySelector('.repeatable-identity-note[data-repeatable-family="${family}"]'))`, `P20-E ${family} authored briefing`);
+  await tapButton('Deploy selected contract', idBase + 3, 120);
+  await waitFor(`document.querySelector('.game-root')?.dataset.repeatableFamily === '${family}'`, `P20-E ${family} deployment`, 45_000);
+}
+
+await p20eFinishActiveFamily('stabilization', 2100);
+await p20eDeployFamily('salvage', 2300);
+await p20eFinishActiveFamily('salvage', 2400);
+await p20eDeployFamily('boarding', 2600);
+await p20eFinishActiveFamily('boarding', 2700);
+console.log('ANDROID_P20E_REPEATABLE_PLAY_PASS families=stabilization+salvage+boarding completions=3 depth=safe input=touch actualGameplay=true');
+
 session.close();
 console.log(`ANDROID_RUNTIME_SMOKE_PASS title=${startup.title} route=ship>contracts>combat canvases=${combat.canvases}`);
