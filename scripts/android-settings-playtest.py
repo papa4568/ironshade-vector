@@ -180,11 +180,22 @@ def set_checkbox(label, expected):
         return
     x, y = center(node)
     print(f"ANDROID_SETTINGS_CHECKBOX label={label!r} expected={expected} before={state} node={node_summary(node)}")
-    tap(x, y, 0.8)
+    tap(x, y, 0.9)
     node = wait_node(label, timeout=8, actionable=True)
     after = node.attrib.get("checked")
     if after in ("true", "false") and (after == "true") != expected:
-        raise RuntimeError(f"Checkbox did not change: {label} expected={expected} after={after}")
+        # WebView checkboxes can expose the small input hit area while the HTML
+        # label owns the more reliable touch target. Retry by tapping the same
+        # row well inside its copy region, exactly as a player can tap a label.
+        x1, y1, x2, y2 = parse_bounds(node.attrib["bounds"])
+        label_x = max(240, x1 - 900)
+        label_y = (y1 + y2) // 2
+        print(f"ANDROID_SETTINGS_CHECKBOX_RETRY label={label!r} x={label_x} y={label_y}")
+        tap(label_x, label_y, 1.0)
+        node = wait_node(label, timeout=8, actionable=True)
+        after = node.attrib.get("checked")
+    if after in ("true", "false") and (after == "true") != expected:
+        raise RuntimeError(f"Checkbox did not change after input+label taps: {label} expected={expected} after={after}")
 
 def adjust_slider(label, fraction):
     for _ in range(10):
