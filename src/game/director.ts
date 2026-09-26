@@ -8,8 +8,8 @@ import { orphelineStageIdentity } from './orphelineCapstone';
 import { hecateStageIdentity } from './hecateCapstone';
 import { getClassMechanicStatus, releaseBossGate, type EnemyRole, type EnemyVariant, type SimState } from './sim';
 
-export type DirectorRuntime = { elapsed: number; deepElapsed: number; deep: boolean; reinforcementsReleased: boolean; gridTriggered: boolean; defenseTriggered: boolean; pressureWarned: boolean; pressureTriggered: boolean; gravityTriggered: boolean; locationEventA: boolean; locationEventB: boolean; megastructureEventA: boolean; megastructureEventB: boolean; thermalPulseUntil: number; clearSweepElapsed: number; clearSweepWarned: boolean; environmental: EnvironmentalEventRuntime };
-export function createDirector(): DirectorRuntime { return { elapsed: 0, deepElapsed: 0, deep: false, reinforcementsReleased: false, gridTriggered: false, defenseTriggered: false, pressureWarned: false, pressureTriggered: false, gravityTriggered: false, locationEventA: false, locationEventB: false, megastructureEventA: false, megastructureEventB: false, thermalPulseUntil: 0, clearSweepElapsed: 0, clearSweepWarned: false, environmental: createEnvironmentalEventRuntime() }; }
+export type DirectorRuntime = { elapsed: number; deepElapsed: number; deep: boolean; reinforcementsReleased: boolean; repeatableDeepTriggered: boolean; gridTriggered: boolean; defenseTriggered: boolean; pressureWarned: boolean; pressureTriggered: boolean; gravityTriggered: boolean; locationEventA: boolean; locationEventB: boolean; megastructureEventA: boolean; megastructureEventB: boolean; thermalPulseUntil: number; clearSweepElapsed: number; clearSweepWarned: boolean; environmental: EnvironmentalEventRuntime };
+export function createDirector(): DirectorRuntime { return { elapsed: 0, deepElapsed: 0, deep: false, reinforcementsReleased: false, repeatableDeepTriggered: false, gridTriggered: false, defenseTriggered: false, pressureWarned: false, pressureTriggered: false, gravityTriggered: false, locationEventA: false, locationEventB: false, megastructureEventA: false, megastructureEventB: false, thermalPulseUntil: 0, clearSweepElapsed: 0, clearSweepWarned: false, environmental: createEnvironmentalEventRuntime() }; }
 function event(state: SimState, text: string, duration = 2.4) { state.eventText = text; state.eventT = duration; }
 function setRole(state: SimState, id: number, role: EnemyRole, label: string) { const enemy = state.enemies.find(item => item.id === id); if (!enemy) return; enemy.role = role; enemy.label = label; enemy.anchored = role === 'elite' || role === 'boss'; }
 function setTacticalEnemy(state: SimState, id: number, role: EnemyRole, variant: EnemyVariant, label: string, hp?: number, armor?: number) { const enemy = state.enemies.find(item => item.id === id); if (!enemy) return; enemy.role = role; enemy.variant = variant; enemy.label = label; enemy.anchored = role === 'elite'; if (typeof hp === 'number') { enemy.hp = hp; enemy.maxHp = hp; } if (typeof armor === 'number') { enemy.armor = armor; enemy.maxArmor = armor; } }
@@ -314,6 +314,27 @@ export function stepMissionDirector(state: SimState, runtime: DirectorRuntime, c
       const sector = state.sectors.find(item => item.id === 'B');
       if (sector) sector.gravity = 0.05;
       event(state, 'GRAVITY CONTROL FAILURE // TRANSFER ZONE 0.05G', 3);
+    }
+  }
+
+  if (contract.standardRepeatable && runtime.deep && !runtime.repeatableDeepTriggered) {
+    const triggerAt = contract.archetype === 'boarding' ? 3 : contract.archetype === 'salvage' ? 4 : 5;
+    if (runtime.deepElapsed >= triggerAt) {
+      runtime.repeatableDeepTriggered = true;
+      if (contract.archetype === 'boarding') {
+        if (!runtime.reinforcementsReleased) {
+          runtime.reinforcementsReleased = true;
+          releaseReinforcements(state, contract);
+        }
+        deployHazard(state, 1760, 520, 'shockGrid', 8);
+        event(state, 'BOARDING DEEP RISK // COUNTER-BOARDERS COMMIT // DENIAL GRID ENERGIZED', 3.2);
+      } else if (contract.archetype === 'stabilization') {
+        deployHazard(state, 1640, 560, 'gravityWell', 8);
+        event(state, 'STABILIZATION DEEP RISK // CONTROL SPINE GRAVITY FAULT SURGE', 3.2);
+      } else {
+        deployHazard(state, 1580, 500, 'vectorWash', 8);
+        event(state, 'SALVAGE DEEP RISK // RECOVERY LANE VECTOR SHEAR', 3.2);
+      }
     }
   }
 
