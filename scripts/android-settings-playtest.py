@@ -385,7 +385,7 @@ def open_settings():
     shot("04-settings")
 
 def return_to_command():
-    tap_with_scroll("Return to ship", direction="up", attempts=12)
+    tap_with_scroll("Return to ship", direction="down", attempts=16)
     wait_node("Command", timeout=20, actionable=True)
     if not visible_label("Tasking nexus online.", contains=True):
         tap_label("Command")
