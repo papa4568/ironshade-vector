@@ -2714,15 +2714,29 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
         objectiveActionReady: root?.dataset.objectiveActionReady === 'true',
         objectiveTargetId: root?.dataset.objectiveTargetId ?? '',
         contextActionId: root?.dataset.contextActionId ?? '',
+        contextActionLabel: root?.dataset.contextActionLabel ?? '',
         extractionReady: root?.dataset.extractionReady === 'true',
         interact: Boolean(document.querySelector('.interact-button:not(:disabled)')),
       };
     })()`);
     if (state.dead) throw new Error(`P20-E ${expectedFamily} representative play ended with operator down.`);
 
+    if (state.health > 0 && state.health < 72) {
+      const med = await elementMetrics('button.consumable-button[aria-label="Trauma Gel"]:not(:disabled)');
+      if (med) {
+        await dispatchTouch('touchStart', med.x, med.y, idBase + 5000 + iteration);
+        await sleep(100);
+        await dispatchTouch('touchEnd', med.x, med.y, idBase + 5000 + iteration);
+        await sleep(180);
+      }
+    }
+
     if (!state.objectiveComplete) {
       if (state.interact && state.objectiveActionReady) {
         await tap('.interact-button:not(:disabled)', idBase + 500 + iteration, 100);
+        await sleep(420);
+      } else if (state.interact && state.contextActionLabel === 'OPEN PRESSURE DOOR') {
+        await tap('.interact-button:not(:disabled)', idBase + 520 + iteration, 100);
         await sleep(420);
       } else if (state.objectiveDirection) {
         if (iteration % 3 === 0) {
@@ -2748,15 +2762,6 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
         await sleep(300);
       }
     } else if (state.remaining > 0) {
-      if (state.health > 0 && state.health < 72) {
-        const med = await elementMetrics('button.consumable-button[aria-label="Trauma Gel"]:not(:disabled)');
-        if (med) {
-          await dispatchTouch('touchStart', med.x, med.y, idBase + 5000 + iteration);
-          await sleep(100);
-          await dispatchTouch('touchEnd', med.x, med.y, idBase + 5000 + iteration);
-          await sleep(180);
-        }
-      }
       if (iteration % 3 === 0) {
         const guard = await elementMetrics('.ability-button.ability-2:not(:disabled)');
         if (guard) {
