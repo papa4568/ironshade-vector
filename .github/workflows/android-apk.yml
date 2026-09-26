@@ -346,5 +346,11 @@ jobs:
             android-network-planner-persistence.png
             android-chapter3-playthrough.png
             android-chapter3-playthrough.json
+            android-settings-playtest.xml
+            android-settings-command-default.png
+            android-settings-command-compact.png
+            android-settings-command-compact-relaunch.png
+            android-settings-playtest-final.png
+            android-settings-command-final-compact.png
           if-no-files-found: error
           retention-days: 90
