@@ -1142,6 +1142,109 @@ try {
   }
   console.log(`BROWSER_P20_BUILD_SCALE_PASS viewport=${viewportMode} loadout+crafting+progression+skills+settings+tabs=ordered overflow=none`);
 
+  const p20dPreviousTimeOrigin = await evaluate('performance.timeOrigin');
+  const p20dSeeded = await evaluate(`(() => {
+    const stateKey = 'ironshade-vector-state-v1';
+    const state = JSON.parse(localStorage.getItem(stateKey) || 'null');
+    if (!state?.profile) return false;
+    state.profile.operatorClass = 'vanguard';
+    state.profile.classSelectionComplete = true;
+    state.profile.specialization = null;
+    state.profile.specializationOverclock = false;
+    state.profile.level = 7;
+    state.profile.xp = Math.max(Number(state.profile.xp || 0), 1890);
+    state.profile.progressionPoints = 6;
+    state.profile.allocatedNodes = [];
+    state.profile.operatorNetwork = { schemaVersion: 3, startNodeId: 'start-vanguard', allocatedNodeIds: [], unspentPoints: 6, plannedTargetNodeIds: [] };
+    state.operatorNetworkSchemaVersion = 3;
+    localStorage.setItem(stateKey, JSON.stringify(state));
+    location.reload();
+    return true;
+  })()`);
+  if (!p20dSeeded) throw new Error('P20-D could not seed a six-point Vanguard recommendation profile.');
+  await waitFor(`performance.timeOrigin !== ${JSON.stringify(p20dPreviousTimeOrigin)}`, 'P20-D browser document reload');
+  await waitFor(`(() => {
+    const operatorButton = [...document.querySelectorAll('button[data-primary-area]')].find(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase() === 'operator');
+    return document.readyState === 'complete' && operatorButton instanceof HTMLButtonElement && !operatorButton.disabled;
+  })()`, 'P20-D seeded Command Deck after reload');
+  await keyboardActivateButton('Operator');
+  await waitFor(`[...document.querySelectorAll('.operator-section-tabs button')].some(button => (button.textContent || '').trim() === 'Build')`, 'P20-D Operator build route');
+  await keyboardActivateButton('Build');
+  await waitFor(`document.querySelector('.build-header h1')?.textContent?.trim() === 'Build'`, 'P20-D Build after seed');
+  const p20dProgressionOpened = await evaluate(`(() => {
+    const button = [...document.querySelectorAll('.build-tabs button')].find(candidate => (candidate.textContent || '').trim().toLowerCase().startsWith('progression'));
+    if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+    button.focus();
+    button.click();
+    return true;
+  })()`);
+  if (!p20dProgressionOpened) throw new Error('P20-D could not open the Progression tab.');
+  await waitFor(`Boolean(document.querySelector('[data-network-recommendation="vanguard-breach-guard-early"]'))`, 'P20-D Vanguard recommendations');
+
+  const p20dLayout = await evaluate(`(() => {
+    const card = document.querySelector('[data-network-recommendation="vanguard-breach-guard-early"]');
+    const button = document.querySelector('button[data-network-recommendation-load="vanguard-breach-guard-early"]');
+    if (!(card instanceof HTMLElement) || !(button instanceof HTMLButtonElement)) return null;
+    const visible = element => {
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+    };
+    const copy = [...card.querySelectorAll('small, b, span, p')].filter(visible);
+    const rect = card.getBoundingClientRect();
+    return {
+      minFont: copy.length ? Math.min(...copy.map(element => Number.parseFloat(getComputedStyle(element).fontSize))) : 0,
+      buttonHeight: button.getBoundingClientRect().height,
+      cardWidth: rect.width,
+      viewportWidth: window.visualViewport?.width ?? window.innerWidth,
+      horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
+      hasRationale: (card.textContent || '').includes('Breacher pressure and armor break'),
+    };
+  })()`);
+  if (!p20dLayout || !p20dLayout.hasRationale || p20dLayout.horizontalOverflow > 2 || p20dLayout.cardWidth > p20dLayout.viewportWidth + 2
+    || (viewportMode === 'mobile-landscape' && (p20dLayout.minFont < 11.5 || p20dLayout.buttonHeight < 44))) {
+    throw new Error(`P20-D recommendation layout failed: ${JSON.stringify(p20dLayout)}`);
+  }
+
+  const p20dLoaded = await evaluate(`(() => {
+    const button = document.querySelector('button[data-network-recommendation-load="vanguard-breach-guard-early"]');
+    if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+    button.focus();
+    button.click();
+    return document.activeElement === button;
+  })()`);
+  if (!p20dLoaded) throw new Error('P20-D could not load the Vanguard early recommendation.');
+  await waitFor(`(() => {
+    const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+    const network = state?.profile?.operatorNetwork;
+    const plan = document.querySelector('.network-plan-card')?.textContent ?? '';
+    return state?.profile?.progressionPoints === 6
+      && Array.isArray(network?.allocatedNodeIds)
+      && network.allocatedNodeIds.length === 0
+      && Array.isArray(network?.plannedTargetNodeIds)
+      && network.plannedTargetNodeIds.join(',') === 'vanguard-breach-telemetry,survival-2'
+      && plan.includes('Breach Telemetry')
+      && plan.includes('Pressure Discipline')
+      && plan.includes('6 PT');
+  })()`, 'P20-D recommendation to non-destructive Planned Build');
+
+  await keyboardActivateButton('Auto Allocate');
+  await waitFor(`(() => {
+    const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+    const network = state?.profile?.operatorNetwork;
+    const report = document.querySelector('.network-auto-allocate-report')?.textContent ?? '';
+    return Array.isArray(network?.allocatedNodeIds)
+      && network.allocatedNodeIds.join(',') === 'vanguard-breach-entry,vanguard-breach-pressure,vanguard-breach-impulse,vanguard-breach-telemetry,survival-1,survival-2'
+      && network.unspentPoints === 0
+      && state?.profile?.progressionPoints === 0
+      && Array.isArray(network?.plannedTargetNodeIds)
+      && network.plannedTargetNodeIds.length === 0
+      && report.includes('6 nodes allocated')
+      && report.includes('6 pt spent')
+      && report.includes('Planned build complete');
+  })()`, 'P20-D recommendation Auto Allocate commit', 20_000);
+  console.log(`BROWSER_P20D_RECOMMENDATION_PASS viewport=${viewportMode} class=vanguard route=early preview=non-destructive autoAllocate=6 readability=${p20dLayout.minFont}px touch=${p20dLayout.buttonHeight}px`);
+
   const p20bPreviousTimeOrigin = await evaluate('performance.timeOrigin');
   const p20bSeeded = await evaluate(`(() => {
     const stateKey = 'ironshade-vector-state-v1';
