@@ -53,7 +53,9 @@ def parse_bounds(value):
     match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", value or "")
     if not match:
         return None
-    return tuple(map(int, match.groups()))
+    bounds = tuple(map(int, match.groups()))
+    x1, y1, x2, y2 = bounds
+    return bounds if x2 > x1 and y2 > y1 else None
 
 def center(node):
     bounds = parse_bounds(node.attrib.get("bounds", ""))
