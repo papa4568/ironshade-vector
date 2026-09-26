@@ -160,6 +160,39 @@ def select_option(label, option):
     x, y = center(option_node)
     tap(x, y, 0.9)
 
+def tap_row_action(row_label, action_label, attempts=16):
+    """Tap a button embedded in a Settings row using only visible accessibility geometry."""
+    for _ in range(attempts):
+        action = actionable_node(action_label)
+        if action is not None and comfortably_visible(action):
+            x, y = center(action)
+            print(f"ANDROID_SETTINGS_ROW_ACTION row={row_label!r} action={action_label!r} path=button node={node_summary(action)}")
+            tap(x, y, 0.9)
+            return
+
+        matches = matching_nodes(row_label)
+        if matches:
+            row, parents = matches[0]
+            current = row
+            best = None
+            while current is not None:
+                bounds = parse_bounds(current.attrib.get("bounds", ""))
+                if bounds:
+                    x1, y1, x2, y2 = bounds
+                    width, height = x2 - x1, y2 - y1
+                    if width >= 1200 and height >= 80 and comfortably_visible(current):
+                        best = current
+                current = parents.get(current)
+            if best is not None:
+                x1, y1, x2, y2 = parse_bounds(best.attrib["bounds"])
+                x = max(x1 + 40, x2 - min(420, max(120, (x2 - x1) // 7)))
+                y = (y1 + y2) // 2
+                print(f"ANDROID_SETTINGS_ROW_ACTION row={row_label!r} action={action_label!r} path=row-right x={x} y={y} container={node_summary(best)}")
+                tap(x, y, 0.9)
+                return
+        scroll_up()
+    raise RuntimeError(f"Could not reach visible row action {action_label!r} for {row_label!r}")
+
 def checkbox_state(label):
     node = actionable_node(label)
     if node is None:
@@ -383,7 +416,7 @@ adjust_slider("Movement cluster size", 0.62)
 adjust_slider("Action cluster inset", 0.68)
 adjust_slider("Action cluster height", 0.64)
 adjust_slider("Action cluster size", 0.70)
-tap_with_scroll("Reset current preset", attempts=12)
+tap_row_action("Reset touch layout", "Reset current preset")
 select_option("Touch aim assistance", "Light")
 set_checkbox("Assisted fire tracking", False)
 set_checkbox("Screen shake", False)
@@ -393,7 +426,7 @@ adjust_slider("Interface volume", 0.65)
 set_checkbox("Mobile haptics", False)
 set_checkbox("Share anonymous run telemetry", True)
 set_checkbox("Share anonymous run telemetry", False)
-tap_with_scroll("Replay field tutorial", attempts=12)
+tap_row_action("Reset touch layout", "Replay field tutorial", attempts=18)
 shot("05-settings-exercised")
 
 # Compare Default and Compact from the same player route and state.
