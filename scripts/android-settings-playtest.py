@@ -426,7 +426,7 @@ adjust_slider("Interface volume", 0.65)
 set_checkbox("Mobile haptics", False)
 set_checkbox("Share anonymous run telemetry", True)
 set_checkbox("Share anonymous run telemetry", False)
-tap_row_action("Reset touch layout", "Replay field tutorial", attempts=18)
+tap_with_scroll("Replay field tutorial", attempts=18)
 shot("05-settings-exercised")
 
 # Compare Default and Compact from the same player route and state.
