@@ -1077,6 +1077,52 @@ if (!p20InterfaceCompact.panelVisible || !p20InterfaceDefault.panelVisible || !p
 }
 console.log(`ANDROID_P20_INTERFACE_SIZE_PASS compact=${p20InterfaceCompact.rootFontSize}px default=${p20InterfaceDefault.rootFontSize}px large=${p20InterfaceLarge.rootFontSize}px rows=${p20InterfaceCompact.rowPadding}/${p20InterfaceDefault.rowPadding}/${p20InterfaceLarge.rowPadding} tabs=${p20InterfaceCompact.tabGap}/${p20InterfaceDefault.tabGap}/${p20InterfaceLarge.tabGap} overflow=none persisted=large`);
 
+async function p20OpenSettingsFromCommand(tapBase) {
+  await tapButton('Operator', tapBase);
+  await waitFor(`Boolean(document.querySelector('.ship-hub.area-operator'))`, 'Android P20-A Operator after Command');
+  await tapButton('Build', tapBase + 1);
+  await waitFor(`Boolean(document.querySelector('.build-bay.iv-view'))`, 'Android P20-A Build after Command');
+  await tapButton('Settings', tapBase + 2);
+  await waitFor(`Boolean(document.querySelector('.settings-panel select[aria-label="Interface size"]'))`, 'Android P20-A Settings after Command');
+}
+
+async function p20CommandFromSettings(size, tapId) {
+  await setP20InterfaceSize(size);
+  await tapButton('Return to ship', tapId);
+  await waitFor(`Boolean(document.querySelector('.ship-hub.area-command[data-interface-size="${size}"]')) && document.documentElement.dataset.interfaceSize === '${size}'`, `Android P20-A ${size} Settings to Command binding`);
+  await sleep(180);
+  return await evaluate(`(() => {
+    const shell = document.querySelector('.ship-hub.area-command');
+    const bridge = document.querySelector('.command-visual.command-bridge.command-bridge-compact');
+    const kicker = document.querySelector('.command-bridge-copy .card-kicker');
+    const nav = document.querySelector('.command-rail-nav button[data-primary-area]');
+    const viewport = window.visualViewport?.width ?? window.innerWidth;
+    return {
+      shellSize: shell?.getAttribute('data-interface-size') ?? '',
+      rootSize: document.documentElement.dataset.interfaceSize ?? '',
+      bridgeHeight: Number((bridge?.getBoundingClientRect().height ?? 0).toFixed(3)),
+      kickerDisplay: kicker ? getComputedStyle(kicker).display : '',
+      navHeight: Number((nav?.getBoundingClientRect().height ?? 0).toFixed(3)),
+      horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - viewport),
+    };
+  })()`);
+}
+
+const p20SettingsFlowCompact = await p20CommandFromSettings('compact', 99);
+await p20OpenSettingsFromCommand(100);
+const p20SettingsFlowDefault = await p20CommandFromSettings('default', 103);
+if (p20SettingsFlowCompact.shellSize !== 'compact' || p20SettingsFlowCompact.rootSize !== 'compact'
+  || p20SettingsFlowDefault.shellSize !== 'default' || p20SettingsFlowDefault.rootSize !== 'default'
+  || !(p20SettingsFlowCompact.bridgeHeight <= p20SettingsFlowDefault.bridgeHeight * 0.8)
+  || p20SettingsFlowCompact.kickerDisplay !== 'none'
+  || p20SettingsFlowCompact.navHeight < 44
+  || p20SettingsFlowCompact.horizontalOverflow > 2 || p20SettingsFlowDefault.horizontalOverflow > 2) {
+  throw new Error(`Android P20-A real Settings -> Command flow did not produce distinct density: ${JSON.stringify({ compact: p20SettingsFlowCompact, default: p20SettingsFlowDefault })}`);
+}
+console.log(`ANDROID_P20_SETTINGS_COMMAND_PASS compactBridge=${p20SettingsFlowCompact.bridgeHeight}px defaultBridge=${p20SettingsFlowDefault.bridgeHeight}px shell=bound root=bound nav=${p20SettingsFlowCompact.navHeight}px overflow=none`);
+await p20OpenSettingsFromCommand(106);
+await setP20InterfaceSize('large');
+
 const p19AccessibilityBefore = await evaluate(`(() => {
   const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
   const settings = state?.profile?.settings;
