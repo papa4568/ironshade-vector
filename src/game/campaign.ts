@@ -64,7 +64,7 @@ export type OperationDirective = { id: string; seed: number; tier: number; locat
 export type DirectiveState = { unlocked: boolean; inventory: OperationDirective[]; preparedId: string | null; completed: number; highestTier: number; lastBeat: string };
 export type CampaignState = { version: 1; shipSystemSchemaVersion: typeof SHIP_SYSTEM_SCHEMA_VERSION; cycle: number; contractsCompleted: number; resources: SalvageWallet; consumables: ConsumableInventory; reputation: Record<FactionId, number>; shipUpgrades: Record<ShipUpgradeId, number>; shipSpecialization: ShipSpecializationId | null; anomalyRecovered: boolean; dailyCompletedDate: string | null; lastOutcome: string; story: StoryState; escalation: EscalationState; directives: DirectiveState };
 export type FactionProfile = { id: FactionId; name: string; history: string; economy: string; culture: string; technology: string; goals: string; strengths: string; failures: string; divisions: string; unlocks: string[] };
-export type Contract = { id: string; sponsor: FactionId; archetype: ContractArchetype; location: LocationId; locationName: string; title: string; objective: string; objectiveMode: ObjectiveMode; objectiveSteps: string[]; briefing: string; conditions: ConditionId[]; conditionLabels: string[]; directorPreview: string; deepTarget: string; rewardBase: Partial<SalvageWallet>; reputationGain: number; contestedFaction?: FactionId; priority: boolean; anomalyOpportunity: boolean; daily?: boolean; operationDate?: string; seed: number; storyArc?: StoryArcId; storyStep?: number; storyFinale?: boolean; storyChapter?: string; storyClue?: boolean; storyAftermath?: string; campaignChapter?: 'black-lattice' | 'dead-reckoning' | 'dead-reckoning-interdiction' | 'parallax-debt'; campaignStep?: number; campaignFinale?: boolean; campaignEvidence?: string; campaignAftermath?: string; escalationStage?: number; escalationFinale?: boolean; escalationDate?: string; megastructure?: MegastructureId; megastructureStage?: number; megastructureStageCount?: number; megastructureZoneNames?: string[]; megastructureOptionalLabel?: string; megastructureBossTarget?: string; megastructureTransitionRoute?: string; megastructureTransitionDetail?: string; megastructureArrivalCue?: string; megastructureContinuityConditions?: ConditionId[]; megastructureContinuityDetail?: string; operationTier?: number; encounterRating?: number; threatBudget?: number; maxRecoveryLevel?: number; maxFrameGeneration?: 1 | 2 | 3 | 4 | 5 | 6; eliteProtocolSlots?: number; environmentalEventSlots?: number; combatEffectiveness?: number; monsterLevel?: number; monsterDamageScale?: number; operationRewardMultiplier?: number; chapterRewardMultiplier?: number; xpFloor?: number; encounterPressureBonus?: number; encounterPattern?: 'swarm' | 'mixed' | 'elite-led'; reserveCount?: number; directiveId?: string; directiveTier?: number; directiveModifierIds?: DirectiveModifierId[]; directiveTargetClass?: DirectiveTargetClass; directiveMaterialMultiplier?: number; directiveQualityBonus?: number; directiveSingularChanceBonus?: number; directiveRecoveryLevelBonus?: number; directiveEventBias?: string[]; directiveProtocolBias?: string[]; directiveThreatBonus?: number; directiveProtocolBonus?: number; directiveProtocolDensity?: number; directiveEventBonus?: number; directiveReserveBonus?: number; directiveRiskScore?: number; directiveSource?: string; commandTrace?: boolean };
+export type Contract = { id: string; sponsor: FactionId; archetype: ContractArchetype; location: LocationId; locationName: string; title: string; objective: string; objectiveMode: ObjectiveMode; objectiveSteps: string[]; briefing: string; conditions: ConditionId[]; conditionLabels: string[]; directorPreview: string; deepTarget: string; rewardBase: Partial<SalvageWallet>; reputationGain: number; contestedFaction?: FactionId; priority: boolean; anomalyOpportunity: boolean; daily?: boolean; operationDate?: string; seed: number; storyArc?: StoryArcId; storyStep?: number; storyFinale?: boolean; storyChapter?: string; storyClue?: boolean; storyAftermath?: string; campaignChapter?: 'black-lattice' | 'dead-reckoning' | 'dead-reckoning-interdiction' | 'parallax-debt'; campaignStep?: number; campaignFinale?: boolean; campaignEvidence?: string; campaignAftermath?: string; escalationStage?: number; escalationFinale?: boolean; escalationDate?: string; megastructure?: MegastructureId; megastructureStage?: number; megastructureStageCount?: number; megastructureZoneNames?: string[]; megastructureOptionalLabel?: string; megastructureBossTarget?: string; megastructureTransitionRoute?: string; megastructureTransitionDetail?: string; megastructureArrivalCue?: string; megastructureContinuityConditions?: ConditionId[]; megastructureContinuityDetail?: string; operationTier?: number; encounterRating?: number; threatBudget?: number; maxRecoveryLevel?: number; maxFrameGeneration?: 1 | 2 | 3 | 4 | 5 | 6; eliteProtocolSlots?: number; environmentalEventSlots?: number; combatEffectiveness?: number; monsterLevel?: number; monsterDamageScale?: number; operationRewardMultiplier?: number; chapterRewardMultiplier?: number; xpFloor?: number; encounterPressureBonus?: number; encounterPattern?: 'swarm' | 'mixed' | 'elite-led'; reserveCount?: number; directiveId?: string; directiveTier?: number; directiveModifierIds?: DirectiveModifierId[]; directiveTargetClass?: DirectiveTargetClass; directiveMaterialMultiplier?: number; directiveQualityBonus?: number; directiveSingularChanceBonus?: number; directiveRecoveryLevelBonus?: number; directiveEventBias?: string[]; directiveProtocolBias?: string[]; directiveThreatBonus?: number; directiveProtocolBonus?: number; directiveProtocolDensity?: number; directiveEventBonus?: number; directiveReserveBonus?: number; directiveRiskScore?: number; directiveSource?: string; standardRepeatable?: boolean; repeatableIdentity?: { loop: string; safePattern: string; deepPattern: string }; commandTrace?: boolean };
 export type DailyOperationSpec = { date: string; seed: number; codename: string; sponsor: FactionId; archetype: ContractArchetype; objectiveMode: ObjectiveMode; location: LocationId; conditions: ConditionId[]; challenge: string; generatedAt: string };
 export type CampaignReward = { campaign: CampaignState; gained: SalvageWallet; reputationDelta: Partial<Record<FactionId, number>>; anomalyRecovered: boolean; depth: 'safe' | 'deep' };
 export type UpgradeDefinition = { id: ShipUpgradeId; name: string; area: 'Engineering' | 'Cargo' | 'Medical' | 'Fabrication'; ownerFaction: FactionId; dependency: ShipUpgradeId; description: string; benefits: string[]; costs: Partial<SalvageWallet>[]; tiers: ShipSystemTierDefinition[] };
@@ -288,7 +288,7 @@ const archetypes: Array<{ id: ContractArchetype; sponsor: FactionId }> = [{ id: 
 
 export function factionDisplayName(id: FactionId) { return factions.find(faction => faction.id === id)?.name ?? id; }
 
-const objectiveModes: ObjectiveMode[] = ['pressure-recovery', 'grid-isolation', 'gravity-stabilization', 'machinery-recovery', 'emergency-boarding', 'deep-salvage'];
+const standardObjectiveModes: Record<ContractArchetype, ObjectiveMode[]> = { salvage: ['deep-salvage', 'machinery-recovery'], boarding: ['emergency-boarding'], stabilization: ['grid-isolation', 'gravity-stabilization'] };
 const tacticalLocations = new Set<LocationId>(['spin-habitat', 'jovian-harvester', 'ice-mine', 'solar-yard']);
 
 function defaultObjectiveMode(archetype: ContractArchetype, location: LocationId): ObjectiveMode {
@@ -693,11 +693,104 @@ export function advanceEscalationAfterContract(campaign: CampaignState, complete
 }
 
 function objectiveModeForContract(campaign: CampaignState, index: number, archetype: ContractArchetype, location: LocationId) {
-  if (!tacticalLocations.has(location)) return defaultObjectiveMode(archetype, location);
-  return objectiveModes[(campaign.cycle * archetypes.length + index) % objectiveModes.length];
+  const pool = standardObjectiveModes[archetype];
+  const locationIndex = Math.max(0, locations.findIndex(item => item.id === location));
+  return pool[(campaign.cycle + index + locationIndex) % pool.length];
 }
 
-function generateStandardContracts(campaign: CampaignState): Contract[] { return archetypes.map((entry, index) => { const location = locations[(campaign.cycle + index) % locations.length]; const missionObjective = missionObjectiveFor(objectiveModeForContract(campaign, index, entry.id, location.id), location.id); const priority = campaign.reputation[entry.sponsor] >= 8; const anomalyOpportunity = entry.id === 'salvage' && !campaign.anomalyRecovered && campaign.contractsCompleted >= 2 && campaign.cycle % 4 === 2; let title = ''; let objective = ''; let briefing = ''; let conditions: ConditionId[] = []; let directorPreview = ''; let deepTarget = ''; let rewardBase: Partial<SalvageWallet> = {}; let contestedFaction: FactionId | undefined; if (entry.id === 'salvage') { title = priority ? 'Priority Recovery // Silent Hold' : 'Silent Hold Recovery'; objective = 'Secure the recovery deck and tag usable machinery for extraction.'; briefing = anomalyOpportunity ? 'A Long Arc survey team found valuable machinery around a non-reflective lattice seam that does not match any registered construction method. Recover ordinary salvage first. Do not cut the lattice.' : 'A stranded worksite still holds intact drives and pressure hardware. Clear the recovery lanes before the structure fails further.'; conditions = campaign.cycle % 2 === 0 ? ['limited-atmosphere', 'unstable-pressure'] : ['low-visibility', 'failing-gravity']; directorPreview = 'One reserve fireteam enters after the second hostile falls. Structural pressure failure is telegraphed before activation.'; deepTarget = deepTargetForLocation(location.id, entry.id); rewardBase = { credits: 235, alloys: 5, electronics: 2, components: 1 }; } else if (entry.id === 'boarding') { title = priority ? 'Priority Boarding // Bonded Hold' : 'Bonded Hold Boarding'; objective = 'Break the armed boarding line and regain control of the pressure-gated cargo route.'; briefing = 'Meridian insurers claim the cargo is legally bonded; the current holders claim the seizure order is coercive. Your contract is narrower: restore access and prevent habitat systems from becoming weapons.'; conditions = campaign.cycle % 2 === 0 ? ['damaged-grid', 'automated-defense'] : ['failing-gravity', 'damaged-grid']; directorPreview = 'Two assault reserves enter after the line begins to collapse. Automated hazards activate on fixed, visible timing rather than performance scaling.'; deepTarget = deepTargetForLocation(location.id, entry.id); rewardBase = { credits: 270, alloys: 4, electronics: 3, medstock: 1 }; contestedFaction = 'longarc'; } else { title = priority ? 'Priority Stabilization // Reactor Spine' : 'Reactor Spine Stabilization'; objective = 'Reach the control spine, suppress armed interference, and keep damaged power systems from cascading.'; briefing = 'Heliostat technicians can stabilize the plant only after hostile controllers and damaged electrical sections are isolated. The machinery is part of the battlefield, not a separate puzzle.'; conditions = campaign.cycle % 2 === 0 ? ['failing-gravity', 'damaged-grid'] : ['limited-atmosphere', 'automated-defense']; directorPreview = 'A technical reserve deploys after initial contact. Electrical denial fields activate at announced locations and fixed mission times.'; deepTarget = deepTargetForLocation(location.id, entry.id); rewardBase = { credits: 250, electronics: 5, medstock: 2, components: 1 }; } objective = missionObjective.objective; const identity = tacticalIdentityForLocation(location.id); briefing = `${briefing} ${identity.briefing}`.trim(); directorPreview = `${directorPreview} ${identity.forecast}`.trim(); return { id: `cycle-${campaign.cycle}-${entry.id}`, sponsor: entry.sponsor, archetype: entry.id, location: location.id, locationName: location.name, title, objective, objectiveMode: missionObjective.mode, objectiveSteps: missionObjective.steps, briefing, conditions, conditionLabels: conditions.map(condition => conditionLabel[condition]), directorPreview, deepTarget, rewardBase, reputationGain: priority ? 3 : 2, contestedFaction, priority, anomalyOpportunity, seed: 1009 + campaign.cycle * 7919 + index * 104729 }; }); }
+export function generateStandardContracts(campaign: CampaignState): Contract[] {
+  return archetypes.map((entry, index) => {
+    const location = locations[(campaign.cycle + index) % locations.length];
+    const missionObjective = missionObjectiveFor(objectiveModeForContract(campaign, index, entry.id, location.id), location.id);
+    const priority = campaign.reputation[entry.sponsor] >= 8;
+    const anomalyOpportunity = entry.id === 'salvage' && !campaign.anomalyRecovered && campaign.contractsCompleted >= 2 && campaign.cycle % 4 === 2;
+    let title = '';
+    let briefing = '';
+    let conditions: ConditionId[] = [];
+    let directorPreview = '';
+    let deepTarget = '';
+    let rewardBase: Partial<SalvageWallet> = {};
+    let contestedFaction: FactionId | undefined;
+    let encounterPattern: Contract['encounterPattern'] = 'mixed';
+    let reserveCount = 1;
+    let repeatableIdentity: NonNullable<Contract['repeatableIdentity']>;
+
+    if (entry.id === 'salvage') {
+      title = priority ? 'Priority Recovery // Silent Hold' : 'Silent Hold Recovery';
+      briefing = anomalyOpportunity
+        ? 'A Long Arc survey team found valuable machinery around a non-reflective lattice seam that does not match any registered construction method. Recover ordinary salvage first. Do not cut the lattice.'
+        : 'A stranded worksite still holds intact drives and pressure hardware. Recovery is the job: tag physical packages while hostiles try to deny the lane.';
+      conditions = campaign.cycle % 2 === 0 ? ['limited-atmosphere', 'low-visibility'] : ['low-visibility', 'unstable-pressure'];
+      directorPreview = 'Recovery interdiction arrives after the second hostile falls. The safe run is a paced manifest clear; pushing deep destabilizes the recovery lane with vector shear.';
+      deepTarget = deepTargetForLocation(location.id, entry.id);
+      rewardBase = { credits: 235, alloys: 5, electronics: 2, components: 1 };
+      encounterPattern = 'mixed';
+      reserveCount = 1;
+      repeatableIdentity = {
+        loop: 'RECOVER // Tag physical recovery packages while keeping the salvage lane open.',
+        safePattern: 'SAFE // Finish the manifest, clear the remaining interdictor, and bank.',
+        deepPattern: 'DEEP // The recovery lane shears under vector wash while optional command salvage stays exposed.',
+      };
+    } else if (entry.id === 'boarding') {
+      title = priority ? 'Priority Boarding // Bonded Hold' : 'Bonded Hold Boarding';
+      briefing = 'Meridian insurers claim the cargo is legally bonded; the current holders claim the seizure order is coercive. Your contract is narrower: breach the pressure-gated route, cycle both locks, and survive the immediate counter-board.';
+      conditions = campaign.cycle % 2 === 0 ? ['automated-defense', 'limited-atmosphere'] : ['damaged-grid', 'automated-defense'];
+      directorPreview = 'The first casualty commits a two-route reserve counterpush. Lock cycling is the safe objective; continuing deep commits counter-boarders under an energized denial grid.';
+      deepTarget = deepTargetForLocation(location.id, entry.id);
+      rewardBase = { credits: 270, alloys: 4, electronics: 3, medstock: 1 };
+      contestedFaction = 'longarc';
+      encounterPattern = 'swarm';
+      reserveCount = 2;
+      repeatableIdentity = {
+        loop: 'BREACH // Cycle both pressure locks before the reserve counterpush closes the route.',
+        safePattern: 'SAFE // Secure both locks, break the boarding line, and bank.',
+        deepPattern: 'DEEP // Counter-boarders commit under an energized denial grid.',
+      };
+    } else {
+      title = priority ? 'Priority Stabilization // Reactor Spine' : 'Reactor Spine Stabilization';
+      briefing = 'Heliostat technicians need two damaged control points brought back into tolerance while armed interference protects the failure. Stabilize the plant first; combat pressure is built around the control sequence.';
+      conditions = ['damaged-grid', 'failing-gravity'];
+      directorPreview = 'Elite-led pressure delays the technical reserve until the third casualty. The safe run suppresses the local cascade; pushing deep forces the stabilized spine through a gravity-fault surge.';
+      deepTarget = deepTargetForLocation(location.id, entry.id);
+      rewardBase = { credits: 250, electronics: 5, medstock: 2, components: 1 };
+      encounterPattern = 'elite-led';
+      reserveCount = 1;
+      repeatableIdentity = {
+        loop: 'STABILIZE // Bring both control points online before the secondary system cascades.',
+        safePattern: 'SAFE // Stabilized controls suppress the local cascade while you clear the plant.',
+        deepPattern: 'DEEP // The control spine is forced through a gravity-fault surge.',
+      };
+    }
+
+    const identity = tacticalIdentityForLocation(location.id);
+    return {
+      id: `cycle-${campaign.cycle}-${entry.id}`,
+      sponsor: entry.sponsor,
+      archetype: entry.id,
+      location: location.id,
+      locationName: location.name,
+      title,
+      objective: missionObjective.objective,
+      objectiveMode: missionObjective.mode,
+      objectiveSteps: missionObjective.steps,
+      briefing: `${briefing} ${identity.briefing}`.trim(),
+      conditions,
+      conditionLabels: conditions.map(condition => conditionLabel[condition]),
+      directorPreview: `${directorPreview} ${identity.forecast}`.trim(),
+      deepTarget,
+      rewardBase,
+      reputationGain: priority ? 3 : 2,
+      contestedFaction,
+      priority,
+      anomalyOpportunity,
+      seed: 1009 + campaign.cycle * 7919 + index * 104729,
+      encounterPattern,
+      reserveCount,
+      standardRepeatable: true,
+      repeatableIdentity,
+    };
+  });
+}
 
 export function generateContracts(campaign: CampaignState): Contract[] {
   const standard = generateStandardContracts(campaign);
