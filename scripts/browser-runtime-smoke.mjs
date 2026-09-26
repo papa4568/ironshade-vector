@@ -694,12 +694,15 @@ async function targetFeedbackAudit(includeTouch) {
     })()`);
     await waitFor(`(() => {
       const canvas = document.querySelector('canvas');
-      return canvas?.dataset.assistedTargetId === '' && !document.querySelector('.target-readout[data-target-id]');
-    })()`, 'controller manual-aim target release', 5_000);
+      const announcement = document.querySelector('#target-lock-status')?.textContent?.toLowerCase() ?? '';
+      return canvas?.dataset.assistedTargetId === ''
+        && !document.querySelector('.target-readout[data-target-id]')
+        && announcement.includes('manual controller aim');
+    })()`, 'controller manual-aim target release + announcement', 5_000);
 
     const manualOverride = await evaluate(`document.querySelector('#target-lock-status')?.textContent ?? ''`);
     if (!manualOverride.toLowerCase().includes('manual controller aim')) {
-      throw new Error(`Controller manual override was not announced: ${JSON.stringify(manualOverride)}`);
+      throw new Error(`Controller manual override was not announced after target release: ${JSON.stringify(manualOverride)}`);
     }
 
     await evaluate(`(() => {
