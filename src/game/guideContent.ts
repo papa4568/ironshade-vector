@@ -40,8 +40,8 @@ export const guideSections: GuideSection[] = [
         title: 'Core inputs',
         body: 'Move first, acquire a target, then commit the class armament or a class skill. Manual aim remains authoritative when you drag the battlefield or use a precise mouse/right-stick direction.',
         points: [
-          'Desktop: WASD moves, mouse aims, left mouse fires, Q/E/F use MAG/MARK/ARC, Space dodges, X interacts, R reloads, and V vents.',
-          'Mobile: left stick moves; hold FIRE for assisted tracking; drag the right battlefield for precision aim; use MAG/MARK/ARC, DODGE, ACT, reload/vent prompts as they become relevant.',
+          'Desktop: WASD moves, mouse aims, left mouse fires, Q/E/F use your first/second/third class skills, Space dodges, X interacts, R reloads, and V vents.',
+          'Mobile: left stick moves; hold FIRE for assisted tracking; drag the right battlefield for precision aim; use the three class-skill buttons, DODGE, ACT, and reload/vent prompts as they become relevant.',
           'Touch layout: Standard keeps movement on the left and combat actions on the right; Large enlarges both clusters; Left-Handed swaps those sides. Settings can lift, inset, and scale each cluster, and Reset reapplies the selected preset.',
           'Mission-critical vitals, objectives, alerts, target/boss state, and transient combat tells stay fixed outside the movable touch clusters. Portrait temporarily suspends horizontal inset so movement and actions remain separated; the saved landscape offset is preserved.',
           'Controller: movement/aim use the sticks; focused UI actions use the platform confirm/back convention. Menus preserve native focus order so D-pad/stick navigation remains visible.',

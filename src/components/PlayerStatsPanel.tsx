@@ -10,10 +10,10 @@ type StatDatum = { label: string; value: string; hint: string };
 
 const weaponLabels: Record<WeaponId, string> = { carbine: 'Carbine', breacher: 'Breacher', rail: 'Rail Lance' };
 const mechanicLabels: Record<string, string> = {
-  railFragment: 'Rail Fragment Cascade', dodgeVent: 'Dodge Heat Vent', magRedirect: 'MAG Redirect', breacherPropulsion: 'Breacher Propulsion',
-  markWeakArmor: 'MARK Weak-Armor Mapping', arcDrone: 'ARC Relay Drone', recoilVectoring: 'Recoil Vectoring', breachDoctrine: 'Breach Doctrine',
-  sensorPenetration: 'Sensor Penetration', widebandMark: 'Wideband MARK', magOverdriveKick: 'MAG Overdrive Kick', arcGroundLoop: 'ARC Ground Loop',
-  magBoundarySink: 'MAG Boundary Sink', markExecutionTrace: 'MARK Execution Trace', arcCascadeLattice: 'ARC Cascade Lattice',
+  railFragment: 'Rail Fragment Cascade', dodgeVent: 'Dodge Heat Vent', magRedirect: 'First-Skill Projectile Redirect', breacherPropulsion: 'Breacher Propulsion',
+  markWeakArmor: 'Marked-Target Armor Mapping', arcDrone: 'Disruption Relay Drone', recoilVectoring: 'Recoil Vectoring', breachDoctrine: 'Breach Doctrine',
+  sensorPenetration: 'Sensor Penetration', widebandMark: 'Second-Skill Wideband Echo', magOverdriveKick: 'First-Skill Overdrive Kick', arcGroundLoop: 'Third-Skill Ground Loop',
+  magBoundarySink: 'First-Skill Boundary Sink', markExecutionTrace: 'Second-Skill Execution Trace', arcCascadeLattice: 'Third-Skill Cascade Lattice',
   vanguardSiegeRam: 'Vanguard Evolution // Siege Ram', vanguardFaultlineTag: 'Vanguard Evolution // Faultline Tag', vanguardReprisalPulse: 'Vanguard Evolution // Reprisal Pulse',
   vectorSlingshotShift: 'Vector Evolution // Slingshot Shift', vectorTriangulationLock: 'Vector Evolution // Triangulation Lock', vectorNeedleFan: 'Vector Evolution // Needle Fan',
   systemsAnchorLattice: 'Systems Evolution // Anchor Lattice', systemsRecursiveIntrusion: 'Systems Evolution // Recursive Intrusion', systemsReturnCurrent: 'Systems Evolution // Return Current',
@@ -41,7 +41,7 @@ export default function PlayerStatsPanel({ profile, campaign }: Props) {
   const survival: StatDatum[] = [
     { label: 'Health', value: number(sim.player.maxHp, 0), hint: 'Your life pool. Damage that gets through armor reduces health; reaching 0 ends the attempt.' },
     { label: 'Armor', value: number(sim.player.maxArmor, 0), hint: 'Protective plating that absorbs incoming hits before health. Armor can be broken and restored independently.' },
-    { label: 'Capacitor', value: number(sim.player.maxCapacitor, 0), hint: 'Energy available for MAG, MARK, ARC and Rail Lance capacitor costs.' },
+    { label: 'Capacitor', value: number(sim.player.maxCapacitor, 0), hint: 'Energy available for class skills and capacitor-fed armaments.' },
     { label: 'Move speed', value: signedPct(build.player.moveSpeedMul), hint: 'Movement modifier from equipped gear, ship systems and progression. 0% is the standard operator pace.' },
     { label: 'Attack Speed', value: signedPct(build.attackSpeedMul), hint: 'Raises weapon shots per second and assisted FIRE tracking turn speed together. 0% keeps both at the standard cadence.' },
     { label: 'Cap recharge', value: signedPct(build.player.capRegenMul), hint: 'How quickly capacitor energy comes back relative to the standard recharge rate.' },
