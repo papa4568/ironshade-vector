@@ -1570,6 +1570,33 @@ try {
   await keyboardActivateButton('Contracts');
   await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('contract board') && [...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'deploy selected contract')`, 'Contract Board');
   await accessibilityAudit('contract-board');
+  const p20eRepeatableProfiles = {};
+  for (const family of ['salvage', 'boarding', 'stabilization']) {
+    const selectedRepeatable = await evaluate(`(() => {
+      const family = ${JSON.stringify(family)};
+      const button = [...document.querySelectorAll('button[data-contract-id]')].find(candidate => candidate.dataset.contractId?.endsWith('-' + family));
+      if (!button || button.disabled) return false;
+      button.click();
+      return true;
+    })()`);
+    if (!selectedRepeatable) throw new Error(`P20-E ${family} repeatable contract was not available on the Contract Board.`);
+    await waitFor(`document.querySelector('button[data-contract-id$="-${family}"]')?.classList.contains('selected') === true`, `P20-E ${family} selection`);
+    const profile = await evaluate(`(() => {
+      const note = document.querySelector('.repeatable-identity-note[data-repeatable-family="${family}"]');
+      const objective = document.querySelector('.contract-inspector .objective-box b')?.textContent?.trim() ?? '';
+      return { text: note?.textContent ?? '', objective };
+    })()`);
+    const marker = family === 'salvage' ? 'RECOVER //' : family === 'boarding' ? 'BREACH //' : 'STABILIZE //';
+    if (!profile.text.includes(marker) || !profile.text.includes('SAFE //') || !profile.text.includes('DEEP //') || !profile.objective) {
+      throw new Error(`P20-E ${family} briefing/objective identity was not distinguishable before deployment: ${JSON.stringify(profile)}`);
+    }
+    p20eRepeatableProfiles[family] = profile;
+  }
+  if (new Set(Object.values(p20eRepeatableProfiles).map(profile => profile.objective)).size !== 3) {
+    throw new Error(`P20-E repeatable objectives were not materially distinct: ${JSON.stringify(p20eRepeatableProfiles)}`);
+  }
+  console.log(`BROWSER_P20E_REPEATABLE_IDENTITY_PASS viewport=${viewportMode} families=salvage+boarding+stabilization markers=RECOVER+BREACH+STABILIZE predeploy=true`);
+
 
   const targetSelected = await evaluate(`(() => {
     const target = ${JSON.stringify(targetLocation)};
