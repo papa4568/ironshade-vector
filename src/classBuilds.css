@@ -1092,8 +1092,8 @@
   .reconstruction-panel,
   .network-panel,
   .protocol-panel {
-    --p19-management-secondary: 12px;
-    --p19-management-decision: 14px;
+    --p19-management-secondary: max(12px, .75rem);
+    --p19-management-decision: max(14px, .875rem);
   }
 
   .reconstruction-panel :is(p, small, span, em),
@@ -1240,5 +1240,110 @@
   .targeted-replace-row > span > b,
   .targeted-replace-row button {
     font-size: var(--p19-compact-type-decision, max(14px, .875rem));
+  }
+}
+
+
+/* P20-A // Scale representative Progression, Skills, and Crafting geometry.
+   Text floors remain readable on compact phones; spacing and card chrome reflow. */
+.operator-class-panel {
+  margin-bottom: .875rem;
+  padding: .875rem;
+  border-radius: .8125rem;
+}
+.operator-class-heading {
+  gap: .875rem;
+}
+.resonance-meter {
+  min-width: 7.25rem;
+  padding: .5625rem .6875rem;
+  border-radius: .625rem;
+}
+.operator-class-grid {
+  gap: .5rem;
+  margin-top: .75rem;
+}
+.operator-class-grid > button {
+  min-height: 9.625rem;
+  gap: .3125rem;
+  padding: .75rem;
+  border-radius: .6875rem;
+}
+.skill-path-overview {
+  gap: .4375rem;
+  margin-bottom: .625rem;
+}
+.skill-path-overview > article,
+.skill-hierarchy-grid > div {
+  padding: .5625rem .625rem;
+  border-radius: .5625rem;
+}
+.skill-path-heading {
+  grid-template-columns: 2.625rem minmax(0, 1fr);
+  gap: .5625rem;
+  margin-bottom: .5rem;
+}
+.skill-path-heading img {
+  width: 2.625rem;
+  height: 2.625rem;
+  padding: .4375rem;
+  border-radius: .625rem;
+}
+.skill-hierarchy-grid {
+  gap: .3125rem;
+  margin-bottom: .5625rem;
+}
+.skill-family-stage {
+  grid-template-columns: 1.75rem minmax(0, 1fr);
+  gap: .4375rem;
+}
+.skill-family-stage img {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+.skill-option-group {
+  gap: .3125rem;
+  margin-top: .5rem;
+}
+.skill-option-group > button {
+  min-height: max(44px, 3rem);
+}
+.crafting-rules-contract {
+  margin: .625rem 0;
+  padding: .625rem;
+  border-radius: .625rem;
+}
+.crafting-rules-contract > header,
+.crafting-pool-family > header {
+  gap: .625rem;
+}
+.crafting-rule-grid,
+.crafting-family-guide,
+.crafting-legal-pool {
+  gap: .4375rem;
+  margin-top: .5rem;
+}
+.crafting-rule-grid > article,
+.crafting-family-guide > article,
+.crafting-pool-family {
+  padding: .5rem .5625rem;
+  border-radius: .5rem;
+}
+.crafting-pool-family > div {
+  gap: .3125rem;
+  margin-top: .4375rem;
+}
+.crafting-pool-entry {
+  padding: .4375rem .5rem;
+  border-radius: .4375rem;
+}
+
+@media (orientation: landscape) and (max-height: 650px) {
+  .operator-class-panel {
+    padding: .5625rem;
+    margin-bottom: .5rem;
+  }
+  .operator-class-heading {
+    gap: .5rem;
   }
 }

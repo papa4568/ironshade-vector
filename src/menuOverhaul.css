@@ -2324,3 +2324,83 @@
     display: none;
   }
 }
+
+
+/* P20-A // Shared menu/Command geometry follows Interface Size.
+   Rem values preserve Default's authored dimensions while Compact/Large reflow
+   actual chrome instead of only changing the document root font metric. */
+.build-header {
+  margin-bottom: .5625rem;
+  padding: .3125rem 0 .625rem;
+}
+.build-header h1 {
+  font-size: clamp(1.5rem, 2.7vw, 2.25rem);
+}
+.close-build {
+  min-height: max(42px, 2.625rem);
+  border-radius: .5rem;
+}
+.build-tabs {
+  gap: .3125rem;
+  margin-bottom: .5625rem;
+}
+.build-tabs button {
+  border-radius: .5rem;
+  padding-inline: .75rem;
+}
+.command-card.primary-card {
+  min-height: 11.375rem;
+  padding: 1rem;
+}
+.command-card.primary-card button {
+  min-height: max(44px, 3rem);
+  border-radius: .4375rem;
+}
+.command-action-row button {
+  min-height: max(44px, 3.75rem);
+  border-radius: .5rem;
+}
+.command-priority-panel {
+  padding: .75rem .875rem;
+  border-radius: .625rem;
+}
+.command-priority-panel button {
+  min-height: max(40px, 2.5rem);
+  padding-inline: .75rem;
+  border-radius: .5rem;
+}
+
+@media (orientation: landscape) and (max-height: 650px) {
+  .build-header {
+    padding: .125rem 0 .375rem;
+    margin-bottom: .3125rem;
+  }
+  .build-tabs {
+    margin-bottom: .3125rem;
+  }
+  .build-tabs button {
+    padding-inline: .5625rem;
+  }
+  .command-card.primary-card {
+    min-height: 8.25rem;
+    padding: .625rem;
+  }
+  .command-card.primary-card button {
+    min-height: 40px;
+    padding-inline: .5rem;
+  }
+  .command-action-row button {
+    min-height: 39px;
+    padding: .375rem .5rem;
+  }
+}
+
+@media (max-width: 620px) and (orientation: portrait),
+       (orientation: landscape) and (max-width: 1000px) and (max-height: 500px) {
+  .build-tabs {
+    gap: .3125rem;
+  }
+  .ship-hub.area-command .command-priority-panel {
+    padding: .625rem .75rem;
+  }
+}

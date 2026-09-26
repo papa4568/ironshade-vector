@@ -20,6 +20,9 @@ const meta = read('src/game/meta.ts');
 const guide = read('src/game/guideContent.ts');
 const combatHud = read('src/combatHudGlance.css');
 const combatLayout = read('src/combatHudLayout.css');
+const menuCss = read('src/menuOverhaul.css');
+const armoryCss = read('src/part3.css');
+const classBuildCss = read('src/classBuilds.css');
 const browserSmoke = read('scripts/browser-runtime-smoke.mjs');
 const androidSmoke = read('scripts/android-runtime-smoke.mjs');
 const pkg = JSON.parse(read('package.json')) as { scripts?: Record<string, string> };
@@ -74,12 +77,25 @@ assert(armory.includes('aria-label="Interface size"') && armory.includes('<optio
 for (const selector of ["data-interface-size='compact'", "data-interface-size='default'", "data-interface-size='large'", "data-interface-size='compact'][data-text-scale='large'", "data-interface-size='large'][data-text-scale='large'"]) {
   assert(css.includes(selector), `P20-A shared interface-size selector missing: ${selector}`);
 }
-assert(css.includes('--iv-interface-scale') && css.includes('font-size: 93.75%') && css.includes('font-size: 126.5625%'), 'P20-A shared root scale must compose Interface Size with Interface Text Size.');
+assert(css.includes('--iv-interface-scale') && css.includes('font-size: 87.5%') && css.includes('font-size: 129.375%'), 'P20-A shared root scale must compose materially distinct Interface Size values with Interface Text Size.');
 assert(!css.includes('.touch-ui') && !css.includes('.combat-dock') && !css.includes('.fire-button') && !css.includes('.move-stick'), 'P20-A general interface scaling must not add combat-control selectors to the shared design system.');
-assert(!combatHud.includes('rem') && !combatLayout.match(/\d+(?:\.\d+)?rem\b/), 'P20-A combat-control geometry must remain fixed-pixel and independent of root rem scaling.');
+
+for (const [source, marker, expectations] of [
+  [menuCss, 'P20-A // Shared menu/Command geometry', ['.build-tabs', '.command-card.primary-card', 'rem']],
+  [armoryCss, 'P20-A // Effective interface-size geometry', ['.inventory-card', '.settings-panel label', '.network-planner', 'rem']],
+  [classBuildCss, 'P20-A // Scale representative Progression, Skills, and Crafting geometry', ['.skill-path-overview', '.crafting-rules-contract', 'rem']],
+] as const) {
+  assert(source.includes(marker) && expectations.every(expectation => source.includes(expectation)), `P20-A scale-aware surface contract missing: ${marker}`);
+}
+const p20HudBlock = combatHud.split('/* P20-A // Interface Size owns informational combat HUD chrome only.')[1] ?? '';
+assert(p20HudBlock.includes('.game-root .vitals') && p20HudBlock.includes('.game-root .mission-card') && p20HudBlock.includes('rem'), 'P20-A informational HUD must route real chrome dimensions through root-scaled units.');
+for (const controlSelector of ['.move-stick', '.combat-dock', '.touch-button', '.fire-button', '.dodge-button', '.interact-button']) {
+  assert(!p20HudBlock.includes(controlSelector), `P20-A informational HUD block must not resize combat control geometry: ${controlSelector}`);
+}
+assert(!combatLayout.match(/\d+(?:\.\d+)?rem\b/), 'P20-A combat-control layout geometry must remain fixed-pixel and independent of root rem scaling.');
 assert(guide.includes('Interface Size scales shared non-combat menu') && guide.includes('Combat movement, FIRE, DODGE, class-skill, ACT'), 'P20-A Guide must explain non-combat scaling and combat-control ownership.');
-assert(browserSmoke.includes('BROWSER_P20_INTERFACE_SIZE_PASS') && browserSmoke.includes('BROWSER_P20_COMBAT_CONTROL_INVARIANT_PASS'), 'P20-A Browser E2E must verify interface reflow and combat-control geometry invariance.');
-assert(androidSmoke.includes('ANDROID_P20_INTERFACE_SIZE_PASS') && androidSmoke.includes('ANDROID_P20_COMBAT_CONTROL_INVARIANT_PASS'), 'P20-A Android smoke must verify interface reflow/persistence and combat-control geometry invariance.');
+assert(browserSmoke.includes('BROWSER_P20_COMMAND_SCALE_PASS') && browserSmoke.includes('BROWSER_P20_BUILD_SCALE_PASS') && browserSmoke.includes('BROWSER_P20_HUD_SCALE_PASS') && browserSmoke.includes('BROWSER_P20_COMBAT_CONTROL_INVARIANT_PASS'), 'P20-A Browser E2E must compare rendered Command, Build-management, informational-HUD, and isolated combat-control geometry.');
+assert(androidSmoke.includes('ANDROID_P20_INTERFACE_SIZE_PASS') && androidSmoke.includes('rowPadding') && androidSmoke.includes('ANDROID_P20_HUD_SCALE_PASS') && androidSmoke.includes('ANDROID_P20_COMBAT_CONTROL_INVARIANT_PASS'), 'P20-A Android smoke must verify persisted rendered scaling, informational HUD scaling, and combat-control geometry invariance.');
 
 assert(primitives.includes("export function ProgressiveDisclosure") && primitives.includes('createPortal') && primitives.includes('role="dialog"') && primitives.includes('aria-modal="true"') && primitives.includes('aria-haspopup="dialog"'), 'P18-D must provide one reusable, portal-backed progressive-disclosure dialog pattern.');
 assert(primitives.includes("event.key === 'Escape'") && primitives.includes("event.key !== 'Tab'") && primitives.includes("window.history.pushState") && primitives.includes("window.addEventListener('popstate'") && primitives.includes('focusTarget?.focus()'), 'P18-D disclosure must trap focus, support Escape/back dismissal, and restore the trigger focus.');
@@ -109,4 +125,4 @@ assert(
   'P18-F Android smoke must verify Crafting, Progression, and Skills requirement states on-device.',
 );
 
-console.log('DESIGN_SYSTEM_PASS typography=shared spacing=4px iconography=normalized focus=visible rarity=canonical panel=shared tooltip=shared disclosure=accessible requirement=explicit responsive=coarse+safe-area interfaceSize=compact+default+large combatControls=isolated');
+console.log('DESIGN_SYSTEM_PASS typography=shared spacing=4px iconography=normalized focus=visible rarity=canonical panel=shared tooltip=shared disclosure=accessible requirement=explicit responsive=coarse+safe-area interfaceSize=rendered+ordered combatHud=scaled combatControls=isolated');
