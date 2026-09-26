@@ -22,6 +22,8 @@ import {
   refundOperatorNetworkNode,
   OPERATOR_NETWORK_SCHEMA_VERSION,
 } from '../src/game/operatorNetwork';
+import { operatorNetworkRecommendationDefinitions, operatorNetworkRecommendations } from '../src/game/operatorNetworkRecommendations';
+import { operatorWeaponFamilyForClass, type OperatorClassId } from '../src/game/classSkills';
 import {
   allocateNode,
   autoAllocatePlannedOperatorNetwork,
@@ -86,6 +88,28 @@ assert.deepEqual(operatorNetworkRouteToNode(vanguard, 'mobility-1'), { nodeIds: 
 assert.deepEqual(operatorNetworkRouteToNode(vanguard, 'vanguard-breach-telemetry'), { nodeIds: ['vanguard-breach-entry', 'vanguard-breach-pressure', 'vanguard-breach-impulse', 'vanguard-breach-telemetry'], pointCost: 4 });
 assert.deepEqual(operatorNetworkRouteToNode(createOperatorNetworkState('vanguard', 12), 'ballistics-terminal-collapse-capstone'), { nodeIds: ['ballistics-1', 'ballistics-2', 'ballistics-3', 'ballistics-terminal-mastery', 'ballistics-overpenetration-keystone', 'ballistics-terminal-collapse-capstone'], pointCost: 8 }, 'Ballistics Capstone routing must require the existing branch spine, Mastery, one Keystone, then the Capstone.');
 assert.equal(operatorNetworkRouteToNode(vanguard, 'vector-rail-entry'), null, 'Class weapon sectors cannot be used as cross-class routing shortcuts.');
+
+assert.equal(operatorNetworkRecommendationDefinitions.length, 15, 'P20-D must keep the authored recommendation surface small: two base routes per class plus one refinement for each specialization.');
+assert.equal(operatorNetworkRecommendationDefinitions.filter(entry => entry.stage === 'specialization').length, 9, 'Every authored specialization should have exactly one gated P20-D refinement.');
+for (const operatorClass of ['vanguard', 'vector', 'systems'] as const satisfies readonly OperatorClassId[]) {
+  const recommendationState = createOperatorNetworkState(operatorClass, 20);
+  const recommendationStateBefore = JSON.stringify(recommendationState);
+  const recommendations = operatorNetworkRecommendations(recommendationState, operatorClass, { level: 16, specialization: null, unlockKeys: [] });
+  assert.equal(recommendations.length, 2, `${operatorClass} must expose one useful early route and one useful core route before specialization.`);
+  assert.deepEqual(recommendations.map(entry => entry.stage), ['early', 'core'], `${operatorClass} base recommendations must stay ordered early then core.`);
+  assert.equal(JSON.stringify(recommendationState), recommendationStateBefore, `${operatorClass} recommendation resolution must never spend or mutate progression state.`);
+  for (const recommendation of recommendations) {
+    const expectedPlan = operatorNetworkPlan(recommendationState, recommendation.remainingTargetNodeIds, { level: 16, specialization: null, unlockKeys: [] });
+    assert.deepEqual(recommendation.routeNodeIds, expectedPlan.nodeIds, `${recommendation.id} must expose the canonical planner route.`);
+    assert.equal(recommendation.pointCost, expectedPlan.pointCost, `${recommendation.id} must expose the canonical planner point cost.`);
+    assert.deepEqual(expectedPlan.unresolvedTargetIds, [], `${recommendation.id} cannot contain an impossible target.`);
+    for (const nodeId of [...recommendation.remainingTargetNodeIds, ...recommendation.routeNodeIds]) {
+      const node = operatorNetworkNode(nodeId);
+      assert.ok(node, `${recommendation.id} references a missing node: ${nodeId}`);
+      assert.ok(!node?.weaponFamily || node.weaponFamily === operatorWeaponFamilyForClass(operatorClass), `${recommendation.id} cannot cross into another class weapon family at ${nodeId}.`);
+    }
+  }
+}
 
 const futurePlan = operatorNetworkPlan(createOperatorNetworkState('vanguard', 1), ['ballistics-3']);
 assert.deepEqual(futurePlan.nodeIds, ['ballistics-1', 'ballistics-2', 'ballistics-3'], 'Planner should preview a future legal route even when the current profile cannot afford every node yet.');
@@ -215,8 +239,18 @@ const autoGated = autoAllocateOperatorNetworkPlan(autoGatedSource, autoGatedSour
 assert.deepEqual(autoGated.allocatedNodeIds, [], 'Auto Allocate must not bypass authored campaign, boss, or faction gates.');
 assert.deepEqual(autoGated.nextBlocker, { nodeId: 'pressure-diver-network-hook', reason: 'external-gate' });
 assert.deepEqual(autoGated.remainingTargetNodeIds, ['pressure-diver-network-hook']);
+const pressureLockedRecommendations = operatorNetworkRecommendations(pressureNetworkState, 'vanguard', pressureLv16Context);
+assert.equal(pressureLockedRecommendations.some(entry => entry.id === 'pressure-diver-refinement'), false, 'Pressure Diver refinement must stay hidden before the authored Khepri unlock applies.');
+const pressureLv15Recommendations = operatorNetworkRecommendations(pressureNetworkState, 'vanguard', pressureLv15Context);
+assert.equal(pressureLv15Recommendations.some(entry => entry.id === 'pressure-diver-refinement'), false, 'Pressure Diver refinement must stay hidden before the LV16 milestone applies.');
 const pressureUnlockedContext = { ...pressureLv16Context, unlockKeys: ['boss:khepri'] };
 assert.deepEqual(operatorNetworkRouteToNode(pressureNetworkState, 'pressure-diver-network-hook', pressureUnlockedContext), { nodeIds: ['pressure-diver-network-hook'], pointCost: 1 }, 'Unlocked specialization field hook should be one adjacent progression point from its LV16 milestone.');
+const pressureUnlockedRecommendations = operatorNetworkRecommendations(pressureNetworkState, 'vanguard', pressureUnlockedContext);
+const pressureRecommendation = pressureUnlockedRecommendations.find(entry => entry.id === 'pressure-diver-refinement');
+assert.ok(pressureRecommendation, 'Pressure Diver refinement must appear once specialization, LV16 milestone, anchor Mastery, and Khepri unlock are all active.');
+assert.deepEqual(pressureRecommendation?.remainingTargetNodeIds, ['pressure-diver-network-hook']);
+assert.deepEqual(pressureRecommendation?.routeNodeIds, ['pressure-diver-network-hook']);
+assert.equal(pressureRecommendation?.pointCost, 1);
 const pressureAllocation = allocateOperatorNetworkNode(pressureNetworkState, 'pressure-diver-network-hook', pressureUnlockedContext);
 assert.equal(pressureAllocation.allocated, true, 'Unlocked specialization field hook must allocate through the canonical graph API.');
 assert.equal(pressureAllocation.state.unspentPoints, 1);
