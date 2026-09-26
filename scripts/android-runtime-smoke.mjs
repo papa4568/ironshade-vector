@@ -1836,6 +1836,15 @@ if (p15ShipLayout.horizontalOverflow > 2 || p15ShipLayout.visibleTabs < 2 || p15
 console.log('ANDROID_P15_MENU_PRESENTATION_PASS input=touch flows=class+crafting+progression+ship-systems shared=iv-panel transition=iv-view');
 
 
+const p20cStateCheckpointed = await evaluate(`(() => {
+  const stateKey = 'ironshade-vector-state-v1';
+  const original = localStorage.getItem(stateKey);
+  if (!original) return false;
+  sessionStorage.setItem('ironshade-p20c-state-checkpoint', original);
+  return true;
+})()`);
+if (!p20cStateCheckpointed) throw new Error('Android P20-C could not checkpoint the pre-audit save state.');
+
 async function p20cLoadClassCombat(operatorClass, family, kit, singularTrait = null, deploy = true) {
   const previousTimeOrigin = await evaluate('performance.timeOrigin');
   const seeded = await evaluate(`(() => {
@@ -1951,6 +1960,21 @@ await p20cLoadClassCombat('vanguard', 'breacher', [
   { name: 'Bulwark Pulse', short: 'GUARD' },
 ], null, false);
 console.log('ANDROID_P20C_CLASS_SKILL_APK_PASS kits=Vanguard+Vector+Systems representativeSkillGear=Bloom-Vector-Rig');
+
+const p20cRestoreTimeOrigin = await evaluate('performance.timeOrigin');
+const p20cStateRestored = await evaluate(`(() => {
+  const checkpointKey = 'ironshade-p20c-state-checkpoint';
+  const original = sessionStorage.getItem(checkpointKey);
+  if (!original) return false;
+  localStorage.setItem('ironshade-vector-state-v1', original);
+  sessionStorage.removeItem(checkpointKey);
+  location.reload();
+  return true;
+})()`);
+if (!p20cStateRestored) throw new Error('Android P20-C could not restore the pre-audit save state.');
+await waitFor(`performance.timeOrigin !== ${JSON.stringify(p20cRestoreTimeOrigin)}`, 'Android P20-C restore reload', 45_000);
+await waitFor(`document.readyState === 'complete' && Boolean(document.querySelector('button[data-primary-area="operations"]'))`, 'Android P20-C restored Command Deck', 45_000);
+console.log('ANDROID_P20C_STATE_RESTORE_PASS save=exact-pre-audit-checkpoint');
 
 await tapButton('Operations', 39);
 await waitFor(`[...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'contracts')`, 'Operations navigation');
