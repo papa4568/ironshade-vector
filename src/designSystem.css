@@ -97,13 +97,13 @@
 }
 
 :root[data-interface-size='compact'] {
-  --iv-interface-scale: 0.875;
-  font-size: 87.5%;
+  --iv-interface-scale: 0.72;
+  font-size: 72%;
 }
 
 :root[data-interface-size='large'] {
-  --iv-interface-scale: 1.15;
-  font-size: 115%;
+  --iv-interface-scale: 1.25;
+  font-size: 125%;
 }
 
 /* P15-E // Persisted accessibility presentation overrides.
@@ -114,11 +114,11 @@
 }
 
 :root[data-interface-size='compact'][data-text-scale='large'] {
-  font-size: 98.4375%;
+  font-size: 81%;
 }
 
 :root[data-interface-size='large'][data-text-scale='large'] {
-  font-size: 129.375%;
+  font-size: 140.625%;
 }
 
 :root[data-contrast='high'] {
