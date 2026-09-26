@@ -2510,6 +2510,7 @@
   }
 
   :root[data-interface-size='compact'] .command-overview {
+    align-items: start;
     gap: .35rem;
     margin-bottom: .5rem;
   }
