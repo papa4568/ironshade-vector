@@ -2515,12 +2515,16 @@
   }
 
   :root[data-interface-size='compact'] .ship-hub.area-command .command-visual.command-bridge.command-bridge-compact {
-    min-height: 13rem;
+    min-height: 9rem;
   }
 
   :root[data-interface-size='compact'] .ship-hub.area-command .command-bridge-compact {
-    gap: .45rem;
-    padding: .55rem;
+    grid-template-columns: minmax(10.5rem, .72fr) minmax(0, 1.28fr);
+    grid-template-rows: auto;
+    grid-template-areas: "copy readiness";
+    align-items: center;
+    gap: .4rem;
+    padding: .45rem;
   }
 
   :root[data-interface-size='compact'] .ship-hub.area-command .command-bridge-compact .command-bridge-copy h2 {
@@ -2534,12 +2538,14 @@
   }
 
   :root[data-interface-size='compact'] .ship-hub.area-command .bridge-compact-readiness {
-    gap: .3rem;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-self: center;
+    gap: .2rem;
   }
 
   :root[data-interface-size='compact'] .ship-hub.area-command .bridge-compact-readiness > span {
-    padding: .35rem .45rem;
-    border-radius: .45rem;
+    padding: .25rem .3rem;
+    border-radius: .4rem;
   }
 
   :root[data-interface-size='compact'] .ship-hub.area-command .bridge-compact-readiness small {
