@@ -45,14 +45,19 @@ def dismiss_overlays():
 
 print("ANDROID_SETTINGS_PLAYTEST_START mode=black-box game-input=adb-screen-taps game-observation=screenshots dom=forbidden")
 adb("shell","pm","clear",PACKAGE,capture=True)
+# Suppress emulator-only ANR and immersive-mode education overlays. These are
+# Android system UI, not game state, and otherwise intercept human-equivalent taps.
+adb("shell","settings","put","global","hide_error_dialogs","1",capture=True)
+adb("shell","settings","put","secure","immersive_mode_confirmations","confirmed",capture=True)
 adb("shell","am","start","-W","-n",ACTIVITY,capture=True)
-time.sleep(12)
-dismiss_overlays(); time.sleep(2)
+time.sleep(14)
+dismiss_overlays(); time.sleep(1)
 shot("00-class")
 
 # Explicitly pick Vanguard, then press the visible Play Vanguard button.
 tap(285,285); time.sleep(.7)
-tap(1595,725); time.sleep(4)
+dismiss_overlays()
+tap(1618,726); time.sleep(5)
 dismiss_overlays(); time.sleep(1)
 shot("01-command")
 
