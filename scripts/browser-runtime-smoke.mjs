@@ -1253,7 +1253,7 @@ try {
     const operatorClass = state.profile.operatorClass || 'vanguard';
     const startNodeId = { vanguard: 'start-vanguard', vector: 'start-vector', systems: 'start-systems' }[operatorClass] || 'start-vanguard';
     state.profile.level = 3;
-    state.profile.xp = Math.max(Number(state.profile.xp || 0), 270);
+    state.profile.xp = 270;
     state.profile.progressionPoints = 2;
     state.profile.allocatedNodes = [];
     state.profile.operatorNetwork = { schemaVersion: 3, startNodeId, allocatedNodeIds: [], unspentPoints: 2, plannedTargetNodeIds: [] };
