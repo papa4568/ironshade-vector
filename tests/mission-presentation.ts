@@ -13,6 +13,9 @@ const app = read('src/App.tsx');
 const combat = read('src/components/GameCanvas.tsx');
 const css = read('src/missionPresentation.css');
 const main = read('src/main.tsx');
+const shipHub = read('src/components/ShipHub.tsx');
+const campaign = read('src/game/campaign.ts');
+const director = read('src/game/director.ts');
 const browserSmoke = read('scripts/browser-runtime-smoke.mjs');
 const androidSmoke = read('scripts/android-runtime-smoke.mjs');
 const pkg = JSON.parse(read('package.json')) as { scripts?: Record<string, string> };
@@ -73,6 +76,25 @@ assert(
     && androidSmoke.includes('window.__ironshadeP15MissionPresentation = sample')
     && androidSmoke.includes("sample.pointerEvents === 'none'"),
   'Browser and Android smoke must verify the live deployment cue remains non-blocking and onscreen.',
+);
+
+
+assert(
+  shipHub.includes('data-repeatable-family={selected.archetype}')
+    && shipHub.includes('AUTHORED LOOP')
+    && campaign.includes("salvage: ['deep-salvage', 'machinery-recovery']")
+    && campaign.includes("boarding: ['emergency-boarding']")
+    && campaign.includes("stabilization: ['grid-isolation', 'gravity-stabilization']")
+    && director.includes('SALVAGE DEEP RISK // RECOVERY LANE VECTOR SHEAR')
+    && director.includes('BOARDING DEEP RISK // COUNTER-BOARDERS COMMIT // DENIAL GRID ENERGIZED')
+    && director.includes('STABILIZATION DEEP RISK // CONTROL SPINE GRAVITY FAULT SURGE'),
+  'P20-E standard repeatables must expose distinct authored loops, objective pools, and deep-risk mechanics.',
+);
+
+assert(
+  browserSmoke.includes('BROWSER_P20E_REPEATABLE_IDENTITY_PASS')
+    && androidSmoke.includes('ANDROID_P20E_REPEATABLE_PLAY_PASS'),
+  'P20-E browser briefing discrimination and Android three-family play completion must remain release-gated.',
 );
 
 assert(pkg.scripts?.['test:mission-presentation']?.includes('tests/mission-presentation.ts'), 'P15-C mission-presentation test script is missing.');
