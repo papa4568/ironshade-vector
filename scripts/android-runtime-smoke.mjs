@@ -628,6 +628,40 @@ if (!commandLayout.landscape || !commandLayout.rail || !commandLayout.workspace 
 }
 console.log(`ANDROID_MOBILE_MENU_PASS viewport=${Math.round(commandLayout.viewport.width)}x${Math.round(commandLayout.viewport.height)} destinations=${commandLayout.primaryCount} safe=onscreen+separated overflow=${Math.max(0, commandLayout.verticalOverflow)}px`);
 
+const p20CommandDensity = await evaluate(`(() => {
+  const root = document.documentElement;
+  const previous = root.dataset.interfaceSize ?? '';
+  const measure = size => {
+    root.dataset.interfaceSize = size;
+    const bridge = document.querySelector('.command-visual.command-bridge.command-bridge-compact');
+    const card = document.querySelector('.command-card.primary-card');
+    const workspace = document.querySelector('.tactical-workspace');
+    const navButton = document.querySelector('.command-rail-nav button[data-primary-area]');
+    const cardStyle = card ? getComputedStyle(card) : null;
+    const workspaceStyle = workspace ? getComputedStyle(workspace) : null;
+    return {
+      bridgeHeight: Number((bridge?.getBoundingClientRect().height ?? 0).toFixed(3)),
+      cardPadding: Number.parseFloat(cardStyle?.paddingLeft ?? '0'),
+      workspacePaddingTop: Number.parseFloat(workspaceStyle?.paddingTop ?? '0'),
+      navHeight: Number((navButton?.getBoundingClientRect().height ?? 0).toFixed(3)),
+      horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
+    };
+  };
+  const compact = measure('compact');
+  const baseline = measure('default');
+  if (previous) root.dataset.interfaceSize = previous;
+  else delete root.dataset.interfaceSize;
+  return { compact, baseline };
+})()`);
+if (!(p20CommandDensity.compact.bridgeHeight <= p20CommandDensity.baseline.bridgeHeight * 0.82)
+  || !(p20CommandDensity.compact.cardPadding <= p20CommandDensity.baseline.cardPadding * 0.8)
+  || !(p20CommandDensity.compact.workspacePaddingTop <= p20CommandDensity.baseline.workspacePaddingTop * 0.8)
+  || p20CommandDensity.compact.navHeight < 44
+  || p20CommandDensity.compact.horizontalOverflow > 2) {
+  throw new Error(`Android P20-A Compact Command density is not materially smaller than Default: ${JSON.stringify(p20CommandDensity)}`);
+}
+console.log(`ANDROID_P20_COMMAND_DENSITY_PASS bridge=${p20CommandDensity.compact.bridgeHeight}/${p20CommandDensity.baseline.bridgeHeight} cardPadding=${p20CommandDensity.compact.cardPadding}/${p20CommandDensity.baseline.cardPadding} nav=${p20CommandDensity.compact.navHeight}px`);
+
 await p19CompactTypographyScan('command', '.ship-hub.area-command');
 
 await tapButton('Operator', 31);
@@ -1035,10 +1069,10 @@ const p20InterfaceLarge = await setP20InterfaceSize('large');
 if (!p20InterfaceCompact.panelVisible || !p20InterfaceDefault.panelVisible || !p20InterfaceLarge.panelVisible
   || !p20InterfaceCompact.panelWithinViewport || !p20InterfaceDefault.panelWithinViewport || !p20InterfaceLarge.panelWithinViewport
   || p20InterfaceCompact.horizontalOverflow > 2 || p20InterfaceDefault.horizontalOverflow > 2 || p20InterfaceLarge.horizontalOverflow > 2
-  || !(p20InterfaceCompact.rootFontSize < p20InterfaceDefault.rootFontSize && p20InterfaceDefault.rootFontSize < p20InterfaceLarge.rootFontSize)
-  || !(p20InterfaceCompact.rowPadding < p20InterfaceDefault.rowPadding && p20InterfaceDefault.rowPadding < p20InterfaceLarge.rowPadding)
-  || !(p20InterfaceCompact.selectPadding < p20InterfaceDefault.selectPadding && p20InterfaceDefault.selectPadding < p20InterfaceLarge.selectPadding)
-  || !(p20InterfaceCompact.tabGap < p20InterfaceDefault.tabGap && p20InterfaceDefault.tabGap < p20InterfaceLarge.tabGap)) {
+  || !(p20InterfaceCompact.rootFontSize <= p20InterfaceDefault.rootFontSize * 0.75 && p20InterfaceLarge.rootFontSize >= p20InterfaceDefault.rootFontSize * 1.2)
+  || !(p20InterfaceCompact.rowPadding <= p20InterfaceDefault.rowPadding * 0.8 && p20InterfaceLarge.rowPadding >= p20InterfaceDefault.rowPadding * 1.15)
+  || !(p20InterfaceCompact.selectPadding <= p20InterfaceDefault.selectPadding * 0.8 && p20InterfaceLarge.selectPadding >= p20InterfaceDefault.selectPadding * 1.15)
+  || !(p20InterfaceCompact.tabGap <= p20InterfaceDefault.tabGap * 0.8 && p20InterfaceLarge.tabGap >= p20InterfaceDefault.tabGap * 1.15)) {
   throw new Error(`Android P20-A Interface Size reflow failed: ${JSON.stringify({ compact: p20InterfaceCompact, default: p20InterfaceDefault, large: p20InterfaceLarge })}`);
 }
 console.log(`ANDROID_P20_INTERFACE_SIZE_PASS compact=${p20InterfaceCompact.rootFontSize}px default=${p20InterfaceDefault.rootFontSize}px large=${p20InterfaceLarge.rootFontSize}px rows=${p20InterfaceCompact.rowPadding}/${p20InterfaceDefault.rowPadding}/${p20InterfaceLarge.rowPadding} tabs=${p20InterfaceCompact.tabGap}/${p20InterfaceDefault.tabGap}/${p20InterfaceLarge.tabGap} overflow=none persisted=large`);
