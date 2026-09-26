@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { applyShipBonuses, buildMegastructureDebrief, buyConsumable, createDefaultCampaign, deepTargetForLocation, generateContracts, getMegastructureStageContract, loadCampaign, locationNameFor, missionObjectiveFor, saveCampaign, type Contract } from '../src/game/campaign';
+import { applyShipBonuses, buildMegastructureDebrief, buyConsumable, createDefaultCampaign, deepTargetForLocation, generateContracts, generateStandardContracts, getMegastructureStageContract, loadCampaign, locationNameFor, missionObjectiveFor, saveCampaign, type Contract } from '../src/game/campaign';
 import { abilityUsesTargetAcquisition, acquireCombatTarget, aimAtMobileTarget, applyPlayerDamage, createSimulation, createTargetControlMemory, cycleWeapon, getAbilityConfig, resetTargetControlMemory, selectWeapon, stepSimulation, triggerAbility, triggerConsumable, triggerDodge, triggerFire, triggerReload, triggerVent, updateMobileTargetControl, weaponConfigs, weaponHandlingProfiles, type Telemetry } from '../src/game/sim';
 import { applyMissionSetup, continueIntoDeepZone, createDirector, stepMissionDirector } from '../src/game/director';
 import { findNavigationPath } from '../src/game/mapPathfinding';
@@ -2854,3 +2854,45 @@ function skillHierarchyPersistenceSmoke() {
 
 }
 skillHierarchyPersistenceSmoke();
+
+function standardRepeatableIdentitySmoke() {
+  const allowedModes = {
+    salvage: new Set(['deep-salvage', 'machinery-recovery']),
+    boarding: new Set(['emergency-boarding']),
+    stabilization: new Set(['grid-isolation', 'gravity-stabilization']),
+  } as const;
+  const expectedPattern = { salvage: 'mixed', boarding: 'swarm', stabilization: 'elite-led' } as const;
+  const seenModes = { salvage: new Set<string>(), boarding: new Set<string>(), stabilization: new Set<string>() };
+
+  for (let cycle = 0; cycle < 9; cycle += 1) {
+    const campaign = { ...createDefaultCampaign(), cycle };
+    const contracts = generateStandardContracts(campaign);
+    assert.equal(contracts.length, 3, `cycle ${cycle} should author exactly three standard repeatable families`);
+    for (const contract of contracts) {
+      assert.equal(contract.standardRepeatable, true, `${contract.archetype} should be marked as a standard repeatable`);
+      assert.ok(contract.repeatableIdentity?.loop && contract.repeatableIdentity.safePattern && contract.repeatableIdentity.deepPattern, `${contract.archetype} should expose authored loop/safe/deep briefing identity`);
+      assert.equal(contract.encounterPattern, expectedPattern[contract.archetype], `${contract.archetype} should keep its authored encounter pressure`);
+      assert.ok(allowedModes[contract.archetype].has(contract.objectiveMode as never), `${contract.archetype} should stay inside its family objective pool, got ${contract.objectiveMode}`);
+      seenModes[contract.archetype].add(contract.objectiveMode);
+    }
+  }
+
+  assert.deepEqual([...seenModes.salvage].sort(), ['deep-salvage', 'machinery-recovery'], 'salvage should rotate recovery primitives');
+  assert.deepEqual([...seenModes.boarding], ['emergency-boarding'], 'boarding should stay on the two-lock breach primitive');
+  assert.deepEqual([...seenModes.stabilization].sort(), ['gravity-stabilization', 'grid-isolation'], 'stabilization should rotate control-system primitives');
+
+  const profile = setOperatorClass(createDefaultProfile(), 'vanguard').profile;
+  const build = deriveCombatBuild(profile);
+  for (const contract of generateStandardContracts(createDefaultCampaign())) {
+    const state = createSimulation(build);
+    applyMissionSetup(state, contract);
+    const runtime = createDirector();
+    runtime.deep = true;
+    runtime.deepElapsed = 10;
+    stepMissionDirector(state, runtime, contract, 0.1);
+    const expectedHazard = contract.archetype === 'salvage' ? 'vectorWash' : contract.archetype === 'boarding' ? 'shockGrid' : 'gravityWell';
+    assert.ok(state.hazards.some(hazard => hazard.active && hazard.kind === expectedHazard), `${contract.archetype} deep push should activate its authored ${expectedHazard} risk`);
+    assert.equal(runtime.repeatableDeepTriggered, true, `${contract.archetype} deep identity should trigger once`);
+  }
+}
+standardRepeatableIdentitySmoke();
