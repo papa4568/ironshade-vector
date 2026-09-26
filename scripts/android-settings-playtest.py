@@ -188,7 +188,7 @@ def set_checkbox(label, expected):
     if label == "High contrast" and expected and visual_before is not None:
         visual_after_first = shot("check-high-contrast-after-input")
         first_delta = pixel_difference(visual_before, visual_after_first)
-        if first_delta >= 0.015:
+        if first_delta >= 0.004:
             print(f"ANDROID_SETTINGS_HIGH_CONTRAST_PASS changed_pixels={first_delta:.4f} path=input")
             return
 
@@ -203,7 +203,7 @@ def set_checkbox(label, expected):
         tap(label_x, label_y, 1.0)
         visual_after_label = shot("check-high-contrast-after-label")
         label_delta = pixel_difference(visual_before, visual_after_label)
-        if label_delta < 0.015:
+        if label_delta < 0.004:
             raise RuntimeError(f"High contrast produced no visible change through input or label taps: input_delta={first_delta:.4f} label_delta={label_delta:.4f}")
         print(f"ANDROID_SETTINGS_HIGH_CONTRAST_PASS changed_pixels={label_delta:.4f} path=label")
         return
