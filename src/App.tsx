@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import './qol.css';
 import './equipmentBay.css';
 import './readability.css';
@@ -219,7 +219,7 @@ function App() {
   useEffect(() => { setCampaign(current => syncInterdictionAccess(current, profile.level)); }, [profile.level, campaign.story.postKhepri.status]);
   useEffect(() => { setCampaign(current => syncParallaxDebtAccess(current, profile.level)); }, [profile.level, campaign.story.interdiction.status]);
   useEffect(() => feedback.configure(profile.settings), [profile.settings]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (typeof document === 'undefined') return;
     const root = document.documentElement;
     root.dataset.interfaceSize = profile.settings.interfaceSize;
@@ -329,7 +329,7 @@ function App() {
   };
   const openCombat = () => { if (!selectedContract) return; void loadGameCanvas(); setScreen('combat'); };
 
-  return <div className="app-shell" data-client-architecture="split-v1" onPointerDownCapture={() => feedback.unlock()} onClickCapture={event => { const target = event.target as HTMLElement; if (target.closest('button') && !target.closest('.game-root')) feedback.cue('ui'); }}>
+  return <div className="app-shell" data-client-architecture="split-v1" data-interface-size={profile.settings.interfaceSize} onPointerDownCapture={() => feedback.unlock()} onClickCapture={event => { const target = event.target as HTMLElement; if (target.closest('button') && !target.closest('.game-root')) feedback.cue('ui'); }}>
     <Suspense fallback={<SurfaceLoader screen={screen} />}>
       {screen === 'class' && <ClassSelectScreen profile={profile} onConfirm={confirmOperatorClass} />}
       {screen === 'ship' && <ShipHub profile={profile} campaign={campaign} contracts={contracts} operations={operations} operationsStatus={operationsStatus} operationsError={operationsError} telemetrySharing={profile.settings.telemetrySharing} selectedContractId={selectedContract?.id ?? ''} statusMessage={statusMessage} guideRequest={guideRequest} onGuideBack={returnFromGuideToBuild} onSelectContract={setSelectedContractId} onDeploy={openCombat} onOpenBuild={openBuild} onCampaignChange={setCampaign} />}
