@@ -491,7 +491,7 @@ export default function ShipHub({ profile, campaign, contracts, operations, oper
   }, [primaryArea, tab, guideRequest?.requestId]);
   const pageTitle = tab === 'overview' ? 'Overview' : areaLabels[primaryArea];
 
-  return <main className={`ship-hub area-${primaryArea} iv-view`}>
+  return <main className={`ship-hub area-${primaryArea} iv-view`} data-interface-size={profile.settings.interfaceSize}>
     <aside className="command-rail" aria-label="Primary navigation">
       <div className="command-rail-brand"><span>IV</span><div><b>QUIET SIGNAL</b><small>VECTOR COMMAND</small></div></div>
       <nav ref={commandNavRef} className="command-rail-nav" onKeyDown={handlePrimaryNavigationKeyDown}>
