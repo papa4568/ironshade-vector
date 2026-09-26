@@ -1371,6 +1371,109 @@ await waitFor(`Boolean(document.querySelector('.iv-disclosure-sheet .network-sta
 await tapButton('Close details', 97);
 await waitFor(`!document.querySelector('.iv-disclosure-sheet')`, 'Android P18-F planned build math close');
 
+const p20dPreviousTimeOrigin = await evaluate('performance.timeOrigin');
+const p20dSeeded = await evaluate(`(() => {
+  const stateKey = 'ironshade-vector-state-v1';
+  const state = JSON.parse(localStorage.getItem(stateKey) || 'null');
+  if (!state?.profile) return false;
+  state.profile.operatorClass = 'vanguard';
+  state.profile.classSelectionComplete = true;
+  state.profile.specialization = null;
+  state.profile.specializationOverclock = false;
+  state.profile.level = 7;
+  state.profile.xp = Math.max(Number(state.profile.xp || 0), 1890);
+  state.profile.progressionPoints = 6;
+  state.profile.allocatedNodes = [];
+  state.profile.operatorNetwork = { schemaVersion: 3, startNodeId: 'start-vanguard', allocatedNodeIds: [], unspentPoints: 6, plannedTargetNodeIds: [] };
+  state.operatorNetworkSchemaVersion = 3;
+  localStorage.setItem(stateKey, JSON.stringify(state));
+  location.reload();
+  return true;
+})()`);
+if (!p20dSeeded) throw new Error('Android P20-D could not seed a six-point Vanguard recommendation profile.');
+await waitFor(`performance.timeOrigin !== ${JSON.stringify(p20dPreviousTimeOrigin)}`, 'Android P20-D document reload', 45_000);
+await waitFor(`(() => {
+  const operatorButton = [...document.querySelectorAll('button[data-primary-area]')].find(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase() === 'operator');
+  return document.readyState === 'complete' && operatorButton instanceof HTMLButtonElement && !operatorButton.disabled;
+})()`, 'Android P20-D seeded Command Deck after reload', 45_000);
+await tapButton('Operator', 138);
+await waitFor(`[...document.querySelectorAll('.operator-section-tabs button')].some(button => (button.textContent || '').trim().toLowerCase() === 'build')`, 'Android P20-D Operator build route');
+await tapButton('Build', 139);
+await waitFor(`document.querySelector('.build-header h1')?.textContent?.trim() === 'Build'`, 'Android P20-D Build after seed');
+const p20dProgressionMarked = await evaluate(`(() => {
+  const button = [...document.querySelectorAll('.build-tabs button')].find(candidate => (candidate.textContent || '').trim().toLowerCase().startsWith('progression'));
+  if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+  button.dataset.p20dProgressionTab = 'true';
+  button.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+  return true;
+})()`);
+if (!p20dProgressionMarked) throw new Error('Android P20-D could not find the Progression tab.');
+await tap('button[data-p20d-progression-tab="true"]', 140);
+await waitFor(`Boolean(document.querySelector('[data-network-recommendation="vanguard-breach-guard-early"]'))`, 'Android P20-D Vanguard recommendations');
+
+const p20dLayout = await evaluate(`(() => {
+  const card = document.querySelector('[data-network-recommendation="vanguard-breach-guard-early"]');
+  const button = document.querySelector('button[data-network-recommendation-load="vanguard-breach-guard-early"]');
+  if (!(card instanceof HTMLElement) || !(button instanceof HTMLButtonElement)) return null;
+  const visible = element => {
+    const rect = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+  };
+  const copy = [...card.querySelectorAll('small, b, span, p')].filter(visible);
+  const rect = card.getBoundingClientRect();
+  return {
+    minFont: copy.length ? Math.min(...copy.map(element => Number.parseFloat(getComputedStyle(element).fontSize))) : 0,
+    buttonHeight: button.getBoundingClientRect().height,
+    cardWidth: rect.width,
+    viewportWidth: window.visualViewport?.width ?? window.innerWidth,
+    horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
+    hasRationale: (card.textContent || '').includes('Breacher pressure and armor break'),
+  };
+})()`);
+if (!p20dLayout || !p20dLayout.hasRationale || p20dLayout.minFont < 11.5 || p20dLayout.buttonHeight < 44
+  || p20dLayout.horizontalOverflow > 2 || p20dLayout.cardWidth > p20dLayout.viewportWidth + 2) {
+  throw new Error(`Android P20-D recommendation readability/actionability failed: ${JSON.stringify(p20dLayout)}`);
+}
+const p20dRecommendationReady = await evaluate(`(() => {
+  const button = document.querySelector('button[data-network-recommendation-load="vanguard-breach-guard-early"]');
+  if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+  button.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+  return true;
+})()`);
+if (!p20dRecommendationReady) throw new Error('Android P20-D Vanguard recommendation button unavailable.');
+await sleep(180);
+await tap('button[data-network-recommendation-load="vanguard-breach-guard-early"]', 141);
+await waitFor(`(() => {
+  const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+  const network = state?.profile?.operatorNetwork;
+  const plan = document.querySelector('.network-plan-card')?.textContent ?? '';
+  return state?.profile?.progressionPoints === 6
+    && Array.isArray(network?.allocatedNodeIds)
+    && network.allocatedNodeIds.length === 0
+    && Array.isArray(network?.plannedTargetNodeIds)
+    && network.plannedTargetNodeIds.join(',') === 'vanguard-breach-telemetry,survival-2'
+    && plan.includes('Breach Telemetry')
+    && plan.includes('Pressure Discipline')
+    && plan.includes('6 PT');
+})()`, 'Android P20-D recommendation to non-destructive Planned Build', 20_000);
+await tapButton('Auto Allocate', 142);
+await waitFor(`(() => {
+  const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+  const network = state?.profile?.operatorNetwork;
+  const report = document.querySelector('.network-auto-allocate-report')?.textContent ?? '';
+  return Array.isArray(network?.allocatedNodeIds)
+    && network.allocatedNodeIds.join(',') === 'vanguard-breach-entry,vanguard-breach-pressure,vanguard-breach-impulse,vanguard-breach-telemetry,survival-1,survival-2'
+    && network.unspentPoints === 0
+    && state?.profile?.progressionPoints === 0
+    && Array.isArray(network?.plannedTargetNodeIds)
+    && network.plannedTargetNodeIds.length === 0
+    && report.includes('6 nodes allocated')
+    && report.includes('6 pt spent')
+    && report.includes('Planned build complete');
+})()`, 'Android P20-D recommendation Auto Allocate commit', 20_000);
+console.log(`ANDROID_P20D_RECOMMENDATION_PASS class=vanguard route=early preview=non-destructive autoAllocate=6 font=${p20dLayout.minFont}px touch=${p20dLayout.buttonHeight}px overflow=none`);
+
 const p20bPreviousTimeOrigin = await evaluate('performance.timeOrigin');
 const p20bSeeded = await evaluate(`(() => {
   const stateKey = 'ironshade-vector-state-v1';
