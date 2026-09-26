@@ -2692,6 +2692,15 @@ async function p20eRemoveCombatGamepad() {
   })()`);
 }
 
+async function p20eTryTapInteract(id, holdMs = 100) {
+  const metrics = await elementMetrics('.interact-button:not(:disabled)');
+  if (!metrics || metrics.disabled) return false;
+  await dispatchTouch('touchStart', metrics.x, metrics.y, id);
+  await sleep(holdMs);
+  await dispatchTouch('touchEnd', metrics.x, metrics.y, id);
+  return true;
+}
+
 async function p20eFinishActiveFamily(expectedFamily, idBase) {
   await waitFor(`document.querySelector('.game-root')?.dataset.repeatableFamily === '${expectedFamily}'`, `P20-E ${expectedFamily} combat family`, 30_000);
   const combatDeadline = Date.now() + 180_000;
@@ -2733,11 +2742,11 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
 
     if (!state.objectiveComplete) {
       if (state.interact && state.objectiveActionReady) {
-        await tap('.interact-button:not(:disabled)', idBase + 500 + iteration, 100);
-        await sleep(420);
+        const acted = await p20eTryTapInteract(idBase + 500 + iteration, 100);
+        await sleep(acted ? 420 : 120);
       } else if (state.interact && state.contextActionLabel === 'OPEN PRESSURE DOOR') {
-        await tap('.interact-button:not(:disabled)', idBase + 520 + iteration, 100);
-        await sleep(420);
+        const acted = await p20eTryTapInteract(idBase + 520 + iteration, 100);
+        await sleep(acted ? 420 : 120);
       } else if (state.objectiveDirection) {
         const approachMs = state.objectiveRange > 900 ? 320 : state.objectiveRange > 600 ? 260 : state.objectiveRange > 350 ? 190 : state.objectiveRange > 180 ? 120 : state.objectiveRange > 90 ? 75 : 45;
         await p20eMove(state.objectiveDirection, idBase + 9000 + iteration, approachMs);
