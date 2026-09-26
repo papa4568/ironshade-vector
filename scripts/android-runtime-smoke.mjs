@@ -1400,7 +1400,7 @@ await tapButton('Build', 69);
 await waitFor(`document.querySelector('.build-header h1')?.textContent?.trim() === 'Build'`, 'Android P20-B Build after seed');
 const p20bProgressionMarked = await evaluate(`(() => {
   const button = [...document.querySelectorAll('.build-tabs button')].find(candidate => (candidate.textContent || '').trim().toLowerCase().startsWith('progression'));
-  if (!button || button.disabled) return false;
+  if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
   button.dataset.p20bProgressionTab = 'true';
   button.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
   return true;
