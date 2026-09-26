@@ -2739,25 +2739,9 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
         await tap('.interact-button:not(:disabled)', idBase + 520 + iteration, 100);
         await sleep(420);
       } else if (state.objectiveDirection) {
-        if (iteration % 3 === 0) {
-          const guard = await elementMetrics('.ability-button.ability-2:not(:disabled)');
-          if (guard) {
-            await dispatchTouch('touchStart', guard.x, guard.y, idBase + 6000 + iteration);
-            await sleep(90);
-            await dispatchTouch('touchEnd', guard.x, guard.y, idBase + 6000 + iteration);
-          }
-        }
-        if (iteration % 2 === 0) {
-          const dodge = await elementMetrics('.dodge-button:not(:disabled)');
-          if (dodge) {
-            await dispatchTouch('touchStart', dodge.x, dodge.y, idBase + 7000 + iteration);
-            await sleep(90);
-            await dispatchTouch('touchEnd', dodge.x, dodge.y, idBase + 7000 + iteration);
-          }
-        }
-        const approachMs = state.objectiveRange > 900 ? 850 : state.objectiveRange > 600 ? 650 : state.objectiveRange > 350 ? 440 : state.objectiveRange > 180 ? 260 : 120;
+        const approachMs = state.objectiveRange > 900 ? 320 : state.objectiveRange > 600 ? 260 : state.objectiveRange > 350 ? 190 : state.objectiveRange > 180 ? 120 : state.objectiveRange > 90 ? 75 : 45;
         await p20eMove(state.objectiveDirection, idBase + 9000 + iteration, approachMs);
-        await sleep(120);
+        await sleep(state.objectiveRange > 180 ? 80 : 150);
       } else {
         await sleep(300);
       }
@@ -2782,10 +2766,8 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
       }
       const pursuitDirection = state.extractionHostileDirection || state.hostileDirection;
       const pursuitRange = state.extractionHostileRange > 0 ? state.extractionHostileRange : state.hostileRange;
-      if (pursuitDirection && pursuitRange > 260) {
-        const closeMs = pursuitRange > 700 ? 1200 : pursuitRange > 480 ? 900 : 560;
-        await p20eMove(pursuitDirection, idBase + 10000 + iteration, closeMs);
-        await sleep(120);
+      if (pursuitDirection && pursuitRange > 220) {
+        await p20eGamepadCombat(pursuitDirection, pursuitRange > 700 ? 1200 : pursuitRange > 480 ? 1000 : pursuitRange > 320 ? 850 : 650);
       } else {
         await p20eGamepadCombat('', 1500);
         if (iteration % 2 === 0) {
