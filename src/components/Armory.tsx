@@ -9,6 +9,7 @@ import '../guide.css';
 import { ActionRequirement, ProgressiveDisclosure, type RequirementPresentation } from './UiPrimitives';
 import { classAbilityKits, operatorWeaponFamilyForClass } from '../game/classSkills';
 import { autoAllocateOperatorNetworkPlan, normalizeOperatorNetworkState, operatorNetworkMilestoneActive, operatorNetworkPlan, operatorNetworkRespecCreditCost, operatorNetworkRouteToNode, type OperatorNetworkUnlockContext } from '../game/operatorNetwork';
+import { operatorNetworkRecommendations } from '../game/operatorNetworkRecommendations';
 import { classSkillIconAssets, weaponIconAssets } from '../game/mobileUiAssets';
 import {
   abilityMods,
@@ -745,6 +746,7 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
   const operatorNetwork = useMemo(() => normalizeOperatorNetworkState({ operatorClass, level: profile.level, specialization: profile.specialization, state: profile.operatorNetwork, legacyAllocatedNodes: profile.allocatedNodes, legacyUnspentPoints: profile.progressionPoints }), [operatorClass, profile.level, profile.specialization, profile.operatorNetwork, profile.allocatedNodes, profile.progressionPoints]);
   const networkPlanTargets = operatorNetwork.plannedTargetNodeIds;
   const operatorNetworkContext = useMemo<OperatorNetworkUnlockContext>(() => ({ level: profile.level, specialization: profile.specialization, unlockKeys: specializationNetworkUnlockKeys(campaign) }), [profile.level, profile.specialization, campaign.story.blackLattice.status, campaign.story.postKhepri.status, campaign.story.interdiction.status, campaign.story.parallaxDebt.status, campaign.escalation.status, campaign.reputation.meridian, campaign.reputation.longarc, campaign.reputation.heliostat]);
+  const networkRecommendations = useMemo(() => operatorNetworkRecommendations(operatorNetwork, operatorClass, operatorNetworkContext), [operatorNetwork, operatorClass, operatorNetworkContext]);
   const specializationNetworkNodes = useMemo(() => progressionNodes.filter(node => node.specialization === profile.specialization), [profile.specialization]);
   const networkSearchResults = useMemo(() => {
     const query = networkQuery.trim().toLowerCase();
@@ -1097,6 +1099,21 @@ export default function Armory({ profile, campaign, newLootIds, onProfileChange,
           <div className="network-planner-nav" aria-label="Network navigation"><button onClick={() => focusNetworkNodeByOffset(-1)}>Previous node</button><button onClick={() => focusNetworkNodeByOffset(1)}>Next node</button></div>
         </header>
         {networkQuery && <div className="network-search-results" aria-label="Operator Network search results">{networkSearchResults.length ? networkSearchResults.map(node => <button key={node.id} className={networkFocusId === node.id ? 'selected' : ''} onClick={() => setNetworkFocusId(node.id)}><small>{node.branch} · {node.kind}</small><b>{node.name}</b><span>{node.description}</span></button>) : <span className="network-search-empty">No class-compatible Network nodes match “{networkQuery}”.</span>}</div>}
+        <section className="network-recommendations" aria-label="Recommended Operator Network paths">
+          <header><div><small>P20-D // CLASS ROUTES</small><b>{operatorClassDefinition.name} recommended paths</b><span>Load a route into Planned Build for review. Recommendations never spend points; Auto Allocate remains the explicit commit action.</span></div></header>
+          <div className="network-recommendation-grid">{networkRecommendations.map(recommendation => {
+            const targetNames = recommendation.targetNodeIds.map(id => progressionNodes.find(node => node.id === id)?.name ?? id);
+            const routeNames = recommendation.routeNodeIds.map(id => progressionNodes.find(node => node.id === id)?.name ?? id);
+            const stageLabel = recommendation.stage === 'early' ? 'EARLY ROUTE' : recommendation.stage === 'core' ? 'CORE ROUTE' : 'SPECIALIZATION REFINEMENT';
+            return <article key={recommendation.id} className={`network-recommendation-card ${recommendation.complete ? 'complete' : ''}`} data-network-recommendation={recommendation.id}>
+              <div className="network-recommendation-copy"><small>{stageLabel}</small><b>{recommendation.name}</b><span>{recommendation.loop}</span></div>
+              <p>{recommendation.rationale}</p>
+              <div className="network-recommendation-meta"><span><small>PLAN COST</small><b>{recommendation.pointCost} PT</b></span><span><small>ROUTE NODES</small><b>{recommendation.routeNodeIds.length}</b></span><span><small>TARGETS</small><b>{targetNames.join(' + ')}</b></span></div>
+              <div className="network-recommendation-route"><small>LEGAL ROUTE</small><span>{recommendation.complete ? 'Path already active in the current build.' : routeNames.join(' → ')}</span></div>
+              <button data-network-recommendation-load={recommendation.id} disabled={recommendation.complete} onClick={() => { setNetworkPlanTargets([...recommendation.targetNodeIds]); setNetworkFocusId(recommendation.remainingTargetNodeIds[0] ?? recommendation.targetNodeIds[0] ?? null); }}>{recommendation.complete ? 'Path complete' : 'Load Planned Build'}</button>
+            </article>;
+          })}</div>
+        </section>
         <div className="network-planner-body">
           <article className="network-focus-card">
             {networkFocusedNode ? <>
