@@ -2609,13 +2609,12 @@ if (scrollAfter.x !== scrollBefore.x || scrollAfter.y !== scrollBefore.y) {
 
 console.log(`ANDROID_TOUCH_SMOKE_PASS move=drag aim=drag fire=hold ability=tap dodge=tap weapon=class-locked scroll=${scrollAfter.x},${scrollAfter.y}`);
 
-async function p20eSyntheticFire(active) {
-  await evaluate(`(() => {
-    const button = document.querySelector('.fire-button');
-    if (!(button instanceof HTMLButtonElement)) return false;
-    button.dispatchEvent(new PointerEvent('${active ? 'pointerdown' : 'pointerup'}', { bubbles: true, pointerId: 1901, pointerType: 'touch', isPrimary: true }));
-    return true;
-  })()`);
+async function p20eFireBurst(id, holdMs = 1000) {
+  const fire = await elementMetrics('.fire-button:not(:disabled)');
+  if (!fire) throw new Error('P20-E FIRE control unavailable during representative contract play.');
+  await dispatchTouch('touchStart', fire.x, fire.y, id);
+  await sleep(holdMs);
+  await dispatchTouch('touchEnd', fire.x, fire.y, id);
 }
 
 const p20eDirectionOffset = {
@@ -2670,13 +2669,20 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
         await p20eMove(pursuitDirection, idBase + iteration, pursuitRange > 620 ? 1100 : 850);
         await sleep(90);
       } else {
-        await p20eSyntheticFire(true);
-        if (iteration % 3 === 0) {
-          await evaluate(`document.querySelector('.ability-button:not(:disabled)')?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1902, pointerType: 'touch' }))`);
+        await p20eFireBurst(idBase + 1000 + iteration, pursuitRange > 220 ? 1050 : 850);
+        if (iteration % 4 === 0) {
+          const ability = await elementMetrics('.ability-button:not(:disabled)');
+          if (ability) {
+            await dispatchTouch('touchStart', ability.x, ability.y, idBase + 2000 + iteration);
+            await sleep(90);
+            await dispatchTouch('touchEnd', ability.x, ability.y, idBase + 2000 + iteration);
+          }
         }
-        if (pursuitDirection) await p20eMove(pursuitDirection, idBase + iteration, pursuitRange > 220 ? 420 : 240);
-        await sleep(650);
-        await p20eSyntheticFire(false);
+        if (pursuitDirection && pursuitRange > 220) {
+          await p20eMove(pursuitDirection, idBase + iteration, 260);
+        } else {
+          await sleep(220);
+        }
       }
     } else if (!state.objectiveComplete) {
       if (state.objectiveDirection) {
