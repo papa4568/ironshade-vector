@@ -1019,12 +1019,19 @@ try {
     const measure = size => {
       root.dataset.interfaceSize = size;
       const card = document.querySelector('.command-card.primary-card');
+      const bridge = document.querySelector('.command-visual.command-bridge.command-bridge-compact');
+      const workspace = document.querySelector('.tactical-workspace');
+      const navButton = document.querySelector('.command-rail-nav button[data-primary-area]');
       const style = card ? getComputedStyle(card) : null;
+      const workspaceStyle = workspace ? getComputedStyle(workspace) : null;
       const rect = card?.getBoundingClientRect();
       return {
         size,
         paddingLeft: Number.parseFloat(style?.paddingLeft ?? '0'),
         height: Number((rect?.height ?? 0).toFixed(3)),
+        bridgeHeight: Number((bridge?.getBoundingClientRect().height ?? 0).toFixed(3)),
+        workspacePaddingTop: Number.parseFloat(workspaceStyle?.paddingTop ?? '0'),
+        navHeight: Number((navButton?.getBoundingClientRect().height ?? 0).toFixed(3)),
         horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
       };
     };
@@ -1035,14 +1042,17 @@ try {
     else delete root.dataset.interfaceSize;
     return { compact, baseline, large };
   })()`);
-  if (!(p20CommandScale.compact.paddingLeft < p20CommandScale.baseline.paddingLeft
+  if (!(p20CommandScale.compact.paddingLeft <= p20CommandScale.baseline.paddingLeft * 0.8
     && p20CommandScale.baseline.paddingLeft < p20CommandScale.large.paddingLeft)
+    || !(p20CommandScale.compact.bridgeHeight <= p20CommandScale.baseline.bridgeHeight * 0.82)
+    || !(p20CommandScale.compact.workspacePaddingTop <= p20CommandScale.baseline.workspacePaddingTop * 0.8)
+    || p20CommandScale.compact.navHeight < 44
     || p20CommandScale.compact.horizontalOverflow > 2
     || p20CommandScale.baseline.horizontalOverflow > 2
     || p20CommandScale.large.horizontalOverflow > 2) {
-    throw new Error(`P20-A Command surface did not visibly reflow across Interface Size: ${JSON.stringify(p20CommandScale)}`);
+    throw new Error(`P20-A Command surface did not produce a materially smaller Compact layout: ${JSON.stringify(p20CommandScale)}`);
   }
-  console.log(`BROWSER_P20_COMMAND_SCALE_PASS viewport=${viewportMode} padding=${p20CommandScale.compact.paddingLeft}/${p20CommandScale.baseline.paddingLeft}/${p20CommandScale.large.paddingLeft} overflow=none`);
+  console.log(`BROWSER_P20_COMMAND_SCALE_PASS viewport=${viewportMode} padding=${p20CommandScale.compact.paddingLeft}/${p20CommandScale.baseline.paddingLeft}/${p20CommandScale.large.paddingLeft} bridge=${p20CommandScale.compact.bridgeHeight}/${p20CommandScale.baseline.bridgeHeight} nav=${p20CommandScale.compact.navHeight}px overflow=none`);
   await captureScreenshot(commandScreenshotPath);
 
   const equipmentShortcutVisible = await evaluate(`(() => {
@@ -1119,9 +1129,9 @@ try {
   }
   await evaluate(`document.documentElement.dataset.interfaceSize = ${JSON.stringify(p20BuildPreviousInterfaceSize)}; true`);
   for (const metric of ['loadout', 'crafting', 'progression', 'skills', 'settings', 'tabs']) {
-    if (!(p20BuildScale.compact[metric] < p20BuildScale.default[metric]
-      && p20BuildScale.default[metric] < p20BuildScale.large[metric])) {
-      throw new Error(`P20-A rendered ${metric} geometry is not ordered Compact < Default < Large: ${JSON.stringify(p20BuildScale)}`);
+    if (!(p20BuildScale.compact[metric] <= p20BuildScale.default[metric] * 0.8
+      && p20BuildScale.large[metric] >= p20BuildScale.default[metric] * 1.15)) {
+      throw new Error(`P20-A rendered ${metric} geometry is not materially separated around Default: ${JSON.stringify(p20BuildScale)}`);
     }
   }
   if (p20BuildScale.compact.horizontalOverflow > 2 || p20BuildScale.default.horizontalOverflow > 2 || p20BuildScale.large.horizontalOverflow > 2) {
@@ -1270,10 +1280,10 @@ try {
   const p20InterfaceLarge = await setP20InterfaceSize('large');
   if (!p20InterfaceCompact.panelVisible || !p20InterfaceDefault.panelVisible || !p20InterfaceLarge.panelVisible
     || p20InterfaceCompact.horizontalOverflow > 2 || p20InterfaceDefault.horizontalOverflow > 2 || p20InterfaceLarge.horizontalOverflow > 2
-    || !(p20InterfaceCompact.rootFontSize < p20InterfaceDefault.rootFontSize && p20InterfaceDefault.rootFontSize < p20InterfaceLarge.rootFontSize)
-    || !(p20InterfaceCompact.rowPadding < p20InterfaceDefault.rowPadding && p20InterfaceDefault.rowPadding < p20InterfaceLarge.rowPadding)
-    || !(p20InterfaceCompact.selectPadding < p20InterfaceDefault.selectPadding && p20InterfaceDefault.selectPadding < p20InterfaceLarge.selectPadding)
-    || !(p20InterfaceCompact.tabGap < p20InterfaceDefault.tabGap && p20InterfaceDefault.tabGap < p20InterfaceLarge.tabGap)) {
+    || !(p20InterfaceCompact.rootFontSize <= p20InterfaceDefault.rootFontSize * 0.75 && p20InterfaceLarge.rootFontSize >= p20InterfaceDefault.rootFontSize * 1.2)
+    || !(p20InterfaceCompact.rowPadding <= p20InterfaceDefault.rowPadding * 0.8 && p20InterfaceLarge.rowPadding >= p20InterfaceDefault.rowPadding * 1.15)
+    || !(p20InterfaceCompact.selectPadding <= p20InterfaceDefault.selectPadding * 0.8 && p20InterfaceLarge.selectPadding >= p20InterfaceDefault.selectPadding * 1.15)
+    || !(p20InterfaceCompact.tabGap <= p20InterfaceDefault.tabGap * 0.8 && p20InterfaceLarge.tabGap >= p20InterfaceDefault.tabGap * 1.15)) {
     throw new Error(`P20-A Interface Size reflow failed: ${JSON.stringify({ compact: p20InterfaceCompact, default: p20InterfaceDefault, large: p20InterfaceLarge })}`);
   }
   await setP20InterfaceSize('default');
