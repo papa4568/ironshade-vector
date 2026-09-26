@@ -179,32 +179,42 @@ def set_checkbox(label, expected):
     if state in ("true", "false") and (state == "true") == expected:
         print(f"ANDROID_SETTINGS_CHECKBOX_ALREADY label={label!r} expected={expected}")
         return
+
     visual_before = shot("check-high-contrast-before") if label == "High contrast" and expected else None
     x, y = center(node)
     print(f"ANDROID_SETTINGS_CHECKBOX label={label!r} expected={expected} before={state} node={node_summary(node)}")
-    tap(x, y, 0.9)
-    node = wait_node(label, timeout=8, actionable=True)
-    after = node.attrib.get("checked")
-    if after in ("true", "false") and (after == "true") != expected:
-        # WebView can expose a stale checked flag. Retry through the visible
-        # HTML label row, still using only screen input.
+    tap(x, y, 1.0)
+
+    if label == "High contrast" and expected and visual_before is not None:
+        visual_after_first = shot("check-high-contrast-after-input")
+        first_delta = pixel_difference(visual_before, visual_after_first)
+        if first_delta >= 0.015:
+            print(f"ANDROID_SETTINGS_HIGH_CONTRAST_PASS changed_pixels={first_delta:.4f} path=input")
+            return
+
+        # Only retry through the visible label if the first player tap produced
+        # no visible theme change. Never double-toggle based on stale WebView
+        # accessibility state alone.
+        node = wait_node(label, timeout=8, actionable=True)
         x1, y1, x2, y2 = parse_bounds(node.attrib["bounds"])
         label_x = max(240, x1 - 900)
         label_y = (y1 + y2) // 2
-        print(f"ANDROID_SETTINGS_CHECKBOX_RETRY label={label!r} x={label_x} y={label_y}")
+        print(f"ANDROID_SETTINGS_CHECKBOX_LABEL_RETRY label={label!r} x={label_x} y={label_y}")
         tap(label_x, label_y, 1.0)
-        node = wait_node(label, timeout=8, actionable=True)
-        after = node.attrib.get("checked")
-    if label == "High contrast" and expected and visual_before is not None:
-        visual_after = shot("check-high-contrast-after")
-        visual_delta = pixel_difference(visual_before, visual_after)
-        if visual_delta < 0.015 and after != "true":
-            raise RuntimeError(f"High contrast produced no visible change through player input: delta={visual_delta:.4f} accessibility={after}")
-        print(f"ANDROID_SETTINGS_HIGH_CONTRAST_PASS changed_pixels={visual_delta:.4f} accessibility={after}")
-    elif after in ("true", "false") and (after == "true") != expected:
-        # Nonvisual toggles cannot be truthfully judged from screenshots. Record
-        # the WebView accessibility limitation but continue playing the panel.
-        print(f"ANDROID_SETTINGS_CHECKBOX_STATE_UNRELIABLE label={label!r} expected={expected} accessibility={after}")
+        visual_after_label = shot("check-high-contrast-after-label")
+        label_delta = pixel_difference(visual_before, visual_after_label)
+        if label_delta < 0.015:
+            raise RuntimeError(f"High contrast produced no visible change through input or label taps: input_delta={first_delta:.4f} label_delta={label_delta:.4f}")
+        print(f"ANDROID_SETTINGS_HIGH_CONTRAST_PASS changed_pixels={label_delta:.4f} path=label")
+        return
+
+    # For nonvisual toggles, one touch is the truthful black-box action. Do not
+    # retry based on WebView's stale accessibility checked flag because that can
+    # undo a successful player tap.
+    node = wait_node(label, timeout=8, actionable=True)
+    after = node.attrib.get("checked")
+    print(f"ANDROID_SETTINGS_CHECKBOX_TOUCHED label={label!r} expected={expected} accessibility_after={after}")
+
 
 def adjust_slider(label, fraction):
     for _ in range(10):
