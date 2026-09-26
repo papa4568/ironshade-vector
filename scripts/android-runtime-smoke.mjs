@@ -2653,7 +2653,10 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
     })()`);
     if (state.dead) throw new Error(`P20-E ${expectedFamily} representative play ended with operator down.`);
 
-    if (state.remaining > 0) {
+    if (!state.objectiveComplete && state.interact) {
+      await tap('.interact-button:not(:disabled)', idBase + 500 + iteration, 100);
+      await sleep(420);
+    } else if (state.remaining > 0) {
       await p20eSyntheticFire(true);
       if (iteration % 4 === 0) {
         await evaluate(`document.querySelector('.ability-button:not(:disabled)')?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1902, pointerType: 'touch' }))`);
@@ -2662,10 +2665,7 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
       else await sleep(700);
       await p20eSyntheticFire(false);
     } else if (!state.objectiveComplete) {
-      if (state.interact) {
-        await tap('.interact-button:not(:disabled)', idBase + 500 + iteration, 100);
-        await sleep(420);
-      } else if (state.objectiveDirection) {
+      if (state.objectiveDirection) {
         await p20eMove(state.objectiveDirection, idBase + iteration, 520);
       } else {
         await sleep(350);
