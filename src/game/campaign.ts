@@ -289,7 +289,6 @@ const archetypes: Array<{ id: ContractArchetype; sponsor: FactionId }> = [{ id: 
 export function factionDisplayName(id: FactionId) { return factions.find(faction => faction.id === id)?.name ?? id; }
 
 const standardObjectiveModes: Record<ContractArchetype, ObjectiveMode[]> = { salvage: ['deep-salvage', 'machinery-recovery'], boarding: ['emergency-boarding'], stabilization: ['grid-isolation', 'gravity-stabilization'] };
-const tacticalLocations = new Set<LocationId>(['spin-habitat', 'jovian-harvester', 'ice-mine', 'solar-yard']);
 
 function defaultObjectiveMode(archetype: ContractArchetype, location: LocationId): ObjectiveMode {
   if (archetype === 'salvage') return location === 'damaged-vessel' ? 'pressure-recovery' : location === 'asteroid-refinery' ? 'machinery-recovery' : 'deep-salvage';
