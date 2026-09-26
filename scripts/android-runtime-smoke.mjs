@@ -1569,6 +1569,18 @@ await waitFor(`(() => {
     && Boolean(document.querySelector('button[data-skill-slot="mag"][data-skill-mod="standard"]'));
 })()`, 'Android P19-E decision-first skill hierarchy', 20_000);
 
+const p20cSkillAudit = await evaluate(`(() => {
+  const root = document.querySelector('[data-management-surface="skills"]');
+  const text = root?.textContent ?? '';
+  const authored = ['Breach Rush', 'Fracture Tag', 'Bulwark Pulse'].every(name => text.includes(name));
+  const legacy = ['Magnetic Impulse', 'Sensor Spike', 'Arc Tap'].filter(name => text.includes(name));
+  return { authored, legacy, classCards: root?.querySelectorAll('.skill-path-card').length ?? 0 };
+})()`);
+if (!p20cSkillAudit.authored || p20cSkillAudit.legacy.length || p20cSkillAudit.classCards !== 3) {
+  throw new Error(`Android P20-C class-skill audit failed: ${JSON.stringify(p20cSkillAudit)}`);
+}
+console.log('ANDROID_P20C_CLASS_SKILL_AUDIT_PASS class=Vanguard skills=RUSH+BREAK+GUARD legacyNeutralNames=absent');
+
 await p19CompactTypographyScan('skills', '[data-management-surface="skills"]');
 const p18fSkillRequirements = await evaluate(`(() => {
   const root = document.querySelector('[data-management-surface="skills"]');
