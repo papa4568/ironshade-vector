@@ -2644,20 +2644,17 @@ async function p20eInstallCombatGamepad() {
   if (!installed) throw new Error('P20-E could not install assisted combat gamepad.');
 }
 
-async function p20eGamepadCombat(moveDirection, aimDirection, duration = 950) {
+async function p20eGamepadCombat(moveDirection, duration = 950) {
   const moveOffset = p20eDirectionOffset[moveDirection] ?? [0, 0];
-  const aimOffset = p20eDirectionOffset[aimDirection] ?? moveOffset;
   const moveX = Math.max(-1, Math.min(1, moveOffset[0] / 36));
   const moveY = Math.max(-1, Math.min(1, moveOffset[1] / 36));
-  const aimX = Math.max(-1, Math.min(1, aimOffset[0] / 36));
-  const aimY = Math.max(-1, Math.min(1, aimOffset[1] / 36));
   await evaluate(`(() => {
     const pad = globalThis.__ironshadeP20eGamepad;
     if (!pad) return false;
     pad.axes[0] = ${moveX};
     pad.axes[1] = ${moveY};
-    pad.axes[2] = ${aimX};
-    pad.axes[3] = ${aimY};
+    pad.axes[2] = 0;
+    pad.axes[3] = 0;
     const trigger = pad.buttons[7];
     trigger.pressed = true;
     trigger.value = 1;
@@ -2756,7 +2753,16 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
       }
       const pursuitDirection = state.objectiveComplete && state.extractionHostileDirection ? state.extractionHostileDirection : state.hostileDirection;
       const pursuitRange = state.objectiveComplete && state.extractionHostileRange > 0 ? state.extractionHostileRange : state.hostileRange;
-      await p20eGamepadCombat(pursuitDirection, state.hostileDirection || pursuitDirection, pursuitRange > 620 ? 1300 : pursuitRange > 340 ? 1050 : 850);
+      await p20eGamepadCombat(pursuitRange > 220 ? pursuitDirection : '', pursuitRange > 620 ? 1300 : pursuitRange > 340 ? 1050 : pursuitRange > 220 ? 850 : 1450);
+      if (iteration % 4 === 0) {
+        const offense = await elementMetrics('.ability-button.ability-0:not(:disabled)');
+        if (offense) {
+          await dispatchTouch('touchStart', offense.x, offense.y, idBase + 8000 + iteration);
+          await sleep(90);
+          await dispatchTouch('touchEnd', offense.x, offense.y, idBase + 8000 + iteration);
+          await sleep(120);
+        }
+      }
     } else if (!state.objectiveComplete) {
       if (state.objectiveDirection) {
         const approachMs = state.objectiveRange > 900 ? 520 : state.objectiveRange > 500 ? 360 : state.objectiveRange > 250 ? 220 : state.objectiveRange > 120 ? 130 : 70;
