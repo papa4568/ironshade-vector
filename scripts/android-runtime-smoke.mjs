@@ -2636,7 +2636,7 @@ async function p20eMove(direction, id, duration = 650) {
 
 async function p20eFinishActiveFamily(expectedFamily, idBase) {
   await waitFor(`document.querySelector('.game-root')?.dataset.repeatableFamily === '${expectedFamily}'`, `P20-E ${expectedFamily} combat family`, 30_000);
-  const combatDeadline = Date.now() + 150_000;
+  const combatDeadline = Date.now() + 180_000;
   let iteration = 0;
   while (Date.now() < combatDeadline) {
     const state = await evaluate(`(() => {
@@ -2645,6 +2645,7 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
         dead: Boolean(document.querySelector('[aria-label="Operator down"]')),
         remaining: Number(root?.dataset.squadRemaining ?? '999'),
         hostileDirection: root?.dataset.nearestHostileDirection ?? '',
+        hostileRange: Number(root?.dataset.nearestHostileRange ?? '0'),
         extractionHostileDirection: root?.dataset.extractionHostileDirection ?? '',
         extractionHostileRange: Number(root?.dataset.extractionHostileRange ?? '0'),
         objectiveComplete: root?.dataset.objectiveComplete === 'true',
@@ -2663,15 +2664,20 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
       await tap('.interact-button:not(:disabled)', idBase + 500 + iteration, 100);
       await sleep(420);
     } else if (state.remaining > 0) {
-      await p20eSyntheticFire(true);
-      if (iteration % 4 === 0) {
-        await evaluate(`document.querySelector('.ability-button:not(:disabled)')?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1902, pointerType: 'touch' }))`);
-      }
       const pursuitDirection = state.objectiveComplete && state.extractionHostileDirection ? state.extractionHostileDirection : state.hostileDirection;
-      const pursuitMs = state.objectiveComplete && state.extractionHostileRange > 0 && state.extractionHostileRange < 280 ? 260 : 520;
-      if (pursuitDirection) await p20eMove(pursuitDirection, idBase + iteration, pursuitMs);
-      else await sleep(700);
-      await p20eSyntheticFire(false);
+      const pursuitRange = state.objectiveComplete && state.extractionHostileRange > 0 ? state.extractionHostileRange : state.hostileRange;
+      if (pursuitDirection && pursuitRange > 340) {
+        await p20eMove(pursuitDirection, idBase + iteration, pursuitRange > 620 ? 1100 : 850);
+        await sleep(90);
+      } else {
+        await p20eSyntheticFire(true);
+        if (iteration % 3 === 0) {
+          await evaluate(`document.querySelector('.ability-button:not(:disabled)')?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1902, pointerType: 'touch' }))`);
+        }
+        if (pursuitDirection) await p20eMove(pursuitDirection, idBase + iteration, pursuitRange > 220 ? 420 : 240);
+        await sleep(650);
+        await p20eSyntheticFire(false);
+      }
     } else if (!state.objectiveComplete) {
       if (state.objectiveDirection) {
         const approachMs = state.objectiveRange > 900 ? 520 : state.objectiveRange > 500 ? 360 : state.objectiveRange > 250 ? 220 : state.objectiveRange > 120 ? 130 : 70;
