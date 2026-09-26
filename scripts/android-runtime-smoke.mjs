@@ -1835,6 +1835,125 @@ if (p15ShipLayout.horizontalOverflow > 2 || p15ShipLayout.visibleTabs < 2 || p15
 }
 console.log('ANDROID_P15_MENU_PRESENTATION_PASS input=touch flows=class+crafting+progression+ship-systems shared=iv-panel transition=iv-view');
 
+
+async function p20cLoadClassCombat(operatorClass, family, kit, singularTrait = null, deploy = true) {
+  const previousTimeOrigin = await evaluate('performance.timeOrigin');
+  const seeded = await evaluate(`(() => {
+    const stateKey = 'ironshade-vector-state-v1';
+    const state = JSON.parse(localStorage.getItem(stateKey) || 'null');
+    if (!state?.profile || !Array.isArray(state.profile.inventory)) return null;
+    const profile = state.profile;
+    const weaponSlots = ['carbine', 'breacher', 'rail'];
+    const startNodeId = { vanguard: 'start-vanguard', vector: 'start-vector', systems: 'start-systems' }[${JSON.stringify(operatorClass)}];
+    profile.operatorClass = ${JSON.stringify(operatorClass)};
+    profile.classSelectionComplete = true;
+    profile.specialization = null;
+    profile.specializationOverclock = false;
+    profile.abilityMods = { mag: null, mark: null, arc: null };
+    profile.allocatedNodes = [];
+    profile.operatorNetwork = { schemaVersion: 3, startNodeId, allocatedNodeIds: [], unspentPoints: Math.max(0, Number(profile.progressionPoints || 0)), plannedTargetNodeIds: [] };
+    for (const slot of weaponSlots) profile.equipped[slot] = slot === ${JSON.stringify(family)} ? 'starter-' + slot : null;
+    const starterRig = profile.inventory.find(item => item.id === 'starter-rig');
+    if (starterRig && starterRig.rarity === 'Field') delete starterRig.singularTrait;
+    if (${JSON.stringify(singularTrait)} && starterRig) {
+      starterRig.singularTrait = ${JSON.stringify(singularTrait)};
+      profile.equipped.rig = starterRig.id;
+    }
+    localStorage.setItem(stateKey, JSON.stringify(state));
+    location.reload();
+    return { operatorClass: profile.operatorClass, family: ${JSON.stringify(family)}, singularTrait: starterRig?.singularTrait ?? null };
+  })()`);
+  if (!seeded || seeded.operatorClass !== operatorClass) throw new Error(`Android P20-C could not seed ${operatorClass} combat profile.`);
+  await waitFor(`performance.timeOrigin !== ${JSON.stringify(previousTimeOrigin)}`, `Android P20-C ${operatorClass} reload`, 45_000);
+  await waitFor(`(() => {
+    const button = [...document.querySelectorAll('button')].find(candidate => (candidate.textContent || '').trim().toLowerCase() === 'operations');
+    return document.readyState === 'complete' && button instanceof HTMLButtonElement && !button.disabled;
+  })()`, `Android P20-C ${operatorClass} Command Deck`, 45_000);
+  if (!deploy) return;
+
+  const openedOperations = await evaluate(`(() => {
+    const button = [...document.querySelectorAll('button')].find(candidate => (candidate.textContent || '').trim().toLowerCase() === 'operations');
+    if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+    button.click();
+    return true;
+  })()`);
+  if (!openedOperations) throw new Error(`Android P20-C could not open Operations for ${operatorClass}.`);
+  await waitFor(`[...document.querySelectorAll('button')].some(button => (button.textContent || '').trim().toLowerCase() === 'contracts')`, `Android P20-C ${operatorClass} Operations`);
+
+  const openedContracts = await evaluate(`(() => {
+    const button = [...document.querySelectorAll('button')].find(candidate => (candidate.textContent || '').trim().toLowerCase() === 'contracts');
+    if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+    button.click();
+    return true;
+  })()`);
+  if (!openedContracts) throw new Error(`Android P20-C could not open Contracts for ${operatorClass}.`);
+  await waitFor(`Boolean(document.querySelector('button[data-location="asteroid-refinery"]')) && [...document.querySelectorAll('button')].some(button => (button.textContent || '').trim().toLowerCase() === 'deploy selected contract')`, `Android P20-C ${operatorClass} Contract Board`);
+
+  const selected = await evaluate(`(() => {
+    const target = document.querySelector('button[data-location="asteroid-refinery"]');
+    if (!(target instanceof HTMLButtonElement) || target.disabled) return false;
+    target.click();
+    return true;
+  })()`);
+  if (!selected) throw new Error(`Android P20-C could not select the Asteroid Refinery for ${operatorClass}.`);
+  await waitFor(`document.querySelector('button[data-location="asteroid-refinery"]')?.classList.contains('selected') === true`, `Android P20-C ${operatorClass} contract selection`);
+
+  const deployed = await evaluate(`(() => {
+    const button = [...document.querySelectorAll('button')].find(candidate => (candidate.textContent || '').trim().toLowerCase() === 'deploy selected contract');
+    if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+    button.click();
+    return true;
+  })()`);
+  if (!deployed) throw new Error(`Android P20-C could not deploy ${operatorClass}.`);
+  await waitFor(`(() => {
+    const root = document.querySelector('.game-root');
+    const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || '').trim());
+    return root?.dataset.classSkillKit === ${JSON.stringify(kit.map(entry => entry.short).join('/'))}
+      && ${JSON.stringify(kit.map(entry => entry.name))}.every(label => labels.includes(label))
+      && ${JSON.stringify(singularTrait)} === null
+        ? true
+        : (root?.dataset.classSkillGear || '').split('+').includes(${JSON.stringify(singularTrait)});
+  })()`, `Android P20-C ${operatorClass} combat kit + skill gear`, 45_000);
+
+  const fired = await evaluate(`(() => {
+    const button = document.querySelector('.touch-ability-fan button[aria-label="${kit[0].name.replaceAll('"', '\\"')}"]');
+    if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+    const rect = button.getBoundingClientRect();
+    button.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true,
+      pointerId: 920,
+      pointerType: 'touch',
+      isPrimary: true,
+      clientX: rect.left + rect.width / 2,
+      clientY: rect.top + rect.height / 2,
+    }));
+    return true;
+  })()`);
+  if (!fired) throw new Error(`Android P20-C could not activate ${kit[0].name} for ${operatorClass}.`);
+  await waitFor(`(() => {
+    const button = document.querySelector('.touch-ability-fan button[aria-label="${kit[0].name.replaceAll('"', '\\"')}"]');
+    return button instanceof HTMLButtonElement && button.disabled;
+  })()`, `Android P20-C ${operatorClass} first-skill activation`);
+  console.log(`ANDROID_P20C_CLASS_SKILL_PASS class=${operatorClass} kit=${kit.map(entry => entry.short).join('/')} firstSkill=${kit[0].name} gear=${singularTrait ?? 'baseline'}`);
+}
+
+await p20cLoadClassCombat('vector', 'rail', [
+  { name: 'Vector Shift', short: 'SHIFT' },
+  { name: 'Deadeye Lock', short: 'LOCK' },
+  { name: 'Splitshot', short: 'SPLIT' },
+]);
+await p20cLoadClassCombat('systems', 'carbine', [
+  { name: 'Polarity Well', short: 'WELL' },
+  { name: 'Relay Hack', short: 'HACK' },
+  { name: 'Cascade Arc', short: 'CHAIN' },
+], 'magBloom');
+await p20cLoadClassCombat('vanguard', 'breacher', [
+  { name: 'Breach Rush', short: 'RUSH' },
+  { name: 'Fracture Tag', short: 'BREAK' },
+  { name: 'Bulwark Pulse', short: 'GUARD' },
+], null, false);
+console.log('ANDROID_P20C_CLASS_SKILL_APK_PASS kits=Vanguard+Vector+Systems representativeSkillGear=Bloom-Vector-Rig');
+
 await tapButton('Operations', 39);
 await waitFor(`[...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'contracts')`, 'Operations navigation');
 
