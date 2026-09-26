@@ -1400,7 +1400,7 @@ await tapButton('Build', 69);
 await waitFor(`document.querySelector('.build-header h1')?.textContent?.trim() === 'Build'`, 'Android P20-B Build after seed');
 const p20bProgressionMarked = await evaluate(`(() => {
   const button = [...document.querySelectorAll('.build-tabs button')].find(candidate => (candidate.textContent || '').trim().toLowerCase().startsWith('progression'));
-  if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+  if (!button || button.disabled) return false;
   button.dataset.p20bProgressionTab = 'true';
   button.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
   return true;
@@ -1867,13 +1867,13 @@ async function p20cLoadClassCombat(operatorClass, family, kit, singularTrait = n
   await waitFor(`performance.timeOrigin !== ${JSON.stringify(previousTimeOrigin)}`, `Android P20-C ${operatorClass} reload`, 45_000);
   await waitFor(`(() => {
     const button = [...document.querySelectorAll('button')].find(candidate => (candidate.textContent || '').trim().toLowerCase() === 'operations');
-    return document.readyState === 'complete' && button instanceof HTMLButtonElement && !button.disabled;
+    return document.readyState === 'complete' && Boolean(button) && !button.disabled;
   })()`, `Android P20-C ${operatorClass} Command Deck`, 45_000);
   if (!deploy) return;
 
   const openedOperations = await evaluate(`(() => {
     const button = [...document.querySelectorAll('button')].find(candidate => (candidate.textContent || '').trim().toLowerCase() === 'operations');
-    if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+    if (!button || button.disabled) return false;
     button.click();
     return true;
   })()`);
@@ -1882,7 +1882,7 @@ async function p20cLoadClassCombat(operatorClass, family, kit, singularTrait = n
 
   const openedContracts = await evaluate(`(() => {
     const button = [...document.querySelectorAll('button')].find(candidate => (candidate.textContent || '').trim().toLowerCase() === 'contracts');
-    if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+    if (!button || button.disabled) return false;
     button.click();
     return true;
   })()`);
@@ -1891,7 +1891,7 @@ async function p20cLoadClassCombat(operatorClass, family, kit, singularTrait = n
 
   const selected = await evaluate(`(() => {
     const target = document.querySelector('button[data-location="asteroid-refinery"]');
-    if (!(target instanceof HTMLButtonElement) || target.disabled) return false;
+    if (!target || target.disabled) return false;
     target.click();
     return true;
   })()`);
@@ -1900,7 +1900,7 @@ async function p20cLoadClassCombat(operatorClass, family, kit, singularTrait = n
 
   const deployed = await evaluate(`(() => {
     const button = [...document.querySelectorAll('button')].find(candidate => (candidate.textContent || '').trim().toLowerCase() === 'deploy selected contract');
-    if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+    if (!button || button.disabled) return false;
     button.click();
     return true;
   })()`);
@@ -1915,7 +1915,7 @@ async function p20cLoadClassCombat(operatorClass, family, kit, singularTrait = n
 
   const fired = await evaluate(`(() => {
     const button = document.querySelector('.touch-ability-fan button[aria-label="${kit[0].name.replaceAll('"', '\\"')}"]');
-    if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+    if (!button || button.disabled) return false;
     const rect = button.getBoundingClientRect();
     button.dispatchEvent(new PointerEvent('pointerdown', {
       bubbles: true,
@@ -1930,7 +1930,7 @@ async function p20cLoadClassCombat(operatorClass, family, kit, singularTrait = n
   if (!fired) throw new Error(`Android P20-C could not activate ${kit[0].name} for ${operatorClass}.`);
   await waitFor(`(() => {
     const button = document.querySelector('.touch-ability-fan button[aria-label="${kit[0].name.replaceAll('"', '\\"')}"]');
-    return button instanceof HTMLButtonElement && button.disabled;
+    return Boolean(button) && button.disabled;
   })()`, `Android P20-C ${operatorClass} first-skill activation`);
   console.log(`ANDROID_P20C_CLASS_SKILL_PASS class=${operatorClass} kit=${kit.map(entry => entry.short).join('/')} firstSkill=${kit[0].name} gear=${singularTrait ?? 'baseline'}`);
 }
