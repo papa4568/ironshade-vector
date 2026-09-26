@@ -15,6 +15,7 @@ const rootCss = read('src/index.css');
 const rarity = read('src/game/rarity.ts');
 const primitives = read('src/components/UiPrimitives.tsx');
 const armory = read('src/components/Armory.tsx');
+const shipHub = read('src/components/ShipHub.tsx');
 const app = read('src/App.tsx');
 const meta = read('src/game/meta.ts');
 const guide = read('src/game/guideContent.ts');
@@ -72,7 +73,8 @@ assert(pkg.scripts?.['test:design-system']?.includes('tests/design-system.ts'), 
 assert(pkg.scripts?.build?.includes('npm run test:design-system'), 'Full production build must gate on the P15-A design-system regression.');
 
 assert(meta.includes("export type InterfaceSize = 'compact' | 'default' | 'large'") && meta.includes("interfaceSize: 'default'") && meta.includes('normalizeInterfaceSize'), 'P20-A profile settings must persist and normalize Compact/Default/Large Interface Size.');
-assert(app.includes('root.dataset.interfaceSize = profile.settings.interfaceSize') && app.includes('profile.settings.interfaceSize'), 'P20-A must apply the saved Interface Size at the shared document root.');
+assert(app.includes('root.dataset.interfaceSize = profile.settings.interfaceSize') && app.includes('data-interface-size={profile.settings.interfaceSize}') && app.includes('useLayoutEffect'), 'P20-A must bind saved Interface Size synchronously to both document root and rendered app shell.');
+assert(shipHub.includes('data-interface-size={profile.settings.interfaceSize}') && armory.includes('data-interface-size={profile.settings.interfaceSize}'), 'P20-A non-combat shells must carry the profile Interface Size directly.');
 assert(armory.includes('aria-label="Interface size"') && armory.includes('<option value="compact">Compact</option>') && armory.includes('<option value="large">Large</option>'), 'P20-A Settings must expose Compact/Default/Large Interface Size.');
 for (const selector of ["data-interface-size='compact'", "data-interface-size='default'", "data-interface-size='large'", "data-interface-size='compact'][data-text-scale='large'", "data-interface-size='large'][data-text-scale='large'"]) {
   assert(css.includes(selector), `P20-A shared interface-size selector missing: ${selector}`);
@@ -94,8 +96,9 @@ for (const controlSelector of ['.move-stick', '.combat-dock', '.touch-button', '
 }
 assert(!combatLayout.match(/\d+(?:\.\d+)?rem\b/), 'P20-A combat-control layout geometry must remain fixed-pixel and independent of root rem scaling.');
 assert(guide.includes('Interface Size scales shared non-combat menu') && guide.includes('Combat movement, FIRE, DODGE, class-skill, ACT'), 'P20-A Guide must explain non-combat scaling and combat-control ownership.');
-assert(browserSmoke.includes('BROWSER_P20_COMMAND_SCALE_PASS') && browserSmoke.includes('* 0.82') && browserSmoke.includes('* 0.8') && browserSmoke.includes('BROWSER_P20_BUILD_SCALE_PASS') && browserSmoke.includes('BROWSER_P20_HUD_SCALE_PASS') && browserSmoke.includes('BROWSER_P20_COMBAT_CONTROL_INVARIANT_PASS'), 'P20-A Browser E2E must require a material Compact density delta across Command/Build while retaining informational-HUD scaling and isolated combat controls.');
-assert(androidSmoke.includes('ANDROID_P20_COMMAND_DENSITY_PASS') && androidSmoke.includes('ANDROID_P20_INTERFACE_SIZE_PASS') && androidSmoke.includes('rowPadding') && androidSmoke.includes('ANDROID_P20_HUD_SCALE_PASS') && androidSmoke.includes('ANDROID_P20_COMBAT_CONTROL_INVARIANT_PASS'), 'P20-A Android smoke must verify material Compact Command density, persisted rendered scaling, informational HUD scaling, and combat-control geometry invariance.');
+assert(menuCss.includes('P20-A // Real Settings-flow density binding') && menuCss.includes(".ship-hub[data-interface-size='compact']") && armoryCss.includes('P20-A // Real Settings-flow Compact fallback'), 'P20-A must keep a rendered-shell Compact fallback independent of root rem propagation.');
+assert(browserSmoke.includes('BROWSER_P20_SETTINGS_COMMAND_PASS') && browserSmoke.includes('BROWSER_P20_COMMAND_SCALE_PASS') && browserSmoke.includes('* 0.82') && browserSmoke.includes('* 0.8') && browserSmoke.includes('BROWSER_P20_BUILD_SCALE_PASS') && browserSmoke.includes('BROWSER_P20_HUD_SCALE_PASS') && browserSmoke.includes('BROWSER_P20_COMBAT_CONTROL_INVARIANT_PASS'), 'P20-A Browser E2E must prove Settings -> Command mode binding plus material density across Command/Build while retaining isolated combat controls.');
+assert(androidSmoke.includes('ANDROID_P20_SETTINGS_COMMAND_PASS') && androidSmoke.includes('ANDROID_P20_COMMAND_DENSITY_PASS') && androidSmoke.includes('ANDROID_P20_INTERFACE_SIZE_PASS') && androidSmoke.includes('rowPadding') && androidSmoke.includes('ANDROID_P20_HUD_SCALE_PASS') && androidSmoke.includes('ANDROID_P20_COMBAT_CONTROL_INVARIANT_PASS'), 'P20-A Android smoke must prove native Settings -> Command mode binding, persisted scaling, material Compact density, and combat-control invariance.');
 
 assert(primitives.includes("export function ProgressiveDisclosure") && primitives.includes('createPortal') && primitives.includes('role="dialog"') && primitives.includes('aria-modal="true"') && primitives.includes('aria-haspopup="dialog"'), 'P18-D must provide one reusable, portal-backed progressive-disclosure dialog pattern.');
 assert(primitives.includes("event.key === 'Escape'") && primitives.includes("event.key !== 'Tab'") && primitives.includes("window.history.pushState") && primitives.includes("window.addEventListener('popstate'") && primitives.includes('focusTarget?.focus()'), 'P18-D disclosure must trap focus, support Escape/back dismissal, and restore the trigger focus.');
