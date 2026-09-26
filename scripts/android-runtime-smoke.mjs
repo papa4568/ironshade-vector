@@ -2636,7 +2636,7 @@ async function p20eMove(direction, id, duration = 650) {
 
 async function p20eFinishActiveFamily(expectedFamily, idBase) {
   await waitFor(`document.querySelector('.game-root')?.dataset.repeatableFamily === '${expectedFamily}'`, `P20-E ${expectedFamily} combat family`, 30_000);
-  const combatDeadline = Date.now() + 90_000;
+  const combatDeadline = Date.now() + 150_000;
   let iteration = 0;
   while (Date.now() < combatDeadline) {
     const state = await evaluate(`(() => {
@@ -2645,6 +2645,8 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
         dead: Boolean(document.querySelector('[aria-label="Operator down"]')),
         remaining: Number(root?.dataset.squadRemaining ?? '999'),
         hostileDirection: root?.dataset.nearestHostileDirection ?? '',
+        extractionHostileDirection: root?.dataset.extractionHostileDirection ?? '',
+        extractionHostileRange: Number(root?.dataset.extractionHostileRange ?? '0'),
         objectiveComplete: root?.dataset.objectiveComplete === 'true',
         objectiveDirection: root?.dataset.objectiveDirection ?? '',
         objectiveRange: Number((document.querySelector('.post-clear-objective span')?.textContent?.match(/RANGE (\\d+)/)?.[1]) ?? '0'),
@@ -2665,7 +2667,9 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
       if (iteration % 4 === 0) {
         await evaluate(`document.querySelector('.ability-button:not(:disabled)')?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1902, pointerType: 'touch' }))`);
       }
-      if (state.hostileDirection) await p20eMove(state.hostileDirection, idBase + iteration, 520);
+      const pursuitDirection = state.objectiveComplete && state.extractionHostileDirection ? state.extractionHostileDirection : state.hostileDirection;
+      const pursuitMs = state.objectiveComplete && state.extractionHostileRange > 0 && state.extractionHostileRange < 280 ? 260 : 520;
+      if (pursuitDirection) await p20eMove(pursuitDirection, idBase + iteration, pursuitMs);
       else await sleep(700);
       await p20eSyntheticFire(false);
     } else if (!state.objectiveComplete) {
