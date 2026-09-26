@@ -1371,6 +1371,7 @@ await waitFor(`Boolean(document.querySelector('.iv-disclosure-sheet .network-sta
 await tapButton('Close details', 97);
 await waitFor(`!document.querySelector('.iv-disclosure-sheet')`, 'Android P18-F planned build math close');
 
+const p20dOriginalState = await evaluate("localStorage.getItem('ironshade-vector-state-v1')");
 const p20dPreviousTimeOrigin = await evaluate('performance.timeOrigin');
 const p20dSeeded = await evaluate(`(() => {
   const stateKey = 'ironshade-vector-state-v1';
@@ -1473,6 +1474,20 @@ await waitFor(`(() => {
     && report.includes('Planned build complete');
 })()`, 'Android P20-D recommendation Auto Allocate commit', 20_000);
 console.log(`ANDROID_P20D_RECOMMENDATION_PASS class=vanguard route=early preview=non-destructive autoAllocate=6 font=${p20dLayout.minFont}px touch=${p20dLayout.buttonHeight}px overflow=none`);
+const p20dRestoreTimeOrigin = await evaluate('performance.timeOrigin');
+await evaluate(`(() => {
+  const stateKey = 'ironshade-vector-state-v1';
+  const previous = ${JSON.stringify(p20dOriginalState)};
+  if (previous === null) localStorage.removeItem(stateKey);
+  else localStorage.setItem(stateKey, previous);
+  location.reload();
+  return true;
+})()`);
+await waitFor(`performance.timeOrigin !== ${JSON.stringify(p20dRestoreTimeOrigin)}`, 'Android P20-D fixture restore', 45_000);
+await waitFor(`(() => {
+  const operatorButton = [...document.querySelectorAll('button[data-primary-area]')].find(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase() === 'operator');
+  return document.readyState === 'complete' && operatorButton instanceof HTMLButtonElement && !operatorButton.disabled;
+})()`, 'Android P20-D restored Command Deck', 45_000);
 
 const p20bPreviousTimeOrigin = await evaluate('performance.timeOrigin');
 const p20bSeeded = await evaluate(`(() => {
