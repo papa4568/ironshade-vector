@@ -309,7 +309,7 @@ def open_settings():
     wait_node("Settings", timeout=20, actionable=True)
     shot("03-build")
     tap_label("Settings")
-    wait_node("Interface size", timeout=20)
+    wait_node("Graphics quality", timeout=20)
     shot("04-settings")
 
 def return_to_command():
