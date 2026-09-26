@@ -2405,6 +2405,46 @@
   }
 }
 
+/* P20-A // Compact mode also shrinks fixed-pixel Command chrome on wider windows. */
+:root[data-interface-size='compact'] .tactical-workspace {
+  padding-top: max(.65rem, var(--command-safe-top));
+  padding-right: max(.75rem, var(--command-safe-right));
+  padding-bottom: .65rem;
+  padding-left: max(.75rem, var(--command-safe-left));
+}
+:root[data-interface-size='compact'] .tactical-header {
+  margin-bottom: .4rem;
+  padding-block: .15rem .35rem;
+}
+:root[data-interface-size='compact'] .command-overview {
+  gap: .45rem;
+  margin-bottom: .75rem;
+}
+:root[data-interface-size='compact'] .ship-hub.area-command .command-visual.command-bridge.command-bridge-compact {
+  min-height: 15rem;
+}
+:root[data-interface-size='compact'] .ship-hub.area-command .command-bridge-compact {
+  gap: .5rem;
+  padding: .75rem;
+}
+:root[data-interface-size='compact'] .ship-hub.area-command .command-bridge-compact .command-bridge-copy h2 {
+  font-size: clamp(18px, 1.6rem, 24px);
+}
+:root[data-interface-size='compact'] .ship-hub.area-command .bridge-compact-readiness {
+  gap: .3rem;
+}
+:root[data-interface-size='compact'] .ship-hub.area-command .bridge-compact-readiness > span {
+  padding: .45rem .55rem;
+  border-radius: .5rem;
+}
+:root[data-interface-size='compact'] .ship-hub.area-command .command-card.primary-card {
+  min-height: 8rem;
+  padding: .55rem;
+}
+:root[data-interface-size='compact'] .ship-hub.area-command .command-side {
+  gap: .4rem;
+}
+
 /* P20-A // Compact density must be obvious at normal viewing distance.
    Keep touch navigation usable, but reclaim decorative/menu chrome aggressively.
    Combat controls are intentionally absent from this block. */
