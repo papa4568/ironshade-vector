@@ -1993,23 +1993,34 @@ await tap('button[data-location="asteroid-refinery"]', 23);
 await sleep(220);
 const p20ContractSelected = await evaluate(`document.querySelector('button[data-location="asteroid-refinery"]')?.classList.contains('selected') === true`);
 if (!p20ContractSelected) {
-  const retryPoint = await evaluate(`(() => {
+  const retryPoint = await evaluate(`(async () => {
     const target = document.querySelector('button[data-location="asteroid-refinery"]');
-    if (!(target instanceof HTMLButtonElement)) return null;
-    const rect = target.getBoundingClientRect();
+    if (!target) return null;
     const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
     const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
     const inset = 10;
-    const candidates = [
-      [rect.left + rect.width * .5, rect.top + rect.height * .5],
-      [rect.left + rect.width * .5, rect.top + Math.min(34, rect.height * .25)],
-      [rect.left + rect.width * .5, rect.bottom - Math.min(34, rect.height * .25)],
-      [rect.left + Math.min(34, rect.width * .2), rect.top + rect.height * .5],
-    ];
-    for (const [x, y] of candidates) {
-      if (x < inset || y < inset || x > viewportWidth - inset || y > viewportHeight - inset) continue;
-      const hit = document.elementFromPoint(x, y);
-      if (hit && (hit === target || target.contains(hit))) return { x, y, hit: hit.tagName };
+    for (const block of ['center', 'start', 'end', 'nearest']) {
+      target.scrollIntoView({ block, inline: 'nearest', behavior: 'instant' });
+      await new Promise(resolve => setTimeout(resolve, 180));
+      const rect = target.getBoundingClientRect();
+      const left = Math.max(rect.left, inset);
+      const right = Math.min(rect.right, viewportWidth - inset);
+      const top = Math.max(rect.top, inset);
+      const bottom = Math.min(rect.bottom, viewportHeight - inset);
+      if (right <= left || bottom <= top) continue;
+      const edgeX = Math.min(18, Math.max(4, (right - left) * .18));
+      const edgeY = Math.min(18, Math.max(4, (bottom - top) * .18));
+      const candidates = [
+        [(left + right) * .5, (top + bottom) * .5],
+        [left + edgeX, (top + bottom) * .5],
+        [right - edgeX, (top + bottom) * .5],
+        [(left + right) * .5, top + edgeY],
+        [(left + right) * .5, bottom - edgeY],
+      ];
+      for (const [x, y] of candidates) {
+        const hit = document.elementFromPoint(x, y);
+        if (hit && (hit === target || target.contains(hit))) return { x, y, hit: hit.tagName, block };
+      }
     }
     return null;
   })()`);
@@ -2017,7 +2028,7 @@ if (!p20ContractSelected) {
   await dispatchTouch('touchStart', retryPoint.x, retryPoint.y, 123);
   await sleep(120);
   await dispatchTouch('touchEnd', retryPoint.x, retryPoint.y, 123);
-  console.log(`ANDROID_CONTRACT_TOUCH_RETRY_PASS target=asteroid-refinery hit=${retryPoint.hit}`);
+  console.log(`ANDROID_CONTRACT_TOUCH_RETRY_PASS target=asteroid-refinery hit=${retryPoint.hit} block=${retryPoint.block}`);
 }
 await waitFor(`document.querySelector('button[data-location="asteroid-refinery"]')?.classList.contains('selected') === true`, 'Asteroid Refinery contract selection');
 
