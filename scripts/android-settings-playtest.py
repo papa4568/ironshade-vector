@@ -75,6 +75,15 @@ def node_summary(node):
         "bounds": node.attrib.get("bounds", ""),
     }
 
+def comfortably_visible(node):
+    bounds = parse_bounds(node.attrib.get("bounds", ""))
+    if not bounds:
+        return False
+    x1, y1, x2, y2 = bounds
+    # Pixel 7 Pro emulator is 3120x1440 in landscape. Keep player taps away
+    # from clipped screen edges/nav chrome just as a human would by scrolling.
+    return x2 - x1 >= 24 and y2 - y1 >= 40 and y1 >= 48 and y2 <= 1375
+
 def matching_nodes(label, contains=False):
     root, parents = dump_tree()
     wanted = label.strip().lower()
@@ -136,13 +145,13 @@ def scroll_down():
 def tap_with_scroll(label, direction="up", attempts=10, contains=False):
     for _ in range(attempts):
         node = actionable_node(label, contains=contains)
-        if node is not None:
+        if node is not None and comfortably_visible(node):
             x, y = center(node)
             print(f"ANDROID_SETTINGS_TAP_SCROLL label={label!r} node={node_summary(node)}")
             tap(x, y)
             return node
         scroll_up() if direction == "up" else scroll_down()
-    raise RuntimeError(f"Could not reach visible control {label!r} by player scrolling")
+    raise RuntimeError(f"Could not reach fully visible control {label!r} by player scrolling")
 
 def select_option(label, option):
     tap_with_scroll(label, attempts=10)
@@ -161,11 +170,11 @@ def checkbox_state(label):
 def set_checkbox(label, expected):
     for _ in range(10):
         node = actionable_node(label)
-        if node is not None:
+        if node is not None and comfortably_visible(node):
             break
         scroll_up()
     else:
-        raise RuntimeError(f"Checkbox not reachable: {label}")
+        raise RuntimeError(f"Checkbox not fully reachable: {label}")
     state = node.attrib.get("checked")
     if state in ("true", "false") and (state == "true") == expected:
         return
@@ -180,11 +189,11 @@ def set_checkbox(label, expected):
 def adjust_slider(label, fraction):
     for _ in range(10):
         node = actionable_node(label)
-        if node is not None:
+        if node is not None and comfortably_visible(node):
             break
         scroll_up()
     else:
-        raise RuntimeError(f"Slider not reachable: {label}")
+        raise RuntimeError(f"Slider not fully reachable: {label}")
     x1, y1, x2, y2 = parse_bounds(node.attrib["bounds"])
     y = (y1 + y2) // 2
     start = x1 + max(4, int((x2 - x1) * 0.30))
