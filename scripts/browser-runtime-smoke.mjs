@@ -1289,6 +1289,49 @@ try {
   await setP20InterfaceSize('default');
   console.log(`BROWSER_P20_INTERFACE_SIZE_PASS viewport=${viewportMode} compact=${p20InterfaceCompact.rootFontSize}px default=${p20InterfaceDefault.rootFontSize}px large=${p20InterfaceLarge.rootFontSize}px overflow=none persisted=true`);
 
+  async function p20OpenSettingsFromCommand() {
+    await keyboardActivateButton('Operator');
+    await keyboardActivateButton('Build');
+    await waitFor(`Boolean(document.querySelector('.build-bay.iv-view'))`, 'P20-A Build after Command');
+    await keyboardActivateButton('Settings');
+    await waitFor(`Boolean(document.querySelector('.settings-panel select[aria-label="Interface size"]'))`, 'P20-A Settings after Command');
+  }
+
+  async function p20CommandFromSettings(size) {
+    await setP20InterfaceSize(size);
+    await keyboardActivateButton('Return to ship');
+    await waitFor(`Boolean(document.querySelector('.ship-hub.area-command[data-interface-size="${size}"]')) && document.documentElement.dataset.interfaceSize === '${size}'`, `P20-A ${size} Settings to Command binding`);
+    await sleep(120);
+    return await evaluate(`(() => {
+      const shell = document.querySelector('.ship-hub.area-command');
+      const bridge = document.querySelector('.command-visual.command-bridge.command-bridge-compact');
+      const kicker = document.querySelector('.command-bridge-copy .card-kicker');
+      const nav = document.querySelector('.command-rail-nav button[data-primary-area]');
+      return {
+        shellSize: shell?.getAttribute('data-interface-size') ?? '',
+        rootSize: document.documentElement.dataset.interfaceSize ?? '',
+        bridgeHeight: Number((bridge?.getBoundingClientRect().height ?? 0).toFixed(3)),
+        kickerDisplay: kicker ? getComputedStyle(kicker).display : '',
+        navHeight: Number((nav?.getBoundingClientRect().height ?? 0).toFixed(3)),
+        horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
+      };
+    })()`);
+  }
+
+  const p20FlowCompact = await p20CommandFromSettings('compact');
+  await p20OpenSettingsFromCommand();
+  const p20FlowDefault = await p20CommandFromSettings('default');
+  if (p20FlowCompact.shellSize !== 'compact' || p20FlowCompact.rootSize !== 'compact'
+    || p20FlowDefault.shellSize !== 'default' || p20FlowDefault.rootSize !== 'default'
+    || !(p20FlowCompact.bridgeHeight <= p20FlowDefault.bridgeHeight * 0.8)
+    || p20FlowCompact.kickerDisplay !== 'none'
+    || p20FlowCompact.navHeight < 44
+    || p20FlowCompact.horizontalOverflow > 2 || p20FlowDefault.horizontalOverflow > 2) {
+    throw new Error(`P20-A real Settings -> Command flow did not produce distinct density: ${JSON.stringify({ compact: p20FlowCompact, default: p20FlowDefault })}`);
+  }
+  console.log(`BROWSER_P20_SETTINGS_COMMAND_PASS viewport=${viewportMode} compactBridge=${p20FlowCompact.bridgeHeight}px defaultBridge=${p20FlowDefault.bridgeHeight}px shell=bound root=bound nav=${p20FlowCompact.navHeight}px overflow=none`);
+  await p20OpenSettingsFromCommand();
+
   const textScaleChanged = await evaluate(`(() => {
     const control = document.querySelector('select[aria-label="Interface text size"]');
     if (!(control instanceof HTMLSelectElement)) return false;
