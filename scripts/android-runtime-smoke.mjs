@@ -2644,15 +2644,20 @@ async function p20eInstallCombatGamepad() {
   if (!installed) throw new Error('P20-E could not install assisted combat gamepad.');
 }
 
-async function p20eGamepadCombat(direction, duration = 950) {
-  const offset = p20eDirectionOffset[direction] ?? [0, 0];
-  const x = Math.max(-1, Math.min(1, offset[0] / 36));
-  const y = Math.max(-1, Math.min(1, offset[1] / 36));
+async function p20eGamepadCombat(moveDirection, aimDirection, duration = 950) {
+  const moveOffset = p20eDirectionOffset[moveDirection] ?? [0, 0];
+  const aimOffset = p20eDirectionOffset[aimDirection] ?? moveOffset;
+  const moveX = Math.max(-1, Math.min(1, moveOffset[0] / 36));
+  const moveY = Math.max(-1, Math.min(1, moveOffset[1] / 36));
+  const aimX = Math.max(-1, Math.min(1, aimOffset[0] / 36));
+  const aimY = Math.max(-1, Math.min(1, aimOffset[1] / 36));
   await evaluate(`(() => {
     const pad = globalThis.__ironshadeP20eGamepad;
     if (!pad) return false;
-    pad.axes[0] = ${x};
-    pad.axes[1] = ${y};
+    pad.axes[0] = ${moveX};
+    pad.axes[1] = ${moveY};
+    pad.axes[2] = ${aimX};
+    pad.axes[3] = ${aimY};
     const trigger = pad.buttons[7];
     trigger.pressed = true;
     trigger.value = 1;
@@ -2664,6 +2669,8 @@ async function p20eGamepadCombat(direction, duration = 950) {
     if (!pad) return false;
     pad.axes[0] = 0;
     pad.axes[1] = 0;
+    pad.axes[2] = 0;
+    pad.axes[3] = 0;
     const trigger = pad.buttons[7];
     trigger.pressed = false;
     trigger.value = 0;
@@ -2720,7 +2727,7 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
     } else if (state.remaining > 0) {
       const pursuitDirection = state.objectiveComplete && state.extractionHostileDirection ? state.extractionHostileDirection : state.hostileDirection;
       const pursuitRange = state.objectiveComplete && state.extractionHostileRange > 0 ? state.extractionHostileRange : state.hostileRange;
-      await p20eGamepadCombat(pursuitDirection, pursuitRange > 620 ? 1300 : pursuitRange > 340 ? 1050 : 850);
+      await p20eGamepadCombat(pursuitDirection, state.hostileDirection || pursuitDirection, pursuitRange > 620 ? 1300 : pursuitRange > 340 ? 1050 : 850);
     } else if (!state.objectiveComplete) {
       if (state.objectiveDirection) {
         const approachMs = state.objectiveRange > 900 ? 520 : state.objectiveRange > 500 ? 360 : state.objectiveRange > 250 ? 220 : state.objectiveRange > 120 ? 130 : 70;
