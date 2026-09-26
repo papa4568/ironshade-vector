@@ -2704,6 +2704,8 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
       const root = document.querySelector('.game-root');
       return {
         dead: Boolean(document.querySelector('[aria-label="Operator down"]')),
+        health: Number(root?.dataset.playerHealth ?? '0'),
+        armor: Number(root?.dataset.playerArmor ?? '0'),
         remaining: Number(root?.dataset.squadRemaining ?? '999'),
         hostileDirection: root?.dataset.nearestHostileDirection ?? '',
         hostileRange: Number(root?.dataset.nearestHostileRange ?? '0'),
@@ -2725,6 +2727,33 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
       await tap('.interact-button:not(:disabled)', idBase + 500 + iteration, 100);
       await sleep(420);
     } else if (state.remaining > 0) {
+      if (state.health > 0 && state.health < 72) {
+        const med = await elementMetrics('button.consumable-button[aria-label="Trauma Gel"]:not(:disabled)');
+        if (med) {
+          await dispatchTouch('touchStart', med.x, med.y, idBase + 5000 + iteration);
+          await sleep(100);
+          await dispatchTouch('touchEnd', med.x, med.y, idBase + 5000 + iteration);
+          await sleep(180);
+        }
+      }
+      if (iteration % 3 === 0) {
+        const guard = await elementMetrics('.ability-button.ability-2:not(:disabled)');
+        if (guard) {
+          await dispatchTouch('touchStart', guard.x, guard.y, idBase + 6000 + iteration);
+          await sleep(90);
+          await dispatchTouch('touchEnd', guard.x, guard.y, idBase + 6000 + iteration);
+          await sleep(100);
+        }
+      }
+      if (iteration % 2 === 0) {
+        const dodge = await elementMetrics('.dodge-button:not(:disabled)');
+        if (dodge) {
+          await dispatchTouch('touchStart', dodge.x, dodge.y, idBase + 7000 + iteration);
+          await sleep(90);
+          await dispatchTouch('touchEnd', dodge.x, dodge.y, idBase + 7000 + iteration);
+          await sleep(100);
+        }
+      }
       const pursuitDirection = state.objectiveComplete && state.extractionHostileDirection ? state.extractionHostileDirection : state.hostileDirection;
       const pursuitRange = state.objectiveComplete && state.extractionHostileRange > 0 ? state.extractionHostileRange : state.hostileRange;
       await p20eGamepadCombat(pursuitDirection, state.hostileDirection || pursuitDirection, pursuitRange > 620 ? 1300 : pursuitRange > 340 ? 1050 : 850);
