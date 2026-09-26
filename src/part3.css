@@ -808,7 +808,7 @@
 }
 .build-bay[data-interface-size='compact'] .settings-panel select {
   min-width: 104px;
-  padding: 5px 7px;
+  padding: 5px 6px;
   border-radius: 7px;
 }
 .build-bay[data-interface-size='compact'] .inventory-grid,
