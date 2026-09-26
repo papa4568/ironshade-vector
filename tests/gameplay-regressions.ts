@@ -2856,11 +2856,11 @@ function skillHierarchyPersistenceSmoke() {
 skillHierarchyPersistenceSmoke();
 
 function standardRepeatableIdentitySmoke() {
-  const allowedModes = {
+  const allowedModes: Record<'salvage' | 'boarding' | 'stabilization', Set<string>> = {
     salvage: new Set(['deep-salvage', 'machinery-recovery']),
     boarding: new Set(['emergency-boarding']),
     stabilization: new Set(['grid-isolation', 'gravity-stabilization']),
-  } as const;
+  };
   const expectedPattern = { salvage: 'mixed', boarding: 'swarm', stabilization: 'elite-led' } as const;
   const seenModes = { salvage: new Set<string>(), boarding: new Set<string>(), stabilization: new Set<string>() };
 
@@ -2872,7 +2872,7 @@ function standardRepeatableIdentitySmoke() {
       assert.equal(contract.standardRepeatable, true, `${contract.archetype} should be marked as a standard repeatable`);
       assert.ok(contract.repeatableIdentity?.loop && contract.repeatableIdentity.safePattern && contract.repeatableIdentity.deepPattern, `${contract.archetype} should expose authored loop/safe/deep briefing identity`);
       assert.equal(contract.encounterPattern, expectedPattern[contract.archetype], `${contract.archetype} should keep its authored encounter pressure`);
-      assert.ok(allowedModes[contract.archetype].has(contract.objectiveMode as never), `${contract.archetype} should stay inside its family objective pool, got ${contract.objectiveMode}`);
+      assert.ok(allowedModes[contract.archetype].has(contract.objectiveMode), `${contract.archetype} should stay inside its family objective pool, got ${contract.objectiveMode}`);
       seenModes[contract.archetype].add(contract.objectiveMode);
     }
   }
