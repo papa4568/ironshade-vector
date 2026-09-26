@@ -2838,7 +2838,9 @@ async function p20eDeployFamily(family, idBase) {
 
 const p20eCampaignBaselineSeeded = await evaluate(`(() => {
   const key = 'ironshade-vector-campaign-v1';
-  const campaign = JSON.parse(localStorage.getItem(key) || 'null');
+  const raw = localStorage.getItem(key);
+  if (!raw) return true;
+  const campaign = JSON.parse(raw);
   if (!campaign || campaign.version !== 1) return false;
   campaign.cycle = 0;
   campaign.contractsCompleted = 0;
