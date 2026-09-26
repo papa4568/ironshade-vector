@@ -2404,3 +2404,156 @@
     padding: .625rem .75rem;
   }
 }
+
+/* P20-A // Compact density must be obvious at normal viewing distance.
+   Keep touch navigation usable, but reclaim decorative/menu chrome aggressively.
+   Combat controls are intentionally absent from this block. */
+@media (max-width: 620px) and (orientation: portrait),
+       (orientation: landscape) and (max-width: 1000px) and (max-height: 500px) {
+  :root[data-interface-size='compact'] {
+    --p19-compact-type-secondary: 11.5px;
+    --p19-compact-type-decision: 13px;
+  }
+
+  :root[data-interface-size='compact'] .tactical-workspace {
+    padding-top: max(.4rem, var(--command-safe-top));
+    padding-right: max(.5rem, var(--command-safe-right));
+    padding-bottom: .4rem;
+    padding-left: max(.5rem, var(--command-safe-left));
+  }
+
+  :root[data-interface-size='compact'] .tactical-header {
+    min-height: 2.25rem;
+    margin-bottom: .25rem;
+    padding-block: 0;
+  }
+
+  :root[data-interface-size='compact'] .tactical-header h1 {
+    margin-block: .1rem;
+    font-size: 15px;
+    line-height: 1;
+  }
+
+  :root[data-interface-size='compact'] .tactical-header p {
+    font-size: 11.5px;
+    line-height: 1.2;
+  }
+
+  :root[data-interface-size='compact'] .hub-resource-ribbon {
+    gap: .25rem;
+    margin-bottom: .3rem;
+  }
+
+  :root[data-interface-size='compact'] .hub-resource-ribbon > div {
+    min-height: 2.5rem;
+    padding: .35rem .45rem;
+  }
+
+  :root[data-interface-size='compact'] .qol-priority-strip,
+  :root[data-interface-size='compact'] .ship-status {
+    margin-bottom: .3rem;
+  }
+
+  :root[data-interface-size='compact'] .ship-status {
+    min-height: 2.25rem;
+    padding: .4rem .5rem;
+  }
+
+  :root[data-interface-size='compact'] .section-tabs {
+    gap: .25rem;
+    margin-bottom: .35rem;
+  }
+
+  :root[data-interface-size='compact'] .section-tabs button {
+    min-height: 44px;
+    padding-inline: .55rem;
+  }
+
+  :root[data-interface-size='compact'] .command-overview {
+    gap: .35rem;
+    margin-bottom: .5rem;
+  }
+
+  :root[data-interface-size='compact'] .ship-hub.area-command .command-visual.command-bridge.command-bridge-compact {
+    min-height: 13rem;
+  }
+
+  :root[data-interface-size='compact'] .ship-hub.area-command .command-bridge-compact {
+    gap: .45rem;
+    padding: .55rem;
+  }
+
+  :root[data-interface-size='compact'] .ship-hub.area-command .command-bridge-compact .command-bridge-copy h2 {
+    margin: .2rem 0;
+    font-size: clamp(17px, 1.45rem, 20px);
+    line-height: 1;
+  }
+
+  :root[data-interface-size='compact'] .ship-hub.area-command .command-visual-tags {
+    margin-top: .3rem;
+  }
+
+  :root[data-interface-size='compact'] .ship-hub.area-command .bridge-compact-readiness {
+    gap: .3rem;
+  }
+
+  :root[data-interface-size='compact'] .ship-hub.area-command .bridge-compact-readiness > span {
+    padding: .35rem .45rem;
+    border-radius: .45rem;
+  }
+
+  :root[data-interface-size='compact'] .ship-hub.area-command .bridge-compact-readiness small {
+    font-size: 11.5px;
+  }
+
+  :root[data-interface-size='compact'] .ship-hub.area-command .bridge-compact-readiness b {
+    margin-top: .15rem;
+    font-size: 13px;
+  }
+
+  :root[data-interface-size='compact'] .ship-hub.area-command .command-side {
+    gap: .35rem;
+  }
+
+  :root[data-interface-size='compact'] .ship-hub.area-command .command-card.primary-card {
+    min-height: 6.5rem;
+    padding: .5rem;
+  }
+
+  :root[data-interface-size='compact'] .ship-hub.area-command .command-card.primary-card button,
+  :root[data-interface-size='compact'] .ship-hub.area-command .command-side .command-action-row button {
+    min-height: 44px;
+  }
+
+  :root[data-interface-size='compact'] .ship-hub.area-command .command-action-row {
+    gap: .25rem;
+  }
+
+  :root[data-interface-size='compact'] .command-rail {
+    padding:
+      .25rem
+      max(.4rem, var(--command-safe-right))
+      max(.25rem, var(--command-safe-bottom))
+      max(.4rem, var(--command-safe-left));
+  }
+
+  :root[data-interface-size='compact'] .command-rail-nav {
+    gap: .2rem;
+  }
+
+  :root[data-interface-size='compact'] .command-rail-nav button {
+    min-height: 48px;
+    gap: .15rem;
+    padding: .15rem .2rem;
+  }
+
+  :root[data-interface-size='compact'] .command-rail-nav button svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  :root[data-interface-size='compact'] .command-rail-nav button b {
+    font-size: 11.5px;
+  }
+}
+
