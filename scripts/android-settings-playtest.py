@@ -80,9 +80,10 @@ def comfortably_visible(node):
     if not bounds:
         return False
     x1, y1, x2, y2 = bounds
-    # Pixel 7 Pro emulator is 3120x1440 in landscape. Keep player taps away
-    # from clipped screen edges/nav chrome just as a human would by scrolling.
-    return x2 - x1 >= 24 and y2 - y1 >= 40 and y1 >= 48 and y2 <= 1375
+    # Pixel 7 Pro emulator is 3120x1440 in landscape. The game runs immersive,
+    # so header controls can legitimately sit close to the top edge after Compact
+    # changes density. Require a real on-screen hit region, not an arbitrary inset.
+    return x2 - x1 >= 24 and y2 - y1 >= 28 and x1 >= 0 and y1 >= 0 and x2 <= 3120 and y2 <= 1438
 
 def matching_nodes(label, contains=False):
     root, parents = dump_tree()
