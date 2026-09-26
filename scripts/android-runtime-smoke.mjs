@@ -2836,6 +2836,20 @@ async function p20eDeployFamily(family, idBase) {
   await waitFor(`document.querySelector('.game-root')?.dataset.repeatableFamily === '${family}'`, `P20-E ${family} deployment`, 45_000);
 }
 
+const p20eCampaignBaselineSeeded = await evaluate(`(() => {
+  const key = 'ironshade-vector-campaign-v1';
+  const campaign = JSON.parse(localStorage.getItem(key) || 'null');
+  if (!campaign || campaign.version !== 1) return false;
+  campaign.cycle = 0;
+  campaign.contractsCompleted = 0;
+  campaign.reputation = { meridian: 0, heliostat: 0, longarc: 0 };
+  campaign.anomalyRecovered = false;
+  campaign.dailyCompletedDate = null;
+  localStorage.setItem(key, JSON.stringify(campaign));
+  return true;
+})()`);
+if (!p20eCampaignBaselineSeeded) throw new Error('P20-E could not seed the tier-1 standard campaign baseline.');
+
 await p20cLoadClassCombat('systems', 'carbine', [
   { name: 'Polarity Well', short: 'WELL' },
   { name: 'Relay Hack', short: 'HACK' },
@@ -2850,7 +2864,7 @@ await p20eFinishActiveFamily('salvage', 2400);
 await p20eDeployFamily('boarding', 2600);
 await p20eFinishActiveFamily('boarding', 2700);
 await p20eRemoveCombatGamepad();
-console.log('ANDROID_P20E_REPEATABLE_PLAY_PASS families=stabilization+salvage+boarding completions=3 depth=safe class=systems weapon=carbine input=controller-combat+touch-objectives actualGameplay=true');
+console.log('ANDROID_P20E_REPEATABLE_PLAY_PASS families=stabilization+salvage+boarding completions=3 depth=safe campaign=tier1-baseline class=systems weapon=carbine input=controller-combat+touch-objectives actualGameplay=true');
 
 session.close();
 console.log(`ANDROID_RUNTIME_SMOKE_PASS title=${startup.title} route=ship>contracts>combat canvases=${combat.canvases}`);
