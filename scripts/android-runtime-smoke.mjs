@@ -1910,9 +1910,7 @@ async function p20cLoadClassCombat(operatorClass, family, kit, singularTrait = n
     const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || '').trim());
     return root?.dataset.classSkillKit === ${JSON.stringify(kit.map(entry => entry.short).join('/'))}
       && ${JSON.stringify(kit.map(entry => entry.name))}.every(label => labels.includes(label))
-      && ${JSON.stringify(singularTrait)} === null
-        ? true
-        : (root?.dataset.classSkillGear || '').split('+').includes(${JSON.stringify(singularTrait)});
+      && (${JSON.stringify(singularTrait)} === null || (root?.dataset.classSkillGear || '').split('+').includes(${JSON.stringify(singularTrait)}));
   })()`, `Android P20-C ${operatorClass} combat kit + skill gear`, 45_000);
 
   const fired = await evaluate(`(() => {
