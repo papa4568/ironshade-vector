@@ -1142,6 +1142,7 @@ try {
   }
   console.log(`BROWSER_P20_BUILD_SCALE_PASS viewport=${viewportMode} loadout+crafting+progression+skills+settings+tabs=ordered overflow=none`);
 
+  const p20dOriginalState = await evaluate("localStorage.getItem('ironshade-vector-state-v1')");
   const p20dPreviousTimeOrigin = await evaluate('performance.timeOrigin');
   const p20dSeeded = await evaluate(`(() => {
     const stateKey = 'ironshade-vector-state-v1';
@@ -1244,6 +1245,20 @@ try {
       && report.includes('Planned build complete');
   })()`, 'P20-D recommendation Auto Allocate commit', 20_000);
   console.log(`BROWSER_P20D_RECOMMENDATION_PASS viewport=${viewportMode} class=vanguard route=early preview=non-destructive autoAllocate=6 readability=${p20dLayout.minFont}px touch=${p20dLayout.buttonHeight}px`);
+  const p20dRestoreTimeOrigin = await evaluate('performance.timeOrigin');
+  await evaluate(`(() => {
+    const stateKey = 'ironshade-vector-state-v1';
+    const previous = ${JSON.stringify(p20dOriginalState)};
+    if (previous === null) localStorage.removeItem(stateKey);
+    else localStorage.setItem(stateKey, previous);
+    location.reload();
+    return true;
+  })()`);
+  await waitFor(`performance.timeOrigin !== ${JSON.stringify(p20dRestoreTimeOrigin)}`, 'P20-D browser fixture restore');
+  await waitFor(`(() => {
+    const operatorButton = [...document.querySelectorAll('button[data-primary-area]')].find(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase() === 'operator');
+    return document.readyState === 'complete' && operatorButton instanceof HTMLButtonElement && !operatorButton.disabled;
+  })()`, 'P20-D restored Command Deck');
 
   const p20bPreviousTimeOrigin = await evaluate('performance.timeOrigin');
   const p20bSeeded = await evaluate(`(() => {
