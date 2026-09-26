@@ -2648,13 +2648,16 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
         objectiveComplete: root?.dataset.objectiveComplete === 'true',
         objectiveDirection: root?.dataset.objectiveDirection ?? '',
         objectiveRange: Number((document.querySelector('.post-clear-objective span')?.textContent?.match(/RANGE (\\d+)/)?.[1]) ?? '0'),
+        objectiveActionReady: root?.dataset.objectiveActionReady === 'true',
+        objectiveTargetId: root?.dataset.objectiveTargetId ?? '',
+        contextActionId: root?.dataset.contextActionId ?? '',
         extractionReady: root?.dataset.extractionReady === 'true',
         interact: Boolean(document.querySelector('.interact-button:not(:disabled)')),
       };
     })()`);
     if (state.dead) throw new Error(`P20-E ${expectedFamily} representative play ended with operator down.`);
 
-    if (!state.objectiveComplete && state.interact) {
+    if (!state.objectiveComplete && state.interact && state.objectiveActionReady) {
       await tap('.interact-button:not(:disabled)', idBase + 500 + iteration, 100);
       await sleep(420);
     } else if (state.remaining > 0) {
