@@ -1,5 +1,16 @@
 # Ironshade Vector — Active Production Roadmap
 
+## New-chat handoff — resume here first
+
+- **Resume P20-E before starting P22/P21/P20-F work.** P20-E is implemented but remains **unchecked** because its final Android representative-play verification has not completed successfully yet. Do not skip ahead.
+- **Current source of truth:** `main` at commit `fc354d23ca74996b80575653cde1cfcb8e9cb974` — `P20-E respect reload and thermal lockouts in Android combat QA`.
+- **Already green on this commit:** Level 15 beta/production validation; Browser E2E mobile-landscape; Browser E2E desktop.
+- **Android state at handoff:** workflow run `36282149805`, job `108515911976`. The APK has already rebuilt and passed package/version/SDK/signature verification. The job is/was in **Smoke test APK on Android emulator** when this handoff was written.
+- **What P20-E already contains:** authored and visibly distinct Salvage / Boarding / Stabilization repeatable identities; family-specific objective pools and deep-risk behavior; deterministic gameplay/mission-presentation regressions; pre-deployment browser identity verification; Android representative-play harness with tier-1 baseline seeding, transient-ACT tolerance, objective-first routing, assisted combat, thermal/reload handling, and safe-extraction assertions.
+- **Most recent completed Android evidence before the current run:** Stabilization reached `GRID ISOLATION 2/2`, so objective routing and transient ACT handling are fixed. The remaining blocker was the extraction sweep/combat driver, not the authored mission objective. A Vector/Rail attempt survived but ended with five hostiles still remaining; the current `fc354d23` change specifically adds reload/thermal lockout handling for that combat loop.
+- **Next action in the new chat:** inspect Android run `36282149805` first. If it passed, verify the log contains `ANDROID_P20E_REPEATABLE_FAMILY_PASS` for Stabilization, Salvage, and Boarding plus `ANDROID_P20E_REPEATABLE_PLAY_PASS`; then move P20-E completion evidence to `docs/content-roadmap-archive.md`, remove/check off the active P20-E item per roadmap rules, rebuild/reverify if the documentation commit requires it, and deliver the verified APK. If it failed, pull the emulator trace, fix only the concrete P20-E Android-play blocker, rerun the same release gates, and leave P20-E unchecked until all three families complete.
+- **After P20-E is actually closed:** the next item in the P20 sequence is **P20-F1 — Define and settle distinct repeatable-contract incentive profiles**. The roadmap also currently contains P22 and P21 above P20; do not reinterpret this handoff as completing or reprioritizing those items.
+
 Only active/future executable work lives here. Completed and verified work belongs in [content-roadmap-archive.md](./content-roadmap-archive.md). Stable product rules live in [product-constraints.md](./product-constraints.md).
 
 ## Execution contract
