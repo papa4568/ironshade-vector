@@ -2802,9 +2802,18 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
         const acted = await p20eTryTapInteract(idBase + 520 + iteration, 100);
         await sleep(acted ? 420 : 120);
       } else if (state.objectiveDirection) {
-        const approachMs = state.objectiveRange > 900 ? 320 : state.objectiveRange > 600 ? 260 : state.objectiveRange > 350 ? 190 : state.objectiveRange > 180 ? 120 : state.objectiveRange > 90 ? 75 : 45;
-        await p20eMove(state.objectiveDirection, idBase + 9000 + iteration, approachMs);
-        await sleep(state.objectiveRange > 180 ? 80 : 150);
+        const approachMs = state.objectiveRange > 900 ? 520 : state.objectiveRange > 600 ? 420 : state.objectiveRange > 350 ? 320 : state.objectiveRange > 180 ? 220 : state.objectiveRange > 90 ? 140 : 80;
+        if (state.remaining > 0) {
+          await p20eGamepadCombat(
+            state.objectiveDirection,
+            state.hostileAimX,
+            state.hostileAimY,
+            approachMs,
+          );
+        } else {
+          await p20eMove(state.objectiveDirection, idBase + 9000 + iteration, approachMs);
+          await sleep(state.objectiveRange > 180 ? 80 : 150);
+        }
       } else {
         await sleep(300);
       }
