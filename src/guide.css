@@ -139,9 +139,11 @@
   .guide-heading p,
   .guide-section > p,
   .guide-topic p,
-  .guide-topic li,
+  .guide-topic li {
+    font-size: max(12px, var(--iv-type-body));
+  }
   .guide-section-nav button {
-    font-size: max(0.75rem, var(--iv-type-sm));
+    font-size: max(12px, var(--iv-type-sm));
   }
 }
 
@@ -174,7 +176,14 @@
 /* P19-G // Lazy Guide chunk preserves the compact-phone secondary type floor. */
 @media (max-width: 620px) and (orientation: portrait),
        (orientation: landscape) and (max-width: 1000px) and (max-height: 500px) {
-  .guide-heading .card-kicker {
-    font-size: var(--p19-compact-type-secondary, max(12px, .75rem));
+  .guide-heading .card-kicker,
+  .guide-section > small,
+  .guide-topic small,
+  .guide-panel :is(span, b, strong, em, label, summary, dt, dd) {
+    font-size: max(12px, var(--iv-type-sm));
+  }
+
+  .guide-topic h3 {
+    font-size: max(14px, var(--iv-type-md));
   }
 }

@@ -19,6 +19,7 @@ const shipHub = read('src/components/ShipHub.tsx');
 const app = read('src/App.tsx');
 const meta = read('src/game/meta.ts');
 const guide = read('src/game/guideContent.ts');
+const guideCss = read('src/guide.css');
 const combatHud = read('src/combatHudGlance.css');
 const combatLayout = read('src/combatHudLayout.css');
 const menuCss = read('src/menuOverhaul.css');
@@ -84,6 +85,7 @@ assert(css.includes('--iv-interface-scale') && css.includes('font-size: 50.4%') 
 assert(css.includes('font-size: 81%') && css.includes('font-size: 112.5%') && css.includes('font-size: 140.625%'), 'P22-A must retain the readable Large-text accessibility override with Compact/Default/Large ordering.');
 assert(css.includes("data-interface-context='combat'") && css.includes('font-size: 72%') && css.includes('font-size: 100%') && css.includes('font-size: 125%'), 'P22-A must preserve the pre-rebase combat root scale so P22-B2 remains independently actionable.');
 assert(css.includes('min-block-size: max(44px, 2.75rem);'), 'P22-A must preserve the coarse-pointer interaction floor after shrinking the root rem baseline.');
+assert(guideCss.includes('font-size: max(12px, var(--iv-type-body));') && guideCss.includes('font-size: max(12px, var(--iv-type-sm));') && guideCss.includes('font-size: max(14px, var(--iv-type-md));'), 'P22-A compact Guide must preserve readable body, secondary, and decision text floors while shared geometry shrinks.');
 assert(!css.includes('.touch-ui') && !css.includes('.combat-dock') && !css.includes('.fire-button') && !css.includes('.move-stick'), 'P20-A general interface scaling must not add combat-control selectors to the shared design system.');
 
 for (const [source, marker, expectations] of [
