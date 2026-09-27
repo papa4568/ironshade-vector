@@ -2980,11 +2980,26 @@ await p20eRemoveCombatGamepad();
 console.log('ANDROID_P20E_REPEATABLE_PLAY_PASS families=stabilization+salvage+boarding completions=3 depth=safe campaign=tier1-baseline class=systems weapon=carbine input=assisted-target-combat+touch-objectives actualGameplay=true');
 
 // The shell runs authored operator/enemy/weapon/refinery verifiers immediately after
-// this smoke. P20-E intentionally ends on a debrief, so restore a live Asteroid
-// Refinery combat canvas without replaying another representative completion.
-await p20eDeployFamily('stabilization', 3000);
-await waitFor(`Boolean(document.querySelector('canvas')) && document.querySelector('.game-root')?.dataset.repeatableFamily === 'stabilization'`, 'post-P20-E authored asset verification combat', 45_000);
-console.log('ANDROID_P20E_POST_SMOKE_COMBAT_READY family=stabilization location=asteroid-refinery');
+// this smoke. P20-E advances the campaign three cycles, so restore the cycle-0
+// Asteroid Refinery verification scene without replaying another representative completion.
+const p20eAssetVerificationBaseline = await evaluate(`(() => {
+  const key = 'ironshade-vector-campaign-v1';
+  const raw = localStorage.getItem(key);
+  if (!raw) return false;
+  const campaign = JSON.parse(raw);
+  if (!campaign || campaign.version !== 1) return false;
+  campaign.cycle = 0;
+  localStorage.setItem(key, JSON.stringify(campaign));
+  return true;
+})()`);
+if (!p20eAssetVerificationBaseline) throw new Error('P20-E could not restore the cycle-0 asset verification baseline.');
+await p20cLoadClassCombat('systems', 'carbine', [
+  { name: 'Polarity Well', short: 'WELL' },
+  { name: 'Relay Hack', short: 'HACK' },
+  { name: 'Cascade Arc', short: 'CHAIN' },
+]);
+await waitFor(`document.querySelector('canvas')?.dataset.bossEnvironmentFx === 'phase-reactive-ready'`, 'post-P20-E Asteroid Refinery authored asset verification state', 45_000);
+console.log('ANDROID_P20E_POST_SMOKE_COMBAT_READY family=stabilization location=asteroid-refinery environment=phase-reactive-ready');
 
 session.close();
 console.log(`ANDROID_RUNTIME_SMOKE_PASS title=${startup.title} route=ship>contracts>combat canvases=${combat.canvases}`);
