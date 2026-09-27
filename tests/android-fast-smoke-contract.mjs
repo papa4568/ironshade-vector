@@ -43,6 +43,12 @@ for (const marker of [
   'ANDROID_FAST_LIFECYCLE_RESUME_PASS',
 ]) requireText(runtime, marker, 'runtime harness');
 
+for (const marker of [
+  'browser-chapter3-playthrough',
+  'android-settings-playtest.py',
+]) requireText(extendedShell, marker, 'extended Android shell');
+requireText(runtime, 'ANDROID_P20E_REPEATABLE', 'extended Android runtime harness');
+
 requireText(workflow, 'npm run test:android-fast-smoke', 'Android workflow');
 requireText(workflow, 'npm run build', 'Android workflow production build');
 requireText(workflow, "set -euo pipefail;", 'Android workflow');
