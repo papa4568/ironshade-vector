@@ -41,6 +41,7 @@ for (const marker of [
 ]) requireText(runtime, marker, 'runtime harness');
 
 requireText(workflow, 'npm run test:android-fast-smoke', 'Android workflow');
+requireText(workflow, "set -euo pipefail;", 'Android workflow');
 requireText(workflow, 'bash scripts/android-fast-smoke.sh; bash scripts/android-runtime-smoke.sh', 'Android workflow');
 
-console.log('ANDROID_FAST_SMOKE_CONTRACT_PASS entry=scripts/android-fast-smoke.sh extended=excluded touch=required lifecycle=required artifacts=required');
+console.log('ANDROID_FAST_SMOKE_CONTRACT_PASS entry=scripts/android-fast-smoke.sh extended=excluded touch=required lifecycle=required artifacts=required failFast=required');

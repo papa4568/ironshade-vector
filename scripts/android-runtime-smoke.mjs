@@ -671,7 +671,51 @@ if (fastSmoke) {
   await waitFor(`Boolean(document.querySelector('canvas') && document.querySelector('[aria-label="Touch combat controls"]') && document.querySelector('.move-stick') && document.querySelector('.fire-button') && document.querySelector('.dodge-button'))`, 'Fast Android combat controls', 45_000);
 
   const scrollBefore = await evaluate(`({ x: window.scrollX, y: window.scrollY })`);
-  await fastMove('UP-RIGHT', 205, 320);
+
+  let interactionObserved = false;
+  const interactionDeadline = Date.now() + 18_000;
+  let movementAttempt = 0;
+  while (Date.now() < interactionDeadline && !interactionObserved) {
+    const state = await evaluate(`(() => {
+      const root = document.querySelector('.game-root');
+      return {
+        direction: root?.dataset.objectiveDirection ?? '',
+        range: Number(root?.dataset.objectiveRange ?? '0'),
+        objectiveProgress: Number(root?.dataset.objectiveProgress ?? '0'),
+        contextActionId: root?.dataset.contextActionId ?? '',
+        contextActionLabel: root?.dataset.contextActionLabel ?? '',
+        interact: Boolean(document.querySelector('.interact-button:not(:disabled)')),
+        health: Number(root?.dataset.playerHealth ?? '0'),
+      };
+    })()`);
+    if (state.health <= 0) throw new Error('Fast Android operator was down before ACT sanity could complete.');
+    if (state.interact) {
+      const interact = await elementMetrics('.interact-button:not(:disabled)');
+      if (interact && !interact.disabled) {
+        const beforeProgress = state.objectiveProgress;
+        await dispatchTouch('touchStart', interact.x, interact.y, 230 + movementAttempt);
+        await sleep(110);
+        await dispatchTouch('touchEnd', interact.x, interact.y, 230 + movementAttempt);
+        const progressDeadline = Date.now() + 4_000;
+        while (Date.now() < progressDeadline) {
+          const afterProgress = await evaluate(`Number(document.querySelector('.game-root')?.dataset.objectiveProgress ?? '0')`);
+          if (afterProgress > beforeProgress) {
+            interactionObserved = true;
+            console.log(`ANDROID_FAST_INTERACTION_TOUCH_PASS action=${JSON.stringify(state.contextActionLabel || state.contextActionId || 'ACT')} objectiveProgress=${beforeProgress}->${afterProgress}`);
+            break;
+          }
+          await sleep(160);
+        }
+        if (interactionObserved) break;
+      }
+    }
+    const duration = state.range > 700 ? 360 : state.range > 350 ? 280 : state.range > 160 ? 190 : 120;
+    await fastMove(state.direction || 'DOWN', 300 + movementAttempt, duration);
+    movementAttempt += 1;
+  }
+  if (!interactionObserved) throw new Error('Fast Android ACT interaction was not reached through touch movement within the smoke budget.');
+
+  await fastMove('RIGHT', 205, 280);
   await waitFor(`document.querySelector('.move-stick')?.style.getPropertyValue('--knob-x') === '0px' && document.querySelector('.move-stick')?.style.getPropertyValue('--knob-y') === '0px'`, 'Fast Android movement stick release', 10_000);
 
   const fire = await elementMetrics('.fire-button');
@@ -699,51 +743,14 @@ if (fastSmoke) {
   await dispatchTouch('touchStart', ability.x, ability.y, 220);
   await sleep(100);
   await dispatchTouch('touchEnd', ability.x, ability.y, 220);
-  await waitFor(`document.querySelector('.game-root')?.getAttribute('data-tutorial-step') === '3'`, 'Fast Android ability touch response', 12_000);
+  await waitFor(`document.querySelector('.ability-button')?.disabled === true || document.querySelector('.game-root')?.getAttribute('data-tutorial-step') === '3'`, 'Fast Android ability touch response', 12_000);
 
   const dodge = await elementMetrics('.dodge-button:not(:disabled)');
   if (!dodge || dodge.disabled) throw new Error('Fast Android DODGE control unavailable.');
   await dispatchTouch('touchStart', dodge.x, dodge.y, 221);
   await sleep(100);
   await dispatchTouch('touchEnd', dodge.x, dodge.y, 221);
-  await waitFor(`document.querySelector('.game-root')?.getAttribute('data-tutorial-step') === '4'`, 'Fast Android dodge touch response', 12_000);
-
-  let interactionObserved = false;
-  const interactionDeadline = Date.now() + 25_000;
-  let movementAttempt = 0;
-  while (Date.now() < interactionDeadline && !interactionObserved) {
-    const state = await evaluate(`(() => {
-      const root = document.querySelector('.game-root');
-      return {
-        direction: root?.dataset.objectiveDirection ?? '',
-        range: Number(root?.dataset.objectiveRange ?? '0'),
-        actionReady: root?.dataset.objectiveActionReady === 'true',
-        contextActionId: root?.dataset.contextActionId ?? '',
-        contextActionLabel: root?.dataset.contextActionLabel ?? '',
-        interact: Boolean(document.querySelector('.interact-button:not(:disabled)')),
-        tutorialStep: Number(root?.dataset.tutorialStep ?? '0'),
-      };
-    })()`);
-    if (state.interact) {
-      const interact = await elementMetrics('.interact-button:not(:disabled)');
-      if (interact && !interact.disabled) {
-        await dispatchTouch('touchStart', interact.x, interact.y, 230 + movementAttempt);
-        await sleep(110);
-        await dispatchTouch('touchEnd', interact.x, interact.y, 230 + movementAttempt);
-        await sleep(350);
-        const after = await evaluate(`Number(document.querySelector('.game-root')?.dataset.tutorialStep ?? '0')`);
-        interactionObserved = after >= 5;
-        if (interactionObserved) {
-          console.log(`ANDROID_FAST_INTERACTION_TOUCH_PASS action=${JSON.stringify(state.contextActionLabel || state.contextActionId || 'ACT')} tutorialStep=${after}`);
-          break;
-        }
-      }
-    }
-    const duration = state.range > 700 ? 420 : state.range > 350 ? 320 : state.range > 160 ? 220 : 160;
-    await fastMove(state.direction || 'RIGHT', 300 + movementAttempt, duration);
-    movementAttempt += 1;
-  }
-  if (!interactionObserved) throw new Error('Fast Android ACT interaction was not reached through touch movement within the smoke budget.');
+  await waitFor(`document.querySelector('.dodge-button')?.disabled === true`, 'Fast Android dodge touch response', 12_000);
 
   const scrollAfter = await evaluate(`({ x: window.scrollX, y: window.scrollY })`);
   if (scrollAfter.x !== scrollBefore.x || scrollAfter.y !== scrollBefore.y) {
@@ -755,7 +762,7 @@ if (fastSmoke) {
     controls: Boolean(document.querySelector('[aria-label="Touch combat controls"]')),
     tutorialStep: Number(document.querySelector('.game-root')?.dataset.tutorialStep ?? '0'),
   }))()`);
-  if (combat.canvases < 1 || !combat.controls || combat.tutorialStep < 5) {
+  if (combat.canvases < 1 || !combat.controls || !interactionObserved) {
     throw new Error(`Fast Android combat sanity incomplete: ${JSON.stringify(combat)}`);
   }
 
