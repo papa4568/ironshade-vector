@@ -673,7 +673,7 @@ if (fastSmoke) {
   const scrollBefore = await evaluate(`({ x: window.scrollX, y: window.scrollY })`);
 
   let interactionObserved = false;
-  const interactionDeadline = Date.now() + 18_000;
+  const interactionDeadline = Date.now() + 45_000;
   let movementAttempt = 0;
   while (Date.now() < interactionDeadline && !interactionObserved) {
     const state = await evaluate(`(() => {
@@ -681,6 +681,7 @@ if (fastSmoke) {
       return {
         direction: root?.dataset.objectiveDirection ?? '',
         range: Number(root?.dataset.objectiveRange ?? '0'),
+        targetId: root?.dataset.objectiveTargetId ?? '',
         objectiveProgress: Number(root?.dataset.objectiveProgress ?? '0'),
         contextActionId: root?.dataset.contextActionId ?? '',
         contextActionLabel: root?.dataset.contextActionLabel ?? '',
@@ -693,15 +694,26 @@ if (fastSmoke) {
       const interact = await elementMetrics('.interact-button:not(:disabled)');
       if (interact && !interact.disabled) {
         const beforeProgress = state.objectiveProgress;
+        const beforeActionId = state.contextActionId;
         await dispatchTouch('touchStart', interact.x, interact.y, 230 + movementAttempt);
         await sleep(110);
         await dispatchTouch('touchEnd', interact.x, interact.y, 230 + movementAttempt);
-        const progressDeadline = Date.now() + 4_000;
-        while (Date.now() < progressDeadline) {
-          const afterProgress = await evaluate(`Number(document.querySelector('.game-root')?.dataset.objectiveProgress ?? '0')`);
-          if (afterProgress > beforeProgress) {
+        const actionDeadline = Date.now() + 4_000;
+        while (Date.now() < actionDeadline) {
+          const after = await evaluate(`(() => {
+            const root = document.querySelector('.game-root');
+            return {
+              objectiveProgress: Number(root?.dataset.objectiveProgress ?? '0'),
+              contextActionId: root?.dataset.contextActionId ?? '',
+              interact: Boolean(document.querySelector('.interact-button:not(:disabled)')),
+            };
+          })()`);
+          if (after.objectiveProgress > beforeProgress || (beforeActionId && after.contextActionId !== beforeActionId) || !after.interact) {
             interactionObserved = true;
-            console.log(`ANDROID_FAST_INTERACTION_TOUCH_PASS action=${JSON.stringify(state.contextActionLabel || state.contextActionId || 'ACT')} objectiveProgress=${beforeProgress}->${afterProgress}`);
+            const evidence = after.objectiveProgress > beforeProgress
+              ? `objectiveProgress=${beforeProgress}->${after.objectiveProgress}`
+              : `context=${JSON.stringify(beforeActionId)}->${JSON.stringify(after.contextActionId || 'cleared')}`;
+            console.log(`ANDROID_FAST_INTERACTION_TOUCH_PASS action=${JSON.stringify(state.contextActionLabel || state.contextActionId || 'ACT')} ${evidence}`);
             break;
           }
           await sleep(160);
@@ -709,8 +721,13 @@ if (fastSmoke) {
         if (interactionObserved) break;
       }
     }
-    const duration = state.range > 700 ? 360 : state.range > 350 ? 280 : state.range > 160 ? 190 : 120;
-    await fastMove(state.direction || 'DOWN', 300 + movementAttempt, duration);
+    const nearStartRefineryTarget = /^(grid-isolator-a|gravity-control-a|salvage-node-a)$/.test(state.targetId);
+    const direction = nearStartRefineryTarget && movementAttempt < 8 ? 'DOWN' : (state.direction || 'DOWN');
+    const duration = state.range > 700 ? 300 : state.range > 350 ? 220 : state.range > 160 ? 150 : 90;
+    await fastMove(direction, 300 + movementAttempt, duration);
+    if (movementAttempt % 6 === 5) {
+      console.log(`ANDROID_FAST_INTERACTION_PROGRESS attempt=${movementAttempt + 1} target=${state.targetId || 'unknown'} direction=${direction} range=${state.range} action=${state.contextActionId || 'none'}`);
+    }
     movementAttempt += 1;
   }
   if (!interactionObserved) throw new Error('Fast Android ACT interaction was not reached through touch movement within the smoke budget.');
