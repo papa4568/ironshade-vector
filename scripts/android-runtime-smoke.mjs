@@ -2751,7 +2751,7 @@ async function p20eTryTapInteract(id, holdMs = 100) {
 
 async function p20eFinishActiveFamily(expectedFamily, idBase) {
   await waitFor(`document.querySelector('.game-root')?.dataset.repeatableFamily === '${expectedFamily}'`, `P20-E ${expectedFamily} combat family`, 30_000);
-  const combatDeadline = Date.now() + 300_000;
+  const combatDeadline = Date.now() + (expectedFamily === 'boarding' ? 420_000 : 300_000);
   let iteration = 0;
   while (Date.now() < combatDeadline) {
     const state = await evaluate(`(() => {
