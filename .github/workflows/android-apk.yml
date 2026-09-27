@@ -414,3 +414,57 @@ jobs:
             android-repeatable-regression-logcat.txt
           if-no-files-found: warn
           retention-days: 90
+
+  settings-regression:
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/android/capacitor-apk' || github.ref == 'refs/heads/android/full-regression'
+    needs: build-apk
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out Settings harness
+        uses: actions/checkout@v7
+
+      - name: Download shared Android APK
+        uses: actions/download-artifact@v8
+        with:
+          name: ironshade-vector-android-apk
+          path: .
+
+      - name: Verify shared smoke APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s Ironshade-Vector-Android-Smoke.apk
+          sha256sum -c Ironshade-Vector-Android-Smoke.sha256
+
+      - name: Enable KVM
+        shell: bash
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run black-box Settings Android regression
+        uses: ReactiveCircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7_pro
+          emulator-boot-timeout: 300
+          disable-animations: true
+          script: bash -lc 'ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-settings-regression.sh'
+
+      - name: Upload Settings regression evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ironshade-vector-settings-regression
+          path: |
+            android-settings-regression.txt
+            android-settings-regression-logcat.txt
+            android-settings-*.png
+            settings-native.xml
+          if-no-files-found: warn
+          retention-days: 90
+

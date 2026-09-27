@@ -4,6 +4,8 @@ const shell = fs.readFileSync(new URL('../scripts/android-fast-smoke.sh', import
 const runtime = fs.readFileSync(new URL('../scripts/android-runtime-smoke.mjs', import.meta.url), 'utf8');
 const extendedShell = fs.readFileSync(new URL('../scripts/android-runtime-smoke.sh', import.meta.url), 'utf8');
 const repeatableShell = fs.readFileSync(new URL('../scripts/android-repeatable-regression.sh', import.meta.url), 'utf8');
+const settingsShell = fs.readFileSync(new URL('../scripts/android-settings-regression.sh', import.meta.url), 'utf8');
+const settingsScript = fs.readFileSync(new URL('../scripts/android-settings-playtest.py', import.meta.url), 'utf8');
 const workflow = fs.readFileSync(new URL('../.github/workflows/android-apk.yml', import.meta.url), 'utf8');
 const browserWorkflow = fs.readFileSync(new URL('../.github/workflows/browser-e2e.yml', import.meta.url), 'utf8');
 
@@ -47,10 +49,10 @@ for (const marker of [
   'ANDROID_FAST_LIFECYCLE_RESUME_PASS',
 ]) requireText(runtime, marker, 'runtime harness');
 
-for (const marker of [
-  'browser-chapter3-playthrough',
-  'android-settings-playtest.py',
-]) requireText(extendedShell, marker, 'extended Android shell');
+requireText(extendedShell, 'browser-chapter3-playthrough', 'extended Android shell');
+if (extendedShell.includes('android-settings-playtest.py')) {
+  throw new Error('legacy extended Android shell must not run extracted Settings playtest');
+}
 requireText(runtime, 'ANDROID_P20E_REPEATABLE', 'extended Android runtime harness');
 
 requireText(workflow, 'npm run test:android-fast-smoke', 'Android workflow');
@@ -88,12 +90,48 @@ for (const marker of [
 
 for (const marker of [
   'browser-chapter3-playthrough',
-  'android-settings-playtest.py',
   'verify-authored-operator',
   'verify-authored-enemies',
   'verify-authored-weapons',
   'verify-authored-refinery',
 ]) requireText(extendedShell, marker, 'extended Android shell');
+
+for (const marker of [
+  'ANDROID_SMOKE_APK',
+  'adb install -r',
+  'python3 scripts/android-settings-playtest.py',
+  'android-settings-regression.txt',
+  'android-settings-regression-logcat.txt',
+  'ANDROID_SETTINGS_PLAYTEST_START',
+  'ANDROID_SETTINGS_VISUAL_DENSITY_PASS',
+  'ANDROID_SETTINGS_RELAUNCH_PASS',
+  'ANDROID_SETTINGS_PLAYTEST_PASS',
+  'ANDROID_SETTINGS_REGRESSION_JOB_PASS',
+  'apk=reused',
+  'crashCheck=clean',
+]) requireText(settingsShell, marker, 'Settings regression shell');
+
+for (const marker of [
+  'adb("shell", "input", "tap"',
+  'adb("shell", "uiautomator", "dump"',
+  'adb("shell", "pm", "clear", PACKAGE',
+  'adb("shell", "am", "force-stop", PACKAGE',
+  'ANDROID_SETTINGS_PLAYTEST_START mode=black-box game-input=adb accessibility=uiautomator screenshots=true dom=false cdp=false storage=false',
+  'ANDROID_SETTINGS_VISUAL_DENSITY_PASS',
+  'ANDROID_SETTINGS_RELAUNCH_PASS',
+  'ANDROID_SETTINGS_PLAYTEST_PASS',
+  'shot("06-command-default")',
+  'shot("07-command-compact")',
+  'shot("08-command-compact-relaunch")',
+]) requireText(settingsScript, marker, 'black-box Settings script');
+
+for (const forbidden of ['CDP_ENDPOINT', 'localStorage.setItem', 'document.querySelector']) {
+  if (settingsShell.includes(forbidden)) throw new Error(`Settings regression shell must remain black-box: ${forbidden}`);
+}
+
+if (fs.existsSync(new URL('../.github/workflows/settings-playtest.yml', import.meta.url))) {
+  throw new Error('stale beta-pinned Settings workflow must be removed after extraction');
+}
 
 for (const artifact of [
   'Ironshade-Vector-Android-Beta.apk',
@@ -104,6 +142,25 @@ for (const artifact of [
   'android-fast-smoke.png',
   'android-fast-resume.png',
 ]) requireText(workflow, artifact, 'Android workflow artifact upload');
+
+for (const marker of [
+  'settings-regression:',
+  "github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/android/capacitor-apk' || github.ref == 'refs/heads/android/full-regression'",
+  'needs: build-apk',
+  'actions/download-artifact@v8',
+  'bash scripts/android-settings-regression.sh',
+  'ironshade-vector-settings-regression',
+  'android-settings-regression.txt',
+  'android-settings-regression-logcat.txt',
+  'android-settings-*.png',
+]) requireText(workflow, marker, 'Settings regression workflow');
+
+const settingsJobStart = workflow.indexOf('  settings-regression:');
+const repeatableJobStart = workflow.indexOf('  repeatable-family-regression:');
+if (settingsJobStart < 0 || repeatableJobStart < 0) throw new Error('Android workflow missing dedicated extended jobs');
+const settingsJobText = workflow.slice(settingsJobStart);
+if (!settingsJobText.includes('needs: build-apk')) throw new Error('Settings regression must depend only on shared APK build');
+if (settingsJobText.includes('needs: repeatable-family-regression')) throw new Error('Settings regression must run in parallel with repeatable-family regression');
 
 for (const marker of [
   'repeatable-family-regression:',
