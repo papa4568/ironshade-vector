@@ -2751,7 +2751,7 @@ async function p20eTryTapInteract(id, holdMs = 100) {
 
 async function p20eFinishActiveFamily(expectedFamily, idBase) {
   await waitFor(`document.querySelector('.game-root')?.dataset.repeatableFamily === '${expectedFamily}'`, `P20-E ${expectedFamily} combat family`, 30_000);
-  const combatDeadline = Date.now() + (expectedFamily === 'boarding' ? 420_000 : 300_000);
+  const combatDeadline = Date.now() + 420_000;
   let iteration = 0;
   while (Date.now() < combatDeadline) {
     const state = await evaluate(`(() => {
@@ -2782,9 +2782,12 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
         contextActionId: root?.dataset.contextActionId ?? '',
         contextActionLabel: root?.dataset.contextActionLabel ?? '',
         extractionReady: root?.dataset.extractionReady === 'true',
+        extractionChoice: Boolean(document.querySelector('[aria-label="Extraction decision"] .extraction-choice button.safe')),
+        safeDebrief: document.querySelector('[data-presentation="mission-debrief"] h1')?.textContent?.includes('Safe extraction complete') === true,
         interact: Boolean(document.querySelector('.interact-button:not(:disabled)')),
       };
     })()`);
+    if (state.safeDebrief || state.extractionChoice) break;
     if (state.dead) throw new Error(`P20-E ${expectedFamily} representative play ended with operator down.`);
     if (iteration % 8 === 0) {
       console.log(`ANDROID_P20E_PROGRESS family=${expectedFamily} iteration=${iteration} objective=${state.objectiveComplete ? 'complete' : 'active'} remaining=${state.remaining} hp=${state.health} armor=${state.armor} range=${state.extractionHostileRange || state.hostileRange} shots=${state.weaponShots} damage=${Math.round(state.damageDealt)}`);
