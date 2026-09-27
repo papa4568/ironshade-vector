@@ -2976,5 +2976,12 @@ await p20eFinishActiveFamily('boarding', 2700);
 await p20eRemoveCombatGamepad();
 console.log('ANDROID_P20E_REPEATABLE_PLAY_PASS families=stabilization+salvage+boarding completions=3 depth=safe campaign=tier1-baseline class=systems weapon=carbine input=assisted-target-combat+touch-objectives actualGameplay=true');
 
+// The shell runs authored operator/enemy/weapon/refinery verifiers immediately after
+// this smoke. P20-E intentionally ends on a debrief, so restore a live Asteroid
+// Refinery combat canvas without replaying another representative completion.
+await p20eDeployFamily('stabilization', 3000);
+await waitFor(`Boolean(document.querySelector('canvas')) && document.querySelector('.game-root')?.dataset.repeatableFamily === 'stabilization'`, 'post-P20-E authored asset verification combat', 45_000);
+console.log('ANDROID_P20E_POST_SMOKE_COMBAT_READY family=stabilization location=asteroid-refinery');
+
 session.close();
 console.log(`ANDROID_RUNTIME_SMOKE_PASS title=${startup.title} route=ship>contracts>combat canvases=${combat.canvases}`);
