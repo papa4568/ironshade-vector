@@ -2942,10 +2942,10 @@ const p20eCampaignBaselineSeeded = await evaluate(`(() => {
 })()`);
 if (!p20eCampaignBaselineSeeded) throw new Error('P20-E could not seed the tier-1 standard campaign baseline.');
 
-await p20cLoadClassCombat('systems', 'carbine', [
-  { name: 'Polarity Well', short: 'WELL' },
-  { name: 'Relay Hack', short: 'HACK' },
-  { name: 'Cascade Arc', short: 'CHAIN' },
+await p20cLoadClassCombat('vector', 'rail', [
+  { name: 'Vector Shift', short: 'SHIFT' },
+  { name: 'Deadeye Lock', short: 'LOCK' },
+  { name: 'Splitshot', short: 'SPLIT' },
 ], null, false);
 await p20eDeployFamily('stabilization', 2000);
 await p20eInstallCombatGamepad();
@@ -2956,7 +2956,7 @@ await p20eFinishActiveFamily('salvage', 2400);
 await p20eDeployFamily('boarding', 2600);
 await p20eFinishActiveFamily('boarding', 2700);
 await p20eRemoveCombatGamepad();
-console.log('ANDROID_P20E_REPEATABLE_PLAY_PASS families=stabilization+salvage+boarding completions=3 depth=safe campaign=tier1-baseline class=systems weapon=carbine input=direct-target-combat+touch-objectives actualGameplay=true');
+console.log('ANDROID_P20E_REPEATABLE_PLAY_PASS families=stabilization+salvage+boarding completions=3 depth=safe campaign=tier1-baseline class=vector weapon=rail input=direct-target-combat+touch-objectives actualGameplay=true');
 
 session.close();
 console.log(`ANDROID_RUNTIME_SMOKE_PASS title=${startup.title} route=ship>contracts>combat canvases=${combat.canvases}`);
