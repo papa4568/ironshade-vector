@@ -518,13 +518,13 @@
 .iv-disclosure-sheet__close {
   flex: 0 0 auto;
   min-inline-size: 4.5rem;
-  min-block-size: 2.75rem;
+  min-block-size: max(44px, 2.75rem);
   padding: var(--iv-space-2) var(--iv-space-3);
   border: 1px solid var(--iv-border-strong);
   border-radius: var(--iv-radius-sm);
   background: var(--iv-surface-raised);
   color: var(--iv-text-primary);
-  font: 800 var(--iv-type-sm)/1.2 var(--iv-font-body);
+  font: 800 max(12px, var(--iv-type-sm))/1.2 var(--iv-font-body);
 }
 
 .iv-disclosure-sheet__body {
@@ -621,7 +621,7 @@
 @media (pointer: coarse), (max-width: 900px) {
   .iv-disclosure-trigger,
   .iv-disclosure-sheet__close {
-    min-block-size: 2.75rem;
+    min-block-size: max(44px, 2.75rem);
   }
 
   .iv-disclosure-sheet {
