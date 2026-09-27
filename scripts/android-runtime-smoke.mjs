@@ -2983,13 +2983,11 @@ console.log('ANDROID_P20E_REPEATABLE_PLAY_PASS families=stabilization+salvage+bo
 // this smoke. P20-E advances the campaign three cycles, so restore the cycle-0
 // Asteroid Refinery verification scene without replaying another representative completion.
 const p20eAssetVerificationBaseline = await evaluate(`(() => {
-  const key = 'ironshade-vector-campaign-v1';
-  const raw = localStorage.getItem(key);
-  if (!raw) return true;
-  const campaign = JSON.parse(raw);
-  if (!campaign || campaign.version !== 1) return false;
-  campaign.cycle = 0;
-  localStorage.setItem(key, JSON.stringify(campaign));
+  const key = 'ironshade-vector-state-v1';
+  const state = JSON.parse(localStorage.getItem(key) || 'null');
+  if (!state?.campaign || state.campaign.version !== 1) return false;
+  state.campaign.cycle = 0;
+  localStorage.setItem(key, JSON.stringify(state));
   return true;
 })()`);
 if (!p20eAssetVerificationBaseline) throw new Error('P20-E could not restore the cycle-0 asset verification baseline.');
