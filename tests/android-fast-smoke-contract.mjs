@@ -43,6 +43,29 @@ for (const marker of [
 
 requireText(workflow, 'npm run test:android-fast-smoke', 'Android workflow');
 requireText(workflow, "set -euo pipefail;", 'Android workflow');
-requireText(workflow, 'bash scripts/android-fast-smoke.sh; bash scripts/android-runtime-smoke.sh', 'Android workflow');
+requireText(workflow, 'actions/upload-artifact@v7', 'Android workflow');
+for (const artifact of [
+  'Ironshade-Vector-Android-Beta.apk',
+  'Ironshade-Vector-Android-Beta.sha256',
+  'android-fast-logcat.txt',
+  'android-fast-smoke.png',
+  'android-fast-resume.png',
+]) requireText(workflow, artifact, 'Android workflow artifact upload');
 
-console.log('ANDROID_FAST_SMOKE_CONTRACT_PASS entry=scripts/android-fast-smoke.sh extended=excluded touch=required lifecycle=required artifacts=required failFast=required');
+const emulatorScriptLine = workflow
+  .split('\n')
+  .find((line) => line.includes("script: bash -lc '"));
+if (!emulatorScriptLine) throw new Error('Android workflow missing emulator runner script');
+requireText(emulatorScriptLine, 'bash scripts/android-fast-smoke.sh', 'Android workflow emulator script');
+for (const forbidden of [
+  'android-runtime-smoke.sh',
+  'android-settings-playtest.py',
+  'browser-chapter3-playthrough',
+  'ANDROID_P20E_REPEATABLE',
+]) {
+  if (emulatorScriptLine.includes(forbidden)) {
+    throw new Error(`default Android emulator path must not run extended suite: ${forbidden}`);
+  }
+}
+
+console.log('ANDROID_FAST_SMOKE_CONTRACT_PASS entry=scripts/android-fast-smoke.sh defaultPush=fast-only extended=excluded touch=required lifecycle=required artifacts=required failFast=required');

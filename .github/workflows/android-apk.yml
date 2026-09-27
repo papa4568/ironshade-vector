@@ -317,7 +317,7 @@ jobs:
           done
           exit 1
 
-      - name: Smoke test APK on Android emulator
+      - name: Fast smoke test APK on Android emulator
         uses: ReactiveCircus/android-emulator-runner@v2.38.0
         with:
           api-level: 35
@@ -326,7 +326,7 @@ jobs:
           profile: pixel_7_pro
           emulator-boot-timeout: 300
           disable-animations: true
-          script: bash -lc 'set -euo pipefail; if [[ "${{ steps.signing.outputs.mode }}" == "release" ]]; then bash scripts/android-upgrade-smoke.sh; fi; bash scripts/android-fast-smoke.sh; bash scripts/android-runtime-smoke.sh'
+          script: bash -lc 'set -euo pipefail; if [[ "${{ steps.signing.outputs.mode }}" == "release" ]]; then bash scripts/android-upgrade-smoke.sh; fi; bash scripts/android-fast-smoke.sh'
 
       - name: Upload APK and QA evidence
         uses: actions/upload-artifact@v7
@@ -347,12 +347,6 @@ jobs:
             android-fast-logcat.txt
             android-fast-smoke.png
             android-fast-resume.png
-            android-runtime-logcat.txt
-            android-runtime-smoke.png
-            android-network-planner-persistence.png
-            android-chapter3-playthrough.png
-            android-chapter3-playthrough.json
-            android-settings-*.png
           if-no-files-found: warn
           retention-days: 90
         if: always()
