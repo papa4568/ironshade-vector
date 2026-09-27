@@ -70,6 +70,13 @@ for (const marker of [
 ]) requireText(runtime, marker, 'extended Android runtime harness');
 
 for (const marker of [
+  'state.remaining > 1 && iteration % 3 === 0',
+  'state.remaining > 1 && iteration % 2 === 0',
+  'state.remaining > 1 && iteration % 4 === 0',
+  'safe-extraction can appear as soon as that target dies',
+]) requireText(runtime, marker, 'repeatable final-hostile touch guard');
+
+for (const marker of [
   'ANDROID_P20E_REPEATABLE_ONLY=1',
   'ANDROID_P20E_REPEATABLE_FAMILY_PASS family=${family}',
   'ANDROID_P20E_REPEATABLE_PLAY_PASS families=stabilization+salvage+boarding completions=3',

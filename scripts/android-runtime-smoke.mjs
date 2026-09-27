@@ -3103,7 +3103,9 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
           continue;
         }
       }
-      if (iteration % 3 === 0) {
+      // Avoid touch controls on the final hostile: safe-extraction can appear as soon as that target dies,
+      // and a later touch in the same iteration could hit the newly-mounted deep-zone choice.
+      if (state.remaining > 1 && iteration % 3 === 0) {
         const guard = await elementMetrics('.ability-button.ability-2:not(:disabled)');
         if (guard) {
           await dispatchTouch('touchStart', guard.x, guard.y, idBase + 6000 + iteration);
@@ -3112,7 +3114,7 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
           await sleep(100);
         }
       }
-      if (iteration % 2 === 0) {
+      if (state.remaining > 1 && iteration % 2 === 0) {
         const dodge = await elementMetrics('.dodge-button:not(:disabled)');
         if (dodge) {
           await dispatchTouch('touchStart', dodge.x, dodge.y, idBase + 7000 + iteration);
@@ -3130,7 +3132,7 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
       if (finalHostileAimReady) {
         await p20ePulseAimedGamepadButton(4, state.hostileAimX, state.hostileAimY, 120);
         await p20ePulseAimedGamepadButton(6, state.hostileAimX, state.hostileAimY, 120);
-      } else if (iteration % 4 === 0) {
+      } else if (state.remaining > 1 && iteration % 4 === 0) {
         const control = await elementMetrics('.ability-button.ability-0:not(:disabled)');
         if (control) {
           await dispatchTouch('touchStart', control.x, control.y, idBase + 7800 + iteration);
@@ -3139,7 +3141,7 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
           await sleep(100);
         }
       }
-      if (iteration % 2 === 0) {
+      if (state.remaining > 1 && iteration % 2 === 0) {
         const lock = await elementMetrics('.ability-button.ability-1:not(:disabled)');
         if (lock) {
           await dispatchTouch('touchStart', lock.x, lock.y, idBase + 8000 + iteration);
