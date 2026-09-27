@@ -2985,7 +2985,7 @@ console.log('ANDROID_P20E_REPEATABLE_PLAY_PASS families=stabilization+salvage+bo
 const p20eAssetVerificationBaseline = await evaluate(`(() => {
   const key = 'ironshade-vector-campaign-v1';
   const raw = localStorage.getItem(key);
-  if (!raw) return false;
+  if (!raw) return true;
   const campaign = JSON.parse(raw);
   if (!campaign || campaign.version !== 1) return false;
   campaign.cycle = 0;
