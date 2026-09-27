@@ -1,6 +1,8 @@
 const cdpBase = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9222';
 const timeoutMs = Number(process.env.ANDROID_SMOKE_TIMEOUT_MS ?? 75_000);
 const startedAt = Date.now();
+const fastSmoke = process.env.ANDROID_FAST_SMOKE === '1';
+const fastResumeOnly = process.env.ANDROID_FAST_RESUME_CHECK === '1';
 const resumeOnly = process.env.ANDROID_RESUME_CHECK === '1';
 const plannerPersistenceOnly = process.env.ANDROID_PLANNER_PERSISTENCE_CHECK === '1';
 const resumeProcessMode = process.env.ANDROID_RESUME_PROCESS_MODE ?? 'preserved';
@@ -470,6 +472,29 @@ if (plannerPersistenceOnly) {
   process.exit(0);
 }
 
+
+if (fastResumeOnly) {
+  await waitFor(`document.readyState === 'complete' && document.title === 'Ironshade Vector'`, 'fast resumed Ironshade document', 45_000);
+  await waitFor(`Boolean(document.querySelector('canvas') && document.querySelector('[aria-label="Touch combat controls"]') && document.querySelector('.move-stick') && document.querySelector('.fire-button') && document.querySelector('.dodge-button'))`, 'fast resumed Android combat surface', 45_000);
+  const fastResumed = await evaluate(`(() => {
+    const root = document.querySelector('.game-root');
+    return {
+      title: document.title,
+      canvases: document.querySelectorAll('canvas').length,
+      controls: Boolean(document.querySelector('[aria-label="Touch combat controls"]') && document.querySelector('.move-stick') && document.querySelector('.fire-button') && document.querySelector('.dodge-button')),
+      tutorialStep: Number(root?.dataset.tutorialStep ?? '0'),
+      location: document.querySelector('.mission-chip')?.textContent?.trim() ?? '',
+    };
+  })()`);
+  if (fastResumed.title !== 'Ironshade Vector' || fastResumed.canvases < 1 || !fastResumed.controls) {
+    throw new Error(`Fast Android lifecycle resume did not restore combat/touch surfaces: ${JSON.stringify(fastResumed)}`);
+  }
+  console.log(`ANDROID_FAST_LIFECYCLE_RESUME_PASS canvases=${fastResumed.canvases} tutorialStep=${fastResumed.tutorialStep} location=${JSON.stringify(fastResumed.location)}`);
+  session.close();
+  await sleep(100);
+  process.exit(0);
+}
+
 if (resumeOnly) {
   if (!['preserved', 'reclaimed'].includes(resumeProcessMode)) {
     throw new Error(`Unknown Android lifecycle process mode: ${resumeProcessMode}`);
@@ -598,6 +623,147 @@ if (startupText.toLowerCase().includes('save recovery lock')) {
 const startupButtons = startup.buttons ?? [];
 if (startup.title !== 'Ironshade Vector' || !(startupText.toLowerCase().includes('command ready') || startupText.toLowerCase().includes('command deck')) || !startupButtons.some(label => label.toLowerCase() === 'operations')) {
   throw new Error(`Unexpected Android startup surface: ${JSON.stringify(startup)}`);
+}
+
+
+if (fastSmoke) {
+  const fastDirectionOffsets = {
+    RIGHT: [34, 0],
+    'DOWN-RIGHT': [28, 28],
+    DOWN: [0, 34],
+    'DOWN-LEFT': [-28, 28],
+    LEFT: [-34, 0],
+    'UP-LEFT': [-28, -28],
+    UP: [0, -34],
+    'UP-RIGHT': [28, -28],
+  };
+  const fastMove = async (direction, id, duration = 260) => {
+    const offset = fastDirectionOffsets[direction] ?? fastDirectionOffsets.RIGHT;
+    const stick = await elementMetrics('.move-stick');
+    if (!stick) throw new Error('Fast Android movement stick unavailable.');
+    await dispatchTouch('touchStart', stick.x, stick.y, id);
+    await dispatchTouch('touchMove', stick.x + offset[0], stick.y + offset[1], id);
+    await sleep(duration);
+    await dispatchTouch('touchEnd', stick.x + offset[0], stick.y + offset[1], id);
+    await sleep(120);
+  };
+
+  console.log(`ANDROID_FAST_STARTUP_PASS title=${startup.title} surface=command-deck`);
+
+  await tapButton('Operations', 201, 100);
+  await waitFor(`[...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'contracts')`, 'Fast Android Operations navigation');
+  await tapButton('Contracts', 202, 100);
+  await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('contract board') && [...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'deploy selected contract')`, 'Fast Android Contract Board');
+
+  const fastContractPrepared = await evaluate(`(() => {
+    const target = document.querySelector('button[data-location="asteroid-refinery"]');
+    if (!target) return false;
+    target.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+    return true;
+  })()`);
+  if (!fastContractPrepared) throw new Error('Fast Android Asteroid Refinery contract card unavailable.');
+  await sleep(220);
+  await tap('button[data-location="asteroid-refinery"]', 203, 110);
+  await waitFor(`document.querySelector('button[data-location="asteroid-refinery"]')?.classList.contains('selected') === true`, 'Fast Android Asteroid Refinery selection');
+  console.log('ANDROID_FAST_MANAGEMENT_TOUCH_PASS route=command>operations>contracts interaction=contract-select');
+
+  await tapButton('Deploy selected contract', 204, 110);
+  await waitFor(`Boolean(document.querySelector('canvas') && document.querySelector('[aria-label="Touch combat controls"]') && document.querySelector('.move-stick') && document.querySelector('.fire-button') && document.querySelector('.dodge-button'))`, 'Fast Android combat controls', 45_000);
+
+  const scrollBefore = await evaluate(`({ x: window.scrollX, y: window.scrollY })`);
+  await fastMove('UP-RIGHT', 205, 320);
+  await waitFor(`document.querySelector('.move-stick')?.style.getPropertyValue('--knob-x') === '0px' && document.querySelector('.move-stick')?.style.getPropertyValue('--knob-y') === '0px'`, 'Fast Android movement stick release', 10_000);
+
+  const fire = await elementMetrics('.fire-button');
+  if (!fire || fire.disabled) throw new Error('Fast Android FIRE control unavailable.');
+  let fireObserved = false;
+  for (let attempt = 0; attempt < 2 && !fireObserved; attempt += 1) {
+    const before = await evaluate(`document.querySelector('.fire-button small')?.textContent ?? ''`);
+    await dispatchTouch('touchStart', fire.x, fire.y, 210 + attempt);
+    await sleep(800);
+    await dispatchTouch('touchEnd', fire.x, fire.y, 210 + attempt);
+    const deadline = Date.now() + 6_000;
+    while (Date.now() < deadline) {
+      const after = await evaluate(`document.querySelector('.fire-button small')?.textContent ?? ''`);
+      if (after !== before) {
+        fireObserved = true;
+        break;
+      }
+      await sleep(200);
+    }
+  }
+  if (!fireObserved) throw new Error('Fast Android FIRE control did not change weapon state.');
+
+  const ability = await elementMetrics('.ability-button:not(:disabled)');
+  if (!ability || ability.disabled) throw new Error('Fast Android class-skill control unavailable.');
+  await dispatchTouch('touchStart', ability.x, ability.y, 220);
+  await sleep(100);
+  await dispatchTouch('touchEnd', ability.x, ability.y, 220);
+  await waitFor(`document.querySelector('.game-root')?.getAttribute('data-tutorial-step') === '3'`, 'Fast Android ability touch response', 12_000);
+
+  const dodge = await elementMetrics('.dodge-button:not(:disabled)');
+  if (!dodge || dodge.disabled) throw new Error('Fast Android DODGE control unavailable.');
+  await dispatchTouch('touchStart', dodge.x, dodge.y, 221);
+  await sleep(100);
+  await dispatchTouch('touchEnd', dodge.x, dodge.y, 221);
+  await waitFor(`document.querySelector('.game-root')?.getAttribute('data-tutorial-step') === '4'`, 'Fast Android dodge touch response', 12_000);
+
+  let interactionObserved = false;
+  const interactionDeadline = Date.now() + 25_000;
+  let movementAttempt = 0;
+  while (Date.now() < interactionDeadline && !interactionObserved) {
+    const state = await evaluate(`(() => {
+      const root = document.querySelector('.game-root');
+      return {
+        direction: root?.dataset.objectiveDirection ?? '',
+        range: Number(root?.dataset.objectiveRange ?? '0'),
+        actionReady: root?.dataset.objectiveActionReady === 'true',
+        contextActionId: root?.dataset.contextActionId ?? '',
+        contextActionLabel: root?.dataset.contextActionLabel ?? '',
+        interact: Boolean(document.querySelector('.interact-button:not(:disabled)')),
+        tutorialStep: Number(root?.dataset.tutorialStep ?? '0'),
+      };
+    })()`);
+    if (state.interact) {
+      const interact = await elementMetrics('.interact-button:not(:disabled)');
+      if (interact && !interact.disabled) {
+        await dispatchTouch('touchStart', interact.x, interact.y, 230 + movementAttempt);
+        await sleep(110);
+        await dispatchTouch('touchEnd', interact.x, interact.y, 230 + movementAttempt);
+        await sleep(350);
+        const after = await evaluate(`Number(document.querySelector('.game-root')?.dataset.tutorialStep ?? '0')`);
+        interactionObserved = after >= 5;
+        if (interactionObserved) {
+          console.log(`ANDROID_FAST_INTERACTION_TOUCH_PASS action=${JSON.stringify(state.contextActionLabel || state.contextActionId || 'ACT')} tutorialStep=${after}`);
+          break;
+        }
+      }
+    }
+    const duration = state.range > 700 ? 420 : state.range > 350 ? 320 : state.range > 160 ? 220 : 160;
+    await fastMove(state.direction || 'RIGHT', 300 + movementAttempt, duration);
+    movementAttempt += 1;
+  }
+  if (!interactionObserved) throw new Error('Fast Android ACT interaction was not reached through touch movement within the smoke budget.');
+
+  const scrollAfter = await evaluate(`({ x: window.scrollX, y: window.scrollY })`);
+  if (scrollAfter.x !== scrollBefore.x || scrollAfter.y !== scrollBefore.y) {
+    throw new Error(`Fast Android combat touch gestures moved the page: before=${JSON.stringify(scrollBefore)} after=${JSON.stringify(scrollAfter)}`);
+  }
+
+  const combat = await evaluate(`(() => ({
+    canvases: document.querySelectorAll('canvas').length,
+    controls: Boolean(document.querySelector('[aria-label="Touch combat controls"]')),
+    tutorialStep: Number(document.querySelector('.game-root')?.dataset.tutorialStep ?? '0'),
+  }))()`);
+  if (combat.canvases < 1 || !combat.controls || combat.tutorialStep < 5) {
+    throw new Error(`Fast Android combat sanity incomplete: ${JSON.stringify(combat)}`);
+  }
+
+  console.log(`ANDROID_FAST_TOUCH_PASS move=drag fire=hold ability=tap dodge=tap interact=tap scroll=${scrollAfter.x},${scrollAfter.y}`);
+  console.log(`ANDROID_FAST_RUNTIME_PASS title=${startup.title} route=ship>contracts>combat canvases=${combat.canvases}`);
+  session.close();
+  await sleep(100);
+  process.exit(0);
 }
 
 const commandLayout = await evaluate(`(() => {

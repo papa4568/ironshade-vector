@@ -137,6 +137,9 @@ jobs:
             exit "$status"
           done
 
+      - name: Test fast Android smoke contract
+        run: npm run test:android-fast-smoke
+
       - name: Run full web regression and production build
         env:
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
@@ -323,7 +326,7 @@ jobs:
           profile: pixel_7_pro
           emulator-boot-timeout: 300
           disable-animations: true
-          script: bash -lc 'if [[ "${{ steps.signing.outputs.mode }}" == "release" ]]; then bash scripts/android-upgrade-smoke.sh; fi; bash scripts/android-runtime-smoke.sh'
+          script: bash -lc 'if [[ "${{ steps.signing.outputs.mode }}" == "release" ]]; then bash scripts/android-upgrade-smoke.sh; fi; bash scripts/android-fast-smoke.sh; bash scripts/android-runtime-smoke.sh'
 
       - name: Upload APK and QA evidence
         uses: actions/upload-artifact@v7
@@ -341,6 +344,9 @@ jobs:
             android-upgrade-smoke.txt
             android-upgrade-logcat.txt
             android-upgrade-smoke.png
+            android-fast-logcat.txt
+            android-fast-smoke.png
+            android-fast-resume.png
             android-runtime-logcat.txt
             android-runtime-smoke.png
             android-network-planner-persistence.png
