@@ -2782,16 +2782,16 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
       }
       const pursuitDirection = state.extractionHostileDirection || state.hostileDirection;
       const pursuitRange = state.extractionHostileRange > 0 ? state.extractionHostileRange : state.hostileRange;
-      if (pursuitDirection && pursuitRange > 220) {
-        await p20eGamepadCombat(pursuitDirection, pursuitRange > 700 ? 1200 : pursuitRange > 480 ? 1000 : pursuitRange > 320 ? 850 : 650);
+      if (pursuitDirection && pursuitRange > 560) {
+        await p20eGamepadCombat(pursuitDirection, pursuitRange > 800 ? 1200 : 900);
       } else {
         await p20eGamepadCombat('', 1500);
         if (iteration % 2 === 0) {
-          const offense = await elementMetrics('.ability-button.ability-0:not(:disabled)');
-          if (offense) {
-            await dispatchTouch('touchStart', offense.x, offense.y, idBase + 8000 + iteration);
+          const lock = await elementMetrics('.ability-button.ability-1:not(:disabled)');
+          if (lock) {
+            await dispatchTouch('touchStart', lock.x, lock.y, idBase + 8000 + iteration);
             await sleep(90);
-            await dispatchTouch('touchEnd', offense.x, offense.y, idBase + 8000 + iteration);
+            await dispatchTouch('touchEnd', lock.x, lock.y, idBase + 8000 + iteration);
             await sleep(120);
           }
         }
@@ -2850,10 +2850,10 @@ const p20eCampaignBaselineSeeded = await evaluate(`(() => {
 })()`);
 if (!p20eCampaignBaselineSeeded) throw new Error('P20-E could not seed the tier-1 standard campaign baseline.');
 
-await p20cLoadClassCombat('systems', 'carbine', [
-  { name: 'Polarity Well', short: 'WELL' },
-  { name: 'Relay Hack', short: 'HACK' },
-  { name: 'Cascade Arc', short: 'CHAIN' },
+await p20cLoadClassCombat('vector', 'rail', [
+  { name: 'Vector Shift', short: 'SHIFT' },
+  { name: 'Deadeye Lock', short: 'LOCK' },
+  { name: 'Splitshot', short: 'SPLIT' },
 ], null, false);
 await p20eDeployFamily('stabilization', 2000);
 await p20eInstallCombatGamepad();
@@ -2864,7 +2864,7 @@ await p20eFinishActiveFamily('salvage', 2400);
 await p20eDeployFamily('boarding', 2600);
 await p20eFinishActiveFamily('boarding', 2700);
 await p20eRemoveCombatGamepad();
-console.log('ANDROID_P20E_REPEATABLE_PLAY_PASS families=stabilization+salvage+boarding completions=3 depth=safe campaign=tier1-baseline class=systems weapon=carbine input=controller-combat+touch-objectives actualGameplay=true');
+console.log('ANDROID_P20E_REPEATABLE_PLAY_PASS families=stabilization+salvage+boarding completions=3 depth=safe campaign=tier1-baseline class=vector weapon=rail input=controller-combat+touch-objectives actualGameplay=true');
 
 session.close();
 console.log(`ANDROID_RUNTIME_SMOKE_PASS title=${startup.title} route=ship>contracts>combat canvases=${combat.canvases}`);
