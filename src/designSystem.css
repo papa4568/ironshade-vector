@@ -457,13 +457,13 @@
   align-items: center;
   justify-content: center;
   gap: var(--iv-space-2);
-  min-block-size: 2.5rem;
+  min-block-size: max(44px, 2.5rem);
   padding: var(--iv-space-2) var(--iv-space-4);
   border: 1px solid var(--iv-border-strong);
   border-radius: var(--iv-radius-sm);
   background: color-mix(in srgb, var(--iv-surface-raised) 86%, var(--iv-accent) 14%);
   color: var(--iv-text-primary);
-  font: 800 var(--iv-type-sm)/1.2 var(--iv-font-body);
+  font: 800 max(12px, var(--iv-type-sm))/1.2 var(--iv-font-body);
 }
 
 .iv-disclosure-trigger[aria-expanded='true'] {

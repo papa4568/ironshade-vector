@@ -1,13 +1,13 @@
 /* P19-C // Canonical Intel Guide and contextual deep-links. */
 .guide-context-link,
 .guide-return-button {
-  min-height: 42px;
+  min-height: 44px;
   padding: var(--iv-space-2) var(--iv-space-3);
   border: 1px solid var(--iv-border-strong);
   border-radius: var(--iv-radius-sm);
   background: rgba(17, 31, 28, .86);
   color: var(--iv-accent-strong);
-  font: 800 var(--iv-type-sm)/1.25 var(--iv-font-body);
+  font: 800 max(12px, var(--iv-type-sm))/1.25 var(--iv-font-body);
 }
 
 .guide-panel {

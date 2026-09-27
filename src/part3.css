@@ -775,6 +775,14 @@
     font-size: var(--p19-armory-decision);
   }
 
+  .build-bay .gear-discovery-note .iv-disclosure-trigger,
+  .build-bay .gear-discovery-note .guide-context-link,
+  .build-bay .equipment-card-heading .rarity-pill {
+    font-size: var(--p19-armory-secondary);
+  }
+
+  .build-bay .gear-discovery-note .iv-disclosure-trigger,
+  .build-bay .gear-discovery-note .guide-context-link,
   .build-bay .close-build,
   .build-bay .build-tabs button {
     min-height: 44px;
@@ -783,7 +791,7 @@
   .build-bay .inventory-tools input,
   .build-bay .inventory-tools select,
   .build-bay .inventory-filter-scroll button {
-    min-height: 40px;
+    min-height: 44px;
   }
 }
 
