@@ -928,7 +928,7 @@
   padding-block: 2px 5px;
 }
 .build-bay[data-interface-size='compact'] .build-tabs {
-  gap: 4px;
+  gap: 3px;
   margin-bottom: 5px;
 }
 .build-bay[data-interface-size='compact'] .build-tabs button {
@@ -943,7 +943,7 @@
 }
 .build-bay[data-interface-size='compact'] .settings-panel select {
   min-width: 104px;
-  padding: 5px 6px;
+  padding: 4px;
   border-radius: 7px;
 }
 .build-bay[data-interface-size='compact'] .inventory-grid,

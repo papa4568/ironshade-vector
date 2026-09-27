@@ -87,27 +87,30 @@
   --iv-safe-left: max(var(--iv-space-4), env(safe-area-inset-left));
 }
 
-/* P20-A // Persisted non-combat interface sizing.
- * Root rem scaling recomposes shared menu/panel typography, spacing, radii, icons,
- * and safe-area layout without touching the fixed-pixel combat-control contract.
+/* P20-A / P22-A // Persisted non-combat interface sizing.
+ * P22-A rebases the shared management baseline to 70% of the pre-P22 geometry.
+ * Compact and Large retain the established P20 relative ordering around Default.
+ * The combat context restores the pre-P22 root scale so informational HUD sizing
+ * remains owned by P22-B2 and fixed-pixel combat controls remain untouched.
  */
 :root[data-interface-size='default'] {
-  --iv-interface-scale: 1;
-  font-size: 100%;
+  --iv-interface-scale: 0.7;
+  font-size: 70%;
 }
 
 :root[data-interface-size='compact'] {
-  --iv-interface-scale: 0.72;
-  font-size: 72%;
+  --iv-interface-scale: 0.504;
+  font-size: 50.4%;
 }
 
 :root[data-interface-size='large'] {
-  --iv-interface-scale: 1.25;
-  font-size: 125%;
+  --iv-interface-scale: 0.875;
+  font-size: 87.5%;
 }
 
 /* P15-E // Persisted accessibility presentation overrides.
- * Interface Text Size composes multiplicatively with Interface Size.
+ * Large text deliberately keeps the pre-P22 readable presentation sizes while
+ * retaining Compact < Default < Large ordering for accessibility users.
  */
 :root[data-text-scale='large'] {
   font-size: 112.5%;
@@ -118,6 +121,33 @@
 }
 
 :root[data-interface-size='large'][data-text-scale='large'] {
+  font-size: 140.625%;
+}
+
+:root[data-interface-context='combat'][data-interface-size='default'] {
+  --iv-interface-scale: 1;
+  font-size: 100%;
+}
+
+:root[data-interface-context='combat'][data-interface-size='compact'] {
+  --iv-interface-scale: 0.72;
+  font-size: 72%;
+}
+
+:root[data-interface-context='combat'][data-interface-size='large'] {
+  --iv-interface-scale: 1.25;
+  font-size: 125%;
+}
+
+:root[data-interface-context='combat'][data-text-scale='large'] {
+  font-size: 112.5%;
+}
+
+:root[data-interface-context='combat'][data-interface-size='compact'][data-text-scale='large'] {
+  font-size: 81%;
+}
+
+:root[data-interface-context='combat'][data-interface-size='large'][data-text-scale='large'] {
   font-size: 140.625%;
 }
 
@@ -347,7 +377,7 @@
   }
 
   :where(button, [role='button'], a[href], input, select, summary) {
-    min-block-size: 2.75rem;
+    min-block-size: max(44px, 2.75rem);
   }
 
   .iv-panel__header,

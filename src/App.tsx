@@ -223,10 +223,11 @@ function App() {
     if (typeof document === 'undefined') return;
     const root = document.documentElement;
     root.dataset.interfaceSize = profile.settings.interfaceSize;
+    root.dataset.interfaceContext = screen === 'combat' ? 'combat' : 'management';
     root.dataset.textScale = profile.settings.textScale;
     root.dataset.contrast = profile.settings.contrast;
     root.dataset.reducedMotion = profile.settings.reducedMotion ? 'true' : 'false';
-  }, [profile.settings.interfaceSize, profile.settings.textScale, profile.settings.contrast, profile.settings.reducedMotion]);
+  }, [screen, profile.settings.interfaceSize, profile.settings.textScale, profile.settings.contrast, profile.settings.reducedMotion]);
   useEffect(() => {
     let active = true;
     const controller = new AbortController();

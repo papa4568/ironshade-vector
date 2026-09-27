@@ -74,12 +74,16 @@ assert(pkg.scripts?.build?.includes('npm run test:design-system'), 'Full product
 
 assert(meta.includes("export type InterfaceSize = 'compact' | 'default' | 'large'") && meta.includes("interfaceSize: 'default'") && meta.includes('normalizeInterfaceSize'), 'P20-A profile settings must persist and normalize Compact/Default/Large Interface Size.');
 assert(app.includes('root.dataset.interfaceSize = profile.settings.interfaceSize') && app.includes('data-interface-size={profile.settings.interfaceSize}') && app.includes('useLayoutEffect'), 'P20-A must bind saved Interface Size synchronously to both document root and rendered app shell.');
+assert(app.includes("root.dataset.interfaceContext = screen === 'combat' ? 'combat' : 'management'") && app.includes('[screen, profile.settings.interfaceSize'), 'P22-A must switch the shared root between reduced management geometry and the preserved combat presentation synchronously.');
 assert(shipHub.includes('data-interface-size={profile.settings.interfaceSize}') && armory.includes('data-interface-size={profile.settings.interfaceSize}'), 'P20-A non-combat shells must carry the profile Interface Size directly.');
 assert(armory.includes('aria-label="Interface size"') && armory.includes('<option value="compact">Compact</option>') && armory.includes('<option value="large">Large</option>'), 'P20-A Settings must expose Compact/Default/Large Interface Size.');
 for (const selector of ["data-interface-size='compact'", "data-interface-size='default'", "data-interface-size='large'", "data-interface-size='compact'][data-text-scale='large'", "data-interface-size='large'][data-text-scale='large'"]) {
   assert(css.includes(selector), `P20-A shared interface-size selector missing: ${selector}`);
 }
-assert(css.includes('--iv-interface-scale') && css.includes('font-size: 72%') && css.includes('font-size: 81%') && css.includes('font-size: 125%') && css.includes('font-size: 140.625%'), 'P20-A shared root scale must keep Compact drastically smaller, Default baseline, Large larger, and compose Interface Text Size.');
+assert(css.includes('--iv-interface-scale') && css.includes('font-size: 50.4%') && css.includes('font-size: 70%') && css.includes('font-size: 87.5%'), 'P22-A must rebase normal non-combat Compact/Default/Large root geometry around a 70% Default baseline while preserving ordering.');
+assert(css.includes('font-size: 81%') && css.includes('font-size: 112.5%') && css.includes('font-size: 140.625%'), 'P22-A must retain the readable Large-text accessibility override with Compact/Default/Large ordering.');
+assert(css.includes("data-interface-context='combat'") && css.includes('font-size: 72%') && css.includes('font-size: 100%') && css.includes('font-size: 125%'), 'P22-A must preserve the pre-rebase combat root scale so P22-B2 remains independently actionable.');
+assert(css.includes('min-block-size: max(44px, 2.75rem);'), 'P22-A must preserve the coarse-pointer interaction floor after shrinking the root rem baseline.');
 assert(!css.includes('.touch-ui') && !css.includes('.combat-dock') && !css.includes('.fire-button') && !css.includes('.move-stick'), 'P20-A general interface scaling must not add combat-control selectors to the shared design system.');
 
 for (const [source, marker, expectations] of [
