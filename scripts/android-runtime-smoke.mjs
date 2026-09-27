@@ -2692,6 +2692,29 @@ async function p20eRemoveCombatGamepad() {
   })()`);
 }
 
+async function p20ePulseGamepadButton(index, holdMs = 100) {
+  const pressed = await evaluate(`(() => {
+    const pad = globalThis.__ironshadeP20eGamepad;
+    const button = pad?.buttons?.[${index}];
+    if (!button) return false;
+    button.pressed = true;
+    button.value = 1;
+    return true;
+  })()`);
+  if (!pressed) return false;
+  await sleep(holdMs);
+  await evaluate(`(() => {
+    const pad = globalThis.__ironshadeP20eGamepad;
+    const button = pad?.buttons?.[${index}];
+    if (!button) return false;
+    button.pressed = false;
+    button.value = 0;
+    return true;
+  })()`);
+  await sleep(150);
+  return true;
+}
+
 async function p20eTryTapInteract(id, holdMs = 100) {
   const metrics = await elementMetrics('.interact-button:not(:disabled)');
   if (!metrics || metrics.disabled) return false;
@@ -2712,6 +2735,13 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
         dead: Boolean(document.querySelector('[aria-label="Operator down"]')),
         health: Number(root?.dataset.playerHealth ?? '0'),
         armor: Number(root?.dataset.playerArmor ?? '0'),
+        capacitor: Number(root?.dataset.playerCapacitor ?? '0'),
+        weaponMag: Number(root?.dataset.weaponMag ?? '-1'),
+        weaponHeat: Number(root?.dataset.weaponHeat ?? '0'),
+        weaponReload: Number(root?.dataset.weaponReload ?? '0'),
+        weaponVenting: root?.dataset.weaponVenting === 'true',
+        weaponShots: Number(root?.dataset.weaponShots ?? '0'),
+        damageDealt: Number(root?.dataset.damageDealt ?? '0'),
         remaining: Number(root?.dataset.squadRemaining ?? '999'),
         hostileDirection: root?.dataset.nearestHostileDirection ?? '',
         hostileRange: Number(root?.dataset.nearestHostileRange ?? '0'),
@@ -2755,6 +2785,28 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
         await sleep(300);
       }
     } else if (state.remaining > 0) {
+      if (state.weaponReload > 0 || state.weaponVenting) {
+        await sleep(280);
+        iteration += 1;
+        continue;
+      }
+      if (state.weaponMag >= 0 && state.weaponMag <= 1) {
+        await p20ePulseGamepadButton(3, 100);
+        await sleep(260);
+        iteration += 1;
+        continue;
+      }
+      if (state.weaponHeat >= 0.78) {
+        const vent = await elementMetrics('.vent-button:not(:disabled)');
+        if (vent) {
+          await dispatchTouch('touchStart', vent.x, vent.y, idBase + 7500 + iteration);
+          await sleep(90);
+          await dispatchTouch('touchEnd', vent.x, vent.y, idBase + 7500 + iteration);
+          await sleep(260);
+          iteration += 1;
+          continue;
+        }
+      }
       if (iteration % 3 === 0) {
         const guard = await elementMetrics('.ability-button.ability-2:not(:disabled)');
         if (guard) {
@@ -2773,19 +2825,11 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
           await sleep(100);
         }
       }
-      const vent = await elementMetrics('.vent-button:not(:disabled)');
-      if (vent) {
-        await dispatchTouch('touchStart', vent.x, vent.y, idBase + 7500 + iteration);
-        await sleep(90);
-        await dispatchTouch('touchEnd', vent.x, vent.y, idBase + 7500 + iteration);
-        await sleep(180);
-      }
       const pursuitDirection = state.extractionHostileDirection || state.hostileDirection;
       const pursuitRange = state.extractionHostileRange > 0 ? state.extractionHostileRange : state.hostileRange;
-      if (pursuitDirection && pursuitRange > 560) {
-        await p20eGamepadCombat(pursuitDirection, pursuitRange > 800 ? 1200 : 900);
+      if (pursuitDirection && pursuitRange > 760) {
+        await p20eGamepadCombat(pursuitDirection, 850);
       } else {
-        await p20eGamepadCombat('', 1500);
         if (iteration % 2 === 0) {
           const lock = await elementMetrics('.ability-button.ability-1:not(:disabled)');
           if (lock) {
@@ -2795,6 +2839,7 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
             await sleep(120);
           }
         }
+        await p20eGamepadCombat('', 1900);
       }
     } else if (state.extractionReady) {
       break;
