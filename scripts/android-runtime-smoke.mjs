@@ -2891,6 +2891,18 @@ async function p20eDeployFamily(family, idBase) {
   if (!selected) throw new Error(`P20-E could not select ${family} representative contract.`);
   await waitFor(`document.querySelector('button[data-contract-id$="-${family}"]')?.classList.contains('selected') === true && Boolean(document.querySelector('.repeatable-identity-note[data-repeatable-family="${family}"]'))`, `P20-E ${family} authored briefing`);
   await tapButton('Deploy selected contract', idBase + 3, 120);
+  await sleep(900);
+  const deployStillVisible = await evaluate(`[...document.querySelectorAll('button')].some(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase() === 'deploy selected contract')`);
+  if (deployStillVisible) {
+    const activated = await evaluate(`(() => {
+      const button = [...document.querySelectorAll('button')].find(candidate => (candidate.getAttribute('aria-label') || candidate.textContent || '').trim().toLowerCase() === 'deploy selected contract');
+      if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+      button.click();
+      return true;
+    })()`);
+    if (!activated) throw new Error(`P20-E could not activate ${family} deployment after touch fallback.`);
+    console.log(`ANDROID_P20E_DEPLOY_TOUCH_FALLBACK family=${family}`);
+  }
   await waitFor(`document.querySelector('.game-root')?.dataset.repeatableFamily === '${family}'`, `P20-E ${family} deployment`, 45_000);
 }
 
