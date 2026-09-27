@@ -68,7 +68,7 @@ for (const inset of ['safe-area-inset-top', 'safe-area-inset-right', 'safe-area-
 }
 assert(browserWorkflow.includes('- desktop') && browserWorkflow.includes('- mobile-landscape') && browserWorkflow.includes('browser-accessibility-${{ matrix.viewport }}.png'), 'Browser presentation QA must retain desktop/mobile-landscape coverage and dedicated accessibility screenshots.');
 assert(browserSmoke.includes('BROWSER_P15_ACCESSIBILITY_PASS') && browserSmoke.includes("localStorage.getItem('ironshade-vector-state-v1')") && browserSmoke.includes("accessibilityAudit('settings-accessibility')") && browserSmoke.includes('captureScreenshot(accessibilityScreenshotPath)'), 'Browser QA must verify persisted settings, accessibility/readability, and screenshot capture through the live UI.');
-assert(androidWorkflow.includes('android:screenOrientation="sensorLandscape"') && androidWorkflow.includes('ReactiveCircus/android-emulator-runner') && androidWorkflow.includes('android-runtime-smoke.png'), 'Android QA must enforce the target sensor-landscape orientation and retain emulator screenshot evidence.');
+assert(androidWorkflow.includes('android:screenOrientation="sensorLandscape"') && androidWorkflow.includes('ReactiveCircus/android-emulator-runner') && androidWorkflow.includes('android-fast-smoke.png'), 'Android QA must enforce the target sensor-landscape orientation and retain emulator screenshot evidence.');
 assert(androidSmoke.includes('ANDROID_MOBILE_LAYOUT_PASS') && androidSmoke.includes('ANDROID_LIFECYCLE_RESUME_PASS'), 'Android runtime QA must retain mobile-layout and lifecycle gates.');
 
 assert(pkg.scripts?.['test:accessibility-mobile']?.includes('tests/accessibility-mobile-gate.ts'), 'P15-E regression test script is missing.');
