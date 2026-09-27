@@ -3,7 +3,7 @@
 ## New-chat handoff — resume here first
 
 - **Resume P23-A next.** Android CI feedback-loop work has been promoted ahead of P22 so normal implementation runs stop waiting on the current 20–30 minute all-in-one emulator suite.
-- **P22-A remains active but is temporarily behind P23.** Resume the UI-footprint sequence after the Android verification path is shortened.
+- **P22-A is verified and archived.** After P23, resume the UI-footprint sequence at **P22-B1 — Reduce visible combat-control geometry by 30%**.
 - **P20-E is closed and archived.** When global roadmap order later returns to P20, resume that sequence at **P20-F1 — Define and settle distinct repeatable-contract incentive profiles**.
 
 Only active/future executable work lives here. Completed and verified work belongs in [content-roadmap-archive.md](./content-roadmap-archive.md). Stable product rules live in [product-constraints.md](./product-constraints.md).
@@ -34,7 +34,7 @@ Only active/future executable work lives here. Completed and verified work belon
 
 ## P22 — Global UI Footprint Reduction
 
-- [ ] **P22-A — Reduce the shared non-combat baseline by 30%** — Rebase the existing Interface Size/design-token path so the Default non-combat interface renders at roughly 70% of its current shared-scale geometry across Command, Build, Intel, contract preparation, Settings, navigation, cards/panels, spacing, icons, and other surfaces already owned by that scale. Change the shared baseline rather than chasing one-off legacy outliers in this batch; preserve Compact/Default/Large ordering, compact-phone readability floors, safe areas, wrapping, scrolling, and focus visibility. Do not change movement/FIRE/DODGE/skill/ACT control geometry. **Done when:** representative shared-scale measurements on Command, Build, Intel, contract prep, and Settings are approximately 70% of the pre-change Default baseline; Compact < Default < Large remains persistent and ordered; targeted UI/design-system tests, Browser E2E, and production build pass; and the Android APK verifies real-touch navigation on representative management screens with no clipping or unreachable content.
+- **P22-A complete / archived** — Shared non-combat Interface Size geometry now uses a 70% Default baseline with ordered Compact/Default/Large presets, compact-phone readability/touch floors, and preserved combat-control geometry. Final verification: Level 15 beta smoke #792, Browser E2E #932, Android beta.503; see the completion archive for measured evidence and artifact details.
 
 - [ ] **P22-B1 — Reduce visible combat-control geometry by 30%** — Use the dedicated Combat layout preset / movement-action cluster ownership to make the visible joystick, FIRE, DODGE, class-skill, and ACT controls roughly 70% of their current baseline without moving their authored cluster positions or changing input semantics. Preserve reliable touch behavior with existing or invisibly extended hit regions where needed, and keep Standard/Large/Left-handed/custom layout behavior intact. **Done when:** deterministic layout tests show the visible movement/action controls are approximately 30% smaller while hit testing, safe-area bounds, preset persistence, and custom offsets remain correct; Browser E2E and production build pass; and Android combat smoke verifies movement, aim/fire, abilities, dodge, interaction, pause/resume, and lifecycle behavior with the reduced visuals.
 
