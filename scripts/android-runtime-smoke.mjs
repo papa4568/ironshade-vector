@@ -2968,6 +2968,12 @@ const p20eCampaignBaselineSeeded = await evaluate(`(() => {
 })()`);
 if (!p20eCampaignBaselineSeeded) throw new Error('P20-E could not seed the tier-1 standard campaign baseline.');
 
+const p20eProfileCheckpoint = await evaluate(`(() => {
+  const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+  return state?.profile ? JSON.stringify(state.profile) : '';
+})()`);
+if (!p20eProfileCheckpoint) throw new Error('P20-E could not checkpoint the pre-play profile state.');
+
 await p20cLoadClassCombat('systems', 'carbine', [
   { name: 'Polarity Well', short: 'WELL' },
   { name: 'Relay Hack', short: 'HACK' },
@@ -3002,7 +3008,16 @@ await p20cLoadClassCombat('systems', 'carbine', [
   { name: 'Cascade Arc', short: 'CHAIN' },
 ]);
 await waitFor(`document.querySelector('canvas')?.dataset.bossEnvironmentFx === 'phase-reactive-ready'`, 'post-P20-E Asteroid Refinery authored asset verification state', 45_000);
-console.log('ANDROID_P20E_POST_SMOKE_COMBAT_READY family=stabilization location=asteroid-refinery environment=phase-reactive-ready');
+const p20eProfileRestored = await evaluate(`(() => {
+  const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+  const profile = JSON.parse(${JSON.stringify(p20eProfileCheckpoint)});
+  if (!state || !profile) return false;
+  state.profile = profile;
+  localStorage.setItem('ironshade-vector-state-v1', JSON.stringify(state));
+  return true;
+})()`);
+if (!p20eProfileRestored) throw new Error('P20-E could not restore the pre-play profile state for downstream persistence verification.');
+console.log('ANDROID_P20E_POST_SMOKE_COMBAT_READY family=stabilization location=asteroid-refinery environment=phase-reactive-ready profile=restored');
 
 session.close();
 console.log(`ANDROID_RUNTIME_SMOKE_PASS title=${startup.title} route=ship>contracts>combat canvases=${combat.canvases}`);
