@@ -2731,6 +2731,37 @@ async function p20ePulseGamepadButton(index, holdMs = 100) {
   return true;
 }
 
+async function p20ePulseAimedGamepadButton(index, aimX, aimY, holdMs = 120) {
+  const magnitude = Math.hypot(aimX, aimY);
+  if (magnitude <= 0.2) return false;
+  const rightX = Math.max(-1, Math.min(1, aimX / magnitude));
+  const rightY = Math.max(-1, Math.min(1, aimY / magnitude));
+  const pressed = await evaluate(`(() => {
+    const pad = globalThis.__ironshadeP20eGamepad;
+    const button = pad?.buttons?.[${index}];
+    if (!pad || !button) return false;
+    pad.axes[2] = ${rightX};
+    pad.axes[3] = ${rightY};
+    button.pressed = true;
+    button.value = 1;
+    return true;
+  })()`);
+  if (!pressed) return false;
+  await sleep(holdMs);
+  await evaluate(`(() => {
+    const pad = globalThis.__ironshadeP20eGamepad;
+    const button = pad?.buttons?.[${index}];
+    if (!pad || !button) return false;
+    button.pressed = false;
+    button.value = 0;
+    pad.axes[2] = 0;
+    pad.axes[3] = 0;
+    return true;
+  })()`);
+  await sleep(160);
+  return true;
+}
+
 async function p20eTouchFireBurst(id, holdMs = 2400) {
   const fire = await elementMetrics('.fire-button');
   if (!fire || fire.disabled) return false;
@@ -2870,7 +2901,14 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
       }
       const pursuitDirection = state.extractionHostileDirection || state.hostileDirection;
       const pursuitRange = state.extractionHostileRange > 0 ? state.extractionHostileRange : state.hostileRange;
-      if (iteration % 4 === 0) {
+      const finalHostileAimReady = state.remaining === 1
+        && state.hostileRange > 0
+        && state.hostileRange <= 470
+        && Math.hypot(state.hostileAimX, state.hostileAimY) > 0.2;
+      if (finalHostileAimReady) {
+        await p20ePulseAimedGamepadButton(4, state.hostileAimX, state.hostileAimY, 120);
+        await p20ePulseAimedGamepadButton(6, state.hostileAimX, state.hostileAimY, 120);
+      } else if (iteration % 4 === 0) {
         const control = await elementMetrics('.ability-button.ability-0:not(:disabled)');
         if (control) {
           await dispatchTouch('touchStart', control.x, control.y, idBase + 7800 + iteration);
