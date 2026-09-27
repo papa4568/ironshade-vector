@@ -3,6 +3,7 @@ import fs from 'node:fs';
 const shell = fs.readFileSync(new URL('../scripts/android-fast-smoke.sh', import.meta.url), 'utf8');
 const runtime = fs.readFileSync(new URL('../scripts/android-runtime-smoke.mjs', import.meta.url), 'utf8');
 const extendedShell = fs.readFileSync(new URL('../scripts/android-runtime-smoke.sh', import.meta.url), 'utf8');
+const repeatableShell = fs.readFileSync(new URL('../scripts/android-repeatable-regression.sh', import.meta.url), 'utf8');
 const workflow = fs.readFileSync(new URL('../.github/workflows/android-apk.yml', import.meta.url), 'utf8');
 const browserWorkflow = fs.readFileSync(new URL('../.github/workflows/browser-e2e.yml', import.meta.url), 'utf8');
 
@@ -35,6 +36,9 @@ for (const forbidden of [
 for (const marker of [
   "const fastSmoke = process.env.ANDROID_FAST_SMOKE === '1';",
   "const fastResumeOnly = process.env.ANDROID_FAST_RESUME_CHECK === '1';",
+  "const repeatableRegressionOnly = process.env.ANDROID_P20E_REPEATABLE_ONLY === '1';",
+  'if (!repeatableRegressionOnly) {',
+  'if (repeatableRegressionOnly) {',
   'ANDROID_FAST_MANAGEMENT_TOUCH_PASS',
   'ANDROID_FAST_INTERACTION_TOUCH_PASS',
   'ANDROID_FAST_FIRE_TOUCH_PASS',
@@ -66,6 +70,16 @@ for (const marker of [
 ]) requireText(runtime, marker, 'extended Android runtime harness');
 
 for (const marker of [
+  'ANDROID_P20E_REPEATABLE_ONLY=1',
+  'ANDROID_P20E_REPEATABLE_FAMILY_PASS family=${family}',
+  'ANDROID_P20E_REPEATABLE_PLAY_PASS families=stabilization+salvage+boarding completions=3',
+  'ANDROID_P20E_REPEATABLE_REGRESSION_PASS families=stabilization+salvage+boarding completions=3',
+  'android-repeatable-regression.png',
+  'android-repeatable-regression-logcat.txt',
+  'ANDROID_P20E_REPEATABLE_JOB_PASS',
+]) requireText(repeatableShell, marker, 'repeatable-family shell');
+
+for (const marker of [
   'browser-chapter3-playthrough',
   'android-settings-playtest.py',
   'verify-authored-operator',
@@ -77,10 +91,21 @@ for (const marker of [
 for (const artifact of [
   'Ironshade-Vector-Android-Beta.apk',
   'Ironshade-Vector-Android-Beta.sha256',
+  'Ironshade-Vector-Android-Smoke.apk',
+  'Ironshade-Vector-Android-Smoke.sha256',
   'android-fast-logcat.txt',
   'android-fast-smoke.png',
   'android-fast-resume.png',
 ]) requireText(workflow, artifact, 'Android workflow artifact upload');
+
+for (const marker of [
+  'repeatable-family-regression:',
+  "if: github.event_name == 'workflow_dispatch'",
+  'needs: build-apk',
+  'actions/download-artifact@v8',
+  'bash scripts/android-repeatable-regression.sh',
+  'ironshade-vector-repeatable-family-regression',
+]) requireText(workflow, marker, 'repeatable-family workflow');
 
 const emulatorScriptLine = workflow
   .split('\n')
@@ -98,4 +123,4 @@ for (const forbidden of [
   }
 }
 
-console.log('ANDROID_FAST_SMOKE_CONTRACT_PASS entry=scripts/android-fast-smoke.sh defaultPush=fast-only extended=retained-not-run browser=required productionBuild=required touch=required lifecycle=required artifacts=required failFast=required');
+console.log('ANDROID_FAST_SMOKE_CONTRACT_PASS entry=scripts/android-fast-smoke.sh defaultPush=fast-only repeatable=dedicated-dispatch extended=retained-not-run browser=required productionBuild=required touch=required lifecycle=required artifacts=required failFast=required');

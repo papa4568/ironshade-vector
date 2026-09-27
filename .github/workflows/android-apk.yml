@@ -26,6 +26,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   build-apk:
@@ -287,7 +288,10 @@ jobs:
           printf 'signing_mode=%s\nversion_code=%s\nversion_name=%s\n' "$SIGNING_MODE" "$ANDROID_VERSION_CODE" "$ANDROID_VERSION_NAME" | tee android-apk-signing-mode.txt
 
           cp "$APK" Ironshade-Vector-Android-Beta.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk Ironshade-Vector-Android-Smoke.apk
+          test -s Ironshade-Vector-Android-Smoke.apk
           sha256sum Ironshade-Vector-Android-Beta.apk | tee Ironshade-Vector-Android-Beta.sha256
+          sha256sum Ironshade-Vector-Android-Smoke.apk | tee Ironshade-Vector-Android-Smoke.sha256
           echo "ANDROID_APK_PASS signing=$SIGNING_MODE version=${ANDROID_VERSION_NAME}(${ANDROID_VERSION_CODE}) size=$(du -h Ironshade-Vector-Android-Beta.apk | cut -f1)"
 
       - name: Enable KVM
@@ -335,6 +339,8 @@ jobs:
           path: |
             Ironshade-Vector-Android-Beta.apk
             Ironshade-Vector-Android-Beta.sha256
+            Ironshade-Vector-Android-Smoke.apk
+            Ironshade-Vector-Android-Smoke.sha256
             android-apk-badging.txt
             android-apk-signing.txt
             android-apk-signing-mode.txt
@@ -350,3 +356,60 @@ jobs:
           if-no-files-found: warn
           retention-days: 90
         if: always()
+
+  repeatable-family-regression:
+    if: github.event_name == 'workflow_dispatch'
+    needs: build-apk
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - name: Check out regression harness
+        uses: actions/checkout@v7
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Download shared Android APK
+        uses: actions/download-artifact@v8
+        with:
+          name: ironshade-vector-android-apk
+          path: .
+
+      - name: Verify shared smoke APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s Ironshade-Vector-Android-Smoke.apk
+          sha256sum -c Ironshade-Vector-Android-Smoke.sha256
+
+      - name: Enable KVM
+        shell: bash
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run repeatable-family Android regression
+        uses: ReactiveCircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7_pro
+          emulator-boot-timeout: 300
+          disable-animations: true
+          script: bash -lc 'ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-repeatable-regression.sh'
+
+      - name: Upload repeatable-family evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ironshade-vector-repeatable-family-regression
+          path: |
+            android-repeatable-regression.txt
+            android-repeatable-regression.png
+            android-repeatable-regression-logcat.txt
+          if-no-files-found: warn
+          retention-days: 90
