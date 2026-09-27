@@ -2837,22 +2837,19 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
       }
       const pursuitDirection = state.extractionHostileDirection || state.hostileDirection;
       const pursuitRange = state.extractionHostileRange > 0 ? state.extractionHostileRange : state.hostileRange;
-      if (pursuitDirection && pursuitRange > 220) {
-        await p20eMove(pursuitDirection, idBase + 10000 + iteration, pursuitRange > 760 ? 620 : 360);
-        await sleep(100);
-      } else {
-        if (iteration % 2 === 0) {
-          const lock = await elementMetrics('.ability-button.ability-1:not(:disabled)');
-          if (lock) {
-            await dispatchTouch('touchStart', lock.x, lock.y, idBase + 8000 + iteration);
-            await sleep(90);
-            await dispatchTouch('touchEnd', lock.x, lock.y, idBase + 8000 + iteration);
-            await sleep(120);
-          }
+      if (iteration % 2 === 0) {
+        const lock = await elementMetrics('.ability-button.ability-1:not(:disabled)');
+        if (lock) {
+          await dispatchTouch('touchStart', lock.x, lock.y, idBase + 8000 + iteration);
+          await sleep(90);
+          await dispatchTouch('touchEnd', lock.x, lock.y, idBase + 8000 + iteration);
+          await sleep(120);
         }
-        const fired = await p20eTouchFireBurst(idBase + 11000 + iteration, 2400);
-        if (!fired) await sleep(180);
       }
+      await p20eGamepadCombat(
+        pursuitDirection && pursuitRange > 220 ? pursuitDirection : '',
+        pursuitRange > 620 ? 1300 : pursuitRange > 340 ? 1050 : pursuitRange > 220 ? 850 : 1450,
+      );
     } else if (state.extractionReady) {
       break;
     } else {
