@@ -2658,8 +2658,11 @@ async function p20eGamepadCombat(moveDirection, aimX = 0, aimY = 0, duration = 9
   const moveOffset = p20eDirectionOffset[moveDirection] ?? [0, 0];
   const moveX = Math.max(-1, Math.min(1, moveOffset[0] / 36));
   const moveY = Math.max(-1, Math.min(1, moveOffset[1] / 36));
-  const rightX = Math.max(-1, Math.min(1, Number.isFinite(aimX) ? aimX : 0));
-  const rightY = Math.max(-1, Math.min(1, Number.isFinite(aimY) ? aimY : 0));
+  // Keep the right stick neutral so R2 uses the game's assisted targeter.
+  // Direct right-stick input switches combat into manual targeting and can
+  // keep firing into obstructed enemies instead of selecting a visible one.
+  const rightX = 0;
+  const rightY = 0;
   await evaluate(`(() => {
     const pad = globalThis.__ironshadeP20eGamepad;
     if (!pad) return false;
