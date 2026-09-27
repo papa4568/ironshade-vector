@@ -100,7 +100,7 @@ for (const artifact of [
 
 for (const marker of [
   'repeatable-family-regression:',
-  "if: github.event_name == 'workflow_dispatch'",
+  "if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/android/capacitor-apk'",
   'needs: build-apk',
   'actions/download-artifact@v8',
   'bash scripts/android-repeatable-regression.sh',
