@@ -2,7 +2,7 @@
 
 ## New-chat handoff — resume here first
 
-- **Resume P23-B next.** P23-A delivered an independent fast Android emulator smoke gate in 127 seconds; next make normal `main` pushes use that fast path instead of waiting on the all-in-one emulator suite.
+- **Resume P23-C next.** P23-B moved normal `main` pushes onto the fast Android gate; next extract the repeatable-family Android gameplay into a dedicated full-regression job.
 - **P22-A is verified and archived.** After P23, resume the UI-footprint sequence at **P22-B1 — Reduce visible combat-control geometry by 30%**.
 - **P20-E is closed and archived.** When global roadmap order later returns to P20, resume that sequence at **P20-F1 — Define and settle distinct repeatable-contract incentive profiles**.
 
@@ -22,7 +22,7 @@ Only active/future executable work lives here. Completed and verified work belon
 
 - **P23-A complete / archived** — Independent fast Android emulator smoke now covers startup, real-touch management + combat controls, ACT, pause/resume, crash/logcat checks, and screenshot evidence. Verified in Android beta.507 with the fast gate completing in 127 seconds; see the completion archive for evidence.
 
-- [ ] **P23-B — Make normal push APK verification use the fast Android gate** — Rework the default `main` push path in `.github/workflows/android-apk.yml` so it builds/verifies the APK once and runs P23-A instead of the current all-in-one `android-runtime-smoke.sh` suite. Preserve package/version/signature checks, artifact upload, KVM/emulator validation, and any cheap asset/lifecycle checks still needed for every implementation batch; do not delete the extended suites. **Done when:** a normal source push reaches an authoritative Android pass without running repeatable-family, Chapter 3, or black-box Settings playthroughs; the produced APK/evidence artifact is still downloadable and valid; Browser E2E and production build remain required; and two representative push runs show total Android workflow wall time at or below 12 minutes with the emulator smoke portion under 5 minutes.
+- **P23-B complete / archived** — Normal `main` pushes now build and verify the APK once, run only the fast Android emulator gate, retain Browser E2E/production-build requirements, and preserve the extended suites for full-regression work. Representative Android pushes completed in 8m02s / 131s smoke and 6m23s / 98s smoke; final Android beta.512 passed in 6m48s / 120s smoke.
 
 - [ ] **P23-C — Move repeatable-family Android gameplay to a full-regression job** — Extract the existing Stabilization + Salvage + Boarding real-play verification from the default runtime smoke into its own Android regression entry point/job. Reuse the already-built debug APK and current P20-E gameplay helpers instead of rebuilding the app or duplicating mission logic. **Done when:** the dedicated job independently completes all three families with the existing `ANDROID_P20E_REPEATABLE_*_PASS` evidence, failure remains authoritative for full/release verification, normal push smoke no longer waits on these ~16 minutes of gameplay, and the job can run in parallel with other extended Android suites.
 

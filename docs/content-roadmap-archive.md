@@ -14,6 +14,14 @@ This file is the permanent archive for completed production work. The active exe
   - APK verification passed as debug-signed `0.0.1-beta.507 (507)`, size 5.6 MB. The legacy all-in-one Android regression also completed successfully afterward with `ANDROID_EMULATOR_PASS`.
   - **Next: P23-B — Make normal push APK verification use the fast Android gate.**
 
+- [x] **P23-B — Make normal push APK verification use the fast Android gate** — Reworked the default `main` push path in `.github/workflows/android-apk.yml` so the emulator runner executes `scripts/android-fast-smoke.sh` instead of chaining the legacy all-in-one `android-runtime-smoke.sh`. Package/version/SDK/signature verification, production build, KVM/emulator setup, APK upload, fast logcat, and fast screenshot evidence remain authoritative on every normal Android push.
+  - The fast-smoke contract now proves normal Android pushes still run the production build, Browser E2E remains a required `main` push workflow, the APK/fast evidence artifact is retained, and the default emulator command cannot include the repeatable-family, Chapter 3, Settings, or legacy runtime suites.
+  - Extended verification was not deleted: the contract separately proves the existing repeatable-family markers remain in `scripts/android-runtime-smoke.mjs` and the Chapter 3, black-box Settings, and authored-asset entry points remain in `scripts/android-runtime-smoke.sh` for P23-C–F extraction.
+  - Two representative normal Android pushes met the timing target: beta.510 run `36352077512` completed in 8m02s with `ANDROID_FAST_EMULATOR_PASS ... elapsedSeconds=131`; beta.511 run `36352652211` completed in 6m23s with `ANDROID_FAST_EMULATOR_PASS ... elapsedSeconds=98`. Both are below the 12-minute total and 5-minute emulator-smoke ceilings.
+  - Final source `4fdebd6a08a1818e950fbaa3cd6edb286e9a0d8a` passed Level 15 beta smoke #804, Browser E2E #940 desktop/mobile-landscape, and Android beta.512 run `36352693750`. The final Android run completed in 6m48s and emitted `ANDROID_FAST_RUNTIME_PASS`, `ANDROID_FAST_LIFECYCLE_RESUME_PASS`, and `ANDROID_FAST_EMULATOR_PASS ... elapsedSeconds=120`.
+  - Android beta.512 artifact `10943286034` contains debug-signed `Ironshade-Vector-Android-Beta.apk`, package `app.ironshade.vector`, version `0.0.1-beta.512 (512)`, size 5.6 MB, APK SHA-256 `da45a2f50849ba239925f5040f370aca9ba5bfd021da9b93aff23b107f08eb2b`, and artifact digest `e435b479fbe4ef267634942f8c998d86cf04f93b8dfbc24f12e6e01847bbff2c`.
+  - **Next: P23-C — Move repeatable-family Android gameplay to a full-regression job.**
+
 ## Completed P6 Directive Work
 
 - [x] **P6.1 Exclusive protocol combinations**
