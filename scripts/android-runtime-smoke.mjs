@@ -2613,6 +2613,16 @@ const p20eDirectionOffset = {
   RIGHT: [36, 0], 'DOWN-RIGHT': [30, 30], DOWN: [0, 36], 'DOWN-LEFT': [-30, 30],
   LEFT: [-36, 0], 'UP-LEFT': [-30, -30], UP: [0, -36], 'UP-RIGHT': [30, -30],
 };
+const p20eStrafeDirections = {
+  RIGHT: ['UP', 'DOWN'],
+  'DOWN-RIGHT': ['UP-RIGHT', 'DOWN-LEFT'],
+  DOWN: ['RIGHT', 'LEFT'],
+  'DOWN-LEFT': ['DOWN-RIGHT', 'UP-LEFT'],
+  LEFT: ['DOWN', 'UP'],
+  'UP-LEFT': ['DOWN-LEFT', 'UP-RIGHT'],
+  UP: ['LEFT', 'RIGHT'],
+  'UP-RIGHT': ['UP-LEFT', 'DOWN-RIGHT'],
+};
 
 async function p20eMove(direction, id, duration = 650) {
   const offset = p20eDirectionOffset[direction];
@@ -2841,6 +2851,15 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
       }
       const pursuitDirection = state.extractionHostileDirection || state.hostileDirection;
       const pursuitRange = state.extractionHostileRange > 0 ? state.extractionHostileRange : state.hostileRange;
+      if (iteration % 4 === 0) {
+        const control = await elementMetrics('.ability-button.ability-0:not(:disabled)');
+        if (control) {
+          await dispatchTouch('touchStart', control.x, control.y, idBase + 7800 + iteration);
+          await sleep(90);
+          await dispatchTouch('touchEnd', control.x, control.y, idBase + 7800 + iteration);
+          await sleep(100);
+        }
+      }
       if (iteration % 2 === 0) {
         const lock = await elementMetrics('.ability-button.ability-1:not(:disabled)');
         if (lock) {
@@ -2850,11 +2869,12 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
           await sleep(120);
         }
       }
+      const closeStrafe = pursuitDirection ? p20eStrafeDirections[pursuitDirection]?.[iteration % 2] ?? '' : '';
       await p20eGamepadCombat(
-        pursuitDirection && pursuitRange > 220 ? pursuitDirection : '',
+        pursuitDirection && pursuitRange > 220 ? pursuitDirection : closeStrafe,
         state.hostileAimX,
         state.hostileAimY,
-        pursuitRange > 620 ? 1300 : pursuitRange > 340 ? 1050 : pursuitRange > 220 ? 850 : 1450,
+        pursuitRange > 620 ? 1300 : pursuitRange > 340 ? 1050 : pursuitRange > 220 ? 850 : 1100,
       );
     } else if (state.extractionReady) {
       break;
