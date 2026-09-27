@@ -12,6 +12,7 @@ on:
     branches:
       - main
       - android/capacitor-apk
+      - android/full-regression
     paths:
       - 'src/**'
       - 'tests/**'
@@ -358,7 +359,7 @@ jobs:
         if: always()
 
   repeatable-family-regression:
-    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/android/capacitor-apk'
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/android/capacitor-apk' || github.ref == 'refs/heads/android/full-regression'
     needs: build-apk
     runs-on: ubuntu-24.04
     timeout-minutes: 40
