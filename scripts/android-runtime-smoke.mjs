@@ -718,25 +718,39 @@ if (fastSmoke) {
   await fastMove('RIGHT', 205, 280);
   await waitFor(`document.querySelector('.move-stick')?.style.getPropertyValue('--knob-x') === '0px' && document.querySelector('.move-stick')?.style.getPropertyValue('--knob-y') === '0px'`, 'Fast Android movement stick release', 10_000);
 
+  const combatCanvas = await elementMetrics('canvas');
+  if (!combatCanvas) throw new Error('Fast Android combat canvas unavailable for manual aim.');
+  const aimStartX = combatCanvas.left + combatCanvas.width * 0.72;
+  const aimStartY = combatCanvas.top + combatCanvas.height * 0.5;
+  const aimEndX = Math.min(combatCanvas.left + combatCanvas.width - 12, aimStartX + Math.min(48, combatCanvas.width * 0.08));
+  const aimEndY = Math.max(combatCanvas.top + 12, aimStartY - Math.min(24, combatCanvas.height * 0.08));
+  await dispatchTouch('touchStart', aimStartX, aimStartY, 206);
+  await dispatchTouch('touchMove', aimEndX, aimEndY, 206);
+  await sleep(120);
+  await dispatchTouch('touchEnd', aimEndX, aimEndY, 206);
+  await sleep(1_250);
+
   const fire = await elementMetrics('.fire-button');
   if (!fire || fire.disabled) throw new Error('Fast Android FIRE control unavailable.');
   let fireObserved = false;
-  for (let attempt = 0; attempt < 2 && !fireObserved; attempt += 1) {
-    const before = await evaluate(`document.querySelector('.fire-button small')?.textContent ?? ''`);
+  for (let attempt = 0; attempt < 3 && !fireObserved; attempt += 1) {
+    const before = await evaluate(`Number(document.querySelector('.game-root')?.dataset.weaponShots ?? '0')`);
     await dispatchTouch('touchStart', fire.x, fire.y, 210 + attempt);
-    await sleep(800);
+    await sleep(900);
     await dispatchTouch('touchEnd', fire.x, fire.y, 210 + attempt);
     const deadline = Date.now() + 6_000;
     while (Date.now() < deadline) {
-      const after = await evaluate(`document.querySelector('.fire-button small')?.textContent ?? ''`);
-      if (after !== before) {
+      const after = await evaluate(`Number(document.querySelector('.game-root')?.dataset.weaponShots ?? '0')`);
+      if (after > before) {
         fireObserved = true;
+        console.log(`ANDROID_FAST_FIRE_TOUCH_PASS shots=${before}->${after} mode=manual-aim+hold`);
         break;
       }
       await sleep(200);
     }
+    if (!fireObserved) await sleep(700);
   }
-  if (!fireObserved) throw new Error('Fast Android FIRE control did not change weapon state.');
+  if (!fireObserved) throw new Error('Fast Android FIRE control did not increment weapon shot telemetry after manual aim.');
 
   const ability = await elementMetrics('.ability-button:not(:disabled)');
   if (!ability || ability.disabled) throw new Error('Fast Android class-skill control unavailable.');
