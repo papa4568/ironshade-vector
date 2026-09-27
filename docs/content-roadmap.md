@@ -2,7 +2,7 @@
 
 ## New-chat handoff — resume here first
 
-- **Resume P23-C next.** P23-B moved normal `main` pushes onto the fast Android gate; next extract the repeatable-family Android gameplay into a dedicated full-regression job.
+- **Resume P23-D next.** P23-C moved Stabilization + Salvage + Boarding representative gameplay into a dedicated full-regression Android job that reuses the shared APK; next extract the black-box Settings playtest.
 - **P22-A is verified and archived.** After P23, resume the UI-footprint sequence at **P22-B1 — Reduce visible combat-control geometry by 30%**.
 - **P20-E is closed and archived.** When global roadmap order later returns to P20, resume that sequence at **P20-F1 — Define and settle distinct repeatable-contract incentive profiles**.
 
@@ -24,7 +24,7 @@ Only active/future executable work lives here. Completed and verified work belon
 
 - **P23-B complete / archived** — Normal `main` pushes now build and verify the APK once, run only the fast Android emulator gate, retain Browser E2E/production-build requirements, and preserve the extended suites for full-regression work. Representative Android pushes completed in 8m02s / 131s smoke and 6m23s / 98s smoke; final Android beta.512 passed in 6m48s / 120s smoke.
 
-- [ ] **P23-C — Move repeatable-family Android gameplay to a full-regression job** — Extract the existing Stabilization + Salvage + Boarding real-play verification from the default runtime smoke into its own Android regression entry point/job. Reuse the already-built debug APK and current P20-E gameplay helpers instead of rebuilding the app or duplicating mission logic. **Done when:** the dedicated job independently completes all three families with the existing `ANDROID_P20E_REPEATABLE_*_PASS` evidence, failure remains authoritative for full/release verification, normal push smoke no longer waits on these ~16 minutes of gameplay, and the job can run in parallel with other extended Android suites.
+- **P23-C complete / archived** — Stabilization, Salvage, and Boarding representative gameplay now runs in a dedicated full-regression Android job against the shared built debug APK. Full-regression run #520 passed all family/play/regression markers and clean logcat; normal `main` push smoke remains fast-only. See the completion archive for evidence.
 
 - [ ] **P23-D — Move the black-box Settings playtest to a full-regression job** — Run `scripts/android-settings-playtest.py` as a separate Android regression job using the shared built APK, preserving its adb/UiAutomator-only contract, persistence checks, screenshots, and accessibility/touch assertions. Keep it out of the normal push smoke. **Done when:** the dedicated Settings job reproduces the existing `ANDROID_SETTINGS_PLAYTEST_PASS` evidence and artifacts without CDP/DOM shortcuts; failures remain authoritative for full/release verification; normal push smoke no longer spends several minutes exercising the full Settings matrix; and the job can execute in parallel with P23-C.
 
