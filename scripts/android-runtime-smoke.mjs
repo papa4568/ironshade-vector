@@ -2899,8 +2899,11 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
     iteration += 1;
   }
 
-  await waitFor(`Boolean(document.querySelector('[aria-label="Extraction decision"] .extraction-choice button.safe'))`, `P20-E ${expectedFamily} safe extraction choice`, 20_000);
-  await tap('[aria-label="Extraction decision"] .extraction-choice button.safe', idBase + 900, 120);
+  await waitFor(`Boolean(document.querySelector('[aria-label="Extraction decision"] .extraction-choice button.safe')) || document.querySelector('[data-presentation="mission-debrief"] h1')?.textContent?.includes('Safe extraction complete') === true`, `P20-E ${expectedFamily} safe extraction completion`, 20_000);
+  const alreadyDebriefed = await evaluate(`document.querySelector('[data-presentation="mission-debrief"] h1')?.textContent?.includes('Safe extraction complete') === true`);
+  if (!alreadyDebriefed) {
+    await tap('[aria-label="Extraction decision"] .extraction-choice button.safe', idBase + 900, 120);
+  }
   await waitFor(`document.querySelector('[data-presentation="mission-debrief"] h1')?.textContent?.includes('Safe extraction complete') === true`, `P20-E ${expectedFamily} debrief`, 30_000);
   console.log(`ANDROID_P20E_REPEATABLE_FAMILY_PASS family=${expectedFamily} completion=safe actualGameplay=touch+combat+objective`);
 }
