@@ -2658,11 +2658,12 @@ async function p20eGamepadCombat(moveDirection, aimX = 0, aimY = 0, duration = 9
   const moveOffset = p20eDirectionOffset[moveDirection] ?? [0, 0];
   const moveX = Math.max(-1, Math.min(1, moveOffset[0] / 36));
   const moveY = Math.max(-1, Math.min(1, moveOffset[1] / 36));
-  // Keep the right stick neutral so R2 uses the game's assisted targeter.
-  // Direct right-stick input switches combat into manual targeting and can
-  // keep firing into obstructed enemies instead of selecting a visible one.
-  const rightX = 0;
-  const rightY = 0;
+  // Assisted targeting remains the default. A non-zero aim vector is reserved
+  // for the bounded final-hostile closeout when assist is locked to a support
+  // target that is not the last counted extraction hostile.
+  const aimMagnitude = Math.hypot(aimX, aimY);
+  const rightX = aimMagnitude > 0.2 ? Math.max(-1, Math.min(1, aimX / aimMagnitude)) : 0;
+  const rightY = aimMagnitude > 0.2 ? Math.max(-1, Math.min(1, aimY / aimMagnitude)) : 0;
   await evaluate(`(() => {
     const pad = globalThis.__ironshadeP20eGamepad;
     if (!pad) return false;
@@ -2893,10 +2894,14 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
         : pursuitDirection && pursuitRange > 220
           ? pursuitDirection
           : closeStrafe;
+      const finalHostileManualAim = state.remaining === 1
+        && state.hostileRange > 0
+        && state.hostileRange <= 520
+        && Math.hypot(state.hostileAimX, state.hostileAimY) > 0.2;
       await p20eGamepadCombat(
         combatMoveDirection,
-        0,
-        0,
+        finalHostileManualAim ? state.hostileAimX : 0,
+        finalHostileManualAim ? state.hostileAimY : 0,
         pursuitRange > 620 ? 1300 : pursuitRange > 340 ? 1050 : pursuitRange > 220 ? 850 : 1100,
       );
     } else if (state.extractionReady) {
