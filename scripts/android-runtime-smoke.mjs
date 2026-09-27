@@ -2715,6 +2715,16 @@ async function p20ePulseGamepadButton(index, holdMs = 100) {
   return true;
 }
 
+async function p20eTouchFireBurst(id, holdMs = 2400) {
+  const fire = await elementMetrics('.fire-button');
+  if (!fire || fire.disabled) return false;
+  await dispatchTouch('touchStart', fire.x, fire.y, id);
+  await sleep(holdMs);
+  await dispatchTouch('touchEnd', fire.x, fire.y, id);
+  await sleep(180);
+  return true;
+}
+
 async function p20eTryTapInteract(id, holdMs = 100) {
   const metrics = await elementMetrics('.interact-button:not(:disabled)');
   if (!metrics || metrics.disabled) return false;
@@ -2790,7 +2800,7 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
         iteration += 1;
         continue;
       }
-      if (state.weaponMag >= 0 && state.weaponMag <= 1) {
+      if (state.weaponMag === 0) {
         await p20ePulseGamepadButton(3, 100);
         await sleep(260);
         iteration += 1;
@@ -2827,8 +2837,9 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
       }
       const pursuitDirection = state.extractionHostileDirection || state.hostileDirection;
       const pursuitRange = state.extractionHostileRange > 0 ? state.extractionHostileRange : state.hostileRange;
-      if (pursuitDirection && pursuitRange > 760) {
-        await p20eGamepadCombat(pursuitDirection, 850);
+      if (pursuitDirection && pursuitRange > 520) {
+        await p20eMove(pursuitDirection, idBase + 10000 + iteration, pursuitRange > 760 ? 620 : 360);
+        await sleep(100);
       } else {
         if (iteration % 2 === 0) {
           const lock = await elementMetrics('.ability-button.ability-1:not(:disabled)');
@@ -2839,7 +2850,8 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
             await sleep(120);
           }
         }
-        await p20eGamepadCombat('', 1900);
+        const fired = await p20eTouchFireBurst(idBase + 11000 + iteration, 2400);
+        if (!fired) await sleep(180);
       }
     } else if (state.extractionReady) {
       break;
@@ -2909,7 +2921,7 @@ await p20eFinishActiveFamily('salvage', 2400);
 await p20eDeployFamily('boarding', 2600);
 await p20eFinishActiveFamily('boarding', 2700);
 await p20eRemoveCombatGamepad();
-console.log('ANDROID_P20E_REPEATABLE_PLAY_PASS families=stabilization+salvage+boarding completions=3 depth=safe campaign=tier1-baseline class=vector weapon=rail input=controller-combat+touch-objectives actualGameplay=true');
+console.log('ANDROID_P20E_REPEATABLE_PLAY_PASS families=stabilization+salvage+boarding completions=3 depth=safe campaign=tier1-baseline class=vector weapon=rail input=touch-fire+touch-objectives actualGameplay=true');
 
 session.close();
 console.log(`ANDROID_RUNTIME_SMOKE_PASS title=${startup.title} route=ship>contracts>combat canvases=${combat.canvases}`);
