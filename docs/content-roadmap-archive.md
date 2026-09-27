@@ -4,6 +4,16 @@ This file is the permanent archive for completed production work. The active exe
 
 **Archive rule:** once a roadmap batch is merged, verified, and marked complete, move its detailed checklist and delivery note here. Keep only a compact completion pointer in the active roadmap. Do not execute work directly from this archive.
 
+## P23 — Android CI Feedback Loop
+
+- [x] **P23-A — Add a fast Android smoke entry point** — Added `scripts/android-fast-smoke.sh` plus fast-mode branches in the existing Android runtime harness. The independent path installs/launches the debug APK, uses real Android/WebView touch events for command-deck navigation, contract selection, movement, FIRE, class skill, DODGE, and ACT, then verifies pause/resume process preservation, clean logcat, and two screenshot artifacts. The extended repeatable-family, Chapter 3, Settings, and authored-asset suites remain available outside the fast entry point.
+  - CI is fail-fast for the fast gate so a fast-smoke failure cannot be masked by the legacy runtime suite. The contract test also rejects accidental inclusion of the extended suites.
+  - Verified on source head `80b246b4afe54cc720fba17211062953af74bc1d`: Level 15 beta smoke #798 passed, Browser E2E #936 passed desktop/mobile-landscape, and Android APK #507 passed the full regression/build/emulator job.
+  - Android beta.507 evidence: `ANDROID_FAST_STARTUP_PASS`, `ANDROID_FAST_MANAGEMENT_TOUCH_PASS`, `ANDROID_FAST_INTERACTION_TOUCH_PASS` with objective progress 0→1, `ANDROID_FAST_FIRE_TOUCH_PASS` with weapon shots 0→1, `ANDROID_FAST_TOUCH_PASS`, `ANDROID_FAST_RUNTIME_PASS`, and `ANDROID_FAST_LIFECYCLE_RESUME_PASS`.
+  - The independent fast gate emitted `ANDROID_FAST_EMULATOR_PASS ... elapsedSeconds=127`, preserving the same Android process across pause/resume and reporting `crashCheck=clean screenshots=2`; this is below the 5-minute acceptance ceiling after emulator boot.
+  - APK verification passed as debug-signed `0.0.1-beta.507 (507)`, size 5.6 MB. The legacy all-in-one Android regression also completed successfully afterward with `ANDROID_EMULATOR_PASS`.
+  - **Next: P23-B — Make normal push APK verification use the fast Android gate.**
+
 ## Completed P6 Directive Work
 
 - [x] **P6.1 Exclusive protocol combinations**

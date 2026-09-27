@@ -2,7 +2,7 @@
 
 ## New-chat handoff — resume here first
 
-- **Resume P23-A next.** Android CI feedback-loop work has been promoted ahead of P22 so normal implementation runs stop waiting on the current 20–30 minute all-in-one emulator suite.
+- **Resume P23-B next.** P23-A delivered an independent fast Android emulator smoke gate in 127 seconds; next make normal `main` pushes use that fast path instead of waiting on the all-in-one emulator suite.
 - **P22-A is verified and archived.** After P23, resume the UI-footprint sequence at **P22-B1 — Reduce visible combat-control geometry by 30%**.
 - **P20-E is closed and archived.** When global roadmap order later returns to P20, resume that sequence at **P20-F1 — Define and settle distinct repeatable-contract incentive profiles**.
 
@@ -20,7 +20,7 @@ Only active/future executable work lives here. Completed and verified work belon
 
 ## P23 — Android CI Feedback Loop
 
-- [ ] **P23-A — Add a fast Android smoke entry point** — Create a dedicated fast emulator smoke path that reuses the existing APK/runtime helpers but stops after the minimum per-change Android confidence gate: install/launch, startup navigation, representative real-touch management interaction, enter combat, movement/fire/dodge/interaction sanity, pause/resume lifecycle, crash/logcat check, and screenshot evidence. Keep the existing long repeatable-family, Chapter 3, and black-box Settings suites available but do not run them from the fast entry point. **Done when:** the fast script can run independently against the debug APK, preserves real Android/WebView/touch verification rather than replacing it with DOM-only checks, produces explicit PASS evidence plus logcat/screenshot artifacts, targeted script tests and production build pass, and one representative GitHub Actions emulator run completes the fast smoke in under 5 minutes after emulator boot.
+- **P23-A complete / archived** — Independent fast Android emulator smoke now covers startup, real-touch management + combat controls, ACT, pause/resume, crash/logcat checks, and screenshot evidence. Verified in Android beta.507 with the fast gate completing in 127 seconds; see the completion archive for evidence.
 
 - [ ] **P23-B — Make normal push APK verification use the fast Android gate** — Rework the default `main` push path in `.github/workflows/android-apk.yml` so it builds/verifies the APK once and runs P23-A instead of the current all-in-one `android-runtime-smoke.sh` suite. Preserve package/version/signature checks, artifact upload, KVM/emulator validation, and any cheap asset/lifecycle checks still needed for every implementation batch; do not delete the extended suites. **Done when:** a normal source push reaches an authoritative Android pass without running repeatable-family, Chapter 3, or black-box Settings playthroughs; the produced APK/evidence artifact is still downloadable and valid; Browser E2E and production build remain required; and two representative push runs show total Android workflow wall time at or below 12 minutes with the emulator smoke portion under 5 minutes.
 
