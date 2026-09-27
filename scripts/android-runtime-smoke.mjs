@@ -2888,8 +2888,13 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
         }
       }
       const closeStrafe = pursuitDirection ? p20eStrafeDirections[pursuitDirection]?.[iteration % 2] ?? '' : '';
+      const combatMoveDirection = state.remaining === 1 && pursuitDirection
+        ? pursuitDirection
+        : pursuitDirection && pursuitRange > 220
+          ? pursuitDirection
+          : closeStrafe;
       await p20eGamepadCombat(
-        pursuitDirection && pursuitRange > 220 ? pursuitDirection : closeStrafe,
+        combatMoveDirection,
         0,
         0,
         pursuitRange > 620 ? 1300 : pursuitRange > 340 ? 1050 : pursuitRange > 220 ? 850 : 1100,
