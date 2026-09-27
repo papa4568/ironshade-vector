@@ -255,7 +255,20 @@ async function tapButton(label, id = 1, holdMs = 90) {
     const rect = element.getBoundingClientRect();
     const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
     const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
-    if (rect.left < 0 || rect.top < 0 || rect.right > viewportWidth || rect.bottom > viewportHeight) {
+    let clippedByScrollContainer = false;
+    for (let ancestor = element.parentElement; ancestor && ancestor !== document.body; ancestor = ancestor.parentElement) {
+      const style = getComputedStyle(ancestor);
+      const clipsX = /(?:auto|scroll|hidden|clip)/.test(style.overflowX);
+      const clipsY = /(?:auto|scroll|hidden|clip)/.test(style.overflowY);
+      if (!clipsX && !clipsY) continue;
+      const bounds = ancestor.getBoundingClientRect();
+      if ((clipsX && (rect.left < bounds.left + 1 || rect.right > bounds.right - 1))
+        || (clipsY && (rect.top < bounds.top + 1 || rect.bottom > bounds.bottom - 1))) {
+        clippedByScrollContainer = true;
+        break;
+      }
+    }
+    if (rect.left < 0 || rect.top < 0 || rect.right > viewportWidth || rect.bottom > viewportHeight || clippedByScrollContainer) {
       element.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
     }
     return true;
