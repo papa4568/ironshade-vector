@@ -2644,17 +2644,19 @@ async function p20eInstallCombatGamepad() {
   if (!installed) throw new Error('P20-E could not install assisted combat gamepad.');
 }
 
-async function p20eGamepadCombat(moveDirection, duration = 950) {
+async function p20eGamepadCombat(moveDirection, aimX = 0, aimY = 0, duration = 950) {
   const moveOffset = p20eDirectionOffset[moveDirection] ?? [0, 0];
   const moveX = Math.max(-1, Math.min(1, moveOffset[0] / 36));
   const moveY = Math.max(-1, Math.min(1, moveOffset[1] / 36));
+  const rightX = Math.max(-1, Math.min(1, Number.isFinite(aimX) ? aimX : 0));
+  const rightY = Math.max(-1, Math.min(1, Number.isFinite(aimY) ? aimY : 0));
   await evaluate(`(() => {
     const pad = globalThis.__ironshadeP20eGamepad;
     if (!pad) return false;
     pad.axes[0] = ${moveX};
     pad.axes[1] = ${moveY};
-    pad.axes[2] = 0;
-    pad.axes[3] = 0;
+    pad.axes[2] = ${rightX};
+    pad.axes[3] = ${rightY};
     const trigger = pad.buttons[7];
     trigger.pressed = true;
     trigger.value = 1;
@@ -2755,6 +2757,8 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
         remaining: Number(root?.dataset.squadRemaining ?? '999'),
         hostileDirection: root?.dataset.nearestHostileDirection ?? '',
         hostileRange: Number(root?.dataset.nearestHostileRange ?? '0'),
+        hostileAimX: Number(root?.dataset.nearestHostileAimX ?? '0'),
+        hostileAimY: Number(root?.dataset.nearestHostileAimY ?? '0'),
         extractionHostileDirection: root?.dataset.extractionHostileDirection ?? '',
         extractionHostileRange: Number(root?.dataset.extractionHostileRange ?? '0'),
         objectiveComplete: root?.dataset.objectiveComplete === 'true',
@@ -2848,6 +2852,8 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
       }
       await p20eGamepadCombat(
         pursuitDirection && pursuitRange > 220 ? pursuitDirection : '',
+        state.hostileAimX,
+        state.hostileAimY,
         pursuitRange > 620 ? 1300 : pursuitRange > 340 ? 1050 : pursuitRange > 220 ? 850 : 1450,
       );
     } else if (state.extractionReady) {
@@ -2918,7 +2924,7 @@ await p20eFinishActiveFamily('salvage', 2400);
 await p20eDeployFamily('boarding', 2600);
 await p20eFinishActiveFamily('boarding', 2700);
 await p20eRemoveCombatGamepad();
-console.log('ANDROID_P20E_REPEATABLE_PLAY_PASS families=stabilization+salvage+boarding completions=3 depth=safe campaign=tier1-baseline class=systems weapon=carbine input=assisted-combat+touch-objectives actualGameplay=true');
+console.log('ANDROID_P20E_REPEATABLE_PLAY_PASS families=stabilization+salvage+boarding completions=3 depth=safe campaign=tier1-baseline class=systems weapon=carbine input=direct-target-combat+touch-objectives actualGameplay=true');
 
 session.close();
 console.log(`ANDROID_RUNTIME_SMOKE_PASS title=${startup.title} route=ship>contracts>combat canvases=${combat.canvases}`);
