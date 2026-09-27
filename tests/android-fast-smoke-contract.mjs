@@ -2,7 +2,9 @@ import fs from 'node:fs';
 
 const shell = fs.readFileSync(new URL('../scripts/android-fast-smoke.sh', import.meta.url), 'utf8');
 const runtime = fs.readFileSync(new URL('../scripts/android-runtime-smoke.mjs', import.meta.url), 'utf8');
+const extendedShell = fs.readFileSync(new URL('../scripts/android-runtime-smoke.sh', import.meta.url), 'utf8');
 const workflow = fs.readFileSync(new URL('../.github/workflows/android-apk.yml', import.meta.url), 'utf8');
+const browserWorkflow = fs.readFileSync(new URL('../.github/workflows/browser-e2e.yml', import.meta.url), 'utf8');
 
 const requireText = (text, needle, label) => {
   if (!text.includes(needle)) throw new Error(`${label} missing required marker: ${needle}`);
@@ -42,8 +44,30 @@ for (const marker of [
 ]) requireText(runtime, marker, 'runtime harness');
 
 requireText(workflow, 'npm run test:android-fast-smoke', 'Android workflow');
+requireText(workflow, 'npm run build', 'Android workflow production build');
 requireText(workflow, "set -euo pipefail;", 'Android workflow');
 requireText(workflow, 'actions/upload-artifact@v7', 'Android workflow');
+requireText(workflow, "      - main", 'Android workflow main push');
+requireText(workflow, "      - 'tests/**'", 'Android workflow test push path');
+requireText(browserWorkflow, 'name: Browser E2E', 'Browser workflow');
+requireText(browserWorkflow, '  push:', 'Browser workflow');
+requireText(browserWorkflow, "      - main", 'Browser workflow main push');
+requireText(browserWorkflow, "      - 'tests/**'", 'Browser workflow test push path');
+
+for (const marker of [
+  'ANDROID_P20E_REPEATABLE_FAMILY_PASS',
+  'ANDROID_P20E_REPEATABLE_PLAY_PASS',
+]) requireText(runtime, marker, 'extended Android runtime harness');
+
+for (const marker of [
+  'browser-chapter3-playthrough',
+  'android-settings-playtest.py',
+  'verify-authored-operator',
+  'verify-authored-enemies',
+  'verify-authored-weapons',
+  'verify-authored-refinery',
+]) requireText(extendedShell, marker, 'extended Android shell');
+
 for (const artifact of [
   'Ironshade-Vector-Android-Beta.apk',
   'Ironshade-Vector-Android-Beta.sha256',
@@ -68,4 +92,4 @@ for (const forbidden of [
   }
 }
 
-console.log('ANDROID_FAST_SMOKE_CONTRACT_PASS entry=scripts/android-fast-smoke.sh defaultPush=fast-only extended=excluded touch=required lifecycle=required artifacts=required failFast=required');
+console.log('ANDROID_FAST_SMOKE_CONTRACT_PASS entry=scripts/android-fast-smoke.sh defaultPush=fast-only extended=retained-not-run browser=required productionBuild=required touch=required lifecycle=required artifacts=required failFast=required');
