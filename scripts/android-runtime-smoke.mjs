@@ -2837,7 +2837,7 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
       }
       const pursuitDirection = state.extractionHostileDirection || state.hostileDirection;
       const pursuitRange = state.extractionHostileRange > 0 ? state.extractionHostileRange : state.hostileRange;
-      if (pursuitDirection && pursuitRange > 520) {
+      if (pursuitDirection && pursuitRange > 220) {
         await p20eMove(pursuitDirection, idBase + 10000 + iteration, pursuitRange > 760 ? 620 : 360);
         await sleep(100);
       } else {
