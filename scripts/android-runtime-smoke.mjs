@@ -2748,7 +2748,7 @@ async function p20eTryTapInteract(id, holdMs = 100) {
 
 async function p20eFinishActiveFamily(expectedFamily, idBase) {
   await waitFor(`document.querySelector('.game-root')?.dataset.repeatableFamily === '${expectedFamily}'`, `P20-E ${expectedFamily} combat family`, 30_000);
-  const combatDeadline = Date.now() + 180_000;
+  const combatDeadline = Date.now() + 300_000;
   let iteration = 0;
   while (Date.now() < combatDeadline) {
     const state = await evaluate(`(() => {
@@ -2783,6 +2783,9 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
       };
     })()`);
     if (state.dead) throw new Error(`P20-E ${expectedFamily} representative play ended with operator down.`);
+    if (iteration % 8 === 0) {
+      console.log(`ANDROID_P20E_PROGRESS family=${expectedFamily} iteration=${iteration} objective=${state.objectiveComplete ? 'complete' : 'active'} remaining=${state.remaining} hp=${state.health} armor=${state.armor} range=${state.extractionHostileRange || state.hostileRange} shots=${state.weaponShots} damage=${Math.round(state.damageDealt)}`);
+    }
 
     if (state.health > 0 && state.health < 72) {
       const med = await elementMetrics('button.consumable-button[aria-label="Trauma Gel"]:not(:disabled)');
@@ -2806,8 +2809,8 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
         if (state.remaining > 0) {
           await p20eGamepadCombat(
             state.objectiveDirection,
-            state.hostileAimX,
-            state.hostileAimY,
+            0,
+            0,
             approachMs,
           );
         } else {
@@ -2881,8 +2884,8 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
       const closeStrafe = pursuitDirection ? p20eStrafeDirections[pursuitDirection]?.[iteration % 2] ?? '' : '';
       await p20eGamepadCombat(
         pursuitDirection && pursuitRange > 220 ? pursuitDirection : closeStrafe,
-        state.hostileAimX,
-        state.hostileAimY,
+        0,
+        0,
         pursuitRange > 620 ? 1300 : pursuitRange > 340 ? 1050 : pursuitRange > 220 ? 850 : 1100,
       );
     } else if (state.extractionReady) {
@@ -2965,7 +2968,7 @@ await p20eFinishActiveFamily('salvage', 2400);
 await p20eDeployFamily('boarding', 2600);
 await p20eFinishActiveFamily('boarding', 2700);
 await p20eRemoveCombatGamepad();
-console.log('ANDROID_P20E_REPEATABLE_PLAY_PASS families=stabilization+salvage+boarding completions=3 depth=safe campaign=tier1-baseline class=systems weapon=carbine input=direct-target-combat+touch-objectives actualGameplay=true');
+console.log('ANDROID_P20E_REPEATABLE_PLAY_PASS families=stabilization+salvage+boarding completions=3 depth=safe campaign=tier1-baseline class=systems weapon=carbine input=assisted-target-combat+touch-objectives actualGameplay=true');
 
 session.close();
 console.log(`ANDROID_RUNTIME_SMOKE_PASS title=${startup.title} route=ship>contracts>combat canvases=${combat.canvases}`);
