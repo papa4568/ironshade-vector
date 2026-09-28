@@ -3,7 +3,7 @@
 ## New-chat handoff — resume here first
 
 - **P23 is complete and archived.** Full Android verification now builds the APK once, fans out repeatable-family, Settings, Chapter 3, and remaining runtime/persistence/authored-asset coverage in parallel, then aggregates evidence behind one required gate. Normal `main` pushes remain fast-only.
-- **Resume P22-B1 next — Reduce visible combat-control geometry by 30%.** P22-A is verified and archived.
+- **Resume P22-B2 next — Reduce combat informational HUD chrome by 30%.** P22-A and P22-B1 are verified and archived.
 - **P20-E is closed and archived.** When global roadmap order later returns to P20, resume that sequence at **P20-F1 — Define and settle distinct repeatable-contract incentive profiles**.
 
 Only active/future executable work lives here. Completed and verified work belongs in [content-roadmap-archive.md](./content-roadmap-archive.md). Stable product rules live in [product-constraints.md](./product-constraints.md).
@@ -36,7 +36,7 @@ Only active/future executable work lives here. Completed and verified work belon
 
 - **P22-A complete / archived** — Shared non-combat Interface Size geometry now uses a 70% Default baseline with ordered Compact/Default/Large presets, compact-phone readability/touch floors, and preserved combat-control geometry. Final verification: Level 15 beta smoke #792, Browser E2E #932, Android beta.503; see the completion archive for measured evidence and artifact details.
 
-- [ ] **P22-B1 — Reduce visible combat-control geometry by 30%** — Use the dedicated Combat layout preset / movement-action cluster ownership to make the visible joystick, FIRE, DODGE, class-skill, and ACT controls roughly 70% of their current baseline without moving their authored cluster positions or changing input semantics. Preserve reliable touch behavior with existing or invisibly extended hit regions where needed, and keep Standard/Large/Left-handed/custom layout behavior intact. **Done when:** deterministic layout tests show the visible movement/action controls are approximately 30% smaller while hit testing, safe-area bounds, preset persistence, and custom offsets remain correct; Browser E2E and production build pass; and Android combat smoke verifies movement, aim/fire, abilities, dodge, interaction, pause/resume, and lifecycle behavior with the reduced visuals.
+- **P22-B1 complete / archived** — Visible joystick, FIRE, DODGE, class-skill, and ACT bodies now use a 70% combat-control visual baseline while transparent hit extensions preserve the prior acquisition footprint and the persisted Standard/Large/Left-Handed/custom cluster transforms remain authoritative. Level 15 beta smoke #822, Browser E2E #953, and Android beta.535 passed; see the completion archive for measured geometry and APK evidence.
 
 - [ ] **P22-B2 — Reduce combat informational HUD chrome by 30%** — Independently reduce the health/resource, objective, boss/status, loot, interaction, and other non-control combat HUD chrome to the same approximately 70% visual baseline using the appropriate HUD/design tokens. Do not couple this work to combat-control hit regions or positions. **Done when:** deterministic measurements show the representative informational HUD surfaces are approximately 30% smaller without overlap or lost readability; safe areas and compact landscape remain valid; targeted HUD/UI tests, Browser E2E, and production build pass; and the Android APK verifies the reduced combat information surfaces during live combat and pickup/objective flows.
 
