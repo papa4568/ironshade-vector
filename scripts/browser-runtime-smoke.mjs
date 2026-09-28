@@ -360,23 +360,46 @@ async function p21F1WebGpuPrototypeAudit() {
         && canvas?.dataset.webgpuInputParity === 'ground-plane-raycast-v1';
     })()`, 'P21-F1 WebGPU TSL + authored refinery prototype', 45_000);
 
-    const dispatched = await evaluate(`(() => {
+    const pointerProbe = await evaluate(`(() => {
       const canvas = document.querySelector('canvas');
-      if (!(canvas instanceof HTMLCanvasElement)) return false;
+      if (!(canvas instanceof HTMLCanvasElement)) return null;
       const rect = canvas.getBoundingClientRect();
       const coarse = window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900;
-      canvas.dispatchEvent(new PointerEvent(coarse ? 'pointerdown' : 'pointermove', {
-        bubbles: true,
-        pointerId: 921,
-        pointerType: coarse ? 'touch' : 'mouse',
-        clientX: rect.left + rect.width * 0.68,
-        clientY: rect.top + rect.height * 0.48,
-        button: 0,
-      }));
-      return true;
+      return {
+        coarse,
+        x: rect.left + rect.width * 0.68,
+        y: rect.top + rect.height * 0.48,
+      };
     })()`);
-    if (!dispatched) throw new Error('P21-F1 could not dispatch the parity pointer probe.');
-    await waitFor(`/^[-0-9.]+,[-0-9.]+$/.test(document.querySelector('canvas')?.dataset.webgpuPointerDirection ?? '')`, 'P21-F1 pointer-direction parity probe', 5_000);
+    if (!pointerProbe) throw new Error('P21-F1 could not locate the canvas for the parity pointer probe.');
+    if (pointerProbe.coarse) {
+      await call('Input.dispatchTouchEvent', {
+        type: 'touchStart',
+        touchPoints: [{ x: pointerProbe.x, y: pointerProbe.y, id: 921, radiusX: 1, radiusY: 1, force: 1 }],
+      });
+      try {
+        await waitFor(`/^[-0-9.]+,[-0-9.]+$/.test(document.querySelector('canvas')?.dataset.webgpuPointerDirection ?? '')`, 'P21-F1 pointer-direction parity probe', 5_000);
+      } finally {
+        await call('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }).catch(() => undefined);
+      }
+    } else {
+      const dispatched = await evaluate(`(() => {
+        const canvas = document.querySelector('canvas');
+        if (!(canvas instanceof HTMLCanvasElement)) return false;
+        const rect = canvas.getBoundingClientRect();
+        canvas.dispatchEvent(new PointerEvent('pointermove', {
+          bubbles: true,
+          pointerId: 921,
+          pointerType: 'mouse',
+          clientX: rect.left + rect.width * 0.68,
+          clientY: rect.top + rect.height * 0.48,
+          button: 0,
+        }));
+        return true;
+      })()`);
+      if (!dispatched) throw new Error('P21-F1 could not dispatch the parity pointer probe.');
+      await waitFor(`/^[-0-9.]+,[-0-9.]+$/.test(document.querySelector('canvas')?.dataset.webgpuPointerDirection ?? '')`, 'P21-F1 pointer-direction parity probe', 5_000);
+    }
   } else {
     await waitFor(`document.querySelector('canvas')?.dataset.environmentVisual === 'authored-refinery'`, 'P21-F1 WebGL2 fallback refinery', 45_000);
   }
