@@ -98,11 +98,21 @@ function call(method, params = {}) {
 }
 
 async function evaluate(expression) {
-  const response = await call('Runtime.evaluate', {
-    expression,
-    awaitPromise: true,
-    returnByValue: true,
-  });
+  let response;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      response = await call('Runtime.evaluate', {
+        expression,
+        awaitPromise: true,
+        returnByValue: true,
+      });
+      break;
+    } catch (error) {
+      const transientNavigation = String(error?.message ?? error).includes('Inspected target navigated or closed');
+      if (!transientNavigation || attempt === 3) throw error;
+      await sleep(attempt * 125);
+    }
+  }
   if (response.exceptionDetails) {
     throw new Error(response.exceptionDetails.exception?.description ?? response.exceptionDetails.text ?? 'Runtime.evaluate failed');
   }
