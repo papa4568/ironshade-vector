@@ -116,7 +116,12 @@ try {
         locationArt: canvas.dataset.locationArt ?? '',
         locationLighting: canvas.dataset.locationLighting ?? '',
         locationProps: canvas.dataset.locationProps ?? '',
+        graphicsPathSelection: canvas.dataset.graphicsPathSelection ?? '',
+        graphicsPathRequested: canvas.dataset.graphicsPathRequested ?? '',
+        graphicsPathLoaded: canvas.dataset.graphicsPathLoaded ?? '',
         renderTier: canvas.dataset.renderTier ?? '',
+        renderFrameMs: canvas.dataset.renderFrameMs ?? '',
+        renderFrameBudget: canvas.dataset.renderFrameBudget ?? '',
         renderBudget: canvas.dataset.renderBudget ?? '',
         canvases: document.querySelectorAll('canvas').length,
         width: rect.width,
@@ -179,8 +184,20 @@ try {
       if (lastState.locationProps !== 'ore-service:instanced-shared-library') {
         throw new Error(`Shared instanced prop library is not active: ${JSON.stringify(lastState)}`);
       }
+      if (!['production-default', 'qa-explicit'].includes(lastState.graphicsPathSelection) || lastState.graphicsPathLoaded !== 'webgl2') {
+        throw new Error(`Refinery graphics path telemetry is missing or non-WebGL2: ${JSON.stringify(lastState)}`);
+      }
+      if (lastState.graphicsPathSelection === 'qa-explicit' && lastState.graphicsPathRequested !== lastState.graphicsPathLoaded) {
+        throw new Error(`Refinery explicit graphics path selection did not load the requested path: ${JSON.stringify(lastState)}`);
+      }
+      if (lastState.graphicsPathSelection === 'production-default' && lastState.graphicsPathRequested !== '') {
+        throw new Error(`Production-default refinery path must not report a QA request: ${JSON.stringify(lastState)}`);
+      }
       if (!['high', 'balanced', 'performance'].includes(lastState.renderTier)) {
         throw new Error(`Adaptive render tier telemetry is missing: ${JSON.stringify(lastState)}`);
+      }
+      if (!/^\d+\.\d{2}$/.test(lastState.renderFrameMs) || !/^[a-z-]+:-?\d+\.\d{2}ms@\d+\.\d{2}ms$/.test(lastState.renderFrameBudget)) {
+        throw new Error(`Adaptive frame telemetry is malformed: ${JSON.stringify(lastState)}`);
       }
       if (!/^pixel:\d+\.\d{2}\+shadow:\d+\+vfx:\d+\.\d{2}\+transparency:\d+\.\d{2}\+reflection:\d+\.\d{2}\+secondary:\d+\.\d{2}\+detail:\d+\.\d{2}$/.test(lastState.renderBudget)) {
         throw new Error(`Adaptive render budget telemetry is malformed: ${JSON.stringify(lastState)}`);
@@ -194,7 +211,7 @@ try {
       if (!(lastState.width > 0 && lastState.height > 0)) {
         throw new Error(`Authored refinery canvas is not visible: ${JSON.stringify(lastState)}`);
       }
-      console.log(`AUTHORED_REFINERY_RUNTIME_PASS lod=${lastState.lod} kit=${[...kit].sort().join(',')} instances=${lastState.instances} terminals=${lastState.terminals} landmark=${lastState.landmark} service=${lastState.serviceDetails} surface=${lastState.surfaceDetail} machine=${lastState.machineDetail} composition=${lastState.composition} lighting=${lastState.lighting} materials=${lastState.materials} vfx=${lastState.vfx} tone=${lastState.tone} effects=${lastState.effectsMode} readability=${lastState.readability} location=${lastState.locationArt} props=${lastState.locationProps} tier=${lastState.renderTier} budget=${lastState.renderBudget} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
+      console.log(`AUTHORED_REFINERY_RUNTIME_PASS lod=${lastState.lod} kit=${[...kit].sort().join(',')} instances=${lastState.instances} terminals=${lastState.terminals} landmark=${lastState.landmark} service=${lastState.serviceDetails} surface=${lastState.surfaceDetail} machine=${lastState.machineDetail} composition=${lastState.composition} lighting=${lastState.lighting} materials=${lastState.materials} vfx=${lastState.vfx} tone=${lastState.tone} effects=${lastState.effectsMode} readability=${lastState.readability} location=${lastState.locationArt} props=${lastState.locationProps} graphics=${lastState.graphicsPathSelection}:${lastState.graphicsPathRequested || 'none'}->${lastState.graphicsPathLoaded} tier=${lastState.renderTier} frame=${lastState.renderFrameMs}ms budget=${lastState.renderBudget} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
       process.exitCode = 0;
       break;
     }
