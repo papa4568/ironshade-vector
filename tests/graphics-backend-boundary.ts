@@ -220,7 +220,13 @@ assert(
     && browserWorkflowSource.includes('p21f2-stack-*.png')
     && browserWorkflowSource.includes('--enable-unsafe-webgpu')
     && browserWorkflowSource.includes('--use-webgpu-adapter=swiftshader')
-    && browserWorkflowSource.includes('--use-gpu-in-tests'),
+    && browserWorkflowSource.includes('--use-vulkan=swiftshader')
+    && browserWorkflowSource.includes('vk_swiftshader_icd.json')
+    && browserWorkflowSource.includes('BROWSER_E2E_REQUIRE_WEBGPU')
+    && browserWorkflowSource.includes('--use-gpu-in-tests')
+    && browserSmokeSource.includes("process.env.BROWSER_E2E_REQUIRE_WEBGPU === '1'")
+    && browserSmokeSource.includes('P21-F2 requires a real WebGPU desktop comparison')
+    && browserSmokeSource.includes('webgpuFallbackReason'),
   'P21-F2 Browser E2E must preserve explicit WebGL2/WebGPU QA paths and retain deterministic stack-off/stack-on comparison evidence.',
 );
 assert(

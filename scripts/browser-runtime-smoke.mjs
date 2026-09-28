@@ -3,6 +3,7 @@ import { writeFile } from 'node:fs/promises';
 const cdpBase = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9223';
 const appUrl = process.env.BROWSER_E2E_APP_URL ?? 'http://127.0.0.1:4173/';
 const requestedGraphicsPath = (process.env.BROWSER_E2E_GRAPHICS_PATH ?? '').trim();
+const requireWebGpuComparison = process.env.BROWSER_E2E_REQUIRE_WEBGPU === '1';
 const navigationUrl = (() => {
   if (!requestedGraphicsPath) return appUrl;
   const url = new URL(appUrl);
@@ -334,6 +335,7 @@ async function p21F1WebGpuPrototypeAudit() {
     return {
       loaded: canvas?.dataset.graphicsPathLoaded ?? '',
       fallback: canvas?.dataset.graphicsPathFallback ?? '',
+      fallbackReason: canvas?.dataset.webgpuFallbackReason ?? '',
       init: canvas?.dataset.webgpuInit ?? '',
       backend: canvas?.dataset.webgpuBackend ?? '',
       visual: canvas?.dataset.environmentVisual ?? '',
@@ -384,6 +386,7 @@ async function p21F1WebGpuPrototypeAudit() {
     return {
       loaded: canvas?.dataset.graphicsPathLoaded ?? '',
       fallback: canvas?.dataset.graphicsPathFallback ?? '',
+      fallbackReason: canvas?.dataset.webgpuFallbackReason ?? '',
       init: canvas?.dataset.webgpuInit ?? '',
       backend: canvas?.dataset.webgpuBackend ?? '',
       visual: canvas?.dataset.environmentVisual ?? '',
@@ -395,6 +398,10 @@ async function p21F1WebGpuPrototypeAudit() {
       pointer: canvas?.dataset.webgpuPointerDirection ?? '',
     };
   })()`);
+
+  if (requireWebGpuComparison && state?.loaded !== 'webgpu') {
+    throw new Error(`P21-F2 requires a real WebGPU desktop comparison; loaded=${state?.loaded || 'unknown'} fallback=${state?.fallback || 'none'} reason=${state?.fallbackReason || 'none'}`);
+  }
 
   if (state?.loaded === 'webgpu') {
     if (state.init !== 'ready'
@@ -416,7 +423,7 @@ async function p21F1WebGpuPrototypeAudit() {
     throw new Error(`P21-F1 loaded an unexpected graphics path: ${JSON.stringify(state)}`);
   }
 
-  console.log(`BROWSER_P21F1_WEBGPU_PASS viewport=${viewportMode} requested=webgpu loaded=${state.loaded} fallback=${state.fallback || 'none'} init=${state.init || 'not-started'} visual=${state.visual} assets=${state.assets || 'production-webgl2'} tsl=${state.tsl || 'fallback'} camera=${state.camera || 'production-webgl2'} input=${state.input || 'production-webgl2'} pointer=${state.pointer || 'production-webgl2'}`);
+  console.log(`BROWSER_P21F1_WEBGPU_PASS viewport=${viewportMode} requested=webgpu loaded=${state.loaded} fallback=${state.fallback || 'none'} reason=${state.fallbackReason || 'none'} init=${state.init || 'not-started'} visual=${state.visual} assets=${state.assets || 'production-webgl2'} tsl=${state.tsl || 'fallback'} camera=${state.camera || 'production-webgl2'} input=${state.input || 'production-webgl2'} pointer=${state.pointer || 'production-webgl2'}`);
   return state;
 }
 

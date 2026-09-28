@@ -119,12 +119,25 @@ jobs:
           else
             chrome_window_size="1280,720"
           fi
+          chrome_dir="$(dirname "$CHROME_PATH")"
+          swiftshader_icd="$(find "$chrome_dir" -maxdepth 4 -name vk_swiftshader_icd.json -print -quit)"
+          if [[ -z "$swiftshader_icd" ]]; then
+            echo "::error::Chrome for Testing did not include vk_swiftshader_icd.json; P21-F2 cannot produce a real WebGPU comparison on this runner."
+            find "$chrome_dir" -maxdepth 4 -type f | sort | tail -n 120
+            exit 1
+          fi
+          export VK_ICD_FILENAMES="$swiftshader_icd"
+          export LD_LIBRARY_PATH="$(dirname "$swiftshader_icd"):${LD_LIBRARY_PATH:-}"
+          echo "P21-F2 SwiftShader Vulkan ICD: $swiftshader_icd"
           "$CHROME_PATH" \
             --headless=new \
             --no-sandbox \
             --disable-dev-shm-usage \
             --enable-unsafe-webgpu \
             --use-webgpu-adapter=swiftshader \
+            --use-vulkan=swiftshader \
+            --use-gl=angle \
+            --use-angle=swiftshader \
             --enable-dawn-features=allow_unsafe_apis \
             --disable-dawn-features=use_dxc \
             --enable-webgpu-developer-features \
@@ -152,6 +165,7 @@ jobs:
           CDP_ENDPOINT: http://127.0.0.1:9223
           BROWSER_E2E_APP_URL: http://127.0.0.1:4173/
           BROWSER_E2E_VIEWPORT: ${{ matrix.viewport }}
+          BROWSER_E2E_REQUIRE_WEBGPU: ${{ matrix.viewport == 'desktop' && '1' || '0' }}
           BROWSER_E2E_SCREENSHOT: browser-e2e-${{ matrix.viewport }}.png
           BROWSER_E2E_COMMAND_SCREENSHOT: browser-command-${{ matrix.viewport }}.png
           BROWSER_E2E_CLASS_SCREENSHOT: browser-class-${{ matrix.viewport }}.png
