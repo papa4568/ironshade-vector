@@ -2,7 +2,7 @@
 
 ## New-chat handoff — resume here first
 
-- **Resume P23-D next.** P23-C moved Stabilization + Salvage + Boarding representative gameplay into a dedicated full-regression Android job that reuses the shared APK; next extract the black-box Settings playtest.
+- **Resume P23-E next.** P23-D moved the black-box Settings playtest into a dedicated full-regression Android job that reuses the shared APK; next extract the Chapter 3 Android playthrough.
 - **P22-A is verified and archived.** After P23, resume the UI-footprint sequence at **P22-B1 — Reduce visible combat-control geometry by 30%**.
 - **P20-E is closed and archived.** When global roadmap order later returns to P20, resume that sequence at **P20-F1 — Define and settle distinct repeatable-contract incentive profiles**.
 
@@ -26,7 +26,7 @@ Only active/future executable work lives here. Completed and verified work belon
 
 - **P23-C complete / archived** — Stabilization, Salvage, and Boarding representative gameplay now runs in a dedicated full-regression Android job against the shared built debug APK. Full-regression run #520 passed all family/play/regression markers and clean logcat; normal `main` push smoke remains fast-only. See the completion archive for evidence.
 
-- [ ] **P23-D — Move the black-box Settings playtest to a full-regression job** — Run `scripts/android-settings-playtest.py` as a separate Android regression job using the shared built APK, preserving its adb/UiAutomator-only contract, persistence checks, screenshots, and accessibility/touch assertions. Keep it out of the normal push smoke. **Done when:** the dedicated Settings job reproduces the existing `ANDROID_SETTINGS_PLAYTEST_PASS` evidence and artifacts without CDP/DOM shortcuts; failures remain authoritative for full/release verification; normal push smoke no longer spends several minutes exercising the full Settings matrix; and the job can execute in parallel with P23-C.
+- **P23-D complete / archived** — The black-box Settings matrix now runs in a dedicated full-regression Android job against the shared built debug APK, preserving adb/UiAutomator-only input, cold-relaunch persistence, accessibility assertions, and screenshot evidence. Full-regression run #521 passed the Settings job in parallel with P23-C; normal `main` push smoke remains fast-only. See the completion archive for evidence.
 
 - [ ] **P23-E — Move the Chapter 3 Android playthrough to a full-regression job** — Extract the touch-driven Chapter 3 playthrough/report from the default Android smoke and run it independently against the shared APK, preserving the current screenshot/report evidence and route/branch assertions. **Done when:** the dedicated job emits the existing Android Chapter 3 PASS evidence and report, normal push smoke does not execute the Chapter 3 playthrough, failures remain authoritative for full/release verification, and the job can run in parallel with the other extended Android suites.
 
