@@ -1042,19 +1042,44 @@
   }
 
   .game-root .transient-alert-lane.event > .combat-alert {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
+    display: flex;
     align-items: center;
     gap: .5rem;
     text-align: left;
   }
 
   .game-root .transient-alert-lane.event .combat-alert small {
+    flex: 0 0 auto;
     white-space: nowrap;
   }
 
   .game-root .transient-alert-lane.event .combat-alert b {
+    flex: 1 1 auto;
+    min-width: 0;
     margin-top: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .game-root .transient-alert-lane[data-presentation="deployment"] {
+    top: max(.45rem, env(safe-area-inset-top));
+    bottom: auto;
+    width: min(21rem, 39vw);
+  }
+
+  .game-root .transient-alert-lane[data-presentation="deployment"] > .combat-alert {
+    padding: .4rem .55rem;
+    border-color: rgba(120, 164, 154, .5);
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(8, 17, 18, .94), rgba(6, 12, 13, .9));
+    box-shadow: 0 .45rem 1rem rgba(0, 0, 0, .24);
+  }
+
+  .game-root .transient-alert-lane[data-presentation="deployment"] .combat-alert small,
+  .game-root .transient-alert-lane[data-presentation="deployment"] .combat-alert b {
+    font-size: max(12px, .75rem);
+    line-height: 1;
   }
 }
 
