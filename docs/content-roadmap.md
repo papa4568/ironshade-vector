@@ -2,8 +2,8 @@
 
 ## New-chat handoff — resume here first
 
-- **Resume P23-F next.** P23-E moved the Chapter 3 touch playthrough into a dedicated full-regression Android job that reuses the shared APK; next consolidate the remaining extended Android verification into the parallel full-verification mode.
-- **P22-A is verified and archived.** After P23, resume the UI-footprint sequence at **P22-B1 — Reduce visible combat-control geometry by 30%**.
+- **P23 is complete and archived.** Full Android verification now builds the APK once, fans out repeatable-family, Settings, Chapter 3, and remaining runtime/persistence/authored-asset coverage in parallel, then aggregates evidence behind one required gate. Normal `main` pushes remain fast-only.
+- **Resume P22-B1 next — Reduce visible combat-control geometry by 30%.** P22-A is verified and archived.
 - **P20-E is closed and archived.** When global roadmap order later returns to P20, resume that sequence at **P20-F1 — Define and settle distinct repeatable-contract incentive profiles**.
 
 Only active/future executable work lives here. Completed and verified work belongs in [content-roadmap-archive.md](./content-roadmap-archive.md). Stable product rules live in [product-constraints.md](./product-constraints.md).
@@ -30,7 +30,7 @@ Only active/future executable work lives here. Completed and verified work belon
 
 - **P23-E complete / archived** — Chapter 3 now runs in a dedicated full-regression Android job against the shared built APK, with fresh-save initialization, touch-driven route selection, both branch assertions, screenshot/report evidence, and clean-logcat verification. Normal `main` push smoke remains fast-only; see the completion archive for evidence.
 
-- [ ] **P23-F — Add parallel full Android verification without slowing normal pushes** — Add a manual/release full-verification mode and a scheduled full-regression run that build the APK once, fan out P23-C/D/E plus the remaining extended persistence/asset checks in parallel, and collect their evidence under one full Android verification result. Keep normal `main` pushes on the P23-B fast path. **Done when:** full verification proves the same long-form coverage currently embedded in `android-runtime-smoke.sh` with no lost acceptance checks; extended jobs consume the same built APK rather than rebuilding independently; a failed extended job fails the full/release gate; scheduled/manual runs retain the expected artifacts; and the roadmap implementation loop can rely on the fast push gate while release/full verification remains comprehensive.
+- **P23-F complete / archived** — Manual/full and scheduled Android verification now reuse one shared APK, fan out repeatable-family, Settings, Chapter 3, and the remaining persistence/authored-asset runtime coverage in parallel, and aggregate their evidence behind one required full-verification gate. Normal `main` pushes remain on the fast Android path. Final full-regression run #534 passed all fan-out jobs and the aggregate gate; see the completion archive for evidence.
 
 ## P22 — Global UI Footprint Reduction
 
