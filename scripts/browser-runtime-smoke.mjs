@@ -35,6 +35,29 @@ const p21d2AfterScreenshotPath = process.env.BROWSER_E2E_P21D2_AFTER_SCREENSHOT 
 const p22cPrimaryJourney = targetLocation === 'asteroid-refinery';
 const p22cEvidence = { viewport: viewportMode, location: targetLocation };
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const P21_EFFECT_BUDGETS = Object.freeze({
+  high: { ibl: 1, bloom: 1, contact: 1, atmosphere: 1 },
+  balanced: { ibl: 0.7, bloom: 0.68, contact: 0.68, atmosphere: 0.68 },
+  performance: { ibl: 0.38, bloom: 0.42, contact: 0.42, atmosphere: 0.42 },
+});
+
+function parseP21EffectBudget(value) {
+  if (typeof value !== 'string' || !value) return null;
+  const fields = Object.fromEntries(value.split('+').map(part => {
+    const separator = part.indexOf(':');
+    return separator > 0 ? [part.slice(0, separator), part.slice(separator + 1)] : ['', ''];
+  }));
+  if (!Object.prototype.hasOwnProperty.call(P21_EFFECT_BUDGETS, fields.tier)) return null;
+  const budget = {
+    tier: fields.tier,
+    ibl: Number(fields.ibl),
+    bloom: Number(fields.bloom),
+    contact: Number(fields.contact),
+    atmosphere: Number(fields.atmosphere),
+    critical: Number(fields.critical),
+  };
+  return Object.values(budget).slice(1).every(Number.isFinite) ? budget : null;
+}
 
 if (typeof WebSocket !== 'function') {
   throw new Error('Node runtime does not expose WebSocket support required for browser E2E testing.');
@@ -1946,10 +1969,28 @@ try {
     await performanceDiagnosticsAudit();
     await waitFor(`(() => {
       const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery');
-      return canvas?.dataset.environmentIbl?.startsWith('pmrem:furnace-amber+service-cyan:intensity-')
-        && canvas?.dataset.environmentLighting?.includes('+ibl:pmrem+')
-        && canvas?.dataset.environmentTone?.includes('+ibl-');
-    })()`, 'P21-B refinery IBL production lighting', 45_000);
+      return Boolean(canvas?.dataset.environmentP21Budget && canvas?.dataset.environmentIbl && canvas?.dataset.environmentTone);
+    })()`, 'P21-E refinery adaptive effect budget', 45_000);
+
+    const p21eState = await evaluate(`(() => {
+      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery');
+      return {
+        tier: canvas?.dataset.renderTier ?? '',
+        quality: canvas?.dataset.graphicsQuality ?? '',
+        budget: canvas?.dataset.environmentP21Budget ?? '',
+        selection: canvas?.dataset.graphicsPathSelection ?? '',
+      };
+    })()`);
+    const p21eBudget = parseP21EffectBudget(p21eState?.budget);
+    const p21eExpected = p21eBudget ? P21_EFFECT_BUDGETS[p21eBudget.tier] : null;
+    if (!p21eBudget || !p21eExpected || p21eState.tier !== p21eBudget.tier
+      || Math.abs(p21eBudget.ibl - p21eExpected.ibl) > 0.001
+      || Math.abs(p21eBudget.bloom - p21eExpected.bloom) > 0.001
+      || Math.abs(p21eBudget.contact - p21eExpected.contact) > 0.001
+      || Math.abs(p21eBudget.atmosphere - p21eExpected.atmosphere) > 0.001
+      || p21eBudget.critical !== 1) {
+      throw new Error(`P21-E refinery adaptive budget telemetry is invalid: ${JSON.stringify({ state: p21eState, parsed: p21eBudget })}`);
+    }
 
     const p21bEnabled = await evaluate(`(() => {
       const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery');
@@ -1960,10 +2001,15 @@ try {
         selection: canvas?.dataset.graphicsPathSelection ?? '',
       };
     })()`);
-    if (!p21bEnabled?.ibl.startsWith('pmrem:furnace-amber+service-cyan:intensity-')
-      || !p21bEnabled?.lighting.includes('+ibl:pmrem+')
-      || !p21bEnabled?.tone.includes('+ibl-')) {
-      throw new Error(`P21-B refinery IBL production telemetry is incomplete: ${JSON.stringify(p21bEnabled)}`);
+    const p21bShouldBeOn = p21bEnabled?.selection === 'qa-explicit' || p21eExpected.ibl >= 0.5;
+    if (p21bShouldBeOn
+      ? (!p21bEnabled?.ibl.startsWith('pmrem:furnace-amber+service-cyan:intensity-')
+        || !p21bEnabled?.lighting.includes('+ibl:pmrem+')
+        || !p21bEnabled?.tone.includes('+ibl-'))
+      : (p21bEnabled?.ibl !== 'off:adaptive-budget'
+        || !p21bEnabled?.lighting.includes('+ibl:off+')
+        || !p21bEnabled?.tone.includes('+ibl-off'))) {
+      throw new Error(`P21-B/P21-E refinery IBL telemetry is incomplete: ${JSON.stringify(p21bEnabled)}`);
     }
 
     if (requestedGraphicsPath) {
@@ -2017,8 +2063,8 @@ try {
       || !p21cEnabled.sources.includes('+practical:')
       || !p21cEnabled.sources.includes('+vfx:muzzle-')
       || p21cEnabled.excluded !== 'hud+enemies+hazards+objectives+loot+interactables'
-      || p21cEnabled.cost !== '1.00') {
-      throw new Error(`P21-C refinery bloom production telemetry is incomplete: ${JSON.stringify(p21cEnabled)}`);
+      || Math.abs(Number(p21cEnabled.cost) - p21eExpected.bloom) > 0.001) {
+      throw new Error(`P21-C/P21-E refinery bloom production telemetry is incomplete: ${JSON.stringify(p21cEnabled)}`);
     }
 
     if (requestedGraphicsPath) {
@@ -2082,7 +2128,6 @@ try {
     await waitFor(`(() => {
       const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery');
       return canvas?.dataset.environmentContactDepth?.startsWith('grounding:refinery-contact-grounding-v1:')
-        && canvas.dataset.environmentContactDepth.includes(':instances-10:triangles-20:draws-1:alpha-32:opacity-0.26')
         && canvas?.dataset.environmentContactDepthProtected === 'hud+enemies+hazards+objectives+loot+interactables';
     })()`, 'P21-D1 refinery contact-depth production path', 20_000);
 
@@ -2094,10 +2139,14 @@ try {
         selection: canvas?.dataset.graphicsPathSelection ?? '',
       };
     })()`);
+    const p21d1ContactMatch = p21d1Enabled?.contactDepth.match(/:instances-(\d+):triangles-(\d+):draws-1:alpha-32:opacity-0\.26/);
+    const p21d1ExpectedInstances = Math.max(1, Math.round(10 * p21eExpected.contact));
     if (!p21d1Enabled?.contactDepth.startsWith('grounding:refinery-contact-grounding-v1:')
-      || !p21d1Enabled.contactDepth.includes(':instances-10:triangles-20:draws-1:alpha-32:opacity-0.26')
+      || !p21d1ContactMatch
+      || Number(p21d1ContactMatch[1]) !== p21d1ExpectedInstances
+      || Number(p21d1ContactMatch[2]) !== p21d1ExpectedInstances * 2
       || p21d1Enabled.protected !== 'hud+enemies+hazards+objectives+loot+interactables') {
-      throw new Error(`P21-D1 refinery contact-depth production telemetry is incomplete: ${JSON.stringify(p21d1Enabled)}`);
+      throw new Error(`P21-D1/P21-E refinery contact-depth production telemetry is incomplete: ${JSON.stringify(p21d1Enabled)}`);
     }
 
     if (requestedGraphicsPath) {
@@ -2139,9 +2188,9 @@ try {
 
     await waitFor(`(() => {
       const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery');
-      return canvas?.dataset.environmentAtmosphere?.startsWith('fog:refinery-depth-atmosphere-v1:near-18.0:far-42.0:color-160d08:exposure-0.98')
+      return Boolean(canvas?.dataset.environmentAtmosphere)
         && canvas?.dataset.environmentAtmosphereProtected === 'hud+enemies+hazards+objectives+loot+interactables'
-        && canvas?.dataset.environmentTone?.includes('+atmosphere-refinery-depth-atmosphere-v1');
+        && Boolean(canvas?.dataset.environmentTone);
     })()`, 'P21-D2 refinery atmosphere production path', 20_000);
 
     const p21d2Enabled = await evaluate(`(() => {
@@ -2153,11 +2202,15 @@ try {
         contactDepth: canvas?.dataset.environmentContactDepth ?? '',
       };
     })()`);
-    if (!p21d2Enabled?.atmosphere.startsWith('fog:refinery-depth-atmosphere-v1:near-18.0:far-42.0:color-160d08:exposure-0.98')
+    const p21d2ShouldBeOn = p21bEnabled?.selection === 'qa-explicit' || p21eExpected.atmosphere >= 0.5;
+    if ((p21d2ShouldBeOn
+        ? (!p21d2Enabled?.atmosphere.startsWith('fog:refinery-depth-atmosphere-v1:')
+          || !p21d2Enabled.tone.includes('+atmosphere-refinery-depth-atmosphere-v1'))
+        : (p21d2Enabled?.atmosphere !== 'off:adaptive-budget'
+          || !p21d2Enabled.tone.includes('+atmosphere-off')))
       || p21d2Enabled.protected !== 'hud+enemies+hazards+objectives+loot+interactables'
-      || !p21d2Enabled.tone.includes('+atmosphere-refinery-depth-atmosphere-v1')
       || !p21d2Enabled.contactDepth.startsWith('grounding:refinery-contact-grounding-v1:')) {
-      throw new Error(`P21-D2 refinery atmosphere production telemetry is incomplete: ${JSON.stringify(p21d2Enabled)}`);
+      throw new Error(`P21-D2/P21-E refinery atmosphere production telemetry is incomplete: ${JSON.stringify(p21d2Enabled)}`);
     }
 
     if (requestedGraphicsPath) {
@@ -2201,6 +2254,7 @@ try {
       }
       console.log(`BROWSER_P21D2_ATMOSPHERE_PASS viewport=${viewportMode} atmosphere=${p21d2Enabled.atmosphere} protected=${p21d2Enabled.protected} contact=independent screenshots=${p21d2BeforeScreenshotPath}+${p21d2AfterScreenshotPath}`);
     }
+    console.log(`BROWSER_P21E_ADAPTIVE_EFFECTS_PASS viewport=${viewportMode} tier=${p21eBudget.tier} quality=${p21eState.quality} budget=${p21eState.budget}`);
   }
   await waitFor(`(() => {
     const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || '').trim());
