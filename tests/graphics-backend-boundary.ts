@@ -205,7 +205,10 @@ assert(
     && browserSmokeSource.includes("canvas.dataset.refineryIblQa = 'off'")
     && browserSmokeSource.includes("canvas.dataset.refineryBloomQa = 'off'")
     && browserSmokeSource.includes("canvas.dataset.refineryContactDepthQa = 'off'")
-    && browserSmokeSource.includes("canvas.dataset.refineryAtmosphereQa = 'off'"),
+    && browserSmokeSource.includes("canvas.dataset.refineryAtmosphereQa = 'off'")
+    && browserSmokeSource.includes("call('Input.dispatchTouchEvent'")
+    && browserSmokeSource.includes("type: 'touchStart'")
+    && browserSmokeSource.includes("type: 'touchEnd'"),
   'P21-A2 browser QA must reuse the existing deterministic runtime smoke as the explicit comparison entry point.',
 );
 assert(
