@@ -12,6 +12,7 @@ function assert(condition: unknown, message: string): asserts condition {
 const app = read('src/App.tsx');
 const combat = read('src/components/GameCanvas.tsx');
 const css = read('src/missionPresentation.css');
+const combatHudCss = read('src/combatHudGlance.css');
 const main = read('src/main.tsx');
 const shipHub = read('src/components/ShipHub.tsx');
 const campaign = read('src/game/campaign.ts');
@@ -48,6 +49,16 @@ assert(
     && css.includes('env(safe-area-inset-top)')
     && css.includes('@media (pointer: coarse), (max-width: 900px)'),
   'Mission callouts must respect reduced motion, safe areas, and coarse-pointer layouts.',
+);
+
+assert(
+  combat.includes("? { kind: 'event', label: `DROP VECTOR // OP T${activeMission.operationTier ?? 1}`, detail: activeMission.title }")
+    && combatHudCss.includes('.transient-alert-lane[data-presentation="deployment"]')
+    && combatHudCss.includes('top: max(.45rem, env(safe-area-inset-top))')
+    && combatHudCss.includes('bottom: auto')
+    && combatHudCss.includes('text-overflow: ellipsis')
+    && combatHudCss.includes('white-space: nowrap'),
+  'Short-landscape deployment presentation must stay in a compact top banner and leave objective detail to the fixed objective card.',
 );
 
 assert(
