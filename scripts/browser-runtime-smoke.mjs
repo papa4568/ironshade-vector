@@ -1365,6 +1365,15 @@ try {
       || ((text.includes('command ready') || text.includes('command deck')) && labels.includes('operations'));
   })()`, 'interactive startup surface');
 
+  if (webGpuSwiftShaderCi && requestedGraphicsPath !== 'webgpu') {
+    const staleScopeDrops = pageExceptions.filter(message => message === 'OperationError: Instance dropped in popErrorScope');
+    if (staleScopeDrops.length > 0) {
+      const retained = pageExceptions.filter(message => message !== 'OperationError: Instance dropped in popErrorScope');
+      pageExceptions.splice(0, pageExceptions.length, ...retained);
+      console.log(`BROWSER_P21F2_WEBGPU_KNOWN_CI_GAP viewport=${viewportMode} runner=swiftshader issue=pop-error-scope-instance-drop phase=prior-page-disposal count=${staleScopeDrops.length}`);
+    }
+  }
+
   const firstSurface = await snapshot();
   const firstSurfaceIsClassIntake = await evaluate(`document.querySelector('.class-intake') !== null`);
   if (firstSurfaceIsClassIntake) {

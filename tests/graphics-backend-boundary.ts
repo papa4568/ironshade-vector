@@ -234,6 +234,9 @@ assert(
     && browserSmokeSource.includes('P21-F2 requires a real WebGPU desktop comparison')
     && browserSmokeSource.includes("message === 'OperationError: Instance dropped in popErrorScope'")
     && browserSmokeSource.includes('BROWSER_P21F2_WEBGPU_KNOWN_CI_GAP')
+    && browserSmokeSource.includes("requestedGraphicsPath !== 'webgpu'")
+    && browserSmokeSource.includes('phase=prior-page-disposal')
+    && browserSmokeSource.includes('staleScopeDrops')
     && browserSmokeSource.includes('unexpectedWebGpuExceptions')
     && browserSmokeSource.includes('webgpuFallbackReason'),
   'P21-F2 Browser E2E must preserve explicit WebGL2/WebGPU QA paths and retain deterministic stack-off/stack-on comparison evidence.',
