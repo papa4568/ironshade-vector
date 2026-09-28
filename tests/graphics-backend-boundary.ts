@@ -217,7 +217,10 @@ assert(
   browserWorkflowSource.includes('BROWSER_E2E_GRAPHICS_PATH=webgl2 node scripts/browser-runtime-smoke.mjs')
     && browserWorkflowSource.includes('BROWSER_E2E_GRAPHICS_PATH=webgpu')
     && browserWorkflowSource.includes('p21f1-webgpu.png')
-    && browserWorkflowSource.includes('p21f2-stack-*.png'),
+    && browserWorkflowSource.includes('p21f2-stack-*.png')
+    && browserWorkflowSource.includes('--enable-unsafe-webgpu')
+    && browserWorkflowSource.includes('--use-webgpu-adapter=swiftshader')
+    && browserWorkflowSource.includes('--use-gpu-in-tests'),
   'P21-F2 Browser E2E must preserve explicit WebGL2/WebGPU QA paths and retain deterministic stack-off/stack-on comparison evidence.',
 );
 assert(
