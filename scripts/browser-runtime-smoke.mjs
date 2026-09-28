@@ -28,6 +28,8 @@ const p21bBeforeScreenshotPath = process.env.BROWSER_E2E_P21B_BEFORE_SCREENSHOT 
 const p21bAfterScreenshotPath = process.env.BROWSER_E2E_P21B_AFTER_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21b-ibl-on.png');
 const p21cBeforeScreenshotPath = process.env.BROWSER_E2E_P21C_BEFORE_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21c-bloom-off.png');
 const p21cAfterScreenshotPath = process.env.BROWSER_E2E_P21C_AFTER_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21c-bloom-on.png');
+const p21d1BeforeScreenshotPath = process.env.BROWSER_E2E_P21D1_BEFORE_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21d1-contact-off.png');
+const p21d1AfterScreenshotPath = process.env.BROWSER_E2E_P21D1_AFTER_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21d1-contact-on.png');
 const p22cPrimaryJourney = targetLocation === 'asteroid-refinery';
 const p22cEvidence = { viewport: viewportMode, location: targetLocation };
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -2073,6 +2075,64 @@ try {
       if (!restoredCost) throw new Error('P21-C could not restore full bloom cost after runtime-control verification.');
       await waitFor(`[...document.querySelectorAll('canvas')].some(canvas => canvas.dataset.environmentBloom?.includes(':cost-1.00:'))`, 'P21-C restored bloom runtime cost');
       console.log(`BROWSER_P21C_BLOOM_PASS viewport=${viewportMode} bloom=${p21cEnabled.bloom} sources=${p21cEnabled.sources} excluded=${p21cEnabled.excluded} costControl=1.00>0.45>1.00 screenshots=${p21cBeforeScreenshotPath}+${p21cAfterScreenshotPath}`);
+    }
+
+    await waitFor(`(() => {
+      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery');
+      return canvas?.dataset.environmentContactDepth?.startsWith('grounding:refinery-contact-grounding-v1:')
+        && canvas.dataset.environmentContactDepth.includes(':instances-10:triangles-20:draws-1:alpha-32:opacity-0.26')
+        && canvas?.dataset.environmentContactDepthProtected === 'hud+enemies+hazards+objectives+loot+interactables';
+    })()`, 'P21-D1 refinery contact-depth production path', 20_000);
+
+    const p21d1Enabled = await evaluate(`(() => {
+      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery');
+      return {
+        contactDepth: canvas?.dataset.environmentContactDepth ?? '',
+        protected: canvas?.dataset.environmentContactDepthProtected ?? '',
+        selection: canvas?.dataset.graphicsPathSelection ?? '',
+      };
+    })()`);
+    if (!p21d1Enabled?.contactDepth.startsWith('grounding:refinery-contact-grounding-v1:')
+      || !p21d1Enabled.contactDepth.includes(':instances-10:triangles-20:draws-1:alpha-32:opacity-0.26')
+      || p21d1Enabled.protected !== 'hud+enemies+hazards+objectives+loot+interactables') {
+      throw new Error(`P21-D1 refinery contact-depth production telemetry is incomplete: ${JSON.stringify(p21d1Enabled)}`);
+    }
+
+    if (requestedGraphicsPath) {
+      const readProtectedCueState = () => evaluate(`(() => ({
+        interactables: Boolean(document.querySelector('canvas')?.dataset.interactableReadability),
+        hazards: Boolean(document.querySelector('canvas')?.dataset.hazardReadability),
+        loot: Boolean(document.querySelector('canvas')?.dataset.lootVisual),
+        controls: Boolean(document.querySelector('[aria-label="Touch combat controls"]') || document.querySelector('.fire-button')),
+        mission: Boolean(document.querySelector('.mission-chip')),
+      }))()`);
+      const cuesBefore = await readProtectedCueState();
+      const disabled = await evaluate(`(() => {
+        const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery');
+        if (!(canvas instanceof HTMLCanvasElement)) return false;
+        canvas.dataset.refineryContactDepthQa = 'off';
+        return true;
+      })()`);
+      if (!disabled) throw new Error('P21-D1 could not disable refinery contact depth for the deterministic baseline capture.');
+      await waitFor(`[...document.querySelectorAll('canvas')].some(canvas => canvas.dataset.environmentVisual === 'authored-refinery' && canvas.dataset.environmentContactDepth === 'off:qa-baseline')`, 'P21-D1 contact-depth-off baseline');
+      await sleep(120);
+      await captureScreenshot(p21d1BeforeScreenshotPath);
+
+      const restored = await evaluate(`(() => {
+        const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery');
+        if (!(canvas instanceof HTMLCanvasElement)) return false;
+        canvas.dataset.refineryContactDepthQa = 'on';
+        return true;
+      })()`);
+      if (!restored) throw new Error('P21-D1 could not restore refinery contact depth after the baseline capture.');
+      await waitFor(`[...document.querySelectorAll('canvas')].some(canvas => canvas.dataset.environmentVisual === 'authored-refinery' && canvas.dataset.environmentContactDepth?.startsWith('grounding:refinery-contact-grounding-v1:'))`, 'P21-D1 contact-depth-on comparison');
+      await sleep(120);
+      await captureScreenshot(p21d1AfterScreenshotPath);
+      const cuesAfter = await readProtectedCueState();
+      if (JSON.stringify(cuesAfter) !== JSON.stringify(cuesBefore)) {
+        throw new Error(`P21-D1 contact-depth toggle changed protected gameplay/UI cue availability: before=${JSON.stringify(cuesBefore)} after=${JSON.stringify(cuesAfter)}`);
+      }
+      console.log(`BROWSER_P21D1_CONTACT_DEPTH_PASS viewport=${viewportMode} contact=${p21d1Enabled.contactDepth} protected=${p21d1Enabled.protected} screenshots=${p21d1BeforeScreenshotPath}+${p21d1AfterScreenshotPath}`);
     }
   }
   await waitFor(`(() => {

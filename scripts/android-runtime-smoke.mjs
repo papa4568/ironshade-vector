@@ -490,6 +490,8 @@ if (fastResumeOnly) {
       bloom: document.querySelector('canvas')?.dataset.environmentBloom ?? '',
       bloomSources: document.querySelector('canvas')?.dataset.environmentBloomSources ?? '',
       bloomExcluded: document.querySelector('canvas')?.dataset.environmentBloomExcluded ?? '',
+      contactDepth: document.querySelector('canvas')?.dataset.environmentContactDepth ?? '',
+      contactDepthProtected: document.querySelector('canvas')?.dataset.environmentContactDepthProtected ?? '',
     };
   })()`);
   if (fastResumed.title !== 'Ironshade Vector' || fastResumed.canvases < 1 || !fastResumed.controls) {
@@ -505,6 +507,12 @@ if (fastResumeOnly) {
     throw new Error(`Fast Android P21-C refinery bloom did not survive pause/resume: ${JSON.stringify(fastResumed)}`);
   }
   console.log(`ANDROID_P21C_BLOOM_RESUME_PASS bloom=${fastResumed.bloom} sources=${fastResumed.bloomSources} excluded=${fastResumed.bloomExcluded}`);
+  if (!fastResumed.contactDepth.startsWith('grounding:refinery-contact-grounding-v1:')
+    || !fastResumed.contactDepth.includes(':instances-10:triangles-20:draws-1:alpha-32:opacity-0.26')
+    || fastResumed.contactDepthProtected !== 'hud+enemies+hazards+objectives+loot+interactables') {
+    throw new Error(`Fast Android P21-D1 refinery contact depth did not survive pause/resume: ${JSON.stringify(fastResumed)}`);
+  }
+  console.log(`ANDROID_P21D1_CONTACT_DEPTH_RESUME_PASS contact=${fastResumed.contactDepth} protected=${fastResumed.contactDepthProtected}`);
   console.log(`ANDROID_FAST_LIFECYCLE_RESUME_PASS canvases=${fastResumed.canvases} tutorialStep=${fastResumed.tutorialStep} location=${JSON.stringify(fastResumed.location)}`);
   session.close();
   await sleep(100);
@@ -853,6 +861,27 @@ if (fastSmoke) {
     throw new Error(`Android P21-C refinery bloom telemetry is incomplete: ${JSON.stringify(p21cBloom)}`);
   }
   console.log(`ANDROID_P21C_BLOOM_PASS bloom=${p21cBloom.bloom} sources=${p21cBloom.sources} excluded=${p21cBloom.excluded} cost=${p21cBloom.cost}`);
+
+  await waitFor(`(() => {
+    const canvas = document.querySelector('canvas');
+    return canvas?.dataset.environmentVisual === 'authored-refinery'
+      && canvas?.dataset.environmentContactDepth?.startsWith('grounding:refinery-contact-grounding-v1:')
+      && canvas.dataset.environmentContactDepth.includes(':instances-10:triangles-20:draws-1:alpha-32:opacity-0.26')
+      && canvas?.dataset.environmentContactDepthProtected === 'hud+enemies+hazards+objectives+loot+interactables';
+  })()`, 'Fast Android P21-D1 refinery contact depth', 20_000);
+  const p21d1ContactDepth = await evaluate(`(() => {
+    const canvas = document.querySelector('canvas');
+    return {
+      contactDepth: canvas?.dataset.environmentContactDepth ?? '',
+      protected: canvas?.dataset.environmentContactDepthProtected ?? '',
+    };
+  })()`);
+  if (!p21d1ContactDepth?.contactDepth.startsWith('grounding:refinery-contact-grounding-v1:')
+    || !p21d1ContactDepth.contactDepth.includes(':instances-10:triangles-20:draws-1:alpha-32:opacity-0.26')
+    || p21d1ContactDepth.protected !== 'hud+enemies+hazards+objectives+loot+interactables') {
+    throw new Error(`Android P21-D1 refinery contact-depth telemetry is incomplete: ${JSON.stringify(p21d1ContactDepth)}`);
+  }
+  console.log(`ANDROID_P21D1_CONTACT_DEPTH_PASS contact=${p21d1ContactDepth.contactDepth} protected=${p21d1ContactDepth.protected}`);
 
   const p22b1Geometry = await evaluate(`(() => {
     const readControl = selector => {

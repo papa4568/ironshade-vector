@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createRefineryIblTarget, REFINERY_IBL_PROFILE } from './refineryIbl';
 import { clampRefineryBloomCostScale, isRefineryBloomAssetLabel, REFINERY_BLOOM_LAYER, REFINERY_BLOOM_PROFILE, refineryBloomResolutionScale, refineryBloomStrengthForCost, RefineryBloomPipeline } from './refineryBloom';
+import { createRefineryContactDepthAlphaData, REFINERY_CONTACT_DEPTH_PROFILE, refineryContactDepthTelemetry } from './refineryContactDepth';
 import type { Contract } from './campaign';
 import type { EquipmentFaction } from './factionGear';
 import { getNextMissionObjectiveTarget } from './encounters';
@@ -801,6 +802,7 @@ export class ThreeCombatRenderer {
   private refineryDecals: THREE.InstancedMesh | null = null;
   private refineryGrimeDecals: THREE.InstancedMesh | null = null;
   private refineryContactShadows: THREE.InstancedMesh | null = null;
+  private refineryContactDepthTexture: THREE.DataTexture | null = null;
   private damagedVesselVapor: THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial> | null = null;
   private damagedVesselScorchDecals: THREE.InstancedMesh | null = null;
   private refineryLoadGeneration = 0;
@@ -1303,6 +1305,10 @@ export class ThreeCombatRenderer {
       materials.forEach(material => material.dispose());
       this.refineryContactShadows = null;
     }
+    if (this.refineryContactDepthTexture) {
+      this.refineryContactDepthTexture.dispose();
+      this.refineryContactDepthTexture = null;
+    }
     if (this.damagedVesselVapor) {
       this.damagedVesselVapor.geometry.dispose();
       this.damagedVesselVapor.material.dispose();
@@ -1359,6 +1365,8 @@ export class ThreeCombatRenderer {
     delete this.renderer.domElement.dataset.environmentBloomSources;
     delete this.renderer.domElement.dataset.environmentBloomExcluded;
     delete this.renderer.domElement.dataset.environmentBloomCost;
+    delete this.renderer.domElement.dataset.environmentContactDepth;
+    delete this.renderer.domElement.dataset.environmentContactDepthProtected;
     delete this.renderer.domElement.dataset.environmentMaterials;
     delete this.renderer.domElement.dataset.environmentVfx;
     delete this.renderer.domElement.dataset.environmentTone;
@@ -1509,27 +1517,43 @@ export class ThreeCombatRenderer {
     this.authoredEnvironmentRoot.add(grime);
 
     const contactGeometry = new THREE.PlaneGeometry(2.4, 1.6);
+    const contactAlpha = createRefineryContactDepthAlphaData();
+    const contactTexture = new THREE.DataTexture(
+      contactAlpha,
+      REFINERY_CONTACT_DEPTH_PROFILE.alphaTextureSize,
+      REFINERY_CONTACT_DEPTH_PROFILE.alphaTextureSize,
+      THREE.RGBAFormat,
+    );
+    contactTexture.name = 'refinery-contact-depth-alpha';
+    contactTexture.minFilter = THREE.LinearFilter;
+    contactTexture.magFilter = THREE.LinearFilter;
+    contactTexture.generateMipmaps = false;
+    contactTexture.needsUpdate = true;
+    this.refineryContactDepthTexture = contactTexture;
     const contactMaterial = new THREE.MeshBasicMaterial({
       color: 0x050403,
+      map: contactTexture,
       transparent: true,
-      opacity: 0.22,
+      opacity: REFINERY_CONTACT_DEPTH_PROFILE.opacity,
       depthWrite: false,
       side: THREE.DoubleSide,
+      toneMapped: false,
     });
-    const contactShadows = new THREE.InstancedMesh(contactGeometry, contactMaterial, 10);
+    const contactShadows = new THREE.InstancedMesh(contactGeometry, contactMaterial, REFINERY_CONTACT_DEPTH_PROFILE.instanceLimit);
     const contactPoints = [
       [0.29, 0.67, 1.00, 0.72], [0.50, 0.26, 1.16, 0.84], [0.71, 0.67, 1.00, 0.72],
       [0.50, 0.09, 1.55, 0.62], [0.18, 0.24, 0.72, 0.52], [0.82, 0.24, 0.72, 0.52],
       [0.18, 0.76, 0.72, 0.52], [0.82, 0.76, 0.72, 0.52], [0.29, 0.52, 0.54, 0.40],
       [0.71, 0.52, 0.54, 0.40],
     ];
-    contactPoints.forEach(([x, z, sx, sz], index) => {
+    contactPoints.slice(0, REFINERY_CONTACT_DEPTH_PROFILE.instanceLimit).forEach(([x, z, sx, sz], index) => {
       transform.position.set(width * x, 0.021, height * z);
       transform.rotation.set(-Math.PI / 2, 0, index * 0.31);
       transform.scale.set(sx, sz, 1);
       transform.updateMatrix();
       contactShadows.setMatrixAt(index, transform.matrix);
     });
+    contactShadows.count = Math.min(contactPoints.length, REFINERY_CONTACT_DEPTH_PROFILE.instanceLimit);
     contactShadows.instanceMatrix.needsUpdate = true;
     contactShadows.renderOrder = 1;
     contactShadows.name = 'refinery-contact-darkening';
@@ -1545,6 +1569,16 @@ export class ThreeCombatRenderer {
     this.refinerySteam.material.opacity = (0.1 + Math.sin(state.time * 1.7) * 0.025) * transparencyScale;
     if (this.refineryDecals) this.refineryDecals.visible = true;
     if (this.refineryGrimeDecals) this.refineryGrimeDecals.visible = !reducedEffects;
+
+    if (this.refineryContactShadows) {
+      const qaDisabled = this.renderer.domElement.dataset.graphicsPathSelection === 'qa-explicit'
+        && this.renderer.domElement.dataset.refineryContactDepthQa === 'off';
+      this.refineryContactShadows.visible = !qaDisabled;
+      this.renderer.domElement.dataset.environmentContactDepth = qaDisabled
+        ? 'off:qa-baseline'
+        : refineryContactDepthTelemetry(this.refineryContactShadows.count);
+      this.renderer.domElement.dataset.environmentContactDepthProtected = REFINERY_CONTACT_DEPTH_PROFILE.protectedCueGroups.join('+');
+    }
   }
 
   private buildDamagedVesselAtmospherics(width: number, height: number) {

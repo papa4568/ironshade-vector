@@ -362,6 +362,7 @@ jobs:
             browser-e2e-${{ matrix.viewport }}*.performance.json
             browser-e2e-${{ matrix.viewport }}-p21b-ibl-*.png
             browser-e2e-${{ matrix.viewport }}-p21c-bloom-*.png
+            browser-e2e-${{ matrix.viewport }}-p21d1-contact-*.png
             browser-e2e-${{ matrix.viewport }}-damaged-vessel.png
             browser-e2e-${{ matrix.viewport }}-spin-habitat.png
             browser-e2e-${{ matrix.viewport }}-jovian-harvester.png
