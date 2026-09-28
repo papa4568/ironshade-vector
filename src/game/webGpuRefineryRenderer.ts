@@ -207,7 +207,7 @@ export class WebGpuRefineryRenderer {
       material.metalness = 0.24;
       const mesh = new this.THREE.Mesh(geometry, material);
       mesh.name = `p21-f2-webgpu-practical-${index + 1}`;
-      mesh.position.set(...spec.position);
+      mesh.position.set(spec.position[0], spec.position[1], spec.position[2]);
       this.scene.add(mesh);
       this.practicalMeshes.push(mesh);
       this.ownedGeometry.push(geometry);
