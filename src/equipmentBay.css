@@ -1775,3 +1775,31 @@
     font-size: var(--p19-compact-type-decision, max(14px, .875rem));
   }
 }
+
+
+/* P22-C // Keep blocker + quick-read visible together under Large Text in short landscape.
+   Give the required blocker explanation the full dialog width, then place the quick decision
+   surfaces side by side below it instead of shrinking the copy. */
+@media (orientation: landscape) and (max-width: 1000px) and (max-height: 500px) {
+  .armory-item-modal .gear-summary-grid--quick > .iv-requirement {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .armory-item-modal .iv-requirement__copy {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px 8px;
+    padding-inline-start: 0;
+    line-height: 1.25;
+  }
+
+  .armory-item-modal .gear-summary-grid--quick > .gear-quick-read {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .armory-item-modal .gear-summary-grid--quick > .quick-loadout-impact {
+    grid-column: 2;
+    grid-row: 2;
+  }
+}
