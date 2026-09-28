@@ -1770,6 +1770,7 @@
   .armory-item-modal .iv-requirement__state b,
   .armory-item-modal .compare-head b,
   .armory-item-modal .gear-quick-read b,
+  .armory-item-modal .loadout-impact-heading b,
   .armory-item-modal .impact-values b {
     font-size: var(--p19-compact-type-decision, max(14px, .875rem));
   }
