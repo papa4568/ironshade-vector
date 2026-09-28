@@ -32,6 +32,8 @@ const p21d1BeforeScreenshotPath = process.env.BROWSER_E2E_P21D1_BEFORE_SCREENSHO
 const p21d1AfterScreenshotPath = process.env.BROWSER_E2E_P21D1_AFTER_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21d1-contact-on.png');
 const p21d2BeforeScreenshotPath = process.env.BROWSER_E2E_P21D2_BEFORE_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21d2-atmosphere-off.png');
 const p21d2AfterScreenshotPath = process.env.BROWSER_E2E_P21D2_AFTER_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21d2-atmosphere-on.png');
+const p21f2StackOffScreenshotPath = process.env.BROWSER_E2E_P21F2_STACK_OFF_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21f2-stack-off.png');
+const p21f2StackOnScreenshotPath = process.env.BROWSER_E2E_P21F2_STACK_ON_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21f2-stack-on.png');
 const p22cPrimaryJourney = targetLocation === 'asteroid-refinery' && requestedGraphicsPath !== 'webgpu';
 const p22cEvidence = { viewport: viewportMode, location: targetLocation };
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -348,10 +350,10 @@ async function p21F1WebGpuPrototypeAudit() {
     await waitFor(`(() => {
       const canvas = document.querySelector('canvas');
       return canvas?.dataset.webgpuInit === 'ready'
-        && canvas?.dataset.environmentVisual === 'authored-refinery-webgpu-prototype'
+        && canvas?.dataset.environmentVisual === 'authored-refinery-webgpu-p21f2'
         && canvas?.dataset.webgpuAssets === 'floor,processor,terminal'
         && canvas?.dataset.webgpuAssetPipeline === 'glb+ktx2+meshopt'
-        && canvas?.dataset.webgpuTsl === 'mesh-standard-node-color'
+        && canvas?.dataset.webgpuTsl === 'mesh-standard-node-color+render-pipeline+mrt-emissive'
         && canvas?.dataset.webgpuCameraParity === 'three-combat-v1'
         && canvas?.dataset.webgpuInputParity === 'ground-plane-raycast-v1';
     })()`, 'P21-F1 WebGPU TSL + authored refinery prototype', 45_000);
@@ -397,10 +399,10 @@ async function p21F1WebGpuPrototypeAudit() {
   if (state?.loaded === 'webgpu') {
     if (state.init !== 'ready'
       || state.backend !== 'webgpu'
-      || state.visual !== 'authored-refinery-webgpu-prototype'
+      || state.visual !== 'authored-refinery-webgpu-p21f2'
       || state.assets !== 'floor,processor,terminal'
       || state.assetPipeline !== 'glb+ktx2+meshopt'
-      || state.tsl !== 'mesh-standard-node-color'
+      || state.tsl !== 'mesh-standard-node-color+render-pipeline+mrt-emissive'
       || state.camera !== 'three-combat-v1'
       || state.input !== 'ground-plane-raycast-v1'
       || !/^[-0-9.]+,[-0-9.]+$/.test(state.pointer)) {
@@ -416,6 +418,123 @@ async function p21F1WebGpuPrototypeAudit() {
 
   console.log(`BROWSER_P21F1_WEBGPU_PASS viewport=${viewportMode} requested=webgpu loaded=${state.loaded} fallback=${state.fallback || 'none'} init=${state.init || 'not-started'} visual=${state.visual} assets=${state.assets || 'production-webgl2'} tsl=${state.tsl || 'fallback'} camera=${state.camera || 'production-webgl2'} input=${state.input || 'production-webgl2'} pointer=${state.pointer || 'production-webgl2'}`);
   return state;
+}
+
+async function p21F2RefineryParityAudit(backend) {
+  const visual = backend === 'webgpu' ? 'authored-refinery-webgpu-p21f2' : 'authored-refinery';
+  await waitFor(`(() => {
+    const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === ${JSON.stringify(visual)});
+    return Boolean(canvas?.dataset.environmentP21Budget
+      && canvas?.dataset.environmentIbl
+      && canvas?.dataset.environmentBloom
+      && canvas?.dataset.environmentContactDepth
+      && canvas?.dataset.environmentAtmosphere);
+  })()`, `P21-F2 ${backend} refinery effect stack`, 45_000);
+
+  const baseline = await evaluate(`(() => {
+    const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === ${JSON.stringify(visual)});
+    return {
+      loaded: canvas?.dataset.graphicsPathLoaded ?? '',
+      budget: canvas?.dataset.environmentP21Budget ?? '',
+      ibl: canvas?.dataset.environmentIbl ?? '',
+      bloom: canvas?.dataset.environmentBloom ?? '',
+      bloomSources: canvas?.dataset.environmentBloomSources ?? '',
+      bloomExcluded: canvas?.dataset.environmentBloomExcluded ?? '',
+      contact: canvas?.dataset.environmentContactDepth ?? '',
+      contactProtected: canvas?.dataset.environmentContactDepthProtected ?? '',
+      atmosphere: canvas?.dataset.environmentAtmosphere ?? '',
+      atmosphereProtected: canvas?.dataset.environmentAtmosphereProtected ?? '',
+      effectParity: canvas?.dataset.webgpuEffectParity ?? '',
+      parityGaps: canvas?.dataset.webgpuParityGaps ?? '',
+    };
+  })()`);
+  const parsedBudget = parseP21EffectBudget(baseline?.budget);
+  const expected = parsedBudget ? P21_EFFECT_BUDGETS[parsedBudget.tier] : null;
+  if (!parsedBudget || !expected
+    || Math.abs(parsedBudget.ibl - expected.ibl) > 0.001
+    || Math.abs(parsedBudget.bloom - expected.bloom) > 0.001
+    || Math.abs(parsedBudget.contact - expected.contact) > 0.001
+    || Math.abs(parsedBudget.atmosphere - expected.atmosphere) > 0.001
+    || parsedBudget.critical !== 1
+    || !baseline?.bloom.startsWith('selective:refinery-selective-v1:')
+    || !baseline?.contact.startsWith('grounding:refinery-contact-grounding-v1:')
+    || !baseline?.atmosphere.startsWith('fog:refinery-depth-atmosphere-v1:')
+    || baseline?.bloomExcluded !== 'hud+enemies+hazards+objectives+loot+interactables'
+    || baseline?.contactProtected !== 'hud+enemies+hazards+objectives+loot+interactables'
+    || baseline?.atmosphereProtected !== 'hud+enemies+hazards+objectives+loot+interactables') {
+    throw new Error(`P21-F2 ${backend} parity telemetry incomplete: ${JSON.stringify({ baseline, parsedBudget })}`);
+  }
+  if (backend === 'webgpu') {
+    if (baseline.loaded !== 'webgpu'
+      || !baseline.ibl.startsWith('proxy:furnace-amber+service-cyan:intensity-')
+      || baseline.effectParity !== 'ibl-proxy+selective-bloom+contact-depth+atmosphere+adaptive-budget'
+      || !baseline.parityGaps.includes('ibl-pmrem-generator-webgl-only:bounded-light-proxy')
+      || !baseline.parityGaps.includes('combat-vfx-full-scene:not-in-f1-prototype')) {
+      throw new Error(`P21-F2 WebGPU parity gaps/effect contract incomplete: ${JSON.stringify(baseline)}`);
+    }
+  } else if (!baseline.ibl.startsWith('pmrem:furnace-amber+service-cyan:intensity-')) {
+    throw new Error(`P21-F2 WebGL2 comparison did not expose the proven PMREM path: ${JSON.stringify(baseline)}`);
+  }
+
+  const disabled = await evaluate(`(() => {
+    const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === ${JSON.stringify(visual)});
+    if (!(canvas instanceof HTMLCanvasElement)) return false;
+    canvas.dataset.refineryIblQa = 'off';
+    canvas.dataset.refineryBloomQa = 'off';
+    canvas.dataset.refineryContactDepthQa = 'off';
+    canvas.dataset.refineryAtmosphereQa = 'off';
+    canvas.dataset.refineryBloomCost = '1';
+    return true;
+  })()`);
+  if (!disabled) throw new Error(`P21-F2 could not disable the ${backend} refinery stack.`);
+  await waitFor(`(() => {
+    const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === ${JSON.stringify(visual)});
+    return canvas?.dataset.environmentIbl === 'off:qa-baseline'
+      && canvas?.dataset.environmentBloom === 'off:qa-baseline'
+      && canvas?.dataset.environmentContactDepth === 'off:qa-baseline'
+      && canvas?.dataset.environmentAtmosphere === 'off:qa-baseline';
+  })()`, `P21-F2 ${backend} stack-off baseline`, 10_000);
+  await sleep(120);
+  await captureScreenshot(p21f2StackOffScreenshotPath);
+
+  const restored = await evaluate(`(() => {
+    const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === ${JSON.stringify(visual)});
+    if (!(canvas instanceof HTMLCanvasElement)) return false;
+    canvas.dataset.refineryIblQa = 'on';
+    canvas.dataset.refineryBloomQa = 'on';
+    canvas.dataset.refineryContactDepthQa = 'on';
+    canvas.dataset.refineryAtmosphereQa = 'on';
+    canvas.dataset.refineryBloomCost = '1';
+    return true;
+  })()`);
+  if (!restored) throw new Error(`P21-F2 could not restore the ${backend} refinery stack.`);
+  await waitFor(`(() => {
+    const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === ${JSON.stringify(visual)});
+    return canvas?.dataset.environmentIbl !== 'off:qa-baseline'
+      && canvas?.dataset.environmentBloom?.startsWith('selective:refinery-selective-v1:')
+      && canvas?.dataset.environmentContactDepth?.startsWith('grounding:refinery-contact-grounding-v1:')
+      && canvas?.dataset.environmentAtmosphere?.startsWith('fog:refinery-depth-atmosphere-v1:');
+  })()`, `P21-F2 ${backend} stack-on comparison`, 10_000);
+  await sleep(120);
+  await captureScreenshot(p21f2StackOnScreenshotPath);
+
+  const costReduced = await evaluate(`(() => {
+    const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === ${JSON.stringify(visual)});
+    if (!(canvas instanceof HTMLCanvasElement)) return false;
+    canvas.dataset.refineryBloomCost = '0.45';
+    return true;
+  })()`);
+  if (!costReduced) throw new Error(`P21-F2 could not reduce ${backend} bloom cost.`);
+  await waitFor(`[...document.querySelectorAll('canvas')].some(canvas => canvas.dataset.environmentVisual === ${JSON.stringify(visual)} && canvas.dataset.environmentBloom?.includes(':cost-0.45:'))`, `P21-F2 ${backend} bloom cost control`);
+  await evaluate(`(() => {
+    const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === ${JSON.stringify(visual)});
+    if (canvas instanceof HTMLCanvasElement) canvas.dataset.refineryBloomCost = '1';
+    return true;
+  })()`);
+  await waitFor(`[...document.querySelectorAll('canvas')].some(canvas => canvas.dataset.environmentVisual === ${JSON.stringify(visual)} && canvas.dataset.environmentBloom?.includes(':cost-1.00:'))`, `P21-F2 ${backend} bloom cost restore`);
+
+  console.log(`BROWSER_P21F2_REFINERY_PARITY_PASS viewport=${viewportMode} backend=${backend} budget=${baseline.budget} ibl=${baseline.ibl} bloom=${baseline.bloom} contact=${baseline.contact} atmosphere=${baseline.atmosphere} gaps=${baseline.parityGaps || 'none'} screenshots=${p21f2StackOffScreenshotPath}+${p21f2StackOnScreenshotPath}`);
+  return baseline;
 }
 
 async function classSelectionViewportAudit() {
@@ -2042,9 +2161,10 @@ try {
   }
   console.log(`BROWSER_P15_MISSION_PRESENTATION_PASS viewport=${viewportMode} deployment=non-blocking mode=${p15MissionPresentation.mode} title=${p15MissionPresentation.title}`);
   if (requestedGraphicsPath === 'webgpu') {
-    await p21F1WebGpuPrototypeAudit();
+    const p21f1State = await p21F1WebGpuPrototypeAudit();
+    if (p21f1State.loaded === 'webgpu') await p21F2RefineryParityAudit('webgpu');
     if (pageExceptions.length > 0) {
-      throw new Error(`P21-F1 WebGPU comparison observed uncaught page exceptions: ${JSON.stringify(pageExceptions)}`);
+      throw new Error(`P21-F2 WebGPU comparison observed uncaught page exceptions: ${JSON.stringify(pageExceptions)}`);
     }
     await captureScreenshot();
     console.log(`BROWSER_E2E_PASS title=${startup.title} route=command>operations>contracts>combat location=${targetLocation} input=keyboard viewport=${viewportMode} graphics=webgpu-comparison`);
@@ -2364,6 +2484,7 @@ try {
       console.log(`BROWSER_P21D2_ATMOSPHERE_PASS viewport=${viewportMode} atmosphere=${p21d2Enabled.atmosphere} protected=${p21d2Enabled.protected} contact=independent screenshots=${p21d2BeforeScreenshotPath}+${p21d2AfterScreenshotPath}`);
     }
     console.log(`BROWSER_P21E_ADAPTIVE_EFFECTS_PASS viewport=${viewportMode} tier=${p21eBudget.tier} quality=${p21eState.quality} budget=${p21eState.budget}`);
+    if (requestedGraphicsPath === 'webgl2') await p21F2RefineryParityAudit('webgl2');
   }
   await waitFor(`(() => {
     const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || '').trim());

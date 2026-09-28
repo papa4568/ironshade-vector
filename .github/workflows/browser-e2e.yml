@@ -365,6 +365,7 @@ jobs:
             browser-e2e-${{ matrix.viewport }}-p21c-bloom-*.png
             browser-e2e-${{ matrix.viewport }}-p21d1-contact-*.png
             browser-e2e-${{ matrix.viewport }}-p21d2-atmosphere-*.png
+            browser-e2e-${{ matrix.viewport }}*p21f2-stack-*.png
             browser-e2e-${{ matrix.viewport }}-p21f1-webgpu.png
             browser-e2e-${{ matrix.viewport }}-damaged-vessel.png
             browser-e2e-${{ matrix.viewport }}-spin-habitat.png

@@ -160,11 +160,27 @@ assert(
     && webgpuRendererSource.includes('MeshStandardNodeMaterial')
     && webgpuRendererSource.includes('ground-plane-raycast-v1')
     && webgpuRendererSource.includes('three-combat-v1')
-    && webgpuRendererSource.includes('this.renderer.dispose()')
-    && !webgpuRendererSource.includes("from './refineryBloom'")
-    && !webgpuRendererSource.includes("from './refineryContactDepth'")
-    && !webgpuRendererSource.includes("from './refineryAtmosphere'"),
-  'P21-F1 WebGPU prototype must prove TSL, authored refinery assets, camera/input parity, and teardown without porting the P21 effect stack.',
+    && webgpuRendererSource.includes('this.renderer.dispose()'),
+  'P21-F1 WebGPU prototype must preserve TSL, authored refinery assets, camera/input parity, and teardown while later parity work remains isolated behind the same QA path.',
+);
+assert(
+  webgpuRendererSource.includes("from './refineryIbl'")
+    && webgpuRendererSource.includes("from './refineryBloom'")
+    && webgpuRendererSource.includes("from './refineryContactDepth'")
+    && webgpuRendererSource.includes("from './refineryAtmosphere'")
+    && webgpuRendererSource.includes('new this.THREE.RenderPipeline(this.renderer)')
+    && webgpuRendererSource.includes('TSL.mrt({')
+    && webgpuRendererSource.includes('emissive: TSL.emissive')
+    && webgpuRendererSource.includes('setResolutionScale(refineryBloomResolutionScale(costScale))')
+    && webgpuRendererSource.includes('createRefineryContactDepthAlphaData()')
+    && webgpuRendererSource.includes('refineryAtmosphereTelemetry')
+    && webgpuRendererSource.includes('new AdaptiveRenderBudget(coarse)')
+    && webgpuRendererSource.includes('environmentP21Budget')
+    && webgpuRendererSource.includes('webgpuEffectParity')
+    && webgpuRendererSource.includes('webgpuParityGaps')
+    && webgpuRendererSource.includes('ibl-pmrem-generator-webgl-only:bounded-light-proxy')
+    && webgpuRendererSource.includes('authored-refinery-webgpu-p21f2'),
+  'P21-F2 WebGPU refinery path must reproduce the P21-B-E effect contracts with WebGPU-native selective bloom, bounded contact/atmosphere/adaptive scaling, and explicit parity gaps.',
 );
 
 assert(
@@ -181,7 +197,14 @@ assert(
     && browserSmokeSource.includes("url.searchParams.set('graphicsPath', requestedGraphicsPath)")
     && browserSmokeSource.includes('graphicsPathLoaded: canvas.dataset.graphicsPathLoaded')
     && browserSmokeSource.includes('BROWSER_P21A2_GRAPHICS_PATH_PASS')
-    && browserSmokeSource.includes('BROWSER_P21F1_WEBGPU_PASS'),
+    && browserSmokeSource.includes('BROWSER_P21F1_WEBGPU_PASS')
+    && browserSmokeSource.includes('BROWSER_P21F2_REFINERY_PARITY_PASS')
+    && browserSmokeSource.includes("await p21F2RefineryParityAudit('webgl2')")
+    && browserSmokeSource.includes("await p21F2RefineryParityAudit('webgpu')")
+    && browserSmokeSource.includes("canvas.dataset.refineryIblQa = 'off'")
+    && browserSmokeSource.includes("canvas.dataset.refineryBloomQa = 'off'")
+    && browserSmokeSource.includes("canvas.dataset.refineryContactDepthQa = 'off'")
+    && browserSmokeSource.includes("canvas.dataset.refineryAtmosphereQa = 'off'"),
   'P21-A2 browser QA must reuse the existing deterministic runtime smoke as the explicit comparison entry point.',
 );
 assert(
@@ -193,8 +216,9 @@ assert(
 assert(
   browserWorkflowSource.includes('BROWSER_E2E_GRAPHICS_PATH=webgl2 node scripts/browser-runtime-smoke.mjs')
     && browserWorkflowSource.includes('BROWSER_E2E_GRAPHICS_PATH=webgpu')
-    && browserWorkflowSource.includes('p21f1-webgpu.png'),
-  'P21-F1 Browser E2E must preserve explicit WebGL2 QA and add the isolated WebGPU refinery comparison path.',
+    && browserWorkflowSource.includes('p21f1-webgpu.png')
+    && browserWorkflowSource.includes('p21f2-stack-*.png'),
+  'P21-F2 Browser E2E must preserve explicit WebGL2/WebGPU QA paths and retain deterministic stack-off/stack-on comparison evidence.',
 );
 assert(
   androidSmokeSource.includes('ANDROID_P21A2_GRAPHICS_PATH_PASS selection=production-default requested=none loaded=webgl2')
@@ -252,4 +276,5 @@ assert(
 
 console.log('P21_A1_GRAPHICS_BACKEND_PASS default=webgl2 create=boundary render=delegated resize=preserved pointer=preserved dispose=preserved fallback=canvas2d');
 console.log('P21_A2_GRAPHICS_PATH_HARNESS_PASS selector=opt-in explicit=webgl2 refinery=existing-route telemetry=path+drawcalls+triangles+frame+tier android=production-default');
-console.log('P21_F1_WEBGPU_REFINERY_BACKEND_PASS production=webgl2 qa=webgpu lazy=true fallback=webgl2 assets=glb+ktx2+meshopt tsl=node-material camera=parity input=parity teardown=dispose effects=deferred');
+console.log('P21_F1_WEBGPU_REFINERY_BACKEND_PASS production=webgl2 qa=webgpu lazy=true fallback=webgl2 assets=glb+ktx2+meshopt tsl=node-material camera=parity input=parity teardown=dispose');
+console.log('P21_F2_WEBGPU_REFINERY_PARITY_PASS stack=ibl-proxy+selective-bloom+contact-depth+atmosphere budget=adaptive captures=webgl2+webgpu gaps=explicit production=webgl2');
