@@ -1,6 +1,20 @@
 name: Build Android APK
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'capacitor.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.nvmrc'
+      - 'vite.config.ts'
+      - 'index.html'
+      - '.github/workflows/android-apk.yml'
   workflow_dispatch:
     inputs:
       verification_mode:
