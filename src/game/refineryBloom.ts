@@ -73,7 +73,7 @@ export class RefineryBloomPipeline {
   private costScale = -1;
 
   constructor(
-    private readonly renderer: THREE.WebGLRenderer,
+    renderer: THREE.WebGLRenderer,
     private readonly scene: THREE.Scene,
     private readonly camera: THREE.Camera,
   ) {
