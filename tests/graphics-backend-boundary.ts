@@ -232,7 +232,7 @@ assert(
     && browserWorkflowSource.includes('--disable-gpu-watchdog')
     && browserWorkflowSource.includes('vk_swiftshader_icd.json')
     && browserWorkflowSource.includes('VK_DRIVER_FILES')
-    && browserWorkflowSource.includes('lvp_icd.x86_64.json')
+    && browserWorkflowSource.includes("-name 'lvp_icd.json' -o -name 'lvp_icd.x86_64.json'")
     && browserWorkflowSource.includes('mesa-vulkan-drivers xvfb xauth')
     && browserWorkflowSource.includes('xvfb-run -a -s "-screen 0 1280x720x24"')
     && browserWorkflowSource.includes("P21-F2 desktop Chrome mode: headed-xvfb lavapipe=")

@@ -139,8 +139,8 @@ jobs:
           if [[ "$BROWSER_E2E_VIEWPORT" == "desktop" ]]; then
             sudo apt-get update -y >/dev/null
             sudo apt-get install -y mesa-vulkan-drivers xvfb xauth >/dev/null
-            lavapipe_icd="/usr/share/vulkan/icd.d/lvp_icd.x86_64.json"
-            if [[ ! -f "$lavapipe_icd" ]]; then
+            lavapipe_icd="$(find /usr/share/vulkan/icd.d -maxdepth 1 \( -name 'lvp_icd.json' -o -name 'lvp_icd.x86_64.json' \) -print -quit)"
+            if [[ -z "$lavapipe_icd" ]]; then
               echo "::error::Mesa Lavapipe ICD is required for the headed P21-F2 WebGPU presentation gate."
               find /usr/share/vulkan/icd.d -maxdepth 1 -type f -print 2>/dev/null || true
               exit 1
