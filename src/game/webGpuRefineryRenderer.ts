@@ -1,11 +1,4 @@
 import type { ThreeCombatRenderer } from './threeCombatRenderer';
-import { REFINERY_ASSET_FAMILIES } from './graphicsAssetManifest';
-import {
-  configureGraphicsAssetRenderer,
-  instantiateGraphicsAsset,
-  selectGraphicsAssetSpec,
-  type GraphicsAssetInstance,
-} from './graphicsAssets';
 
 const WORLD_SCALE = 0.02;
 const FLOOR_Y = 0;
@@ -30,7 +23,7 @@ export class WebGpuRefineryRenderer {
   private readonly playerRoot: InstanceType<typeof import('three/webgpu')['Group']>;
   private readonly ownedGeometry: Array<{ dispose(): void }> = [];
   private readonly ownedMaterial: Array<{ dispose(): void }> = [];
-  private readonly assets: GraphicsAssetInstance[] = [];
+  private readonly assets: Array<{ release(): void }> = [];
   private disposed = false;
   private width = 1;
   private height = 1;
@@ -78,9 +71,11 @@ export class WebGpuRefineryRenderer {
     const adapter = await gpu.requestAdapter();
     if (!adapter) throw new Error('WebGPU adapter unavailable');
 
-    const [THREE, TSL] = await Promise.all([
+    const [THREE, TSL, graphicsAssets, graphicsAssetManifest] = await Promise.all([
       import('three/webgpu'),
       import('three/tsl'),
+      import('./graphicsAssets'),
+      import('./graphicsAssetManifest'),
     ]);
     const renderer = new THREE.WebGPURenderer({
       canvas,
@@ -90,11 +85,15 @@ export class WebGpuRefineryRenderer {
     });
     try {
       await renderer.init();
-      configureGraphicsAssetRenderer(
-        renderer as unknown as Parameters<typeof configureGraphicsAssetRenderer>[0],
+      graphicsAssets.configureGraphicsAssetRenderer(
+        renderer as unknown as Parameters<typeof graphicsAssets.configureGraphicsAssetRenderer>[0],
       );
       const instance = new WebGpuRefineryRenderer(canvas, coarse, THREE, renderer);
-      await instance.initializePrototype(TSL);
+      await instance.initializePrototype(
+        TSL,
+        graphicsAssets,
+        graphicsAssetManifest.REFINERY_ASSET_FAMILIES,
+      );
       return instance;
     } catch (error) {
       renderer.dispose();
@@ -102,7 +101,11 @@ export class WebGpuRefineryRenderer {
     }
   }
 
-  private async initializePrototype(TSL: typeof import('three/tsl')) {
+  private async initializePrototype(
+    TSL: typeof import('three/tsl'),
+    graphicsAssets: typeof import('./graphicsAssets'),
+    refineryAssetFamilies: typeof import('./graphicsAssetManifest')['REFINERY_ASSET_FAMILIES'],
+  ) {
     const platformGeometry = new this.THREE.PlaneGeometry(28, 20);
     const platformMaterial = new this.THREE.MeshStandardNodeMaterial();
     platformMaterial.colorNode = TSL.color(0x293134);
@@ -134,9 +137,9 @@ export class WebGpuRefineryRenderer {
     };
     const detailScale = this.coarse ? 0.55 : 0.78;
     for (const key of PROTOTYPE_ASSET_KEYS) {
-      const spec = selectGraphicsAssetSpec(REFINERY_ASSET_FAMILIES[key], detailScale);
+      const spec = graphicsAssets.selectGraphicsAssetSpec(refineryAssetFamilies[key], detailScale);
       if (!spec) throw new Error(`P21-F1 refinery asset unavailable: ${key}`);
-      const asset = await instantiateGraphicsAsset(spec);
+      const asset = await graphicsAssets.instantiateGraphicsAsset(spec);
       if (this.disposed) {
         asset.release();
         throw new Error('P21-F1 renderer disposed during asset initialization');
