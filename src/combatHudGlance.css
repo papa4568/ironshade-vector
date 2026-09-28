@@ -1038,7 +1038,7 @@
   }
 
   .game-root .transient-alert-lane.event {
-    width: min(29rem, 42vw);
+    width: min(19rem, 35vw);
   }
 
   .game-root .transient-alert-lane.event > .combat-alert {
