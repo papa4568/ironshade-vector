@@ -625,10 +625,14 @@ async function mobileCombatLayoutAudit() {
       ratios: Object.fromEntries(Object.entries(actual).map(([key, value]) => [key, value == null ? null : value / baseline[key]])),
     };
   })()`);
-  if (Math.abs(p22b2.scale - 0.7) > 0.001 || Object.values(p22b2.ratios).some(value => value == null || Math.abs(value - 0.7) > 0.025)) {
+  const p22b2CoreRatios = [p22b2.ratios.vitals, p22b2.ratios.mission];
+  const p22b2OptionalClassInvalid = p22b2.ratios.classMechanic != null && Math.abs(p22b2.ratios.classMechanic - 0.7) > 0.025;
+  if (Math.abs(p22b2.scale - 0.7) > 0.001
+    || p22b2CoreRatios.some(value => value == null || Math.abs(value - 0.7) > 0.025)
+    || p22b2OptionalClassInvalid) {
     throw new Error(`P22-B2 mobile HUD did not resolve to the 70% informational baseline: ${JSON.stringify(p22b2)}`);
   }
-  console.log(`BROWSER_P22B2_HUD_FOOTPRINT_PASS viewport=${viewportMode} scale=${p22b2.scale.toFixed(2)} vitals=${p22b2.ratios.vitals.toFixed(3)} objective=${p22b2.ratios.mission.toFixed(3)} class=${p22b2.ratios.classMechanic.toFixed(3)}`);
+  console.log(`BROWSER_P22B2_HUD_FOOTPRINT_PASS viewport=${viewportMode} scale=${p22b2.scale.toFixed(2)} vitals=${p22b2.ratios.vitals.toFixed(3)} objective=${p22b2.ratios.mission.toFixed(3)} class=${p22b2.ratios.classMechanic == null ? 'not-mounted' : p22b2.ratios.classMechanic.toFixed(3)}`);
   console.log(`BROWSER_P20_HUD_SCALE_PASS viewport=${viewportMode} vitalsPadding=${interfaceInvariant.hud.compact.vitalsPadding}/${interfaceInvariant.hud.baseline.vitalsPadding}/${interfaceInvariant.hud.large.vitalsPadding} missionPadding=${interfaceInvariant.hud.compact.missionPadding}/${interfaceInvariant.hud.baseline.missionPadding}/${interfaceInvariant.hud.large.missionPadding}`);
   console.log(`BROWSER_P20_COMBAT_CONTROL_INVARIANT_PASS viewport=${viewportMode} controls=${interfaceInvariant.compact.controls.length} compact=large geometry=identical`);
   console.log(`BROWSER_MOBILE_LAYOUT_PASS viewport=${Math.round(result.viewport.width)}x${Math.round(result.viewport.height)} touchButtons=${result.touchButtons} safe=onscreen+separated`);

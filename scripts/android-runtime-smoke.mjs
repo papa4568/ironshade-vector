@@ -873,13 +873,16 @@ if (fastSmoke) {
       minFont: readable.length ? Math.min(...readable) : null,
     };
   })()`);
+  const p22b2CoreRatios = [p22b2Hud.ratios.vitals, p22b2Hud.ratios.mission];
+  const p22b2OptionalClassInvalid = p22b2Hud.ratios.classMechanic != null && Math.abs(p22b2Hud.ratios.classMechanic - 0.7) > 0.025;
   if (Math.abs(p22b2Hud.scale - 0.7) > 0.001
-    || Object.values(p22b2Hud.ratios).some(value => value == null || Math.abs(value - 0.7) > 0.025)
+    || p22b2CoreRatios.some(value => value == null || Math.abs(value - 0.7) > 0.025)
+    || p22b2OptionalClassInvalid
     || p22b2Hud.overlaps.length
     || (p22b2Hud.minFont != null && p22b2Hud.minFont < 11.5)) {
     throw new Error(`Fast Android P22-B2 informational HUD footprint/readability failed: ${JSON.stringify(p22b2Hud)}`);
   }
-  console.log(`ANDROID_P22B2_HUD_FOOTPRINT_PASS scale=${p22b2Hud.scale.toFixed(2)} vitals=${p22b2Hud.ratios.vitals.toFixed(3)} objective=${p22b2Hud.ratios.mission.toFixed(3)} class=${p22b2Hud.ratios.classMechanic.toFixed(3)} typeFloor=${p22b2Hud.minFont?.toFixed(1) ?? 'n/a'}px overlaps=none`);
+  console.log(`ANDROID_P22B2_HUD_FOOTPRINT_PASS scale=${p22b2Hud.scale.toFixed(2)} vitals=${p22b2Hud.ratios.vitals.toFixed(3)} objective=${p22b2Hud.ratios.mission.toFixed(3)} class=${p22b2Hud.ratios.classMechanic == null ? 'not-mounted' : p22b2Hud.ratios.classMechanic.toFixed(3)} typeFloor=${p22b2Hud.minFont?.toFixed(1) ?? 'n/a'}px overlaps=none`);
 
   const scrollBefore = await evaluate(`({ x: window.scrollX, y: window.scrollY })`);
 
