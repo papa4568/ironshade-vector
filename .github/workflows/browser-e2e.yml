@@ -119,35 +119,16 @@ jobs:
           else
             chrome_window_size="1280,720"
           fi
-          chrome_dir="$(dirname "$CHROME_PATH")"
-          swiftshader_icd="$(find "$chrome_dir" -maxdepth 4 -name vk_swiftshader_icd.json -print -quit)"
-          if [[ -z "$swiftshader_icd" ]]; then
-            echo "::error::Chrome for Testing did not include vk_swiftshader_icd.json; P21-F2 cannot produce a real WebGPU comparison on this runner."
-            find "$chrome_dir" -maxdepth 4 -type f | sort | tail -n 120
-            exit 1
-          fi
-          export VK_ICD_FILENAMES="$swiftshader_icd"
-          export LD_LIBRARY_PATH="$(dirname "$swiftshader_icd"):${LD_LIBRARY_PATH:-}"
-          echo "P21-F2 SwiftShader Vulkan ICD: $swiftshader_icd"
 
           chrome_args=(
             --no-sandbox
             --disable-dev-shm-usage
             --enable-unsafe-webgpu
             --enable-features=Vulkan
-            --use-angle=vulkan
-            --use-vulkan=swiftshader
-            --use-webgpu-adapter=swiftshader
             --disable-vulkan-surface
             --ignore-gpu-blocklist
             --disable-gpu-driver-bug-workarounds
-            --ozone-platform=x11
-            --enable-dawn-features=allow_unsafe_apis
-            --disable-dawn-features=use_dxc
-            --enable-webgpu-developer-features
-            --use-gpu-in-tests
-            --enable-accelerated-2d-canvas
-            --enable-unsafe-swiftshader
+            --disable-gpu-watchdog
             --window-size="$chrome_window_size"
             --remote-debugging-address=127.0.0.1
             --remote-debugging-port=9223
@@ -156,15 +137,43 @@ jobs:
           )
 
           if [[ "$BROWSER_E2E_VIEWPORT" == "desktop" ]]; then
+            sudo apt-get update -y >/dev/null
+            sudo apt-get install -y mesa-vulkan-drivers xvfb xauth >/dev/null
+            lavapipe_icd="/usr/share/vulkan/icd.d/lvp_icd.x86_64.json"
+            if [[ ! -f "$lavapipe_icd" ]]; then
+              echo "::error::Mesa Lavapipe ICD is required for the headed P21-F2 WebGPU presentation gate."
+              find /usr/share/vulkan/icd.d -maxdepth 1 -type f -print 2>/dev/null || true
+              exit 1
+            fi
+            export VK_DRIVER_FILES="$lavapipe_icd"
+            unset VK_ICD_FILENAMES || true
             if ! command -v xvfb-run >/dev/null 2>&1; then
               echo "::error::xvfb-run is required for the headed P21-F2 WebGPU presentation gate."
               exit 1
             fi
             xvfb-run -a -s "-screen 0 1280x720x24" "$CHROME_PATH" "${chrome_args[@]}" > browser-chrome.log 2>&1 &
-            echo 'P21-F2 desktop Chrome mode: headed-xvfb'
+            echo "P21-F2 desktop Chrome mode: headed-xvfb lavapipe=$lavapipe_icd"
           else
-            "$CHROME_PATH" --headless=new "${chrome_args[@]}" > browser-chrome.log 2>&1 &
-            echo 'Browser Chrome mode: headless-mobile'
+            chrome_dir="$(dirname "$CHROME_PATH")"
+            swiftshader_icd="$(find "$chrome_dir" -maxdepth 4 -name vk_swiftshader_icd.json -print -quit)"
+            if [[ -z "$swiftshader_icd" ]]; then
+              echo "::error::Chrome for Testing did not include vk_swiftshader_icd.json; mobile WebGPU comparison cannot initialize."
+              find "$chrome_dir" -maxdepth 4 -type f | sort | tail -n 120
+              exit 1
+            fi
+            export VK_ICD_FILENAMES="$swiftshader_icd"
+            export LD_LIBRARY_PATH="$(dirname "$swiftshader_icd"):${LD_LIBRARY_PATH:-}"
+            "$CHROME_PATH" --headless=new "${chrome_args[@]}" \
+              --use-vulkan=swiftshader \
+              --use-webgpu-adapter=swiftshader \
+              --enable-dawn-features=allow_unsafe_apis \
+              --disable-dawn-features=use_dxc \
+              --enable-webgpu-developer-features \
+              --use-gpu-in-tests \
+              --enable-accelerated-2d-canvas \
+              --enable-unsafe-swiftshader \
+              > browser-chrome.log 2>&1 &
+            echo "Browser Chrome mode: headless-mobile swiftshader=$swiftshader_icd"
           fi
           echo $! > "$RUNNER_TEMP/ironshade-chrome.pid"
           for attempt in {1..60}; do
@@ -183,7 +192,7 @@ jobs:
           BROWSER_E2E_APP_URL: http://127.0.0.1:4173/
           BROWSER_E2E_VIEWPORT: ${{ matrix.viewport }}
           BROWSER_E2E_REQUIRE_WEBGPU: ${{ matrix.viewport == 'desktop' && '1' || '0' }}
-          BROWSER_E2E_WEBGPU_SWIFTSHADER: '1'
+          BROWSER_E2E_WEBGPU_SWIFTSHADER: ${{ matrix.viewport == 'mobile-landscape' && '1' || '0' }}
           BROWSER_E2E_SCREENSHOT: browser-e2e-${{ matrix.viewport }}.png
           BROWSER_E2E_COMMAND_SCREENSHOT: browser-command-${{ matrix.viewport }}.png
           BROWSER_E2E_CLASS_SCREENSHOT: browser-class-${{ matrix.viewport }}.png
