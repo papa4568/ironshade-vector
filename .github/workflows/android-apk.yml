@@ -468,3 +468,60 @@ jobs:
           if-no-files-found: warn
           retention-days: 90
 
+  chapter3-regression:
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/android/capacitor-apk' || github.ref == 'refs/heads/android/full-regression'
+    needs: build-apk
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out Chapter 3 harness
+        uses: actions/checkout@v7
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Download shared Android APK
+        uses: actions/download-artifact@v8
+        with:
+          name: ironshade-vector-android-apk
+          path: .
+
+      - name: Verify shared smoke APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s Ironshade-Vector-Android-Smoke.apk
+          sha256sum -c Ironshade-Vector-Android-Smoke.sha256
+
+      - name: Enable KVM
+        shell: bash
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run Chapter 3 Android regression
+        uses: ReactiveCircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7_pro
+          emulator-boot-timeout: 300
+          disable-animations: true
+          script: bash -lc 'ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-chapter3-regression.sh'
+
+      - name: Upload Chapter 3 regression evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ironshade-vector-chapter3-regression
+          path: |
+            android-chapter3-regression.txt
+            android-chapter3-regression-logcat.txt
+            android-chapter3-playthrough.png
+            android-chapter3-playthrough.json
+          if-no-files-found: warn
+          retention-days: 90

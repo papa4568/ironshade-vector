@@ -6,6 +6,7 @@ const extendedShell = fs.readFileSync(new URL('../scripts/android-runtime-smoke.
 const repeatableShell = fs.readFileSync(new URL('../scripts/android-repeatable-regression.sh', import.meta.url), 'utf8');
 const settingsShell = fs.readFileSync(new URL('../scripts/android-settings-regression.sh', import.meta.url), 'utf8');
 const settingsScript = fs.readFileSync(new URL('../scripts/android-settings-playtest.py', import.meta.url), 'utf8');
+const chapter3Shell = fs.readFileSync(new URL('../scripts/android-chapter3-regression.sh', import.meta.url), 'utf8');
 const workflow = fs.readFileSync(new URL('../.github/workflows/android-apk.yml', import.meta.url), 'utf8');
 const browserWorkflow = fs.readFileSync(new URL('../.github/workflows/browser-e2e.yml', import.meta.url), 'utf8');
 
@@ -49,7 +50,9 @@ for (const marker of [
   'ANDROID_FAST_LIFECYCLE_RESUME_PASS',
 ]) requireText(runtime, marker, 'runtime harness');
 
-requireText(extendedShell, 'browser-chapter3-playthrough', 'extended Android shell');
+if (extendedShell.includes('browser-chapter3-playthrough')) {
+  throw new Error('legacy extended Android shell must not run extracted Chapter 3 playthrough');
+}
 if (extendedShell.includes('android-settings-playtest.py')) {
   throw new Error('legacy extended Android shell must not run extracted Settings playtest');
 }
@@ -89,12 +92,38 @@ for (const marker of [
 ]) requireText(repeatableShell, marker, 'repeatable-family shell');
 
 for (const marker of [
-  'browser-chapter3-playthrough',
   'verify-authored-operator',
   'verify-authored-enemies',
   'verify-authored-weapons',
   'verify-authored-refinery',
 ]) requireText(extendedShell, marker, 'extended Android shell');
+
+for (const marker of [
+  'ANDROID_SMOKE_APK',
+  'adb install -r',
+  'node scripts/browser-chapter3-playthrough.mjs',
+  'CHAPTER3_INTERACTION_MODE=touch',
+  'android-chapter3-regression.txt',
+  'android-chapter3-regression-logcat.txt',
+  'android-chapter3-playthrough.png',
+  'android-chapter3-playthrough.json',
+  'ANDROID_CHAPTER3_PLAYTHROUGH_PASS',
+  'ANDROID_CHAPTER3_REGRESSION_JOB_PASS',
+  'routeDecision=interactive',
+  'branches=2',
+  'crashCheck=clean',
+]) requireText(chapter3Shell, marker, 'Chapter 3 regression shell');
+
+for (const checkpoint of [
+  '"label": "lv15-start"',
+  '"label": "lv16-gate"',
+  '"label": "lv17-gate"',
+  '"label": "lv18-gate"',
+  '"label": "route-decision"',
+  '"label": "exposed-route-live"',
+  '"label": "exposed-complete"',
+  '"label": "held-complete"',
+]) requireText(chapter3Shell, checkpoint, 'Chapter 3 regression shell');
 
 for (const marker of [
   'ANDROID_SMOKE_APK',
@@ -163,6 +192,28 @@ if (!settingsJobText.includes('needs: build-apk')) throw new Error('Settings reg
 if (settingsJobText.includes('needs: repeatable-family-regression')) throw new Error('Settings regression must run in parallel with repeatable-family regression');
 
 for (const marker of [
+  'chapter3-regression:',
+  "github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/android/capacitor-apk' || github.ref == 'refs/heads/android/full-regression'",
+  'needs: build-apk',
+  'actions/download-artifact@v8',
+  'bash scripts/android-chapter3-regression.sh',
+  'ironshade-vector-chapter3-regression',
+  'android-chapter3-regression.txt',
+  'android-chapter3-regression-logcat.txt',
+  'android-chapter3-playthrough.png',
+  'android-chapter3-playthrough.json',
+]) requireText(workflow, marker, 'Chapter 3 regression workflow');
+
+const chapter3JobStart = workflow.indexOf('  chapter3-regression:');
+if (chapter3JobStart < 0) throw new Error('Android workflow missing dedicated Chapter 3 job');
+const chapter3JobText = workflow.slice(chapter3JobStart);
+if (!chapter3JobText.includes('needs: build-apk')) throw new Error('Chapter 3 regression must depend only on shared APK build');
+if (chapter3JobText.includes('needs: repeatable-family-regression') || chapter3JobText.includes('needs: settings-regression')) {
+  throw new Error('Chapter 3 regression must run in parallel with other extended Android jobs');
+}
+
+
+for (const marker of [
   'repeatable-family-regression:',
   "github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/android/capacitor-apk' || github.ref == 'refs/heads/android/full-regression'",
   "      - android/full-regression",
@@ -188,4 +239,4 @@ for (const forbidden of [
   }
 }
 
-console.log('ANDROID_FAST_SMOKE_CONTRACT_PASS entry=scripts/android-fast-smoke.sh defaultPush=fast-only repeatable=dedicated-dispatch extended=retained-not-run browser=required productionBuild=required touch=required lifecycle=required artifacts=required failFast=required');
+console.log('ANDROID_FAST_SMOKE_CONTRACT_PASS entry=scripts/android-fast-smoke.sh defaultPush=fast-only repeatable=dedicated-dispatch settings=dedicated-dispatch chapter3=dedicated-full-regression extended=retained-not-run browser=required productionBuild=required touch=required lifecycle=required artifacts=required failFast=required');

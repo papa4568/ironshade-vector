@@ -93,25 +93,10 @@ ANDROID_PLANNER_PERSISTENCE_CHECK=1 CDP_ENDPOINT=http://127.0.0.1:9222 node scri
 adb exec-out screencap -p > android-network-planner-persistence.png
 test -s android-network-planner-persistence.png
 
-# Chapter 3 QA mutates the operator to LV15–18 checkpoints, so run it only after
-# the P20-B partial-plan cold-relaunch persistence gate has captured its evidence.
-CHAPTER3_INTERACTION_MODE=touch \
-CHAPTER3_TARGET_TITLE='Ironshade Vector' \
-CDP_ENDPOINT=http://127.0.0.1:9222 \
-BROWSER_E2E_APP_URL=https://localhost/ \
-BROWSER_E2E_VIEWPORT=android-emulator \
-BROWSER_E2E_CHAPTER3_SCREENSHOT=android-chapter3-playthrough.png \
-BROWSER_E2E_CHAPTER3_REPORT=android-chapter3-playthrough.json \
-node scripts/browser-chapter3-playthrough.mjs
-
-test -s android-chapter3-playthrough.png
-test -s android-chapter3-playthrough.json
-grep -q '"result": "PASS"' android-chapter3-playthrough.json
-
 adb logcat -d > android-runtime-logcat.txt
 if grep -E 'FATAL EXCEPTION|Process: app\.ironshade\.vector' android-runtime-logcat.txt; then
   echo 'Android runtime crash detected.' >&2
   exit 1
 fi
 
-echo "ANDROID_EMULATOR_PASS pid=${APP_PID} resumePid=${RESUME_PID} plannerRelaunchPid=${PLANNER_PID} route=ship>contracts>combat lifecycle=resume plannerPersistence=cold-relaunch chapter3=touch-playthrough authoredOperator=verified authoredEnemies=verified authoredWeapons=verified authoredRefinery=verified"
+echo "ANDROID_EMULATOR_PASS pid=${APP_PID} resumePid=${RESUME_PID} plannerRelaunchPid=${PLANNER_PID} route=ship>contracts>combat lifecycle=resume plannerPersistence=cold-relaunch authoredOperator=verified authoredEnemies=verified authoredWeapons=verified authoredRefinery=verified"
