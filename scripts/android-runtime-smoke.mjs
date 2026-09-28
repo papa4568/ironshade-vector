@@ -829,6 +829,58 @@ if (fastSmoke) {
   }
   console.log(`ANDROID_P22B1_CONTROL_GEOMETRY_PASS visualScale=0.7 hitRegion=baseline controls=joystick+fire+dodge+ability preset=${p22b1Geometry.preset}`);
 
+  const p22b2Hud = await evaluate(`(() => {
+    const root = document.querySelector('.game-root');
+    const viewport = { width: window.visualViewport?.width ?? window.innerWidth, height: window.visualViewport?.height ?? window.innerHeight };
+    const rootFont = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const compactLandscape = viewport.width > viewport.height && viewport.height <= 560;
+    const contentWidth = selector => {
+      const element = document.querySelector(selector);
+      return element instanceof HTMLElement ? Number.parseFloat(getComputedStyle(element).width) : null;
+    };
+    const rect = selector => {
+      const element = document.querySelector(selector);
+      if (!(element instanceof HTMLElement)) return null;
+      const value = element.getBoundingClientRect();
+      return { left: value.left, top: value.top, right: value.right, bottom: value.bottom };
+    };
+    const intersects = (a, b) => !!a && !!b && !(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top);
+    const baseline = {
+      vitals: Math.min((compactLandscape ? 15.625 : 16.875) * rootFont, viewport.width * (compactLandscape ? 0.29 : 0.30)),
+      mission: Math.min((compactLandscape ? 20.625 : 22.5) * rootFont, viewport.width * (compactLandscape ? 0.34 : 0.36)),
+      classMechanic: Math.min(14.375 * rootFont, viewport.width * 0.28),
+    };
+    const widths = {
+      vitals: contentWidth('.vitals'),
+      mission: contentWidth('.mission-card'),
+      classMechanic: contentWidth('.class-mechanic-hud'),
+    };
+    const ratios = Object.fromEntries(Object.entries(widths).map(([key, value]) => [key, value == null ? null : value / baseline[key]]));
+    const move = rect('.move-stick');
+    const dock = rect('.combat-dock');
+    const informational = ['.vitals', '.mission-card', '.class-mechanic-hud', '.transient-alert-lane']
+      .map(selector => ({ selector, rect: rect(selector) })).filter(entry => entry.rect);
+    const overlaps = informational.filter(entry => intersects(entry.rect, move) || intersects(entry.rect, dock)).map(entry => entry.selector);
+    const readable = [...document.querySelectorAll('.vitals .barline > span,.vitals .barline > b,.mission-card b,.mission-card span,.class-mechanic-hud small,.class-mechanic-hud b,.transient-alert-lane small,.transient-alert-lane b,.transient-alert-lane span')]
+      .filter(element => element instanceof HTMLElement && element.offsetWidth > 0 && element.offsetHeight > 0)
+      .map(element => Number.parseFloat(getComputedStyle(element).fontSize))
+      .filter(Number.isFinite);
+    return {
+      scale: Number.parseFloat(getComputedStyle(root).getPropertyValue('--iv-combat-hud-visual-scale')),
+      viewport,
+      ratios,
+      overlaps,
+      minFont: readable.length ? Math.min(...readable) : null,
+    };
+  })()`);
+  if (Math.abs(p22b2Hud.scale - 0.7) > 0.001
+    || Object.values(p22b2Hud.ratios).some(value => value == null || Math.abs(value - 0.7) > 0.025)
+    || p22b2Hud.overlaps.length
+    || (p22b2Hud.minFont != null && p22b2Hud.minFont < 11.5)) {
+    throw new Error(`Fast Android P22-B2 informational HUD footprint/readability failed: ${JSON.stringify(p22b2Hud)}`);
+  }
+  console.log(`ANDROID_P22B2_HUD_FOOTPRINT_PASS scale=${p22b2Hud.scale.toFixed(2)} vitals=${p22b2Hud.ratios.vitals.toFixed(3)} objective=${p22b2Hud.ratios.mission.toFixed(3)} class=${p22b2Hud.ratios.classMechanic.toFixed(3)} typeFloor=${p22b2Hud.minFont?.toFixed(1) ?? 'n/a'}px overlaps=none`);
+
   const scrollBefore = await evaluate(`({ x: window.scrollX, y: window.scrollY })`);
 
   let interactionObserved = false;
@@ -890,6 +942,23 @@ if (fastSmoke) {
     movementAttempt += 1;
   }
   if (!interactionObserved) throw new Error('Fast Android ACT interaction was not reached through touch movement within the smoke budget.');
+  const p22b2ObjectiveFlow = await evaluate(`(() => {
+    const mission = document.querySelector('.mission-card');
+    const root = document.querySelector('.game-root');
+    if (!(mission instanceof HTMLElement) || !(root instanceof HTMLElement)) return null;
+    const rect = mission.getBoundingClientRect();
+    return {
+      width: rect.width,
+      height: rect.height,
+      progress: Number(root.dataset.objectiveProgress ?? '0'),
+      scale: Number.parseFloat(getComputedStyle(root).getPropertyValue('--iv-combat-hud-visual-scale')),
+      readable: [...mission.querySelectorAll('b,span')].every(element => Number.parseFloat(getComputedStyle(element).fontSize) >= 11.5),
+    };
+  })()`);
+  if (!p22b2ObjectiveFlow || Math.abs(p22b2ObjectiveFlow.scale - 0.7) > 0.001 || !p22b2ObjectiveFlow.readable || p22b2ObjectiveFlow.width <= 0 || p22b2ObjectiveFlow.height <= 0) {
+    throw new Error(`Fast Android P22-B2 objective flow lost reduced/readable mission chrome: ${JSON.stringify(p22b2ObjectiveFlow)}`);
+  }
+  console.log(`ANDROID_P22B2_OBJECTIVE_FLOW_PASS scale=${p22b2ObjectiveFlow.scale.toFixed(2)} progress=${p22b2ObjectiveFlow.progress} size=${Math.round(p22b2ObjectiveFlow.width)}x${Math.round(p22b2ObjectiveFlow.height)} readable=true`);
 
   await fastMove('RIGHT', 205, 280);
   await waitFor(`document.querySelector('.move-stick')?.style.getPropertyValue('--knob-x') === '0px' && document.querySelector('.move-stick')?.style.getPropertyValue('--knob-y') === '0px'`, 'Fast Android movement stick release', 10_000);

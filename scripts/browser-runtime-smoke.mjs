@@ -605,6 +605,30 @@ async function mobileCombatLayoutAudit() {
       && interfaceInvariant.hud.baseline.missionPadding < interfaceInvariant.hud.large.missionPadding)) {
     throw new Error(`P20-A informational HUD chrome did not scale while controls stayed fixed: ${JSON.stringify(interfaceInvariant)}`);
   }
+  const p22b2 = await evaluate(`(() => {
+    const root = document.querySelector('.game-root');
+    const viewport = { width: window.visualViewport?.width ?? window.innerWidth, height: window.visualViewport?.height ?? window.innerHeight };
+    const rootFont = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const compactLandscape = viewport.width > viewport.height && viewport.height <= 560;
+    const width = selector => {
+      const element = document.querySelector(selector);
+      return element instanceof HTMLElement ? Number.parseFloat(getComputedStyle(element).width) : null;
+    };
+    const baseline = {
+      vitals: Math.min((compactLandscape ? 15.625 : 16.875) * rootFont, viewport.width * (compactLandscape ? 0.29 : 0.30)),
+      mission: Math.min((compactLandscape ? 20.625 : 22.5) * rootFont, viewport.width * (compactLandscape ? 0.34 : 0.36)),
+      classMechanic: Math.min(14.375 * rootFont, viewport.width * 0.28),
+    };
+    const actual = { vitals: width('.vitals'), mission: width('.mission-card'), classMechanic: width('.class-mechanic-hud') };
+    return {
+      scale: Number.parseFloat(getComputedStyle(root).getPropertyValue('--iv-combat-hud-visual-scale')),
+      ratios: Object.fromEntries(Object.entries(actual).map(([key, value]) => [key, value == null ? null : value / baseline[key]])),
+    };
+  })()`);
+  if (Math.abs(p22b2.scale - 0.7) > 0.001 || Object.values(p22b2.ratios).some(value => value == null || Math.abs(value - 0.7) > 0.025)) {
+    throw new Error(`P22-B2 mobile HUD did not resolve to the 70% informational baseline: ${JSON.stringify(p22b2)}`);
+  }
+  console.log(`BROWSER_P22B2_HUD_FOOTPRINT_PASS viewport=${viewportMode} scale=${p22b2.scale.toFixed(2)} vitals=${p22b2.ratios.vitals.toFixed(3)} objective=${p22b2.ratios.mission.toFixed(3)} class=${p22b2.ratios.classMechanic.toFixed(3)}`);
   console.log(`BROWSER_P20_HUD_SCALE_PASS viewport=${viewportMode} vitalsPadding=${interfaceInvariant.hud.compact.vitalsPadding}/${interfaceInvariant.hud.baseline.vitalsPadding}/${interfaceInvariant.hud.large.vitalsPadding} missionPadding=${interfaceInvariant.hud.compact.missionPadding}/${interfaceInvariant.hud.baseline.missionPadding}/${interfaceInvariant.hud.large.missionPadding}`);
   console.log(`BROWSER_P20_COMBAT_CONTROL_INVARIANT_PASS viewport=${viewportMode} controls=${interfaceInvariant.compact.controls.length} compact=large geometry=identical`);
   console.log(`BROWSER_MOBILE_LAYOUT_PASS viewport=${Math.round(result.viewport.width)}x${Math.round(result.viewport.height)} touchButtons=${result.touchButtons} safe=onscreen+separated`);
@@ -627,6 +651,25 @@ async function targetFeedbackAudit(includeTouch) {
         && readout?.dataset.targetId === canvas.dataset.assistedTargetId
         && (document.querySelector('#target-lock-status')?.textContent ?? '').toLowerCase().includes('locked');
     })()`, 'touch assisted target lock', 8_000);
+    const p22b2Target = await evaluate(`(() => {
+      const readout = document.querySelector('.target-readout[data-target-id]');
+      const root = document.querySelector('.game-root');
+      if (!(readout instanceof HTMLElement) || !(root instanceof HTMLElement)) return null;
+      const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
+      const rootFont = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      const baseline = Math.min(17.8125 * rootFont, viewportWidth * 0.30);
+      const actual = Number.parseFloat(getComputedStyle(readout).width);
+      const type = [...readout.querySelectorAll('small,b,span')].map(element => Number.parseFloat(getComputedStyle(element).fontSize)).filter(Number.isFinite);
+      return {
+        scale: Number.parseFloat(getComputedStyle(root).getPropertyValue('--iv-combat-hud-visual-scale')),
+        ratio: actual / baseline,
+        minFont: type.length ? Math.min(...type) : null,
+      };
+    })()`);
+    if (!p22b2Target || Math.abs(p22b2Target.scale - 0.7) > 0.001 || Math.abs(p22b2Target.ratio - 0.7) > 0.025 || (p22b2Target.minFont != null && p22b2Target.minFont < 11.5)) {
+      throw new Error(`P22-B2 target HUD lost footprint/readability contract: ${JSON.stringify(p22b2Target)}`);
+    }
+    console.log(`BROWSER_P22B2_TARGET_FLOW_PASS viewport=${viewportMode} scale=${p22b2Target.scale.toFixed(2)} ratio=${p22b2Target.ratio.toFixed(3)} typeFloor=${p22b2Target.minFont?.toFixed(1) ?? 'n/a'}px`);
     await evaluate(`(() => {
       const button = document.querySelector('.fire-button');
       button?.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 71, pointerType: 'touch', isPrimary: true }));

@@ -87,6 +87,8 @@ assert(normalizeStoredProfile(malformedInterface).settings.interfaceSize === 'de
 
 const combat = read('src/components/GameCanvas.tsx');
 const layoutCss = read('src/combatHudLayout.css');
+const combatGlanceCss = read('src/combatHudGlance.css');
+const browserSmoke = read('scripts/browser-runtime-smoke.mjs');
 const armory = read('src/components/Armory.tsx');
 const guide = read('src/game/guideContent.ts');
 const androidSmoke = read('scripts/android-runtime-smoke.mjs');
@@ -118,6 +120,38 @@ for (const [name, [width, height]] of Object.entries(p22LandscapeBaseline)) {
   assert(close(visibleWidth / width, 0.7) && close(visibleHeight / height, 0.7), `P22-B1 ${name} visible geometry did not resolve to the 70% baseline.`);
 }
 assert(androidSmoke.includes('ANDROID_P22B1_CONTROL_GEOMETRY_PASS'), 'P22-B1 Android fast smoke must verify reduced visible geometry plus preserved hit acquisition.');
+
+const p22b2Block = combatGlanceCss.split('/* P22-B2 //')[1]?.split('/* P22-B2 END */')[0] ?? '';
+const p22b2ScaleMatch = p22b2Block.match(/--iv-combat-hud-visual-scale:\s*([0-9.]+)/);
+assert(p22b2ScaleMatch && close(Number(p22b2ScaleMatch[1]), 0.7), 'P22-B2 informational HUD scale token must be exactly 70% of the prior baseline.');
+const p22b2LinearMeasurements: Array<[string, RegExp, number]> = [
+  ['vitals', /--iv-combat-hud-vitals-width:\s*([0-9.]+)rem/, 16.875],
+  ['mission', /--iv-combat-hud-mission-width:\s*([0-9.]+)rem/, 22.5],
+  ['target', /--iv-combat-hud-target-width:\s*([0-9.]+)rem/, 18.75],
+  ['loot', /--iv-combat-hud-loot-width:\s*([0-9.]+)rem/, 17.8125],
+  ['mega objective', /--iv-combat-hud-mega-width:\s*([0-9.]+)rem/, 22.5],
+  ['post-clear objective', /--iv-combat-hud-post-clear-width:\s*([0-9.]+)rem/, 24.375],
+  ['boss', /--iv-combat-hud-boss-width:\s*([0-9.]+)rem/, 26.875],
+  ['class mechanic', /--iv-combat-hud-class-width:\s*([0-9.]+)rem/, 14.375],
+  ['transient status', /--iv-combat-hud-transient-width:\s*([0-9.]+)rem/, 22.5],
+  ['landscape vitals', /--iv-combat-hud-landscape-vitals-width:\s*([0-9.]+)rem/, 15.625],
+  ['landscape mission', /--iv-combat-hud-landscape-mission-width:\s*([0-9.]+)rem/, 20.625],
+  ['landscape target', /--iv-combat-hud-landscape-target-width:\s*([0-9.]+)rem/, 17.8125],
+  ['landscape loot', /--iv-combat-hud-landscape-loot-width:\s*([0-9.]+)rem/, 16.875],
+  ['landscape boss', /--iv-combat-hud-landscape-boss-width:\s*([0-9.]+)rem/, 24.375],
+  ['landscape transient', /--iv-combat-hud-landscape-transient-width:\s*([0-9.]+)rem/, 20.625],
+];
+for (const [label, pattern, baseline] of p22b2LinearMeasurements) {
+  const match = p22b2Block.match(pattern);
+  assert(match, `P22-B2 missing deterministic ${label} footprint measurement.`);
+  assert(close(Number(match[1]) / baseline, 0.7, 0.002), `P22-B2 ${label} footprint did not resolve to approximately 70% of its prior linear baseline.`);
+}
+for (const controlSelector of ['.move-stick', '.combat-dock', '.touch-button', '.fire-button', '.dodge-button', '.ability-button', '.interact-button']) {
+  assert(!p22b2Block.includes(controlSelector), `P22-B2 informational HUD block must not alter combat-control geometry: ${controlSelector}`);
+}
+assert(combatGlanceCss.includes('font-size: max(12px') || combatGlanceCss.includes('font-size: 12px'), 'P22-B2 must retain the compact-phone secondary type floor.');
+assert(androidSmoke.includes('ANDROID_P22B2_HUD_FOOTPRINT_PASS') && androidSmoke.includes('ANDROID_P22B2_OBJECTIVE_FLOW_PASS'), 'P22-B2 Android fast smoke must measure reduced live HUD geometry and the objective interaction flow.');
+assert(browserSmoke.includes('BROWSER_P22B2_HUD_FOOTPRINT_PASS') && browserSmoke.includes('BROWSER_P22B2_TARGET_FLOW_PASS'), 'P22-B2 Browser E2E must measure reduced mobile HUD geometry and target-context presentation.');
 
 for (const label of ['Combat layout preset', 'Movement cluster inset', 'Movement cluster height', 'Movement cluster size', 'Action cluster inset', 'Action cluster height', 'Action cluster size', 'Reset current preset']) {
   assert(armory.includes(label), `P19-F Settings is missing ${label}.`);
