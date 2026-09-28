@@ -64,6 +64,10 @@ const source = readFileSync(resolve(process.cwd(), 'src/game/graphicsAssets.ts')
 assert(source.includes("import('three/examples/jsm/loaders/GLTFLoader.js')"), 'GLTFLoader must remain a dynamic import');
 assert(source.includes("import('three/examples/jsm/libs/meshopt_decoder.module.js')"), 'Meshopt decoder must remain deferred with authored assets');
 assert(source.includes("import('three/examples/jsm/loaders/KTX2Loader.js')"), 'KTX2 loader must remain deferred with authored assets');
+assert(source.includes("import type { WebGPURenderer } from 'three/webgpu'"), 'authored asset runtime must type the isolated WebGPU renderer without eager runtime loading');
+assert(source.includes('type GraphicsAssetRenderer = WebGLRenderer | WebGPURenderer'), 'authored asset runtime must accept both production WebGL2 and QA WebGPU renderers');
+assert(source.includes('graphicsRenderer.getMaxAnisotropy()'), 'WebGPU authored textures must use the common renderer anisotropy API instead of WebGL capabilities');
+assert(source.includes("graphicsRenderer.capabilities.getMaxAnisotropy()"), 'production WebGL2 authored textures must preserve the existing capabilities path');
 assert(source.includes("import('three/examples/jsm/utils/SkeletonUtils.js')"), 'rigged asset cloning must use SkeletonUtils');
 assert(!source.includes("import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'"), 'GLTFLoader must not become an eager runtime import');
 assert(source.includes('gltfCache.delete(spec.url)'), 'failed asset requests must be evicted so they can retry');

@@ -1,4 +1,5 @@
 import type { AnimationClip, BufferGeometry, Group, Material, Object3D, Skeleton, Texture, WebGLRenderer } from 'three';
+import type { WebGPURenderer } from 'three/webgpu';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 
@@ -78,7 +79,8 @@ const DEFAULT_GRAPHICS_ASSET_RUNTIME_BUDGET: GraphicsAssetRuntimeBudget = {
 };
 let graphicsAssetRuntimeBudget = { ...DEFAULT_GRAPHICS_ASSET_RUNTIME_BUDGET };
 let graphicsAssetAccessOrdinal = 0;
-let graphicsRenderer: WebGLRenderer | null = null;
+type GraphicsAssetRenderer = WebGLRenderer | WebGPURenderer;
+let graphicsRenderer: GraphicsAssetRenderer | null = null;
 let rendererGeneration = 0;
 let sharedKtx2Loader: KTX2Loader | null = null;
 let sharedKtx2LoaderPromise: Promise<KTX2Loader> | null = null;
@@ -132,7 +134,7 @@ export function selectGraphicsAssetSpec(family: GraphicsAssetFamily, detailScale
   return null;
 }
 
-export function configureGraphicsAssetRenderer(renderer: WebGLRenderer) {
+export function configureGraphicsAssetRenderer(renderer: GraphicsAssetRenderer) {
   if (graphicsRenderer === renderer) return;
   rendererGeneration += 1;
   graphicsRenderer = renderer;
@@ -141,7 +143,7 @@ export function configureGraphicsAssetRenderer(renderer: WebGLRenderer) {
   sharedKtx2LoaderPromise = null;
 }
 
-async function getSharedKtx2Loader(renderer: WebGLRenderer) {
+async function getSharedKtx2Loader(renderer: GraphicsAssetRenderer) {
   if (sharedKtx2Loader) return sharedKtx2Loader;
   if (sharedKtx2LoaderPromise) return sharedKtx2LoaderPromise;
 
@@ -235,7 +237,11 @@ function applyTextureRuntimeBudget(gltf: GLTF) {
     });
   }
   materials.forEach(material => collectMaterialTextures(material, textures));
-  const rendererLimit = graphicsRenderer?.capabilities.getMaxAnisotropy() ?? graphicsAssetRuntimeBudget.maxTextureAnisotropy;
+  const rendererLimit = graphicsRenderer
+    ? graphicsRenderer.isWebGPURenderer
+      ? graphicsRenderer.getMaxAnisotropy()
+      : graphicsRenderer.capabilities.getMaxAnisotropy()
+    : graphicsAssetRuntimeBudget.maxTextureAnisotropy;
   const anisotropy = Math.max(1, Math.min(graphicsAssetRuntimeBudget.maxTextureAnisotropy, rendererLimit));
   textures.forEach(texture => {
     if (texture.anisotropy === anisotropy) return;

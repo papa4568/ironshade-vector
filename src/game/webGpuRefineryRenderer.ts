@@ -126,9 +126,7 @@ export class WebGpuRefineryRenderer {
     });
     try {
       await renderer.init();
-      graphicsAssets.configureGraphicsAssetRenderer(
-        renderer as unknown as Parameters<typeof graphicsAssets.configureGraphicsAssetRenderer>[0],
-      );
+      graphicsAssets.configureGraphicsAssetRenderer(renderer);
       const instance = new WebGpuRefineryRenderer(canvas, coarse, THREE, renderer);
       await instance.initializePrototype(
         TSL,
