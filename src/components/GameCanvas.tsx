@@ -1485,7 +1485,7 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
   const transientCue = bossTransitionCue
     ? { kind: 'event', label: bossTransitionCue.kicker, detail: `${bossTransitionCue.title} // ${bossTransitionCue.detail}` }
     : deploymentCueVisible && !hud.dead && !hud.complete
-      ? { kind: 'event', label: `DROP VECTOR // OP T${activeMission.operationTier ?? 1}`, detail: `${activeMission.title} // ${activeMission.objective}` }
+      ? { kind: 'event', label: `DROP VECTOR // OP T${activeMission.operationTier ?? 1}`, detail: activeMission.title }
       : hud.eventT > 0
         ? { kind: 'event', label: 'TACTICAL', detail: hud.eventText }
         : statusItems.length > 0
