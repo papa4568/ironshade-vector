@@ -35,6 +35,39 @@ function validRenderBudget(value) {
     && Number.isFinite(detail) && detail > 0 && detail <= 1;
 }
 
+const P21_EFFECT_BUDGETS = Object.freeze({
+  high: { ibl: 1, bloom: 1, contact: 1, atmosphere: 1 },
+  balanced: { ibl: 0.7, bloom: 0.68, contact: 0.68, atmosphere: 0.68 },
+  performance: { ibl: 0.38, bloom: 0.42, contact: 0.42, atmosphere: 0.42 },
+});
+
+function parseP21EffectBudget(value) {
+  if (typeof value !== 'string' || !value) return null;
+  const fields = Object.fromEntries(value.split('+').map(part => {
+    const separator = part.indexOf(':');
+    return separator > 0 ? [part.slice(0, separator), part.slice(separator + 1)] : ['', ''];
+  }));
+  if (!Object.prototype.hasOwnProperty.call(P21_EFFECT_BUDGETS, fields.tier)) return null;
+  const budget = {
+    tier: fields.tier,
+    ibl: Number(fields.ibl),
+    bloom: Number(fields.bloom),
+    contact: Number(fields.contact),
+    atmosphere: Number(fields.atmosphere),
+    critical: Number(fields.critical),
+  };
+  return Object.values(budget).slice(1).every(Number.isFinite) ? budget : null;
+}
+
+function p21BudgetMatchesExpected(budget, expected) {
+  return !!budget && !!expected
+    && Math.abs(budget.ibl - expected.ibl) <= 0.001
+    && Math.abs(budget.bloom - expected.bloom) <= 0.001
+    && Math.abs(budget.contact - expected.contact) <= 0.001
+    && Math.abs(budget.atmosphere - expected.atmosphere) <= 0.001
+    && budget.critical === 1;
+}
+
 if (typeof WebSocket !== 'function') {
   throw new Error('Node runtime does not expose WebSocket support required for Android runtime smoke testing.');
 }
@@ -485,11 +518,15 @@ if (fastResumeOnly) {
       controls: Boolean(document.querySelector('[aria-label="Touch combat controls"]') && document.querySelector('.move-stick') && document.querySelector('.fire-button') && document.querySelector('.dodge-button')),
       tutorialStep: Number(root?.dataset.tutorialStep ?? '0'),
       location: document.querySelector('.mission-chip')?.textContent?.trim() ?? '',
+      tier: document.querySelector('canvas')?.dataset.renderTier ?? '',
+      quality: document.querySelector('canvas')?.dataset.graphicsQuality ?? '',
+      p21Budget: document.querySelector('canvas')?.dataset.environmentP21Budget ?? '',
       ibl: document.querySelector('canvas')?.dataset.environmentIbl ?? '',
       lighting: document.querySelector('canvas')?.dataset.environmentLighting ?? '',
       bloom: document.querySelector('canvas')?.dataset.environmentBloom ?? '',
       bloomSources: document.querySelector('canvas')?.dataset.environmentBloomSources ?? '',
       bloomExcluded: document.querySelector('canvas')?.dataset.environmentBloomExcluded ?? '',
+      bloomCost: document.querySelector('canvas')?.dataset.environmentBloomCost ?? '',
       contactDepth: document.querySelector('canvas')?.dataset.environmentContactDepth ?? '',
       contactDepthProtected: document.querySelector('canvas')?.dataset.environmentContactDepthProtected ?? '',
       atmosphere: document.querySelector('canvas')?.dataset.environmentAtmosphere ?? '',
@@ -500,28 +537,35 @@ if (fastResumeOnly) {
   if (fastResumed.title !== 'Ironshade Vector' || fastResumed.canvases < 1 || !fastResumed.controls) {
     throw new Error(`Fast Android lifecycle resume did not restore combat/touch surfaces: ${JSON.stringify(fastResumed)}`);
   }
-  if (!fastResumed.ibl.startsWith('pmrem:furnace-amber+service-cyan:intensity-') || !fastResumed.lighting.includes('+ibl:pmrem+')) {
-    throw new Error(`Fast Android P21-B refinery IBL did not survive pause/resume: ${JSON.stringify(fastResumed)}`);
+  const resumedP21Budget = parseP21EffectBudget(fastResumed.p21Budget);
+  const resumedP21Expected = P21_EFFECT_BUDGETS.performance;
+  if (fastResumed.tier !== 'performance' || fastResumed.quality !== 'performance' || !p21BudgetMatchesExpected(resumedP21Budget, resumedP21Expected)) {
+    throw new Error(`Fast Android P21-E performance budget did not survive pause/resume: ${JSON.stringify(fastResumed)}`);
+  }
+  if (fastResumed.ibl !== 'off:adaptive-budget' || !fastResumed.lighting.includes('+ibl:off+')) {
+    throw new Error(`Fast Android P21-B/P21-E performance IBL did not survive pause/resume: ${JSON.stringify(fastResumed)}`);
   }
   console.log(`ANDROID_P21B_IBL_RESUME_PASS ibl=${fastResumed.ibl} lighting=${fastResumed.lighting}`);
   if (!fastResumed.bloom.startsWith('selective:refinery-selective-v1:')
     || !/authored:[1-9]/.test(fastResumed.bloomSources)
-    || fastResumed.bloomExcluded !== 'hud+enemies+hazards+objectives+loot+interactables') {
-    throw new Error(`Fast Android P21-C refinery bloom did not survive pause/resume: ${JSON.stringify(fastResumed)}`);
+    || fastResumed.bloomExcluded !== 'hud+enemies+hazards+objectives+loot+interactables'
+    || Math.abs(Number(fastResumed.bloomCost) - resumedP21Expected.bloom) > 0.001) {
+    throw new Error(`Fast Android P21-C/P21-E refinery bloom did not survive pause/resume: ${JSON.stringify(fastResumed)}`);
   }
   console.log(`ANDROID_P21C_BLOOM_RESUME_PASS bloom=${fastResumed.bloom} sources=${fastResumed.bloomSources} excluded=${fastResumed.bloomExcluded}`);
   if (!fastResumed.contactDepth.startsWith('grounding:refinery-contact-grounding-v1:')
-    || !fastResumed.contactDepth.includes(':instances-10:triangles-20:draws-1:alpha-32:opacity-0.26')
+    || !fastResumed.contactDepth.includes(':instances-4:triangles-8:draws-1:alpha-32:opacity-0.26')
     || fastResumed.contactDepthProtected !== 'hud+enemies+hazards+objectives+loot+interactables') {
-    throw new Error(`Fast Android P21-D1 refinery contact depth did not survive pause/resume: ${JSON.stringify(fastResumed)}`);
+    throw new Error(`Fast Android P21-D1/P21-E refinery contact depth did not survive pause/resume: ${JSON.stringify(fastResumed)}`);
   }
   console.log(`ANDROID_P21D1_CONTACT_DEPTH_RESUME_PASS contact=${fastResumed.contactDepth} protected=${fastResumed.contactDepthProtected}`);
-  if (!fastResumed.atmosphere.startsWith('fog:refinery-depth-atmosphere-v1:near-18.0:far-42.0:color-160d08:exposure-0.98')
+  if (fastResumed.atmosphere !== 'off:adaptive-budget'
     || fastResumed.atmosphereProtected !== 'hud+enemies+hazards+objectives+loot+interactables'
-    || !fastResumed.tone.includes('+atmosphere-refinery-depth-atmosphere-v1')) {
-    throw new Error(`Fast Android P21-D2 refinery atmosphere did not survive pause/resume: ${JSON.stringify(fastResumed)}`);
+    || !fastResumed.tone.includes('+atmosphere-off')) {
+    throw new Error(`Fast Android P21-D2/P21-E refinery atmosphere did not survive pause/resume: ${JSON.stringify(fastResumed)}`);
   }
   console.log(`ANDROID_P21D2_ATMOSPHERE_RESUME_PASS atmosphere=${fastResumed.atmosphere} protected=${fastResumed.atmosphereProtected} tone=${fastResumed.tone}`);
+  console.log(`ANDROID_P21E_ADAPTIVE_EFFECTS_RESUME_PASS tier=${fastResumed.tier} budget=${fastResumed.p21Budget}`);
   console.log(`ANDROID_FAST_LIFECYCLE_RESUME_PASS canvases=${fastResumed.canvases} tutorialStep=${fastResumed.tutorialStep} location=${JSON.stringify(fastResumed.location)}`);
   session.close();
   await sleep(100);
@@ -825,22 +869,27 @@ if (fastSmoke) {
 
   await waitFor(`(() => {
     const canvas = document.querySelector('canvas');
-    return canvas?.dataset.environmentIbl?.startsWith('pmrem:furnace-amber+service-cyan:intensity-')
-      && canvas?.dataset.environmentLighting?.includes('+ibl:pmrem+')
-      && canvas?.dataset.environmentTone?.includes('+ibl-0.68');
-  })()`, 'Fast Android P21-B refinery IBL', 20_000);
+    return Boolean(canvas?.dataset.environmentP21Budget && canvas?.dataset.environmentIbl && canvas?.dataset.environmentTone);
+  })()`, 'Fast Android P21-E refinery adaptive budget', 20_000);
   const p21bIbl = await evaluate(`(() => {
     const canvas = document.querySelector('canvas');
     return {
+      tier: canvas?.dataset.renderTier ?? '',
+      quality: canvas?.dataset.graphicsQuality ?? '',
+      p21Budget: canvas?.dataset.environmentP21Budget ?? '',
       ibl: canvas?.dataset.environmentIbl ?? '',
       lighting: canvas?.dataset.environmentLighting ?? '',
       tone: canvas?.dataset.environmentTone ?? '',
     };
   })()`);
-  if (!p21bIbl?.ibl.startsWith('pmrem:furnace-amber+service-cyan:intensity-')
-    || !p21bIbl?.lighting.includes('+ibl:pmrem+')
-    || !p21bIbl?.tone.includes('+ibl-0.68')) {
-    throw new Error(`Android P21-B refinery IBL telemetry is incomplete: ${JSON.stringify(p21bIbl)}`);
+  const p21InitialBudget = parseP21EffectBudget(p21bIbl?.p21Budget);
+  const p21InitialExpected = p21InitialBudget ? P21_EFFECT_BUDGETS[p21InitialBudget.tier] : null;
+  const p21InitialIblOn = !!p21InitialExpected && p21InitialExpected.ibl >= 0.5;
+  if (!p21InitialBudget || !p21InitialExpected || p21bIbl.tier !== p21InitialBudget.tier || !p21BudgetMatchesExpected(p21InitialBudget, p21InitialExpected)
+    || (p21InitialIblOn
+      ? (!p21bIbl?.ibl.startsWith('pmrem:furnace-amber+service-cyan:intensity-') || !p21bIbl?.lighting.includes('+ibl:pmrem+') || !p21bIbl?.tone.includes('+ibl-'))
+      : (p21bIbl?.ibl !== 'off:adaptive-budget' || !p21bIbl?.lighting.includes('+ibl:off+') || !p21bIbl?.tone.includes('+ibl-off')))) {
+    throw new Error(`Android P21-B/P21-E refinery IBL telemetry is incomplete: ${JSON.stringify(p21bIbl)}`);
   }
   console.log(`ANDROID_P21B_IBL_PASS ibl=${p21bIbl.ibl} lighting=${p21bIbl.lighting} tone=${p21bIbl.tone}`);
 
@@ -866,8 +915,8 @@ if (fastSmoke) {
     || !p21cBloom.sources.includes('+practical:')
     || !p21cBloom.sources.includes('+vfx:muzzle-')
     || p21cBloom.excluded !== 'hud+enemies+hazards+objectives+loot+interactables'
-    || p21cBloom.cost !== '1.00') {
-    throw new Error(`Android P21-C refinery bloom telemetry is incomplete: ${JSON.stringify(p21cBloom)}`);
+    || Math.abs(Number(p21cBloom.cost) - p21InitialExpected.bloom) > 0.001) {
+    throw new Error(`Android P21-C/P21-E refinery bloom telemetry is incomplete: ${JSON.stringify(p21cBloom)}`);
   }
   console.log(`ANDROID_P21C_BLOOM_PASS bloom=${p21cBloom.bloom} sources=${p21cBloom.sources} excluded=${p21cBloom.excluded} cost=${p21cBloom.cost}`);
 
@@ -875,7 +924,6 @@ if (fastSmoke) {
     const canvas = document.querySelector('canvas');
     return canvas?.dataset.environmentVisual === 'authored-refinery'
       && canvas?.dataset.environmentContactDepth?.startsWith('grounding:refinery-contact-grounding-v1:')
-      && canvas.dataset.environmentContactDepth.includes(':instances-10:triangles-20:draws-1:alpha-32:opacity-0.26')
       && canvas?.dataset.environmentContactDepthProtected === 'hud+enemies+hazards+objectives+loot+interactables';
   })()`, 'Fast Android P21-D1 refinery contact depth', 20_000);
   const p21d1ContactDepth = await evaluate(`(() => {
@@ -885,19 +933,20 @@ if (fastSmoke) {
       protected: canvas?.dataset.environmentContactDepthProtected ?? '',
     };
   })()`);
+  const p21InitialContactInstances = Math.max(1, Math.round(10 * p21InitialExpected.contact));
   if (!p21d1ContactDepth?.contactDepth.startsWith('grounding:refinery-contact-grounding-v1:')
-    || !p21d1ContactDepth.contactDepth.includes(':instances-10:triangles-20:draws-1:alpha-32:opacity-0.26')
+    || !p21d1ContactDepth.contactDepth.includes(`:instances-${p21InitialContactInstances}:triangles-${p21InitialContactInstances * 2}:draws-1:alpha-32:opacity-0.26`)
     || p21d1ContactDepth.protected !== 'hud+enemies+hazards+objectives+loot+interactables') {
-    throw new Error(`Android P21-D1 refinery contact-depth telemetry is incomplete: ${JSON.stringify(p21d1ContactDepth)}`);
+    throw new Error(`Android P21-D1/P21-E refinery contact-depth telemetry is incomplete: ${JSON.stringify(p21d1ContactDepth)}`);
   }
   console.log(`ANDROID_P21D1_CONTACT_DEPTH_PASS contact=${p21d1ContactDepth.contactDepth} protected=${p21d1ContactDepth.protected}`);
 
   await waitFor(`(() => {
     const canvas = document.querySelector('canvas');
     return canvas?.dataset.environmentVisual === 'authored-refinery'
-      && canvas?.dataset.environmentAtmosphere?.startsWith('fog:refinery-depth-atmosphere-v1:near-18.0:far-42.0:color-160d08:exposure-0.98')
+      && Boolean(canvas?.dataset.environmentAtmosphere)
       && canvas?.dataset.environmentAtmosphereProtected === 'hud+enemies+hazards+objectives+loot+interactables'
-      && canvas?.dataset.environmentTone?.includes('+atmosphere-refinery-depth-atmosphere-v1');
+      && Boolean(canvas?.dataset.environmentTone);
   })()`, 'Fast Android P21-D2 refinery atmosphere', 20_000);
   const p21d2Atmosphere = await evaluate(`(() => {
     const canvas = document.querySelector('canvas');
@@ -908,13 +957,114 @@ if (fastSmoke) {
       contactDepth: canvas?.dataset.environmentContactDepth ?? '',
     };
   })()`);
-  if (!p21d2Atmosphere?.atmosphere.startsWith('fog:refinery-depth-atmosphere-v1:near-18.0:far-42.0:color-160d08:exposure-0.98')
+  const p21InitialAtmosphereOn = p21InitialExpected.atmosphere >= 0.5;
+  if ((p21InitialAtmosphereOn
+      ? (!p21d2Atmosphere?.atmosphere.startsWith('fog:refinery-depth-atmosphere-v1:') || !p21d2Atmosphere.tone.includes('+atmosphere-refinery-depth-atmosphere-v1'))
+      : (p21d2Atmosphere?.atmosphere !== 'off:adaptive-budget' || !p21d2Atmosphere.tone.includes('+atmosphere-off')))
     || p21d2Atmosphere.protected !== 'hud+enemies+hazards+objectives+loot+interactables'
-    || !p21d2Atmosphere.tone.includes('+atmosphere-refinery-depth-atmosphere-v1')
     || !p21d2Atmosphere.contactDepth.startsWith('grounding:refinery-contact-grounding-v1:')) {
-    throw new Error(`Android P21-D2 refinery atmosphere telemetry is incomplete: ${JSON.stringify(p21d2Atmosphere)}`);
+    throw new Error(`Android P21-D2/P21-E refinery atmosphere telemetry is incomplete: ${JSON.stringify(p21d2Atmosphere)}`);
   }
   console.log(`ANDROID_P21D2_ATMOSPHERE_PASS atmosphere=${p21d2Atmosphere.atmosphere} protected=${p21d2Atmosphere.protected} contact=independent`);
+
+  const readP21eTierSnapshot = async () => evaluate(`(() => {
+    const canvas = document.querySelector('canvas[data-render-tier]');
+    const rect = canvas?.getBoundingClientRect();
+    return {
+      tier: canvas?.dataset.renderTier ?? '',
+      quality: canvas?.dataset.graphicsQuality ?? '',
+      budget: canvas?.dataset.environmentP21Budget ?? '',
+      ibl: canvas?.dataset.environmentIbl ?? '',
+      bloom: canvas?.dataset.environmentBloom ?? '',
+      bloomCost: canvas?.dataset.environmentBloomCost ?? '',
+      contact: canvas?.dataset.environmentContactDepth ?? '',
+      atmosphere: canvas?.dataset.environmentAtmosphere ?? '',
+      iblProtected: canvas?.dataset.environmentBloomExcluded ?? '',
+      contactProtected: canvas?.dataset.environmentContactDepthProtected ?? '',
+      atmosphereProtected: canvas?.dataset.environmentAtmosphereProtected ?? '',
+      interactables: canvas?.dataset.interactableReadability ?? '',
+      hazards: canvas?.dataset.hazardReadability ?? '',
+      controls: Boolean(document.querySelector('[aria-label="Touch combat controls"]') && document.querySelector('.move-stick') && document.querySelector('.fire-button') && document.querySelector('.dodge-button')),
+      mission: document.querySelector('.mission-chip')?.textContent?.trim() ?? '',
+      canvasWidth: rect?.width ?? 0,
+      canvasHeight: rect?.height ?? 0,
+    };
+  })()`);
+
+  const validateP21eTierSnapshot = (snapshot, expectedTier, expectedQuality) => {
+    const budget = parseP21EffectBudget(snapshot?.budget);
+    const expected = P21_EFFECT_BUDGETS[expectedTier];
+    const contactInstances = Math.max(1, Math.round(10 * expected.contact));
+    const iblOn = expected.ibl >= 0.5;
+    const atmosphereOn = expected.atmosphere >= 0.5;
+    if (!snapshot || snapshot.tier !== expectedTier || snapshot.quality !== expectedQuality
+      || !p21BudgetMatchesExpected(budget, expected)
+      || Math.abs(Number(snapshot.bloomCost) - expected.bloom) > 0.001
+      || !snapshot.bloom.startsWith('selective:refinery-selective-v1:')
+      || !snapshot.contact.includes(`:instances-${contactInstances}:triangles-${contactInstances * 2}:draws-1:alpha-32:opacity-0.26`)
+      || (iblOn ? !snapshot.ibl.startsWith('pmrem:furnace-amber+service-cyan:intensity-') : snapshot.ibl !== 'off:adaptive-budget')
+      || (atmosphereOn ? !snapshot.atmosphere.startsWith('fog:refinery-depth-atmosphere-v1:') : snapshot.atmosphere !== 'off:adaptive-budget')
+      || snapshot.iblProtected !== 'hud+enemies+hazards+objectives+loot+interactables'
+      || snapshot.contactProtected !== 'hud+enemies+hazards+objectives+loot+interactables'
+      || snapshot.atmosphereProtected !== 'hud+enemies+hazards+objectives+loot+interactables'
+      || snapshot.interactables !== 'shape-coded+state-emissive+floor-cue:quality-safe'
+      || snapshot.hazards !== 'shape-coded+floor-bound+quality-safe'
+      || !snapshot.controls || !snapshot.mission || snapshot.canvasWidth <= 0 || snapshot.canvasHeight <= 0) {
+      throw new Error(`Android P21-E ${expectedTier} tier is not coherent/playable: ${JSON.stringify({ snapshot, budget, expected })}`);
+    }
+    return budget;
+  };
+
+  const redeployP21eQuality = async (qualityMode, expectedTier, idBase) => {
+    const previousTimeOrigin = await evaluate('performance.timeOrigin');
+    const updatedMode = await evaluate(`(() => {
+      const stateKey = 'ironshade-vector-state-v1';
+      const state = JSON.parse(localStorage.getItem(stateKey) || 'null');
+      if (!state?.profile?.settings) return false;
+      state.profile.settings.graphicsQuality = ${JSON.stringify(qualityMode)};
+      localStorage.setItem(stateKey, JSON.stringify(state));
+      location.reload();
+      return true;
+    })()`);
+    if (!updatedMode) throw new Error(`Android P21-E could not persist graphics mode ${qualityMode}.`);
+    await waitFor(`performance.timeOrigin !== ${JSON.stringify(previousTimeOrigin)}`, `P21-E ${qualityMode} reload`, 45_000);
+    await waitFor(`[...document.querySelectorAll('button[data-primary-area]')].some(button => (button.getAttribute('aria-label') || '').trim().toLowerCase() === 'operations')`, `P21-E ${qualityMode} Command Deck`, 45_000);
+    await tapButton('Operations', idBase, 70);
+    await waitFor(`[...document.querySelectorAll('button')].some(button => (button.textContent || '').trim().toLowerCase() === 'contracts')`, `P21-E ${qualityMode} Operations`);
+    await tapButton('Contracts', idBase + 1, 70);
+    await waitFor(`Boolean(document.querySelector('button[data-location="asteroid-refinery"]'))`, `P21-E ${qualityMode} Contract Board`);
+    const selected = await evaluate(`(() => {
+      const target = document.querySelector('button[data-location="asteroid-refinery"]');
+      if (!target || target.disabled) return false;
+      target.click();
+      return true;
+    })()`);
+    if (!selected) throw new Error(`Android P21-E could not select Asteroid Refinery for ${qualityMode}.`);
+    await waitFor(`document.querySelector('button[data-location="asteroid-refinery"]')?.classList.contains('selected') === true`, `P21-E ${qualityMode} contract selection`);
+    await tapButton('Deploy selected contract', idBase + 2, 70);
+    await waitFor(`(() => {
+      const canvas = document.querySelector('canvas[data-render-tier]');
+      return canvas?.dataset.renderTier === ${JSON.stringify(expectedTier)}
+        && canvas?.dataset.graphicsQuality === ${JSON.stringify(qualityMode)}
+        && Boolean(canvas?.dataset.environmentP21Budget)
+        && Boolean(document.querySelector('[aria-label="Touch combat controls"]'));
+    })()`, `P21-E ${qualityMode} ${expectedTier} combat tier`, 20_000);
+    return await readP21eTierSnapshot();
+  };
+
+  const balancedP21e = await redeployP21eQuality('adaptive', 'balanced', 240);
+  const balancedP21Budget = validateP21eTierSnapshot(balancedP21e, 'balanced', 'adaptive');
+  const highP21e = await redeployP21eQuality('flagship', 'high', 250);
+  const highP21Budget = validateP21eTierSnapshot(highP21e, 'high', 'flagship');
+  const performanceP21e = await redeployP21eQuality('performance', 'performance', 260);
+  const performanceP21Budget = validateP21eTierSnapshot(performanceP21e, 'performance', 'performance');
+  if (!(highP21Budget.ibl > balancedP21Budget.ibl && balancedP21Budget.ibl > performanceP21Budget.ibl)
+    || !(highP21Budget.bloom > balancedP21Budget.bloom && balancedP21Budget.bloom > performanceP21Budget.bloom)
+    || !(highP21Budget.contact > balancedP21Budget.contact && balancedP21Budget.contact > performanceP21Budget.contact)
+    || !(highP21Budget.atmosphere > balancedP21Budget.atmosphere && balancedP21Budget.atmosphere > performanceP21Budget.atmosphere)) {
+    throw new Error(`Android P21-E tier budgets are not strictly descending: ${JSON.stringify({ highP21Budget, balancedP21Budget, performanceP21Budget })}`);
+  }
+  console.log(`ANDROID_P21E_ADAPTIVE_EFFECTS_PASS tiers=high>balanced>performance critical=1.00 high=${highP21e.budget} balanced=${balancedP21e.budget} performance=${performanceP21e.budget} playable=touch+mission+readability`);
 
   const p22b1Geometry = await evaluate(`(() => {
     const readControl = selector => {
