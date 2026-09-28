@@ -941,6 +941,34 @@ async function armoryInspectorViewportAudit() {
     throw new Error(`P19-I item details did not open as a dedicated modal: before=${JSON.stringify(prepared)} open=${JSON.stringify(opened)}`);
   }
 
+  if (p22cPrimaryJourney) {
+    const compactLandscape = opened.width > opened.height && opened.height <= 500;
+    const overlayTypography = await evaluate(`(() => {
+      const root = document.querySelector('.armory-item-modal .item-inspector.open');
+      if (!(root instanceof HTMLElement)) return null;
+      const visible = element => {
+        const style = getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0 && rect.width > 0 && rect.height > 0;
+      };
+      const ownText = element => [...element.childNodes].filter(node => node.nodeType === Node.TEXT_NODE).map(node => node.textContent || '').join(' ').replace(/\\s+/g, ' ').trim();
+      const copy = [...root.querySelectorAll('small,p,span,b,strong,h2,h3,button,summary')].filter(visible).map(element => ({
+        text: ownText(element).slice(0, 64),
+        size: Number.parseFloat(getComputedStyle(element).fontSize),
+      })).filter(item => item.text && Number.isFinite(item.size));
+      return { minFont: copy.length ? Math.min(...copy.map(item => item.size)) : 0, tinyText: copy.filter(item => item.size < 11.5).slice(0, 16) };
+    })()`);
+    if (!overlayTypography || (compactLandscape && overlayTypography.tinyText.length)) {
+      throw new Error(`P22-C Armory overlay readability audit failed: ${JSON.stringify({ opened, overlayTypography })}`);
+    }
+    p22cEvidence.overlay = {
+      viewport: { width: opened.width, height: opened.height },
+      minFont: overlayTypography.minFont,
+      inspector: { withinViewport: opened.windowWithinViewport, centered: opened.windowCentered, actionsOnscreen: opened.actionsOnscreen },
+    };
+    console.log(`BROWSER_P22C_OVERLAY_BOUNDS_PASS viewport=${viewportMode} minFont=${overlayTypography.minFont.toFixed(1)}px dialog=onscreen+centered actions=onscreen`);
+  }
+
   const closedInspector = await evaluate(`(() => {
     const button = document.querySelector('.armory-item-modal .item-inspector .sheet-close[aria-label="Back to ship storage"]');
     if (!(button instanceof HTMLButtonElement)) return false;
@@ -975,33 +1003,6 @@ async function armoryInspectorViewportAudit() {
     throw new Error(`P19-I item modal dismissal did not preserve Ship Storage context: before=${JSON.stringify(prepared)} closed=${JSON.stringify(closed)}`);
   }
 
-  if (p22cPrimaryJourney) {
-    const compactLandscape = opened.width > opened.height && opened.height <= 500;
-    const overlayTypography = await evaluate(`(() => {
-      const root = document.querySelector('.armory-item-modal .item-inspector.open');
-      if (!(root instanceof HTMLElement)) return null;
-      const visible = element => {
-        const style = getComputedStyle(element);
-        const rect = element.getBoundingClientRect();
-        return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0 && rect.width > 0 && rect.height > 0;
-      };
-      const ownText = element => [...element.childNodes].filter(node => node.nodeType === Node.TEXT_NODE).map(node => node.textContent || '').join(' ').replace(/\\s+/g, ' ').trim();
-      const copy = [...root.querySelectorAll('small,p,span,b,strong,h2,h3,button,summary')].filter(visible).map(element => ({
-        text: ownText(element).slice(0, 64),
-        size: Number.parseFloat(getComputedStyle(element).fontSize),
-      })).filter(item => item.text && Number.isFinite(item.size));
-      return { minFont: copy.length ? Math.min(...copy.map(item => item.size)) : 0, tinyText: copy.filter(item => item.size < 11.5).slice(0, 16) };
-    })()`);
-    if (!overlayTypography || (compactLandscape && overlayTypography.tinyText.length)) {
-      throw new Error(`P22-C Armory overlay readability audit failed: ${JSON.stringify({ opened, overlayTypography })}`);
-    }
-    p22cEvidence.overlay = {
-      viewport: { width: opened.width, height: opened.height },
-      minFont: overlayTypography.minFont,
-      inspector: { withinViewport: opened.windowWithinViewport, centered: opened.windowCentered, actionsOnscreen: opened.actionsOnscreen },
-    };
-    console.log(`BROWSER_P22C_OVERLAY_BOUNDS_PASS viewport=${viewportMode} minFont=${overlayTypography.minFont.toFixed(1)}px dialog=onscreen+centered actions=onscreen`);
-  }
   console.log(`BROWSER_P19_ITEM_MODAL_PASS viewport=${viewportMode} item=${JSON.stringify(prepared.item)} grid=${prepared.gridColumns} dialog=modal popup=centered context=preserved`);
 }
 
