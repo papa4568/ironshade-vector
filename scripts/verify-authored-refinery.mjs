@@ -124,6 +124,7 @@ try {
         renderFrameMs: canvas.dataset.renderFrameMs ?? '',
         renderFrameBudget: canvas.dataset.renderFrameBudget ?? '',
         renderBudget: canvas.dataset.renderBudget ?? '',
+        p21Budget: canvas.dataset.environmentP21Budget ?? '',
         canvases: document.querySelectorAll('canvas').length,
         width: rect.width,
         height: rect.height,
@@ -164,11 +165,20 @@ try {
       if (lastState.composition !== 'clear-center-lane+processor-triangle+gantry-focal+perimeter-clutter') {
         throw new Error(`Authored refinery composition/readability hierarchy is missing: ${JSON.stringify(lastState)}`);
       }
-      if (!String(lastState.lighting).startsWith('refinery-key+rim+ibl:pmrem+contact:player+enemy+practical:')) {
-        throw new Error(`Refinery player/enemy readability lighting recipe is not active: ${JSON.stringify(lastState)}`);
+      const p21BudgetMatch = String(lastState.p21Budget).match(/^tier:(high|balanced|performance)\+ibl:(\d+\.\d{2})\+bloom:(\d+\.\d{2})\+contact:(\d+\.\d{2})\+atmosphere:(\d+\.\d{2})\+critical:(\d+\.\d{2})$/);
+      const p21IblScale = Number(p21BudgetMatch?.[2] ?? NaN);
+      const expectedIblIntensity = (0.68 * p21IblScale).toFixed(2);
+      const iblExpectedOn = lastState.graphicsPathSelection === 'qa-explicit' || p21IblScale >= 0.5;
+      if (!p21BudgetMatch || p21BudgetMatch[1] !== lastState.renderTier || p21BudgetMatch[6] !== '1.00') {
+        throw new Error(`Refinery P21-E adaptive budget telemetry is missing or malformed: ${JSON.stringify(lastState)}`);
       }
-      if (!/^pmrem:furnace-amber\+service-cyan:intensity-0\.68$/.test(lastState.ibl)) {
-        throw new Error(`Refinery P21-B PMREM IBL contribution is missing or out of bounds: ${JSON.stringify(lastState)}`);
+      if (iblExpectedOn) {
+        if (!String(lastState.lighting).startsWith('refinery-key+rim+ibl:pmrem+contact:player+enemy+practical:')
+          || lastState.ibl !== `pmrem:furnace-amber+service-cyan:intensity-${expectedIblIntensity}`) {
+          throw new Error(`Refinery P21-B/P21-E PMREM IBL contribution is missing or out of bounds: ${JSON.stringify(lastState)}`);
+        }
+      } else if (!String(lastState.lighting).startsWith('refinery-key+rim+ibl:off+contact:player+enemy+practical:') || lastState.ibl !== 'off:adaptive-budget') {
+        throw new Error(`Refinery P21-E performance IBL budget did not fall back cleanly: ${JSON.stringify(lastState)}`);
       }
       if (lastState.materials !== 'pbr-bounded+emissive+decals:safety+grime+contact-darkening') {
         throw new Error(`Refinery material normalization/decal/contact strategy is missing: ${JSON.stringify(lastState)}`);
@@ -206,7 +216,7 @@ try {
       if (!/^pixel:\d+\.\d{2}\+shadow:\d+\+vfx:\d+\.\d{2}\+transparency:\d+\.\d{2}\+reflection:\d+\.\d{2}\+secondary:\d+\.\d{2}\+detail:\d+\.\d{2}$/.test(lastState.renderBudget)) {
         throw new Error(`Adaptive render budget telemetry is malformed: ${JSON.stringify(lastState)}`);
       }
-      if (!String(lastState.tone).startsWith('aces-') || !String(lastState.tone).includes('+ibl-0.68')) {
+      if (!String(lastState.tone).startsWith('aces-') || !String(lastState.tone).includes(`+ibl-${iblExpectedOn ? expectedIblIntensity : 'off'}`)) {
         throw new Error(`Refinery ACES/IBL tone telemetry is missing: ${JSON.stringify(lastState)}`);
       }
       if (!['full', 'reduced'].includes(lastState.effectsMode)) {
@@ -215,7 +225,7 @@ try {
       if (!(lastState.width > 0 && lastState.height > 0)) {
         throw new Error(`Authored refinery canvas is not visible: ${JSON.stringify(lastState)}`);
       }
-      console.log(`AUTHORED_REFINERY_RUNTIME_PASS lod=${lastState.lod} kit=${[...kit].sort().join(',')} instances=${lastState.instances} terminals=${lastState.terminals} landmark=${lastState.landmark} service=${lastState.serviceDetails} surface=${lastState.surfaceDetail} machine=${lastState.machineDetail} composition=${lastState.composition} lighting=${lastState.lighting} ibl=${lastState.ibl} materials=${lastState.materials} vfx=${lastState.vfx} tone=${lastState.tone} effects=${lastState.effectsMode} readability=${lastState.readability} location=${lastState.locationArt} props=${lastState.locationProps} graphics=${lastState.graphicsPathSelection}:${lastState.graphicsPathRequested || 'none'}->${lastState.graphicsPathLoaded} tier=${lastState.renderTier} frame=${lastState.renderFrameMs}ms budget=${lastState.renderBudget} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
+      console.log(`AUTHORED_REFINERY_RUNTIME_PASS lod=${lastState.lod} kit=${[...kit].sort().join(',')} instances=${lastState.instances} terminals=${lastState.terminals} landmark=${lastState.landmark} service=${lastState.serviceDetails} surface=${lastState.surfaceDetail} machine=${lastState.machineDetail} composition=${lastState.composition} lighting=${lastState.lighting} ibl=${lastState.ibl} materials=${lastState.materials} vfx=${lastState.vfx} tone=${lastState.tone} effects=${lastState.effectsMode} readability=${lastState.readability} location=${lastState.locationArt} props=${lastState.locationProps} graphics=${lastState.graphicsPathSelection}:${lastState.graphicsPathRequested || 'none'}->${lastState.graphicsPathLoaded} tier=${lastState.renderTier} frame=${lastState.renderFrameMs}ms budget=${lastState.renderBudget} p21=${lastState.p21Budget} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
       process.exitCode = 0;
       break;
     }
