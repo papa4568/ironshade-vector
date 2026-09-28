@@ -80,6 +80,9 @@ const DEFAULT_GRAPHICS_ASSET_RUNTIME_BUDGET: GraphicsAssetRuntimeBudget = {
 let graphicsAssetRuntimeBudget = { ...DEFAULT_GRAPHICS_ASSET_RUNTIME_BUDGET };
 let graphicsAssetAccessOrdinal = 0;
 type GraphicsAssetRenderer = WebGLRenderer | WebGPURenderer;
+function isWebGpuGraphicsAssetRenderer(renderer: GraphicsAssetRenderer): renderer is WebGPURenderer {
+  return 'isWebGPURenderer' in renderer && renderer.isWebGPURenderer === true;
+}
 let graphicsRenderer: GraphicsAssetRenderer | null = null;
 let rendererGeneration = 0;
 let sharedKtx2Loader: KTX2Loader | null = null;
@@ -238,7 +241,7 @@ function applyTextureRuntimeBudget(gltf: GLTF) {
   }
   materials.forEach(material => collectMaterialTextures(material, textures));
   const rendererLimit = graphicsRenderer
-    ? graphicsRenderer.isWebGPURenderer
+    ? isWebGpuGraphicsAssetRenderer(graphicsRenderer)
       ? graphicsRenderer.getMaxAnisotropy()
       : graphicsRenderer.capabilities.getMaxAnisotropy()
     : graphicsAssetRuntimeBudget.maxTextureAnisotropy;
