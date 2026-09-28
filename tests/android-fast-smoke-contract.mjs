@@ -268,8 +268,10 @@ for (const jobName of [
 ]) {
   const start = workflow.indexOf(`  ${jobName}`);
   if (start < 0) throw new Error(`P23-F missing full-verification job: ${jobName}`);
-  const nextJob = workflow.indexOf('\n  ', start + 3);
-  const text = workflow.slice(start, nextJob < 0 ? workflow.length : nextJob);
+  const remainder = workflow.slice(start + 3);
+  const nextJobMatch = remainder.match(/\n  [a-z0-9-]+:\n/i);
+  const end = nextJobMatch ? start + 3 + nextJobMatch.index : workflow.length;
+  const text = workflow.slice(start, end);
   requireText(text, fullJobCondition, `P23-F ${jobName} condition`);
   requireText(text, 'needs: build-apk', `P23-F ${jobName} shared APK dependency`);
 }
