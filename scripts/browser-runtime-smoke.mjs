@@ -2,6 +2,14 @@ import { writeFile } from 'node:fs/promises';
 
 const cdpBase = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9223';
 const appUrl = process.env.BROWSER_E2E_APP_URL ?? 'http://127.0.0.1:4173/';
+const requestedGraphicsPath = (process.env.BROWSER_E2E_GRAPHICS_PATH ?? '').trim();
+const navigationUrl = (() => {
+  if (!requestedGraphicsPath) return appUrl;
+  const url = new URL(appUrl);
+  url.searchParams.set('graphicsCompare', '1');
+  url.searchParams.set('graphicsPath', requestedGraphicsPath);
+  return url.toString();
+})();
 const timeoutMs = Number(process.env.BROWSER_E2E_TIMEOUT_MS ?? 75_000);
 const startedAt = Date.now();
 const viewportMode = process.env.BROWSER_E2E_VIEWPORT ?? 'desktop';
@@ -240,6 +248,13 @@ async function performanceDiagnosticsAudit() {
       sampleCount: Number(canvas.dataset.performanceSampleCount ?? 0),
       status: canvas.dataset.performanceStatus ?? '',
       regressions: canvas.dataset.performanceRegressions ?? '',
+      graphicsPathSelection: canvas.dataset.graphicsPathSelection ?? '',
+      graphicsPathRequested: canvas.dataset.graphicsPathRequested ?? '',
+      graphicsPathLoaded: canvas.dataset.graphicsPathLoaded ?? '',
+      renderTier: canvas.dataset.renderTier ?? '',
+      renderFrameMs: canvas.dataset.renderFrameMs ?? '',
+      renderFrameBudget: canvas.dataset.renderFrameBudget ?? '',
+      renderBudget: canvas.dataset.renderBudget ?? '',
       report: JSON.parse(canvas.dataset.performanceReport),
     };
   })()`);
@@ -250,6 +265,18 @@ async function performanceDiagnosticsAudit() {
   if (categoryKeys !== 'animation,audio,cpu,gc,gpu,render,ui') {
     throw new Error(`P16-A performance categories incomplete: ${JSON.stringify(result.report.categories ?? {})}`);
   }
+  if (!['production-default', 'qa-explicit'].includes(result.graphicsPathSelection) || !result.graphicsPathLoaded) {
+    throw new Error(`P21-A2 graphics path telemetry unavailable: ${JSON.stringify(result)}`);
+  }
+  if (requestedGraphicsPath) {
+    if (result.graphicsPathSelection !== 'qa-explicit'
+      || result.graphicsPathRequested !== requestedGraphicsPath
+      || result.graphicsPathLoaded !== requestedGraphicsPath) {
+      throw new Error(`P21-A2 explicit graphics path was not loaded: requested=${requestedGraphicsPath} telemetry=${JSON.stringify(result)}`);
+    }
+  } else if (result.graphicsPathSelection !== 'production-default' || result.graphicsPathRequested !== '') {
+    throw new Error(`P21-A2 production path must remain default when comparison mode is absent: ${JSON.stringify(result)}`);
+  }
   await writeFile(performanceReportPath, JSON.stringify({
     viewport: viewportMode,
     location: targetLocation,
@@ -257,6 +284,7 @@ async function performanceDiagnosticsAudit() {
     ...result,
   }, null, 2));
   console.log(`BROWSER_PERFORMANCE_BASELINE_PASS viewport=${viewportMode} location=${targetLocation} tier=${result.deviceTier} samples=${result.sampleCount} status=${result.status} regressions=${result.regressions} report=${performanceReportPath}`);
+  console.log(`BROWSER_P21A2_GRAPHICS_PATH_PASS viewport=${viewportMode} location=${targetLocation} selection=${result.graphicsPathSelection} requested=${result.graphicsPathRequested || 'none'} loaded=${result.graphicsPathLoaded} renderTier=${result.renderTier} renderFrameMs=${result.renderFrameMs} drawCallsP95=${result.report.categories?.gpu?.drawCalls?.actual ?? 'n/a'} trianglesP95=${result.report.categories?.gpu?.triangles?.actual ?? 'n/a'}`);
   return result;
 }
 
@@ -1044,7 +1072,7 @@ if (viewportMode === 'mobile-landscape') {
   });
 }
 
-await call('Page.navigate', { url: appUrl });
+await call('Page.navigate', { url: navigationUrl });
 await sleep(250);
 
 try {
