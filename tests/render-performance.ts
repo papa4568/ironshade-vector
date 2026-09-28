@@ -44,6 +44,7 @@ assert(snapshot.shadowMapSize === 1024, 'high tier should use the 1024 shadow bu
 assert(snapshot.vfxDensity === 1, 'high tier should keep full VFX density');
 assert(snapshot.transparencyScale === 1, 'high tier should keep full transparency budget');
 assert(snapshot.reflectionScale === 1 && snapshot.secondaryEffectScale === 1, 'high tier should keep full reflection and secondary presentation');
+assert(snapshot.refineryIblScale === 1 && snapshot.refineryBloomScale === 1 && snapshot.refineryContactDepthScale === 1 && snapshot.refineryAtmosphereScale === 1, 'P21-E high tier must keep all new refinery effects at full contribution');
 assert(snapshot.gameplayCueScale === 1, 'gameplay-critical cues must stay full strength at every render tier');
 assert(snapshot.textureAnisotropy === 4 && snapshot.assetCacheCompressedByteBudget === 64 * 1024 * 1024, 'high tier should keep the flagship texture/cache budget');
 assert(Math.abs(snapshot.targetFrameMs - 1000 / 60) < 0.01, 'render profiling should target a 60 fps frame budget');
@@ -60,6 +61,7 @@ assert(snapshot.pixelRatioScale < 0.75, 'performance tier should reduce pixel de
 assert(snapshot.vfxDensity === 0.45, 'performance tier should reduce secondary VFX density');
 assert(snapshot.transparencyScale === 0.4, 'performance tier should reduce transparency-heavy effects');
 assert(snapshot.reflectionScale === 0.38 && snapshot.secondaryEffectScale === 0.42, 'performance tier should shed reflections and secondary effects before critical cues');
+assert(snapshot.refineryIblScale === 0.38 && snapshot.refineryBloomScale === 0.42 && snapshot.refineryContactDepthScale === 0.42 && snapshot.refineryAtmosphereScale === 0.42, 'P21-E performance tier must minimize all new refinery effects with the existing reflection/secondary priorities');
 assert(snapshot.gameplayCueScale === 1, 'performance tier must not scale gameplay-critical cue strength');
 assert(snapshot.textureAnisotropy === 1 && snapshot.assetCacheCompressedByteBudget === 24 * 1024 * 1024, 'performance tier should enforce the minimum texture/cache budget');
 assert(snapshot.framePressure === 'over' && snapshot.frameHeadroomMs < 0, 'sustained 30 ms frames must expose over-budget pressure and negative headroom');
@@ -74,6 +76,7 @@ assert(snapshot.tierName === 'balanced', 'coarse/mobile should expose balanced t
 assert(snapshot.shadowMapSize === 512, 'balanced tier should cap shadows at 512');
 assert(snapshot.vfxDensity === 0.72, 'balanced tier should reduce secondary VFX density');
 assert(snapshot.transparencyScale === 0.68, 'balanced tier should reduce transparency cost');
+assert(snapshot.refineryIblScale === 0.7 && snapshot.refineryBloomScale === 0.68 && snapshot.refineryContactDepthScale === 0.68 && snapshot.refineryAtmosphereScale === 0.68, 'P21-E balanced tier must sit strictly between high and performance for every new refinery effect');
 
 const mobileFlagship = new AdaptiveRenderBudget(true);
 const flagshipSnapshot = mobileFlagship.sample(16.7, 1, 'flagship');
@@ -96,6 +99,8 @@ assert(rendererSource.includes('budget.vfxDensity'), 'renderer must apply the ti
 assert(rendererSource.includes('budget.transparencyScale'), 'renderer must apply the tier transparency budget');
 assert(rendererSource.includes('configureGraphicsAssetRuntimeBudget({'), 'renderer must apply the tier texture/material cache budget');
 assert(rendererSource.includes('budget.reflectionScale') && rendererSource.includes('budget.secondaryEffectScale'), 'renderer must apply reflection and secondary-effect priority budgets');
+assert(rendererSource.includes('budget.refineryIblScale') && rendererSource.includes('budget.refineryBloomScale') && rendererSource.includes('budget.refineryContactDepthScale') && rendererSource.includes('budget.refineryAtmosphereScale'), 'P21-E renderer must explicitly apply the adaptive budget to IBL, bloom, contact depth, and atmosphere');
+assert(rendererSource.includes('dataset.environmentP21Budget') && rendererSource.includes('`critical:${budget.gameplayCueScale.toFixed(2)}`'), 'P21-E runtime QA must expose the four effect budgets beside an unscaled critical-cue budget');
 assert(rendererSource.includes("dataset.effectPriority = `critical:hazards+telegraphs+class-cues@1.00"), 'runtime QA must expose preserved critical cues ahead of secondary effects');
 assert(graphicsAssetsSource.includes('enforceGraphicsAssetCacheBudget') && graphicsAssetsSource.includes('entry.activeInstances === 0'), 'graphics runtime must evict only idle cached assets under memory pressure');
 assert(graphicsAssetsSource.includes('materials.forEach(material => collectMaterialTextures(material, textures))') && graphicsAssetsSource.includes('materials.forEach(material => material.dispose())'), 'graphics cache eviction must reclaim shared material/texture resources');
@@ -335,6 +340,7 @@ assert(worstSnapshot.tier === 2, 'worst-case rendering pressure must settle on t
 assert(worstSnapshot.pixelRatioScale <= 0.68 && worstSnapshot.detailScale <= 0.5, 'worst-case rendering must reduce raster and authored detail cost together');
 assert(worstSnapshot.assetCacheCompressedByteBudget <= 24 * 1024 * 1024 && worstSnapshot.textureAnisotropy === 1, 'worst-case rendering must clamp texture/material residency and sampling cost');
 assert(!worstSnapshot.shadows && worstSnapshot.reflectionScale < 0.5 && worstSnapshot.secondaryEffectScale < 0.5, 'worst-case rendering must shed shadows, reflections, and secondary effects');
+assert(worstSnapshot.refineryIblScale < 0.5 && worstSnapshot.refineryBloomScale < 0.5 && worstSnapshot.refineryContactDepthScale < 0.5 && worstSnapshot.refineryAtmosphereScale < 0.5, 'worst-case rendering pressure must push every P21 secondary effect into its minimum budget');
 assert(worstSnapshot.gameplayCueScale === 1, 'worst-case rendering must preserve gameplay-critical information');
 assert(rendererSource.includes("telegraph.visible = enemy.telegraph > 0") && rendererSource.includes("dataset.hazardReadability = 'shape-coded+floor-bound+quality-safe'"), 'critical enemy telegraphs and hazard readability must remain independent of secondary render scaling');
 
