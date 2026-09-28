@@ -15,21 +15,35 @@ const [, entry] = entryRecord;
 
 const dynamic = records.filter(([, record]) => record.isDynamicEntry);
 const dynamicKeys = dynamic.map(([key]) => key);
-for (const expected of ['src/components/ShipHub.tsx', 'src/components/Armory.tsx', 'src/components/GameCanvas.tsx']) {
+for (const expected of ['src/components/ShipHub.tsx', 'src/components/Armory.tsx']) {
   assert(dynamicKeys.includes(expected), `${expected} is no longer emitted as a dynamic entry.`);
 }
+const gameCanvasEntry = records.find(([key]) => key === 'src/components/GameCanvas.tsx');
+assert(gameCanvasEntry, 'src/components/GameCanvas.tsx is no longer emitted as a deferred chunk.');
+const [gameCanvasKey, gameCanvasRecord] = gameCanvasEntry;
+assert(basename(gameCanvasRecord.file).startsWith('GameCanvas-'), 'GameCanvas is no longer isolated in its own deferred chunk.');
 
 const assetsDir = resolve(root, 'dist/assets');
 const jsFiles = readdirSync(assetsDir).filter(name => name.endsWith('.js'));
 const threeChunks = jsFiles.filter(name => name.startsWith('three-core-') || name.startsWith('three-webgl-'));
 assert(threeChunks.some(name => name.startsWith('three-core-')), 'Three.js core is not isolated in its deferred chunk.');
 assert(threeChunks.some(name => name.startsWith('three-webgl-')), 'Three.js WebGL renderer is not isolated in its deferred chunk.');
-assert(threeChunks.length === 2, `Expected exactly two Three.js runtime chunks; found ${threeChunks.length}.`);
+assert(threeChunks.length === 2, `Expected exactly two production Three.js runtime chunks; found ${threeChunks.length}.`);
+const webGpuQaChunks = jsFiles.filter(name => name.startsWith('three.webgpu-') || name.startsWith('three.tsl-') || name.startsWith('webGpuRefineryRenderer-'));
+assert(webGpuQaChunks.length === 3, `Expected three deferred WebGPU QA chunks; found ${webGpuQaChunks.length}.`);
 
 const threeManifestKeys = new Set(records
   .filter(([, record]) => threeChunks.includes(basename(record.file)))
   .map(([key]) => key));
 const bootImports = new Set(entry.imports ?? []);
+assert(!bootImports.has(gameCanvasKey), 'GameCanvas leaked into the synchronous boot graph.');
+const appRecordEntry = records.find(([, record]) => basename(record.file).startsWith('App-'));
+assert(appRecordEntry, 'The staged app chunk was not emitted.');
+const [, appRecord] = appRecordEntry;
+assert(
+  new Set(appRecord.dynamicImports ?? []).has(gameCanvasKey),
+  'The staged app chunk no longer reaches GameCanvas through a dynamic import.',
+);
 const mainSource = readFileSync(resolve(root, 'src/main.tsx'), 'utf8');
 const runtimeStaticImports = mainSource.split('\n').filter(line => { const trimmed = line.trim(); return trimmed.startsWith('import ') && !trimmed.startsWith('import type '); }).join('\n');
 for (const [label, sourcePath, prefix] of [['save recovery', './game/saveRecovery', 'saveRecovery-'], ['app', './App', 'App-']]) {
@@ -40,7 +54,11 @@ for (const [label, sourcePath, prefix] of [['save recovery', './game/saveRecover
   const [stagedKey] = stagedRecord;
   assert(!bootImports.has(stagedKey), `The ${label} chunk leaked back into the synchronous boot graph.`);
 }
-assert([...threeManifestKeys].every(key => !bootImports.has(key)), 'Three.js runtime is no longer deferred from the boot entry.');
+assert([...threeManifestKeys].every(key => !bootImports.has(key)), 'Three.js production runtime is no longer deferred from the boot entry.');
+const webGpuManifestKeys = new Set(records
+  .filter(([, record]) => webGpuQaChunks.includes(basename(record.file)))
+  .map(([key]) => key));
+assert([...webGpuManifestKeys].every(key => !bootImports.has(key)), 'WebGPU QA runtime leaked into the synchronous boot graph.');
 
 const graphicsRuntimePrefixes = ['GLTFLoader-', 'KTX2Loader-', 'meshopt_decoder.module-', 'SkeletonUtils-'];
 const graphicsRuntimeChunks = jsFiles.filter(name => graphicsRuntimePrefixes.some(prefix => name.startsWith(prefix)));
@@ -57,5 +75,5 @@ assert(jsFiles.length >= 10, `Expected navigation, Three.js, and authored-asset 
 
 console.log(
   'CLIENT_BUNDLE_ARCHITECTURE_PASS ' +
-  `chunks=${jsFiles.length} three=${threeChunks.join(',')} graphicsRuntime=${graphicsRuntimeChunks.join(',')}`,
+  `chunks=${jsFiles.length} three=${threeChunks.join(',')} webgpuQa=${webGpuQaChunks.join(',')} graphicsRuntime=${graphicsRuntimeChunks.join(',')}`,
 );
