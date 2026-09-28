@@ -1079,3 +1079,215 @@
     font-size: 14px;
   }
 }
+
+
+/* P22-C // Close the fixed-pixel class-intake outlier left outside the shared P22-A root scale.
+   Geometry now follows the 70% management baseline; compact landscape uses disclosure instead
+   of sub-readable type so the full first-run flow remains reachable without horizontal overflow. */
+.class-intake {
+  padding:
+    max(.875rem, env(safe-area-inset-top))
+    max(1.125rem, env(safe-area-inset-right))
+    max(.875rem, env(safe-area-inset-bottom))
+    max(1.125rem, env(safe-area-inset-left));
+}
+.class-intake-shell {
+  width: min(77.5rem, 100%);
+  min-height: calc(100dvh - 1.75rem);
+  gap: .875rem;
+}
+.class-intake-header {
+  grid-template-columns: minmax(0, 1fr) 15.625rem;
+  gap: 1.125rem;
+}
+.class-intake-header h1 {
+  margin-top: .3125rem;
+  font-size: clamp(1.75rem, 3.8vw, 2.875rem);
+}
+.class-intake-header aside {
+  padding: .75rem .875rem;
+  border-radius: .75rem;
+}
+.class-choice-grid {
+  gap: .625rem;
+}
+.class-choice-card {
+  min-height: 10.625rem;
+  padding: .8125rem .875rem;
+  gap: .5rem;
+  border-radius: .875rem;
+}
+.class-choice-card h3 {
+  font-size: clamp(1.375rem, 2.6vw, 1.9375rem);
+}
+.class-selected-panel {
+  gap: .625rem;
+  padding: .75rem;
+  border-radius: 1rem;
+}
+.class-selected-overview,
+.class-starting-kit {
+  padding: .75rem;
+  border-radius: .75rem;
+}
+.class-confirm-row {
+  gap: .875rem;
+  padding: .5625rem .625rem .5625rem .75rem;
+  border-radius: .6875rem;
+}
+.class-confirm {
+  min-width: 11.875rem;
+  min-height: max(44px, 3.25rem);
+  padding: .5625rem .9375rem;
+  border-radius: .625rem;
+}
+
+@media (orientation: landscape) and (max-width: 1000px) and (max-height: 500px) {
+  .class-intake {
+    padding:
+      max(6px, env(safe-area-inset-top))
+      max(10px, env(safe-area-inset-right))
+      max(6px, env(safe-area-inset-bottom))
+      max(10px, env(safe-area-inset-left));
+  }
+  .class-intake-shell {
+    min-height: calc(100dvh - 12px);
+    gap: 4px;
+  }
+  .class-intake-header {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .class-intake-header aside,
+  .class-intake-header > div > span,
+  .class-choice-section-head,
+  .class-choice-pitch,
+  .class-choice-tags,
+  .class-card-kit,
+  .class-selected-summary,
+  .class-selected-facts,
+  .class-new-player-note,
+  .class-starting-kit > header,
+  .class-advanced-details,
+  .class-selected-heading small,
+  .class-selected-heading > span,
+  .class-confirm-row small,
+  .class-confirm-row > div > span,
+  .class-starting-kit-grid article small,
+  .class-starting-kit-grid article span,
+  .class-confirm small {
+    display: none;
+  }
+  .class-intake-header h1 {
+    margin: 0;
+    font-size: 20px;
+    line-height: 1;
+  }
+  .class-choice-section {
+    gap: 0;
+  }
+  .class-choice-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .class-choice-card {
+    min-height: 48px;
+    padding: 4px 6px;
+    gap: 2px;
+    border-radius: 7px;
+  }
+  .class-choice-top {
+    gap: 4px;
+  }
+  .class-choice-role {
+    gap: 4px;
+  }
+  .class-choice-role img {
+    width: 16px;
+    height: 16px;
+  }
+  .class-choice-role span,
+  .class-choice-top strong {
+    font-size: 12px;
+    line-height: 1;
+    letter-spacing: 0;
+  }
+  .class-choice-top strong {
+    padding: 2px 4px;
+  }
+  .class-choice-card h3 {
+    font-size: 14px;
+    line-height: 1;
+  }
+  .class-selected-panel {
+    grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+    gap: 4px;
+    padding: 4px;
+    border-radius: 8px;
+  }
+  .class-selected-overview,
+  .class-starting-kit {
+    padding: 5px;
+    border-radius: 7px;
+  }
+  .class-selected-title {
+    gap: 5px;
+  }
+  .class-selected-title > img {
+    width: 20px;
+    height: 20px;
+  }
+  .class-selected-heading h2 {
+    margin-top: 0;
+    font-size: 14px;
+  }
+  .class-selected-heading b {
+    margin-top: 2px;
+    font-size: 12px;
+    line-height: 1.2;
+  }
+  .class-starting-kit {
+    gap: 4px;
+  }
+  .class-starting-kit-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .class-starting-kit-grid article {
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 4px;
+    padding: 4px;
+    border-radius: 6px;
+  }
+  .class-skill-key {
+    width: 22px;
+    height: 22px;
+    border-radius: 5px;
+  }
+  .class-skill-key img {
+    width: 16px;
+    height: 16px;
+  }
+  .class-starting-kit-grid article b {
+    margin-top: 0;
+    font-size: 12px;
+    line-height: 1.1;
+  }
+  .class-confirm-row {
+    min-height: 44px;
+    padding: 4px 6px;
+    gap: 8px;
+  }
+  .class-confirm-row > div b {
+    margin-top: 0;
+    font-size: 12px;
+  }
+  .class-confirm {
+    min-width: 150px;
+    min-height: 44px;
+    padding: 5px 8px;
+  }
+  .class-confirm span {
+    font-size: 14px;
+  }
+}
