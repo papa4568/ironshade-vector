@@ -17,6 +17,10 @@ export type RenderBudgetSnapshot = {
   transparencyScale: number;
   reflectionScale: number;
   secondaryEffectScale: number;
+  refineryIblScale: number;
+  refineryBloomScale: number;
+  refineryContactDepthScale: number;
+  refineryAtmosphereScale: number;
   gameplayCueScale: 1;
   textureAnisotropy: 1 | 2 | 4;
   assetCacheCompressedByteBudget: number;
@@ -100,6 +104,10 @@ export class AdaptiveRenderBudget {
       transparencyScale: TRANSPARENCY_SCALE[tier],
       reflectionScale: REFLECTION_SCALE[tier],
       secondaryEffectScale: SECONDARY_EFFECT_SCALE[tier],
+      refineryIblScale: REFLECTION_SCALE[tier],
+      refineryBloomScale: SECONDARY_EFFECT_SCALE[tier],
+      refineryContactDepthScale: SECONDARY_EFFECT_SCALE[tier],
+      refineryAtmosphereScale: SECONDARY_EFFECT_SCALE[tier],
       gameplayCueScale: 1,
       textureAnisotropy: TEXTURE_ANISOTROPY[tier],
       assetCacheCompressedByteBudget: ASSET_CACHE_COMPRESSED_BYTE_BUDGET[tier],
