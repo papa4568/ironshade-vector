@@ -351,6 +351,30 @@ assert(
   'P19-G Build surfaces must close legacy compact 5–9px labels without changing wide-layout density.',
 );
 assert(
+  classSelectCss.includes('P22-C // Compact class intake keeps the reduced footprint without sub-readable labels.')
+    && classSelectCss.includes('.class-card-kit b,')
+    && classSelectCss.includes('font-size: 12px')
+    && classSelectCss.includes('.class-confirm span')
+    && classSelectCss.includes('font-size: 14px'),
+  'P22-C compact class intake must disclose secondary copy rather than retaining legacy 4–8px visible labels.',
+);
+assert(
+  browserSmoke.includes('BROWSER_P22C_CLASS_AUDIT_PASS')
+    && browserSmoke.includes('BROWSER_P22C_MANAGEMENT_FOOTPRINT_PASS')
+    && browserSmoke.includes('BROWSER_P22C_CONTRACT_PREP_PASS')
+    && browserSmoke.includes('BROWSER_P22C_OVERLAY_BOUNDS_PASS')
+    && browserSmoke.includes('BROWSER_P22C_FULL_UI_AUDIT_PASS')
+    && browserSmoke.includes('cardPadding / before.cardPadding')
+    && browserSmoke.includes('tinyText'),
+  'P22-C Browser E2E must retain before/after footprint evidence and full-surface readability/bounds checks.',
+);
+assert(
+  androidSmoke.includes("p19CompactTypographyScan('class', '.class-intake')")
+    && androidSmoke.includes('ANDROID_P22C_CLASS_READABILITY_PASS')
+    && androidSmoke.includes("['class', 'command', 'armory'"),
+  'P22-C Android acceptance must include first-run class intake in the native compact typography sweep.',
+);
+assert(
   androidSmoke.includes('async function p19CompactTypographyScan')
     && androidSmoke.includes("p19CompactTypographyScan('command'")
     && androidSmoke.includes("p19CompactTypographyScan('armory'")

@@ -10,7 +10,12 @@ const screenshotPath = process.env.BROWSER_E2E_SCREENSHOT ?? 'browser-e2e-smoke.
 const commandScreenshotPath = process.env.BROWSER_E2E_COMMAND_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-command.png');
 const classScreenshotPath = process.env.BROWSER_E2E_CLASS_SCREENSHOT ?? commandScreenshotPath.replace(/command/i, 'class');
 const accessibilityScreenshotPath = process.env.BROWSER_E2E_ACCESSIBILITY_SCREENSHOT ?? commandScreenshotPath.replace(/command/i, 'accessibility');
+const p22cBeforeScreenshotPath = process.env.BROWSER_E2E_P22C_BEFORE_SCREENSHOT ?? commandScreenshotPath.replace(/command/i, 'p22c-before');
+const p22cAfterScreenshotPath = process.env.BROWSER_E2E_P22C_AFTER_SCREENSHOT ?? commandScreenshotPath.replace(/command/i, 'p22c-after');
+const p22cReportPath = process.env.BROWSER_E2E_P22C_REPORT ?? screenshotPath.replace(/\.png$/i, '.p22c.json');
 const performanceReportPath = process.env.BROWSER_E2E_PERFORMANCE_REPORT ?? screenshotPath.replace(/\.png$/i, '.performance.json');
+const p22cPrimaryJourney = targetLocation === 'asteroid-refinery';
+const p22cEvidence = { viewport: viewportMode, location: targetLocation };
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 if (typeof WebSocket !== 'function') {
@@ -970,6 +975,33 @@ async function armoryInspectorViewportAudit() {
     throw new Error(`P19-I item modal dismissal did not preserve Ship Storage context: before=${JSON.stringify(prepared)} closed=${JSON.stringify(closed)}`);
   }
 
+  if (p22cPrimaryJourney) {
+    const compactLandscape = opened.width > opened.height && opened.height <= 500;
+    const overlayTypography = await evaluate(`(() => {
+      const root = document.querySelector('.armory-item-modal .item-inspector.open');
+      if (!(root instanceof HTMLElement)) return null;
+      const visible = element => {
+        const style = getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0 && rect.width > 0 && rect.height > 0;
+      };
+      const ownText = element => [...element.childNodes].filter(node => node.nodeType === Node.TEXT_NODE).map(node => node.textContent || '').join(' ').replace(/\\s+/g, ' ').trim();
+      const copy = [...root.querySelectorAll('small,p,span,b,strong,h2,h3,button,summary')].filter(visible).map(element => ({
+        text: ownText(element).slice(0, 64),
+        size: Number.parseFloat(getComputedStyle(element).fontSize),
+      })).filter(item => item.text && Number.isFinite(item.size));
+      return { minFont: copy.length ? Math.min(...copy.map(item => item.size)) : 0, tinyText: copy.filter(item => item.size < 11.5).slice(0, 16) };
+    })()`);
+    if (!overlayTypography || (compactLandscape && overlayTypography.tinyText.length)) {
+      throw new Error(`P22-C Armory overlay readability audit failed: ${JSON.stringify({ opened, overlayTypography })}`);
+    }
+    p22cEvidence.overlay = {
+      viewport: { width: opened.width, height: opened.height },
+      minFont: overlayTypography.minFont,
+      inspector: { withinViewport: opened.windowWithinViewport, centered: opened.windowCentered, actionsOnscreen: opened.actionsOnscreen },
+    };
+    console.log(`BROWSER_P22C_OVERLAY_BOUNDS_PASS viewport=${viewportMode} minFont=${overlayTypography.minFont.toFixed(1)}px dialog=onscreen+centered actions=onscreen`);
+  }
   console.log(`BROWSER_P19_ITEM_MODAL_PASS viewport=${viewportMode} item=${JSON.stringify(prepared.item)} grid=${prepared.gridColumns} dialog=modal popup=centered context=preserved`);
 }
 
@@ -1013,7 +1045,40 @@ try {
   const firstSurface = await snapshot();
   if ((firstSurface.text ?? '').toLowerCase().includes('operator intake')) {
     await accessibilityAudit('class-selection');
-    await classSelectionViewportAudit();
+    const classLayout = await classSelectionViewportAudit();
+    if (p22cPrimaryJourney) {
+      const p22cClass = await evaluate(`(() => {
+        const root = document.querySelector('.class-intake');
+        if (!(root instanceof HTMLElement)) return null;
+        const viewport = { width: window.visualViewport?.width ?? window.innerWidth, height: window.visualViewport?.height ?? window.innerHeight };
+        const visible = element => {
+          const style = getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0 && rect.width > 0 && rect.height > 0;
+        };
+        const ownText = element => [...element.childNodes].filter(node => node.nodeType === Node.TEXT_NODE).map(node => node.textContent || '').join(' ').replace(/\\s+/g, ' ').trim();
+        const copy = [...root.querySelectorAll('small,p,span,b,strong,h1,h2,h3,summary')].filter(visible).map(element => ({
+          text: ownText(element).slice(0, 64),
+          size: Number.parseFloat(getComputedStyle(element).fontSize),
+        })).filter(item => item.text && Number.isFinite(item.size));
+        const rootRect = root.getBoundingClientRect();
+        return {
+          viewport,
+          compactLandscape: viewport.width > viewport.height && viewport.height <= 500,
+          minFont: copy.length ? Math.min(...copy.map(item => item.size)) : 0,
+          tinyText: copy.filter(item => item.size < 11.5).slice(0, 16),
+          horizontalOverflow: Math.max(0, root.scrollWidth - root.clientWidth),
+          bounds: { left: rootRect.left, top: rootRect.top, right: rootRect.right, bottom: rootRect.bottom },
+        };
+      })()`);
+      if (!p22cClass
+        || p22cClass.horizontalOverflow > 2
+        || (p22cClass.compactLandscape && p22cClass.tinyText.length)) {
+        throw new Error(`P22-C class intake readability/bounds audit failed: ${JSON.stringify(p22cClass)}`);
+      }
+      p22cEvidence.classSelection = { ...p22cClass, confirmOnscreen: classLayout.confirmOnscreen };
+      console.log(`BROWSER_P22C_CLASS_AUDIT_PASS viewport=${viewportMode} minFont=${p22cClass.minFont.toFixed(1)}px compactFloor=${p22cClass.compactLandscape ? '11.5px' : 'wide'} overflow=none confirm=onscreen`);
+    }
     await captureScreenshot(classScreenshotPath);
     await keyboardActivateButton('Select Vanguard class');
     await keyboardActivateButton('Confirm Vanguard');
@@ -1113,6 +1178,55 @@ try {
     throw new Error(`P20-A Command surface did not produce a materially smaller Compact layout: ${JSON.stringify(p20CommandScale)}`);
   }
   console.log(`BROWSER_P20_COMMAND_SCALE_PASS viewport=${viewportMode} padding=${p20CommandScale.compact.paddingLeft}/${p20CommandScale.baseline.paddingLeft}/${p20CommandScale.large.paddingLeft} bridge=${p20CommandScale.compact.bridgeHeight}/${p20CommandScale.baseline.bridgeHeight} nav=${p20CommandScale.compact.navHeight}px overflow=none`);
+  if (p22cPrimaryJourney) {
+    const p22cMeasureManagement = async () => evaluate(`(() => {
+      const card = document.querySelector('.command-card.primary-card');
+      const workspace = document.querySelector('.tactical-workspace');
+      const bridge = document.querySelector('.command-visual.command-bridge.command-bridge-compact');
+      if (!(card instanceof HTMLElement) || !(workspace instanceof HTMLElement) || !(bridge instanceof HTMLElement)) return null;
+      const cardStyle = getComputedStyle(card);
+      const cardRect = card.getBoundingClientRect();
+      const bridgeRect = bridge.getBoundingClientRect();
+      return {
+        rootFont: Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
+        cardPadding: Number.parseFloat(cardStyle.paddingLeft),
+        card: { width: cardRect.width, height: cardRect.height },
+        bridge: { width: bridgeRect.width, height: bridgeRect.height },
+        horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
+      };
+    })()`);
+    const after = await p22cMeasureManagement();
+    await captureScreenshot(p22cAfterScreenshotPath);
+    await evaluate(`(() => {
+      const root = document.documentElement;
+      globalThis.__p22cInlineFontSize = root.style.fontSize;
+      globalThis.__p22cInlineInterfaceScale = root.style.getPropertyValue('--iv-interface-scale');
+      root.style.fontSize = '100%';
+      root.style.setProperty('--iv-interface-scale', '1');
+      return true;
+    })()`);
+    await sleep(100);
+    const before = await p22cMeasureManagement();
+    await captureScreenshot(p22cBeforeScreenshotPath);
+    await evaluate(`(() => {
+      const root = document.documentElement;
+      root.style.fontSize = globalThis.__p22cInlineFontSize || '';
+      const previousScale = globalThis.__p22cInlineInterfaceScale || '';
+      if (previousScale) root.style.setProperty('--iv-interface-scale', previousScale);
+      else root.style.removeProperty('--iv-interface-scale');
+      delete globalThis.__p22cInlineFontSize;
+      delete globalThis.__p22cInlineInterfaceScale;
+      return true;
+    })()`);
+    await sleep(100);
+    const restored = await p22cMeasureManagement();
+    const ratio = after && before && before.cardPadding > 0 ? after.cardPadding / before.cardPadding : 0;
+    if (!after || !before || !restored || Math.abs(ratio - 0.7) > 0.035 || after.horizontalOverflow > 2 || restored.horizontalOverflow > 2 || Math.abs(restored.cardPadding - after.cardPadding) > 0.1) {
+      throw new Error(`P22-C management before/after footprint audit failed: ${JSON.stringify({ before, after, restored, ratio })}`);
+    }
+    p22cEvidence.management = { before, after, restored, ratio };
+    console.log(`BROWSER_P22C_MANAGEMENT_FOOTPRINT_PASS viewport=${viewportMode} rootFont=${after.rootFont}/${before.rootFont}px cardPaddingRatio=${ratio.toFixed(3)} overflow=none screenshots=before+after`);
+  }
   await captureScreenshot(commandScreenshotPath);
 
   const equipmentShortcutVisible = await evaluate(`(() => {
@@ -1654,6 +1768,45 @@ try {
   }
   console.log(`BROWSER_P20E_REPEATABLE_IDENTITY_PASS viewport=${viewportMode} families=salvage+boarding+stabilization markers=RECOVER+BREACH+STABILIZE predeploy=true`);
 
+  if (p22cPrimaryJourney) {
+    const p22cContract = await evaluate(`(() => {
+      const layout = document.querySelector('.contracts-layout');
+      const inspector = document.querySelector('.contract-inspector');
+      const deploy = document.querySelector('.deploy-contract');
+      if (!(layout instanceof HTMLElement) || !(inspector instanceof HTMLElement) || !(deploy instanceof HTMLElement)) return null;
+      const viewport = { width: window.visualViewport?.width ?? window.innerWidth, height: window.visualViewport?.height ?? window.innerHeight };
+      const visible = element => {
+        const style = getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0 && rect.width > 0 && rect.height > 0;
+      };
+      const ownText = element => [...element.childNodes].filter(node => node.nodeType === Node.TEXT_NODE).map(node => node.textContent || '').join(' ').replace(/\\s+/g, ' ').trim();
+      const copy = [...layout.querySelectorAll('small,p,span,b,strong,h2,h3,button')].filter(visible).map(element => ({
+        text: ownText(element).slice(0, 64),
+        size: Number.parseFloat(getComputedStyle(element).fontSize),
+      })).filter(item => item.text && Number.isFinite(item.size));
+      const inspectorRect = inspector.getBoundingClientRect();
+      const deployRect = deploy.getBoundingClientRect();
+      return {
+        compactLandscape: viewport.width > viewport.height && viewport.height <= 500,
+        minFont: copy.length ? Math.min(...copy.map(item => item.size)) : 0,
+        tinyText: copy.filter(item => item.size < 11.5).slice(0, 16),
+        horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - viewport.width),
+        inspector: { left: inspectorRect.left, top: inspectorRect.top, right: inspectorRect.right, bottom: inspectorRect.bottom, width: inspectorRect.width, height: inspectorRect.height },
+        deploy: { left: deployRect.left, top: deployRect.top, right: deployRect.right, bottom: deployRect.bottom, width: deployRect.width, height: deployRect.height },
+      };
+    })()`);
+    if (!p22cContract
+      || p22cContract.horizontalOverflow > 2
+      || (p22cContract.compactLandscape && p22cContract.tinyText.length)
+      || p22cContract.deploy.width < 40
+      || p22cContract.deploy.height < 40) {
+      throw new Error(`P22-C contract preparation audit failed: ${JSON.stringify(p22cContract)}`);
+    }
+    p22cEvidence.contractPreparation = p22cContract;
+    console.log(`BROWSER_P22C_CONTRACT_PREP_PASS viewport=${viewportMode} minFont=${p22cContract.minFont.toFixed(1)}px overflow=none deploy=${Math.round(p22cContract.deploy.width)}x${Math.round(p22cContract.deploy.height)}`);
+  }
+
 
   const targetSelected = await evaluate(`(() => {
     const target = ${JSON.stringify(targetLocation)};
@@ -2166,8 +2319,16 @@ try {
     throw new Error(`Browser combat surface failed E2E validation: ${JSON.stringify({ ...combat, combatGuidanceVisible })}`);
   }
   await accessibilityAudit('combat');
-  if (viewportMode === 'mobile-landscape') await mobileCombatLayoutAudit();
+  if (viewportMode === 'mobile-landscape') {
+    const p22cCombatLayout = await mobileCombatLayoutAudit();
+    if (p22cPrimaryJourney) p22cEvidence.combat = { viewport: p22cCombatLayout.viewport, offscreen: p22cCombatLayout.offscreen, touchButtons: p22cCombatLayout.touchButtons };
+  }
   await targetFeedbackAudit(viewportMode === 'mobile-landscape');
+  if (p22cPrimaryJourney) {
+    p22cEvidence.completed = true;
+    await writeFile(p22cReportPath, JSON.stringify(p22cEvidence, null, 2));
+    console.log(`BROWSER_P22C_FULL_UI_AUDIT_PASS viewport=${viewportMode} surfaces=class+management+contract+overlay+combat report=${p22cReportPath}`);
+  }
 
   if (pageExceptions.length > 0) {
     throw new Error(`Browser E2E observed uncaught page exceptions: ${JSON.stringify(pageExceptions)}`);

@@ -1013,3 +1013,69 @@
     transition: none;
   }
 }
+
+
+/* P22-C // Compact class intake keeps the reduced footprint without sub-readable labels.
+   Secondary onboarding copy is disclosed away on short landscape screens; the remaining
+   class names, ability names, selected-role summary, and confirm action stay at the
+   compact-phone readability floor instead of using the legacy 4-8px fit strategy. */
+@media (orientation: landscape) and (max-width: 1000px) and (max-height: 500px) {
+  .class-intake-header {
+    grid-template-columns: 1fr;
+  }
+
+  .class-intake-header > div > span,
+  .class-intake-header aside,
+  .class-choice-section-head,
+  .class-choice-top span,
+  .class-choice-top strong,
+  .class-choice-pitch,
+  .class-choice-tags,
+  .class-card-kit small,
+  .class-selected-heading small,
+  .class-selected-heading > span,
+  .class-selected-summary,
+  .class-selected-facts,
+  .class-new-player-note,
+  .class-starting-kit > header small,
+  .class-starting-kit > header > span,
+  .class-starting-kit-grid article small,
+  .class-starting-kit-grid article span,
+  .class-skill-key span,
+  .class-confirm-row > div,
+  .class-confirm small {
+    display: none;
+  }
+
+  .class-intake-header h1 {
+    font-size: 18px;
+  }
+
+  .class-choice-card {
+    min-height: 68px;
+  }
+
+  .class-choice-card h3 {
+    font-size: 14px;
+  }
+
+  .class-card-kit b,
+  .class-selected-heading b,
+  .class-starting-kit h3,
+  .class-starting-kit-grid article b {
+    font-size: 12px;
+    line-height: 1.15;
+  }
+
+  .class-selected-heading h2 {
+    font-size: 16px;
+  }
+
+  .class-confirm {
+    min-height: 44px;
+  }
+
+  .class-confirm span {
+    font-size: 14px;
+  }
+}

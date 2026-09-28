@@ -148,6 +148,9 @@ jobs:
           BROWSER_E2E_COMMAND_SCREENSHOT: browser-command-${{ matrix.viewport }}.png
           BROWSER_E2E_CLASS_SCREENSHOT: browser-class-${{ matrix.viewport }}.png
           BROWSER_E2E_ACCESSIBILITY_SCREENSHOT: browser-accessibility-${{ matrix.viewport }}.png
+          BROWSER_E2E_P22C_BEFORE_SCREENSHOT: browser-p22c-before-${{ matrix.viewport }}.png
+          BROWSER_E2E_P22C_AFTER_SCREENSHOT: browser-p22c-after-${{ matrix.viewport }}.png
+          BROWSER_E2E_P22C_REPORT: browser-p22c-${{ matrix.viewport }}.json
           BROWSER_E2E_CHAPTER3_SCREENSHOT: browser-chapter3-${{ matrix.viewport }}.png
           BROWSER_E2E_CHAPTER3_REPORT: browser-chapter3-${{ matrix.viewport }}.json
         run: |
@@ -348,6 +351,9 @@ jobs:
             browser-chapter3-${{ matrix.viewport }}.png
             browser-chapter3-${{ matrix.viewport }}.json
             browser-command-${{ matrix.viewport }}.png
+            browser-p22c-before-${{ matrix.viewport }}.png
+            browser-p22c-after-${{ matrix.viewport }}.png
+            browser-p22c-${{ matrix.viewport }}.json
             browser-e2e-${{ matrix.viewport }}.png
             browser-e2e-${{ matrix.viewport }}*.performance.json
             browser-e2e-${{ matrix.viewport }}-damaged-vessel.png

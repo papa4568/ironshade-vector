@@ -606,6 +606,8 @@ if ((firstSurface.text ?? '').toLowerCase().includes('operator intake')) {
     throw new Error(`Android class selection layout is not first-screen safe: ${JSON.stringify(classLayout)}`);
   }
   console.log(`ANDROID_CLASS_SELECTION_LAYOUT_PASS viewport=${Math.round(classLayout.viewport.width)}x${Math.round(classLayout.viewport.height)} horizontalOverflow=${classLayout.horizontalOverflow}px confirm=onscreen`);
+  const p22cClassTypography = await p19CompactTypographyScan('class', '.class-intake');
+  console.log(`ANDROID_P22C_CLASS_READABILITY_PASS default=${p22cClassTypography.default.minFont.toFixed(1)}px large=${p22cClassTypography.large.minFont.toFixed(1)}px overflow=none`);
   await tapButton('Select Vanguard class', 11);
   await tapButton('Confirm Vanguard', 12);
   await waitFor(`(() => {
@@ -2713,7 +2715,7 @@ console.log(`ANDROID_MOBILE_LAYOUT_PASS viewport=${Math.round(mobileLayout.viewp
 console.log(`ANDROID_COMBAT_HUD_PASS layers=core+context+transient typeFloor=12px overlaps=none touch=clear`);
 
 await p19CompactTypographyScan('combat', '#root');
-const p19RequiredTypographySurfaces = ['command', 'armory', 'progression', 'skills', 'crafting', 'ship', 'intel', 'guide', 'combat'];
+const p19RequiredTypographySurfaces = ['class', 'command', 'armory', 'progression', 'skills', 'crafting', 'ship', 'intel', 'guide', 'combat'];
 const p19MissingTypographySurfaces = p19RequiredTypographySurfaces.filter(label => !p19TypographyAcceptance[label]);
 if (p19MissingTypographySurfaces.length) {
   throw new Error(`Android P19-G acceptance missed required surfaces: ${p19MissingTypographySurfaces.join(', ')}`);
