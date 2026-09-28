@@ -107,7 +107,7 @@ jobs:
           cat browser-preview.log
           exit 1
 
-      - name: Launch headless Chrome
+      - name: Launch Chrome
         shell: bash
         env:
           CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
@@ -129,28 +129,41 @@ jobs:
           export VK_ICD_FILENAMES="$swiftshader_icd"
           export LD_LIBRARY_PATH="$(dirname "$swiftshader_icd"):${LD_LIBRARY_PATH:-}"
           echo "P21-F2 SwiftShader Vulkan ICD: $swiftshader_icd"
-          "$CHROME_PATH" \
-            --headless=new \
-            --no-sandbox \
-            --disable-dev-shm-usage \
-            --enable-unsafe-webgpu \
-            --use-webgpu-adapter=swiftshader \
-            --use-vulkan=swiftshader \
-            --enable-dawn-features=allow_unsafe_apis \
-            --disable-dawn-features=use_dxc \
-            --enable-webgpu-developer-features \
-            --use-gpu-in-tests \
-            --enable-accelerated-2d-canvas \
-            --enable-unsafe-swiftshader \
-            --window-size="$chrome_window_size" \
-            --remote-debugging-address=127.0.0.1 \
-            --remote-debugging-port=9223 \
-            --user-data-dir="$RUNNER_TEMP/ironshade-browser-e2e" \
-            http://127.0.0.1:4173/ > browser-chrome.log 2>&1 &
+
+          chrome_args=(
+            --no-sandbox
+            --disable-dev-shm-usage
+            --enable-unsafe-webgpu
+            --use-webgpu-adapter=swiftshader
+            --use-vulkan=swiftshader
+            --enable-dawn-features=allow_unsafe_apis
+            --disable-dawn-features=use_dxc
+            --enable-webgpu-developer-features
+            --use-gpu-in-tests
+            --enable-accelerated-2d-canvas
+            --enable-unsafe-swiftshader
+            --window-size="$chrome_window_size"
+            --remote-debugging-address=127.0.0.1
+            --remote-debugging-port=9223
+            --user-data-dir="$RUNNER_TEMP/ironshade-browser-e2e"
+            http://127.0.0.1:4173/
+          )
+
+          if [[ "$BROWSER_E2E_VIEWPORT" == "desktop" ]]; then
+            if ! command -v xvfb-run >/dev/null 2>&1; then
+              echo "::error::xvfb-run is required for the headed P21-F2 WebGPU presentation gate."
+              exit 1
+            fi
+            xvfb-run -a -s "-screen 0 1280x720x24" "$CHROME_PATH" "${chrome_args[@]}" > browser-chrome.log 2>&1 &
+            echo 'P21-F2 desktop Chrome mode: headed-xvfb'
+          else
+            "$CHROME_PATH" --headless=new "${chrome_args[@]}" > browser-chrome.log 2>&1 &
+            echo 'Browser Chrome mode: headless-mobile'
+          fi
           echo $! > "$RUNNER_TEMP/ironshade-chrome.pid"
           for attempt in {1..60}; do
             if curl --fail --silent http://127.0.0.1:9223/json/version >/dev/null; then
-              echo 'Headless Chrome CDP endpoint is ready.'
+              echo 'Chrome CDP endpoint is ready.'
               exit 0
             fi
             sleep 0.5

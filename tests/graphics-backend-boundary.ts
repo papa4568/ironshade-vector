@@ -226,6 +226,8 @@ assert(
     && browserWorkflowSource.includes('--use-webgpu-adapter=swiftshader')
     && browserWorkflowSource.includes('--use-vulkan=swiftshader')
     && browserWorkflowSource.includes('vk_swiftshader_icd.json')
+    && browserWorkflowSource.includes('xvfb-run -a -s "-screen 0 1280x720x24"')
+    && browserWorkflowSource.includes("P21-F2 desktop Chrome mode: headed-xvfb")
     && browserWorkflowSource.includes('BROWSER_E2E_REQUIRE_WEBGPU')
     && browserWorkflowSource.includes("BROWSER_E2E_WEBGPU_SWIFTSHADER: '1'")
     && browserWorkflowSource.includes('--use-gpu-in-tests')
@@ -238,7 +240,11 @@ assert(
     && browserSmokeSource.includes('phase=prior-page-disposal')
     && browserSmokeSource.includes('staleScopeDrops')
     && browserSmokeSource.includes('unexpectedWebGpuExceptions')
-    && browserSmokeSource.includes('webgpuFallbackReason'),
+    && browserSmokeSource.includes('webgpuFallbackReason')
+    && browserSmokeSource.includes('createImageBitmap(canvas)')
+    && browserSmokeSource.includes('P21-F2 WebGPU canvas presentation is blank')
+    && browserSmokeSource.includes('P21-F2 WebGPU stack-off/stack-on captures are pixel-identical')
+    && browserSmokeSource.includes('BROWSER_P21F2_WEBGPU_PRESENTATION_PASS'),
   'P21-F2 Browser E2E must preserve explicit WebGL2/WebGPU QA paths and retain deterministic stack-off/stack-on comparison evidence.',
 );
 assert(

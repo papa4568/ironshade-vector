@@ -196,6 +196,48 @@ async function captureScreenshot(path = screenshotPath) {
   await writeFile(path, Buffer.from(result.data, 'base64'));
 }
 
+async function sampleWebGpuCanvasPresentation(label) {
+  const sample = await evaluate(`(async () => {
+    const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-webgpu-p21f2');
+    if (!(canvas instanceof HTMLCanvasElement)) return null;
+    const bitmap = await createImageBitmap(canvas);
+    try {
+      const probe = document.createElement('canvas');
+      probe.width = 64;
+      probe.height = 36;
+      const context = probe.getContext('2d', { willReadFrequently: true });
+      if (!context) return null;
+      context.drawImage(bitmap, 0, 0, probe.width, probe.height);
+      const pixels = context.getImageData(0, 0, probe.width, probe.height).data;
+      let rgbSum = 0;
+      let litPixels = 0;
+      let hash = 2166136261;
+      for (let index = 0; index < pixels.length; index += 4) {
+        const red = pixels[index];
+        const green = pixels[index + 1];
+        const blue = pixels[index + 2];
+        rgbSum += red + green + blue;
+        if (Math.max(red, green, blue) > 12) litPixels += 1;
+        hash = Math.imul(hash ^ red, 16777619);
+        hash = Math.imul(hash ^ green, 16777619);
+        hash = Math.imul(hash ^ blue, 16777619);
+      }
+      const pixelCount = pixels.length / 4;
+      return {
+        meanRgb: rgbSum / (pixelCount * 3),
+        litRatio: litPixels / pixelCount,
+        hash: (hash >>> 0).toString(16).padStart(8, '0'),
+      };
+    } finally {
+      bitmap.close?.();
+    }
+  })()`);
+  if (!sample || sample.meanRgb <= 5 || sample.litRatio <= 0.2) {
+    throw new Error(`P21-F2 WebGPU canvas presentation is blank for ${label}: ${JSON.stringify(sample)}`);
+  }
+  return sample;
+}
+
 async function accessibilityAudit(surface) {
   const result = await evaluate(`(() => {
     const isVisible = element => {
@@ -527,6 +569,9 @@ async function p21F2RefineryParityAudit(backend) {
   })()`, `P21-F2 ${backend} stack-off baseline`, 10_000);
   await sleep(120);
   await captureScreenshot(p21f2StackOffScreenshotPath);
+  const webGpuPresentationOff = backend === 'webgpu' && requireWebGpuComparison
+    ? await sampleWebGpuCanvasPresentation('stack-off')
+    : null;
 
   const restored = await evaluate(`(() => {
     const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === ${JSON.stringify(visual)});
@@ -548,6 +593,15 @@ async function p21F2RefineryParityAudit(backend) {
   })()`, `P21-F2 ${backend} stack-on comparison`, 10_000);
   await sleep(120);
   await captureScreenshot(p21f2StackOnScreenshotPath);
+  const webGpuPresentationOn = backend === 'webgpu' && requireWebGpuComparison
+    ? await sampleWebGpuCanvasPresentation('stack-on')
+    : null;
+  if (webGpuPresentationOff && webGpuPresentationOn) {
+    if (webGpuPresentationOff.hash === webGpuPresentationOn.hash) {
+      throw new Error(`P21-F2 WebGPU stack-off/stack-on captures are pixel-identical: ${JSON.stringify({ off: webGpuPresentationOff, on: webGpuPresentationOn })}`);
+    }
+    console.log(`BROWSER_P21F2_WEBGPU_PRESENTATION_PASS viewport=${viewportMode} offMean=${webGpuPresentationOff.meanRgb.toFixed(2)} onMean=${webGpuPresentationOn.meanRgb.toFixed(2)} offLit=${webGpuPresentationOff.litRatio.toFixed(3)} onLit=${webGpuPresentationOn.litRatio.toFixed(3)} offHash=${webGpuPresentationOff.hash} onHash=${webGpuPresentationOn.hash}`);
+  }
 
   const costReduced = await evaluate(`(() => {
     const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === ${JSON.stringify(visual)});
