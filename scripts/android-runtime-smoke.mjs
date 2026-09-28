@@ -774,6 +774,23 @@ if (fastSmoke) {
   await tapButton('Deploy selected contract', 204, 110);
   await waitFor(`Boolean(document.querySelector('canvas') && document.querySelector('[aria-label="Touch combat controls"]') && document.querySelector('.move-stick') && document.querySelector('.fire-button') && document.querySelector('.dodge-button'))`, 'Fast Android combat controls', 45_000);
 
+  const p21a2GraphicsPath = await evaluate(`(() => {
+    const canvas = document.querySelector('canvas');
+    if (!(canvas instanceof HTMLCanvasElement)) return null;
+    return {
+      selection: canvas.dataset.graphicsPathSelection ?? '',
+      requested: canvas.dataset.graphicsPathRequested ?? '',
+      loaded: canvas.dataset.graphicsPathLoaded ?? '',
+    };
+  })()`);
+  if (!p21a2GraphicsPath
+    || p21a2GraphicsPath.selection !== 'production-default'
+    || p21a2GraphicsPath.requested !== ''
+    || p21a2GraphicsPath.loaded !== 'webgl2') {
+    throw new Error(`Android P21-A2 production graphics path changed unexpectedly: ${JSON.stringify(p21a2GraphicsPath)}`);
+  }
+  console.log('ANDROID_P21A2_GRAPHICS_PATH_PASS selection=production-default requested=none loaded=webgl2');
+
   const p22b1Geometry = await evaluate(`(() => {
     const readControl = selector => {
       const element = document.querySelector(selector);
