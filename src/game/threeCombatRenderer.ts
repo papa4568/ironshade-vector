@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { createRefineryIblTarget, REFINERY_IBL_PROFILE } from './refineryIbl';
 import { clampRefineryBloomCostScale, isRefineryBloomAssetLabel, REFINERY_BLOOM_LAYER, REFINERY_BLOOM_PROFILE, refineryBloomResolutionScale, refineryBloomStrengthForCost, RefineryBloomPipeline } from './refineryBloom';
 import { createRefineryContactDepthAlphaData, REFINERY_CONTACT_DEPTH_PROFILE, refineryContactDepthTelemetry } from './refineryContactDepth';
-import { REFINERY_ATMOSPHERE_PROFILE, refineryAtmosphereRange, refineryAtmosphereTelemetry } from './refineryAtmosphere';
+import { REFINERY_ATMOSPHERE_PROFILE, refineryAtmosphereExposureScale, refineryAtmosphereRange, refineryAtmosphereTelemetry } from './refineryAtmosphere';
 import type { Contract } from './campaign';
 import type { EquipmentFaction } from './factionGear';
 import { getNextMissionObjectiveTarget } from './encounters';
@@ -1048,7 +1048,7 @@ export class ThreeCombatRenderer {
     this.syncBreaches(state);
     syncHardSciFiBreaches(this.dynamicRoot, state, WORLD_SCALE, quality * budget.vfxDensity);
     this.syncDebris(state, quality * budget.detailScale * budget.vfxDensity, runtimeProfile);
-    this.syncRefineryAtmospherics(state, quality * budget.detailScale, budget.vfxDensity, budget.transparencyScale);
+    this.syncRefineryAtmospherics(state, quality * budget.detailScale, budget.vfxDensity, budget.transparencyScale, budget.refineryContactDepthScale);
     this.syncDamagedVesselAtmospherics(state, quality * budget.detailScale, budget.vfxDensity, budget.transparencyScale);
     this.syncCamera(state, width / Math.max(1, height), cameraFeedback);
     this.syncLighting(state, mission, quality, budget);
@@ -1058,16 +1058,17 @@ export class ThreeCombatRenderer {
       `sparks:${this.impactSparkPool.length}/${runtimeProfile.poolRetention.impactSparks}`,
       `debris:${this.debrisPool.length}/${runtimeProfile.poolRetention.debris}`,
     ].join('|');
-    this.renderFrame(mission);
+    this.renderFrame(mission, budget);
   }
 
-  private renderFrame(mission: Contract) {
+  private renderFrame(mission: Contract, budget: RenderBudgetSnapshot) {
     const isRefinery = mission.location === 'asteroid-refinery';
+    const qaExplicit = this.renderer.domElement.dataset.graphicsPathSelection === 'qa-explicit';
     const qaDisabled = isRefinery
-      && this.renderer.domElement.dataset.graphicsPathSelection === 'qa-explicit'
+      && qaExplicit
       && this.renderer.domElement.dataset.refineryBloomQa === 'off';
-    const requestedCost = Number.parseFloat(this.renderer.domElement.dataset.refineryBloomCost ?? '');
-    const costScale = clampRefineryBloomCostScale(Number.isFinite(requestedCost) ? requestedCost : REFINERY_BLOOM_PROFILE.defaultCostScale);
+    const requestedCost = qaExplicit ? Number.parseFloat(this.renderer.domElement.dataset.refineryBloomCost ?? '') : Number.NaN;
+    const costScale = clampRefineryBloomCostScale(Number.isFinite(requestedCost) ? requestedCost : budget.refineryBloomScale);
     const authoredBloomReady = this.refineryBloomAuthoredSourceCount > 0;
     const enabled = isRefinery && authoredBloomReady && !qaDisabled && costScale > 0;
 
@@ -1370,6 +1371,7 @@ export class ThreeCombatRenderer {
     delete this.renderer.domElement.dataset.environmentContactDepthProtected;
     delete this.renderer.domElement.dataset.environmentAtmosphere;
     delete this.renderer.domElement.dataset.environmentAtmosphereProtected;
+    delete this.renderer.domElement.dataset.environmentP21Budget;
     delete this.renderer.domElement.dataset.environmentMaterials;
     delete this.renderer.domElement.dataset.environmentVfx;
     delete this.renderer.domElement.dataset.environmentTone;
@@ -1564,7 +1566,7 @@ export class ThreeCombatRenderer {
     this.authoredEnvironmentRoot.add(contactShadows);
   }
 
-  private syncRefineryAtmospherics(state: SimState, detailLevel: number, vfxDensity: number, transparencyScale: number) {
+  private syncRefineryAtmospherics(state: SimState, detailLevel: number, vfxDensity: number, transparencyScale: number, contactDepthScale: number) {
     if (!this.refinerySteam) return;
     const reducedEffects = detailLevel < 0.58 || vfxDensity < 0.55;
     this.refinerySteam.visible = !reducedEffects;
@@ -1576,6 +1578,11 @@ export class ThreeCombatRenderer {
     if (this.refineryContactShadows) {
       const qaDisabled = this.renderer.domElement.dataset.graphicsPathSelection === 'qa-explicit'
         && this.renderer.domElement.dataset.refineryContactDepthQa === 'off';
+      const budgetedCount = Math.max(1, Math.min(
+        REFINERY_CONTACT_DEPTH_PROFILE.instanceLimit,
+        Math.round(REFINERY_CONTACT_DEPTH_PROFILE.instanceLimit * contactDepthScale),
+      ));
+      this.refineryContactShadows.count = budgetedCount;
       this.refineryContactShadows.visible = !qaDisabled;
       this.renderer.domElement.dataset.environmentContactDepth = qaDisabled
         ? 'off:qa-baseline'
@@ -7130,13 +7137,28 @@ export class ThreeCombatRenderer {
     const lowVisibility = mission.conditions.includes('low-visibility');
     this.renderer.toneMappingExposure = lowVisibility ? baseExposure * 1.04 : baseExposure;
 
-    const refineryAtmosphereQaDisabled = isRefinery
-      && this.renderer.domElement.dataset.graphicsPathSelection === 'qa-explicit'
+    const refineryGraphicsQa = isRefinery && this.renderer.domElement.dataset.graphicsPathSelection === 'qa-explicit';
+    if (isRefinery) {
+      this.renderer.domElement.dataset.environmentP21Budget = [
+        `tier:${budget.tierName}`,
+        `ibl:${budget.refineryIblScale.toFixed(2)}`,
+        `bloom:${budget.refineryBloomScale.toFixed(2)}`,
+        `contact:${budget.refineryContactDepthScale.toFixed(2)}`,
+        `atmosphere:${budget.refineryAtmosphereScale.toFixed(2)}`,
+        `critical:${budget.gameplayCueScale.toFixed(2)}`,
+      ].join('+');
+    } else {
+      delete this.renderer.domElement.dataset.environmentP21Budget;
+    }
+
+    const refineryAtmosphereQaDisabled = refineryGraphicsQa
       && this.renderer.domElement.dataset.refineryAtmosphereQa === 'off';
-    const refineryAtmosphereEnabled = isRefinery && !refineryAtmosphereQaDisabled;
+    const refineryAtmosphereEnabled = isRefinery
+      && !refineryAtmosphereQaDisabled
+      && (refineryGraphicsQa || budget.refineryAtmosphereScale >= 0.5);
     if (isRefinery) {
       if (refineryAtmosphereEnabled) {
-        const range = refineryAtmosphereRange(lowVisibility);
+        const range = refineryAtmosphereRange(lowVisibility, budget.refineryAtmosphereScale);
         if (this.scene.fog instanceof THREE.Fog) {
           this.scene.fog.color.setHex(REFINERY_ATMOSPHERE_PROFILE.fogColor);
           this.scene.fog.near = range.near;
@@ -7146,8 +7168,8 @@ export class ThreeCombatRenderer {
         }
         if (this.scene.background instanceof THREE.Color) this.scene.background.setHex(REFINERY_ATMOSPHERE_PROFILE.backgroundColor);
         else this.scene.background = new THREE.Color(REFINERY_ATMOSPHERE_PROFILE.backgroundColor);
-        this.renderer.toneMappingExposure *= REFINERY_ATMOSPHERE_PROFILE.exposureScale;
-        this.renderer.domElement.dataset.environmentAtmosphere = refineryAtmosphereTelemetry(lowVisibility);
+        this.renderer.toneMappingExposure *= refineryAtmosphereExposureScale(budget.refineryAtmosphereScale);
+        this.renderer.domElement.dataset.environmentAtmosphere = refineryAtmosphereTelemetry(lowVisibility, budget.refineryAtmosphereScale);
       } else {
         const fallbackDensity = lowVisibility ? 0.037 : 0.019;
         if (this.scene.fog instanceof THREE.FogExp2) {
@@ -7158,7 +7180,7 @@ export class ThreeCombatRenderer {
         }
         if (this.scene.background instanceof THREE.Color) this.scene.background.setHex(palette.background);
         else this.scene.background = new THREE.Color(palette.background);
-        this.renderer.domElement.dataset.environmentAtmosphere = 'off:qa-baseline';
+        this.renderer.domElement.dataset.environmentAtmosphere = refineryAtmosphereQaDisabled ? 'off:qa-baseline' : 'off:adaptive-budget';
       }
       this.renderer.domElement.dataset.environmentAtmosphereProtected = REFINERY_ATMOSPHERE_PROFILE.protectedCueGroups.join('+');
     } else {
@@ -7167,16 +7189,18 @@ export class ThreeCombatRenderer {
     }
     this.renderer.domElement.dataset.locationLighting = `${mission.location}:${lightingProfile.id}:aces-${this.renderer.toneMappingExposure.toFixed(2)}`;
 
-    const refineryIblQaDisabled = isRefinery
-      && this.renderer.domElement.dataset.graphicsPathSelection === 'qa-explicit'
+    const refineryIblQaDisabled = refineryGraphicsQa
       && this.renderer.domElement.dataset.refineryIblQa === 'off';
-    const refineryIblEnabled = isRefinery && !refineryIblQaDisabled;
+    const refineryIblEnabled = isRefinery
+      && !refineryIblQaDisabled
+      && (refineryGraphicsQa || budget.refineryIblScale >= 0.5);
+    const refineryIblIntensity = REFINERY_IBL_PROFILE.intensity * budget.refineryIblScale;
     this.scene.environment = refineryIblEnabled ? this.refineryIblTarget.texture : null;
-    this.scene.environmentIntensity = refineryIblEnabled ? REFINERY_IBL_PROFILE.intensity : 1;
+    this.scene.environmentIntensity = refineryIblEnabled ? refineryIblIntensity : 1;
     if (isRefinery) {
       this.renderer.domElement.dataset.environmentIbl = refineryIblEnabled
-        ? `pmrem:${REFINERY_IBL_PROFILE.id}:intensity-${REFINERY_IBL_PROFILE.intensity.toFixed(2)}`
-        : 'off:qa-baseline';
+        ? `pmrem:${REFINERY_IBL_PROFILE.id}:intensity-${refineryIblIntensity.toFixed(2)}`
+        : refineryIblQaDisabled ? 'off:qa-baseline' : 'off:adaptive-budget';
     } else {
       delete this.renderer.domElement.dataset.environmentIbl;
     }
@@ -7228,7 +7252,7 @@ export class ThreeCombatRenderer {
     } else if (isRefinery) {
       const practicalCount = (firstPractical.visible ? 1 : 0) + (secondPractical.visible ? 1 : 0);
       this.renderer.domElement.dataset.environmentLighting = `refinery-key+rim+ibl:${refineryIblEnabled ? 'pmrem' : 'off'}+contact:player+enemy+practical:${practicalCount}+shadow:key`;
-      this.renderer.domElement.dataset.environmentTone = `aces-${this.renderer.toneMappingExposure.toFixed(2)}+ibl-${refineryIblEnabled ? REFINERY_IBL_PROFILE.intensity.toFixed(2) : 'off'}+atmosphere-${refineryAtmosphereEnabled ? REFINERY_ATMOSPHERE_PROFILE.id : 'off'}`;
+      this.renderer.domElement.dataset.environmentTone = `aces-${this.renderer.toneMappingExposure.toFixed(2)}+ibl-${refineryIblEnabled ? refineryIblIntensity.toFixed(2) : 'off'}+atmosphere-${refineryAtmosphereEnabled ? REFINERY_ATMOSPHERE_PROFILE.id : 'off'}`;
       this.renderer.domElement.dataset.bossEnvironmentFx = bossPhaseTwo ? 'phase2-practical-pulse' : 'phase-reactive-ready';
     } else if (isDamagedVessel) {
       const practicalCount = (firstPractical.visible ? 1 : 0) + (secondPractical.visible ? 1 : 0);

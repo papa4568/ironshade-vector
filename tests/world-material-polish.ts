@@ -75,7 +75,8 @@ assert(rendererSource.includes('worldQuality.materialDepthScale'), 'material dep
 assert(rendererSource.includes('biomeState.motionHz * worldQuality.stateMotionScale'), 'biome state animation must respect adaptive quality');
 assert(rendererSource.includes('createRefineryIblTarget(this.renderer)'), 'P21-B refinery renderer must create one reusable PMREM IBL target');
 assert(rendererSource.includes('this.scene.environment = refineryIblEnabled ? this.refineryIblTarget.texture : null'), 'P21-B IBL must be refinery-scoped instead of changing global location lighting');
-assert(rendererSource.includes('this.scene.environmentIntensity = refineryIblEnabled ? REFINERY_IBL_PROFILE.intensity : 1'), 'P21-B IBL intensity must come from the bounded refinery profile');
+assert(rendererSource.includes('const refineryIblIntensity = REFINERY_IBL_PROFILE.intensity * budget.refineryIblScale'), 'P21-E IBL intensity must derive from the bounded refinery profile and the existing adaptive reflection budget');
+assert(rendererSource.includes('this.scene.environmentIntensity = refineryIblEnabled ? refineryIblIntensity : 1'), 'P21-B/P21-E IBL intensity must remain refinery-scoped and budget-aware');
 assert(rendererSource.includes("'off:qa-baseline'"), 'P21-B renderer must retain a QA-only IBL-off baseline for deterministic before/after evidence');
 assert(rendererSource.includes('this.refineryIblTarget.dispose()'), 'P21-B PMREM render target must be disposed with the combat renderer');
 
