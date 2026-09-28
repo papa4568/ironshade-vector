@@ -3,11 +3,21 @@ name: Build Android APK
 on:
   workflow_dispatch:
     inputs:
+      verification_mode:
+        description: Android verification depth
+        required: true
+        default: full
+        type: choice
+        options:
+          - full
+          - fast
       require_release_signing:
         description: Fail unless persistent Android release-signing secrets are configured
         required: true
         default: false
         type: boolean
+  schedule:
+    - cron: '0 9 * * 1'
   push:
     branches:
       - main
@@ -359,7 +369,7 @@ jobs:
         if: always()
 
   repeatable-family-regression:
-    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/android/capacitor-apk' || github.ref == 'refs/heads/android/full-regression'
+    if: github.event_name == 'schedule' || github.ref == 'refs/heads/android/capacitor-apk' || github.ref == 'refs/heads/android/full-regression' || (github.event_name == 'workflow_dispatch' && (inputs.verification_mode == 'full' || inputs.require_release_signing))
     needs: build-apk
     runs-on: ubuntu-24.04
     timeout-minutes: 40
@@ -416,7 +426,7 @@ jobs:
           retention-days: 90
 
   settings-regression:
-    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/android/capacitor-apk' || github.ref == 'refs/heads/android/full-regression'
+    if: github.event_name == 'schedule' || github.ref == 'refs/heads/android/capacitor-apk' || github.ref == 'refs/heads/android/full-regression' || (github.event_name == 'workflow_dispatch' && (inputs.verification_mode == 'full' || inputs.require_release_signing))
     needs: build-apk
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -469,7 +479,7 @@ jobs:
           retention-days: 90
 
   chapter3-regression:
-    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/android/capacitor-apk' || github.ref == 'refs/heads/android/full-regression'
+    if: github.event_name == 'schedule' || github.ref == 'refs/heads/android/capacitor-apk' || github.ref == 'refs/heads/android/full-regression' || (github.event_name == 'workflow_dispatch' && (inputs.verification_mode == 'full' || inputs.require_release_signing))
     needs: build-apk
     runs-on: ubuntu-24.04
     timeout-minutes: 25
@@ -524,4 +534,156 @@ jobs:
             android-chapter3-playthrough.png
             android-chapter3-playthrough.json
           if-no-files-found: warn
+          retention-days: 90
+
+  extended-runtime-regression:
+    if: github.event_name == 'schedule' || github.ref == 'refs/heads/android/capacitor-apk' || github.ref == 'refs/heads/android/full-regression' || (github.event_name == 'workflow_dispatch' && (inputs.verification_mode == 'full' || inputs.require_release_signing))
+    needs: build-apk
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out extended runtime harness
+        uses: actions/checkout@v7
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Download shared Android APK
+        uses: actions/download-artifact@v8
+        with:
+          name: ironshade-vector-android-apk
+          path: .
+
+      - name: Verify shared smoke APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s Ironshade-Vector-Android-Smoke.apk
+          sha256sum -c Ironshade-Vector-Android-Smoke.sha256
+
+      - name: Enable KVM
+        shell: bash
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run remaining extended Android runtime regression
+        uses: ReactiveCircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7_pro
+          emulator-boot-timeout: 300
+          disable-animations: true
+          script: bash -lc 'set -euo pipefail; ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-runtime-smoke.sh 2>&1 | tee android-runtime-regression.txt'
+
+      - name: Upload extended runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ironshade-vector-extended-runtime-regression
+          path: |
+            android-runtime-regression.txt
+            android-runtime-smoke.png
+            android-network-planner-persistence.png
+            android-runtime-logcat.txt
+          if-no-files-found: warn
+          retention-days: 90
+
+  full-android-verification:
+    if: always() && (github.event_name == 'schedule' || github.ref == 'refs/heads/android/capacitor-apk' || github.ref == 'refs/heads/android/full-regression' || (github.event_name == 'workflow_dispatch' && (inputs.verification_mode == 'full' || inputs.require_release_signing)))
+    needs:
+      - build-apk
+      - repeatable-family-regression
+      - settings-regression
+      - chapter3-regression
+      - extended-runtime-regression
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Download shared APK evidence
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: ironshade-vector-android-apk
+          path: full-android-evidence/apk
+
+      - name: Download repeatable-family evidence
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: ironshade-vector-repeatable-family-regression
+          path: full-android-evidence/repeatable
+
+      - name: Download Settings evidence
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: ironshade-vector-settings-regression
+          path: full-android-evidence/settings
+
+      - name: Download Chapter 3 evidence
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: ironshade-vector-chapter3-regression
+          path: full-android-evidence/chapter3
+
+      - name: Download extended runtime evidence
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: ironshade-vector-extended-runtime-regression
+          path: full-android-evidence/runtime
+
+      - name: Verify full Android result and evidence
+        shell: bash
+        env:
+          BUILD_RESULT: ${{ needs.build-apk.result }}
+          REPEATABLE_RESULT: ${{ needs.repeatable-family-regression.result }}
+          SETTINGS_RESULT: ${{ needs.settings-regression.result }}
+          CHAPTER3_RESULT: ${{ needs.chapter3-regression.result }}
+          RUNTIME_RESULT: ${{ needs.extended-runtime-regression.result }}
+        run: |
+          set -euo pipefail
+          mkdir -p full-android-evidence
+          {
+            printf 'build=%s\n' "$BUILD_RESULT"
+            printf 'repeatable=%s\n' "$REPEATABLE_RESULT"
+            printf 'settings=%s\n' "$SETTINGS_RESULT"
+            printf 'chapter3=%s\n' "$CHAPTER3_RESULT"
+            printf 'runtime=%s\n' "$RUNTIME_RESULT"
+          } | tee full-android-evidence/full-android-verification.txt
+
+          for result in "$BUILD_RESULT" "$REPEATABLE_RESULT" "$SETTINGS_RESULT" "$CHAPTER3_RESULT" "$RUNTIME_RESULT"; do
+            test "$result" = 'success'
+          done
+
+          test -s full-android-evidence/apk/Ironshade-Vector-Android-Beta.apk
+          test -s full-android-evidence/apk/Ironshade-Vector-Android-Beta.sha256
+          test -s full-android-evidence/repeatable/android-repeatable-regression.txt
+          test -s full-android-evidence/repeatable/android-repeatable-regression.png
+          test -s full-android-evidence/settings/android-settings-regression.txt
+          test -s full-android-evidence/settings/android-settings-10-command-final-compact.png
+          test -s full-android-evidence/chapter3/android-chapter3-regression.txt
+          test -s full-android-evidence/chapter3/android-chapter3-playthrough.json
+          test -s full-android-evidence/chapter3/android-chapter3-playthrough.png
+          test -s full-android-evidence/runtime/android-runtime-regression.txt
+          test -s full-android-evidence/runtime/android-runtime-smoke.png
+          test -s full-android-evidence/runtime/android-network-planner-persistence.png
+          test -s full-android-evidence/runtime/android-runtime-logcat.txt
+
+          echo 'ANDROID_FULL_VERIFICATION_PASS apk=shared parallel=repeatable+settings+chapter3+runtime evidence=aggregated gate=required' | tee -a full-android-evidence/full-android-verification.txt
+
+      - name: Upload full Android verification evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ironshade-vector-full-android-verification
+          path: full-android-evidence
+          if-no-files-found: error
           retention-days: 90

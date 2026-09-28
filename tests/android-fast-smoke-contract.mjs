@@ -184,7 +184,7 @@ for (const artifact of [
 
 for (const marker of [
   'settings-regression:',
-  "github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/android/capacitor-apk' || github.ref == 'refs/heads/android/full-regression'",
+  "github.event_name == 'schedule'",
   'needs: build-apk',
   'actions/download-artifact@v8',
   'bash scripts/android-settings-regression.sh',
@@ -203,7 +203,7 @@ if (settingsJobText.includes('needs: repeatable-family-regression')) throw new E
 
 for (const marker of [
   'chapter3-regression:',
-  "github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/android/capacitor-apk' || github.ref == 'refs/heads/android/full-regression'",
+  "github.event_name == 'schedule'",
   'needs: build-apk',
   'actions/download-artifact@v8',
   'bash scripts/android-chapter3-regression.sh',
@@ -225,7 +225,7 @@ if (chapter3JobText.includes('needs: repeatable-family-regression') || chapter3J
 
 for (const marker of [
   'repeatable-family-regression:',
-  "github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/android/capacitor-apk' || github.ref == 'refs/heads/android/full-regression'",
+  "github.event_name == 'schedule'",
   "      - android/full-regression",
   'needs: build-apk',
   'actions/download-artifact@v8',
@@ -249,4 +249,70 @@ for (const forbidden of [
   }
 }
 
-console.log('ANDROID_FAST_SMOKE_CONTRACT_PASS entry=scripts/android-fast-smoke.sh defaultPush=fast-only repeatable=dedicated-dispatch settings=dedicated-dispatch chapter3=dedicated-full-regression extended=retained-not-run browser=required productionBuild=required touch=required lifecycle=required artifacts=required failFast=required');
+
+for (const marker of [
+  'verification_mode:',
+  "default: full",
+  "type: choice",
+  "- cron: '0 9 * * 1'",
+  "inputs.verification_mode == 'full'",
+  "inputs.require_release_signing",
+]) requireText(workflow, marker, 'P23-F full verification trigger');
+
+const fullJobCondition = "github.event_name == 'schedule' || github.ref == 'refs/heads/android/capacitor-apk' || github.ref == 'refs/heads/android/full-regression' || (github.event_name == 'workflow_dispatch' && (inputs.verification_mode == 'full' || inputs.require_release_signing))";
+for (const jobName of [
+  'repeatable-family-regression:',
+  'settings-regression:',
+  'chapter3-regression:',
+  'extended-runtime-regression:',
+]) {
+  const start = workflow.indexOf(`  ${jobName}`);
+  if (start < 0) throw new Error(`P23-F missing full-verification job: ${jobName}`);
+  const nextJob = workflow.indexOf('\n  ', start + 3);
+  const text = workflow.slice(start, nextJob < 0 ? workflow.length : nextJob);
+  requireText(text, fullJobCondition, `P23-F ${jobName} condition`);
+  requireText(text, 'needs: build-apk', `P23-F ${jobName} shared APK dependency`);
+}
+
+const runtimeJobStart = workflow.indexOf('  extended-runtime-regression:');
+const fullGateStart = workflow.indexOf('  full-android-verification:');
+if (runtimeJobStart < 0 || fullGateStart < 0) throw new Error('P23-F missing runtime or aggregate job');
+const runtimeJobText = workflow.slice(runtimeJobStart, fullGateStart);
+for (const marker of [
+  'actions/download-artifact@v8',
+  'Ironshade-Vector-Android-Smoke.apk',
+  'sha256sum -c Ironshade-Vector-Android-Smoke.sha256',
+  'bash scripts/android-runtime-smoke.sh',
+  'android-runtime-regression.txt',
+  'android-runtime-smoke.png',
+  'android-network-planner-persistence.png',
+  'android-runtime-logcat.txt',
+  'ironshade-vector-extended-runtime-regression',
+]) requireText(runtimeJobText, marker, 'P23-F extended runtime job');
+
+for (const marker of [
+  'full-android-verification:',
+  'if: always() &&',
+  '- repeatable-family-regression',
+  '- settings-regression',
+  '- chapter3-regression',
+  '- extended-runtime-regression',
+  'needs.build-apk.result',
+  'needs.repeatable-family-regression.result',
+  'needs.settings-regression.result',
+  'needs.chapter3-regression.result',
+  'needs.extended-runtime-regression.result',
+  'Ironshade-Vector-Android-Beta.apk',
+  'android-repeatable-regression.txt',
+  'android-settings-10-command-final-compact.png',
+  'android-chapter3-playthrough.json',
+  'android-network-planner-persistence.png',
+  'ANDROID_FULL_VERIFICATION_PASS',
+  'ironshade-vector-full-android-verification',
+]) requireText(workflow.slice(fullGateStart), marker, 'P23-F aggregate full verification');
+
+if (workflow.slice(fullGateStart).includes('needs: build-apk\n')) {
+  throw new Error('P23-F aggregate gate must require all full-verification jobs, not only build-apk');
+}
+
+console.log('ANDROID_FAST_SMOKE_CONTRACT_PASS entry=scripts/android-fast-smoke.sh defaultPush=fast-only repeatable=dedicated-dispatch settings=dedicated-dispatch chapter3=dedicated-full-regression extended=parallel-runtime fullGate=aggregated scheduled=weekly manualMode=full-or-fast browser=required productionBuild=required touch=required lifecycle=required artifacts=required failFast=required');
