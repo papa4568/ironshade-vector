@@ -149,6 +149,8 @@ for (const [label, pattern, baseline] of p22b2LinearMeasurements) {
 for (const controlSelector of ['.move-stick', '.combat-dock', '.touch-button', '.fire-button', '.dodge-button', '.ability-button', '.interact-button']) {
   assert(!p22b2Block.includes(controlSelector), `P22-B2 informational HUD block must not alter combat-control geometry: ${controlSelector}`);
 }
+const p22b2PortraitBlock = p22b2Block.split('@media (pointer: coarse) and (orientation: portrait)')[1] ?? '';
+assert(p22b2PortraitBlock.includes('.game-root .vitals') && p22b2PortraitBlock.includes('.game-root .mission-card') && (p22b2PortraitBlock.match(/min-width:\s*0/g)?.length ?? 0) >= 2, 'P22-B2 portrait HUD must clear coarse min-width floors so vitals/objective remain onscreen.');
 assert(combatGlanceCss.includes('font-size: max(12px') || combatGlanceCss.includes('font-size: 12px'), 'P22-B2 must retain the compact-phone secondary type floor.');
 assert(androidSmoke.includes('ANDROID_P22B2_HUD_FOOTPRINT_PASS') && androidSmoke.includes('ANDROID_P22B2_OBJECTIVE_FLOW_PASS') && androidSmoke.includes('ANDROID_P22B2_PICKUP_FLOW_PASS'), 'P22-B2 Android verification must measure reduced live HUD geometry plus objective and pickup flows.');
 assert(browserSmoke.includes('BROWSER_P22B2_HUD_FOOTPRINT_PASS') && browserSmoke.includes('BROWSER_P22B2_TARGET_FLOW_PASS'), 'P22-B2 Browser E2E must measure reduced mobile HUD geometry and target-context presentation.');

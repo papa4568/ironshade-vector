@@ -765,9 +765,13 @@
 }
 
 @media (pointer: coarse) and (orientation: portrait) {
-  .game-root .vitals { width: 33.6vw; }
+  .game-root .vitals {
+    min-width: 0;
+    width: 33.6vw;
+  }
 
   .game-root .mission-card {
+    min-width: 0;
     width: 30.8vw;
     max-width: 30.8vw;
   }
