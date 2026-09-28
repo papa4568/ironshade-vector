@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import {
   createCombatGraphicsBackend,
   productionCombatGraphicsBackendId,
+  resolveCombatGraphicsPathSelection,
   selectCombatGraphicsBackendFactory,
   type CombatGraphicsBackend,
   type CombatGraphicsBackendFactory,
@@ -13,6 +14,22 @@ function assert(condition: unknown, message: string) {
 }
 
 assert(productionCombatGraphicsBackendId === 'webgl2', 'P21-A1 production graphics backend must remain WebGL2.');
+
+const productionPath = resolveCombatGraphicsPathSelection('?graphicsPath=webgl2');
+const explicitPath = resolveCombatGraphicsPathSelection('?graphicsCompare=1&graphicsPath=webgl2');
+const unknownPath = resolveCombatGraphicsPathSelection('?graphicsCompare=1&graphicsPath=webgpu');
+assert(
+  productionPath.mode === 'production-default' && productionPath.requestedId === null && productionPath.selectedId === 'webgl2',
+  'P21-A2 graphics-path overrides must remain disabled unless comparison mode is explicitly enabled.',
+);
+assert(
+  explicitPath.mode === 'qa-explicit' && explicitPath.requestedId === 'webgl2' && explicitPath.selectedId === 'webgl2',
+  'P21-A2 comparison mode must resolve an explicit WebGL2 request deterministically.',
+);
+assert(
+  unknownPath.mode === 'production-default' && unknownPath.requestedId === null && unknownPath.selectedId === 'webgl2',
+  'P21-A2 unknown comparison paths must fall back to the production WebGL2 selection instead of changing runtime behavior.',
+);
 
 const fakeBackend = {
   id: 'webgl2',
@@ -51,14 +68,22 @@ assert(
   createCombatGraphicsBackend({} as HTMLCanvasElement, false, [unsupportedFactory, supportedFactory]) === fakeBackend && createCount === 1,
   'P21-A1 backend creation must instantiate the selected renderer exactly once.',
 );
+assert(
+  createCombatGraphicsBackend({} as HTMLCanvasElement, false, [supportedFactory], explicitPath.selectedId) === fakeBackend && createCount === 2,
+  'P21-A2 explicit path creation must use the same backend factory and lifecycle as production WebGL2.',
+);
 
 const root = process.cwd();
 const gameCanvasSource = readFileSync(resolve(root, 'src/components/GameCanvas.tsx'), 'utf8');
 const boundarySource = readFileSync(resolve(root, 'src/game/combatGraphicsBackend.ts'), 'utf8');
 const rendererSource = readFileSync(resolve(root, 'src/game/threeCombatRenderer.ts'), 'utf8');
+const browserSmokeSource = readFileSync(resolve(root, 'scripts/browser-runtime-smoke.mjs'), 'utf8');
+const refineryVerifierSource = readFileSync(resolve(root, 'scripts/verify-authored-refinery.mjs'), 'utf8');
+const androidSmokeSource = readFileSync(resolve(root, 'scripts/android-runtime-smoke.mjs'), 'utf8');
+const browserWorkflowSource = readFileSync(resolve(root, '.github/workflows/browser-e2e.yml'), 'utf8');
 
 assert(
-  gameCanvasSource.includes("createCombatGraphicsBackend(canvas, coarse)")
+  gameCanvasSource.includes("createCombatGraphicsBackend(canvas, coarse, undefined, graphicsPathSelection.selectedId)")
     && gameCanvasSource.includes("useRef<CombatGraphicsBackend | null>(null)")
     && !gameCanvasSource.includes('new ThreeCombatRenderer(')
     && !gameCanvasSource.includes('ThreeCombatRenderer.isSupported()'),
@@ -71,6 +96,39 @@ assert(
     && boundarySource.includes("return this.renderer.screenDirection(...args)")
     && boundarySource.includes("this.renderer.dispose()"),
   'P21-A1 WebGL2 backend must delegate create/render/pointer/dispose to the existing Three.js renderer.',
+);
+
+assert(
+  gameCanvasSource.includes('resolveCombatGraphicsPathSelection(window.location.search)')
+    && gameCanvasSource.includes('canvas.dataset.graphicsPathSelection = graphicsPathSelection.mode')
+    && gameCanvasSource.includes("canvas.dataset.graphicsPathRequested = graphicsPathSelection.requestedId ?? ''")
+    && gameCanvasSource.includes('canvas.dataset.graphicsPathLoaded = loadedGraphicsPath')
+    && gameCanvasSource.includes("${activeMissionRef.current.location}:${coarse ? 'touch' : 'pointer'}:${loadedGraphicsPath}"),
+  'P21-A2 combat telemetry must expose requested/loaded path alongside the existing performance scenario without touching simulation state.',
+);
+assert(
+  browserSmokeSource.includes("process.env.BROWSER_E2E_GRAPHICS_PATH")
+    && browserSmokeSource.includes("url.searchParams.set('graphicsCompare', '1')")
+    && browserSmokeSource.includes("url.searchParams.set('graphicsPath', requestedGraphicsPath)")
+    && browserSmokeSource.includes('graphicsPathLoaded: canvas.dataset.graphicsPathLoaded')
+    && browserSmokeSource.includes('BROWSER_P21A2_GRAPHICS_PATH_PASS'),
+  'P21-A2 browser QA must reuse the existing deterministic runtime smoke as the explicit comparison entry point.',
+);
+assert(
+  refineryVerifierSource.includes("graphicsPathLoaded !== 'webgl2'")
+    && refineryVerifierSource.includes('renderFrameMs: canvas.dataset.renderFrameMs')
+    && refineryVerifierSource.includes('renderFrameBudget: canvas.dataset.renderFrameBudget'),
+  'P21-A2 refinery verification must keep path, frame, and adaptive-tier telemetry on the existing showcase.',
+);
+assert(
+  browserWorkflowSource.includes('BROWSER_E2E_GRAPHICS_PATH=webgl2 node scripts/browser-runtime-smoke.mjs'),
+  'P21-A2 Browser E2E must repeatedly launch the existing refinery route through an explicit WebGL2 path.',
+);
+assert(
+  androidSmokeSource.includes('ANDROID_P21A2_GRAPHICS_PATH_PASS selection=production-default requested=none loaded=webgl2')
+    && androidSmokeSource.includes("p21a2GraphicsPath.selection !== 'production-default'")
+    && androidSmokeSource.includes("p21a2GraphicsPath.loaded !== 'webgl2'"),
+  'P21-A2 Android smoke must verify that production still loads WebGL2 without the QA selector.',
 );
 
 const renderStart = rendererSource.indexOf('  render(state: SimState');
@@ -121,3 +179,4 @@ assert(
 );
 
 console.log('P21_A1_GRAPHICS_BACKEND_PASS default=webgl2 create=boundary render=delegated resize=preserved pointer=preserved dispose=preserved fallback=canvas2d');
+console.log('P21_A2_GRAPHICS_PATH_HARNESS_PASS selector=opt-in explicit=webgl2 refinery=existing-route telemetry=path+drawcalls+triangles+frame+tier android=production-default');
