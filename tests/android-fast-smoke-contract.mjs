@@ -7,6 +7,7 @@ const repeatableShell = fs.readFileSync(new URL('../scripts/android-repeatable-r
 const settingsShell = fs.readFileSync(new URL('../scripts/android-settings-regression.sh', import.meta.url), 'utf8');
 const settingsScript = fs.readFileSync(new URL('../scripts/android-settings-playtest.py', import.meta.url), 'utf8');
 const chapter3Shell = fs.readFileSync(new URL('../scripts/android-chapter3-regression.sh', import.meta.url), 'utf8');
+const chapter3Script = fs.readFileSync(new URL('../scripts/browser-chapter3-playthrough.mjs', import.meta.url), 'utf8');
 const workflow = fs.readFileSync(new URL('../.github/workflows/android-apk.yml', import.meta.url), 'utf8');
 const browserWorkflow = fs.readFileSync(new URL('../.github/workflows/browser-e2e.yml', import.meta.url), 'utf8');
 
@@ -124,6 +125,15 @@ for (const checkpoint of [
   '"label": "exposed-complete"',
   '"label": "held-complete"',
 ]) requireText(chapter3Shell, checkpoint, 'Chapter 3 regression shell');
+
+for (const marker of [
+  'async function ensureQaState()',
+  'operator intake',
+  'select vanguard class',
+  'confirm vanguard',
+  'CHAPTER3_QA_STATE_READY source=fresh-intake',
+  'await ensureQaState();',
+]) requireText(chapter3Script, marker, 'Chapter 3 playthrough bootstrap');
 
 for (const marker of [
   'ANDROID_SMOKE_APK',

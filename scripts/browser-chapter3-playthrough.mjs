@@ -139,6 +139,38 @@ const branchEvidence = {
 };
 const xpForLevel = { 15: 7140, 16: 8100, 17: 9120, 18: 10200 };
 
+async function ensureQaState() {
+  await waitFor(`document.readyState === 'complete' && document.title === 'Ironshade Vector'`, 'Chapter 3 startup');
+
+  const hasState = await evaluate(`(() => {
+    const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+    return Boolean(state?.profile && Array.isArray(state.profile.inventory) && state?.campaign?.story?.parallaxDebt && state?.campaign?.story?.interdiction);
+  })()`);
+  if (hasState) return;
+
+  await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('operator intake')`, 'Chapter 3 operator intake');
+
+  const selected = await activateElement(
+    `[...document.querySelectorAll('button')].find(candidate => ((candidate.getAttribute('aria-label') || candidate.textContent || '').trim().toLowerCase()) === 'select vanguard class')`,
+    'Select Vanguard class',
+  );
+  if (!selected) throw new Error('Chapter 3 QA could not select Vanguard while initializing a fresh save.');
+
+  const confirmed = await activateElement(
+    `[...document.querySelectorAll('button')].find(candidate => ((candidate.getAttribute('aria-label') || candidate.textContent || '').trim().toLowerCase()) === 'confirm vanguard')`,
+    'Confirm Vanguard',
+  );
+  if (!confirmed) throw new Error('Chapter 3 QA could not confirm Vanguard while initializing a fresh save.');
+
+  await waitFor(`(() => {
+    const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+    const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase());
+    return Boolean(state?.profile && Array.isArray(state.profile.inventory) && state?.campaign?.story?.parallaxDebt && state?.campaign?.story?.interdiction)
+      && labels.includes('operations');
+  })()`, 'fresh Chapter 3 QA save');
+  console.log(`CHAPTER3_QA_STATE_READY source=fresh-intake interaction=${interactionMode}`);
+}
+
 async function seedCheckpoint({ level, step, status = 'active', choiceA = null, evidence = commonEvidence.slice(0, Math.min(step, 9)), label }) {
   const saved = await evaluate(`(() => {
     const stateKey = 'ironshade-vector-state-v1';
@@ -213,6 +245,7 @@ await call('Page.enable');
 
 const results = [];
 try {
+  await ensureQaState();
   await seedCheckpoint({ level: 15, step: 0, label: 'lv15-start' });
   results.push(await assertCheckpoint('lv15-start', ['0 / 12 CONTRACTS', 'LV15 // FALSE BASELINE', 'Baseline Zero', 'Open contract 1']));
 
