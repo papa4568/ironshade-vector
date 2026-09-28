@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createRefineryIblTarget, REFINERY_IBL_PROFILE } from './refineryIbl';
+import { clampRefineryBloomCostScale, isRefineryBloomAssetLabel, REFINERY_BLOOM_LAYER, REFINERY_BLOOM_PROFILE, refineryBloomResolutionScale, refineryBloomStrengthForCost, RefineryBloomPipeline } from './refineryBloom';
 import type { Contract } from './campaign';
 import type { EquipmentFaction } from './factionGear';
 import { getNextMissionObjectiveTarget } from './encounters';
@@ -777,6 +778,11 @@ export class ThreeCombatRenderer {
     new THREE.PointLight(0xffb36c, 10, 12, 2),
     new THREE.PointLight(0x6edce7, 8, 10, 2),
   ];
+  private readonly refineryBloomPracticalRoot = new THREE.Group();
+  private readonly refineryBloomPracticalMeshes = [
+    new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffb36c, transparent: true, opacity: 0.92, depthWrite: false, toneMapped: false })),
+    new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), new THREE.MeshBasicMaterial({ color: 0x6edce7, transparent: true, opacity: 0.88, depthWrite: false, toneMapped: false })),
+  ];
   private readonly objectVisuals = new Map<string, THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial>>();
   private readonly interactableCueVisuals = new Map<string, WorldCueVisual>();
   private readonly authoredInteractables = new Map<string, AuthoredInteractableVisual>();
@@ -872,6 +878,7 @@ export class ThreeCombatRenderer {
   );
   private readonly objectiveGuideTransform = new THREE.Object3D();
   private readonly renderBudget: AdaptiveRenderBudget;
+  private readonly refineryBloom: RefineryBloomPipeline;
   private readonly coarse: boolean;
   private worldFloorMaterial: THREE.MeshStandardMaterial | null = null;
   private readonly proceduralOperatorVisuals: THREE.Object3D[] = [];
@@ -896,6 +903,7 @@ export class ThreeCombatRenderer {
   private runtimePreloadSignature = '';
   private readonly runtimeStartedAt = performance.now();
   private animationFrame = 0;
+  private refineryBloomAuthoredSourceCount = 0;
 
   constructor(canvas: HTMLCanvasElement, coarse: boolean) {
     this.coarse = coarse;
@@ -913,8 +921,9 @@ export class ThreeCombatRenderer {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.refineryIblTarget = createRefineryIblTarget(this.renderer);
+    this.refineryBloom = new RefineryBloomPipeline(this.renderer, this.scene, this.camera);
 
-    this.scene.add(this.environmentRoot, this.authoredEnvironmentRoot, this.objectRoot, this.authoredInteractableRoot, this.dynamicRoot, this.playerRoot);
+    this.scene.add(this.environmentRoot, this.authoredEnvironmentRoot, this.objectRoot, this.authoredInteractableRoot, this.dynamicRoot, this.playerRoot, this.refineryBloomPracticalRoot);
     this.dynamicRoot.add(this.objectiveBeacon, this.objectiveGuide);
     this.objectiveGuideMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.objectiveGuideMesh.count = 0;
@@ -954,6 +963,12 @@ export class ThreeCombatRenderer {
       light.visible = false;
       this.scene.add(light);
     });
+    this.refineryBloomPracticalMeshes.forEach(mesh => {
+      mesh.layers.set(REFINERY_BLOOM_LAYER);
+      mesh.visible = false;
+      mesh.frustumCulled = false;
+      this.refineryBloomPracticalRoot.add(mesh);
+    });
 
     const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x8aa89d, metalness: 0.72, roughness: 0.34 });
     this.playerBody = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.46, 1.25, 10), bodyMaterial);
@@ -981,6 +996,7 @@ export class ThreeCombatRenderer {
     this.playerRoot.add(this.weaponPivot);
 
     this.muzzleFlash = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), new THREE.MeshBasicMaterial({ color: weaponColors.carbine }));
+    this.muzzleFlash.layers.enable(REFINERY_BLOOM_LAYER);
     this.muzzleFlash.position.set(1.45, 1.02, 0);
     this.weaponPivot.add(this.muzzleFlash);
 
@@ -1039,7 +1055,40 @@ export class ThreeCombatRenderer {
       `sparks:${this.impactSparkPool.length}/${runtimeProfile.poolRetention.impactSparks}`,
       `debris:${this.debrisPool.length}/${runtimeProfile.poolRetention.debris}`,
     ].join('|');
-    this.renderer.render(this.scene, this.camera);
+    this.renderFrame(mission);
+  }
+
+  private renderFrame(mission: Contract) {
+    const isRefinery = mission.location === 'asteroid-refinery';
+    const qaDisabled = isRefinery
+      && this.renderer.domElement.dataset.graphicsPathSelection === 'qa-explicit'
+      && this.renderer.domElement.dataset.refineryBloomQa === 'off';
+    const requestedCost = Number.parseFloat(this.renderer.domElement.dataset.refineryBloomCost ?? '');
+    const costScale = clampRefineryBloomCostScale(Number.isFinite(requestedCost) ? requestedCost : REFINERY_BLOOM_PROFILE.defaultCostScale);
+    const enabled = isRefinery && !qaDisabled && costScale > 0;
+
+    if (isRefinery) {
+      const practicalCount = this.refineryBloomPracticalMeshes.filter(mesh => mesh.visible).length;
+      const vfxCount = this.muzzleFlash.visible ? 1 : 0;
+      this.renderer.domElement.dataset.environmentBloom = enabled
+        ? `selective:${REFINERY_BLOOM_PROFILE.id}:strength-${refineryBloomStrengthForCost(costScale).toFixed(2)}:radius-${REFINERY_BLOOM_PROFILE.radius.toFixed(2)}:cost-${costScale.toFixed(2)}:resolution-${refineryBloomResolutionScale(costScale).toFixed(2)}`
+        : qaDisabled ? 'off:qa-baseline' : 'off:cost-control';
+      this.renderer.domElement.dataset.environmentBloomSources = `authored:${this.refineryBloomAuthoredSourceCount}+practical:${practicalCount}+vfx:muzzle-${vfxCount}`;
+      this.renderer.domElement.dataset.environmentBloomExcluded = REFINERY_BLOOM_PROFILE.excludedCueGroups.join('+');
+      this.renderer.domElement.dataset.environmentBloomCost = costScale.toFixed(2);
+    } else {
+      delete this.renderer.domElement.dataset.environmentBloom;
+      delete this.renderer.domElement.dataset.environmentBloomSources;
+      delete this.renderer.domElement.dataset.environmentBloomExcluded;
+      delete this.renderer.domElement.dataset.environmentBloomCost;
+    }
+
+    if (enabled) {
+      this.refineryBloom.resize(this.width, this.height, this.pixelRatio, costScale);
+      this.refineryBloom.render();
+    } else {
+      this.renderer.render(this.scene, this.camera);
+    }
   }
 
   performanceStats() {
@@ -1112,6 +1161,7 @@ export class ThreeCombatRenderer {
     this.iceMineFracturePulseMaterial.dispose();
     this.iceMineFractureShardMaterial.dispose();
     this.scene.environment = null;
+    this.refineryBloom.dispose();
     this.refineryIblTarget.dispose();
     disposeTree(this.scene);
     this.renderer.dispose();
@@ -1220,6 +1270,8 @@ export class ThreeCombatRenderer {
     this.spinHabitatAmbientBands.length = 0;
     this.spinHabitatRotationY = 0;
     this.spinHabitatLastSimTime = Number.NaN;
+    this.refineryBloomAuthoredSourceCount = 0;
+    this.refineryBloomPracticalMeshes.forEach(mesh => { mesh.visible = false; });
     for (const mesh of this.refineryInstancedMeshes) {
       mesh.removeFromParent();
       mesh.dispose();
@@ -1302,6 +1354,10 @@ export class ThreeCombatRenderer {
     delete this.renderer.domElement.dataset.environmentZoneIdentity;
     delete this.renderer.domElement.dataset.environmentLighting;
     delete this.renderer.domElement.dataset.environmentIbl;
+    delete this.renderer.domElement.dataset.environmentBloom;
+    delete this.renderer.domElement.dataset.environmentBloomSources;
+    delete this.renderer.domElement.dataset.environmentBloomExcluded;
+    delete this.renderer.domElement.dataset.environmentBloomCost;
     delete this.renderer.domElement.dataset.environmentMaterials;
     delete this.renderer.domElement.dataset.environmentVfx;
     delete this.renderer.domElement.dataset.environmentTone;
@@ -1569,6 +1625,10 @@ export class ThreeCombatRenderer {
         : this.cloneRefineryMaterial(source.material, label);
       const mesh = new THREE.InstancedMesh(source.geometry, material, placements.length);
       mesh.name = `authored-${label}-${source.name || 'mesh'}`;
+      if (isRefineryBloomAssetLabel(label)) {
+        mesh.layers.enable(REFINERY_BLOOM_LAYER);
+        this.refineryBloomAuthoredSourceCount += placements.length;
+      }
       mesh.castShadow = castShadow && (source.castShadow || label !== 'floor');
       mesh.receiveShadow = true;
       mesh.frustumCulled = true;
@@ -7013,6 +7073,15 @@ export class ThreeCombatRenderer {
       secondPractical.position.set(scaled(world.w * 0.71), 2.9, scaled(world.h * 0.67));
       secondPractical.intensity = 7.0 * bossPulse;
     }
+
+    this.refineryBloomPracticalMeshes.forEach((mesh, index) => {
+      const light = this.refineryPracticalLights[index];
+      mesh.visible = isRefinery && light.visible;
+      mesh.position.copy(light.position);
+      mesh.material.color.copy(light.color);
+      const baseScale = index === 0 ? 0.92 : 0.78;
+      mesh.scale.setScalar(baseScale * (reducedEffects ? 0.82 : 1));
+    });
 
     this.keyLight.color.setHex(lightingProfile.keyColor);
     this.rimLight.color.setHex(lightingProfile.rimColor);

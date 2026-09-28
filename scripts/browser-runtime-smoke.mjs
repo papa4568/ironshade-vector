@@ -26,6 +26,8 @@ const p22cReportPath = process.env.BROWSER_E2E_P22C_REPORT ?? screenshotPath.rep
 const performanceReportPath = process.env.BROWSER_E2E_PERFORMANCE_REPORT ?? screenshotPath.replace(/\.png$/i, '.performance.json');
 const p21bBeforeScreenshotPath = process.env.BROWSER_E2E_P21B_BEFORE_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21b-ibl-off.png');
 const p21bAfterScreenshotPath = process.env.BROWSER_E2E_P21B_AFTER_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21b-ibl-on.png');
+const p21cBeforeScreenshotPath = process.env.BROWSER_E2E_P21C_BEFORE_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21c-bloom-off.png');
+const p21cAfterScreenshotPath = process.env.BROWSER_E2E_P21C_AFTER_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21c-bloom-on.png');
 const p22cPrimaryJourney = targetLocation === 'asteroid-refinery';
 const p22cEvidence = { viewport: viewportMode, location: targetLocation };
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -1986,6 +1988,91 @@ try {
       await sleep(120);
       await captureScreenshot(p21bAfterScreenshotPath);
       console.log(`BROWSER_P21B_IBL_PASS viewport=${viewportMode} ibl=${p21bEnabled.ibl} lighting=${p21bEnabled.lighting} tone=${p21bEnabled.tone} screenshots=${p21bBeforeScreenshotPath}+${p21bAfterScreenshotPath}`);
+    }
+
+    await waitFor(`(() => {
+      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery');
+      const authored = Number((canvas?.dataset.environmentBloomSources ?? '').match(/authored:(\\d+)/)?.[1] ?? 0);
+      return canvas?.dataset.environmentBloom?.startsWith('selective:refinery-selective-v1:')
+        && authored > 0
+        && canvas?.dataset.environmentBloomExcluded === 'hud+enemies+hazards+objectives+loot+interactables';
+    })()`, 'P21-C selective refinery bloom production path', 20_000);
+
+    const p21cEnabled = await evaluate(`(() => {
+      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery');
+      return {
+        bloom: canvas?.dataset.environmentBloom ?? '',
+        sources: canvas?.dataset.environmentBloomSources ?? '',
+        excluded: canvas?.dataset.environmentBloomExcluded ?? '',
+        cost: canvas?.dataset.environmentBloomCost ?? '',
+        selection: canvas?.dataset.graphicsPathSelection ?? '',
+      };
+    })()`);
+    if (!p21cEnabled?.bloom.startsWith('selective:refinery-selective-v1:')
+      || !/authored:[1-9]/.test(p21cEnabled.sources)
+      || !p21cEnabled.sources.includes('+practical:')
+      || !p21cEnabled.sources.includes('+vfx:muzzle-')
+      || p21cEnabled.excluded !== 'hud+enemies+hazards+objectives+loot+interactables'
+      || p21cEnabled.cost !== '1.00') {
+      throw new Error(`P21-C refinery bloom production telemetry is incomplete: ${JSON.stringify(p21cEnabled)}`);
+    }
+
+    if (requestedGraphicsPath) {
+      const readProtectedCueState = () => evaluate(`(() => {
+        const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery');
+        return {
+          excluded: canvas?.dataset.environmentBloomExcluded ?? '',
+          interactables: Boolean(canvas?.dataset.interactableReadability),
+          hazards: Boolean(canvas?.dataset.hazardReadability),
+          loot: Boolean(canvas?.dataset.lootVisual),
+          controls: Boolean(document.querySelector('[aria-label="Touch combat controls"]') || document.querySelector('.fire-button')),
+          mission: Boolean(document.querySelector('.mission-chip')),
+        };
+      })()`);
+      const cuesBefore = await readProtectedCueState();
+      const disabled = await evaluate(`(() => {
+        const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery');
+        if (!(canvas instanceof HTMLCanvasElement)) return false;
+        canvas.dataset.refineryBloomQa = 'off';
+        return true;
+      })()`);
+      if (!disabled) throw new Error('P21-C could not disable refinery bloom for the deterministic baseline capture.');
+      await waitFor(`[...document.querySelectorAll('canvas')].some(canvas => canvas.dataset.environmentVisual === 'authored-refinery' && canvas.dataset.environmentBloom === 'off:qa-baseline')`, 'P21-C bloom-off baseline');
+      await sleep(120);
+      await captureScreenshot(p21cBeforeScreenshotPath);
+
+      const restored = await evaluate(`(() => {
+        const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery');
+        if (!(canvas instanceof HTMLCanvasElement)) return false;
+        canvas.dataset.refineryBloomQa = 'on';
+        return true;
+      })()`);
+      if (!restored) throw new Error('P21-C could not restore refinery bloom after the baseline capture.');
+      await waitFor(`[...document.querySelectorAll('canvas')].some(canvas => canvas.dataset.environmentVisual === 'authored-refinery' && canvas.dataset.environmentBloom?.startsWith('selective:refinery-selective-v1:'))`, 'P21-C bloom-on comparison');
+      await sleep(120);
+      await captureScreenshot(p21cAfterScreenshotPath);
+      const cuesAfter = await readProtectedCueState();
+      if (JSON.stringify(cuesAfter) !== JSON.stringify(cuesBefore)) {
+        throw new Error(`P21-C bloom toggle changed protected gameplay/UI cue availability: before=${JSON.stringify(cuesBefore)} after=${JSON.stringify(cuesAfter)}`);
+      }
+
+      const reducedCost = await evaluate(`(() => {
+        const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery');
+        if (!(canvas instanceof HTMLCanvasElement)) return false;
+        canvas.dataset.refineryBloomCost = '0.45';
+        return true;
+      })()`);
+      if (!reducedCost) throw new Error('P21-C could not apply the runtime bloom cost control.');
+      await waitFor(`[...document.querySelectorAll('canvas')].some(canvas => canvas.dataset.environmentBloom?.includes(':cost-0.45:'))`, 'P21-C reduced bloom runtime cost');
+      const restoredCost = await evaluate(`(() => {
+        const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery');
+        if (!(canvas instanceof HTMLCanvasElement)) return false;
+        canvas.dataset.refineryBloomCost = '1';
+        return true;
+      })()`);
+      if (!restoredCost) throw new Error('P21-C could not restore full bloom cost after runtime-control verification.');
+      await waitFor(`[...document.querySelectorAll('canvas')].some(canvas => canvas.dataset.environmentBloom?.includes(':cost-1.00:'))`, 'P21-C restored bloom runtime cost');
+      console.log(`BROWSER_P21C_BLOOM_PASS viewport=${viewportMode} bloom=${p21cEnabled.bloom} sources=${p21cEnabled.sources} excluded=${p21cEnabled.excluded} costControl=1.00>0.45>1.00 screenshots=${p21cBeforeScreenshotPath}+${p21cAfterScreenshotPath}`);
     }
   }
   await waitFor(`(() => {

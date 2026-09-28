@@ -487,6 +487,9 @@ if (fastResumeOnly) {
       location: document.querySelector('.mission-chip')?.textContent?.trim() ?? '',
       ibl: document.querySelector('canvas')?.dataset.environmentIbl ?? '',
       lighting: document.querySelector('canvas')?.dataset.environmentLighting ?? '',
+      bloom: document.querySelector('canvas')?.dataset.environmentBloom ?? '',
+      bloomSources: document.querySelector('canvas')?.dataset.environmentBloomSources ?? '',
+      bloomExcluded: document.querySelector('canvas')?.dataset.environmentBloomExcluded ?? '',
     };
   })()`);
   if (fastResumed.title !== 'Ironshade Vector' || fastResumed.canvases < 1 || !fastResumed.controls) {
@@ -496,6 +499,12 @@ if (fastResumeOnly) {
     throw new Error(`Fast Android P21-B refinery IBL did not survive pause/resume: ${JSON.stringify(fastResumed)}`);
   }
   console.log(`ANDROID_P21B_IBL_RESUME_PASS ibl=${fastResumed.ibl} lighting=${fastResumed.lighting}`);
+  if (!fastResumed.bloom.startsWith('selective:refinery-selective-v1:')
+    || !/authored:[1-9]/.test(fastResumed.bloomSources)
+    || fastResumed.bloomExcluded !== 'hud+enemies+hazards+objectives+loot+interactables') {
+    throw new Error(`Fast Android P21-C refinery bloom did not survive pause/resume: ${JSON.stringify(fastResumed)}`);
+  }
+  console.log(`ANDROID_P21C_BLOOM_RESUME_PASS bloom=${fastResumed.bloom} sources=${fastResumed.bloomSources} excluded=${fastResumed.bloomExcluded}`);
   console.log(`ANDROID_FAST_LIFECYCLE_RESUME_PASS canvases=${fastResumed.canvases} tutorialStep=${fastResumed.tutorialStep} location=${JSON.stringify(fastResumed.location)}`);
   session.close();
   await sleep(100);
@@ -817,6 +826,33 @@ if (fastSmoke) {
     throw new Error(`Android P21-B refinery IBL telemetry is incomplete: ${JSON.stringify(p21bIbl)}`);
   }
   console.log(`ANDROID_P21B_IBL_PASS ibl=${p21bIbl.ibl} lighting=${p21bIbl.lighting} tone=${p21bIbl.tone}`);
+
+  await waitFor(`(() => {
+    const canvas = document.querySelector('canvas');
+    const authored = Number((canvas?.dataset.environmentBloomSources ?? '').match(/authored:(\\d+)/)?.[1] ?? 0);
+    return canvas?.dataset.environmentVisual === 'authored-refinery'
+      && canvas?.dataset.environmentBloom?.startsWith('selective:refinery-selective-v1:')
+      && authored > 0
+      && canvas?.dataset.environmentBloomExcluded === 'hud+enemies+hazards+objectives+loot+interactables';
+  })()`, 'Fast Android P21-C refinery bloom', 20_000);
+  const p21cBloom = await evaluate(`(() => {
+    const canvas = document.querySelector('canvas');
+    return {
+      bloom: canvas?.dataset.environmentBloom ?? '',
+      sources: canvas?.dataset.environmentBloomSources ?? '',
+      excluded: canvas?.dataset.environmentBloomExcluded ?? '',
+      cost: canvas?.dataset.environmentBloomCost ?? '',
+    };
+  })()`);
+  if (!p21cBloom?.bloom.startsWith('selective:refinery-selective-v1:')
+    || !/authored:[1-9]/.test(p21cBloom.sources)
+    || !p21cBloom.sources.includes('+practical:')
+    || !p21cBloom.sources.includes('+vfx:muzzle-')
+    || p21cBloom.excluded !== 'hud+enemies+hazards+objectives+loot+interactables'
+    || p21cBloom.cost !== '1.00') {
+    throw new Error(`Android P21-C refinery bloom telemetry is incomplete: ${JSON.stringify(p21cBloom)}`);
+  }
+  console.log(`ANDROID_P21C_BLOOM_PASS bloom=${p21cBloom.bloom} sources=${p21cBloom.sources} excluded=${p21cBloom.excluded} cost=${p21cBloom.cost}`);
 
   const p22b1Geometry = await evaluate(`(() => {
     const readControl = selector => {
