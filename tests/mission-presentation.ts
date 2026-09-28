@@ -51,6 +51,16 @@ assert(
 );
 
 assert(
+  combat.includes("? { kind: 'event', label: `DROP VECTOR // OP T${activeMission.operationTier ?? 1}`, detail: activeMission.title }")
+    && css.includes('.transient-alert-lane[data-presentation="deployment"]')
+    && css.includes('top: max(.45rem, env(safe-area-inset-top))')
+    && css.includes('bottom: auto')
+    && css.includes('text-overflow: ellipsis')
+    && css.includes('white-space: nowrap'),
+  'Short-landscape deployment presentation must stay in a compact top banner and leave objective detail to the fixed objective card.',
+);
+
+assert(
   app.includes('debrief-shell iv-view')
     && app.includes('debrief-card iv-panel iv-panel--glass')
     && app.includes('data-presentation="debrief-highlights"')
