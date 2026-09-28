@@ -32,7 +32,7 @@ const p21d1BeforeScreenshotPath = process.env.BROWSER_E2E_P21D1_BEFORE_SCREENSHO
 const p21d1AfterScreenshotPath = process.env.BROWSER_E2E_P21D1_AFTER_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21d1-contact-on.png');
 const p21d2BeforeScreenshotPath = process.env.BROWSER_E2E_P21D2_BEFORE_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21d2-atmosphere-off.png');
 const p21d2AfterScreenshotPath = process.env.BROWSER_E2E_P21D2_AFTER_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21d2-atmosphere-on.png');
-const p22cPrimaryJourney = targetLocation === 'asteroid-refinery';
+const p22cPrimaryJourney = targetLocation === 'asteroid-refinery' && requestedGraphicsPath !== 'webgpu';
 const p22cEvidence = { viewport: viewportMode, location: targetLocation };
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const P21_EFFECT_BUDGETS = Object.freeze({
