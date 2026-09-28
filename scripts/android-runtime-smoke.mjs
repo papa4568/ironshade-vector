@@ -2636,8 +2636,7 @@ const mobileLayout = await evaluate(`(() => {
     if (!visibleRect || !(element instanceof HTMLElement) || element.offsetWidth <= 0 || element.offsetHeight <= 0) return visibleRect;
     const pseudo = getComputedStyle(element, '::before');
     if (pseudo.pointerEvents !== 'auto') return visibleRect;
-    const root = document.querySelector('.game-root');
-    const visualScale = Number.parseFloat(getComputedStyle(root).getPropertyValue('--iv-combat-control-visual-scale')) || 1;
+    const visualScale = Number.parseFloat(getComputedStyle(element).getPropertyValue('--iv-combat-control-visual-scale')) || 1;
     const width = visibleRect.width / visualScale;
     const height = visibleRect.height / visualScale;
     const centerX = visibleRect.left + visibleRect.width / 2;
