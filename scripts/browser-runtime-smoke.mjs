@@ -24,6 +24,8 @@ const p22cContractScreenshotPath = process.env.BROWSER_E2E_P22C_CONTRACT_SCREENS
 const p22cDialogScreenshotPath = process.env.BROWSER_E2E_P22C_DIALOG_SCREENSHOT ?? commandScreenshotPath.replace(/command/i, 'p22c-dialog');
 const p22cReportPath = process.env.BROWSER_E2E_P22C_REPORT ?? screenshotPath.replace(/\.png$/i, '.p22c.json');
 const performanceReportPath = process.env.BROWSER_E2E_PERFORMANCE_REPORT ?? screenshotPath.replace(/\.png$/i, '.performance.json');
+const p21bBeforeScreenshotPath = process.env.BROWSER_E2E_P21B_BEFORE_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21b-ibl-off.png');
+const p21bAfterScreenshotPath = process.env.BROWSER_E2E_P21B_AFTER_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21b-ibl-on.png');
 const p22cPrimaryJourney = targetLocation === 'asteroid-refinery';
 const p22cEvidence = { viewport: viewportMode, location: targetLocation };
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -1934,7 +1936,58 @@ try {
     };
   })()`);
   console.log(`BROWSER_P15_WORLD_POLISH_PASS viewport=${viewportMode} location=${targetLocation} state=${p15WorldPolish.biomeState} depth=${p15WorldPolish.materialDepth}`);
-  if (targetLocation === 'asteroid-refinery') await performanceDiagnosticsAudit();
+  if (targetLocation === 'asteroid-refinery') {
+    await performanceDiagnosticsAudit();
+    await waitFor(`(() => {
+      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery');
+      return canvas?.dataset.environmentIbl?.startsWith('pmrem:furnace-amber+service-cyan:intensity-')
+        && canvas?.dataset.environmentLighting?.includes('+ibl:pmrem+')
+        && canvas?.dataset.environmentTone?.includes('+ibl-');
+    })()`, 'P21-B refinery IBL production lighting', 20_000);
+
+    const p21bEnabled = await evaluate(`(() => {
+      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery');
+      return {
+        ibl: canvas?.dataset.environmentIbl ?? '',
+        lighting: canvas?.dataset.environmentLighting ?? '',
+        tone: canvas?.dataset.environmentTone ?? '',
+        selection: canvas?.dataset.graphicsPathSelection ?? '',
+      };
+    })()`);
+    if (!p21bEnabled?.ibl.startsWith('pmrem:furnace-amber+service-cyan:intensity-')
+      || !p21bEnabled?.lighting.includes('+ibl:pmrem+')
+      || !p21bEnabled?.tone.includes('+ibl-')) {
+      throw new Error(`P21-B refinery IBL production telemetry is incomplete: ${JSON.stringify(p21bEnabled)}`);
+    }
+
+    if (requestedGraphicsPath) {
+      if (p21bEnabled.selection !== 'qa-explicit') {
+        throw new Error(`P21-B before/after capture requires explicit graphics QA mode: ${JSON.stringify(p21bEnabled)}`);
+      }
+      const disabled = await evaluate(`(() => {
+        const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery');
+        if (!(canvas instanceof HTMLCanvasElement)) return false;
+        canvas.dataset.refineryIblQa = 'off';
+        return true;
+      })()`);
+      if (!disabled) throw new Error('P21-B could not disable refinery IBL for the deterministic baseline capture.');
+      await waitFor(`[...document.querySelectorAll('canvas')].some(canvas => canvas.dataset.environmentVisual === 'authored-refinery' && canvas.dataset.environmentIbl === 'off:qa-baseline' && canvas.dataset.environmentLighting?.includes('+ibl:off+'))`, 'P21-B IBL-off baseline');
+      await sleep(120);
+      await captureScreenshot(p21bBeforeScreenshotPath);
+
+      const restored = await evaluate(`(() => {
+        const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery');
+        if (!(canvas instanceof HTMLCanvasElement)) return false;
+        canvas.dataset.refineryIblQa = 'on';
+        return true;
+      })()`);
+      if (!restored) throw new Error('P21-B could not restore refinery IBL after the baseline capture.');
+      await waitFor(`[...document.querySelectorAll('canvas')].some(canvas => canvas.dataset.environmentVisual === 'authored-refinery' && canvas.dataset.environmentIbl?.startsWith('pmrem:furnace-amber+service-cyan:intensity-') && canvas.dataset.environmentLighting?.includes('+ibl:pmrem+'))`, 'P21-B IBL-on comparison');
+      await sleep(120);
+      await captureScreenshot(p21bAfterScreenshotPath);
+      console.log(`BROWSER_P21B_IBL_PASS viewport=${viewportMode} ibl=${p21bEnabled.ibl} lighting=${p21bEnabled.lighting} tone=${p21bEnabled.tone} screenshots=${p21bBeforeScreenshotPath}+${p21bAfterScreenshotPath}`);
+    }
+  }
   await waitFor(`(() => {
     const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || '').trim());
     return ['Breach Rush', 'Fracture Tag', 'Bulwark Pulse'].every(label => labels.includes(label));

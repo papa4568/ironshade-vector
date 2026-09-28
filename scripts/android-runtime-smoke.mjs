@@ -485,11 +485,17 @@ if (fastResumeOnly) {
       controls: Boolean(document.querySelector('[aria-label="Touch combat controls"]') && document.querySelector('.move-stick') && document.querySelector('.fire-button') && document.querySelector('.dodge-button')),
       tutorialStep: Number(root?.dataset.tutorialStep ?? '0'),
       location: document.querySelector('.mission-chip')?.textContent?.trim() ?? '',
+      ibl: document.querySelector('canvas')?.dataset.environmentIbl ?? '',
+      lighting: document.querySelector('canvas')?.dataset.environmentLighting ?? '',
     };
   })()`);
   if (fastResumed.title !== 'Ironshade Vector' || fastResumed.canvases < 1 || !fastResumed.controls) {
     throw new Error(`Fast Android lifecycle resume did not restore combat/touch surfaces: ${JSON.stringify(fastResumed)}`);
   }
+  if (!fastResumed.ibl.startsWith('pmrem:furnace-amber+service-cyan:intensity-') || !fastResumed.lighting.includes('+ibl:pmrem+')) {
+    throw new Error(`Fast Android P21-B refinery IBL did not survive pause/resume: ${JSON.stringify(fastResumed)}`);
+  }
+  console.log(`ANDROID_P21B_IBL_RESUME_PASS ibl=${fastResumed.ibl} lighting=${fastResumed.lighting}`);
   console.log(`ANDROID_FAST_LIFECYCLE_RESUME_PASS canvases=${fastResumed.canvases} tutorialStep=${fastResumed.tutorialStep} location=${JSON.stringify(fastResumed.location)}`);
   session.close();
   await sleep(100);
@@ -790,6 +796,27 @@ if (fastSmoke) {
     throw new Error(`Android P21-A2 production graphics path changed unexpectedly: ${JSON.stringify(p21a2GraphicsPath)}`);
   }
   console.log('ANDROID_P21A2_GRAPHICS_PATH_PASS selection=production-default requested=none loaded=webgl2');
+
+  await waitFor(`(() => {
+    const canvas = document.querySelector('canvas');
+    return canvas?.dataset.environmentIbl?.startsWith('pmrem:furnace-amber+service-cyan:intensity-')
+      && canvas?.dataset.environmentLighting?.includes('+ibl:pmrem+')
+      && canvas?.dataset.environmentTone?.includes('+ibl-0.68');
+  })()`, 'Fast Android P21-B refinery IBL', 20_000);
+  const p21bIbl = await evaluate(`(() => {
+    const canvas = document.querySelector('canvas');
+    return {
+      ibl: canvas?.dataset.environmentIbl ?? '',
+      lighting: canvas?.dataset.environmentLighting ?? '',
+      tone: canvas?.dataset.environmentTone ?? '',
+    };
+  })()`);
+  if (!p21bIbl?.ibl.startsWith('pmrem:furnace-amber+service-cyan:intensity-')
+    || !p21bIbl?.lighting.includes('+ibl:pmrem+')
+    || !p21bIbl?.tone.includes('+ibl-0.68')) {
+    throw new Error(`Android P21-B refinery IBL telemetry is incomplete: ${JSON.stringify(p21bIbl)}`);
+  }
+  console.log(`ANDROID_P21B_IBL_PASS ibl=${p21bIbl.ibl} lighting=${p21bIbl.lighting} tone=${p21bIbl.tone}`);
 
   const p22b1Geometry = await evaluate(`(() => {
     const readControl = selector => {

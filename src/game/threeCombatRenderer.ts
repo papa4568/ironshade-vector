@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createRefineryIblTarget, REFINERY_IBL_PROFILE } from './refineryIbl';
 import type { Contract } from './campaign';
 import type { EquipmentFaction } from './factionGear';
 import { getNextMissionObjectiveTarget } from './encounters';
@@ -746,6 +747,7 @@ export class ThreeCombatRenderer {
   }
 
   private readonly renderer: THREE.WebGLRenderer;
+  private readonly refineryIblTarget: THREE.WebGLRenderTarget;
   private readonly scene = new THREE.Scene();
   private readonly camera = new THREE.PerspectiveCamera(42, 1, 0.1, 180);
   private readonly raycaster = new THREE.Raycaster();
@@ -910,6 +912,7 @@ export class ThreeCombatRenderer {
     this.renderer.toneMappingExposure = 1.08;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.refineryIblTarget = createRefineryIblTarget(this.renderer);
 
     this.scene.add(this.environmentRoot, this.authoredEnvironmentRoot, this.objectRoot, this.authoredInteractableRoot, this.dynamicRoot, this.playerRoot);
     this.dynamicRoot.add(this.objectiveBeacon, this.objectiveGuide);
@@ -1108,6 +1111,8 @@ export class ThreeCombatRenderer {
     this.iceMineFractureCrackMaterial.dispose();
     this.iceMineFracturePulseMaterial.dispose();
     this.iceMineFractureShardMaterial.dispose();
+    this.scene.environment = null;
+    this.refineryIblTarget.dispose();
     disposeTree(this.scene);
     this.renderer.dispose();
   }
@@ -1296,6 +1301,7 @@ export class ThreeCombatRenderer {
     delete this.renderer.domElement.dataset.environmentFractureSupports;
     delete this.renderer.domElement.dataset.environmentZoneIdentity;
     delete this.renderer.domElement.dataset.environmentLighting;
+    delete this.renderer.domElement.dataset.environmentIbl;
     delete this.renderer.domElement.dataset.environmentMaterials;
     delete this.renderer.domElement.dataset.environmentVfx;
     delete this.renderer.domElement.dataset.environmentTone;
@@ -7016,6 +7022,20 @@ export class ThreeCombatRenderer {
     this.renderer.toneMappingExposure = mission.conditions.includes('low-visibility') ? baseExposure * 1.04 : baseExposure;
     this.renderer.domElement.dataset.locationLighting = `${mission.location}:${lightingProfile.id}:aces-${this.renderer.toneMappingExposure.toFixed(2)}`;
 
+    const refineryIblQaDisabled = isRefinery
+      && this.renderer.domElement.dataset.graphicsPathSelection === 'qa-explicit'
+      && this.renderer.domElement.dataset.refineryIblQa === 'off';
+    const refineryIblEnabled = isRefinery && !refineryIblQaDisabled;
+    this.scene.environment = refineryIblEnabled ? this.refineryIblTarget.texture : null;
+    this.scene.environmentIntensity = refineryIblEnabled ? REFINERY_IBL_PROFILE.intensity : 1;
+    if (isRefinery) {
+      this.renderer.domElement.dataset.environmentIbl = refineryIblEnabled
+        ? `pmrem:${REFINERY_IBL_PROFILE.id}:intensity-${REFINERY_IBL_PROFILE.intensity.toFixed(2)}`
+        : 'off:qa-baseline';
+    } else {
+      delete this.renderer.domElement.dataset.environmentIbl;
+    }
+
     if (isSolarYard) {
       const shutterClosed = !!solarShutter?.exposed;
       if (this.solarYardThermalShutterRoot && this.solarYardThermalShutterLeft && this.solarYardThermalShutterRight) {
@@ -7062,8 +7082,8 @@ export class ThreeCombatRenderer {
       this.renderer.domElement.dataset.readabilityLanguage = 'hard-sun-edge+cool-shade-mass+gold-reflectors+amber-hot-work+moving-gantry-cues';
     } else if (isRefinery) {
       const practicalCount = (firstPractical.visible ? 1 : 0) + (secondPractical.visible ? 1 : 0);
-      this.renderer.domElement.dataset.environmentLighting = `refinery-key+rim+contact:player+enemy+practical:${practicalCount}+shadow:key`;
-      this.renderer.domElement.dataset.environmentTone = `aces-${this.renderer.toneMappingExposure.toFixed(2)}`;
+      this.renderer.domElement.dataset.environmentLighting = `refinery-key+rim+ibl:${refineryIblEnabled ? 'pmrem' : 'off'}+contact:player+enemy+practical:${practicalCount}+shadow:key`;
+      this.renderer.domElement.dataset.environmentTone = `aces-${this.renderer.toneMappingExposure.toFixed(2)}+ibl-${refineryIblEnabled ? REFINERY_IBL_PROFILE.intensity.toFixed(2) : 'off'}`;
       this.renderer.domElement.dataset.bossEnvironmentFx = bossPhaseTwo ? 'phase2-practical-pulse' : 'phase-reactive-ready';
     } else if (isDamagedVessel) {
       const practicalCount = (firstPractical.visible ? 1 : 0) + (secondPractical.visible ? 1 : 0);

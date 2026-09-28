@@ -7,6 +7,7 @@ import {
   materialWorldResponse,
   worldMaterialQualityProfile,
 } from '../src/game/worldMaterialPolish';
+import { REFINERY_IBL_PROFILE } from '../src/game/refineryIbl';
 import type { CombatObject, Hazard, SimState } from '../src/game/sim';
 
 function assert(condition: unknown, message: string) {
@@ -38,6 +39,8 @@ const bulkhead = materialWorldResponse('bulkhead');
 const system = materialWorldResponse('system');
 const industrial = materialWorldResponse('industrial');
 assert(bulkhead.metalness > industrial.metalness && system.roughness < industrial.roughness, 'world material response should preserve readable bulkhead/system/industrial depth');
+assert(REFINERY_IBL_PROFILE.intensity >= 0.55 && REFINERY_IBL_PROFILE.intensity <= 0.8, 'refinery IBL must remain a bounded secondary contribution beside the authored key/rim/practical stack');
+assert(REFINERY_IBL_PROFILE.size <= 128 && REFINERY_IBL_PROFILE.blur > 0, 'refinery IBL PMREM must stay mobile-conscious and prefiltered for rough PBR surfaces');
 
 type BiomeSignals = Parameters<typeof biomeWorldState>[1];
 const baseSignals: BiomeSignals = {
@@ -70,6 +73,23 @@ assert(rendererSource.includes("dataset.worldReadability = 'interactables:shape+
 assert(rendererSource.includes('worldQuality.pickupBeamScale'), 'pickup beam cost must follow the P15-D quality profile');
 assert(rendererSource.includes('worldQuality.materialDepthScale'), 'material depth must follow the P15-D quality profile');
 assert(rendererSource.includes('biomeState.motionHz * worldQuality.stateMotionScale'), 'biome state animation must respect adaptive quality');
+assert(rendererSource.includes('createRefineryIblTarget(this.renderer)'), 'P21-B refinery renderer must create one reusable PMREM IBL target');
+assert(rendererSource.includes('this.scene.environment = refineryIblEnabled ? this.refineryIblTarget.texture : null'), 'P21-B IBL must be refinery-scoped instead of changing global location lighting');
+assert(rendererSource.includes('this.scene.environmentIntensity = refineryIblEnabled ? REFINERY_IBL_PROFILE.intensity : 1'), 'P21-B IBL intensity must come from the bounded refinery profile');
+assert(rendererSource.includes("'off:qa-baseline'"), 'P21-B renderer must retain a QA-only IBL-off baseline for deterministic before/after evidence');
+assert(rendererSource.includes('this.refineryIblTarget.dispose()'), 'P21-B PMREM render target must be disposed with the combat renderer');
+
+const browserSource = readFileSync(resolve(process.cwd(), 'scripts/browser-runtime-smoke.mjs'), 'utf8');
+assert(browserSource.includes("canvas.dataset.refineryIblQa = 'off'"), 'P21-B browser QA must capture an explicit IBL-off baseline');
+assert(browserSource.includes("canvas.dataset.refineryIblQa = 'on'"), 'P21-B browser QA must restore the production IBL path after baseline capture');
+assert(browserSource.includes('BROWSER_P21B_IBL_PASS'), 'P21-B browser QA must report deterministic before/after IBL evidence');
+
+const refineryVerifierSource = readFileSync(resolve(process.cwd(), 'scripts/verify-authored-refinery.mjs'), 'utf8');
+assert(refineryVerifierSource.includes('environmentIbl'), 'P21-B authored-refinery verifier must require IBL runtime telemetry');
+
+const androidSmokeSource = readFileSync(resolve(process.cwd(), 'scripts/android-runtime-smoke.mjs'), 'utf8');
+assert(androidSmokeSource.includes('ANDROID_P21B_IBL_PASS'), 'P21-B Android fast smoke must verify the production refinery IBL path');
+assert(androidSmokeSource.includes('ANDROID_P21B_IBL_RESUME_PASS'), 'P21-B Android lifecycle smoke must verify refinery IBL survives pause/resume');
 
 const canvasSource = readFileSync(resolve(process.cwd(), 'src/components/GameCanvas.tsx'), 'utf8');
 assert(canvasSource.includes('interactableWorldPresentation(object.kind)'), 'Canvas fallback must preserve interactable glyph readability');
