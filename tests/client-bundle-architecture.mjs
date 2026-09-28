@@ -40,9 +40,19 @@ assert(!bootImports.has(gameCanvasKey), 'GameCanvas leaked into the synchronous 
 const appRecordEntry = records.find(([, record]) => basename(record.file).startsWith('App-'));
 assert(appRecordEntry, 'The staged app chunk was not emitted.');
 const [, appRecord] = appRecordEntry;
+const appSource = readFileSync(resolve(root, 'src/App.tsx'), 'utf8');
 assert(
-  new Set(appRecord.dynamicImports ?? []).has(gameCanvasKey),
-  'The staged app chunk no longer reaches GameCanvas through a dynamic import.',
+  appSource.includes("const loadGameCanvas = () => import('./components/GameCanvas')")
+    && appSource.includes('const GameCanvas = lazy(loadGameCanvas)'),
+  'App no longer lazy-loads GameCanvas through the combat route.',
+);
+assert(
+  !(appRecord.imports ?? []).includes(gameCanvasKey),
+  'GameCanvas leaked into the synchronous App chunk.',
+);
+assert(
+  (appRecord.dynamicImports ?? []).length > 0,
+  'The staged App chunk no longer contains lazy child imports.',
 );
 const mainSource = readFileSync(resolve(root, 'src/main.tsx'), 'utf8');
 const runtimeStaticImports = mainSource.split('\n').filter(line => { const trimmed = line.trim(); return trimmed.startsWith('import ') && !trimmed.startsWith('import type '); }).join('\n');
