@@ -771,6 +771,64 @@ if (fastSmoke) {
   await tapButton('Deploy selected contract', 204, 110);
   await waitFor(`Boolean(document.querySelector('canvas') && document.querySelector('[aria-label="Touch combat controls"]') && document.querySelector('.move-stick') && document.querySelector('.fire-button') && document.querySelector('.dodge-button'))`, 'Fast Android combat controls', 45_000);
 
+  const p22b1Geometry = await evaluate(`(() => {
+    const readControl = selector => {
+      const element = document.querySelector(selector);
+      if (!(element instanceof HTMLElement)) return null;
+      const rect = element.getBoundingClientRect();
+      const transform = getComputedStyle(element).transform;
+      const matrix = transform && transform !== 'none'
+        ? transform.match(/^matrix\\(([^)]+)\\)$/)?.[1]?.split(',').map(Number)
+        : null;
+      const scale = matrix && matrix.length >= 4 ? Math.hypot(matrix[0], matrix[1]) : 1;
+      const pseudo = getComputedStyle(element, '::before');
+      const distance = Math.max(2, Math.min(8, rect.width * 0.12));
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const probes = [
+        [rect.right + distance, centerY],
+        [rect.left - distance, centerY],
+        [centerX, rect.top - distance],
+        [centerX, rect.bottom + distance],
+      ].filter(([x, y]) => x >= 1 && y >= 1 && x < window.innerWidth - 1 && y < window.innerHeight - 1);
+      const expandedHit = probes.some(([x, y]) => {
+        const hit = document.elementFromPoint(x, y);
+        return hit === element || (hit instanceof Node && element.contains(hit));
+      });
+      return {
+        scale,
+        width: rect.width,
+        height: rect.height,
+        expandedHit,
+        pseudoPointerEvents: pseudo.pointerEvents,
+      };
+    };
+    const touchUi = document.querySelector('.touch-ui');
+    return {
+      preset: touchUi?.getAttribute('data-layout-preset') ?? '',
+      movementClusterScale: Number(touchUi?.getAttribute('data-movement-scale') ?? 'NaN'),
+      actionClusterScale: Number(touchUi?.getAttribute('data-action-scale') ?? 'NaN'),
+      joystick: readControl('.move-stick'),
+      fire: readControl('.fire-button'),
+      dodge: readControl('.dodge-button'),
+      ability: readControl('.ability-button'),
+    };
+  })()`);
+  for (const [name, geometry] of Object.entries({
+    joystick: p22b1Geometry.joystick,
+    fire: p22b1Geometry.fire,
+    dodge: p22b1Geometry.dodge,
+    ability: p22b1Geometry.ability,
+  })) {
+    if (!geometry || Math.abs(geometry.scale - 0.7) > 0.015 || !geometry.expandedHit || geometry.pseudoPointerEvents !== 'auto') {
+      throw new Error(`Fast Android P22-B1 ${name} geometry/hit acquisition failed: ${JSON.stringify(p22b1Geometry)}`);
+    }
+  }
+  if (p22b1Geometry.preset !== 'standard' || Math.abs(p22b1Geometry.movementClusterScale - 1) > 0.001 || Math.abs(p22b1Geometry.actionClusterScale - 1) > 0.001) {
+    throw new Error(`Fast Android P22-B1 baseline unexpectedly changed persisted cluster layout semantics: ${JSON.stringify(p22b1Geometry)}`);
+  }
+  console.log(`ANDROID_P22B1_CONTROL_GEOMETRY_PASS visualScale=0.7 hitRegion=baseline controls=joystick+fire+dodge+ability preset=${p22b1Geometry.preset}`);
+
   const scrollBefore = await evaluate(`({ x: window.scrollX, y: window.scrollY })`);
 
   let interactionObserved = false;

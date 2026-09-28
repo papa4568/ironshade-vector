@@ -5,6 +5,11 @@
     position: absolute;
     inset: 0;
     pointer-events: none;
+    /* P22-B1 keeps authored cluster placement/preset scaling intact while the
+       rendered movement/action control bodies use a smaller independent baseline. */
+    --iv-combat-control-visual-scale: 0.7;
+    --iv-combat-control-active-scale: 0.651;
+    --iv-combat-control-hit-inset: -21.428571%;
   }
 
   .touch-control-cluster {
@@ -46,6 +51,29 @@
     right: 0 !important;
     top: auto !important;
     bottom: 0 !important;
+  }
+
+  /* P22-B1: shrink only the visible combat movement/action bodies. The inverse
+     transparent ::before region preserves the pre-reduction acquisition footprint,
+     including Large/custom parent-cluster scaling. Utility rail controls stay out
+     of this selector because they are not part of the movement/action baseline. */
+  .movement-control-cluster .move-stick,
+  .action-control-cluster .touch-button {
+    transform: scale(var(--iv-combat-control-visual-scale));
+    transform-origin: center;
+  }
+
+  .movement-control-cluster .move-stick::before,
+  .action-control-cluster .touch-button::before {
+    content: '';
+    position: absolute;
+    inset: var(--iv-combat-control-hit-inset);
+    background: transparent;
+    pointer-events: auto;
+  }
+
+  .action-control-cluster .touch-button:active:not(:disabled) {
+    transform: scale(var(--iv-combat-control-active-scale));
   }
 
   .touch-ui[data-layout-preset='left-handed'] .movement-control-cluster {

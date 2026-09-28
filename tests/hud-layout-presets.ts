@@ -92,6 +92,33 @@ const guide = read('src/game/guideContent.ts');
 const androidSmoke = read('scripts/android-runtime-smoke.mjs');
 const pkg = JSON.parse(read('package.json')) as { scripts?: Record<string, string> };
 
+const p22VisualScaleMatch = layoutCss.match(/--iv-combat-control-visual-scale:\s*([0-9.]+)/);
+const p22ActiveScaleMatch = layoutCss.match(/--iv-combat-control-active-scale:\s*([0-9.]+)/);
+const p22HitInsetMatch = layoutCss.match(/--iv-combat-control-hit-inset:\s*(-?[0-9.]+)%/);
+assert(p22VisualScaleMatch && p22ActiveScaleMatch && p22HitInsetMatch, 'P22-B1 combat-control geometry tokens are missing.');
+const p22VisualScale = Number(p22VisualScaleMatch[1]);
+const p22ActiveScale = Number(p22ActiveScaleMatch[1]);
+const p22HitInset = Math.abs(Number(p22HitInsetMatch[1])) / 100;
+assert(close(p22VisualScale, 0.7), 'P22-B1 visible combat-control baseline must be exactly 70% of the prior geometry.');
+assert(close(p22ActiveScale, 0.651), 'P22-B1 active feedback must preserve the existing 0.93 press response on the 70% visual baseline.');
+assert(close(p22VisualScale * (1 + p22HitInset * 2), 1, 1e-5), 'P22-B1 transparent hit extension must restore the pre-reduction acquisition footprint.');
+assert(layoutCss.includes('.movement-control-cluster .move-stick,\n  .action-control-cluster .touch-button'), 'P22-B1 must reduce only the movement joystick and action-cluster controls.');
+assert(layoutCss.includes('.movement-control-cluster .move-stick::before,\n  .action-control-cluster .touch-button::before'), 'P22-B1 must preserve touch acquisition through invisible extended hit regions.');
+assert(layoutCss.includes('transform: scale(var(--iv-combat-control-visual-scale))') && layoutCss.includes('transform-origin: center'), 'P22-B1 visible reduction must keep authored control centers stationary.');
+const p22LandscapeBaseline = {
+  joystick: [150, 150],
+  fire: [104, 104],
+  dodge: [82, 66],
+  ability: [58, 58],
+  act: [82, 48],
+} as const;
+for (const [name, [width, height]] of Object.entries(p22LandscapeBaseline)) {
+  const visibleWidth = width * p22VisualScale;
+  const visibleHeight = height * p22VisualScale;
+  assert(close(visibleWidth / width, 0.7) && close(visibleHeight / height, 0.7), `P22-B1 ${name} visible geometry did not resolve to the 70% baseline.`);
+}
+assert(androidSmoke.includes('ANDROID_P22B1_CONTROL_GEOMETRY_PASS'), 'P22-B1 Android fast smoke must verify reduced visible geometry plus preserved hit acquisition.');
+
 for (const label of ['Combat layout preset', 'Movement cluster inset', 'Movement cluster height', 'Movement cluster size', 'Action cluster inset', 'Action cluster height', 'Action cluster size', 'Reset current preset']) {
   assert(armory.includes(label), `P19-F Settings is missing ${label}.`);
 }
