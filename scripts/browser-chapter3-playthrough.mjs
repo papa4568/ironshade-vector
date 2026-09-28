@@ -148,7 +148,7 @@ async function ensureQaState() {
   })()`);
   if (hasState) return;
 
-  await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('operator intake')`, 'Chapter 3 operator intake');
+  await waitFor(`document.querySelector('.class-intake') !== null`, 'Chapter 3 operator intake');
 
   const selected = await activateElement(
     `[...document.querySelectorAll('button')].find(candidate => ((candidate.getAttribute('aria-label') || candidate.textContent || '').trim().toLowerCase()) === 'select vanguard class')`,
