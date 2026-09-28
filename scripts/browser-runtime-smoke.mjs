@@ -1039,12 +1039,13 @@ try {
     const text = (document.body?.innerText ?? '').toLowerCase();
     const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase());
     return text.includes('save recovery lock')
-      || text.includes('operator intake')
+      || document.querySelector('.class-intake') !== null
       || ((text.includes('command ready') || text.includes('command deck')) && labels.includes('operations'));
   })()`, 'interactive startup surface');
 
   const firstSurface = await snapshot();
-  if ((firstSurface.text ?? '').toLowerCase().includes('operator intake')) {
+  const firstSurfaceIsClassIntake = await evaluate(`document.querySelector('.class-intake') !== null`);
+  if (firstSurfaceIsClassIntake) {
     await accessibilityAudit('class-selection');
     const classLayout = await classSelectionViewportAudit();
     if (p22cPrimaryJourney) {

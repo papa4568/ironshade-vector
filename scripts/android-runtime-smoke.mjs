@@ -568,12 +568,13 @@ await waitFor(`(() => {
   const text = (document.body?.innerText ?? '').toLowerCase();
   const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase());
   return text.includes('save recovery lock')
-    || text.includes('operator intake')
+    || document.querySelector('.class-intake') !== null
     || ((text.includes('command ready') || text.includes('command deck')) && labels.includes('operations'));
 })()`, 'interactive startup surface', 45_000);
 
 const firstSurface = await snapshot();
-if ((firstSurface.text ?? '').toLowerCase().includes('operator intake')) {
+const firstSurfaceIsClassIntake = await evaluate(`document.querySelector('.class-intake') !== null`);
+if (firstSurfaceIsClassIntake) {
   const classLayout = await evaluate(`(() => {
     const root = document.querySelector('.class-intake');
     const shell = document.querySelector('.class-intake-shell');
