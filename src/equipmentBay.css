@@ -1719,3 +1719,30 @@
   }
 }
 
+
+
+/* P22-C // Dialog footprint closure.
+   Dedicated Armory details remains viewport-anchored, but its fixed desktop window now
+   follows the 70% management baseline instead of bypassing P22-A. */
+.armory-item-modal {
+  padding:
+    max(.875rem, env(safe-area-inset-top))
+    max(.875rem, env(safe-area-inset-right))
+    max(.875rem, env(safe-area-inset-bottom))
+    max(.875rem, env(safe-area-inset-left));
+}
+.armory-item-modal > .item-inspector.open {
+  width: min(55rem, calc(100vw - 2rem));
+  max-width: 55rem;
+  height: min(86dvh, 51.25rem);
+  max-height: 51.25rem;
+  min-height: min(35rem, calc(100dvh - 2rem));
+  border-radius: 1.125rem;
+}
+
+@media (orientation: landscape) and (max-height: 650px) {
+  .armory-item-modal > .item-inspector.open {
+    width: min(60rem, 100%);
+    border-radius: .75rem;
+  }
+}
