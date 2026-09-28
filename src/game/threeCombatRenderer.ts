@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { createRefineryIblTarget, REFINERY_IBL_PROFILE } from './refineryIbl';
 import { clampRefineryBloomCostScale, isRefineryBloomAssetLabel, REFINERY_BLOOM_LAYER, REFINERY_BLOOM_PROFILE, refineryBloomResolutionScale, refineryBloomStrengthForCost, RefineryBloomPipeline } from './refineryBloom';
 import { createRefineryContactDepthAlphaData, REFINERY_CONTACT_DEPTH_PROFILE, refineryContactDepthTelemetry } from './refineryContactDepth';
+import { REFINERY_ATMOSPHERE_PROFILE, refineryAtmosphereRange, refineryAtmosphereTelemetry } from './refineryAtmosphere';
 import type { Contract } from './campaign';
 import type { EquipmentFaction } from './factionGear';
 import { getNextMissionObjectiveTarget } from './encounters';
@@ -1367,6 +1368,8 @@ export class ThreeCombatRenderer {
     delete this.renderer.domElement.dataset.environmentBloomCost;
     delete this.renderer.domElement.dataset.environmentContactDepth;
     delete this.renderer.domElement.dataset.environmentContactDepthProtected;
+    delete this.renderer.domElement.dataset.environmentAtmosphere;
+    delete this.renderer.domElement.dataset.environmentAtmosphereProtected;
     delete this.renderer.domElement.dataset.environmentMaterials;
     delete this.renderer.domElement.dataset.environmentVfx;
     delete this.renderer.domElement.dataset.environmentTone;
@@ -7047,6 +7050,7 @@ export class ThreeCombatRenderer {
     const isDamagedVessel = mission.location === 'damaged-vessel';
     const isSolarYard = mission.location === 'solar-yard';
     const lightingProfile = LOCATION_LIGHTING_PROFILES[mission.location];
+    const palette = locationPalette(mission.location);
     const reducedEffects = budget.tier === 2 || quality < 0.55;
     const solarShutter = isSolarYard ? state.objects.find(object => object.id === 'solar-shutter') : undefined;
     const solarSurge = isSolarYard
@@ -7123,7 +7127,44 @@ export class ThreeCombatRenderer {
     this.keyLight.intensity = isSolarYard ? (solarSurge ? 3.75 : 3.15) : lightingProfile.keyIntensity;
     this.rimLight.intensity = isSolarYard ? (solarSurge ? 0.68 : 0.82) : lightingProfile.rimIntensity;
     const baseExposure = isSolarYard ? (solarSurge ? 1.16 : 1.08) : lightingProfile.exposure;
-    this.renderer.toneMappingExposure = mission.conditions.includes('low-visibility') ? baseExposure * 1.04 : baseExposure;
+    const lowVisibility = mission.conditions.includes('low-visibility');
+    this.renderer.toneMappingExposure = lowVisibility ? baseExposure * 1.04 : baseExposure;
+
+    const refineryAtmosphereQaDisabled = isRefinery
+      && this.renderer.domElement.dataset.graphicsPathSelection === 'qa-explicit'
+      && this.renderer.domElement.dataset.refineryAtmosphereQa === 'off';
+    const refineryAtmosphereEnabled = isRefinery && !refineryAtmosphereQaDisabled;
+    if (isRefinery) {
+      if (refineryAtmosphereEnabled) {
+        const range = refineryAtmosphereRange(lowVisibility);
+        if (this.scene.fog instanceof THREE.Fog) {
+          this.scene.fog.color.setHex(REFINERY_ATMOSPHERE_PROFILE.fogColor);
+          this.scene.fog.near = range.near;
+          this.scene.fog.far = range.far;
+        } else {
+          this.scene.fog = new THREE.Fog(REFINERY_ATMOSPHERE_PROFILE.fogColor, range.near, range.far);
+        }
+        if (this.scene.background instanceof THREE.Color) this.scene.background.setHex(REFINERY_ATMOSPHERE_PROFILE.backgroundColor);
+        else this.scene.background = new THREE.Color(REFINERY_ATMOSPHERE_PROFILE.backgroundColor);
+        this.renderer.toneMappingExposure *= REFINERY_ATMOSPHERE_PROFILE.exposureScale;
+        this.renderer.domElement.dataset.environmentAtmosphere = refineryAtmosphereTelemetry(lowVisibility);
+      } else {
+        const fallbackDensity = lowVisibility ? 0.037 : 0.019;
+        if (this.scene.fog instanceof THREE.FogExp2) {
+          this.scene.fog.color.setHex(palette.fog);
+          this.scene.fog.density = fallbackDensity;
+        } else {
+          this.scene.fog = new THREE.FogExp2(palette.fog, fallbackDensity);
+        }
+        if (this.scene.background instanceof THREE.Color) this.scene.background.setHex(palette.background);
+        else this.scene.background = new THREE.Color(palette.background);
+        this.renderer.domElement.dataset.environmentAtmosphere = 'off:qa-baseline';
+      }
+      this.renderer.domElement.dataset.environmentAtmosphereProtected = REFINERY_ATMOSPHERE_PROFILE.protectedCueGroups.join('+');
+    } else {
+      delete this.renderer.domElement.dataset.environmentAtmosphere;
+      delete this.renderer.domElement.dataset.environmentAtmosphereProtected;
+    }
     this.renderer.domElement.dataset.locationLighting = `${mission.location}:${lightingProfile.id}:aces-${this.renderer.toneMappingExposure.toFixed(2)}`;
 
     const refineryIblQaDisabled = isRefinery
@@ -7187,7 +7228,7 @@ export class ThreeCombatRenderer {
     } else if (isRefinery) {
       const practicalCount = (firstPractical.visible ? 1 : 0) + (secondPractical.visible ? 1 : 0);
       this.renderer.domElement.dataset.environmentLighting = `refinery-key+rim+ibl:${refineryIblEnabled ? 'pmrem' : 'off'}+contact:player+enemy+practical:${practicalCount}+shadow:key`;
-      this.renderer.domElement.dataset.environmentTone = `aces-${this.renderer.toneMappingExposure.toFixed(2)}+ibl-${refineryIblEnabled ? REFINERY_IBL_PROFILE.intensity.toFixed(2) : 'off'}`;
+      this.renderer.domElement.dataset.environmentTone = `aces-${this.renderer.toneMappingExposure.toFixed(2)}+ibl-${refineryIblEnabled ? REFINERY_IBL_PROFILE.intensity.toFixed(2) : 'off'}+atmosphere-${refineryAtmosphereEnabled ? REFINERY_ATMOSPHERE_PROFILE.id : 'off'}`;
       this.renderer.domElement.dataset.bossEnvironmentFx = bossPhaseTwo ? 'phase2-practical-pulse' : 'phase-reactive-ready';
     } else if (isDamagedVessel) {
       const practicalCount = (firstPractical.visible ? 1 : 0) + (secondPractical.visible ? 1 : 0);

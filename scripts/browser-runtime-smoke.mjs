@@ -30,6 +30,8 @@ const p21cBeforeScreenshotPath = process.env.BROWSER_E2E_P21C_BEFORE_SCREENSHOT 
 const p21cAfterScreenshotPath = process.env.BROWSER_E2E_P21C_AFTER_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21c-bloom-on.png');
 const p21d1BeforeScreenshotPath = process.env.BROWSER_E2E_P21D1_BEFORE_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21d1-contact-off.png');
 const p21d1AfterScreenshotPath = process.env.BROWSER_E2E_P21D1_AFTER_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21d1-contact-on.png');
+const p21d2BeforeScreenshotPath = process.env.BROWSER_E2E_P21D2_BEFORE_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21d2-atmosphere-off.png');
+const p21d2AfterScreenshotPath = process.env.BROWSER_E2E_P21D2_AFTER_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21d2-atmosphere-on.png');
 const p22cPrimaryJourney = targetLocation === 'asteroid-refinery';
 const p22cEvidence = { viewport: viewportMode, location: targetLocation };
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -2133,6 +2135,71 @@ try {
         throw new Error(`P21-D1 contact-depth toggle changed protected gameplay/UI cue availability: before=${JSON.stringify(cuesBefore)} after=${JSON.stringify(cuesAfter)}`);
       }
       console.log(`BROWSER_P21D1_CONTACT_DEPTH_PASS viewport=${viewportMode} contact=${p21d1Enabled.contactDepth} protected=${p21d1Enabled.protected} screenshots=${p21d1BeforeScreenshotPath}+${p21d1AfterScreenshotPath}`);
+    }
+
+    await waitFor(`(() => {
+      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery');
+      return canvas?.dataset.environmentAtmosphere?.startsWith('fog:refinery-depth-atmosphere-v1:near-18.0:far-42.0:color-160d08:exposure-0.98')
+        && canvas?.dataset.environmentAtmosphereProtected === 'hud+enemies+hazards+objectives+loot+interactables'
+        && canvas?.dataset.environmentTone?.includes('+atmosphere-refinery-depth-atmosphere-v1');
+    })()`, 'P21-D2 refinery atmosphere production path', 20_000);
+
+    const p21d2Enabled = await evaluate(`(() => {
+      const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery');
+      return {
+        atmosphere: canvas?.dataset.environmentAtmosphere ?? '',
+        protected: canvas?.dataset.environmentAtmosphereProtected ?? '',
+        tone: canvas?.dataset.environmentTone ?? '',
+        contactDepth: canvas?.dataset.environmentContactDepth ?? '',
+      };
+    })()`);
+    if (!p21d2Enabled?.atmosphere.startsWith('fog:refinery-depth-atmosphere-v1:near-18.0:far-42.0:color-160d08:exposure-0.98')
+      || p21d2Enabled.protected !== 'hud+enemies+hazards+objectives+loot+interactables'
+      || !p21d2Enabled.tone.includes('+atmosphere-refinery-depth-atmosphere-v1')
+      || !p21d2Enabled.contactDepth.startsWith('grounding:refinery-contact-grounding-v1:')) {
+      throw new Error(`P21-D2 refinery atmosphere production telemetry is incomplete: ${JSON.stringify(p21d2Enabled)}`);
+    }
+
+    if (requestedGraphicsPath) {
+      const readProtectedCueState = () => evaluate(`(() => ({
+        interactables: Boolean(document.querySelector('canvas')?.dataset.interactableReadability),
+        hazards: Boolean(document.querySelector('canvas')?.dataset.hazardReadability),
+        loot: Boolean(document.querySelector('canvas')?.dataset.lootVisual),
+        controls: Boolean(document.querySelector('[aria-label="Touch combat controls"]') || document.querySelector('.fire-button')),
+        mission: Boolean(document.querySelector('.mission-chip')),
+      }))()`);
+      const cuesBefore = await readProtectedCueState();
+      const contactBefore = p21d2Enabled.contactDepth;
+      const disabled = await evaluate(`(() => {
+        const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery');
+        if (!(canvas instanceof HTMLCanvasElement)) return false;
+        canvas.dataset.refineryAtmosphereQa = 'off';
+        return true;
+      })()`);
+      if (!disabled) throw new Error('P21-D2 could not disable refinery atmosphere for the deterministic baseline capture.');
+      await waitFor(`[...document.querySelectorAll('canvas')].some(canvas => canvas.dataset.environmentVisual === 'authored-refinery' && canvas.dataset.environmentAtmosphere === 'off:qa-baseline' && canvas.dataset.environmentContactDepth?.startsWith('grounding:refinery-contact-grounding-v1:'))`, 'P21-D2 atmosphere-off baseline');
+      await sleep(120);
+      await captureScreenshot(p21d2BeforeScreenshotPath);
+
+      const restored = await evaluate(`(() => {
+        const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery');
+        if (!(canvas instanceof HTMLCanvasElement)) return false;
+        canvas.dataset.refineryAtmosphereQa = 'on';
+        return true;
+      })()`);
+      if (!restored) throw new Error('P21-D2 could not restore refinery atmosphere after the baseline capture.');
+      await waitFor(`[...document.querySelectorAll('canvas')].some(canvas => canvas.dataset.environmentVisual === 'authored-refinery' && canvas.dataset.environmentAtmosphere?.startsWith('fog:refinery-depth-atmosphere-v1:') && canvas.dataset.environmentContactDepth?.startsWith('grounding:refinery-contact-grounding-v1:'))`, 'P21-D2 atmosphere-on comparison');
+      await sleep(120);
+      await captureScreenshot(p21d2AfterScreenshotPath);
+      const cuesAfter = await readProtectedCueState();
+      const contactAfter = await evaluate(`[...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery')?.dataset.environmentContactDepth ?? ''`);
+      if (JSON.stringify(cuesAfter) !== JSON.stringify(cuesBefore)) {
+        throw new Error(`P21-D2 atmosphere toggle changed protected gameplay/UI cue availability: before=${JSON.stringify(cuesBefore)} after=${JSON.stringify(cuesAfter)}`);
+      }
+      if (contactBefore !== contactAfter) {
+        throw new Error(`P21-D2 atmosphere toggle changed P21-D1 contact grounding: before=${contactBefore} after=${contactAfter}`);
+      }
+      console.log(`BROWSER_P21D2_ATMOSPHERE_PASS viewport=${viewportMode} atmosphere=${p21d2Enabled.atmosphere} protected=${p21d2Enabled.protected} contact=independent screenshots=${p21d2BeforeScreenshotPath}+${p21d2AfterScreenshotPath}`);
     }
   }
   await waitFor(`(() => {

@@ -492,6 +492,9 @@ if (fastResumeOnly) {
       bloomExcluded: document.querySelector('canvas')?.dataset.environmentBloomExcluded ?? '',
       contactDepth: document.querySelector('canvas')?.dataset.environmentContactDepth ?? '',
       contactDepthProtected: document.querySelector('canvas')?.dataset.environmentContactDepthProtected ?? '',
+      atmosphere: document.querySelector('canvas')?.dataset.environmentAtmosphere ?? '',
+      atmosphereProtected: document.querySelector('canvas')?.dataset.environmentAtmosphereProtected ?? '',
+      tone: document.querySelector('canvas')?.dataset.environmentTone ?? '',
     };
   })()`);
   if (fastResumed.title !== 'Ironshade Vector' || fastResumed.canvases < 1 || !fastResumed.controls) {
@@ -513,6 +516,12 @@ if (fastResumeOnly) {
     throw new Error(`Fast Android P21-D1 refinery contact depth did not survive pause/resume: ${JSON.stringify(fastResumed)}`);
   }
   console.log(`ANDROID_P21D1_CONTACT_DEPTH_RESUME_PASS contact=${fastResumed.contactDepth} protected=${fastResumed.contactDepthProtected}`);
+  if (!fastResumed.atmosphere.startsWith('fog:refinery-depth-atmosphere-v1:near-18.0:far-42.0:color-160d08:exposure-0.98')
+    || fastResumed.atmosphereProtected !== 'hud+enemies+hazards+objectives+loot+interactables'
+    || !fastResumed.tone.includes('+atmosphere-refinery-depth-atmosphere-v1')) {
+    throw new Error(`Fast Android P21-D2 refinery atmosphere did not survive pause/resume: ${JSON.stringify(fastResumed)}`);
+  }
+  console.log(`ANDROID_P21D2_ATMOSPHERE_RESUME_PASS atmosphere=${fastResumed.atmosphere} protected=${fastResumed.atmosphereProtected} tone=${fastResumed.tone}`);
   console.log(`ANDROID_FAST_LIFECYCLE_RESUME_PASS canvases=${fastResumed.canvases} tutorialStep=${fastResumed.tutorialStep} location=${JSON.stringify(fastResumed.location)}`);
   session.close();
   await sleep(100);
@@ -882,6 +891,30 @@ if (fastSmoke) {
     throw new Error(`Android P21-D1 refinery contact-depth telemetry is incomplete: ${JSON.stringify(p21d1ContactDepth)}`);
   }
   console.log(`ANDROID_P21D1_CONTACT_DEPTH_PASS contact=${p21d1ContactDepth.contactDepth} protected=${p21d1ContactDepth.protected}`);
+
+  await waitFor(`(() => {
+    const canvas = document.querySelector('canvas');
+    return canvas?.dataset.environmentVisual === 'authored-refinery'
+      && canvas?.dataset.environmentAtmosphere?.startsWith('fog:refinery-depth-atmosphere-v1:near-18.0:far-42.0:color-160d08:exposure-0.98')
+      && canvas?.dataset.environmentAtmosphereProtected === 'hud+enemies+hazards+objectives+loot+interactables'
+      && canvas?.dataset.environmentTone?.includes('+atmosphere-refinery-depth-atmosphere-v1');
+  })()`, 'Fast Android P21-D2 refinery atmosphere', 20_000);
+  const p21d2Atmosphere = await evaluate(`(() => {
+    const canvas = document.querySelector('canvas');
+    return {
+      atmosphere: canvas?.dataset.environmentAtmosphere ?? '',
+      protected: canvas?.dataset.environmentAtmosphereProtected ?? '',
+      tone: canvas?.dataset.environmentTone ?? '',
+      contactDepth: canvas?.dataset.environmentContactDepth ?? '',
+    };
+  })()`);
+  if (!p21d2Atmosphere?.atmosphere.startsWith('fog:refinery-depth-atmosphere-v1:near-18.0:far-42.0:color-160d08:exposure-0.98')
+    || p21d2Atmosphere.protected !== 'hud+enemies+hazards+objectives+loot+interactables'
+    || !p21d2Atmosphere.tone.includes('+atmosphere-refinery-depth-atmosphere-v1')
+    || !p21d2Atmosphere.contactDepth.startsWith('grounding:refinery-contact-grounding-v1:')) {
+    throw new Error(`Android P21-D2 refinery atmosphere telemetry is incomplete: ${JSON.stringify(p21d2Atmosphere)}`);
+  }
+  console.log(`ANDROID_P21D2_ATMOSPHERE_PASS atmosphere=${p21d2Atmosphere.atmosphere} protected=${p21d2Atmosphere.protected} contact=independent`);
 
   const p22b1Geometry = await evaluate(`(() => {
     const readControl = selector => {
