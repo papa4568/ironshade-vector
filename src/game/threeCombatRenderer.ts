@@ -1065,14 +1065,15 @@ export class ThreeCombatRenderer {
       && this.renderer.domElement.dataset.refineryBloomQa === 'off';
     const requestedCost = Number.parseFloat(this.renderer.domElement.dataset.refineryBloomCost ?? '');
     const costScale = clampRefineryBloomCostScale(Number.isFinite(requestedCost) ? requestedCost : REFINERY_BLOOM_PROFILE.defaultCostScale);
-    const enabled = isRefinery && !qaDisabled && costScale > 0;
+    const authoredBloomReady = this.refineryBloomAuthoredSourceCount > 0;
+    const enabled = isRefinery && authoredBloomReady && !qaDisabled && costScale > 0;
 
     if (isRefinery) {
       const practicalCount = this.refineryBloomPracticalMeshes.filter(mesh => mesh.visible).length;
       const vfxCount = this.muzzleFlash.visible ? 1 : 0;
       this.renderer.domElement.dataset.environmentBloom = enabled
         ? `selective:${REFINERY_BLOOM_PROFILE.id}:strength-${refineryBloomStrengthForCost(costScale).toFixed(2)}:radius-${REFINERY_BLOOM_PROFILE.radius.toFixed(2)}:cost-${costScale.toFixed(2)}:resolution-${refineryBloomResolutionScale(costScale).toFixed(2)}`
-        : qaDisabled ? 'off:qa-baseline' : 'off:cost-control';
+        : qaDisabled ? 'off:qa-baseline' : !authoredBloomReady ? 'off:awaiting-authored-emissives' : 'off:cost-control';
       this.renderer.domElement.dataset.environmentBloomSources = `authored:${this.refineryBloomAuthoredSourceCount}+practical:${practicalCount}+vfx:muzzle-${vfxCount}`;
       this.renderer.domElement.dataset.environmentBloomExcluded = REFINERY_BLOOM_PROFILE.excludedCueGroups.join('+');
       this.renderer.domElement.dataset.environmentBloomCost = costScale.toFixed(2);
