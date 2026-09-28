@@ -2703,3 +2703,46 @@
 .ship-hub[data-interface-size='compact'] .command-rail-nav button {
   min-height: 48px;
 }
+
+
+/* P22-C // Contract-preparation fixed-pixel closure.
+   The board's card/list chrome now participates in the 70% management baseline while
+   compact-phone decision text keeps the established readability floor. */
+.contract-toolbar {
+  padding: .5625rem .6875rem;
+  border-radius: .5rem;
+}
+.contracts-layout {
+  grid-template-columns: minmax(18.75rem, .78fr) minmax(27.5rem, 1.22fr);
+}
+.contract-list {
+  gap: .375rem;
+}
+.contract-card {
+  padding: .8125rem .875rem;
+  border-radius: .5625rem;
+}
+.contract-card h2 {
+  font-size: max(14px, 1rem);
+}
+.contract-inspector {
+  border-radius: .625rem;
+}
+
+@media (max-width: 620px) and (orientation: portrait),
+       (orientation: landscape) and (max-width: 1000px) and (max-height: 500px) {
+  .contract-card h2,
+  .contract-inspector h2,
+  .contract-inspector b {
+    font-size: max(14px, .875rem);
+  }
+  .contract-card small,
+  .contract-card span,
+  .contract-card p,
+  .contract-inspector small,
+  .contract-inspector span,
+  .contract-inspector p,
+  .contract-inspector .deploy-contract {
+    font-size: var(--p19-compact-type-secondary, max(12px, .75rem));
+  }
+}

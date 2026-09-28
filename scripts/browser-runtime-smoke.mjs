@@ -12,6 +12,8 @@ const classScreenshotPath = process.env.BROWSER_E2E_CLASS_SCREENSHOT ?? commandS
 const accessibilityScreenshotPath = process.env.BROWSER_E2E_ACCESSIBILITY_SCREENSHOT ?? commandScreenshotPath.replace(/command/i, 'accessibility');
 const p22cBeforeScreenshotPath = process.env.BROWSER_E2E_P22C_BEFORE_SCREENSHOT ?? commandScreenshotPath.replace(/command/i, 'p22c-before');
 const p22cAfterScreenshotPath = process.env.BROWSER_E2E_P22C_AFTER_SCREENSHOT ?? commandScreenshotPath.replace(/command/i, 'p22c-after');
+const p22cContractScreenshotPath = process.env.BROWSER_E2E_P22C_CONTRACT_SCREENSHOT ?? commandScreenshotPath.replace(/command/i, 'p22c-contract');
+const p22cDialogScreenshotPath = process.env.BROWSER_E2E_P22C_DIALOG_SCREENSHOT ?? commandScreenshotPath.replace(/command/i, 'p22c-dialog');
 const p22cReportPath = process.env.BROWSER_E2E_P22C_REPORT ?? screenshotPath.replace(/\.png$/i, '.p22c.json');
 const performanceReportPath = process.env.BROWSER_E2E_PERFORMANCE_REPORT ?? screenshotPath.replace(/\.png$/i, '.performance.json');
 const p22cPrimaryJourney = targetLocation === 'asteroid-refinery';
@@ -919,6 +921,7 @@ async function armoryInspectorViewportAudit() {
       layoutWidth: layoutRect.width,
       gridColumns,
       selectedCard: card.classList.contains('selected'),
+      inspectorWidth: inspectorRect.width,
     };
   })()`);
 
@@ -947,6 +950,7 @@ async function armoryInspectorViewportAudit() {
       const root = document.querySelector('.armory-item-modal .item-inspector.open');
       if (!(root instanceof HTMLElement)) return null;
       const visible = element => {
+        if (element.closest('[aria-hidden="true"]')) return false;
         const style = getComputedStyle(element);
         const rect = element.getBoundingClientRect();
         return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0 && rect.width > 0 && rect.height > 0;
@@ -961,12 +965,22 @@ async function armoryInspectorViewportAudit() {
     if (!overlayTypography || (compactLandscape && overlayTypography.tinyText.length)) {
       throw new Error(`P22-C Armory overlay readability audit failed: ${JSON.stringify({ opened, overlayTypography })}`);
     }
+    const legacyDialogWidth = opened.height <= 650
+      ? Math.min(960, Math.max(0, opened.width - 16))
+      : Math.min(880, Math.max(0, opened.width - 28));
+    const dialogRatio = legacyDialogWidth > 0 ? opened.inspectorWidth / legacyDialogWidth : 0;
+    if (dialogRatio < 0.65 || dialogRatio > 0.82) {
+      throw new Error(`P22-C Armory dialog did not resolve to the reduced footprint: ${JSON.stringify({ opened, legacyDialogWidth, dialogRatio })}`);
+    }
     p22cEvidence.overlay = {
       viewport: { width: opened.width, height: opened.height },
       minFont: overlayTypography.minFont,
-      inspector: { withinViewport: opened.windowWithinViewport, centered: opened.windowCentered, actionsOnscreen: opened.actionsOnscreen },
+      dialogRatio,
+      inspector: { width: opened.inspectorWidth, withinViewport: opened.windowWithinViewport, centered: opened.windowCentered, actionsOnscreen: opened.actionsOnscreen },
+      screenshot: p22cDialogScreenshotPath,
     };
-    console.log(`BROWSER_P22C_OVERLAY_BOUNDS_PASS viewport=${viewportMode} minFont=${overlayTypography.minFont.toFixed(1)}px dialog=onscreen+centered actions=onscreen`);
+    await captureScreenshot(p22cDialogScreenshotPath);
+    console.log(`BROWSER_P22C_OVERLAY_BOUNDS_PASS viewport=${viewportMode} minFont=${overlayTypography.minFont.toFixed(1)}px ratio=${dialogRatio.toFixed(3)} dialog=onscreen+centered actions=onscreen`);
   }
 
   const closedInspector = await evaluate(`(() => {
@@ -1771,42 +1785,67 @@ try {
   console.log(`BROWSER_P20E_REPEATABLE_IDENTITY_PASS viewport=${viewportMode} families=salvage+boarding+stabilization markers=RECOVER+BREACH+STABILIZE predeploy=true`);
 
   if (p22cPrimaryJourney) {
-    const p22cContract = await evaluate(`(() => {
-      const layout = document.querySelector('.contracts-layout');
-      const inspector = document.querySelector('.contract-inspector');
-      const deploy = document.querySelector('.deploy-contract');
-      if (!(layout instanceof HTMLElement) || !(inspector instanceof HTMLElement) || !(deploy instanceof HTMLElement)) return null;
-      const viewport = { width: window.visualViewport?.width ?? window.innerWidth, height: window.visualViewport?.height ?? window.innerHeight };
-      const visible = element => {
-        const style = getComputedStyle(element);
-        const rect = element.getBoundingClientRect();
-        return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0 && rect.width > 0 && rect.height > 0;
-      };
-      const ownText = element => [...element.childNodes].filter(node => node.nodeType === Node.TEXT_NODE).map(node => node.textContent || '').join(' ').replace(/\\s+/g, ' ').trim();
-      const copy = [...layout.querySelectorAll('small,p,span,b,strong,h2,h3,button')].filter(visible).map(element => ({
-        text: ownText(element).slice(0, 64),
-        size: Number.parseFloat(getComputedStyle(element).fontSize),
-      })).filter(item => item.text && Number.isFinite(item.size));
-      const inspectorRect = inspector.getBoundingClientRect();
-      const deployRect = deploy.getBoundingClientRect();
-      return {
-        compactLandscape: viewport.width > viewport.height && viewport.height <= 500,
-        minFont: copy.length ? Math.min(...copy.map(item => item.size)) : 0,
-        tinyText: copy.filter(item => item.size < 11.5).slice(0, 16),
-        horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - viewport.width),
-        inspector: { left: inspectorRect.left, top: inspectorRect.top, right: inspectorRect.right, bottom: inspectorRect.bottom, width: inspectorRect.width, height: inspectorRect.height },
-        deploy: { left: deployRect.left, top: deployRect.top, right: deployRect.right, bottom: deployRect.bottom, width: deployRect.width, height: deployRect.height },
-      };
-    })()`);
+    const p22cContractPreviousTextScale = await evaluate(`document.documentElement.dataset.textScale ?? ''`);
+    let p22cContract;
+    try {
+      await evaluate(`document.documentElement.dataset.textScale = 'default'; true`);
+      await sleep(100);
+      p22cContract = await evaluate(`(() => {
+        const layout = document.querySelector('.contracts-layout');
+        const inspector = document.querySelector('.contract-inspector');
+        const deploy = document.querySelector('.deploy-contract');
+        const card = document.querySelector('.contract-card.selected') || document.querySelector('.contract-card');
+        const toolbar = document.querySelector('.contract-toolbar');
+        if (!(layout instanceof HTMLElement) || !(inspector instanceof HTMLElement) || !(deploy instanceof HTMLElement) || !(card instanceof HTMLElement) || !(toolbar instanceof HTMLElement)) return null;
+        const viewport = { width: window.visualViewport?.width ?? window.innerWidth, height: window.visualViewport?.height ?? window.innerHeight };
+        const visible = element => {
+          if (element.closest('[aria-hidden="true"]')) return false;
+          const style = getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0 && rect.width > 0 && rect.height > 0;
+        };
+        const ownText = element => [...element.childNodes].filter(node => node.nodeType === Node.TEXT_NODE).map(node => node.textContent || '').join(' ').replace(/\\s+/g, ' ').trim();
+        const copy = [...layout.querySelectorAll('small,p,span,b,strong,h2,h3,button')].filter(visible).map(element => ({
+          text: ownText(element).slice(0, 64),
+          size: Number.parseFloat(getComputedStyle(element).fontSize),
+        })).filter(item => item.text && Number.isFinite(item.size));
+        const inspectorRect = inspector.getBoundingClientRect();
+        const deployRect = deploy.getBoundingClientRect();
+        return {
+          compactLandscape: viewport.width > viewport.height && viewport.height <= 500,
+          rootFont: Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
+          minFont: copy.length ? Math.min(...copy.map(item => item.size)) : 0,
+          tinyText: copy.filter(item => item.size < 11.5).slice(0, 16),
+          cardRatio: Number.parseFloat(getComputedStyle(card).paddingLeft) / 14,
+          toolbarRatio: Number.parseFloat(getComputedStyle(toolbar).paddingLeft) / 11,
+          horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - viewport.width),
+          inspector: { left: inspectorRect.left, top: inspectorRect.top, right: inspectorRect.right, bottom: inspectorRect.bottom, width: inspectorRect.width, height: inspectorRect.height },
+          deploy: { left: deployRect.left, top: deployRect.top, right: deployRect.right, bottom: deployRect.bottom, width: deployRect.width, height: deployRect.height },
+        };
+      })()`);
+      await captureScreenshot(p22cContractScreenshotPath);
+    } finally {
+      const previous = JSON.stringify(p22cContractPreviousTextScale);
+      await evaluate(`(() => {
+        const value = ${previous};
+        if (value) document.documentElement.dataset.textScale = value;
+        else delete document.documentElement.dataset.textScale;
+        return true;
+      })()`).catch(() => undefined);
+      await sleep(100);
+    }
     if (!p22cContract
       || p22cContract.horizontalOverflow > 2
+      || Math.abs(p22cContract.rootFont / 16 - 0.7) > 0.025
+      || Math.abs(p22cContract.cardRatio - 0.7) > 0.06
+      || Math.abs(p22cContract.toolbarRatio - 0.7) > 0.06
       || (p22cContract.compactLandscape && p22cContract.tinyText.length)
       || p22cContract.deploy.width < 40
       || p22cContract.deploy.height < 40) {
       throw new Error(`P22-C contract preparation audit failed: ${JSON.stringify(p22cContract)}`);
     }
-    p22cEvidence.contractPreparation = p22cContract;
-    console.log(`BROWSER_P22C_CONTRACT_PREP_PASS viewport=${viewportMode} minFont=${p22cContract.minFont.toFixed(1)}px overflow=none deploy=${Math.round(p22cContract.deploy.width)}x${Math.round(p22cContract.deploy.height)}`);
+    p22cEvidence.contractPreparation = { ...p22cContract, screenshot: p22cContractScreenshotPath };
+    console.log(`BROWSER_P22C_CONTRACT_PREP_PASS viewport=${viewportMode} root=${(p22cContract.rootFont / 16).toFixed(3)} card=${p22cContract.cardRatio.toFixed(3)} toolbar=${p22cContract.toolbarRatio.toFixed(3)} minFont=${p22cContract.minFont.toFixed(1)}px overflow=none deploy=${Math.round(p22cContract.deploy.width)}x${Math.round(p22cContract.deploy.height)} accessibility=restored`);
   }
 
 

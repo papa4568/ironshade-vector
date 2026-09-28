@@ -786,3 +786,30 @@
 }
 /* P22-B2 END */
 
+
+
+/* P22-C // Combat dialog footprint closure.
+   Extraction/death/completion overlays are not part of the informational HUD scale, so
+   their legacy fixed-pixel chrome is reduced independently while actions retain touch floors. */
+.game-root .overlay {
+  padding: 14px;
+}
+.game-root .overlay-card {
+  width: min(308px, 92vw);
+  max-height: calc(100dvh - 28px);
+  padding: 20px;
+  border-radius: 11px;
+}
+.game-root .overlay-card h2 {
+  margin: 6px 0 7px;
+  font-size: max(24px, 1.5rem);
+}
+.game-root .overlay-actions {
+  gap: 7px;
+  margin-top: 13px;
+}
+.game-root .overlay-actions button {
+  min-height: 44px;
+  padding: 8px 11px;
+  border-radius: 7px;
+}

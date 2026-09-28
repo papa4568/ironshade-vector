@@ -1719,3 +1719,87 @@
   }
 }
 
+
+
+/* P22-C // Dialog footprint closure.
+   Dedicated Armory details remains viewport-anchored, but its fixed desktop window now
+   follows the 70% management baseline instead of bypassing P22-A. */
+.armory-item-modal {
+  padding:
+    max(.875rem, env(safe-area-inset-top))
+    max(.875rem, env(safe-area-inset-right))
+    max(.875rem, env(safe-area-inset-bottom))
+    max(.875rem, env(safe-area-inset-left));
+}
+.armory-item-modal > .item-inspector.open {
+  width: min(55rem, calc(100vw - 2rem));
+  max-width: 55rem;
+  height: min(86dvh, 51.25rem);
+  max-height: 51.25rem;
+  min-height: min(35rem, calc(100dvh - 2rem));
+  border-radius: 1.125rem;
+}
+
+@media (orientation: landscape) and (max-height: 650px) {
+  .armory-item-modal > .item-inspector.open {
+    width: min(60rem, 100%);
+    border-radius: .75rem;
+  }
+}
+
+
+/* P22-C // Compact Armory dialog readability closure.
+   Lazy-loaded inspector rules previously overrode the shared P19 phone type floor. */
+@media (max-width: 620px) and (orientation: portrait),
+       (orientation: landscape) and (max-width: 1000px) and (max-height: 500px) {
+  .armory-item-modal .iv-requirement__state small,
+  .armory-item-modal .iv-requirement__copy span,
+  .armory-item-modal .compare-head small,
+  .armory-item-modal .compare-head span,
+  .armory-item-modal .inspector-heading > p,
+  .armory-item-modal .inspector-badges span,
+  .armory-item-modal .gear-quick-read small,
+  .armory-item-modal .gear-quick-read span,
+  .armory-item-modal .loadout-impact-heading small,
+  .armory-item-modal .loadout-impact-heading > span,
+  .armory-item-modal .impact-values small,
+  .armory-item-modal .item-effect-panel p {
+    font-size: var(--p19-compact-type-secondary, max(12px, .75rem));
+  }
+
+  .armory-item-modal .iv-requirement__state b,
+  .armory-item-modal .compare-head b,
+  .armory-item-modal .gear-quick-read b,
+  .armory-item-modal .loadout-impact-heading b,
+  .armory-item-modal .impact-values b {
+    font-size: var(--p19-compact-type-decision, max(14px, .875rem));
+  }
+}
+
+
+/* P22-C // Keep blocker + quick-read visible together under Large Text in short landscape.
+   Give the required blocker explanation the full dialog width, then place the quick decision
+   surfaces side by side below it instead of shrinking the copy. */
+@media (orientation: landscape) and (max-width: 1000px) and (max-height: 500px) {
+  .armory-item-modal .gear-summary-grid--quick > .iv-requirement {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .armory-item-modal .iv-requirement__copy {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px 8px;
+    padding-inline-start: 0;
+    line-height: 1.25;
+  }
+
+  .armory-item-modal .gear-summary-grid--quick > .gear-quick-read {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .armory-item-modal .gear-summary-grid--quick > .quick-loadout-impact {
+    grid-column: 2;
+    grid-row: 2;
+  }
+}
