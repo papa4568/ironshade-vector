@@ -162,6 +162,7 @@ jobs:
           node scripts/verify-authored-weapons.mjs
           node scripts/verify-authored-interactables.mjs
           node scripts/verify-authored-refinery.mjs
+          BROWSER_E2E_GRAPHICS_PATH=webgpu BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p21f1-webgpu.png node scripts/browser-runtime-smoke.mjs
           BROWSER_E2E_LOCATION=damaged-vessel BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-damaged-vessel.png node scripts/browser-runtime-smoke.mjs
           node scripts/verify-authored-damaged-vessel.mjs
           node --input-type=module <<'NODE'
@@ -364,6 +365,7 @@ jobs:
             browser-e2e-${{ matrix.viewport }}-p21c-bloom-*.png
             browser-e2e-${{ matrix.viewport }}-p21d1-contact-*.png
             browser-e2e-${{ matrix.viewport }}-p21d2-atmosphere-*.png
+            browser-e2e-${{ matrix.viewport }}-p21f1-webgpu.png
             browser-e2e-${{ matrix.viewport }}-damaged-vessel.png
             browser-e2e-${{ matrix.viewport }}-spin-habitat.png
             browser-e2e-${{ matrix.viewport }}-jovian-harvester.png

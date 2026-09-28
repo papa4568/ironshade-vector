@@ -18,9 +18,11 @@ const requireText = (text, needle, label) => {
 for (const marker of [
   'ANDROID_FAST_SMOKE=1',
   'ANDROID_FAST_RESUME_CHECK=1',
+  'ANDROID_P21F1_CHECK=1',
   'adb install -r',
   'android-fast-smoke.png',
   'android-fast-resume.png',
+  'android-p21f1-webgpu.png',
   'android-fast-logcat.txt',
   'ANDROID_FAST_EMULATOR_PASS',
 ]) requireText(shell, marker, 'fast shell');
@@ -40,6 +42,7 @@ for (const forbidden of [
 for (const marker of [
   "const fastSmoke = process.env.ANDROID_FAST_SMOKE === '1';",
   "const fastResumeOnly = process.env.ANDROID_FAST_RESUME_CHECK === '1';",
+  "const p21f1Only = process.env.ANDROID_P21F1_CHECK === '1';",
   "const repeatableRegressionOnly = process.env.ANDROID_P20E_REPEATABLE_ONLY === '1';",
   'if (!repeatableRegressionOnly) {',
   'if (repeatableRegressionOnly) {',
@@ -51,6 +54,9 @@ for (const marker of [
   'ANDROID_P22B2_HUD_FOOTPRINT_PASS',
   'ANDROID_P22B2_OBJECTIVE_FLOW_PASS',
   'ANDROID_FAST_LIFECYCLE_RESUME_PASS',
+  'ANDROID_P21F1_WEBGPU_PASS',
+  "canvas?.dataset.graphicsPathRequested === 'webgpu'",
+  "['webgpu', 'webgl2'].includes(canvas?.dataset.graphicsPathLoaded ?? '')",
 ]) requireText(runtime, marker, 'runtime harness');
 
 if (extendedShell.includes('browser-chapter3-playthrough')) {
@@ -182,6 +188,7 @@ for (const artifact of [
   'android-fast-logcat.txt',
   'android-fast-smoke.png',
   'android-fast-resume.png',
+  'android-p21f1-webgpu.png',
 ]) requireText(workflow, artifact, 'Android workflow artifact upload');
 
 for (const marker of [

@@ -364,6 +364,7 @@ jobs:
             android-fast-logcat.txt
             android-fast-smoke.png
             android-fast-resume.png
+            android-p21f1-webgpu.png
           if-no-files-found: warn
           retention-days: 90
         if: always()

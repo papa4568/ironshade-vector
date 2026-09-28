@@ -32,7 +32,7 @@ const p21d1BeforeScreenshotPath = process.env.BROWSER_E2E_P21D1_BEFORE_SCREENSHO
 const p21d1AfterScreenshotPath = process.env.BROWSER_E2E_P21D1_AFTER_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21d1-contact-on.png');
 const p21d2BeforeScreenshotPath = process.env.BROWSER_E2E_P21D2_BEFORE_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21d2-atmosphere-off.png');
 const p21d2AfterScreenshotPath = process.env.BROWSER_E2E_P21D2_AFTER_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21d2-atmosphere-on.png');
-const p22cPrimaryJourney = targetLocation === 'asteroid-refinery';
+const p22cPrimaryJourney = targetLocation === 'asteroid-refinery' && requestedGraphicsPath !== 'webgpu';
 const p22cEvidence = { viewport: viewportMode, location: targetLocation };
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const P21_EFFECT_BUDGETS = Object.freeze({
@@ -317,6 +317,105 @@ async function performanceDiagnosticsAudit() {
   console.log(`BROWSER_PERFORMANCE_BASELINE_PASS viewport=${viewportMode} location=${targetLocation} tier=${result.deviceTier} samples=${result.sampleCount} status=${result.status} regressions=${result.regressions} report=${performanceReportPath}`);
   console.log(`BROWSER_P21A2_GRAPHICS_PATH_PASS viewport=${viewportMode} location=${targetLocation} selection=${result.graphicsPathSelection} requested=${result.graphicsPathRequested || 'none'} loaded=${result.graphicsPathLoaded} renderTier=${result.renderTier} renderFrameMs=${result.renderFrameMs} drawCallsP95=${result.report.categories?.gpu?.drawCalls?.actual ?? 'n/a'} trianglesP95=${result.report.categories?.gpu?.triangles?.actual ?? 'n/a'}`);
   return result;
+}
+
+async function p21F1WebGpuPrototypeAudit() {
+  await waitFor(`(() => {
+    const canvas = document.querySelector('canvas');
+    return canvas?.dataset.graphicsPathSelection === 'qa-explicit'
+      && canvas?.dataset.graphicsPathRequested === 'webgpu'
+      && ['webgpu', 'webgl2'].includes(canvas?.dataset.graphicsPathLoaded ?? '');
+  })()`, 'P21-F1 WebGPU/refinery backend selection', 45_000);
+
+  let state = await evaluate(`(() => {
+    const canvas = document.querySelector('canvas');
+    return {
+      loaded: canvas?.dataset.graphicsPathLoaded ?? '',
+      fallback: canvas?.dataset.graphicsPathFallback ?? '',
+      init: canvas?.dataset.webgpuInit ?? '',
+      backend: canvas?.dataset.webgpuBackend ?? '',
+      visual: canvas?.dataset.environmentVisual ?? '',
+      assets: canvas?.dataset.webgpuAssets ?? '',
+      assetPipeline: canvas?.dataset.webgpuAssetPipeline ?? '',
+      tsl: canvas?.dataset.webgpuTsl ?? '',
+      camera: canvas?.dataset.webgpuCameraParity ?? '',
+      input: canvas?.dataset.webgpuInputParity ?? '',
+      pointer: canvas?.dataset.webgpuPointerDirection ?? '',
+    };
+  })()`);
+
+  if (state?.loaded === 'webgpu') {
+    await waitFor(`(() => {
+      const canvas = document.querySelector('canvas');
+      return canvas?.dataset.webgpuInit === 'ready'
+        && canvas?.dataset.environmentVisual === 'authored-refinery-webgpu-prototype'
+        && canvas?.dataset.webgpuAssets === 'floor,processor,terminal'
+        && canvas?.dataset.webgpuAssetPipeline === 'glb+ktx2+meshopt'
+        && canvas?.dataset.webgpuTsl === 'mesh-standard-node-color'
+        && canvas?.dataset.webgpuCameraParity === 'three-combat-v1'
+        && canvas?.dataset.webgpuInputParity === 'ground-plane-raycast-v1';
+    })()`, 'P21-F1 WebGPU TSL + authored refinery prototype', 45_000);
+
+    const dispatched = await evaluate(`(() => {
+      const canvas = document.querySelector('canvas');
+      if (!(canvas instanceof HTMLCanvasElement)) return false;
+      const rect = canvas.getBoundingClientRect();
+      const coarse = window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900;
+      canvas.dispatchEvent(new PointerEvent(coarse ? 'pointerdown' : 'pointermove', {
+        bubbles: true,
+        pointerId: 921,
+        pointerType: coarse ? 'touch' : 'mouse',
+        clientX: rect.left + rect.width * 0.68,
+        clientY: rect.top + rect.height * 0.48,
+        button: 0,
+      }));
+      return true;
+    })()`);
+    if (!dispatched) throw new Error('P21-F1 could not dispatch the parity pointer probe.');
+    await waitFor(`/^[-0-9.]+,[-0-9.]+$/.test(document.querySelector('canvas')?.dataset.webgpuPointerDirection ?? '')`, 'P21-F1 pointer-direction parity probe', 5_000);
+  } else {
+    await waitFor(`document.querySelector('canvas')?.dataset.environmentVisual === 'authored-refinery'`, 'P21-F1 WebGL2 fallback refinery', 45_000);
+  }
+
+  state = await evaluate(`(() => {
+    const canvas = document.querySelector('canvas');
+    return {
+      loaded: canvas?.dataset.graphicsPathLoaded ?? '',
+      fallback: canvas?.dataset.graphicsPathFallback ?? '',
+      init: canvas?.dataset.webgpuInit ?? '',
+      backend: canvas?.dataset.webgpuBackend ?? '',
+      visual: canvas?.dataset.environmentVisual ?? '',
+      assets: canvas?.dataset.webgpuAssets ?? '',
+      assetPipeline: canvas?.dataset.webgpuAssetPipeline ?? '',
+      tsl: canvas?.dataset.webgpuTsl ?? '',
+      camera: canvas?.dataset.webgpuCameraParity ?? '',
+      input: canvas?.dataset.webgpuInputParity ?? '',
+      pointer: canvas?.dataset.webgpuPointerDirection ?? '',
+    };
+  })()`);
+
+  if (state?.loaded === 'webgpu') {
+    if (state.init !== 'ready'
+      || state.backend !== 'webgpu'
+      || state.visual !== 'authored-refinery-webgpu-prototype'
+      || state.assets !== 'floor,processor,terminal'
+      || state.assetPipeline !== 'glb+ktx2+meshopt'
+      || state.tsl !== 'mesh-standard-node-color'
+      || state.camera !== 'three-combat-v1'
+      || state.input !== 'ground-plane-raycast-v1'
+      || !/^[-0-9.]+,[-0-9.]+$/.test(state.pointer)) {
+      throw new Error(`P21-F1 WebGPU prototype telemetry incomplete: ${JSON.stringify(state)}`);
+    }
+  } else if (state?.loaded === 'webgl2') {
+    if (!state.fallback.startsWith('webgpu->webgl2:') || state.visual !== 'authored-refinery') {
+      throw new Error(`P21-F1 WebGL2 fallback telemetry incomplete: ${JSON.stringify(state)}`);
+    }
+  } else {
+    throw new Error(`P21-F1 loaded an unexpected graphics path: ${JSON.stringify(state)}`);
+  }
+
+  console.log(`BROWSER_P21F1_WEBGPU_PASS viewport=${viewportMode} requested=webgpu loaded=${state.loaded} fallback=${state.fallback || 'none'} init=${state.init || 'not-started'} visual=${state.visual} assets=${state.assets || 'production-webgl2'} tsl=${state.tsl || 'fallback'} camera=${state.camera || 'production-webgl2'} input=${state.input || 'production-webgl2'} pointer=${state.pointer || 'production-webgl2'}`);
+  return state;
 }
 
 async function classSelectionViewportAudit() {
@@ -1942,6 +2041,16 @@ try {
     throw new Error(`P15-C deployment presentation blocks input or leaves the viewport: ${JSON.stringify(p15MissionPresentation)}`);
   }
   console.log(`BROWSER_P15_MISSION_PRESENTATION_PASS viewport=${viewportMode} deployment=non-blocking mode=${p15MissionPresentation.mode} title=${p15MissionPresentation.title}`);
+  if (requestedGraphicsPath === 'webgpu') {
+    await p21F1WebGpuPrototypeAudit();
+    if (pageExceptions.length > 0) {
+      throw new Error(`P21-F1 WebGPU comparison observed uncaught page exceptions: ${JSON.stringify(pageExceptions)}`);
+    }
+    await captureScreenshot();
+    console.log(`BROWSER_E2E_PASS title=${startup.title} route=command>operations>contracts>combat location=${targetLocation} input=keyboard viewport=${viewportMode} graphics=webgpu-comparison`);
+    socket.close();
+    process.exit(0);
+  }
   await waitFor(`(() => {
     const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.worldReadability);
     return canvas?.dataset.worldReadability === 'interactables:shape+state|hazards:shape+motion|loot:shape+rarity'

@@ -4,6 +4,7 @@ const startedAt = Date.now();
 const fastSmoke = process.env.ANDROID_FAST_SMOKE === '1';
 const repeatableRegressionOnly = process.env.ANDROID_P20E_REPEATABLE_ONLY === '1';
 const fastResumeOnly = process.env.ANDROID_FAST_RESUME_CHECK === '1';
+const p21f1Only = process.env.ANDROID_P21F1_CHECK === '1';
 const resumeOnly = process.env.ANDROID_RESUME_CHECK === '1';
 const plannerPersistenceOnly = process.env.ANDROID_PLANNER_PERSISTENCE_CHECK === '1';
 const resumeProcessMode = process.env.ANDROID_RESUME_PROCESS_MODE ?? 'preserved';
@@ -501,6 +502,93 @@ if (plannerPersistenceOnly) {
   console.log(`ANDROID_NETWORK_PLANNER_PERSISTENCE_PASS version=${persisted.version} schema=${persisted.networkSchema} targets=${persisted.targets.join('+')} allocated=${persisted.allocated.join('+')} unspent=${persisted.unspentPoints} relaunch=cold ui=restored autoAllocate=partial`);
   console.log(`ANDROID_P20_INTERFACE_SIZE_RELAUNCH_PASS size=${persisted.interfaceSize} relaunch=cold`);
   console.log(`ANDROID_P19_HUD_LAYOUT_RELAUNCH_PASS preset=${persisted.hudLayout?.preset} movement=${persisted.hudLayout?.movementInset}/${persisted.hudLayout?.movementLift}/${persisted.hudLayout?.movementScale} action=${persisted.hudLayout?.actionInset}/${persisted.hudLayout?.actionLift}/${persisted.hudLayout?.actionScale} relaunch=cold`);
+  session.close();
+  await sleep(100);
+  process.exit(0);
+}
+
+
+if (p21f1Only) {
+  const comparisonUrl = await evaluate(`(() => {
+    const url = new URL(location.href);
+    url.search = '';
+    url.searchParams.set('graphicsCompare', '1');
+    url.searchParams.set('graphicsPath', 'webgpu');
+    return url.toString();
+  })()`);
+  await call('Page.enable', {}, 5_000);
+  await call('Page.navigate', { url: comparisonUrl }, 10_000);
+  await waitFor(`document.readyState === 'complete' && document.title === 'Ironshade Vector'`, 'P21-F1 Android comparison document', 45_000);
+  await waitFor(`(() => {
+    const labels = [...document.querySelectorAll('button')].map(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase());
+    return labels.includes('operations') && !document.querySelector('.class-intake');
+  })()`, 'P21-F1 Android Command Deck', 45_000);
+
+  await tapButton('Operations', 261, 100);
+  await waitFor(`[...document.querySelectorAll('button')].some(button => (button.textContent || '').trim().toLowerCase() === 'contracts')`, 'P21-F1 Android Operations');
+  await tapButton('Contracts', 262, 100);
+  await waitFor(`Boolean(document.querySelector('button[data-location="asteroid-refinery"]')) && [...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'deploy selected contract')`, 'P21-F1 Android Contract Board');
+
+  const selected = await evaluate(`(() => {
+    const target = document.querySelector('button[data-location="asteroid-refinery"]');
+    if (!target || target.disabled) return false;
+    target.click();
+    return true;
+  })()`);
+  if (!selected) throw new Error('P21-F1 Android Asteroid Refinery contract was unavailable.');
+  await waitFor(`document.querySelector('button[data-location="asteroid-refinery"]')?.classList.contains('selected') === true`, 'P21-F1 Android refinery selection');
+  await tapButton('Deploy selected contract', 263, 110);
+
+  await waitFor(`(() => {
+    const canvas = document.querySelector('canvas');
+    return canvas?.dataset.graphicsPathSelection === 'qa-explicit'
+      && canvas?.dataset.graphicsPathRequested === 'webgpu'
+      && ['webgpu', 'webgl2'].includes(canvas?.dataset.graphicsPathLoaded ?? '');
+  })()`, 'P21-F1 Android WebGPU/fallback graphics path', 45_000);
+
+  const state = await evaluate(`(() => {
+    const canvas = document.querySelector('canvas');
+    return {
+      webgpuAvailable: Boolean(navigator.gpu),
+      selection: canvas?.dataset.graphicsPathSelection ?? '',
+      requested: canvas?.dataset.graphicsPathRequested ?? '',
+      loaded: canvas?.dataset.graphicsPathLoaded ?? '',
+      fallback: canvas?.dataset.graphicsPathFallback ?? '',
+      init: canvas?.dataset.webgpuInit ?? '',
+      backend: canvas?.dataset.webgpuBackend ?? '',
+      visual: canvas?.dataset.environmentVisual ?? '',
+      assets: canvas?.dataset.webgpuAssets ?? '',
+      assetPipeline: canvas?.dataset.webgpuAssetPipeline ?? '',
+      tsl: canvas?.dataset.webgpuTsl ?? '',
+      camera: canvas?.dataset.webgpuCameraParity ?? '',
+      input: canvas?.dataset.webgpuInputParity ?? '',
+    };
+  })()`);
+
+  if (state.selection !== 'qa-explicit' || state.requested !== 'webgpu') {
+    throw new Error(`P21-F1 Android comparison selector telemetry is invalid: ${JSON.stringify(state)}`);
+  }
+  if (state.loaded === 'webgpu') {
+    if (state.init !== 'ready'
+      || state.backend !== 'webgpu'
+      || state.visual !== 'authored-refinery-webgpu-prototype'
+      || state.assets !== 'floor,processor,terminal'
+      || state.assetPipeline !== 'glb+ktx2+meshopt'
+      || state.tsl !== 'mesh-standard-node-color'
+      || state.camera !== 'three-combat-v1'
+      || state.input !== 'ground-plane-raycast-v1') {
+      throw new Error(`P21-F1 Android WebGPU initialization telemetry is incomplete: ${JSON.stringify(state)}`);
+    }
+  } else if (state.loaded === 'webgl2') {
+    if (!state.fallback.startsWith('webgpu->webgl2:')) {
+      throw new Error(`P21-F1 Android WebGL2 fallback telemetry is incomplete: ${JSON.stringify(state)}`);
+    }
+    await waitFor(`document.querySelector('canvas')?.dataset.environmentVisual === 'authored-refinery'`, 'P21-F1 Android production WebGL2 fallback refinery', 45_000);
+  } else {
+    throw new Error(`P21-F1 Android loaded an unexpected graphics path: ${JSON.stringify(state)}`);
+  }
+
+  console.log(`ANDROID_P21F1_WEBGPU_PASS available=${state.webgpuAvailable} requested=webgpu loaded=${state.loaded} fallback=${state.fallback || 'none'} init=${state.init || 'not-started'} visual=${state.visual} assets=${state.assets || 'production-webgl2'} tsl=${state.tsl || 'fallback'} camera=${state.camera || 'production-webgl2'} input=${state.input || 'production-webgl2'}`);
   session.close();
   await sleep(100);
   process.exit(0);

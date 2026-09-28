@@ -54,6 +54,10 @@ ANDROID_FAST_RESUME_CHECK=1 CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/andr
 adb exec-out screencap -p > android-fast-resume.png
 test -s android-fast-resume.png
 
+ANDROID_P21F1_CHECK=1 CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-runtime-smoke.mjs
+adb exec-out screencap -p > android-p21f1-webgpu.png
+test -s android-p21f1-webgpu.png
+
 adb logcat -d > android-fast-logcat.txt
 if grep -E 'FATAL EXCEPTION|Process: app\.ironshade\.vector' android-fast-logcat.txt; then
   echo 'Fast Android runtime crash detected.' >&2
@@ -61,7 +65,7 @@ if grep -E 'FATAL EXCEPTION|Process: app\.ironshade\.vector' android-fast-logcat
 fi
 
 ELAPSED_SECONDS=$(( $(date +%s) - STARTED_AT ))
-echo "ANDROID_FAST_EMULATOR_PASS pid=${APP_PID} resumePid=${RESUME_PID} route=ship>contracts>combat touch=management+move+fire+ability+dodge+act lifecycle=pause-resume crashCheck=clean screenshots=2 elapsedSeconds=${ELAPSED_SECONDS}"
+echo "ANDROID_FAST_EMULATOR_PASS pid=${APP_PID} resumePid=${RESUME_PID} route=ship>contracts>combat touch=management+move+fire+ability+dodge+act lifecycle=pause-resume p21f1=webgpu-or-fallback crashCheck=clean screenshots=3 elapsedSeconds=${ELAPSED_SECONDS}"
 
 adb shell am force-stop "$PACKAGE" >/dev/null 2>&1 || true
 adb shell pm clear "$PACKAGE" >/dev/null 2>&1 || true
