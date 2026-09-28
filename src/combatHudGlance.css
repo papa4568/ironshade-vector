@@ -965,19 +965,20 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: .35rem;
-    width: auto;
-    min-width: 4.35rem;
+    gap: 4px;
+    width: 76px;
+    min-width: 76px;
+    max-width: 76px;
     min-height: 44px;
     height: 44px;
-    padding: .25rem .55rem;
+    padding: 4px 7px;
     border-radius: 999px;
   }
 
   .game-root .touch-utility-rail .consumable-button span,
   .game-root .touch-utility-rail .consumable-button small {
     margin: 0;
-    font-size: max(12px, .75rem);
+    font-size: 12px;
     line-height: 1;
   }
 
