@@ -8,7 +8,8 @@
 - **P21-A2 is complete and archived.** The existing deterministic Asteroid Refinery QA route now supports opt-in graphics-path selection and loaded-path/performance telemetry while production Android remains WebGL2.
 - **P21-B is complete and archived.** The Asteroid Refinery WebGL2 recipe now includes a bounded PMREM IBL contribution with deterministic off/on visual evidence and verified Android lifecycle/resource cleanup.
 - **P21-C is complete and archived.** The Asteroid Refinery WebGL2 slice now uses selective, refinery-scoped emissive bloom with deterministic off/on evidence, protected gameplay-cue groups, a 0–1 runtime cost control, and verified Android lifecycle behavior.
-- **Resume P21-D1 next — Add one mobile-conscious ambient/contact-depth technique.**
+- **P21-D1 is complete and archived.** The Asteroid Refinery now has one bounded, scene-only soft contact-grounding pass with deterministic off/on evidence and verified Android lifecycle behavior.
+- **Resume P21-D2 next — Add refinery fog/atmosphere color treatment.**
 - **P20-E is closed and archived.** When global roadmap order later returns to P20, resume that sequence at **P20-F1 — Define and settle distinct repeatable-contract incentive profiles**.
 
 Only active/future executable work lives here. Completed and verified work belongs in [content-roadmap-archive.md](./content-roadmap-archive.md). Stable product rules live in [product-constraints.md](./product-constraints.md).
@@ -57,7 +58,7 @@ Only active/future executable work lives here. Completed and verified work belon
 
 - **P21-C complete / archived** — Selective refinery bloom now targets authored terminal/processor emissives, practical-light glow proxies, and important muzzle VFX on an isolated layer; HUD/UI and gameplay-critical cue groups stay outside bloom, the runtime cost control can reduce or bypass the pass, and desktop/mobile Browser E2E plus Android beta.567 passed. See the completion archive for evidence.
 
-- [ ] **P21-D1 — Add one mobile-conscious ambient/contact-depth technique** — Add a single SSAO/contact-shadow/grounding technique to improve machinery intersections and floor contact in the Asteroid Refinery WebGL2 path. Keep it scene-only, independently disableable, and bounded for mobile; do not add fog/color treatment in this batch. **Done when:** deterministic captures show clearer grounding/contact depth without muddying targets or interaction cues; the effect can be disabled cleanly; targeted graphics regressions, Browser E2E, and production build pass; and the Android APK completes refinery combat/lifecycle smoke without visual or resource faults.
+- **P21-D1 complete / archived** — Refinery machinery/floor intersections now use a single bounded instanced soft-contact grounding pass (10 instances / 20 triangles / 1 draw call / 32px alpha footprint), with QA-only disablement, protected gameplay/UI cue telemetry, deterministic desktop/mobile captures, and Android beta.569 combat/lifecycle verification. See the completion archive for evidence.
 
 - [ ] **P21-D2 — Add refinery fog/atmosphere color treatment** — Add location-aware fog/depth atmosphere and restrained color treatment for the Asteroid Refinery, building on the existing atmosphere/VFX system without changing simulation coordinates or objective logic. Keep the treatment independently disableable from P21-D1. **Done when:** foreground/background separation improves while combat tells, objectives, loot, and interactables remain readable; deterministic visual checks cover the enabled/disabled states; Browser E2E and production build pass; and Android refinery smoke remains stable.
 
