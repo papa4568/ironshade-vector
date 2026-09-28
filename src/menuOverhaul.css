@@ -2741,7 +2741,8 @@
   .contract-card p,
   .contract-inspector small,
   .contract-inspector span,
-  .contract-inspector p {
+  .contract-inspector p,
+  .contract-inspector .deploy-contract {
     font-size: var(--p19-compact-type-secondary, max(12px, .75rem));
   }
 }
