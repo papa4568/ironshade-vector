@@ -2631,9 +2631,31 @@ const mobileLayout = await evaluate(`(() => {
   const transient = rect(document.querySelector('.transient-alert-lane'));
   const contextSelectors = ['.target-readout', '.boss-hud', '.loot-radar', '.mega-objective-chip', '.post-clear-objective', '.class-mechanic-hud'];
   const contexts = contextSelectors.map(selector => ({ selector, rect: rect(document.querySelector(selector)) })).filter(item => item.rect);
+  const hitRect = element => {
+    const visibleRect = rect(element);
+    if (!visibleRect || !(element instanceof HTMLElement) || element.offsetWidth <= 0 || element.offsetHeight <= 0) return visibleRect;
+    const pseudo = getComputedStyle(element, '::before');
+    if (pseudo.pointerEvents !== 'auto') return visibleRect;
+    const scaleX = visibleRect.width / element.offsetWidth;
+    const scaleY = visibleRect.height / element.offsetHeight;
+    const extension = value => Math.max(0, -(Number.parseFloat(value) || 0));
+    const left = extension(pseudo.left) * scaleX;
+    const right = extension(pseudo.right) * scaleX;
+    const top = extension(pseudo.top) * scaleY;
+    const bottom = extension(pseudo.bottom) * scaleY;
+    return {
+      left: visibleRect.left - left,
+      top: visibleRect.top - top,
+      right: visibleRect.right + right,
+      bottom: visibleRect.bottom + bottom,
+      width: visibleRect.width + left + right,
+      height: visibleRect.height + top + bottom,
+    };
+  };
   const touchButtons = [...document.querySelectorAll('.touch-button')].filter(visible).map(button => ({
     label: button.getAttribute('aria-label') || button.textContent?.trim().slice(0, 40) || button.className,
     rect: rect(button),
+    hitRect: hitRect(button),
   }));
   const readableText = [...document.querySelectorAll([
     '.vitals .barline > span', '.vitals .barline > b',
@@ -2669,9 +2691,9 @@ const mobileLayout = await evaluate(`(() => {
     offscreen: [
       ['canvas', canvas], ['move', move], ['dock', dock], ['fire', fire], ['dodge', dodge], ['hud', hud], ['vitals', vitals], ['objective', objective], ['transient', transient],
       ...contexts.map(item => [item.selector, item.rect]),
-      ...touchButtons.map(item => [item.label, item.rect]),
+      ...touchButtons.map(item => [item.label, item.hitRect]),
     ].filter(([, value]) => !within(value)).map(([label]) => label),
-    undersized: touchButtons.filter(item => item.rect && (item.rect.width < 40 || item.rect.height < 40)).map(item => item.label),
+    undersized: touchButtons.filter(item => item.hitRect && (item.hitRect.width < 40 || item.hitRect.height < 40)).map(item => item.label),
     moveDockOverlap: intersects(move, dock),
     coreOverlap,
     transientOverlap,
