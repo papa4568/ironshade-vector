@@ -7,7 +7,8 @@
 - **P21-A1 is complete and archived.** Combat rendering now enters through an explicit WebGL2 backend boundary with targeted create/render/resize/pointer/dispose coverage and verified Android touch/lifecycle behavior.
 - **P21-A2 is complete and archived.** The existing deterministic Asteroid Refinery QA route now supports opt-in graphics-path selection and loaded-path/performance telemetry while production Android remains WebGL2.
 - **P21-B is complete and archived.** The Asteroid Refinery WebGL2 recipe now includes a bounded PMREM IBL contribution with deterministic off/on visual evidence and verified Android lifecycle/resource cleanup.
-- **Resume P21-C next — Add selective emissive bloom to the WebGL2 refinery slice.**
+- **P21-C is complete and archived.** The Asteroid Refinery WebGL2 slice now uses selective, refinery-scoped emissive bloom with deterministic off/on evidence, protected gameplay-cue groups, a 0–1 runtime cost control, and verified Android lifecycle behavior.
+- **Resume P21-D1 next — Add one mobile-conscious ambient/contact-depth technique.**
 - **P20-E is closed and archived.** When global roadmap order later returns to P20, resume that sequence at **P20-F1 — Define and settle distinct repeatable-contract incentive profiles**.
 
 Only active/future executable work lives here. Completed and verified work belongs in [content-roadmap-archive.md](./content-roadmap-archive.md). Stable product rules live in [product-constraints.md](./product-constraints.md).
@@ -54,7 +55,7 @@ Only active/future executable work lives here. Completed and verified work belon
 
 - **P21-B complete / archived** — The existing WebGL2 key/rim/contact/practical + bounded-PBR/ACES refinery recipe now adds a reusable 64px PMREM environment contribution with warm furnace, cool service, and neutral fill response; deterministic QA captures, desktop/mobile Browser E2E, production build, and Android beta.564 lifecycle/resource verification passed. See the completion archive for evidence.
 
-- [ ] **P21-C — Add selective emissive bloom to the WebGL2 refinery slice** — Add one bounded post-processing bloom stage for authored emissive/practical-light sources and important VFX only. Prevent bloom from affecting HUD/UI, flattening silhouettes, or obscuring enemy attacks, hazards, objectives, loot, and interactables. Expose a simple runtime cost control for later adaptive-quality integration. **Done when:** bloom is visibly limited to intended refinery lights/VFX; non-emissive surfaces and UI remain unaffected; gameplay cues stay readable; targeted post-processing tests, Browser E2E, and production build pass; and Android combat plus pause/resume remains stable.
+- **P21-C complete / archived** — Selective refinery bloom now targets authored terminal/processor emissives, practical-light glow proxies, and important muzzle VFX on an isolated layer; HUD/UI and gameplay-critical cue groups stay outside bloom, the runtime cost control can reduce or bypass the pass, and desktop/mobile Browser E2E plus Android beta.567 passed. See the completion archive for evidence.
 
 - [ ] **P21-D1 — Add one mobile-conscious ambient/contact-depth technique** — Add a single SSAO/contact-shadow/grounding technique to improve machinery intersections and floor contact in the Asteroid Refinery WebGL2 path. Keep it scene-only, independently disableable, and bounded for mobile; do not add fog/color treatment in this batch. **Done when:** deterministic captures show clearer grounding/contact depth without muddying targets or interaction cues; the effect can be disabled cleanly; targeted graphics regressions, Browser E2E, and production build pass; and the Android APK completes refinery combat/lifecycle smoke without visual or resource faults.
 
