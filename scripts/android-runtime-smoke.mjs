@@ -2636,20 +2636,19 @@ const mobileLayout = await evaluate(`(() => {
     if (!visibleRect || !(element instanceof HTMLElement) || element.offsetWidth <= 0 || element.offsetHeight <= 0) return visibleRect;
     const pseudo = getComputedStyle(element, '::before');
     if (pseudo.pointerEvents !== 'auto') return visibleRect;
-    const scaleX = visibleRect.width / element.offsetWidth;
-    const scaleY = visibleRect.height / element.offsetHeight;
-    const extension = value => Math.max(0, -(Number.parseFloat(value) || 0));
-    const left = extension(pseudo.left) * scaleX;
-    const right = extension(pseudo.right) * scaleX;
-    const top = extension(pseudo.top) * scaleY;
-    const bottom = extension(pseudo.bottom) * scaleY;
+    const root = document.querySelector('.game-root');
+    const visualScale = Number.parseFloat(getComputedStyle(root).getPropertyValue('--iv-combat-control-visual-scale')) || 1;
+    const width = visibleRect.width / visualScale;
+    const height = visibleRect.height / visualScale;
+    const centerX = visibleRect.left + visibleRect.width / 2;
+    const centerY = visibleRect.top + visibleRect.height / 2;
     return {
-      left: visibleRect.left - left,
-      top: visibleRect.top - top,
-      right: visibleRect.right + right,
-      bottom: visibleRect.bottom + bottom,
-      width: visibleRect.width + left + right,
-      height: visibleRect.height + top + bottom,
+      left: centerX - width / 2,
+      top: centerY - height / 2,
+      right: centerX + width / 2,
+      bottom: centerY + height / 2,
+      width,
+      height,
     };
   };
   const touchButtons = [...document.querySelectorAll('.touch-button')].filter(visible).map(button => ({
@@ -3160,26 +3159,42 @@ async function p22b2InstallPickupHudAudit() {
     if (globalThis.__p22b2PickupHudObserver) return true;
     globalThis.__p22b2PickupHudAudit = {
       lootSeen: false,
-      lootScale: null,
+      lootRatio: null,
+      lootMinFont: null,
       pickupCueSeen: false,
-      pickupCueScale: null,
+      pickupCueRatio: null,
+      pickupCueMinFont: null,
     };
-    const ratio = element => {
+    const viewport = { width: window.visualViewport?.width ?? window.innerWidth, height: window.visualViewport?.height ?? window.innerHeight };
+    const rootFont = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const compactLandscape = viewport.width > viewport.height && viewport.height <= 560;
+    const widthRatio = (element, baselineRem, baselineVw) => {
       if (!(element instanceof HTMLElement) || element.offsetWidth <= 0 || element.offsetHeight <= 0) return null;
-      const rect = element.getBoundingClientRect();
-      return { width: rect.width / element.offsetWidth, height: rect.height / element.offsetHeight };
+      const actual = Number.parseFloat(getComputedStyle(element).width);
+      const baseline = Math.min(baselineRem * rootFont, viewport.width * baselineVw);
+      return actual / baseline;
+    };
+    const minFont = element => {
+      if (!(element instanceof HTMLElement)) return null;
+      const sizes = [...element.querySelectorAll('small,b,span')]
+        .filter(node => (node.textContent || '').trim())
+        .map(node => Number.parseFloat(getComputedStyle(node).fontSize))
+        .filter(Number.isFinite);
+      return sizes.length ? Math.min(...sizes) : null;
     };
     const capture = () => {
       const audit = globalThis.__p22b2PickupHudAudit;
       const loot = document.querySelector('.loot-radar');
       if (loot) {
         audit.lootSeen = true;
-        audit.lootScale = ratio(loot);
+        audit.lootRatio = widthRatio(loot, compactLandscape ? 16.875 : 17.8125, compactLandscape ? 0.28 : 0.29);
+        audit.lootMinFont = minFont(loot);
       }
       const transient = document.querySelector('.transient-alert-lane');
       if (transient && (transient.textContent || '').includes('EXTRACT TO KEEP')) {
         audit.pickupCueSeen = true;
-        audit.pickupCueScale = ratio(transient);
+        audit.pickupCueRatio = widthRatio(transient, compactLandscape ? 20.625 : 22.5, compactLandscape ? 0.32 : 0.34);
+        audit.pickupCueMinFont = minFont(transient);
       }
     };
     const observer = new MutationObserver(capture);
@@ -3446,15 +3461,17 @@ await p20eDeployFamily('boarding', 2600);
 await p20eFinishActiveFamily('boarding', 2700);
 await p20eRemoveCombatGamepad();
 const p22b2PickupHudAudit = await evaluate(`globalThis.__p22b2PickupHudAudit ?? null`);
-const p22b2PickupScaleOk = value => value && Math.abs(value.width - 0.7) <= 0.025 && Math.abs(value.height - 0.7) <= 0.025;
+const p22b2PickupScaleOk = value => Number.isFinite(value) && Math.abs(value - 0.7) <= 0.025;
 if (!p22b2PickupHudAudit
   || !p22b2PickupHudAudit.lootSeen
-  || !p22b2PickupScaleOk(p22b2PickupHudAudit.lootScale)
+  || !p22b2PickupScaleOk(p22b2PickupHudAudit.lootRatio)
+  || (p22b2PickupHudAudit.lootMinFont != null && p22b2PickupHudAudit.lootMinFont < 11.5)
   || !p22b2PickupHudAudit.pickupCueSeen
-  || !p22b2PickupScaleOk(p22b2PickupHudAudit.pickupCueScale)) {
+  || !p22b2PickupScaleOk(p22b2PickupHudAudit.pickupCueRatio)
+  || (p22b2PickupHudAudit.pickupCueMinFont != null && p22b2PickupHudAudit.pickupCueMinFont < 11.5)) {
   throw new Error(`Android P22-B2 live pickup HUD verification failed: ${JSON.stringify(p22b2PickupHudAudit)}`);
 }
-console.log(`ANDROID_P22B2_PICKUP_FLOW_PASS loot=${p22b2PickupHudAudit.lootScale.width.toFixed(3)}x${p22b2PickupHudAudit.lootScale.height.toFixed(3)} pickupCue=${p22b2PickupHudAudit.pickupCueScale.width.toFixed(3)}x${p22b2PickupHudAudit.pickupCueScale.height.toFixed(3)} flow=drop+pickup`);
+console.log(`ANDROID_P22B2_PICKUP_FLOW_PASS loot=${p22b2PickupHudAudit.lootRatio.toFixed(3)} pickupCue=${p22b2PickupHudAudit.pickupCueRatio.toFixed(3)} typeFloor>=11.5px flow=drop+pickup`);
 console.log('ANDROID_P20E_REPEATABLE_PLAY_PASS families=stabilization+salvage+boarding completions=3 depth=safe campaign=tier1-baseline class=systems weapon=carbine input=assisted-target-combat+touch-objectives actualGameplay=true');
 
 // The shell runs authored operator/enemy/weapon/refinery verifiers immediately after
