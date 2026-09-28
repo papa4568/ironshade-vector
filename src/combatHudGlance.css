@@ -813,3 +813,258 @@
   padding: 8px 11px;
   border-radius: 7px;
 }
+
+/* User-directed combat HUD polish // keep command-target information at the top edge.
+   The boss band uses the open center between survival and objective chrome instead of covering play space. */
+.game-root .boss-hud.boss-hud--top {
+  top: max(.5rem, env(safe-area-inset-top));
+  left: 50%;
+  width: min(32rem, 44vw);
+  transform: translateX(-50%);
+  padding: .5rem .625rem .4375rem;
+  border: 1px solid rgba(176, 92, 76, .5);
+  border-radius: .75rem;
+  background:
+    linear-gradient(180deg, rgba(31, 15, 14, .9), rgba(10, 12, 12, .86)),
+    radial-gradient(circle at 50% 0, rgba(202, 92, 70, .12), transparent 62%);
+  box-shadow: 0 .55rem 1.4rem rgba(0, 0, 0, .34), inset 0 0 0 1px rgba(255, 229, 214, .025);
+  backdrop-filter: blur(8px);
+  text-align: left;
+  z-index: 12;
+}
+
+.game-root .boss-heading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: .5rem;
+  min-width: 0;
+}
+
+.game-root .boss-heading > small {
+  margin: 0;
+  color: #c28c80;
+  font-size: max(10px, .625rem);
+  line-height: 1;
+  letter-spacing: .11em;
+  white-space: nowrap;
+}
+
+.game-root .boss-name {
+  min-width: 0;
+  overflow: hidden;
+  color: #f0ddd5;
+  font: 850 max(12px, .8125rem)/1.05 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .045em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-root .boss-phase {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2rem;
+  min-height: 1.35rem;
+  padding: 0 .4rem;
+  border: 1px solid rgba(224, 119, 96, .46);
+  border-radius: 999px;
+  background: rgba(125, 48, 39, .28);
+  color: #f2a28f;
+  font: 900 max(11px, .6875rem)/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .08em;
+}
+
+.game-root .boss-meter-row {
+  display: grid;
+  grid-template-columns: minmax(5rem, 1fr) auto;
+  align-items: center;
+  gap: .6rem;
+  margin-top: .38rem;
+}
+
+.game-root .boss-hud.boss-hud--top .boss-bars {
+  height: .5rem;
+  margin: 0;
+  border-color: rgba(151, 92, 81, .72);
+  background: rgba(4, 7, 8, .88);
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, .65);
+}
+
+.game-root .boss-hud.boss-hud--top .boss-health {
+  background: linear-gradient(90deg, #a94f46, #ce6b5a);
+}
+
+.game-root .boss-hud.boss-hud--top .boss-armor {
+  height: .16rem;
+  background: #7aa3b9;
+}
+
+.game-root .boss-hud.boss-hud--top .boss-values {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  color: #c9d4d0;
+  font: 800 max(11px, .6875rem)/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .035em;
+  white-space: nowrap;
+}
+
+.game-root .boss-hud.boss-hud--top .boss-values .armor-broken {
+  color: #efb878;
+}
+
+.game-root .boss-status-row {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  min-width: 0;
+  margin-top: .36rem;
+  overflow: hidden;
+}
+
+.game-root .boss-status-row > small {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: #b58f83;
+  font-size: max(10px, .625rem);
+  line-height: 1.1;
+  letter-spacing: .045em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-root .boss-status-row .boss-tell {
+  flex: 0 0 auto;
+  padding: .18rem .42rem;
+  border: 1px solid rgba(231, 164, 92, .38);
+  border-radius: 999px;
+  background: rgba(111, 65, 27, .24);
+  color: #ffd29e;
+}
+
+.game-root .mission-card.boss-objective-card {
+  width: min(15rem, 22vw);
+  max-width: min(15rem, 22vw);
+  min-width: 0;
+  padding: .45rem .6rem;
+}
+
+.game-root .mission-card.boss-objective-card b {
+  color: #d9e6e1;
+  white-space: nowrap;
+}
+
+.game-root .mission-card.boss-objective-card span {
+  color: #879d96;
+}
+
+/* Utilities remain easy to hit, but read as compact pills instead of large floating cards. */
+@media (pointer: coarse), (max-width: 900px) {
+  .game-root .touch-utility-rail .consumable-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .35rem;
+    width: auto;
+    min-width: 4.35rem;
+    min-height: 44px;
+    height: 44px;
+    padding: .25rem .55rem;
+    border-radius: 999px;
+  }
+
+  .game-root .touch-utility-rail .consumable-button span,
+  .game-root .touch-utility-rail .consumable-button small {
+    margin: 0;
+    font-size: max(12px, .75rem);
+    line-height: 1;
+  }
+
+  .game-root .boss-hud.boss-hud--top {
+    top: max(.5rem, env(safe-area-inset-top));
+    width: min(32rem, 44vw);
+    padding: .4rem .5rem .36rem;
+  }
+
+  .game-root .boss-heading > small,
+  .game-root .boss-hud.boss-hud--top .boss-values {
+    font-size: max(12px, .75rem);
+  }
+
+  .game-root .boss-name {
+    font-size: max(14px, .875rem);
+  }
+
+  .game-root .boss-phase {
+    min-height: 1.5rem;
+    font-size: max(12px, .75rem);
+  }
+
+  .game-root .boss-status-row > .boss-technical {
+    display: none;
+  }
+
+  .game-root .boss-status-row {
+    margin-top: .3rem;
+  }
+
+  .game-root .boss-status-row .boss-tell {
+    max-width: 100%;
+    font-size: max(12px, .75rem);
+  }
+
+  .game-root .mission-card.boss-objective-card {
+    width: min(12rem, 22vw);
+    max-width: min(12rem, 22vw);
+    min-width: 0;
+    padding: .35rem .45rem;
+  }
+}
+
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 560px) {
+  .game-root .boss-hud.boss-hud--top {
+    top: max(.45rem, env(safe-area-inset-top));
+    width: min(31rem, 43vw);
+  }
+
+  .game-root .boss-meter-row {
+    margin-top: .28rem;
+  }
+
+  .game-root .boss-status-row {
+    margin-top: .24rem;
+  }
+
+  .game-root .transient-alert-lane.event {
+    width: min(29rem, 42vw);
+  }
+
+  .game-root .transient-alert-lane.event > .combat-alert {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: .5rem;
+    text-align: left;
+  }
+
+  .game-root .transient-alert-lane.event .combat-alert small {
+    white-space: nowrap;
+  }
+
+  .game-root .transient-alert-lane.event .combat-alert b {
+    margin-top: 0;
+  }
+}
+
+@media (pointer: coarse) and (orientation: portrait) {
+  .game-root .mission-card.boss-objective-card {
+    display: none;
+  }
+
+  .game-root .boss-hud.boss-hud--top {
+    top: max(5.75rem, calc(env(safe-area-inset-top) + 5.1rem));
+    width: min(29rem, 82vw);
+  }
+}
+
