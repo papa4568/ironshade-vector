@@ -359,6 +359,23 @@ assert(
   'P22-C compact class intake must disclose secondary copy rather than retaining legacy 4–8px visible labels.',
 );
 assert(
+  classSelectCss.includes('P22-C // Close the fixed-pixel class-intake outlier left outside the shared P22-A root scale.')
+    && menuOverhaulCss.includes('P22-C // Contract-preparation fixed-pixel closure.')
+    && equipmentCss.includes('P22-C // Dialog footprint closure.')
+    && equipmentCss.includes('P22-C // Compact Armory dialog readability closure.')
+    && combatGlanceCss.includes('P22-C // Combat dialog footprint closure.')
+    && combatGlanceCss.includes('width: min(308px, 92vw)')
+    && equipmentCss.includes('width: min(55rem, calc(100vw - 2rem))'),
+  'P22-C fixed-pixel closure must cover class intake, contract preparation, Armory dialogs, and combat decision overlays.',
+);
+assert(
+  browserSmoke.includes('p22cContractScreenshotPath')
+    && browserSmoke.includes('p22cDialogScreenshotPath')
+    && browserSmoke.includes('cardRatio')
+    && browserSmoke.includes('dialogRatio'),
+  'P22-C Browser evidence must retain dedicated contract/dialog screenshots and measurable fixed-pixel reduction ratios.',
+);
+assert(
   browserSmoke.includes('BROWSER_P22C_CLASS_AUDIT_PASS')
     && browserSmoke.includes('BROWSER_P22C_MANAGEMENT_FOOTPRINT_PASS')
     && browserSmoke.includes('BROWSER_P22C_CONTRACT_PREP_PASS')
