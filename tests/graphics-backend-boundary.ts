@@ -227,9 +227,14 @@ assert(
     && browserWorkflowSource.includes('--use-vulkan=swiftshader')
     && browserWorkflowSource.includes('vk_swiftshader_icd.json')
     && browserWorkflowSource.includes('BROWSER_E2E_REQUIRE_WEBGPU')
+    && browserWorkflowSource.includes("BROWSER_E2E_WEBGPU_SWIFTSHADER: '1'")
     && browserWorkflowSource.includes('--use-gpu-in-tests')
     && browserSmokeSource.includes("process.env.BROWSER_E2E_REQUIRE_WEBGPU === '1'")
+    && browserSmokeSource.includes("process.env.BROWSER_E2E_WEBGPU_SWIFTSHADER === '1'")
     && browserSmokeSource.includes('P21-F2 requires a real WebGPU desktop comparison')
+    && browserSmokeSource.includes("message === 'OperationError: Instance dropped in popErrorScope'")
+    && browserSmokeSource.includes('BROWSER_P21F2_WEBGPU_KNOWN_CI_GAP')
+    && browserSmokeSource.includes('unexpectedWebGpuExceptions')
     && browserSmokeSource.includes('webgpuFallbackReason'),
   'P21-F2 Browser E2E must preserve explicit WebGL2/WebGPU QA paths and retain deterministic stack-off/stack-on comparison evidence.',
 );
