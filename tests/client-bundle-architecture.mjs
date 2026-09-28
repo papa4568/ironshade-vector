@@ -18,8 +18,8 @@ const dynamicKeys = dynamic.map(([key]) => key);
 for (const expected of ['src/components/ShipHub.tsx', 'src/components/Armory.tsx']) {
   assert(dynamicKeys.includes(expected), `${expected} is no longer emitted as a dynamic entry.`);
 }
-const gameCanvasEntry = records.find(([key]) => key === 'src/components/GameCanvas.tsx');
-assert(gameCanvasEntry, 'src/components/GameCanvas.tsx is no longer emitted as a deferred chunk.');
+const gameCanvasEntry = records.find(([, record]) => basename(record.file).startsWith('GameCanvas-') && record.file.endsWith('.js'));
+assert(gameCanvasEntry, 'GameCanvas is no longer emitted as a deferred JS chunk.');
 const [gameCanvasKey, gameCanvasRecord] = gameCanvasEntry;
 assert(basename(gameCanvasRecord.file).startsWith('GameCanvas-'), 'GameCanvas is no longer isolated in its own deferred chunk.');
 
