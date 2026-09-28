@@ -3,7 +3,8 @@
 ## New-chat handoff — resume here first
 
 - **P23 is complete and archived.** Full Android verification now builds the APK once, fans out repeatable-family, Settings, Chapter 3, and remaining runtime/persistence/authored-asset coverage in parallel, then aggregates evidence behind one required gate. Normal `main` pushes remain fast-only.
-- **Resume P22-C next — Verify the 30% reduction across the full playable UI.** P22-A, P22-B1, and P22-B2 are verified and archived.
+- **P22 is complete and archived.** The full playable-UI audit closed the remaining fixed-pixel outliers and verified the reduced baseline across management, contract preparation, combat, dialogs, and compact landscape.
+- **Resume P21-A1 next — Extract a renderer backend boundary from the current WebGL2 renderer.**
 - **P20-E is closed and archived.** When global roadmap order later returns to P20, resume that sequence at **P20-F1 — Define and settle distinct repeatable-contract incentive profiles**.
 
 Only active/future executable work lives here. Completed and verified work belongs in [content-roadmap-archive.md](./content-roadmap-archive.md). Stable product rules live in [product-constraints.md](./product-constraints.md).
@@ -40,7 +41,7 @@ Only active/future executable work lives here. Completed and verified work belon
 
 - **P22-B2 complete / archived** — Combat informational HUD chrome now uses a 70% visual baseline across health/resources, objectives, target/boss/status, loot, class-state, and transient information while retaining compact-phone readability floors, safe-area validity, and P22-B1 control hit geometry. Final verification: Level 15 beta smoke #830, Browser E2E #960, normal Android beta.546, and full Android beta.547; see the completion archive for measured live-combat, objective, pickup, and APK evidence.
 
-- [ ] **P22-C — Verify the 30% reduction across the full playable UI** — Audit every player-facing surface after P22-A/B1/B2 for fixed-size rules that bypass the shared non-combat scale or combat baselines, and correct only the remaining outliers. Capture representative before/after screenshots and measurable bounds for ship/management, contract preparation, combat, overlays/dialogs, and compact landscape; verify no text falls below the design-system readability floor, no interactive element is obscured by safe areas, and no screen develops horizontal overflow or unreachable controls. **Done when:** the audit finds no major player-facing surface still using the old oversized baseline; screenshot/bounds evidence confirms the intended approximately 30% reduction; Browser E2E and production build pass; and the verified Android APK completes the standard touch/runtime/lifecycle smoke with no UI-accessibility regression.
+- **P22-C complete / archived** — Full playable-UI verification closed the remaining fixed-pixel class-intake, contract-preparation, Armory-dialog, and combat-overlay outliers; measured management/contract geometry at 0.700, the Armory dialog at 0.738 in compact landscape, retained 12px-class phone readability floors, and passed main Browser E2E #969 plus Android beta.551. See the completion archive for screenshots, bounds, runtime evidence, and APK details.
 
 ## P21 — Graphics Engine Modernization
 
