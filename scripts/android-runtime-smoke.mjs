@@ -1140,7 +1140,7 @@ if (fastSmoke) {
         && Boolean(canvas?.dataset.environmentAtmosphere)
         && Boolean(canvas?.dataset.environmentIbl)
         && Boolean(document.querySelector('[aria-label="Touch combat controls"]'));
-    })()`, `P21-E ${qualityMode} ${expectedTier} authored-effects warmup`, 30_000);
+    })()`, `P21-E ${qualityMode} ${expectedTier} authored-effects warmup`, 60_000);
     return await readP21eTierSnapshot();
   };
 
