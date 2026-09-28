@@ -1743,6 +1743,9 @@
 @media (orientation: landscape) and (max-height: 650px) {
   .armory-item-modal > .item-inspector.open {
     width: min(60rem, 100%);
+    height: 100%;
+    max-height: none;
+    min-height: 0;
     border-radius: .75rem;
   }
 }
