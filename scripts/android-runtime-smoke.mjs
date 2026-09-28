@@ -845,7 +845,7 @@ if (fastSmoke) {
       const element = document.querySelector(selector);
       if (!(element instanceof HTMLElement)) return null;
       const value = element.getBoundingClientRect();
-      return { left: value.left, top: value.top, right: value.right, bottom: value.bottom };
+      return { left: value.left, top: value.top, right: value.right, bottom: value.bottom, width: value.width, height: value.height };
     };
     const intersects = (a, b) => !!a && !!b && !(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top);
     const baseline = {
@@ -861,6 +861,7 @@ if (fastSmoke) {
     const ratios = Object.fromEntries(Object.entries(widths).map(([key, value]) => [key, value == null ? null : value / baseline[key]]));
     const move = rect('.move-stick');
     const dock = rect('.combat-dock');
+    const deployment = rect('.transient-alert-lane[data-presentation="deployment"]');
     const informational = ['.vitals', '.mission-card', '.class-mechanic-hud', '.transient-alert-lane']
       .map(selector => ({ selector, rect: rect(selector) })).filter(entry => entry.rect);
     const overlaps = informational.filter(entry => intersects(entry.rect, move) || intersects(entry.rect, dock)).map(entry => entry.selector);
@@ -873,19 +874,23 @@ if (fastSmoke) {
       viewport,
       ratios,
       overlaps,
+      deployment,
       minFont: readable.length ? Math.min(...readable) : null,
     };
   })()`);
   const p22b2CoreRatios = [p22b2Hud.ratios.vitals, p22b2Hud.ratios.mission];
   const p22b2OptionalClassInvalid = p22b2Hud.ratios.classMechanic != null && Math.abs(p22b2Hud.ratios.classMechanic - 0.7) > 0.025;
+  const p22b2DeploymentInvalid = p22b2Hud.deployment != null
+    && (p22b2Hud.deployment.top > p22b2Hud.viewport.height * 0.12 || p22b2Hud.deployment.height > 56);
   if (Math.abs(p22b2Hud.scale - 0.7) > 0.001
     || p22b2CoreRatios.some(value => value == null || Math.abs(value - 0.7) > 0.025)
     || p22b2OptionalClassInvalid
     || p22b2Hud.overlaps.length
+    || p22b2DeploymentInvalid
     || (p22b2Hud.minFont != null && p22b2Hud.minFont < 11.5)) {
     throw new Error(`Fast Android P22-B2 informational HUD footprint/readability failed: ${JSON.stringify(p22b2Hud)}`);
   }
-  console.log(`ANDROID_P22B2_HUD_FOOTPRINT_PASS scale=${p22b2Hud.scale.toFixed(2)} vitals=${p22b2Hud.ratios.vitals.toFixed(3)} objective=${p22b2Hud.ratios.mission.toFixed(3)} class=${p22b2Hud.ratios.classMechanic == null ? 'not-mounted' : p22b2Hud.ratios.classMechanic.toFixed(3)} typeFloor=${p22b2Hud.minFont?.toFixed(1) ?? 'n/a'}px overlaps=none`);
+  console.log(`ANDROID_P22B2_HUD_FOOTPRINT_PASS scale=${p22b2Hud.scale.toFixed(2)} vitals=${p22b2Hud.ratios.vitals.toFixed(3)} objective=${p22b2Hud.ratios.mission.toFixed(3)} class=${p22b2Hud.ratios.classMechanic == null ? 'not-mounted' : p22b2Hud.ratios.classMechanic.toFixed(3)} typeFloor=${p22b2Hud.minFont?.toFixed(1) ?? 'n/a'}px overlaps=none deployment=${p22b2Hud.deployment ? `top-${Math.round(p22b2Hud.deployment.height)}px` : 'not-mounted'}`);
 
   const scrollBefore = await evaluate(`({ x: window.scrollX, y: window.scrollY })`);
 
