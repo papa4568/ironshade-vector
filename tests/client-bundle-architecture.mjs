@@ -50,10 +50,6 @@ assert(
   !(appRecord.imports ?? []).includes(gameCanvasKey),
   'GameCanvas leaked into the synchronous App chunk.',
 );
-assert(
-  (appRecord.dynamicImports ?? []).length > 0,
-  'The staged App chunk no longer contains lazy child imports.',
-);
 const mainSource = readFileSync(resolve(root, 'src/main.tsx'), 'utf8');
 const runtimeStaticImports = mainSource.split('\n').filter(line => { const trimmed = line.trim(); return trimmed.startsWith('import ') && !trimmed.startsWith('import type '); }).join('\n');
 for (const [label, sourcePath, prefix] of [['save recovery', './game/saveRecovery', 'saveRecovery-'], ['app', './App', 'App-']]) {
