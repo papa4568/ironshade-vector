@@ -150,7 +150,7 @@ for (const controlSelector of ['.move-stick', '.combat-dock', '.touch-button', '
   assert(!p22b2Block.includes(controlSelector), `P22-B2 informational HUD block must not alter combat-control geometry: ${controlSelector}`);
 }
 assert(combatGlanceCss.includes('font-size: max(12px') || combatGlanceCss.includes('font-size: 12px'), 'P22-B2 must retain the compact-phone secondary type floor.');
-assert(androidSmoke.includes('ANDROID_P22B2_HUD_FOOTPRINT_PASS') && androidSmoke.includes('ANDROID_P22B2_OBJECTIVE_FLOW_PASS'), 'P22-B2 Android fast smoke must measure reduced live HUD geometry and the objective interaction flow.');
+assert(androidSmoke.includes('ANDROID_P22B2_HUD_FOOTPRINT_PASS') && androidSmoke.includes('ANDROID_P22B2_OBJECTIVE_FLOW_PASS') && androidSmoke.includes('ANDROID_P22B2_PICKUP_FLOW_PASS'), 'P22-B2 Android verification must measure reduced live HUD geometry plus objective and pickup flows.');
 assert(browserSmoke.includes('BROWSER_P22B2_HUD_FOOTPRINT_PASS') && browserSmoke.includes('BROWSER_P22B2_TARGET_FLOW_PASS'), 'P22-B2 Browser E2E must measure reduced mobile HUD geometry and target-context presentation.');
 
 for (const label of ['Combat layout preset', 'Movement cluster inset', 'Movement cluster height', 'Movement cluster size', 'Action cluster inset', 'Action cluster height', 'Action cluster size', 'Reset current preset']) {

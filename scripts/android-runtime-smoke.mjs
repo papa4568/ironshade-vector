@@ -3133,7 +3133,44 @@ async function p20eTryTapInteract(id, holdMs = 100) {
   return true;
 }
 
+async function p22b2InstallPickupHudAudit() {
+  const installed = await evaluate(`(() => {
+    if (globalThis.__p22b2PickupHudObserver) return true;
+    globalThis.__p22b2PickupHudAudit = {
+      lootSeen: false,
+      lootScale: null,
+      pickupCueSeen: false,
+      pickupCueScale: null,
+    };
+    const ratio = element => {
+      if (!(element instanceof HTMLElement) || element.offsetWidth <= 0 || element.offsetHeight <= 0) return null;
+      const rect = element.getBoundingClientRect();
+      return { width: rect.width / element.offsetWidth, height: rect.height / element.offsetHeight };
+    };
+    const capture = () => {
+      const audit = globalThis.__p22b2PickupHudAudit;
+      const loot = document.querySelector('.loot-radar');
+      if (loot) {
+        audit.lootSeen = true;
+        audit.lootScale = ratio(loot);
+      }
+      const transient = document.querySelector('.transient-alert-lane');
+      if (transient && (transient.textContent || '').includes('EXTRACT TO KEEP')) {
+        audit.pickupCueSeen = true;
+        audit.pickupCueScale = ratio(transient);
+      }
+    };
+    const observer = new MutationObserver(capture);
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    globalThis.__p22b2PickupHudObserver = observer;
+    capture();
+    return true;
+  })()`);
+  if (!installed) throw new Error('P22-B2 pickup HUD observer failed to install.');
+}
+
 async function p20eFinishActiveFamily(expectedFamily, idBase) {
+  await p22b2InstallPickupHudAudit();
   await waitFor(`document.querySelector('.game-root')?.dataset.repeatableFamily === '${expectedFamily}'`, `P20-E ${expectedFamily} combat family`, 30_000);
   const combatDeadline = Date.now() + 900_000;
   let iteration = 0;
@@ -3386,6 +3423,16 @@ await p20eFinishActiveFamily('salvage', 2400);
 await p20eDeployFamily('boarding', 2600);
 await p20eFinishActiveFamily('boarding', 2700);
 await p20eRemoveCombatGamepad();
+const p22b2PickupHudAudit = await evaluate(`globalThis.__p22b2PickupHudAudit ?? null`);
+const p22b2PickupScaleOk = value => value && Math.abs(value.width - 0.7) <= 0.025 && Math.abs(value.height - 0.7) <= 0.025;
+if (!p22b2PickupHudAudit
+  || !p22b2PickupHudAudit.lootSeen
+  || !p22b2PickupScaleOk(p22b2PickupHudAudit.lootScale)
+  || !p22b2PickupHudAudit.pickupCueSeen
+  || !p22b2PickupScaleOk(p22b2PickupHudAudit.pickupCueScale)) {
+  throw new Error(`Android P22-B2 live pickup HUD verification failed: ${JSON.stringify(p22b2PickupHudAudit)}`);
+}
+console.log(`ANDROID_P22B2_PICKUP_FLOW_PASS loot=${p22b2PickupHudAudit.lootScale.width.toFixed(3)}x${p22b2PickupHudAudit.lootScale.height.toFixed(3)} pickupCue=${p22b2PickupHudAudit.pickupCueScale.width.toFixed(3)}x${p22b2PickupHudAudit.pickupCueScale.height.toFixed(3)} flow=drop+pickup`);
 console.log('ANDROID_P20E_REPEATABLE_PLAY_PASS families=stabilization+salvage+boarding completions=3 depth=safe campaign=tier1-baseline class=systems weapon=carbine input=assisted-target-combat+touch-objectives actualGameplay=true');
 
 // The shell runs authored operator/enemy/weapon/refinery verifiers immediately after
