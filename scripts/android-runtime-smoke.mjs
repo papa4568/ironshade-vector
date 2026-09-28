@@ -1047,8 +1047,12 @@ if (fastSmoke) {
       return canvas?.dataset.renderTier === ${JSON.stringify(expectedTier)}
         && canvas?.dataset.graphicsQuality === ${JSON.stringify(qualityMode)}
         && Boolean(canvas?.dataset.environmentP21Budget)
+        && canvas?.dataset.environmentBloom?.startsWith('selective:refinery-selective-v1:')
+        && canvas?.dataset.environmentContactDepth?.startsWith('grounding:refinery-contact-grounding-v1:')
+        && Boolean(canvas?.dataset.environmentAtmosphere)
+        && Boolean(canvas?.dataset.environmentIbl)
         && Boolean(document.querySelector('[aria-label="Touch combat controls"]'));
-    })()`, `P21-E ${qualityMode} ${expectedTier} combat tier`, 20_000);
+    })()`, `P21-E ${qualityMode} ${expectedTier} authored-effects warmup`, 30_000);
     return await readP21eTierSnapshot();
   };
 
