@@ -4,7 +4,8 @@
 
 - **P23 is complete and archived.** Full Android verification now builds the APK once, fans out repeatable-family, Settings, Chapter 3, and remaining runtime/persistence/authored-asset coverage in parallel, then aggregates evidence behind one required gate. Normal `main` pushes remain fast-only.
 - **P22 is complete and archived.** The full playable-UI audit closed the remaining fixed-pixel outliers and verified the reduced baseline across management, contract preparation, combat, dialogs, and compact landscape.
-- **Resume P21-A1 next — Extract a renderer backend boundary from the current WebGL2 renderer.**
+- **P21-A1 is complete and archived.** Combat rendering now enters through an explicit WebGL2 backend boundary with targeted create/render/resize/pointer/dispose coverage and verified Android touch/lifecycle behavior.
+- **Resume P21-A2 next — Add the deterministic graphics-path comparison harness.**
 - **P20-E is closed and archived.** When global roadmap order later returns to P20, resume that sequence at **P20-F1 — Define and settle distinct repeatable-contract incentive profiles**.
 
 Only active/future executable work lives here. Completed and verified work belongs in [content-roadmap-archive.md](./content-roadmap-archive.md). Stable product rules live in [product-constraints.md](./product-constraints.md).
@@ -45,7 +46,7 @@ Only active/future executable work lives here. Completed and verified work belon
 
 ## P21 — Graphics Engine Modernization
 
-- [ ] **P21-A1 — Extract a renderer backend boundary from the current WebGL2 renderer** — Refactor only the minimum creation/lifecycle boundary needed so the current Three.js WebGL2 renderer can be selected through an explicit graphics-backend interface instead of being instantiated directly from combat runtime code. Keep the existing WebGL2 implementation, simulation, controls, saves, React UI, authored assets, adaptive quality, and gameplay behavior unchanged. **Done when:** production still selects WebGL2 by default through the new boundary; renderer create/render/resize/dispose and pointer-direction behavior remain covered by targeted tests; Browser E2E and production build pass; and the Android APK passes the existing graphics/touch/lifecycle smoke unchanged.
+- **P21-A1 complete / archived** — Production WebGL2 now sits behind the explicit combat graphics-backend boundary; targeted lifecycle/pointer coverage plus Browser E2E, production build, and Android beta.558 touch/lifecycle verification passed. See the completion archive for evidence.
 
 - [ ] **P21-A2 — Add the deterministic graphics-path comparison harness** — Reuse the repository’s existing deterministic Asteroid Refinery QA route and existing draw-call/triangle/frame/adaptive-tier diagnostics rather than creating a second showcase. Add a non-production graphics-path selector plus loaded-path telemetry and a repeatable comparison entry point that does not alter simulation state, collision, targeting, controls, saves, or mission logic. **Done when:** the same refinery scenario can be launched repeatedly through an explicitly selected graphics path; telemetry records the loaded path alongside the existing performance metrics; targeted selector/harness tests, Browser E2E, and production build pass; and Android verifies that the production WebGL2 path is unaffected.
 
