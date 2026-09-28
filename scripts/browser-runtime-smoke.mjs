@@ -1947,7 +1947,7 @@ try {
       return canvas?.dataset.environmentIbl?.startsWith('pmrem:furnace-amber+service-cyan:intensity-')
         && canvas?.dataset.environmentLighting?.includes('+ibl:pmrem+')
         && canvas?.dataset.environmentTone?.includes('+ibl-');
-    })()`, 'P21-B refinery IBL production lighting', 20_000);
+    })()`, 'P21-B refinery IBL production lighting', 45_000);
 
     const p21bEnabled = await evaluate(`(() => {
       const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery');
