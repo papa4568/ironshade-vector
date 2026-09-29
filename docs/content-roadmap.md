@@ -14,8 +14,8 @@
 - **P21-F1 is complete and archived.** The isolated QA-only WebGPU/TSL refinery backend now lazy-loads behind the P21-A boundary, reuses the authored asset pipeline, preserves camera/input/lifecycle parity, and falls back reproducibly to production WebGL2 on current Browser/Android CI.
 - **P21-F2 is complete and archived.** The QA-only WebGPU/TSL refinery slice now reproduces the proven P21-B–E effect contracts for direct comparison, records renderer/CI parity gaps explicitly, and preserves production WebGL2 plus Android fallback.
 - **P21-F3 is complete and archived.** Browser and Android now record WebGPU support/fallback behavior plus exact lazy-chunk/APK delivery cost while production WebGL2 remains unchanged.
-- **Resume P21-G next — Make the engine decision from measured refinery evidence.**
-- **P20-E is closed and archived.** When global roadmap order later returns to P20, resume that sequence at **P20-F1 — Define and settle distinct repeatable-contract incentive profiles**.
+- **P21-G is complete and archived.** The measured engine decision keeps Three.js WebGL2 as the production combat renderer, retains WebGPU/TSL as a QA-only comparison harness, and does not start a Godot/Unity-class replatform. Level 15 beta smoke #905, Browser E2E #1045, and Android beta.609 passed after the decision documentation; see the completion archive and `graphics-engine-decision.md` for evidence.
+- **P20-E is closed and archived.** Resume the active sequence at **P20-F1 — Define and settle distinct repeatable-contract incentive profiles**.
 
 Only active/future executable work lives here. Completed and verified work belongs in [content-roadmap-archive.md](./content-roadmap-archive.md). Stable product rules live in [product-constraints.md](./product-constraints.md).
 
@@ -71,7 +71,6 @@ Only active/future executable work lives here. Completed and verified work belon
 
 - **P21-F3 complete / archived** — Browser + Android evidence now records WebGPU initialization/support/fallback behavior and known renderer/runner defects; the three QA-only WebGPU/TSL chunks add 254,269 compressed bytes to the verified Android APK (4.183% of 6,078,104 bytes) while production remains WebGL2. Final verification: Level 15 #901, Browser E2E #1044, Android beta.608. See the completion archive for evidence.
 
-- [ ] **P21-G — Make the engine decision from measured refinery evidence** — Compare the verified WebGL2 and WebGPU/TSL slices using captured screenshots plus existing diagnostics: visual result, draw calls/triangles, frame-time/adaptive-tier behavior, bundle/APK impact, Android compatibility, implementation complexity, and renderer-specific defects. Document the concrete systems a future Godot/Unity-class replatform would have to replace or bridge—TypeScript simulation, React UI, Capacitor Android integration, deterministic tests, save/runtime contracts, graphics assets, and release QA—then record one next-path decision and reorder the roadmap around it without starting a replatform. **Done when:** comparison evidence and the engine decision are committed; the active roadmap contains only follow-on work for the chosen path; Browser E2E and production build still pass; and the current production Android APK is reverified after the decision/documentation changes.
 
 ## P20 — Build Usability, Skill Integrity & Repeatable Contract Identity
 

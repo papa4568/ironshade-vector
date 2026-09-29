@@ -1,1 +1,0 @@
-// Temporary source-path trigger used to verify the P21-G documentation decision through Browser and Android CI.\nexport const P21_G_CI_TRIGGER = 'graphics-engine-decision-verification';\n
