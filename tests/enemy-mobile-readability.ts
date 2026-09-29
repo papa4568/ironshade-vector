@@ -64,9 +64,9 @@ for (const tell of ['syncEnemyLifecyclePresentation', 'syncEnemyProtocolPresenta
   assert(renderer.includes(tell), `Three.js must preserve ${tell} at mobile LOD2.`);
 }
 assert(renderer.includes("selectGraphicsAssetSpec(family, this.coarse ? 0.55 : 1)"), 'coarse hostile assets must keep the established authored mobile LOD selection.');
-assert(canvas.includes('resolveEnemyHudReadability(enemy, coarse, enemy.id === mobileTargetId)'), 'Canvas fallback must consume the shared P13-G mobile policy.');
+assert(canvas.includes('resolveEnemyHudReadability(enemy, compactLayout, enemy.id === mobileTargetId)'), 'Canvas fallback must consume the shared P13-G compact-layout policy.');
 assert(/drawEnemyStatusPresentation\(ctx,[\s\S]{0,220}drawEnemyLifecyclePresentation\(ctx,[\s\S]{0,220}drawEnemyTelegraph\(ctx/.test(canvas), 'Canvas attack telegraph must stay authoritative over modifier/status/lifecycle presentation.');
-assert(canvas.includes('enemyHudReadabilityTelemetry(coarse'), 'runtime QA telemetry must identify the active P13-G information budget.');
+assert(canvas.includes('enemyHudReadabilityTelemetry(compactLayout'), 'runtime QA telemetry must identify the active P13-G information budget.');
 assert(canvas.includes("enemyLifecycleReducedEffects = profileSettingsRef.current.effectIntensity === 'reduced' ? 'preserved' : 'full'"), 'Reduced Effects must continue to publish preserved lifecycle identity telemetry.');
 
 console.log('P13-G enemy mobile readability policy passed.');
