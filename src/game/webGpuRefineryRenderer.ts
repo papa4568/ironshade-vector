@@ -315,7 +315,7 @@ export class WebGpuRefineryRenderer {
     this.playerRoot.position.set(state.player.x * WORLD_SCALE, 0, state.player.y * WORLD_SCALE);
     this.syncCamera(state, width / Math.max(1, height), cameraFeedback);
     this.applyRefineryEffects(mission, budget);
-    if (this.renderPipeline) this.renderPipeline.render();
+    if (this.renderPipeline && this.bloomEnabled) this.renderPipeline.render();
     else this.renderer.render(this.scene, this.camera);
   }
 

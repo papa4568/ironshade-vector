@@ -170,6 +170,8 @@ assert(
     && webgpuRendererSource.includes("from './refineryContactDepth'")
     && webgpuRendererSource.includes("from './refineryAtmosphere'")
     && webgpuRendererSource.includes('new this.THREE.RenderPipeline(this.renderer)')
+    && webgpuRendererSource.includes('this.renderPipeline && this.bloomEnabled')
+    && webgpuRendererSource.includes('else this.renderer.render(this.scene, this.camera)')
     && webgpuRendererSource.includes('TSL.mrt({')
     && webgpuRendererSource.includes('emissive: TSL.vec4(TSL.emissive, TSL.output.a)')
     && webgpuRendererSource.includes("setBlendMode('emissive', new this.THREE.BlendMode(this.THREE.NormalBlending))")
