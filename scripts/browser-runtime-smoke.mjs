@@ -197,6 +197,77 @@ async function captureScreenshot(path = screenshotPath) {
   await writeFile(path, Buffer.from(result.data, 'base64'));
 }
 
+async function rawWebGpuPresentationProbe() {
+  const sample = await evaluate(`(async () => {
+    if (!navigator.gpu?.requestAdapter) return { supported: false };
+    const adapter = await navigator.gpu.requestAdapter();
+    if (!adapter) return { supported: true, adapter: false };
+    const device = await adapter.requestDevice();
+    const canvas = document.createElement('canvas');
+    canvas.width = 96;
+    canvas.height = 64;
+    canvas.style.cssText = 'position:fixed;left:0;top:0;width:96px;height:64px;z-index:2147483647;pointer-events:none';
+    document.body.appendChild(canvas);
+    try {
+      const context = canvas.getContext('webgpu');
+      if (!context) return { supported: true, adapter: true, context: false };
+      const format = navigator.gpu.getPreferredCanvasFormat();
+      context.configure({ device, format, alphaMode: 'opaque' });
+      const encoder = device.createCommandEncoder();
+      const pass = encoder.beginRenderPass({
+        colorAttachments: [{
+          view: context.getCurrentTexture().createView(),
+          clearValue: { r: 0.18, g: 0.72, b: 0.34, a: 1 },
+          loadOp: 'clear',
+          storeOp: 'store',
+        }],
+      });
+      pass.end();
+      device.queue.submit([encoder.finish()]);
+      await device.queue.onSubmittedWorkDone();
+      await new Promise(resolve => requestAnimationFrame(() => resolve()));
+      await new Promise(resolve => requestAnimationFrame(() => resolve()));
+      const bitmap = await createImageBitmap(canvas);
+      try {
+        const probe = document.createElement('canvas');
+        probe.width = 24;
+        probe.height = 16;
+        const context2d = probe.getContext('2d', { willReadFrequently: true });
+        if (!context2d) return { supported: true, adapter: true, context: true, sample: false };
+        context2d.drawImage(bitmap, 0, 0, probe.width, probe.height);
+        const pixels = context2d.getImageData(0, 0, probe.width, probe.height).data;
+        let rgbSum = 0;
+        let litPixels = 0;
+        for (let index = 0; index < pixels.length; index += 4) {
+          const red = pixels[index];
+          const green = pixels[index + 1];
+          const blue = pixels[index + 2];
+          rgbSum += red + green + blue;
+          if (Math.max(red, green, blue) > 24) litPixels += 1;
+        }
+        const pixelCount = pixels.length / 4;
+        return {
+          supported: true,
+          adapter: true,
+          context: true,
+          meanRgb: rgbSum / (pixelCount * 3),
+          litRatio: litPixels / pixelCount,
+        };
+      } finally {
+        bitmap.close?.();
+      }
+    } finally {
+      canvas.remove();
+      device.destroy?.();
+    }
+  })()`);
+  if (!sample?.supported || !sample?.adapter || !sample?.context || sample.meanRgb <= 20 || sample.litRatio <= 0.8) {
+    throw new Error(`P21-F2 raw WebGPU presentation probe failed: ${JSON.stringify(sample)}`);
+  }
+  console.log(`BROWSER_P21F2_RAW_WEBGPU_PRESENTATION_PASS viewport=${viewportMode} mean=${sample.meanRgb.toFixed(2)} lit=${sample.litRatio.toFixed(3)}`);
+  return sample;
+}
+
 async function sampleWebGpuCanvasPresentation(label) {
   const sample = await evaluate(`(async () => {
     const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-webgpu-p21f2');
@@ -2261,6 +2332,7 @@ try {
   }
   console.log(`BROWSER_P15_MISSION_PRESENTATION_PASS viewport=${viewportMode} deployment=non-blocking mode=${p15MissionPresentation.mode} title=${p15MissionPresentation.title}`);
   if (requestedGraphicsPath === 'webgpu') {
+    if (requireWebGpuComparison) await rawWebGpuPresentationProbe();
     const p21f1State = await p21F1WebGpuPrototypeAudit();
     if (p21f1State.loaded === 'webgpu') await p21F2RefineryParityAudit('webgpu');
     const knownSwiftShaderScopeDrops = webGpuSwiftShaderCi

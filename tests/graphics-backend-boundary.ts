@@ -261,6 +261,8 @@ assert(
     && browserSmokeSource.includes('createImageBitmap(canvas)')
     && browserSmokeSource.includes('P21-F2 WebGPU canvas presentation is blank')
     && browserSmokeSource.includes('P21-F2 WebGPU stack-off/stack-on captures are pixel-identical')
+    && browserSmokeSource.includes('BROWSER_P21F2_RAW_WEBGPU_PRESENTATION_PASS')
+    && browserSmokeSource.includes('P21-F2 raw WebGPU presentation probe failed')
     && browserSmokeSource.includes('BROWSER_P21F2_WEBGPU_PRESENTATION_PASS'),
   'P21-F2 Browser E2E must preserve explicit WebGL2/WebGPU QA paths and retain deterministic stack-off/stack-on comparison evidence.',
 );
