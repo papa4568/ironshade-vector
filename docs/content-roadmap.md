@@ -5,7 +5,7 @@
 - All previously completed P20–P23 work plus P24-A–P24-D is preserved in [content-roadmap-archive.md](./content-roadmap-archive.md).
 - The 2026-09-29 code audit has been reduced to **release-critical work only**. Non-blocking cleanup/refactor ideas were removed from the active queue.
 - Priority order is intentional: **P24 correctness/data safety → P25 release/platform/security → P26 telemetry scale resilience**.
-- **Next executable item: P25-A — Establish persistent Android release signing and separate debug artifacts.**
+- **Next executable item: P25-A — Configure persistent Android release signing and verify signed upgrade continuity.**
 
 Only active/future executable work lives here. Completed and verified work belongs in [content-roadmap-archive.md](./content-roadmap-archive.md). Stable product rules live in [product-constraints.md](./product-constraints.md).
 
