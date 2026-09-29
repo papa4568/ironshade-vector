@@ -32,6 +32,7 @@ Corrupt or structurally unsafe known-format saves use quarantine recovery:
 - detach the unsafe primary key only after that copy is verified,
 - allow a clean save to start only after detachment succeeds, and
 - block startup instead of overwriting data when backup or detachment cannot be verified.
+- after an atomic save is quarantined, persist and verify a recovery guard before detaching it; older split profile/campaign keys may remain stored for explicit recovery, but they must never silently become the active state through legacy fallback.
 
 This is intentionally different from compatibility failure.
 
