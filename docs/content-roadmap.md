@@ -20,7 +20,7 @@ Only active/future executable work lives here. Completed and verified work belon
 
 ## P25 — Release, Platform, and Security Blockers
 
-- [ ] **P25-A — Establish persistent Android release signing and separate debug artifacts** — Keep debug APKs for CI/emulator QA, but require a persistent keystore for distributable builds. Make signing mode explicit in artifact names/metadata and preserve upgrade-signature verification so a release APK can update prior release APKs safely.
+- [ ] **P25-A — Configure persistent Android release signing and verify signed upgrade continuity** — Debug QA and release artifacts are already separated, signing mode is explicit in artifact metadata, and distributable builds are gated on a persistent keystore. Remaining blocker: configure all four GitHub Actions signing secrets (`ANDROID_KEYSTORE_BASE64`, `ANDROID_SIGNING_STORE_PASSWORD`, `ANDROID_SIGNING_KEY_ALIAS`, `ANDROID_SIGNING_KEY_PASSWORD`), then run **Build Android APK** with `require_release_signing=true` and verify the `ironshade-vector-android-release` artifact plus signer-continuity/in-place-upgrade evidence before archiving this item.
 
 - [ ] **P25-B — Make Android 16 large-screen behavior explicit and verified** — For target SDK 36, define the intended tablet/foldable orientation/resizing behavior, apply the appropriate Android game/category configuration where justified, and verify at least one ≥600dp portrait/resize/foldable-style path in addition to the existing phone-landscape path.
 
