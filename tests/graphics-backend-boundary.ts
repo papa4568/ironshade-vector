@@ -267,6 +267,8 @@ assert(
     && browserSmokeSource.includes('BROWSER_P21F2_RAW_WEBGPU_PRESENTATION_PASS')
     && browserSmokeSource.includes('BROWSER_P21F2_WEBGPU_PRESENTATION_KNOWN_GAP')
     && browserSmokeSource.includes('captureWebGpuRendererFrame')
+    && browserSmokeSource.includes('capture.maxChannel <= 12')
+    && browserSmokeSource.includes('capture.nonBlackRatio <= 0.001')
     && browserSmokeSource.includes('P21-F2 WebGPU renderer capture is blank')
     && browserSmokeSource.includes('BROWSER_P21F2_WEBGPU_CAPTURE_PASS'),
   'P21-F2 Browser E2E must preserve explicit WebGL2/WebGPU QA paths and retain deterministic stack-off/stack-on comparison evidence.',

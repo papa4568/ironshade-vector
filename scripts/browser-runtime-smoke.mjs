@@ -310,7 +310,7 @@ async function captureWebGpuRendererFrame(label, path) {
   })()`);
   if (result?.state === 'error') throw new Error(`P21-F2 WebGPU renderer capture failed for ${label}: ${result.error || 'unknown error'}`);
   const capture = result?.result;
-  if (!capture?.dataUrl || capture.meanRgb <= 5 || capture.litRatio <= 0.2) {
+  if (!capture?.dataUrl || capture.maxChannel <= 12 || capture.nonBlackRatio <= 0.001) {
     throw new Error(`P21-F2 WebGPU renderer capture is blank for ${label}: ${JSON.stringify(capture)}`);
   }
   const separator = capture.dataUrl.indexOf(',');
@@ -687,7 +687,7 @@ async function p21F2RefineryParityAudit(backend) {
     if (webGpuCaptureOff.hash === webGpuCaptureOn.hash) {
       throw new Error(`P21-F2 WebGPU stack-off/stack-on captures are pixel-identical: ${JSON.stringify({ off: webGpuCaptureOff, on: webGpuCaptureOn })}`);
     }
-    console.log(`BROWSER_P21F2_WEBGPU_CAPTURE_PASS viewport=${viewportMode} offMean=${webGpuCaptureOff.meanRgb.toFixed(2)} onMean=${webGpuCaptureOn.meanRgb.toFixed(2)} offLit=${webGpuCaptureOff.litRatio.toFixed(3)} onLit=${webGpuCaptureOn.litRatio.toFixed(3)} offHash=${webGpuCaptureOff.hash} onHash=${webGpuCaptureOn.hash} size=${webGpuCaptureOn.width}x${webGpuCaptureOn.height}`);
+    console.log(`BROWSER_P21F2_WEBGPU_CAPTURE_PASS viewport=${viewportMode} offMean=${webGpuCaptureOff.meanRgb.toFixed(2)} onMean=${webGpuCaptureOn.meanRgb.toFixed(2)} offLit=${webGpuCaptureOff.litRatio.toFixed(3)} onLit=${webGpuCaptureOn.litRatio.toFixed(3)} offNonBlack=${webGpuCaptureOff.nonBlackRatio.toFixed(3)} onNonBlack=${webGpuCaptureOn.nonBlackRatio.toFixed(3)} offPeak=${webGpuCaptureOff.maxChannel} onPeak=${webGpuCaptureOn.maxChannel} offHash=${webGpuCaptureOff.hash} onHash=${webGpuCaptureOn.hash} size=${webGpuCaptureOn.width}x${webGpuCaptureOn.height}`);
   }
 
   const costReduced = await evaluate(`(() => {

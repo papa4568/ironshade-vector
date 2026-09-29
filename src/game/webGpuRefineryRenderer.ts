@@ -491,8 +491,6 @@ export class WebGpuRefineryRenderer {
     const captureHeight = Math.max(96, Math.round(captureWidth * this.height / Math.max(1, this.width)));
     const target = new this.THREE.RenderTarget(captureWidth, captureHeight, {
       depthBuffer: true,
-      type: this.THREE.UnsignedByteType,
-      format: this.THREE.RGBAFormat,
     });
     target.texture.name = `p21-f2-webgpu-qa-${token}`;
     const previousTarget = this.renderer.getRenderTarget();
@@ -505,13 +503,18 @@ export class WebGpuRefineryRenderer {
       rgba.set(pixels as Uint8Array);
       let rgbSum = 0;
       let litPixels = 0;
+      let nonBlackPixels = 0;
+      let maxChannel = 0;
       let hash = 2166136261;
       for (let index = 0; index < rgba.length; index += 4) {
         const red = rgba[index];
         const green = rgba[index + 1];
         const blue = rgba[index + 2];
+        const peak = Math.max(red, green, blue);
         rgbSum += red + green + blue;
-        if (Math.max(red, green, blue) > 12) litPixels += 1;
+        if (peak > 12) litPixels += 1;
+        if (peak > 1) nonBlackPixels += 1;
+        if (peak > maxChannel) maxChannel = peak;
         hash = Math.imul(hash ^ red, 16777619);
         hash = Math.imul(hash ^ green, 16777619);
         hash = Math.imul(hash ^ blue, 16777619);
@@ -529,6 +532,8 @@ export class WebGpuRefineryRenderer {
         height: captureHeight,
         meanRgb: rgbSum / (pixelCount * 3),
         litRatio: litPixels / pixelCount,
+        nonBlackRatio: nonBlackPixels / pixelCount,
+        maxChannel,
         hash: (hash >>> 0).toString(16).padStart(8, '0'),
         dataUrl: captureCanvas.toDataURL('image/png'),
       };
