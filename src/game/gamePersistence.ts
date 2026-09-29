@@ -1,8 +1,8 @@
-import { loadCampaign, normalizeCampaignState, type CampaignState } from './campaign';
+import { createDefaultCampaign, loadCampaign, normalizeCampaignState, type CampaignState } from './campaign';
 import { gearSchemaVersion } from './gearSchema';
-import { loadProfile, normalizeStoredProfile, type PlayerProfile } from './meta';
+import { createDefaultProfile, loadProfile, normalizeStoredProfile, type PlayerProfile } from './meta';
 import { OPERATOR_NETWORK_SCHEMA_VERSION, isSupportedOperatorNetworkSchemaVersion } from './operatorNetwork';
-import { GAME_STATE_STORAGE_KEY, GAME_STATE_VERSION, validateStoredCampaign, validateStoredProfile } from './saveRecovery';
+import { GAME_STATE_STORAGE_KEY, GAME_STATE_VERSION, LEGACY_FALLBACK_BLOCK_STORAGE_KEY, validateStoredCampaign, validateStoredProfile } from './saveRecovery';
 
 // Profile and campaign are committed atomically so readers never observe half of a progression update. APK verification follows each audited fix.
 type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
@@ -39,6 +39,20 @@ function legacySnapshot(): GameStateSnapshot {
   return { profile: loadProfile(), campaign: loadCampaign() };
 }
 
+function cleanSnapshot(): GameStateSnapshot {
+  return { profile: createDefaultProfile(), campaign: createDefaultCampaign() };
+}
+
+function fallbackSnapshot(storage: StorageLike): GameStateSnapshot {
+  try {
+    if (storage.getItem(LEGACY_FALLBACK_BLOCK_STORAGE_KEY) !== null) return cleanSnapshot();
+  } catch {
+    // If the guard cannot be read, prefer a clean state over reviving older split-save progression.
+    return cleanSnapshot();
+  }
+  return legacySnapshot();
+}
+
 function persistedEnvelope(profile: PlayerProfile, campaign: CampaignState): PersistedGameState {
   return {
     version: GAME_STATE_VERSION,
@@ -54,17 +68,17 @@ export function loadGameState(storage: StorageLike | null = browserStorage()): G
   if (!storage) return legacySnapshot();
   try {
     const raw = storage.getItem(GAME_STATE_STORAGE_KEY);
-    if (!raw) return legacySnapshot();
+    if (!raw) return fallbackSnapshot(storage);
     const parsed = JSON.parse(raw) as Partial<PersistedGameState | LegacyPersistedGameState>;
-    if (parsed.version !== 1 && parsed.version !== 2 && parsed.version !== 3 && parsed.version !== GAME_STATE_VERSION) return legacySnapshot();
-    if ((parsed.version === 2 || parsed.version === 3 || parsed.version === GAME_STATE_VERSION) && parsed.gearSchemaVersion !== gearSchemaVersion) return legacySnapshot();
-    if (parsed.version === 3 && !isSupportedOperatorNetworkSchemaVersion(parsed.operatorNetworkSchemaVersion)) return legacySnapshot();
-    if (parsed.version === GAME_STATE_VERSION && parsed.operatorNetworkSchemaVersion !== OPERATOR_NETWORK_SCHEMA_VERSION) return legacySnapshot();
-    if (validateStoredProfile(parsed.profile) || validateStoredCampaign(parsed.campaign)) return legacySnapshot();
+    if (parsed.version !== 1 && parsed.version !== 2 && parsed.version !== 3 && parsed.version !== GAME_STATE_VERSION) return fallbackSnapshot(storage);
+    if ((parsed.version === 2 || parsed.version === 3 || parsed.version === GAME_STATE_VERSION) && parsed.gearSchemaVersion !== gearSchemaVersion) return fallbackSnapshot(storage);
+    if (parsed.version === 3 && !isSupportedOperatorNetworkSchemaVersion(parsed.operatorNetworkSchemaVersion)) return fallbackSnapshot(storage);
+    if (parsed.version === GAME_STATE_VERSION && parsed.operatorNetworkSchemaVersion !== OPERATOR_NETWORK_SCHEMA_VERSION) return fallbackSnapshot(storage);
+    if (validateStoredProfile(parsed.profile) || validateStoredCampaign(parsed.campaign)) return fallbackSnapshot(storage);
 
     const profile = normalizeStoredProfile(parsed.profile as Partial<PlayerProfile>);
     const campaign = normalizeCampaignState(parsed.campaign as Partial<CampaignState>);
-    if (validateStoredProfile(profile) || validateStoredCampaign(campaign)) return legacySnapshot();
+    if (validateStoredProfile(profile) || validateStoredCampaign(campaign)) return fallbackSnapshot(storage);
     const profileRepaired = JSON.stringify(parsed.profile) !== JSON.stringify(profile);
     const campaignRepaired = JSON.stringify(parsed.campaign) !== JSON.stringify(campaign);
 
@@ -81,7 +95,7 @@ export function loadGameState(storage: StorageLike | null = browserStorage()): G
 
     return { profile, campaign };
   } catch {
-    return legacySnapshot();
+    return fallbackSnapshot(storage);
   }
 }
 

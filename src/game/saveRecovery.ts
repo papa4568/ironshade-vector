@@ -6,6 +6,7 @@ import { SHIP_SYSTEM_MAX_TIER, SHIP_SYSTEM_SCHEMA_VERSION } from './campaign';
 export const PROFILE_STORAGE_KEY = 'ironshade-vector-profile-v3';
 export const CAMPAIGN_STORAGE_KEY = 'ironshade-vector-campaign-v1';
 export const GAME_STATE_STORAGE_KEY = 'ironshade-vector-state-v1';
+export const LEGACY_FALLBACK_BLOCK_STORAGE_KEY = 'ironshade-vector-legacy-fallback-block-v1';
 
 export const GAME_STATE_VERSION = 4;
 export const SUPPORTED_GAME_STATE_VERSIONS = [1, 2, 3, GAME_STATE_VERSION] as const;
@@ -399,7 +400,24 @@ async function inspectGameState(storage: StorageLike, indexedDb: IDBFactory | nu
   } catch {
     return { blocked: true, notice: 'STATE SAVE RECOVERY LOCK // existing browser storage could not be read, so the game was not started and no save was overwritten.', backup: null as SaveRecoveryBackup | null };
   }
-  if (!raw) return { blocked: false, notice: null as string | null, backup: null as SaveRecoveryBackup | null };
+  if (!raw) {
+    try {
+      if (storage.getItem(LEGACY_FALLBACK_BLOCK_STORAGE_KEY)) {
+        return {
+          blocked: false,
+          notice: 'STATE SAVE RECOVERY // a previous atomic quarantine requires a clean start. Legacy profile/campaign keys remain excluded from automatic fallback until a valid atomic save exists.',
+          backup: null as SaveRecoveryBackup | null,
+        };
+      }
+    } catch {
+      return {
+        blocked: true,
+        notice: 'STATE SAVE RECOVERY LOCK // the atomic-recovery fallback guard could not be read, so startup was stopped before older profile/campaign keys could replace quarantined progression.',
+        backup: null as SaveRecoveryBackup | null,
+      };
+    }
+    return { blocked: false, notice: null as string | null, backup: null as SaveRecoveryBackup | null };
+  }
 
   let parsed: unknown;
   try {
@@ -426,6 +444,24 @@ async function inspectGameState(storage: StorageLike, indexedDb: IDBFactory | nu
       return { blocked: true, notice: `STATE SAVE RECOVERY LOCK // ${invalidReason}. The original save remains untouched because a verified backup could not be created.`, backup: null as SaveRecoveryBackup | null };
     }
 
+    const fallbackBlock = JSON.stringify({
+      version: 1,
+      sourceKey: GAME_STATE_STORAGE_KEY,
+      backupKey: backup.backupKey,
+      createdAt,
+      reason: invalidReason,
+    });
+    try {
+      storage.setItem(LEGACY_FALLBACK_BLOCK_STORAGE_KEY, fallbackBlock);
+      if (storage.getItem(LEGACY_FALLBACK_BLOCK_STORAGE_KEY) !== fallbackBlock) throw new Error('fallback guard verification failed');
+    } catch {
+      return {
+        blocked: true,
+        notice: `STATE SAVE RECOVERY LOCK // ${invalidReason}. A backup was preserved in ${backup.medium}, but the clean-start guard could not be verified, so the original primary save remains attached.`,
+        backup,
+      };
+    }
+
     try {
       storage.removeItem(GAME_STATE_STORAGE_KEY);
       if (storage.getItem(GAME_STATE_STORAGE_KEY) !== null) throw new Error('save key still present');
@@ -435,7 +471,7 @@ async function inspectGameState(storage: StorageLike, indexedDb: IDBFactory | nu
 
     return {
       blocked: false,
-      notice: `STATE SAVE RECOVERY // ${invalidReason}. The original raw save was preserved in ${backup.medium} as ${backup.backupKey} before a clean save was allowed to start.`,
+      notice: `STATE SAVE RECOVERY // ${invalidReason}. The original raw save was preserved in ${backup.medium} as ${backup.backupKey} before a clean save was allowed to start. Legacy profile/campaign keys are not used as fallback after this quarantine.`,
       backup,
     };
   }

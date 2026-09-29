@@ -4,7 +4,7 @@ import { GAME_STATE_VERSION, loadGameState, saveGameState } from '../src/game/ga
 import { gearSchemaVersion } from '../src/game/gearSchema';
 import { OPERATOR_NETWORK_SCHEMA_VERSION, createOperatorNetworkState } from '../src/game/operatorNetwork';
 import { createDefaultProfile, setProfileSettings } from '../src/game/meta';
-import { GAME_STATE_STORAGE_KEY, prepareSaveRecovery, validateStoredProfile } from '../src/game/saveRecovery';
+import { CAMPAIGN_STORAGE_KEY, GAME_STATE_STORAGE_KEY, LEGACY_FALLBACK_BLOCK_STORAGE_KEY, PROFILE_STORAGE_KEY, prepareSaveRecovery, validateStoredProfile } from '../src/game/saveRecovery';
 
 class MemoryStorage {
   readonly values = new Map<string, string>();
@@ -322,6 +322,70 @@ async function migrationBackupFailureLockSmoke() {
   assert.match(recovery.notices.join(' '), /pre-migration rollback snapshot could not be created/, 'migration lock should explain why startup stopped');
 }
 
+async function quarantinedAtomicSuppressesStaleLegacyFallbackSmoke() {
+  const storage = new MemoryStorage();
+  const staleProfile = setProfileSettings(createDefaultProfile(), { graphicsQuality: 'performance' });
+  const staleCampaign = createDefaultCampaign();
+  staleCampaign.cycle = 41;
+  staleCampaign.contractsCompleted = 23;
+  staleCampaign.lastOutcome = 'STALE LEGACY CAMPAIGN SHOULD NOT LOAD';
+  const staleProfileRaw = JSON.stringify(staleProfile);
+  const staleCampaignRaw = JSON.stringify(staleCampaign);
+  const invalidAtomicRaw = JSON.stringify({
+    version: GAME_STATE_VERSION,
+    gearSchemaVersion,
+    operatorNetworkSchemaVersion: OPERATOR_NETWORK_SCHEMA_VERSION,
+    profile: { ...createDefaultProfile(), inventory: 'corrupt-inventory-shape' },
+    campaign: createDefaultCampaign(),
+    savedAt: '2026-09-29T18:30:00.000Z',
+  });
+
+  storage.setItem(PROFILE_STORAGE_KEY, staleProfileRaw);
+  storage.setItem(CAMPAIGN_STORAGE_KEY, staleCampaignRaw);
+  storage.setItem(GAME_STATE_STORAGE_KEY, invalidAtomicRaw);
+
+  const recovery = await prepareSaveRecovery({
+    storage: storage as any,
+    indexedDb: null,
+    now: () => new Date('2026-09-29T18:31:00.000Z'),
+    id: () => 'atomic-quarantine',
+  });
+
+  assert.equal(recovery.blocked, false, 'verified atomic quarantine should allow a clean startup');
+  assert.equal(recovery.backups.length, 1, 'only the invalid atomic state should need a recovery backup when stale legacy keys are structurally valid');
+  assert.equal(storage.getItem(recovery.backups[0]!.backupKey), invalidAtomicRaw, 'atomic quarantine must preserve the exact invalid raw bytes');
+  assert.equal(storage.getItem(GAME_STATE_STORAGE_KEY), null, 'invalid atomic primary state should be detached after protection succeeds');
+  assert.equal(storage.getItem(PROFILE_STORAGE_KEY), staleProfileRaw, 'stale legacy profile bytes should remain preserved for explicit recovery');
+  assert.equal(storage.getItem(CAMPAIGN_STORAGE_KEY), staleCampaignRaw, 'stale legacy campaign bytes should remain preserved for explicit recovery');
+  assert.ok(storage.getItem(LEGACY_FALLBACK_BLOCK_STORAGE_KEY), 'atomic quarantine must persist a guard before detaching the primary state');
+  assert.match(recovery.notices.join(' '), /clean save was allowed to start/, 'recovery copy must describe the clean state that actually starts');
+  assert.match(recovery.notices.join(' '), /Legacy profile\/campaign keys are not used as fallback/, 'recovery copy must disclose that stale split saves are excluded');
+
+  const hadWindow = Object.prototype.hasOwnProperty.call(globalThis, 'window');
+  const previousWindow = (globalThis as any).window;
+  (globalThis as any).window = { localStorage: storage };
+  try {
+    const loaded = loadGameState();
+    const defaults = { profile: createDefaultProfile(), campaign: createDefaultCampaign() };
+    assert.equal(loaded.profile.settings.graphicsQuality, defaults.profile.settings.graphicsQuality, 'quarantine startup must use clean profile defaults instead of stale legacy profile settings');
+    assert.notEqual(loaded.profile.settings.graphicsQuality, staleProfile.settings.graphicsQuality, 'stale legacy profile must not become active after atomic quarantine');
+    assert.equal(loaded.campaign.cycle, defaults.campaign.cycle, 'quarantine startup must use a clean campaign instead of the stale legacy cycle');
+    assert.notEqual(loaded.campaign.cycle, staleCampaign.cycle, 'stale legacy campaign must not become active after atomic quarantine');
+
+    assert.equal(saveGameState(loaded.profile, loaded.campaign, storage as any), true, 'clean quarantine state should be writable through the atomic save path');
+    assert.ok(storage.getItem(GAME_STATE_STORAGE_KEY), 'clean startup should establish a new atomic primary save');
+    assert.ok(storage.getItem(LEGACY_FALLBACK_BLOCK_STORAGE_KEY), 'legacy fallback guard should remain durable after a clean atomic save so stale split saves cannot reappear later');
+
+    storage.removeItem(GAME_STATE_STORAGE_KEY);
+    const recoveredAgain = loadGameState();
+    assert.equal(recoveredAgain.profile.settings.graphicsQuality, defaults.profile.settings.graphicsQuality, 'durable guard must still suppress stale legacy profile fallback if the atomic key is later absent');
+    assert.equal(recoveredAgain.campaign.cycle, defaults.campaign.cycle, 'durable guard must still suppress stale legacy campaign fallback if the atomic key is later absent');
+  } finally {
+    if (hadWindow) (globalThis as any).window = previousWindow;
+    else delete (globalThis as any).window;
+  }
+}
+
 async function recoveryPreservationSmoke() {
   const storage = new MemoryStorage();
   const campaign = createDefaultCampaign();
@@ -358,7 +422,8 @@ async function main() {
   await incompatibleFutureSaveLockSmoke();
   await migrationBackupFailureLockSmoke();
   await recoveryPreservationSmoke();
-  console.log(`SAVE_DATA_MIGRATION_PASS legacy=v1/v2/v3->v${GAME_STATE_VERSION} gearSchema=${gearSchemaVersion} networkSchema=${OPERATOR_NETWORK_SCHEMA_VERSION} plannerPersistence=roundtrip+pruned currentNetworkRepair=refunded graphicsQuality=adaptive+flagship+performance migrationRollback=preserved incompatibleSave=blocked recovery=preserved`);
+  await quarantinedAtomicSuppressesStaleLegacyFallbackSmoke();
+  console.log(`SAVE_DATA_MIGRATION_PASS legacy=v1/v2/v3->v${GAME_STATE_VERSION} gearSchema=${gearSchemaVersion} networkSchema=${OPERATOR_NETWORK_SCHEMA_VERSION} plannerPersistence=roundtrip+pruned currentNetworkRepair=refunded graphicsQuality=adaptive+flagship+performance migrationRollback=preserved incompatibleSave=blocked recovery=preserved atomicQuarantine=stale-legacy-blocked`);
 }
 
 main().catch(error => {
