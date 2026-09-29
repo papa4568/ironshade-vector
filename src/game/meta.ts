@@ -984,7 +984,7 @@ function chooseRecoverySlots(profile: PlayerProfile, count: number, random: () =
   return chosen;
 }
 
-export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep: boolean, _fabricationLevel = 0, source: { deepTarget?: string; location?: string; locationName?: string; faction?: EquipmentFaction; factionReputation?: number; operationTier?: number; maxRecoveryLevel?: number; combatEffectiveness?: number; threatBudget?: number; eliteProtocolCount?: number; environmentalComplications?: number; optionalObjectives?: number; actualDepth?: boolean; xpFloor?: number; directiveQualityBonus?: number; directiveSingularChanceBonus?: number; directiveRecoveryLevelBonus?: number; directiveTier?: number; campaignChapter?: CampaignGearChapter } = {}, fieldLoot?: GroundLootReceipt[]): VictoryReward {
+export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep: boolean, _fabricationLevel = 0, source: { deepTarget?: string; location?: string; locationName?: string; faction?: EquipmentFaction; factionReputation?: number; operationTier?: number; maxRecoveryLevel?: number; combatEffectiveness?: number; threatBudget?: number; eliteProtocolCount?: number; environmentalComplications?: number; optionalObjectives?: number; actualDepth?: boolean; xpFloor?: number; directiveQualityBonus?: number; directiveSingularChanceBonus?: number; directiveRecoveryLevelBonus?: number; directiveTier?: number; recoveryQualityBonus?: number; recoveryLevelBonus?: number; sponsoredGearChanceBonus?: number; campaignChapter?: CampaignGearChapter } = {}, fieldLoot?: GroundLootReceipt[]): VictoryReward {
   const rawXp = (deep ? 250 : 145) + Math.min(deep ? 90 : 45, Math.round(telemetry.damageDealt / 22));
   const requestedXp = Math.max(Math.max(0, Math.round(source.xpFloor ?? 0)), Math.round(rawXp * (1 + Math.max(0, (source.combatEffectiveness ?? 1) - 1) * 0.65)));
   const cappedProfileXp = Math.max(0, Math.min(maxLevelXp, profile.xp));
@@ -998,14 +998,15 @@ export function awardRecovery(profile: PlayerProfile, telemetry: Telemetry, deep
   const maxRecoveryLevel = source.maxRecoveryLevel ?? 8 + Math.max(1, source.operationTier ?? 1) * 4;
   const eliteKills = telemetry.eliteKills ?? 0;
   const directiveRecoveryBonus = Math.max(0, Math.min(3, source.directiveRecoveryLevelBonus ?? 0));
-  const ordinaryRecoveryLevel = Math.min(maxRecoveryLevel, recoveryLevelForSource(maxRecoveryLevel, { deep, boss: false, eliteKills }) + directiveRecoveryBonus);
-  const bossRecoveryLevel = Math.min(maxRecoveryLevel, recoveryLevelForSource(maxRecoveryLevel, { deep: true, boss: true, eliteKills }) + directiveRecoveryBonus);
+  const incentiveRecoveryBonus = Math.max(0, Math.min(3, source.recoveryLevelBonus ?? 0));
+  const ordinaryRecoveryLevel = Math.min(maxRecoveryLevel, recoveryLevelForSource(maxRecoveryLevel, { deep, boss: false, eliteKills }) + directiveRecoveryBonus + incentiveRecoveryBonus);
+  const bossRecoveryLevel = Math.min(maxRecoveryLevel, recoveryLevelForSource(maxRecoveryLevel, { deep: true, boss: true, eliteKills }) + directiveRecoveryBonus + incentiveRecoveryBonus);
   const locationRecoveryLevel = Math.min(maxRecoveryLevel, ordinaryRecoveryLevel + 1);
   const actualDepth = source.actualDepth ?? deep;
   const locationName = source.locationName ?? (source.location ?? 'Unknown site').replaceAll('-', ' ');
   const factionName = source.faction === 'meridian' ? 'Meridian Compact' : source.faction === 'heliostat' ? 'Heliostat League' : source.faction === 'longarc' ? 'Long Arc Assembly' : 'Independent';
-  const rollQuality = (boss: boolean, minimum: RecoveryQualityGrade = 0) => Math.max(minimum, rollRecoveryQuality(random, { operationTier: source.operationTier ?? 1, threatBudget: source.threatBudget ?? 32, eliteKills, eliteProtocolCount: source.eliteProtocolCount ?? 0, deep: actualDepth, optionalObjectives: source.optionalObjectives ?? 0, environmentalComplications: source.environmentalComplications ?? 0, boss, location: source.location, faction: source.faction, factionReputation: source.factionReputation, directiveBonus: source.directiveQualityBonus ?? 0 })) as RecoveryQualityGrade;
-  const sponsoredChance = source.faction ? factionGearChance(source.factionReputation ?? 0, deep) : 0;
+  const rollQuality = (boss: boolean, minimum: RecoveryQualityGrade = 0) => Math.max(minimum, rollRecoveryQuality(random, { operationTier: source.operationTier ?? 1, threatBudget: source.threatBudget ?? 32, eliteKills, eliteProtocolCount: source.eliteProtocolCount ?? 0, deep: actualDepth, optionalObjectives: source.optionalObjectives ?? 0, environmentalComplications: source.environmentalComplications ?? 0, boss, location: source.location, faction: source.faction, factionReputation: source.factionReputation, directiveBonus: (source.directiveQualityBonus ?? 0) + Math.max(0, source.recoveryQualityBonus ?? 0) })) as RecoveryQualityGrade;
+  const sponsoredChance = source.faction ? Math.min(1, factionGearChance(source.factionReputation ?? 0, deep) + Math.max(0, source.sponsoredGearChanceBonus ?? 0)) : 0;
   const makeCampaignItem = (...args: Parameters<typeof makeItem>) => applyCampaignGearIdentity(makeItem(...args), source.campaignChapter);
   const makeRecoveredItem = (slot: EquipmentSlot, index: number) => {
     const recoveryQuality = rollQuality(actualDepth);
