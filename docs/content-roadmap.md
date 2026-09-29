@@ -12,7 +12,8 @@
 - **P21-D2 is complete and archived.** The Asteroid Refinery now uses a restrained, location-aware linear depth atmosphere/color treatment with independent QA disablement, protected gameplay-cue verification, and Android lifecycle coverage.
 - **P21-E is complete and archived.** The new refinery IBL, selective bloom, contact depth, and atmosphere now scale through the existing High/Balanced/Performance render budget while gameplay-critical cues remain full-strength; Browser and Android verification passed.
 - **P21-F1 is complete and archived.** The isolated QA-only WebGPU/TSL refinery backend now lazy-loads behind the P21-A boundary, reuses the authored asset pipeline, preserves camera/input/lifecycle parity, and falls back reproducibly to production WebGL2 on current Browser/Android CI.
-- **Resume P21-F2 next — Reproduce the proven refinery visual stack on WebGPU/TSL.**
+- **P21-F2 is complete and archived.** The QA-only WebGPU/TSL refinery slice now reproduces the proven P21-B–E effect contracts for direct comparison, records renderer/CI parity gaps explicitly, and preserves production WebGL2 plus Android fallback.
+- **Resume P21-F3 next — Measure WebGPU Android compatibility and delivery cost.**
 - **P20-E is closed and archived.** When global roadmap order later returns to P20, resume that sequence at **P20-F1 — Define and settle distinct repeatable-contract incentive profiles**.
 
 Only active/future executable work lives here. Completed and verified work belongs in [content-roadmap-archive.md](./content-roadmap-archive.md). Stable product rules live in [product-constraints.md](./product-constraints.md).
@@ -65,7 +66,7 @@ Only active/future executable work lives here. Completed and verified work belon
 
 - **P21-E complete / archived** — The refinery IBL, selective bloom, contact-depth, and atmosphere contributions now scale through the existing High/Balanced/Performance render budget; critical cues remain at 1.00, sustained degrade/recover still passes, and Browser E2E plus Android beta.573 verified coherent play across all three tiers. See the completion archive for evidence.
 
-- [ ] **P21-F2 — Reproduce the proven refinery visual stack on WebGPU/TSL** — Port only the verified P21-B–E refinery treatment needed for apples-to-apples comparison onto the isolated WebGPU/TSL path. Track unsupported material/post-processing differences explicitly instead of expanding scope to the whole game. **Done when:** deterministic captures can compare equivalent refinery content/effects between WebGL2 and WebGPU/TSL; known parity gaps are recorded; targeted visual/backend regressions, Browser E2E, and production build pass; and the Android APK still preserves a safe fallback path.
+- **P21-F2 complete / archived** — The QA-only WebGPU/TSL refinery slice now reproduces the proven P21-B–E visual contracts, captures a renderer-owned stack-off/stack-on WebGPU comparison, records the remaining PMREM/full-combat plus CI presentation/readback gaps explicitly, and preserves production WebGL2 with Android fallback. Final verification: Level 15 beta smoke #896, Browser E2E #1040, Android beta.604. See the completion archive for evidence.
 
 - [ ] **P21-F3 — Measure WebGPU Android compatibility and delivery cost** — Measure renderer initialization/fallback behavior, frame diagnostics, bundle/APK delta, and Android WebView compatibility for the completed WebGPU prototype without changing production defaults. **Done when:** reproducible browser and Android evidence records supported/unsupported behavior, bundle/APK impact, initialization differences, and renderer-specific defects; production WebGL2 remains intact; Browser E2E and production build pass; and the Android artifact is verified.
 
