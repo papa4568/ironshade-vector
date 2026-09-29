@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import handler, { config } from '../netlify/functions/api';
-import { uploadRunTelemetry } from '../src/game/network';
+import { loadOperationsSnapshot, loadRunTrace, uploadRunTelemetry } from '../src/game/network';
 import { getMockBlobCalls, getMockStoreJson, getMockStoreKeys, resetMockBlobStores, setMockMetricsContention } from './mocks/netlify-blobs';
 
 const context = (params: Record<string, string> = {}) => ({ params }) as never;
@@ -124,9 +124,17 @@ async function main() {
   const originalFetch = globalThis.fetch;
   let capturedHeaders: Headers | null = null;
   try {
+    globalThis.fetch = (async () => Response.json(operationsBody)) as typeof fetch;
+    const clientOperations = await loadOperationsSnapshot({ timeoutMs: 100 });
+    assert.equal(clientOperations.metrics.attempts, 3, 'client Operations snapshot validation must accept the real service response');
+
+    globalThis.fetch = (async () => Response.json(traceBody)) as typeof fetch;
+    const clientTrace = await loadRunTrace(secondKey, { timeoutMs: 100 });
+    assert.equal(clientTrace.tracePoints, 1, 'client trace normalization must derive tracePoints from the validated trace array');
+
     globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
       capturedHeaders = new Headers(init?.headers);
-      return Response.json({ id: 'client-run', metrics: { attempts: 0 } });
+      return Response.json({ id: 'client-run', metrics: operationsBody.metrics });
     }) as typeof fetch;
     await uploadRunTelemetry({
       contract: { id: 'client-contract', title: 'Client contract', locationName: 'Station', objectiveMode: 'pressure-recovery', operationTier: 2 } as any,
@@ -141,7 +149,7 @@ async function main() {
   assert.equal(existsSync('.github/workflows/fix-three-objective-beacon.yml'), false, 'completed objective-beacon migration workflow must stay retired');
   assert.equal(existsSync('scripts/apply-three-objective-beacon.mjs'), false, 'completed objective-beacon migration script must stay retired');
 
-  console.log('SERVICE_REGRESSIONS_PASS executable=handler idempotency=verified metrics=cas+reconcile validation=strict payloadBytes=bounded rateLimit=enabled clientKey=verified staleMigration=removed');
+  console.log('SERVICE_REGRESSIONS_PASS executable=handler idempotency=verified metrics=cas+reconcile validation=strict payloadBytes=bounded rateLimit=enabled clientResponses=validated clientKey=verified staleMigration=removed');
 }
 
 void main();
