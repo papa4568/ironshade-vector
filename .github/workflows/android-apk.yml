@@ -305,6 +305,12 @@ jobs:
           sha256sum Ironshade-Vector-Android-Smoke.apk | tee Ironshade-Vector-Android-Smoke.sha256
           echo "ANDROID_APK_PASS signing=$SIGNING_MODE version=${ANDROID_VERSION_NAME}(${ANDROID_VERSION_CODE}) size=$(du -h Ironshade-Vector-Android-Beta.apk | cut -f1)"
 
+      - name: Measure P21-F3 WebGPU delivery cost
+        env:
+          P21F3_APK_PATH: Ironshade-Vector-Android-Beta.apk
+          P21F3_REPORT_PATH: p21f3-webgpu-delivery.json
+        run: node scripts/measure-webgpu-delivery-cost.mjs
+
       - name: Enable KVM
         shell: bash
         run: |
@@ -365,6 +371,8 @@ jobs:
             android-fast-smoke.png
             android-fast-resume.png
             android-p21f1-webgpu.png
+            android-p21f3-webgpu.json
+            p21f3-webgpu-delivery.json
           if-no-files-found: warn
           retention-days: 90
         if: always()

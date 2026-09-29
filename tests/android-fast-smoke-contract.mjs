@@ -10,6 +10,7 @@ const chapter3Shell = fs.readFileSync(new URL('../scripts/android-chapter3-regre
 const chapter3Script = fs.readFileSync(new URL('../scripts/browser-chapter3-playthrough.mjs', import.meta.url), 'utf8');
 const workflow = fs.readFileSync(new URL('../.github/workflows/android-apk.yml', import.meta.url), 'utf8');
 const browserWorkflow = fs.readFileSync(new URL('../.github/workflows/browser-e2e.yml', import.meta.url), 'utf8');
+const p21f3Delivery = fs.readFileSync(new URL('../scripts/measure-webgpu-delivery-cost.mjs', import.meta.url), 'utf8');
 
 const requireText = (text, needle, label) => {
   if (!text.includes(needle)) throw new Error(`${label} missing required marker: ${needle}`);
@@ -55,6 +56,8 @@ for (const marker of [
   'ANDROID_P22B2_OBJECTIVE_FLOW_PASS',
   'ANDROID_FAST_LIFECYCLE_RESUME_PASS',
   'ANDROID_P21F1_WEBGPU_PASS',
+  'ANDROID_P21F3_WEBGPU_COMPAT_PASS',
+  'android-p21f3-webgpu.json',
   "canvas?.dataset.graphicsPathRequested === 'webgpu'",
   "['webgpu', 'webgl2'].includes(canvas?.dataset.graphicsPathLoaded ?? '')",
 ]) requireText(runtime, marker, 'runtime harness');
@@ -71,6 +74,8 @@ requireText(workflow, 'npm run test:android-fast-smoke', 'Android workflow');
 requireText(workflow, 'npm run build', 'Android workflow production build');
 requireText(workflow, "set -euo pipefail;", 'Android workflow');
 requireText(workflow, 'actions/upload-artifact@v7', 'Android workflow');
+requireText(workflow, 'node scripts/measure-webgpu-delivery-cost.mjs', 'Android workflow');
+requireText(workflow, 'p21f3-webgpu-delivery.json', 'Android workflow');
 requireText(workflow, "      - main", 'Android workflow main push');
 requireText(workflow, "      - 'tests/**'", 'Android workflow test push path');
 requireText(browserWorkflow, 'name: Browser E2E', 'Browser workflow');
@@ -189,6 +194,8 @@ for (const artifact of [
   'android-fast-smoke.png',
   'android-fast-resume.png',
   'android-p21f1-webgpu.png',
+  'android-p21f3-webgpu.json',
+  'p21f3-webgpu-delivery.json',
 ]) requireText(workflow, artifact, 'Android workflow artifact upload');
 
 for (const marker of [
@@ -327,3 +334,13 @@ if (workflow.slice(fullGateStart).includes('needs: build-apk\n')) {
 }
 
 console.log('ANDROID_FAST_SMOKE_CONTRACT_PASS entry=scripts/android-fast-smoke.sh defaultPush=fast-only repeatable=dedicated-dispatch settings=dedicated-dispatch chapter3=dedicated-full-regression extended=parallel-runtime fullGate=aggregated scheduled=weekly manualMode=full-or-fast browser=required productionBuild=required touch=required lifecycle=required artifacts=required failFast=required');
+
+
+for (const marker of [
+  'P21F3_WEBGPU_DELIVERY_PASS',
+  'three.webgpu-',
+  'three.tsl-',
+  'webGpuRefineryRenderer-',
+  'incrementalCompressedBytes',
+  'compressedPercentOfApk',
+]) requireText(p21f3Delivery, marker, 'P21-F3 delivery measurement');
