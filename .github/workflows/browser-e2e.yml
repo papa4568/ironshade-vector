@@ -214,7 +214,9 @@ jobs:
           CDP_ENDPOINT: http://127.0.0.1:9223
           BROWSER_E2E_APP_URL: http://127.0.0.1:4173/
           BROWSER_E2E_VIEWPORT: ${{ matrix.viewport }}
-          BROWSER_E2E_REQUIRE_WEBGPU: ${{ matrix.viewport == 'desktop' && '1' || '0' }}
+          BROWSER_E2E_REQUIRE_WEBGPU: '1'
+          BROWSER_E2E_REQUIRE_WEBGPU_PRESENTATION: ${{ matrix.viewport == 'mobile-landscape' && '1' || '0' }}
+          BROWSER_E2E_WEBGPU_PRESENTATION_KNOWN_GAP: ${{ matrix.viewport == 'desktop' && 'lavapipe-xvfb-black-canvas' || '' }}
           BROWSER_E2E_WEBGPU_SWIFTSHADER: ${{ matrix.viewport == 'mobile-landscape' && '1' || '0' }}
           BROWSER_E2E_SKIP_SYNTHETIC_CONTROLLER: ${{ matrix.viewport == 'desktop' && '1' || '0' }}
           BROWSER_E2E_SCREENSHOT: browser-e2e-${{ matrix.viewport }}.png

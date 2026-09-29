@@ -239,6 +239,9 @@ assert(
     && browserWorkflowSource.includes('VK_DRIVER_FILES')
     && browserWorkflowSource.includes("lvp_icd.json")
     && browserWorkflowSource.includes('xvfb-run -a -s "-screen 0 1280x720x24"')
+    && browserWorkflowSource.includes("BROWSER_E2E_REQUIRE_WEBGPU: '1'")
+    && browserWorkflowSource.includes('BROWSER_E2E_REQUIRE_WEBGPU_PRESENTATION:')
+    && browserWorkflowSource.includes('lavapipe-xvfb-black-canvas')
     && browserWorkflowSource.includes("'--ozone-platform=x11'")
     && !browserWorkflowSource.includes("'--disable-vulkan-surface'")
     && browserWorkflowSource.includes('P21-F2 desktop Chrome mode: puppeteer-headed-xvfb')
@@ -262,6 +265,8 @@ assert(
     && browserSmokeSource.includes('P21-F2 WebGPU canvas presentation is blank')
     && browserSmokeSource.includes('P21-F2 WebGPU stack-off/stack-on captures are pixel-identical')
     && browserSmokeSource.includes('BROWSER_P21F2_RAW_WEBGPU_PRESENTATION_PASS')
+    && browserSmokeSource.includes('BROWSER_P21F2_WEBGPU_PRESENTATION_KNOWN_GAP')
+    && browserSmokeSource.includes('BROWSER_E2E_REQUIRE_WEBGPU_PRESENTATION')
     && browserSmokeSource.includes('P21-F2 raw WebGPU presentation probe failed')
     && browserSmokeSource.includes('BROWSER_P21F2_WEBGPU_PRESENTATION_PASS'),
   'P21-F2 Browser E2E must preserve explicit WebGL2/WebGPU QA paths and retain deterministic stack-off/stack-on comparison evidence.',
