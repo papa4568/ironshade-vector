@@ -5,6 +5,7 @@ const appUrl = process.env.BROWSER_E2E_APP_URL ?? 'http://127.0.0.1:4173/';
 const requestedGraphicsPath = (process.env.BROWSER_E2E_GRAPHICS_PATH ?? '').trim();
 const requireWebGpuComparison = process.env.BROWSER_E2E_REQUIRE_WEBGPU === '1';
 const webGpuSwiftShaderCi = process.env.BROWSER_E2E_WEBGPU_SWIFTSHADER === '1';
+const skipSyntheticControllerAudit = process.env.BROWSER_E2E_SKIP_SYNTHETIC_CONTROLLER === '1';
 const navigationUrl = (() => {
   if (!requestedGraphicsPath) return appUrl;
   const url = new URL(appUrl);
@@ -814,6 +815,11 @@ async function primaryNavigationInputAudit() {
   await waitFor(`document.querySelector('.ship-hub.area-operations') !== null`, 'P19-B keyboard area activation');
   await dispatchKey('Escape', 'Escape', 27);
   await waitFor(`document.querySelector('.ship-hub.area-command') !== null && document.activeElement?.getAttribute('aria-label') === 'Command'`, 'P19-B keyboard back to Command');
+
+  if (skipSyntheticControllerAudit) {
+    console.log('BROWSER_P19_COMMAND_INPUT_PASS keyboard=arrows+space+escape controller=skipped-headed-webgpu-ci routing=shared');
+    return;
+  }
 
   await evaluate(`(() => {
     globalThis.__p19OriginalGetGamepads = typeof navigator.getGamepads === 'function' ? navigator.getGamepads.bind(navigator) : null;

@@ -216,6 +216,7 @@ jobs:
           BROWSER_E2E_VIEWPORT: ${{ matrix.viewport }}
           BROWSER_E2E_REQUIRE_WEBGPU: ${{ matrix.viewport == 'desktop' && '1' || '0' }}
           BROWSER_E2E_WEBGPU_SWIFTSHADER: ${{ matrix.viewport == 'mobile-landscape' && '1' || '0' }}
+          BROWSER_E2E_SKIP_SYNTHETIC_CONTROLLER: ${{ matrix.viewport == 'desktop' && '1' || '0' }}
           BROWSER_E2E_SCREENSHOT: browser-e2e-${{ matrix.viewport }}.png
           BROWSER_E2E_COMMAND_SCREENSHOT: browser-command-${{ matrix.viewport }}.png
           BROWSER_E2E_CLASS_SCREENSHOT: browser-class-${{ matrix.viewport }}.png
