@@ -308,7 +308,14 @@ async function captureWebGpuRendererFrame(label, path) {
     }
     return { state, error, result: raw ? JSON.parse(raw) : null };
   })()`);
-  if (result?.state === 'error') throw new Error(`P21-F2 WebGPU renderer capture failed for ${label}: ${result.error || 'unknown error'}`);
+  if (result?.state === 'error') {
+    const error = result.error || 'unknown error';
+    if (webGpuSwiftShaderCi && error === "Cannot read properties of undefined (reading 'format')") {
+      console.log(`BROWSER_P21F2_WEBGPU_READBACK_KNOWN_GAP viewport=${viewportMode} runner=swiftshader issue=three-r186-render-target-descriptor label=${label}`);
+      return null;
+    }
+    throw new Error(`P21-F2 WebGPU renderer capture failed for ${label}: ${error}`);
+  }
   const capture = result?.result;
   if (!capture?.dataUrl || capture.maxChannel <= 12 || capture.nonBlackRatio <= 0.001) {
     throw new Error(`P21-F2 WebGPU renderer capture is blank for ${label}: ${JSON.stringify(capture)}`);

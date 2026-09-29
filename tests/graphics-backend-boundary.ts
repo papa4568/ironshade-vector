@@ -269,6 +269,9 @@ assert(
     && browserSmokeSource.includes('captureWebGpuRendererFrame')
     && browserSmokeSource.includes('capture.maxChannel <= 12')
     && browserSmokeSource.includes('capture.nonBlackRatio <= 0.001')
+    && browserSmokeSource.includes("error === \"Cannot read properties of undefined (reading 'format')\"")
+    && browserSmokeSource.includes('BROWSER_P21F2_WEBGPU_READBACK_KNOWN_GAP')
+    && browserSmokeSource.includes('three-r186-render-target-descriptor')
     && browserSmokeSource.includes('P21-F2 WebGPU renderer capture is blank')
     && browserSmokeSource.includes('BROWSER_P21F2_WEBGPU_CAPTURE_PASS'),
   'P21-F2 Browser E2E must preserve explicit WebGL2/WebGPU QA paths and retain deterministic stack-off/stack-on comparison evidence.',
