@@ -352,7 +352,7 @@ export const repeatableIncentiveProfiles: Record<ContractArchetype, RepeatableIn
     chase: 'technical-recovery',
     safe: {
       ...neutralRepeatableDepth(),
-      resourceMultipliers: { electronics: 1.15, medstock: 1.2, components: 1.15 },
+      resourceMultipliers: { electronics: 1.15, medstock: 1.3, components: 1.5 },
       recoveryQualityBonus: 0.35,
       recoveryLevelBonus: 1,
     },
