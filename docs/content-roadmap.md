@@ -2,10 +2,10 @@
 
 ## New-chat handoff — resume here first
 
-- All previously completed P20–P23 work plus P24-A–P24-C is preserved in [content-roadmap-archive.md](./content-roadmap-archive.md).
+- All previously completed P20–P23 work plus P24-A–P24-D is preserved in [content-roadmap-archive.md](./content-roadmap-archive.md).
 - The 2026-09-29 code audit has been reduced to **release-critical work only**. Non-blocking cleanup/refactor ideas were removed from the active queue.
 - Priority order is intentional: **P24 correctness/data safety → P25 release/platform/security → P26 telemetry scale resilience**.
-- **Next executable item: P24-D — Validate Operations API responses at runtime.**
+- **Next executable item: P25-A — Establish persistent Android release signing and separate debug artifacts.**
 
 Only active/future executable work lives here. Completed and verified work belongs in [content-roadmap-archive.md](./content-roadmap-archive.md). Stable product rules live in [product-constraints.md](./product-constraints.md).
 
@@ -17,10 +17,6 @@ Only active/future executable work lives here. Completed and verified work belon
 - An item is complete only when its requested behavior works, relevant regression checks pass, the production build succeeds, and the Android deliverable is verified as required by the repository workflow.
 - After verified completion, move the completion detail/evidence to the archive and remove the item from this file.
 - If repository evidence shows an active item is already complete, verify that evidence before archiving it. If only part is complete, rewrite the item around the remaining work.
-
-## P24 — Critical Runtime Correctness and Data Safety
-
-- [ ] **P24-D — Validate Operations API responses at runtime** — Replace unchecked generic JSON casts for Operations snapshots, telemetry responses, and run traces with runtime validation/normalization. Malformed-but-valid JSON must fail as a controlled `invalid-response` condition instead of entering gameplay/UI state.
 
 ## P25 — Release, Platform, and Security Blockers
 
