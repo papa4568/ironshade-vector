@@ -64,7 +64,7 @@ export type OperationDirective = { id: string; seed: number; tier: number; locat
 export type DirectiveState = { unlocked: boolean; inventory: OperationDirective[]; preparedId: string | null; completed: number; highestTier: number; lastBeat: string };
 export type CampaignState = { version: 1; shipSystemSchemaVersion: typeof SHIP_SYSTEM_SCHEMA_VERSION; cycle: number; contractsCompleted: number; resources: SalvageWallet; consumables: ConsumableInventory; reputation: Record<FactionId, number>; shipUpgrades: Record<ShipUpgradeId, number>; shipSpecialization: ShipSpecializationId | null; anomalyRecovered: boolean; dailyCompletedDate: string | null; lastOutcome: string; story: StoryState; escalation: EscalationState; directives: DirectiveState };
 export type FactionProfile = { id: FactionId; name: string; history: string; economy: string; culture: string; technology: string; goals: string; strengths: string; failures: string; divisions: string; unlocks: string[] };
-export type Contract = { id: string; sponsor: FactionId; archetype: ContractArchetype; location: LocationId; locationName: string; title: string; objective: string; objectiveMode: ObjectiveMode; objectiveSteps: string[]; briefing: string; conditions: ConditionId[]; conditionLabels: string[]; directorPreview: string; deepTarget: string; rewardBase: Partial<SalvageWallet>; reputationGain: number; contestedFaction?: FactionId; priority: boolean; anomalyOpportunity: boolean; daily?: boolean; operationDate?: string; seed: number; storyArc?: StoryArcId; storyStep?: number; storyFinale?: boolean; storyChapter?: string; storyClue?: boolean; storyAftermath?: string; campaignChapter?: 'black-lattice' | 'dead-reckoning' | 'dead-reckoning-interdiction' | 'parallax-debt'; campaignStep?: number; campaignFinale?: boolean; campaignEvidence?: string; campaignAftermath?: string; escalationStage?: number; escalationFinale?: boolean; escalationDate?: string; megastructure?: MegastructureId; megastructureStage?: number; megastructureStageCount?: number; megastructureZoneNames?: string[]; megastructureOptionalLabel?: string; megastructureBossTarget?: string; megastructureTransitionRoute?: string; megastructureTransitionDetail?: string; megastructureArrivalCue?: string; megastructureContinuityConditions?: ConditionId[]; megastructureContinuityDetail?: string; operationTier?: number; encounterRating?: number; threatBudget?: number; maxRecoveryLevel?: number; maxFrameGeneration?: 1 | 2 | 3 | 4 | 5 | 6; eliteProtocolSlots?: number; environmentalEventSlots?: number; combatEffectiveness?: number; monsterLevel?: number; monsterDamageScale?: number; operationRewardMultiplier?: number; chapterRewardMultiplier?: number; xpFloor?: number; encounterPressureBonus?: number; encounterPattern?: 'swarm' | 'mixed' | 'elite-led'; reserveCount?: number; directiveId?: string; directiveTier?: number; directiveModifierIds?: DirectiveModifierId[]; directiveTargetClass?: DirectiveTargetClass; directiveMaterialMultiplier?: number; directiveQualityBonus?: number; directiveSingularChanceBonus?: number; directiveRecoveryLevelBonus?: number; directiveEventBias?: string[]; directiveProtocolBias?: string[]; directiveThreatBonus?: number; directiveProtocolBonus?: number; directiveProtocolDensity?: number; directiveEventBonus?: number; directiveReserveBonus?: number; directiveRiskScore?: number; directiveSource?: string; standardRepeatable?: boolean; repeatableIdentity?: { loop: string; safePattern: string; deepPattern: string }; commandTrace?: boolean };
+export type Contract = { id: string; sponsor: FactionId; archetype: ContractArchetype; location: LocationId; locationName: string; title: string; objective: string; objectiveMode: ObjectiveMode; objectiveSteps: string[]; briefing: string; conditions: ConditionId[]; conditionLabels: string[]; directorPreview: string; deepTarget: string; rewardBase: Partial<SalvageWallet>; reputationGain: number; contestedFaction?: FactionId; priority: boolean; anomalyOpportunity: boolean; daily?: boolean; operationDate?: string; seed: number; storyArc?: StoryArcId; storyStep?: number; storyFinale?: boolean; storyChapter?: string; storyClue?: boolean; storyAftermath?: string; campaignChapter?: 'black-lattice' | 'dead-reckoning' | 'dead-reckoning-interdiction' | 'parallax-debt'; campaignStep?: number; campaignFinale?: boolean; campaignEvidence?: string; campaignAftermath?: string; escalationStage?: number; escalationFinale?: boolean; escalationDate?: string; megastructure?: MegastructureId; megastructureStage?: number; megastructureStageCount?: number; megastructureZoneNames?: string[]; megastructureOptionalLabel?: string; megastructureBossTarget?: string; megastructureTransitionRoute?: string; megastructureTransitionDetail?: string; megastructureArrivalCue?: string; megastructureContinuityConditions?: ConditionId[]; megastructureContinuityDetail?: string; operationTier?: number; encounterRating?: number; threatBudget?: number; maxRecoveryLevel?: number; maxFrameGeneration?: 1 | 2 | 3 | 4 | 5 | 6; eliteProtocolSlots?: number; environmentalEventSlots?: number; combatEffectiveness?: number; monsterLevel?: number; monsterDamageScale?: number; operationRewardMultiplier?: number; chapterRewardMultiplier?: number; xpFloor?: number; encounterPressureBonus?: number; encounterPattern?: 'swarm' | 'mixed' | 'elite-led'; reserveCount?: number; directiveId?: string; directiveTier?: number; directiveModifierIds?: DirectiveModifierId[]; directiveTargetClass?: DirectiveTargetClass; directiveMaterialMultiplier?: number; directiveQualityBonus?: number; directiveSingularChanceBonus?: number; directiveRecoveryLevelBonus?: number; directiveEventBias?: string[]; directiveProtocolBias?: string[]; directiveThreatBonus?: number; directiveProtocolBonus?: number; directiveProtocolDensity?: number; directiveEventBonus?: number; directiveReserveBonus?: number; directiveRiskScore?: number; directiveSource?: string; standardRepeatable?: boolean; repeatableIdentity?: { loop: string; safePattern: string; deepPattern: string }; repeatableIncentive?: RepeatableIncentiveProfile; commandTrace?: boolean };
 export type DailyOperationSpec = { date: string; seed: number; codename: string; sponsor: FactionId; archetype: ContractArchetype; objectiveMode: ObjectiveMode; location: LocationId; conditions: ConditionId[]; challenge: string; generatedAt: string };
 export type CampaignReward = { campaign: CampaignState; gained: SalvageWallet; reputationDelta: Partial<Record<FactionId, number>>; anomalyRecovered: boolean; depth: 'safe' | 'deep' };
 export type UpgradeDefinition = { id: ShipUpgradeId; name: string; area: 'Engineering' | 'Cargo' | 'Medical' | 'Fabrication'; ownerFaction: FactionId; dependency: ShipUpgradeId; description: string; benefits: string[]; costs: Partial<SalvageWallet>[]; tiers: ShipSystemTierDefinition[] };
@@ -285,6 +285,100 @@ const locations: Array<{ id: LocationId; name: string }> = [
 ];
 export function locationNameFor(id: LocationId) { return locations.find(location => location.id === id)?.name ?? (id === 'lattice-annex' ? 'Khepri Survey Annex' : id === 'momentum-exchange' ? 'Cislunar Momentum Exchange' : id === 'cryo-reserve' ? 'Umbra Cryogenic Propellant Reserve' : id === 'parallax-array' ? 'Cislunar Parallax Array' : id); }
 const archetypes: Array<{ id: ContractArchetype; sponsor: FactionId }> = [{ id: 'salvage', sponsor: 'longarc' }, { id: 'boarding', sponsor: 'meridian' }, { id: 'stabilization', sponsor: 'heliostat' }];
+
+export type RepeatableRewardResourceId = Exclude<ResourceId, 'rareTech'>;
+export type RepeatableIncentiveDepth = {
+  resourceMultipliers: Partial<Record<RepeatableRewardResourceId, number>>;
+  sponsorReputationBonus: number;
+  sponsoredGearChanceBonus: number;
+  recoveryQualityBonus: number;
+  recoveryLevelBonus: number;
+  optionalObjectiveBase: number;
+};
+export type RepeatableIncentiveProfile = {
+  family: ContractArchetype;
+  chase: 'material-recovery' | 'sponsored-equipment' | 'technical-recovery';
+  safe: RepeatableIncentiveDepth;
+  deep: RepeatableIncentiveDepth;
+  salvageTagsPerOptional?: number;
+  salvageTagOptionalCap?: number;
+};
+
+const neutralRepeatableDepth = (): RepeatableIncentiveDepth => ({
+  resourceMultipliers: {},
+  sponsorReputationBonus: 0,
+  sponsoredGearChanceBonus: 0,
+  recoveryQualityBonus: 0,
+  recoveryLevelBonus: 0,
+  optionalObjectiveBase: 0,
+});
+
+export const repeatableIncentiveProfiles: Record<ContractArchetype, RepeatableIncentiveProfile> = {
+  salvage: {
+    family: 'salvage',
+    chase: 'material-recovery',
+    safe: {
+      ...neutralRepeatableDepth(),
+      resourceMultipliers: { credits: 0.95, alloys: 1.3, electronics: 1.12, components: 1.2 },
+    },
+    deep: {
+      ...neutralRepeatableDepth(),
+      resourceMultipliers: { credits: 0.9, alloys: 1.5, electronics: 1.25, components: 1.4 },
+      recoveryQualityBonus: 0.15,
+      recoveryLevelBonus: 1,
+      optionalObjectiveBase: 1,
+    },
+    salvageTagsPerOptional: 4,
+    salvageTagOptionalCap: 2,
+  },
+  boarding: {
+    family: 'boarding',
+    chase: 'sponsored-equipment',
+    safe: {
+      ...neutralRepeatableDepth(),
+      resourceMultipliers: { credits: 1.15, alloys: 0.95 },
+      sponsorReputationBonus: 1,
+      sponsoredGearChanceBonus: 0.08,
+    },
+    deep: {
+      ...neutralRepeatableDepth(),
+      resourceMultipliers: { credits: 1, alloys: 0.9 },
+      sponsorReputationBonus: 1,
+      sponsoredGearChanceBonus: 0.18,
+    },
+  },
+  stabilization: {
+    family: 'stabilization',
+    chase: 'technical-recovery',
+    safe: {
+      ...neutralRepeatableDepth(),
+      resourceMultipliers: { electronics: 1.15, medstock: 1.2, components: 1.15 },
+      recoveryQualityBonus: 0.35,
+      recoveryLevelBonus: 1,
+    },
+    deep: {
+      ...neutralRepeatableDepth(),
+      resourceMultipliers: { credits: 0.95, electronics: 1.05, medstock: 1.05 },
+      recoveryQualityBonus: 0.85,
+      recoveryLevelBonus: 3,
+    },
+  },
+};
+
+export function repeatableRecoveryModifiers(contract: Pick<Contract, 'standardRepeatable' | 'repeatableIncentive'>, depth: 'safe' | 'deep', salvageTags: number) {
+  const profile = contract.standardRepeatable ? contract.repeatableIncentive : undefined;
+  if (!profile) return { optionalObjectives: 0, sponsoredGearChanceBonus: 0, recoveryQualityBonus: 0, recoveryLevelBonus: 0 };
+  const incentive = profile[depth];
+  const tagObjectives = profile.salvageTagsPerOptional
+    ? Math.min(profile.salvageTagOptionalCap ?? 0, Math.floor(Math.max(0, salvageTags) / profile.salvageTagsPerOptional))
+    : 0;
+  return {
+    optionalObjectives: incentive.optionalObjectiveBase + tagObjectives,
+    sponsoredGearChanceBonus: incentive.sponsoredGearChanceBonus,
+    recoveryQualityBonus: incentive.recoveryQualityBonus,
+    recoveryLevelBonus: incentive.recoveryLevelBonus,
+  };
+}
 
 export function factionDisplayName(id: FactionId) { return factions.find(faction => faction.id === id)?.name ?? id; }
 
@@ -787,6 +881,7 @@ export function generateStandardContracts(campaign: CampaignState): Contract[] {
       reserveCount,
       standardRepeatable: true,
       repeatableIdentity,
+      repeatableIncentive: repeatableIncentiveProfiles[entry.id],
     };
   });
 }
@@ -800,7 +895,7 @@ export function generateContracts(campaign: CampaignState): Contract[] {
   return standard.map((contract, index) => index === replacementIndex ? rareContract : contract);
 }
 
-function walletAdd(target: SalvageWallet, source: Partial<SalvageWallet>, multiplier: number) { for (const key of Object.keys(target) as ResourceId[]) { if (key === 'rareTech') continue; target[key] += Math.max(0, Math.round((source[key] ?? 0) * multiplier)); } }
+function walletAdd(target: SalvageWallet, source: Partial<SalvageWallet>, multiplier: number, resourceMultipliers: Partial<Record<RepeatableRewardResourceId, number>> = {}) { for (const key of Object.keys(target) as ResourceId[]) { if (key === 'rareTech') continue; const resourceMultiplier = resourceMultipliers[key as RepeatableRewardResourceId] ?? 1; target[key] += Math.max(0, Math.round((source[key] ?? 0) * multiplier * resourceMultiplier)); } }
 
 export function directiveTraceRecovery(contract: Pick<Contract, 'directiveTier' | 'directiveTargetClass'>, depth: 'safe' | 'deep') {
   return depth === 'deep' && (contract.directiveTier ?? 0) >= 6 && contract.directiveTargetClass === 'command-target' ? 1 : 0;
@@ -822,11 +917,12 @@ export function settleContract(campaign: CampaignState, contract: Contract, dept
   const priorityMultiplier = contract.priority ? 1.18 : 1;
   const firstDailyCompletion = !!contract.daily && campaign.dailyCompletedDate !== contract.operationDate;
   const dailyMultiplier = firstDailyCompletion ? 1.15 : 1;
-  walletAdd(gained, contract.rewardBase, depthMultiplier * tagMultiplier * cargoMultiplier * priorityMultiplier * dailyMultiplier * expeditionStageMultiplier * optionalMultiplier * (contract.operationRewardMultiplier ?? 1));
+  const repeatableIncentive = contract.standardRepeatable ? contract.repeatableIncentive?.[depth] : undefined;
+  walletAdd(gained, contract.rewardBase, depthMultiplier * tagMultiplier * cargoMultiplier * priorityMultiplier * dailyMultiplier * expeditionStageMultiplier * optionalMultiplier * (contract.operationRewardMultiplier ?? 1), repeatableIncentive?.resourceMultipliers);
   const anomalyRecovered = depth === 'deep' && contract.anomalyOpportunity && !campaign.anomalyRecovered;
   gained.rareTech = (anomalyRecovered ? 1 : 0) + directiveTraceRecovery(contract, depth);
   const expeditionReputation = contract.megastructure ? Math.max(0, zonesCompleted - 1) : 0;
-  const requestedReputationDelta: Partial<Record<FactionId, number>> = { [contract.sponsor]: contract.reputationGain + expeditionReputation + (depth === 'deep' ? 2 : 0) }; if (contract.contestedFaction && depth === 'deep') requestedReputationDelta[contract.contestedFaction] = -1; const reputation = { ...campaign.reputation }; const reputationDelta: Partial<Record<FactionId, number>> = {}; for (const [key, delta] of Object.entries(requestedReputationDelta) as Array<[FactionId, number]>) { const before = reputation[key]; const after = Math.max(-10, Math.min(20, before + delta)); reputation[key] = after; reputationDelta[key] = after - before; } const resources = { ...campaign.resources }; for (const key of Object.keys(resources) as ResourceId[]) resources[key] += gained[key]; const expeditionSummary = contract.megastructure ? ` // ${zonesCompleted}/${contract.megastructureStageCount ?? 4} spaces // ${optionalRecovered} optional recoveries` : '';
+  const requestedReputationDelta: Partial<Record<FactionId, number>> = { [contract.sponsor]: contract.reputationGain + expeditionReputation + (depth === 'deep' ? 2 : 0) + (repeatableIncentive?.sponsorReputationBonus ?? 0) }; if (contract.contestedFaction && depth === 'deep') requestedReputationDelta[contract.contestedFaction] = -1; const reputation = { ...campaign.reputation }; const reputationDelta: Partial<Record<FactionId, number>> = {}; for (const [key, delta] of Object.entries(requestedReputationDelta) as Array<[FactionId, number]>) { const before = reputation[key]; const after = Math.max(-10, Math.min(20, before + delta)); reputation[key] = after; reputationDelta[key] = after - before; } const resources = { ...campaign.resources }; for (const key of Object.keys(resources) as ResourceId[]) resources[key] += gained[key]; const expeditionSummary = contract.megastructure ? ` // ${zonesCompleted}/${contract.megastructureStageCount ?? 4} spaces // ${optionalRecovered} optional recoveries` : '';
   return { campaign: { ...campaign, cycle: campaign.cycle + 1, contractsCompleted: campaign.contractsCompleted + 1, resources, reputation, anomalyRecovered: campaign.anomalyRecovered || anomalyRecovered, dailyCompletedDate: firstDailyCompletion ? contract.operationDate ?? campaign.dailyCompletedDate : campaign.dailyCompletedDate, lastOutcome: `${contract.title} // ${depth === 'deep' ? 'deep extraction' : 'safe extraction'} // ${salvageTags} salvage tags banked${expeditionSummary}` }, gained, reputationDelta, anomalyRecovered, depth };
 }
 
