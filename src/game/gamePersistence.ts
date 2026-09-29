@@ -50,7 +50,7 @@ function fallbackSnapshot(storage: StorageLike): GameStateSnapshot {
     // If the guard cannot be read, prefer a clean state over reviving older split-save progression.
     return cleanSnapshot();
   }
-  return fallbackSnapshot(storage);
+  return legacySnapshot();
 }
 
 function persistedEnvelope(profile: PlayerProfile, campaign: CampaignState): PersistedGameState {
