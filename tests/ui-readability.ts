@@ -224,7 +224,7 @@ assert(!shipHub.includes('command-nav-grid'), 'Overview still duplicates the ful
 assert((statsPanel.match(/Weapon stat glossary/g) ?? []).length === 1, 'Weapon stat help should be shared once, not repeated per weapon.');
 assert(!statsPanel.includes('What these numbers mean'), 'Per-weapon duplicate glossary remains.');
 assert(armory.includes('compact-discovery') && !armory.includes('Build changes save automatically on this device.'), 'Equipment Bay still shows repetitive instructional/status chrome.');
-assert(combat.includes('mission-build-label') && !combat.includes('objective-progress-chip') && combat.includes("const focusEnemy = hud.bossActive ? null : lockedHostile") && combat.includes("(!coarse || hud.classActive)"), 'Combat HUD still duplicates objective guidance or permanently renders secondary target/class panels.');
+assert(combat.includes('mission-build-label') && !combat.includes('objective-progress-chip') && combat.includes("const focusEnemy = hud.bossActive ? null : lockedHostile") && combat.includes("(!compactLayout || hud.classActive)"), 'Combat HUD still duplicates objective guidance or permanently renders secondary target/class panels.');
 assert(combat.includes('hostileRouteMode') && combat.includes('objectiveRouteMode'), 'Combat cleanup guidance is missing obstacle-aware route state.');
 const gameRootRule = rootCss.match(/\.game-root\s*\{[^}]*\}/)?.[0] ?? '';
 const gameCanvasRule = rootCss.match(/\.game-canvas\s*\{[^}]*\}/)?.[0] ?? '';

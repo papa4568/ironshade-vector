@@ -126,7 +126,7 @@ const androidSmokeSource = readFileSync(resolve(root, 'scripts/android-runtime-s
 const browserWorkflowSource = readFileSync(resolve(root, '.github/workflows/browser-e2e.yml'), 'utf8');
 
 assert(
-  gameCanvasSource.includes("createCombatGraphicsBackend(canvas, coarse, undefined, graphicsPathSelection.selectedId)")
+  gameCanvasSource.includes("createCombatGraphicsBackend(canvas, compactLayout, undefined, graphicsPathSelection.selectedId)")
     && gameCanvasSource.includes("useRef<CombatGraphicsBackend | null>(null)")
     && !gameCanvasSource.includes('new ThreeCombatRenderer(')
     && !gameCanvasSource.includes('ThreeCombatRenderer.isSupported()'),
@@ -197,7 +197,7 @@ assert(
     && gameCanvasSource.includes('canvas.dataset.graphicsPathSelection = graphicsPathSelection.mode')
     && gameCanvasSource.includes("canvas.dataset.graphicsPathRequested = graphicsPathSelection.requestedId ?? ''")
     && gameCanvasSource.includes('canvas.dataset.graphicsPathLoaded = loadedGraphicsPath')
-    && gameCanvasSource.includes("${activeMissionRef.current.location}:${coarse ? 'touch' : 'pointer'}:${loadedGraphicsPath}"),
+    && gameCanvasSource.includes("${activeMissionRef.current.location}:${compactLayout ? 'touch' : 'pointer'}:${loadedGraphicsPath}"),
   'P21-A2 combat telemetry must expose requested/loaded path alongside the existing performance scenario without touching simulation state.',
 );
 assert(
