@@ -2,23 +2,9 @@
 
 ## New-chat handoff — resume here first
 
-- **P23 is complete and archived.** Full Android verification now builds the APK once, fans out repeatable-family, Settings, Chapter 3, and remaining runtime/persistence/authored-asset coverage in parallel, then aggregates evidence behind one required gate. Normal `main` pushes remain fast-only.
-- **P22 is complete and archived.** The full playable-UI audit closed the remaining fixed-pixel outliers and verified the reduced baseline across management, contract preparation, combat, dialogs, and compact landscape.
-- **P21-A1 is complete and archived.** Combat rendering now enters through an explicit WebGL2 backend boundary with targeted create/render/resize/pointer/dispose coverage and verified Android touch/lifecycle behavior.
-- **P21-A2 is complete and archived.** The existing deterministic Asteroid Refinery QA route now supports opt-in graphics-path selection and loaded-path/performance telemetry while production Android remains WebGL2.
-- **P21-B is complete and archived.** The Asteroid Refinery WebGL2 recipe now includes a bounded PMREM IBL contribution with deterministic off/on visual evidence and verified Android lifecycle/resource cleanup.
-- **P21-C is complete and archived.** The Asteroid Refinery WebGL2 slice now uses selective, refinery-scoped emissive bloom with deterministic off/on evidence, protected gameplay-cue groups, a 0–1 runtime cost control, and verified Android lifecycle behavior.
-- **P21-D1 is complete and archived.** The Asteroid Refinery now has one bounded, scene-only soft contact-grounding pass with deterministic off/on evidence and verified Android lifecycle behavior.
-- **P21-D2 is complete and archived.** The Asteroid Refinery now uses a restrained, location-aware linear depth atmosphere/color treatment with independent QA disablement, protected gameplay-cue verification, and Android lifecycle coverage.
-- **P21-E is complete and archived.** The new refinery IBL, selective bloom, contact depth, and atmosphere now scale through the existing High/Balanced/Performance render budget while gameplay-critical cues remain full-strength; Browser and Android verification passed.
-- **P21-F1 is complete and archived.** The isolated QA-only WebGPU/TSL refinery backend now lazy-loads behind the P21-A boundary, reuses the authored asset pipeline, preserves camera/input/lifecycle parity, and falls back reproducibly to production WebGL2 on current Browser/Android CI.
-- **P21-F2 is complete and archived.** The QA-only WebGPU/TSL refinery slice now reproduces the proven P21-B–E effect contracts for direct comparison, records renderer/CI parity gaps explicitly, and preserves production WebGL2 plus Android fallback.
-- **P21-F3 is complete and archived.** Browser and Android now record WebGPU support/fallback behavior plus exact lazy-chunk/APK delivery cost while production WebGL2 remains unchanged.
-- **P21-G is complete and archived.** The measured engine decision keeps Three.js WebGL2 as the production combat renderer, retains WebGPU/TSL as a QA-only comparison harness, and does not start a Godot/Unity-class replatform. Level 15 beta smoke #905, Browser E2E #1045, and Android beta.609 passed after the decision documentation; see the completion archive and `graphics-engine-decision.md` for evidence.
-- **P20-E is closed and archived.**
-- **P20-F1 is complete and archived.** Salvage, Boarding, and Stabilization now settle through distinct authored incentive profiles using the existing materials, reputation, faction-gear, optional-objective, and recovery-quality/level systems. Deterministic tests, Level 15 #908, Browser E2E #1051, Android beta.614 repeatable settlement, and full Android verification passed.
-- **P20-F2 is complete and archived.** Repeatable contract cards now preview each family’s distinctive payoff, and the prepared briefing shows SAFE/DEEP implications derived directly from the P20-F1 profile data. Level 15 #910, Browser E2E #1052, normal Android beta.615, and the beta.616 dedicated repeatable-family regression passed.
-- **P20-F3 is complete and archived.** The deterministic early/mid/late SAFE/DEEP matrix preserves distinct progression uses for Salvage, Boarding, and Stabilization without payout tuning; Level 15 #913, Browser E2E #1054, and full Android beta.618 passed. **No unchecked executable roadmap item remains.**
+- All previously completed P20–P23 work is already preserved in [content-roadmap-archive.md](./content-roadmap-archive.md) and has been removed from the active queue.
+- The 2026-09-29 full-code audit is now queued as progressive remediation work. Broad findings are split into bounded implementation/verification cycles so one checkbox does not require a large multi-system rewrite.
+- **Next executable item: P24-A — Separate input capability detection from responsive combat layout.**
 
 Only active/future executable work lives here. Completed and verified work belongs in [content-roadmap-archive.md](./content-roadmap-archive.md). Stable product rules live in [product-constraints.md](./product-constraints.md).
 
@@ -26,50 +12,79 @@ Only active/future executable work lives here. Completed and verified work belon
 
 - Execute top to bottom. The **first unchecked top-level item is next** unless the user explicitly changes priority.
 - One checkbox should fit one realistic **implement → test → build → APK verification** cycle.
-- Split an item before coding if it spans independent systems or verification cycles; combine tiny changes when they touch the same system and can be verified together.
+- Split an item before coding if it spans independent systems or verification cycles; combine tiny changes only when they touch the same system and can be verified together.
 - An item is complete only when its requested behavior works, relevant regression checks pass, the production build succeeds, and the Android deliverable is verified as required by the repository workflow.
 - After verified completion, move the completion detail/evidence to the archive and remove the item from this file.
 - If repository evidence shows an active item is already complete, verify that evidence before archiving it. If only part is complete, rewrite the item around the remaining work.
 
+## P24 — Runtime Correctness and Data Integrity
 
-## P23 — Android CI Feedback Loop
+- [ ] **P24-A — Separate input capability detection from responsive combat layout** — Stop treating every viewport at or below 900 px as touch-only/coarse input. Preserve compact/touch layout behavior, but allow WASD and other hardware-keyboard movement on narrow desktop windows, tablets, foldables, and hybrid devices. Add regression coverage for narrow fine-pointer + keyboard and coarse-pointer layouts.
 
-- **P23-A complete / archived** — Independent fast Android emulator smoke now covers startup, real-touch management + combat controls, ACT, pause/resume, crash/logcat checks, and screenshot evidence. Verified in Android beta.507 with the fast gate completing in 127 seconds; see the completion archive for evidence.
+- [ ] **P24-B — Prevent stale legacy saves from resurrecting after atomic-save recovery** — When pre-boot recovery quarantines/removes an unsafe atomic save, ensure valid old profile/campaign keys cannot silently replace newer progression. Add a migration/recovery regression covering an invalid atomic save plus older valid legacy keys, and verify recovery messaging matches the actual resulting state.
 
-- **P23-B complete / archived** — Normal `main` pushes now build and verify the APK once, run only the fast Android emulator gate, retain Browser E2E/production-build requirements, and preserve the extended suites for full-regression work. Representative Android pushes completed in 8m02s / 131s smoke and 6m23s / 98s smoke; final Android beta.512 passed in 6m48s / 120s smoke.
+- [ ] **P24-C1 — Make healthy Operations metrics reads independent of total telemetry-ledger size** — Remove the unconditional full accepted-run ledger enumeration from normal `/api/operations` reads. Keep the current aggregate as the fast path and add a bounded consistency signal/version mechanism so healthy reads remain effectively O(1) as telemetry grows.
 
-- **P23-C complete / archived** — Stabilization, Salvage, and Boarding representative gameplay now runs in a dedicated full-regression Android job against the shared built debug APK. Full-regression run #520 passed all family/play/regression markers and clean logcat; normal `main` push smoke remains fast-only. See the completion archive for evidence.
+- [ ] **P24-C2 — Bound telemetry-ledger reconciliation work** — Rework stale-metrics repair so reconciliation is explicitly paginated/batched instead of serially reading the entire ledger in one request. Add deterministic service coverage for a multi-page/large-ledger case, contention recovery, and no double-counting.
 
-- **P23-D complete / archived** — The black-box Settings matrix now runs in a dedicated full-regression Android job against the shared built debug APK, preserving adb/UiAutomator-only input, cold-relaunch persistence, accessibility assertions, and screenshot evidence. Full-regression run #521 passed the Settings job in parallel with P23-C; normal `main` push smoke remains fast-only. See the completion archive for evidence.
+- [ ] **P24-D — Harden the trust boundary for global balance telemetry** — Reduce arbitrary public submission poisoning without introducing a full account system: require a server-verifiable short-lived submission/session credential or equivalent bounded ingest control, retain idempotency/replay protection, cap abuse within the chosen trust model, and label aggregate data as unverified anywhere gameplay authenticity cannot actually be proven. Add forged/replayed/expired submission tests.
 
-- **P23-E complete / archived** — Chapter 3 now runs in a dedicated full-regression Android job against the shared built APK, with fresh-save initialization, touch-driven route selection, both branch assertions, screenshot/report evidence, and clean-logcat verification. Normal `main` push smoke remains fast-only; see the completion archive for evidence.
+- [ ] **P24-E — Enforce the telemetry payload byte limit while reading the body** — Do not rely only on `Content-Length`. Reject oversized chunked/missing-length requests using an actual bounded body read/stream strategy while preserving the existing 512 KB contract and 413 behavior. Add service tests for missing, false, and oversized content-length cases.
 
-- **P23-F complete / archived** — Manual/full and scheduled Android verification now reuse one shared APK, fan out repeatable-family, Settings, Chapter 3, and the remaining persistence/authored-asset runtime coverage in parallel, and aggregate their evidence behind one required full-verification gate. Normal `main` pushes remain on the fast Android path. Final full-regression run #534 passed all fan-out jobs and the aggregate gate; see the completion archive for evidence.
+- [ ] **P24-F — Validate Operations API response schemas at the client boundary** — Replace unchecked generic JSON casts for Operations snapshots and run traces with runtime validation/normalization. Malformed-but-valid JSON should become a controlled `invalid-response` failure instead of leaking bad shapes into UI/runtime state. Cover both snapshot and trace responses.
 
-## P22 — Global UI Footprint Reduction
+## P25 — CI, Release, and Platform Hardening
 
-- **P22-A complete / archived** — Shared non-combat Interface Size geometry now uses a 70% Default baseline with ordered Compact/Default/Large presets, compact-phone readability/touch floors, and preserved combat-control geometry. Final verification: Level 15 beta smoke #792, Browser E2E #932, Android beta.503; see the completion archive for measured evidence and artifact details.
+- [ ] **P25-A — Extend strict TypeScript checking to service and build/config code** — Add a bounded server/tooling typecheck configuration that covers `netlify/functions/api.ts`, Vite/Capacitor config, and directly relevant test/service entry points without weakening the existing strict `src` settings. Make the production/CI gate fail on server-side type regressions.
 
-- **P22-B1 complete / archived** — Visible joystick, FIRE, DODGE, class-skill, and ACT bodies now use a 70% combat-control visual baseline while transparent hit extensions preserve the prior acquisition footprint and the persisted Standard/Large/Left-Handed/custom cluster transforms remain authoritative. Level 15 beta smoke #822, Browser E2E #953, and Android beta.535 passed; see the completion archive for measured geometry and APK evidence.
+- [ ] **P25-B — Run service regressions on service-only pull requests** — Update PR path filters/gates so changes to `netlify/functions/**`, `vite.service.config.ts`, service mocks, or service/network tests execute the relevant typecheck and `test:service`/`test:network` coverage before merge. Keep unrelated PRs from paying unnecessary Android cost.
 
-- **P22-B2 complete / archived** — Combat informational HUD chrome now uses a 70% visual baseline across health/resources, objectives, target/boss/status, loot, class-state, and transient information while retaining compact-phone readability floors, safe-area validity, and P22-B1 control hit geometry. Final verification: Level 15 beta smoke #830, Browser E2E #960, normal Android beta.546, and full Android beta.547; see the completion archive for measured live-combat, objective, pickup, and APK evidence.
+- [ ] **P25-C — Align the declared and CI npm toolchain** — Resolve the `npm@10.9.8` package/engine declaration versus workflows forcing `npm@11.19.1`. Choose one supported pinned version, use it consistently in local metadata and every workflow, and verify `npm ci` plus the production build under that exact version.
 
-- **P22-C complete / archived** — Full playable-UI verification closed the remaining fixed-pixel class-intake, contract-preparation, Armory-dialog, and combat-overlay outliers; measured management/contract geometry at 0.700, the Armory dialog at 0.738 in compact landscape, retained 12px-class phone readability floors, and passed main Browser E2E #969 plus Android beta.551. See the completion archive for screenshots, bounds, runtime evidence, and APK details.
+- [ ] **P25-D — Make Android artifact signing identity unambiguous** — Keep debug APKs available for CI/smoke work, but do not present an ephemeral debug-signed artifact under the same release-like beta identity as a persistent release-signed artifact. Encode signing mode in artifact metadata/name, require persistent signing for release-distribution runs, and retain upgrade-signature verification for release mode.
 
-## P21 — Graphics Engine Modernization
+- [ ] **P25-E — Make Android 16 large-screen orientation behavior explicit and tested** — For target SDK 36, decide the intended tablet/foldable behavior, add the appropriate Android game/category/orientation configuration if justified, and add at least one ≥600dp portrait/resize verification path. Preserve phone landscape behavior and ensure portrait fallback remains usable where orientation locking is not honored.
 
-- **P21-A1 complete / archived** — Production WebGL2 now sits behind the explicit combat graphics-backend boundary; targeted lifecycle/pointer coverage plus Browser E2E, production build, and Android beta.558 touch/lifecycle verification passed. See the completion archive for evidence.
+- [ ] **P25-F — Trigger soak coverage when performance-sensitive runtime code changes** — Expand the P16-E soak workflow trigger beyond its own scripts to the combat/render/simulation/performance/assets/dependency files that can actually introduce sustained-runtime regressions. Keep routine docs/UI-only changes out of the soak trigger.
 
-- **P21-A2 complete / archived** — The existing Asteroid Refinery QA journey now provides an opt-in graphics-path comparison selector with loaded-path, draw-call, triangle, frame, and adaptive-tier evidence; Browser E2E and production build passed, and Android beta.563 verified the untouched production-default WebGL2 path. See the completion archive for evidence.
+- [ ] **P25-G — Separate routine advisory outages from release security gates** — Routine CI may warn/retry when the npm advisory service is unavailable, but release-producing verification must not silently succeed without a completed high-severity runtime dependency audit. Add an explicit release gate/status that distinguishes “clean”, “failed”, and “audit service unavailable”.
 
-- **P21-B complete / archived** — The existing WebGL2 key/rim/contact/practical + bounded-PBR/ACES refinery recipe now adds a reusable 64px PMREM environment contribution with warm furnace, cool service, and neutral fill response; deterministic QA captures, desktop/mobile Browser E2E, production build, and Android beta.564 lifecycle/resource verification passed. See the completion archive for evidence.
+## P26 — Performance and Verification Quality
 
-- **P21-C complete / archived** — Selective refinery bloom now targets authored terminal/processor emissives, practical-light glow proxies, and important muzzle VFX on an isolated layer; HUD/UI and gameplay-critical cue groups stay outside bloom, the runtime cost control can reduce or bypass the pass, and desktop/mobile Browser E2E plus Android beta.567 passed. See the completion archive for evidence.
+- [ ] **P26-A — Add production bundle byte budgets** — Keep the existing intentional code splitting, but replace the effectively unlimited chunk warning policy with measured budgets for boot, App, GameCanvas, Three WebGL, and QA-only WebGPU delivery. Fail or clearly gate regressions beyond an explicit tolerance while allowing intentional reviewed increases.
 
-- **P21-D1 complete / archived** — Refinery machinery/floor intersections now use a single bounded instanced soft-contact grounding pass (10 instances / 20 triangles / 1 draw call / 32px alpha footprint), with QA-only disablement, protected gameplay/UI cue telemetry, deterministic desktop/mobile captures, and Android beta.569 combat/lifecycle verification. See the completion archive for evidence.
+- [ ] **P26-B1 — Replace graphics-backend source-string assertions with executable behavior checks** — Start with `graphics-backend-boundary`, refinery effect gates, and world-material/runtime wiring. Preserve only static checks that are genuinely architecture contracts; move renderer creation, fallback, lifecycle, and effect behavior to executable assertions.
 
-- **P21-E complete / archived** — The refinery IBL, selective bloom, contact-depth, and atmosphere contributions now scale through the existing High/Balanced/Performance render budget; critical cues remain at 1.00, sustained degrade/recover still passes, and Browser E2E plus Android beta.573 verified coherent play across all three tiers. See the completion archive for evidence.
+- [ ] **P26-B2 — Replace UI/accessibility source-string assertions with rendered behavior checks** — Convert the highest-value assertions in `ui-readability`, `menu-presentation`, `mission-presentation`, and `accessibility-mobile-gate` to DOM/browser behavior or deterministic presentation helpers. Keep each converted family small enough to diagnose independently.
 
-- **P21-F2 complete / archived** — The QA-only WebGPU/TSL refinery slice now reproduces the proven P21-B–E visual contracts, captures a renderer-owned stack-off/stack-on WebGPU comparison, records the remaining PMREM/full-combat plus CI presentation/readback gaps explicitly, and preserves production WebGL2 with Android fallback. Final verification: Level 15 beta smoke #896, Browser E2E #1040, Android beta.604. See the completion archive for evidence.
+- [ ] **P26-B3 — Replace combat/enemy source-string wiring checks with runtime contracts** — Convert source-inspection assertions around combat camera feedback, status/lifecycle presentation, protocol/mutation visuals, and mobile enemy readability into exported deterministic behavior checks or browser/runtime assertions where practical.
 
-- **P21-F3 complete / archived** — Browser + Android evidence now records WebGPU initialization/support/fallback behavior and known renderer/runner defects; the three QA-only WebGPU/TSL chunks add 254,269 compressed bytes to the verified Android APK (4.183% of 6,078,104 bytes) while production remains WebGL2. Final verification: Level 15 #901, Browser E2E #1044, Android beta.608. See the completion archive for evidence.
+- [ ] **P26-B4 — Audit remaining source-inspection tests and keep only intentional static contracts** — Inventory residual `readFileSync(...).includes/match` checks after P26-B1–B3. Remove redundant implementation-text assertions, document the few remaining architecture/static-file contracts, and ensure every player-facing behavior has at least one executable verification path.
+
+## P27 — Maintainability and Low-Risk Cleanup
+
+- [ ] **P27-A1 — Extract GameCanvas input orchestration without changing gameplay** — Move global keyboard/gamepad/touch input state and event lifecycle out of the monolithic component into a focused helper/hook boundary. Preserve existing controls, assisted targeting, tutorial advancement, pause/visibility clearing, and test behavior.
+
+- [ ] **P27-A2 — Extract GameCanvas performance/diagnostics publishing** — Move frame-budget sampling, dataset diagnostics publication, and performance-report bookkeeping behind a focused runtime helper while keeping the render/simulation loop behavior and telemetry fields unchanged.
+
+- [ ] **P27-A3 — Extract GameCanvas HUD derivation/presentation selectors** — Move pure HUD/status derivation and presentation-selection helpers out of `GameCanvas.tsx` without changing rendered output. Verify the component shrinks while existing gameplay/browser/Android checks remain green.
+
+- [ ] **P27-B1 — Extract Asteroid Refinery renderer responsibilities from the monolithic Three renderer** — Move refinery-specific authored environment loading/state/effect plumbing into a focused module while preserving renderer ownership, disposal, adaptive quality, and existing refinery QA telemetry.
+
+- [ ] **P27-B2 — Extract damaged-vessel and Parallax environment renderer responsibilities** — Move those location-specific asset/load/state paths out of `threeCombatRenderer.ts` with no visual/gameplay changes and retain deterministic asset/runtime verification.
+
+- [ ] **P27-B3 — Extract Jovian Harvester and Ice Mine environment renderer responsibilities** — Isolate those location-specific authored environment paths, preserving existing LOD, performance, state animation, and Android/browser verification.
+
+- [ ] **P27-B4 — Extract Solar Yard and Spin Habitat environment renderer responsibilities** — Isolate those location-specific authored environment paths, preserving lighting/state/LOD behavior and current deterministic/runtime checks.
+
+- [ ] **P27-B5 — Isolate shared transient renderer lifecycle and disposal helpers** — Move repeated projectile/enemy/transient VFX resource ownership/disposal mechanics behind focused helpers after the location extractions, preserving bounded pools and leak/lifecycle behavior.
+
+- [ ] **P27-C1 — Inventory and assign ownership for combat-HUD CSS specificity overrides** — Map the `!important` clusters in combat HUD/readability/mobile styles to their intended cascade owner and remove only redundant overrides. No visual redesign in this item; lock current screenshots/layout measurements before changing specificity.
+
+- [ ] **P27-C2 — Reduce remaining combat-HUD specificity debt** — Refactor the highest-pressure remaining override clusters in `combatHudGlance.css`, `combatHudLayout.css`, `mobileCombatReadability.css`, `readability.css`, and `spaceCombat.css` using explicit layer/order/selectors instead of escalating `!important`. Preserve compact/mobile accessibility and P22 geometry.
+
+- [ ] **P27-D — Stop aim-assist setting changes from rebuilding the graphics backend** — Decouple the main renderer lifecycle effect from callbacks whose identity changes with `profileSettings.aimAssist`. Verify changing aim assist updates targeting behavior without disposing/recreating the graphics backend or restarting the animation loop.
+
+- [ ] **P27-E — React to pointer-capability changes without requiring a resize** — Subscribe to `matchMedia('(pointer: coarse)')` changes in addition to viewport resizing so attaching/removing mouse/touch input updates the combat layout/input mode immediately. Cover hybrid-device transitions.
+
+- [ ] **P27-F — Remove the WebGPU renderer `any` escape hatches** — Replace the TSL/render-pipeline `any` fields in `webGpuRefineryRenderer.ts` with stable local structural types or upstream Three.js types where available. Keep the QA-only WebGPU lazy boundary/fallback behavior unchanged.
