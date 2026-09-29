@@ -260,11 +260,7 @@ jobs:
           SIGNING_MODE: ${{ steps.signing.outputs.mode }}
         run: |
           set -euo pipefail
-          if [[ "$SIGNING_MODE" == "release" ]]; then
-            APK='android/app/build/outputs/apk/release/app-release.apk'
-          else
-            APK='android/app/build/outputs/apk/debug/app-debug.apk'
-          fi
+          APK='android/app/build/outputs/apk/debug/app-debug.apk'
           test -s "$APK"
 
           AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
@@ -279,11 +275,20 @@ jobs:
           grep -q 'Signer #1 certificate SHA-256 digest:' android-apk-signing.txt
 
           if [[ "$SIGNING_MODE" == "release" ]]; then
+            RELEASE_APK='android/app/build/outputs/apk/release/app-release.apk'
+            test -s "$RELEASE_APK"
+            "$AAPT" dump badging "$RELEASE_APK" | tee android-release-apk-badging.txt
+            grep -q "package: name=\'app.ironshade.vector\' versionCode=\'${ANDROID_VERSION_CODE}\' versionName=\'${ANDROID_VERSION_NAME}\'" android-release-apk-badging.txt
+            grep -q "sdkVersion:\'24\'" android-release-apk-badging.txt
+            grep -q "targetSdkVersion:\'36\'" android-release-apk-badging.txt
+            grep -q "launchable-activity: name=\'app.ironshade.vector.MainActivity\'" android-release-apk-badging.txt
+            "$APKSIGNER" verify --verbose --print-certs "$RELEASE_APK" | tee android-release-apk-signing.txt
+            grep -q 'Signer #1 certificate SHA-256 digest:' android-release-apk-signing.txt
             BASE_APK='Ironshade-Vector-Android-Upgrade-Base.apk'
             test -s "$BASE_APK"
             "$APKSIGNER" verify --verbose --print-certs "$BASE_APK" | tee android-upgrade-base-signing.txt
             grep -q 'Signer #1 certificate SHA-256 digest:' android-upgrade-base-signing.txt
-            candidate_signer="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' android-apk-signing.txt | head -n 1)"
+            candidate_signer="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' android-release-apk-signing.txt | head -n 1)"
             baseline_signer="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' android-upgrade-base-signing.txt | head -n 1)"
             test -n "$candidate_signer"
             test "$candidate_signer" = "$baseline_signer"
@@ -294,20 +299,24 @@ jobs:
               printf 'candidate_version_name=%s\n' "$ANDROID_VERSION_NAME"
               printf 'signer_sha256=%s\n' "$candidate_signer"
             } | tee android-apk-upgrade.txt
+            cp "$RELEASE_APK" Ironshade-Vector-Android-Release.apk
+            sha256sum Ironshade-Vector-Android-Release.apk | tee Ironshade-Vector-Android-Release.sha256
+            printf 'artifact=Ironshade-Vector-Android-Release.apk\nsigning_mode=release\ndistributable=true\npersistent_keystore=true\nversion_code=%s\nversion_name=%s\nsigner_sha256=%s\n' "$ANDROID_VERSION_CODE" "$ANDROID_VERSION_NAME" "$candidate_signer" | tee android-release-artifact-metadata.txt
           fi
 
-          printf 'signing_mode=%s\nversion_code=%s\nversion_name=%s\n' "$SIGNING_MODE" "$ANDROID_VERSION_CODE" "$ANDROID_VERSION_NAME" | tee android-apk-signing-mode.txt
-
-          cp "$APK" Ironshade-Vector-Android-Beta.apk
-          cp android/app/build/outputs/apk/debug/app-debug.apk Ironshade-Vector-Android-Smoke.apk
+          cp "$APK" Ironshade-Vector-Android-Debug.apk
+          cp "$APK" Ironshade-Vector-Android-Smoke.apk
           test -s Ironshade-Vector-Android-Smoke.apk
-          sha256sum Ironshade-Vector-Android-Beta.apk | tee Ironshade-Vector-Android-Beta.sha256
+          sha256sum Ironshade-Vector-Android-Debug.apk | tee Ironshade-Vector-Android-Debug.sha256
           sha256sum Ironshade-Vector-Android-Smoke.apk | tee Ironshade-Vector-Android-Smoke.sha256
-          echo "ANDROID_APK_PASS signing=$SIGNING_MODE version=${ANDROID_VERSION_NAME}(${ANDROID_VERSION_CODE}) size=$(du -h Ironshade-Vector-Android-Beta.apk | cut -f1)"
+          debug_signer="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' android-apk-signing.txt | head -n 1)"
+          test -n "$debug_signer"
+          printf 'artifact=Ironshade-Vector-Android-Debug.apk\nsigning_mode=debug\ndistributable=false\npersistent_keystore=false\nversion_code=%s\nversion_name=%s\nsigner_sha256=%s\n' "$ANDROID_VERSION_CODE" "$ANDROID_VERSION_NAME" "$debug_signer" | tee android-debug-artifact-metadata.txt
+          echo "ANDROID_APK_PASS qa_signing=debug release_signing=$SIGNING_MODE version=${ANDROID_VERSION_NAME}(${ANDROID_VERSION_CODE}) size=$(du -h Ironshade-Vector-Android-Debug.apk | cut -f1)"
 
       - name: Measure P21-F3 WebGPU delivery cost
         env:
-          P21F3_APK_PATH: Ironshade-Vector-Android-Beta.apk
+          P21F3_APK_PATH: Ironshade-Vector-Android-Debug.apk
           P21F3_REPORT_PATH: p21f3-webgpu-delivery.json
         run: node scripts/measure-webgpu-delivery-cost.mjs
 
@@ -349,24 +358,18 @@ jobs:
           disable-animations: true
           script: bash -lc 'set -euo pipefail; if [[ "${{ steps.signing.outputs.mode }}" == "release" ]]; then bash scripts/android-upgrade-smoke.sh; fi; bash scripts/android-fast-smoke.sh'
 
-      - name: Upload APK and QA evidence
+      - name: Upload debug QA APK and evidence
         uses: actions/upload-artifact@v7
         with:
-          name: ironshade-vector-android-apk
+          name: ironshade-vector-android-debug-qa
           path: |
-            Ironshade-Vector-Android-Beta.apk
-            Ironshade-Vector-Android-Beta.sha256
+            Ironshade-Vector-Android-Debug.apk
+            Ironshade-Vector-Android-Debug.sha256
             Ironshade-Vector-Android-Smoke.apk
             Ironshade-Vector-Android-Smoke.sha256
             android-apk-badging.txt
             android-apk-signing.txt
-            android-apk-signing-mode.txt
-            Ironshade-Vector-Android-Upgrade-Base.apk
-            android-upgrade-base-signing.txt
-            android-apk-upgrade.txt
-            android-upgrade-smoke.txt
-            android-upgrade-logcat.txt
-            android-upgrade-smoke.png
+            android-debug-artifact-metadata.txt
             android-fast-logcat.txt
             android-fast-smoke.png
             android-fast-resume.png
@@ -376,6 +379,26 @@ jobs:
           if-no-files-found: warn
           retention-days: 90
         if: always()
+
+      - name: Upload release distributable APK and upgrade evidence
+        if: steps.signing.outputs.mode == 'release'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ironshade-vector-android-release
+          path: |
+            Ironshade-Vector-Android-Release.apk
+            Ironshade-Vector-Android-Release.sha256
+            android-release-apk-badging.txt
+            android-release-apk-signing.txt
+            android-release-artifact-metadata.txt
+            Ironshade-Vector-Android-Upgrade-Base.apk
+            android-upgrade-base-signing.txt
+            android-apk-upgrade.txt
+            android-upgrade-smoke.txt
+            android-upgrade-logcat.txt
+            android-upgrade-smoke.png
+          if-no-files-found: error
+          retention-days: 90
 
   repeatable-family-regression:
     if: github.event_name == 'schedule' || github.ref == 'refs/heads/android/capacitor-apk' || github.ref == 'refs/heads/android/full-regression' || (github.event_name == 'workflow_dispatch' && (inputs.verification_mode == 'full' || inputs.require_release_signing))
@@ -394,7 +417,7 @@ jobs:
       - name: Download shared Android APK
         uses: actions/download-artifact@v8
         with:
-          name: ironshade-vector-android-apk
+          name: ironshade-vector-android-debug-qa
           path: .
 
       - name: Verify shared smoke APK
@@ -446,7 +469,7 @@ jobs:
       - name: Download shared Android APK
         uses: actions/download-artifact@v8
         with:
-          name: ironshade-vector-android-apk
+          name: ironshade-vector-android-debug-qa
           path: .
 
       - name: Verify shared smoke APK
@@ -504,7 +527,7 @@ jobs:
       - name: Download shared Android APK
         uses: actions/download-artifact@v8
         with:
-          name: ironshade-vector-android-apk
+          name: ironshade-vector-android-debug-qa
           path: .
 
       - name: Verify shared smoke APK
@@ -562,7 +585,7 @@ jobs:
       - name: Download shared Android APK
         uses: actions/download-artifact@v8
         with:
-          name: ironshade-vector-android-apk
+          name: ironshade-vector-android-debug-qa
           path: .
 
       - name: Verify shared smoke APK
@@ -618,7 +641,7 @@ jobs:
         continue-on-error: true
         uses: actions/download-artifact@v8
         with:
-          name: ironshade-vector-android-apk
+          name: ironshade-vector-android-debug-qa
           path: full-android-evidence/apk
 
       - name: Download repeatable-family evidence
@@ -672,8 +695,8 @@ jobs:
             test "$result" = 'success'
           done
 
-          test -s full-android-evidence/apk/Ironshade-Vector-Android-Beta.apk
-          test -s full-android-evidence/apk/Ironshade-Vector-Android-Beta.sha256
+          test -s full-android-evidence/apk/Ironshade-Vector-Android-Debug.apk
+          test -s full-android-evidence/apk/Ironshade-Vector-Android-Debug.sha256
           test -s full-android-evidence/repeatable/android-repeatable-regression.txt
           test -s full-android-evidence/repeatable/android-repeatable-regression.png
           test -s full-android-evidence/settings/android-settings-regression.txt

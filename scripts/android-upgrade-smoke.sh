@@ -2,7 +2,7 @@
 set -euo pipefail
 
 BASE_APK="${ANDROID_UPGRADE_BASE_APK:-Ironshade-Vector-Android-Upgrade-Base.apk}"
-CANDIDATE_APK="${ANDROID_UPGRADE_CANDIDATE_APK:-Ironshade-Vector-Android-Beta.apk}"
+CANDIDATE_APK="${ANDROID_UPGRADE_CANDIDATE_APK:-Ironshade-Vector-Android-Release.apk}"
 PACKAGE="app.ironshade.vector"
 ACTIVITY="${PACKAGE}/.MainActivity"
 BASE_VERSION_CODE="${ANDROID_UPGRADE_BASE_VERSION_CODE:?ANDROID_UPGRADE_BASE_VERSION_CODE is required}"

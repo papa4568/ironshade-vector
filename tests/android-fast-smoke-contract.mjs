@@ -78,6 +78,22 @@ requireText(workflow, "set -euo pipefail;", 'Android workflow');
 requireText(workflow, 'actions/upload-artifact@v7', 'Android workflow');
 requireText(workflow, 'node scripts/measure-webgpu-delivery-cost.mjs', 'Android workflow');
 requireText(workflow, 'p21f3-webgpu-delivery.json', 'Android workflow');
+for (const marker of [
+  'ironshade-vector-android-debug-qa',
+  'Ironshade-Vector-Android-Debug.apk',
+  'android-debug-artifact-metadata.txt',
+  'distributable=false',
+  'ironshade-vector-android-release',
+  'Ironshade-Vector-Android-Release.apk',
+  'android-release-artifact-metadata.txt',
+  'distributable=true',
+  'persistent_keystore=true',
+  'android-release-apk-signing.txt',
+  'test \"$candidate_signer\" = \"$baseline_signer\"',
+]) requireText(workflow, marker, 'P25-A signing separation');
+if (workflow.includes('Ironshade-Vector-Android-Beta.apk')) {
+  throw new Error('P25-A distributable/debug artifacts must not use the ambiguous Beta APK name');
+}
 requireText(workflow, "      - main", 'Android workflow main push');
 requireText(workflow, "      - 'tests/**'", 'Android workflow test push path');
 requireText(browserWorkflow, 'name: Browser E2E', 'Browser workflow');
@@ -190,8 +206,8 @@ if (fs.existsSync(new URL('../.github/workflows/settings-playtest.yml', import.m
 }
 
 for (const artifact of [
-  'Ironshade-Vector-Android-Beta.apk',
-  'Ironshade-Vector-Android-Beta.sha256',
+  'Ironshade-Vector-Android-Debug.apk',
+  'Ironshade-Vector-Android-Debug.sha256',
   'Ironshade-Vector-Android-Smoke.apk',
   'Ironshade-Vector-Android-Smoke.sha256',
   'android-fast-logcat.txt',
@@ -324,7 +340,7 @@ for (const marker of [
   'needs.settings-regression.result',
   'needs.chapter3-regression.result',
   'needs.extended-runtime-regression.result',
-  'Ironshade-Vector-Android-Beta.apk',
+  'Ironshade-Vector-Android-Debug.apk',
   'android-repeatable-regression.txt',
   'android-settings-10-command-final-compact.png',
   'android-chapter3-playthrough.json',
