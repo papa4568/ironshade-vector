@@ -15,6 +15,7 @@ const metricsStore = () => getStore({ name: 'ironshade-metrics', consistency: 's
 // Only telemetry that passes the strict ingestion gate enters this ledger; aggregate balance metrics are derived exclusively from it.
 const acceptedRunsStore = () => getStore({ name: 'ironshade-runs', consistency: 'strong' });
 const METRICS_KEY = 'global';
+const MAX_RUN_TELEMETRY_BYTES = 512_000;
 
 function json(data: unknown, status = 200) {
   return Response.json(data, { status, headers: { 'cache-control': 'no-store' } });
@@ -226,11 +227,36 @@ function validateRunPayload(raw: Record<string, unknown>): string | null {
   return null;
 }
 
+async function readRequestTextWithinLimit(req: Request, limit: number) {
+  if (!req.body) return '';
+  const reader = req.body.getReader();
+  const decoder = new TextDecoder();
+  let bytesRead = 0;
+  let text = '';
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytesRead += value.byteLength;
+      if (bytesRead > limit) {
+        await reader.cancel().catch(() => undefined);
+        return null;
+      }
+      text += decoder.decode(value, { stream: true });
+    }
+    return text + decoder.decode();
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 async function handlePostRun(req: Request) {
   const declaredLength = Number(req.headers.get('content-length') ?? 0);
-  if (Number.isFinite(declaredLength) && declaredLength > 512_000) return problem('Run telemetry payload is too large', 413);
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_RUN_TELEMETRY_BYTES) return problem('Run telemetry payload is too large', 413);
+  const bodyText = await readRequestTextWithinLimit(req, MAX_RUN_TELEMETRY_BYTES);
+  if (bodyText === null) return problem('Run telemetry payload is too large', 413);
   let body: unknown;
-  try { body = await req.json(); } catch { return problem('Invalid run telemetry payload', 400); }
+  try { body = JSON.parse(bodyText); } catch { return problem('Invalid run telemetry payload', 400); }
   if (!isRecord(body)) return problem('Invalid run telemetry payload', 400);
   const raw = body;
   const validationError = validateRunPayload(raw);
