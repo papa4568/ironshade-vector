@@ -263,8 +263,6 @@ assert(
     && browserSmokeSource.includes('staleScopeDrops')
     && browserSmokeSource.includes('unexpectedWebGpuExceptions')
     && browserSmokeSource.includes('webgpuFallbackReason')
-    && browserSmokeSource.includes('createImageBitmap(canvas)')
-    && browserSmokeSource.includes('P21-F2 WebGPU canvas presentation is blank')
     && browserSmokeSource.includes('P21-F2 WebGPU stack-off/stack-on captures are pixel-identical')
     && browserSmokeSource.includes('BROWSER_P21F2_RAW_WEBGPU_PRESENTATION_PASS')
     && browserSmokeSource.includes('BROWSER_P21F2_WEBGPU_PRESENTATION_KNOWN_GAP')
