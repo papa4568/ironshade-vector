@@ -113,6 +113,23 @@ assert(
   'P20-E browser briefing discrimination and Android three-family play completion must remain release-gated.',
 );
 
+
+assert(
+  shipHub.includes('repeatableIncentivePresentation')
+    && shipHub.includes('contract-card-incentive')
+    && shipHub.includes('repeatable-incentive-note')
+    && shipHub.includes('data-incentive-depth="safe"')
+    && shipHub.includes('data-incentive-depth="deep"')
+    && campaign.includes('export function repeatableIncentivePresentation'),
+  'P20-F2 repeatable cards and prepared briefings must present payoff data through the P20-F1 profile formatter.',
+);
+
+assert(
+  browserSmoke.includes('BROWSER_P20F2_REPEATABLE_INCENTIVES_PASS')
+    && androidSmoke.includes('ANDROID_P20F2_REPEATABLE_PRESENTATION_PASS'),
+  'P20-F2 browser and Android payoff presentation must remain release-gated.',
+);
+
 assert(pkg.scripts?.['test:mission-presentation']?.includes('tests/mission-presentation.ts'), 'P15-C mission-presentation test script is missing.');
 assert(pkg.scripts?.build?.includes('npm run test:mission-presentation'), 'Full production build must gate on the P15-C mission-presentation regression.');
 

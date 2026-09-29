@@ -3881,6 +3881,37 @@ async function p20eDeployFamily(family, idBase) {
   })()`);
   if (!selected) throw new Error(`P20-E could not select ${family} representative contract.`);
   await waitFor(`document.querySelector('button[data-contract-id$="-${family}"]')?.classList.contains('selected') === true && Boolean(document.querySelector('.repeatable-identity-note[data-repeatable-family="${family}"]'))`, `P20-E ${family} authored briefing`);
+
+  const p20f2Presentation = await evaluate(`(() => {
+    const card = document.querySelector('button[data-contract-id$="-${family}"] .contract-card-incentive');
+    const note = document.querySelector('.repeatable-incentive-note[data-repeatable-incentive="${family}"]');
+    const safe = note?.querySelector('[data-incentive-depth="safe"]');
+    const deep = note?.querySelector('[data-incentive-depth="deep"]');
+    const cardStyle = card ? getComputedStyle(card) : null;
+    const safeStyle = safe ? getComputedStyle(safe) : null;
+    const deepStyle = deep ? getComputedStyle(deep) : null;
+    return {
+      cardText: card?.textContent?.trim() ?? '',
+      noteText: note?.textContent?.trim() ?? '',
+      safeText: safe?.textContent?.trim() ?? '',
+      deepText: deep?.textContent?.trim() ?? '',
+      cardFont: cardStyle ? Number.parseFloat(cardStyle.fontSize) : 0,
+      safeFont: safeStyle ? Number.parseFloat(safeStyle.fontSize) : 0,
+      deepFont: deepStyle ? Number.parseFloat(deepStyle.fontSize) : 0,
+      cardOverflow: card ? Math.max(0, card.scrollWidth - card.clientWidth) : 999,
+      noteOverflow: note ? Math.max(0, note.scrollWidth - note.clientWidth) : 999,
+    };
+  })()`);
+  if (!p20f2Presentation?.cardText
+    || !p20f2Presentation?.noteText
+    || !p20f2Presentation.safeText.startsWith('SAFE //')
+    || !p20f2Presentation.deepText.startsWith('DEEP //')
+    || Math.min(p20f2Presentation.cardFont, p20f2Presentation.safeFont, p20f2Presentation.deepFont) < 11.5
+    || p20f2Presentation.cardOverflow > 2
+    || p20f2Presentation.noteOverflow > 2) {
+    throw new Error(`P20-F2 ${family} payoff presentation was not readable before deployment: ${JSON.stringify(p20f2Presentation)}`);
+  }
+  console.log(`ANDROID_P20F2_REPEATABLE_PRESENTATION_PASS family=${family} card="${p20f2Presentation.cardText}" safeDeep=readable minFont=${Math.min(p20f2Presentation.cardFont, p20f2Presentation.safeFont, p20f2Presentation.deepFont).toFixed(1)}px overflow=none`);
   await tapButton('Deploy selected contract', idBase + 3, 120);
   await sleep(900);
   const deployStillVisible = await evaluate(`[...document.querySelectorAll('button')].some(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase() === 'deploy selected contract')`);

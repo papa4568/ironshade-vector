@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   createDefaultCampaign,
   generateStandardContracts,
+  repeatableIncentivePresentation,
   repeatableIncentiveProfiles,
   repeatableRecoveryModifiers,
   settleContract,
@@ -29,6 +30,24 @@ for (const family of ['salvage', 'boarding', 'stabilization'] as const) {
     assert.equal(Object.prototype.hasOwnProperty.call(contract.repeatableIncentive?.[depth].resourceMultipliers ?? {}, 'rareTech'), false, `${family} ${depth} incentives must not encode campaign-only rareTech.`);
   }
 }
+
+
+const presentationByFamily = Object.fromEntries(
+  (['salvage', 'boarding', 'stabilization'] as const).map(family => [family, repeatableIncentivePresentation(byFamily[family])!]),
+) as Record<ContractArchetype, NonNullable<ReturnType<typeof repeatableIncentivePresentation>>>;
+assert.equal(new Set(Object.values(presentationByFamily).map(presentation => presentation.chaseLabel)).size, 3, 'Repeatable card payoff labels must remain materially distinct.');
+assert.match(presentationByFamily.salvage.cardLabel, /MATERIAL RECOVERY/, 'Salvage card must preview its material-recovery chase.');
+assert.match(presentationByFamily.salvage.safe, /Industrial alloys \+30%/, 'Salvage safe briefing must derive its alloy bias from the authored profile.');
+assert.match(presentationByFamily.salvage.deep, /Industrial alloys \+50%/, 'Salvage deep briefing must expose the stronger authored alloy chase.');
+assert.match(presentationByFamily.salvage.safe, /Every 4 salvage tags: \+1 optional recovery \(max \+2\)/, 'Salvage briefing must expose tag-to-recovery pressure from the authored profile.');
+assert.match(presentationByFamily.boarding.cardLabel, /SPONSORED EQUIPMENT/, 'Boarding card must preview its sponsored-equipment chase.');
+assert.match(presentationByFamily.boarding.safe, /Sponsor reputation \+1/, 'Boarding safe briefing must expose its sponsor reputation incentive.');
+assert.match(presentationByFamily.boarding.safe, /Sponsor gear chance \+8pp/, 'Boarding safe briefing must expose its authored sponsor-gear chance.');
+assert.match(presentationByFamily.boarding.deep, /Sponsor gear chance \+18pp/, 'Boarding deep briefing must expose the stronger sponsor-gear chase.');
+assert.match(presentationByFamily.stabilization.cardLabel, /TECHNICAL RECOVERY/, 'Stabilization card must preview its technical-recovery chase.');
+assert.match(presentationByFamily.stabilization.safe, /Recovery quality \+0\.35/, 'Stabilization safe briefing must expose authored recovery-quality pressure.');
+assert.match(presentationByFamily.stabilization.deep, /Recovery quality \+0\.85/, 'Stabilization deep briefing must expose stronger recovery-quality pressure.');
+assert.match(presentationByFamily.stabilization.deep, /Recovery level \+3/, 'Stabilization deep briefing must expose the authored recovery-level chase.');
 
 const withoutIncentive = (contract: Contract): Contract => ({ ...contract, standardRepeatable: false, repeatableIncentive: undefined });
 
@@ -112,5 +131,5 @@ assert.equal(rareTechSettlement.gained.rareTech, 0, 'Repeatable resource settlem
 assert.equal(rareTechSettlement.campaign.resources.rareTech, baseCampaign.resources.rareTech, 'Campaign-only rareTech must remain unchanged by ordinary repeatable incentive settlement.');
 
 console.log(
-  `REPEATABLE_INCENTIVES_PASS salvage=safe-materials+deep-optional boarding=rep+faction-gear(${baselineSponsored}->${boardingSponsored}) stabilization=quality+recovery-level rareTech=protected`,
+  `REPEATABLE_INCENTIVES_PASS salvage=safe-materials+deep-optional boarding=rep+faction-gear(${baselineSponsored}->${boardingSponsored}) stabilization=quality+recovery-level rareTech=protected presentation=distinct-safe-deep`,
 );

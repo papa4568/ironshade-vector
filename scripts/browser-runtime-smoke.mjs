@@ -2240,11 +2240,15 @@ try {
     await waitFor(`document.querySelector('button[data-contract-id$="-${family}"]')?.classList.contains('selected') === true`, `P20-E ${family} selection`);
     const profile = await evaluate(`(() => {
       const note = document.querySelector('.repeatable-identity-note[data-repeatable-family="${family}"]');
+      const incentive = document.querySelector('.repeatable-incentive-note[data-repeatable-incentive="${family}"]');
+      const card = document.querySelector('button[data-contract-id$="-${family}"] .contract-card-incentive');
+      const safe = incentive?.querySelector('[data-incentive-depth="safe"]');
+      const deep = incentive?.querySelector('[data-incentive-depth="deep"]');
       const objective = document.querySelector('.contract-inspector .objective-box b')?.textContent?.trim() ?? '';
-      return { text: note?.textContent ?? '', objective };
+      return { text: note?.textContent ?? '', objective, cardText: card?.textContent?.trim() ?? '', incentiveText: incentive?.textContent?.trim() ?? '', safeText: safe?.textContent?.trim() ?? '', deepText: deep?.textContent?.trim() ?? '' };
     })()`);
     const marker = family === 'salvage' ? 'RECOVER //' : family === 'boarding' ? 'BREACH //' : 'STABILIZE //';
-    if (!profile.text.includes(marker) || !profile.text.includes('SAFE //') || !profile.text.includes('DEEP //') || !profile.objective) {
+    if (!profile.text.includes(marker) || !profile.text.includes('SAFE //') || !profile.text.includes('DEEP //') || !profile.objective || !profile.cardText || !profile.incentiveText || !profile.safeText.startsWith('SAFE //') || !profile.deepText.startsWith('DEEP //')) {
       throw new Error(`P20-E ${family} briefing/objective identity was not distinguishable before deployment: ${JSON.stringify(profile)}`);
     }
     p20eRepeatableProfiles[family] = profile;
@@ -2253,6 +2257,10 @@ try {
     throw new Error(`P20-E repeatable objectives were not materially distinct: ${JSON.stringify(p20eRepeatableProfiles)}`);
   }
   console.log(`BROWSER_P20E_REPEATABLE_IDENTITY_PASS viewport=${viewportMode} families=salvage+boarding+stabilization markers=RECOVER+BREACH+STABILIZE predeploy=true`);
+  if (new Set(Object.values(p20eRepeatableProfiles).map(profile => profile.cardText)).size !== 3 || new Set(Object.values(p20eRepeatableProfiles).map(profile => profile.incentiveText)).size !== 3) {
+    throw new Error(`P20-F2 repeatable payoff presentation was not materially distinct: ${JSON.stringify(p20eRepeatableProfiles)}`);
+  }
+  console.log(`BROWSER_P20F2_REPEATABLE_INCENTIVES_PASS viewport=${viewportMode} families=salvage+boarding+stabilization cards=distinct safeDeep=visible predeploy=true`);
 
   if (p22cPrimaryJourney) {
     const p22cContractPreviousTextScale = await evaluate(`document.documentElement.dataset.textScale ?? ''`);

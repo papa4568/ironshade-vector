@@ -380,6 +380,56 @@ export function repeatableRecoveryModifiers(contract: Pick<Contract, 'standardRe
   };
 }
 
+export type RepeatableIncentivePresentation = {
+  chaseLabel: string;
+  cardLabel: string;
+  safe: string;
+  deep: string;
+};
+
+const repeatableIncentiveChaseLabels: Record<RepeatableIncentiveProfile['chase'], string> = {
+  'material-recovery': 'MATERIAL RECOVERY',
+  'sponsored-equipment': 'SPONSORED EQUIPMENT',
+  'technical-recovery': 'TECHNICAL RECOVERY',
+};
+const repeatableRewardResourceOrder: RepeatableRewardResourceId[] = ['credits', 'alloys', 'electronics', 'medstock', 'components'];
+
+function repeatablePresentationNumber(value: number) {
+  return Number(value.toFixed(2)).toString();
+}
+
+function repeatableIncentiveDepthPresentation(profile: RepeatableIncentiveProfile, depth: 'safe' | 'deep') {
+  const incentive = profile[depth];
+  const parts: string[] = [];
+  for (const resource of repeatableRewardResourceOrder) {
+    const multiplier = incentive.resourceMultipliers[resource];
+    if (multiplier === undefined || Math.abs(multiplier - 1) < 0.001) continue;
+    const percent = Math.round((multiplier - 1) * 100);
+    parts.push(`${resourceLabels[resource]} ${percent > 0 ? '+' : ''}${percent}%`);
+  }
+  if (incentive.sponsorReputationBonus) parts.push(`Sponsor reputation +${incentive.sponsorReputationBonus}`);
+  if (incentive.sponsoredGearChanceBonus) parts.push(`Sponsor gear chance +${Math.round(incentive.sponsoredGearChanceBonus * 100)}pp`);
+  if (incentive.recoveryQualityBonus) parts.push(`Recovery quality +${repeatablePresentationNumber(incentive.recoveryQualityBonus)}`);
+  if (incentive.recoveryLevelBonus) parts.push(`Recovery level +${incentive.recoveryLevelBonus}`);
+  if (incentive.optionalObjectiveBase) parts.push(`Optional recovery +${incentive.optionalObjectiveBase}`);
+  if (profile.salvageTagsPerOptional && profile.salvageTagOptionalCap) {
+    parts.push(`Every ${profile.salvageTagsPerOptional} salvage tags: +1 optional recovery (max +${profile.salvageTagOptionalCap})`);
+  }
+  return `${depth.toUpperCase()} // ${parts.length ? parts.join(' · ') : 'Standard settlement'}`;
+}
+
+export function repeatableIncentivePresentation(contract: Pick<Contract, 'standardRepeatable' | 'repeatableIncentive'>): RepeatableIncentivePresentation | null {
+  const profile = contract.standardRepeatable ? contract.repeatableIncentive : undefined;
+  if (!profile) return null;
+  const chaseLabel = repeatableIncentiveChaseLabels[profile.chase];
+  return {
+    chaseLabel,
+    cardLabel: `PAYOFF // ${chaseLabel}`,
+    safe: repeatableIncentiveDepthPresentation(profile, 'safe'),
+    deep: repeatableIncentiveDepthPresentation(profile, 'deep'),
+  };
+}
+
 export function factionDisplayName(id: FactionId) { return factions.find(faction => faction.id === id)?.name ?? id; }
 
 const standardObjectiveModes: Record<ContractArchetype, ObjectiveMode[]> = { salvage: ['deep-salvage', 'machinery-recovery'], boarding: ['emergency-boarding'], stabilization: ['grid-isolation', 'gravity-stabilization'] };

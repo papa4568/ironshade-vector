@@ -31,6 +31,7 @@ ANDROID_P20E_REPEATABLE_ONLY=1 CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/a
 
 for family in stabilization salvage boarding; do
   grep -q "ANDROID_P20E_REPEATABLE_FAMILY_PASS family=${family} " android-repeatable-regression.txt
+  grep -q "ANDROID_P20F2_REPEATABLE_PRESENTATION_PASS family=${family} " android-repeatable-regression.txt
 done
 grep -q 'ANDROID_P20E_REPEATABLE_PLAY_PASS families=stabilization+salvage+boarding completions=3' android-repeatable-regression.txt
 grep -q 'ANDROID_P20E_REPEATABLE_REGRESSION_PASS families=stabilization+salvage+boarding completions=3' android-repeatable-regression.txt
