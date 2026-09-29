@@ -634,7 +634,7 @@ if (p21f1Only) {
     webView: {
       userAgent: state.userAgent,
       platform: state.platform,
-      chromeVersion: state.userAgent.match(/Chrome\\/([\\d.]+)/)?.[1] ?? '',
+      chromeVersion: state.userAgent.includes('Chrome/') ? (state.userAgent.split('Chrome/')[1]?.split(' ')[0] ?? '') : '',
       navigatorGpu: state.webgpuAvailable,
     },
     productionDefault: {
