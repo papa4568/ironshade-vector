@@ -264,11 +264,15 @@ export class WebGpuRefineryRenderer {
     this.ownedMaterial.push(contactMaterial);
 
     const scenePass = TSL.pass(this.scene, this.camera);
-    scenePass.setMRT(TSL.mrt({
+    const refineryMrt = TSL.mrt({
       output: TSL.output,
-      emissive: TSL.emissive,
-    }));
-    this.beautyNode = scenePass.getTextureNode('output');
+      emissive: TSL.vec4(TSL.emissive, TSL.output.a),
+    });
+    refineryMrt.setBlendMode('emissive', new this.THREE.BlendMode(this.THREE.NormalBlending));
+    scenePass.setMRT(refineryMrt);
+    const emissiveTexture = scenePass.getTexture('emissive');
+    emissiveTexture.type = this.THREE.UnsignedByteType;
+    this.beautyNode = scenePass.getTextureNode();
     const emissivePass = scenePass.getTextureNode('emissive');
     this.bloomNode = bloomModule.bloom(
       emissivePass,
