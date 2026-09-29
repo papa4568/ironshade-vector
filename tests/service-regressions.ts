@@ -19,9 +19,13 @@ function validRun(overrides: Record<string, unknown> = {}) {
 }
 
 async function postRun(payload: Record<string, unknown>, key?: string, extraHeaders: Record<string, string> = {}) {
+  return postRunBody(JSON.stringify(payload), key, extraHeaders);
+}
+
+async function postRunBody(body: string, key?: string, extraHeaders: Record<string, string> = {}) {
   const headers = new Headers({ 'content-type': 'application/json', ...extraHeaders });
   if (key) headers.set('x-idempotency-key', key);
-  return handler(new Request('https://example.test/api/runs', { method: 'POST', headers, body: JSON.stringify(payload) }), context());
+  return handler(new Request('https://example.test/api/runs', { method: 'POST', headers, body }), context());
 }
 
 async function responseJson(response: Response) {
@@ -46,9 +50,22 @@ async function main() {
   assert.equal(missingKey.status, 400);
   assert.equal(getMockStoreKeys('ironshade-runs').length, 0, 'missing idempotency keys must not write telemetry');
 
-  const oversized = await postRun(validRun(), 'oversized-run-0001', { 'content-length': '512001' });
-  assert.equal(oversized.status, 413);
-  assert.equal(getMockStoreKeys('ironshade-runs').length, 0, 'oversized telemetry must be rejected before persistence');
+  const encodedValidRun = JSON.stringify(validRun());
+  const correctLength = await postRunBody(encodedValidRun, 'length-correct-0001', { 'content-length': String(Buffer.byteLength(encodedValidRun)) });
+  assert.equal(correctLength.status, 201, 'correctly declared telemetry within the byte limit must be accepted');
+
+  const missingLength = await postRunBody(encodedValidRun, 'length-missing-0001');
+  assert.equal(missingLength.status, 201, 'telemetry without Content-Length must be accepted when actual bytes are within the limit');
+
+  const oversizedBody = JSON.stringify({ ...validRun(), padding: 'x'.repeat(512_000) });
+  const understatedLength = await postRunBody(oversizedBody, 'length-under-00001', { 'content-length': '128' });
+  assert.equal(understatedLength.status, 413, 'understated Content-Length must not bypass the actual byte limit');
+
+  const oversizedMissingLength = await postRunBody(oversizedBody, 'length-oversize-001');
+  assert.equal(oversizedMissingLength.status, 413, 'oversized telemetry must be rejected when Content-Length is missing');
+  assert.equal(getMockStoreKeys('ironshade-runs').length, 2, 'only byte-valid payloads may enter the accepted run ledger during payload-limit coverage');
+
+  resetMockBlobStores();
 
   const firstKey = 'accepted-run-000001';
   const first = await postRun(validRun(), firstKey);
@@ -124,7 +141,7 @@ async function main() {
   assert.equal(existsSync('.github/workflows/fix-three-objective-beacon.yml'), false, 'completed objective-beacon migration workflow must stay retired');
   assert.equal(existsSync('scripts/apply-three-objective-beacon.mjs'), false, 'completed objective-beacon migration script must stay retired');
 
-  console.log('SERVICE_REGRESSIONS_PASS executable=handler idempotency=verified metrics=cas+reconcile validation=strict rateLimit=enabled clientKey=verified staleMigration=removed');
+  console.log('SERVICE_REGRESSIONS_PASS executable=handler idempotency=verified metrics=cas+reconcile validation=strict payloadBytes=bounded rateLimit=enabled clientKey=verified staleMigration=removed');
 }
 
 void main();
