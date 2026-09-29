@@ -130,6 +130,114 @@ const rareTechSettlement = settleContract(baseCampaign, rareTechProbe, 'deep', 1
 assert.equal(rareTechSettlement.gained.rareTech, 0, 'Repeatable resource settlement must never leak campaign-only rareTech even if it appears in rewardBase.');
 assert.equal(rareTechSettlement.campaign.resources.rareTech, baseCampaign.resources.rareTech, 'Campaign-only rareTech must remain unchanged by ordinary repeatable incentive settlement.');
 
+
+const balanceFamilies = ['salvage', 'boarding', 'stabilization'] as const;
+const progressionStages = [
+  { name: 'early', cycle: 0, contractsCompleted: 0, cargoTier: 0, reputation: 0, salvageTags: 4 },
+  { name: 'mid', cycle: 8, contractsCompleted: 8, cargoTier: 2, reputation: 8, salvageTags: 6 },
+  { name: 'late', cycle: 18, contractsCompleted: 18, cargoTier: 4, reputation: 12, salvageTags: 8 },
+] as const;
+
+type BalanceRow = {
+  materialStock: number;
+  credits: number;
+  technicalStock: number;
+  sponsorReputation: number;
+  sponsoredGearChance: number;
+  recoveryQuality: number;
+  recoveryLevel: number;
+  optionalRecovery: number;
+};
+
+function strictBalanceWinner(
+  rows: Record<ContractArchetype, BalanceRow>,
+  metric: keyof BalanceRow,
+  stage: string,
+  depth: 'safe' | 'deep',
+): ContractArchetype {
+  const ranked = balanceFamilies
+    .map(family => ({ family, value: rows[family][metric] }))
+    .sort((left, right) => right.value - left.value);
+  assert.ok(
+    ranked[0]!.value > ranked[1]!.value,
+    `Balance matrix must have a strict ${metric} leader at ${stage}/${depth}: ${ranked.map(entry => `${entry.family}=${entry.value}`).join(', ')}`,
+  );
+  return ranked[0]!.family;
+}
+
+const balanceMatrixSummary: string[] = [];
+for (const stage of progressionStages) {
+  const defaultStageCampaign = createDefaultCampaign();
+  const campaign = {
+    ...defaultStageCampaign,
+    cycle: stage.cycle,
+    contractsCompleted: stage.contractsCompleted,
+    reputation: { meridian: stage.reputation, heliostat: stage.reputation, longarc: stage.reputation },
+    shipUpgrades: { ...defaultStageCampaign.shipUpgrades, cargo: stage.cargoTier },
+  };
+  const stageContracts = generateStandardContracts(campaign);
+  const stageByFamily = Object.fromEntries(stageContracts.map(contract => [contract.archetype, contract])) as Record<ContractArchetype, Contract>;
+
+  for (const depth of ['safe', 'deep'] as const) {
+    const rows = Object.fromEntries(balanceFamilies.map(family => {
+      const contract = stageByFamily[family];
+      const settlement = settleContract(campaign, contract, depth, stage.salvageTags);
+      const modifiers = repeatableRecoveryModifiers(contract, depth, stage.salvageTags);
+      return [family, {
+        materialStock: settlement.gained.alloys + settlement.gained.components,
+        credits: settlement.gained.credits,
+        technicalStock: settlement.gained.electronics + settlement.gained.medstock + settlement.gained.components,
+        sponsorReputation: settlement.reputationDelta[contract.sponsor] ?? 0,
+        sponsoredGearChance: modifiers.sponsoredGearChanceBonus,
+        recoveryQuality: modifiers.recoveryQualityBonus,
+        recoveryLevel: modifiers.recoveryLevelBonus,
+        optionalRecovery: modifiers.optionalObjectives,
+      } satisfies BalanceRow];
+    })) as Record<ContractArchetype, BalanceRow>;
+
+    const winners = {
+      materialStock: strictBalanceWinner(rows, 'materialStock', stage.name, depth),
+      credits: strictBalanceWinner(rows, 'credits', stage.name, depth),
+      technicalStock: strictBalanceWinner(rows, 'technicalStock', stage.name, depth),
+      sponsorReputation: strictBalanceWinner(rows, 'sponsorReputation', stage.name, depth),
+      sponsoredGearChance: strictBalanceWinner(rows, 'sponsoredGearChance', stage.name, depth),
+      recoveryQuality: strictBalanceWinner(rows, 'recoveryQuality', stage.name, depth),
+      recoveryLevel: strictBalanceWinner(rows, 'recoveryLevel', stage.name, depth),
+      optionalRecovery: strictBalanceWinner(rows, 'optionalRecovery', stage.name, depth),
+    };
+
+    assert.equal(winners.materialStock, 'salvage', `Salvage must remain the material-stock specialist at ${stage.name}/${depth}.`);
+    assert.equal(winners.optionalRecovery, 'salvage', `Salvage must remain the optional-recovery specialist at ${stage.name}/${depth}.`);
+    assert.equal(winners.credits, 'boarding', `Boarding must remain the liquid-credit specialist at ${stage.name}/${depth}.`);
+    assert.equal(winners.sponsorReputation, 'boarding', `Boarding must remain the sponsor-progression specialist at ${stage.name}/${depth}.`);
+    assert.equal(winners.sponsoredGearChance, 'boarding', `Boarding must remain the sponsored-equipment specialist at ${stage.name}/${depth}.`);
+    assert.equal(winners.technicalStock, 'stabilization', `Stabilization must remain the technical-stock specialist at ${stage.name}/${depth}.`);
+    assert.equal(winners.recoveryQuality, 'stabilization', `Stabilization must remain the recovery-quality specialist at ${stage.name}/${depth}.`);
+    assert.equal(winners.recoveryLevel, 'stabilization', `Stabilization must remain the recovery-level specialist at ${stage.name}/${depth}.`);
+
+    const representedFamilies = new Set(Object.values(winners));
+    assert.deepEqual(
+      [...representedFamilies].sort(),
+      [...balanceFamilies].sort(),
+      `Every repeatable family must own at least one progression need at ${stage.name}/${depth}.`,
+    );
+    const winnerCounts = Object.fromEntries(balanceFamilies.map(family => [
+      family,
+      Object.values(winners).filter(winner => winner === family).length,
+    ])) as Record<ContractArchetype, number>;
+    assert.ok(
+      Math.max(...Object.values(winnerCounts)) < Object.keys(winners).length,
+      `No repeatable family may dominate every progression need at ${stage.name}/${depth}: ${JSON.stringify(winnerCounts)}`,
+    );
+
+    balanceMatrixSummary.push(
+      `${stage.name}/${depth}=salvage(material+optional),boarding(credits+rep+gear),stabilization(technical+quality+level)`,
+    );
+  }
+}
+
+console.log(`REPEATABLE_INCENTIVE_BALANCE_MATRIX_PASS ${balanceMatrixSummary.join(' | ')} tuning=not-required`);
+
 console.log(
   `REPEATABLE_INCENTIVES_PASS salvage=safe-materials+deep-optional boarding=rep+faction-gear(${baselineSponsored}->${boardingSponsored}) stabilization=quality+recovery-level rareTech=protected presentation=distinct-safe-deep`,
 );

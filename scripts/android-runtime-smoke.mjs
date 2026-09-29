@@ -3783,6 +3783,11 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
       }
       // Avoid touch controls on the final hostile: safe-extraction can appear as soon as that target dies,
       // and a later touch in the same iteration could hit the newly-mounted deep-zone choice.
+      // Controller dodge is safe here because it cannot activate extraction UI, and it keeps the
+      // representative run from charging directly into the final hostile while closing the fight.
+      if (state.remaining === 1 && iteration % 3 === 0) {
+        await p20ePulseGamepadButton(0, 100);
+      }
       if (state.remaining > 1 && iteration % 3 === 0) {
         const guard = await elementMetrics('.ability-button.ability-2:not(:disabled)');
         if (guard) {
@@ -3830,7 +3835,9 @@ async function p20eFinishActiveFamily(expectedFamily, idBase) {
       }
       const closeStrafe = pursuitDirection ? p20eStrafeDirections[pursuitDirection]?.[iteration % 2] ?? '' : '';
       const combatMoveDirection = state.remaining === 1 && pursuitDirection
-        ? pursuitDirection
+        ? pursuitRange > 420
+          ? pursuitDirection
+          : closeStrafe
         : pursuitDirection && pursuitRange > 220
           ? pursuitDirection
           : closeStrafe;
