@@ -4,7 +4,7 @@ import './equipmentBay.css';
 import './readability.css';
 import './consumables.css';
 import { advanceBlackLatticeAfterContract, getBlackLatticeContract } from './game/blackLattice';
-import { advanceEscalationAfterContract, applyShipBonuses, buildMegastructureDebrief, dailyOperationContract, factionDisplayName, generateContracts, generateEscalationContract, resourceLabels, settleContract, type CampaignReward, type CampaignState, type Contract, type ExpeditionProgress, type ResourceId } from './game/campaign';
+import { advanceEscalationAfterContract, applyShipBonuses, buildMegastructureDebrief, dailyOperationContract, factionDisplayName, generateContracts, generateEscalationContract, repeatableRecoveryModifiers, resourceLabels, settleContract, type CampaignReward, type CampaignState, type Contract, type ExpeditionProgress, type ResourceId } from './game/campaign';
 import { feedback } from './game/feedback';
 import { awardRecovery, buildIdentity, deriveCombatBuild, discardItem, dominantEquipmentFaction, operatorClassDefinitions, operatorClassForProfile, setOperatorClass, setProfileSettings, type OperatorClassId, type PlayerProfile, type ProfileSettings, type VictoryReward } from './game/meta';
 import { createTelemetryRequestId, isNetworkRequestError, loadOperationsSnapshot, networkFailureMessage, uploadRunTelemetry, type OperationsSnapshot } from './game/network';
@@ -262,6 +262,7 @@ function App() {
     const directiveAdvance = advanceDirectivesAfterContract(escalationAdvance.campaign, selectedContract, depth, telemetry, fullMegastructure);
     const narrativeRareTechGain = Math.max(0, directiveAdvance.campaign.resources.rareTech - baseCampaignReward.campaign.resources.rareTech);
     const campaignReward: CampaignReward = { ...baseCampaignReward, gained: narrativeRareTechGain > 0 ? { ...baseCampaignReward.gained, rareTech: baseCampaignReward.gained.rareTech + narrativeRareTechGain } : baseCampaignReward.gained, campaign: directiveAdvance.campaign };
+    const repeatableRecovery = repeatableRecoveryModifiers(selectedContract, depth, salvageTags);
     const lootReward = awardRecovery(profile, telemetry, depth === 'deep' || fullMegastructure, campaign.shipUpgrades.fabrication, {
       deepTarget: selectedContract.deepTarget,
       location: selectedContract.location,
@@ -275,8 +276,11 @@ function App() {
       threatBudget: selectedContract.threatBudget,
       eliteProtocolCount: telemetry.eliteProtocolsDefeated,
       environmentalComplications: selectedContract.environmentalEventSlots,
-      optionalObjectives: expeditionProgress?.optionalRecovered ?? 0,
+      optionalObjectives: (expeditionProgress?.optionalRecovered ?? 0) + repeatableRecovery.optionalObjectives,
       actualDepth: depth === 'deep',
+      recoveryQualityBonus: repeatableRecovery.recoveryQualityBonus,
+      recoveryLevelBonus: repeatableRecovery.recoveryLevelBonus,
+      sponsoredGearChanceBonus: repeatableRecovery.sponsoredGearChanceBonus,
       xpFloor: selectedContract.xpFloor,
       directiveQualityBonus: selectedContract.directiveQualityBonus,
       directiveSingularChanceBonus: selectedContract.directiveSingularChanceBonus,
