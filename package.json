@@ -79,7 +79,7 @@
     "test:runtime-scalability": "vite build --ssr tests/runtime-scalability.ts --outDir .runtime-scalability-dist && node .runtime-scalability-dist/runtime-scalability.js",
     "test:boot-architecture": "vite build --ssr tests/boot-architecture.ts --outDir .boot-architecture-dist && node .boot-architecture-dist/boot-architecture.js",
     "test:guide": "vite build --ssr tests/guide-content.ts --outDir .guide-dist && node .guide-dist/guide-content.js",
-    "test:android-fast-smoke": "node tests/android-fast-smoke-contract.mjs"
+    "test:android-fast-smoke": "node --check scripts/android-runtime-smoke.mjs && node --check scripts/measure-webgpu-delivery-cost.mjs && node tests/android-fast-smoke-contract.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.0",
