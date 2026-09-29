@@ -2,10 +2,10 @@
 
 ## New-chat handoff — resume here first
 
-- All previously completed P20–P23 work plus P24-A is preserved in [content-roadmap-archive.md](./content-roadmap-archive.md).
+- All previously completed P20–P23 work plus P24-A–P24-C is preserved in [content-roadmap-archive.md](./content-roadmap-archive.md).
 - The 2026-09-29 code audit has been reduced to **release-critical work only**. Non-blocking cleanup/refactor ideas were removed from the active queue.
 - Priority order is intentional: **P24 correctness/data safety → P25 release/platform/security → P26 telemetry scale resilience**.
-- **Next executable item: P24-C — Enforce the telemetry payload limit on actual bytes read.**
+- **Next executable item: P24-D — Validate Operations API responses at runtime.**
 
 Only active/future executable work lives here. Completed and verified work belongs in [content-roadmap-archive.md](./content-roadmap-archive.md). Stable product rules live in [product-constraints.md](./product-constraints.md).
 
@@ -19,8 +19,6 @@ Only active/future executable work lives here. Completed and verified work belon
 - If repository evidence shows an active item is already complete, verify that evidence before archiving it. If only part is complete, rewrite the item around the remaining work.
 
 ## P24 — Critical Runtime Correctness and Data Safety
-
-- [ ] **P24-C — Enforce the telemetry payload limit on actual bytes read** — Preserve the 512 KB contract, but reject oversized requests even when `Content-Length` is missing, false, or chunked. Add service coverage for correct-length, missing-length, understated-length, and oversized bodies.
 
 - [ ] **P24-D — Validate Operations API responses at runtime** — Replace unchecked generic JSON casts for Operations snapshots, telemetry responses, and run traces with runtime validation/normalization. Malformed-but-valid JSON must fail as a controlled `invalid-response` condition instead of entering gameplay/UI state.
 
