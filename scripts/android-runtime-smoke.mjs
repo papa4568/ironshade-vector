@@ -1015,6 +1015,45 @@ if (fastSmoke) {
   if (!fastContractPrepared) throw new Error('Fast Android Asteroid Refinery contract card unavailable.');
   await sleep(220);
   await tap('button[data-location="asteroid-refinery"]', 203, 110);
+  const fastContractSelected = await evaluate(`document.querySelector('button[data-location="asteroid-refinery"]')?.classList.contains('selected') === true`);
+  if (!fastContractSelected) {
+    const retryPoint = await evaluate(`(async () => {
+      const target = document.querySelector('button[data-location="asteroid-refinery"]');
+      if (!target) return null;
+      const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
+      const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+      const inset = 10;
+      for (const block of ['center', 'start', 'end', 'nearest']) {
+        target.scrollIntoView({ block, inline: 'nearest', behavior: 'instant' });
+        await new Promise(resolve => setTimeout(resolve, 180));
+        const rect = target.getBoundingClientRect();
+        const left = Math.max(rect.left, inset);
+        const right = Math.min(rect.right, viewportWidth - inset);
+        const top = Math.max(rect.top, inset);
+        const bottom = Math.min(rect.bottom, viewportHeight - inset);
+        if (right <= left || bottom <= top) continue;
+        const edgeX = Math.min(18, Math.max(4, (right - left) * .18));
+        const edgeY = Math.min(18, Math.max(4, (bottom - top) * .18));
+        const candidates = [
+          [(left + right) * .5, (top + bottom) * .5],
+          [left + edgeX, (top + bottom) * .5],
+          [right - edgeX, (top + bottom) * .5],
+          [(left + right) * .5, top + edgeY],
+          [(left + right) * .5, bottom - edgeY],
+        ];
+        for (const [x, y] of candidates) {
+          const hit = document.elementFromPoint(x, y);
+          if (hit && (hit === target || target.contains(hit))) return { x, y, hit: hit.tagName, block };
+        }
+      }
+      return null;
+    })()`);
+    if (!retryPoint) throw new Error('Fast Android Asteroid Refinery card had no unobscured visible touch point.');
+    await dispatchTouch('touchStart', retryPoint.x, retryPoint.y, 203);
+    await sleep(120);
+    await dispatchTouch('touchEnd', retryPoint.x, retryPoint.y, 203);
+    console.log(`ANDROID_FAST_CONTRACT_TOUCH_RETRY_PASS target=asteroid-refinery hit=${retryPoint.hit} block=${retryPoint.block}`);
+  }
   await waitFor(`document.querySelector('button[data-location="asteroid-refinery"]')?.classList.contains('selected') === true`, 'Fast Android Asteroid Refinery selection');
   console.log('ANDROID_FAST_MANAGEMENT_TOUCH_PASS route=command>operations>contracts interaction=contract-select');
 
