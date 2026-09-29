@@ -227,6 +227,6 @@ assert.ok(singularGate.includes('simulation hook') || singularGate.includes('has
 const saveGate = readFileSync('tests/save-data-migration.ts', 'utf8');
 assert.ok(saveGate.includes('legacyStateMigrationSmoke') && saveGate.includes('recoveryPreservationSmoke'), 'P8.5-L release gate must retain save migration and recovery coverage.');
 const androidWorkflow = readFileSync('.github/workflows/android-apk.yml', 'utf8');
-assert.ok(androidWorkflow.includes('npm run build') && androidWorkflow.includes('Smoke test APK on Android emulator') && androidWorkflow.includes('Ironshade-Vector-Android-Beta.apk') && androidWorkflow.includes("'tests/**'"), 'P8.5-L code/test changes must flow through the full Android build + emulator smoke + APK artifact workflow.');
+assert.ok(androidWorkflow.includes('npm run build') && androidWorkflow.includes('Smoke test APK on Android emulator') && androidWorkflow.includes('Ironshade-Vector-Android-Debug.apk') && androidWorkflow.includes("'tests/**'"), 'P8.5-L code/test changes must flow through the full Android build + emulator smoke + APK artifact workflow.');
 
 console.log(`GEAR_BALANCE_DIVERSITY_PASS railGoals=${railGoals.length} affixRuntime=${gearAffixDefinitions.length} statConnectivity=${gearStatDefinitions.length} refinedSpecialist=true release=android+touch+save+singular`);
