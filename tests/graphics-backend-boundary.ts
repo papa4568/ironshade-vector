@@ -267,6 +267,7 @@ assert(
     && browserSmokeSource.includes('BROWSER_P21F2_RAW_WEBGPU_PRESENTATION_PASS')
     && browserSmokeSource.includes('BROWSER_P21F2_WEBGPU_PRESENTATION_KNOWN_GAP')
     && browserSmokeSource.includes('BROWSER_E2E_REQUIRE_WEBGPU_PRESENTATION')
+    && browserSmokeSource.includes('requireWebGpuPresentation && !webGpuSwiftShaderCi')
     && browserSmokeSource.includes('P21-F2 raw WebGPU presentation probe failed')
     && browserSmokeSource.includes('BROWSER_P21F2_WEBGPU_PRESENTATION_PASS'),
   'P21-F2 Browser E2E must preserve explicit WebGL2/WebGPU QA paths and retain deterministic stack-off/stack-on comparison evidence.',

@@ -2342,7 +2342,7 @@ try {
   }
   console.log(`BROWSER_P15_MISSION_PRESENTATION_PASS viewport=${viewportMode} deployment=non-blocking mode=${p15MissionPresentation.mode} title=${p15MissionPresentation.title}`);
   if (requestedGraphicsPath === 'webgpu') {
-    if (requireWebGpuPresentation || webGpuPresentationKnownGap) await rawWebGpuPresentationProbe();
+    if (webGpuPresentationKnownGap || (requireWebGpuPresentation && !webGpuSwiftShaderCi)) await rawWebGpuPresentationProbe();
     const p21f1State = await p21F1WebGpuPrototypeAudit();
     if (p21f1State.loaded === 'webgpu') await p21F2RefineryParityAudit('webgpu');
     const knownSwiftShaderScopeDrops = webGpuSwiftShaderCi
