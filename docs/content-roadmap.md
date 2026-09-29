@@ -15,7 +15,8 @@
 - **P21-F2 is complete and archived.** The QA-only WebGPU/TSL refinery slice now reproduces the proven P21-B–E effect contracts for direct comparison, records renderer/CI parity gaps explicitly, and preserves production WebGL2 plus Android fallback.
 - **P21-F3 is complete and archived.** Browser and Android now record WebGPU support/fallback behavior plus exact lazy-chunk/APK delivery cost while production WebGL2 remains unchanged.
 - **P21-G is complete and archived.** The measured engine decision keeps Three.js WebGL2 as the production combat renderer, retains WebGPU/TSL as a QA-only comparison harness, and does not start a Godot/Unity-class replatform. Level 15 beta smoke #905, Browser E2E #1045, and Android beta.609 passed after the decision documentation; see the completion archive and `graphics-engine-decision.md` for evidence.
-- **P20-E is closed and archived.** Resume the active sequence at **P20-F1 — Define and settle distinct repeatable-contract incentive profiles**.
+- **P20-E is closed and archived.**
+- **P20-F1 is complete and archived.** Salvage, Boarding, and Stabilization now settle through distinct authored incentive profiles using the existing materials, reputation, faction-gear, optional-objective, and recovery-quality/level systems. Deterministic tests, Level 15 #908, Browser E2E #1051, Android beta.614 repeatable settlement, and full Android verification passed. Resume at **P20-F2 — Surface repeatable-contract incentives before deployment**.
 
 Only active/future executable work lives here. Completed and verified work belongs in [content-roadmap-archive.md](./content-roadmap-archive.md). Stable product rules live in [product-constraints.md](./product-constraints.md).
 
@@ -74,7 +75,6 @@ Only active/future executable work lives here. Completed and verified work belon
 
 ## P20 — Build Usability, Skill Integrity & Repeatable Contract Identity
 
-- [ ] **P20-F1 — Define and settle distinct repeatable-contract incentive profiles** — Give Salvage, Boarding, and Stabilization separate reward/chase profiles using the existing economy, faction/reputation, gear-source, optional-objective, and recovery systems rather than adding a new currency. Implement the profile definitions and settlement/generation behavior only; preserve campaign-only reward boundaries and meaningful safe-vs-deep tradeoffs. **Done when:** deterministic generation/settlement tests prove each family grants its authored incentive, deep variants preserve the intended tradeoff, campaign-only rewards cannot leak, Browser E2E regression gates and production build pass, and the Android APK completes a representative settlement smoke without reward corruption.
 
 - [ ] **P20-F2 — Surface repeatable-contract incentives before deployment** — Present each family’s distinctive expected payoff on the existing contract card/prepared briefing surfaces using the P20-F1 profile data, without duplicating reward logic in UI code. **Done when:** all three family cards/briefings communicate materially different incentive profiles and safe/deep implications before launch; targeted UI/mission-presentation tests, Browser E2E, and production build pass; and Android verifies readable reward presentation on all three choices.
 
