@@ -172,6 +172,9 @@ assert(
     && webgpuRendererSource.includes('new this.THREE.RenderPipeline(this.renderer)')
     && webgpuRendererSource.includes('this.renderPipeline && this.bloomEnabled')
     && webgpuRendererSource.includes('else this.renderer.render(this.scene, this.camera)')
+    && webgpuRendererSource.includes('webgpuCaptureRequest')
+    && webgpuRendererSource.includes('readRenderTargetPixelsAsync')
+    && webgpuRendererSource.includes('toDataURL(\'image/png\')')
     && webgpuRendererSource.includes('TSL.mrt({')
     && webgpuRendererSource.includes('emissive: TSL.vec4(TSL.emissive, TSL.output.a)')
     && webgpuRendererSource.includes("setBlendMode('emissive', new this.THREE.BlendMode(this.THREE.NormalBlending))")
@@ -240,7 +243,6 @@ assert(
     && browserWorkflowSource.includes("lvp_icd.json")
     && browserWorkflowSource.includes('xvfb-run -a -s "-screen 0 1280x720x24"')
     && browserWorkflowSource.includes("BROWSER_E2E_REQUIRE_WEBGPU: '1'")
-    && browserWorkflowSource.includes('BROWSER_E2E_REQUIRE_WEBGPU_PRESENTATION:')
     && browserWorkflowSource.includes('lavapipe-xvfb-black-canvas')
     && browserWorkflowSource.includes("'--ozone-platform=x11'")
     && !browserWorkflowSource.includes("'--disable-vulkan-surface'")
@@ -266,10 +268,9 @@ assert(
     && browserSmokeSource.includes('P21-F2 WebGPU stack-off/stack-on captures are pixel-identical')
     && browserSmokeSource.includes('BROWSER_P21F2_RAW_WEBGPU_PRESENTATION_PASS')
     && browserSmokeSource.includes('BROWSER_P21F2_WEBGPU_PRESENTATION_KNOWN_GAP')
-    && browserSmokeSource.includes('BROWSER_E2E_REQUIRE_WEBGPU_PRESENTATION')
-    && browserSmokeSource.includes('requireWebGpuPresentation && !webGpuSwiftShaderCi')
-    && browserSmokeSource.includes('P21-F2 raw WebGPU presentation probe failed')
-    && browserSmokeSource.includes('BROWSER_P21F2_WEBGPU_PRESENTATION_PASS'),
+    && browserSmokeSource.includes('captureWebGpuRendererFrame')
+    && browserSmokeSource.includes('P21-F2 WebGPU renderer capture is blank')
+    && browserSmokeSource.includes('BROWSER_P21F2_WEBGPU_CAPTURE_PASS'),
   'P21-F2 Browser E2E must preserve explicit WebGL2/WebGPU QA paths and retain deterministic stack-off/stack-on comparison evidence.',
 );
 assert(

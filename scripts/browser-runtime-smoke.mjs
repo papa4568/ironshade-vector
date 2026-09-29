@@ -4,7 +4,6 @@ const cdpBase = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9223';
 const appUrl = process.env.BROWSER_E2E_APP_URL ?? 'http://127.0.0.1:4173/';
 const requestedGraphicsPath = (process.env.BROWSER_E2E_GRAPHICS_PATH ?? '').trim();
 const requireWebGpuComparison = process.env.BROWSER_E2E_REQUIRE_WEBGPU === '1';
-const requireWebGpuPresentation = process.env.BROWSER_E2E_REQUIRE_WEBGPU_PRESENTATION === '1';
 const webGpuPresentationKnownGap = (process.env.BROWSER_E2E_WEBGPU_PRESENTATION_KNOWN_GAP ?? '').trim();
 const webGpuSwiftShaderCi = process.env.BROWSER_E2E_WEBGPU_SWIFTSHADER === '1';
 const skipSyntheticControllerAudit = process.env.BROWSER_E2E_SKIP_SYNTHETIC_CONTROLLER === '1';
@@ -278,47 +277,49 @@ async function rawWebGpuPresentationProbe() {
   return sample;
 }
 
-async function sampleWebGpuCanvasPresentation(label) {
-  const sample = await evaluate(`(async () => {
+async function captureWebGpuRendererFrame(label, path) {
+  const token = `p21f2-${viewportMode}-${label}-${Date.now()}`;
+  const armed = await evaluate(`(() => {
     const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-webgpu-p21f2');
-    if (!(canvas instanceof HTMLCanvasElement)) return null;
-    const bitmap = await createImageBitmap(canvas);
-    try {
-      const probe = document.createElement('canvas');
-      probe.width = 64;
-      probe.height = 36;
-      const context = probe.getContext('2d', { willReadFrequently: true });
-      if (!context) return null;
-      context.drawImage(bitmap, 0, 0, probe.width, probe.height);
-      const pixels = context.getImageData(0, 0, probe.width, probe.height).data;
-      let rgbSum = 0;
-      let litPixels = 0;
-      let hash = 2166136261;
-      for (let index = 0; index < pixels.length; index += 4) {
-        const red = pixels[index];
-        const green = pixels[index + 1];
-        const blue = pixels[index + 2];
-        rgbSum += red + green + blue;
-        if (Math.max(red, green, blue) > 12) litPixels += 1;
-        hash = Math.imul(hash ^ red, 16777619);
-        hash = Math.imul(hash ^ green, 16777619);
-        hash = Math.imul(hash ^ blue, 16777619);
-      }
-      const pixelCount = pixels.length / 4;
-      return {
-        meanRgb: rgbSum / (pixelCount * 3),
-        litRatio: litPixels / pixelCount,
-        hash: (hash >>> 0).toString(16).padStart(8, '0'),
-      };
-    } finally {
-      bitmap.close?.();
-    }
+    if (!(canvas instanceof HTMLCanvasElement)) return false;
+    canvas.dataset.webgpuCaptureRequest = ${JSON.stringify(token)};
+    canvas.dataset.webgpuCaptureState = 'requested';
+    delete canvas.dataset.webgpuCaptureError;
+    delete canvas.dataset.webgpuCaptureResult;
+    return true;
   })()`);
-  if (!sample || sample.meanRgb <= 5 || sample.litRatio <= 0.2) {
-    throw new Error(`P21-F2 WebGPU canvas presentation is blank for ${label}: ${JSON.stringify(sample)}`);
+  if (!armed) throw new Error(`P21-F2 could not arm WebGPU renderer capture for ${label}.`);
+  await waitFor(`(() => {
+    const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-webgpu-p21f2');
+    return canvas?.dataset.webgpuCaptureToken === ${JSON.stringify(token)}
+      && (canvas.dataset.webgpuCaptureState === 'ready' || canvas.dataset.webgpuCaptureState === 'error');
+  })()`, `P21-F2 WebGPU renderer capture ${label}`, 20_000);
+  const result = await evaluate(`(() => {
+    const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-webgpu-p21f2');
+    const state = canvas?.dataset.webgpuCaptureState ?? '';
+    const error = canvas?.dataset.webgpuCaptureError ?? '';
+    const raw = canvas?.dataset.webgpuCaptureResult ?? '';
+    if (canvas instanceof HTMLCanvasElement) {
+      delete canvas.dataset.webgpuCaptureRequest;
+      delete canvas.dataset.webgpuCaptureState;
+      delete canvas.dataset.webgpuCaptureToken;
+      delete canvas.dataset.webgpuCaptureError;
+      delete canvas.dataset.webgpuCaptureResult;
+    }
+    return { state, error, result: raw ? JSON.parse(raw) : null };
+  })()`);
+  if (result?.state === 'error') throw new Error(`P21-F2 WebGPU renderer capture failed for ${label}: ${result.error || 'unknown error'}`);
+  const capture = result?.result;
+  if (!capture?.dataUrl || capture.meanRgb <= 5 || capture.litRatio <= 0.2) {
+    throw new Error(`P21-F2 WebGPU renderer capture is blank for ${label}: ${JSON.stringify(capture)}`);
   }
-  return sample;
+  const separator = capture.dataUrl.indexOf(',');
+  if (separator < 0) throw new Error(`P21-F2 WebGPU renderer capture returned an invalid PNG for ${label}.`);
+  await writeFile(path, Buffer.from(capture.dataUrl.slice(separator + 1), 'base64'));
+  delete capture.dataUrl;
+  return capture;
 }
+
 
 async function accessibilityAudit(surface) {
   const result = await evaluate(`(() => {
@@ -649,11 +650,13 @@ async function p21F2RefineryParityAudit(backend) {
       && canvas?.dataset.environmentContactDepth === 'off:qa-baseline'
       && canvas?.dataset.environmentAtmosphere === 'off:qa-baseline';
   })()`, `P21-F2 ${backend} stack-off baseline`, 10_000);
-  await sleep(120);
-  await captureScreenshot(p21f2StackOffScreenshotPath);
-  const webGpuPresentationOff = backend === 'webgpu' && requireWebGpuPresentation
-    ? await sampleWebGpuCanvasPresentation('stack-off')
-    : null;
+  let webGpuCaptureOff = null;
+  if (backend === 'webgpu') {
+    webGpuCaptureOff = await captureWebGpuRendererFrame('stack-off', p21f2StackOffScreenshotPath);
+  } else {
+    await sleep(120);
+    await captureScreenshot(p21f2StackOffScreenshotPath);
+  }
 
   const restored = await evaluate(`(() => {
     const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === ${JSON.stringify(visual)});
@@ -673,16 +676,18 @@ async function p21F2RefineryParityAudit(backend) {
       && canvas?.dataset.environmentContactDepth?.startsWith('grounding:refinery-contact-grounding-v1:')
       && canvas?.dataset.environmentAtmosphere?.startsWith('fog:refinery-depth-atmosphere-v1:');
   })()`, `P21-F2 ${backend} stack-on comparison`, 10_000);
-  await sleep(120);
-  await captureScreenshot(p21f2StackOnScreenshotPath);
-  const webGpuPresentationOn = backend === 'webgpu' && requireWebGpuPresentation
-    ? await sampleWebGpuCanvasPresentation('stack-on')
-    : null;
-  if (webGpuPresentationOff && webGpuPresentationOn) {
-    if (webGpuPresentationOff.hash === webGpuPresentationOn.hash) {
-      throw new Error(`P21-F2 WebGPU stack-off/stack-on captures are pixel-identical: ${JSON.stringify({ off: webGpuPresentationOff, on: webGpuPresentationOn })}`);
+  let webGpuCaptureOn = null;
+  if (backend === 'webgpu') {
+    webGpuCaptureOn = await captureWebGpuRendererFrame('stack-on', p21f2StackOnScreenshotPath);
+  } else {
+    await sleep(120);
+    await captureScreenshot(p21f2StackOnScreenshotPath);
+  }
+  if (webGpuCaptureOff && webGpuCaptureOn) {
+    if (webGpuCaptureOff.hash === webGpuCaptureOn.hash) {
+      throw new Error(`P21-F2 WebGPU stack-off/stack-on captures are pixel-identical: ${JSON.stringify({ off: webGpuCaptureOff, on: webGpuCaptureOn })}`);
     }
-    console.log(`BROWSER_P21F2_WEBGPU_PRESENTATION_PASS viewport=${viewportMode} offMean=${webGpuPresentationOff.meanRgb.toFixed(2)} onMean=${webGpuPresentationOn.meanRgb.toFixed(2)} offLit=${webGpuPresentationOff.litRatio.toFixed(3)} onLit=${webGpuPresentationOn.litRatio.toFixed(3)} offHash=${webGpuPresentationOff.hash} onHash=${webGpuPresentationOn.hash}`);
+    console.log(`BROWSER_P21F2_WEBGPU_CAPTURE_PASS viewport=${viewportMode} offMean=${webGpuCaptureOff.meanRgb.toFixed(2)} onMean=${webGpuCaptureOn.meanRgb.toFixed(2)} offLit=${webGpuCaptureOff.litRatio.toFixed(3)} onLit=${webGpuCaptureOn.litRatio.toFixed(3)} offHash=${webGpuCaptureOff.hash} onHash=${webGpuCaptureOn.hash} size=${webGpuCaptureOn.width}x${webGpuCaptureOn.height}`);
   }
 
   const costReduced = await evaluate(`(() => {
@@ -2342,7 +2347,7 @@ try {
   }
   console.log(`BROWSER_P15_MISSION_PRESENTATION_PASS viewport=${viewportMode} deployment=non-blocking mode=${p15MissionPresentation.mode} title=${p15MissionPresentation.title}`);
   if (requestedGraphicsPath === 'webgpu') {
-    if (webGpuPresentationKnownGap || (requireWebGpuPresentation && !webGpuSwiftShaderCi)) await rawWebGpuPresentationProbe();
+    if (webGpuPresentationKnownGap) await rawWebGpuPresentationProbe();
     const p21f1State = await p21F1WebGpuPrototypeAudit();
     if (p21f1State.loaded === 'webgpu') await p21F2RefineryParityAudit('webgpu');
     const knownSwiftShaderScopeDrops = webGpuSwiftShaderCi

@@ -62,6 +62,8 @@ export class WebGpuRefineryRenderer {
   private pixelRatio = 1;
   private lastFrameAt = 0;
   private bloomEnabled = true;
+  private qaCaptureInFlight = false;
+  private qaCaptureToken = '';
 
   private constructor(
     canvas: HTMLCanvasElement,
@@ -315,6 +317,31 @@ export class WebGpuRefineryRenderer {
     this.playerRoot.position.set(state.player.x * WORLD_SCALE, 0, state.player.y * WORLD_SCALE);
     this.syncCamera(state, width / Math.max(1, height), cameraFeedback);
     this.applyRefineryEffects(mission, budget);
+    const qaCaptureRequest = this.canvas.dataset.webgpuCaptureRequest ?? '';
+    if (qaCaptureRequest && qaCaptureRequest !== this.qaCaptureToken && !this.qaCaptureInFlight) {
+      this.qaCaptureToken = qaCaptureRequest;
+      this.qaCaptureInFlight = true;
+      this.canvas.dataset.webgpuCaptureToken = qaCaptureRequest;
+      this.canvas.dataset.webgpuCaptureState = 'capturing';
+      delete this.canvas.dataset.webgpuCaptureError;
+      delete this.canvas.dataset.webgpuCaptureResult;
+      void this.captureQaFrame(qaCaptureRequest)
+        .then(result => {
+          if (this.disposed) return;
+          this.canvas.dataset.webgpuCaptureResult = JSON.stringify(result);
+          this.canvas.dataset.webgpuCaptureState = 'ready';
+        })
+        .catch(error => {
+          if (this.disposed) return;
+          this.canvas.dataset.webgpuCaptureError = error instanceof Error ? error.message : String(error);
+          this.canvas.dataset.webgpuCaptureState = 'error';
+        })
+        .finally(() => {
+          this.qaCaptureInFlight = false;
+        });
+      return;
+    }
+    if (this.qaCaptureInFlight) return;
     if (this.renderPipeline && this.bloomEnabled) this.renderPipeline.render();
     else this.renderer.render(this.scene, this.camera);
   }
@@ -457,6 +484,58 @@ export class WebGpuRefineryRenderer {
     this.canvas.dataset.environmentBloomCost = costScale.toFixed(2);
     this.canvas.dataset.environmentLighting = `refinery-key+rim+ibl:${iblEnabled ? 'webgpu-light-proxy' : 'off'}+contact:bounded+practical:2+shadow:none`;
     this.canvas.dataset.environmentTone = `aces-${this.renderer.toneMappingExposure.toFixed(2)}+ibl-${iblEnabled ? iblIntensity.toFixed(2) : 'off'}+atmosphere-${atmosphereEnabled ? REFINERY_ATMOSPHERE_PROFILE.id : 'off'}`;
+  }
+
+  private async captureQaFrame(token: string) {
+    const captureWidth = 320;
+    const captureHeight = Math.max(96, Math.round(captureWidth * this.height / Math.max(1, this.width)));
+    const target = new this.THREE.RenderTarget(captureWidth, captureHeight, {
+      depthBuffer: true,
+      type: this.THREE.UnsignedByteType,
+      format: this.THREE.RGBAFormat,
+    });
+    target.texture.name = `p21-f2-webgpu-qa-${token}`;
+    const previousTarget = this.renderer.getRenderTarget();
+    try {
+      this.renderer.setRenderTarget(target);
+      if (this.renderPipeline && this.bloomEnabled) this.renderPipeline.render();
+      else this.renderer.render(this.scene, this.camera);
+      const pixels = await this.renderer.readRenderTargetPixelsAsync(target, 0, 0, captureWidth, captureHeight);
+      const rgba = new Uint8ClampedArray(pixels.length);
+      rgba.set(pixels as Uint8Array);
+      let rgbSum = 0;
+      let litPixels = 0;
+      let hash = 2166136261;
+      for (let index = 0; index < rgba.length; index += 4) {
+        const red = rgba[index];
+        const green = rgba[index + 1];
+        const blue = rgba[index + 2];
+        rgbSum += red + green + blue;
+        if (Math.max(red, green, blue) > 12) litPixels += 1;
+        hash = Math.imul(hash ^ red, 16777619);
+        hash = Math.imul(hash ^ green, 16777619);
+        hash = Math.imul(hash ^ blue, 16777619);
+      }
+      const pixelCount = rgba.length / 4;
+      const captureCanvas = document.createElement('canvas');
+      captureCanvas.width = captureWidth;
+      captureCanvas.height = captureHeight;
+      const context = captureCanvas.getContext('2d');
+      if (!context) throw new Error('P21-F2 WebGPU QA capture could not create a 2D encoder.');
+      context.putImageData(new ImageData(rgba, captureWidth, captureHeight), 0, 0);
+      return {
+        token,
+        width: captureWidth,
+        height: captureHeight,
+        meanRgb: rgbSum / (pixelCount * 3),
+        litRatio: litPixels / pixelCount,
+        hash: (hash >>> 0).toString(16).padStart(8, '0'),
+        dataUrl: captureCanvas.toDataURL('image/png'),
+      };
+    } finally {
+      this.renderer.setRenderTarget(previousTarget);
+      target.dispose();
+    }
   }
 
   private resize(width: number, height: number, quality: number) {
