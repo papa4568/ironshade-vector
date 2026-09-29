@@ -3925,6 +3925,17 @@ await p20cLoadClassCombat('systems', 'carbine', [
   { name: 'Relay Hack', short: 'HACK' },
   { name: 'Cascade Arc', short: 'CHAIN' },
 ], null, false);
+const p20f1SettlementBaseline = await evaluate(`(() => {
+  const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+  if (!state?.campaign || !state?.profile) return null;
+  return {
+    contractsCompleted: Number(state.campaign.contractsCompleted ?? 0),
+    reputation: { ...state.campaign.reputation },
+    rareTech: Number(state.campaign.resources?.rareTech ?? 0),
+    inventoryCount: Array.isArray(state.profile.inventory) ? state.profile.inventory.length : 0,
+  };
+})()`);
+if (!p20f1SettlementBaseline) throw new Error('P20-F1 could not capture the repeatable settlement baseline.');
 await p20eDeployFamily('stabilization', 2000);
 await p20eInstallCombatGamepad();
 await waitFor(`document.querySelector('canvas')?.dataset.controllerInput === 'connected'`, 'P20-E assisted combat controller', 10_000);
@@ -3934,6 +3945,39 @@ await p20eFinishActiveFamily('salvage', 2400);
 await p20eDeployFamily('boarding', 2600);
 await p20eFinishActiveFamily('boarding', 2700);
 await p20eRemoveCombatGamepad();
+await waitFor(`(() => {
+  const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+  return Number(state?.campaign?.contractsCompleted ?? 0) >= ${p20f1SettlementBaseline.contractsCompleted + 3};
+})()`, 'P20-F1 repeatable settlement persistence', 20_000);
+const p20f1Settlement = await evaluate(`(() => {
+  const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
+  if (!state?.campaign || !state?.profile) return null;
+  return {
+    contractsCompleted: Number(state.campaign.contractsCompleted ?? 0),
+    reputation: { ...state.campaign.reputation },
+    resources: { ...state.campaign.resources },
+    inventoryCount: Array.isArray(state.profile.inventory) ? state.profile.inventory.length : 0,
+  };
+})()`);
+if (!p20f1Settlement) throw new Error('P20-F1 repeatable settlement snapshot unavailable.');
+const p20f1RepDelta = {
+  meridian: p20f1Settlement.reputation.meridian - p20f1SettlementBaseline.reputation.meridian,
+  heliostat: p20f1Settlement.reputation.heliostat - p20f1SettlementBaseline.reputation.heliostat,
+  longarc: p20f1Settlement.reputation.longarc - p20f1SettlementBaseline.reputation.longarc,
+};
+const p20f1InventoryGain = p20f1Settlement.inventoryCount - p20f1SettlementBaseline.inventoryCount;
+const p20f1ResourcesValid = ['credits', 'alloys', 'electronics', 'medstock', 'components', 'rareTech']
+  .every(key => Number.isFinite(p20f1Settlement.resources[key]) && p20f1Settlement.resources[key] >= 0);
+if (p20f1Settlement.contractsCompleted !== p20f1SettlementBaseline.contractsCompleted + 3
+  || p20f1RepDelta.heliostat !== 2
+  || p20f1RepDelta.longarc !== 2
+  || p20f1RepDelta.meridian !== 3
+  || p20f1Settlement.resources.rareTech !== p20f1SettlementBaseline.rareTech
+  || p20f1InventoryGain < 3
+  || !p20f1ResourcesValid) {
+  throw new Error(`Android P20-F1 settlement verification failed: ${JSON.stringify({ baseline: p20f1SettlementBaseline, settlement: p20f1Settlement, repDelta: p20f1RepDelta, inventoryGain: p20f1InventoryGain, resourcesValid: p20f1ResourcesValid })}`);
+}
+console.log(`ANDROID_P20F1_REPEATABLE_SETTLEMENT_PASS contracts=3 rep=heliostat:+${p20f1RepDelta.heliostat},longarc:+${p20f1RepDelta.longarc},meridian:+${p20f1RepDelta.meridian} rareTech=unchanged inventoryGain=${p20f1InventoryGain} resources=valid`);
 const p22b2PickupHudAudit = await evaluate(`globalThis.__p22b2PickupHudAudit ?? null`);
 const p22b2PickupScaleOk = value => Number.isFinite(value) && Math.abs(value - 0.7) <= 0.025;
 if (!p22b2PickupHudAudit
