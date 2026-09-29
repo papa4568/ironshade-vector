@@ -34,6 +34,7 @@ for family in stabilization salvage boarding; do
 done
 grep -q 'ANDROID_P20E_REPEATABLE_PLAY_PASS families=stabilization+salvage+boarding completions=3' android-repeatable-regression.txt
 grep -q 'ANDROID_P20E_REPEATABLE_REGRESSION_PASS families=stabilization+salvage+boarding completions=3' android-repeatable-regression.txt
+grep -q 'ANDROID_P20F1_REPEATABLE_SETTLEMENT_PASS contracts=3 ' android-repeatable-regression.txt
 
 adb exec-out screencap -p > android-repeatable-regression.png
 test -s android-repeatable-regression.png
