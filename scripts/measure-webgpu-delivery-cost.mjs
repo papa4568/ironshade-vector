@@ -29,7 +29,7 @@ const python = [
   'with zipfile.ZipFile(apk) as z:',
   '  rows=[{"name":i.filename,"basename":i.filename.rsplit("/",1)[-1],"bytes":i.file_size,"compressedBytes":i.compress_size,"method":i.compress_type} for i in z.infolist() if i.filename.rsplit("/",1)[-1] in names]',
   'print(json.dumps(rows))',
-].join('\\n');
+].join('\n');
 const apkEntries = JSON.parse(execFileSync('python3', ['-c', python, apkPath, ...chunks], { encoding: 'utf8' }));
 if (apkEntries.length !== chunks.length) {
   throw new Error(`Expected ${chunks.length} WebGPU QA APK entries, found ${apkEntries.length}: ${apkEntries.map(entry => entry.name).join(',')}`);
