@@ -62,6 +62,11 @@ assert(
 );
 
 assert(
+  /\.game-root \.transient-alert-lane\.event \{\s*width: min\(var\(--iv-combat-hud-landscape-transient-width\), 22\.4vw\);\s*\}/.test(combatHudCss),
+  'Short-landscape pickup/event alerts must preserve the compact informational HUD scale instead of overriding it with an unscaled event width.',
+);
+
+assert(
   app.includes('debrief-shell iv-view')
     && app.includes('debrief-card iv-panel iv-panel--glass')
     && app.includes('data-presentation="debrief-highlights"')
