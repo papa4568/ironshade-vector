@@ -239,6 +239,8 @@ assert(
     && browserWorkflowSource.includes('VK_DRIVER_FILES')
     && browserWorkflowSource.includes("lvp_icd.json")
     && browserWorkflowSource.includes('xvfb-run -a -s "-screen 0 1280x720x24"')
+    && browserWorkflowSource.includes("'--ozone-platform=x11'")
+    && !browserWorkflowSource.includes("'--disable-vulkan-surface'")
     && browserWorkflowSource.includes('P21-F2 desktop Chrome mode: puppeteer-headed-xvfb')
     && browserWorkflowSource.includes('BROWSER_E2E_REQUIRE_WEBGPU')
     && browserWorkflowSource.includes('BROWSER_E2E_WEBGPU_SWIFTSHADER')
