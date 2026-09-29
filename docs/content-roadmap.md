@@ -2,10 +2,10 @@
 
 ## New-chat handoff — resume here first
 
-- All previously completed P20–P23 work is preserved in [content-roadmap-archive.md](./content-roadmap-archive.md).
+- All previously completed P20–P23 work plus P24-A is preserved in [content-roadmap-archive.md](./content-roadmap-archive.md).
 - The 2026-09-29 code audit has been reduced to **release-critical work only**. Non-blocking cleanup/refactor ideas were removed from the active queue.
 - Priority order is intentional: **P24 correctness/data safety → P25 release/platform/security → P26 telemetry scale resilience**.
-- **Next executable item: P24-A — Separate input capability from responsive combat layout.**
+- **Next executable item: P24-B — Prevent stale legacy saves from replacing quarantined atomic progression.**
 
 Only active/future executable work lives here. Completed and verified work belongs in [content-roadmap-archive.md](./content-roadmap-archive.md). Stable product rules live in [product-constraints.md](./product-constraints.md).
 
@@ -19,8 +19,6 @@ Only active/future executable work lives here. Completed and verified work belon
 - If repository evidence shows an active item is already complete, verify that evidence before archiving it. If only part is complete, rewrite the item around the remaining work.
 
 ## P24 — Critical Runtime Correctness and Data Safety
-
-- [ ] **P24-A — Separate input capability from responsive combat layout** — Stop using viewport width as a proxy for keyboard availability. Preserve compact/touch layout behavior while allowing WASD on narrow desktops, tablets, foldables, and hybrid devices. Subscribe to pointer-capability changes directly so attaching/removing mouse/touch input updates immediately without requiring a resize. Add regressions for narrow fine-pointer + keyboard, coarse touch, and hybrid transitions.
 
 - [ ] **P24-B — Prevent stale legacy saves from replacing quarantined atomic progression** — When pre-boot recovery backs up and removes an invalid atomic save, ensure older profile/campaign keys cannot silently become the active state. Add a regression for invalid atomic state plus valid stale legacy keys and verify recovery messaging matches the state that actually loads.
 
