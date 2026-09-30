@@ -2,10 +2,9 @@
 
 ## New-chat handoff — resume here first
 
-- All previously completed P20–P23 work plus P24-A–P24-D, verified P25 work, and verified P26-A work is preserved in [content-roadmap-archive.md](./content-roadmap-archive.md).
+- All previously completed P20–P23 work plus P24-A–P24-D, verified P25 work, and verified P26-A–P26-B work is preserved in [content-roadmap-archive.md](./content-roadmap-archive.md).
 - The 2026-09-29 code audit has been reduced to **release-critical work only**. Non-blocking cleanup/refactor ideas were removed from the active queue.
-- Priority order is intentional: **P26 telemetry scale resilience**.
-- **Next executable item: P26-B — Bound telemetry reconciliation work.**
+- **No unchecked executable release-critical item remains in the active queue.**
 
 Only active/future executable work lives here. Completed and verified work belongs in [content-roadmap-archive.md](./content-roadmap-archive.md). Stable product rules live in [product-constraints.md](./product-constraints.md).
 
@@ -18,8 +17,6 @@ Only active/future executable work lives here. Completed and verified work belon
 - After verified completion, move the completion detail/evidence to the archive and remove the item from this file.
 - If repository evidence shows an active item is already complete, verify that evidence before archiving it. If only part is complete, rewrite the item around the remaining work.
 
-## P26 — Telemetry Scale Resilience
+## Active queue
 
-These become mandatory before public telemetry volume is allowed to grow materially. They are intentionally after correctness/release blockers because the current game can operate without global metrics.
-
-- [ ] **P26-B — Bound telemetry reconciliation work** — Rebuild stale aggregates through explicit pagination/batching rather than serially fetching the entire run ledger in one request. Add large-ledger/multi-page coverage, contention recovery, and no-double-counting verification.
+No unchecked executable work remains. Add future release-critical work here in priority order.
