@@ -1122,14 +1122,14 @@ async function p27A2BabylonBackendAudit() {
 
   const protectedGroups = 'hud+enemies+hazards+objectives+loot+interactables';
   if (!state.environmentBloom.startsWith('selective:refinery-selective-v1:')
-    || !/^babylon-included:\\d+\\+authored:processor\\+terminal\\+muzzle$/.test(state.environmentBloomSources)
+    || !/^babylon-included:\d+\+authored:processor\+terminal\+muzzle$/.test(state.environmentBloomSources)
     || state.environmentBloomExcluded !== protectedGroups
     || !state.environmentContactDepth.startsWith('grounding:refinery-contact-grounding-v1:')
     || state.environmentContactDepthProtected !== protectedGroups
     || !state.environmentAtmosphere.startsWith('fog:refinery-depth-atmosphere-v1:')
     || state.environmentAtmosphereProtected !== protectedGroups
-    || !/^aces-exposure-\\d+\\.\\d{2}\\+contrast-\\d+\\.\\d{2}$/.test(state.environmentPostTone)
-    || !/^tier:(high|balanced|performance)\\|bloom:(1\\.00|0\\.68|0\\.42)\\|contact:(1\\.00|0\\.68|0\\.42)\\|atmosphere:(1\\.00|0\\.68|0\\.42)\\|critical:1\\.00$/.test(state.babylonPostBudget)
+    || !/^aces-exposure-\d+\.\d{2}\+contrast-\d+\.\d{2}$/.test(state.environmentPostTone)
+    || !/^tier:(high|balanced|performance)\|bloom:(1\.00|0\.68|0\.42)\|contact:(1\.00|0\.68|0\.42)\|atmosphere:(1\.00|0\.68|0\.42)\|critical:1\.00$/.test(state.babylonPostBudget)
     || state.babylonPostStack !== 'on:qa-explicit'
     || state.effectPriority !== 'critical:hazards+telegraphs+class-cues@1.00|secondary:bloom+contact-depth+atmosphere@'
       + (state.renderTier === 'high' ? '1.00' : state.renderTier === 'balanced' ? '0.68' : '0.42')) {
