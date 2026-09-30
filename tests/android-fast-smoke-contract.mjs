@@ -51,7 +51,7 @@ for (const marker of [
   'LARGE_SCREEN_SMALLEST_WIDTH_DP = 600',
   'ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE',
   'ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED',
-  'smallestScreenWidthDp >= LARGE_SCREEN_SMALLEST_WIDTH_DP',
+  'smallestWidthDp >= LARGE_SCREEN_SMALLEST_WIDTH_DP',
   'phoneLandscape=sensor largeScreen=adaptive-resizable thresholdDp=600 appCategory=game',
 ]) requireText(androidConfigurator, marker, 'P25-B Android configurator');
 
