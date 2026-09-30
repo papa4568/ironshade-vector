@@ -23,7 +23,6 @@ on:
       - main
       - android/capacitor-apk
       - android/full-regression
-      - p25b-android16-large-screen
     paths:
       - 'src/**'
       - 'tests/**'
