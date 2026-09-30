@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
   createCombatGraphicsBackend,
+  babylonCombatGraphicsBackendFactory,
   productionCombatGraphicsBackendId,
   resolveCombatGraphicsPathSelection,
   selectCombatGraphicsBackendFactory,
@@ -19,6 +20,7 @@ assert(productionCombatGraphicsBackendId === 'webgl2', 'P21-A1 production graphi
 const productionPath = resolveCombatGraphicsPathSelection('?graphicsPath=webgl2');
 const explicitPath = resolveCombatGraphicsPathSelection('?graphicsCompare=1&graphicsPath=webgl2');
 const webgpuPath = resolveCombatGraphicsPathSelection('?graphicsCompare=1&graphicsPath=webgpu');
+const babylonPath = resolveCombatGraphicsPathSelection('?graphicsCompare=1&graphicsPath=babylon');
 const unknownPath = resolveCombatGraphicsPathSelection('?graphicsCompare=1&graphicsPath=metal');
 assert(
   productionPath.mode === 'production-default' && productionPath.requestedId === null && productionPath.selectedId === 'webgl2',
@@ -31,6 +33,10 @@ assert(
 assert(
   webgpuPath.mode === 'qa-explicit' && webgpuPath.requestedId === 'webgpu' && webgpuPath.selectedId === 'webgpu',
   'P21-F1 comparison mode must expose WebGPU only behind the explicit QA selector.',
+);
+assert(
+  babylonPath.mode === 'qa-explicit' && babylonPath.requestedId === 'babylon' && babylonPath.selectedId === 'babylon',
+  'P27-A2 comparison mode must expose Babylon only behind the explicit QA selector.',
 );
 assert(
   unknownPath.mode === 'production-default' && unknownPath.requestedId === null && unknownPath.selectedId === 'webgl2',
@@ -81,6 +87,24 @@ const supportedWebGpuFactory = {
   create: () => fakeWebGpuBackend,
 } as CombatGraphicsBackendFactory;
 
+const fakeBabylonBackend = {
+  ...fakeBackend,
+  id: 'babylon',
+  loadedId: 'babylon',
+} as CombatGraphicsBackend;
+const unsupportedBabylonFactory = {
+  id: 'babylon',
+  isSupported: () => false,
+  create: () => {
+    throw new Error('unsupported Babylon factory must not create a renderer');
+  },
+} as CombatGraphicsBackendFactory;
+const supportedBabylonFactory = {
+  id: 'babylon',
+  isSupported: () => true,
+  create: () => fakeBabylonBackend,
+} as CombatGraphicsBackendFactory;
+
 assert(
   selectCombatGraphicsBackendFactory([unsupportedFactory, supportedFactory]) === supportedFactory,
   'P21-A1 backend selection must choose the first supported production WebGL2 factory.',
@@ -115,11 +139,30 @@ assert(
   'P21-F1 WebGPU refinery factory must remain isolated from the production backend id.',
 );
 
+assert(
+  selectCombatGraphicsBackendFactory([supportedFactory, supportedBabylonFactory], babylonPath.selectedId) === supportedBabylonFactory,
+  'P27-A2 explicit Babylon selection must choose the Babylon QA backend when WebGL2 is supported.',
+);
+assert(
+  selectCombatGraphicsBackendFactory([supportedFactory, unsupportedBabylonFactory], babylonPath.selectedId) === supportedFactory,
+  'P27-A2 unsupported Babylon must fall back to the supported production WebGL2 factory.',
+);
+assert(
+  createCombatGraphicsBackend({} as HTMLCanvasElement, false, [supportedFactory, unsupportedBabylonFactory], babylonPath.selectedId) === fakeBackend,
+  'P27-A2 Babylon creation must preserve safe production WebGL2 fallback when unavailable.',
+);
+assert(
+  babylonCombatGraphicsBackendFactory.id === 'babylon',
+  'P27-A2 Babylon factory must remain isolated from the production backend id.',
+);
+
 const root = process.cwd();
 const gameCanvasSource = readFileSync(resolve(root, 'src/components/GameCanvas.tsx'), 'utf8');
 const boundarySource = readFileSync(resolve(root, 'src/game/combatGraphicsBackend.ts'), 'utf8');
 const rendererSource = readFileSync(resolve(root, 'src/game/threeCombatRenderer.ts'), 'utf8');
 const webgpuRendererSource = readFileSync(resolve(root, 'src/game/webGpuRefineryRenderer.ts'), 'utf8');
+const babylonRendererSource = readFileSync(resolve(root, 'src/game/babylonCombatRenderer.ts'), 'utf8');
+const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
 const browserSmokeSource = readFileSync(resolve(root, 'scripts/browser-runtime-smoke.mjs'), 'utf8');
 const refineryVerifierSource = readFileSync(resolve(root, 'scripts/verify-authored-refinery.mjs'), 'utf8');
 const androidSmokeSource = readFileSync(resolve(root, 'scripts/android-runtime-smoke.mjs'), 'utf8');
@@ -166,9 +209,9 @@ assert(
 );
 
 assert(
-  boundarySource.includes("export type CombatGraphicsBackendId = 'webgl2' | 'webgpu'")
+  boundarySource.includes("export type CombatGraphicsBackendId = 'webgl2' | 'webgpu' | 'babylon'")
     && boundarySource.includes("await import('./webGpuRefineryRenderer')")
-    && boundarySource.includes("if (selectedId === 'webgpu')")
+    && boundarySource.includes("if (selectedId !== productionCombatGraphicsBackendId)")
     && boundarySource.includes("productionCombatGraphicsBackendId")
     && boundarySource.includes("webgpu->webgl2:init-fallback"),
   'P21-F1 backend boundary must lazy-load WebGPU only for QA and preserve explicit WebGL2 fallback.',
@@ -187,6 +230,36 @@ assert(
     && webgpuRendererSource.includes('three-combat-v1')
     && webgpuRendererSource.includes('this.renderer.dispose()'),
   'P21-F1 WebGPU prototype must preserve TSL, authored refinery assets, camera/input parity, and teardown while later parity work remains isolated behind the same QA path.',
+);
+
+assert(
+  boundarySource.includes("await import('./babylonCombatRenderer')")
+    && boundarySource.includes("babylon->webgl2:init-fallback")
+    && boundarySource.includes("canvas.dataset.babylonInit = 'initializing'")
+    && boundarySource.includes("canvas.dataset.babylonDisposed = 'true'")
+    && boundarySource.includes("typeof WebGL2RenderingContext !== 'undefined'"),
+  'P27-A2 backend boundary must lazy-load Babylon only for QA, expose lifecycle telemetry, and preserve production WebGL2 fallback.',
+);
+assert(
+  babylonRendererSource.includes("from '@babylonjs/core/Engines/engine'")
+    && babylonRendererSource.includes("from '@babylonjs/core/scene'")
+    && babylonRendererSource.includes('new Engine(canvas, !coarse')
+    && babylonRendererSource.includes('engine.webGLVersion !== 2')
+    && babylonRendererSource.includes('new Scene(engine)')
+    && babylonRendererSource.includes('this.scene.render()')
+    && babylonRendererSource.includes('this.scene.dispose()')
+    && babylonRendererSource.includes('this.engine.dispose()')
+    && babylonRendererSource.includes("canvas.dataset.babylonBackend = 'webgl2'")
+    && babylonRendererSource.includes("canvas.dataset.babylonScene = 'active'")
+    && babylonRendererSource.includes("this.canvas.dataset.babylonScene = 'disposed'")
+    && !babylonRendererSource.includes('ThreeCombatRenderer')
+    && !babylonRendererSource.includes("from './sim'"),
+  'P27-A2 Babylon renderer must own only a WebGL2 Babylon scene/render/dispose lifecycle without taking simulation or Three.js ownership.',
+);
+assert(
+  packageJson.dependencies?.['@babylonjs/core'] === '9.28.0'
+    && packageJson.dependencies?.['@babylonjs/loaders'] === '9.28.0',
+  'P27-A2 must pin full Babylon core and loader dependencies to the same exact version.',
 );
 assert(
   webgpuRendererSource.includes("from './refineryIbl'")
@@ -232,6 +305,7 @@ assert(
     && browserSmokeSource.includes('BROWSER_P21A2_GRAPHICS_PATH_PASS')
     && browserSmokeSource.includes('BROWSER_P21F1_WEBGPU_PASS')
     && browserSmokeSource.includes('BROWSER_P21F2_REFINERY_PARITY_PASS')
+    && browserSmokeSource.includes('BROWSER_P27A2_BABYLON_PASS')
     && browserSmokeSource.includes("await p21F2RefineryParityAudit('webgl2')")
     && browserSmokeSource.includes("await p21F2RefineryParityAudit('webgpu')")
     && browserSmokeSource.includes("canvas.dataset.refineryIblQa = 'off'")
@@ -252,6 +326,8 @@ assert(
 assert(
   browserWorkflowSource.includes('BROWSER_E2E_GRAPHICS_PATH=webgl2 node scripts/browser-runtime-smoke.mjs')
     && browserWorkflowSource.includes('BROWSER_E2E_GRAPHICS_PATH=webgpu')
+    && browserWorkflowSource.includes('BROWSER_E2E_GRAPHICS_PATH=babylon')
+    && browserWorkflowSource.includes('p27a2-babylon.png')
     && browserWorkflowSource.includes('p21f1-webgpu.png')
     && browserWorkflowSource.includes('p21f2-stack-*.png')
     && browserWorkflowSource.includes('--enable-unsafe-webgpu')
@@ -356,6 +432,7 @@ assert(
 
 console.log('P21_A1_GRAPHICS_BACKEND_PASS default=webgl2 create=boundary render=delegated resize=preserved pointer=preserved dispose=preserved fallback=canvas2d');
 console.log('P27_A1_NEUTRAL_GRAPHICS_CONTRACT_PASS render=explicit stats=explicit pointer=explicit lifecycle=explicit loaded=explicit webgl2=implemented webgpu=implemented');
+console.log('P27_A2_BABYLON_QA_BACKEND_PASS production=webgl2 qa=babylon lazy=true webgl2-only=true fallback=webgl2 telemetry=init+backend+scene+frames+dispose dependencies=core+loaders-pinned');
 console.log('P21_A2_GRAPHICS_PATH_HARNESS_PASS selector=opt-in explicit=webgl2 refinery=existing-route telemetry=path+drawcalls+triangles+frame+tier android=production-default');
 console.log('P21_F1_WEBGPU_REFINERY_BACKEND_PASS production=webgl2 qa=webgpu lazy=true fallback=webgl2 assets=glb+ktx2+meshopt tsl=node-material camera=parity input=parity teardown=dispose');
 console.log('P21_F2_WEBGPU_REFINERY_PARITY_PASS stack=ibl-proxy+selective-bloom+contact-depth+atmosphere budget=adaptive captures=webgl2+webgpu gaps=explicit production=webgl2');

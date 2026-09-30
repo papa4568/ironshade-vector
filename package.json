@@ -85,6 +85,8 @@
     "typecheck:service": "tsc -p tsconfig.service.json --noEmit"
   },
   "dependencies": {
+    "@babylonjs/core": "9.28.0",
+    "@babylonjs/loaders": "9.28.0",
     "@capacitor/android": "^8.0.0",
     "@capacitor/core": "^8.0.0",
     "@netlify/blobs": "^11.1.0",
