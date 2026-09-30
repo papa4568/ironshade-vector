@@ -475,6 +475,13 @@ async function p27A2BabylonBackendAudit() {
       && canvas?.dataset.operatorSocket === 'weapon-socket'
       && canvas?.dataset.weaponVisual === 'authored-babylon'
       && canvas?.dataset.weaponRoles === 'breacher,carbine,rail'
+      && canvas?.dataset.babylonEnemyCatalogState === 'ready'
+      && canvas?.dataset.babylonEnemyState === 'ready'
+      && canvas?.dataset.babylonEnemyCatalogRoles === 'assault,suppressor,technician,elite'
+      && Number(canvas?.dataset.enemyActive ?? 0) > 0
+      && Number(canvas?.dataset.enemyLoadingCount ?? 0) === 0
+      && Boolean(canvas?.dataset.enemyAnimationTarget)
+      && Boolean(canvas?.dataset.babylonEnemyRuntime)
       && Boolean(canvas?.dataset.babylonPlayerRuntime)
       && Boolean(canvas?.dataset.babylonWeaponMuzzle)
       && Boolean(canvas?.dataset.babylonCameraFraming)
@@ -616,6 +623,32 @@ async function p27A2BabylonBackendAudit() {
       playerTracking: canvas?.dataset.babylonPlayerTracking ?? '',
       playerReuse: canvas?.dataset.babylonPlayerReuse ?? '',
       playerRuntime: canvas?.dataset.babylonPlayerRuntime ?? '',
+      enemyCatalogState: canvas?.dataset.babylonEnemyCatalogState ?? '',
+      enemyCatalogError: canvas?.dataset.babylonEnemyCatalogError ?? '',
+      enemyCatalogRoles: canvas?.dataset.babylonEnemyCatalogRoles ?? '',
+      enemyCatalogAssets: canvas?.dataset.babylonEnemyCatalogAssets ?? '',
+      enemyCatalogLod: canvas?.dataset.babylonEnemyCatalogLod ?? '',
+      enemyCatalogRuntime: canvas?.dataset.babylonEnemyCatalogRuntime ?? '',
+      enemyState: canvas?.dataset.babylonEnemyState ?? '',
+      enemyVisual: canvas?.dataset.enemyVisual ?? '',
+      enemyRoles: canvas?.dataset.enemyRoles ?? '',
+      enemyVariants: canvas?.dataset.enemyVariants ?? '',
+      enemyAssets: canvas?.dataset.enemyAssets ?? '',
+      enemyActive: Number(canvas?.dataset.enemyActive ?? 0),
+      enemyAuthoredCount: Number(canvas?.dataset.enemyAuthoredCount ?? 0),
+      enemyFallbackCount: Number(canvas?.dataset.enemyFallbackCount ?? 0),
+      enemyLoadingCount: Number(canvas?.dataset.enemyLoadingCount ?? 0),
+      enemyAnimation: canvas?.dataset.enemyAnimation ?? '',
+      enemyAnimationBlend: canvas?.dataset.enemyAnimationBlend ?? '',
+      enemyAnimationTarget: canvas?.dataset.enemyAnimationTarget ?? '',
+      enemyVariantSilhouette: canvas?.dataset.enemyVariantSilhouette ?? '',
+      enemyFacing: canvas?.dataset.enemyFacing ?? '',
+      enemySpawnDeath: canvas?.dataset.enemySpawnDeath ?? '',
+      enemyTracking: canvas?.dataset.babylonEnemyTracking ?? '',
+      enemyReuse: canvas?.dataset.babylonEnemyReuse ?? '',
+      enemyCleanup: canvas?.dataset.babylonEnemyCleanup ?? '',
+      enemyRuntime: canvas?.dataset.babylonEnemyRuntime ?? '',
+      enemyFallbackReason: canvas?.dataset.babylonEnemyFallbackReason ?? '',
       sceneTelemetry: canvas?.dataset.babylonSceneTelemetry ?? '',
       rectWidth: canvas?.getBoundingClientRect().width ?? 0,
       rectHeight: canvas?.getBoundingClientRect().height ?? 0,
@@ -714,6 +747,59 @@ async function p27A2BabylonBackendAudit() {
     throw new Error(`P27-B3 Babylon operator/weapon presentation parity invalid: ${JSON.stringify(state)}`);
   }
 
+  const enemyCatalogRoles = new Set(String(state.enemyCatalogRoles).split(',').filter(Boolean));
+  const enemyCatalogAssets = new Set(String(state.enemyCatalogAssets).split(',').filter(Boolean));
+  const enemyRoles = new Set(String(state.enemyRoles).split(',').filter(Boolean));
+  const enemyAssets = String(state.enemyAssets).split(',').filter(Boolean);
+  const enemyVariants = String(state.enemyVariants).split(',').filter(Boolean);
+  const expectedEnemyRoles = ['assault', 'suppressor', 'technician', 'elite'];
+  const expectedEnemyAssets = expectedEnemyRoles.map(role => `enemy-${role}-lod${expectedPlayerLod}`);
+  const enemyRuntimeMatch = /^cached:(\d+)\|active:(\d+)\|bytes:(\d+)$/.exec(state.enemyRuntime);
+  const enemyCatalogRuntimeMatch = /^cached:(\d+)\|active:(\d+)\|bytes:(\d+)$/.exec(state.enemyCatalogRuntime);
+  const enemyTrackingMatch = /^active:(\d+)\|authored:(\d+)\|fallback:(\d+)\|loading:(\d+)$/.exec(state.enemyTracking);
+  const enemyBlendPattern = /^move:\d+\.\d+,tell:\d+\.\d+,commit:\d+\.\d+,recovery:\d+\.\d+,hit:\d+\.\d+,stagger:\d+\.\d+,armorBreak:\d+\.\d+$/;
+  const enemyAnimationPattern = /^(assault-breach|suppressor-braced|technician-control|elite-hunter):(idle|locomotion|tell|commit|recovery|death)$/;
+  if (state.enemyCatalogState !== 'ready'
+    || state.enemyCatalogError
+    || !expectedEnemyRoles.every(role => enemyCatalogRoles.has(role))
+    || enemyCatalogRoles.size !== expectedEnemyRoles.length
+    || !expectedEnemyAssets.every(asset => enemyCatalogAssets.has(asset))
+    || enemyCatalogAssets.size !== expectedEnemyAssets.length
+    || state.enemyCatalogLod !== String(expectedPlayerLod)
+    || !enemyCatalogRuntimeMatch
+    || Number(enemyCatalogRuntimeMatch[1]) < 19
+    || state.enemyState !== 'ready'
+    || state.enemyVisual !== 'authored-babylon'
+    || state.enemyFallbackReason
+    || state.enemyActive < 1
+    || state.enemyAuthoredCount !== state.enemyActive
+    || state.enemyFallbackCount !== 0
+    || state.enemyLoadingCount !== 0
+    || ![...enemyRoles].every(role => expectedEnemyRoles.includes(role))
+    || enemyRoles.size < 1
+    || !enemyAssets.every(asset => /^enemy-(assault|suppressor|technician|elite)-lod[12]$/.test(asset))
+    || enemyAssets.length < 1
+    || !enemyVariants.every(value => /:(standard|mobile|braced|technical|drone)$/.test(value))
+    || enemyVariants.length < 1
+    || !enemyAnimationPattern.test(state.enemyAnimation)
+    || !enemyBlendPattern.test(state.enemyAnimationBlend)
+    || !/^(assault|suppressor|technician|elite):/.test(state.enemyAnimationTarget)
+    || !['standard', 'mobile', 'braced', 'technical', 'drone'].includes(state.enemyVariantSilhouette)
+    || state.enemyFacing !== 'telegraph-or-velocity'
+    || state.enemySpawnDeath !== 'active-root+spawn-pose+death-rig+deterministic-release'
+    || state.enemyReuse !== 'shared-runtime+role-assets+variant-silhouettes+shared-animation-signals'
+    || !/^released:\d+$/.test(state.enemyCleanup)
+    || !enemyTrackingMatch
+    || Number(enemyTrackingMatch[1]) !== state.enemyActive
+    || Number(enemyTrackingMatch[2]) !== state.enemyAuthoredCount
+    || Number(enemyTrackingMatch[3]) !== state.enemyFallbackCount
+    || Number(enemyTrackingMatch[4]) !== state.enemyLoadingCount
+    || !enemyRuntimeMatch
+    || Number(enemyRuntimeMatch[1]) < 19
+    || Number(enemyRuntimeMatch[2]) < state.environmentInstances + 4 + state.enemyAuthoredCount) {
+    throw new Error(`P27-B4 Babylon enemy presentation parity invalid: ${JSON.stringify(state)}`);
+  }
+
   const viewportMatch = /^(\d+)x(\d+)@ratio:([0-9.]+)@buffer:(\d+)x(\d+)$/.exec(state.viewport);
   if (!viewportMatch) throw new Error(`P27-B1 Babylon viewport telemetry invalid: ${state.viewport}`);
   const [, cssWidthRaw, cssHeightRaw, ratioRaw, bufferWidthRaw, bufferHeightRaw] = viewportMatch;
@@ -739,6 +825,7 @@ async function p27A2BabylonBackendAudit() {
   console.log(`BROWSER_P27B1_BABYLON_CAMERA_INPUT_PASS viewport=${viewportMode} camera=${state.camera} input=${state.input} layout=${state.layout} framing=${state.framing} viewport=${state.viewport} pointer=${state.pointer} initialRetargetDelta=${initialRetargetDelta.toFixed(4)} settledDelta=${settledDirectionDelta.toFixed(4)} feedback=${state.feedback}`);
   console.log(`BROWSER_P27B2_BABYLON_REFINERY_PASS viewport=${viewportMode} lod=${state.environmentLod} kit=${[...refineryKit].sort().join(',')} placements=${state.environmentInstances} terminals=${state.environmentTerminals} runtime=${state.environmentRuntime} scene=${state.sceneTelemetry} reuse=${state.environmentReuse}`);
   console.log(`BROWSER_P27B3_BABYLON_OPERATOR_WEAPON_PASS viewport=${viewportMode} class=${state.operatorClass} operator=${state.operatorAsset} stance=${state.operatorStance} animation=${state.operatorAnimation} weapon=${state.weaponActive} asset=${state.weaponAsset} variant=${state.weaponVariant} thermal=${state.weaponThermalCue} muzzle=${state.weaponMuzzle} runtime=${state.playerRuntime}`);
+  console.log(`BROWSER_P27B4_BABYLON_ENEMY_PASS viewport=${viewportMode} catalog=${state.enemyCatalogAssets} active=${state.enemyActive} roles=${state.enemyRoles} variants=${state.enemyVariants} visual=${state.enemyVisual} animation=${state.enemyAnimation} target=${state.enemyAnimationTarget} tracking=${state.enemyTracking} runtime=${state.enemyRuntime}`);
   return state;
 }
 
