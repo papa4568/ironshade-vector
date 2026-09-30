@@ -11,14 +11,17 @@ type MetricsRecord = { runs: number; attempts: number; safeRuns: number; deepRun
 type DailyOperation = { date: string; seed: number; codename: string; sponsor: 'meridian' | 'heliostat' | 'longarc'; archetype: 'salvage' | 'boarding' | 'stabilization'; objectiveMode: 'pressure-recovery' | 'grid-isolation' | 'gravity-stabilization' | 'machinery-recovery' | 'emergency-boarding' | 'deep-salvage'; location: 'orbital-station' | 'damaged-vessel' | 'asteroid-refinery' | 'spin-habitat' | 'jovian-harvester' | 'ice-mine' | 'solar-yard'; conditions: Array<'unstable-pressure' | 'failing-gravity' | 'damaged-grid' | 'automated-defense' | 'limited-atmosphere' | 'low-visibility'>; challenge: string; generatedAt: string };
 type TelemetrySessionRecord = { requestId: string; credential: string; clientKey: string; issuedAt: string; expiresAt: string };
 type TelemetryQuotaRecord = { windowStartedAt: number; issued: number };
+type AcceptedRunStateRecord = { acceptedRuns: number };
 
 const dailyStore = () => getStore('ironshade-daily');
 const metricsStore = () => getStore({ name: 'ironshade-metrics', consistency: 'strong' });
 // Only telemetry that passes the strict ingestion gate enters this ledger; aggregate balance metrics are derived exclusively from it.
 const acceptedRunsStore = () => getStore({ name: 'ironshade-runs', consistency: 'strong' });
+const acceptedRunStateStore = () => getStore({ name: 'ironshade-run-ledger-state', consistency: 'strong' });
 const telemetrySessionsStore = () => getStore({ name: 'ironshade-telemetry-sessions', consistency: 'strong' });
 const telemetryQuotaStore = () => getStore({ name: 'ironshade-telemetry-quota', consistency: 'strong' });
 const METRICS_KEY = 'global';
+const ACCEPTED_RUN_STATE_KEY = 'accepted-runs';
 const MAX_RUN_TELEMETRY_BYTES = 512_000;
 const MAX_TELEMETRY_SESSION_BYTES = 4_096;
 const TELEMETRY_SESSION_TTL_MS = 5 * 60 * 1_000;
@@ -137,6 +140,43 @@ function applyRunToMetrics(base: MetricsRecord, runId: string, run: RunRecord): 
   };
 }
 
+function normalizeAcceptedRunCount(value: Partial<AcceptedRunStateRecord> | null | undefined) {
+  return typeof value?.acceptedRuns === 'number' && Number.isInteger(value.acceptedRuns) && value.acceptedRuns >= 0 ? value.acceptedRuns : 0;
+}
+
+async function readAcceptedRunCount() {
+  const version = await acceptedRunStateStore().getWithMetadata(ACCEPTED_RUN_STATE_KEY, { type: 'json', consistency: 'strong' }) as { data: AcceptedRunStateRecord; etag: string } | null;
+  return normalizeAcceptedRunCount(version?.data);
+}
+
+async function incrementAcceptedRunCount() {
+  const store = acceptedRunStateStore();
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const version = await store.getWithMetadata(ACCEPTED_RUN_STATE_KEY, { type: 'json', consistency: 'strong' }) as { data: AcceptedRunStateRecord; etag: string } | null;
+    const next: AcceptedRunStateRecord = { acceptedRuns: normalizeAcceptedRunCount(version?.data) + 1 };
+    const result = version
+      ? await store.setJSON(ACCEPTED_RUN_STATE_KEY, next, { onlyIfMatch: version.etag })
+      : await store.setJSON(ACCEPTED_RUN_STATE_KEY, next, { onlyIfNew: true });
+    if (result.modified) return next.acceptedRuns;
+  }
+  throw new Error('Accepted-run state contention exceeded retry budget');
+}
+
+async function ensureAcceptedRunCountAtLeast(expected: number) {
+  const store = acceptedRunStateStore();
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const version = await store.getWithMetadata(ACCEPTED_RUN_STATE_KEY, { type: 'json', consistency: 'strong' }) as { data: AcceptedRunStateRecord; etag: string } | null;
+    const current = normalizeAcceptedRunCount(version?.data);
+    if (current >= expected) return current;
+    const next: AcceptedRunStateRecord = { acceptedRuns: expected };
+    const result = version
+      ? await store.setJSON(ACCEPTED_RUN_STATE_KEY, next, { onlyIfMatch: version.etag })
+      : await store.setJSON(ACCEPTED_RUN_STATE_KEY, next, { onlyIfNew: true });
+    if (result.modified) return expected;
+  }
+  throw new Error('Accepted-run state repair contention exceeded retry budget');
+}
+
 async function rebuildMetricsFromLedger(runKeys: string[]) {
   const store = acceptedRunsStore();
   let rebuilt = emptyMetrics();
@@ -147,28 +187,39 @@ async function rebuildMetricsFromLedger(runKeys: string[]) {
   return rebuilt;
 }
 
-async function readMetrics() {
+async function reconcileMetricsFromLedger(version?: { data: MetricsRecord; etag: string } | null) {
   const store = metricsStore();
-  const version = await store.getWithMetadata(METRICS_KEY, { type: 'json', consistency: 'strong' }) as { data: MetricsRecord; etag: string } | null;
-  const cached = normalizeMetrics(version?.data);
   const runStore = acceptedRunsStore();
   const ledger = await runStore.list();
   const runKeys = ledger.blobs.map(blob => blob.key);
-  if (cached.attempts === runKeys.length) return cached;
-
   const rebuilt = await rebuildMetricsFromLedger(runKeys);
   const confirmed = await runStore.list();
   if (confirmed.blobs.length === runKeys.length) {
-    const result = version
-      ? await store.setJSON(METRICS_KEY, rebuilt, { onlyIfMatch: version.etag })
+    await ensureAcceptedRunCountAtLeast(confirmed.blobs.length);
+    const currentVersion = version === undefined
+      ? await store.getWithMetadata(METRICS_KEY, { type: 'json', consistency: 'strong' }) as { data: MetricsRecord; etag: string } | null
+      : version;
+    const result = currentVersion
+      ? await store.setJSON(METRICS_KEY, rebuilt, { onlyIfMatch: currentVersion.etag })
       : await store.setJSON(METRICS_KEY, rebuilt, { onlyIfNew: true });
     if (!result.modified) {
       const current = await store.get(METRICS_KEY, { type: 'json', consistency: 'strong' }) as MetricsRecord | null;
       const normalized = normalizeMetrics(current);
-      if (normalized.attempts === confirmed.blobs.length) return normalized;
+      if (normalized.attempts === await readAcceptedRunCount()) return normalized;
     }
   }
   return rebuilt;
+}
+
+async function readMetrics() {
+  const store = metricsStore();
+  const [version, acceptedRunCount] = await Promise.all([
+    store.getWithMetadata(METRICS_KEY, { type: 'json', consistency: 'strong' }) as Promise<{ data: MetricsRecord; etag: string } | null>,
+    readAcceptedRunCount(),
+  ]);
+  const cached = normalizeMetrics(version?.data);
+  if (cached.attempts === acceptedRunCount) return cached;
+  return reconcileMetricsFromLedger(version);
 }
 
 function mergeCountMap(base: Record<string, number>, addition: Record<string, number>, maxKeys = 30) {
@@ -393,6 +444,12 @@ async function handlePostRun(req: Request, context: Context) {
   const store = acceptedRunsStore();
   const created = await store.setJSON(runId, run, { onlyIfNew: true });
   if (!created.modified) return json({ id: runId, metrics: await readMetrics() }, 200);
+  try {
+    await incrementAcceptedRunCount();
+  } catch (cause) {
+    console.error('Accepted-run state update deferred to ledger reconciliation', cause);
+    return json({ id: runId, metrics: await reconcileMetricsFromLedger() }, 201);
+  }
   try {
     return json({ id: runId, metrics: await updateMetrics(runId, run) }, 201);
   } catch (cause) {
