@@ -276,6 +276,7 @@ export function createCombatGraphicsBackend(
   factories: readonly CombatGraphicsBackendFactory[] = [
     webgl2CombatGraphicsBackendFactory,
     webgpuRefineryCombatGraphicsBackendFactory,
+    babylonCombatGraphicsBackendFactory,
   ],
   selectedId: CombatGraphicsBackendId = productionCombatGraphicsBackendId,
 ) {
