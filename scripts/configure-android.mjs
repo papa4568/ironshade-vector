@@ -11,18 +11,52 @@ for (const requiredPath of [manifestPath, activityPath, appGradlePath]) {
   }
 }
 
+function upsertAttribute(tag, name, value, indent) {
+  const marker = name + '=\"';
+  const start = tag.indexOf(marker);
+  if (start >= 0) {
+    const valueStart = start + marker.length;
+    const valueEnd = tag.indexOf('\"', valueStart);
+    if (valueEnd < 0) throw new Error('Malformed Android manifest attribute: ' + name);
+    return tag.slice(0, start) + name + '=\"' + value + '\"' + tag.slice(valueEnd + 1);
+  }
+  const attribute = '\n' + indent + name + '=\"' + value + '\"';
+  return tag.replace(/>$/, attribute + '>');
+}
+
 let manifest = readFileSync(manifestPath, 'utf8');
-if (!manifest.includes('android:hardwareAccelerated=')) {
-  manifest = manifest.replace('<application', '<application\n        android:hardwareAccelerated="true"');
-} else {
-  manifest = manifest.replace(/android:hardwareAccelerated="[^"]*"/, 'android:hardwareAccelerated="true"');
+const applicationPattern = /<application\\b[^>]*>/;
+const applicationMatch = manifest.match(applicationPattern);
+if (!applicationMatch) throw new Error('Unable to locate Android application manifest tag.');
+let applicationTag = applicationMatch[0];
+applicationTag = upsertAttribute(applicationTag, 'android:hardwareAccelerated', 'true', '        ');
+applicationTag = upsertAttribute(applicationTag, 'android:appCategory', 'game', '        ');
+manifest = manifest.replace(applicationPattern, applicationTag);
+
+const activityPattern = /<activity\\b(?=[^>]*android:name=\"\\.MainActivity\")[^>]*>/;
+const activityMatch = manifest.match(activityPattern);
+if (!activityMatch) throw new Error('Unable to locate generated MainActivity manifest tag.');
+let activityTag = activityMatch[0].replace(/\\s+android:screenOrientation=\"[^\"]*\"/g, '');
+activityTag = upsertAttribute(activityTag, 'android:resizeableActivity', 'true', '            ');
+activityTag = upsertAttribute(activityTag, 'android:keepScreenOn', 'true', '            ');
+
+const configMatch = activityTag.match(/android:configChanges=\"([^\"]*)\"/);
+const configChanges = configMatch?.[1]
+  ? configMatch[1].split('|').map(value => value.trim()).filter(Boolean)
+  : [];
+for (const requiredChange of [
+  'orientation',
+  'keyboardHidden',
+  'keyboard',
+  'screenSize',
+  'smallestScreenSize',
+  'screenLayout',
+  'density',
+]) {
+  if (!configChanges.includes(requiredChange)) configChanges.push(requiredChange);
 }
-if (!manifest.includes('android:screenOrientation="sensorLandscape"')) {
-  manifest = manifest.replace(
-    'android:exported="true">',
-    'android:exported="true"\n            android:screenOrientation="sensorLandscape"\n            android:keepScreenOn="true">',
-  );
-}
+activityTag = upsertAttribute(activityTag, 'android:configChanges', configChanges.join('|'), '            ');
+manifest = manifest.replace(activityPattern, activityTag);
 writeFileSync(manifestPath, manifest);
 
 let appGradle = readFileSync(appGradlePath, 'utf8');
@@ -66,7 +100,9 @@ writeFileSync(appGradlePath, appGradle);
 
 writeFileSync(activityPath, `package app.ironshade.vector;
 
+import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.View;
 import android.webkit.WebView;
@@ -76,10 +112,20 @@ import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
+    private static final int LARGE_SCREEN_SMALLEST_WIDTH_DP = 600;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        configureGameOrientation();
         configureGameWebView();
+        enterImmersiveMode();
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        configureGameOrientation();
         enterImmersiveMode();
     }
 
@@ -87,6 +133,16 @@ public class MainActivity extends BridgeActivity {
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) enterImmersiveMode();
+    }
+
+    private void configureGameOrientation() {
+        int smallestWidthDp = getResources().getConfiguration().smallestScreenWidthDp;
+        int requestedOrientation = smallestWidthDp >= LARGE_SCREEN_SMALLEST_WIDTH_DP
+            ? ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            : ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE;
+        if (getRequestedOrientation() != requestedOrientation) {
+            setRequestedOrientation(requestedOrientation);
+        }
     }
 
     private void configureGameWebView() {
@@ -109,4 +165,4 @@ public class MainActivity extends BridgeActivity {
 }
 `);
 
-console.log(`ANDROID_GAME_SHELL_CONFIGURED landscape=sensor fullscreen=immersive hardwareAcceleration=true releaseSigning=env-backed version=${versionName}(${versionCode})`);
+console.log(`ANDROID_GAME_SHELL_CONFIGURED phoneLandscape=sensor largeScreen=adaptive-resizable thresholdDp=600 appCategory=game fullscreen=immersive hardwareAcceleration=true releaseSigning=env-backed version=${versionName}(${versionCode})`);
