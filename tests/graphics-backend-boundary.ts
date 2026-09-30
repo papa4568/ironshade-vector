@@ -163,6 +163,7 @@ const rendererSource = readFileSync(resolve(root, 'src/game/threeCombatRenderer.
 const webgpuRendererSource = readFileSync(resolve(root, 'src/game/webGpuRefineryRenderer.ts'), 'utf8');
 const babylonRendererSource = readFileSync(resolve(root, 'src/game/babylonCombatRenderer.ts'), 'utf8');
 const babylonWorldSource = readFileSync(resolve(root, 'src/game/babylonWorldPresentation.ts'), 'utf8');
+const babylonWeaponVfxSource = readFileSync(resolve(root, 'src/game/babylonWeaponVfx.ts'), 'utf8');
 const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
 const browserSmokeSource = readFileSync(resolve(root, 'scripts/browser-runtime-smoke.mjs'), 'utf8');
 const refineryVerifierSource = readFileSync(resolve(root, 'scripts/verify-authored-refinery.mjs'), 'utf8');
@@ -393,6 +394,30 @@ assert(
 );
 
 assert(
+  babylonRendererSource.includes("from './babylonWeaponVfx'")
+    && babylonRendererSource.includes('new BabylonWeaponVfx(scene, canvas, coarse)')
+    && babylonRendererSource.includes('this.weaponVfx.sync(state, muzzlePosition, quality)')
+    && babylonRendererSource.includes("this.weaponVfx.release('scenario-exit')")
+    && babylonRendererSource.includes('this.weaponVfx.dispose()')
+    && babylonWeaponVfxSource.includes("from './classArsenal'")
+    && babylonWeaponVfxSource.includes('weaponHandlingProfiles')
+    && babylonWeaponVfxSource.includes('state.weaponFlash')
+    && babylonWeaponVfxSource.includes('state.projectiles')
+    && babylonWeaponVfxSource.includes("effect.kind !== 'impact'")
+    && babylonWeaponVfxSource.includes('state.impactEvent')
+    && babylonWeaponVfxSource.includes('p27-b6-muzzle-flash')
+    && babylonWeaponVfxSource.includes('p27-b6-projectile-core-')
+    && babylonWeaponVfxSource.includes('p27-b6-impact-ring-')
+    && babylonWeaponVfxSource.includes("this.canvas.dataset.babylonWeaponVfxFamilies = 'breacher,carbine,rail'")
+    && babylonWeaponVfxSource.includes("this.canvas.dataset.babylonWeaponDamageFeedback")
+    && babylonWeaponVfxSource.includes("effectsMode === 'reduced' ? 0 : 0.78 * fade")
+    && !babylonWeaponVfxSource.includes('fireCurrent(')
+    && packageJson.scripts['test:babylon-weapon-vfx']
+    && packageJson.scripts.build.includes('npm run test:babylon-weapon-vfx'),
+  'P27-B6 Babylon renderer must drive muzzle, three-family projectile/beam, impact, and damage-feedback VFX from existing simulation/presentation state while preserving reduced-effects priority and simulation ownership.',
+);
+
+assert(
   webgpuRendererSource.includes("from './refineryIbl'")
     && webgpuRendererSource.includes("from './refineryBloom'")
     && webgpuRendererSource.includes("from './refineryContactDepth'")
@@ -439,6 +464,9 @@ assert(
     && browserSmokeSource.includes('BROWSER_P27A2_BABYLON_PASS')
     && browserSmokeSource.includes('BROWSER_P27B1_BABYLON_CAMERA_INPUT_PASS')
     && browserSmokeSource.includes('BROWSER_P27B4_BABYLON_ENEMY_PASS')
+    && browserSmokeSource.includes('BROWSER_P27B6_BABYLON_WEAPON_VFX_PASS')
+    && browserSmokeSource.includes('babylonWeaponShotCount')
+    && browserSmokeSource.includes('babylonWeaponDamageFeedback')
     && browserSmokeSource.includes('babylonCameraParity')
     && browserSmokeSource.includes('babylonInputParity')
     && browserSmokeSource.includes('babylonPointerDirection')
@@ -573,6 +601,7 @@ console.log('P27_B1_BABYLON_CAMERA_INPUT_PASS camera=three-combat-v1 resize=expl
 console.log('P27_B2_BABYLON_REFINERY_ENVIRONMENT_PASS kit=11 placements=three-parity lod=shared-runtime reuse=shared-resources cleanup=generation+release telemetry=asset+scene collision=unchanged');
 console.log('P27_B3_BABYLON_OPERATOR_WEAPON_PASS classes=3 weapons=3 rig=articulated socket=weapon-socket handling=shared variant=shared thermal=shared muzzle=authored-socket accents=emissive cleanup=generation+release simulation=unchanged');
 console.log('P27_B5_BABYLON_WORLD_PRESENTATION_PASS objects=sim-state interactables=authored+shape-state objective=beacon+path hazards=shared-shapes loot=authored+rarity breach=world-state cleanup=deterministic simulation=unchanged');
+console.log('P27_B6_BABYLON_WEAPON_VFX_BOUNDARY_PASS muzzle=authored-socket projectiles=sim-state impacts=shared-event reduced=secondary-sparks-only simulation=unchanged');
 console.log('P21_A2_GRAPHICS_PATH_HARNESS_PASS selector=opt-in explicit=webgl2 refinery=existing-route telemetry=path+drawcalls+triangles+frame+tier android=production-default');
 console.log('P21_F1_WEBGPU_REFINERY_BACKEND_PASS production=webgl2 qa=webgpu lazy=true fallback=webgl2 assets=glb+ktx2+meshopt tsl=node-material camera=parity input=parity teardown=dispose');
 console.log('P21_F2_WEBGPU_REFINERY_PARITY_PASS stack=ibl-proxy+selective-bloom+contact-depth+atmosphere budget=adaptive captures=webgl2+webgpu gaps=explicit production=webgl2');

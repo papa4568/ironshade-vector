@@ -579,6 +579,82 @@ async function p27A2BabylonBackendAudit() {
   if (!normalized || settledDirectionDelta > 0.04) {
     throw new Error(`P27-B1 Babylon ground projection is not normalized/stable after camera retarget: samples=${pointerSamples.join(' -> ')} initialDelta=${initialRetargetDelta} settledDelta=${settledDirectionDelta}`);
   }
+  const preFireShotCount = Number(await evaluate(`document.querySelector('canvas')?.dataset.babylonWeaponShotCount ?? 0`));
+  if (pointerProbe.coarse) {
+    const fireStarted = await evaluate(`(() => {
+      const button = document.querySelector('.fire-button');
+      if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+      button.dispatchEvent(new PointerEvent('pointerdown', {
+        bubbles: true,
+        pointerId: 936,
+        pointerType: 'touch',
+        isPrimary: true,
+        button: 0,
+        buttons: 1,
+      }));
+      return true;
+    })()`);
+    if (!fireStarted) throw new Error('P27-B6 mobile Babylon fire probe could not press FIRE.');
+    try {
+      await waitFor(`Number(document.querySelector('canvas')?.dataset.babylonWeaponShotCount ?? 0) > ${preFireShotCount}`, 'P27-B6 mobile Babylon weapon fire', 8_000);
+    } finally {
+      await evaluate(`(() => {
+        const button = document.querySelector('.fire-button');
+        if (!(button instanceof HTMLButtonElement)) return false;
+        button.dispatchEvent(new PointerEvent('pointerup', {
+          bubbles: true,
+          pointerId: 936,
+          pointerType: 'touch',
+          isPrimary: true,
+          button: 0,
+          buttons: 0,
+        }));
+        return true;
+      })()`).catch(() => undefined);
+    }
+  } else {
+    const fireStarted = await evaluate(`(() => {
+      const canvas = document.querySelector('canvas');
+      if (!(canvas instanceof HTMLCanvasElement)) return false;
+      const rect = canvas.getBoundingClientRect();
+      canvas.dispatchEvent(new PointerEvent('pointerdown', {
+        bubbles: true,
+        pointerId: 936,
+        pointerType: 'mouse',
+        isPrimary: true,
+        clientX: rect.left + rect.width * 0.68,
+        clientY: rect.top + rect.height * 0.48,
+        button: 0,
+        buttons: 1,
+      }));
+      return true;
+    })()`);
+    if (!fireStarted) throw new Error('P27-B6 desktop Babylon fire probe could not press the combat canvas.');
+    try {
+      await waitFor(`Number(document.querySelector('canvas')?.dataset.babylonWeaponShotCount ?? 0) > ${preFireShotCount}`, 'P27-B6 desktop Babylon weapon fire', 8_000);
+    } finally {
+      await evaluate(`(() => {
+        const canvas = document.querySelector('canvas');
+        if (!(canvas instanceof HTMLCanvasElement)) return false;
+        const rect = canvas.getBoundingClientRect();
+        canvas.dispatchEvent(new PointerEvent('pointerup', {
+          bubbles: true,
+          pointerId: 936,
+          pointerType: 'mouse',
+          isPrimary: true,
+          clientX: rect.left + rect.width * 0.68,
+          clientY: rect.top + rect.height * 0.48,
+          button: 0,
+          buttons: 0,
+        }));
+        return true;
+      })()`).catch(() => undefined);
+    }
+  }
+  const fireProbeShotCount = Number(await evaluate(`document.querySelector('canvas')?.dataset.babylonWeaponShotCount ?? 0`));
+
+  const pointerAfterFire = await evaluate(`document.querySelector('canvas')?.dataset.babylonPointerDirection ?? ''`);
+
   const state = await evaluate(`(() => {
     const canvas = document.querySelector('canvas');
     return {
@@ -635,6 +711,21 @@ async function p27A2BabylonBackendAudit() {
       weaponThermalCue: canvas?.dataset.weaponThermalCue ?? '',
       weaponMuzzleOrigin: canvas?.dataset.babylonWeaponMuzzleOrigin ?? '',
       weaponMuzzle: canvas?.dataset.babylonWeaponMuzzle ?? '',
+      weaponVfx: canvas?.dataset.babylonWeaponVfx ?? '',
+      weaponVfxFamilies: canvas?.dataset.babylonWeaponVfxFamilies ?? '',
+      weaponFireFx: canvas?.dataset.babylonWeaponFireFx ?? '',
+      weaponMuzzleFx: canvas?.dataset.babylonWeaponMuzzleFx ?? '',
+      weaponProjectileCount: Number(canvas?.dataset.babylonWeaponProjectileCount ?? 0),
+      weaponProjectileFamilies: canvas?.dataset.babylonWeaponProjectileFamilies ?? '',
+      weaponProjectileLanguage: canvas?.dataset.babylonWeaponProjectileLanguage ?? '',
+      weaponImpactCount: Number(canvas?.dataset.babylonWeaponImpactCount ?? 0),
+      weaponImpactFx: canvas?.dataset.babylonWeaponImpactFx ?? '',
+      weaponImpactSerial: Number(canvas?.dataset.babylonWeaponImpactSerial ?? 0),
+      weaponImpactHeavy: canvas?.dataset.babylonWeaponImpactHeavy ?? '',
+      weaponEffectsMode: canvas?.dataset.babylonWeaponEffectsMode ?? '',
+      weaponDamageFeedback: canvas?.dataset.babylonWeaponDamageFeedback ?? '',
+      weaponShotCount: Number(canvas?.dataset.babylonWeaponShotCount ?? 0),
+      weaponShotCounts: canvas?.dataset.babylonWeaponShotCounts ?? '',
       playerTracking: canvas?.dataset.babylonPlayerTracking ?? '',
       playerReuse: canvas?.dataset.babylonPlayerReuse ?? '',
       playerRuntime: canvas?.dataset.babylonPlayerRuntime ?? '',
@@ -713,7 +804,7 @@ async function p27A2BabylonBackendAudit() {
     || state.disposed !== 'false'
     || state.camera !== 'three-combat-v1'
     || state.input !== 'ground-plane-raycast-v1'
-    || state.pointer !== pointerThird
+    || state.pointer !== pointerAfterFire
     || !/^(narrow|coarse|standard):height-(18\.0|14\.8|12\.8)\+offset-(13\.2|11\.2|9\.8)\+fov-42$/.test(state.framing)
     || !/^(full|reduced|off):[0-9]+\.[0-9]{2}$/.test(state.feedback)
     || state.frames < 2) {
@@ -788,6 +879,30 @@ async function p27A2BabylonBackendAudit() {
     || Number(playerRuntimeMatch[1]) < 15
     || Number(playerRuntimeMatch[2]) < state.environmentInstances + 4) {
     throw new Error(`P27-B3 Babylon operator/weapon presentation parity invalid: ${JSON.stringify(state)}`);
+  }
+
+  const expectedWeaponFireFx = state.weaponActive === 'rail'
+    ? state.weaponVariant === 'rail-charge' ? 'charge-lance' : state.weaponVariant === 'rail-repeater' ? 'repeater-lance' : 'lance'
+    : state.weaponActive === 'breacher'
+      ? state.weaponVariant === 'breacher-slug' ? 'slug-impact' : state.weaponVariant === 'breacher-rapid' ? 'rapid-scatter' : 'scatter'
+      : state.weaponVariant === 'carbine-burst' ? 'burst-tracer' : state.weaponVariant === 'carbine-precision' ? 'precision-tracer' : 'tracer';
+  if (state.weaponVfx !== 'muzzle+projectiles+impact'
+    || state.weaponVfxFamilies !== 'breacher,carbine,rail'
+    || state.weaponFireFx !== expectedWeaponFireFx
+    || !['idle', 'authored-socket-live'].includes(state.weaponMuzzleFx)
+    || state.weaponProjectileCount < 0
+    || !['idle', 'carbine', 'breacher', 'rail', 'carbine,breacher', 'carbine,rail', 'breacher,rail', 'breacher,carbine,rail'].includes(state.weaponProjectileFamilies)
+    || state.weaponProjectileLanguage !== 'carbine:tracer|breacher:scatter-slug|rail:beam-lance|enemy:bolt'
+    || state.weaponImpactCount < 0
+    || !['armor-spark', 'hull-spall', 'field-flash', 'metal-spark', 'electrical-flash', 'industrial-spall', 'generic-spark'].includes(state.weaponImpactFx)
+    || state.weaponImpactSerial < 0
+    || !['true', 'false'].includes(state.weaponImpactHeavy)
+    || !['full', 'reduced'].includes(state.weaponEffectsMode)
+    || !state.weaponDamageFeedback.startsWith('impact-ring+surface-language+shared-camera-kick:')
+    || state.weaponShotCount !== fireProbeShotCount
+    || state.weaponShotCount <= preFireShotCount
+    || !/^carbine:\d+\|breacher:\d+\|rail:\d+$/.test(state.weaponShotCounts)) {
+    throw new Error(`P27-B6 Babylon weapon fire/impact VFX parity invalid: ${JSON.stringify({ state, preFireShotCount, fireProbeShotCount, expectedWeaponFireFx })}`);
   }
 
   const enemyCatalogRoles = new Set(String(state.enemyCatalogRoles).split(',').filter(Boolean));
@@ -904,6 +1019,7 @@ async function p27A2BabylonBackendAudit() {
   console.log(`BROWSER_P27B1_BABYLON_CAMERA_INPUT_PASS viewport=${viewportMode} camera=${state.camera} input=${state.input} layout=${state.layout} framing=${state.framing} viewport=${state.viewport} pointer=${state.pointer} initialRetargetDelta=${initialRetargetDelta.toFixed(4)} settledDelta=${settledDirectionDelta.toFixed(4)} feedback=${state.feedback}`);
   console.log(`BROWSER_P27B2_BABYLON_REFINERY_PASS viewport=${viewportMode} lod=${state.environmentLod} kit=${[...refineryKit].sort().join(',')} placements=${state.environmentInstances} terminals=${state.environmentTerminals} runtime=${state.environmentRuntime} scene=${state.sceneTelemetry} reuse=${state.environmentReuse}`);
   console.log(`BROWSER_P27B3_BABYLON_OPERATOR_WEAPON_PASS viewport=${viewportMode} class=${state.operatorClass} operator=${state.operatorAsset} stance=${state.operatorStance} animation=${state.operatorAnimation} weapon=${state.weaponActive} asset=${state.weaponAsset} variant=${state.weaponVariant} thermal=${state.weaponThermalCue} muzzle=${state.weaponMuzzle} runtime=${state.playerRuntime}`);
+  console.log(`BROWSER_P27B6_BABYLON_WEAPON_VFX_PASS viewport=${viewportMode} weapon=${state.weaponActive} variant=${state.weaponVariant} fire=${state.weaponFireFx} shots=${state.weaponShotCount} projectiles=${state.weaponProjectileCount}/${state.weaponProjectileFamilies} impact=${state.weaponImpactFx}:${state.weaponImpactSerial} effects=${state.weaponEffectsMode} feedback=${state.weaponDamageFeedback}`);
   console.log(`BROWSER_P27B4_BABYLON_ENEMY_PASS viewport=${viewportMode} catalog=${state.enemyCatalogAssets} active=${state.enemyActive} roles=${state.enemyRoles} variants=${state.enemyVariants} visual=${state.enemyVisual} animation=${state.enemyAnimation} target=${state.enemyAnimationTarget} tracking=${state.enemyTracking} runtime=${state.enemyRuntime}`);
   console.log(`BROWSER_P27B5_BABYLON_WORLD_PASS viewport=${viewportMode} objects=${state.worldObjectCount} interactables=${state.interactableActive}/${state.interactableAuthoredCount} assets=${state.interactableAssets} objective=${state.objectiveTarget} guide=${state.objectiveGuideCount} hazards=${state.hazardActive} loot=${state.lootActive} breaches=${state.breachActive} biome=${state.biomeState} runtime=${state.worldRuntime}`);
   return state;
