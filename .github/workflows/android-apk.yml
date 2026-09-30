@@ -175,8 +175,15 @@ jobs:
           test -f android/app/src/main/assets/public/index.html
           find android/app/src/main/assets/public/assets -name 'three-core-*.js' -print -quit | grep -q .
           find android/app/src/main/assets/public/assets -name 'three-webgl-*.js' -print -quit | grep -q .
-          grep -q 'android:screenOrientation="sensorLandscape"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:appCategory="game"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:resizeableActivity="true"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:keepScreenOn="true"' android/app/src/main/AndroidManifest.xml
           grep -q 'android:hardwareAccelerated="true"' android/app/src/main/AndroidManifest.xml
+          grep -q 'density' android/app/src/main/AndroidManifest.xml
+          ! grep -q 'android:screenOrientation=' android/app/src/main/AndroidManifest.xml
+          grep -q 'LARGE_SCREEN_SMALLEST_WIDTH_DP = 600' android/app/src/main/java/app/ironshade/vector/MainActivity.java
+          grep -q 'SCREEN_ORIENTATION_SENSOR_LANDSCAPE' android/app/src/main/java/app/ironshade/vector/MainActivity.java
+          grep -q 'SCREEN_ORIENTATION_UNSPECIFIED' android/app/src/main/java/app/ironshade/vector/MainActivity.java
           grep -q 'IRONSHADE_RELEASE_SIGNING' android/app/build.gradle
           grep -q 'ANDROID_SIGNING_STORE_FILE' android/app/build.gradle
           grep -q "versionCode ${ANDROID_VERSION_CODE}" android/app/build.gradle
@@ -334,18 +341,24 @@ jobs:
           SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
           SDKMANAGER="$(find "$SDK_ROOT" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
           test -n "$SDKMANAGER"
-          package='system-images;android-35;google_apis;x86_64'
-          for attempt in 1 2 3; do
-            if "$SDKMANAGER" --install "$package"; then
-              exit 0
-            fi
-            if [[ "$attempt" -lt 3 ]]; then
-              echo "::warning::Android emulator system image install attempt $attempt failed; clearing partial download state and retrying."
-              rm -rf "$SDK_ROOT/.temp" "$SDK_ROOT/system-images/android-35/google_apis/x86_64"
-              sleep $((attempt * 5))
+          for api_level in 35 36; do
+            package="system-images;android-${api_level};google_apis;x86_64"
+            installed=false
+            for attempt in 1 2 3; do
+              if "$SDKMANAGER" --install "$package"; then
+                installed=true
+                break
+              fi
+              if [[ "$attempt" -lt 3 ]]; then
+                echo "::warning::Android emulator system image API ${api_level} install attempt $attempt failed; clearing partial download state and retrying."
+                rm -rf "$SDK_ROOT/.temp" "$SDK_ROOT/system-images/android-${api_level}/google_apis/x86_64"
+                sleep $((attempt * 5))
+              fi
+            done
+            if [[ "$installed" != "true" ]]; then
+              exit 1
             fi
           done
-          exit 1
 
       - name: Smoke test APK on Android emulator
         uses: ReactiveCircus/android-emulator-runner@v2.38.0
@@ -357,6 +370,17 @@ jobs:
           emulator-boot-timeout: 300
           disable-animations: true
           script: bash -lc 'set -euo pipefail; if [[ "${{ steps.signing.outputs.mode }}" == "release" ]]; then bash scripts/android-upgrade-smoke.sh; fi; bash scripts/android-fast-smoke.sh'
+
+      - name: Smoke test Android 16 large-screen resize path
+        uses: ReactiveCircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7_pro
+          emulator-boot-timeout: 300
+          disable-animations: true
+          script: bash -lc 'ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-large-screen-smoke.sh'
 
       - name: Upload debug QA APK and evidence
         uses: actions/upload-artifact@v7
@@ -375,6 +399,12 @@ jobs:
             android-fast-resume.png
             android-p21f1-webgpu.png
             android-p21f3-webgpu.json
+            android-large-screen.txt
+            android-large-screen-portrait.json
+            android-large-screen-resized.json
+            android-large-screen-portrait.png
+            android-large-screen-resized.png
+            android-large-screen-logcat.txt
             p21f3-webgpu-delivery.json
           if-no-files-found: warn
           retention-days: 90
