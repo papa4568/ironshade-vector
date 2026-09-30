@@ -467,8 +467,12 @@ async function p27A2BabylonBackendAudit() {
       && canvas?.dataset.babylonDisposed === 'false'
       && canvas?.dataset.babylonCameraParity === 'three-combat-v1'
       && canvas?.dataset.babylonInputParity === 'ground-plane-raycast-v1'
+      && canvas?.dataset.babylonEnvironmentState === 'ready'
+      && canvas?.dataset.environmentVisual === 'authored-refinery-babylon'
       && Boolean(canvas?.dataset.babylonCameraFraming)
       && Boolean(canvas?.dataset.babylonViewport)
+      && Boolean(canvas?.dataset.babylonEnvironmentRuntime)
+      && Boolean(canvas?.dataset.babylonSceneTelemetry)
       && Number(canvas?.dataset.babylonFrames ?? 0) >= 2;
   })()`, 'P27-A2 Babylon WebGL2 QA backend', 45_000);
 
@@ -564,6 +568,23 @@ async function p27A2BabylonBackendAudit() {
       framing: canvas?.dataset.babylonCameraFraming ?? '',
       viewport: canvas?.dataset.babylonViewport ?? '',
       feedback: canvas?.dataset.cameraFeedback ?? '',
+      environmentState: canvas?.dataset.babylonEnvironmentState ?? '',
+      environmentVisual: canvas?.dataset.environmentVisual ?? '',
+      environmentKit: canvas?.dataset.environmentKit ?? '',
+      environmentLod: canvas?.dataset.environmentLod ?? '',
+      environmentAssets: Number(canvas?.dataset.babylonEnvironmentAssets ?? 0),
+      environmentPlacements: Number(canvas?.dataset.babylonEnvironmentPlacements ?? 0),
+      environmentInstances: Number(canvas?.dataset.environmentInstances ?? 0),
+      environmentTerminals: Number(canvas?.dataset.environmentTerminals ?? 0),
+      environmentLandmark: canvas?.dataset.environmentLandmark ?? '',
+      environmentServiceDetails: canvas?.dataset.environmentServiceDetails ?? '',
+      environmentSurfaceDetail: canvas?.dataset.environmentSurfaceDetail ?? '',
+      environmentMachineDetail: canvas?.dataset.environmentMachineDetail ?? '',
+      environmentComposition: canvas?.dataset.environmentComposition ?? '',
+      environmentReuse: canvas?.dataset.babylonEnvironmentReuse ?? '',
+      environmentRuntime: canvas?.dataset.babylonEnvironmentRuntime ?? '',
+      environmentError: canvas?.dataset.babylonEnvironmentError ?? '',
+      sceneTelemetry: canvas?.dataset.babylonSceneTelemetry ?? '',
       rectWidth: canvas?.getBoundingClientRect().width ?? 0,
       rectHeight: canvas?.getBoundingClientRect().height ?? 0,
       bufferWidth: canvas instanceof HTMLCanvasElement ? canvas.width : 0,
@@ -591,6 +612,38 @@ async function p27A2BabylonBackendAudit() {
     throw new Error(`P27-A2 Babylon backend telemetry invalid: ${JSON.stringify(state)}`);
   }
 
+  const expectedRefineryKit = new Set(['floor', 'floor-grate', 'bulkhead', 'processor', 'pipe-rack', 'wall-panel', 'cable-tray', 'service-conduit', 'gantry', 'crate', 'terminal']);
+  const refineryKit = new Set(String(state.environmentKit).split(',').filter(Boolean));
+  const refineryLods = String(state.environmentLod).split(',').filter(Boolean);
+  const environmentRuntimeMatch = /^cached:(\d+)\|active:(\d+)\|bytes:(\d+)$/.exec(state.environmentRuntime);
+  const sceneTelemetryMatch = /^meshes:(\d+)\|materials:(\d+)\|textures:(\d+)\|roots:(\d+)$/.exec(state.sceneTelemetry);
+  const activeInstances = Number(environmentRuntimeMatch?.[2] ?? NaN);
+  const cachedAssets = Number(environmentRuntimeMatch?.[1] ?? NaN);
+  const sceneMeshes = Number(sceneTelemetryMatch?.[1] ?? NaN);
+  const sceneMaterials = Number(sceneTelemetryMatch?.[2] ?? NaN);
+  if (state.environmentState !== 'ready'
+    || state.environmentVisual !== 'authored-refinery-babylon'
+    || state.environmentError
+    || ![...expectedRefineryKit].every(item => refineryKit.has(item))
+    || refineryLods.length < 1
+    || !refineryLods.every(value => value === '1' || value === '2')
+    || state.environmentAssets !== 11
+    || state.environmentPlacements !== state.environmentInstances
+    || state.environmentInstances < 69
+    || state.environmentTerminals < 1
+    || state.environmentLandmark !== 'ore-smelter-gantry'
+    || state.environmentServiceDetails !== 'service-conduit:6'
+    || state.environmentSurfaceDetail !== 'wall-panel:6+cable-tray:6'
+    || state.environmentMachineDetail !== 'processor-functional:3+floor-grate:8'
+    || state.environmentComposition !== 'clear-center-lane+processor-triangle+gantry-focal+perimeter-clutter'
+    || state.environmentReuse !== 'cache-shared+geometry-shared+material-shared'
+    || cachedAssets !== 11
+    || activeInstances !== state.environmentInstances
+    || !(sceneMeshes > 0)
+    || !(sceneMaterials > 0)) {
+    throw new Error(`P27-B2 Babylon authored refinery environment parity invalid: ${JSON.stringify(state)}`);
+  }
+
   const viewportMatch = /^(\d+)x(\d+)@ratio:([0-9.]+)@buffer:(\d+)x(\d+)$/.exec(state.viewport);
   if (!viewportMatch) throw new Error(`P27-B1 Babylon viewport telemetry invalid: ${state.viewport}`);
   const [, cssWidthRaw, cssHeightRaw, ratioRaw, bufferWidthRaw, bufferHeightRaw] = viewportMatch;
@@ -614,6 +667,7 @@ async function p27A2BabylonBackendAudit() {
 
   console.log(`BROWSER_P27A2_BABYLON_PASS viewport=${viewportMode} backend=${state.backend} scene=${state.scene} frames=${state.frames} fallback=none`);
   console.log(`BROWSER_P27B1_BABYLON_CAMERA_INPUT_PASS viewport=${viewportMode} camera=${state.camera} input=${state.input} layout=${state.layout} framing=${state.framing} viewport=${state.viewport} pointer=${state.pointer} initialRetargetDelta=${initialRetargetDelta.toFixed(4)} settledDelta=${settledDirectionDelta.toFixed(4)} feedback=${state.feedback}`);
+  console.log(`BROWSER_P27B2_BABYLON_REFINERY_PASS viewport=${viewportMode} lod=${state.environmentLod} kit=${[...refineryKit].sort().join(',')} placements=${state.environmentInstances} terminals=${state.environmentTerminals} runtime=${state.environmentRuntime} scene=${state.sceneTelemetry} reuse=${state.environmentReuse}`);
   return state;
 }
 
