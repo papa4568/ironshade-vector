@@ -367,6 +367,7 @@ export class BabylonOrbitalStationPresentation {
     this.canvas.dataset.environmentComposition = 'primary-spine+pressure-ribs+airlocks+perimeter-service';
     this.canvas.dataset.locationArtIdentity = 'radial-spine|clean-industrial|neutral-cyan|service-cases';
     this.canvas.dataset.babylonOrbitalParity = 'architecture+materials+lighting+props+navigation+shared-world-cues';
+    this.canvas.dataset.babylonOrbitalPlayerPosition = `${state.player.x.toFixed(1)},${state.player.y.toFixed(1)}`;
     this.canvas.dataset.babylonOrbitalRoutes = String(getMapNavigationPlan('orbital-station').routes.length);
     this.canvas.dataset.babylonOrbitalLandmarks = getMapNavigationPlan('orbital-station').landmarks.map(item => item.label).join('|');
     this.canvas.dataset.babylonLightingProfile = lighting.id;
