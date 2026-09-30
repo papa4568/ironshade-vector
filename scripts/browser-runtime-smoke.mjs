@@ -770,7 +770,7 @@ async function p27A2BabylonBackendAudit() {
     || enemyCatalogAssets.size !== expectedEnemyAssets.length
     || state.enemyCatalogLod !== String(expectedPlayerLod)
     || !enemyCatalogRuntimeMatch
-    || Number(enemyCatalogRuntimeMatch[1]) < 19
+    || Number(enemyCatalogRuntimeMatch[1]) < expectedEnemyAssets.length
     || state.enemyState !== 'ready'
     || state.enemyVisual !== 'authored-babylon'
     || state.enemyFallbackReason
