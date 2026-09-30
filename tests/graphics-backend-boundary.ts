@@ -341,6 +341,25 @@ assert(
 );
 
 assert(
+  babylonRendererSource.includes('ENEMY_ASSET_FAMILIES')
+    && babylonRendererSource.includes("const BABYLON_ENEMY_ROLES: readonly BabylonEnemyRole[] = ['assault', 'suppressor', 'technician', 'elite']")
+    && babylonRendererSource.includes("function enemyVariantSilhouette(variant: Enemy['variant'])")
+    && babylonRendererSource.includes("MeshBuilder.CreateCylinder(`p27-b4-enemy-body-${enemy.id}`")
+    && babylonRendererSource.includes("MeshBuilder.CreateBox(`p27-b4-variant-${silhouette}-${enemy.id}`")
+    && babylonRendererSource.includes('resolveEnemyBossAnimation({')
+    && babylonRendererSource.includes('resolveEnemyDamageAnimation({')
+    && babylonRendererSource.includes("findInstanceTransform(instance, 'weapon-socket')")
+    && babylonRendererSource.includes('visual.fallbackRoot.setEnabled(false)')
+    && babylonRendererSource.includes("this.canvas.dataset.enemyFacing = 'telegraph-or-velocity'")
+    && babylonRendererSource.includes("this.canvas.dataset.enemySpawnDeath = 'active-root+spawn-pose+death-rig+deterministic-release'")
+    && babylonRendererSource.includes("this.canvas.dataset.babylonEnemyReuse = 'shared-runtime+role-assets+variant-silhouettes+shared-animation-signals'")
+    && babylonRendererSource.includes("this.disposeEnemyVisual(visual, 'despawn')")
+    && babylonRendererSource.includes("this.releaseEnemyPresentation('scenario-exit')")
+    && babylonRendererSource.includes("this.releaseEnemyPresentation('renderer-dispose')"),
+  'P27-B4 Babylon renderer must port non-boss role/variant silhouettes, authored/fallback rigs, shared motion/damage signals, facing, spawn/death ownership, and deterministic cleanup without changing simulation.',
+);
+
+assert(
   webgpuRendererSource.includes("from './refineryIbl'")
     && webgpuRendererSource.includes("from './refineryBloom'")
     && webgpuRendererSource.includes("from './refineryContactDepth'")
@@ -386,6 +405,7 @@ assert(
     && browserSmokeSource.includes('BROWSER_P21F2_REFINERY_PARITY_PASS')
     && browserSmokeSource.includes('BROWSER_P27A2_BABYLON_PASS')
     && browserSmokeSource.includes('BROWSER_P27B1_BABYLON_CAMERA_INPUT_PASS')
+    && browserSmokeSource.includes('BROWSER_P27B4_BABYLON_ENEMY_PASS')
     && browserSmokeSource.includes('babylonCameraParity')
     && browserSmokeSource.includes('babylonInputParity')
     && browserSmokeSource.includes('babylonPointerDirection')
