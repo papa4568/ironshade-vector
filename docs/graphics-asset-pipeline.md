@@ -43,7 +43,7 @@ Avoid material proliferation. Repeated environment pieces should share atlases a
 - Environment modules: 1024px maximum by default; prefer atlases.
 - UI-independent authored art must remain readable with lower mip levels on small screens.
 
-KTX2/Basis Universal is the mobile texture target. `scripts/prepare-graphics-codecs.mjs` copies the Basis transcoder JS/WASM from the locked Three.js package into generated public assets so the Android package does not depend on a CDN. The runtime loader keeps KTX2 code deferred until an authored asset is actually requested. A live WebGL renderer must be registered with `configureGraphicsAssetRenderer()` before KTX2 content is loaded so Three.js can select the supported GPU texture format.
+KTX2/Basis Universal is the mobile texture target. `scripts/prepare-graphics-codecs.mjs` packages both renderer paths locally: the existing Three.js Basis transcoder remains under `/assets/codecs/basis/`, while Babylon's KTX2 decoder module, MSC/UASTC/ZSTD WASM payloads, and Meshopt decoder live under `/assets/codecs/babylon/`. Neither authored-asset runtime requires a decoder CDN. The Three loader still requires `configureGraphicsAssetRenderer()` before KTX2 content is mounted so it can select the supported GPU texture format; the Babylon runtime configures its decoder URLs before registering the deferred glTF loader.
 
 ## Geometry and LOD
 
@@ -54,28 +54,29 @@ KTX2/Basis Universal is the mobile texture target. `scripts/prepare-graphics-cod
 - Repeated static props should be compatible with `InstancedMesh` where feasible.
 - Skinning influence counts and bone counts should stay minimal for mobile.
 
-Meshopt is the geometry-compression target. Its decoder is dynamically imported with the GLTF loader, so existing app boot chunks remain unaffected until authored 3D content is requested.
+Meshopt is the geometry-compression target. The existing Three path dynamically imports its decoder with the GLTF loader. The Babylon path registers Babylon's glTF loader only when authored content is first requested and points `MeshoptCompression` at the packaged local `meshopt_decoder.js`, so neither backend adds authored-asset decoding to the synchronous app boot graph.
 
 `graphicsAssetLodForDetailScale()` maps the existing adaptive renderer detail scale to LOD0/1/2. Missing preferred LODs fall toward a cheaper model first, protecting mobile performance rather than silently escalating to the heaviest asset.
 
 ## Loading and ownership contract
 
-`src/game/graphicsAssets.ts` owns the GLB load/cache boundary.
+`src/game/graphicsAssets.ts` remains the unchanged Three.js GLB load/cache boundary. `src/game/babylonGraphicsAssets.ts` is the parallel Babylon-specific boundary used by the migration backend; both consume the same `GraphicsAssetSpec`, manifest families, LOD selection, and compressed-byte budget contract.
 
-- `GLTFLoader`, Meshopt, KTX2, and `SkeletonUtils` are dynamically imported.
+- Three: `GLTFLoader`, Meshopt, KTX2, and `SkeletonUtils` are dynamically imported.
+- Babylon: the glTF plugin is deferred, Meshopt/KTX2 decoder URLs are local, and source `AssetContainer`s are cached per Babylon `Scene` so resources never cross scene/engine ownership.
 - Validated asset URLs live under `/assets/models/`, end in `.glb`, and include `-lodN` matching their declared LOD.
-- Successful source GLBs are cached by URL.
+- Successful source GLBs are cached by URL within the owning renderer/runtime.
 - Failed loads are removed from cache so a later request can retry.
-- `instantiateGraphicsAsset()` clones rigged scenes with `SkeletonUtils.clone()` so bones are correctly rebound while geometry/material data remains shareable.
-- Mounted instances hold a cache lease. Eviction waits for mounted clones to release before disposing shared geometry, materials, textures, image bitmaps, and skeleton GPU resources.
-- Instance release detaches the clone and disposes clone-specific skeleton resources without destroying shared cached geometry/materials.
+- `instantiateGraphicsAsset()` clones Three rigged scenes with `SkeletonUtils.clone()` so bones are correctly rebound while geometry/material data remains shareable. `BabylonGraphicsAssetRuntime.instantiate()` uses `AssetContainer.instantiateModelsToScene(..., cloneMaterials=false)` so cloned nodes/rig state get instance ownership while shared source materials/textures stay cache-owned.
+- Mounted instances hold a cache lease. Eviction waits for mounted clones to release before disposing shared source resources.
+- Instance release disposes only clone-owned nodes/skeletons/animation groups; the cached source remains usable until explicit/LRU/runtime disposal.
 - The current procedural renderer remains the required fallback until each authored asset family is production-ready.
 
 ## Current compression status
 
 - GLB: supported.
 - Mesh compression: Meshopt runtime decoding supported.
-- KTX2/Basis textures: transcoder packaging and runtime loader support implemented; renderer registration is required before compressed content is mounted.
+- KTX2/Basis textures: local transcoder packaging exists for both Three and Babylon; Three requires renderer registration, while Babylon configures its local decoder module/WASM URLs before glTF loading.
 - Animation clips: carried through instantiated GLBs; animation-state integration remains Phase 2.
 
 ## First asset slots
