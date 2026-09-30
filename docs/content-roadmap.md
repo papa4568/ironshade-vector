@@ -5,7 +5,7 @@
 - All previously completed P20–P23 work plus P24-A–P24-D and verified P25 work is preserved in [content-roadmap-archive.md](./content-roadmap-archive.md).
 - The 2026-09-29 code audit has been reduced to **release-critical work only**. Non-blocking cleanup/refactor ideas were removed from the active queue.
 - Priority order is intentional: **P25 release/platform/security → P26 telemetry scale resilience**.
-- **Next executable item: P25-E — Run service validation on service-only pull requests.**
+- **Next executable item: P25-F — Align the declared and CI npm toolchain.**
 
 Only active/future executable work lives here. Completed and verified work belongs in [content-roadmap-archive.md](./content-roadmap-archive.md). Stable product rules live in [product-constraints.md](./product-constraints.md).
 
@@ -19,8 +19,6 @@ Only active/future executable work lives here. Completed and verified work belon
 - If repository evidence shows an active item is already complete, verify that evidence before archiving it. If only part is complete, rewrite the item around the remaining work.
 
 ## P25 — Release, Platform, and Security Blockers
-
-- [ ] **P25-E — Run service validation on service-only pull requests** — Update PR triggers so changes to `netlify/functions/**`, service configuration, service mocks, and network/service tests run the relevant strict typecheck plus `test:service`/`test:network` before merge, without forcing unnecessary Android work.
 
 - [ ] **P25-F — Align the declared and CI npm toolchain** — Resolve the repository declaration of `npm@10.9.8` versus workflows installing `npm@11.19.1`. Pin one supported version everywhere and verify `npm ci` plus the full production build under that exact version.
 
