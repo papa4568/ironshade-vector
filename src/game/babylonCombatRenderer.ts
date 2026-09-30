@@ -420,7 +420,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
 
     const weaponSpecs = BABYLON_WEAPON_IDS.map(id => {
       const spec = selectGraphicsAssetSpec(WEAPON_ASSET_FAMILIES[id], assetDetailScale);
-      if (!spec) throw new Error(\`No authored Babylon weapon asset available for \${id}\`);
+      if (!spec) throw new Error(`No authored Babylon weapon asset available for ${id}`);
       return { id, spec };
     });
     const signature = [
@@ -453,7 +453,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.canvas.dataset.babylonPlayerState = 'error';
       this.canvas.dataset.operatorVisual = 'authored-fallback-babylon';
       this.canvas.dataset.weaponVisual = 'authored-fallback-babylon';
-      this.canvas.dataset.babylonPlayerError = \`preload-failed:\${preload.failed}\`;
+      this.canvas.dataset.babylonPlayerError = `preload-failed:${preload.failed}`;
       return;
     }
 
@@ -467,7 +467,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         return;
       }
 
-      const operatorMount = new TransformNode(\`p27-b3-operator-\${generation}\`, this.scene);
+      const operatorMount = new TransformNode(`p27-b3-operator-${generation}`, this.scene);
       localMounts.push(operatorMount);
       operatorMount.parent = this.playerRoot;
       operatorMount.setEnabled(false);
@@ -505,7 +505,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
           return;
         }
 
-        const mount = new TransformNode(\`p27-b3-weapon-\${id}-\${generation}\`, this.scene);
+        const mount = new TransformNode(`p27-b3-weapon-${id}-${generation}`, this.scene);
         localMounts.push(mount);
         mount.parent = this.weaponPivot;
         mount.setEnabled(false);
@@ -513,7 +513,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
           root.parent = mount;
         });
         const muzzleSocket = findInstanceTransform(instance, 'muzzle-socket');
-        if (!muzzleSocket) throw new Error(\`Authored Babylon \${id} weapon is missing muzzle-socket\`);
+        if (!muzzleSocket) throw new Error(`Authored Babylon ${id} weapon is missing muzzle-socket`);
         loadedWeapons.set(id, {
           instance,
           assetId: spec.id,
@@ -542,7 +542,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
 
       const stats = runtime.stats();
       this.canvas.dataset.babylonPlayerState = 'ready';
-      this.canvas.dataset.operatorVisual = \`authored-\${operatorSpec.lod}-babylon\`;
+      this.canvas.dataset.operatorVisual = `authored-${operatorSpec.lod}-babylon`;
       this.canvas.dataset.operatorAsset = operatorSpec.id;
       this.canvas.dataset.operatorClassAsset = operatorClass ?? 'generic';
       this.canvas.dataset.operatorRig = 'articulated';
@@ -550,11 +550,11 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.canvas.dataset.weaponVisual = 'authored-babylon';
       this.canvas.dataset.weaponRoles = [...loadedWeapons.keys()].sort().join(',');
       this.canvas.dataset.weaponFallback = '';
-      this.canvas.dataset.babylonPlayerAssets = \`operator:\${operatorSpec.id}|weapons:\${weaponSpecs.map(item => item.spec.id).join(',')}\`;
+      this.canvas.dataset.babylonPlayerAssets = `operator:${operatorSpec.id}|weapons:${weaponSpecs.map(item => item.spec.id).join(',')}`;
       this.canvas.dataset.babylonPlayerRuntime = [
-        \`cached:\${stats.cachedAssets}\`,
-        \`active:\${stats.activeInstances}\`,
-        \`bytes:\${stats.estimatedCachedCompressedBytes}\`,
+        `cached:${stats.cachedAssets}`,
+        `active:${stats.activeInstances}`,
+        `bytes:${stats.estimatedCachedCompressedBytes}`,
       ].join('|');
       this.canvas.dataset.babylonPlayerReuse = 'shared-runtime+authored-rig+authored-sockets+shared-presentation-signals';
       this.updateSceneTelemetry();
@@ -800,25 +800,25 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.canvas.dataset.operatorStance = profile.id;
     this.canvas.dataset.operatorAnimation = mode;
     this.canvas.dataset.operatorBlend = [
-      \`move:\${speed.toFixed(2)}\`,
-      \`aim:\${Math.abs(aimOffset).toFixed(2)}\`,
-      \`recoil:\${recoil.toFixed(2)}\`,
-      \`reload:\${reload.toFixed(2)}\`,
-      \`charge:\${charge.toFixed(2)}\`,
-      \`vent:\${vent.toFixed(2)}\`,
-      \`overheat:\${overheat.toFixed(2)}\`,
-      \`dodge:\${dodge.toFixed(2)}\`,
-      \`hit:\${hit.toFixed(2)}\`,
+      `move:${speed.toFixed(2)}`,
+      `aim:${Math.abs(aimOffset).toFixed(2)}`,
+      `recoil:${recoil.toFixed(2)}`,
+      `reload:${reload.toFixed(2)}`,
+      `charge:${charge.toFixed(2)}`,
+      `vent:${vent.toFixed(2)}`,
+      `overheat:${overheat.toFixed(2)}`,
+      `dodge:${dodge.toFixed(2)}`,
+      `hit:${hit.toFixed(2)}`,
     ].join(',');
     this.canvas.dataset.weaponActive = player.currentWeapon;
     this.canvas.dataset.weaponAsset = current.assetId;
     this.canvas.dataset.weaponHeat = heat.toFixed(2);
     this.canvas.dataset.weaponThermalCue = thermalCue;
     this.canvas.dataset.weaponVariant = variantId ?? 'family-service';
-    this.canvas.dataset.weaponHandling = \`\${handling.stance}:\${handling.reloadStyle}:\${handling.ventStyle}\`;
+    this.canvas.dataset.weaponHandling = `${handling.stance}:${handling.reloadStyle}:${handling.ventStyle}`;
     this.canvas.dataset.babylonWeaponMuzzleOrigin = 'muzzle-socket';
-    this.canvas.dataset.babylonWeaponMuzzle = \`\${muzzle.x.toFixed(3)},\${muzzle.y.toFixed(3)},\${muzzle.z.toFixed(3)}\`;
-    this.canvas.dataset.babylonPlayerTracking = \`sim:\${player.currentWeapon}|class:\${state.build.operatorClass ?? 'generic'}|aim:\${player.aim.x.toFixed(3)},\${player.aim.y.toFixed(3)}\`;
+    this.canvas.dataset.babylonWeaponMuzzle = `${muzzle.x.toFixed(3)},${muzzle.y.toFixed(3)},${muzzle.z.toFixed(3)}`;
+    this.canvas.dataset.babylonPlayerTracking = `sim:${player.currentWeapon}|class:${state.build.operatorClass ?? 'generic'}|aim:${player.aim.x.toFixed(3)},${player.aim.y.toFixed(3)}`;
   }
 
   private releasePlayerPresentation(reason: string) {
@@ -834,12 +834,12 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.canvas.dataset.babylonPlayerState = 'released';
     this.canvas.dataset.operatorVisual = 'released-babylon';
     this.canvas.dataset.weaponVisual = 'released-babylon';
-    this.canvas.dataset.babylonPlayerRelease = \`\${reason}:released-\${released}\`;
+    this.canvas.dataset.babylonPlayerRelease = `${reason}:released-${released}`;
     const stats = getBabylonGraphicsAssetRuntime(this.scene).stats();
     this.canvas.dataset.babylonPlayerRuntime = [
-      \`cached:\${stats.cachedAssets}\`,
-      \`active:\${stats.activeInstances}\`,
-      \`bytes:\${stats.estimatedCachedCompressedBytes}\`,
+      `cached:${stats.cachedAssets}`,
+      `active:${stats.activeInstances}`,
+      `bytes:${stats.estimatedCachedCompressedBytes}`,
     ].join('|');
     this.updateSceneTelemetry();
   }
