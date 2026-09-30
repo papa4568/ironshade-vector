@@ -2,7 +2,7 @@
 
 ## New-chat handoff — resume here first
 
-- All previously completed P20–P23 work plus P24-A–P24-D, verified P25 work, verified P26-A–P26-B work, and verified P27-A1–P27-B5 work is preserved in [content-roadmap-archive.md](./content-roadmap-archive.md).
+- All previously completed P20–P23 work plus P24-A–P24-D, verified P25 work, verified P26-A–P26-B work, and verified P27-A1–P27-B6 work is preserved in [content-roadmap-archive.md](./content-roadmap-archive.md).
 - On 2026-09-29 the product direction changed explicitly: migrate the combat graphics engine from Three.js to **Babylon.js** while preserving the TypeScript simulation, React UI, Capacitor Android delivery, save/runtime contracts, and gameplay behavior.
 - The previous P21-G decision to keep Three.js as the long-term production renderer is now superseded; its measurements remain the migration baseline and rollback evidence in [graphics-engine-decision.md](./graphics-engine-decision.md).
 - The migration is incremental. Three.js WebGL2 remains the production renderer until Babylon passes the roadmap's visual, gameplay, performance, lifecycle, bundle, and Android gates. Babylon Lite is not the migration target because the required Android baseline still needs a WebGL2-capable path.
@@ -25,7 +25,6 @@ Only active/future executable work lives here. Completed and verified work belon
 
 #### Asteroid Refinery vertical-slice parity
 
-- [ ] **P27-B6 — Port weapon fire/impact VFX to Babylon** — Reproduce muzzle, projectile/beam, impact, and weapon damage-feedback visuals for Breacher, Rail Lance, and Carbine while preserving targeting origins, hit timing, cue priority, and reduced-effects behavior. **Done when:** representative primary-fire paths for all three weapon families show synchronized Babylon VFX with no simulation/timing changes, targeted combat-feel tests pass, and the required build/APK gates pass.
 - [ ] **P27-B7 — Port class skill and mobility VFX to Babylon** — Reproduce the current class-skill, dodge, movement, field/area, and other non-primary-fire ability visuals using existing gameplay events and presentation contracts. **Done when:** each current class kit's active skills and mobility actions produce the expected Babylon visuals without changing skill behavior or combat-control geometry, targeted skill/animation regressions pass, and the required build/APK gates pass.
 - [ ] **P27-B8 — Port enemy telegraphs and boss phase cues to Babylon** — Reproduce enemy attack telegraphs, aim/range shapes, boss attack-pattern warnings, and boss phase-transition cues with the same timing and gameplay meaning as the current renderer. **Done when:** representative normal, elite, and refinery-boss attacks are readable at normal phone zoom before damage resolves, timing matches simulation state, and the required build/APK gates pass.
 - [ ] **P27-B9 — Port protocol, mutation, and status visuals to Babylon** — Reproduce enhanced-protocol/mutation hardware/fields plus player and enemy status-state visuals using the existing protocol/status presentation data. **Done when:** representative protocol, mutation, and status combinations remain distinguishable without hue-only dependence at Performance tier, targeted status/protocol regressions pass, and the required build/APK gates pass.
