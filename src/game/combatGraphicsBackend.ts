@@ -5,7 +5,7 @@ import type { GraphicsQualityMode } from './renderQuality';
 import type { Player, SimState } from './sim';
 import { ThreeCombatRenderer } from './threeCombatRenderer';
 
-export type CombatGraphicsBackendId = 'webgl2' | 'webgpu';
+export type CombatGraphicsBackendId = 'webgl2' | 'webgpu' | 'babylon';
 export type CombatGraphicsLoadedBackendId = CombatGraphicsBackendId | 'initializing';
 
 export type CombatGraphicsRenderArgs = [
@@ -147,6 +147,72 @@ class WebGpuRefineryCombatGraphicsBackend implements CombatGraphicsBackend {
   }
 }
 
+class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
+  readonly id = 'babylon' as const;
+  private delegate: CombatGraphicsBackend | null = null;
+  private disposed = false;
+
+  constructor(private readonly canvas: HTMLCanvasElement, private readonly coarse: boolean) {
+    canvas.dataset.babylonInit = 'initializing';
+    canvas.dataset.babylonDisposed = 'false';
+    void this.initialize();
+  }
+
+  get loadedId(): CombatGraphicsLoadedBackendId {
+    return this.delegate?.loadedId ?? 'initializing';
+  }
+
+  render(...args: CombatGraphicsRenderArgs) {
+    return this.delegate?.render(...args);
+  }
+
+  performanceStats() {
+    return this.delegate?.performanceStats() ?? { drawCalls: 0, triangles: 0 };
+  }
+
+  screenDirection(...args: CombatGraphicsPointerProjectionArgs) {
+    return this.delegate?.screenDirection(...args) ?? null;
+  }
+
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.delegate?.dispose();
+    this.delegate = null;
+    this.canvas.dataset.babylonDisposed = 'true';
+  }
+
+  private async initialize() {
+    try {
+      const { createBabylonCombatRenderer } = await import('./babylonCombatRenderer');
+      const renderer = createBabylonCombatRenderer(this.canvas, this.coarse);
+      if (this.disposed) {
+        renderer.dispose();
+        return;
+      }
+      this.delegate = renderer;
+      this.canvas.dataset.graphicsPathLoaded = renderer.loadedId;
+      this.canvas.dataset.graphicsPathFallback = '';
+      this.canvas.dataset.babylonInit = 'ready';
+    } catch (error) {
+      if (this.disposed) return;
+      console.warn('P27-A2 Babylon QA backend unavailable; falling back to production WebGL2.', error);
+      this.canvas.dataset.babylonInit = 'fallback';
+      this.canvas.dataset.babylonFallbackReason = error instanceof Error ? error.message : String(error);
+      try {
+        const fallback = new WebGl2CombatGraphicsBackend(this.canvas, this.coarse);
+        this.delegate = fallback;
+        this.canvas.dataset.graphicsPathLoaded = fallback.loadedId;
+        this.canvas.dataset.graphicsPathFallback = 'babylon->webgl2:init-fallback';
+      } catch (fallbackError) {
+        this.canvas.dataset.babylonInit = 'failed';
+        this.canvas.dataset.babylonFallbackReason = `${this.canvas.dataset.babylonFallbackReason}; ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`;
+        console.warn('P27-A2 Babylon and WebGL2 renderer initialization both failed.', fallbackError);
+      }
+    }
+  }
+}
+
 export const productionCombatGraphicsBackendId: CombatGraphicsBackendId = 'webgl2';
 
 export type CombatGraphicsPathSelection = {
@@ -160,7 +226,7 @@ export function resolveCombatGraphicsPathSelection(search: string): CombatGraphi
   const requested = params.get('graphicsPath');
   if (
     params.get('graphicsCompare') === '1'
-    && (requested === 'webgl2' || requested === 'webgpu')
+    && (requested === 'webgl2' || requested === 'webgpu' || requested === 'babylon')
   ) {
     return { mode: 'qa-explicit', requestedId: requested, selectedId: requested };
   }
@@ -182,16 +248,23 @@ export const webgpuRefineryCombatGraphicsBackendFactory: CombatGraphicsBackendFa
   create: (canvas, coarse) => new WebGpuRefineryCombatGraphicsBackend(canvas, coarse),
 };
 
+export const babylonCombatGraphicsBackendFactory: CombatGraphicsBackendFactory = {
+  id: 'babylon',
+  isSupported: () => typeof WebGL2RenderingContext !== 'undefined',
+  create: (canvas, coarse) => new BabylonCombatGraphicsBackend(canvas, coarse),
+};
+
 export function selectCombatGraphicsBackendFactory(
   factories: readonly CombatGraphicsBackendFactory[] = [
     webgl2CombatGraphicsBackendFactory,
     webgpuRefineryCombatGraphicsBackendFactory,
+    babylonCombatGraphicsBackendFactory,
   ],
   selectedId: CombatGraphicsBackendId = productionCombatGraphicsBackendId,
 ) {
   const selected = factories.find(factory => factory.id === selectedId && factory.isSupported());
   if (selected) return selected;
-  if (selectedId === 'webgpu') {
+  if (selectedId !== productionCombatGraphicsBackendId) {
     return factories.find(factory => factory.id === productionCombatGraphicsBackendId && factory.isSupported()) ?? null;
   }
   return null;
