@@ -240,6 +240,7 @@ jobs:
           node scripts/verify-authored-refinery.mjs
           BROWSER_E2E_GRAPHICS_PATH=webgpu BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p21f1-webgpu.png node scripts/browser-runtime-smoke.mjs
           BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27a2-babylon.png node scripts/browser-runtime-smoke.mjs
+          BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=orbital-station BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c1-orbital-station.png node scripts/browser-runtime-smoke.mjs
           BROWSER_E2E_LOCATION=damaged-vessel BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-damaged-vessel.png node scripts/browser-runtime-smoke.mjs
           node scripts/verify-authored-damaged-vessel.mjs
           node --input-type=module <<'NODE'
@@ -445,6 +446,7 @@ jobs:
             browser-e2e-${{ matrix.viewport }}*p21f2-stack-*.png
             browser-e2e-${{ matrix.viewport }}-p21f1-webgpu.png
             browser-e2e-${{ matrix.viewport }}-p27a2-babylon*.png
+            browser-e2e-${{ matrix.viewport }}-p27c1-orbital-station.png
             browser-e2e-${{ matrix.viewport }}-damaged-vessel.png
             browser-e2e-${{ matrix.viewport }}-spin-habitat.png
             browser-e2e-${{ matrix.viewport }}-jovian-harvester.png
