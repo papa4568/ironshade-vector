@@ -1,15 +1,54 @@
+import type { Contract } from './campaign';
+import type { CombatCameraFeedbackSample } from './combatCameraFeedback';
+import type { EquipmentFaction } from './factionGear';
+import type { GraphicsQualityMode } from './renderQuality';
+import type { Player, SimState } from './sim';
 import { ThreeCombatRenderer } from './threeCombatRenderer';
 
 export type CombatGraphicsBackendId = 'webgl2' | 'webgpu';
 export type CombatGraphicsLoadedBackendId = CombatGraphicsBackendId | 'initializing';
 
-export interface CombatGraphicsBackend {
+export type CombatGraphicsRenderArgs = [
+  state: SimState,
+  width: number,
+  height: number,
+  quality: number,
+  qualityMode: GraphicsQualityMode,
+  mission: Contract,
+  mobileTargetId: number | null,
+  operatorFaction: EquipmentFaction | null,
+  reducedTargetMotion?: boolean,
+  firingIntent?: boolean,
+  cameraFeedback?: CombatCameraFeedbackSample,
+];
+
+export type CombatGraphicsPerformanceStats = {
+  drawCalls: number;
+  triangles: number;
+};
+
+export type CombatGraphicsPointerProjectionArgs = [
+  clientX: number,
+  clientY: number,
+  rect: DOMRect,
+  player: Player,
+];
+
+export type CombatGraphicsPointerDirection = {
+  x: number;
+  y: number;
+} | null;
+
+export interface CombatGraphicsLifecycle {
+  dispose(): void;
+}
+
+export interface CombatGraphicsBackend extends CombatGraphicsLifecycle {
   readonly id: CombatGraphicsBackendId;
   readonly loadedId: CombatGraphicsLoadedBackendId;
-  render(...args: Parameters<ThreeCombatRenderer['render']>): ReturnType<ThreeCombatRenderer['render']>;
-  performanceStats(): ReturnType<ThreeCombatRenderer['performanceStats']>;
-  screenDirection(...args: Parameters<ThreeCombatRenderer['screenDirection']>): ReturnType<ThreeCombatRenderer['screenDirection']>;
-  dispose(): void;
+  render(...args: CombatGraphicsRenderArgs): void;
+  performanceStats(): CombatGraphicsPerformanceStats;
+  screenDirection(...args: CombatGraphicsPointerProjectionArgs): CombatGraphicsPointerDirection;
 }
 
 export interface CombatGraphicsBackendFactory {
@@ -27,7 +66,7 @@ class WebGl2CombatGraphicsBackend implements CombatGraphicsBackend {
     this.renderer = new ThreeCombatRenderer(canvas, coarse);
   }
 
-  render(...args: Parameters<ThreeCombatRenderer['render']>) {
+  render(...args: CombatGraphicsRenderArgs) {
     return this.renderer.render(...args);
   }
 
@@ -35,7 +74,7 @@ class WebGl2CombatGraphicsBackend implements CombatGraphicsBackend {
     return this.renderer.performanceStats();
   }
 
-  screenDirection(...args: Parameters<ThreeCombatRenderer['screenDirection']>) {
+  screenDirection(...args: CombatGraphicsPointerProjectionArgs) {
     return this.renderer.screenDirection(...args);
   }
 
@@ -58,7 +97,7 @@ class WebGpuRefineryCombatGraphicsBackend implements CombatGraphicsBackend {
     return this.delegate?.loadedId ?? 'initializing';
   }
 
-  render(...args: Parameters<ThreeCombatRenderer['render']>) {
+  render(...args: CombatGraphicsRenderArgs) {
     return this.delegate?.render(...args);
   }
 
@@ -66,7 +105,7 @@ class WebGpuRefineryCombatGraphicsBackend implements CombatGraphicsBackend {
     return this.delegate?.performanceStats() ?? { drawCalls: 0, triangles: 0 };
   }
 
-  screenDirection(...args: Parameters<ThreeCombatRenderer['screenDirection']>) {
+  screenDirection(...args: CombatGraphicsPointerProjectionArgs) {
     return this.delegate?.screenDirection(...args) ?? null;
   }
 
