@@ -32,7 +32,6 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   static create(canvas: HTMLCanvasElement, coarse: boolean) {
     const engine = new Engine(canvas, !coarse, {
       alpha: false,
-      antialias: !coarse,
       powerPreference: 'high-performance',
       preserveDrawingBuffer: false,
       stencil: true,
