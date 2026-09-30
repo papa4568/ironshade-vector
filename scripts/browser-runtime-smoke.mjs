@@ -465,9 +465,86 @@ async function p27A2BabylonBackendAudit() {
       && canvas?.dataset.babylonBackend === 'webgl2'
       && canvas?.dataset.babylonScene === 'active'
       && canvas?.dataset.babylonDisposed === 'false'
+      && canvas?.dataset.babylonCameraParity === 'three-combat-v1'
+      && canvas?.dataset.babylonInputParity === 'ground-plane-raycast-v1'
+      && Boolean(canvas?.dataset.babylonCameraFraming)
+      && Boolean(canvas?.dataset.babylonViewport)
       && Number(canvas?.dataset.babylonFrames ?? 0) >= 2;
   })()`, 'P27-A2 Babylon WebGL2 QA backend', 45_000);
 
+  const pointerProbe = await evaluate(`(() => {
+    const canvas = document.querySelector('canvas');
+    if (!(canvas instanceof HTMLCanvasElement)) return null;
+    const rect = canvas.getBoundingClientRect();
+    return {
+      coarse: window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900,
+      x: rect.left + rect.width * 0.68,
+      y: rect.top + rect.height * 0.48,
+    };
+  })()`);
+  if (!pointerProbe) throw new Error('P27-B1 could not locate the canvas for the Babylon pointer probe.');
+
+  const dispatchBabylonPointerProbe = async pointerId => {
+    await evaluate(`(() => {
+      const canvas = document.querySelector('canvas');
+      if (!(canvas instanceof HTMLCanvasElement)) return false;
+      delete canvas.dataset.babylonPointerDirection;
+      return true;
+    })()`);
+    if (pointerProbe.coarse) {
+      await call('Input.dispatchTouchEvent', {
+        type: 'touchStart',
+        touchPoints: [{ x: pointerProbe.x, y: pointerProbe.y, id: pointerId, radiusX: 1, radiusY: 1, force: 1 }],
+      });
+      try {
+        await waitFor(`/^[-0-9.]+,[-0-9.]+$/.test(document.querySelector('canvas')?.dataset.babylonPointerDirection ?? '')`, 'P27-B1 Babylon touch ground projection', 5_000);
+      } finally {
+        await call('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }).catch(() => undefined);
+      }
+    } else {
+      const dispatched = await evaluate(`(() => {
+        const canvas = document.querySelector('canvas');
+        if (!(canvas instanceof HTMLCanvasElement)) return false;
+        const rect = canvas.getBoundingClientRect();
+        canvas.dispatchEvent(new PointerEvent('pointermove', {
+          bubbles: true,
+          pointerId: ${pointerId},
+          pointerType: 'mouse',
+          clientX: rect.left + rect.width * 0.68,
+          clientY: rect.top + rect.height * 0.48,
+          button: 0,
+        }));
+        return true;
+      })()`);
+      if (!dispatched) throw new Error('P27-B1 could not dispatch the Babylon pointer parity probe.');
+      await waitFor(`/^[-0-9.]+,[-0-9.]+$/.test(document.querySelector('canvas')?.dataset.babylonPointerDirection ?? '')`, 'P27-B1 Babylon pointer ground projection', 5_000);
+    }
+    return evaluate(`document.querySelector('canvas')?.dataset.babylonPointerDirection ?? ''`);
+  };
+
+  const pointerFirst = await dispatchBabylonPointerProbe(927);
+  await new Promise(resolve => setTimeout(resolve, 50));
+  const pointerSecond = await dispatchBabylonPointerProbe(928);
+  await new Promise(resolve => setTimeout(resolve, 50));
+  const pointerThird = await dispatchBabylonPointerProbe(929);
+  const parseDirection = value => value.split(',').map(Number);
+  const firstDirection = parseDirection(pointerFirst);
+  const secondDirection = parseDirection(pointerSecond);
+  const thirdDirection = parseDirection(pointerThird);
+  const firstLength = Math.hypot(firstDirection[0], firstDirection[1]);
+  const secondLength = Math.hypot(secondDirection[0], secondDirection[1]);
+  const thirdLength = Math.hypot(thirdDirection[0], thirdDirection[1]);
+  const initialRetargetDelta = Math.hypot(firstDirection[0] - secondDirection[0], firstDirection[1] - secondDirection[1]);
+  const settledDirectionDelta = Math.hypot(secondDirection[0] - thirdDirection[0], secondDirection[1] - thirdDirection[1]);
+  if (!firstDirection.every(Number.isFinite)
+    || !secondDirection.every(Number.isFinite)
+    || !thirdDirection.every(Number.isFinite)
+    || Math.abs(firstLength - 1) > 0.01
+    || Math.abs(secondLength - 1) > 0.01
+    || Math.abs(thirdLength - 1) > 0.01
+    || settledDirectionDelta > 0.04) {
+    throw new Error(`P27-B1 Babylon ground projection is not normalized/stable after camera retarget: first=${pointerFirst} second=${pointerSecond} third=${pointerThird} initialDelta=${initialRetargetDelta} settledDelta=${settledDirectionDelta}`);
+  }
   const state = await evaluate(`(() => {
     const canvas = document.querySelector('canvas');
     return {
@@ -480,6 +557,17 @@ async function p27A2BabylonBackendAudit() {
       backend: canvas?.dataset.babylonBackend ?? '',
       scene: canvas?.dataset.babylonScene ?? '',
       disposed: canvas?.dataset.babylonDisposed ?? '',
+      camera: canvas?.dataset.babylonCameraParity ?? '',
+      input: canvas?.dataset.babylonInputParity ?? '',
+      pointer: canvas?.dataset.babylonPointerDirection ?? '',
+      layout: canvas?.dataset.babylonCameraLayout ?? '',
+      framing: canvas?.dataset.babylonCameraFraming ?? '',
+      viewport: canvas?.dataset.babylonViewport ?? '',
+      feedback: canvas?.dataset.cameraFeedback ?? '',
+      rectWidth: canvas?.getBoundingClientRect().width ?? 0,
+      rectHeight: canvas?.getBoundingClientRect().height ?? 0,
+      bufferWidth: canvas instanceof HTMLCanvasElement ? canvas.width : 0,
+      bufferHeight: canvas instanceof HTMLCanvasElement ? canvas.height : 0,
       frames: Number(canvas?.dataset.babylonFrames ?? 0),
     };
   })()`);
@@ -494,11 +582,38 @@ async function p27A2BabylonBackendAudit() {
     || state.backend !== 'webgl2'
     || state.scene !== 'active'
     || state.disposed !== 'false'
+    || state.camera !== 'three-combat-v1'
+    || state.input !== 'ground-plane-raycast-v1'
+    || state.pointer !== pointerThird
+    || !/^(narrow|coarse|standard):height-(18\.0|14\.8|12\.8)\+offset-(13\.2|11\.2|9\.8)\+fov-42$/.test(state.framing)
+    || !/^(full|reduced|off):[0-9]+\.[0-9]{2}$/.test(state.feedback)
     || state.frames < 2) {
     throw new Error(`P27-A2 Babylon backend telemetry invalid: ${JSON.stringify(state)}`);
   }
 
+  const viewportMatch = /^(\d+)x(\d+)@ratio:([0-9.]+)@buffer:(\d+)x(\d+)$/.exec(state.viewport);
+  if (!viewportMatch) throw new Error(`P27-B1 Babylon viewport telemetry invalid: ${state.viewport}`);
+  const [, cssWidthRaw, cssHeightRaw, ratioRaw, bufferWidthRaw, bufferHeightRaw] = viewportMatch;
+  const cssWidth = Number(cssWidthRaw);
+  const cssHeight = Number(cssHeightRaw);
+  const ratio = Number(ratioRaw);
+  const bufferWidth = Number(bufferWidthRaw);
+  const bufferHeight = Number(bufferHeightRaw);
+  const expectedLayout = state.rectWidth / Math.max(1, state.rectHeight) < 1.15
+    ? 'narrow'
+    : pointerProbe.coarse ? 'coarse' : 'standard';
+  if (state.layout !== expectedLayout
+    || Math.abs(cssWidth - state.rectWidth) > 2
+    || Math.abs(cssHeight - state.rectHeight) > 2
+    || bufferWidth !== state.bufferWidth
+    || bufferHeight !== state.bufferHeight
+    || Math.abs(bufferWidth - state.rectWidth * ratio) > 2
+    || Math.abs(bufferHeight - state.rectHeight * ratio) > 2) {
+    throw new Error(`P27-B1 Babylon camera/resize parity invalid: ${JSON.stringify({ state, expectedLayout, ratio })}`);
+  }
+
   console.log(`BROWSER_P27A2_BABYLON_PASS viewport=${viewportMode} backend=${state.backend} scene=${state.scene} frames=${state.frames} fallback=none`);
+  console.log(`BROWSER_P27B1_BABYLON_CAMERA_INPUT_PASS viewport=${viewportMode} camera=${state.camera} input=${state.input} layout=${state.layout} framing=${state.framing} viewport=${state.viewport} pointer=${state.pointer} initialRetargetDelta=${initialRetargetDelta.toFixed(4)} settledDelta=${settledDirectionDelta.toFixed(4)} feedback=${state.feedback}`);
   return state;
 }
 

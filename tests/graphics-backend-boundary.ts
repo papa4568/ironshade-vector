@@ -262,6 +262,34 @@ assert(
   'P27-A2 must pin full Babylon core and loader dependencies to the same exact version.',
 );
 assert(
+  babylonRendererSource.includes("from '@babylonjs/core/Culling/ray'")
+    && babylonRendererSource.includes('const WORLD_SCALE = 0.02')
+    && babylonRendererSource.includes('const CAMERA_FOV_DEGREES = 42')
+    && babylonRendererSource.includes('scene.useRightHandedSystem = true')
+    && babylonRendererSource.includes('camera.fov = CAMERA_FOV_RADIANS')
+    && babylonRendererSource.includes('camera.minZ = 0.1')
+    && babylonRendererSource.includes('camera.maxZ = 180')
+    && babylonRendererSource.includes('new Engine(canvas, !coarse')
+    && babylonRendererSource.includes('}, false);')
+    && babylonRendererSource.includes('this.engine.setHardwareScalingLevel(1 / nextRatio)')
+    && babylonRendererSource.includes('this.engine.resize()')
+    && babylonRendererSource.includes('this.syncCamera(state, width / Math.max(1, height), cameraFeedback)')
+    && babylonRendererSource.includes('cameraFeedback?.worldOffsetX')
+    && babylonRendererSource.includes('cameraFeedback?.worldOffsetZ')
+    && babylonRendererSource.includes('Ray.CreateNew(')
+    && babylonRendererSource.includes('rect.width')
+    && babylonRendererSource.includes('rect.height')
+    && babylonRendererSource.includes('(FLOOR_Y - ray.origin.y) / denominator')
+    && babylonRendererSource.includes('hitX / WORLD_SCALE - player.x')
+    && babylonRendererSource.includes('hitZ / WORLD_SCALE - player.y')
+    && babylonRendererSource.includes("canvas.dataset.babylonCameraParity = 'three-combat-v1'")
+    && babylonRendererSource.includes("canvas.dataset.babylonInputParity = 'ground-plane-raycast-v1'")
+    && babylonRendererSource.includes('this.canvas.dataset.babylonPointerDirection')
+    && babylonRendererSource.includes('this.canvas.dataset.babylonViewport')
+    && babylonRendererSource.includes('this.canvas.dataset.cameraFeedback'),
+  'P27-B1 Babylon renderer must match the production camera framing, explicit pixel-ratio resize, feedback offsets, and normalized ground-plane pointer projection.',
+);
+assert(
   webgpuRendererSource.includes("from './refineryIbl'")
     && webgpuRendererSource.includes("from './refineryBloom'")
     && webgpuRendererSource.includes("from './refineryContactDepth'")
@@ -306,6 +334,10 @@ assert(
     && browserSmokeSource.includes('BROWSER_P21F1_WEBGPU_PASS')
     && browserSmokeSource.includes('BROWSER_P21F2_REFINERY_PARITY_PASS')
     && browserSmokeSource.includes('BROWSER_P27A2_BABYLON_PASS')
+    && browserSmokeSource.includes('BROWSER_P27B1_BABYLON_CAMERA_INPUT_PASS')
+    && browserSmokeSource.includes('babylonCameraParity')
+    && browserSmokeSource.includes('babylonInputParity')
+    && browserSmokeSource.includes('babylonPointerDirection')
     && browserSmokeSource.includes("await p21F2RefineryParityAudit('webgl2')")
     && browserSmokeSource.includes("await p21F2RefineryParityAudit('webgpu')")
     && browserSmokeSource.includes("canvas.dataset.refineryIblQa = 'off'")
@@ -433,6 +465,7 @@ assert(
 console.log('P21_A1_GRAPHICS_BACKEND_PASS default=webgl2 create=boundary render=delegated resize=preserved pointer=preserved dispose=preserved fallback=canvas2d');
 console.log('P27_A1_NEUTRAL_GRAPHICS_CONTRACT_PASS render=explicit stats=explicit pointer=explicit lifecycle=explicit loaded=explicit webgl2=implemented webgpu=implemented');
 console.log('P27_A2_BABYLON_QA_BACKEND_PASS production=webgl2 qa=babylon lazy=true webgl2-only=true fallback=webgl2 telemetry=init+backend+scene+frames+dispose dependencies=core+loaders-pinned');
+console.log('P27_B1_BABYLON_CAMERA_INPUT_PASS camera=three-combat-v1 resize=explicit-pixel-ratio input=ground-plane-raycast-v1 feedback=shared simulation=unchanged');
 console.log('P21_A2_GRAPHICS_PATH_HARNESS_PASS selector=opt-in explicit=webgl2 refinery=existing-route telemetry=path+drawcalls+triangles+frame+tier android=production-default');
 console.log('P21_F1_WEBGPU_REFINERY_BACKEND_PASS production=webgl2 qa=webgpu lazy=true fallback=webgl2 assets=glb+ktx2+meshopt tsl=node-material camera=parity input=parity teardown=dispose');
 console.log('P21_F2_WEBGPU_REFINERY_PARITY_PASS stack=ibl-proxy+selective-bloom+contact-depth+atmosphere budget=adaptive captures=webgl2+webgpu gaps=explicit production=webgl2');
