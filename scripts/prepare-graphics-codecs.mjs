@@ -56,7 +56,7 @@ const babylonCodecSources = [
     name: 'babylon.ktx2Decoder.js',
   },
   {
-    source: resolve(root, 'node_modules/meshoptimizer/meshopt_decoder.js'),
+    source: resolve(root, 'node_modules/meshoptimizer/meshopt_decoder.cjs'),
     name: 'meshopt_decoder.js',
   },
   ...[
