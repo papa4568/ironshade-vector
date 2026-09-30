@@ -653,6 +653,8 @@ async function p27A2BabylonBackendAudit() {
   }
   const fireProbeShotCount = Number(await evaluate(`document.querySelector('canvas')?.dataset.babylonWeaponShotCount ?? 0`));
 
+  const pointerAfterFire = await evaluate(`document.querySelector('canvas')?.dataset.babylonPointerDirection ?? ''`);
+
   const state = await evaluate(`(() => {
     const canvas = document.querySelector('canvas');
     return {
@@ -802,7 +804,7 @@ async function p27A2BabylonBackendAudit() {
     || state.disposed !== 'false'
     || state.camera !== 'three-combat-v1'
     || state.input !== 'ground-plane-raycast-v1'
-    || state.pointer !== pointerThird
+    || state.pointer !== pointerAfterFire
     || !/^(narrow|coarse|standard):height-(18\.0|14\.8|12\.8)\+offset-(13\.2|11\.2|9\.8)\+fov-42$/.test(state.framing)
     || !/^(full|reduced|off):[0-9]+\.[0-9]{2}$/.test(state.feedback)
     || state.frames < 2) {
