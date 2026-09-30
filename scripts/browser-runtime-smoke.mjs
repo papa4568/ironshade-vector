@@ -472,6 +472,179 @@ async function performanceDiagnosticsAudit() {
   return result;
 }
 
+async function p27C1BabylonOrbitalAudit() {
+  const initial = await evaluate(`(() => {
+    const canvas = document.querySelector('canvas');
+    return {
+      init: canvas?.dataset.babylonInit ?? '',
+      fallback: canvas?.dataset.graphicsPathFallback ?? '',
+      fallbackReason: canvas?.dataset.babylonFallbackReason ?? '',
+      loaded: canvas?.dataset.graphicsPathLoaded ?? '',
+    };
+  })()`);
+  if (initial?.init === 'fallback' || initial?.init === 'failed') {
+    throw new Error('P27-C1 Babylon Orbital Station initialization failed before readiness: ' + JSON.stringify(initial));
+  }
+
+  await waitFor(`(() => {
+    const canvas = document.querySelector('canvas');
+    return canvas?.dataset.graphicsPathSelection === 'qa-explicit'
+      && canvas?.dataset.graphicsPathRequested === 'babylon'
+      && canvas?.dataset.graphicsPathLoaded === 'babylon'
+      && canvas?.dataset.babylonInit === 'ready'
+      && canvas?.dataset.babylonBackend === 'webgl2'
+      && canvas?.dataset.babylonScene === 'active'
+      && canvas?.dataset.babylonScenario === 'orbital-station'
+      && canvas?.dataset.babylonEnvironmentState === 'ready'
+      && canvas?.dataset.environmentVisual === 'procedural-orbital-station-babylon'
+      && canvas?.dataset.babylonOrbitalParity === 'architecture+materials+lighting+props+navigation+shared-world-cues'
+      && canvas?.dataset.locationArtIdentity === 'radial-spine|clean-industrial|neutral-cyan|service-cases'
+      && canvas?.dataset.babylonLightingProfile === 'neutral-cyan'
+      && canvas?.dataset.babylonWorldState === 'ready'
+      && canvas?.dataset.worldPresentationMode === 'scene-meshes-not-hud'
+      && Number(canvas?.dataset.worldObjectCount ?? 0) > 0
+      && Number(canvas?.dataset.interactableActive ?? 0) > 0
+      && canvas?.dataset.interactableVisual === 'authored-babylon'
+      && canvas?.dataset.interactableReadability === 'shape-coded+state-emissive+floor-cue:quality-safe'
+      && canvas?.dataset.objectiveWorldCue === 'beacon+navigation-path'
+      && Boolean(canvas?.dataset.objectiveTarget)
+      && canvas?.dataset.hazardReadability === 'shape-coded+floor-bound+quality-safe'
+      && canvas?.dataset.breachReadability === 'pressure-state+floor-ring+boss-priority'
+      && canvas?.dataset.babylonPlayerState === 'ready'
+      && canvas?.dataset.babylonEnemyCatalogState === 'ready'
+      && canvas?.dataset.babylonEnemyState === 'ready'
+      && Number(canvas?.dataset.enemyActive ?? 0) > 0
+      && Number(canvas?.dataset.babylonFrames ?? 0) >= 2;
+  })()`, 'P27-C1 Babylon Orbital Station parity', 45_000);
+
+  const beforeMove = await evaluate(`document.querySelector('canvas')?.dataset.babylonOrbitalPlayerPosition ?? ''`);
+  if (!/^\d+\.\d,\d+\.\d$/.test(beforeMove)) {
+    throw new Error('P27-C1 Orbital Station player position telemetry unavailable before movement: ' + beforeMove);
+  }
+  await call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
+  await sleep(260);
+  await call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
+  await waitFor(`document.querySelector('canvas')?.dataset.babylonOrbitalPlayerPosition !== ${JSON.stringify(beforeMove)}`, 'P27-C1 Orbital Station movement', 5_000);
+  const afterMove = await evaluate(`document.querySelector('canvas')?.dataset.babylonOrbitalPlayerPosition ?? ''`);
+
+  const state = await evaluate(`(() => {
+    const canvas = document.querySelector('canvas');
+    return {
+      selection: canvas?.dataset.graphicsPathSelection ?? '',
+      requested: canvas?.dataset.graphicsPathRequested ?? '',
+      loaded: canvas?.dataset.graphicsPathLoaded ?? '',
+      fallback: canvas?.dataset.graphicsPathFallback ?? '',
+      fallbackReason: canvas?.dataset.babylonFallbackReason ?? '',
+      init: canvas?.dataset.babylonInit ?? '',
+      backend: canvas?.dataset.babylonBackend ?? '',
+      scene: canvas?.dataset.babylonScene ?? '',
+      scenario: canvas?.dataset.babylonScenario ?? '',
+      frames: Number(canvas?.dataset.babylonFrames ?? 0),
+      environmentState: canvas?.dataset.babylonEnvironmentState ?? '',
+      environmentVisual: canvas?.dataset.environmentVisual ?? '',
+      environmentKit: canvas?.dataset.environmentKit ?? '',
+      environmentInstances: Number(canvas?.dataset.environmentInstances ?? 0),
+      environmentLandmark: canvas?.dataset.environmentLandmark ?? '',
+      serviceDetails: canvas?.dataset.environmentServiceDetails ?? '',
+      composition: canvas?.dataset.environmentComposition ?? '',
+      parity: canvas?.dataset.babylonOrbitalParity ?? '',
+      artIdentity: canvas?.dataset.locationArtIdentity ?? '',
+      routes: Number(canvas?.dataset.babylonOrbitalRoutes ?? 0),
+      landmarks: canvas?.dataset.babylonOrbitalLandmarks ?? '',
+      lighting: canvas?.dataset.babylonLightingProfile ?? '',
+      lightingBudget: canvas?.dataset.babylonLightingBudget ?? '',
+      environmentLighting: canvas?.dataset.environmentLighting ?? '',
+      environmentIbl: canvas?.dataset.environmentIbl ?? '',
+      tone: canvas?.dataset.environmentTone ?? '',
+      locationLighting: canvas?.dataset.locationLighting ?? '',
+      materialIntent: canvas?.dataset.babylonMaterialIntent ?? '',
+      pbr: canvas?.dataset.babylonPbrMaterials ?? '',
+      postRelease: canvas?.dataset.babylonPostRelease ?? '',
+      worldState: canvas?.dataset.babylonWorldState ?? '',
+      worldMode: canvas?.dataset.worldPresentationMode ?? '',
+      worldObjects: Number(canvas?.dataset.worldObjectCount ?? 0),
+      interactables: Number(canvas?.dataset.interactableActive ?? 0),
+      interactableAuthored: Number(canvas?.dataset.interactableAuthoredCount ?? 0),
+      interactableVisual: canvas?.dataset.interactableVisual ?? '',
+      interactableReadability: canvas?.dataset.interactableReadability ?? '',
+      objective: canvas?.dataset.objectiveTarget ?? '',
+      objectiveCue: canvas?.dataset.objectiveWorldCue ?? '',
+      hazards: Number(canvas?.dataset.hazardActive ?? 0),
+      hazardReadability: canvas?.dataset.hazardReadability ?? '',
+      breaches: Number(canvas?.dataset.breachActive ?? 0),
+      breachReadability: canvas?.dataset.breachReadability ?? '',
+      biome: canvas?.dataset.biomeState ?? '',
+      biomeAnimation: canvas?.dataset.biomeStateAnimation ?? '',
+      biomeAudio: canvas?.dataset.biomeStateAudio ?? '',
+      playerState: canvas?.dataset.babylonPlayerState ?? '',
+      enemyState: canvas?.dataset.babylonEnemyState ?? '',
+      enemies: Number(canvas?.dataset.enemyActive ?? 0),
+      playerPosition: canvas?.dataset.babylonOrbitalPlayerPosition ?? '',
+    };
+  })()`);
+
+  const kit = new Set(String(state.environmentKit).split(',').filter(Boolean));
+  const expectedKit = ['floor', 'radial-spine', 'ribs', 'airlocks', 'pipes', 'service-cases', 'wayfinding'];
+  if (!state
+    || state.selection !== 'qa-explicit'
+    || state.requested !== 'babylon'
+    || state.loaded !== 'babylon'
+    || state.fallback
+    || state.fallbackReason
+    || state.init !== 'ready'
+    || state.backend !== 'webgl2'
+    || state.scene !== 'active'
+    || state.scenario !== 'orbital-station'
+    || state.frames < 2
+    || state.environmentState !== 'ready'
+    || state.environmentVisual !== 'procedural-orbital-station-babylon'
+    || !expectedKit.every(item => kit.has(item))
+    || state.environmentInstances < 60
+    || state.environmentLandmark !== 'radial-spine'
+    || state.serviceDetails !== 'service-cases:12+posts:8'
+    || state.composition !== 'primary-spine+pressure-ribs+airlocks+perimeter-service'
+    || state.parity !== 'architecture+materials+lighting+props+navigation+shared-world-cues'
+    || state.artIdentity !== 'radial-spine|clean-industrial|neutral-cyan|service-cases'
+    || state.routes < 6
+    || state.landmarks !== 'SPIN ACCESS|TRANSFER BAY|CRANE WELL'
+    || state.lighting !== 'neutral-cyan'
+    || !/^tier:(high|balanced|performance)\|practical:(1|2)\|shadows:off$/.test(state.lightingBudget)
+    || !state.environmentLighting.startsWith('orbital-key+rim+emergency+readability+practical:')
+    || state.environmentIbl !== 'off:orbital-station'
+    || !/^aces-\d+\.\d{2}$/.test(state.tone)
+    || !/^orbital-station:neutral-cyan:aces-\d+\.\d{2}$/.test(state.locationLighting)
+    || state.materialIntent !== 'procedural-clean-industrial-pbr+shared-world-pbr'
+    || !/^pbr:\d+\|station:6$/.test(state.pbr)
+    || state.postRelease !== 'scenario-switch'
+    || state.worldState !== 'ready'
+    || state.worldMode !== 'scene-meshes-not-hud'
+    || state.worldObjects < 1
+    || state.interactables < 1
+    || state.interactableAuthored < 1
+    || state.interactableVisual !== 'authored-babylon'
+    || state.interactableReadability !== 'shape-coded+state-emissive+floor-cue:quality-safe'
+    || !state.objective
+    || state.objective === 'complete'
+    || state.objectiveCue !== 'beacon+navigation-path'
+    || state.hazards < 0
+    || state.hazardReadability !== 'shape-coded+floor-bound+quality-safe'
+    || state.breaches < 0
+    || state.breachReadability !== 'pressure-state+floor-ring+boss-priority'
+    || !state.biome
+    || !state.biomeAnimation
+    || !state.biomeAudio
+    || state.playerState !== 'ready'
+    || state.enemyState !== 'ready'
+    || state.enemies < 1
+    || afterMove === beforeMove
+    || state.playerPosition !== afterMove) {
+    throw new Error('P27-C1 Babylon Orbital Station parity invalid: ' + JSON.stringify({ state, beforeMove, afterMove }));
+  }
+
+  console.log(`BROWSER_P27C1_BABYLON_ORBITAL_PASS viewport=${viewportMode} identity=${state.artIdentity} routes=${state.routes} landmarks=${state.landmarks} world=${state.worldObjects} interactables=${state.interactables} hazards=${state.hazards} movement=${beforeMove}->${afterMove} lighting=${state.locationLighting}`);
+  return state;
+}
+
 async function p27A2BabylonBackendAudit() {
   const babylonInitState = await evaluate(`(() => {
     const canvas = document.querySelector('canvas');
@@ -3100,7 +3273,8 @@ try {
   }
   console.log(`BROWSER_P15_MISSION_PRESENTATION_PASS viewport=${viewportMode} deployment=non-blocking mode=${p15MissionPresentation.mode} title=${p15MissionPresentation.title}`);
   if (requestedGraphicsPath === 'babylon') {
-    await p27A2BabylonBackendAudit();
+    if (targetLocation === 'orbital-station') await p27C1BabylonOrbitalAudit();
+    else await p27A2BabylonBackendAudit();
     await performanceDiagnosticsAudit();
     if (pageExceptions.length > 0) {
       throw new Error(`P27-A2 Babylon comparison observed uncaught page exceptions: ${JSON.stringify(pageExceptions)}`);
