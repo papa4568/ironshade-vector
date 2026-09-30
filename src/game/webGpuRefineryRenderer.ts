@@ -1,5 +1,14 @@
-import type { ThreeCombatRenderer } from './threeCombatRenderer';
+import type { Contract } from './campaign';
+import type { CombatCameraFeedbackSample } from './combatCameraFeedback';
+import type {
+  CombatGraphicsBackend,
+  CombatGraphicsPerformanceStats,
+  CombatGraphicsPointerDirection,
+  CombatGraphicsPointerProjectionArgs,
+  CombatGraphicsRenderArgs,
+} from './combatGraphicsBackend';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
+import type { SimState } from './sim';
 import { REFINERY_IBL_PROFILE } from './refineryIbl';
 import {
   clampRefineryBloomCostScale,
@@ -27,11 +36,9 @@ const WEBGPU_REFINERY_PARITY_GAPS = [
   'combat-vfx-full-scene:not-in-f1-prototype',
 ] as const;
 
-type RenderArgs = Parameters<ThreeCombatRenderer['render']>;
-type ScreenDirectionArgs = Parameters<ThreeCombatRenderer['screenDirection']>;
 export type WebGpuRefineryLoadedPath = 'webgpu' | 'webgl2';
 
-export class WebGpuRefineryRenderer {
+export class WebGpuRefineryRenderer implements CombatGraphicsBackend {
   readonly id = 'webgpu' as const;
   readonly loadedId: WebGpuRefineryLoadedPath;
 
@@ -301,7 +308,7 @@ export class WebGpuRefineryRenderer {
     this.canvas.dataset.environmentInstances = String(this.assets.length);
   }
 
-  render(...args: RenderArgs) {
+  render(...args: CombatGraphicsRenderArgs): void {
     if (this.disposed) return;
     const [state, width, height, quality, qualityMode, mission, , , , , cameraFeedback] = args;
     if (mission.location !== 'asteroid-refinery') {
@@ -346,12 +353,12 @@ export class WebGpuRefineryRenderer {
     else this.renderer.render(this.scene, this.camera);
   }
 
-  performanceStats() {
+  performanceStats(): CombatGraphicsPerformanceStats {
     const render = this.renderer.info.render;
     return { drawCalls: render.calls, triangles: render.triangles };
   }
 
-  screenDirection(...args: ScreenDirectionArgs) {
+  screenDirection(...args: CombatGraphicsPointerProjectionArgs): CombatGraphicsPointerDirection {
     const [clientX, clientY, rect, player] = args;
     if (rect.width <= 0 || rect.height <= 0) return null;
     const pointer = new this.THREE.Vector2(
@@ -392,7 +399,7 @@ export class WebGpuRefineryRenderer {
   }
 
   private applyRefineryEffects(
-    mission: RenderArgs[5],
+    mission: Contract,
     budget: RenderBudgetSnapshot,
   ) {
     const qaExplicit = this.canvas.dataset.graphicsPathSelection === 'qa-explicit';
@@ -560,9 +567,9 @@ export class WebGpuRefineryRenderer {
   }
 
   private syncCamera(
-    state: RenderArgs[0],
+    state: SimState,
     aspect: number,
-    cameraFeedback?: RenderArgs[10],
+    cameraFeedback?: CombatCameraFeedbackSample,
   ) {
     const px = state.player.x * WORLD_SCALE;
     const pz = state.player.y * WORLD_SCALE;

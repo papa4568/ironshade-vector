@@ -142,6 +142,30 @@ assert(
 );
 
 assert(
+  boundarySource.includes('export type CombatGraphicsRenderArgs = [')
+    && boundarySource.includes('export type CombatGraphicsPerformanceStats = {')
+    && boundarySource.includes('export type CombatGraphicsPointerProjectionArgs = [')
+    && boundarySource.includes('export type CombatGraphicsPointerDirection = {')
+    && boundarySource.includes('export interface CombatGraphicsLifecycle')
+    && boundarySource.includes('render(...args: CombatGraphicsRenderArgs): void')
+    && boundarySource.includes('performanceStats(): CombatGraphicsPerformanceStats')
+    && boundarySource.includes('screenDirection(...args: CombatGraphicsPointerProjectionArgs): CombatGraphicsPointerDirection')
+    && !boundarySource.includes('Parameters<ThreeCombatRenderer')
+    && !boundarySource.includes('ReturnType<ThreeCombatRenderer'),
+  'P27-A1 graphics backend contract must own explicit renderer-neutral render, stats, pointer, lifecycle, and loaded-backend types.',
+);
+assert(
+  webgpuRendererSource.includes('implements CombatGraphicsBackend')
+    && webgpuRendererSource.includes('render(...args: CombatGraphicsRenderArgs): void')
+    && webgpuRendererSource.includes('performanceStats(): CombatGraphicsPerformanceStats')
+    && webgpuRendererSource.includes('screenDirection(...args: CombatGraphicsPointerProjectionArgs): CombatGraphicsPointerDirection')
+    && !webgpuRendererSource.includes('ThreeCombatRenderer')
+    && !webgpuRendererSource.includes('Parameters<ThreeCombatRenderer')
+    && !webgpuRendererSource.includes('ReturnType<ThreeCombatRenderer'),
+  'P27-A1 WebGPU QA renderer must implement the neutral backend contract without deriving public types from the Three.js renderer.',
+);
+
+assert(
   boundarySource.includes("export type CombatGraphicsBackendId = 'webgl2' | 'webgpu'")
     && boundarySource.includes("await import('./webGpuRefineryRenderer')")
     && boundarySource.includes("if (selectedId === 'webgpu')")
@@ -331,6 +355,7 @@ assert(
 );
 
 console.log('P21_A1_GRAPHICS_BACKEND_PASS default=webgl2 create=boundary render=delegated resize=preserved pointer=preserved dispose=preserved fallback=canvas2d');
+console.log('P27_A1_NEUTRAL_GRAPHICS_CONTRACT_PASS render=explicit stats=explicit pointer=explicit lifecycle=explicit loaded=explicit webgl2=implemented webgpu=implemented');
 console.log('P21_A2_GRAPHICS_PATH_HARNESS_PASS selector=opt-in explicit=webgl2 refinery=existing-route telemetry=path+drawcalls+triangles+frame+tier android=production-default');
 console.log('P21_F1_WEBGPU_REFINERY_BACKEND_PASS production=webgl2 qa=webgpu lazy=true fallback=webgl2 assets=glb+ktx2+meshopt tsl=node-material camera=parity input=parity teardown=dispose');
 console.log('P21_F2_WEBGPU_REFINERY_PARITY_PASS stack=ibl-proxy+selective-bloom+contact-depth+atmosphere budget=adaptive captures=webgl2+webgpu gaps=explicit production=webgl2');
