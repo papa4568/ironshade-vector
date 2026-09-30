@@ -73,7 +73,7 @@ for (const marker of [
   "if (!['portrait', 'resized'].includes(phase))",
   'if (smallestWidth < 600)',
   "if (phase === 'portrait')",
-  "if (phase === 'resized')",
+  "webViewPreserved: phase === 'resized'",
   'Horizontal overflow detected',
   '__ironshadeP25BLargeScreenSentinel',
   'ANDROID_P25B_LARGE_SCREEN_PHASE_PASS',
