@@ -4,6 +4,17 @@ This file is the permanent archive for completed production work. The active exe
 
 **Archive rule:** once a roadmap batch is merged, verified, and marked complete, move its detailed checklist and delivery note here. Keep only a compact completion pointer in the active roadmap. Do not execute work directly from this archive.
 
+
+## P26 — Telemetry Scale Resilience
+
+- [x] **P26-A — Make healthy Operations metrics reads independent of total ledger size** — Added a strongly consistent `ironshade-run-ledger-state` accepted-run count signal and changed healthy `/api/operations` metrics reads to compare that bounded signal with the stored aggregate instead of enumerating `ironshade-runs`. New accepted ledger rows advance the signal with bounded compare-and-set retries, idempotent replays do not advance it, and stale/mismatched state falls back to the existing ledger reconciliation path so correctness remains ledger-authoritative while normal reads stay effectively O(1).
+  - Service regression coverage now verifies accepted-run state advancement, duplicate protection, survival through aggregate contention, stale aggregate repair, and—critically—that a healthy Operations read performs no list or fetch against the accepted-run ledger.
+  - PR #267 service validation passed strict service/config TypeScript, service regressions, and network regressions on head `2da2d4f1664c5f68d1d95fd576a367baf1a294a5`. The change merged to `main` as source `0568c70ee3a27e52b0f8e9b11eb3be918338f469`.
+  - Merged-main verification passed Level 15 beta smoke #946 and Browser E2E #1081 on desktop and mobile-landscape. Android APK run #640 passed the full web regression/production build, native project generation, package/version/SDK/signature checks, real Android fast touch/runtime/lifecycle smoke, and the Android 16 large-screen portrait/live-resize smoke.
+  - Android evidence recorded `ANDROID_APK_PASS qa_signing=debug release_signing=debug version=0.0.1-beta.640(640) size=5.9M`, `ANDROID_FAST_RUNTIME_PASS`, `ANDROID_FAST_LIFECYCLE_RESUME_PASS`, `ANDROID_FAST_EMULATOR_PASS ... crashCheck=clean screenshots=3 elapsedSeconds=232`, and `ANDROID_P25B_LARGE_SCREEN_PASS ... processPreserved=true webViewPreserved=true overflow=none crashCheck=clean`.
+  - Android artifact `ironshade-vector-android-debug-qa` (artifact `11073536011`) has digest `sha256:aa3cd65e44e6e17cd4a9359f67f0e6f9ccfe84ea2dda7c81268c217bee62c6c2`; `Ironshade-Vector-Android-Debug.apk` is debug-signed, package `app.ironshade.vector`, version `0.0.1-beta.640 (640)`, size 5.9 MB, SHA-256 `6777ca28c4b4fe1cc146489b13052d6a60d3eb071b7c7a08401f6630c28dcd4d`.
+  - **Next: P26-B — Bound telemetry reconciliation work.**
+
 ## P23 — Android CI Feedback Loop
 
 - [x] **P23-A — Add a fast Android smoke entry point** — Added `scripts/android-fast-smoke.sh` plus fast-mode branches in the existing Android runtime harness. The independent path installs/launches the debug APK, uses real Android/WebView touch events for command-deck navigation, contract selection, movement, FIRE, class skill, DODGE, and ACT, then verifies pause/resume process preservation, clean logcat, and two screenshot artifacts. The extended repeatable-family, Chapter 3, Settings, and authored-asset suites remain available outside the fast entry point.
