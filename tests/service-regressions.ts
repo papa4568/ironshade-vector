@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import handler, { config } from '../netlify/functions/api';
 import { loadOperationsSnapshot, loadRunTrace, uploadRunTelemetry } from '../src/game/network';
-import { getMockBlobCalls, getMockStoreJson, getMockStoreKeys, getStore, resetMockBlobStores, setMockMetricsContention } from './mocks/netlify-blobs';
+import { getMockBlobCalls, getMockListPageYields, getMockMaxConcurrentGets, getMockStoreJson, getMockStoreKeys, getStore, resetMockBlobStores, setMockListPageSize, setMockMetricsContention, setMockMetricsContentionFailures } from './mocks/netlify-blobs';
 
 const defaultClientIp = '203.0.113.10';
 const context = (params: Record<string, string> = {}, ip = defaultClientIp) => ({ params, ip }) as never;
@@ -183,6 +183,55 @@ async function main() {
   assert.equal((await responseJson(healthyOperations)).metrics.attempts, 3);
   assert.equal(getMockBlobCalls('ironshade-runs').length, ledgerCallsBeforeHealthyRead, 'healthy Operations reads must not list or fetch the accepted-run ledger');
 
+  resetMockBlobStores();
+  setMockListPageSize(1_000);
+  const largeLedgerSize = 1_205;
+  const largeLedgerStore = getStore('ironshade-runs');
+  for (let index = 0; index < largeLedgerSize; index += 1) {
+    const outcome = index % 3 === 0 ? 'safe' : index % 3 === 1 ? 'deep' : 'failed';
+    await largeLedgerStore.setJSON(`bulk-run-${String(index).padStart(5, '0')}`, {
+      ...validRun({
+        outcome,
+        operationTier: (index % 12) + 1,
+        damageDealt: 10,
+        damageTaken: 2,
+        duration: 1,
+        killIntervalTotal: 1,
+        killIntervalSamples: 1,
+        recoveryQualities: [2],
+        modifierGrades: [1],
+        protocolCombinations: { bulk: 1 },
+        trace: [],
+      }),
+      createdAt: new Date(1_700_000_000_000 + index * 1_000).toISOString(),
+    });
+  }
+  await getStore('ironshade-run-ledger-state').setJSON('accepted-runs', { acceptedRuns: largeLedgerSize });
+  await getStore('ironshade-metrics').setJSON('global', { runs: 0, attempts: 0 });
+  setMockMetricsContentionFailures(2);
+
+  const largeLedgerOperations = await handler(new Request('https://example.test/api/operations'), context());
+  assert.equal(largeLedgerOperations.status, 200);
+  const largeLedgerBody = await responseJson(largeLedgerOperations);
+  assert.equal(largeLedgerBody.metrics.attempts, largeLedgerSize, 'large-ledger reconciliation must count every accepted run exactly once');
+  assert.equal(largeLedgerBody.metrics.safeRuns, 402);
+  assert.equal(largeLedgerBody.metrics.deepRuns, 402);
+  assert.equal(largeLedgerBody.metrics.failedRuns, 401);
+  assert.equal(largeLedgerBody.metrics.runs, 804);
+  assert.equal(largeLedgerBody.metrics.totalDamageDealt, largeLedgerSize * 10, 'reconciliation retries must rebuild from zero rather than double-counting prior work');
+  assert.equal(getMockStoreJson<any>('ironshade-metrics', 'global')?.attempts, largeLedgerSize, 'transient reconciliation contention must recover and persist the rebuilt aggregate');
+  assert.equal(getMockListPageYields('ironshade-runs'), 4, 'a >1000-row ledger must be consumed and confirmed across multiple explicit pages');
+  assert.ok(getMockMaxConcurrentGets('ironshade-runs') > 1, 'reconciliation must fetch accepted runs in parallel batches rather than serially');
+  assert.ok(getMockMaxConcurrentGets('ironshade-runs') <= 32, 'reconciliation read concurrency must stay bounded');
+  const paginatedLedgerLists = getMockBlobCalls('ironshade-runs').filter(call => call.method === 'list');
+  assert.ok(paginatedLedgerLists.length >= 2 && paginatedLedgerLists.every(call => call.options?.paginate === true), 'ledger reconciliation must opt into manual pagination for every ledger scan');
+
+  const ledgerCallsBeforeLargeHealthyRead = getMockBlobCalls('ironshade-runs').length;
+  const largeHealthyOperations = await handler(new Request('https://example.test/api/operations'), context());
+  assert.equal(largeHealthyOperations.status, 200);
+  assert.equal((await responseJson(largeHealthyOperations)).metrics.attempts, largeLedgerSize, 'the persisted reconciled aggregate must stay exact on the next read');
+  assert.equal(getMockBlobCalls('ironshade-runs').length, ledgerCallsBeforeLargeHealthyRead, 'healthy reads after large-ledger reconciliation must return to the bounded state signal without rescanning the ledger');
+
   const originalFetch = globalThis.fetch;
   let capturedHeaders: Headers | null = null;
   let capturedSessionBody = '';
@@ -218,7 +267,7 @@ async function main() {
   assert.equal(existsSync('.github/workflows/fix-three-objective-beacon.yml'), false, 'completed objective-beacon migration workflow must stay retired');
   assert.equal(existsSync('scripts/apply-three-objective-beacon.mjs'), false, 'completed objective-beacon migration script must stay retired');
 
-  console.log('SERVICE_REGRESSIONS_PASS executable=handler trustBoundary=session+ipQuota forged=rejected replay=idempotent+bound expired=rejected idempotency=verified metrics=cas+versioned-fast-read+reconcile validation=strict payloadBytes=bounded rateLimit=enabled clientCredential=verified staleMigration=removed');
+  console.log('SERVICE_REGRESSIONS_PASS executable=handler trustBoundary=session+ipQuota forged=rejected replay=idempotent+bound expired=rejected idempotency=verified metrics=cas+versioned-fast-read+paginated-batched-reconcile validation=strict payloadBytes=bounded rateLimit=enabled clientCredential=verified staleMigration=removed');
 }
 
 void main();
