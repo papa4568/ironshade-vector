@@ -2,6 +2,9 @@ import fs from 'node:fs';
 
 const shell = fs.readFileSync(new URL('../scripts/android-fast-smoke.sh', import.meta.url), 'utf8');
 const runtime = fs.readFileSync(new URL('../scripts/android-runtime-smoke.mjs', import.meta.url), 'utf8');
+const largeScreenShell = fs.readFileSync(new URL('../scripts/android-large-screen-smoke.sh', import.meta.url), 'utf8');
+const largeScreenRuntime = fs.readFileSync(new URL('../scripts/android-large-screen-smoke.mjs', import.meta.url), 'utf8');
+const androidConfigurator = fs.readFileSync(new URL('../scripts/configure-android.mjs', import.meta.url), 'utf8');
 const extendedShell = fs.readFileSync(new URL('../scripts/android-runtime-smoke.sh', import.meta.url), 'utf8');
 const repeatableShell = fs.readFileSync(new URL('../scripts/android-repeatable-regression.sh', import.meta.url), 'utf8');
 const settingsShell = fs.readFileSync(new URL('../scripts/android-settings-regression.sh', import.meta.url), 'utf8');
@@ -41,6 +44,42 @@ for (const forbidden of [
 }
 
 for (const marker of [
+  "upsertAttribute(applicationTag, 'android:appCategory', 'game'",
+  "upsertAttribute(activityTag, 'android:resizeableActivity', 'true'",
+  "upsertAttribute(activityTag, 'android:keepScreenOn', 'true'",
+  "'density'",
+  'LARGE_SCREEN_SMALLEST_WIDTH_DP = 600',
+  'ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE',
+  'ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED',
+  'smallestScreenWidthDp >= LARGE_SCREEN_SMALLEST_WIDTH_DP',
+  'phoneLandscape=sensor largeScreen=adaptive-resizable thresholdDp=600 appCategory=game',
+]) requireText(androidConfigurator, marker, 'P25-B Android configurator');
+
+for (const marker of [
+  'adb shell wm size 1600x2560',
+  'adb shell wm density 320',
+  'adb shell wm size 1800x1400',
+  'ANDROID_LARGE_SCREEN_PHASE=portrait',
+  'ANDROID_LARGE_SCREEN_PHASE=resized',
+  'android-large-screen-portrait.png',
+  'android-large-screen-resized.png',
+  'android-large-screen-logcat.txt',
+  'ANDROID_P25B_LARGE_SCREEN_PASS',
+  'test "$(adb shell getprop ro.build.version.sdk',
+]) requireText(largeScreenShell, marker, 'P25-B large-screen shell');
+
+for (const marker of [
+  "const sentinelToken = 'ironshade-p25b-live-resize';",
+  "if (!['portrait', 'resized'].includes(phase))",
+  'if (smallestWidth < 600)',
+  "if (phase === 'portrait')",
+  "if (phase === 'resized')",
+  'Horizontal overflow detected',
+  '__ironshadeP25BLargeScreenSentinel',
+  'ANDROID_P25B_LARGE_SCREEN_PHASE_PASS',
+]) requireText(largeScreenRuntime, marker, 'P25-B large-screen runtime');
+
+for (const marker of [
   "const fastSmoke = process.env.ANDROID_FAST_SMOKE === '1';",
   "const fastResumeOnly = process.env.ANDROID_FAST_RESUME_CHECK === '1';",
   "const p21f1Only = process.env.ANDROID_P21F1_CHECK === '1';",
@@ -77,6 +116,21 @@ requireText(workflow, 'npm run build', 'Android workflow production build');
 requireText(workflow, "set -euo pipefail;", 'Android workflow');
 requireText(workflow, 'actions/upload-artifact@v7', 'Android workflow');
 requireText(workflow, 'node scripts/measure-webgpu-delivery-cost.mjs', 'Android workflow');
+for (const marker of [
+  "grep -q 'android:appCategory=\"game\"'",
+  "grep -q 'android:resizeableActivity=\"true\"'",
+  "! grep -q 'android:screenOrientation='",
+  'system-images;android-${api_level};google_apis;x86_64',
+  'Smoke test Android 16 large-screen resize path',
+  'api-level: 36',
+  'bash scripts/android-large-screen-smoke.sh',
+  'android-large-screen.txt',
+  'android-large-screen-portrait.json',
+  'android-large-screen-resized.json',
+  'android-large-screen-portrait.png',
+  'android-large-screen-resized.png',
+  'android-large-screen-logcat.txt',
+]) requireText(workflow, marker, 'P25-B Android 16 large-screen workflow');
 requireText(workflow, 'p21f3-webgpu-delivery.json', 'Android workflow');
 for (const marker of [
   'ironshade-vector-android-debug-qa',
@@ -353,7 +407,7 @@ if (workflow.slice(fullGateStart).includes('needs: build-apk\n')) {
   throw new Error('P23-F aggregate gate must require all full-verification jobs, not only build-apk');
 }
 
-console.log('ANDROID_FAST_SMOKE_CONTRACT_PASS entry=scripts/android-fast-smoke.sh defaultPush=fast-only repeatable=dedicated-dispatch settings=dedicated-dispatch chapter3=dedicated-full-regression extended=parallel-runtime fullGate=aggregated scheduled=weekly manualMode=full-or-fast browser=required productionBuild=required touch=required lifecycle=required artifacts=required failFast=required');
+console.log('ANDROID_FAST_SMOKE_CONTRACT_PASS entry=scripts/android-fast-smoke.sh defaultPush=phone+android16-large-screen repeatable=dedicated-dispatch settings=dedicated-dispatch chapter3=dedicated-full-regression extended=parallel-runtime fullGate=aggregated scheduled=weekly manualMode=full-or-fast browser=required productionBuild=required touch=required lifecycle=required largeScreen=portrait+live-resize artifacts=required failFast=required');
 
 
 for (const marker of [
