@@ -18,9 +18,9 @@ The migration is staged rather than a flag-day rewrite:
 
 Babylon.js 9.28.0 was the current stable upstream release when this decision was recorded. Implementation should stay on a deliberately pinned supported release and update only through normal dependency verification.
 
-## Decision
+## Historical P21-G decision (superseded)
 
-Keep **Three.js WebGL2 as the production combat renderer** for the current roadmap. Retain the P21 WebGPU/TSL renderer as a **QA-only comparison harness** and do not start a Godot/Unity-class replatform.
+The prior P21-G decision was to keep **Three.js WebGL2 as the production combat renderer** for that roadmap, retain the P21 WebGPU/TSL renderer as a **QA-only comparison harness**, and avoid a Godot/Unity-class replatform.
 
 This decision is based on the completed P21-A through P21-F evidence, including the captured Asteroid Refinery screenshots, runtime diagnostics, Android compatibility probes, delivery-size measurement, and current release QA behavior. It is not a claim that WebGPU or a native engine can never become the better choice; it records which path is justified by the evidence available now.
 
@@ -56,7 +56,7 @@ A native-engine migration is not a renderer swap. It would need an explicit plan
 
 Because those systems are already integrated and verified, a future replatform should be treated as a product/architecture project with explicit migration criteria, not as a graphics-only optimization.
 
-## Roadmap consequence
+## Historical P21-G roadmap consequence (superseded)
 
 P21 closes on the existing production architecture:
 
@@ -65,7 +65,7 @@ P21 closes on the existing production architecture:
 3. Do not add replatform work to the active queue.
 4. Return roadmap priority to the existing product work at **P20-F1 — Define and settle distinct repeatable-contract incentive profiles**.
 
-## Revisit triggers
+## Historical P21-G revisit triggers
 
 Reopen the renderer decision only when new evidence materially changes the tradeoff, such as:
 
@@ -75,4 +75,4 @@ Reopen the renderer decision only when new evidence materially changes the trade
 - renderer-specific CI/presentation/readback defects are resolved or can be removed from required QA; or
 - product requirements become blocked by the current WebGL2/React/Capacitor architecture strongly enough to justify the broader migration cost.
 
-Until one of those conditions is demonstrated, production WebGL2 remains the measured, lower-risk path.
+At the time P21-G was recorded, production WebGL2 was the measured, lower-risk path. That conclusion is retained as baseline evidence but no longer controls roadmap priority after the explicit P27 Babylon.js migration direction.
