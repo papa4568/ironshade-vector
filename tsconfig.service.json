@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": [
+    "netlify/functions/api.ts",
+    "vite.config.ts",
+    "vite.service.config.ts",
+    "capacitor.config.ts",
+    "tests/mocks/netlify-blobs.ts"
+  ]
+}
