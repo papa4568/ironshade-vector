@@ -86,7 +86,8 @@
     "test:graphics:babylon": "vite build --ssr tests/babylon-graphics-assets.ts --outDir .babylon-graphics-dist && node .babylon-graphics-dist/babylon-graphics-assets.js",
     "test:babylon-weapon-vfx": "vite build --ssr tests/babylon-weapon-vfx.ts --outDir .babylon-weapon-vfx-dist && node .babylon-weapon-vfx-dist/babylon-weapon-vfx.js",
     "test:babylon-ability-vfx": "vite build --ssr tests/babylon-ability-vfx.ts --outDir .babylon-ability-vfx-dist && node .babylon-ability-vfx-dist/babylon-ability-vfx.js",
-    "test:babylon-enemy-telegraphs": "vite build --ssr tests/babylon-enemy-telegraphs.ts --outDir .babylon-enemy-telegraphs-dist && node .babylon-enemy-telegraphs-dist/babylon-enemy-telegraphs.js",\n    "test:babylon-protocol-status": "vite build --ssr tests/babylon-protocol-status-visuals.ts --outDir .babylon-protocol-status-dist && node .babylon-protocol-status-dist/babylon-protocol-status-visuals.js"
+    "test:babylon-enemy-telegraphs": "vite build --ssr tests/babylon-enemy-telegraphs.ts --outDir .babylon-enemy-telegraphs-dist && node .babylon-enemy-telegraphs-dist/babylon-enemy-telegraphs.js",
+    "test:babylon-protocol-status": "vite build --ssr tests/babylon-protocol-status-visuals.ts --outDir .babylon-protocol-status-dist && node .babylon-protocol-status-dist/babylon-protocol-status-visuals.js"
   },
   "dependencies": {
     "@babylonjs/core": "9.28.0",
