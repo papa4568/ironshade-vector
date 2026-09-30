@@ -2,33 +2,99 @@ import { copyFile, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises
 import { resolve } from 'node:path';
 
 const root = process.cwd();
-const threePackagePath = resolve(root, 'node_modules/three/package.json');
-const sourceDir = resolve(root, 'node_modules/three/examples/jsm/libs/basis');
-const targetDir = resolve(root, 'public/assets/codecs/basis');
-const codecFiles = ['basis_transcoder.js', 'basis_transcoder.wasm'];
+const threePackage = JSON.parse(await readFile(resolve(root, 'node_modules/three/package.json'), 'utf8'));
+const babylonCorePackage = JSON.parse(await readFile(resolve(root, 'node_modules/@babylonjs/core/package.json'), 'utf8'));
+const babylonKtx2Package = JSON.parse(await readFile(resolve(root, 'node_modules/@babylonjs/ktx2decoder/package.json'), 'utf8'));
+const babylonKtx2UmdPackage = JSON.parse(await readFile(resolve(root, 'node_modules/babylonjs-ktx2decoder/package.json'), 'utf8'));
+const meshoptimizerPackage = JSON.parse(await readFile(resolve(root, 'node_modules/meshoptimizer/package.json'), 'utf8'));
 
-const threePackage = JSON.parse(await readFile(threePackagePath, 'utf8'));
-await rm(targetDir, { recursive: true, force: true });
-await mkdir(targetDir, { recursive: true });
-
-const files = [];
-for (const name of codecFiles) {
-  const source = resolve(sourceDir, name);
-  const destination = resolve(targetDir, name);
-  const sourceStat = await stat(source);
-  if (!sourceStat.isFile() || sourceStat.size <= 0) throw new Error(`Missing Three.js Basis transcoder asset: ${source}`);
-  await copyFile(source, destination);
-  files.push({ name, bytes: sourceStat.size });
+if (babylonCorePackage.version !== babylonKtx2Package.version || babylonCorePackage.version !== babylonKtx2UmdPackage.version) {
+  throw new Error(
+    `Babylon codec packages must match @babylonjs/core: core=${babylonCorePackage.version} scoped=${babylonKtx2Package.version} umd=${babylonKtx2UmdPackage.version}`,
+  );
 }
 
-const totalBytes = files.reduce((sum, file) => sum + file.bytes, 0);
-const manifest = {
+async function copyMeasured(source, destination, name) {
+  const sourceStat = await stat(source);
+  if (!sourceStat.isFile() || sourceStat.size <= 0) throw new Error(`Missing graphics codec asset: ${source}`);
+  await copyFile(source, destination);
+  return { name, bytes: sourceStat.size };
+}
+
+const threeSourceDir = resolve(root, 'node_modules/three/examples/jsm/libs/basis');
+const threeTargetDir = resolve(root, 'public/assets/codecs/basis');
+const threeCodecFiles = ['basis_transcoder.js', 'basis_transcoder.wasm'];
+
+await rm(threeTargetDir, { recursive: true, force: true });
+await mkdir(threeTargetDir, { recursive: true });
+
+const threeFiles = [];
+for (const name of threeCodecFiles) {
+  threeFiles.push(await copyMeasured(
+    resolve(threeSourceDir, name),
+    resolve(threeTargetDir, name),
+    name,
+  ));
+}
+
+const threeTotalBytes = threeFiles.reduce((sum, file) => sum + file.bytes, 0);
+await writeFile(resolve(threeTargetDir, 'manifest.json'), `${JSON.stringify({
   threeVersion: threePackage.version,
   codec: 'basis-universal',
   generated: true,
-  files,
-  totalBytes,
-};
-await writeFile(resolve(targetDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+  files: threeFiles,
+  totalBytes: threeTotalBytes,
+}, null, 2)}\n`, 'utf8');
 
-console.log(`GRAPHICS_CODECS_READY three=${threePackage.version} files=${files.length} bytes=${totalBytes}`);
+const babylonTargetDir = resolve(root, 'public/assets/codecs/babylon');
+await rm(babylonTargetDir, { recursive: true, force: true });
+await mkdir(babylonTargetDir, { recursive: true });
+
+const babylonCodecSources = [
+  {
+    source: resolve(root, 'node_modules/babylonjs-ktx2decoder/babylon.ktx2Decoder.js'),
+    name: 'babylon.ktx2Decoder.js',
+  },
+  {
+    source: resolve(root, 'node_modules/meshoptimizer/meshopt_decoder.js'),
+    name: 'meshopt_decoder.js',
+  },
+  ...[
+    'msc_basis_transcoder.js',
+    'msc_basis_transcoder.wasm',
+    'uastc_astc.wasm',
+    'uastc_bc7.wasm',
+    'uastc_r8_unorm.wasm',
+    'uastc_rg8_unorm.wasm',
+    'uastc_rgba8_srgb_v2.wasm',
+    'uastc_rgba8_unorm_v2.wasm',
+    'zstddec.wasm',
+  ].map(name => ({
+    source: resolve(root, 'node_modules/@babylonjs/ktx2decoder/wasm', name),
+    name,
+  })),
+];
+
+const babylonFiles = [];
+for (const item of babylonCodecSources) {
+  babylonFiles.push(await copyMeasured(
+    item.source,
+    resolve(babylonTargetDir, item.name),
+    item.name,
+  ));
+}
+
+const babylonTotalBytes = babylonFiles.reduce((sum, file) => sum + file.bytes, 0);
+await writeFile(resolve(babylonTargetDir, 'manifest.json'), `${JSON.stringify({
+  babylonVersion: babylonCorePackage.version,
+  ktx2DecoderVersion: babylonKtx2Package.version,
+  meshoptimizerVersion: meshoptimizerPackage.version,
+  codec: 'babylon-glb-ktx2-meshopt',
+  generated: true,
+  files: babylonFiles,
+  totalBytes: babylonTotalBytes,
+}, null, 2)}\n`, 'utf8');
+
+console.log(
+  `GRAPHICS_CODECS_READY three=${threePackage.version} threeFiles=${threeFiles.length} threeBytes=${threeTotalBytes} babylon=${babylonCorePackage.version} babylonFiles=${babylonFiles.length} babylonBytes=${babylonTotalBytes} meshopt=${meshoptimizerPackage.version}`,
+);
