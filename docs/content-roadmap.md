@@ -2,7 +2,7 @@
 
 ## New-chat handoff — resume here first
 
-- All previously completed P20–P23 work plus P24-A–P24-D, verified P25 work, verified P26-A–P26-B work, and verified P27-A1 work is preserved in [content-roadmap-archive.md](./content-roadmap-archive.md).
+- All previously completed P20–P23 work plus P24-A–P24-D, verified P25 work, verified P26-A–P26-B work, and verified P27-A1–P27-A2 work is preserved in [content-roadmap-archive.md](./content-roadmap-archive.md).
 - On 2026-09-29 the product direction changed explicitly: migrate the combat graphics engine from Three.js to **Babylon.js** while preserving the TypeScript simulation, React UI, Capacitor Android delivery, save/runtime contracts, and gameplay behavior.
 - The previous P21-G decision to keep Three.js as the long-term production renderer is now superseded; its measurements remain the migration baseline and rollback evidence in [graphics-engine-decision.md](./graphics-engine-decision.md).
 - The migration is incremental. Three.js WebGL2 remains the production renderer until Babylon passes the roadmap's visual, gameplay, performance, lifecycle, bundle, and Android gates. Babylon Lite is not the migration target because the required Android baseline still needs a WebGL2-capable path.
@@ -23,7 +23,6 @@ Only active/future executable work lives here. Completed and verified work belon
 
 ### P27 — Babylon.js renderer migration
 
-- [ ] **P27-A2 — Add a deferred Babylon.js QA backend** — Add pinned full Babylon.js core/loader dependencies and a lazily imported Babylon backend behind the existing explicit graphics comparison selector; initialize Babylon WebGL2 only, keep Three.js as the production default and fallback, and expose backend/init/dispose telemetry without moving simulation or UI ownership. **Done when:** `graphicsCompare=1&graphicsPath=babylon` creates and disposes a Babylon scene, initialization failure returns safely to Three.js, Babylon code stays out of the synchronous boot graph, backend/bundle tests pass, and the required build/APK gates pass.
 - [ ] **P27-A3 — Add the Babylon authored-asset runtime** — Implement a Babylon-specific GLB load/cache/instantiate/release path that reuses `graphicsAssetManifest`, LOD selection, GLB/KTX2/Meshopt standards, compressed-byte budgets, local codec delivery, and explicit ownership/disposal semantics without changing the existing Three loader. **Done when:** representative operator and Asteroid Refinery assets load at the requested LOD, compressed textures and mesh compression work without a CDN, clones/releases do not leak shared resources, targeted asset tests pass, and the required build/APK gates pass.
 
 #### Asteroid Refinery vertical-slice parity
