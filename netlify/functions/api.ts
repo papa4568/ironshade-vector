@@ -27,6 +27,9 @@ const MAX_TELEMETRY_SESSION_BYTES = 4_096;
 const TELEMETRY_SESSION_TTL_MS = 5 * 60 * 1_000;
 const TELEMETRY_QUOTA_WINDOW_MS = 60 * 60 * 1_000;
 const TELEMETRY_SESSIONS_PER_WINDOW = 24;
+const RECONCILIATION_READ_BATCH_SIZE = 32;
+const RECONCILIATION_LEDGER_RETRIES = 4;
+const RECONCILIATION_WRITE_RETRIES = 8;
 
 function json(data: unknown, status = 200) {
   return Response.json(data, { status, headers: { 'cache-control': 'no-store' } });
@@ -177,38 +180,66 @@ async function ensureAcceptedRunCountAtLeast(expected: number) {
   throw new Error('Accepted-run state repair contention exceeded retry budget');
 }
 
-async function rebuildMetricsFromLedger(runKeys: string[]) {
+async function rebuildMetricsFromLedger() {
   const store = acceptedRunsStore();
   let rebuilt = emptyMetrics();
-  for (const runId of runKeys) {
-    const run = await store.get(runId, { type: 'json', consistency: 'strong' }) as RunRecord | null;
-    if (run) rebuilt = applyRunToMetrics(rebuilt, runId, run);
+  let listedRuns = 0;
+  for await (const page of store.list({ paginate: true })) {
+    listedRuns += page.blobs.length;
+    for (let start = 0; start < page.blobs.length; start += RECONCILIATION_READ_BATCH_SIZE) {
+      const batch = page.blobs.slice(start, start + RECONCILIATION_READ_BATCH_SIZE);
+      const runs = await Promise.all(batch.map(async blob => ({
+        id: blob.key,
+        run: await store.get(blob.key, { type: 'json', consistency: 'strong' }) as RunRecord | null,
+      })));
+      for (const { id, run } of runs) if (run) rebuilt = applyRunToMetrics(rebuilt, id, run);
+    }
   }
-  return rebuilt;
+  return { metrics: rebuilt, listedRuns };
+}
+
+async function countAcceptedRunsFromLedger() {
+  let count = 0;
+  for await (const page of acceptedRunsStore().list({ paginate: true })) count += page.blobs.length;
+  return count;
 }
 
 async function reconcileMetricsFromLedger(version?: { data: MetricsRecord; etag: string } | null) {
   const store = metricsStore();
-  const runStore = acceptedRunsStore();
-  const ledger = await runStore.list();
-  const runKeys = ledger.blobs.map(blob => blob.key);
-  const rebuilt = await rebuildMetricsFromLedger(runKeys);
-  const confirmed = await runStore.list();
-  if (confirmed.blobs.length === runKeys.length) {
-    await ensureAcceptedRunCountAtLeast(confirmed.blobs.length);
-    const currentVersion = version === undefined
-      ? await store.getWithMetadata(METRICS_KEY, { type: 'json', consistency: 'strong' }) as { data: MetricsRecord; etag: string } | null
-      : version;
-    const result = currentVersion
-      ? await store.setJSON(METRICS_KEY, rebuilt, { onlyIfMatch: currentVersion.etag })
-      : await store.setJSON(METRICS_KEY, rebuilt, { onlyIfNew: true });
-    if (!result.modified) {
-      const current = await store.get(METRICS_KEY, { type: 'json', consistency: 'strong' }) as MetricsRecord | null;
-      const normalized = normalizeMetrics(current);
-      if (normalized.attempts === await readAcceptedRunCount()) return normalized;
+  let suppliedVersion = version;
+  let latestStable = emptyMetrics();
+  for (let ledgerAttempt = 0; ledgerAttempt < RECONCILIATION_LEDGER_RETRIES; ledgerAttempt += 1) {
+    const rebuilt = await rebuildMetricsFromLedger();
+    latestStable = rebuilt.metrics;
+    const confirmedRuns = await countAcceptedRunsFromLedger();
+    if (confirmedRuns !== rebuilt.listedRuns) {
+      suppliedVersion = undefined;
+      continue;
     }
+
+    await ensureAcceptedRunCountAtLeast(confirmedRuns);
+    let currentVersion = suppliedVersion === undefined
+      ? await store.getWithMetadata(METRICS_KEY, { type: 'json', consistency: 'strong' }) as { data: MetricsRecord; etag: string } | null
+      : suppliedVersion;
+    suppliedVersion = undefined;
+
+    let ledgerChanged = false;
+    for (let writeAttempt = 0; writeAttempt < RECONCILIATION_WRITE_RETRIES; writeAttempt += 1) {
+      if (await readAcceptedRunCount() !== confirmedRuns) {
+        ledgerChanged = true;
+        break;
+      }
+      const current = normalizeMetrics(currentVersion?.data);
+      if (current.attempts === confirmedRuns) return current;
+      const result = currentVersion
+        ? await store.setJSON(METRICS_KEY, rebuilt.metrics, { onlyIfMatch: currentVersion.etag })
+        : await store.setJSON(METRICS_KEY, rebuilt.metrics, { onlyIfNew: true });
+      if (result.modified) return rebuilt.metrics;
+      currentVersion = await store.getWithMetadata(METRICS_KEY, { type: 'json', consistency: 'strong' }) as { data: MetricsRecord; etag: string } | null;
+    }
+    if (!ledgerChanged) return rebuilt.metrics;
   }
-  return rebuilt;
+  return latestStable;
 }
 
 async function readMetrics() {
