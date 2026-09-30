@@ -24,14 +24,17 @@ import type {
 } from './combatGraphicsBackend';
 import { weaponVariantPresentation, weaponVariantThermalCue } from './classArsenal';
 import {
+  ENEMY_ASSET_FAMILIES,
   OPERATOR_ASSET_FAMILY,
   OPERATOR_CLASS_ASSET_FAMILIES,
   REFINERY_ASSET_FAMILIES,
   WEAPON_ASSET_FAMILIES,
 } from './graphicsAssetManifest';
 import { selectGraphicsAssetSpec, type GraphicsAssetSpec } from './graphicsAssets';
+import { resolveEnemyBossAnimation, type EnemyBossAnimationSignals } from './enemyBossAnimation';
 import { resolvePlayerHandlingAnimation } from './playerHandlingAnimation';
-import { getWorldSize, weaponHandlingProfiles, type CombatObject, type SimState, type WeaponId } from './sim';
+import { resolveEnemyDamageAnimation, type EnemyDamageAnimationSignals } from './skillDamageAnimation';
+import { getWorldSize, weaponHandlingProfiles, type CombatObject, type Enemy, type SimState, type WeaponId } from './sim';
 
 const WORLD_SCALE = 0.02;
 const FLOOR_Y = 0;
@@ -39,6 +42,8 @@ const CAMERA_FOV_DEGREES = 42;
 const CAMERA_FOV_RADIANS = CAMERA_FOV_DEGREES * Math.PI / 180;
 const REFINERY_ENVIRONMENT_KIT = 'floor,floor-grate,bulkhead,processor,pipe-rack,wall-panel,cable-tray,service-conduit,gantry,crate,terminal';
 const BABYLON_WEAPON_IDS: readonly WeaponId[] = ['carbine', 'breacher', 'rail'];
+type BabylonEnemyRole = Exclude<Enemy['role'], 'boss'>;
+const BABYLON_ENEMY_ROLES: readonly BabylonEnemyRole[] = ['assault', 'suppressor', 'technician', 'elite'];
 const weaponColors: Record<WeaponId, number> = {
   carbine: 0xd9f3c6,
   breacher: 0xffddb3,
@@ -49,6 +54,12 @@ const factionColors = {
   heliostat: 0xe0a45c,
   longarc: 0x79a8bf,
 } as const;
+const enemyRoleColors: Record<BabylonEnemyRole, number> = {
+  assault: 0xb35a4b,
+  suppressor: 0xb67850,
+  technician: 0x7d6daf,
+  elite: 0xc34f6e,
+};
 
 type RefineryFamilyKey = keyof typeof REFINERY_ASSET_FAMILIES;
 
@@ -85,6 +96,53 @@ type BabylonWeaponVisual = {
   mount: TransformNode;
   muzzleSocket: TransformNode;
 };
+
+type BabylonEnemyVariantSilhouette = 'standard' | 'mobile' | 'braced' | 'technical' | 'drone';
+
+type BabylonEnemyVisual = {
+  root: TransformNode;
+  fallbackRoot: TransformNode;
+  body: Mesh;
+  head: Mesh;
+  weapon: Mesh;
+  variantCue: Mesh;
+  shellMaterial: StandardMaterial;
+  headMaterial: StandardMaterial;
+  accentMaterial: StandardMaterial;
+  role: BabylonEnemyRole;
+  variant: Enemy['variant'];
+  assetInstance: BabylonGraphicsAssetInstance | null;
+  assetMount: TransformNode | null;
+  assetId: string | null;
+  assetSignature: string;
+  rig: BabylonOperatorRig | null;
+  loadGeneration: number;
+  loadState: 'fallback' | 'loading' | 'authored';
+  lastDurability: number;
+  lastArmor: number;
+  impactUntil: number;
+  armorBreakUntil: number;
+  lastTelegraph: number;
+  attackEventAt: number;
+  lastActive: boolean;
+  activationEventAt: number;
+  lastDead: boolean;
+  deathEventAt: number;
+  baseBodyY: number;
+  baseHeadY: number;
+};
+
+function enemyVariantSilhouette(variant: Enemy['variant']): BabylonEnemyVariantSilhouette {
+  if (variant === 'standard') return 'standard';
+  if (/Drone$/.test(variant)) return 'drone';
+  if (/Skirmisher|Thief|Broker/.test(variant)) return 'mobile';
+  if (/Tech|Engineer|Rigger|Operator|Specialist|Orchestrator|Custodian|Adjudicator|Director/.test(variant)) return 'technical';
+  return 'braced';
+}
+
+function clamp01(value: number) {
+  return Math.max(0, Math.min(1, value));
+}
 
 function scaled(value: number) {
   return value * WORLD_SCALE;
@@ -233,6 +291,11 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   private playerLoadGeneration = 0;
   private operatorHitUntil = -1;
   private lastPlayerDurability = Number.NaN;
+  private readonly enemyVisuals = new Map<number, BabylonEnemyVisual>();
+  private enemyCatalogSignature = '';
+  private enemyCatalogGeneration = 0;
+  private enemyCatalogReady = false;
+  private enemyReleaseCount = 0;
   private readonly refineryAssetInstances: BabylonGraphicsAssetInstance[] = [];
   private refineryMountRoot: TransformNode | null = null;
   private refineryEnvironmentSignature = '';
@@ -328,6 +391,8 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       canvas.dataset.babylonInputParity = 'ground-plane-raycast-v1';
       canvas.dataset.babylonEnvironmentState = 'idle';
       canvas.dataset.babylonPlayerState = 'idle';
+      canvas.dataset.babylonEnemyCatalogState = 'idle';
+      canvas.dataset.babylonEnemyState = 'idle';
 
       return new BabylonCombatRenderer(canvas, coarse, engine, scene, camera);
     } catch (error) {
@@ -342,6 +407,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     if (mission.location !== 'asteroid-refinery') {
       this.canvas.dataset.babylonScenario = 'refinery-only';
       this.releasePlayerPresentation('scenario-exit');
+      this.releaseEnemyPresentation('scenario-exit');
       this.releaseRefineryEnvironment('scenario-exit');
       return;
     }
@@ -350,6 +416,8 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.ensureRefineryEnvironment(state, quality);
     this.ensurePlayerPresentation(state, quality);
     this.syncPlayerPresentation(state, operatorFaction, firingIntent);
+    this.ensureEnemyCatalog(quality);
+    this.syncEnemyPresentation(state, quality);
     this.syncCamera(state, width / Math.max(1, height), cameraFeedback);
     this.scene.render();
     this.frames += 1;
@@ -397,6 +465,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     if (this.disposed) return;
     this.disposed = true;
     this.releasePlayerPresentation('renderer-dispose');
+    this.releaseEnemyPresentation('renderer-dispose');
     this.releaseRefineryEnvironment('renderer-dispose');
     void disposeBabylonGraphicsAssetRuntime(this.scene);
     this.scene.dispose();
@@ -865,6 +934,600 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.operatorAccent.setEnabled(false);
     this.weaponAccent.setEnabled(false);
     this.lastPlayerDurability = Number.NaN;
+  }
+
+  private ensureEnemyCatalog(detailScale: number) {
+    const assetDetailScale = this.coarse ? Math.min(detailScale, 0.55) : detailScale;
+    const selected = BABYLON_ENEMY_ROLES.map(role => {
+      const spec = selectGraphicsAssetSpec(ENEMY_ASSET_FAMILIES[role], assetDetailScale);
+      if (!spec) throw new Error(`No authored Babylon enemy asset available for ${role}`);
+      return { role, spec };
+    });
+    const signature = selected.map(item => item.spec.id).join(':');
+    if (signature === this.enemyCatalogSignature) return;
+
+    this.enemyCatalogSignature = signature;
+    const generation = ++this.enemyCatalogGeneration;
+    this.enemyCatalogReady = false;
+    this.canvas.dataset.babylonEnemyCatalogState = 'loading';
+    this.canvas.dataset.babylonEnemyCatalogRoles = BABYLON_ENEMY_ROLES.join(',');
+    this.canvas.dataset.babylonEnemyCatalogAssets = selected.map(item => item.spec.id).join(',');
+    delete this.canvas.dataset.babylonEnemyCatalogError;
+
+    const runtime = getBabylonGraphicsAssetRuntime(this.scene);
+    void runtime.preload(selected.map(item => item.spec), 2).then(preload => {
+      if (this.disposed || generation !== this.enemyCatalogGeneration) return;
+      if (preload.failed > 0) {
+        this.canvas.dataset.babylonEnemyCatalogState = 'fallback';
+        this.canvas.dataset.babylonEnemyCatalogError = `preload-failed:${preload.failed}`;
+        return;
+      }
+      this.enemyCatalogReady = true;
+      this.canvas.dataset.babylonEnemyCatalogState = 'ready';
+      this.canvas.dataset.babylonEnemyCatalogLod = [...new Set(selected.map(item => item.spec.lod))].sort().join(',');
+      const stats = runtime.stats();
+      this.canvas.dataset.babylonEnemyCatalogRuntime = [
+        `cached:${stats.cachedAssets}`,
+        `active:${stats.activeInstances}`,
+        `bytes:${stats.estimatedCachedCompressedBytes}`,
+      ].join('|');
+      this.updateSceneTelemetry();
+    }).catch(error => {
+      if (this.disposed || generation !== this.enemyCatalogGeneration) return;
+      this.canvas.dataset.babylonEnemyCatalogState = 'fallback';
+      this.canvas.dataset.babylonEnemyCatalogError = error instanceof Error ? error.message : String(error);
+    });
+  }
+
+  private createEnemyVisual(enemy: Enemy) {
+    if (enemy.role === 'boss') throw new Error('P27-B4 Babylon enemy presentation excludes bosses');
+    const role = enemy.role;
+    const eliteScale = role === 'elite' ? 1.18 : 1;
+    const bodyHeight = (role === 'suppressor' ? 1.25 : role === 'technician' ? 1.1 : 1.16) * eliteScale;
+    const bodyWidth = (role === 'suppressor' ? 0.56 : role === 'elite' ? 0.5 : 0.43) * eliteScale;
+    const baseBodyY = bodyHeight * 0.52;
+    const baseHeadY = bodyHeight + 0.26 * eliteScale;
+
+    const root = new TransformNode(`p27-b4-enemy-${enemy.id}`, this.scene);
+    const fallbackRoot = new TransformNode(`p27-b4-enemy-fallback-${enemy.id}`, this.scene);
+    fallbackRoot.parent = root;
+
+    const shellMaterial = new StandardMaterial(`p27-b4-enemy-shell-${enemy.id}`, this.scene);
+    shellMaterial.diffuseColor = colorFromHex(enemyRoleColors[role]).scale(0.72);
+    shellMaterial.emissiveColor = colorFromHex(enemyRoleColors[role]).scale(0.06);
+    shellMaterial.specularColor = Color3.Black();
+
+    const headMaterial = new StandardMaterial(`p27-b4-enemy-head-${enemy.id}`, this.scene);
+    headMaterial.diffuseColor = colorFromHex(0xb99080).scale(0.72);
+    headMaterial.specularColor = Color3.Black();
+
+    const accentMaterial = new StandardMaterial(`p27-b4-enemy-accent-${enemy.id}`, this.scene);
+    accentMaterial.diffuseColor = colorFromHex(enemyRoleColors[role]).scale(0.58);
+    accentMaterial.emissiveColor = colorFromHex(enemyRoleColors[role]).scale(0.24);
+    accentMaterial.specularColor = Color3.Black();
+
+    const body = MeshBuilder.CreateCylinder(`p27-b4-enemy-body-${enemy.id}`, {
+      height: bodyHeight,
+      diameterTop: bodyWidth * 1.55,
+      diameterBottom: bodyWidth * 1.9,
+      tessellation: 9,
+    }, this.scene);
+    body.parent = fallbackRoot;
+    body.position.y = baseBodyY;
+    body.material = shellMaterial;
+    body.isPickable = false;
+
+    const head = MeshBuilder.CreateSphere(`p27-b4-enemy-head-${enemy.id}`, {
+      diameter: 0.46 * eliteScale,
+      segments: 8,
+    }, this.scene);
+    head.parent = fallbackRoot;
+    head.position.y = baseHeadY;
+    head.material = headMaterial;
+    head.isPickable = false;
+
+    const weapon = MeshBuilder.CreateBox(`p27-b4-enemy-weapon-${enemy.id}`, {
+      width: role === 'technician' ? 0.9 : role === 'suppressor' ? 0.8 : 0.72,
+      height: role === 'suppressor' ? 0.16 : 0.11,
+      depth: role === 'technician' ? 0.09 : 0.14,
+    }, this.scene);
+    weapon.parent = fallbackRoot;
+    weapon.position.set(0.48 * eliteScale, 1.04 * eliteScale, 0.08);
+    weapon.material = accentMaterial;
+    weapon.isPickable = false;
+
+    if (role === 'suppressor') {
+      for (const side of [-1, 1]) {
+        const shoulder = MeshBuilder.CreateBox(`p27-b4-suppressor-shoulder-${enemy.id}-${side}`, {
+          width: 0.18,
+          height: 0.18,
+          depth: 0.34,
+        }, this.scene);
+        shoulder.parent = fallbackRoot;
+        shoulder.position.set(0, 1.08, side * 0.34);
+        shoulder.material = shellMaterial;
+        shoulder.isPickable = false;
+      }
+    } else if (role === 'technician') {
+      const antenna = MeshBuilder.CreateBox(`p27-b4-technician-antenna-${enemy.id}`, {
+        width: 0.05,
+        height: 0.5,
+        depth: 0.05,
+      }, this.scene);
+      antenna.parent = fallbackRoot;
+      antenna.position.set(-0.18, 1.35, -0.14);
+      antenna.rotation.z = -0.18;
+      antenna.material = accentMaterial;
+      antenna.isPickable = false;
+    } else if (role === 'elite') {
+      for (const side of [-1, 1]) {
+        const fin = MeshBuilder.CreateBox(`p27-b4-elite-fin-${enemy.id}-${side}`, {
+          width: 0.08,
+          height: 0.42,
+          depth: 0.13,
+        }, this.scene);
+        fin.parent = fallbackRoot;
+        fin.position.set(-0.1, 1.34, side * 0.28);
+        fin.rotation.x = side * 0.12;
+        fin.material = accentMaterial;
+        fin.isPickable = false;
+      }
+    }
+
+    const silhouette = enemyVariantSilhouette(enemy.variant);
+    const variantCue = MeshBuilder.CreateBox(`p27-b4-variant-${silhouette}-${enemy.id}`, {
+      width: silhouette === 'braced' ? 0.62 : silhouette === 'mobile' ? 0.4 : silhouette === 'drone' ? 0.34 : 0.18,
+      height: silhouette === 'technical' ? 0.48 : silhouette === 'drone' ? 0.12 : 0.08,
+      depth: silhouette === 'braced' ? 0.14 : silhouette === 'mobile' ? 0.08 : 0.12,
+    }, this.scene);
+    variantCue.parent = root;
+    variantCue.position.set(
+      silhouette === 'technical' ? -0.22 : 0,
+      silhouette === 'drone' ? 0.72 : silhouette === 'technical' ? 1.48 : 1.22,
+      silhouette === 'mobile' ? -0.34 : -0.24,
+    );
+    variantCue.rotation.z = silhouette === 'mobile' ? -0.28 : silhouette === 'technical' ? 0.16 : 0;
+    variantCue.material = accentMaterial;
+    variantCue.isPickable = false;
+
+    const visual: BabylonEnemyVisual = {
+      root,
+      fallbackRoot,
+      body,
+      head,
+      weapon,
+      variantCue,
+      shellMaterial,
+      headMaterial,
+      accentMaterial,
+      role,
+      variant: enemy.variant,
+      assetInstance: null,
+      assetMount: null,
+      assetId: null,
+      assetSignature: '',
+      rig: null,
+      loadGeneration: 0,
+      loadState: 'fallback',
+      lastDurability: enemy.hp + enemy.armor,
+      lastArmor: enemy.armor,
+      impactUntil: -1,
+      armorBreakUntil: -1,
+      lastTelegraph: enemy.telegraph,
+      attackEventAt: -1,
+      lastActive: false,
+      activationEventAt: -1,
+      lastDead: false,
+      deathEventAt: -1,
+      baseBodyY,
+      baseHeadY,
+    };
+    this.enemyVisuals.set(enemy.id, visual);
+    return visual;
+  }
+
+  private ensureEnemyAsset(visual: BabylonEnemyVisual, enemy: Enemy, detailScale: number) {
+    if (enemy.role === 'boss') return;
+    const assetDetailScale = this.coarse ? Math.min(detailScale, 0.55) : detailScale;
+    const spec = selectGraphicsAssetSpec(ENEMY_ASSET_FAMILIES[enemy.role], assetDetailScale);
+    if (!spec) return;
+    const signature = `${enemy.role}:${spec.id}`;
+    if (signature === visual.assetSignature) return;
+
+    visual.assetSignature = signature;
+    const generation = ++visual.loadGeneration;
+    this.releaseMountedEnemyAsset(visual);
+    visual.loadState = 'loading';
+    visual.fallbackRoot.setEnabled(true);
+    void this.loadEnemyAsset(visual, enemy, spec, generation);
+  }
+
+  private async loadEnemyAsset(
+    visual: BabylonEnemyVisual,
+    enemy: Enemy,
+    spec: GraphicsAssetSpec,
+    generation: number,
+  ) {
+    const runtime = getBabylonGraphicsAssetRuntime(this.scene);
+    let instance: BabylonGraphicsAssetInstance | null = null;
+    let mount: TransformNode | null = null;
+    try {
+      instance = await runtime.instantiate(spec);
+      if (this.disposed || generation !== visual.loadGeneration || !this.enemyVisuals.has(enemy.id)) {
+        instance.release();
+        return;
+      }
+
+      mount = new TransformNode(`p27-b4-authored-enemy-${enemy.id}-${generation}`, this.scene);
+      mount.parent = visual.root;
+      mount.setEnabled(false);
+      instance.rootNodes.forEach(root => {
+        root.parent = mount;
+      });
+
+      const rigCandidates = {
+        hip: findInstanceTransform(instance, 'hip'),
+        torso: findInstanceTransform(instance, 'torso'),
+        helmet: findInstanceTransform(instance, 'helmet'),
+        leftArm: findInstanceTransform(instance, 'arm-left'),
+        rightArm: findInstanceTransform(instance, 'arm-right'),
+        leftLeg: findInstanceTransform(instance, 'leg-left'),
+        rightLeg: findInstanceTransform(instance, 'leg-right'),
+        backpack: findInstanceTransform(instance, 'backpack'),
+        weaponSocket: findInstanceTransform(instance, 'weapon-socket'),
+      };
+      if (!Object.values(rigCandidates).every(Boolean)) {
+        throw new Error(`Authored Babylon ${enemy.role} enemy is missing the articulated rig/socket contract`);
+      }
+
+      const rigBase = rigCandidates as Omit<BabylonOperatorRig, 'rest'>;
+      const rest = new Map<TransformNode, BabylonRigRest>();
+      for (const node of Object.values(rigBase)) rest.set(node, prepareRigNode(node));
+      const rig: BabylonOperatorRig = { ...rigBase, rest };
+
+      if (this.disposed || generation !== visual.loadGeneration || !this.enemyVisuals.has(enemy.id)) {
+        instance.release();
+        mount.dispose();
+        return;
+      }
+
+      visual.assetInstance = instance;
+      visual.assetMount = mount;
+      visual.assetId = spec.id;
+      visual.rig = rig;
+      visual.loadState = 'authored';
+      visual.fallbackRoot.setEnabled(false);
+      mount.setEnabled(true);
+    } catch (error) {
+      instance?.release();
+      mount?.dispose();
+      if (this.disposed || generation !== visual.loadGeneration || !this.enemyVisuals.has(enemy.id)) return;
+      visual.assetInstance = null;
+      visual.assetMount = null;
+      visual.assetId = null;
+      visual.rig = null;
+      visual.loadState = 'fallback';
+      visual.fallbackRoot.setEnabled(true);
+      this.canvas.dataset.babylonEnemyFallbackReason = error instanceof Error ? error.message : String(error);
+    }
+  }
+
+  private syncEnemyPresentation(state: SimState, detailScale: number) {
+    const seen = new Set<number>();
+    let animationTelemetry: { priority: number; enemy: Enemy; motion: EnemyBossAnimationSignals; damage: EnemyDamageAnimationSignals } | null = null;
+
+    for (const enemy of state.enemies) {
+      if (enemy.role === 'boss') continue;
+      seen.add(enemy.id);
+      let visual = this.enemyVisuals.get(enemy.id);
+      if (visual && (visual.role !== enemy.role || visual.variant !== enemy.variant)) {
+        this.disposeEnemyVisual(visual, 'identity-change');
+        this.enemyVisuals.delete(enemy.id);
+        visual = undefined;
+      }
+      visual ??= this.createEnemyVisual(enemy);
+
+      if (enemy.active && !visual.lastActive) visual.activationEventAt = state.time;
+      visual.lastActive = enemy.active;
+      if (enemy.dead && !visual.lastDead) visual.deathEventAt = state.time;
+      visual.lastDead = enemy.dead;
+      visual.root.setEnabled(enemy.active);
+      if (!enemy.active) continue;
+
+      this.ensureEnemyAsset(visual, enemy, detailScale);
+
+      const durability = enemy.hp + enemy.armor;
+      if (!enemy.dead && durability < visual.lastDurability - 0.5) visual.impactUntil = state.time + 0.18;
+      if (!enemy.dead && visual.lastArmor > 0 && enemy.armor <= 0) visual.armorBreakUntil = state.time + 0.44;
+      visual.lastDurability = durability;
+      visual.lastArmor = enemy.armor;
+      if (visual.lastTelegraph > 0 && enemy.telegraph <= 0 && !enemy.dead && enemy.statuses.disrupted <= 0 && enemy.statuses.stagger <= 0) {
+        visual.attackEventAt = state.time;
+      }
+      visual.lastTelegraph = enemy.telegraph;
+
+      const motion = resolveEnemyBossAnimation({
+        role: enemy.role,
+        id: enemy.id,
+        time: state.time,
+        vx: enemy.vx,
+        vy: enemy.vy,
+        telegraph: enemy.telegraph,
+        sinceAttack: visual.attackEventAt >= 0 ? state.time - visual.attackEventAt : -1,
+        sincePhaseChange: -1,
+        combatClass: enemy.combatClass,
+        protocolPulse: enemy.protocolPulse,
+        modifierCount: enemy.protocols.length + enemy.mutations.length + enemy.commandTargetMutations.length + enemy.bossPhaseMutations.length,
+        anchored: enemy.anchored,
+        statuses: enemy.statuses,
+        bossPhase: enemy.bossPhase,
+        dead: enemy.dead,
+      });
+      const damage = resolveEnemyDamageAnimation({
+        hit: state.time < visual.impactUntil ? clamp01((visual.impactUntil - state.time) / 0.18) : 0,
+        staggerTimer: enemy.statuses.stagger,
+        armorBreak: state.time < visual.armorBreakUntil ? clamp01((visual.armorBreakUntil - state.time) / 0.44) : 0,
+        dead: enemy.dead,
+      });
+      const spawn = visual.activationEventAt >= 0 ? clamp01(1 - (state.time - visual.activationEventAt) / 0.42) : 0;
+
+      visual.root.position.set(scaled(enemy.x), 0, scaled(enemy.y));
+      const direction = enemy.telegraph > 0 || motion.commit > 0 || motion.recovery > 0 ? enemy.telegraphAim : { x: enemy.vx, y: enemy.vy };
+      if (Math.hypot(direction.x, direction.y) > 0.01) visual.root.rotation.y = Math.atan2(-direction.y, direction.x);
+
+      this.syncEnemyFallback(visual, enemy, state, motion, damage, spawn);
+      if (visual.rig) this.syncAuthoredEnemyRig(visual, enemy, state, motion, damage, spawn);
+
+      if (enemy.dead) {
+        visual.root.scaling.set(1, Math.max(0.16, enemy.deathT * 0.32), 1);
+        visual.shellMaterial.alpha = 0.35;
+        visual.headMaterial.alpha = 0.35;
+        visual.accentMaterial.alpha = 0.45;
+      } else {
+        visual.root.scaling.set(1, 1, 1);
+        visual.shellMaterial.alpha = 1;
+        visual.headMaterial.alpha = 1;
+        visual.accentMaterial.alpha = 1;
+      }
+
+      const priority = enemy.role === 'elite' ? 4 : enemy.role === 'technician' ? 3 : enemy.role === 'suppressor' ? 2 : 1;
+      if (!animationTelemetry || priority > animationTelemetry.priority) {
+        animationTelemetry = { priority, enemy, motion, damage };
+      }
+    }
+
+    for (const [id, visual] of this.enemyVisuals) {
+      if (seen.has(id)) continue;
+      this.disposeEnemyVisual(visual, 'despawn');
+      this.enemyVisuals.delete(id);
+    }
+
+    const activeVisuals = [...this.enemyVisuals.values()].filter(visual => visual.root.isEnabled());
+    const authored = activeVisuals.filter(visual => visual.loadState === 'authored').length;
+    const fallback = activeVisuals.filter(visual => visual.loadState === 'fallback').length;
+    const loading = activeVisuals.filter(visual => visual.loadState === 'loading').length;
+    const roles = [...new Set(activeVisuals.map(visual => visual.role))].sort();
+    const variants = [...new Set(activeVisuals.map(visual => `${visual.variant}:${enemyVariantSilhouette(visual.variant)}`))].sort();
+    const assets = [...new Set(activeVisuals.map(visual => visual.assetId).filter((value): value is string => Boolean(value)))].sort();
+    const runtimeStats = getBabylonGraphicsAssetRuntime(this.scene).stats();
+
+    this.canvas.dataset.babylonEnemyState = activeVisuals.length === 0
+      ? 'idle'
+      : loading > 0 || !this.enemyCatalogReady
+        ? 'loading'
+        : 'ready';
+    this.canvas.dataset.enemyVisual = authored > 0
+      ? fallback > 0 ? 'authored+procedural-fallback-babylon' : 'authored-babylon'
+      : 'procedural-fallback-babylon';
+    this.canvas.dataset.enemyRoles = roles.join(',');
+    this.canvas.dataset.enemyVariants = variants.join(',');
+    this.canvas.dataset.enemyAssets = assets.join(',');
+    this.canvas.dataset.enemyActive = String(activeVisuals.length);
+    this.canvas.dataset.enemyAuthoredCount = String(authored);
+    this.canvas.dataset.enemyFallbackCount = String(fallback);
+    this.canvas.dataset.enemyLoadingCount = String(loading);
+    this.canvas.dataset.babylonEnemyTracking = `active:${activeVisuals.length}|authored:${authored}|fallback:${fallback}|loading:${loading}`;
+    this.canvas.dataset.babylonEnemyReuse = 'shared-runtime+role-assets+variant-silhouettes+shared-animation-signals';
+    this.canvas.dataset.babylonEnemyCleanup = `released:${this.enemyReleaseCount}`;
+    this.canvas.dataset.babylonEnemyRuntime = [
+      `cached:${runtimeStats.cachedAssets}`,
+      `active:${runtimeStats.activeInstances}`,
+      `bytes:${runtimeStats.estimatedCachedCompressedBytes}`,
+    ].join('|');
+
+    if (animationTelemetry) {
+      const { enemy, motion, damage } = animationTelemetry;
+      this.canvas.dataset.enemyAnimation = `${motion.profile.id}:${motion.phase}`;
+      this.canvas.dataset.enemyAnimationBlend = [
+        `move:${motion.speed.toFixed(2)}`,
+        `tell:${motion.tell.toFixed(2)}`,
+        `commit:${motion.commit.toFixed(2)}`,
+        `recovery:${motion.recovery.toFixed(2)}`,
+        `hit:${damage.hit.toFixed(2)}`,
+        `stagger:${damage.stagger.toFixed(2)}`,
+        `armorBreak:${damage.armorBreak.toFixed(2)}`,
+      ].join(',');
+      this.canvas.dataset.enemyAnimationTarget = `${enemy.role}:${enemy.variant}`;
+      this.canvas.dataset.enemyVariantSilhouette = enemyVariantSilhouette(enemy.variant);
+      this.canvas.dataset.enemyFacing = 'telegraph-or-velocity';
+      this.canvas.dataset.enemySpawnDeath = 'active-root+spawn-pose+death-rig+deterministic-release';
+    } else {
+      delete this.canvas.dataset.enemyAnimation;
+      delete this.canvas.dataset.enemyAnimationBlend;
+      delete this.canvas.dataset.enemyAnimationTarget;
+      delete this.canvas.dataset.enemyVariantSilhouette;
+    }
+  }
+
+  private syncEnemyFallback(
+    visual: BabylonEnemyVisual,
+    enemy: Enemy,
+    state: SimState,
+    motion: EnemyBossAnimationSignals,
+    damage: EnemyDamageAnimationSignals,
+    spawn: number,
+  ) {
+    const { profile } = motion;
+    const burst = enemy.burst > 0 && enemy.fireCooldown <= 0.78 ? 0.55 : 0;
+    const commit = Math.max(motion.commit, burst);
+    const side = enemy.id % 2 === 0 ? 1 : -1;
+
+    visual.body.position.y = visual.baseBodyY - spawn * 0.08;
+    visual.head.position.y = visual.baseHeadY - spawn * 0.04;
+    visual.body.rotation.set(0, 0, profile.torsoLean + profile.tellLean * motion.tell);
+    visual.head.rotation.set(0, 0, -profile.tellLean * motion.tell * 0.2);
+    visual.body.scaling.set(1, 1 - damage.stagger * 0.06 - spawn * 0.08, 1);
+    visual.body.rotation.z += side * (damage.torsoSnap * 0.12 + damage.armorBreak * 0.08);
+    visual.head.rotation.z -= side * (damage.hit * 0.1 + damage.stagger * 0.08);
+
+    visual.weapon.position.set(
+      0.48 + profile.tellReach * motion.tell - profile.commitKick * commit * 0.65,
+      1.04 + profile.tellLift * motion.tell,
+      0.08,
+    );
+    visual.weapon.rotation.set(0, 0, -profile.tellLean * motion.tell * 0.45 + profile.commitKick * commit * 0.5);
+
+    const silhouette = enemyVariantSilhouette(enemy.variant);
+    const speed = clamp01(Math.hypot(enemy.vx, enemy.vy) * 0.012);
+    visual.variantCue.rotation.y = silhouette === 'drone' ? state.time * 1.8 : 0;
+    visual.variantCue.rotation.z = (silhouette === 'mobile' ? -0.28 : silhouette === 'technical' ? 0.16 : 0)
+      + (silhouette === 'mobile' ? Math.sin(state.time * 8 + enemy.id) * 0.08 * speed : 0);
+    visual.accentMaterial.emissiveColor = colorFromHex(enemyRoleColors[visual.role]).scale(
+      0.22 + damage.hit * 0.32 + damage.armorBreak * 0.24,
+    );
+  }
+
+  private syncAuthoredEnemyRig(
+    visual: BabylonEnemyVisual,
+    enemy: Enemy,
+    state: SimState,
+    motion: EnemyBossAnimationSignals,
+    damage: EnemyDamageAnimationSignals,
+    spawn: number,
+  ) {
+    const rig = visual.rig;
+    if (!rig) return;
+    for (const [node, rest] of rig.rest) {
+      node.position.copyFrom(rest.position);
+      node.rotation.copyFrom(rest.rotation);
+    }
+
+    const { profile } = motion;
+    const burst = enemy.burst > 0 && enemy.fireCooldown <= 0.78 ? 0.55 : 0;
+    const commit = Math.max(motion.commit, burst);
+    rig.torso.position.y += motion.idle;
+    rig.backpack.position.y += motion.idle * 0.62;
+    rig.helmet.rotation.z += motion.idle * 0.8;
+    rig.leftLeg.rotation.z += motion.gait;
+    rig.rightLeg.rotation.z -= motion.gait;
+    rig.leftArm.rotation.z += profile.leftArm - motion.gait * 0.22;
+    rig.rightArm.rotation.z += profile.rightArm + motion.gait * 0.18;
+    rig.torso.rotation.z += profile.torsoLean;
+
+    if (motion.tell > 0) {
+      rig.torso.rotation.z += profile.tellLean * motion.tell;
+      rig.torso.position.y += profile.tellLift * motion.tell * 0.32;
+      rig.weaponSocket.position.x += profile.tellReach * motion.tell;
+      rig.weaponSocket.position.y += profile.tellLift * motion.tell;
+      rig.weaponSocket.rotation.z -= profile.tellLean * motion.tell * 0.48;
+      rig.leftArm.rotation.z -= 0.16 * motion.tell;
+      rig.rightArm.rotation.z += 0.12 * motion.tell;
+      rig.helmet.rotation.z -= profile.tellLean * motion.tell * 0.24;
+    }
+    if (commit > 0) {
+      rig.weaponSocket.position.x -= profile.commitKick * commit;
+      rig.weaponSocket.rotation.z += profile.commitKick * commit * 0.72;
+      rig.torso.rotation.z -= profile.commitKick * commit * 0.42;
+      rig.torso.position.y -= profile.commitKick * commit * 0.1;
+      rig.rightArm.rotation.z += profile.commitKick * commit * 0.8;
+      rig.backpack.rotation.z -= profile.commitKick * commit * 0.28;
+    } else if (motion.recovery > 0) {
+      rig.weaponSocket.position.x -= profile.commitKick * motion.recovery * 0.22;
+      rig.torso.rotation.z += profile.commitKick * motion.recovery * 0.12;
+      rig.rightArm.rotation.z += profile.commitKick * motion.recovery * 0.18;
+    }
+
+    if (spawn > 0) {
+      rig.hip.position.y -= 0.16 * spawn;
+      rig.torso.position.y -= 0.08 * spawn;
+      rig.leftArm.rotation.z += 0.12 * spawn;
+      rig.rightArm.rotation.z -= 0.12 * spawn;
+    }
+    if (damage.hit > 0) {
+      const side = enemy.id % 2 === 0 ? 1 : -1;
+      rig.torso.rotation.z += side * 0.2 * damage.torsoSnap;
+      rig.helmet.rotation.z -= side * 0.13 * damage.hit;
+      rig.hip.position.x -= 0.065 * damage.hit;
+    }
+    if (damage.stagger > 0) {
+      rig.torso.rotation.x += 0.14 * damage.stagger;
+      rig.torso.position.y -= 0.07 * damage.stagger;
+      rig.leftArm.rotation.z += 0.1 * damage.stagger;
+      rig.rightArm.rotation.z -= 0.08 * damage.stagger;
+      rig.weaponSocket.position.y -= 0.04 * damage.stagger;
+    }
+    if (damage.armorBreak > 0) {
+      rig.torso.rotation.x -= 0.16 * damage.armorBreak;
+      rig.torso.position.y += 0.04 * damage.armorBreak;
+      rig.leftArm.rotation.z -= 0.24 * damage.armFlare;
+      rig.rightArm.rotation.z += 0.24 * damage.armFlare;
+      rig.weaponSocket.position.y += 0.07 * damage.armorBreak;
+      rig.helmet.rotation.z += (enemy.id % 2 === 0 ? -1 : 1) * 0.08 * damage.armorBreak;
+    }
+    if (enemy.dead) {
+      const fall = clamp01(1 - enemy.deathT);
+      rig.hip.position.y -= 0.45 * fall;
+      rig.torso.rotation.z = (enemy.id % 2 === 0 ? -1 : 1) * 1.1 * fall;
+      rig.leftArm.rotation.z = -0.15;
+      rig.rightArm.rotation.z = 0.12;
+    }
+
+    void state;
+  }
+
+  private releaseMountedEnemyAsset(visual: BabylonEnemyVisual) {
+    visual.assetInstance?.release();
+    visual.assetInstance = null;
+    visual.assetMount?.dispose();
+    visual.assetMount = null;
+    visual.assetId = null;
+    visual.rig = null;
+    visual.fallbackRoot.setEnabled(true);
+  }
+
+  private disposeEnemyVisual(visual: BabylonEnemyVisual, reason: string) {
+    visual.loadGeneration += 1;
+    this.releaseMountedEnemyAsset(visual);
+    visual.body.dispose();
+    visual.head.dispose();
+    visual.weapon.dispose();
+    visual.variantCue.dispose();
+    visual.shellMaterial.dispose();
+    visual.headMaterial.dispose();
+    visual.accentMaterial.dispose();
+    visual.fallbackRoot.dispose();
+    visual.root.dispose();
+    this.enemyReleaseCount += 1;
+    this.canvas.dataset.babylonEnemyLastRelease = `${reason}:${visual.role}:${visual.variant}`;
+  }
+
+  private releaseEnemyPresentation(reason: string) {
+    if (this.enemyVisuals.size === 0 && this.canvas.dataset.babylonEnemyState === 'idle') return;
+    for (const visual of this.enemyVisuals.values()) this.disposeEnemyVisual(visual, reason);
+    this.enemyVisuals.clear();
+    this.canvas.dataset.babylonEnemyState = 'released';
+    this.canvas.dataset.enemyActive = '0';
+    this.canvas.dataset.enemyAuthoredCount = '0';
+    this.canvas.dataset.enemyFallbackCount = '0';
+    this.canvas.dataset.enemyLoadingCount = '0';
+    this.canvas.dataset.babylonEnemyCleanup = `released:${this.enemyReleaseCount}`;
+    const stats = getBabylonGraphicsAssetRuntime(this.scene).stats();
+    this.canvas.dataset.babylonEnemyRuntime = [
+      `cached:${stats.cachedAssets}`,
+      `active:${stats.activeInstances}`,
+      `bytes:${stats.estimatedCachedCompressedBytes}`,
+    ].join('|');
+    this.updateSceneTelemetry();
   }
 
   private ensureRefineryEnvironment(state: SimState, detailScale: number) {
