@@ -28,6 +28,10 @@ for (const marker of [
   'android-fast-resume.png',
   'android-p21f1-webgpu.png',
   'android-fast-logcat.txt',
+  'PROCESS_LIFECYCLE="preserved"',
+  'PROCESS_LIFECYCLE="reclaimed"',
+  'process=${PROCESS_LIFECYCLE}',
+  'lifecycle=pause-resume+state-restoration',
   'ANDROID_FAST_EMULATOR_PASS',
 ]) requireText(shell, marker, 'fast shell');
 
