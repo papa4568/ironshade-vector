@@ -59,6 +59,12 @@ function rendererOwnedSnapshot(state: SimState) {
   });
 }
 
+function syncReadOnly(telegraphs: BabylonEnemyTelegraphs, state: SimState, detailScale: number) {
+  const before = rendererOwnedSnapshot(state);
+  telegraphs.sync(state, detailScale);
+  assert.deepEqual(rendererOwnedSnapshot(state), before, 'Babylon enemy telegraph presentation must remain read-only.');
+}
+
 {
   const { enemy } = isolatedEnemyState({ role: 'assault', variant: 'standard' });
   const profile = babylonEnemyTelegraphProfile(enemy);
@@ -108,7 +114,7 @@ assert.equal(
   const canvas = { dataset: {} } as HTMLCanvasElement;
   const telegraphs = new BabylonEnemyTelegraphs(scene, canvas, false);
   try {
-    telegraphs.sync(state, 1);
+    syncReadOnly(telegraphs, state, 1);
     const lane = scene.getMeshByName('p27-b8-telegraph-lane-' + enemy.id);
     assert.ok(lane?.isEnabled(), 'Normal enemy warning must render a live Babylon floor lane.');
     assert(Math.abs((lane?.scaling.x ?? 0) - 6.6) < 0.001, 'Normal attack lane must scale to 330 simulation units at the shared world scale.');
@@ -136,7 +142,7 @@ assert.equal(
   const canvas = { dataset: {} } as HTMLCanvasElement;
   const telegraphs = new BabylonEnemyTelegraphs(scene, canvas, true);
   try {
-    telegraphs.sync(state, 1);
+    syncReadOnly(telegraphs, state, 1);
     assert.equal(canvas.dataset.babylonEnemyTelegraphEffectsMode, 'reduced');
     assert.equal(canvas.dataset.babylonEnemyTelegraphModes, 'elite-bracket');
     assert.equal(scene.getMeshByName('p27-b8-telegraph-side-a-' + enemy.id)?.isEnabled(), true);
@@ -161,13 +167,12 @@ assert.equal(
     bossPhase: 1,
     patternIndex: 1,
   });
-  const before = rendererOwnedSnapshot(state);
   const engine = new NullEngine();
   const scene = new Scene(engine);
   const canvas = { dataset: {} } as HTMLCanvasElement;
   const telegraphs = new BabylonEnemyTelegraphs(scene, canvas, true);
   try {
-    telegraphs.sync(state, 1);
+    syncReadOnly(telegraphs, state, 1);
     assert.equal(canvas.dataset.babylonEnemyTelegraphEffectsMode, 'reduced');
     assert.equal(canvas.dataset.babylonBossPatternCue, 'coilFan:boss-fan');
     assert.equal(scene.getMeshByName('p27-b8-telegraph-lane-' + boss.id)?.isEnabled(), true);
@@ -176,7 +181,7 @@ assert.equal(
 
     boss.bossPattern = 'massPulse';
     boss.telegraph = 0.82;
-    telegraphs.sync(state, 1);
+    syncReadOnly(telegraphs, state, 1);
     assert.equal(canvas.dataset.babylonBossPatternCue, 'massPulse:boss-pulse');
     assert.equal(scene.getMeshByName('p27-b8-telegraph-pulse-' + boss.id)?.isEnabled(), true);
     assert.match(canvas.dataset.babylonEnemyTelegraphLast ?? '', /range:330/);
@@ -185,7 +190,7 @@ assert.equal(
     state.player.vy = -40;
     boss.bossPattern = 'craneLock';
     boss.telegraph = 1.05;
-    telegraphs.sync(state, 1);
+    syncReadOnly(telegraphs, state, 1);
     const expectedX = state.player.x + state.player.vx * 0.45;
     const expectedY = state.player.y + state.player.vy * 0.45;
     assert.equal(canvas.dataset.babylonBossPatternCue, 'craneLock:boss-ground-lock');
@@ -196,28 +201,22 @@ assert.equal(
     boss.telegraph = 0;
     boss.bossPattern = 'none';
     state.time = 20;
-    telegraphs.sync(state, 1);
+    syncReadOnly(telegraphs, state, 1);
     boss.bossPhase = 2;
-    telegraphs.sync(state, 1);
+    syncReadOnly(telegraphs, state, 1);
     state.time = 20.55;
-    telegraphs.sync(state, 1);
+    syncReadOnly(telegraphs, state, 1);
     assert.equal(canvas.dataset.babylonBossPhaseCue, 'phase:2|transition:active');
     assert(Number(canvas.dataset.babylonBossPhaseTransition) > 0.95, 'Boss phase transition must use the shared 1.1-second lifecycle envelope.');
     assert.equal(scene.getMeshByName('p27-b8-phase-inner-' + boss.id)?.isEnabled(), true, 'Phase two must keep a persistent inner phase ring.');
     assert.equal(scene.getMeshByName('p27-b8-phase-spoke-' + boss.id + '-0')?.isEnabled(), true, 'Shared phase-transition timing must drive the distinct transition spokes.');
 
     state.time = 21.2;
-    telegraphs.sync(state, 1);
+    syncReadOnly(telegraphs, state, 1);
     assert.equal(canvas.dataset.babylonBossPhaseCue, 'phase:2|transition:idle');
     assert.equal(scene.getMeshByName('p27-b8-phase-spoke-' + boss.id + '-0')?.isEnabled(), false, 'Transition-only spokes must turn off after the shared lifecycle window.');
     assert.equal(scene.getMeshByName('p27-b8-phase-inner-' + boss.id)?.isEnabled(), true, 'Persistent phase-two identity must remain after the transition burst.');
-    assert.deepEqual(
-      rendererOwnedSnapshot(state),
-      rendererOwnedSnapshot(state),
-      'B8 runtime probe keeps simulation state serializable after presentation updates.',
-    );
     assert.equal(canvas.dataset.babylonEnemyTelegraphSimulationOwnership, 'read-only-presentation');
-    void before;
   } finally {
     telegraphs.dispose();
     scene.dispose();
