@@ -127,6 +127,7 @@ async function main() {
   assert.equal(firstLedgerWrite?.options?.onlyIfNew, true, 'accepted runs must use create-only ledger writes');
   const firstMetricsWrite = getMockBlobCalls('ironshade-metrics').find(call => call.method === 'setJSON');
   assert.equal(firstMetricsWrite?.options?.onlyIfNew, true, 'first aggregate write must be create-only');
+  assert.equal(getMockStoreJson<any>('ironshade-run-ledger-state', 'accepted-runs')?.acceptedRuns, 1, 'accepted-run state must track the authoritative ledger without listing it');
 
   const duplicate = await postRun(validRun({ damageTaken: 999999 }), firstKey, { 'x-telemetry-credential': firstCredential });
   assert.equal(duplicate.status, 200);
@@ -134,6 +135,7 @@ async function main() {
   assert.equal(duplicateBody.metrics.attempts, 1, 'replaying one idempotency key must not double-count an attempt');
   assert.equal(getMockStoreKeys('ironshade-runs').length, 1, 'replaying one idempotency key must not create a second ledger row');
   assert.equal(getMockStoreJson<any>('ironshade-runs', firstKey)?.damageTaken, 230, 'a replayed credential must not mutate the accepted run');
+  assert.equal(getMockStoreJson<any>('ironshade-run-ledger-state', 'accepted-runs')?.acceptedRuns, 1, 'duplicate submissions must not advance accepted-run state');
   const crossRunReplay = await postRun(validRun(), 'replay-cross-run-001', { 'x-telemetry-credential': firstCredential });
   assert.equal(crossRunReplay.status, 401, 'one run credential must not authorize a different idempotency key');
   assert.equal(getMockStoreKeys('ironshade-runs').length, 1, 'cross-run credential replay must not skew the ledger');
@@ -146,6 +148,7 @@ async function main() {
   assert.equal(secondBody.metrics.deepRuns, 1);
   const conditionalMetricsWrite = getMockBlobCalls('ironshade-metrics').find(call => call.method === 'setJSON' && typeof call.options?.onlyIfMatch === 'string');
   assert.ok(conditionalMetricsWrite, 'existing aggregate writes must use the current ETag');
+  assert.equal(getMockStoreJson<any>('ironshade-run-ledger-state', 'accepted-runs')?.acceptedRuns, 2, 'accepted-run state must advance once per new ledger row');
 
   const trace = await handler(new Request(`https://example.test/api/runs/${secondKey}`), context({ id: secondKey }));
   assert.equal(trace.status, 200);
@@ -165,6 +168,7 @@ async function main() {
   const contentionCalls = getMockBlobCalls('ironshade-metrics').slice(metricsCallsBeforeContention).filter(call => call.method === 'setJSON' && typeof call.options?.onlyIfMatch === 'string');
   assert.ok(contentionCalls.length >= 8, 'aggregate contention must exhaust the bounded compare-and-set retry budget before reconciliation');
   assert.equal(getMockStoreKeys('ironshade-runs').length, 3, 'the authoritative run ledger must survive aggregate contention');
+  assert.equal(getMockStoreJson<any>('ironshade-run-ledger-state', 'accepted-runs')?.acceptedRuns, 3, 'aggregate contention must not lose the accepted-run version signal');
 
   setMockMetricsContention(false);
   const operations = await handler(new Request('https://example.test/api/operations'), context());
@@ -172,6 +176,12 @@ async function main() {
   const operationsBody = await responseJson(operations);
   assert.equal(operationsBody.metrics.attempts, 3, 'operations reads must repair stale aggregate metrics from the accepted ledger');
   assert.equal((getMockStoreJson<any>('ironshade-metrics', 'global'))?.attempts, 3, 'reconciled aggregate metrics must be persisted after contention clears');
+
+  const ledgerCallsBeforeHealthyRead = getMockBlobCalls('ironshade-runs').length;
+  const healthyOperations = await handler(new Request('https://example.test/api/operations'), context());
+  assert.equal(healthyOperations.status, 200);
+  assert.equal((await responseJson(healthyOperations)).metrics.attempts, 3);
+  assert.equal(getMockBlobCalls('ironshade-runs').length, ledgerCallsBeforeHealthyRead, 'healthy Operations reads must not list or fetch the accepted-run ledger');
 
   const originalFetch = globalThis.fetch;
   let capturedHeaders: Headers | null = null;
@@ -208,7 +218,7 @@ async function main() {
   assert.equal(existsSync('.github/workflows/fix-three-objective-beacon.yml'), false, 'completed objective-beacon migration workflow must stay retired');
   assert.equal(existsSync('scripts/apply-three-objective-beacon.mjs'), false, 'completed objective-beacon migration script must stay retired');
 
-  console.log('SERVICE_REGRESSIONS_PASS executable=handler trustBoundary=session+ipQuota forged=rejected replay=idempotent+bound expired=rejected idempotency=verified metrics=cas+reconcile validation=strict payloadBytes=bounded rateLimit=enabled clientCredential=verified staleMigration=removed');
+  console.log('SERVICE_REGRESSIONS_PASS executable=handler trustBoundary=session+ipQuota forged=rejected replay=idempotent+bound expired=rejected idempotency=verified metrics=cas+versioned-fast-read+reconcile validation=strict payloadBytes=bounded rateLimit=enabled clientCredential=verified staleMigration=removed');
 }
 
 void main();
