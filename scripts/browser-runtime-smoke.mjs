@@ -38,7 +38,7 @@ const p21d2BeforeScreenshotPath = process.env.BROWSER_E2E_P21D2_BEFORE_SCREENSHO
 const p21d2AfterScreenshotPath = process.env.BROWSER_E2E_P21D2_AFTER_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21d2-atmosphere-on.png');
 const p21f2StackOffScreenshotPath = process.env.BROWSER_E2E_P21F2_STACK_OFF_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21f2-stack-off.png');
 const p21f2StackOnScreenshotPath = process.env.BROWSER_E2E_P21F2_STACK_ON_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21f2-stack-on.png');
-const p22cPrimaryJourney = targetLocation === 'asteroid-refinery' && requestedGraphicsPath !== 'webgpu';
+const p22cPrimaryJourney = targetLocation === 'asteroid-refinery' && !['webgpu', 'babylon'].includes(requestedGraphicsPath);
 const p22cEvidence = { viewport: viewportMode, location: targetLocation };
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const P21_EFFECT_BUDGETS = Object.freeze({
@@ -453,6 +453,53 @@ async function performanceDiagnosticsAudit() {
   console.log(`BROWSER_PERFORMANCE_BASELINE_PASS viewport=${viewportMode} location=${targetLocation} tier=${result.deviceTier} samples=${result.sampleCount} status=${result.status} regressions=${result.regressions} report=${performanceReportPath}`);
   console.log(`BROWSER_P21A2_GRAPHICS_PATH_PASS viewport=${viewportMode} location=${targetLocation} selection=${result.graphicsPathSelection} requested=${result.graphicsPathRequested || 'none'} loaded=${result.graphicsPathLoaded} renderTier=${result.renderTier} renderFrameMs=${result.renderFrameMs} drawCallsP95=${result.report.categories?.gpu?.drawCalls?.actual ?? 'n/a'} trianglesP95=${result.report.categories?.gpu?.triangles?.actual ?? 'n/a'}`);
   return result;
+}
+
+async function p27A2BabylonBackendAudit() {
+  await waitFor(`(() => {
+    const canvas = document.querySelector('canvas');
+    return canvas?.dataset.graphicsPathSelection === 'qa-explicit'
+      && canvas?.dataset.graphicsPathRequested === 'babylon'
+      && canvas?.dataset.graphicsPathLoaded === 'babylon'
+      && canvas?.dataset.babylonInit === 'ready'
+      && canvas?.dataset.babylonBackend === 'webgl2'
+      && canvas?.dataset.babylonScene === 'active'
+      && canvas?.dataset.babylonDisposed === 'false'
+      && Number(canvas?.dataset.babylonFrames ?? 0) >= 2;
+  })()`, 'P27-A2 Babylon WebGL2 QA backend', 45_000);
+
+  const state = await evaluate(`(() => {
+    const canvas = document.querySelector('canvas');
+    return {
+      selection: canvas?.dataset.graphicsPathSelection ?? '',
+      requested: canvas?.dataset.graphicsPathRequested ?? '',
+      loaded: canvas?.dataset.graphicsPathLoaded ?? '',
+      fallback: canvas?.dataset.graphicsPathFallback ?? '',
+      fallbackReason: canvas?.dataset.babylonFallbackReason ?? '',
+      init: canvas?.dataset.babylonInit ?? '',
+      backend: canvas?.dataset.babylonBackend ?? '',
+      scene: canvas?.dataset.babylonScene ?? '',
+      disposed: canvas?.dataset.babylonDisposed ?? '',
+      frames: Number(canvas?.dataset.babylonFrames ?? 0),
+    };
+  })()`);
+
+  if (!state
+    || state.selection !== 'qa-explicit'
+    || state.requested !== 'babylon'
+    || state.loaded !== 'babylon'
+    || state.fallback
+    || state.fallbackReason
+    || state.init !== 'ready'
+    || state.backend !== 'webgl2'
+    || state.scene !== 'active'
+    || state.disposed !== 'false'
+    || state.frames < 2) {
+    throw new Error(`P27-A2 Babylon backend telemetry invalid: ${JSON.stringify(state)}`);
+  }
+
+  console.log(`BROWSER_P27A2_BABYLON_PASS viewport=${viewportMode} backend=${state.backend} scene=${state.scene} frames=${state.frames} fallback=none`);
+  return state;
 }
 
 async function p21F1WebGpuPrototypeAudit() {
@@ -2361,6 +2408,17 @@ try {
     throw new Error(`P15-C deployment presentation blocks input or leaves the viewport: ${JSON.stringify(p15MissionPresentation)}`);
   }
   console.log(`BROWSER_P15_MISSION_PRESENTATION_PASS viewport=${viewportMode} deployment=non-blocking mode=${p15MissionPresentation.mode} title=${p15MissionPresentation.title}`);
+  if (requestedGraphicsPath === 'babylon') {
+    await p27A2BabylonBackendAudit();
+    await performanceDiagnosticsAudit();
+    if (pageExceptions.length > 0) {
+      throw new Error(`P27-A2 Babylon comparison observed uncaught page exceptions: ${JSON.stringify(pageExceptions)}`);
+    }
+    await captureScreenshot();
+    console.log(`BROWSER_E2E_PASS title=${startup.title} route=command>operations>contracts>combat location=${targetLocation} input=keyboard viewport=${viewportMode} graphics=babylon-comparison`);
+    socket.close();
+    process.exit(0);
+  }
   if (requestedGraphicsPath === 'webgpu') {
     if (webGpuPresentationKnownGap) await rawWebGpuPresentationProbe();
     const p21f1State = await p21F1WebGpuPrototypeAudit();
