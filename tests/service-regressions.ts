@@ -2,9 +2,10 @@ import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import handler, { config } from '../netlify/functions/api';
 import { loadOperationsSnapshot, loadRunTrace, uploadRunTelemetry } from '../src/game/network';
-import { getMockBlobCalls, getMockStoreJson, getMockStoreKeys, resetMockBlobStores, setMockMetricsContention } from './mocks/netlify-blobs';
+import { getMockBlobCalls, getMockStoreJson, getMockStoreKeys, getStore, resetMockBlobStores, setMockMetricsContention } from './mocks/netlify-blobs';
 
-const context = (params: Record<string, string> = {}) => ({ params }) as never;
+const defaultClientIp = '203.0.113.10';
+const context = (params: Record<string, string> = {}, ip = defaultClientIp) => ({ params, ip }) as never;
 
 function validRun(overrides: Record<string, unknown> = {}) {
   return {
@@ -18,14 +19,34 @@ function validRun(overrides: Record<string, unknown> = {}) {
   };
 }
 
-async function postRun(payload: Record<string, unknown>, key?: string, extraHeaders: Record<string, string> = {}) {
-  return postRunBody(JSON.stringify(payload), key, extraHeaders);
+async function requestTelemetrySession(key: string, ip = defaultClientIp) {
+  return handler(new Request('https://example.test/api/telemetry/session', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ requestId: key }),
+  }), context({}, ip));
 }
 
-async function postRunBody(body: string, key?: string, extraHeaders: Record<string, string> = {}) {
+async function issueTelemetryCredential(key: string, ip = defaultClientIp) {
+  const response = await requestTelemetrySession(key, ip);
+  assert.ok(response.status === 200 || response.status === 201, `telemetry session issuance failed with HTTP ${response.status}`);
+  const body = await responseJson(response);
+  assert.match(body.credential, /^tsc_[0-9a-f]{64}$/);
+  assert.ok(Number.isFinite(Date.parse(body.expiresAt)));
+  return body.credential as string;
+}
+
+async function postRun(payload: Record<string, unknown>, key?: string, extraHeaders: Record<string, string> = {}, ip = defaultClientIp) {
+  return postRunBody(JSON.stringify(payload), key, extraHeaders, ip);
+}
+
+async function postRunBody(body: string, key?: string, extraHeaders: Record<string, string> = {}, ip = defaultClientIp) {
   const headers = new Headers({ 'content-type': 'application/json', ...extraHeaders });
-  if (key) headers.set('x-idempotency-key', key);
-  return handler(new Request('https://example.test/api/runs', { method: 'POST', headers, body }), context());
+  if (key) {
+    headers.set('x-idempotency-key', key);
+    if (!headers.has('x-telemetry-credential')) headers.set('x-telemetry-credential', await issueTelemetryCredential(key, ip));
+  }
+  return handler(new Request('https://example.test/api/runs', { method: 'POST', headers, body }), context({}, ip));
 }
 
 async function responseJson(response: Response) {
@@ -40,6 +61,16 @@ async function main() {
   assert.deepEqual(await health.json(), { message: 'Success', platform: 'netlify' });
 
   assert.deepEqual((config as any).rateLimit, { windowLimit: 60, windowSize: 60, aggregateBy: ['ip', 'domain'] });
+  assert.ok((config as any).path.includes('/api/telemetry/session'), 'telemetry credential issuance must be routed through the service');
+
+  for (let index = 0; index < 24; index += 1) {
+    const issued = await requestTelemetrySession(`quota-session-${String(index).padStart(4, '0')}`, '198.51.100.40');
+    assert.equal(issued.status, 201, 'bounded telemetry sessions should issue below the per-client quota');
+  }
+  const quotaLimited = await requestTelemetrySession('quota-session-0024', '198.51.100.40');
+  assert.equal(quotaLimited.status, 429, 'public telemetry session issuance must be server-bounded per client');
+  assert.equal(getMockStoreKeys('ironshade-telemetry-sessions').length, 24);
+  resetMockBlobStores();
 
   const invalidOutcome = await postRun(validRun({ outcome: 'mystery' }), 'invalid-run-000001');
   assert.equal(invalidOutcome.status, 400);
@@ -49,6 +80,22 @@ async function main() {
   const missingKey = await postRun(validRun());
   assert.equal(missingKey.status, 400);
   assert.equal(getMockStoreKeys('ironshade-runs').length, 0, 'missing idempotency keys must not write telemetry');
+
+  const forged = await postRun(validRun(), 'forged-run-000001', { 'x-telemetry-credential': `tsc_${'0'.repeat(64)}` });
+  assert.equal(forged.status, 401, 'forged telemetry credentials must be rejected');
+  assert.equal(getMockStoreKeys('ironshade-runs').length, 0, 'forged credentials must never write telemetry');
+
+  const expiredKey = 'expired-run-000001';
+  const expiredCredential = await issueTelemetryCredential(expiredKey);
+  const issuedSession = getMockStoreJson<any>('ironshade-telemetry-sessions', expiredKey);
+  assert.ok(issuedSession);
+  await getStore('ironshade-telemetry-sessions').setJSON(expiredKey, { ...issuedSession, expiresAt: '2000-01-01T00:00:00.000Z' });
+  const expired = await postRun(validRun(), expiredKey, { 'x-telemetry-credential': expiredCredential });
+  assert.equal(expired.status, 401, 'expired telemetry credentials must be rejected');
+  assert.match((await responseJson(expired)).error, /expired/i);
+  assert.equal(getMockStoreKeys('ironshade-runs').length, 0, 'expired credentials must never write telemetry');
+
+  resetMockBlobStores();
 
   const encodedValidRun = JSON.stringify(validRun());
   const correctLength = await postRunBody(encodedValidRun, 'length-correct-0001', { 'content-length': String(Buffer.byteLength(encodedValidRun)) });
@@ -68,7 +115,8 @@ async function main() {
   resetMockBlobStores();
 
   const firstKey = 'accepted-run-000001';
-  const first = await postRun(validRun(), firstKey);
+  const firstCredential = await issueTelemetryCredential(firstKey);
+  const first = await postRun(validRun(), firstKey, { 'x-telemetry-credential': firstCredential });
   assert.equal(first.status, 201);
   const firstBody = await responseJson(first);
   assert.equal(firstBody.id, firstKey);
@@ -80,11 +128,15 @@ async function main() {
   const firstMetricsWrite = getMockBlobCalls('ironshade-metrics').find(call => call.method === 'setJSON');
   assert.equal(firstMetricsWrite?.options?.onlyIfNew, true, 'first aggregate write must be create-only');
 
-  const duplicate = await postRun(validRun(), firstKey);
+  const duplicate = await postRun(validRun({ damageTaken: 999999 }), firstKey, { 'x-telemetry-credential': firstCredential });
   assert.equal(duplicate.status, 200);
   const duplicateBody = await responseJson(duplicate);
   assert.equal(duplicateBody.metrics.attempts, 1, 'replaying one idempotency key must not double-count an attempt');
   assert.equal(getMockStoreKeys('ironshade-runs').length, 1, 'replaying one idempotency key must not create a second ledger row');
+  assert.equal(getMockStoreJson<any>('ironshade-runs', firstKey)?.damageTaken, 230, 'a replayed credential must not mutate the accepted run');
+  const crossRunReplay = await postRun(validRun(), 'replay-cross-run-001', { 'x-telemetry-credential': firstCredential });
+  assert.equal(crossRunReplay.status, 401, 'one run credential must not authorize a different idempotency key');
+  assert.equal(getMockStoreKeys('ironshade-runs').length, 1, 'cross-run credential replay must not skew the ledger');
 
   const secondKey = 'accepted-run-000002';
   const second = await postRun(validRun({ outcome: 'deep', bossDefeated: true }), secondKey);
@@ -123,6 +175,7 @@ async function main() {
 
   const originalFetch = globalThis.fetch;
   let capturedHeaders: Headers | null = null;
+  let capturedSessionBody = '';
   try {
     globalThis.fetch = (async () => Response.json(operationsBody)) as typeof fetch;
     const clientOperations = await loadOperationsSnapshot({ timeoutMs: 100 });
@@ -132,7 +185,11 @@ async function main() {
     const clientTrace = await loadRunTrace(secondKey, { timeoutMs: 100 });
     assert.equal(clientTrace.tracePoints, 1, 'client trace normalization must derive tracePoints from the validated trace array');
 
-    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith('/api/telemetry/session')) {
+        capturedSessionBody = String(init?.body ?? '');
+        return Response.json({ credential: `tsc_${'a'.repeat(64)}`, expiresAt: '2099-01-01T00:00:00.000Z' });
+      }
       capturedHeaders = new Headers(init?.headers);
       return Response.json({ id: 'client-run', metrics: operationsBody.metrics });
     }) as typeof fetch;
@@ -141,7 +198,9 @@ async function main() {
       telemetry: { duration: 1, damageDealt: 0, damageTaken: 0, kills: 0, eliteProtocolsDefeated: 0, killIntervalTotal: 0, killIntervalSamples: 0, protocolCombinations: {}, weaponShots: { carbine: 0, breacher: 0, rail: 0 }, abilityUses: [0, 0, 0], trace: [] } as any,
       outcome: 'safe', salvageTags: 0, level: 1, buildLabel: 'Client', requestId: 'client-request-0001',
     }, { timeoutMs: 100 });
+    assert.deepEqual(JSON.parse(capturedSessionBody), { requestId: 'client-request-0001' }, 'telemetry transport must bind the short-lived session to the caller-owned idempotency key');
     assert.equal(capturedHeaders?.get('x-idempotency-key'), 'client-request-0001', 'telemetry transport must send the caller-owned idempotency key');
+    assert.equal(capturedHeaders?.get('x-telemetry-credential'), `tsc_${'a'.repeat(64)}`, 'telemetry transport must attach the server-issued submission credential');
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -149,7 +208,7 @@ async function main() {
   assert.equal(existsSync('.github/workflows/fix-three-objective-beacon.yml'), false, 'completed objective-beacon migration workflow must stay retired');
   assert.equal(existsSync('scripts/apply-three-objective-beacon.mjs'), false, 'completed objective-beacon migration script must stay retired');
 
-  console.log('SERVICE_REGRESSIONS_PASS executable=handler idempotency=verified metrics=cas+reconcile validation=strict payloadBytes=bounded rateLimit=enabled clientResponses=validated clientKey=verified staleMigration=removed');
+  console.log('SERVICE_REGRESSIONS_PASS executable=handler trustBoundary=session+ipQuota forged=rejected replay=idempotent+bound expired=rejected idempotency=verified metrics=cas+reconcile validation=strict payloadBytes=bounded rateLimit=enabled clientCredential=verified staleMigration=removed');
 }
 
 void main();

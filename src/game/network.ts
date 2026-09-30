@@ -309,6 +309,14 @@ function parseOperationsSnapshot(value: unknown): OperationsSnapshot {
   return { operation: parseDailyOperation(record.operation), metrics: parseRunMetrics(record.metrics) };
 }
 
+function parseTelemetrySession(value: unknown): { credential: string; expiresAt: string } {
+  const record = expectRecord(value, 'telemetry session');
+  const credential = expectString(record, 'credential', 'telemetry session', true);
+  const expiresAt = expectString(record, 'expiresAt', 'telemetry session', true);
+  if (!/^tsc_[0-9a-f]{64}$/.test(credential) || !Number.isFinite(Date.parse(expiresAt))) invalidResponse('telemetry session');
+  return { credential, expiresAt };
+}
+
 function parseTelemetryResponse(value: unknown): { id: string; metrics: RunMetrics } {
   const record = expectRecord(value, 'telemetry response');
   return { id: expectString(record, 'id', 'telemetry response', true), metrics: parseRunMetrics(record.metrics) };
@@ -438,9 +446,14 @@ export async function uploadRunTelemetry(input: {
   requestId?: string;
 }, options?: NetworkRequestOptions) {
   const requestId = input.requestId ?? createTelemetryRequestId();
+  const requestOptions = { ...options, timeoutMs: options?.timeoutMs ?? TELEMETRY_TIMEOUT_MS };
+  const session = await requestJson('/api/telemetry/session', parseTelemetrySession, {
+    method: 'POST',
+    body: JSON.stringify({ requestId }),
+  }, requestOptions);
   return requestJson('/api/runs', parseTelemetryResponse, {
     method: 'POST',
-    headers: { 'x-idempotency-key': requestId },
+    headers: { 'x-idempotency-key': requestId, 'x-telemetry-credential': session.credential },
     body: JSON.stringify({
       contractId: input.contract.id,
       contractTitle: input.contract.title,
@@ -470,7 +483,7 @@ export async function uploadRunTelemetry(input: {
       operationDate: input.contract.operationDate ?? '',
       trace: input.telemetry.trace,
     }),
-  }, { ...options, timeoutMs: options?.timeoutMs ?? TELEMETRY_TIMEOUT_MS });
+  }, requestOptions);
 }
 
 export async function loadRunTrace(id: string, options?: NetworkRequestOptions) {

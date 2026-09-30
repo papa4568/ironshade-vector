@@ -9,13 +9,21 @@ type RunSummary = { id: string; contractTitle: string; location: string; outcome
 type RunRecord = Omit<RunSummary, 'id' | 'tracePoints'> & { contractId: string; objectiveMode: string; salvageTags: number; damageDealt: number; damageTaken: number; weaponShots: Record<WeaponId, number>; abilityUses: [number, number, number]; bossDefeated: boolean; operationDate: string; kills: number; eliteProtocolValue: number; killIntervalTotal: number; killIntervalSamples: number; protocolCombinations: Record<string, number>; recoveryQualities: number[]; modifierGrades: number[]; singularCount: number; trace: TracePoint[] };
 type MetricsRecord = { runs: number; attempts: number; safeRuns: number; deepRuns: number; failedRuns: number; totalDamageTaken: number; totalDamageDealt: number; totalDuration: number; weaponShots: Record<WeaponId, number>; byTier: Record<string, TierBalanceMetric>; protocolCombinations: Record<string, number>; recent: RunSummary[] };
 type DailyOperation = { date: string; seed: number; codename: string; sponsor: 'meridian' | 'heliostat' | 'longarc'; archetype: 'salvage' | 'boarding' | 'stabilization'; objectiveMode: 'pressure-recovery' | 'grid-isolation' | 'gravity-stabilization' | 'machinery-recovery' | 'emergency-boarding' | 'deep-salvage'; location: 'orbital-station' | 'damaged-vessel' | 'asteroid-refinery' | 'spin-habitat' | 'jovian-harvester' | 'ice-mine' | 'solar-yard'; conditions: Array<'unstable-pressure' | 'failing-gravity' | 'damaged-grid' | 'automated-defense' | 'limited-atmosphere' | 'low-visibility'>; challenge: string; generatedAt: string };
+type TelemetrySessionRecord = { requestId: string; credential: string; clientKey: string; issuedAt: string; expiresAt: string };
+type TelemetryQuotaRecord = { windowStartedAt: number; issued: number };
 
 const dailyStore = () => getStore('ironshade-daily');
 const metricsStore = () => getStore({ name: 'ironshade-metrics', consistency: 'strong' });
 // Only telemetry that passes the strict ingestion gate enters this ledger; aggregate balance metrics are derived exclusively from it.
 const acceptedRunsStore = () => getStore({ name: 'ironshade-runs', consistency: 'strong' });
+const telemetrySessionsStore = () => getStore({ name: 'ironshade-telemetry-sessions', consistency: 'strong' });
+const telemetryQuotaStore = () => getStore({ name: 'ironshade-telemetry-quota', consistency: 'strong' });
 const METRICS_KEY = 'global';
 const MAX_RUN_TELEMETRY_BYTES = 512_000;
+const MAX_TELEMETRY_SESSION_BYTES = 4_096;
+const TELEMETRY_SESSION_TTL_MS = 5 * 60 * 1_000;
+const TELEMETRY_QUOTA_WINDOW_MS = 60 * 60 * 1_000;
+const TELEMETRY_SESSIONS_PER_WINDOW = 24;
 
 function json(data: unknown, status = 200) {
   return Response.json(data, { status, headers: { 'cache-control': 'no-store' } });
@@ -25,6 +33,13 @@ function problem(message: string, status: number) {
 }
 function dayKey(date = new Date()) { return date.toISOString().slice(0, 10); }
 function hashText(value: string) { let hash = 2166136261; for (let index = 0; index < value.length; index += 1) { hash ^= value.charCodeAt(index); hash = Math.imul(hash, 16777619); } return hash >>> 0; }
+function telemetryClientKey(ip: string | undefined) { return `client-${hashText(ip?.trim() || 'unknown').toString(36)}`; }
+function isTelemetryRequestId(value: string) { return /^[A-Za-z0-9._-]{16,80}$/.test(value); }
+function createTelemetryCredential() {
+  const bytes = new Uint8Array(32);
+  globalThis.crypto.getRandomValues(bytes);
+  return `tsc_${Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('')}`;
+}
 
 function makeDailyOperation(date: string): DailyOperation {
   const seed = hashText(`ironshade-vector:${date}`);
@@ -250,7 +265,81 @@ async function readRequestTextWithinLimit(req: Request, limit: number) {
   }
 }
 
-async function handlePostRun(req: Request) {
+async function reserveTelemetrySessionSlot(clientKey: string, now = Date.now()) {
+  const store = telemetryQuotaStore();
+  const windowStartedAt = Math.floor(now / TELEMETRY_QUOTA_WINDOW_MS) * TELEMETRY_QUOTA_WINDOW_MS;
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const version = await store.getWithMetadata(clientKey, { type: 'json', consistency: 'strong' }) as { data: TelemetryQuotaRecord; etag: string } | null;
+    const current = version?.data;
+    const issued = current?.windowStartedAt === windowStartedAt && Number.isInteger(current.issued) && current.issued >= 0 ? current.issued : 0;
+    if (issued >= TELEMETRY_SESSIONS_PER_WINDOW) return false;
+    const next: TelemetryQuotaRecord = { windowStartedAt, issued: issued + 1 };
+    const result = version
+      ? await store.setJSON(clientKey, next, { onlyIfMatch: version.etag })
+      : await store.setJSON(clientKey, next, { onlyIfNew: true });
+    if (result.modified) return true;
+  }
+  throw new Error('Telemetry session quota contention exceeded retry budget');
+}
+
+async function handleCreateTelemetrySession(req: Request, context: Context) {
+  const bodyText = await readRequestTextWithinLimit(req, MAX_TELEMETRY_SESSION_BYTES);
+  if (bodyText === null) return problem('Telemetry session request is too large', 413);
+  let body: unknown;
+  try { body = JSON.parse(bodyText); } catch { return problem('Invalid telemetry session request', 400); }
+  if (!isRecord(body)) return problem('Invalid telemetry session request', 400);
+  const requestId = cleanText(body.requestId, 80);
+  if (!isTelemetryRequestId(requestId)) return problem('Telemetry session requires a valid request id', 400);
+
+  const store = telemetrySessionsStore();
+  const clientKey = telemetryClientKey(context.ip);
+  const now = Date.now();
+  const existing = await store.getWithMetadata(requestId, { type: 'json', consistency: 'strong' }) as { data: TelemetrySessionRecord; etag: string } | null;
+  const existingExpiry = Date.parse(existing?.data?.expiresAt ?? '');
+  if (existing?.data?.requestId === requestId
+    && existing.data.clientKey === clientKey
+    && /^tsc_[0-9a-f]{64}$/.test(existing.data.credential)
+    && Number.isFinite(existingExpiry)
+    && existingExpiry > now) {
+    return json({ credential: existing.data.credential, expiresAt: existing.data.expiresAt }, 200);
+  }
+
+  if (!await reserveTelemetrySessionSlot(clientKey, now)) return problem('Telemetry submission quota reached; try again later', 429);
+
+  const issuedAt = new Date(now).toISOString();
+  const record: TelemetrySessionRecord = {
+    requestId,
+    credential: createTelemetryCredential(),
+    clientKey,
+    issuedAt,
+    expiresAt: new Date(now + TELEMETRY_SESSION_TTL_MS).toISOString(),
+  };
+  const written = existing
+    ? await store.setJSON(requestId, record, { onlyIfMatch: existing.etag })
+    : await store.setJSON(requestId, record, { onlyIfNew: true });
+  if (written.modified) return json({ credential: record.credential, expiresAt: record.expiresAt }, 201);
+
+  const raced = await store.get(requestId, { type: 'json', consistency: 'strong' }) as TelemetrySessionRecord | null;
+  const racedExpiry = Date.parse(raced?.expiresAt ?? '');
+  if (raced?.requestId === requestId && raced.clientKey === clientKey && Number.isFinite(racedExpiry) && racedExpiry > now) {
+    return json({ credential: raced.credential, expiresAt: raced.expiresAt }, 200);
+  }
+  return problem('Telemetry session could not be established', 409);
+}
+
+async function verifyTelemetryCredential(requestId: string, credential: string, context: Context) {
+  if (!/^tsc_[0-9a-f]{64}$/.test(credential)) return 'Run telemetry requires a valid short-lived submission credential';
+  const session = await telemetrySessionsStore().get(requestId, { type: 'json', consistency: 'strong' }) as TelemetrySessionRecord | null;
+  if (!session
+    || session.requestId !== requestId
+    || session.credential !== credential
+    || session.clientKey !== telemetryClientKey(context.ip)) return 'Run telemetry requires a valid short-lived submission credential';
+  const expiresAt = Date.parse(session.expiresAt);
+  if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) return 'Run telemetry submission credential has expired';
+  return null;
+}
+
+async function handlePostRun(req: Request, context: Context) {
   const declaredLength = Number(req.headers.get('content-length') ?? 0);
   if (Number.isFinite(declaredLength) && declaredLength > MAX_RUN_TELEMETRY_BYTES) return problem('Run telemetry payload is too large', 413);
   const bodyText = await readRequestTextWithinLimit(req, MAX_RUN_TELEMETRY_BYTES);
@@ -296,7 +385,10 @@ async function handlePostRun(req: Request) {
     trace,
   };
   const idempotencyKey = cleanText(req.headers.get('x-idempotency-key'), 80);
-  if (!/^[A-Za-z0-9._-]{16,80}$/.test(idempotencyKey)) return problem('Run telemetry requires a valid idempotency key', 400);
+  if (!isTelemetryRequestId(idempotencyKey)) return problem('Run telemetry requires a valid idempotency key', 400);
+  const credential = cleanText(req.headers.get('x-telemetry-credential'), 128);
+  const credentialError = await verifyTelemetryCredential(idempotencyKey, credential, context);
+  if (credentialError) return problem(credentialError, 401);
   const runId = idempotencyKey;
   const store = acceptedRunsStore();
   const created = await store.setJSON(runId, run, { onlyIfNew: true });
@@ -318,7 +410,8 @@ export default async function handler(req: Request, context: Context) {
       const [operation, metrics] = await Promise.all([ensureDailyOperation(), readMetrics()]);
       return json({ operation, metrics });
     }
-    if (req.method === 'POST' && path === '/api/runs') return handlePostRun(req);
+    if (req.method === 'POST' && path === '/api/telemetry/session') return handleCreateTelemetrySession(req, context);
+    if (req.method === 'POST' && path === '/api/runs') return handlePostRun(req, context);
     if (req.method === 'GET' && path.startsWith('/api/runs/')) {
       const id = cleanText(context.params.id ?? decodeURIComponent(path.slice('/api/runs/'.length)), 80);
       if (!id) return problem('Run id is required', 400);
@@ -334,6 +427,6 @@ export default async function handler(req: Request, context: Context) {
 }
 
 export const config: Config = {
-  path: ['/api/_healthcheck', '/api/operations', '/api/runs', '/api/runs/:id'],
+  path: ['/api/_healthcheck', '/api/operations', '/api/telemetry/session', '/api/runs', '/api/runs/:id'],
   rateLimit: { windowLimit: 60, windowSize: 60, aggregateBy: ['ip', 'domain'] },
 };

@@ -85,14 +85,26 @@ async function main() {
     globalThis.fetch = (async () => Response.json({ id: 'trace-a', trace: [] })) as typeof fetch;
     await expectFailure(() => loadRunTrace('trace-a', { timeoutMs: 100 }), error => isNetworkRequestError(error) && error.kind === 'invalid-response', 'shape-invalid trace JSON must fail as invalid-response');
 
-    globalThis.fetch = (async () => Response.json({ id: 'client-run', metrics: { attempts: 1 } })) as typeof fetch;
+    globalThis.fetch = (async () => Response.json({ credential: 'invalid', expiresAt: 'not-a-date' })) as typeof fetch;
+    await expectFailure(() => uploadRunTelemetry({
+      contract: { id: 'client-contract', title: 'Client contract', locationName: 'Station', objectiveMode: 'pressure-recovery', operationTier: 2 } as any,
+      telemetry: { duration: 1, damageDealt: 0, damageTaken: 0, kills: 0, eliteProtocolsDefeated: 0, killIntervalTotal: 0, killIntervalSamples: 0, protocolCombinations: {}, weaponShots: { carbine: 0, breacher: 0, rail: 0 }, abilityUses: [0, 0, 0], trace: [] } as any,
+      outcome: 'safe', salvageTags: 0, level: 1, buildLabel: 'Client', requestId: 'client-request-0000',
+    }, { timeoutMs: 100 }), error => isNetworkRequestError(error) && error.kind === 'invalid-response', 'shape-invalid telemetry session JSON must fail as invalid-response');
+
+    let telemetryFetchCount = 0;
+    globalThis.fetch = (async () => {
+      telemetryFetchCount += 1;
+      if (telemetryFetchCount === 1) return Response.json({ credential: `tsc_${'b'.repeat(64)}`, expiresAt: '2099-01-01T00:00:00.000Z' });
+      return Response.json({ id: 'client-run', metrics: { attempts: 1 } });
+    }) as typeof fetch;
     await expectFailure(() => uploadRunTelemetry({
       contract: { id: 'client-contract', title: 'Client contract', locationName: 'Station', objectiveMode: 'pressure-recovery', operationTier: 2 } as any,
       telemetry: { duration: 1, damageDealt: 0, damageTaken: 0, kills: 0, eliteProtocolsDefeated: 0, killIntervalTotal: 0, killIntervalSamples: 0, protocolCombinations: {}, weaponShots: { carbine: 0, breacher: 0, rail: 0 }, abilityUses: [0, 0, 0], trace: [] } as any,
       outcome: 'safe', salvageTags: 0, level: 1, buildLabel: 'Client', requestId: 'client-request-0001',
     }, { timeoutMs: 100 }), error => isNetworkRequestError(error) && error.kind === 'invalid-response', 'shape-invalid telemetry response JSON must fail as invalid-response');
 
-    console.log('NETWORK_REGRESSION_PASS timeout=bounded body=bounded abort=distinct http=typed offline=typed invalid=typed shapeValidation=operations+telemetry+trace apiOrigin=verified');
+    console.log('NETWORK_REGRESSION_PASS timeout=bounded body=bounded abort=distinct http=typed offline=typed invalid=typed shapeValidation=operations+telemetrySession+telemetry+trace apiOrigin=verified');
   } finally {
     globalThis.fetch = originalFetch;
   }
