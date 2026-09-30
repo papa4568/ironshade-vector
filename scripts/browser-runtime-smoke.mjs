@@ -40,6 +40,8 @@ const p21f2StackOffScreenshotPath = process.env.BROWSER_E2E_P21F2_STACK_OFF_SCRE
 const p21f2StackOnScreenshotPath = process.env.BROWSER_E2E_P21F2_STACK_ON_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21f2-stack-on.png');
 const p27b11IblOffScreenshotPath = process.env.BROWSER_E2E_P27B11_IBL_OFF_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p27b11-ibl-off.png');
 const p27b11IblOnScreenshotPath = process.env.BROWSER_E2E_P27B11_IBL_ON_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p27b11-ibl-on.png');
+const p27b12StackOffScreenshotPath = process.env.BROWSER_E2E_P27B12_STACK_OFF_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p27b12-stack-off.png');
+const p27b12StackOnScreenshotPath = process.env.BROWSER_E2E_P27B12_STACK_ON_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p27b12-stack-on.png');
 const p22cPrimaryJourney = targetLocation === 'asteroid-refinery' && !['webgpu', 'babylon'].includes(requestedGraphicsPath);
 const p22cEvidence = { viewport: viewportMode, location: targetLocation };
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -197,7 +199,20 @@ async function waitFor(predicateExpression, label, timeout = 45_000) {
 async function captureScreenshot(path = screenshotPath) {
   const result = await call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   if (!result?.data) throw new Error('Browser screenshot payload was empty.');
-  await writeFile(path, Buffer.from(result.data, 'base64'));
+  const png = Buffer.from(result.data, 'base64');
+  await writeFile(path, png);
+  return png;
+}
+
+function pngByteDifferenceRatio(before, after) {
+  const longest = Math.max(before.length, after.length);
+  if (longest === 0) return 0;
+  const shared = Math.min(before.length, after.length);
+  let changed = Math.abs(before.length - after.length);
+  for (let index = 0; index < shared; index += 1) {
+    if (before[index] !== after[index]) changed += 1;
+  }
+  return changed / longest;
 }
 
 async function rawWebGpuPresentationProbe() {
@@ -794,6 +809,18 @@ async function p27A2BabylonBackendAudit() {
       environmentLighting: canvas?.dataset.environmentLighting ?? '',
       environmentShadowBudget: canvas?.dataset.environmentShadowBudget ?? '',
       environmentTone: canvas?.dataset.environmentTone ?? '',
+      environmentBloom: canvas?.dataset.environmentBloom ?? '',
+      environmentBloomSources: canvas?.dataset.environmentBloomSources ?? '',
+      environmentBloomExcluded: canvas?.dataset.environmentBloomExcluded ?? '',
+      environmentContactDepth: canvas?.dataset.environmentContactDepth ?? '',
+      environmentContactDepthProtected: canvas?.dataset.environmentContactDepthProtected ?? '',
+      environmentAtmosphere: canvas?.dataset.environmentAtmosphere ?? '',
+      environmentAtmosphereProtected: canvas?.dataset.environmentAtmosphereProtected ?? '',
+      environmentPostTone: canvas?.dataset.environmentPostTone ?? '',
+      environmentP21Budget: canvas?.dataset.environmentP21Budget ?? '',
+      effectPriority: canvas?.dataset.effectPriority ?? '',
+      babylonPostBudget: canvas?.dataset.babylonPostBudget ?? '',
+      babylonPostStack: canvas?.dataset.babylonPostStack ?? '',
       locationLighting: canvas?.dataset.locationLighting ?? '',
       pbrMaterials: canvas?.dataset.babylonPbrMaterials ?? '',
       materialIntent: canvas?.dataset.babylonMaterialIntent ?? '',
@@ -1080,6 +1107,70 @@ async function p27A2BabylonBackendAudit() {
   }
 
   console.log(`BROWSER_P27B11_BABYLON_PBR_LIGHTING_PASS viewport=${viewportMode} budget=${b11StackOn.budget} ibl=${b11StackOn.ibl} shadows=${b11StackOn.shadows} tone=${b11StackOn.tone} pbr=${b11StackOn.pbr} screenshots=${p27b11IblOffScreenshotPath}+${p27b11IblOnScreenshotPath}`);
+
+  const protectedGroups = 'hud+enemies+hazards+objectives+loot+interactables';
+  if (!state.environmentBloom.startsWith('selective:refinery-selective-v1:')
+    || !/^babylon-included:\\d+\\+authored:processor\\+terminal\\+muzzle$/.test(state.environmentBloomSources)
+    || state.environmentBloomExcluded !== protectedGroups
+    || !state.environmentContactDepth.startsWith('grounding:refinery-contact-grounding-v1:')
+    || state.environmentContactDepthProtected !== protectedGroups
+    || !state.environmentAtmosphere.startsWith('fog:refinery-depth-atmosphere-v1:')
+    || state.environmentAtmosphereProtected !== protectedGroups
+    || !/^aces-exposure-\\d+\\.\\d{2}\\+contrast-\\d+\\.\\d{2}$/.test(state.environmentPostTone)
+    || !/^tier:(high|balanced|performance)\\|bloom:(1\\.00|0\\.68|0\\.42)\\|contact:(1\\.00|0\\.68|0\\.42)\\|atmosphere:(1\\.00|0\\.68|0\\.42)\\|critical:1\\.00$/.test(state.babylonPostBudget)
+    || state.babylonPostStack !== 'on:qa-explicit'
+    || state.effectPriority !== 'critical:hazards+telegraphs+class-cues@1.00|secondary:bloom+contact-depth+atmosphere@'
+      + (state.renderTier === 'high' ? '1.00' : state.renderTier === 'balanced' ? '0.68' : '0.42')) {
+    throw new Error('P27-B12 Babylon post-processing parity invalid: ' + JSON.stringify(state));
+  }
+
+  await evaluate(`(() => {
+    const canvas = document.querySelector('canvas');
+    if (!canvas) return false;
+    canvas.dataset.refineryPostStackQa = 'off';
+    return true;
+  })()`);
+  await waitFor(`(() => {
+    const canvas = document.querySelector('canvas');
+    return canvas?.dataset.environmentBloom === 'off:qa-baseline'
+      && canvas?.dataset.environmentContactDepth === 'off:qa-baseline'
+      && canvas?.dataset.environmentAtmosphere === 'off:qa-baseline'
+      && canvas?.dataset.babylonPostStack === 'off:qa-baseline';
+  })()`, 'P27-B12 Babylon stack-off', 5_000);
+  await sleep(120);
+  const b12StackOffPng = await captureScreenshot(p27b12StackOffScreenshotPath);
+
+  await evaluate(`(() => {
+    const canvas = document.querySelector('canvas');
+    if (!canvas) return false;
+    canvas.dataset.refineryPostStackQa = 'on';
+    return true;
+  })()`);
+  await waitFor(`(() => {
+    const canvas = document.querySelector('canvas');
+    return canvas?.dataset.environmentBloom?.startsWith('selective:refinery-selective-v1:')
+      && canvas?.dataset.environmentContactDepth?.startsWith('grounding:refinery-contact-grounding-v1:')
+      && canvas?.dataset.environmentAtmosphere?.startsWith('fog:refinery-depth-atmosphere-v1:')
+      && canvas?.dataset.babylonPostStack === 'on:qa-explicit';
+  })()`, 'P27-B12 Babylon stack-on', 5_000);
+  await sleep(120);
+  const b12StackOnPng = await captureScreenshot(p27b12StackOnScreenshotPath);
+  const b12PngDelta = pngByteDifferenceRatio(b12StackOffPng, b12StackOnPng);
+  if (!(b12PngDelta > 0.01)) {
+    throw new Error('P27-B12 stack-off/on captures were not measurably different: delta=' + b12PngDelta.toFixed(4));
+  }
+  const b12StackOn = await evaluate(`(() => {
+    const canvas = document.querySelector('canvas');
+    return {
+      bloom: canvas?.dataset.environmentBloom ?? '',
+      contact: canvas?.dataset.environmentContactDepth ?? '',
+      atmosphere: canvas?.dataset.environmentAtmosphere ?? '',
+      tone: canvas?.dataset.environmentPostTone ?? '',
+      budget: canvas?.dataset.babylonPostBudget ?? '',
+      priority: canvas?.dataset.effectPriority ?? '',
+    };
+  })()`);
+  console.log(`BROWSER_P27B12_BABYLON_POST_PROCESSING_PASS viewport=${viewportMode} tier=${state.renderTier} bloom=${b12StackOn.bloom} contact=${b12StackOn.contact} atmosphere=${b12StackOn.atmosphere} tone=${b12StackOn.tone} budget=${b12StackOn.budget} priority=${b12StackOn.priority} pngDelta=${b12PngDelta.toFixed(4)} screenshots=${p27b12StackOffScreenshotPath}+${p27b12StackOnScreenshotPath}`);
   console.log(`BROWSER_P27A2_BABYLON_PASS viewport=${viewportMode} backend=${state.backend} scene=${state.scene} frames=${state.frames} fallback=none`);
   console.log(`BROWSER_P27B1_BABYLON_CAMERA_INPUT_PASS viewport=${viewportMode} camera=${state.camera} input=${state.input} layout=${state.layout} framing=${state.framing} viewport=${state.viewport} pointer=${state.pointer} initialRetargetDelta=${initialRetargetDelta.toFixed(4)} settledDelta=${settledDirectionDelta.toFixed(4)} feedback=${state.feedback}`);
   console.log(`BROWSER_P27B2_BABYLON_REFINERY_PASS viewport=${viewportMode} lod=${state.environmentLod} kit=${[...refineryKit].sort().join(',')} placements=${state.environmentInstances} terminals=${state.environmentTerminals} runtime=${state.environmentRuntime} scene=${state.sceneTelemetry} reuse=${state.environmentReuse}`);

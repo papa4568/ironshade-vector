@@ -15,6 +15,7 @@ import {
   type BabylonGraphicsAssetInstance,
 } from './babylonGraphicsAssets';
 import { BabylonRefineryLighting } from './babylonRefineryLighting';
+import { BabylonRefineryPostProcessing } from './babylonRefineryPostProcessing';
 import type {
   CombatGraphicsBackend,
   CombatGraphicsPerformanceStats,
@@ -310,6 +311,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   private readonly enemyLifecycleVisuals: BabylonEnemyLifecycleVisuals;
   private readonly protocolStatusVisuals: BabylonProtocolStatusVisuals;
   private readonly refineryLighting: BabylonRefineryLighting;
+  private readonly refineryPostProcessing: BabylonRefineryPostProcessing;
   private readonly renderBudget: AdaptiveRenderBudget;
   private readonly refineryAssetInstances: BabylonGraphicsAssetInstance[] = [];
   private refineryMountRoot: TransformNode | null = null;
@@ -342,6 +344,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.enemyLifecycleVisuals = new BabylonEnemyLifecycleVisuals(scene, canvas, coarse);
     this.protocolStatusVisuals = new BabylonProtocolStatusVisuals(scene, canvas, coarse);
     this.refineryLighting = new BabylonRefineryLighting(scene, canvas);
+    this.refineryPostProcessing = new BabylonRefineryPostProcessing(scene, canvas);
     this.renderBudget = new AdaptiveRenderBudget(coarse);
 
     this.playerRoot = new TransformNode('p27-b3-player-root', scene);
@@ -441,6 +444,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.enemyTelegraphs.release('scenario-exit');
       this.enemyLifecycleVisuals.release('scenario-exit');
       this.protocolStatusVisuals.release('scenario-exit');
+      this.refineryPostProcessing.release('scenario-exit');
       this.releaseRefineryEnvironment('scenario-exit');
       return;
     }
@@ -465,6 +469,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.enemyTelegraphs.sync(state, quality);
     this.worldPresentation.sync(state, mission, quality);
     this.refineryLighting.sync(state, budget);
+    this.refineryPostProcessing.sync(mission.conditions.includes('low-visibility'), budget);
     this.syncCamera(state, width / Math.max(1, height), cameraFeedback);
     this.scene.render();
     this.frames += 1;
@@ -519,6 +524,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.enemyTelegraphs.dispose();
     this.enemyLifecycleVisuals.dispose();
     this.protocolStatusVisuals.dispose();
+    this.refineryPostProcessing.dispose();
     this.refineryLighting.dispose();
     this.releaseRefineryEnvironment('renderer-dispose');
     void disposeBabylonGraphicsAssetRuntime(this.scene);
