@@ -819,6 +819,12 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.canvas.dataset.babylonWeaponMuzzleOrigin = 'muzzle-socket';
     this.canvas.dataset.babylonWeaponMuzzle = `${muzzle.x.toFixed(3)},${muzzle.y.toFixed(3)},${muzzle.z.toFixed(3)}`;
     this.canvas.dataset.babylonPlayerTracking = `sim:${player.currentWeapon}|class:${state.build.operatorClass ?? 'generic'}|aim:${player.aim.x.toFixed(3)},${player.aim.y.toFixed(3)}`;
+    const runtimeStats = getBabylonGraphicsAssetRuntime(this.scene).stats();
+    this.canvas.dataset.babylonPlayerRuntime = [
+      `cached:${runtimeStats.cachedAssets}`,
+      `active:${runtimeStats.activeInstances}`,
+      `bytes:${runtimeStats.estimatedCachedCompressedBytes}`,
+    ].join('|');
   }
 
   private releasePlayerPresentation(reason: string) {
