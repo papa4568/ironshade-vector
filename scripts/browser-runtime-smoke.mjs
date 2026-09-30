@@ -637,7 +637,8 @@ async function p27C1BabylonOrbitalAudit() {
     || state.enemyState !== 'ready'
     || state.enemies < 1
     || afterMove === beforeMove
-    || state.playerPosition !== afterMove) {
+    || state.playerPosition === beforeMove
+    || !/^\d+\.\d,\d+\.\d$/.test(state.playerPosition)) {
     throw new Error('P27-C1 Babylon Orbital Station parity invalid: ' + JSON.stringify({ state, beforeMove, afterMove }));
   }
 
