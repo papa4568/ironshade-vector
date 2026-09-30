@@ -27,7 +27,7 @@ Only active/future executable work lives here. Completed and verified work belon
 
 - [x] **P27-B8 — Port enemy telegraphs and boss phase cues to Babylon** — Reproduce enemy attack telegraphs, aim/range shapes, boss attack-pattern warnings, and boss phase-transition cues with the same timing and gameplay meaning as the current renderer. **Done when:** representative normal, elite, and refinery-boss attacks are readable at normal phone zoom before damage resolves, timing matches simulation state, and the required build/APK gates pass.
 - [x] **P27-B9 — Port protocol, mutation, and status visuals to Babylon** — Reproduce enhanced-protocol/mutation hardware/fields plus player and enemy status-state visuals using the existing protocol/status presentation data. **Done when:** representative protocol, mutation, and status combinations remain distinguishable without hue-only dependence at Performance tier, targeted status/protocol regressions pass, and the required build/APK gates pass.
-- [ ] **P27-B12 — Build Babylon post-processing and atmosphere parity** — Recreate selective/readability-safe bloom, contact-depth treatment, fog/atmosphere, exposure/color processing, and quality-tier scaling with Babylon post-processing/frame-graph facilities; secondary effects must shed before gameplay cues. **Done when:** stack-off/stack-on captures are measurably different, gameplay-critical cues remain protected at Performance tier, adaptive degrade/recover tests pass, and the required build/APK gates pass.
+- [x] **P27-B12 — Build Babylon post-processing and atmosphere parity** — Completed and verified; implementation and delivery evidence are archived in `docs/content-roadmap-archive.md`.
 
 #### Campaign location parity
 
