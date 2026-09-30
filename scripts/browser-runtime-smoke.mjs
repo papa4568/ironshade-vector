@@ -38,6 +38,8 @@ const p21d2BeforeScreenshotPath = process.env.BROWSER_E2E_P21D2_BEFORE_SCREENSHO
 const p21d2AfterScreenshotPath = process.env.BROWSER_E2E_P21D2_AFTER_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21d2-atmosphere-on.png');
 const p21f2StackOffScreenshotPath = process.env.BROWSER_E2E_P21F2_STACK_OFF_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21f2-stack-off.png');
 const p21f2StackOnScreenshotPath = process.env.BROWSER_E2E_P21F2_STACK_ON_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p21f2-stack-on.png');
+const p27b11IblOffScreenshotPath = process.env.BROWSER_E2E_P27B11_IBL_OFF_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p27b11-ibl-off.png');
+const p27b11IblOnScreenshotPath = process.env.BROWSER_E2E_P27B11_IBL_ON_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p27b11-ibl-on.png');
 const p22cPrimaryJourney = targetLocation === 'asteroid-refinery' && !['webgpu', 'babylon'].includes(requestedGraphicsPath);
 const p22cEvidence = { viewport: viewportMode, location: targetLocation };
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -784,6 +786,17 @@ async function p27A2BabylonBackendAudit() {
       worldStateVisual: canvas?.dataset.worldStateVisual ?? '',
       worldRuntime: canvas?.dataset.babylonWorldRuntime ?? '',
       sceneTelemetry: canvas?.dataset.babylonSceneTelemetry ?? '',
+      renderTier: canvas?.dataset.renderTier ?? '',
+      graphicsQuality: canvas?.dataset.graphicsQuality ?? '',
+      lightingProfile: canvas?.dataset.babylonLightingProfile ?? '',
+      lightingBudget: canvas?.dataset.babylonLightingBudget ?? '',
+      environmentIbl: canvas?.dataset.environmentIbl ?? '',
+      environmentLighting: canvas?.dataset.environmentLighting ?? '',
+      environmentShadowBudget: canvas?.dataset.environmentShadowBudget ?? '',
+      environmentTone: canvas?.dataset.environmentTone ?? '',
+      locationLighting: canvas?.dataset.locationLighting ?? '',
+      pbrMaterials: canvas?.dataset.babylonPbrMaterials ?? '',
+      materialIntent: canvas?.dataset.babylonMaterialIntent ?? '',
       rectWidth: canvas?.getBoundingClientRect().width ?? 0,
       rectHeight: canvas?.getBoundingClientRect().height ?? 0,
       bufferWidth: canvas instanceof HTMLCanvasElement ? canvas.width : 0,
@@ -1015,6 +1028,58 @@ async function p27A2BabylonBackendAudit() {
     throw new Error(`P27-B1 Babylon camera/resize parity invalid: ${JSON.stringify({ state, expectedLayout, ratio })}`);
   }
 
+  const pbrMatch = /^pbr:(\d+)\|standard:(\d+)\|max-lights:(3|5|6)$/.exec(state.pbrMaterials);
+  const lightingBudgetMatch = /^tier:(high|balanced|performance)\|ibl:(1\.00|0\.70|0\.38)\|shadow:(0|512|1024)\|practical:(1|2)\|max-lights:(3|5|6)$/.exec(state.lightingBudget);
+  if (state.lightingProfile !== 'furnace-amber'
+    || state.materialIntent !== 'authored-gltf-pbr+procedural-world-pbr'
+    || !pbrMatch
+    || Number(pbrMatch[1]) < 1
+    || !lightingBudgetMatch
+    || !['high', 'balanced', 'performance'].includes(state.renderTier)
+    || !['adaptive', 'flagship', 'performance'].includes(state.graphicsQuality)
+    || !/^raw-cube:furnace-amber\+service-cyan:intensity-\d+\.\d{2}$/.test(state.environmentIbl)
+    || !state.environmentLighting.startsWith('refinery-key+rim+ibl:raw-cube+practical:')
+    || !/^key:(512|1024):pcf-low:casters-\d+$|^key:off$/.test(state.environmentShadowBudget)
+    || !/^aces-\d+\.\d{2}\+ibl-\d+\.\d{2}$/.test(state.environmentTone)
+    || !/^asteroid-refinery:furnace-amber:aces-\d+\.\d{2}$/.test(state.locationLighting)) {
+    throw new Error('P27-B11 Babylon PBR lighting parity invalid: ' + JSON.stringify(state));
+  }
+
+  await evaluate(`(() => {
+    const canvas = document.querySelector('canvas');
+    if (!canvas) return false;
+    canvas.dataset.refineryIblQa = 'off';
+    return true;
+  })()`);
+  await waitFor(`document.querySelector('canvas')?.dataset.environmentIbl === 'off:qa-baseline'`, 'P27-B11 Babylon IBL stack-off', 5_000);
+  await captureScreenshot(p27b11IblOffScreenshotPath);
+
+  await evaluate(`(() => {
+    const canvas = document.querySelector('canvas');
+    if (!canvas) return false;
+    canvas.dataset.refineryIblQa = 'on';
+    return true;
+  })()`);
+  await waitFor(`/^raw-cube:furnace-amber\\+service-cyan:intensity-\\d+\\.\\d{2}$/.test(document.querySelector('canvas')?.dataset.environmentIbl ?? '')`, 'P27-B11 Babylon IBL stack-on', 5_000);
+  await captureScreenshot(p27b11IblOnScreenshotPath);
+  const b11StackOn = await evaluate(`(() => {
+    const canvas = document.querySelector('canvas');
+    return {
+      ibl: canvas?.dataset.environmentIbl ?? '',
+      lighting: canvas?.dataset.environmentLighting ?? '',
+      shadows: canvas?.dataset.environmentShadowBudget ?? '',
+      tone: canvas?.dataset.environmentTone ?? '',
+      pbr: canvas?.dataset.babylonPbrMaterials ?? '',
+      budget: canvas?.dataset.babylonLightingBudget ?? '',
+    };
+  })()`);
+  if (!b11StackOn?.ibl?.startsWith('raw-cube:furnace-amber+service-cyan:')
+    || !b11StackOn?.lighting?.includes('ibl:raw-cube')
+    || !b11StackOn?.pbr?.startsWith('pbr:')) {
+    throw new Error('P27-B11 Babylon stack-on capture telemetry invalid: ' + JSON.stringify(b11StackOn));
+  }
+
+  console.log(`BROWSER_P27B11_BABYLON_PBR_LIGHTING_PASS viewport=${viewportMode} budget=${b11StackOn.budget} ibl=${b11StackOn.ibl} shadows=${b11StackOn.shadows} tone=${b11StackOn.tone} pbr=${b11StackOn.pbr} screenshots=${p27b11IblOffScreenshotPath}+${p27b11IblOnScreenshotPath}`);
   console.log(`BROWSER_P27A2_BABYLON_PASS viewport=${viewportMode} backend=${state.backend} scene=${state.scene} frames=${state.frames} fallback=none`);
   console.log(`BROWSER_P27B1_BABYLON_CAMERA_INPUT_PASS viewport=${viewportMode} camera=${state.camera} input=${state.input} layout=${state.layout} framing=${state.framing} viewport=${state.viewport} pointer=${state.pointer} initialRetargetDelta=${initialRetargetDelta.toFixed(4)} settledDelta=${settledDirectionDelta.toFixed(4)} feedback=${state.feedback}`);
   console.log(`BROWSER_P27B2_BABYLON_REFINERY_PASS viewport=${viewportMode} lod=${state.environmentLod} kit=${[...refineryKit].sort().join(',')} placements=${state.environmentInstances} terminals=${state.environmentTerminals} runtime=${state.environmentRuntime} scene=${state.sceneTelemetry} reuse=${state.environmentReuse}`);

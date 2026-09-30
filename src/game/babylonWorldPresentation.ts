@@ -1,3 +1,4 @@
+import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial';
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { Color3 } from '@babylonjs/core/Maths/math.color';
 import { Mesh } from '@babylonjs/core/Meshes/mesh';
@@ -32,7 +33,7 @@ type ReadabilityShape = ReturnType<typeof groundLootPresentation>['shape'];
 
 type WorldObjectVisual = {
   mesh: Mesh;
-  material: StandardMaterial;
+  material: PBRMaterial;
   height: number;
 };
 
@@ -381,9 +382,10 @@ export class BabylonRefineryWorldPresentation {
       let visual = this.objectVisuals.get(object.id);
       if (!visual) {
         const height = panelObject(object) ? 0.7 : object.kind === 'cover' ? 1.25 : 1.05;
-        const material = new StandardMaterial('p27-b5-object-material-' + object.id, this.scene);
-        material.diffuseColor = colorFromHex(objectColor(object));
-        material.specularColor = Color3.White().scale(0.28);
+        const material = new PBRMaterial('p27-b5-object-material-' + object.id, this.scene);
+        material.albedoColor = colorFromHex(objectColor(object));
+        material.metallic = 0.55;
+        material.roughness = 0.48;
         const mesh = MeshBuilder.CreateBox('p27-b5-object-' + object.id, {
           width: Math.max(0.15, scaled(object.w)),
           height,
@@ -401,16 +403,14 @@ export class BabylonRefineryWorldPresentation {
       visual.mesh.setEnabled(object.active && !authored);
       visual.mesh.position.set(scaled(object.x + object.w / 2), visual.height / 2, scaled(object.y + object.h / 2));
       const response = materialWorldResponse(object.material);
-      visual.material.diffuseColor = colorFromHex(objectColor(object));
-      visual.material.specularPower = lerp(32, 86, quality.materialDepthScale);
+      visual.material.albedoColor = colorFromHex(objectColor(object));
       visual.material.alpha = object.kind === 'cover'
         && Math.hypot(object.x + object.w / 2 - state.player.x, object.y + object.h / 2 - state.player.y) < 155
         ? 0.48
         : 1;
       visual.material.emissiveColor = object.exposed ? colorFromHex(0xd69b4d).scale(0.32) : Color3.Black();
-      visual.material.specularColor = Color3.White().scale(
-        lerp(0.16, Math.max(0.18, response.metalness * (1 - response.roughness * 0.35)), quality.materialDepthScale),
-      );
+      visual.material.metallic = lerp(0.32, response.metalness, quality.materialDepthScale);
+      visual.material.roughness = lerp(0.62, response.roughness, quality.materialDepthScale);
       const hpRatio = object.maxHp > 0 ? Math.max(0.18, Math.min(1, object.hp / object.maxHp)) : 1;
       visual.mesh.scaling.y = object.destructible && object.maxHp < 9000 ? 0.72 + hpRatio * 0.28 : 1;
 

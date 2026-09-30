@@ -1,7 +1,6 @@
 import { FreeCamera } from '@babylonjs/core/Cameras/freeCamera';
 import { Ray } from '@babylonjs/core/Culling/ray';
 import { Engine } from '@babylonjs/core/Engines/engine';
-import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight';
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { Color3, Color4 } from '@babylonjs/core/Maths/math.color';
 import { Matrix, Vector3 } from '@babylonjs/core/Maths/math.vector';
@@ -15,6 +14,7 @@ import {
   getBabylonGraphicsAssetRuntime,
   type BabylonGraphicsAssetInstance,
 } from './babylonGraphicsAssets';
+import { BabylonRefineryLighting } from './babylonRefineryLighting';
 import type {
   CombatGraphicsBackend,
   CombatGraphicsPerformanceStats,
@@ -40,6 +40,7 @@ import { BabylonEnemyLifecycleVisuals } from './babylonEnemyLifecycleVisuals';
 import { BabylonProtocolStatusVisuals } from './babylonProtocolStatusVisuals';
 import { BabylonRefineryWorldPresentation } from './babylonWorldPresentation';
 import { BabylonWeaponVfx } from './babylonWeaponVfx';
+import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
 import { getWorldSize, weaponHandlingProfiles, type CombatObject, type Enemy, type SimState, type WeaponId } from './sim';
 
 const WORLD_SCALE = 0.02;
@@ -308,6 +309,8 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   private readonly enemyTelegraphs: BabylonEnemyTelegraphs;
   private readonly enemyLifecycleVisuals: BabylonEnemyLifecycleVisuals;
   private readonly protocolStatusVisuals: BabylonProtocolStatusVisuals;
+  private readonly refineryLighting: BabylonRefineryLighting;
+  private readonly renderBudget: AdaptiveRenderBudget;
   private readonly refineryAssetInstances: BabylonGraphicsAssetInstance[] = [];
   private refineryMountRoot: TransformNode | null = null;
   private refineryEnvironmentSignature = '';
@@ -317,6 +320,8 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   private width = 1;
   private height = 1;
   private pixelRatio = 1;
+  private lastFrameAt = 0;
+  private graphicsBudgetSignature = '';
 
   private constructor(
     canvas: HTMLCanvasElement,
@@ -336,6 +341,8 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.enemyTelegraphs = new BabylonEnemyTelegraphs(scene, canvas, coarse);
     this.enemyLifecycleVisuals = new BabylonEnemyLifecycleVisuals(scene, canvas, coarse);
     this.protocolStatusVisuals = new BabylonProtocolStatusVisuals(scene, canvas, coarse);
+    this.refineryLighting = new BabylonRefineryLighting(scene, canvas);
+    this.renderBudget = new AdaptiveRenderBudget(coarse);
 
     this.playerRoot = new TransformNode('p27-b3-player-root', scene);
     this.weaponPivot = new TransformNode('p27-b3-weapon-pivot', scene);
@@ -397,8 +404,6 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       camera.setTarget(new Vector3(0, 0.62, 0));
       scene.activeCamera = camera;
 
-      const migrationLight = new HemisphericLight('p27-b2-refinery-preview-light', new Vector3(-0.5, 1, 0.35), scene);
-      migrationLight.intensity = 0.82;
 
       canvas.dataset.babylonBackend = 'webgl2';
       canvas.dataset.babylonInit = 'ready';
@@ -421,7 +426,11 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
 
   render(...args: CombatGraphicsRenderArgs): void {
     if (this.disposed) return;
-    const [state, width, height, quality, , mission, mobileTargetId, operatorFaction, reducedTargetMotion = false, firingIntent = false, cameraFeedback] = args;
+    const [state, width, height, quality, qualityMode, mission, mobileTargetId, operatorFaction, reducedTargetMotion = false, firingIntent = false, cameraFeedback] = args;
+    const now = performance.now();
+    const frameMs = this.lastFrameAt > 0 ? now - this.lastFrameAt : 1000 / 60;
+    this.lastFrameAt = now;
+    const budget = this.renderBudget.sample(frameMs, quality, qualityMode);
     if (mission.location !== 'asteroid-refinery') {
       this.canvas.dataset.babylonScenario = 'refinery-only';
       this.releasePlayerPresentation('scenario-exit');
@@ -436,7 +445,8 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       return;
     }
     this.canvas.dataset.babylonScenario = 'asteroid-refinery';
-    this.resize(width, height, quality);
+    this.resize(width, height, quality, budget);
+    this.syncGraphicsRuntimeBudget(budget);
     this.ensureRefineryEnvironment(state, quality);
     this.ensurePlayerPresentation(state, quality);
     this.syncPlayerPresentation(state, operatorFaction, firingIntent);
@@ -454,6 +464,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.protocolStatusVisuals.sync(state, quality);
     this.enemyTelegraphs.sync(state, quality);
     this.worldPresentation.sync(state, mission, quality);
+    this.refineryLighting.sync(state, budget);
     this.syncCamera(state, width / Math.max(1, height), cameraFeedback);
     this.scene.render();
     this.frames += 1;
@@ -508,6 +519,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.enemyTelegraphs.dispose();
     this.enemyLifecycleVisuals.dispose();
     this.protocolStatusVisuals.dispose();
+    this.refineryLighting.dispose();
     this.releaseRefineryEnvironment('renderer-dispose');
     void disposeBabylonGraphicsAssetRuntime(this.scene);
     this.scene.dispose();
@@ -1762,9 +1774,23 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     ].join('|');
   }
 
-  private resize(width: number, height: number, quality: number) {
+  private syncGraphicsRuntimeBudget(budget: RenderBudgetSnapshot) {
+    const signature = budget.assetCacheCompressedByteBudget + ':' + budget.textureAnisotropy;
+    if (signature === this.graphicsBudgetSignature) return;
+    this.graphicsBudgetSignature = signature;
+    getBabylonGraphicsAssetRuntime(this.scene).configureBudget({
+      maxCachedCompressedBytes: budget.assetCacheCompressedByteBudget,
+      maxTextureAnisotropy: budget.textureAnisotropy,
+    });
+    this.canvas.dataset.renderMemoryBudget = 'asset-cache:'
+      + Math.round(budget.assetCacheCompressedByteBudget / (1024 * 1024))
+      + 'mb+anisotropy:' + budget.textureAnisotropy + 'x+materials:shared-cache';
+  }
+
+  private resize(width: number, height: number, quality: number, budget: RenderBudgetSnapshot) {
     const qualityCap = quality < 0.55 ? 1.12 : this.coarse || quality < 0.8 ? 1.35 : 1.8;
-    const nextRatio = Math.min(qualityCap, window.devicePixelRatio || 1);
+    const maxRatio = Math.max(0.76, qualityCap * budget.pixelRatioScale);
+    const nextRatio = Math.min(maxRatio, window.devicePixelRatio || 1);
     const nextWidth = Math.max(1, width);
     const nextHeight = Math.max(1, height);
     const ratioChanged = Math.abs(nextRatio - this.pixelRatio) > 0.01;
@@ -1785,6 +1811,15 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       `ratio:${this.pixelRatio.toFixed(2)}`,
       `buffer:${this.canvas.width}x${this.canvas.height}`,
     ].join('@');
+    this.canvas.dataset.renderTier = budget.tierName;
+    this.canvas.dataset.graphicsQuality = budget.qualityMode;
+    this.canvas.dataset.renderFrameMs = budget.smoothedFrameMs.toFixed(2);
+    this.canvas.dataset.renderBudget = [
+      `pixel:${budget.pixelRatioScale.toFixed(2)}`,
+      `shadow:${budget.shadows ? budget.shadowMapSize : 0}`,
+      `reflection:${budget.reflectionScale.toFixed(2)}`,
+      `detail:${budget.detailScale.toFixed(2)}`,
+    ].join('+');
   }
 
   private syncCamera(
