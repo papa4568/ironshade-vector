@@ -32,6 +32,18 @@ assert(threeChunks.length === 2, `Expected exactly two production Three.js runti
 const webGpuQaChunks = jsFiles.filter(name => name.startsWith('three.webgpu-') || name.startsWith('three.tsl-') || name.startsWith('webGpuRefineryRenderer-'));
 assert(webGpuQaChunks.length === 3, `Expected three deferred WebGPU QA chunks; found ${webGpuQaChunks.length}.`);
 
+const babylonEntry = records.find(([key, record]) =>
+  key === 'src/game/babylonCombatRenderer.ts'
+  || basename(record.file).startsWith('babylonCombatRenderer-'));
+assert(babylonEntry, 'Babylon QA backend is no longer emitted as a deferred entry.');
+const [babylonKey, babylonRecord] = babylonEntry;
+assert(babylonRecord.isDynamicEntry, 'Babylon QA backend must remain a dynamic entry.');
+assert(
+  (gameCanvasRecord.dynamicImports ?? []).includes(babylonKey)
+    && !(gameCanvasRecord.imports ?? []).includes(babylonKey),
+  'GameCanvas must lazy-load Babylon instead of synchronously importing it.',
+);
+
 const threeManifestKeys = new Set(records
   .filter(([, record]) => threeChunks.includes(basename(record.file)))
   .map(([key]) => key));
@@ -65,6 +77,8 @@ const webGpuManifestKeys = new Set(records
   .filter(([, record]) => webGpuQaChunks.includes(basename(record.file)))
   .map(([key]) => key));
 assert([...webGpuManifestKeys].every(key => !bootImports.has(key)), 'WebGPU QA runtime leaked into the synchronous boot graph.');
+assert(!bootImports.has(babylonKey), 'Babylon QA runtime leaked into the synchronous boot graph.');
+assert(!(appRecord.imports ?? []).includes(babylonKey), 'Babylon QA runtime leaked into the synchronous App chunk.');
 
 const graphicsRuntimePrefixes = ['GLTFLoader-', 'KTX2Loader-', 'meshopt_decoder.module-', 'SkeletonUtils-'];
 const graphicsRuntimeChunks = jsFiles.filter(name => graphicsRuntimePrefixes.some(prefix => name.startsWith(prefix)));
