@@ -252,9 +252,8 @@ assert(
     && babylonRendererSource.includes("canvas.dataset.babylonBackend = 'webgl2'")
     && babylonRendererSource.includes("canvas.dataset.babylonScene = 'active'")
     && babylonRendererSource.includes("this.canvas.dataset.babylonScene = 'disposed'")
-    && !babylonRendererSource.includes('ThreeCombatRenderer')
-    && !babylonRendererSource.includes("from './sim'"),
-  'P27-A2 Babylon renderer must own only a WebGL2 Babylon scene/render/dispose lifecycle without taking simulation or Three.js ownership.',
+    && !babylonRendererSource.includes('ThreeCombatRenderer'),
+  'P27-A2 Babylon renderer must own a WebGL2 Babylon scene/render/dispose lifecycle without taking Three.js renderer ownership.',
 );
 assert(
   packageJson.dependencies?.['@babylonjs/core'] === '9.28.0'
@@ -289,6 +288,33 @@ assert(
     && babylonRendererSource.includes('this.canvas.dataset.cameraFeedback'),
   'P27-B1 Babylon renderer must match the production camera framing, explicit pixel-ratio resize, feedback offsets, and normalized ground-plane pointer projection.',
 );
+assert(
+  babylonRendererSource.includes("from './babylonGraphicsAssets'")
+    && babylonRendererSource.includes("from './graphicsAssetManifest'")
+    && babylonRendererSource.includes("from './graphicsAssets'")
+    && babylonRendererSource.includes("from './sim'")
+    && babylonRendererSource.includes('REFINERY_ASSET_FAMILIES')
+    && babylonRendererSource.includes('getBabylonGraphicsAssetRuntime')
+    && babylonRendererSource.includes('disposeBabylonGraphicsAssetRuntime')
+    && babylonRendererSource.includes('selectGraphicsAssetSpec(REFINERY_ASSET_FAMILIES[key], detailScale)')
+    && babylonRendererSource.includes('runtime.preload(selected.map(item => item.spec), 2)')
+    && babylonRendererSource.includes('const instance = await runtime.instantiate(spec)')
+    && babylonRendererSource.includes('instance.rootNodes.forEach(root =>')
+    && babylonRendererSource.includes('instance.release()')
+    && babylonRendererSource.includes("const REFINERY_ENVIRONMENT_KIT = 'floor,floor-grate,bulkhead,processor,pipe-rack,wall-panel,cable-tray,service-conduit,gantry,crate,terminal'")
+    && babylonRendererSource.includes('for (const fx of [0.18, 0.34, 0.50, 0.66, 0.82])')
+    && babylonRendererSource.includes('for (const fz of [0.20, 0.40, 0.60, 0.80])')
+    && babylonRendererSource.includes('state.objects')
+    && babylonRendererSource.includes('.filter(object => object.active && panelObject(object))')
+    && babylonRendererSource.includes("this.canvas.dataset.environmentVisual = 'authored-refinery-babylon'")
+    && babylonRendererSource.includes("this.canvas.dataset.babylonEnvironmentReuse = 'cache-shared+geometry-shared+material-shared'")
+    && babylonRendererSource.includes("this.releaseRefineryEnvironment('scenario-exit')")
+    && babylonRendererSource.includes("this.releaseRefineryEnvironment('renderer-dispose')")
+    && babylonRendererSource.includes('this.canvas.dataset.babylonSceneTelemetry')
+    && babylonRendererSource.includes('this.canvas.dataset.babylonEnvironmentRuntime'),
+  'P27-B2 Babylon renderer must mount the complete authored refinery shell with shared asset-runtime ownership, matching world transforms/LOD selection, telemetry, and deterministic release behavior without changing collision geometry.',
+);
+
 assert(
   webgpuRendererSource.includes("from './refineryIbl'")
     && webgpuRendererSource.includes("from './refineryBloom'")
@@ -466,6 +492,7 @@ console.log('P21_A1_GRAPHICS_BACKEND_PASS default=webgl2 create=boundary render=
 console.log('P27_A1_NEUTRAL_GRAPHICS_CONTRACT_PASS render=explicit stats=explicit pointer=explicit lifecycle=explicit loaded=explicit webgl2=implemented webgpu=implemented');
 console.log('P27_A2_BABYLON_QA_BACKEND_PASS production=webgl2 qa=babylon lazy=true webgl2-only=true fallback=webgl2 telemetry=init+backend+scene+frames+dispose dependencies=core+loaders-pinned');
 console.log('P27_B1_BABYLON_CAMERA_INPUT_PASS camera=three-combat-v1 resize=explicit-pixel-ratio input=ground-plane-raycast-v1 feedback=shared simulation=unchanged');
+console.log('P27_B2_BABYLON_REFINERY_ENVIRONMENT_PASS kit=11 placements=three-parity lod=shared-runtime reuse=shared-resources cleanup=generation+release telemetry=asset+scene collision=unchanged');
 console.log('P21_A2_GRAPHICS_PATH_HARNESS_PASS selector=opt-in explicit=webgl2 refinery=existing-route telemetry=path+drawcalls+triangles+frame+tier android=production-default');
 console.log('P21_F1_WEBGPU_REFINERY_BACKEND_PASS production=webgl2 qa=webgpu lazy=true fallback=webgl2 assets=glb+ktx2+meshopt tsl=node-material camera=parity input=parity teardown=dispose');
 console.log('P21_F2_WEBGPU_REFINERY_PARITY_PASS stack=ibl-proxy+selective-bloom+contact-depth+atmosphere budget=adaptive captures=webgl2+webgpu gaps=explicit production=webgl2');
