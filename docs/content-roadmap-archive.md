@@ -5,6 +5,17 @@ This file is the permanent archive for completed production work. The active exe
 **Archive rule:** once a roadmap batch is merged, verified, and marked complete, move its detailed checklist and delivery note here. Keep only a compact completion pointer in the active roadmap. Do not execute work directly from this archive.
 
 
+## P27 — Babylon.js renderer migration
+
+- [x] **P27-A1 — Decouple the combat graphics contract from Three.js types** — Replaced the `CombatGraphicsBackend` method signatures that derived their public API from `Parameters<ThreeCombatRenderer[...]>` / `ReturnType<ThreeCombatRenderer[...]>` with explicit renderer-neutral render arguments, performance statistics, pointer-projection arguments/result, lifecycle, and loaded-backend types. The production WebGL2 adapter still delegates to the existing `ThreeCombatRenderer`, while the existing QA WebGPU renderer now implements the neutral contract directly without importing `ThreeCombatRenderer` for public typing.
+  - `tests/graphics-backend-boundary.ts` now locks the neutral contract shape, rejects reintroduced Three-derived public types, and verifies the QA WebGPU implementation consumes the same contract; no simulation, UI, asset, renderer-selection, or gameplay behavior was changed.
+  - PR #269 head `f5792283ce55f72fb7b94b580266fe3a391a009b` passed Browser E2E #1084 on desktop and mobile-landscape, including the full regression suite, production build, and browser player journeys, before merge.
+  - Merged to `main` as `32248172e7c3ab29365cec4571f2a13ae485f638`. Merged-main verification passed Level 15 beta smoke #957, Browser E2E #1085 on desktop and mobile-landscape, and Android APK #643 with the full web regression/production build, native project generation, APK package/version/SDK/signature verification, real Android fast touch/runtime/lifecycle smoke, and Android 16 large-screen live-resize smoke.
+  - Android evidence records `ANDROID_APK_PASS qa_signing=debug release_signing=debug version=0.0.1-beta.643(643) size=5.9M`, `ANDROID_FAST_RUNTIME_PASS`, `ANDROID_FAST_LIFECYCLE_RESUME_PASS`, `ANDROID_FAST_EMULATOR_PASS ... crashCheck=clean screenshots=3 elapsedSeconds=232`, and `ANDROID_P25B_LARGE_SCREEN_PASS ... processPreserved=true webViewPreserved=true overflow=none crashCheck=clean`.
+  - Android artifact `ironshade-vector-android-debug-qa` (artifact `11075256714`) has digest `sha256:0e1289b8f60e06721c2acfcee69cd4efbbe1763b4e4e72073aad291215ce2a70`; `Ironshade-Vector-Android-Debug.apk` is debug-signed, package `app.ironshade.vector`, version `0.0.1-beta.643 (643)`, size 5.9 MB, SHA-256 `3dd36be70b66c0bed881535fa76eef21444efd7cd5c7a1caf04bd0a924909c3e`.
+  - **Next: P27-A2 — Add a deferred Babylon.js QA backend.**
+
+
 ## P26 — Telemetry Scale Resilience
 
 - [x] **P26-B — Bound telemetry reconciliation work** — Reworked stale aggregate recovery to iterate the accepted-run ledger with explicit Netlify Blobs manual pagination and fetch run records in bounded batches of 32 instead of auto-loading all keys and reading every record serially. Reconciliation confirms the ledger count after each rebuild, retries when ingestion changes the ledger mid-scan, and uses bounded compare-and-set persistence retries so transient aggregate contention recovers without applying the same run twice.
