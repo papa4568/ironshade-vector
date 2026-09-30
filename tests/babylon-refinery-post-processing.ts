@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
+import { FreeCamera } from '@babylonjs/core/Cameras/freeCamera';
+import { NullEngine } from '@babylonjs/core/Engines/nullEngine';
+import { Vector3 } from '@babylonjs/core/Maths/math.vector';
+import { Scene } from '@babylonjs/core/scene';
 import { readFileSync } from 'node:fs';
 import {
+  BabylonRefineryPostProcessing,
   isBabylonRefineryBloomSourceName,
   resolveBabylonRefineryPostProcessingBudget,
 } from '../src/game/babylonRefineryPostProcessing';
@@ -62,6 +67,20 @@ assert.equal(degraded.atmosphereEnabled, false);
 assert.equal(degraded.gameplayCueScale, 1);
 for (let index = 0; index < 1400; index += 1) adaptiveSnapshot = adaptive.sample(16, 1, 'adaptive');
 assert.equal(adaptiveSnapshot.tierName, 'high', 'Sustained frame headroom must recover Babylon post-processing to High.');
+
+const runtimeEngine = new NullEngine({ renderWidth: 640, renderHeight: 360 });
+const runtimeScene = new Scene(runtimeEngine);
+runtimeScene.activeCamera = new FreeCamera('p27-b12-test-camera', new Vector3(0, 8, 8), runtimeScene);
+const runtimeCanvas = { dataset: { graphicsPathSelection: 'qa-explicit' } } as unknown as HTMLCanvasElement;
+const runtimePost = new BabylonRefineryPostProcessing(runtimeScene, runtimeCanvas);
+runtimePost.sync(false, highSnapshot);
+assert.match(runtimeCanvas.dataset.environmentBloom ?? '', /^selective:refinery-selective-v1:|^off:awaiting-authored-emissives$/);
+assert.match(runtimeCanvas.dataset.environmentContactDepth ?? '', /^grounding:refinery-contact-grounding-v1:/);
+assert.match(runtimeCanvas.dataset.environmentAtmosphere ?? '', /^fog:refinery-depth-atmosphere-v1:/);
+assert.equal(runtimeCanvas.dataset.babylonPostStack, 'on:qa-explicit');
+runtimePost.dispose();
+runtimeScene.dispose();
+runtimeEngine.dispose();
 
 const rendererSource = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const postSource = readFileSync('src/game/babylonRefineryPostProcessing.ts', 'utf8');

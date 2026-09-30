@@ -473,6 +473,18 @@ async function performanceDiagnosticsAudit() {
 }
 
 async function p27A2BabylonBackendAudit() {
+  const babylonInitState = await evaluate(`(() => {
+    const canvas = document.querySelector('canvas');
+    return {
+      init: canvas?.dataset.babylonInit ?? '',
+      fallback: canvas?.dataset.graphicsPathFallback ?? '',
+      fallbackReason: canvas?.dataset.babylonFallbackReason ?? '',
+      loaded: canvas?.dataset.graphicsPathLoaded ?? '',
+    };
+  })()`);
+  if (babylonInitState?.init === 'fallback' || babylonInitState?.init === 'failed') {
+    throw new Error('P27-A2 Babylon backend initialization failed before readiness: ' + JSON.stringify(babylonInitState));
+  }
   await waitFor(`(() => {
     const canvas = document.querySelector('canvas');
     return canvas?.dataset.graphicsPathSelection === 'qa-explicit'
