@@ -53,10 +53,12 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Use npm 11
+      - name: Use npm 10.9.8
         run: |
-          npm install --global npm@11.19.1
-          npm --version
+          npm install --global npm@10.9.8
+          npm_version="$(npm --version)"
+          echo "$npm_version"
+          test "$npm_version" = "10.9.8"
 
       - name: Set up stable Chrome
         id: setup-chrome

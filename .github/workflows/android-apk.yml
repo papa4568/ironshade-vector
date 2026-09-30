@@ -73,10 +73,12 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Use npm 11
+      - name: Use npm 10.9.8
         run: |
-          npm install --global npm@11.19.1
-          npm --version
+          npm install --global npm@10.9.8
+          npm_version="$(npm --version)"
+          echo "$npm_version"
+          test "$npm_version" = "10.9.8"
 
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
@@ -108,10 +110,12 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Use npm 11
+      - name: Use npm 10.9.8
         run: |
-          npm install --global npm@11.19.1
-          npm --version
+          npm install --global npm@10.9.8
+          npm_version="$(npm --version)"
+          echo "$npm_version"
+          test "$npm_version" = "10.9.8"
 
       - name: Set up Java 21
         uses: actions/setup-java@v6

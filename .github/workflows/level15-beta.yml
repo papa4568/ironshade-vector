@@ -20,10 +20,12 @@ jobs:
           node-version: '22.23.2'
           cache: npm
           cache-dependency-path: package-lock.json
-      - name: Use npm 11
+      - name: Use npm 10.9.8
         run: |
-          npm install --global npm@11.19.1
-          npm --version
+          npm install --global npm@10.9.8
+          npm_version="$(npm --version)"
+          echo "$npm_version"
+          test "$npm_version" = "10.9.8"
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
       - name: Audit runtime dependencies
