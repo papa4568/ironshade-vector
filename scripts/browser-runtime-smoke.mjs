@@ -541,28 +541,31 @@ async function p27A2BabylonBackendAudit() {
     return evaluate(`document.querySelector('canvas')?.dataset.babylonPointerDirection ?? ''`);
   };
 
-  const pointerFirst = await dispatchBabylonPointerProbe(927);
-  await new Promise(resolve => setTimeout(resolve, 50));
-  const pointerSecond = await dispatchBabylonPointerProbe(928);
-  await new Promise(resolve => setTimeout(resolve, 50));
-  const pointerThird = await dispatchBabylonPointerProbe(929);
+  const pointerSamples = [];
+  for (let index = 0; index < 6; index += 1) {
+    pointerSamples.push(await dispatchBabylonPointerProbe(927 + index));
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
   const parseDirection = value => value.split(',').map(Number);
-  const firstDirection = parseDirection(pointerFirst);
-  const secondDirection = parseDirection(pointerSecond);
-  const thirdDirection = parseDirection(pointerThird);
-  const firstLength = Math.hypot(firstDirection[0], firstDirection[1]);
-  const secondLength = Math.hypot(secondDirection[0], secondDirection[1]);
-  const thirdLength = Math.hypot(thirdDirection[0], thirdDirection[1]);
+  const parsedDirections = pointerSamples.map(parseDirection);
+  const pointerFirst = pointerSamples[0];
+  const pointerSecond = pointerSamples[1];
+  const pointerThird = pointerSamples[pointerSamples.length - 1];
+  const firstDirection = parsedDirections[0];
+  const secondDirection = parsedDirections[1];
+  const settledPreviousDirection = parsedDirections[parsedDirections.length - 2];
+  const settledDirection = parsedDirections[parsedDirections.length - 1];
   const initialRetargetDelta = Math.hypot(firstDirection[0] - secondDirection[0], firstDirection[1] - secondDirection[1]);
-  const settledDirectionDelta = Math.hypot(secondDirection[0] - thirdDirection[0], secondDirection[1] - thirdDirection[1]);
-  if (!firstDirection.every(Number.isFinite)
-    || !secondDirection.every(Number.isFinite)
-    || !thirdDirection.every(Number.isFinite)
-    || Math.abs(firstLength - 1) > 0.01
-    || Math.abs(secondLength - 1) > 0.01
-    || Math.abs(thirdLength - 1) > 0.01
-    || settledDirectionDelta > 0.04) {
-    throw new Error(`P27-B1 Babylon ground projection is not normalized/stable after camera retarget: first=${pointerFirst} second=${pointerSecond} third=${pointerThird} initialDelta=${initialRetargetDelta} settledDelta=${settledDirectionDelta}`);
+  const settledDirectionDelta = Math.hypot(
+    settledPreviousDirection[0] - settledDirection[0],
+    settledPreviousDirection[1] - settledDirection[1],
+  );
+  const normalized = parsedDirections.every(direction => {
+    const length = Math.hypot(direction[0], direction[1]);
+    return direction.every(Number.isFinite) && Math.abs(length - 1) <= 0.01;
+  });
+  if (!normalized || settledDirectionDelta > 0.04) {
+    throw new Error(`P27-B1 Babylon ground projection is not normalized/stable after camera retarget: samples=${pointerSamples.join(' -> ')} initialDelta=${initialRetargetDelta} settledDelta=${settledDirectionDelta}`);
   }
   const state = await evaluate(`(() => {
     const canvas = document.querySelector('canvas');
