@@ -25,7 +25,7 @@ function upsertAttribute(tag, name, value, indent) {
 }
 
 let manifest = readFileSync(manifestPath, 'utf8');
-const applicationPattern = /<application\\b[^>]*>/;
+const applicationPattern = /<application\b[^>]*>/;
 const applicationMatch = manifest.match(applicationPattern);
 if (!applicationMatch) throw new Error('Unable to locate Android application manifest tag.');
 let applicationTag = applicationMatch[0];
@@ -33,14 +33,14 @@ applicationTag = upsertAttribute(applicationTag, 'android:hardwareAccelerated', 
 applicationTag = upsertAttribute(applicationTag, 'android:appCategory', 'game', '        ');
 manifest = manifest.replace(applicationPattern, applicationTag);
 
-const activityPattern = /<activity\\b(?=[^>]*android:name=\"\\.MainActivity\")[^>]*>/;
+const activityPattern = /<activity\b(?=[^>]*android:name="\.MainActivity")[^>]*>/;
 const activityMatch = manifest.match(activityPattern);
 if (!activityMatch) throw new Error('Unable to locate generated MainActivity manifest tag.');
-let activityTag = activityMatch[0].replace(/\\s+android:screenOrientation=\"[^\"]*\"/g, '');
+let activityTag = activityMatch[0].replace(/\s+android:screenOrientation="[^"]*"/g, '');
 activityTag = upsertAttribute(activityTag, 'android:resizeableActivity', 'true', '            ');
 activityTag = upsertAttribute(activityTag, 'android:keepScreenOn', 'true', '            ');
 
-const configMatch = activityTag.match(/android:configChanges=\"([^\"]*)\"/);
+const configMatch = activityTag.match(/android:configChanges="([^"]*)"/);
 const configChanges = configMatch?.[1]
   ? configMatch[1].split('|').map(value => value.trim()).filter(Boolean)
   : [];
