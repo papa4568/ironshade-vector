@@ -2,10 +2,10 @@
 
 ## New-chat handoff — resume here first
 
-- All previously completed P20–P23 work plus P24-A–P24-D and verified P25 work is preserved in [content-roadmap-archive.md](./content-roadmap-archive.md).
+- All previously completed P20–P23 work plus P24-A–P24-D, verified P25 work, and verified P26-A work is preserved in [content-roadmap-archive.md](./content-roadmap-archive.md).
 - The 2026-09-29 code audit has been reduced to **release-critical work only**. Non-blocking cleanup/refactor ideas were removed from the active queue.
 - Priority order is intentional: **P26 telemetry scale resilience**.
-- **Next executable item: P26-A — Make healthy Operations metrics reads independent of total ledger size.**
+- **Next executable item: P26-B — Bound telemetry reconciliation work.**
 
 Only active/future executable work lives here. Completed and verified work belongs in [content-roadmap-archive.md](./content-roadmap-archive.md). Stable product rules live in [product-constraints.md](./product-constraints.md).
 
@@ -21,7 +21,5 @@ Only active/future executable work lives here. Completed and verified work belon
 ## P26 — Telemetry Scale Resilience
 
 These become mandatory before public telemetry volume is allowed to grow materially. They are intentionally after correctness/release blockers because the current game can operate without global metrics.
-
-- [ ] **P26-A — Make healthy Operations metrics reads independent of total ledger size** — Remove the unconditional full accepted-run enumeration from normal `/api/operations` reads. Use the stored aggregate as the fast path with a bounded consistency/version signal so healthy reads remain effectively O(1) as run history grows.
 
 - [ ] **P26-B — Bound telemetry reconciliation work** — Rebuild stale aggregates through explicit pagination/batching rather than serially fetching the entire run ledger in one request. Add large-ledger/multi-page coverage, contention recovery, and no-double-counting verification.
