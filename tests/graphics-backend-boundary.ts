@@ -282,8 +282,8 @@ assert(
     && babylonRendererSource.includes('(FLOOR_Y - ray.origin.y) / denominator')
     && babylonRendererSource.includes('hitX / WORLD_SCALE - player.x')
     && babylonRendererSource.includes('hitZ / WORLD_SCALE - player.y')
-    && babylonRendererSource.includes("this.canvas.dataset.babylonCameraParity = 'three-combat-v1'")
-    && babylonRendererSource.includes("this.canvas.dataset.babylonInputParity = 'ground-plane-raycast-v1'")
+    && babylonRendererSource.includes("canvas.dataset.babylonCameraParity = 'three-combat-v1'")
+    && babylonRendererSource.includes("canvas.dataset.babylonInputParity = 'ground-plane-raycast-v1'")
     && babylonRendererSource.includes('this.canvas.dataset.babylonPointerDirection')
     && babylonRendererSource.includes('this.canvas.dataset.babylonViewport')
     && babylonRendererSource.includes('this.canvas.dataset.cameraFeedback'),
