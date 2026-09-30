@@ -469,6 +469,14 @@ async function p27A2BabylonBackendAudit() {
       && canvas?.dataset.babylonInputParity === 'ground-plane-raycast-v1'
       && canvas?.dataset.babylonEnvironmentState === 'ready'
       && canvas?.dataset.environmentVisual === 'authored-refinery-babylon'
+      && canvas?.dataset.babylonPlayerState === 'ready'
+      && /^authored-[12]-babylon$/.test(canvas?.dataset.operatorVisual ?? '')
+      && canvas?.dataset.operatorRig === 'articulated'
+      && canvas?.dataset.operatorSocket === 'weapon-socket'
+      && canvas?.dataset.weaponVisual === 'authored-babylon'
+      && canvas?.dataset.weaponRoles === 'breacher,carbine,rail'
+      && Boolean(canvas?.dataset.babylonPlayerRuntime)
+      && Boolean(canvas?.dataset.babylonWeaponMuzzle)
       && Boolean(canvas?.dataset.babylonCameraFraming)
       && Boolean(canvas?.dataset.babylonViewport)
       && Boolean(canvas?.dataset.babylonEnvironmentRuntime)
@@ -584,6 +592,30 @@ async function p27A2BabylonBackendAudit() {
       environmentReuse: canvas?.dataset.babylonEnvironmentReuse ?? '',
       environmentRuntime: canvas?.dataset.babylonEnvironmentRuntime ?? '',
       environmentError: canvas?.dataset.babylonEnvironmentError ?? '',
+      playerState: canvas?.dataset.babylonPlayerState ?? '',
+      playerError: canvas?.dataset.babylonPlayerError ?? '',
+      operatorVisual: canvas?.dataset.operatorVisual ?? '',
+      operatorAsset: canvas?.dataset.operatorAsset ?? '',
+      operatorClass: canvas?.dataset.operatorClassAsset ?? '',
+      operatorRig: canvas?.dataset.operatorRig ?? '',
+      operatorSocket: canvas?.dataset.operatorSocket ?? '',
+      operatorStance: canvas?.dataset.operatorStance ?? '',
+      operatorAnimation: canvas?.dataset.operatorAnimation ?? '',
+      operatorBlend: canvas?.dataset.operatorBlend ?? '',
+      weaponVisual: canvas?.dataset.weaponVisual ?? '',
+      weaponRoles: canvas?.dataset.weaponRoles ?? '',
+      weaponFallback: canvas?.dataset.weaponFallback ?? '',
+      weaponActive: canvas?.dataset.weaponActive ?? '',
+      weaponAsset: canvas?.dataset.weaponAsset ?? '',
+      weaponVariant: canvas?.dataset.weaponVariant ?? '',
+      weaponHandling: canvas?.dataset.weaponHandling ?? '',
+      weaponHeat: canvas?.dataset.weaponHeat ?? '',
+      weaponThermalCue: canvas?.dataset.weaponThermalCue ?? '',
+      weaponMuzzleOrigin: canvas?.dataset.babylonWeaponMuzzleOrigin ?? '',
+      weaponMuzzle: canvas?.dataset.babylonWeaponMuzzle ?? '',
+      playerTracking: canvas?.dataset.babylonPlayerTracking ?? '',
+      playerReuse: canvas?.dataset.babylonPlayerReuse ?? '',
+      playerRuntime: canvas?.dataset.babylonPlayerRuntime ?? '',
       sceneTelemetry: canvas?.dataset.babylonSceneTelemetry ?? '',
       rectWidth: canvas?.getBoundingClientRect().width ?? 0,
       rectHeight: canvas?.getBoundingClientRect().height ?? 0,
@@ -637,11 +669,49 @@ async function p27A2BabylonBackendAudit() {
     || state.environmentMachineDetail !== 'processor-functional:3+floor-grate:8'
     || state.environmentComposition !== 'clear-center-lane+processor-triangle+gantry-focal+perimeter-clutter'
     || state.environmentReuse !== 'cache-shared+geometry-shared+material-shared'
-    || cachedAssets !== 11
-    || activeInstances !== state.environmentInstances
+    || cachedAssets < 11
+    || activeInstances < state.environmentInstances
     || !(sceneMeshes > 0)
     || !(sceneMaterials > 0)) {
     throw new Error(`P27-B2 Babylon authored refinery environment parity invalid: ${JSON.stringify(state)}`);
+  }
+
+
+  const expectedPlayerLod = pointerProbe.coarse ? 2 : 1;
+  const expectedOperatorAsset = state.operatorClass && state.operatorClass !== 'generic'
+    ? `operator-${state.operatorClass}-lod${expectedPlayerLod}`
+    : `operator-field-suit-lod${expectedPlayerLod}`;
+  const weaponRoles = new Set(String(state.weaponRoles).split(',').filter(Boolean));
+  const playerRuntimeMatch = /^cached:(\d+)\|active:(\d+)\|bytes:(\d+)$/.exec(state.playerRuntime);
+  const muzzle = String(state.weaponMuzzle).split(',').map(Number);
+  const handlingBlendPattern = /^move:\d+\.\d+,aim:\d+\.\d+,recoil:\d+\.\d+,reload:\d+\.\d+,charge:\d+\.\d+,vent:\d+\.\d+,overheat:\d+\.\d+,dodge:\d+\.\d+,hit:\d+\.\d+$/;
+  if (state.playerState !== 'ready'
+    || state.playerError
+    || state.operatorVisual !== `authored-${expectedPlayerLod}-babylon`
+    || state.operatorAsset !== expectedOperatorAsset
+    || !['generic', 'vanguard', 'vector', 'systems'].includes(state.operatorClass)
+    || state.operatorRig !== 'articulated'
+    || state.operatorSocket !== 'weapon-socket'
+    || !state.operatorStance
+    || !['idle', 'locomotion', 'recoil', 'reload', 'charge', 'vent', 'overheat', 'dodge', 'hit', 'down'].includes(state.operatorAnimation)
+    || !handlingBlendPattern.test(state.operatorBlend)
+    || state.weaponVisual !== 'authored-babylon'
+    || state.weaponFallback
+    || !['carbine', 'breacher', 'rail'].every(id => weaponRoles.has(id))
+    || !['carbine', 'breacher', 'rail'].includes(state.weaponActive)
+    || state.weaponAsset !== `weapon-${state.weaponActive}-lod${expectedPlayerLod}`
+    || !state.weaponHandling
+    || !['nominal', 'warning', 'critical'].includes(state.weaponThermalCue)
+    || !Number.isFinite(Number(state.weaponHeat))
+    || state.weaponMuzzleOrigin !== 'muzzle-socket'
+    || muzzle.length !== 3
+    || !muzzle.every(Number.isFinite)
+    || !state.playerTracking.startsWith(`sim:${state.weaponActive}|class:${state.operatorClass}|aim:`)
+    || state.playerReuse !== 'shared-runtime+authored-rig+authored-sockets+shared-presentation-signals'
+    || !playerRuntimeMatch
+    || Number(playerRuntimeMatch[1]) < 15
+    || Number(playerRuntimeMatch[2]) < state.environmentInstances + 4) {
+    throw new Error(`P27-B3 Babylon operator/weapon presentation parity invalid: ${JSON.stringify(state)}`);
   }
 
   const viewportMatch = /^(\d+)x(\d+)@ratio:([0-9.]+)@buffer:(\d+)x(\d+)$/.exec(state.viewport);
@@ -668,6 +738,7 @@ async function p27A2BabylonBackendAudit() {
   console.log(`BROWSER_P27A2_BABYLON_PASS viewport=${viewportMode} backend=${state.backend} scene=${state.scene} frames=${state.frames} fallback=none`);
   console.log(`BROWSER_P27B1_BABYLON_CAMERA_INPUT_PASS viewport=${viewportMode} camera=${state.camera} input=${state.input} layout=${state.layout} framing=${state.framing} viewport=${state.viewport} pointer=${state.pointer} initialRetargetDelta=${initialRetargetDelta.toFixed(4)} settledDelta=${settledDirectionDelta.toFixed(4)} feedback=${state.feedback}`);
   console.log(`BROWSER_P27B2_BABYLON_REFINERY_PASS viewport=${viewportMode} lod=${state.environmentLod} kit=${[...refineryKit].sort().join(',')} placements=${state.environmentInstances} terminals=${state.environmentTerminals} runtime=${state.environmentRuntime} scene=${state.sceneTelemetry} reuse=${state.environmentReuse}`);
+  console.log(`BROWSER_P27B3_BABYLON_OPERATOR_WEAPON_PASS viewport=${viewportMode} class=${state.operatorClass} operator=${state.operatorAsset} stance=${state.operatorStance} animation=${state.operatorAnimation} weapon=${state.weaponActive} asset=${state.weaponAsset} variant=${state.weaponVariant} thermal=${state.weaponThermalCue} muzzle=${state.weaponMuzzle} runtime=${state.playerRuntime}`);
   return state;
 }
 

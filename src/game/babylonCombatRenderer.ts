@@ -2,9 +2,13 @@ import { FreeCamera } from '@babylonjs/core/Cameras/freeCamera';
 import { Ray } from '@babylonjs/core/Culling/ray';
 import { Engine } from '@babylonjs/core/Engines/engine';
 import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight';
-import { Color4 } from '@babylonjs/core/Maths/math.color';
+import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
+import { Color3, Color4 } from '@babylonjs/core/Maths/math.color';
 import { Matrix, Vector3 } from '@babylonjs/core/Maths/math.vector';
+import { Mesh } from '@babylonjs/core/Meshes/mesh';
+import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
+import type { Node } from '@babylonjs/core/node';
 import { Scene } from '@babylonjs/core/scene';
 import {
   disposeBabylonGraphicsAssetRuntime,
@@ -18,15 +22,33 @@ import type {
   CombatGraphicsPointerProjectionArgs,
   CombatGraphicsRenderArgs,
 } from './combatGraphicsBackend';
-import { REFINERY_ASSET_FAMILIES } from './graphicsAssetManifest';
+import { weaponVariantPresentation, weaponVariantThermalCue } from './classArsenal';
+import {
+  OPERATOR_ASSET_FAMILY,
+  OPERATOR_CLASS_ASSET_FAMILIES,
+  REFINERY_ASSET_FAMILIES,
+  WEAPON_ASSET_FAMILIES,
+} from './graphicsAssetManifest';
 import { selectGraphicsAssetSpec, type GraphicsAssetSpec } from './graphicsAssets';
-import { getWorldSize, type CombatObject, type SimState } from './sim';
+import { resolvePlayerHandlingAnimation } from './playerHandlingAnimation';
+import { getWorldSize, weaponHandlingProfiles, type CombatObject, type SimState, type WeaponId } from './sim';
 
 const WORLD_SCALE = 0.02;
 const FLOOR_Y = 0;
 const CAMERA_FOV_DEGREES = 42;
 const CAMERA_FOV_RADIANS = CAMERA_FOV_DEGREES * Math.PI / 180;
 const REFINERY_ENVIRONMENT_KIT = 'floor,floor-grate,bulkhead,processor,pipe-rack,wall-panel,cable-tray,service-conduit,gantry,crate,terminal';
+const BABYLON_WEAPON_IDS: readonly WeaponId[] = ['carbine', 'breacher', 'rail'];
+const weaponColors: Record<WeaponId, number> = {
+  carbine: 0xd9f3c6,
+  breacher: 0xffddb3,
+  rail: 0xb9e8ff,
+};
+const factionColors = {
+  meridian: 0x7fa697,
+  heliostat: 0xe0a45c,
+  longarc: 0x79a8bf,
+} as const;
 
 type RefineryFamilyKey = keyof typeof REFINERY_ASSET_FAMILIES;
 
@@ -39,8 +61,62 @@ type RefineryPlacement = {
 
 type RefineryPlacementGroups = Record<RefineryFamilyKey, RefineryPlacement[]>;
 
+type BabylonRigRest = {
+  position: Vector3;
+  rotation: Vector3;
+};
+
+type BabylonOperatorRig = {
+  hip: TransformNode;
+  torso: TransformNode;
+  helmet: TransformNode;
+  leftArm: TransformNode;
+  rightArm: TransformNode;
+  leftLeg: TransformNode;
+  rightLeg: TransformNode;
+  backpack: TransformNode;
+  weaponSocket: TransformNode;
+  rest: Map<TransformNode, BabylonRigRest>;
+};
+
+type BabylonWeaponVisual = {
+  instance: BabylonGraphicsAssetInstance;
+  assetId: string;
+  mount: TransformNode;
+  muzzleSocket: TransformNode;
+};
+
 function scaled(value: number) {
   return value * WORLD_SCALE;
+}
+
+function colorFromHex(hex: number) {
+  return Color3.FromInts((hex >> 16) & 0xff, (hex >> 8) & 0xff, hex & 0xff);
+}
+
+function instanceNodes(instance: BabylonGraphicsAssetInstance) {
+  const nodes: Node[] = [];
+  for (const root of instance.rootNodes) {
+    nodes.push(root, ...root.getDescendants(false));
+  }
+  return nodes;
+}
+
+function findInstanceTransform(instance: BabylonGraphicsAssetInstance, sourceName: string) {
+  const node = instanceNodes(instance).find(candidate =>
+    candidate.name === sourceName || candidate.name.endsWith(`:${sourceName}`));
+  return node instanceof TransformNode ? node : null;
+}
+
+function prepareRigNode(node: TransformNode): BabylonRigRest {
+  if (node.rotationQuaternion) {
+    node.rotation.copyFrom(node.rotationQuaternion.toEulerAngles());
+    node.rotationQuaternion = null;
+  }
+  return {
+    position: node.position.clone(),
+    rotation: node.rotation.clone(),
+  };
 }
 
 function panelObject(object: CombatObject) {
@@ -143,6 +219,20 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   private readonly coarse: boolean;
   private readonly identity = Matrix.Identity();
   private readonly cameraTarget = new Vector3();
+  private readonly playerRoot: TransformNode;
+  private readonly weaponPivot: TransformNode;
+  private readonly operatorAccent: Mesh;
+  private readonly weaponAccent: Mesh;
+  private readonly operatorAccentMaterial: StandardMaterial;
+  private readonly weaponAccentMaterial: StandardMaterial;
+  private readonly authoredWeapons = new Map<WeaponId, BabylonWeaponVisual>();
+  private operatorAssetInstance: BabylonGraphicsAssetInstance | null = null;
+  private operatorMountRoot: TransformNode | null = null;
+  private authoredOperatorRig: BabylonOperatorRig | null = null;
+  private playerPresentationSignature = '';
+  private playerLoadGeneration = 0;
+  private operatorHitUntil = -1;
+  private lastPlayerDurability = Number.NaN;
   private readonly refineryAssetInstances: BabylonGraphicsAssetInstance[] = [];
   private refineryMountRoot: TransformNode | null = null;
   private refineryEnvironmentSignature = '';
@@ -165,6 +255,40 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.engine = engine;
     this.scene = scene;
     this.camera = camera;
+
+    this.playerRoot = new TransformNode('p27-b3-player-root', scene);
+    this.weaponPivot = new TransformNode('p27-b3-weapon-pivot', scene);
+    this.weaponPivot.parent = this.playerRoot;
+
+    this.operatorAccentMaterial = new StandardMaterial('p27-b3-operator-accent-material', scene);
+    this.operatorAccentMaterial.diffuseColor = colorFromHex(weaponColors.carbine).scale(0.45);
+    this.operatorAccentMaterial.emissiveColor = colorFromHex(weaponColors.carbine).scale(0.22);
+    this.operatorAccentMaterial.specularColor = Color3.Black();
+    this.operatorAccent = MeshBuilder.CreateBox('p27-b3-operator-accent', {
+      width: 0.04,
+      height: 0.13,
+      depth: 0.32,
+    }, scene);
+    this.operatorAccent.parent = this.playerRoot;
+    this.operatorAccent.position.set(0.27, 1.22, 0);
+    this.operatorAccent.material = this.operatorAccentMaterial;
+    this.operatorAccent.isPickable = false;
+    this.operatorAccent.setEnabled(false);
+
+    this.weaponAccentMaterial = new StandardMaterial('p27-b3-weapon-accent-material', scene);
+    this.weaponAccentMaterial.diffuseColor = colorFromHex(weaponColors.carbine).scale(0.45);
+    this.weaponAccentMaterial.emissiveColor = colorFromHex(weaponColors.carbine).scale(0.28);
+    this.weaponAccentMaterial.specularColor = Color3.Black();
+    this.weaponAccent = MeshBuilder.CreateBox('p27-b3-weapon-accent', {
+      width: 0.46,
+      height: 0.035,
+      depth: 0.055,
+    }, scene);
+    this.weaponAccent.parent = this.weaponPivot;
+    this.weaponAccent.position.set(0.45, 0.08, 0);
+    this.weaponAccent.material = this.weaponAccentMaterial;
+    this.weaponAccent.isPickable = false;
+    this.weaponAccent.setEnabled(false);
   }
 
   static create(canvas: HTMLCanvasElement, coarse: boolean) {
@@ -203,6 +327,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       canvas.dataset.babylonCameraParity = 'three-combat-v1';
       canvas.dataset.babylonInputParity = 'ground-plane-raycast-v1';
       canvas.dataset.babylonEnvironmentState = 'idle';
+      canvas.dataset.babylonPlayerState = 'idle';
 
       return new BabylonCombatRenderer(canvas, coarse, engine, scene, camera);
     } catch (error) {
@@ -213,15 +338,18 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
 
   render(...args: CombatGraphicsRenderArgs): void {
     if (this.disposed) return;
-    const [state, width, height, quality, , mission, , , , , cameraFeedback] = args;
+    const [state, width, height, quality, , mission, , operatorFaction, , firingIntent = false, cameraFeedback] = args;
     if (mission.location !== 'asteroid-refinery') {
       this.canvas.dataset.babylonScenario = 'refinery-only';
+      this.releasePlayerPresentation('scenario-exit');
       this.releaseRefineryEnvironment('scenario-exit');
       return;
     }
     this.canvas.dataset.babylonScenario = 'asteroid-refinery';
     this.resize(width, height, quality);
     this.ensureRefineryEnvironment(state, quality);
+    this.ensurePlayerPresentation(state, quality);
+    this.syncPlayerPresentation(state, operatorFaction, firingIntent);
     this.syncCamera(state, width / Math.max(1, height), cameraFeedback);
     this.scene.render();
     this.frames += 1;
@@ -268,12 +396,475 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    this.releasePlayerPresentation('renderer-dispose');
     this.releaseRefineryEnvironment('renderer-dispose');
     void disposeBabylonGraphicsAssetRuntime(this.scene);
     this.scene.dispose();
     this.engine.dispose();
     this.canvas.dataset.babylonScene = 'disposed';
     this.canvas.dataset.babylonDisposed = 'true';
+  }
+
+
+  private ensurePlayerPresentation(state: SimState, detailScale: number) {
+    const assetDetailScale = this.coarse ? Math.min(detailScale, 0.55) : detailScale;
+    const operatorFamily = state.build.operatorClass
+      ? OPERATOR_CLASS_ASSET_FAMILIES[state.build.operatorClass]
+      : OPERATOR_ASSET_FAMILY;
+    const operatorSpec = selectGraphicsAssetSpec(operatorFamily, assetDetailScale);
+    if (!operatorSpec) {
+      this.canvas.dataset.babylonPlayerState = 'error';
+      this.canvas.dataset.babylonPlayerError = 'operator-spec-unavailable';
+      return;
+    }
+
+    const weaponSpecs = BABYLON_WEAPON_IDS.map(id => {
+      const spec = selectGraphicsAssetSpec(WEAPON_ASSET_FAMILIES[id], assetDetailScale);
+      if (!spec) throw new Error(`No authored Babylon weapon asset available for ${id}`);
+      return { id, spec };
+    });
+    const signature = [
+      state.build.operatorClass ?? 'generic',
+      operatorSpec.id,
+      ...weaponSpecs.map(item => item.spec.id),
+    ].join(':');
+    if (signature === this.playerPresentationSignature) return;
+
+    this.playerPresentationSignature = signature;
+    const generation = ++this.playerLoadGeneration;
+    this.releaseMountedPlayerAssets();
+    this.canvas.dataset.babylonPlayerState = 'loading';
+    this.canvas.dataset.operatorVisual = 'authored-loading-babylon';
+    this.canvas.dataset.weaponVisual = 'authored-loading-babylon';
+    delete this.canvas.dataset.babylonPlayerError;
+    void this.loadPlayerPresentation(state.build.operatorClass, operatorSpec, weaponSpecs, generation);
+  }
+
+  private async loadPlayerPresentation(
+    operatorClass: SimState['build']['operatorClass'],
+    operatorSpec: GraphicsAssetSpec,
+    weaponSpecs: Array<{ id: WeaponId; spec: GraphicsAssetSpec }>,
+    generation: number,
+  ) {
+    const runtime = getBabylonGraphicsAssetRuntime(this.scene);
+    const preload = await runtime.preload([operatorSpec, ...weaponSpecs.map(item => item.spec)], 2);
+    if (this.disposed || generation !== this.playerLoadGeneration) return;
+    if (preload.failed > 0) {
+      this.canvas.dataset.babylonPlayerState = 'error';
+      this.canvas.dataset.operatorVisual = 'authored-fallback-babylon';
+      this.canvas.dataset.weaponVisual = 'authored-fallback-babylon';
+      this.canvas.dataset.babylonPlayerError = `preload-failed:${preload.failed}`;
+      return;
+    }
+
+    const localInstances: BabylonGraphicsAssetInstance[] = [];
+    const localMounts: TransformNode[] = [];
+    try {
+      const operatorInstance = await runtime.instantiate(operatorSpec);
+      localInstances.push(operatorInstance);
+      if (this.disposed || generation !== this.playerLoadGeneration) {
+        localInstances.forEach(instance => instance.release());
+        return;
+      }
+
+      const operatorMount = new TransformNode(`p27-b3-operator-${generation}`, this.scene);
+      localMounts.push(operatorMount);
+      operatorMount.parent = this.playerRoot;
+      operatorMount.setEnabled(false);
+      operatorInstance.rootNodes.forEach(root => {
+        root.parent = operatorMount;
+      });
+
+      const rigCandidates = {
+        hip: findInstanceTransform(operatorInstance, 'hip'),
+        torso: findInstanceTransform(operatorInstance, 'torso'),
+        helmet: findInstanceTransform(operatorInstance, 'helmet'),
+        leftArm: findInstanceTransform(operatorInstance, 'arm-left'),
+        rightArm: findInstanceTransform(operatorInstance, 'arm-right'),
+        leftLeg: findInstanceTransform(operatorInstance, 'leg-left'),
+        rightLeg: findInstanceTransform(operatorInstance, 'leg-right'),
+        backpack: findInstanceTransform(operatorInstance, 'backpack'),
+        weaponSocket: findInstanceTransform(operatorInstance, 'weapon-socket'),
+      };
+      if (!Object.values(rigCandidates).every(Boolean)) {
+        throw new Error('Authored Babylon operator is missing the articulated rig/socket contract');
+      }
+
+      const rigBase = rigCandidates as Omit<BabylonOperatorRig, 'rest'>;
+      const rest = new Map<TransformNode, BabylonRigRest>();
+      for (const node of Object.values(rigBase)) rest.set(node, prepareRigNode(node));
+      const rig: BabylonOperatorRig = { ...rigBase, rest };
+
+      const loadedWeapons = new Map<WeaponId, BabylonWeaponVisual>();
+      for (const { id, spec } of weaponSpecs) {
+        const instance = await runtime.instantiate(spec);
+        localInstances.push(instance);
+        if (this.disposed || generation !== this.playerLoadGeneration) {
+          localInstances.forEach(item => item.release());
+          localMounts.forEach(item => item.dispose());
+          return;
+        }
+
+        const mount = new TransformNode(`p27-b3-weapon-${id}-${generation}`, this.scene);
+        localMounts.push(mount);
+        mount.parent = this.weaponPivot;
+        mount.setEnabled(false);
+        instance.rootNodes.forEach(root => {
+          root.parent = mount;
+        });
+        const muzzleSocket = findInstanceTransform(instance, 'muzzle-socket');
+        if (!muzzleSocket) throw new Error(`Authored Babylon ${id} weapon is missing muzzle-socket`);
+        loadedWeapons.set(id, {
+          instance,
+          assetId: spec.id,
+          mount,
+          muzzleSocket,
+        });
+      }
+
+      if (this.disposed || generation !== this.playerLoadGeneration) {
+        localInstances.forEach(instance => instance.release());
+        localMounts.forEach(mount => mount.dispose());
+        return;
+      }
+
+      this.operatorAssetInstance = operatorInstance;
+      this.operatorMountRoot = operatorMount;
+      this.authoredOperatorRig = rig;
+      for (const [id, visual] of loadedWeapons) this.authoredWeapons.set(id, visual);
+      this.weaponPivot.parent = rig.weaponSocket;
+      this.weaponPivot.position.set(0, 0, 0);
+      this.weaponPivot.rotation.set(0, 0, 0);
+      this.weaponPivot.scaling.set(1, 1, 1);
+      operatorMount.setEnabled(true);
+      this.operatorAccent.setEnabled(true);
+      this.weaponAccent.setEnabled(true);
+
+      const stats = runtime.stats();
+      this.canvas.dataset.babylonPlayerState = 'ready';
+      this.canvas.dataset.operatorVisual = `authored-${operatorSpec.lod}-babylon`;
+      this.canvas.dataset.operatorAsset = operatorSpec.id;
+      this.canvas.dataset.operatorClassAsset = operatorClass ?? 'generic';
+      this.canvas.dataset.operatorRig = 'articulated';
+      this.canvas.dataset.operatorSocket = 'weapon-socket';
+      this.canvas.dataset.weaponVisual = 'authored-babylon';
+      this.canvas.dataset.weaponRoles = [...loadedWeapons.keys()].sort().join(',');
+      this.canvas.dataset.weaponFallback = '';
+      this.canvas.dataset.babylonPlayerAssets = `operator:${operatorSpec.id}|weapons:${weaponSpecs.map(item => item.spec.id).join(',')}`;
+      this.canvas.dataset.babylonPlayerRuntime = [
+        `cached:${stats.cachedAssets}`,
+        `active:${stats.activeInstances}`,
+        `bytes:${stats.estimatedCachedCompressedBytes}`,
+      ].join('|');
+      this.canvas.dataset.babylonPlayerReuse = 'shared-runtime+authored-rig+authored-sockets+shared-presentation-signals';
+      this.updateSceneTelemetry();
+    } catch (error) {
+      this.weaponPivot.parent = this.playerRoot;
+      localInstances.forEach(instance => instance.release());
+      localMounts.forEach(mount => mount.dispose());
+      if (this.disposed || generation !== this.playerLoadGeneration) return;
+      this.canvas.dataset.babylonPlayerState = 'error';
+      this.canvas.dataset.operatorVisual = 'authored-fallback-babylon';
+      this.canvas.dataset.weaponVisual = 'authored-fallback-babylon';
+      this.canvas.dataset.babylonPlayerError = error instanceof Error ? error.message : String(error);
+    }
+  }
+
+  private syncPlayerPresentation(
+    state: SimState,
+    operatorFaction: CombatGraphicsRenderArgs[7],
+    firingIntent: boolean,
+  ) {
+    const rig = this.authoredOperatorRig;
+    const player = state.player;
+    const current = this.authoredWeapons.get(player.currentWeapon) ?? null;
+    if (!rig || !current || this.canvas.dataset.babylonPlayerState !== 'ready') return;
+
+    const durability = player.hp + player.armor;
+    if (Number.isFinite(this.lastPlayerDurability) && durability < this.lastPlayerDurability - 0.5 && !player.dead) {
+      this.operatorHitUntil = state.time + 0.18;
+    }
+    this.lastPlayerDurability = durability;
+
+    this.playerRoot.position.set(scaled(player.x), 0, scaled(player.y));
+    this.playerRoot.rotation.y = Math.atan2(-player.aim.y, player.aim.x);
+
+    for (const [node, rest] of rig.rest) {
+      node.position.copyFrom(rest.position);
+      node.rotation.copyFrom(rest.rotation);
+    }
+
+    const handling = weaponHandlingProfiles[player.currentWeapon];
+    const variantId = state.weapons[player.currentWeapon].variantId;
+    const variantPresentation = weaponVariantPresentation(variantId);
+    const reloadHandling = weaponHandlingProfiles[player.reloadWeapon];
+    const reloadDuration = Math.max(0.01, state.weapons[player.reloadWeapon].reloadSeconds * reloadHandling.reloadDurationMul);
+    const hit = state.time < this.operatorHitUntil
+      ? Math.max(0, Math.min(1, (this.operatorHitUntil - state.time) / 0.18))
+      : 0;
+    const motion = resolvePlayerHandlingAnimation({
+      operatorClass: state.build.operatorClass,
+      weapon: player.currentWeapon,
+      weaponVariantId: variantId,
+      time: state.time,
+      vx: player.vx,
+      vy: player.vy,
+      aimX: player.aim.x,
+      aimY: player.aim.y,
+      moveX: player.move.x,
+      moveY: player.move.y,
+      weaponFlash: state.weaponFlash,
+      fireCooldown: player.fireCooldown,
+      weaponRate: state.weapons[player.currentWeapon].rate,
+      firingIntent,
+      reloadT: player.reloadT,
+      reloadDuration,
+      ventT: player.ventT,
+      ventDuration: Math.max(0.01, handling.ventSeconds),
+      heat: player.weaponHeat[player.currentWeapon] ?? 0,
+      dodgeTime: player.dodgeTime,
+      hit,
+    });
+    const { profile, speed, gait, idleBreath, aimOffset, aimForward, recoil, reload, charge, vent, overheat, dodge } = motion;
+
+    rig.torso.position.y += idleBreath * 0.012;
+    rig.backpack.position.y += idleBreath * 0.008;
+    rig.helmet.rotation.z += idleBreath * 0.012;
+    rig.leftLeg.rotation.z += gait * 0.42;
+    rig.rightLeg.rotation.z -= gait * 0.42;
+    rig.leftArm.rotation.z += profile.leftArm - gait * 0.075;
+    rig.rightArm.rotation.z += profile.rightArm + gait * 0.065;
+    rig.torso.rotation.z += profile.torsoLean + aimOffset * profile.aimLean;
+    rig.hip.position.x += profile.hipOffset - Math.max(0, -aimForward) * 0.012;
+    rig.helmet.rotation.z += aimOffset * profile.aimLean * 0.48;
+    rig.weaponSocket.rotation.z += aimOffset * profile.aimLean * 0.34;
+    rig.weaponSocket.position.y += profile.aimLift * (0.45 + Math.max(0, aimForward) * 0.55) + (variantPresentation?.aimLift ?? 0);
+    rig.leftArm.rotation.x -= 0.12;
+    rig.rightArm.rotation.x += 0.12;
+
+    if (recoil > 0) {
+      const kick = handling.recoilVisual * (variantPresentation?.recoilVisualMul ?? 1) * profile.recoilScale * recoil;
+      rig.weaponSocket.position.x -= 0.1 * kick;
+      rig.torso.rotation.z -= 0.055 * kick;
+      rig.rightArm.rotation.z += 0.1 * kick;
+      if (state.build.operatorClass === 'vanguard') {
+        rig.leftArm.rotation.z -= 0.045 * kick;
+        rig.hip.position.x -= 0.04 * kick;
+      } else if (state.build.operatorClass === 'vector') {
+        rig.hip.position.x -= 0.025 * kick;
+        rig.helmet.rotation.z += 0.02 * kick;
+      } else if (state.build.operatorClass === 'systems') {
+        rig.rightArm.rotation.z += 0.035 * kick;
+      }
+    }
+
+    if (reload > 0) {
+      const cycle = Math.sin((1 - reload) * Math.PI);
+      if (handling.reloadStyle === 'mag-swap') {
+        rig.weaponSocket.rotation.z += 0.38 * cycle;
+        rig.weaponSocket.position.y -= 0.06 * cycle;
+        rig.leftArm.rotation.z += 0.46 * cycle;
+      } else if (handling.reloadStyle === 'chamber-feed') {
+        rig.weaponSocket.rotation.z += 0.58 * cycle;
+        rig.weaponSocket.position.x -= 0.07 * cycle;
+        rig.weaponSocket.position.y -= 0.11 * cycle;
+        rig.leftArm.rotation.z += 0.72 * cycle;
+        rig.rightArm.rotation.z -= 0.26 * cycle;
+        rig.hip.position.x -= 0.025 * cycle;
+      } else {
+        rig.weaponSocket.rotation.z += 0.76 * cycle;
+        rig.weaponSocket.position.y -= 0.15 * cycle;
+        rig.leftArm.rotation.z += 0.82 * cycle;
+        rig.rightArm.rotation.z -= 0.16 * cycle;
+        rig.torso.rotation.z += 0.08 * cycle;
+        rig.helmet.rotation.z += 0.035 * cycle;
+      }
+    }
+
+    if (charge > 0) {
+      const settle = Math.sin(charge * Math.PI * 0.5);
+      rig.weaponSocket.position.x -= 0.035 * settle;
+      rig.weaponSocket.position.y += 0.045 * settle;
+      rig.weaponSocket.rotation.z -= 0.1 * settle;
+      rig.torso.rotation.z += profile.chargeLean * settle;
+      rig.helmet.rotation.z -= profile.chargeLean * 0.34 * settle;
+      rig.leftArm.rotation.z -= 0.08 * settle;
+    }
+
+    if (vent > 0) {
+      const cycle = Math.sin((1 - vent) * Math.PI);
+      rig.weaponSocket.position.y -= 0.05 * cycle;
+      rig.weaponSocket.rotation.z -= (handling.ventStyle === 'coil-quench' ? 0.34 : handling.ventStyle === 'chamber-dump' ? 0.22 : 0.12) * cycle;
+      rig.backpack.rotation.z += (handling.ventStyle === 'fan-purge' ? 0.08 : 0.14) * cycle;
+      rig.torso.rotation.z += profile.ventLean * cycle;
+      if (state.build.operatorClass === 'systems') rig.leftArm.rotation.z += 0.12 * cycle;
+      if (state.build.operatorClass === 'vanguard') rig.hip.position.x -= 0.03 * cycle;
+    }
+
+    if (overheat > 0) {
+      const strain = overheat * profile.overheatStrain;
+      const tremor = Math.sin(state.time * 27 + (state.build.operatorClass === 'vector' ? 1.7 : state.build.operatorClass === 'systems' ? 3.1 : 0));
+      rig.torso.rotation.x += strain * 0.42;
+      rig.torso.position.y -= strain * 0.16;
+      rig.backpack.rotation.z += strain * (0.6 + tremor * 0.08);
+      rig.weaponSocket.rotation.z += tremor * strain * 0.22;
+      rig.rightArm.rotation.z += tremor * strain * 0.16;
+    }
+
+    if (dodge > 0) {
+      const weightedDodge = dodge * profile.dodgeWeight;
+      if (state.build.operatorClass === 'vanguard') {
+        rig.torso.rotation.z -= 0.22 * weightedDodge;
+        rig.hip.position.x += 0.075 * weightedDodge;
+        rig.leftArm.rotation.z -= 0.08 * weightedDodge;
+      } else if (state.build.operatorClass === 'vector') {
+        rig.torso.rotation.z -= 0.34 * weightedDodge;
+        rig.hip.position.x += 0.13 * weightedDodge;
+        rig.helmet.rotation.z += 0.08 * weightedDodge;
+      } else {
+        rig.torso.rotation.z -= 0.28 * weightedDodge;
+        rig.hip.position.x += 0.1 * weightedDodge;
+        rig.backpack.rotation.z += 0.16 * weightedDodge;
+      }
+    }
+
+    if (hit > 0) {
+      const stagger = Math.sin((1 - hit) * Math.PI);
+      rig.torso.rotation.z += 0.22 * stagger;
+      rig.torso.rotation.x += 0.08 * stagger;
+      rig.helmet.rotation.z -= 0.16 * stagger;
+      rig.leftArm.rotation.z += 0.18 * stagger;
+      rig.rightArm.rotation.z -= 0.12 * stagger;
+      rig.hip.position.x -= 0.06 * stagger;
+    }
+
+    if (player.dead) {
+      rig.hip.position.y -= 0.48;
+      rig.torso.rotation.z = -1.02;
+      rig.helmet.rotation.z = -0.34;
+      rig.leftArm.rotation.z = -0.12;
+      rig.rightArm.rotation.z = 0.1;
+      rig.leftLeg.rotation.z = 0.2;
+      rig.rightLeg.rotation.z = -0.22;
+    }
+
+    for (const [id, visual] of this.authoredWeapons) {
+      const active = id === player.currentWeapon;
+      visual.mount.setEnabled(active);
+      visual.mount.scaling.set(active ? (variantPresentation?.silhouetteScaleX ?? 1) : 1, 1, 1);
+    }
+
+    const heat = Math.max(0, Math.min(1, player.weaponHeat[player.currentWeapon] ?? 0));
+    const thermalCue = weaponVariantThermalCue(variantId, heat);
+    const thermalWarningAt = variantPresentation?.thermalWarningAt ?? 0.72;
+    const thermalCriticalAt = variantPresentation?.thermalCriticalAt ?? 0.98;
+    const thermalLoad = Math.max(0, Math.min(1, (heat - thermalWarningAt) / Math.max(0.04, thermalCriticalAt - thermalWarningAt)));
+    const reloadPulse = player.reloadT > 0 && player.reloadWeapon === player.currentWeapon
+      ? Math.max(0, Math.min(1, player.reloadT / Math.max(0.01, state.weapons[player.currentWeapon].reloadSeconds)))
+      : 0;
+    const flash = Math.max(0, Math.min(1, state.weaponFlash * 8));
+    const pulse = 0.75 + Math.sin(state.time * 11) * 0.12;
+    const weaponColor = colorFromHex(weaponColors[player.currentWeapon]);
+    const operatorColor = operatorFaction ? colorFromHex(factionColors[operatorFaction]) : weaponColor;
+
+    this.operatorAccentMaterial.diffuseColor.copyFrom(operatorColor.scale(0.45));
+    this.operatorAccentMaterial.emissiveColor.copyFrom(operatorColor.scale(0.18 + Math.min(0.35, heat * 0.16 + flash * 0.12)));
+    this.weaponAccentMaterial.diffuseColor.copyFrom(weaponColor.scale(0.5));
+    this.weaponAccentMaterial.emissiveColor.copyFrom(weaponColor.scale(
+      0.28 + heat * 0.9 + flash * 0.8 + reloadPulse * pulse * 0.25 + thermalLoad * 0.24,
+    ));
+    this.weaponAccent.scaling.x = variantPresentation?.silhouetteScaleX ?? 1;
+
+    current.muzzleSocket.computeWorldMatrix(true);
+    const muzzle = current.muzzleSocket.getAbsolutePosition();
+    const mode = player.dead
+      ? 'down'
+      : player.dodgeTime > 0
+        ? 'dodge'
+        : hit > 0
+          ? 'hit'
+          : player.ventT > 0
+            ? 'vent'
+            : player.reloadT > 0
+              ? 'reload'
+              : state.weaponFlash > 0
+                ? 'recoil'
+                : charge > 0.08
+                  ? 'charge'
+                  : overheat > 0.1
+                    ? 'overheat'
+                    : speed > 0.08
+                      ? 'locomotion'
+                      : 'idle';
+
+    this.canvas.dataset.operatorStance = profile.id;
+    this.canvas.dataset.operatorAnimation = mode;
+    this.canvas.dataset.operatorBlend = [
+      `move:${speed.toFixed(2)}`,
+      `aim:${Math.abs(aimOffset).toFixed(2)}`,
+      `recoil:${recoil.toFixed(2)}`,
+      `reload:${reload.toFixed(2)}`,
+      `charge:${charge.toFixed(2)}`,
+      `vent:${vent.toFixed(2)}`,
+      `overheat:${overheat.toFixed(2)}`,
+      `dodge:${dodge.toFixed(2)}`,
+      `hit:${hit.toFixed(2)}`,
+    ].join(',');
+    this.canvas.dataset.weaponActive = player.currentWeapon;
+    this.canvas.dataset.weaponAsset = current.assetId;
+    this.canvas.dataset.weaponHeat = heat.toFixed(2);
+    this.canvas.dataset.weaponThermalCue = thermalCue;
+    this.canvas.dataset.weaponVariant = variantId ?? 'family-service';
+    this.canvas.dataset.weaponHandling = `${handling.stance}:${handling.reloadStyle}:${handling.ventStyle}`;
+    this.canvas.dataset.babylonWeaponMuzzleOrigin = 'muzzle-socket';
+    this.canvas.dataset.babylonWeaponMuzzle = `${muzzle.x.toFixed(3)},${muzzle.y.toFixed(3)},${muzzle.z.toFixed(3)}`;
+    this.canvas.dataset.babylonPlayerTracking = `sim:${player.currentWeapon}|class:${state.build.operatorClass ?? 'generic'}|aim:${player.aim.x.toFixed(3)},${player.aim.y.toFixed(3)}`;
+    const runtimeStats = getBabylonGraphicsAssetRuntime(this.scene).stats();
+    this.canvas.dataset.babylonPlayerRuntime = [
+      `cached:${runtimeStats.cachedAssets}`,
+      `active:${runtimeStats.activeInstances}`,
+      `bytes:${runtimeStats.estimatedCachedCompressedBytes}`,
+    ].join('|');
+  }
+
+  private releasePlayerPresentation(reason: string) {
+    if (!this.operatorAssetInstance
+      && this.authoredWeapons.size === 0
+      && this.canvas.dataset.babylonPlayerState !== 'loading') {
+      return;
+    }
+    this.playerPresentationSignature = '';
+    this.playerLoadGeneration += 1;
+    const released = this.authoredWeapons.size + (this.operatorAssetInstance ? 1 : 0);
+    this.releaseMountedPlayerAssets();
+    this.canvas.dataset.babylonPlayerState = 'released';
+    this.canvas.dataset.operatorVisual = 'released-babylon';
+    this.canvas.dataset.weaponVisual = 'released-babylon';
+    this.canvas.dataset.babylonPlayerRelease = `${reason}:released-${released}`;
+    const stats = getBabylonGraphicsAssetRuntime(this.scene).stats();
+    this.canvas.dataset.babylonPlayerRuntime = [
+      `cached:${stats.cachedAssets}`,
+      `active:${stats.activeInstances}`,
+      `bytes:${stats.estimatedCachedCompressedBytes}`,
+    ].join('|');
+    this.updateSceneTelemetry();
+  }
+
+  private releaseMountedPlayerAssets() {
+    this.weaponPivot.parent = this.playerRoot;
+    for (const visual of this.authoredWeapons.values()) {
+      visual.instance.release();
+      visual.mount.dispose();
+    }
+    this.authoredWeapons.clear();
+    this.operatorAssetInstance?.release();
+    this.operatorAssetInstance = null;
+    this.operatorMountRoot?.dispose();
+    this.operatorMountRoot = null;
+    this.authoredOperatorRig = null;
+    this.operatorAccent.setEnabled(false);
+    this.weaponAccent.setEnabled(false);
+    this.lastPlayerDurability = Number.NaN;
   }
 
   private ensureRefineryEnvironment(state: SimState, detailScale: number) {

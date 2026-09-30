@@ -316,6 +316,31 @@ assert(
 );
 
 assert(
+  babylonRendererSource.includes("from './classArsenal'")
+    && babylonRendererSource.includes("from './playerHandlingAnimation'")
+    && babylonRendererSource.includes('OPERATOR_CLASS_ASSET_FAMILIES')
+    && babylonRendererSource.includes('WEAPON_ASSET_FAMILIES')
+    && babylonRendererSource.includes("const BABYLON_WEAPON_IDS: readonly WeaponId[] = ['carbine', 'breacher', 'rail']")
+    && babylonRendererSource.includes("findInstanceTransform(operatorInstance, 'weapon-socket')")
+    && babylonRendererSource.includes("findInstanceTransform(instance, 'muzzle-socket')")
+    && babylonRendererSource.includes('resolvePlayerHandlingAnimation({')
+    && babylonRendererSource.includes('weaponVariantPresentation(variantId)')
+    && babylonRendererSource.includes('weaponVariantThermalCue(variantId, heat)')
+    && babylonRendererSource.includes('visual.mount.setEnabled(active)')
+    && babylonRendererSource.includes('current.muzzleSocket.getAbsolutePosition()')
+    && babylonRendererSource.includes("this.canvas.dataset.operatorRig = 'articulated'")
+    && babylonRendererSource.includes("this.canvas.dataset.operatorSocket = 'weapon-socket'")
+    && babylonRendererSource.includes("this.canvas.dataset.weaponVisual = 'authored-babylon'")
+    && babylonRendererSource.includes("this.canvas.dataset.babylonWeaponMuzzleOrigin = 'muzzle-socket'")
+    && babylonRendererSource.includes('this.canvas.dataset.operatorBlend')
+    && babylonRendererSource.includes('this.canvas.dataset.weaponHandling')
+    && babylonRendererSource.includes("this.canvas.dataset.babylonPlayerReuse = 'shared-runtime+authored-rig+authored-sockets+shared-presentation-signals'")
+    && babylonRendererSource.includes("this.releasePlayerPresentation('scenario-exit')")
+    && babylonRendererSource.includes("this.releasePlayerPresentation('renderer-dispose')"),
+  'P27-B3 Babylon renderer must port class-specific authored operator/weapon attachments, shared handling and variant signals, authored muzzle origins, readable emissive accents, and deterministic player-presentation cleanup without changing combat simulation.',
+);
+
+assert(
   webgpuRendererSource.includes("from './refineryIbl'")
     && webgpuRendererSource.includes("from './refineryBloom'")
     && webgpuRendererSource.includes("from './refineryContactDepth'")
@@ -493,6 +518,7 @@ console.log('P27_A1_NEUTRAL_GRAPHICS_CONTRACT_PASS render=explicit stats=explici
 console.log('P27_A2_BABYLON_QA_BACKEND_PASS production=webgl2 qa=babylon lazy=true webgl2-only=true fallback=webgl2 telemetry=init+backend+scene+frames+dispose dependencies=core+loaders-pinned');
 console.log('P27_B1_BABYLON_CAMERA_INPUT_PASS camera=three-combat-v1 resize=explicit-pixel-ratio input=ground-plane-raycast-v1 feedback=shared simulation=unchanged');
 console.log('P27_B2_BABYLON_REFINERY_ENVIRONMENT_PASS kit=11 placements=three-parity lod=shared-runtime reuse=shared-resources cleanup=generation+release telemetry=asset+scene collision=unchanged');
+console.log('P27_B3_BABYLON_OPERATOR_WEAPON_PASS classes=3 weapons=3 rig=articulated socket=weapon-socket handling=shared variant=shared thermal=shared muzzle=authored-socket accents=emissive cleanup=generation+release simulation=unchanged');
 console.log('P21_A2_GRAPHICS_PATH_HARNESS_PASS selector=opt-in explicit=webgl2 refinery=existing-route telemetry=path+drawcalls+triangles+frame+tier android=production-default');
 console.log('P21_F1_WEBGPU_REFINERY_BACKEND_PASS production=webgl2 qa=webgpu lazy=true fallback=webgl2 assets=glb+ktx2+meshopt tsl=node-material camera=parity input=parity teardown=dispose');
 console.log('P21_F2_WEBGPU_REFINERY_PARITY_PASS stack=ibl-proxy+selective-bloom+contact-depth+atmosphere budget=adaptive captures=webgl2+webgpu gaps=explicit production=webgl2');
