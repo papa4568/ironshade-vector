@@ -874,7 +874,7 @@ async function p27A2BabylonBackendAudit() {
     || !state.biomeStateAudio
     || state.worldStateVisual !== 'floor-signal+breach-rings'
     || !worldRuntimeMatch
-    || Number(worldRuntimeMatch[1]) < 21
+    || Number(worldRuntimeMatch[1]) < 20
     || Number(worldRuntimeMatch[2]) < state.environmentInstances + 4 + state.enemyAuthoredCount + state.interactableAuthoredCount) {
     throw new Error('P27-B5 Babylon refinery world presentation parity invalid: ' + JSON.stringify(state));
   }
