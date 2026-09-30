@@ -33,7 +33,8 @@ import {
 import { selectGraphicsAssetSpec, type GraphicsAssetSpec } from './graphicsAssets';
 import { resolveEnemyBossAnimation, type EnemyBossAnimationSignals } from './enemyBossAnimation';
 import { resolvePlayerHandlingAnimation } from './playerHandlingAnimation';
-import { resolveEnemyDamageAnimation, type EnemyDamageAnimationSignals } from './skillDamageAnimation';
+import { resolveEnemyDamageAnimation, resolvePlayerSkillAnimation, type EnemyDamageAnimationSignals } from './skillDamageAnimation';
+import { BabylonAbilityVfx } from './babylonAbilityVfx';
 import { BabylonRefineryWorldPresentation } from './babylonWorldPresentation';
 import { BabylonWeaponVfx } from './babylonWeaponVfx';
 import { getWorldSize, weaponHandlingProfiles, type CombatObject, type Enemy, type SimState, type WeaponId } from './sim';
@@ -300,6 +301,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   private enemyReleaseCount = 0;
   private readonly worldPresentation: BabylonRefineryWorldPresentation;
   private readonly weaponVfx: BabylonWeaponVfx;
+  private readonly abilityVfx: BabylonAbilityVfx;
   private readonly refineryAssetInstances: BabylonGraphicsAssetInstance[] = [];
   private refineryMountRoot: TransformNode | null = null;
   private refineryEnvironmentSignature = '';
@@ -324,6 +326,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.camera = camera;
     this.worldPresentation = new BabylonRefineryWorldPresentation(scene, canvas, coarse);
     this.weaponVfx = new BabylonWeaponVfx(scene, canvas, coarse);
+    this.abilityVfx = new BabylonAbilityVfx(scene, canvas, coarse);
 
     this.playerRoot = new TransformNode('p27-b3-player-root', scene);
     this.weaponPivot = new TransformNode('p27-b3-weapon-pivot', scene);
@@ -416,6 +419,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.releaseEnemyPresentation('scenario-exit');
       this.worldPresentation.release('scenario-exit');
       this.weaponVfx.release('scenario-exit');
+      this.abilityVfx.release('scenario-exit');
       this.releaseRefineryEnvironment('scenario-exit');
       return;
     }
@@ -424,6 +428,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.ensureRefineryEnvironment(state, quality);
     this.ensurePlayerPresentation(state, quality);
     this.syncPlayerPresentation(state, operatorFaction, firingIntent);
+    this.abilityVfx.sync(state, quality);
     let muzzlePosition: Vector3 | null = null;
     const activeWeapon = this.authoredWeapons.get(state.player.currentWeapon) ?? null;
     if (activeWeapon && this.canvas.dataset.babylonPlayerState === 'ready') {
@@ -484,6 +489,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.releaseEnemyPresentation('renderer-dispose');
     this.worldPresentation.dispose();
     this.weaponVfx.dispose();
+    this.abilityVfx.dispose();
     this.releaseRefineryEnvironment('renderer-dispose');
     void disposeBabylonGraphicsAssetRuntime(this.scene);
     this.scene.dispose();
@@ -713,6 +719,16 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       hit,
     });
     const { profile, speed, gait, idleBreath, aimOffset, aimForward, recoil, reload, charge, vent, overheat, dodge } = motion;
+    const skill = resolvePlayerSkillAnimation({
+      operatorClass: state.build.operatorClass,
+      abilityIndex: state.lastAbilityIndex,
+      elapsed: state.time - state.lastAbilityAt,
+      dodge: player.dodgeTime,
+      reload: player.reloadT,
+      vent: player.ventT,
+      hit,
+      dead: player.dead,
+    });
 
     rig.torso.position.y += idleBreath * 0.012;
     rig.backpack.position.y += idleBreath * 0.008;
@@ -796,6 +812,25 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       rig.backpack.rotation.z += strain * (0.6 + tremor * 0.08);
       rig.weaponSocket.rotation.z += tremor * strain * 0.22;
       rig.rightArm.rotation.z += tremor * strain * 0.16;
+    }
+
+    if (skill.profile && skill.weight > 0) {
+      const pose = skill.profile;
+      const weight = skill.weight;
+      const impulse = skill.impulse;
+      rig.torso.rotation.z += pose.torsoLean * weight;
+      rig.torso.position.y += pose.torsoDip * weight;
+      rig.hip.position.x += pose.hipShift * weight;
+      rig.weaponSocket.position.x += pose.socketReach * weight * (0.72 + impulse * 0.28);
+      rig.weaponSocket.position.y += pose.socketLift * weight;
+      rig.weaponSocket.rotation.z += pose.socketRoll * weight;
+      rig.leftArm.rotation.z += pose.leftArm * weight;
+      rig.rightArm.rotation.z += pose.rightArm * weight;
+      rig.helmet.rotation.z -= pose.torsoLean * weight * 0.22;
+      if (skill.phase === 'action') {
+        rig.weaponSocket.position.x += pose.socketReach * impulse * 0.25;
+        rig.torso.rotation.x -= Math.abs(pose.torsoLean) * impulse * 0.16;
+      }
     }
 
     if (dodge > 0) {
@@ -897,6 +932,8 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       `dodge:${dodge.toFixed(2)}`,
       `hit:${hit.toFixed(2)}`,
     ].join(',');
+    this.canvas.dataset.operatorSkillAnimation = skill.profile && skill.phase !== 'idle' ? `${skill.profile.id}:${skill.phase}` : 'idle';
+    this.canvas.dataset.operatorSkillBlend = `weight:${skill.weight.toFixed(2)},impulse:${skill.impulse.toFixed(2)},recovery:${skill.recovery.toFixed(2)},cancel:${skill.interrupted ? 'interrupted' : skill.cancelReady ? 'ready' : 'locked'}`;
     this.canvas.dataset.weaponActive = player.currentWeapon;
     this.canvas.dataset.weaponAsset = current.assetId;
     this.canvas.dataset.weaponHeat = heat.toFixed(2);
