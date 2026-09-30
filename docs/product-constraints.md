@@ -12,6 +12,7 @@ Target **premium console/PC-quality ARPG presentation on modern phones** while p
 - Major combat actions should synchronize targeting, animation, sound, VFX, camera response, and haptics where supported.
 - Performance scaling should remove secondary presentation cost before enemy mechanics, class identity, boss complexity, or encounter density.
 - High-end devices should have a visibly richer quality mode.
+- Android phone-class windows below 600dp smallest width stay sensor-landscape. Android tablet/foldable/desktop-style windows at 600dp or wider are intentionally resizable and orientation-adaptive; the app declares the Android game category but does not use that Android 16 exception to lock large-screen orientation.
 
 ## Locked design decisions
 

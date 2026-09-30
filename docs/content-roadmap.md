@@ -5,7 +5,7 @@
 - All previously completed P20–P23 work plus P24-A–P24-D is preserved in [content-roadmap-archive.md](./content-roadmap-archive.md).
 - The 2026-09-29 code audit has been reduced to **release-critical work only**. Non-blocking cleanup/refactor ideas were removed from the active queue.
 - Priority order is intentional: **P25 release/platform/security → P26 telemetry scale resilience**.
-- **Next executable item: P25-B — Make Android 16 large-screen behavior explicit and verified.**
+- **Next executable item: P25-C — Harden the global telemetry submission trust boundary.**
 
 Only active/future executable work lives here. Completed and verified work belongs in [content-roadmap-archive.md](./content-roadmap-archive.md). Stable product rules live in [product-constraints.md](./product-constraints.md).
 
@@ -19,8 +19,6 @@ Only active/future executable work lives here. Completed and verified work belon
 - If repository evidence shows an active item is already complete, verify that evidence before archiving it. If only part is complete, rewrite the item around the remaining work.
 
 ## P25 — Release, Platform, and Security Blockers
-
-- [ ] **P25-B — Make Android 16 large-screen behavior explicit and verified** — For target SDK 36, define the intended tablet/foldable orientation/resizing behavior, apply the appropriate Android game/category configuration where justified, and verify at least one ≥600dp portrait/resize/foldable-style path in addition to the existing phone-landscape path.
 
 - [ ] **P25-C — Harden the global telemetry submission trust boundary** — Keep idempotency and rate limiting, but require a server-verifiable short-lived submission/session credential or equivalent bounded ingest control so arbitrary public callers cannot freely skew balance aggregates. Add forged, replayed, and expired submission tests and do not present telemetry as server-authoritative where authenticity cannot be proven.
 

@@ -39,6 +39,8 @@ const browserSmoke = read('scripts/browser-runtime-smoke.mjs');
 const androidSmoke = read('scripts/android-runtime-smoke.mjs');
 const browserWorkflow = read('.github/workflows/browser-e2e.yml');
 const androidWorkflow = read('.github/workflows/android-apk.yml');
+const androidConfigurator = read('scripts/configure-android.mjs');
+const androidLargeScreenSmoke = read('scripts/android-large-screen-smoke.sh');
 const pkg = JSON.parse(read('package.json')) as { scripts?: Record<string, string> };
 
 assert(meta.includes("export type TextScale = 'default' | 'large'") && meta.includes("export type ContrastMode = 'standard' | 'high'"), 'P15-E must type persisted text-scale and contrast preferences.');
@@ -68,10 +70,24 @@ for (const inset of ['safe-area-inset-top', 'safe-area-inset-right', 'safe-area-
 }
 assert(browserWorkflow.includes('- desktop') && browserWorkflow.includes('- mobile-landscape') && browserWorkflow.includes('browser-accessibility-${{ matrix.viewport }}.png'), 'Browser presentation QA must retain desktop/mobile-landscape coverage and dedicated accessibility screenshots.');
 assert(browserSmoke.includes('BROWSER_P15_ACCESSIBILITY_PASS') && browserSmoke.includes("localStorage.getItem('ironshade-vector-state-v1')") && browserSmoke.includes("accessibilityAudit('settings-accessibility')") && browserSmoke.includes('captureScreenshot(accessibilityScreenshotPath)'), 'Browser QA must verify persisted settings, accessibility/readability, and screenshot capture through the live UI.');
-assert(androidWorkflow.includes('android:screenOrientation="sensorLandscape"') && androidWorkflow.includes('ReactiveCircus/android-emulator-runner') && androidWorkflow.includes('android-fast-smoke.png'), 'Android QA must enforce the target sensor-landscape orientation and retain emulator screenshot evidence.');
+assert(
+  androidConfigurator.includes('LARGE_SCREEN_SMALLEST_WIDTH_DP = 600')
+    && androidConfigurator.includes('ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE')
+    && androidConfigurator.includes('ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED')
+    && androidConfigurator.includes("upsertAttribute(applicationTag, 'android:appCategory', 'game'")
+    && androidConfigurator.includes("upsertAttribute(activityTag, 'android:resizeableActivity', 'true'")
+    && androidWorkflow.includes('ReactiveCircus/android-emulator-runner')
+    && androidWorkflow.includes('api-level: 36')
+    && androidWorkflow.includes('bash scripts/android-large-screen-smoke.sh')
+    && androidWorkflow.includes('android-fast-smoke.png')
+    && androidWorkflow.includes('android-large-screen-portrait.png')
+    && androidWorkflow.includes('android-large-screen-resized.png')
+    && androidLargeScreenSmoke.includes('ANDROID_P25B_LARGE_SCREEN_PASS'),
+  'Android QA must preserve phone sensor-landscape while verifying adaptive >=600dp Android 16 portrait/resize behavior and screenshot evidence.',
+);
 assert(androidSmoke.includes('ANDROID_MOBILE_LAYOUT_PASS') && androidSmoke.includes('ANDROID_LIFECYCLE_RESUME_PASS'), 'Android runtime QA must retain mobile-layout and lifecycle gates.');
 
 assert(pkg.scripts?.['test:accessibility-mobile']?.includes('tests/accessibility-mobile-gate.ts'), 'P15-E regression test script is missing.');
 assert(pkg.scripts?.build?.includes('npm run test:accessibility-mobile'), 'Full production build must gate on P15-E accessibility/mobile verification.');
 
-console.log('ACCESSIBILITY_MOBILE_GATE_PASS text=large contrast=wcag-aaa motion=saved+system effects=controlled audio=controlled assist=controlled safe-area=4-sided orientation=desktop+mobile-landscape+sensor-landscape screenshots=retained');
+console.log('ACCESSIBILITY_MOBILE_GATE_PASS text=large contrast=wcag-aaa motion=saved+system effects=controlled audio=controlled assist=controlled safe-area=4-sided orientation=desktop+mobile-landscape+phone-sensor-landscape+android16-large-screen-adaptive screenshots=retained');
