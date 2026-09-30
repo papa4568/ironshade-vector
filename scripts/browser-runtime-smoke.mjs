@@ -679,15 +679,15 @@ async function p27A2BabylonBackendAudit() {
 
   const expectedPlayerLod = pointerProbe.coarse ? 2 : 1;
   const expectedOperatorAsset = state.operatorClass && state.operatorClass !== 'generic'
-    ? \`operator-\${state.operatorClass}-lod\${expectedPlayerLod}\`
-    : \`operator-field-suit-lod\${expectedPlayerLod}\`;
+    ? `operator-${state.operatorClass}-lod${expectedPlayerLod}`
+    : `operator-field-suit-lod${expectedPlayerLod}`;
   const weaponRoles = new Set(String(state.weaponRoles).split(',').filter(Boolean));
   const playerRuntimeMatch = /^cached:(\d+)\|active:(\d+)\|bytes:(\d+)$/.exec(state.playerRuntime);
   const muzzle = String(state.weaponMuzzle).split(',').map(Number);
   const handlingBlendPattern = /^move:\d+\.\d+,aim:\d+\.\d+,recoil:\d+\.\d+,reload:\d+\.\d+,charge:\d+\.\d+,vent:\d+\.\d+,overheat:\d+\.\d+,dodge:\d+\.\d+,hit:\d+\.\d+$/;
   if (state.playerState !== 'ready'
     || state.playerError
-    || state.operatorVisual !== \`authored-\${expectedPlayerLod}-babylon\`
+    || state.operatorVisual !== `authored-${expectedPlayerLod}-babylon`
     || state.operatorAsset !== expectedOperatorAsset
     || !['generic', 'vanguard', 'vector', 'systems'].includes(state.operatorClass)
     || state.operatorRig !== 'articulated'
@@ -699,19 +699,19 @@ async function p27A2BabylonBackendAudit() {
     || state.weaponFallback
     || !['carbine', 'breacher', 'rail'].every(id => weaponRoles.has(id))
     || !['carbine', 'breacher', 'rail'].includes(state.weaponActive)
-    || state.weaponAsset !== \`weapon-\${state.weaponActive}-lod\${expectedPlayerLod}\`
+    || state.weaponAsset !== `weapon-${state.weaponActive}-lod${expectedPlayerLod}`
     || !state.weaponHandling
     || !['nominal', 'warning', 'critical'].includes(state.weaponThermalCue)
     || !Number.isFinite(Number(state.weaponHeat))
     || state.weaponMuzzleOrigin !== 'muzzle-socket'
     || muzzle.length !== 3
     || !muzzle.every(Number.isFinite)
-    || !state.playerTracking.startsWith(\`sim:\${state.weaponActive}|class:\${state.operatorClass}|aim:\`)
+    || !state.playerTracking.startsWith(`sim:${state.weaponActive}|class:${state.operatorClass}|aim:`)
     || state.playerReuse !== 'shared-runtime+authored-rig+authored-sockets+shared-presentation-signals'
     || !playerRuntimeMatch
     || Number(playerRuntimeMatch[1]) < 15
     || Number(playerRuntimeMatch[2]) < state.environmentInstances + 4) {
-    throw new Error(\`P27-B3 Babylon operator/weapon presentation parity invalid: \${JSON.stringify(state)}\`);
+    throw new Error(`P27-B3 Babylon operator/weapon presentation parity invalid: ${JSON.stringify(state)}`);
   }
 
   const viewportMatch = /^(\d+)x(\d+)@ratio:([0-9.]+)@buffer:(\d+)x(\d+)$/.exec(state.viewport);
