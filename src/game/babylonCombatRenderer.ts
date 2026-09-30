@@ -36,6 +36,7 @@ import { resolvePlayerHandlingAnimation } from './playerHandlingAnimation';
 import { resolveEnemyDamageAnimation, resolvePlayerSkillAnimation, type EnemyDamageAnimationSignals } from './skillDamageAnimation';
 import { BabylonAbilityVfx } from './babylonAbilityVfx';
 import { BabylonEnemyTelegraphs } from './babylonEnemyTelegraphs';
+import { BabylonEnemyLifecycleVisuals } from './babylonEnemyLifecycleVisuals';
 import { BabylonProtocolStatusVisuals } from './babylonProtocolStatusVisuals';
 import { BabylonRefineryWorldPresentation } from './babylonWorldPresentation';
 import { BabylonWeaponVfx } from './babylonWeaponVfx';
@@ -305,6 +306,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   private readonly weaponVfx: BabylonWeaponVfx;
   private readonly abilityVfx: BabylonAbilityVfx;
   private readonly enemyTelegraphs: BabylonEnemyTelegraphs;
+  private readonly enemyLifecycleVisuals: BabylonEnemyLifecycleVisuals;
   private readonly protocolStatusVisuals: BabylonProtocolStatusVisuals;
   private readonly refineryAssetInstances: BabylonGraphicsAssetInstance[] = [];
   private refineryMountRoot: TransformNode | null = null;
@@ -332,6 +334,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.weaponVfx = new BabylonWeaponVfx(scene, canvas, coarse);
     this.abilityVfx = new BabylonAbilityVfx(scene, canvas, coarse);
     this.enemyTelegraphs = new BabylonEnemyTelegraphs(scene, canvas, coarse);
+    this.enemyLifecycleVisuals = new BabylonEnemyLifecycleVisuals(scene, canvas, coarse);
     this.protocolStatusVisuals = new BabylonProtocolStatusVisuals(scene, canvas, coarse);
 
     this.playerRoot = new TransformNode('p27-b3-player-root', scene);
@@ -418,7 +421,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
 
   render(...args: CombatGraphicsRenderArgs): void {
     if (this.disposed) return;
-    const [state, width, height, quality, , mission, , operatorFaction, , firingIntent = false, cameraFeedback] = args;
+    const [state, width, height, quality, , mission, mobileTargetId, operatorFaction, reducedTargetMotion = false, firingIntent = false, cameraFeedback] = args;
     if (mission.location !== 'asteroid-refinery') {
       this.canvas.dataset.babylonScenario = 'refinery-only';
       this.releasePlayerPresentation('scenario-exit');
@@ -427,6 +430,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.weaponVfx.release('scenario-exit');
       this.abilityVfx.release('scenario-exit');
       this.enemyTelegraphs.release('scenario-exit');
+      this.enemyLifecycleVisuals.release('scenario-exit');
       this.protocolStatusVisuals.release('scenario-exit');
       this.releaseRefineryEnvironment('scenario-exit');
       return;
@@ -446,6 +450,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.weaponVfx.sync(state, muzzlePosition, quality);
     this.ensureEnemyCatalog(quality);
     this.syncEnemyPresentation(state, quality);
+    this.enemyLifecycleVisuals.sync(state, mobileTargetId, quality, reducedTargetMotion);
     this.protocolStatusVisuals.sync(state, quality);
     this.enemyTelegraphs.sync(state, quality);
     this.worldPresentation.sync(state, mission, quality);
@@ -501,6 +506,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.weaponVfx.dispose();
     this.abilityVfx.dispose();
     this.enemyTelegraphs.dispose();
+    this.enemyLifecycleVisuals.dispose();
     this.protocolStatusVisuals.dispose();
     this.releaseRefineryEnvironment('renderer-dispose');
     void disposeBabylonGraphicsAssetRuntime(this.scene);
