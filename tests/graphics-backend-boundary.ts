@@ -162,6 +162,7 @@ const boundarySource = readFileSync(resolve(root, 'src/game/combatGraphicsBacken
 const rendererSource = readFileSync(resolve(root, 'src/game/threeCombatRenderer.ts'), 'utf8');
 const webgpuRendererSource = readFileSync(resolve(root, 'src/game/webGpuRefineryRenderer.ts'), 'utf8');
 const babylonRendererSource = readFileSync(resolve(root, 'src/game/babylonCombatRenderer.ts'), 'utf8');
+const babylonWorldSource = readFileSync(resolve(root, 'src/game/babylonWorldPresentation.ts'), 'utf8');
 const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
 const browserSmokeSource = readFileSync(resolve(root, 'scripts/browser-runtime-smoke.mjs'), 'utf8');
 const refineryVerifierSource = readFileSync(resolve(root, 'scripts/verify-authored-refinery.mjs'), 'utf8');
@@ -360,6 +361,38 @@ assert(
 );
 
 assert(
+  babylonRendererSource.includes("from './babylonWorldPresentation'")
+    && babylonRendererSource.includes('new BabylonRefineryWorldPresentation(scene, canvas, coarse)')
+    && babylonRendererSource.includes('this.worldPresentation.sync(state, mission, quality)')
+    && babylonRendererSource.includes("this.worldPresentation.release('scenario-exit')")
+    && babylonRendererSource.includes('this.worldPresentation.dispose()')
+    && babylonWorldSource.includes("from './encounters'")
+    && babylonWorldSource.includes("from './fieldLoot'")
+    && babylonWorldSource.includes("from './mapPathfinding'")
+    && babylonWorldSource.includes("from './worldMaterialPolish'")
+    && babylonWorldSource.includes('INTERACTABLE_ASSET_FAMILIES')
+    && babylonWorldSource.includes('PICKUP_ASSET_FAMILY')
+    && babylonWorldSource.includes('getNextMissionObjectiveTarget(state, mission)')
+    && babylonWorldSource.includes('findNavigationPath(state, target)')
+    && babylonWorldSource.includes('interactableWorldPresentation(object.kind)')
+    && babylonWorldSource.includes('hazardWorldPresentation(hazard.kind)')
+    && babylonWorldSource.includes('groundLootPresentation(drop.rarity)')
+    && babylonWorldSource.includes('biomeWorldState(mission.location, state)')
+    && babylonWorldSource.includes('materialWorldResponse(object.material)')
+    && babylonWorldSource.includes('p27-b5-interactable-ring-')
+    && babylonWorldSource.includes('p27-b5-objective-ring')
+    && babylonWorldSource.includes('p27-b5-hazard-ring-')
+    && babylonWorldSource.includes('p27-b5-breach-')
+    && babylonWorldSource.includes('p27-b5-loot-beam-')
+    && babylonWorldSource.includes("this.canvas.dataset.worldPresentationMode = 'scene-meshes-not-hud'")
+    && babylonWorldSource.includes("this.canvas.dataset.interactableReadability = 'shape-coded+state-emissive+floor-cue:quality-safe'")
+    && babylonWorldSource.includes("this.canvas.dataset.hazardReadability = 'shape-coded+floor-bound+quality-safe'")
+    && babylonWorldSource.includes("this.canvas.dataset.lootReadability = 'authored-capsule+rarity-shape+ring+beam'")
+    && babylonWorldSource.includes("this.canvas.dataset.worldStateVisual = 'floor-signal+breach-rings'"),
+  'P27-B5 Babylon renderer must port refinery mission objects, authored interactables, in-world objective guidance, hazards, loot, breach/world-state decoration, and shared readability contracts without HUD-only substitution or simulation changes.',
+);
+
+assert(
   webgpuRendererSource.includes("from './refineryIbl'")
     && webgpuRendererSource.includes("from './refineryBloom'")
     && webgpuRendererSource.includes("from './refineryContactDepth'")
@@ -539,6 +572,7 @@ console.log('P27_A2_BABYLON_QA_BACKEND_PASS production=webgl2 qa=babylon lazy=tr
 console.log('P27_B1_BABYLON_CAMERA_INPUT_PASS camera=three-combat-v1 resize=explicit-pixel-ratio input=ground-plane-raycast-v1 feedback=shared simulation=unchanged');
 console.log('P27_B2_BABYLON_REFINERY_ENVIRONMENT_PASS kit=11 placements=three-parity lod=shared-runtime reuse=shared-resources cleanup=generation+release telemetry=asset+scene collision=unchanged');
 console.log('P27_B3_BABYLON_OPERATOR_WEAPON_PASS classes=3 weapons=3 rig=articulated socket=weapon-socket handling=shared variant=shared thermal=shared muzzle=authored-socket accents=emissive cleanup=generation+release simulation=unchanged');
+console.log('P27_B5_BABYLON_WORLD_PRESENTATION_PASS objects=sim-state interactables=authored+shape-state objective=beacon+path hazards=shared-shapes loot=authored+rarity breach=world-state cleanup=deterministic simulation=unchanged');
 console.log('P21_A2_GRAPHICS_PATH_HARNESS_PASS selector=opt-in explicit=webgl2 refinery=existing-route telemetry=path+drawcalls+triangles+frame+tier android=production-default');
 console.log('P21_F1_WEBGPU_REFINERY_BACKEND_PASS production=webgl2 qa=webgpu lazy=true fallback=webgl2 assets=glb+ktx2+meshopt tsl=node-material camera=parity input=parity teardown=dispose');
 console.log('P21_F2_WEBGPU_REFINERY_PARITY_PASS stack=ibl-proxy+selective-bloom+contact-depth+atmosphere budget=adaptive captures=webgl2+webgpu gaps=explicit production=webgl2');

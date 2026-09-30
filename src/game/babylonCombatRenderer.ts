@@ -34,6 +34,7 @@ import { selectGraphicsAssetSpec, type GraphicsAssetSpec } from './graphicsAsset
 import { resolveEnemyBossAnimation, type EnemyBossAnimationSignals } from './enemyBossAnimation';
 import { resolvePlayerHandlingAnimation } from './playerHandlingAnimation';
 import { resolveEnemyDamageAnimation, type EnemyDamageAnimationSignals } from './skillDamageAnimation';
+import { BabylonRefineryWorldPresentation } from './babylonWorldPresentation';
 import { getWorldSize, weaponHandlingProfiles, type CombatObject, type Enemy, type SimState, type WeaponId } from './sim';
 
 const WORLD_SCALE = 0.02;
@@ -296,6 +297,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   private enemyCatalogGeneration = 0;
   private enemyCatalogReady = false;
   private enemyReleaseCount = 0;
+  private readonly worldPresentation: BabylonRefineryWorldPresentation;
   private readonly refineryAssetInstances: BabylonGraphicsAssetInstance[] = [];
   private refineryMountRoot: TransformNode | null = null;
   private refineryEnvironmentSignature = '';
@@ -318,6 +320,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.engine = engine;
     this.scene = scene;
     this.camera = camera;
+    this.worldPresentation = new BabylonRefineryWorldPresentation(scene, canvas, coarse);
 
     this.playerRoot = new TransformNode('p27-b3-player-root', scene);
     this.weaponPivot = new TransformNode('p27-b3-weapon-pivot', scene);
@@ -408,6 +411,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.canvas.dataset.babylonScenario = 'refinery-only';
       this.releasePlayerPresentation('scenario-exit');
       this.releaseEnemyPresentation('scenario-exit');
+      this.worldPresentation.release('scenario-exit');
       this.releaseRefineryEnvironment('scenario-exit');
       return;
     }
@@ -418,6 +422,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.syncPlayerPresentation(state, operatorFaction, firingIntent);
     this.ensureEnemyCatalog(quality);
     this.syncEnemyPresentation(state, quality);
+    this.worldPresentation.sync(state, mission, quality);
     this.syncCamera(state, width / Math.max(1, height), cameraFeedback);
     this.scene.render();
     this.frames += 1;
@@ -466,6 +471,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.disposed = true;
     this.releasePlayerPresentation('renderer-dispose');
     this.releaseEnemyPresentation('renderer-dispose');
+    this.worldPresentation.dispose();
     this.releaseRefineryEnvironment('renderer-dispose');
     void disposeBabylonGraphicsAssetRuntime(this.scene);
     this.scene.dispose();

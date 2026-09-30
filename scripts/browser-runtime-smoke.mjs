@@ -482,6 +482,18 @@ async function p27A2BabylonBackendAudit() {
       && Number(canvas?.dataset.enemyLoadingCount ?? 0) === 0
       && Boolean(canvas?.dataset.enemyAnimationTarget)
       && Boolean(canvas?.dataset.babylonEnemyRuntime)
+      && canvas?.dataset.babylonWorldState === 'ready'
+      && canvas?.dataset.worldPresentationMode === 'scene-meshes-not-hud'
+      && Number(canvas?.dataset.worldObjectCount ?? 0) > 0
+      && Number(canvas?.dataset.interactableActive ?? 0) > 0
+      && canvas?.dataset.interactableVisual === 'authored-babylon'
+      && canvas?.dataset.interactableReadability === 'shape-coded+state-emissive+floor-cue:quality-safe'
+      && canvas?.dataset.objectiveWorldCue === 'beacon+navigation-path'
+      && Boolean(canvas?.dataset.objectiveTarget)
+      && canvas?.dataset.hazardReadability === 'shape-coded+floor-bound+quality-safe'
+      && canvas?.dataset.lootReadability === 'authored-capsule+rarity-shape+ring+beam'
+      && canvas?.dataset.breachReadability === 'pressure-state+floor-ring+boss-priority'
+      && Boolean(canvas?.dataset.babylonWorldRuntime)
       && Boolean(canvas?.dataset.babylonPlayerRuntime)
       && Boolean(canvas?.dataset.babylonWeaponMuzzle)
       && Boolean(canvas?.dataset.babylonCameraFraming)
@@ -652,6 +664,34 @@ async function p27A2BabylonBackendAudit() {
       enemyCleanup: canvas?.dataset.babylonEnemyCleanup ?? '',
       enemyRuntime: canvas?.dataset.babylonEnemyRuntime ?? '',
       enemyFallbackReason: canvas?.dataset.babylonEnemyFallbackReason ?? '',
+      worldState: canvas?.dataset.babylonWorldState ?? '',
+      worldPresentationMode: canvas?.dataset.worldPresentationMode ?? '',
+      worldObjectCount: Number(canvas?.dataset.worldObjectCount ?? 0),
+      interactableVisual: canvas?.dataset.interactableVisual ?? '',
+      interactableAssets: canvas?.dataset.interactableAssets ?? '',
+      interactableFallback: canvas?.dataset.interactableFallback ?? '',
+      interactableActive: Number(canvas?.dataset.interactableActive ?? 0),
+      interactableAuthoredCount: Number(canvas?.dataset.interactableAuthoredCount ?? 0),
+      interactableReadability: canvas?.dataset.interactableReadability ?? '',
+      objectiveTarget: canvas?.dataset.objectiveTarget ?? '',
+      objectiveWorldCue: canvas?.dataset.objectiveWorldCue ?? '',
+      objectiveGuideCount: Number(canvas?.dataset.objectiveGuideCount ?? 0),
+      hazardActive: Number(canvas?.dataset.hazardActive ?? 0),
+      hazardReadability: canvas?.dataset.hazardReadability ?? '',
+      lootActive: Number(canvas?.dataset.lootActive ?? 0),
+      lootVisual: canvas?.dataset.lootVisual ?? '',
+      lootAsset: canvas?.dataset.lootAsset ?? '',
+      lootReadability: canvas?.dataset.lootReadability ?? '',
+      breachActive: Number(canvas?.dataset.breachActive ?? 0),
+      breachReadability: canvas?.dataset.breachReadability ?? '',
+      worldReadability: canvas?.dataset.worldReadability ?? '',
+      worldMaterialDepth: canvas?.dataset.worldMaterialDepth ?? '',
+      biomeState: canvas?.dataset.biomeState ?? '',
+      biomeStateSeverity: canvas?.dataset.biomeStateSeverity ?? '',
+      biomeStateAnimation: canvas?.dataset.biomeStateAnimation ?? '',
+      biomeStateAudio: canvas?.dataset.biomeStateAudio ?? '',
+      worldStateVisual: canvas?.dataset.worldStateVisual ?? '',
+      worldRuntime: canvas?.dataset.babylonWorldRuntime ?? '',
       sceneTelemetry: canvas?.dataset.babylonSceneTelemetry ?? '',
       rectWidth: canvas?.getBoundingClientRect().width ?? 0,
       rectHeight: canvas?.getBoundingClientRect().height ?? 0,
@@ -803,6 +843,42 @@ async function p27A2BabylonBackendAudit() {
     throw new Error(`P27-B4 Babylon enemy presentation parity invalid: ${JSON.stringify(state)}`);
   }
 
+  const interactableAssets = String(state.interactableAssets).split(',').filter(Boolean);
+  const worldRuntimeMatch = /^cached:(\d+)\|active:(\d+)\|bytes:(\d+)$/.exec(state.worldRuntime);
+  if (state.worldState !== 'ready'
+    || state.worldPresentationMode !== 'scene-meshes-not-hud'
+    || state.worldObjectCount < 1
+    || state.interactableVisual !== 'authored-babylon'
+    || state.interactableFallback
+    || state.interactableActive < 1
+    || state.interactableAuthoredCount < 1
+    || interactableAssets.length < 1
+    || !interactableAssets.every(asset => /^interactable-(control-terminal|salvage-tag-node)-lod[12]$/.test(asset))
+    || state.interactableReadability !== 'shape-coded+state-emissive+floor-cue:quality-safe'
+    || state.objectiveWorldCue !== 'beacon+navigation-path'
+    || !state.objectiveTarget
+    || state.objectiveTarget === 'complete'
+    || state.objectiveGuideCount < 0
+    || state.hazardActive < 0
+    || state.hazardReadability !== 'shape-coded+floor-bound+quality-safe'
+    || state.lootActive < 0
+    || !['procedural-ready-babylon', 'authored-babylon', 'procedural-fallback-babylon'].includes(state.lootVisual)
+    || state.lootReadability !== 'authored-capsule+rarity-shape+ring+beam'
+    || state.breachActive < 0
+    || state.breachReadability !== 'pressure-state+floor-ring+boss-priority'
+    || state.worldReadability !== 'interactables:shape+state|hazards:shape+motion|loot:shape+rarity'
+    || !/^(high|balanced|performance):material-response\+state-emissive\+quality-safe$/.test(state.worldMaterialDepth)
+    || !state.biomeState
+    || !/^\d+\.\d{2}$/.test(state.biomeStateSeverity)
+    || !state.biomeStateAnimation
+    || !state.biomeStateAudio
+    || state.worldStateVisual !== 'floor-signal+breach-rings'
+    || !worldRuntimeMatch
+    || Number(worldRuntimeMatch[1]) < 21
+    || Number(worldRuntimeMatch[2]) < state.environmentInstances + 4 + state.enemyAuthoredCount + state.interactableAuthoredCount) {
+    throw new Error('P27-B5 Babylon refinery world presentation parity invalid: ' + JSON.stringify(state));
+  }
+
   const viewportMatch = /^(\d+)x(\d+)@ratio:([0-9.]+)@buffer:(\d+)x(\d+)$/.exec(state.viewport);
   if (!viewportMatch) throw new Error(`P27-B1 Babylon viewport telemetry invalid: ${state.viewport}`);
   const [, cssWidthRaw, cssHeightRaw, ratioRaw, bufferWidthRaw, bufferHeightRaw] = viewportMatch;
@@ -829,6 +905,7 @@ async function p27A2BabylonBackendAudit() {
   console.log(`BROWSER_P27B2_BABYLON_REFINERY_PASS viewport=${viewportMode} lod=${state.environmentLod} kit=${[...refineryKit].sort().join(',')} placements=${state.environmentInstances} terminals=${state.environmentTerminals} runtime=${state.environmentRuntime} scene=${state.sceneTelemetry} reuse=${state.environmentReuse}`);
   console.log(`BROWSER_P27B3_BABYLON_OPERATOR_WEAPON_PASS viewport=${viewportMode} class=${state.operatorClass} operator=${state.operatorAsset} stance=${state.operatorStance} animation=${state.operatorAnimation} weapon=${state.weaponActive} asset=${state.weaponAsset} variant=${state.weaponVariant} thermal=${state.weaponThermalCue} muzzle=${state.weaponMuzzle} runtime=${state.playerRuntime}`);
   console.log(`BROWSER_P27B4_BABYLON_ENEMY_PASS viewport=${viewportMode} catalog=${state.enemyCatalogAssets} active=${state.enemyActive} roles=${state.enemyRoles} variants=${state.enemyVariants} visual=${state.enemyVisual} animation=${state.enemyAnimation} target=${state.enemyAnimationTarget} tracking=${state.enemyTracking} runtime=${state.enemyRuntime}`);
+  console.log(`BROWSER_P27B5_BABYLON_WORLD_PASS viewport=${viewportMode} objects=${state.worldObjectCount} interactables=${state.interactableActive}/${state.interactableAuthoredCount} assets=${state.interactableAssets} objective=${state.objectiveTarget} guide=${state.objectiveGuideCount} hazards=${state.hazardActive} loot=${state.lootActive} breaches=${state.breachActive} biome=${state.biomeState} runtime=${state.worldRuntime}`);
   return state;
 }
 
