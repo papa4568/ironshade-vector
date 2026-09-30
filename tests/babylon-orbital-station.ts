@@ -83,10 +83,10 @@ assert(
 
 assert(
   world.includes('biomeWorldState(mission.location, state)')
-    && world.includes('this.syncInteractables(')
+    && world.includes('this.syncObjects(state, detailScale);')
     && world.includes('this.syncHazards(')
     && world.includes('this.syncObjective(')
-    && world.includes('this.syncLoot(')
+    && world.includes('this.syncGroundLoot(state, detailScale);')
     && world.includes('this.syncBreaches('),
   'P27-C1 shared Babylon world presentation must retain interactables, hazards, objectives, loot, breaches, and location state cues.',
 );
