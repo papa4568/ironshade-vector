@@ -1,7 +1,22 @@
 # Graphics Engine Decision — P21-G
 
 Date: 2026-09-28
-Status: accepted for the current production roadmap
+Status: superseded on 2026-09-29 by the P27 Babylon.js migration direction
+
+## Superseding decision — P27 Babylon.js migration
+
+On 2026-09-29 the product direction changed explicitly: migrate the production combat renderer to **Babylon.js** while preserving the existing TypeScript simulation, React UI, Capacitor Android packaging, save/runtime contracts, and release QA wherever practical.
+
+The migration is staged rather than a flag-day rewrite:
+
+- Keep the current Three.js WebGL2 renderer as the production path and rollback/fallback until Babylon reaches required gameplay, visual, performance, lifecycle, and Android parity.
+- Reuse the existing `CombatGraphicsBackend` boundary, but first remove its direct type dependency on `ThreeCombatRenderer` so Babylon can implement the contract cleanly.
+- Use full Babylon.js rather than Babylon Lite. The required baseline remains a WebGL2-capable Android path; Babylon WebGPU may be added only as an optional path after Babylon WebGL2 parity is proven.
+- Keep the existing GLB/KTX2/Meshopt asset standards, LOD policy, adaptive-quality intent, deterministic QA, React HUD, and simulation coordinates. The renderer migration must not move gameplay ownership into Babylon.
+- Do not change the production default to Babylon until the roadmap's parity and Android acceptance gates are satisfied.
+- Treat the P21 measurements below as the migration baseline and rollback evidence, not as a reason to discard the new product direction.
+
+Babylon.js 9.28.0 was the current stable upstream release when this decision was recorded. Implementation should stay on a deliberately pinned supported release and update only through normal dependency verification.
 
 ## Decision
 
