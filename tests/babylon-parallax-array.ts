@@ -17,7 +17,6 @@ const director = readFileSync('src/game/director.ts', 'utf8');
 const sim = readFileSync('src/game/sim.ts', 'utf8');
 const parallax = readFileSync('src/game/parallaxDebt.ts', 'utf8');
 const smoke = readFileSync('scripts/browser-runtime-smoke.mjs', 'utf8');
-const seed = readFileSync('scripts/browser-parallax-array-seed.mjs', 'utf8');
 const workflow = readFileSync('.github/workflows/browser-e2e.yml', 'utf8');
 const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { scripts: Record<string, string> };
 
@@ -116,13 +115,10 @@ assert.ok(babylon.includes('this.worldPresentation.sync(state, mission, quality)
 assert.ok(smoke.includes('async function p27C10BabylonParallaxArrayAudit()'));
 assert.ok(smoke.includes('BROWSER_P27C10_BABYLON_PARALLAX_ARRAY_PASS'));
 assert.ok(smoke.includes("else if (targetLocation === 'parallax-array') await p27C10BabylonParallaxArrayAudit();"));
-assert.ok(workflow.includes('node scripts/browser-parallax-array-seed.mjs'));
-assert.ok(seed.includes('parallaxDebt.step = 2'));
-assert.ok(seed.includes('profile.level = Math.max(15, profile.level || 1)'));
-assert.ok(seed.includes('profile.progressionPoints = 0'));
-assert.ok(seed.includes("'ballistics-1'"));
-assert.ok(seed.includes("'engineering-2'"));
-assert.ok(seed.includes('profile.operatorNetwork.unspentPoints = 0'));
+assert.ok(smoke.includes("if (targetLocation === 'parallax-array') {"));
+assert.ok(smoke.includes("parallaxDebt.step = 2"));
+assert.ok(smoke.includes("state.profile.level = Math.max(15, state.profile.level || 1)"));
+assert.ok(smoke.includes("BROWSER_PARALLAX_ARRAY_SEED_PASS parallaxDebt=active step=2 level>=15 stage=predeploy"));
 assert.ok(workflow.includes('BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=parallax-array'));
 assert.ok(workflow.includes('p27c10-parallax-array.png'));
 assert.ok(pkg.scripts['test:babylon-parallax-array']);
