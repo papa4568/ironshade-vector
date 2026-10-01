@@ -15,6 +15,7 @@ import {
   type BabylonGraphicsAssetInstance,
 } from './babylonGraphicsAssets';
 import { BabylonDamagedVesselPresentation } from './babylonDamagedVesselPresentation';
+import { BabylonIceMinePresentation } from './babylonIceMinePresentation';
 import { BabylonJovianHarvesterPresentation } from './babylonJovianHarvesterPresentation';
 import { BabylonOrbitalStationPresentation } from './babylonOrbitalStationPresentation';
 import { BabylonRefineryLighting } from './babylonRefineryLighting';
@@ -318,6 +319,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   private readonly damagedVesselPresentation: BabylonDamagedVesselPresentation;
   private readonly spinHabitatPresentation: BabylonSpinHabitatPresentation;
   private readonly jovianHarvesterPresentation: BabylonJovianHarvesterPresentation;
+  private readonly iceMinePresentation: BabylonIceMinePresentation;
   private readonly refineryLighting: BabylonRefineryLighting;
   private readonly refineryPostProcessing: BabylonRefineryPostProcessing;
   private readonly renderBudget: AdaptiveRenderBudget;
@@ -355,6 +357,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.damagedVesselPresentation = new BabylonDamagedVesselPresentation(scene, canvas, coarse);
     this.spinHabitatPresentation = new BabylonSpinHabitatPresentation(scene, canvas, coarse);
     this.jovianHarvesterPresentation = new BabylonJovianHarvesterPresentation(scene, canvas, coarse);
+    this.iceMinePresentation = new BabylonIceMinePresentation(scene, canvas, coarse);
     this.refineryLighting = new BabylonRefineryLighting(scene, canvas);
     this.refineryPostProcessing = new BabylonRefineryPostProcessing(scene, canvas);
     this.renderBudget = new AdaptiveRenderBudget(coarse);
@@ -451,8 +454,9 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const damagedVesselScenario = mission.location === 'damaged-vessel';
     const spinHabitatScenario = mission.location === 'spin-habitat';
     const jovianHarvesterScenario = mission.location === 'jovian-harvester';
-    if (!refineryScenario && !orbitalStationScenario && !damagedVesselScenario && !spinHabitatScenario && !jovianHarvesterScenario) {
-      this.canvas.dataset.babylonScenario = 'ported:asteroid-refinery,orbital-station,damaged-vessel,spin-habitat,jovian-harvester';
+    const iceMineScenario = mission.location === 'ice-mine';
+    if (!refineryScenario && !orbitalStationScenario && !damagedVesselScenario && !spinHabitatScenario && !jovianHarvesterScenario && !iceMineScenario) {
+      this.canvas.dataset.babylonScenario = 'ported:asteroid-refinery,orbital-station,damaged-vessel,spin-habitat,jovian-harvester,ice-mine';
       this.releasePlayerPresentation('scenario-exit');
       this.releaseEnemyPresentation('scenario-exit');
       this.worldPresentation.release('scenario-exit');
@@ -465,6 +469,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.damagedVesselPresentation.release('scenario-exit');
       this.spinHabitatPresentation.release('scenario-exit');
       this.jovianHarvesterPresentation.release('scenario-exit');
+      this.iceMinePresentation.release('scenario-exit');
       this.refineryLighting.setEnabled(false);
       this.refineryPostProcessing.release('scenario-exit');
       this.releaseRefineryEnvironment('scenario-exit');
@@ -479,6 +484,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.damagedVesselPresentation.release('scenario-switch');
       this.spinHabitatPresentation.release('scenario-switch');
       this.jovianHarvesterPresentation.release('scenario-switch');
+      this.iceMinePresentation.release('scenario-switch');
       this.ensureRefineryEnvironment(state, quality);
     } else {
       this.refineryLighting.setEnabled(false);
@@ -488,18 +494,27 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         this.damagedVesselPresentation.release('scenario-switch');
         this.spinHabitatPresentation.release('scenario-switch');
         this.jovianHarvesterPresentation.release('scenario-switch');
+        this.iceMinePresentation.release('scenario-switch');
       } else if (damagedVesselScenario) {
         this.orbitalStationPresentation.release('scenario-switch');
         this.spinHabitatPresentation.release('scenario-switch');
         this.jovianHarvesterPresentation.release('scenario-switch');
+        this.iceMinePresentation.release('scenario-switch');
       } else if (spinHabitatScenario) {
         this.orbitalStationPresentation.release('scenario-switch');
         this.damagedVesselPresentation.release('scenario-switch');
         this.jovianHarvesterPresentation.release('scenario-switch');
+        this.iceMinePresentation.release('scenario-switch');
+      } else if (jovianHarvesterScenario) {
+        this.orbitalStationPresentation.release('scenario-switch');
+        this.damagedVesselPresentation.release('scenario-switch');
+        this.spinHabitatPresentation.release('scenario-switch');
+        this.iceMinePresentation.release('scenario-switch');
       } else {
         this.orbitalStationPresentation.release('scenario-switch');
         this.damagedVesselPresentation.release('scenario-switch');
         this.spinHabitatPresentation.release('scenario-switch');
+        this.jovianHarvesterPresentation.release('scenario-switch');
       }
     }
     this.ensurePlayerPresentation(state, quality);
@@ -527,7 +542,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.damagedVesselPresentation.sync(state, budget, mission.conditions.includes('low-visibility'));
     } else if (spinHabitatScenario) {
       this.spinHabitatPresentation.sync(state, budget, mission.conditions.includes('low-visibility'));
-    } else {
+    } else if (jovianHarvesterScenario) {
       this.jovianHarvesterPresentation.sync(
         state,
         budget,
@@ -535,6 +550,8 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         mission.conditions.includes('unstable-pressure'),
         mission.conditions.includes('damaged-grid'),
       );
+    } else {
+      this.iceMinePresentation.sync(state, budget, mission.conditions.includes('low-visibility'));
     }
     this.syncCamera(state, width / Math.max(1, height), cameraFeedback);
     this.scene.render();
@@ -594,6 +611,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.damagedVesselPresentation.dispose();
     this.spinHabitatPresentation.dispose();
     this.jovianHarvesterPresentation.dispose();
+    this.iceMinePresentation.dispose();
     this.refineryPostProcessing.dispose();
     this.refineryLighting.dispose();
     this.releaseRefineryEnvironment('renderer-dispose');

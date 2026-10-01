@@ -1182,6 +1182,151 @@ async function p27C4BabylonJovianHarvesterAudit() {
   return state;
 }
 
+
+async function p27C5BabylonIceMineAudit() {
+  await waitFor(
+    "(() => { const canvas = document.querySelector('canvas'); return"
+      + " canvas?.dataset.graphicsPathSelection === 'qa-explicit'"
+      + " && canvas?.dataset.graphicsPathRequested === 'babylon'"
+      + " && canvas?.dataset.graphicsPathLoaded === 'babylon'"
+      + " && !(canvas?.dataset.graphicsPathFallback ?? '')"
+      + " && !(canvas?.dataset.babylonFallbackReason ?? '')"
+      + " && canvas?.dataset.babylonInit === 'ready'"
+      + " && canvas?.dataset.babylonBackend === 'webgl2'"
+      + " && canvas?.dataset.babylonScene === 'active'"
+      + " && canvas?.dataset.babylonScenario === 'ice-mine'"
+      + " && canvas?.dataset.babylonEnvironmentState === 'ready'"
+      + " && canvas?.dataset.environmentVisual === 'procedural-ice-mine-babylon'"
+      + " && canvas?.dataset.environmentLandmark === 'subglacial-vault-ice-pillars'"
+      + " && canvas?.dataset.environmentComposition === 'access-bore+reinforced-extraction-tunnel+subglacial-vault'"
+      + " && canvas?.dataset.environmentTunnelSequence === 'access-bore>extraction-tunnel>subglacial-vault'"
+      + " && canvas?.dataset.environmentZoneIdentity === 'access-bore:frost-wall-cut|extraction-tunnel:steel-support-frames+service-deck+cryo-pumps|subglacial-vault:ice-pillar-cluster+coolant-manifolds+freeze-compressors'"
+      + " && canvas?.dataset.readabilityLanguage === 'frost-wall-corridor+support-frame-rhythm+cyan-service-deck+vault-pillars+cold-cyan-machinery'"
+      + " && canvas?.dataset.environmentMachineDetail === 'cryo-pump:2+coolant-manifold:3+freeze-compressor:2'"
+      + " && canvas?.dataset.environmentBrittleSupportIds === 'ice-brittle-gate-a,ice-brittle-gate-b'"
+      + " && /^(intact|damaged|partial|cleared)$/.test(canvas?.dataset.environmentBrittleSupportState ?? '')"
+      + " && canvas?.dataset.environmentFractureVfx === 'support-cracks+shard-burst+frost-pulse'"
+      + " && /^(idle|cracking|collapsing|settled)$/.test(canvas?.dataset.environmentFractureState ?? '')"
+      + " && ['4-shards+2-cracks+frost-pulse', '8-shards+3-cracks+frost-pulse'].includes(canvas?.dataset.environmentFractureDetail ?? '')"
+      + " && canvas?.dataset.environmentHazardLanguage === 'shared-hazards+brittle-support-fracture'"
+      + " && canvas?.dataset.locationArtIdentity === 'bore-crystals|frosted-industrial|ice-cyan|drill-service'"
+      + " && canvas?.dataset.interactableBiome === 'ice-mine'"
+      + " && canvas?.dataset.interactableMode === 'ice-mine-cryo-machinery+mission-controls'"
+      + " && Number(canvas?.dataset.interactableLocationCueCount ?? 0) > 0"
+      + " && canvas?.dataset.bossBiome === 'ice-mine'"
+      + " && canvas?.dataset.bossPresentation === 'rhea-kade'"
+      + " && canvas?.dataset.bossSilhouette === 'bore-cowl+cryo-tanks+fracture-ram'"
+      + " && canvas?.dataset.bossCue === 'fracture-ring+cryo-halo+fracture-ram'"
+      + " && Number(canvas?.dataset.babylonIceMineRoutes ?? 0) >= 6"
+      + " && canvas?.dataset.babylonIceMineLandmarks === 'ACCESS BORE|EXTRACTION TUNNEL|SUBGLACIAL VAULT'"
+      + " && canvas?.dataset.babylonWorldState === 'ready'"
+      + " && canvas?.dataset.worldPresentationMode === 'scene-meshes-not-hud'"
+      + " && Number(canvas?.dataset.worldObjectCount ?? 0) > 0"
+      + " && Number(canvas?.dataset.interactableActive ?? 0) > 0"
+      + " && canvas?.dataset.interactableVisual === 'authored-babylon'"
+      + " && canvas?.dataset.objectiveWorldCue === 'beacon+navigation-path'"
+      + " && Boolean(canvas?.dataset.objectiveTarget)"
+      + " && canvas?.dataset.hazardReadability === 'shape-coded+floor-bound+quality-safe'"
+      + " && canvas?.dataset.babylonPlayerState === 'ready'"
+      + " && canvas?.dataset.babylonEnemyCatalogState === 'ready'"
+      + " && canvas?.dataset.babylonEnemyState === 'ready'"
+      + " && Number(canvas?.dataset.enemyActive ?? 0) > 0"
+      + " && Number(canvas?.dataset.babylonFrames ?? 0) >= 2; })()",
+    'P27-C5 Babylon Ice Mine parity',
+    45_000,
+  );
+
+  const beforeMove = await evaluate("document.querySelector('canvas')?.dataset.babylonIceMinePlayerPosition ?? ''");
+  if (!/^\d+\.\d,\d+\.\d$/.test(beforeMove)) {
+    throw new Error('P27-C5 Ice Mine player position telemetry unavailable before movement: ' + beforeMove);
+  }
+  for (const holdMs of [260, 520]) {
+    await call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
+    await sleep(holdMs);
+    await call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
+    await sleep(140);
+    const moved = await evaluate("document.querySelector('canvas')?.dataset.babylonIceMinePlayerPosition !== " + JSON.stringify(beforeMove));
+    if (moved) break;
+  }
+  await waitFor(
+    "document.querySelector('canvas')?.dataset.babylonIceMinePlayerPosition !== " + JSON.stringify(beforeMove),
+    'P27-C5 Ice Mine movement',
+    5_000,
+  );
+  const afterMove = await evaluate("document.querySelector('canvas')?.dataset.babylonIceMinePlayerPosition ?? ''");
+
+  const state = await evaluate("(() => { const canvas = document.querySelector('canvas'); return {"
+    + " scenario: canvas?.dataset.babylonScenario ?? '', environmentVisual: canvas?.dataset.environmentVisual ?? '',"
+    + " kit: canvas?.dataset.environmentKit ?? '', instances: Number(canvas?.dataset.environmentInstances ?? 0),"
+    + " profile: canvas?.dataset.environmentPerformanceProfile ?? '', budget: canvas?.dataset.environmentInstanceBudget ?? '',"
+    + " landmark: canvas?.dataset.environmentLandmark ?? '', composition: canvas?.dataset.environmentComposition ?? '',"
+    + " sequence: canvas?.dataset.environmentTunnelSequence ?? '', service: canvas?.dataset.environmentServiceDetails ?? '',"
+    + " surface: canvas?.dataset.environmentSurfaceDetail ?? '', machinery: canvas?.dataset.environmentMachineDetail ?? '',"
+    + " brittle: canvas?.dataset.environmentBrittleSupports ?? '', brittleState: canvas?.dataset.environmentBrittleSupportState ?? '',"
+    + " fractureVfx: canvas?.dataset.environmentFractureVfx ?? '', fractureState: canvas?.dataset.environmentFractureState ?? '',"
+    + " fractureDetail: canvas?.dataset.environmentFractureDetail ?? '', fractureSupports: canvas?.dataset.environmentFractureSupports ?? '',"
+    + " hazardLanguage: canvas?.dataset.environmentHazardLanguage ?? '', ambientDetail: canvas?.dataset.environmentAmbientDetail ?? '',"
+    + " localCues: Number(canvas?.dataset.interactableLocationCueCount ?? 0), boss: canvas?.dataset.bossPresentation ?? '',"
+    + " bossCue: canvas?.dataset.bossCue ?? '', bossCueState: canvas?.dataset.bossCueState ?? '',"
+    + " parity: canvas?.dataset.babylonIceMineParity ?? '', identity: canvas?.dataset.locationArtIdentity ?? '',"
+    + " routes: Number(canvas?.dataset.babylonIceMineRoutes ?? 0), landmarks: canvas?.dataset.babylonIceMineLandmarks ?? '',"
+    + " lighting: canvas?.dataset.babylonLightingProfile ?? '', lightingBudget: canvas?.dataset.babylonLightingBudget ?? '',"
+    + " locationLighting: canvas?.dataset.locationLighting ?? '', tone: canvas?.dataset.environmentTone ?? '',"
+    + " worldObjects: Number(canvas?.dataset.worldObjectCount ?? 0), interactables: Number(canvas?.dataset.interactableActive ?? 0),"
+    + " enemies: Number(canvas?.dataset.enemyActive ?? 0), playerPosition: canvas?.dataset.babylonIceMinePlayerPosition ?? '' }; })()");
+
+  if (!state
+    || state.scenario !== 'ice-mine'
+    || state.environmentVisual !== 'procedural-ice-mine-babylon'
+    || state.instances < 40
+    || state.landmark !== 'subglacial-vault-ice-pillars'
+    || state.composition !== 'access-bore+reinforced-extraction-tunnel+subglacial-vault'
+    || state.sequence !== 'access-bore>extraction-tunnel>subglacial-vault'
+    || !state.service.includes('support-frame:6+service-deck:4+cryo-machinery:7')
+    || state.surface !== 'frost-wall:10+ice-pillar:5'
+    || state.machinery !== 'cryo-pump:2+coolant-manifold:3+freeze-compressor:2'
+    || !/^intact:\d+\+failed:\d+\+damaged:\d+$/.test(state.brittle)
+    || !/^(intact|damaged|partial|cleared)$/.test(state.brittleState)
+    || state.fractureVfx !== 'support-cracks+shard-burst+frost-pulse'
+    || !/^(idle|cracking|collapsing|settled)$/.test(state.fractureState)
+    || !/^(4-shards\+2-cracks|8-shards\+3-cracks)\+frost-pulse$/.test(state.fractureDetail)
+    || !/^cracking:\d+\+collapsing:\d+\+settled:\d+$/.test(state.fractureSupports)
+    || state.hazardLanguage !== 'shared-hazards+brittle-support-fracture'
+    || state.localCues < 1
+    || state.boss !== 'rhea-kade'
+    || state.bossCue !== 'fracture-ring+cryo-halo+fracture-ram'
+    || !/^(queued|active-phase-[12])$/.test(state.bossCueState)
+    || state.parity !== 'architecture+frost-materials+props+interactables+hazards+fracture+navigation+boss-cues+shared-world-cues'
+    || state.identity !== 'bore-crystals|frosted-industrial|ice-cyan|drill-service'
+    || state.routes < 6
+    || state.landmarks !== 'ACCESS BORE|EXTRACTION TUNNEL|SUBGLACIAL VAULT'
+    || state.lighting !== 'ice-cyan'
+    || !/^tier:(high|balanced|performance)\|practical:(1|2)\|shadows:off$/.test(state.lightingBudget)
+    || !/^ice-mine:ice-cyan:aces-\d+\.\d{2}$/.test(state.locationLighting)
+    || !/^aces-\d+\.\d{2}$/.test(state.tone)
+    || state.worldObjects < 1
+    || state.interactables < 1
+    || state.enemies < 1
+    || state.playerPosition !== afterMove) {
+    throw new Error('P27-C5 Babylon Ice Mine runtime parity regressed: ' + JSON.stringify(state));
+  }
+  if (viewportMode === 'mobile-landscape' && state.fractureDetail !== '4-shards+2-cracks+frost-pulse') {
+    throw new Error('P27-C5 mobile Ice Mine fracture detail did not reduce: ' + JSON.stringify(state));
+  }
+
+  console.log('BROWSER_P27C5_BABYLON_ICE_MINE_PASS viewport=' + viewportMode
+    + ' identity=' + state.identity
+    + ' routes=' + state.routes
+    + ' landmarks=' + state.landmarks
+    + ' machinery=' + state.localCues
+    + ' brittle=' + state.brittleState + ':' + state.brittle
+    + ' fracture=' + state.fractureState + ':' + state.fractureDetail
+    + ' boss=' + state.boss + ':' + state.bossCueState
+    + ' movement=' + beforeMove + '->' + afterMove
+    + ' lighting=' + state.locationLighting);
+  return state;
+}
+
 async function p27A2BabylonBackendAudit() {
   const babylonInitState = await evaluate(`(() => {
     const canvas = document.querySelector('canvas');
@@ -3814,6 +3959,7 @@ try {
     else if (targetLocation === 'damaged-vessel') await p27C2BabylonDamagedVesselAudit();
     else if (targetLocation === 'spin-habitat') await p27C3BabylonSpinHabitatAudit();
     else if (targetLocation === 'jovian-harvester') await p27C4BabylonJovianHarvesterAudit();
+    else if (targetLocation === 'ice-mine') await p27C5BabylonIceMineAudit();
     else await p27A2BabylonBackendAudit();
     await performanceDiagnosticsAudit();
     if (pageExceptions.length > 0) {
