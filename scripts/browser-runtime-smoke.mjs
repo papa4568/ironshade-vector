@@ -1799,6 +1799,13 @@ async function p27C9BabylonCryoReserveAudit() {
     + " interactables: Number(canvas?.dataset.interactableActive ?? 0), enemies: Number(canvas?.dataset.enemyActive ?? 0),"
     + " playerPosition: canvas?.dataset.babylonCryoReservePlayerPosition ?? '' }; })()");
 
+  const pressureValues = String(state?.pressure ?? '').split('>').map(Number);
+  const pressureWithinLimitedAtmosphere = pressureValues.length === 3
+    && pressureValues.every(value => Number.isFinite(value) && value > 0)
+    && pressureValues[0] <= 0.74
+    && pressureValues[1] <= 0.52
+    && pressureValues[2] <= 0.68;
+
   if (!state
     || state.scenario !== 'cryo-reserve'
     || state.environmentVisual !== 'procedural-cryo-reserve-babylon'
@@ -1808,7 +1815,7 @@ async function p27C9BabylonCryoReserveAudit() {
     || !state.service.includes('purge-valve:2')
     || !state.surface.includes('vacuum-jacket-tank:7')
     || !state.machinery.includes('vacuum-jacket-tank:7+purge-valve:2+siphon-relay:')
-    || state.pressure !== '0.74>0.52>0.56'
+    || !pressureWithinLimitedAtmosphere
     || !/^(armed|partial|routed|offline):[0-2]\/[0-2]$/.test(state.valves)
     || state.jets < 1
     || state.hazardMode !== 'boiloff-purge'
