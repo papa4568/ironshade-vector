@@ -27,6 +27,26 @@ const evaluate = expression => new Promise((resolve, reject) => {
 });
 
 const result = await evaluate(`(() => {
+  const qaAllocations = [
+    'ballistics-1', 'ballistics-2', 'ballistics-3',
+    'mobility-1', 'mobility-2', 'mobility-3',
+    'systems-1', 'systems-2', 'systems-3',
+    'survival-1', 'survival-2', 'survival-3',
+    'engineering-1', 'engineering-2',
+  ];
+  const seedProfile = profile => {
+    if (!profile) return false;
+    profile.level = Math.max(15, profile.level || 1);
+    profile.xp = Math.max(7140, profile.xp || 0);
+    profile.progressionPoints = 0;
+    profile.allocatedNodes = [...qaAllocations];
+    if (profile.operatorNetwork) {
+      profile.operatorNetwork.allocatedNodeIds = [...qaAllocations];
+      profile.operatorNetwork.unspentPoints = 0;
+      profile.operatorNetwork.plannedTargetNodeIds = [];
+    }
+    return true;
+  };
   const seedCampaign = campaign => {
     if (!campaign?.story?.parallaxDebt || !campaign?.story?.interdiction || !campaign?.story?.postKhepri) return false;
     if (campaign.story.blackLattice) {
@@ -112,4 +132,4 @@ socket.close();
 if (result?.exceptionDetails || result?.result?.exceptionDetails) {
   throw new Error('Failed to seed Parallax Array QA campaign finale.');
 }
-console.log('BROWSER_PARALLAX_ARRAY_SEED_PASS parallaxDebt=active step=2 level>=15');
+console.log('BROWSER_PARALLAX_ARRAY_SEED_PASS parallaxDebt=active step=2 level>=15 network=14/14-spent');
