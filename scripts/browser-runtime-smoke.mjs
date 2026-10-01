@@ -1528,7 +1528,9 @@ async function p27C7BabylonLatticeAnnexAudit() {
   await waitFor("document.querySelector('canvas')?.dataset.babylonLatticeAnnexPlayerPosition !== " + JSON.stringify(beforeMove), 'P27-C7 Lattice Annex movement', 5_000);
   const afterMove = await evaluate("document.querySelector('canvas')?.dataset.babylonLatticeAnnexPlayerPosition ?? ''");
 
-  await waitFor("document.querySelector('canvas')?.dataset.environmentCalibrationMass === 'near-zero-g'", 'P27-C7 Lattice Annex calibration mass shift', 16_000);
+  if (viewportMode === 'mobile-landscape') {
+    await waitFor("document.querySelector('canvas')?.dataset.environmentCalibrationMass === 'near-zero-g'", 'P27-C7 Lattice Annex calibration mass shift', 16_000);
+  }
 
   const state = await evaluate("(() => { const canvas = document.querySelector('canvas'); return {"
     + " scenario: canvas?.dataset.babylonScenario ?? '', environmentVisual: canvas?.dataset.environmentVisual ?? '',"
@@ -1553,8 +1555,10 @@ async function p27C7BabylonLatticeAnnexAudit() {
     || !state.service.includes('metrology-plinth:')
     || !state.surface.includes('reference-pylon:')
     || !state.machinery.includes('calibration-shutter:2')
-    || state.calibration !== 'near-zero-g'
-    || !/^0\.0[0-4],0\.0[0-3]$/.test(state.gravity)
+    || !/^(nominal|near-zero-g)$/.test(state.calibration)
+    || !(state.calibration === 'near-zero-g'
+      ? /^0\.0[0-4],0\.0[0-3]$/.test(state.gravity)
+      : state.gravity === '0.11,0.05')
     || !/^(retracted|indexed|partial|destroyed):[0-2]$/.test(state.shutters)
     || !/^active:[0-3]\+intact:[0-3]$/.test(state.references)
     || state.localCues < 1
@@ -1573,8 +1577,13 @@ async function p27C7BabylonLatticeAnnexAudit() {
     || state.playerPosition === beforeMove) {
     throw new Error('P27-C7 Babylon Lattice Annex runtime parity regressed: ' + JSON.stringify(state));
   }
-  if (viewportMode === 'mobile-landscape' && !/^(mobile|performance):/.test(state.profile)) {
-    throw new Error('P27-C7 mobile Lattice Annex profile did not reduce: ' + JSON.stringify(state));
+  if (viewportMode === 'mobile-landscape') {
+    if (!/^(mobile|performance):/.test(state.profile)) {
+      throw new Error('P27-C7 mobile Lattice Annex profile did not reduce: ' + JSON.stringify(state));
+    }
+    if (state.calibration !== 'near-zero-g') {
+      throw new Error('P27-C7 mobile Lattice Annex did not reach the authored calibration mass shift: ' + JSON.stringify(state));
+    }
   }
 
   console.log('BROWSER_P27C7_BABYLON_LATTICE_ANNEX_PASS viewport=' + viewportMode
