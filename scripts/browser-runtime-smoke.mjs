@@ -1594,6 +1594,130 @@ async function p27C7BabylonLatticeAnnexAudit() {
   return state;
 }
 
+
+async function p27C8BabylonMomentumExchangeAudit() {
+  await waitFor(
+    "(() => { const canvas = document.querySelector('canvas'); return"
+      + " canvas?.dataset.graphicsPathSelection === 'qa-explicit'"
+      + " && canvas?.dataset.graphicsPathRequested === 'babylon'"
+      + " && canvas?.dataset.graphicsPathLoaded === 'babylon'"
+      + " && !(canvas?.dataset.graphicsPathFallback ?? '')"
+      + " && !(canvas?.dataset.babylonFallbackReason ?? '')"
+      + " && canvas?.dataset.babylonInit === 'ready'"
+      + " && canvas?.dataset.babylonBackend === 'webgl2'"
+      + " && canvas?.dataset.babylonScene === 'active'"
+      + " && canvas?.dataset.babylonScenario === 'momentum-exchange'"
+      + " && canvas?.dataset.babylonEnvironmentState === 'ready'"
+      + " && canvas?.dataset.environmentVisual === 'procedural-momentum-exchange-babylon'"
+      + " && canvas?.dataset.environmentLandmark === 'counter-rotating-flywheel-transfer-lane'"
+      + " && canvas?.dataset.environmentComposition === 'brake-deck+near-zero-g-transfer-tunnel+countermass-cradle'"
+      + " && canvas?.dataset.environmentZoneIdentity === 'brake:flywheel-housings+capture-collar|tunnel:electromagnetic-rails+near-zero-g+countermass-wash|cradle:counterweight-cradle+reference-bus'"
+      + " && canvas?.dataset.environmentMaterials === 'magnetic-machinery+brushed-ferrous+transfer-blue+capture-cyan'"
+      + " && canvas?.dataset.environmentCountermassTimeline === '9.0s:first-wash>20.0s:transfer-reversal'"
+      + " && canvas?.dataset.environmentTransferGravity === '0.05'"
+      + " && /^(armed|partial|loaded|offline):[0-2]\/[0-2]$/.test(canvas?.dataset.environmentCaptureDrums ?? '')"
+      + " && canvas?.dataset.environmentHazardLanguage === 'shared-hazards+countermass-wash+vector-wash+near-zero-g+magnetic-transfer'"
+      + " && canvas?.dataset.locationArtIdentity === 'flywheel-lane|magnetic-machinery|transfer-blue|capture-service'"
+      + " && canvas?.dataset.interactableBiome === 'momentum-exchange'"
+      + " && Number(canvas?.dataset.interactableLocationCueCount ?? 0) > 0"
+      + " && canvas?.dataset.bossBiome === 'momentum-exchange'"
+      + " && canvas?.dataset.bossPresentation === 'iona-vale'"
+      + " && canvas?.dataset.bossSilhouette === 'brake-crown+counterweights+transfer-core'"
+      + " && canvas?.dataset.bossCue === 'brake-wave+partition-sweep+recoil-vector'"
+      + " && Number(canvas?.dataset.babylonMomentumExchangeRoutes ?? 0) >= 6"
+      + " && canvas?.dataset.babylonMomentumExchangeLandmarks === 'BRAKE DECK|TRANSFER TUNNEL|COUNTERMASS CRADLE'"
+      + " && canvas?.dataset.babylonWorldState === 'ready'"
+      + " && canvas?.dataset.worldPresentationMode === 'scene-meshes-not-hud'"
+      + " && Number(canvas?.dataset.worldObjectCount ?? 0) > 0"
+      + " && Number(canvas?.dataset.interactableActive ?? 0) > 0"
+      + " && canvas?.dataset.hazardReadability === 'shape-coded+floor-bound+quality-safe'"
+      + " && Number(canvas?.dataset.enemyActive ?? 0) > 0"
+      + " && Number(canvas?.dataset.babylonFrames ?? 0) >= 2; })()",
+    'P27-C8 Babylon Momentum Exchange parity',
+    45_000,
+  );
+
+  const beforeMove = await evaluate("document.querySelector('canvas')?.dataset.babylonMomentumExchangePlayerPosition ?? ''");
+  if (!/^\d+\.\d,\d+\.\d$/.test(beforeMove)) {
+    throw new Error('P27-C8 Momentum Exchange player position telemetry unavailable before movement: ' + beforeMove);
+  }
+  for (const key of ['d', 'w', 'a']) {
+    const code = key === 'd' ? 'KeyD' : key === 'w' ? 'KeyW' : 'KeyA';
+    const virtual = key === 'd' ? 68 : key === 'w' ? 87 : 65;
+    await call('Input.dispatchKeyEvent', { type: 'keyDown', key, code, windowsVirtualKeyCode: virtual, nativeVirtualKeyCode: virtual });
+    await sleep(420);
+    await call('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: virtual, nativeVirtualKeyCode: virtual });
+    await sleep(140);
+    const moved = await evaluate("document.querySelector('canvas')?.dataset.babylonMomentumExchangePlayerPosition !== " + JSON.stringify(beforeMove));
+    if (moved) break;
+  }
+  await waitFor("document.querySelector('canvas')?.dataset.babylonMomentumExchangePlayerPosition !== " + JSON.stringify(beforeMove), 'P27-C8 Momentum Exchange movement', 5_000);
+  const afterMove = await evaluate("document.querySelector('canvas')?.dataset.babylonMomentumExchangePlayerPosition ?? ''");
+
+  await waitFor(
+    "(() => { const canvas = document.querySelector('canvas'); return"
+      + " canvas?.dataset.environmentHazardMode === 'countermass-wash'"
+      + " && Number(canvas?.dataset.environmentCountermassWashes ?? 0) > 0; })()",
+    'P27-C8 Momentum Exchange authored countermass wash',
+    16_000,
+  );
+
+  const state = await evaluate("(() => { const canvas = document.querySelector('canvas'); return {"
+    + " scenario: canvas?.dataset.babylonScenario ?? '', environmentVisual: canvas?.dataset.environmentVisual ?? '',"
+    + " profile: canvas?.dataset.environmentPerformanceProfile ?? '', budget: canvas?.dataset.environmentInstanceBudget ?? '',"
+    + " service: canvas?.dataset.environmentServiceDetails ?? '', surface: canvas?.dataset.environmentSurfaceDetail ?? '',"
+    + " machinery: canvas?.dataset.environmentMachineDetail ?? '', transferGravity: canvas?.dataset.environmentTransferGravity ?? '',"
+    + " capture: canvas?.dataset.environmentCaptureDrums ?? '', washes: Number(canvas?.dataset.environmentCountermassWashes ?? 0),"
+    + " hazardMode: canvas?.dataset.environmentHazardMode ?? '', localCues: Number(canvas?.dataset.interactableLocationCueCount ?? 0),"
+    + " boss: canvas?.dataset.bossPresentation ?? '', bossCueState: canvas?.dataset.bossCueState ?? '',"
+    + " parity: canvas?.dataset.babylonMomentumExchangeParity ?? '', identity: canvas?.dataset.locationArtIdentity ?? '',"
+    + " routes: Number(canvas?.dataset.babylonMomentumExchangeRoutes ?? 0), landmarks: canvas?.dataset.babylonMomentumExchangeLandmarks ?? '',"
+    + " lighting: canvas?.dataset.babylonLightingProfile ?? '', lightingBudget: canvas?.dataset.babylonLightingBudget ?? '',"
+    + " locationLighting: canvas?.dataset.locationLighting ?? '', worldObjects: Number(canvas?.dataset.worldObjectCount ?? 0),"
+    + " interactables: Number(canvas?.dataset.interactableActive ?? 0), enemies: Number(canvas?.dataset.enemyActive ?? 0),"
+    + " playerPosition: canvas?.dataset.babylonMomentumExchangePlayerPosition ?? '' }; })()");
+
+  if (!state
+    || state.scenario !== 'momentum-exchange'
+    || state.environmentVisual !== 'procedural-momentum-exchange-babylon'
+    || !/^(full|balanced|mobile|performance):procedural:structure-shadows-off$/.test(state.profile)
+    || !state.budget.includes('flywheel:3')
+    || !state.budget.includes('drum:2')
+    || !state.service.includes('capture-cradle:')
+    || !state.surface.includes('electromagnetic-rail:')
+    || !state.machinery.includes('counter-rotating-flywheel:3')
+    || state.transferGravity !== '0.05'
+    || !/^(armed|partial|loaded|offline):[0-2]\/[0-2]$/.test(state.capture)
+    || state.washes < 1
+    || state.hazardMode !== 'countermass-wash'
+    || state.localCues < 1
+    || state.boss !== 'iona-vale'
+    || !/^(queued|active-phase-[12]:(none|brakeWave|partitionSweep|recoilVector))$/.test(state.bossCueState)
+    || state.parity !== 'flywheel-transfer-architecture+magnetic-machinery+props+interactables+hazards+countermass-washes+capture-drums+navigation+boss-cues+shared-world-cues'
+    || state.identity !== 'flywheel-lane|magnetic-machinery|transfer-blue|capture-service'
+    || state.routes < 6
+    || state.landmarks !== 'BRAKE DECK|TRANSFER TUNNEL|COUNTERMASS CRADLE'
+    || state.lighting !== 'transfer-blue'
+    || !/^tier:(high|balanced|performance)\|practical:(1|2)\|shadows:off$/.test(state.lightingBudget)
+    || !/^momentum-exchange:transfer-blue:aces-\d+\.\d{2}$/.test(state.locationLighting)
+    || state.worldObjects < 1
+    || state.interactables < 1
+    || state.enemies < 1
+    || state.playerPosition === beforeMove) {
+    throw new Error('P27-C8 Babylon Momentum Exchange runtime parity regressed: ' + JSON.stringify(state));
+  }
+  if (viewportMode === 'mobile-landscape' && !/^(mobile|performance):/.test(state.profile)) {
+    throw new Error('P27-C8 mobile Momentum Exchange profile did not reduce: ' + JSON.stringify(state));
+  }
+
+  console.log('BROWSER_P27C8_BABYLON_MOMENTUM_EXCHANGE_PASS viewport=' + viewportMode
+    + ' identity=' + state.identity + ' routes=' + state.routes + ' landmarks=' + state.landmarks
+    + ' capture=' + state.capture + ' washes=' + state.washes + ':' + state.hazardMode
+    + ' boss=' + state.boss + ':' + state.bossCueState + ' movement=' + beforeMove + '->' + afterMove
+    + ' lighting=' + state.locationLighting);
+  return state;
+}
+
 async function p27A2BabylonBackendAudit() {
   const babylonInitState = await evaluate(`(() => {
     const canvas = document.querySelector('canvas');
@@ -4229,6 +4353,7 @@ try {
     else if (targetLocation === 'ice-mine') await p27C5BabylonIceMineAudit();
     else if (targetLocation === 'solar-yard') await p27C6BabylonSolarYardAudit();
     else if (targetLocation === 'lattice-annex') await p27C7BabylonLatticeAnnexAudit();
+    else if (targetLocation === 'momentum-exchange') await p27C8BabylonMomentumExchangeAudit();
     else await p27A2BabylonBackendAudit();
     await performanceDiagnosticsAudit();
     if (pageExceptions.length > 0) {
