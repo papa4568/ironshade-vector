@@ -1467,6 +1467,124 @@ async function p27C6BabylonSolarYardAudit() {
   return state;
 }
 
+
+async function p27C7BabylonLatticeAnnexAudit() {
+  await waitFor(
+    "(() => { const canvas = document.querySelector('canvas'); return"
+      + " canvas?.dataset.graphicsPathSelection === 'qa-explicit'"
+      + " && canvas?.dataset.graphicsPathRequested === 'babylon'"
+      + " && canvas?.dataset.graphicsPathLoaded === 'babylon'"
+      + " && !(canvas?.dataset.graphicsPathFallback ?? '')"
+      + " && !(canvas?.dataset.babylonFallbackReason ?? '')"
+      + " && canvas?.dataset.babylonInit === 'ready'"
+      + " && canvas?.dataset.babylonBackend === 'webgl2'"
+      + " && canvas?.dataset.babylonScene === 'active'"
+      + " && canvas?.dataset.babylonScenario === 'lattice-annex'"
+      + " && canvas?.dataset.babylonEnvironmentState === 'ready'"
+      + " && canvas?.dataset.environmentVisual === 'procedural-lattice-annex-babylon'"
+      + " && canvas?.dataset.environmentLandmark === 'long-reference-pylon-gallery'"
+      + " && canvas?.dataset.environmentComposition === 'cold-metrology-ring+long-reference-gallery+sample-vault'"
+      + " && canvas?.dataset.environmentZoneIdentity === 'ring:survey-ceramic+metrology-plinths|gallery:reference-pylon-row+calibration-rails+mass-shift-bands|vault:sample-cradles+calibration-shutters+reference-network'"
+      + " && canvas?.dataset.environmentMaterials === 'survey-ceramic+brushed-metrology-steel+black-reference-glass+metrology-teal'"
+      + " && canvas?.dataset.environmentCalibrationTimeline === '10.0s:near-zero-g>20.0s:shutter-index'"
+      + " && /^(nominal|near-zero-g)$/.test(canvas?.dataset.environmentCalibrationMass ?? '')"
+      + " && /^(retracted|indexed|partial|destroyed):[0-2]$/.test(canvas?.dataset.environmentCalibrationShutters ?? '')"
+      + " && /^active:[0-3]\\+intact:[0-3]$/.test(canvas?.dataset.environmentReferenceNetwork ?? '')"
+      + " && canvas?.dataset.environmentHazardLanguage === 'shared-hazards+calibration-mass-shift+gravity-well+calibration-shutters+reference-network'"
+      + " && canvas?.dataset.locationArtIdentity === 'reference-pylons|survey-ceramic|metrology-teal|calibration-service'"
+      + " && canvas?.dataset.interactableBiome === 'lattice-annex'"
+      + " && Number(canvas?.dataset.interactableLocationCueCount ?? 0) > 0"
+      + " && canvas?.dataset.bossBiome === 'lattice-annex'"
+      + " && canvas?.dataset.bossPresentation === 'veyra-senn'"
+      + " && canvas?.dataset.bossSilhouette === 'survey-crown+reference-spines+archive-core'"
+      + " && canvas?.dataset.bossCue === 'survey-sweep+reference-lock+archive-purge'"
+      + " && Number(canvas?.dataset.babylonLatticeAnnexRoutes ?? 0) >= 6"
+      + " && canvas?.dataset.babylonLatticeAnnexLandmarks === 'METROLOGY RING|REFERENCE GALLERY|SAMPLE VAULT'"
+      + " && canvas?.dataset.babylonWorldState === 'ready'"
+      + " && canvas?.dataset.worldPresentationMode === 'scene-meshes-not-hud'"
+      + " && Number(canvas?.dataset.worldObjectCount ?? 0) > 0"
+      + " && Number(canvas?.dataset.interactableActive ?? 0) > 0"
+      + " && canvas?.dataset.hazardReadability === 'shape-coded+floor-bound+quality-safe'"
+      + " && Number(canvas?.dataset.enemyActive ?? 0) > 0"
+      + " && Number(canvas?.dataset.babylonFrames ?? 0) >= 2; })()",
+    'P27-C7 Babylon Lattice Annex parity',
+    45_000,
+  );
+
+  const beforeMove = await evaluate("document.querySelector('canvas')?.dataset.babylonLatticeAnnexPlayerPosition ?? ''");
+  if (!/^\\d+\\.\\d,\\d+\\.\\d$/.test(beforeMove)) {
+    throw new Error('P27-C7 Lattice Annex player position telemetry unavailable before movement: ' + beforeMove);
+  }
+  for (const key of ['d', 'w', 'a']) {
+    const code = key === 'd' ? 'KeyD' : key === 'w' ? 'KeyW' : 'KeyA';
+    const virtual = key === 'd' ? 68 : key === 'w' ? 87 : 65;
+    await call('Input.dispatchKeyEvent', { type: 'keyDown', key, code, windowsVirtualKeyCode: virtual, nativeVirtualKeyCode: virtual });
+    await sleep(420);
+    await call('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: virtual, nativeVirtualKeyCode: virtual });
+    await sleep(140);
+    const moved = await evaluate("document.querySelector('canvas')?.dataset.babylonLatticeAnnexPlayerPosition !== " + JSON.stringify(beforeMove));
+    if (moved) break;
+  }
+  await waitFor("document.querySelector('canvas')?.dataset.babylonLatticeAnnexPlayerPosition !== " + JSON.stringify(beforeMove), 'P27-C7 Lattice Annex movement', 5_000);
+  const afterMove = await evaluate("document.querySelector('canvas')?.dataset.babylonLatticeAnnexPlayerPosition ?? ''");
+
+  await waitFor("document.querySelector('canvas')?.dataset.environmentCalibrationMass === 'near-zero-g'", 'P27-C7 Lattice Annex calibration mass shift', 16_000);
+
+  const state = await evaluate("(() => { const canvas = document.querySelector('canvas'); return {"
+    + " scenario: canvas?.dataset.babylonScenario ?? '', environmentVisual: canvas?.dataset.environmentVisual ?? '',"
+    + " profile: canvas?.dataset.environmentPerformanceProfile ?? '', budget: canvas?.dataset.environmentInstanceBudget ?? '',"
+    + " service: canvas?.dataset.environmentServiceDetails ?? '', surface: canvas?.dataset.environmentSurfaceDetail ?? '',"
+    + " machinery: canvas?.dataset.environmentMachineDetail ?? '', calibration: canvas?.dataset.environmentCalibrationMass ?? '',"
+    + " gravity: canvas?.dataset.environmentGalleryGravity ?? '', shutters: canvas?.dataset.environmentCalibrationShutters ?? '',"
+    + " references: canvas?.dataset.environmentReferenceNetwork ?? '', hazardMode: canvas?.dataset.environmentHazardMode ?? '',"
+    + " localCues: Number(canvas?.dataset.interactableLocationCueCount ?? 0), boss: canvas?.dataset.bossPresentation ?? '',"
+    + " bossCueState: canvas?.dataset.bossCueState ?? '', parity: canvas?.dataset.babylonLatticeAnnexParity ?? '',"
+    + " identity: canvas?.dataset.locationArtIdentity ?? '', routes: Number(canvas?.dataset.babylonLatticeAnnexRoutes ?? 0),"
+    + " landmarks: canvas?.dataset.babylonLatticeAnnexLandmarks ?? '', lighting: canvas?.dataset.babylonLightingProfile ?? '',"
+    + " lightingBudget: canvas?.dataset.babylonLightingBudget ?? '', locationLighting: canvas?.dataset.locationLighting ?? '',"
+    + " worldObjects: Number(canvas?.dataset.worldObjectCount ?? 0), interactables: Number(canvas?.dataset.interactableActive ?? 0),"
+    + " enemies: Number(canvas?.dataset.enemyActive ?? 0), playerPosition: canvas?.dataset.babylonLatticeAnnexPlayerPosition ?? '' }; })()");
+
+  if (!state
+    || state.scenario !== 'lattice-annex'
+    || state.environmentVisual !== 'procedural-lattice-annex-babylon'
+    || !/^(full|balanced|mobile|performance):procedural:structure-shadows-off$/.test(state.profile)
+    || !/^pylon:(5|7|9)\\+frame:(3|4|5|6)\\+plinth:(2|3)\\+cradle:(1|2|3)\\+rail:(2|3)\\+band:(1|2|3)\\+shutter:2\\+reference:3$/.test(state.budget)
+    || !state.service.includes('metrology-plinth:')
+    || !state.surface.includes('reference-pylon:')
+    || !state.machinery.includes('calibration-shutter:2')
+    || state.calibration !== 'near-zero-g'
+    || !/^0\\.0[0-4],0\\.0[0-3]$/.test(state.gravity)
+    || !/^(retracted|indexed|partial|destroyed):[0-2]$/.test(state.shutters)
+    || !/^active:[0-3]\\+intact:[0-3]$/.test(state.references)
+    || state.localCues < 1
+    || state.boss !== 'veyra-senn'
+    || !/^active-phase-[12]:(none|surveySweep|referenceLock|archivePurge)$/.test(state.bossCueState)
+    || state.parity !== 'reference-pylon-architecture+survey-materials+props+interactables+hazards+calibration-mass-shift+shutters+reference-network+navigation+boss-cues+shared-world-cues'
+    || state.identity !== 'reference-pylons|survey-ceramic|metrology-teal|calibration-service'
+    || state.routes < 6
+    || state.landmarks !== 'METROLOGY RING|REFERENCE GALLERY|SAMPLE VAULT'
+    || state.lighting !== 'metrology-teal'
+    || !/^tier:(high|balanced|performance)\\|practical:(1|2)\\|shadows:off$/.test(state.lightingBudget)
+    || !/^lattice-annex:metrology-teal:aces-\\d+\\.\\d{2}$/.test(state.locationLighting)
+    || state.worldObjects < 1
+    || state.interactables < 1
+    || state.enemies < 1
+    || state.playerPosition === beforeMove) {
+    throw new Error('P27-C7 Babylon Lattice Annex runtime parity regressed: ' + JSON.stringify(state));
+  }
+  if (viewportMode === 'mobile-landscape' && !/^(mobile|performance):/.test(state.profile)) {
+    throw new Error('P27-C7 mobile Lattice Annex profile did not reduce: ' + JSON.stringify(state));
+  }
+
+  console.log('BROWSER_P27C7_BABYLON_LATTICE_ANNEX_PASS viewport=' + viewportMode
+    + ' identity=' + state.identity + ' routes=' + state.routes + ' landmarks=' + state.landmarks
+    + ' calibration=' + state.calibration + ':' + state.gravity + ' shutters=' + state.shutters
+    + ' references=' + state.references + ' boss=' + state.boss + ':' + state.bossCueState
+    + ' movement=' + beforeMove + '->' + afterMove + ' lighting=' + state.locationLighting);
+  return state;
+}
+
 async function p27A2BabylonBackendAudit() {
   const babylonInitState = await evaluate(`(() => {
     const canvas = document.querySelector('canvas');
@@ -4101,6 +4219,7 @@ try {
     else if (targetLocation === 'jovian-harvester') await p27C4BabylonJovianHarvesterAudit();
     else if (targetLocation === 'ice-mine') await p27C5BabylonIceMineAudit();
     else if (targetLocation === 'solar-yard') await p27C6BabylonSolarYardAudit();
+    else if (targetLocation === 'lattice-annex') await p27C7BabylonLatticeAnnexAudit();
     else await p27A2BabylonBackendAudit();
     await performanceDiagnosticsAudit();
     if (pageExceptions.length > 0) {

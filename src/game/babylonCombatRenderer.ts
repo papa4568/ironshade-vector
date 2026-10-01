@@ -17,6 +17,7 @@ import {
 import { BabylonDamagedVesselPresentation } from './babylonDamagedVesselPresentation';
 import { BabylonIceMinePresentation } from './babylonIceMinePresentation';
 import { BabylonJovianHarvesterPresentation } from './babylonJovianHarvesterPresentation';
+import { BabylonLatticeAnnexPresentation } from './babylonLatticeAnnexPresentation';
 import { BabylonOrbitalStationPresentation } from './babylonOrbitalStationPresentation';
 import { BabylonRefineryLighting } from './babylonRefineryLighting';
 import { BabylonRefineryPostProcessing } from './babylonRefineryPostProcessing';
@@ -322,6 +323,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   private readonly jovianHarvesterPresentation: BabylonJovianHarvesterPresentation;
   private readonly iceMinePresentation: BabylonIceMinePresentation;
   private readonly solarYardPresentation: BabylonSolarYardPresentation;
+  private readonly latticeAnnexPresentation: BabylonLatticeAnnexPresentation;
   private readonly refineryLighting: BabylonRefineryLighting;
   private readonly refineryPostProcessing: BabylonRefineryPostProcessing;
   private readonly renderBudget: AdaptiveRenderBudget;
@@ -361,6 +363,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.jovianHarvesterPresentation = new BabylonJovianHarvesterPresentation(scene, canvas, coarse);
     this.iceMinePresentation = new BabylonIceMinePresentation(scene, canvas, coarse);
     this.solarYardPresentation = new BabylonSolarYardPresentation(scene, canvas, coarse);
+    this.latticeAnnexPresentation = new BabylonLatticeAnnexPresentation(scene, canvas, coarse);
     this.refineryLighting = new BabylonRefineryLighting(scene, canvas);
     this.refineryPostProcessing = new BabylonRefineryPostProcessing(scene, canvas);
     this.renderBudget = new AdaptiveRenderBudget(coarse);
@@ -459,8 +462,9 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const jovianHarvesterScenario = mission.location === 'jovian-harvester';
     const iceMineScenario = mission.location === 'ice-mine';
     const solarYardScenario = mission.location === 'solar-yard';
-    if (!refineryScenario && !orbitalStationScenario && !damagedVesselScenario && !spinHabitatScenario && !jovianHarvesterScenario && !iceMineScenario && !solarYardScenario) {
-      this.canvas.dataset.babylonScenario = 'ported:asteroid-refinery,orbital-station,damaged-vessel,spin-habitat,jovian-harvester,ice-mine,solar-yard';
+    const latticeAnnexScenario = mission.location === 'lattice-annex';
+    if (!refineryScenario && !orbitalStationScenario && !damagedVesselScenario && !spinHabitatScenario && !jovianHarvesterScenario && !iceMineScenario && !solarYardScenario && !latticeAnnexScenario) {
+      this.canvas.dataset.babylonScenario = 'ported:asteroid-refinery,orbital-station,damaged-vessel,spin-habitat,jovian-harvester,ice-mine,solar-yard,lattice-annex';
       this.releasePlayerPresentation('scenario-exit');
       this.releaseEnemyPresentation('scenario-exit');
       this.worldPresentation.release('scenario-exit');
@@ -475,6 +479,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.jovianHarvesterPresentation.release('scenario-exit');
       this.iceMinePresentation.release('scenario-exit');
       this.solarYardPresentation.release('scenario-exit');
+      this.latticeAnnexPresentation.release('scenario-exit');
       this.refineryLighting.setEnabled(false);
       this.refineryPostProcessing.release('scenario-exit');
       this.releaseRefineryEnvironment('scenario-exit');
@@ -491,6 +496,8 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.jovianHarvesterPresentation.release('scenario-switch');
       this.iceMinePresentation.release('scenario-switch');
       this.solarYardPresentation.release('scenario-switch');
+        this.latticeAnnexPresentation.release('scenario-switch');
+      this.latticeAnnexPresentation.release('scenario-switch');
       this.ensureRefineryEnvironment(state, quality);
     } else {
       this.refineryLighting.setEnabled(false);
@@ -502,36 +509,49 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         this.jovianHarvesterPresentation.release('scenario-switch');
         this.iceMinePresentation.release('scenario-switch');
         this.solarYardPresentation.release('scenario-switch');
+        this.latticeAnnexPresentation.release('scenario-switch');
       } else if (damagedVesselScenario) {
         this.orbitalStationPresentation.release('scenario-switch');
         this.spinHabitatPresentation.release('scenario-switch');
         this.jovianHarvesterPresentation.release('scenario-switch');
         this.iceMinePresentation.release('scenario-switch');
         this.solarYardPresentation.release('scenario-switch');
+        this.latticeAnnexPresentation.release('scenario-switch');
       } else if (spinHabitatScenario) {
         this.orbitalStationPresentation.release('scenario-switch');
         this.damagedVesselPresentation.release('scenario-switch');
         this.jovianHarvesterPresentation.release('scenario-switch');
         this.iceMinePresentation.release('scenario-switch');
         this.solarYardPresentation.release('scenario-switch');
+        this.latticeAnnexPresentation.release('scenario-switch');
       } else if (jovianHarvesterScenario) {
         this.orbitalStationPresentation.release('scenario-switch');
         this.damagedVesselPresentation.release('scenario-switch');
         this.spinHabitatPresentation.release('scenario-switch');
         this.iceMinePresentation.release('scenario-switch');
         this.solarYardPresentation.release('scenario-switch');
+        this.latticeAnnexPresentation.release('scenario-switch');
       } else if (iceMineScenario) {
         this.orbitalStationPresentation.release('scenario-switch');
         this.damagedVesselPresentation.release('scenario-switch');
         this.spinHabitatPresentation.release('scenario-switch');
         this.jovianHarvesterPresentation.release('scenario-switch');
         this.solarYardPresentation.release('scenario-switch');
+        this.latticeAnnexPresentation.release('scenario-switch');
+      } else if (solarYardScenario) {
+        this.orbitalStationPresentation.release('scenario-switch');
+        this.damagedVesselPresentation.release('scenario-switch');
+        this.spinHabitatPresentation.release('scenario-switch');
+        this.jovianHarvesterPresentation.release('scenario-switch');
+        this.iceMinePresentation.release('scenario-switch');
+        this.latticeAnnexPresentation.release('scenario-switch');
       } else {
         this.orbitalStationPresentation.release('scenario-switch');
         this.damagedVesselPresentation.release('scenario-switch');
         this.spinHabitatPresentation.release('scenario-switch');
         this.jovianHarvesterPresentation.release('scenario-switch');
         this.iceMinePresentation.release('scenario-switch');
+        this.solarYardPresentation.release('scenario-switch');
       }
     }
     this.ensurePlayerPresentation(state, quality);
@@ -569,8 +589,10 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       );
     } else if (iceMineScenario) {
       this.iceMinePresentation.sync(state, budget, mission.conditions.includes('low-visibility'));
-    } else {
+    } else if (solarYardScenario) {
       this.solarYardPresentation.sync(state, budget, mission.conditions.includes('low-visibility'));
+    } else {
+      this.latticeAnnexPresentation.sync(state, budget, mission.conditions.includes('low-visibility'));
     }
     this.syncCamera(state, width / Math.max(1, height), cameraFeedback);
     this.scene.render();
@@ -632,6 +654,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.jovianHarvesterPresentation.dispose();
     this.iceMinePresentation.dispose();
     this.solarYardPresentation.dispose();
+    this.latticeAnnexPresentation.dispose();
     this.refineryPostProcessing.dispose();
     this.refineryLighting.dispose();
     this.releaseRefineryEnvironment('renderer-dispose');
