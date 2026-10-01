@@ -1718,6 +1718,128 @@ async function p27C8BabylonMomentumExchangeAudit() {
   return state;
 }
 
+async function p27C9BabylonCryoReserveAudit() {
+  await waitFor(
+    "(() => { const canvas = document.querySelector('canvas'); return"
+      + " canvas?.dataset.graphicsPathSelection === 'qa-explicit'"
+      + " && canvas?.dataset.graphicsPathRequested === 'babylon'"
+      + " && canvas?.dataset.graphicsPathLoaded === 'babylon'"
+      + " && !(canvas?.dataset.graphicsPathFallback ?? '')"
+      + " && !(canvas?.dataset.babylonFallbackReason ?? '')"
+      + " && canvas?.dataset.babylonInit === 'ready'"
+      + " && canvas?.dataset.babylonBackend === 'webgl2'"
+      + " && canvas?.dataset.babylonScene === 'active'"
+      + " && canvas?.dataset.babylonScenario === 'cryo-reserve'"
+      + " && canvas?.dataset.babylonEnvironmentState === 'ready'"
+      + " && canvas?.dataset.environmentVisual === 'procedural-cryo-reserve-babylon'"
+      + " && canvas?.dataset.environmentLandmark === 'staggered-vacuum-jacket-tank-gallery'"
+      + " && canvas?.dataset.environmentComposition === 'service-collar+propellant-gallery+umbra-tank-farm'"
+      + " && canvas?.dataset.environmentZoneIdentity === 'service-collar:valve-service+vacuum-jacket|gallery:staggered-tanks+boiloff-headers+purge-plumes|tank-farm:tank-saddles+umbra-manifold+siphon-bus'"
+      + " && canvas?.dataset.environmentMaterials === 'vacuum-jacketed-steel+frosted-insulation+cold-blue-purge+cold-cyan-service'"
+      + " && canvas?.dataset.environmentPurgeTimeline === '10.0s:first-boiloff>21.0s:secondary-purge'"
+      + " && canvas?.dataset.environmentPurgeValveIds === 'purge-valve-a,purge-valve-b'"
+      + " && canvas?.dataset.environmentHazardLanguage === 'shared-hazards+boiloff-jet+limited-atmosphere+damaged-grid+purge-routing'"
+      + " && canvas?.dataset.locationArtIdentity === 'tank-gallery|vacuum-jacketed-cryogenic|cold-blue|purge-service'"
+      + " && canvas?.dataset.interactableBiome === 'cryo-reserve'"
+      + " && Number(canvas?.dataset.interactableLocationCueCount ?? 0) > 0"
+      + " && canvas?.dataset.bossBiome === 'cryo-reserve'"
+      + " && canvas?.dataset.bossPresentation === 'oren-saal'"
+      + " && canvas?.dataset.bossSilhouette === 'purge-manifold+cold-siphon-spines+marshal-core'"
+      + " && canvas?.dataset.bossCue === 'purge-lance+bus-siphon+bus-reroute'"
+      + " && Number(canvas?.dataset.babylonCryoReserveRoutes ?? 0) >= 6"
+      + " && canvas?.dataset.babylonCryoReserveLandmarks === 'SERVICE COLLAR|PROPELLANT GALLERY|UMBRA TANK FARM'"
+      + " && canvas?.dataset.babylonWorldState === 'ready'"
+      + " && canvas?.dataset.worldPresentationMode === 'scene-meshes-not-hud'"
+      + " && Number(canvas?.dataset.worldObjectCount ?? 0) > 0"
+      + " && Number(canvas?.dataset.interactableActive ?? 0) > 0"
+      + " && canvas?.dataset.hazardReadability === 'shape-coded+floor-bound+quality-safe'"
+      + " && Number(canvas?.dataset.enemyActive ?? 0) > 0"
+      + " && Number(canvas?.dataset.babylonFrames ?? 0) >= 2; })()",
+    'P27-C9 Babylon Cryo Reserve parity',
+    45_000,
+  );
+
+  const beforeMove = await evaluate("document.querySelector('canvas')?.dataset.babylonCryoReservePlayerPosition ?? ''");
+  if (!/^\d+\.\d,\d+\.\d$/.test(beforeMove)) {
+    throw new Error('P27-C9 Cryo Reserve player position telemetry unavailable before movement: ' + beforeMove);
+  }
+  for (const key of ['d', 'w', 'a']) {
+    const code = key === 'd' ? 'KeyD' : key === 'w' ? 'KeyW' : 'KeyA';
+    const virtual = key === 'd' ? 68 : key === 'w' ? 87 : 65;
+    await call('Input.dispatchKeyEvent', { type: 'keyDown', key, code, windowsVirtualKeyCode: virtual, nativeVirtualKeyCode: virtual });
+    await sleep(420);
+    await call('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: virtual, nativeVirtualKeyCode: virtual });
+    await sleep(140);
+    const moved = await evaluate("document.querySelector('canvas')?.dataset.babylonCryoReservePlayerPosition !== " + JSON.stringify(beforeMove));
+    if (moved) break;
+  }
+  await waitFor("document.querySelector('canvas')?.dataset.babylonCryoReservePlayerPosition !== " + JSON.stringify(beforeMove), 'P27-C9 Cryo Reserve movement', 5_000);
+  const afterMove = await evaluate("document.querySelector('canvas')?.dataset.babylonCryoReservePlayerPosition ?? ''");
+
+  await waitFor(
+    "(() => { const canvas = document.querySelector('canvas'); return"
+      + " canvas?.dataset.environmentHazardMode === 'boiloff-purge'"
+      + " && Number(canvas?.dataset.environmentBoiloffJets ?? 0) > 0; })()",
+    'P27-C9 Cryo Reserve authored boiloff purge',
+    17_000,
+  );
+
+  const state = await evaluate("(() => { const canvas = document.querySelector('canvas'); return {"
+    + " scenario: canvas?.dataset.babylonScenario ?? '', environmentVisual: canvas?.dataset.environmentVisual ?? '',"
+    + " profile: canvas?.dataset.environmentPerformanceProfile ?? '', budget: canvas?.dataset.environmentInstanceBudget ?? '',"
+    + " service: canvas?.dataset.environmentServiceDetails ?? '', surface: canvas?.dataset.environmentSurfaceDetail ?? '',"
+    + " machinery: canvas?.dataset.environmentMachineDetail ?? '', pressure: canvas?.dataset.environmentPressureProfile ?? '',"
+    + " valves: canvas?.dataset.environmentPurgeValves ?? '', jets: Number(canvas?.dataset.environmentBoiloffJets ?? 0),"
+    + " hazardMode: canvas?.dataset.environmentHazardMode ?? '', localCues: Number(canvas?.dataset.interactableLocationCueCount ?? 0),"
+    + " boss: canvas?.dataset.bossPresentation ?? '', bossCueState: canvas?.dataset.bossCueState ?? '',"
+    + " parity: canvas?.dataset.babylonCryoReserveParity ?? '', identity: canvas?.dataset.locationArtIdentity ?? '',"
+    + " routes: Number(canvas?.dataset.babylonCryoReserveRoutes ?? 0), landmarks: canvas?.dataset.babylonCryoReserveLandmarks ?? '',"
+    + " lighting: canvas?.dataset.babylonLightingProfile ?? '', lightingBudget: canvas?.dataset.babylonLightingBudget ?? '',"
+    + " locationLighting: canvas?.dataset.locationLighting ?? '', worldObjects: Number(canvas?.dataset.worldObjectCount ?? 0),"
+    + " interactables: Number(canvas?.dataset.interactableActive ?? 0), enemies: Number(canvas?.dataset.enemyActive ?? 0),"
+    + " playerPosition: canvas?.dataset.babylonCryoReservePlayerPosition ?? '' }; })()");
+
+  if (!state
+    || state.scenario !== 'cryo-reserve'
+    || state.environmentVisual !== 'procedural-cryo-reserve-babylon'
+    || !/^(full|balanced|mobile|performance):procedural:structure-shadows-off$/.test(state.profile)
+    || !state.budget.includes('tank:7')
+    || !state.budget.includes('valve:2')
+    || !state.service.includes('purge-valve:2')
+    || !state.surface.includes('vacuum-jacket-tank:7')
+    || !state.machinery.includes('vacuum-jacket-tank:7+purge-valve:2+siphon-relay:')
+    || state.pressure !== '0.74>0.52>0.56'
+    || !/^(armed|partial|routed|offline):[0-2]\/[0-2]$/.test(state.valves)
+    || state.jets < 1
+    || state.hazardMode !== 'boiloff-purge'
+    || state.localCues < 1
+    || state.boss !== 'oren-saal'
+    || !/^(queued|active-phase-[12]:(none|purgeLance|busSiphon|busReroute))$/.test(state.bossCueState)
+    || state.parity !== 'tank-gallery-architecture+cryogenic-materials+props+interactables+hazards+boiloff-purges+purge-valves+siphon-relays+navigation+boss-cues+shared-world-cues'
+    || state.identity !== 'tank-gallery|vacuum-jacketed-cryogenic|cold-blue|purge-service'
+    || state.routes < 6
+    || state.landmarks !== 'SERVICE COLLAR|PROPELLANT GALLERY|UMBRA TANK FARM'
+    || state.lighting !== 'cold-blue'
+    || !/^tier:(high|balanced|performance)\|practical:(1|2)\|shadows:off$/.test(state.lightingBudget)
+    || !/^cryo-reserve:cold-blue:aces-\d+\.\d{2}$/.test(state.locationLighting)
+    || state.worldObjects < 1
+    || state.interactables < 1
+    || state.enemies < 1
+    || state.playerPosition === beforeMove) {
+    throw new Error('P27-C9 Babylon Cryo Reserve runtime parity regressed: ' + JSON.stringify(state));
+  }
+  if (viewportMode === 'mobile-landscape' && !/^(mobile|performance):/.test(state.profile)) {
+    throw new Error('P27-C9 mobile Cryo Reserve profile did not reduce: ' + JSON.stringify(state));
+  }
+
+  console.log('BROWSER_P27C9_BABYLON_CRYO_RESERVE_PASS viewport=' + viewportMode
+    + ' identity=' + state.identity + ' routes=' + state.routes + ' landmarks=' + state.landmarks
+    + ' pressure=' + state.pressure + ' valves=' + state.valves + ' purge=' + state.jets + ':' + state.hazardMode
+    + ' boss=' + state.boss + ':' + state.bossCueState + ' movement=' + beforeMove + '->' + afterMove
+    + ' lighting=' + state.locationLighting);
+  return state;
+}
+
 async function p27A2BabylonBackendAudit() {
   const babylonInitState = await evaluate(`(() => {
     const canvas = document.querySelector('canvas');
@@ -4360,6 +4482,7 @@ try {
     else if (targetLocation === 'solar-yard') await p27C6BabylonSolarYardAudit();
     else if (targetLocation === 'lattice-annex') await p27C7BabylonLatticeAnnexAudit();
     else if (targetLocation === 'momentum-exchange') await p27C8BabylonMomentumExchangeAudit();
+    else if (targetLocation === 'cryo-reserve') await p27C9BabylonCryoReserveAudit();
     else await p27A2BabylonBackendAudit();
     await performanceDiagnosticsAudit();
     if (pageExceptions.length > 0) {
