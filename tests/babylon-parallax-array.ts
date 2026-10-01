@@ -68,7 +68,9 @@ for (const marker of [
   "['parallax-frame-a', 760, 340]",
   "['parallax-frame-b', 1080, 690]",
   "['parallax-frame-c', 1370, 390]",
-  "['reference-node-a', 'reference-node-b', 'reference-node-c']",
+  "addAt('reference-node-a', labels[0], 'gravityControl', 0)",
+  "addAt('reference-node-b', labels[1], 'gravityControl', 1)",
+  "addAt('reference-node-c', labels[2], 'gravityControl', 2)",
 ]) assert.ok(encounters.includes(marker), 'missing Parallax authored encounter cue: ' + marker);
 
 assert.ok(director.includes("contract.location === 'parallax-array'"));
