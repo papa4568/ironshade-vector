@@ -44,6 +44,7 @@ const p27b12StackOffScreenshotPath = process.env.BROWSER_E2E_P27B12_STACK_OFF_SC
 const p27b12StackOnScreenshotPath = process.env.BROWSER_E2E_P27B12_STACK_ON_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p27b12-stack-on.png');
 const p22cPrimaryJourney = targetLocation === 'asteroid-refinery' && !['webgpu', 'babylon'].includes(requestedGraphicsPath);
 const p22cEvidence = { viewport: viewportMode, location: targetLocation };
+let parallaxQaOriginalState = null;
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const P21_EFFECT_BUDGETS = Object.freeze({
   high: { ibl: 1, bloom: 1, contact: 1, atmosphere: 1 },
@@ -1907,10 +1908,11 @@ async function p27C10BabylonParallaxArrayAudit() {
   const afterMove = await evaluate("document.querySelector('canvas')?.dataset.babylonParallaxArrayPlayerPosition ?? ''");
 
   await waitFor(
-    "(() => { const canvas = document.querySelector('canvas'); return"
-      + " canvas?.dataset.environmentHazardMode === 'reference-shear'"
-      + " && Number(canvas?.dataset.environmentReferenceShear ?? 0) > 0; })()",
-    'P27-C10 Parallax Array authored reference shear',
+    "(() => { const canvas = document.querySelector('canvas'); const gravity = String(canvas?.dataset.environmentGravityProfile ?? '').split('>').map(Number);"
+      + " const gravitySheared = gravity.length === 3 && gravity.every(Number.isFinite) && Math.max(...gravity) - Math.min(...gravity) >= 0.3;"
+      + " return (canvas?.dataset.environmentHazardMode === 'reference-shear' && Number(canvas?.dataset.environmentReferenceShear ?? 0) > 0)"
+      + " || (canvas?.dataset.environmentHazardMode === 'gravity-split' && gravitySheared); })()",
+    'P27-C10 Parallax Array authored reference shear or persistent gravity split',
     16_000,
   );
 
@@ -1945,8 +1947,7 @@ async function p27C10BabylonParallaxArrayAudit() {
     || !state.machinery.includes('baseline-pylon:3+mass-carriage:3+live-baseline-servo:')
     || !gravitySheared
     || !/^(armed|partial|aligned|offline):[0-3]\/[0-3]$/.test(state.references)
-    || state.shear < 1
-    || state.hazardMode !== 'reference-shear'
+    || !((state.shear >= 1 && state.hazardMode === 'reference-shear') || (state.hazardMode === 'gravity-split' && gravitySheared))
     || state.localCues < 1
     || state.boss !== 'sera-nox'
     || !/^(queued|active-phase-[12]:(none|baselineFork|parallaxSweep|shearCollapse))$/.test(state.bossCueState)
@@ -4575,6 +4576,8 @@ try {
 
 
   if (targetLocation === 'parallax-array') {
+    parallaxQaOriginalState = await evaluate(`localStorage.getItem('ironshade-vector-state-v1') ?? ''`);
+    if (!parallaxQaOriginalState) throw new Error('P27-C10 could not snapshot the pre-Parallax QA state.');
     const previousTimeOrigin = await evaluate('performance.timeOrigin');
     const seeded = await evaluate(`(() => {
       const stateKey = 'ironshade-vector-state-v1';
@@ -4668,6 +4671,10 @@ try {
     }
     await captureScreenshot();
     console.log(`BROWSER_E2E_PASS title=${startup.title} route=command>operations>contracts>combat location=${targetLocation} input=keyboard viewport=${viewportMode} graphics=babylon-comparison`);
+    if (parallaxQaOriginalState !== null) {
+      await evaluate(`localStorage.setItem('ironshade-vector-state-v1', ${JSON.stringify(parallaxQaOriginalState)}); true`);
+      console.log('BROWSER_PARALLAX_ARRAY_SEED_RESTORE_PASS stage=babylon-exit');
+    }
     socket.close();
     process.exit(0);
   }
@@ -5483,5 +5490,9 @@ try {
   console.error(`BROWSER_E2E_FAILURE state=${JSON.stringify(state)} exceptions=${JSON.stringify(pageExceptions)}`);
   throw error;
 } finally {
+  if (parallaxQaOriginalState !== null) {
+    await evaluate(`localStorage.setItem('ironshade-vector-state-v1', ${JSON.stringify(parallaxQaOriginalState)}); true`).catch(() => undefined);
+    console.log('BROWSER_PARALLAX_ARRAY_SEED_RESTORE_PASS stage=finalize');
+  }
   socket.close();
 }
