@@ -44,6 +44,7 @@ const p27b12StackOffScreenshotPath = process.env.BROWSER_E2E_P27B12_STACK_OFF_SC
 const p27b12StackOnScreenshotPath = process.env.BROWSER_E2E_P27B12_STACK_ON_SCREENSHOT ?? screenshotPath.replace(/\.png$/i, '-p27b12-stack-on.png');
 const p22cPrimaryJourney = targetLocation === 'asteroid-refinery' && !['webgpu', 'babylon'].includes(requestedGraphicsPath);
 const p22cEvidence = { viewport: viewportMode, location: targetLocation };
+let parallaxQaOriginalState = null;
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const P21_EFFECT_BUDGETS = Object.freeze({
   high: { ibl: 1, bloom: 1, contact: 1, atmosphere: 1 },
@@ -1842,6 +1843,134 @@ async function p27C9BabylonCryoReserveAudit() {
   console.log('BROWSER_P27C9_BABYLON_CRYO_RESERVE_PASS viewport=' + viewportMode
     + ' identity=' + state.identity + ' routes=' + state.routes + ' landmarks=' + state.landmarks
     + ' pressure=' + state.pressure + ' valves=' + state.valves + ' purge=' + state.jets + ':' + state.hazardMode
+    + ' boss=' + state.boss + ':' + state.bossCueState + ' movement=' + beforeMove + '->' + afterMove
+    + ' lighting=' + state.locationLighting);
+  return state;
+}
+
+async function p27C10BabylonParallaxArrayAudit() {
+  await waitFor(
+    "(() => { const canvas = document.querySelector('canvas'); return"
+      + " canvas?.dataset.graphicsPathSelection === 'qa-explicit'"
+      + " && canvas?.dataset.graphicsPathRequested === 'babylon'"
+      + " && canvas?.dataset.graphicsPathLoaded === 'babylon'"
+      + " && !(canvas?.dataset.graphicsPathFallback ?? '')"
+      + " && !(canvas?.dataset.babylonFallbackReason ?? '')"
+      + " && canvas?.dataset.babylonInit === 'ready'"
+      + " && canvas?.dataset.babylonBackend === 'webgl2'"
+      + " && canvas?.dataset.babylonScene === 'active'"
+      + " && canvas?.dataset.babylonScenario === 'parallax-array'"
+      + " && canvas?.dataset.babylonEnvironmentState === 'ready'"
+      + " && canvas?.dataset.environmentVisual === 'procedural-parallax-array-babylon'"
+      + " && canvas?.dataset.environmentLandmark === 'three-point-long-baseline'"
+      + " && canvas?.dataset.environmentComposition === 'three-point-baseline+cross-track-frames+perimeter-shear-anchors'"
+      + " && canvas?.dataset.environmentMaterials === 'graphite-structure+reference-shell+violet-alignment+cyan-readout'"
+      + " && canvas?.dataset.environmentZoneIdentity === 'near-baseline:reference-pylon+mass-carriage|cross-track:reference-frame+timing-bus|deep-reference:baseline-pylon+shear-anchor'"
+      + " && canvas?.dataset.readabilityLanguage === 'baseline-silhouette+violet-cyan+luminance'"
+      + " && canvas?.dataset.environmentReferenceNodeIds === 'reference-node-a,reference-node-b,reference-node-c'"
+      + " && canvas?.dataset.environmentShearTimeline === '8.0s:first-shear>19.0s:deep-reference-reversal'"
+      + " && canvas?.dataset.environmentHazardLanguage === 'shared-hazards+reference-shear+gravity-split+physical-baseline-alignment'"
+      + " && canvas?.dataset.locationArtIdentity === 'baseline-pylons|metrology-composite|reference-violet|inertial-reference'"
+      + " && canvas?.dataset.interactableBiome === 'parallax-array'"
+      + " && Number(canvas?.dataset.interactableLocationCueCount ?? 0) > 0"
+      + " && canvas?.dataset.bossBiome === 'parallax-array'"
+      + " && canvas?.dataset.bossPresentation === 'sera-nox'"
+      + " && canvas?.dataset.bossSilhouette === 'triple-reference-crown+baseline-forks+shear-core'"
+      + " && canvas?.dataset.bossCue === 'baseline-fork+parallax-sweep+shear-collapse'"
+      + " && Number(canvas?.dataset.babylonParallaxArrayRoutes ?? 0) >= 6"
+      + " && canvas?.dataset.babylonParallaxArrayLandmarks === 'NEAR BASELINE|CROSS-TRACK GALLERY|DEEP REFERENCE'"
+      + " && canvas?.dataset.babylonWorldState === 'ready'"
+      + " && canvas?.dataset.worldPresentationMode === 'scene-meshes-not-hud'"
+      + " && Number(canvas?.dataset.worldObjectCount ?? 0) > 0"
+      + " && Number(canvas?.dataset.interactableActive ?? 0) > 0"
+      + " && canvas?.dataset.hazardReadability === 'shape-coded+floor-bound+quality-safe'"
+      + " && Number(canvas?.dataset.enemyActive ?? 0) > 0"
+      + " && Number(canvas?.dataset.babylonFrames ?? 0) >= 2; })()",
+    'P27-C10 Babylon Parallax Array parity',
+    45_000,
+  );
+
+  const beforeMove = await evaluate("document.querySelector('canvas')?.dataset.babylonParallaxArrayPlayerPosition ?? ''");
+  if (!/^\d+\.\d,\d+\.\d$/.test(beforeMove)) {
+    throw new Error('P27-C10 Parallax Array player position telemetry unavailable before movement: ' + beforeMove);
+  }
+  for (const key of ['d', 'w', 'a']) {
+    const code = key === 'd' ? 'KeyD' : key === 'w' ? 'KeyW' : 'KeyA';
+    const virtual = key === 'd' ? 68 : key === 'w' ? 87 : 65;
+    await call('Input.dispatchKeyEvent', { type: 'keyDown', key, code, windowsVirtualKeyCode: virtual, nativeVirtualKeyCode: virtual });
+    await sleep(420);
+    await call('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: virtual, nativeVirtualKeyCode: virtual });
+    await sleep(140);
+    const moved = await evaluate("document.querySelector('canvas')?.dataset.babylonParallaxArrayPlayerPosition !== " + JSON.stringify(beforeMove));
+    if (moved) break;
+  }
+  await waitFor("document.querySelector('canvas')?.dataset.babylonParallaxArrayPlayerPosition !== " + JSON.stringify(beforeMove), 'P27-C10 Parallax Array movement', 5_000);
+  const afterMove = await evaluate("document.querySelector('canvas')?.dataset.babylonParallaxArrayPlayerPosition ?? ''");
+
+  await waitFor(
+    "(() => { const canvas = document.querySelector('canvas'); const gravity = String(canvas?.dataset.environmentGravityProfile ?? '').split('>').map(Number);"
+      + " const gravitySheared = gravity.length === 3 && gravity.every(Number.isFinite) && Math.max(...gravity) - Math.min(...gravity) >= 0.3;"
+      + " return (canvas?.dataset.environmentHazardMode === 'reference-shear' && Number(canvas?.dataset.environmentReferenceShear ?? 0) > 0)"
+      + " || (canvas?.dataset.environmentHazardMode === 'gravity-split' && gravitySheared); })()",
+    'P27-C10 Parallax Array authored reference shear or persistent gravity split',
+    16_000,
+  );
+
+  const state = await evaluate("(() => { const canvas = document.querySelector('canvas'); return {"
+    + " scenario: canvas?.dataset.babylonScenario ?? '', environmentVisual: canvas?.dataset.environmentVisual ?? '',"
+    + " profile: canvas?.dataset.environmentPerformanceProfile ?? '', budget: canvas?.dataset.environmentInstanceBudget ?? '',"
+    + " service: canvas?.dataset.environmentServiceDetails ?? '', surface: canvas?.dataset.environmentSurfaceDetail ?? '',"
+    + " machinery: canvas?.dataset.environmentMachineDetail ?? '', gravity: canvas?.dataset.environmentGravityProfile ?? '',"
+    + " references: canvas?.dataset.environmentReferenceNodes ?? '', shear: Number(canvas?.dataset.environmentReferenceShear ?? 0),"
+    + " hazardMode: canvas?.dataset.environmentHazardMode ?? '', localCues: Number(canvas?.dataset.interactableLocationCueCount ?? 0),"
+    + " boss: canvas?.dataset.bossPresentation ?? '', bossCueState: canvas?.dataset.bossCueState ?? '',"
+    + " parity: canvas?.dataset.babylonParallaxArrayParity ?? '', identity: canvas?.dataset.locationArtIdentity ?? '',"
+    + " routes: Number(canvas?.dataset.babylonParallaxArrayRoutes ?? 0), landmarks: canvas?.dataset.babylonParallaxArrayLandmarks ?? '',"
+    + " lighting: canvas?.dataset.babylonLightingProfile ?? '', lightingBudget: canvas?.dataset.babylonLightingBudget ?? '',"
+    + " locationLighting: canvas?.dataset.locationLighting ?? '', worldObjects: Number(canvas?.dataset.worldObjectCount ?? 0),"
+    + " interactables: Number(canvas?.dataset.interactableActive ?? 0), enemies: Number(canvas?.dataset.enemyActive ?? 0),"
+    + " playerPosition: canvas?.dataset.babylonParallaxArrayPlayerPosition ?? '' }; })()");
+
+  const gravityValues = String(state?.gravity ?? '').split('>').map(Number);
+  const gravitySheared = gravityValues.length === 3
+    && gravityValues.every(value => Number.isFinite(value) && value >= 0)
+    && Math.max(...gravityValues) - Math.min(...gravityValues) >= 0.3;
+
+  if (!state
+    || state.scenario !== 'parallax-array'
+    || state.environmentVisual !== 'procedural-parallax-array-babylon'
+    || !/^(full|balanced|mobile|performance):procedural:structure-shadows-off$/.test(state.profile)
+    || !state.budget.includes('pylon:3')
+    || !state.budget.includes('console:3')
+    || !state.service.includes('reference-console:3')
+    || !state.surface.includes('reference-frame:')
+    || !state.machinery.includes('baseline-pylon:3+mass-carriage:3+live-baseline-servo:')
+    || !gravitySheared
+    || !/^(armed|partial|aligned|offline):[0-3]\/[0-3]$/.test(state.references)
+    || !((state.shear >= 1 && state.hazardMode === 'reference-shear') || (state.hazardMode === 'gravity-split' && gravitySheared))
+    || state.localCues < 1
+    || state.boss !== 'sera-nox'
+    || !/^(queued|active-phase-[12]:(none|baselineFork|parallaxSweep|shearCollapse))$/.test(state.bossCueState)
+    || state.parity !== 'baseline-pylon-architecture+metrology-reference+props+interactables+hazards+reference-shear+physical-alignment+navigation+boss-cues+shared-world-cues'
+    || state.identity !== 'baseline-pylons|metrology-composite|reference-violet|inertial-reference'
+    || state.routes < 6
+    || state.landmarks !== 'NEAR BASELINE|CROSS-TRACK GALLERY|DEEP REFERENCE'
+    || state.lighting !== 'reference-violet'
+    || !/^tier:(high|balanced|performance)\|practical:(1|2)\|shadows:off$/.test(state.lightingBudget)
+    || !/^parallax-array:reference-violet:aces-\d+\.\d{2}$/.test(state.locationLighting)
+    || state.worldObjects < 1
+    || state.interactables < 1
+    || state.enemies < 1
+    || state.playerPosition === beforeMove) {
+    throw new Error('P27-C10 Babylon Parallax Array runtime parity regressed: ' + JSON.stringify(state));
+  }
+  if (viewportMode === 'mobile-landscape' && !/^(mobile|performance):/.test(state.profile)) {
+    throw new Error('P27-C10 mobile Parallax Array profile did not reduce: ' + JSON.stringify(state));
+  }
+
+  console.log('BROWSER_P27C10_BABYLON_PARALLAX_ARRAY_PASS viewport=' + viewportMode
+    + ' identity=' + state.identity + ' routes=' + state.routes + ' landmarks=' + state.landmarks
+    + ' gravity=' + state.gravity + ' references=' + state.references + ' shear=' + state.shear + ':' + state.hazardMode
     + ' boss=' + state.boss + ':' + state.bossCueState + ' movement=' + beforeMove + '->' + afterMove
     + ' lighting=' + state.locationLighting);
   return state;
@@ -4446,6 +4575,50 @@ try {
   }
 
 
+  if (targetLocation === 'parallax-array') {
+    parallaxQaOriginalState = await evaluate(`localStorage.getItem('ironshade-vector-state-v1') ?? ''`);
+    if (!parallaxQaOriginalState) throw new Error('P27-C10 could not snapshot the pre-Parallax QA state.');
+    const previousTimeOrigin = await evaluate('performance.timeOrigin');
+    const seeded = await evaluate(`(() => {
+      const stateKey = 'ironshade-vector-state-v1';
+      const state = JSON.parse(localStorage.getItem(stateKey) || 'null');
+      if (!state?.profile || !state?.campaign?.story?.parallaxDebt || !state.campaign.story.interdiction || !state.campaign.story.postKhepri) return false;
+      state.profile.level = Math.max(15, state.profile.level || 1);
+      state.profile.xp = Math.max(7140, state.profile.xp || 0);
+      if (state.campaign.story.blackLattice) {
+        state.campaign.story.blackLattice.status = 'complete';
+        state.campaign.story.blackLattice.step = Math.max(14, state.campaign.story.blackLattice.step || 0);
+      }
+      state.campaign.story.postKhepri.status = 'complete';
+      state.campaign.story.postKhepri.step = Math.max(5, state.campaign.story.postKhepri.step || 0);
+      state.campaign.story.interdiction.status = 'complete';
+      state.campaign.story.interdiction.step = Math.max(5, state.campaign.story.interdiction.step || 0);
+      const parallaxDebt = state.campaign.story.parallaxDebt;
+      parallaxDebt.status = 'active';
+      parallaxDebt.step = 2;
+      parallaxDebt.choiceA = null;
+      parallaxDebt.completed = ['parallax-debt-0', 'parallax-debt-1'];
+      parallaxDebt.evidence = ['baseline-offset', 'return-vector'];
+      parallaxDebt.lastBeat = 'QA seed // Blind Meridian ready at Cislunar Parallax Array.';
+      state.campaign.story.lastBeat = parallaxDebt.lastBeat;
+      state.campaign.lastOutcome = parallaxDebt.lastBeat;
+      localStorage.setItem(stateKey, JSON.stringify(state));
+      location.reload();
+      return true;
+    })()`);
+    if (!seeded) throw new Error('P27-C10 could not seed the Blind Meridian QA contract.');
+    await waitFor(`performance.timeOrigin !== ${JSON.stringify(previousTimeOrigin)}`, 'P27-C10 seeded browser document reload');
+    await waitFor(`(() => {
+      const labels = [...document.querySelectorAll('button[data-primary-area]')].map(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase());
+      return document.readyState === 'complete' && labels.includes('operations');
+    })()`, 'P27-C10 seeded Command Deck');
+    await keyboardActivateButton('Operations');
+    await waitFor(`[...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'contracts')`, 'P27-C10 Operations navigation');
+    await keyboardActivateButton('Contracts');
+    await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('contract board') && [...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'deploy selected contract')`, 'P27-C10 seeded Contract Board');
+    console.log('BROWSER_PARALLAX_ARRAY_SEED_PASS parallaxDebt=active step=2 level>=15 stage=predeploy');
+  }
+
   const targetSelected = await evaluate(`(() => {
     const target = ${JSON.stringify(targetLocation)};
     const button = [...document.querySelectorAll('button[data-location]')].find(candidate => candidate.dataset.location === target);
@@ -4490,6 +4663,7 @@ try {
     else if (targetLocation === 'lattice-annex') await p27C7BabylonLatticeAnnexAudit();
     else if (targetLocation === 'momentum-exchange') await p27C8BabylonMomentumExchangeAudit();
     else if (targetLocation === 'cryo-reserve') await p27C9BabylonCryoReserveAudit();
+    else if (targetLocation === 'parallax-array') await p27C10BabylonParallaxArrayAudit();
     else await p27A2BabylonBackendAudit();
     await performanceDiagnosticsAudit();
     if (pageExceptions.length > 0) {
@@ -4497,6 +4671,10 @@ try {
     }
     await captureScreenshot();
     console.log(`BROWSER_E2E_PASS title=${startup.title} route=command>operations>contracts>combat location=${targetLocation} input=keyboard viewport=${viewportMode} graphics=babylon-comparison`);
+    if (parallaxQaOriginalState !== null) {
+      await evaluate(`localStorage.setItem('ironshade-vector-state-v1', ${JSON.stringify(parallaxQaOriginalState)}); true`);
+      console.log('BROWSER_PARALLAX_ARRAY_SEED_RESTORE_PASS stage=babylon-exit');
+    }
     socket.close();
     process.exit(0);
   }
@@ -5312,5 +5490,9 @@ try {
   console.error(`BROWSER_E2E_FAILURE state=${JSON.stringify(state)} exceptions=${JSON.stringify(pageExceptions)}`);
   throw error;
 } finally {
+  if (parallaxQaOriginalState !== null) {
+    await evaluate(`localStorage.setItem('ironshade-vector-state-v1', ${JSON.stringify(parallaxQaOriginalState)}); true`).catch(() => undefined);
+    console.log('BROWSER_PARALLAX_ARRAY_SEED_RESTORE_PASS stage=finalize');
+  }
   socket.close();
 }
