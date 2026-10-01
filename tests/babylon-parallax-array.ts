@@ -80,7 +80,7 @@ assert.ok(director.includes("deployHazard(state, 980, 420, 'vectorWash', 6)"));
 assert.ok(director.includes("runtime.elapsed >= 19"));
 assert.ok(director.includes("deployHazard(state, 1420, 620, 'vectorWash', 6)"));
 assert.ok(sim.includes("object.id.startsWith('reference-node-')"));
-assert.ok(sim.includes("'PHYSICAL BASELINE ALIGNED'"));
+assert.ok(sim.includes('PHYSICAL BASELINE ALIGNED'));
 assert.ok(sim.includes("boss.variant === 'baselineKeeper'"));
 assert.ok(sim.includes("['parallaxSweep', 'baselineFork', 'shearCollapse', 'baselineFork']"));
 assert.ok(parallax.includes("title: 'Parallax Debt // Blind Meridian'"));
