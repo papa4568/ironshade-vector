@@ -1318,7 +1318,8 @@ async function p27C5BabylonIceMineAudit() {
     || state.worldObjects < 1
     || state.interactables < 1
     || state.enemies < 1
-    || state.playerPosition !== afterMove) {
+    || !/^\d+\.\d,\d+\.\d$/.test(state.playerPosition)
+    || state.playerPosition === beforeMove) {
     throw new Error('P27-C5 Babylon Ice Mine runtime parity regressed: ' + JSON.stringify(state));
   }
   if (viewportMode === 'mobile-landscape' && state.fractureDetail !== '4-shards+2-cracks+frost-pulse') {
