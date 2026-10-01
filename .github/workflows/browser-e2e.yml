@@ -332,6 +332,7 @@ jobs:
           if (result?.result?.exceptionDetails) throw new Error('Failed to seed Jovian Harvester QA campaign cycle.');
           console.log('BROWSER_JOVIAN_HARVESTER_SEED_PASS cycle=2');
           NODE
+          BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=jovian-harvester BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c4-jovian-harvester.png node scripts/browser-runtime-smoke.mjs
           BROWSER_E2E_LOCATION=jovian-harvester BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-jovian-harvester.png node scripts/browser-runtime-smoke.mjs
           node --input-type=module <<'NODE'
           const targets = await (await fetch('http://127.0.0.1:9223/json')).json();
@@ -453,6 +454,7 @@ jobs:
             browser-e2e-${{ matrix.viewport }}-p27c3-spin-habitat.png
             browser-e2e-${{ matrix.viewport }}-damaged-vessel.png
             browser-e2e-${{ matrix.viewport }}-spin-habitat.png
+            browser-e2e-${{ matrix.viewport }}-p27c4-jovian-harvester.png
             browser-e2e-${{ matrix.viewport }}-jovian-harvester.png
             browser-e2e-${{ matrix.viewport }}-ice-mine.png
             browser-e2e-${{ matrix.viewport }}-solar-yard.png

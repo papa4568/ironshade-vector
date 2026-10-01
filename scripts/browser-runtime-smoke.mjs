@@ -1015,6 +1015,173 @@ async function p27C3BabylonSpinHabitatAudit() {
   return state;
 }
 
+
+async function p27C4BabylonJovianHarvesterAudit() {
+  await waitFor(
+    "(() => { const canvas = document.querySelector('canvas'); return"
+      + " canvas?.dataset.graphicsPathSelection === 'qa-explicit'"
+      + " && canvas?.dataset.graphicsPathRequested === 'babylon'"
+      + " && canvas?.dataset.graphicsPathLoaded === 'babylon'"
+      + " && !(canvas?.dataset.graphicsPathFallback ?? '')"
+      + " && !(canvas?.dataset.babylonFallbackReason ?? '')"
+      + " && canvas?.dataset.babylonInit === 'ready'"
+      + " && canvas?.dataset.babylonBackend === 'webgl2'"
+      + " && canvas?.dataset.babylonScene === 'active'"
+      + " && canvas?.dataset.babylonScenario === 'jovian-harvester'"
+      + " && canvas?.dataset.babylonEnvironmentState === 'ready'"
+      + " && canvas?.dataset.environmentVisual === 'procedural-jovian-harvester-babylon'"
+      + " && canvas?.dataset.environmentLandmark === 'five-skimmer-tower-spine'"
+      + " && canvas?.dataset.environmentComposition === 'elevated-skimmer-decks+five-tower-spine+transfer-bridges+ballast-pods'"
+      + " && canvas?.dataset.environmentZoneIdentity === 'deck:weathered-plate|tower:vertical-skimmer-spine|bridge:dark-transfer-truss|ballast:light-suspended-pod'"
+      + " && canvas?.dataset.readabilityLanguage === 'tower-height+bridge-lines+amber-wayfinding+pressure-shear+storm-charge'"
+      + " && canvas?.dataset.environmentStormLanguage === 'storm-charge-sweeps+pressure-shear-bands+relief-pulse'"
+      + " && canvas?.dataset.environmentStormSource === 'live-sector-pressure+service-breach+contract-conditions'"
+      + " && canvas?.dataset.environmentVfx === 'storm-charge-sweeps+pressure-shear-bands+relief-pulse'"
+      + " && canvas?.dataset.environmentAmbient === 'upper-haze+pressure-clouds+charged-particulate'"
+      + " && canvas?.dataset.environmentAmbientMotion === 'crosswind-drift+pressure-breath+charged-drift'"
+      + " && Number.isFinite(Number(canvas?.dataset.environmentStormIntensity))"
+      + " && Number.isFinite(Number(canvas?.dataset.environmentPressureShear))"
+      + " && Number.isFinite(Number(canvas?.dataset.environmentAmbientIntensity))"
+      + " && canvas?.dataset.locationArtIdentity === 'skimmer-towers|weathered-condenser|storm-orange|compressor-service'"
+      + " && canvas?.dataset.interactableBiome === 'jovian-harvester'"
+      + " && canvas?.dataset.interactableMode === 'jovian-gas-machinery+mission-controls'"
+      + " && canvas?.dataset.interactableKit === 'storm-bus-isolator+deck-mass-trim+skimmer-compressor+separator-package'"
+      + " && canvas?.dataset.interactablePressureKit === 'storm-pressure-lock+relief-manifold'"
+      + " && canvas?.dataset.interactablePressureSource === 'live-pressure-links+breach-state+sector-pressure'"
+      + " && Number(canvas?.dataset.interactableLocationCueCount ?? 0) > 0"
+      + " && canvas?.dataset.bossBiome === 'jovian-harvester'"
+      + " && canvas?.dataset.bossPresentation === 'stormline-foreman-ilex'"
+      + " && canvas?.dataset.bossSilhouette === 'storm-cowl+pressure-crown+relief-stacks'"
+      + " && canvas?.dataset.bossCue === 'storm-ring+pressure-crown+relief-stacks'"
+      + " && Number(canvas?.dataset.babylonJovianRoutes ?? 0) >= 6"
+      + " && canvas?.dataset.babylonJovianLandmarks === 'PRESSURE LOCK|SKIMMER DECK|COMPRESSOR CROWN'"
+      + " && canvas?.dataset.babylonWorldState === 'ready'"
+      + " && canvas?.dataset.worldPresentationMode === 'scene-meshes-not-hud'"
+      + " && Number(canvas?.dataset.worldObjectCount ?? 0) > 0"
+      + " && Number(canvas?.dataset.interactableActive ?? 0) > 0"
+      + " && canvas?.dataset.interactableVisual === 'authored-babylon'"
+      + " && canvas?.dataset.objectiveWorldCue === 'beacon+navigation-path'"
+      + " && Boolean(canvas?.dataset.objectiveTarget)"
+      + " && canvas?.dataset.hazardReadability === 'shape-coded+floor-bound+quality-safe'"
+      + " && canvas?.dataset.babylonPlayerState === 'ready'"
+      + " && canvas?.dataset.babylonEnemyCatalogState === 'ready'"
+      + " && canvas?.dataset.babylonEnemyState === 'ready'"
+      + " && Number(canvas?.dataset.enemyActive ?? 0) > 0"
+      + " && Number(canvas?.dataset.babylonFrames ?? 0) >= 2; })()",
+    'P27-C4 Babylon Jovian Harvester parity',
+    45_000,
+  );
+
+  const beforeMove = await evaluate("document.querySelector('canvas')?.dataset.babylonJovianPlayerPosition ?? ''");
+  if (!/^\d+\.\d,\d+\.\d$/.test(beforeMove)) {
+    throw new Error('P27-C4 Jovian player position telemetry unavailable before movement: ' + beforeMove);
+  }
+  for (const holdMs of [260, 520]) {
+    await call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
+    await sleep(holdMs);
+    await call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
+    await sleep(140);
+    const moved = await evaluate("document.querySelector('canvas')?.dataset.babylonJovianPlayerPosition !== " + JSON.stringify(beforeMove));
+    if (moved) break;
+  }
+  await waitFor(
+    "document.querySelector('canvas')?.dataset.babylonJovianPlayerPosition !== " + JSON.stringify(beforeMove),
+    'P27-C4 Jovian Harvester movement',
+    5_000,
+  );
+  const afterMove = await evaluate("document.querySelector('canvas')?.dataset.babylonJovianPlayerPosition ?? ''");
+
+  const state = await evaluate("(() => { const canvas = document.querySelector('canvas'); return {"
+    + " scenario: canvas?.dataset.babylonScenario ?? '', environmentVisual: canvas?.dataset.environmentVisual ?? '',"
+    + " kit: canvas?.dataset.environmentKit ?? '', instances: Number(canvas?.dataset.environmentInstances ?? 0),"
+    + " activeStructures: Number(canvas?.dataset.environmentActiveStructures ?? 0), profile: canvas?.dataset.environmentPerformanceProfile ?? '',"
+    + " budget: canvas?.dataset.environmentInstanceBudget ?? '', shadows: canvas?.dataset.environmentShadowCasters ?? '',"
+    + " landmark: canvas?.dataset.environmentLandmark ?? '', composition: canvas?.dataset.environmentComposition ?? '',"
+    + " zone: canvas?.dataset.environmentZoneIdentity ?? '', readability: canvas?.dataset.readabilityLanguage ?? '',"
+    + " stormMode: canvas?.dataset.environmentStormMode ?? '', stormIntensity: Number(canvas?.dataset.environmentStormIntensity),"
+    + " pressureShear: Number(canvas?.dataset.environmentPressureShear), pressureRange: canvas?.dataset.environmentPressureRange ?? '',"
+    + " stormDetail: canvas?.dataset.environmentStormDetail ?? '', stormSource: canvas?.dataset.environmentStormSource ?? '',"
+    + " ambientDetail: canvas?.dataset.environmentAmbientDetail ?? '', ambientIntensity: Number(canvas?.dataset.environmentAmbientIntensity),"
+    + " pressureState: canvas?.dataset.interactablePressureState ?? '', pressureDoor: canvas?.dataset.interactablePressureDoor ?? '',"
+    + " localCues: Number(canvas?.dataset.interactableLocationCueCount ?? 0), boss: canvas?.dataset.bossPresentation ?? '',"
+    + " bossCue: canvas?.dataset.bossCue ?? '', bossCueState: canvas?.dataset.bossCueState ?? '',"
+    + " parity: canvas?.dataset.babylonJovianParity ?? '', identity: canvas?.dataset.locationArtIdentity ?? '',"
+    + " routes: Number(canvas?.dataset.babylonJovianRoutes ?? 0), landmarks: canvas?.dataset.babylonJovianLandmarks ?? '',"
+    + " lighting: canvas?.dataset.babylonLightingProfile ?? '', lightingBudget: canvas?.dataset.babylonLightingBudget ?? '',"
+    + " locationLighting: canvas?.dataset.locationLighting ?? '', tone: canvas?.dataset.environmentTone ?? '',"
+    + " worldObjects: Number(canvas?.dataset.worldObjectCount ?? 0), interactables: Number(canvas?.dataset.interactableActive ?? 0),"
+    + " hazards: Number(canvas?.dataset.hazardActive ?? 0), enemies: Number(canvas?.dataset.enemyActive ?? 0),"
+    + " playerPosition: canvas?.dataset.babylonJovianPlayerPosition ?? '' }; })()");
+
+  const expectedKit = ['floor', 'deck-span', 'skimmer-tower', 'transfer-bridge', 'ballast-pod', 'wayfinding', 'storm-language', 'atmosphere', 'boss-cue'];
+  const kit = new Set(String(state.kit).split(',').filter(Boolean));
+  if (!state
+    || state.scenario !== 'jovian-harvester'
+    || state.environmentVisual !== 'procedural-jovian-harvester-babylon'
+    || !expectedKit.every(item => kit.has(item))
+    || state.instances < 20
+    || state.activeStructures < 13
+    || state.landmark !== 'five-skimmer-tower-spine'
+    || state.composition !== 'elevated-skimmer-decks+five-tower-spine+transfer-bridges+ballast-pods'
+    || state.zone !== 'deck:weathered-plate|tower:vertical-skimmer-spine|bridge:dark-transfer-truss|ballast:light-suspended-pod'
+    || state.readability !== 'tower-height+bridge-lines+amber-wayfinding+pressure-shear+storm-charge'
+    || !['nominal', 'charged', 'shear', 'venting'].includes(state.stormMode)
+    || !Number.isFinite(state.stormIntensity)
+    || !Number.isFinite(state.pressureShear)
+    || !/^\d+\.\d{2}-\d+\.\d{2}$/.test(state.pressureRange)
+    || state.stormSource !== 'live-sector-pressure+service-breach+contract-conditions'
+    || !['2-sweeps+2-bands+relief-pulse', '4-sweeps+3-bands+relief-pulse'].includes(state.stormDetail)
+    || !['2-clouds+20-motes+spine-haze', '3-clouds+36-motes+spine-haze', '5-clouds+56-motes+spine-haze'].includes(state.ambientDetail)
+    || !Number.isFinite(state.ambientIntensity)
+    || !['normal', 'leaking', 'decompressing', 'vacuum', 'venting'].includes(state.pressureState)
+    || !['open', 'sealed'].includes(state.pressureDoor)
+    || state.localCues < 1
+    || state.boss !== 'stormline-foreman-ilex'
+    || state.bossCue !== 'storm-ring+pressure-crown+relief-stacks'
+    || !/^(queued|active-phase-[12])$/.test(state.bossCueState)
+    || state.parity !== 'architecture+weather+storm-pressure+props+interactables+navigation+boss-cues+shared-world-cues'
+    || state.identity !== 'skimmer-towers|weathered-condenser|storm-orange|compressor-service'
+    || state.routes < 6
+    || state.landmarks !== 'PRESSURE LOCK|SKIMMER DECK|COMPRESSOR CROWN'
+    || state.lighting !== 'storm-orange'
+    || !/^tier:(high|balanced|performance)\|practical:(1|2)\|shadows:off$/.test(state.lightingBudget)
+    || !/^jovian-harvester:storm-orange:aces-\d+\.\d{2}$/.test(state.locationLighting)
+    || !/^aces-\d+\.\d{2}$/.test(state.tone)
+    || state.worldObjects < 1
+    || state.interactables < 1
+    || state.hazards < 0
+    || state.enemies < 1
+    || afterMove === beforeMove
+    || state.playerPosition === beforeMove
+    || !/^\d+\.\d,\d+\.\d$/.test(state.playerPosition)) {
+    throw new Error('P27-C4 Babylon Jovian Harvester parity invalid: ' + JSON.stringify({ state, beforeMove, afterMove }));
+  }
+
+  if (viewportMode === 'mobile-landscape') {
+    if (!/^(mobile|performance):procedural:structure-shadows-off$/.test(state.profile)) {
+      throw new Error('P27-C4 mobile Jovian performance profile invalid: ' + JSON.stringify(state));
+    }
+    if (state.budget !== 'deck:4+tower:5+bridge:2+ballast:2') {
+      throw new Error('P27-C4 mobile Jovian instance budget regressed: ' + JSON.stringify(state));
+    }
+    if (state.stormDetail !== '2-sweeps+2-bands+relief-pulse' || state.ambientDetail !== '2-clouds+20-motes+spine-haze') {
+      throw new Error('P27-C4 mobile Jovian secondary-effect reduction regressed: ' + JSON.stringify(state));
+    }
+  }
+
+  console.log('BROWSER_P27C4_BABYLON_JOVIAN_HARVESTER_PASS viewport=' + viewportMode
+    + ' identity=' + state.identity
+    + ' routes=' + state.routes
+    + ' landmarks=' + state.landmarks
+    + ' machinery=' + state.localCues
+    + ' boss=' + state.boss + ':' + state.bossCueState
+    + ' storm=' + state.stormMode + ':' + state.stormDetail
+    + ' pressure=' + state.pressureState + ':' + state.pressureDoor
+    + ' movement=' + beforeMove + '->' + afterMove
+    + ' lighting=' + state.locationLighting);
+  return state;
+}
+
 async function p27A2BabylonBackendAudit() {
   const babylonInitState = await evaluate(`(() => {
     const canvas = document.querySelector('canvas');
@@ -3646,6 +3813,7 @@ try {
     if (targetLocation === 'orbital-station') await p27C1BabylonOrbitalAudit();
     else if (targetLocation === 'damaged-vessel') await p27C2BabylonDamagedVesselAudit();
     else if (targetLocation === 'spin-habitat') await p27C3BabylonSpinHabitatAudit();
+    else if (targetLocation === 'jovian-harvester') await p27C4BabylonJovianHarvesterAudit();
     else await p27A2BabylonBackendAudit();
     await performanceDiagnosticsAudit();
     if (pageExceptions.length > 0) {
