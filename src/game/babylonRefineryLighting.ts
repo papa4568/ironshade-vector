@@ -186,9 +186,29 @@ export class BabylonRefineryLighting {
 
     canvas.dataset.babylonLightingProfile = profile.id;
     canvas.dataset.babylonMaterialIntent = 'authored-gltf-pbr+procedural-world-pbr';
+    this.setEnabled(false);
+  }
+
+  setEnabled(enabled: boolean) {
+    this.hemisphere.setEnabled(enabled);
+    this.keyLight.setEnabled(enabled);
+    this.rimLight.setEnabled(enabled);
+    this.emergencyLight.setEnabled(enabled);
+    this.readabilityLight.setEnabled(enabled);
+    this.practicalLights.forEach(light => light.setEnabled(enabled));
+    if (enabled) return;
+    this.shadowGenerator?.dispose();
+    this.shadowGenerator = null;
+    this.shadowMapSize = 0;
+    if (this.scene.environmentTexture === this.iblTexture) this.scene.environmentTexture = null;
+    this.scene.environmentIntensity = 0;
+    this.emergencyLight.intensity = 0;
+    this.readabilityLight.intensity = 0;
+    this.practicalLights.forEach(light => { light.intensity = 0; });
   }
 
   sync(state: SimState, renderBudget: RenderBudgetSnapshot) {
+    this.setEnabled(true);
     const profile = REFINERY_BABYLON_LIGHTING_PROFILE;
     const budget = resolveBabylonRefineryLightingBudget(renderBudget);
     const tierScale = budget.tierName === 'high' ? 1 : budget.tierName === 'balanced' ? 0.88 : 0.72;
