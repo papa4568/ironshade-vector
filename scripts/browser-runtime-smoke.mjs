@@ -521,10 +521,16 @@ async function p27C1BabylonOrbitalAudit() {
   if (!/^\d+\.\d,\d+\.\d$/.test(beforeMove)) {
     throw new Error('P27-C1 Orbital Station player position telemetry unavailable before movement: ' + beforeMove);
   }
-  for (const holdMs of [260, 520]) {
-    await call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
-    await sleep(holdMs);
-    await call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
+  const movementAttempts = [
+    { key: 'd', code: 'KeyD', virtualKeyCode: 68, holdMs: 260 },
+    { key: 'd', code: 'KeyD', virtualKeyCode: 68, holdMs: 520 },
+    { key: 'w', code: 'KeyW', virtualKeyCode: 87, holdMs: 520 },
+    { key: 's', code: 'KeyS', virtualKeyCode: 83, holdMs: 520 },
+  ];
+  for (const attempt of movementAttempts) {
+    await call('Input.dispatchKeyEvent', { type: 'keyDown', key: attempt.key, code: attempt.code, windowsVirtualKeyCode: attempt.virtualKeyCode, nativeVirtualKeyCode: attempt.virtualKeyCode });
+    await sleep(attempt.holdMs);
+    await call('Input.dispatchKeyEvent', { type: 'keyUp', key: attempt.key, code: attempt.code, windowsVirtualKeyCode: attempt.virtualKeyCode, nativeVirtualKeyCode: attempt.virtualKeyCode });
     await sleep(140);
     const moved = await evaluate(`document.querySelector('canvas')?.dataset.babylonOrbitalPlayerPosition !== ${JSON.stringify(beforeMove)}`);
     if (moved) break;
