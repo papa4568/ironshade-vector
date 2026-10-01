@@ -67,6 +67,7 @@ assert.ok(encounters.includes("addObject(state, coverObject('momentum-rail-a', '
 assert.ok(encounters.includes("addObject(state, coverObject('momentum-baffle', 'Countermass service baffle'"));
 assert.ok(encounters.includes("addAt('capture-drum-a', 'Inbound capture drum'"));
 assert.ok(encounters.includes("addAt('capture-drum-b', 'Outbound capture drum'"));
+assert.ok(director.includes("state.sectors[1].gravity = 0.05"));
 assert.ok(director.includes("deployHazard(state, 1050, 520, 'vectorWash', 6)"));
 assert.ok(director.includes('COUNTERMASS WASH // TRANSFER LANE IMPULSE FRONT LIVE'));
 assert.ok(director.includes('TRANSFER REVERSAL // SECOND COUNTERMASS WASH CROSSING LANE'));
