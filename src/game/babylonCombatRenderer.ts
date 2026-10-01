@@ -15,6 +15,7 @@ import {
   type BabylonGraphicsAssetInstance,
 } from './babylonGraphicsAssets';
 import { BabylonDamagedVesselPresentation } from './babylonDamagedVesselPresentation';
+import { BabylonJovianHarvesterPresentation } from './babylonJovianHarvesterPresentation';
 import { BabylonOrbitalStationPresentation } from './babylonOrbitalStationPresentation';
 import { BabylonRefineryLighting } from './babylonRefineryLighting';
 import { BabylonRefineryPostProcessing } from './babylonRefineryPostProcessing';
@@ -316,6 +317,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   private readonly orbitalStationPresentation: BabylonOrbitalStationPresentation;
   private readonly damagedVesselPresentation: BabylonDamagedVesselPresentation;
   private readonly spinHabitatPresentation: BabylonSpinHabitatPresentation;
+  private readonly jovianHarvesterPresentation: BabylonJovianHarvesterPresentation;
   private readonly refineryLighting: BabylonRefineryLighting;
   private readonly refineryPostProcessing: BabylonRefineryPostProcessing;
   private readonly renderBudget: AdaptiveRenderBudget;
@@ -352,6 +354,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.orbitalStationPresentation = new BabylonOrbitalStationPresentation(scene, canvas, coarse);
     this.damagedVesselPresentation = new BabylonDamagedVesselPresentation(scene, canvas, coarse);
     this.spinHabitatPresentation = new BabylonSpinHabitatPresentation(scene, canvas, coarse);
+    this.jovianHarvesterPresentation = new BabylonJovianHarvesterPresentation(scene, canvas, coarse);
     this.refineryLighting = new BabylonRefineryLighting(scene, canvas);
     this.refineryPostProcessing = new BabylonRefineryPostProcessing(scene, canvas);
     this.renderBudget = new AdaptiveRenderBudget(coarse);
@@ -447,8 +450,9 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const orbitalStationScenario = mission.location === 'orbital-station';
     const damagedVesselScenario = mission.location === 'damaged-vessel';
     const spinHabitatScenario = mission.location === 'spin-habitat';
-    if (!refineryScenario && !orbitalStationScenario && !damagedVesselScenario && !spinHabitatScenario) {
-      this.canvas.dataset.babylonScenario = 'ported:asteroid-refinery,orbital-station,damaged-vessel,spin-habitat';
+    const jovianHarvesterScenario = mission.location === 'jovian-harvester';
+    if (!refineryScenario && !orbitalStationScenario && !damagedVesselScenario && !spinHabitatScenario && !jovianHarvesterScenario) {
+      this.canvas.dataset.babylonScenario = 'ported:asteroid-refinery,orbital-station,damaged-vessel,spin-habitat,jovian-harvester';
       this.releasePlayerPresentation('scenario-exit');
       this.releaseEnemyPresentation('scenario-exit');
       this.worldPresentation.release('scenario-exit');
@@ -460,6 +464,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.orbitalStationPresentation.release('scenario-exit');
       this.damagedVesselPresentation.release('scenario-exit');
       this.spinHabitatPresentation.release('scenario-exit');
+      this.jovianHarvesterPresentation.release('scenario-exit');
       this.refineryLighting.setEnabled(false);
       this.refineryPostProcessing.release('scenario-exit');
       this.releaseRefineryEnvironment('scenario-exit');
@@ -473,6 +478,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.orbitalStationPresentation.release('scenario-switch');
       this.damagedVesselPresentation.release('scenario-switch');
       this.spinHabitatPresentation.release('scenario-switch');
+      this.jovianHarvesterPresentation.release('scenario-switch');
       this.ensureRefineryEnvironment(state, quality);
     } else {
       this.refineryLighting.setEnabled(false);
@@ -481,12 +487,19 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       if (orbitalStationScenario) {
         this.damagedVesselPresentation.release('scenario-switch');
         this.spinHabitatPresentation.release('scenario-switch');
+        this.jovianHarvesterPresentation.release('scenario-switch');
       } else if (damagedVesselScenario) {
         this.orbitalStationPresentation.release('scenario-switch');
         this.spinHabitatPresentation.release('scenario-switch');
+        this.jovianHarvesterPresentation.release('scenario-switch');
+      } else if (spinHabitatScenario) {
+        this.orbitalStationPresentation.release('scenario-switch');
+        this.damagedVesselPresentation.release('scenario-switch');
+        this.jovianHarvesterPresentation.release('scenario-switch');
       } else {
         this.orbitalStationPresentation.release('scenario-switch');
         this.damagedVesselPresentation.release('scenario-switch');
+        this.spinHabitatPresentation.release('scenario-switch');
       }
     }
     this.ensurePlayerPresentation(state, quality);
@@ -512,8 +525,16 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.orbitalStationPresentation.sync(state, budget, mission.conditions.includes('low-visibility'));
     } else if (damagedVesselScenario) {
       this.damagedVesselPresentation.sync(state, budget, mission.conditions.includes('low-visibility'));
-    } else {
+    } else if (spinHabitatScenario) {
       this.spinHabitatPresentation.sync(state, budget, mission.conditions.includes('low-visibility'));
+    } else {
+      this.jovianHarvesterPresentation.sync(
+        state,
+        budget,
+        mission.conditions.includes('low-visibility'),
+        mission.conditions.includes('unstable-pressure'),
+        mission.conditions.includes('damaged-grid'),
+      );
     }
     this.syncCamera(state, width / Math.max(1, height), cameraFeedback);
     this.scene.render();
@@ -572,6 +593,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.orbitalStationPresentation.dispose();
     this.damagedVesselPresentation.dispose();
     this.spinHabitatPresentation.dispose();
+    this.jovianHarvesterPresentation.dispose();
     this.refineryPostProcessing.dispose();
     this.refineryLighting.dispose();
     this.releaseRefineryEnvironment('renderer-dispose');
