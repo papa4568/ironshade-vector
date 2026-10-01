@@ -119,6 +119,8 @@ assert.ok(smoke.includes("if (targetLocation === 'parallax-array') {"));
 assert.ok(smoke.includes("parallaxDebt.step = 2"));
 assert.ok(smoke.includes("state.profile.level = Math.max(15, state.profile.level || 1)"));
 assert.ok(smoke.includes("BROWSER_PARALLAX_ARRAY_SEED_PASS parallaxDebt=active step=2 level>=15 stage=predeploy"));
+assert.ok(smoke.includes("BROWSER_PARALLAX_ARRAY_SEED_RESTORE_PASS stage=babylon-exit"));
+assert.ok(smoke.includes("state.hazardMode === 'gravity-split' && gravitySheared"));
 assert.ok(workflow.includes('BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=parallax-array'));
 assert.ok(workflow.includes('p27c10-parallax-array.png'));
 assert.ok(pkg.scripts['test:babylon-parallax-array']);
