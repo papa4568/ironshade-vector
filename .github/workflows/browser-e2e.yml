@@ -422,6 +422,7 @@ jobs:
           if (result?.result?.exceptionDetails) throw new Error('Failed to seed Solar Yard QA campaign cycle.');
           console.log('BROWSER_SOLAR_YARD_SEED_PASS cycle=4');
           NODE
+          BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=solar-yard BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c6-solar-yard.png node scripts/browser-runtime-smoke.mjs
           BROWSER_E2E_LOCATION=solar-yard BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-solar-yard.png node scripts/browser-runtime-smoke.mjs
           node scripts/browser-chapter3-playthrough.mjs
 
@@ -459,6 +460,7 @@ jobs:
             browser-e2e-${{ matrix.viewport }}-jovian-harvester.png
             browser-e2e-${{ matrix.viewport }}-p27c5-ice-mine.png
             browser-e2e-${{ matrix.viewport }}-ice-mine.png
+            browser-e2e-${{ matrix.viewport }}-p27c6-solar-yard.png
             browser-e2e-${{ matrix.viewport }}-solar-yard.png
             browser-preview.log
             browser-chrome.log
