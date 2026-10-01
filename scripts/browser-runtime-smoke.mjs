@@ -1930,6 +1930,12 @@ async function p27A2BabylonBackendAudit() {
 
   const pointerAfterFire = await evaluate(`document.querySelector('canvas')?.dataset.babylonPointerDirection ?? ''`);
 
+  await waitFor(
+    `(() => { const canvas = document.querySelector('canvas'); return canvas?.dataset.babylonEnemyState === 'ready' && Number(canvas?.dataset.enemyLoadingCount ?? 0) === 0; })()`,
+    'P27-B4 Babylon enemy post-fire settle',
+    10_000,
+  );
+
   const state = await evaluate(`(() => {
     const canvas = document.querySelector('canvas');
     return {
