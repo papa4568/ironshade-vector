@@ -14,6 +14,7 @@ import {
   getBabylonGraphicsAssetRuntime,
   type BabylonGraphicsAssetInstance,
 } from './babylonGraphicsAssets';
+import { BabylonDamagedVesselPresentation } from './babylonDamagedVesselPresentation';
 import { BabylonOrbitalStationPresentation } from './babylonOrbitalStationPresentation';
 import { BabylonRefineryLighting } from './babylonRefineryLighting';
 import { BabylonRefineryPostProcessing } from './babylonRefineryPostProcessing';
@@ -312,6 +313,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   private readonly enemyLifecycleVisuals: BabylonEnemyLifecycleVisuals;
   private readonly protocolStatusVisuals: BabylonProtocolStatusVisuals;
   private readonly orbitalStationPresentation: BabylonOrbitalStationPresentation;
+  private readonly damagedVesselPresentation: BabylonDamagedVesselPresentation;
   private readonly refineryLighting: BabylonRefineryLighting;
   private readonly refineryPostProcessing: BabylonRefineryPostProcessing;
   private readonly renderBudget: AdaptiveRenderBudget;
@@ -346,6 +348,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.enemyLifecycleVisuals = new BabylonEnemyLifecycleVisuals(scene, canvas, coarse);
     this.protocolStatusVisuals = new BabylonProtocolStatusVisuals(scene, canvas, coarse);
     this.orbitalStationPresentation = new BabylonOrbitalStationPresentation(scene, canvas, coarse);
+    this.damagedVesselPresentation = new BabylonDamagedVesselPresentation(scene, canvas, coarse);
     this.refineryLighting = new BabylonRefineryLighting(scene, canvas);
     this.refineryPostProcessing = new BabylonRefineryPostProcessing(scene, canvas);
     this.renderBudget = new AdaptiveRenderBudget(coarse);
@@ -439,8 +442,9 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const budget = this.renderBudget.sample(frameMs, quality, qualityMode);
     const refineryScenario = mission.location === 'asteroid-refinery';
     const orbitalStationScenario = mission.location === 'orbital-station';
-    if (!refineryScenario && !orbitalStationScenario) {
-      this.canvas.dataset.babylonScenario = 'ported:asteroid-refinery,orbital-station';
+    const damagedVesselScenario = mission.location === 'damaged-vessel';
+    if (!refineryScenario && !orbitalStationScenario && !damagedVesselScenario) {
+      this.canvas.dataset.babylonScenario = 'ported:asteroid-refinery,orbital-station,damaged-vessel';
       this.releasePlayerPresentation('scenario-exit');
       this.releaseEnemyPresentation('scenario-exit');
       this.worldPresentation.release('scenario-exit');
@@ -450,6 +454,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.enemyLifecycleVisuals.release('scenario-exit');
       this.protocolStatusVisuals.release('scenario-exit');
       this.orbitalStationPresentation.release('scenario-exit');
+      this.damagedVesselPresentation.release('scenario-exit');
       this.refineryLighting.setEnabled(false);
       this.refineryPostProcessing.release('scenario-exit');
       this.releaseRefineryEnvironment('scenario-exit');
@@ -461,11 +466,14 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.syncGraphicsRuntimeBudget(budget);
     if (refineryScenario) {
       this.orbitalStationPresentation.release('scenario-switch');
+      this.damagedVesselPresentation.release('scenario-switch');
       this.ensureRefineryEnvironment(state, quality);
     } else {
       this.refineryLighting.setEnabled(false);
       this.refineryPostProcessing.release('scenario-switch');
       this.releaseRefineryEnvironment('scenario-switch');
+      if (orbitalStationScenario) this.damagedVesselPresentation.release('scenario-switch');
+      else this.orbitalStationPresentation.release('scenario-switch');
     }
     this.ensurePlayerPresentation(state, quality);
     this.syncPlayerPresentation(state, operatorFaction, firingIntent);
@@ -486,8 +494,10 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     if (refineryScenario) {
       this.refineryLighting.sync(state, budget);
       this.refineryPostProcessing.sync(mission.conditions.includes('low-visibility'), budget);
-    } else {
+    } else if (orbitalStationScenario) {
       this.orbitalStationPresentation.sync(state, budget, mission.conditions.includes('low-visibility'));
+    } else {
+      this.damagedVesselPresentation.sync(state, budget, mission.conditions.includes('low-visibility'));
     }
     this.syncCamera(state, width / Math.max(1, height), cameraFeedback);
     this.scene.render();
@@ -544,6 +554,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.enemyLifecycleVisuals.dispose();
     this.protocolStatusVisuals.dispose();
     this.orbitalStationPresentation.dispose();
+    this.damagedVesselPresentation.dispose();
     this.refineryPostProcessing.dispose();
     this.refineryLighting.dispose();
     this.releaseRefineryEnvironment('renderer-dispose');
