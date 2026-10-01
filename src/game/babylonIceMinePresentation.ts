@@ -430,7 +430,7 @@ export class BabylonIceMinePresentation {
       mote.isPickable = false;
       this.frostMotes.push(mote);
       this.frostMoteBases.push(mote.position.clone());
-    });
+    }
 
     this.machineryRoot = new TransformNode('p27-c5-ice-machinery-cues', scene);
     this.machineryRoot.parent = this.root;
