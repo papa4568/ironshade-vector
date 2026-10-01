@@ -1512,7 +1512,7 @@ async function p27C7BabylonLatticeAnnexAudit() {
   );
 
   const beforeMove = await evaluate("document.querySelector('canvas')?.dataset.babylonLatticeAnnexPlayerPosition ?? ''");
-  if (!/^\\d+\\.\\d,\\d+\\.\\d$/.test(beforeMove)) {
+  if (!/^\d+\.\d,\d+\.\d$/.test(beforeMove)) {
     throw new Error('P27-C7 Lattice Annex player position telemetry unavailable before movement: ' + beforeMove);
   }
   for (const key of ['d', 'w', 'a']) {
@@ -1549,14 +1549,14 @@ async function p27C7BabylonLatticeAnnexAudit() {
     || state.scenario !== 'lattice-annex'
     || state.environmentVisual !== 'procedural-lattice-annex-babylon'
     || !/^(full|balanced|mobile|performance):procedural:structure-shadows-off$/.test(state.profile)
-    || !/^pylon:(5|7|9)\\+frame:(3|4|5|6)\\+plinth:(2|3)\\+cradle:(1|2|3)\\+rail:(2|3)\\+band:(1|2|3)\\+shutter:2\\+reference:3$/.test(state.budget)
+    || !/^pylon:(5|7|9)\+frame:(3|4|5|6)\+plinth:(2|3)\+cradle:(1|2|3)\+rail:(2|3)\+band:(1|2|3)\+shutter:2\+reference:3$/.test(state.budget)
     || !state.service.includes('metrology-plinth:')
     || !state.surface.includes('reference-pylon:')
     || !state.machinery.includes('calibration-shutter:2')
     || state.calibration !== 'near-zero-g'
-    || !/^0\\.0[0-4],0\\.0[0-3]$/.test(state.gravity)
+    || !/^0\.0[0-4],0\.0[0-3]$/.test(state.gravity)
     || !/^(retracted|indexed|partial|destroyed):[0-2]$/.test(state.shutters)
-    || !/^active:[0-3]\\+intact:[0-3]$/.test(state.references)
+    || !/^active:[0-3]\+intact:[0-3]$/.test(state.references)
     || state.localCues < 1
     || state.boss !== 'veyra-senn'
     || !/^(queued|active-phase-[12]:(none|surveySweep|referenceLock|archivePurge))$/.test(state.bossCueState)
@@ -1565,8 +1565,8 @@ async function p27C7BabylonLatticeAnnexAudit() {
     || state.routes < 6
     || state.landmarks !== 'METROLOGY RING|REFERENCE GALLERY|SAMPLE VAULT'
     || state.lighting !== 'metrology-teal'
-    || !/^tier:(high|balanced|performance)\\|practical:(1|2)\\|shadows:off$/.test(state.lightingBudget)
-    || !/^lattice-annex:metrology-teal:aces-\\d+\\.\\d{2}$/.test(state.locationLighting)
+    || !/^tier:(high|balanced|performance)\|practical:(1|2)\|shadows:off$/.test(state.lightingBudget)
+    || !/^lattice-annex:metrology-teal:aces-\d+\.\d{2}$/.test(state.locationLighting)
     || state.worldObjects < 1
     || state.interactables < 1
     || state.enemies < 1
