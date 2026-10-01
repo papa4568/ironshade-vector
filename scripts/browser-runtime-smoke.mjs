@@ -4574,6 +4574,48 @@ try {
   }
 
 
+  if (targetLocation === 'parallax-array') {
+    const previousTimeOrigin = await evaluate('performance.timeOrigin');
+    const seeded = await evaluate(`(() => {
+      const stateKey = 'ironshade-vector-state-v1';
+      const state = JSON.parse(localStorage.getItem(stateKey) || 'null');
+      if (!state?.profile || !state?.campaign?.story?.parallaxDebt || !state.campaign.story.interdiction || !state.campaign.story.postKhepri) return false;
+      state.profile.level = Math.max(15, state.profile.level || 1);
+      state.profile.xp = Math.max(7140, state.profile.xp || 0);
+      if (state.campaign.story.blackLattice) {
+        state.campaign.story.blackLattice.status = 'complete';
+        state.campaign.story.blackLattice.step = Math.max(14, state.campaign.story.blackLattice.step || 0);
+      }
+      state.campaign.story.postKhepri.status = 'complete';
+      state.campaign.story.postKhepri.step = Math.max(5, state.campaign.story.postKhepri.step || 0);
+      state.campaign.story.interdiction.status = 'complete';
+      state.campaign.story.interdiction.step = Math.max(5, state.campaign.story.interdiction.step || 0);
+      const parallaxDebt = state.campaign.story.parallaxDebt;
+      parallaxDebt.status = 'active';
+      parallaxDebt.step = 2;
+      parallaxDebt.choiceA = null;
+      parallaxDebt.completed = ['parallax-debt-0', 'parallax-debt-1'];
+      parallaxDebt.evidence = ['baseline-offset', 'return-vector'];
+      parallaxDebt.lastBeat = 'QA seed // Blind Meridian ready at Cislunar Parallax Array.';
+      state.campaign.story.lastBeat = parallaxDebt.lastBeat;
+      state.campaign.lastOutcome = parallaxDebt.lastBeat;
+      localStorage.setItem(stateKey, JSON.stringify(state));
+      location.reload();
+      return true;
+    })()`);
+    if (!seeded) throw new Error('P27-C10 could not seed the Blind Meridian QA contract.');
+    await waitFor(`performance.timeOrigin !== ${JSON.stringify(previousTimeOrigin)}`, 'P27-C10 seeded browser document reload');
+    await waitFor(`(() => {
+      const labels = [...document.querySelectorAll('button[data-primary-area]')].map(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase());
+      return document.readyState === 'complete' && labels.includes('operations');
+    })()`, 'P27-C10 seeded Command Deck');
+    await keyboardActivateButton('Operations');
+    await waitFor(`[...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'contracts')`, 'P27-C10 Operations navigation');
+    await keyboardActivateButton('Contracts');
+    await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('contract board') && [...document.querySelectorAll('button')].some(button => button.textContent?.trim().toLowerCase() === 'deploy selected contract')`, 'P27-C10 seeded Contract Board');
+    console.log('BROWSER_PARALLAX_ARRAY_SEED_PASS parallaxDebt=active step=2 level>=15 stage=predeploy');
+  }
+
   const targetSelected = await evaluate(`(() => {
     const target = ${JSON.stringify(targetLocation)};
     const button = [...document.querySelectorAll('button[data-location]')].find(candidate => candidate.dataset.location === target);
