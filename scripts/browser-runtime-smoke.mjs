@@ -1339,6 +1339,134 @@ async function p27C5BabylonIceMineAudit() {
   return state;
 }
 
+
+async function p27C6BabylonSolarYardAudit() {
+  await waitFor(
+    "(() => { const canvas = document.querySelector('canvas'); return"
+      + " canvas?.dataset.graphicsPathSelection === 'qa-explicit'"
+      + " && canvas?.dataset.graphicsPathRequested === 'babylon'"
+      + " && canvas?.dataset.graphicsPathLoaded === 'babylon'"
+      + " && !(canvas?.dataset.graphicsPathFallback ?? '')"
+      + " && !(canvas?.dataset.babylonFallbackReason ?? '')"
+      + " && canvas?.dataset.babylonInit === 'ready'"
+      + " && canvas?.dataset.babylonBackend === 'webgl2'"
+      + " && canvas?.dataset.babylonScenario === 'solar-yard'"
+      + " && canvas?.dataset.environmentVisual === 'procedural-solar-yard-babylon'"
+      + " && canvas?.dataset.environmentLandmark === 'gold-reflector-pylon-row'"
+      + " && canvas?.dataset.environmentComposition === 'shade-service-deck+fabrication-spine+sunward-work-yard'"
+      + " && canvas?.dataset.environmentZoneIdentity === 'shade:ceramic-deck+radiator-towers+thermal-shutter|spine:truss-frames+sinter-forges+transfer-rails+gantry-cranes|sunward:reflector-pylons+printer-spindles+feedstock-presses'"
+      + " && canvas?.dataset.environmentMaterials === 'ceramic-shell+scorched-steel+black-radiator+solar-gold+heat-amber'"
+      + " && canvas?.dataset.environmentSunShadow === 'hard-sun+cool-shade+long-shadow'"
+      + " && canvas?.dataset.environmentSunDirection === 'fixed-sunward-east-to-west'"
+      + " && /^(hard-sun|solar-surge)$/.test(canvas?.dataset.environmentSunMode ?? '')"
+      + " && /^sun:[123]\\+shade:[123]$/.test(canvas?.dataset.environmentSunPatches ?? '')"
+      + " && canvas?.dataset.environmentThermalShutters === 'procedural-babylon:open'"
+      + " && /^(shutters-open|solar-surge-exposed)$/.test(canvas?.dataset.environmentThermalProtection ?? '')"
+      + " && canvas?.dataset.environmentThermalShutterControl === 'solar-shutter:state-linked'"
+      + " && canvas?.dataset.environmentThermalWindow === '10.0-18.0s:shutter-gated'"
+      + " && /^reciprocating-trolleys:[12]$/.test(canvas?.dataset.environmentCraneMotion ?? '')"
+      + " && /^-?\\d+\\.\\d{2}(,-?\\d+\\.\\d{2})?$/.test(canvas?.dataset.environmentCraneOffsets ?? '')"
+      + " && canvas?.dataset.environmentHazardLanguage === 'shared-hazards+solar-surge+thermal-shutter+radiator-saturation+crane-runaway'"
+      + " && canvas?.dataset.locationArtIdentity === 'panel-clamps|heat-shielded-alloy|solar-orange|fabrication-service'"
+      + " && canvas?.dataset.interactableBiome === 'solar-yard'"
+      + " && Number(canvas?.dataset.interactableLocationCueCount ?? 0) > 0"
+      + " && canvas?.dataset.bossPresentation === 'helios-9'"
+      + " && canvas?.dataset.bossSilhouette === 'sunshield-crown+reflector-wings+fabricator-core'"
+      + " && canvas?.dataset.bossCue === 'sunshield-crown+reflector-wings+fabricator-core'"
+      + " && Number(canvas?.dataset.babylonSolarYardRoutes ?? 0) >= 6"
+      + " && canvas?.dataset.babylonSolarYardLandmarks === 'SHADE GANTRY|FABRICATION SPINE|SUNWARD YARD'"
+      + " && canvas?.dataset.babylonWorldState === 'ready'"
+      + " && Number(canvas?.dataset.worldObjectCount ?? 0) > 0"
+      + " && Number(canvas?.dataset.interactableActive ?? 0) > 0"
+      + " && canvas?.dataset.hazardReadability === 'shape-coded+floor-bound+quality-safe'"
+      + " && Number(canvas?.dataset.enemyActive ?? 0) > 0"
+      + " && Number(canvas?.dataset.babylonFrames ?? 0) >= 2; })()",
+    'P27-C6 Babylon Solar Yard parity',
+    45_000,
+  );
+
+  const beforeMove = await evaluate("document.querySelector('canvas')?.dataset.babylonSolarYardPlayerPosition ?? ''");
+  if (!/^\d+\.\d,\d+\.\d$/.test(beforeMove)) {
+    throw new Error('P27-C6 Solar Yard player position telemetry unavailable before movement: ' + beforeMove);
+  }
+  for (const key of ['d', 'w', 'a']) {
+    const code = key === 'd' ? 'KeyD' : key === 'w' ? 'KeyW' : 'KeyA';
+    const virtual = key === 'd' ? 68 : key === 'w' ? 87 : 65;
+    await call('Input.dispatchKeyEvent', { type: 'keyDown', key, code, windowsVirtualKeyCode: virtual, nativeVirtualKeyCode: virtual });
+    await sleep(420);
+    await call('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: virtual, nativeVirtualKeyCode: virtual });
+    await sleep(140);
+    const moved = await evaluate("document.querySelector('canvas')?.dataset.babylonSolarYardPlayerPosition !== " + JSON.stringify(beforeMove));
+    if (moved) break;
+  }
+  await waitFor("document.querySelector('canvas')?.dataset.babylonSolarYardPlayerPosition !== " + JSON.stringify(beforeMove), 'P27-C6 Solar Yard movement', 5_000);
+  const afterMove = await evaluate("document.querySelector('canvas')?.dataset.babylonSolarYardPlayerPosition ?? ''");
+
+  const state = await evaluate("(() => { const canvas = document.querySelector('canvas'); return {"
+    + " scenario: canvas?.dataset.babylonScenario ?? '', environmentVisual: canvas?.dataset.environmentVisual ?? '',"
+    + " profile: canvas?.dataset.environmentPerformanceProfile ?? '', budget: canvas?.dataset.environmentInstanceBudget ?? '',"
+    + " service: canvas?.dataset.environmentServiceDetails ?? '', surface: canvas?.dataset.environmentSurfaceDetail ?? '',"
+    + " machinery: canvas?.dataset.environmentMachineDetail ?? '', transport: canvas?.dataset.environmentTransport ?? '',"
+    + " craneMotion: canvas?.dataset.environmentCraneMotion ?? '', craneOffsets: canvas?.dataset.environmentCraneOffsets ?? '',"
+    + " thermal: canvas?.dataset.environmentThermalShutters ?? '', protection: canvas?.dataset.environmentThermalProtection ?? '',"
+    + " sunMode: canvas?.dataset.environmentSunMode ?? '', sunPatches: canvas?.dataset.environmentSunPatches ?? '',"
+    + " hazardLanguage: canvas?.dataset.environmentHazardLanguage ?? '', hazardMode: canvas?.dataset.environmentHazardMode ?? '',"
+    + " localCues: Number(canvas?.dataset.interactableLocationCueCount ?? 0), boss: canvas?.dataset.bossPresentation ?? '',"
+    + " bossCueState: canvas?.dataset.bossCueState ?? '', parity: canvas?.dataset.babylonSolarYardParity ?? '',"
+    + " identity: canvas?.dataset.locationArtIdentity ?? '', routes: Number(canvas?.dataset.babylonSolarYardRoutes ?? 0),"
+    + " landmarks: canvas?.dataset.babylonSolarYardLandmarks ?? '', lighting: canvas?.dataset.babylonLightingProfile ?? '',"
+    + " lightingBudget: canvas?.dataset.babylonLightingBudget ?? '', locationLighting: canvas?.dataset.locationLighting ?? '',"
+    + " worldObjects: Number(canvas?.dataset.worldObjectCount ?? 0), interactables: Number(canvas?.dataset.interactableActive ?? 0),"
+    + " enemies: Number(canvas?.dataset.enemyActive ?? 0), playerPosition: canvas?.dataset.babylonSolarYardPlayerPosition ?? '' }; })()");
+
+  if (!state
+    || state.scenario !== 'solar-yard'
+    || state.environmentVisual !== 'procedural-solar-yard-babylon'
+    || !/^(full|balanced|mobile|performance):procedural:structure-shadows-off$/.test(state.profile)
+    || !/^deck:(4|6)\+truss:(3|5)\+radiator:(2|4)\+reflector:3\+machines:(4|7)\+rail:(2|3)\+crane:(1|2)\+shutter:1$/.test(state.budget)
+    || !state.service.includes('thermal-shutter:1')
+    || !state.surface.includes('reflector-pylon:3')
+    || !state.machinery.includes('sinter-forge:')
+    || !state.transport.includes('transfer-rail:')
+    || !/^reciprocating-trolleys:[12]$/.test(state.craneMotion)
+    || !/^-?\d+\.\d{2}(,-?\d+\.\d{2})?$/.test(state.craneOffsets)
+    || state.thermal !== 'procedural-babylon:open'
+    || !/^(shutters-open|solar-surge-exposed)$/.test(state.protection)
+    || !/^(hard-sun|solar-surge)$/.test(state.sunMode)
+    || !/^sun:[123]\+shade:[123]$/.test(state.sunPatches)
+    || state.hazardLanguage !== 'shared-hazards+solar-surge+thermal-shutter+radiator-saturation+crane-runaway'
+    || !/^(nominal|solar-surge|radiator-saturation|crane-runaway)$/.test(state.hazardMode)
+    || state.localCues < 1
+    || state.boss !== 'helios-9'
+    || !/^(queued|active-phase-[12])$/.test(state.bossCueState)
+    || state.parity !== 'panel-clamp-architecture+heat-materials+props+interactables+hazards+thermal-shutter+transport+navigation+boss-cues+shared-world-cues'
+    || state.identity !== 'panel-clamps|heat-shielded-alloy|solar-orange|fabrication-service'
+    || state.routes < 6
+    || state.landmarks !== 'SHADE GANTRY|FABRICATION SPINE|SUNWARD YARD'
+    || state.lighting !== 'solar-orange'
+    || !/^tier:(high|balanced|performance)\|practical:(1|2)\|shadows:off$/.test(state.lightingBudget)
+    || !/^solar-yard:solar-orange:aces-\d+\.\d{2}$/.test(state.locationLighting)
+    || state.worldObjects < 1
+    || state.interactables < 1
+    || state.enemies < 1
+    || state.playerPosition === beforeMove) {
+    throw new Error('P27-C6 Babylon Solar Yard runtime parity regressed: ' + JSON.stringify(state));
+  }
+  if (viewportMode === 'mobile-landscape' && !/^(mobile|performance):/.test(state.profile)) {
+    throw new Error('P27-C6 mobile Solar Yard profile did not reduce: ' + JSON.stringify(state));
+  }
+
+  const initialOffsets = state.craneOffsets;
+  await waitFor("(() => { const value = document.querySelector('canvas')?.dataset.environmentCraneOffsets ?? ''; return Boolean(value) && value !== " + JSON.stringify(initialOffsets) + "; })()", 'P27-C6 Solar Yard gantry motion', 5_000);
+  console.log('BROWSER_P27C6_BABYLON_SOLAR_YARD_PASS viewport=' + viewportMode
+    + ' identity=' + state.identity + ' routes=' + state.routes + ' landmarks=' + state.landmarks
+    + ' machinery=' + state.localCues + ' transport=' + state.transport + ':' + state.craneMotion
+    + ' shutters=' + state.thermal + ':' + state.protection + ' sun=' + state.sunMode + ':' + state.sunPatches
+    + ' boss=' + state.boss + ':' + state.bossCueState + ' movement=' + beforeMove + '->' + afterMove
+    + ' lighting=' + state.locationLighting);
+  return state;
+}
+
 async function p27A2BabylonBackendAudit() {
   const babylonInitState = await evaluate(`(() => {
     const canvas = document.querySelector('canvas');
@@ -3972,6 +4100,7 @@ try {
     else if (targetLocation === 'spin-habitat') await p27C3BabylonSpinHabitatAudit();
     else if (targetLocation === 'jovian-harvester') await p27C4BabylonJovianHarvesterAudit();
     else if (targetLocation === 'ice-mine') await p27C5BabylonIceMineAudit();
+    else if (targetLocation === 'solar-yard') await p27C6BabylonSolarYardAudit();
     else await p27A2BabylonBackendAudit();
     await performanceDiagnosticsAudit();
     if (pageExceptions.length > 0) {
