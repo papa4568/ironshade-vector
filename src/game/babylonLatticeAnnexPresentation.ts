@@ -364,8 +364,9 @@ export class BabylonLatticeAnnexPresentation {
     }
 
     const cueCount = this.syncObjectCues(state);
-    const activeBoss = state.enemies.find(enemy => enemy.active && !enemy.dead && enemy.role === 'boss') ?? null;
-    const veyra = activeBoss?.variant === 'latticeCustodian';
+    const configuredBoss = state.enemies.find(enemy => !enemy.dead && enemy.role === 'boss') ?? null;
+    const activeBoss = configuredBoss?.active ? configuredBoss : null;
+    const veyra = configuredBoss?.variant === 'latticeCustodian';
     this.bossCueRoot.setEnabled(Boolean(activeBoss));
     if (activeBoss) {
       this.bossCueRoot.position.set(scaled(activeBoss.x), 0.05, scaled(activeBoss.y));

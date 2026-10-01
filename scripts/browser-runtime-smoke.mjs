@@ -1559,7 +1559,7 @@ async function p27C7BabylonLatticeAnnexAudit() {
     || !/^active:[0-3]\\+intact:[0-3]$/.test(state.references)
     || state.localCues < 1
     || state.boss !== 'veyra-senn'
-    || !/^active-phase-[12]:(none|surveySweep|referenceLock|archivePurge)$/.test(state.bossCueState)
+    || !/^(queued|active-phase-[12]:(none|surveySweep|referenceLock|archivePurge))$/.test(state.bossCueState)
     || state.parity !== 'reference-pylon-architecture+survey-materials+props+interactables+hazards+calibration-mass-shift+shutters+reference-network+navigation+boss-cues+shared-world-cues'
     || state.identity !== 'reference-pylons|survey-ceramic|metrology-teal|calibration-service'
     || state.routes < 6
