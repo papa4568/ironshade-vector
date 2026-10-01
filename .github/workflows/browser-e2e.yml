@@ -618,7 +618,6 @@ jobs:
           NODE
           BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=cryo-reserve BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c9-cryo-reserve.png node scripts/browser-runtime-smoke.mjs
           BROWSER_E2E_LOCATION=cryo-reserve BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-cryo-reserve.png node scripts/browser-runtime-smoke.mjs
-          node scripts/browser-parallax-array-seed.mjs
           BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=parallax-array BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c10-parallax-array.png node scripts/browser-runtime-smoke.mjs
           BROWSER_E2E_LOCATION=parallax-array BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-parallax-array.png node scripts/browser-runtime-smoke.mjs
           node scripts/browser-chapter3-playthrough.mjs
