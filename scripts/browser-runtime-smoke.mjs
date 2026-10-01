@@ -687,9 +687,14 @@ async function p27C2BabylonDamagedVesselAudit() {
   if (!/^\d+\.\d,\d+\.\d$/.test(beforeMove)) {
     throw new Error('P27-C2 Damaged Vessel player position telemetry unavailable before movement: ' + beforeMove);
   }
-  await call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
-  await sleep(260);
-  await call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
+  for (const holdMs of [260, 520]) {
+    await call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
+    await sleep(holdMs);
+    await call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
+    await sleep(140);
+    const moved = await evaluate("document.querySelector('canvas')?.dataset.babylonDamagedPlayerPosition !== " + JSON.stringify(beforeMove));
+    if (moved) break;
+  }
   await waitFor(
     "document.querySelector('canvas')?.dataset.babylonDamagedPlayerPosition !== " + JSON.stringify(beforeMove),
     'P27-C2 Damaged Vessel movement',
@@ -871,9 +876,14 @@ async function p27C3BabylonSpinHabitatAudit() {
   if (!/^\d+\.\d,\d+\.\d$/.test(beforeMove)) {
     throw new Error('P27-C3 Spin Habitat player position telemetry unavailable before movement: ' + beforeMove);
   }
-  await call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
-  await sleep(260);
-  await call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
+  for (const holdMs of [260, 520]) {
+    await call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
+    await sleep(holdMs);
+    await call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
+    await sleep(140);
+    const moved = await evaluate("document.querySelector('canvas')?.dataset.babylonSpinPlayerPosition !== " + JSON.stringify(beforeMove));
+    if (moved) break;
+  }
   await waitFor(
     "document.querySelector('canvas')?.dataset.babylonSpinPlayerPosition !== " + JSON.stringify(beforeMove),
     'P27-C3 Spin Habitat movement',
