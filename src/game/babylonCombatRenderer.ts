@@ -496,7 +496,6 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.jovianHarvesterPresentation.release('scenario-switch');
       this.iceMinePresentation.release('scenario-switch');
       this.solarYardPresentation.release('scenario-switch');
-        this.latticeAnnexPresentation.release('scenario-switch');
       this.latticeAnnexPresentation.release('scenario-switch');
       this.ensureRefineryEnvironment(state, quality);
     } else {
