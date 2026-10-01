@@ -687,9 +687,14 @@ async function p27C2BabylonDamagedVesselAudit() {
   if (!/^\d+\.\d,\d+\.\d$/.test(beforeMove)) {
     throw new Error('P27-C2 Damaged Vessel player position telemetry unavailable before movement: ' + beforeMove);
   }
-  await call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
-  await sleep(260);
-  await call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
+  for (const holdMs of [260, 520]) {
+    await call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
+    await sleep(holdMs);
+    await call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
+    await sleep(140);
+    const moved = await evaluate("document.querySelector('canvas')?.dataset.babylonDamagedPlayerPosition !== " + JSON.stringify(beforeMove));
+    if (moved) break;
+  }
   await waitFor(
     "document.querySelector('canvas')?.dataset.babylonDamagedPlayerPosition !== " + JSON.stringify(beforeMove),
     'P27-C2 Damaged Vessel movement',
@@ -801,6 +806,210 @@ async function p27C2BabylonDamagedVesselAudit() {
     + ' interactables=' + state.interactables
     + ' hazards=' + state.hazards
     + ' breaches=' + state.breaches
+    + ' movement=' + beforeMove + '->' + afterMove
+    + ' lighting=' + state.locationLighting);
+  return state;
+}
+
+
+async function p27C3BabylonSpinHabitatAudit() {
+  await waitFor(
+    "(() => { const canvas = document.querySelector('canvas'); return"
+      + " canvas?.dataset.graphicsPathSelection === 'qa-explicit'"
+      + " && canvas?.dataset.graphicsPathRequested === 'babylon'"
+      + " && canvas?.dataset.graphicsPathLoaded === 'babylon'"
+      + " && !(canvas?.dataset.graphicsPathFallback ?? '')"
+      + " && !(canvas?.dataset.babylonFallbackReason ?? '')"
+      + " && canvas?.dataset.babylonInit === 'ready'"
+      + " && canvas?.dataset.babylonBackend === 'webgl2'"
+      + " && canvas?.dataset.babylonScene === 'active'"
+      + " && canvas?.dataset.babylonScenario === 'spin-habitat'"
+      + " && canvas?.dataset.babylonEnvironmentState === 'ready'"
+      + " && canvas?.dataset.environmentVisual === 'procedural-spin-habitat-babylon'"
+      + " && canvas?.dataset.environmentMotion === 'gravity-coupled-rigid-rotation'"
+      + " && canvas?.dataset.environmentSpinSource === 'sector-A-gravity'"
+      + " && canvas?.dataset.environmentSpindownSource === 'sector-B-transfer-gravity'"
+      + " && canvas?.dataset.environmentVfx === 'spindown-brake-arcs+axis-warning-pulse'"
+      + " && canvas?.dataset.environmentZoneIdentity === 'rim:plated-green-deck|spoke:skeletal-cyan-truss|axis:bright-stationary-tower'"
+      + " && canvas?.dataset.readabilityLanguage === 'rim-plated-green+spoke-skeletal-cyan+axis-bright-stationary'"
+      + " && canvas?.dataset.locationArtIdentity === 'ring-and-spokes|habitat-alloy|cool-green|habitat-service'"
+      + " && canvas?.dataset.interactableBiome === 'spin-habitat'"
+      + " && canvas?.dataset.interactableMode === 'spin-habitat-machinery+mission-controls'"
+      + " && canvas?.dataset.interactableKit === 'spin-bus-isolator+gravity-trim+bearing-control+attitude-flywheel+pressure-lock'"
+      + " && Number(canvas?.dataset.interactableLocationCueCount ?? 0) > 0"
+      + " && canvas?.dataset.bossBiome === 'spin-habitat'"
+      + " && canvas?.dataset.bossPresentation === 'sable-voss'"
+      + " && canvas?.dataset.bossSilhouette === 'counterspin-mantle+governor-towers+command-visor'"
+      + " && canvas?.dataset.bossCue === 'counterspin-ring+governor-towers+phase-halo'"
+      + " && Number(canvas?.dataset.babylonSpinRoutes ?? 0) >= 6"
+      + " && canvas?.dataset.babylonSpinLandmarks === 'RIM HAB|SPOKE TRANSIT|AXIS HUB'"
+      + " && canvas?.dataset.babylonWorldState === 'ready'"
+      + " && canvas?.dataset.worldPresentationMode === 'scene-meshes-not-hud'"
+      + " && Number(canvas?.dataset.worldObjectCount ?? 0) > 0"
+      + " && Number(canvas?.dataset.interactableActive ?? 0) > 0"
+      + " && canvas?.dataset.interactableVisual === 'authored-babylon'"
+      + " && canvas?.dataset.objectiveWorldCue === 'beacon+navigation-path'"
+      + " && Boolean(canvas?.dataset.objectiveTarget)"
+      + " && canvas?.dataset.hazardReadability === 'shape-coded+floor-bound+quality-safe'"
+      + " && canvas?.dataset.babylonPlayerState === 'ready'"
+      + " && canvas?.dataset.babylonEnemyCatalogState === 'ready'"
+      + " && canvas?.dataset.babylonEnemyState === 'ready'"
+      + " && Number(canvas?.dataset.enemyActive ?? 0) > 0"
+      + " && Number(canvas?.dataset.babylonFrames ?? 0) >= 2; })()",
+    'P27-C3 Babylon Spin Habitat parity',
+    45_000,
+  );
+
+  const firstPhase = Number(await evaluate("document.querySelector('canvas')?.dataset.environmentSpinPhase ?? NaN"));
+  if (!Number.isFinite(firstPhase)) {
+    throw new Error('P27-C3 Spin Habitat rotation phase unavailable: ' + firstPhase);
+  }
+  await waitFor(
+    "(() => { const phase = Number(document.querySelector('canvas')?.dataset.environmentSpinPhase); return Number.isFinite(phase) && Math.abs(phase - "
+      + JSON.stringify(firstPhase) + ") >= 0.015; })()",
+    'P27-C3 Spin Habitat rotation phase advance',
+    5_000,
+  );
+  const nextPhase = Number(await evaluate("document.querySelector('canvas')?.dataset.environmentSpinPhase ?? NaN"));
+
+  const beforeMove = await evaluate("document.querySelector('canvas')?.dataset.babylonSpinPlayerPosition ?? ''");
+  if (!/^\d+\.\d,\d+\.\d$/.test(beforeMove)) {
+    throw new Error('P27-C3 Spin Habitat player position telemetry unavailable before movement: ' + beforeMove);
+  }
+  for (const holdMs of [260, 520]) {
+    await call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
+    await sleep(holdMs);
+    await call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
+    await sleep(140);
+    const moved = await evaluate("document.querySelector('canvas')?.dataset.babylonSpinPlayerPosition !== " + JSON.stringify(beforeMove));
+    if (moved) break;
+  }
+  await waitFor(
+    "document.querySelector('canvas')?.dataset.babylonSpinPlayerPosition !== " + JSON.stringify(beforeMove),
+    'P27-C3 Spin Habitat movement',
+    5_000,
+  );
+  const afterMove = await evaluate("document.querySelector('canvas')?.dataset.babylonSpinPlayerPosition ?? ''");
+
+  const state = await evaluate("(() => { const canvas = document.querySelector('canvas'); return {"
+    + " selection: canvas?.dataset.graphicsPathSelection ?? '', requested: canvas?.dataset.graphicsPathRequested ?? '', loaded: canvas?.dataset.graphicsPathLoaded ?? '',"
+    + " fallback: canvas?.dataset.graphicsPathFallback ?? '', fallbackReason: canvas?.dataset.babylonFallbackReason ?? '',"
+    + " init: canvas?.dataset.babylonInit ?? '', backend: canvas?.dataset.babylonBackend ?? '', scene: canvas?.dataset.babylonScene ?? '',"
+    + " scenario: canvas?.dataset.babylonScenario ?? '', frames: Number(canvas?.dataset.babylonFrames ?? 0),"
+    + " environmentState: canvas?.dataset.babylonEnvironmentState ?? '', environmentVisual: canvas?.dataset.environmentVisual ?? '',"
+    + " environmentKit: canvas?.dataset.environmentKit ?? '', environmentInstances: Number(canvas?.dataset.environmentInstances ?? 0),"
+    + " landmark: canvas?.dataset.environmentLandmark ?? '', serviceDetails: canvas?.dataset.environmentServiceDetails ?? '',"
+    + " composition: canvas?.dataset.environmentComposition ?? '', motion: canvas?.dataset.environmentMotion ?? '',"
+    + " spinMode: canvas?.dataset.environmentSpinMode ?? '', spinRpm: Number(canvas?.dataset.environmentSpinRpm), spinPhase: Number(canvas?.dataset.environmentSpinPhase),"
+    + " spinSource: canvas?.dataset.environmentSpinSource ?? '', spindown: canvas?.dataset.environmentSpindown ?? '',"
+    + " spindownIntensity: Number(canvas?.dataset.environmentSpindownIntensity), spindownSource: canvas?.dataset.environmentSpindownSource ?? '',"
+    + " spindownDetail: canvas?.dataset.environmentSpindownDetail ?? '', vfx: canvas?.dataset.environmentVfx ?? '',"
+    + " ambient: canvas?.dataset.environmentAmbient ?? '', ambientMotion: canvas?.dataset.environmentAmbientMotion ?? '', ambientDetail: canvas?.dataset.environmentAmbientDetail ?? '',"
+    + " zoneIdentity: canvas?.dataset.environmentZoneIdentity ?? '', readability: canvas?.dataset.readabilityLanguage ?? '',"
+    + " parity: canvas?.dataset.babylonSpinHabitatParity ?? '', artIdentity: canvas?.dataset.locationArtIdentity ?? '',"
+    + " routes: Number(canvas?.dataset.babylonSpinRoutes ?? 0), landmarks: canvas?.dataset.babylonSpinLandmarks ?? '',"
+    + " interactableBiome: canvas?.dataset.interactableBiome ?? '', interactableMode: canvas?.dataset.interactableMode ?? '',"
+    + " interactableKit: canvas?.dataset.interactableKit ?? '', localCues: Number(canvas?.dataset.interactableLocationCueCount ?? 0),"
+    + " bossBiome: canvas?.dataset.bossBiome ?? '', bossPresentation: canvas?.dataset.bossPresentation ?? '', bossVisual: canvas?.dataset.bossVisual ?? '',"
+    + " bossSilhouette: canvas?.dataset.bossSilhouette ?? '', bossPalette: canvas?.dataset.bossPalette ?? '', bossCue: canvas?.dataset.bossCue ?? '', bossCueState: canvas?.dataset.bossCueState ?? '',"
+    + " lighting: canvas?.dataset.babylonLightingProfile ?? '', lightingBudget: canvas?.dataset.babylonLightingBudget ?? '',"
+    + " environmentLighting: canvas?.dataset.environmentLighting ?? '', environmentIbl: canvas?.dataset.environmentIbl ?? '', tone: canvas?.dataset.environmentTone ?? '',"
+    + " locationLighting: canvas?.dataset.locationLighting ?? '', materialIntent: canvas?.dataset.babylonMaterialIntent ?? '', pbr: canvas?.dataset.babylonPbrMaterials ?? '',"
+    + " worldState: canvas?.dataset.babylonWorldState ?? '', worldMode: canvas?.dataset.worldPresentationMode ?? '', worldObjects: Number(canvas?.dataset.worldObjectCount ?? 0),"
+    + " interactables: Number(canvas?.dataset.interactableActive ?? 0), interactableVisual: canvas?.dataset.interactableVisual ?? '',"
+    + " objective: canvas?.dataset.objectiveTarget ?? '', objectiveCue: canvas?.dataset.objectiveWorldCue ?? '',"
+    + " hazards: Number(canvas?.dataset.hazardActive ?? 0), hazardReadability: canvas?.dataset.hazardReadability ?? '',"
+    + " playerState: canvas?.dataset.babylonPlayerState ?? '', enemyState: canvas?.dataset.babylonEnemyState ?? '', enemies: Number(canvas?.dataset.enemyActive ?? 0),"
+    + " playerPosition: canvas?.dataset.babylonSpinPlayerPosition ?? '' }; })()");
+
+  const kit = new Set(String(state.environmentKit).split(',').filter(Boolean));
+  const expectedKit = ['floor', 'ring-segment', 'spoke-truss', 'axis-hub', 'service-bay', 'wayfinding', 'spindown', 'ambient', 'boss-cue'];
+  if (!state
+    || state.selection !== 'qa-explicit'
+    || state.requested !== 'babylon'
+    || state.loaded !== 'babylon'
+    || state.fallback
+    || state.fallbackReason
+    || state.init !== 'ready'
+    || state.backend !== 'webgl2'
+    || state.scene !== 'active'
+    || state.scenario !== 'spin-habitat'
+    || state.frames < 2
+    || state.environmentState !== 'ready'
+    || state.environmentVisual !== 'procedural-spin-habitat-babylon'
+    || !expectedKit.every(item => kit.has(item))
+    || state.environmentInstances < 20
+    || state.landmark !== 'central-axis-hub'
+    || !state.serviceDetails.startsWith('service-bay:4+machinery-cues:')
+    || state.composition !== 'rotating-ring-arc+rotating-cross-spokes+stationary-axis+service-bays'
+    || state.motion !== 'gravity-coupled-rigid-rotation'
+    || !['reduced', 'nominal', 'overspeed'].includes(state.spinMode)
+    || !Number.isFinite(state.spinRpm)
+    || state.spinRpm <= 0
+    || !Number.isFinite(state.spinPhase)
+    || Math.abs(state.spinPhase - firstPhase) < 0.015
+    || !Number.isFinite(nextPhase)
+    || state.spinSource !== 'sector-A-gravity'
+    || !['idle', 'active'].includes(state.spindown)
+    || !Number.isFinite(state.spindownIntensity)
+    || state.spindownSource !== 'sector-B-transfer-gravity'
+    || !['3-arcs+axis-pulse', '6-arcs+axis-pulse'].includes(state.spindownDetail)
+    || state.vfx !== 'spindown-brake-arcs+axis-warning-pulse'
+    || state.ambient !== 'rim-light-sweep+spin-dust+axis-haze'
+    || state.ambientMotion !== 'gravity-coupled-sweep+counterspin-drift+stationary-axis-pulse'
+    || !state.ambientDetail.includes('motes+axis-haze')
+    || state.zoneIdentity !== 'rim:plated-green-deck|spoke:skeletal-cyan-truss|axis:bright-stationary-tower'
+    || state.readability !== 'rim-plated-green+spoke-skeletal-cyan+axis-bright-stationary'
+    || state.parity !== 'architecture+spindown+props+interactables+navigation+boss-cues+shared-world-cues'
+    || state.artIdentity !== 'ring-and-spokes|habitat-alloy|cool-green|habitat-service'
+    || state.routes < 6
+    || state.landmarks !== 'RIM HAB|SPOKE TRANSIT|AXIS HUB'
+    || state.interactableBiome !== 'spin-habitat'
+    || state.interactableMode !== 'spin-habitat-machinery+mission-controls'
+    || state.interactableKit !== 'spin-bus-isolator+gravity-trim+bearing-control+attitude-flywheel+pressure-lock'
+    || state.localCues < 1
+    || state.bossBiome !== 'spin-habitat'
+    || state.bossPresentation !== 'sable-voss'
+    || state.bossVisual !== 'procedural-babylon'
+    || state.bossSilhouette !== 'counterspin-mantle+governor-towers+command-visor'
+    || state.bossPalette !== 'recovery-green+cyan-command+amber-phase-two'
+    || state.bossCue !== 'counterspin-ring+governor-towers+phase-halo'
+    || !/^(queued|active-phase-[12])$/.test(state.bossCueState)
+    || state.lighting !== 'cool-green'
+    || !/^tier:(high|balanced|performance)\|practical:(1|2)\|shadows:off$/.test(state.lightingBudget)
+    || !/^spin-habitat-cool-green:axis\+rim\+contact:player\+enemy\+practical:(1|2)\+shadow:off$/.test(state.environmentLighting)
+    || state.environmentIbl !== 'off:spin-habitat'
+    || !/^aces-\d+\.\d{2}$/.test(state.tone)
+    || !/^spin-habitat:cool-green:aces-\d+\.\d{2}$/.test(state.locationLighting)
+    || state.materialIntent !== 'procedural-habitat-alloy-pbr+shared-world-pbr'
+    || !/^pbr:\d+\|spin:7$/.test(state.pbr)
+    || state.worldState !== 'ready'
+    || state.worldMode !== 'scene-meshes-not-hud'
+    || state.worldObjects < 1
+    || state.interactables < 1
+    || state.interactableVisual !== 'authored-babylon'
+    || !state.objective
+    || state.objective === 'complete'
+    || state.objectiveCue !== 'beacon+navigation-path'
+    || state.hazards < 0
+    || state.hazardReadability !== 'shape-coded+floor-bound+quality-safe'
+    || state.playerState !== 'ready'
+    || state.enemyState !== 'ready'
+    || state.enemies < 1
+    || afterMove === beforeMove
+    || state.playerPosition === beforeMove
+    || !/^\d+\.\d,\d+\.\d$/.test(state.playerPosition)) {
+    throw new Error('P27-C3 Babylon Spin Habitat parity invalid: ' + JSON.stringify({ state, firstPhase, nextPhase, beforeMove, afterMove }));
+  }
+
+  console.log('BROWSER_P27C3_BABYLON_SPIN_HABITAT_PASS viewport=' + viewportMode
+    + ' identity=' + state.artIdentity
+    + ' routes=' + state.routes
+    + ' landmarks=' + state.landmarks
+    + ' machinery=' + state.localCues
+    + ' boss=' + state.bossPresentation + ':' + state.bossCueState
+    + ' spin=' + firstPhase.toFixed(3) + '->' + nextPhase.toFixed(3)
+    + ' spindown=' + state.spindown + ':' + state.spindownDetail
     + ' movement=' + beforeMove + '->' + afterMove
     + ' lighting=' + state.locationLighting);
   return state;
@@ -3436,6 +3645,7 @@ try {
   if (requestedGraphicsPath === 'babylon') {
     if (targetLocation === 'orbital-station') await p27C1BabylonOrbitalAudit();
     else if (targetLocation === 'damaged-vessel') await p27C2BabylonDamagedVesselAudit();
+    else if (targetLocation === 'spin-habitat') await p27C3BabylonSpinHabitatAudit();
     else await p27A2BabylonBackendAudit();
     await performanceDiagnosticsAudit();
     if (pageExceptions.length > 0) {
@@ -3793,7 +4003,7 @@ try {
       return icons.length >= 4 && icons.every(image => image.complete && image.naturalWidth > 0);
     })()`, 'Mobile combat SVG assets', 20_000);
   }
-  if (targetLocation === 'spin-habitat') {
+  if (targetLocation === 'spin-habitat' && requestedGraphicsPath !== 'babylon') {
     await waitFor(`(() => {
       const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-spin-habitat');
       return canvas?.dataset.environmentMotion === 'gravity-coupled-rigid-rotation'
