@@ -646,6 +646,166 @@ async function p27C1BabylonOrbitalAudit() {
   return state;
 }
 
+async function p27C2BabylonDamagedVesselAudit() {
+  const initial = await evaluate("(() => { const canvas = document.querySelector('canvas'); return { init: canvas?.dataset.babylonInit ?? '', fallback: canvas?.dataset.graphicsPathFallback ?? '', fallbackReason: canvas?.dataset.babylonFallbackReason ?? '', loaded: canvas?.dataset.graphicsPathLoaded ?? '' }; })()");
+  if (initial?.init === 'fallback' || initial?.init === 'failed') {
+    throw new Error('P27-C2 Babylon Damaged Vessel initialization failed before readiness: ' + JSON.stringify(initial));
+  }
+
+  await waitFor(
+    "(() => { const canvas = document.querySelector('canvas'); return canvas?.dataset.graphicsPathSelection === 'qa-explicit'"
+      + " && canvas?.dataset.graphicsPathRequested === 'babylon'"
+      + " && canvas?.dataset.graphicsPathLoaded === 'babylon'"
+      + " && canvas?.dataset.babylonInit === 'ready'"
+      + " && canvas?.dataset.babylonBackend === 'webgl2'"
+      + " && canvas?.dataset.babylonScene === 'active'"
+      + " && canvas?.dataset.babylonScenario === 'damaged-vessel'"
+      + " && canvas?.dataset.babylonEnvironmentState === 'ready'"
+      + " && canvas?.dataset.environmentVisual === 'procedural-damaged-vessel-babylon'"
+      + " && canvas?.dataset.babylonDamagedParity === 'architecture+scarred-hull+breach-effects+props+navigation+shared-world-cues'"
+      + " && canvas?.dataset.locationArtIdentity === 'broken-ribs|scarred-hull|emergency-amber|salvage-cases'"
+      + " && canvas?.dataset.babylonLightingProfile === 'emergency-amber'"
+      + " && canvas?.dataset.babylonWorldState === 'ready'"
+      + " && canvas?.dataset.worldPresentationMode === 'scene-meshes-not-hud'"
+      + " && Number(canvas?.dataset.worldObjectCount ?? 0) > 0"
+      + " && Number(canvas?.dataset.interactableActive ?? 0) > 0"
+      + " && canvas?.dataset.interactableVisual === 'authored-babylon'"
+      + " && canvas?.dataset.objectiveWorldCue === 'beacon+navigation-path'"
+      + " && Boolean(canvas?.dataset.objectiveTarget)"
+      + " && canvas?.dataset.hazardReadability === 'shape-coded+floor-bound+quality-safe'"
+      + " && canvas?.dataset.breachReadability === 'pressure-state+floor-ring+boss-priority'"
+      + " && canvas?.dataset.babylonPlayerState === 'ready'"
+      + " && canvas?.dataset.babylonEnemyCatalogState === 'ready'"
+      + " && canvas?.dataset.babylonEnemyState === 'ready'"
+      + " && Number(canvas?.dataset.enemyActive ?? 0) > 0"
+      + " && Number(canvas?.dataset.babylonFrames ?? 0) >= 2; })()",
+    'P27-C2 Babylon Damaged Vessel parity',
+    45_000,
+  );
+
+  const beforeMove = await evaluate("document.querySelector('canvas')?.dataset.babylonDamagedPlayerPosition ?? ''");
+  if (!/^\d+\.\d,\d+\.\d$/.test(beforeMove)) {
+    throw new Error('P27-C2 Damaged Vessel player position telemetry unavailable before movement: ' + beforeMove);
+  }
+  await call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
+  await sleep(260);
+  await call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
+  await waitFor(
+    "document.querySelector('canvas')?.dataset.babylonDamagedPlayerPosition !== " + JSON.stringify(beforeMove),
+    'P27-C2 Damaged Vessel movement',
+    5_000,
+  );
+  const afterMove = await evaluate("document.querySelector('canvas')?.dataset.babylonDamagedPlayerPosition ?? ''");
+
+  const state = await evaluate("(() => { const canvas = document.querySelector('canvas'); return {"
+    + " selection: canvas?.dataset.graphicsPathSelection ?? '',"
+    + " requested: canvas?.dataset.graphicsPathRequested ?? '',"
+    + " loaded: canvas?.dataset.graphicsPathLoaded ?? '',"
+    + " fallback: canvas?.dataset.graphicsPathFallback ?? '',"
+    + " fallbackReason: canvas?.dataset.babylonFallbackReason ?? '',"
+    + " init: canvas?.dataset.babylonInit ?? '', backend: canvas?.dataset.babylonBackend ?? '', scene: canvas?.dataset.babylonScene ?? '',"
+    + " scenario: canvas?.dataset.babylonScenario ?? '', frames: Number(canvas?.dataset.babylonFrames ?? 0),"
+    + " environmentState: canvas?.dataset.babylonEnvironmentState ?? '', environmentVisual: canvas?.dataset.environmentVisual ?? '',"
+    + " environmentKit: canvas?.dataset.environmentKit ?? '', environmentInstances: Number(canvas?.dataset.environmentInstances ?? 0),"
+    + " environmentLandmark: canvas?.dataset.environmentLandmark ?? '', serviceDetails: canvas?.dataset.environmentServiceDetails ?? '',"
+    + " surfaceDetail: canvas?.dataset.environmentSurfaceDetail ?? '', composition: canvas?.dataset.environmentComposition ?? '',"
+    + " materials: canvas?.dataset.environmentMaterials ?? '', vfx: canvas?.dataset.environmentVfx ?? '', readability: canvas?.dataset.readabilityLanguage ?? '',"
+    + " parity: canvas?.dataset.babylonDamagedParity ?? '', artIdentity: canvas?.dataset.locationArtIdentity ?? '',"
+    + " locationArt: canvas?.dataset.locationArt ?? '', locationProps: canvas?.dataset.locationProps ?? '',"
+    + " routes: Number(canvas?.dataset.babylonDamagedRoutes ?? 0), landmarks: canvas?.dataset.babylonDamagedLandmarks ?? '',"
+    + " lighting: canvas?.dataset.babylonLightingProfile ?? '', lightingBudget: canvas?.dataset.babylonLightingBudget ?? '',"
+    + " environmentLighting: canvas?.dataset.environmentLighting ?? '', environmentIbl: canvas?.dataset.environmentIbl ?? '',"
+    + " tone: canvas?.dataset.environmentTone ?? '', locationLighting: canvas?.dataset.locationLighting ?? '',"
+    + " materialIntent: canvas?.dataset.babylonMaterialIntent ?? '', pbr: canvas?.dataset.babylonPbrMaterials ?? '',"
+    + " postRelease: canvas?.dataset.babylonPostRelease ?? '', worldState: canvas?.dataset.babylonWorldState ?? '',"
+    + " worldMode: canvas?.dataset.worldPresentationMode ?? '', worldObjects: Number(canvas?.dataset.worldObjectCount ?? 0),"
+    + " interactables: Number(canvas?.dataset.interactableActive ?? 0), interactableAuthored: Number(canvas?.dataset.interactableAuthoredCount ?? 0),"
+    + " interactableVisual: canvas?.dataset.interactableVisual ?? '', interactableReadability: canvas?.dataset.interactableReadability ?? '',"
+    + " objective: canvas?.dataset.objectiveTarget ?? '', objectiveCue: canvas?.dataset.objectiveWorldCue ?? '',"
+    + " hazards: Number(canvas?.dataset.hazardActive ?? 0), hazardReadability: canvas?.dataset.hazardReadability ?? '',"
+    + " breaches: Number(canvas?.dataset.breachActive ?? 0), breachReadability: canvas?.dataset.breachReadability ?? '',"
+    + " biome: canvas?.dataset.biomeState ?? '', biomeAnimation: canvas?.dataset.biomeStateAnimation ?? '', biomeAudio: canvas?.dataset.biomeStateAudio ?? '',"
+    + " playerState: canvas?.dataset.babylonPlayerState ?? '', enemyState: canvas?.dataset.babylonEnemyState ?? '',"
+    + " enemies: Number(canvas?.dataset.enemyActive ?? 0), playerPosition: canvas?.dataset.babylonDamagedPlayerPosition ?? '' }; })()");
+
+  const kit = new Set(String(state.environmentKit).split(',').filter(Boolean));
+  const expectedKit = ['floor', 'broken-rib', 'breach-frame', 'salvage-rack', 'torn-plate', 'service-bundle', 'wayfinding', 'breach-vapor', 'scorch'];
+  if (!state
+    || state.selection !== 'qa-explicit'
+    || state.requested !== 'babylon'
+    || state.loaded !== 'babylon'
+    || state.fallback
+    || state.fallbackReason
+    || state.init !== 'ready'
+    || state.backend !== 'webgl2'
+    || state.scene !== 'active'
+    || state.scenario !== 'damaged-vessel'
+    || state.frames < 2
+    || state.environmentState !== 'ready'
+    || state.environmentVisual !== 'procedural-damaged-vessel-babylon'
+    || !expectedKit.every(item => kit.has(item))
+    || state.environmentInstances < 50
+    || state.environmentLandmark !== 'starboard-hull-breach'
+    || state.serviceDetails !== 'salvage-rack:6+service-bundle:5'
+    || state.surfaceDetail !== 'broken-rib:5+torn-plate:6+scorch:6'
+    || state.composition !== 'broken-rib-corridor+starboard-breach+torn-shell+perimeter-salvage'
+    || state.materials !== 'scarred-hull+torn-edge+warning-emissive+salvage-status'
+    || state.vfx !== 'breach-vapor:18+scorch:6'
+    || state.readability !== 'silhouette+damage-edge+breach-vapor+luminance'
+    || state.parity !== 'architecture+scarred-hull+breach-effects+props+navigation+shared-world-cues'
+    || state.artIdentity !== 'broken-ribs|scarred-hull|emergency-amber|salvage-cases'
+    || state.locationArt !== 'damaged-vessel:broken-ribs:scarred-hull'
+    || state.locationProps !== 'salvage-cases:procedural-babylon'
+    || state.routes < 6
+    || state.landmarks !== 'FORE HAB|CARGO SPINE|ENGINE VAULT'
+    || state.lighting !== 'emergency-amber'
+    || !/^tier:(high|balanced|performance)\|practical:(1|2)\|shadows:off$/.test(state.lightingBudget)
+    || !/^damaged-vessel-emergency:breach\+salvage\+contact:player\+enemy\+practical:(1|2)\+shadow:off$/.test(state.environmentLighting)
+    || state.environmentIbl !== 'off:damaged-vessel'
+    || !/^aces-\d+\.\d{2}$/.test(state.tone)
+    || !/^damaged-vessel:emergency-amber:aces-\d+\.\d{2}$/.test(state.locationLighting)
+    || state.materialIntent !== 'procedural-scarred-hull-pbr+shared-world-pbr'
+    || !/^pbr:\d+\|damaged:7$/.test(state.pbr)
+    || state.postRelease !== 'scenario-switch'
+    || state.worldState !== 'ready'
+    || state.worldMode !== 'scene-meshes-not-hud'
+    || state.worldObjects < 1
+    || state.interactables < 1
+    || state.interactableAuthored < 1
+    || state.interactableVisual !== 'authored-babylon'
+    || state.interactableReadability !== 'shape-coded+state-emissive+floor-cue:quality-safe'
+    || !state.objective
+    || state.objective === 'complete'
+    || state.objectiveCue !== 'beacon+navigation-path'
+    || state.hazards < 0
+    || state.hazardReadability !== 'shape-coded+floor-bound+quality-safe'
+    || state.breaches < 0
+    || state.breachReadability !== 'pressure-state+floor-ring+boss-priority'
+    || !state.biome
+    || !state.biomeAnimation
+    || !state.biomeAudio
+    || state.playerState !== 'ready'
+    || state.enemyState !== 'ready'
+    || state.enemies < 1
+    || afterMove === beforeMove
+    || state.playerPosition === beforeMove
+    || !/^\d+\.\d,\d+\.\d$/.test(state.playerPosition)) {
+    throw new Error('P27-C2 Babylon Damaged Vessel parity invalid: ' + JSON.stringify({ state, beforeMove, afterMove }));
+  }
+
+  console.log('BROWSER_P27C2_BABYLON_DAMAGED_VESSEL_PASS viewport=' + viewportMode
+    + ' identity=' + state.artIdentity
+    + ' routes=' + state.routes
+    + ' landmarks=' + state.landmarks
+    + ' world=' + state.worldObjects
+    + ' interactables=' + state.interactables
+    + ' hazards=' + state.hazards
+    + ' breaches=' + state.breaches
+    + ' movement=' + beforeMove + '->' + afterMove
+    + ' lighting=' + state.locationLighting);
+  return state;
+}
+
 async function p27A2BabylonBackendAudit() {
   const babylonInitState = await evaluate(`(() => {
     const canvas = document.querySelector('canvas');
@@ -3275,6 +3435,7 @@ try {
   console.log(`BROWSER_P15_MISSION_PRESENTATION_PASS viewport=${viewportMode} deployment=non-blocking mode=${p15MissionPresentation.mode} title=${p15MissionPresentation.title}`);
   if (requestedGraphicsPath === 'babylon') {
     if (targetLocation === 'orbital-station') await p27C1BabylonOrbitalAudit();
+    else if (targetLocation === 'damaged-vessel') await p27C2BabylonDamagedVesselAudit();
     else await p27A2BabylonBackendAudit();
     await performanceDiagnosticsAudit();
     if (pageExceptions.length > 0) {
