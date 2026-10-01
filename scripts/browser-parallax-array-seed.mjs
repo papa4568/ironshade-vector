@@ -50,6 +50,34 @@ const result = await evaluate(`(() => {
     return true;
   };
 
+  const level15AllocatedNodes = [
+    'ballistics-vectoring-lane',
+    'ballistics-bore-map',
+    'ballistics-terminal-geometry',
+    'ballistics-impact-lane',
+    'ballistics-kinetic-budget',
+    'ballistics-dense-salvo',
+    'mobility-servo-lane',
+    'mobility-countermass-timing',
+    'mobility-vector-recovery',
+    'mobility-impulse-lane',
+    'mobility-brake-sense',
+    'mobility-transit-window',
+    'systems-capacitor-lane',
+    'systems-charge-recovery',
+  ];
+  const seedLevel15Profile = profile => {
+    if (!profile) return;
+    profile.level = Math.max(15, profile.level || 1);
+    profile.progressionPoints = 0;
+    profile.allocatedNodes = [...level15AllocatedNodes];
+    if (profile.operatorNetwork) {
+      profile.operatorNetwork.allocatedNodeIds = [...level15AllocatedNodes];
+      profile.operatorNetwork.unspentPoints = 0;
+      profile.operatorNetwork.plannedTargetNodeIds = [];
+    }
+  };
+
   const stateKey = 'ironshade-vector-state-v1';
   const profileKey = 'ironshade-vector-profile-v3';
   const campaignKey = 'ironshade-vector-campaign-v1';
@@ -57,7 +85,7 @@ const result = await evaluate(`(() => {
   let stateSeeded = false;
   if (stateRaw) {
     const state = JSON.parse(stateRaw);
-    if (state.profile) state.profile.level = Math.max(15, state.profile.level || 1);
+    seedLevel15Profile(state.profile);
     stateSeeded = seedCampaign(state.campaign);
     localStorage.setItem(stateKey, JSON.stringify(state));
   }
@@ -65,7 +93,7 @@ const result = await evaluate(`(() => {
   const profileRaw = localStorage.getItem(profileKey);
   if (profileRaw) {
     const profile = JSON.parse(profileRaw);
-    profile.level = Math.max(15, profile.level || 1);
+    seedLevel15Profile(profile);
     localStorage.setItem(profileKey, JSON.stringify(profile));
   }
 
