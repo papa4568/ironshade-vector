@@ -484,6 +484,73 @@ jobs:
           NODE
           BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=lattice-annex BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c7-lattice-annex.png node scripts/browser-runtime-smoke.mjs
           BROWSER_E2E_LOCATION=lattice-annex BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-lattice-annex.png node scripts/browser-runtime-smoke.mjs
+          node --input-type=module <<'NODE'
+          const targets = await (await fetch('http://127.0.0.1:9223/json')).json();
+          const target = targets.find(candidate => candidate.type === 'page' && candidate.webSocketDebuggerUrl);
+          if (!target) throw new Error('No Chrome page target available for Momentum Exchange QA seeding.');
+          const socket = new WebSocket(target.webSocketDebuggerUrl);
+          await new Promise((resolve, reject) => {
+            socket.addEventListener('open', resolve, { once: true });
+            socket.addEventListener('error', reject, { once: true });
+          });
+          let sequence = 0;
+          const evaluate = expression => new Promise((resolve, reject) => {
+            const id = ++sequence;
+            const onMessage = event => {
+              const message = JSON.parse(event.data);
+              if (message.id !== id) return;
+              socket.removeEventListener('message', onMessage);
+              if (message.error) reject(new Error(message.error.message));
+              else resolve(message.result);
+            };
+            socket.addEventListener('message', onMessage);
+            socket.send(JSON.stringify({ id, method: 'Runtime.evaluate', params: { expression, returnByValue: true } }));
+          });
+          const result = await evaluate(`(() => {
+            const seedCampaign = campaign => {
+              if (!campaign?.story?.interdiction || !campaign?.story?.postKhepri) return false;
+              if (campaign.story.blackLattice) {
+                campaign.story.blackLattice.status = 'complete';
+                campaign.story.blackLattice.step = Math.max(14, campaign.story.blackLattice.step || 0);
+              }
+              campaign.story.postKhepri.status = 'complete';
+              campaign.story.postKhepri.step = Math.max(5, campaign.story.postKhepri.step || 0);
+              const interdiction = campaign.story.interdiction;
+              interdiction.status = 'active';
+              interdiction.step = 0;
+              interdiction.choiceA = null;
+              interdiction.completed = [];
+              interdiction.evidence = [];
+              interdiction.identifiedTargets = [];
+              interdiction.lastBeat = 'QA seed // Brake Custody ready at Cislunar Momentum Exchange.';
+              campaign.story.lastBeat = interdiction.lastBeat;
+              campaign.lastOutcome = interdiction.lastBeat;
+              return true;
+            };
+            const stateKey = 'ironshade-vector-state-v1';
+            const campaignKey = 'ironshade-vector-campaign-v1';
+            const stateRaw = localStorage.getItem(stateKey);
+            let stateSeeded = false;
+            if (stateRaw) {
+              const state = JSON.parse(stateRaw);
+              stateSeeded = seedCampaign(state?.campaign);
+              localStorage.setItem(stateKey, JSON.stringify(state));
+            }
+            const campaignRaw = localStorage.getItem(campaignKey);
+            let campaignSeeded = false;
+            if (campaignRaw) {
+              const campaign = JSON.parse(campaignRaw);
+              campaignSeeded = seedCampaign(campaign);
+              localStorage.setItem(campaignKey, JSON.stringify(campaign));
+            }
+            return { stateSeeded, campaignSeeded };
+          })()`);
+          socket.close();
+          if (result?.result?.exceptionDetails) throw new Error('Failed to seed Momentum Exchange QA Interdiction contract.');
+          console.log('BROWSER_MOMENTUM_EXCHANGE_SEED_PASS interdiction=active step=0');
+          NODE
+          BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=momentum-exchange BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c8-momentum-exchange.png node scripts/browser-runtime-smoke.mjs
+          BROWSER_E2E_LOCATION=momentum-exchange BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-momentum-exchange.png node scripts/browser-runtime-smoke.mjs
           node scripts/browser-chapter3-playthrough.mjs
 
       - name: Upload browser QA evidence
@@ -524,6 +591,8 @@ jobs:
             browser-e2e-${{ matrix.viewport }}-solar-yard.png
             browser-e2e-${{ matrix.viewport }}-p27c7-lattice-annex.png
             browser-e2e-${{ matrix.viewport }}-lattice-annex.png
+            browser-e2e-${{ matrix.viewport }}-p27c8-momentum-exchange.png
+            browser-e2e-${{ matrix.viewport }}-momentum-exchange.png
             browser-preview.log
             browser-chrome.log
           if-no-files-found: warn
