@@ -1615,7 +1615,7 @@ async function p27C8BabylonMomentumExchangeAudit() {
       + " && canvas?.dataset.environmentMaterials === 'magnetic-machinery+brushed-ferrous+transfer-blue+capture-cyan'"
       + " && canvas?.dataset.environmentCountermassTimeline === '9.0s:first-wash>20.0s:transfer-reversal'"
       + " && canvas?.dataset.environmentTransferGravity === '0.05'"
-      + " && /^(armed|partial|loaded|offline):[0-2]\/[0-2]$/.test(canvas?.dataset.environmentCaptureDrums ?? '')"
+      + " && /^(armed|partial|loaded|offline):[0-2]\\/[0-2]$/.test(canvas?.dataset.environmentCaptureDrums ?? '')"
       + " && canvas?.dataset.environmentHazardLanguage === 'shared-hazards+countermass-wash+vector-wash+near-zero-g+magnetic-transfer'"
       + " && canvas?.dataset.locationArtIdentity === 'flywheel-lane|magnetic-machinery|transfer-blue|capture-service'"
       + " && canvas?.dataset.interactableBiome === 'momentum-exchange'"
