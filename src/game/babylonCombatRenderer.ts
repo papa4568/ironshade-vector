@@ -1,5 +1,6 @@
 import { FreeCamera } from '@babylonjs/core/Cameras/freeCamera';
 import { Ray } from '@babylonjs/core/Culling/ray';
+import type { AbstractEngine } from '@babylonjs/core/Engines/abstractEngine';
 import { Engine } from '@babylonjs/core/Engines/engine';
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { Color3, Color4 } from '@babylonjs/core/Maths/math.color';
@@ -31,6 +32,7 @@ import { BabylonRefineryPostProcessing } from './babylonRefineryPostProcessing';
 import { BabylonSpinHabitatPresentation } from './babylonSpinHabitatPresentation';
 import { BabylonSolarYardPresentation } from './babylonSolarYardPresentation';
 import type {
+  BabylonGraphicsBackendId,
   CombatGraphicsBackend,
   CombatGraphicsPerformanceStats,
   CombatGraphicsPointerDirection,
@@ -292,10 +294,11 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   readonly id = 'babylon' as const;
   readonly loadedId = 'babylon' as const;
 
-  private readonly engine: Engine;
+  private readonly engine: AbstractEngine;
   private readonly scene: Scene;
   private readonly camera: FreeCamera;
   private readonly canvas: HTMLCanvasElement;
+  private readonly renderCanvas: HTMLCanvasElement;
   private readonly coarse: boolean;
   private readonly identity = Matrix.Identity();
   private readonly cameraTarget = new Vector3();
@@ -355,12 +358,14 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
 
   private constructor(
     canvas: HTMLCanvasElement,
+    renderCanvas: HTMLCanvasElement,
     coarse: boolean,
-    engine: Engine,
+    engine: AbstractEngine,
     scene: Scene,
     camera: FreeCamera,
   ) {
     this.canvas = canvas;
+    this.renderCanvas = renderCanvas;
     this.coarse = coarse;
     this.engine = engine;
     this.scene = scene;
@@ -424,21 +429,48 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.weaponAccent.setEnabled(false);
   }
 
-  static create(canvas: HTMLCanvasElement, coarse: boolean) {
-    const engine = new Engine(canvas, !coarse, {
-      alpha: false,
-      powerPreference: 'high-performance',
-      preserveDrawingBuffer: false,
-      stencil: true,
-    }, false);
-
-    if (engine.webGLVersion !== 2) {
-      const version = engine.webGLVersion;
-      engine.dispose();
-      throw new Error(`Babylon QA backend requires WebGL2; initialized WebGL${version}.`);
-    }
+  static async create(
+    renderCanvas: HTMLCanvasElement,
+    coarse: boolean,
+    backend: BabylonGraphicsBackendId = 'webgl2',
+    telemetryCanvas: HTMLCanvasElement = renderCanvas,
+  ) {
+    let engine: AbstractEngine | null = null;
+    telemetryCanvas.dataset.babylonBackendRequested ||= backend;
+    telemetryCanvas.dataset.babylonBackendLoaded = 'initializing';
 
     try {
+      if (backend === 'webgpu') {
+        telemetryCanvas.dataset.babylonBackendInitStage = 'webgpu-support';
+        const { WebGPUEngine } = await import('@babylonjs/core/Engines/webgpuEngine');
+        if (!(await WebGPUEngine.IsSupportedAsync)) {
+          throw new Error('Babylon WebGPU is not supported by this browser/runtime.');
+        }
+        telemetryCanvas.dataset.babylonBackendInitStage = 'webgpu-init';
+        const webGpuEngine = new WebGPUEngine(renderCanvas, {
+          powerPreference: 'high-performance',
+          enableAllFeatures: false,
+        });
+        engine = webGpuEngine;
+        await webGpuEngine.initAsync();
+      } else {
+        telemetryCanvas.dataset.babylonBackendInitStage = 'webgl2-init';
+        const webGlEngine = new Engine(renderCanvas, !coarse, {
+          alpha: false,
+          powerPreference: 'high-performance',
+          preserveDrawingBuffer: false,
+          stencil: true,
+        }, false);
+        engine = webGlEngine;
+        if (webGlEngine.webGLVersion !== 2) {
+          const version = webGlEngine.webGLVersion;
+          webGlEngine.dispose();
+          engine = null;
+          throw new Error(`Babylon QA backend requires WebGL2; initialized WebGL${version}.`);
+        }
+      }
+
+      telemetryCanvas.dataset.babylonBackendInitStage = 'scene-create';
       const scene = new Scene(engine);
       scene.useRightHandedSystem = true;
       scene.clearColor = new Color4(0.035, 0.055, 0.065, 1);
@@ -449,22 +481,24 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       camera.setTarget(new Vector3(0, 0.62, 0));
       scene.activeCamera = camera;
 
+      telemetryCanvas.dataset.babylonBackend = backend;
+      telemetryCanvas.dataset.babylonBackendLoaded = backend;
+      telemetryCanvas.dataset.babylonBackendInitStage = 'ready';
+      telemetryCanvas.dataset.babylonInit = 'ready';
+      telemetryCanvas.dataset.babylonScene = 'active';
+      telemetryCanvas.dataset.babylonDisposed = 'false';
+      telemetryCanvas.dataset.babylonFrames = '0';
+      telemetryCanvas.dataset.babylonCameraParity = 'three-combat-v1';
+      telemetryCanvas.dataset.babylonInputParity = 'ground-plane-raycast-v1';
+      telemetryCanvas.dataset.babylonEnvironmentState = 'idle';
+      telemetryCanvas.dataset.babylonPlayerState = 'idle';
+      telemetryCanvas.dataset.babylonEnemyCatalogState = 'idle';
+      telemetryCanvas.dataset.babylonEnemyState = 'idle';
 
-      canvas.dataset.babylonBackend = 'webgl2';
-      canvas.dataset.babylonInit = 'ready';
-      canvas.dataset.babylonScene = 'active';
-      canvas.dataset.babylonDisposed = 'false';
-      canvas.dataset.babylonFrames = '0';
-      canvas.dataset.babylonCameraParity = 'three-combat-v1';
-      canvas.dataset.babylonInputParity = 'ground-plane-raycast-v1';
-      canvas.dataset.babylonEnvironmentState = 'idle';
-      canvas.dataset.babylonPlayerState = 'idle';
-      canvas.dataset.babylonEnemyCatalogState = 'idle';
-      canvas.dataset.babylonEnemyState = 'idle';
-
-      return new BabylonCombatRenderer(canvas, coarse, engine, scene, camera);
+      return new BabylonCombatRenderer(telemetryCanvas, renderCanvas, coarse, engine, scene, camera);
     } catch (error) {
-      engine.dispose();
+      engine?.dispose();
+      telemetryCanvas.dataset.babylonBackendLoaded = 'failed';
       throw error;
     }
   }
@@ -2044,7 +2078,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.canvas.dataset.babylonViewport = [
       `${this.width.toFixed(0)}x${this.height.toFixed(0)}`,
       `ratio:${this.pixelRatio.toFixed(2)}`,
-      `buffer:${this.canvas.width}x${this.canvas.height}`,
+      `buffer:${this.renderCanvas.width}x${this.renderCanvas.height}`,
     ].join('@');
     this.canvas.dataset.renderTier = budget.tierName;
     this.canvas.dataset.graphicsQuality = budget.qualityMode;
@@ -2089,6 +2123,11 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   }
 }
 
-export function createBabylonCombatRenderer(canvas: HTMLCanvasElement, coarse: boolean) {
-  return BabylonCombatRenderer.create(canvas, coarse);
+export function createBabylonCombatRenderer(
+  renderCanvas: HTMLCanvasElement,
+  coarse: boolean,
+  backend: BabylonGraphicsBackendId = 'webgl2',
+  telemetryCanvas: HTMLCanvasElement = renderCanvas,
+) {
+  return BabylonCombatRenderer.create(renderCanvas, coarse, backend, telemetryCanvas);
 }
