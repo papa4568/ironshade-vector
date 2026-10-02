@@ -38,6 +38,8 @@ for (const marker of [
   'babylonDisposeResources',
   'babylonAssetCacheReclaimed',
   'HeapProfiler.collectGarbage',
+  'Runtime.getHeapUsage',
+  'cdp-runtime-heap',
   'ANDROID_P27D6_GC_PASS',
   'cacheBudgetViolations',
   'frameFinal > frameBaseline * 1.5',
@@ -55,6 +57,7 @@ for (const marker of [
   'FATAL EXCEPTION',
   'ANR in app\\.ironshade\\.vector',
   'Math.max(128 * 1024, baselineKb * 0.45)',
+  'WEBVIEW_STATUS=$?',
   'ANDROID_P27D6_MEMORY_PASS',
   'ANDROID_P27D6_SOAK_PASS',
 ]) {
