@@ -123,9 +123,13 @@ await call('HeapProfiler.enable', {}, 10_000).catch(() => undefined);
 async function collectGarbage(label) {
   await call('HeapProfiler.collectGarbage', {}, 30_000);
   await sleep(250);
-  const heapMb = await evaluate('(() => { const memory = performance.memory; return typeof memory?.usedJSHeapSize === "number" ? memory.usedJSHeapSize / 1048576 : null; })()');
-  console.log('ANDROID_P27D6_GC_PASS label=' + label + ' heapMb=' + (heapMb ?? 'na'));
-  return heapMb;
+  const usage = await call('Runtime.getHeapUsage', {}, 10_000).catch(() => null);
+  const usedMb = Number.isFinite(usage?.usedSize) ? usage.usedSize / 1048576 : null;
+  const totalMb = Number.isFinite(usage?.totalSize) ? usage.totalSize / 1048576 : null;
+  console.log('ANDROID_P27D6_GC_PASS label=' + label
+    + ' usedMb=' + (usedMb ?? 'na')
+    + ' totalMb=' + (totalMb ?? 'na'));
+  return { usedMb, totalMb };
 }
 
 async function waitFor(expression, label, timeoutMs = 60_000) {
@@ -214,7 +218,12 @@ function edgeMedian(values, atEnd = false) {
 }
 
 async function sampleRuntime(atMs) {
-  return await evaluate('(() => { const canvas = document.querySelector("canvas"); if (!canvas || canvas.dataset.graphicsPathRequested !== "babylon") return null; let report = null; try { report = JSON.parse(canvas.dataset.performanceReport || "null"); } catch {} const memory = performance.memory; return { atMs: ' + Math.round(atMs) + ', mission: document.querySelector(".mission-chip")?.textContent?.trim() ?? "", frames: Number(canvas.dataset.babylonFrames ?? "0"), graphicsLoaded: canvas.dataset.graphicsPathLoaded ?? "", backendLoaded: canvas.dataset.babylonBackendLoaded ?? "", init: canvas.dataset.babylonInit ?? "", scene: canvas.dataset.babylonScene ?? "", disposed: canvas.dataset.babylonDisposed ?? "", sceneTelemetry: canvas.dataset.babylonSceneTelemetry ?? "", geometryStats: canvas.dataset.babylonGeometryStats ?? "", resourceBudget: canvas.dataset.babylonResourceBudget ?? "", performanceStatus: canvas.dataset.performanceStatus ?? "", performanceRegressions: canvas.dataset.performanceRegressions ?? "", report, jsHeapMb: typeof memory?.usedJSHeapSize === "number" ? memory.usedJSHeapSize / 1048576 : null }; })()');
+  const sample = await evaluate('(() => { const canvas = document.querySelector("canvas"); if (!canvas || canvas.dataset.graphicsPathRequested !== "babylon") return null; let report = null; try { report = JSON.parse(canvas.dataset.performanceReport || "null"); } catch {} const memory = performance.memory; return { atMs: ' + Math.round(atMs) + ', mission: document.querySelector(".mission-chip")?.textContent?.trim() ?? "", frames: Number(canvas.dataset.babylonFrames ?? "0"), graphicsLoaded: canvas.dataset.graphicsPathLoaded ?? "", backendLoaded: canvas.dataset.babylonBackendLoaded ?? "", init: canvas.dataset.babylonInit ?? "", scene: canvas.dataset.babylonScene ?? "", disposed: canvas.dataset.babylonDisposed ?? "", sceneTelemetry: canvas.dataset.babylonSceneTelemetry ?? "", geometryStats: canvas.dataset.babylonGeometryStats ?? "", resourceBudget: canvas.dataset.babylonResourceBudget ?? "", performanceStatus: canvas.dataset.performanceStatus ?? "", performanceRegressions: canvas.dataset.performanceRegressions ?? "", report, jsHeapMb: typeof memory?.usedJSHeapSize === "number" ? memory.usedJSHeapSize / 1048576 : null }; })()');
+  if (!sample) return null;
+  const heapUsage = await call('Runtime.getHeapUsage', {}, 10_000).catch(() => null);
+  sample.cdpHeapUsedMb = Number.isFinite(heapUsage?.usedSize) ? heapUsage.usedSize / 1048576 : null;
+  sample.cdpHeapTotalMb = Number.isFinite(heapUsage?.totalSize) ? heapUsage.totalSize / 1048576 : null;
+  return sample;
 }
 
 async function exerciseCombatInput() {
@@ -239,8 +248,8 @@ async function cycleMission(index) {
     throw new Error('P27-D6 cycle ' + index + ' retained Babylon renderer resources: ' + JSON.stringify(disposed));
   }
 
-  const heapAfterGcMb = await collectGarbage('cycle-' + index + '-disposed');
-  disposed.heapAfterGcMb = heapAfterGcMb;
+  const heapAfterGc = await collectGarbage('cycle-' + index + '-disposed');
+  disposed.heapAfterGc = heapAfterGc;
 
   await deployRefinery();
   const reentered = await sampleRuntime(0);
@@ -316,9 +325,11 @@ const elapsedSeconds = Math.round((Date.now() - soakStartedAt) / 1000);
 const minimumSamples = Math.max(6, Math.floor(durationMs / sampleEveryMs * 0.55));
 const requiredCycles = Math.max(1, Math.min(4, Math.floor(durationMs / cycleEveryMs) - 1));
 const frameP95 = samples.map(sample => Number(sample.report?.frameP95Ms)).filter(Number.isFinite);
+const cdpHeap = samples.map(sample => Number(sample.cdpHeapUsedMb)).filter(value => Number.isFinite(value) && value > 0);
 const diagnosticHeap = samples.map(sample => Number(sample.report?.categories?.gc?.heapMb?.actual)).filter(value => Number.isFinite(value) && value > 0);
 const browserHeap = samples.map(sample => Number(sample.jsHeapMb)).filter(value => Number.isFinite(value) && value > 0);
-const heapSeries = diagnosticHeap.length >= 6 ? diagnosticHeap : browserHeap;
+const heapSeries = cdpHeap.length >= 6 ? cdpHeap : diagnosticHeap.length >= 6 ? diagnosticHeap : browserHeap;
+const heapSource = cdpHeap.length >= 6 ? 'cdp-runtime-heap' : diagnosticHeap.length >= 6 ? 'performance-diagnostics' : browserHeap.length ? 'performance.memory' : 'unavailable';
 const frameBaseline = edgeMedian(frameP95);
 const frameFinal = edgeMedian(frameP95, true);
 const heapBaseline = edgeMedian(heapSeries);
@@ -384,17 +395,21 @@ const summary = {
   backend: { requested: 'babylon', loaded: 'babylon', babylonBackend: 'webgl2', invalidSamples: invalidBackendSamples },
   frameP95: { baselineMs: frameBaseline, finalMs: frameFinal, deltaMs: frameDelta, regressed: frameRegressed },
   heap: {
-    source: diagnosticHeap.length >= 6 ? 'performance-diagnostics' : browserHeap.length ? 'performance.memory' : 'unavailable',
+    source: heapSource,
     baselineMb: heapBaseline,
     finalMb: heapFinal,
     deltaMb: heapDelta,
     regressed: heapRegressed,
+    coarsePerformanceMemory: {
+      baselineMb: edgeMedian(browserHeap),
+      finalMb: edgeMedian(browserHeap, true),
+    },
   },
   resources: {
     ...resourceSummary,
     cacheBudgetViolations,
     disposalCyclesReclaimed: cycles.every(cycle => cycle.disposed?.cacheReclaimed === 'true'),
-    postDisposalGcHeapMb: cycles.map(cycle => cycle.disposed?.heapAfterGcMb).filter(Number.isFinite),
+    postDisposalGcHeapMb: cycles.map(cycle => cycle.disposed?.heapAfterGc?.usedMb).filter(Number.isFinite),
   },
   final: samples.at(-1) ?? null,
 };
@@ -419,7 +434,8 @@ console.log('ANDROID_P27D6_BABYLON_SOAK_PASS duration=' + elapsedSeconds
   + ' heapFinal=' + (heapFinal ?? 'na')
   + ' cacheBaseline=' + (cachedBaseline ?? 'na')
   + ' cacheFinal=' + (cachedFinal ?? 'na')
-  + ' postDisposalGc=' + cycles.map(cycle => cycle.disposed?.heapAfterGcMb ?? 'na').join(',')
+  + ' heapSource=' + heapSource
+  + ' postDisposalGc=' + cycles.map(cycle => cycle.disposed?.heapAfterGc?.usedMb ?? 'na').join(',')
   + ' report=' + reportPath);
 
 session.close();
