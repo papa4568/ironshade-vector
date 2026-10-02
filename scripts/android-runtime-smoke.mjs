@@ -557,7 +557,13 @@ if (p21f1Only) {
   })()`);
   if (!selected) throw new Error('P21-F3 Android Asteroid Refinery contract was unavailable.');
   await waitFor(`document.querySelector('button[data-location="asteroid-refinery"]')?.classList.contains('selected') === true`, 'P21-F3 Android refinery selection');
-  await tapButton('Deploy selected contract', 263, 110);
+  const deployed = await evaluate(`(() => {
+    const button = [...document.querySelectorAll('button')].find(candidate => (candidate.textContent || '').trim().toLowerCase() === 'deploy selected contract');
+    if (!button || button.disabled) return false;
+    button.click();
+    return true;
+  })()`);
+  if (!deployed) throw new Error('P21-F3 Android deploy action was unavailable.');
 
   await waitFor(`(() => {
     const canvas = document.querySelector('canvas');
