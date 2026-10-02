@@ -67,13 +67,10 @@ const webGpuQaChunks = jsFiles.filter(name =>
   || name.startsWith('webGpuRefineryRenderer-'));
 assert(webGpuQaChunks.length === 3, `Expected three deferred legacy WebGPU QA chunks; found ${webGpuQaChunks.length}.`);
 
-const babylonLoaderChunks = jsFiles.filter(name => name.startsWith('babylon-loaders-'));
-assert(
-  babylonLoaderChunks.length === 1,
-  `Expected exactly one deferred Babylon loader chunk; found ${babylonLoaderChunks.length}: ${babylonLoaderChunks.join(',')}.`,
-);
-const babylonLoaderKey = [...keysForChunkFiles(babylonLoaderChunks)][0];
-assert(babylonLoaderKey, 'Babylon loader chunk is missing from the Vite manifest.');
+const babylonLoaderEntry = records.find(([key]) => key.includes('@babylonjs/loaders/glTF'));
+assert(babylonLoaderEntry, 'Babylon glTF loader dynamic entry is missing from the Vite manifest.');
+const [babylonLoaderKey, babylonLoaderRecord] = babylonLoaderEntry;
+assert(babylonLoaderRecord.isDynamicEntry, 'Babylon glTF loader must remain a dynamic entry.');
 
 const babylonEntry = records.find(([key, record]) =>
   key === 'src/game/babylonCombatRenderer.ts'
@@ -203,7 +200,7 @@ assert(jsFiles.length >= 10, `Expected navigation, Three.js, Babylon, and author
 console.log(
   'CLIENT_BUNDLE_ARCHITECTURE_PASS ' +
   `chunks=${jsFiles.length} three=${threeChunks.join(',')} webgpuQa=${webGpuQaChunks.join(',')} ` +
-  `babylonRenderer=${basename(babylonRecord.file)} babylonLoaders=${babylonLoaderChunks.join(',')} ` +
+  `babylonRenderer=${basename(babylonRecord.file)} babylonLoaders=${basename(babylonLoaderRecord.file)} ` +
   `babylonWebgpu=${basename(babylonWebGpuEntry[1].file)} corePost=renderer-deferred forbiddenBabylon=none ` +
   `graphicsRuntime=${graphicsRuntimeChunks.join(',')}`,
 );
