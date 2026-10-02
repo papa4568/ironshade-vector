@@ -37,6 +37,8 @@ for (const marker of [
   'ironshade:p27d5-return-to-hub',
   'babylonDisposeResources',
   'babylonAssetCacheReclaimed',
+  'HeapProfiler.collectGarbage',
+  'ANDROID_P27D6_GC_PASS',
   'cacheBudgetViolations',
   'frameFinal > frameBaseline * 1.5',
   'heapFinal - heapBaseline > Math.max(96, heapBaseline * 0.5)',
