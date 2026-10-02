@@ -138,7 +138,7 @@ async function elementCenter(selector) {
 
 async function buttonCenter(label) {
   const normalized = label.toLowerCase();
-  return await evaluate('(() => { const target = [...document.querySelectorAll("button")].find(button => (button.textContent || "").trim().toLowerCase() === ' + JSON.stringify(normalized) + '); if (!target) return null; const rect = target.getBoundingClientRect(); const style = getComputedStyle(target); if (style.display === "none" || style.visibility === "hidden" || rect.width <= 0 || rect.height <= 0) return null; return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, disabled: Boolean(target.disabled) }; })()');
+  return await evaluate('(() => { const target = [...document.querySelectorAll("button")].find(button => (button.getAttribute("aria-label") || button.textContent || "").trim().toLowerCase() === ' + JSON.stringify(normalized) + '); if (!target) return null; const rect = target.getBoundingClientRect(); const style = getComputedStyle(target); if (style.display === "none" || style.visibility === "hidden" || rect.width <= 0 || rect.height <= 0) return null; return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, disabled: Boolean(target.disabled) }; })()');
 }
 
 async function dispatchTouch(type, x, y, id) {
