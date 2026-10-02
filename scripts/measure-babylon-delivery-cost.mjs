@@ -82,9 +82,24 @@ if (!runtimeChunks.includes(babylonWebGpuRecord.file)) {
 }
 
 const codecDir = resolve(assetsDir, 'codecs/babylon');
+const codecManifestPath = resolve(codecDir, 'manifest.json');
+const codecManifest = JSON.parse(readFileSync(codecManifestPath, 'utf8'));
+const declaredCodecNames = (codecManifest.files ?? []).map(file => file.name).sort();
+if (declaredCodecNames.length !== 11) {
+  throw new Error(`Expected Babylon codec manifest to declare 11 files, found ${declaredCodecNames.length}.`);
+}
 const codecFiles = listFiles(codecDir).sort();
-if (codecFiles.length !== 11) {
-  throw new Error(`Expected 11 packaged Babylon codec files, found ${codecFiles.length}.`);
+const actualCodecNames = codecFiles
+  .filter(path => path !== codecManifestPath)
+  .map(path => basename(path))
+  .sort();
+if (
+  actualCodecNames.length !== declaredCodecNames.length
+  || actualCodecNames.some((name, index) => name !== declaredCodecNames[index])
+) {
+  throw new Error(
+    `Packaged Babylon codec files do not match manifest: declared=${declaredCodecNames.join(',')} actual=${actualCodecNames.join(',')}`,
+  );
 }
 
 const payloadFiles = [
@@ -176,7 +191,7 @@ const report = {
 writeFileSync(reportPath, JSON.stringify(report, null, 2));
 
 console.log(
-  `P27D2_BABYLON_DELIVERY_PASS chunks=${runtimeChunks.length} codecs=${codecFiles.length} ` +
+  `P27D2_BABYLON_DELIVERY_PASS chunks=${runtimeChunks.length} codecs=${declaredCodecNames.length} codecPayloadFiles=${codecFiles.length} ` +
   `browserRawBytes=${browserRawBytes} browserGzipBytes=${browserGzipBytes} ` +
   `apkCompressedBytes=${apkCompressedBytes} apkUncompressedBytes=${apkUncompressedBytes} apkBytes=${apkBytes} ` +
   `p21ApkBytes=${p21Baseline.apkBytes} totalDeltaVsP21=${totalDeltaVsP21Bytes} report=${basename(reportPath)}`,
