@@ -104,7 +104,7 @@ let babylonGltfLoaderPromise: Promise<void> | null = null;
 async function ensureBabylonGltfLoader() {
   configureBabylonGraphicsDecoders();
   if (babylonGltfLoaderPromise) return babylonGltfLoaderPromise;
-  const request = import('@babylonjs/loaders/glTF')
+  const request = import('./babylonGltfLoader')
     .then(() => undefined)
     .catch(error => {
       if (babylonGltfLoaderPromise === request) babylonGltfLoaderPromise = null;

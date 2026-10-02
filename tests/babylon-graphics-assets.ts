@@ -23,10 +23,15 @@ function assert(condition: unknown, message: string): asserts condition {
 }
 
 const runtimeSource = readFileSync(resolve(process.cwd(), 'src/game/babylonGraphicsAssets.ts'), 'utf8');
+const loaderBoundarySource = readFileSync(resolve(process.cwd(), 'src/game/babylonGltfLoader.ts'), 'utf8');
 const threeRuntimeSource = readFileSync(resolve(process.cwd(), 'src/game/graphicsAssets.ts'), 'utf8');
 assert(!runtimeSource.includes("from 'three'") && !runtimeSource.includes('three/examples'), 'Babylon asset runtime must not depend on the Three asset loader');
 assert(!threeRuntimeSource.includes('babylonGraphicsAssets'), 'Three asset runtime must remain independent of the Babylon asset path');
-assert(runtimeSource.includes("import('@babylonjs/loaders/glTF')"), 'Babylon GLB loader must remain deferred until authored content is requested');
+assert(
+  runtimeSource.includes("import('./babylonGltfLoader')")
+    && loaderBoundarySource.includes("import '@babylonjs/loaders/glTF'"),
+  'Babylon GLB loader must remain deferred until authored content is requested',
+);
 assert(!runtimeSource.includes('cdn.babylonjs.com') && !runtimeSource.includes('preview.babylonjs.com'), 'Babylon asset runtime must not hard-code a decoder CDN');
 
 const decoderUrls = configureBabylonGraphicsDecoders();
