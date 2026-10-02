@@ -506,6 +506,8 @@ assert(
 assert(
   browserSmokeSource.includes("process.env.BROWSER_E2E_GRAPHICS_PATH")
     && browserSmokeSource.includes("process.env.BROWSER_E2E_BABYLON_BACKEND")
+    && browserSmokeSource.includes("process.env.BROWSER_E2E_REQUIRE_BABYLON_WEBGPU === '1'")
+    && browserSmokeSource.includes("requireBabylonWebGpuComparison && state.backendLoaded !== 'webgpu'")
     && browserSmokeSource.includes("url.searchParams.set('graphicsCompare', '1')")
     && browserSmokeSource.includes("url.searchParams.set('graphicsPath', requestedGraphicsPath)")
     && browserSmokeSource.includes("url.searchParams.set('babylonBackend', requestedBabylonBackend)")
