@@ -14,9 +14,9 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           const normalizedId = id.replaceAll('\\', '/');
-          // Keep Babylon's glTF plugin behind its existing dynamic import without
-          // forcing Babylon core/post/WebGPU modules into mutually dependent manual chunks.
-          if (normalizedId.includes('/node_modules/@babylonjs/loaders/')) return 'babylon-loaders';
+          // Babylon uses real dynamic import boundaries for the renderer, glTF loader,
+          // and optional WebGPU engine. Do not manually merge Babylon modules across them.
+          if (normalizedId.includes('/node_modules/@babylonjs/')) return undefined;
           if (normalizedId.endsWith('/node_modules/three/build/three.core.js')) return 'three-core';
           if (normalizedId.endsWith('/node_modules/three/build/three.module.js')) return 'three-webgl';
           if (normalizedId.includes('/node_modules/react/') || normalizedId.includes('/node_modules/react-dom/')) return 'react-runtime';
