@@ -2,6 +2,9 @@ import fs from 'node:fs';
 
 const shell = fs.readFileSync(new URL('../scripts/android-fast-smoke.sh', import.meta.url), 'utf8');
 const runtime = fs.readFileSync(new URL('../scripts/android-runtime-smoke.mjs', import.meta.url), 'utf8');
+const babylonLifecycle = fs.readFileSync(new URL('../scripts/android-babylon-lifecycle-smoke.mjs', import.meta.url), 'utf8');
+const gameCanvas = fs.readFileSync(new URL('../src/components/GameCanvas.tsx', import.meta.url), 'utf8');
+const graphicsBackend = fs.readFileSync(new URL('../src/game/combatGraphicsBackend.ts', import.meta.url), 'utf8');
 const largeScreenShell = fs.readFileSync(new URL('../scripts/android-large-screen-smoke.sh', import.meta.url), 'utf8');
 const largeScreenRuntime = fs.readFileSync(new URL('../scripts/android-large-screen-smoke.mjs', import.meta.url), 'utf8');
 const androidConfigurator = fs.readFileSync(new URL('../scripts/configure-android.mjs', import.meta.url), 'utf8');
@@ -24,6 +27,15 @@ for (const marker of [
   'ANDROID_FAST_SMOKE=1',
   'ANDROID_FAST_RESUME_CHECK=1',
   'ANDROID_P21F1_CHECK=1',
+  'ANDROID_P27D5_PHASE=interaction',
+  'ANDROID_P27D5_PHASE=resume',
+  'scripts/android-babylon-lifecycle-smoke.mjs',
+  'android-p27d5-babylon-interaction.json',
+  'android-p27d5-babylon-resume.json',
+  'android-p27d5-babylon.png',
+  'android-p27d5-babylon-resume.png',
+  'ANDROID_P27D5_PROCESS_RECLAIM',
+  'p27d5=babylon-webgl2+touch+controller+renderer-reentry+mission-reentry+resume',
   'LIFECYCLE_ATTEMPT=1',
   'ANDROID_FAST_PROCESS_RECLAIM',
   're-establishing fast combat before retrying pause/resume',
@@ -70,6 +82,9 @@ for (const marker of [
   'android-large-screen-resized.png',
   'android-large-screen-logcat.txt',
   'ANDROID_P25B_LARGE_SCREEN_PASS',
+  'ANDROID_P27D5_PHASE=large-screen',
+  'scripts/android-babylon-lifecycle-smoke.mjs',
+  'babylon=webgl2 rendererPreserved=true',
   'test "$(adb shell getprop ro.build.version.sdk',
 ]) requireText(largeScreenShell, marker, 'P25-B large-screen shell');
 
@@ -82,6 +97,10 @@ for (const marker of [
   'Horizontal overflow detected',
   '__ironshadeP25BLargeScreenSentinel',
   'ANDROID_P25B_LARGE_SCREEN_PHASE_PASS',
+  'babylonRendererPreserved',
+  "metrics.babylon.requested !== 'babylon'",
+  "metrics.babylon.backendLoaded !== 'webgl2'",
+  '__ironshadeP27D5LargeScreenCanvas',
 ]) requireText(largeScreenRuntime, marker, 'P25-B large-screen runtime');
 
 for (const marker of [
@@ -107,6 +126,36 @@ for (const marker of [
   "canvas?.dataset.graphicsPathRequested === 'webgpu'",
   "['webgpu', 'webgl2'].includes(canvas?.dataset.graphicsPathLoaded ?? '')",
 ]) requireText(runtime, marker, 'runtime harness');
+
+for (const marker of [
+  "url.searchParams.set('graphicsPath', 'babylon')",
+  "url.searchParams.set('babylonBackend', 'webgl2')",
+  "url.searchParams.set('p27d5Lifecycle', '1')",
+  "Input.dispatchTouchEvent",
+  'ANDROID_P27D5_BABYLON_WEBGL2_PASS',
+  'ANDROID_P27D5_TOUCH_PASS',
+  'ANDROID_P27D5_CONTROLLER_PASS',
+  'ANDROID_P27D5_RENDERER_REENTRY_PASS',
+  'ANDROID_P27D5_MISSION_REENTRY_PASS',
+  'ANDROID_P27D5_INTERACTION_PASS',
+  'ANDROID_P27D5_LIFECYCLE_RESUME_PASS',
+  'ironshade:p27d5-restart-renderer',
+  'ironshade:p27d5-return-to-hub',
+  'babylonDisposeCount',
+  '__ironshadeP27D5ResumeCanvas',
+]) requireText(babylonLifecycle, marker, 'P27-D5 Babylon Android lifecycle harness');
+
+for (const marker of [
+  "get('p27d5Lifecycle') !== '1'",
+  "window.addEventListener('ironshade:p27d5-restart-renderer'",
+  "window.addEventListener('ironshade:p27d5-return-to-hub'",
+]) requireText(gameCanvas, marker, 'P27-D5 GameCanvas lifecycle QA bridge');
+
+for (const marker of [
+  "canvas.dataset.babylonDisposeCount ||= '0'",
+  'previousDisposeCount',
+  "this.canvas.dataset.babylonDisposed = 'true'",
+]) requireText(graphicsBackend, marker, 'P27-D5 Babylon disposal telemetry');
 
 if (extendedShell.includes('browser-chapter3-playthrough')) {
   throw new Error('legacy extended Android shell must not run extracted Chapter 3 playthrough');
@@ -275,6 +324,10 @@ for (const artifact of [
   'android-fast-smoke.png',
   'android-fast-resume.png',
   'android-p21f1-webgpu.png',
+  'android-p27d5-babylon.png',
+  'android-p27d5-babylon-resume.png',
+  'android-p27d5-babylon-interaction.json',
+  'android-p27d5-babylon-resume.json',
   'android-p21f3-webgpu.json',
   'p21f3-webgpu-delivery.json',
   'p27d2-babylon-delivery.json',
@@ -415,7 +468,7 @@ if (workflow.slice(fullGateStart).includes('needs: build-apk\n')) {
   throw new Error('P23-F aggregate gate must require all full-verification jobs, not only build-apk');
 }
 
-console.log('ANDROID_FAST_SMOKE_CONTRACT_PASS entry=scripts/android-fast-smoke.sh defaultPush=phone+android16-large-screen repeatable=dedicated-dispatch settings=dedicated-dispatch chapter3=dedicated-full-regression extended=parallel-runtime fullGate=aggregated scheduled=weekly manualMode=full-or-fast browser=required productionBuild=required touch=required lifecycle=required largeScreen=portrait+live-resize artifacts=required failFast=required');
+console.log('ANDROID_FAST_SMOKE_CONTRACT_PASS entry=scripts/android-fast-smoke.sh defaultPush=phone+android16-large-screen repeatable=dedicated-dispatch settings=dedicated-dispatch chapter3=dedicated-full-regression extended=parallel-runtime fullGate=aggregated scheduled=weekly manualMode=full-or-fast browser=required productionBuild=required touch=required lifecycle=required babylon=webgl2+renderer-reentry+mission-reentry+resume largeScreen=portrait+live-resize+Babylon artifacts=required failFast=required');
 
 
 for (const marker of [
