@@ -80,7 +80,7 @@
     "test:runtime-scalability": "vite build --ssr tests/runtime-scalability.ts --outDir .runtime-scalability-dist && node .runtime-scalability-dist/runtime-scalability.js",
     "test:boot-architecture": "vite build --ssr tests/boot-architecture.ts --outDir .boot-architecture-dist && node .boot-architecture-dist/boot-architecture.js",
     "test:guide": "vite build --ssr tests/guide-content.ts --outDir .guide-dist && node .guide-dist/guide-content.js",
-    "test:android-fast-smoke": "node --check scripts/android-runtime-smoke.mjs && node --check scripts/android-large-screen-smoke.mjs && node --check scripts/measure-webgpu-delivery-cost.mjs && node tests/android-fast-smoke-contract.mjs",
+    "test:android-fast-smoke": "node --check scripts/android-runtime-smoke.mjs && node --check scripts/android-large-screen-smoke.mjs && node --check scripts/measure-webgpu-delivery-cost.mjs && node --check scripts/measure-babylon-delivery-cost.mjs && node tests/android-fast-smoke-contract.mjs",
     "test:combat-input-capabilities": "vite build --ssr tests/combat-input-capabilities.ts --outDir .combat-input-capabilities-dist && node .combat-input-capabilities-dist/combat-input-capabilities.js",
     "typecheck:service": "tsc -p tsconfig.service.json --noEmit",
     "test:graphics:babylon": "vite build --ssr tests/babylon-graphics-assets.ts --outDir .babylon-graphics-dist && node .babylon-graphics-dist/babylon-graphics-assets.js",
