@@ -14,6 +14,7 @@ const chapter3Script = fs.readFileSync(new URL('../scripts/browser-chapter3-play
 const workflow = fs.readFileSync(new URL('../.github/workflows/android-apk.yml', import.meta.url), 'utf8');
 const browserWorkflow = fs.readFileSync(new URL('../.github/workflows/browser-e2e.yml', import.meta.url), 'utf8');
 const p21f3Delivery = fs.readFileSync(new URL('../scripts/measure-webgpu-delivery-cost.mjs', import.meta.url), 'utf8');
+const p27d2Delivery = fs.readFileSync(new URL('../scripts/measure-babylon-delivery-cost.mjs', import.meta.url), 'utf8');
 
 const requireText = (text, needle, label) => {
   if (!text.includes(needle)) throw new Error(`${label} missing required marker: ${needle}`);
@@ -120,6 +121,7 @@ requireText(workflow, 'npm run build', 'Android workflow production build');
 requireText(workflow, "set -euo pipefail;", 'Android workflow');
 requireText(workflow, 'actions/upload-artifact@v7', 'Android workflow');
 requireText(workflow, 'node scripts/measure-webgpu-delivery-cost.mjs', 'Android workflow');
+requireText(workflow, 'node scripts/measure-babylon-delivery-cost.mjs', 'Android workflow');
 for (const marker of [
   "grep -q 'android:appCategory=\"game\"'",
   "grep -q 'android:resizeableActivity=\"true\"'",
@@ -136,6 +138,7 @@ for (const marker of [
   'android-large-screen-logcat.txt',
 ]) requireText(workflow, marker, 'P25-B Android 16 large-screen workflow');
 requireText(workflow, 'p21f3-webgpu-delivery.json', 'Android workflow');
+requireText(workflow, 'p27d2-babylon-delivery.json', 'Android workflow');
 for (const marker of [
   'ironshade-vector-android-debug-qa',
   'Ironshade-Vector-Android-Debug.apk',
@@ -274,6 +277,7 @@ for (const artifact of [
   'android-p21f1-webgpu.png',
   'android-p21f3-webgpu.json',
   'p21f3-webgpu-delivery.json',
+  'p27d2-babylon-delivery.json',
 ]) requireText(workflow, artifact, 'Android workflow artifact upload');
 
 for (const marker of [
@@ -422,3 +426,16 @@ for (const marker of [
   'incrementalCompressedBytes',
   'compressedPercentOfApk',
 ]) requireText(p21f3Delivery, marker, 'P21-F3 delivery measurement');
+
+for (const marker of [
+  'P27D2_BABYLON_DELIVERY_PASS',
+  'babylon-core-',
+  'babylon-post-',
+  'babylon-loaders-',
+  'babylon-webgpu-',
+  'babylonCombatRenderer-',
+  'P21-F3 Android beta.608',
+  'babylonCompressedBytes',
+  'babylonUncompressedBytes',
+  'totalBytesDeltaVsP21',
+]) requireText(p27d2Delivery, marker, 'P27-D2 Babylon delivery measurement');
