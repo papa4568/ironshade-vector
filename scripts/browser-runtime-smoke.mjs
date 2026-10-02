@@ -2350,6 +2350,11 @@ async function p27A2BabylonBackendAudit() {
       worldRuntime: canvas?.dataset.babylonWorldRuntime ?? '',
       sceneTelemetry: canvas?.dataset.babylonSceneTelemetry ?? '',
       resourceBudget: canvas?.dataset.babylonResourceBudget ?? '',
+      effectsBudget: canvas?.dataset.babylonEffectsBudget ?? '',
+      criticalCueBudget: canvas?.dataset.babylonCriticalCueBudget ?? '',
+      renderFrameMs: Number(canvas?.dataset.renderFrameMs ?? 0),
+      weaponTransparencyScale: canvas?.dataset.babylonWeaponTransparencyScale ?? '',
+      abilityTransparencyScale: canvas?.dataset.babylonAbilityTransparencyScale ?? '',
       geometryStats: canvas?.dataset.babylonGeometryStats ?? '',
       animationLod: canvas?.dataset.runtimeAnimationLod ?? '',
       assetReusePolicy: canvas?.dataset.babylonAssetReusePolicy ?? '',
@@ -2435,6 +2440,29 @@ async function p27A2BabylonBackendAudit() {
     || animationLodMatch[1] !== state.renderTier
     || state.assetReusePolicy !== 'static-instancing+skinned-cloning') {
     throw new Error('P27-D3 Babylon resource quality telemetry invalid: ' + JSON.stringify(state));
+  }
+
+  const effectsBudgetMatch = /^tier:(high|balanced|performance)\|shadow:(0|512|1024)\|post:(1\.00|0\.68|0\.42)\|transparency:(1\.00|0\.68|0\.40)\|reflection:(1\.00|0\.70|0\.38)\|vfx:(1\.00|0\.72|0\.45)\|secondary:(1\.00|0\.68|0\.42)\|critical:1\.00\|frame:(\d+\.\d{2})$/.exec(state.effectsBudget);
+  const effectsExpected = {
+    high: { shadow: '1024', post: '1.00', transparency: '1.00', reflection: '1.00', vfx: '1.00', secondary: '1.00' },
+    balanced: { shadow: '512', post: '0.68', transparency: '0.68', reflection: '0.70', vfx: '0.72', secondary: '0.68' },
+    performance: { shadow: '0', post: '0.42', transparency: '0.40', reflection: '0.38', vfx: '0.45', secondary: '0.42' },
+  }[state.renderTier];
+  if (!effectsBudgetMatch
+    || !effectsExpected
+    || effectsBudgetMatch[1] !== state.renderTier
+    || effectsBudgetMatch[2] !== effectsExpected.shadow
+    || effectsBudgetMatch[3] !== effectsExpected.post
+    || effectsBudgetMatch[4] !== effectsExpected.transparency
+    || effectsBudgetMatch[5] !== effectsExpected.reflection
+    || effectsBudgetMatch[6] !== effectsExpected.vfx
+    || effectsBudgetMatch[7] !== effectsExpected.secondary
+    || state.weaponTransparencyScale !== effectsExpected.transparency
+    || state.abilityTransparencyScale !== effectsExpected.transparency
+    || state.criticalCueBudget !== 'telegraphs+hazards+status+class-cues@1.00'
+    || !(state.renderFrameMs > 0 && state.renderFrameMs <= 80)
+    || Math.abs(Number(effectsBudgetMatch[8]) - state.renderFrameMs) > 0.01) {
+    throw new Error('P27-D4 Babylon effects quality telemetry invalid: ' + JSON.stringify(state));
   }
 
   const expectedRefineryKit = new Set(['floor', 'floor-grate', 'bulkhead', 'processor', 'pipe-rack', 'wall-panel', 'cable-tray', 'service-conduit', 'gantry', 'crate', 'terminal']);
@@ -2694,6 +2722,7 @@ async function p27A2BabylonBackendAudit() {
 
   console.log(`BROWSER_P27B11_BABYLON_PBR_LIGHTING_PASS viewport=${viewportMode} budget=${b11StackOn.budget} ibl=${b11StackOn.ibl} shadows=${b11StackOn.shadows} tone=${b11StackOn.tone} pbr=${b11StackOn.pbr} screenshots=${p27b11IblOffScreenshotPath}+${p27b11IblOnScreenshotPath}`);
   console.log(`BROWSER_P27D3_BABYLON_RESOURCE_QUALITY_PASS viewport=${viewportMode} tier=${state.renderTier} budget=${state.resourceBudget} geometry=${state.geometryStats} animation=${state.animationLod} reuse=${state.assetReusePolicy}`);
+  console.log(`BROWSER_P27D4_BABYLON_EFFECTS_QUALITY_PASS viewport=${viewportMode} tier=${state.renderTier} frameMs=${state.renderFrameMs.toFixed(2)} budget=${state.effectsBudget} critical=${state.criticalCueBudget} weaponTransparency=${state.weaponTransparencyScale} abilityTransparency=${state.abilityTransparencyScale}`);
 
   const protectedGroups = 'hud+enemies+hazards+objectives+loot+interactables';
   if (!state.environmentBloom.startsWith('selective:refinery-selective-v1:')
