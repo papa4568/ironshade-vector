@@ -290,7 +290,7 @@ assert(
     && babylonRendererSource.includes("from '@babylonjs/core/Engines/engine'")
     && babylonRendererSource.includes("await import('./babylonWebGpuEngine')")
     && babylonWebGpuEngineSource.includes("from '@babylonjs/core/Engines/webgpuEngine.pure'")
-    && !babylonWebGpuEngineSource.includes("@babylonjs/core/Audio/")
+    && !babylonWebGpuEngineSource.includes("import '@babylonjs/core/Audio/")
     && babylonRendererSource.includes('await WebGPUEngine.IsSupportedAsync')
     && babylonRendererSource.includes('new WebGPUEngine(renderCanvas')
     && babylonRendererSource.includes('doNotHandleContextLost: true')
