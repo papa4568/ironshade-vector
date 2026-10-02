@@ -183,8 +183,8 @@ async function navigateBabylonQa() {
 
 async function ensureCommandDeck(idBase) {
   await waitFor('document.readyState === "complete" && document.title === "Ironshade Vector"', 'Ironshade document', 45_000);
-  const needsIntake = await evaluate('Boolean(document.querySelector(".class-intake"))');
-  if (needsIntake) {
+  const surface = await waitFor('(() => { const labels = [...document.querySelectorAll("button")].map(button => (button.getAttribute("aria-label") || button.textContent || "").trim().toLowerCase()); if (labels.includes("operations")) return "command"; if (document.querySelector(".class-intake")) return "intake"; return ""; })()', 'P27-D5 command surface or operator intake', 45_000);
+  if (surface === 'intake') {
     if (!(await tapSelector('[aria-label="Select Vanguard class"]', idBase))) {
       throw new Error('P27-D5 could not select Vanguard during fresh Android intake.');
     }
@@ -192,12 +192,12 @@ async function ensureCommandDeck(idBase) {
       throw new Error('P27-D5 could not confirm Vanguard during fresh Android intake.');
     }
   }
-  await waitFor('[...document.querySelectorAll("button")].some(button => button.getAttribute("data-primary-area") === "operations")', 'P27-D5 Command Deck', 45_000);
+  await waitFor('[...document.querySelectorAll("button")].some(button => (button.getAttribute("aria-label") || button.textContent || "").trim().toLowerCase() === "operations") && !document.querySelector(".class-intake")', 'P27-D5 Command Deck', 45_000);
 }
 
 async function deployRefinery(idBase) {
   await ensureCommandDeck(idBase);
-  if (!(await tapSelector('button[data-primary-area="operations"]', idBase + 2))) {
+  if (!(await tapButton('Operations', idBase + 2))) {
     throw new Error('P27-D5 Operations touch target unavailable.');
   }
   await waitFor('[...document.querySelectorAll("button")].some(button => (button.textContent || "").trim().toLowerCase() === "contracts")', 'P27-D5 Operations contracts');
