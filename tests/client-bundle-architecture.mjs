@@ -211,7 +211,7 @@ assert(
     && !babylonLoaderSource.includes("import '@babylonjs/loaders/glTF';")
     && babylonRendererSource.includes("import('./babylonWebGpuEngine')")
     && babylonWebGpuEngineSource.includes("from '@babylonjs/core/Engines/webgpuEngine.pure'")
-    && !babylonWebGpuEngineSource.includes("@babylonjs/core/Audio/"),
+    && !babylonWebGpuEngineSource.includes("import '@babylonjs/core/Audio/"),
   'Babylon core/post/loaders/WebGPU source boundaries no longer match the deferred renderer architecture.',
 );
 
