@@ -224,6 +224,31 @@ function edgeMedian(values, atEnd = false) {
   return median(atEnd ? finite.slice(-count) : finite.slice(0, count));
 }
 
+function summarizeSamplingProfile(profile) {
+  const totals = new Map();
+  const visit = node => {
+    const frame = node?.callFrame ?? {};
+    const url = String(frame.url ?? '');
+    const functionName = String(frame.functionName ?? '(anonymous)');
+    const line = Number(frame.lineNumber ?? -1) + 1;
+    const key = functionName + '|' + url + '|' + line;
+    const selfSize = Number(node?.selfSize ?? 0);
+    if (selfSize > 0) {
+      const current = totals.get(key) ?? { functionName, url, line, bytes: 0 };
+      current.bytes += selfSize;
+      totals.set(key, current);
+    }
+    for (const child of node?.children ?? []) visit(child);
+  };
+  visit(profile?.head);
+  return [...totals.values()]
+    .sort((a, b) => b.bytes - a.bytes)
+    .slice(0, 30)
+    .map(item => ({ ...item, mb: Math.round(item.bytes / 1048576 * 1000) / 1000 }));
+}
+
+let retainedAllocationProfile = [];
+
 async function sampleRuntime(atMs) {
   const sample = await evaluate('(() => { const canvas = document.querySelector("canvas"); if (!canvas || canvas.dataset.graphicsPathRequested !== "babylon") return null; let report = null; try { report = JSON.parse(canvas.dataset.performanceReport || "null"); } catch {} const memory = performance.memory; return { atMs: ' + Math.round(atMs) + ', mission: document.querySelector(".mission-chip")?.textContent?.trim() ?? "", frames: Number(canvas.dataset.babylonFrames ?? "0"), graphicsLoaded: canvas.dataset.graphicsPathLoaded ?? "", backendLoaded: canvas.dataset.babylonBackendLoaded ?? "", init: canvas.dataset.babylonInit ?? "", scene: canvas.dataset.babylonScene ?? "", disposed: canvas.dataset.babylonDisposed ?? "", sceneTelemetry: canvas.dataset.babylonSceneTelemetry ?? "", geometryStats: canvas.dataset.babylonGeometryStats ?? "", resourceBudget: canvas.dataset.babylonResourceBudget ?? "", performanceStatus: canvas.dataset.performanceStatus ?? "", performanceRegressions: canvas.dataset.performanceRegressions ?? "", report, jsHeapMb: typeof memory?.usedJSHeapSize === "number" ? memory.usedJSHeapSize / 1048576 : null }; })()');
   if (!sample) return null;
@@ -262,6 +287,18 @@ async function cycleMission(index) {
   await evaluate('(() => { globalThis.__ironshadeP27D6ExitedCanvas = null; delete globalThis.__ironshadeP27D6ExitedCanvas; return true; })()');
   const heapAfterGc = await collectGarbage('cycle-' + index + '-disposed');
   disposed.heapAfterGc = heapAfterGc;
+
+  if (index === 1) {
+    await call('HeapProfiler.startSampling', {
+      samplingInterval: 16 * 1024,
+      includeObjectsCollectedByMajorGC: false,
+    }, 10_000);
+    console.log('ANDROID_P27D6_HEAP_SAMPLING_START cycle=1');
+  } else if (index === 2) {
+    const sampling = await call('HeapProfiler.stopSampling', {}, 30_000);
+    retainedAllocationProfile = summarizeSamplingProfile(sampling?.profile);
+    console.log('ANDROID_P27D6_HEAP_SAMPLING_PASS top=' + JSON.stringify(retainedAllocationProfile.slice(0, 12)));
+  }
 
   await deployRefinery();
   const reentered = await sampleRuntime(0);
@@ -417,6 +454,7 @@ const summary = {
       finalMb: edgeMedian(browserHeap, true),
     },
   },
+  retainedAllocationProfile,
   resources: {
     ...resourceSummary,
     cacheBudgetViolations,
