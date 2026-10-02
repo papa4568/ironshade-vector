@@ -124,12 +124,19 @@ async function collectGarbage(label) {
   await call('HeapProfiler.collectGarbage', {}, 30_000);
   await sleep(250);
   const usage = await call('Runtime.getHeapUsage', {}, 10_000).catch(() => null);
+  const dom = await call('Memory.getDOMCounters', {}, 10_000).catch(() => null);
   const usedMb = Number.isFinite(usage?.usedSize) ? usage.usedSize / 1048576 : null;
   const totalMb = Number.isFinite(usage?.totalSize) ? usage.totalSize / 1048576 : null;
+  const documents = Number.isFinite(dom?.documents) ? dom.documents : null;
+  const nodes = Number.isFinite(dom?.nodes) ? dom.nodes : null;
+  const jsEventListeners = Number.isFinite(dom?.jsEventListeners) ? dom.jsEventListeners : null;
   console.log('ANDROID_P27D6_GC_PASS label=' + label
     + ' usedMb=' + (usedMb ?? 'na')
-    + ' totalMb=' + (totalMb ?? 'na'));
-  return { usedMb, totalMb };
+    + ' totalMb=' + (totalMb ?? 'na')
+    + ' documents=' + (documents ?? 'na')
+    + ' nodes=' + (nodes ?? 'na')
+    + ' listeners=' + (jsEventListeners ?? 'na'));
+  return { usedMb, totalMb, documents, nodes, jsEventListeners };
 }
 
 async function waitFor(expression, label, timeoutMs = 60_000) {
@@ -252,6 +259,7 @@ async function cycleMission(index) {
   if (!sentinelReleased) throw new Error('P27-D6 cycle ' + index + ' could not release disposed-canvas QA sentinel before GC.');
   console.log('ANDROID_P27D6_SENTINEL_RELEASE_PASS cycle=' + index);
 
+  await evaluate('(() => { globalThis.__ironshadeP27D6ExitedCanvas = null; delete globalThis.__ironshadeP27D6ExitedCanvas; return true; })()');
   const heapAfterGc = await collectGarbage('cycle-' + index + '-disposed');
   disposed.heapAfterGc = heapAfterGc;
 
@@ -414,6 +422,11 @@ const summary = {
     cacheBudgetViolations,
     disposalCyclesReclaimed: cycles.every(cycle => cycle.disposed?.cacheReclaimed === 'true'),
     postDisposalGcHeapMb: cycles.map(cycle => cycle.disposed?.heapAfterGc?.usedMb).filter(Number.isFinite),
+    postDisposalDom: cycles.map(cycle => ({
+      documents: cycle.disposed?.heapAfterGc?.documents ?? null,
+      nodes: cycle.disposed?.heapAfterGc?.nodes ?? null,
+      jsEventListeners: cycle.disposed?.heapAfterGc?.jsEventListeners ?? null,
+    })),
   },
   final: samples.at(-1) ?? null,
 };
