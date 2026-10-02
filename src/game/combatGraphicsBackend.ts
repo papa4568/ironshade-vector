@@ -157,6 +157,7 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
   private delegate: CombatGraphicsBackend | null = null;
   private disposed = false;
   private webGpuRenderSurface: HTMLCanvasElement | null = null;
+  private webGpuFallbackInFlight = false;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -201,9 +202,27 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
     const { createBabylonCombatRenderer } = await import('./babylonCombatRenderer');
 
     if (this.requestedBackend === 'webgpu') {
+      let webGpuReady = false;
+      let pendingRuntimeFailure: string | null = null;
       try {
         const renderSurface = this.createWebGpuRenderSurface();
-        const renderer = await createBabylonCombatRenderer(renderSurface, this.coarse, 'webgpu', this.canvas);
+        const renderer = await createBabylonCombatRenderer(
+          renderSurface,
+          this.coarse,
+          'webgpu',
+          this.canvas,
+          reason => {
+            if (!webGpuReady) {
+              pendingRuntimeFailure = reason;
+              return;
+            }
+            void this.fallbackFromWebGpu(reason);
+          },
+        );
+        if (pendingRuntimeFailure) {
+          renderer.dispose();
+          throw new Error(pendingRuntimeFailure);
+        }
         if (this.disposed) {
           renderer.dispose();
           this.releaseWebGpuRenderSurface();
@@ -213,14 +232,19 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
         this.canvas.dataset.graphicsPathLoaded = renderer.loadedId;
         this.canvas.dataset.graphicsPathFallback = '';
         this.canvas.dataset.babylonInit = 'ready';
+        webGpuReady = true;
         return;
       } catch (error) {
         if (this.disposed) {
           this.releaseWebGpuRenderSurface();
           return;
         }
-        const failureStage = this.canvas.dataset.babylonBackendInitStage ?? 'webgpu-init';
-        const fallbackKind = failureStage === 'webgpu-support' ? 'unsupported' : 'init-fallback';
+        const failureStage = this.canvas.dataset.babylonBackendFailureStage
+          ?? this.canvas.dataset.babylonBackendInitStage
+          ?? 'webgpu-init';
+        const fallbackKind = failureStage === 'webgpu-support'
+          ? 'unsupported'
+          : failureStage === 'runtime-device-lost' ? 'runtime-device-lost' : 'init-fallback';
         this.canvas.dataset.babylonBackendFallback = `webgpu->webgl2:${fallbackKind}`;
         this.canvas.dataset.babylonBackendFallbackReason = error instanceof Error ? error.message : String(error);
         this.releaseWebGpuRenderSurface();
@@ -228,6 +252,31 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
       }
     }
 
+    await this.initializeWebGl2();
+  }
+
+  private async fallbackFromWebGpu(reason: string) {
+    if (this.disposed || this.webGpuFallbackInFlight || this.requestedBackend !== 'webgpu') return;
+    this.webGpuFallbackInFlight = true;
+    this.canvas.dataset.babylonBackendFallback = 'webgpu->webgl2:runtime-device-lost';
+    this.canvas.dataset.babylonBackendFallbackReason = reason;
+    this.canvas.dataset.babylonBackendLoaded = 'initializing';
+    this.canvas.dataset.babylonInit = 'initializing';
+
+    const failedRenderer = this.delegate;
+    this.delegate = null;
+    failedRenderer?.dispose();
+    this.releaseWebGpuRenderSurface();
+
+    try {
+      await this.initializeWebGl2();
+    } finally {
+      this.webGpuFallbackInFlight = false;
+    }
+  }
+
+  private async initializeWebGl2() {
+    const { createBabylonCombatRenderer } = await import('./babylonCombatRenderer');
     try {
       const renderer = await createBabylonCombatRenderer(this.canvas, this.coarse, 'webgl2', this.canvas);
       if (this.disposed) {
