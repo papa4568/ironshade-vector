@@ -46,6 +46,7 @@ test -n "$PORTRAIT_PID"
 
 adb forward --remove tcp:9222 >/dev/null 2>&1 || true
 adb forward tcp:9222 "localabstract:webview_devtools_remote_${PORTRAIT_PID}"
+ANDROID_P27D5_PHASE=large-screen CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-babylon-lifecycle-smoke.mjs | tee -a "$REPORT"
 ANDROID_LARGE_SCREEN_PHASE=portrait ANDROID_LARGE_SCREEN_REPORT_PATH=android-large-screen-portrait.json CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-large-screen-smoke.mjs | tee -a "$REPORT"
 
 adb exec-out screencap -p > android-large-screen-portrait.png
@@ -73,4 +74,4 @@ if grep -E 'FATAL EXCEPTION|Process: app\.ironshade\.vector' android-large-scree
   exit 1
 fi
 
-echo "ANDROID_P25B_LARGE_SCREEN_PASS api=36 initial=portrait-sw>=600 resize=landscape-style-sw>=600 processPreserved=true webViewPreserved=true overflow=none crashCheck=clean" | tee -a "$REPORT"
+echo "ANDROID_P25B_LARGE_SCREEN_PASS api=36 initial=portrait-sw>=600 resize=landscape-style-sw>=600 processPreserved=true webViewPreserved=true babylon=webgl2 rendererPreserved=true overflow=none crashCheck=clean" | tee -a "$REPORT"
