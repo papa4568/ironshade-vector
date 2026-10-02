@@ -13,9 +13,20 @@ export default defineConfig({
       maxParallelFileOps: 128,
       output: {
         manualChunks(id) {
-          if (id.endsWith('/node_modules/three/build/three.core.js')) return 'three-core';
-          if (id.endsWith('/node_modules/three/build/three.module.js')) return 'three-webgl';
-          if (id.includes('/node_modules/react/') || id.includes('/node_modules/react-dom/')) return 'react-runtime';
+          const normalizedId = id.replaceAll('\\', '/');
+          if (
+            normalizedId.includes('/node_modules/@babylonjs/core/Engines/webgpuEngine')
+            || normalizedId.includes('/node_modules/@babylonjs/core/Engines/WebGPU/')
+          ) return 'babylon-webgpu';
+          if (
+            normalizedId.includes('/node_modules/@babylonjs/core/Layers/')
+            || normalizedId.includes('/node_modules/@babylonjs/core/PostProcesses/')
+          ) return 'babylon-post';
+          if (normalizedId.includes('/node_modules/@babylonjs/loaders/')) return 'babylon-loaders';
+          if (normalizedId.includes('/node_modules/@babylonjs/core/')) return 'babylon-core';
+          if (normalizedId.endsWith('/node_modules/three/build/three.core.js')) return 'three-core';
+          if (normalizedId.endsWith('/node_modules/three/build/three.module.js')) return 'three-webgl';
+          if (normalizedId.includes('/node_modules/react/') || normalizedId.includes('/node_modules/react-dom/')) return 'react-runtime';
         },
       },
     },
