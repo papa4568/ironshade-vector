@@ -154,7 +154,7 @@ if (metrics.rootScrollWidth > metrics.rootClientWidth + 2 || metrics.bodyScrollW
 
 if (metrics.babylon.selection !== 'qa-explicit'
   || metrics.babylon.requested !== 'babylon'
-  || metrics.babylon.graphicsLoaded !== 'webgl2'
+  || metrics.babylon.graphicsLoaded !== 'babylon'
   || metrics.babylon.backendRequested !== 'webgl2'
   || metrics.babylon.backendLoaded !== 'webgl2'
   || metrics.babylon.init !== 'ready'
