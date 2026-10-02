@@ -29,6 +29,7 @@ export type BabylonRefineryLightingBudget = {
   practicalLightCount: 1 | 2;
   maxSimultaneousLights: 3 | 5 | 6;
   shadowCasterLimit: 0 | 72 | 128;
+  shadowReceiverLimit: 0 | 72 | 128;
 };
 
 function scaled(value: number) {
@@ -103,14 +104,19 @@ export function resolveBabylonRefineryLightingBudget(
     practicalLightCount: tierName === 'performance' ? 1 : 2,
     maxSimultaneousLights: tierName === 'high' ? 6 : tierName === 'balanced' ? 5 : 3,
     shadowCasterLimit: tierName === 'high' ? 128 : tierName === 'balanced' ? 72 : 0,
+    shadowReceiverLimit: tierName === 'high' ? 128 : tierName === 'balanced' ? 72 : 0,
   };
 }
 
-function isShadowReceiver(mesh: AbstractMesh) {
+function isShadowCandidate(mesh: AbstractMesh) {
   if (!mesh.isEnabled() || !mesh.isVisible || mesh.visibility < 0.85 || mesh.getTotalVertices() <= 0) return false;
   const alpha = mesh.material?.alpha ?? 1;
   if (alpha < 0.82) return false;
   return !/(ring|glyph|beam|marker|telegraph|protocol|status|lifecycle|muzzle|flash|signal|cue|objective-guide|hazard)/i.test(mesh.name);
+}
+
+function isRefineryShadowReceiver(mesh: AbstractMesh) {
+  return /(?:refinery-floor-(?:panel|grate)|p27-b2-(?:floor|floorGrate))/i.test(mesh.name);
 }
 
 function shadowPriority(mesh: AbstractMesh) {
@@ -275,6 +281,7 @@ export class BabylonRefineryLighting {
       'tier:' + budget.tierName,
       'ibl:' + renderBudget.refineryIblScale.toFixed(2),
       'shadow:' + budget.shadowMapSize,
+      'shadow-receivers:' + budget.shadowReceiverLimit,
       'practical:' + budget.practicalLightCount,
       'max-lights:' + budget.maxSimultaneousLights,
     ].join('|');
@@ -319,9 +326,15 @@ export class BabylonRefineryLighting {
       this.shadowMapSize = budget.shadowMapSize;
     }
 
-    const receivers = this.scene.meshes.filter(isShadowReceiver);
-    for (const mesh of receivers) mesh.receiveShadows = true;
-    const casters = receivers
+    const shadowCandidates = this.scene.meshes.filter(isShadowCandidate);
+    const receivers = shadowCandidates
+      .filter(isRefineryShadowReceiver)
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .slice(0, budget.shadowReceiverLimit);
+    for (const mesh of receivers) {
+      if (!mesh.receiveShadows) mesh.receiveShadows = true;
+    }
+    const casters = shadowCandidates
       .filter(mesh => !/(floor|grate|ring|beam|signal)/i.test(mesh.name))
       .sort((a, b) => shadowPriority(a) - shadowPriority(b) || a.name.localeCompare(b.name))
       .slice(0, budget.shadowCasterLimit);
