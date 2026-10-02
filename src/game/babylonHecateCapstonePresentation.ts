@@ -149,7 +149,6 @@ export class BabylonHecateCapstonePresentation {
     const world = getWorldSize();
     const worldW = scaled(world.w);
     const worldH = scaled(world.h);
-    const cx = worldW * 0.5;
     const cz = worldH * 0.5;
 
     this.root = new TransformNode('p27-c14-hecate-capstone', scene);
