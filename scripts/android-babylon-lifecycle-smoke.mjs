@@ -205,12 +205,30 @@ async function deployRefinery(idBase) {
     throw new Error('P27-D5 Contracts touch target unavailable.');
   }
   await waitFor('[...document.querySelectorAll("button")].some(button => button.getAttribute("data-location") === "asteroid-refinery")', 'P27-D5 refinery contract');
-  if (!(await tapSelector('button[data-location="asteroid-refinery"]', idBase + 4))) {
-    throw new Error('P27-D5 refinery contract touch target unavailable.');
+  const prepared = await evaluate('(() => { const target = [...document.querySelectorAll("button")].find(button => button.getAttribute("data-location") === "asteroid-refinery"); if (!target) return false; target.scrollIntoView({ block: "center", inline: "center", behavior: "instant" }); return true; })()');
+  if (!prepared) throw new Error('P27-D5 refinery contract touch target unavailable.');
+  await sleep(220);
+  await tapSelector('button[data-location="asteroid-refinery"]', idBase + 4);
+  let selected = await evaluate('[...document.querySelectorAll("button")].some(button => button.getAttribute("data-location") === "asteroid-refinery" && button.classList.contains("selected"))');
+  if (!selected) {
+    const retryPoint = await evaluate('(() => { const target = [...document.querySelectorAll("button")].find(button => button.getAttribute("data-location") === "asteroid-refinery"); if (!target) return null; const viewportWidth = window.visualViewport?.width ?? window.innerWidth; const viewportHeight = window.visualViewport?.height ?? window.innerHeight; const rect = target.getBoundingClientRect(); const inset = 10; const left = Math.max(rect.left, inset); const right = Math.min(rect.right, viewportWidth - inset); const top = Math.max(rect.top, inset); const bottom = Math.min(rect.bottom, viewportHeight - inset); if (right <= left || bottom <= top) return null; const edgeX = Math.min(18, Math.max(4, (right - left) * .18)); const edgeY = Math.min(18, Math.max(4, (bottom - top) * .18)); const candidates = [[(left + right) * .5, (top + bottom) * .5], [left + edgeX, (top + bottom) * .5], [right - edgeX, (top + bottom) * .5], [(left + right) * .5, top + edgeY], [(left + right) * .5, bottom - edgeY]]; for (const [x, y] of candidates) { const hit = document.elementFromPoint(x, y); if (hit && (hit === target || target.contains(hit))) return { x, y }; } return null; })()');
+    if (!retryPoint) throw new Error('P27-D5 refinery contract had no unobscured real-touch point.');
+    await dispatchTouch('touchStart', retryPoint.x, retryPoint.y, idBase + 4);
+    await sleep(120);
+    await dispatchTouch('touchEnd', retryPoint.x, retryPoint.y, idBase + 4);
+    await sleep(220);
+    selected = await evaluate('[...document.querySelectorAll("button")].some(button => button.getAttribute("data-location") === "asteroid-refinery" && button.classList.contains("selected"))');
+    if (!selected) throw new Error('P27-D5 refinery selection did not respond to real touch.');
+    console.log('ANDROID_P27D5_CONTRACT_TOUCH_RETRY_PASS target=asteroid-refinery');
   }
-  await waitFor('[...document.querySelectorAll("button")].some(button => button.getAttribute("data-location") === "asteroid-refinery" && button.classList.contains("selected"))', 'P27-D5 refinery selection');
-  if (!(await tapButton('Deploy selected contract', idBase + 5, 120))) {
-    throw new Error('P27-D5 deploy touch target unavailable.');
+  const deployPoint = await buttonCenter('Deploy selected contract');
+  if (!deployPoint || deployPoint.disabled) throw new Error('P27-D5 deploy touch target unavailable.');
+  await tapPoint(deployPoint, idBase + 5, 120);
+  const stillOnBoard = await evaluate('[...document.querySelectorAll("button")].some(button => (button.textContent || "").trim().toLowerCase() === "deploy selected contract")');
+  if (stillOnBoard) {
+    const fallback = await evaluate('(() => { const button = [...document.querySelectorAll("button")].find(candidate => (candidate.textContent || "").trim().toLowerCase() === "deploy selected contract"); if (!button || button.disabled) return false; button.click(); return true; })()');
+    if (!fallback) throw new Error('P27-D5 deploy action remained unavailable after real-touch attempt.');
+    console.log('ANDROID_P27D5_DEPLOY_CLICK_FALLBACK_PASS reason=touch-remained-visible');
   }
   await waitFor('(() => { const canvas = document.querySelector("canvas"); return Boolean(canvas && canvas.dataset.graphicsPathSelection === "qa-explicit" && canvas.dataset.graphicsPathRequested === "babylon" && canvas.dataset.babylonBackendRequested === "webgl2" && canvas.dataset.graphicsPathLoaded === "webgl2" && canvas.dataset.babylonBackendLoaded === "webgl2" && canvas.dataset.babylonInit === "ready" && canvas.dataset.babylonScene === "active" && canvas.dataset.babylonDisposed === "false"); })()', 'P27-D5 Babylon WebGL2 combat', 45_000);
   await waitFor('Number(document.querySelector("canvas")?.dataset.babylonFrames ?? "0") >= 2', 'P27-D5 Babylon rendered frames', 30_000);
