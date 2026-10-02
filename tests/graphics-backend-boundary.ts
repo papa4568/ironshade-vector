@@ -449,7 +449,7 @@ assert(
 assert(
   babylonRendererSource.includes("from './babylonWeaponVfx'")
     && babylonRendererSource.includes('new BabylonWeaponVfx(scene, canvas, coarse)')
-    && babylonRendererSource.includes('this.weaponVfx.sync(state, muzzlePosition, quality)')
+    && babylonRendererSource.includes('this.weaponVfx.sync(state, muzzlePosition, budget.vfxDensity, budget.transparencyScale)')
     && babylonRendererSource.includes("this.weaponVfx.release('scenario-exit')")
     && babylonRendererSource.includes('this.weaponVfx.dispose()')
     && babylonWeaponVfxSource.includes("from './classArsenal'")
