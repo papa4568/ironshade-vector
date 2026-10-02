@@ -2104,7 +2104,12 @@ async function p27A2BabylonBackendAudit() {
   const pointerSamples = [];
   for (let index = 0; index < 6; index += 1) {
     pointerSamples.push(await dispatchBabylonPointerProbe(927 + index));
-    await new Promise(resolve => setTimeout(resolve, 50));
+    const frameAtProbe = Number(await evaluate(`document.querySelector('canvas')?.dataset.babylonFrames ?? 0`));
+    await waitFor(
+      `Number(document.querySelector('canvas')?.dataset.babylonFrames ?? 0) > ${frameAtProbe}`,
+      'P27-B1 Babylon camera retarget frame',
+      5_000,
+    );
   }
   const parseDirection = value => value.split(',').map(Number);
   const parsedDirections = pointerSamples.map(parseDirection);
