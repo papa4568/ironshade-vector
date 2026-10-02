@@ -5,6 +5,7 @@ const appUrl = process.env.BROWSER_E2E_APP_URL ?? 'http://127.0.0.1:4173/';
 const requestedGraphicsPath = (process.env.BROWSER_E2E_GRAPHICS_PATH ?? '').trim();
 const requestedBabylonBackend = (process.env.BROWSER_E2E_BABYLON_BACKEND ?? '').trim();
 const requireWebGpuComparison = process.env.BROWSER_E2E_REQUIRE_WEBGPU === '1';
+const requireBabylonWebGpuComparison = process.env.BROWSER_E2E_REQUIRE_BABYLON_WEBGPU === '1';
 const webGpuPresentationKnownGap = (process.env.BROWSER_E2E_WEBGPU_PRESENTATION_KNOWN_GAP ?? '').trim();
 const webGpuSwiftShaderCi = process.env.BROWSER_E2E_WEBGPU_SWIFTSHADER === '1';
 const skipSyntheticControllerAudit = process.env.BROWSER_E2E_SKIP_SYNTHETIC_CONTROLLER === '1';
@@ -2387,7 +2388,7 @@ async function p27A2BabylonBackendAudit() {
     || (expectedBabylonBackend === 'webgl2' && (state.backendLoaded !== 'webgl2' || state.backendFallback || state.backendFallbackReason || state.renderSurface !== 0))
     || (expectedBabylonBackend === 'webgpu' && state.backendLoaded === 'webgpu' && (state.backendFallback || state.backendFallbackReason || state.renderSurface !== 1))
     || (expectedBabylonBackend === 'webgpu' && state.backendLoaded === 'webgl2' && (!state.backendFallback.startsWith('webgpu->webgl2:') || !state.backendFallbackReason || state.renderSurface !== 0))
-    || (expectedBabylonBackend === 'webgpu' && requireWebGpuComparison && state.backendLoaded !== 'webgpu')
+    || (expectedBabylonBackend === 'webgpu' && requireBabylonWebGpuComparison && state.backendLoaded !== 'webgpu')
     || state.backendInitStage !== 'ready'
     || state.scene !== 'active'
     || state.disposed !== 'false'
