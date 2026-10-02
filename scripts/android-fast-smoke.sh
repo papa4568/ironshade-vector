@@ -73,6 +73,46 @@ ANDROID_P21F1_CHECK=1 CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-ru
 adb exec-out screencap -p > android-p21f1-webgpu.png
 test -s android-p21f1-webgpu.png
 
+ANDROID_P27D5_PHASE=interaction ANDROID_P27D5_REPORT_PATH=android-p27d5-babylon-interaction.json CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-babylon-lifecycle-smoke.mjs
+adb exec-out screencap -p > android-p27d5-babylon.png
+test -s android-p27d5-babylon.png
+
+P27D5_LIFECYCLE_ATTEMPT=1
+while true; do
+  adb shell input keyevent KEYCODE_HOME
+  sleep 2
+  adb shell am start -W --activity-reorder-to-front -n "$ACTIVITY"
+  timeout 30 bash -c 'until [[ -n "$(adb shell pidof app.ironshade.vector 2>/dev/null | tr -d "\r")" ]]; do sleep 1; done'
+  P27D5_RESUME_PID="$(adb shell pidof "$PACKAGE" | tr -d '\r')"
+  if [[ -z "$P27D5_RESUME_PID" ]]; then
+    echo "Ironshade Vector process did not resume during P27-D5 Babylon lifecycle smoke." >&2
+    exit 1
+  fi
+  if [[ "$P27D5_RESUME_PID" == "$APP_PID" ]]; then
+    break
+  fi
+
+  echo "ANDROID_P27D5_PROCESS_RECLAIM before=$APP_PID after=$P27D5_RESUME_PID attempt=$P27D5_LIFECYCLE_ATTEMPT // re-establishing Babylon combat before retrying pause/resume"
+  if [[ "$P27D5_LIFECYCLE_ATTEMPT" -ge 2 ]]; then
+    echo "Ironshade Vector process was reclaimed during two consecutive P27-D5 Babylon pause/resume attempts." >&2
+    exit 1
+  fi
+
+  APP_PID="$P27D5_RESUME_PID"
+  P27D5_SOCKET="webview_devtools_remote_$APP_PID"
+  adb forward --remove tcp:9222 >/dev/null 2>&1 || true
+  adb forward tcp:9222 "localabstract:$P27D5_SOCKET"
+  ANDROID_P27D5_PHASE=interaction ANDROID_P27D5_REPORT_PATH=android-p27d5-babylon-interaction.json CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-babylon-lifecycle-smoke.mjs
+  P27D5_LIFECYCLE_ATTEMPT=$((P27D5_LIFECYCLE_ATTEMPT + 1))
+done
+
+P27D5_SOCKET="webview_devtools_remote_$P27D5_RESUME_PID"
+adb forward --remove tcp:9222 >/dev/null 2>&1 || true
+adb forward tcp:9222 "localabstract:$P27D5_SOCKET"
+ANDROID_P27D5_PHASE=resume ANDROID_P27D5_REPORT_PATH=android-p27d5-babylon-resume.json CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-babylon-lifecycle-smoke.mjs
+adb exec-out screencap -p > android-p27d5-babylon-resume.png
+test -s android-p27d5-babylon-resume.png
+
 adb logcat -d > android-fast-logcat.txt
 if grep -E 'FATAL EXCEPTION|Process: app\.ironshade\.vector' android-fast-logcat.txt; then
   echo 'Fast Android runtime crash detected.' >&2
@@ -80,7 +120,7 @@ if grep -E 'FATAL EXCEPTION|Process: app\.ironshade\.vector' android-fast-logcat
 fi
 
 ELAPSED_SECONDS=$(( $(date +%s) - STARTED_AT ))
-echo "ANDROID_FAST_EMULATOR_PASS pid=${APP_PID} resumePid=${RESUME_PID} route=ship>contracts>combat touch=management+move+fire+ability+dodge+act lifecycle=pause-resume p21f1=webgpu-or-fallback crashCheck=clean screenshots=3 elapsedSeconds=${ELAPSED_SECONDS}"
+echo "ANDROID_FAST_EMULATOR_PASS pid=${APP_PID} resumePid=${P27D5_RESUME_PID} route=ship>contracts>combat touch=management+move+fire+ability+dodge+act lifecycle=pause-resume p21f1=webgpu-or-fallback p27d5=babylon-webgl2+touch+controller+renderer-reentry+mission-reentry+resume crashCheck=clean screenshots=5 elapsedSeconds=${ELAPSED_SECONDS}"
 
 adb shell am force-stop "$PACKAGE" >/dev/null 2>&1 || true
 adb shell pm clear "$PACKAGE" >/dev/null 2>&1 || true
