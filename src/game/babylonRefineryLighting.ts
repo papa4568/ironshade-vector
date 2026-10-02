@@ -320,7 +320,9 @@ export class BabylonRefineryLighting {
     }
 
     const receivers = this.scene.meshes.filter(isShadowReceiver);
-    for (const mesh of receivers) mesh.receiveShadows = true;
+    for (const mesh of receivers) {
+      if (!mesh.receiveShadows) mesh.receiveShadows = true;
+    }
     const casters = receivers
       .filter(mesh => !/(floor|grate|ring|beam|signal)/i.test(mesh.name))
       .sort((a, b) => shadowPriority(a) - shadowPriority(b) || a.name.localeCompare(b.name))
