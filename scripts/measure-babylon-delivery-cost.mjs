@@ -51,6 +51,16 @@ const babylonEntry = records.find(([key, record]) =>
 if (!babylonEntry) throw new Error('Babylon renderer manifest entry is missing.');
 const [babylonKey] = babylonEntry;
 
+const babylonLoaderEntry = records.find(([key]) => key.includes('@babylonjs/loaders/glTF'));
+if (!babylonLoaderEntry) throw new Error('Babylon glTF loader manifest entry is missing.');
+const [, babylonLoaderRecord] = babylonLoaderEntry;
+
+const babylonWebGpuEntry = records.find(([key, record]) =>
+  key.includes('@babylonjs/core/Engines/webgpuEngine')
+  || basename(record.file).startsWith('webgpuEngine-'));
+if (!babylonWebGpuEntry) throw new Error('Babylon WebGPU engine manifest entry is missing.');
+const [, babylonWebGpuRecord] = babylonWebGpuEntry;
+
 const gameCanvasStaticGraph = collectGraph([gameCanvasKey]);
 const babylonFullGraph = collectGraph([babylonKey], true);
 const babylonIncrementalKeys = [...babylonFullGraph]
@@ -62,10 +72,10 @@ const runtimeChunks = [...new Set(babylonIncrementalKeys.map(key => recordByKey.
 if (!runtimeChunks.some(name => basename(name).startsWith('babylonCombatRenderer-'))) {
   throw new Error('Babylon incremental graph does not contain the renderer entry.');
 }
-if (!runtimeChunks.some(name => basename(name).startsWith('babylon-loaders-'))) {
+if (!runtimeChunks.includes(babylonLoaderRecord.file)) {
   throw new Error('Babylon incremental graph does not contain the deferred loaders chunk.');
 }
-if (!runtimeChunks.some(name => basename(name).startsWith('webgpuEngine-'))) {
+if (!runtimeChunks.includes(babylonWebGpuRecord.file)) {
   throw new Error('Babylon incremental graph does not contain the optional WebGPU engine chunk.');
 }
 
