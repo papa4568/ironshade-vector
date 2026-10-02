@@ -417,7 +417,7 @@ assert(
 assert(
   babylonRendererSource.includes("from './babylonWorldPresentation'")
     && babylonRendererSource.includes('new BabylonRefineryWorldPresentation(scene, canvas, coarse)')
-    && babylonRendererSource.includes('this.worldPresentation.sync(state, mission, quality)')
+    && babylonRendererSource.includes('this.worldPresentation.sync(state, mission, budget.detailScale)')
     && babylonRendererSource.includes("this.worldPresentation.release('scenario-exit')")
     && babylonRendererSource.includes('this.worldPresentation.dispose()')
     && babylonWorldSource.includes("from './encounters'")
