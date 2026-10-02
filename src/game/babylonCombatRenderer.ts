@@ -437,7 +437,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     onFatalBackendFailure?: (reason: string) => void,
   ) {
     let engine: AbstractEngine | null = null;
-    let webGpuDeviceLost: Promise<GPUDeviceLostInfo> | null = null;
+    let webGpuDeviceLost: PromiseLike<{ reason?: string; message?: string }> | null = null;
     telemetryCanvas.dataset.babylonBackendRequested ||= backend;
     telemetryCanvas.dataset.babylonBackendLoaded = 'initializing';
 
