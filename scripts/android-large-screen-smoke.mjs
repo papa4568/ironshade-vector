@@ -136,6 +136,7 @@ const metrics = await session.evaluate(`(() => {
     bodyScrollWidth: body?.scrollWidth ?? 0,
     orientation: screen.orientation?.type ?? 'unknown',
     sentinel: window.__ironshadeP25BLargeScreenSentinel ?? null,
+    babylon: (() => { const canvas = document.querySelector('canvas'); return { selection: canvas?.dataset.graphicsPathSelection ?? '', requested: canvas?.dataset.graphicsPathRequested ?? '', graphicsLoaded: canvas?.dataset.graphicsPathLoaded ?? '', backendRequested: canvas?.dataset.babylonBackendRequested ?? '', backendLoaded: canvas?.dataset.babylonBackendLoaded ?? '', init: canvas?.dataset.babylonInit ?? '', scene: canvas?.dataset.babylonScene ?? '', disposed: canvas?.dataset.babylonDisposed ?? '', disposeCount: Number(canvas?.dataset.babylonDisposeCount ?? '0'), frames: Number(canvas?.dataset.babylonFrames ?? '0') }; })(),
   };
 })()`);
 
@@ -151,14 +152,29 @@ if (metrics.rootScrollWidth > metrics.rootClientWidth + 2 || metrics.bodyScrollW
   throw new Error(`Horizontal overflow detected: root=${metrics.rootScrollWidth}/${metrics.rootClientWidth} body=${metrics.bodyScrollWidth}/${metrics.bodyClientWidth}`);
 }
 
+if (metrics.babylon.selection !== 'qa-explicit'
+  || metrics.babylon.requested !== 'babylon'
+  || metrics.babylon.graphicsLoaded !== 'webgl2'
+  || metrics.babylon.backendRequested !== 'webgl2'
+  || metrics.babylon.backendLoaded !== 'webgl2'
+  || metrics.babylon.init !== 'ready'
+  || metrics.babylon.scene !== 'active'
+  || metrics.babylon.disposed !== 'false'
+  || metrics.babylon.frames < 1) {
+  throw new Error(`P27-D5 Babylon large-screen renderer is not active: ${JSON.stringify(metrics.babylon)}`);
+}
+
+let babylonRendererPreserved = null;
 if (phase === 'portrait') {
   if (height <= width) throw new Error(`Expected portrait large-screen launch, got ${width}x${height}`);
-  await session.evaluate(`window.__ironshadeP25BLargeScreenSentinel = ${JSON.stringify(sentinelToken)}; ${JSON.stringify(sentinelToken)}`);
+  await session.evaluate(`(() => { window.__ironshadeP25BLargeScreenSentinel = ${JSON.stringify(sentinelToken)}; window.__ironshadeP27D5LargeScreenCanvas = document.querySelector('canvas'); return ${JSON.stringify(sentinelToken)}; })()`);
 } else {
   if (width <= height) throw new Error(`Expected resized landscape-style window, got ${width}x${height}`);
   if (metrics.sentinel !== sentinelToken) {
     throw new Error(`WebView was recreated during live large-screen resize: sentinel=${JSON.stringify(metrics.sentinel)}`);
   }
+  babylonRendererPreserved = await session.evaluate(`window.__ironshadeP27D5LargeScreenCanvas === document.querySelector('canvas')`);
+  if (!babylonRendererPreserved) throw new Error('P27-D5 Babylon renderer surface was recreated during live large-screen resize.');
 }
 
 const report = {
@@ -167,7 +183,8 @@ const report = {
   smallestWidth,
   horizontalOverflow: false,
   webViewPreserved: phase === 'resized' ? metrics.sentinel === sentinelToken : null,
+  babylonRendererPreserved,
 };
 writeFileSync(reportPath, JSON.stringify(report, null, 2) + '\n');
-console.log(`ANDROID_P25B_LARGE_SCREEN_PHASE_PASS phase=${phase} viewport=${width}x${height} sw=${smallestWidth} orientation=${metrics.orientation} overflow=none preserved=${phase === 'resized' ? 'true' : 'armed'}`);
+console.log(`ANDROID_P25B_LARGE_SCREEN_PHASE_PASS phase=${phase} viewport=${width}x${height} sw=${smallestWidth} orientation=${metrics.orientation} overflow=none preserved=${phase === 'resized' ? 'true' : 'armed'} babylon=webgl2 renderer=${phase === 'resized' ? 'preserved' : 'armed'}`);
 socket.close();
