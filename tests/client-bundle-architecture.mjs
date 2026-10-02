@@ -107,8 +107,8 @@ assert(
 );
 
 const babylonWebGpuEntry = records.find(([key, record]) =>
-  key.includes('@babylonjs/core/Engines/webgpuEngine')
-  || basename(record.file).startsWith('webgpuEngine-'));
+  key === 'src/game/babylonWebGpuEngine.ts'
+  || basename(record.file).startsWith('babylonWebGpuEngine-'));
 assert(babylonWebGpuEntry, 'Optional Babylon WebGPU engine chunk is missing.');
 const [babylonWebGpuKey] = babylonWebGpuEntry;
 
@@ -198,6 +198,7 @@ for (const key of webGpuManifestKeys) {
 }
 
 const babylonRendererSource = readFileSync(resolve(root, 'src/game/babylonCombatRenderer.ts'), 'utf8');
+const babylonWebGpuEngineSource = readFileSync(resolve(root, 'src/game/babylonWebGpuEngine.ts'), 'utf8');
 const babylonAssetsSource = readFileSync(resolve(root, 'src/game/babylonGraphicsAssets.ts'), 'utf8');
 const babylonLoaderSource = readFileSync(resolve(root, 'src/game/babylonGltfLoader.ts'), 'utf8');
 const babylonPostSource = readFileSync(resolve(root, 'src/game/babylonRefineryPostProcessing.ts'), 'utf8');
@@ -208,7 +209,9 @@ assert(
     && babylonAssetsSource.includes("import('./babylonGltfLoader')")
     && babylonLoaderSource.includes("import '@babylonjs/loaders/glTF/2.0/glTFLoader'")
     && !babylonLoaderSource.includes("import '@babylonjs/loaders/glTF';")
-    && babylonRendererSource.includes("import('@babylonjs/core/Engines/webgpuEngine')"),
+    && babylonRendererSource.includes("import('./babylonWebGpuEngine')")
+    && babylonWebGpuEngineSource.includes("from '@babylonjs/core/Engines/webgpuEngine.pure'")
+    && !babylonWebGpuEngineSource.includes("@babylonjs/core/Audio/"),
   'Babylon core/post/loaders/WebGPU source boundaries no longer match the deferred renderer architecture.',
 );
 
