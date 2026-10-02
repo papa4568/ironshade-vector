@@ -248,6 +248,10 @@ async function cycleMission(index) {
     throw new Error('P27-D6 cycle ' + index + ' retained Babylon renderer resources: ' + JSON.stringify(disposed));
   }
 
+  const sentinelReleased = await evaluate('(() => { delete globalThis.__ironshadeP27D6ExitedCanvas; return !("__ironshadeP27D6ExitedCanvas" in globalThis); })()');
+  if (!sentinelReleased) throw new Error('P27-D6 cycle ' + index + ' could not release disposed-canvas QA sentinel before GC.');
+  console.log('ANDROID_P27D6_SENTINEL_RELEASE_PASS cycle=' + index);
+
   const heapAfterGc = await collectGarbage('cycle-' + index + '-disposed');
   disposed.heapAfterGc = heapAfterGc;
 
