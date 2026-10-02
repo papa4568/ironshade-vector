@@ -21,6 +21,7 @@ import { BabylonJovianHarvesterPresentation } from './babylonJovianHarvesterPres
 import { BabylonLatticeAnnexPresentation } from './babylonLatticeAnnexPresentation';
 import { BabylonMomentumExchangePresentation } from './babylonMomentumExchangePresentation';
 import { BabylonParallaxArrayPresentation } from './babylonParallaxArrayPresentation';
+import { BabylonPerseidCapstonePresentation } from './babylonPerseidCapstonePresentation';
 import { BabylonOrbitalStationPresentation } from './babylonOrbitalStationPresentation';
 import { BabylonRefineryLighting } from './babylonRefineryLighting';
 import { BabylonRefineryPostProcessing } from './babylonRefineryPostProcessing';
@@ -330,6 +331,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   private readonly momentumExchangePresentation: BabylonMomentumExchangePresentation;
   private readonly cryoReservePresentation: BabylonCryoReservePresentation;
   private readonly parallaxArrayPresentation: BabylonParallaxArrayPresentation;
+  private readonly perseidCapstonePresentation: BabylonPerseidCapstonePresentation;
   private readonly refineryLighting: BabylonRefineryLighting;
   private readonly refineryPostProcessing: BabylonRefineryPostProcessing;
   private readonly renderBudget: AdaptiveRenderBudget;
@@ -373,6 +375,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.momentumExchangePresentation = new BabylonMomentumExchangePresentation(scene, canvas, coarse);
     this.cryoReservePresentation = new BabylonCryoReservePresentation(scene, canvas, coarse);
     this.parallaxArrayPresentation = new BabylonParallaxArrayPresentation(scene, canvas, coarse);
+    this.perseidCapstonePresentation = new BabylonPerseidCapstonePresentation(scene, canvas, coarse);
     this.refineryLighting = new BabylonRefineryLighting(scene, canvas);
     this.refineryPostProcessing = new BabylonRefineryPostProcessing(scene, canvas);
     this.renderBudget = new AdaptiveRenderBudget(coarse);
@@ -495,6 +498,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.momentumExchangePresentation.release('scenario-exit');
       this.cryoReservePresentation.release('scenario-exit');
       this.parallaxArrayPresentation.release('scenario-exit');
+      this.perseidCapstonePresentation.release('scenario-exit');
       this.refineryLighting.setEnabled(false);
       this.refineryPostProcessing.release('scenario-exit');
       this.releaseRefineryEnvironment('scenario-exit');
@@ -643,6 +647,11 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     } else {
       this.parallaxArrayPresentation.sync(state, budget, mission.conditions.includes('low-visibility'));
     }
+    if (mission.megastructure === 'generation-ship') {
+      this.perseidCapstonePresentation.sync(state, budget, mission);
+    } else {
+      this.perseidCapstonePresentation.release('scenario-switch');
+    }
     this.syncCamera(state, width / Math.max(1, height), cameraFeedback);
     this.scene.render();
     this.frames += 1;
@@ -707,6 +716,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.momentumExchangePresentation.dispose();
     this.cryoReservePresentation.dispose();
     this.parallaxArrayPresentation.dispose();
+    this.perseidCapstonePresentation.dispose();
     this.refineryPostProcessing.dispose();
     this.refineryLighting.dispose();
     this.releaseRefineryEnvironment('renderer-dispose');
