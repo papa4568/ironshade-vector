@@ -429,7 +429,7 @@ for (const marker of [
 
 for (const marker of [
   'P27D2_BABYLON_DELIVERY_PASS',
-  'babylon-loaders-',
+  '@babylonjs/loaders/glTF',
   'webgpuEngine-',
   'babylonCombatRenderer-',
   'collectGraph([babylonKey], true)',
