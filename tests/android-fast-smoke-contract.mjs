@@ -99,6 +99,7 @@ for (const marker of [
   'ANDROID_P25B_LARGE_SCREEN_PHASE_PASS',
   'babylonRendererPreserved',
   "metrics.babylon.requested !== 'babylon'",
+  "metrics.babylon.graphicsLoaded !== 'babylon'",
   "metrics.babylon.backendLoaded !== 'webgl2'",
   '__ironshadeP27D5LargeScreenCanvas',
 ]) requireText(largeScreenRuntime, marker, 'P25-B large-screen runtime');
@@ -143,6 +144,8 @@ for (const marker of [
   'ironshade:p27d5-return-to-hub',
   'babylonDisposeCount',
   '__ironshadeP27D5ResumeCanvas',
+  "state.graphicsLoaded !== 'babylon'",
+  "state.backendLoaded !== 'webgl2'",
 ]) requireText(babylonLifecycle, marker, 'P27-D5 Babylon Android lifecycle harness');
 
 for (const marker of [
