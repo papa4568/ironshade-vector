@@ -192,7 +192,7 @@ async function ensureCommandDeck(idBase) {
       throw new Error('P27-D5 could not confirm Vanguard during fresh Android intake.');
     }
   }
-  await waitFor('Boolean(document.querySelector("button[data-primary-area=\"operations\"]"))', 'P27-D5 Command Deck', 45_000);
+  await waitFor('[...document.querySelectorAll("button")].some(button => button.getAttribute("data-primary-area") === "operations")', 'P27-D5 Command Deck', 45_000);
 }
 
 async function deployRefinery(idBase) {
@@ -204,11 +204,11 @@ async function deployRefinery(idBase) {
   if (!(await tapButton('Contracts', idBase + 3))) {
     throw new Error('P27-D5 Contracts touch target unavailable.');
   }
-  await waitFor('Boolean(document.querySelector("button[data-location=\"asteroid-refinery\"]"))', 'P27-D5 refinery contract');
+  await waitFor('[...document.querySelectorAll("button")].some(button => button.getAttribute("data-location") === "asteroid-refinery")', 'P27-D5 refinery contract');
   if (!(await tapSelector('button[data-location="asteroid-refinery"]', idBase + 4))) {
     throw new Error('P27-D5 refinery contract touch target unavailable.');
   }
-  await waitFor('document.querySelector("button[data-location=\"asteroid-refinery\"]")?.classList.contains("selected") === true', 'P27-D5 refinery selection');
+  await waitFor('[...document.querySelectorAll("button")].some(button => button.getAttribute("data-location") === "asteroid-refinery" && button.classList.contains("selected"))', 'P27-D5 refinery selection');
   if (!(await tapButton('Deploy selected contract', idBase + 5, 120))) {
     throw new Error('P27-D5 deploy touch target unavailable.');
   }
@@ -217,7 +217,7 @@ async function deployRefinery(idBase) {
 }
 
 async function readBabylonState() {
-  return await evaluate('(() => { const canvas = document.querySelector("canvas"); const root = document.querySelector(".game-root"); return { title: document.title, href: location.href, canvas: Boolean(canvas), selection: canvas?.dataset.graphicsPathSelection ?? "", requested: canvas?.dataset.graphicsPathRequested ?? "", graphicsLoaded: canvas?.dataset.graphicsPathLoaded ?? "", backendRequested: canvas?.dataset.babylonBackendRequested ?? "", backendLoaded: canvas?.dataset.babylonBackendLoaded ?? "", init: canvas?.dataset.babylonInit ?? "", scene: canvas?.dataset.babylonScene ?? "", disposed: canvas?.dataset.babylonDisposed ?? "", disposeCount: Number(canvas?.dataset.babylonDisposeCount ?? "0"), frames: Number(canvas?.dataset.babylonFrames ?? "0"), controls: Boolean(document.querySelector("[aria-label=\"Touch combat controls\"]")), shots: Number(root?.dataset.weaponShots ?? "0"), tutorialStep: Number(root?.dataset.tutorialStep ?? "0"), mission: document.querySelector(".mission-chip")?.textContent?.trim() ?? "" }; })()');
+  return await evaluate('(() => { const canvas = document.querySelector("canvas"); const root = document.querySelector(".game-root"); return { title: document.title, href: location.href, canvas: Boolean(canvas), selection: canvas?.dataset.graphicsPathSelection ?? "", requested: canvas?.dataset.graphicsPathRequested ?? "", graphicsLoaded: canvas?.dataset.graphicsPathLoaded ?? "", backendRequested: canvas?.dataset.babylonBackendRequested ?? "", backendLoaded: canvas?.dataset.babylonBackendLoaded ?? "", init: canvas?.dataset.babylonInit ?? "", scene: canvas?.dataset.babylonScene ?? "", disposed: canvas?.dataset.babylonDisposed ?? "", disposeCount: Number(canvas?.dataset.babylonDisposeCount ?? "0"), frames: Number(canvas?.dataset.babylonFrames ?? "0"), controls: [...document.querySelectorAll("[aria-label]")].some(element => element.getAttribute("aria-label") === "Touch combat controls"), shots: Number(root?.dataset.weaponShots ?? "0"), tutorialStep: Number(root?.dataset.tutorialStep ?? "0"), mission: document.querySelector(".mission-chip")?.textContent?.trim() ?? "" }; })()');
 }
 
 function requireBabylonState(state, label, requireTouch = true) {
@@ -317,7 +317,7 @@ async function proveRendererReentry() {
 async function proveMissionExitAndReentry() {
   const exited = await evaluate('(() => { const canvas = document.querySelector("canvas"); if (!canvas) return false; globalThis.__ironshadeP27D5ExitedCanvas = canvas; window.dispatchEvent(new Event("ironshade:p27d5-return-to-hub")); return true; })()');
   if (!exited) throw new Error('P27-D5 could not request mission exit.');
-  await waitFor('Boolean(document.querySelector("button[data-primary-area=\"operations\"]")) && !document.querySelector("canvas")', 'P27-D5 return to Command Deck', 20_000);
+  await waitFor('[...document.querySelectorAll("button")].some(button => button.getAttribute("data-primary-area") === "operations") && !document.querySelector("canvas")', 'P27-D5 return to Command Deck', 20_000);
   const disposed = await evaluate('(() => { const canvas = globalThis.__ironshadeP27D5ExitedCanvas; return canvas ? { connected: canvas.isConnected, disposed: canvas.dataset.babylonDisposed ?? "", scene: canvas.dataset.babylonScene ?? "", disposeCount: Number(canvas.dataset.babylonDisposeCount ?? "0") } : null; })()');
   if (!disposed || disposed.connected || disposed.disposed !== 'true' || disposed.scene !== 'disposed' || disposed.disposeCount < 1) {
     throw new Error('P27-D5 mission exit did not dispose Babylon renderer: ' + JSON.stringify(disposed));
