@@ -444,7 +444,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     try {
       if (backend === 'webgpu') {
         telemetryCanvas.dataset.babylonBackendInitStage = 'webgpu-support';
-        const { WebGPUEngine } = await import('@babylonjs/core/Engines/webgpuEngine');
+        const { WebGPUEngine } = await import('./babylonWebGpuEngine');
         if (!(await WebGPUEngine.IsSupportedAsync)) {
           throw new Error('Babylon WebGPU is not supported by this browser/runtime.');
         }
