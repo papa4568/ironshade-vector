@@ -18,6 +18,7 @@ import { BabylonCryoReservePresentation } from './babylonCryoReservePresentation
 import { BabylonDamagedVesselPresentation } from './babylonDamagedVesselPresentation';
 import { BabylonIceMinePresentation } from './babylonIceMinePresentation';
 import { BabylonK91CapstonePresentation } from './babylonK91CapstonePresentation';
+import { BabylonOrphelineCapstonePresentation } from './babylonOrphelineCapstonePresentation';
 import { BabylonJovianHarvesterPresentation } from './babylonJovianHarvesterPresentation';
 import { BabylonLatticeAnnexPresentation } from './babylonLatticeAnnexPresentation';
 import { BabylonMomentumExchangePresentation } from './babylonMomentumExchangePresentation';
@@ -328,6 +329,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   private readonly jovianHarvesterPresentation: BabylonJovianHarvesterPresentation;
   private readonly iceMinePresentation: BabylonIceMinePresentation;
   private readonly k91CapstonePresentation: BabylonK91CapstonePresentation;
+  private readonly orphelineCapstonePresentation: BabylonOrphelineCapstonePresentation;
   private readonly solarYardPresentation: BabylonSolarYardPresentation;
   private readonly latticeAnnexPresentation: BabylonLatticeAnnexPresentation;
   private readonly momentumExchangePresentation: BabylonMomentumExchangePresentation;
@@ -373,6 +375,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.jovianHarvesterPresentation = new BabylonJovianHarvesterPresentation(scene, canvas, coarse);
     this.iceMinePresentation = new BabylonIceMinePresentation(scene, canvas, coarse);
     this.k91CapstonePresentation = new BabylonK91CapstonePresentation(scene, canvas, coarse);
+    this.orphelineCapstonePresentation = new BabylonOrphelineCapstonePresentation(scene, canvas, coarse);
     this.solarYardPresentation = new BabylonSolarYardPresentation(scene, canvas, coarse);
     this.latticeAnnexPresentation = new BabylonLatticeAnnexPresentation(scene, canvas, coarse);
     this.momentumExchangePresentation = new BabylonMomentumExchangePresentation(scene, canvas, coarse);
@@ -503,6 +506,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.parallaxArrayPresentation.release('scenario-exit');
       this.perseidCapstonePresentation.release('scenario-exit');
       this.k91CapstonePresentation.release('scenario-exit');
+      this.orphelineCapstonePresentation.release('scenario-exit');
       this.refineryLighting.setEnabled(false);
       this.refineryPostProcessing.release('scenario-exit');
       this.releaseRefineryEnvironment('scenario-exit');
@@ -653,13 +657,20 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     }
     if (mission.megastructure === 'generation-ship') {
       this.k91CapstonePresentation.release('scenario-switch');
+      this.orphelineCapstonePresentation.release('scenario-switch');
       this.perseidCapstonePresentation.sync(state, budget, mission);
     } else if (mission.megastructure === 'counterweight') {
       this.perseidCapstonePresentation.release('scenario-switch');
+      this.orphelineCapstonePresentation.release('scenario-switch');
       this.k91CapstonePresentation.sync(state, budget, mission);
+    } else if (mission.megastructure === 'hidden-habitat') {
+      this.perseidCapstonePresentation.release('scenario-switch');
+      this.k91CapstonePresentation.release('scenario-switch');
+      this.orphelineCapstonePresentation.sync(state, budget, mission);
     } else {
       this.perseidCapstonePresentation.release('scenario-switch');
       this.k91CapstonePresentation.release('scenario-switch');
+      this.orphelineCapstonePresentation.release('scenario-switch');
     }
     this.syncCamera(state, width / Math.max(1, height), cameraFeedback);
     this.scene.render();
@@ -727,6 +738,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.parallaxArrayPresentation.dispose();
     this.perseidCapstonePresentation.dispose();
     this.k91CapstonePresentation.dispose();
+    this.orphelineCapstonePresentation.dispose();
     this.refineryPostProcessing.dispose();
     this.refineryLighting.dispose();
     this.releaseRefineryEnvironment('renderer-dispose');
