@@ -136,7 +136,11 @@ async function run() {
   assert(loadCounts.get(refineryLod1.url) === 2, 'evicted refinery GLB must reload on the next request');
   reloadedRefinery.release();
   
-  await runtime.dispose();
+  const runtimeDispose = runtime.dispose();
+  assert((disposeCounts.get(operatorLod1.url) ?? 0) === 1, 'resolved operator LOD1 source resources must dispose synchronously before scene teardown');
+  assert((disposeCounts.get(operatorLod2.url) ?? 0) === 1, 'resolved operator LOD2 source resources must dispose synchronously before scene teardown');
+  assert((disposeCounts.get(refineryLod1.url) ?? 0) === 2, 'resolved refinery source resources must dispose synchronously before scene teardown');
+  await runtimeDispose;
   await Promise.resolve();
   assert((disposeCounts.get(operatorLod1.url) ?? 0) === 1, 'operator LOD1 source resources must dispose once with the runtime');
   assert((disposeCounts.get(operatorLod2.url) ?? 0) === 1, 'operator LOD2 source resources must dispose once with the runtime');
