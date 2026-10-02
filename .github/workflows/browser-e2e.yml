@@ -240,6 +240,9 @@ jobs:
           node scripts/verify-authored-refinery.mjs
           BROWSER_E2E_GRAPHICS_PATH=webgpu BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p21f1-webgpu.png node scripts/browser-runtime-smoke.mjs
           BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27a2-babylon.png node scripts/browser-runtime-smoke.mjs
+          if [[ "${{ matrix.viewport }}" == "desktop" ]]; then
+            BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_BABYLON_BACKEND=webgpu BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27d1-babylon-webgpu.png node scripts/browser-runtime-smoke.mjs
+          fi
           BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=orbital-station BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c1-orbital-station.png node scripts/browser-runtime-smoke.mjs
           BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=damaged-vessel BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c2-damaged-vessel.png node scripts/browser-runtime-smoke.mjs
           BROWSER_E2E_LOCATION=damaged-vessel BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-damaged-vessel.png node scripts/browser-runtime-smoke.mjs
@@ -647,6 +650,7 @@ jobs:
             browser-e2e-${{ matrix.viewport }}*p21f2-stack-*.png
             browser-e2e-${{ matrix.viewport }}-p21f1-webgpu.png
             browser-e2e-${{ matrix.viewport }}-p27a2-babylon*.png
+            browser-e2e-${{ matrix.viewport }}-p27d1-babylon-webgpu.png
             browser-e2e-${{ matrix.viewport }}-p27c1-orbital-station.png
             browser-e2e-${{ matrix.viewport }}-p27c2-damaged-vessel.png
             browser-e2e-${{ matrix.viewport }}-p27c3-spin-habitat.png
