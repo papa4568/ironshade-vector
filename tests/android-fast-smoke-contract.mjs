@@ -430,7 +430,7 @@ for (const marker of [
 for (const marker of [
   'P27D2_BABYLON_DELIVERY_PASS',
   'babylonGltfLoader.ts',
-  'webgpuEngine-',
+  'babylonWebGpuEngine-',
   'babylonCombatRenderer-',
   'collectGraph([babylonKey], true)',
   'P21-F3 Android beta.608',
