@@ -43,7 +43,7 @@ jobs:
     env:
       ANDROID_VERSION_CODE: ${{ github.run_number }}
       ANDROID_VERSION_NAME: 0.0.1-beta.${{ github.run_number }}
-      ANDROID_P27D6_SOAK_MINUTES: ${{ github.event_name == 'pull_request' && '12' || github.event_name == 'workflow_dispatch' && inputs.soak_minutes || '30' }}
+      ANDROID_P27D6_SOAK_MINUTES: ${{ github.event_name == 'workflow_dispatch' && inputs.soak_minutes || '30' }}
 
     steps:
       - name: Check out source
