@@ -790,6 +790,17 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    const assetRuntime = getBabylonGraphicsAssetRuntime(this.scene);
+    const runtimeBefore = assetRuntime.stats();
+    const resourcesBefore = {
+      meshes: this.scene.meshes.length,
+      materials: this.scene.materials.length,
+      textures: this.scene.textures.length,
+      roots: this.scene.rootNodes.length,
+      cachedAssets: runtimeBefore.cachedAssets,
+      activeInstances: runtimeBefore.activeInstances,
+      estimatedCachedCompressedBytes: runtimeBefore.estimatedCachedCompressedBytes,
+    };
     this.releasePlayerPresentation('renderer-dispose');
     this.releaseEnemyPresentation('renderer-dispose');
     this.worldPresentation.dispose();
@@ -816,8 +827,27 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.refineryLighting.dispose();
     this.releaseRefineryEnvironment('renderer-dispose');
     void disposeBabylonGraphicsAssetRuntime(this.scene);
+    const runtimeAfter = assetRuntime.stats();
     this.scene.dispose();
+    const resourcesAfter = {
+      meshes: this.scene.meshes.length,
+      materials: this.scene.materials.length,
+      textures: this.scene.textures.length,
+      roots: this.scene.rootNodes.length,
+      cachedAssets: runtimeAfter.cachedAssets,
+      activeInstances: runtimeAfter.activeInstances,
+      estimatedCachedCompressedBytes: runtimeAfter.estimatedCachedCompressedBytes,
+    };
     this.engine.dispose();
+    this.canvas.dataset.babylonDisposeResources = JSON.stringify({
+      before: resourcesBefore,
+      after: resourcesAfter,
+    });
+    this.canvas.dataset.babylonAssetCacheReclaimed = String(
+      resourcesAfter.cachedAssets === 0
+      && resourcesAfter.activeInstances === 0
+      && resourcesAfter.estimatedCachedCompressedBytes === 0,
+    );
     this.canvas.dataset.babylonScene = 'disposed';
     this.canvas.dataset.babylonDisposed = 'true';
   }
