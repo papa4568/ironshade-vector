@@ -14,6 +14,7 @@ const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const presentation = readFileSync('src/game/babylonOrphelineCapstonePresentation.ts', 'utf8');
 const campaign = readFileSync('src/game/campaign.ts', 'utf8');
 const encounters = readFileSync('src/game/encounters.ts', 'utf8');
+const sim = readFileSync('src/game/sim.ts', 'utf8');
 const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { scripts: Record<string, string> };
 
 assert.deepEqual(BABYLON_ORPHELINE_CAPSTONE_IDENTITY, {
@@ -84,11 +85,14 @@ for (const marker of [
 for (const marker of [
   "contract.megastructure === 'hidden-habitat'",
   "boss.variant = 'orphelineWarden'",
-  "stepOrphelineWardenBoss",
+]) assert.ok(encounters.includes(marker), 'missing Orpheline encounter source marker: ' + marker);
+
+for (const marker of [
+  'stepOrphelineWardenBoss',
   "boss.bossPattern === 'pressureCascade'",
   "boss.bossPattern === 'gravityOverride'",
   "boss.bossPattern === 'shutterGeometry'",
-]) assert.ok(encounters.includes(marker), 'missing Orpheline gameplay source marker: ' + marker);
+]) assert.ok(sim.includes(marker), 'missing Orpheline runtime source marker: ' + marker);
 
 for (const marker of [
   'addOrphelineCapstoneScenery',
