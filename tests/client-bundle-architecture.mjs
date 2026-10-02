@@ -85,6 +85,13 @@ const babylonWebGpuEntry = records.find(([key, record]) =>
 assert(babylonWebGpuEntry, 'Optional Babylon WebGPU engine chunk is missing.');
 const [babylonWebGpuKey] = babylonWebGpuEntry;
 
+const babylonLoaderEntry = records.find(([key, record]) =>
+  key === 'src/game/babylonGltfLoader.ts'
+  || basename(record.file).startsWith('babylonGltfLoader-'));
+assert(babylonLoaderEntry, 'Babylon glTF loader boundary is missing.');
+const [babylonLoaderKey, babylonLoaderRecord] = babylonLoaderEntry;
+assert(babylonLoaderRecord.isDynamicEntry, 'Babylon glTF loader boundary must remain a dynamic entry.');
+
 const appRecordEntry = records.find(([, record]) => basename(record.file).startsWith('App-'));
 assert(appRecordEntry, 'The staged app chunk was not emitted.');
 const [appKey] = appRecordEntry;
@@ -94,18 +101,6 @@ const appStaticGraph = collectGraph([appKey]);
 const gameCanvasStaticGraph = collectGraph([gameCanvasKey]);
 const babylonStaticGraph = collectGraph([babylonKey]);
 const babylonFullGraph = collectGraph([babylonKey], true);
-const babylonDirectDynamicKeys = new Set(
-  [...babylonStaticGraph].flatMap(key => recordByKey.get(key)?.dynamicImports ?? []),
-);
-const babylonLoaderCandidates = [...babylonDirectDynamicKeys]
-  .filter(key => key !== babylonWebGpuKey && recordByKey.get(key)?.isDynamicEntry);
-assert(
-  babylonLoaderCandidates.length === 1,
-  `Expected one Babylon loader dynamic entry beside WebGPU; found ${babylonLoaderCandidates.length}: ${babylonLoaderCandidates.join(',')}.`,
-);
-const [babylonLoaderKey] = babylonLoaderCandidates;
-const babylonLoaderRecord = recordByKey.get(babylonLoaderKey);
-assert(babylonLoaderRecord, 'Babylon loader dynamic record is missing.');
 
 assert(!bootStaticGraph.has(gameCanvasKey), 'GameCanvas leaked into the synchronous boot graph.');
 assert(!appStaticGraph.has(gameCanvasKey), 'GameCanvas leaked into the synchronous App graph.');
@@ -158,12 +153,14 @@ for (const key of webGpuManifestKeys) {
 
 const babylonRendererSource = readFileSync(resolve(root, 'src/game/babylonCombatRenderer.ts'), 'utf8');
 const babylonAssetsSource = readFileSync(resolve(root, 'src/game/babylonGraphicsAssets.ts'), 'utf8');
+const babylonLoaderSource = readFileSync(resolve(root, 'src/game/babylonGltfLoader.ts'), 'utf8');
 const babylonPostSource = readFileSync(resolve(root, 'src/game/babylonRefineryPostProcessing.ts'), 'utf8');
 assert(
   babylonRendererSource.includes("from '@babylonjs/core/")
     && babylonRendererSource.includes("from './babylonRefineryPostProcessing'")
     && babylonPostSource.includes("from '@babylonjs/core/Layers/glowLayer'")
-    && babylonAssetsSource.includes("import('@babylonjs/loaders/glTF')")
+    && babylonAssetsSource.includes("import('./babylonGltfLoader')")
+    && babylonLoaderSource.includes("import '@babylonjs/loaders/glTF'")
     && babylonRendererSource.includes("import('@babylonjs/core/Engines/webgpuEngine')"),
   'Babylon core/post/loaders/WebGPU source boundaries no longer match the deferred renderer architecture.',
 );
