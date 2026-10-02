@@ -67,11 +67,6 @@ const webGpuQaChunks = jsFiles.filter(name =>
   || name.startsWith('webGpuRefineryRenderer-'));
 assert(webGpuQaChunks.length === 3, `Expected three deferred legacy WebGPU QA chunks; found ${webGpuQaChunks.length}.`);
 
-const babylonLoaderEntry = records.find(([key]) => key.includes('@babylonjs/loaders/glTF'));
-assert(babylonLoaderEntry, 'Babylon glTF loader dynamic entry is missing from the Vite manifest.');
-const [babylonLoaderKey, babylonLoaderRecord] = babylonLoaderEntry;
-assert(babylonLoaderRecord.isDynamicEntry, 'Babylon glTF loader must remain a dynamic entry.');
-
 const babylonEntry = records.find(([key, record]) =>
   key === 'src/game/babylonCombatRenderer.ts'
   || basename(record.file).startsWith('babylonCombatRenderer-'));
@@ -99,6 +94,18 @@ const appStaticGraph = collectGraph([appKey]);
 const gameCanvasStaticGraph = collectGraph([gameCanvasKey]);
 const babylonStaticGraph = collectGraph([babylonKey]);
 const babylonFullGraph = collectGraph([babylonKey], true);
+const babylonDirectDynamicKeys = new Set(
+  [...babylonStaticGraph].flatMap(key => recordByKey.get(key)?.dynamicImports ?? []),
+);
+const babylonLoaderCandidates = [...babylonDirectDynamicKeys]
+  .filter(key => key !== babylonWebGpuKey && recordByKey.get(key)?.isDynamicEntry);
+assert(
+  babylonLoaderCandidates.length === 1,
+  `Expected one Babylon loader dynamic entry beside WebGPU; found ${babylonLoaderCandidates.length}: ${babylonLoaderCandidates.join(',')}.`,
+);
+const [babylonLoaderKey] = babylonLoaderCandidates;
+const babylonLoaderRecord = recordByKey.get(babylonLoaderKey);
+assert(babylonLoaderRecord, 'Babylon loader dynamic record is missing.');
 
 assert(!bootStaticGraph.has(gameCanvasKey), 'GameCanvas leaked into the synchronous boot graph.');
 assert(!appStaticGraph.has(gameCanvasKey), 'GameCanvas leaked into the synchronous App graph.');
