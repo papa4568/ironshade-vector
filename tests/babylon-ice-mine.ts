@@ -96,7 +96,7 @@ assert(
 assert(
   renderer.includes("const iceMineScenario = mission.location === 'ice-mine';")
     && renderer.includes("this.canvas.dataset.babylonScenario = mission.location;")
-    && renderer.includes('this.worldPresentation.sync(state, mission, quality);')
+    && renderer.includes('this.worldPresentation.sync(state, mission, budget.detailScale);')
     && renderer.includes('this.iceMinePresentation.sync(')
     && renderer.includes("this.jovianHarvesterPresentation.release('scenario-switch');")
     && renderer.includes("this.iceMinePresentation.release('scenario-switch');"),

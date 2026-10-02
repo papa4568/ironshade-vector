@@ -75,7 +75,7 @@ assert(
 assert(
   renderer.includes("const orbitalStationScenario = mission.location === 'orbital-station';")
     && renderer.includes("this.canvas.dataset.babylonScenario = mission.location;")
-    && renderer.includes('this.worldPresentation.sync(state, mission, quality);')
+    && renderer.includes('this.worldPresentation.sync(state, mission, budget.detailScale);')
     && renderer.includes("this.orbitalStationPresentation.sync(state, budget, mission.conditions.includes('low-visibility'));")
     && renderer.includes("this.refineryPostProcessing.release('scenario-switch');"),
   'P27-C1 renderer must run Orbital Station through shared Babylon gameplay cues while keeping refinery-only post processing isolated.',

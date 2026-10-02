@@ -79,7 +79,7 @@ assert(
 assert(
   renderer.includes("const damagedVesselScenario = mission.location === 'damaged-vessel';")
     && renderer.includes("this.canvas.dataset.babylonScenario = mission.location;")
-    && renderer.includes('this.worldPresentation.sync(state, mission, quality);')
+    && renderer.includes('this.worldPresentation.sync(state, mission, budget.detailScale);')
     && renderer.includes("this.damagedVesselPresentation.sync(state, budget, mission.conditions.includes('low-visibility'));")
     && renderer.includes("this.orbitalStationPresentation.release('scenario-switch');")
     && renderer.includes("this.refineryPostProcessing.release('scenario-switch');"),

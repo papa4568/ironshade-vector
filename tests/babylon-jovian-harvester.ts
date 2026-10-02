@@ -112,7 +112,7 @@ assert(
 assert(
   renderer.includes("const jovianHarvesterScenario = mission.location === 'jovian-harvester';")
     && renderer.includes("this.canvas.dataset.babylonScenario = mission.location;")
-    && renderer.includes('this.worldPresentation.sync(state, mission, quality);')
+    && renderer.includes('this.worldPresentation.sync(state, mission, budget.detailScale);')
     && renderer.includes("this.jovianHarvesterPresentation.sync(")
     && renderer.includes("mission.conditions.includes('unstable-pressure')")
     && renderer.includes("mission.conditions.includes('damaged-grid')")

@@ -78,7 +78,7 @@ assert.ok(babylon.includes("import { BabylonSolarYardPresentation } from './baby
 assert.ok(babylon.includes("const solarYardScenario = mission.location === 'solar-yard';"));
 assert.ok(babylon.includes("this.solarYardPresentation.sync(state, budget, mission.conditions.includes('low-visibility'));"));
 assert.ok(babylon.includes("ported:asteroid-refinery,orbital-station,damaged-vessel,spin-habitat,jovian-harvester,ice-mine,solar-yard"));
-assert.ok(babylon.includes('this.worldPresentation.sync(state, mission, quality);'));
+assert.ok(babylon.includes('this.worldPresentation.sync(state, mission, budget.detailScale);'));
 assert.ok(smoke.includes('async function p27C6BabylonSolarYardAudit()'));
 assert.ok(smoke.includes('BROWSER_P27C6_BABYLON_SOLAR_YARD_PASS'));
 assert.ok(smoke.includes("else if (targetLocation === 'solar-yard') await p27C6BabylonSolarYardAudit();"));

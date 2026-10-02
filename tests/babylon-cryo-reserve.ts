@@ -106,7 +106,7 @@ assert.ok(babylon.includes("import { BabylonCryoReservePresentation } from './ba
 assert.ok(babylon.includes("const cryoReserveScenario = mission.location === 'cryo-reserve';"));
 assert.ok(babylon.includes("this.cryoReservePresentation.sync(state, budget, mission.conditions.includes('low-visibility'));"));
 assert.ok(babylon.includes('momentum-exchange,cryo-reserve'));
-assert.ok(babylon.includes('this.worldPresentation.sync(state, mission, quality);'));
+assert.ok(babylon.includes('this.worldPresentation.sync(state, mission, budget.detailScale);'));
 assert.ok(smoke.includes('async function p27C9BabylonCryoReserveAudit()'));
 assert.ok(smoke.includes('BROWSER_P27C9_BABYLON_CRYO_RESERVE_PASS'));
 assert.ok(smoke.includes("else if (targetLocation === 'cryo-reserve') await p27C9BabylonCryoReserveAudit();"));

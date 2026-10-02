@@ -96,7 +96,7 @@ assert.ok(babylon.includes("import { BabylonMomentumExchangePresentation } from 
 assert.ok(babylon.includes("const momentumExchangeScenario = mission.location === 'momentum-exchange';"));
 assert.ok(babylon.includes("this.momentumExchangePresentation.sync(state, budget, mission.conditions.includes('low-visibility'));"));
 assert.ok(babylon.includes("ported:asteroid-refinery,orbital-station,damaged-vessel,spin-habitat,jovian-harvester,ice-mine,solar-yard,lattice-annex,momentum-exchange"));
-assert.ok(babylon.includes('this.worldPresentation.sync(state, mission, quality);'));
+assert.ok(babylon.includes('this.worldPresentation.sync(state, mission, budget.detailScale);'));
 assert.ok(smoke.includes('async function p27C8BabylonMomentumExchangeAudit()'));
 assert.ok(smoke.includes('BROWSER_P27C8_BABYLON_MOMENTUM_EXCHANGE_PASS'));
 assert.ok(smoke.includes("else if (targetLocation === 'momentum-exchange') await p27C8BabylonMomentumExchangeAudit();"));
