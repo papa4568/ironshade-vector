@@ -40,6 +40,8 @@ for (const marker of [
   'HeapProfiler.collectGarbage',
   'Runtime.getHeapUsage',
   'cdp-runtime-heap',
+  'delete globalThis.__ironshadeP27D6ExitedCanvas',
+  'ANDROID_P27D6_SENTINEL_RELEASE_PASS',
   'ANDROID_P27D6_GC_PASS',
   'cacheBudgetViolations',
   'frameFinal > frameBaseline * 1.5',
