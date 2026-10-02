@@ -39,6 +39,8 @@ for (const marker of [
   'babylonAssetCacheReclaimed',
   'HeapProfiler.collectGarbage',
   'Runtime.getHeapUsage',
+  'Memory.getDOMCounters',
+  'delete globalThis.__ironshadeP27D6ExitedCanvas',
   'cdp-runtime-heap',
   'delete globalThis.__ironshadeP27D6ExitedCanvas',
   'ANDROID_P27D6_SENTINEL_RELEASE_PASS',
