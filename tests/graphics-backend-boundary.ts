@@ -274,8 +274,10 @@ assert(
     && boundarySource.includes("canvas.dataset.babylonDisposed = 'true'")
     && boundarySource.includes("canvas.dataset.babylonBackendRequested = requestedBackend")
     && boundarySource.includes('createWebGpuRenderSurface()')
-    && boundarySource.includes("await createBabylonCombatRenderer(renderSurface, this.coarse, 'webgpu', this.canvas)")
+    && boundarySource.includes("'webgpu',\n          this.canvas,\n          reason =>")
     && boundarySource.includes("await createBabylonCombatRenderer(this.canvas, this.coarse, 'webgl2', this.canvas)")
+    && boundarySource.includes("webgpu->webgl2:runtime-device-lost")
+    && boundarySource.includes('fallbackFromWebGpu(reason)')
     && boundarySource.includes('webgpu->webgl2:')
     && boundarySource.includes('Three.js fallback is intentionally disabled for the Babylon QA path')
     && !babylonBoundarySource.includes('new WebGl2CombatGraphicsBackend(')
@@ -288,7 +290,11 @@ assert(
     && babylonRendererSource.includes("await import('@babylonjs/core/Engines/webgpuEngine')")
     && babylonRendererSource.includes('await WebGPUEngine.IsSupportedAsync')
     && babylonRendererSource.includes('new WebGPUEngine(renderCanvas')
+    && babylonRendererSource.includes('doNotHandleContextLost: true')
     && babylonRendererSource.includes('await webGpuEngine.initAsync()')
+    && babylonRendererSource.includes('webGpuDeviceLost = webGpuEngine._device.lost')
+    && babylonRendererSource.includes("telemetryCanvas.dataset.babylonBackendFailureStage = 'runtime-device-lost'")
+    && babylonRendererSource.includes('onFatalBackendFailure(reason)')
     && babylonRendererSource.includes('new Engine(renderCanvas, !coarse')
     && babylonRendererSource.includes('webGlEngine.webGLVersion !== 2')
     && babylonRendererSource.includes("telemetryCanvas.dataset.babylonBackendInitStage = 'scene-create'")
@@ -299,7 +305,7 @@ assert(
     && babylonRendererSource.includes('this.engine.dispose()')
     && babylonRendererSource.includes("this.canvas.dataset.babylonScene = 'disposed'")
     && !babylonRendererSource.includes('ThreeCombatRenderer'),
-  'P27-D1 Babylon renderer must initialize WebGPU or WebGL2 before scene/resource creation and keep the Babylon lifecycle independent from Three.js.',
+  'P27-D1 Babylon renderer must initialize WebGPU or WebGL2 before scene/resource creation, route device loss to deterministic fallback instead of Babylon rebuild, and stay independent from Three.js.',
 );
 assert(
   packageJson.dependencies?.['@babylonjs/core'] === '9.28.0'
