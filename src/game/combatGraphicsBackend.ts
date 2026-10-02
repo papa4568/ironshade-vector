@@ -166,6 +166,7 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
   ) {
     canvas.dataset.babylonInit = 'initializing';
     canvas.dataset.babylonDisposed = 'false';
+    canvas.dataset.babylonDisposeCount ||= '0';
     canvas.dataset.babylonBackendRequested = requestedBackend;
     canvas.dataset.babylonBackendLoaded = 'initializing';
     canvas.dataset.babylonBackendFallback = '';
@@ -195,6 +196,8 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
     this.delegate?.dispose();
     this.delegate = null;
     this.releaseWebGpuRenderSurface();
+    const previousDisposeCount = Number.parseInt(this.canvas.dataset.babylonDisposeCount ?? '0', 10);
+    this.canvas.dataset.babylonDisposeCount = String(Number.isFinite(previousDisposeCount) ? previousDisposeCount + 1 : 1);
     this.canvas.dataset.babylonDisposed = 'true';
   }
 
