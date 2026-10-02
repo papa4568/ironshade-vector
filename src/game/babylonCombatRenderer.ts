@@ -434,8 +434,10 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     coarse: boolean,
     backend: BabylonGraphicsBackendId = 'webgl2',
     telemetryCanvas: HTMLCanvasElement = renderCanvas,
+    onFatalBackendFailure?: (reason: string) => void,
   ) {
     let engine: AbstractEngine | null = null;
+    let webGpuDeviceLost: Promise<GPUDeviceLostInfo> | null = null;
     telemetryCanvas.dataset.babylonBackendRequested ||= backend;
     telemetryCanvas.dataset.babylonBackendLoaded = 'initializing';
 
@@ -449,9 +451,11 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         telemetryCanvas.dataset.babylonBackendInitStage = 'webgpu-init';
         const webGpuEngine = new WebGPUEngine(renderCanvas, {
           powerPreference: 'high-performance',
+          doNotHandleContextLost: true,
         });
         engine = webGpuEngine;
         await webGpuEngine.initAsync();
+        webGpuDeviceLost = webGpuEngine._device.lost;
       } else {
         telemetryCanvas.dataset.babylonBackendInitStage = 'webgl2-init';
         const webGlEngine = new Engine(renderCanvas, !coarse, {
@@ -494,7 +498,17 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       telemetryCanvas.dataset.babylonEnemyCatalogState = 'idle';
       telemetryCanvas.dataset.babylonEnemyState = 'idle';
 
-      return new BabylonCombatRenderer(telemetryCanvas, renderCanvas, coarse, engine, scene, camera);
+      const renderer = new BabylonCombatRenderer(telemetryCanvas, renderCanvas, coarse, engine, scene, camera);
+      if (backend === 'webgpu' && webGpuDeviceLost && onFatalBackendFailure) {
+        void webGpuDeviceLost.then(info => {
+          if (renderer.disposed || info.reason === 'destroyed') return;
+          const reason = `WebGPU device lost${info.reason ? ` (${info.reason})` : ''}: ${info.message || 'unknown reason'}`;
+          telemetryCanvas.dataset.babylonBackendFailureStage = 'runtime-device-lost';
+          telemetryCanvas.dataset.babylonBackendFailureReason = reason;
+          onFatalBackendFailure(reason);
+        });
+      }
+      return renderer;
     } catch (error) {
       engine?.dispose();
       telemetryCanvas.dataset.babylonBackendLoaded = 'failed';
@@ -2127,6 +2141,7 @@ export function createBabylonCombatRenderer(
   coarse: boolean,
   backend: BabylonGraphicsBackendId = 'webgl2',
   telemetryCanvas: HTMLCanvasElement = renderCanvas,
+  onFatalBackendFailure?: (reason: string) => void,
 ) {
-  return BabylonCombatRenderer.create(renderCanvas, coarse, backend, telemetryCanvas);
+  return BabylonCombatRenderer.create(renderCanvas, coarse, backend, telemetryCanvas, onFatalBackendFailure);
 }
