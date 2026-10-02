@@ -52,8 +52,8 @@ if (!babylonEntry) throw new Error('Babylon renderer manifest entry is missing.'
 const [babylonKey] = babylonEntry;
 
 const babylonWebGpuEntry = records.find(([key, record]) =>
-  key.includes('@babylonjs/core/Engines/webgpuEngine')
-  || basename(record.file).startsWith('webgpuEngine-'));
+  key === 'src/game/babylonWebGpuEngine.ts'
+  || basename(record.file).startsWith('babylonWebGpuEngine-'));
 if (!babylonWebGpuEntry) throw new Error('Babylon WebGPU engine manifest entry is missing.');
 const [, babylonWebGpuRecord] = babylonWebGpuEntry;
 
