@@ -12,6 +12,7 @@ export default defineConfig({
     rollupOptions: {
       maxParallelFileOps: 128,
       output: {
+        onlyExplicitManualChunks: true,
         manualChunks(id) {
           const normalizedId = id.replaceAll('\\', '/');
           // Babylon uses real dynamic import boundaries for the renderer, glTF loader,
