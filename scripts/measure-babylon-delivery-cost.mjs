@@ -55,20 +55,16 @@ const babylonWebGpuEntry = records.find(([key, record]) =>
   key.includes('@babylonjs/core/Engines/webgpuEngine')
   || basename(record.file).startsWith('webgpuEngine-'));
 if (!babylonWebGpuEntry) throw new Error('Babylon WebGPU engine manifest entry is missing.');
+const [, babylonWebGpuRecord] = babylonWebGpuEntry;
+
+const babylonLoaderEntry = records.find(([key, record]) =>
+  key === 'src/game/babylonGltfLoader.ts'
+  || basename(record.file).startsWith('babylonGltfLoader-'));
+if (!babylonLoaderEntry) throw new Error('Babylon glTF loader boundary is missing.');
+const [, babylonLoaderRecord] = babylonLoaderEntry;
+
 const gameCanvasStaticGraph = collectGraph([gameCanvasKey]);
-const babylonStaticGraph = collectGraph([babylonKey]);
 const babylonFullGraph = collectGraph([babylonKey], true);
-const [babylonWebGpuKey, babylonWebGpuRecord] = babylonWebGpuEntry;
-const babylonDirectDynamicKeys = new Set(
-  [...babylonStaticGraph].flatMap(key => recordByKey.get(key)?.dynamicImports ?? []),
-);
-const babylonLoaderCandidates = [...babylonDirectDynamicKeys]
-  .filter(key => key !== babylonWebGpuKey && recordByKey.get(key)?.isDynamicEntry);
-if (babylonLoaderCandidates.length !== 1) {
-  throw new Error(`Expected one Babylon loader dynamic entry beside WebGPU, found ${babylonLoaderCandidates.length}: ${babylonLoaderCandidates.join(',')}`);
-}
-const babylonLoaderRecord = recordByKey.get(babylonLoaderCandidates[0]);
-if (!babylonLoaderRecord) throw new Error('Babylon loader dynamic record is missing.');
 const babylonIncrementalKeys = [...babylonFullGraph]
   .filter(key => !gameCanvasStaticGraph.has(key))
   .filter(key => recordByKey.get(key)?.file?.endsWith('.js'))
