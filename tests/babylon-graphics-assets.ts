@@ -29,8 +29,9 @@ assert(!runtimeSource.includes("from 'three'") && !runtimeSource.includes('three
 assert(!threeRuntimeSource.includes('babylonGraphicsAssets'), 'Three asset runtime must remain independent of the Babylon asset path');
 assert(
   runtimeSource.includes("import('./babylonGltfLoader')")
-    && loaderBoundarySource.includes("import '@babylonjs/loaders/glTF'"),
-  'Babylon GLB loader must remain deferred until authored content is requested',
+    && loaderBoundarySource.includes("import '@babylonjs/loaders/glTF/2.0/glTFLoader'")
+    && !loaderBoundarySource.includes("import '@babylonjs/loaders/glTF';"),
+  'Babylon GLB loader must remain deferred and restricted to the glTF 2.0 loader until authored content requires extensions',
 );
 assert(!runtimeSource.includes('cdn.babylonjs.com') && !runtimeSource.includes('preview.babylonjs.com'), 'Babylon asset runtime must not hard-code a decoder CDN');
 

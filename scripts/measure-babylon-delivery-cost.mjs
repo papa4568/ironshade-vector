@@ -52,8 +52,8 @@ if (!babylonEntry) throw new Error('Babylon renderer manifest entry is missing.'
 const [babylonKey] = babylonEntry;
 
 const babylonWebGpuEntry = records.find(([key, record]) =>
-  key.includes('@babylonjs/core/Engines/webgpuEngine')
-  || basename(record.file).startsWith('webgpuEngine-'));
+  key === 'src/game/babylonWebGpuEngine.ts'
+  || basename(record.file).startsWith('babylonWebGpuEngine-'));
 if (!babylonWebGpuEntry) throw new Error('Babylon WebGPU engine manifest entry is missing.');
 const [, babylonWebGpuRecord] = babylonWebGpuEntry;
 
@@ -71,6 +71,19 @@ const babylonIncrementalKeys = [...babylonFullGraph]
   .sort((a, b) => recordByKey.get(a).file.localeCompare(recordByKey.get(b).file));
 
 const runtimeChunks = [...new Set(babylonIncrementalKeys.map(key => recordByKey.get(key).file))];
+const forbiddenRuntimePatterns = [
+  /flowGraph/i,
+  /(?:^|\/)Audio\//i,
+  /webAudio/i,
+  /audioSceneComponent/i,
+  /inspector/i,
+  /serializer/i,
+];
+const forbiddenRuntimeChunks = runtimeChunks.filter(name =>
+  forbiddenRuntimePatterns.some(pattern => pattern.test(name)));
+if (forbiddenRuntimeChunks.length) {
+  throw new Error(`Unused/debug Babylon runtime chunks must not ship: ${forbiddenRuntimeChunks.join(',')}`);
+}
 if (!runtimeChunks.some(name => basename(name).startsWith('babylonCombatRenderer-'))) {
   throw new Error('Babylon incremental graph does not contain the renderer entry.');
 }
@@ -152,6 +165,7 @@ const report = {
     runtimeChunks,
     runtimeChunkCount: runtimeChunks.length,
     sharedGameCanvasChunksExcluded: [...babylonFullGraph].filter(key => gameCanvasStaticGraph.has(key)).length,
+    forbiddenOptionalModules: [],
   },
   browser: {
     files: browserPayload,
@@ -176,7 +190,7 @@ const report = {
 writeFileSync(reportPath, JSON.stringify(report, null, 2));
 
 console.log(
-  `P27D2_BABYLON_DELIVERY_PASS chunks=${runtimeChunks.length} codecs=${codecFiles.length} ` +
+  `P27D2_BABYLON_DELIVERY_PASS chunks=${runtimeChunks.length} codecs=${codecFiles.length} unusedModules=none ` +
   `browserRawBytes=${browserRawBytes} browserGzipBytes=${browserGzipBytes} ` +
   `apkCompressedBytes=${apkCompressedBytes} apkUncompressedBytes=${apkUncompressedBytes} apkBytes=${apkBytes} ` +
   `p21ApkBytes=${p21Baseline.apkBytes} totalDeltaVsP21=${totalDeltaVsP21Bytes} report=${basename(reportPath)}`,
