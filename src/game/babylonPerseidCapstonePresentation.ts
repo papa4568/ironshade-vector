@@ -44,7 +44,7 @@ export function perseidStewardCueState(state: Pick<SimState, 'bossActive' | 'bos
   if (state.bossDefeated) return 'defeated' as const;
   const steward = state.enemies.find(enemy => enemy.role === 'boss' && enemy.variant === 'perseidSteward');
   if (!steward || !state.bossActive || !steward.active || steward.dead) return 'queued' as const;
-  return `active-phase-${steward.bossPhase}:${steward.bossPattern}` as const;
+  return `active-phase-${steward.bossPhase}:${steward.bossPattern}`;
 }
 
 function scaled(value: number) {
