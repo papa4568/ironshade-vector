@@ -1258,6 +1258,18 @@ if (fastSmoke) {
     if (!selected) throw new Error(`Android P21-E could not select Asteroid Refinery for ${qualityMode}.`);
     await waitFor(`document.querySelector('button[data-location="asteroid-refinery"]')?.classList.contains('selected') === true`, `P21-E ${qualityMode} contract selection`);
     await tapButton('Deploy selected contract', idBase + 2, 70);
+    await sleep(900);
+    const deployStillVisible = await evaluate(`[...document.querySelectorAll('button')].some(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase() === 'deploy selected contract')`);
+    if (deployStillVisible) {
+      const activated = await evaluate(`(() => {
+        const button = [...document.querySelectorAll('button')].find(candidate => (candidate.getAttribute('aria-label') || candidate.textContent || '').trim().toLowerCase() === 'deploy selected contract');
+        if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+        button.click();
+        return true;
+      })()`);
+      if (!activated) throw new Error(`Android P21-E could not activate ${qualityMode} deployment after touch fallback.`);
+      console.log(`ANDROID_P21E_DEPLOY_TOUCH_FALLBACK quality=${qualityMode}`);
+    }
     await waitFor(`(() => {
       const canvas = document.querySelector('canvas[data-render-tier]');
       return canvas?.dataset.renderTier === ${JSON.stringify(expectedTier)}
