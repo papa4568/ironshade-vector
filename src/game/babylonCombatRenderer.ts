@@ -569,6 +569,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.canvas.dataset.babylonScenario = mission.location;
     this.resize(width, height, quality, budget);
     this.syncGraphicsRuntimeBudget(budget);
+    this.syncEffectsRuntimeBudget(budget);
     if (refineryScenario) {
       this.orbitalStationPresentation.release('scenario-switch');
       this.damagedVesselPresentation.release('scenario-switch');
@@ -664,14 +665,14 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     }
     this.ensurePlayerPresentation(state, budget.detailScale);
     this.syncPlayerPresentation(state, operatorFaction, firingIntent);
-    this.abilityVfx.sync(state, quality);
+    this.abilityVfx.sync(state, budget.vfxDensity, budget.transparencyScale);
     let muzzlePosition: Vector3 | null = null;
     const activeWeapon = this.authoredWeapons.get(state.player.currentWeapon) ?? null;
     if (activeWeapon && this.canvas.dataset.babylonPlayerState === 'ready') {
       activeWeapon.muzzleSocket.computeWorldMatrix(true);
       muzzlePosition = activeWeapon.muzzleSocket.getAbsolutePosition();
     }
-    this.weaponVfx.sync(state, muzzlePosition, quality);
+    this.weaponVfx.sync(state, muzzlePosition, budget.vfxDensity, budget.transparencyScale);
     this.ensureEnemyCatalog(budget.detailScale, runtimeProfile.preloadConcurrency);
     this.syncEnemyPresentation(state, budget, mobileTargetId);
     this.enemyLifecycleVisuals.sync(state, mobileTargetId, quality, reducedTargetMotion);
@@ -2092,6 +2093,22 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       `textures:${this.scene.textures.length}`,
       `roots:${this.scene.rootNodes.length}`,
     ].join('|');
+  }
+
+  private syncEffectsRuntimeBudget(budget: RenderBudgetSnapshot) {
+    const shadowCost = budget.shadows ? budget.shadowMapSize : 0;
+    this.canvas.dataset.babylonEffectsBudget = [
+      `tier:${budget.tierName}`,
+      `shadow:${shadowCost}`,
+      `post:${budget.secondaryEffectScale.toFixed(2)}`,
+      `transparency:${budget.transparencyScale.toFixed(2)}`,
+      `reflection:${budget.reflectionScale.toFixed(2)}`,
+      `vfx:${budget.vfxDensity.toFixed(2)}`,
+      `secondary:${budget.secondaryEffectScale.toFixed(2)}`,
+      `critical:${budget.gameplayCueScale.toFixed(2)}`,
+      `frame:${budget.smoothedFrameMs.toFixed(2)}`,
+    ].join('|');
+    this.canvas.dataset.babylonCriticalCueBudget = `telegraphs+hazards+status+class-cues@${budget.gameplayCueScale.toFixed(2)}`;
   }
 
   private syncGraphicsRuntimeBudget(budget: RenderBudgetSnapshot) {
