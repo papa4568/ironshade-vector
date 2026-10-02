@@ -199,17 +199,19 @@ export class BabylonWeaponVfx {
     this.canvas.dataset.babylonWeaponImpactCount = '0';
   }
 
-  sync(state: SimState, muzzlePosition: Vector3 | null, detailScale: number) {
+  sync(state: SimState, muzzlePosition: Vector3 | null, vfxDensity: number, transparencyScale = 1) {
     if (this.disposed) return;
-    const effectsMode = babylonWeaponEffectsMode(detailScale, this.coarse);
+    const effectsMode = babylonWeaponEffectsMode(vfxDensity, this.coarse);
+    const secondaryTransparency = Math.max(0, Math.min(1, transparencyScale));
     this.syncMuzzle(state, muzzlePosition);
-    this.syncProjectiles(state, effectsMode);
-    this.syncImpacts(state, effectsMode);
+    this.syncProjectiles(state, effectsMode, secondaryTransparency);
+    this.syncImpacts(state, effectsMode, secondaryTransparency);
 
     const shots = state.telemetry.weaponShots;
     this.canvas.dataset.babylonWeaponShotCounts = `carbine:${shots.carbine}|breacher:${shots.breacher}|rail:${shots.rail}`;
     this.canvas.dataset.babylonWeaponShotCount = String(shots[state.player.currentWeapon]);
     this.canvas.dataset.babylonWeaponEffectsMode = effectsMode;
+    this.canvas.dataset.babylonWeaponTransparencyScale = secondaryTransparency.toFixed(2);
     this.canvas.dataset.babylonWeaponVfx = 'muzzle+projectiles+impact';
   }
 
@@ -307,7 +309,7 @@ export class BabylonWeaponVfx {
     return this.projectiles[index];
   }
 
-  private syncProjectiles(state: SimState, effectsMode: 'full' | 'reduced') {
+  private syncProjectiles(state: SimState, effectsMode: 'full' | 'reduced', transparencyScale: number) {
     let count = 0;
     const activeFamilies = new Set<string>();
     for (const projectile of state.projectiles) {
@@ -339,7 +341,7 @@ export class BabylonWeaponVfx {
       visual.coreMaterial.alpha = 1;
       visual.trailMaterial.diffuseColor.copyFrom(color.scale(0.2));
       visual.trailMaterial.emissiveColor.copyFrom(color);
-      visual.trailMaterial.alpha = profile.trailAlpha * secondaryScale;
+      visual.trailMaterial.alpha = profile.trailAlpha * secondaryScale * transparencyScale;
 
       if (projectile.owner === 'player' && projectile.weapon !== 'enemy') activeFamilies.add(projectile.weapon);
       count += 1;
@@ -392,7 +394,7 @@ export class BabylonWeaponVfx {
     return this.impacts[index];
   }
 
-  private syncImpacts(state: SimState, effectsMode: 'full' | 'reduced') {
+  private syncImpacts(state: SimState, effectsMode: 'full' | 'reduced', transparencyScale: number) {
     let count = 0;
     const impactProfile = babylonWeaponImpactProfile(state.impactEvent);
     const color = colorFromHex(impactProfile.color);
@@ -418,7 +420,7 @@ export class BabylonWeaponVfx {
       visual.coreMaterial.alpha = 0.68 * fade;
       visual.sparkMaterial.diffuseColor.copyFrom(color.scale(0.25));
       visual.sparkMaterial.emissiveColor.copyFrom(color);
-      visual.sparkMaterial.alpha = effectsMode === 'reduced' ? 0 : 0.78 * fade;
+      visual.sparkMaterial.alpha = effectsMode === 'reduced' ? 0 : 0.78 * fade * transparencyScale;
       visual.sparks.forEach((spark, sparkIndex) => {
         spark.setEnabled(effectsMode === 'full');
         const sparkScale = 0.75 + progress * 1.9;
