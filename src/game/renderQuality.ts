@@ -24,6 +24,7 @@ export type RenderBudgetSnapshot = {
   gameplayCueScale: 1;
   textureAnisotropy: 1 | 2 | 4;
   assetCacheCompressedByteBudget: number;
+  assetCacheEntryBudget: number;
 };
 
 export const TARGET_FRAME_MS = 1000 / 60;
@@ -40,6 +41,11 @@ const ASSET_CACHE_COMPRESSED_BYTE_BUDGET: Record<AdaptiveRenderTier, number> = {
   0: 64 * 1024 * 1024,
   1: 40 * 1024 * 1024,
   2: 24 * 1024 * 1024,
+};
+const ASSET_CACHE_ENTRY_BUDGET: Record<AdaptiveRenderTier, number> = {
+  0: 32,
+  1: 24,
+  2: 20,
 };
 
 function qualityFloorTier(requestedQuality: number): AdaptiveRenderTier {
@@ -111,6 +117,7 @@ export class AdaptiveRenderBudget {
       gameplayCueScale: 1,
       textureAnisotropy: TEXTURE_ANISOTROPY[tier],
       assetCacheCompressedByteBudget: ASSET_CACHE_COMPRESSED_BYTE_BUDGET[tier],
+      assetCacheEntryBudget: ASSET_CACHE_ENTRY_BUDGET[tier],
     };
   }
 }

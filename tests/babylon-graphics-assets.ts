@@ -103,6 +103,11 @@ async function run() {
   assert(refinery.rootNodes.length > 0, 'Babylon Asteroid Refinery module must instantiate scene roots');
   assert(refinery.rootNodes.some(root => root.getChildMeshes(false).length > 0), 'Babylon refinery module must contain renderable meshes');
   
+  const refineryShared = await runtime.instantiate(refineryLod1);
+  const sharedStaticMeshes = refineryShared.rootNodes.flatMap(root => root.getChildMeshes(false)).filter(mesh => mesh.isAnInstance);
+  assert(sharedStaticMeshes.length > 0, 'repeated static Babylon GLB geometry must use native InstancedMesh reuse');
+  refineryShared.release();
+
   const statsWithRefinery = runtime.stats();
   assert(statsWithRefinery.cachedAssets === 3, `expected three cached representative assets, got ${statsWithRefinery.cachedAssets}`);
   assert(
@@ -111,6 +116,13 @@ async function run() {
     'Babylon cache accounting must reuse manifest compressed-byte budgets',
   );
   
+  runtime.configureBudget({
+    maxCachedCompressedBytes: 64 * 1024 * 1024,
+    maxTextureAnisotropy: 4,
+    maxCachedAssets: 2,
+  });
+  assert(runtime.stats().cachedAssets <= 2, 'Babylon resource tier must trim least-recently-used idle cache entries by count as well as bytes');
+
   const heldRefinery = refinery;
   const evictedWhileMounted = await runtime.evict(refineryLod1.url);
   assert(evictedWhileMounted, 'mounted refinery cache entry should be evictable into pending-dispose state');
@@ -134,7 +146,7 @@ async function run() {
   engine.dispose();
   
   console.log(
-    `BABYLON_GRAPHICS_ASSETS_PASS operatorLod1=${operatorLod1.id} operatorLod2=${operatorLod2.id} refinery=${refineryLod1.id} localCodecs=true cacheLoads=${[...loadCounts.values()].reduce((sum, count) => sum + count, 0)}`,
+    `BABYLON_GRAPHICS_ASSETS_PASS operatorLod1=${operatorLod1.id} operatorLod2=${operatorLod2.id} refinery=${refineryLod1.id} localCodecs=true instancing=static-native cacheTrim=count+bytes cacheLoads=${[...loadCounts.values()].reduce((sum, count) => sum + count, 0)}`,
   );
   
 }

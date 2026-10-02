@@ -58,6 +58,7 @@ import { BabylonProtocolStatusVisuals } from './babylonProtocolStatusVisuals';
 import { BabylonRefineryWorldPresentation } from './babylonWorldPresentation';
 import { BabylonWeaponVfx } from './babylonWeaponVfx';
 import { AdaptiveRenderBudget, type RenderBudgetSnapshot } from './renderQuality';
+import { runtimeAnimationStride, runtimeScalabilityProfile } from './runtimeScalability';
 import { getWorldSize, weaponHandlingProfiles, type CombatObject, type Enemy, type SimState, type WeaponId } from './sim';
 
 const WORLD_SCALE = 0.02;
@@ -523,6 +524,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const frameMs = this.lastFrameAt > 0 ? now - this.lastFrameAt : 1000 / 60;
     this.lastFrameAt = now;
     const budget = this.renderBudget.sample(frameMs, quality, qualityMode);
+    const runtimeProfile = runtimeScalabilityProfile(budget.tierName);
     const refineryScenario = mission.location === 'asteroid-refinery';
     const orbitalStationScenario = mission.location === 'orbital-station';
     const damagedVesselScenario = mission.location === 'damaged-vessel';
@@ -578,7 +580,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.momentumExchangePresentation.release('scenario-switch');
       this.cryoReservePresentation.release('scenario-switch');
       this.parallaxArrayPresentation.release('scenario-switch');
-      this.ensureRefineryEnvironment(state, quality);
+      this.ensureRefineryEnvironment(state, budget.detailScale);
     } else {
       this.refineryLighting.setEnabled(false);
       this.refineryPostProcessing.release('scenario-switch');
@@ -660,7 +662,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         this.momentumExchangePresentation.release('scenario-switch');
       }
     }
-    this.ensurePlayerPresentation(state, quality);
+    this.ensurePlayerPresentation(state, budget.detailScale);
     this.syncPlayerPresentation(state, operatorFaction, firingIntent);
     this.abilityVfx.sync(state, quality);
     let muzzlePosition: Vector3 | null = null;
@@ -670,12 +672,12 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       muzzlePosition = activeWeapon.muzzleSocket.getAbsolutePosition();
     }
     this.weaponVfx.sync(state, muzzlePosition, quality);
-    this.ensureEnemyCatalog(quality);
-    this.syncEnemyPresentation(state, quality);
+    this.ensureEnemyCatalog(budget.detailScale, runtimeProfile.preloadConcurrency);
+    this.syncEnemyPresentation(state, budget, mobileTargetId);
     this.enemyLifecycleVisuals.sync(state, mobileTargetId, quality, reducedTargetMotion);
     this.protocolStatusVisuals.sync(state, quality);
     this.enemyTelegraphs.sync(state, quality);
-    this.worldPresentation.sync(state, mission, quality);
+    this.worldPresentation.sync(state, mission, budget.detailScale);
     if (refineryScenario) {
       this.refineryLighting.sync(state, budget);
       this.refineryPostProcessing.sync(mission.conditions.includes('low-visibility'), budget);
@@ -740,7 +742,16 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   }
 
   performanceStats(): CombatGraphicsPerformanceStats {
-    return { drawCalls: 0, triangles: 0 };
+    const drawCalls = this.engine._drawCalls.current;
+    const triangles = Math.floor(this.scene.getActiveIndices() / 3);
+    const runtimeStats = getBabylonGraphicsAssetRuntime(this.scene).stats();
+    this.canvas.dataset.babylonGeometryStats = [
+      `draw:${drawCalls}`,
+      `triangles:${triangles}`,
+      `cached:${runtimeStats.cachedAssets}`,
+      `bytes:${runtimeStats.estimatedCachedCompressedBytes}`,
+    ].join('|');
+    return { drawCalls, triangles };
   }
 
   screenDirection(...args: CombatGraphicsPointerProjectionArgs): CombatGraphicsPointerDirection {
@@ -1303,7 +1314,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.lastPlayerDurability = Number.NaN;
   }
 
-  private ensureEnemyCatalog(detailScale: number) {
+  private ensureEnemyCatalog(detailScale: number, preloadConcurrency: 1 | 2 | 3) {
     const assetDetailScale = this.coarse ? Math.min(detailScale, 0.55) : detailScale;
     const selected = BABYLON_ENEMY_ROLES.map(role => {
       const spec = selectGraphicsAssetSpec(ENEMY_ASSET_FAMILIES[role], assetDetailScale);
@@ -1322,7 +1333,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     delete this.canvas.dataset.babylonEnemyCatalogError;
 
     const runtime = getBabylonGraphicsAssetRuntime(this.scene);
-    void runtime.preload(selected.map(item => item.spec), 2).then(preload => {
+    void runtime.preload(selected.map(item => item.spec), preloadConcurrency).then(preload => {
       if (this.disposed || generation !== this.enemyCatalogGeneration) return;
       if (preload.failed > 0) {
         this.canvas.dataset.babylonEnemyCatalogState = 'fallback';
@@ -1579,8 +1590,10 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     }
   }
 
-  private syncEnemyPresentation(state: SimState, detailScale: number) {
+  private syncEnemyPresentation(state: SimState, budget: RenderBudgetSnapshot, mobileTargetId: number | null | undefined) {
     const seen = new Set<number>();
+    let maxAnimationStride = 1;
+    let deferredAuthoredAnimations = 0;
     let animationTelemetry: { priority: number; enemy: Enemy; motion: EnemyBossAnimationSignals; damage: EnemyDamageAnimationSignals } | null = null;
 
     for (const enemy of state.enemies) {
@@ -1601,7 +1614,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       visual.root.setEnabled(enemy.active);
       if (!enemy.active) continue;
 
-      this.ensureEnemyAsset(visual, enemy, detailScale);
+      this.ensureEnemyAsset(visual, enemy, budget.detailScale);
 
       const durability = enemy.hp + enemy.armor;
       if (!enemy.dead && durability < visual.lastDurability - 0.5) visual.impactUntil = state.time + 0.18;
@@ -1643,7 +1656,31 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       if (Math.hypot(direction.x, direction.y) > 0.01) visual.root.rotation.y = Math.atan2(-direction.y, direction.x);
 
       this.syncEnemyFallback(visual, enemy, state, motion, damage, spawn);
-      if (visual.rig) this.syncAuthoredEnemyRig(visual, enemy, state, motion, damage, spawn);
+      if (visual.rig) {
+        const activeStatus = Object.values(enemy.statuses).some(value => typeof value === 'number' && value > 0);
+        const criticalAnimationCue = enemy.telegraph > 0
+          || motion.tell > 0
+          || motion.commit > 0
+          || motion.recovery > 0
+          || spawn > 0
+          || activeStatus
+          || enemy.dead
+          || state.time < visual.impactUntil
+          || state.time < visual.armorBreakUntil;
+        const animationStride = runtimeAnimationStride({
+          tier: budget.tierName,
+          role: enemy.role,
+          distance: Math.hypot(enemy.x - state.player.x, enemy.y - state.player.y),
+          targeted: enemy.id === mobileTargetId,
+          criticalCue: criticalAnimationCue,
+        });
+        maxAnimationStride = Math.max(maxAnimationStride, animationStride);
+        if (animationStride === 1 || (this.frames + enemy.id) % animationStride === 0) {
+          this.syncAuthoredEnemyRig(visual, enemy, state, motion, damage, spawn);
+        } else {
+          deferredAuthoredAnimations += 1;
+        }
+      }
 
       if (enemy.dead) {
         visual.root.scaling.set(1, Math.max(0.16, enemy.deathT * 0.32), 1);
@@ -1701,6 +1738,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       `active:${runtimeStats.activeInstances}`,
       `bytes:${runtimeStats.estimatedCachedCompressedBytes}`,
     ].join('|');
+    this.canvas.dataset.runtimeAnimationLod = `${budget.tierName}:max-stride-${maxAnimationStride}:deferred-${deferredAuthoredAnimations}`;
 
     if (animationTelemetry) {
       const { enemy, motion, damage } = animationTelemetry;
@@ -2057,16 +2095,26 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   }
 
   private syncGraphicsRuntimeBudget(budget: RenderBudgetSnapshot) {
-    const signature = budget.assetCacheCompressedByteBudget + ':' + budget.textureAnisotropy;
+    const signature = budget.tierName + ':' + budget.assetCacheCompressedByteBudget + ':' + budget.assetCacheEntryBudget + ':' + budget.textureAnisotropy;
     if (signature === this.graphicsBudgetSignature) return;
     this.graphicsBudgetSignature = signature;
     getBabylonGraphicsAssetRuntime(this.scene).configureBudget({
       maxCachedCompressedBytes: budget.assetCacheCompressedByteBudget,
       maxTextureAnisotropy: budget.textureAnisotropy,
+      maxCachedAssets: budget.assetCacheEntryBudget,
     });
     this.canvas.dataset.renderMemoryBudget = 'asset-cache:'
       + Math.round(budget.assetCacheCompressedByteBudget / (1024 * 1024))
       + 'mb+anisotropy:' + budget.textureAnisotropy + 'x+materials:shared-cache';
+    this.canvas.dataset.babylonResourceBudget = [
+      `tier:${budget.tierName}`,
+      `detail:${budget.detailScale.toFixed(2)}`,
+      `pixel:${budget.pixelRatioScale.toFixed(2)}`,
+      `cache-bytes:${Math.round(budget.assetCacheCompressedByteBudget / (1024 * 1024))}mb`,
+      `cache-assets:${budget.assetCacheEntryBudget}`,
+      `anisotropy:${budget.textureAnisotropy}`,
+    ].join('|');
+    this.canvas.dataset.babylonAssetReusePolicy = 'static-instancing+skinned-cloning';
   }
 
   private resize(width: number, height: number, quality: number, budget: RenderBudgetSnapshot) {

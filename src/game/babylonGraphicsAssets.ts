@@ -29,9 +29,14 @@ export const BABYLON_GRAPHICS_CODEC_PATHS = {
   zstdDecoder: '/assets/codecs/babylon/zstddec.wasm',
 } as const;
 
-const DEFAULT_BABYLON_GRAPHICS_ASSET_RUNTIME_BUDGET: GraphicsAssetRuntimeBudget = {
+export type BabylonGraphicsAssetRuntimeBudget = GraphicsAssetRuntimeBudget & {
+  maxCachedAssets: number;
+};
+
+const DEFAULT_BABYLON_GRAPHICS_ASSET_RUNTIME_BUDGET: BabylonGraphicsAssetRuntimeBudget = {
   maxCachedCompressedBytes: 64 * 1024 * 1024,
   maxTextureAnisotropy: 4,
+  maxCachedAssets: 32,
 };
 
 export type BabylonGraphicsAssetInstance = {
@@ -46,6 +51,7 @@ export type BabylonGraphicsAssetRuntimeStats = {
   activeInstances: number;
   estimatedCachedCompressedBytes: number;
   maxCachedCompressedBytes: number;
+  maxCachedAssets: number;
 };
 
 export type BabylonGraphicsAssetContainerLoader = (
@@ -126,10 +132,11 @@ function assertValidSpec(spec: GraphicsAssetSpec) {
   if (issues.length) throw new Error(`Invalid Babylon graphics asset ${spec.id}: ${issues.join('; ')}`);
 }
 
-function normalizeRuntimeBudget(budget: GraphicsAssetRuntimeBudget): GraphicsAssetRuntimeBudget {
+function normalizeRuntimeBudget(budget: BabylonGraphicsAssetRuntimeBudget): BabylonGraphicsAssetRuntimeBudget {
   return {
     maxCachedCompressedBytes: Math.max(8 * 1024 * 1024, Math.floor(budget.maxCachedCompressedBytes)),
     maxTextureAnisotropy: budget.maxTextureAnisotropy >= 4 ? 4 : budget.maxTextureAnisotropy >= 2 ? 2 : 1,
+    maxCachedAssets: Math.max(1, Math.floor(budget.maxCachedAssets)),
   };
 }
 
@@ -177,14 +184,14 @@ export class BabylonGraphicsAssetRuntime {
   private async enforceCacheBudget() {
     let estimatedCompressedBytes = [...this.cache.values()]
       .reduce((sum, entry) => sum + entry.spec.compressedByteBudget, 0);
-    if (estimatedCompressedBytes <= this.budget.maxCachedCompressedBytes) return;
+    if (estimatedCompressedBytes <= this.budget.maxCachedCompressedBytes && this.cache.size <= this.budget.maxCachedAssets) return;
 
     const idleEntries = [...this.cache.entries()]
       .filter(([, entry]) => entry.activeInstances === 0 && !entry.pendingDispose)
       .sort((a, b) => a[1].lastUsedOrdinal - b[1].lastUsedOrdinal);
 
     for (const [url, entry] of idleEntries) {
-      if (estimatedCompressedBytes <= this.budget.maxCachedCompressedBytes) break;
+      if (estimatedCompressedBytes <= this.budget.maxCachedCompressedBytes && this.cache.size <= this.budget.maxCachedAssets) break;
       if (this.cache.get(url) !== entry) continue;
       this.cache.delete(url);
       entry.pendingDispose = true;
@@ -236,7 +243,7 @@ export class BabylonGraphicsAssetRuntime {
     return entry;
   }
 
-  configureBudget(budget: GraphicsAssetRuntimeBudget) {
+  configureBudget(budget: BabylonGraphicsAssetRuntimeBudget) {
     this.assertActive();
     this.budget = normalizeRuntimeBudget(budget);
     for (const entry of this.cache.values()) {
@@ -252,6 +259,7 @@ export class BabylonGraphicsAssetRuntime {
       estimatedCachedCompressedBytes: [...this.cache.values()]
         .reduce((sum, entry) => sum + entry.spec.compressedByteBudget, 0),
       maxCachedCompressedBytes: this.budget.maxCachedCompressedBytes,
+      maxCachedAssets: this.budget.maxCachedAssets,
     };
   }
 
@@ -300,7 +308,7 @@ export class BabylonGraphicsAssetRuntime {
       const instantiated = container.instantiateModelsToScene(
         sourceName => `${spec.id}:${sourceName}`,
         false,
-        { doNotInstantiate: true },
+        { doNotInstantiate: false },
       );
       let released = false;
       return {

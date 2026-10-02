@@ -63,7 +63,7 @@ assert(snapshot.transparencyScale === 0.4, 'performance tier should reduce trans
 assert(snapshot.reflectionScale === 0.38 && snapshot.secondaryEffectScale === 0.42, 'performance tier should shed reflections and secondary effects before critical cues');
 assert(snapshot.refineryIblScale === 0.38 && snapshot.refineryBloomScale === 0.42 && snapshot.refineryContactDepthScale === 0.42 && snapshot.refineryAtmosphereScale === 0.42, 'P21-E performance tier must minimize all new refinery effects with the existing reflection/secondary priorities');
 assert(snapshot.gameplayCueScale === 1, 'performance tier must not scale gameplay-critical cue strength');
-assert(snapshot.textureAnisotropy === 1 && snapshot.assetCacheCompressedByteBudget === 24 * 1024 * 1024, 'performance tier should enforce the minimum texture/cache budget');
+assert(snapshot.textureAnisotropy === 1 && snapshot.assetCacheCompressedByteBudget === 24 * 1024 * 1024 && snapshot.assetCacheEntryBudget === 20, 'performance tier should enforce the minimum texture/cache budget');
 assert(snapshot.framePressure === 'over' && snapshot.frameHeadroomMs < 0, 'sustained 30 ms frames must expose over-budget pressure and negative headroom');
 
 for (let index = 0; index < 700; index += 1) snapshot = desktop.sample(16.4, 1);
@@ -73,6 +73,7 @@ const coarse = new AdaptiveRenderBudget(true);
 snapshot = coarse.sample(16.7, 1);
 assert(snapshot.tier === 1, 'coarse pointers should start at balanced tier');
 assert(snapshot.tierName === 'balanced', 'coarse/mobile should expose balanced tier at startup');
+assert(snapshot.assetCacheEntryBudget === 24, 'balanced tier should cap Babylon-compatible cached asset entries below High');
 assert(snapshot.shadowMapSize === 512, 'balanced tier should cap shadows at 512');
 assert(snapshot.vfxDensity === 0.72, 'balanced tier should reduce secondary VFX density');
 assert(snapshot.transparencyScale === 0.68, 'balanced tier should reduce transparency cost');
