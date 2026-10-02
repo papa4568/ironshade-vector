@@ -172,15 +172,17 @@ export class BabylonAbilityVfx {
     this.canvas.dataset.babylonAbilityFieldRenderer = 'babylon-world-presentation';
   }
 
-  sync(state: SimState, detailScale: number) {
+  sync(state: SimState, vfxDensity: number, transparencyScale = 1) {
     if (this.disposed) return;
-    const effectsMode = babylonAbilityEffectsMode(detailScale, this.coarse);
+    const effectsMode = babylonAbilityEffectsMode(vfxDensity, this.coarse);
+    const secondaryTransparency = Math.max(0, Math.min(1, transparencyScale));
     this.syncSkill(state);
-    this.syncMobility(state, effectsMode);
+    this.syncMobility(state, effectsMode, secondaryTransparency);
     this.syncPulse(state);
-    this.syncEffects(state, effectsMode);
+    this.syncEffects(state, effectsMode, secondaryTransparency);
     this.syncFieldTelemetry(state);
     this.canvas.dataset.babylonAbilityEffectsMode = effectsMode;
+    this.canvas.dataset.babylonAbilityTransparencyScale = secondaryTransparency.toFixed(2);
     this.canvas.dataset.babylonAbilityVfx = 'skill+mobility+effects+shared-player-fields';
     this.canvas.dataset.babylonAbilitySimulationOwnership = 'read-only-presentation';
   }
@@ -285,7 +287,7 @@ export class BabylonAbilityVfx {
     ].join(',');
   }
 
-  private syncMobility(state: SimState, effectsMode: 'full' | 'reduced') {
+  private syncMobility(state: SimState, effectsMode: 'full' | 'reduced', transparencyScale: number) {
     const player = state.player;
     const profile = babylonMobilityVfxProfile(state.build.operatorClass);
     const speed = Math.hypot(player.vx, player.vy);
@@ -309,7 +311,7 @@ export class BabylonAbilityVfx {
     this.mobilityRoot.rotation.y = Math.atan2(-dirY, dirX);
     this.mobilityMaterial.diffuseColor.copyFrom(color.scale(0.18));
     this.mobilityMaterial.emissiveColor.copyFrom(color);
-    this.mobilityMaterial.alpha = dodging ? 0.72 : 0.26 + speedScale * 0.16;
+    this.mobilityMaterial.alpha = dodging ? 0.72 : (0.26 + speedScale * 0.16) * transparencyScale;
 
     this.mobilityStreaks.forEach((streak, index) => {
       const secondarySuppressed = effectsMode === 'reduced' && index === 2;
@@ -364,7 +366,7 @@ export class BabylonAbilityVfx {
     return this.effects[index];
   }
 
-  private syncEffects(state: SimState, effectsMode: 'full' | 'reduced') {
+  private syncEffects(state: SimState, effectsMode: 'full' | 'reduced', transparencyScale: number) {
     let count = 0;
     const kinds = new Set<string>();
     for (const effect of state.effects) {
@@ -394,7 +396,9 @@ export class BabylonAbilityVfx {
       visual.ringMaterial.alpha = (effect.kind === 'mark' ? 0.58 : 0.76) * fade;
       visual.glyphMaterial.diffuseColor.copyFrom(color.scale(0.24));
       visual.glyphMaterial.emissiveColor.copyFrom(color.scale(1.08));
-      visual.glyphMaterial.alpha = (effectsMode === 'reduced' && !criticalGlyph ? 0 : 0.62 * fade);
+      visual.glyphMaterial.alpha = effectsMode === 'reduced' && !criticalGlyph
+        ? 0
+        : 0.62 * fade * (criticalGlyph ? 1 : transparencyScale);
       kinds.add(effect.kind);
       count += 1;
     }
