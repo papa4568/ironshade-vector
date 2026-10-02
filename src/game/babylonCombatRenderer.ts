@@ -449,7 +449,6 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         telemetryCanvas.dataset.babylonBackendInitStage = 'webgpu-init';
         const webGpuEngine = new WebGPUEngine(renderCanvas, {
           powerPreference: 'high-performance',
-          enableAllFeatures: false,
         });
         engine = webGpuEngine;
         await webGpuEngine.initAsync();
