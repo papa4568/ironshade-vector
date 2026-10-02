@@ -118,6 +118,15 @@ async function waitForSession(timeoutMs = 90_000) {
 
 const session = await waitForSession();
 const { call, evaluate } = session;
+await call('HeapProfiler.enable', {}, 10_000).catch(() => undefined);
+
+async function collectGarbage(label) {
+  await call('HeapProfiler.collectGarbage', {}, 30_000);
+  await sleep(250);
+  const heapMb = await evaluate('(() => { const memory = performance.memory; return typeof memory?.usedJSHeapSize === "number" ? memory.usedJSHeapSize / 1048576 : null; })()');
+  console.log('ANDROID_P27D6_GC_PASS label=' + label + ' heapMb=' + (heapMb ?? 'na'));
+  return heapMb;
+}
 
 async function waitFor(expression, label, timeoutMs = 60_000) {
   const deadline = Date.now() + timeoutMs;
@@ -230,6 +239,9 @@ async function cycleMission(index) {
     throw new Error('P27-D6 cycle ' + index + ' retained Babylon renderer resources: ' + JSON.stringify(disposed));
   }
 
+  const heapAfterGcMb = await collectGarbage('cycle-' + index + '-disposed');
+  disposed.heapAfterGcMb = heapAfterGcMb;
+
   await deployRefinery();
   const reentered = await sampleRuntime(0);
   if (!reentered || reentered.graphicsLoaded !== 'babylon' || reentered.backendLoaded !== 'webgl2' || reentered.scene !== 'active' || reentered.disposed !== 'false') {
@@ -247,6 +259,7 @@ async function cycleMission(index) {
 
 await navigateBabylonQa();
 await deployRefinery();
+await collectGarbage('initial-warmup');
 
 const samples = [];
 const cycles = [];
@@ -381,6 +394,7 @@ const summary = {
     ...resourceSummary,
     cacheBudgetViolations,
     disposalCyclesReclaimed: cycles.every(cycle => cycle.disposed?.cacheReclaimed === 'true'),
+    postDisposalGcHeapMb: cycles.map(cycle => cycle.disposed?.heapAfterGcMb).filter(Number.isFinite),
   },
   final: samples.at(-1) ?? null,
 };
@@ -405,6 +419,7 @@ console.log('ANDROID_P27D6_BABYLON_SOAK_PASS duration=' + elapsedSeconds
   + ' heapFinal=' + (heapFinal ?? 'na')
   + ' cacheBaseline=' + (cachedBaseline ?? 'na')
   + ' cacheFinal=' + (cachedFinal ?? 'na')
+  + ' postDisposalGc=' + cycles.map(cycle => cycle.disposed?.heapAfterGcMb ?? 'na').join(',')
   + ' report=' + reportPath);
 
 session.close();
