@@ -53,10 +53,13 @@ SOCKET="webview_devtools_remote_${APP_PID}"
 adb forward --remove tcp:9222 >/dev/null 2>&1 || true
 adb forward tcp:9222 "localabstract:${SOCKET}"
 
+set +e
 ANDROID_P27D6_SOAK_MINUTES="$SOAK_MINUTES" \
 ANDROID_P27D6_REPORT_PATH=android-p27d6-babylon-soak.json \
 CDP_ENDPOINT=http://127.0.0.1:9222 \
 node scripts/android-babylon-soak-stress.mjs
+WEBVIEW_STATUS=$?
+set -e
 
 cleanup
 trap - EXIT
@@ -146,5 +149,9 @@ if [[ "$CURRENT_PID" != "$APP_PID" ]]; then
   echo "Ironshade Vector process changed during P27-D6 soak: $APP_PID -> $CURRENT_PID" >&2
   exit 1
 fi
+if [[ "$WEBVIEW_STATUS" -ne 0 ]]; then
+  echo "P27-D6 WebView soak gate failed after Android evidence collection (status=$WEBVIEW_STATUS)." >&2
+  exit "$WEBVIEW_STATUS"
+fi
 
-echo "ANDROID_P27D6_SOAK_PASS minutes=${SOAK_MINUTES} pid=${APP_PID} evidence=babylon-lifecycle+webview+pss+gfxinfo+logcat"
+echo "ANDROID_P27D6_SOAK_PASS minutes=${SOAK_MINUTES} pid=${APP_PID} evidence=babylon-lifecycle+cdp-heap+pss+gfxinfo+logcat"
