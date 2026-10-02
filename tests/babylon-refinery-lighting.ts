@@ -47,6 +47,11 @@ assert.match(rendererSource, /this\.refineryLighting\.dispose\(\)/, 'Babylon ren
 assert.match(lightingSource, /new RawCubeTexture\(/, 'B11 must use a Babylon-native cubemap for refinery IBL.');
 assert.match(lightingSource, /TONEMAPPING_ACES/, 'B11 must preserve ACES tone mapping parity.');
 assert.match(lightingSource, /new ShadowGenerator\(budget\.shadowMapSize, this\.keyLight\)/, 'B11 must use bounded Babylon key-light shadow maps.');
+assert.match(
+  lightingSource,
+  /if \(!mesh\.receiveShadows\) mesh\.receiveShadows = true;/,
+  'B11 shadow receiver setup must avoid re-running Babylon receiver invalidation every refinery frame.',
+);
 assert.match(lightingSource, /refineryIblQa === 'off'/, 'B11 must preserve deterministic IBL stack-off QA capture control.');
 assert.match(worldSource, /new PBRMaterial\('p27-b5-object-material-'/, 'Babylon refinery world fallback materials must use Babylon PBR.');
 assert.match(worldSource, /visual\.material\.metallic =/, 'Babylon world material response must preserve authored metalness.');
