@@ -83,8 +83,8 @@ if (!runtimeChunks.includes(babylonWebGpuRecord.file)) {
 
 const codecDir = resolve(assetsDir, 'codecs/babylon');
 const codecFiles = listFiles(codecDir).sort();
-if (codecFiles.length !== 11) {
-  throw new Error(`Expected 11 packaged Babylon codec files, found ${codecFiles.length}.`);
+if (codecFiles.length !== 12) {
+  throw new Error(`Expected 11 packaged Babylon codec dependencies plus manifest.json, found ${codecFiles.length} files.`);
 }
 
 const payloadFiles = [
