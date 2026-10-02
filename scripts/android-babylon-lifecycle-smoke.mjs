@@ -230,7 +230,7 @@ async function deployRefinery(idBase) {
     if (!fallback) throw new Error('P27-D5 deploy action remained unavailable after real-touch attempt.');
     console.log('ANDROID_P27D5_DEPLOY_CLICK_FALLBACK_PASS reason=touch-remained-visible');
   }
-  await waitFor('(() => { const canvas = document.querySelector("canvas"); return Boolean(canvas && canvas.dataset.graphicsPathSelection === "qa-explicit" && canvas.dataset.graphicsPathRequested === "babylon" && canvas.dataset.babylonBackendRequested === "webgl2" && canvas.dataset.graphicsPathLoaded === "webgl2" && canvas.dataset.babylonBackendLoaded === "webgl2" && canvas.dataset.babylonInit === "ready" && canvas.dataset.babylonScene === "active" && canvas.dataset.babylonDisposed === "false"); })()', 'P27-D5 Babylon WebGL2 combat', 45_000);
+  await waitFor('(() => { const canvas = document.querySelector("canvas"); return Boolean(canvas && canvas.dataset.graphicsPathSelection === "qa-explicit" && canvas.dataset.graphicsPathRequested === "babylon" && canvas.dataset.babylonBackendRequested === "webgl2" && canvas.dataset.graphicsPathLoaded === "babylon" && canvas.dataset.babylonBackendLoaded === "webgl2" && canvas.dataset.babylonInit === "ready" && canvas.dataset.babylonScene === "active" && canvas.dataset.babylonDisposed === "false"); })()', 'P27-D5 Babylon WebGL2 combat', 45_000);
   await waitFor('Number(document.querySelector("canvas")?.dataset.babylonFrames ?? "0") >= 2', 'P27-D5 Babylon rendered frames', 30_000);
 }
 
@@ -243,7 +243,7 @@ function requireBabylonState(state, label, requireTouch = true) {
     || !state.canvas
     || state.selection !== 'qa-explicit'
     || state.requested !== 'babylon'
-    || state.graphicsLoaded !== 'webgl2'
+    || state.graphicsLoaded !== 'babylon'
     || state.backendRequested !== 'webgl2'
     || state.backendLoaded !== 'webgl2'
     || state.init !== 'ready'
