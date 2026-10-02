@@ -47,7 +47,7 @@ export function hecateYardmasterCueState(
   if (state.bossDefeated) return 'defeated' as const;
   const yardmaster = state.enemies.find(enemy => enemy.role === 'boss' && enemy.variant === 'hecateYardmaster');
   if (!yardmaster || !state.bossActive || !yardmaster.active || yardmaster.dead) return 'queued' as const;
-  return \`active-phase-\${yardmaster.bossPhase}:\${yardmaster.bossPattern}\`;
+  return `active-phase-${yardmaster.bossPhase}:${yardmaster.bossPattern}`;
 }
 
 function scaled(value: number) {
@@ -433,7 +433,7 @@ export class BabylonHecateCapstonePresentation {
     this.canvas.dataset.babylonHecateParity = 'stage-identity+salvage-truss-continuity+stage-props+interactables+hazards+yardmaster-cues+shared-location-foundations';
     this.canvas.dataset.megastructureVisual = 'procedural-hecate-capstone-babylon';
     this.canvas.dataset.megastructureIdentity = BABYLON_HECATE_CAPSTONE_IDENTITY.megastructure;
-    this.canvas.dataset.megastructureStage = \`\${stage.stage}:\${stage.code}:\${stage.name.toLowerCase().replaceAll(' ', '-')}\`;
+    this.canvas.dataset.megastructureStage = `${stage.stage}:${stage.code}:${stage.name.toLowerCase().replaceAll(' ', '-')}`;
     this.canvas.dataset.megastructureContinuity = BABYLON_HECATE_CAPSTONE_IDENTITY.continuity;
     this.canvas.dataset.megastructureStageKit = stage.kit.join('+');
     this.canvas.dataset.megastructureStagePurpose = stage.purpose;
@@ -441,7 +441,7 @@ export class BabylonHecateCapstonePresentation {
     this.canvas.dataset.megastructureStageEvents = stage.eventA + '|' + stage.eventB;
     this.canvas.dataset.megastructureBatching = 'continuity-pairs+pooled-stage-cues';
     this.canvas.dataset.megastructureContinuityDrawCalls = 'babylon-shared-geometry';
-    this.canvas.dataset.megastructurePerformanceProfile = \`\${profile.name}:trusses-\${profile.trussPairs}:guides-\${profile.cutterDatums}:props-\${profile.stageProps}:shadows-\${profile.castStructuralShadows ? 'on' : 'off'}\`;
+    this.canvas.dataset.megastructurePerformanceProfile = `${profile.name}:trusses-${profile.trussPairs}:guides-${profile.cutterDatums}:props-${profile.stageProps}:shadows-${profile.castStructuralShadows ? 'on' : 'off'}`;
     this.canvas.dataset.megastructureReadability = BABYLON_HECATE_CAPSTONE_IDENTITY.readability;
     this.canvas.dataset.megastructureInteractableCues = String(Math.min(interactables.length, this.interactableCues.length));
     this.canvas.dataset.megastructureInteractableLanguage = activeInteractableKinds.join('+') || 'shared-world-cues';
@@ -450,7 +450,7 @@ export class BabylonHecateCapstonePresentation {
     this.canvas.dataset.megastructureBossPresentation = BABYLON_HECATE_CAPSTONE_IDENTITY.boss;
     this.canvas.dataset.megastructureBossCue = 'control-crown+master-clamps+yellow-command-core';
     this.canvas.dataset.megastructureBossCueState = hecateYardmasterCueState(state);
-    this.canvas.dataset.megastructurePlayerPosition = \`\${state.player.x.toFixed(1)},\${state.player.y.toFixed(1)}\`;
+    this.canvas.dataset.megastructurePlayerPosition = `${state.player.x.toFixed(1)},${state.player.y.toFixed(1)}`;
   }
 
   release(reason: string) {

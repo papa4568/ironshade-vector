@@ -125,7 +125,7 @@ assert.ok(babylon.includes("this.hecateCapstonePresentation.release('scenario-sw
 assert.ok(babylon.includes('this.hecateCapstonePresentation.dispose();'));
 
 for (const baseLocation of ['solar-yard', 'asteroid-refinery', 'damaged-vessel', 'jovian-harvester']) {
-  assert.ok(babylon.includes(\`mission.location === '\${baseLocation}'\`), 'Hecate stage base location must stay on Babylon: ' + baseLocation);
+  assert.ok(babylon.includes(`mission.location === '${baseLocation}'`), 'Hecate stage base location must stay on Babylon: ' + baseLocation);
 }
 
 assert.ok(pkg.scripts['test:babylon-hecate-capstone']);
