@@ -433,6 +433,8 @@ for (const marker of [
   'webgpuEngine-',
   'babylonCombatRenderer-',
   'collectGraph([babylonKey], true)',
+  'codecManifestPath',
+  'declaredCodecNames',
   'P21-F3 Android beta.608',
   'babylonCompressedBytes',
   'babylonUncompressedBytes',
