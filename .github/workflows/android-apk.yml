@@ -382,6 +382,12 @@ jobs:
           P21F3_REPORT_PATH: p21f3-webgpu-delivery.json
         run: node scripts/measure-webgpu-delivery-cost.mjs
 
+      - name: Measure P27-D2 Babylon delivery cost
+        env:
+          P27D2_APK_PATH: Ironshade-Vector-Android-Debug.apk
+          P27D2_REPORT_PATH: p27d2-babylon-delivery.json
+        run: node scripts/measure-babylon-delivery-cost.mjs
+
       - name: Enable KVM
         shell: bash
         run: |
@@ -461,6 +467,7 @@ jobs:
             android-large-screen-resized.png
             android-large-screen-logcat.txt
             p21f3-webgpu-delivery.json
+            p27d2-babylon-delivery.json
           if-no-files-found: warn
           retention-days: 90
         if: always()
