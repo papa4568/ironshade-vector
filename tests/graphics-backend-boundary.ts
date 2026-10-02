@@ -193,6 +193,7 @@ const boundarySource = readFileSync(resolve(root, 'src/game/combatGraphicsBacken
 const rendererSource = readFileSync(resolve(root, 'src/game/threeCombatRenderer.ts'), 'utf8');
 const webgpuRendererSource = readFileSync(resolve(root, 'src/game/webGpuRefineryRenderer.ts'), 'utf8');
 const babylonRendererSource = readFileSync(resolve(root, 'src/game/babylonCombatRenderer.ts'), 'utf8');
+const babylonWebGpuEngineSource = readFileSync(resolve(root, 'src/game/babylonWebGpuEngine.ts'), 'utf8');
 const babylonWorldSource = readFileSync(resolve(root, 'src/game/babylonWorldPresentation.ts'), 'utf8');
 const babylonWeaponVfxSource = readFileSync(resolve(root, 'src/game/babylonWeaponVfx.ts'), 'utf8');
 const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
@@ -287,7 +288,9 @@ assert(
 assert(
   babylonRendererSource.includes("from '@babylonjs/core/Engines/abstractEngine'")
     && babylonRendererSource.includes("from '@babylonjs/core/Engines/engine'")
-    && babylonRendererSource.includes("await import('@babylonjs/core/Engines/webgpuEngine')")
+    && babylonRendererSource.includes("await import('./babylonWebGpuEngine')")
+    && babylonWebGpuEngineSource.includes("from '@babylonjs/core/Engines/webgpuEngine.pure'")
+    && !babylonWebGpuEngineSource.includes("@babylonjs/core/Audio/")
     && babylonRendererSource.includes('await WebGPUEngine.IsSupportedAsync')
     && babylonRendererSource.includes('new WebGPUEngine(renderCanvas')
     && babylonRendererSource.includes('doNotHandleContextLost: true')
