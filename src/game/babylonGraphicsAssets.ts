@@ -62,6 +62,7 @@ export type BabylonGraphicsAssetContainerLoader = (
 type BabylonGraphicsAssetCacheEntry = {
   spec: GraphicsAssetSpec;
   promise: Promise<AssetContainer>;
+  container: AssetContainer | null;
   activeInstances: number;
   pendingDispose: boolean;
   disposePromise: Promise<void> | null;
@@ -173,8 +174,15 @@ export class BabylonGraphicsAssetRuntime {
 
   private finalizeEntry(entry: BabylonGraphicsAssetCacheEntry) {
     if (entry.disposePromise) return entry.disposePromise;
+    if (entry.container) {
+      entry.container.dispose();
+      entry.container = null;
+      entry.disposePromise = Promise.resolve();
+      return entry.disposePromise;
+    }
     entry.disposePromise = entry.promise
       .then(container => {
+        if (entry.container === container) entry.container = null;
         container.dispose();
       })
       .catch(() => undefined);
@@ -223,6 +231,7 @@ export class BabylonGraphicsAssetRuntime {
     const promise = ensureBabylonGltfLoader()
       .then(() => this.loadContainer(spec, this.scene))
       .then(container => {
+        entry.container = container;
         this.applyTextureRuntimeBudget(container);
         return container;
       })
@@ -234,6 +243,7 @@ export class BabylonGraphicsAssetRuntime {
     entry = {
       spec,
       promise,
+      container: null,
       activeInstances: 0,
       pendingDispose: false,
       disposePromise: null,
