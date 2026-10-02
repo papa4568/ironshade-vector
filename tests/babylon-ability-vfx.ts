@@ -214,7 +214,7 @@ assert.equal(babylonAbilityEffectsMode(1, true), 'reduced');
 
 const rendererSource = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 assert.match(rendererSource, /resolvePlayerSkillAnimation/, 'Babylon operator rig must consume the shared class-skill animation resolver.');
-assert.match(rendererSource, /this\.abilityVfx\.sync\(state, quality\)/, 'Babylon combat renderer must synchronize the B7 VFX layer every refinery frame.');
+assert.match(rendererSource, /this\.abilityVfx\.sync\(state, budget\.vfxDensity, budget\.transparencyScale\)/, 'Babylon combat renderer must synchronize the B7 VFX layer through the shared adaptive effects budget every refinery frame.');
 assert.match(rendererSource, /operatorSkillAnimation/, 'Babylon combat renderer must expose shared skill-pose telemetry.');
 assert.match(rendererSource, /pose\.socketReach/, 'Babylon authored operator must reproduce the production skill socket pose contract.');
 
