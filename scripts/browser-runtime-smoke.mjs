@@ -3,6 +3,7 @@ import { writeFile } from 'node:fs/promises';
 const cdpBase = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9223';
 const appUrl = process.env.BROWSER_E2E_APP_URL ?? 'http://127.0.0.1:4173/';
 const requestedGraphicsPath = (process.env.BROWSER_E2E_GRAPHICS_PATH ?? '').trim();
+const requestedBabylonBackend = (process.env.BROWSER_E2E_BABYLON_BACKEND ?? '').trim();
 const requireWebGpuComparison = process.env.BROWSER_E2E_REQUIRE_WEBGPU === '1';
 const webGpuPresentationKnownGap = (process.env.BROWSER_E2E_WEBGPU_PRESENTATION_KNOWN_GAP ?? '').trim();
 const webGpuSwiftShaderCi = process.env.BROWSER_E2E_WEBGPU_SWIFTSHADER === '1';
@@ -12,6 +13,9 @@ const navigationUrl = (() => {
   const url = new URL(appUrl);
   url.searchParams.set('graphicsCompare', '1');
   url.searchParams.set('graphicsPath', requestedGraphicsPath);
+  if (requestedGraphicsPath === 'babylon' && ['webgl2', 'webgpu'].includes(requestedBabylonBackend)) {
+    url.searchParams.set('babylonBackend', requestedBabylonBackend);
+  }
   return url.toString();
 })();
 const timeoutMs = Number(process.env.BROWSER_E2E_TIMEOUT_MS ?? 75_000);
@@ -1977,6 +1981,7 @@ async function p27C10BabylonParallaxArrayAudit() {
 }
 
 async function p27A2BabylonBackendAudit() {
+  const expectedBabylonBackend = requestedBabylonBackend === 'webgpu' ? 'webgpu' : 'webgl2';
   const babylonInitState = await evaluate(`(() => {
     const canvas = document.querySelector('canvas');
     return {
@@ -1984,6 +1989,10 @@ async function p27A2BabylonBackendAudit() {
       fallback: canvas?.dataset.graphicsPathFallback ?? '',
       fallbackReason: canvas?.dataset.babylonFallbackReason ?? '',
       loaded: canvas?.dataset.graphicsPathLoaded ?? '',
+      backendRequested: canvas?.dataset.babylonBackendRequested ?? '',
+      backendLoaded: canvas?.dataset.babylonBackendLoaded ?? '',
+      backendFallback: canvas?.dataset.babylonBackendFallback ?? '',
+      backendFallbackReason: canvas?.dataset.babylonBackendFallbackReason ?? '',
     };
   })()`);
   if (babylonInitState?.init === 'fallback' || babylonInitState?.init === 'failed') {
@@ -1991,11 +2000,16 @@ async function p27A2BabylonBackendAudit() {
   }
   await waitFor(`(() => {
     const canvas = document.querySelector('canvas');
+    const requestedBackend = canvas?.dataset.babylonBackendRequested ?? '';
+    const loadedBackend = canvas?.dataset.babylonBackendLoaded ?? '';
+    const backendFallback = canvas?.dataset.babylonBackendFallback ?? '';
     return canvas?.dataset.graphicsPathSelection === 'qa-explicit'
       && canvas?.dataset.graphicsPathRequested === 'babylon'
       && canvas?.dataset.graphicsPathLoaded === 'babylon'
       && canvas?.dataset.babylonInit === 'ready'
-      && canvas?.dataset.babylonBackend === 'webgl2'
+      && requestedBackend === '${expectedBabylonBackend}'
+      && (loadedBackend === '${expectedBabylonBackend}' || ('${expectedBabylonBackend}' === 'webgpu' && loadedBackend === 'webgl2' && backendFallback.startsWith('webgpu->webgl2:')))
+      && canvas?.dataset.babylonBackend === loadedBackend
       && canvas?.dataset.babylonScene === 'active'
       && canvas?.dataset.babylonDisposed === 'false'
       && canvas?.dataset.babylonCameraParity === 'three-combat-v1'
@@ -2204,6 +2218,12 @@ async function p27A2BabylonBackendAudit() {
       fallbackReason: canvas?.dataset.babylonFallbackReason ?? '',
       init: canvas?.dataset.babylonInit ?? '',
       backend: canvas?.dataset.babylonBackend ?? '',
+      backendRequested: canvas?.dataset.babylonBackendRequested ?? '',
+      backendLoaded: canvas?.dataset.babylonBackendLoaded ?? '',
+      backendFallback: canvas?.dataset.babylonBackendFallback ?? '',
+      backendFallbackReason: canvas?.dataset.babylonBackendFallbackReason ?? '',
+      backendInitStage: canvas?.dataset.babylonBackendInitStage ?? '',
+      renderSurface: document.querySelectorAll('canvas[data-babylon-render-surface="webgpu"]').length,
       scene: canvas?.dataset.babylonScene ?? '',
       disposed: canvas?.dataset.babylonDisposed ?? '',
       camera: canvas?.dataset.babylonCameraParity ?? '',
@@ -2361,7 +2381,14 @@ async function p27A2BabylonBackendAudit() {
     || state.fallback
     || state.fallbackReason
     || state.init !== 'ready'
-    || state.backend !== 'webgl2'
+    || state.backendRequested !== expectedBabylonBackend
+    || state.backendLoaded !== state.backend
+    || !['webgl2', 'webgpu'].includes(state.backendLoaded)
+    || (expectedBabylonBackend === 'webgl2' && (state.backendLoaded !== 'webgl2' || state.backendFallback || state.backendFallbackReason || state.renderSurface !== 0))
+    || (expectedBabylonBackend === 'webgpu' && state.backendLoaded === 'webgpu' && (state.backendFallback || state.backendFallbackReason || state.renderSurface !== 1))
+    || (expectedBabylonBackend === 'webgpu' && state.backendLoaded === 'webgl2' && (!state.backendFallback.startsWith('webgpu->webgl2:') || !state.backendFallbackReason || state.renderSurface !== 0))
+    || (expectedBabylonBackend === 'webgpu' && requireWebGpuComparison && state.backendLoaded !== 'webgpu')
+    || state.backendInitStage !== 'ready'
     || state.scene !== 'active'
     || state.disposed !== 'false'
     || state.camera !== 'three-combat-v1'
@@ -2693,7 +2720,10 @@ async function p27A2BabylonBackendAudit() {
     };
   })()`);
   console.log(`BROWSER_P27B12_BABYLON_POST_PROCESSING_PASS viewport=${viewportMode} tier=${state.renderTier} bloom=${b12StackOn.bloom} contact=${b12StackOn.contact} atmosphere=${b12StackOn.atmosphere} tone=${b12StackOn.tone} budget=${b12StackOn.budget} priority=${b12StackOn.priority} pngDelta=${b12PngDelta.toFixed(4)} screenshots=${p27b12StackOffScreenshotPath}+${p27b12StackOnScreenshotPath}`);
-  console.log(`BROWSER_P27A2_BABYLON_PASS viewport=${viewportMode} backend=${state.backend} scene=${state.scene} frames=${state.frames} fallback=none`);
+  console.log(`BROWSER_P27A2_BABYLON_PASS viewport=${viewportMode} backend=${state.backend} scene=${state.scene} frames=${state.frames} fallback=${state.backendFallback || 'none'}`);
+  if (expectedBabylonBackend === 'webgpu') {
+    console.log(`BROWSER_P27D1_BABYLON_WEBGPU_PASS viewport=${viewportMode} requested=${state.backendRequested} loaded=${state.backendLoaded} fallback=${state.backendFallback || 'none'} surface=${state.renderSurface}`);
+  }
   console.log(`BROWSER_P27B1_BABYLON_CAMERA_INPUT_PASS viewport=${viewportMode} camera=${state.camera} input=${state.input} layout=${state.layout} framing=${state.framing} viewport=${state.viewport} pointer=${state.pointer} initialRetargetDelta=${initialRetargetDelta.toFixed(4)} settledDelta=${settledDirectionDelta.toFixed(4)} feedback=${state.feedback}`);
   console.log(`BROWSER_P27B2_BABYLON_REFINERY_PASS viewport=${viewportMode} lod=${state.environmentLod} kit=${[...refineryKit].sort().join(',')} placements=${state.environmentInstances} terminals=${state.environmentTerminals} runtime=${state.environmentRuntime} scene=${state.sceneTelemetry} reuse=${state.environmentReuse}`);
   console.log(`BROWSER_P27B3_BABYLON_OPERATOR_WEAPON_PASS viewport=${viewportMode} class=${state.operatorClass} operator=${state.operatorAsset} stance=${state.operatorStance} animation=${state.operatorAnimation} weapon=${state.weaponActive} asset=${state.weaponAsset} variant=${state.weaponVariant} thermal=${state.weaponThermalCue} muzzle=${state.weaponMuzzle} runtime=${state.playerRuntime}`);
