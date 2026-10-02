@@ -24,6 +24,9 @@ for (const marker of [
 
 for (const marker of [
   'this.cache.clear()',
+  'container: AssetContainer | null',
+  'if (entry.container)',
+  'entry.container.dispose()',
   'async dispose()',
   'disposeBabylonGraphicsAssetRuntime',
 ]) {
