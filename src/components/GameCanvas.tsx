@@ -1240,6 +1240,17 @@ export default function GameCanvas({ build, mission, profileSettings, consumable
     consumableStockRef.current = { ...consumables };
     setConsumableStock({ ...consumables });
   }, [consumables]);
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('p27d5Lifecycle') !== '1') return;
+    const restartRenderer = () => setRestartKey(value => value + 1);
+    const returnToHub = () => onReturnToHub();
+    window.addEventListener('ironshade:p27d5-restart-renderer', restartRenderer);
+    window.addEventListener('ironshade:p27d5-return-to-hub', returnToHub);
+    return () => {
+      window.removeEventListener('ironshade:p27d5-restart-renderer', restartRenderer);
+      window.removeEventListener('ironshade:p27d5-return-to-hub', returnToHub);
+    };
+  }, [onReturnToHub]);
   const clearAssistedTarget = useCallback((announcement = '') => {
     const hadTarget = mobileTargetControlRef.current.targetId != null || targetFeedbackIdRef.current != null;
     resetTargetControlMemory(mobileTargetControlRef.current);
