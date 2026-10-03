@@ -157,6 +157,25 @@ function resourceEnvelope(sample) {
 const session = await waitForSession();
 const { call, evaluate } = session;
 await call('Page.enable').catch(() => undefined);
+await call('HeapProfiler.enable', {}, 5_000);
+
+async function readRuntimeHeap(timeoutMs = 5_000) {
+  const heapUsage = await call('Runtime.getHeapUsage', {}, timeoutMs);
+  return {
+    usedMb: typeof heapUsage?.usedSize === 'number' ? heapUsage.usedSize / 1048576 : null,
+    totalMb: typeof heapUsage?.totalSize === 'number' ? heapUsage.totalSize / 1048576 : null,
+  };
+}
+
+async function collectRetainedHeap(label, atMs) {
+  await call('HeapProfiler.collectGarbage', {}, 20_000);
+  await sleep(250);
+  const heap = await readRuntimeHeap(10_000);
+  if (!Number.isFinite(heap.usedMb)) throw new Error(`Could not read post-GC retained heap at ${label}.`);
+  const checkpoint = { label, atMs: Math.round(atMs), usedMb: heap.usedMb, totalMb: heap.totalMb };
+  console.log(`ANDROID_P27D6_RETAINED_HEAP label=${label} atMs=${checkpoint.atMs} used=${checkpoint.usedMb} total=${checkpoint.totalMb ?? 'na'}`);
+  return checkpoint;
+}
 
 const currentUrl = await evaluate('location.href', 5_000);
 const qaUrl = new URL(currentUrl);
@@ -278,9 +297,9 @@ async function readSample(atMs) {
   })()`);
   if (!sample) return null;
   try {
-    const heapUsage = await call('Runtime.getHeapUsage', {}, 5_000);
-    sample.cdpHeapMb = typeof heapUsage?.usedSize === 'number' ? heapUsage.usedSize / 1048576 : null;
-    sample.cdpHeapTotalMb = typeof heapUsage?.totalSize === 'number' ? heapUsage.totalSize / 1048576 : null;
+    const heap = await readRuntimeHeap();
+    sample.cdpHeapMb = heap.usedMb;
+    sample.cdpHeapTotalMb = heap.totalMb;
   } catch {
     sample.cdpHeapMb = null;
     sample.cdpHeapTotalMb = null;
@@ -323,6 +342,7 @@ await deployRefinery();
 const samples = [];
 const lifecycle = [];
 const missionEntries = [];
+const retainedHeapCheckpoints = [];
 let inputBursts = 0;
 let restarts = 0;
 let reruns = 0;
@@ -333,8 +353,12 @@ let nextCycleAt = Date.now() + cycleEveryMs;
 let lastMinuteLogged = -1;
 const soakStartedAt = Date.now();
 
+const initialRetainedHeap = await collectRetainedHeap('initial', 0);
+retainedHeapCheckpoints.push(initialRetainedHeap);
 const initialEntry = await readSample(0);
 if (!initialEntry) throw new Error('No initial Babylon telemetry sample after deployment.');
+initialEntry.retainedHeapMb = initialRetainedHeap.usedMb;
+initialEntry.retainedHeapTotalMb = initialRetainedHeap.totalMb;
 missionEntries.push(initialEntry);
 
 while (Date.now() - soakStartedAt < durationMs) {
@@ -347,11 +371,15 @@ while (Date.now() - soakStartedAt < durationMs) {
     const disposed = await exitMission(cycle);
     await deployRefinery();
     await sleep(1_500);
+    const retainedHeap = await collectRetainedHeap(`reentry-${cycle}`, Date.now() - soakStartedAt);
+    retainedHeapCheckpoints.push(retainedHeap);
     const after = await readSample(Date.now() - soakStartedAt);
     if (!after) throw new Error(`No Babylon telemetry after lifecycle re-entry ${cycle}.`);
-    lifecycle.push({ cycle, before, disposed, after });
+    after.retainedHeapMb = retainedHeap.usedMb;
+    after.retainedHeapTotalMb = retainedHeap.totalMb;
+    lifecycle.push({ cycle, before, disposed, after, retainedHeap });
     missionEntries.push(after);
-    console.log(`ANDROID_P27D6_LIFECYCLE_PASS cycle=${cycle}/${desiredLifecycleCycles} oldDisposeCount=${disposed.disposeCount} oldFrames=${disposed.frames} reentryFrames=${after.frames} resources=${after.sceneTelemetry} cache=${after.assetRuntime}`);
+    console.log(`ANDROID_P27D6_LIFECYCLE_PASS cycle=${cycle}/${desiredLifecycleCycles} oldDisposeCount=${disposed.disposeCount} oldFrames=${disposed.frames} reentryFrames=${after.frames} retainedHeap=${retainedHeap.usedMb} resources=${after.sceneTelemetry} cache=${after.assetRuntime}`);
     nextCycleAt = Date.now() + cycleEveryMs;
     nextInputAt = Date.now() + 1_000;
     nextSampleAt = Date.now();
@@ -398,11 +426,13 @@ while (Date.now() - soakStartedAt < durationMs) {
   if (minute !== lastMinuteLogged) {
     lastMinuteLogged = minute;
     const latest = samples.at(-1) ?? initialEntry;
-    console.log(`ANDROID_P27D6_SOAK_PROGRESS minute=${minute}/${soakMinutes} samples=${samples.length} cycles=${lifecycle.length}/${desiredLifecycleCycles} frameP95=${latest?.report?.frameP95Ms ?? 'na'} cdpHeap=${latest?.cdpHeapMb ?? 'na'} perfHeap=${latest?.report?.categories?.gc?.heapMb?.actual ?? latest?.jsHeapMb ?? 'na'} resources=${latest?.sceneTelemetry ?? 'na'}`);
+    console.log(`ANDROID_P27D6_SOAK_PROGRESS minute=${minute}/${soakMinutes} samples=${samples.length} cycles=${lifecycle.length}/${desiredLifecycleCycles} frameP95=${latest?.report?.frameP95Ms ?? 'na'} cdpHeap=${latest?.cdpHeapMb ?? 'na'} retainedHeap=${retainedHeapCheckpoints.at(-1)?.usedMb ?? 'na'} perfHeap=${latest?.report?.categories?.gc?.heapMb?.actual ?? latest?.jsHeapMb ?? 'na'} resources=${latest?.sceneTelemetry ?? 'na'}`);
   }
   await sleep(250);
 }
 
+const finalRetainedHeap = await collectRetainedHeap('final', Date.now() - soakStartedAt);
+retainedHeapCheckpoints.push(finalRetainedHeap);
 session.close();
 
 if (samples.length < Math.max(6, Math.floor(durationMs / sampleEveryMs * 0.5))) {
@@ -411,21 +441,24 @@ if (samples.length < Math.max(6, Math.floor(durationMs / sampleEveryMs * 0.5))) 
 if (lifecycle.length < desiredLifecycleCycles) {
   throw new Error(`Insufficient Babylon renderer lifecycle cycles: ${lifecycle.length}/${desiredLifecycleCycles}`);
 }
+if (retainedHeapCheckpoints.length < desiredLifecycleCycles + 2) {
+  throw new Error(`Insufficient post-GC retained heap checkpoints: ${retainedHeapCheckpoints.length}/${desiredLifecycleCycles + 2}`);
+}
 if (samples.some(sample => sample.requested !== 'babylon' || sample.loaded !== 'babylon' || sample.backendRequested !== 'webgl2' || sample.backendLoaded !== 'webgl2')) {
   throw new Error('Babylon soak left the explicit Babylon WebGL2 path.');
 }
 
 const frameP95 = samples.map(sample => Number(sample.report?.frameP95Ms)).filter(Number.isFinite);
-const cdpHeap = samples.map(sample => Number(sample.cdpHeapMb)).filter(value => Number.isFinite(value) && value > 0);
-const heapP95 = samples.map(sample => Number(sample.report?.categories?.gc?.heapMb?.actual)).filter(value => Number.isFinite(value) && value > 0);
-const jsHeap = samples.map(sample => Number(sample.jsHeapMb)).filter(value => Number.isFinite(value) && value > 0);
+const rawCdpHeap = samples.map(sample => Number(sample.cdpHeapMb)).filter(value => Number.isFinite(value) && value > 0);
+const retainedHeap = retainedHeapCheckpoints.map(checkpoint => Number(checkpoint.usedMb)).filter(value => Number.isFinite(value) && value > 0);
 const frameBaseline = edgeMedian(frameP95);
 const frameFinal = edgeMedian(frameP95, true);
-const heapSeries = cdpHeap.length >= 6 ? cdpHeap : heapP95.length >= 6 ? heapP95 : jsHeap;
-const heapSource = cdpHeap.length >= 6 ? 'cdp-runtime' : heapP95.length >= 6 ? 'performance-diagnostics' : jsHeap.length ? 'performance.memory' : 'unavailable';
-const heapBaseline = edgeMedian(heapSeries);
-const heapFinal = edgeMedian(heapSeries, true);
+const rawHeapBaseline = edgeMedian(rawCdpHeap);
+const rawHeapFinal = edgeMedian(rawCdpHeap, true);
+const heapBaseline = edgeMedian(retainedHeap);
+const heapFinal = edgeMedian(retainedHeap, true);
 const frameDelta = frameBaseline != null && frameFinal != null ? frameFinal - frameBaseline : null;
+const rawHeapDelta = rawHeapBaseline != null && rawHeapFinal != null ? rawHeapFinal - rawHeapBaseline : null;
 const heapDelta = heapBaseline != null && heapFinal != null ? heapFinal - heapBaseline : null;
 const frameRegressed = frameBaseline != null && frameFinal != null && frameFinal > frameBaseline * 1.5 && frameFinal - frameBaseline > 8;
 const heapRegressed = heapBaseline != null && heapFinal != null && heapFinal - heapBaseline > Math.max(96, heapBaseline * 0.5);
@@ -447,7 +480,7 @@ const resourceRegressed = Boolean(initialResources && finalResources) && (
 );
 
 const summary = {
-  version: 'p27-d6-babylon-v2',
+  version: 'p27-d6-babylon-v3',
   requestedMinutes: soakMinutes,
   elapsedSeconds: Math.round((Date.now() - soakStartedAt) / 1000),
   setupSeconds: Math.round((soakStartedAt - runnerStartedAt) / 1000),
@@ -456,14 +489,15 @@ const summary = {
   missionEntries: missionEntries.length,
   activity: { inputBursts, restarts, reruns, deepTransitions },
   frameP95: { baselineMs: frameBaseline, finalMs: frameFinal, deltaMs: frameDelta, regressed: frameRegressed },
-  heap: { source: heapSource, baselineMb: heapBaseline, finalMb: heapFinal, deltaMb: heapDelta, regressed: heapRegressed },
+  heap: { source: 'cdp-post-gc', checkpoints: retainedHeapCheckpoints.length, baselineMb: heapBaseline, finalMb: heapFinal, deltaMb: heapDelta, regressed: heapRegressed },
+  rawHeap: { source: 'cdp-runtime-live', baselineMb: rawHeapBaseline, finalMb: rawHeapFinal, deltaMb: rawHeapDelta },
   resources: { initial: initialResources, final: finalResources, max: maxResources, cacheBudgetViolations: cacheBudgetViolations.length, regressed: resourceRegressed },
   final: samples.at(-1),
 };
-fs.writeFileSync('android-p27d6-babylon-soak.json', JSON.stringify({ summary, lifecycle, missionEntries, samples }, null, 2));
+fs.writeFileSync('android-p27d6-babylon-soak.json', JSON.stringify({ summary, lifecycle, missionEntries, retainedHeapCheckpoints, samples }, null, 2));
 
 if (frameRegressed) throw new Error(`Sustained Babylon frame pacing regressed: baseline=${frameBaseline}ms final=${frameFinal}ms`);
-if (heapRegressed) throw new Error(`Sustained Babylon JS heap growth exceeded leak gate: source=${heapSource} baseline=${heapBaseline}MB final=${heapFinal}MB`);
+if (heapRegressed) throw new Error(`Sustained Babylon post-GC retained JS heap growth exceeded leak gate: baseline=${heapBaseline}MB final=${heapFinal}MB`);
 if (resourceRegressed) throw new Error(`Babylon renderer resources did not remain bounded across recreation: ${JSON.stringify(summary.resources)}`);
 
-console.log(`ANDROID_P27D6_WEBVIEW_PASS duration=${summary.elapsedSeconds}s samples=${samples.length} cycles=${lifecycle.length} entries=${missionEntries.length} frameBaseline=${frameBaseline ?? 'na'} frameFinal=${frameFinal ?? 'na'} heapSource=${heapSource} heapBaseline=${heapBaseline ?? 'na'} heapFinal=${heapFinal ?? 'na'} resourcesInitial=${JSON.stringify(initialResources)} resourcesFinal=${JSON.stringify(finalResources)} cacheBudgetViolations=${cacheBudgetViolations.length}`);
+console.log(`ANDROID_P27D6_WEBVIEW_PASS duration=${summary.elapsedSeconds}s samples=${samples.length} cycles=${lifecycle.length} entries=${missionEntries.length} frameBaseline=${frameBaseline ?? 'na'} frameFinal=${frameFinal ?? 'na'} heapSource=cdp-post-gc heapBaseline=${heapBaseline ?? 'na'} heapFinal=${heapFinal ?? 'na'} rawHeapBaseline=${rawHeapBaseline ?? 'na'} rawHeapFinal=${rawHeapFinal ?? 'na'} resourcesInitial=${JSON.stringify(initialResources)} resourcesFinal=${JSON.stringify(finalResources)} cacheBudgetViolations=${cacheBudgetViolations.length}`);
