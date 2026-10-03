@@ -52,7 +52,10 @@ SOCKET="webview_devtools_remote_${APP_PID}"
 adb forward --remove tcp:9222 >/dev/null 2>&1 || true
 adb forward tcp:9222 "localabstract:${SOCKET}"
 
+set +e
 ANDROID_P27D6_SOAK_MINUTES="$SOAK_MINUTES" CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-babylon-resource-soak.mjs
+SOAK_STATUS=$?
+set -e
 
 cleanup
 trap - EXIT
@@ -60,15 +63,20 @@ trap - EXIT
 adb shell dumpsys meminfo "$PACKAGE" > android-p27d6-meminfo-final.txt 2>&1 || true
 adb shell dumpsys gfxinfo "$PACKAGE" > android-p27d6-gfxinfo.txt 2>&1 || true
 adb shell dumpsys thermalservice > android-p27d6-thermal-after.txt 2>&1 || true
-adb logcat -d > android-p27d6-logcat.txt
-adb exec-out screencap -p > android-p27d6-final.png
-test -s android-p27d6-final.png
+adb logcat -d > android-p27d6-logcat.txt 2>&1 || true
+adb exec-out screencap -p > android-p27d6-final.png 2>/dev/null || true
 
+EVIDENCE_STATUS=0
+if [[ ! -s android-p27d6-final.png ]]; then
+  echo 'Babylon resource soak did not produce a final screenshot.' >&2
+  EVIDENCE_STATUS=1
+fi
 if grep -E 'FATAL EXCEPTION|Fatal signal|ANR in app\.ironshade\.vector|Process: app\.ironshade\.vector' android-p27d6-logcat.txt; then
   echo 'Babylon resource soak detected a crash, fatal signal, or ANR.' >&2
-  exit 1
+  EVIDENCE_STATUS=1
 fi
 
+set +e
 node --input-type=module <<'NODE'
 import fs from 'node:fs';
 
@@ -118,15 +126,26 @@ if (uniquePids.length !== 1) throw new Error(`Android process restarted during B
 if (regressed) throw new Error(`Android PSS growth exceeded leak gate: ${JSON.stringify(summary)}`);
 console.log(`ANDROID_P27D6_MEMORY_PASS samples=${pss.length} baseline=${summary.baselinePssMb}MB final=${summary.finalPssMb}MB delta=${summary.deltaPssMb}MB pidStable=true`);
 NODE
+MEMORY_STATUS=$?
+set -e
 
-CURRENT_PID="$(adb shell pidof "$PACKAGE" | tr -d '\r')"
+CURRENT_PID="$(adb shell pidof "$PACKAGE" 2>/dev/null | tr -d '\r')"
 if [[ -z "$CURRENT_PID" ]]; then
   echo "Ironshade Vector process did not survive the Babylon resource soak." >&2
-  exit 1
-fi
-if [[ "$CURRENT_PID" != "$APP_PID" ]]; then
+  EVIDENCE_STATUS=1
+elif [[ "$CURRENT_PID" != "$APP_PID" ]]; then
   echo "Ironshade Vector process restarted during the Babylon resource soak: $APP_PID -> $CURRENT_PID" >&2
-  exit 1
+  EVIDENCE_STATUS=1
 fi
 
-echo "ANDROID_P27D6_SOAK_PASS minutes=${SOAK_MINUTES} initialPid=${APP_PID} finalPid=${CURRENT_PID} evidence=babylon-webview+renderer-reentry+scene-cache+jsheap+pss+gfxinfo+thermalservice+logcat"
+if (( SOAK_STATUS != 0 )); then
+  exit "$SOAK_STATUS"
+fi
+if (( MEMORY_STATUS != 0 )); then
+  exit "$MEMORY_STATUS"
+fi
+if (( EVIDENCE_STATUS != 0 )); then
+  exit "$EVIDENCE_STATUS"
+fi
+
+echo "ANDROID_P27D6_SOAK_PASS minutes=${SOAK_MINUTES} initialPid=${APP_PID} finalPid=${CURRENT_PID} evidence=babylon-webview+renderer-reentry+scene-cache+post-gc-jsheap+pss+gfxinfo+thermalservice+logcat"
