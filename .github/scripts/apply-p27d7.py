@@ -192,6 +192,15 @@ for (const migrationOnly of [
 """
 replace_once(contract, old_markers, new_markers)
 
+for stale_contract_artifact in [
+    "  'android-p21f1-webgpu.png',\n",
+    "  'android-p27d5-babylon.png',\n",
+    "  'android-p27d5-babylon-resume.png',\n",
+    "  'android-p27d5-babylon-interaction.json',\n",
+    "  'android-p27d5-babylon-resume.json',\n",
+]:
+    replace_once(contract, stale_contract_artifact, "")
+
 workflow = ".github/workflows/android-apk.yml"
 for stale_path in [
     "            android-p21f1-webgpu.png\n",
