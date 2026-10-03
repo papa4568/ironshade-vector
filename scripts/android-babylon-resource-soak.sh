@@ -6,6 +6,7 @@ PACKAGE="app.ironshade.vector"
 ACTIVITY="${PACKAGE}/.MainActivity"
 SOAK_MINUTES="${ANDROID_P27D6_SOAK_MINUTES:-30}"
 MEMORY_LOG="android-p27d6-memory.txt"
+CENSUS_LOG="android-p27d6-retention-census.log"
 CENSUS_PID=""
 
 if [[ ! -s "$SMOKE_APK" ]]; then
@@ -29,6 +30,7 @@ fi
 adb shell dumpsys thermalservice > android-p27d6-thermal-before.txt 2>&1 || true
 adb shell dumpsys gfxinfo "$PACKAGE" reset > /dev/null 2>&1 || true
 : > "$MEMORY_LOG"
+: > "$CENSUS_LOG"
 
 sample_memory() {
   while true; do
@@ -57,7 +59,7 @@ SOCKET="webview_devtools_remote_${APP_PID}"
 adb forward --remove tcp:9222 >/dev/null 2>&1 || true
 adb forward tcp:9222 "localabstract:${SOCKET}"
 
-CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-babylon-retention-census.mjs &
+CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-babylon-retention-census.mjs > "$CENSUS_LOG" 2>&1 &
 CENSUS_PID=$!
 
 set +e
