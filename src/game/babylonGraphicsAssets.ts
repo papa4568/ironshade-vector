@@ -152,8 +152,15 @@ export class BabylonGraphicsAssetRuntime {
     this.scene = scene;
     this.loadContainer = loadContainer;
     scene.onDisposeObservable.addOnce(() => {
-      this.disposed = true;
+      if (this.disposed) return;
+      const entries = [...this.cache.values()];
       this.cache.clear();
+      this.disposed = true;
+      for (const entry of entries) {
+        entry.pendingDispose = true;
+        entry.activeInstances = 0;
+        void this.finalizeEntry(entry);
+      }
     });
   }
 
@@ -354,8 +361,14 @@ export class BabylonGraphicsAssetRuntime {
 
   async dispose() {
     if (this.disposed) return;
-    await this.clear();
+    const entries = [...this.cache.values()];
+    this.cache.clear();
     this.disposed = true;
+    await Promise.all(entries.map(entry => {
+      entry.pendingDispose = true;
+      entry.activeInstances = 0;
+      return this.finalizeEntry(entry);
+    }));
   }
 }
 

@@ -144,9 +144,36 @@ async function run() {
   
   scene.dispose();
   engine.dispose();
+
+  const teardownEngine = new NullEngine();
+  const teardownScene = new Scene(teardownEngine);
+  let teardownDisposeCount = 0;
+  const teardownLoader: BabylonGraphicsAssetContainerLoader = async (spec, targetScene) => {
+    const filePath = resolve(process.cwd(), 'public', spec.url.replace(/^\/+/, ''));
+    const data = await readFileAsync(filePath);
+    const bytes = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+    const container = await LoadAssetContainerAsync(bytes, targetScene, {
+      pluginExtension: '.glb',
+      name: `${spec.id}-teardown`,
+    });
+    const originalDispose = container.dispose.bind(container);
+    container.dispose = () => {
+      teardownDisposeCount += 1;
+      originalDispose();
+    };
+    return container;
+  };
+  const teardownRuntime = new BabylonGraphicsAssetRuntime(teardownScene, teardownLoader);
+  await teardownRuntime.instantiate(operatorLod1);
+  const teardownDispose = teardownRuntime.dispose();
+  teardownScene.dispose();
+  await teardownDispose;
+  await Promise.resolve();
+  assert(teardownDisposeCount === 1, `renderer teardown must dispose mounted cached source resources exactly once, got ${teardownDisposeCount}`);
+  teardownEngine.dispose();
   
   console.log(
-    `BABYLON_GRAPHICS_ASSETS_PASS operatorLod1=${operatorLod1.id} operatorLod2=${operatorLod2.id} refinery=${refineryLod1.id} localCodecs=true instancing=static-native cacheTrim=count+bytes cacheLoads=${[...loadCounts.values()].reduce((sum, count) => sum + count, 0)}`,
+    `BABYLON_GRAPHICS_ASSETS_PASS operatorLod1=${operatorLod1.id} operatorLod2=${operatorLod2.id} refinery=${refineryLod1.id} localCodecs=true instancing=static-native cacheTrim=count+bytes cacheLoads=${[...loadCounts.values()].reduce((sum, count) => sum + count, 0)} teardownDispose=${teardownDisposeCount}`,
   );
   
 }
