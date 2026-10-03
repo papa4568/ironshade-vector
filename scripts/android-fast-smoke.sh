@@ -11,11 +11,59 @@ if [[ ! -s "$SMOKE_APK" ]]; then
   exit 1
 fi
 
+confirm_immersive_mode_for_smoke() {
+  # The API-35 emulator can show SystemUI's one-time immersive-mode education
+  # over the game. Mark it confirmed up front, then dismiss it by its native
+  # button if SystemUI already created the overlay. This is test-device state
+  # only; the app keeps its normal player-facing immersive behavior unchanged.
+  adb shell settings put secure immersive_mode_confirmations confirmed >/dev/null 2>&1 || true
+
+  local remote_dump='/sdcard/ironshade-fast-smoke-window.xml'
+  local dump=''
+  local coords=''
+  local x=''
+  local y=''
+  for attempt in 1 2 3 4 5; do
+    adb shell uiautomator dump --compressed "$remote_dump" >/dev/null 2>&1 || true
+    dump="$(adb shell cat "$remote_dump" 2>/dev/null | tr -d '\r' || true)"
+    if [[ "$dump" != *'text="Viewing full screen"'* && "$dump" != *'text="Got it"'* ]]; then
+      echo "ANDROID_IMMERSIVE_CONFIRMATION_PASS state=clear attempt=$attempt"
+      return 0
+    fi
+
+    coords="$(printf '%s' "$dump" | python3 -c 'import re, sys, xml.etree.ElementTree as ET
+text = sys.stdin.read()
+try:
+    root = ET.fromstring(text)
+except ET.ParseError:
+    raise SystemExit(0)
+for node in root.iter("node"):
+    if node.attrib.get("text") != "Got it":
+        continue
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
+    if match:
+        left, top, right, bottom = map(int, match.groups())
+        print((left + right) // 2, (top + bottom) // 2)
+        break')"
+    if [[ -n "$coords" ]]; then
+      read -r x y <<< "$coords"
+      adb shell input tap "$x" "$y"
+    fi
+    sleep 1
+  done
+
+  echo "Immersive-mode SystemUI confirmation still covers the app after deterministic dismissal attempts." >&2
+  printf '%s\n' "$dump" >&2
+  return 1
+}
+
 adb wait-for-device
+adb shell settings put secure immersive_mode_confirmations confirmed >/dev/null 2>&1 || true
 adb install -r "$SMOKE_APK"
 adb logcat -c
 adb shell am force-stop "$PACKAGE"
 adb shell am start -W -n "$ACTIVITY"
+confirm_immersive_mode_for_smoke
 
 timeout 30 bash -c 'until [[ -n "$(adb shell pidof app.ironshade.vector 2>/dev/null | tr -d "\r")" ]]; do sleep 1; done'
 APP_PID="$(adb shell pidof "$PACKAGE" | tr -d '\r')"
