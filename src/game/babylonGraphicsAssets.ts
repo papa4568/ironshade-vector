@@ -68,6 +68,19 @@ type BabylonGraphicsAssetCacheEntry = {
   lastUsedOrdinal: number;
 };
 
+type P27D6BabylonPrototypeRegistry = Record<string, object>;
+
+function registerP27D6BabylonPrototype(name: string, value: object) {
+  if (typeof location === 'undefined' || new URLSearchParams(location.search).get('p27d6Soak') !== '1') return;
+  const scope = globalThis as typeof globalThis & {
+    __ironshadeP27D6BabylonPrototypes?: P27D6BabylonPrototypeRegistry;
+  };
+  const prototype = Object.getPrototypeOf(value) as object | null;
+  if (!prototype) return;
+  const registry = scope.__ironshadeP27D6BabylonPrototypes ??= {};
+  registry[name] ??= prototype;
+}
+
 function resolveRuntimeCodecUrl(path: string) {
   const base = typeof document !== 'undefined'
     ? document.baseURI
@@ -151,6 +164,9 @@ export class BabylonGraphicsAssetRuntime {
   constructor(scene: Scene, loadContainer: BabylonGraphicsAssetContainerLoader = loadAssetContainerFromUrl) {
     this.scene = scene;
     this.loadContainer = loadContainer;
+    registerP27D6BabylonPrototype('assetRuntime', this);
+    registerP27D6BabylonPrototype('scene', scene);
+    registerP27D6BabylonPrototype('engine', scene.getEngine());
     scene.onDisposeObservable.addOnce(() => this.disposeForSceneTeardown());
   }
 
@@ -220,6 +236,7 @@ export class BabylonGraphicsAssetRuntime {
     const promise = ensureBabylonGltfLoader()
       .then(() => this.loadContainer(spec, this.scene))
       .then(container => {
+        registerP27D6BabylonPrototype('assetContainer', container);
         this.applyTextureRuntimeBudget(container);
         return container;
       })
