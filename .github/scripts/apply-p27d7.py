@@ -10,111 +10,196 @@ def replace_once(path: str, old: str, new: str) -> None:
     p.write_text(text.replace(old, new, 1))
 
 
-backend = "src/game/combatGraphicsBackend.ts"
-replace_once(
-    backend,
-    "export const productionCombatGraphicsBackendId: CombatGraphicsBackendId = 'webgl2';",
-    "export const productionCombatGraphicsBackendId: CombatGraphicsBackendId = 'babylon';",
-)
-replace_once(
-    backend,
-    "    babylonBackendRequested: null,\n  };\n}",
-    "    babylonBackendRequested: 'webgl2',\n  };\n}",
-)
-replace_once(
-    backend,
-    "  if (selected) return selected;\n  if (selectedId !== productionCombatGraphicsBackendId) {\n    return factories.find(factory => factory.id === productionCombatGraphicsBackendId && factory.isSupported()) ?? null;\n  }",
-    "  if (selected) return selected;\n  // Keep the legacy P21 WebGPU comparison fallback pinned to Three WebGL2 for the\n  // P27-D7 verification cycle. D8 retires both legacy Three paths after cutover.\n  if (selectedId === 'webgpu') {\n    return factories.find(factory => factory.id === 'webgl2' && factory.isSupported()) ?? null;\n  }\n  if (selectedId !== productionCombatGraphicsBackendId) {\n    return factories.find(factory => factory.id === productionCombatGraphicsBackendId && factory.isSupported()) ?? null;\n  }",
-)
+fast_shell = Path("scripts/android-fast-smoke.sh")
+fast_shell.write_text(r'''#!/usr/bin/env bash
+set -euo pipefail
 
-boundary_test = "tests/graphics-backend-boundary.ts"
-replace_once(
-    boundary_test,
-    "assert(productionCombatGraphicsBackendId === 'webgl2', 'P21-A1 production graphics backend must remain WebGL2.');",
-    "assert(productionCombatGraphicsBackendId === 'babylon', 'P27-D7 production graphics backend must be Babylon.');",
-)
-replace_once(
-    boundary_test,
-    "productionPath.mode === 'production-default' && productionPath.requestedId === null && productionPath.selectedId === 'webgl2'",
-    "productionPath.mode === 'production-default' && productionPath.requestedId === null && productionPath.selectedId === 'babylon'",
-)
-replace_once(
-    boundary_test,
-    "productionPath.babylonBackendRequested === null,\n  'P27-D1 production selection must not request Babylon WebGPU.',",
-    "productionPath.babylonBackendRequested === 'webgl2',\n  'P27-D7 production selection must deterministically request Babylon WebGL2.',",
-)
-replace_once(
-    boundary_test,
-    "unknownPath.mode === 'production-default' && unknownPath.requestedId === null && unknownPath.selectedId === 'webgl2',\n  'P21-A2 unknown comparison paths must fall back to the production WebGL2 selection instead of changing runtime behavior.',",
-    "unknownPath.mode === 'production-default' && unknownPath.requestedId === null && unknownPath.selectedId === 'babylon',\n  'P27-D7 unknown comparison paths must fall back to the production Babylon selection instead of changing runtime behavior.',",
-)
-replace_once(
-    boundary_test,
-    "selectCombatGraphicsBackendFactory([unsupportedFactory, supportedFactory]) === supportedFactory,\n  'P21-A1 backend selection must choose the first supported production WebGL2 factory.',",
-    "selectCombatGraphicsBackendFactory([unsupportedFactory, supportedFactory], explicitPath.selectedId) === supportedFactory,\n  'P27-D7 explicit Three rollback selection must choose the supported WebGL2 factory.',",
-)
-replace_once(
-    boundary_test,
-    "createCombatGraphicsBackend({} as HTMLCanvasElement, false, [unsupportedFactory]) === null,\n  'P21-A1 backend creation must preserve the Canvas 2D fallback when WebGL2 is unsupported.',",
-    "createCombatGraphicsBackend({} as HTMLCanvasElement, false, [unsupportedFactory], explicitPath.selectedId) === null,\n  'P27-D7 explicit Three rollback must preserve the Canvas 2D fallback when WebGL2 is unsupported.',",
-)
-replace_once(
-    boundary_test,
-    "createCombatGraphicsBackend({} as HTMLCanvasElement, false, [unsupportedFactory, supportedFactory]) === fakeBackend && createCount === 1,\n  'P21-A1 backend creation must instantiate the selected renderer exactly once.',",
-    "createCombatGraphicsBackend({} as HTMLCanvasElement, false, [unsupportedFactory, supportedFactory], explicitPath.selectedId) === fakeBackend && createCount === 1,\n  'P27-D7 explicit Three rollback must instantiate the selected renderer exactly once.',",
-)
-marker = "const supportedBabylonFactory = {\n  id: 'babylon',\n  isSupported: () => true,\n  create: (_canvas, _coarse, options) => {\n    capturedBabylonBackend = options?.babylonBackend ?? null;\n    return fakeBabylonBackend;\n  },\n} as CombatGraphicsBackendFactory;\n"
-insertion = marker + "\nassert(\n  selectCombatGraphicsBackendFactory([supportedFactory, supportedBabylonFactory]) === supportedBabylonFactory,\n  'P27-D7 default backend selection must choose Babylon in production.',\n);\nassert(\n  createCombatGraphicsBackend(\n    {} as HTMLCanvasElement,\n    false,\n    [supportedFactory, supportedBabylonFactory],\n    productionPath.selectedId,\n    { babylonBackend: productionPath.babylonBackendRequested ?? undefined },\n  ) === fakeBabylonBackend && capturedBabylonBackend === 'webgl2',\n  'P27-D7 production creation must select Babylon WebGL2 without QA flags.',\n);\n"
-replace_once(boundary_test, marker, insertion)
-replace_once(
-    boundary_test,
-    "selectCombatGraphicsBackendFactory([supportedFactory, unsupportedBabylonFactory], babylonPath.selectedId) === supportedFactory,\n  'P27-A2 unsupported Babylon must fall back to the supported production WebGL2 factory.',",
-    "selectCombatGraphicsBackendFactory([supportedFactory, unsupportedBabylonFactory], babylonPath.selectedId) === null,\n  'P27-D7 unsupported production Babylon must not silently cross into the Three rollback renderer.',",
-)
-replace_once(
-    boundary_test,
-    "createCombatGraphicsBackend({} as HTMLCanvasElement, false, [supportedFactory, unsupportedBabylonFactory], babylonPath.selectedId) === fakeBackend,\n  'P27-A2 Babylon creation must preserve safe production WebGL2 fallback when unavailable.',",
-    "createCombatGraphicsBackend({} as HTMLCanvasElement, false, [supportedFactory, unsupportedBabylonFactory], babylonPath.selectedId) === null,\n  'P27-D7 unavailable production Babylon must fail closed instead of silently selecting Three.',",
-)
-replace_once(
-    boundary_test,
-    "boundarySource.includes(\"productionCombatGraphicsBackendId: CombatGraphicsBackendId = 'webgl2'\")",
-    "boundarySource.includes(\"productionCombatGraphicsBackendId: CombatGraphicsBackendId = 'babylon'\")",
-)
-replace_once(
-    boundary_test,
-    "androidSmokeSource.includes('ANDROID_P21A2_GRAPHICS_PATH_PASS selection=production-default requested=none loaded=webgl2')\n    && androidSmokeSource.includes(\"p21a2GraphicsPath.selection !== 'production-default'\")\n    && androidSmokeSource.includes(\"p21a2GraphicsPath.loaded !== 'webgl2'\"),\n  'P21-A2 Android smoke must verify that production still loads WebGL2 without the QA selector.',",
-    "androidSmokeSource.includes('ANDROID_P27D7_PRODUCTION_BABYLON_PASS selection=production-default requested=none loaded=babylon backend=webgl2')\n    && androidSmokeSource.includes(\"p21a2GraphicsPath.selection !== 'production-default'\")\n    && androidSmokeSource.includes(\"p21a2GraphicsPath.loaded !== 'babylon'\"),\n  'P27-D7 Android smoke must verify that production loads Babylon WebGL2 without a QA selector.',",
-)
-replace_once(
-    boundary_test,
-    "console.log('P21_A1_GRAPHICS_BACKEND_PASS default=webgl2 create=boundary render=delegated resize=preserved pointer=preserved dispose=preserved fallback=canvas2d');",
-    "console.log('P21_A1_GRAPHICS_BACKEND_PASS rollback=webgl2 create=boundary render=delegated resize=preserved pointer=preserved dispose=preserved fallback=canvas2d');\nconsole.log('P27_D7_PRODUCTION_CUTOVER_PASS production=babylon backend=webgl2 rollback=webgl2 selector=graphicsCompare+graphicsPath');",
-)
+STARTED_AT="$(date +%s)"
+SMOKE_APK="${ANDROID_SMOKE_APK:-android/app/build/outputs/apk/debug/app-debug.apk}"
+PACKAGE="app.ironshade.vector"
+ACTIVITY="${PACKAGE}/.MainActivity"
 
-android = "scripts/android-runtime-smoke.mjs"
-replace_once(
-    android,
-    "      tier: document.querySelector('canvas')?.dataset.renderTier ?? '',\n      quality: document.querySelector('canvas')?.dataset.graphicsQuality ?? '',",
-    "      graphicsLoaded: document.querySelector('canvas')?.dataset.graphicsPathLoaded ?? '',\n      babylonInit: document.querySelector('canvas')?.dataset.babylonInit ?? '',\n      babylonBackend: document.querySelector('canvas')?.dataset.babylonBackendLoaded ?? document.querySelector('canvas')?.dataset.babylonBackend ?? '',\n      tier: document.querySelector('canvas')?.dataset.renderTier ?? '',\n      quality: document.querySelector('canvas')?.dataset.graphicsQuality ?? '',",
-)
-replace_once(
-    android,
-    "  const resumedP21Budget = parseP21EffectBudget(fastResumed.p21Budget);",
-    "  if (fastResumed.graphicsLoaded === 'babylon') {\n    if (fastResumed.babylonInit !== 'ready' || fastResumed.babylonBackend !== 'webgl2'\n      || fastResumed.tier !== 'performance' || fastResumed.quality !== 'performance') {\n      throw new Error(`Fast Android P27-D7 Babylon production resume is invalid: ${JSON.stringify(fastResumed)}`);\n    }\n    console.log(`ANDROID_P27D7_BABYLON_RESUME_PASS loaded=${fastResumed.graphicsLoaded} backend=${fastResumed.babylonBackend} tier=${fastResumed.tier}`);\n    console.log(`ANDROID_FAST_LIFECYCLE_RESUME_PASS canvases=${fastResumed.canvases} tutorialStep=${fastResumed.tutorialStep} location=${JSON.stringify(fastResumed.location)}`);\n    session.close();\n    await sleep(100);\n    process.exit(0);\n  }\n  const resumedP21Budget = parseP21EffectBudget(fastResumed.p21Budget);",
-)
-replace_once(
-    android,
-    "  const p21a2GraphicsPath = await evaluate(`(() => {\n    const canvas = document.querySelector('canvas');",
-    "  await waitFor(`(() => {\n    const canvas = document.querySelector('canvas');\n    return canvas?.dataset.graphicsPathSelection === 'production-default'\n      && canvas?.dataset.graphicsPathLoaded === 'babylon'\n      && canvas?.dataset.babylonInit === 'ready'\n      && (canvas?.dataset.babylonBackendLoaded ?? canvas?.dataset.babylonBackend) === 'webgl2';\n  })()`, 'P27-D7 production Babylon WebGL2 path', 45_000);\n\n  const p21a2GraphicsPath = await evaluate(`(() => {\n    const canvas = document.querySelector('canvas');",
-)
-replace_once(
-    android,
-    "      loaded: canvas.dataset.graphicsPathLoaded ?? '',\n    };\n  })()`);\n  if (!p21a2GraphicsPath\n    || p21a2GraphicsPath.selection !== 'production-default'\n    || p21a2GraphicsPath.requested !== ''\n    || p21a2GraphicsPath.loaded !== 'webgl2') {\n    throw new Error(`Android P21-A2 production graphics path changed unexpectedly: ${JSON.stringify(p21a2GraphicsPath)}`);\n  }\n  console.log('ANDROID_P21A2_GRAPHICS_PATH_PASS selection=production-default requested=none loaded=webgl2');\n\n  await waitFor(`(() => {",
-    "      loaded: canvas.dataset.graphicsPathLoaded ?? '',\n      babylonInit: canvas.dataset.babylonInit ?? '',\n      babylonBackend: canvas.dataset.babylonBackendLoaded ?? canvas.dataset.babylonBackend ?? '',\n    };\n  })()`);\n  if (!p21a2GraphicsPath\n    || p21a2GraphicsPath.selection !== 'production-default'\n    || p21a2GraphicsPath.requested !== ''\n    || p21a2GraphicsPath.loaded !== 'babylon'\n    || p21a2GraphicsPath.babylonInit !== 'ready'\n    || p21a2GraphicsPath.babylonBackend !== 'webgl2') {\n    throw new Error(`Android P27-D7 production graphics path is invalid: ${JSON.stringify(p21a2GraphicsPath)}`);\n  }\n  console.log('ANDROID_P27D7_PRODUCTION_BABYLON_PASS selection=production-default requested=none loaded=babylon backend=webgl2');\n\n  if (p21a2GraphicsPath.loaded === 'webgl2') {\n  await waitFor(`(() => {",
-)
-replace_once(
-    android,
-    "  const p22b1Geometry = await evaluate(`(() => {",
-    "  }\n\n  const p22b1Geometry = await evaluate(`(() => {",
-)
+if [[ ! -s "$SMOKE_APK" ]]; then
+  echo "Fast Android smoke APK not found: $SMOKE_APK" >&2
+  exit 1
+fi
+
+confirm_immersive_mode_for_smoke() {
+  adb shell settings put secure immersive_mode_confirmations confirmed >/dev/null 2>&1 || true
+
+  local remote_dump='/sdcard/ironshade-fast-smoke-window.xml'
+  local dump=''
+  local coords=''
+  local x=''
+  local y=''
+  for attempt in 1 2 3 4 5; do
+    adb shell uiautomator dump --compressed "$remote_dump" >/dev/null 2>&1 || true
+    dump="$(adb shell cat "$remote_dump" 2>/dev/null | tr -d '\r' || true)"
+    if [[ "$dump" != *'text="Viewing full screen"'* && "$dump" != *'text="Got it"'* ]]; then
+      echo "ANDROID_IMMERSIVE_CONFIRMATION_PASS state=clear attempt=$attempt"
+      return 0
+    fi
+
+    coords="$(printf '%s' "$dump" | python3 -c 'import re, sys, xml.etree.ElementTree as ET
+text = sys.stdin.read()
+try:
+    root = ET.fromstring(text)
+except ET.ParseError:
+    raise SystemExit(0)
+for node in root.iter("node"):
+    if node.attrib.get("text") != "Got it":
+        continue
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
+    if match:
+        left, top, right, bottom = map(int, match.groups())
+        print((left + right) // 2, (top + bottom) // 2)
+        break')"
+    if [[ -n "$coords" ]]; then
+      read -r x y <<< "$coords"
+      adb shell input tap "$x" "$y"
+    fi
+    sleep 1
+  done
+
+  echo "Immersive-mode SystemUI confirmation still covers the app after deterministic dismissal attempts." >&2
+  printf '%s\n' "$dump" >&2
+  return 1
+}
+
+wait_for_process() {
+  timeout 30 bash -c 'until [[ -n "$(adb shell pidof app.ironshade.vector 2>/dev/null | tr -d "\r")" ]]; do sleep 1; done'
+  adb shell pidof "$PACKAGE" | tr -d '\r'
+}
+
+connect_cdp() {
+  local pid="$1"
+  local socket="webview_devtools_remote_${pid}"
+  adb forward --remove tcp:9222 >/dev/null 2>&1 || true
+  adb forward tcp:9222 "localabstract:${socket}"
+}
+
+adb wait-for-device
+adb shell settings put secure immersive_mode_confirmations confirmed >/dev/null 2>&1 || true
+adb install -r "$SMOKE_APK"
+adb logcat -c
+adb shell am force-stop "$PACKAGE"
+adb shell am start -W -n "$ACTIVITY"
+confirm_immersive_mode_for_smoke
+
+APP_PID="$(wait_for_process)"
+if [[ -z "$APP_PID" ]]; then
+  echo "Ironshade Vector process did not stay running for fast smoke." >&2
+  exit 1
+fi
+
+connect_cdp "$APP_PID"
+ANDROID_FAST_SMOKE=1 CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-runtime-smoke.mjs
+adb exec-out screencap -p > android-fast-smoke.png
+test -s android-fast-smoke.png
+
+adb shell input keyevent KEYCODE_HOME
+sleep 2
+adb shell am start -W --activity-reorder-to-front -n "$ACTIVITY"
+confirm_immersive_mode_for_smoke
+RESUME_PID="$(wait_for_process)"
+if [[ -z "$RESUME_PID" ]]; then
+  echo "Ironshade Vector process did not return during D7 lifecycle smoke." >&2
+  exit 1
+fi
+
+connect_cdp "$RESUME_PID"
+if [[ "$RESUME_PID" == "$APP_PID" ]]; then
+  LIFECYCLE_MODE='preserved-resume'
+  ANDROID_FAST_RESUME_CHECK=1 CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-runtime-smoke.mjs
+else
+  echo "ANDROID_FAST_PROCESS_RECLAIM before=$APP_PID after=$RESUME_PID // verifying clean production-default recovery"
+  LIFECYCLE_MODE='reclaimed-recovered'
+  APP_PID="$RESUME_PID"
+  ANDROID_FAST_SMOKE=1 CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-runtime-smoke.mjs
+fi
+
+adb exec-out screencap -p > android-fast-resume.png
+test -s android-fast-resume.png
+
+adb logcat -d > android-fast-logcat.txt
+if grep -E 'FATAL EXCEPTION|Process: app\.ironshade\.vector' android-fast-logcat.txt; then
+  echo 'Fast Android runtime crash detected.' >&2
+  exit 1
+fi
+
+ELAPSED_SECONDS=$(( $(date +%s) - STARTED_AT ))
+echo "ANDROID_FAST_EMULATOR_PASS pid=${APP_PID} resumePid=${RESUME_PID} route=ship>contracts>combat touch=management+move+fire+ability+dodge+act controller=pointer+touch lifecycle=${LIFECYCLE_MODE} p27d7=babylon-production-default+renderer-reentry performance=js-heap crashCheck=clean screenshots=2 elapsedSeconds=${ELAPSED_SECONDS}"
+
+adb shell am force-stop "$PACKAGE" >/dev/null 2>&1 || true
+adb shell pm clear "$PACKAGE" >/dev/null 2>&1 || true
+''')
+
+contract = "tests/android-fast-smoke-contract.mjs"
+old_markers = """for (const marker of [
+  'ANDROID_FAST_SMOKE=1',
+  'ANDROID_FAST_RESUME_CHECK=1',
+  'ANDROID_P21F1_CHECK=1',
+  'ANDROID_P27D5_PHASE=interaction',
+  'ANDROID_P27D5_PHASE=resume',
+  'scripts/android-babylon-lifecycle-smoke.mjs',
+  'android-p27d5-babylon-interaction.json',
+  'android-p27d5-babylon-resume.json',
+  'android-p27d5-babylon.png',
+  'android-p27d5-babylon-resume.png',
+  'ANDROID_P27D5_PROCESS_RECLAIM',
+  'p27d5=babylon-webgl2+touch+controller+renderer-reentry+mission-reentry+resume',
+  'LIFECYCLE_ATTEMPT=1',
+  'ANDROID_FAST_PROCESS_RECLAIM',
+  're-establishing fast combat before retrying pause/resume',
+  'reclaimed during two consecutive fast pause/resume attempts',
+  'adb install -r',
+  'android-fast-smoke.png',
+  'android-fast-resume.png',
+  'android-p21f1-webgpu.png',
+  'android-fast-logcat.txt',
+  'ANDROID_FAST_EMULATOR_PASS',
+]) requireText(shell, marker, 'fast shell');
+"""
+new_markers = """for (const marker of [
+  'ANDROID_FAST_SMOKE=1',
+  'ANDROID_FAST_RESUME_CHECK=1',
+  'ANDROID_FAST_PROCESS_RECLAIM',
+  'verifying clean production-default recovery',
+  \"LIFECYCLE_MODE='preserved-resume'\",
+  \"LIFECYCLE_MODE='reclaimed-recovered'\",
+  'adb install -r',
+  'android-fast-smoke.png',
+  'android-fast-resume.png',
+  'android-fast-logcat.txt',
+  'ANDROID_FAST_EMULATOR_PASS',
+  'p27d7=babylon-production-default+renderer-reentry',
+  'performance=js-heap',
+  'FATAL EXCEPTION',
+]) requireText(shell, marker, 'fast shell');
+
+for (const migrationOnly of [
+  'ANDROID_P21F1_CHECK=1',
+  'android-p21f1-webgpu.png',
+  'ANDROID_P27D5_PHASE=interaction',
+  'ANDROID_P27D5_PHASE=resume',
+  'android-p27d5-babylon',
+  'scripts/android-babylon-lifecycle-smoke.mjs',
+  're-establishing fast combat before retrying pause/resume',
+  'reclaimed during two consecutive fast pause/resume attempts',
+]) {
+  if (shell.includes(migrationOnly)) throw new Error(`fast shell must not retain migration-only gate: ${migrationOnly}`);
+}
+"""
+replace_once(contract, old_markers, new_markers)
+
+workflow = ".github/workflows/android-apk.yml"
+for stale_path in [
+    "            android-p21f1-webgpu.png\n",
+    "            android-p27d5-babylon.png\n",
+    "            android-p27d5-babylon-resume.png\n",
+    "            android-p27d5-babylon-interaction.json\n",
+    "            android-p27d5-babylon-resume.json\n",
+]:
+    replace_once(workflow, stale_path, "")
+
+print("P27_D7_FINALIZER_APPLIED lifecycle=reclaim-recovery fastSmoke=production-default-babylon migrationFastGates=removed")
