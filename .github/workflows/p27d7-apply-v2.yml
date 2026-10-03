@@ -51,7 +51,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git add scripts/android-fast-smoke.sh tests/android-fast-smoke-contract.mjs .github/workflows/android-apk.yml
+          git add scripts/android-fast-smoke.sh tests/android-fast-smoke-contract.mjs
           git diff --cached --check
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
