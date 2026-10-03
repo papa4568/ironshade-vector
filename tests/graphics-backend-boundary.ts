@@ -15,7 +15,7 @@ function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
 }
 
-assert(productionCombatGraphicsBackendId === 'webgl2', 'P21-A1 production graphics backend must remain WebGL2.');
+assert(productionCombatGraphicsBackendId === 'babylon', 'P27-D7 production graphics backend must be Babylon.');
 
 const productionPath = resolveCombatGraphicsPathSelection('?graphicsPath=webgl2');
 const explicitPath = resolveCombatGraphicsPathSelection('?graphicsCompare=1&graphicsPath=webgl2');
@@ -25,7 +25,7 @@ const babylonWebGpuPath = resolveCombatGraphicsPathSelection('?graphicsCompare=1
 const babylonInvalidBackendPath = resolveCombatGraphicsPathSelection('?graphicsCompare=1&graphicsPath=babylon&babylonBackend=metal');
 const unknownPath = resolveCombatGraphicsPathSelection('?graphicsCompare=1&graphicsPath=metal');
 assert(
-  productionPath.mode === 'production-default' && productionPath.requestedId === null && productionPath.selectedId === 'webgl2',
+  productionPath.mode === 'production-default' && productionPath.requestedId === null && productionPath.selectedId === 'babylon',
   'P21-A2 graphics-path overrides must remain disabled unless comparison mode is explicitly enabled.',
 );
 assert(
@@ -52,12 +52,12 @@ assert(
   'P27-D1 unknown Babylon engine requests must deterministically use Babylon WebGL2.',
 );
 assert(
-  productionPath.babylonBackendRequested === null,
-  'P27-D1 production selection must not request Babylon WebGPU.',
+  productionPath.babylonBackendRequested === 'webgl2',
+  'P27-D7 production selection must deterministically request Babylon WebGL2.',
 );
 assert(
-  unknownPath.mode === 'production-default' && unknownPath.requestedId === null && unknownPath.selectedId === 'webgl2',
-  'P21-A2 unknown comparison paths must fall back to the production WebGL2 selection instead of changing runtime behavior.',
+  unknownPath.mode === 'production-default' && unknownPath.requestedId === null && unknownPath.selectedId === 'babylon',
+  'P27-D7 unknown comparison paths must fall back to the production Babylon selection instead of changing runtime behavior.',
 );
 
 const fakeBackend = {
@@ -127,16 +127,31 @@ const supportedBabylonFactory = {
 } as CombatGraphicsBackendFactory;
 
 assert(
-  selectCombatGraphicsBackendFactory([unsupportedFactory, supportedFactory]) === supportedFactory,
-  'P21-A1 backend selection must choose the first supported production WebGL2 factory.',
+  selectCombatGraphicsBackendFactory([supportedFactory, supportedBabylonFactory]) === supportedBabylonFactory,
+  'P27-D7 default backend selection must choose Babylon in production.',
 );
 assert(
-  createCombatGraphicsBackend({} as HTMLCanvasElement, false, [unsupportedFactory]) === null,
-  'P21-A1 backend creation must preserve the Canvas 2D fallback when WebGL2 is unsupported.',
+  createCombatGraphicsBackend(
+    {} as HTMLCanvasElement,
+    false,
+    [supportedFactory, supportedBabylonFactory],
+    productionPath.selectedId,
+    { babylonBackend: productionPath.babylonBackendRequested ?? undefined },
+  ) === fakeBabylonBackend && capturedBabylonBackend === 'webgl2',
+  'P27-D7 production creation must select Babylon WebGL2 without QA flags.',
+);
+
+assert(
+  selectCombatGraphicsBackendFactory([unsupportedFactory, supportedFactory], explicitPath.selectedId) === supportedFactory,
+  'P27-D7 explicit Three rollback selection must choose the supported WebGL2 factory.',
 );
 assert(
-  createCombatGraphicsBackend({} as HTMLCanvasElement, false, [unsupportedFactory, supportedFactory]) === fakeBackend && createCount === 1,
-  'P21-A1 backend creation must instantiate the selected renderer exactly once.',
+  createCombatGraphicsBackend({} as HTMLCanvasElement, false, [unsupportedFactory], explicitPath.selectedId) === null,
+  'P27-D7 explicit Three rollback must preserve the Canvas 2D fallback when WebGL2 is unsupported.',
+);
+assert(
+  createCombatGraphicsBackend({} as HTMLCanvasElement, false, [unsupportedFactory, supportedFactory], explicitPath.selectedId) === fakeBackend && createCount === 1,
+  'P27-D7 explicit Three rollback must instantiate the selected renderer exactly once.',
 );
 assert(
   createCombatGraphicsBackend({} as HTMLCanvasElement, false, [supportedFactory], explicitPath.selectedId) === fakeBackend && createCount === 2,
@@ -165,12 +180,12 @@ assert(
   'P27-A2 explicit Babylon selection must choose the Babylon QA backend when WebGL2 is supported.',
 );
 assert(
-  selectCombatGraphicsBackendFactory([supportedFactory, unsupportedBabylonFactory], babylonPath.selectedId) === supportedFactory,
-  'P27-A2 unsupported Babylon must fall back to the supported production WebGL2 factory.',
+  selectCombatGraphicsBackendFactory([supportedFactory, unsupportedBabylonFactory], babylonPath.selectedId) === null,
+  'P27-D7 unsupported production Babylon must not silently cross into the Three rollback renderer.',
 );
 assert(
-  createCombatGraphicsBackend({} as HTMLCanvasElement, false, [supportedFactory, unsupportedBabylonFactory], babylonPath.selectedId) === fakeBackend,
-  'P27-A2 Babylon creation must preserve safe production WebGL2 fallback when unavailable.',
+  createCombatGraphicsBackend({} as HTMLCanvasElement, false, [supportedFactory, unsupportedBabylonFactory], babylonPath.selectedId) === null,
+  'P27-D7 unavailable production Babylon must fail closed instead of silently selecting Three.',
 );
 assert(
   createCombatGraphicsBackend(
@@ -210,7 +225,7 @@ assert(
   'P21-A1 combat runtime must create the renderer only through the graphics-backend boundary.',
 );
 assert(
-  boundarySource.includes("productionCombatGraphicsBackendId: CombatGraphicsBackendId = 'webgl2'")
+  boundarySource.includes("productionCombatGraphicsBackendId: CombatGraphicsBackendId = 'babylon'")
     && boundarySource.includes("new ThreeCombatRenderer(canvas, coarse)")
     && boundarySource.includes("return this.renderer.render(...args)")
     && boundarySource.includes("return this.renderer.screenDirection(...args)")
@@ -604,10 +619,10 @@ assert(
   'P21-F2 Browser E2E must preserve explicit WebGL2/WebGPU QA paths and retain deterministic stack-off/stack-on comparison evidence.',
 );
 assert(
-  androidSmokeSource.includes('ANDROID_P21A2_GRAPHICS_PATH_PASS selection=production-default requested=none loaded=webgl2')
+  androidSmokeSource.includes('ANDROID_P27D7_PRODUCTION_BABYLON_PASS selection=production-default requested=none loaded=babylon backend=webgl2')
     && androidSmokeSource.includes("p21a2GraphicsPath.selection !== 'production-default'")
-    && androidSmokeSource.includes("p21a2GraphicsPath.loaded !== 'webgl2'"),
-  'P21-A2 Android smoke must verify that production still loads WebGL2 without the QA selector.',
+    && androidSmokeSource.includes("p21a2GraphicsPath.loaded !== 'babylon'"),
+  'P27-D7 Android smoke must verify that production loads Babylon WebGL2 without a QA selector.',
 );
 
 const renderStart = rendererSource.indexOf('  render(state: SimState');
@@ -657,7 +672,8 @@ assert(
   'P21-A1 renderer disposal must continue reclaiming scene and WebGL resources.',
 );
 
-console.log('P21_A1_GRAPHICS_BACKEND_PASS default=webgl2 create=boundary render=delegated resize=preserved pointer=preserved dispose=preserved fallback=canvas2d');
+console.log('P21_A1_GRAPHICS_BACKEND_PASS rollback=webgl2 create=boundary render=delegated resize=preserved pointer=preserved dispose=preserved fallback=canvas2d');
+console.log('P27_D7_PRODUCTION_CUTOVER_PASS production=babylon backend=webgl2 rollback=webgl2 selector=graphicsCompare+graphicsPath');
 console.log('P27_A1_NEUTRAL_GRAPHICS_CONTRACT_PASS render=explicit stats=explicit pointer=explicit lifecycle=explicit loaded=explicit webgl2=implemented webgpu=implemented');
 console.log('P27_A2_BABYLON_QA_BACKEND_PASS production=webgl2 qa=babylon lazy=true default=webgl2 telemetry=init+backend+scene+frames+dispose dependencies=core+loaders-pinned');
 console.log('P27_D1_BABYLON_WEBGPU_BACKEND_PASS qa=optional-webgpu fallback=babylon-webgl2 three-fallback=disabled selection=pre-scene telemetry=requested+loaded+fallback android=webgl2-required');

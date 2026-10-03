@@ -320,7 +320,7 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
   }
 }
 
-export const productionCombatGraphicsBackendId: CombatGraphicsBackendId = 'webgl2';
+export const productionCombatGraphicsBackendId: CombatGraphicsBackendId = 'babylon';
 
 export type CombatGraphicsPathSelection = {
   mode: 'production-default' | 'qa-explicit';
@@ -350,7 +350,7 @@ export function resolveCombatGraphicsPathSelection(search: string): CombatGraphi
     mode: 'production-default',
     requestedId: null,
     selectedId: productionCombatGraphicsBackendId,
-    babylonBackendRequested: null,
+    babylonBackendRequested: 'webgl2',
   };
 }
 
@@ -385,6 +385,11 @@ export function selectCombatGraphicsBackendFactory(
 ) {
   const selected = factories.find(factory => factory.id === selectedId && factory.isSupported());
   if (selected) return selected;
+  // Keep the legacy P21 WebGPU comparison fallback pinned to Three WebGL2 for the
+  // P27-D7 verification cycle. D8 retires both legacy Three paths after cutover.
+  if (selectedId === 'webgpu') {
+    return factories.find(factory => factory.id === 'webgl2' && factory.isSupported()) ?? null;
+  }
   if (selectedId !== productionCombatGraphicsBackendId) {
     return factories.find(factory => factory.id === productionCombatGraphicsBackendId && factory.isSupported()) ?? null;
   }

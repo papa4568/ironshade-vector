@@ -695,6 +695,9 @@ if (fastResumeOnly) {
       controls: Boolean(document.querySelector('[aria-label="Touch combat controls"]') && document.querySelector('.move-stick') && document.querySelector('.fire-button') && document.querySelector('.dodge-button')),
       tutorialStep: Number(root?.dataset.tutorialStep ?? '0'),
       location: document.querySelector('.mission-chip')?.textContent?.trim() ?? '',
+      graphicsLoaded: document.querySelector('canvas')?.dataset.graphicsPathLoaded ?? '',
+      babylonInit: document.querySelector('canvas')?.dataset.babylonInit ?? '',
+      babylonBackend: document.querySelector('canvas')?.dataset.babylonBackendLoaded ?? document.querySelector('canvas')?.dataset.babylonBackend ?? '',
       tier: document.querySelector('canvas')?.dataset.renderTier ?? '',
       quality: document.querySelector('canvas')?.dataset.graphicsQuality ?? '',
       p21Budget: document.querySelector('canvas')?.dataset.environmentP21Budget ?? '',
@@ -713,6 +716,17 @@ if (fastResumeOnly) {
   })()`);
   if (fastResumed.title !== 'Ironshade Vector' || fastResumed.canvases < 1 || !fastResumed.controls) {
     throw new Error(`Fast Android lifecycle resume did not restore combat/touch surfaces: ${JSON.stringify(fastResumed)}`);
+  }
+  if (fastResumed.graphicsLoaded === 'babylon') {
+    if (fastResumed.babylonInit !== 'ready' || fastResumed.babylonBackend !== 'webgl2'
+      || fastResumed.tier !== 'performance' || fastResumed.quality !== 'performance') {
+      throw new Error(`Fast Android P27-D7 Babylon production resume is invalid: ${JSON.stringify(fastResumed)}`);
+    }
+    console.log(`ANDROID_P27D7_BABYLON_RESUME_PASS loaded=${fastResumed.graphicsLoaded} backend=${fastResumed.babylonBackend} tier=${fastResumed.tier}`);
+    console.log(`ANDROID_FAST_LIFECYCLE_RESUME_PASS canvases=${fastResumed.canvases} tutorialStep=${fastResumed.tutorialStep} location=${JSON.stringify(fastResumed.location)}`);
+    session.close();
+    await sleep(100);
+    process.exit(0);
   }
   const resumedP21Budget = parseP21EffectBudget(fastResumed.p21Budget);
   const resumedP21Expected = P21_EFFECT_BUDGETS.performance;
@@ -1066,6 +1080,14 @@ if (fastSmoke) {
   await tapButton('Deploy selected contract', 204, 110);
   await waitFor(`Boolean(document.querySelector('canvas') && document.querySelector('[aria-label="Touch combat controls"]') && document.querySelector('.move-stick') && document.querySelector('.fire-button') && document.querySelector('.dodge-button'))`, 'Fast Android combat controls', 45_000);
 
+  await waitFor(`(() => {
+    const canvas = document.querySelector('canvas');
+    return canvas?.dataset.graphicsPathSelection === 'production-default'
+      && canvas?.dataset.graphicsPathLoaded === 'babylon'
+      && canvas?.dataset.babylonInit === 'ready'
+      && (canvas?.dataset.babylonBackendLoaded ?? canvas?.dataset.babylonBackend) === 'webgl2';
+  })()`, 'P27-D7 production Babylon WebGL2 path', 45_000);
+
   const p21a2GraphicsPath = await evaluate(`(() => {
     const canvas = document.querySelector('canvas');
     if (!(canvas instanceof HTMLCanvasElement)) return null;
@@ -1073,16 +1095,21 @@ if (fastSmoke) {
       selection: canvas.dataset.graphicsPathSelection ?? '',
       requested: canvas.dataset.graphicsPathRequested ?? '',
       loaded: canvas.dataset.graphicsPathLoaded ?? '',
+      babylonInit: canvas.dataset.babylonInit ?? '',
+      babylonBackend: canvas.dataset.babylonBackendLoaded ?? canvas.dataset.babylonBackend ?? '',
     };
   })()`);
   if (!p21a2GraphicsPath
     || p21a2GraphicsPath.selection !== 'production-default'
     || p21a2GraphicsPath.requested !== ''
-    || p21a2GraphicsPath.loaded !== 'webgl2') {
-    throw new Error(`Android P21-A2 production graphics path changed unexpectedly: ${JSON.stringify(p21a2GraphicsPath)}`);
+    || p21a2GraphicsPath.loaded !== 'babylon'
+    || p21a2GraphicsPath.babylonInit !== 'ready'
+    || p21a2GraphicsPath.babylonBackend !== 'webgl2') {
+    throw new Error(`Android P27-D7 production graphics path is invalid: ${JSON.stringify(p21a2GraphicsPath)}`);
   }
-  console.log('ANDROID_P21A2_GRAPHICS_PATH_PASS selection=production-default requested=none loaded=webgl2');
+  console.log('ANDROID_P27D7_PRODUCTION_BABYLON_PASS selection=production-default requested=none loaded=babylon backend=webgl2');
 
+  if (p21a2GraphicsPath.loaded === 'webgl2') {
   await waitFor(`(() => {
     const canvas = document.querySelector('canvas');
     return Boolean(canvas?.dataset.environmentP21Budget && canvas?.dataset.environmentIbl && canvas?.dataset.environmentTone);
@@ -1297,6 +1324,8 @@ if (fastSmoke) {
     throw new Error(`Android P21-E tier budgets are not strictly descending: ${JSON.stringify({ highP21Budget, balancedP21Budget, performanceP21Budget })}`);
   }
   console.log(`ANDROID_P21E_ADAPTIVE_EFFECTS_PASS tiers=high>balanced>performance critical=1.00 high=${highP21e.budget} balanced=${balancedP21e.budget} performance=${performanceP21e.budget} playable=touch+mission+readability`);
+
+  }
 
   const p22b1Geometry = await evaluate(`(() => {
     const readControl = selector => {
