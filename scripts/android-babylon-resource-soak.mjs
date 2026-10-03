@@ -235,10 +235,17 @@ async function deployRefinery() {
   })()`, 'active Babylon WebGL2 renderer', 60_000);
   await waitFor(evaluate, `Number(document.querySelector('canvas')?.dataset.babylonFrames ?? '0') >= 20`, 'Babylon rendered frames', 30_000);
   await waitFor(evaluate, `Boolean(document.querySelector('canvas')?.dataset.babylonSceneTelemetry)`, 'Babylon scene telemetry', 30_000);
+  await waitFor(evaluate, `(() => {
+    const canvas = document.querySelector('canvas');
+    return Boolean(canvas
+      && canvas.dataset.babylonEnvironmentState === 'ready'
+      && canvas.dataset.babylonPlayerState === 'ready'
+      && canvas.dataset.babylonEnemyState === 'ready');
+  })()`, 'fully loaded Babylon mission assets', 60_000);
 }
 
 async function readSample(atMs) {
-  return evaluate(`(() => {
+  const sample = await evaluate(`(() => {
     const canvas = document.querySelector('canvas');
     if (!canvas) return null;
     let report = null;
@@ -269,6 +276,16 @@ async function readSample(atMs) {
       enemyState: canvas.dataset.babylonEnemyState ?? '',
     };
   })()`);
+  if (!sample) return null;
+  try {
+    const heapUsage = await call('Runtime.getHeapUsage', {}, 5_000);
+    sample.cdpHeapMb = typeof heapUsage?.usedSize === 'number' ? heapUsage.usedSize / 1048576 : null;
+    sample.cdpHeapTotalMb = typeof heapUsage?.totalSize === 'number' ? heapUsage.totalSize / 1048576 : null;
+  } catch {
+    sample.cdpHeapMb = null;
+    sample.cdpHeapTotalMb = null;
+  }
+  return sample;
 }
 
 async function exitMission(cycle) {
@@ -381,7 +398,7 @@ while (Date.now() - soakStartedAt < durationMs) {
   if (minute !== lastMinuteLogged) {
     lastMinuteLogged = minute;
     const latest = samples.at(-1) ?? initialEntry;
-    console.log(`ANDROID_P27D6_SOAK_PROGRESS minute=${minute}/${soakMinutes} samples=${samples.length} cycles=${lifecycle.length}/${desiredLifecycleCycles} frameP95=${latest?.report?.frameP95Ms ?? 'na'} heap=${latest?.report?.categories?.gc?.heapMb?.actual ?? latest?.jsHeapMb ?? 'na'} resources=${latest?.sceneTelemetry ?? 'na'}`);
+    console.log(`ANDROID_P27D6_SOAK_PROGRESS minute=${minute}/${soakMinutes} samples=${samples.length} cycles=${lifecycle.length}/${desiredLifecycleCycles} frameP95=${latest?.report?.frameP95Ms ?? 'na'} cdpHeap=${latest?.cdpHeapMb ?? 'na'} perfHeap=${latest?.report?.categories?.gc?.heapMb?.actual ?? latest?.jsHeapMb ?? 'na'} resources=${latest?.sceneTelemetry ?? 'na'}`);
   }
   await sleep(250);
 }
@@ -399,11 +416,13 @@ if (samples.some(sample => sample.requested !== 'babylon' || sample.loaded !== '
 }
 
 const frameP95 = samples.map(sample => Number(sample.report?.frameP95Ms)).filter(Number.isFinite);
+const cdpHeap = samples.map(sample => Number(sample.cdpHeapMb)).filter(value => Number.isFinite(value) && value > 0);
 const heapP95 = samples.map(sample => Number(sample.report?.categories?.gc?.heapMb?.actual)).filter(value => Number.isFinite(value) && value > 0);
 const jsHeap = samples.map(sample => Number(sample.jsHeapMb)).filter(value => Number.isFinite(value) && value > 0);
 const frameBaseline = edgeMedian(frameP95);
 const frameFinal = edgeMedian(frameP95, true);
-const heapSeries = heapP95.length >= 6 ? heapP95 : jsHeap;
+const heapSeries = cdpHeap.length >= 6 ? cdpHeap : heapP95.length >= 6 ? heapP95 : jsHeap;
+const heapSource = cdpHeap.length >= 6 ? 'cdp-runtime' : heapP95.length >= 6 ? 'performance-diagnostics' : jsHeap.length ? 'performance.memory' : 'unavailable';
 const heapBaseline = edgeMedian(heapSeries);
 const heapFinal = edgeMedian(heapSeries, true);
 const frameDelta = frameBaseline != null && frameFinal != null ? frameFinal - frameBaseline : null;
@@ -428,7 +447,7 @@ const resourceRegressed = Boolean(initialResources && finalResources) && (
 );
 
 const summary = {
-  version: 'p27-d6-babylon-v1',
+  version: 'p27-d6-babylon-v2',
   requestedMinutes: soakMinutes,
   elapsedSeconds: Math.round((Date.now() - soakStartedAt) / 1000),
   setupSeconds: Math.round((soakStartedAt - runnerStartedAt) / 1000),
@@ -437,14 +456,14 @@ const summary = {
   missionEntries: missionEntries.length,
   activity: { inputBursts, restarts, reruns, deepTransitions },
   frameP95: { baselineMs: frameBaseline, finalMs: frameFinal, deltaMs: frameDelta, regressed: frameRegressed },
-  heap: { source: heapP95.length >= 6 ? 'performance-diagnostics' : jsHeap.length ? 'performance.memory' : 'unavailable', baselineMb: heapBaseline, finalMb: heapFinal, deltaMb: heapDelta, regressed: heapRegressed },
+  heap: { source: heapSource, baselineMb: heapBaseline, finalMb: heapFinal, deltaMb: heapDelta, regressed: heapRegressed },
   resources: { initial: initialResources, final: finalResources, max: maxResources, cacheBudgetViolations: cacheBudgetViolations.length, regressed: resourceRegressed },
   final: samples.at(-1),
 };
 fs.writeFileSync('android-p27d6-babylon-soak.json', JSON.stringify({ summary, lifecycle, missionEntries, samples }, null, 2));
 
 if (frameRegressed) throw new Error(`Sustained Babylon frame pacing regressed: baseline=${frameBaseline}ms final=${frameFinal}ms`);
-if (heapRegressed) throw new Error(`Sustained Babylon JS heap growth exceeded leak gate: baseline=${heapBaseline}MB final=${heapFinal}MB`);
+if (heapRegressed) throw new Error(`Sustained Babylon JS heap growth exceeded leak gate: source=${heapSource} baseline=${heapBaseline}MB final=${heapFinal}MB`);
 if (resourceRegressed) throw new Error(`Babylon renderer resources did not remain bounded across recreation: ${JSON.stringify(summary.resources)}`);
 
-console.log(`ANDROID_P27D6_WEBVIEW_PASS duration=${summary.elapsedSeconds}s samples=${samples.length} cycles=${lifecycle.length} entries=${missionEntries.length} frameBaseline=${frameBaseline ?? 'na'} frameFinal=${frameFinal ?? 'na'} heapBaseline=${heapBaseline ?? 'na'} heapFinal=${heapFinal ?? 'na'} resourcesInitial=${JSON.stringify(initialResources)} resourcesFinal=${JSON.stringify(finalResources)} cacheBudgetViolations=${cacheBudgetViolations.length}`);
+console.log(`ANDROID_P27D6_WEBVIEW_PASS duration=${summary.elapsedSeconds}s samples=${samples.length} cycles=${lifecycle.length} entries=${missionEntries.length} frameBaseline=${frameBaseline ?? 'na'} frameFinal=${frameFinal ?? 'na'} heapSource=${heapSource} heapBaseline=${heapBaseline ?? 'na'} heapFinal=${heapFinal ?? 'na'} resourcesInitial=${JSON.stringify(initialResources)} resourcesFinal=${JSON.stringify(finalResources)} cacheBudgetViolations=${cacheBudgetViolations.length}`);
