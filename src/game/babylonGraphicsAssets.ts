@@ -70,6 +70,10 @@ type BabylonGraphicsAssetCacheEntry = {
 
 type P27D6BabylonPrototypeRegistry = Record<string, object>;
 
+type BabylonEngineCreationOptions = {
+  loseContextOnDispose?: boolean;
+};
+
 function registerP27D6BabylonPrototype(name: string, value: object) {
   if (typeof location === 'undefined' || new URLSearchParams(location.search).get('p27d6Soak') !== '1') return;
   const scope = globalThis as typeof globalThis & {
@@ -79,6 +83,13 @@ function registerP27D6BabylonPrototype(name: string, value: object) {
   if (!prototype) return;
   const registry = scope.__ironshadeP27D6BabylonPrototypes ??= {};
   registry[name] ??= prototype;
+}
+
+function configureBabylonWebGlContextDisposal(scene: Scene) {
+  const engine = scene.getEngine();
+  if (engine.getClassName() !== 'Engine') return;
+  const creationOptions = (engine as unknown as { _creationOptions?: BabylonEngineCreationOptions })._creationOptions;
+  if (creationOptions) creationOptions.loseContextOnDispose = true;
 }
 
 function resolveRuntimeCodecUrl(path: string) {
@@ -164,6 +175,7 @@ export class BabylonGraphicsAssetRuntime {
   constructor(scene: Scene, loadContainer: BabylonGraphicsAssetContainerLoader = loadAssetContainerFromUrl) {
     this.scene = scene;
     this.loadContainer = loadContainer;
+    configureBabylonWebGlContextDisposal(scene);
     registerP27D6BabylonPrototype('assetRuntime', this);
     registerP27D6BabylonPrototype('scene', scene);
     registerP27D6BabylonPrototype('engine', scene.getEngine());
