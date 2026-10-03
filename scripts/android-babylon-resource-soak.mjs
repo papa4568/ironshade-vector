@@ -347,11 +347,11 @@ let inputBursts = 0;
 let restarts = 0;
 let reruns = 0;
 let deepTransitions = 0;
-let nextSampleAt = Date.now();
-let nextInputAt = Date.now();
-let nextCycleAt = Date.now() + cycleEveryMs;
-let lastMinuteLogged = -1;
 const soakStartedAt = Date.now();
+let nextSampleAt = soakStartedAt;
+let nextInputAt = soakStartedAt;
+let nextCycleAt = soakStartedAt + cycleEveryMs;
+let lastMinuteLogged = -1;
 
 const initialRetainedHeap = await collectRetainedHeap('initial', 0);
 retainedHeapCheckpoints.push(initialRetainedHeap);
@@ -380,7 +380,7 @@ while (Date.now() - soakStartedAt < durationMs) {
     lifecycle.push({ cycle, before, disposed, after, retainedHeap });
     missionEntries.push(after);
     console.log(`ANDROID_P27D6_LIFECYCLE_PASS cycle=${cycle}/${desiredLifecycleCycles} oldDisposeCount=${disposed.disposeCount} oldFrames=${disposed.frames} reentryFrames=${after.frames} retainedHeap=${retainedHeap.usedMb} resources=${after.sceneTelemetry} cache=${after.assetRuntime}`);
-    nextCycleAt = Date.now() + cycleEveryMs;
+    nextCycleAt = soakStartedAt + (lifecycle.length + 1) * cycleEveryMs;
     nextInputAt = Date.now() + 1_000;
     nextSampleAt = Date.now();
     continue;
