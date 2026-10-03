@@ -10,6 +10,15 @@ def replace_once(path: str, old: str, new: str) -> None:
     p.write_text(text.replace(old, new, 1))
 
 
+def remove_all(path: str, old: str) -> None:
+    p = Path(path)
+    text = p.read_text()
+    count = text.count(old)
+    if count < 1:
+        raise SystemExit(f"{path}: expected at least one occurrence, found none: {old[:120]!r}")
+    p.write_text(text.replace(old, ""))
+
+
 fast_shell = Path("scripts/android-fast-smoke.sh")
 fast_shell.write_text(r'''#!/usr/bin/env bash
 set -euo pipefail
@@ -199,7 +208,7 @@ for stale_contract_artifact in [
     "  'android-p27d5-babylon-interaction.json',\n",
     "  'android-p27d5-babylon-resume.json',\n",
 ]:
-    replace_once(contract, stale_contract_artifact, "")
+    remove_all(contract, stale_contract_artifact)
 
 workflow = ".github/workflows/android-apk.yml"
 for stale_path in [
