@@ -32,13 +32,13 @@ jobs:
           npm install --global npm@10.9.8
           test "$(npm --version)" = "10.9.8"
 
-      - name: Apply P27-D7 production cutover
+      - name: Apply P27-D7 Android lifecycle finalizer
         run: python3 .github/scripts/apply-p27d7.py
 
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Verify cutover boundary
+      - name: Verify graphics cutover boundary
         run: npm run test:graphics-backend
 
       - name: Verify Android smoke contract
@@ -47,14 +47,13 @@ jobs:
       - name: Run production build gate
         run: npm run build
 
-      - name: Commit verified cutover to staging branch
+      - name: Commit verified D7 finalizer to main
         shell: bash
         run: |
           set -euo pipefail
-          git switch -C p27d7-cutover
-          git add src/game/combatGraphicsBackend.ts tests/graphics-backend-boundary.ts scripts/android-runtime-smoke.mjs
+          git add scripts/android-fast-smoke.sh tests/android-fast-smoke-contract.mjs .github/workflows/android-apk.yml
           git diff --cached --check
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'feat(graphics): cut production combat over to Babylon'
-          git push --force origin p27d7-cutover
+          git commit -m 'test(android): verify Babylon cutover lifecycle recovery'
+          git push origin HEAD:main
