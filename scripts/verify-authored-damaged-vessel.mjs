@@ -1,5 +1,9 @@
+import { writeFileSync } from 'node:fs';
+
 const cdpBase = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9223';
 const timeoutMs = Number(process.env.AUTHORED_DAMAGED_VESSEL_TIMEOUT_MS ?? 45_000);
+const viewport = process.env.BROWSER_E2E_VIEWPORT ?? 'unknown';
+const reportPath = `browser-e2e-${viewport}-authored-damaged-vessel.performance.json`;
 const startedAt = Date.now();
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -71,7 +75,34 @@ async function createSession() {
   throw new Error(`Timed out finding Ironshade CDP target; targets=${JSON.stringify(lastTargets)}`);
 }
 
+function validateAuthoredState(state) {
+  const expectedKit = new Set(['broken-rib', 'breach-frame', 'salvage-rack', 'torn-plate', 'service-bundle']);
+  const kit = new Set(String(state.kit ?? '').split(',').filter(Boolean));
+  if (![...expectedKit].every(item => kit.has(item))) return 'Authored Damaged Vessel kit is incomplete';
+  if (!String(state.lod).split(',').every(value => value === '1' || value === '2')) return 'Unexpected Damaged Vessel LOD';
+  if (!(state.instances >= 50)) return 'Damaged Vessel instancing coverage is too low';
+  if (state.landmark !== 'starboard-hull-breach') return 'Damaged Vessel breach landmark is missing';
+  if (state.serviceDetails !== 'salvage-rack:6+service-bundle:5') return 'Damaged Vessel salvage/service coverage is incomplete';
+  if (state.surfaceDetail !== 'broken-rib:5+torn-plate:6+scorch:6') return 'Damaged Vessel surface damage coverage is incomplete';
+  if (state.composition !== 'broken-rib-corridor+starboard-breach+torn-shell+perimeter-salvage') return 'Damaged Vessel composition contract is missing';
+  if (state.materials !== 'scarred-hull+torn-edge+warning-emissive+salvage-status') return 'Damaged Vessel material language is missing';
+  if (state.vfx !== 'breach-vapor:18+scorch:6') return 'Damaged Vessel bounded breach VFX are missing';
+  if (!/^damaged-vessel-emergency:breach\+salvage\+contact:player\+enemy\+practical:[12]\+shadow:key$/.test(state.environmentLighting)) return 'Damaged Vessel emergency lighting recipe is missing';
+  if (!/^aces-\d+\.\d{2}$/.test(state.environmentTone)) return 'Damaged Vessel authored tone telemetry is malformed';
+  if (state.readability !== 'silhouette+damage-edge+breach-vapor+luminance') return 'Damaged Vessel readability language is missing';
+  if (!String(state.locationArt).startsWith('damaged-vessel:broken-ribs:scarred-hull')) return 'Damaged Vessel campaign art identity is not active';
+  if (!String(state.locationLighting).startsWith('damaged-vessel:emergency-amber:aces-')) return 'Damaged Vessel lighting profile is not active';
+  if (state.locationProps !== 'salvage-cases:instanced-shared-library') return 'Damaged Vessel shared salvage props are not active';
+  if (!['high', 'balanced', 'performance'].includes(state.renderTier)) return 'Adaptive render tier telemetry is missing';
+  if (!/^pixel:\d+\.\d{2}\+shadow:\d+\+vfx:\d+\.\d{2}\+transparency:\d+\.\d{2}\+reflection:\d+\.\d{2}\+secondary:\d+\.\d{2}\+detail:\d+\.\d{2}$/.test(state.renderBudget)) return 'Adaptive render budget telemetry is malformed';
+  if (!(state.width > 0 && state.height > 0)) return 'Authored Damaged Vessel canvas is not visible';
+  return '';
+}
+
 const { socket, call } = await createSession();
+let lastState = null;
+let lastMismatch = 'authored environment not observed';
+let stableSamples = 0;
 
 async function evaluate(expression) {
   const response = await call('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });
@@ -82,7 +113,6 @@ async function evaluate(expression) {
 }
 
 try {
-  let lastState = null;
   while (Date.now() - startedAt < timeoutMs) {
     lastState = await evaluate(`(() => {
       const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual);
@@ -117,36 +147,33 @@ try {
     }
 
     if (lastState?.visual === 'authored-damaged-vessel') {
-      const expectedKit = new Set(['broken-rib', 'breach-frame', 'salvage-rack', 'torn-plate', 'service-bundle']);
-      const kit = new Set(String(lastState.kit ?? '').split(',').filter(Boolean));
-      if (![...expectedKit].every(item => kit.has(item))) throw new Error(`Authored Damaged Vessel kit is incomplete: ${JSON.stringify(lastState)}`);
-      if (!String(lastState.lod).split(',').every(value => value === '1' || value === '2')) throw new Error(`Unexpected Damaged Vessel LOD: ${JSON.stringify(lastState)}`);
-      if (!(lastState.instances >= 50)) throw new Error(`Damaged Vessel instancing coverage is too low: ${JSON.stringify(lastState)}`);
-      if (lastState.landmark !== 'starboard-hull-breach') throw new Error(`Damaged Vessel breach landmark is missing: ${JSON.stringify(lastState)}`);
-      if (lastState.serviceDetails !== 'salvage-rack:6+service-bundle:5') throw new Error(`Damaged Vessel salvage/service coverage is incomplete: ${JSON.stringify(lastState)}`);
-      if (lastState.surfaceDetail !== 'broken-rib:5+torn-plate:6+scorch:6') throw new Error(`Damaged Vessel surface damage coverage is incomplete: ${JSON.stringify(lastState)}`);
-      if (lastState.composition !== 'broken-rib-corridor+starboard-breach+torn-shell+perimeter-salvage') throw new Error(`Damaged Vessel composition contract is missing: ${JSON.stringify(lastState)}`);
-      if (lastState.materials !== 'scarred-hull+torn-edge+warning-emissive+salvage-status') throw new Error(`Damaged Vessel material language is missing: ${JSON.stringify(lastState)}`);
-      if (lastState.vfx !== 'breach-vapor:18+scorch:6') throw new Error(`Damaged Vessel bounded breach VFX are missing: ${JSON.stringify(lastState)}`);
-      if (!/^damaged-vessel-emergency:breach\+salvage\+contact:player\+enemy\+practical:[12]\+shadow:key$/.test(lastState.environmentLighting)) throw new Error(`Damaged Vessel emergency lighting recipe is missing: ${JSON.stringify(lastState)}`);
-      if (!/^aces-\d+\.\d{2}$/.test(lastState.environmentTone)) throw new Error(`Damaged Vessel authored tone telemetry is malformed: ${JSON.stringify(lastState)}`);
-      if (lastState.readability !== 'silhouette+damage-edge+breach-vapor+luminance') throw new Error(`Damaged Vessel readability language is missing: ${JSON.stringify(lastState)}`);
-      if (!String(lastState.locationArt).startsWith('damaged-vessel:broken-ribs:scarred-hull')) throw new Error(`Damaged Vessel campaign art identity is not active: ${JSON.stringify(lastState)}`);
-      if (!String(lastState.locationLighting).startsWith('damaged-vessel:emergency-amber:aces-')) throw new Error(`Damaged Vessel lighting profile is not active: ${JSON.stringify(lastState)}`);
-      if (lastState.locationProps !== 'salvage-cases:instanced-shared-library') throw new Error(`Damaged Vessel shared salvage props are not active: ${JSON.stringify(lastState)}`);
-      if (!['high', 'balanced', 'performance'].includes(lastState.renderTier)) throw new Error(`Adaptive render tier telemetry is missing: ${JSON.stringify(lastState)}`);
-      if (!/^pixel:\d+\.\d{2}\+shadow:\d+\+vfx:\d+\.\d{2}\+transparency:\d+\.\d{2}\+reflection:\d+\.\d{2}\+secondary:\d+\.\d{2}\+detail:\d+\.\d{2}$/.test(lastState.renderBudget)) throw new Error(`Adaptive render budget telemetry is malformed: ${JSON.stringify(lastState)}`);
-      if (!(lastState.width > 0 && lastState.height > 0)) throw new Error(`Authored Damaged Vessel canvas is not visible: ${JSON.stringify(lastState)}`);
-      console.log(`AUTHORED_DAMAGED_VESSEL_RUNTIME_PASS lod=${lastState.lod} kit=${[...kit].sort().join(',')} instances=${lastState.instances} landmark=${lastState.landmark} service=${lastState.serviceDetails} surface=${lastState.surfaceDetail} composition=${lastState.composition} materials=${lastState.materials} vfx=${lastState.vfx} lighting=${lastState.environmentLighting} tone=${lastState.environmentTone} readability=${lastState.readability} location=${lastState.locationArt} props=${lastState.locationProps} tier=${lastState.renderTier} budget=${lastState.renderBudget} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
-      process.exitCode = 0;
-      break;
+      lastMismatch = validateAuthoredState(lastState);
+      if (!lastMismatch) {
+        stableSamples += 1;
+        if (stableSamples >= 2) {
+          const kit = new Set(String(lastState.kit ?? '').split(',').filter(Boolean));
+          console.log(`AUTHORED_DAMAGED_VESSEL_RUNTIME_PASS lod=${lastState.lod} kit=${[...kit].sort().join(',')} instances=${lastState.instances} landmark=${lastState.landmark} service=${lastState.serviceDetails} surface=${lastState.surfaceDetail} composition=${lastState.composition} materials=${lastState.materials} vfx=${lastState.vfx} lighting=${lastState.environmentLighting} tone=${lastState.environmentTone} readability=${lastState.readability} location=${lastState.locationArt} props=${lastState.locationProps} tier=${lastState.renderTier} budget=${lastState.renderBudget} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
+          writeFileSync(reportPath, JSON.stringify({ pass: true, elapsedMs: Date.now() - startedAt, stableSamples, state: lastState }, null, 2));
+          process.exitCode = 0;
+          break;
+        }
+      } else {
+        stableSamples = 0;
+      }
+    } else {
+      stableSamples = 0;
+      lastMismatch = `waiting for authored visual; observed=${lastState?.visual ?? ''}`;
     }
     await sleep(200);
   }
 
-  if (lastState?.visual !== 'authored-damaged-vessel') {
-    throw new Error(`Timed out waiting for authored Damaged Vessel environment: ${JSON.stringify(lastState)}`);
+  if (stableSamples < 2) {
+    writeFileSync(reportPath, JSON.stringify({ pass: false, elapsedMs: Date.now() - startedAt, stableSamples, mismatch: lastMismatch, state: lastState }, null, 2));
+    throw new Error(`Timed out waiting for complete stable authored Damaged Vessel environment (${lastMismatch}): ${JSON.stringify(lastState)}`);
   }
+} catch (error) {
+  writeFileSync(reportPath, JSON.stringify({ pass: false, elapsedMs: Date.now() - startedAt, stableSamples, mismatch: lastMismatch, state: lastState, error: String(error?.stack ?? error) }, null, 2));
+  throw error;
 } finally {
   socket.close();
 }
