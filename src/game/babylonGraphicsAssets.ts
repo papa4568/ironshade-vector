@@ -151,17 +151,7 @@ export class BabylonGraphicsAssetRuntime {
   constructor(scene: Scene, loadContainer: BabylonGraphicsAssetContainerLoader = loadAssetContainerFromUrl) {
     this.scene = scene;
     this.loadContainer = loadContainer;
-    scene.onDisposeObservable.addOnce(() => {
-      if (this.disposed) return;
-      const entries = [...this.cache.values()];
-      this.cache.clear();
-      this.disposed = true;
-      for (const entry of entries) {
-        entry.pendingDispose = true;
-        entry.activeInstances = 0;
-        void this.finalizeEntry(entry);
-      }
-    });
+    scene.onDisposeObservable.addOnce(() => this.disposeForSceneTeardown());
   }
 
   private assertActive() {
@@ -359,16 +349,16 @@ export class BabylonGraphicsAssetRuntime {
     }));
   }
 
+  disposeForSceneTeardown() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.cache.clear();
+  }
+
   async dispose() {
     if (this.disposed) return;
-    const entries = [...this.cache.values()];
-    this.cache.clear();
+    await this.clear();
     this.disposed = true;
-    await Promise.all(entries.map(entry => {
-      entry.pendingDispose = true;
-      entry.activeInstances = 0;
-      return this.finalizeEntry(entry);
-    }));
   }
 }
 
@@ -387,5 +377,5 @@ export async function disposeBabylonGraphicsAssetRuntime(scene: Scene) {
   const runtime = runtimesByScene.get(scene);
   if (!runtime) return;
   runtimesByScene.delete(scene);
-  await runtime.dispose();
+  runtime.disposeForSceneTeardown();
 }
