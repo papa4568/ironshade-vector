@@ -34,6 +34,10 @@ assert(
   'Babylon GLB loader must remain deferred and restricted to the glTF 2.0 loader until authored content requires extensions',
 );
 assert(!runtimeSource.includes('cdn.babylonjs.com') && !runtimeSource.includes('preview.babylonjs.com'), 'Babylon asset runtime must not hard-code a decoder CDN');
+assert(
+  runtimeSource.includes("engine.getClassName() !== 'Engine'") && runtimeSource.includes('creationOptions.loseContextOnDispose = true'),
+  'Babylon WebGL engine teardown must explicitly release its WebGL context while leaving WebGPU untouched',
+);
 
 const decoderUrls = configureBabylonGraphicsDecoders();
 for (const [name, url] of Object.entries(decoderUrls)) {
@@ -173,7 +177,7 @@ async function run() {
   teardownEngine.dispose();
   
   console.log(
-    `BABYLON_GRAPHICS_ASSETS_PASS operatorLod1=${operatorLod1.id} operatorLod2=${operatorLod2.id} refinery=${refineryLod1.id} localCodecs=true instancing=static-native cacheTrim=count+bytes cacheLoads=${[...loadCounts.values()].reduce((sum, count) => sum + count, 0)} teardownDispose=${teardownDisposeCount}`,
+    `BABYLON_GRAPHICS_ASSETS_PASS operatorLod1=${operatorLod1.id} operatorLod2=${operatorLod2.id} refinery=${refineryLod1.id} localCodecs=true instancing=static-native cacheTrim=count+bytes cacheLoads=${[...loadCounts.values()].reduce((sum, count) => sum + count, 0)} teardownDispose=${teardownDisposeCount} webglContextRelease=true`,
   );
   
 }
