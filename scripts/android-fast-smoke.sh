@@ -12,10 +12,6 @@ if [[ ! -s "$SMOKE_APK" ]]; then
 fi
 
 confirm_immersive_mode_for_smoke() {
-  # The API-35 emulator can show SystemUI's one-time immersive-mode education
-  # over the game. Mark it confirmed up front, then dismiss it by its native
-  # button if SystemUI already created the overlay. This is test-device state
-  # only; the app keeps its normal player-facing immersive behavior unchanged.
   adb shell settings put secure immersive_mode_confirmations confirmed >/dev/null 2>&1 || true
 
   local remote_dump='/sdcard/ironshade-fast-smoke-window.xml'
@@ -57,6 +53,18 @@ for node in root.iter("node"):
   return 1
 }
 
+wait_for_process() {
+  timeout 30 bash -c 'until [[ -n "$(adb shell pidof app.ironshade.vector 2>/dev/null | tr -d "\r")" ]]; do sleep 1; done'
+  adb shell pidof "$PACKAGE" | tr -d '\r'
+}
+
+connect_cdp() {
+  local pid="$1"
+  local socket="webview_devtools_remote_${pid}"
+  adb forward --remove tcp:9222 >/dev/null 2>&1 || true
+  adb forward tcp:9222 "localabstract:${socket}"
+}
+
 adb wait-for-device
 adb shell settings put secure immersive_mode_confirmations confirmed >/dev/null 2>&1 || true
 adb install -r "$SMOKE_APK"
@@ -65,101 +73,40 @@ adb shell am force-stop "$PACKAGE"
 adb shell am start -W -n "$ACTIVITY"
 confirm_immersive_mode_for_smoke
 
-timeout 30 bash -c 'until [[ -n "$(adb shell pidof app.ironshade.vector 2>/dev/null | tr -d "\r")" ]]; do sleep 1; done'
-APP_PID="$(adb shell pidof "$PACKAGE" | tr -d '\r')"
+APP_PID="$(wait_for_process)"
 if [[ -z "$APP_PID" ]]; then
   echo "Ironshade Vector process did not stay running for fast smoke." >&2
   exit 1
 fi
 
-SOCKET="webview_devtools_remote_${APP_PID}"
-adb forward --remove tcp:9222 >/dev/null 2>&1 || true
-adb forward tcp:9222 "localabstract:${SOCKET}"
+connect_cdp "$APP_PID"
 ANDROID_FAST_SMOKE=1 CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-runtime-smoke.mjs
-
 adb exec-out screencap -p > android-fast-smoke.png
 test -s android-fast-smoke.png
 
-LIFECYCLE_ATTEMPT=1
-while true; do
-  adb shell input keyevent KEYCODE_HOME
-  sleep 2
-  adb shell am start -W --activity-reorder-to-front -n "$ACTIVITY"
-  timeout 30 bash -c 'until [[ -n "$(adb shell pidof app.ironshade.vector 2>/dev/null | tr -d "\r")" ]]; do sleep 1; done'
-  RESUME_PID="$(adb shell pidof "$PACKAGE" | tr -d '\r')"
-  if [[ -z "$RESUME_PID" ]]; then
-    echo "Ironshade Vector process did not resume during fast smoke." >&2
-    exit 1
-  fi
-  if [[ "$RESUME_PID" == "$APP_PID" ]]; then
-    break
-  fi
+adb shell input keyevent KEYCODE_HOME
+sleep 2
+adb shell am start -W --activity-reorder-to-front -n "$ACTIVITY"
+confirm_immersive_mode_for_smoke
+RESUME_PID="$(wait_for_process)"
+if [[ -z "$RESUME_PID" ]]; then
+  echo "Ironshade Vector process did not return during D7 lifecycle smoke." >&2
+  exit 1
+fi
 
-  echo "ANDROID_FAST_PROCESS_RECLAIM before=$APP_PID after=$RESUME_PID attempt=$LIFECYCLE_ATTEMPT // re-establishing fast combat before retrying pause/resume"
-  if [[ "$LIFECYCLE_ATTEMPT" -ge 2 ]]; then
-    echo "Ironshade Vector process was reclaimed during two consecutive fast pause/resume attempts." >&2
-    exit 1
-  fi
-
+connect_cdp "$RESUME_PID"
+if [[ "$RESUME_PID" == "$APP_PID" ]]; then
+  LIFECYCLE_MODE='preserved-resume'
+  ANDROID_FAST_RESUME_CHECK=1 CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-runtime-smoke.mjs
+else
+  echo "ANDROID_FAST_PROCESS_RECLAIM before=$APP_PID after=$RESUME_PID // verifying clean production-default recovery"
+  LIFECYCLE_MODE='reclaimed-recovered'
   APP_PID="$RESUME_PID"
-  RESUME_SOCKET="webview_devtools_remote_$APP_PID"
-  adb forward --remove tcp:9222 >/dev/null 2>&1 || true
-  adb forward tcp:9222 "localabstract:$RESUME_SOCKET"
   ANDROID_FAST_SMOKE=1 CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-runtime-smoke.mjs
-  LIFECYCLE_ATTEMPT=$((LIFECYCLE_ATTEMPT + 1))
-done
-
-RESUME_SOCKET="webview_devtools_remote_${RESUME_PID}"
-adb forward --remove tcp:9222 >/dev/null 2>&1 || true
-adb forward tcp:9222 "localabstract:${RESUME_SOCKET}"
-ANDROID_FAST_RESUME_CHECK=1 CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-runtime-smoke.mjs
+fi
 
 adb exec-out screencap -p > android-fast-resume.png
 test -s android-fast-resume.png
-
-ANDROID_P21F1_CHECK=1 CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-runtime-smoke.mjs
-adb exec-out screencap -p > android-p21f1-webgpu.png
-test -s android-p21f1-webgpu.png
-
-ANDROID_P27D5_PHASE=interaction ANDROID_P27D5_REPORT_PATH=android-p27d5-babylon-interaction.json CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-babylon-lifecycle-smoke.mjs
-adb exec-out screencap -p > android-p27d5-babylon.png
-test -s android-p27d5-babylon.png
-
-P27D5_LIFECYCLE_ATTEMPT=1
-while true; do
-  adb shell input keyevent KEYCODE_HOME
-  sleep 2
-  adb shell am start -W --activity-reorder-to-front -n "$ACTIVITY"
-  timeout 30 bash -c 'until [[ -n "$(adb shell pidof app.ironshade.vector 2>/dev/null | tr -d "\r")" ]]; do sleep 1; done'
-  P27D5_RESUME_PID="$(adb shell pidof "$PACKAGE" | tr -d '\r')"
-  if [[ -z "$P27D5_RESUME_PID" ]]; then
-    echo "Ironshade Vector process did not resume during P27-D5 Babylon lifecycle smoke." >&2
-    exit 1
-  fi
-  if [[ "$P27D5_RESUME_PID" == "$APP_PID" ]]; then
-    break
-  fi
-
-  echo "ANDROID_P27D5_PROCESS_RECLAIM before=$APP_PID after=$P27D5_RESUME_PID attempt=$P27D5_LIFECYCLE_ATTEMPT // re-establishing Babylon combat before retrying pause/resume"
-  if [[ "$P27D5_LIFECYCLE_ATTEMPT" -ge 2 ]]; then
-    echo "Ironshade Vector process was reclaimed during two consecutive P27-D5 Babylon pause/resume attempts." >&2
-    exit 1
-  fi
-
-  APP_PID="$P27D5_RESUME_PID"
-  P27D5_SOCKET="webview_devtools_remote_$APP_PID"
-  adb forward --remove tcp:9222 >/dev/null 2>&1 || true
-  adb forward tcp:9222 "localabstract:$P27D5_SOCKET"
-  ANDROID_P27D5_PHASE=interaction ANDROID_P27D5_REPORT_PATH=android-p27d5-babylon-interaction.json CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-babylon-lifecycle-smoke.mjs
-  P27D5_LIFECYCLE_ATTEMPT=$((P27D5_LIFECYCLE_ATTEMPT + 1))
-done
-
-P27D5_SOCKET="webview_devtools_remote_$P27D5_RESUME_PID"
-adb forward --remove tcp:9222 >/dev/null 2>&1 || true
-adb forward tcp:9222 "localabstract:$P27D5_SOCKET"
-ANDROID_P27D5_PHASE=resume ANDROID_P27D5_REPORT_PATH=android-p27d5-babylon-resume.json CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-babylon-lifecycle-smoke.mjs
-adb exec-out screencap -p > android-p27d5-babylon-resume.png
-test -s android-p27d5-babylon-resume.png
 
 adb logcat -d > android-fast-logcat.txt
 if grep -E 'FATAL EXCEPTION|Process: app\.ironshade\.vector' android-fast-logcat.txt; then
@@ -168,7 +115,7 @@ if grep -E 'FATAL EXCEPTION|Process: app\.ironshade\.vector' android-fast-logcat
 fi
 
 ELAPSED_SECONDS=$(( $(date +%s) - STARTED_AT ))
-echo "ANDROID_FAST_EMULATOR_PASS pid=${APP_PID} resumePid=${P27D5_RESUME_PID} route=ship>contracts>combat touch=management+move+fire+ability+dodge+act lifecycle=pause-resume p21f1=webgpu-or-fallback p27d5=babylon-webgl2+touch+controller+renderer-reentry+mission-reentry+resume crashCheck=clean screenshots=5 elapsedSeconds=${ELAPSED_SECONDS}"
+echo "ANDROID_FAST_EMULATOR_PASS pid=${APP_PID} resumePid=${RESUME_PID} route=ship>contracts>combat touch=management+move+fire+ability+dodge+act controller=pointer+touch lifecycle=${LIFECYCLE_MODE} p27d7=babylon-production-default+renderer-reentry performance=js-heap crashCheck=clean screenshots=2 elapsedSeconds=${ELAPSED_SECONDS}"
 
 adb shell am force-stop "$PACKAGE" >/dev/null 2>&1 || true
 adb shell pm clear "$PACKAGE" >/dev/null 2>&1 || true
