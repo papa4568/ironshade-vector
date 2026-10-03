@@ -165,11 +165,11 @@ async function run() {
   };
   const teardownRuntime = new BabylonGraphicsAssetRuntime(teardownScene, teardownLoader);
   await teardownRuntime.instantiate(operatorLod1);
-  const teardownDispose = teardownRuntime.dispose();
+  teardownRuntime.disposeForSceneTeardown();
+  assert(teardownRuntime.stats().cachedAssets === 0, 'renderer teardown must synchronously drop Babylon runtime cache references before scene disposal');
   teardownScene.dispose();
-  await teardownDispose;
   await Promise.resolve();
-  assert(teardownDisposeCount === 1, `renderer teardown must dispose mounted cached source resources exactly once, got ${teardownDisposeCount}`);
+  assert(teardownDisposeCount === 1, `renderer teardown must leave source-container ownership to Babylon scene disposal, got ${teardownDisposeCount} disposals`);
   teardownEngine.dispose();
   
   console.log(
