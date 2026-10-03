@@ -6,6 +6,7 @@ PACKAGE="app.ironshade.vector"
 ACTIVITY="${PACKAGE}/.MainActivity"
 SOAK_MINUTES="${ANDROID_P27D6_SOAK_MINUTES:-30}"
 MEMORY_LOG="android-p27d6-memory.txt"
+CENSUS_PID=""
 
 if [[ ! -s "$SMOKE_APK" ]]; then
   echo "Babylon resource soak APK not found: $SMOKE_APK" >&2
@@ -45,12 +46,19 @@ MEMORY_SAMPLER_PID=$!
 cleanup() {
   kill "$MEMORY_SAMPLER_PID" >/dev/null 2>&1 || true
   wait "$MEMORY_SAMPLER_PID" >/dev/null 2>&1 || true
+  if [[ -n "$CENSUS_PID" ]]; then
+    kill "$CENSUS_PID" >/dev/null 2>&1 || true
+    wait "$CENSUS_PID" >/dev/null 2>&1 || true
+  fi
 }
 trap cleanup EXIT
 
 SOCKET="webview_devtools_remote_${APP_PID}"
 adb forward --remove tcp:9222 >/dev/null 2>&1 || true
 adb forward tcp:9222 "localabstract:${SOCKET}"
+
+CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-babylon-retention-census.mjs &
+CENSUS_PID=$!
 
 set +e
 ANDROID_P27D6_SOAK_MINUTES="$SOAK_MINUTES" CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-babylon-resource-soak.mjs
