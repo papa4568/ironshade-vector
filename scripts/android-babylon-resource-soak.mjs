@@ -275,18 +275,16 @@ async function exitMission(cycle) {
   const stored = await evaluate(`(() => {
     const canvas = document.querySelector('canvas');
     if (!canvas) return false;
-    globalThis.__ironshadeP27D6ExitedCanvases ??= [];
-    globalThis.__ironshadeP27D6ExitedCanvases.push(canvas);
+    globalThis.__ironshadeP27D6ExitedCanvas = canvas;
     window.dispatchEvent(new Event('ironshade:p27d5-return-to-hub'));
     return true;
   })()`);
   if (!stored) throw new Error(`P27-D6 lifecycle cycle ${cycle} could not retain the exiting canvas.`);
   await waitFor(evaluate, `[...document.querySelectorAll('button')].some(button => button.getAttribute('data-primary-area') === 'operations') && !document.querySelector('canvas')`, `Command Deck after lifecycle cycle ${cycle}`, 25_000);
   const disposed = await evaluate(`(() => {
-    const canvases = globalThis.__ironshadeP27D6ExitedCanvases ?? [];
-    const canvas = canvases[canvases.length - 1];
+    const canvas = globalThis.__ironshadeP27D6ExitedCanvas;
     if (!canvas) return null;
-    return {
+    const result = {
       connected: canvas.isConnected,
       disposed: canvas.dataset.babylonDisposed ?? '',
       scene: canvas.dataset.babylonScene ?? '',
@@ -295,6 +293,8 @@ async function exitMission(cycle) {
       sceneTelemetry: canvas.dataset.babylonSceneTelemetry ?? '',
       assetRuntime: canvas.dataset.babylonEnvironmentRuntime || canvas.dataset.babylonPlayerRuntime || canvas.dataset.babylonEnemyRuntime || '',
     };
+    delete globalThis.__ironshadeP27D6ExitedCanvas;
+    return result;
   })()`);
   if (!disposed || disposed.connected || disposed.disposed !== 'true' || disposed.scene !== 'disposed' || disposed.disposeCount < 1) {
     throw new Error(`Babylon renderer did not dispose cleanly during lifecycle cycle ${cycle}: ${JSON.stringify(disposed)}`);
