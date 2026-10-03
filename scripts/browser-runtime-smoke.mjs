@@ -2,7 +2,7 @@ import { writeFile } from 'node:fs/promises';
 
 const cdpBase = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9223';
 const appUrl = process.env.BROWSER_E2E_APP_URL ?? 'http://127.0.0.1:4173/';
-const requestedGraphicsPath = (process.env.BROWSER_E2E_GRAPHICS_PATH ?? '').trim();
+const requestedGraphicsPath = (process.env.BROWSER_E2E_GRAPHICS_PATH ?? 'webgl2').trim();
 const requestedBabylonBackend = (process.env.BROWSER_E2E_BABYLON_BACKEND ?? '').trim();
 const requireWebGpuComparison = process.env.BROWSER_E2E_REQUIRE_WEBGPU === '1';
 const requireBabylonWebGpuComparison = process.env.BROWSER_E2E_REQUIRE_BABYLON_WEBGPU === '1';
