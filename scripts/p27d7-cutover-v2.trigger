@@ -1,1 +1,1 @@
-P27-D7 Android lifecycle finalizer trigger retry 5 2026-10-03.
+P27-D7 browser rollback harness correction trigger 2026-10-03.
