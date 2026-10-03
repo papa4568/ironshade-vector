@@ -458,11 +458,6 @@ jobs:
             android-fast-logcat.txt
             android-fast-smoke.png
             android-fast-resume.png
-            android-p21f1-webgpu.png
-            android-p27d5-babylon.png
-            android-p27d5-babylon-resume.png
-            android-p27d5-babylon-interaction.json
-            android-p27d5-babylon-resume.json
             android-p21f3-webgpu.json
             android-large-screen.txt
             android-large-screen-portrait.json

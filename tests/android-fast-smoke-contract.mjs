@@ -26,27 +26,31 @@ const requireText = (text, needle, label) => {
 for (const marker of [
   'ANDROID_FAST_SMOKE=1',
   'ANDROID_FAST_RESUME_CHECK=1',
-  'ANDROID_P21F1_CHECK=1',
-  'ANDROID_P27D5_PHASE=interaction',
-  'ANDROID_P27D5_PHASE=resume',
-  'scripts/android-babylon-lifecycle-smoke.mjs',
-  'android-p27d5-babylon-interaction.json',
-  'android-p27d5-babylon-resume.json',
-  'android-p27d5-babylon.png',
-  'android-p27d5-babylon-resume.png',
-  'ANDROID_P27D5_PROCESS_RECLAIM',
-  'p27d5=babylon-webgl2+touch+controller+renderer-reentry+mission-reentry+resume',
-  'LIFECYCLE_ATTEMPT=1',
   'ANDROID_FAST_PROCESS_RECLAIM',
-  're-establishing fast combat before retrying pause/resume',
-  'reclaimed during two consecutive fast pause/resume attempts',
+  'verifying clean production-default recovery',
+  "LIFECYCLE_MODE='preserved-resume'",
+  "LIFECYCLE_MODE='reclaimed-recovered'",
   'adb install -r',
   'android-fast-smoke.png',
   'android-fast-resume.png',
-  'android-p21f1-webgpu.png',
   'android-fast-logcat.txt',
   'ANDROID_FAST_EMULATOR_PASS',
+  'p27d7=babylon-production-default+renderer-reentry',
+  'performance=js-heap',
+  'FATAL EXCEPTION',
 ]) requireText(shell, marker, 'fast shell');
+
+for (const migrationOnly of [
+  'ANDROID_P21F1_CHECK=1',
+  'ANDROID_P27D5_PHASE=interaction',
+  'ANDROID_P27D5_PHASE=resume',
+  'android-p27d5-babylon',
+  'scripts/android-babylon-lifecycle-smoke.mjs',
+  're-establishing fast combat before retrying pause/resume',
+  'reclaimed during two consecutive fast pause/resume attempts',
+]) {
+  if (shell.includes(migrationOnly)) throw new Error(`fast shell must not retain migration-only gate: ${migrationOnly}`);
+}
 
 for (const forbidden of [
   'browser-chapter3-playthrough',
@@ -326,11 +330,6 @@ for (const artifact of [
   'android-fast-logcat.txt',
   'android-fast-smoke.png',
   'android-fast-resume.png',
-  'android-p21f1-webgpu.png',
-  'android-p27d5-babylon.png',
-  'android-p27d5-babylon-resume.png',
-  'android-p27d5-babylon-interaction.json',
-  'android-p27d5-babylon-resume.json',
   'android-p21f3-webgpu.json',
   'p21f3-webgpu-delivery.json',
   'p27d2-babylon-delivery.json',
