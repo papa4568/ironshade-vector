@@ -1,0 +1,60 @@
+name: P27-D7 Apply Cutover v2
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/p27d7-cutover-v2.trigger'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Use npm 10.9.8
+        run: |
+          npm install --global npm@10.9.8
+          test "$(npm --version)" = "10.9.8"
+
+      - name: Apply P27-D7 production cutover
+        run: python3 .github/scripts/apply-p27d7.py
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Verify cutover boundary
+        run: npm run test:graphics-backend
+
+      - name: Verify Android smoke contract
+        run: npm run test:android-fast-smoke
+
+      - name: Run production build gate
+        run: npm run build
+
+      - name: Commit verified cutover to staging branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git switch -C p27d7-cutover
+          git add src/game/combatGraphicsBackend.ts tests/graphics-backend-boundary.ts scripts/android-runtime-smoke.mjs
+          git diff --cached --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat(graphics): cut production combat over to Babylon'
+          git push --force origin p27d7-cutover
