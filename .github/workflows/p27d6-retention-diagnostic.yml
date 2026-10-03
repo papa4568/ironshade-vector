@@ -101,6 +101,7 @@ jobs:
           path: |
             android-p27d6-babylon-soak.json
             android-p27d6-retention-census.jsonl
+            android-p27d6-retention-census.log
             android-p27d6-memory.txt
             android-p27d6-memory-summary.json
             android-p27d6-logcat.txt
