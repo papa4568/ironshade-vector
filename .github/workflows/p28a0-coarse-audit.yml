@@ -188,6 +188,7 @@ jobs:
 
           replace('tests/babylon-parallax-array.ts', "assert.equal(parallaxArrayRenderProfile(1, true).name, 'mobile');", "assert.deepEqual(parallaxArrayRenderProfile(1, true), parallaxArrayRenderProfile(1, false), 'Coarse input alone must preserve the full Parallax Array profile.');", 1)
           replace('tests/babylon-perseid-capstone.ts', "assert.equal(perseidRenderProfile(1, true).name, 'mobile');", "assert.deepEqual(perseidRenderProfile(1, true), perseidRenderProfile(1, false), 'Coarse input alone must preserve the full Perseid capstone profile.');", 1)
+          replace('tests/babylon-k91-capstone.ts', "assert.equal(k91RenderProfile(1, true).name, 'mobile');", "assert.deepEqual(k91RenderProfile(1, true), k91RenderProfile(1, false), 'Coarse input alone must preserve the full K91 capstone profile.');", 1)
 
           print('P28_A0_COARSE_QUALITY_CEILINGS_REMOVED')
           PY
