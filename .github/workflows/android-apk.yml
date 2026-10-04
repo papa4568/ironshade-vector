@@ -432,21 +432,21 @@ jobs:
           profile: pixel_7_pro
           emulator-boot-timeout: 300
           disable-animations: true
-          script: bash -lc 'set -euo pipefail; if [[ "${{ steps.signing.outputs.mode }}" == "release" ]]; then bash scripts/android-upgrade-smoke.sh; fi; bash scripts/android-fast-smoke.sh'
+          script: bash -lc 'set -euo pipefail; touch .android-api35-primary-smoke-started; if [[ "${{ steps.signing.outputs.mode }}" == "release" ]]; then bash scripts/android-upgrade-smoke.sh; fi; bash scripts/android-fast-smoke.sh; touch .android-api35-primary-smoke-complete'
 
       - name: Reset Android emulator state before API 35 retry
-        if: steps.api35_smoke_primary.outcome == 'failure'
+        if: steps.api35_smoke_primary.outcome == 'failure' && hashFiles('.android-api35-primary-smoke-started') == ''
         shell: bash
         run: |
-          echo '::warning::API 35 emulator attempt failed; clearing crashed emulator/ADB state before one fresh retry.'
+          echo '::warning::API 35 emulator failed before smoke execution; clearing crashed emulator/ADB state before one fresh retry.'
           pkill -f '[e]mulator.*-avd' || true
           pkill -f '[q]emu-system' || true
           adb kill-server || true
           find "$HOME/.android/avd" -maxdepth 2 -name '*.lock' -exec rm -rf {} + 2>/dev/null || true
           sleep 2
 
-      - name: Retry APK smoke on Android emulator
-        if: steps.api35_smoke_primary.outcome == 'failure'
+      - name: Retry APK smoke after API 35 boot failure
+        if: steps.api35_smoke_primary.outcome == 'failure' && hashFiles('.android-api35-primary-smoke-started') == ''
         uses: ReactiveCircus/android-emulator-runner@v2.38.0
         with:
           api-level: 35
@@ -456,6 +456,13 @@ jobs:
           emulator-boot-timeout: 300
           disable-animations: true
           script: bash -lc 'set -euo pipefail; if [[ "${{ steps.signing.outputs.mode }}" == "release" ]]; then bash scripts/android-upgrade-smoke.sh; fi; bash scripts/android-fast-smoke.sh'
+
+      - name: Reject API 35 product smoke failure
+        if: steps.api35_smoke_primary.outcome == 'failure' && hashFiles('.android-api35-primary-smoke-started') != '' && hashFiles('.android-api35-primary-smoke-complete') == ''
+        shell: bash
+        run: |
+          echo '::error::API 35 emulator booted, but the Android product smoke failed. Infrastructure retry is intentionally disabled for product assertions.'
+          exit 1
 
       - name: Smoke test Android 16 large-screen resize path
         id: api36_smoke_primary
@@ -468,21 +475,21 @@ jobs:
           profile: pixel_7_pro
           emulator-boot-timeout: 300
           disable-animations: true
-          script: bash -lc 'ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-large-screen-smoke.sh'
+          script: bash -lc 'set -euo pipefail; touch .android-api36-primary-smoke-started; ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-large-screen-smoke.sh; touch .android-api36-primary-smoke-complete'
 
       - name: Reset Android emulator state before API 36 retry
-        if: steps.api36_smoke_primary.outcome == 'failure'
+        if: steps.api36_smoke_primary.outcome == 'failure' && hashFiles('.android-api36-primary-smoke-started') == ''
         shell: bash
         run: |
-          echo '::warning::API 36 emulator attempt failed; clearing crashed emulator/ADB state before one fresh retry.'
+          echo '::warning::API 36 emulator failed before smoke execution; clearing crashed emulator/ADB state before one fresh retry.'
           pkill -f '[e]mulator.*-avd' || true
           pkill -f '[q]emu-system' || true
           adb kill-server || true
           find "$HOME/.android/avd" -maxdepth 2 -name '*.lock' -exec rm -rf {} + 2>/dev/null || true
           sleep 2
 
-      - name: Retry Android 16 large-screen resize path
-        if: steps.api36_smoke_primary.outcome == 'failure'
+      - name: Retry Android 16 resize after boot failure
+        if: steps.api36_smoke_primary.outcome == 'failure' && hashFiles('.android-api36-primary-smoke-started') == ''
         uses: ReactiveCircus/android-emulator-runner@v2.38.0
         with:
           api-level: 36
@@ -492,6 +499,13 @@ jobs:
           emulator-boot-timeout: 300
           disable-animations: true
           script: bash -lc 'ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-large-screen-smoke.sh'
+
+      - name: Reject API 36 product smoke failure
+        if: steps.api36_smoke_primary.outcome == 'failure' && hashFiles('.android-api36-primary-smoke-started') != '' && hashFiles('.android-api36-primary-smoke-complete') == ''
+        shell: bash
+        run: |
+          echo '::error::API 36 emulator booted, but the Android large-screen smoke failed. Infrastructure retry is intentionally disabled for product assertions.'
+          exit 1
 
       - name: Upload debug QA APK and evidence
         uses: actions/upload-artifact@v7
@@ -535,7 +549,6 @@ jobs:
             Ironshade-Vector-Android-Upgrade-Base.apk
             android-upgrade-base-signing.txt
             android-apk-upgrade.txt
-            android-upgrade-smoke.txt
             android-upgrade-logcat.txt
             android-upgrade-smoke.png
           if-no-files-found: error
