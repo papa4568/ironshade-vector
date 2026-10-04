@@ -23,11 +23,12 @@ jobs:
         run: |
           python3 scripts/p27-d9-fix-graphics-regressions.py
           git diff --check
-          ! git grep -n "src/game/threeCombatRenderer.ts" -- tests/gameplay-regressions.ts tests/enemy-t9-visuals-i.ts tests/enemy-t9-visuals-ii.ts tests/enemy-protocol-visuals.ts tests/status-visuals.ts tests/enemy-lifecycle-visuals.ts tests/enemy-mobile-readability.ts tests/combat-camera-feedback.ts tests/babylon-*.ts
-      - name: Commit regression fixes
+          ! git grep -n "src/game/threeCombatRenderer.ts" -- tests ':!tests/graphics-backend-boundary.ts'
+          ! git grep -n -E "^import .* from ['\"]three|three/examples" -- tests
+      - name: Commit regression and runtime fixes
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add tests
-          git commit -m 'Move graphics regressions to Babylon ownership'
+          git add src tests
+          git commit -m 'Finish Babylon graphics regression ownership'
           git push origin HEAD:p27-d9-babylon-cleanup
