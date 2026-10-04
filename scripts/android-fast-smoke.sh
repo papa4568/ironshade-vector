@@ -70,7 +70,7 @@ adb shell settings put secure immersive_mode_confirmations confirmed >/dev/null 
 adb install -r "$SMOKE_APK"
 adb logcat -c
 adb shell am force-stop "$PACKAGE"
-adb shell am start -W -n "$ACTIVITY"
+adb shell am start -n "$ACTIVITY"
 confirm_immersive_mode_for_smoke
 
 APP_PID="$(wait_for_process)"
@@ -86,7 +86,7 @@ test -s android-fast-smoke.png
 
 adb shell input keyevent KEYCODE_HOME
 sleep 2
-adb shell am start -W --activity-reorder-to-front -n "$ACTIVITY"
+adb shell am start --activity-reorder-to-front -n "$ACTIVITY"
 confirm_immersive_mode_for_smoke
 RESUME_PID="$(wait_for_process)"
 if [[ -z "$RESUME_PID" ]]; then
