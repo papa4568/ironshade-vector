@@ -1217,12 +1217,11 @@ function specializationGearSynergySmoke() {
 }
 specializationGearSynergySmoke();
 
-const capstoneRendererSource = readFileSync('src/game/threeCombatRenderer.ts', 'utf8');
-assert.match(capstoneRendererSource, /effect\.kind === 'vanguard'[\s\S]*0xbd8a64/, 'Vanguard capstone feedback should retain its authored warm class color.');
-assert.match(capstoneRendererSource, /effect\.kind === 'vector'[\s\S]*0x74a6c7/, 'Vector capstone feedback should retain its authored blue class color.');
-assert.match(capstoneRendererSource, /effect\.kind === 'systems'[\s\S]*0x9b87bd/, 'Systems capstone feedback should retain its authored violet class color.');
-assert.match(capstoneRendererSource, /dataset\.capstoneFx = lastCapstoneFx \|\| 'idle'/, 'Renderer QA telemetry should expose the active class capstone effect.');
-assert.match(capstoneRendererSource, /class-capstones/, 'Combat VFX telemetry should advertise class-capstone feedback support.');
+const capstoneRendererSource = readFileSync('src/game/babylonAbilityVfx.ts', 'utf8');
+assert.match(capstoneRendererSource, /vanguard: \{ color: 0xbd8a64/, 'Vanguard capstone feedback should retain its authored warm class color.');
+assert.match(capstoneRendererSource, /vector: \{ color: 0x74a6c7/, 'Vector capstone feedback should retain its authored blue class color.');
+assert.match(capstoneRendererSource, /systems: \{ color: 0x9b87bd/, 'Systems capstone feedback should retain its authored violet class color.');
+assert.match(capstoneRendererSource, /dataset\.babylonAbilityVfx = 'skill\+mobility\+effects\+shared-player-fields'/, 'Babylon combat VFX telemetry should expose the active shared player-field presentation path.');
 
 function systemsSkillEvolutionSmoke() {
   const level15 = {
@@ -2112,7 +2111,7 @@ assert.equal(abilityUsesTargetAcquisition(neutralTargetPolicyState, 1), true, 'n
 assert.equal(abilityUsesTargetAcquisition(neutralTargetPolicyState, 2), true, 'neutral Arc Tap should acquire');
 const targetingCanvasSource = readFileSync('src/components/GameCanvas.tsx', 'utf8');
 const targetingFeedbackSource = readFileSync('src/game/feedback.ts', 'utf8');
-const targetingRendererSource = readFileSync('src/game/threeCombatRenderer.ts', 'utf8');
+const targetingRendererSource = readFileSync('src/game/babylonEnemyLifecycleVisuals.ts', 'utf8');
 assert.match(targetingCanvasSource, /const assistedTargeting = !manualTargeting && abilityUsesTargetAcquisition\(state, index\)/, 'targeted-skill routing must still gate acquisition through the explicit targeted-skill policy');
 assert.match(targetingCanvasSource, /triggerAbility\(state, index, assistedTargeting \? 'acquire' : 'manual', targetId\)/, 'targeted-skill execution must preserve manual intent while passing the retained id only for targeted abilities');
 assert.match(targetingCanvasSource, /const updateAssistedTarget = useCallback[\s\S]*updateMobileTargetControl\(state, aimAssist, mobileTargetControlRef\.current\)/, 'touch and controller acquisition should share the retained target-control helper');
@@ -2129,7 +2128,7 @@ assert.match(targetingCanvasSource, /targetFeedbackMotion = profileSettingsRef\.
 assert.match(targetingFeedbackSource, /targetLock: \{ frequency: 520, duration: \.065, type: 'triangle', sweep: 1\.16 \}/, 'target acquisition needs its own short audio cue');
 assert.match(targetingFeedbackSource, /cue === 'targetLock' \? 8/, 'target acquisition needs a short phone haptic when haptics are enabled');
 assert.match(targetingFeedbackSource, /playEffect\('dual-rumble'/, 'supported controllers should receive target feedback through their rumble actuator');
-assert.match(targetingRendererSource, /reducedTargetMotion \? 1 : 1 \+ Math\.sin\(state\.time \* 8\) \* 0\.08/, 'reduced effects must freeze the 3D target-ring scale while full effects retain restrained motion');
+assert.match(targetingRendererSource, /const pulse = reducedTargetMotion \? 1 : 1 \+ Math\.sin\(state\.time \* 8\) \* 0\.08/, 'reduced effects must freeze the Babylon 3D target-ring scale while full effects retain restrained motion');
 assert.match(targetingCanvasSource, /const pulse = reducedMotion \? 0\.9 : 0\.78 \+ Math\.sin\(time \* 8\) \* 0\.1/, 'Canvas target feedback must also remove pulsing in reduced-effects mode');
 
 function spinHabitatAssistedFireReliabilitySmoke() {
