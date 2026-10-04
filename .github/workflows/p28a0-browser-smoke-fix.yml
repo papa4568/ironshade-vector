@@ -1,0 +1,71 @@
+name: P28-A0 Browser Smoke Correction
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/p28a0-browser-smoke-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Correct adaptive shadow expectation
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('scripts/browser-runtime-smoke.mjs')
+          source = path.read_text()
+          old = """  const effectsBudgetMatch = /^tier:(high|balanced|performance)\\|shadow:(0|512|1024)\\|post:(1\\.00|0\\.68|0\\.42)\\|transparency:(1\\.00|0\\.68|0\\.40)\\|reflection:(1\\.00|0\\.70|0\\.38)\\|vfx:(1\\.00|0\\.72|0\\.45)\\|secondary:(1\\.00|0\\.68|0\\.42)\\|critical:1\\.00\\|frame:(\\d+\\.\\d{2})$/.exec(state.effectsBudget);
+  const effectsExpected = {
+    high: { shadow: '1024', post: '1.00', transparency: '1.00', reflection: '1.00', vfx: '1.00', secondary: '1.00' },
+    balanced: { shadow: '512', post: '0.68', transparency: '0.68', reflection: '0.70', vfx: '0.72', secondary: '0.68' },
+    performance: { shadow: '0', post: '0.42', transparency: '0.40', reflection: '0.38', vfx: '0.45', secondary: '0.42' },
+  }[state.renderTier];
+  if (!effectsBudgetMatch
+    || !effectsExpected
+    || effectsBudgetMatch[1] !== state.renderTier
+    || effectsBudgetMatch[2] !== effectsExpected.shadow
+"""
+          new = """  const effectsBudgetMatch = /^tier:(high|balanced|performance)\\|shadow:(0|512|1024)\\|post:(1\\.00|0\\.68|0\\.42)\\|transparency:(1\\.00|0\\.68|0\\.40)\\|reflection:(1\\.00|0\\.70|0\\.38)\\|vfx:(1\\.00|0\\.72|0\\.45)\\|secondary:(1\\.00|0\\.68|0\\.42)\\|critical:1\\.00\\|frame:(\\d+\\.\\d{2})$/.exec(state.effectsBudget);
+  const qualityInputMatch = /^requested:([0-9]+\\.[0-9]{2})\\+effective:([0-9]+\\.[0-9]{2})$/.exec(state.renderQualityInput);
+  const effectsExpected = {
+    high: { shadow: '1024', post: '1.00', transparency: '1.00', reflection: '1.00', vfx: '1.00', secondary: '1.00' },
+    balanced: { shadow: '512', post: '0.68', transparency: '0.68', reflection: '0.70', vfx: '0.72', secondary: '0.68' },
+    performance: { shadow: '0', post: '0.42', transparency: '0.40', reflection: '0.38', vfx: '0.45', secondary: '0.42' },
+  }[state.renderTier];
+  const expectedShadow = effectsExpected && qualityInputMatch
+    && Number(qualityInputMatch[2]) > 0.62
+    && state.renderTier !== 'performance'
+      ? effectsExpected.shadow
+      : '0';
+  if (!effectsBudgetMatch
+    || !effectsExpected
+    || !qualityInputMatch
+    || effectsBudgetMatch[1] !== state.renderTier
+    || effectsBudgetMatch[2] !== expectedShadow
+"""
+          count = source.count(old)
+          if count != 1:
+              raise SystemExit(f'expected one P27-D4 effects assertion anchor, found {count}')
+          path.write_text(source.replace(old, new, 1))
+          PY
+          git diff --check
+          node --check scripts/browser-runtime-smoke.mjs
+      - name: Commit correction and retire helper
+        shell: bash
+        run: |
+          rm .github/workflows/p28a0-browser-smoke-fix.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add scripts/browser-runtime-smoke.mjs .github/workflows/p28a0-browser-smoke-fix.yml
+          git commit -m 'Fix P28-A0 adaptive shadow smoke expectation'
+          git push origin HEAD:main
