@@ -229,11 +229,7 @@ assert(
 
 const graphicsRuntimePrefixes = ['GLTFLoader-', 'KTX2Loader-', 'meshopt_decoder.module-', 'SkeletonUtils-'];
 const graphicsRuntimeChunks = jsFiles.filter(name => graphicsRuntimePrefixes.some(prefix => name.startsWith(prefix)));
-assert(graphicsRuntimeChunks.length === graphicsRuntimePrefixes.length, `Expected ${graphicsRuntimePrefixes.length} authored-asset runtime chunks; found ${graphicsRuntimeChunks.length}.`);
-const graphicsManifestKeys = keysForChunkFiles(graphicsRuntimeChunks);
-for (const key of graphicsManifestKeys) {
-  assert(!bootStaticGraph.has(key), 'Authored-asset loaders must remain deferred from the boot entry.');
-}
+assert(graphicsRuntimeChunks.length === 0, `P27-D8 retired Three authored-asset runtime chunks must not ship; found ${graphicsRuntimeChunks.length}: ${graphicsRuntimeChunks.join(',')}.`);
 
 const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
 const dependencyNames = new Set([
@@ -268,5 +264,5 @@ console.log(
   `chunks=${jsFiles.length} three=${threeChunks.join(',')} webgpuQa=${webGpuQaChunks.join(',')} ` +
   `babylonRenderer=${basename(babylonRecord.file)} babylonLoaders=${basename(babylonLoaderRecord.file)} ` +
   `babylonWebgpu=${basename(babylonWebGpuEntry[1].file)} corePost=renderer-deferred forbiddenBabylon=none glbExtensions=none glbs=${shippedGlbs.length} ` +
-  `graphicsRuntime=${graphicsRuntimeChunks.join(',')}`,
+  `graphicsRuntime=retired`,
 );
