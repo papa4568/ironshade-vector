@@ -110,10 +110,10 @@ try {
       };
     })()`);
 
-    if (lastState?.fallback || lastState?.visual === 'procedural-fallback') {
+    if (lastState?.fallback || lastState?.visual?.includes('fallback')) {
       throw new Error(`Authored interactable entered procedural fallback: ${JSON.stringify(lastState)}`);
     }
-    if (lastState?.lootVisual === 'procedural-fallback') {
+    if (lastState?.lootVisual?.includes('fallback')) {
       throw new Error(`Authored loot pickup entered procedural fallback: ${JSON.stringify(lastState)}`);
     }
 
@@ -121,17 +121,17 @@ try {
     const expectedLod = mobileViewport ? 2 : 1;
     const assets = new Set(String(lastState?.assets ?? '').split(',').filter(Boolean));
     const controlAsset = `interactable-control-terminal-lod${expectedLod}`;
-    if (lastState?.visual === 'authored' && assets.has(controlAsset)) {
+    if (lastState?.visual === 'authored-babylon' && assets.has(controlAsset)) {
       if (lastState.mode !== 'control-terminal+salvage-tag-node') {
         throw new Error(`Unexpected authored interactable mode: ${JSON.stringify(lastState)}`);
       }
       if (!(lastState.width > 0 && lastState.height > 0)) {
         throw new Error(`Authored interactable canvas is not visible: ${JSON.stringify(lastState)}`);
       }
-      if (lastState.lootVisual === 'authored') {
+      if (lastState.lootVisual === 'authored-babylon') {
         const expectedPickup = `pickup-recovery-capsule-lod${expectedLod}`;
-        if (lastState.lootAsset !== expectedPickup || lastState.lootReadability !== 'authored-capsule+rarity-ring+beam') {
-          throw new Error(`Unexpected authored loot runtime state: ${JSON.stringify(lastState)}`);
+        if (lastState.lootAsset !== expectedPickup || lastState.lootReadability !== 'authored-capsule+rarity-shape+ring+beam') {
+          throw new Error(`Unexpected authored Babylon loot runtime state: ${JSON.stringify(lastState)}`);
         }
       }
       console.log(`AUTHORED_INTERACTABLE_RUNTIME_PASS control=${controlAsset} assets=${[...assets].sort().join(',')} loot=${lastState.lootAsset || 'pending-no-drop'} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
@@ -144,8 +144,8 @@ try {
   const mobileViewport = ['mobile-landscape', 'android-emulator'].includes(process.env.BROWSER_E2E_VIEWPORT ?? '');
   const expectedLod = mobileViewport ? 2 : 1;
   const assets = new Set(String(lastState?.assets ?? '').split(',').filter(Boolean));
-  if (lastState?.visual !== 'authored' || !assets.has(`interactable-control-terminal-lod${expectedLod}`)) {
-    throw new Error(`Timed out waiting for authored mission interactables: ${JSON.stringify(lastState)}`);
+  if (lastState?.visual !== 'authored-babylon' || !assets.has(`interactable-control-terminal-lod${expectedLod}`)) {
+    throw new Error(`Timed out waiting for authored Babylon mission interactables: ${JSON.stringify(lastState)}`);
   }
 } finally {
   socket.close();
