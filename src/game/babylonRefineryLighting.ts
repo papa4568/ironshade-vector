@@ -5,6 +5,7 @@ import { PointLight } from '@babylonjs/core/Lights/pointLight';
 import { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGenerator';
 import { ImageProcessingConfiguration } from '@babylonjs/core/Materials/imageProcessingConfiguration';
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial';
+import { CubeTexture } from '@babylonjs/core/Materials/Textures/cubeTexture';
 import { RawCubeTexture } from '@babylonjs/core/Materials/Textures/rawCubeTexture';
 import { Color3 } from '@babylonjs/core/Maths/math.color';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector';
@@ -19,7 +20,10 @@ import type { RenderBudgetSnapshot } from './renderQuality';
 import { getWorldSize, type SimState } from './sim';
 
 const WORLD_SCALE = 0.02;
-const IBL_FACE_SIZE = 8;
+const IBL_FALLBACK_FACE_SIZE = 8;
+const REFINERY_PREFILTERED_IBL_URL = '/assets/environments/refinery-prefiltered.env';
+
+type RefineryIblLoadState = 'loading' | 'authored' | 'fallback';
 
 export type BabylonRefineryLightingBudget = {
   tierName: RenderBudgetSnapshot['tierName'];
@@ -46,12 +50,12 @@ function normalizedPanelRgb(panelIndex: number): readonly [number, number, numbe
 }
 
 function createFace(primary: readonly [number, number, number], secondary: readonly [number, number, number]) {
-  const pixels = new Uint8Array(IBL_FACE_SIZE * IBL_FACE_SIZE * 4);
-  const denominator = Math.max(1, (IBL_FACE_SIZE - 1) * 2);
-  for (let y = 0; y < IBL_FACE_SIZE; y += 1) {
-    for (let x = 0; x < IBL_FACE_SIZE; x += 1) {
+  const pixels = new Uint8Array(IBL_FALLBACK_FACE_SIZE * IBL_FALLBACK_FACE_SIZE * 4);
+  const denominator = Math.max(1, (IBL_FALLBACK_FACE_SIZE - 1) * 2);
+  for (let y = 0; y < IBL_FALLBACK_FACE_SIZE; y += 1) {
+    for (let x = 0; x < IBL_FALLBACK_FACE_SIZE; x += 1) {
       const mix = (x + y) / denominator;
-      const offset = (y * IBL_FACE_SIZE + x) * 4;
+      const offset = (y * IBL_FALLBACK_FACE_SIZE + x) * 4;
       for (let channel = 0; channel < 3; channel += 1) {
         const linear = primary[channel] * (1 - mix) + secondary[channel] * mix;
         pixels[offset + channel] = Math.round(Math.max(0, Math.min(1, linear)) * 220);
@@ -62,7 +66,7 @@ function createFace(primary: readonly [number, number, number], secondary: reado
   return pixels;
 }
 
-export function createBabylonRefineryIblTexture(scene: Scene) {
+export function createBabylonRefineryIblFallbackTexture(scene: Scene) {
   const amber = normalizedPanelRgb(0);
   const furnace = normalizedPanelRgb(1);
   const cyan = normalizedPanelRgb(2);
@@ -79,14 +83,14 @@ export function createBabylonRefineryIblTexture(scene: Scene) {
   const texture = new RawCubeTexture(
     scene,
     faces,
-    IBL_FACE_SIZE,
+    IBL_FALLBACK_FACE_SIZE,
     Constants.TEXTUREFORMAT_RGBA,
     Constants.TEXTURETYPE_UNSIGNED_BYTE,
     true,
     false,
     Constants.TEXTURE_TRILINEAR_SAMPLINGMODE,
   );
-  texture.name = 'p27-b11-refinery-ibl';
+  texture.name = 'p28-a1-refinery-ibl-fallback';
   texture.gammaSpace = false;
   return texture;
 }
@@ -128,7 +132,10 @@ export class BabylonRefineryLighting {
   private readonly emergencyLight: PointLight;
   private readonly readabilityLight: PointLight;
   private readonly practicalLights: readonly [PointLight, PointLight];
-  private readonly iblTexture: RawCubeTexture;
+  private iblTexture: CubeTexture | RawCubeTexture | null = null;
+  private authoredIblTexture: CubeTexture | null = null;
+  private fallbackIblTexture: RawCubeTexture | null = null;
+  private iblLoadState: RefineryIblLoadState = 'loading';
   private shadowGenerator: ShadowGenerator | null = null;
   private shadowMapSize = 0;
 
@@ -176,8 +183,26 @@ export class BabylonRefineryLighting {
       return light;
     }) as unknown as readonly [PointLight, PointLight];
 
-    this.iblTexture = createBabylonRefineryIblTexture(scene);
-    scene.environmentTexture = this.iblTexture;
+    const authoredIblTexture = new CubeTexture(
+      REFINERY_PREFILTERED_IBL_URL,
+      scene,
+      undefined,
+      false,
+      undefined,
+      () => {
+        this.iblLoadState = 'authored';
+        this.canvas.dataset.refineryIblAsset = 'prefiltered-env:ready';
+      },
+      () => this.activateIblFallback(),
+      undefined,
+      true,
+    );
+    authoredIblTexture.name = 'p28-a1-refinery-prefiltered-ibl';
+    authoredIblTexture.gammaSpace = false;
+    this.authoredIblTexture = authoredIblTexture;
+    this.iblTexture = authoredIblTexture;
+    canvas.dataset.refineryIblAsset = 'prefiltered-env:loading';
+    scene.environmentTexture = authoredIblTexture;
     scene.environmentIntensity = REFINERY_IBL_PROFILE.intensity;
 
     scene.imageProcessingConfiguration.toneMappingEnabled = true;
@@ -269,6 +294,14 @@ export class BabylonRefineryLighting {
     }
 
     const shadowCasterCount = this.syncShadows(budget);
+    const authoredIblReady = this.iblLoadState === 'authored';
+    const iblTelemetry = authoredIblReady
+      ? 'raw-cube:' + REFINERY_IBL_PROFILE.id + ':intensity-' + budget.iblIntensity.toFixed(2)
+      : this.iblLoadState === 'fallback'
+        ? 'raw-cube-fallback:' + REFINERY_IBL_PROFILE.id + ':intensity-' + budget.iblIntensity.toFixed(2)
+        : 'loading:prefiltered-env';
+    const iblLightingTelemetry = authoredIblReady ? 'raw-cube' : this.iblLoadState === 'fallback' ? 'raw-cube-fallback' : 'loading';
+
     this.canvas.dataset.renderTier = budget.tierName;
     this.canvas.dataset.graphicsQuality = renderBudget.qualityMode;
     this.canvas.dataset.babylonLightingBudget = [
@@ -279,12 +312,15 @@ export class BabylonRefineryLighting {
       'max-lights:' + budget.maxSimultaneousLights,
     ].join('|');
     this.canvas.dataset.environmentIbl = iblEnabled
-      ? 'raw-cube:' + REFINERY_IBL_PROFILE.id + ':intensity-' + budget.iblIntensity.toFixed(2)
+      ? iblTelemetry
       : qaIblDisabled ? 'off:qa-baseline' : 'off:adaptive-budget';
+    this.canvas.dataset.refineryIblAsset = this.iblLoadState === 'fallback'
+      ? 'raw-cube:fallback'
+      : 'prefiltered-env:' + this.iblLoadState;
     this.canvas.dataset.environmentLighting = [
       'refinery-key',
       'rim',
-      'ibl:' + (iblEnabled ? 'raw-cube' : 'off'),
+      'ibl:' + (iblEnabled ? iblLightingTelemetry : 'off'),
       'practical:' + budget.practicalLightCount,
       'shadow:' + (budget.shadowMapSize || 'off'),
     ].join('+');
@@ -298,6 +334,20 @@ export class BabylonRefineryLighting {
     this.canvas.dataset.babylonPbrMaterials = 'pbr:' + pbrMaterials
       + '|standard:' + standardMaterials
       + '|max-lights:' + budget.maxSimultaneousLights;
+  }
+
+  private activateIblFallback() {
+    if (this.iblLoadState === 'fallback') return;
+    const authoredIblTexture = this.authoredIblTexture;
+    const wasActive = this.scene.environmentTexture === authoredIblTexture;
+    const fallbackIblTexture = createBabylonRefineryIblFallbackTexture(this.scene);
+    this.fallbackIblTexture = fallbackIblTexture;
+    this.iblTexture = fallbackIblTexture;
+    this.iblLoadState = 'fallback';
+    this.canvas.dataset.refineryIblAsset = 'raw-cube:fallback';
+    if (wasActive) this.scene.environmentTexture = fallbackIblTexture;
+    authoredIblTexture?.dispose();
+    this.authoredIblTexture = null;
   }
 
   private syncShadows(budget: BabylonRefineryLightingBudget) {
@@ -340,6 +390,10 @@ export class BabylonRefineryLighting {
     this.emergencyLight.dispose();
     this.readabilityLight.dispose();
     this.practicalLights.forEach(light => light.dispose());
-    this.iblTexture.dispose();
+    this.authoredIblTexture?.dispose();
+    this.fallbackIblTexture?.dispose();
+    this.authoredIblTexture = null;
+    this.fallbackIblTexture = null;
+    this.iblTexture = null;
   }
 }
