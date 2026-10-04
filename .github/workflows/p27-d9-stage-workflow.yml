@@ -1,0 +1,34 @@
+name: P27 D9 Stage Workflow
+
+on:
+  push:
+    branches:
+      - p27-d9-babylon-cleanup
+    paths:
+      - '.github/workflows/p27-d9-stage-workflow.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  stage:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: p27-d9-babylon-cleanup
+          fetch-depth: 0
+      - name: Stage patched Android workflow as ordinary file
+        run: |
+          python3 scripts/p27-d9-stage-workflow.py
+          grep -q 'P27D9_APK_PATH' p27-d9-android-apk.staged.yml
+          grep -q 'p27d9-no-three-delivery.json' p27-d9-android-apk.staged.yml
+          ! grep -q "find android/app/src/main/assets/public/assets -name 'three-core-\*.js'.*grep -q" p27-d9-android-apk.staged.yml
+          git diff --check -- p27-d9-android-apk.staged.yml
+      - name: Commit staged file
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add p27-d9-android-apk.staged.yml
+          git commit -m 'Stage P27-D9 Android workflow update'
+          git push origin HEAD:p27-d9-babylon-cleanup
