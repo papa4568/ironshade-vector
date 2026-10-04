@@ -27,6 +27,89 @@ fi
 SOCKET="webview_devtools_remote_${APP_PID}"
 adb forward --remove tcp:9222 >/dev/null 2>&1 || true
 adb forward tcp:9222 "localabstract:${SOCKET}"
+
+# Android WebView can expose its CDP target a few frames before the Activity's
+# visual viewport is established. Require three consecutive usable viewport
+# samples so the first class-intake geometry assertion measures the real screen
+# rather than a transient 0x0 viewport during immersive startup.
+node --input-type=module <<'NODE'
+const endpoint = 'http://127.0.0.1:9222';
+const deadline = Date.now() + 30_000;
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+let stableSamples = 0;
+let lastSample = null;
+
+async function sampleViewport() {
+  const targets = await (await fetch(`${endpoint}/json/list`)).json();
+  const target = targets.find(candidate => candidate.webSocketDebuggerUrl && (
+    candidate.title === 'Ironshade Vector'
+    || (/ironshade/i.test(candidate.title ?? '') && /localhost/i.test(candidate.url ?? ''))
+  ));
+  if (!target) return null;
+
+  const socket = new WebSocket(target.webSocketDebuggerUrl);
+  await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      socket.close();
+      reject(new Error('viewport preflight websocket timeout'));
+    }, 3_000);
+    socket.addEventListener('open', () => {
+      clearTimeout(timer);
+      resolve();
+    }, { once: true });
+    socket.addEventListener('error', () => {
+      clearTimeout(timer);
+      reject(new Error('viewport preflight websocket error'));
+    }, { once: true });
+  });
+
+  const result = await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('viewport preflight evaluate timeout')), 3_000);
+    socket.addEventListener('message', event => {
+      const message = JSON.parse(String(event.data));
+      if (message.id !== 1) return;
+      clearTimeout(timer);
+      resolve(message.result?.result?.value ?? null);
+    }, { once: true });
+    socket.send(JSON.stringify({
+      id: 1,
+      method: 'Runtime.evaluate',
+      params: {
+        expression: `({
+          innerWidth: window.innerWidth,
+          innerHeight: window.innerHeight,
+          visualWidth: window.visualViewport?.width ?? 0,
+          visualHeight: window.visualViewport?.height ?? 0,
+          readyState: document.readyState,
+        })`,
+        returnByValue: true,
+      },
+    }));
+  }).finally(() => socket.close());
+  return result;
+}
+
+while (Date.now() < deadline) {
+  try {
+    const sample = await sampleViewport();
+    if (sample) lastSample = sample;
+    const width = sample?.visualWidth > 0 ? sample.visualWidth : sample?.innerWidth ?? 0;
+    const height = sample?.visualHeight > 0 ? sample.visualHeight : sample?.innerHeight ?? 0;
+    if (sample?.readyState === 'complete' && width > 0 && height > 0) stableSamples += 1;
+    else stableSamples = 0;
+    if (stableSamples >= 3) {
+      console.log(`ANDROID_WEBVIEW_VIEWPORT_READY width=${Math.round(width)} height=${Math.round(height)} samples=${stableSamples}`);
+      process.exit(0);
+    }
+  } catch {
+    stableSamples = 0;
+  }
+  await sleep(500);
+}
+
+throw new Error(`Android WebView viewport did not stabilize before repeatable regression: ${JSON.stringify(lastSample)}`);
+NODE
+
 ANDROID_P20E_REPEATABLE_ONLY=1 CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-runtime-smoke.mjs | tee android-repeatable-regression.txt
 
 for family in stabilization salvage boarding; do
