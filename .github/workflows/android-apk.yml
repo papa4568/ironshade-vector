@@ -228,8 +228,12 @@ jobs:
           node scripts/configure-android.mjs
           npx cap sync android
           test -f android/app/src/main/assets/public/index.html
-          find android/app/src/main/assets/public/assets -name 'three-core-*.js' -print -quit | grep -q .
-          find android/app/src/main/assets/public/assets -name 'three-webgl-*.js' -print -quit | grep -q .
+          if find android/app/src/main/assets/public/assets \( -name 'three-core-*.js' -o -name 'three-webgl-*.js' -o -name 'three.webgpu-*.js' -o -name 'three.tsl-*.js' \) -print -quit | grep -q .; then
+            echo '::error::Retired Three runtime chunk found in Android assets.'
+            exit 1
+          fi
+          test -s android/app/src/main/assets/public/assets/codecs/babylon/manifest.json
+          ! test -e android/app/src/main/assets/public/assets/codecs/basis
           grep -q 'android:appCategory="game"' android/app/src/main/AndroidManifest.xml
           grep -q 'android:resizeableActivity="true"' android/app/src/main/AndroidManifest.xml
           grep -q 'android:keepScreenOn="true"' android/app/src/main/AndroidManifest.xml
@@ -376,12 +380,6 @@ jobs:
           printf 'artifact=Ironshade-Vector-Android-Debug.apk\nsigning_mode=debug\ndistributable=false\npersistent_keystore=false\nversion_code=%s\nversion_name=%s\nsigner_sha256=%s\n' "$ANDROID_VERSION_CODE" "$ANDROID_VERSION_NAME" "$debug_signer" | tee android-debug-artifact-metadata.txt
           echo "ANDROID_APK_PASS qa_signing=debug release_signing=$SIGNING_MODE version=${ANDROID_VERSION_NAME}(${ANDROID_VERSION_CODE}) size=$(du -h Ironshade-Vector-Android-Debug.apk | cut -f1)"
 
-      - name: Measure P21-F3 WebGPU delivery cost
-        env:
-          P21F3_APK_PATH: Ironshade-Vector-Android-Debug.apk
-          P21F3_REPORT_PATH: p21f3-webgpu-delivery.json
-        run: node scripts/measure-webgpu-delivery-cost.mjs
-
       - name: Measure P27-D2 Babylon delivery cost
         env:
           P27D2_APK_PATH: Ironshade-Vector-Android-Debug.apk
@@ -522,14 +520,12 @@ jobs:
             android-fast-logcat.txt
             android-fast-smoke.png
             android-fast-resume.png
-            android-p21f3-webgpu.json
             android-large-screen.txt
             android-large-screen-portrait.json
             android-large-screen-resized.json
             android-large-screen-portrait.png
             android-large-screen-resized.png
             android-large-screen-logcat.txt
-            p21f3-webgpu-delivery.json
             p27d2-babylon-delivery.json
           if-no-files-found: warn
           retention-days: 90
