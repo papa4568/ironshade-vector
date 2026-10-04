@@ -3090,7 +3090,7 @@ await waitFor(`(() => {
 await waitFor(`(() => {
   const canvas = document.querySelector('canvas');
   return canvas?.dataset.operatorClassAsset === 'vanguard'
-    && canvas?.dataset.operatorVisual === 'authored-2'
+    && canvas?.dataset.operatorVisual === 'authored-2-babylon'
     && (canvas?.dataset.operatorAsset ?? '').includes('operator-vanguard-lod2')
     && (canvas?.dataset.weaponAsset ?? '').includes('weapon-breacher-lod2');
 })()`, 'Android Vanguard authored mobile assets', 90_000);
