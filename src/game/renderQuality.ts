@@ -55,7 +55,7 @@ function qualityFloorTier(requestedQuality: number): AdaptiveRenderTier {
 }
 
 export class AdaptiveRenderBudget {
-  // Device class is not a quality ceiling; only sustained measured runtime pressure may lower this tier.
+  // Device class never lowers quality; explicit player settings or sustained measured runtime pressure may do so.
   private runtimeTier: AdaptiveRenderTier = 0;
   private smoothedFrameMs = 1000 / 60;
   private slowSamples = 0;
