@@ -88,7 +88,7 @@ for (const marker of [
 
 assert.ok(babylon.includes("import { BabylonOrphelineCapstonePresentation } from './babylonOrphelineCapstonePresentation';"));
 assert.ok(babylon.includes('private readonly orphelineCapstonePresentation: BabylonOrphelineCapstonePresentation;'));
-assert.ok(babylon.includes('this.orphelineCapstonePresentation = new BabylonOrphelineCapstonePresentation(scene, canvas, coarse);'));
+assert.ok(babylon.includes('this.orphelineCapstonePresentation = new BabylonOrphelineCapstonePresentation(scene, canvas, qualityCoarse);'));
 assert.ok(babylon.includes("mission.megastructure === 'hidden-habitat'"));
 assert.ok(babylon.includes('this.orphelineCapstonePresentation.sync(state, budget, mission);'));
 assert.ok(babylon.includes("this.orphelineCapstonePresentation.release('scenario-switch');"));

@@ -77,7 +77,7 @@ for (const marker of [
 
 assert.ok(babylon.includes("import { BabylonPerseidCapstonePresentation } from './babylonPerseidCapstonePresentation';"));
 assert.ok(babylon.includes('private readonly perseidCapstonePresentation: BabylonPerseidCapstonePresentation;'));
-assert.ok(babylon.includes('this.perseidCapstonePresentation = new BabylonPerseidCapstonePresentation(scene, canvas, coarse);'));
+assert.ok(babylon.includes('this.perseidCapstonePresentation = new BabylonPerseidCapstonePresentation(scene, canvas, qualityCoarse);'));
 assert.ok(babylon.includes("if (mission.megastructure === 'generation-ship')"));
 assert.ok(babylon.includes('this.perseidCapstonePresentation.sync(state, budget, mission);'));
 assert.ok(babylon.includes("this.perseidCapstonePresentation.release('scenario-switch');"));

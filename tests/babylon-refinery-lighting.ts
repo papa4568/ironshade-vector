@@ -59,7 +59,7 @@ for (const mip of environmentManifest.specular?.mipmaps ?? []) {
   assert((mip.length ?? 0) > 0 && (mip.position ?? -1) >= 0, 'P28-A1 prefiltered mip entries must be non-empty and addressable.');
 }
 
-assert.match(rendererSource, /new AdaptiveRenderBudget\(coarse\)/, 'Babylon lighting must consume the shared adaptive render budget.');
+assert.match(rendererSource, /new AdaptiveRenderBudget\(qualityCoarse\)/, 'Babylon lighting must consume the shared adaptive render budget.');
 assert.match(rendererSource, /new BabylonRefineryLighting\(scene, canvas\)/, 'Babylon renderer must own the B11 lighting layer.');
 assert.match(rendererSource, /this\.refineryLighting\.sync\(state, budget\)/, 'Babylon renderer must synchronize B11 every refinery frame.');
 assert.match(rendererSource, /this\.refineryLighting\.dispose\(\)/, 'Babylon renderer must deterministically release B11 GPU resources.');

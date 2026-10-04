@@ -226,7 +226,7 @@ assert.equal(
 
 const rendererSource = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 assert.match(rendererSource, /from '.\/babylonEnemyTelegraphs'/, 'Babylon combat renderer must own the dedicated B8 telegraph layer.');
-assert.match(rendererSource, /new BabylonEnemyTelegraphs\(scene, canvas, coarse\)/, 'Babylon combat renderer must construct B8 with the shared scene and quality mode.');
+assert.match(rendererSource, /new BabylonEnemyTelegraphs\(scene, canvas, qualityCoarse\)/, 'Babylon combat renderer must construct B8 with the shared scene and quality mode.');
 assert.match(rendererSource, /this\.enemyTelegraphs\.sync\(state, quality\)/, 'Babylon combat renderer must synchronize B8 every refinery frame.');
 assert.match(rendererSource, /this\.enemyTelegraphs\.release\('scenario-exit'\)/, 'Babylon scenario exit must release telegraph presentation.');
 assert.match(rendererSource, /this\.enemyTelegraphs\.dispose\(\)/, 'Babylon renderer teardown must dispose B8 resources.');

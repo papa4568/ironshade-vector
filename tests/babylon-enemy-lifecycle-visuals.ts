@@ -212,7 +212,7 @@ const packageSource = readFileSync('package.json', 'utf8');
 const visualSource = readFileSync('src/game/babylonEnemyLifecycleVisuals.ts', 'utf8');
 
 assert.match(rendererSource, /from '.\/babylonEnemyLifecycleVisuals'/, 'Babylon renderer must own the dedicated B10 lifecycle/readability layer.');
-assert.match(rendererSource, /new BabylonEnemyLifecycleVisuals\(scene, canvas, coarse\)/);
+assert.match(rendererSource, /new BabylonEnemyLifecycleVisuals\(scene, canvas, qualityCoarse\)/);
 assert.match(rendererSource, /this\.enemyLifecycleVisuals\.sync\(state, mobileTargetId, quality, reducedTargetMotion\)/, 'Babylon must consume the existing assisted-target and reduced-motion inputs.');
 assert.match(rendererSource, /this\.enemyLifecycleVisuals\.release\('scenario-exit'\)/);
 assert.match(rendererSource, /this\.enemyLifecycleVisuals\.dispose\(\)/);

@@ -189,7 +189,7 @@ const packageSource = readFileSync('package.json', 'utf8');
 const visualSource = readFileSync('src/game/babylonProtocolStatusVisuals.ts', 'utf8');
 
 assert.match(rendererSource, /from '.\/babylonProtocolStatusVisuals'/, 'Babylon combat renderer must own the dedicated B9 presentation layer.');
-assert.match(rendererSource, /new BabylonProtocolStatusVisuals\(scene, canvas, coarse\)/, 'Babylon renderer must construct B9 with shared quality mode.');
+assert.match(rendererSource, /new BabylonProtocolStatusVisuals\(scene, canvas, qualityCoarse\)/, 'Babylon renderer must construct B9 with shared quality mode.');
 assert.match(rendererSource, /this\.protocolStatusVisuals\.sync\(state, quality\)/, 'Babylon renderer must synchronize B9 every refinery frame.');
 assert.match(rendererSource, /this\.protocolStatusVisuals\.release\('scenario-exit'\)/, 'Babylon scenario exit must release B9 presentation.');
 assert.match(rendererSource, /this\.protocolStatusVisuals\.dispose\(\)/, 'Babylon teardown must dispose B9 resources.');
