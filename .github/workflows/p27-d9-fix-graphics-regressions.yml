@@ -1,0 +1,33 @@
+name: P27 D9 Fix Graphics Regressions
+
+on:
+  push:
+    branches:
+      - p27-d9-babylon-cleanup
+    paths:
+      - '.github/workflows/p27-d9-fix-graphics-regressions.yml'
+      - 'scripts/p27-d9-fix-graphics-regressions.py'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: p27-d9-babylon-cleanup
+          fetch-depth: 0
+      - name: Apply Babylon regression migration
+        run: |
+          python3 scripts/p27-d9-fix-graphics-regressions.py
+          git diff --check
+          ! git grep -n "src/game/threeCombatRenderer.ts" -- tests/gameplay-regressions.ts tests/enemy-t9-visuals-i.ts tests/enemy-t9-visuals-ii.ts tests/enemy-protocol-visuals.ts tests/status-visuals.ts tests/enemy-lifecycle-visuals.ts tests/enemy-mobile-readability.ts tests/combat-camera-feedback.ts tests/babylon-*.ts
+      - name: Commit regression fixes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests
+          git commit -m 'Move graphics regressions to Babylon ownership'
+          git push origin HEAD:p27-d9-babylon-cleanup
