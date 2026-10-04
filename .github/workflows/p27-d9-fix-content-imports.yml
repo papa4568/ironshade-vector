@@ -1,0 +1,32 @@
+name: P27 D9 Fix Content Imports
+
+on:
+  push:
+    branches:
+      - p27-d9-babylon-cleanup
+    paths:
+      - '.github/workflows/p27-d9-fix-content-imports.yml'
+      - 'scripts/p27-d9-fix-content-imports.py'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: p27-d9-babylon-cleanup
+          fetch-depth: 0
+      - name: Fix direct Node Babylon imports
+        run: |
+          python3 scripts/p27-d9-fix-content-imports.py
+          git diff --check
+      - name: Commit fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/graphics-content-assets.mjs
+          git commit -m 'Fix Babylon content test Node imports'
+          git push origin HEAD:p27-d9-babylon-cleanup
