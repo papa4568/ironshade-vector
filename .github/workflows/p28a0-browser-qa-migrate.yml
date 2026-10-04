@@ -21,31 +21,10 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-
           path = Path('scripts/browser-runtime-smoke.mjs')
           source = path.read_text()
-          old = """  if (viewportMode === 'mobile-landscape') {
-    const flagshipInput = /^requested:[0-9]+\\.[0-9]{2}\\+effective:1\\.00$/.test(state.renderQualityInput);
-    const devicePolicy = /^flagship-default(?::coarse-hint-ignored)?$/.test(state.renderDeviceClassPolicy);
-    const downgradeMatchesTier = state.renderTier === 'high'
-      ? state.renderDowngradeReason === 'none'
-      : state.renderDowngradeReason === 'sustained-frame-pressure';
-    if (!flagshipInput || !devicePolicy || !downgradeMatchesTier) {
-      throw new Error('P28-A0 flagship phone quality must ignore device class and only downgrade under measured pressure: ' + JSON.stringify(state));
-    }
-  }
-"""
-          new = """  if (viewportMode === 'mobile-landscape') {
-    const qualityInputPresent = /^requested:[0-9]+\\.[0-9]{2}\\+effective:[0-9]+\\.[0-9]{2}$/.test(state.renderQualityInput);
-    const devicePolicy = /^flagship-default(?::coarse-hint-ignored)?$/.test(state.renderDeviceClassPolicy);
-    const downgradeMatchesTier = state.renderTier === 'high'
-      ? state.renderDowngradeReason === 'none'
-      : ['sustained-frame-pressure', 'reduced-effects', 'display-quality', 'performance-mode'].includes(state.renderDowngradeReason);
-    if (!qualityInputPresent || !devicePolicy || !downgradeMatchesTier) {
-      throw new Error('P28-A0 flagship phone quality must ignore device class and report an explicit downgrade cause: ' + JSON.stringify(state));
-    }
-  }
-"""
+          old = "  if (viewportMode === 'mobile-landscape') {\n    const flagshipInput = /^requested:[0-9]+\\.[0-9]{2}\\+effective:1\\.00$/.test(state.renderQualityInput);\n    const devicePolicy = /^flagship-default(?::coarse-hint-ignored)?$/.test(state.renderDeviceClassPolicy);\n    const downgradeMatchesTier = state.renderTier === 'high'\n      ? state.renderDowngradeReason === 'none'\n      : state.renderDowngradeReason === 'sustained-frame-pressure';\n    if (!flagshipInput || !devicePolicy || !downgradeMatchesTier) {\n      throw new Error('P28-A0 flagship phone quality must ignore device class and only downgrade under measured pressure: ' + JSON.stringify(state));\n    }\n  }\n"
+          new = "  if (viewportMode === 'mobile-landscape') {\n    const qualityInputPresent = /^requested:[0-9]+\\.[0-9]{2}\\+effective:[0-9]+\\.[0-9]{2}$/.test(state.renderQualityInput);\n    const devicePolicy = /^flagship-default(?::coarse-hint-ignored)?$/.test(state.renderDeviceClassPolicy);\n    const downgradeMatchesTier = state.renderTier === 'high'\n      ? state.renderDowngradeReason === 'none'\n      : ['sustained-frame-pressure', 'reduced-effects', 'display-quality', 'performance-mode'].includes(state.renderDowngradeReason);\n    if (!qualityInputPresent || !devicePolicy || !downgradeMatchesTier) {\n      throw new Error('P28-A0 flagship phone quality must ignore device class and report an explicit downgrade cause: ' + JSON.stringify(state));\n    }\n  }\n"
           if old not in source:
               raise SystemExit('P28-A0 current browser assertion not found')
           source = source.replace(old, new, 1)
