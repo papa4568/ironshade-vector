@@ -54,9 +54,14 @@ for old in [
     "  'verifying clean production-default recovery',\n",
     "  \"LIFECYCLE_MODE='preserved-resume'\",\n",
     "  \"LIFECYCLE_MODE='reclaimed-recovered'\",\n",
-    "  'android-fast-resume.png',\n",
 ]:
     replace_once(contract, old, "", f"obsolete fast-smoke contract marker {old.strip()}")
+replace_once(
+    contract,
+    "  'android-fast-smoke.png',\n  'android-fast-resume.png',\n  'android-fast-logcat.txt',\n",
+    "  'android-fast-smoke.png',\n  'android-fast-logcat.txt',\n",
+    "fast-shell resume screenshot requirement",
+)
 replace_once(
     contract,
     "  'p27d7=babylon-production-default+renderer-reentry',\n",
