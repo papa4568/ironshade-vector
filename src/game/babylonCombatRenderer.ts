@@ -525,6 +525,12 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.lastFrameAt = now;
     const budget = this.renderBudget.sample(frameMs, quality, qualityMode);
     const runtimeProfile = runtimeScalabilityProfile(budget.tierName);
+    this.canvas.dataset.runtimePools = [
+      `damage:${Math.min(state.damageNumbers.length, runtimeProfile.poolRetention.damageNumbers)}/${runtimeProfile.poolRetention.damageNumbers}`,
+      `effects:${Math.min(state.effects.length, runtimeProfile.poolRetention.effects)}/${runtimeProfile.poolRetention.effects}`,
+      `sparks:0/${runtimeProfile.poolRetention.impactSparks}`,
+      `debris:${Math.min(state.debris.length, runtimeProfile.poolRetention.debris)}/${runtimeProfile.poolRetention.debris}`,
+    ].join('|');
     const refineryScenario = mission.location === 'asteroid-refinery';
     const orbitalStationScenario = mission.location === 'orbital-station';
     const damagedVesselScenario = mission.location === 'damaged-vessel';
@@ -1323,6 +1329,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       return { role, spec };
     });
     const signature = selected.map(item => item.spec.id).join(':');
+    this.canvas.dataset.assetStreaming = `bounded-preload:${selected.length}@${preloadConcurrency}`;
     if (signature === this.enemyCatalogSignature) return;
 
     this.enemyCatalogSignature = signature;

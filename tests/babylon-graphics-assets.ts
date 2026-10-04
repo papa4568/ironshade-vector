@@ -24,9 +24,9 @@ function assert(condition: unknown, message: string): asserts condition {
 
 const runtimeSource = readFileSync(resolve(process.cwd(), 'src/game/babylonGraphicsAssets.ts'), 'utf8');
 const loaderBoundarySource = readFileSync(resolve(process.cwd(), 'src/game/babylonGltfLoader.ts'), 'utf8');
-const threeRuntimeSource = readFileSync(resolve(process.cwd(), 'src/game/graphicsAssets.ts'), 'utf8');
+const assetContractSource = readFileSync(resolve(process.cwd(), 'src/game/graphicsAssets.ts'), 'utf8');
 assert(!runtimeSource.includes("from 'three'") && !runtimeSource.includes('three/examples'), 'Babylon asset runtime must not depend on the Three asset loader');
-assert(!threeRuntimeSource.includes('babylonGraphicsAssets'), 'Three asset runtime must remain independent of the Babylon asset path');
+assert(!assetContractSource.includes("from 'three'") && !assetContractSource.includes('@babylonjs/'), 'shared graphics asset contract must remain renderer-neutral');
 assert(
   runtimeSource.includes("import('./babylonGltfLoader')")
     && loaderBoundarySource.includes("import '@babylonjs/loaders/glTF/2.0/glTFLoader'")
