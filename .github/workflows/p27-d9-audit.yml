@@ -14,20 +14,23 @@ jobs:
   audit:
     runs-on: ubuntu-24.04
     steps:
-      - name: Check out source
-        uses: actions/checkout@v7
-
-      - name: Enumerate remaining Three references after cleanup
+      - uses: actions/checkout@v7
+      - name: Verify Three runtime is retired
         shell: bash
         run: |
           set -euo pipefail
-          echo '=== P27-D9 THREE REFERENCE AUDIT ==='
-          git grep -n -E "from ['\"]three|import\(['\"]three|node_modules/three|@types/three|threeCombatRenderer|webGpuRefineryRenderer|assets/codecs/basis|three-core-|three-webgl-|P21F3|p21f3" -- \
-            ':!docs/content-roadmap-archive.md' \
-            ':!docs/content-roadmap.md' || true
-          echo '=== P27-D9 LEGACY HELPER CONSUMERS ==='
-          git grep -n -E "hardSciFiVisuals|mapVisuals|refineryBloom|refineryIbl" -- \
-            ':!docs/content-roadmap-archive.md' \
-            ':!docs/content-roadmap.md' || true
-          echo '=== P27-D9 GRAPHICS ASSET CONTRACT CONSUMERS ==='
-          git grep -n -E "graphicsAssets|configureGraphicsAssetRenderer|loadGraphicsAsset|preloadGraphicsAssets|instantiateGraphicsAsset|setGraphicsAssetRuntimeBudget|clearGraphicsAsset" -- src tests scripts || true
+          test ! -e src/game/threeCombatRenderer.ts
+          test ! -e src/game/webGpuRefineryRenderer.ts
+          test ! -e src/game/hardSciFiVisuals.ts
+          test ! -e src/game/mapVisuals.ts
+          test ! -e src/game/refineryBloom.ts
+          test ! -e src/game/refineryIbl.ts
+          ! grep -Eq '"(three|@types/three)"[[:space:]]*:' package.json package-lock.json
+          ! git grep -n -E "from ['\"]three|import\(['\"]three|from ['\"][^'\"]*three/examples|import\(['\"][^'\"]*three/examples" -- src tests vite.config.ts
+          ! git grep -n -E "node_modules/three|node_modules/@types/three|assets/codecs/basis" -- scripts/prepare-graphics-codecs.mjs src package.json package-lock.json vite.config.ts
+          grep -q "public/assets/codecs/babylon" scripts/prepare-graphics-codecs.mjs
+          grep -q "verify-no-three-delivery.mjs" .github/workflows/android-apk.yml
+          grep -q "measure-babylon-delivery-cost.mjs" .github/workflows/android-apk.yml
+          grep -q "Babylon.js as the sole production 3D combat renderer" docs/graphics-engine-decision.md
+          grep -q "Babylon.js owns production 3D rendering" docs/graphics-asset-pipeline.md
+          echo 'P27_D9_SOURCE_AUDIT_PASS runtime=babylon-only codecs=babylon-local tests=no-three-imports docs=current'
