@@ -1,0 +1,95 @@
+name: P28-A0 Compact Camera Repair
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/p28a0-camera-coarse-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Restore compact framing without coarse quality caps
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          boundary_path = Path('src/game/combatGraphicsBackend.ts')
+          boundary = boundary_path.read_text()
+          old = '    coarse: boolean,\n    private readonly requestedBackend: BabylonGraphicsBackendId,'
+          new = '    private readonly coarse: boolean,\n    private readonly requestedBackend: BabylonGraphicsBackendId,'
+          if boundary.count(old) != 1:
+              raise SystemExit(f'expected one backend coarse constructor anchor, found {boundary.count(old)}')
+          boundary = boundary.replace(old, new, 1)
+          old = "          false,\n          'webgpu',\n          this.canvas,"
+          new = "          this.coarse,\n          'webgpu',\n          this.canvas,"
+          if boundary.count(old) != 1:
+              raise SystemExit(f'expected one WebGPU coarse propagation anchor, found {boundary.count(old)}')
+          boundary = boundary.replace(old, new, 1)
+          old = "await createBabylonCombatRenderer(this.canvas, false, 'webgl2', this.canvas)"
+          new = "await createBabylonCombatRenderer(this.canvas, this.coarse, 'webgl2', this.canvas)"
+          if boundary.count(old) != 1:
+              raise SystemExit(f'expected one WebGL2 coarse propagation anchor, found {boundary.count(old)}')
+          boundary = boundary.replace(old, new, 1)
+          boundary_path.write_text(boundary)
+
+          renderer_path = Path('src/game/babylonCombatRenderer.ts')
+          renderer = renderer_path.read_text()
+          anchor = '    this.camera = camera;\n'
+          insert = "    this.camera = camera;\n    const qualityCoarse = false; // P28-A0: compact input may change framing/readability, never startup visual quality.\n"
+          if renderer.count(anchor) != 1:
+              raise SystemExit(f'expected one renderer camera assignment anchor, found {renderer.count(anchor)}')
+          renderer = renderer.replace(anchor, insert, 1)
+          start = renderer.index(insert)
+          end = renderer.index('    this.playerRoot =', start)
+          block = renderer[start:end]
+          presentation_replacements = block.count(', coarse);')
+          if presentation_replacements < 10:
+              raise SystemExit(f'expected coarse presentation constructors in renderer initialization, found {presentation_replacements}')
+          block = block.replace(', coarse);', ', qualityCoarse);')
+          if 'new AdaptiveRenderBudget(coarse)' not in block:
+              raise SystemExit('expected adaptive render budget coarse anchor')
+          block = block.replace('new AdaptiveRenderBudget(coarse)', 'new AdaptiveRenderBudget(qualityCoarse)', 1)
+          renderer = renderer[:start] + block + renderer[end:]
+          renderer_path.write_text(renderer)
+
+          test_path = Path('tests/graphics-backend-boundary.ts')
+          test = test_path.read_text()
+          old = "boundarySource.includes(\"await createBabylonCombatRenderer(this.canvas, false, 'webgl2', this.canvas)\")"
+          new = "boundarySource.includes(\"await createBabylonCombatRenderer(this.canvas, this.coarse, 'webgl2', this.canvas)\")"
+          if test.count(old) != 1:
+              raise SystemExit(f'expected one backend boundary WebGL2 assertion, found {test.count(old)}')
+          test = test.replace(old, new, 1)
+          old = "    && boundarySource.includes(\"renderDeviceClassPolicy = coarse ? 'flagship-default:coarse-hint-ignored' : 'flagship-default'\")"
+          new = "    && boundarySource.includes(\"renderDeviceClassPolicy = coarse ? 'flagship-default:coarse-hint-ignored' : 'flagship-default'\")\n    && babylonRendererSource.includes('const qualityCoarse = false')"
+          if test.count(old) != 1:
+              raise SystemExit(f'expected one P28-A0 device-policy assertion, found {test.count(old)}')
+          test = test.replace(old, new, 1)
+          test_path.write_text(test)
+          PY
+          git diff --check
+          npm ci
+          npx tsx tests/graphics-backend-boundary.ts
+          npx tsx tests/babylon-effects-quality.ts
+          node --check scripts/browser-runtime-smoke.mjs
+      - name: Commit repair and retire helper
+        shell: bash
+        run: |
+          rm .github/workflows/p28a0-camera-coarse-fix.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/game/combatGraphicsBackend.ts src/game/babylonCombatRenderer.ts tests/graphics-backend-boundary.ts .github/workflows/p28a0-camera-coarse-fix.yml
+          git commit -m 'Preserve compact Babylon framing at flagship quality'
+          git push origin HEAD:main
