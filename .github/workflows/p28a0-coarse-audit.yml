@@ -190,6 +190,7 @@ jobs:
           replace('tests/babylon-perseid-capstone.ts', "assert.equal(perseidRenderProfile(1, true).name, 'mobile');", "assert.deepEqual(perseidRenderProfile(1, true), perseidRenderProfile(1, false), 'Coarse input alone must preserve the full Perseid capstone profile.');", 1)
           replace('tests/babylon-k91-capstone.ts', "assert.equal(k91RenderProfile(1, true).name, 'mobile');", "assert.deepEqual(k91RenderProfile(1, true), k91RenderProfile(1, false), 'Coarse input alone must preserve the full K91 capstone profile.');", 1)
           replace('tests/babylon-orpheline-capstone.ts', "assert.equal(orphelineRenderProfile(1, true).name, 'mobile');", "assert.deepEqual(orphelineRenderProfile(1, true), orphelineRenderProfile(1, false), 'Coarse input alone must preserve the full Orpheline capstone profile.');", 1)
+          replace('tests/babylon-hecate-capstone.ts', "assert.equal(hecateRenderProfile(1, true).name, 'mobile');", "assert.deepEqual(hecateRenderProfile(1, true), hecateRenderProfile(1, false), 'Coarse input alone must preserve the full Hecate capstone profile.');", 1)
 
           print('P28_A0_COARSE_QUALITY_CEILINGS_REMOVED')
           PY
