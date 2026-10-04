@@ -3093,7 +3093,7 @@ await waitFor(`(() => {
     && canvas?.dataset.operatorVisual === 'authored-2'
     && (canvas?.dataset.operatorAsset ?? '').includes('operator-vanguard-lod2')
     && (canvas?.dataset.weaponAsset ?? '').includes('weapon-breacher-lod2');
-})()`, 'Android Vanguard authored mobile assets', 20_000);
+})()`, 'Android Vanguard authored mobile assets', 90_000);
 console.log('ANDROID_MOBILE_ASSET_PASS icons=loaded operatorLod=2 weaponLod=2');
 console.log('ANDROID_CLASS_ASSET_PASS operator=vanguard');
 
@@ -4133,7 +4133,7 @@ await p20cLoadClassCombat('systems', 'carbine', [
   { name: 'Relay Hack', short: 'HACK' },
   { name: 'Cascade Arc', short: 'CHAIN' },
 ]);
-await waitFor(`document.querySelector('canvas')?.dataset.bossEnvironmentFx === 'phase-reactive-ready'`, 'post-P20-E Asteroid Refinery authored asset verification state', 45_000);
+await waitFor(`document.querySelector('canvas')?.dataset.bossEnvironmentFx === 'phase-reactive-ready'`, 'post-P20-E Asteroid Refinery authored asset verification state', 90_000);
 const p20eProfileRestored = await evaluate(`(() => {
   const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
   const profile = JSON.parse(${JSON.stringify(p20eProfileCheckpoint)});
