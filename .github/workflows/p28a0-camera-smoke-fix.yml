@@ -25,30 +25,19 @@ jobs:
           path = Path('scripts/browser-runtime-smoke.mjs')
           source = path.read_text()
 
-          anchor = """  const babylonCameraState = await page.evaluate(() => {
-    const canvas = document.querySelector('canvas.game-canvas');
-    return {
-      layout: canvas?.dataset.babylonCameraLayout ?? '',
-      framing: canvas?.dataset.babylonCameraFraming ?? '',
-      viewport: canvas?.dataset.babylonViewport ?? '',
-    };
-  });
-"""
-          replacement = """  const babylonCameraState = await page.evaluate(() => {
-    const canvas = document.querySelector('canvas.game-canvas');
-    const root = document.querySelector('.game-root');
-    return {
-      layout: canvas?.dataset.babylonCameraLayout ?? '',
-      framing: canvas?.dataset.babylonCameraFraming ?? '',
-      viewport: canvas?.dataset.babylonViewport ?? '',
-      compactLayout: root instanceof HTMLElement && root.dataset.compactLayout === 'true',
-    };
-  });
-"""
-          count = source.count(anchor)
+          old = "    const canvas = document.querySelector('canvas.game-canvas');\n    return {\n"
+          new = "    const canvas = document.querySelector('canvas.game-canvas');\n    const root = document.querySelector('.game-root');\n    return {\n"
+          count = source.count(old)
           if count != 1:
-              raise SystemExit(f'expected one Babylon camera state anchor, found {count}')
-          source = source.replace(anchor, replacement, 1)
+              raise SystemExit(f'expected one Babylon camera evaluate anchor, found {count}')
+          source = source.replace(old, new, 1)
+
+          old = "      viewport: canvas?.dataset.babylonViewport ?? '',\n    };\n"
+          new = "      viewport: canvas?.dataset.babylonViewport ?? '',\n      compactLayout: root instanceof HTMLElement && root.dataset.compactLayout === 'true',\n    };\n"
+          count = source.count(old)
+          if count != 1:
+              raise SystemExit(f'expected one Babylon camera viewport anchor, found {count}')
+          source = source.replace(old, new, 1)
 
           old = "  const expectedLayout = expectedNarrow ? 'narrow' : pointerProbe.coarse ? 'coarse' : 'standard';"
           new = "  const expectedLayout = expectedNarrow ? 'narrow' : babylonCameraState.compactLayout ? 'coarse' : 'standard';"
