@@ -16,88 +16,29 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - name: Remove viewport-class render ceilings from browser QA
+      - name: Validate flagship phone downgrades by measured pressure
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
 
           path = Path('scripts/browser-runtime-smoke.mjs')
-          lines = path.read_text().splitlines(keepends=True)
-          markers = (
-              'mobile Jovian performance profile',
-              'mobile Jovian instance budget',
-              'mobile Ice Mine fracture detail',
-              'mobile Solar Yard profile did not reduce',
-              'mobile Lattice Annex profile did not reduce',
-              'mobile Momentum Exchange profile did not reduce',
-              'mobile Cryo Reserve profile did not reduce',
-              'mobile Parallax Array profile did not reduce',
-              'Spin Habitat mobile environment',
-              'Spin Habitat mobile performance profile',
-              'Spin Habitat mobile instance budget',
-              'Spin Habitat mobile moving shadows',
-              'Spin Habitat mobile spindown VFX',
-              'Jovian Harvester mobile environment',
-              'Jovian Harvester mobile performance profile',
-              'Jovian Harvester mobile instance budget',
-              'Jovian Harvester mobile structural shadows',
-              'Jovian Harvester mobile storm/pressure detail',
-              'Jovian Harvester mobile atmosphere detail',
-              'Ice Mine mobile environment',
-              'Ice Mine mobile fracture VFX',
-              'Rhea Kade mobile presentation',
-              'HELIOS-9 mobile presentation',
-          )
+          source = path.read_text()
 
-          out = []
-          removed = []
-          i = 0
-          while i < len(lines):
-              line = lines[i]
-              stripped = line.lstrip()
-              if stripped.startswith("if (viewportMode === 'mobile-landscape'"):
-                  start = i
-                  text = line
-                  if '{' in line:
-                      depth = line.count('{') - line.count('}')
-                      i += 1
-                      while i < len(lines) and depth > 0:
-                          text += lines[i]
-                          depth += lines[i].count('{') - lines[i].count('}')
-                          i += 1
-                  else:
-                      i += 1
-                  if any(marker in text for marker in markers):
-                      removed.append(text)
-                      continue
-                  out.extend(lines[start:i])
-                  continue
-              out.append(line)
-              i += 1
+          telemetry_old = "      renderTier: canvas?.dataset.renderTier ?? '',\n      graphicsQuality: canvas?.dataset.graphicsQuality ?? '',\n"
+          telemetry_new = "      renderTier: canvas?.dataset.renderTier ?? '',\n      graphicsQuality: canvas?.dataset.graphicsQuality ?? '',\n      renderQualityInput: canvas?.dataset.renderQualityInput ?? '',\n      renderDeviceClassPolicy: canvas?.dataset.renderDeviceClassPolicy ?? '',\n      renderDowngradeReason: canvas?.dataset.renderDowngradeReason ?? '',\n"
+          if telemetry_old not in source:
+              raise SystemExit('P28-A0 browser telemetry anchor not found')
+          source = source.replace(telemetry_old, telemetry_new, 1)
 
-          source = ''.join(out)
-          old = "const allowedProfiles = viewportMode === 'mobile-landscape' ? ['mobile', 'performance'] : ['full', 'balanced', 'mobile', 'performance'];"
-          new = "const allowedProfiles = ['full', 'balanced', 'mobile', 'performance'];"
-          if old not in source:
-              raise SystemExit('Solar Yard viewport-class profile gate not found')
-          source = source.replace(old, new, 1)
+          assertion_old = "  if (viewportMode === 'mobile-landscape' && state.renderTier !== 'high') {\n    throw new Error('P28-A0 flagship phone render tier must start High without measured pressure: ' + JSON.stringify(state));\n  }\n"
+          assertion_new = "  if (viewportMode === 'mobile-landscape') {\n    const flagshipInput = /^requested:[0-9]+\\.[0-9]{2}\\+effective:1\\.00$/.test(state.renderQualityInput);\n    const devicePolicy = /^flagship-default(?::coarse-hint-ignored)?$/.test(state.renderDeviceClassPolicy);\n    const downgradeMatchesTier = state.renderTier === 'high'\n      ? state.renderDowngradeReason === 'none'\n      : state.renderDowngradeReason === 'sustained-frame-pressure';\n    if (!flagshipInput || !devicePolicy || !downgradeMatchesTier) {\n      throw new Error('P28-A0 flagship phone quality must ignore device class and only downgrade under measured pressure: ' + JSON.stringify(state));\n    }\n  }\n"
+          if assertion_old not in source:
+              raise SystemExit('P28-A0 stale flagship phone assertion not found')
+          source = source.replace(assertion_old, assertion_new, 1)
 
-          anchor = "  const resourceExpected = {\n"
-          flagship = (
-              "  if (viewportMode === 'mobile-landscape' && state.renderTier !== 'high') {\n"
-              "    throw new Error('P28-A0 flagship phone render tier must start High without measured pressure: ' + JSON.stringify(state));\n"
-              "  }\n\n"
-              + anchor
-          )
-          if anchor not in source:
-              raise SystemExit('Babylon resource telemetry anchor not found')
-          source = source.replace(anchor, flagship, 1)
-
-          if len(removed) < 8:
-              raise SystemExit(f'Expected multiple legacy mobile render gates, removed only {len(removed)}')
           path.write_text(source)
-          print(f'P28_A0_BROWSER_QA_MIGRATION removed_blocks={len(removed)}')
+          print('P28_A0_BROWSER_PRESSURE_GATE migrated=1')
           PY
           git diff --check
           git diff -- scripts/browser-runtime-smoke.mjs
@@ -108,5 +49,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add scripts/browser-runtime-smoke.mjs
-          git commit -m 'Align mobile browser QA with P28-A0 flagship policy'
+          git commit -m 'P28-A0 validate mobile downgrade cause in browser QA'
           git push origin HEAD:main
