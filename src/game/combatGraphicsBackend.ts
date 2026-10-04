@@ -5,7 +5,8 @@ import type { GraphicsQualityMode } from './renderQuality';
 import type { Player, SimState } from './sim';
 
 export type CombatGraphicsBackendId = 'babylon';
-export type CombatGraphicsLoadedBackendId = CombatGraphicsBackendId | 'initializing';
+export type CombatGraphicsImplementationId = CombatGraphicsBackendId | 'webgl2' | 'webgpu';
+export type CombatGraphicsLoadedBackendId = CombatGraphicsImplementationId | 'initializing';
 export type BabylonGraphicsBackendId = 'webgl2' | 'webgpu';
 
 export type CombatGraphicsBackendCreateOptions = {
@@ -48,7 +49,7 @@ export interface CombatGraphicsLifecycle {
 }
 
 export interface CombatGraphicsBackend extends CombatGraphicsLifecycle {
-  readonly id: CombatGraphicsBackendId;
+  readonly id: CombatGraphicsImplementationId;
   readonly loadedId: CombatGraphicsLoadedBackendId;
   render(...args: CombatGraphicsRenderArgs): void;
   performanceStats(): CombatGraphicsPerformanceStats;
