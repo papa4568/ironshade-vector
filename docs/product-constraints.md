@@ -4,14 +4,16 @@ These are durable product decisions and quality constraints. They apply across r
 
 ## Product target
 
-Target **premium console/PC-quality ARPG presentation on modern phones** while preserving responsive touch/controller play and reliable Android delivery.
+Target **premium console/PC-quality ARPG presentation on current high-performance / flagship-class phones** while preserving responsive touch/controller play and reliable Android delivery.
 
-- Build the premium version first. Solve device differences with adaptive quality, LODs, pooling, streaming, code splitting, and measured budgets before cutting mechanics.
-- Protect frame pacing, input latency, memory/thermal stability, save integrity, deterministic QA, readable combat tells, and touch/controller usability.
+- The supported visual target is high-performance phones, not broad low-end phone compatibility. Do not lower the art direction to accommodate devices outside that target.
+- Build the richest version first. Texture resolution, geometry density, material complexity, shadows, reflections, AO, post-processing, particles, decals, and authored scene density should be chosen from visual need first, then optimized only when measurements on target hardware show a real bottleneck.
+- Do not use arbitrary mobile-era caps, legacy tier budgets, fixed triangle percentages, fixed texture ceilings, fixed draw-call ceilings, or conservative effect-count limits as product-quality constraints. Measured hardware limits may justify optimization; undocumented or precautionary limits may not.
+- Flagship/high quality is the default art-direction and acceptance baseline. Adaptive quality, LODs, pooling, streaming, instancing, compression, and residency management are runtime engineering tools for measured pressure and thermal stability, not the ceiling for authored quality.
+- If a target high-performance phone can sustain richer rendering, prefer the richer rendering. Secondary presentation may degrade only when real runtime pressure requires it; gameplay-critical cues must remain intact.
+- Protect frame pacing, input latency, memory/thermal stability, save integrity, deterministic QA, readable combat tells, and touch/controller usability. These are release requirements, not reasons to pre-emptively flatten the visuals.
 - World state should communicate rarity, modifiers, status, boss phases, hazards, and interactions through model/animation/material/VFX/audio before relying on HUD text.
 - Major combat actions should synchronize targeting, animation, sound, VFX, camera response, and haptics where supported.
-- Performance scaling should remove secondary presentation cost before enemy mechanics, class identity, boss complexity, or encounter density.
-- High-end devices should have a visibly richer quality mode.
 - Android phone-class windows below 600dp smallest width stay sensor-landscape. Android tablet/foldable/desktop-style windows at 600dp or wider are intentionally resizable and orientation-adaptive; the app declares the Android game category but does not use that Android 16 exception to lock large-screen orientation.
 
 ## Locked design decisions
