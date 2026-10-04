@@ -1,0 +1,106 @@
+name: P27-D9 Fast Smoke Cleanup
+
+on:
+  push:
+    branches:
+      - p27d9-clean
+    paths:
+      - '.github/workflows/p27d9-fast-smoke-cleanup.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out clean D9 branch
+        uses: actions/checkout@v7
+        with:
+          ref: p27d9-clean
+          fetch-depth: 0
+
+      - name: Build corrected fast-smoke contract blobs
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          package = Path('package.json')
+          package_source = package.read_text()
+          stale_check = ' && node --check scripts/measure-webgpu-delivery-cost.mjs'
+          if stale_check not in package_source:
+              raise SystemExit('stale WebGPU syntax check not found in package script')
+          package.write_text(package_source.replace(stale_check, '', 1))
+
+          contract = Path('tests/android-fast-smoke-contract.mjs')
+          source = contract.read_text()
+          stale_reader = "const p21f3Delivery = fs.readFileSync(new URL('../scripts/measure-webgpu-delivery-cost.mjs', import.meta.url), 'utf8');\n"
+          if stale_reader not in source:
+              raise SystemExit('stale P21-F3 reader not found')
+          source = source.replace(stale_reader, '', 1)
+
+          stale_workflow_requirement = "requireText(workflow, 'node scripts/measure-webgpu-delivery-cost.mjs', 'Android workflow');\n"
+          if stale_workflow_requirement not in source:
+              raise SystemExit('stale P21-F3 workflow requirement not found')
+          source = source.replace(stale_workflow_requirement, '', 1)
+
+          stale_artifact_requirement = "requireText(workflow, 'p21f3-webgpu-delivery.json', 'Android workflow');\n"
+          if stale_artifact_requirement not in source:
+              raise SystemExit('stale P21-F3 artifact requirement not found')
+          source = source.replace(stale_artifact_requirement, '', 1)
+
+          for stale_entry in (
+              "  'android-p21f3-webgpu.json',\n",
+              "  'p21f3-webgpu-delivery.json',\n",
+          ):
+              if stale_entry not in source:
+                  raise SystemExit(f'stale P21 artifact upload entry not found: {stale_entry.strip()}')
+              source = source.replace(stale_entry, '', 1)
+
+          stale_measurement_block = """for (const marker of [
+  'P21F3_WEBGPU_DELIVERY_PASS',
+  'three.webgpu-',
+  'three.tsl-',
+  'webGpuRefineryRenderer-',
+  'incrementalCompressedBytes',
+  'compressedPercentOfApk',
+]) requireText(p21f3Delivery, marker, 'P21-F3 delivery measurement');
+
+"""
+          if stale_measurement_block not in source:
+              raise SystemExit('stale P21-F3 measurement contract block not found')
+          source = source.replace(stale_measurement_block, '', 1)
+
+          anchor = "requireText(workflow, 'node scripts/measure-babylon-delivery-cost.mjs', 'Android workflow');\n"
+          if anchor not in source:
+              raise SystemExit('Babylon delivery workflow anchor not found')
+          replacement = anchor + """for (const retired of [
+  'measure-webgpu-delivery-cost.mjs',
+  'p21f3-webgpu-delivery.json',
+  'android-p21f3-webgpu.json',
+]) {
+  if (workflow.includes(retired)) throw new Error(`Android workflow must not retain retired Three/P21 delivery gate: ${retired}`);
+}
+for (const marker of [
+  "-name 'three-core-*.js'",
+  "-name 'three-webgl-*.js'",
+  "-name 'three.webgpu-*.js'",
+  "-name 'three.tsl-*.js'",
+  'Retired Three runtime chunk found in Android assets.',
+  'assets/codecs/babylon/manifest.json',
+  '! test -e android/app/src/main/assets/public/assets/codecs/basis',
+]) requireText(workflow, marker, 'P27-D9 Babylon-only Android workflow');
+"""
+          source = source.replace(anchor, replacement, 1)
+          contract.write_text(source)
+          PY
+
+          for file in package.json tests/android-fast-smoke-contract.mjs; do
+            jq -Rs '{content: ., encoding: "utf-8"}' "$file" > /tmp/blob.json
+            response="$(gh api --method POST "repos/${GITHUB_REPOSITORY}/git/blobs" --input /tmp/blob.json)"
+            echo "$file BLOB_SHA=$(jq -r '.sha' <<<"$response")"
+          done
