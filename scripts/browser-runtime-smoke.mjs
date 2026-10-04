@@ -2423,15 +2423,22 @@ async function p27A2BabylonBackendAudit() {
   }
 
   const effectsBudgetMatch = /^tier:(high|balanced|performance)\|shadow:(0|512|1024)\|post:(1\.00|0\.68|0\.42)\|transparency:(1\.00|0\.68|0\.40)\|reflection:(1\.00|0\.70|0\.38)\|vfx:(1\.00|0\.72|0\.45)\|secondary:(1\.00|0\.68|0\.42)\|critical:1\.00\|frame:(\d+\.\d{2})$/.exec(state.effectsBudget);
+  const qualityInputMatch = /^requested:([0-9]+\.[0-9]{2})\+effective:([0-9]+\.[0-9]{2})$/.exec(state.renderQualityInput);
   const effectsExpected = {
     high: { shadow: '1024', post: '1.00', transparency: '1.00', reflection: '1.00', vfx: '1.00', secondary: '1.00' },
     balanced: { shadow: '512', post: '0.68', transparency: '0.68', reflection: '0.70', vfx: '0.72', secondary: '0.68' },
     performance: { shadow: '0', post: '0.42', transparency: '0.40', reflection: '0.38', vfx: '0.45', secondary: '0.42' },
   }[state.renderTier];
+  const expectedShadow = effectsExpected && qualityInputMatch
+    && Number(qualityInputMatch[2]) > 0.62
+    && state.renderTier !== 'performance'
+      ? effectsExpected.shadow
+      : '0';
   if (!effectsBudgetMatch
     || !effectsExpected
+    || !qualityInputMatch
     || effectsBudgetMatch[1] !== state.renderTier
-    || effectsBudgetMatch[2] !== effectsExpected.shadow
+    || effectsBudgetMatch[2] !== expectedShadow
     || effectsBudgetMatch[3] !== effectsExpected.post
     || effectsBudgetMatch[4] !== effectsExpected.transparency
     || effectsBudgetMatch[5] !== effectsExpected.reflection
