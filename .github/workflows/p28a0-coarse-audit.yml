@@ -28,6 +28,7 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
           def replace(path, old, new, expected=None):
               p = Path(path)
@@ -70,7 +71,7 @@ jobs:
           replace('src/game/babylonIceMinePresentation.ts', "const profileName = this.coarse ? 'mobile' : renderBudget.tierName;", 'const profileName = renderBudget.tierName;', 1)
           replace('src/game/babylonIceMinePresentation.ts', 'const reduced = coarse || vfxDensity < 0.55;', 'const reduced = vfxDensity < 0.55;', 1)
 
-          # Remove legacy mobile render profiles while preserving the budget-driven performance/balanced/full profiles.
+          # Remove legacy mobile render profiles while preserving budget-driven performance/balanced/full profiles.
           profile_files = [
               'src/game/babylonCryoReservePresentation.ts',
               'src/game/babylonMomentumExchangePresentation.ts',
@@ -115,13 +116,58 @@ jobs:
                   raise SystemExit(f'{path}: expected one legacy coarse mobile profile, removed={removed}')
               p.write_text(''.join(out))
 
+          # Remove dead pointer-class plumbing created by the quality-policy cleanup.
+          helper_functions = {
+              'src/game/babylonAbilityVfx.ts': 'babylonAbilityEffectsMode',
+              'src/game/babylonCryoReservePresentation.ts': 'cryoReserveRenderProfile',
+              'src/game/babylonEnemyLifecycleVisuals.ts': 'babylonEnemyLifecycleEffectsMode',
+              'src/game/babylonEnemyTelegraphs.ts': 'babylonEnemyTelegraphEffectsMode',
+              'src/game/babylonIceMinePresentation.ts': 'iceMineFractureBudget',
+              'src/game/babylonLatticeAnnexPresentation.ts': 'latticeAnnexRenderProfile',
+              'src/game/babylonMomentumExchangePresentation.ts': 'momentumExchangeRenderProfile',
+              'src/game/babylonParallaxArrayPresentation.ts': 'parallaxArrayRenderProfile',
+              'src/game/babylonProtocolStatusVisuals.ts': 'babylonProtocolStatusEffectsMode',
+              'src/game/babylonWeaponVfx.ts': 'babylonWeaponEffectsMode',
+              'src/game/hecateCapstone.ts': 'hecateRenderProfile',
+              'src/game/jovianHarvesterVisualLanguage.ts': 'jovianHarvesterRenderProfile',
+              'src/game/k91Capstone.ts': 'k91RenderProfile',
+              'src/game/orphelineCapstone.ts': 'orphelineRenderProfile',
+              'src/game/perseidCapstone.ts': 'perseidRenderProfile',
+              'src/game/solarYardVisualProfile.ts': 'solarYardRenderProfile',
+              'src/game/spinHabitatArchitecture.ts': 'spinHabitatRenderProfile',
+          }
+          for path, fn in helper_functions.items():
+              p = Path(path)
+              s = p.read_text()
+              pattern = rf'(export function {re.escape(fn)}\([^)]*)\bcoarse: boolean'
+              updated, count = re.subn(pattern, r'\1_coarse: boolean', s, count=1)
+              if count != 1:
+                  raise SystemExit(f'{path}: could not rename unused coarse parameter for {fn}')
+              p.write_text(updated)
+
+          for path in [
+              'src/game/babylonDamagedVesselPresentation.ts',
+              'src/game/babylonOrbitalStationPresentation.ts',
+              'src/game/babylonSpinHabitatPresentation.ts',
+          ]:
+              replace(path, 'private readonly coarse: boolean,', '_coarse: boolean,', 1)
+
+          world = Path('src/game/babylonWorldPresentation.ts')
+          s = world.read_text()
+          if s.count('  private readonly coarse: boolean;') != 1 or s.count('    this.coarse = coarse;') != 1:
+              raise SystemExit('babylonWorldPresentation coarse property anchors changed')
+          s = s.replace('  private readonly coarse: boolean;\n', '', 1)
+          s = s.replace('constructor(scene: Scene, canvas: HTMLCanvasElement, coarse: boolean)', 'constructor(scene: Scene, canvas: HTMLCanvasElement, _coarse: boolean)', 1)
+          s = s.replace('    this.coarse = coarse;\n', '', 1)
+          world.write_text(s)
+
           # Browser parity follows actual adaptive detail tier, not pointer class.
           replace('scripts/browser-runtime-smoke.mjs', 'const expectedPlayerLod = pointerProbe.coarse ? 2 : 1;', "const expectedPlayerLod = state.renderTier === 'performance' ? 2 : 1;", 1)
 
           print('P28_A0_COARSE_QUALITY_CEILINGS_REMOVED')
           PY
           git diff --check
-          echo '=== remaining coarse production branches (UX/layout references are expected) ==='
+          echo '=== remaining coarse production branches (UX/layout/readability references are expected) ==='
           grep -RIn --include='*.ts' -E '\bcoarse\b' src/game | grep -E 'babylon|renderQuality|graphics|runtimeScalability|Capstone|Visual|Architecture' || true
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
