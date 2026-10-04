@@ -172,7 +172,7 @@ assert(
   'P27-D8 renderer-neutral render, performance, pointer, and lifecycle measurements must remain on the backend contract.',
 );
 assert(
-  boundarySource.includes("requestedBackend: BabylonGraphicsBackendId")
+  boundarySource.includes('requestedBackend: BabylonGraphicsBackendId')
     && boundarySource.includes("'webgpu',\n          this.canvas,\n          reason =>")
     && boundarySource.includes("await createBabylonCombatRenderer(this.canvas, this.coarse, 'webgl2', this.canvas)")
     && boundarySource.includes('fallbackFromWebGpu(reason)')
@@ -183,7 +183,7 @@ assert(
 assert(
   gameCanvasSource.includes('createCombatGraphicsBackend(canvas, compactLayout')
     && gameCanvasSource.includes('graphicsBackend?.performanceStats()')
-    && gameCanvasSource.includes('graphicsBackend?.screenDirection(')
+    && gameCanvasSource.includes('graphicsBackendRef.current?.screenDirection(')
     && !gameCanvasSource.includes('new ThreeCombatRenderer('),
   'P27-D8 combat runtime and renderer-neutral QA measurements must continue through the backend boundary.',
 );
