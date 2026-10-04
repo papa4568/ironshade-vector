@@ -18,8 +18,10 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 22.23.2
           cache: npm
+      - name: Use locked npm
+        run: npm install --global npm@10.9.8
       - name: Migrate renderer quality-source assertions
         shell: bash
         run: |
@@ -30,14 +32,23 @@ jobs:
           replacement_count = 0
           for path in sorted(Path('tests').glob('babylon-*.ts')):
               source = path.read_text()
-              updated = source.replace('scene, canvas, coarse\\)', 'scene, canvas, qualityCoarse\\)')
-              updated = updated.replace('scene, canvas, coarse\\,', 'scene, canvas, qualityCoarse\\,')
-              if updated != source:
-                  path.write_text(updated)
+              lines = source.splitlines(keepends=True)
+              updated_lines = []
+              file_changes = 0
+              for line in lines:
+                  updated = line
+                  source_assertion = ('assert.match(rendererSource' in line or 'assert.match(babylonRendererSource' in line)
+                  if source_assertion and 'new ' in line and 'coarse' in line:
+                      updated = line.replace('coarse', 'qualityCoarse')
+                  if updated != line:
+                      file_changes += 1
+                  updated_lines.append(updated)
+              if file_changes:
+                  path.write_text(''.join(updated_lines))
                   changed.append(str(path))
-                  replacement_count += source.count('scene, canvas, coarse\\)') + source.count('scene, canvas, coarse\\,')
-          if replacement_count < 1:
-              raise SystemExit('expected at least one stale Babylon renderer quality-source assertion')
+                  replacement_count += file_changes
+          if replacement_count < 4:
+              raise SystemExit(f'expected at least four stale Babylon renderer quality-source assertions, found {replacement_count}')
           print(f'P28_A0_ASSERTION_MIGRATION files={len(changed)} replacements={replacement_count}')
           for path in changed:
               print(path)
