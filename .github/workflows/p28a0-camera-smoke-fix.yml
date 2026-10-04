@@ -25,15 +25,8 @@ jobs:
           path = Path('scripts/browser-runtime-smoke.mjs')
           source = path.read_text()
 
-          old = "  const state = await evaluate(`(() => {\n    const canvas = document.querySelector('canvas');\n    return {\n"
-          new = "  const state = await evaluate(`(() => {\n    const canvas = document.querySelector('canvas');\n    const root = document.querySelector('.game-root');\n    return {\n"
-          count = source.count(old)
-          if count != 1:
-              raise SystemExit(f'expected one Babylon state telemetry anchor, found {count}')
-          source = source.replace(old, new, 1)
-
           old = "      viewport: canvas?.dataset.babylonViewport ?? '',\n      feedback: canvas?.dataset.cameraFeedback ?? '',\n"
-          new = "      viewport: canvas?.dataset.babylonViewport ?? '',\n      compactLayout: root instanceof HTMLElement && root.dataset.compactLayout === 'true',\n      feedback: canvas?.dataset.cameraFeedback ?? '',\n"
+          new = "      viewport: canvas?.dataset.babylonViewport ?? '',\n      compactLayout: document.querySelector('.game-root')?.dataset.compactLayout === 'true',\n      feedback: canvas?.dataset.cameraFeedback ?? '',\n"
           count = source.count(old)
           if count != 1:
               raise SystemExit(f'expected one Babylon viewport telemetry anchor, found {count}')
