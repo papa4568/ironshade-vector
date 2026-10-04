@@ -1,9 +1,9 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { resolve, relative } from 'node:path';
-import { NullEngine } from '@babylonjs/core/Engines/nullEngine';
-import { LoadAssetContainerAsync } from '@babylonjs/core/Loading/sceneLoader';
-import { Scene } from '@babylonjs/core/scene';
-import '@babylonjs/loaders/glTF/2.0/glTFLoader';
+import { NullEngine } from '@babylonjs/core/Engines/nullEngine.js';
+import { LoadAssetContainerAsync } from '@babylonjs/core/Loading/sceneLoader.js';
+import { Scene } from '@babylonjs/core/scene.js';
+import '@babylonjs/loaders/glTF/2.0/glTFLoader.js';
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
