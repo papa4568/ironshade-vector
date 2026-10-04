@@ -103,7 +103,7 @@ try {
         active: canvas.dataset.weaponActive ?? '',
         asset: canvas.dataset.weaponAsset ?? '',
         variant: canvas.dataset.weaponVariant ?? '',
-        fx: canvas.dataset.weaponFx ?? '',
+        fx: canvas.dataset.babylonWeaponFireFx ?? '',
         heat: canvas.dataset.weaponHeat ?? '',
         canvases: document.querySelectorAll('canvas').length,
         width: rect.width,
@@ -111,13 +111,13 @@ try {
       };
     })()`);
 
-    if (lastState?.fallback) {
+    if (lastState?.fallback || lastState?.visual?.includes('fallback')) {
       throw new Error(`Authored weapon asset entered procedural fallback: ${JSON.stringify(lastState)}`);
     }
 
     const roles = new Set(String(lastState?.roles ?? '').split(',').filter(Boolean));
     const allRoles = ['carbine', 'breacher', 'rail'].every(role => roles.has(role));
-    if (lastState?.visual === 'authored' && allRoles) {
+    if (lastState?.visual === 'authored-babylon' && allRoles) {
       if (!['carbine', 'breacher', 'rail'].includes(lastState.active)) {
         await sleep(200);
         continue;
@@ -134,10 +134,10 @@ try {
               : lastState.variant === 'carbine-burst' ? 'burst-tracer'
                 : lastState.variant === 'carbine-precision' ? 'precision-tracer'
                   : lastState.active === 'rail' ? 'lance'
-                : lastState.active === 'breacher' ? 'scatter'
-                  : 'tracer';
+                    : lastState.active === 'breacher' ? 'scatter'
+                      : 'tracer';
       if (lastState.fx !== expectedFx) {
-        throw new Error(`Unexpected authored weapon FX language: ${JSON.stringify(lastState)}`);
+        throw new Error(`Unexpected authored Babylon weapon FX language: ${JSON.stringify(lastState)}`);
       }
       if (!(lastState.width > 0 && lastState.height > 0)) {
         throw new Error(`Authored weapon canvas is not visible: ${JSON.stringify(lastState)}`);
@@ -153,8 +153,8 @@ try {
   const activeWeapon = ['carbine', 'breacher', 'rail'].includes(lastState?.active) ? lastState.active : null;
   const expectedLod = ['mobile-landscape', 'android-emulator'].includes(process.env.BROWSER_E2E_VIEWPORT ?? '') ? 2 : 1;
   const activeAuthored = activeWeapon && lastState?.asset === `weapon-${activeWeapon}-lod${expectedLod}`;
-  if (lastState?.visual !== 'authored' || !['carbine', 'breacher', 'rail'].every(role => roles.has(role)) || !activeAuthored) {
-    throw new Error(`Timed out waiting for active authored weapon asset: ${JSON.stringify(lastState)}`);
+  if (lastState?.visual !== 'authored-babylon' || !['carbine', 'breacher', 'rail'].every(role => roles.has(role)) || !activeAuthored) {
+    throw new Error(`Timed out waiting for active authored Babylon weapon asset: ${JSON.stringify(lastState)}`);
   }
 } finally {
   socket.close();

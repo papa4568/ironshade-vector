@@ -59,7 +59,7 @@ assert(
     && browserSmokeSource.includes("canvas.dataset.refineryAtmosphereQa = 'off'")
     && browserSmokeSource.includes('p21d2-atmosphere-off')
     && browserSmokeSource.includes('p21d2-atmosphere-on'),
-  'P21-D2 Browser E2E must capture deterministic atmosphere off/on evidence.',
+  'P21-D2 historical Browser E2E helpers must remain available until P27-D9 removes the dormant Three implementation.',
 );
 assert(
   androidSmokeSource.includes('ANDROID_P21D2_ATMOSPHERE_PASS')
@@ -67,8 +67,8 @@ assert(
   'P21-D2 Android fast smoke must cover production atmosphere and lifecycle stability.',
 );
 assert(
-  browserWorkflowSource.includes('browser-e2e-${{ matrix.viewport }}-p21d2-atmosphere-*.png'),
-  'P21-D2 Browser E2E must retain the deterministic off/on screenshots as workflow evidence.',
+  !browserWorkflowSource.includes('browser-e2e-${{ matrix.viewport }}-p21d2-atmosphere-*.png'),
+  'P27-D8 Browser E2E must not publish Three-only atmosphere comparison evidence after the Three QA runtime path is retired.',
 );
 
 console.log(`P21D2_REFINERY_ATMOSPHERE_PASS fog=${refineryAtmosphereTelemetry(false)} lowVisibility=${lowVisibility.near.toFixed(1)}-${lowVisibility.far.toFixed(1)} protected=${REFINERY_ATMOSPHERE_PROFILE.protectedCueGroups.join('+')}`);

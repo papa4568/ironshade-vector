@@ -1,6 +1,8 @@
+import { spawnSync } from 'node:child_process';
+
 const cdpBase = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9223';
 const timeoutMs = Number(process.env.AUTHORED_OPERATOR_TIMEOUT_MS ?? 20_000);
-const startedAt = Date.now();
+let startedAt = Date.now();
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 if (typeof WebSocket !== 'function') {
@@ -80,9 +82,7 @@ async function createSession() {
   throw new Error(`Timed out finding Ironshade CDP target; targets=${JSON.stringify(lastTargets)}${lastError ? ` error=${lastError}` : ''}`);
 }
 
-const { socket, call } = await createSession();
-
-async function evaluate(expression) {
+async function evaluateWith(call, expression) {
   const response = await call('Runtime.evaluate', {
     expression,
     awaitPromise: true,
@@ -92,6 +92,32 @@ async function evaluate(expression) {
     throw new Error(response.exceptionDetails.exception?.description ?? response.exceptionDetails.text ?? 'Runtime.evaluate failed');
   }
   return response.result?.value;
+}
+
+let session = await createSession();
+const initialCanvasCount = await evaluateWith(session.call, 'document.querySelectorAll(\'canvas\').length');
+if (initialCanvasCount === 0) {
+  session.socket.close();
+  const bootstrap = spawnSync(process.execPath, ['scripts/browser-runtime-smoke.mjs'], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      BROWSER_E2E_GRAPHICS_PATH: 'babylon',
+    },
+    stdio: 'inherit',
+  });
+  if (bootstrap.status !== 0) {
+    throw new Error(`Babylon combat bootstrap failed before authored-operator verification (exit=${bootstrap.status ?? 'signal'}).`);
+  }
+  startedAt = Date.now();
+  session = await createSession();
+  console.log('AUTHORED_OPERATOR_BOOTSTRAP_PASS graphics=babylon');
+}
+
+const { socket, call } = session;
+
+async function evaluate(expression) {
+  return evaluateWith(call, expression);
 }
 
 try {
