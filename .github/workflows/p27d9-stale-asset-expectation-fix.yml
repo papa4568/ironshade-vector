@@ -1,0 +1,39 @@
+name: P27-D9 Stale Asset Expectation Fix
+
+on:
+  push:
+    branches:
+      - p27d9-clean
+    paths:
+      - '.github/workflows/p27d9-stale-asset-expectation-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out D9 branch
+        uses: actions/checkout@v7
+        with:
+          ref: p27d9-clean
+          fetch-depth: 0
+
+      - name: Replace retired Three-era asset expectation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -c "from pathlib import Path; p=Path('scripts/android-runtime-smoke.mjs'); s=p.read_text(); old=\"canvas?.dataset.operatorVisual === 'authored-2'\"; new=\"canvas?.dataset.operatorVisual === 'authored-2-babylon'\"; assert old in s, 'stale operatorVisual expectation not found'; p.write_text(s.replace(old, new, 1))"
+          git diff --check
+          grep -Fq "operatorVisual === 'authored-2-babylon'" scripts/android-runtime-smoke.mjs
+
+      - name: Commit corrected Android smoke expectation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add scripts/android-runtime-smoke.mjs
+          git commit -m 'Align Android asset smoke with Babylon renderer'
+          git push origin HEAD:p27d9-clean
