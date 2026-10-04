@@ -3,9 +3,15 @@ import { readFileSync } from 'node:fs';
 import { AdaptiveRenderBudget } from '../src/game/renderQuality';
 
 const high = new AdaptiveRenderBudget(false).sample(16.7, 1, 'flagship');
-const balanced = new AdaptiveRenderBudget(true).sample(16.7, 1, 'adaptive');
+const phoneDefault = new AdaptiveRenderBudget(true).sample(16.7, 1, 'adaptive');
+const balancedBudget = new AdaptiveRenderBudget(true);
+let balanced = balancedBudget.sample(16.7, 1, 'adaptive');
+for (let frame = 0; frame < 90 && balanced.tierName === 'high'; frame += 1) {
+  balanced = balancedBudget.sample(30, 1, 'adaptive');
+}
 const performance = new AdaptiveRenderBudget(false).sample(16.7, 1, 'performance');
 
+assert.equal(phoneDefault.tierName, 'high', 'P28-A0 coarse/mobile input must start with the complete Babylon effects stack before measured frame pressure.');
 assert.deepEqual(
   {
     tier: high.tierName,
@@ -30,7 +36,7 @@ assert.deepEqual(
     critical: balanced.gameplayCueScale,
   },
   { tier: 'balanced', shadow: 512, transparency: 0.68, reflection: 0.7, vfx: 0.72, secondary: 0.68, critical: 1 },
-  'Balanced must reduce Babylon effects cost while keeping gameplay-critical cues full-strength.',
+  'Balanced must reduce Babylon effects cost after measured pressure while keeping gameplay-critical cues full-strength.',
 );
 assert.deepEqual(
   {
@@ -77,7 +83,7 @@ assert(rendererSource.includes('this.enemyLifecycleVisuals.sync(state, mobileTar
 
 assert(weaponSource.includes('profile.trailAlpha * secondaryScale * transparencyScale'), 'Projectile trails must scale secondary transparency.');
 assert(weaponSource.includes('visual.coreMaterial.alpha = 1'), 'Projectile cores must stay fully readable while trail transparency sheds cost.');
-assert(weaponSource.includes('effectsMode === \'reduced\' ? 0 : 0.78 * fade * transparencyScale'), 'Impact sparks must shed secondary transparency and disappear at reduced VFX density.');
+assert(weaponSource.includes("effectsMode === 'reduced' ? 0 : 0.78 * fade * transparencyScale"), 'Impact sparks must shed secondary transparency and disappear at reduced VFX density.');
 
 assert(abilitySource.includes('dodging ? 0.72 : (0.26 + speedScale * 0.16) * transparencyScale'), 'Non-dodge mobility trails must scale transparency while the dodge cue remains protected.');
 assert(abilitySource.includes('0.62 * fade * (criticalGlyph ? 1 : transparencyScale)'), 'Ability secondary glyph transparency must scale without weakening critical class/mark glyphs.');
@@ -92,5 +98,5 @@ assert(browserSource.includes('BROWSER_P27D4_BABYLON_EFFECTS_QUALITY_PASS'), 'Br
 assert(packageSource.includes('test:babylon-effects-quality'), 'The production build must execute the D4 targeted regression.');
 
 console.log(
-  'P27_D4_BABYLON_EFFECTS_QUALITY_PASS tiers=high>balanced>performance shadows=1024>512>off transparency=1.00>0.68>0.40 reflection=1.00>0.70>0.38 vfx=1.00>0.72>0.45 secondary=1.00>0.68>0.42 critical=1.00 degrade=performance recover=high frame-evidence=browser-runtime',
+  'P27_D4_BABYLON_EFFECTS_QUALITY_PASS phoneDefault=high tiers=high>balanced>performance shadows=1024>512>off transparency=1.00>0.68>0.40 reflection=1.00>0.70>0.38 vfx=1.00>0.72>0.45 secondary=1.00>0.68>0.42 critical=1.00 degrade=performance recover=high frame-evidence=browser-runtime',
 );
