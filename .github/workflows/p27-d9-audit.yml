@@ -25,3 +25,7 @@ jobs:
           git grep -n -E "from ['\"]three|import\(['\"]three|node_modules/three|@types/three|threeCombatRenderer|webGpuRefineryRenderer|assets/codecs/basis|three-core-|three-webgl-|P21F3|p21f3" -- \
             ':!docs/content-roadmap-archive.md' \
             ':!docs/content-roadmap.md' || true
+          echo '=== P27-D9 LEGACY HELPER CONSUMERS ==='
+          git grep -n -E "hardSciFiVisuals|mapVisuals|refineryBloom|refineryIbl" -- \
+            ':!docs/content-roadmap-archive.md' \
+            ':!docs/content-roadmap.md' || true
