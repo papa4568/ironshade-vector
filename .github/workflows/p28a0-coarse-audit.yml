@@ -1,0 +1,24 @@
+name: P28-A0 Coarse Quality Audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/p28a0-coarse-audit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Find coarse-device rendering policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== coarse references in Babylon production rendering ==='
+          grep -RIn --include='*.ts' -E 'coarse|pointer: coarse' src/game | grep -E 'babylon|renderQuality|graphics|runtimeScalability' || true
+          echo '=== hard detail / quality caps ==='
+          grep -RIn --include='*.ts' -E 'Math\.min\([^)]*(detail|quality|density)[^)]*\)|coarse[^;]*(performance|reduced|detail|quality|light|shadow|lod|ratio|density)' src/game || true
