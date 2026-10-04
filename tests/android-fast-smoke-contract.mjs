@@ -109,7 +109,6 @@ for (const marker of [
 for (const marker of [
   "const fastSmoke = process.env.ANDROID_FAST_SMOKE === '1';",
   "const fastResumeOnly = process.env.ANDROID_FAST_RESUME_CHECK === '1';",
-  "const p21f1Only = process.env.ANDROID_P21F1_CHECK === '1';",
   "const repeatableRegressionOnly = process.env.ANDROID_P20E_REPEATABLE_ONLY === '1';",
   'if (!repeatableRegressionOnly) {',
   'if (repeatableRegressionOnly) {',
@@ -122,13 +121,8 @@ for (const marker of [
   'ANDROID_P22B2_HUD_FOOTPRINT_PASS',
   'ANDROID_P22B2_OBJECTIVE_FLOW_PASS',
   'ANDROID_FAST_LIFECYCLE_RESUME_PASS',
-  'ANDROID_P21F1_WEBGPU_PASS',
-  'ANDROID_P21F3_WEBGPU_COMPAT_PASS',
   'ANDROID_P20F1_REPEATABLE_SETTLEMENT_PASS',
   'ANDROID_P20F2_REPEATABLE_PRESENTATION_PASS',
-  'android-p21f3-webgpu.json',
-  "canvas?.dataset.graphicsPathRequested === 'webgpu'",
-  "['webgpu', 'webgl2'].includes(canvas?.dataset.graphicsPathLoaded ?? '')",
 ]) requireText(runtime, marker, 'runtime harness');
 
 for (const marker of [
@@ -374,7 +368,6 @@ if (chapter3JobText.includes('needs: repeatable-family-regression') || chapter3J
   throw new Error('Chapter 3 regression must run in parallel with other extended Android jobs');
 }
 
-
 for (const marker of [
   'repeatable-family-regression:',
   "github.event_name == 'schedule'",
@@ -400,7 +393,6 @@ for (const forbidden of [
     throw new Error(`default Android emulator path must not run extended suite: ${forbidden}`);
   }
 }
-
 
 for (const marker of [
   'verification_mode:',
@@ -470,7 +462,6 @@ if (workflow.slice(fullGateStart).includes('needs: build-apk\n')) {
 }
 
 console.log('ANDROID_FAST_SMOKE_CONTRACT_PASS entry=scripts/android-fast-smoke.sh defaultPush=phone+android16-large-screen repeatable=dedicated-dispatch settings=dedicated-dispatch chapter3=dedicated-full-regression extended=parallel-runtime fullGate=aggregated scheduled=weekly manualMode=full-or-fast browser=required productionBuild=required touch=required lifecycle=required babylon=webgl2+renderer-reentry+mission-reentry+resume largeScreen=portrait+live-resize+Babylon artifacts=required failFast=required');
-
 
 for (const marker of [
   'P21F3_WEBGPU_DELIVERY_PASS',

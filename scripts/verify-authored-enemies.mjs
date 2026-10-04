@@ -89,52 +89,38 @@ async function evaluate(expression) {
   return response.result?.value;
 }
 
+const requiredRoles = ['assault', 'suppressor', 'technician', 'elite'];
+
 try {
   let lastState = null;
   while (Date.now() - startedAt < timeoutMs) {
     lastState = await evaluate(`(() => {
       const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.enemyVisual);
-      if (!canvas) return { visual: '', count: 0, roles: '', fallback: '', canvases: document.querySelectorAll('canvas').length };
+      if (!canvas) return { visual: '', count: 0, roles: '', fallback: '', state: '', canvases: document.querySelectorAll('canvas').length };
       const rect = canvas.getBoundingClientRect();
       return {
         visual: canvas.dataset.enemyVisual ?? '',
         count: Number(canvas.dataset.enemyAuthoredCount ?? 0),
         roles: canvas.dataset.enemyRoles ?? '',
         fallback: canvas.dataset.enemyFallbackRoles ?? '',
-        bossSignature: canvas.dataset.bossSignature ?? '',
-        bossTelegraph: canvas.dataset.bossTelegraph ?? '',
-        bossDamageFx: canvas.dataset.bossDamageFx ?? '',
-        bossEnvironmentFx: canvas.dataset.bossEnvironmentFx ?? '',
+        state: canvas.dataset.babylonEnemyState ?? '',
         canvases: document.querySelectorAll('canvas').length,
         width: rect.width,
         height: rect.height,
       };
     })()`);
 
-    if (lastState?.fallback) {
+    if (lastState?.fallback || lastState?.visual?.includes('procedural-fallback')) {
       throw new Error(`Authored enemy asset entered procedural fallback: ${JSON.stringify(lastState)}`);
     }
 
     const roles = new Set(String(lastState?.roles ?? '').split(',').filter(Boolean));
-    const requiredRoles = ['assault', 'suppressor', 'technician', 'elite', 'boss'];
     const allRoles = requiredRoles.every(role => roles.has(role));
-    if (lastState?.visual === 'authored' && lastState.count >= 10 && allRoles) {
+    if (lastState?.visual === 'authored-babylon' && lastState.state === 'ready' && lastState.count >= requiredRoles.length && allRoles) {
       if (!(lastState.width > 0 && lastState.height > 0)) {
         throw new Error(`Authored enemy canvas is not visible: ${JSON.stringify(lastState)}`);
       }
-      if (lastState.bossSignature !== 'authored-boss+phase-ring+pylons') {
-        throw new Error(`Boss signature assembly did not initialize: ${JSON.stringify(lastState)}`);
-      }
-      if (lastState.bossTelegraph !== 'directional-wedge+phase-halo+pulse') {
-        throw new Error(`Boss telegraph language did not initialize: ${JSON.stringify(lastState)}`);
-      }
-      if (lastState.bossDamageFx !== 'armor-break+phase-emissive+low-hp-pulse') {
-        throw new Error(`Boss phase/damage visual language did not initialize: ${JSON.stringify(lastState)}`);
-      }
-      if (lastState.bossEnvironmentFx !== 'phase-reactive-ready') {
-        throw new Error(`Boss environment phase reaction did not initialize: ${JSON.stringify(lastState)}`);
-      }
-      console.log(`AUTHORED_ENEMY_RUNTIME_PASS count=${lastState.count} roles=${[...roles].sort().join(',')} boss=${lastState.bossSignature} telegraph=${lastState.bossTelegraph} damage=${lastState.bossDamageFx} environment=${lastState.bossEnvironmentFx} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
+      console.log(`AUTHORED_ENEMY_RUNTIME_PASS count=${lastState.count} roles=${[...roles].sort().join(',')} state=${lastState.state} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
       process.exitCode = 0;
       break;
     }
@@ -142,8 +128,8 @@ try {
   }
 
   const roles = new Set(String(lastState?.roles ?? '').split(',').filter(Boolean));
-  if (lastState?.visual !== 'authored' || lastState.count < 10 || !['assault', 'suppressor', 'technician', 'elite', 'boss'].every(role => roles.has(role))) {
-    throw new Error(`Timed out waiting for all authored enemy role assets: ${JSON.stringify(lastState)}`);
+  if (lastState?.visual !== 'authored-babylon' || lastState.state !== 'ready' || lastState.count < requiredRoles.length || !requiredRoles.every(role => roles.has(role))) {
+    throw new Error(`Timed out waiting for all authored Babylon enemy role assets: ${JSON.stringify(lastState)}`);
   }
 } finally {
   socket.close();

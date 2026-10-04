@@ -94,10 +94,11 @@ try {
   while (Date.now() - startedAt < timeoutMs) {
     lastState = await evaluate(`(() => {
       const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual);
-      if (!canvas) return { visual: '', kit: '', lod: '', instances: 0, terminals: 0, canvases: document.querySelectorAll('canvas').length };
+      if (!canvas) return { visual: '', state: '', kit: '', lod: '', instances: 0, terminals: 0, canvases: document.querySelectorAll('canvas').length };
       const rect = canvas.getBoundingClientRect();
       return {
         visual: canvas.dataset.environmentVisual ?? '',
+        state: canvas.dataset.babylonEnvironmentState ?? '',
         kit: canvas.dataset.environmentKit ?? '',
         lod: canvas.dataset.environmentLod ?? '',
         instances: Number(canvas.dataset.environmentInstances ?? 0),
@@ -107,125 +108,92 @@ try {
         surfaceDetail: canvas.dataset.environmentSurfaceDetail ?? '',
         machineDetail: canvas.dataset.environmentMachineDetail ?? '',
         composition: canvas.dataset.environmentComposition ?? '',
+        lightingProfile: canvas.dataset.babylonLightingProfile ?? '',
+        materialIntent: canvas.dataset.babylonMaterialIntent ?? '',
+        lightingBudget: canvas.dataset.babylonLightingBudget ?? '',
         lighting: canvas.dataset.environmentLighting ?? '',
         ibl: canvas.dataset.environmentIbl ?? '',
-        materials: canvas.dataset.environmentMaterials ?? '',
-        vfx: canvas.dataset.environmentVfx ?? '',
         tone: canvas.dataset.environmentTone ?? '',
-        effectsMode: canvas.dataset.effectsMode ?? '',
-        readability: canvas.dataset.readabilityLanguage ?? '',
-        locationArt: canvas.dataset.locationArt ?? '',
-        locationLighting: canvas.dataset.locationLighting ?? '',
-        locationProps: canvas.dataset.locationProps ?? '',
-        graphicsPathSelection: canvas.dataset.graphicsPathSelection ?? '',
-        graphicsPathRequested: canvas.dataset.graphicsPathRequested ?? '',
-        graphicsPathLoaded: canvas.dataset.graphicsPathLoaded ?? '',
+        postProcessing: canvas.dataset.babylonPostProcessing ?? '',
+        postBudget: canvas.dataset.babylonPostBudget ?? '',
+        postStack: canvas.dataset.babylonPostStack ?? '',
         renderTier: canvas.dataset.renderTier ?? '',
         renderFrameMs: canvas.dataset.renderFrameMs ?? '',
-        renderFrameBudget: canvas.dataset.renderFrameBudget ?? '',
         renderBudget: canvas.dataset.renderBudget ?? '',
-        p21Budget: canvas.dataset.environmentP21Budget ?? '',
         canvases: document.querySelectorAll('canvas').length,
         width: rect.width,
         height: rect.height,
       };
     })()`);
 
-    if (lastState?.visual === 'procedural-fallback') {
-      throw new Error(`Authored Asteroid Refinery entered procedural fallback: ${JSON.stringify(lastState)}`);
+    if (lastState?.visual?.includes('fallback') || lastState?.state === 'error') {
+      throw new Error(`Authored Babylon Asteroid Refinery entered fallback/error state: ${JSON.stringify(lastState)}`);
     }
 
-    if (lastState?.visual === 'authored-refinery') {
+    if (lastState?.visual === 'authored-refinery-babylon' && lastState.state === 'ready') {
       const expectedKit = new Set(['floor', 'floor-grate', 'bulkhead', 'processor', 'pipe-rack', 'wall-panel', 'cable-tray', 'service-conduit', 'gantry', 'crate', 'terminal']);
       const kit = new Set(String(lastState.kit ?? '').split(',').filter(Boolean));
       if (![...expectedKit].every(item => kit.has(item))) {
-        throw new Error(`Authored refinery kit is incomplete: ${JSON.stringify(lastState)}`);
+        throw new Error(`Authored Babylon refinery kit is incomplete: ${JSON.stringify(lastState)}`);
       }
-      if (!String(lastState.lod).split(',').every(value => value === '1' || value === '2')) {
-        throw new Error(`Unexpected authored refinery LOD: ${JSON.stringify(lastState)}`);
+      const lods = String(lastState.lod).split(',').filter(Boolean);
+      if (lods.length === 0 || !lods.every(value => value === '1' || value === '2')) {
+        throw new Error(`Unexpected authored Babylon refinery LOD: ${JSON.stringify(lastState)}`);
       }
-      if (!(lastState.instances >= 40)) {
-        throw new Error(`Authored refinery instancing coverage is too low: ${JSON.stringify(lastState)}`);
+      if (lastState.instances < 40) {
+        throw new Error(`Authored Babylon refinery instancing coverage is too low: ${JSON.stringify(lastState)}`);
       }
-      if (!(lastState.terminals >= 1)) {
-        throw new Error(`Authored refinery interactive terminals were not mounted: ${JSON.stringify(lastState)}`);
+      if (lastState.terminals < 1) {
+        throw new Error(`Authored Babylon refinery interactive terminals were not mounted: ${JSON.stringify(lastState)}`);
       }
       if (lastState.landmark !== 'ore-smelter-gantry') {
-        throw new Error(`Authored refinery bespoke landmark is missing: ${JSON.stringify(lastState)}`);
+        throw new Error(`Authored Babylon refinery bespoke landmark is missing: ${JSON.stringify(lastState)}`);
       }
       if (lastState.serviceDetails !== 'service-conduit:6') {
-        throw new Error(`Authored refinery secondary service-detail coverage is incomplete: ${JSON.stringify(lastState)}`);
+        throw new Error(`Authored Babylon refinery service-detail coverage is incomplete: ${JSON.stringify(lastState)}`);
       }
-      if (lastState.surfaceDetail !== 'wall-panel:6+cable-tray:6+contact-darkening:10') {
-        throw new Error(`Authored refinery wall/cable/contact detail coverage is incomplete: ${JSON.stringify(lastState)}`);
+      if (lastState.surfaceDetail !== 'wall-panel:6+cable-tray:6') {
+        throw new Error(`Authored Babylon refinery wall/cable detail coverage is incomplete: ${JSON.stringify(lastState)}`);
       }
       if (lastState.machineDetail !== 'processor-functional:3+floor-grate:8') {
-        throw new Error(`Authored refinery processor/floor refinement coverage is incomplete: ${JSON.stringify(lastState)}`);
+        throw new Error(`Authored Babylon refinery processor/floor detail coverage is incomplete: ${JSON.stringify(lastState)}`);
       }
       if (lastState.composition !== 'clear-center-lane+processor-triangle+gantry-focal+perimeter-clutter') {
-        throw new Error(`Authored refinery composition/readability hierarchy is missing: ${JSON.stringify(lastState)}`);
+        throw new Error(`Authored Babylon refinery composition/readability hierarchy is missing: ${JSON.stringify(lastState)}`);
       }
-      const p21BudgetMatch = String(lastState.p21Budget).match(/^tier:(high|balanced|performance)\+ibl:(\d+\.\d{2})\+bloom:(\d+\.\d{2})\+contact:(\d+\.\d{2})\+atmosphere:(\d+\.\d{2})\+critical:(\d+\.\d{2})$/);
-      const p21IblScale = Number(p21BudgetMatch?.[2] ?? NaN);
-      const expectedIblIntensity = (0.68 * p21IblScale).toFixed(2);
-      const iblExpectedOn = lastState.graphicsPathSelection === 'qa-explicit' || p21IblScale >= 0.5;
-      if (!p21BudgetMatch || p21BudgetMatch[1] !== lastState.renderTier || p21BudgetMatch[6] !== '1.00') {
-        throw new Error(`Refinery P21-E adaptive budget telemetry is missing or malformed: ${JSON.stringify(lastState)}`);
+      if (!lastState.lightingProfile || lastState.materialIntent !== 'authored-gltf-pbr+procedural-world-pbr') {
+        throw new Error(`Babylon refinery lighting/material ownership telemetry is missing: ${JSON.stringify(lastState)}`);
       }
-      if (iblExpectedOn) {
-        if (!String(lastState.lighting).startsWith('refinery-key+rim+ibl:pmrem+contact:player+enemy+practical:')
-          || lastState.ibl !== `pmrem:furnace-amber+service-cyan:intensity-${expectedIblIntensity}`) {
-          throw new Error(`Refinery P21-B/P21-E PMREM IBL contribution is missing or out of bounds: ${JSON.stringify(lastState)}`);
-        }
-      } else if (!String(lastState.lighting).startsWith('refinery-key+rim+ibl:off+contact:player+enemy+practical:') || lastState.ibl !== 'off:adaptive-budget') {
-        throw new Error(`Refinery P21-E performance IBL budget did not fall back cleanly: ${JSON.stringify(lastState)}`);
+      if (!/^tier:(high|balanced|performance)\|ibl:\d+\.\d{2}\|shadow:\d+\|practical:[12]\|max-lights:[356]$/.test(lastState.lightingBudget)) {
+        throw new Error(`Babylon refinery lighting budget telemetry is malformed: ${JSON.stringify(lastState)}`);
       }
-      if (lastState.materials !== 'pbr-bounded+emissive+decals:safety+grime+contact-darkening') {
-        throw new Error(`Refinery material normalization/decal/contact strategy is missing: ${JSON.stringify(lastState)}`);
+      if (!/^refinery-key\+rim\+ibl:(?:raw-cube|off)\+practical:[12]\+shadow:(?:off|\d+)$/.test(lastState.lighting)) {
+        throw new Error(`Babylon refinery lighting telemetry is malformed: ${JSON.stringify(lastState)}`);
       }
-      if (lastState.vfx !== 'steam+sparse-sparks+debris+breach+objective') {
-        throw new Error(`Refinery atmosphere/VFX pass is missing: ${JSON.stringify(lastState)}`);
+      if (!/^(?:raw-cube:[a-z0-9-]+(?:\+[a-z0-9-]+)*:intensity-\d+\.\d{2}|off:(?:qa-baseline|adaptive-budget))$/.test(lastState.ibl)) {
+        throw new Error(`Babylon refinery IBL telemetry is malformed: ${JSON.stringify(lastState)}`);
       }
-      if (lastState.readability !== 'shape+silhouette+luminance') {
-        throw new Error(`Color-independent gameplay readability language is missing: ${JSON.stringify(lastState)}`);
+      if (!/^aces-\d+\.\d{2}\+ibl-(?:\d+\.\d{2}|off)$/.test(lastState.tone)) {
+        throw new Error(`Babylon refinery tone telemetry is malformed: ${JSON.stringify(lastState)}`);
       }
-      if (!String(lastState.locationArt).startsWith('asteroid-refinery:processor-tanks:heavy-ferrous')) {
-        throw new Error(`Campaign-wide location art identity is not active for the showcase: ${JSON.stringify(lastState)}`);
+      if (lastState.postProcessing !== 'selective-glow+instanced-contact+linear-fog+image-processing') {
+        throw new Error(`Babylon refinery post-processing ownership telemetry is missing: ${JSON.stringify(lastState)}`);
       }
-      if (!String(lastState.locationLighting).startsWith('asteroid-refinery:furnace-amber:aces-')) {
-        throw new Error(`Location-specific lighting profile is not active: ${JSON.stringify(lastState)}`);
-      }
-      if (lastState.locationProps !== 'ore-service:instanced-shared-library') {
-        throw new Error(`Shared instanced prop library is not active: ${JSON.stringify(lastState)}`);
-      }
-      if (!['production-default', 'qa-explicit'].includes(lastState.graphicsPathSelection) || lastState.graphicsPathLoaded !== 'webgl2') {
-        throw new Error(`Refinery graphics path telemetry is missing or non-WebGL2: ${JSON.stringify(lastState)}`);
-      }
-      if (lastState.graphicsPathSelection === 'qa-explicit' && lastState.graphicsPathRequested !== lastState.graphicsPathLoaded) {
-        throw new Error(`Refinery explicit graphics path selection did not load the requested path: ${JSON.stringify(lastState)}`);
-      }
-      if (lastState.graphicsPathSelection === 'production-default' && lastState.graphicsPathRequested !== '') {
-        throw new Error(`Production-default refinery path must not report a QA request: ${JSON.stringify(lastState)}`);
+      if (!/^tier:(high|balanced|performance)\|bloom:\d+\.\d{2}\|contact:\d+\.\d{2}\|atmosphere:\d+\.\d{2}\|critical:1\.00$/.test(lastState.postBudget)
+        || !['on:adaptive', 'on:qa-explicit', 'off:qa-baseline'].includes(lastState.postStack)) {
+        throw new Error(`Babylon refinery post-processing budget telemetry is malformed: ${JSON.stringify(lastState)}`);
       }
       if (!['high', 'balanced', 'performance'].includes(lastState.renderTier)) {
-        throw new Error(`Adaptive render tier telemetry is missing: ${JSON.stringify(lastState)}`);
+        throw new Error(`Adaptive Babylon render tier telemetry is missing: ${JSON.stringify(lastState)}`);
       }
-      if (!/^\d+\.\d{2}$/.test(lastState.renderFrameMs) || !/^[a-z-]+:-?\d+\.\d{2}ms@\d+\.\d{2}ms$/.test(lastState.renderFrameBudget)) {
-        throw new Error(`Adaptive frame telemetry is malformed: ${JSON.stringify(lastState)}`);
-      }
-      if (!/^pixel:\d+\.\d{2}\+shadow:\d+\+vfx:\d+\.\d{2}\+transparency:\d+\.\d{2}\+reflection:\d+\.\d{2}\+secondary:\d+\.\d{2}\+detail:\d+\.\d{2}$/.test(lastState.renderBudget)) {
-        throw new Error(`Adaptive render budget telemetry is malformed: ${JSON.stringify(lastState)}`);
-      }
-      if (!String(lastState.tone).startsWith('aces-') || !String(lastState.tone).includes(`+ibl-${iblExpectedOn ? expectedIblIntensity : 'off'}`)) {
-        throw new Error(`Refinery ACES/IBL tone telemetry is missing: ${JSON.stringify(lastState)}`);
-      }
-      if (!['full', 'reduced'].includes(lastState.effectsMode)) {
-        throw new Error(`Reduced-effects telemetry is missing: ${JSON.stringify(lastState)}`);
+      if (!/^\d+\.\d{2}$/.test(lastState.renderFrameMs)
+        || !/^pixel:\d+\.\d{2}\+shadow:\d+\+reflection:\d+\.\d{2}\+detail:\d+\.\d{2}$/.test(lastState.renderBudget)) {
+        throw new Error(`Adaptive Babylon render telemetry is malformed: ${JSON.stringify(lastState)}`);
       }
       if (!(lastState.width > 0 && lastState.height > 0)) {
-        throw new Error(`Authored refinery canvas is not visible: ${JSON.stringify(lastState)}`);
+        throw new Error(`Authored Babylon refinery canvas is not visible: ${JSON.stringify(lastState)}`);
       }
-      console.log(`AUTHORED_REFINERY_RUNTIME_PASS lod=${lastState.lod} kit=${[...kit].sort().join(',')} instances=${lastState.instances} terminals=${lastState.terminals} landmark=${lastState.landmark} service=${lastState.serviceDetails} surface=${lastState.surfaceDetail} machine=${lastState.machineDetail} composition=${lastState.composition} lighting=${lastState.lighting} ibl=${lastState.ibl} materials=${lastState.materials} vfx=${lastState.vfx} tone=${lastState.tone} effects=${lastState.effectsMode} readability=${lastState.readability} location=${lastState.locationArt} props=${lastState.locationProps} graphics=${lastState.graphicsPathSelection}:${lastState.graphicsPathRequested || 'none'}->${lastState.graphicsPathLoaded} tier=${lastState.renderTier} frame=${lastState.renderFrameMs}ms budget=${lastState.renderBudget} p21=${lastState.p21Budget} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
+      console.log(`AUTHORED_REFINERY_RUNTIME_PASS lod=${lastState.lod} kit=${[...kit].sort().join(',')} instances=${lastState.instances} terminals=${lastState.terminals} landmark=${lastState.landmark} lighting=${lastState.lighting} ibl=${lastState.ibl} post=${lastState.postStack} tier=${lastState.renderTier} frame=${lastState.renderFrameMs}ms budget=${lastState.renderBudget} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
       process.exitCode = 0;
       break;
     }
@@ -233,8 +201,8 @@ try {
     await sleep(200);
   }
 
-  if (lastState?.visual !== 'authored-refinery') {
-    throw new Error(`Timed out waiting for authored Asteroid Refinery environment: ${JSON.stringify(lastState)}`);
+  if (lastState?.visual !== 'authored-refinery-babylon' || lastState.state !== 'ready') {
+    throw new Error(`Timed out waiting for authored Babylon Asteroid Refinery environment: ${JSON.stringify(lastState)}`);
   }
 } finally {
   socket.close();
