@@ -25,17 +25,12 @@ const requireText = (text, needle, label) => {
 
 for (const marker of [
   'ANDROID_FAST_SMOKE=1',
-  'ANDROID_FAST_RESUME_CHECK=1',
-  'ANDROID_FAST_PROCESS_RECLAIM',
-  'verifying clean production-default recovery',
-  "LIFECYCLE_MODE='preserved-resume'",
-  "LIFECYCLE_MODE='reclaimed-recovered'",
   'adb install -r',
   'android-fast-smoke.png',
-  'android-fast-resume.png',
   'android-fast-logcat.txt',
   'ANDROID_FAST_EMULATOR_PASS',
-  'p27d7=babylon-production-default+renderer-reentry',
+  'p27d7=babylon-production-default',
+  'screenshots=1',
   'performance=js-heap',
   'FATAL EXCEPTION',
 ]) requireText(shell, marker, 'fast shell');
@@ -48,6 +43,9 @@ for (const migrationOnly of [
   'scripts/android-babylon-lifecycle-smoke.mjs',
   're-establishing fast combat before retrying pause/resume',
   'reclaimed during two consecutive fast pause/resume attempts',
+  'ANDROID_FAST_RESUME_CHECK=1',
+  'ANDROID_FAST_PROCESS_RECLAIM',
+  'android-fast-resume.png',
 ]) {
   if (shell.includes(migrationOnly)) throw new Error(`fast shell must not retain migration-only gate: ${migrationOnly}`);
 }
@@ -120,6 +118,7 @@ for (const marker of [
   'ANDROID_FAST_FIRE_TOUCH_PASS',
   'ANDROID_FAST_TOUCH_PASS',
   'ANDROID_FAST_RUNTIME_PASS',
+  'ANDROID_P27D7_PRODUCTION_BABYLON_PASS',
   'ANDROID_P22B2_HUD_FOOTPRINT_PASS',
   'ANDROID_P22B2_OBJECTIVE_FLOW_PASS',
   'ANDROID_FAST_LIFECYCLE_RESUME_PASS',

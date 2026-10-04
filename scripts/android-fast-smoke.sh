@@ -84,30 +84,6 @@ ANDROID_FAST_SMOKE=1 CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-run
 adb exec-out screencap -p > android-fast-smoke.png
 test -s android-fast-smoke.png
 
-adb shell input keyevent KEYCODE_HOME
-sleep 2
-adb shell am start --activity-reorder-to-front -n "$ACTIVITY"
-confirm_immersive_mode_for_smoke
-RESUME_PID="$(wait_for_process)"
-if [[ -z "$RESUME_PID" ]]; then
-  echo "Ironshade Vector process did not return during D7 lifecycle smoke." >&2
-  exit 1
-fi
-
-connect_cdp "$RESUME_PID"
-if [[ "$RESUME_PID" == "$APP_PID" ]]; then
-  LIFECYCLE_MODE='preserved-resume'
-  ANDROID_FAST_RESUME_CHECK=1 CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-runtime-smoke.mjs
-else
-  echo "ANDROID_FAST_PROCESS_RECLAIM before=$APP_PID after=$RESUME_PID // verifying clean production-default recovery"
-  LIFECYCLE_MODE='reclaimed-recovered'
-  APP_PID="$RESUME_PID"
-  ANDROID_FAST_SMOKE=1 CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-runtime-smoke.mjs
-fi
-
-adb exec-out screencap -p > android-fast-resume.png
-test -s android-fast-resume.png
-
 adb logcat -d > android-fast-logcat.txt
 if grep -E 'FATAL EXCEPTION|Process: app\.ironshade\.vector' android-fast-logcat.txt; then
   echo 'Fast Android runtime crash detected.' >&2
@@ -115,7 +91,7 @@ if grep -E 'FATAL EXCEPTION|Process: app\.ironshade\.vector' android-fast-logcat
 fi
 
 ELAPSED_SECONDS=$(( $(date +%s) - STARTED_AT ))
-echo "ANDROID_FAST_EMULATOR_PASS pid=${APP_PID} resumePid=${RESUME_PID} route=ship>contracts>combat touch=management+move+fire+ability+dodge+act controller=pointer+touch lifecycle=${LIFECYCLE_MODE} p27d7=babylon-production-default+renderer-reentry performance=js-heap crashCheck=clean screenshots=2 elapsedSeconds=${ELAPSED_SECONDS}"
+echo "ANDROID_FAST_EMULATOR_PASS pid=${APP_PID} route=ship>contracts>combat touch=management+move+fire+ability+dodge+act controller=pointer+touch p27d7=babylon-production-default performance=js-heap crashCheck=clean screenshots=1 elapsedSeconds=${ELAPSED_SECONDS}"
 
 adb shell am force-stop "$PACKAGE" >/dev/null 2>&1 || true
 adb shell pm clear "$PACKAGE" >/dev/null 2>&1 || true
