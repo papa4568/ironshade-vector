@@ -170,7 +170,7 @@ try {
       if (!/^refinery-key\+rim\+ibl:(?:raw-cube|off)\+practical:[12]\+shadow:(?:off|\d+)$/.test(lastState.lighting)) {
         throw new Error(`Babylon refinery lighting telemetry is malformed: ${JSON.stringify(lastState)}`);
       }
-      if (!/^(?:raw-cube:[a-z0-9-]+:intensity-\d+\.\d{2}|off:(?:qa-baseline|adaptive-budget))$/.test(lastState.ibl)) {
+      if (!/^(?:raw-cube:[a-z0-9-]+(?:\+[a-z0-9-]+)*:intensity-\d+\.\d{2}|off:(?:qa-baseline|adaptive-budget))$/.test(lastState.ibl)) {
         throw new Error(`Babylon refinery IBL telemetry is malformed: ${JSON.stringify(lastState)}`);
       }
       if (!/^aces-\d+\.\d{2}\+ibl-(?:\d+\.\d{2}|off)$/.test(lastState.tone)) {
