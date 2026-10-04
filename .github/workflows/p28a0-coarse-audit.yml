@@ -187,6 +187,7 @@ jobs:
           replace('tests/babylon-cryo-reserve.ts', "assert.equal(mobile.name, 'mobile');\nassert.equal(mobile.galleryFrameInstances, 4);\nassert.equal(mobile.plumeInstances, 2);", "assert.equal(coarse.name, 'full');\nassert.equal(coarse.tankInstances, 7);\nassert.equal(coarse.galleryFrameInstances, 6);\nassert.equal(coarse.pipeRunInstances, 4);\nassert.equal(coarse.plumeInstances, 3);", 1)
 
           replace('tests/babylon-parallax-array.ts', "assert.equal(parallaxArrayRenderProfile(1, true).name, 'mobile');", "assert.deepEqual(parallaxArrayRenderProfile(1, true), parallaxArrayRenderProfile(1, false), 'Coarse input alone must preserve the full Parallax Array profile.');", 1)
+          replace('tests/babylon-perseid-capstone.ts', "assert.equal(perseidRenderProfile(1, true).name, 'mobile');", "assert.deepEqual(perseidRenderProfile(1, true), perseidRenderProfile(1, false), 'Coarse input alone must preserve the full Perseid capstone profile.');", 1)
 
           print('P28_A0_COARSE_QUALITY_CEILINGS_REMOVED')
           PY
