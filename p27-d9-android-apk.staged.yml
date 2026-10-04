@@ -1,0 +1,877 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      verification_mode:
+        description: Android verification depth
+        required: true
+        default: full
+        type: choice
+        options:
+          - full
+          - fast
+      require_release_signing:
+        description: Fail unless persistent Android release-signing secrets are configured
+        required: true
+        default: false
+        type: boolean
+  schedule:
+    - cron: '0 9 * * 1'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'netlify/functions/**'
+      - 'netlify.toml'
+      - 'src/game/network.ts'
+      - 'tests/mocks/**'
+      - 'tests/network-regressions.ts'
+      - 'tests/service-regressions.ts'
+      - 'tsconfig.json'
+      - 'tsconfig.service.json'
+      - 'vite.config.ts'
+      - 'vite.service.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.nvmrc'
+      - '.github/workflows/android-apk.yml'
+  push:
+    branches:
+      - main
+      - android/capacitor-apk
+      - android/full-regression
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'capacitor.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.nvmrc'
+      - 'vite.config.ts'
+      - 'index.html'
+      - '.github/workflows/android-apk.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  service-validation:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Use npm 10.9.8
+        run: |
+          npm install --global npm@10.9.8
+          npm_version="$(npm --version)"
+          echo "$npm_version"
+          test "$npm_version" = "10.9.8"
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Strict-check service and config TypeScript
+        run: npm run typecheck:service
+
+      - name: Run service regressions
+        run: npm run test:service
+
+      - name: Run network regressions
+        run: npm run test:network
+
+  build-apk:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      ANDROID_VERSION_CODE: ${{ github.run_number }}
+      ANDROID_VERSION_NAME: 0.0.1-beta.${{ github.run_number }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Use npm 10.9.8
+        run: |
+          npm install --global npm@10.9.8
+          npm_version="$(npm --version)"
+          echo "$npm_version"
+          test "$npm_version" = "10.9.8"
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Resolve APK signing mode
+        id: signing
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
+          ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
+          ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
+          REQUIRE_RELEASE_SIGNING: ${{ github.event_name == 'workflow_dispatch' && inputs.require_release_signing }}
+        run: |
+          set -euo pipefail
+          present=0
+          for value in "$ANDROID_KEYSTORE_BASE64" "$ANDROID_SIGNING_STORE_PASSWORD" "$ANDROID_SIGNING_KEY_ALIAS" "$ANDROID_SIGNING_KEY_PASSWORD"; do
+            if [[ -n "$value" ]]; then
+              present=$((present + 1))
+            fi
+          done
+
+          if [[ "$present" -eq 0 ]]; then
+            if [[ "$REQUIRE_RELEASE_SIGNING" == "true" ]]; then
+              echo "::error::Release signing is required for this run, but persistent Android signing secrets are not configured."
+              exit 1
+            fi
+            echo "::warning::Persistent Android signing secrets are not configured; building an ephemeral debug-signed APK."
+            echo "mode=debug" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "$present" -ne 4 ]]; then
+            echo "::error::Android signing is partially configured. Set all four ANDROID_* signing secrets or remove all four."
+            exit 1
+          fi
+
+          KEYSTORE="$RUNNER_TEMP/ironshade-vector-release.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+          chmod 600 "$KEYSTORE"
+          test -s "$KEYSTORE"
+          keytool -list -keystore "$KEYSTORE" -storepass "$ANDROID_SIGNING_STORE_PASSWORD" -alias "$ANDROID_SIGNING_KEY_ALIAS" >/dev/null
+          echo "mode=release" >> "$GITHUB_OUTPUT"
+          echo "keystore=$KEYSTORE" >> "$GITHUB_OUTPUT"
+          echo "Persistent Android release signing is configured."
+
+      - name: Install Android SDK 36
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$(find "$SDK_ROOT" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          test -n "$SDKMANAGER"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Audit runtime dependencies
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4; do
+            set +e
+            output="$(npm audit --omit=dev --audit-level=high 2>&1)"
+            status=$?
+            set -e
+            printf '%s\n' "$output"
+            if [[ "$status" -eq 0 ]]; then
+              exit 0
+            fi
+            if grep -Eq '503 Service Unavailable|performing maintenance|audit endpoint returned an error' <<<"$output"; then
+              if [[ "$attempt" -lt 4 ]]; then
+                sleep $((attempt * 5))
+                continue
+              fi
+              echo "::warning::npm advisory service unavailable after retries; dependency install remains lockfile-pinned and the audit gate will run again on the next CI execution."
+              exit 0
+            fi
+            exit "$status"
+          done
+
+      - name: Test fast Android smoke contract
+        run: npm run test:android-fast-smoke
+
+      - name: Run full web regression and production build
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+        run: |
+          npm run build
+          if [[ -n "$VITE_API_BASE_URL" ]]; then
+            grep -R --fixed-strings "$VITE_API_BASE_URL" dist/assets >/dev/null
+            echo "Native Operations API origin embedded in production bundle."
+          else
+            echo "::warning::VITE_API_BASE_URL is not configured; native Operations features will report configuration unavailable instead of calling the app-local origin."
+          fi
+
+      - name: Generate native Android project
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf android
+          npx cap add android
+          node scripts/configure-android.mjs
+          npx cap sync android
+          test -f android/app/src/main/assets/public/index.html
+          ! find android/app/src/main/assets/public/assets -name 'three-*.js' -print -quit | grep -q .
+          test ! -d android/app/src/main/assets/public/assets/codecs/basis
+          test -f android/app/src/main/assets/public/assets/codecs/babylon/manifest.json
+          grep -q 'android:appCategory="game"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:resizeableActivity="true"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:keepScreenOn="true"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:hardwareAccelerated="true"' android/app/src/main/AndroidManifest.xml
+          grep -q 'density' android/app/src/main/AndroidManifest.xml
+          ! grep -q 'android:screenOrientation=' android/app/src/main/AndroidManifest.xml
+          grep -q 'LARGE_SCREEN_SMALLEST_WIDTH_DP = 600' android/app/src/main/java/app/ironshade/vector/MainActivity.java
+          grep -q 'SCREEN_ORIENTATION_SENSOR_LANDSCAPE' android/app/src/main/java/app/ironshade/vector/MainActivity.java
+          grep -q 'SCREEN_ORIENTATION_UNSPECIFIED' android/app/src/main/java/app/ironshade/vector/MainActivity.java
+          grep -q 'IRONSHADE_RELEASE_SIGNING' android/app/build.gradle
+          grep -q 'ANDROID_SIGNING_STORE_FILE' android/app/build.gradle
+          grep -q "versionCode ${ANDROID_VERSION_CODE}" android/app/build.gradle
+          grep -q "versionName \"${ANDROID_VERSION_NAME}\"" android/app/build.gradle
+          grep -q 'CapacitorHttp' android/app/src/main/assets/capacitor.config.json
+
+      - name: Build signed upgrade baseline APK
+        if: steps.signing.outputs.mode == 'release'
+        shell: bash
+        env:
+          ANDROID_SIGNING_STORE_FILE: ${{ steps.signing.outputs.keystore }}
+          ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
+          ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
+          ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          final_version_code="$ANDROID_VERSION_CODE"
+          final_version_name="$ANDROID_VERSION_NAME"
+          base_version_code=$((final_version_code - 1))
+          if [[ "$base_version_code" -lt 1 ]]; then
+            echo "::error::ANDROID_VERSION_CODE must be at least 2 to verify an in-place upgrade."
+            exit 1
+          fi
+          base_version_name="${final_version_name}-upgrade-base"
+
+          ANDROID_VERSION_CODE="$base_version_code" ANDROID_VERSION_NAME="$base_version_name" node scripts/configure-android.mjs
+          (
+            cd android
+            chmod +x gradlew
+            ./gradlew assembleRelease --no-daemon --stacktrace
+          )
+          cp android/app/build/outputs/apk/release/app-release.apk Ironshade-Vector-Android-Upgrade-Base.apk
+          test -s Ironshade-Vector-Android-Upgrade-Base.apk
+
+          echo "ANDROID_UPGRADE_BASE_VERSION_CODE=$base_version_code" >> "$GITHUB_ENV"
+          echo "ANDROID_UPGRADE_BASE_VERSION_NAME=$base_version_name" >> "$GITHUB_ENV"
+
+          ANDROID_VERSION_CODE="$final_version_code" ANDROID_VERSION_NAME="$final_version_name" node scripts/configure-android.mjs
+          grep -q "versionCode ${final_version_code}" android/app/build.gradle
+          grep -q "versionName \"${final_version_name}\"" android/app/build.gradle
+
+      - name: Build persistent-signed release APK
+        if: steps.signing.outputs.mode == 'release'
+        working-directory: android
+        env:
+          ANDROID_SIGNING_STORE_FILE: ${{ steps.signing.outputs.keystore }}
+          ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
+          ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
+          ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Build installable debug APK
+        if: steps.signing.outputs.mode == 'debug'
+        working-directory: android
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          for attempt in 1 2 3; do
+            if ./gradlew assembleDebug --no-daemon --stacktrace; then
+              exit 0
+            fi
+            if [[ "$attempt" -lt 3 ]]; then
+              echo "::warning::Gradle dependency/build attempt $attempt failed; retrying after a short backoff."
+              sleep $((attempt * 10))
+            fi
+          done
+          exit 1
+
+      - name: Build emulator smoke APK
+        if: steps.signing.outputs.mode == 'release'
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Verify APK package, version, SDK and signature
+        shell: bash
+        env:
+          SIGNING_MODE: ${{ steps.signing.outputs.mode }}
+        run: |
+          set -euo pipefail
+          APK='android/app/build/outputs/apk/debug/app-debug.apk'
+          test -s "$APK"
+
+          AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
+          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          "$AAPT" dump badging "$APK" | tee android-apk-badging.txt
+          grep -q "package: name='app.ironshade.vector' versionCode='${ANDROID_VERSION_CODE}' versionName='${ANDROID_VERSION_NAME}'" android-apk-badging.txt
+          grep -q "sdkVersion:'24'" android-apk-badging.txt
+          grep -q "targetSdkVersion:'36'" android-apk-badging.txt
+          grep -q "launchable-activity: name='app.ironshade.vector.MainActivity'" android-apk-badging.txt
+
+          "$APKSIGNER" verify --verbose --print-certs "$APK" | tee android-apk-signing.txt
+          grep -q 'Signer #1 certificate SHA-256 digest:' android-apk-signing.txt
+
+          if [[ "$SIGNING_MODE" == "release" ]]; then
+            RELEASE_APK='android/app/build/outputs/apk/release/app-release.apk'
+            test -s "$RELEASE_APK"
+            "$AAPT" dump badging "$RELEASE_APK" | tee android-release-apk-badging.txt
+            grep -q "package: name=\'app.ironshade.vector\' versionCode=\'${ANDROID_VERSION_CODE}\' versionName=\'${ANDROID_VERSION_NAME}\'" android-release-apk-badging.txt
+            grep -q "sdkVersion:\'24\'" android-release-apk-badging.txt
+            grep -q "targetSdkVersion:\'36\'" android-release-apk-badging.txt
+            grep -q "launchable-activity: name=\'app.ironshade.vector.MainActivity\'" android-release-apk-badging.txt
+            "$APKSIGNER" verify --verbose --print-certs "$RELEASE_APK" | tee android-release-apk-signing.txt
+            grep -q 'Signer #1 certificate SHA-256 digest:' android-release-apk-signing.txt
+            BASE_APK='Ironshade-Vector-Android-Upgrade-Base.apk'
+            test -s "$BASE_APK"
+            "$APKSIGNER" verify --verbose --print-certs "$BASE_APK" | tee android-upgrade-base-signing.txt
+            grep -q 'Signer #1 certificate SHA-256 digest:' android-upgrade-base-signing.txt
+            candidate_signer="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' android-release-apk-signing.txt | head -n 1)"
+            baseline_signer="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' android-upgrade-base-signing.txt | head -n 1)"
+            test -n "$candidate_signer"
+            test "$candidate_signer" = "$baseline_signer"
+            {
+              printf 'baseline_version_code=%s\n' "$ANDROID_UPGRADE_BASE_VERSION_CODE"
+              printf 'baseline_version_name=%s\n' "$ANDROID_UPGRADE_BASE_VERSION_NAME"
+              printf 'candidate_version_code=%s\n' "$ANDROID_VERSION_CODE"
+              printf 'candidate_version_name=%s\n' "$ANDROID_VERSION_NAME"
+              printf 'signer_sha256=%s\n' "$candidate_signer"
+            } | tee android-apk-upgrade.txt
+            cp "$RELEASE_APK" Ironshade-Vector-Android-Release.apk
+            sha256sum Ironshade-Vector-Android-Release.apk | tee Ironshade-Vector-Android-Release.sha256
+            printf 'artifact=Ironshade-Vector-Android-Release.apk\nsigning_mode=release\ndistributable=true\npersistent_keystore=true\nversion_code=%s\nversion_name=%s\nsigner_sha256=%s\n' "$ANDROID_VERSION_CODE" "$ANDROID_VERSION_NAME" "$candidate_signer" | tee android-release-artifact-metadata.txt
+          fi
+
+          cp "$APK" Ironshade-Vector-Android-Debug.apk
+          cp "$APK" Ironshade-Vector-Android-Smoke.apk
+          test -s Ironshade-Vector-Android-Smoke.apk
+          sha256sum Ironshade-Vector-Android-Debug.apk | tee Ironshade-Vector-Android-Debug.sha256
+          sha256sum Ironshade-Vector-Android-Smoke.apk | tee Ironshade-Vector-Android-Smoke.sha256
+          debug_signer="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' android-apk-signing.txt | head -n 1)"
+          test -n "$debug_signer"
+          printf 'artifact=Ironshade-Vector-Android-Debug.apk\nsigning_mode=debug\ndistributable=false\npersistent_keystore=false\nversion_code=%s\nversion_name=%s\nsigner_sha256=%s\n' "$ANDROID_VERSION_CODE" "$ANDROID_VERSION_NAME" "$debug_signer" | tee android-debug-artifact-metadata.txt
+          echo "ANDROID_APK_PASS qa_signing=debug release_signing=$SIGNING_MODE version=${ANDROID_VERSION_NAME}(${ANDROID_VERSION_CODE}) size=$(du -h Ironshade-Vector-Android-Debug.apk | cut -f1)"
+
+      - name: Verify no Three runtime delivery
+        env:
+          P27D9_APK_PATH: Ironshade-Vector-Android-Debug.apk
+          P27D9_REPORT_PATH: p27d9-no-three-delivery.json
+        run: node scripts/verify-no-three-delivery.mjs
+
+      - name: Measure P27-D2 Babylon delivery cost
+        env:
+          P27D2_APK_PATH: Ironshade-Vector-Android-Debug.apk
+          P27D2_REPORT_PATH: p27d2-babylon-delivery.json
+        run: node scripts/measure-babylon-delivery-cost.mjs
+
+      - name: Enable KVM
+        shell: bash
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Preinstall Android emulator system image
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$(find "$SDK_ROOT" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          test -n "$SDKMANAGER"
+          for api_level in 35 36; do
+            package="system-images;android-${api_level};google_apis;x86_64"
+            installed=false
+            for attempt in 1 2 3; do
+              if "$SDKMANAGER" --install "$package"; then
+                installed=true
+                break
+              fi
+              if [[ "$attempt" -lt 3 ]]; then
+                echo "::warning::Android emulator system image API ${api_level} install attempt $attempt failed; clearing partial download state and retrying."
+                rm -rf "$SDK_ROOT/.temp" "$SDK_ROOT/system-images/android-${api_level}/google_apis/x86_64"
+                sleep $((attempt * 5))
+              fi
+            done
+            if [[ "$installed" != "true" ]]; then
+              exit 1
+            fi
+          done
+
+      - name: Smoke test APK on Android emulator
+        id: api35_smoke_primary
+        continue-on-error: true
+        uses: ReactiveCircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7_pro
+          emulator-boot-timeout: 300
+          disable-animations: true
+          script: bash -lc 'set -euo pipefail; touch .android-api35-primary-smoke-started; if [[ "${{ steps.signing.outputs.mode }}" == "release" ]]; then bash scripts/android-upgrade-smoke.sh; fi; bash scripts/android-fast-smoke.sh; touch .android-api35-primary-smoke-complete'
+
+      - name: Reset Android emulator state before API 35 retry
+        if: steps.api35_smoke_primary.outcome == 'failure' && hashFiles('.android-api35-primary-smoke-started') == ''
+        shell: bash
+        run: |
+          echo '::warning::API 35 emulator failed before smoke execution; clearing crashed emulator/ADB state before one fresh retry.'
+          pkill -f '[e]mulator.*-avd' || true
+          pkill -f '[q]emu-system' || true
+          adb kill-server || true
+          find "$HOME/.android/avd" -maxdepth 2 -name '*.lock' -exec rm -rf {} + 2>/dev/null || true
+          sleep 2
+
+      - name: Retry APK smoke after API 35 boot failure
+        if: steps.api35_smoke_primary.outcome == 'failure' && hashFiles('.android-api35-primary-smoke-started') == ''
+        uses: ReactiveCircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7_pro
+          emulator-boot-timeout: 300
+          disable-animations: true
+          script: bash -lc 'set -euo pipefail; if [[ "${{ steps.signing.outputs.mode }}" == "release" ]]; then bash scripts/android-upgrade-smoke.sh; fi; bash scripts/android-fast-smoke.sh'
+
+      - name: Reject API 35 product smoke failure
+        if: steps.api35_smoke_primary.outcome == 'failure' && hashFiles('.android-api35-primary-smoke-started') != '' && hashFiles('.android-api35-primary-smoke-complete') == ''
+        shell: bash
+        run: |
+          echo '::error::API 35 emulator booted, but the Android product smoke failed. Infrastructure retry is intentionally disabled for product assertions.'
+          exit 1
+
+      - name: Smoke test Android 16 large-screen resize path
+        id: api36_smoke_primary
+        continue-on-error: true
+        uses: ReactiveCircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7_pro
+          emulator-boot-timeout: 300
+          disable-animations: true
+          script: bash -lc 'set -euo pipefail; touch .android-api36-primary-smoke-started; ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-large-screen-smoke.sh; touch .android-api36-primary-smoke-complete'
+
+      - name: Reset Android emulator state before API 36 retry
+        if: steps.api36_smoke_primary.outcome == 'failure' && hashFiles('.android-api36-primary-smoke-started') == ''
+        shell: bash
+        run: |
+          echo '::warning::API 36 emulator failed before smoke execution; clearing crashed emulator/ADB state before one fresh retry.'
+          pkill -f '[e]mulator.*-avd' || true
+          pkill -f '[q]emu-system' || true
+          adb kill-server || true
+          find "$HOME/.android/avd" -maxdepth 2 -name '*.lock' -exec rm -rf {} + 2>/dev/null || true
+          sleep 2
+
+      - name: Retry Android 16 resize after boot failure
+        if: steps.api36_smoke_primary.outcome == 'failure' && hashFiles('.android-api36-primary-smoke-started') == ''
+        uses: ReactiveCircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7_pro
+          emulator-boot-timeout: 300
+          disable-animations: true
+          script: bash -lc 'ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-large-screen-smoke.sh'
+
+      - name: Reject API 36 product smoke failure
+        if: steps.api36_smoke_primary.outcome == 'failure' && hashFiles('.android-api36-primary-smoke-started') != '' && hashFiles('.android-api36-primary-smoke-complete') == ''
+        shell: bash
+        run: |
+          echo '::error::API 36 emulator booted, but the Android large-screen smoke failed. Infrastructure retry is intentionally disabled for product assertions.'
+          exit 1
+
+      - name: Upload debug QA APK and evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: ironshade-vector-android-debug-qa
+          path: |
+            Ironshade-Vector-Android-Debug.apk
+            Ironshade-Vector-Android-Debug.sha256
+            Ironshade-Vector-Android-Smoke.apk
+            Ironshade-Vector-Android-Smoke.sha256
+            android-apk-badging.txt
+            android-apk-signing.txt
+            android-debug-artifact-metadata.txt
+            android-fast-logcat.txt
+            android-fast-smoke.png
+            android-fast-resume.png
+            android-babylon-webgpu.json
+            android-large-screen.txt
+            android-large-screen-portrait.json
+            android-large-screen-resized.json
+            android-large-screen-portrait.png
+            android-large-screen-resized.png
+            android-large-screen-logcat.txt
+            p27d9-no-three-delivery.json
+            p27d2-babylon-delivery.json
+          if-no-files-found: warn
+          retention-days: 90
+        if: always()
+
+      - name: Upload release distributable APK and upgrade evidence
+        if: steps.signing.outputs.mode == 'release'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ironshade-vector-android-release
+          path: |
+            Ironshade-Vector-Android-Release.apk
+            Ironshade-Vector-Android-Release.sha256
+            android-release-apk-badging.txt
+            android-release-apk-signing.txt
+            android-release-artifact-metadata.txt
+            Ironshade-Vector-Android-Upgrade-Base.apk
+            android-upgrade-base-signing.txt
+            android-apk-upgrade.txt
+            android-upgrade-smoke.txt
+            android-upgrade-logcat.txt
+            android-upgrade-smoke.png
+          if-no-files-found: error
+          retention-days: 90
+
+  repeatable-family-regression:
+    if: github.event_name == 'schedule' || github.ref == 'refs/heads/android/capacitor-apk' || github.ref == 'refs/heads/android/full-regression' || (github.event_name == 'workflow_dispatch' && (inputs.verification_mode == 'full' || inputs.require_release_signing))
+    needs: build-apk
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - name: Check out regression harness
+        uses: actions/checkout@v7
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Download shared Android APK
+        uses: actions/download-artifact@v8
+        with:
+          name: ironshade-vector-android-debug-qa
+          path: .
+
+      - name: Verify shared smoke APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s Ironshade-Vector-Android-Smoke.apk
+          sha256sum -c Ironshade-Vector-Android-Smoke.sha256
+
+      - name: Enable KVM
+        shell: bash
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run repeatable-family Android regression
+        uses: ReactiveCircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7_pro
+          emulator-boot-timeout: 300
+          disable-animations: true
+          script: bash -lc 'ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-repeatable-regression.sh'
+
+      - name: Upload repeatable-family evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ironshade-vector-repeatable-family-regression
+          path: |
+            android-repeatable-regression.txt
+            android-repeatable-regression.png
+            android-repeatable-regression-logcat.txt
+          if-no-files-found: warn
+          retention-days: 90
+
+  settings-regression:
+    if: github.event_name == 'schedule' || github.ref == 'refs/heads/android/capacitor-apk' || github.ref == 'refs/heads/android/full-regression' || (github.event_name == 'workflow_dispatch' && (inputs.verification_mode == 'full' || inputs.require_release_signing))
+    needs: build-apk
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out Settings harness
+        uses: actions/checkout@v7
+
+      - name: Download shared Android APK
+        uses: actions/download-artifact@v8
+        with:
+          name: ironshade-vector-android-debug-qa
+          path: .
+
+      - name: Verify shared smoke APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s Ironshade-Vector-Android-Smoke.apk
+          sha256sum -c Ironshade-Vector-Android-Smoke.sha256
+
+      - name: Enable KVM
+        shell: bash
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run black-box Settings Android regression
+        uses: ReactiveCircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7_pro
+          emulator-boot-timeout: 300
+          disable-animations: true
+          script: bash -lc 'ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-settings-regression.sh'
+
+      - name: Upload Settings regression evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ironshade-vector-settings-regression
+          path: |
+            android-settings-regression.txt
+            android-settings-regression-logcat.txt
+            android-settings-*.png
+            settings-native.xml
+          if-no-files-found: warn
+          retention-days: 90
+
+  chapter3-regression:
+    if: github.event_name == 'schedule' || github.ref == 'refs/heads/android/capacitor-apk' || github.ref == 'refs/heads/android/full-regression' || (github.event_name == 'workflow_dispatch' && (inputs.verification_mode == 'full' || inputs.require_release_signing))
+    needs: build-apk
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out Chapter 3 harness
+        uses: actions/checkout@v7
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Download shared Android APK
+        uses: actions/download-artifact@v8
+        with:
+          name: ironshade-vector-android-debug-qa
+          path: .
+
+      - name: Verify shared smoke APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s Ironshade-Vector-Android-Smoke.apk
+          sha256sum -c Ironshade-Vector-Android-Smoke.sha256
+
+      - name: Enable KVM
+        shell: bash
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run Chapter 3 Android regression
+        uses: ReactiveCircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7_pro
+          emulator-boot-timeout: 300
+          disable-animations: true
+          script: bash -lc 'ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-chapter3-regression.sh'
+
+      - name: Upload Chapter 3 regression evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ironshade-vector-chapter3-regression
+          path: |
+            android-chapter3-regression.txt
+            android-chapter3-regression-logcat.txt
+            android-chapter3-playthrough.png
+            android-chapter3-playthrough.json
+          if-no-files-found: warn
+          retention-days: 90
+
+  extended-runtime-regression:
+    if: github.event_name == 'schedule' || github.ref == 'refs/heads/android/capacitor-apk' || github.ref == 'refs/heads/android/full-regression' || (github.event_name == 'workflow_dispatch' && (inputs.verification_mode == 'full' || inputs.require_release_signing))
+    needs: build-apk
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out extended runtime harness
+        uses: actions/checkout@v7
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Download shared Android APK
+        uses: actions/download-artifact@v8
+        with:
+          name: ironshade-vector-android-debug-qa
+          path: .
+
+      - name: Verify shared smoke APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s Ironshade-Vector-Android-Smoke.apk
+          sha256sum -c Ironshade-Vector-Android-Smoke.sha256
+
+      - name: Enable KVM
+        shell: bash
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run remaining extended Android runtime regression
+        uses: ReactiveCircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7_pro
+          emulator-boot-timeout: 300
+          disable-animations: true
+          script: bash -lc 'set -euo pipefail; ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-runtime-smoke.sh 2>&1 | tee android-runtime-regression.txt'
+
+      - name: Upload extended runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ironshade-vector-extended-runtime-regression
+          path: |
+            android-runtime-regression.txt
+            android-runtime-smoke.png
+            android-network-planner-persistence.png
+            android-runtime-logcat.txt
+          if-no-files-found: warn
+          retention-days: 90
+
+  full-android-verification:
+    if: always() && (github.event_name == 'schedule' || github.ref == 'refs/heads/android/capacitor-apk' || github.ref == 'refs/heads/android/full-regression' || (github.event_name == 'workflow_dispatch' && (inputs.verification_mode == 'full' || inputs.require_release_signing)))
+    needs:
+      - build-apk
+      - repeatable-family-regression
+      - settings-regression
+      - chapter3-regression
+      - extended-runtime-regression
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Download shared APK evidence
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: ironshade-vector-android-debug-qa
+          path: full-android-evidence/apk
+
+      - name: Download repeatable-family evidence
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: ironshade-vector-repeatable-family-regression
+          path: full-android-evidence/repeatable
+
+      - name: Download Settings evidence
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: ironshade-vector-settings-regression
+          path: full-android-evidence/settings
+
+      - name: Download Chapter 3 evidence
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: ironshade-vector-chapter3-regression
+          path: full-android-evidence/chapter3
+
+      - name: Download extended runtime evidence
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: ironshade-vector-extended-runtime-regression
+          path: full-android-evidence/runtime
+
+      - name: Verify full Android result and evidence
+        shell: bash
+        env:
+          BUILD_RESULT: ${{ needs.build-apk.result }}
+          REPEATABLE_RESULT: ${{ needs.repeatable-family-regression.result }}
+          SETTINGS_RESULT: ${{ needs.settings-regression.result }}
+          CHAPTER3_RESULT: ${{ needs.chapter3-regression.result }}
+          RUNTIME_RESULT: ${{ needs.extended-runtime-regression.result }}
+        run: |
+          set -euo pipefail
+          mkdir -p full-android-evidence
+          {
+            printf 'build=%s\n' "$BUILD_RESULT"
+            printf 'repeatable=%s\n' "$REPEATABLE_RESULT"
+            printf 'settings=%s\n' "$SETTINGS_RESULT"
+            printf 'chapter3=%s\n' "$CHAPTER3_RESULT"
+            printf 'runtime=%s\n' "$RUNTIME_RESULT"
+          } | tee full-android-evidence/full-android-verification.txt
+
+          for result in "$BUILD_RESULT" "$REPEATABLE_RESULT" "$SETTINGS_RESULT" "$CHAPTER3_RESULT" "$RUNTIME_RESULT"; do
+            test "$result" = 'success'
+          done
+
+          test -s full-android-evidence/apk/Ironshade-Vector-Android-Debug.apk
+          test -s full-android-evidence/apk/Ironshade-Vector-Android-Debug.sha256
+          test -s full-android-evidence/repeatable/android-repeatable-regression.txt
+          test -s full-android-evidence/repeatable/android-repeatable-regression.png
+          test -s full-android-evidence/settings/android-settings-regression.txt
+          test -s full-android-evidence/settings/android-settings-10-command-final-compact.png
+          test -s full-android-evidence/chapter3/android-chapter3-regression.txt
+          test -s full-android-evidence/chapter3/android-chapter3-playthrough.json
+          test -s full-android-evidence/chapter3/android-chapter3-playthrough.png
+          test -s full-android-evidence/runtime/android-runtime-regression.txt
+          test -s full-android-evidence/runtime/android-runtime-smoke.png
+          test -s full-android-evidence/runtime/android-network-planner-persistence.png
+          test -s full-android-evidence/runtime/android-runtime-logcat.txt
+
+          echo 'ANDROID_FULL_VERIFICATION_PASS apk=shared parallel=repeatable+settings+chapter3+runtime evidence=aggregated gate=required' | tee -a full-android-evidence/full-android-verification.txt
+
+      - name: Upload full Android verification evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ironshade-vector-full-android-verification
+          path: full-android-evidence
+          if-no-files-found: error
+          retention-days: 90
