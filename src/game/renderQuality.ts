@@ -55,16 +55,12 @@ function qualityFloorTier(requestedQuality: number): AdaptiveRenderTier {
 }
 
 export class AdaptiveRenderBudget {
-  private readonly baselineTier: AdaptiveRenderTier;
-  private runtimeTier: AdaptiveRenderTier;
+  private runtimeTier: AdaptiveRenderTier = 0;
   private smoothedFrameMs = 1000 / 60;
   private slowSamples = 0;
   private fastSamples = 0;
 
-  constructor(coarse: boolean) {
-    this.baselineTier = coarse ? 1 : 0;
-    this.runtimeTier = 0;
-  }
+  constructor(_coarse: boolean) {}
 
   sample(frameMs: number, requestedQuality: number, qualityMode: GraphicsQualityMode = 'adaptive'): RenderBudgetSnapshot {
     if (Number.isFinite(frameMs) && frameMs >= 4 && frameMs <= 80) {
@@ -92,7 +88,7 @@ export class AdaptiveRenderBudget {
     }
 
     const requested = Math.max(0.35, Math.min(1, requestedQuality));
-    const modeFloor: AdaptiveRenderTier = qualityMode === 'performance' ? 2 : qualityMode === 'flagship' ? 0 : this.baselineTier;
+    const modeFloor: AdaptiveRenderTier = qualityMode === 'performance' ? 2 : 0;
     const tier = Math.max(this.runtimeTier, modeFloor, qualityFloorTier(requested)) as AdaptiveRenderTier;
     return {
       tier,
