@@ -16,6 +16,7 @@ on:
       - 'scripts/android-babylon-resource-soak.mjs'
       - 'scripts/android-babylon-resource-soak.sh'
       - 'scripts/android-babylon-retention-census.mjs'
+      - 'src/game/renderQuality.ts'
       - 'src/game/babylonCombatRenderer.ts'
       - 'src/game/babylonGraphicsAssets.ts'
       - 'src/game/combatGraphicsBackend.ts'
