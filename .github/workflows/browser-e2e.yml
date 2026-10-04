@@ -121,13 +121,13 @@ jobs:
             sudo apt-get install -y mesa-vulkan-drivers xvfb xauth >/dev/null
             lavapipe_icd="$(find /usr/share/vulkan/icd.d -maxdepth 1 \( -name 'lvp_icd.json' -o -name 'lvp_icd.x86_64.json' \) -print -quit)"
             if [[ -z "$lavapipe_icd" ]]; then
-              echo "::error::Mesa Lavapipe ICD is required for the headed P21-F2 WebGPU presentation gate."
+              echo "::error::Mesa Lavapipe ICD is required for the headed Babylon WebGPU presentation gate."
               find /usr/share/vulkan/icd.d -maxdepth 1 -type f -print 2>/dev/null || true
               exit 1
             fi
             npm install --no-save --package-lock=false --ignore-scripts puppeteer-core@24.26.1 >/dev/null
-            export P21F2_LAVAPIPE_ICD="$lavapipe_icd"
-            cat > .p21f2-puppeteer-launch.mjs <<'NODE'
+            export BABYLON_LAVAPIPE_ICD="$lavapipe_icd"
+            cat > .babylon-webgpu-puppeteer-launch.mjs <<'NODE'
           import puppeteer from 'puppeteer-core';
 
           const browser = await puppeteer.launch({
@@ -138,7 +138,7 @@ jobs:
             userDataDir: `${process.env.RUNNER_TEMP}/ironshade-browser-e2e`,
             env: {
               ...process.env,
-              VK_DRIVER_FILES: process.env.P21F2_LAVAPIPE_ICD,
+              VK_DRIVER_FILES: process.env.BABYLON_LAVAPIPE_ICD,
             },
             args: [
               '--no-sandbox',
@@ -162,18 +162,18 @@ jobs:
           };
           process.once('SIGTERM', shutdown);
           process.once('SIGINT', shutdown);
-          console.log(`P21-F2 Puppeteer headed browser ready endpoint=${browser.wsEndpoint()}`);
+          console.log(`Babylon WebGPU Puppeteer headed browser ready endpoint=${browser.wsEndpoint()}`);
           await new Promise(() => {});
           NODE
-            xvfb-run -a -s "-screen 0 1280x720x24" node .p21f2-puppeteer-launch.mjs > browser-chrome.log 2>&1 &
+            xvfb-run -a -s "-screen 0 1280x720x24" node .babylon-webgpu-puppeteer-launch.mjs > browser-chrome.log 2>&1 &
             launch_attempts=180
-            echo "P21-F2 desktop Chrome mode: puppeteer-headed-xvfb lavapipe=$lavapipe_icd"
+            echo "Babylon WebGPU desktop Chrome mode: puppeteer-headed-xvfb lavapipe=$lavapipe_icd"
           else
             chrome_window_size="851,360"
             chrome_dir="$(dirname "$CHROME_PATH")"
             swiftshader_icd="$(find "$chrome_dir" -maxdepth 4 -name vk_swiftshader_icd.json -print -quit)"
             if [[ -z "$swiftshader_icd" ]]; then
-              echo "::error::Chrome for Testing did not include vk_swiftshader_icd.json; mobile WebGPU comparison cannot initialize."
+              echo "::error::Chrome for Testing did not include vk_swiftshader_icd.json; mobile WebGPU support cannot initialize."
               find "$chrome_dir" -maxdepth 4 -type f | sort | tail -n 120
               exit 1
             fi
@@ -216,9 +216,7 @@ jobs:
           CDP_ENDPOINT: http://127.0.0.1:9223
           BROWSER_E2E_APP_URL: http://127.0.0.1:4173/
           BROWSER_E2E_VIEWPORT: ${{ matrix.viewport }}
-          BROWSER_E2E_REQUIRE_WEBGPU: '1'
-          BROWSER_E2E_WEBGPU_PRESENTATION_KNOWN_GAP: ${{ matrix.viewport == 'desktop' && 'lavapipe-xvfb-black-canvas' || '' }}
-          BROWSER_E2E_WEBGPU_SWIFTSHADER: ${{ matrix.viewport == 'mobile-landscape' && '1' || '0' }}
+          BROWSER_E2E_GRAPHICS_PATH: babylon
           BROWSER_E2E_SKIP_SYNTHETIC_CONTROLLER: ${{ matrix.viewport == 'desktop' && '1' || '0' }}
           BROWSER_E2E_SCREENSHOT: browser-e2e-${{ matrix.viewport }}.png
           BROWSER_E2E_COMMAND_SCREENSHOT: browser-command-${{ matrix.viewport }}.png
@@ -232,13 +230,12 @@ jobs:
           BROWSER_E2E_CHAPTER3_SCREENSHOT: browser-chapter3-${{ matrix.viewport }}.png
           BROWSER_E2E_CHAPTER3_REPORT: browser-chapter3-${{ matrix.viewport }}.json
         run: |
-          BROWSER_E2E_GRAPHICS_PATH=webgl2 node scripts/browser-runtime-smoke.mjs
+          BROWSER_E2E_GRAPHICS_PATH= node scripts/browser-runtime-smoke.mjs
           node scripts/verify-authored-operator.mjs
           node scripts/verify-authored-enemies.mjs
           node scripts/verify-authored-weapons.mjs
           node scripts/verify-authored-interactables.mjs
           node scripts/verify-authored-refinery.mjs
-          BROWSER_E2E_GRAPHICS_PATH=webgpu BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p21f1-webgpu.png node scripts/browser-runtime-smoke.mjs
           BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27a2-babylon.png node scripts/browser-runtime-smoke.mjs
           if [[ "${{ matrix.viewport }}" == "desktop" ]]; then
             BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_BABYLON_BACKEND=webgpu BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27d1-babylon-webgpu.png node scripts/browser-runtime-smoke.mjs
@@ -643,12 +640,6 @@ jobs:
             browser-p22c-${{ matrix.viewport }}.json
             browser-e2e-${{ matrix.viewport }}.png
             browser-e2e-${{ matrix.viewport }}*.performance.json
-            browser-e2e-${{ matrix.viewport }}-p21b-ibl-*.png
-            browser-e2e-${{ matrix.viewport }}-p21c-bloom-*.png
-            browser-e2e-${{ matrix.viewport }}-p21d1-contact-*.png
-            browser-e2e-${{ matrix.viewport }}-p21d2-atmosphere-*.png
-            browser-e2e-${{ matrix.viewport }}*p21f2-stack-*.png
-            browser-e2e-${{ matrix.viewport }}-p21f1-webgpu.png
             browser-e2e-${{ matrix.viewport }}-p27a2-babylon*.png
             browser-e2e-${{ matrix.viewport }}-p27d1-babylon-webgpu.png
             browser-e2e-${{ matrix.viewport }}-p27c1-orbital-station.png
