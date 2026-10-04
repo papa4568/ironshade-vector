@@ -8,7 +8,7 @@ on:
       - '.github/workflows/p27d9-android-workflow-cleanup.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   cleanup:
@@ -20,7 +20,7 @@ jobs:
           ref: p27d9-clean
           fetch-depth: 0
 
-      - name: Retire stale Three Android release gates
+      - name: Build corrected Android release gate
         shell: bash
         run: |
           set -euo pipefail
@@ -43,15 +43,7 @@ jobs:
               source = source.replace(stale, '', 1)
           path.write_text(source)
           PY
-          rm .github/workflows/p27d9-android-workflow-cleanup.yml
-
-      - name: Commit corrected Android release gate
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add .github/workflows/android-apk.yml .github/workflows/p27d9-android-workflow-cleanup.yml
-          git diff --cached --check
-          git commit -m 'Retire stale Three Android release gates'
-          git push origin HEAD:p27d9-clean
+          echo 'ANDROID_WORKFLOW_BASE64_BEGIN'
+          base64 -w0 .github/workflows/android-apk.yml
+          echo
+          echo 'ANDROID_WORKFLOW_BASE64_END'
