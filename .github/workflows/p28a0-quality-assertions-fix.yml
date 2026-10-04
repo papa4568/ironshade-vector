@@ -30,15 +30,16 @@ jobs:
 
           changed = []
           replacement_count = 0
-          for path in sorted(Path('tests').glob('babylon-*.ts')):
+          for path in sorted(Path('tests').glob('*.ts')):
               source = path.read_text()
               lines = source.splitlines(keepends=True)
               updated_lines = []
               file_changes = 0
               for line in lines:
                   updated = line
-                  source_assertion = ('assert.match(rendererSource' in line or 'assert.match(babylonRendererSource' in line)
-                  if source_assertion and 'new ' in line and 'coarse' in line:
+                  assertion = 'assert' in line
+                  quality_constructor = 'new Babylon' in line or 'new AdaptiveRenderBudget' in line
+                  if assertion and quality_constructor and 'coarse' in line:
                       updated = line.replace('coarse', 'qualityCoarse')
                   if updated != line:
                       file_changes += 1
@@ -47,8 +48,8 @@ jobs:
                   path.write_text(''.join(updated_lines))
                   changed.append(str(path))
                   replacement_count += file_changes
-          if replacement_count < 4:
-              raise SystemExit(f'expected at least four stale Babylon renderer quality-source assertions, found {replacement_count}')
+          if replacement_count < 5:
+              raise SystemExit(f'expected at least five stale Babylon renderer quality-source assertions, found {replacement_count}')
           print(f'P28_A0_ASSERTION_MIGRATION files={len(changed)} replacements={replacement_count}')
           for path in changed:
               print(path)
