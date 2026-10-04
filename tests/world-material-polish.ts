@@ -7,7 +7,7 @@ import {
   materialWorldResponse,
   worldMaterialQualityProfile,
 } from '../src/game/worldMaterialPolish';
-import { REFINERY_IBL_PROFILE } from '../src/game/refineryIbl';
+import { REFINERY_IBL_PROFILE } from '../src/game/refineryLightingProfile';
 import type { CombatObject, Hazard, SimState } from '../src/game/sim';
 
 function assert(condition: unknown, message: string) {

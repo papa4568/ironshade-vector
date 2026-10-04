@@ -7,7 +7,7 @@ import {
   REFINERY_BLOOM_PROFILE,
   refineryBloomResolutionScale,
   refineryBloomStrengthForCost,
-} from '../src/game/refineryBloom';
+} from '../src/game/refineryBloomProfile';
 
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);

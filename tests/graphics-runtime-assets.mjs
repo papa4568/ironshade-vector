@@ -5,21 +5,13 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-const threeCodecRoot = resolve(process.cwd(), 'dist/assets/codecs/basis');
-const threeManifest = JSON.parse(await readFile(resolve(threeCodecRoot, 'manifest.json'), 'utf8'));
-assert(threeManifest.codec === 'basis-universal', 'graphics codec manifest must identify Basis Universal');
-assert(threeManifest.threeVersion === '0.186.0', `graphics codec version must match locked Three.js 0.186.0, got ${threeManifest.threeVersion}`);
-assert(Array.isArray(threeManifest.files) && threeManifest.files.length === 2, 'Three graphics codec manifest must contain JS and WASM transcoder files');
-
-let threeTotalBytes = 0;
-for (const expected of ['basis_transcoder.js', 'basis_transcoder.wasm']) {
-  const fileStat = await stat(resolve(threeCodecRoot, expected));
-  assert(fileStat.isFile() && fileStat.size > 0, `missing runtime Three graphics codec ${expected}`);
-  threeTotalBytes += fileStat.size;
+const retiredThreeCodecRoot = resolve(process.cwd(), 'dist/assets/codecs/basis');
+try {
+  await stat(retiredThreeCodecRoot);
+  throw new Error('retired Three Basis codec directory must not ship');
+} catch (error) {
+  if (error?.code !== 'ENOENT') throw error;
 }
-
-assert(threeTotalBytes === threeManifest.totalBytes, 'Three graphics codec manifest byte count does not match build output');
-assert(threeTotalBytes <= 700_000, `Three Basis runtime codec budget exceeded: ${threeTotalBytes} bytes`);
 
 const babylonCodecRoot = resolve(process.cwd(), 'dist/assets/codecs/babylon');
 const babylonManifest = JSON.parse(await readFile(resolve(babylonCodecRoot, 'manifest.json'), 'utf8'));
@@ -52,6 +44,4 @@ for (const expected of babylonFiles) {
 assert(babylonTotalBytes === babylonManifest.totalBytes, 'Babylon graphics codec manifest byte count does not match build output');
 assert(babylonTotalBytes <= 1_250_000, `Babylon local codec payload budget exceeded: ${babylonTotalBytes} bytes`);
 
-console.log(
-  `GRAPHICS_RUNTIME_ASSETS_PASS threeFiles=2 threeBytes=${threeTotalBytes} three=${threeManifest.threeVersion} babylonFiles=${babylonFiles.length} babylonBytes=${babylonTotalBytes} babylon=${babylonManifest.babylonVersion} meshopt=${babylonManifest.meshoptimizerVersion}`,
-);
+console.log(`GRAPHICS_RUNTIME_ASSETS_PASS threeFiles=0 babylonFiles=${babylonFiles.length} babylonBytes=${babylonTotalBytes} babylon=${babylonManifest.babylonVersion} meshopt=${babylonManifest.meshoptimizerVersion}`);
