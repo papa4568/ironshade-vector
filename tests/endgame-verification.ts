@@ -279,13 +279,13 @@ function adaptiveQualityStressVerification() {
 
   const mobile = new AdaptiveRenderBudget(true);
   let mobileSnapshot = mobile.sample(16.7, 1);
-  assert.equal(mobileSnapshot.tierName, 'balanced', 'coarse/mobile rendering should start from the Balanced baseline');
+  assert.equal(mobileSnapshot.tierName, 'high', 'coarse/mobile hint must not lower the flagship baseline before measured frame pressure');
 
   for (let frame = 0; frame < 180; frame += 1) mobileSnapshot = mobile.sample(32, 1);
   assert.equal(mobileSnapshot.tierName, 'performance', 'sustained T12 pressure should force mobile into Performance quality');
 
   for (let frame = 0; frame < 800; frame += 1) mobileSnapshot = mobile.sample(16.2, 1);
-  assert.equal(mobileSnapshot.tierName, 'balanced', 'mobile recovery should stop at the safe Balanced baseline instead of restoring desktop High');
+  assert.equal(mobileSnapshot.tierName, 'high', 'mobile recovery should restore High after sustained healthy frames');
 
   return {
     desktopRecoveredTier: desktopSnapshot.tierName,
