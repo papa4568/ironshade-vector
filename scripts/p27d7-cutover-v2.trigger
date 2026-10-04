@@ -1,1 +1,1 @@
-P27-D7 release smoke correction trigger 2026-10-03.
+P27-D7 release smoke correction retry 2 2026-10-03.
