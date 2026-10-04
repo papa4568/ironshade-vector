@@ -1174,17 +1174,6 @@ async function p27C4BabylonJovianHarvesterAudit() {
     throw new Error('P27-C4 Babylon Jovian Harvester parity invalid: ' + JSON.stringify({ state, beforeMove, afterMove }));
   }
 
-  if (viewportMode === 'mobile-landscape') {
-    if (!/^(mobile|performance):procedural:structure-shadows-off$/.test(state.profile)) {
-      throw new Error('P27-C4 mobile Jovian performance profile invalid: ' + JSON.stringify(state));
-    }
-    if (state.budget !== 'deck:4+tower:5+bridge:2+ballast:2') {
-      throw new Error('P27-C4 mobile Jovian instance budget regressed: ' + JSON.stringify(state));
-    }
-    if (state.stormDetail !== '2-sweeps+2-bands+relief-pulse' || state.ambientDetail !== '2-clouds+20-motes+spine-haze') {
-      throw new Error('P27-C4 mobile Jovian secondary-effect reduction regressed: ' + JSON.stringify(state));
-    }
-  }
 
   console.log('BROWSER_P27C4_BABYLON_JOVIAN_HARVESTER_PASS viewport=' + viewportMode
     + ' identity=' + state.identity
@@ -1328,9 +1317,6 @@ async function p27C5BabylonIceMineAudit() {
     || state.playerPosition === beforeMove) {
     throw new Error('P27-C5 Babylon Ice Mine runtime parity regressed: ' + JSON.stringify(state));
   }
-  if (viewportMode === 'mobile-landscape' && state.fractureDetail !== '4-shards+2-cracks+frost-pulse') {
-    throw new Error('P27-C5 mobile Ice Mine fracture detail did not reduce: ' + JSON.stringify(state));
-  }
 
   console.log('BROWSER_P27C5_BABYLON_ICE_MINE_PASS viewport=' + viewportMode
     + ' identity=' + state.identity
@@ -1458,9 +1444,6 @@ async function p27C6BabylonSolarYardAudit() {
     || state.playerPosition === beforeMove) {
     throw new Error('P27-C6 Babylon Solar Yard runtime parity regressed: ' + JSON.stringify(state));
   }
-  if (viewportMode === 'mobile-landscape' && !/^(mobile|performance):/.test(state.profile)) {
-    throw new Error('P27-C6 mobile Solar Yard profile did not reduce: ' + JSON.stringify(state));
-  }
 
   const initialOffsets = state.craneOffsets;
   await waitFor("(() => { const value = document.querySelector('canvas')?.dataset.environmentCraneOffsets ?? ''; return Boolean(value) && value !== " + JSON.stringify(initialOffsets) + "; })()", 'P27-C6 Solar Yard gantry motion', 5_000);
@@ -1583,14 +1566,6 @@ async function p27C7BabylonLatticeAnnexAudit() {
     || state.playerPosition === beforeMove) {
     throw new Error('P27-C7 Babylon Lattice Annex runtime parity regressed: ' + JSON.stringify(state));
   }
-  if (viewportMode === 'mobile-landscape') {
-    if (!/^(mobile|performance):/.test(state.profile)) {
-      throw new Error('P27-C7 mobile Lattice Annex profile did not reduce: ' + JSON.stringify(state));
-    }
-    if (state.calibration !== 'near-zero-g') {
-      throw new Error('P27-C7 mobile Lattice Annex did not reach the authored calibration mass shift: ' + JSON.stringify(state));
-    }
-  }
 
   console.log('BROWSER_P27C7_BABYLON_LATTICE_ANNEX_PASS viewport=' + viewportMode
     + ' identity=' + state.identity + ' routes=' + state.routes + ' landmarks=' + state.landmarks
@@ -1711,9 +1686,6 @@ async function p27C8BabylonMomentumExchangeAudit() {
     || state.enemies < 1
     || state.playerPosition === beforeMove) {
     throw new Error('P27-C8 Babylon Momentum Exchange runtime parity regressed: ' + JSON.stringify(state));
-  }
-  if (viewportMode === 'mobile-landscape' && !/^(mobile|performance):/.test(state.profile)) {
-    throw new Error('P27-C8 mobile Momentum Exchange profile did not reduce: ' + JSON.stringify(state));
   }
 
   console.log('BROWSER_P27C8_BABYLON_MOMENTUM_EXCHANGE_PASS viewport=' + viewportMode
@@ -1841,9 +1813,6 @@ async function p27C9BabylonCryoReserveAudit() {
     || state.playerPosition === beforeMove) {
     throw new Error('P27-C9 Babylon Cryo Reserve runtime parity regressed: ' + JSON.stringify(state));
   }
-  if (viewportMode === 'mobile-landscape' && !/^(mobile|performance):/.test(state.profile)) {
-    throw new Error('P27-C9 mobile Cryo Reserve profile did not reduce: ' + JSON.stringify(state));
-  }
 
   console.log('BROWSER_P27C9_BABYLON_CRYO_RESERVE_PASS viewport=' + viewportMode
     + ' identity=' + state.identity + ' routes=' + state.routes + ' landmarks=' + state.landmarks
@@ -1968,9 +1937,6 @@ async function p27C10BabylonParallaxArrayAudit() {
     || state.enemies < 1
     || state.playerPosition === beforeMove) {
     throw new Error('P27-C10 Babylon Parallax Array runtime parity regressed: ' + JSON.stringify(state));
-  }
-  if (viewportMode === 'mobile-landscape' && !/^(mobile|performance):/.test(state.profile)) {
-    throw new Error('P27-C10 mobile Parallax Array profile did not reduce: ' + JSON.stringify(state));
   }
 
   console.log('BROWSER_P27C10_BABYLON_PARALLAX_ARRAY_PASS viewport=' + viewportMode
@@ -2418,6 +2384,10 @@ async function p27A2BabylonBackendAudit() {
   const resourceBudgetMatch = /^tier:(high|balanced|performance)\|detail:(1\.00|0\.78|0\.50)\|pixel:(1\.00|0\.84|0\.68)\|cache-bytes:(64|40|24)mb\|cache-assets:(32|24|20)\|anisotropy:(4|2|1)$/.exec(state.resourceBudget);
   const geometryStatsMatch = /^draw:(\d+)\|triangles:(\d+)\|cached:(\d+)\|bytes:(\d+)$/.exec(state.geometryStats);
   const animationLodMatch = /^(high|balanced|performance):max-stride-([123]):deferred-(\d+)$/.exec(state.animationLod);
+  if (viewportMode === 'mobile-landscape' && state.renderTier !== 'high') {
+    throw new Error('P28-A0 flagship phone render tier must start High without measured pressure: ' + JSON.stringify(state));
+  }
+
   const resourceExpected = {
     high: { detail: '1.00', pixel: '1.00', bytes: '64', entries: '32', anisotropy: '4' },
     balanced: { detail: '0.78', pixel: '0.84', bytes: '40', entries: '24', anisotropy: '2' },
@@ -5207,13 +5177,6 @@ try {
         renderTier: canvas?.dataset.renderTier ?? '',
       };
     })()`);
-    if (viewportMode === 'mobile-landscape') {
-      if (habitatPerformance?.lod !== '2') throw new Error(`Spin Habitat mobile environment did not select LOD2: ${JSON.stringify(habitatPerformance)}`);
-      if (!/^(mobile|performance):lod2:rotor-shadows-off$/.test(habitatPerformance?.profile ?? '')) throw new Error(`Spin Habitat mobile performance profile is invalid: ${JSON.stringify(habitatPerformance)}`);
-      if (habitatPerformance?.instances !== 'ring:4+spoke:4+axis:1+service:2') throw new Error(`Spin Habitat mobile instance budget regressed: ${JSON.stringify(habitatPerformance)}`);
-      if (habitatPerformance?.shadows !== 'axis-only') throw new Error(`Spin Habitat mobile moving shadows were not suppressed: ${JSON.stringify(habitatPerformance)}`);
-      if (spindownState.detail !== '3-arcs+axis-pulse') throw new Error(`Spin Habitat mobile spindown VFX kept excess arcs: ${JSON.stringify(spindownState)}`);
-    }
     console.log(`BROWSER_SPIN_HABITAT_PASS viewport=${viewportMode} identity=rim/spoke/axis machinery=${habitatInteractables} enemies=${habitatEnemies} boss=${habitatBoss} ambient=${habitatAmbient} performance=${habitatPerformance.profile}:${habitatPerformance.instances}:${habitatPerformance.shadows} vfx=spindown:${spindownState.mode}:${spindownState.detail} phase=${firstPhase.toFixed(3)}->${nextPhase.toFixed(3)}`);
   }
 
@@ -5288,18 +5251,6 @@ try {
     if (!Number.isFinite(jovianEnvironment?.stormIntensity) || !Number.isFinite(jovianEnvironment?.pressureShear) || !Number.isFinite(jovianEnvironment?.atmosphereIntensity)) {
       throw new Error(`Jovian Harvester storm/pressure/atmosphere state was not observable: ${JSON.stringify(jovianEnvironment)}`);
     }
-    if (viewportMode === 'mobile-landscape') {
-      if (jovianEnvironment?.lod !== '2') throw new Error(`Jovian Harvester mobile environment did not select LOD2: ${JSON.stringify(jovianEnvironment)}`);
-      if (!/^(mobile|performance):lod2:structure-shadows-off$/.test(jovianEnvironment?.profile ?? '')) throw new Error(`Jovian Harvester mobile performance profile is invalid: ${JSON.stringify(jovianEnvironment)}`);
-      if (jovianEnvironment?.instanceBudget !== 'deck:4+tower:5+bridge:2+ballast:2') throw new Error(`Jovian Harvester mobile instance budget regressed: ${JSON.stringify(jovianEnvironment)}`);
-      if (jovianEnvironment?.shadows !== 'off') throw new Error(`Jovian Harvester mobile structural shadows were not suppressed: ${JSON.stringify(jovianEnvironment)}`);
-      if (jovianEnvironment?.stormDetail !== '2-sweeps+2-bands+relief-pulse') {
-        throw new Error(`Jovian Harvester mobile storm/pressure detail did not reduce: ${JSON.stringify(jovianEnvironment)}`);
-      }
-    }
-    if (viewportMode === 'mobile-landscape' && jovianEnvironment?.atmosphereDetail !== '2-clouds+20-motes+spine-haze') {
-      throw new Error(`Jovian Harvester mobile atmosphere detail did not reduce: ${JSON.stringify(jovianEnvironment)}`);
-    }
     console.log(`BROWSER_JOVIAN_HARVESTER_PASS viewport=${viewportMode} lod=${jovianEnvironment?.lod} instances=${jovianEnvironment?.instances} performance=${jovianEnvironment?.profile}:${jovianEnvironment?.instanceBudget}:${jovianEnvironment?.shadows} kit=${jovianEnvironment?.kit} composition=${jovianEnvironment?.composition} machinery=${jovianEnvironment?.machinery} pressureKit=${jovianEnvironment?.pressureKit} boss=${jovianEnvironment?.bossPresentation}:${jovianEnvironment?.bossAsset} pressure=${jovianEnvironment?.pressureState} door=${jovianEnvironment?.pressureDoor} atmosphere=${jovianEnvironment?.atmosphereDetail}:${jovianEnvironment?.atmosphereIntensity.toFixed(2)} storm=${jovianEnvironment?.stormMode}:${jovianEnvironment?.stormIntensity.toFixed(2)} shear=${jovianEnvironment?.pressureShear.toFixed(2)} range=${jovianEnvironment?.pressureRange} detail=${jovianEnvironment?.stormDetail}`);
   }
 
@@ -5353,9 +5304,6 @@ try {
         bossPresentation: canvas?.dataset.bossPresentation ?? '',
       };
     })()`);
-    if (viewportMode === 'mobile-landscape' && iceMineEnvironment?.lod !== '2') {
-      throw new Error(`Ice Mine mobile environment did not select LOD2: ${JSON.stringify(iceMineEnvironment)}`);
-    }
     if (iceMineEnvironment?.machinery !== 'cryo-pump:2+coolant-manifold:3+freeze-compressor:2') {
       throw new Error(`Ice Mine cryogenic machinery runtime telemetry was not observable: ${JSON.stringify(iceMineEnvironment)}`);
     }
@@ -5364,12 +5312,6 @@ try {
     }
     if (iceMineEnvironment?.fractureVfx !== 'support-cracks+shard-burst+frost-pulse' || !/^(idle|cracking|collapsing|settled)$/.test(iceMineEnvironment?.fractureState ?? '')) {
       throw new Error(`Ice Mine fracture/collapse VFX telemetry was not observable: ${JSON.stringify(iceMineEnvironment)}`);
-    }
-    if (viewportMode === 'mobile-landscape' && iceMineEnvironment?.fractureDetail !== '4-shards+2-cracks+frost-pulse') {
-      throw new Error(`Ice Mine mobile fracture VFX did not reduce detail: ${JSON.stringify(iceMineEnvironment)}`);
-    }
-    if (viewportMode === 'mobile-landscape' && !iceMineEnvironment?.bossAsset.includes('ice-mine-rhea-kade-lod2')) {
-      throw new Error(`Rhea Kade mobile presentation did not select boss LOD2: ${JSON.stringify(iceMineEnvironment)}`);
     }
     console.log(`BROWSER_ICE_MINE_PASS viewport=${viewportMode} lod=${iceMineEnvironment?.lod} instances=${iceMineEnvironment?.instances} kit=${iceMineEnvironment?.kit} composition=${iceMineEnvironment?.composition} sequence=${iceMineEnvironment?.sequence} service=${iceMineEnvironment?.service} surface=${iceMineEnvironment?.surface} machinery=${iceMineEnvironment?.machinery} brittle=${iceMineEnvironment?.brittleState}:${iceMineEnvironment?.brittle} fracture=${iceMineEnvironment?.fractureState}:${iceMineEnvironment?.fractureDetail}:${iceMineEnvironment?.fractureSupports} boss=${iceMineEnvironment?.bossPresentation}:${iceMineEnvironment?.bossAsset}`);
   }
@@ -5492,7 +5434,7 @@ try {
       };
     })()`);
     const profileName = solarYardEnvironment?.performanceProfile?.split(':')[0] ?? '';
-    const allowedProfiles = viewportMode === 'mobile-landscape' ? ['mobile', 'performance'] : ['full', 'balanced', 'mobile', 'performance'];
+    const allowedProfiles = ['full', 'balanced', 'mobile', 'performance'];
     if (!allowedProfiles.includes(profileName)) {
       throw new Error(`Solar Yard active profile is invalid for ${viewportMode}: ${JSON.stringify(solarYardEnvironment)}`);
     }
@@ -5528,9 +5470,6 @@ try {
       const offsets = canvas?.dataset.environmentCraneOffsets ?? '';
       return Boolean(offsets) && offsets !== ${JSON.stringify(initialCraneOffsets)};
     })()`, 'Solar Yard gantry trolley motion', 5_000);
-    if (viewportMode === 'mobile-landscape' && !solarYardEnvironment?.bossAsset.includes('solar-yard-helios-9-lod2')) {
-      throw new Error(`HELIOS-9 mobile presentation did not select boss LOD2: ${JSON.stringify(solarYardEnvironment)}`);
-    }
     console.log(`BROWSER_SOLAR_YARD_PASS viewport=${viewportMode} profile=${solarYardEnvironment?.performanceProfile} budget=${solarYardEnvironment?.instanceBudget} casters=${solarYardEnvironment?.shadowCasters} lod=${solarYardEnvironment?.lod} instances=${solarYardEnvironment?.instances} kit=${solarYardEnvironment?.kit} composition=${solarYardEnvironment?.composition} service=${solarYardEnvironment?.service} surface=${solarYardEnvironment?.surface} machinery=${solarYardEnvironment?.machinery} transport=${solarYardEnvironment?.transport}:${solarYardEnvironment?.craneMotion}:${solarYardEnvironment?.craneOffsets} shutters=${solarYardEnvironment?.thermalShutters}:${solarYardEnvironment?.thermalProtection}:${solarYardEnvironment?.thermalControl} materials=${solarYardEnvironment?.materials} lighting=${solarYardEnvironment?.lighting} sun=${solarYardEnvironment?.sunMode}:${solarYardEnvironment?.sunShadow}:${solarYardEnvironment?.sunDirection} patches=${solarYardEnvironment?.sunPatches} shadow=${solarYardEnvironment?.shadowBudget} tone=${solarYardEnvironment?.tone} boss=${solarYardEnvironment?.bossPresentation}:${solarYardEnvironment?.bossAsset} phase=${solarYardEnvironment?.bossPhaseVisual}`);
   }
 
