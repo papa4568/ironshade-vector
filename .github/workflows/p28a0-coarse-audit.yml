@@ -191,6 +191,9 @@ jobs:
           replace('tests/babylon-momentum-exchange.ts', 'const mobile = momentumExchangeRenderProfile(1, true);', 'const coarse = momentumExchangeRenderProfile(1, true);', 1)
           replace('tests/babylon-momentum-exchange.ts', "assert.equal(mobile.name, 'mobile');\nassert.equal(mobile.serviceFrameInstances, 4);\nassert.equal(mobile.impulseBandInstances, 2);", "assert.equal(coarse.name, 'full');\nassert.equal(coarse.flywheelInstances, 3);\nassert.equal(coarse.serviceFrameInstances, 6);\nassert.equal(coarse.transferRailInstances, 4);\nassert.equal(coarse.captureCradleInstances, 3);\nassert.equal(coarse.impulseBandInstances, 3);", 1)
 
+          replace('tests/babylon-cryo-reserve.ts', 'const mobile = cryoReserveRenderProfile(1, true);', 'const coarse = cryoReserveRenderProfile(1, true);', 1)
+          replace('tests/babylon-cryo-reserve.ts', "assert.equal(mobile.name, 'mobile');\nassert.equal(mobile.galleryFrameInstances, 4);\nassert.equal(mobile.plumeInstances, 2);", "assert.equal(coarse.name, 'full');\nassert.equal(coarse.tankInstances, 7);\nassert.equal(coarse.galleryFrameInstances, 6);\nassert.equal(coarse.pipeRunInstances, 4);\nassert.equal(coarse.plumeInstances, 3);", 1)
+
           print('P28_A0_COARSE_QUALITY_CEILINGS_REMOVED')
           PY
           git diff --check
