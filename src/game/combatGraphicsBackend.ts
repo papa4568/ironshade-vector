@@ -44,6 +44,32 @@ export type CombatGraphicsPointerDirection = {
   y: number;
 } | null;
 
+export function normalizeProductionRenderQuality(
+  quality: number,
+  qualityMode: GraphicsQualityMode,
+  reducedEffects: boolean,
+) {
+  const safeQuality = Number.isFinite(quality) ? Math.max(0.35, Math.min(1, quality)) : 1;
+  if (qualityMode !== 'adaptive') return safeQuality;
+  return reducedEffects ? 0.62 : 1;
+}
+
+const RENDER_TIER_COST = { high: 0, balanced: 1, performance: 2 } as const;
+
+export function resolveRenderDowngradeReason(
+  tier: string | undefined,
+  qualityMode: GraphicsQualityMode,
+  reducedEffects: boolean,
+) {
+  if (tier !== 'high' && tier !== 'balanced' && tier !== 'performance') return 'pending';
+  const reasons: string[] = [];
+  const selectedTierCost = qualityMode === 'performance' ? 2 : reducedEffects ? 1 : 0;
+  if (qualityMode === 'performance') reasons.push('performance-mode');
+  if (reducedEffects) reasons.push('reduced-effects');
+  if (RENDER_TIER_COST[tier] > selectedTierCost) reasons.push('sustained-frame-pressure');
+  return reasons.length ? reasons.join('+') : 'none';
+}
+
 export interface CombatGraphicsLifecycle {
   dispose(): void;
 }
@@ -71,7 +97,7 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
-    private readonly coarse: boolean,
+    coarse: boolean,
     private readonly requestedBackend: BabylonGraphicsBackendId,
   ) {
     canvas.dataset.babylonInit = 'initializing';
@@ -81,6 +107,8 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
     canvas.dataset.babylonBackendLoaded = 'initializing';
     canvas.dataset.babylonBackendFallback = '';
     canvas.dataset.babylonBackendFallbackReason = '';
+    canvas.dataset.renderDeviceClassPolicy = coarse ? 'flagship-default:coarse-hint-ignored' : 'flagship-default';
+    canvas.dataset.renderDowngradeReason = 'pending';
     void this.initialize();
   }
 
@@ -89,7 +117,19 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
   }
 
   render(...args: CombatGraphicsRenderArgs) {
-    return this.delegate?.render(...args);
+    const qualityMode = args[4];
+    const reducedEffects = args[8] ?? false;
+    const effectiveQuality = normalizeProductionRenderQuality(args[3], qualityMode, reducedEffects);
+    this.canvas.dataset.renderQualityInput = `requested:${args[3].toFixed(2)}+effective:${effectiveQuality.toFixed(2)}`;
+    if (!this.delegate) return;
+    const normalizedArgs: CombatGraphicsRenderArgs = [...args];
+    normalizedArgs[3] = effectiveQuality;
+    this.delegate.render(...normalizedArgs);
+    this.canvas.dataset.renderDowngradeReason = resolveRenderDowngradeReason(
+      this.canvas.dataset.renderTier,
+      qualityMode,
+      reducedEffects,
+    );
   }
 
   performanceStats() {
@@ -121,7 +161,7 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
         const renderSurface = this.createWebGpuRenderSurface();
         const renderer = await createBabylonCombatRenderer(
           renderSurface,
-          this.coarse,
+          false,
           'webgpu',
           this.canvas,
           reason => {
@@ -191,7 +231,7 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
   private async initializeWebGl2() {
     const { createBabylonCombatRenderer } = await import('./babylonCombatRenderer');
     try {
-      const renderer = await createBabylonCombatRenderer(this.canvas, this.coarse, 'webgl2', this.canvas);
+      const renderer = await createBabylonCombatRenderer(this.canvas, false, 'webgl2', this.canvas);
       if (this.disposed) {
         renderer.dispose();
         return;
