@@ -72,10 +72,11 @@ assert(worldSource.includes("dataset.interactableReadability = 'shape-coded+stat
 assert(worldSource.includes("dataset.hazardReadability = 'shape-coded+floor-bound+quality-safe'"), 'Babylon runtime QA must expose hazard readability');
 assert(worldSource.includes("dataset.worldReadability = 'interactables:shape+state|hazards:shape+motion|loot:shape+rarity'"), 'Babylon runtime QA must expose shared world readability');
 assert(worldSource.includes('quality.pickupBeamScale') && worldSource.includes('quality.materialDepthScale') && worldSource.includes('biomeState.motionHz * quality.stateMotionScale'), 'Babylon world presentation must consume adaptive world-material quality');
-assert(lightingSource.includes('createBabylonRefineryIblTexture(scene)') && lightingSource.includes('this.scene.environmentTexture = iblEnabled ? this.iblTexture : null'), 'Babylon refinery lighting must own a reusable refinery-scoped IBL texture');
+assert(lightingSource.includes("REFINERY_PREFILTERED_IBL_URL = '/assets/environments/refinery-prefiltered.env'") && lightingSource.includes('this.scene.environmentTexture = iblEnabled ? this.iblTexture : null'), 'Babylon refinery lighting must own the committed reusable prefiltered refinery IBL texture');
 assert(lightingSource.includes('REFINERY_IBL_PROFILE.intensity * budget.refineryIblScale'), 'Babylon refinery IBL intensity must follow adaptive reflection budget');
 assert(lightingSource.includes("qaExplicit && this.canvas.dataset.refineryIblQa === 'off'") && lightingSource.includes("'off:qa-baseline'"), 'Babylon refinery lighting must retain deterministic IBL-off QA evidence');
-assert(lightingSource.includes('this.iblTexture.dispose()'), 'Babylon refinery IBL resources must dispose with the renderer');
+assert(lightingSource.includes('this.authoredIblTexture?.dispose()') && lightingSource.includes('this.fallbackIblTexture?.dispose()'), 'Babylon refinery authored and fallback IBL resources must dispose with the renderer');
+assert(lightingSource.includes('activateIblFallback()') && lightingSource.includes('createBabylonRefineryIblFallbackTexture(this.scene)'), 'Babylon refinery procedural cube must remain a deterministic load-failure fallback only');
 
 const browserSource = readFileSync(resolve(process.cwd(), 'scripts/browser-runtime-smoke.mjs'), 'utf8');
 assert(browserSource.includes("canvas.dataset.refineryIblQa = 'off'"), 'P21-B browser QA must capture an explicit IBL-off baseline');
