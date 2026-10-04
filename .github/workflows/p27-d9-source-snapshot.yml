@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - name: Pack branch source
+      - name: Pack current P27-D9 branch source
         run: tar --exclude=.git -czf /tmp/ironshade-vector-p27-d9-source.tgz .
       - uses: actions/upload-artifact@v7
         with:
