@@ -25,22 +25,22 @@ jobs:
           path = Path('scripts/browser-runtime-smoke.mjs')
           source = path.read_text()
 
-          old = "    const canvas = document.querySelector('canvas.game-canvas');\n    return {\n"
-          new = "    const canvas = document.querySelector('canvas.game-canvas');\n    const root = document.querySelector('.game-root');\n    return {\n"
+          old = "  const state = await evaluate(`(() => {\n    const canvas = document.querySelector('canvas');\n    return {\n"
+          new = "  const state = await evaluate(`(() => {\n    const canvas = document.querySelector('canvas');\n    const root = document.querySelector('.game-root');\n    return {\n"
           count = source.count(old)
           if count != 1:
-              raise SystemExit(f'expected one Babylon camera evaluate anchor, found {count}')
+              raise SystemExit(f'expected one Babylon state telemetry anchor, found {count}')
           source = source.replace(old, new, 1)
 
-          old = "      viewport: canvas?.dataset.babylonViewport ?? '',\n    };\n"
-          new = "      viewport: canvas?.dataset.babylonViewport ?? '',\n      compactLayout: root instanceof HTMLElement && root.dataset.compactLayout === 'true',\n    };\n"
+          old = "      viewport: canvas?.dataset.babylonViewport ?? '',\n      feedback: canvas?.dataset.cameraFeedback ?? '',\n"
+          new = "      viewport: canvas?.dataset.babylonViewport ?? '',\n      compactLayout: root instanceof HTMLElement && root.dataset.compactLayout === 'true',\n      feedback: canvas?.dataset.cameraFeedback ?? '',\n"
           count = source.count(old)
           if count != 1:
-              raise SystemExit(f'expected one Babylon camera viewport anchor, found {count}')
+              raise SystemExit(f'expected one Babylon viewport telemetry anchor, found {count}')
           source = source.replace(old, new, 1)
 
-          old = "  const expectedLayout = expectedNarrow ? 'narrow' : pointerProbe.coarse ? 'coarse' : 'standard';"
-          new = "  const expectedLayout = expectedNarrow ? 'narrow' : babylonCameraState.compactLayout ? 'coarse' : 'standard';"
+          old = "  const expectedLayout = state.rectWidth / Math.max(1, state.rectHeight) < 1.15\n    ? 'narrow'\n    : pointerProbe.coarse ? 'coarse' : 'standard';"
+          new = "  const expectedNarrow = state.rectWidth / Math.max(1, state.rectHeight) < 1.35\n    || state.rectWidth < 560\n    || state.rectHeight < 340;\n  const expectedLayout = expectedNarrow\n    ? 'narrow'\n    : state.compactLayout ? 'coarse' : 'standard';"
           count = source.count(old)
           if count != 1:
               raise SystemExit(f'expected one camera layout expectation anchor, found {count}')
