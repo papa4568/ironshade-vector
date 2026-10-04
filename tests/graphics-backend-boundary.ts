@@ -174,11 +174,12 @@ assert(
 assert(
   boundarySource.includes('requestedBackend: BabylonGraphicsBackendId')
     && boundarySource.includes("'webgpu',\n          this.canvas,\n          reason =>")
-    && boundarySource.includes("await createBabylonCombatRenderer(this.canvas, this.coarse, 'webgl2', this.canvas)")
+    && boundarySource.includes("await createBabylonCombatRenderer(this.canvas, false, 'webgl2', this.canvas)")
+    && boundarySource.includes("renderDeviceClassPolicy = coarse ? 'flagship-default:coarse-hint-ignored' : 'flagship-default'")
     && boundarySource.includes('fallbackFromWebGpu(reason)')
     && boundarySource.includes('webgpu->webgl2:runtime-device-lost')
     && boundarySource.includes('createWebGpuRenderSurface()'),
-  'P27-D8 Babylon WebGPU QA and deterministic Babylon WebGL2 fallback must remain available without a Three fallback.',
+  'P27-D8 Babylon WebGPU QA and deterministic Babylon WebGL2 fallback must remain available while P28-A0 removes coarse-device render ceilings.',
 );
 assert(
   gameCanvasSource.includes('createCombatGraphicsBackend(canvas, compactLayout')
