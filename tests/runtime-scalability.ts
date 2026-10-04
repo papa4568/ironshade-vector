@@ -41,17 +41,10 @@ assert(!combatAudioVoiceAdmission(combatAudioBudget.normalVoiceCeiling, 2, 'dire
 assert(combatAudioVoiceAdmission(combatAudioBudget.normalVoiceCeiling, 2, 'direct', 'important').admitted, 'important cues should retain the main voice budget');
 assert(combatAudioVoiceAdmission(combatAudioBudget.maxVoices, combatAudioBudget.maxTailVoices, 'direct', 'critical').admitted, 'critical cues should use reserved voices above the main ceiling');
 assert(!combatAudioVoiceAdmission(combatAudioBudget.maxVoices + combatAudioBudget.criticalReserveVoices, 0, 'direct', 'critical').admitted, 'critical voices must still obey the absolute ceiling');
-
-const rendererSource = readFileSync(resolve(process.cwd(), 'src/game/threeCombatRenderer.ts'), 'utf8');
-const graphicsSource = readFileSync(resolve(process.cwd(), 'src/game/graphicsAssets.ts'), 'utf8');
+const graphicsSource = readFileSync(resolve(process.cwd(), 'src/game/babylonGraphicsAssets.ts'), 'utf8');
 const canvasSource = readFileSync(resolve(process.cwd(), 'src/components/GameCanvas.tsx'), 'utf8');
 const androidSmokeSource = readFileSync(resolve(process.cwd(), 'scripts/android-runtime-smoke.mjs'), 'utf8');
-
-assert(rendererSource.includes('runtimeAnimationStride({') && rendererSource.includes('dataset.runtimeAnimationLod'), 'renderer must apply and expose authored enemy animation LOD');
-assert(rendererSource.includes('runtimePoolTrimTarget(') && rendererSource.includes('dataset.runtimePools'), 'renderer must trim and expose burst-grown secondary pools');
-assert(rendererSource.includes('runtimeStartedAt = performance.now()') && rendererSource.includes('now - this.runtimeStartedAt') && rendererSource.includes('runtimeAssetPreloadReady(runtimeElapsedSeconds, profile)') && rendererSource.includes('dataset.assetStreaming = `startup-deferred:'), 'renderer must defer noncritical preload by wall-clock startup time rather than simulation progress');
-assert(rendererSource.includes('preloadGraphicsAssets(') && rendererSource.includes('dataset.assetStreaming'), 'renderer must run bounded mission asset preload/streaming');
-assert(graphicsSource.includes('export async function preloadGraphicsAssets') && graphicsSource.includes('workerCount'), 'graphics runtime must implement bounded-concurrency preload');
+assert(graphicsSource.includes('async preload(specs: readonly GraphicsAssetSpec[], maxConcurrency = 2)') && graphicsSource.includes('workerCount') && graphicsSource.includes('Promise.all(Array.from({ length: workerCount }'), 'Babylon graphics runtime must implement bounded-concurrency preload');
 assert(canvasSource.includes('feedback.performanceStats()') && canvasSource.includes('dataset.audioVirtualization'), 'runtime QA must expose audio virtualization pressure');
 assert(androidSmokeSource.includes('runtimeAnimationLod') && androidSmokeSource.includes('audioVirtualization') && androidSmokeSource.includes('assetStreaming') && androidSmokeSource.includes('runtimePools'), 'Android smoke must verify P16-C runtime telemetry');
 assert(androidSmokeSource.includes('startup-deferred:') && androidSmokeSource.includes('Android bounded asset streaming activation') && androidSmokeSource.includes('activeAssetStreaming'), 'Android smoke must prove asset streaming defers during startup and activates afterward');

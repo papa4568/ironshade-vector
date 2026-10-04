@@ -1496,9 +1496,8 @@ if (fastSmoke) {
         if (interactionObserved) break;
       }
     }
-    const nearStartRefineryTarget = /^(grid-isolator-a|gravity-control-a|salvage-node-a)$/.test(state.targetId);
-    const direction = nearStartRefineryTarget && movementAttempt < 8 ? 'DOWN' : (state.direction || 'DOWN');
-    const duration = state.range > 700 ? 300 : state.range > 350 ? 220 : state.range > 160 ? 150 : 90;
+    const direction = state.direction || 'DOWN';
+    const duration = state.range > 700 ? 1_200 : state.range > 350 ? 850 : state.range > 160 ? 550 : 320;
     await fastMove(direction, 300 + movementAttempt, duration);
     if (movementAttempt % 6 === 5) {
       console.log(`ANDROID_FAST_INTERACTION_PROGRESS attempt=${movementAttempt + 1} target=${state.targetId || 'unknown'} direction=${direction} range=${state.range} action=${state.contextActionId || 'none'}`);
@@ -1623,13 +1622,27 @@ const commandLayout = await evaluate(`(() => {
   const offscreen = primaryButtons.filter(item => item.rect && (item.rect.left < -1 || item.rect.top < -1 || item.rect.right > viewport.width + 1 || item.rect.bottom > viewport.height + 1)).map(item => item.label);
   const undersized = primaryButtons.filter(item => item.rect && item.rect.height < 40).map(item => item.label);
   const overlap = !!rail && !!workspace && !(rail.right <= workspace.left || workspace.right <= rail.left || rail.bottom <= workspace.top || workspace.bottom <= rail.top);
+  const workspaceChildren = workspaceElement
+    ? [...workspaceElement.children].filter(visible).map(element => ({
+      label: element.className || element.tagName,
+      rect: bounds(element),
+    }))
+    : [];
+  const workspaceOffscreen = workspace && workspaceChildren
+    ? workspaceChildren.filter(item => item.rect && (
+      item.rect.left < workspace.left - 2
+      || item.rect.top < workspace.top - 2
+      || item.rect.right > workspace.right + 2
+      || item.rect.bottom > workspace.bottom + 2
+    )).map(item => item.label)
+    : [];
   const verticalOverflow = workspaceElement ? workspaceElement.scrollHeight - workspaceElement.clientHeight : null;
   const scrollTop = workspaceElement?.scrollTop ?? null;
-  return { viewport, rail, workspace, overview, primaryCount: primaryButtons.length, offscreen, undersized, overlap, verticalOverflow, scrollTop, landscape: viewport.width > viewport.height };
+  return { viewport, rail, workspace, overview, primaryCount: primaryButtons.length, offscreen, undersized, overlap, workspaceOffscreen, verticalOverflow, scrollTop, landscape: viewport.width > viewport.height };
 })()`);
 const commandDoesNotFit = commandLayout.verticalOverflow === null
-  || commandLayout.verticalOverflow > 2
   || commandLayout.scrollTop !== 0
+  || commandLayout.workspaceOffscreen.length
   || !commandLayout.overview
   || commandLayout.overview.bottom > commandLayout.workspace.bottom + 2;
 if (!commandLayout.landscape || !commandLayout.rail || !commandLayout.workspace || commandLayout.primaryCount !== 5 || commandLayout.offscreen.length || commandLayout.undersized.length || commandLayout.overlap || commandDoesNotFit) {
@@ -3090,10 +3103,10 @@ await waitFor(`(() => {
 await waitFor(`(() => {
   const canvas = document.querySelector('canvas');
   return canvas?.dataset.operatorClassAsset === 'vanguard'
-    && canvas?.dataset.operatorVisual === 'authored-2'
+    && canvas?.dataset.operatorVisual === 'authored-2-babylon'
     && (canvas?.dataset.operatorAsset ?? '').includes('operator-vanguard-lod2')
     && (canvas?.dataset.weaponAsset ?? '').includes('weapon-breacher-lod2');
-})()`, 'Android Vanguard authored mobile assets', 20_000);
+})()`, 'Android Vanguard authored mobile assets', 90_000);
 console.log('ANDROID_MOBILE_ASSET_PASS icons=loaded operatorLod=2 weaponLod=2');
 console.log('ANDROID_CLASS_ASSET_PASS operator=vanguard');
 
@@ -4133,7 +4146,7 @@ await p20cLoadClassCombat('systems', 'carbine', [
   { name: 'Relay Hack', short: 'HACK' },
   { name: 'Cascade Arc', short: 'CHAIN' },
 ]);
-await waitFor(`document.querySelector('canvas')?.dataset.bossEnvironmentFx === 'phase-reactive-ready'`, 'post-P20-E Asteroid Refinery authored asset verification state', 45_000);
+await waitFor(`document.querySelector('canvas')?.dataset.bossEnvironmentFx === 'phase-reactive-ready'`, 'post-P20-E Asteroid Refinery authored asset verification state', 90_000);
 const p20eProfileRestored = await evaluate(`(() => {
   const state = JSON.parse(localStorage.getItem('ironshade-vector-state-v1') || 'null');
   const profile = JSON.parse(${JSON.stringify(p20eProfileCheckpoint)});

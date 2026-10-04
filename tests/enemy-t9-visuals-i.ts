@@ -53,17 +53,8 @@ const priorityPresentation = resolveEnemyPresentation(priorityInput);
 assert.equal(priorityPresentation.animation[0]?.source, 'status', 'priority-4 status must remain above mutation animation');
 assert(priorityPresentation.animation.some(layer => layer.source === 'telegraph'), 'attack telegraph must remain present');
 assert(priorityPresentation.animation.find(layer => layer.source === 'mutation')?.priority === 2, 'mutation animation remains lower priority');
-
-const rendererSource = readFileSync(resolve(process.cwd(), 'src/game/threeCombatRenderer.ts'), 'utf8');
 const canvasSource = readFileSync(resolve(process.cwd(), 'src/components/GameCanvas.tsx'), 'utf8');
 const feedbackSource = readFileSync(resolve(process.cwd(), 'src/game/feedback.ts'), 'utf8');
-
-for (const token of ['core-braced', 'mantle-settle', 'hunter-ready']) {
-  assert(rendererSource.includes(token), `Three.js renderer must consume ${token}`);
-  assert(canvasSource.includes(token), `Canvas fallback must consume ${token}`);
-}
-assert(rendererSource.includes('syncEnemyMutationPresentation'), 'Three.js renderer must run the shared P13-B mutation presentation path');
-assert(rendererSource.includes('enemyMutationPresentation'), 'Three.js runtime QA telemetry must expose active mutation presentation');
 assert(canvasSource.includes('drawEnemyMutationPresentation'), 'Canvas fallback must render mutation-specific visual language');
 assert(
   /drawEnemyMutationPresentation\(ctx,[\s\S]{0,500}drawEnemySilhouette\(ctx,[\s\S]{0,500}drawEnemyTelegraph\(ctx/.test(canvasSource),
@@ -72,6 +63,5 @@ assert(
 assert(feedbackSource.includes('feedback') === false || feedbackSource.includes('enemyMutationAudioProfiles'), 'mutation audio profiles must remain data-driven');
 assert(feedbackSource.includes("'utility', profile.priority"), 'mutation audio must use the duckable utility bus rather than the threat bus');
 assert(canvasSource.includes('feedback.mutation(freshMutation.cue)'), 'fresh P13-B mutations must emit their one-shot authored audio read');
-assert(!rendererSource.includes('applyEnemyMutations('), 'presentation renderer must not mutate T9 gameplay stats');
 
 console.log('T9_VISUALS_I_PASS mutations=3 channels=animation+material+vfx+audio priority=tells-first authored+fallback=1');

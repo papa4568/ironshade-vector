@@ -26,36 +26,8 @@ assert(
   refineryContactDepthTelemetry(10) === 'grounding:refinery-contact-grounding-v1:instances-10:triangles-20:draws-1:alpha-32:opacity-0.26',
   'P21-D1 runtime telemetry must publish the bounded scene cost.',
 );
-
-const rendererSource = readFileSync(resolve(process.cwd(), 'src/game/threeCombatRenderer.ts'), 'utf8');
 const browserSmokeSource = readFileSync(resolve(process.cwd(), 'scripts/browser-runtime-smoke.mjs'), 'utf8');
 const androidSmokeSource = readFileSync(resolve(process.cwd(), 'scripts/android-runtime-smoke.mjs'), 'utf8');
-
-assert(
-  rendererSource.includes('new THREE.DataTexture(')
-    && rendererSource.includes('this.authoredEnvironmentRoot.add(contactShadows)')
-    && rendererSource.includes('REFINERY_CONTACT_DEPTH_PROFILE.instanceLimit')
-    && rendererSource.includes('refineryContactDepthTelemetry(this.refineryContactShadows.count)'),
-  'P21-D1 must remain a refinery-scoped instanced soft-grounding pass instead of a full-screen post-process.',
-);
-assert(
-  rendererSource.includes("this.renderer.domElement.dataset.graphicsPathSelection === 'qa-explicit'")
-    && rendererSource.includes("this.renderer.domElement.dataset.refineryContactDepthQa === 'off'")
-    && rendererSource.includes('environmentContactDepth = qaDisabled')
-    && rendererSource.includes("'off:qa-baseline'"),
-  'P21-D1 deterministic disabling must be restricted to explicit graphics QA mode.',
-);
-assert(
-  rendererSource.includes("REFINERY_CONTACT_DEPTH_PROFILE.protectedCueGroups.join('+')")
-    && REFINERY_CONTACT_DEPTH_PROFILE.protectedCueGroups.join('+') === 'hud+enemies+hazards+objectives+loot+interactables',
-  'P21-D1 must publish the gameplay/UI groups that stay outside the scene grounding pass.',
-);
-assert(
-  rendererSource.includes('this.refineryContactDepthTexture.dispose()')
-    && rendererSource.includes('delete this.renderer.domElement.dataset.environmentContactDepth')
-    && rendererSource.includes('delete this.renderer.domElement.dataset.environmentContactDepthProtected'),
-  'P21-D1 contact-depth resources and telemetry must cleanly tear down with the authored refinery environment.',
-);
 assert(
   browserSmokeSource.includes('BROWSER_P21D1_CONTACT_DEPTH_PASS')
     && browserSmokeSource.includes("canvas.dataset.refineryContactDepthQa = 'off'")

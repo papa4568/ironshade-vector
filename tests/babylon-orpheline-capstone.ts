@@ -8,8 +8,6 @@ import {
 } from '../src/game/babylonOrphelineCapstonePresentation';
 import { ORPHELINE_STAGES, orphelineRenderProfile } from '../src/game/orphelineCapstone';
 import type { Enemy, SimState } from '../src/game/sim';
-
-const three = readFileSync('src/game/threeCombatRenderer.ts', 'utf8');
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const presentation = readFileSync('src/game/babylonOrphelineCapstonePresentation.ts', 'utf8');
 const campaign = readFileSync('src/game/campaign.ts', 'utf8');
@@ -93,13 +91,6 @@ for (const marker of [
   "boss.bossPattern === 'gravityOverride'",
   "boss.bossPattern === 'shutterGeometry'",
 ]) assert.ok(sim.includes(marker), 'missing Orpheline runtime source marker: ' + marker);
-
-for (const marker of [
-  'addOrphelineCapstoneScenery',
-  "dataset.megastructureIdentity = 'hidden-habitat:orpheline'",
-  "dataset.megastructureContinuity = 'rock-cut-spine+violet-utility-trunk+white-occupancy-marks'",
-  "dataset.megastructureStageKit = stage.kit.join('+')",
-]) assert.ok(three.includes(marker), 'missing Three Orpheline parity source marker: ' + marker);
 
 for (const marker of [
   'procedural-orpheline-capstone-babylon',

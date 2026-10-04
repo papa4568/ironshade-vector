@@ -7,7 +7,6 @@ import {
   materialWorldResponse,
   worldMaterialQualityProfile,
 } from '../src/game/worldMaterialPolish';
-import { REFINERY_IBL_PROFILE } from '../src/game/refineryIbl';
 import type { CombatObject, Hazard, SimState } from '../src/game/sim';
 
 function assert(condition: unknown, message: string) {
@@ -39,8 +38,6 @@ const bulkhead = materialWorldResponse('bulkhead');
 const system = materialWorldResponse('system');
 const industrial = materialWorldResponse('industrial');
 assert(bulkhead.metalness > industrial.metalness && system.roughness < industrial.roughness, 'world material response should preserve readable bulkhead/system/industrial depth');
-assert(REFINERY_IBL_PROFILE.intensity >= 0.55 && REFINERY_IBL_PROFILE.intensity <= 0.8, 'refinery IBL must remain a bounded secondary contribution beside the authored key/rim/practical stack');
-assert(REFINERY_IBL_PROFILE.size <= 128 && REFINERY_IBL_PROFILE.blur > 0, 'refinery IBL PMREM must stay mobile-conscious and prefiltered for rough PBR surfaces');
 
 type BiomeSignals = Parameters<typeof biomeWorldState>[1];
 const baseSignals: BiomeSignals = {
@@ -65,20 +62,6 @@ const pressureCritical = biomeWorldState('damaged-vessel', {
   sectors: [{ ...baseSignals.sectors[0], pressure: 0.35, pressureState: 'decompressing' }],
 });
 assert(pressureCritical.id === 'pressure-critical' && pressureCritical.audioCue === 'breach' && pressureCritical.severity === 1, 'pressure crises must outrank secondary biome presentation');
-
-const rendererSource = readFileSync(resolve(process.cwd(), 'src/game/threeCombatRenderer.ts'), 'utf8');
-assert(rendererSource.includes("dataset.interactableReadability = 'shape-coded+state-emissive+floor-cue:quality-safe'"), 'Three.js runtime QA must expose priority-interactable readability');
-assert(rendererSource.includes("dataset.hazardReadability = 'shape-coded+floor-bound+quality-safe'"), 'Three.js runtime QA must expose hazard readability');
-assert(rendererSource.includes("dataset.worldReadability = 'interactables:shape+state|hazards:shape+motion|loot:shape+rarity'"), 'Three.js runtime QA must expose the shared world readability language');
-assert(rendererSource.includes('worldQuality.pickupBeamScale'), 'pickup beam cost must follow the P15-D quality profile');
-assert(rendererSource.includes('worldQuality.materialDepthScale'), 'material depth must follow the P15-D quality profile');
-assert(rendererSource.includes('biomeState.motionHz * worldQuality.stateMotionScale'), 'biome state animation must respect adaptive quality');
-assert(rendererSource.includes('createRefineryIblTarget(this.renderer)'), 'P21-B refinery renderer must create one reusable PMREM IBL target');
-assert(rendererSource.includes('this.scene.environment = refineryIblEnabled ? this.refineryIblTarget.texture : null'), 'P21-B IBL must be refinery-scoped instead of changing global location lighting');
-assert(rendererSource.includes('const refineryIblIntensity = REFINERY_IBL_PROFILE.intensity * budget.refineryIblScale'), 'P21-E IBL intensity must derive from the bounded refinery profile and the existing adaptive reflection budget');
-assert(rendererSource.includes('this.scene.environmentIntensity = refineryIblEnabled ? refineryIblIntensity : 1'), 'P21-B/P21-E IBL intensity must remain refinery-scoped and budget-aware');
-assert(rendererSource.includes("'off:qa-baseline'"), 'P21-B renderer must retain a QA-only IBL-off baseline for deterministic before/after evidence');
-assert(rendererSource.includes('this.refineryIblTarget.dispose()'), 'P21-B PMREM render target must be disposed with the combat renderer');
 
 const browserSource = readFileSync(resolve(process.cwd(), 'scripts/browser-runtime-smoke.mjs'), 'utf8');
 assert(browserSource.includes("canvas.dataset.refineryIblQa = 'off'"), 'P21-B browser QA must capture an explicit IBL-off baseline');

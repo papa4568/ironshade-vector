@@ -28,32 +28,9 @@ assert(
   REFINERY_ATMOSPHERE_PROFILE.protectedCueGroups.join('+') === 'hud+enemies+hazards+objectives+loot+interactables',
   'P21-D2 must preserve the established gameplay/UI readability groups.',
 );
-
-const rendererSource = readFileSync(resolve(process.cwd(), 'src/game/threeCombatRenderer.ts'), 'utf8');
 const browserSmokeSource = readFileSync(resolve(process.cwd(), 'scripts/browser-runtime-smoke.mjs'), 'utf8');
 const androidSmokeSource = readFileSync(resolve(process.cwd(), 'scripts/android-runtime-smoke.mjs'), 'utf8');
 const browserWorkflowSource = readFileSync(resolve(process.cwd(), '.github/workflows/browser-e2e.yml'), 'utf8');
-
-assert(
-  rendererSource.includes("dataset.refineryAtmosphereQa === 'off'")
-    && rendererSource.includes('new THREE.Fog(REFINERY_ATMOSPHERE_PROFILE.fogColor, range.near, range.far)')
-    && rendererSource.includes('refineryAtmosphereTelemetry(lowVisibility, budget.refineryAtmosphereScale)')
-    && rendererSource.includes("'off:qa-baseline'")
-    && rendererSource.includes("'off:adaptive-budget'"),
-  'P21-D2 must apply a refinery-scoped linear depth fog with an explicit deterministic QA bypass.',
-);
-assert(
-  rendererSource.includes("dataset.refineryContactDepthQa === 'off'")
-    && rendererSource.includes("dataset.refineryAtmosphereQa === 'off'")
-    && !rendererSource.includes("dataset.refineryAtmosphereQa = this.renderer.domElement.dataset.refineryContactDepthQa"),
-  'P21-D2 atmosphere control must remain independent from the P21-D1 contact-grounding toggle.',
-);
-assert(
-  rendererSource.includes("REFINERY_ATMOSPHERE_PROFILE.protectedCueGroups.join('+')")
-    && rendererSource.includes("delete this.renderer.domElement.dataset.environmentAtmosphere")
-    && rendererSource.includes("delete this.renderer.domElement.dataset.environmentAtmosphereProtected"),
-  'P21-D2 must publish and clean up its readability telemetry with the refinery environment lifecycle.',
-);
 assert(
   browserSmokeSource.includes('BROWSER_P21D2_ATMOSPHERE_PASS')
     && browserSmokeSource.includes("canvas.dataset.refineryAtmosphereQa = 'off'")

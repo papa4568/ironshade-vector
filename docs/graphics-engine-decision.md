@@ -1,78 +1,78 @@
-# Graphics Engine Decision — P21-G
+# Graphics engine decision
 
 Date: 2026-09-28
-Status: superseded on 2026-09-29 by the P27 Babylon.js migration direction
+Finalized: 2026-10-04
+Status: Babylon.js is the shipped combat graphics engine; the former Three.js production and P21 WebGPU/TSL paths are retired.
 
-## Superseding decision — P27 Babylon.js migration
+## Current shipped decision — P27 Babylon.js migration complete
 
-On 2026-09-29 the product direction changed explicitly: migrate the production combat renderer to **Babylon.js** while preserving the existing TypeScript simulation, React UI, Capacitor Android packaging, save/runtime contracts, and release QA wherever practical.
+Ironshade Vector now ships the combat renderer on **Babylon.js** while preserving the TypeScript simulation, React UI, Capacitor Android packaging, save/runtime contracts, and deterministic release QA.
 
-The migration is staged rather than a flag-day rewrite:
+The migration completed in stages rather than as a flag-day rewrite. P27 first introduced Babylon behind the renderer-neutral `CombatGraphicsBackend` contract, reached gameplay/visual parity, proved browser and Android behavior, cut production over to Babylon, retired the old runtime selectors, and finally removed the remaining Three.js-only dependencies and loader/codec plumbing.
 
-- Keep the current Three.js WebGL2 renderer as the production path and rollback/fallback until Babylon reaches required gameplay, visual, performance, lifecycle, and Android parity.
-- Reuse the existing `CombatGraphicsBackend` boundary, but first remove its direct type dependency on `ThreeCombatRenderer` so Babylon can implement the contract cleanly.
-- Use full Babylon.js rather than Babylon Lite. The required baseline remains a WebGL2-capable Android path; Babylon WebGPU may be added only as an optional path after Babylon WebGL2 parity is proven.
-- Keep the existing GLB/KTX2/Meshopt asset standards, LOD policy, adaptive-quality intent, deterministic QA, React HUD, and simulation coordinates. The renderer migration must not move gameplay ownership into Babylon.
-- Do not change the production default to Babylon until the roadmap's parity and Android acceptance gates are satisfied.
-- Treat the P21 measurements below as the migration baseline and rollback evidence, not as a reason to discard the new product direction.
+The shipped graphics architecture is now:
 
-Babylon.js 9.28.0 was the current stable upstream release when this decision was recorded. Implementation should stay on a deliberately pinned supported release and update only through normal dependency verification.
+- **Babylon.js WebGL2 is the required production baseline.** This is the verified Android-compatible path.
+- **Babylon WebGPU is optional when supported** and falls back to Babylon WebGL2 through the Babylon backend rather than through a second renderer implementation.
+- **Three.js and `@types/three` are not runtime or development dependencies.** No normal or QA route loads Three chunks, GLTF/KTX2 helpers, TSL, or the former P21 WebGPU comparison renderer.
+- **GLB/KTX2/Meshopt remains the authored-asset contract.** The renderer-neutral asset spec/LOD/budget contract lives in `src/game/graphicsAssets.ts`; Babylon owns runtime loading, caching, instancing, decoder configuration, and scene-resource disposal.
+- **Decoder payloads are local.** Babylon KTX2, UASTC/MSC/ZSTD, and Meshopt decoder assets are packaged under `/assets/codecs/babylon/`; the retired Three Basis directory is explicitly rejected by release tests.
+- **Gameplay ownership remains outside the renderer.** Simulation coordinates, combat rules, mission state, input semantics, React HUD, save data, and deterministic test contracts remain engine-independent.
+- **Rollback is release/history based.** The old Three renderer is no longer a live selector. A rollback would use a prior verified release/commit, not dormant Three code in the shipping bundle.
 
-## Historical P21-G decision (superseded)
+Babylon.js is deliberately pinned and upgraded only through normal dependency, build, browser, Android, and APK verification.
+
+## Why Babylon became the production renderer
+
+The original P21 decision below was correct for the evidence available on 2026-09-28: Three.js WebGL2 was the only full-combat, Android-proven implementation and the P21 Three WebGPU/TSL path was only a QA slice. On 2026-09-29 product direction changed explicitly to migrate to Babylon.js. P27 then supplied the evidence the earlier decision said was missing: full combat/location parity, adaptive-quality parity, Android touch/lifecycle behavior, sustained resource stability, bundle/APK budgeting, browser coverage, and a verified production cutover.
+
+By P27-D7 the Babylon renderer was the production default with browser and Android acceptance passing. P27-D8 removed the legacy Three production and P21 WebGPU/TSL runtime paths. P27-D9 removed the remaining Three dependencies, Three-specific loader/codec plumbing, dead helpers, and obsolete bundle rules. The historical P21 measurements are retained below as baseline and rollback evidence only.
+
+## Historical P21-G decision — superseded
 
 The prior P21-G decision was to keep **Three.js WebGL2 as the production combat renderer** for that roadmap, retain the P21 WebGPU/TSL renderer as a **QA-only comparison harness**, and avoid a Godot/Unity-class replatform.
 
-This decision is based on the completed P21-A through P21-F evidence, including the captured Asteroid Refinery screenshots, runtime diagnostics, Android compatibility probes, delivery-size measurement, and current release QA behavior. It is not a claim that WebGPU or a native engine can never become the better choice; it records which path is justified by the evidence available now.
+That decision was based on the completed P21-A through P21-F evidence available at the time. It was not a claim that Three.js must remain permanent; it recorded the lowest-risk path before Babylon parity existed.
 
-## Measured comparison
+## Historical measured comparison
 
-| Area | Production WebGL2 | QA WebGPU/TSL | Decision impact |
+| Area | P21 Three WebGL2 production path | P21 Three WebGPU/TSL QA path | Historical conclusion |
 | --- | --- | --- | --- |
-| Visual result | Full authored Asteroid Refinery combat is covered: operator/enemies, HUD, touch controls, objectives, authored assets, PMREM IBL, selective bloom, contact grounding, atmosphere, and adaptive quality. The deterministic captures show the complete playable scene with gameplay cues preserved. | The stack-off/stack-on captures prove the TSL/WebGPU effects change renderer output, but the comparison remains an isolated refinery slice rather than the full combat renderer. PMREM is represented by a bounded light proxy and full combat VFX are intentionally absent. | WebGPU demonstrates feasibility, not production parity. |
-| Draw calls / triangles / frame evidence | P21-A2 recorded desktop High at **16.67 ms, 455 draw calls P95, 14,444 triangles P95** and mobile-landscape Performance at **40.05 ms, 224 draw calls P95, 9,052 triangles P95** on the deterministic refinery route. | No apples-to-apples full-combat WebGPU frame/draw/triangle result exists because the WebGPU path is still the isolated comparison slice. Android beta.608 recorded **19.18 ms, 215 draw calls P95, 7,648 triangles P95 only after falling back to WebGL2**, so it is explicitly not a WebGPU performance result. | There is no measured production workload win that justifies switching renderers. |
-| Adaptive quality | High/Balanced/Performance budgets are integrated into the real renderer. New P21 effects scale to **1.00/1.00/1.00/1.00**, **0.70/0.68/0.68/0.68**, and **0.38/0.42/0.42/0.42**, while gameplay-critical cues remain at 1.00. Browser and Android degrade/recover coverage passes. | Reuses the same budget contract inside the QA slice, but not across the complete combat scene. | Existing production scaling is already proven on the shipping path. |
-| Android compatibility | Production-default WebGL2 repeatedly passes APK build, install, real-touch combat, pause/resume, and clean crash/logcat verification. | On Android beta.608, WebView Chrome 124 exposed `navigator.gpu=true` but `requestAdapter()` returned no adapter. The QA request spent **12,970 ms** initializing before safely falling back to WebGL2. | WebGPU cannot replace the current Android production path on the verified target environment. |
-| Delivery cost | Current production boot graph stays WebGPU-free. | The three lazy QA chunks (`three.tsl`, `three.webgpu`, `webGpuRefineryRenderer`) add **254,269 compressed APK bytes**, **757,432 uncompressed APK bytes**, or **4.183%** of the measured 6,078,104-byte APK. | The prototype has a measurable shipped cost without a production benefit yet. |
-| Implementation complexity | One mature combat renderer already owns authored assets, camera/input, full combat VFX, PMREM, post-processing, adaptive quality, lifecycle, and Android verification. | Requires a separate WebGPU renderer, TSL material/pipeline setup, MRT bloom path, compatibility/fallback logic, renderer-specific readback handling, and explicit parity-gap tracking. | Keeping two production renderers would add duplicated ownership before parity or platform support is established. |
-| Renderer-specific defects / gaps | No P21 renderer-specific blocker remains on the verified production path. | Desktop Lavapipe has the recorded `lavapipe-xvfb-black-canvas` presentation defect; mobile-landscape SwiftShader has the Three r186 `three-r186-render-target-descriptor` readback defect. Intentional parity gaps remain `ibl-pmrem-generator-webgl-only:bounded-light-proxy` and `combat-vfx-full-scene:not-in-f1-prototype`. | The QA path is valuable for continued measurement, but it is not the lower-risk production choice today. |
+| Visual result | Full authored Asteroid Refinery combat covered operator/enemies, HUD, touch controls, objectives, authored assets, PMREM IBL, selective bloom, contact grounding, atmosphere, and adaptive quality. | The stack-off/stack-on captures proved the TSL/WebGPU effects changed renderer output, but the comparison remained an isolated refinery slice rather than the full combat renderer. | WebGPU demonstrated feasibility, not production parity. |
+| Draw calls / triangles / frame evidence | P21-A2 recorded desktop High at **16.67 ms, 455 draw calls P95, 14,444 triangles P95** and mobile-landscape Performance at **40.05 ms, 224 draw calls P95, 9,052 triangles P95** on the deterministic refinery route. | No apples-to-apples full-combat WebGPU result existed. Android beta.608 recorded **19.18 ms, 215 draw calls P95, 7,648 triangles P95 only after falling back to WebGL2**, so it was not a WebGPU performance result. | There was no measured production-workload win yet. |
+| Adaptive quality | High/Balanced/Performance budgets were integrated into the real renderer and covered by browser/Android degrade-recover checks. | Reused the same budget contract only inside the QA slice. | The shipping path had the only proven full-scene scaling. |
+| Android compatibility | Three WebGL2 repeatedly passed APK build, install, real-touch combat, pause/resume, and crash/logcat verification. | On Android beta.608, WebView Chrome 124 exposed `navigator.gpu=true` but `requestAdapter()` returned no adapter; the QA request then fell back to WebGL2. | Three WebGPU could not replace the Android baseline. |
+| Delivery cost | Production boot stayed WebGPU-free. | The lazy Three TSL/WebGPU comparison chunks added measurable APK payload without a production benefit. | The prototype cost was not justified as a shipping renderer. |
+| Implementation complexity | One mature renderer owned full combat presentation and Android verification. | A second Three WebGPU/TSL implementation duplicated renderer-specific ownership and parity tracking. | Keeping both as production paths would increase risk. |
+| Renderer-specific defects / gaps | No P21 renderer-specific blocker remained on the verified WebGL2 production path. | Desktop Lavapipe and mobile SwiftShader/readback defects remained, with intentional full-combat parity gaps. | The QA path was useful evidence but not production-ready. |
 
-## Screenshot evidence
+## Historical screenshot evidence
 
-The verified WebGL2 captures show the P21 treatment in the actual playable refinery scene: authored machinery and floor, operator/enemy silhouettes, objective/HUD layers, touch controls, and gameplay cues all coexist with the lighting/post stack.
+The verified P21 WebGL2 captures showed the complete playable refinery scene with authored machinery, operator/enemy silhouettes, HUD/touch layers, and gameplay cues coexisting with the lighting/post stack.
 
-The verified WebGPU renderer-owned captures show a much smaller comparison scene. The stack-on image is visibly brighter and adds the intended lighting/effect response relative to stack-off, matching the recorded non-identical hashes and readback means. That proves the TSL/WebGPU stack is rendering meaningful output, but it does not erase the full-combat parity and Android-support gaps above.
+The P21 Three WebGPU renderer-owned captures showed a much smaller comparison scene. They proved meaningful TSL/WebGPU output, but not complete combat parity or verified Android support. P27 replaced that experimental branch with Babylon's production renderer and optional Babylon WebGPU capability.
 
-## What a future Godot/Unity-class replatform would have to replace or bridge
+## Native-engine replatform boundary
 
-A native-engine migration is not a renderer swap. It would need an explicit plan for all of these existing production systems:
+A future Godot/Unity-class replatform would still be substantially larger than a renderer swap. It would need an explicit migration plan for:
 
-- **TypeScript simulation and game systems** — deterministic combat/mission/state/economy logic currently exercised directly by the TypeScript regression suites would need to be ported, embedded, or separated behind a stable engine boundary.
-- **React UI and interaction layer** — management screens, combat HUD, dialogs, accessibility behavior, touch/controller interaction, responsive layout, and the design-system contracts would need either a new native UI implementation or a maintained bridge.
-- **Capacitor Android integration** — app lifecycle, WebView/native packaging, Android project generation, signing/versioning, install behavior, and release automation would need equivalent native-engine ownership.
-- **Deterministic tests and QA harnesses** — the current SSR regression suite, Browser E2E routes, deterministic screenshots, runtime telemetry, graphics-path probes, and Android adb/UiAutomator smoke/full-regression gates would need replacements with equivalent signal and reproducibility.
-- **Save/runtime contracts** — existing persisted state, migrations, recovery rules, campaign/runtime assumptions, and release rollback compatibility would need a versioned migration boundary rather than a reset.
-- **Graphics asset pipeline** — authored GLB/KTX2/Meshopt assets, loaders/caches, material intent, effect profiles, quality budgets, and authored-scene verification would need importer/runtime parity and regenerated visual baselines.
-- **Release QA and artifact delivery** — APK package/version/signature checks, emulator lifecycle/touch coverage, evidence artifacts, CI fan-out, and final gate behavior would need to exist before a native replatform could replace the current release path.
+- **TypeScript simulation and game systems** — deterministic combat/mission/state/economy logic currently exercised by the TypeScript regression suites.
+- **React UI and interaction layer** — management screens, combat HUD, dialogs, accessibility behavior, touch/controller interaction, responsive layout, and design-system contracts.
+- **Capacitor Android integration** — lifecycle, WebView/native packaging, Android project generation, signing/versioning, install behavior, and release automation.
+- **Deterministic tests and QA harnesses** — SSR regressions, Browser E2E routes, screenshots, runtime telemetry, graphics probes, and Android adb/UiAutomator gates.
+- **Save/runtime contracts** — persisted state, migrations, recovery rules, campaign/runtime assumptions, and rollback compatibility.
+- **Graphics asset pipeline** — GLB/KTX2/Meshopt assets, Babylon loaders/caches, material intent, effects profiles, quality budgets, and authored-scene verification.
+- **Release QA and artifact delivery** — APK package/version/signature checks, emulator lifecycle/touch coverage, evidence artifacts, CI fan-out, and final-gate behavior.
 
-Because those systems are already integrated and verified, a future replatform should be treated as a product/architecture project with explicit migration criteria, not as a graphics-only optimization.
+Any future native-engine move should therefore be treated as a product/architecture migration with explicit acceptance criteria, not as a graphics-only optimization.
 
-## Historical P21-G roadmap consequence (superseded)
+## Revisit triggers
 
-P21 closes on the existing production architecture:
+Reopen the graphics-engine decision only when new product or platform evidence materially changes the tradeoff, such as:
 
-1. Continue shipping WebGL2 as the production combat path.
-2. Keep the WebGPU/TSL implementation QA-only so future browser/Android support can be measured without production risk.
-3. Do not add replatform work to the active queue.
-4. Return roadmap priority to the existing product work at **P20-F1 — Define and settle distinct repeatable-contract incentive profiles**.
+- the supported Android/WebView matrix changes enough to require a different production graphics baseline;
+- Babylon cannot meet a required graphics, stability, accessibility, power, memory, or delivery constraint after normal optimization;
+- a new renderer or native engine demonstrates full gameplay/UI/release parity with a meaningful measured benefit; or
+- product requirements become blocked by the current Babylon/React/Capacitor architecture strongly enough to justify the broader migration cost.
 
-## Historical P21-G revisit triggers
-
-Reopen the renderer decision only when new evidence materially changes the tradeoff, such as:
-
-- the supported Android/WebView target matrix reliably provides a WebGPU adapter;
-- the WebGPU path reaches full-combat parity rather than an isolated slice;
-- an apples-to-apples production workload shows a meaningful frame-time, power, memory, or visual-quality advantage after delivery cost;
-- renderer-specific CI/presentation/readback defects are resolved or can be removed from required QA; or
-- product requirements become blocked by the current WebGL2/React/Capacitor architecture strongly enough to justify the broader migration cost.
-
-At the time P21-G was recorded, production WebGL2 was the measured, lower-risk path. That conclusion is retained as baseline evidence but no longer controls roadmap priority after the explicit P27 Babylon.js migration direction.
+The current production decision is Babylon.js with Babylon WebGL2 as the required baseline, optional Babylon WebGPU where supported, and no shipped Three.js runtime.

@@ -56,14 +56,7 @@ assert.equal(boss.showBossPattern, false, 'boss pattern text is redundant with t
 
 assert.deepEqual(MOBILE_ENEMY_TELL_CHANNELS, ['telegraph', 'protocol', 'mutation', 'status', 'lifecycle']);
 assert.match(enemyHudReadabilityTelemetry(true, true), /mobile-lod2\|priority-bars\+focused-tags\|tells:telegraph\+protocol\+mutation\+status\+lifecycle\|reduced-effects:identity-preserved/);
-
-const renderer = readFileSync(resolve(process.cwd(), 'src/game/threeCombatRenderer.ts'), 'utf8');
 const canvas = readFileSync(resolve(process.cwd(), 'src/components/GameCanvas.tsx'), 'utf8');
-assert(renderer.includes('resolveEnemyHudReadability(enemy, this.coarse, enemy.id === mobileTargetId)'), 'Three.js enemy bars must consume the shared P13-G mobile policy.');
-for (const tell of ['syncEnemyLifecyclePresentation', 'syncEnemyProtocolPresentation', 'syncEnemyMutationPresentation', 'syncEnemyStatusPresentation']) {
-  assert(renderer.includes(tell), `Three.js must preserve ${tell} at mobile LOD2.`);
-}
-assert(renderer.includes("selectGraphicsAssetSpec(family, this.coarse ? 0.55 : 1)"), 'coarse hostile assets must keep the established authored mobile LOD selection.');
 assert(canvas.includes('resolveEnemyHudReadability(enemy, compactLayout, enemy.id === mobileTargetId)'), 'Canvas fallback must consume the shared P13-G compact-layout policy.');
 assert(/drawEnemyStatusPresentation\(ctx,[\s\S]{0,220}drawEnemyLifecyclePresentation\(ctx,[\s\S]{0,220}drawEnemyTelegraph\(ctx/.test(canvas), 'Canvas attack telegraph must stay authoritative over modifier/status/lifecycle presentation.');
 assert(canvas.includes('enemyHudReadabilityTelemetry(compactLayout'), 'runtime QA telemetry must identify the active P13-G information budget.');

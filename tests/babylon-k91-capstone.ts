@@ -8,8 +8,6 @@ import {
 } from '../src/game/babylonK91CapstonePresentation';
 import { K91_STAGES, k91RenderProfile } from '../src/game/k91Capstone';
 import type { CombatObject, SimState } from '../src/game/sim';
-
-const three = readFileSync('src/game/threeCombatRenderer.ts', 'utf8');
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const presentation = readFileSync('src/game/babylonK91CapstonePresentation.ts', 'utf8');
 const campaign = readFileSync('src/game/campaign.ts', 'utf8');
@@ -74,13 +72,6 @@ for (const marker of [
   "{ name: 'Power Transfer Gallery', location: 'solar-yard'",
   "{ name: 'Ballast Vault', location: 'asteroid-refinery'",
 ]) assert.ok(campaign.includes(marker), 'missing K91 campaign route: ' + marker);
-
-for (const marker of [
-  'addK91CapstoneScenery',
-  "dataset.megastructureIdentity = 'counterweight:k-91'",
-  "dataset.megastructureContinuity = 'load-spine+countermass-rails+amber-inertial-datum'",
-  "dataset.megastructureStageKit = stage.kit.join('+')",
-]) assert.ok(three.includes(marker), 'missing Three K91 parity source marker: ' + marker);
 
 for (const marker of [
   'procedural-k91-capstone-babylon',

@@ -16,7 +16,6 @@ const chapter3Shell = fs.readFileSync(new URL('../scripts/android-chapter3-regre
 const chapter3Script = fs.readFileSync(new URL('../scripts/browser-chapter3-playthrough.mjs', import.meta.url), 'utf8');
 const workflow = fs.readFileSync(new URL('../.github/workflows/android-apk.yml', import.meta.url), 'utf8');
 const browserWorkflow = fs.readFileSync(new URL('../.github/workflows/browser-e2e.yml', import.meta.url), 'utf8');
-const p21f3Delivery = fs.readFileSync(new URL('../scripts/measure-webgpu-delivery-cost.mjs', import.meta.url), 'utf8');
 const p27d2Delivery = fs.readFileSync(new URL('../scripts/measure-babylon-delivery-cost.mjs', import.meta.url), 'utf8');
 
 const requireText = (text, needle, label) => {
@@ -169,8 +168,23 @@ requireText(workflow, 'npm run test:android-fast-smoke', 'Android workflow');
 requireText(workflow, 'npm run build', 'Android workflow production build');
 requireText(workflow, "set -euo pipefail;", 'Android workflow');
 requireText(workflow, 'actions/upload-artifact@v7', 'Android workflow');
-requireText(workflow, 'node scripts/measure-webgpu-delivery-cost.mjs', 'Android workflow');
 requireText(workflow, 'node scripts/measure-babylon-delivery-cost.mjs', 'Android workflow');
+for (const retired of [
+  'measure-webgpu-delivery-cost.mjs',
+  'p21f3-webgpu-delivery.json',
+  'android-p21f3-webgpu.json',
+]) {
+  if (workflow.includes(retired)) throw new Error(`Android workflow must not retain retired Three/P21 delivery gate: ${retired}`);
+}
+for (const marker of [
+  "-name 'three-core-*.js'",
+  "-name 'three-webgl-*.js'",
+  "-name 'three.webgpu-*.js'",
+  "-name 'three.tsl-*.js'",
+  'Retired Three runtime chunk found in Android assets.',
+  'assets/codecs/babylon/manifest.json',
+  '! test -e android/app/src/main/assets/public/assets/codecs/basis',
+]) requireText(workflow, marker, 'P27-D9 Babylon-only Android workflow');
 for (const marker of [
   "grep -q 'android:appCategory=\"game\"'",
   "grep -q 'android:resizeableActivity=\"true\"'",
@@ -186,7 +200,6 @@ for (const marker of [
   'android-large-screen-resized.png',
   'android-large-screen-logcat.txt',
 ]) requireText(workflow, marker, 'P25-B Android 16 large-screen workflow');
-requireText(workflow, 'p21f3-webgpu-delivery.json', 'Android workflow');
 requireText(workflow, 'p27d2-babylon-delivery.json', 'Android workflow');
 for (const marker of [
   'ironshade-vector-android-debug-qa',
@@ -323,8 +336,6 @@ for (const artifact of [
   'android-fast-logcat.txt',
   'android-fast-smoke.png',
   'android-fast-resume.png',
-  'android-p21f3-webgpu.json',
-  'p21f3-webgpu-delivery.json',
   'p27d2-babylon-delivery.json',
 ]) requireText(workflow, artifact, 'Android workflow artifact upload');
 
@@ -462,15 +473,6 @@ if (workflow.slice(fullGateStart).includes('needs: build-apk\n')) {
 }
 
 console.log('ANDROID_FAST_SMOKE_CONTRACT_PASS entry=scripts/android-fast-smoke.sh defaultPush=phone+android16-large-screen repeatable=dedicated-dispatch settings=dedicated-dispatch chapter3=dedicated-full-regression extended=parallel-runtime fullGate=aggregated scheduled=weekly manualMode=full-or-fast browser=required productionBuild=required touch=required lifecycle=required babylon=webgl2+renderer-reentry+mission-reentry+resume largeScreen=portrait+live-resize+Babylon artifacts=required failFast=required');
-
-for (const marker of [
-  'P21F3_WEBGPU_DELIVERY_PASS',
-  'three.webgpu-',
-  'three.tsl-',
-  'webGpuRefineryRenderer-',
-  'incrementalCompressedBytes',
-  'compressedPercentOfApk',
-]) requireText(p21f3Delivery, marker, 'P21-F3 delivery measurement');
 
 for (const marker of [
   'P27D2_BABYLON_DELIVERY_PASS',

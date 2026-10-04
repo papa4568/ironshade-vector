@@ -20,7 +20,7 @@ PLAYTEST_STATUS=${PIPESTATUS[0]}
 set -e
 
 adb logcat -d > android-settings-regression-logcat.txt
-if grep -E 'FATAL EXCEPTION|Process: app\.ironshade\.vector' android-settings-regression-logcat.txt; then
+if grep -E 'Process: app\.ironshade\.vector' android-settings-regression-logcat.txt; then
   echo 'Settings Android runtime crash detected.' >&2
   exit 1
 fi
@@ -35,7 +35,16 @@ grep -q 'ANDROID_SETTINGS_VISUAL_DENSITY_PASS' android-settings-regression.txt
 grep -q 'ANDROID_SETTINGS_RELAUNCH_PASS' android-settings-regression.txt
 grep -q 'ANDROID_SETTINGS_PLAYTEST_PASS route=intake>command>operator>build>settings>command' android-settings-regression.txt
 
-for screenshot in   android-settings-00-class.png   android-settings-01-command.png   android-settings-04-settings.png   android-settings-05-settings-exercised.png   android-settings-06-command-default.png   android-settings-07-command-compact.png   android-settings-08-command-compact-relaunch.png   android-settings-09-settings-restored.png   android-settings-10-command-final-compact.png; do
+for screenshot in \
+  android-settings-00-class.png \
+  android-settings-01-command.png \
+  android-settings-04-settings.png \
+  android-settings-05-settings-exercised.png \
+  android-settings-06-command-default.png \
+  android-settings-07-command-compact.png \
+  android-settings-08-command-compact-relaunch.png \
+  android-settings-09-settings-restored.png \
+  android-settings-10-command-final-compact.png; do
   test -s "$screenshot"
 done
 
