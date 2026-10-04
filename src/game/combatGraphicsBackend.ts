@@ -97,7 +97,7 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
-    coarse: boolean,
+    private readonly coarse: boolean,
     private readonly requestedBackend: BabylonGraphicsBackendId,
   ) {
     canvas.dataset.babylonInit = 'initializing';
@@ -161,7 +161,7 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
         const renderSurface = this.createWebGpuRenderSurface();
         const renderer = await createBabylonCombatRenderer(
           renderSurface,
-          false,
+          this.coarse,
           'webgpu',
           this.canvas,
           reason => {
@@ -231,7 +231,7 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
   private async initializeWebGl2() {
     const { createBabylonCombatRenderer } = await import('./babylonCombatRenderer');
     try {
-      const renderer = await createBabylonCombatRenderer(this.canvas, false, 'webgl2', this.canvas);
+      const renderer = await createBabylonCombatRenderer(this.canvas, this.coarse, 'webgl2', this.canvas);
       if (this.disposed) {
         renderer.dispose();
         return;

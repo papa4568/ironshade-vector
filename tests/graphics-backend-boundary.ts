@@ -174,8 +174,9 @@ assert(
 assert(
   boundarySource.includes('requestedBackend: BabylonGraphicsBackendId')
     && boundarySource.includes("'webgpu',\n          this.canvas,\n          reason =>")
-    && boundarySource.includes("await createBabylonCombatRenderer(this.canvas, false, 'webgl2', this.canvas)")
+    && boundarySource.includes("await createBabylonCombatRenderer(this.canvas, this.coarse, 'webgl2', this.canvas)")
     && boundarySource.includes("renderDeviceClassPolicy = coarse ? 'flagship-default:coarse-hint-ignored' : 'flagship-default'")
+    && babylonRendererSource.includes('const qualityCoarse = false')
     && boundarySource.includes('fallbackFromWebGpu(reason)')
     && boundarySource.includes('webgpu->webgl2:runtime-device-lost')
     && boundarySource.includes('createWebGpuRenderSurface()'),
