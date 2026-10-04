@@ -1,4 +1,4 @@
-name: P28-A0 Coarse Quality Audit
+name: P28-A0 Quality Ceiling Migration
 
 on:
   push:
@@ -7,18 +7,132 @@ on:
       - '.github/workflows/p28a0-coarse-audit.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  audit:
+  migrate:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - name: Find every coarse-device production branch
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Use npm 10.9.8
+        run: npm install --global npm@10.9.8
+      - name: Remove device-class quality ceilings
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new, expected=None):
+              p = Path(path)
+              s = p.read_text()
+              count = s.count(old)
+              if expected is not None and count != expected:
+                  raise SystemExit(f'{path}: expected {expected} occurrences, found {count}: {old!r}')
+              if count == 0:
+                  raise SystemExit(f'{path}: anchor not found: {old!r}')
+              p.write_text(s.replace(old, new))
+
+          # Core renderer: AA, asset LOD and pixel ratio follow explicit quality / measured budget, never pointer class.
+          replace('src/game/babylonCombatRenderer.ts', 'new Engine(renderCanvas, !coarse, {', 'new Engine(renderCanvas, true, {', 1)
+          replace('src/game/babylonCombatRenderer.ts', 'const assetDetailScale = this.coarse ? Math.min(detailScale, 0.55) : detailScale;', 'const assetDetailScale = detailScale;', 3)
+          replace('src/game/babylonCombatRenderer.ts', "const qualityCap = quality < 0.55 ? 1.12 : this.coarse || quality < 0.8 ? 1.35 : 1.8;", "const qualityCap = quality < 0.55 ? 1.12 : quality < 0.8 ? 1.35 : 1.8;", 1)
+
+          # Shared authored assets no longer select LOD from pointer class.
+          replace('src/game/babylonWorldPresentation.ts', 'selectGraphicsAssetSpec(family, this.coarse ? Math.min(detailScale, 0.55) : detailScale)', 'selectGraphicsAssetSpec(family, detailScale)', 1)
+          replace('src/game/babylonWorldPresentation.ts', 'selectGraphicsAssetSpec(PICKUP_ASSET_FAMILY, this.coarse ? Math.min(detailScale, 0.55) : detailScale)', 'selectGraphicsAssetSpec(PICKUP_ASSET_FAMILY, detailScale)', 1)
+
+          # Shared effects use the render budget only; coarse remains available solely for UX/readability where needed.
+          for path in [
+              'src/game/babylonWeaponVfx.ts',
+              'src/game/babylonAbilityVfx.ts',
+              'src/game/babylonEnemyTelegraphs.ts',
+              'src/game/babylonProtocolStatusVisuals.ts',
+          ]:
+              replace(path, 'const effectiveDetail = coarse ? Math.min(detailScale, 0.55) : detailScale;', 'const effectiveDetail = detailScale;', 1)
+          replace('src/game/babylonEnemyLifecycleVisuals.ts', "return coarse || detailScale < 0.72 ? 'reduced' : 'full';", "return detailScale < 0.72 ? 'reduced' : 'full';", 1)
+
+          # Environment presentation must degrade only from the render budget.
+          for p in Path('src/game').glob('babylon*Presentation.ts'):
+              s = p.read_text()
+              s = s.replace("renderBudget.tierName === 'performance' || this.coarse ? 1 : 2", "renderBudget.tierName === 'performance' ? 1 : 2")
+              s = s.replace('this.coarse || renderBudget.vfxDensity < 0.55', 'renderBudget.vfxDensity < 0.55')
+              p.write_text(s)
+
+          replace('src/game/babylonSpinHabitatPresentation.ts', 'tessellation: this.coarse ? 32 : 48,', 'tessellation: 48,', 1)
+          replace('src/game/babylonSpinHabitatPresentation.ts', 'tessellation: this.coarse ? 28 : 40,', 'tessellation: 40,', 1)
+          replace('src/game/babylonIceMinePresentation.ts', "const profileName = this.coarse ? 'mobile' : renderBudget.tierName;", 'const profileName = renderBudget.tierName;', 1)
+          replace('src/game/babylonIceMinePresentation.ts', 'const reduced = coarse || vfxDensity < 0.55;', 'const reduced = vfxDensity < 0.55;', 1)
+
+          # Remove legacy mobile render profiles while preserving the budget-driven performance/balanced/full profiles.
+          profile_files = [
+              'src/game/babylonCryoReservePresentation.ts',
+              'src/game/babylonMomentumExchangePresentation.ts',
+              'src/game/babylonLatticeAnnexPresentation.ts',
+              'src/game/babylonParallaxArrayPresentation.ts',
+              'src/game/spinHabitatArchitecture.ts',
+              'src/game/jovianHarvesterVisualLanguage.ts',
+              'src/game/solarYardVisualProfile.ts',
+              'src/game/hecateCapstone.ts',
+              'src/game/orphelineCapstone.ts',
+              'src/game/perseidCapstone.ts',
+              'src/game/k91Capstone.ts',
+          ]
+          for path in profile_files:
+              p = Path(path)
+              lines = p.read_text().splitlines(keepends=True)
+              out = []
+              removed = 0
+              i = 0
+              while i < len(lines):
+                  stripped = lines[i].strip()
+                  if stripped.startswith('if (coarse) return {') and "name: 'mobile'" in stripped:
+                      removed += 1
+                      i += 1
+                      continue
+                  if stripped == 'if (coarse) {':
+                      block = [lines[i]]
+                      depth = lines[i].count('{') - lines[i].count('}')
+                      i += 1
+                      while i < len(lines) and depth > 0:
+                          block.append(lines[i])
+                          depth += lines[i].count('{') - lines[i].count('}')
+                          i += 1
+                      if "name: 'mobile'" in ''.join(block):
+                          removed += 1
+                          continue
+                      out.extend(block)
+                      continue
+                  out.append(lines[i])
+                  i += 1
+              if removed != 1:
+                  raise SystemExit(f'{path}: expected one legacy coarse mobile profile, removed={removed}')
+              p.write_text(''.join(out))
+
+          # Browser parity follows actual adaptive detail tier, not pointer class.
+          replace('scripts/browser-runtime-smoke.mjs', 'const expectedPlayerLod = pointerProbe.coarse ? 2 : 1;', "const expectedPlayerLod = state.renderTier === 'performance' ? 2 : 1;", 1)
+
+          print('P28_A0_COARSE_QUALITY_CEILINGS_REMOVED')
+          PY
+          git diff --check
+          echo '=== remaining coarse production branches (UX/layout references are expected) ==='
+          grep -RIn --include='*.ts' -E '\bcoarse\b' src/game | grep -E 'babylon|renderQuality|graphics|runtimeScalability|Capstone|Visual|Architecture' || true
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Verify full regression and production build
+        run: npm run build
+      - name: Commit verified migration
         shell: bash
         run: |
           set -euo pipefail
-          echo '=== all coarse references in game source ==='
-          grep -RIn --include='*.ts' -E '\bcoarse\b|pointer: coarse' src/game || true
-          echo '=== mobile render-profile references ==='
-          grep -RIn --include='*.ts' -E "name: 'mobile'|profileName = .*mobile|mobile-lod2" src/game || true
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/game scripts/browser-runtime-smoke.mjs
+          git commit -m 'P28-A0 remove remaining coarse render ceilings'
+          git push origin HEAD:main
