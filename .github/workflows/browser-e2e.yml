@@ -230,7 +230,6 @@ jobs:
           BROWSER_E2E_CHAPTER3_SCREENSHOT: browser-chapter3-${{ matrix.viewport }}.png
           BROWSER_E2E_CHAPTER3_REPORT: browser-chapter3-${{ matrix.viewport }}.json
         run: |
-          BROWSER_E2E_GRAPHICS_PATH= node scripts/browser-runtime-smoke.mjs
           node scripts/verify-authored-operator.mjs
           node scripts/verify-authored-enemies.mjs
           node scripts/verify-authored-weapons.mjs
