@@ -14,11 +14,11 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - name: Find coarse-device rendering policy
+      - name: Find every coarse-device production branch
         shell: bash
         run: |
           set -euo pipefail
-          echo '=== coarse references in Babylon production rendering ==='
-          grep -RIn --include='*.ts' -E 'coarse|pointer: coarse' src/game | grep -E 'babylon|renderQuality|graphics|runtimeScalability' || true
-          echo '=== hard detail / quality caps ==='
-          grep -RIn --include='*.ts' -E 'Math\.min\([^)]*(detail|quality|density)[^)]*\)|coarse[^;]*(performance|reduced|detail|quality|light|shadow|lod|ratio|density)' src/game || true
+          echo '=== all coarse references in game source ==='
+          grep -RIn --include='*.ts' -E '\bcoarse\b|pointer: coarse' src/game || true
+          echo '=== mobile render-profile references ==='
+          grep -RIn --include='*.ts' -E "name: 'mobile'|profileName = .*mobile|mobile-lod2" src/game || true
