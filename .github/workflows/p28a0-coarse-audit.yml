@@ -179,6 +179,9 @@ jobs:
           replace('tests/babylon-jovian-harvester.ts', '&& mobileProfile.bridgeInstances === 2', '&& coarseProfile.bridgeInstances === 4', 1)
           replace('tests/babylon-jovian-harvester.ts', "&& mobileProfile.ballastInstances === 2,\n  'P27-C4 Babylon environment must preserve the shared Jovian adaptive structure budget.',", "&& coarseProfile.ballastInstances === 4\n    && performanceProfile.name === 'performance'\n    && performanceProfile.deckInstances === 4\n    && performanceProfile.bridgeInstances === 2\n    && performanceProfile.ballastInstances === 2,\n  'P27-C4 Babylon environment must preserve flagship structure density for coarse input and degrade only with the adaptive render budget.',", 1)
 
+          replace('tests/babylon-ice-mine.ts', 'const mobileFracture = iceMineFractureBudget(true, 1);', "const coarseFracture = iceMineFractureBudget(true, 1);\nconst reducedFracture = iceMineFractureBudget(true, 0.54);", 1)
+          replace('tests/babylon-ice-mine.ts', "&& mobileFracture.shardBudget === 4\n    && mobileFracture.crackBudget === 2\n    && mobileFracture.detail === '4-shards+2-cracks+frost-pulse',\n  'P27-C5 Babylon fracture cues must preserve the Three desktop/mobile budgets.',", "&& coarseFracture.shardBudget === 8\n    && coarseFracture.crackBudget === 3\n    && coarseFracture.detail === '8-shards+3-cracks+frost-pulse'\n    && reducedFracture.shardBudget === 4\n    && reducedFracture.crackBudget === 2\n    && reducedFracture.detail === '4-shards+2-cracks+frost-pulse',\n  'P27-C5 Babylon fracture cues must retain flagship density for coarse input and reduce only under the adaptive VFX budget.',", 1)
+
           print('P28_A0_COARSE_QUALITY_CEILINGS_REMOVED')
           PY
           git diff --check
