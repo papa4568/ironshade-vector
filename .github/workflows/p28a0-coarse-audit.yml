@@ -185,6 +185,9 @@ jobs:
           replace('tests/babylon-solar-yard.ts', 'const mobile = solarYardRenderProfile(1, true);', 'const coarse = solarYardRenderProfile(1, true);', 1)
           replace('tests/babylon-solar-yard.ts', "assert.equal(mobile.name, 'mobile');\nassert.equal(mobile.ceramicDeckInstances, 4);\nassert.equal(mobile.gantryCraneInstances, 2);\nassert.equal(mobile.sunPatchInstances, 2);", "assert.equal(coarse.name, 'full');\nassert.equal(coarse.ceramicDeckInstances, 6);\nassert.equal(coarse.trussFrameInstances, 5);\nassert.equal(coarse.radiatorTowerInstances, 4);\nassert.equal(coarse.gantryCraneInstances, 2);\nassert.equal(coarse.sunPatchInstances, 3);", 1)
 
+          replace('tests/babylon-lattice-annex.ts', 'const mobile = latticeAnnexRenderProfile(1, true);', 'const coarse = latticeAnnexRenderProfile(1, true);', 1)
+          replace('tests/babylon-lattice-annex.ts', "assert.equal(mobile.name, 'mobile');\nassert.equal(mobile.referencePylonInstances, 7);\nassert.equal(mobile.surveyFrameInstances, 4);", "assert.equal(coarse.name, 'full');\nassert.equal(coarse.referencePylonInstances, 9);\nassert.equal(coarse.surveyFrameInstances, 6);\nassert.equal(coarse.massBandInstances, 3);", 1)
+
           print('P28_A0_COARSE_QUALITY_CEILINGS_REMOVED')
           PY
           git diff --check
