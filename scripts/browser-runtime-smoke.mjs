@@ -2326,6 +2326,9 @@ async function p27A2BabylonBackendAudit() {
       assetReusePolicy: canvas?.dataset.babylonAssetReusePolicy ?? '',
       renderTier: canvas?.dataset.renderTier ?? '',
       graphicsQuality: canvas?.dataset.graphicsQuality ?? '',
+      renderQualityInput: canvas?.dataset.renderQualityInput ?? '',
+      renderDeviceClassPolicy: canvas?.dataset.renderDeviceClassPolicy ?? '',
+      renderDowngradeReason: canvas?.dataset.renderDowngradeReason ?? '',
       lightingProfile: canvas?.dataset.babylonLightingProfile ?? '',
       lightingBudget: canvas?.dataset.babylonLightingBudget ?? '',
       environmentIbl: canvas?.dataset.environmentIbl ?? '',
@@ -2384,8 +2387,15 @@ async function p27A2BabylonBackendAudit() {
   const resourceBudgetMatch = /^tier:(high|balanced|performance)\|detail:(1\.00|0\.78|0\.50)\|pixel:(1\.00|0\.84|0\.68)\|cache-bytes:(64|40|24)mb\|cache-assets:(32|24|20)\|anisotropy:(4|2|1)$/.exec(state.resourceBudget);
   const geometryStatsMatch = /^draw:(\d+)\|triangles:(\d+)\|cached:(\d+)\|bytes:(\d+)$/.exec(state.geometryStats);
   const animationLodMatch = /^(high|balanced|performance):max-stride-([123]):deferred-(\d+)$/.exec(state.animationLod);
-  if (viewportMode === 'mobile-landscape' && state.renderTier !== 'high') {
-    throw new Error('P28-A0 flagship phone render tier must start High without measured pressure: ' + JSON.stringify(state));
+  if (viewportMode === 'mobile-landscape') {
+    const flagshipInput = /^requested:[0-9]+\.[0-9]{2}\+effective:1\.00$/.test(state.renderQualityInput);
+    const devicePolicy = /^flagship-default(?::coarse-hint-ignored)?$/.test(state.renderDeviceClassPolicy);
+    const downgradeMatchesTier = state.renderTier === 'high'
+      ? state.renderDowngradeReason === 'none'
+      : state.renderDowngradeReason === 'sustained-frame-pressure';
+    if (!flagshipInput || !devicePolicy || !downgradeMatchesTier) {
+      throw new Error('P28-A0 flagship phone quality must ignore device class and only downgrade under measured pressure: ' + JSON.stringify(state));
+    }
   }
 
   const resourceExpected = {
