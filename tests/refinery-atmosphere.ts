@@ -11,7 +11,7 @@ assert(refineryAtmosphereTelemetry(false).includes('refinery-depth-atmosphere-v1
 const postSource=readFileSync(resolve(process.cwd(),'src/game/babylonRefineryPostProcessing.ts'),'utf8');
 const browserSmokeSource=readFileSync(resolve(process.cwd(),'scripts/browser-runtime-smoke.mjs'),'utf8');
 const androidSmokeSource=readFileSync(resolve(process.cwd(),'scripts/android-runtime-smoke.mjs'),'utf8');
-assert(postSource.includes('this.scene.fogMode = Scene.FOGMODE_LINEAR') && postSource.includes('refineryAtmosphereRange(lowVisibility, budget.atmosphereScale)'), 'Babylon must apply refinery-scoped linear depth fog');
+assert(postSource.includes('const atmosphere = refineryAtmosphereRange(lowVisibility, budget.refineryAtmosphereScale)') && postSource.includes('this.scene.fogMode = Scene.FOGMODE_LINEAR') && postSource.includes('this.scene.fogStart = budget.atmosphereNear') && postSource.includes('this.scene.fogEnd = budget.atmosphereFar'), 'Babylon must derive and apply refinery-scoped adaptive linear depth fog');
 assert(postSource.includes("qaExplicit && this.canvas.dataset.refineryPostStackQa === 'off'"), 'atmosphere QA bypass must remain explicit and deterministic');
 assert(postSource.includes("this.canvas.dataset.environmentAtmosphereProtected = REFINERY_ATMOSPHERE_PROFILE.protectedCueGroups.join('+')") && postSource.includes("'environmentAtmosphereProtected'"), 'atmosphere telemetry must publish and clean up protected groups');
 assert(browserSmokeSource.includes('BROWSER_P21D2_ATMOSPHERE_PASS') && androidSmokeSource.includes('ANDROID_P21D2_ATMOSPHERE_PASS'), 'atmosphere browser/Android QA must remain present');
