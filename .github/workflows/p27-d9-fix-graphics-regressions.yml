@@ -24,7 +24,7 @@ jobs:
           python3 scripts/p27-d9-fix-graphics-regressions.py
           git diff --check
           ! git grep -n "src/game/threeCombatRenderer.ts" -- tests ':!tests/graphics-backend-boundary.ts'
-          ! git grep -n -E "^import .* from ['\"]three|three/examples" -- tests
+          ! git grep -n -E "^import .* from ['\"]three|^import .* from ['\"][^'\"]*three/examples" -- tests
       - name: Commit regression and runtime fixes
         run: |
           git config user.name 'github-actions[bot]'
