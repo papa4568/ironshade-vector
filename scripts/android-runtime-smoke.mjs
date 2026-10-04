@@ -1622,13 +1622,27 @@ const commandLayout = await evaluate(`(() => {
   const offscreen = primaryButtons.filter(item => item.rect && (item.rect.left < -1 || item.rect.top < -1 || item.rect.right > viewport.width + 1 || item.rect.bottom > viewport.height + 1)).map(item => item.label);
   const undersized = primaryButtons.filter(item => item.rect && item.rect.height < 40).map(item => item.label);
   const overlap = !!rail && !!workspace && !(rail.right <= workspace.left || workspace.right <= rail.left || rail.bottom <= workspace.top || workspace.bottom <= rail.top);
+  const workspaceChildren = workspaceElement
+    ? [...workspaceElement.children].filter(visible).map(element => ({
+      label: element.className || element.tagName,
+      rect: bounds(element),
+    }))
+    : [];
+  const workspaceOffscreen = workspace && workspaceChildren
+    ? workspaceChildren.filter(item => item.rect && (
+      item.rect.left < workspace.left - 2
+      || item.rect.top < workspace.top - 2
+      || item.rect.right > workspace.right + 2
+      || item.rect.bottom > workspace.bottom + 2
+    )).map(item => item.label)
+    : [];
   const verticalOverflow = workspaceElement ? workspaceElement.scrollHeight - workspaceElement.clientHeight : null;
   const scrollTop = workspaceElement?.scrollTop ?? null;
-  return { viewport, rail, workspace, overview, primaryCount: primaryButtons.length, offscreen, undersized, overlap, verticalOverflow, scrollTop, landscape: viewport.width > viewport.height };
+  return { viewport, rail, workspace, overview, primaryCount: primaryButtons.length, offscreen, undersized, overlap, workspaceOffscreen, verticalOverflow, scrollTop, landscape: viewport.width > viewport.height };
 })()`);
 const commandDoesNotFit = commandLayout.verticalOverflow === null
-  || commandLayout.verticalOverflow > 2
   || commandLayout.scrollTop !== 0
+  || commandLayout.workspaceOffscreen.length
   || !commandLayout.overview
   || commandLayout.overview.bottom > commandLayout.workspace.bottom + 2;
 if (!commandLayout.landscape || !commandLayout.rail || !commandLayout.workspace || commandLayout.primaryCount !== 5 || commandLayout.offscreen.length || commandLayout.undersized.length || commandLayout.overlap || commandDoesNotFit) {
