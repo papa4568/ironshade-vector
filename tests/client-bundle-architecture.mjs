@@ -92,7 +92,7 @@ const webGpuQaChunks = jsFiles.filter(name =>
   name.startsWith('three.webgpu-')
   || name.startsWith('three.tsl-')
   || name.startsWith('webGpuRefineryRenderer-'));
-assert(webGpuQaChunks.length === 3, `Expected three deferred legacy WebGPU QA chunks; found ${webGpuQaChunks.length}.`);
+assert(webGpuQaChunks.length === 0, `Retired Three WebGPU QA chunks must not ship; found ${webGpuQaChunks.length}.`);
 
 const babylonEntry = records.find(([key, record]) =>
   key === 'src/game/babylonCombatRenderer.ts'
