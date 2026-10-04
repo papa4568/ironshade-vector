@@ -2,10 +2,11 @@
 
 ## New-chat handoff — resume here first
 
-- All previously completed P20–P23 work plus P24-A–P24-D, verified P25 work, verified P26-A–P26-B work, and verified P27-A1–P27-B7 work is preserved in [content-roadmap-archive.md](./content-roadmap-archive.md).
-- On 2026-09-29 the product direction changed explicitly: migrate the combat graphics engine from Three.js to **Babylon.js** while preserving the TypeScript simulation, React UI, Capacitor Android delivery, save/runtime contracts, and gameplay behavior.
-- The previous P21-G decision to keep Three.js as the long-term production renderer is now superseded; its measurements remain the migration baseline and rollback evidence in [graphics-engine-decision.md](./graphics-engine-decision.md).
-- Babylon.js WebGL2 is now the production-default combat renderer after the verified P27-D7 cutover. Three.js WebGL2 remains only as the temporary rollback selector until P27-D8 retires the old backend; Babylon Lite is not the migration target because the required Android baseline needs a WebGL2-capable path.
+- The P27 Babylon.js renderer migration and Three.js retirement are complete. Babylon.js remains the sole production combat renderer; the TypeScript simulation, React UI, save/runtime contracts, and Capacitor Android delivery remain outside renderer ownership.
+- P28 is a **visual-quality overhaul inside the existing Babylon renderer**, not another engine migration. Target Babylon WebGL2 first so the same work ships on Android; optional backend differences must not become a visual requirement.
+- The current renderer already has useful foundations to reuse: authored GLB/KTX2/Meshopt loading, adaptive quality tiers, PBR materials, ACES tone mapping, selective bloom/fog, location presentation modules, and deterministic browser/Android QA.
+- The current visual ceiling is largely content/presentation quality rather than missing engine infrastructure: the refinery still uses a tiny procedural cubemap for IBL, generic combat-world objects can fall back to simple boxes, the post stack uses proxy contact-depth cards instead of real screen-space occlusion, and hero/operator/enemy families currently ship LOD1/LOD2 without hero LOD0 assets.
+- The goal is premium hard-sci-fi depth and material richness while preserving readable tells and a safe mobile quality floor. Secondary visual richness may scale down before gameplay-critical cues, exactly as required by `docs/product-constraints.md`.
 - The **first unchecked item below is the next executable task**.
 
 Only active/future executable work lives here. Completed and verified work belongs in [content-roadmap-archive.md](./content-roadmap-archive.md). Stable product rules live in [product-constraints.md](./product-constraints.md).
@@ -15,44 +16,113 @@ Only active/future executable work lives here. Completed and verified work belon
 - Execute top to bottom. The **first unchecked top-level item is next** unless the user explicitly changes priority.
 - One checkbox should fit one realistic **implement → test → build → APK verification** cycle.
 - Split an item before coding if it spans independent systems or verification cycles; combine tiny changes only when they touch the same system and can be verified together.
-- An item is complete only when its requested behavior works, relevant regression checks pass, the production build succeeds, and the Android deliverable is verified as required by the repository workflow.
-- After verified completion, move the completion detail/evidence to the archive and remove the item from this file.
-- If repository evidence shows an active item is already complete, verify that evidence before archiving it. If only part is complete, rewrite the item around the remaining work.
+- Keep gameplay simulation authoritative. Babylon presentation may consume state but must not change combat timing, collision, mission logic, or save semantics.
+- Preserve the existing readability contract: telegraphs, hazards, objectives, status/protocol cues, target feedback, and touch/controller behavior must remain readable at Performance tier.
+- Each visual task must add or update deterministic browser captures for the affected scene and quality tier, pass targeted regressions, complete the production build, and pass the repository's required Android/APK gate before it can be archived.
+- After verified completion, move completion detail/evidence to the archive and remove the item from this file.
 
 ## Active queue
 
-### P27 — Babylon.js renderer migration
+### P28 — Babylon premium visual-quality overhaul
 
-#### Asteroid Refinery vertical-slice parity
+#### A. Asteroid Refinery lighting, grounding, and image quality
 
-- [x] **P27-B8 — Port enemy telegraphs and boss phase cues to Babylon** — Reproduce enemy attack telegraphs, aim/range shapes, boss attack-pattern warnings, and boss phase-transition cues with the same timing and gameplay meaning as the current renderer. **Done when:** representative normal, elite, and refinery-boss attacks are readable at normal phone zoom before damage resolves, timing matches simulation state, and the required build/APK gates pass.
-- [x] **P27-B9 — Port protocol, mutation, and status visuals to Babylon** — Reproduce enhanced-protocol/mutation hardware/fields plus player and enemy status-state visuals using the existing protocol/status presentation data. **Done when:** representative protocol, mutation, and status combinations remain distinguishable without hue-only dependence at Performance tier, targeted status/protocol regressions pass, and the required build/APK gates pass.
-- [x] **P27-B12 — Build Babylon post-processing and atmosphere parity** — Completed and verified; implementation and delivery evidence are archived in `docs/content-roadmap-archive.md`.
+- [ ] **P28-A1 — Replace the refinery placeholder IBL with an authored prefiltered environment** — Replace the 8×8 procedural `RawCubeTexture` lighting source with a committed Babylon-compatible prefiltered environment texture, keeping the procedural cube only as a deterministic load-failure fallback. Calibrate environment intensity against the existing furnace-amber/cyan lighting profile. **Done when:** refinery metals receive visibly structured reflections on High/Balanced, the environment loads from local packaged assets without network access, Performance still has a bounded fallback path, before/after captures show materially stronger shape definition without washing out gameplay cues, and the standard build/APK gates pass.
 
-#### Campaign location parity
+- [ ] **P28-A2 — Guarantee dynamic actor grounding at every quality tier** — Keep the current bounded key-light shadow map for High/Balanced, but add a cheap Babylon projected/blob contact-shadow path for the player and active nearby enemies when Performance disables dynamic shadows. **Done when:** the player and nearby enemies never appear visually detached from the floor on any tier, Performance adds no full-scene shadow map, actor shadows cannot cover telegraphs/objective glyphs, and targeted quality/readability plus standard build/APK gates pass.
 
-- [x] **P27-C1 — Port Orbital Station environment parity** — Completed and verified; implementation, browser playability, Android runtime, and APK evidence are archived in `docs/content-roadmap-archive.md`.
-- [x] **P27-C2 — Port Damaged Vessel environment parity** — Completed and verified; implementation, browser playability, Android runtime, and APK evidence are archived in `docs/content-roadmap-archive.md`.
-- [x] **P27-C3 — Port Spin Habitat environment parity** — Completed and verified; implementation, browser playability, Android runtime, and APK evidence are archived in `docs/content-roadmap-archive.md`.
-- [x] **P27-C4 — Port Jovian Harvester environment parity** — Completed and verified; implementation, browser playability, Android runtime, and APK evidence are archived in `docs/content-roadmap-archive.md`.
-- [x] **P27-C5 — Port Ice Mine environment parity** — Completed and verified; implementation, browser playability, Android runtime, fracture/hazard parity, and APK evidence are archived in `docs/content-roadmap-archive.md`.
-- [x] **P27-C7 — Port Lattice Annex environment parity** — Move Lattice Annex reference-pylon architecture, survey material language, props, interactables, hazards, and location-specific gameplay cues to Babylon. **Done when:** its deterministic route is fully playable and visually identifiable on Babylon with no Three-only required world cue, and the required build/APK gates pass.
-- [x] **P27-C8 — Port Momentum Exchange environment parity** — Move Momentum Exchange flywheel/transfer architecture, magnetic-machinery treatment, props, interactables, hazards, and location-specific gameplay cues to Babylon. **Done when:** its deterministic route is fully playable and visually identifiable on Babylon with no Three-only required world cue, and the required build/APK gates pass.
-- [x] **P27-C9 — Port Cryo Reserve environment parity** — Completed and verified; implementation, browser playability, Android runtime, boiloff/thermal-routing parity, and APK evidence are archived in `docs/content-roadmap-archive.md`.
-- [x] **P27-C10 — Port Parallax Array environment parity** — Move Parallax Array baseline-pylon architecture, metrology/reference treatment, props, interactables, hazards, and location-specific gameplay cues to Babylon. **Done when:** its deterministic route is fully playable and visually identifiable on Babylon with no Three-only required world cue, and the required build/APK gates pass.
-- [x] **P27-C11 — Port Perseid capstone renderer parity** — Move Perseid-specific stage identity, world presentation, hazards/interactables, boss/capstone cues, and remaining Three-only visual branches to Babylon. **Done when:** the Perseid capstone route is fully playable/readable on Babylon with no required Three-only presentation branch, targeted capstone regressions pass, and the required build/APK gates pass.
-- [x] **P27-C12 — Port K91 capstone renderer parity** — Completed and verified; implementation, browser playability, Android runtime, K-91 stage/cue parity, and APK evidence are archived in `docs/content-roadmap-archive.md`.
-- [x] **P27-C13 — Port Orpheline capstone renderer parity** — Move Orpheline-specific stage identity, world presentation, hazards/interactables, boss/capstone cues, and remaining Three-only visual branches to Babylon. **Done when:** the Orpheline capstone route is fully playable/readable on Babylon with no required Three-only presentation branch, targeted capstone regressions pass, and the required build/APK gates pass.
-- [x] **P27-C14 — Port Hecate capstone renderer parity** — Move Hecate-specific stage identity, world presentation, hazards/interactables, boss/capstone cues, and remaining Three-only visual branches to Babylon. **Done when:** the Hecate capstone route is fully playable/readable on Babylon with no required Three-only presentation branch, targeted capstone regressions pass, and the required build/APK gates pass.
+- [ ] **P28-A3 — Add Babylon SSAO2 to the refinery High/Balanced tiers** — Add a bounded `SSAO2RenderingPipeline` (or the repository-supported Babylon equivalent) for world geometry on High/Balanced while retaining the existing cheap contact-depth fallback on Performance. **Done when:** wall/floor/prop intersections and large machinery gain real screen-space depth on High/Balanced, Performance remains on the cheap fallback, gameplay cue meshes are excluded or remain visually dominant, adaptive degrade/recover is deterministic, and frame/regression plus standard build/APK gates pass.
 
-#### Backend expansion, acceptance, and cutover
+- [ ] **P28-A4 — Stabilize and soften refinery key-light shadows** — Tune Babylon shadow filtering, bias/normal-bias, caster prioritization, and camera-relative bounds for the existing key light without increasing the established caster/map budgets. **Done when:** High/Balanced captures show softer contact definition with no obvious acne, peter-panning, or large-map swimming; caster counts remain bounded; Performance behavior is unchanged; and standard build/APK gates pass.
 
-- [x] **P27-D1 — Add optional Babylon WebGPU with Babylon WebGL2 fallback** — Completed and verified; implementation, desktop WebGPU/device-loss fallback, deterministic backend telemetry, Android WebGL2 compatibility, and APK evidence are archived in `docs/content-roadmap-archive.md`.
-- [x] **P27-D2 — Re-establish client bundle and APK delivery budgets for Babylon** — Completed and verified; deferred Babylon bundle architecture, unused-module guards, delivery-size measurement, browser QA, Android runtime/lifecycle, large-screen QA, and APK evidence are archived in `docs/content-roadmap-archive.md`.
-- [x] **P27-D3 — Map Babylon geometry and resource quality budgets** — Completed and verified; adaptive Babylon hardware/detail scaling, authored LODs, static instancing, bounded cache residency, animation stride, measured draw/triangle/cache telemetry, browser QA, Android runtime/lifecycle/large-screen QA, and APK evidence are archived in `docs/content-roadmap-archive.md`.
-- [x] **P27-D4 — Map Babylon effects quality budgets** — Completed and verified; adaptive Babylon shadows/post/IBL/transparency/VFX budgets, protected full-strength combat cues, measured desktop/mobile frame evidence, degrade/recover coverage, browser QA, Android runtime/lifecycle/large-screen QA, and APK evidence are archived in `docs/content-roadmap-archive.md`.
-- [x] **P27-D5 — Prove Babylon Android interaction and lifecycle compatibility** — Exercise install/launch, real touch combat, pause/resume, mission enter/exit, large-screen/resizable behavior, renderer re-entry, and required Babylon WebGL2 fallback on the repository's Android verification targets. **Done when:** touch/controller behavior, pause/resume, orientation/window behavior, and renderer recreation pass the Android smoke/regression gates without Babylon-specific crashes or lost input.
-- [x] **P27-D6 — Prove Babylon sustained-runtime resource stability** — Completed and verified on the API-35 sustained Babylon soak: 7/7 renderer lifecycle recreations, stable 50 ms frame-p95, identical scene/cache resource envelopes across re-entry, post-GC retained heap within the leak gate, and Android PSS +9 MB with a stable PID. Evidence: workflow run `37126872929`, artifact `11275957176`.
-- [x] **P27-D7 — Verify the Babylon production cutover** — Verified production-default Babylon/WebGL2 launch and playable touch combat with clean crash scan; the explicit Three/WebGL2 rollback selector remains functional. Production build, package/signature checks, Browser E2E desktop/mobile, Level 15, API-35 runtime smoke, and API-36 large-screen smoke passed. Evidence: Android run `37170043772`, Browser run `37170043784`, Level 15 run `37170043785`, APK artifact `11291032048`.
-- [x] **P27-D8 — Retire the Three production and P21 WebGPU QA backends** — After the Babylon production cutover is verified, remove the old Three combat renderer and obsolete Three WebGPU/TSL comparison backend from runtime selection while preserving any still-useful renderer-neutral QA measurements. **Done when:** no normal or QA runtime path requires either old backend, graphics-path tests reflect the Babylon architecture, and the required build/APK gates pass.
-- [x] **P27-D9 — Remove Three-only runtime dependencies and finalize graphics documentation** — Remove remaining Three.js/@types/three dependencies, Three-specific loader/codec plumbing, bundle rules, dead renderer helpers, and obsolete P21 implementation notes only after code search proves they are unused; update the graphics asset/engine/QA docs to describe Babylon ownership and rollback history. **Done when:** production builds contain no unintended Three runtime chunks/imports, graphics asset preparation still works locally and in APK builds, documentation matches the shipped architecture, and the required build/APK gates pass.
+- [ ] **P28-A5 — Re-grade refinery exposure, contrast, and dark-value separation** — Recalibrate the existing ACES/image-processing profile after the new IBL/AO/shadow stack so dark materials retain visible form instead of collapsing into near-black while emissives and HUD-independent gameplay cues do not clip. **Done when:** deterministic High/Balanced/Performance captures retain readable floor/wall/character separation in dark rooms, emissive highlights remain controlled, the same profile survives low-visibility gameplay, and standard build/APK gates pass.
+
+#### B. Shared PBR materials and refinery surface detail
+
+- [ ] **P28-B1 — Build a reusable mobile PBR surface library** — Add a small shared set of authored hard-sci-fi surface materials (painted metal, bare metal, deck plate, polymer/rubber, emissive fixture) using glTF/Babylon metallic-roughness conventions with normal + packed ORM detail and local KTX2 compression. **Done when:** materials share texture atlases/instances instead of proliferating unique materials, texture limits match the graphics asset contract, LOD/mip behavior stays readable on phone zoom, content/codec tests cover the new assets, and standard build/APK gates pass.
+
+- [ ] **P28-B2 — Apply the P28 material library to refinery floors and bulkheads** — Replace flat-color refinery floor/bulkhead/wall surface treatment with the shared PBR materials while keeping collision and mission geometry unchanged. **Done when:** the deterministic Deep Salvage route shows visible normal/roughness/metalness response across floor and wall surfaces on High/Balanced, Performance keeps readable mip-level detail, no gameplay bounds change, and standard build/APK gates pass.
+
+- [ ] **P28-B3 — Apply the P28 material library to refinery cover and machinery** — Move refinery cover, crates, processors, terminals, pipe racks, and other industrial machinery off generic flat material treatment where an authored family exists. **Done when:** representative cover and machinery have distinct material identities and edge/readability separation without increasing gameplay collision complexity, material reuse remains bounded, and standard build/APK gates pass.
+
+- [ ] **P28-B4 — Add an instanced refinery decal/trim atlas** — Add a mobile-bounded detail layer for panel seams, hazard stripes, service labels, grime, heat staining, and repair marks using an atlas plus instanced/merged decal cards or equivalent Babylon-friendly batching. **Done when:** the refinery gains visible medium-scale breakup without one material/draw call per decal, decals do not z-fight or obscure combat telegraphs, adaptive detail can shed secondary decals before cues, and standard build/APK gates pass.
+
+- [ ] **P28-B5 — Art-direct Deep Salvage decal placement** — Place the shared detail atlas through the Deep Salvage/refinery showcase route to break up large blank planes and reinforce navigation/focal machinery while preserving the existing route layout. **Done when:** major floor/wall expanses no longer read as untextured slabs, focal/interactable areas gain intentional visual hierarchy, repeated marks are not obviously tiled at gameplay zoom, and standard build/APK gates pass.
+
+#### C. Refinery authored geometry and silhouette upgrade
+
+- [ ] **P28-C1 — Add refinery LOD0 shell modules** — Author and register hero LOD0 variants for refinery floor panel, service grate, bulkhead, and wall service panel families; retain LOD1/LOD2 for adaptive fallback. **Done when:** Flagship/High selects the shipped LOD0 shell pieces, Balanced/Performance continue to select cheaper valid LODs, silhouette/bevel/panel depth is visibly improved over LOD1, asset bounds/compression tests pass, and standard build/APK gates pass.
+
+- [ ] **P28-C2 — Add refinery LOD0 structural utility modules** — Author and register LOD0 variants for pipe rack, cable tray, service conduit, and smelter gantry families with stronger silhouettes and readable mechanical layering. **Done when:** High uses the new LOD0 assets, lower tiers fall back correctly, repeated pieces remain instancing-friendly, and asset/content plus standard build/APK gates pass.
+
+- [ ] **P28-C3 — Add refinery LOD0 focal machinery modules** — Author and register LOD0 variants for processor, crate, and terminal families, prioritizing bevels, inset panels, readable emissive fixtures, and material separation at the existing camera distance. **Done when:** focal machinery is visibly richer on High without changing interaction coordinates, authored emissives participate in the selective glow policy, lower LOD fallback remains valid, and standard build/APK gates pass.
+
+- [ ] **P28-C4 — Replace refinery generic world boxes with authored family mappings** — In `BabylonRefineryWorldPresentation`, map eligible cover/industrial/interactable `CombatObject` visuals to existing/new refinery authored families and keep `MeshBuilder.CreateBox` only as the explicit fallback for unmapped/load-failed content. **Done when:** the Deep Salvage route no longer relies on generic boxes for mapped refinery objects, object dimensions/interaction centers remain simulation-owned, failure fallback is deterministic, and standard build/APK gates pass.
+
+- [ ] **P28-C5 — Re-budget refinery instancing after the geometry upgrade** — Consolidate repeated static refinery modules through Babylon instances/thin instances or existing asset-runtime reuse so the new LOD0 art does not erase current frame/cache headroom. **Done when:** deterministic High/Balanced/Performance captures report bounded draw calls, triangles, materials, textures, and cache residency; no visible module disappears during tier changes; and render-performance plus standard build/APK gates pass.
+
+#### D. Hero operators and enemy presentation
+
+- [ ] **P28-D1 — Ship Vanguard operator LOD0** — Add a hero-quality Vanguard LOD0 model/material set using the proven operator rig/socket contract while preserving current animation and gameplay bounds. **Done when:** Flagship/High selects Vanguard LOD0, Balanced/Performance fall back to LOD1/LOD2, all required animation/socket states remain valid, the model is clearly more detailed at gameplay zoom, and standard build/APK gates pass.
+
+- [ ] **P28-D2 — Ship Vector operator LOD0** — Add the Vector hero LOD0 on the same validated rig/socket/material contract with class-specific silhouette detail. **Done when:** quality-tier selection, animation/socket compatibility, class readability, content budgets, and standard build/APK gates pass.
+
+- [ ] **P28-D3 — Ship Systems operator LOD0** — Add the Systems hero LOD0 on the same validated rig/socket/material contract with class-specific silhouette detail. **Done when:** quality-tier selection, animation/socket compatibility, class readability, content budgets, and standard build/APK gates pass.
+
+- [ ] **P28-D4 — Ship assault enemy LOD0** — Add a hero-near-camera LOD0 for the common assault enemy family without changing hitboxes, targeting, or lifecycle cues. **Done when:** High can select LOD0 for near assault enemies, lower tiers remain on LOD1/LOD2, telegraphs/status/lifecycle overlays still align, and standard build/APK gates pass.
+
+- [ ] **P28-D5 — Ship suppressor enemy LOD0** — Add a hero-near-camera LOD0 for the suppressor family with stronger weapon/armor silhouette separation. **Done when:** tier selection, rig/overlay alignment, combat readability, content budgets, and standard build/APK gates pass.
+
+- [ ] **P28-D6 — Ship technician enemy LOD0** — Add a hero-near-camera LOD0 for the technician family with readable tool/hardware silhouette detail. **Done when:** tier selection, rig/overlay alignment, combat readability, content budgets, and standard build/APK gates pass.
+
+- [ ] **P28-D7 — Ship elite enemy LOD0** — Add a hero LOD0 for the elite family that reads as higher threat through silhouette/material detail before HUD labels. **Done when:** elite identity is distinguishable at gameplay zoom without hue-only dependence, tier selection and lifecycle/telegraph alignment remain correct, and standard build/APK gates pass.
+
+- [ ] **P28-D8 — Ship refinery boss LOD0** — Add a boss-quality LOD0 with stronger phase-readable hard-surface detail and emissive anchors while keeping boss mechanics and cue timing unchanged. **Done when:** High uses the boss LOD0, phase cues align with the authored model, lower tiers preserve the existing readable fallback, content budgets pass, and standard build/APK gates pass.
+
+#### E. Refinery ambience and local visual richness
+
+- [ ] **P28-E1 — Add a shared adaptive ambient-particle budget** — Add a Babylon ambient-effects layer with pooled/bounded dust, sparks, vapor/steam, and drifting debris primitives whose density follows `vfxDensity`/secondary-effect budgets. **Done when:** the system has explicit High/Balanced/Performance caps, sheds ambience before gameplay VFX, releases resources on renderer/location teardown, and targeted resource/performance plus standard build/APK gates pass.
+
+- [ ] **P28-E2 — Art-direct refinery ambient particles** — Place the shared ambience around refinery machinery, vents, damaged service areas, and open industrial spaces without adding gameplay state. **Done when:** Deep Salvage gains visible depth/motion on High/Balanced, Performance keeps only the cheapest ambient subset, particles never mask telegraphs/targets, and standard build/APK gates pass.
+
+- [ ] **P28-E3 — Upgrade refinery practical/emissive fixtures** — Give furnace ports, terminals, warning fixtures, and selected machinery authored emissive surfaces that visually correspond to existing practical lights and selective bloom sources. **Done when:** bright fixtures appear to emit the light already present in the scene, bloom remains selective/bounded, dark-area navigation improves without extra HUD, and standard build/APK gates pass.
+
+- [ ] **P28-E4 — Add High-tier local reflection probes for refinery hero machinery** — Add a tightly bounded Babylon reflection-probe path only for a small set of focal metal machinery after material/geometry upgrades, with lower tiers using the shared environment reflection. **Done when:** hero metal gains localized reflection variation on High, probe count/update policy is fixed and measurable, Balanced/Performance incur no probe cost, and standard build/APK gates pass.
+
+#### F. Campaign-location rollout of the shared visual stack
+
+Each rollout below reuses the P28 lighting/material/grounding/detail systems and existing location modules; do not reopen gameplay design. Keep each location as its own implementation/verification batch.
+
+- [ ] **P28-F1 — Refresh Orbital Station visuals** — Apply the shared P28 material/lighting/grounding/detail stack to the existing Babylon Orbital Station presentation and tune its location profile. **Done when:** its deterministic route has authored surface depth, grounded characters/props, controlled emissives/atmosphere, preserved cue readability, and standard build/APK gates pass.
+
+- [ ] **P28-F2 — Refresh Damaged Vessel visuals** — Apply the shared P28 stack to Damaged Vessel with damaged-hull material breakup and depth treatment while preserving breach/salvage gameplay cues. **Done when:** the deterministic route is materially richer and spatially deeper without cue loss or collision changes, and standard build/APK gates pass.
+
+- [ ] **P28-F3 — Refresh Spin Habitat visuals** — Apply the shared P28 stack to Spin Habitat and tune ring/spoke surfaces and lighting to reinforce rotational architecture without changing mechanics. **Done when:** the route reads as a distinct high-quality location at gameplay zoom across tiers and standard build/APK gates pass.
+
+- [ ] **P28-F4 — Refresh Jovian Harvester visuals** — Apply the shared P28 stack to Jovian Harvester with stronger industrial/atmospheric material and lighting separation. **Done when:** the route gains authored depth and identity across tiers while storm/hazard tells remain dominant, and standard build/APK gates pass.
+
+- [ ] **P28-F5 — Refresh Ice Mine visuals** — Apply the shared P28 stack to Ice Mine with ice/metal roughness, normals, occlusion, and cold-light tuning while preserving fracture/hazard readability. **Done when:** ice and machinery no longer read as flat-color geometry, tier degradation is safe, and standard build/APK gates pass.
+
+- [ ] **P28-F6 — Refresh Lattice Annex visuals** — Apply the shared P28 stack to Lattice Annex, emphasizing reference-pylon/survey material identity and authored depth. **Done when:** the route is visually distinct and grounded across tiers with unchanged gameplay cues, and standard build/APK gates pass.
+
+- [ ] **P28-F7 — Refresh Momentum Exchange visuals** — Apply the shared P28 stack to Momentum Exchange, emphasizing flywheel/transfer machinery material depth and magnetic-industrial lighting. **Done when:** the route has premium mechanical layering across tiers without masking motion/hazard cues, and standard build/APK gates pass.
+
+- [ ] **P28-F8 — Refresh Cryo Reserve visuals** — Apply the shared P28 stack to Cryo Reserve, emphasizing thermal/cryogenic surface response and controlled atmosphere. **Done when:** cryogenic identity is visible through material/light/atmosphere rather than HUD alone, boiloff/thermal cues stay readable, and standard build/APK gates pass.
+
+- [ ] **P28-F9 — Refresh Parallax Array visuals** — Apply the shared P28 stack to Parallax Array, emphasizing metrology/reference hardware, surface precision, and focal lighting. **Done when:** the route gains authored material/geometry depth while reference/gameplay cues remain distinct across tiers, and standard build/APK gates pass.
+
+#### G. Capstone visual refreshes
+
+- [ ] **P28-G1 — Refresh Perseid capstone visuals** — Apply the shared P28 visual stack to the Perseid capstone without changing stage mechanics. **Done when:** the capstone has premium material/light/grounding treatment, boss/hazard cues remain dominant at Performance tier, and standard build/APK gates pass.
+
+- [ ] **P28-G2 — Refresh K-91 capstone visuals** — Apply the shared P28 visual stack to K-91 without changing stage mechanics. **Done when:** the capstone has premium material/light/grounding treatment, boss/hazard cues remain dominant at Performance tier, and standard build/APK gates pass.
+
+- [ ] **P28-G3 — Refresh Orpheline capstone visuals** — Apply the shared P28 visual stack to Orpheline without changing stage mechanics. **Done when:** the capstone has premium material/light/grounding treatment, boss/hazard cues remain dominant at Performance tier, and standard build/APK gates pass.
+
+- [ ] **P28-G4 — Refresh Hecate capstone visuals** — Apply the shared P28 visual stack to Hecate without changing stage mechanics. **Done when:** the capstone has premium material/light/grounding treatment, boss/hazard cues remain dominant at Performance tier, and standard build/APK gates pass.
+
+#### H. Cross-game visual acceptance
+
+- [ ] **P28-H1 — Verify representative High/Balanced/Performance visual captures on Android** — Capture the same deterministic representative combat moments for refinery plus at least one campaign and one capstone route on API-35/36 hardware/emulators at all three quality tiers, recording frame/resource telemetry alongside screenshots. **Done when:** High is visibly richer than Balanced, Performance preserves grounding/material identity/gameplay cues rather than reverting to flat placeholders, no tier has broken/missing authored assets, and the standard build/APK gates pass.
+
+- [ ] **P28-H2 — Close the P28 sustained performance and memory budget** — Run the repository's sustained combat/lifecycle soak with the finished P28 art stack and tune only secondary visual budgets/residency where needed. **Done when:** frame pacing, renderer recreation, cache residency, retained heap/PSS, thermal-safe adaptive degradation, touch/controller behavior, and APK delivery remain within the repository's accepted gates without removing the P28 visual-quality floor.
