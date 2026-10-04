@@ -29,3 +29,5 @@ jobs:
           git grep -n -E "hardSciFiVisuals|mapVisuals|refineryBloom|refineryIbl" -- \
             ':!docs/content-roadmap-archive.md' \
             ':!docs/content-roadmap.md' || true
+          echo '=== P27-D9 GRAPHICS ASSET CONTRACT CONSUMERS ==='
+          git grep -n -E "graphicsAssets|configureGraphicsAssetRenderer|loadGraphicsAsset|preloadGraphicsAssets|instantiateGraphicsAsset|setGraphicsAssetRuntimeBudget|clearGraphicsAsset" -- src tests scripts || true
