@@ -9,6 +9,7 @@
 - Do not impose arbitrary limits on texture resolution, geometry density, shadows, reflections, AO, post-processing, particles, decals, material complexity, or scene density before profiling the actual result on target high-performance phones.
 - The current renderer already has strong foundations to reuse: authored GLB/KTX2/Meshopt loading, PBR materials, ACES tone mapping, selective bloom/fog, location presentation modules, optional adaptive recovery, and deterministic browser/Android QA.
 - The current visual ceiling is largely content/presentation quality: the refinery still uses a tiny procedural cubemap for IBL, generic world objects can fall back to simple boxes, contact-depth uses proxy cards rather than true SSAO, and hero/operator/enemy families currently stop at LOD1/LOD2.
+- The authored-asset build path is itself a major visual blocker: `scripts/prepare-graphics-assets.mjs` currently emits GLBs from a single cube vertex/index primitive and assembles many operators, enemies, and environment assets from scaled box nodes with factor-only materials. P28 must upgrade that source/build path before treating new LOD0 assets as premium art.
 - The **first unchecked item below is the next executable task**.
 
 Only active/future executable work lives here. Completed and verified work belongs in [content-roadmap-archive.md](./content-roadmap-archive.md). Stable product rules live in [product-constraints.md](./product-constraints.md).
@@ -45,6 +46,8 @@ Only active/future executable work lives here. Completed and verified work belon
 
 #### B. Shared premium PBR materials and refinery surface detail
 
+- [ ] **P28-B0 — Add textured PBR support to the deterministic GLB build path** — Extend the current generated-asset pipeline (or replace its source boundary) so premium assets can carry UV0/tangents plus local base-color, normal, packed ORM, and emissive textures through glTF/Babylon instead of being limited to factor-only cube materials. Keep generation/rebuild deterministic and compatible with local KTX2 packaging. **Done when:** a committed reference asset generated through the production preparation path loads in Babylon with verified normal/ORM/emissive texture response, rebuilds do not discard the premium source, content/codec tests cover the path, and standard build/APK gates pass.
+
 - [ ] **P28-B1 — Build a reusable premium PBR surface library** — Add a shared set of authored hard-sci-fi materials (painted metal, bare metal, deck plate, polymer/rubber, emissive fixture) using glTF/Babylon metallic-roughness conventions with normal + packed ORM detail and local KTX2 compression. Select texture resolution from visible need rather than legacy mobile caps. **Done when:** the material set is visibly rich at gameplay zoom, shared where useful, supports mipmapped/KTX2 delivery, content/codec tests cover the new assets, and standard build/APK gates pass.
 
 - [ ] **P28-B2 — Apply P28 materials to refinery floors and bulkheads** — Replace flat-color floor/bulkhead/wall treatment with the shared PBR materials while keeping collision and mission geometry unchanged. **Done when:** the deterministic Deep Salvage route shows visible normal/roughness/metalness response across floor and wall surfaces, no gameplay bounds change, and standard build/APK gates pass.
@@ -58,6 +61,8 @@ Only active/future executable work lives here. Completed and verified work belon
 - [ ] **P28-B6 — Art-direct Deep Salvage decal placement** — Place the shared detail atlas through the Deep Salvage/refinery showcase route to break up large blank planes and reinforce navigation/focal machinery while preserving the existing route layout. **Done when:** major floor/wall expanses no longer read as untextured slabs, focal/interactable areas gain intentional visual hierarchy, repeated marks are not obviously tiled at gameplay zoom, and standard build/APK gates pass.
 
 #### C. Refinery authored geometry and silhouette upgrade
+
+- [ ] **P28-C0 — Add reusable non-box hard-surface geometry support to asset authoring** — Extend the deterministic asset source/build path with reusable beveled/chamfered solids, cylinders/pipes, wedges/extrusions, inset-panel geometry, and correct normals/UVs/tangents so new refinery LOD0 assets are not assemblies of the existing single cube primitive. **Done when:** a reference refinery GLB built through the production preparation path contains visibly rounded/beveled/non-orthogonal geometry with stable pivots and valid material mapping, content tests verify its bounds/attributes, and standard build/APK gates pass.
 
 - [ ] **P28-C1 — Add LOD0 refinery floor modules** — Author and register full-detail LOD0 variants for the refinery floor panel and service grate families. Keep LOD1/LOD2 only as optional recovery assets. **Done when:** Flagship selects the LOD0 assets, panel/bevel/grate depth is visibly improved, asset bounds/loading/compression tests pass, and standard build/APK gates pass.
 
@@ -78,6 +83,8 @@ Only active/future executable work lives here. Completed and verified work belon
 - [ ] **P28-C9 — Consolidate repeated refinery geometry without reducing visible quality** — Use Babylon instances/thin instances or existing asset-runtime reuse for repeated static modules where it preserves the full-detail result. **Done when:** repeated LOD0 modules reuse resources correctly, scene re-entry/disposal is stable, no visible module is simplified solely to hit an arbitrary draw/triangle cap, target-phone telemetry is recorded, and standard build/APK gates pass.
 
 #### D. Hero operators and enemy presentation
+
+- [ ] **P28-D0 — Upgrade the character asset source path beyond box-node bodies** — Add a premium character-mesh source path that preserves the existing named operator/enemy rig nodes, animation hooks, sockets, hitbox ownership, and cue attachment contracts while allowing non-box body/armor/tool meshes and textured PBR materials. **Done when:** one representative generated/committed character runs through the production asset preparation path with a clearly non-box silhouette, existing animation/socket/cue tests still align, rebuilds remain deterministic, and standard build/APK gates pass.
 
 - [ ] **P28-D1 — Ship Vanguard operator LOD0** — Add a hero-quality Vanguard LOD0 model/material set using the proven operator rig/socket contract while preserving current animation and gameplay bounds. **Done when:** Flagship selects Vanguard LOD0, all required animation/socket states remain valid, the model is clearly more detailed at gameplay zoom, and standard build/APK gates pass.
 
