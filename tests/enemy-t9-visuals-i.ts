@@ -54,16 +54,16 @@ assert.equal(priorityPresentation.animation[0]?.source, 'status', 'priority-4 st
 assert(priorityPresentation.animation.some(layer => layer.source === 'telegraph'), 'attack telegraph must remain present');
 assert(priorityPresentation.animation.find(layer => layer.source === 'mutation')?.priority === 2, 'mutation animation remains lower priority');
 
-const rendererSource = readFileSync(resolve(process.cwd(), 'src/game/threeCombatRenderer.ts'), 'utf8');
+const rendererSource = readFileSync(resolve(process.cwd(), 'src/game/babylonProtocolStatusVisuals.ts'), 'utf8');
 const canvasSource = readFileSync(resolve(process.cwd(), 'src/components/GameCanvas.tsx'), 'utf8');
 const feedbackSource = readFileSync(resolve(process.cwd(), 'src/game/feedback.ts'), 'utf8');
 
 for (const token of ['core-braced', 'mantle-settle', 'hunter-ready']) {
-  assert(rendererSource.includes(token), `Three.js renderer must consume ${token}`);
+  assert(rendererSource.includes(token), `Babylon protocol/status visuals must consume ${token}`);
   assert(canvasSource.includes(token), `Canvas fallback must consume ${token}`);
 }
-assert(rendererSource.includes('syncEnemyMutationPresentation'), 'Three.js renderer must run the shared P13-B mutation presentation path');
-assert(rendererSource.includes('enemyMutationPresentation'), 'Three.js runtime QA telemetry must expose active mutation presentation');
+assert(rendererSource.includes('private syncMutations('), 'Babylon protocol/status visuals must run the shared P13-B mutation presentation path');
+assert(rendererSource.includes('dataset.babylonEnemyMutations'), 'Babylon runtime QA telemetry must expose active mutation presentation');
 assert(canvasSource.includes('drawEnemyMutationPresentation'), 'Canvas fallback must render mutation-specific visual language');
 assert(
   /drawEnemyMutationPresentation\(ctx,[\s\S]{0,500}drawEnemySilhouette\(ctx,[\s\S]{0,500}drawEnemyTelegraph\(ctx/.test(canvasSource),

@@ -9,7 +9,6 @@ import {
 } from '../src/game/babylonParallaxArrayPresentation';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
 
-const three = readFileSync('src/game/threeCombatRenderer.ts', 'utf8');
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const presentation = readFileSync('src/game/babylonParallaxArrayPresentation.ts', 'utf8');
 const encounters = readFileSync('src/game/encounters.ts', 'utf8');
@@ -26,7 +25,6 @@ assert.deepEqual(BABYLON_PARALLAX_ARRAY_IDENTITY, {
   lighting: 'reference-violet',
   propSet: 'inertial-reference',
 });
-assert.ok(three.includes("'parallax-array': { id: 'reference-violet', keyColor: 0xe2ddf1, rimColor: 0x9a87cf, emergencyColor: 0x7864ba, keyIntensity: 2.2, rimIntensity: 1.15, emergencyIntensity: 8.1, exposure: 1.06 }"));
 assert.deepEqual(BABYLON_PARALLAX_ARRAY_LIGHTING, {
   id: 'reference-violet',
   keyColor: 0xe2ddf1,

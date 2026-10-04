@@ -7,7 +7,7 @@ import {
   materialWorldResponse,
   worldMaterialQualityProfile,
 } from '../src/game/worldMaterialPolish';
-import { REFINERY_IBL_PROFILE } from '../src/game/refineryIbl';
+import { REFINERY_IBL_PROFILE } from '../src/game/refineryLightingProfile';
 import type { CombatObject, Hazard, SimState } from '../src/game/sim';
 
 function assert(condition: unknown, message: string) {
@@ -66,19 +66,16 @@ const pressureCritical = biomeWorldState('damaged-vessel', {
 });
 assert(pressureCritical.id === 'pressure-critical' && pressureCritical.audioCue === 'breach' && pressureCritical.severity === 1, 'pressure crises must outrank secondary biome presentation');
 
-const rendererSource = readFileSync(resolve(process.cwd(), 'src/game/threeCombatRenderer.ts'), 'utf8');
-assert(rendererSource.includes("dataset.interactableReadability = 'shape-coded+state-emissive+floor-cue:quality-safe'"), 'Three.js runtime QA must expose priority-interactable readability');
-assert(rendererSource.includes("dataset.hazardReadability = 'shape-coded+floor-bound+quality-safe'"), 'Three.js runtime QA must expose hazard readability');
-assert(rendererSource.includes("dataset.worldReadability = 'interactables:shape+state|hazards:shape+motion|loot:shape+rarity'"), 'Three.js runtime QA must expose the shared world readability language');
-assert(rendererSource.includes('worldQuality.pickupBeamScale'), 'pickup beam cost must follow the P15-D quality profile');
-assert(rendererSource.includes('worldQuality.materialDepthScale'), 'material depth must follow the P15-D quality profile');
-assert(rendererSource.includes('biomeState.motionHz * worldQuality.stateMotionScale'), 'biome state animation must respect adaptive quality');
-assert(rendererSource.includes('createRefineryIblTarget(this.renderer)'), 'P21-B refinery renderer must create one reusable PMREM IBL target');
-assert(rendererSource.includes('this.scene.environment = refineryIblEnabled ? this.refineryIblTarget.texture : null'), 'P21-B IBL must be refinery-scoped instead of changing global location lighting');
-assert(rendererSource.includes('const refineryIblIntensity = REFINERY_IBL_PROFILE.intensity * budget.refineryIblScale'), 'P21-E IBL intensity must derive from the bounded refinery profile and the existing adaptive reflection budget');
-assert(rendererSource.includes('this.scene.environmentIntensity = refineryIblEnabled ? refineryIblIntensity : 1'), 'P21-B/P21-E IBL intensity must remain refinery-scoped and budget-aware');
-assert(rendererSource.includes("'off:qa-baseline'"), 'P21-B renderer must retain a QA-only IBL-off baseline for deterministic before/after evidence');
-assert(rendererSource.includes('this.refineryIblTarget.dispose()'), 'P21-B PMREM render target must be disposed with the combat renderer');
+const worldSource = readFileSync(resolve(process.cwd(), 'src/game/babylonWorldPresentation.ts'), 'utf8');
+const lightingSource = readFileSync(resolve(process.cwd(), 'src/game/babylonRefineryLighting.ts'), 'utf8');
+assert(worldSource.includes("dataset.interactableReadability = 'shape-coded+state-emissive+floor-cue:quality-safe'"), 'Babylon runtime QA must expose priority-interactable readability');
+assert(worldSource.includes("dataset.hazardReadability = 'shape-coded+floor-bound+quality-safe'"), 'Babylon runtime QA must expose hazard readability');
+assert(worldSource.includes("dataset.worldReadability = 'interactables:shape+state|hazards:shape+motion|loot:shape+rarity'"), 'Babylon runtime QA must expose shared world readability');
+assert(worldSource.includes('quality.pickupBeamScale') && worldSource.includes('quality.materialDepthScale') && worldSource.includes('biomeState.motionHz * quality.stateMotionScale'), 'Babylon world presentation must consume adaptive world-material quality');
+assert(lightingSource.includes('createBabylonRefineryIblTexture(scene)') && lightingSource.includes('this.scene.environmentTexture = iblEnabled ? this.iblTexture : null'), 'Babylon refinery lighting must own a reusable refinery-scoped IBL texture');
+assert(lightingSource.includes('REFINERY_IBL_PROFILE.intensity * budget.refineryIblScale'), 'Babylon refinery IBL intensity must follow adaptive reflection budget');
+assert(lightingSource.includes("qaExplicit && this.canvas.dataset.refineryIblQa === 'off'") && lightingSource.includes("'off:qa-baseline'"), 'Babylon refinery lighting must retain deterministic IBL-off QA evidence');
+assert(lightingSource.includes('this.iblTexture.dispose()'), 'Babylon refinery IBL resources must dispose with the renderer');
 
 const browserSource = readFileSync(resolve(process.cwd(), 'scripts/browser-runtime-smoke.mjs'), 'utf8');
 assert(browserSource.includes("canvas.dataset.refineryIblQa = 'off'"), 'P21-B browser QA must capture an explicit IBL-off baseline');

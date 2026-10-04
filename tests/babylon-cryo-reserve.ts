@@ -9,7 +9,6 @@ import {
 } from '../src/game/babylonCryoReservePresentation';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
 
-const three = readFileSync('src/game/threeCombatRenderer.ts', 'utf8');
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const presentation = readFileSync('src/game/babylonCryoReservePresentation.ts', 'utf8');
 const encounters = readFileSync('src/game/encounters.ts', 'utf8');
@@ -25,7 +24,6 @@ assert.deepEqual(BABYLON_CRYO_RESERVE_IDENTITY, {
   lighting: 'cold-blue',
   propSet: 'purge-service',
 });
-assert.ok(three.includes("'cryo-reserve': { id: 'cold-blue', keyColor: 0xd0e3ed, rimColor: 0x77c6de, emergencyColor: 0x76cde9, keyIntensity: 2.0, rimIntensity: 1.12, emergencyIntensity: 8.4, exposure: 1.07 }"));
 assert.deepEqual(BABYLON_CRYO_RESERVE_LIGHTING, {
   id: 'cold-blue',
   keyColor: 0xd0e3ed,

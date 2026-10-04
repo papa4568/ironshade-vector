@@ -16,8 +16,6 @@ function assert(condition: unknown, message: string): asserts condition {
 
 const renderer = read('src/game/babylonCombatRenderer.ts');
 const station = read('src/game/babylonOrbitalStationPresentation.ts');
-const three = read('src/game/hardSciFiVisuals.ts');
-const threeRenderer = read('src/game/threeCombatRenderer.ts');
 const world = read('src/game/babylonWorldPresentation.ts');
 const browser = read('scripts/browser-runtime-smoke.mjs');
 const workflow = read('.github/workflows/browser-e2e.yml');
@@ -33,10 +31,6 @@ assert(
   'P27-C1 Babylon Orbital Station art identity must preserve the Three baseline.',
 );
 
-assert(
-  three.includes("'orbital-station': { silhouette: 'radial-spine', material: 'clean-industrial', lighting: 'neutral-cyan', propSet: 'service-cases' }"),
-  'P27-C1 source baseline for Orbital Station identity changed without updating the Babylon port.',
-);
 
 assert(
   BABYLON_ORBITAL_STATION_LIGHTING.id === 'neutral-cyan'
@@ -50,10 +44,6 @@ assert(
   'P27-C1 Babylon Orbital Station lighting must retain the neutral-cyan Three profile.',
 );
 
-assert(
-  threeRenderer.includes("'orbital-station': { id: 'neutral-cyan', keyColor: 0xd8e8e1, rimColor: 0x72a8b2, emergencyColor: 0xd97958, keyIntensity: 2.35, rimIntensity: 1.0, emergencyIntensity: 8.5, exposure: 1.06 }"),
-  'P27-C1 Three lighting baseline changed without updating the Babylon profile.',
-);
 
 const navigation = getMapNavigationPlan('orbital-station');
 assert(

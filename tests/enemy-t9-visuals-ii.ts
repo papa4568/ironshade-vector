@@ -54,19 +54,20 @@ assert.equal(priorityPresentation.animation[0]?.source, 'status', 'priority-4 st
 assert(priorityPresentation.animation.some(layer => layer.source === 'telegraph'), 'attack telegraph must remain present');
 assert(priorityPresentation.animation.filter(layer => layer.source === 'mutation').every(layer => layer.priority === 2), 'P13-C mutation animation remains lower priority');
 
-const rendererSource = readFileSync(resolve(process.cwd(), 'src/game/threeCombatRenderer.ts'), 'utf8');
+const rendererSource = readFileSync(resolve(process.cwd(), 'src/game/babylonProtocolStatusVisuals.ts'), 'utf8');
 const canvasSource = readFileSync(resolve(process.cwd(), 'src/components/GameCanvas.tsx'), 'utf8');
 const feedbackSource = readFileSync(resolve(process.cwd(), 'src/game/feedback.ts'), 'utf8');
 
 for (const token of ['redline-tension', 'countermass-ready', 'relay-ready']) {
-  assert(rendererSource.includes(token), `Three.js renderer must consume ${token}`);
+  assert(rendererSource.includes(token), `Babylon protocol/status visuals must consume ${token}`);
   assert(canvasSource.includes(token), `Canvas fallback must consume ${token}`);
 }
-for (const hardware of ['mutation-redline-bus', 'mutation-countermass-rig', 'mutation-relay-reflex']) {
-  assert(rendererSource.includes(hardware), `Three.js renderer must author ${hardware}`);
+for (const id of ['redline-bus', 'countermass-rig', 'relay-reflex']) {
+  assert(rendererSource.includes(`'${id}'`), `Babylon protocol/status visuals must register ${id}`);
 }
-assert(rendererSource.includes('reducedEffects ? 0 : state.time * 0.45'), 'Countermass secondary orbit motion must stop in reduced-effects mode');
-assert(rendererSource.includes('snap.visible = !reducedEffects || side > 0'), 'Relay secondary snap VFX must reduce in reduced-effects mode');
+assert(rendererSource.includes("'p27-b9-mutation-' + id + '-' + name + '-' + enemyId"), 'Babylon mutation visuals must author mutation-specific hardware and field mesh names');
+assert(rendererSource.includes("mutation.root.rotation.y = !reduced && id === 'countermass-rig' ? state.time * 0.45 : 0"), 'Countermass secondary orbit motion must stop in reduced-effects mode');
+assert(rendererSource.includes('const enabled = !reduced || secondaryIndex === 0'), 'Mutation secondary VFX must reduce in reduced-effects mode');
 assert(canvasSource.includes('const snapCount = reducedEffects ? 1 : 2'), 'Canvas Relay fallback must reduce secondary snap density');
 assert(canvasSource.includes('presentationMutationAudioIds'), 'all six mutation audio cues must share the presentation feedback path');
 for (const id of ['redline-bus', 'countermass-rig', 'relay-reflex']) {

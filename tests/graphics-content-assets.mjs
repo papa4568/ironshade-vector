@@ -1,8 +1,9 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { resolve, relative } from 'node:path';
-import { Box3 } from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { clone } from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { NullEngine } from '@babylonjs/core/Engines/nullEngine.js';
+import { LoadAssetContainerAsync } from '@babylonjs/core/Loading/sceneLoader.js';
+import { Scene } from '@babylonjs/core/scene.js';
+import '@babylonjs/loaders/glTF/2.0/glTFLoader.js';
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -114,7 +115,25 @@ function assetClassFor(path) {
 const glbs = await collectGlbs(MODEL_ROOT);
 assert(glbs.length > 0, 'no authored GLB assets were found under public/assets/models');
 
-const loader = new GLTFLoader();
+const engine = new NullEngine();
+const scene = new Scene(engine);
+
+function boundsForRoots(rootNodes) {
+  let found = false;
+  const min = { x: Infinity, y: Infinity, z: Infinity };
+  const max = { x: -Infinity, y: -Infinity, z: -Infinity };
+  for (const root of rootNodes) {
+    for (const node of [root, ...root.getDescendants(false)]) {
+      if (typeof node.getBoundingInfo !== 'function') continue;
+      node.computeWorldMatrix(true);
+      const box = node.getBoundingInfo().boundingBox;
+      for (const axis of ['x', 'y', 'z']) { min[axis] = Math.min(min[axis], box.minimumWorld[axis]); max[axis] = Math.max(max[axis], box.maximumWorld[axis]); }
+      found = true;
+    }
+  }
+  assert(found, 'Babylon instance must contain bounded renderable meshes');
+  return { min, max };
+}
 const reports = [];
 for (const path of glbs) {
   const data = await readFile(path);
@@ -131,18 +150,14 @@ for (const path of glbs) {
   assert((json.materials?.length ?? 0) > 0, `${relativePath}: asset contains no materials`);
   assert((json.buffers?.length ?? 0) === 1, `${relativePath}: runtime GLB should use a single embedded buffer`);
 
-  const arrayBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
-  const gltf = await loader.parseAsync(arrayBuffer, '');
-  assert(gltf.scene, `${relativePath}: GLTFLoader did not produce a scene`);
-  const instance = clone(gltf.scene);
-  let runtimeMeshes = 0;
-  instance.traverse(child => {
-    if (child.isMesh) runtimeMeshes += 1;
-  });
-  assert(runtimeMeshes > 0, `${relativePath}: cloned runtime scene contains no meshes`);
+  const bytes = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+  const container = await LoadAssetContainerAsync(bytes, scene, { pluginExtension: '.glb', name: relativePath });
+  const instance = container.instantiateModelsToScene(name => `content-test:${name}`, false, { doNotInstantiate: false });
+  const runtimeMeshes = instance.rootNodes.flatMap(root => [root, ...root.getDescendants(false)]).filter(node => typeof node.getBoundingInfo === 'function');
+  assert(runtimeMeshes.length > 0, `${relativePath}: Babylon runtime scene contains no meshes`);
 
   const authoredBounds = positionBounds(json, relativePath);
-  const runtimeBounds = new Box3().setFromObject(instance);
+  const runtimeBounds = boundsForRoots(instance.rootNodes);
   if (top === 'operators') {
     const height = runtimeBounds.max.y - runtimeBounds.min.y;
     assert(Math.abs(runtimeBounds.min.y) <= 0.03, `${relativePath}: operator feet must rest on authored ground origin; minY=${runtimeBounds.min.y}`);
@@ -561,7 +576,9 @@ for (const path of glbs) {
     assert(nodeNames.has(silhouetteMarker), `${relativePath}: role/local silhouette marker ${silhouetteMarker} is missing`);
   }
 
-  reports.push({ relativePath, bytes: data.byteLength, triangles, meshes: runtimeMeshes, authoredBounds });
+  reports.push({ relativePath, bytes: data.byteLength, triangles, meshes: runtimeMeshes.length, authoredBounds });
+  instance.dispose();
+  container.dispose();
 }
 
 const reportByPath = new Map(reports.map(report => [report.relativePath, report]));
@@ -696,6 +713,9 @@ for (const asset of ['parallax-baseline-pylon', 'parallax-reference-frame', 'par
   assert(lod1 && lod2, `${asset}: Parallax LOD1/LOD2 pair missing`);
   assert(lod2.bytes < lod1.bytes && lod2.meshes < lod1.meshes, `${asset}: Parallax mobile LOD2 must reduce payload and draw surfaces`);
 }
+
+scene.dispose();
+engine.dispose();
 
 const totalBytes = reports.reduce((sum, report) => sum + report.bytes, 0);
 const totalTriangles = reports.reduce((sum, report) => sum + report.triangles, 0);

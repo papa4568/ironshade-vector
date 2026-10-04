@@ -16,7 +16,7 @@ const chapter3Shell = fs.readFileSync(new URL('../scripts/android-chapter3-regre
 const chapter3Script = fs.readFileSync(new URL('../scripts/browser-chapter3-playthrough.mjs', import.meta.url), 'utf8');
 const workflow = fs.readFileSync(new URL('../.github/workflows/android-apk.yml', import.meta.url), 'utf8');
 const browserWorkflow = fs.readFileSync(new URL('../.github/workflows/browser-e2e.yml', import.meta.url), 'utf8');
-const p21f3Delivery = fs.readFileSync(new URL('../scripts/measure-webgpu-delivery-cost.mjs', import.meta.url), 'utf8');
+const p27d9Delivery = fs.readFileSync(new URL('../scripts/verify-no-three-delivery.mjs', import.meta.url), 'utf8');
 const p27d2Delivery = fs.readFileSync(new URL('../scripts/measure-babylon-delivery-cost.mjs', import.meta.url), 'utf8');
 
 const requireText = (text, needle, label) => {
@@ -169,7 +169,7 @@ requireText(workflow, 'npm run test:android-fast-smoke', 'Android workflow');
 requireText(workflow, 'npm run build', 'Android workflow production build');
 requireText(workflow, "set -euo pipefail;", 'Android workflow');
 requireText(workflow, 'actions/upload-artifact@v7', 'Android workflow');
-requireText(workflow, 'node scripts/measure-webgpu-delivery-cost.mjs', 'Android workflow');
+requireText(workflow, 'node scripts/verify-no-three-delivery.mjs', 'Android workflow');
 requireText(workflow, 'node scripts/measure-babylon-delivery-cost.mjs', 'Android workflow');
 for (const marker of [
   "grep -q 'android:appCategory=\"game\"'",
@@ -186,7 +186,7 @@ for (const marker of [
   'android-large-screen-resized.png',
   'android-large-screen-logcat.txt',
 ]) requireText(workflow, marker, 'P25-B Android 16 large-screen workflow');
-requireText(workflow, 'p21f3-webgpu-delivery.json', 'Android workflow');
+requireText(workflow, 'p27d9-no-three-delivery.json', 'Android workflow');
 requireText(workflow, 'p27d2-babylon-delivery.json', 'Android workflow');
 for (const marker of [
   'ironshade-vector-android-debug-qa',
@@ -323,8 +323,8 @@ for (const artifact of [
   'android-fast-logcat.txt',
   'android-fast-smoke.png',
   'android-fast-resume.png',
-  'android-p21f3-webgpu.json',
-  'p21f3-webgpu-delivery.json',
+  'android-babylon-webgpu.json',
+  'p27d9-no-three-delivery.json',
   'p27d2-babylon-delivery.json',
 ]) requireText(workflow, artifact, 'Android workflow artifact upload');
 
@@ -464,13 +464,13 @@ if (workflow.slice(fullGateStart).includes('needs: build-apk\n')) {
 console.log('ANDROID_FAST_SMOKE_CONTRACT_PASS entry=scripts/android-fast-smoke.sh defaultPush=phone+android16-large-screen repeatable=dedicated-dispatch settings=dedicated-dispatch chapter3=dedicated-full-regression extended=parallel-runtime fullGate=aggregated scheduled=weekly manualMode=full-or-fast browser=required productionBuild=required touch=required lifecycle=required babylon=webgl2+renderer-reentry+mission-reentry+resume largeScreen=portrait+live-resize+Babylon artifacts=required failFast=required');
 
 for (const marker of [
-  'P21F3_WEBGPU_DELIVERY_PASS',
-  'three.webgpu-',
-  'three.tsl-',
+  'P27D9_NO_THREE_DELIVERY_PASS',
+  'FORBIDDEN_THREE_PATTERNS',
+  'assets/codecs/basis',
   'webGpuRefineryRenderer-',
-  'incrementalCompressedBytes',
-  'compressedPercentOfApk',
-]) requireText(p21f3Delivery, marker, 'P21-F3 delivery measurement');
+  'node_modules/three',
+  'package-lock.json',
+]) requireText(p27d9Delivery, marker, 'P27-D9 no-Three delivery verification');
 
 for (const marker of [
   'P27D2_BABYLON_DELIVERY_PASS',

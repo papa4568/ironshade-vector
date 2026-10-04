@@ -2,7 +2,6 @@ import { copyFile, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises
 import { resolve } from 'node:path';
 
 const root = process.cwd();
-const threePackage = JSON.parse(await readFile(resolve(root, 'node_modules/three/package.json'), 'utf8'));
 const babylonCorePackage = JSON.parse(await readFile(resolve(root, 'node_modules/@babylonjs/core/package.json'), 'utf8'));
 const babylonKtx2Package = JSON.parse(await readFile(resolve(root, 'node_modules/@babylonjs/ktx2decoder/package.json'), 'utf8'));
 const babylonKtx2UmdPackage = JSON.parse(await readFile(resolve(root, 'node_modules/babylonjs-ktx2decoder/package.json'), 'utf8'));
@@ -21,30 +20,7 @@ async function copyMeasured(source, destination, name) {
   return { name, bytes: sourceStat.size };
 }
 
-const threeSourceDir = resolve(root, 'node_modules/three/examples/jsm/libs/basis');
-const threeTargetDir = resolve(root, 'public/assets/codecs/basis');
-const threeCodecFiles = ['basis_transcoder.js', 'basis_transcoder.wasm'];
-
-await rm(threeTargetDir, { recursive: true, force: true });
-await mkdir(threeTargetDir, { recursive: true });
-
-const threeFiles = [];
-for (const name of threeCodecFiles) {
-  threeFiles.push(await copyMeasured(
-    resolve(threeSourceDir, name),
-    resolve(threeTargetDir, name),
-    name,
-  ));
-}
-
-const threeTotalBytes = threeFiles.reduce((sum, file) => sum + file.bytes, 0);
-await writeFile(resolve(threeTargetDir, 'manifest.json'), `${JSON.stringify({
-  threeVersion: threePackage.version,
-  codec: 'basis-universal',
-  generated: true,
-  files: threeFiles,
-  totalBytes: threeTotalBytes,
-}, null, 2)}\n`, 'utf8');
+await rm(resolve(root, 'public/assets/codecs/basis'), { recursive: true, force: true });
 
 const babylonTargetDir = resolve(root, 'public/assets/codecs/babylon');
 await rm(babylonTargetDir, { recursive: true, force: true });
@@ -96,5 +72,5 @@ await writeFile(resolve(babylonTargetDir, 'manifest.json'), `${JSON.stringify({
 }, null, 2)}\n`, 'utf8');
 
 console.log(
-  `GRAPHICS_CODECS_READY three=${threePackage.version} threeFiles=${threeFiles.length} threeBytes=${threeTotalBytes} babylon=${babylonCorePackage.version} babylonFiles=${babylonFiles.length} babylonBytes=${babylonTotalBytes} meshopt=${meshoptimizerPackage.version}`,
+  `GRAPHICS_CODECS_READY babylon=${babylonCorePackage.version} babylonFiles=${babylonFiles.length} babylonBytes=${babylonTotalBytes} meshopt=${meshoptimizerPackage.version}`,
 );

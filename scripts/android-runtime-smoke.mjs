@@ -628,14 +628,14 @@ if (p21f1Only) {
     if (!state.fallback.startsWith('webgpu->webgl2:') || !state.fallbackReason) {
       throw new Error(`P21-F3 Android WebGL2 fallback telemetry is incomplete: ${JSON.stringify(state)}`);
     }
-    await waitFor(`document.querySelector('canvas')?.dataset.environmentVisual === 'authored-refinery'`, 'P21-F3 Android production WebGL2 fallback refinery', 45_000);
+    await waitFor(`document.querySelector('canvas')?.dataset.environmentVisual === 'authored-refinery'`, 'Babylon Android production WebGL2 fallback refinery', 45_000);
   } else {
-    throw new Error(`P21-F3 Android loaded an unexpected graphics path: ${JSON.stringify(state)}`);
+    throw new Error(`Babylon Android loaded an unexpected graphics path: ${JSON.stringify(state)}`);
   }
 
   const gpuMetrics = state.performanceReport?.categories?.gpu ?? {};
   const report = {
-    schema: 'p21-f3-webgpu-android-v1',
+    schema: 'babylon-webgpu-android-v1',
     capturedAt: new Date().toISOString(),
     webView: {
       userAgent: state.userAgent,
@@ -674,11 +674,11 @@ if (p21f1Only) {
       : [`android-webview-init-fallback:${state.fallbackReason || state.fallback || 'unknown'}`],
   };
   const { writeFile } = await import('node:fs/promises');
-  const reportPath = process.env.ANDROID_P21F3_REPORT ?? 'android-p21f3-webgpu.json';
+  const reportPath = process.env.ANDROID_BABYLON_WEBGPU_REPORT ?? 'android-babylon-webgpu.json';
   await writeFile(reportPath, JSON.stringify(report, null, 2));
 
   console.log(`ANDROID_P21F1_WEBGPU_PASS available=${state.webgpuAvailable} requested=webgpu loaded=${state.loaded} fallback=${state.fallback || 'none'} init=${state.init || 'not-started'} visual=${state.visual} assets=${state.assets || 'production-webgl2'} tsl=${state.tsl || 'fallback'} camera=${state.camera || 'production-webgl2'} input=${state.input || 'production-webgl2'}`);
-  console.log(`ANDROID_P21F3_WEBGPU_COMPAT_PASS chrome=${report.webView.chromeVersion || 'unknown'} navigatorGpu=${state.webgpuAvailable} production=${productionState.loaded || 'unknown'} requested=webgpu loaded=${state.loaded} initMs=${comparisonInitMs} fallback=${state.fallback || 'none'} reason=${state.fallbackReason || 'none'} frameMs=${state.renderFrameMs || 'unknown'} drawCallsP95=${report.webgpuComparison.drawCallsP95 ?? 'n/a'} trianglesP95=${report.webgpuComparison.trianglesP95 ?? 'n/a'} report=${reportPath}`);
+  console.log(`ANDROID_BABYLON_WEBGPU_COMPAT_PASS chrome=${report.webView.chromeVersion || 'unknown'} navigatorGpu=${state.webgpuAvailable} production=${productionState.loaded || 'unknown'} requested=webgpu loaded=${state.loaded} initMs=${comparisonInitMs} fallback=${state.fallback || 'none'} reason=${state.fallbackReason || 'none'} frameMs=${state.renderFrameMs || 'unknown'} drawCallsP95=${report.webgpuComparison.drawCallsP95 ?? 'n/a'} trianglesP95=${report.webgpuComparison.trianglesP95 ?? 'n/a'} report=${reportPath}`);
   session.close();
   await sleep(100);
   process.exit(0);

@@ -17,8 +17,6 @@ function assert(condition: unknown, message: string): asserts condition {
 
 const renderer = read('src/game/babylonCombatRenderer.ts');
 const ice = read('src/game/babylonIceMinePresentation.ts');
-const three = read('src/game/hardSciFiVisuals.ts');
-const threeRenderer = read('src/game/threeCombatRenderer.ts');
 const world = read('src/game/babylonWorldPresentation.ts');
 const browser = read('scripts/browser-runtime-smoke.mjs');
 const workflow = read('.github/workflows/browser-e2e.yml');
@@ -34,10 +32,6 @@ assert(
   'P27-C5 Babylon Ice Mine art identity must preserve the Three baseline.',
 );
 
-assert(
-  three.includes("'ice-mine': { silhouette: 'bore-crystals', material: 'frosted-industrial', lighting: 'ice-cyan', propSet: 'drill-service' }"),
-  'P27-C5 source baseline for Ice Mine identity changed without updating the Babylon port.',
-);
 
 assert(
   BABYLON_ICE_MINE_LIGHTING.id === 'ice-cyan'
@@ -51,10 +45,6 @@ assert(
   'P27-C5 Babylon Ice Mine lighting must retain the ice-cyan Three profile.',
 );
 
-assert(
-  threeRenderer.includes("'ice-mine': { id: 'ice-cyan', keyColor: 0xd2e7ef, rimColor: 0x7ec9df, emergencyColor: 0x76cde9, keyIntensity: 2.1, rimIntensity: 1.1, emergencyIntensity: 8, exposure: 1.08 }"),
-  'P27-C5 Three lighting baseline changed without updating the Babylon profile.',
-);
 
 const fullFracture = iceMineFractureBudget(false, 1);
 const mobileFracture = iceMineFractureBudget(true, 1);
