@@ -1,0 +1,27 @@
+name: P27 D9 Audit
+
+on:
+  push:
+    branches:
+      - p27-d9-babylon-cleanup
+    paths:
+      - '.github/workflows/p27-d9-audit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Enumerate remaining Three references
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== P27-D9 THREE REFERENCE AUDIT ==='
+          git grep -n -E "from ['\"]three|import\(['\"]three|node_modules/three|@types/three|threeCombatRenderer|webGpuRefineryRenderer|assets/codecs/basis|three-core-|three-webgl-|P21F3|p21f3" -- \
+            ':!docs/content-roadmap-archive.md' \
+            ':!docs/content-roadmap.md' || true
