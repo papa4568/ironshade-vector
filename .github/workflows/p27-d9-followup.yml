@@ -26,10 +26,19 @@ jobs:
           grep -q 'P27D9_NO_THREE_DELIVERY_PASS' scripts/verify-no-three-delivery.mjs
           grep -q 'node scripts/verify-no-three-delivery.mjs' .github/workflows/android-apk.yml
           ! grep -q 'measure-webgpu-delivery-cost' package.json
-      - name: Commit cleanup
+      - name: Preserve workflow patch and commit ordinary files
         run: |
+          cp .github/workflows/android-apk.yml /tmp/android-apk.yml
+          git restore .github/workflows/android-apk.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
           git commit -m 'Replace Three-era delivery checks with Babylon gates'
           git push origin HEAD:p27-d9-babylon-cleanup
+      - name: Upload patched Android workflow
+        uses: actions/upload-artifact@v7
+        with:
+          name: p27-d9-android-workflow-patch
+          path: /tmp/android-apk.yml
+          if-no-files-found: error
+          retention-days: 1
