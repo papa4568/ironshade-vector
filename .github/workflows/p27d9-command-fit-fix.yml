@@ -21,19 +21,28 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22.23.2
-      - name: Patch Command fit assertion
+      - name: Patch Command fit assertion and contract
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          path = Path('scripts/android-runtime-smoke.mjs')
-          text = path.read_text()
-          old = """  const overlap = !!rail && !!workspace && !(rail.right <= workspace.left || workspace.right <= rail.left || rail.bottom <= workspace.top || workspace.bottom <= rail.top);\n  const verticalOverflow = workspaceElement ? workspaceElement.scrollHeight - workspaceElement.clientHeight : null;\n  const scrollTop = workspaceElement?.scrollTop ?? null;\n  return { viewport, rail, workspace, overview, primaryCount: primaryButtons.length, offscreen, undersized, overlap, verticalOverflow, scrollTop, landscape: viewport.width > viewport.height };\n})()`);\nconst commandDoesNotFit = commandLayout.verticalOverflow === null\n  || commandLayout.verticalOverflow > 2\n  || commandLayout.scrollTop !== 0\n  || !commandLayout.overview\n  || commandLayout.overview.bottom > commandLayout.workspace.bottom + 2;\n"""
-          new = """  const overlap = !!rail && !!workspace && !(rail.right <= workspace.left || workspace.right <= rail.left || rail.bottom <= workspace.top || workspace.bottom <= rail.top);\n  const workspaceChildren = workspaceElement\n    ? [...workspaceElement.children].filter(visible).map(element => ({\n      label: element.className || element.tagName,\n      rect: bounds(element),\n    }))\n    : [];\n  const workspaceOffscreen = workspace && workspaceChildren\n    ? workspaceChildren.filter(item => item.rect && (\n      item.rect.left < workspace.left - 2\n      || item.rect.top < workspace.top - 2\n      || item.rect.right > workspace.right + 2\n      || item.rect.bottom > workspace.bottom + 2\n    )).map(item => item.label)\n    : [];\n  const verticalOverflow = workspaceElement ? workspaceElement.scrollHeight - workspaceElement.clientHeight : null;\n  const scrollTop = workspaceElement?.scrollTop ?? null;\n  return { viewport, rail, workspace, overview, primaryCount: primaryButtons.length, offscreen, undersized, overlap, workspaceOffscreen, verticalOverflow, scrollTop, landscape: viewport.width > viewport.height };\n})()`);\nconst commandDoesNotFit = commandLayout.verticalOverflow === null\n  || commandLayout.scrollTop !== 0\n  || commandLayout.workspaceOffscreen.length\n  || !commandLayout.overview\n  || commandLayout.overview.bottom > commandLayout.workspace.bottom + 2;\n"""
-          if text.count(old) != 1:
-              raise SystemExit(f'expected exactly one Command fit block, found {text.count(old)}')
-          path.write_text(text.replace(old, new))
+
+          smoke_path = Path('scripts/android-runtime-smoke.mjs')
+          smoke = smoke_path.read_text()
+          old_smoke = """  const overlap = !!rail && !!workspace && !(rail.right <= workspace.left || workspace.right <= rail.left || rail.bottom <= workspace.top || workspace.bottom <= rail.top);\n  const verticalOverflow = workspaceElement ? workspaceElement.scrollHeight - workspaceElement.clientHeight : null;\n  const scrollTop = workspaceElement?.scrollTop ?? null;\n  return { viewport, rail, workspace, overview, primaryCount: primaryButtons.length, offscreen, undersized, overlap, verticalOverflow, scrollTop, landscape: viewport.width > viewport.height };\n})()`);\nconst commandDoesNotFit = commandLayout.verticalOverflow === null\n  || commandLayout.verticalOverflow > 2\n  || commandLayout.scrollTop !== 0\n  || !commandLayout.overview\n  || commandLayout.overview.bottom > commandLayout.workspace.bottom + 2;\n"""
+          new_smoke = """  const overlap = !!rail && !!workspace && !(rail.right <= workspace.left || workspace.right <= rail.left || rail.bottom <= workspace.top || workspace.bottom <= rail.top);\n  const workspaceChildren = workspaceElement\n    ? [...workspaceElement.children].filter(visible).map(element => ({\n      label: element.className || element.tagName,\n      rect: bounds(element),\n    }))\n    : [];\n  const workspaceOffscreen = workspace && workspaceChildren\n    ? workspaceChildren.filter(item => item.rect && (\n      item.rect.left < workspace.left - 2\n      || item.rect.top < workspace.top - 2\n      || item.rect.right > workspace.right + 2\n      || item.rect.bottom > workspace.bottom + 2\n    )).map(item => item.label)\n    : [];\n  const verticalOverflow = workspaceElement ? workspaceElement.scrollHeight - workspaceElement.clientHeight : null;\n  const scrollTop = workspaceElement?.scrollTop ?? null;\n  return { viewport, rail, workspace, overview, primaryCount: primaryButtons.length, offscreen, undersized, overlap, workspaceOffscreen, verticalOverflow, scrollTop, landscape: viewport.width > viewport.height };\n})()`);\nconst commandDoesNotFit = commandLayout.verticalOverflow === null\n  || commandLayout.scrollTop !== 0\n  || commandLayout.workspaceOffscreen.length\n  || !commandLayout.overview\n  || commandLayout.overview.bottom > commandLayout.workspace.bottom + 2;\n"""
+          if smoke.count(old_smoke) != 1:
+              raise SystemExit(f'expected exactly one Command fit block, found {smoke.count(old_smoke)}')
+          smoke_path.write_text(smoke.replace(old_smoke, new_smoke))
+
+          ui_path = Path('tests/ui-readability.ts')
+          ui = ui_path.read_text()
+          old_ui = "androidSmoke.includes('verticalOverflow > 2')"
+          new_ui = "androidSmoke.includes('workspaceOffscreen') && androidSmoke.includes('item.rect.bottom > workspace.bottom + 2')"
+          if ui.count(old_ui) != 1:
+              raise SystemExit(f'expected exactly one Tactical Command fit contract, found {ui.count(old_ui)}')
+          ui_path.write_text(ui.replace(old_ui, new_ui))
           PY
           npm ci --no-audit --no-fund
           npm run test:android-fast-smoke
@@ -46,6 +55,6 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git rm .github/workflows/p27d9-command-fit-fix.yml
-          git add scripts/android-runtime-smoke.mjs
+          git add scripts/android-runtime-smoke.mjs tests/ui-readability.ts
           git commit -m 'Measure visible Command fit in Android smoke'
           git push origin HEAD:p27d9-clean
