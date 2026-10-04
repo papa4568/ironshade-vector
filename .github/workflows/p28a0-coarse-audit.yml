@@ -182,6 +182,9 @@ jobs:
           replace('tests/babylon-ice-mine.ts', 'const mobileFracture = iceMineFractureBudget(true, 1);', "const coarseFracture = iceMineFractureBudget(true, 1);\nconst reducedFracture = iceMineFractureBudget(true, 0.54);", 1)
           replace('tests/babylon-ice-mine.ts', "&& mobileFracture.shardBudget === 4\n    && mobileFracture.crackBudget === 2\n    && mobileFracture.detail === '4-shards+2-cracks+frost-pulse',\n  'P27-C5 Babylon fracture cues must preserve the Three desktop/mobile budgets.',", "&& coarseFracture.shardBudget === 8\n    && coarseFracture.crackBudget === 3\n    && coarseFracture.detail === '8-shards+3-cracks+frost-pulse'\n    && reducedFracture.shardBudget === 4\n    && reducedFracture.crackBudget === 2\n    && reducedFracture.detail === '4-shards+2-cracks+frost-pulse',\n  'P27-C5 Babylon fracture cues must retain flagship density for coarse input and reduce only under the adaptive VFX budget.',", 1)
 
+          replace('tests/babylon-solar-yard.ts', 'const mobile = solarYardRenderProfile(1, true);', 'const coarse = solarYardRenderProfile(1, true);', 1)
+          replace('tests/babylon-solar-yard.ts', "assert.equal(mobile.name, 'mobile');\nassert.equal(mobile.ceramicDeckInstances, 4);\nassert.equal(mobile.gantryCraneInstances, 2);\nassert.equal(mobile.sunPatchInstances, 2);", "assert.equal(coarse.name, 'full');\nassert.equal(coarse.ceramicDeckInstances, 6);\nassert.equal(coarse.trussFrameInstances, 5);\nassert.equal(coarse.radiatorTowerInstances, 4);\nassert.equal(coarse.gantryCraneInstances, 2);\nassert.equal(coarse.sunPatchInstances, 3);", 1)
+
           print('P28_A0_COARSE_QUALITY_CEILINGS_REMOVED')
           PY
           git diff --check
