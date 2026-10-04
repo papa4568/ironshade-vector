@@ -1,1 +1,1 @@
-P27-D7 release smoke correction retry 2 2026-10-03.
+P27-D7 corrected Android release smoke verification trigger 2026-10-03.
