@@ -1496,9 +1496,8 @@ if (fastSmoke) {
         if (interactionObserved) break;
       }
     }
-    const nearStartRefineryTarget = /^(grid-isolator-a|gravity-control-a|salvage-node-a)$/.test(state.targetId);
-    const direction = nearStartRefineryTarget && movementAttempt < 8 ? 'DOWN' : (state.direction || 'DOWN');
-    const duration = state.range > 700 ? 300 : state.range > 350 ? 220 : state.range > 160 ? 150 : 90;
+    const direction = state.direction || 'DOWN';
+    const duration = state.range > 700 ? 1_200 : state.range > 350 ? 850 : state.range > 160 ? 550 : 320;
     await fastMove(direction, 300 + movementAttempt, duration);
     if (movementAttempt % 6 === 5) {
       console.log(`ANDROID_FAST_INTERACTION_PROGRESS attempt=${movementAttempt + 1} target=${state.targetId || 'unknown'} direction=${direction} range=${state.range} action=${state.contextActionId || 'none'}`);
