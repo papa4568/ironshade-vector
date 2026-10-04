@@ -138,8 +138,8 @@ function markerAngle(
   return phase + index * Math.PI * 2 / Math.max(1, count) + motion;
 }
 
-export function babylonProtocolStatusEffectsMode(detailScale: number, coarse: boolean) {
-  const effectiveDetail = coarse ? Math.min(detailScale, 0.55) : detailScale;
+export function babylonProtocolStatusEffectsMode(detailScale: number, _coarse: boolean) {
+  const effectiveDetail = detailScale;
   return effectiveDetail < 0.58 ? 'reduced' as const : 'full' as const;
 }
 

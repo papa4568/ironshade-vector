@@ -66,8 +66,8 @@ assert.equal(babylonProtocolStatusEffectsMode(1, false), 'full');
 assert.equal(babylonProtocolStatusEffectsMode(0.55, false), 'reduced');
 assert.equal(
   babylonProtocolStatusEffectsMode(1, true),
-  'reduced',
-  'Phone/coarse mode must retain critical shapes while reducing secondary presentation cost.',
+  'full',
+  'Phone/coarse input alone must not lower protocol/status presentation quality.',
 );
 
 {

@@ -35,8 +35,8 @@ export const BABYLON_ICE_MINE_LIGHTING = Object.freeze({
   exposure: 1.08,
 });
 
-export function iceMineFractureBudget(coarse: boolean, vfxDensity: number) {
-  const reduced = coarse || vfxDensity < 0.55;
+export function iceMineFractureBudget(_coarse: boolean, vfxDensity: number) {
+  const reduced = vfxDensity < 0.55;
   return Object.freeze({
     shardBudget: reduced ? 4 : 8,
     crackBudget: reduced ? 2 : 3,
@@ -525,7 +525,7 @@ export class BabylonIceMinePresentation {
     const fracture = this.syncBrittleSupports(state, renderBudget);
     const machineCount = this.syncMachineryCues(state);
 
-    const frostDensity = this.coarse || renderBudget.vfxDensity < 0.55
+    const frostDensity = renderBudget.vfxDensity < 0.55
       ? 16
       : renderBudget.vfxDensity < 0.85
         ? 24
@@ -589,7 +589,7 @@ export class BabylonIceMinePresentation {
       * (fracture.state === 'collapsing' ? 1.20 : fracture.state === 'cracking' ? 1.05 : 0.72)
       * (activeBoss?.bossPhase === 2 ? 1.18 : 1);
 
-    const practicalCount = renderBudget.tierName === 'performance' || this.coarse ? 1 : 2;
+    const practicalCount = renderBudget.tierName === 'performance' ? 1 : 2;
     this.practicalLights.forEach((light, index) => {
       const enabled = index < practicalCount;
       light.setEnabled(enabled);
@@ -609,7 +609,7 @@ export class BabylonIceMinePresentation {
 
     const navigation = getMapNavigationPlan('ice-mine');
     const pbrCount = this.scene.materials.filter(item => item instanceof PBRMaterial).length;
-    const profileName = this.coarse ? 'mobile' : renderBudget.tierName;
+    const profileName = renderBudget.tierName;
 
     this.canvas.dataset.babylonEnvironmentState = 'ready';
     this.canvas.dataset.environmentVisual = 'procedural-ice-mine-babylon';

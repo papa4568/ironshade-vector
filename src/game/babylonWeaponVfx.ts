@@ -154,8 +154,8 @@ export function babylonWeaponImpactProfile(impactEvent: ImpactEvent | null): Bab
   return { language: 'industrial-spall', color: 0xc9a878, scale: 0.88, heavyScale };
 }
 
-export function babylonWeaponEffectsMode(detailScale: number, coarse: boolean) {
-  const effectiveDetail = coarse ? Math.min(detailScale, 0.55) : detailScale;
+export function babylonWeaponEffectsMode(detailScale: number, _coarse: boolean) {
+  const effectiveDetail = detailScale;
   return effectiveDetail < 0.58 ? 'reduced' as const : 'full' as const;
 }
 

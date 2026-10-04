@@ -124,7 +124,7 @@ export class BabylonOrbitalStationPresentation {
   constructor(
     private readonly scene: Scene,
     private readonly canvas: HTMLCanvasElement,
-    private readonly coarse: boolean,
+    _coarse: boolean,
   ) {
     const world = getWorldSize();
     const worldW = scaled(world.w);
@@ -337,7 +337,7 @@ export class BabylonOrbitalStationPresentation {
     this.readabilityLight.position.set(px, 2.6, pz);
     this.readabilityLight.intensity = 1.08 * (renderBudget.tierName === 'performance' ? 0.72 : 1);
 
-    const practicalCount = renderBudget.tierName === 'performance' || this.coarse ? 1 : 2;
+    const practicalCount = renderBudget.tierName === 'performance' ? 1 : 2;
     this.practicalLights.forEach((light, index) => {
       const enabled = index < practicalCount;
       light.setEnabled(enabled);

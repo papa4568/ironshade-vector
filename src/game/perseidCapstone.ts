@@ -72,10 +72,9 @@ export function perseidStageIdentity(contract: Contract) {
   return PERSEID_STAGES.find(item => item.stage === stage) ?? PERSEID_STAGES[0];
 }
 
-export function perseidRenderProfile(detailScale: number, coarse: boolean): PerseidRenderProfile {
+export function perseidRenderProfile(detailScale: number, _coarse: boolean): PerseidRenderProfile {
   const safeDetail = Number.isFinite(detailScale) ? Math.max(0.35, Math.min(1, detailScale)) : 0.5;
   if (safeDetail < 0.58) return { name: 'performance', ribPairs: 3, guideLights: 4, stageProps: 3, castStructuralShadows: false };
-  if (coarse) return { name: 'mobile', ribPairs: 4, guideLights: 6, stageProps: 4, castStructuralShadows: false };
   if (safeDetail < 0.88) return { name: 'balanced', ribPairs: 5, guideLights: 8, stageProps: 5, castStructuralShadows: false };
   return { name: 'full', ribPairs: 7, guideLights: 10, stageProps: 7, castStructuralShadows: true };
 }

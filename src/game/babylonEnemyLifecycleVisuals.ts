@@ -100,9 +100,9 @@ function activeStatusWeight(enemy: Enemy) {
 
 export function babylonEnemyLifecycleEffectsMode(
   detailScale: number,
-  coarse: boolean,
+  _coarse: boolean,
 ): BabylonEnemyLifecycleEffectsMode {
-  return coarse || detailScale < 0.72 ? 'reduced' : 'full';
+  return detailScale < 0.72 ? 'reduced' : 'full';
 }
 
 export class BabylonEnemyLifecycleVisuals {

@@ -45,7 +45,7 @@ assert.deepEqual(parallaxArrayRenderProfile(1, false), {
 });
 assert.equal(parallaxArrayRenderProfile(0.8, false).name, 'balanced');
 assert.equal(parallaxArrayRenderProfile(0.5, false).name, 'performance');
-assert.equal(parallaxArrayRenderProfile(1, true).name, 'mobile');
+assert.deepEqual(parallaxArrayRenderProfile(1, true), parallaxArrayRenderProfile(1, false), 'Coarse input alone must preserve the full Parallax Array profile.');
 assert.equal(parallaxReferenceState(0, 3), 'armed');
 assert.equal(parallaxReferenceState(1, 3), 'partial');
 assert.equal(parallaxReferenceState(3, 3), 'aligned');

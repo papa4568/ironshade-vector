@@ -143,7 +143,7 @@ export class BabylonSpinHabitatPresentation {
   constructor(
     private readonly scene: Scene,
     private readonly canvas: HTMLCanvasElement,
-    private readonly coarse: boolean,
+    _coarse: boolean,
   ) {
     const world = getWorldSize();
     const worldW = scaled(world.w);
@@ -197,7 +197,7 @@ export class BabylonSpinHabitatPresentation {
       const ring = MeshBuilder.CreateTorus('p27-c3-spin-ring-' + index, {
         diameter: radius * 2,
         thickness: 0.22,
-        tessellation: this.coarse ? 32 : 48,
+        tessellation: 48,
       }, scene);
       ring.parent = this.rotorRoot;
       ring.material = rim;
@@ -278,7 +278,7 @@ export class BabylonSpinHabitatPresentation {
       const band = MeshBuilder.CreateTorus('p27-c3-spin-ambient-band-' + index, {
         diameter: 6.2 + index * 4.4,
         thickness: 0.035,
-        tessellation: this.coarse ? 28 : 40,
+        tessellation: 40,
       }, scene);
       band.parent = this.ambientRoot;
       band.position.y = 0.01 + index * 0.006;
@@ -436,7 +436,7 @@ export class BabylonSpinHabitatPresentation {
     });
     this.ambientMaterial.alpha = ambientAlpha;
 
-    const reducedSpindownDetail = this.coarse || renderBudget.vfxDensity < 0.55;
+    const reducedSpindownDetail = renderBudget.vfxDensity < 0.55;
     const pulse = 0.5 + Math.sin(state.time * (4.2 + spindown.intensity * 2.6)) * 0.5;
     this.spindownRoot.setEnabled(spindown.active);
     this.spindownRoot.rotation.y = -this.rotationY * 0.32 + state.time * (0.08 + spindown.intensity * 0.16);
@@ -502,7 +502,7 @@ export class BabylonSpinHabitatPresentation {
       * spindownBoost
       * (bossPhaseTwo ? 1.22 : 1);
 
-    const practicalCount = renderBudget.tierName === 'performance' || this.coarse ? 1 : 2;
+    const practicalCount = renderBudget.tierName === 'performance' ? 1 : 2;
     this.practicalLights.forEach((light, index) => {
       const enabled = index < practicalCount;
       light.setEnabled(enabled);

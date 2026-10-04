@@ -2478,7 +2478,7 @@ async function p27A2BabylonBackendAudit() {
   }
 
 
-  const expectedPlayerLod = pointerProbe.coarse ? 2 : 1;
+  const expectedPlayerLod = state.renderTier === 'performance' ? 2 : 1;
   const expectedOperatorAsset = state.operatorClass && state.operatorClass !== 'generic'
     ? `operator-${state.operatorClass}-lod${expectedPlayerLod}`
     : `operator-field-suit-lod${expectedPlayerLod}`;

@@ -35,13 +35,10 @@ function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
-export function spinHabitatRenderProfile(detailScale: number, coarse: boolean): SpinHabitatRenderProfile {
+export function spinHabitatRenderProfile(detailScale: number, _coarse: boolean): SpinHabitatRenderProfile {
   const safeDetail = Number.isFinite(detailScale) ? clamp(detailScale, 0.35, 1) : 0.5;
   if (safeDetail < 0.62) {
     return { name: 'performance', assetDetailScale: 0.5, ringInstances: 4, spokeInstances: 4, serviceInstances: 2, movingShadows: false, proceduralRingSegments: 32 };
-  }
-  if (coarse) {
-    return { name: 'mobile', assetDetailScale: Math.min(safeDetail, 0.58), ringInstances: 4, spokeInstances: 4, serviceInstances: 2, movingShadows: false, proceduralRingSegments: 40 };
   }
   if (safeDetail < 0.9) {
     return { name: 'balanced', assetDetailScale: safeDetail, ringInstances: 4, spokeInstances: 4, serviceInstances: 2, movingShadows: false, proceduralRingSegments: 48 };

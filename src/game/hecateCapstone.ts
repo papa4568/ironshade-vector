@@ -72,10 +72,9 @@ export function hecateStageIdentity(contract: Contract) {
   return HECATE_STAGES.find(item => item.stage === stage) ?? HECATE_STAGES[0];
 }
 
-export function hecateRenderProfile(detailScale: number, coarse: boolean): HecateRenderProfile {
+export function hecateRenderProfile(detailScale: number, _coarse: boolean): HecateRenderProfile {
   const safeDetail = Number.isFinite(detailScale) ? Math.max(0.35, Math.min(1, detailScale)) : 0.5;
   if (safeDetail < 0.58) return { name: 'performance', trussPairs: 3, cutterDatums: 4, stageProps: 3, castStructuralShadows: false };
-  if (coarse) return { name: 'mobile', trussPairs: 4, cutterDatums: 6, stageProps: 5, castStructuralShadows: false };
   if (safeDetail < 0.88) return { name: 'balanced', trussPairs: 5, cutterDatums: 8, stageProps: 6, castStructuralShadows: false };
   return { name: 'full', trussPairs: 7, cutterDatums: 10, stageProps: 8, castStructuralShadows: true };
 }

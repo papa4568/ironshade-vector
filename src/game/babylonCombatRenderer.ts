@@ -459,7 +459,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         webGpuDeviceLost = webGpuEngine._device.lost;
       } else {
         telemetryCanvas.dataset.babylonBackendInitStage = 'webgl2-init';
-        const webGlEngine = new Engine(renderCanvas, !coarse, {
+        const webGlEngine = new Engine(renderCanvas, true, {
           alpha: false,
           powerPreference: 'high-performance',
           preserveDrawingBuffer: false,
@@ -830,7 +830,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
 
 
   private ensurePlayerPresentation(state: SimState, detailScale: number) {
-    const assetDetailScale = this.coarse ? Math.min(detailScale, 0.55) : detailScale;
+    const assetDetailScale = detailScale;
     const operatorFamily = state.build.operatorClass
       ? OPERATOR_CLASS_ASSET_FAMILIES[state.build.operatorClass]
       : OPERATOR_ASSET_FAMILY;
@@ -1322,7 +1322,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   }
 
   private ensureEnemyCatalog(detailScale: number, preloadConcurrency: 1 | 2 | 3) {
-    const assetDetailScale = this.coarse ? Math.min(detailScale, 0.55) : detailScale;
+    const assetDetailScale = detailScale;
     const selected = BABYLON_ENEMY_ROLES.map(role => {
       const spec = selectGraphicsAssetSpec(ENEMY_ASSET_FAMILIES[role], assetDetailScale);
       if (!spec) throw new Error(`No authored Babylon enemy asset available for ${role}`);
@@ -1514,7 +1514,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
 
   private ensureEnemyAsset(visual: BabylonEnemyVisual, enemy: Enemy, detailScale: number) {
     if (enemy.role === 'boss') return;
-    const assetDetailScale = this.coarse ? Math.min(detailScale, 0.55) : detailScale;
+    const assetDetailScale = detailScale;
     const spec = selectGraphicsAssetSpec(ENEMY_ASSET_FAMILIES[enemy.role], assetDetailScale);
     if (!spec) return;
     const signature = `${enemy.role}:${spec.id}`;
@@ -2142,7 +2142,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   }
 
   private resize(width: number, height: number, quality: number, budget: RenderBudgetSnapshot) {
-    const qualityCap = quality < 0.55 ? 1.12 : this.coarse || quality < 0.8 ? 1.35 : 1.8;
+    const qualityCap = quality < 0.55 ? 1.12 : quality < 0.8 ? 1.35 : 1.8;
     const maxRatio = Math.max(0.76, qualityCap * budget.pixelRatioScale);
     const nextRatio = Math.min(maxRatio, window.devicePixelRatio || 1);
     const nextWidth = Math.max(1, width);

@@ -71,7 +71,7 @@ function syncReadOnly(
 
 assert.equal(babylonEnemyLifecycleEffectsMode(1, false), 'full');
 assert.equal(babylonEnemyLifecycleEffectsMode(0.55, false), 'reduced');
-assert.equal(babylonEnemyLifecycleEffectsMode(1, true), 'reduced');
+assert.equal(babylonEnemyLifecycleEffectsMode(1, true), 'full');
 
 {
   const { state, enemy } = isolatedState();
@@ -145,7 +145,7 @@ assert.equal(babylonEnemyLifecycleEffectsMode(1, true), 'reduced');
   const visuals = new BabylonEnemyLifecycleVisuals(scene, canvas, true);
   try {
     syncReadOnly(visuals, state, null, 1, true);
-    assert.equal(canvas.dataset.babylonEnemyLifecycleEffectsMode, 'reduced');
+    assert.equal(canvas.dataset.babylonEnemyLifecycleEffectsMode, 'full');
     assert.match(canvas.dataset.babylonEnemyReadability ?? '', /mobile-lod2/);
     assert.equal(scene.getMeshByName('p27-b10-health-back-' + enemy.id)?.isEnabled(), false, 'Pristine untargeted common enemies must shed redundant mobile bars.');
 

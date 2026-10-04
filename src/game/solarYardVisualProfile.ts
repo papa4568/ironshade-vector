@@ -22,7 +22,7 @@ function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
-export function solarYardRenderProfile(detailScale: number, coarse: boolean): SolarYardRenderProfile {
+export function solarYardRenderProfile(detailScale: number, _coarse: boolean): SolarYardRenderProfile {
   const safeDetail = Number.isFinite(detailScale) ? clamp(detailScale, 0.35, 1) : 0.5;
   if (safeDetail < 0.62) {
     return {
@@ -40,25 +40,6 @@ export function solarYardRenderProfile(detailScale: number, coarse: boolean): So
       shadePatchInstances: 1,
       sunPatchInstances: 1,
       fallbackPanelInstances: 3,
-      environmentShadows: false,
-    };
-  }
-  if (coarse) {
-    return {
-      name: 'mobile',
-      assetDetailScale: Math.min(safeDetail, 0.58),
-      ceramicDeckInstances: 4,
-      trussFrameInstances: 3,
-      radiatorTowerInstances: 2,
-      reflectorPylonInstances: 3,
-      sinterForgeInstances: 1,
-      printerSpindleInstances: 2,
-      feedstockPressInstances: 1,
-      transferRailInstances: 2,
-      gantryCraneInstances: 2,
-      shadePatchInstances: 2,
-      sunPatchInstances: 2,
-      fallbackPanelInstances: 5,
       environmentShadows: false,
     };
   }

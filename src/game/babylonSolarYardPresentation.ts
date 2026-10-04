@@ -391,7 +391,7 @@ export class BabylonSolarYardPresentation {
     this.readabilityLight.position.set(px - 0.6, 2.7, pz + 0.7); this.readabilityLight.intensity = (renderBudget.tierName === 'performance' ? 3.8 : 5.6) * tierScale;
     this.emergencyLight.position.set(px + 1.9, 3.0, pz - 1.7);
     this.emergencyLight.intensity = lighting.emergencyIntensity * (renderBudget.tierName === 'performance' ? 0.72 : 1) * (thermal.surge || radiatorEvent || craneEvent ? 1.18 : 0.68) * (activeBoss?.bossPhase === 2 ? 1.12 : 1);
-    const practicalCount = renderBudget.tierName === 'performance' || this.coarse ? 1 : 2;
+    const practicalCount = renderBudget.tierName === 'performance' ? 1 : 2;
     this.practicalLights.forEach((light, index) => { const enabled = index < practicalCount; light.setEnabled(enabled); light.intensity = enabled ? (index === 0 ? 5.8 : 4.8) * tierScale : 0; });
     const routePulse = 0.86 + Math.sin(state.time * 3.8) * 0.14;
     this.routeMaterials[0].emissiveColor = colorFromHex(0xef8f46).scale(0.16 * routePulse);

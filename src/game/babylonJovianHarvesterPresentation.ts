@@ -517,7 +517,7 @@ export class BabylonJovianHarvesterPresentation {
       unstablePressure,
       damagedGrid,
     );
-    const reducedStormDetail = this.coarse || renderBudget.vfxDensity < 0.55;
+    const reducedStormDetail = renderBudget.vfxDensity < 0.55;
     const sweepCount = reducedStormDetail ? 2 : 4;
     const bandCount = reducedStormDetail ? 2 : 3;
     const pulse = 0.5 + Math.sin(state.time * (2.6 + storm.intensity * 2.8)) * 0.5;
@@ -561,7 +561,7 @@ export class BabylonJovianHarvesterPresentation {
     this.pressureReliefPulse.scaling.set(reliefScale, reliefScale, reliefScale);
     this.pressureReliefPulse.rotation.y = state.time * (0.18 + storm.intensity * 0.44);
 
-    const atmosphereDensity = this.coarse || renderBudget.vfxDensity < 0.55
+    const atmosphereDensity = renderBudget.vfxDensity < 0.55
       ? 'reduced'
       : renderBudget.vfxDensity < 0.85
         ? 'balanced'
@@ -647,7 +647,7 @@ export class BabylonJovianHarvesterPresentation {
       * (0.62 + storm.intensity * 0.52)
       * (activeBoss?.bossPhase === 2 ? 1.20 : 1);
 
-    const practicalCount = renderBudget.tierName === 'performance' || this.coarse ? 1 : 2;
+    const practicalCount = renderBudget.tierName === 'performance' ? 1 : 2;
     this.practicalLights.forEach((light, index) => {
       const enabled = index < practicalCount;
       light.setEnabled(enabled);

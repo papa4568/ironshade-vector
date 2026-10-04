@@ -101,8 +101,8 @@ export function babylonMobilityVfxProfile(operatorClass: OperatorClassId | null)
   return operatorClass ? MOBILITY_PROFILES[operatorClass] : null;
 }
 
-export function babylonAbilityEffectsMode(detailScale: number, coarse: boolean) {
-  const effectiveDetail = coarse ? Math.min(detailScale, 0.55) : detailScale;
+export function babylonAbilityEffectsMode(detailScale: number, _coarse: boolean) {
+  const effectiveDetail = detailScale;
   return effectiveDetail < 0.58 ? 'reduced' as const : 'full' as const;
 }
 

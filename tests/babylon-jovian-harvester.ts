@@ -50,17 +50,22 @@ assert(
 
 
 const fullProfile = jovianHarvesterRenderProfile(1, false);
-const mobileProfile = jovianHarvesterRenderProfile(1, true);
+const coarseProfile = jovianHarvesterRenderProfile(1, true);
+const performanceProfile = jovianHarvesterRenderProfile(0.55, true);
 assert(
   fullProfile.deckInstances === 6
     && fullProfile.towerInstances === 5
     && fullProfile.bridgeInstances === 4
     && fullProfile.ballastInstances === 4
-    && mobileProfile.deckInstances === 4
-    && mobileProfile.towerInstances === 5
-    && mobileProfile.bridgeInstances === 2
-    && mobileProfile.ballastInstances === 2,
-  'P27-C4 Babylon environment must preserve the shared Jovian adaptive structure budget.',
+    && coarseProfile.deckInstances === 6
+    && coarseProfile.towerInstances === 5
+    && coarseProfile.bridgeInstances === 4
+    && coarseProfile.ballastInstances === 4
+    && performanceProfile.name === 'performance'
+    && performanceProfile.deckInstances === 4
+    && performanceProfile.bridgeInstances === 2
+    && performanceProfile.ballastInstances === 2,
+  'P27-C4 Babylon environment must preserve flagship structure density for coarse input and degrade only with the adaptive render budget.',
 );
 
 const nominalStorm = jovianHarvesterStormState([1, 0.96], ['normal', 'normal'], false, false, false);

@@ -44,8 +44,7 @@ export type LatticeAnnexRenderProfile = {
   massBandInstances: number;
 };
 
-export function latticeAnnexRenderProfile(detailScale: number, coarse: boolean): LatticeAnnexRenderProfile {
-  if (coarse) return { name: 'mobile', referencePylonInstances: 7, surveyFrameInstances: 4, metrologyPlinthInstances: 2, sampleCradleInstances: 2, calibrationRailInstances: 2, massBandInstances: 2 };
+export function latticeAnnexRenderProfile(detailScale: number, _coarse: boolean): LatticeAnnexRenderProfile {
   if (detailScale < 0.62) return { name: 'performance', referencePylonInstances: 5, surveyFrameInstances: 3, metrologyPlinthInstances: 2, sampleCradleInstances: 1, calibrationRailInstances: 2, massBandInstances: 1 };
   if (detailScale < 0.9) return { name: 'balanced', referencePylonInstances: 7, surveyFrameInstances: 5, metrologyPlinthInstances: 3, sampleCradleInstances: 2, calibrationRailInstances: 3, massBandInstances: 2 };
   return { name: 'full', referencePylonInstances: 9, surveyFrameInstances: 6, metrologyPlinthInstances: 3, sampleCradleInstances: 3, calibrationRailInstances: 3, massBandInstances: 3 };
@@ -398,7 +397,7 @@ export class BabylonLatticeAnnexPresentation {
     this.readabilityLight.position.set(px - 0.5, 2.8, pz + 0.7); this.readabilityLight.intensity = (renderBudget.tierName === 'performance' ? 3.6 : 5.2) * tierScale;
     this.emergencyLight.position.set(px + 1.7, 3.0, pz - 1.5);
     this.emergencyLight.intensity = lighting.emergencyIntensity * (renderBudget.tierName === 'performance' ? 0.72 : 1) * (hazardMode === 'nominal' ? 0.58 : 1.14) * (activeBoss?.bossPhase === 2 ? 1.10 : 1);
-    const practicalCount = renderBudget.tierName === 'performance' || this.coarse ? 1 : 2;
+    const practicalCount = renderBudget.tierName === 'performance' ? 1 : 2;
     this.practicalLights.forEach((light, index) => { const enabled = index < practicalCount; light.setEnabled(enabled); light.intensity = enabled ? (index === 0 ? 5.2 : 4.4) * tierScale : 0; });
     const routePulse = 0.86 + Math.sin(state.time * 3.4) * 0.14;
     this.routeMaterials[0].emissiveColor = colorFromHex(0x88b8ad).scale(0.15 * routePulse);

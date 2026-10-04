@@ -35,7 +35,7 @@ assert.deepEqual(
 assert.equal(orphelineRenderProfile(1, false).name, 'full');
 assert.equal(orphelineRenderProfile(0.8, false).name, 'balanced');
 assert.equal(orphelineRenderProfile(0.5, false).name, 'performance');
-assert.equal(orphelineRenderProfile(1, true).name, 'mobile');
+assert.deepEqual(orphelineRenderProfile(1, true), orphelineRenderProfile(1, false), 'Coarse input alone must preserve the full Orpheline capstone profile.');
 
 assert.equal(orphelineInteractableCue('doorControl'), 'concealment-lock');
 assert.equal(orphelineInteractableCue('gravityControl'), 'spin-authority');

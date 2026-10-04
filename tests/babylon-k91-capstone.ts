@@ -33,7 +33,7 @@ assert.deepEqual(
 assert.equal(k91RenderProfile(1, false).name, 'full');
 assert.equal(k91RenderProfile(0.8, false).name, 'balanced');
 assert.equal(k91RenderProfile(0.5, false).name, 'performance');
-assert.equal(k91RenderProfile(1, true).name, 'mobile');
+assert.deepEqual(k91RenderProfile(1, true), k91RenderProfile(1, false), 'Coarse input alone must preserve the full K91 capstone profile.');
 
 assert.equal(k91InteractableCue('doorControl'), 'capture-lock');
 assert.equal(k91InteractableCue('gravityControl'), 'mass-trim');

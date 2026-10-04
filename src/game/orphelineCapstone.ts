@@ -72,10 +72,9 @@ export function orphelineStageIdentity(contract: Contract) {
   return ORPHELINE_STAGES.find(item => item.stage === stage) ?? ORPHELINE_STAGES[0];
 }
 
-export function orphelineRenderProfile(detailScale: number, coarse: boolean): OrphelineRenderProfile {
+export function orphelineRenderProfile(detailScale: number, _coarse: boolean): OrphelineRenderProfile {
   const safeDetail = Number.isFinite(detailScale) ? Math.max(0.35, Math.min(1, detailScale)) : 0.5;
   if (safeDetail < 0.58) return { name: 'performance', rockRibs: 3, utilityLights: 4, stageProps: 3, castStructuralShadows: false };
-  if (coarse) return { name: 'mobile', rockRibs: 4, utilityLights: 6, stageProps: 5, castStructuralShadows: false };
   if (safeDetail < 0.88) return { name: 'balanced', rockRibs: 5, utilityLights: 8, stageProps: 6, castStructuralShadows: false };
   return { name: 'full', rockRibs: 7, utilityLights: 10, stageProps: 8, castStructuralShadows: true };
 }

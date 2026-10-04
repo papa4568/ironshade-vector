@@ -127,7 +127,6 @@ function lerp(from: number, to: number, amount: number) {
 export class BabylonRefineryWorldPresentation {
   private readonly scene: Scene;
   private readonly canvas: HTMLCanvasElement;
-  private readonly coarse: boolean;
   private readonly objectVisuals = new Map<string, WorldObjectVisual>();
   private readonly interactableCues = new Map<string, WorldCueVisual>();
   private readonly authoredInteractables = new Map<string, AuthoredInteractableVisual>();
@@ -145,10 +144,9 @@ export class BabylonRefineryWorldPresentation {
   private active = false;
   private disposed = false;
 
-  constructor(scene: Scene, canvas: HTMLCanvasElement, coarse: boolean) {
+  constructor(scene: Scene, canvas: HTMLCanvasElement, _coarse: boolean) {
     this.scene = scene;
     this.canvas = canvas;
-    this.coarse = coarse;
     canvas.dataset.babylonWorldState = 'idle';
     canvas.dataset.interactableVisual = 'procedural-loading-babylon';
     canvas.dataset.lootVisual = 'procedural-ready-babylon';
@@ -341,7 +339,7 @@ export class BabylonRefineryWorldPresentation {
         ? INTERACTABLE_ASSET_FAMILIES.control
         : null;
     if (!family) return;
-    const spec = selectGraphicsAssetSpec(family, this.coarse ? Math.min(detailScale, 0.55) : detailScale);
+    const spec = selectGraphicsAssetSpec(family, detailScale);
     if (!spec) return;
     this.interactableRequests.add(object.id);
     const generation = this.loadGeneration;
@@ -646,7 +644,7 @@ export class BabylonRefineryWorldPresentation {
   private async loadGroundLoot(visual: GroundLootVisual, detailScale: number, index: number) {
     if (visual.assetRequested) return;
     visual.assetRequested = true;
-    const spec = selectGraphicsAssetSpec(PICKUP_ASSET_FAMILY, this.coarse ? Math.min(detailScale, 0.55) : detailScale);
+    const spec = selectGraphicsAssetSpec(PICKUP_ASSET_FAMILY, detailScale);
     if (!spec) return;
     const generation = this.loadGeneration;
     try {

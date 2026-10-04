@@ -72,10 +72,9 @@ export function k91StageIdentity(contract: Contract) {
   return K91_STAGES.find(item => item.stage === stage) ?? K91_STAGES[0];
 }
 
-export function k91RenderProfile(detailScale: number, coarse: boolean): K91RenderProfile {
+export function k91RenderProfile(detailScale: number, _coarse: boolean): K91RenderProfile {
   const safeDetail = Number.isFinite(detailScale) ? Math.max(0.35, Math.min(1, detailScale)) : 0.5;
   if (safeDetail < 0.58) return { name: 'performance', railPairs: 3, datumLights: 4, stageProps: 3, castStructuralShadows: false };
-  if (coarse) return { name: 'mobile', railPairs: 4, datumLights: 6, stageProps: 5, castStructuralShadows: false };
   if (safeDetail < 0.88) return { name: 'balanced', railPairs: 5, datumLights: 8, stageProps: 6, castStructuralShadows: false };
   return { name: 'full', railPairs: 6, datumLights: 10, stageProps: 8, castStructuralShadows: true };
 }

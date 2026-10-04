@@ -43,8 +43,7 @@ export type MomentumExchangeRenderProfile = {
   impulseBandInstances: number;
 };
 
-export function momentumExchangeRenderProfile(detailScale: number, coarse: boolean): MomentumExchangeRenderProfile {
-  if (coarse) return { name: 'mobile', flywheelInstances: 3, serviceFrameInstances: 4, transferRailInstances: 3, captureCradleInstances: 2, impulseBandInstances: 2 };
+export function momentumExchangeRenderProfile(detailScale: number, _coarse: boolean): MomentumExchangeRenderProfile {
   if (detailScale < 0.62) return { name: 'performance', flywheelInstances: 3, serviceFrameInstances: 3, transferRailInstances: 2, captureCradleInstances: 2, impulseBandInstances: 1 };
   if (detailScale < 0.9) return { name: 'balanced', flywheelInstances: 3, serviceFrameInstances: 5, transferRailInstances: 3, captureCradleInstances: 2, impulseBandInstances: 2 };
   return { name: 'full', flywheelInstances: 3, serviceFrameInstances: 6, transferRailInstances: 4, captureCradleInstances: 3, impulseBandInstances: 3 };
@@ -447,7 +446,7 @@ export class BabylonMomentumExchangePresentation {
     this.readabilityLight.intensity = (renderBudget.tierName === 'performance' ? 3.7 : 5.3) * tierScale;
     this.emergencyLight.position.set(px + 1.6, 3.0, pz - 1.4);
     this.emergencyLight.intensity = lighting.emergencyIntensity * (renderBudget.tierName === 'performance' ? 0.72 : 1) * (hazardMode === 'nominal' ? 0.54 : 1.16) * (activeBoss?.bossPhase === 2 ? 1.10 : 1);
-    const practicalCount = renderBudget.tierName === 'performance' || this.coarse ? 1 : 2;
+    const practicalCount = renderBudget.tierName === 'performance' ? 1 : 2;
     this.practicalLights.forEach((light, index) => {
       const enabled = index < practicalCount;
       light.setEnabled(enabled);

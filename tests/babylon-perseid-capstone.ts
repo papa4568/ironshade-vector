@@ -33,7 +33,7 @@ assert.deepEqual(
 assert.equal(perseidRenderProfile(1, false).name, 'full');
 assert.equal(perseidRenderProfile(0.8, false).name, 'balanced');
 assert.equal(perseidRenderProfile(0.5, false).name, 'performance');
-assert.equal(perseidRenderProfile(1, true).name, 'mobile');
+assert.deepEqual(perseidRenderProfile(1, true), perseidRenderProfile(1, false), 'Coarse input alone must preserve the full Perseid capstone profile.');
 
 assert.equal(perseidInteractableCue('doorControl'), 'pressure-lock');
 assert.equal(perseidInteractableCue('gravityControl'), 'drum-stabilizer');

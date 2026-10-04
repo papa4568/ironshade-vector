@@ -35,7 +35,7 @@ assert.deepEqual(
 assert.equal(hecateRenderProfile(1, false).name, 'full');
 assert.equal(hecateRenderProfile(0.8, false).name, 'balanced');
 assert.equal(hecateRenderProfile(0.5, false).name, 'performance');
-assert.equal(hecateRenderProfile(1, true).name, 'mobile');
+assert.deepEqual(hecateRenderProfile(1, true), hecateRenderProfile(1, false), 'Coarse input alone must preserve the full Hecate capstone profile.');
 
 assert.equal(hecateInteractableCue('doorControl'), 'yard-clamp-lock');
 assert.equal(hecateInteractableCue('gravityControl'), 'crane-authority');

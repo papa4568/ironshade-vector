@@ -32,7 +32,7 @@ assert.deepEqual(solarYardThermalState(12, true), { surge: false, mode: 'hard-su
 assert.deepEqual(solarYardThermalState(8, false), { surge: false, mode: 'hard-sun', protection: 'shutters-open' });
 
 const full = solarYardRenderProfile(1, false);
-const mobile = solarYardRenderProfile(1, true);
+const coarse = solarYardRenderProfile(1, true);
 const performance = solarYardRenderProfile(0.5, false);
 assert.equal(full.name, 'full');
 assert.equal(full.ceramicDeckInstances, 6);
@@ -40,10 +40,12 @@ assert.equal(full.trussFrameInstances, 5);
 assert.equal(full.radiatorTowerInstances, 4);
 assert.equal(full.gantryCraneInstances, 2);
 assert.equal(full.sunPatchInstances, 3);
-assert.equal(mobile.name, 'mobile');
-assert.equal(mobile.ceramicDeckInstances, 4);
-assert.equal(mobile.gantryCraneInstances, 2);
-assert.equal(mobile.sunPatchInstances, 2);
+assert.equal(coarse.name, 'full');
+assert.equal(coarse.ceramicDeckInstances, 6);
+assert.equal(coarse.trussFrameInstances, 5);
+assert.equal(coarse.radiatorTowerInstances, 4);
+assert.equal(coarse.gantryCraneInstances, 2);
+assert.equal(coarse.sunPatchInstances, 3);
 assert.equal(performance.name, 'performance');
 assert.equal(performance.gantryCraneInstances, 1);
 assert.equal(performance.sunPatchInstances, 1);

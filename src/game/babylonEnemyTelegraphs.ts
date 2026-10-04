@@ -74,8 +74,8 @@ function normalizedDirection(x: number, y: number) {
   return length > 0.001 ? { x: x / length, y: y / length } : { x: 1, y: 0 };
 }
 
-export function babylonEnemyTelegraphEffectsMode(detailScale: number, coarse: boolean) {
-  const effectiveDetail = coarse ? Math.min(detailScale, 0.55) : detailScale;
+export function babylonEnemyTelegraphEffectsMode(detailScale: number, _coarse: boolean) {
+  const effectiveDetail = detailScale;
   return effectiveDetail < 0.58 ? 'reduced' as const : 'full' as const;
 }
 

@@ -69,7 +69,7 @@ assert(
 
 assert.equal(babylonWeaponEffectsMode(1, false), 'full', 'Desktop/high-detail mode should keep secondary impact sparks.');
 assert.equal(babylonWeaponEffectsMode(0.55, false), 'reduced', 'Low detail should suppress secondary weapon VFX first.');
-assert.equal(babylonWeaponEffectsMode(1, true), 'reduced', 'Coarse/mobile presentation should keep primary cues while reducing secondary sparks.');
+assert.equal(babylonWeaponEffectsMode(1, true), 'full', 'Coarse/mobile input alone must not reduce weapon effects; measured/explicit quality controls that budget.');
 
 function liveFamilySnapshot(operatorClass: OperatorClassId, expectedWeapon: WeaponId) {
   const build: CombatBuild = { ...neutralCombatBuild, operatorClass };

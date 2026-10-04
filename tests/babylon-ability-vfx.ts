@@ -178,7 +178,7 @@ assert.equal(mobilityLanguages.size, 3, 'Each class needs a distinct Babylon mob
 
 assert.equal(babylonAbilityEffectsMode(1, false), 'full');
 assert.equal(babylonAbilityEffectsMode(0.55, false), 'reduced');
-assert.equal(babylonAbilityEffectsMode(1, true), 'reduced');
+assert.equal(babylonAbilityEffectsMode(1, true), 'full');
 
 {
   const state = createSimulation(classBuild('systems'));

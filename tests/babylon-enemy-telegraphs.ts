@@ -97,8 +97,8 @@ assert.equal(babylonEnemyTelegraphEffectsMode(1, false), 'full');
 assert.equal(babylonEnemyTelegraphEffectsMode(0.55, false), 'reduced');
 assert.equal(
   babylonEnemyTelegraphEffectsMode(1, true),
-  'reduced',
-  'Phone/coarse mode should reduce secondary cost without removing attack tells.',
+  'full',
+  'Phone/coarse input alone must not lower telegraph presentation quality.',
 );
 
 {
@@ -143,7 +143,7 @@ assert.equal(
   const telegraphs = new BabylonEnemyTelegraphs(scene, canvas, true);
   try {
     syncReadOnly(telegraphs, state, 1);
-    assert.equal(canvas.dataset.babylonEnemyTelegraphEffectsMode, 'reduced');
+    assert.equal(canvas.dataset.babylonEnemyTelegraphEffectsMode, 'full');
     assert.equal(canvas.dataset.babylonEnemyTelegraphModes, 'elite-bracket');
     assert.equal(scene.getMeshByName('p27-b8-telegraph-side-a-' + enemy.id)?.isEnabled(), true);
     assert.equal(scene.getMeshByName('p27-b8-telegraph-side-b-' + enemy.id)?.isEnabled(), true);
@@ -173,7 +173,7 @@ assert.equal(
   const telegraphs = new BabylonEnemyTelegraphs(scene, canvas, true);
   try {
     syncReadOnly(telegraphs, state, 1);
-    assert.equal(canvas.dataset.babylonEnemyTelegraphEffectsMode, 'reduced');
+    assert.equal(canvas.dataset.babylonEnemyTelegraphEffectsMode, 'full');
     assert.equal(canvas.dataset.babylonBossPatternCue, 'coilFan:boss-fan');
     assert.equal(scene.getMeshByName('p27-b8-telegraph-lane-' + boss.id)?.isEnabled(), true);
     assert.equal(scene.getMeshByName('p27-b8-telegraph-side-a-' + boss.id)?.isEnabled(), true);

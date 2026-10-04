@@ -42,8 +42,7 @@ export type ParallaxArrayRenderProfile = {
   shearInstances: number;
 };
 
-export function parallaxArrayRenderProfile(detailScale: number, coarse: boolean): ParallaxArrayRenderProfile {
-  if (coarse) return { name: 'mobile', frameInstances: 3, carriageInstances: 2, anchorInstances: 5, shearInstances: 2 };
+export function parallaxArrayRenderProfile(detailScale: number, _coarse: boolean): ParallaxArrayRenderProfile {
   if (detailScale < 0.62) return { name: 'performance', frameInstances: 2, carriageInstances: 2, anchorInstances: 4, shearInstances: 1 };
   if (detailScale < 0.9) return { name: 'balanced', frameInstances: 3, carriageInstances: 3, anchorInstances: 6, shearInstances: 2 };
   return { name: 'full', frameInstances: 3, carriageInstances: 3, anchorInstances: 8, shearInstances: 3 };
@@ -452,7 +451,7 @@ export class BabylonParallaxArrayPresentation {
     this.emergencyLight.intensity = lighting.emergencyIntensity * (renderBudget.tierName === 'performance' ? 0.72 : 1)
       * (hazardMode === 'nominal' ? 0.46 : hazardMode === 'gravity-split' ? 0.72 : 1.16)
       * (activeBoss?.bossPhase === 2 ? 1.10 : 1);
-    const practicalCount = renderBudget.tierName === 'performance' || this.coarse ? 1 : 2;
+    const practicalCount = renderBudget.tierName === 'performance' ? 1 : 2;
     this.practicalLights.forEach((light, index) => {
       const enabled = index < practicalCount;
       light.setEnabled(enabled);

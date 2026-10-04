@@ -43,8 +43,7 @@ export type CryoReserveRenderProfile = {
   plumeInstances: number;
 };
 
-export function cryoReserveRenderProfile(detailScale: number, coarse: boolean): CryoReserveRenderProfile {
-  if (coarse) return { name: 'mobile', tankInstances: 7, galleryFrameInstances: 4, pipeRunInstances: 3, saddleInstances: 3, plumeInstances: 2 };
+export function cryoReserveRenderProfile(detailScale: number, _coarse: boolean): CryoReserveRenderProfile {
   if (detailScale < 0.62) return { name: 'performance', tankInstances: 7, galleryFrameInstances: 3, pipeRunInstances: 2, saddleInstances: 2, plumeInstances: 1 };
   if (detailScale < 0.9) return { name: 'balanced', tankInstances: 7, galleryFrameInstances: 5, pipeRunInstances: 3, saddleInstances: 3, plumeInstances: 2 };
   return { name: 'full', tankInstances: 7, galleryFrameInstances: 6, pipeRunInstances: 4, saddleInstances: 4, plumeInstances: 3 };
@@ -440,7 +439,7 @@ export class BabylonCryoReservePresentation {
     this.readabilityLight.intensity = (renderBudget.tierName === 'performance' ? 3.6 : 5.1) * tierScale;
     this.emergencyLight.position.set(px + 1.5, 3.0, pz - 1.3);
     this.emergencyLight.intensity = lighting.emergencyIntensity * (renderBudget.tierName === 'performance' ? 0.72 : 1) * (hazardMode === 'nominal' ? 0.52 : 1.18) * (activeBoss?.bossPhase === 2 ? 1.10 : 1);
-    const practicalCount = renderBudget.tierName === 'performance' || this.coarse ? 1 : 2;
+    const practicalCount = renderBudget.tierName === 'performance' ? 1 : 2;
     this.practicalLights.forEach((light, index) => {
       const enabled = index < practicalCount;
       light.setEnabled(enabled);

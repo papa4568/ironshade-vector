@@ -47,15 +47,19 @@ assert(
 
 
 const fullFracture = iceMineFractureBudget(false, 1);
-const mobileFracture = iceMineFractureBudget(true, 1);
+const coarseFracture = iceMineFractureBudget(true, 1);
+const reducedFracture = iceMineFractureBudget(true, 0.54);
 assert(
   fullFracture.shardBudget === 8
     && fullFracture.crackBudget === 3
     && fullFracture.detail === '8-shards+3-cracks+frost-pulse'
-    && mobileFracture.shardBudget === 4
-    && mobileFracture.crackBudget === 2
-    && mobileFracture.detail === '4-shards+2-cracks+frost-pulse',
-  'P27-C5 Babylon fracture cues must preserve the Three desktop/mobile budgets.',
+    && coarseFracture.shardBudget === 8
+    && coarseFracture.crackBudget === 3
+    && coarseFracture.detail === '8-shards+3-cracks+frost-pulse'
+    && reducedFracture.shardBudget === 4
+    && reducedFracture.crackBudget === 2
+    && reducedFracture.detail === '4-shards+2-cracks+frost-pulse',
+  'P27-C5 Babylon fracture cues must retain flagship density for coarse input and reduce only under the adaptive VFX budget.',
 );
 
 const navigation = getMapNavigationPlan('ice-mine');
