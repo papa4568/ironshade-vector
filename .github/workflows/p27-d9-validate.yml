@@ -25,5 +25,5 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Android smoke contract
         run: npm run test:android-fast-smoke
-      - name: Production build and regressions — pass 8
+      - name: Production build and regressions — pass 9
         run: npm run build
