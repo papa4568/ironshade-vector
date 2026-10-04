@@ -116,16 +116,16 @@ assert.equal(priorityPresentation.animation[0]?.source, 'status', 'priority-4 st
 assert(priorityPresentation.animation.some(layer => layer.source === 'telegraph'), 'attack telegraph must remain present above protocol hardware');
 assert(priorityPresentation.animation.some(layer => layer.source === 'protocol'), 'protocol hardware must remain composed under higher-priority tells');
 
-const rendererSource = readFileSync(resolve(process.cwd(), 'src/game/threeCombatRenderer.ts'), 'utf8');
+const rendererSource = readFileSync(resolve(process.cwd(), 'src/game/babylonProtocolStatusVisuals.ts'), 'utf8');
 const canvasSource = readFileSync(resolve(process.cwd(), 'src/components/GameCanvas.tsx'), 'utf8');
 const visualSource = readFileSync(resolve(process.cwd(), 'src/game/protocolVisualLanguage.ts'), 'utf8');
 
-assert(rendererSource.includes('createEnemyProtocolVisuals'), 'Three.js must author physical protocol hardware');
-assert(rendererSource.includes('syncEnemyProtocolPresentation'), 'Three.js must animate protocol hardware');
-assert(rendererSource.includes('protocol-enhanced-ring'), 'Three.js must expose enhanced protocol accents');
-assert(rendererSource.includes('dataset.enemyProtocolPresentation'), 'Three.js must expose protocol QA telemetry');
-assert(rendererSource.includes('reducedTargetMotion ? 0 : state.time'), 'generic protocol ring motion must stop in reduced-effects mode');
-assert(rendererSource.includes('const spokeCount = reducedEffects ? Math.min(2, variant.spokes) : variant.spokes'), 'enhanced protocol secondary detail must reduce under reduced effects');
+assert(rendererSource.includes('private createProtocolSlot('), 'Babylon must author physical protocol hardware');
+assert(rendererSource.includes('private syncProtocols('), 'Babylon must animate protocol hardware');
+assert(rendererSource.includes('protocol-enhanced-ring'), 'Babylon must expose enhanced protocol accents');
+assert(rendererSource.includes('dataset.babylonEnemyProtocols'), 'Babylon must expose protocol QA telemetry');
+assert(rendererSource.includes('const motion = reduced ? 0 : state.time'), 'generic protocol ring motion must stop in reduced-effects mode');
+assert(rendererSource.includes('const spokeCount = reduced ? Math.min(2, variant.spokes) : variant.spokes'), 'enhanced protocol secondary detail must reduce under reduced effects');
 
 assert(canvasSource.includes('drawEnemyProtocolPresentation'), 'Canvas fallback must render protocol hardware');
 assert(canvasSource.includes('const markerCount = reducedEffects ? Math.min(2, variant.spokes) : variant.spokes'), 'Canvas enhanced protocol detail must reduce under reduced effects');

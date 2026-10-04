@@ -85,7 +85,6 @@ const assetsDir = resolve(root, 'dist/assets');
 const jsFiles = readdirSync(assetsDir).filter(name => name.endsWith('.js'));
 const threeChunks = jsFiles.filter(name => name.startsWith('three-') || name.startsWith('three.') || name.startsWith('webGpuRefineryRenderer-'));
 assert(threeChunks.length === 0, `Three runtime chunks must not ship after P27-D9: ${threeChunks.join(',')}`);
-assert(threeChunks.length === 2, `Expected exactly two production Three.js runtime chunks; found ${threeChunks.length}.`);
 
 const webGpuQaChunks = jsFiles.filter(name =>
   name.startsWith('three.webgpu-')

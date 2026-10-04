@@ -36,7 +36,7 @@ assert(high.iblIntensity > balanced.iblIntensity && balanced.iblIntensity > perf
 const rendererSource = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const lightingSource = readFileSync('src/game/babylonRefineryLighting.ts', 'utf8');
 const worldSource = readFileSync('src/game/babylonWorldPresentation.ts', 'utf8');
-const iblSource = readFileSync('src/game/refineryIbl.ts', 'utf8');
+const iblSource = readFileSync('src/game/refineryLightingProfile.ts', 'utf8');
 const packageSource = readFileSync('package.json', 'utf8');
 const browserSource = readFileSync('scripts/browser-runtime-smoke.mjs', 'utf8');
 
@@ -51,7 +51,7 @@ assert.match(lightingSource, /refineryIblQa === 'off'/, 'B11 must preserve deter
 assert.match(worldSource, /new PBRMaterial\('p27-b5-object-material-'/, 'Babylon refinery world fallback materials must use Babylon PBR.');
 assert.match(worldSource, /visual\.material\.metallic =/, 'Babylon world material response must preserve authored metalness.');
 assert.match(worldSource, /visual\.material\.roughness =/, 'Babylon world material response must preserve authored roughness.');
-assert.match(iblSource, /from '.\/refineryLightingProfile'/, 'Three and Babylon refinery IBL must share the authored environment profile.');
+assert.match(iblSource, /REFINERY_IBL_PROFILE/, 'Babylon refinery IBL must use the engine-neutral authored environment profile.');
 assert.match(browserSource, /BROWSER_P27B11_BABYLON_PBR_LIGHTING_PASS/, 'Browser QA must capture the real WebGL Babylon B11 stack.');
 assert.match(packageSource, /test:babylon-refinery-lighting/, 'Production build must execute the B11 regression.');
 

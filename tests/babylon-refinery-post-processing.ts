@@ -84,7 +84,7 @@ runtimeEngine.dispose();
 
 const rendererSource = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const postSource = readFileSync('src/game/babylonRefineryPostProcessing.ts', 'utf8');
-const bloomSource = readFileSync('src/game/refineryBloom.ts', 'utf8');
+const bloomSource = readFileSync('src/game/refineryBloomProfile.ts', 'utf8');
 const browserSource = readFileSync('scripts/browser-runtime-smoke.mjs', 'utf8');
 const packageSource = readFileSync('package.json', 'utf8');
 
@@ -102,7 +102,7 @@ assert.match(postSource, /imageProcessingConfiguration\.contrast/);
 assert.match(postSource, /dataset\.refineryPostStackQa === 'off'/);
 assert.match(postSource, /critical:hazards\+telegraphs\+class-cues@/);
 assert.match(postSource, /environmentP21Budget/);
-assert.match(bloomSource, /from '\.\/refineryBloomProfile'/, 'Three and Babylon bloom must share the engine-neutral bloom profile.');
+assert.match(bloomSource, /REFINERY_BLOOM_PROFILE/, 'Babylon bloom must use the engine-neutral bloom profile.');
 assert.match(browserSource, /BROWSER_P27B12_BABYLON_POST_PROCESSING_PASS/);
 assert.match(browserSource, /p27b12-stack-off/);
 assert.match(browserSource, /p27b12-stack-on/);

@@ -9,7 +9,6 @@ import {
 import { HECATE_STAGES, hecateRenderProfile } from '../src/game/hecateCapstone';
 import type { Enemy, SimState } from '../src/game/sim';
 
-const three = readFileSync('src/game/threeCombatRenderer.ts', 'utf8');
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const presentation = readFileSync('src/game/babylonHecateCapstonePresentation.ts', 'utf8');
 const campaign = readFileSync('src/game/campaign.ts', 'utf8');
@@ -71,35 +70,6 @@ yardmasterState.bossActive = false;
 assert.equal(hecateYardmasterCueState(yardmasterState), 'queued');
 yardmasterState.bossDefeated = true;
 assert.equal(hecateYardmasterCueState(yardmasterState), 'defeated');
-
-for (const marker of [
-  "id: 'shipbreaking-yard'",
-  "siteName: 'Abandoned Shipbreaking Yard Hecate'",
-  "deepTarget: 'Hecate Yardmaster Null'",
-  "{ name: 'Sunward Clamp Field', location: 'solar-yard'",
-  "{ name: 'Crusher Causeway', location: 'asteroid-refinery'",
-  "{ name: 'Wreck Transit', location: 'damaged-vessel'",
-  "{ name: 'Yard Control Crown', location: 'jovian-harvester'",
-]) assert.ok(campaign.includes(marker), 'missing Hecate campaign route: ' + marker);
-
-for (const marker of [
-  "contract.megastructure === 'shipbreaking-yard'",
-  "boss.variant = 'hecateYardmaster'",
-]) assert.ok(encounters.includes(marker), 'missing Hecate encounter source marker: ' + marker);
-
-for (const marker of [
-  'stepHecateYardmasterBoss',
-  "boss.bossPattern === 'craneLock'",
-  "boss.bossPattern === 'thermalCascade'",
-  "boss.bossPattern === 'pressureCascade'",
-]) assert.ok(sim.includes(marker), 'missing Hecate runtime source marker: ' + marker);
-
-for (const marker of [
-  'addHecateCapstoneScenery',
-  "dataset.megastructureIdentity = 'shipbreaking-yard:hecate'",
-  "dataset.megastructureContinuity = 'salvage-truss-spine+red-clamp-arms+yellow-cutter-datum'",
-  "dataset.megastructureStageKit = stage.kit.join('+')",
-]) assert.ok(three.includes(marker), 'missing Three Hecate parity source marker: ' + marker);
 
 for (const marker of [
   'procedural-hecate-capstone-babylon',

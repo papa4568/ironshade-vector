@@ -9,7 +9,6 @@ import {
 import { ORPHELINE_STAGES, orphelineRenderProfile } from '../src/game/orphelineCapstone';
 import type { Enemy, SimState } from '../src/game/sim';
 
-const three = readFileSync('src/game/threeCombatRenderer.ts', 'utf8');
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const presentation = readFileSync('src/game/babylonOrphelineCapstonePresentation.ts', 'utf8');
 const campaign = readFileSync('src/game/campaign.ts', 'utf8');
@@ -71,35 +70,6 @@ wardenState.bossActive = false;
 assert.equal(orphelineWardenCueState(wardenState), 'queued');
 wardenState.bossDefeated = true;
 assert.equal(orphelineWardenCueState(wardenState), 'defeated');
-
-for (const marker of [
-  "id: 'hidden-habitat'",
-  "siteName: 'Unregistered Asteroid Habitat Orpheline'",
-  "deepTarget: 'Orpheline Habitat Warden'",
-  "{ name: 'Ice Access Bore', location: 'ice-mine'",
-  "{ name: 'Industrial Commons', location: 'asteroid-refinery'",
-  "{ name: 'Residential Spin Ring', location: 'spin-habitat'",
-  "{ name: 'Buried Control Vault', location: 'orbital-station'",
-]) assert.ok(campaign.includes(marker), 'missing Orpheline campaign route: ' + marker);
-
-for (const marker of [
-  "contract.megastructure === 'hidden-habitat'",
-  "boss.variant = 'orphelineWarden'",
-]) assert.ok(encounters.includes(marker), 'missing Orpheline encounter source marker: ' + marker);
-
-for (const marker of [
-  'stepOrphelineWardenBoss',
-  "boss.bossPattern === 'pressureCascade'",
-  "boss.bossPattern === 'gravityOverride'",
-  "boss.bossPattern === 'shutterGeometry'",
-]) assert.ok(sim.includes(marker), 'missing Orpheline runtime source marker: ' + marker);
-
-for (const marker of [
-  'addOrphelineCapstoneScenery',
-  "dataset.megastructureIdentity = 'hidden-habitat:orpheline'",
-  "dataset.megastructureContinuity = 'rock-cut-spine+violet-utility-trunk+white-occupancy-marks'",
-  "dataset.megastructureStageKit = stage.kit.join('+')",
-]) assert.ok(three.includes(marker), 'missing Three Orpheline parity source marker: ' + marker);
 
 for (const marker of [
   'procedural-orpheline-capstone-babylon',

@@ -4,7 +4,6 @@ import { BABYLON_SOLAR_YARD_IDENTITY, BABYLON_SOLAR_YARD_LIGHTING, solarYardTher
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
 import { solarYardRenderProfile } from '../src/game/solarYardVisualProfile';
 
-const three = readFileSync('src/game/threeCombatRenderer.ts', 'utf8');
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const presentation = readFileSync('src/game/babylonSolarYardPresentation.ts', 'utf8');
 const smoke = readFileSync('scripts/browser-runtime-smoke.mjs', 'utf8');
@@ -17,7 +16,6 @@ assert.deepEqual(BABYLON_SOLAR_YARD_IDENTITY, {
   lighting: 'solar-orange',
   propSet: 'fabrication-service',
 });
-assert.ok(three.includes("'solar-yard': { id: 'solar-orange', keyColor: 0xffc89a, rimColor: 0xef8f46, emergencyColor: 0xe27745, keyIntensity: 2.55, rimIntensity: 1.14, emergencyIntensity: 8.8, exposure: 1.1 }"));
 assert.deepEqual(BABYLON_SOLAR_YARD_LIGHTING, {
   id: 'solar-orange',
   keyColor: 0xffc89a,

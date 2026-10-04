@@ -20,8 +20,6 @@ function assert(condition: unknown, message: string): asserts condition {
 
 const renderer = read('src/game/babylonCombatRenderer.ts');
 const jovian = read('src/game/babylonJovianHarvesterPresentation.ts');
-const three = read('src/game/hardSciFiVisuals.ts');
-const threeRenderer = read('src/game/threeCombatRenderer.ts');
 const world = read('src/game/babylonWorldPresentation.ts');
 const browser = read('scripts/browser-runtime-smoke.mjs');
 const workflow = read('.github/workflows/browser-e2e.yml');
@@ -37,10 +35,6 @@ assert(
   'P27-C4 Babylon Jovian Harvester art identity must preserve the Three baseline.',
 );
 
-assert(
-  three.includes("'jovian-harvester': { silhouette: 'skimmer-towers', material: 'weathered-condenser', lighting: 'storm-orange', propSet: 'compressor-service' }"),
-  'P27-C4 source baseline for Jovian Harvester identity changed without updating the Babylon port.',
-);
 
 assert(
   BABYLON_JOVIAN_HARVESTER_LIGHTING.id === 'storm-orange'
@@ -54,10 +48,6 @@ assert(
   'P27-C4 Babylon Jovian Harvester lighting must retain the storm-orange Three profile.',
 );
 
-assert(
-  threeRenderer.includes("'jovian-harvester': { id: 'storm-orange', keyColor: 0xffc89a, rimColor: 0xd59a57, emergencyColor: 0xd46b45, keyIntensity: 2.5, rimIntensity: 1.18, emergencyIntensity: 9.5, exposure: 1.09 }"),
-  'P27-C4 Three lighting baseline changed without updating the Babylon profile.',
-);
 
 const fullProfile = jovianHarvesterRenderProfile(1, false);
 const mobileProfile = jovianHarvesterRenderProfile(1, true);

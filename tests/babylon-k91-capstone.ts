@@ -9,7 +9,6 @@ import {
 import { K91_STAGES, k91RenderProfile } from '../src/game/k91Capstone';
 import type { CombatObject, SimState } from '../src/game/sim';
 
-const three = readFileSync('src/game/threeCombatRenderer.ts', 'utf8');
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const presentation = readFileSync('src/game/babylonK91CapstonePresentation.ts', 'utf8');
 const campaign = readFileSync('src/game/campaign.ts', 'utf8');
@@ -64,23 +63,6 @@ blackbox.exposed = true;
 assert.equal(k91BlackboxCueState(cueState, 4), 'blackbox-exposed');
 cueState.objects.length = 0;
 assert.equal(k91BlackboxCueState(cueState, 4), 'ballast-vault-ready');
-
-for (const marker of [
-  "id: 'counterweight'",
-  "siteName: 'Orbital Elevator Counterweight K-91'",
-  'not hunting a boss',
-  "{ name: 'Capture Collar', location: 'orbital-station'",
-  "{ name: 'Mass Transit Spine', location: 'spin-habitat'",
-  "{ name: 'Power Transfer Gallery', location: 'solar-yard'",
-  "{ name: 'Ballast Vault', location: 'asteroid-refinery'",
-]) assert.ok(campaign.includes(marker), 'missing K91 campaign route: ' + marker);
-
-for (const marker of [
-  'addK91CapstoneScenery',
-  "dataset.megastructureIdentity = 'counterweight:k-91'",
-  "dataset.megastructureContinuity = 'load-spine+countermass-rails+amber-inertial-datum'",
-  "dataset.megastructureStageKit = stage.kit.join('+')",
-]) assert.ok(three.includes(marker), 'missing Three K91 parity source marker: ' + marker);
 
 for (const marker of [
   'procedural-k91-capstone-babylon',

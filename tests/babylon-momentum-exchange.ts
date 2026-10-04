@@ -9,7 +9,6 @@ import {
 } from '../src/game/babylonMomentumExchangePresentation';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
 
-const three = readFileSync('src/game/threeCombatRenderer.ts', 'utf8');
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const presentation = readFileSync('src/game/babylonMomentumExchangePresentation.ts', 'utf8');
 const encounters = readFileSync('src/game/encounters.ts', 'utf8');
@@ -25,7 +24,6 @@ assert.deepEqual(BABYLON_MOMENTUM_EXCHANGE_IDENTITY, {
   lighting: 'transfer-blue',
   propSet: 'capture-service',
 });
-assert.ok(three.includes("'momentum-exchange': { id: 'transfer-blue', keyColor: 0xd4e5ed, rimColor: 0x67b5d5, emergencyColor: 0x4d90ac, keyIntensity: 2.3, rimIntensity: 1.16, emergencyIntensity: 8.2, exposure: 1.06 }"));
 assert.deepEqual(BABYLON_MOMENTUM_EXCHANGE_LIGHTING, {
   id: 'transfer-blue',
   keyColor: 0xd4e5ed,
