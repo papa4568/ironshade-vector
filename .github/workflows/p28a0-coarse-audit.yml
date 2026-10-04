@@ -40,16 +40,13 @@ jobs:
                   raise SystemExit(f'{path}: anchor not found: {old!r}')
               p.write_text(s.replace(old, new))
 
-          # Core renderer: AA, authored LOD, and pixel ratio follow explicit/measured quality, never pointer class.
           replace('src/game/babylonCombatRenderer.ts', 'new Engine(renderCanvas, !coarse, {', 'new Engine(renderCanvas, true, {', 1)
           replace('src/game/babylonCombatRenderer.ts', 'const assetDetailScale = this.coarse ? Math.min(detailScale, 0.55) : detailScale;', 'const assetDetailScale = detailScale;', 3)
           replace('src/game/babylonCombatRenderer.ts', "const qualityCap = quality < 0.55 ? 1.12 : this.coarse || quality < 0.8 ? 1.35 : 1.8;", "const qualityCap = quality < 0.55 ? 1.12 : quality < 0.8 ? 1.35 : 1.8;", 1)
 
-          # Shared authored assets no longer select LOD from pointer class.
           replace('src/game/babylonWorldPresentation.ts', 'selectGraphicsAssetSpec(family, this.coarse ? Math.min(detailScale, 0.55) : detailScale)', 'selectGraphicsAssetSpec(family, detailScale)', 1)
           replace('src/game/babylonWorldPresentation.ts', 'selectGraphicsAssetSpec(PICKUP_ASSET_FAMILY, this.coarse ? Math.min(detailScale, 0.55) : detailScale)', 'selectGraphicsAssetSpec(PICKUP_ASSET_FAMILY, detailScale)', 1)
 
-          # Shared effects use the render budget only; coarse remains solely where UX/readability needs it.
           for path in [
               'src/game/babylonWeaponVfx.ts',
               'src/game/babylonAbilityVfx.ts',
@@ -59,7 +56,6 @@ jobs:
               replace(path, 'const effectiveDetail = coarse ? Math.min(detailScale, 0.55) : detailScale;', 'const effectiveDetail = detailScale;', 1)
           replace('src/game/babylonEnemyLifecycleVisuals.ts', "return coarse || detailScale < 0.72 ? 'reduced' : 'full';", "return detailScale < 0.72 ? 'reduced' : 'full';", 1)
 
-          # Environment presentation degrades only from the adaptive render budget.
           for p in Path('src/game').glob('babylon*Presentation.ts'):
               s = p.read_text()
               s = s.replace("renderBudget.tierName === 'performance' || this.coarse ? 1 : 2", "renderBudget.tierName === 'performance' ? 1 : 2")
@@ -71,7 +67,6 @@ jobs:
           replace('src/game/babylonIceMinePresentation.ts', "const profileName = this.coarse ? 'mobile' : renderBudget.tierName;", 'const profileName = renderBudget.tierName;', 1)
           replace('src/game/babylonIceMinePresentation.ts', 'const reduced = coarse || vfxDensity < 0.55;', 'const reduced = vfxDensity < 0.55;', 1)
 
-          # Remove legacy coarse/mobile render profiles while retaining performance/balanced/full budget profiles.
           profile_files = [
               'src/game/babylonCryoReservePresentation.ts',
               'src/game/babylonMomentumExchangePresentation.ts',
@@ -116,7 +111,6 @@ jobs:
                   raise SystemExit(f'{path}: expected one legacy coarse mobile profile, removed={removed}')
               p.write_text(''.join(out))
 
-          # Keep public helper signatures compatible while making now-unused pointer-class parameters explicit.
           helper_functions = {
               'src/game/babylonAbilityVfx.ts': 'babylonAbilityEffectsMode',
               'src/game/babylonCryoReservePresentation.ts': 'cryoReserveRenderProfile',
@@ -161,10 +155,8 @@ jobs:
           s = s.replace('    this.coarse = coarse;\n', '', 1)
           world.write_text(s)
 
-          # Browser parity follows actual adaptive detail tier, not pointer class.
           replace('scripts/browser-runtime-smoke.mjs', 'const expectedPlayerLod = pointerProbe.coarse ? 2 : 1;', "const expectedPlayerLod = state.renderTier === 'performance' ? 2 : 1;", 1)
 
-          # Regression contracts: pointer class alone never lowers effects or structural density.
           replace('tests/babylon-weapon-vfx.ts', "assert.equal(babylonWeaponEffectsMode(1, true), 'reduced', 'Coarse/mobile presentation should keep primary cues while reducing secondary sparks.');", "assert.equal(babylonWeaponEffectsMode(1, true), 'full', 'Coarse/mobile input alone must not reduce weapon effects; measured/explicit quality controls that budget.');", 1)
           replace('tests/babylon-ability-vfx.ts', "assert.equal(babylonAbilityEffectsMode(1, true), 'reduced');", "assert.equal(babylonAbilityEffectsMode(1, true), 'full');", 1)
           replace('tests/babylon-enemy-lifecycle-visuals.ts', "assert.equal(babylonEnemyLifecycleEffectsMode(1, true), 'reduced');", "assert.equal(babylonEnemyLifecycleEffectsMode(1, true), 'full');", 1)
@@ -193,6 +185,8 @@ jobs:
 
           replace('tests/babylon-cryo-reserve.ts', 'const mobile = cryoReserveRenderProfile(1, true);', 'const coarse = cryoReserveRenderProfile(1, true);', 1)
           replace('tests/babylon-cryo-reserve.ts', "assert.equal(mobile.name, 'mobile');\nassert.equal(mobile.galleryFrameInstances, 4);\nassert.equal(mobile.plumeInstances, 2);", "assert.equal(coarse.name, 'full');\nassert.equal(coarse.tankInstances, 7);\nassert.equal(coarse.galleryFrameInstances, 6);\nassert.equal(coarse.pipeRunInstances, 4);\nassert.equal(coarse.plumeInstances, 3);", 1)
+
+          replace('tests/babylon-parallax-array.ts', "assert.equal(parallaxArrayRenderProfile(1, true).name, 'mobile');", "assert.deepEqual(parallaxArrayRenderProfile(1, true), parallaxArrayRenderProfile(1, false), 'Coarse input alone must preserve the full Parallax Array profile.');", 1)
 
           print('P28_A0_COARSE_QUALITY_CEILINGS_REMOVED')
           PY
