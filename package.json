@@ -117,8 +117,7 @@
     "@netlify/functions": "^6.0.0",
     "lucide-react": "^0.469.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "three": "0.186.0"
+    "react-dom": "^19.0.0"
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "^4.0.0"
@@ -128,7 +127,6 @@
     "@capacitor/cli": "^8.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@types/three": "0.186.0",
     "@vitejs/plugin-react": "^4.3.0",
     "autoprefixer": "^10.4.0",
     "babylonjs-ktx2decoder": "9.28.0",

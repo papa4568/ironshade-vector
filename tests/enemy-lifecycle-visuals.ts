@@ -102,17 +102,9 @@ assert.equal(persistentSignals.disable, 0, 'disable transient must expire');
 assert.equal(persistentSignals.persistentDisabled, 1, 'post-disable presentation must remain');
 assert.equal(persistentContract.audio.length, 0, 'persistent disabled state must not leak sustained audio');
 assert(persistentContract.material.some(layer => layer.key === 'death:persistent'), 'persistent disabled hardware/material read must survive');
-
-const rendererSource = readFileSync(resolve(process.cwd(), 'src/game/threeCombatRenderer.ts'), 'utf8');
 const canvasSource = readFileSync(resolve(process.cwd(), 'src/components/GameCanvas.tsx'), 'utf8');
 const feedbackSource = readFileSync(resolve(process.cwd(), 'src/game/feedback.ts'), 'utf8');
 const lifecycleSource = readFileSync(resolve(process.cwd(), 'src/game/enemyLifecyclePresentation.ts'), 'utf8');
-
-assert(rendererSource.includes('syncEnemyLifecyclePresentation'), 'Three.js must render lifecycle hardware/VFX');
-assert(rendererSource.includes('enemy-lifecycle-presentation'), 'Three.js must keep lifecycle presentation on the shared enemy root for authored and procedural rigs');
-assert(rendererSource.includes('dataset.enemyLifecyclePresentation'), 'Three.js must expose lifecycle QA telemetry');
-assert(rendererSource.includes("reducedTargetMotion ? 'preserved' : 'full'"), 'Three.js must preserve lifecycle identity in reduced-effects mode');
-assert(rendererSource.includes('const lifecycle = resolveEnemyLifecyclePresentation(enemy, {') && rendererSource.includes('syncAuthoredEnemyAnimation(visual, enemy, state, motion)'), 'authored enemy animation must consume lifecycle signals without breaking the established integration contract');
 
 assert(canvasSource.includes('drawEnemyLifecyclePresentation'), 'Canvas fallback must render lifecycle presentation');
 assert(canvasSource.includes('CanvasEnemyLifecycleMemory'), 'Canvas fallback must track presentation-only activation/phase/death edges');

@@ -8,8 +8,6 @@ import {
 } from '../src/game/babylonHecateCapstonePresentation';
 import { HECATE_STAGES, hecateRenderProfile } from '../src/game/hecateCapstone';
 import type { Enemy, SimState } from '../src/game/sim';
-
-const three = readFileSync('src/game/threeCombatRenderer.ts', 'utf8');
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const presentation = readFileSync('src/game/babylonHecateCapstonePresentation.ts', 'utf8');
 const campaign = readFileSync('src/game/campaign.ts', 'utf8');
@@ -93,13 +91,6 @@ for (const marker of [
   "boss.bossPattern === 'thermalCascade'",
   "boss.bossPattern === 'pressureCascade'",
 ]) assert.ok(sim.includes(marker), 'missing Hecate runtime source marker: ' + marker);
-
-for (const marker of [
-  'addHecateCapstoneScenery',
-  "dataset.megastructureIdentity = 'shipbreaking-yard:hecate'",
-  "dataset.megastructureContinuity = 'salvage-truss-spine+red-clamp-arms+yellow-cutter-datum'",
-  "dataset.megastructureStageKit = stage.kit.join('+')",
-]) assert.ok(three.includes(marker), 'missing Three Hecate parity source marker: ' + marker);
 
 for (const marker of [
   'procedural-hecate-capstone-babylon',

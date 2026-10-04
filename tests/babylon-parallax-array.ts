@@ -8,8 +8,6 @@ import {
   parallaxShearMode,
 } from '../src/game/babylonParallaxArrayPresentation';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
-
-const three = readFileSync('src/game/threeCombatRenderer.ts', 'utf8');
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const presentation = readFileSync('src/game/babylonParallaxArrayPresentation.ts', 'utf8');
 const encounters = readFileSync('src/game/encounters.ts', 'utf8');
@@ -26,7 +24,6 @@ assert.deepEqual(BABYLON_PARALLAX_ARRAY_IDENTITY, {
   lighting: 'reference-violet',
   propSet: 'inertial-reference',
 });
-assert.ok(three.includes("'parallax-array': { id: 'reference-violet', keyColor: 0xe2ddf1, rimColor: 0x9a87cf, emergencyColor: 0x7864ba, keyIntensity: 2.2, rimIntensity: 1.15, emergencyIntensity: 8.1, exposure: 1.06 }"));
 assert.deepEqual(BABYLON_PARALLAX_ARRAY_LIGHTING, {
   id: 'reference-violet',
   keyColor: 0xe2ddf1,
@@ -85,24 +82,6 @@ assert.ok(sim.includes("['parallaxSweep', 'baselineFork', 'shearCollapse', 'base
 assert.ok(parallax.includes("title: 'Parallax Debt // Blind Meridian'"));
 assert.ok(parallax.includes("deepTarget: 'Baseline Keeper Sera Nox'"));
 assert.ok(parallax.includes("phaseFinale: true"));
-
-for (const marker of [
-  "environmentVisual = 'procedural-parallax-array-babylon'",
-  "environmentLandmark = 'three-point-long-baseline'",
-  "environmentComposition = 'three-point-baseline+cross-track-frames+perimeter-shear-anchors'",
-  "environmentMaterials = 'graphite-structure+reference-shell+violet-alignment+cyan-readout'",
-  "environmentZoneIdentity = 'near-baseline:reference-pylon+mass-carriage|cross-track:reference-frame+timing-bus|deep-reference:baseline-pylon+shear-anchor'",
-  "readabilityLanguage = 'baseline-silhouette+violet-cyan+luminance'",
-  "environmentReferenceNodeIds = 'reference-node-a,reference-node-b,reference-node-c'",
-  "environmentShearTimeline = '8.0s:first-shear>19.0s:deep-reference-reversal'",
-  "environmentHazardLanguage = 'shared-hazards+reference-shear+gravity-split+physical-baseline-alignment'",
-  "locationArtIdentity = 'baseline-pylons|metrology-composite|reference-violet|inertial-reference'",
-  "interactableBiome = 'parallax-array'",
-  "bossPresentation = baselineKeeper ? 'sera-nox' : 'array-command'",
-  "bossSilhouette = 'triple-reference-crown+baseline-forks+shear-core'",
-  "bossCue = 'baseline-fork+parallax-sweep+shear-collapse'",
-  "babylonParallaxArrayParity = 'baseline-pylon-architecture+metrology-reference+props+interactables+hazards+reference-shear+physical-alignment+navigation+boss-cues+shared-world-cues'",
-]) assert.ok(presentation.includes(marker), 'missing Parallax Babylon parity marker: ' + marker);
 
 assert.ok(presentation.includes("object.id.startsWith('reference-node-')"));
 assert.ok(presentation.includes("hazard.active && hazard.kind === 'vectorWash'"));

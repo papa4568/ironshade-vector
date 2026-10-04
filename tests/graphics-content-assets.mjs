@@ -1,8 +1,5 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { resolve, relative } from 'node:path';
-import { Box3 } from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { clone } from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -103,6 +100,109 @@ function positionBounds(json, label) {
   return { min, max };
 }
 
+function multiplyMat4(a, b) {
+  const out = new Array(16).fill(0);
+  for (let column = 0; column < 4; column += 1) {
+    for (let row = 0; row < 4; row += 1) {
+      for (let k = 0; k < 4; k += 1) out[column * 4 + row] += a[k * 4 + row] * b[column * 4 + k];
+    }
+  }
+  return out;
+}
+
+function nodeLocalMatrix(node) {
+  if (Array.isArray(node.matrix) && node.matrix.length === 16) return [...node.matrix];
+  const [tx, ty, tz] = node.translation ?? [0, 0, 0];
+  const [x, y, z, w] = node.rotation ?? [0, 0, 0, 1];
+  const [sx, sy, sz] = node.scale ?? [1, 1, 1];
+  const xx = x * x * 2;
+  const yy = y * y * 2;
+  const zz = z * z * 2;
+  const xy = x * y * 2;
+  const xz = x * z * 2;
+  const yz = y * z * 2;
+  const wx = w * x * 2;
+  const wy = w * y * 2;
+  const wz = w * z * 2;
+  return [
+    (1 - yy - zz) * sx, (xy + wz) * sx, (xz - wy) * sx, 0,
+    (xy - wz) * sy, (1 - xx - zz) * sy, (yz + wx) * sy, 0,
+    (xz + wy) * sz, (yz - wx) * sz, (1 - xx - yy) * sz, 0,
+    tx, ty, tz, 1,
+  ];
+}
+
+function transformPoint(matrix, x, y, z) {
+  return [
+    matrix[0] * x + matrix[4] * y + matrix[8] * z + matrix[12],
+    matrix[1] * x + matrix[5] * y + matrix[9] * z + matrix[13],
+    matrix[2] * x + matrix[6] * y + matrix[10] * z + matrix[14],
+  ];
+}
+
+function worldPositionBounds(json, label) {
+  const nodes = json.nodes ?? [];
+  const meshes = json.meshes ?? [];
+  const accessors = json.accessors ?? [];
+  const parents = new Array(nodes.length).fill(-1);
+  for (let parentIndex = 0; parentIndex < nodes.length; parentIndex += 1) {
+    for (const childIndex of nodes[parentIndex].children ?? []) {
+      assert(Number.isInteger(childIndex) && childIndex >= 0 && childIndex < nodes.length, `${label}: node child index is invalid`);
+      assert(parents[childIndex] === -1, `${label}: node graph must not have multiple parents`);
+      parents[childIndex] = parentIndex;
+    }
+  }
+
+  const worldMatrices = new Array(nodes.length);
+  const visiting = new Set();
+  const resolveWorld = index => {
+    if (worldMatrices[index]) return worldMatrices[index];
+    assert(!visiting.has(index), `${label}: node graph contains a cycle`);
+    visiting.add(index);
+    const local = nodeLocalMatrix(nodes[index]);
+    const parent = parents[index];
+    const world = parent >= 0 ? multiplyMat4(resolveWorld(parent), local) : local;
+    visiting.delete(index);
+    worldMatrices[index] = world;
+    return world;
+  };
+
+  const min = [Infinity, Infinity, Infinity];
+  const max = [-Infinity, -Infinity, -Infinity];
+  let meshNodes = 0;
+  for (let nodeIndex = 0; nodeIndex < nodes.length; nodeIndex += 1) {
+    const meshIndex = nodes[nodeIndex].mesh;
+    if (!Number.isInteger(meshIndex)) continue;
+    const mesh = meshes[meshIndex];
+    assert(mesh, `${label}: node references missing mesh ${meshIndex}`);
+    meshNodes += 1;
+    const world = resolveWorld(nodeIndex);
+    for (const primitive of mesh.primitives ?? []) {
+      const accessor = accessors[primitive.attributes?.POSITION];
+      assert(accessor?.min && accessor?.max, `${label}: POSITION min/max bounds are required`);
+      for (const x of [accessor.min[0], accessor.max[0]]) {
+        for (const y of [accessor.min[1], accessor.max[1]]) {
+          for (const z of [accessor.min[2], accessor.max[2]]) {
+            const point = transformPoint(world, x, y, z);
+            for (let axis = 0; axis < 3; axis += 1) {
+              min[axis] = Math.min(min[axis], point[axis]);
+              max[axis] = Math.max(max[axis], point[axis]);
+            }
+          }
+        }
+      }
+    }
+  }
+  assert(meshNodes > 0, `${label}: authored scene contains no mesh nodes`);
+  return {
+    meshNodes,
+    bounds: {
+      min: { x: min[0], y: min[1], z: min[2] },
+      max: { x: max[0], y: max[1], z: max[2] },
+    },
+  };
+}
+
 function assetClassFor(path) {
   const relativePath = relative(MODEL_ROOT, path).replaceAll('\\', '/');
   const top = relativePath.split('/')[0];
@@ -114,7 +214,6 @@ function assetClassFor(path) {
 const glbs = await collectGlbs(MODEL_ROOT);
 assert(glbs.length > 0, 'no authored GLB assets were found under public/assets/models');
 
-const loader = new GLTFLoader();
 const reports = [];
 for (const path of glbs) {
   const data = await readFile(path);
@@ -131,18 +230,9 @@ for (const path of glbs) {
   assert((json.materials?.length ?? 0) > 0, `${relativePath}: asset contains no materials`);
   assert((json.buffers?.length ?? 0) === 1, `${relativePath}: runtime GLB should use a single embedded buffer`);
 
-  const arrayBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
-  const gltf = await loader.parseAsync(arrayBuffer, '');
-  assert(gltf.scene, `${relativePath}: GLTFLoader did not produce a scene`);
-  const instance = clone(gltf.scene);
-  let runtimeMeshes = 0;
-  instance.traverse(child => {
-    if (child.isMesh) runtimeMeshes += 1;
-  });
-  assert(runtimeMeshes > 0, `${relativePath}: cloned runtime scene contains no meshes`);
-
   const authoredBounds = positionBounds(json, relativePath);
-  const runtimeBounds = new Box3().setFromObject(instance);
+  const { bounds: runtimeBounds, meshNodes: runtimeMeshes } = worldPositionBounds(json, relativePath);
+  assert(runtimeMeshes > 0, `${relativePath}: authored runtime scene contains no meshes`);
   if (top === 'operators') {
     const height = runtimeBounds.max.y - runtimeBounds.min.y;
     assert(Math.abs(runtimeBounds.min.y) <= 0.03, `${relativePath}: operator feet must rest on authored ground origin; minY=${runtimeBounds.min.y}`);

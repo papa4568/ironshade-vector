@@ -8,8 +8,6 @@ import {
 } from '../src/game/babylonPerseidCapstonePresentation';
 import { PERSEID_STAGES, perseidRenderProfile } from '../src/game/perseidCapstone';
 import { createSimulation } from '../src/game/sim';
-
-const three = readFileSync('src/game/threeCombatRenderer.ts', 'utf8');
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const presentation = readFileSync('src/game/babylonPerseidCapstonePresentation.ts', 'utf8');
 const campaign = readFileSync('src/game/campaign.ts', 'utf8');
@@ -70,13 +68,6 @@ for (const marker of [
   "{ name: 'Cryogenic Service Deck', location: 'orbital-station'",
   "{ name: 'Reactor Choir', location: 'solar-yard'",
 ]) assert.ok(campaign.includes(marker), 'missing Perseid campaign route: ' + marker);
-
-for (const marker of [
-  'addPerseidCapstoneScenery',
-  "dataset.megastructureIdentity = 'generation-ship:perseid'",
-  "dataset.megastructureContinuity = 'keel-spine+pressure-ribs+green-transit-datum'",
-  "dataset.megastructureStageKit = stage.kit.join('+')",
-]) assert.ok(three.includes(marker), 'missing Three Perseid parity source marker: ' + marker);
 
 for (const marker of [
   'procedural-perseid-capstone-babylon',

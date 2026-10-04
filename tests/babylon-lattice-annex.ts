@@ -8,8 +8,6 @@ import {
   latticeAnnexShutterState,
 } from '../src/game/babylonLatticeAnnexPresentation';
 import { getMapNavigationPlan } from '../src/game/mapNavigation';
-
-const three = readFileSync('src/game/threeCombatRenderer.ts', 'utf8');
 const babylon = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const presentation = readFileSync('src/game/babylonLatticeAnnexPresentation.ts', 'utf8');
 const encounters = readFileSync('src/game/encounters.ts', 'utf8');
@@ -24,7 +22,6 @@ assert.deepEqual(BABYLON_LATTICE_ANNEX_IDENTITY, {
   lighting: 'metrology-teal',
   propSet: 'calibration-service',
 });
-assert.ok(three.includes("'lattice-annex': { id: 'metrology-teal', keyColor: 0xd9e6e2, rimColor: 0x88b8ad, emergencyColor: 0x629d93, keyIntensity: 2.25, rimIntensity: 1.0, emergencyIntensity: 7.6, exposure: 1.05 }"));
 assert.deepEqual(BABYLON_LATTICE_ANNEX_LIGHTING, {
   id: 'metrology-teal',
   keyColor: 0xd9e6e2,

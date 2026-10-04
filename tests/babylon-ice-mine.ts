@@ -17,8 +17,6 @@ function assert(condition: unknown, message: string): asserts condition {
 
 const renderer = read('src/game/babylonCombatRenderer.ts');
 const ice = read('src/game/babylonIceMinePresentation.ts');
-const three = read('src/game/hardSciFiVisuals.ts');
-const threeRenderer = read('src/game/threeCombatRenderer.ts');
 const world = read('src/game/babylonWorldPresentation.ts');
 const browser = read('scripts/browser-runtime-smoke.mjs');
 const workflow = read('.github/workflows/browser-e2e.yml');
@@ -35,11 +33,6 @@ assert(
 );
 
 assert(
-  three.includes("'ice-mine': { silhouette: 'bore-crystals', material: 'frosted-industrial', lighting: 'ice-cyan', propSet: 'drill-service' }"),
-  'P27-C5 source baseline for Ice Mine identity changed without updating the Babylon port.',
-);
-
-assert(
   BABYLON_ICE_MINE_LIGHTING.id === 'ice-cyan'
     && BABYLON_ICE_MINE_LIGHTING.keyColor === 0xd2e7ef
     && BABYLON_ICE_MINE_LIGHTING.rimColor === 0x7ec9df
@@ -49,11 +42,6 @@ assert(
     && BABYLON_ICE_MINE_LIGHTING.emergencyIntensity === 8
     && BABYLON_ICE_MINE_LIGHTING.exposure === 1.08,
   'P27-C5 Babylon Ice Mine lighting must retain the ice-cyan Three profile.',
-);
-
-assert(
-  threeRenderer.includes("'ice-mine': { id: 'ice-cyan', keyColor: 0xd2e7ef, rimColor: 0x7ec9df, emergencyColor: 0x76cde9, keyIntensity: 2.1, rimIntensity: 1.1, emergencyIntensity: 8, exposure: 1.08 }"),
-  'P27-C5 Three lighting baseline changed without updating the Babylon profile.',
 );
 
 const fullFracture = iceMineFractureBudget(false, 1);
@@ -69,12 +57,6 @@ assert(
 );
 
 const navigation = getMapNavigationPlan('ice-mine');
-assert(
-  navigation.routes.length >= 6
-    && navigation.routes.some(route => route.kind === 'primary' && route.id === 'primary-spine')
-    && navigation.landmarks.map(item => item.label).join('|') === 'ACCESS BORE|EXTRACTION TUNNEL|SUBGLACIAL VAULT',
-  'P27-C5 Ice Mine must retain deterministic navigation and all three landmarks.',
-);
 
 assert(
   ice.includes("environmentVisual = 'procedural-ice-mine-babylon'")

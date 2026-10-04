@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 
 function assert(condition, message) {
@@ -83,10 +83,8 @@ const [gameCanvasKey, gameCanvasRecord] = gameCanvasEntry;
 
 const assetsDir = resolve(root, 'dist/assets');
 const jsFiles = readdirSync(assetsDir).filter(name => name.endsWith('.js'));
-const threeChunks = jsFiles.filter(name => name.startsWith('three-core-') || name.startsWith('three-webgl-'));
-assert(threeChunks.some(name => name.startsWith('three-core-')), 'Three.js core is not isolated in its deferred chunk.');
-assert(threeChunks.some(name => name.startsWith('three-webgl-')), 'Three.js WebGL renderer is not isolated in its deferred chunk.');
-assert(threeChunks.length === 2, `Expected exactly two production Three.js runtime chunks; found ${threeChunks.length}.`);
+const threeChunks = jsFiles.filter(name => name.startsWith('three-core-') || name.startsWith('three-webgl-') || name.startsWith('three.webgpu-') || name.startsWith('three.tsl-'));
+assert(threeChunks.length === 0, `Retired Three runtime chunks must not ship; found ${threeChunks.length}: ${threeChunks.join(',')}.`);
 
 const webGpuQaChunks = jsFiles.filter(name =>
   name.startsWith('three.webgpu-')
@@ -237,13 +235,19 @@ const dependencyNames = new Set([
   ...Object.keys(packageJson.devDependencies ?? {}),
   ...Object.keys(packageJson.optionalDependencies ?? {}),
 ]);
-for (const forbiddenPackage of ['@babylonjs/inspector', '@babylonjs/gui', '@babylonjs/materials', '@babylonjs/serializers']) {
+for (const forbiddenPackage of ['three', '@types/three', '@babylonjs/inspector', '@babylonjs/gui', '@babylonjs/materials', '@babylonjs/serializers']) {
   assert(!dependencyNames.has(forbiddenPackage), `Unused Babylon package must not ship: ${forbiddenPackage}.`);
+}
+
+for (const retiredSource of ['src/game/threeCombatRenderer.ts', 'src/game/webGpuRefineryRenderer.ts', 'src/game/refineryBloom.ts', 'src/game/refineryIbl.ts', 'src/game/hardSciFiVisuals.ts', 'src/game/mapVisuals.ts']) {
+  assert(!existsSync(resolve(root, retiredSource)), `Retired Three source must stay deleted: ${retiredSource}.`);
 }
 
 const sourceFiles = collectSourceFiles(resolve(root, 'src'));
 const sourceText = sourceFiles.map(path => readFileSync(path, 'utf8')).join('\n');
 const forbiddenImports = [
+  /from\s+['"]three(?:\/[^'"]*)?['"]/,
+  /import\(\s*['"]three(?:\/[^'"]*)?['"]\s*\)/,
   /from\s+['"]@babylonjs\/core['"]/,
   /import\(\s*['"]@babylonjs\/core['"]\s*\)/,
   /@babylonjs\/core\/Debug\//,
@@ -257,11 +261,11 @@ for (const forbiddenImport of forbiddenImports) {
 }
 
 // Architecture guardrail: byte evidence is captured separately from the built APK by P27-D2.
-assert(jsFiles.length >= 10, `Expected navigation, Three.js, Babylon, and authored-asset code splitting; found only ${jsFiles.length} JS chunks.`);
+assert(jsFiles.length >= 10, `Expected navigation, Babylon, and authored-asset code splitting; found only ${jsFiles.length} JS chunks.`);
 
 console.log(
   'CLIENT_BUNDLE_ARCHITECTURE_PASS ' +
-  `chunks=${jsFiles.length} three=${threeChunks.join(',')} webgpuQa=${webGpuQaChunks.join(',')} ` +
+  `chunks=${jsFiles.length} three=retired webgpuQa=${webGpuQaChunks.join(',')} ` +
   `babylonRenderer=${basename(babylonRecord.file)} babylonLoaders=${basename(babylonLoaderRecord.file)} ` +
   `babylonWebgpu=${basename(babylonWebGpuEntry[1].file)} corePost=renderer-deferred forbiddenBabylon=none glbExtensions=none glbs=${shippedGlbs.length} ` +
   `graphicsRuntime=retired`,

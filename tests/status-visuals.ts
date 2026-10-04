@@ -82,21 +82,9 @@ for (const id of playerStatusVisualIds) {
   const spec = playerStatusVisualSpecFor(id);
   assert(spec.primary !== spec.accent, `${id} must have readable primary/accent separation`);
 }
-
-const rendererSource = readFileSync(resolve(process.cwd(), 'src/game/threeCombatRenderer.ts'), 'utf8');
 const canvasSource = readFileSync(resolve(process.cwd(), 'src/components/GameCanvas.tsx'), 'utf8');
 const feedbackSource = readFileSync(resolve(process.cwd(), 'src/game/feedback.ts'), 'utf8');
 const visualSource = readFileSync(resolve(process.cwd(), 'src/game/statusVisualLanguage.ts'), 'utf8');
-
-assert(rendererSource.includes('createEnemyStatusVisuals'), 'Three.js must build enemy status geometry');
-assert(rendererSource.includes('syncEnemyStatusPresentation'), 'Three.js must animate enemy status presentation');
-assert(rendererSource.includes('createPlayerStatusVisuals'), 'Three.js must build operator status geometry');
-assert(rendererSource.includes('syncPlayerStatusPresentation'), 'Three.js must animate operator thermal/environment states');
-assert(rendererSource.includes('dataset.enemyStatusPresentation'), 'Three.js must expose enemy status QA telemetry');
-assert(rendererSource.includes('dataset.playerStatusDominant'), 'Three.js must expose operator status QA telemetry');
-assert(rendererSource.includes("enemy.telegraph > 0 ? 0x7a3327 : dominantStatusSpec?.accent"), 'attack telegraph material must stay authoritative over status emissive');
-assert(rendererSource.includes('const markerCount = reducedEffects ? 2'), 'operator secondary status detail must reduce in reduced-effects mode');
-assert(rendererSource.includes('const nodeCount = reducedEffects ? Math.min(3, spec.nodeCount)'), 'enemy secondary status detail must reduce in reduced-effects mode');
 
 assert(canvasSource.includes('drawEnemyStatusPresentation'), 'Canvas fallback must render enemy statuses');
 assert(canvasSource.includes('drawOperatorStatusPresentation'), 'Canvas fallback must render operator thermal/environment states');
