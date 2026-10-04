@@ -1,0 +1,35 @@
+name: P27 D9 Followup
+
+on:
+  push:
+    branches:
+      - p27-d9-babylon-cleanup
+    paths:
+      - '.github/workflows/p27-d9-followup.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: p27-d9-babylon-cleanup
+          fetch-depth: 0
+      - name: Apply delivery cleanup
+        run: python3 scripts/p27-d9-followup.py
+      - name: Verify patch
+        run: |
+          git diff --check
+          grep -q 'P27D9_NO_THREE_DELIVERY_PASS' scripts/verify-no-three-delivery.mjs
+          grep -q 'node scripts/verify-no-three-delivery.mjs' .github/workflows/android-apk.yml
+          ! grep -q 'measure-webgpu-delivery-cost' package.json
+      - name: Commit cleanup
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Replace Three-era delivery checks with Babylon gates'
+          git push origin HEAD:p27-d9-babylon-cleanup
