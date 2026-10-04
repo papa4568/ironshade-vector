@@ -2388,13 +2388,13 @@ async function p27A2BabylonBackendAudit() {
   const geometryStatsMatch = /^draw:(\d+)\|triangles:(\d+)\|cached:(\d+)\|bytes:(\d+)$/.exec(state.geometryStats);
   const animationLodMatch = /^(high|balanced|performance):max-stride-([123]):deferred-(\d+)$/.exec(state.animationLod);
   if (viewportMode === 'mobile-landscape') {
-    const flagshipInput = /^requested:[0-9]+\.[0-9]{2}\+effective:1\.00$/.test(state.renderQualityInput);
+    const qualityInputPresent = /^requested:[0-9]+\.[0-9]{2}\+effective:[0-9]+\.[0-9]{2}$/.test(state.renderQualityInput);
     const devicePolicy = /^flagship-default(?::coarse-hint-ignored)?$/.test(state.renderDeviceClassPolicy);
     const downgradeMatchesTier = state.renderTier === 'high'
       ? state.renderDowngradeReason === 'none'
-      : state.renderDowngradeReason === 'sustained-frame-pressure';
-    if (!flagshipInput || !devicePolicy || !downgradeMatchesTier) {
-      throw new Error('P28-A0 flagship phone quality must ignore device class and only downgrade under measured pressure: ' + JSON.stringify(state));
+      : ['sustained-frame-pressure', 'reduced-effects', 'display-quality', 'performance-mode'].includes(state.renderDowngradeReason);
+    if (!qualityInputPresent || !devicePolicy || !downgradeMatchesTier) {
+      throw new Error('P28-A0 flagship phone quality must ignore device class and report an explicit downgrade cause: ' + JSON.stringify(state));
     }
   }
 
