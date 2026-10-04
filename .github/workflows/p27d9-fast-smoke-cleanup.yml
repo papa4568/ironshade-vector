@@ -53,24 +53,23 @@ jobs:
               raise SystemExit('stale P21-F3 artifact requirement not found')
           source = source.replace(stale_artifact_requirement, '', 1)
 
-          for stale_entry in (
-              "  'android-p21f3-webgpu.json',\n",
-              "  'p21f3-webgpu-delivery.json',\n",
-          ):
+          for stale_entry in ("  'android-p21f3-webgpu.json',\n", "  'p21f3-webgpu-delivery.json',\n"):
               if stale_entry not in source:
                   raise SystemExit(f'stale P21 artifact upload entry not found: {stale_entry.strip()}')
               source = source.replace(stale_entry, '', 1)
 
-          stale_measurement_block = """for (const marker of [
-  'P21F3_WEBGPU_DELIVERY_PASS',
-  'three.webgpu-',
-  'three.tsl-',
-  'webGpuRefineryRenderer-',
-  'incrementalCompressedBytes',
-  'compressedPercentOfApk',
-]) requireText(p21f3Delivery, marker, 'P21-F3 delivery measurement');
-
-"""
+          stale_measurement_block = "\n".join([
+              "for (const marker of [",
+              "  'P21F3_WEBGPU_DELIVERY_PASS',",
+              "  'three.webgpu-',",
+              "  'three.tsl-',",
+              "  'webGpuRefineryRenderer-',",
+              "  'incrementalCompressedBytes',",
+              "  'compressedPercentOfApk',",
+              "]) requireText(p21f3Delivery, marker, 'P21-F3 delivery measurement');",
+              "",
+              "",
+          ])
           if stale_measurement_block not in source:
               raise SystemExit('stale P21-F3 measurement contract block not found')
           source = source.replace(stale_measurement_block, '', 1)
@@ -78,23 +77,25 @@ jobs:
           anchor = "requireText(workflow, 'node scripts/measure-babylon-delivery-cost.mjs', 'Android workflow');\n"
           if anchor not in source:
               raise SystemExit('Babylon delivery workflow anchor not found')
-          replacement = anchor + """for (const retired of [
-  'measure-webgpu-delivery-cost.mjs',
-  'p21f3-webgpu-delivery.json',
-  'android-p21f3-webgpu.json',
-]) {
-  if (workflow.includes(retired)) throw new Error(`Android workflow must not retain retired Three/P21 delivery gate: ${retired}`);
-}
-for (const marker of [
-  "-name 'three-core-*.js'",
-  "-name 'three-webgl-*.js'",
-  "-name 'three.webgpu-*.js'",
-  "-name 'three.tsl-*.js'",
-  'Retired Three runtime chunk found in Android assets.',
-  'assets/codecs/babylon/manifest.json',
-  '! test -e android/app/src/main/assets/public/assets/codecs/basis',
-]) requireText(workflow, marker, 'P27-D9 Babylon-only Android workflow');
-"""
+          replacement = anchor + "\n".join([
+              "for (const retired of [",
+              "  'measure-webgpu-delivery-cost.mjs',",
+              "  'p21f3-webgpu-delivery.json',",
+              "  'android-p21f3-webgpu.json',",
+              "]) {",
+              "  if (workflow.includes(retired)) throw new Error(`Android workflow must not retain retired Three/P21 delivery gate: ${retired}`);",
+              "}",
+              "for (const marker of [",
+              "  \"-name 'three-core-*.js'\",",
+              "  \"-name 'three-webgl-*.js'\",",
+              "  \"-name 'three.webgpu-*.js'\",",
+              "  \"-name 'three.tsl-*.js'\",",
+              "  'Retired Three runtime chunk found in Android assets.',",
+              "  'assets/codecs/babylon/manifest.json',",
+              "  '! test -e android/app/src/main/assets/public/assets/codecs/basis',",
+              "]) requireText(workflow, marker, 'P27-D9 Babylon-only Android workflow');",
+              "",
+          ])
           source = source.replace(anchor, replacement, 1)
           contract.write_text(source)
           PY
