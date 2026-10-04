@@ -32,11 +32,14 @@ jobs:
           npm install --global npm@10.9.8
           test "$(npm --version)" = "10.9.8"
 
-      - name: Apply P27-D7 browser cutover harness fix
+      - name: Apply P27-D7 release smoke correction
         run: python3 .github/scripts/apply-p27d7.py
 
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
+
+      - name: Verify Android release smoke contract
+        run: npm run test:android-fast-smoke
 
       - name: Verify graphics cutover boundary
         run: npm run test:graphics-backend
@@ -44,13 +47,13 @@ jobs:
       - name: Run production build gate
         run: npm run build
 
-      - name: Commit verified D7 browser harness fix to main
+      - name: Commit verified D7 release smoke correction to main
         shell: bash
         run: |
           set -euo pipefail
-          git add scripts/browser-runtime-smoke.mjs
+          git add scripts/android-fast-smoke.sh tests/android-fast-smoke-contract.mjs
           git diff --cached --check
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'test(browser): keep legacy journeys on rollback renderer'
+          git commit -m 'test(android): scope D7 smoke to release cutover'
           git push origin HEAD:main
