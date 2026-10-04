@@ -8,7 +8,7 @@ const startedAt = Date.now();
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 if (typeof WebSocket !== 'function') {
-  throw new Error('Node runtime does not expose WebSocket support required for authored Damaged Vessel verification.');
+  throw new Error('Node runtime does not expose WebSocket support required for Damaged Vessel verification.');
 }
 
 async function listTargets() {
@@ -20,14 +20,14 @@ async function listTargets() {
 function connect(url) {
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(url);
-    const timer = setTimeout(() => reject(new Error('Timed out connecting to authored Damaged Vessel CDP target')), 5_000);
+    const timer = setTimeout(() => reject(new Error('Timed out connecting to Damaged Vessel CDP target')), 5_000);
     socket.addEventListener('open', () => {
       clearTimeout(timer);
       resolve(socket);
     }, { once: true });
     socket.addEventListener('error', event => {
       clearTimeout(timer);
-      reject(new Error(`Authored Damaged Vessel CDP socket error: ${String(event?.message ?? 'unknown')}`));
+      reject(new Error(`Damaged Vessel CDP socket error: ${String(event?.message ?? 'unknown')}`));
     }, { once: true });
   });
 }
@@ -75,33 +75,43 @@ async function createSession() {
   throw new Error(`Timed out finding Ironshade CDP target; targets=${JSON.stringify(lastTargets)}`);
 }
 
-function validateAuthoredState(state) {
-  const expectedKit = new Set(['broken-rib', 'breach-frame', 'salvage-rack', 'torn-plate', 'service-bundle']);
+function validateBabylonState(state) {
+  const expectedKit = new Set([
+    'floor',
+    'broken-rib',
+    'breach-frame',
+    'salvage-rack',
+    'torn-plate',
+    'service-bundle',
+    'wayfinding',
+    'breach-vapor',
+    'scorch',
+  ]);
   const kit = new Set(String(state.kit ?? '').split(',').filter(Boolean));
-  if (![...expectedKit].every(item => kit.has(item))) return 'Authored Damaged Vessel kit is incomplete';
-  if (!String(state.lod).split(',').every(value => value === '1' || value === '2')) return 'Unexpected Damaged Vessel LOD';
-  if (!(state.instances >= 50)) return 'Damaged Vessel instancing coverage is too low';
+  if (state.rendererState !== 'ready') return 'Babylon Damaged Vessel renderer is not ready';
+  if (![...expectedKit].every(item => kit.has(item))) return 'Babylon Damaged Vessel kit is incomplete';
+  if (!(state.instances >= 50)) return 'Damaged Vessel environment coverage is too low';
   if (state.landmark !== 'starboard-hull-breach') return 'Damaged Vessel breach landmark is missing';
   if (state.serviceDetails !== 'salvage-rack:6+service-bundle:5') return 'Damaged Vessel salvage/service coverage is incomplete';
   if (state.surfaceDetail !== 'broken-rib:5+torn-plate:6+scorch:6') return 'Damaged Vessel surface damage coverage is incomplete';
   if (state.composition !== 'broken-rib-corridor+starboard-breach+torn-shell+perimeter-salvage') return 'Damaged Vessel composition contract is missing';
   if (state.materials !== 'scarred-hull+torn-edge+warning-emissive+salvage-status') return 'Damaged Vessel material language is missing';
   if (state.vfx !== 'breach-vapor:18+scorch:6') return 'Damaged Vessel bounded breach VFX are missing';
-  if (!/^damaged-vessel-emergency:breach\+salvage\+contact:player\+enemy\+practical:[12]\+shadow:key$/.test(state.environmentLighting)) return 'Damaged Vessel emergency lighting recipe is missing';
-  if (!/^aces-\d+\.\d{2}$/.test(state.environmentTone)) return 'Damaged Vessel authored tone telemetry is malformed';
+  if (!/^damaged-vessel-emergency:breach\+salvage\+contact:player\+enemy\+practical:[12]\+shadow:off$/.test(state.environmentLighting)) return 'Damaged Vessel Babylon emergency lighting recipe is missing';
+  if (!/^aces-\d+\.\d{2}$/.test(state.environmentTone)) return 'Damaged Vessel tone telemetry is malformed';
   if (state.readability !== 'silhouette+damage-edge+breach-vapor+luminance') return 'Damaged Vessel readability language is missing';
   if (!String(state.locationArt).startsWith('damaged-vessel:broken-ribs:scarred-hull')) return 'Damaged Vessel campaign art identity is not active';
   if (!String(state.locationLighting).startsWith('damaged-vessel:emergency-amber:aces-')) return 'Damaged Vessel lighting profile is not active';
-  if (state.locationProps !== 'salvage-cases:instanced-shared-library') return 'Damaged Vessel shared salvage props are not active';
+  if (state.locationProps !== 'salvage-cases:procedural-babylon') return 'Damaged Vessel Babylon salvage props are not active';
   if (!['high', 'balanced', 'performance'].includes(state.renderTier)) return 'Adaptive render tier telemetry is missing';
-  if (!/^pixel:\d+\.\d{2}\+shadow:\d+\+vfx:\d+\.\d{2}\+transparency:\d+\.\d{2}\+reflection:\d+\.\d{2}\+secondary:\d+\.\d{2}\+detail:\d+\.\d{2}$/.test(state.renderBudget)) return 'Adaptive render budget telemetry is malformed';
-  if (!(state.width > 0 && state.height > 0)) return 'Authored Damaged Vessel canvas is not visible';
+  if (!/^pixel:\d+\.\d{2}\+shadow:\d+\+reflection:\d+\.\d{2}\+detail:\d+\.\d{2}$/.test(state.renderBudget)) return 'Adaptive render budget telemetry is malformed';
+  if (!(state.width > 0 && state.height > 0)) return 'Damaged Vessel canvas is not visible';
   return '';
 }
 
 const { socket, call } = await createSession();
 let lastState = null;
-let lastMismatch = 'authored environment not observed';
+let lastMismatch = 'Babylon Damaged Vessel environment not observed';
 let stableSamples = 0;
 
 async function evaluate(expression) {
@@ -119,9 +129,9 @@ try {
       if (!canvas) return { visual: '', canvases: document.querySelectorAll('canvas').length };
       const rect = canvas.getBoundingClientRect();
       return {
+        rendererState: canvas.dataset.babylonEnvironmentState ?? '',
         visual: canvas.dataset.environmentVisual ?? '',
         kit: canvas.dataset.environmentKit ?? '',
-        lod: canvas.dataset.environmentLod ?? '',
         instances: Number(canvas.dataset.environmentInstances ?? 0),
         landmark: canvas.dataset.environmentLandmark ?? '',
         serviceDetails: canvas.dataset.environmentServiceDetails ?? '',
@@ -143,16 +153,16 @@ try {
     })()`);
 
     if (lastState?.visual === 'procedural-fallback') {
-      throw new Error(`Authored Damaged Vessel entered procedural fallback: ${JSON.stringify(lastState)}`);
+      throw new Error(`Damaged Vessel entered generic procedural fallback: ${JSON.stringify(lastState)}`);
     }
 
-    if (lastState?.visual === 'authored-damaged-vessel') {
-      lastMismatch = validateAuthoredState(lastState);
+    if (lastState?.visual === 'procedural-damaged-vessel-babylon') {
+      lastMismatch = validateBabylonState(lastState);
       if (!lastMismatch) {
         stableSamples += 1;
         if (stableSamples >= 2) {
           const kit = new Set(String(lastState.kit ?? '').split(',').filter(Boolean));
-          console.log(`AUTHORED_DAMAGED_VESSEL_RUNTIME_PASS lod=${lastState.lod} kit=${[...kit].sort().join(',')} instances=${lastState.instances} landmark=${lastState.landmark} service=${lastState.serviceDetails} surface=${lastState.surfaceDetail} composition=${lastState.composition} materials=${lastState.materials} vfx=${lastState.vfx} lighting=${lastState.environmentLighting} tone=${lastState.environmentTone} readability=${lastState.readability} location=${lastState.locationArt} props=${lastState.locationProps} tier=${lastState.renderTier} budget=${lastState.renderBudget} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
+          console.log(`AUTHORED_DAMAGED_VESSEL_RUNTIME_PASS visual=${lastState.visual} kit=${[...kit].sort().join(',')} instances=${lastState.instances} landmark=${lastState.landmark} service=${lastState.serviceDetails} surface=${lastState.surfaceDetail} composition=${lastState.composition} materials=${lastState.materials} vfx=${lastState.vfx} lighting=${lastState.environmentLighting} tone=${lastState.environmentTone} readability=${lastState.readability} location=${lastState.locationArt} props=${lastState.locationProps} tier=${lastState.renderTier} budget=${lastState.renderBudget} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
           writeFileSync(reportPath, JSON.stringify({ pass: true, elapsedMs: Date.now() - startedAt, stableSamples, state: lastState }, null, 2));
           process.exitCode = 0;
           break;
@@ -162,14 +172,14 @@ try {
       }
     } else {
       stableSamples = 0;
-      lastMismatch = `waiting for authored visual; observed=${lastState?.visual ?? ''}`;
+      lastMismatch = `waiting for Babylon Damaged Vessel visual; observed=${lastState?.visual ?? ''}`;
     }
     await sleep(200);
   }
 
   if (stableSamples < 2) {
     writeFileSync(reportPath, JSON.stringify({ pass: false, elapsedMs: Date.now() - startedAt, stableSamples, mismatch: lastMismatch, state: lastState }, null, 2));
-    throw new Error(`Timed out waiting for complete stable authored Damaged Vessel environment (${lastMismatch}): ${JSON.stringify(lastState)}`);
+    throw new Error(`Timed out waiting for complete stable Babylon Damaged Vessel environment (${lastMismatch}): ${JSON.stringify(lastState)}`);
   }
 } catch (error) {
   writeFileSync(reportPath, JSON.stringify({ pass: false, elapsedMs: Date.now() - startedAt, stableSamples, mismatch: lastMismatch, state: lastState, error: String(error?.stack ?? error) }, null, 2));
