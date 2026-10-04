@@ -17,7 +17,7 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v7
 
-      - name: Enumerate remaining Three references
+      - name: Enumerate remaining Three references after cleanup
         shell: bash
         run: |
           set -euo pipefail
