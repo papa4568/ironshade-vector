@@ -107,6 +107,7 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
     canvas.dataset.babylonBackendLoaded = 'initializing';
     canvas.dataset.babylonBackendFallback = '';
     canvas.dataset.babylonBackendFallbackReason = '';
+    // Compact/coarse input remains a framing hint; it must never lower startup render quality.
     canvas.dataset.renderDeviceClassPolicy = coarse ? 'flagship-default:coarse-hint-ignored' : 'flagship-default';
     canvas.dataset.renderDowngradeReason = 'pending';
     void this.initialize();
