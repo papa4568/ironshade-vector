@@ -2204,6 +2204,7 @@ async function p27A2BabylonBackendAudit() {
       layout: canvas?.dataset.babylonCameraLayout ?? '',
       framing: canvas?.dataset.babylonCameraFraming ?? '',
       viewport: canvas?.dataset.babylonViewport ?? '',
+      compactLayout: document.querySelector('.game-root')?.dataset.compactLayout === 'true',
       feedback: canvas?.dataset.cameraFeedback ?? '',
       environmentState: canvas?.dataset.babylonEnvironmentState ?? '',
       environmentVisual: canvas?.dataset.environmentVisual ?? '',
@@ -2643,9 +2644,12 @@ async function p27A2BabylonBackendAudit() {
   const ratio = Number(ratioRaw);
   const bufferWidth = Number(bufferWidthRaw);
   const bufferHeight = Number(bufferHeightRaw);
-  const expectedLayout = state.rectWidth / Math.max(1, state.rectHeight) < 1.15
+  const expectedNarrow = state.rectWidth / Math.max(1, state.rectHeight) < 1.35
+    || state.rectWidth < 560
+    || state.rectHeight < 340;
+  const expectedLayout = expectedNarrow
     ? 'narrow'
-    : pointerProbe.coarse ? 'coarse' : 'standard';
+    : state.compactLayout ? 'coarse' : 'standard';
   if (state.layout !== expectedLayout
     || Math.abs(cssWidth - state.rectWidth) > 2
     || Math.abs(cssHeight - state.rectHeight) > 2
