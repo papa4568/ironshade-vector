@@ -1,0 +1,40 @@
+name: Assistant Android smoke marker fix
+
+on:
+  push:
+    branches:
+      - feat/p28-a3-ssao2
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/p28-a3-ssao2
+          fetch-depth: 1
+      - name: Patch stale Babylon asset marker contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/android-runtime-smoke.mjs')
+          text = path.read_text()
+          old = "canvas?.dataset.operatorVisual === 'authored-2'"
+          new = "canvas?.dataset.operatorVisual === 'authored-2-babylon'"
+          count = text.count(old)
+          if count != 1:
+              raise SystemExit(f'expected exactly one stale marker, found {count}')
+          path.write_text(text.replace(old, new))
+          PY
+          git rm .github/workflows/assistant-fix-android-asset-marker.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add scripts/android-runtime-smoke.mjs
+          git commit -m "test: align Android authored asset marker with Babylon"
+          git push origin HEAD:feat/p28-a3-ssao2
