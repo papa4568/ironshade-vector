@@ -143,10 +143,11 @@ def scroll_up():
 def scroll_down():
     swipe(720, 330, 720, 1110)
 
-def tap_with_scroll(label, direction="up", attempts=10, contains=False):
+def tap_with_scroll(label, direction="up", attempts=10, contains=False, min_height=28):
     for _ in range(attempts):
         node = actionable_node(label, contains=contains)
-        if node is not None and comfortably_visible(node):
+        bounds = parse_bounds(node.attrib.get("bounds", "")) if node is not None else None
+        if node is not None and bounds is not None and comfortably_visible(node) and bounds[3] - bounds[1] >= min_height:
             x, y = center(node)
             print(f"ANDROID_SETTINGS_TAP_SCROLL label={label!r} node={node_summary(node)}")
             tap(x, y)
@@ -386,7 +387,7 @@ def open_settings():
     shot("04-settings")
 
 def return_to_command():
-    tap_with_scroll("Return to ship", direction="down", attempts=16)
+    tap_with_scroll("Return to ship", direction="down", attempts=16, min_height=60)
     wait_node("Command", timeout=20, actionable=True)
     if not visible_label("Tasking nexus online.", contains=True):
         tap_label("Command")
