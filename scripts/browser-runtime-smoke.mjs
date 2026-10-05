@@ -2663,7 +2663,7 @@ async function p27A2BabylonBackendAudit() {
   }
 
   const pbrMatch = /^pbr:(\d+)\|standard:(\d+)\|max-lights:(3|5|6)$/.exec(state.pbrMaterials);
-  const lightingBudgetMatch = /^tier:(high|balanced|performance)\|ibl:(1\.00|0\.70|0\.38)\|shadow:(0|512|1024)\|practical:(1|2)\|max-lights:(3|5|6)$/.exec(state.lightingBudget);
+  const lightingBudgetMatch = /^tier:(high|balanced|performance)\|ibl:(1\.00|0\.70|0\.38)\|shadow:(0|1024|2048)\|practical:(1|2)\|max-lights:(3|5|6)$/.exec(state.lightingBudget);
   if (state.lightingProfile !== 'furnace-amber'
     || state.materialIntent !== 'authored-gltf-pbr+procedural-world-pbr'
     || !pbrMatch
@@ -2673,7 +2673,7 @@ async function p27A2BabylonBackendAudit() {
     || !['adaptive', 'flagship', 'performance'].includes(state.graphicsQuality)
     || !/^raw-cube:furnace-amber\+service-cyan:intensity-\d+\.\d{2}$/.test(state.environmentIbl)
     || !state.environmentLighting.startsWith('refinery-key+rim+ibl:raw-cube+practical:')
-    || !/^key:(512|1024):pcf-low:casters-\d+$|^key:off$/.test(state.environmentShadowBudget)
+    || !/^key:(1024|2048):pcf-high:bias-0\.00035:normal-0\.012:coverage-34:snap-1\.5:casters-\d+$|^key:off$/.test(state.environmentShadowBudget)
     || !/^aces-\d+\.\d{2}\+ibl-\d+\.\d{2}$/.test(state.environmentTone)
     || !/^asteroid-refinery:furnace-amber:aces-\d+\.\d{2}$/.test(state.locationLighting)) {
     throw new Error('P27-B11 Babylon PBR lighting parity invalid: ' + JSON.stringify(state));
