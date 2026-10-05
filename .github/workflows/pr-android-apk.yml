@@ -4,18 +4,6 @@ on:
   pull_request:
     branches:
       - main
-    paths:
-      - 'src/**'
-      - 'public/**'
-      - 'tests/**'
-      - 'scripts/**'
-      - 'capacitor.config.ts'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.nvmrc'
-      - 'vite.config.ts'
-      - 'index.html'
-      - '.github/workflows/pr-android-apk.yml'
 
 permissions:
   contents: read
