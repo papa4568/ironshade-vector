@@ -92,13 +92,15 @@ const runtimePost = new BabylonRefineryPostProcessing(runtimeScene, runtimeCanva
 runtimePost.sync(false, highSnapshot);
 assert.match(runtimeCanvas.dataset.environmentSsao2 ?? '', /^(primary:refinery-ssao2-v1:|off:unsupported\+fallback-contact$)/);
 if (runtimeCanvas.dataset.environmentSsao2?.startsWith('primary:')) {
-  assert.equal(runtimeCanvas.dataset.environmentContactDepth, 'fallback-idle:ssao2-primary');
+  assert.match(runtimeCanvas.dataset.environmentContactDepth ?? '', /^grounding:refinery-contact-grounding-v1:instances-0:.*:fallback-idle:ssao2-primary$/);
 } else {
   assert.match(runtimeCanvas.dataset.environmentContactDepth ?? '', /^grounding:refinery-contact-grounding-v1:/);
 }
 assert.match(runtimeCanvas.dataset.environmentBloom ?? '', /^selective:refinery-selective-v1:|^off:awaiting-authored-emissives$/);
 assert.match(runtimeCanvas.dataset.environmentAtmosphere ?? '', /^fog:refinery-depth-atmosphere-v1:/);
 assert.equal(runtimeCanvas.dataset.babylonPostStack, 'on:qa-explicit');
+assert.match(runtimeCanvas.dataset.babylonPostBudget ?? '', /^tier:(high|balanced|performance)\|bloom:/);
+assert.match(runtimeCanvas.dataset.effectPriority ?? '', /secondary:bloom\+contact-depth\+atmosphere@/);
 
 runtimeCanvas.dataset.refineryPostStackQa = 'off';
 runtimePost.sync(false, highSnapshot);
@@ -139,6 +141,7 @@ assert.match(postSource, /samples = budget\.ssaoSamples/);
 assert.match(postSource, /environmentSsao2/);
 assert.match(postSource, /fallback-idle:ssao2-primary/);
 assert.match(postSource, /stackEnabled && !ssaoEnabled \? budget\.contactDepthCount : 0/);
+assert.match(postSource, /refineryContactDepthTelemetry\(0\) \+ ':fallback-idle:ssao2-primary'/);
 assert.match(postSource, /new GlowLayer\('p27-b12-refinery-selective-bloom'/);
 assert.match(postSource, /excludeByDefault: true/);
 assert.match(postSource, /this\.glow\.addIncludedOnlyMesh\(mesh\)/);
@@ -156,4 +159,4 @@ assert.match(browserSource, /p27b12-stack-on/);
 assert.match(browserSource, /pngByteDifferenceRatio/);
 assert.match(packageSource, /test:babylon-refinery-post-processing/);
 
-console.log('P28_A3_BABYLON_SSAO2_PASS primary=high+balanced fallback=performance-or-unsupported samples=16>8>off cues=1.00 lifecycle=qa-off+on+release+reentry captures=p27b12-stack-off+stack-on');
+console.log('P28_A3_BABYLON_SSAO2_PASS primary=high+balanced fallback=performance-or-unsupported samples=16>8>off cues=1.00 lifecycle=qa-off+on+release+reentry telemetry=p27-compatible captures=p27b12-stack-off+stack-on');

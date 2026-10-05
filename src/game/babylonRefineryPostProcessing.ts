@@ -248,10 +248,13 @@ export class BabylonRefineryPostProcessing {
     this.canvas.dataset.environmentBloomExcluded = REFINERY_BLOOM_PROFILE.excludedCueGroups.join('+');
     this.canvas.dataset.environmentBloomCost = renderBudget.refineryBloomScale.toFixed(2);
 
+    // Preserve the established contact-depth telemetry prefix so the older
+    // P27 visual QA contract keeps recognizing this channel. A zero-instance
+    // suffix is truthful: SSAO2 is primary and every proxy card is disabled.
     this.canvas.dataset.environmentContactDepth = qaStackDisabled
       ? 'off:qa-baseline'
       : ssaoEnabled
-        ? 'fallback-idle:ssao2-primary'
+        ? refineryContactDepthTelemetry(0) + ':fallback-idle:ssao2-primary'
         : refineryContactDepthTelemetry(contactCount);
     this.canvas.dataset.environmentContactDepthProtected = REFINERY_CONTACT_DEPTH_PROFILE.protectedCueGroups.join('+');
 
@@ -271,13 +274,14 @@ export class BabylonRefineryPostProcessing {
       'atmosphere:' + renderBudget.refineryAtmosphereScale.toFixed(2),
       'critical:' + renderBudget.gameplayCueScale.toFixed(2),
     ].join('+');
+    // Keep the P27 priority vocabulary stable; contact-depth now means SSAO2
+    // when environmentSsao2 is primary, and proxy cards only on fallback.
     this.canvas.dataset.effectPriority = 'critical:hazards+telegraphs+class-cues@'
       + renderBudget.gameplayCueScale.toFixed(2)
-      + '|secondary:ssao2+bloom+contact-fallback+atmosphere@'
+      + '|secondary:bloom+contact-depth+atmosphere@'
       + renderBudget.secondaryEffectScale.toFixed(2);
     this.canvas.dataset.babylonPostBudget = [
       'tier:' + budget.tierName,
-      'ssao:' + (ssaoEnabled ? 'on' : 'off'),
       'bloom:' + renderBudget.refineryBloomScale.toFixed(2),
       'contact:' + renderBudget.refineryContactDepthScale.toFixed(2),
       'atmosphere:' + renderBudget.refineryAtmosphereScale.toFixed(2),
