@@ -112,6 +112,7 @@ try {
         materialIntent: canvas.dataset.babylonMaterialIntent ?? '',
         lightingBudget: canvas.dataset.babylonLightingBudget ?? '',
         lighting: canvas.dataset.environmentLighting ?? '',
+        actorGrounding: canvas.dataset.environmentActorGrounding ?? '',
         ibl: canvas.dataset.environmentIbl ?? '',
         tone: canvas.dataset.environmentTone ?? '',
         postProcessing: canvas.dataset.babylonPostProcessing ?? '',
@@ -167,8 +168,11 @@ try {
       if (!/^tier:(high|balanced|performance)\|ibl:\d+\.\d{2}\|shadow:\d+\|practical:[12]\|max-lights:[356]$/.test(lastState.lightingBudget)) {
         throw new Error(`Babylon refinery lighting budget telemetry is malformed: ${JSON.stringify(lastState)}`);
       }
-      if (!/^refinery-key\+rim\+ibl:(?:raw-cube|off)\+practical:[12]\+shadow:(?:off|\d+)$/.test(lastState.lighting)) {
+      if (!/^refinery-key\+rim\+ibl:(?:raw-cube|off)\+practical:[12]\+shadow:(?:off|\d+)\+actor-grounding:key-linked$/.test(lastState.lighting)) {
         throw new Error(`Babylon refinery lighting telemetry is malformed: ${JSON.stringify(lastState)}`);
+      }
+      if (!/^p28-a2:refinery-actor-grounding-v1:quality-64:actors-\d+\/\d+:contact-and-key-projected:instances:core\+penumbra:cue-priority-preserved$/.test(lastState.actorGrounding)) {
+        throw new Error(`Babylon refinery actor-grounding telemetry is malformed: ${JSON.stringify(lastState)}`);
       }
       if (!/^(?:raw-cube:[a-z0-9-]+(?:\+[a-z0-9-]+)*:intensity-\d+\.\d{2}|off:(?:qa-baseline|adaptive-budget))$/.test(lastState.ibl)) {
         throw new Error(`Babylon refinery IBL telemetry is malformed: ${JSON.stringify(lastState)}`);
@@ -193,7 +197,7 @@ try {
       if (!(lastState.width > 0 && lastState.height > 0)) {
         throw new Error(`Authored Babylon refinery canvas is not visible: ${JSON.stringify(lastState)}`);
       }
-      console.log(`AUTHORED_REFINERY_RUNTIME_PASS lod=${lastState.lod} kit=${[...kit].sort().join(',')} instances=${lastState.instances} terminals=${lastState.terminals} landmark=${lastState.landmark} lighting=${lastState.lighting} ibl=${lastState.ibl} post=${lastState.postStack} tier=${lastState.renderTier} frame=${lastState.renderFrameMs}ms budget=${lastState.renderBudget} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
+      console.log(`AUTHORED_REFINERY_RUNTIME_PASS lod=${lastState.lod} kit=${[...kit].sort().join(',')} instances=${lastState.instances} terminals=${lastState.terminals} landmark=${lastState.landmark} lighting=${lastState.lighting} grounding=${lastState.actorGrounding} ibl=${lastState.ibl} post=${lastState.postStack} tier=${lastState.renderTier} frame=${lastState.renderFrameMs}ms budget=${lastState.renderBudget} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
       process.exitCode = 0;
       break;
     }
