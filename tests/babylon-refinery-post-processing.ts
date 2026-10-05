@@ -8,6 +8,7 @@ import {
   BabylonRefineryPostProcessing,
   isBabylonRefineryBloomSourceName,
   resolveBabylonRefineryPostProcessingBudget,
+  supportsBabylonRefinerySsao2,
 } from '../src/game/babylonRefineryPostProcessing';
 import { AdaptiveRenderBudget } from '../src/game/renderQuality';
 
@@ -66,6 +67,15 @@ for (const protectedName of [
 ]) {
   assert.equal(isBabylonRefineryBloomSourceName(protectedName), false, 'Gameplay cue leaked into selective bloom: ' + protectedName);
 }
+
+const unsupportedMrtScene = {
+  getEngine: () => ({}),
+} as unknown as Pick<Scene, 'getEngine'>;
+assert.equal(
+  supportsBabylonRefinerySsao2(unsupportedMrtScene),
+  false,
+  'SSAO2 must fall back before pipeline creation when the active engine does not expose MRT creation.',
+);
 
 const adaptive = new AdaptiveRenderBudget(false);
 let adaptiveSnapshot = adaptive.sample(1000 / 60, 1, 'adaptive');
@@ -135,6 +145,8 @@ assert.match(rendererSource, /this\.refineryPostProcessing\.release\('scenario-e
 assert.match(rendererSource, /this\.refineryPostProcessing\.dispose\(\)/);
 assert.match(postSource, /SSAO2RenderingPipeline/);
 assert.match(postSource, /new SSAO2RenderingPipeline\(/);
+assert.match(postSource, /supportsBabylonRefinerySsao2\(this\.scene\)/);
+assert.match(postSource, /typeof engine\.createMultipleRenderTarget === 'function'/);
 assert.match(postSource, /attachCamerasToRenderPipeline\(/);
 assert.match(postSource, /detachCamerasFromRenderPipeline\(/);
 assert.match(postSource, /samples = budget\.ssaoSamples/);
@@ -159,4 +171,4 @@ assert.match(browserSource, /p27b12-stack-on/);
 assert.match(browserSource, /pngByteDifferenceRatio/);
 assert.match(packageSource, /test:babylon-refinery-post-processing/);
 
-console.log('P28_A3_BABYLON_SSAO2_PASS primary=high+balanced fallback=performance-or-unsupported samples=16>8>off cues=1.00 lifecycle=qa-off+on+release+reentry telemetry=p27-compatible captures=p27b12-stack-off+stack-on');
+console.log('P28_A3_BABYLON_SSAO2_PASS primary=high+balanced fallback=performance-or-unsupported+mrt-missing samples=16>8>off cues=1.00 lifecycle=qa-off+on+release+reentry telemetry=p27-compatible captures=p27b12-stack-off+stack-on');
