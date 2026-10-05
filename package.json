@@ -74,7 +74,7 @@
     "test:status-visuals": "vite build --ssr tests/status-visuals.ts --outDir .status-visuals-dist && node .status-visuals-dist/status-visuals.js",
     "test:enemy-lifecycle-visuals": "vite build --ssr tests/enemy-lifecycle-visuals.ts --outDir .enemy-lifecycle-visuals-dist && node .enemy-lifecycle-visuals-dist/enemy-lifecycle-visuals.js",
     "test:enemy-mobile-readability": "vite build --ssr tests/enemy-mobile-readability.ts --outDir .enemy-mobile-readability-dist && node .enemy-mobile-readability-dist/enemy-mobile-readability.js",
-    "test:menu-presentation": "vite build --ssr tests/menu-presentation.ts --outDir .menu-dist && node .menu-dist/menu-presentation.js",
+    "test:menu-presentation": "vite build --ssr tests/menu-presentation.ts --outDir .menu-presentation-dist && node .menu-presentation-dist/menu-presentation.js",
     "test:mission-presentation": "vite build --ssr tests/mission-presentation.ts --outDir .mission-presentation-dist && node .mission-presentation-dist/mission-presentation.js",
     "test:world-material-polish": "vite build --ssr tests/world-material-polish.ts --outDir .world-material-polish-dist && node .world-material-polish-dist/world-material-polish.js",
     "test:accessibility-mobile": "vite build --ssr tests/accessibility-mobile-gate.ts --outDir .accessibility-mobile-dist && node .accessibility-mobile-dist/accessibility-mobile-gate.js",
