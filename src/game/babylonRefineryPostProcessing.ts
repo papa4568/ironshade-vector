@@ -1,3 +1,4 @@
+import type { Camera } from '@babylonjs/core/Cameras/camera';
 import { GlowLayer } from '@babylonjs/core/Layers/glowLayer';
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { RawTexture } from '@babylonjs/core/Materials/Textures/rawTexture';
@@ -6,6 +7,7 @@ import type { AbstractMesh } from '@babylonjs/core/Meshes/abstractMesh';
 import '@babylonjs/core/Meshes/instancedMesh';
 import { Mesh } from '@babylonjs/core/Meshes/mesh';
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
+import { SSAO2RenderingPipeline } from '@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/ssao2RenderingPipeline';
 import { Scene } from '@babylonjs/core/scene';
 import {
   REFINERY_BLOOM_PROFILE,
@@ -28,6 +30,8 @@ import { getWorldSize } from './sim';
 const WORLD_SCALE = 0.02;
 const REFINERY_BASELINE_BACKGROUND = 0x070604;
 const REFINERY_BASELINE_FOG = 0x0b0805;
+const REFINERY_SSAO_PIPELINE_NAME = 'p28-a3-refinery-ssao2';
+const REFINERY_SSAO_RATIO = Object.freeze({ ssaoRatio: 0.72, blurRatio: 1 });
 const PROTECTED_BLOOM_NAME = /(enemy|telegraph|phase-cue|hazard|objective|loot|interactable|protocol|status|lifecycle|target|health|armor|guide)/i;
 const REFINERY_BLOOM_SOURCE_NAME = /(refinery-(terminal|processor)|p27-b6-muzzle-(flash|core))/i;
 const CONTACT_POINTS = Object.freeze([
@@ -45,6 +49,11 @@ const CONTACT_POINTS = Object.freeze([
 
 export type BabylonRefineryPostProcessingBudget = {
   tierName: RenderBudgetSnapshot['tierName'];
+  ssaoEnabled: boolean;
+  ssaoStrength: number;
+  ssaoRadius: number;
+  ssaoSamples: 0 | 8 | 16;
+  ssaoBilateralSamples: 8 | 12 | 16;
   bloomEnabled: boolean;
   bloomStrength: number;
   bloomKernelSize: 12 | 18 | 24;
@@ -86,11 +95,18 @@ export function resolveBabylonRefineryPostProcessingBudget(
   lowVisibility = false,
 ): BabylonRefineryPostProcessingBudget {
   const atmosphere = refineryAtmosphereRange(lowVisibility, budget.refineryAtmosphereScale);
+  const high = budget.tierName === 'high';
+  const balanced = budget.tierName === 'balanced';
   return {
     tierName: budget.tierName,
+    ssaoEnabled: budget.refineryContactDepthScale >= 0.5,
+    ssaoStrength: high ? 1.08 : balanced ? 0.78 : 0,
+    ssaoRadius: high ? 1.15 : balanced ? 0.95 : 0.8,
+    ssaoSamples: high ? 16 : balanced ? 8 : 0,
+    ssaoBilateralSamples: high ? 16 : balanced ? 12 : 8,
     bloomEnabled: budget.refineryBloomScale >= 0.5,
     bloomStrength: refineryBloomStrengthForCost(budget.refineryBloomScale),
-    bloomKernelSize: budget.tierName === 'high' ? 24 : budget.tierName === 'balanced' ? 18 : 12,
+    bloomKernelSize: high ? 24 : balanced ? 18 : 12,
     contactDepthCount: Math.max(
       1,
       Math.min(
@@ -113,6 +129,9 @@ export class BabylonRefineryPostProcessing {
   private readonly contactMaterial: StandardMaterial;
   private readonly contactMeshes: AbstractMesh[] = [];
   private readonly bloomMeshes = new Set<Mesh>();
+  private ssao: SSAO2RenderingPipeline | null = null;
+  private ssaoCamera: Camera | null = null;
+  private ssaoAttached = false;
   private bloomMeshCount = -1;
   private released = false;
 
@@ -166,7 +185,7 @@ export class BabylonRefineryPostProcessing {
     this.positionContactDepth();
     this.contactMeshes.forEach(mesh => mesh.setEnabled(false));
 
-    canvas.dataset.babylonPostProcessing = 'selective-glow+instanced-contact+linear-fog+image-processing';
+    canvas.dataset.babylonPostProcessing = 'ssao2+selective-glow+contact-fallback+linear-fog+image-processing';
     canvas.dataset.babylonPostProtected = REFINERY_BLOOM_PROFILE.excludedCueGroups.join('+');
   }
 
@@ -178,12 +197,18 @@ export class BabylonRefineryPostProcessing {
     const stackEnabled = !qaStackDisabled;
     const sourceCount = this.syncBloomSources();
 
+    const ssaoRequested = stackEnabled && (qaExplicit || budget.ssaoEnabled);
+    const ssaoEnabled = this.syncSsao(ssaoRequested, budget);
+
     const bloomEnabled = stackEnabled && sourceCount > 0 && (qaExplicit || budget.bloomEnabled);
     this.glow.isEnabled = bloomEnabled;
     this.glow.intensity = budget.bloomStrength;
     this.glow.blurKernelSize = budget.bloomKernelSize;
 
-    const contactCount = stackEnabled ? budget.contactDepthCount : 0;
+    // P28-A3: SSAO2 owns contact depth whenever the runtime supports it.
+    // The authored cards remain as a deterministic fallback for unsupported
+    // hardware and the Performance tier instead of double-darkening the scene.
+    const contactCount = stackEnabled && !ssaoEnabled ? budget.contactDepthCount : 0;
     this.contactMeshes.forEach((mesh, index) => mesh.setEnabled(index < contactCount));
 
     const atmosphereEnabled = stackEnabled && (qaExplicit || budget.atmosphereEnabled);
@@ -201,6 +226,18 @@ export class BabylonRefineryPostProcessing {
       this.scene.imageProcessingConfiguration.contrast = 1;
     }
 
+    this.canvas.dataset.environmentSsao2 = ssaoEnabled
+      ? 'primary:refinery-ssao2-v1'
+        + ':strength-' + budget.ssaoStrength.toFixed(2)
+        + ':radius-' + budget.ssaoRadius.toFixed(2)
+        + ':samples-' + budget.ssaoSamples
+        + ':ratio-' + REFINERY_SSAO_RATIO.ssaoRatio.toFixed(2)
+      : qaStackDisabled
+        ? 'off:qa-baseline'
+        : ssaoRequested
+          ? 'off:unsupported+fallback-contact'
+          : 'off:adaptive-budget+fallback-contact';
+
     this.canvas.dataset.environmentBloom = bloomEnabled
       ? 'selective:' + REFINERY_BLOOM_PROFILE.id
         + ':strength-' + budget.bloomStrength.toFixed(2)
@@ -213,7 +250,9 @@ export class BabylonRefineryPostProcessing {
 
     this.canvas.dataset.environmentContactDepth = qaStackDisabled
       ? 'off:qa-baseline'
-      : refineryContactDepthTelemetry(contactCount);
+      : ssaoEnabled
+        ? 'fallback-idle:ssao2-primary'
+        : refineryContactDepthTelemetry(contactCount);
     this.canvas.dataset.environmentContactDepthProtected = REFINERY_CONTACT_DEPTH_PROFILE.protectedCueGroups.join('+');
 
     this.canvas.dataset.environmentAtmosphere = atmosphereEnabled
@@ -234,10 +273,11 @@ export class BabylonRefineryPostProcessing {
     ].join('+');
     this.canvas.dataset.effectPriority = 'critical:hazards+telegraphs+class-cues@'
       + renderBudget.gameplayCueScale.toFixed(2)
-      + '|secondary:bloom+contact-depth+atmosphere@'
+      + '|secondary:ssao2+bloom+contact-fallback+atmosphere@'
       + renderBudget.secondaryEffectScale.toFixed(2);
     this.canvas.dataset.babylonPostBudget = [
       'tier:' + budget.tierName,
+      'ssao:' + (ssaoEnabled ? 'on' : 'off'),
       'bloom:' + renderBudget.refineryBloomScale.toFixed(2),
       'contact:' + renderBudget.refineryContactDepthScale.toFixed(2),
       'atmosphere:' + renderBudget.refineryAtmosphereScale.toFixed(2),
@@ -251,12 +291,14 @@ export class BabylonRefineryPostProcessing {
   release(reason: string) {
     if (this.released) return;
     this.released = true;
+    this.detachSsao();
     this.glow.isEnabled = false;
     this.contactMeshes.forEach(mesh => mesh.setEnabled(false));
     this.scene.fogMode = Scene.FOGMODE_NONE;
     this.scene.imageProcessingConfiguration.contrast = 1;
     this.canvas.dataset.babylonPostRelease = reason;
     for (const key of [
+      'environmentSsao2',
       'environmentBloom',
       'environmentBloomSources',
       'environmentBloomExcluded',
@@ -277,6 +319,10 @@ export class BabylonRefineryPostProcessing {
 
   dispose() {
     this.release('renderer-dispose');
+    this.ssao?.dispose();
+    this.ssao = null;
+    this.ssaoCamera = null;
+    this.ssaoAttached = false;
     this.glow.dispose();
     for (let index = this.contactMeshes.length - 1; index >= 0; index -= 1) {
       this.contactMeshes[index].dispose();
@@ -284,6 +330,74 @@ export class BabylonRefineryPostProcessing {
     this.contactMeshes.length = 0;
     this.contactMaterial.dispose();
     this.contactTexture.dispose();
+  }
+
+  private syncSsao(requested: boolean, budget: BabylonRefineryPostProcessingBudget) {
+    if (!requested) {
+      this.detachSsao();
+      return false;
+    }
+
+    const pipeline = this.ensureSsao();
+    const camera = this.scene.activeCamera;
+    if (!pipeline || !camera) {
+      this.detachSsao();
+      return false;
+    }
+
+    pipeline.totalStrength = budget.ssaoStrength;
+    pipeline.radius = budget.ssaoRadius;
+    pipeline.samples = budget.ssaoSamples;
+    pipeline.expensiveBlur = true;
+    pipeline.bypassBlur = false;
+    pipeline.bilateralSamples = budget.ssaoBilateralSamples;
+    pipeline.bilateralSoften = 0.55;
+    pipeline.bilateralTolerance = 0.25;
+
+    if (this.ssaoAttached && this.ssaoCamera !== camera) this.detachSsao();
+    if (!this.ssaoAttached) {
+      this.scene.postProcessRenderPipelineManager.attachCamerasToRenderPipeline(
+        REFINERY_SSAO_PIPELINE_NAME,
+        [camera],
+      );
+      this.ssaoCamera = camera;
+      this.ssaoAttached = true;
+    }
+    return true;
+  }
+
+  private ensureSsao() {
+    if (this.ssao) return this.ssao;
+    if (!SSAO2RenderingPipeline.IsSupported) return null;
+
+    const pipeline = new SSAO2RenderingPipeline(
+      REFINERY_SSAO_PIPELINE_NAME,
+      this.scene,
+      REFINERY_SSAO_RATIO,
+    );
+    pipeline.base = 0;
+    pipeline.epsilon = 0.02;
+    pipeline.maxZ = 90;
+    pipeline.minZAspect = 0.2;
+    pipeline.textureSamples = 1;
+    pipeline.expensiveBlur = true;
+    pipeline.bypassBlur = false;
+    this.ssao = pipeline;
+    return pipeline;
+  }
+
+  private detachSsao() {
+    if (!this.ssaoAttached || !this.ssaoCamera) {
+      this.ssaoAttached = false;
+      this.ssaoCamera = null;
+      return;
+    }
+    this.scene.postProcessRenderPipelineManager.detachCamerasFromRenderPipeline(
+      REFINERY_SSAO_PIPELINE_NAME,
+      [this.ssaoCamera],
+    );
+    this.ssaoAttached = false;
+    this.ssaoCamera = null;
   }
 
   private positionContactDepth() {
