@@ -5,25 +5,47 @@ import { PointLight } from '@babylonjs/core/Lights/pointLight';
 import { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGenerator';
 import { ImageProcessingConfiguration } from '@babylonjs/core/Materials/imageProcessingConfiguration';
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial';
+import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { CubeTexture } from '@babylonjs/core/Materials/Textures/cubeTexture';
 import { RawCubeTexture } from '@babylonjs/core/Materials/Textures/rawCubeTexture';
+import { RawTexture } from '@babylonjs/core/Materials/Textures/rawTexture';
 import { Color3 } from '@babylonjs/core/Maths/math.color';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import type { AbstractMesh } from '@babylonjs/core/Meshes/abstractMesh';
+import '@babylonjs/core/Meshes/instancedMesh';
+import { Mesh } from '@babylonjs/core/Meshes/mesh';
+import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
 import type { Scene } from '@babylonjs/core/scene';
+import { createRefineryContactDepthAlphaData } from './refineryContactDepth';
 import {
   REFINERY_BABYLON_LIGHTING_PROFILE,
   REFINERY_IBL_PANELS,
   REFINERY_IBL_PROFILE,
 } from './refineryLightingProfile';
 import type { RenderBudgetSnapshot } from './renderQuality';
-import { getWorldSize, type SimState } from './sim';
+import { getWorldSize, type Enemy, type SimState } from './sim';
 
 const WORLD_SCALE = 0.02;
 const IBL_FALLBACK_FACE_SIZE = 8;
 const REFINERY_PREFILTERED_IBL_URL = '/assets/environments/refinery-prefiltered.env';
 
+export const REFINERY_ACTOR_GROUNDING_PROFILE = Object.freeze({
+  id: 'key-linked-contact-projector-v1',
+  nearbyRadius: 900,
+  alphaTextureSize: 64,
+  coreOpacity: 0.3,
+  penumbraOpacity: 0.14,
+  playerScale: 1,
+  coreWidth: 0.68,
+  coreDepth: 0.42,
+  penumbraWidth: 1.18,
+  penumbraDepth: 0.52,
+  penumbraOffset: 0.24,
+  protectedCueGroups: Object.freeze(['telegraphs', 'objectives', 'hazards', 'interactables']),
+});
+
 type RefineryIblLoadState = 'loading' | 'authored' | 'fallback';
+type ActorGroundingVisual = { core: AbstractMesh; penumbra: AbstractMesh };
 
 export type BabylonRefineryLightingBudget = {
   tierName: RenderBudgetSnapshot['tierName'];
@@ -110,11 +132,19 @@ export function resolveBabylonRefineryLightingBudget(
   };
 }
 
+export function refineryActorGroundingScale(role: Enemy['role']) {
+  if (role === 'boss') return 1.62;
+  if (role === 'elite') return 1.22;
+  if (role === 'suppressor') return 1.14;
+  if (role === 'technician') return 0.94;
+  return 1;
+}
+
 function isShadowReceiver(mesh: AbstractMesh) {
   if (!mesh.isEnabled() || !mesh.isVisible || mesh.visibility < 0.85 || mesh.getTotalVertices() <= 0) return false;
   const alpha = mesh.material?.alpha ?? 1;
   if (alpha < 0.82) return false;
-  return !/(ring|glyph|beam|marker|telegraph|protocol|status|lifecycle|muzzle|flash|signal|cue|objective-guide|hazard)/i.test(mesh.name);
+  return !/(ring|glyph|beam|marker|telegraph|protocol|status|lifecycle|muzzle|flash|signal|cue|objective-guide|hazard|grounding)/i.test(mesh.name);
 }
 
 function shadowPriority(mesh: AbstractMesh) {
@@ -132,6 +162,12 @@ export class BabylonRefineryLighting {
   private readonly emergencyLight: PointLight;
   private readonly readabilityLight: PointLight;
   private readonly practicalLights: readonly [PointLight, PointLight];
+  private readonly actorGroundingTexture: RawTexture;
+  private readonly actorGroundingCoreMaterial: StandardMaterial;
+  private readonly actorGroundingPenumbraMaterial: StandardMaterial;
+  private readonly actorGroundingCoreSource: Mesh;
+  private readonly actorGroundingPenumbraSource: Mesh;
+  private readonly enemyGrounding = new Map<number, ActorGroundingVisual>();
   private iblTexture: CubeTexture | RawCubeTexture | null = null;
   private authoredIblTexture: CubeTexture | null = null;
   private fallbackIblTexture: RawCubeTexture | null = null;
@@ -183,6 +219,58 @@ export class BabylonRefineryLighting {
       return light;
     }) as unknown as readonly [PointLight, PointLight];
 
+    const groundingAlpha = createRefineryContactDepthAlphaData(REFINERY_ACTOR_GROUNDING_PROFILE.alphaTextureSize);
+    this.actorGroundingTexture = RawTexture.CreateRGBATexture(
+      groundingAlpha,
+      REFINERY_ACTOR_GROUNDING_PROFILE.alphaTextureSize,
+      REFINERY_ACTOR_GROUNDING_PROFILE.alphaTextureSize,
+      scene,
+      false,
+      false,
+    );
+    this.actorGroundingTexture.name = 'p28-a2-actor-grounding-alpha';
+    this.actorGroundingTexture.hasAlpha = true;
+
+    this.actorGroundingCoreMaterial = new StandardMaterial('p28-a2-actor-grounding-core-material', scene);
+    this.actorGroundingCoreMaterial.diffuseColor = new Color3(0.012, 0.011, 0.01);
+    this.actorGroundingCoreMaterial.specularColor = Color3.Black();
+    this.actorGroundingCoreMaterial.diffuseTexture = this.actorGroundingTexture;
+    this.actorGroundingCoreMaterial.useAlphaFromDiffuseTexture = true;
+    this.actorGroundingCoreMaterial.alpha = REFINERY_ACTOR_GROUNDING_PROFILE.coreOpacity;
+    this.actorGroundingCoreMaterial.disableLighting = true;
+    this.actorGroundingCoreMaterial.disableDepthWrite = true;
+    this.actorGroundingCoreMaterial.backFaceCulling = false;
+
+    this.actorGroundingPenumbraMaterial = new StandardMaterial('p28-a2-actor-grounding-penumbra-material', scene);
+    this.actorGroundingPenumbraMaterial.diffuseColor = new Color3(0.018, 0.015, 0.012);
+    this.actorGroundingPenumbraMaterial.specularColor = Color3.Black();
+    this.actorGroundingPenumbraMaterial.diffuseTexture = this.actorGroundingTexture;
+    this.actorGroundingPenumbraMaterial.useAlphaFromDiffuseTexture = true;
+    this.actorGroundingPenumbraMaterial.alpha = REFINERY_ACTOR_GROUNDING_PROFILE.penumbraOpacity;
+    this.actorGroundingPenumbraMaterial.disableLighting = true;
+    this.actorGroundingPenumbraMaterial.disableDepthWrite = true;
+    this.actorGroundingPenumbraMaterial.backFaceCulling = false;
+
+    this.actorGroundingCoreSource = MeshBuilder.CreatePlane(
+      'p28-a2-player-grounding-core',
+      { width: 1, height: 1, sideOrientation: Mesh.DOUBLESIDE },
+      scene,
+    );
+    this.actorGroundingCoreSource.material = this.actorGroundingCoreMaterial;
+    this.actorGroundingCoreSource.isPickable = false;
+    this.actorGroundingCoreSource.receiveShadows = false;
+    this.actorGroundingCoreSource.alphaIndex = -300;
+
+    this.actorGroundingPenumbraSource = MeshBuilder.CreatePlane(
+      'p28-a2-player-grounding-penumbra',
+      { width: 1, height: 1, sideOrientation: Mesh.DOUBLESIDE },
+      scene,
+    );
+    this.actorGroundingPenumbraSource.material = this.actorGroundingPenumbraMaterial;
+    this.actorGroundingPenumbraSource.isPickable = false;
+    this.actorGroundingPenumbraSource.receiveShadows = false;
+    this.actorGroundingPenumbraSource.alphaIndex = -301;
+
     const authoredIblTexture = new CubeTexture(
       REFINERY_PREFILTERED_IBL_URL,
       scene,
@@ -222,6 +310,15 @@ export class BabylonRefineryLighting {
     this.readabilityLight.setEnabled(enabled);
     this.practicalLights.forEach(light => light.setEnabled(enabled));
     if (enabled) return;
+    this.actorGroundingCoreSource.setEnabled(false);
+    this.actorGroundingPenumbraSource.setEnabled(false);
+    for (const visual of this.enemyGrounding.values()) {
+      visual.core.setEnabled(false);
+      visual.penumbra.setEnabled(false);
+    }
+    for (const key of ['actorGrounding', 'actorGroundingActors', 'actorGroundingCuePriority'] as const) {
+      delete this.canvas.dataset[key];
+    }
     this.shadowGenerator?.dispose();
     this.shadowGenerator = null;
     this.shadowMapSize = 0;
@@ -293,6 +390,7 @@ export class BabylonRefineryLighting {
       }
     }
 
+    const groundedEnemyCount = this.syncActorGrounding(state, budget);
     const shadowCasterCount = this.syncShadows(budget);
     const authoredIblReady = this.iblLoadState === 'authored';
     const iblTelemetry = authoredIblReady
@@ -323,10 +421,18 @@ export class BabylonRefineryLighting {
       'ibl:' + (iblEnabled ? iblLightingTelemetry : 'off'),
       'practical:' + budget.practicalLightCount,
       'shadow:' + (budget.shadowMapSize || 'off'),
+      'actor-grounding:key-linked',
     ].join('+');
     this.canvas.dataset.environmentShadowBudget = budget.shadowMapSize
       ? 'key:' + budget.shadowMapSize + ':pcf-low:casters-' + shadowCasterCount
       : 'key:off';
+    this.canvas.dataset.actorGrounding = REFINERY_ACTOR_GROUNDING_PROFILE.id
+      + ':radius-' + REFINERY_ACTOR_GROUNDING_PROFILE.nearbyRadius
+      + ':alpha-' + REFINERY_ACTOR_GROUNDING_PROFILE.alphaTextureSize;
+    this.canvas.dataset.actorGroundingActors = 'player:1|enemies:' + groundedEnemyCount
+      + '|layers:' + ((groundedEnemyCount + 1) * 2);
+    this.canvas.dataset.actorGroundingCuePriority = 'alpha-index:-301..-300|protected:'
+      + REFINERY_ACTOR_GROUNDING_PROFILE.protectedCueGroups.join('+');
     this.canvas.dataset.environmentTone = 'aces-' + this.scene.imageProcessingConfiguration.exposure.toFixed(2)
       + '+ibl-' + (iblEnabled ? budget.iblIntensity.toFixed(2) : 'off');
     this.canvas.dataset.locationLighting = 'asteroid-refinery:' + profile.id
@@ -334,6 +440,91 @@ export class BabylonRefineryLighting {
     this.canvas.dataset.babylonPbrMaterials = 'pbr:' + pbrMaterials
       + '|standard:' + standardMaterials
       + '|max-lights:' + budget.maxSimultaneousLights;
+  }
+
+  private syncActorGrounding(state: SimState, budget: BabylonRefineryLightingBudget) {
+    const profile = REFINERY_ACTOR_GROUNDING_PROFILE;
+    const keyPosition = REFINERY_BABYLON_LIGHTING_PROFILE.key.position;
+    const keyLength = Math.max(0.001, Math.hypot(keyPosition[0], keyPosition[2]));
+    const shadowX = -keyPosition[0] / keyLength;
+    const shadowZ = -keyPosition[2] / keyLength;
+    const shadowAngle = Math.atan2(shadowZ, shadowX);
+    const opacityScale = budget.tierName === 'high' ? 1 : budget.tierName === 'balanced' ? 0.92 : 0.84;
+    this.actorGroundingCoreMaterial.alpha = profile.coreOpacity * opacityScale;
+    this.actorGroundingPenumbraMaterial.alpha = profile.penumbraOpacity * opacityScale;
+
+    this.syncActorGroundingPair(
+      { core: this.actorGroundingCoreSource, penumbra: this.actorGroundingPenumbraSource },
+      state.player.x,
+      state.player.y,
+      profile.playerScale,
+      shadowX,
+      shadowZ,
+      shadowAngle,
+    );
+
+    for (const visual of this.enemyGrounding.values()) {
+      visual.core.setEnabled(false);
+      visual.penumbra.setEnabled(false);
+    }
+
+    let groundedEnemies = 0;
+    const radiusSq = profile.nearbyRadius * profile.nearbyRadius;
+    for (const enemy of state.enemies) {
+      if (!enemy.active || enemy.dead) continue;
+      const dx = enemy.x - state.player.x;
+      const dy = enemy.y - state.player.y;
+      if (dx * dx + dy * dy > radiusSq) continue;
+      let visual = this.enemyGrounding.get(enemy.id);
+      if (!visual) {
+        const core = this.actorGroundingCoreSource.createInstance('p28-a2-enemy-grounding-core-' + enemy.id);
+        const penumbra = this.actorGroundingPenumbraSource.createInstance('p28-a2-enemy-grounding-penumbra-' + enemy.id);
+        core.isPickable = false;
+        penumbra.isPickable = false;
+        core.alphaIndex = -300;
+        penumbra.alphaIndex = -301;
+        visual = { core, penumbra };
+        this.enemyGrounding.set(enemy.id, visual);
+      }
+      this.syncActorGroundingPair(
+        visual,
+        enemy.x,
+        enemy.y,
+        refineryActorGroundingScale(enemy.role),
+        shadowX,
+        shadowZ,
+        shadowAngle,
+      );
+      groundedEnemies += 1;
+    }
+    return groundedEnemies;
+  }
+
+  private syncActorGroundingPair(
+    visual: ActorGroundingVisual,
+    simX: number,
+    simY: number,
+    scale: number,
+    shadowX: number,
+    shadowZ: number,
+    shadowAngle: number,
+  ) {
+    const profile = REFINERY_ACTOR_GROUNDING_PROFILE;
+    const x = scaled(simX);
+    const z = scaled(simY);
+    visual.core.setEnabled(true);
+    visual.core.position.set(x, 0.029, z);
+    visual.core.rotation.set(Math.PI / 2, shadowAngle, 0);
+    visual.core.scaling.set(profile.coreWidth * scale, profile.coreDepth * scale, 1);
+
+    visual.penumbra.setEnabled(true);
+    visual.penumbra.position.set(
+      x + shadowX * profile.penumbraOffset * scale,
+      0.027,
+      z + shadowZ * profile.penumbraOffset * scale,
+    );
+    visual.penumbra.rotation.set(Math.PI / 2, shadowAngle, 0);
+    visual.penumbra.scaling.set(profile.penumbraWidth * scale, profile.penumbraDepth * scale, 1);
   }
 
   private activateIblFallback() {
@@ -384,6 +575,16 @@ export class BabylonRefineryLighting {
     if (this.scene.environmentTexture === this.iblTexture) this.scene.environmentTexture = null;
     this.shadowGenerator?.dispose();
     this.shadowGenerator = null;
+    for (const visual of this.enemyGrounding.values()) {
+      visual.core.dispose();
+      visual.penumbra.dispose();
+    }
+    this.enemyGrounding.clear();
+    this.actorGroundingCoreSource.dispose();
+    this.actorGroundingPenumbraSource.dispose();
+    this.actorGroundingCoreMaterial.dispose();
+    this.actorGroundingPenumbraMaterial.dispose();
+    this.actorGroundingTexture.dispose();
     this.hemisphere.dispose();
     this.keyLight.dispose();
     this.rimLight.dispose();
