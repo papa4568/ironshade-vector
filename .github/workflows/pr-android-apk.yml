@@ -178,6 +178,9 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      - name: Preinstall API 35 emulator image with retries
+        run: bash scripts/install-android-system-image.sh 35 google_apis x86_64
+
       - name: Run API 35 product smoke
         uses: ReactiveCircus/android-emulator-runner@v2.38.0
         with:
@@ -231,6 +234,9 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+
+      - name: Preinstall API 36 emulator image with retries
+        run: bash scripts/install-android-system-image.sh 36 google_apis x86_64
 
       - name: Run Android 16 large-screen smoke
         uses: ReactiveCircus/android-emulator-runner@v2.38.0
