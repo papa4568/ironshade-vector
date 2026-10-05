@@ -19,6 +19,14 @@ Every graphics release candidate must pass:
 
 The automated Android gate uses an API 35 Google APIs x86_64 Pixel 7 Pro emulator in sensor-landscape mode. It is useful for package, WebView, touch, lifecycle, layout, and deterministic authored-graphics assertions, but it is not a substitute for thermal/GPU profiling on physical devices.
 
+## P28-A4 physical shadow-quality evidence
+
+Run `scripts/android-p28a4-shadow-qa.sh` with a current APK on an unlocked physical high-performance Android phone connected through ADB. Set `ANDROID_P28A4_APK` when the APK is not at the default debug-build path and `ANDROID_SERIAL` when more than one ADB device is attached.
+
+The wrapper rejects emulator/QEMU devices before launch. It records Android model/build/SOC metadata, installs and launches the APK, attaches to the production WebView, enters Asteroid Refinery, verifies the High-tier 2048 high-PCF key-shadow profile and tuned bias/normal-bias telemetry, moves across multiple snapped shadow-anchor regions, samples frame cadence, captures four renderer screenshots, records WebGL vendor/renderer identity, stores `gfxinfo`, and fails on Android crash signatures. Evidence is written to `p28a4-physical-qa/` by default.
+
+P28-A4 can close only after the generated screenshots are inspected on the target phone class and show soft stable contacts with no obvious acne, peter-panning, missing important casters, or large-map swimming. The JSON evidence must also show at least two shadow-anchor regions while remaining on High quality with 2048 shadows.
+
 ## P16-E sustained emulator stress evidence
 
 GitHub Actions run `35898430306` (`P16-E Android Soak Stress`) passed a 30-minute API 35 Pixel 7 Pro emulator T12 soak using a prepared six-modifier Command Target Directive on Solar Fabrication Yard.
