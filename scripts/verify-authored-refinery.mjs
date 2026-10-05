@@ -184,7 +184,7 @@ try {
       if (!/^aces-\d+\.\d{2}\+ibl-(?:\d+\.\d{2}|off)$/.test(lastState.tone)) {
         throw new Error(`Babylon refinery tone telemetry is malformed: ${JSON.stringify(lastState)}`);
       }
-      if (lastState.postProcessing !== 'selective-glow+instanced-contact+linear-fog+image-processing') {
+      if (lastState.postProcessing !== 'ssao2+selective-glow+contact-fallback+linear-fog+image-processing') {
         throw new Error(`Babylon refinery post-processing ownership telemetry is missing: ${JSON.stringify(lastState)}`);
       }
       if (!/^tier:(high|balanced|performance)\|bloom:\d+\.\d{2}\|contact:\d+\.\d{2}\|atmosphere:\d+\.\d{2}\|critical:1\.00$/.test(lastState.postBudget)
