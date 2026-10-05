@@ -1,0 +1,123 @@
+name: P28 authored LOD verifier repair
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/p28-authored-lod-verifier-repair.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.23.2
+          cache: npm
+      - run: npm install --global npm@10.9.8
+      - name: Migrate authored asset LOD verifiers to render-quality policy
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f'anchor not found in {path}: {old[:80]!r}')
+              p.write_text(text.replace(old, new, 1))
+
+          # Operator: record the adaptive render tier and derive LOD from quality, not viewport class.
+          replace_once(
+              'scripts/verify-authored-operator.mjs',
+              """        skillBlend: canvas.dataset.operatorSkillBlend ?? '',\n        canvases: document.querySelectorAll('canvas').length,\n""",
+              """        skillBlend: canvas.dataset.operatorSkillBlend ?? '',\n        renderTier: canvas.dataset.renderTier ?? '',\n        canvases: document.querySelectorAll('canvas').length,\n""",
+          )
+          replace_once(
+              'scripts/verify-authored-operator.mjs',
+              """      const mobileViewport = ['mobile-landscape', 'android-emulator'].includes(process.env.BROWSER_E2E_VIEWPORT ?? '');\n      const expectedLod = mobileViewport ? 2 : 1;\n""",
+              """      if (!['high', 'balanced', 'performance'].includes(lastState.renderTier)) {\n        throw new Error(`Authored operator render tier telemetry is missing: ${JSON.stringify(lastState)}`);\n      }\n      const expectedLod = lastState.renderTier === 'performance' ? 2 : 1;\n""",
+          )
+          replace_once(
+              'scripts/verify-authored-operator.mjs',
+              """      console.log(`AUTHORED_OPERATOR_RUNTIME_PASS visual=${lastState.visual} asset=${lastState.asset} class=${lastState.operatorClass || 'generic'} rig=${lastState.rig} socket=${lastState.socket} stance=${lastState.stance} animation=${lastState.animation} blend=${lastState.blend} skill=${lastState.skillAnimation} skillBlend=${lastState.skillBlend} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);\n""",
+              """      console.log(`AUTHORED_OPERATOR_RUNTIME_PASS visual=${lastState.visual} asset=${lastState.asset} class=${lastState.operatorClass || 'generic'} tier=${lastState.renderTier} lod=${expectedLod} rig=${lastState.rig} socket=${lastState.socket} stance=${lastState.stance} animation=${lastState.animation} blend=${lastState.blend} skill=${lastState.skillAnimation} skillBlend=${lastState.skillBlend} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);\n""",
+          )
+
+          # Weapons: quality tier owns authored LOD selection.
+          replace_once(
+              'scripts/verify-authored-weapons.mjs',
+              """        heat: canvas.dataset.weaponHeat ?? '',\n        canvases: document.querySelectorAll('canvas').length,\n""",
+              """        heat: canvas.dataset.weaponHeat ?? '',\n        renderTier: canvas.dataset.renderTier ?? '',\n        canvases: document.querySelectorAll('canvas').length,\n""",
+          )
+          replace_once(
+              'scripts/verify-authored-weapons.mjs',
+              """      const mobileViewport = ['mobile-landscape', 'android-emulator'].includes(process.env.BROWSER_E2E_VIEWPORT ?? '');\n      const expectedLod = mobileViewport ? 2 : 1;\n""",
+              """      if (!['high', 'balanced', 'performance'].includes(lastState.renderTier)) {\n        throw new Error(`Authored weapon render tier telemetry is missing: ${JSON.stringify(lastState)}`);\n      }\n      const expectedLod = lastState.renderTier === 'performance' ? 2 : 1;\n""",
+          )
+          replace_once(
+              'scripts/verify-authored-weapons.mjs',
+              """      console.log(`AUTHORED_WEAPON_RUNTIME_PASS active=${lastState.active} asset=${lastState.asset} roles=${[...roles].sort().join(',')} fx=${lastState.fx} heat=${lastState.heat} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);\n""",
+              """      console.log(`AUTHORED_WEAPON_RUNTIME_PASS active=${lastState.active} asset=${lastState.asset} tier=${lastState.renderTier} lod=${expectedLod} roles=${[...roles].sort().join(',')} fx=${lastState.fx} heat=${lastState.heat} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);\n""",
+          )
+          replace_once(
+              'scripts/verify-authored-weapons.mjs',
+              """  const expectedLod = ['mobile-landscape', 'android-emulator'].includes(process.env.BROWSER_E2E_VIEWPORT ?? '') ? 2 : 1;\n  const activeAuthored = activeWeapon && lastState?.asset === `weapon-${activeWeapon}-lod${expectedLod}`;\n""",
+              """  const expectedLod = lastState?.renderTier === 'performance' ? 2 : 1;\n  const activeAuthored = activeWeapon && ['high', 'balanced', 'performance'].includes(lastState?.renderTier)\n    && lastState?.asset === `weapon-${activeWeapon}-lod${expectedLod}`;\n""",
+          )
+
+          # Interactables/pickups: same quality-tier policy.
+          replace_once(
+              'scripts/verify-authored-interactables.mjs',
+              """        lootReadability: canvas.dataset.lootReadability ?? '',\n        canvases: document.querySelectorAll('canvas').length,\n""",
+              """        lootReadability: canvas.dataset.lootReadability ?? '',\n        renderTier: canvas.dataset.renderTier ?? '',\n        canvases: document.querySelectorAll('canvas').length,\n""",
+          )
+          replace_once(
+              'scripts/verify-authored-interactables.mjs',
+              """    const mobileViewport = ['mobile-landscape', 'android-emulator'].includes(process.env.BROWSER_E2E_VIEWPORT ?? '');\n    const expectedLod = mobileViewport ? 2 : 1;\n""",
+              """    if (!['high', 'balanced', 'performance'].includes(lastState?.renderTier)) {\n      throw new Error(`Authored interactable render tier telemetry is missing: ${JSON.stringify(lastState)}`);\n    }\n    const expectedLod = lastState.renderTier === 'performance' ? 2 : 1;\n""",
+          )
+          replace_once(
+              'scripts/verify-authored-interactables.mjs',
+              """      console.log(`AUTHORED_INTERACTABLE_RUNTIME_PASS control=${controlAsset} assets=${[...assets].sort().join(',')} loot=${lastState.lootAsset || 'pending-no-drop'} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);\n""",
+              """      console.log(`AUTHORED_INTERACTABLE_RUNTIME_PASS control=${controlAsset} tier=${lastState.renderTier} lod=${expectedLod} assets=${[...assets].sort().join(',')} loot=${lastState.lootAsset || 'pending-no-drop'} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);\n""",
+          )
+          replace_once(
+              'scripts/verify-authored-interactables.mjs',
+              """  const mobileViewport = ['mobile-landscape', 'android-emulator'].includes(process.env.BROWSER_E2E_VIEWPORT ?? '');\n  const expectedLod = mobileViewport ? 2 : 1;\n  const assets = new Set(String(lastState?.assets ?? '').split(',').filter(Boolean));\n  if (lastState?.visual !== 'authored-babylon' || !assets.has(`interactable-control-terminal-lod${expectedLod}`)) {\n""",
+              """  const expectedLod = lastState?.renderTier === 'performance' ? 2 : 1;\n  const assets = new Set(String(lastState?.assets ?? '').split(',').filter(Boolean));\n  if (lastState?.visual !== 'authored-babylon'\n    || !['high', 'balanced', 'performance'].includes(lastState?.renderTier)\n    || !assets.has(`interactable-control-terminal-lod${expectedLod}`)) {\n""",
+          )
+          PY
+      - name: Verify verifier policy migration
+        run: |
+          node --check scripts/verify-authored-operator.mjs
+          node --check scripts/verify-authored-weapons.mjs
+          node --check scripts/verify-authored-interactables.mjs
+          ! grep -q "mobileViewport.*expectedLod" scripts/verify-authored-operator.mjs
+          ! grep -q "mobileViewport.*expectedLod" scripts/verify-authored-weapons.mjs
+          ! grep -q "mobileViewport.*expectedLod" scripts/verify-authored-interactables.mjs
+          node --input-type=module <<'NODE'
+          const expectedLod = tier => tier === 'performance' ? 2 : 1;
+          if (expectedLod('high') !== 1 || expectedLod('balanced') !== 1 || expectedLod('performance') !== 2) {
+            throw new Error('Render-quality LOD contract regression.');
+          }
+          console.log('P28_AUTHORED_LOD_VERIFIER_PASS high=lod1 balanced=lod1 performance=lod2 viewport=ignored');
+          NODE
+      - name: Full production build
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+      - name: Commit repair and remove helper
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/p28-authored-lod-verifier-repair.yml
+          git add scripts/verify-authored-operator.mjs scripts/verify-authored-weapons.mjs scripts/verify-authored-interactables.mjs
+          git commit -m "test: align authored LOD verification with render quality"
+          git push origin HEAD:main
