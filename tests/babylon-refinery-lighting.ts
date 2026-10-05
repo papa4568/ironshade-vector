@@ -117,6 +117,8 @@ assert.match(worldSource, /visual\.material\.metallic =/, 'Babylon world materia
 assert.match(worldSource, /visual\.material\.roughness =/, 'Babylon world material response must preserve authored roughness.');
 assert.match(iblSource, /REFINERY_IBL_PROFILE/, 'Babylon refinery IBL must use the engine-neutral authored environment profile.');
 assert.match(browserSource, /BROWSER_P27B11_BABYLON_PBR_LIGHTING_PASS/, 'Browser QA must capture the real WebGL Babylon B11 stack that now contains the A4 key shadows.');
+assert.match(browserSource, /shadow:\(0\|1024\|2048\)/, 'Browser QA must accept the P28-A4 refinery-local 2048/1024/off shadow tiers.');
+assert(browserSource.includes('pcf-high:bias-0'), 'Browser QA must validate the P28-A4 high-PCF tuned shadow telemetry.');
 assert.match(browserSource, /p27b11-ibl-off/, 'Browser QA must retain the refinery IBL-off comparison capture.');
 assert.match(browserSource, /p27b11-ibl-on/, 'Browser QA must retain the refinery IBL-on comparison capture.');
 assert.match(packageSource, /test:babylon-refinery-lighting/, 'Production build must execute the refinery lighting regression.');
