@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
+  REFINERY_ACTOR_GROUNDING_PROFILE,
+  refineryActorGroundingScale,
   resolveBabylonRefineryLightingBudget,
 } from '../src/game/babylonRefineryLighting';
 import { AdaptiveRenderBudget } from '../src/game/renderQuality';
@@ -32,6 +34,15 @@ assert.equal(high.iblEnabled, true);
 assert.equal(balanced.iblEnabled, true);
 assert.equal(performance.iblEnabled, false);
 assert(high.iblIntensity > balanced.iblIntensity && balanced.iblIntensity > performance.iblIntensity);
+
+assert.equal(REFINERY_ACTOR_GROUNDING_PROFILE.alphaTextureSize, 64, 'P28-A2 actor grounding must use a higher-resolution feathered alpha than the legacy static contact cards.');
+assert(REFINERY_ACTOR_GROUNDING_PROFILE.nearbyRadius >= 650, 'P28-A2 must cover the camera-relevant nearby-enemy envelope.');
+assert(REFINERY_ACTOR_GROUNDING_PROFILE.coreOpacity > REFINERY_ACTOR_GROUNDING_PROFILE.penumbraOpacity, 'P28-A2 contact core must stay tighter than the projected penumbra.');
+assert(REFINERY_ACTOR_GROUNDING_PROFILE.penumbraOffset > 0, 'P28-A2 projected penumbra must visibly follow key-light direction instead of reading as a centered blob.');
+assert(REFINERY_ACTOR_GROUNDING_PROFILE.protectedCueGroups.includes('telegraphs') && REFINERY_ACTOR_GROUNDING_PROFILE.protectedCueGroups.includes('objectives'), 'P28-A2 must explicitly preserve dominant gameplay cues.');
+assert(refineryActorGroundingScale('boss') > refineryActorGroundingScale('elite'));
+assert(refineryActorGroundingScale('elite') > refineryActorGroundingScale('assault'));
+assert(refineryActorGroundingScale('technician') < refineryActorGroundingScale('assault'));
 
 const rendererSource = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8');
 const lightingSource = readFileSync('src/game/babylonRefineryLighting.ts', 'utf8');
@@ -69,6 +80,14 @@ assert.match(lightingSource, /prefiltered-env:ready/, 'P28-A1 must expose determ
 assert.match(lightingSource, /activateIblFallback\(\)/, 'P28-A1 must keep a deterministic load-failure fallback path.');
 assert.match(lightingSource, /new RawCubeTexture\(/, 'P28-A1 must retain the procedural cubemap only as a bounded fallback.');
 assert.match(lightingSource, /raw-cube-fallback/, 'P28-A1 fallback telemetry must not masquerade as the authored environment path.');
+assert.match(lightingSource, /RawTexture\.CreateRGBATexture/, 'P28-A2 must use a Babylon-native soft-alpha projected grounding texture.');
+assert.match(lightingSource, /actorGroundingCoreSource\.createInstance/, 'P28-A2 nearby enemies must reuse the player contact-core geometry through GPU instances.');
+assert.match(lightingSource, /actorGroundingPenumbraSource\.createInstance/, 'P28-A2 nearby enemies must reuse the projected-penumbra geometry through GPU instances.');
+assert.match(lightingSource, /REFINERY_BABYLON_LIGHTING_PROFILE\.key\.position/, 'P28-A2 projected actor shadows must derive direction from the authored refinery key light.');
+assert.match(lightingSource, /dx \* dx \+ dy \* dy > radiusSq/, 'P28-A2 must restrict dynamic actor projections to nearby active enemies.');
+assert.match(lightingSource, /alphaIndex = -300/, 'P28-A2 grounding must render beneath normal transparent gameplay cues.');
+assert.match(lightingSource, /actorGroundingCuePriority/, 'P28-A2 must publish cue-priority telemetry for Deep Salvage QA.');
+assert.match(lightingSource, /grounding\)\/i/, 'P28-A2 projected cards must be excluded from the global key-shadow caster/receiver pass.');
 assert.match(lightingSource, /TONEMAPPING_ACES/, 'B11 must preserve ACES tone mapping parity.');
 assert.match(lightingSource, /new ShadowGenerator\(budget\.shadowMapSize, this\.keyLight\)/, 'B11 must use bounded Babylon key-light shadow maps.');
 assert.match(lightingSource, /refineryIblQa === 'off'/, 'B11 must preserve deterministic IBL stack-off QA capture control.');
@@ -81,4 +100,4 @@ assert.match(browserSource, /p27b11-ibl-off/, 'Browser QA must retain the refine
 assert.match(browserSource, /p27b11-ibl-on/, 'Browser QA must retain the refinery IBL-on comparison capture.');
 assert.match(packageSource, /test:babylon-refinery-lighting/, 'Production build must execute the refinery lighting regression.');
 
-console.log('P28_A1_REFINERY_PREFILTERED_IBL_PASS pbr=authored+procedural ibl=local-prefiltered-env fallback=raw-cube-on-load-failure tone=aces shadows=1024>512>off practicals=2>2>1 qa-capture=webgl adaptive=shared-budget');
+console.log('P28_A2_DYNAMIC_ACTOR_GROUNDING_PASS player=contact+key-penumbra enemies=nearby-active instancing=2-layer cues=protected p28a1=preserved');
