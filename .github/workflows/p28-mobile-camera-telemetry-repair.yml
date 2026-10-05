@@ -1,0 +1,74 @@
+name: P28 mobile camera telemetry repair
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/p28-mobile-camera-telemetry-repair.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.23.2
+          cache: npm
+      - run: npm install --global npm@10.9.8
+      - name: Repair rounded ratio parity assertion
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/browser-runtime-smoke.mjs')
+          text = path.read_text()
+          old = """  const bufferWidth = Number(bufferWidthRaw);\n  const bufferHeight = Number(bufferHeightRaw);\n  const expectedNarrow = state.rectWidth / Math.max(1, state.rectHeight) < 1.35\n"""
+          new = """  const bufferWidth = Number(bufferWidthRaw);\n  const bufferHeight = Number(bufferHeightRaw);\n  const minCssDimension = Math.max(1, Math.min(cssWidth, cssHeight));\n  const widthBufferRatio = bufferWidth / Math.max(1, cssWidth);\n  const heightBufferRatio = bufferHeight / Math.max(1, cssHeight);\n  const ratioTelemetryTolerance = 0.005 + 1 / minCssDimension;\n  const ratioAxisTolerance = 1 / minCssDimension;\n  const expectedNarrow = state.rectWidth / Math.max(1, state.rectHeight) < 1.35\n"""
+          if old not in text:
+              raise SystemExit('ratio setup anchor not found')
+          text = text.replace(old, new, 1)
+          old = """    || bufferWidth !== state.bufferWidth\n    || bufferHeight !== state.bufferHeight\n    || Math.abs(bufferWidth - state.rectWidth * ratio) > 2\n    || Math.abs(bufferHeight - state.rectHeight * ratio) > 2) {\n"""
+          new = """    || bufferWidth !== state.bufferWidth\n    || bufferHeight !== state.bufferHeight\n    || Math.abs(widthBufferRatio - ratio) > ratioTelemetryTolerance\n    || Math.abs(heightBufferRatio - ratio) > ratioTelemetryTolerance\n    || Math.abs(widthBufferRatio - heightBufferRatio) > ratioAxisTolerance) {\n"""
+          if old not in text:
+              raise SystemExit('ratio assertion anchor not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - name: Verify repaired ratio contract
+        run: |
+          node --check scripts/browser-runtime-smoke.mjs
+          node --input-type=module <<'NODE'
+          const verify = ({ cssWidth, cssHeight, bufferWidth, bufferHeight, ratio }) => {
+            const minCssDimension = Math.max(1, Math.min(cssWidth, cssHeight));
+            const widthBufferRatio = bufferWidth / Math.max(1, cssWidth);
+            const heightBufferRatio = bufferHeight / Math.max(1, cssHeight);
+            const ratioTelemetryTolerance = 0.005 + 1 / minCssDimension;
+            const ratioAxisTolerance = 1 / minCssDimension;
+            return Math.abs(widthBufferRatio - ratio) <= ratioTelemetryTolerance
+              && Math.abs(heightBufferRatio - ratio) <= ratioTelemetryTolerance
+              && Math.abs(widthBufferRatio - heightBufferRatio) <= ratioAxisTolerance;
+          };
+          if (!verify({ cssWidth: 851, cssHeight: 360, bufferWidth: 965, bufferHeight: 408, ratio: 1.13 })) {
+            throw new Error('Rounded mobile ratio regression sample must pass.');
+          }
+          if (verify({ cssWidth: 851, cssHeight: 360, bufferWidth: 1021, bufferHeight: 432, ratio: 1.13 })) {
+            throw new Error('Materially incorrect buffer ratio must still fail.');
+          }
+          console.log('P28_CAMERA_RATIO_ASSERTION_PASS rounded-telemetry=true invalid-scale=rejected');
+          NODE
+      - name: Full production build
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+      - name: Commit repair and remove helper
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/p28-mobile-camera-telemetry-repair.yml
+          git add scripts/browser-runtime-smoke.mjs
+          git commit -m "test: tolerate rounded Babylon viewport ratio telemetry"
+          git push origin HEAD:main
