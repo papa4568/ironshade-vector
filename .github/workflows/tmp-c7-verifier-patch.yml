@@ -25,13 +25,14 @@ jobs:
 
           path = Path('scripts/browser-runtime-smoke.mjs')
           text = path.read_text()
-          old = '''  if (viewportMode === 'mobile-landscape') {
-            await waitFor("document.querySelector('canvas')?.dataset.environmentCalibrationMass === 'near-zero-g'", 'P27-C7 Lattice Annex calibration mass shift', 16_000);
-          }
-
-          '''
-          if text.count(old) != 1:
-              raise SystemExit(f'expected exactly one transient C7 mobile wait, found {text.count(old)}')
+          old = (
+              "  if (viewportMode === 'mobile-landscape') {\n"
+              "    await waitFor(\"document.querySelector('canvas')?.dataset.environmentCalibrationMass === 'near-zero-g'\", 'P27-C7 Lattice Annex calibration mass shift', 16_000);\n"
+              "  }\n\n"
+          )
+          count = text.count(old)
+          if count != 1:
+              raise SystemExit(f'expected exactly one transient C7 mobile wait, found {count}')
           path.write_text(text.replace(old, '', 1))
           PY
           rm .github/workflows/tmp-c7-verifier-patch.yml
