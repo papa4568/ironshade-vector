@@ -109,6 +109,8 @@ assert.match(lightingSource, /Math\.round\(worldX \/ snap\) \* snap/, 'P28-A4 mu
 assert.match(lightingSource, /getAbsolutePosition\(\)/, 'P28-A4 caster admission must use actual scene-space positions.');
 assert.match(lightingSource, /casterPadding/, 'P28-A4 caster coverage must include a padded spatial footprint.');
 assert.doesNotMatch(lightingSource, /shadowCasterLimit/, 'P28-A4 must remove the old arbitrary 128\/72 shadow-caster ceilings.');
+assert.match(lightingSource, /mesh instanceof InstancedMesh \? mesh\.sourceMesh : mesh/, 'P28-A4 shadow receivers must route Babylon instances through their source mesh so reception is effective and warning-free.');
+assert.doesNotMatch(lightingSource, /for \(const mesh of receivers\) mesh\.receiveShadows = true/, 'P28-A4 must not assign receiveShadows directly to InstancedMesh receivers because Babylon ignores it.');
 assert.match(lightingSource, /environmentShadowAnchor/, 'P28-A4 must expose the snapped key-shadow anchor for browser and phone QA.');
 assert.match(lightingSource, /pcf-high:bias-/, 'P28-A4 must expose filter and bias tuning in deterministic runtime telemetry.');
 assert.match(lightingSource, /refineryIblQa === 'off'/, 'B11 must preserve deterministic IBL stack-off QA capture control.');
