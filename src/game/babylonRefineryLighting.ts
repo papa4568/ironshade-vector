@@ -12,7 +12,7 @@ import { RawTexture } from '@babylonjs/core/Materials/Textures/rawTexture';
 import { Color3 } from '@babylonjs/core/Maths/math.color';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import type { AbstractMesh } from '@babylonjs/core/Meshes/abstractMesh';
-import '@babylonjs/core/Meshes/instancedMesh';
+import { InstancedMesh } from '@babylonjs/core/Meshes/instancedMesh';
 import { Mesh } from '@babylonjs/core/Meshes/mesh';
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
 import type { Scene } from '@babylonjs/core/scene';
@@ -152,6 +152,11 @@ function isShadowReceiver(mesh: AbstractMesh) {
   const alpha = mesh.material?.alpha ?? 1;
   if (alpha < 0.82) return false;
   return !/(ring|glyph|beam|marker|telegraph|protocol|status|lifecycle|muzzle|flash|signal|cue|objective-guide|hazard|grounding)/i.test(mesh.name);
+}
+
+function enableShadowReceiver(mesh: AbstractMesh) {
+  const receiver = mesh instanceof InstancedMesh ? mesh.sourceMesh : mesh;
+  receiver.receiveShadows = true;
 }
 
 function shadowPriority(mesh: AbstractMesh) {
@@ -589,7 +594,7 @@ export class BabylonRefineryLighting {
     }
 
     const receivers = this.scene.meshes.filter(isShadowReceiver);
-    for (const mesh of receivers) mesh.receiveShadows = true;
+    for (const mesh of receivers) enableShadowReceiver(mesh);
     const casters = receivers
       .filter(mesh => !/(floor|grate|ring|beam|signal)/i.test(mesh.name))
       .filter(mesh => isShadowCasterInCoverage(mesh, anchor))
