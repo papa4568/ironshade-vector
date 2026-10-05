@@ -1,0 +1,294 @@
+name: PR Android APK
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'capacitor.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.nvmrc'
+      - 'vite.config.ts'
+      - 'index.html'
+      - '.github/workflows/pr-android-apk.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-android-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-pr-apk:
+    name: Android PR APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      ANDROID_VERSION_CODE: ${{ github.run_number }}
+      ANDROID_VERSION_NAME: 0.0.1-pr.${{ github.run_number }}
+    steps:
+      - name: Check out PR revision
+        uses: actions/checkout@v7
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Use npm 10.9.8
+        run: |
+          npm install --global npm@10.9.8
+          test "$(npm --version)" = '10.9.8'
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install Android SDK 36
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$(find "$SDK_ROOT" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          test -n "$SDKMANAGER"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Validate Android smoke contracts
+        run: npm run test:android-fast-smoke
+
+      - name: Run full repository verification
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+        run: npm run verify:full
+
+      - name: Generate native Android project
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf android
+          npx cap add android
+          node scripts/configure-android.mjs
+          npx cap sync android
+          test -f android/app/src/main/assets/public/index.html
+          ! find android/app/src/main/assets/public/assets -name 'three-*.js' -print -quit | grep -q .
+          test ! -d android/app/src/main/assets/public/assets/codecs/basis
+          test -f android/app/src/main/assets/public/assets/codecs/babylon/manifest.json
+          grep -q 'android:appCategory="game"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:resizeableActivity="true"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:keepScreenOn="true"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:hardwareAccelerated="true"' android/app/src/main/AndroidManifest.xml
+          ! grep -q 'android:screenOrientation=' android/app/src/main/AndroidManifest.xml
+          grep -q "versionCode ${ANDROID_VERSION_CODE}" android/app/build.gradle
+          grep -q "versionName \"${ANDROID_VERSION_NAME}\"" android/app/build.gradle
+
+      - name: Build installable debug APK
+        working-directory: android
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          for attempt in 1 2 3; do
+            if ./gradlew assembleDebug --no-daemon --stacktrace; then
+              exit 0
+            fi
+            if [[ "$attempt" -lt 3 ]]; then
+              sleep $((attempt * 10))
+            fi
+          done
+          exit 1
+
+      - name: Verify and stage APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK='android/app/build/outputs/apk/debug/app-debug.apk'
+          test -s "$APK"
+          AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
+          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          "$AAPT" dump badging "$APK" | tee android-pr-apk-badging.txt
+          grep -q "package: name='app.ironshade.vector' versionCode='${ANDROID_VERSION_CODE}' versionName='${ANDROID_VERSION_NAME}'" android-pr-apk-badging.txt
+          grep -q "sdkVersion:'24'" android-pr-apk-badging.txt
+          grep -q "targetSdkVersion:'36'" android-pr-apk-badging.txt
+          grep -q "launchable-activity: name='app.ironshade.vector.MainActivity'" android-pr-apk-badging.txt
+          "$APKSIGNER" verify --verbose --print-certs "$APK" | tee android-pr-apk-signing.txt
+          grep -q 'Signer #1 certificate SHA-256 digest:' android-pr-apk-signing.txt
+          cp "$APK" Ironshade-Vector-Android-Debug.apk
+          cp "$APK" Ironshade-Vector-Android-Smoke.apk
+          sha256sum Ironshade-Vector-Android-Debug.apk | tee Ironshade-Vector-Android-Debug.sha256
+          sha256sum Ironshade-Vector-Android-Smoke.apk | tee Ironshade-Vector-Android-Smoke.sha256
+
+      - name: Verify Android delivery contract
+        env:
+          P27D9_APK_PATH: Ironshade-Vector-Android-Debug.apk
+          P27D9_REPORT_PATH: p27d9-no-three-delivery.json
+          P27D2_APK_PATH: Ironshade-Vector-Android-Debug.apk
+          P27D2_REPORT_PATH: p27d2-babylon-delivery.json
+        run: |
+          node scripts/verify-no-three-delivery.mjs
+          node scripts/measure-babylon-delivery-cost.mjs
+
+      - name: Upload PR APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: ironshade-vector-pr-android-apk
+          path: |
+            Ironshade-Vector-Android-Debug.apk
+            Ironshade-Vector-Android-Debug.sha256
+            Ironshade-Vector-Android-Smoke.apk
+            Ironshade-Vector-Android-Smoke.sha256
+            android-pr-apk-badging.txt
+            android-pr-apk-signing.txt
+            p27d9-no-three-delivery.json
+            p27d2-babylon-delivery.json
+          if-no-files-found: error
+          retention-days: 30
+
+  android-pr-api35-smoke:
+    name: Android PR API 35 Smoke
+    needs: android-pr-apk
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out PR revision
+        uses: actions/checkout@v7
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Download PR APK
+        uses: actions/download-artifact@v8
+        with:
+          name: ironshade-vector-pr-android-apk
+          path: .
+
+      - name: Verify APK digest
+        run: sha256sum -c Ironshade-Vector-Android-Smoke.sha256
+
+      - name: Enable KVM
+        shell: bash
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run API 35 product smoke
+        uses: ReactiveCircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7_pro
+          emulator-boot-timeout: 300
+          disable-animations: true
+          script: bash -lc 'ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-fast-smoke.sh'
+
+      - name: Upload API 35 evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ironshade-vector-pr-api35-smoke
+          path: |
+            android-fast-logcat.txt
+            android-fast-smoke.png
+            android-fast-resume.png
+            android-babylon-webgpu.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  android-pr-api36-large-screen:
+    name: Android PR API 36 Large Screen
+    needs: android-pr-apk
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out PR revision
+        uses: actions/checkout@v7
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Download PR APK
+        uses: actions/download-artifact@v8
+        with:
+          name: ironshade-vector-pr-android-apk
+          path: .
+
+      - name: Verify APK digest
+        run: sha256sum -c Ironshade-Vector-Android-Smoke.sha256
+
+      - name: Enable KVM
+        shell: bash
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run Android 16 large-screen smoke
+        uses: ReactiveCircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7_pro
+          emulator-boot-timeout: 300
+          disable-animations: true
+          script: bash -lc 'ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-large-screen-smoke.sh'
+
+      - name: Upload API 36 evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ironshade-vector-pr-api36-large-screen
+          path: |
+            android-large-screen.txt
+            android-large-screen-portrait.json
+            android-large-screen-resized.json
+            android-large-screen-portrait.png
+            android-large-screen-resized.png
+            android-large-screen-logcat.txt
+          if-no-files-found: warn
+          retention-days: 30
+
+  android-pr-verification:
+    name: Android PR Verification
+    if: always()
+    needs:
+      - android-pr-apk
+      - android-pr-api35-smoke
+      - android-pr-api36-large-screen
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require all Android PR gates
+        env:
+          APK_RESULT: ${{ needs.android-pr-apk.result }}
+          API35_RESULT: ${{ needs.android-pr-api35-smoke.result }}
+          API36_RESULT: ${{ needs.android-pr-api36-large-screen.result }}
+        run: |
+          set -euo pipefail
+          printf 'apk=%s\napi35=%s\napi36=%s\n' "$APK_RESULT" "$API35_RESULT" "$API36_RESULT"
+          test "$APK_RESULT" = 'success'
+          test "$API35_RESULT" = 'success'
+          test "$API36_RESULT" = 'success'
+          echo 'ANDROID_PR_VERIFICATION_PASS apk=verified api35=smoke api36=large-screen'
