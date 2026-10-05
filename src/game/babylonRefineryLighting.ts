@@ -46,15 +46,15 @@ export const REFINERY_ACTOR_GROUNDING_PROFILE = Object.freeze({
 
 type RefineryIblLoadState = 'loading' | 'authored' | 'fallback';
 type ActorGroundingVisual = { core: AbstractMesh; penumbra: AbstractMesh };
+export type RefineryShadowAnchor = { x: number; z: number };
 
 export type BabylonRefineryLightingBudget = {
   tierName: RenderBudgetSnapshot['tierName'];
   iblEnabled: boolean;
   iblIntensity: number;
-  shadowMapSize: 0 | RenderBudgetSnapshot['shadowMapSize'];
+  shadowMapSize: 0 | 1024 | 2048;
   practicalLightCount: 1 | 2;
   maxSimultaneousLights: 3 | 5 | 6;
-  shadowCasterLimit: 0 | 72 | 128;
 };
 
 function scaled(value: number) {
@@ -125,10 +125,17 @@ export function resolveBabylonRefineryLightingBudget(
     tierName,
     iblEnabled: budget.refineryIblScale >= 0.5,
     iblIntensity: REFINERY_IBL_PROFILE.intensity * budget.refineryIblScale,
-    shadowMapSize: budget.shadows ? budget.shadowMapSize : 0,
+    shadowMapSize: !budget.shadows || tierName === 'performance' ? 0 : tierName === 'high' ? 2048 : 1024,
     practicalLightCount: tierName === 'performance' ? 1 : 2,
     maxSimultaneousLights: tierName === 'high' ? 6 : tierName === 'balanced' ? 5 : 3,
-    shadowCasterLimit: tierName === 'high' ? 128 : tierName === 'balanced' ? 72 : 0,
+  };
+}
+
+export function resolveRefineryShadowAnchor(worldX: number, worldZ: number): RefineryShadowAnchor {
+  const snap = REFINERY_BABYLON_LIGHTING_PROFILE.shadow.anchorSnap;
+  return {
+    x: Math.round(worldX / snap) * snap,
+    z: Math.round(worldZ / snap) * snap,
   };
 }
 
@@ -151,6 +158,13 @@ function shadowPriority(mesh: AbstractMesh) {
   if (/player|operator|enemy/i.test(mesh.name)) return 0;
   if (/processor|bulkhead|crate|gantry|terminal|object/i.test(mesh.name)) return 1;
   return 2;
+}
+
+function isShadowCasterInCoverage(mesh: AbstractMesh, anchor: RefineryShadowAnchor) {
+  const position = mesh.getAbsolutePosition();
+  const coverage = REFINERY_BABYLON_LIGHTING_PROFILE.shadow.orthoExtent
+    + REFINERY_BABYLON_LIGHTING_PROFILE.shadow.casterPadding;
+  return Math.abs(position.x - anchor.x) <= coverage && Math.abs(position.z - anchor.z) <= coverage;
 }
 
 export class BabylonRefineryLighting {
@@ -316,7 +330,7 @@ export class BabylonRefineryLighting {
       visual.core.setEnabled(false);
       visual.penumbra.setEnabled(false);
     }
-    for (const key of ['actorGrounding', 'actorGroundingActors', 'actorGroundingCuePriority'] as const) {
+    for (const key of ['actorGrounding', 'actorGroundingActors', 'actorGroundingCuePriority', 'environmentShadowAnchor'] as const) {
       delete this.canvas.dataset[key];
     }
     this.shadowGenerator?.dispose();
@@ -341,6 +355,7 @@ export class BabylonRefineryLighting {
 
     const px = scaled(state.player.x);
     const pz = scaled(state.player.y);
+    const shadowAnchor = this.syncShadowProjection(px, pz);
     const activeBoss = state.enemies.find(enemy => enemy.active && !enemy.dead && enemy.role === 'boss') ?? null;
     const bossPulse = activeBoss?.bossPhase === 2 ? 1 + Math.sin(state.time * 4.6) * 0.16 : 1;
     this.emergencyLight.position.set(px + 2.4, 3.2, pz - 2.2);
@@ -391,7 +406,7 @@ export class BabylonRefineryLighting {
     }
 
     const groundedEnemyCount = this.syncActorGrounding(state, budget);
-    const shadowCasterCount = this.syncShadows(budget);
+    const shadowCasterCount = this.syncShadows(budget, shadowAnchor);
     const authoredIblReady = this.iblLoadState === 'authored';
     const iblTelemetry = authoredIblReady
       ? 'raw-cube:' + REFINERY_IBL_PROFILE.id + ':intensity-' + budget.iblIntensity.toFixed(2)
@@ -423,8 +438,14 @@ export class BabylonRefineryLighting {
       'shadow:' + (budget.shadowMapSize || 'off'),
       'actor-grounding:key-linked',
     ].join('+');
+    this.canvas.dataset.environmentShadowAnchor = shadowAnchor.x.toFixed(2) + ',' + shadowAnchor.z.toFixed(2);
     this.canvas.dataset.environmentShadowBudget = budget.shadowMapSize
-      ? 'key:' + budget.shadowMapSize + ':pcf-low:casters-' + shadowCasterCount
+      ? 'key:' + budget.shadowMapSize
+        + ':pcf-high:bias-' + profile.shadow.bias
+        + ':normal-' + profile.shadow.normalBias
+        + ':coverage-' + (profile.shadow.orthoExtent + profile.shadow.casterPadding)
+        + ':snap-' + profile.shadow.anchorSnap
+        + ':casters-' + shadowCasterCount
       : 'key:off';
     this.canvas.dataset.actorGrounding = REFINERY_ACTOR_GROUNDING_PROFILE.id
       + ':radius-' + REFINERY_ACTOR_GROUNDING_PROFILE.nearbyRadius
@@ -541,8 +562,15 @@ export class BabylonRefineryLighting {
     this.authoredIblTexture = null;
   }
 
-  private syncShadows(budget: BabylonRefineryLightingBudget) {
-    if (!budget.shadowMapSize || budget.shadowCasterLimit === 0) {
+  private syncShadowProjection(playerX: number, playerZ: number) {
+    const anchor = resolveRefineryShadowAnchor(playerX, playerZ);
+    const key = REFINERY_BABYLON_LIGHTING_PROFILE.key.position;
+    this.keyLight.position.set(anchor.x + key[0], key[1], anchor.z + key[2]);
+    return anchor;
+  }
+
+  private syncShadows(budget: BabylonRefineryLightingBudget, anchor: RefineryShadowAnchor) {
+    if (!budget.shadowMapSize) {
       this.shadowGenerator?.dispose();
       this.shadowGenerator = null;
       this.shadowMapSize = 0;
@@ -553,7 +581,7 @@ export class BabylonRefineryLighting {
       this.shadowGenerator?.dispose();
       const generator = new ShadowGenerator(budget.shadowMapSize, this.keyLight);
       generator.usePercentageCloserFiltering = true;
-      generator.filteringQuality = ShadowGenerator.QUALITY_LOW;
+      generator.filteringQuality = ShadowGenerator.QUALITY_HIGH;
       generator.bias = REFINERY_BABYLON_LIGHTING_PROFILE.shadow.bias;
       generator.normalBias = REFINERY_BABYLON_LIGHTING_PROFILE.shadow.normalBias;
       this.shadowGenerator = generator;
@@ -564,8 +592,8 @@ export class BabylonRefineryLighting {
     for (const mesh of receivers) mesh.receiveShadows = true;
     const casters = receivers
       .filter(mesh => !/(floor|grate|ring|beam|signal)/i.test(mesh.name))
-      .sort((a, b) => shadowPriority(a) - shadowPriority(b) || a.name.localeCompare(b.name))
-      .slice(0, budget.shadowCasterLimit);
+      .filter(mesh => isShadowCasterInCoverage(mesh, anchor))
+      .sort((a, b) => shadowPriority(a) - shadowPriority(b) || a.name.localeCompare(b.name));
     const map = this.shadowGenerator.getShadowMap();
     if (map) map.renderList = casters;
     return casters.length;

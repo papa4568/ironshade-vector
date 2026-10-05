@@ -53,10 +53,13 @@ export const REFINERY_BABYLON_LIGHTING_PROFILE = {
     { color: 0x6edce7, intensity: 7.0, range: 10, normalizedX: 0.71, normalizedZ: 0.67, height: 2.9 },
   ],
   shadow: {
+    qualityId: 'p28-a4-flagship-soft-stable-v1',
     orthoExtent: 28,
     near: 1,
     far: 70,
-    bias: 0.0008,
-    normalBias: 0.018,
+    bias: 0.00035,
+    normalBias: 0.012,
+    anchorSnap: 1.5,
+    casterPadding: 6,
   },
 } as const;

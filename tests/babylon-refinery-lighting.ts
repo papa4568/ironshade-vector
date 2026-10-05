@@ -4,7 +4,9 @@ import {
   REFINERY_ACTOR_GROUNDING_PROFILE,
   refineryActorGroundingScale,
   resolveBabylonRefineryLightingBudget,
+  resolveRefineryShadowAnchor,
 } from '../src/game/babylonRefineryLighting';
+import { REFINERY_BABYLON_LIGHTING_PROFILE } from '../src/game/refineryLightingProfile';
 import { AdaptiveRenderBudget } from '../src/game/renderQuality';
 
 const highSnapshot = new AdaptiveRenderBudget(false).sample(1000 / 60, 1, 'flagship');
@@ -17,23 +19,34 @@ const performance = resolveBabylonRefineryLightingBudget(performanceSnapshot);
 
 assert.deepEqual(
   { tier: high.tierName, shadow: high.shadowMapSize, practical: high.practicalLightCount, lights: high.maxSimultaneousLights },
-  { tier: 'high', shadow: 1024, practical: 2, lights: 6 },
-  'High Babylon lighting budget must preserve full key shadow, practicals, and material light count.',
+  { tier: 'high', shadow: 2048, practical: 2, lights: 6 },
+  'P28-A4 Flagship lighting must raise the refinery key shadow map above the old 1024 ceiling.',
 );
 assert.deepEqual(
   { tier: balanced.tierName, shadow: balanced.shadowMapSize, practical: balanced.practicalLightCount, lights: balanced.maxSimultaneousLights },
-  { tier: 'balanced', shadow: 512, practical: 2, lights: 5 },
-  'Balanced Babylon lighting budget must reduce shadow resolution without dropping authored practical identity.',
+  { tier: 'balanced', shadow: 1024, practical: 2, lights: 5 },
+  'P28-A4 Balanced lighting must retain a full-resolution recovery tier without dropping authored practical identity.',
 );
 assert.deepEqual(
   { tier: performance.tierName, shadow: performance.shadowMapSize, practical: performance.practicalLightCount, lights: performance.maxSimultaneousLights },
   { tier: 'performance', shadow: 0, practical: 1, lights: 3 },
-  'Performance Babylon lighting budget must shed shadows and the secondary practical before critical readability.',
+  'Performance Babylon lighting budget must still shed shadows and the secondary practical before critical readability.',
 );
 assert.equal(high.iblEnabled, true);
 assert.equal(balanced.iblEnabled, true);
 assert.equal(performance.iblEnabled, false);
 assert(high.iblIntensity > balanced.iblIntensity && balanced.iblIntensity > performance.iblIntensity);
+
+assert.equal(REFINERY_BABYLON_LIGHTING_PROFILE.shadow.qualityId, 'p28-a4-flagship-soft-stable-v1');
+assert(REFINERY_BABYLON_LIGHTING_PROFILE.shadow.bias < 0.0008, 'P28-A4 must reduce the old coarse depth bias that exaggerated peter-panning.');
+assert(REFINERY_BABYLON_LIGHTING_PROFILE.shadow.normalBias < 0.018, 'P28-A4 must tighten normal bias while retaining acne protection.');
+assert(REFINERY_BABYLON_LIGHTING_PROFILE.shadow.anchorSnap > 0, 'P28-A4 must quantize the player-relative shadow volume for stable camera motion.');
+assert(REFINERY_BABYLON_LIGHTING_PROFILE.shadow.casterPadding > 0, 'P28-A4 must admit nearby off-footprint casters before they enter the visible shadow region.');
+const anchorA = resolveRefineryShadowAnchor(10.1, 7.1);
+const anchorB = resolveRefineryShadowAnchor(10.4, 7.4);
+const anchorC = resolveRefineryShadowAnchor(11.4, 8.4);
+assert.deepEqual(anchorA, anchorB, 'Sub-snap player motion must not continuously move the directional shadow volume.');
+assert.notDeepEqual(anchorA, anchorC, 'The directional shadow volume must advance once the player crosses a snap cell.');
 
 assert.equal(REFINERY_ACTOR_GROUNDING_PROFILE.alphaTextureSize, 64, 'P28-A2 actor grounding must use a higher-resolution feathered alpha than the legacy static contact cards.');
 assert(REFINERY_ACTOR_GROUNDING_PROFILE.nearbyRadius >= 650, 'P28-A2 must cover the camera-relevant nearby-enemy envelope.');
@@ -89,15 +102,23 @@ assert.match(lightingSource, /alphaIndex = -300/, 'P28-A2 grounding must render 
 assert.match(lightingSource, /actorGroundingCuePriority/, 'P28-A2 must publish cue-priority telemetry for Deep Salvage QA.');
 assert.match(lightingSource, /grounding\)\/i/, 'P28-A2 projected cards must be excluded from the global key-shadow caster/receiver pass.');
 assert.match(lightingSource, /TONEMAPPING_ACES/, 'B11 must preserve ACES tone mapping parity.');
-assert.match(lightingSource, /new ShadowGenerator\(budget\.shadowMapSize, this\.keyLight\)/, 'B11 must use bounded Babylon key-light shadow maps.');
+assert.match(lightingSource, /new ShadowGenerator\(budget\.shadowMapSize, this\.keyLight\)/, 'P28-A4 must keep the key-light map bounded by the refinery-specific adaptive tier.');
+assert.match(lightingSource, /filteringQuality = ShadowGenerator\.QUALITY_HIGH/, 'P28-A4 must replace the legacy low-quality PCF path with high-quality PCF.');
+assert.match(lightingSource, /syncShadowProjection\(px, pz\)/, 'P28-A4 must keep the key shadow projection centered around the player.');
+assert.match(lightingSource, /Math\.round\(worldX \/ snap\) \* snap/, 'P28-A4 must quantize shadow-volume motion instead of swimming every frame.');
+assert.match(lightingSource, /getAbsolutePosition\(\)/, 'P28-A4 caster admission must use actual scene-space positions.');
+assert.match(lightingSource, /casterPadding/, 'P28-A4 caster coverage must include a padded spatial footprint.');
+assert.doesNotMatch(lightingSource, /shadowCasterLimit/, 'P28-A4 must remove the old arbitrary 128\/72 shadow-caster ceilings.');
+assert.match(lightingSource, /environmentShadowAnchor/, 'P28-A4 must expose the snapped key-shadow anchor for browser and phone QA.');
+assert.match(lightingSource, /pcf-high:bias-/, 'P28-A4 must expose filter and bias tuning in deterministic runtime telemetry.');
 assert.match(lightingSource, /refineryIblQa === 'off'/, 'B11 must preserve deterministic IBL stack-off QA capture control.');
 assert.match(worldSource, /new PBRMaterial\('p27-b5-object-material-'/, 'Babylon refinery world fallback materials must use Babylon PBR.');
 assert.match(worldSource, /visual\.material\.metallic =/, 'Babylon world material response must preserve authored metalness.');
 assert.match(worldSource, /visual\.material\.roughness =/, 'Babylon world material response must preserve authored roughness.');
 assert.match(iblSource, /REFINERY_IBL_PROFILE/, 'Babylon refinery IBL must use the engine-neutral authored environment profile.');
-assert.match(browserSource, /BROWSER_P27B11_BABYLON_PBR_LIGHTING_PASS/, 'Browser QA must capture the real WebGL Babylon B11 stack.');
+assert.match(browserSource, /BROWSER_P27B11_BABYLON_PBR_LIGHTING_PASS/, 'Browser QA must capture the real WebGL Babylon B11 stack that now contains the A4 key shadows.');
 assert.match(browserSource, /p27b11-ibl-off/, 'Browser QA must retain the refinery IBL-off comparison capture.');
 assert.match(browserSource, /p27b11-ibl-on/, 'Browser QA must retain the refinery IBL-on comparison capture.');
 assert.match(packageSource, /test:babylon-refinery-lighting/, 'Production build must execute the refinery lighting regression.');
 
-console.log('P28_A2_DYNAMIC_ACTOR_GROUNDING_PASS player=contact+key-penumbra enemies=nearby-active instancing=2-layer cues=protected p28a1=preserved');
+console.log('P28_A4_KEY_SHADOW_QUALITY_PASS maps=2048>1024>off filter=pcf-high bias=tuned casters=spatial-footprint anchor=snapped p28a1-a3=preserved');
