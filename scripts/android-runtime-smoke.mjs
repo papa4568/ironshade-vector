@@ -13,27 +13,30 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 function validRenderBudget(value) {
   if (typeof value !== 'string' || !value) return false;
   const parts = value.split('+');
-  if (parts.length !== 7) return false;
+  if (![4, 7].includes(parts.length)) return false;
   const fields = Object.fromEntries(parts.map(part => {
     const separator = part.indexOf(':');
     return separator > 0 ? [part.slice(0, separator), part.slice(separator + 1)] : ['', ''];
   }));
-  const required = ['pixel', 'shadow', 'vfx', 'transparency', 'reflection', 'secondary', 'detail'];
+  const required = ['pixel', 'shadow', 'reflection', 'detail'];
+  const legacySecondary = ['vfx', 'transparency', 'secondary'];
   if (!required.every(key => Object.prototype.hasOwnProperty.call(fields, key))) return false;
+  if (parts.length === 7 && !legacySecondary.every(key => Object.prototype.hasOwnProperty.call(fields, key))) return false;
   const pixel = Number(fields.pixel);
   const shadow = Number(fields.shadow);
+  const reflection = Number(fields.reflection);
+  const detail = Number(fields.detail);
+  const baseValid = Number.isFinite(pixel) && pixel > 0 && pixel <= 1
+    && Number.isInteger(shadow) && shadow >= 0 && shadow <= 2048
+    && Number.isFinite(reflection) && reflection > 0 && reflection <= 1
+    && Number.isFinite(detail) && detail > 0 && detail <= 1;
+  if (!baseValid || parts.length === 4) return baseValid;
   const vfx = Number(fields.vfx);
   const transparency = Number(fields.transparency);
-  const reflection = Number(fields.reflection);
   const secondary = Number(fields.secondary);
-  const detail = Number(fields.detail);
-  return Number.isFinite(pixel) && pixel > 0 && pixel <= 1
-    && Number.isInteger(shadow) && shadow >= 0 && shadow <= 2048
-    && Number.isFinite(vfx) && vfx > 0 && vfx <= 1
+  return Number.isFinite(vfx) && vfx > 0 && vfx <= 1
     && Number.isFinite(transparency) && transparency > 0 && transparency <= 1
-    && Number.isFinite(reflection) && reflection > 0 && reflection <= 1
-    && Number.isFinite(secondary) && secondary > 0 && secondary <= 1
-    && Number.isFinite(detail) && detail > 0 && detail <= 1;
+    && Number.isFinite(secondary) && secondary > 0 && secondary <= 1;
 }
 
 const P21_EFFECT_BUDGETS = Object.freeze({
