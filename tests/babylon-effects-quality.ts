@@ -89,7 +89,7 @@ assert(abilitySource.includes('dodging ? 0.72 : (0.26 + speedScale * 0.16) * tra
 assert(abilitySource.includes('0.62 * fade * (criticalGlyph ? 1 : transparencyScale)'), 'Ability secondary glyph transparency must scale without weakening critical class/mark glyphs.');
 assert(abilitySource.includes('this.syncSkill(state)') && abilitySource.includes('this.syncPulse(state)'), 'Core class-skill and pulse cues must stay outside the secondary VFX scaler.');
 
-assert(lightingSource.includes('shadowMapSize: budget.shadows ? budget.shadowMapSize : 0'), 'Babylon shadow cost must follow the adaptive contract.');
+assert(lightingSource.includes("shadowMapSize: !budget.shadows || tierName === 'performance' ? 0 : tierName === 'high' ? 2048 : 1024"), 'Babylon refinery shadows must preserve adaptive tier shedding while allowing the P28-A4 flagship quality uplift.');
 assert(lightingSource.includes('iblEnabled: budget.refineryIblScale >= 0.5'), 'Babylon reflection/IBL cost must follow the adaptive contract.');
 assert(postSource.includes('refineryBloomScale') && postSource.includes('refineryContactDepthScale') && postSource.includes('refineryAtmosphereScale'), 'Babylon post-processing components must consume the adaptive secondary-effect scales.');
 assert(postSource.includes('gameplayCueScale: budget.gameplayCueScale'), 'Babylon post-processing must preserve the protected gameplay cue scale.');
