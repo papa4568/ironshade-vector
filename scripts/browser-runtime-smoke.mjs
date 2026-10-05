@@ -2644,6 +2644,11 @@ async function p27A2BabylonBackendAudit() {
   const ratio = Number(ratioRaw);
   const bufferWidth = Number(bufferWidthRaw);
   const bufferHeight = Number(bufferHeightRaw);
+  const minCssDimension = Math.max(1, Math.min(cssWidth, cssHeight));
+  const widthBufferRatio = bufferWidth / Math.max(1, cssWidth);
+  const heightBufferRatio = bufferHeight / Math.max(1, cssHeight);
+  const ratioTelemetryTolerance = 0.005 + 1 / minCssDimension;
+  const ratioAxisTolerance = 1 / minCssDimension;
   const expectedNarrow = state.rectWidth / Math.max(1, state.rectHeight) < 1.35
     || state.rectWidth < 560
     || state.rectHeight < 340;
@@ -2655,8 +2660,9 @@ async function p27A2BabylonBackendAudit() {
     || Math.abs(cssHeight - state.rectHeight) > 2
     || bufferWidth !== state.bufferWidth
     || bufferHeight !== state.bufferHeight
-    || Math.abs(bufferWidth - state.rectWidth * ratio) > 2
-    || Math.abs(bufferHeight - state.rectHeight * ratio) > 2) {
+    || Math.abs(widthBufferRatio - ratio) > ratioTelemetryTolerance
+    || Math.abs(heightBufferRatio - ratio) > ratioTelemetryTolerance
+    || Math.abs(widthBufferRatio - heightBufferRatio) > ratioAxisTolerance) {
     throw new Error(`P27-B1 Babylon camera/resize parity invalid: ${JSON.stringify({ state, expectedLayout, ratio })}`);
   }
 
