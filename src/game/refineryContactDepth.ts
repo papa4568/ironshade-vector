@@ -9,7 +9,7 @@ export const REFINERY_CONTACT_DEPTH_PROFILE = Object.freeze({
   protectedCueGroups: Object.freeze(['hud', 'enemies', 'hazards', 'objectives', 'loot', 'interactables']),
 });
 
-export function createRefineryContactDepthAlphaData(size = REFINERY_CONTACT_DEPTH_PROFILE.alphaTextureSize) {
+export function createRefineryContactDepthAlphaData(size: number = REFINERY_CONTACT_DEPTH_PROFILE.alphaTextureSize) {
   const boundedSize = Math.max(4, Math.min(64, Math.round(Number.isFinite(size) ? size : REFINERY_CONTACT_DEPTH_PROFILE.alphaTextureSize)));
   const data = new Uint8Array(boundedSize * boundedSize * 4);
   for (let y = 0; y < boundedSize; y += 1) {
