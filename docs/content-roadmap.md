@@ -10,19 +10,19 @@
 - The current renderer already has strong foundations to reuse: authored GLB/KTX2/Meshopt loading, PBR materials, ACES tone mapping, selective bloom/fog, location presentation modules, optional adaptive recovery, and deterministic browser/Android QA.
 - The current visual ceiling is largely content/presentation quality: the refinery still uses a tiny procedural cubemap for IBL, generic world objects can fall back to simple boxes, contact-depth uses proxy cards rather than true SSAO, and hero/operator/enemy families currently stop at LOD1/LOD2.
 - The authored-asset build path is itself a major visual blocker: `scripts/prepare-graphics-assets.mjs` currently emits GLBs from a single cube vertex/index primitive and assembles many operators, enemies, and environment assets from scaled box nodes with factor-only materials. P28 must upgrade that source/build path before treating new LOD0 assets as premium art.
-- The **first unchecked item below is the next executable task**.
+- The **first unchecked executable item below is the next engineering task**. Hardware/manual-only validation lives in [external-qa.md](./external-qa.md) and does not participate in queue ordering.
 
-Only active/future executable work lives here. Completed and verified work belongs in [content-roadmap-archive.md](./content-roadmap-archive.md). Stable product rules live in [product-constraints.md](./product-constraints.md).
+Only active/future executable engineering work lives here. Completed and verified work belongs in [content-roadmap-archive.md](./content-roadmap-archive.md). Stable product rules live in [product-constraints.md](./product-constraints.md). External-only validation lives in [external-qa.md](./external-qa.md).
 
 ## Execution contract
 
-- Execute top to bottom. The **first unchecked top-level item is next** unless the user explicitly changes priority.
-- One checkbox should fit one realistic **implement → test → build → APK verification** cycle.
+- Execute top to bottom. The **first unchecked executable top-level item is next** unless the user explicitly changes priority.
+- One checkbox should fit one realistic **implement → targeted test → final build/CI/APK verification** cycle.
 - Split an item before coding if it spans independent systems or verification cycles; combine tiny changes only when they touch the same system and can be verified together.
 - Keep gameplay simulation authoritative. Babylon presentation may consume state but must not change combat timing, collision, mission logic, or save semantics.
 - Preserve combat readability: telegraphs, hazards, objectives, status/protocol cues, target feedback, and touch/controller behavior must remain clear even when effects are visually richer.
 - Do not add or preserve a graphics cap merely because it is "mobile safe." A hard limit needs measured evidence from the target high-performance phone class or a concrete engine/Android failure mode.
-- Each visual task must add/update deterministic Flagship captures, pass targeted regressions, complete the production build, and pass the repository's required Android/APK gate. GPU-heavy changes should also be exercised on real high-performance Android phone hardware when available; emulator-only success is not visual-performance proof.
+- Each visual task must add/update deterministic Flagship captures, pass targeted regressions, complete the production build, and pass the repository's required Android/APK gate. GPU-heavy changes should also be exercised on real high-performance Android phone hardware when available; external physical-device acceptance is tracked separately in `docs/external-qa.md`.
 - Lower quality tiers may remain as emergency recovery paths, but P28 does not require visual parity with them. They must only remain functional enough to avoid crashes and preserve gameplay-critical cues.
 - After verified completion, move completion detail/evidence to the archive and remove the item from this file.
 
@@ -39,8 +39,6 @@ Only active/future executable work lives here. Completed and verified work belon
 - [x] **P28-A2 — Upgrade dynamic actor grounding** — Add high-quality Babylon contact/projected shadow treatment for the player and active nearby enemies so characters consistently feel attached to the floor, supplementing the existing key-light shadowing as needed. **Done when:** the player and nearby enemies are visibly grounded throughout the Deep Salvage route, actor shadows integrate with the real scene instead of reading as detached blobs, telegraphs/objective glyphs remain dominant, and standard build/APK gates pass.
 
 - [x] **P28-A3 — Add Babylon SSAO2 to the production refinery renderer** — Add `SSAO2RenderingPipeline` for refinery world geometry and integrate it with the existing post stack instead of relying on proxy contact-depth cards as the primary depth solution. **Done when:** wall/floor/prop intersections and large machinery gain convincing screen-space depth in Flagship captures, gameplay cue meshes remain visually dominant, pipeline enable/disable/re-entry is deterministic, and frame/regression plus standard build/APK gates pass.
-
-- [ ] **P28-A4 — Validate upgraded refinery key-light shadows on target phone hardware** — The flagship shadow implementation, deterministic captures, browser regression contract, Android/APK gates, and physical-device evidence harness are in place. Run `scripts/android-p28a4-shadow-qa.sh` on a current high-performance Android phone and inspect the generated waypoint captures/evidence. **Done when:** the physical-device run remains High with 2048 high-PCF shadows across multiple snapped anchor regions, captures show soft stable contacts with no obvious acne, peter-panning, missing important casters, or large-map swimming, and the standard build/APK gates pass for the closing commit.
 
 - [ ] **P28-A5 — Re-grade exposure, contrast, and dark-value separation** — Recalibrate ACES/image processing after the new IBL/AO/shadow stack so dark materials retain visible form instead of collapsing into near-black while emissives and gameplay cues do not clip. **Done when:** deterministic Flagship captures retain readable floor/wall/character separation in dark and low-visibility rooms, emissive highlights remain controlled, and standard build/APK gates pass.
 
@@ -80,7 +78,7 @@ Only active/future executable work lives here. Completed and verified work belon
 
 - [ ] **P28-C8 — Replace refinery generic world boxes with authored family mappings** — In `BabylonRefineryWorldPresentation`, map eligible cover/industrial/interactable `CombatObject` visuals to refinery authored families and keep `MeshBuilder.CreateBox` only as the explicit load-failure/unmapped fallback. **Done when:** the Deep Salvage route no longer relies on generic boxes for mapped objects, dimensions/interaction centers remain simulation-owned, failure fallback is deterministic, and standard build/APK gates pass.
 
-- [ ] **P28-C9 — Consolidate repeated refinery geometry without reducing visible quality** — Use Babylon instances/thin instances or existing asset-runtime reuse for repeated static modules where it preserves the full-detail result. **Done when:** repeated LOD0 modules reuse resources correctly, scene re-entry/disposal is stable, no visible module is simplified solely to hit an arbitrary draw/triangle cap, target-phone telemetry is recorded, and standard build/APK gates pass.
+- [ ] **P28-C9 — Consolidate repeated refinery geometry without reducing visible quality** — Use Babylon instances/thin instances or existing asset-runtime reuse for repeated static modules where it preserves the full-detail result. **Done when:** repeated LOD0 modules reuse resources correctly, scene re-entry/disposal is stable, no visible module is simplified solely to hit an arbitrary draw/triangle cap, repository-visible telemetry remains available for later target-phone measurement, and standard build/APK gates pass. Physical target-phone acceptance is tracked in `docs/external-qa.md`.
 
 #### D. Hero operators and enemy presentation
 
@@ -110,7 +108,7 @@ Only active/future executable work lives here. Completed and verified work belon
 
 - [ ] **P28-E3 — Upgrade refinery practical/emissive fixtures** — Give furnace ports, terminals, warning fixtures, and selected machinery authored emissive surfaces that visually correspond to existing practical lights and selective bloom sources. **Done when:** bright fixtures appear to emit the light already present in the scene, bloom remains controlled, dark-area navigation improves without extra HUD, and standard build/APK gates pass.
 
-- [ ] **P28-E4 — Add local reflection probes for refinery hero machinery and spaces** — Add Babylon reflection probes wherever they materially improve focal metal machinery/space reflections instead of enforcing a fixed probe-count ceiling. **Done when:** hero metal gains convincing localized reflection variation, probe placement/update behavior is deterministic and measured on target phone hardware, and standard build/APK gates pass.
+- [ ] **P28-E4 — Add local reflection probes for refinery hero machinery and spaces** — Add Babylon reflection probes wherever they materially improve focal metal machinery/space reflections instead of enforcing a fixed probe-count ceiling. **Done when:** hero metal gains convincing localized reflection variation, probe placement/update behavior is deterministic, repository-visible performance/resource telemetry is available, and standard build/APK gates pass. Physical target-phone acceptance is tracked in `docs/external-qa.md`.
 
 #### F. Campaign-location rollout of the shared visual stack
 
@@ -143,8 +141,4 @@ Each rollout below reuses the P28 lighting/material/grounding/detail systems and
 
 - [ ] **P28-G4 — Refresh Hecate capstone visuals** — Adopt the shared P28 visual stack in Hecate without changing stage mechanics. **Done when:** the capstone has premium material/light/grounding treatment on the flagship target, boss/hazard cues remain dominant, and standard build/APK gates pass.
 
-#### H. Flagship-phone visual acceptance
-
-- [ ] **P28-H1 — Verify representative Flagship visuals on real high-performance Android phones** — Capture the same deterministic representative combat moments for the refinery plus at least one campaign and one capstone route on real high-performance Android phone hardware, recording screenshots and frame/resource telemetry. **Done when:** the shipped Flagship path consistently presents the full P28 lighting/material/geometry/effects stack, no authored assets are missing/broken, touch/controller combat remains readable and responsive, and standard build/APK gates pass.
-
-- [ ] **P28-H2 — Prove sustained Flagship stability without restoring arbitrary art budgets** — Run sustained combat/lifecycle/renderer-reentry testing with the finished full-quality P28 stack on the target high-performance phone class. Fix observed stalls, leaks, resource churn, or thermal collapse with targeted engineering rather than pre-emptive global visual caps. **Done when:** sustained play is stable, renderer recreation and cache ownership remain correct, touch/controller behavior remains reliable, and any quality reduction is backed by a measured target-device failure that could not be solved more locally.
+Physical-device P28 acceptance and sustained Flagship validation are tracked in [external-qa.md](./external-qa.md) so they can block release acceptance without deadlocking the executable engineering queue.
