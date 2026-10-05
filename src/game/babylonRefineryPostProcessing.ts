@@ -83,6 +83,11 @@ export function isBabylonRefineryBloomSourceName(name: string) {
   return !PROTECTED_BLOOM_NAME.test(name) && REFINERY_BLOOM_SOURCE_NAME.test(name);
 }
 
+export function supportsBabylonRefinerySsao2(scene: Pick<Scene, 'getEngine'>) {
+  const engine = scene.getEngine() as unknown as { createMultipleRenderTarget?: unknown };
+  return SSAO2RenderingPipeline.IsSupported && typeof engine.createMultipleRenderTarget === 'function';
+}
+
 export function resolveBabylonRefineryPostProcessingBudget(
   budget: Pick<
     RenderBudgetSnapshot,
@@ -371,8 +376,8 @@ export class BabylonRefineryPostProcessing {
   }
 
   private ensureSsao() {
+    if (!supportsBabylonRefinerySsao2(this.scene)) return null;
     if (this.ssao) return this.ssao;
-    if (!SSAO2RenderingPipeline.IsSupported) return null;
 
     const pipeline = new SSAO2RenderingPipeline(
       REFINERY_SSAO_PIPELINE_NAME,
