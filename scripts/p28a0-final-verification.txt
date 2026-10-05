@@ -1,0 +1,5 @@
+P28-A0 final verification trigger.
+
+Source baseline: 02600167fc420e862d60e5a92d5c2882113d8a5f
+Purpose: run path-filtered Browser E2E, Android/APK, soak, and production verification after the Babylon viewport-ratio smoke gate was corrected for two-decimal telemetry precision.
+This file carries no runtime behavior.
