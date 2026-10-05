@@ -1,0 +1,44 @@
+name: P28-A4 Physical QA Harness
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/android-p28a4-shadow-qa.mjs'
+      - 'scripts/android-p28a4-shadow-qa.sh'
+      - '.github/workflows/p28a4-physical-qa-harness.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'scripts/android-p28a4-shadow-qa.mjs'
+      - 'scripts/android-p28a4-shadow-qa.sh'
+      - '.github/workflows/p28a4-physical-qa-harness.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  syntax-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.2'
+
+      - name: Verify physical QA harness
+        shell: bash
+        run: |
+          test -x scripts/android-p28a4-shadow-qa.sh
+          bash -n scripts/android-p28a4-shadow-qa.sh
+          node --check scripts/android-p28a4-shadow-qa.mjs
+          grep -q 'ro.kernel.qemu' scripts/android-p28a4-shadow-qa.sh
+          grep -q 'shadow:2048' scripts/android-p28a4-shadow-qa.mjs
+          grep -q 'pcf-high' scripts/android-p28a4-shadow-qa.mjs
+          grep -q 'uniqueAnchors.size < 2' scripts/android-p28a4-shadow-qa.mjs
+          echo 'P28_A4_PHYSICAL_QA_HARNESS_PASS'
