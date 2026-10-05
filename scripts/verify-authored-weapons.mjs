@@ -105,6 +105,7 @@ try {
         variant: canvas.dataset.weaponVariant ?? '',
         fx: canvas.dataset.babylonWeaponFireFx ?? '',
         heat: canvas.dataset.weaponHeat ?? '',
+        renderTier: canvas.dataset.renderTier ?? '',
         canvases: document.querySelectorAll('canvas').length,
         width: rect.width,
         height: rect.height,
@@ -122,8 +123,10 @@ try {
         await sleep(200);
         continue;
       }
-      const mobileViewport = ['mobile-landscape', 'android-emulator'].includes(process.env.BROWSER_E2E_VIEWPORT ?? '');
-      const expectedLod = mobileViewport ? 2 : 1;
+      if (!['high', 'balanced', 'performance'].includes(lastState.renderTier)) {
+        throw new Error(`Authored weapon render tier telemetry is missing: ${JSON.stringify(lastState)}`);
+      }
+      const expectedLod = lastState.renderTier === 'performance' ? 2 : 1;
       if (lastState.asset !== `weapon-${lastState.active}-lod${expectedLod}`) {
         throw new Error(`Unexpected authored weapon asset id for LOD${expectedLod}: ${JSON.stringify(lastState)}`);
       }
@@ -142,7 +145,7 @@ try {
       if (!(lastState.width > 0 && lastState.height > 0)) {
         throw new Error(`Authored weapon canvas is not visible: ${JSON.stringify(lastState)}`);
       }
-      console.log(`AUTHORED_WEAPON_RUNTIME_PASS active=${lastState.active} asset=${lastState.asset} roles=${[...roles].sort().join(',')} fx=${lastState.fx} heat=${lastState.heat} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
+      console.log(`AUTHORED_WEAPON_RUNTIME_PASS active=${lastState.active} asset=${lastState.asset} tier=${lastState.renderTier} lod=${expectedLod} roles=${[...roles].sort().join(',')} fx=${lastState.fx} heat=${lastState.heat} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
       process.exitCode = 0;
       break;
     }
@@ -151,8 +154,9 @@ try {
 
   const roles = new Set(String(lastState?.roles ?? '').split(',').filter(Boolean));
   const activeWeapon = ['carbine', 'breacher', 'rail'].includes(lastState?.active) ? lastState.active : null;
-  const expectedLod = ['mobile-landscape', 'android-emulator'].includes(process.env.BROWSER_E2E_VIEWPORT ?? '') ? 2 : 1;
-  const activeAuthored = activeWeapon && lastState?.asset === `weapon-${activeWeapon}-lod${expectedLod}`;
+  const expectedLod = lastState?.renderTier === 'performance' ? 2 : 1;
+  const activeAuthored = activeWeapon && ['high', 'balanced', 'performance'].includes(lastState?.renderTier)
+    && lastState?.asset === `weapon-${activeWeapon}-lod${expectedLod}`;
   if (lastState?.visual !== 'authored-babylon' || !['carbine', 'breacher', 'rail'].every(role => roles.has(role)) || !activeAuthored) {
     throw new Error(`Timed out waiting for active authored Babylon weapon asset: ${JSON.stringify(lastState)}`);
   }

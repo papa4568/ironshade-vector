@@ -104,6 +104,7 @@ try {
         lootVisual: canvas.dataset.lootVisual ?? '',
         lootAsset: canvas.dataset.lootAsset ?? '',
         lootReadability: canvas.dataset.lootReadability ?? '',
+        renderTier: canvas.dataset.renderTier ?? '',
         canvases: document.querySelectorAll('canvas').length,
         width: rect.width,
         height: rect.height,
@@ -117,8 +118,10 @@ try {
       throw new Error(`Authored loot pickup entered procedural fallback: ${JSON.stringify(lastState)}`);
     }
 
-    const mobileViewport = ['mobile-landscape', 'android-emulator'].includes(process.env.BROWSER_E2E_VIEWPORT ?? '');
-    const expectedLod = mobileViewport ? 2 : 1;
+    if (!['high', 'balanced', 'performance'].includes(lastState?.renderTier)) {
+      throw new Error(`Authored interactable render tier telemetry is missing: ${JSON.stringify(lastState)}`);
+    }
+    const expectedLod = lastState.renderTier === 'performance' ? 2 : 1;
     const assets = new Set(String(lastState?.assets ?? '').split(',').filter(Boolean));
     const controlAsset = `interactable-control-terminal-lod${expectedLod}`;
     if (lastState?.visual === 'authored-babylon' && assets.has(controlAsset)) {
@@ -134,17 +137,18 @@ try {
           throw new Error(`Unexpected authored Babylon loot runtime state: ${JSON.stringify(lastState)}`);
         }
       }
-      console.log(`AUTHORED_INTERACTABLE_RUNTIME_PASS control=${controlAsset} assets=${[...assets].sort().join(',')} loot=${lastState.lootAsset || 'pending-no-drop'} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
+      console.log(`AUTHORED_INTERACTABLE_RUNTIME_PASS control=${controlAsset} tier=${lastState.renderTier} lod=${expectedLod} assets=${[...assets].sort().join(',')} loot=${lastState.lootAsset || 'pending-no-drop'} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
       process.exitCode = 0;
       break;
     }
     await sleep(200);
   }
 
-  const mobileViewport = ['mobile-landscape', 'android-emulator'].includes(process.env.BROWSER_E2E_VIEWPORT ?? '');
-  const expectedLod = mobileViewport ? 2 : 1;
+  const expectedLod = lastState?.renderTier === 'performance' ? 2 : 1;
   const assets = new Set(String(lastState?.assets ?? '').split(',').filter(Boolean));
-  if (lastState?.visual !== 'authored-babylon' || !assets.has(`interactable-control-terminal-lod${expectedLod}`)) {
+  if (lastState?.visual !== 'authored-babylon'
+    || !['high', 'balanced', 'performance'].includes(lastState?.renderTier)
+    || !assets.has(`interactable-control-terminal-lod${expectedLod}`)) {
     throw new Error(`Timed out waiting for authored Babylon mission interactables: ${JSON.stringify(lastState)}`);
   }
 } finally {

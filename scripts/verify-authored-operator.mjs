@@ -138,6 +138,7 @@ try {
         blend: canvas.dataset.operatorBlend ?? '',
         skillAnimation: canvas.dataset.operatorSkillAnimation ?? '',
         skillBlend: canvas.dataset.operatorSkillBlend ?? '',
+        renderTier: canvas.dataset.renderTier ?? '',
         canvases: document.querySelectorAll('canvas').length,
         width: rect.width,
         height: rect.height,
@@ -148,8 +149,10 @@ try {
       throw new Error(`Authored operator entered procedural fallback: ${JSON.stringify(lastState)}`);
     }
     if (lastState?.visual?.startsWith('authored-')) {
-      const mobileViewport = ['mobile-landscape', 'android-emulator'].includes(process.env.BROWSER_E2E_VIEWPORT ?? '');
-      const expectedLod = mobileViewport ? 2 : 1;
+      if (!['high', 'balanced', 'performance'].includes(lastState.renderTier)) {
+        throw new Error(`Authored operator render tier telemetry is missing: ${JSON.stringify(lastState)}`);
+      }
+      const expectedLod = lastState.renderTier === 'performance' ? 2 : 1;
       const validAssets = new Set([
         `operator-field-suit-lod${expectedLod}`,
         `operator-vanguard-lod${expectedLod}`,
@@ -177,7 +180,7 @@ try {
       if (!(lastState.width > 0 && lastState.height > 0)) {
         throw new Error(`Authored operator canvas is not visible: ${JSON.stringify(lastState)}`);
       }
-      console.log(`AUTHORED_OPERATOR_RUNTIME_PASS visual=${lastState.visual} asset=${lastState.asset} class=${lastState.operatorClass || 'generic'} rig=${lastState.rig} socket=${lastState.socket} stance=${lastState.stance} animation=${lastState.animation} blend=${lastState.blend} skill=${lastState.skillAnimation} skillBlend=${lastState.skillBlend} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
+      console.log(`AUTHORED_OPERATOR_RUNTIME_PASS visual=${lastState.visual} asset=${lastState.asset} class=${lastState.operatorClass || 'generic'} tier=${lastState.renderTier} lod=${expectedLod} rig=${lastState.rig} socket=${lastState.socket} stance=${lastState.stance} animation=${lastState.animation} blend=${lastState.blend} skill=${lastState.skillAnimation} skillBlend=${lastState.skillBlend} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
       process.exitCode = 0;
       break;
     }
