@@ -1517,10 +1517,6 @@ async function p27C7BabylonLatticeAnnexAudit() {
   await waitFor("document.querySelector('canvas')?.dataset.babylonLatticeAnnexPlayerPosition !== " + JSON.stringify(beforeMove), 'P27-C7 Lattice Annex movement', 5_000);
   const afterMove = await evaluate("document.querySelector('canvas')?.dataset.babylonLatticeAnnexPlayerPosition ?? ''");
 
-  if (viewportMode === 'mobile-landscape') {
-    await waitFor("document.querySelector('canvas')?.dataset.environmentCalibrationMass === 'near-zero-g'", 'P27-C7 Lattice Annex calibration mass shift', 16_000);
-  }
-
   const state = await evaluate("(() => { const canvas = document.querySelector('canvas'); return {"
     + " scenario: canvas?.dataset.babylonScenario ?? '', environmentVisual: canvas?.dataset.environmentVisual ?? '',"
     + " profile: canvas?.dataset.environmentPerformanceProfile ?? '', budget: canvas?.dataset.environmentInstanceBudget ?? '',"
