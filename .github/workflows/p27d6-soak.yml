@@ -1,4 +1,5 @@
 name: P27-D6 Babylon Resource Soak
+# P28-A0 final verification trigger: runtime tree matches 2bf495d4c7de54761fca1c04ac5ae10ee00b0b35.
 
 on:
   workflow_dispatch:
