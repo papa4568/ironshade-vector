@@ -46,7 +46,6 @@ Only active/future executable engineering work lives here. Completed and verifie
 
 
 
-- [ ] **P28-B3 — Apply P28 materials to refinery cover and crates** — Move cover and crate visuals off generic flat material treatment while preserving simulation dimensions and readability. **Done when:** cover/crates have intentional painted/bare-metal/polymer material separation at gameplay zoom and standard build/APK gates pass.
 
 - [ ] **P28-B4 — Apply P28 materials to refinery machinery** — Move processors, terminals, pipe racks, conduits, cable trays, and gantries onto the shared PBR surface language where their authored assets permit it. **Done when:** representative machinery has distinct roughness/metalness/normal response, emissive intent remains compatible with selective bloom, and standard build/APK gates pass.
 
