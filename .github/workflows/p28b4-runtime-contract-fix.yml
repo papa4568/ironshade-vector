@@ -1,0 +1,50 @@
+name: P28-B4 Runtime Contract Fix
+
+on:
+  push:
+    branches:
+      - p28-b4-refinery-machinery-materials
+    paths:
+      - '.github/workflows/p28b4-runtime-contract-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out B4 branch
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: p28-b4-refinery-machinery-materials
+
+      - name: Update extensible bloom-source runtime contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/browser-runtime-smoke.mjs')
+          text = p.read_text()
+          old = "|| !/^babylon-included:\\d+\\+authored:processor\\+terminal\\+muzzle$/.test(state.environmentBloomSources)"
+          new = "|| !/^babylon-included:\\d+\\+authored:processor\\+terminal(?:\\+(?:pipe|cable-tray|service-conduit|gantry))*\\+muzzle$/.test(state.environmentBloomSources)"
+          if text.count(old) != 1:
+              raise SystemExit(f'expected exactly one stale bloom-source assertion, got {text.count(old)}')
+          p.write_text(text.replace(old, new, 1))
+          PY
+          rm .github/workflows/p28b4-runtime-contract-fix.yml
+          git diff --check
+
+      - name: Commit runtime contract fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add scripts/browser-runtime-smoke.mjs .github/workflows/p28b4-runtime-contract-fix.yml
+          git diff --cached --check
+          git commit -m 'Fix refinery bloom telemetry runtime regression'
+          git push origin HEAD:p28-b4-refinery-machinery-materials
