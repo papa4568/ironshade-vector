@@ -106,6 +106,8 @@ try {
         landmark: canvas.dataset.environmentLandmark ?? '',
         serviceDetails: canvas.dataset.environmentServiceDetails ?? '',
         surfaceDetail: canvas.dataset.environmentSurfaceDetail ?? '',
+        premiumSurfaces: canvas.dataset.babylonEnvironmentPremiumSurfaces ?? '',
+        materialDetail: canvas.dataset.babylonEnvironmentMaterialDetail ?? '',
         machineDetail: canvas.dataset.environmentMachineDetail ?? '',
         composition: canvas.dataset.environmentComposition ?? '',
         lightingProfile: canvas.dataset.babylonLightingProfile ?? '',
@@ -158,6 +160,10 @@ try {
       if (lastState.surfaceDetail !== 'wall-panel:6+cable-tray:6') {
         throw new Error(`Authored Babylon refinery wall/cable detail coverage is incomplete: ${JSON.stringify(lastState)}`);
       }
+      if (lastState.premiumSurfaces !== 'floor:bare-metal+deck-plate|floor-grate:bare-metal+painted-metal|bulkhead:painted-metal|wall-panel:bare-metal+painted-metal'
+        || lastState.materialDetail !== 'normal+roughness+metalness:shared-premium-pbr') {
+        throw new Error(`P28-B2 premium refinery surface binding is incomplete: ${JSON.stringify(lastState)}`);
+      }
       if (lastState.machineDetail !== 'processor-functional:3+floor-grate:8') {
         throw new Error(`Authored Babylon refinery processor/floor detail coverage is incomplete: ${JSON.stringify(lastState)}`);
       }
@@ -201,7 +207,7 @@ try {
       if (!(lastState.width > 0 && lastState.height > 0)) {
         throw new Error(`Authored Babylon refinery canvas is not visible: ${JSON.stringify(lastState)}`);
       }
-      console.log(`AUTHORED_REFINERY_RUNTIME_PASS lod=${lastState.lod} kit=${[...kit].sort().join(',')} instances=${lastState.instances} terminals=${lastState.terminals} landmark=${lastState.landmark} lighting=${lastState.lighting} grounding=${lastState.actorGrounding} actors=${lastState.actorGroundingActors} ibl=${lastState.ibl} post=${lastState.postStack} tier=${lastState.renderTier} frame=${lastState.renderFrameMs}ms budget=${lastState.renderBudget} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
+      console.log(`AUTHORED_REFINERY_RUNTIME_PASS lod=${lastState.lod} kit=${[...kit].sort().join(',')} instances=${lastState.instances} terminals=${lastState.terminals} landmark=${lastState.landmark} premium=${lastState.premiumSurfaces} lighting=${lastState.lighting} grounding=${lastState.actorGrounding} actors=${lastState.actorGroundingActors} ibl=${lastState.ibl} post=${lastState.postStack} tier=${lastState.renderTier} frame=${lastState.renderFrameMs}ms budget=${lastState.renderBudget} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
       process.exitCode = 0;
       break;
     }
