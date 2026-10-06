@@ -1,20 +1,20 @@
 name: ChatGPT P28-C1 Smoke Patch
 
 on:
-  pull_request:
-    branches: [main]
+  push:
+    branches:
+      - chatgpt/p28-c1-refinery-floor-lod0
 
 permissions:
   contents: write
 
 jobs:
   patch-smoke-contract:
-    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'chatgpt/p28-c1-refinery-floor-lod0'
+    if: github.ref == 'refs/heads/chatgpt/p28-c1-refinery-floor-lod0'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
       - name: Patch refinery LOD QA contract
