@@ -1,47 +1,36 @@
 import { readFile, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
+await import('./graphics-runtime-assets-base.mjs');
+
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-const retiredThreeCodecRoot = resolve(process.cwd(), 'dist/assets/codecs/basis');
-try {
-  await stat(retiredThreeCodecRoot);
-  throw new Error('retired Three Basis codec directory must not ship');
-} catch (error) {
-  if (error?.code !== 'ENOENT') throw error;
+const root = resolve(process.cwd(), 'dist/assets/materials/premium-pbr');
+const manifest = JSON.parse(await readFile(resolve(root, 'manifest.json'), 'utf8'));
+assert(manifest.encoding === 'ktx2-zstd-rgba8', `premium PBR runtime encoding must stay KTX2+Zstd, got ${manifest.encoding}`);
+assert(manifest.width === 512 && manifest.height === 512 && manifest.mipLevels === 10, 'premium PBR runtime textures must ship the authored 512px/10-mip contract');
+assert(manifest.surfaces?.length === 5, 'premium PBR runtime manifest must ship all five shared surfaces');
+assert(manifest.ormChannels?.r === 'occlusion' && manifest.ormChannels?.g === 'roughness' && manifest.ormChannels?.b === 'metallic', 'premium PBR runtime ORM channel contract changed');
+
+const identifier = Buffer.from([0xab, 0x4b, 0x54, 0x58, 0x20, 0x32, 0x30, 0xbb, 0x0d, 0x0a, 0x1a, 0x0a]);
+let textureCount = 0;
+let textureBytes = 0;
+for (const surface of manifest.surfaces) {
+  for (const [map, filename] of Object.entries(surface.maps ?? {})) {
+    assert(filename.endsWith('.ktx2'), `${surface.id}/${map}: runtime material map must use KTX2`);
+    const path = resolve(root, filename);
+    const fileStat = await stat(path);
+    assert(fileStat.isFile() && fileStat.size > 0, `${surface.id}/${map}: runtime KTX2 is missing`);
+    const header = await readFile(path);
+    assert(header.subarray(0, 12).equals(identifier), `${surface.id}/${map}: runtime payload is not KTX2`);
+    assert(header.readUInt32LE(40) === 10, `${surface.id}/${map}: runtime KTX2 mip chain is incomplete`);
+    assert(header.readUInt32LE(44) === 2, `${surface.id}/${map}: runtime KTX2 is not Zstd-supercompressed`);
+    textureCount += 1;
+    textureBytes += fileStat.size;
+  }
 }
-
-const babylonCodecRoot = resolve(process.cwd(), 'dist/assets/codecs/babylon');
-const babylonManifest = JSON.parse(await readFile(resolve(babylonCodecRoot, 'manifest.json'), 'utf8'));
-assert(babylonManifest.codec === 'babylon-glb-ktx2-meshopt', 'Babylon codec manifest must identify the authored-asset decoder stack');
-assert(babylonManifest.babylonVersion === '9.28.0', `Babylon codec version must match locked Babylon.js 9.28.0, got ${babylonManifest.babylonVersion}`);
-assert(babylonManifest.ktx2DecoderVersion === '9.28.0', 'Babylon KTX2 decoder must match the locked engine version');
-assert(babylonManifest.meshoptimizerVersion === '1.1.1', 'Babylon Meshopt decoder must match the locked meshoptimizer version');
-
-const babylonFiles = [
-  'babylon.ktx2Decoder.js',
-  'meshopt_decoder.js',
-  'msc_basis_transcoder.js',
-  'msc_basis_transcoder.wasm',
-  'uastc_astc.wasm',
-  'uastc_bc7.wasm',
-  'uastc_r8_unorm.wasm',
-  'uastc_rg8_unorm.wasm',
-  'uastc_rgba8_srgb_v2.wasm',
-  'uastc_rgba8_unorm_v2.wasm',
-  'zstddec.wasm',
-];
-assert(Array.isArray(babylonManifest.files) && babylonManifest.files.length === babylonFiles.length, 'Babylon codec manifest must contain every local Meshopt/KTX2 decoder dependency');
-
-let babylonTotalBytes = 0;
-for (const expected of babylonFiles) {
-  const fileStat = await stat(resolve(babylonCodecRoot, expected));
-  assert(fileStat.isFile() && fileStat.size > 0, `missing runtime Babylon graphics codec ${expected}`);
-  babylonTotalBytes += fileStat.size;
-}
-assert(babylonTotalBytes === babylonManifest.totalBytes, 'Babylon graphics codec manifest byte count does not match build output');
-assert(babylonTotalBytes <= 1_250_000, `Babylon local codec payload budget exceeded: ${babylonTotalBytes} bytes`);
-
-console.log(`GRAPHICS_RUNTIME_ASSETS_PASS threeFiles=0 babylonFiles=${babylonFiles.length} babylonBytes=${babylonTotalBytes} babylon=${babylonManifest.babylonVersion} meshopt=${babylonManifest.meshoptimizerVersion}`);
+assert(textureCount === 16, `premium PBR runtime texture count changed: ${textureCount}`);
+assert(textureBytes === manifest.totalBytes, `premium PBR runtime byte count mismatch: ${textureBytes} !== ${manifest.totalBytes}`);
+console.log(`PREMIUM_PBR_RUNTIME_ASSETS_PASS surfaces=${manifest.surfaces.length} textures=${textureCount} bytes=${textureBytes} mips=${manifest.mipLevels}`);
