@@ -205,8 +205,10 @@ export class BabylonRefineryPostProcessing {
   sync(lowVisibility: boolean, renderBudget: RenderBudgetSnapshot) {
     this.released = false;
     this.captureUpstreamImageProcessing();
-    const budget = resolveBabylonRefineryPostProcessingBudget(renderBudget, lowVisibility);
     const qaExplicit = this.canvas.dataset.graphicsPathSelection === 'qa-explicit';
+    const qaLowVisibility = qaExplicit && this.canvas.dataset.refineryImageGradeQa === 'low-visibility';
+    const effectiveLowVisibility = qaLowVisibility || lowVisibility;
+    const budget = resolveBabylonRefineryPostProcessingBudget(renderBudget, effectiveLowVisibility);
     const qaStackDisabled = qaExplicit && this.canvas.dataset.refineryPostStackQa === 'off';
     const stackEnabled = !qaStackDisabled;
     const sourceCount = this.syncBloomSources();
@@ -237,7 +239,7 @@ export class BabylonRefineryPostProcessing {
       this.scene.imageProcessingConfiguration.exposure = this.appliedExposure;
       this.scene.imageProcessingConfiguration.contrast = this.appliedContrast;
     } else {
-      this.applyBaselineAtmosphere(lowVisibility);
+      this.applyBaselineAtmosphere(effectiveLowVisibility);
       this.restoreUpstreamImageProcessing();
     }
 
@@ -274,7 +276,7 @@ export class BabylonRefineryPostProcessing {
     this.canvas.dataset.environmentContactDepthProtected = REFINERY_CONTACT_DEPTH_PROFILE.protectedCueGroups.join('+');
 
     this.canvas.dataset.environmentAtmosphere = atmosphereEnabled
-      ? refineryAtmosphereTelemetry(lowVisibility, renderBudget.refineryAtmosphereScale)
+      ? refineryAtmosphereTelemetry(effectiveLowVisibility, renderBudget.refineryAtmosphereScale)
       : qaStackDisabled ? 'off:qa-baseline' : 'off:adaptive-budget';
     this.canvas.dataset.environmentAtmosphereProtected = REFINERY_ATMOSPHERE_PROFILE.protectedCueGroups.join('+');
 
@@ -284,6 +286,7 @@ export class BabylonRefineryPostProcessing {
       + this.scene.imageProcessingConfiguration.exposure.toFixed(2)
       + '+contrast-' + this.scene.imageProcessingConfiguration.contrast.toFixed(2);
     this.canvas.dataset.environmentImageGrade = REFINERY_ATMOSPHERE_PROFILE.gradeId;
+    this.canvas.dataset.environmentImageGradeMode = effectiveLowVisibility ? 'low-visibility' : 'normal';
     this.canvas.dataset.environmentP21Budget = [
       'tier:' + renderBudget.tierName,
       'ibl:' + renderBudget.refineryIblScale.toFixed(2),
@@ -332,6 +335,7 @@ export class BabylonRefineryPostProcessing {
       'environmentAtmosphereProtected',
       'environmentPostTone',
       'environmentImageGrade',
+      'environmentImageGradeMode',
       'environmentP21Budget',
       'effectPriority',
       'babylonPostBudget',
