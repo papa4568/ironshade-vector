@@ -105,6 +105,8 @@ const loadContainer: BabylonGraphicsAssetContainerLoader = async (spec, targetSc
 };
 
 async function run() {
+  await import('../src/game/babylonGltfLoader');
+
   const flagshipEngine = new NullEngine();
   const flagshipScene = new Scene(flagshipEngine);
   const floorContainer = await loadLocalGlb(refineryFloorLod0, flagshipScene, `${refineryFloorLod0.id}-flagship`);
