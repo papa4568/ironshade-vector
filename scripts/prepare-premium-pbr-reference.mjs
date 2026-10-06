@@ -246,4 +246,8 @@ export async function writePremiumPbrReference() {
 }
 
 const modulePath = fileURLToPath(import.meta.url);
-if (process.argv[1] && resolve(process.argv[1]) === modulePath) await writePremiumPbrReference();
+if (process.argv[1] && resolve(process.argv[1]) === modulePath) {
+  await writePremiumPbrReference();
+  const { writePremiumPbrSurfaceLibrary } = await import('./prepare-premium-pbr-library.mjs');
+  await writePremiumPbrSurfaceLibrary();
+}
