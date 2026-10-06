@@ -64,12 +64,12 @@ for (const target of REFINERY_DECAL_TARGETS) {
   const primitive = detailMesh.primitives[0];
   assert(Number.isInteger(primitive.attributes?.POSITION) && Number.isInteger(primitive.attributes?.NORMAL) && Number.isInteger(primitive.attributes?.TEXCOORD_0), `${target.relativePath}: decal geometry attributes are incomplete`);
   assert(Number.isInteger(primitive.indices), `${target.relativePath}: decal geometry indices are missing`);
-  assert(primitive.attributes?.TANGENT === undefined, `${target.relativePath}: decal mesh should remain a lightweight unlit card batch`);
+  assert(primitive.attributes?.TANGENT === undefined, `${target.relativePath}: decal mesh should remain a lightweight atlas card batch`);
 
   const material = gltf.materials?.[primitive.material];
   assert(material?.name === 'refinery-detail-atlas', `${target.relativePath}: decal material slot changed`);
   assert(material?.alphaMode === 'BLEND' && material?.doubleSided === true, `${target.relativePath}: decal alpha blend contract changed`);
-  assert(material?.extensions?.KHR_materials_unlit, `${target.relativePath}: decals must remain unlit/non-emissive`);
+  assert(!gltf.extensionsUsed?.includes('KHR_materials_unlit') && material?.extensions?.KHR_materials_unlit === undefined, `${target.relativePath}: decals must remain extension-free for the restricted Babylon glTF loader`);
   assert(material?.emissiveFactor === undefined && material?.emissiveTexture === undefined, `${target.relativePath}: decals must not bloom over gameplay cues`);
   assert(material?.pbrMetallicRoughness?.baseColorFactor?.[3] <= 0.82, `${target.relativePath}: decal opacity exceeds readability budget`);
   const texture = gltf.textures?.[material.pbrMetallicRoughness.baseColorTexture.index];
