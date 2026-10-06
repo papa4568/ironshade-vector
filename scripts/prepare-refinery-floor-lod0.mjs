@@ -115,8 +115,8 @@ function floorPanelDefinition() {
     { name: 'refinery-floor-service-plate', mesh: 1, translation: [0.92, 0.075, -0.88] },
     { name: 'refinery-floor-seam-north', mesh: 2, translation: [0, 0.076, -1.63] },
     { name: 'refinery-floor-seam-south', mesh: 2, translation: [0, 0.076, 1.63] },
-    { name: 'refinery-floor-cross-seam-west', mesh: 3, translation: [-1.63, 0.076, 0] },
-    { name: 'refinery-floor-cross-seam-east', mesh: 3, translation: [1.63, 0.076, 0] },
+    { name: 'refinery-floor-seam-cross-west', mesh: 3, translation: [-1.63, 0.076, 0] },
+    { name: 'refinery-floor-seam-cross-east', mesh: 3, translation: [1.63, 0.076, 0] },
   ];
   for (const [index, [x, z]] of [
     [-1.68, -1.68],
