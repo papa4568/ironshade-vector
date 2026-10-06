@@ -146,6 +146,7 @@ export class BabylonRefineryWorldPresentation {
   private worldState: RingVisual | null = null;
   private loadGeneration = 0;
   private active = false;
+  private premiumRefineryScenario = false;
   private disposed = false;
 
   constructor(
@@ -166,7 +167,8 @@ export class BabylonRefineryWorldPresentation {
   sync(state: SimState, mission: Contract, detailScale: number) {
     if (this.disposed) return;
     this.active = true;
-    this.syncObjects(state, detailScale, mission.location === 'asteroid-refinery');
+    this.premiumRefineryScenario = mission.location === 'asteroid-refinery';
+    this.syncObjects(state, detailScale);
     this.syncObjective(state, mission);
     this.syncGroundLoot(state, detailScale);
     this.syncHazards(state, detailScale);
@@ -382,7 +384,8 @@ export class BabylonRefineryWorldPresentation {
     }
   }
 
-  private syncObjects(state: SimState, detailScale: number, refineryScenario: boolean) {
+  private syncObjects(state: SimState, detailScale: number) {
+    const refineryScenario = this.premiumRefineryScenario;
     const quality = worldMaterialQualityProfile(worldQualityName(detailScale));
     const activeIds = new Set<string>();
     let activeCount = 0;
