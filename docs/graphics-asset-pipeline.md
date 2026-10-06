@@ -89,6 +89,7 @@ Meshopt remains the geometry-compression target where it preserves asset fidelit
 
 - `npm run test:graphics` validates the renderer-neutral asset contract, LOD behavior, Babylon loader/cache ownership, fallbacks, and local decoder configuration.
 - `npm run test:graphics:content` loads and instantiates committed GLBs through Babylon, verifies the deterministic premium-PBR reference rebuild plus UV0/tangent/material texture bindings, and validates content/runtime compatibility and authored bounds.
+- P28-B0 pins the committed premium-PBR reference at `4,288` deterministic bytes; the content test verifies regeneration stability rather than treating that reference size as an art-quality target.
 - `npm run test:graphics:dist` verifies production output contains the Babylon codec payload and does not restore the retired Three Basis codec directory.
 - `scripts/verify-no-three-delivery.mjs` rejects unintended Three packages, imports, chunks, or retired codec assets in browser/APK delivery.
 - Visual acceptance is judged primarily on the flagship/high-performance phone target. Profiling remains required, but profiling is used to find real bottlenecks rather than to enforce arbitrary pre-selected art limits.
