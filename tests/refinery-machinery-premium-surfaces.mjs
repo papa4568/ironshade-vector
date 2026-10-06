@@ -56,13 +56,15 @@ for (const target of REFINERY_MACHINERY_PREMIUM_SURFACE_TARGETS) {
   assert(JSON.stringify(gltf.accessors?.[0]?.min) === JSON.stringify([-0.5, -0.5, -0.5]), `${target.relativePath}: position minimum changed`);
   assert(JSON.stringify(gltf.accessors?.[0]?.max) === JSON.stringify([0.5, 0.5, 0.5]), `${target.relativePath}: position maximum changed`);
   for (const mesh of gltf.meshes ?? []) {
+    if (mesh.name === 'p28-b5-refinery-detail-atlas') continue;
     for (const primitive of mesh.primitives ?? []) {
       assert(primitive.attributes?.TANGENT === 2, `${target.relativePath}: TANGENT is missing`);
       assert(primitive.attributes?.TEXCOORD_0 === 3, `${target.relativePath}: TEXCOORD_0 is missing`);
       assert(primitive.indices === 4, `${target.relativePath}: index topology changed`);
     }
   }
-  assert(JSON.stringify((gltf.materials ?? []).map(material => material.name)) === JSON.stringify(expectedMaterials), `${target.relativePath}: authored material slots changed`);
+  const baseMaterials = (gltf.materials ?? []).map(material => material.name).filter(name => name !== 'refinery-detail-atlas');
+  assert(JSON.stringify(baseMaterials) === JSON.stringify(expectedMaterials), `${target.relativePath}: authored machinery material slots changed`);
   const expected = representativeNodes[target.family];
   const node = (gltf.nodes ?? []).find(candidate => candidate.name === expected.name);
   assert(node, `${target.relativePath}: representative machinery node ${expected.name} is missing`);
@@ -88,3 +90,4 @@ assert(post.includes('excludeByDefault: true'), 'Selective bloom protection cont
 assert(runtimeSmoke.includes('authored:processor\\+terminal(?:\\+(?:pipe|cable-tray|service-conduit|gantry))*\\+muzzle'), 'Browser runtime smoke does not accept B4 machinery bloom-source telemetry');
 
 console.log(`REFINERY_MACHINERY_PREMIUM_SURFACES_PASS targets=${REFINERY_MACHINERY_PREMIUM_SURFACE_TARGETS.length} families=${expectedFamilies.join('+')} surfaces=painted-metal+bare-metal+emissive-fixture bounds=unchanged bloom=selective`);
+await import('./refinery-decal-atlas.mjs');

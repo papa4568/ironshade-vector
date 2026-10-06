@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { readFile as readFileAsync } from 'node:fs/promises';
-import { resolve } from 'node:path';
-import { LoadAssetContainerAsync } from '@babylonjs/core/Loading/sceneLoader';
+import { dirname, resolve } from 'node:path';
+import { LoadAssetContainerAsync, SceneLoader } from '@babylonjs/core/Loading/sceneLoader';
 import { KhronosTextureContainer2 } from '@babylonjs/core/Misc/khronosTextureContainer2';
 import { MeshoptCompression } from '@babylonjs/core/Meshes/Compression/meshoptCompression';
 import { NullEngine } from '@babylonjs/core/Engines/nullEngine';
@@ -61,16 +61,36 @@ const engine = new NullEngine();
 const scene = new Scene(engine);
 const loadCounts = new Map<string, number>();
 const disposeCounts = new Map<string, number>();
+let externalAtlasLoads = 0;
 
-const loadContainer: BabylonGraphicsAssetContainerLoader = async (spec, targetScene) => {
-  loadCounts.set(spec.url, (loadCounts.get(spec.url) ?? 0) + 1);
+async function loadLocalGlb(spec: { url: string; id: string }, targetScene: Scene, name: string) {
   const filePath = resolve(process.cwd(), 'public', spec.url.replace(/^\/+/, ''));
   const data = await readFileAsync(filePath);
   const bytes = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
-  const container = await LoadAssetContainerAsync(bytes, targetScene, {
-    pluginExtension: '.glb',
-    name: spec.id,
+  const observer = SceneLoader.OnPluginActivatedObservable.add(plugin => {
+    if (plugin.name !== 'gltf' || !('preprocessUrlAsync' in plugin)) return;
+    const gltfPlugin = plugin as typeof plugin & { preprocessUrlAsync: (url: string) => Promise<string> };
+    const originalPreprocessUrlAsync = gltfPlugin.preprocessUrlAsync.bind(gltfPlugin);
+    gltfPlugin.preprocessUrlAsync = async url => {
+      if (!url.endsWith('refinery-decal-atlas.png')) return originalPreprocessUrlAsync(url);
+      const atlas = await readFileAsync(resolve(dirname(filePath), 'refinery-decal-atlas.png'));
+      externalAtlasLoads += 1;
+      return `data:image/png;base64,${atlas.toString('base64')}`;
+    };
   });
+  try {
+    return await LoadAssetContainerAsync(bytes, targetScene, {
+      pluginExtension: '.glb',
+      name,
+    });
+  } finally {
+    SceneLoader.OnPluginActivatedObservable.remove(observer);
+  }
+}
+
+const loadContainer: BabylonGraphicsAssetContainerLoader = async (spec, targetScene) => {
+  loadCounts.set(spec.url, (loadCounts.get(spec.url) ?? 0) + 1);
+  const container = await loadLocalGlb(spec, targetScene, spec.id);
   const originalDispose = container.dispose.bind(container);
   container.dispose = () => {
     disposeCounts.set(spec.url, (disposeCounts.get(spec.url) ?? 0) + 1);
@@ -81,32 +101,33 @@ const loadContainer: BabylonGraphicsAssetContainerLoader = async (spec, targetSc
 
 async function run() {
   const runtime = new BabylonGraphicsAssetRuntime(scene, loadContainer);
-  
+
   const operatorA = await runtime.instantiate(operatorLod1);
   assert(operatorA.spec.lod === 1, 'operator instance must retain requested LOD1 spec');
   assert(operatorA.rootNodes.length > 0, 'Babylon operator LOD1 must instantiate scene roots');
   assert(operatorA.rootNodes.some(root => root.getChildMeshes(false).length > 0), 'Babylon operator LOD1 must contain renderable meshes');
-  
+
   const operatorB = await runtime.instantiate(operatorLod1);
   assert(loadCounts.get(operatorLod1.url) === 1, 'same Babylon GLB URL must be loaded once and served from cache');
   assert(operatorA.rootNodes[0] !== operatorB.rootNodes[0], 'Babylon instances must own distinct cloned root nodes');
   operatorA.release();
-  
+
   const operatorC = await runtime.instantiate(operatorLod1);
   assert(loadCounts.get(operatorLod1.url) === 1, 'releasing one clone must keep shared cached resources usable');
   assert(operatorC.rootNodes.length > 0, 'cached source container must remain instantiable after another clone releases');
   operatorB.release();
   operatorC.release();
-  
+
   const operatorLow = await runtime.instantiate(operatorLod2);
   assert(operatorLow.spec.lod === 2 && operatorLow.rootNodes.length > 0, 'Babylon operator LOD2 must load and instantiate at reduced detail');
   operatorLow.release();
-  
+
   const refinery = await runtime.instantiate(refineryLod1);
   assert(refinery.spec.lod === 1, 'refinery instance must retain requested LOD1 spec');
   assert(refinery.rootNodes.length > 0, 'Babylon Asteroid Refinery module must instantiate scene roots');
   assert(refinery.rootNodes.some(root => root.getChildMeshes(false).length > 0), 'Babylon refinery module must contain renderable meshes');
-  
+  assert(externalAtlasLoads === 1, `Babylon NullEngine harness must resolve the refinery external decal atlas once, got ${externalAtlasLoads}`);
+
   const refineryShared = await runtime.instantiate(refineryLod1);
   const sharedStaticMeshes = refineryShared.rootNodes.flatMap(root => root.getChildMeshes(false)).filter(mesh => mesh.isAnInstance);
   assert(sharedStaticMeshes.length > 0, 'repeated static Babylon GLB geometry must use native InstancedMesh reuse');
@@ -119,7 +140,7 @@ async function run() {
       === operatorLod1.compressedByteBudget + operatorLod2.compressedByteBudget + refineryLod1.compressedByteBudget,
     'Babylon cache accounting must reuse manifest compressed-byte budgets',
   );
-  
+
   runtime.configureBudget({
     maxCachedCompressedBytes: 64 * 1024 * 1024,
     maxTextureAnisotropy: 4,
@@ -135,17 +156,18 @@ async function run() {
   await Promise.resolve();
   await Promise.resolve();
   assert((disposeCounts.get(refineryLod1.url) ?? 0) === 1, 'shared refinery resources must dispose exactly once after the last mounted clone releases');
-  
+
   const reloadedRefinery = await runtime.instantiate(refineryLod1);
   assert(loadCounts.get(refineryLod1.url) === 2, 'evicted refinery GLB must reload on the next request');
+  assert(externalAtlasLoads === 2, `reloaded refinery GLB must resolve the external atlas again in the NullEngine harness, got ${externalAtlasLoads}`);
   reloadedRefinery.release();
-  
+
   await runtime.dispose();
   await Promise.resolve();
   assert((disposeCounts.get(operatorLod1.url) ?? 0) === 1, 'operator LOD1 source resources must dispose once with the runtime');
   assert((disposeCounts.get(operatorLod2.url) ?? 0) === 1, 'operator LOD2 source resources must dispose once with the runtime');
   assert((disposeCounts.get(refineryLod1.url) ?? 0) === 2, 'reloaded refinery source resources must dispose once with the runtime');
-  
+
   scene.dispose();
   engine.dispose();
 
@@ -153,13 +175,7 @@ async function run() {
   const teardownScene = new Scene(teardownEngine);
   let teardownDisposeCount = 0;
   const teardownLoader: BabylonGraphicsAssetContainerLoader = async (spec, targetScene) => {
-    const filePath = resolve(process.cwd(), 'public', spec.url.replace(/^\/+/, ''));
-    const data = await readFileAsync(filePath);
-    const bytes = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
-    const container = await LoadAssetContainerAsync(bytes, targetScene, {
-      pluginExtension: '.glb',
-      name: `${spec.id}-teardown`,
-    });
+    const container = await loadLocalGlb(spec, targetScene, `${spec.id}-teardown`);
     const originalDispose = container.dispose.bind(container);
     container.dispose = () => {
       teardownDisposeCount += 1;
@@ -175,11 +191,11 @@ async function run() {
   await Promise.resolve();
   assert(teardownDisposeCount === 1, `renderer teardown must leave source-container ownership to Babylon scene disposal, got ${teardownDisposeCount} disposals`);
   teardownEngine.dispose();
-  
+
   console.log(
-    `BABYLON_GRAPHICS_ASSETS_PASS operatorLod1=${operatorLod1.id} operatorLod2=${operatorLod2.id} refinery=${refineryLod1.id} localCodecs=true instancing=static-native cacheTrim=count+bytes cacheLoads=${[...loadCounts.values()].reduce((sum, count) => sum + count, 0)} teardownDispose=${teardownDisposeCount} webglContextRelease=true`,
+    `BABYLON_GRAPHICS_ASSETS_PASS operatorLod1=${operatorLod1.id} operatorLod2=${operatorLod2.id} refinery=${refineryLod1.id} localCodecs=true externalAtlas=${externalAtlasLoads} instancing=static-native cacheTrim=count+bytes cacheLoads=${[...loadCounts.values()].reduce((sum, count) => sum + count, 0)} teardownDispose=${teardownDisposeCount} webglContextRelease=true`,
   );
-  
+
 }
 
 void run().catch(error => {
