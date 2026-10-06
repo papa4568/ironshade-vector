@@ -1,0 +1,56 @@
+name: P28-B2 Closeout
+
+on:
+  push:
+    branches:
+      - p28-b2-refinery-floor-bulkhead-pbr
+    paths:
+      - '.github/workflows/p28b2-closeout.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  closeout:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out B2 branch
+        uses: actions/checkout@v7
+        with:
+          ref: p28-b2-refinery-floor-bulkhead-pbr
+
+      - name: Archive verified P28-B2
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          roadmap_path = Path('docs/content-roadmap.md')
+          roadmap = roadmap_path.read_text()
+          b2 = "- [ ] **P28-B2 — Apply P28 materials to refinery floors and bulkheads** — Replace flat-color floor/bulkhead/wall treatment with the shared PBR materials while keeping collision and mission geometry unchanged. **Done when:** the deterministic Deep Salvage route shows visible normal/roughness/metalness response across floor and wall surfaces, no gameplay bounds change, and standard build/APK gates pass.\n\n"
+          if roadmap.count(b2) != 1:
+              raise SystemExit(f'Expected exactly one P28-B2 active entry, found {roadmap.count(b2)}')
+          roadmap_path.write_text(roadmap.replace(b2, '', 1))
+
+          archive_path = Path('docs/content-roadmap-archive.md')
+          archive = archive_path.read_text()
+          marker = "## P28 — Babylon flagship visual-quality overhaul\n\n"
+          if archive.count(marker) != 1:
+              raise SystemExit(f'Expected one P28 archive marker, found {archive.count(marker)}')
+          entry = """- [x] **P28-B2 — Apply P28 materials to refinery floors and bulkheads** — Applied the shared P28 premium surface library to the Asteroid Refinery floor, service-grate, bulkhead, and wall-panel families while preserving every authored placement and gameplay bound.\n  - Upgraded exactly eight refinery LOD1/LOD2 GLBs (floor, floor grate, bulkhead, wall panel) from position/normal-only cube geometry to face-split UV0 + tangent-space geometry so the shared normal maps render correctly; unit mesh bounds and authored node transforms remain unchanged.\n  - Bound deck plate, bare metal, and painted metal through the reusable Babylon premium PBR library: floor=`bare-metal+deck-plate`, floor grate=`bare-metal+painted-metal`, bulkhead=`painted-metal`, wall panel=`bare-metal+painted-metal`. Existing hazard/status emissive slots remain authored and untouched.\n  - Added runtime fail-closed telemetry plus deterministic content coverage for UV0/tangents, material slots, exact bounds/transforms, idempotent regeneration, and the live Deep Salvage premium-surface contract. Deterministic Flagship capture inspection confirmed visible floor/wall normal, roughness, and metalness response without route or collision changes.\n  - Exact product revision `9466faa98346012db58b69cb66dcda473bc4d2ba` passed targeted B2 verification, full repository verification, Browser E2E run `37468424396` on desktop and mobile-landscape, and PR Android APK run `37468424386` including APK build/sign/delivery, API 35 product smoke, API 36 large-screen smoke, and aggregate Android verification.\n  - Desktop Browser QA artifact `ironshade-vector-browser-e2e-desktop` (`11416112448`) digest: `sha256:1ec19695e5a12bb9c71173380a8e11ea565ff2e3c61b0c3544c3a60f538a2d6b`.\n  - Verified PR debug APK: 10,255,643 bytes, SHA-256 `9e226a8f51f9b2cef989f06c27557ebc1ba67984226cc9214486cd1896aebfb9`, package `app.ironshade.vector`, version `0.0.1-pr.45 (45)`, min SDK 24 / target SDK 36, APK Signature Scheme v2 verified, signer SHA-256 `2055d02ff230b15ab3103f22f1ac3155746642e5ea7ad8aba789136d44120b31`. Initial PR APK artifact `ironshade-vector-pr-android-apk` (`11415898925`) digest: `sha256:2bc5d45e85ba84363894b152b30c6a92bfcf3d57f1bafb7dd0ecabdac49804cd`.\n  - **Next: P28-B3 — Apply P28 materials to refinery cover and crates.**\n\n"""
+          if 'P28-B2 — Apply P28 materials to refinery floors and bulkheads' in archive:
+              raise SystemExit('P28-B2 is already present in the archive')
+          archive_path.write_text(archive.replace(marker, marker + entry, 1))
+          PY
+
+      - name: Commit roadmap closeout and remove helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/p28b2-closeout.yml
+          git add docs/content-roadmap.md docs/content-roadmap-archive.md
+          git diff --cached --check
+          git commit -m 'Archive verified P28-B2 completion'
+          git push origin HEAD:p28-b2-refinery-floor-bulkhead-pbr
