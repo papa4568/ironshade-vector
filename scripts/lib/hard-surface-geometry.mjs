@@ -116,7 +116,7 @@ export function createChamferedBoxGeometry({ width = 2.6, height = 0.5, depth = 
     const next = (index + 1) % ring.length;
     const [x0, z0] = ring[index];
     const [x1, z1] = ring[next];
-    builder.addQuad([[x0, 0, z0], [x1, 0, z1], [x1, height, z1], [x0, height, z0]]);
+    builder.addQuad([[x0, 0, z0], [x0, height, z0], [x1, height, z1], [x1, 0, z1]]);
   }
   const centerBottom = [0, 0, 0];
   const centerTop = [0, height, 0];
@@ -126,8 +126,8 @@ export function createChamferedBoxGeometry({ width = 2.6, height = 0.5, depth = 
     const [x1, z1] = ring[next];
     const uv0 = [0.5 + x0 / width, 0.5 + z0 / depth];
     const uv1 = [0.5 + x1 / width, 0.5 + z1 / depth];
-    builder.addTriangle([centerTop, [x0, height, z0], [x1, height, z1]], [[0.5, 0.5], uv0, uv1]);
-    builder.addTriangle([centerBottom, [x1, 0, z1], [x0, 0, z0]], [[0.5, 0.5], uv1, uv0]);
+    builder.addTriangle([centerTop, [x1, height, z1], [x0, height, z0]], [[0.5, 0.5], uv1, uv0]);
+    builder.addTriangle([centerBottom, [x0, 0, z0], [x1, 0, z1]], [[0.5, 0.5], uv0, uv1]);
   }
   return builder.finish();
 }
@@ -145,11 +145,11 @@ export function createCylinderGeometry({ radius = 0.24, height = 1.3, segments =
     const p3 = [p0[0], height, p0[2]];
     const u0 = index / segments;
     const u1 = (index + 1) / segments;
-    builder.addQuad([p0, p1, p2, p3], [[u0, 0], [u1, 0], [u1, 1], [u0, 1]]);
+    builder.addQuad([p0, p3, p2, p1], [[u0, 0], [u0, 1], [u1, 1], [u1, 0]]);
     const capUv0 = [0.5 + p0[0] / (radius * 2), 0.5 + p0[2] / (radius * 2)];
     const capUv1 = [0.5 + p1[0] / (radius * 2), 0.5 + p1[2] / (radius * 2)];
-    builder.addTriangle([[0, height, 0], p3, p2], [[0.5, 0.5], capUv0, capUv1]);
-    builder.addTriangle([[0, 0, 0], p1, p0], [[0.5, 0.5], capUv1, capUv0]);
+    builder.addTriangle([[0, height, 0], p2, p3], [[0.5, 0.5], capUv1, capUv0]);
+    builder.addTriangle([[0, 0, 0], p0, p1], [[0.5, 0.5], capUv0, capUv1]);
   }
   return builder.finish();
 }
@@ -166,11 +166,11 @@ export function createWedgeGeometry({ width = 1.1, height = 0.68, depth = 0.56 }
   const e = [x1, 0, z1];
   const f = [x0, height, z1];
   const builder = createBuilder('wedge-extrusion');
-  builder.addQuad([a, d, e, b]);
-  builder.addQuad([a, c, f, d]);
-  builder.addQuad([c, b, e, f]);
-  builder.addTriangle([a, b, c], [[0, 0], [1, 0], [0, 1]]);
-  builder.addTriangle([d, f, e], [[0, 0], [0, 1], [1, 0]]);
+  builder.addQuad([a, b, e, d]);
+  builder.addQuad([a, d, f, c]);
+  builder.addQuad([c, f, e, b]);
+  builder.addTriangle([a, c, b], [[0, 0], [0, 1], [1, 0]]);
+  builder.addTriangle([d, e, f], [[0, 0], [1, 0], [0, 1]]);
   return builder.finish();
 }
 
@@ -185,21 +185,21 @@ export function createInsetPanelGeometry({ width = 1.2, height = 0.82, depth = 0
   const builder = createBuilder('inset-panel');
 
   builder.addQuad([[-outerX, -outerY, frontZ], [outerX, -outerY, frontZ], [innerX, -innerY, frontZ], [-innerX, -innerY, frontZ]]);
-  builder.addQuad([[-outerX, outerY, frontZ], [-innerX, innerY, frontZ], [innerX, innerY, frontZ], [outerX, outerY, frontZ]]);
+  builder.addQuad([[-innerX, innerY, frontZ], [innerX, innerY, frontZ], [outerX, outerY, frontZ], [-outerX, outerY, frontZ]]);
   builder.addQuad([[-outerX, -outerY, frontZ], [-innerX, -innerY, frontZ], [-innerX, innerY, frontZ], [-outerX, outerY, frontZ]]);
   builder.addQuad([[innerX, -innerY, frontZ], [outerX, -outerY, frontZ], [outerX, outerY, frontZ], [innerX, innerY, frontZ]]);
 
   builder.addQuad([[-innerX, -innerY, frontZ], [innerX, -innerY, frontZ], [innerX, -innerY, recessZ], [-innerX, -innerY, recessZ]]);
   builder.addQuad([[-innerX, innerY, recessZ], [innerX, innerY, recessZ], [innerX, innerY, frontZ], [-innerX, innerY, frontZ]]);
-  builder.addQuad([[-innerX, -innerY, recessZ], [-innerX, -innerY, frontZ], [-innerX, innerY, frontZ], [-innerX, innerY, recessZ]]);
-  builder.addQuad([[innerX, -innerY, frontZ], [innerX, -innerY, recessZ], [innerX, innerY, recessZ], [innerX, innerY, frontZ]]);
+  builder.addQuad([[-innerX, -innerY, frontZ], [-innerX, -innerY, recessZ], [-innerX, innerY, recessZ], [-innerX, innerY, frontZ]]);
+  builder.addQuad([[innerX, -innerY, recessZ], [innerX, -innerY, frontZ], [innerX, innerY, frontZ], [innerX, innerY, recessZ]]);
   builder.addQuad([[-innerX, -innerY, recessZ], [innerX, -innerY, recessZ], [innerX, innerY, recessZ], [-innerX, innerY, recessZ]]);
 
   builder.addQuad([[outerX, -outerY, backZ], [-outerX, -outerY, backZ], [-outerX, outerY, backZ], [outerX, outerY, backZ]]);
   builder.addQuad([[-outerX, -outerY, backZ], [outerX, -outerY, backZ], [outerX, -outerY, frontZ], [-outerX, -outerY, frontZ]]);
-  builder.addQuad([[-outerX, outerY, frontZ], [outerX, outerY, frontZ], [outerX, outerY, backZ], [-outerX, outerY, backZ]]);
+  builder.addQuad([[-outerX, outerY, backZ], [-outerX, outerY, frontZ], [outerX, outerY, frontZ], [outerX, outerY, backZ]]);
   builder.addQuad([[-outerX, -outerY, backZ], [-outerX, -outerY, frontZ], [-outerX, outerY, frontZ], [-outerX, outerY, backZ]]);
-  builder.addQuad([[outerX, -outerY, frontZ], [outerX, -outerY, backZ], [outerX, outerY, backZ], [outerX, outerY, frontZ]]);
+  builder.addQuad([[outerX, -outerY, backZ], [outerX, outerY, backZ], [outerX, outerY, frontZ], [outerX, -outerY, frontZ]]);
   return builder.finish();
 }
 
