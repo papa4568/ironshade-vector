@@ -1,3 +1,4 @@
+import './premium-pbr-library.mjs';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { NullEngine } from '@babylonjs/core/Engines/nullEngine.js';
