@@ -1,0 +1,83 @@
+name: P28 B3 World Sync Compatibility
+
+on:
+  push:
+    branches:
+      - p28-b3-refinery-cover-crate-pbr
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v7
+        with:
+          ref: p28-b3-refinery-cover-crate-pbr
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Use npm 10.9.8
+        run: |
+          npm install --global npm@10.9.8
+          test "$(npm --version)" = '10.9.8'
+
+      - name: Restore shared-world call contract
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('src/game/babylonWorldPresentation.ts')
+          source = path.read_text()
+          replacements = [
+              (
+                  "  private active = false;\n  private disposed = false;",
+                  "  private active = false;\n  private premiumRefineryScenario = false;\n  private disposed = false;",
+              ),
+              (
+                  "    this.active = true;\n    this.syncObjects(state, detailScale, mission.location === 'asteroid-refinery');",
+                  "    this.active = true;\n    this.premiumRefineryScenario = mission.location === 'asteroid-refinery';\n    this.syncObjects(state, detailScale);",
+              ),
+              (
+                  "  private syncObjects(state: SimState, detailScale: number, refineryScenario: boolean) {\n    const quality = worldMaterialQualityProfile(worldQualityName(detailScale));",
+                  "  private syncObjects(state: SimState, detailScale: number) {\n    const refineryScenario = this.premiumRefineryScenario;\n    const quality = worldMaterialQualityProfile(worldQualityName(detailScale));",
+              ),
+          ]
+          for before, after in replacements:
+              if source.count(before) != 1:
+                  raise SystemExit(f'expected unique replacement missing: {before[:80]!r}')
+              source = source.replace(before, after)
+          path.write_text(source)
+          PY
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Prepare graphics assets
+        run: npm run prepare:graphics-assets
+
+      - name: Run focused compatibility tests
+        run: |
+          npm run test:babylon-damaged-vessel
+          node tests/refinery-cover-crate-premium-surfaces.mjs
+          npx tsc --noEmit
+
+      - name: Commit repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm -f .github/workflows/p28-b3-world-sync-compat.yml
+          git add src/game/babylonWorldPresentation.ts
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Preserve shared-world sync contract for P28-B3'
+          git push origin HEAD:p28-b3-refinery-cover-crate-pbr
