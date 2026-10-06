@@ -1,0 +1,140 @@
+name: P28 Image Grade Visual
+
+on:
+  pull_request:
+    paths:
+      - 'src/game/babylonRefineryPostProcessing.ts'
+      - 'src/game/refineryAtmosphere.ts'
+      - 'tests/babylon-refinery-post-processing.ts'
+      - 'tests/refinery-atmosphere.ts'
+      - 'scripts/p28a5-image-grade-capture.mjs'
+      - '.github/workflows/p28-image-grade-visual.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  flagship-low-visibility:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Use npm 10.9.8
+        run: |
+          npm install --global npm@10.9.8
+          test "$(npm --version)" = "10.9.8"
+
+      - name: Set up stable Chrome
+        id: chrome
+        uses: browser-actions/setup-chrome@v2
+        with:
+          chrome-version: stable
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Verify P28-A5 grade contracts
+        run: |
+          npm run test:babylon-refinery-post-processing
+          npm run test:refinery-atmosphere
+
+      - name: Build production client
+        run: |
+          npm run prepare:graphics-codecs
+          npm run prepare:graphics-assets
+          npx vite build
+
+      - name: Start production preview
+        run: |
+          set -euo pipefail
+          npm run preview -- --host 127.0.0.1 --port 4173 > p28-image-grade-preview.log 2>&1 &
+          echo $! > "$RUNNER_TEMP/ironshade-p28-preview.pid"
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then
+              echo 'Production preview is ready.'
+              exit 0
+            fi
+            sleep 0.5
+          done
+          cat p28-image-grade-preview.log
+          exit 1
+
+      - name: Launch deterministic Chrome
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: |
+          set -euo pipefail
+          chrome_dir="$(dirname "$CHROME_PATH")"
+          swiftshader_icd="$(find "$chrome_dir" -maxdepth 4 -name vk_swiftshader_icd.json -print -quit)"
+          if [[ -z "$swiftshader_icd" ]]; then
+            echo '::error::Chrome for Testing did not include the SwiftShader Vulkan ICD.'
+            exit 1
+          fi
+          export VK_ICD_FILENAMES="$swiftshader_icd"
+          export LD_LIBRARY_PATH="$(dirname "$swiftshader_icd"):${LD_LIBRARY_PATH:-}"
+          "$CHROME_PATH" \
+            --headless=new \
+            --no-sandbox \
+            --disable-dev-shm-usage \
+            --enable-unsafe-webgpu \
+            --use-webgpu-adapter=swiftshader \
+            --use-vulkan=swiftshader \
+            --enable-dawn-features=allow_unsafe_apis \
+            --disable-dawn-features=use_dxc \
+            --enable-webgpu-developer-features \
+            --use-gpu-in-tests \
+            --enable-accelerated-2d-canvas \
+            --enable-unsafe-swiftshader \
+            --window-size=1280,720 \
+            --remote-debugging-address=127.0.0.1 \
+            --remote-debugging-port=9223 \
+            --user-data-dir="$RUNNER_TEMP/ironshade-p28-image-grade" \
+            http://127.0.0.1:4173/ > p28-image-grade-chrome.log 2>&1 &
+          echo $! > "$RUNNER_TEMP/ironshade-p28-chrome.pid"
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:9223/json/version >/dev/null; then
+              echo 'Chrome CDP endpoint is ready.'
+              exit 0
+            fi
+            sleep 0.5
+          done
+          cat p28-image-grade-chrome.log
+          exit 1
+
+      - name: Capture Flagship normal and low-visibility grades
+        env:
+          CDP_ENDPOINT: http://127.0.0.1:9223
+          BROWSER_E2E_APP_URL: http://127.0.0.1:4173/
+          BROWSER_E2E_VIEWPORT: desktop
+          BROWSER_E2E_GRAPHICS_PATH: babylon
+          BROWSER_E2E_SKIP_SYNTHETIC_CONTROLLER: '1'
+          BROWSER_E2E_SCREENSHOT: browser-p28a5-normal.png
+          BROWSER_E2E_P28A5_LOW_VISIBILITY_SCREENSHOT: browser-p28a5-low-visibility.png
+          BROWSER_E2E_P28A5_REPORT: browser-p28a5-image-grade.json
+        run: |
+          node scripts/browser-runtime-smoke.mjs
+          node scripts/p28a5-image-grade-capture.mjs
+
+      - name: Upload P28-A5 visual evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ironshade-vector-p28a5-image-grade
+          path: |
+            browser-p28a5-normal.png
+            browser-p28a5-low-visibility.png
+            browser-p28a5-image-grade.json
+            p28-image-grade-preview.log
+            p28-image-grade-chrome.log
+          if-no-files-found: warn
+          retention-days: 30
