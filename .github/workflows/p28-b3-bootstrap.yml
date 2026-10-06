@@ -10,7 +10,7 @@ permissions:
 
 concurrency:
   group: p28-b3-bootstrap
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   apply-and-test:
@@ -36,7 +36,9 @@ jobs:
           test "$(npm --version)" = '10.9.8'
 
       - name: Apply P28-B3 implementation
-        run: node scripts/p28-b3-bootstrap.mjs
+        run: |
+          node scripts/p28-b3-bootstrap-fix.mjs
+          node scripts/p28-b3-bootstrap.mjs
 
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
