@@ -73,11 +73,15 @@ for (const target of REFINERY_PREMIUM_SURFACE_TARGETS) {
 }
 
 const rendererSource = await readFile(resolve(process.cwd(), 'src/game/babylonCombatRenderer.ts'), 'utf8');
+const verifierSource = await readFile(resolve(process.cwd(), 'scripts/verify-authored-refinery.mjs'), 'utf8');
 const expectedTelemetry = 'floor:bare-metal+deck-plate|floor-grate:bare-metal+painted-metal|bulkhead:painted-metal|wall-panel:bare-metal+painted-metal';
 assert(rendererSource.includes(expectedTelemetry), 'Babylon refinery renderer is missing the B2 premium-surface telemetry contract');
 for (const surface of ['deck-plate', 'bare-metal', 'painted-metal']) {
   assert(rendererSource.includes(`'${surface}'`), `Babylon refinery renderer does not bind ${surface}`);
 }
 assert(rendererSource.includes('normal+roughness+metalness:shared-premium-pbr'), 'Babylon refinery renderer is missing material-detail telemetry');
+assert(verifierSource.includes('canvas.dataset.babylonEnvironmentPremiumSurfaces'), 'Authored-refinery live verifier does not read B2 premium-surface telemetry');
+assert(verifierSource.includes(expectedTelemetry), 'Authored-refinery live verifier does not enforce the exact B2 material bindings');
+assert(verifierSource.includes('normal+roughness+metalness:shared-premium-pbr'), 'Authored-refinery live verifier does not enforce B2 material-detail telemetry');
 
 console.log(`REFINERY_PREMIUM_SURFACES_PASS targets=${REFINERY_PREMIUM_SURFACE_TARGETS.length} attributes=POSITION+NORMAL+TANGENT+TEXCOORD_0 bounds=unchanged telemetry=${expectedTelemetry}`);
