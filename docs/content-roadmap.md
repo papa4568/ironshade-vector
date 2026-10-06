@@ -45,7 +45,6 @@ Only active/future executable engineering work lives here. Completed and verifie
 
 
 
-- [ ] **P28-B2 — Apply P28 materials to refinery floors and bulkheads** — Replace flat-color floor/bulkhead/wall treatment with the shared PBR materials while keeping collision and mission geometry unchanged. **Done when:** the deterministic Deep Salvage route shows visible normal/roughness/metalness response across floor and wall surfaces, no gameplay bounds change, and standard build/APK gates pass.
 
 - [ ] **P28-B3 — Apply P28 materials to refinery cover and crates** — Move cover and crate visuals off generic flat material treatment while preserving simulation dimensions and readability. **Done when:** cover/crates have intentional painted/bare-metal/polymer material separation at gameplay zoom and standard build/APK gates pass.
 

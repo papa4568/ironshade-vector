@@ -6,6 +6,7 @@ import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { Color3, Color4 } from '@babylonjs/core/Maths/math.color';
 import { Matrix, Vector3 } from '@babylonjs/core/Maths/math.vector';
 import { Mesh } from '@babylonjs/core/Meshes/mesh';
+import { InstancedMesh } from '@babylonjs/core/Meshes/instancedMesh';
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
 import type { Node } from '@babylonjs/core/node';
@@ -29,6 +30,11 @@ import { BabylonPerseidCapstonePresentation } from './babylonPerseidCapstonePres
 import { BabylonOrbitalStationPresentation } from './babylonOrbitalStationPresentation';
 import { BabylonRefineryLighting } from './babylonRefineryLighting';
 import { BabylonRefineryPostProcessing } from './babylonRefineryPostProcessing';
+import {
+  createBabylonPremiumPbrSurfaceLibrary,
+  type BabylonPremiumPbrSurfaceLibrary,
+  type PremiumPbrSurfaceId,
+} from './babylonPremiumPbrSurfaceLibrary';
 import { BabylonSpinHabitatPresentation } from './babylonSpinHabitatPresentation';
 import { BabylonSolarYardPresentation } from './babylonSolarYardPresentation';
 import type {
@@ -87,6 +93,40 @@ const enemyRoleColors: Record<BabylonEnemyRole, number> = {
 };
 
 type RefineryFamilyKey = keyof typeof REFINERY_ASSET_FAMILIES;
+
+const REFINERY_PREMIUM_SURFACE_ASSIGNMENTS: Partial<Record<RefineryFamilyKey, Readonly<Record<string, PremiumPbrSurfaceId>>>> = {
+  floor: {
+    'refinery-structural': 'deck-plate',
+    'refinery-shell': 'bare-metal',
+  },
+  floorGrate: {
+    'refinery-structural': 'bare-metal',
+    'refinery-shell': 'painted-metal',
+  },
+  bulkhead: {
+    'refinery-structural': 'painted-metal',
+    'refinery-shell': 'painted-metal',
+  },
+  wallPanel: {
+    'refinery-structural': 'bare-metal',
+    'refinery-shell': 'painted-metal',
+  },
+};
+const REFINERY_PREMIUM_SURFACE_ORDER: readonly RefineryFamilyKey[] = ['floor', 'floorGrate', 'bulkhead', 'wallPanel'];
+const REFINERY_PREMIUM_SURFACE_LABELS: Partial<Record<RefineryFamilyKey, string>> = {
+  floor: 'floor',
+  floorGrate: 'floor-grate',
+  bulkhead: 'bulkhead',
+  wallPanel: 'wall-panel',
+};
+const REFINERY_PREMIUM_SURFACE_TELEMETRY = 'floor:bare-metal+deck-plate|floor-grate:bare-metal+painted-metal|bulkhead:painted-metal|wall-panel:bare-metal+painted-metal';
+
+function premiumSurfaceTelemetry(usage: Map<RefineryFamilyKey, Set<PremiumPbrSurfaceId>>) {
+  return REFINERY_PREMIUM_SURFACE_ORDER.map(key => {
+    const surfaces = [...(usage.get(key) ?? [])].sort();
+    return surfaces.length ? `${REFINERY_PREMIUM_SURFACE_LABELS[key]}:${surfaces.join('+')}` : '';
+  }).filter(Boolean).join('|');
+}
 
 type RefineryPlacement = {
   x: number;
@@ -344,6 +384,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
   private readonly perseidCapstonePresentation: BabylonPerseidCapstonePresentation;
   private readonly refineryLighting: BabylonRefineryLighting;
   private readonly refineryPostProcessing: BabylonRefineryPostProcessing;
+  private refineryPremiumSurfaceLibrary: BabylonPremiumPbrSurfaceLibrary | null = null;
   private readonly renderBudget: AdaptiveRenderBudget;
   private readonly refineryAssetInstances: BabylonGraphicsAssetInstance[] = [];
   private refineryMountRoot: TransformNode | null = null;
@@ -822,6 +863,8 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.refineryPostProcessing.dispose();
     this.refineryLighting.dispose();
     this.releaseRefineryEnvironment('renderer-dispose');
+    this.refineryPremiumSurfaceLibrary?.dispose();
+    this.refineryPremiumSurfaceLibrary = null;
     void disposeBabylonGraphicsAssetRuntime(this.scene);
     this.scene.dispose();
     this.engine.dispose();
@@ -1966,7 +2009,40 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.canvas.dataset.environmentVisual = 'authored-loading-babylon';
     this.canvas.dataset.babylonEnvironmentState = 'loading';
     delete this.canvas.dataset.babylonEnvironmentError;
+    delete this.canvas.dataset.babylonEnvironmentPremiumSurfaces;
+    delete this.canvas.dataset.babylonEnvironmentMaterialDetail;
     void this.loadRefineryEnvironment(state, world.w, world.h, selected, generation);
+  }
+
+  private getRefineryPremiumSurfaceLibrary() {
+    this.refineryPremiumSurfaceLibrary ??= createBabylonPremiumPbrSurfaceLibrary(this.scene);
+    return this.refineryPremiumSurfaceLibrary;
+  }
+
+  private applyRefineryPremiumSurfaces(
+    key: RefineryFamilyKey,
+    instance: BabylonGraphicsAssetInstance,
+    usage: Map<RefineryFamilyKey, Set<PremiumPbrSurfaceId>>,
+  ) {
+    const assignments = REFINERY_PREMIUM_SURFACE_ASSIGNMENTS[key];
+    if (!assignments) return;
+    const library = this.getRefineryPremiumSurfaceLibrary();
+    const targetUsage = usage.get(key) ?? new Set<PremiumPbrSurfaceId>();
+    usage.set(key, targetUsage);
+
+    for (const node of instanceNodes(instance)) {
+      const mesh = node instanceof InstancedMesh ? node.sourceMesh : node instanceof Mesh ? node : null;
+      if (!mesh) continue;
+      const materialName = mesh.material?.name ?? '';
+      let surface = assignments[materialName];
+      if (!surface && materialName.startsWith('premium-pbr:')) {
+        const existingSurface = materialName.slice('premium-pbr:'.length) as PremiumPbrSurfaceId;
+        if (Object.values(assignments).includes(existingSurface)) surface = existingSurface;
+      }
+      if (!surface) continue;
+      mesh.material = library.get(surface);
+      targetUsage.add(surface);
+    }
   }
 
   private async loadRefineryEnvironment(
@@ -1992,6 +2068,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     const loadRoot = new TransformNode(`p27-b2-refinery-shell-${generation}`, this.scene);
     loadRoot.setEnabled(false);
     const mountedInstances: BabylonGraphicsAssetInstance[] = [];
+    const premiumSurfaceUsage = new Map<RefineryFamilyKey, Set<PremiumPbrSurfaceId>>();
     let placementCount = 0;
 
     try {
@@ -2018,6 +2095,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
           instance.rootNodes.forEach(root => {
             root.parent = placementRoot;
           });
+          this.applyRefineryPremiumSurfaces(key, instance, premiumSurfaceUsage);
           mountedInstances.push(instance);
           placementCount += 1;
         }
@@ -2027,6 +2105,11 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
         mountedInstances.forEach(item => item.release());
         loadRoot.dispose();
         return;
+      }
+
+      const premiumSurfaces = premiumSurfaceTelemetry(premiumSurfaceUsage);
+      if (premiumSurfaces !== REFINERY_PREMIUM_SURFACE_TELEMETRY) {
+        throw new Error(`Incomplete P28-B2 premium surface binding: ${premiumSurfaces || 'none'}`);
       }
 
       this.refineryAssetInstances.push(...mountedInstances);
@@ -2043,6 +2126,8 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
       this.canvas.dataset.environmentLandmark = 'ore-smelter-gantry';
       this.canvas.dataset.environmentServiceDetails = `service-conduit:${placements.serviceConduit.length}`;
       this.canvas.dataset.environmentSurfaceDetail = `wall-panel:${placements.wallPanel.length}+cable-tray:${placements.cableTray.length}`;
+      this.canvas.dataset.babylonEnvironmentPremiumSurfaces = premiumSurfaces;
+      this.canvas.dataset.babylonEnvironmentMaterialDetail = 'normal+roughness+metalness:shared-premium-pbr';
       this.canvas.dataset.environmentMachineDetail = `processor-functional:${placements.processor.length}+floor-grate:${placements.floorGrate.length}`;
       this.canvas.dataset.environmentComposition = 'clear-center-lane+processor-triangle+gantry-focal+perimeter-clutter';
       this.canvas.dataset.babylonEnvironmentState = 'ready';
@@ -2077,6 +2162,8 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.canvas.dataset.environmentVisual = 'released-babylon';
     this.canvas.dataset.environmentInstances = '0';
     this.canvas.dataset.environmentTerminals = '0';
+    delete this.canvas.dataset.babylonEnvironmentPremiumSurfaces;
+    delete this.canvas.dataset.babylonEnvironmentMaterialDetail;
     this.canvas.dataset.babylonEnvironmentState = 'released';
     this.canvas.dataset.babylonEnvironmentRelease = `${reason}:released-${released}`;
     const stats = getBabylonGraphicsAssetRuntime(this.scene).stats();
