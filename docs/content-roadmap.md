@@ -40,7 +40,7 @@ Only active/future executable engineering work lives here. Completed and verifie
 
 - [x] **P28-A3 — Add Babylon SSAO2 to the production refinery renderer** — Add `SSAO2RenderingPipeline` for refinery world geometry and integrate it with the existing post stack instead of relying on proxy contact-depth cards as the primary depth solution. **Done when:** wall/floor/prop intersections and large machinery gain convincing screen-space depth in Flagship captures, gameplay cue meshes remain visually dominant, pipeline enable/disable/re-entry is deterministic, and frame/regression plus standard build/APK gates pass.
 
-- [ ] **P28-A5 — Re-grade exposure, contrast, and dark-value separation** — Recalibrate ACES/image processing after the new IBL/AO/shadow stack so dark materials retain visible form instead of collapsing into near-black while emissives and gameplay cues do not clip. **Done when:** deterministic Flagship captures retain readable floor/wall/character separation in dark and low-visibility rooms, emissive highlights remain controlled, and standard build/APK gates pass.
+- [x] **P28-A5 — Re-grade exposure, contrast, and dark-value separation** — Recalibrate ACES/image processing after the new IBL/AO/shadow stack so dark materials retain visible form instead of collapsing into near-black while emissives and gameplay cues do not clip. **Done when:** deterministic Flagship captures retain readable floor/wall/character separation in dark and low-visibility rooms, emissive highlights remain controlled, and standard build/APK gates pass.
 
 #### B. Shared premium PBR materials and refinery surface detail
 
