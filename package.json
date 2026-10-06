@@ -43,7 +43,7 @@
     "test:refinery-contact-depth": "vite build --ssr tests/refinery-contact-depth.ts --outDir .refinery-contact-depth-dist && node .refinery-contact-depth-dist/refinery-contact-depth.js",
     "test:refinery-atmosphere": "vite build --ssr tests/refinery-atmosphere.ts --outDir .refinery-atmosphere-dist && node .refinery-atmosphere-dist/refinery-atmosphere.js",
     "test:graphics": "vite build --ssr tests/graphics-asset-pipeline.ts --outDir .graphics-dist && node .graphics-dist/graphics-asset-pipeline.js",
-    "test:graphics:content": "node tests/graphics-content-assets.mjs && node tests/premium-pbr-reference.mjs && node tests/premium-pbr-library.mjs && node tests/refinery-premium-surfaces.mjs && node tests/refinery-cover-crate-premium-surfaces.mjs && node tests/refinery-machinery-premium-surfaces.mjs",
+    "test:graphics:content": "node --import ./tests/node-glb-external-texture-shim.mjs tests/graphics-content-assets.mjs && node tests/premium-pbr-reference.mjs && node tests/premium-pbr-library.mjs && node tests/refinery-premium-surfaces.mjs && node tests/refinery-cover-crate-premium-surfaces.mjs && node tests/refinery-machinery-premium-surfaces.mjs",
     "test:graphics:dist": "node tests/graphics-runtime-assets.mjs",
     "test:bundle:architecture": "node tests/client-bundle-architecture.mjs",
     "android:sync": "npx cap sync android",
