@@ -5,6 +5,10 @@ import {
   upgradeRefineryPremiumSurfaceGlb,
 } from '../scripts/prepare-refinery-premium-surfaces.mjs';
 import {
+  REFINERY_FLOOR_LOD0_TARGETS,
+  buildRefineryFloorLod0Glb,
+} from '../scripts/prepare-refinery-floor-lod0.mjs';
+import {
   REFINERY_ROUTE_DECAL_TARGETS,
   upgradeRefineryRouteDecalGlb,
 } from '../scripts/prepare-refinery-route-decals.mjs';
@@ -80,7 +84,7 @@ for (const target of REFINERY_PREMIUM_SURFACE_TARGETS) {
 }
 
 const expectedRouteFamilies = ['floor', 'floorGrate', 'bulkhead', 'wallPanel', 'terminal'];
-assert(REFINERY_ROUTE_DECAL_TARGETS.length === 10, `Expected ten P28-B6 route-decal LOD targets, got ${REFINERY_ROUTE_DECAL_TARGETS.length}`);
+assert(REFINERY_ROUTE_DECAL_TARGETS.length === 12, `Expected twelve P28-B6 route-decal LOD targets including P28-C1 LOD0 floor assets, got ${REFINERY_ROUTE_DECAL_TARGETS.length}`);
 assert(JSON.stringify([...new Set(REFINERY_ROUTE_DECAL_TARGETS.map(target => target.family))]) === JSON.stringify(expectedRouteFamilies), 'P28-B6 route-decal family coverage changed');
 assert(REFINERY_ROUTE_DECAL_TARGETS.every(target => target.cards.length >= 1 && target.cards.length <= 3), 'P28-B6 detail batches must stay sparse enough to avoid noisy tiling');
 assert(REFINERY_ROUTE_DECAL_TARGETS.every(target => target.cards.every(card => card.offset === 0.012)), 'P28-B6 cards must preserve the anti-z-fight surface offset');
@@ -144,10 +148,60 @@ for (const target of REFINERY_ROUTE_DECAL_TARGETS) {
   assert(detailNode >= 0 && gltf.scenes?.[sceneIndex]?.nodes?.includes(detailNode), `${target.relativePath}: P28-B6 route detail is not mounted in the authored scene`);
 }
 
+const expectedLod0Nodes = {
+  floor: { base: 'refinery-floor-panel', detailToken: 'refinery-floor-seam-', minimumDetailNodes: 4, minimumMeshes: 5 },
+  floorGrate: { base: 'refinery-floor-service-grate', detailToken: 'refinery-floor-service-grate-slat-', minimumDetailNodes: 7, minimumMeshes: 6 },
+};
+for (const target of REFINERY_FLOOR_LOD0_TARGETS) {
+  const routeTarget = REFINERY_ROUTE_DECAL_TARGETS.find(candidate => candidate.relativePath === target.relativePath);
+  assert(routeTarget, `${target.relativePath}: route decal carry-forward target is missing`);
+  const path = resolve(process.cwd(), 'public/assets/models', target.relativePath);
+  const bytes = await readFile(path);
+  const raw = buildRefineryFloorLod0Glb(target);
+  const rebuilt = upgradeRefineryRouteDecalGlb(raw, routeTarget);
+  assert(bytes.equals(rebuilt), `${target.relativePath}: P28-C1 authored LOD0 output is not deterministic`);
+  assert(bytes.length < 1_200_000, `${target.relativePath}: P28-C1 asset exceeds the environment-module compressed-byte budget`);
+
+  const gltf = parseGlb(bytes, target.relativePath);
+  const marker = gltf.extras?.ironshadeP28C1FloorLod0;
+  assert(marker?.version === 1 && marker?.family === target.family && marker?.lodTier === 0, `${target.relativePath}: P28-C1 LOD0 metadata is missing`);
+  assert(marker?.deterministic === true && marker?.stablePivot === 'environment-root', `${target.relativePath}: deterministic pivot contract changed`);
+  assert(marker?.gameplayBoundsChanged === false, `${target.relativePath}: P28-C1 must remain presentation-only`);
+  assert(JSON.stringify(marker?.footprintMeters) === JSON.stringify([3.8, 3.8]), `${target.relativePath}: 3.8m refinery floor footprint changed`);
+  assert(JSON.stringify(marker?.visualBounds?.min) === JSON.stringify([-1.9, 0, -1.9]), `${target.relativePath}: LOD0 visual minimum changed`);
+  assert(marker?.visualBounds?.max?.[0] === 1.9 && marker?.visualBounds?.max?.[2] === 1.9, `${target.relativePath}: LOD0 visual footprint exceeds the gameplay module footprint`);
+  assert(JSON.stringify(marker?.recoveryLods) === JSON.stringify([1, 2]), `${target.relativePath}: LOD1/LOD2 recovery contract changed`);
+  assert(JSON.stringify(marker?.materialSlots) === JSON.stringify(['refinery-structural', 'refinery-shell']), `${target.relativePath}: premium surface material slot contract changed`);
+  assert(marker?.sourceTriangles > 100 && marker?.sourceVertices > 100, `${target.relativePath}: LOD0 hard-surface geometry is unexpectedly coarse`);
+
+  const root = (gltf.nodes ?? []).find(node => node.name === 'environment-root');
+  assert(root && !root.translation && !root.rotation && !root.scale, `${target.relativePath}: environment-root must remain an identity pivot`);
+  const expected = expectedLod0Nodes[target.family];
+  const baseNode = (gltf.nodes ?? []).find(node => node.name === expected.base);
+  assert(baseNode?.mesh === 0 && !baseNode.translation && !baseNode.rotation && !baseNode.scale, `${target.relativePath}: LOD0 base module moved off the stable pivot`);
+  assert((gltf.nodes ?? []).filter(node => node.name?.includes(expected.detailToken)).length >= expected.minimumDetailNodes, `${target.relativePath}: required panel/grate depth detail is missing`);
+  const baseMeshes = (gltf.meshes ?? []).filter(mesh => mesh.name !== 'p28-b6-refinery-route-detail-atlas');
+  assert(baseMeshes.length >= expected.minimumMeshes, `${target.relativePath}: authored hard-surface mesh count regressed`);
+  for (const mesh of baseMeshes) {
+    const primitive = mesh.primitives?.[0];
+    assert(Number.isInteger(primitive?.attributes?.POSITION), `${target.relativePath}:${mesh.name}: POSITION missing`);
+    assert(Number.isInteger(primitive?.attributes?.NORMAL), `${target.relativePath}:${mesh.name}: NORMAL missing`);
+    assert(Number.isInteger(primitive?.attributes?.TANGENT), `${target.relativePath}:${mesh.name}: TANGENT missing`);
+    assert(Number.isInteger(primitive?.attributes?.TEXCOORD_0), `${target.relativePath}:${mesh.name}: UV0 missing`);
+    assert(Number.isInteger(primitive?.indices), `${target.relativePath}:${mesh.name}: indices missing`);
+  }
+  const basePositionAccessor = gltf.accessors?.[gltf.meshes?.[0]?.primitives?.[0]?.attributes?.POSITION];
+  assert(JSON.stringify(basePositionAccessor?.min) === JSON.stringify([-1.9, 0, -1.9]), `${target.relativePath}: authored base bounds minimum changed`);
+  assert(basePositionAccessor?.max?.[0] === 1.9 && basePositionAccessor?.max?.[2] === 1.9, `${target.relativePath}: authored base bounds maximum changed`);
+  assert(gltf.extras?.ironshadeP28B6RouteDecals?.version === 1, `${target.relativePath}: B6 route detail did not carry forward to LOD0`);
+}
+
 const rendererSource = await readFile(resolve(process.cwd(), 'src/game/babylonCombatRenderer.ts'), 'utf8');
 const verifierSource = await readFile(resolve(process.cwd(), 'scripts/verify-authored-refinery.mjs'), 'utf8');
 const imageGradeSource = await readFile(resolve(process.cwd(), 'scripts/p28a5-image-grade-capture.mjs'), 'utf8');
 const telegraphSource = await readFile(resolve(process.cwd(), 'src/game/babylonEnemyTelegraphs.ts'), 'utf8');
+const manifestSource = await readFile(resolve(process.cwd(), 'src/game/graphicsAssetManifest.ts'), 'utf8');
+const assetContractSource = await readFile(resolve(process.cwd(), 'src/game/graphicsAssets.ts'), 'utf8');
 const expectedTelemetrySegments = [
   'floor:bare-metal+deck-plate',
   'floor-grate:bare-metal+painted-metal',
@@ -166,6 +220,9 @@ assert(rendererSource.includes('normal+roughness+metalness:shared-premium-pbr'),
 assert(verifierSource.includes('canvas.dataset.babylonEnvironmentPremiumSurfaces'), 'Authored-refinery live verifier does not read B2 premium-surface telemetry');
 assert(verifierSource.includes('normal+roughness+metalness:shared-premium-pbr'), 'Authored-refinery live verifier does not enforce B2 material-detail telemetry');
 assert(telegraphSource.includes('const FLOOR_Y = 0.045;'), 'Enemy ground-telegraph height changed; re-review P28-B6 low-opacity floor detail');
-assert(imageGradeSource.includes("visualDetail: 'p28-b6-deep-salvage-route-decals'"), 'P28-B6 Flagship image-grade capture is not tagged for the route-detail candidate');
+assert(manifestSource.includes("0: createGraphicsAssetSpec('refinery-floor-panel-lod0'"), 'P28-C1 refinery floor LOD0 is not registered in the asset manifest');
+assert(manifestSource.includes("0: createGraphicsAssetSpec('refinery-floor-service-grate-lod0'"), 'P28-C1 refinery grate LOD0 is not registered in the asset manifest');
+assert(assetContractSource.includes('if (detailScale >= 0.9) return 0;') && assetContractSource.includes('0: [0, 1, 2]'), 'Flagship detail selection must prefer LOD0 then recover to LOD1/LOD2');
+assert(imageGradeSource.includes("visualDetail: 'p28-c1-refinery-floor-lod0'"), 'P28-C1 Flagship image-grade capture is not tagged for the LOD0 floor candidate');
 
-console.log(`REFINERY_PREMIUM_SURFACES_PASS targets=${REFINERY_PREMIUM_SURFACE_TARGETS.length} routeTargets=${REFINERY_ROUTE_DECAL_TARGETS.length} attributes=POSITION+NORMAL+TANGENT+TEXCOORD_0 bounds=unchanged route=${expectedRouteFamilies.join('+')} detail=${routeDetails.join('+')}`);
+console.log(`REFINERY_PREMIUM_SURFACES_PASS targets=${REFINERY_PREMIUM_SURFACE_TARGETS.length} routeTargets=${REFINERY_ROUTE_DECAL_TARGETS.length} lod0Targets=${REFINERY_FLOOR_LOD0_TARGETS.length} attributes=POSITION+NORMAL+TANGENT+TEXCOORD_0 bounds=unchanged route=${expectedRouteFamilies.join('+')} detail=${routeDetails.join('+')}`);
