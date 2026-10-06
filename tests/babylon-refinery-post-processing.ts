@@ -111,7 +111,8 @@ const normalExposure = runtimeScene.imageProcessingConfiguration.exposure;
 const normalContrast = runtimeScene.imageProcessingConfiguration.contrast;
 assert(normalExposure > 1.02 && normalExposure <= 1.02 * 1.055 + 1e-6, 'Flagship grade must lift dark values without unbounded exposure.');
 assert(normalContrast < 1 && normalContrast >= 0.985, 'Flagship grade must ease contrast instead of crushing shadows.');
-assert.match(runtimeCanvas.dataset.environmentPostTone ?? '', /^aces-exposure-\d+\.\d{3}\+contrast-\d+\.\d{3}\+grade-p28-a5-dark-separation-v1$/);
+assert.match(runtimeCanvas.dataset.environmentPostTone ?? '', /^aces-exposure-\d+\.\d{2}\+contrast-\d+\.\d{2}$/);
+assert.equal(runtimeCanvas.dataset.environmentImageGrade, 'p28-a5-dark-separation-v1');
 
 runtimePost.sync(false, highSnapshot);
 assert.equal(runtimeScene.imageProcessingConfiguration.exposure, normalExposure, 'Repeated post sync must not compound exposure.');
@@ -123,6 +124,7 @@ const lowVisibilityContrast = runtimeScene.imageProcessingConfiguration.contrast
 assert(lowVisibilityExposure > normalExposure && lowVisibilityExposure <= 1.02 * 1.08 + 1e-6, 'Low-visibility grade must reveal dark form while staying bounded.');
 assert(lowVisibilityContrast < normalContrast && lowVisibilityContrast >= 0.965, 'Low-visibility contrast must preserve additional dark-value separation.');
 assert.match(runtimeCanvas.dataset.environmentAtmosphere ?? '', /exposure-1\.080:contrast-0\.965:grade-p28-a5-dark-separation-v1$/);
+assert.equal(runtimeCanvas.dataset.environmentImageGrade, 'p28-a5-dark-separation-v1');
 
 assert.match(runtimeCanvas.dataset.environmentSsao2 ?? '', /^(primary:refinery-ssao2-v1:|off:unsupported\+fallback-contact$)/);
 if (runtimeCanvas.dataset.environmentSsao2?.startsWith('primary:')) {
@@ -154,11 +156,13 @@ assert.equal(runtimeScene.imageProcessingConfiguration.contrast, normalContrast,
 runtimePost.release('test-scenario-exit');
 assert.equal(runtimeCanvas.dataset.environmentSsao2, undefined);
 assert.equal(runtimeCanvas.dataset.babylonPostStack, undefined);
+assert.equal(runtimeCanvas.dataset.environmentImageGrade, undefined);
 assert.equal(runtimeScene.imageProcessingConfiguration.exposure, 1.02, 'Scenario exit must restore upstream exposure.');
 assert.equal(runtimeScene.imageProcessingConfiguration.contrast, 1, 'Scenario exit must restore upstream contrast.');
 runtimePost.sync(false, highSnapshot);
 assert.match(runtimeCanvas.dataset.environmentSsao2 ?? '', /^(primary:refinery-ssao2-v1:|off:unsupported\+fallback-contact$)/);
 assert.equal(runtimeCanvas.dataset.babylonPostStack, 'on:qa-explicit');
+assert.equal(runtimeCanvas.dataset.environmentImageGrade, 'p28-a5-dark-separation-v1');
 assert.equal(runtimeScene.imageProcessingConfiguration.exposure, normalExposure, 'Scenario re-entry must reproduce the same deterministic exposure.');
 assert.equal(runtimeScene.imageProcessingConfiguration.contrast, normalContrast, 'Scenario re-entry must reproduce the same deterministic contrast.');
 runtimePost.dispose();
@@ -195,7 +199,7 @@ assert.match(postSource, /Scene\.FOGMODE_LINEAR/);
 assert.match(postSource, /refineryAtmosphereContrast\(lowVisibility, budget\.refineryAtmosphereScale\)/);
 assert.match(postSource, /this\.captureUpstreamImageProcessing\(\)/);
 assert.match(postSource, /this\.restoreUpstreamImageProcessing\(\)/);
-assert.match(postSource, /grade-' \+ REFINERY_ATMOSPHERE_PROFILE\.gradeId/);
+assert.match(postSource, /environmentImageGrade = REFINERY_ATMOSPHERE_PROFILE\.gradeId/);
 assert.match(postSource, /dataset\.refineryPostStackQa === 'off'/);
 assert.match(postSource, /critical:hazards\+telegraphs\+class-cues@/);
 assert.match(postSource, /environmentP21Budget/);
