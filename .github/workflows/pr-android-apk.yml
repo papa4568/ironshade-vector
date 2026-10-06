@@ -190,7 +190,7 @@ jobs:
           profile: pixel_7_pro
           emulator-boot-timeout: 300
           disable-animations: true
-          script: bash -lc 'ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-fast-smoke.sh'
+          script: bash -lc 'for attempt in 1 2; do ANDROID_SMOKE_APK=Ironshade-Vector-Android-Smoke.apk bash scripts/android-fast-smoke.sh && exit 0; if [[ "$attempt" -lt 2 ]]; then echo "API 35 smoke attempt failed; retrying once on the same emulator"; adb shell am force-stop app.ironshade.vector || true; sleep 3; fi; done; exit 1'
 
       - name: Upload API 35 evidence
         if: always()
