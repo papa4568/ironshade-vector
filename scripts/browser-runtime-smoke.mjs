@@ -2719,7 +2719,7 @@ async function p27A2BabylonBackendAudit() {
 
   const protectedGroups = 'hud+enemies+hazards+objectives+loot+interactables';
   if (!state.environmentBloom.startsWith('selective:refinery-selective-v1:')
-    || !/^babylon-included:\d+\+authored:processor\+terminal\+muzzle$/.test(state.environmentBloomSources)
+    || !/^babylon-included:\d+\+authored:processor\+terminal(?:\+(?:pipe|cable-tray|service-conduit|gantry))*\+muzzle$/.test(state.environmentBloomSources)
     || state.environmentBloomExcluded !== protectedGroups
     || !state.environmentContactDepth.startsWith('grounding:refinery-contact-grounding-v1:')
     || state.environmentContactDepthProtected !== protectedGroups

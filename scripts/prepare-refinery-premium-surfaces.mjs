@@ -15,6 +15,21 @@ export const REFINERY_PREMIUM_SURFACE_TARGETS = [
   { family: 'crate', relativePath: 'environments/refinery-crate-lod2.glb' },
 ];
 
+export const REFINERY_MACHINERY_PREMIUM_SURFACE_TARGETS = [
+  { family: 'processor', phase: 'P28-B4', relativePath: 'environments/refinery-processor-lod1.glb' },
+  { family: 'processor', phase: 'P28-B4', relativePath: 'environments/refinery-processor-lod2.glb' },
+  { family: 'pipeRack', phase: 'P28-B4', relativePath: 'environments/refinery-pipe-rack-lod1.glb' },
+  { family: 'pipeRack', phase: 'P28-B4', relativePath: 'environments/refinery-pipe-rack-lod2.glb' },
+  { family: 'cableTray', phase: 'P28-B4', relativePath: 'environments/refinery-cable-tray-lod1.glb' },
+  { family: 'cableTray', phase: 'P28-B4', relativePath: 'environments/refinery-cable-tray-lod2.glb' },
+  { family: 'serviceConduit', phase: 'P28-B4', relativePath: 'environments/refinery-service-conduit-lod1.glb' },
+  { family: 'serviceConduit', phase: 'P28-B4', relativePath: 'environments/refinery-service-conduit-lod2.glb' },
+  { family: 'gantry', phase: 'P28-B4', relativePath: 'environments/refinery-smelter-gantry-lod1.glb' },
+  { family: 'gantry', phase: 'P28-B4', relativePath: 'environments/refinery-smelter-gantry-lod2.glb' },
+  { family: 'terminal', phase: 'P28-B4', relativePath: 'environments/refinery-terminal-lod1.glb' },
+  { family: 'terminal', phase: 'P28-B4', relativePath: 'environments/refinery-terminal-lod2.glb' },
+];
+
 function bytes(view) {
   return Buffer.from(view.buffer, view.byteOffset, view.byteLength);
 }
@@ -134,7 +149,7 @@ export function upgradeRefineryPremiumSurfaceGlb(input, target) {
   gltf.buffers = [{ byteLength: binary.length }];
   gltf.extras = {
     ...(gltf.extras ?? {}),
-    ironshadeP28B2SurfaceGeometry: {
+    [target.phase === 'P28-B4' ? 'ironshadeP28B4MachinerySurfaceGeometry' : 'ironshadeP28B2SurfaceGeometry']: {
       version: 1,
       family: target.family,
       uvSet: 'TEXCOORD_0',
@@ -148,14 +163,14 @@ export function upgradeRefineryPremiumSurfaceGlb(input, target) {
 
 export async function writeRefineryPremiumSurfaceGeometry() {
   const results = [];
-  for (const target of REFINERY_PREMIUM_SURFACE_TARGETS) {
+  for (const target of [...REFINERY_PREMIUM_SURFACE_TARGETS, ...REFINERY_MACHINERY_PREMIUM_SURFACE_TARGETS]) {
     const outputPath = resolve(process.cwd(), 'public/assets/models', target.relativePath);
     const input = await readFile(outputPath);
     const upgraded = upgradeRefineryPremiumSurfaceGlb(input, target);
     await writeFile(outputPath, upgraded);
     results.push({ ...target, bytes: upgraded.length });
   }
-  console.log('[graphics] P28-B2 premium refinery surface geometry ' + results.map(item => `${item.relativePath}=${item.bytes}b`).join(' '));
+  console.log('[graphics] P28-B2/B4 premium refinery surface geometry ' + results.map(item => `${item.relativePath}=${item.bytes}b`).join(' '));
   return results;
 }
 

@@ -162,9 +162,9 @@ try {
       if (lastState.surfaceDetail !== 'wall-panel:6+cable-tray:6') {
         throw new Error(`Authored Babylon refinery wall/cable detail coverage is incomplete: ${JSON.stringify(lastState)}`);
       }
-      if (lastState.premiumSurfaces !== 'floor:bare-metal+deck-plate|floor-grate:bare-metal+painted-metal|bulkhead:painted-metal|wall-panel:bare-metal+painted-metal|crate:bare-metal+painted-metal+polymer-rubber'
+      if (lastState.premiumSurfaces !== 'floor:bare-metal+deck-plate|floor-grate:bare-metal+painted-metal|bulkhead:painted-metal|processor:bare-metal+emissive-fixture+painted-metal|pipe-rack:bare-metal+emissive-fixture+painted-metal|wall-panel:bare-metal+painted-metal|cable-tray:bare-metal+emissive-fixture+painted-metal|service-conduit:bare-metal+emissive-fixture+painted-metal|gantry:bare-metal+emissive-fixture+painted-metal|crate:bare-metal+painted-metal+polymer-rubber|terminal:bare-metal+emissive-fixture+painted-metal'
         || lastState.materialDetail !== 'normal+roughness+metalness:shared-premium-pbr') {
-        throw new Error(`P28-B2/B3 premium refinery surface binding is incomplete: ${JSON.stringify(lastState)}`);
+        throw new Error(`P28-B2/B3/B4 premium refinery surface binding is incomplete: ${JSON.stringify(lastState)}`);
       }
       if (lastState.coverPremiumSurfaces !== 'painted-metal+bare-metal+polymer-rubber' || lastState.coverPremiumCount < 1) {
         throw new Error(`P28-B3 premium refinery cover presentation is incomplete: ${JSON.stringify(lastState)}`);
