@@ -1,7 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { deflateSync } from 'node:zlib';
 
 export const PREMIUM_PBR_REFERENCE_RELATIVE_PATH = 'environments/refinery-wall-service-panel-pbr-reference-lod0.glb';
 
@@ -16,6 +15,27 @@ function crc32(buffer) {
   let crc = 0xffffffff;
   for (const value of buffer) crc = CRC_TABLE[(crc ^ value) & 0xff] ^ (crc >>> 8);
   return (crc ^ 0xffffffff) >>> 0;
+}
+
+function adler32(buffer) {
+  let a = 1;
+  let b = 0;
+  for (const value of buffer) {
+    a = (a + value) % 65521;
+    b = (b + a) % 65521;
+  }
+  return ((b << 16) | a) >>> 0;
+}
+
+function encodeStoredZlib(buffer) {
+  if (buffer.length > 0xffff) throw new Error(`Stored zlib payload is too large: ${buffer.length}`);
+  const blockHeader = Buffer.alloc(5);
+  blockHeader[0] = 0x01;
+  blockHeader.writeUInt16LE(buffer.length, 1);
+  blockHeader.writeUInt16LE((~buffer.length) & 0xffff, 3);
+  const checksum = Buffer.alloc(4);
+  checksum.writeUInt32BE(adler32(buffer), 0);
+  return Buffer.concat([Buffer.from([0x78, 0x01]), blockHeader, buffer, checksum]);
 }
 
 function pngChunk(type, payload = Buffer.alloc(0)) {
@@ -48,7 +68,7 @@ function encodeRgbaPng(width, height, pixels) {
   return Buffer.concat([
     PNG_SIGNATURE,
     pngChunk('IHDR', ihdr),
-    pngChunk('IDAT', deflateSync(scanlines, { level: 9 })),
+    pngChunk('IDAT', encodeStoredZlib(scanlines)),
     pngChunk('IEND'),
   ]);
 }
