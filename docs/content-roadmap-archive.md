@@ -7,6 +7,14 @@ This file is the permanent archive for completed production work. The active exe
 
 ## P28 — Babylon flagship visual-quality overhaul
 
+- [x] **P28-B1 — Build a reusable premium PBR surface library** — Added five reusable flagship hard-sci-fi surface families—painted metal, bare metal, deck plate, polymer/rubber, and emissive fixture—with deterministic local KTX2 mip chains and Babylon PBR bindings.
+  - Added `scripts/prepare-premium-pbr-library.mjs`; it generates 512×512 authored base-color/normal/packed ORM maps (plus emissive for fixtures), full 512→1 mip chains, correct sRGB/linear metadata, and KTX2 Zstandard supercompression into `public/assets/materials/premium-pbr/`.
+  - Added `src/game/babylonPremiumPbrSurfaceLibrary.ts` with reusable shared `PBRMaterial` instances, trilinear mip sampling, engine-bounded anisotropy up to 16×, glTF ORM channel semantics, tangent-space normal strength, and emissive fixture support.
+  - Added deterministic content validation in `tests/premium-pbr-library.mjs`; the exact generated library is 3,875,485 bytes across five surfaces and validates KTX2 headers/DFD/orientation, ten mip levels, Zstd round-trip, color spaces, ORM channel variation, authored surface variation, and deterministic rebuilds.
+  - Exact product revision `ca21bbc3d635b38b12dcaa6c12312a4fe58cd7c8` passed full repository verification and Browser E2E run `37449379474`, plus PR Android APK run `37449379488` with APK build/signing/delivery checks and API 35 product smoke. The first API 36 large-screen attempt reached Babylon WebGL2 and the large-screen-ready checkpoint before a CDP transport timeout; rerunning only that failed job passed without product changes, confirming a harness/transport flake rather than a product regression.
+  - Verified PR debug APK: 10,252,407 bytes, SHA-256 `fe9e15620465e4a1123e64cc35292465f861b0ba5ffa1ed846424c3a5151a9a5`.
+  - **Next: P28-B2 — Apply P28 materials to refinery floors and bulkheads.**
+
 - [x] **P28-B0 — Add textured PBR support to the deterministic GLB build path** — Extended the deterministic authored-asset preparation path with a premium textured-PBR reference that preserves UV0/tangents plus local base-color, normal, packed ORM, and emissive maps through glTF/Babylon while retaining existing fallback assets.
   - Added `scripts/prepare-premium-pbr-reference.mjs` and wired it into `prepare:graphics-assets`; the generated panel carries `POSITION`, `NORMAL`, `TANGENT`, and `TEXCOORD_0` plus embedded base-color, normal, shared packed ORM, and emissive textures with metallic-roughness bindings.
   - Kept local KTX2/BasisU runtime compatibility intact and documented the premium source boundary in `docs/graphics-asset-pipeline.md`; the committed reference asset is `public/assets/models/environments/refinery-wall-service-panel-pbr-reference-lod0.glb`.

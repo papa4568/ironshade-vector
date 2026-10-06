@@ -44,7 +44,6 @@ Only active/future executable engineering work lives here. Completed and verifie
 #### B. Shared premium PBR materials and refinery surface detail
 
 
-- [ ] **P28-B1 — Build a reusable premium PBR surface library** — Add a shared set of authored hard-sci-fi materials (painted metal, bare metal, deck plate, polymer/rubber, emissive fixture) using glTF/Babylon metallic-roughness conventions with normal + packed ORM detail and local KTX2 compression. Select texture resolution from visible need rather than legacy mobile caps. **Done when:** the material set is visibly rich at gameplay zoom, shared where useful, supports mipmapped/KTX2 delivery, content/codec tests cover the new assets, and standard build/APK gates pass.
 
 - [ ] **P28-B2 — Apply P28 materials to refinery floors and bulkheads** — Replace flat-color floor/bulkhead/wall treatment with the shared PBR materials while keeping collision and mission geometry unchanged. **Done when:** the deterministic Deep Salvage route shows visible normal/roughness/metalness response across floor and wall surfaces, no gameplay bounds change, and standard build/APK gates pass.
 
