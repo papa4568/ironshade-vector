@@ -11,11 +11,11 @@ const CELL_HEIGHT = ATLAS_SIZE / ATLAS_ROWS;
 const UV_INSET = 2;
 const DECAL_MATERIAL_NAME = 'refinery-detail-atlas';
 const DECAL_MESH_NAME = 'p28-b5-refinery-detail-atlas';
-const ATLAS_URI = '../../materials/refinery-detail/refinery-decal-atlas.png';
+const ATLAS_URI = 'refinery-decal-atlas.png';
 
 export const REFINERY_DECAL_ATLAS = Object.freeze({
   id: 'refinery-decal-atlas-v1',
-  relativePath: 'materials/refinery-detail/refinery-decal-atlas.png',
+  relativePath: 'models/environments/refinery-decal-atlas.png',
   width: ATLAS_SIZE,
   height: ATLAS_SIZE,
   columns: ATLAS_COLUMNS,
