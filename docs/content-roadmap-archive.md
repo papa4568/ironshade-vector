@@ -7,6 +7,14 @@ This file is the permanent archive for completed production work. The active exe
 
 ## P28 — Babylon flagship visual-quality overhaul
 
+- [x] **P28-B4 — Apply P28 materials to refinery machinery** — Moved processors, terminals, pipe racks, service conduits, cable trays, and gantries onto the shared P28 premium PBR surface language while preserving authored transforms and gameplay bounds.
+  - Extended the shared surface binder across six authored machinery families and all twelve LOD1/LOD2 GLBs with deterministic UV0/tangent geometry: painted structural metal, bare shell metal, and shared emissive fixtures for authored hazard/screen elements.
+  - Extended selective glow to all six authored machinery emissive families while leaving HUD, enemies, hazards, objectives, loot, and interactables excluded by default.
+  - Added B4 machinery/LOD regression coverage and made the earlier B2/runtime bloom-source telemetry assertions extensible so later material phases can add families without weakening existing guarantees.
+  - Exact code candidate `d132249a245ed61dce808b4bcf29d42562751f02` passed Browser E2E run `37484917179` (desktop + mobile-landscape), P28 Image Grade Visual run `37484916740`, Build Android APK run `37484918289`, and PR Android APK run `37484917475` including API 35 product smoke, API 36 large-screen smoke, and aggregate verification.
+  - Verified PR artifact `ironshade-vector-pr-android-apk` (artifact `11423356717`, artifact ZIP SHA-256 `ef69abec3bbbf946149230f5545a27e02223be1630a2ee998eff310fd918758c`) contains `Ironshade-Vector-Android-Debug.apk` (10,260,395 bytes; package `app.ironshade.vector`; version `0.0.1-pr.68`; min SDK 24; target SDK 36; APK SHA-256 `8f33b41aef75d6df73d9e5c333fd1ba365dc5b500e8a73b6f3e11c6baf3dd337`; Android debug signer).
+  - **Next: P28-B5 — Add a refinery decal/trim atlas.**
+
 - [x] **P28-B3 — Apply P28 materials to refinery cover and crates** — Applied the shared P28 premium PBR language to refinery cover and crates while preserving simulation-owned dimensions, placement, interaction behavior, and near-player cover readability.
   - Extended `scripts/prepare-refinery-premium-surfaces.mjs` so both refinery crate LOD1/LOD2 GLBs receive deterministic UV0/tangent geometry for premium normal mapping without changing unit bounds or authored shell/band/marker transforms. Crate runtime binding now separates painted metal, bare metal, and polymer/rubber and exposes `crate:bare-metal+painted-metal+polymer-rubber` telemetry.
   - Upgraded refinery cover presentation in `BabylonRefineryWorldPresentation`: the simulation-sized cover body uses painted metal with a bare-metal cap and polymer/rubber bumpers only in the Asteroid Refinery presentation. Existing simulation footprint sizing and near-player transparency remain authoritative and unchanged.
