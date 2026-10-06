@@ -126,7 +126,7 @@ try {
 
   await writeFile(reportPath, JSON.stringify({
     viewport: 'desktop',
-    visualDetail: 'p28-b5-refinery-decal-atlas',
+    visualDetail: 'p28-b6-deep-salvage-route-decals',
     normal,
     lowVisibility,
     screenshot: screenshotPath,
@@ -146,7 +146,7 @@ try {
       && canvas?.dataset.environmentAtmosphere?.includes('exposure-1.055:contrast-0.985:grade-p28-a5-dark-separation-v1');
   })()`, 'restored normal Flagship refinery grade');
 
-  console.log(`BROWSER_P28A5_IMAGE_GRADE_PASS tier=${lowVisibility.tier} detail=p28-b5-refinery-decal-atlas normal=${normal.atmosphere} lowVisibility=${lowVisibility.atmosphere} tone=${lowVisibility.tone} cues=1.00 screenshot=${screenshotPath} bytes=${png.length}`);
+  console.log(`BROWSER_P28A5_IMAGE_GRADE_PASS tier=${lowVisibility.tier} detail=p28-b6-deep-salvage-route-decals normal=${normal.atmosphere} lowVisibility=${lowVisibility.atmosphere} tone=${lowVisibility.tone} cues=1.00 screenshot=${screenshotPath} bytes=${png.length}`);
 } finally {
   socket.close();
 }
