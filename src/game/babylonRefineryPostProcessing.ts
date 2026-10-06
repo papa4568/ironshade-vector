@@ -20,6 +20,7 @@ import {
 } from './refineryContactDepth';
 import {
   REFINERY_ATMOSPHERE_PROFILE,
+  refineryAtmosphereContrast,
   refineryAtmosphereExposureScale,
   refineryAtmosphereRange,
   refineryAtmosphereTelemetry,
@@ -122,8 +123,8 @@ export function resolveBabylonRefineryPostProcessingBudget(
     atmosphereEnabled: budget.refineryAtmosphereScale >= 0.5,
     atmosphereNear: atmosphere.near,
     atmosphereFar: atmosphere.far,
-    exposureScale: refineryAtmosphereExposureScale(budget.refineryAtmosphereScale),
-    contrast: 1 + 0.035 * budget.refineryAtmosphereScale,
+    exposureScale: refineryAtmosphereExposureScale(budget.refineryAtmosphereScale, lowVisibility),
+    contrast: refineryAtmosphereContrast(lowVisibility, budget.refineryAtmosphereScale),
     gameplayCueScale: budget.gameplayCueScale,
   };
 }
@@ -138,12 +139,19 @@ export class BabylonRefineryPostProcessing {
   private ssaoCamera: Camera | null = null;
   private ssaoAttached = false;
   private bloomMeshCount = -1;
+  private upstreamExposure: number;
+  private upstreamContrast: number;
+  private appliedExposure: number | null = null;
+  private appliedContrast: number | null = null;
   private released = false;
 
   constructor(
     private readonly scene: Scene,
     private readonly canvas: HTMLCanvasElement,
   ) {
+    this.upstreamExposure = scene.imageProcessingConfiguration.exposure;
+    this.upstreamContrast = scene.imageProcessingConfiguration.contrast;
+
     this.glow = new GlowLayer('p27-b12-refinery-selective-bloom', scene, {
       mainTextureRatio: 0.5,
       blurKernelSize: 24,
@@ -196,8 +204,11 @@ export class BabylonRefineryPostProcessing {
 
   sync(lowVisibility: boolean, renderBudget: RenderBudgetSnapshot) {
     this.released = false;
-    const budget = resolveBabylonRefineryPostProcessingBudget(renderBudget, lowVisibility);
+    this.captureUpstreamImageProcessing();
     const qaExplicit = this.canvas.dataset.graphicsPathSelection === 'qa-explicit';
+    const qaLowVisibility = qaExplicit && this.canvas.dataset.refineryImageGradeQa === 'low-visibility';
+    const effectiveLowVisibility = qaLowVisibility || lowVisibility;
+    const budget = resolveBabylonRefineryPostProcessingBudget(renderBudget, effectiveLowVisibility);
     const qaStackDisabled = qaExplicit && this.canvas.dataset.refineryPostStackQa === 'off';
     const stackEnabled = !qaStackDisabled;
     const sourceCount = this.syncBloomSources();
@@ -217,18 +228,19 @@ export class BabylonRefineryPostProcessing {
     this.contactMeshes.forEach((mesh, index) => mesh.setEnabled(index < contactCount));
 
     const atmosphereEnabled = stackEnabled && (qaExplicit || budget.atmosphereEnabled);
-    const baseExposure = this.scene.imageProcessingConfiguration.exposure;
     if (atmosphereEnabled) {
       this.scene.fogMode = Scene.FOGMODE_LINEAR;
       this.scene.fogColor = color3FromHex(REFINERY_ATMOSPHERE_PROFILE.fogColor);
       this.scene.fogStart = budget.atmosphereNear;
       this.scene.fogEnd = budget.atmosphereFar;
       this.scene.clearColor = color4FromHex(REFINERY_ATMOSPHERE_PROFILE.backgroundColor);
-      this.scene.imageProcessingConfiguration.exposure = baseExposure * budget.exposureScale;
-      this.scene.imageProcessingConfiguration.contrast = budget.contrast;
+      this.appliedExposure = this.upstreamExposure * budget.exposureScale;
+      this.appliedContrast = this.upstreamContrast * budget.contrast;
+      this.scene.imageProcessingConfiguration.exposure = this.appliedExposure;
+      this.scene.imageProcessingConfiguration.contrast = this.appliedContrast;
     } else {
-      this.applyBaselineAtmosphere(lowVisibility);
-      this.scene.imageProcessingConfiguration.contrast = 1;
+      this.applyBaselineAtmosphere(effectiveLowVisibility);
+      this.restoreUpstreamImageProcessing();
     }
 
     this.canvas.dataset.environmentSsao2 = ssaoEnabled
@@ -264,13 +276,17 @@ export class BabylonRefineryPostProcessing {
     this.canvas.dataset.environmentContactDepthProtected = REFINERY_CONTACT_DEPTH_PROFILE.protectedCueGroups.join('+');
 
     this.canvas.dataset.environmentAtmosphere = atmosphereEnabled
-      ? refineryAtmosphereTelemetry(lowVisibility, renderBudget.refineryAtmosphereScale)
+      ? refineryAtmosphereTelemetry(effectiveLowVisibility, renderBudget.refineryAtmosphereScale)
       : qaStackDisabled ? 'off:qa-baseline' : 'off:adaptive-budget';
     this.canvas.dataset.environmentAtmosphereProtected = REFINERY_ATMOSPHERE_PROFILE.protectedCueGroups.join('+');
 
+    // Preserve the P27 telemetry contract exactly; P28 publishes the grade
+    // identity separately while the runtime values remain available here.
     this.canvas.dataset.environmentPostTone = 'aces-exposure-'
       + this.scene.imageProcessingConfiguration.exposure.toFixed(2)
       + '+contrast-' + this.scene.imageProcessingConfiguration.contrast.toFixed(2);
+    this.canvas.dataset.environmentImageGrade = REFINERY_ATMOSPHERE_PROFILE.gradeId;
+    this.canvas.dataset.environmentImageGradeMode = effectiveLowVisibility ? 'low-visibility' : 'normal';
     this.canvas.dataset.environmentP21Budget = [
       'tier:' + renderBudget.tierName,
       'ibl:' + renderBudget.refineryIblScale.toFixed(2),
@@ -300,11 +316,12 @@ export class BabylonRefineryPostProcessing {
   release(reason: string) {
     if (this.released) return;
     this.released = true;
+    this.captureUpstreamImageProcessing();
+    this.restoreUpstreamImageProcessing();
     this.detachSsao();
     this.glow.isEnabled = false;
     this.contactMeshes.forEach(mesh => mesh.setEnabled(false));
     this.scene.fogMode = Scene.FOGMODE_NONE;
-    this.scene.imageProcessingConfiguration.contrast = 1;
     this.canvas.dataset.babylonPostRelease = reason;
     for (const key of [
       'environmentSsao2',
@@ -317,6 +334,8 @@ export class BabylonRefineryPostProcessing {
       'environmentAtmosphere',
       'environmentAtmosphereProtected',
       'environmentPostTone',
+      'environmentImageGrade',
+      'environmentImageGradeMode',
       'environmentP21Budget',
       'effectPriority',
       'babylonPostBudget',
@@ -339,6 +358,23 @@ export class BabylonRefineryPostProcessing {
     this.contactMeshes.length = 0;
     this.contactMaterial.dispose();
     this.contactTexture.dispose();
+  }
+
+  private captureUpstreamImageProcessing() {
+    const imageProcessing = this.scene.imageProcessingConfiguration;
+    if (this.appliedExposure === null || Math.abs(imageProcessing.exposure - this.appliedExposure) > 1e-6) {
+      this.upstreamExposure = imageProcessing.exposure;
+    }
+    if (this.appliedContrast === null || Math.abs(imageProcessing.contrast - this.appliedContrast) > 1e-6) {
+      this.upstreamContrast = imageProcessing.contrast;
+    }
+  }
+
+  private restoreUpstreamImageProcessing() {
+    this.scene.imageProcessingConfiguration.exposure = this.upstreamExposure;
+    this.scene.imageProcessingConfiguration.contrast = this.upstreamContrast;
+    this.appliedExposure = null;
+    this.appliedContrast = null;
   }
 
   private syncSsao(requested: boolean, budget: BabylonRefineryPostProcessingBudget) {

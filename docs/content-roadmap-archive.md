@@ -5,6 +5,18 @@ This file is the permanent archive for completed production work. The active exe
 **Archive rule:** once a roadmap batch is merged, verified, and marked complete, move its detailed checklist and delivery note here. Keep only a compact completion pointer in the active roadmap. Do not execute work directly from this archive.
 
 
+## P28 — Babylon flagship visual-quality overhaul
+
+- [x] **P28-A5 — Re-grade exposure, contrast, and dark-value separation** — Recalibrated the Babylon refinery image grade after the P28 IBL/AO/shadow upgrades so dark surfaces retain readable form in normal and low-visibility conditions without clipping emissives or gameplay cues.
+  - Reworked the refinery ACES/image-processing grade so normal Flagship exposure/contrast and the bounded low-visibility lift remain stable across repeated syncs, while restoring upstream image-processing state on QA bypass and scenario exit.
+  - Preserved the established P27 telemetry contract and surfaced the P28 grade ID separately so existing live QA remains compatible.
+  - Added deterministic normal and forced-low-visibility Flagship QA capture coverage. Visual acceptance retained floor/wall/character/machinery separation in dark rooms with controlled cyan/amber/magenta emissive highlights; High-tier low-visibility telemetry reported exposure `1.080`, contrast `0.965`, selective bloom, and critical cue scale `1.00`.
+  - Targeted grade/post regressions and the production build passed; P28 Image Grade Visual run `37397725287` passed the deterministic capture gate.
+  - Browser E2E run `37397725096` passed desktop and mobile-landscape full regression/build plus live player journeys.
+  - PR Android APK run `37397725103` passed full repository verification, native Android generation, APK build/sign/delivery checks, API 35 product smoke, API 36 large-screen smoke, and aggregate Android verification. The initial API 35 WebView CDP transport failure was rerun successfully without product-code changes.
+  - **Next: P28-B0 — Add textured PBR support to the deterministic GLB build path.**
+
+
 ## P27 — Babylon.js renderer migration
 
 
