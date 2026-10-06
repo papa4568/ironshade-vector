@@ -17,6 +17,7 @@ import {
   PICKUP_ASSET_FAMILY,
 } from './graphicsAssetManifest';
 import { selectGraphicsAssetSpec } from './graphicsAssets';
+import type { BabylonPremiumPbrSurfaceLibrary } from './babylonPremiumPbrSurfaceLibrary';
 import { findNavigationPath } from './mapPathfinding';
 import type { CombatObject, Hazard, SimState } from './sim';
 import {
@@ -35,6 +36,8 @@ type WorldObjectVisual = {
   mesh: Mesh;
   material: PBRMaterial;
   height: number;
+  premiumCover: boolean;
+  premiumDetailMeshes: Mesh[];
 };
 
 type WorldCueVisual = {
@@ -127,6 +130,7 @@ function lerp(from: number, to: number, amount: number) {
 export class BabylonRefineryWorldPresentation {
   private readonly scene: Scene;
   private readonly canvas: HTMLCanvasElement;
+  private readonly getPremiumSurfaceLibrary: (() => BabylonPremiumPbrSurfaceLibrary) | null;
   private readonly objectVisuals = new Map<string, WorldObjectVisual>();
   private readonly interactableCues = new Map<string, WorldCueVisual>();
   private readonly authoredInteractables = new Map<string, AuthoredInteractableVisual>();
@@ -142,11 +146,18 @@ export class BabylonRefineryWorldPresentation {
   private worldState: RingVisual | null = null;
   private loadGeneration = 0;
   private active = false;
+  private premiumRefineryScenario = false;
   private disposed = false;
 
-  constructor(scene: Scene, canvas: HTMLCanvasElement, _coarse: boolean) {
+  constructor(
+    scene: Scene,
+    canvas: HTMLCanvasElement,
+    _coarse: boolean,
+    getPremiumSurfaceLibrary: (() => BabylonPremiumPbrSurfaceLibrary) | null = null,
+  ) {
     this.scene = scene;
     this.canvas = canvas;
+    this.getPremiumSurfaceLibrary = getPremiumSurfaceLibrary;
     canvas.dataset.babylonWorldState = 'idle';
     canvas.dataset.interactableVisual = 'procedural-loading-babylon';
     canvas.dataset.lootVisual = 'procedural-ready-babylon';
@@ -156,6 +167,7 @@ export class BabylonRefineryWorldPresentation {
   sync(state: SimState, mission: Contract, detailScale: number) {
     if (this.disposed) return;
     this.active = true;
+    this.premiumRefineryScenario = mission.location === 'asteroid-refinery';
     this.syncObjects(state, detailScale);
     this.syncObjective(state, mission);
     this.syncGroundLoot(state, detailScale);
@@ -252,6 +264,8 @@ export class BabylonRefineryWorldPresentation {
     this.canvas.dataset.hazardActive = '0';
     this.canvas.dataset.lootActive = '0';
     this.canvas.dataset.breachActive = '0';
+    this.canvas.dataset.babylonCoverPremiumCount = '0';
+    this.canvas.dataset.babylonCoverPremiumSurfaces = 'inactive';
     this.canvas.dataset.babylonWorldRelease = reason + ':deterministic';
   }
 
@@ -371,44 +385,88 @@ export class BabylonRefineryWorldPresentation {
   }
 
   private syncObjects(state: SimState, detailScale: number) {
+    const refineryScenario = this.premiumRefineryScenario;
     const quality = worldMaterialQualityProfile(worldQualityName(detailScale));
     const activeIds = new Set<string>();
     let activeCount = 0;
     let interactableCount = 0;
+    let premiumCoverCount = 0;
     for (const object of state.objects) {
       activeIds.add(object.id);
+      const premiumCover = refineryScenario && object.kind === 'cover' && Boolean(this.getPremiumSurfaceLibrary);
       let visual = this.objectVisuals.get(object.id);
+      if (visual && visual.premiumCover !== premiumCover) {
+        visual.mesh.dispose();
+        visual.material.dispose();
+        this.objectVisuals.delete(object.id);
+        visual = undefined;
+      }
       if (!visual) {
         const height = panelObject(object) ? 0.7 : object.kind === 'cover' ? 1.25 : 1.05;
         const material = new PBRMaterial('p27-b5-object-material-' + object.id, this.scene);
         material.albedoColor = colorFromHex(objectColor(object));
         material.metallic = 0.55;
         material.roughness = 0.48;
-        const mesh = MeshBuilder.CreateBox('p27-b5-object-' + object.id, {
-          width: Math.max(0.15, scaled(object.w)),
-          height,
-          depth: Math.max(0.15, scaled(object.h)),
-        }, this.scene);
-        mesh.material = material;
+        const width = Math.max(0.15, scaled(object.w));
+        const depth = Math.max(0.15, scaled(object.h));
+        const mesh = MeshBuilder.CreateBox('p27-b5-object-' + object.id, { width, height, depth }, this.scene);
+        const premiumDetailMeshes: Mesh[] = [];
+        if (premiumCover && this.getPremiumSurfaceLibrary) {
+          const surfaces = this.getPremiumSurfaceLibrary();
+          mesh.material = surfaces.get('painted-metal');
+
+          const cap = MeshBuilder.CreateBox('p28-b3-cover-bare-cap-' + object.id, {
+            width: Math.max(0.12, width * 0.90),
+            height: 0.10,
+            depth: Math.max(0.12, depth * 0.90),
+          }, this.scene);
+          cap.parent = mesh;
+          cap.position.y = height * 0.5 - 0.05;
+          cap.material = surfaces.get('bare-metal');
+          cap.isPickable = false;
+          premiumDetailMeshes.push(cap);
+
+          const bumperDepth = Math.max(0.035, Math.min(0.07, depth * 0.08));
+          for (const side of [-1, 1]) {
+            const bumper = MeshBuilder.CreateBox('p28-b3-cover-polymer-' + (side > 0 ? 'front' : 'back') + '-' + object.id, {
+              width: Math.max(0.12, width * 0.76),
+              height: 0.18,
+              depth: bumperDepth,
+            }, this.scene);
+            bumper.parent = mesh;
+            bumper.position.set(0, -height * 0.22, side * (depth * 0.5 + bumperDepth * 0.18));
+            bumper.material = surfaces.get('polymer-rubber');
+            bumper.isPickable = false;
+            premiumDetailMeshes.push(bumper);
+          }
+        } else {
+          mesh.material = material;
+        }
         mesh.isPickable = false;
-        visual = { mesh, material, height };
+        visual = { mesh, material, height, premiumCover, premiumDetailMeshes };
         this.objectVisuals.set(object.id, visual);
         if (panelObject(object)) void this.loadInteractable(object, detailScale);
       }
 
       if (object.active) activeCount += 1;
+      if (visual.premiumCover && object.active) premiumCoverCount += 1;
       const authored = this.authoredInteractables.get(object.id);
       visual.mesh.setEnabled(object.active && !authored);
       visual.mesh.position.set(scaled(object.x + object.w / 2), visual.height / 2, scaled(object.y + object.h / 2));
       const response = materialWorldResponse(object.material);
-      visual.material.albedoColor = colorFromHex(objectColor(object));
-      visual.material.alpha = object.kind === 'cover'
+      const coverVisibility = object.kind === 'cover'
         && Math.hypot(object.x + object.w / 2 - state.player.x, object.y + object.h / 2 - state.player.y) < 155
         ? 0.48
         : 1;
-      visual.material.emissiveColor = object.exposed ? colorFromHex(0xd69b4d).scale(0.32) : Color3.Black();
-      visual.material.metallic = lerp(0.32, response.metalness, quality.materialDepthScale);
-      visual.material.roughness = lerp(0.62, response.roughness, quality.materialDepthScale);
+      visual.mesh.visibility = coverVisibility;
+      for (const detail of visual.premiumDetailMeshes) detail.visibility = coverVisibility;
+      if (!visual.premiumCover) {
+        visual.material.albedoColor = colorFromHex(objectColor(object));
+        visual.material.alpha = coverVisibility;
+        visual.material.emissiveColor = object.exposed ? colorFromHex(0xd69b4d).scale(0.32) : Color3.Black();
+        visual.material.metallic = lerp(0.32, response.metalness, quality.materialDepthScale);
+        visual.material.roughness = lerp(0.62, response.roughness, quality.materialDepthScale);
+      }
       const hpRatio = object.maxHp > 0 ? Math.max(0.18, Math.min(1, object.hp / object.maxHp)) : 1;
       visual.mesh.scaling.y = object.destructible && object.maxHp < 9000 ? 0.72 + hpRatio * 0.28 : 1;
 
@@ -454,6 +512,10 @@ export class BabylonRefineryWorldPresentation {
     this.canvas.dataset.interactableAuthoredCount = String(
       [...this.authoredInteractables.values()].filter(visual => visual.mount.isEnabled()).length,
     );
+    this.canvas.dataset.babylonCoverPremiumCount = String(premiumCoverCount);
+    this.canvas.dataset.babylonCoverPremiumSurfaces = refineryScenario && this.getPremiumSurfaceLibrary
+      ? 'painted-metal+bare-metal+polymer-rubber'
+      : 'inactive';
     this.canvas.dataset.interactableReadability = 'shape-coded+state-emissive+floor-cue:quality-safe';
   }
 

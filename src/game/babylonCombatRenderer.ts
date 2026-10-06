@@ -111,15 +111,21 @@ const REFINERY_PREMIUM_SURFACE_ASSIGNMENTS: Partial<Record<RefineryFamilyKey, Re
     'refinery-structural': 'bare-metal',
     'refinery-shell': 'painted-metal',
   },
+  crate: {
+    'refinery-structural': 'bare-metal',
+    'refinery-shell': 'painted-metal',
+    'refinery-hazard-emissive': 'polymer-rubber',
+  },
 };
-const REFINERY_PREMIUM_SURFACE_ORDER: readonly RefineryFamilyKey[] = ['floor', 'floorGrate', 'bulkhead', 'wallPanel'];
+const REFINERY_PREMIUM_SURFACE_ORDER: readonly RefineryFamilyKey[] = ['floor', 'floorGrate', 'bulkhead', 'wallPanel', 'crate'];
 const REFINERY_PREMIUM_SURFACE_LABELS: Partial<Record<RefineryFamilyKey, string>> = {
   floor: 'floor',
   floorGrate: 'floor-grate',
   bulkhead: 'bulkhead',
   wallPanel: 'wall-panel',
+  crate: 'crate',
 };
-const REFINERY_PREMIUM_SURFACE_TELEMETRY = 'floor:bare-metal+deck-plate|floor-grate:bare-metal+painted-metal|bulkhead:painted-metal|wall-panel:bare-metal+painted-metal';
+const REFINERY_PREMIUM_SURFACE_TELEMETRY = 'floor:bare-metal+deck-plate|floor-grate:bare-metal+painted-metal|bulkhead:painted-metal|wall-panel:bare-metal+painted-metal|crate:bare-metal+painted-metal+polymer-rubber';
 
 function premiumSurfaceTelemetry(usage: Map<RefineryFamilyKey, Set<PremiumPbrSurfaceId>>) {
   return REFINERY_PREMIUM_SURFACE_ORDER.map(key => {
@@ -413,7 +419,12 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
     this.scene = scene;
     this.camera = camera;
     const qualityCoarse = false; // P28-A0: compact input may change framing/readability, never startup visual quality.
-    this.worldPresentation = new BabylonRefineryWorldPresentation(scene, canvas, qualityCoarse);
+    this.worldPresentation = new BabylonRefineryWorldPresentation(
+      scene,
+      canvas,
+      qualityCoarse,
+      () => this.getRefineryPremiumSurfaceLibrary(),
+    );
     this.weaponVfx = new BabylonWeaponVfx(scene, canvas, qualityCoarse);
     this.abilityVfx = new BabylonAbilityVfx(scene, canvas, qualityCoarse);
     this.enemyTelegraphs = new BabylonEnemyTelegraphs(scene, canvas, qualityCoarse);
@@ -2109,7 +2120,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
 
       const premiumSurfaces = premiumSurfaceTelemetry(premiumSurfaceUsage);
       if (premiumSurfaces !== REFINERY_PREMIUM_SURFACE_TELEMETRY) {
-        throw new Error(`Incomplete P28-B2 premium surface binding: ${premiumSurfaces || 'none'}`);
+        throw new Error(`Incomplete P28-B2/B3 premium surface binding: ${premiumSurfaces || 'none'}`);
       }
 
       this.refineryAssetInstances.push(...mountedInstances);
