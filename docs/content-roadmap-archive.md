@@ -7,6 +7,16 @@ This file is the permanent archive for completed production work. The active exe
 
 ## P28 — Babylon flagship visual-quality overhaul
 
+- [x] **P28-B0 — Add textured PBR support to the deterministic GLB build path** — Extended the deterministic authored-asset preparation path with a premium textured-PBR reference that preserves UV0/tangents plus local base-color, normal, packed ORM, and emissive maps through glTF/Babylon while retaining existing fallback assets.
+  - Added `scripts/prepare-premium-pbr-reference.mjs` and wired it into `prepare:graphics-assets`; the generated panel carries `POSITION`, `NORMAL`, `TANGENT`, and `TEXCOORD_0` plus embedded base-color, normal, shared packed ORM, and emissive textures with metallic-roughness bindings.
+  - Kept local KTX2/BasisU runtime compatibility intact and documented the premium source boundary in `docs/graphics-asset-pipeline.md`; the committed reference asset is `public/assets/models/environments/refinery-wall-service-panel-pbr-reference-lod0.glb`.
+  - Made texture generation byte-stable across Node/zlib environments with an explicit stored-zlib PNG stream. The final reference deterministically regenerates to `4,288` bytes.
+  - Fixed glTF buffer-view compliance after CI exposed a Babylon loader failure by explicitly assigning every `bufferView` to `buffer: 0`, then regenerated the committed reference.
+  - Added `tests/premium-pbr-reference.mjs` and wired it into `test:graphics:content`; coverage verifies deterministic rebuilds, UV0/tangents, all four texture channels, shared ORM semantics, and Babylon `PBRMaterial` loading without regressing the existing graphics-content/fallback contract.
+  - Exact product revision `1ded925474a272ff41a34211cd62efb11f6e77a1` passed the full production build, Browser E2E run `37411029844`, Build Android APK run `37411029813`, and PR Android APK run `37411029809` including API 35 product smoke and API 36 large-screen smoke.
+  - Verified PR debug APK SHA-256: `da4aa92175e57881c613a7ecfb8bbf479ce533677513b72779b3423e9dbb67b3`.
+  - **Next: P28-B1 — Build a reusable premium PBR surface library.**
+
 - [x] **P28-A5 — Re-grade exposure, contrast, and dark-value separation** — Recalibrated the Babylon refinery image grade after the P28 IBL/AO/shadow upgrades so dark surfaces retain readable form in normal and low-visibility conditions without clipping emissives or gameplay cues.
   - Reworked the refinery ACES/image-processing grade so normal Flagship exposure/contrast and the bounded low-visibility lift remain stable across repeated syncs, while restoring upstream image-processing state on QA bypass and scenario exit.
   - Preserved the established P27 telemetry contract and surfaced the P28 grade ID separately so existing live QA remains compatible.
