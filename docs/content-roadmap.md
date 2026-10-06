@@ -43,7 +43,6 @@ Only active/future executable engineering work lives here. Completed and verifie
 
 #### B. Shared premium PBR materials and refinery surface detail
 
-- [ ] **P28-B0 — Add textured PBR support to the deterministic GLB build path** — Extend the current generated-asset pipeline (or replace its source boundary) so premium assets can carry UV0/tangents plus local base-color, normal, packed ORM, and emissive textures through glTF/Babylon instead of being limited to factor-only cube materials. Keep generation/rebuild deterministic and compatible with local KTX2 packaging. **Done when:** a committed reference asset generated through the production preparation path loads in Babylon with verified normal/ORM/emissive texture response, rebuilds do not discard the premium source, content/codec tests cover the path, and standard build/APK gates pass.
 
 - [ ] **P28-B1 — Build a reusable premium PBR surface library** — Add a shared set of authored hard-sci-fi materials (painted metal, bare metal, deck plate, polymer/rubber, emissive fixture) using glTF/Babylon metallic-roughness conventions with normal + packed ORM detail and local KTX2 compression. Select texture resolution from visible need rather than legacy mobile caps. **Done when:** the material set is visibly rich at gameplay zoom, shared where useful, supports mipmapped/KTX2 delivery, content/codec tests cover the new assets, and standard build/APK gates pass.
 
