@@ -19,55 +19,45 @@ jobs:
         with:
           ref: p28-b3-refinery-cover-crate-pbr
 
-      - name: Update active roadmap and archive
-        shell: bash
+      - name: Archive verified completion
+        shell: python
         run: |
-          python3 - <<'PY'
           from pathlib import Path
 
           roadmap_path = Path('docs/content-roadmap.md')
           roadmap = roadmap_path.read_text()
-          completed = """- [ ] **P28-B3 — Apply P28 materials to refinery cover and crates.**
-            - Scope: move cover and crate surfaces off generic flat materials.
-            - Acceptance: painted/bare-metal/polymer separation is intentional and readable at gameplay zoom.
-            - Acceptance: simulation dimensions and readability remain unchanged.
-            - Acceptance: standard build/APK gates pass.
-          """
-          if roadmap.count(completed) != 1:
-              raise SystemExit('P28-B3 active roadmap block was not found exactly once')
-          roadmap = roadmap.replace(completed, '')
+          lines = roadmap.splitlines(keepends=True)
+          kept = []
+          removed = 0
+          for line in lines:
+              if line.startswith('- [ ] **P28-B3 — Apply P28 materials to refinery cover and crates**'):
+                  removed += 1
+                  continue
+              kept.append(line)
+          if removed != 1:
+              raise SystemExit(f'expected exactly one active P28-B3 line, removed={removed}')
+          roadmap = ''.join(kept)
+          if '- [ ] **P28-B4 — Apply P28 materials to refinery machinery**' not in roadmap:
+              raise SystemExit('P28-B4 must remain the next active machinery item')
           roadmap_path.write_text(roadmap)
 
           archive_path = Path('docs/content-roadmap-archive.md')
           archive = archive_path.read_text()
-          anchor = '### P28-B2 — Upgrade refinery floor, grating, bulkhead, and wall geometry for proper PBR textures — COMPLETE\n'
-          if archive.count(anchor) != 1:
-              raise SystemExit('P28-B2 archive anchor was not found exactly once')
-          entry = """### P28-B3 — Apply P28 materials to refinery cover and crates — COMPLETE
+          if '**P28-B3 — Apply P28 materials to refinery cover and crates**' in archive:
+              raise SystemExit('P28-B3 is already archived')
+          anchor = '## P28 — Babylon flagship visual-quality overhaul\n\n'
+          if anchor not in archive:
+              raise SystemExit('P28 archive heading not found')
+          entry = '''- [x] **P28-B3 — Apply P28 materials to refinery cover and crates** — Applied the shared P28 premium PBR language to refinery cover and crates while preserving simulation-owned dimensions, placement, interaction behavior, and near-player cover readability.\n  - Extended `scripts/prepare-refinery-premium-surfaces.mjs` so both refinery crate LOD1/LOD2 GLBs receive deterministic UV0/tangent geometry for premium normal mapping without changing unit bounds or authored shell/band/marker transforms. Crate runtime binding now separates painted metal, bare metal, and polymer/rubber and exposes `crate:bare-metal+painted-metal+polymer-rubber` telemetry.\n  - Upgraded refinery cover presentation in `BabylonRefineryWorldPresentation`: the simulation-sized cover body uses painted metal with a bare-metal cap and polymer/rubber bumpers only in the Asteroid Refinery presentation. Existing simulation footprint sizing and near-player transparency remain authoritative and unchanged.\n  - Added `tests/refinery-cover-crate-premium-surfaces.mjs`, extended the existing premium-surface regression and authored-refinery live verifier, and preserved shared-world source contracts across non-refinery Babylon locations. Targeted B3 material validation and TypeScript checks passed before full verification.\n  - Exact code candidate `262794776194e59ddb026ad9fb4a3af389469930` passed Browser E2E run `37477447179` on desktop and mobile-landscape, including the full repository regression/production build and live player journeys. Build Android APK run `37477446982` passed. PR Android APK run `37477446926` passed full repository verification, native Android generation, APK build/sign/delivery checks, API 35 product smoke, API 36 Android 16 large-screen smoke, and aggregate Android verification.\n  - Verified PR artifact `ironshade-vector-pr-android-apk` (artifact `11420176236`) has artifact digest `sha256:5918eca99c188052810cb68fe4bfd427bfdf14d63385d47d79fb624cf5e31e3a`. `Ironshade-Vector-Android-Debug.apk` is 10,256,999 bytes, package `app.ironshade.vector`, version `0.0.1-pr.61 (61)`, min SDK 24 / target+compile SDK 36, APK Signature Scheme v2 verified, signer SHA-256 `30312cc99d73e73bdf47a03a378e43a672aa85ee454dc1f0c505d25686406817`, and APK SHA-256 `8c7e41f20eb1e29e48be788c7e43e8a37dcd9e1fbeb6f0351cb4f99e6d8ba415`.\n  - **Next: P28-B4 — Apply P28 materials to refinery machinery.**\n\n'''
+          archive_path.write_text(archive.replace(anchor, anchor + entry, 1))
 
-**Status:** Complete on 2026-10-06.
-
-**Implemented:**
-- Upgraded both refinery crate LODs with deterministic UV/tangent geometry while preserving authored transforms and gameplay bounds.
-- Bound crate shell, structural banding, and marker slots to the shared P28 painted-metal, bare-metal, and polymer/rubber material library.
-- Added refinery-only premium cover presentation using painted metal, a bare-metal cap, and polymer/rubber bumpers while preserving simulation-owned footprint dimensions and near-player transparency/readability behavior.
-- Extended refinery premium-surface telemetry and live verification to require crate material separation plus at least one rendered premium cover.
-- Added focused regression coverage for crate LOD geometry/material slots and the cover premium-surface/readability contract.
-
-**Validated:**
-- Targeted asset preparation, refinery premium-surface tests, P28-B3 cover/crate contract test, and TypeScript checks passed.
-- Browser E2E run `37477447179` passed full regression/build plus headed desktop and mobile-landscape player journeys.
-- PR Android run `37477446926` passed full repository verification, installable debug APK build, API 35 product smoke, API 36 large-screen smoke, and aggregate Android PR verification.
-- Verified APK artifact: `ironshade-vector-pr-android-apk`; debug APK size `82,532,612` bytes; SHA-256 `8c7e41f20eb1e29e48be788c7e43e8a37dcd9e1fbeb6f0351cb4f99e6d8ba415`.
-
-**Expected next active item:** P28-B4 — Apply P28 materials to breach objects and wreck chunks.
-
----
-
-"""
-          archive = archive.replace(anchor, entry + anchor)
-          archive_path.write_text(archive)
-          PY
+      - name: Verify roadmap hygiene
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -q '^\- \[ \] \*\*P28-B3' docs/content-roadmap.md
+          grep -q '^\- \[ \] \*\*P28-B4 — Apply P28 materials to refinery machinery\*\*' docs/content-roadmap.md
+          grep -q '^\- \[x\] \*\*P28-B3 — Apply P28 materials to refinery cover and crates\*\*' docs/content-roadmap-archive.md
 
       - name: Commit closeout
         shell: bash
@@ -77,5 +67,5 @@ jobs:
           git add docs/content-roadmap.md docs/content-roadmap-archive.md
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'Archive completed P28-B3 roadmap item'
+          git commit -m 'Archive verified P28-B3 completion [skip ci]'
           git push origin HEAD:p28-b3-refinery-cover-crate-pbr
