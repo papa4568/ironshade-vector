@@ -304,6 +304,7 @@ export const REFINERY_ASSET_FAMILIES = {
   floor: {
     id: 'refinery-floor-panel',
     lods: {
+      0: createGraphicsAssetSpec('refinery-floor-panel-lod0', 'environment-module', '/assets/models/environments/refinery-floor-panel-lod0.glb', 0),
       1: createGraphicsAssetSpec('refinery-floor-panel-lod1', 'environment-module', '/assets/models/environments/refinery-floor-panel-lod1.glb', 1),
       2: createGraphicsAssetSpec('refinery-floor-panel-lod2', 'environment-module', '/assets/models/environments/refinery-floor-panel-lod2.glb', 2),
     },
@@ -311,6 +312,7 @@ export const REFINERY_ASSET_FAMILIES = {
   floorGrate: {
     id: 'refinery-floor-service-grate',
     lods: {
+      0: createGraphicsAssetSpec('refinery-floor-service-grate-lod0', 'environment-module', '/assets/models/environments/refinery-floor-service-grate-lod0.glb', 0),
       1: createGraphicsAssetSpec('refinery-floor-service-grate-lod1', 'environment-module', '/assets/models/environments/refinery-floor-service-grate-lod1.glb', 1),
       2: createGraphicsAssetSpec('refinery-floor-service-grate-lod2', 'environment-module', '/assets/models/environments/refinery-floor-service-grate-lod2.glb', 2),
     },
