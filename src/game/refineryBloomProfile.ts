@@ -29,5 +29,5 @@ export function refineryBloomStrengthForCost(value: number) {
 }
 
 export function isRefineryBloomAssetLabel(label: string) {
-  return label === 'refinery-terminal' || label === 'refinery-processor';
+  return ['refinery-terminal', 'refinery-processor', 'refinery-pipe-rack', 'refinery-cable-tray', 'refinery-service-conduit', 'refinery-smelter-gantry'].includes(label);
 }

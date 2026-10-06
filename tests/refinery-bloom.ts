@@ -7,7 +7,7 @@ assert(REFINERY_BLOOM_PROFILE.radius > 0 && REFINERY_BLOOM_PROFILE.radius < 0.5,
 assert(clampRefineryBloomCostScale(-1) === 0 && clampRefineryBloomCostScale(2) === 1, 'bloom cost must clamp to 0..1');
 assert(refineryBloomResolutionScale(0) === 0 && refineryBloomResolutionScale(0.35) < refineryBloomResolutionScale(1), 'bloom resolution cost must degrade predictably');
 assert(refineryBloomStrengthForCost(0.35) < refineryBloomStrengthForCost(1), 'reduced cost must reduce secondary glow strength');
-assert(isRefineryBloomAssetLabel('refinery-terminal') && isRefineryBloomAssetLabel('refinery-processor'), 'authored emissives must remain explicit bloom sources');
+for (const source of ['refinery-terminal', 'refinery-processor', 'refinery-pipe-rack', 'refinery-cable-tray', 'refinery-service-conduit', 'refinery-smelter-gantry']) assert(isRefineryBloomAssetLabel(source), `authored machinery emissive must remain an explicit bloom source: ${source}`);
 for (const excluded of ['refinery-floor', 'refinery-bulkhead', 'refinery-crate', 'objective', 'loot', 'hazard', 'interactable', 'enemy']) assert(!isRefineryBloomAssetLabel(excluded), `protected/non-emissive source leaked into bloom selection: ${excluded}`);
 const postSource = readFileSync(resolve(process.cwd(), 'src/game/babylonRefineryPostProcessing.ts'), 'utf8');
 const browserSmokeSource = readFileSync(resolve(process.cwd(), 'scripts/browser-runtime-smoke.mjs'), 'utf8');

@@ -34,7 +34,7 @@ const REFINERY_BASELINE_FOG = 0x0b0805;
 const REFINERY_SSAO_PIPELINE_NAME = 'p28-a3-refinery-ssao2';
 const REFINERY_SSAO_RATIO = Object.freeze({ ssaoRatio: 0.72, blurRatio: 1 });
 const PROTECTED_BLOOM_NAME = /(enemy|telegraph|phase-cue|hazard|objective|loot|interactable|protocol|status|lifecycle|target|health|armor|guide)/i;
-const REFINERY_BLOOM_SOURCE_NAME = /(refinery-(terminal|processor)|p27-b6-muzzle-(flash|core))/i;
+const REFINERY_BLOOM_SOURCE_NAME = /(refinery-(terminal|processor|pipe|cable-tray|service-conduit|smelter-gantry)|p27-b6-muzzle-(flash|core))/i;
 const CONTACT_POINTS = Object.freeze([
   [0.29, 0.67, 1.00, 0.72],
   [0.50, 0.26, 1.16, 0.84],
@@ -261,7 +261,7 @@ export class BabylonRefineryPostProcessing {
         + ':kernel-' + budget.bloomKernelSize
         + ':cost-' + renderBudget.refineryBloomScale.toFixed(2)
       : qaStackDisabled ? 'off:qa-baseline' : sourceCount === 0 ? 'off:awaiting-authored-emissives' : 'off:adaptive-budget';
-    this.canvas.dataset.environmentBloomSources = 'babylon-included:' + sourceCount + '+authored:processor+terminal+muzzle';
+    this.canvas.dataset.environmentBloomSources = 'babylon-included:' + sourceCount + '+authored:processor+terminal+pipe+cable-tray+service-conduit+gantry+muzzle';
     this.canvas.dataset.environmentBloomExcluded = REFINERY_BLOOM_PROFILE.excludedCueGroups.join('+');
     this.canvas.dataset.environmentBloomCost = renderBudget.refineryBloomScale.toFixed(2);
 

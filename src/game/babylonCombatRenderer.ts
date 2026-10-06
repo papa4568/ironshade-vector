@@ -107,25 +107,79 @@ const REFINERY_PREMIUM_SURFACE_ASSIGNMENTS: Partial<Record<RefineryFamilyKey, Re
     'refinery-structural': 'painted-metal',
     'refinery-shell': 'painted-metal',
   },
+  processor: {
+    'refinery-structural': 'painted-metal',
+    'refinery-shell': 'bare-metal',
+    'refinery-hazard-emissive': 'emissive-fixture',
+    'refinery-screen-emissive': 'emissive-fixture',
+  },
+  pipeRack: {
+    'refinery-structural': 'painted-metal',
+    'refinery-shell': 'bare-metal',
+    'refinery-hazard-emissive': 'emissive-fixture',
+    'refinery-screen-emissive': 'emissive-fixture',
+  },
   wallPanel: {
     'refinery-structural': 'bare-metal',
     'refinery-shell': 'painted-metal',
+  },
+  cableTray: {
+    'refinery-structural': 'painted-metal',
+    'refinery-shell': 'bare-metal',
+    'refinery-hazard-emissive': 'emissive-fixture',
+    'refinery-screen-emissive': 'emissive-fixture',
+  },
+  serviceConduit: {
+    'refinery-structural': 'painted-metal',
+    'refinery-shell': 'bare-metal',
+    'refinery-hazard-emissive': 'emissive-fixture',
+    'refinery-screen-emissive': 'emissive-fixture',
+  },
+  gantry: {
+    'refinery-structural': 'painted-metal',
+    'refinery-shell': 'bare-metal',
+    'refinery-hazard-emissive': 'emissive-fixture',
+    'refinery-screen-emissive': 'emissive-fixture',
   },
   crate: {
     'refinery-structural': 'bare-metal',
     'refinery-shell': 'painted-metal',
     'refinery-hazard-emissive': 'polymer-rubber',
   },
+  terminal: {
+    'refinery-structural': 'painted-metal',
+    'refinery-shell': 'bare-metal',
+    'refinery-hazard-emissive': 'emissive-fixture',
+    'refinery-screen-emissive': 'emissive-fixture',
+  },
 };
-const REFINERY_PREMIUM_SURFACE_ORDER: readonly RefineryFamilyKey[] = ['floor', 'floorGrate', 'bulkhead', 'wallPanel', 'crate'];
+const REFINERY_PREMIUM_SURFACE_ORDER: readonly RefineryFamilyKey[] = [
+  'floor',
+  'floorGrate',
+  'bulkhead',
+  'processor',
+  'pipeRack',
+  'wallPanel',
+  'cableTray',
+  'serviceConduit',
+  'gantry',
+  'crate',
+  'terminal',
+];
 const REFINERY_PREMIUM_SURFACE_LABELS: Partial<Record<RefineryFamilyKey, string>> = {
   floor: 'floor',
   floorGrate: 'floor-grate',
   bulkhead: 'bulkhead',
+  processor: 'processor',
+  pipeRack: 'pipe-rack',
   wallPanel: 'wall-panel',
+  cableTray: 'cable-tray',
+  serviceConduit: 'service-conduit',
+  gantry: 'gantry',
   crate: 'crate',
+  terminal: 'terminal',
 };
-const REFINERY_PREMIUM_SURFACE_TELEMETRY = 'floor:bare-metal+deck-plate|floor-grate:bare-metal+painted-metal|bulkhead:painted-metal|wall-panel:bare-metal+painted-metal|crate:bare-metal+painted-metal+polymer-rubber';
+const REFINERY_PREMIUM_SURFACE_TELEMETRY = 'floor:bare-metal+deck-plate|floor-grate:bare-metal+painted-metal|bulkhead:painted-metal|processor:bare-metal+emissive-fixture+painted-metal|pipe-rack:bare-metal+emissive-fixture+painted-metal|wall-panel:bare-metal+painted-metal|cable-tray:bare-metal+emissive-fixture+painted-metal|service-conduit:bare-metal+emissive-fixture+painted-metal|gantry:bare-metal+emissive-fixture+painted-metal|crate:bare-metal+painted-metal+polymer-rubber|terminal:bare-metal+emissive-fixture+painted-metal';
 
 function premiumSurfaceTelemetry(usage: Map<RefineryFamilyKey, Set<PremiumPbrSurfaceId>>) {
   return REFINERY_PREMIUM_SURFACE_ORDER.map(key => {
@@ -2120,7 +2174,7 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
 
       const premiumSurfaces = premiumSurfaceTelemetry(premiumSurfaceUsage);
       if (premiumSurfaces !== REFINERY_PREMIUM_SURFACE_TELEMETRY) {
-        throw new Error(`Incomplete P28-B2/B3 premium surface binding: ${premiumSurfaces || 'none'}`);
+        throw new Error(`Incomplete P28-B2/B3/B4 premium surface binding: ${premiumSurfaces || 'none'}`);
       }
 
       this.refineryAssetInstances.push(...mountedInstances);
