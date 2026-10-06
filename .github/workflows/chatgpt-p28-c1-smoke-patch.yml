@@ -1,0 +1,50 @@
+name: ChatGPT P28-C1 Smoke Patch
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-smoke-contract:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'chatgpt/p28-c1-refinery-floor-lod0'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Patch refinery LOD QA contract
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('scripts/browser-runtime-smoke.mjs')
+          text = path.read_text()
+          anchor = "  const refineryLods = String(state.environmentLod).split(',').filter(Boolean);\n"
+          insertion = anchor + "  const refineryLodsSupported = refineryLods.length >= 1\n    && refineryLods.every(value => value === '0' || value === '1' || value === '2');\n  const refineryFlagshipLodPresent = state.renderTier !== 'high' || refineryLods.includes('0');\n"
+          stale = "    || refineryLods.length < 1\n    || !refineryLods.every(value => value === '1' || value === '2')\n"
+          replacement = "    || !refineryLodsSupported\n    || !refineryFlagshipLodPresent\n"
+
+          if text.count(anchor) != 1:
+              raise SystemExit(f'expected one refineryLods anchor, found {text.count(anchor)}')
+          if text.count(stale) != 1:
+              raise SystemExit(f'expected one stale refinery LOD assertion, found {text.count(stale)}')
+
+          text = text.replace(anchor, insertion, 1).replace(stale, replacement, 1)
+          path.write_text(text)
+
+      - name: Commit source patch
+        run: |
+          if git diff --quiet -- scripts/browser-runtime-smoke.mjs; then
+            echo "Smoke contract already patched."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/browser-runtime-smoke.mjs
+          git commit -m "test: accept flagship refinery lod0 telemetry"
+          git push origin HEAD:chatgpt/p28-c1-refinery-floor-lod0
