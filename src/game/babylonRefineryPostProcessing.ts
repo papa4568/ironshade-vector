@@ -278,10 +278,12 @@ export class BabylonRefineryPostProcessing {
       : qaStackDisabled ? 'off:qa-baseline' : 'off:adaptive-budget';
     this.canvas.dataset.environmentAtmosphereProtected = REFINERY_ATMOSPHERE_PROFILE.protectedCueGroups.join('+');
 
+    // Preserve the P27 telemetry contract exactly; P28 publishes the grade
+    // identity separately while the runtime values remain available here.
     this.canvas.dataset.environmentPostTone = 'aces-exposure-'
-      + this.scene.imageProcessingConfiguration.exposure.toFixed(3)
-      + '+contrast-' + this.scene.imageProcessingConfiguration.contrast.toFixed(3)
-      + '+grade-' + REFINERY_ATMOSPHERE_PROFILE.gradeId;
+      + this.scene.imageProcessingConfiguration.exposure.toFixed(2)
+      + '+contrast-' + this.scene.imageProcessingConfiguration.contrast.toFixed(2);
+    this.canvas.dataset.environmentImageGrade = REFINERY_ATMOSPHERE_PROFILE.gradeId;
     this.canvas.dataset.environmentP21Budget = [
       'tier:' + renderBudget.tierName,
       'ibl:' + renderBudget.refineryIblScale.toFixed(2),
@@ -329,6 +331,7 @@ export class BabylonRefineryPostProcessing {
       'environmentAtmosphere',
       'environmentAtmosphereProtected',
       'environmentPostTone',
+      'environmentImageGrade',
       'environmentP21Budget',
       'effectPriority',
       'babylonPostBudget',
