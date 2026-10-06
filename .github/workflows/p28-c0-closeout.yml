@@ -1,0 +1,56 @@
+name: P28 C0 closeout
+
+on:
+  push:
+    branches:
+      - p28-c0-hard-surface-authoring
+    paths:
+      - .github/workflows/p28-c0-closeout.yml
+
+permissions:
+  contents: write
+
+jobs:
+  closeout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Move P28-C0 from active roadmap to archive
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          roadmap = Path('docs/content-roadmap.md')
+          text = roadmap.read_text()
+          prefix = '- [ ] **P28-C0 — Add reusable non-box hard-surface geometry support to asset authoring**'
+          lines = text.splitlines(keepends=True)
+          matches = [index for index, line in enumerate(lines) if line.startswith(prefix)]
+          if len(matches) != 1:
+              raise SystemExit(f'expected exactly one active P28-C0 item, found {len(matches)}')
+          del lines[matches[0]]
+          roadmap.write_text(''.join(lines))
+
+          archive = Path('docs/content-roadmap-archive.md')
+          archived = archive.read_text()
+          marker = '- [x] **P28-C0 — Add reusable non-box hard-surface geometry support to asset authoring**'
+          if marker in archived:
+              raise SystemExit('P28-C0 is already archived')
+          heading = '## P28 — Babylon flagship visual-quality overhaul\n\n'
+          if heading not in archived:
+              raise SystemExit('P28 archive heading not found')
+          entry = '''- [x] **P28-C0 — Add reusable non-box hard-surface geometry support to asset authoring** — added deterministic non-box hard-surface primitives to the production asset-authoring path without changing collision, route clearance, combat simulation, or existing LOD1/LOD2 recovery assets.\n  - Added `scripts/lib/hard-surface-geometry.mjs` with reusable chamfered-solid, segmented cylinder/pipe, wedge extrusion, and inset/recessed-panel helpers. Each helper emits indexed positions, generated normals, UV0, unit orthogonal tangents, stable bounds, and deterministic feature telemetry.\n  - Added `scripts/prepare-refinery-hard-surface-reference.mjs` and wired it through `scripts/prepare-refinery-premium-surfaces.mjs`, so normal graphics preparation emits `public/assets/models/environments/refinery-processor-hard-surface-reference-lod0.glb`. The reference contains four visibly non-box meshes, an identity `environment-root`, a grounded identity processor core, and painted-metal / bare-metal / dark-polymer / emissive-fixture material slots.\n  - Added `tests/refinery-hard-surface-authoring.mjs` and wired it into the existing refinery machinery graphics-content gate. Coverage verifies non-box shape evidence, indexed POSITION/NORMAL/TANGENT/TEXCOORD_0 payloads, unit/orthogonal tangent space, UV0, material mapping, bounds, pivot stability, and byte-for-byte deterministic rebuild identity.\n  - Exact implementation head `889c48f5ed3693b70b9624251514b189cd5fce93` passed Browser E2E run `37526051072` on desktop and mobile-landscape, including the full regression/production build and live player journeys. Android PR Verification run `37526051011` passed full repository verification, native Android generation, APK build/sign/delivery, API 35 product smoke, API 36 large-screen smoke, and aggregate Android verification.\n  - Deterministic content evidence: `REFINERY_HARD_SURFACE_AUTHORING_PASS path=environments/refinery-processor-hard-surface-reference-lod0.glb features=chamfered-solid+cylinder-pipe+wedge-extrusion+inset-panel meshes=4 materials=4 bytes=27524`; the aggregate graphics gate reports the generated reference as `148t`.\n  - Verified PR artifact `ironshade-vector-pr-android-apk` (artifact `11442019033`, artifact digest `sha256:3c3ed370ded3706adc9f7b16ba8114f7970509c119130d33a3dce65fa6f15a7d`) contains `Ironshade-Vector-Android-Debug.apk` (10,314,763 bytes; package `app.ironshade.vector`; version `0.0.1-pr.89 (89)`; min SDK 24; target SDK 36; APK Signature Scheme v2 verified; signer SHA-256 `c5e1a5109635e3a858a9cea53b6a187754aaf1f1181bf6f1992418b9766b4bb2`; APK SHA-256 `d8b1667c4aab735965ae6215f55ec34deef220e3eb53a57037f2879be0ea9a89`).\n  - **Next: P28-C1 — Add LOD0 refinery floor modules.**\n\n'''
+          archive.write_text(archived.replace(heading, heading + entry, 1))
+          PY
+      - name: Commit roadmap closeout and remove temporary workflow
+        shell: bash
+        run: |
+          rm .github/workflows/p28-c0-closeout.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/content-roadmap.md docs/content-roadmap-archive.md .github/workflows/p28-c0-closeout.yml
+          git diff --cached --check
+          git commit -m "P28-C0 archive verified hard-surface authoring"
+          git push origin HEAD:p28-c0-hard-surface-authoring
