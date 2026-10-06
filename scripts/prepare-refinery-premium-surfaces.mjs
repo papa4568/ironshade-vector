@@ -11,6 +11,8 @@ export const REFINERY_PREMIUM_SURFACE_TARGETS = [
   { family: 'bulkhead', relativePath: 'environments/refinery-bulkhead-lod2.glb' },
   { family: 'wallPanel', relativePath: 'environments/refinery-wall-service-panel-lod1.glb' },
   { family: 'wallPanel', relativePath: 'environments/refinery-wall-service-panel-lod2.glb' },
+  { family: 'crate', relativePath: 'environments/refinery-crate-lod1.glb' },
+  { family: 'crate', relativePath: 'environments/refinery-crate-lod2.glb' },
 ];
 
 function bytes(view) {

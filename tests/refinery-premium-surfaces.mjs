@@ -29,12 +29,14 @@ const requiredNodeByFamily = {
   floorGrate: 'refinery-floor-service-grate',
   bulkhead: 'refinery-bulkhead-left',
   wallPanel: 'refinery-wall-service-panel-shell',
+  crate: 'refinery-crate-shell',
 };
 const expectedNodeTransforms = {
   'refinery-floor-panel': { translation: [0, 0.03, 0], scale: [3.8, 0.08, 3.8] },
   'refinery-floor-service-grate': { translation: [0, 0.035, 0], scale: [3.8, 0.07, 3.8] },
   'refinery-bulkhead-left': { translation: [0, 1.45, -1.75], scale: [0.44, 2.9, 0.38] },
   'refinery-wall-service-panel-shell': { translation: [0, 1.28, 0], scale: [0.18, 2.56, 2.75] },
+  'refinery-crate-shell': { translation: [0, 0.42, 0], scale: [1.05, 0.84, 0.82] },
 };
 
 for (const target of REFINERY_PREMIUM_SURFACE_TARGETS) {
@@ -74,9 +76,9 @@ for (const target of REFINERY_PREMIUM_SURFACE_TARGETS) {
 
 const rendererSource = await readFile(resolve(process.cwd(), 'src/game/babylonCombatRenderer.ts'), 'utf8');
 const verifierSource = await readFile(resolve(process.cwd(), 'scripts/verify-authored-refinery.mjs'), 'utf8');
-const expectedTelemetry = 'floor:bare-metal+deck-plate|floor-grate:bare-metal+painted-metal|bulkhead:painted-metal|wall-panel:bare-metal+painted-metal';
+const expectedTelemetry = 'floor:bare-metal+deck-plate|floor-grate:bare-metal+painted-metal|bulkhead:painted-metal|wall-panel:bare-metal+painted-metal|crate:bare-metal+painted-metal+polymer-rubber';
 assert(rendererSource.includes(expectedTelemetry), 'Babylon refinery renderer is missing the B2 premium-surface telemetry contract');
-for (const surface of ['deck-plate', 'bare-metal', 'painted-metal']) {
+for (const surface of ['deck-plate', 'bare-metal', 'painted-metal', 'polymer-rubber']) {
   assert(rendererSource.includes(`'${surface}'`), `Babylon refinery renderer does not bind ${surface}`);
 }
 assert(rendererSource.includes('normal+roughness+metalness:shared-premium-pbr'), 'Babylon refinery renderer is missing material-detail telemetry');
