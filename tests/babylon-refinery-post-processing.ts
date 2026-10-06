@@ -17,6 +17,7 @@ const balancedSnapshot = new AdaptiveRenderBudget(false).sample(1000 / 60, 0.72,
 const performanceSnapshot = new AdaptiveRenderBudget(false).sample(1000 / 60, 0.5, 'performance');
 
 const high = resolveBabylonRefineryPostProcessingBudget(highSnapshot);
+const highLowVisibility = resolveBabylonRefineryPostProcessingBudget(highSnapshot, true);
 const balanced = resolveBabylonRefineryPostProcessingBudget(balancedSnapshot);
 const performance = resolveBabylonRefineryPostProcessingBudget(performanceSnapshot);
 
@@ -44,7 +45,11 @@ assert.equal(balanced.atmosphereEnabled, true);
 assert.equal(performance.atmosphereEnabled, false);
 assert(high.atmosphereNear < balanced.atmosphereNear && balanced.atmosphereNear < performance.atmosphereNear);
 assert(high.atmosphereFar < balanced.atmosphereFar && balanced.atmosphereFar < performance.atmosphereFar);
-assert(high.exposureScale < balanced.exposureScale && balanced.exposureScale < performance.exposureScale);
+assert(high.exposureScale > balanced.exposureScale && balanced.exposureScale > performance.exposureScale);
+assert(high.exposureScale > 1 && high.exposureScale <= 1.055);
+assert(highLowVisibility.exposureScale > high.exposureScale && highLowVisibility.exposureScale <= 1.08);
+assert(high.contrast < balanced.contrast && balanced.contrast < performance.contrast);
+assert(highLowVisibility.contrast < high.contrast && highLowVisibility.contrast >= 0.965);
 assert.equal(performance.gameplayCueScale, 1, 'Performance must preserve gameplay-critical cue strength.');
 
 for (const source of [
@@ -96,10 +101,29 @@ assert.equal(
 
 const runtimeEngine = new NullEngine({ renderWidth: 640, renderHeight: 360 });
 const runtimeScene = new Scene(runtimeEngine);
-runtimeScene.activeCamera = new FreeCamera('p28-a3-test-camera', new Vector3(0, 8, 8), runtimeScene);
+runtimeScene.imageProcessingConfiguration.exposure = 1.02;
+runtimeScene.imageProcessingConfiguration.contrast = 1;
+runtimeScene.activeCamera = new FreeCamera('p28-a5-test-camera', new Vector3(0, 8, 8), runtimeScene);
 const runtimeCanvas = { dataset: { graphicsPathSelection: 'qa-explicit' } } as unknown as HTMLCanvasElement;
 const runtimePost = new BabylonRefineryPostProcessing(runtimeScene, runtimeCanvas);
 runtimePost.sync(false, highSnapshot);
+const normalExposure = runtimeScene.imageProcessingConfiguration.exposure;
+const normalContrast = runtimeScene.imageProcessingConfiguration.contrast;
+assert(normalExposure > 1.02 && normalExposure <= 1.02 * 1.055 + 1e-6, 'Flagship grade must lift dark values without unbounded exposure.');
+assert(normalContrast < 1 && normalContrast >= 0.985, 'Flagship grade must ease contrast instead of crushing shadows.');
+assert.match(runtimeCanvas.dataset.environmentPostTone ?? '', /^aces-exposure-\d+\.\d{3}\+contrast-\d+\.\d{3}\+grade-p28-a5-dark-separation-v1$/);
+
+runtimePost.sync(false, highSnapshot);
+assert.equal(runtimeScene.imageProcessingConfiguration.exposure, normalExposure, 'Repeated post sync must not compound exposure.');
+assert.equal(runtimeScene.imageProcessingConfiguration.contrast, normalContrast, 'Repeated post sync must not compound contrast.');
+
+runtimePost.sync(true, highSnapshot);
+const lowVisibilityExposure = runtimeScene.imageProcessingConfiguration.exposure;
+const lowVisibilityContrast = runtimeScene.imageProcessingConfiguration.contrast;
+assert(lowVisibilityExposure > normalExposure && lowVisibilityExposure <= 1.02 * 1.08 + 1e-6, 'Low-visibility grade must reveal dark form while staying bounded.');
+assert(lowVisibilityContrast < normalContrast && lowVisibilityContrast >= 0.965, 'Low-visibility contrast must preserve additional dark-value separation.');
+assert.match(runtimeCanvas.dataset.environmentAtmosphere ?? '', /exposure-1\.080:contrast-0\.965:grade-p28-a5-dark-separation-v1$/);
+
 assert.match(runtimeCanvas.dataset.environmentSsao2 ?? '', /^(primary:refinery-ssao2-v1:|off:unsupported\+fallback-contact$)/);
 if (runtimeCanvas.dataset.environmentSsao2?.startsWith('primary:')) {
   assert.match(runtimeCanvas.dataset.environmentContactDepth ?? '', /^grounding:refinery-contact-grounding-v1:instances-0:.*:fallback-idle:ssao2-primary$/);
@@ -117,18 +141,26 @@ runtimePost.sync(false, highSnapshot);
 assert.equal(runtimeCanvas.dataset.environmentSsao2, 'off:qa-baseline');
 assert.equal(runtimeCanvas.dataset.environmentContactDepth, 'off:qa-baseline');
 assert.equal(runtimeCanvas.dataset.babylonPostStack, 'off:qa-baseline');
+assert.equal(runtimeScene.imageProcessingConfiguration.exposure, 1.02, 'QA baseline must restore upstream exposure.');
+assert.equal(runtimeScene.imageProcessingConfiguration.contrast, 1, 'QA baseline must restore upstream contrast.');
 
 runtimeCanvas.dataset.refineryPostStackQa = 'on';
 runtimePost.sync(false, highSnapshot);
 assert.match(runtimeCanvas.dataset.environmentSsao2 ?? '', /^(primary:refinery-ssao2-v1:|off:unsupported\+fallback-contact$)/);
 assert.equal(runtimeCanvas.dataset.babylonPostStack, 'on:qa-explicit');
+assert.equal(runtimeScene.imageProcessingConfiguration.exposure, normalExposure, 'Re-enabling the stack must reproduce the same deterministic grade.');
+assert.equal(runtimeScene.imageProcessingConfiguration.contrast, normalContrast, 'Re-enabling the stack must reproduce the same deterministic contrast.');
 
 runtimePost.release('test-scenario-exit');
 assert.equal(runtimeCanvas.dataset.environmentSsao2, undefined);
 assert.equal(runtimeCanvas.dataset.babylonPostStack, undefined);
+assert.equal(runtimeScene.imageProcessingConfiguration.exposure, 1.02, 'Scenario exit must restore upstream exposure.');
+assert.equal(runtimeScene.imageProcessingConfiguration.contrast, 1, 'Scenario exit must restore upstream contrast.');
 runtimePost.sync(false, highSnapshot);
 assert.match(runtimeCanvas.dataset.environmentSsao2 ?? '', /^(primary:refinery-ssao2-v1:|off:unsupported\+fallback-contact$)/);
 assert.equal(runtimeCanvas.dataset.babylonPostStack, 'on:qa-explicit');
+assert.equal(runtimeScene.imageProcessingConfiguration.exposure, normalExposure, 'Scenario re-entry must reproduce the same deterministic exposure.');
+assert.equal(runtimeScene.imageProcessingConfiguration.contrast, normalContrast, 'Scenario re-entry must reproduce the same deterministic contrast.');
 runtimePost.dispose();
 runtimeScene.dispose();
 runtimeEngine.dispose();
@@ -160,7 +192,10 @@ assert.match(postSource, /this\.glow\.addIncludedOnlyMesh\(mesh\)/);
 assert.match(postSource, /RawTexture\.CreateRGBATexture\(/);
 assert.match(postSource, /source\.createInstance\('p27-b12-refinery-contact-'/);
 assert.match(postSource, /Scene\.FOGMODE_LINEAR/);
-assert.match(postSource, /imageProcessingConfiguration\.contrast/);
+assert.match(postSource, /refineryAtmosphereContrast\(lowVisibility, budget\.refineryAtmosphereScale\)/);
+assert.match(postSource, /this\.captureUpstreamImageProcessing\(\)/);
+assert.match(postSource, /this\.restoreUpstreamImageProcessing\(\)/);
+assert.match(postSource, /grade-' \+ REFINERY_ATMOSPHERE_PROFILE\.gradeId/);
 assert.match(postSource, /dataset\.refineryPostStackQa === 'off'/);
 assert.match(postSource, /critical:hazards\+telegraphs\+class-cues@/);
 assert.match(postSource, /environmentP21Budget/);
@@ -171,4 +206,5 @@ assert.match(browserSource, /p27b12-stack-on/);
 assert.match(browserSource, /pngByteDifferenceRatio/);
 assert.match(packageSource, /test:babylon-refinery-post-processing/);
 
+console.log(`P28_A5_REFINERY_IMAGE_GRADE_PASS normal=exposure-${normalExposure.toFixed(3)}+contrast-${normalContrast.toFixed(3)} low-visibility=exposure-${lowVisibilityExposure.toFixed(3)}+contrast-${lowVisibilityContrast.toFixed(3)} repeat=stable release=restored cues=1.00 aces=bounded`);
 console.log('P28_A3_BABYLON_SSAO2_PASS primary=high+balanced fallback=performance-or-unsupported+mrt-missing samples=16>8>off cues=1.00 lifecycle=qa-off+on+release+reentry telemetry=p27-compatible captures=p27b12-stack-off+stack-on');
