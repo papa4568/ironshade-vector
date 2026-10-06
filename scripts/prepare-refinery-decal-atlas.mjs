@@ -362,7 +362,6 @@ export function upgradeRefineryDecalGlb(input, target) {
   const sampler = gltf.samplers.push({ name: 'p28-b5-refinery-decal-sampler', magFilter: 9729, minFilter: 9987, wrapS: 33071, wrapT: 33071 }) - 1;
   const image = gltf.images.push({ name: 'p28-b5-refinery-decal-atlas', uri: ATLAS_URI, mimeType: 'image/png' }) - 1;
   const texture = gltf.textures.push({ name: 'p28-b5-refinery-decal-atlas', sampler, source: image }) - 1;
-  gltf.extensionsUsed = [...new Set([...(gltf.extensionsUsed ?? []), 'KHR_materials_unlit'])];
   const material = gltf.materials.push({
     name: DECAL_MATERIAL_NAME,
     doubleSided: true,
@@ -373,7 +372,6 @@ export function upgradeRefineryDecalGlb(input, target) {
       metallicFactor: 0,
       roughnessFactor: 1,
     },
-    extensions: { KHR_materials_unlit: {} },
     extras: {
       ironshadeDetailLayer: 'P28-B5',
       atlas: REFINERY_DECAL_ATLAS.id,
