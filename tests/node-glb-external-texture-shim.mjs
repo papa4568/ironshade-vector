@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-const ATLAS_NAME = 'refinery-decal-trim-atlas.png';
+const ATLAS_NAME = 'refinery-decal-atlas.png';
 const ATLAS_PATH = resolve(process.cwd(), 'public/assets/models/environments', ATLAS_NAME);
 
 class NodeGlbXMLHttpRequest {
