@@ -56,14 +56,14 @@ for (const target of REFINERY_MACHINERY_PREMIUM_SURFACE_TARGETS) {
   assert(JSON.stringify(gltf.accessors?.[0]?.min) === JSON.stringify([-0.5, -0.5, -0.5]), `${target.relativePath}: position minimum changed`);
   assert(JSON.stringify(gltf.accessors?.[0]?.max) === JSON.stringify([0.5, 0.5, 0.5]), `${target.relativePath}: position maximum changed`);
   for (const mesh of gltf.meshes ?? []) {
-    if (mesh.name === 'p28-b5-refinery-detail-atlas') continue;
+    if (mesh.name === 'p28-b5-refinery-detail-atlas' || mesh.name === 'p28-b6-refinery-route-detail-atlas') continue;
     for (const primitive of mesh.primitives ?? []) {
       assert(primitive.attributes?.TANGENT === 2, `${target.relativePath}: TANGENT is missing`);
       assert(primitive.attributes?.TEXCOORD_0 === 3, `${target.relativePath}: TEXCOORD_0 is missing`);
       assert(primitive.indices === 4, `${target.relativePath}: index topology changed`);
     }
   }
-  const baseMaterials = (gltf.materials ?? []).map(material => material.name).filter(name => name !== 'refinery-detail-atlas');
+  const baseMaterials = (gltf.materials ?? []).map(material => material.name).filter(name => name !== 'refinery-detail-atlas' && name !== 'refinery-route-detail-atlas');
   assert(JSON.stringify(baseMaterials) === JSON.stringify(expectedMaterials), `${target.relativePath}: authored machinery material slots changed`);
   const expected = representativeNodes[target.family];
   const node = (gltf.nodes ?? []).find(candidate => candidate.name === expected.name);

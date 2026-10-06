@@ -129,7 +129,7 @@ function encodeGlb(gltf, binary) {
 
 export function upgradeRefineryPremiumSurfaceGlb(input, target) {
   const gltf = parseGlb(input, target.relativePath);
-  if (gltf.extras?.ironshadeP28B5DecalAtlas?.version === 1) return input;
+  if (gltf.extras?.ironshadeP28B5DecalAtlas?.version === 1 || gltf.extras?.ironshadeP28B6RouteDecals?.version === 1) return input;
   if (!Array.isArray(gltf.meshes) || gltf.meshes.length === 0) throw new Error(`${target.relativePath}: no meshes found`);
   const geometry = texturedCubeGeometry();
   const { binary, views } = packGeometry(geometry);
@@ -173,6 +173,8 @@ export async function writeRefineryPremiumSurfaceGeometry() {
   }
   const { writeRefineryDecalAtlas } = await import('./prepare-refinery-decal-atlas.mjs');
   await writeRefineryDecalAtlas();
+  const { writeRefineryRouteDecals } = await import('./prepare-refinery-route-decals.mjs');
+  await writeRefineryRouteDecals();
   console.log('[graphics] P28-B2/B4 premium refinery surface geometry ' + results.map(item => `${item.relativePath}=${item.bytes}b`).join(' '));
   return results;
 }
