@@ -66,6 +66,17 @@ function validateGeometry(geometry) {
   }
 }
 
+function assertOutwardFromInterior(geometry, interior) {
+  const vertices = geometry.positions.length / 3;
+  for (let vertex = 0; vertex < vertices; vertex += 1) {
+    const p = geometry.positions.subarray(vertex * 3, vertex * 3 + 3);
+    const n = geometry.normals.subarray(vertex * 3, vertex * 3 + 3);
+    const radial = [p[0] - interior[0], p[1] - interior[1], p[2] - interior[2]];
+    const facing = radial[0] * n[0] + radial[1] * n[1] + radial[2] * n[2];
+    assert(facing > 1e-5, `${geometry.feature}: normal ${vertex} points inward from the authored solid`);
+  }
+}
+
 const sourceGeometries = [
   createChamferedBoxGeometry(),
   createCylinderGeometry(),
@@ -74,6 +85,9 @@ const sourceGeometries = [
 ];
 assert(JSON.stringify(sourceGeometries.map(geometry => geometry.feature)) === JSON.stringify(HARD_SURFACE_REFERENCE_FEATURES), 'P28-C0 reusable feature registry changed');
 for (const geometry of sourceGeometries) validateGeometry(geometry);
+assertOutwardFromInterior(sourceGeometries[0], [0, 0.25, 0]);
+assertOutwardFromInterior(sourceGeometries[1], [0, 0.65, 0]);
+assertOutwardFromInterior(sourceGeometries[2], [-1.1 / 6, 0.68 / 3, 0]);
 assert(sourceGeometries[0].positions.some((value, index) => index % 3 === 0 && Math.abs(Math.abs(value) - 1.3) < 1e-5), 'Chamfered solid lost its outer silhouette');
 assert(sourceGeometries[1].positions.length / 3 >= 180, 'Cylinder/pipe support lost rounded segment density');
 assert(sourceGeometries[2].normals.some((value, index) => index % 3 === 1 && Math.abs(value) > 0.2 && Math.abs(value) < 0.95), 'Wedge support lost its non-orthogonal sloped normal');
