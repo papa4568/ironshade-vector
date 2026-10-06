@@ -144,7 +144,9 @@ try {
         throw new Error(`Authored Babylon refinery kit is incomplete: ${JSON.stringify(lastState)}`);
       }
       const lods = String(lastState.lod).split(',').filter(Boolean);
-      if (lods.length === 0 || !lods.every(value => value === '1' || value === '2')) {
+      const lodsSupported = lods.length > 0 && lods.every(value => value === '0' || value === '1' || value === '2');
+      const flagshipLodPresent = lastState.renderTier !== 'high' || lods.includes('0');
+      if (!lodsSupported || !flagshipLodPresent) {
         throw new Error(`Unexpected authored Babylon refinery LOD: ${JSON.stringify(lastState)}`);
       }
       if (lastState.instances < 40) {
