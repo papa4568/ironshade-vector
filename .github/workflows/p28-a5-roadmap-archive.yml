@@ -1,0 +1,54 @@
+name: P28-A5 Roadmap Archive
+
+on:
+  push:
+    branches:
+      - chatgpt/p28-a5-image-grade
+    paths:
+      - .github/workflows/p28-a5-roadmap-archive.yml
+
+permissions:
+  contents: write
+
+jobs:
+  archive:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v7
+        with:
+          ref: chatgpt/p28-a5-image-grade
+
+      - name: Move P28-A5 to archive
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          roadmap = Path('docs/content-roadmap.md')
+          archive = Path('docs/content-roadmap-archive.md')
+
+          item = '- [x] **P28-A5 — Re-grade exposure, contrast, and dark-value separation** — Recalibrate ACES/image processing after the new IBL/AO/shadow stack so dark materials retain visible form instead of collapsing into near-black while emissives and gameplay cues do not clip. **Done when:** deterministic Flagship captures retain readable floor/wall/character separation in dark and low-visibility rooms, emissive highlights remain controlled, and standard build/APK gates pass.\n\n'
+          roadmap_text = roadmap.read_text()
+          if item not in roadmap_text:
+              raise SystemExit('P28-A5 active roadmap item not found')
+          roadmap.write_text(roadmap_text.replace(item, '', 1))
+
+          archive_text = archive.read_text()
+          if '**P28-A5 — Re-grade exposure, contrast, and dark-value separation**' in archive_text:
+              raise SystemExit('P28-A5 already archived')
+          marker = '\n\n## P27 — Babylon.js renderer migration'
+          if marker not in archive_text:
+              raise SystemExit('P27 archive insertion marker not found')
+
+          entry = '''\n\n## P28 — Babylon flagship visual-quality overhaul\n\n- [x] **P28-A5 — Re-grade exposure, contrast, and dark-value separation** — Recalibrated the Babylon refinery image grade after the P28 IBL/AO/shadow upgrades so dark surfaces retain readable form in normal and low-visibility conditions without clipping emissives or gameplay cues.\n  - Reworked the refinery ACES/image-processing grade so normal Flagship exposure/contrast and the bounded low-visibility lift remain stable across repeated syncs, while restoring upstream image-processing state on QA bypass and scenario exit.\n  - Preserved the established P27 telemetry contract and surfaced the P28 grade ID separately so existing live QA remains compatible.\n  - Added deterministic normal and forced-low-visibility Flagship QA capture coverage. Visual acceptance retained floor/wall/character/machinery separation in dark rooms with controlled cyan/amber/magenta emissive highlights; High-tier low-visibility telemetry reported exposure `1.080`, contrast `0.965`, selective bloom, and critical cue scale `1.00`.\n  - Targeted grade/post regressions and the production build passed; P28 Image Grade Visual run `37397725287` passed the deterministic capture gate.\n  - Browser E2E run `37397725096` passed desktop and mobile-landscape full regression/build plus live player journeys.\n  - PR Android APK run `37397725103` passed full repository verification, native Android generation, APK build/sign/delivery checks, API 35 product smoke, API 36 large-screen smoke, and aggregate Android verification. The initial API 35 WebView CDP transport failure was rerun successfully without product-code changes.\n  - **Next: P28-B0 — Add textured PBR support to the deterministic GLB build path.**\n'''
+          archive.write_text(archive_text.replace(marker, entry + marker, 1))
+          PY
+
+      - name: Remove one-shot workflow and commit docs
+        run: |
+          rm .github/workflows/p28-a5-roadmap-archive.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/content-roadmap.md docs/content-roadmap-archive.md .github/workflows/p28-a5-roadmap-archive.yml
+          git commit -m 'docs(p28-a5): archive verified completion'
+          git push origin HEAD:chatgpt/p28-a5-image-grade
