@@ -113,18 +113,26 @@ assert(normalExposure > 1.02 && normalExposure <= 1.02 * 1.055 + 1e-6, 'Flagship
 assert(normalContrast < 1 && normalContrast >= 0.985, 'Flagship grade must ease contrast instead of crushing shadows.');
 assert.match(runtimeCanvas.dataset.environmentPostTone ?? '', /^aces-exposure-\d+\.\d{2}\+contrast-\d+\.\d{2}$/);
 assert.equal(runtimeCanvas.dataset.environmentImageGrade, 'p28-a5-dark-separation-v1');
+assert.equal(runtimeCanvas.dataset.environmentImageGradeMode, 'normal');
 
 runtimePost.sync(false, highSnapshot);
 assert.equal(runtimeScene.imageProcessingConfiguration.exposure, normalExposure, 'Repeated post sync must not compound exposure.');
 assert.equal(runtimeScene.imageProcessingConfiguration.contrast, normalContrast, 'Repeated post sync must not compound contrast.');
 
-runtimePost.sync(true, highSnapshot);
+runtimeCanvas.dataset.refineryImageGradeQa = 'low-visibility';
+runtimePost.sync(false, highSnapshot);
 const lowVisibilityExposure = runtimeScene.imageProcessingConfiguration.exposure;
 const lowVisibilityContrast = runtimeScene.imageProcessingConfiguration.contrast;
 assert(lowVisibilityExposure > normalExposure && lowVisibilityExposure <= 1.02 * 1.08 + 1e-6, 'Low-visibility grade must reveal dark form while staying bounded.');
 assert(lowVisibilityContrast < normalContrast && lowVisibilityContrast >= 0.965, 'Low-visibility contrast must preserve additional dark-value separation.');
-assert.match(runtimeCanvas.dataset.environmentAtmosphere ?? '', /exposure-1\.080:contrast-0\.965:grade-p28-a5-dark-separation-v1$/);
+assert.match(runtimeCanvas.dataset.environmentAtmosphere ?? '', /near-14\.0:far-32\.0:.*exposure-1\.080:contrast-0\.965:grade-p28-a5-dark-separation-v1$/);
 assert.equal(runtimeCanvas.dataset.environmentImageGrade, 'p28-a5-dark-separation-v1');
+assert.equal(runtimeCanvas.dataset.environmentImageGradeMode, 'low-visibility');
+
+delete runtimeCanvas.dataset.refineryImageGradeQa;
+runtimePost.sync(true, highSnapshot);
+assert.equal(runtimeScene.imageProcessingConfiguration.exposure, lowVisibilityExposure, 'Real low-visibility contracts must match the deterministic QA capture grade.');
+assert.equal(runtimeScene.imageProcessingConfiguration.contrast, lowVisibilityContrast, 'Real low-visibility contracts must match the deterministic QA capture contrast.');
 
 assert.match(runtimeCanvas.dataset.environmentSsao2 ?? '', /^(primary:refinery-ssao2-v1:|off:unsupported\+fallback-contact$)/);
 if (runtimeCanvas.dataset.environmentSsao2?.startsWith('primary:')) {
@@ -150,6 +158,7 @@ runtimeCanvas.dataset.refineryPostStackQa = 'on';
 runtimePost.sync(false, highSnapshot);
 assert.match(runtimeCanvas.dataset.environmentSsao2 ?? '', /^(primary:refinery-ssao2-v1:|off:unsupported\+fallback-contact$)/);
 assert.equal(runtimeCanvas.dataset.babylonPostStack, 'on:qa-explicit');
+assert.equal(runtimeCanvas.dataset.environmentImageGradeMode, 'normal');
 assert.equal(runtimeScene.imageProcessingConfiguration.exposure, normalExposure, 'Re-enabling the stack must reproduce the same deterministic grade.');
 assert.equal(runtimeScene.imageProcessingConfiguration.contrast, normalContrast, 'Re-enabling the stack must reproduce the same deterministic contrast.');
 
@@ -157,12 +166,14 @@ runtimePost.release('test-scenario-exit');
 assert.equal(runtimeCanvas.dataset.environmentSsao2, undefined);
 assert.equal(runtimeCanvas.dataset.babylonPostStack, undefined);
 assert.equal(runtimeCanvas.dataset.environmentImageGrade, undefined);
+assert.equal(runtimeCanvas.dataset.environmentImageGradeMode, undefined);
 assert.equal(runtimeScene.imageProcessingConfiguration.exposure, 1.02, 'Scenario exit must restore upstream exposure.');
 assert.equal(runtimeScene.imageProcessingConfiguration.contrast, 1, 'Scenario exit must restore upstream contrast.');
 runtimePost.sync(false, highSnapshot);
 assert.match(runtimeCanvas.dataset.environmentSsao2 ?? '', /^(primary:refinery-ssao2-v1:|off:unsupported\+fallback-contact$)/);
 assert.equal(runtimeCanvas.dataset.babylonPostStack, 'on:qa-explicit');
 assert.equal(runtimeCanvas.dataset.environmentImageGrade, 'p28-a5-dark-separation-v1');
+assert.equal(runtimeCanvas.dataset.environmentImageGradeMode, 'normal');
 assert.equal(runtimeScene.imageProcessingConfiguration.exposure, normalExposure, 'Scenario re-entry must reproduce the same deterministic exposure.');
 assert.equal(runtimeScene.imageProcessingConfiguration.contrast, normalContrast, 'Scenario re-entry must reproduce the same deterministic contrast.');
 runtimePost.dispose();
@@ -173,6 +184,8 @@ const rendererSource = readFileSync('src/game/babylonCombatRenderer.ts', 'utf8')
 const postSource = readFileSync('src/game/babylonRefineryPostProcessing.ts', 'utf8');
 const bloomSource = readFileSync('src/game/refineryBloomProfile.ts', 'utf8');
 const browserSource = readFileSync('scripts/browser-runtime-smoke.mjs', 'utf8');
+const gradeCaptureSource = readFileSync('scripts/p28a5-image-grade-capture.mjs', 'utf8');
+const gradeWorkflowSource = readFileSync('.github/workflows/p28-image-grade-visual.yml', 'utf8');
 const packageSource = readFileSync('package.json', 'utf8');
 
 assert.match(rendererSource, /new BabylonRefineryPostProcessing\(scene, canvas\)/);
@@ -196,10 +209,12 @@ assert.match(postSource, /this\.glow\.addIncludedOnlyMesh\(mesh\)/);
 assert.match(postSource, /RawTexture\.CreateRGBATexture\(/);
 assert.match(postSource, /source\.createInstance\('p27-b12-refinery-contact-'/);
 assert.match(postSource, /Scene\.FOGMODE_LINEAR/);
-assert.match(postSource, /refineryAtmosphereContrast\(lowVisibility, budget\.refineryAtmosphereScale\)/);
+assert.match(postSource, /refineryAtmosphereContrast\(effectiveLowVisibility, budget\.refineryAtmosphereScale\)/);
 assert.match(postSource, /this\.captureUpstreamImageProcessing\(\)/);
 assert.match(postSource, /this\.restoreUpstreamImageProcessing\(\)/);
+assert.match(postSource, /dataset\.refineryImageGradeQa === 'low-visibility'/);
 assert.match(postSource, /environmentImageGrade = REFINERY_ATMOSPHERE_PROFILE\.gradeId/);
+assert.match(postSource, /environmentImageGradeMode = effectiveLowVisibility \? 'low-visibility' : 'normal'/);
 assert.match(postSource, /dataset\.refineryPostStackQa === 'off'/);
 assert.match(postSource, /critical:hazards\+telegraphs\+class-cues@/);
 assert.match(postSource, /environmentP21Budget/);
@@ -208,7 +223,12 @@ assert.match(browserSource, /BROWSER_P27B12_BABYLON_POST_PROCESSING_PASS/);
 assert.match(browserSource, /p27b12-stack-off/);
 assert.match(browserSource, /p27b12-stack-on/);
 assert.match(browserSource, /pngByteDifferenceRatio/);
+assert.match(gradeCaptureSource, /BROWSER_P28A5_IMAGE_GRADE_PASS/);
+assert.match(gradeCaptureSource, /refineryImageGradeQa = 'low-visibility'/);
+assert.match(gradeCaptureSource, /Page\.captureScreenshot/);
+assert.match(gradeWorkflowSource, /name: P28 Image Grade Visual/);
+assert.match(gradeWorkflowSource, /browser-p28a5-low-visibility\.png/);
 assert.match(packageSource, /test:babylon-refinery-post-processing/);
 
-console.log(`P28_A5_REFINERY_IMAGE_GRADE_PASS normal=exposure-${normalExposure.toFixed(3)}+contrast-${normalContrast.toFixed(3)} low-visibility=exposure-${lowVisibilityExposure.toFixed(3)}+contrast-${lowVisibilityContrast.toFixed(3)} repeat=stable release=restored cues=1.00 aces=bounded`);
+console.log(`P28_A5_REFINERY_IMAGE_GRADE_PASS normal=exposure-${normalExposure.toFixed(3)}+contrast-${normalContrast.toFixed(3)} low-visibility=exposure-${lowVisibilityExposure.toFixed(3)}+contrast-${lowVisibilityContrast.toFixed(3)} repeat=stable release=restored capture=qa-flagship cues=1.00 aces=bounded`);
 console.log('P28_A3_BABYLON_SSAO2_PASS primary=high+balanced fallback=performance-or-unsupported+mrt-missing samples=16>8>off cues=1.00 lifecycle=qa-off+on+release+reentry telemetry=p27-compatible captures=p27b12-stack-off+stack-on');
