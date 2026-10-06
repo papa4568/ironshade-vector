@@ -1,0 +1,75 @@
+name: P28-B2 Roadmap Archive
+
+on:
+  push:
+    branches:
+      - p28-b2-refinery-floor-bulkhead-pbr
+    paths:
+      - .github/workflows/p28b2-roadmap-archive.yml
+
+permissions:
+  contents: write
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out B2 branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: p28-b2-refinery-floor-bulkhead-pbr
+
+      - name: Move verified P28-B2 evidence to archive
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const activePath = 'docs/content-roadmap.md';
+          const archivePath = 'docs/content-roadmap-archive.md';
+          let active = fs.readFileSync(activePath, 'utf8');
+          let archive = fs.readFileSync(archivePath, 'utf8');
+
+          const itemPattern = /^- \[ \] \*\*P28-B2 — Apply P28 materials to refinery floors and bulkheads\*\*.*\n/m;
+          const archiveMarker = '- [x] **P28-B2 — Apply P28 materials to refinery floors and bulkheads**';
+          const archiveBlock = `- [x] **P28-B2 — Apply P28 materials to refinery floors and bulkheads** — Applied the shared P28 premium surface language to refinery floors, service grates, bulkheads, and wall panels without changing simulation geometry, route placement, collision ownership, or mission logic.\n  - Added \`scripts/prepare-refinery-premium-surfaces.mjs\` to deterministically upgrade only the eight affected LOD1/LOD2 refinery GLBs with face-split UV0 and tangent-space geometry required by the premium normal maps while preserving the exact unit bounds, authored node transforms, material slots, and placement contract.\n  - Wired \`deck-plate\`, \`bare-metal\`, and \`painted-metal\` from the shared Babylon PBR library onto the structural/shell slots for floor, floor-grate, bulkhead, and wall-panel families; hazard/status emissive slots remain authored and untouched. Runtime mounting now requires the exact binding telemetry \`floor:bare-metal+deck-plate|floor-grate:bare-metal+painted-metal|bulkhead:painted-metal|wall-panel:bare-metal+painted-metal\` plus \`normal+roughness+metalness:shared-premium-pbr\`.\n  - Added \`tests/refinery-premium-surfaces.mjs\` for deterministic/idempotent rebuilds, UV0/tangents, topology, material slots, unchanged unit bounds, and representative node-transform invariants. Extended \`verify-authored-refinery.mjs\` so the live Deep Salvage browser gate fails unless the premium material bindings are active.\n  - Targeted implementation run \`37468204178\` passed B2 content validation, the full graphics-content suite, TypeScript, and production build. Exact PR candidate \`9466faa98346012db58b69cb66dcda473bc4d2ba\` passed Browser E2E run \`37468424396\` on desktop and mobile-landscape, including the live authored-refinery verifier, and PR Android APK run \`37468424386\` with full repository verification, APK build/signing/delivery checks, API 35 product smoke, API 36 large-screen smoke, and aggregate Android verification.\n  - Verified PR debug APK: 10,255,643 bytes, SHA-256 \`9e226a8f51f9b2cef989f06c27557ebc1ba67984226cc9214486cd1896aebfb9\`.\n  - **Next: P28-B3 — Apply P28 materials to refinery cover and crates.**\n\n`;
+
+          if (itemPattern.test(active)) {
+            active = active.replace(itemPattern, '');
+          } else if (!archive.includes(archiveMarker)) {
+            throw new Error('P28-B2 active roadmap item was not found');
+          }
+
+          if (!archive.includes(archiveMarker)) {
+            const heading = '## P28 — Babylon flagship visual-quality overhaul\n\n';
+            const index = archive.indexOf(heading);
+            if (index < 0) throw new Error('P28 archive heading was not found');
+            archive = archive.slice(0, index + heading.length) + archiveBlock + archive.slice(index + heading.length);
+          }
+
+          if (active.includes('**P28-B2 — Apply P28 materials to refinery floors and bulkheads**')) {
+            throw new Error('P28-B2 remains in the active roadmap');
+          }
+          if (!active.includes('- [ ] **P28-B3 — Apply P28 materials to refinery cover and crates**')) {
+            throw new Error('P28-B3 did not remain the next active material item');
+          }
+          if (!archive.includes(archiveMarker)) {
+            throw new Error('P28-B2 archive evidence was not written');
+          }
+
+          fs.writeFileSync(activePath, active);
+          fs.writeFileSync(archivePath, archive);
+          NODE
+
+      - name: Commit roadmap/archive update
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/content-roadmap.md docs/content-roadmap-archive.md
+          if git diff --cached --quiet; then
+            echo "Roadmap/archive already current"
+            exit 0
+          fi
+          git commit -m "Archive verified P28-B2 completion"
+          git push origin HEAD:p28-b2-refinery-floor-bulkhead-pbr
