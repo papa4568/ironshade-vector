@@ -47,8 +47,6 @@ Only active/future executable engineering work lives here. Completed and verifie
 
 
 
-- [ ] **P28-B5 — Add a refinery decal/trim atlas** — Add a rich detail layer for panel seams, hazard stripes, service labels, grime, heat staining, and repair marks using an atlas plus instanced/merged decal cards or another Babylon-friendly batching method. **Done when:** the refinery gains convincing medium-scale breakup, decals do not z-fight or obscure combat telegraphs, and standard build/APK gates pass.
-
 - [ ] **P28-B6 — Art-direct Deep Salvage decal placement** — Place the shared detail atlas through the Deep Salvage/refinery showcase route to break up large blank planes and reinforce navigation/focal machinery while preserving the existing route layout. **Done when:** major floor/wall expanses no longer read as untextured slabs, focal/interactable areas gain intentional visual hierarchy, repeated marks are not obviously tiled at gameplay zoom, and standard build/APK gates pass.
 
 #### C. Refinery authored geometry and silhouette upgrade
