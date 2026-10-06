@@ -4,6 +4,10 @@ import {
   REFINERY_PREMIUM_SURFACE_TARGETS,
   upgradeRefineryPremiumSurfaceGlb,
 } from '../scripts/prepare-refinery-premium-surfaces.mjs';
+import {
+  REFINERY_ROUTE_DECAL_TARGETS,
+  upgradeRefineryRouteDecalGlb,
+} from '../scripts/prepare-refinery-route-decals.mjs';
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -55,7 +59,8 @@ for (const target of REFINERY_PREMIUM_SURFACE_TARGETS) {
   assert(gltf.accessors?.[3]?.type === 'VEC2' && gltf.accessors?.[3]?.count === 24, `${target.relativePath}: UV0 accessor is missing`);
   assert(gltf.accessors?.[4]?.count === 36, `${target.relativePath}: index topology changed`);
 
-  for (const mesh of gltf.meshes ?? []) {
+  const baseMeshes = (gltf.meshes ?? []).filter(mesh => mesh.name !== 'p28-b6-refinery-route-detail-atlas');
+  for (const mesh of baseMeshes) {
     for (const primitive of mesh.primitives ?? []) {
       assert(primitive.attributes?.POSITION === 0, `${target.relativePath}: POSITION binding changed`);
       assert(primitive.attributes?.NORMAL === 1, `${target.relativePath}: NORMAL binding changed`);
@@ -65,7 +70,7 @@ for (const target of REFINERY_PREMIUM_SURFACE_TARGETS) {
     }
   }
 
-  assert(JSON.stringify((gltf.materials ?? []).map(material => material.name)) === JSON.stringify(expectedMaterials), `${target.relativePath}: authored material slots changed`);
+  assert(JSON.stringify((gltf.materials ?? []).slice(0, expectedMaterials.length).map(material => material.name)) === JSON.stringify(expectedMaterials), `${target.relativePath}: authored base material slots changed`);
   const requiredName = requiredNodeByFamily[target.family];
   const requiredNode = (gltf.nodes ?? []).find(node => node.name === requiredName);
   assert(requiredNode, `${target.relativePath}: required surface node ${requiredName} is missing`);
@@ -74,8 +79,75 @@ for (const target of REFINERY_PREMIUM_SURFACE_TARGETS) {
   assert(JSON.stringify(requiredNode.scale) === JSON.stringify(expectedTransform.scale), `${target.relativePath}: ${requiredName} scale changed`);
 }
 
+const expectedRouteFamilies = ['floor', 'floorGrate', 'bulkhead', 'wallPanel', 'terminal'];
+assert(REFINERY_ROUTE_DECAL_TARGETS.length === 10, `Expected ten P28-B6 route-decal LOD targets, got ${REFINERY_ROUTE_DECAL_TARGETS.length}`);
+assert(JSON.stringify([...new Set(REFINERY_ROUTE_DECAL_TARGETS.map(target => target.family))]) === JSON.stringify(expectedRouteFamilies), 'P28-B6 route-decal family coverage changed');
+assert(REFINERY_ROUTE_DECAL_TARGETS.every(target => target.cards.length >= 1 && target.cards.length <= 3), 'P28-B6 detail batches must stay sparse enough to avoid noisy tiling');
+assert(REFINERY_ROUTE_DECAL_TARGETS.every(target => target.cards.every(card => card.offset === 0.012)), 'P28-B6 cards must preserve the anti-z-fight surface offset');
+assert(REFINERY_ROUTE_DECAL_TARGETS.filter(target => target.family === 'floor').every(target => target.cards.every(card => card.detail === 'panel-seam')), 'P28-B6 repeated floor modules must use structural seam rhythm instead of repeated salient marks');
+assert(REFINERY_ROUTE_DECAL_TARGETS.filter(target => target.cards.some(card => card.plane === 'xz')).every(target => target.opacity <= 0.46), 'P28-B6 ground detail exceeds the gameplay-cue opacity budget');
+assert(REFINERY_ROUTE_DECAL_TARGETS.filter(target => ['bulkhead', 'wallPanel', 'terminal'].includes(target.family)).every(target => target.cards.every(card => card.plane === 'yz')), 'P28-B6 focal wall/interactable detail must stay vertical');
+const routeDetails = [...new Set(REFINERY_ROUTE_DECAL_TARGETS.flatMap(target => target.cards.map(card => card.detail)))];
+for (const detail of ['panel-seam', 'hazard-stripe', 'service-label', 'grime', 'repair-mark']) {
+  assert(routeDetails.includes(detail), `P28-B6 route art direction is missing ${detail}`);
+}
+
+for (const target of REFINERY_ROUTE_DECAL_TARGETS) {
+  const path = resolve(process.cwd(), 'public/assets/models', target.relativePath);
+  const bytes = await readFile(path);
+  const gltf = parseGlb(bytes, target.relativePath);
+  const rebuilt = upgradeRefineryRouteDecalGlb(bytes, target);
+  assert(bytes.equals(rebuilt), `${target.relativePath}: P28-B6 route decal upgrade is not deterministic/idempotent`);
+
+  const marker = gltf.extras?.ironshadeP28B6RouteDecals;
+  assert(marker?.version === 1, `${target.relativePath}: P28-B6 route marker is missing`);
+  assert(marker?.atlas === 'refinery-decal-atlas-v1', `${target.relativePath}: P28-B6 shared atlas identity changed`);
+  assert(marker?.route === 'deep-salvage-refinery-showcase', `${target.relativePath}: P28-B6 route ownership changed`);
+  assert(marker?.family === target.family && marker?.routeRole === target.routeRole, `${target.relativePath}: P28-B6 visual hierarchy role changed`);
+  assert(marker?.cardCount === target.cards.length, `${target.relativePath}: P28-B6 merged-card count changed`);
+  assert(marker?.batching === 'merged-card-mesh-per-asset', `${target.relativePath}: P28-B6 batching mode changed`);
+  assert(marker?.surfaceOffset === 0.012, `${target.relativePath}: P28-B6 anti-z-fight offset changed`);
+  assert(marker?.alphaBlend === true && marker?.emissive === false, `${target.relativePath}: P28-B6 readability blend contract changed`);
+  assert(marker?.opacity === target.opacity && marker.opacity <= 0.76, `${target.relativePath}: P28-B6 opacity budget changed`);
+  assert(marker?.gameplayBoundsChanged === false && marker?.routeLayoutChanged === false, `${target.relativePath}: P28-B6 must remain presentation-only`);
+  if (target.cards.some(card => card.plane === 'xz')) {
+    assert(marker?.cuePriority === 'gameplay-cues-win:low-opacity-ground-detail', `${target.relativePath}: P28-B6 ground cue-priority contract changed`);
+  } else {
+    assert(marker?.cuePriority === 'no-floor-cue-overlap', `${target.relativePath}: P28-B6 vertical cue-priority contract changed`);
+  }
+  if (target.family === 'floor') {
+    assert(marker?.repeatedMarkPolicy === 'continuous-structural-seam-rhythm', `${target.relativePath}: P28-B6 anti-tiling floor policy changed`);
+  } else {
+    assert(marker?.repeatedMarkPolicy === 'mixed-atlas-details+authored-module-rotation', `${target.relativePath}: P28-B6 anti-tiling module policy changed`);
+  }
+
+  const detailMeshIndex = (gltf.meshes ?? []).findIndex(mesh => mesh.name === 'p28-b6-refinery-route-detail-atlas');
+  assert(detailMeshIndex >= 0, `${target.relativePath}: P28-B6 merged route-detail mesh is missing`);
+  const detailMesh = gltf.meshes[detailMeshIndex];
+  assert(detailMesh.extras?.cardCount === target.cards.length && detailMesh.extras?.routeRole === target.routeRole, `${target.relativePath}: P28-B6 detail-mesh metadata changed`);
+  assert(detailMesh.primitives?.length === 1, `${target.relativePath}: P28-B6 route cards must stay in one merged primitive`);
+  const primitive = detailMesh.primitives[0];
+  assert(Number.isInteger(primitive.attributes?.POSITION) && Number.isInteger(primitive.attributes?.NORMAL) && Number.isInteger(primitive.attributes?.TEXCOORD_0), `${target.relativePath}: P28-B6 route geometry attributes are incomplete`);
+  assert(primitive.attributes?.TANGENT === undefined && Number.isInteger(primitive.indices), `${target.relativePath}: P28-B6 route geometry must remain a lightweight indexed card batch`);
+
+  const material = gltf.materials?.[primitive.material];
+  assert(material?.name === 'refinery-route-detail-atlas', `${target.relativePath}: P28-B6 route material slot changed`);
+  assert(material?.alphaMode === 'BLEND' && material?.doubleSided === true, `${target.relativePath}: P28-B6 route alpha contract changed`);
+  assert(material?.emissiveFactor === undefined && material?.emissiveTexture === undefined, `${target.relativePath}: P28-B6 route details must not bloom over gameplay cues`);
+  assert(material?.pbrMetallicRoughness?.baseColorFactor?.[3] === target.opacity, `${target.relativePath}: P28-B6 route material opacity changed`);
+  const texture = gltf.textures?.[material.pbrMetallicRoughness.baseColorTexture.index];
+  const image = gltf.images?.[texture?.source];
+  assert(image?.uri === 'refinery-decal-atlas.png', `${target.relativePath}: P28-B6 no longer uses the shared refinery atlas`);
+
+  const sceneIndex = Number.isInteger(gltf.scene) ? gltf.scene : 0;
+  const detailNode = (gltf.nodes ?? []).findIndex(node => node.mesh === detailMeshIndex);
+  assert(detailNode >= 0 && gltf.scenes?.[sceneIndex]?.nodes?.includes(detailNode), `${target.relativePath}: P28-B6 route detail is not mounted in the authored scene`);
+}
+
 const rendererSource = await readFile(resolve(process.cwd(), 'src/game/babylonCombatRenderer.ts'), 'utf8');
 const verifierSource = await readFile(resolve(process.cwd(), 'scripts/verify-authored-refinery.mjs'), 'utf8');
+const imageGradeSource = await readFile(resolve(process.cwd(), 'scripts/p28a5-image-grade-capture.mjs'), 'utf8');
+const telegraphSource = await readFile(resolve(process.cwd(), 'src/game/babylonEnemyTelegraphs.ts'), 'utf8');
 const expectedTelemetrySegments = [
   'floor:bare-metal+deck-plate',
   'floor-grate:bare-metal+painted-metal',
@@ -93,5 +165,7 @@ for (const surface of ['deck-plate', 'bare-metal', 'painted-metal', 'polymer-rub
 assert(rendererSource.includes('normal+roughness+metalness:shared-premium-pbr'), 'Babylon refinery renderer is missing material-detail telemetry');
 assert(verifierSource.includes('canvas.dataset.babylonEnvironmentPremiumSurfaces'), 'Authored-refinery live verifier does not read B2 premium-surface telemetry');
 assert(verifierSource.includes('normal+roughness+metalness:shared-premium-pbr'), 'Authored-refinery live verifier does not enforce B2 material-detail telemetry');
+assert(telegraphSource.includes('const FLOOR_Y = 0.045;'), 'Enemy ground-telegraph height changed; re-review P28-B6 low-opacity floor detail');
+assert(imageGradeSource.includes("visualDetail: 'p28-b6-deep-salvage-route-decals'"), 'P28-B6 Flagship image-grade capture is not tagged for the route-detail candidate');
 
-console.log(`REFINERY_PREMIUM_SURFACES_PASS targets=${REFINERY_PREMIUM_SURFACE_TARGETS.length} attributes=POSITION+NORMAL+TANGENT+TEXCOORD_0 bounds=unchanged telemetry=${expectedTelemetrySegments.join('|')}`);
+console.log(`REFINERY_PREMIUM_SURFACES_PASS targets=${REFINERY_PREMIUM_SURFACE_TARGETS.length} routeTargets=${REFINERY_ROUTE_DECAL_TARGETS.length} attributes=POSITION+NORMAL+TANGENT+TEXCOORD_0 bounds=unchanged route=${expectedRouteFamilies.join('+')} detail=${routeDetails.join('+')}`);
