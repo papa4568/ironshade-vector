@@ -74,6 +74,7 @@ const renderer = await readFile(resolve(process.cwd(), 'src/game/babylonCombatRe
 const library = await readFile(resolve(process.cwd(), 'src/game/babylonPremiumPbrSurfaceLibrary.ts'), 'utf8');
 const post = await readFile(resolve(process.cwd(), 'src/game/babylonRefineryPostProcessing.ts'), 'utf8');
 const verifier = await readFile(resolve(process.cwd(), 'scripts/verify-authored-refinery.mjs'), 'utf8');
+const runtimeSmoke = await readFile(resolve(process.cwd(), 'scripts/browser-runtime-smoke.mjs'), 'utf8');
 const telemetry = 'floor:bare-metal+deck-plate|floor-grate:bare-metal+painted-metal|bulkhead:painted-metal|processor:bare-metal+emissive-fixture+painted-metal|pipe-rack:bare-metal+emissive-fixture+painted-metal|wall-panel:bare-metal+painted-metal|cable-tray:bare-metal+emissive-fixture+painted-metal|service-conduit:bare-metal+emissive-fixture+painted-metal|gantry:bare-metal+emissive-fixture+painted-metal|crate:bare-metal+painted-metal+polymer-rubber|terminal:bare-metal+emissive-fixture+painted-metal';
 for (const family of ['processor', 'pipeRack', 'cableTray', 'serviceConduit', 'gantry', 'terminal']) {
   assert(renderer.includes(`${family}: {`), `Renderer premium surface assignment is missing ${family}`);
@@ -84,5 +85,6 @@ assert(renderer.includes(telemetry) && verifier.includes(telemetry), 'P28-B4 liv
 assert(library.includes("id: 'emissive-fixture'") && library.includes('emissiveUrl:'), 'Shared emissive fixture material lost its emissive texture');
 assert(post.includes('refinery-(terminal|processor|pipe|cable-tray|service-conduit|smelter-gantry)'), 'Selective bloom does not include P28-B4 machinery emissive families');
 assert(post.includes('excludeByDefault: true'), 'Selective bloom protection contract changed');
+assert(runtimeSmoke.includes('authored:processor\\+terminal(?:\\+(?:pipe|cable-tray|service-conduit|gantry))*\\+muzzle'), 'Browser runtime smoke does not accept B4 machinery bloom-source telemetry');
 
 console.log(`REFINERY_MACHINERY_PREMIUM_SURFACES_PASS targets=${REFINERY_MACHINERY_PREMIUM_SURFACE_TARGETS.length} families=${expectedFamilies.join('+')} surfaces=painted-metal+bare-metal+emissive-fixture bounds=unchanged bloom=selective`);
