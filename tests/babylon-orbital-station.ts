@@ -73,7 +73,7 @@ assert(
 
 assert(
   world.includes('biomeWorldState(mission.location, state)')
-    && world.includes('this.syncObjects(state, detailScale);')
+    && world.includes("this.syncObjects(state, detailScale, mission.location === 'asteroid-refinery');")
     && world.includes('this.syncHazards(')
     && world.includes('this.syncObjective(')
     && world.includes('this.syncGroundLoot(state, detailScale);')
