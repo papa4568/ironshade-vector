@@ -54,9 +54,6 @@ function encodeRgbaPng(width, height, pixels) {
   ihdr.writeUInt32BE(height, 4);
   ihdr[8] = 8;
   ihdr[9] = 6;
-  ihdr[10] = 0;
-  ihdr[11] = 0;
-  ihdr[12] = 0;
 
   const scanlines = Buffer.alloc(height * (1 + width * 4));
   for (let y = 0; y < height; y += 1) {
@@ -64,7 +61,6 @@ function encodeRgbaPng(width, height, pixels) {
     scanlines[rowOffset] = 0;
     Buffer.from(pixels.buffer, pixels.byteOffset + y * width * 4, width * 4).copy(scanlines, rowOffset + 1);
   }
-
   return Buffer.concat([
     PNG_SIGNATURE,
     pngChunk('IHDR', ihdr),
@@ -79,20 +75,11 @@ function texturePixels(kind) {
   for (let y = 0; y < 4; y += 1) {
     for (let x = 0; x < 4; x += 1) {
       const checker = (x + y) % 2 === 0;
-      if (kind === 'base-color') {
-        write(x, y, checker ? [58, 67, 70, 255] : [91, 102, 101, 255]);
-      } else if (kind === 'normal') {
-        const nx = x === 0 ? 118 : x === 3 ? 138 : 128;
-        const ny = y === 0 ? 118 : y === 3 ? 138 : 128;
-        write(x, y, [nx, ny, 253, 255]);
-      } else if (kind === 'orm') {
-        write(x, y, checker ? [222, 92, 226, 255] : [174, 154, 188, 255]);
-      } else if (kind === 'emissive') {
-        const lit = x === 1 || x === 2;
-        write(x, y, lit ? (y === 3 ? [255, 118, 36, 255] : [30, 188, 232, 255]) : [0, 2, 3, 255]);
-      } else {
-        throw new Error(`Unknown texture kind: ${kind}`);
-      }
+      if (kind === 'base-color') write(x, y, checker ? [58, 67, 70, 255] : [91, 102, 101, 255]);
+      else if (kind === 'normal') write(x, y, [x === 0 ? 118 : x === 3 ? 138 : 128, y === 0 ? 118 : y === 3 ? 138 : 128, 253, 255]);
+      else if (kind === 'orm') write(x, y, checker ? [222, 92, 226, 255] : [174, 154, 188, 255]);
+      else if (kind === 'emissive') write(x, y, x === 1 || x === 2 ? (y === 3 ? [255, 118, 36, 255] : [30, 188, 232, 255]) : [0, 2, 3, 255]);
+      else throw new Error(`Unknown texture kind: ${kind}`);
     }
   }
   return pixels;
@@ -118,11 +105,11 @@ function makePanelGeometry() {
   const faceUvs = [[0, 0], [1, 0], [1, 1], [0, 1]];
   for (const face of faces) {
     const base = positions.length / 3;
-    for (let index = 0; index < 4; index += 1) {
-      positions.push(...face.p[index]);
+    for (let i = 0; i < 4; i += 1) {
+      positions.push(...face.p[i]);
       normals.push(...face.n);
       tangents.push(...face.t);
-      uvs.push(...faceUvs[index]);
+      uvs.push(...faceUvs[i]);
     }
     indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
   }
@@ -152,7 +139,7 @@ function packBinary(parts) {
   for (const part of parts) {
     const aligned = align(cursor, part.alignment ?? 4);
     if (aligned > cursor) packed.push(Buffer.alloc(aligned - cursor));
-    views.push({ byteOffset: aligned, byteLength: part.data.length, ...(part.target ? { target: part.target } : {}) });
+    views.push({ buffer: 0, byteOffset: aligned, byteLength: part.data.length, ...(part.target ? { target: part.target } : {}) });
     packed.push(part.data);
     cursor = aligned + part.data.length;
   }
@@ -163,16 +150,12 @@ function packBinary(parts) {
 
 function encodeGlb(gltf, binary) {
   const jsonBytes = Buffer.from(JSON.stringify(gltf), 'utf8');
-  const jsonPadding = (4 - (jsonBytes.length % 4)) % 4;
-  const json = Buffer.concat([jsonBytes, Buffer.alloc(jsonPadding, 0x20)]);
-  const binPadding = (4 - (binary.length % 4)) % 4;
-  const bin = Buffer.concat([binary, Buffer.alloc(binPadding)]);
-  const totalLength = 12 + 8 + json.length + 8 + bin.length;
-
+  const json = Buffer.concat([jsonBytes, Buffer.alloc((4 - (jsonBytes.length % 4)) % 4, 0x20)]);
+  const bin = Buffer.concat([binary, Buffer.alloc((4 - (binary.length % 4)) % 4)]);
   const header = Buffer.alloc(12);
   header.write('glTF', 0, 'ascii');
   header.writeUInt32LE(2, 4);
-  header.writeUInt32LE(totalLength, 8);
+  header.writeUInt32LE(12 + 8 + json.length + 8 + bin.length, 8);
   const jsonHeader = Buffer.alloc(8);
   jsonHeader.writeUInt32LE(json.length, 0);
   jsonHeader.writeUInt32LE(0x4e4f534a, 4);
@@ -190,21 +173,16 @@ export function buildPremiumPbrReferenceGlb() {
     { name: 'premium-orm', data: encodeRgbaPng(4, 4, texturePixels('orm')) },
     { name: 'premium-emissive', data: encodeRgbaPng(4, 4, texturePixels('emissive')) },
   ];
-  const parts = [
+  const { buffer, views } = packBinary([
     { data: viewBytes(geometry.positions), target: 34962 },
     { data: viewBytes(geometry.normals), target: 34962 },
     { data: viewBytes(geometry.tangents), target: 34962 },
     { data: viewBytes(geometry.uvs), target: 34962 },
     { data: viewBytes(geometry.indices), target: 34963 },
     ...textures.map(texture => ({ data: texture.data })),
-  ];
-  const packed = packBinary(parts);
-  const imageBufferViewStart = 5;
+  ]);
   const gltf = {
-    asset: {
-      version: '2.0',
-      generator: 'Ironshade Vector deterministic premium PBR reference generator',
-    },
+    asset: { version: '2.0', generator: 'Ironshade Vector deterministic premium PBR reference generator' },
     scene: 0,
     scenes: [{ name: 'premium-pbr-reference', nodes: [1] }],
     nodes: [
@@ -235,11 +213,7 @@ export function buildPremiumPbrReferenceGlb() {
     }],
     samplers: [{ magFilter: 9729, minFilter: 9987, wrapS: 10497, wrapT: 10497 }],
     textures: textures.map((_, source) => ({ sampler: 0, source })),
-    images: textures.map((texture, index) => ({
-      name: texture.name,
-      bufferView: imageBufferViewStart + index,
-      mimeType: 'image/png',
-    })),
+    images: textures.map((texture, index) => ({ name: texture.name, bufferView: 5 + index, mimeType: 'image/png' })),
     accessors: [
       { bufferView: 0, componentType: 5126, count: 24, type: 'VEC3', min: geometry.min, max: geometry.max },
       { bufferView: 1, componentType: 5126, count: 24, type: 'VEC3' },
@@ -247,8 +221,8 @@ export function buildPremiumPbrReferenceGlb() {
       { bufferView: 3, componentType: 5126, count: 24, type: 'VEC2' },
       { bufferView: 4, componentType: 5123, count: 36, type: 'SCALAR', min: [0], max: [23] },
     ],
-    bufferViews: packed.views,
-    buffers: [{ byteLength: packed.buffer.length }],
+    bufferViews: views,
+    buffers: [{ byteLength: buffer.length }],
     extras: {
       ironshadePremiumPbrReference: {
         uvSet: 'TEXCOORD_0',
@@ -259,7 +233,7 @@ export function buildPremiumPbrReferenceGlb() {
       },
     },
   };
-  return encodeGlb(gltf, packed.buffer);
+  return encodeGlb(gltf, buffer);
 }
 
 export async function writePremiumPbrReference() {
