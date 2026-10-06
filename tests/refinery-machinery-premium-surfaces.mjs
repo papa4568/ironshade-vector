@@ -91,3 +91,4 @@ assert(runtimeSmoke.includes('authored:processor\\+terminal(?:\\+(?:pipe|cable-t
 
 console.log(`REFINERY_MACHINERY_PREMIUM_SURFACES_PASS targets=${REFINERY_MACHINERY_PREMIUM_SURFACE_TARGETS.length} families=${expectedFamilies.join('+')} surfaces=painted-metal+bare-metal+emissive-fixture bounds=unchanged bloom=selective`);
 await import('./refinery-decal-atlas.mjs');
+await import('./refinery-hard-surface-authoring.mjs');
