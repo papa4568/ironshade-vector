@@ -36,6 +36,13 @@ const representativeNodes = {
 
 assert(REFINERY_MACHINERY_PREMIUM_SURFACE_TARGETS.length === expectedFamilies.length * 2, `Expected 12 machinery LOD targets, got ${REFINERY_MACHINERY_PREMIUM_SURFACE_TARGETS.length}`);
 assert(JSON.stringify([...new Set(REFINERY_MACHINERY_PREMIUM_SURFACE_TARGETS.map(target => target.family))]) === JSON.stringify(expectedFamilies), 'Machinery target families changed');
+for (const family of expectedFamilies) {
+  const familyTargets = REFINERY_MACHINERY_PREMIUM_SURFACE_TARGETS.filter(target => target.family === family);
+  assert(familyTargets.length === 2, `${family}: expected exactly two authored machinery LOD targets`);
+  assert(familyTargets.every(target => target.phase === 'P28-B4'), `${family}: machinery target phase changed`);
+  assert(familyTargets.some(target => target.relativePath.endsWith('-lod1.glb')), `${family}: LOD1 target is missing`);
+  assert(familyTargets.some(target => target.relativePath.endsWith('-lod2.glb')), `${family}: LOD2 target is missing`);
+}
 
 for (const target of REFINERY_MACHINERY_PREMIUM_SURFACE_TARGETS) {
   const path = resolve(process.cwd(), 'public/assets/models', target.relativePath);
