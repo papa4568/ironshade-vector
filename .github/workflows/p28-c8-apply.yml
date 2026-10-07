@@ -23,7 +23,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Apply P28-C8 source patch
-        run: node scripts/apply-p28-c8-refinery-world-patch.mjs
+        run: node scripts/p28-c8-patch-runner.mjs
       - name: Focused graphics content verification
         run: npm run test:graphics:content
       - name: Babylon asset integration verification
@@ -35,6 +35,7 @@ jobs:
       - name: Commit verified implementation
         run: |
           rm scripts/apply-p28-c8-refinery-world-patch.mjs
+          rm scripts/p28-c8-patch-runner.mjs
           rm .github/workflows/p28-c8-apply.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
