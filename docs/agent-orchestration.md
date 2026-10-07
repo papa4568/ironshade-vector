@@ -54,16 +54,20 @@ The PR graph is:
 
 ### AO-6 — Independent verifier and mechanical invariants
 
-Active.
+Verified.
 
 AO-6 adds two complementary proof layers:
 
-1. **Mechanical architecture invariants.** `agent/architecture-invariants.json` currently enforces the renderer/simulation import boundary, the renderer-neutral `GameCanvas` entrypoint, and graphics-asset independence from simulation implementation details. `agent/tools/check-architecture-invariants.mjs` runs on every PR final candidate; its regression suite proves the rules fail closed when imports or source boundaries drift.
-2. **Independent verifier context.** `agent/tools/independent-review.mjs` creates an exact-SHA packet containing the task acceptance criteria, changed files, impact selection, required proofs, passed architecture invariants, and adversarial questions. The separate verifier follows `agent/INDEPENDENT_VERIFIER.md`, has no writer role, and returns a machine-readable pass/fail result. The result validator rejects another candidate SHA and rejects `pass` when any acceptance criterion or required proof is unsupported.
+1. **Mechanical architecture invariants.** `agent/architecture-invariants.json` enforces the renderer/simulation import boundary, the renderer-neutral `GameCanvas` entrypoint, and graphics-asset independence from simulation implementation details. `agent/tools/check-architecture-invariants.mjs` runs on every PR final candidate; its regression suite proves the rules fail closed when imports or source boundaries drift.
+2. **Independent verifier context.** `agent/tools/independent-review.mjs` creates an exact-SHA packet containing task acceptance criteria, changed files, impact selection, required proofs, passed architecture invariants, and adversarial questions. A separate verifier follows `agent/INDEPENDENT_VERIFIER.md`, has no writer role, and returns a machine-readable pass/fail result. The result validator rejects another candidate SHA and rejects `pass` when any acceptance criterion or required proof is unsupported.
 
-The PR Candidate workflow creates this review context from a checkout with `contents: read` and `persist-credentials: false`. A verifier failure goes back to the implementation owner, who fixes the same branch and produces a new candidate SHA for review.
+The PR Candidate workflow creates the review context from a checkout with `contents: read` and `persist-credentials: false`. A verifier failure goes back to the implementation owner, who fixes the same branch and produces a new candidate SHA for review.
+
+AO-6 was proven on exact implementation candidate `6e12bec8b2a4b80b3a5fe1034462cff818fd6453` by Agent Orchestration run `37638419687` and PR Candidate Verification run `37638420943`. The candidate passed the architecture invariant checker and its failure-mode regressions, independent-review contract regressions, one full repository verification/build, desktop and mobile browser journeys, Android packaging, API 35 smoke, API 36 large-screen smoke, and the final aggregate gate. Artifact `independent-review-context-324-6e12bec8b2a4b80b3a5fe1034462cff818fd6453` contains the read-only AO-6 review packet, and artifact `agent-candidate-evidence-324-6e12bec8b2a4b80b3a5fe1034462cff818fd6453` contains a strict ledger with all five AO-6 proof obligations passed and no unresolved external QA. The review proof records that the exact-SHA read-only review context and result-validation contract were exercised; it does not claim that CI itself ran a second AI reviewer.
 
 When a failure class recurs and can be made deterministic, promote it into `agent/architecture-invariants.json`, `agent/impact-map.json`, or another focused repository test rather than adding another prose reminder.
+
+With AO-1 through AO-6 verified, the orchestration migration has no remaining AO task. Product/game development therefore continues from `docs/content-roadmap.md` under the compatibility rule unless a future explicit migration changes that authority.
 
 ## Commands
 
