@@ -320,6 +320,7 @@ export const REFINERY_ASSET_FAMILIES = {
   bulkhead: {
     id: 'refinery-bulkhead',
     lods: {
+      0: createGraphicsAssetSpec('refinery-bulkhead-lod0', 'environment-module', '/assets/models/environments/refinery-bulkhead-lod0.glb', 0),
       1: createGraphicsAssetSpec('refinery-bulkhead-lod1', 'environment-module', '/assets/models/environments/refinery-bulkhead-lod1.glb', 1),
       2: createGraphicsAssetSpec('refinery-bulkhead-lod2', 'environment-module', '/assets/models/environments/refinery-bulkhead-lod2.glb', 2),
     },
@@ -341,6 +342,7 @@ export const REFINERY_ASSET_FAMILIES = {
   wallPanel: {
     id: 'refinery-wall-service-panel',
     lods: {
+      0: createGraphicsAssetSpec('refinery-wall-service-panel-lod0', 'environment-module', '/assets/models/environments/refinery-wall-service-panel-lod0.glb', 0),
       1: createGraphicsAssetSpec('refinery-wall-service-panel-lod1', 'environment-module', '/assets/models/environments/refinery-wall-service-panel-lod1.glb', 1),
       2: createGraphicsAssetSpec('refinery-wall-service-panel-lod2', 'environment-module', '/assets/models/environments/refinery-wall-service-panel-lod2.glb', 2),
     },
