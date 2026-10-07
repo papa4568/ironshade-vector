@@ -10,7 +10,9 @@ Keep always-on context small. Read only the documents relevant to the current ta
 - `agent/impact-map.json` — machine-readable change-impact map for selecting focused iteration checks from changed files. Unknown or high-risk impact escalates to `npm run verify:full`; affected-verification selection never replaces a roadmap item's required final proof gates.
 - `agent/candidate-manifest.schema.json` and `agent/verification-ledger.schema.json` — exact-candidate evidence contracts. A ledger is valid only when its task, candidate SHA, canonical manifest digest, proof evidence, and artifact identities agree.
 - `agent/tools/candidate-artifact.mjs` — exact-SHA web-bundle manifest and integrity verifier used before browser/Android consumers trust a reusable `dist/` artifact.
-- `.github/workflows/pr-candidate.yml` — authoritative PR final-candidate orchestrator: one full verification/build producer fans the same verified web bundle out to browser and Android validation.
+- `agent/architecture-invariants.json` — deterministic architecture-boundary rules that every final PR candidate must satisfy.
+- `agent/INDEPENDENT_VERIFIER.md` — read-only adversarial review contract for a separate verifier context. The verifier may challenge completion but must not implement fixes or create a competing implementation.
+- `.github/workflows/pr-candidate.yml` — authoritative PR final-candidate orchestrator: one full verification/build producer fans the same verified web bundle out to browser and Android validation and can emit an exact-SHA independent-review context.
 - `docs/agent-orchestration.md` — migration contract and phased rollout for proof-graph orchestration.
 - `docs/external-qa.md` — validation that requires unavailable physical hardware, manual inspection, credentials, permissions, or other external access. Do not execute this file as the normal coding queue.
 - `docs/content-roadmap-archive.md` — completed work and verification history. Do not execute work from this file.
@@ -33,9 +35,13 @@ Keep always-on context small. Read only the documents relevant to the current ta
 - Prefer established project patterns over new abstractions or dependencies.
 - During implementation, use `node agent/tools/select-affected-verification.mjs` with the current changed-file set when its map covers the task. Run the selected focused checks first. If the selector reports `mode=full`, treat that as an intentional escalation rather than overriding it manually.
 - Affected-verification selection is an iteration aid only. Run the roadmap item's required final production/CI/Android/APK proof gates after the implementation is a credible completion candidate even when the selector recommended a narrower iteration set.
+- Run `node agent/tools/check-architecture-invariants.mjs` for final candidates. Architecture-invariant failures are completion failures, not advisory warnings.
 - For PR final verification, do not independently rerun the full repository suite in browser or Android jobs. `.github/workflows/pr-candidate.yml` owns the one exact-head full verification/production build, publishes the SHA-bound candidate web bundle, and downstream browser/Android jobs must validate and consume that artifact.
 - When exact-candidate evidence is enabled for the task, generate the candidate manifest from the real base/head commit range and validate it against git before crediting proof evidence. Never reuse proof evidence or artifact identity from a different candidate SHA.
-- Do not credit downstream CI proofs before the producing jobs pass. Partial ledgers may record already-proven test/invariant evidence; the complete ledger must be emitted only after all required candidate gates actually succeed.
+- When an independent verifier is required or useful, generate the exact-SHA review packet with `agent/tools/independent-review.mjs` and give it to a separate read-only verifier context following `agent/INDEPENDENT_VERIFIER.md`. The verifier tries to disprove completion; it must not edit code, push commits, change PR state, or implement fixes.
+- If the independent verifier returns `fail`, the implementation owner fixes the same branch/PR and a new candidate SHA must be reviewed from scratch. Do not let the verifier create a competing implementation.
+- Do not credit downstream CI or review proofs before the producing checks actually pass. Partial ledgers may record already-proven test/invariant evidence; the complete ledger must be emitted only after all required candidate gates actually succeed.
+- When the same failure class recurs and can be checked deterministically, promote it into `agent/architecture-invariants.json`, `agent/impact-map.json`, or another focused repository test instead of relying on repeated prose reminders.
 - A technical failure is work, not a blocker while a concrete next technical action exists. Diagnose from evidence, make the smallest reasonable correction, and change the hypothesis if a fix does not work.
 - Do not mark or archive a roadmap item until implementation and all technically available required verification evidence exist.
 - If an active item appears already implemented, verify it from code/tests/commit/CI evidence before archiving it.
@@ -49,6 +55,7 @@ Keep always-on context small. Read only the documents relevant to the current ta
 - The PR head revision is the candidate revision for final verification.
 - Candidate-proof CI must explicitly check out that PR head SHA; a synthetic pull-request merge ref is not exact-candidate evidence.
 - Evidence records may be produced after successful candidate checks, but every recorded proof and artifact must name the immutable candidate SHA it actually verified.
+- The independent verifier is read-only. It reports findings to the implementation owner; it does not own a writer branch or PR.
 - The reusable browser and Android workflows are consumers under PR orchestration. Do not re-add independent `pull_request` triggers that would duplicate candidate verification.
 - Do not push unfinished implementation directly to `main`.
 - Merge only after the required checks for that item pass.
