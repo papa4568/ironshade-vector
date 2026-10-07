@@ -33,8 +33,6 @@ Only active/future executable engineering work lives here. Completed and verifie
 
 #### C. Refinery authored geometry and silhouette upgrade
 
-- [ ] **P28-C6 — Add LOD0 refinery terminal** — Author and register a terminal LOD0 with readable screen/fixture depth and material separation while preserving its interaction origin. **Done when:** Flagship selects the terminal LOD0, interaction/cue alignment is unchanged, and standard build/APK gates pass.
-
 - [ ] **P28-C7 — Add LOD0 refinery crate** — Author and register a crate LOD0 with stronger bevels, seams, handles/structural breakup, and premium PBR materials. **Done when:** Flagship selects the crate LOD0, crate collision/gameplay dimensions are unchanged, and standard build/APK gates pass.
 
 - [ ] **P28-C8 — Replace refinery generic world boxes with authored family mappings** — In `BabylonRefineryWorldPresentation`, map eligible cover/industrial/interactable `CombatObject` visuals to refinery authored families and keep `MeshBuilder.CreateBox` only as the explicit load-failure/unmapped fallback. **Done when:** the Deep Salvage route no longer relies on generic boxes for mapped objects, dimensions/interaction centers remain simulation-owned, failure fallback is deterministic, and standard build/APK gates pass.

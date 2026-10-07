@@ -383,6 +383,7 @@ export const REFINERY_ASSET_FAMILIES = {
   terminal: {
     id: 'refinery-terminal',
     lods: {
+      0: createGraphicsAssetSpec('refinery-terminal-lod0', 'environment-module', '/assets/models/environments/refinery-terminal-lod0.glb', 0),
       1: createGraphicsAssetSpec('refinery-terminal-lod1', 'environment-module', '/assets/models/environments/refinery-terminal-lod1.glb', 1),
       2: createGraphicsAssetSpec('refinery-terminal-lod2', 'environment-module', '/assets/models/environments/refinery-terminal-lod2.glb', 2),
     },

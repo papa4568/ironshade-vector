@@ -167,3 +167,4 @@ await import('./refinery-decal-atlas.mjs');
 await import('./refinery-hard-surface-authoring.mjs');
 await import('./refinery-conduit-gantry-lod0.mjs');
 await import('./refinery-processor-lod0.mjs');
+await import('./refinery-terminal-lod0.mjs');
