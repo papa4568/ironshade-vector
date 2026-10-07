@@ -81,23 +81,23 @@ This avoids a self-reference problem: evidence files do not need to be committed
 
 ### AO-5 — CI proof reuse
 
-Active. PR final verification is being consolidated around `.github/workflows/pr-candidate.yml`.
+Verified. PR final verification is consolidated around `.github/workflows/pr-candidate.yml`.
 
 The PR execution graph is:
 
 `exact PR head -> one npm run build/full verification -> SHA-bound dist artifact -> browser desktop/mobile + Android packaging -> one APK artifact -> API35/API36 -> complete proof ledger`
 
-The candidate-build job owns the only PR `npm run build` producer. Its output is uploaded with `.candidate-artifact/candidate-web.json`. Browser E2E and Android are reusable workflow consumers and must validate that manifest against the exact candidate SHA before testing or packaging the bundle.
+The candidate-build job owns the only PR `npm run build` producer. Its output is uploaded with `.candidate-artifact/candidate-web.json`. Browser E2E and Android are reusable workflow consumers and validate that manifest against the exact candidate SHA before testing or packaging the bundle.
 
 Browser E2E retains a separate single-producer path only for direct `push`/manual runs, where no PR candidate producer exists. It no longer has an independent `pull_request` trigger. Android likewise no longer has an independent PR trigger or `npm run verify:full` step; under PR orchestration it consumes the already verified web bundle and then publishes one APK artifact reused by API 35 and API 36 validation.
 
-`agent/tests/ci-proof-reuse.mjs` mechanically rejects topology drift such as restoring independent PR triggers, adding another Android/browser PR build, or removing exact-artifact validation. `agent/tests/candidate-artifact.mjs` rejects wrong-SHA, tampered, extra-file, and malformed bundle records.
+`agent/tests/ci-proof-reuse.mjs` mechanically rejects topology drift such as restoring independent PR triggers, adding another Android/browser PR build, using caller event name to detect reusable invocation, or removing exact-artifact validation. `agent/tests/candidate-artifact.mjs` rejects wrong-SHA, tampered, extra-file, and malformed bundle records. Candidate-build concurrency serializes only the expensive producer; Android cancellation is keyed by PR so a newer candidate can replace stale downstream validation without stale reusable browser work blocking the next producer.
 
-Agent Orchestration evidence remains partial until downstream CI runs. After candidate build, browser, Android packaging, and emulator gates all pass, the PR Candidate final job generates the AO-5 manifest/ledger against the exact PR head and uploads the complete `agent-candidate-evidence-*` artifact.
+AO-5 was proven on exact implementation candidate `8da57fa08719ac9ca6aa2fae927dce7204c1e60a` by PR Candidate Verification run `37631412805`. That run executed one full repository verification/production build, uploaded `ironshade-vector-pr-candidate-web-8da57fa08719ac9ca6aa2fae927dce7204c1e60a`, skipped the Browser E2E standalone producer, and passed both browser journeys from the shared candidate artifact. Android validated the same web artifact, built and uploaded one APK artifact, and API 35 plus API 36 both consumed that APK successfully. The final artifact `agent-candidate-evidence-323-8da57fa08719ac9ca6aa2fae927dce7204c1e60a` contains a strict ledger with all four AO-5 proofs passed and no unresolved external QA.
 
 ### AO-6 — Independent verifier and mechanical invariants
 
-Add a separate completion-review contract and promote stable architectural assumptions and recurring failure classes into deterministic checks where practical.
+Ready. Add a separate completion-review contract and promote stable architectural assumptions and recurring failure classes into deterministic checks where practical.
 
 ## Orchestration commands
 
