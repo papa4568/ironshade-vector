@@ -4,6 +4,10 @@ import {
   REFINERY_MACHINERY_PREMIUM_SURFACE_TARGETS,
   upgradeRefineryPremiumSurfaceGlb,
 } from '../scripts/prepare-refinery-premium-surfaces.mjs';
+import {
+  REFINERY_PIPE_CABLE_LOD0_TARGETS,
+  buildRefineryPipeCableLod0Glb,
+} from '../scripts/prepare-refinery-pipe-cable-lod0.mjs';
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -72,11 +76,79 @@ for (const target of REFINERY_MACHINERY_PREMIUM_SURFACE_TARGETS) {
   assert(JSON.stringify(node.scale) === JSON.stringify(expected.scale), `${target.relativePath}: ${expected.name} scale changed`);
 }
 
+const expectedC3Lod0 = {
+  pipeRack: {
+    visualBounds: { min: [-1.9, 0, -0.66], max: [1.9, 2, 0.66] },
+    detailNodes: [
+      ['refinery-pipe-main-', 2],
+      ['refinery-pipe-secondary-', 2],
+      ['-coupling-', 4],
+      ['refinery-pipe-support-', 2],
+      ['refinery-pipe-valve-', 2],
+    ],
+    requiredFeatures: ['chamfered-solid', 'cylinder-pipe'],
+  },
+  cableTray: {
+    visualBounds: { min: [-0.245, 0.18, -1.6], max: [0.29, 1.58, 1.6] },
+    detailNodes: [
+      ['refinery-cable-tray-rail-', 2],
+      ['refinery-cable-tray-rung-', 7],
+      ['refinery-cable-tray-clamp', 3],
+      ['refinery-cable-tray-drop', 1],
+      ['refinery-cable-tray-junction', 1],
+    ],
+    requiredFeatures: ['chamfered-solid', 'cylinder-pipe', 'inset-panel'],
+  },
+};
+
+assert(REFINERY_PIPE_CABLE_LOD0_TARGETS.length === 2, `Expected two P28-C3 LOD0 targets, got ${REFINERY_PIPE_CABLE_LOD0_TARGETS.length}`);
+assert(JSON.stringify(REFINERY_PIPE_CABLE_LOD0_TARGETS.map(target => target.family)) === JSON.stringify(['pipeRack', 'cableTray']), 'P28-C3 family order changed');
+const manifest = await readFile(resolve(process.cwd(), 'src/game/graphicsAssetManifest.ts'), 'utf8');
+for (const target of REFINERY_PIPE_CABLE_LOD0_TARGETS) {
+  const path = resolve(process.cwd(), 'public/assets/models', target.relativePath);
+  const bytes = await readFile(path);
+  const rebuilt = buildRefineryPipeCableLod0Glb(target);
+  assert(bytes.equals(rebuilt), `${target.relativePath}: P28-C3 authored LOD0 output is not deterministic`);
+  assert(bytes.length < 1_200_000, `${target.relativePath}: P28-C3 asset exceeds the environment-module compressed-byte budget`);
+
+  const gltf = parseGlb(bytes, target.relativePath);
+  const marker = gltf.extras?.ironshadeP28C3PipeCableLod0;
+  const expected = expectedC3Lod0[target.family];
+  assert(marker?.version === 1 && marker?.family === target.family && marker?.lodTier === 0, `${target.relativePath}: P28-C3 metadata is missing`);
+  assert(marker?.deterministic === true && marker?.stablePivot === 'environment-root', `${target.relativePath}: stable deterministic pivot contract changed`);
+  assert(marker?.repeatedPlacementStable === true, `${target.relativePath}: repeated-placement stability marker is missing`);
+  assert(marker?.gameplayBoundsChanged === false, `${target.relativePath}: P28-C3 must remain presentation-only`);
+  assert(JSON.stringify(marker?.visualBounds) === JSON.stringify(expected.visualBounds), `${target.relativePath}: visual bounds changed`);
+  assert(JSON.stringify(marker?.recoveryLods) === JSON.stringify([1, 2]), `${target.relativePath}: LOD1/LOD2 recovery contract changed`);
+  assert(JSON.stringify(marker?.materialSlots) === JSON.stringify(expectedMaterials), `${target.relativePath}: premium surface material slots changed`);
+  assert(marker?.sourceTriangles > 250 && marker?.sourceVertices > 750, `${target.relativePath}: LOD0 mechanical geometry is unexpectedly coarse`);
+
+  const root = (gltf.nodes ?? []).find(node => node.name === 'environment-root');
+  assert(root && !root.translation && !root.rotation && !root.scale, `${target.relativePath}: environment-root must remain an identity repeated-placement pivot`);
+  for (const [token, minimumCount] of expected.detailNodes) {
+    assert((gltf.nodes ?? []).filter(node => node.name?.includes(token)).length >= minimumCount, `${target.relativePath}: required mechanical detail ${token} is missing`);
+  }
+  const features = new Set((gltf.meshes ?? []).map(mesh => mesh.extras?.ironshadeHardSurfaceFeature));
+  for (const feature of expected.requiredFeatures) assert(features.has(feature), `${target.relativePath}: required hard-surface feature ${feature} is missing`);
+  for (const mesh of gltf.meshes ?? []) {
+    const primitive = mesh.primitives?.[0];
+    assert(Number.isInteger(primitive?.attributes?.POSITION), `${target.relativePath}:${mesh.name}: POSITION missing`);
+    assert(Number.isInteger(primitive?.attributes?.NORMAL), `${target.relativePath}:${mesh.name}: NORMAL missing`);
+    assert(Number.isInteger(primitive?.attributes?.TANGENT), `${target.relativePath}:${mesh.name}: TANGENT missing`);
+    assert(Number.isInteger(primitive?.attributes?.TEXCOORD_0), `${target.relativePath}:${mesh.name}: UV0 missing`);
+    assert(Number.isInteger(primitive?.indices), `${target.relativePath}:${mesh.name}: indices missing`);
+  }
+
+  const expectedId = target.family === 'pipeRack' ? 'refinery-pipe-rack-lod0' : 'refinery-cable-tray-lod0';
+  assert(manifest.includes(`0: createGraphicsAssetSpec('${expectedId}'`), `${target.relativePath}: Flagship LOD0 is not registered in the asset manifest`);
+}
+
 const renderer = await readFile(resolve(process.cwd(), 'src/game/babylonCombatRenderer.ts'), 'utf8');
 const library = await readFile(resolve(process.cwd(), 'src/game/babylonPremiumPbrSurfaceLibrary.ts'), 'utf8');
 const post = await readFile(resolve(process.cwd(), 'src/game/babylonRefineryPostProcessing.ts'), 'utf8');
 const verifier = await readFile(resolve(process.cwd(), 'scripts/verify-authored-refinery.mjs'), 'utf8');
 const runtimeSmoke = await readFile(resolve(process.cwd(), 'scripts/browser-runtime-smoke.mjs'), 'utf8');
+const assetContract = await readFile(resolve(process.cwd(), 'src/game/graphicsAssets.ts'), 'utf8');
 const telemetry = 'floor:bare-metal+deck-plate|floor-grate:bare-metal+painted-metal|bulkhead:painted-metal|processor:bare-metal+emissive-fixture+painted-metal|pipe-rack:bare-metal+emissive-fixture+painted-metal|wall-panel:bare-metal+painted-metal|cable-tray:bare-metal+emissive-fixture+painted-metal|service-conduit:bare-metal+emissive-fixture+painted-metal|gantry:bare-metal+emissive-fixture+painted-metal|crate:bare-metal+painted-metal+polymer-rubber|terminal:bare-metal+emissive-fixture+painted-metal';
 for (const family of ['processor', 'pipeRack', 'cableTray', 'serviceConduit', 'gantry', 'terminal']) {
   assert(renderer.includes(`${family}: {`), `Renderer premium surface assignment is missing ${family}`);
@@ -88,7 +160,8 @@ assert(library.includes("id: 'emissive-fixture'") && library.includes('emissiveU
 assert(post.includes('refinery-(terminal|processor|pipe|cable-tray|service-conduit|smelter-gantry)'), 'Selective bloom does not include P28-B4 machinery emissive families');
 assert(post.includes('excludeByDefault: true'), 'Selective bloom protection contract changed');
 assert(runtimeSmoke.includes('authored:processor\\+terminal(?:\\+(?:pipe|cable-tray|service-conduit|gantry))*\\+muzzle'), 'Browser runtime smoke does not accept B4 machinery bloom-source telemetry');
+assert(assetContract.includes('if (detailScale >= 0.9) return 0;') && assetContract.includes('0: [0, 1, 2]'), 'Flagship detail selection must prefer P28-C3 LOD0 and preserve LOD1/LOD2 recovery');
 
-console.log(`REFINERY_MACHINERY_PREMIUM_SURFACES_PASS targets=${REFINERY_MACHINERY_PREMIUM_SURFACE_TARGETS.length} families=${expectedFamilies.join('+')} surfaces=painted-metal+bare-metal+emissive-fixture bounds=unchanged bloom=selective`);
+console.log(`REFINERY_MACHINERY_PREMIUM_SURFACES_PASS targets=${REFINERY_MACHINERY_PREMIUM_SURFACE_TARGETS.length} c3Lod0=${REFINERY_PIPE_CABLE_LOD0_TARGETS.length} families=${expectedFamilies.join('+')} surfaces=painted-metal+bare-metal+emissive-fixture bounds=unchanged pivot=stable bloom=selective`);
 await import('./refinery-decal-atlas.mjs');
 await import('./refinery-hard-surface-authoring.mjs');
