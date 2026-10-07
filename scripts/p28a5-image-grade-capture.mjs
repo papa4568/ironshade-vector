@@ -100,7 +100,7 @@ try {
     || normal.refineryWorldMappedCount < 1
     || normal.refineryWorldAuthoredCount !== normal.refineryWorldMappedCount
     || normal.refineryWorldFallbackCount !== 0
-    || !normal.assetRuntime.includes('cache:')
+    || !normal.assetRuntime.includes('cached:')
     || !normal.assetRuntime.includes('active:')
     || !normal.sceneTelemetry.includes('meshes:')
     || !normal.sceneTelemetry.includes('materials:')) {
