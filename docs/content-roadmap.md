@@ -33,8 +33,6 @@ Only active/future executable engineering work lives here. Completed and verifie
 
 #### C. Refinery authored geometry and silhouette upgrade
 
-- [ ] **P28-C6 — Add LOD0 refinery terminal** — Author and register a terminal LOD0 with readable screen/fixture depth and material separation while preserving its interaction origin. **Done when:** Flagship selects the terminal LOD0, interaction/cue alignment is unchanged, and standard build/APK gates pass.
-
 - [ ] **P28-C7 — Add LOD0 refinery crate** — Author and register a crate LOD0 with stronger bevels, seams, handles/structural breakup, and premium PBR materials. **Done when:** Flagship selects the crate LOD0, crate collision/gameplay dimensions are unchanged, and standard build/APK gates pass.
 
 - [ ] **P28-C8 — Replace refinery generic world boxes with authored family mappings** — In `BabylonRefineryWorldPresentation`, map eligible cover/industrial/interactable `CombatObject` visuals to refinery authored families and keep `MeshBuilder.CreateBox` only as the explicit load-failure/unmapped fallback. **Done when:** the Deep Salvage route no longer relies on generic boxes for mapped objects, dimensions/interaction centers remain simulation-owned, failure fallback is deterministic, and standard build/APK gates pass.
@@ -69,7 +67,7 @@ Only active/future executable engineering work lives here. Completed and verifie
 
 - [ ] **P28-E3 — Upgrade refinery practical/emissive fixtures** — Give furnace ports, terminals, warning fixtures, and selected machinery authored emissive surfaces that visually correspond to existing practical lights and selective bloom sources. **Done when:** bright fixtures appear to emit the light already present in the scene, bloom remains controlled, dark-area navigation improves without extra HUD, and standard build/APK gates pass.
 
-- [ ] **P28-E4 — Add local reflection probes for refinery hero machinery and spaces** — Add Babylon reflection probes wherever they materially improve focal metal machinery/space reflections instead of enforcing a fixed probe-count ceiling. **Done when:** hero metal gains convincing localized reflection variation, probe placement/update behavior is deterministic, repository-visible performance/resource telemetry is available, and standard build/APK gates pass. Physical target-phone acceptance is tracked in `docs/external-qa.md`.
+- [ ] **P28-E4 — Add local reflection probes for refinery hero machinery and spaces** — Add Babylon reflection probes wherever they materially improve focal metal machinery/space reflections instead of enforcing a fixed probe-count ceiling. **Done when:** hero metal gains convincing localized reflection variation, probe placement/update behavior is deterministic, repository-visible performance/resource telemetry is available, and standard build/APK gates pass. Physical target-phone acceptance is tracked separately in `docs/external-qa.md`.
 
 #### F. Heavy authored-asset production and shipping gate
 
