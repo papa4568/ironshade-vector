@@ -128,7 +128,7 @@
       "id": "AO-4",
       "title": "Add exact-candidate manifest and verification ledger",
       "priority": 40,
-      "status": "active",
+      "status": "verified",
       "dependsOn": ["AO-3"],
       "acceptance": [
         "Final candidates record task ID, base/head SHA, changed files, required proofs, CI evidence, artifact identity, and unresolved external QA.",
@@ -164,7 +164,7 @@
       "id": "AO-5",
       "title": "Deduplicate final verification and reuse candidate artifacts",
       "priority": 50,
-      "status": "planned",
+      "status": "ready",
       "dependsOn": ["AO-4"],
       "acceptance": [
         "Expensive full-repository verification runs once for the exact final candidate unless evidence requires a rerun.",
