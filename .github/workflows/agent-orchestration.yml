@@ -10,6 +10,9 @@ on:
       - 'docs/agent-orchestration.md'
       - 'AGENTS.md'
       - '.github/workflows/agent-orchestration.yml'
+      - '.github/workflows/pr-candidate.yml'
+      - '.github/workflows/browser-e2e.yml'
+      - '.github/workflows/pr-android-apk.yml'
   push:
     branches:
       - main
@@ -19,6 +22,9 @@ on:
       - 'docs/agent-orchestration.md'
       - 'AGENTS.md'
       - '.github/workflows/agent-orchestration.yml'
+      - '.github/workflows/pr-candidate.yml'
+      - '.github/workflows/browser-e2e.yml'
+      - '.github/workflows/pr-android-apk.yml'
   workflow_dispatch:
 
 permissions:
@@ -75,6 +81,12 @@ jobs:
 
       - name: Run candidate evidence regressions
         run: node agent/tests/candidate-evidence.mjs
+
+      - name: Run candidate artifact integrity regressions
+        run: node agent/tests/candidate-artifact.mjs
+
+      - name: Enforce single-producer CI proof reuse contract
+        run: node agent/tests/ci-proof-reuse.mjs
 
       - name: Detect active orchestration evidence task
         id: evidence-task
@@ -135,11 +147,11 @@ jobs:
             --branch "$HEAD_BRANCH" \
             --output .agent-evidence/candidate-manifest.json
 
-      - name: Record successful test and CI proof evidence
+      - name: Record successful proof evidence
         run: |
           node agent/tools/candidate-evidence.mjs ledger \
             --manifest .agent-evidence/candidate-manifest.json \
-            --pass-kinds test,ci \
+            --pass-kinds test,ci,invariant \
             --workflow 'Agent Orchestration' \
             --run-id "$GITHUB_RUN_ID" \
             --job 'validate-agent-orchestration' \
