@@ -48,6 +48,9 @@ jobs:
       - name: Verify single-producer CI reuse contract
         run: node agent/tests/ci-proof-reuse.mjs
 
+      - name: Enforce mechanical architecture invariants
+        run: node agent/tools/check-architecture-invariants.mjs
+
       - name: Audit runtime dependencies once
         run: |
           set -euo pipefail
@@ -133,6 +136,67 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  independent-review-context:
+    name: Independent Review Context
+    needs: candidate-build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Check out exact candidate read-only
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.candidate-build.outputs.candidate-sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Detect active orchestration review task
+        id: review-task
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync, readFileSync } from 'node:fs';
+          const graph = JSON.parse(readFileSync('agent/task-graph.json', 'utf8'));
+          const task = graph.tasks.find(entry => entry.status === 'active' || entry.status === 'verifying');
+          appendFileSync(process.env.GITHUB_OUTPUT, `task=${task?.id ?? ''}\n`);
+          console.log(`INDEPENDENT_REVIEW_TASK ${task?.id ?? 'none'}`);
+          NODE
+
+      - name: Generate exact candidate review packet
+        if: steps.review-task.outputs.task != ''
+        env:
+          TASK_ID: ${{ steps.review-task.outputs.task }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ needs.candidate-build.outputs.candidate-sha }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          node agent/tools/candidate-evidence.mjs manifest \
+            --task "$TASK_ID" \
+            --base "$BASE_SHA" \
+            --head "$HEAD_SHA" \
+            --branch "$HEAD_BRANCH" \
+            --output .independent-review/candidate-manifest.json
+          node agent/tools/independent-review.mjs packet \
+            --manifest .independent-review/candidate-manifest.json \
+            --output .independent-review/review-packet.json \
+            --verify-git
+
+      - name: Upload read-only independent review context
+        if: steps.review-task.outputs.task != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: independent-review-context-${{ github.event.pull_request.number }}-${{ needs.candidate-build.outputs.candidate-sha }}
+          path: .independent-review/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
   browser-e2e:
     name: Browser E2E
     needs: candidate-build
@@ -155,6 +219,7 @@ jobs:
     if: always()
     needs:
       - candidate-build
+      - independent-review-context
       - browser-e2e
       - android
     runs-on: ubuntu-24.04
@@ -163,6 +228,7 @@ jobs:
       - name: Require exact candidate gates
         env:
           BUILD_RESULT: ${{ needs.candidate-build.result }}
+          REVIEW_CONTEXT_RESULT: ${{ needs.independent-review-context.result }}
           BROWSER_RESULT: ${{ needs.browser-e2e.result }}
           ANDROID_RESULT: ${{ needs.android.result }}
           BROWSER_REQUIRED: ${{ needs.candidate-build.outputs.browser-required }}
@@ -170,13 +236,14 @@ jobs:
         run: |
           set -euo pipefail
           test "$BUILD_RESULT" = 'success'
+          test "$REVIEW_CONTEXT_RESULT" = 'success'
           test "$ANDROID_RESULT" = 'success'
           if [[ "$BROWSER_REQUIRED" == 'true' ]]; then
             test "$BROWSER_RESULT" = 'success'
           else
             test "$BROWSER_RESULT" = 'skipped'
           fi
-          echo "PR_CANDIDATE_VERIFICATION_PASS candidate=$CANDIDATE_SHA fullVerification=once browser=$BROWSER_RESULT android=$ANDROID_RESULT"
+          echo "PR_CANDIDATE_VERIFICATION_PASS candidate=$CANDIDATE_SHA fullVerification=once reviewContext=$REVIEW_CONTEXT_RESULT browser=$BROWSER_RESULT android=$ANDROID_RESULT"
 
       - name: Check out exact candidate revision for proof ledger
         uses: actions/checkout@v7
@@ -189,21 +256,35 @@ jobs:
         with:
           node-version: '22.23.2'
 
-      - name: Generate complete AO-5 exact-candidate evidence
+      - name: Detect active orchestration evidence task
+        id: evidence-task
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync, readFileSync } from 'node:fs';
+          const graph = JSON.parse(readFileSync('agent/task-graph.json', 'utf8'));
+          const task = graph.tasks.find(entry => entry.status === 'active' || entry.status === 'verifying');
+          appendFileSync(process.env.GITHUB_OUTPUT, `task=${task?.id ?? ''}\n`);
+          console.log(`FINAL_EVIDENCE_TASK ${task?.id ?? 'none'}`);
+          NODE
+
+      - name: Generate complete active orchestration exact-candidate evidence
+        if: steps.evidence-task.outputs.task != ''
         env:
+          TASK_ID: ${{ steps.evidence-task.outputs.task }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           node agent/tools/candidate-evidence.mjs manifest \
-            --task AO-5 \
+            --task "$TASK_ID" \
             --base "$BASE_SHA" \
             --head "$HEAD_SHA" \
             --branch "$HEAD_BRANCH" \
             --output .agent-evidence/candidate-manifest.json
           node agent/tools/candidate-evidence.mjs ledger \
             --manifest .agent-evidence/candidate-manifest.json \
-            --pass-kinds test,ci,invariant \
+            --pass-kinds test,ci,invariant,review \
             --workflow 'PR Candidate Verification' \
             --run-id "$GITHUB_RUN_ID" \
             --job 'candidate-verification' \
@@ -213,7 +294,8 @@ jobs:
             --ledger .agent-evidence/verification-ledger.json \
             --verify-git
 
-      - name: Upload complete AO-5 candidate evidence
+      - name: Upload complete active orchestration candidate evidence
+        if: steps.evidence-task.outputs.task != ''
         uses: actions/upload-artifact@v7
         with:
           name: agent-candidate-evidence-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
