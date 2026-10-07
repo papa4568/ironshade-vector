@@ -31,28 +31,7 @@ Only active/future executable engineering work lives here. Completed and verifie
 
 ### P28 — Babylon flagship visual-quality overhaul
 
-#### A. Flagship renderer policy, lighting, grounding, and image quality
-
-- [x] **P28-A0 — Remove legacy low-end quality ceilings from the production render policy** — Rework the existing render-quality/runtime-scalability policy so supported high-performance phones start at the richest available Babylon settings instead of being pre-emptively constrained by coarse-device baselines or legacy mobile tier assumptions. Keep downgrade/recovery only for real sustained runtime pressure. **Done when:** the production default on the target phone class uses full pixel ratio/detail/shadows/IBL/reflections/VFX/transparency/anisotropy available to the current renderer, no phone is downgraded solely by a conservative device-class heuristic, telemetry shows why any runtime downgrade occurs, gameplay cues remain full strength, and standard build/APK gates pass.
-
-- [x] **P28-A1 — Replace the refinery placeholder IBL with an authored prefiltered environment** — Replace the 8×8 procedural `RawCubeTexture` lighting source with a committed Babylon-compatible prefiltered environment texture; keep the procedural cube only as a deterministic load-failure fallback. Calibrate environment intensity against the existing furnace-amber/cyan lighting profile. **Done when:** refinery metals receive visibly structured reflections, the environment loads from local packaged assets without network access, before/after Flagship captures show materially stronger shape definition without washing out gameplay cues, and standard build/APK gates pass.
-
-- [x] **P28-A2 — Upgrade dynamic actor grounding** — Add high-quality Babylon contact/projected shadow treatment for the player and active nearby enemies so characters consistently feel attached to the floor, supplementing the existing key-light shadowing as needed. **Done when:** the player and nearby enemies are visibly grounded throughout the Deep Salvage route, actor shadows integrate with the real scene instead of reading as detached blobs, telegraphs/objective glyphs remain dominant, and standard build/APK gates pass.
-
-- [x] **P28-A3 — Add Babylon SSAO2 to the production refinery renderer** — Add `SSAO2RenderingPipeline` for refinery world geometry and integrate it with the existing post stack instead of relying on proxy contact-depth cards as the primary depth solution. **Done when:** wall/floor/prop intersections and large machinery gain convincing screen-space depth in Flagship captures, gameplay cue meshes remain visually dominant, pipeline enable/disable/re-entry is deterministic, and frame/regression plus standard build/APK gates pass.
-
-#### B. Shared premium PBR materials and refinery surface detail
-
-
-
-
-
-
 #### C. Refinery authored geometry and silhouette upgrade
-
-
-
-- [ ] **P28-C4 — Add LOD0 refinery conduit and gantry modules** — Author and register full-detail LOD0 variants for service conduit and smelter gantry families. **Done when:** Flagship uses the new assets, silhouettes and structural depth improve without changing route clearance, and standard build/APK gates pass.
 
 - [ ] **P28-C5 — Add LOD0 refinery processor** — Author and register a processor LOD0 prioritizing bevels, inset panels, material separation, and readable emissive fixtures. **Done when:** Flagship selects the processor LOD0, authored emissives participate in the selective glow policy, interaction/gameplay coordinates remain unchanged, and standard build/APK gates pass.
 
