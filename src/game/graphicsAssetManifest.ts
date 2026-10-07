@@ -437,8 +437,8 @@ export const SPIN_HABITAT_BOSS_ASSET_FAMILY: GraphicsAssetFamily = {
 export const JOVIAN_HARVESTER_BOSS_ASSET_FAMILY: GraphicsAssetFamily = {
   id: 'jovian-harvester-stormline-foreman',
   lods: {
-    1: createGraphicsAssetSpec('jovian-harvester-stormline-foreman-lod1', 'enemy', '/assets/models/bosses/spin-habitat-stormline-foreman-lod1.glb', 1),
-    2: createGraphicsAssetSpec('jovian-harvester-stormline-foreman-lod2', 'enemy', '/assets/models/bosses/spin-habitat-stormline-foreman-lod2.glb', 2),
+    1: createGraphicsAssetSpec('jovian-harvester-stormline-foreman-lod1', 'enemy', '/assets/models/bosses/jovian-harvester-stormline-foreman-lod1.glb', 1),
+    2: createGraphicsAssetSpec('jovian-harvester-stormline-foreman-lod2', 'enemy', '/assets/models/bosses/jovian-harvester-stormline-foreman-lod2.glb', 2),
   },
 };
 
