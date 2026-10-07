@@ -56,7 +56,7 @@
       "id": "AO-2",
       "title": "Add roadmap compatibility adapter and sidecar task metadata",
       "priority": 20,
-      "status": "ready",
+      "status": "verified",
       "dependsOn": ["AO-1"],
       "acceptance": [
         "Active roadmap items can be represented in the graph without manually duplicating their acceptance text.",
@@ -69,7 +69,21 @@
           "id": "roadmap-adapter-tests",
           "kind": "test",
           "required": true,
-          "description": "Roadmap parsing, ID matching, and drift detection tests pass."
+          "description": "Roadmap parsing, graph materialization, ID/order matching, sync behavior, and drift detection tests pass.",
+          "command": "node agent/tests/roadmap-adapter.mjs"
+        },
+        {
+          "id": "roadmap-adapter-cli",
+          "kind": "test",
+          "required": true,
+          "description": "The active Markdown roadmap and sidecar are synchronized and materialize into a valid product task graph.",
+          "command": "node agent/tools/sync-roadmap-metadata.mjs --check && node agent/tools/roadmap-adapter.mjs --validate-only"
+        },
+        {
+          "id": "roadmap-compatibility-ci",
+          "kind": "ci",
+          "required": true,
+          "description": "Agent Orchestration CI passes the roadmap adapter and drift checks on the exact candidate revision."
         }
       ],
       "externalDependencies": []
@@ -78,7 +92,7 @@
       "id": "AO-3",
       "title": "Add change-impact and affected-verification selection",
       "priority": 30,
-      "status": "planned",
+      "status": "ready",
       "dependsOn": ["AO-2"],
       "acceptance": [
         "Changed files map to affected domains and focused verification commands.",

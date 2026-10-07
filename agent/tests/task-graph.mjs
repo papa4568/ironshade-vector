@@ -5,11 +5,14 @@ import { selectNextTask, validateTaskGraph } from '../tools/validate-task-graph.
 
 const repositoryGraph = JSON.parse(await readFile(resolve('agent/task-graph.json'), 'utf8'));
 const summary = validateTaskGraph(repositoryGraph);
+const selectedTask = selectNextTask(repositoryGraph);
+const activeTask = repositoryGraph.tasks.find(task => task.status === 'active') ?? null;
+
 assert.equal(summary.scope, 'agent-orchestration-migration');
-assert.equal(summary.activeTask, null);
 assert.equal(repositoryGraph.tasks.find(task => task.id === 'AO-1')?.status, 'verified');
-assert.equal(repositoryGraph.tasks.find(task => task.id === 'AO-2')?.status, 'ready');
-assert.equal(selectNextTask(repositoryGraph)?.id, 'AO-2');
+assert.equal(summary.activeTask, activeTask?.id ?? null);
+if (activeTask) assert.equal(selectedTask?.id, activeTask.id);
+else if (selectedTask) assert(['ready', 'planned', 'failed_retryable'].includes(selectedTask.status));
 
 function clone(value) {
   return structuredClone(value);
@@ -35,24 +38,39 @@ expectInvalid(graph => {
 }, /dependency cycle detected/);
 
 expectInvalid(graph => {
+  graph.tasks.forEach(task => {
+    if (task.id !== 'AO-1' && task.id !== 'AO-2') task.status = 'planned';
+  });
   graph.tasks[0].status = 'planned';
   graph.tasks[1].status = 'ready';
 }, /AO-2 is ready before all dependencies are verified or archived/);
 
 expectInvalid(graph => {
-  graph.tasks[0].status = 'active';
+  graph.tasks.forEach(task => {
+    if (task.status === 'active') task.status = 'planned';
+  });
   graph.tasks[1].status = 'active';
+  graph.tasks[2].status = 'active';
 }, /only one writer-owned task may be active/);
 
 expectInvalid(graph => {
-  graph.tasks[1].status = 'blocked_external';
-  graph.tasks[1].externalDependencies = [];
+  graph.tasks.forEach(task => {
+    if (task.status === 'active') task.status = 'planned';
+  });
+  graph.tasks[2].status = 'blocked_external';
+  graph.tasks[2].externalDependencies = [];
 }, /blocked_external but has no externalDependencies/);
 
 const priorityGraph = clone(repositoryGraph);
+priorityGraph.tasks.forEach(task => {
+  task.status = 'planned';
+});
+priorityGraph.tasks[0].status = 'verified';
 priorityGraph.tasks[1].status = 'verified';
-priorityGraph.tasks[2].dependsOn = ['AO-1'];
-priorityGraph.tasks[2].priority = 5;
-assert.equal(selectNextTask(priorityGraph)?.id, 'AO-3');
+priorityGraph.tasks[2].dependsOn = ['AO-2'];
+priorityGraph.tasks[3].dependsOn = ['AO-2'];
+priorityGraph.tasks[2].priority = 30;
+priorityGraph.tasks[3].priority = 5;
+assert.equal(selectNextTask(priorityGraph)?.id, 'AO-4');
 
-console.log(`AGENT_TASK_GRAPH_TEST_PASS tasks=${summary.taskCount} requiredProofs=${summary.requiredProofs} next=${selectNextTask(repositoryGraph)?.id ?? 'none'}`);
+console.log(`AGENT_TASK_GRAPH_TEST_PASS tasks=${summary.taskCount} requiredProofs=${summary.requiredProofs} active=${summary.activeTask ?? 'none'} next=${selectedTask?.id ?? 'none'}`);

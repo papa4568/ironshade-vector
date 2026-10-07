@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ironshade-vector.local/schemas/roadmap-metadata.schema.json",
+  "title": "Ironshade Vector Roadmap Metadata",
+  "type": "object",
+  "required": ["schemaVersion", "roadmap", "roadmapIds", "proofProfiles", "rules", "overrides"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "roadmap": { "type": "string", "minLength": 1 },
+    "roadmapIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9-]*$" }
+    },
+    "proofProfiles": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "items": { "$ref": "#/$defs/proof" }
+      }
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/rule" }
+    },
+    "overrides": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/override" }
+    }
+  },
+  "$defs": {
+    "proof": {
+      "type": "object",
+      "required": ["id", "kind", "required", "description"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["test", "build", "ci", "artifact", "review", "invariant", "external"] },
+        "required": { "type": "boolean" },
+        "description": { "type": "string", "minLength": 1 },
+        "command": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "rule": {
+      "type": "object",
+      "required": ["prefix", "affectedDomains", "proofProfile"],
+      "properties": {
+        "prefix": { "type": "string", "minLength": 1 },
+        "affectedDomains": {
+          "type": "array",
+          "uniqueItems": true,
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "proofProfile": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "override": {
+      "type": "object",
+      "properties": {
+        "dependsOn": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "affectedDomains": {
+          "type": "array",
+          "uniqueItems": true,
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "proofProfile": { "type": "string", "minLength": 1 },
+        "externalDependencies": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
