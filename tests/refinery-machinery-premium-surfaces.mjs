@@ -166,3 +166,4 @@ console.log(`REFINERY_MACHINERY_PREMIUM_SURFACES_PASS targets=${REFINERY_MACHINE
 await import('./refinery-decal-atlas.mjs');
 await import('./refinery-hard-surface-authoring.mjs');
 await import('./refinery-conduit-gantry-lod0.mjs');
+await import('./refinery-processor-lod0.mjs');
