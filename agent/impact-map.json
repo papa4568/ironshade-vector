@@ -149,8 +149,10 @@
       "id": "refinery-presentation",
       "include": [
         "src/game/*Refinery*.ts",
-        "scripts/*refinery*.mjs",
-        "tests/*refinery*.mjs"
+        "tests/babylon-refinery-*.*",
+        "tests/refinery-bloom.*",
+        "tests/refinery-contact-depth.*",
+        "tests/refinery-atmosphere.*"
       ],
       "domains": ["graphics", "refinery"],
       "verificationIds": [
