@@ -561,7 +561,7 @@ export class BabylonRefineryWorldPresentation {
 
       const authoredWorld = mappedFamily ? this.authoredWorldObjects.get(object.id) : undefined;
       const authoredInteractable = mappedFamily ? undefined : this.authoredInteractables.get(object.id);
-      const fallback = this.objectVisuals.get(object.id);
+      const visual = this.objectVisuals.get(object.id);
       const coverVisibility = object.kind === 'cover'
         && Math.hypot(object.x + object.w / 2 - state.player.x, object.y + object.h / 2 - state.player.y) < 155
         ? 0.48
@@ -569,21 +569,21 @@ export class BabylonRefineryWorldPresentation {
       const hpRatio = object.maxHp > 0 ? Math.max(0.18, Math.min(1, object.hp / object.maxHp)) : 1;
       const durabilityScale = object.destructible && object.maxHp < 9000 ? 0.72 + hpRatio * 0.28 : 1;
 
-      if (fallback) {
+      if (visual) {
         const useFallback = object.active && !authoredWorld && !authoredInteractable;
-        fallback.mesh.setEnabled(useFallback);
-        fallback.mesh.position.set(scaled(object.x + object.w / 2), fallback.height / 2, scaled(object.y + object.h / 2));
-        fallback.mesh.visibility = coverVisibility;
-        for (const detail of fallback.premiumDetailMeshes) detail.visibility = coverVisibility;
-        if (!fallback.premiumCover) {
+        visual.mesh.setEnabled(useFallback);
+        visual.mesh.position.set(scaled(object.x + object.w / 2), visual.height / 2, scaled(object.y + object.h / 2));
+        visual.mesh.visibility = coverVisibility;
+        for (const detail of visual.premiumDetailMeshes) detail.visibility = coverVisibility;
+        if (!visual.premiumCover) {
           const response = materialWorldResponse(object.material);
-          fallback.material.albedoColor = colorFromHex(objectColor(object));
-          fallback.material.alpha = coverVisibility;
-          fallback.material.emissiveColor = object.exposed ? colorFromHex(0xd69b4d).scale(0.32) : Color3.Black();
-          fallback.material.metallic = lerp(0.32, response.metalness, quality.materialDepthScale);
-          fallback.material.roughness = lerp(0.62, response.roughness, quality.materialDepthScale);
+          visual.material.albedoColor = colorFromHex(objectColor(object));
+          visual.material.alpha = coverVisibility;
+          visual.material.emissiveColor = object.exposed ? colorFromHex(0xd69b4d).scale(0.32) : Color3.Black();
+          visual.material.metallic = lerp(0.32, response.metalness, quality.materialDepthScale);
+          visual.material.roughness = lerp(0.62, response.roughness, quality.materialDepthScale);
         }
-        fallback.mesh.scaling.y = durabilityScale;
+        visual.mesh.scaling.y = durabilityScale;
         if (useFallback) fallbackCount += 1;
       }
 
