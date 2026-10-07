@@ -33,7 +33,7 @@ permissions:
 jobs:
   prepare-browser-candidate:
     name: Prepare Browser Candidate
-    if: github.event_name != 'workflow_call'
+    if: ${{ inputs.candidate_sha == '' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
