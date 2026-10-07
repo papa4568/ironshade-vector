@@ -6,6 +6,7 @@ Keep always-on context small. Read only the documents relevant to the current ta
 
 - `docs/content-roadmap.md` — active/future executable product work. Unless the user gives a different task, the first unchecked executable item is next.
 - `agent/task-graph.json` — machine-readable orchestration graph. During compatibility mode it is authoritative only for task IDs matching the patterns declared in its `authority.authoritativeForPatterns` field (currently `AO-*`); it does not replace product-roadmap selection yet.
+- `agent/roadmap-metadata.json` — machine-only sidecar for the active product roadmap: active ID/order inventory, affected-domain rules, proof profiles, and optional dependency overrides. Product titles/descriptions/acceptance remain authoritative only in `docs/content-roadmap.md`.
 - `docs/agent-orchestration.md` — migration contract and phased rollout for proof-graph orchestration.
 - `docs/external-qa.md` — validation that requires unavailable physical hardware, manual inspection, credentials, permissions, or other external access. Do not execute this file as the normal coding queue.
 - `docs/content-roadmap-archive.md` — completed work and verification history. Do not execute work from this file.
@@ -19,6 +20,7 @@ Keep always-on context small. Read only the documents relevant to the current ta
 
 - User instructions override roadmap selection.
 - During agent-orchestration compatibility mode, normal product/game work still comes from `docs/content-roadmap.md`; do not select P28 or other product work from `agent/task-graph.json` until `docs/agent-orchestration.md` explicitly records the cutover.
+- For product-roadmap work, `node agent/tools/roadmap-adapter.mjs` may be used to materialize the Markdown task into machine-readable domains, dependencies, and proof obligations; it must not override Markdown queue order or acceptance text during compatibility mode.
 - Work on one roadmap item at a time.
 - One roadmap checkbox should fit one focused implementation → targeted test → final verification → APK cycle.
 - Split an item before coding when it contains independent implementation or verification cycles.
@@ -52,5 +54,6 @@ Keep always-on context small. Read only the documents relevant to the current ta
 - The active roadmap contains only unchecked executable engineering work.
 - Checklist order is authoritative; do not maintain a duplicate "next task" section.
 - Move verified completion detail to the archive and remove it from the active roadmap.
+- Whenever unchecked roadmap IDs or their order change, run `node agent/tools/sync-roadmap-metadata.mjs --write` and commit the resulting `agent/roadmap-metadata.json` change with the roadmap update. CI treats unsynchronized metadata as a failure.
 - Move hardware/manual/external-only acceptance work to `docs/external-qa.md`.
 - Keep permanent rules in `docs/product-constraints.md`, not in the active queue.
