@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
-import { resolve } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 
 import {
+  collectChangedFiles,
   globToRegExp,
   loadImpactMap,
   matchesGlob,
@@ -91,4 +95,30 @@ const malformed = structuredClone(impactMap);
 malformed.rules[0].verificationIds = ['missing-check'];
 assert.throws(() => validateImpactMap(malformed), /references unknown verification missing-check/);
 
-console.log(`AFFECTED_VERIFICATION_TEST_PASS rules=${summary.ruleCount} verifications=${summary.verificationCount} graphicsChecks=${graphicsSelection.verifications.length} refineryChecks=${refineryPresentationSelection.verifications.length} unknownMode=${unknownSelection.mode}`);
+const gitFixture = await mkdtemp(join(tmpdir(), 'ironshade-impact-'));
+try {
+  execFileSync('git', ['init'], { cwd: gitFixture, stdio: 'ignore' });
+  execFileSync('git', ['config', 'user.email', 'impact@example.invalid'], { cwd: gitFixture });
+  execFileSync('git', ['config', 'user.name', 'Impact Test'], { cwd: gitFixture });
+  await mkdir(join(gitFixture, 'src/game'), { recursive: true });
+  await writeFile(join(gitFixture, 'src/game/graphicsAssetManifest.ts'), 'export const value = 1;\n');
+  execFileSync('git', ['add', '.'], { cwd: gitFixture });
+  execFileSync('git', ['commit', '-m', 'base'], { cwd: gitFixture, stdio: 'ignore' });
+  const base = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: gitFixture, encoding: 'utf8' }).trim();
+
+  await writeFile(join(gitFixture, 'src/game/graphicsAssetManifest.ts'), 'export const value = 2;\n');
+  await mkdir(join(gitFixture, 'docs'), { recursive: true });
+  await writeFile(join(gitFixture, 'docs/product-constraints.md'), '# changed\n');
+  execFileSync('git', ['add', '.'], { cwd: gitFixture });
+  execFileSync('git', ['commit', '-m', 'head'], { cwd: gitFixture, stdio: 'ignore' });
+  const head = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: gitFixture, encoding: 'utf8' }).trim();
+
+  assert.deepEqual(
+    collectChangedFiles({ base, head, cwd: gitFixture }).sort(),
+    ['docs/product-constraints.md', 'src/game/graphicsAssetManifest.ts'],
+  );
+} finally {
+  await rm(gitFixture, { recursive: true, force: true });
+}
+
+console.log(`AFFECTED_VERIFICATION_TEST_PASS rules=${summary.ruleCount} verifications=${summary.verificationCount} graphicsChecks=${graphicsSelection.verifications.length} refineryChecks=${refineryPresentationSelection.verifications.length} unknownMode=${unknownSelection.mode} gitDiff=pass`);
