@@ -3,6 +3,7 @@ import { LoadAssetContainerAsync } from '@babylonjs/core/Loading/sceneLoader';
 import { KhronosTextureContainer2 } from '@babylonjs/core/Misc/khronosTextureContainer2';
 import { MeshoptCompression } from '@babylonjs/core/Meshes/Compression/meshoptCompression';
 import type { AnimationGroup } from '@babylonjs/core/Animations/animationGroup';
+import { AbstractMesh } from '@babylonjs/core/Meshes/abstractMesh';
 import type { Node } from '@babylonjs/core/node';
 import type { Scene } from '@babylonjs/core/scene';
 import {
@@ -43,12 +44,14 @@ export type BabylonGraphicsAssetInstance = {
   spec: GraphicsAssetSpec;
   rootNodes: readonly Node[];
   animationGroups: readonly AnimationGroup[];
+  nativeMeshInstances: number;
   release: () => void;
 };
 
 export type BabylonGraphicsAssetRuntimeStats = {
   cachedAssets: number;
   activeInstances: number;
+  activeNativeMeshInstances: number;
   estimatedCachedCompressedBytes: number;
   maxCachedCompressedBytes: number;
   maxCachedAssets: number;
@@ -63,6 +66,7 @@ type BabylonGraphicsAssetCacheEntry = {
   spec: GraphicsAssetSpec;
   promise: Promise<AssetContainer>;
   activeInstances: number;
+  activeNativeMeshInstances: number;
   pendingDispose: boolean;
   disposePromise: Promise<void> | null;
   lastUsedOrdinal: number;
@@ -164,6 +168,13 @@ function normalizeRuntimeBudget(budget: BabylonGraphicsAssetRuntimeBudget): Baby
   };
 }
 
+function countNativeMeshInstances(rootNodes: readonly Node[]) {
+  return rootNodes.reduce((sum, root) => {
+    const rootInstance = root instanceof AbstractMesh && root.isAnInstance ? 1 : 0;
+    return sum + rootInstance + root.getChildMeshes(false).filter(mesh => mesh.isAnInstance).length;
+  }, 0);
+}
+
 export class BabylonGraphicsAssetRuntime {
   private readonly cache = new Map<string, BabylonGraphicsAssetCacheEntry>();
   private readonly scene: Scene;
@@ -225,8 +236,9 @@ export class BabylonGraphicsAssetRuntime {
     }
   }
 
-  private releaseEntry(entry: BabylonGraphicsAssetCacheEntry) {
+  private releaseEntry(entry: BabylonGraphicsAssetCacheEntry, nativeMeshInstances = 0) {
     entry.activeInstances = Math.max(0, entry.activeInstances - 1);
+    entry.activeNativeMeshInstances = Math.max(0, entry.activeNativeMeshInstances - nativeMeshInstances);
     if (entry.pendingDispose && entry.activeInstances === 0) {
       void this.finalizeEntry(entry);
     } else if (entry.activeInstances === 0) {
@@ -261,6 +273,7 @@ export class BabylonGraphicsAssetRuntime {
       spec,
       promise,
       activeInstances: 0,
+      activeNativeMeshInstances: 0,
       pendingDispose: false,
       disposePromise: null,
       lastUsedOrdinal: ++this.accessOrdinal,
@@ -282,6 +295,7 @@ export class BabylonGraphicsAssetRuntime {
     return {
       cachedAssets: this.cache.size,
       activeInstances: [...this.cache.values()].reduce((sum, entry) => sum + entry.activeInstances, 0),
+      activeNativeMeshInstances: [...this.cache.values()].reduce((sum, entry) => sum + entry.activeNativeMeshInstances, 0),
       estimatedCachedCompressedBytes: [...this.cache.values()]
         .reduce((sum, entry) => sum + entry.spec.compressedByteBudget, 0),
       maxCachedCompressedBytes: this.budget.maxCachedCompressedBytes,
@@ -336,16 +350,19 @@ export class BabylonGraphicsAssetRuntime {
         false,
         { doNotInstantiate: false },
       );
+      const nativeMeshInstances = countNativeMeshInstances(instantiated.rootNodes);
+      entry.activeNativeMeshInstances += nativeMeshInstances;
       let released = false;
       return {
         spec,
         rootNodes: instantiated.rootNodes,
         animationGroups: instantiated.animationGroups,
+        nativeMeshInstances,
         release: () => {
           if (released) return;
           released = true;
           instantiated.dispose();
-          this.releaseEntry(entry);
+          this.releaseEntry(entry, nativeMeshInstances);
         },
       };
     } catch (error) {
