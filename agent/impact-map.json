@@ -1,0 +1,239 @@
+{
+  "$schema": "./impact-map.schema.json",
+  "schemaVersion": 1,
+  "fallback": {
+    "unknownDomains": ["unknown"],
+    "unknownVerificationIds": ["verify-full"],
+    "highRiskVerificationIds": ["verify-full"]
+  },
+  "verifications": {
+    "agent-orchestration": {
+      "command": "node agent/tests/task-graph.mjs && node agent/tests/roadmap-adapter.mjs && node agent/tests/affected-verification.mjs",
+      "cost": "focused",
+      "purpose": "Validate agent orchestration metadata, roadmap compatibility, and affected-verification selection."
+    },
+    "roadmap-adapter": {
+      "command": "node agent/tools/sync-roadmap-metadata.mjs --check && node agent/tools/roadmap-adapter.mjs --validate-only && node agent/tests/roadmap-adapter.mjs",
+      "cost": "focused",
+      "purpose": "Validate active roadmap parsing, sidecar synchronization, and machine-readable product-task materialization."
+    },
+    "graphics-content": {
+      "command": "npm run test:graphics:content",
+      "cost": "focused",
+      "purpose": "Validate generated and committed premium graphics content, refinery surfaces, and asset-family contracts."
+    },
+    "graphics-babylon": {
+      "command": "npm run test:graphics:babylon",
+      "cost": "moderate",
+      "purpose": "Validate Babylon graphics integration and renderer-facing asset behavior."
+    },
+    "graphics-backend": {
+      "command": "npm run test:graphics-backend",
+      "cost": "focused",
+      "purpose": "Validate renderer/backend architecture boundaries."
+    },
+    "render-performance": {
+      "command": "npm run test:render",
+      "cost": "focused",
+      "purpose": "Exercise renderer performance and deterministic rendering behavior."
+    },
+    "refinery-lighting": {
+      "command": "npm run test:babylon-refinery-lighting",
+      "cost": "focused",
+      "purpose": "Validate refinery Babylon lighting behavior."
+    },
+    "refinery-post-processing": {
+      "command": "npm run test:babylon-refinery-post-processing",
+      "cost": "focused",
+      "purpose": "Validate refinery post-processing integration."
+    },
+    "refinery-bloom": {
+      "command": "npm run test:refinery-bloom",
+      "cost": "focused",
+      "purpose": "Validate refinery selective bloom behavior."
+    },
+    "refinery-contact-depth": {
+      "command": "npm run test:refinery-contact-depth",
+      "cost": "focused",
+      "purpose": "Validate refinery contact-depth behavior."
+    },
+    "refinery-atmosphere": {
+      "command": "npm run test:refinery-atmosphere",
+      "cost": "focused",
+      "purpose": "Validate refinery atmosphere behavior."
+    },
+    "babylon-ability-vfx": {
+      "command": "npm run test:babylon-ability-vfx",
+      "cost": "focused",
+      "purpose": "Validate Babylon ability VFX behavior."
+    },
+    "babylon-enemy-telegraphs": {
+      "command": "npm run test:babylon-enemy-telegraphs",
+      "cost": "focused",
+      "purpose": "Validate Babylon enemy telegraph behavior."
+    },
+    "babylon-enemy-lifecycle": {
+      "command": "npm run test:babylon-enemy-lifecycle",
+      "cost": "focused",
+      "purpose": "Validate Babylon enemy lifecycle visuals."
+    },
+    "babylon-protocol-status": {
+      "command": "npm run test:babylon-protocol-status",
+      "cost": "focused",
+      "purpose": "Validate Babylon protocol and status presentation."
+    },
+    "ui-readability": {
+      "command": "npm run test:ui",
+      "cost": "focused",
+      "purpose": "Validate core UI readability behavior."
+    },
+    "design-system": {
+      "command": "npm run test:design-system",
+      "cost": "focused",
+      "purpose": "Validate shared design-system behavior."
+    },
+    "verify-full": {
+      "command": "npm run verify:full",
+      "cost": "full",
+      "purpose": "Run the authoritative repository-wide verification suite when impact is high-risk or cannot be classified safely."
+    }
+  },
+  "rules": [
+    {
+      "id": "agent-orchestration",
+      "include": ["agent/**"],
+      "domains": ["agent-orchestration"],
+      "verificationIds": ["agent-orchestration"],
+      "risk": "normal"
+    },
+    {
+      "id": "active-roadmap",
+      "include": ["docs/content-roadmap.md"],
+      "domains": ["roadmap"],
+      "verificationIds": ["roadmap-adapter"],
+      "risk": "normal"
+    },
+    {
+      "id": "documentation-only",
+      "include": ["docs/**", "README.md"],
+      "exclude": ["docs/content-roadmap.md"],
+      "domains": ["documentation"],
+      "verificationIds": [],
+      "risk": "normal"
+    },
+    {
+      "id": "repository-agent-map",
+      "include": ["AGENTS.md"],
+      "domains": ["repository-governance", "agent-orchestration"],
+      "verificationIds": ["agent-orchestration"],
+      "risk": "normal"
+    },
+    {
+      "id": "graphics-assets-and-generators",
+      "include": [
+        "scripts/prepare-graphics-*.mjs",
+        "scripts/prepare-refinery-*.mjs",
+        "public/assets/environments/**",
+        "public/assets/models/**",
+        "src/game/graphicsAssetManifest.ts",
+        "src/game/babylonGraphicsAssets.ts",
+        "src/game/babylonGltfLoader.ts",
+        "tests/graphics-*.mjs",
+        "tests/*refinery*-surfaces.mjs"
+      ],
+      "domains": ["graphics", "assets"],
+      "verificationIds": ["graphics-content", "graphics-babylon"],
+      "risk": "normal"
+    },
+    {
+      "id": "refinery-presentation",
+      "include": [
+        "src/game/*Refinery*.ts",
+        "scripts/*refinery*.mjs",
+        "tests/*refinery*.mjs"
+      ],
+      "domains": ["graphics", "refinery"],
+      "verificationIds": [
+        "graphics-babylon",
+        "refinery-lighting",
+        "refinery-post-processing",
+        "refinery-bloom",
+        "refinery-contact-depth",
+        "refinery-atmosphere"
+      ],
+      "risk": "normal"
+    },
+    {
+      "id": "babylon-renderer-core",
+      "include": ["src/game/babylonCombatRenderer.ts", "src/game/babylonGraphicsAssets.ts", "src/game/babylonGltfLoader.ts"],
+      "domains": ["graphics", "renderer"],
+      "verificationIds": ["graphics-backend", "graphics-babylon", "render-performance"],
+      "risk": "normal"
+    },
+    {
+      "id": "babylon-ability-vfx",
+      "include": ["src/game/babylonAbilityVfx.ts", "tests/*ability*vfx*.*"],
+      "domains": ["graphics", "vfx", "combat-presentation"],
+      "verificationIds": ["babylon-ability-vfx"],
+      "risk": "normal"
+    },
+    {
+      "id": "babylon-enemy-telegraphs",
+      "include": ["src/game/babylonEnemyTelegraphs.ts", "tests/*enemy*telegraph*.*"],
+      "domains": ["graphics", "combat-presentation", "telegraphs"],
+      "verificationIds": ["babylon-enemy-telegraphs"],
+      "risk": "normal"
+    },
+    {
+      "id": "babylon-enemy-lifecycle",
+      "include": ["src/game/babylonEnemyLifecycleVisuals.ts", "tests/*enemy*lifecycle*.*"],
+      "domains": ["graphics", "combat-presentation", "enemy-lifecycle"],
+      "verificationIds": ["babylon-enemy-lifecycle"],
+      "risk": "normal"
+    },
+    {
+      "id": "babylon-protocol-status",
+      "include": ["src/game/babylonProtocolStatus*.ts", "tests/*protocol*status*.*"],
+      "domains": ["graphics", "combat-presentation", "status"],
+      "verificationIds": ["babylon-protocol-status"],
+      "risk": "normal"
+    },
+    {
+      "id": "ui-and-design-system",
+      "include": ["src/*.css", "src/components/**", "public/assets/ui/**"],
+      "domains": ["ui", "design-system"],
+      "verificationIds": ["ui-readability", "design-system"],
+      "risk": "normal"
+    },
+    {
+      "id": "high-risk-build-and-dependencies",
+      "include": [
+        "package.json",
+        "package-lock.json",
+        "vite*.config.*",
+        "tsconfig*.json",
+        "capacitor.config.*"
+      ],
+      "domains": ["build", "dependencies", "tooling"],
+      "verificationIds": [],
+      "risk": "high",
+      "reason": "Build, dependency, or bundling changes have repository-wide impact."
+    },
+    {
+      "id": "high-risk-android",
+      "include": ["android/**", "scripts/android-*.mjs"],
+      "domains": ["android", "packaging", "runtime"],
+      "verificationIds": [],
+      "risk": "high",
+      "reason": "Android packaging or runtime-harness changes can invalidate release-wide assumptions."
+    },
+    {
+      "id": "high-risk-ci",
+      "include": [".github/workflows/**"],
+      "domains": ["ci", "verification"],
+      "verificationIds": [],
+      "risk": "high",
+      "reason": "Workflow changes alter the verification system itself."
+    }
+  ]
+}
