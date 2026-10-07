@@ -28,9 +28,14 @@ jobs:
   validate-agent-orchestration:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    outputs:
+      active-task: ${{ steps.evidence-task.outputs.task }}
     steps:
-      - name: Check out source
+      - name: Check out exact candidate revision
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
 
       - name: Set up Node 22
         uses: actions/setup-node@v7
@@ -67,3 +72,90 @@ jobs:
 
       - name: Run affected-verification regressions
         run: node agent/tests/affected-verification.mjs
+
+      - name: Run candidate evidence regressions
+        run: node agent/tests/candidate-evidence.mjs
+
+      - name: Detect active orchestration evidence task
+        id: evidence-task
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync, readFileSync } from 'node:fs';
+          const graph = JSON.parse(readFileSync('agent/task-graph.json', 'utf8'));
+          const task = graph.tasks.find(entry => entry.status === 'active' || entry.status === 'verifying');
+          appendFileSync(process.env.GITHUB_OUTPUT, `task=${task?.id ?? ''}\n`);
+          console.log(`ACTIVE_EVIDENCE_TASK ${task?.id ?? 'none'}`);
+          NODE
+
+      - name: Generate and validate exact candidate manifest
+        if: github.event_name == 'pull_request' && steps.evidence-task.outputs.task != ''
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          node agent/tools/candidate-evidence.mjs manifest \
+            --task active \
+            --base "$BASE_SHA" \
+            --head "$HEAD_SHA" \
+            --branch "$HEAD_BRANCH" \
+            --output .agent-evidence/candidate-manifest.json
+          node agent/tools/candidate-evidence.mjs validate \
+            --manifest .agent-evidence/candidate-manifest.json \
+            --verify-git
+
+  record-agent-candidate-evidence:
+    needs: validate-agent-orchestration
+    if: github.event_name == 'pull_request' && needs.validate-agent-orchestration.outputs.active-task != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out exact candidate revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Generate exact candidate manifest
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          node agent/tools/candidate-evidence.mjs manifest \
+            --task active \
+            --base "$BASE_SHA" \
+            --head "$HEAD_SHA" \
+            --branch "$HEAD_BRANCH" \
+            --output .agent-evidence/candidate-manifest.json
+
+      - name: Record successful test and CI proof evidence
+        run: |
+          node agent/tools/candidate-evidence.mjs ledger \
+            --manifest .agent-evidence/candidate-manifest.json \
+            --pass-kinds test,ci \
+            --workflow 'Agent Orchestration' \
+            --run-id "$GITHUB_RUN_ID" \
+            --job 'validate-agent-orchestration' \
+            --output .agent-evidence/verification-ledger.json
+
+      - name: Strictly validate candidate evidence
+        run: |
+          node agent/tools/candidate-evidence.mjs validate \
+            --manifest .agent-evidence/candidate-manifest.json \
+            --ledger .agent-evidence/verification-ledger.json \
+            --verify-git
+
+      - name: Upload exact candidate evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: agent-candidate-evidence-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: .agent-evidence/
+          if-no-files-found: error
+          retention-days: 30
