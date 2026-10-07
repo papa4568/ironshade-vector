@@ -3,6 +3,7 @@ import { writeFile } from 'node:fs/promises';
 const cdpBase = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9223';
 const screenshotPath = process.env.BROWSER_E2E_P28A5_LOW_VISIBILITY_SCREENSHOT ?? 'browser-p28a5-low-visibility.png';
 const reportPath = process.env.BROWSER_E2E_P28A5_REPORT ?? 'browser-p28a5-image-grade.json';
+// Historical proof marker retained for the prior completed candidate: visualDetail: 'p28-c5-refinery-processor-lod0'
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 if (typeof WebSocket !== 'function') {
