@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ironshade-vector.local/agent/verification-ledger.schema.json",
+  "title": "Ironshade Vector Verification Ledger",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "repository",
+    "taskId",
+    "candidateSha",
+    "manifestSha256",
+    "proofEvidence",
+    "artifacts",
+    "unresolvedExternalQa"
+  ],
+  "properties": {
+    "$schema": { "type": "string", "minLength": 1 },
+    "schemaVersion": { "const": 1 },
+    "repository": { "type": "string", "minLength": 1 },
+    "taskId": { "type": "string", "minLength": 1 },
+    "candidateSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "manifestSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "proofEvidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["proofId", "kind", "status", "candidateSha", "source"],
+        "properties": {
+          "proofId": { "type": "string", "minLength": 1 },
+          "kind": { "enum": ["test", "build", "ci", "artifact", "review", "invariant", "external"] },
+          "status": { "enum": ["passed", "failed", "pending", "blocked_external"] },
+          "candidateSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+          "source": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type"],
+            "properties": {
+              "type": { "enum": ["command", "ci", "artifact", "review", "invariant", "external"] },
+              "command": { "type": "string", "minLength": 1 },
+              "workflow": { "type": "string", "minLength": 1 },
+              "runId": { "type": "integer", "minimum": 1 },
+              "job": { "type": "string", "minLength": 1 },
+              "artifactName": { "type": "string", "minLength": 1 },
+              "notes": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "kind", "candidateSha"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "kind": { "type": "string", "minLength": 1 },
+          "candidateSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "location": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "unresolvedExternalQa": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "status", "reference"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "status": { "type": "string", "minLength": 1 },
+          "reference": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}
