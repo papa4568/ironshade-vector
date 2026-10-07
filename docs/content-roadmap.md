@@ -33,8 +33,6 @@ Only active/future executable engineering work lives here. Completed and verifie
 
 #### C. Refinery authored geometry and silhouette upgrade
 
-- [ ] **P28-C8 — Replace refinery generic world boxes with authored family mappings** — In `BabylonRefineryWorldPresentation`, map eligible cover/industrial/interactable `CombatObject` visuals to refinery authored families and keep `MeshBuilder.CreateBox` only as the explicit load-failure/unmapped fallback. **Done when:** the Deep Salvage route no longer relies on generic boxes for mapped objects, dimensions/interaction centers remain simulation-owned, failure fallback is deterministic, and standard build/APK gates pass.
-
 - [ ] **P28-C9 — Consolidate repeated refinery geometry without reducing visible quality** — Use Babylon instances/thin instances or existing asset-runtime reuse for repeated static modules where it preserves the full-detail result. **Done when:** repeated LOD0 modules reuse resources correctly, scene re-entry/disposal is stable, no visible module is simplified solely to hit an arbitrary draw/triangle cap, repository-visible telemetry remains available for later target-phone measurement, and standard build/APK gates pass. Physical target-phone acceptance is tracked in `docs/external-qa.md`.
 
 #### D. Hero operators and enemy presentation

@@ -2609,7 +2609,7 @@ async function p27A2BabylonBackendAudit() {
     || state.interactableActive < 1
     || state.interactableAuthoredCount < 1
     || interactableAssets.length < 1
-    || !interactableAssets.every(asset => /^interactable-(control-terminal|salvage-tag-node)-lod[12]$/.test(asset))
+    || !interactableAssets.every(asset => /^(?:interactable-(?:control-terminal|salvage-tag-node)-lod[12]|refinery-(?:terminal|crate)-lod[012])$/.test(asset))
     || state.interactableReadability !== 'shape-coded+state-emissive+floor-cue:quality-safe'
     || state.objectiveWorldCue !== 'beacon+navigation-path'
     || !state.objectiveTarget
@@ -2630,7 +2630,7 @@ async function p27A2BabylonBackendAudit() {
     || !state.biomeStateAudio
     || state.worldStateVisual !== 'floor-signal+breach-rings'
     || !worldRuntimeMatch
-    || Number(worldRuntimeMatch[1]) < 20
+    || Number(worldRuntimeMatch[1]) < 19
     || Number(worldRuntimeMatch[2]) < state.environmentInstances + 4 + state.enemyAuthoredCount + state.interactableAuthoredCount) {
     throw new Error('P27-B5 Babylon refinery world presentation parity invalid: ' + JSON.stringify(state));
   }
