@@ -8,7 +8,11 @@ Ironshade Vector is moving from a purely linear Markdown execution queue toward 
 
 `agent/roadmap-metadata.json` is a sidecar, not a duplicate roadmap. It stores only machine-oriented information: the active unchecked ID/order inventory, affected-domain rules, proof profiles, and optional dependency overrides. Product task titles, descriptions, and `Done when` acceptance text are parsed directly from `docs/content-roadmap.md` and are not copied into the sidecar.
 
+`agent/impact-map.json` is the implementation-time change-impact map. It maps changed paths to affected domains and verification commands. It is conservative by design: unknown paths and high-risk build/dependency/Android/CI paths expand to `npm run verify:full` instead of silently selecting too little verification.
+
 Do not select P28 or other product work from `agent/task-graph.json` during compatibility mode. The roadmap adapter may materialize product tasks as a graph for inspection and validation, but Markdown order remains authoritative until cutover.
+
+Affected-verification output optimizes the inspect/implement/test loop only. It does not waive a selected roadmap item's final production build, candidate CI, Android/APK, visual, or other proof obligations.
 
 ## Target model
 
@@ -42,7 +46,15 @@ CI runs the same command in check mode and fails if the sidecar is stale.
 
 ### AO-3 — Change-impact verification
 
-Map changed files and affected domains to the narrowest useful tests. Unknown or high-risk impact must expand verification instead of silently under-testing.
+Active. `agent/impact-map.json` defines repository path rules, affected domains, reusable verification commands, and explicit high-risk fallbacks. `agent/tools/select-affected-verification.mjs` accepts either a comma-separated changed-file list or a git base/head range and emits deterministic human- or machine-readable selection output.
+
+Selection modes:
+
+- `none` — recognized documentation-only impact; no runtime iteration check is selected.
+- `targeted` — recognized low-risk impact; run the listed focused checks first.
+- `full` — at least one changed file is unclassified or matches a high-risk rule; run `npm run verify:full` rather than guessing narrowly.
+
+The selector intentionally de-duplicates overlapping rules. For example, a graphics asset change can map to both asset and renderer domains while each check appears only once.
 
 ### AO-4 — Candidate manifest and verification ledger
 
@@ -99,6 +111,33 @@ Run roadmap-adapter regressions:
 node agent/tests/roadmap-adapter.mjs
 ```
 
+## Affected-verification commands
+
+Validate the impact map without selecting checks:
+
+```bash
+node agent/tools/select-affected-verification.mjs --validate-only
+```
+
+Select checks for explicit changed files:
+
+```bash
+node agent/tools/select-affected-verification.mjs --files src/game/graphicsAssetManifest.ts,scripts/prepare-refinery-premium-surfaces.mjs
+node agent/tools/select-affected-verification.mjs --files src/game/graphicsAssetManifest.ts,scripts/prepare-refinery-premium-surfaces.mjs --json
+```
+
+Select checks from a git diff:
+
+```bash
+node agent/tools/select-affected-verification.mjs --base main --head HEAD --json
+```
+
+Run affected-verification regressions:
+
+```bash
+node agent/tests/affected-verification.mjs
+```
+
 ## State model
 
 - `planned` — known work whose dependencies may not yet be complete.
@@ -110,4 +149,4 @@ node agent/tests/roadmap-adapter.mjs
 - `verified` — required technically available proofs passed.
 - `archived` — verified work retained only as history.
 
-The AO task-graph validator rejects cycles, unknown dependencies, multiple active tasks, actionable tasks whose dependencies are incomplete, and external blockers without named external dependencies. The roadmap adapter separately rejects duplicate unchecked IDs, missing `Done when` clauses, sidecar drift, unknown proof profiles/rules, and dependencies that point to a later active roadmap task.
+The AO task-graph validator rejects cycles, unknown dependencies, multiple active tasks, actionable tasks whose dependencies are incomplete, and external blockers without named external dependencies. The roadmap adapter separately rejects duplicate unchecked IDs, missing `Done when` clauses, sidecar drift, unknown proof profiles/rules, and dependencies that point to a later active roadmap task. The impact-map validator rejects duplicate rules, unknown verification references, malformed path rules, and invalid fallback configuration.
