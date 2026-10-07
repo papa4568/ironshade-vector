@@ -23,7 +23,8 @@ assert.match(candidate, /candidate_artifact_name: \$\{\{ needs\.candidate-build\
 
 assert.match(browser, /workflow_call:/, 'Browser E2E must be reusable by the candidate orchestrator');
 assert.doesNotMatch(browser, /\n  pull_request:/, 'Browser E2E must not independently trigger on PRs after orchestration cutover');
-assert.match(browser, /if: github\.event_name != 'workflow_call'/, 'Standalone browser build must be disabled when called by PR candidate workflow');
+assert.match(browser, /if: \$\{\{ inputs\.candidate_sha == '' \}\}/, 'Standalone browser producer must be skipped whenever a reusable caller supplies candidate_sha; reusable workflows inherit the caller event name');
+assert.doesNotMatch(browser, /if: github\.event_name != 'workflow_call'/, 'Do not use event_name to detect reusable invocation because the called workflow inherits the caller event');
 assert.equal(countExactLine(browser, 'run: npm run build'), 1, 'Browser workflow may build once only for standalone push/dispatch runs');
 assert.match(browser, /Download exact candidate web bundle/);
 assert.match(browser, /candidate-artifact\.mjs validate/);
@@ -39,4 +40,4 @@ assert.match(android, /npx cap sync android/);
 assert.match(android, /Download PR APK/);
 assert.match(android, /sha256sum -c Ironshade-Vector-Android-Smoke\.sha256/);
 
-console.log('CI_PROOF_REUSE_TEST_PASS prFullBuilds=1 browser=reuses-candidate android=reuses-candidate apk=reused-by-emulators');
+console.log('CI_PROOF_REUSE_TEST_PASS prFullBuilds=1 browser=reuses-candidate android=reuses-candidate apk=reused-by-emulators reusableGuard=input');
