@@ -164,7 +164,7 @@
       "id": "AO-5",
       "title": "Deduplicate final verification and reuse candidate artifacts",
       "priority": 50,
-      "status": "ready",
+      "status": "active",
       "dependsOn": ["AO-4"],
       "acceptance": [
         "Expensive full-repository verification runs once for the exact final candidate unless evidence requires a rerun.",
@@ -174,10 +174,29 @@
       "affectedDomains": ["ci", "verification", "android", "browser-e2e"],
       "proofs": [
         {
-          "id": "ci-reuse",
+          "id": "candidate-artifact-tests",
+          "kind": "test",
+          "required": true,
+          "description": "Candidate web artifact identity and integrity regressions reject wrong-SHA or modified bundles.",
+          "command": "node agent/tests/candidate-artifact.mjs"
+        },
+        {
+          "id": "single-final-verification",
+          "kind": "invariant",
+          "required": true,
+          "description": "PR orchestration contains exactly one full-repository verification/production-build producer for the candidate web bundle."
+        },
+        {
+          "id": "browser-artifact-reuse",
           "kind": "ci",
           "required": true,
-          "description": "CI proves artifact reuse and exact-SHA verification without weakening required release gates."
+          "description": "Desktop and mobile browser validation consume the same exact-SHA candidate web artifact instead of rebuilding it."
+        },
+        {
+          "id": "android-artifact-reuse",
+          "kind": "ci",
+          "required": true,
+          "description": "Android packaging consumes the same exact-SHA candidate web artifact and Android emulator jobs reuse the resulting APK artifact."
         }
       ],
       "externalDependencies": []
