@@ -56,7 +56,7 @@
       "id": "AO-2",
       "title": "Add roadmap compatibility adapter and sidecar task metadata",
       "priority": 20,
-      "status": "active",
+      "status": "verified",
       "dependsOn": ["AO-1"],
       "acceptance": [
         "Active roadmap items can be represented in the graph without manually duplicating their acceptance text.",
@@ -92,7 +92,7 @@
       "id": "AO-3",
       "title": "Add change-impact and affected-verification selection",
       "priority": 30,
-      "status": "planned",
+      "status": "ready",
       "dependsOn": ["AO-2"],
       "acceptance": [
         "Changed files map to affected domains and focused verification commands.",
