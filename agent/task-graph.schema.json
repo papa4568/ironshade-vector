@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ironshade-vector.local/schemas/task-graph.schema.json",
+  "title": "Ironshade Vector Agent Task Graph",
+  "type": "object",
+  "required": ["schemaVersion", "scope", "authority", "tasks"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "scope": { "type": "string", "minLength": 1 },
+    "authority": {
+      "type": "object",
+      "required": ["authoritativeForPatterns", "fallbackQueue"],
+      "properties": {
+        "authoritativeForPatterns": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "fallbackQueue": { "type": "string", "minLength": 1 },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "tasks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/task" }
+    }
+  },
+  "$defs": {
+    "task": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "priority",
+        "status",
+        "dependsOn",
+        "acceptance",
+        "affectedDomains",
+        "proofs",
+        "externalDependencies"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Z][A-Z0-9-]*$" },
+        "title": { "type": "string", "minLength": 1 },
+        "priority": { "type": "integer", "minimum": 0 },
+        "status": {
+          "enum": [
+            "planned",
+            "ready",
+            "active",
+            "verifying",
+            "failed_retryable",
+            "blocked_external",
+            "verified",
+            "archived"
+          ]
+        },
+        "dependsOn": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "acceptance": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "affectedDomains": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "proofs": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/proof" }
+        },
+        "externalDependencies": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "proof": {
+      "type": "object",
+      "required": ["id", "kind", "required", "description"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": {
+          "enum": ["test", "build", "ci", "artifact", "review", "invariant", "external"]
+        },
+        "required": { "type": "boolean" },
+        "description": { "type": "string", "minLength": 1 },
+        "command": { "type": "string", "minLength": 1 },
+        "evidence": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
