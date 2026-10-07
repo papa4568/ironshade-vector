@@ -359,6 +359,7 @@ export const REFINERY_ASSET_FAMILIES = {
   serviceConduit: {
     id: 'refinery-service-conduit',
     lods: {
+      0: createGraphicsAssetSpec('refinery-service-conduit-lod0', 'environment-module', '/assets/models/environments/refinery-service-conduit-lod0.glb', 0),
       1: createGraphicsAssetSpec('refinery-service-conduit-lod1', 'environment-module', '/assets/models/environments/refinery-service-conduit-lod1.glb', 1),
       2: createGraphicsAssetSpec('refinery-service-conduit-lod2', 'environment-module', '/assets/models/environments/refinery-service-conduit-lod2.glb', 2),
     },
@@ -366,6 +367,7 @@ export const REFINERY_ASSET_FAMILIES = {
   gantry: {
     id: 'refinery-smelter-gantry',
     lods: {
+      0: createGraphicsAssetSpec('refinery-smelter-gantry-lod0', 'environment-module', '/assets/models/environments/refinery-smelter-gantry-lod0.glb', 0),
       1: createGraphicsAssetSpec('refinery-smelter-gantry-lod1', 'environment-module', '/assets/models/environments/refinery-smelter-gantry-lod1.glb', 1),
       2: createGraphicsAssetSpec('refinery-smelter-gantry-lod2', 'environment-module', '/assets/models/environments/refinery-smelter-gantry-lod2.glb', 2),
     },

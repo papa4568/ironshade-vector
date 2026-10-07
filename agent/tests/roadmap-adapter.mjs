@@ -38,47 +38,54 @@ const metadataRaw = await readFile(metadataPath, 'utf8');
 const metadata = JSON.parse(metadataRaw);
 const roadmap = await readFile(roadmapPath, 'utf8');
 const roadmapTasks = parseRoadmap(roadmap);
+const roadmapIds = roadmapTasks.map(task => task.id);
+const firstTask = roadmapTasks[0];
+const secondTask = roadmapTasks[1];
 
 validateRoadmapMetadata(metadata);
 assert.equal(metadata.roadmap, 'docs/content-roadmap.md');
-assert.equal(roadmapTasks.length, 40);
-assert.equal(roadmapTasks[0].id, 'P28-C4');
-assert.equal(roadmapTasks.at(-1).id, 'P28-H4');
-assert(!metadataRaw.includes('Add LOD0 refinery conduit and gantry modules'));
-assert(!metadataRaw.includes('Flagship uses the new assets'));
+// Queue cardinality intentionally follows the live roadmap so closing a verified item cannot make this adapter test stale.
+assert(roadmapTasks.length > 0, 'active roadmap should contain at least one executable task');
+assert.deepEqual(metadata.roadmapIds, roadmapIds);
+assert(!metadataRaw.includes(firstTask.title));
+assert(!metadataRaw.includes(firstTask.acceptance[0]));
 
 const graph = materializeRoadmapGraph(roadmapTasks, metadata);
+const firstRule = metadata.rules.find(rule => firstTask.id.startsWith(rule.prefix));
+assert(firstRule, `missing metadata rule for ${firstTask.id}`);
 assert.equal(graph.tasks.length, roadmapTasks.length);
-assert.equal(graph.tasks[0].id, 'P28-C4');
+assert.equal(graph.tasks[0].id, firstTask.id);
 assert.equal(graph.tasks[0].status, 'ready');
-assert.equal(graph.tasks[1].status, 'planned');
-assert.equal(graph.tasks[0].title, roadmapTasks[0].title);
-assert.deepEqual(graph.tasks[0].acceptance, roadmapTasks[0].acceptance);
-assert.deepEqual(graph.tasks[0].affectedDomains, ['graphics', 'refinery', 'assets']);
+if (graph.tasks[1]) assert.equal(graph.tasks[1].status, 'planned');
+assert.equal(graph.tasks[0].title, firstTask.title);
+assert.deepEqual(graph.tasks[0].acceptance, firstTask.acceptance);
+assert.deepEqual(graph.tasks[0].affectedDomains, firstRule.affectedDomains);
 assert.equal(graph.tasks[0].proofs.find(proof => proof.id === 'production-build')?.command, 'npm run build:prod');
-assert.equal(selectNextRoadmapTask(graph)?.id, 'P28-C4');
+assert.equal(selectNextRoadmapTask(graph)?.id, firstTask.id);
 
 const driftMissing = clone(metadata);
 driftMissing.roadmapIds.shift();
 assert.throws(() => materializeRoadmapGraph(roadmapTasks, driftMissing), /roadmap metadata drift/);
 
-const driftOrder = clone(metadata);
-[driftOrder.roadmapIds[0], driftOrder.roadmapIds[1]] = [driftOrder.roadmapIds[1], driftOrder.roadmapIds[0]];
-assert.throws(() => materializeRoadmapGraph(roadmapTasks, driftOrder), /roadmap order differs from metadata order/);
+if (secondTask) {
+  const driftOrder = clone(metadata);
+  [driftOrder.roadmapIds[0], driftOrder.roadmapIds[1]] = [driftOrder.roadmapIds[1], driftOrder.roadmapIds[0]];
+  assert.throws(() => materializeRoadmapGraph(roadmapTasks, driftOrder), /roadmap order differs from metadata order/);
 
-const lateDependency = clone(metadata);
-lateDependency.overrides['P28-C4'] = { dependsOn: ['P28-C5'] };
-assert.throws(
-  () => materializeRoadmapGraph(roadmapTasks, lateDependency),
-  /roadmap dependencies must appear earlier than their dependents/,
-);
+  const lateDependency = clone(metadata);
+  lateDependency.overrides[firstTask.id] = { dependsOn: [secondTask.id] };
+  assert.throws(
+    () => materializeRoadmapGraph(roadmapTasks, lateDependency),
+    /roadmap dependencies must appear earlier than their dependents/,
+  );
 
-const staleDependencyMetadata = clone(metadata);
-staleDependencyMetadata.overrides['P28-C5'] = { dependsOn: ['P28-C4'] };
-const synchronized = synchronizeRoadmapMetadata(staleDependencyMetadata, roadmapTasks.slice(1));
-assert.equal(synchronized.roadmapIds[0], 'P28-C5');
-assert(!synchronized.roadmapIds.includes('P28-C4'));
-assert.equal(synchronized.overrides['P28-C5']?.dependsOn, undefined);
+  const staleDependencyMetadata = clone(metadata);
+  staleDependencyMetadata.overrides[secondTask.id] = { dependsOn: [firstTask.id] };
+  const synchronized = synchronizeRoadmapMetadata(staleDependencyMetadata, roadmapTasks.slice(1));
+  assert.equal(synchronized.roadmapIds[0], secondTask.id);
+  assert(!synchronized.roadmapIds.includes(firstTask.id));
+  assert.equal(synchronized.overrides[secondTask.id]?.dependsOn, undefined);
+}
 
 const unknownRuleMetadata = clone(metadata);
 const unknownRuleTasks = clone(roadmapTasks);

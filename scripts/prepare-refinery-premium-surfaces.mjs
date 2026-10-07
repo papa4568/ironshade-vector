@@ -177,6 +177,8 @@ export async function writeRefineryPremiumSurfaceGeometry() {
   await writeRefineryRouteDecals();
   const { writeRefineryPipeCableLod0Assets } = await import('./prepare-refinery-pipe-cable-lod0.mjs');
   await writeRefineryPipeCableLod0Assets();
+  const { writeRefineryConduitGantryLod0Assets } = await import('./prepare-refinery-conduit-gantry-lod0.mjs');
+  await writeRefineryConduitGantryLod0Assets();
   const { writeRefineryHardSurfaceReference } = await import('./prepare-refinery-hard-surface-reference.mjs');
   await writeRefineryHardSurfaceReference();
   console.log('[graphics] P28-B2/B4 premium refinery surface geometry ' + results.map(item => `${item.relativePath}=${item.bytes}b`).join(' '));

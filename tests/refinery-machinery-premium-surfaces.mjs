@@ -165,3 +165,4 @@ assert(assetContract.includes('if (detailScale >= 0.9) return 0;') && assetContr
 console.log(`REFINERY_MACHINERY_PREMIUM_SURFACES_PASS targets=${REFINERY_MACHINERY_PREMIUM_SURFACE_TARGETS.length} c3Lod0=${REFINERY_PIPE_CABLE_LOD0_TARGETS.length} families=${expectedFamilies.join('+')} surfaces=painted-metal+bare-metal+emissive-fixture bounds=unchanged pivot=stable bloom=selective`);
 await import('./refinery-decal-atlas.mjs');
 await import('./refinery-hard-surface-authoring.mjs');
+await import('./refinery-conduit-gantry-lod0.mjs');

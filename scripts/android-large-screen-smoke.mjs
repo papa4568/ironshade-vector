@@ -5,6 +5,7 @@ const phase = process.env.ANDROID_LARGE_SCREEN_PHASE ?? 'portrait';
 const reportPath = process.env.ANDROID_LARGE_SCREEN_REPORT_PATH ?? `android-large-screen-${phase}.json`;
 const sentinelToken = 'ironshade-p25b-live-resize';
 const timeoutMs = Number(process.env.ANDROID_LARGE_SCREEN_TIMEOUT_MS ?? 45_000);
+const cdpCallTimeoutMs = Number(process.env.ANDROID_LARGE_SCREEN_CDP_TIMEOUT_MS ?? 20_000);
 const startedAt = Date.now();
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -58,7 +59,7 @@ function createSession(socket) {
     else request.resolve(message.result);
   });
 
-  function call(method, params = {}, timeout = 10_000) {
+  function call(method, params = {}, timeout = cdpCallTimeoutMs) {
     const id = ++requestId;
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
