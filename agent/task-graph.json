@@ -92,7 +92,7 @@
       "id": "AO-3",
       "title": "Add change-impact and affected-verification selection",
       "priority": 30,
-      "status": "active",
+      "status": "verified",
       "dependsOn": ["AO-2"],
       "acceptance": [
         "Changed files map to affected domains and focused verification commands.",
@@ -128,7 +128,7 @@
       "id": "AO-4",
       "title": "Add exact-candidate manifest and verification ledger",
       "priority": 40,
-      "status": "planned",
+      "status": "ready",
       "dependsOn": ["AO-3"],
       "acceptance": [
         "Final candidates record task ID, base/head SHA, changed files, required proofs, CI evidence, artifact identity, and unresolved external QA.",
