@@ -1,0 +1,99 @@
+name: P28 C8 Desktop Diagnostic
+
+on:
+  push:
+    branches:
+      - chatgpt/p28-c8-diagnostic
+    paths:
+      - .github/workflows/p28-c8-desktop-diagnostic.yml
+
+permissions:
+  contents: read
+
+jobs:
+  exact-head-desktop-verifiers:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ba1628eb160f7845bc527bf72d42a9256ac13ed3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.2
+          cache: npm
+      - run: npm install -g npm@10.9.8
+      - uses: browser-actions/setup-chrome@v2
+        id: chrome
+      - run: npm ci
+      - name: Build exact candidate client
+        run: |
+          npm run prepare:graphics-codecs
+          npm run prepare:graphics-assets
+          npx vite build
+      - name: Start preview
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4173 > p28-desktop-preview.log 2>&1 &
+          for attempt in {1..60}; do
+            curl --fail --silent http://127.0.0.1:4173/ >/dev/null && exit 0
+            sleep 0.5
+          done
+          exit 1
+      - name: Launch exact headed Lavapipe Chrome
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y >/dev/null
+          sudo apt-get install -y mesa-vulkan-drivers xvfb xauth >/dev/null
+          lavapipe_icd="$(find /usr/share/vulkan/icd.d -maxdepth 1 \( -name 'lvp_icd.json' -o -name 'lvp_icd.x86_64.json' \) -print -quit)"
+          npm install --no-save --package-lock=false --ignore-scripts puppeteer-core@24.26.1 >/dev/null
+          export BABYLON_LAVAPIPE_ICD="$lavapipe_icd"
+          cat > .p28-c8-desktop-launch.mjs <<'NODE'
+          import puppeteer from 'puppeteer-core';
+          const browser = await puppeteer.launch({
+            executablePath: process.env.CHROME_PATH,
+            headless: false,
+            dumpio: true,
+            protocolTimeout: 0,
+            userDataDir: `${process.env.RUNNER_TEMP}/ironshade-p28-c8-desktop`,
+            env: { ...process.env, VK_DRIVER_FILES: process.env.BABYLON_LAVAPIPE_ICD },
+            args: [
+              '--no-sandbox','--disable-dev-shm-usage','--enable-unsafe-webgpu','--enable-features=Vulkan',
+              '--ozone-platform=x11','--ignore-gpu-blocklist','--disable-gpu-driver-bug-workarounds',
+              '--disable-gpu-watchdog','--window-size=1280,720','--remote-debugging-address=127.0.0.1',
+              '--remote-debugging-port=9223','http://127.0.0.1:4173/'
+            ],
+          });
+          const shutdown = async () => { await browser.close().catch(() => undefined); process.exit(0); };
+          process.once('SIGTERM', shutdown); process.once('SIGINT', shutdown);
+          console.log(`P28 C8 desktop browser ready ${browser.wsEndpoint()}`);
+          await new Promise(() => {});
+          NODE
+          xvfb-run -a -s "-screen 0 1280x720x24" node .p28-c8-desktop-launch.mjs > p28-desktop-chrome.log 2>&1 &
+          for attempt in {1..180}; do
+            curl --fail --silent http://127.0.0.1:9223/json/version >/dev/null && exit 0
+            sleep 0.5
+          done
+          cat p28-desktop-chrome.log
+          exit 1
+      - name: Verify authored operator
+        env: &browser_env
+          CDP_ENDPOINT: http://127.0.0.1:9223
+          BROWSER_E2E_APP_URL: http://127.0.0.1:4173/
+          BROWSER_E2E_VIEWPORT: desktop
+          BROWSER_E2E_GRAPHICS_PATH: babylon
+          BROWSER_E2E_SKIP_SYNTHETIC_CONTROLLER: '1'
+        run: node scripts/verify-authored-operator.mjs
+      - name: Verify authored enemies
+        env: *browser_env
+        run: node scripts/verify-authored-enemies.mjs
+      - name: Verify authored weapons
+        env: *browser_env
+        run: node scripts/verify-authored-weapons.mjs
+      - name: Verify authored interactables
+        env: *browser_env
+        run: node scripts/verify-authored-interactables.mjs
+      - name: Verify authored refinery
+        env: *browser_env
+        run: node scripts/verify-authored-refinery.mjs
