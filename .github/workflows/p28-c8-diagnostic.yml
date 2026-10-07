@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: b7aa9e706ec0114c23ba0463cf3a85e38feef3df
+          ref: 2443bdca51b6f8d8987a68567f339a6c62126b61
       - uses: actions/setup-node@v4
         with:
           node-version: 22.23.2
@@ -72,6 +72,7 @@ jobs:
           BROWSER_E2E_P28A5_REPORT: browser-p28a5-image-grade.json
         shell: bash
         run: |
+          set +e
           set -o pipefail
           node scripts/browser-runtime-smoke.mjs 2>&1 | tee browser-smoke.log
           smoke_status=${PIPESTATUS[0]}
