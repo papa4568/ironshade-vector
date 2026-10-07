@@ -4,7 +4,9 @@ Keep always-on context small. Read only the documents relevant to the current ta
 
 ## Sources of truth
 
-- `docs/content-roadmap.md` — active/future executable work. Unless the user gives a different task, the first unchecked executable item is next.
+- `docs/content-roadmap.md` — active/future executable product work. Unless the user gives a different task, the first unchecked executable item is next.
+- `agent/task-graph.json` — machine-readable orchestration graph. During compatibility mode it is authoritative only for task IDs matching the patterns declared in its `authority.authoritativeForPatterns` field (currently `AO-*`); it does not replace product-roadmap selection yet.
+- `docs/agent-orchestration.md` — migration contract and phased rollout for proof-graph orchestration.
 - `docs/external-qa.md` — validation that requires unavailable physical hardware, manual inspection, credentials, permissions, or other external access. Do not execute this file as the normal coding queue.
 - `docs/content-roadmap-archive.md` — completed work and verification history. Do not execute work from this file.
 - `docs/product-constraints.md` — stable product, design, platform, and performance constraints.
@@ -16,6 +18,7 @@ Keep always-on context small. Read only the documents relevant to the current ta
 ## Execution
 
 - User instructions override roadmap selection.
+- During agent-orchestration compatibility mode, normal product/game work still comes from `docs/content-roadmap.md`; do not select P28 or other product work from `agent/task-graph.json` until `docs/agent-orchestration.md` explicitly records the cutover.
 - Work on one roadmap item at a time.
 - One roadmap checkbox should fit one focused implementation → targeted test → final verification → APK cycle.
 - Split an item before coding when it contains independent implementation or verification cycles.
