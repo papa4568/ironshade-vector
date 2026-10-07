@@ -205,7 +205,7 @@
       "id": "AO-6",
       "title": "Add independent review and mechanical architecture proofs",
       "priority": 60,
-      "status": "ready",
+      "status": "active",
       "dependsOn": ["AO-5"],
       "acceptance": [
         "Final candidates support an independent verifier context that attempts to disprove completion without creating a competing implementation.",
@@ -215,10 +215,36 @@
       "affectedDomains": ["agent-orchestration", "architecture", "review"],
       "proofs": [
         {
+          "id": "architecture-invariant-tests",
+          "kind": "test",
+          "required": true,
+          "description": "Config validation and regression tests prove stable architecture rules fail closed when boundaries drift.",
+          "command": "node agent/tests/architecture-invariants.mjs && node agent/tools/check-architecture-invariants.mjs"
+        },
+        {
+          "id": "independent-review-contract-tests",
+          "kind": "test",
+          "required": true,
+          "description": "Read-only review packet/result validation rejects cross-SHA reviews and unsupported pass verdicts.",
+          "command": "node agent/tests/independent-review.mjs"
+        },
+        {
           "id": "review-contract",
           "kind": "review",
           "required": true,
-          "description": "Independent verification contract and mechanical invariant checks are documented and exercised."
+          "description": "The exact candidate produces a read-only adversarial review context that cannot modify the implementation and can validate a separate verifier result."
+        },
+        {
+          "id": "architecture-invariants",
+          "kind": "invariant",
+          "required": true,
+          "description": "Stable renderer/simulation, renderer-neutral entrypoint, and asset/simulation boundaries pass mechanically on the exact candidate."
+        },
+        {
+          "id": "ao6-candidate-ci",
+          "kind": "ci",
+          "required": true,
+          "description": "Agent Orchestration and PR Candidate Verification exercise the architecture and review contracts on the exact AO-6 candidate revision."
         }
       ],
       "externalDependencies": []
