@@ -1,0 +1,166 @@
+{
+  "$schema": "./task-graph.schema.json",
+  "schemaVersion": 1,
+  "scope": "agent-orchestration-migration",
+  "authority": {
+    "authoritativeForPatterns": ["AO-*"],
+    "fallbackQueue": "docs/content-roadmap.md",
+    "notes": "Compatibility mode: this graph governs only AO-* migration work. Product/game work remains selected from docs/content-roadmap.md until an explicit cutover phase is verified."
+  },
+  "tasks": [
+    {
+      "id": "AO-1",
+      "title": "Establish machine-readable task graph foundation",
+      "priority": 10,
+      "status": "verified",
+      "dependsOn": [],
+      "acceptance": [
+        "A versioned task-graph schema and migration graph are committed without changing product-roadmap authority.",
+        "Repository-local validation rejects duplicate IDs, unknown dependencies, dependency cycles, invalid active/ready states, and malformed proof metadata.",
+        "A deterministic next-task selector honors active work, dependencies, and priority.",
+        "A focused CI workflow validates the orchestration foundation when its files change.",
+        "AGENTS.md documents the compatibility boundary so P28 selection behavior is unchanged."
+      ],
+      "affectedDomains": ["agent-orchestration", "repository-governance"],
+      "proofs": [
+        {
+          "id": "graph-tests",
+          "kind": "test",
+          "required": true,
+          "description": "Task graph validator and selector regression tests pass.",
+          "command": "node agent/tests/task-graph.mjs"
+        },
+        {
+          "id": "graph-cli",
+          "kind": "test",
+          "required": true,
+          "description": "The repository graph validates and the selector resolves AO-1 deterministically.",
+          "command": "node agent/tools/validate-task-graph.mjs && node agent/tools/next-task.mjs --json"
+        },
+        {
+          "id": "orchestration-ci",
+          "kind": "ci",
+          "required": true,
+          "description": "Agent Orchestration CI passes on the exact candidate revision."
+        },
+        {
+          "id": "compatibility-boundary",
+          "kind": "invariant",
+          "required": true,
+          "description": "docs/content-roadmap.md remains authoritative for product/game task selection during compatibility mode."
+        }
+      ],
+      "externalDependencies": []
+    },
+    {
+      "id": "AO-2",
+      "title": "Add roadmap compatibility adapter and sidecar task metadata",
+      "priority": 20,
+      "status": "ready",
+      "dependsOn": ["AO-1"],
+      "acceptance": [
+        "Active roadmap items can be represented in the graph without manually duplicating their acceptance text.",
+        "Roadmap order remains authoritative while dependency and proof metadata become machine-readable.",
+        "Drift between roadmap IDs and graph metadata fails validation."
+      ],
+      "affectedDomains": ["agent-orchestration", "roadmap"],
+      "proofs": [
+        {
+          "id": "roadmap-adapter-tests",
+          "kind": "test",
+          "required": true,
+          "description": "Roadmap parsing, ID matching, and drift detection tests pass."
+        }
+      ],
+      "externalDependencies": []
+    },
+    {
+      "id": "AO-3",
+      "title": "Add change-impact and affected-verification selection",
+      "priority": 30,
+      "status": "planned",
+      "dependsOn": ["AO-2"],
+      "acceptance": [
+        "Changed files map to affected domains and focused verification commands.",
+        "Unknown or high-risk impact expands verification rather than silently under-testing.",
+        "Selection output is deterministic and machine-readable."
+      ],
+      "affectedDomains": ["agent-orchestration", "verification", "testing"],
+      "proofs": [
+        {
+          "id": "impact-tests",
+          "kind": "test",
+          "required": true,
+          "description": "Impact-map and affected-test selection regressions pass."
+        }
+      ],
+      "externalDependencies": []
+    },
+    {
+      "id": "AO-4",
+      "title": "Add exact-candidate manifest and verification ledger",
+      "priority": 40,
+      "status": "planned",
+      "dependsOn": ["AO-3"],
+      "acceptance": [
+        "Final candidates record task ID, base/head SHA, changed files, required proofs, CI evidence, artifact identity, and unresolved external QA.",
+        "Verification evidence cannot be credited to a different candidate SHA.",
+        "Future agents can read compact proof records instead of reconstructing completion from PR history."
+      ],
+      "affectedDomains": ["agent-orchestration", "verification", "artifacts"],
+      "proofs": [
+        {
+          "id": "ledger-tests",
+          "kind": "test",
+          "required": true,
+          "description": "Candidate-manifest and ledger integrity tests pass."
+        }
+      ],
+      "externalDependencies": []
+    },
+    {
+      "id": "AO-5",
+      "title": "Deduplicate final verification and reuse candidate artifacts",
+      "priority": 50,
+      "status": "planned",
+      "dependsOn": ["AO-4"],
+      "acceptance": [
+        "Expensive full-repository verification runs once for the exact final candidate unless evidence requires a rerun.",
+        "Browser and Android validation consume reusable outputs from the same candidate where technically safe.",
+        "Focused iteration remains fast while final release confidence is preserved."
+      ],
+      "affectedDomains": ["ci", "verification", "android", "browser-e2e"],
+      "proofs": [
+        {
+          "id": "ci-reuse",
+          "kind": "ci",
+          "required": true,
+          "description": "CI proves artifact reuse and exact-SHA verification without weakening required release gates."
+        }
+      ],
+      "externalDependencies": []
+    },
+    {
+      "id": "AO-6",
+      "title": "Add independent review and mechanical architecture proofs",
+      "priority": 60,
+      "status": "planned",
+      "dependsOn": ["AO-5"],
+      "acceptance": [
+        "Final candidates support an independent verifier context that attempts to disprove completion without creating a competing implementation.",
+        "Stable architectural invariants are mechanically checked where practical.",
+        "Recurring failure classes can be promoted into reusable repository checks or telemetry."
+      ],
+      "affectedDomains": ["agent-orchestration", "architecture", "review"],
+      "proofs": [
+        {
+          "id": "review-contract",
+          "kind": "review",
+          "required": true,
+          "description": "Independent verification contract and mechanical invariant checks are documented and exercised."
+        }
+      ],
+      "externalDependencies": []
+    }
+  ]
+}
