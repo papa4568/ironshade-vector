@@ -7,6 +7,7 @@ Keep always-on context small. Read only the documents relevant to the current ta
 - `docs/content-roadmap.md` — active/future executable product work. Unless the user gives a different task, the first unchecked executable item is next.
 - `agent/task-graph.json` — machine-readable orchestration graph. During compatibility mode it is authoritative only for task IDs matching the patterns declared in its `authority.authoritativeForPatterns` field (currently `AO-*`); it does not replace product-roadmap selection yet.
 - `agent/roadmap-metadata.json` — machine-only sidecar for the active product roadmap: active ID/order inventory, affected-domain rules, proof profiles, and optional dependency overrides. Product titles/descriptions/acceptance remain authoritative only in `docs/content-roadmap.md`.
+- `agent/impact-map.json` — machine-readable change-impact map for selecting focused iteration checks from changed files. Unknown or high-risk impact escalates to `npm run verify:full`; affected-verification selection never replaces a roadmap item's required final proof gates.
 - `docs/agent-orchestration.md` — migration contract and phased rollout for proof-graph orchestration.
 - `docs/external-qa.md` — validation that requires unavailable physical hardware, manual inspection, credentials, permissions, or other external access. Do not execute this file as the normal coding queue.
 - `docs/content-roadmap-archive.md` — completed work and verification history. Do not execute work from this file.
@@ -27,7 +28,8 @@ Keep always-on context small. Read only the documents relevant to the current ta
 - Inspect only the code, tests, docs, dependencies, git state, CI evidence, and artifacts needed for the selected task.
 - Preserve unrelated changes and existing user data.
 - Prefer established project patterns over new abstractions or dependencies.
-- Use the narrowest relevant checks while iterating. Run the required final production/CI/Android gates only after the implementation is a credible completion candidate.
+- During implementation, use `node agent/tools/select-affected-verification.mjs` with the current changed-file set when its map covers the task. Run the selected focused checks first. If the selector reports `mode=full`, treat that as an intentional escalation rather than overriding it manually.
+- Affected-verification selection is an iteration aid only. Run the roadmap item's required final production/CI/Android/APK proof gates after the implementation is a credible completion candidate even when the selector recommended a narrower iteration set.
 - A technical failure is work, not a blocker while a concrete next technical action exists. Diagnose from evidence, make the smallest reasonable correction, and change the hypothesis if a fix does not work.
 - Do not mark or archive a roadmap item until implementation and all technically available required verification evidence exist.
 - If an active item appears already implemented, verify it from code/tests/commit/CI evidence before archiving it.
