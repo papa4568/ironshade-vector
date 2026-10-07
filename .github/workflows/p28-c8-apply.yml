@@ -1,0 +1,43 @@
+name: P28 C8 Apply
+
+on:
+  push:
+    branches:
+      - chatgpt/p28-c8-refinery-world-assets
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/p28-c8-refinery-world-assets
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.2
+          cache: npm
+      - run: npm ci
+      - name: Apply P28-C8 source patch
+        run: node scripts/apply-p28-c8-refinery-world-patch.mjs
+      - name: Focused graphics content verification
+        run: npm run test:graphics:content
+      - name: Babylon asset integration verification
+        run: npm run test:graphics:babylon
+      - name: Renderer verification
+        run: npm run test:render
+      - name: Production build
+        run: npm run build:prod
+      - name: Commit verified implementation
+        run: |
+          rm scripts/apply-p28-c8-refinery-world-patch.mjs
+          rm .github/workflows/p28-c8-apply.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "P28-C8 map refinery world objects to authored families"
+          git push origin HEAD:chatgpt/p28-c8-refinery-world-assets
