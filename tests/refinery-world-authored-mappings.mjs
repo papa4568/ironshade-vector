@@ -54,7 +54,7 @@ assert(syncStart >= 0 && syncEnd > syncStart, 'P28-C8 syncObjects boundary is mi
 const syncSource = world.slice(syncStart, syncEnd);
 assert(!syncSource.includes('MeshBuilder.CreateBox'), 'P28-C8 mapped sync path must not construct generic boxes directly');
 assert(syncSource.includes('scaled(object.x + object.w / 2)') && syncSource.includes('scaled(object.y + object.h / 2)'), 'P28-C8 presentation must retain simulation-owned interaction/object centers');
-assert(syncSource.includes('authored.mount.scaling.set(fit.scaleX, fit.scaleY * durabilityScale, fit.scaleZ)'), 'P28-C8 authored object footprint/durability fitting is missing');
+assert(syncSource.includes('authoredWorld.mount.scaling.set(fit.scaleX, fit.scaleY * durabilityScale, fit.scaleZ)'), 'P28-C8 authored object footprint/durability fitting is missing');
 assert(syncSource.includes('const mappedFamily = refineryScenario ? refineryWorldObjectFamilyKey(object) : null'), 'P28-C8 refinery mapping gate is missing');
 
 assert(verifier.includes('refineryWorldVisual') && verifier.includes('refineryWorldMappedCount') && verifier.includes('refineryWorldAuthoredCount') && verifier.includes('refineryWorldFallbackCount'), 'P28-C8 live refinery verifier does not inspect world-family mapping telemetry');
