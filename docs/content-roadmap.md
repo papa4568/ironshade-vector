@@ -33,8 +33,6 @@ Only active/future executable engineering work lives here. Completed and verifie
 
 #### C. Refinery authored geometry and silhouette upgrade
 
-- [ ] **P28-C5 — Add LOD0 refinery processor** — Author and register a processor LOD0 prioritizing bevels, inset panels, material separation, and readable emissive fixtures. **Done when:** Flagship selects the processor LOD0, authored emissives participate in the selective glow policy, interaction/gameplay coordinates remain unchanged, and standard build/APK gates pass.
-
 - [ ] **P28-C6 — Add LOD0 refinery terminal** — Author and register a terminal LOD0 with readable screen/fixture depth and material separation while preserving its interaction origin. **Done when:** Flagship selects the terminal LOD0, interaction/cue alignment is unchanged, and standard build/APK gates pass.
 
 - [ ] **P28-C7 — Add LOD0 refinery crate** — Author and register a crate LOD0 with stronger bevels, seams, handles/structural breakup, and premium PBR materials. **Done when:** Flagship selects the crate LOD0, crate collision/gameplay dimensions are unchanged, and standard build/APK gates pass.

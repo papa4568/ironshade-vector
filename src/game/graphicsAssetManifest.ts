@@ -328,6 +328,7 @@ export const REFINERY_ASSET_FAMILIES = {
   processor: {
     id: 'refinery-processor',
     lods: {
+      0: createGraphicsAssetSpec('refinery-processor-lod0', 'environment-module', '/assets/models/environments/refinery-processor-lod0.glb', 0),
       1: createGraphicsAssetSpec('refinery-processor-lod1', 'environment-module', '/assets/models/environments/refinery-processor-lod1.glb', 1),
       2: createGraphicsAssetSpec('refinery-processor-lod2', 'environment-module', '/assets/models/environments/refinery-processor-lod2.glb', 2),
     },
