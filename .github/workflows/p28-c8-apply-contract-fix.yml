@@ -1,0 +1,58 @@
+name: P28 C8 Apply Contract Fix
+
+on:
+  push:
+    branches:
+      - chatgpt/p28-c8-diagnostic
+    paths:
+      - .github/workflows/p28-c8-apply-contract-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/p28-c8-refinery-world-assets
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.2
+          cache: npm
+      - run: npm install -g npm@10.9.8
+      - run: npm ci
+      - name: Restore established world-material source contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          path = Path('src/game/babylonWorldPresentation.ts')
+          source = path.read_text()
+          start = source.index('  private syncObjects(')
+          end = source.index('  private ensureObjective()', start)
+          section = source[start:end]
+          if 'const fallback = this.objectVisuals.get(object.id);' not in section:
+              raise SystemExit('P28-C8 sync fallback local not found')
+          section = re.sub(r'\bfallback\b', 'visual', section)
+          updated = source[:start] + section + source[end:]
+          if updated == source or 'visual.material.metallic =' not in section or 'visual.material.roughness =' not in section:
+              raise SystemExit('P28-C8 world-material contract patch did not apply')
+          path.write_text(updated)
+          PY
+      - name: Verify affected source contracts
+        run: |
+          npm run test:babylon-refinery-lighting
+          npm run test:graphics:content
+          npx tsc --noEmit
+          git diff --check
+      - name: Commit verified fix to task branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/game/babylonWorldPresentation.ts
+          git commit -m "P28-C8 preserve refinery world material fallback contract"
+          git push origin HEAD:chatgpt/p28-c8-refinery-world-assets
