@@ -49,20 +49,20 @@ Add a separate completion-review contract and promote stable architectural assum
 Validate the graph:
 
 ```bash
-node scripts/agent/validate-task-graph.mjs
+node agent/tools/validate-task-graph.mjs
 ```
 
 Show the currently selected orchestration task:
 
 ```bash
-node scripts/agent/next-task.mjs
-node scripts/agent/next-task.mjs --json
+node agent/tools/next-task.mjs
+node agent/tools/next-task.mjs --json
 ```
 
 Run focused regressions:
 
 ```bash
-node tests/agent-task-graph.mjs
+node agent/tests/task-graph.mjs
 ```
 
 ## State model
