@@ -128,7 +128,7 @@
       "id": "AO-4",
       "title": "Add exact-candidate manifest and verification ledger",
       "priority": 40,
-      "status": "ready",
+      "status": "active",
       "dependsOn": ["AO-3"],
       "acceptance": [
         "Final candidates record task ID, base/head SHA, changed files, required proofs, CI evidence, artifact identity, and unresolved external QA.",
@@ -138,10 +138,24 @@
       "affectedDomains": ["agent-orchestration", "verification", "artifacts"],
       "proofs": [
         {
-          "id": "ledger-tests",
+          "id": "candidate-evidence-tests",
           "kind": "test",
           "required": true,
-          "description": "Candidate-manifest and ledger integrity tests pass."
+          "description": "Candidate-manifest and verification-ledger integrity regressions reject cross-SHA evidence and manifest tampering.",
+          "command": "node agent/tests/candidate-evidence.mjs"
+        },
+        {
+          "id": "candidate-evidence-cli",
+          "kind": "test",
+          "required": true,
+          "description": "The active AO task can generate and strictly validate a manifest and ledger from the exact PR base/head candidate.",
+          "command": "node agent/tools/candidate-evidence.mjs manifest --task active --base <base-sha> --head <head-sha> --branch <branch> --output .agent-evidence/candidate-manifest.json"
+        },
+        {
+          "id": "candidate-evidence-ci",
+          "kind": "ci",
+          "required": true,
+          "description": "Agent Orchestration CI checks out the exact PR head SHA and publishes a validated candidate manifest plus verification ledger artifact for the successful candidate."
         }
       ],
       "externalDependencies": []
