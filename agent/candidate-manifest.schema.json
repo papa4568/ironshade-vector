@@ -87,7 +87,7 @@
         "required": ["id", "kind", "required", "description"],
         "properties": {
           "id": { "type": "string", "minLength": 1 },
-          "kind": { "enum": ["test", "build", "ci", "artifact", "review", "invariant"] },
+          "kind": { "enum": ["test", "build", "ci", "artifact", "review", "invariant", "external"] },
           "required": { "type": "boolean" },
           "description": { "type": "string", "minLength": 1 },
           "command": { "type": "string", "minLength": 1 }
