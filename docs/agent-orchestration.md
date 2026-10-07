@@ -28,7 +28,7 @@ Verified. Added the versioned orchestration graph, semantic validator, determini
 
 ### AO-2 — Roadmap compatibility adapter
 
-Connect active roadmap IDs to sidecar graph metadata without duplicating roadmap acceptance text. Validate drift and preserve existing roadmap ordering until cutover.
+Verified. Active roadmap items are materialized from Markdown plus machine-only sidecar metadata without duplicating product acceptance text. Exact unchecked ID/order drift is CI-enforced, and Markdown ordering remains authoritative during compatibility mode.
 
 The adapter reads unchecked top-level roadmap checkboxes, extracts their title and `Done when` acceptance directly from Markdown, merges machine-only metadata from `agent/roadmap-metadata.json`, and validates the resulting task graph. The first unchecked Markdown item remains the next product task.
 
