@@ -51,8 +51,6 @@ Only active/future executable engineering work lives here. Completed and verifie
 #### C. Refinery authored geometry and silhouette upgrade
 
 
-- [ ] **P28-C2 — Add LOD0 refinery wall modules** — Author and register full-detail LOD0 variants for the refinery bulkhead and wall service panel families. **Done when:** Flagship selects the new assets, wall silhouettes/insets are visibly richer without changing gameplay bounds, and standard build/APK gates pass.
-
 - [ ] **P28-C3 — Add LOD0 refinery pipe and cable modules** — Author and register full-detail LOD0 variants for pipe rack and cable tray families with stronger mechanical layering while retaining stable pivots for repeated placement. **Done when:** Flagship uses the new assets, repeated placement remains stable, and standard build/APK gates pass.
 
 - [ ] **P28-C4 — Add LOD0 refinery conduit and gantry modules** — Author and register full-detail LOD0 variants for service conduit and smelter gantry families. **Done when:** Flagship uses the new assets, silhouettes and structural depth improve without changing route clearance, and standard build/APK gates pass.
