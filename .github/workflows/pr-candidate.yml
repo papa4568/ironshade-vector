@@ -43,6 +43,12 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Verify candidate artifact integrity contract
+        run: node agent/tests/candidate-artifact.mjs
+
+      - name: Verify single-producer CI reuse contract
+        run: node agent/tests/ci-proof-reuse.mjs
+
       - name: Audit runtime dependencies once
         run: |
           set -euo pipefail
@@ -153,7 +159,7 @@ jobs:
       - browser-e2e
       - android
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - name: Require exact candidate gates
         env:
@@ -172,3 +178,47 @@ jobs:
             test "$BROWSER_RESULT" = 'skipped'
           fi
           echo "PR_CANDIDATE_VERIFICATION_PASS candidate=$CANDIDATE_SHA fullVerification=once browser=$BROWSER_RESULT android=$ANDROID_RESULT"
+
+      - name: Check out exact candidate revision for proof ledger
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Set up Node 22 for proof ledger
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Generate complete AO-5 exact-candidate evidence
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          node agent/tools/candidate-evidence.mjs manifest \
+            --task AO-5 \
+            --base "$BASE_SHA" \
+            --head "$HEAD_SHA" \
+            --branch "$HEAD_BRANCH" \
+            --output .agent-evidence/candidate-manifest.json
+          node agent/tools/candidate-evidence.mjs ledger \
+            --manifest .agent-evidence/candidate-manifest.json \
+            --pass-kinds test,ci,invariant \
+            --workflow 'PR Candidate Verification' \
+            --run-id "$GITHUB_RUN_ID" \
+            --job 'candidate-verification' \
+            --output .agent-evidence/verification-ledger.json
+          node agent/tools/candidate-evidence.mjs validate \
+            --manifest .agent-evidence/candidate-manifest.json \
+            --ledger .agent-evidence/verification-ledger.json \
+            --verify-git
+
+      - name: Upload complete AO-5 candidate evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: agent-candidate-evidence-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: .agent-evidence/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
