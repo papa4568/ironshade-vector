@@ -10,6 +10,7 @@ const mappings = await readFile(resolve(process.cwd(), 'src/game/refineryWorldOb
 const manifest = await readFile(resolve(process.cwd(), 'src/game/graphicsAssetManifest.ts'), 'utf8');
 const imageGrade = await readFile(resolve(process.cwd(), 'scripts/p28a5-image-grade-capture.mjs'), 'utf8');
 const verifier = await readFile(resolve(process.cwd(), 'scripts/verify-authored-refinery.mjs'), 'utf8');
+const runtimeSmoke = await readFile(resolve(process.cwd(), 'scripts/browser-runtime-smoke.mjs'), 'utf8');
 
 const expectedMappings = {
   cover: 'crate',
@@ -68,5 +69,7 @@ assert(syncSource.includes('mappedInteractableAuthoredCount'), 'P28-C8 mapped re
 assert(verifier.includes('refineryWorldVisual') && verifier.includes('refineryWorldMappedCount') && verifier.includes('refineryWorldAuthoredCount') && verifier.includes('refineryWorldFallbackCount'), 'P28-C8 live refinery verifier does not inspect world-family mapping telemetry');
 assert(verifier.includes('mapped world-object coverage'), 'P28-C8 live verifier does not require authored mapped coverage');
 assert(imageGrade.includes("visualDetail: 'p28-c8-refinery-world-authored-mappings'"), 'P28-C8 Flagship image-grade capture is not tagged for the world-mapping candidate');
+assert(runtimeSmoke.includes('refinery-(?:terminal|crate)-lod[012]'), 'P28-C8 browser parity must accept mapped refinery interactable families');
+assert(runtimeSmoke.includes('Number(worldRuntimeMatch[1]) < 19'), 'P28-C8 browser parity must allow refinery-family cache reuse without requiring a duplicate interactable asset');
 
 console.log(`REFINERY_WORLD_AUTHORED_MAPPINGS_PASS mappedKinds=${Object.keys(expectedMappings).length} families=${[...new Set(Object.values(expectedMappings))].sort().join('+')} center=simulation-owned fallback=load-failure+unmapped`);
