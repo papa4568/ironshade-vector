@@ -82,6 +82,33 @@ const completeSummary = validateVerificationLedger(manifest, completeLedger);
 assert.equal(completeSummary.complete, true);
 assert.equal(completeSummary.proofCount, 2);
 
+const richLedger = buildVerificationLedger({
+  manifest,
+  passedKinds: ['test', 'ci'],
+  workflow: 'Agent Orchestration',
+  runId: 12345,
+  job: 'validate-agent-orchestration',
+  artifacts: [
+    {
+      name: 'Ironshade-Vector-Android-Debug.apk',
+      kind: 'apk',
+      candidateSha: HEAD_SHA,
+      sha256: 'a'.repeat(64),
+      location: 'github-actions://run/12345/ironshade-vector-pr-android-apk',
+    },
+  ],
+  unresolvedExternalQa: [
+    {
+      id: 'QA-1',
+      status: 'WAITING_FOR_HARDWARE',
+      reference: 'docs/external-qa.md#qa-1',
+    },
+  ],
+});
+const richSummary = validateVerificationLedger(manifest, richLedger);
+assert.equal(richSummary.artifactCount, 1);
+assert.equal(richSummary.unresolvedExternalQaCount, 1);
+
 const incompleteLedger = buildVerificationLedger({
   manifest,
   passedKinds: ['test'],
@@ -155,4 +182,4 @@ try {
   await rm(tempRoot, { recursive: true, force: true });
 }
 
-console.log(`CANDIDATE_EVIDENCE_TEST_PASS proofs=${manifest.requiredProofs.length} manifestSha256=${manifestSummary.manifestSha256} gitDiff=pass mismatchRejection=pass`);
+console.log(`CANDIDATE_EVIDENCE_TEST_PASS proofs=${manifest.requiredProofs.length} manifestSha256=${manifestSummary.manifestSha256} artifacts=${richSummary.artifactCount} externalQa=${richSummary.unresolvedExternalQaCount} gitDiff=pass mismatchRejection=pass`);
