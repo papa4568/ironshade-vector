@@ -8,13 +8,12 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: pr-candidate-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-
 jobs:
   candidate-build:
     name: Candidate Build and Full Verification
+    concurrency:
+      group: pr-candidate-build-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     outputs:
