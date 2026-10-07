@@ -29,7 +29,7 @@
         "required": ["proofId", "kind", "status", "candidateSha", "source"],
         "properties": {
           "proofId": { "type": "string", "minLength": 1 },
-          "kind": { "enum": ["test", "build", "ci", "artifact", "review", "invariant"] },
+          "kind": { "enum": ["test", "build", "ci", "artifact", "review", "invariant", "external"] },
           "status": { "enum": ["passed", "failed", "pending", "blocked_external"] },
           "candidateSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
           "source": {
@@ -37,7 +37,7 @@
             "additionalProperties": false,
             "required": ["type"],
             "properties": {
-              "type": { "enum": ["command", "ci", "artifact", "review", "invariant"] },
+              "type": { "enum": ["command", "ci", "artifact", "review", "invariant", "external"] },
               "command": { "type": "string", "minLength": 1 },
               "workflow": { "type": "string", "minLength": 1 },
               "runId": { "type": "integer", "minimum": 1 },
