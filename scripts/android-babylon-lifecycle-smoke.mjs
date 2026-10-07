@@ -4,6 +4,7 @@ const cdpBase = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9222';
 const phase = process.env.ANDROID_P27D5_PHASE ?? 'interaction';
 const reportPath = process.env.ANDROID_P27D5_REPORT_PATH ?? ('android-p27d5-babylon-' + phase + '.json');
 const timeoutMs = Number(process.env.ANDROID_P27D5_TIMEOUT_MS ?? 75_000);
+const cdpCallTimeoutMs = Number(process.env.ANDROID_P27D5_CDP_TIMEOUT_MS ?? 20_000);
 const startedAt = Date.now();
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -57,7 +58,7 @@ function createSession(socket) {
     else request.resolve(message.result);
   });
 
-  function call(method, params = {}, timeout = 10_000) {
+  function call(method, params = {}, timeout = cdpCallTimeoutMs) {
     const id = ++requestId;
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -211,6 +212,7 @@ async function deployRefinery(idBase) {
   if (!prepared) throw new Error('P27-D5 refinery contract touch target unavailable.');
   await sleep(220);
   await tapSelector('button[data-location="asteroid-refinery"]', idBase + 4);
+  await sleep(800);
   let selected = await evaluate('[...document.querySelectorAll("button")].some(button => button.getAttribute("data-location") === "asteroid-refinery" && button.classList.contains("selected"))');
   if (!selected) {
     const retryPoint = await evaluate('(() => { const target = [...document.querySelectorAll("button")].find(button => button.getAttribute("data-location") === "asteroid-refinery"); if (!target) return null; const viewportWidth = window.visualViewport?.width ?? window.innerWidth; const viewportHeight = window.visualViewport?.height ?? window.innerHeight; const rect = target.getBoundingClientRect(); const inset = 10; const left = Math.max(rect.left, inset); const right = Math.min(rect.right, viewportWidth - inset); const top = Math.max(rect.top, inset); const bottom = Math.min(rect.bottom, viewportHeight - inset); if (right <= left || bottom <= top) return null; const edgeX = Math.min(18, Math.max(4, (right - left) * .18)); const edgeY = Math.min(18, Math.max(4, (bottom - top) * .18)); const candidates = [[(left + right) * .5, (top + bottom) * .5], [left + edgeX, (top + bottom) * .5], [right - edgeX, (top + bottom) * .5], [(left + right) * .5, top + edgeY], [(left + right) * .5, bottom - edgeY]]; for (const [x, y] of candidates) { const hit = document.elementFromPoint(x, y); if (hit && (hit === target || target.contains(hit))) return { x, y }; } return null; })()');
@@ -218,7 +220,7 @@ async function deployRefinery(idBase) {
     await dispatchTouch('touchStart', retryPoint.x, retryPoint.y, idBase + 4);
     await sleep(120);
     await dispatchTouch('touchEnd', retryPoint.x, retryPoint.y, idBase + 4);
-    await sleep(220);
+    await sleep(800);
     selected = await evaluate('[...document.querySelectorAll("button")].some(button => button.getAttribute("data-location") === "asteroid-refinery" && button.classList.contains("selected"))');
     if (!selected) throw new Error('P27-D5 refinery selection did not respond to real touch.');
     console.log('ANDROID_P27D5_CONTRACT_TOUCH_RETRY_PASS target=asteroid-refinery');
