@@ -23,10 +23,10 @@ Run `scripts/android-p28a4-shadow-qa.sh` on a current high-performance Android p
 
 ### P28-C9 — Measure repeated-geometry consolidation on target phone hardware
 
-**Status:** WAITING_FOR_IMPLEMENTATION  
-**Depends on:** P28-C9 implementation
+**Status:** WAITING_FOR_HARDWARE  
+**Depends on:** completed P28-C9 implementation
 
-Record target-phone telemetry for the finalized instancing/thin-instancing strategy and confirm that resource reuse improves or preserves runtime behavior without reducing visible quality.
+Record target-phone telemetry for the finalized shared-runtime/native-instancing strategy and confirm that resource reuse improves or preserves runtime behavior without reducing visible quality.
 
 ### P28-E4 — Measure refinery reflection probes on target phone hardware
 
