@@ -28,25 +28,26 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-
           path = Path('docs/content-roadmap-archive.md')
           source = path.read_text()
           if '**P28-C8 — Replace refinery generic world boxes with authored family mappings**' in source:
-            raise SystemExit('P28-C8 is already archived')
+              raise SystemExit('P28-C8 is already archived')
           heading = '## P28 — Babylon flagship visual-quality overhaul\n\n'
           if heading not in source:
-            raise SystemExit('P28 archive heading missing')
-          entry = '''- [x] **P28-C8 — Replace refinery generic world boxes with authored family mappings** — Completed 2026-10-07 with authored refinery family mapping for eligible Deep Salvage world objects while preserving simulation-owned dimensions, interaction centers, collision/gameplay ownership, and deterministic procedural recovery for unmapped or failed authored loads.
-  - Added `src/game/refineryWorldObjectAssets.ts` as the explicit presentation mapping contract: cover → crate, conduit → service conduit, coolant → pipe rack, breach plate → wall panel, door/gravity/seal/power controls → terminal, salvage node → crate, and anchor node → processor. Long-axis rotation and authored fit remain deterministic and derive from the simulation-owned object footprint.
-  - Integrated mapped authored instances into `BabylonRefineryWorldPresentation` through the shared Babylon graphics-asset runtime, retained lifecycle state by simulation object id, positioned/scaled authored roots from the existing object center/dimensions, and removed generic fallback boxes only after successful authored instantiation. Unmapped objects and load/spec failures retain the explicit deterministic box fallback.
-  - Preserved world/interactable readiness and readability contracts across the new mapped control/salvage path, including authored counts/assets, quality-safe floor cues, and deterministic fallback telemetry. Browser QA now accepts mapped refinery terminal-family assets independently of the legacy generic-interactable LOD policy while continuing to reject procedural fallback.
-  - Added `tests/refinery-world-authored-mappings.mjs` and extended refinery surface/browser contracts to lock all ten simulation-kind mappings, shared-runtime consumption, simulation-centered placement, authored fit/durability scaling, deterministic fallback, mapped-interactable readiness, and cache reuse. Deterministic Flagship image-grade evidence is tagged `p28-c8-refinery-world-authored-mappings`; live proof reported 16 mapped objects, 16 authored objects, and 0 refinery-world fallbacks.
-  - Exact implementation head `e3409a421dac1a31446c49c07ae79c8f2a38b77b` on PR #328 passed P28 Image Grade Visual run `37697605655` and PR Candidate Verification run `37697605891`, including the single full repository verification/production build, desktop and mobile-landscape browser journeys, APK delivery/signature checks, API 35 product smoke, API 36 Android 16 large-screen smoke, aggregate Android verification, and the AO-5 exact-candidate evidence ledger.
-  - P28 image-grade artifact `ironshade-vector-p28a5-image-grade` (artifact `11516710278`, artifact digest `sha256:f48554e1ecc06b57cef2fd30c2661657b1b8858dfdf730965c4b6fbb2da84c5e`) captured normal and low-visibility C8 Flagship evidence. Candidate evidence artifact `agent-candidate-evidence-328-e3409a421dac1a31446c49c07ae79c8f2a38b77b` is artifact `11516054182` (digest `sha256:13ad315e7d90535247a11c4279d39223e93df737c6bcdee7c7308c1fb62fffa1`).
-  - Verified PR artifact `ironshade-vector-pr-android-apk` (artifact `11516411685`, artifact digest `sha256:214f432988b441ceb828a153eaaa9b7bc6e75af9c8ce74655790a1451b3a4b64`) contains `Ironshade-Vector-Android-Debug.apk` (10,449,640 bytes; package `app.ironshade.vector`; version `0.0.1-pr.39 (39)`; min SDK 24; compile/target SDK 36; APK Signature Scheme v2 verified; signer SHA-256 `785140043848d1bd4c3901d042dd4d8a2c821b526820b9e926daf14d0693329f`; APK SHA-256 `784c85603c2565d3cf448ae0fa5bc0c32f43a28d9e4f2e85c44d31a4a67f45ea`).
-  - **Next: P28-C9 — Consolidate repeated refinery geometry without reducing visible quality.**
-
-'''
+              raise SystemExit('P28 archive heading missing')
+          lines = [
+              '- [x] **P28-C8 — Replace refinery generic world boxes with authored family mappings** — Completed 2026-10-07 with authored refinery family mapping for eligible Deep Salvage world objects while preserving simulation-owned dimensions, interaction centers, collision/gameplay ownership, and deterministic procedural recovery for unmapped or failed authored loads.',
+              '  - Added `src/game/refineryWorldObjectAssets.ts` as the explicit presentation mapping contract: cover → crate, conduit → service conduit, coolant → pipe rack, breach plate → wall panel, door/gravity/seal/power controls → terminal, salvage node → crate, and anchor node → processor. Long-axis rotation and authored fit remain deterministic and derive from the simulation-owned object footprint.',
+              '  - Integrated mapped authored instances into `BabylonRefineryWorldPresentation` through the shared Babylon graphics-asset runtime, retained lifecycle state by simulation object id, positioned/scaled authored roots from the existing object center/dimensions, and removed generic fallback boxes only after successful authored instantiation. Unmapped objects and load/spec failures retain the explicit deterministic box fallback.',
+              '  - Preserved world/interactable readiness and readability contracts across the new mapped control/salvage path, including authored counts/assets, quality-safe floor cues, and deterministic fallback telemetry. Browser QA now accepts mapped refinery terminal-family assets independently of the legacy generic-interactable LOD policy while continuing to reject procedural fallback.',
+              '  - Added `tests/refinery-world-authored-mappings.mjs` and extended refinery surface/browser contracts to lock all ten simulation-kind mappings, shared-runtime consumption, simulation-centered placement, authored fit/durability scaling, deterministic fallback, mapped-interactable readiness, and cache reuse. Deterministic Flagship image-grade evidence is tagged `p28-c8-refinery-world-authored-mappings`; live proof reported 16 mapped objects, 16 authored objects, and 0 refinery-world fallbacks.',
+              '  - Exact implementation head `e3409a421dac1a31446c49c07ae79c8f2a38b77b` on PR #328 passed P28 Image Grade Visual run `37697605655` and PR Candidate Verification run `37697605891`, including the single full repository verification/production build, desktop and mobile-landscape browser journeys, APK delivery/signature checks, API 35 product smoke, API 36 Android 16 large-screen smoke, aggregate Android verification, and the AO-5 exact-candidate evidence ledger.',
+              '  - P28 image-grade artifact `ironshade-vector-p28a5-image-grade` (artifact `11516710278`, artifact digest `sha256:f48554e1ecc06b57cef2fd30c2661657b1b8858dfdf730965c4b6fbb2da84c5e`) captured normal and low-visibility C8 Flagship evidence. Candidate evidence artifact `agent-candidate-evidence-328-e3409a421dac1a31446c49c07ae79c8f2a38b77b` is artifact `11516054182` (digest `sha256:13ad315e7d90535247a11c4279d39223e93df737c6bcdee7c7308c1fb62fffa1`).',
+              '  - Verified PR artifact `ironshade-vector-pr-android-apk` (artifact `11516411685`, artifact digest `sha256:214f432988b441ceb828a153eaaa9b7bc6e75af9c8ce74655790a1451b3a4b64`) contains `Ironshade-Vector-Android-Debug.apk` (10,449,640 bytes; package `app.ironshade.vector`; version `0.0.1-pr.39 (39)`; min SDK 24; compile/target SDK 36; APK Signature Scheme v2 verified; signer SHA-256 `785140043848d1bd4c3901d042dd4d8a2c821b526820b9e926daf14d0693329f`; APK SHA-256 `784c85603c2565d3cf448ae0fa5bc0c32f43a28d9e4f2e85c44d31a4a67f45ea`).',
+              '  - **Next: P28-C9 — Consolidate repeated refinery geometry without reducing visible quality.**',
+              '',
+          ]
+          entry = '\n'.join(lines) + '\n'
           path.write_text(source.replace(heading, heading + entry, 1))
           PY
           git diff --check
@@ -58,19 +59,18 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-
           path = Path('docs/content-roadmap.md')
           source = path.read_text()
           start = source.find('- [ ] **P28-C8 — Replace refinery generic world boxes with authored family mappings.**')
           if start < 0:
-            raise SystemExit('P28-C8 active roadmap block missing')
+              raise SystemExit('P28-C8 active roadmap block missing')
           end = source.find('- [ ] **P28-C9 —', start)
           if end < 0:
-            raise SystemExit('P28-C9 boundary missing')
+              raise SystemExit('P28-C9 boundary missing')
           source = source[:start] + source[end:]
           first_unchecked = next((line for line in source.splitlines() if line.startswith('- [ ] **')), '')
           if not first_unchecked.startswith('- [ ] **P28-C9 —'):
-            raise SystemExit('P28-C9 is not the first active roadmap item after C8 removal: ' + first_unchecked)
+              raise SystemExit('P28-C9 is not first after C8 removal: ' + first_unchecked)
           path.write_text(source)
           PY
           git diff --check
@@ -83,10 +83,9 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
-          data = json.loads(Path('agent/roadmap-metadata.json').read_text())
-          ids = data.get('roadmapIds', [])
+          ids = json.loads(Path('agent/roadmap-metadata.json').read_text()).get('roadmapIds', [])
           if not ids or ids[0] != 'P28-C9' or 'P28-C8' in ids:
-            raise SystemExit('roadmap metadata did not advance cleanly to P28-C9: ' + repr(ids[:3]))
+              raise SystemExit('roadmap metadata did not advance cleanly: ' + repr(ids[:3]))
           PY
           git add agent/roadmap-metadata.json
           git commit -m "Sync roadmap metadata after P28-C8"
