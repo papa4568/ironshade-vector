@@ -1,6 +1,16 @@
 name: Browser E2E
 
 on:
+  workflow_call:
+    inputs:
+      candidate_sha:
+        description: Exact candidate SHA whose verified web bundle must be tested.
+        required: true
+        type: string
+      candidate_artifact_name:
+        description: Same-run artifact containing dist/ and its candidate manifest.
+        required: true
+        type: string
   workflow_dispatch:
   push:
     branches:
@@ -15,25 +25,92 @@ on:
       - 'vite.config.ts'
       - 'index.html'
       - '.github/workflows/browser-e2e.yml'
-  pull_request:
-    branches:
-      - main
-    paths:
-      - 'src/**'
-      - 'tests/**'
-      - 'scripts/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.nvmrc'
-      - 'vite.config.ts'
-      - 'index.html'
-      - '.github/workflows/browser-e2e.yml'
+      - 'agent/tools/candidate-artifact.mjs'
 
 permissions:
   contents: read
 
 jobs:
+  prepare-browser-candidate:
+    name: Prepare Browser Candidate
+    if: ${{ inputs.candidate_sha == '' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Check out exact source revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Use npm 10.9.8
+        run: |
+          npm install --global npm@10.9.8
+          test "$(npm --version)" = '10.9.8'
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Audit runtime dependencies once
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4; do
+            set +e
+            output="$(npm audit --omit=dev --audit-level=high 2>&1)"
+            status=$?
+            set -e
+            printf '%s\n' "$output"
+            if [[ "$status" -eq 0 ]]; then
+              exit 0
+            fi
+            if grep -Eq '503 Service Unavailable|performing maintenance|audit endpoint returned an error' <<<"$output"; then
+              if [[ "$attempt" -lt 4 ]]; then
+                sleep $((attempt * 5))
+                continue
+              fi
+              echo "::warning::npm advisory service unavailable after retries; lockfile remains pinned and this gate will run again on the next candidate."
+              exit 0
+            fi
+            exit "$status"
+          done
+
+      - name: Run full regression and production build once
+        run: npm run build
+
+      - name: Create browser candidate artifact manifest
+        env:
+          CANDIDATE_SHA: ${{ github.sha }}
+        run: |
+          node agent/tools/candidate-artifact.mjs create \
+            --candidate "$CANDIDATE_SHA" \
+            --root dist \
+            --build-command 'npm run build' \
+            --output .candidate-artifact/candidate-web.json
+          node agent/tools/candidate-artifact.mjs validate \
+            --candidate "$CANDIDATE_SHA" \
+            --root dist \
+            --manifest .candidate-artifact/candidate-web.json
+
+      - name: Upload browser candidate web bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: ironshade-vector-browser-candidate-web-${{ github.sha }}
+          path: |
+            dist/
+            .candidate-artifact/candidate-web.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
   browser-e2e:
+    needs: prepare-browser-candidate
+    if: ${{ always() && (needs.prepare-browser-candidate.result == 'success' || needs.prepare-browser-candidate.result == 'skipped') }}
     strategy:
       fail-fast: false
       matrix:
@@ -43,8 +120,24 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - name: Check out source
+      - name: Resolve exact candidate identity
+        id: candidate
+        shell: bash
+        env:
+          INPUT_SHA: ${{ inputs.candidate_sha }}
+          INPUT_ARTIFACT: ${{ inputs.candidate_artifact_name }}
+          DEFAULT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          candidate_sha="${INPUT_SHA:-$DEFAULT_SHA}"
+          artifact_name="${INPUT_ARTIFACT:-ironshade-vector-browser-candidate-web-$candidate_sha}"
+          echo "candidate-sha=$candidate_sha" >> "$GITHUB_OUTPUT"
+          echo "artifact-name=$artifact_name" >> "$GITHUB_OUTPUT"
+
+      - name: Check out exact candidate revision
         uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.candidate.outputs.candidate-sha }}
 
       - name: Set up Node 22
         uses: actions/setup-node@v7
@@ -67,31 +160,23 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Audit runtime dependencies
+      - name: Download exact candidate web bundle
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ steps.candidate.outputs.artifact-name }}
+          path: .
+
+      - name: Verify exact candidate web bundle
+        shell: bash
+        env:
+          CANDIDATE_SHA: ${{ steps.candidate.outputs.candidate-sha }}
         run: |
           set -euo pipefail
-          for attempt in 1 2 3 4; do
-            set +e
-            output="$(npm audit --omit=dev --audit-level=high 2>&1)"
-            status=$?
-            set -e
-            printf '%s\n' "$output"
-            if [[ "$status" -eq 0 ]]; then
-              exit 0
-            fi
-            if grep -Eq '503 Service Unavailable|performing maintenance|audit endpoint returned an error' <<<"$output"; then
-              if [[ "$attempt" -lt 4 ]]; then
-                sleep $((attempt * 5))
-                continue
-              fi
-              echo "::warning::npm advisory service unavailable after retries; dependency install remains lockfile-pinned and the audit gate will run again on the next CI execution."
-              exit 0
-            fi
-            exit "$status"
-          done
-
-      - name: Run full regression and production build
-        run: npm run build
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          node agent/tools/candidate-artifact.mjs validate \
+            --candidate "$CANDIDATE_SHA" \
+            --root dist \
+            --manifest .candidate-artifact/candidate-web.json
 
       - name: Start production preview
         shell: bash

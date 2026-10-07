@@ -1,15 +1,22 @@
 name: PR Android APK
 
 on:
-  pull_request:
-    branches:
-      - main
+  workflow_call:
+    inputs:
+      candidate_sha:
+        description: Exact PR head SHA whose verified web bundle must be packaged.
+        required: true
+        type: string
+      candidate_artifact_name:
+        description: Same-run artifact containing dist/ and its candidate manifest.
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: pr-android-${{ github.event.pull_request.number || github.ref }}
+  group: pr-android-${{ github.event.pull_request.number || inputs.candidate_sha }}
   cancel-in-progress: true
 
 jobs:
@@ -21,8 +28,10 @@ jobs:
       ANDROID_VERSION_CODE: ${{ github.run_number }}
       ANDROID_VERSION_NAME: 0.0.1-pr.${{ github.run_number }}
     steps:
-      - name: Check out PR revision
+      - name: Check out exact candidate revision
         uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.candidate_sha }}
 
       - name: Set up Node 22
         uses: actions/setup-node@v7
@@ -61,12 +70,24 @@ jobs:
       - name: Validate Android smoke contracts
         run: npm run test:android-fast-smoke
 
-      - name: Run full repository verification
-        env:
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
-        run: npm run verify:full
+      - name: Download exact candidate web bundle
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.candidate_artifact_name }}
+          path: .
 
-      - name: Generate native Android project
+      - name: Verify exact candidate web bundle
+        shell: bash
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+        run: |
+          set -euo pipefail
+          node agent/tools/candidate-artifact.mjs validate \
+            --candidate "$CANDIDATE_SHA" \
+            --root dist \
+            --manifest .candidate-artifact/candidate-web.json
+
+      - name: Generate native Android project from verified bundle
         shell: bash
         run: |
           set -euo pipefail
@@ -154,8 +175,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - name: Check out PR revision
+      - name: Check out exact candidate revision
         uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.candidate_sha }}
 
       - name: Set up Node 22
         uses: actions/setup-node@v7
@@ -211,8 +234,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - name: Check out PR revision
+      - name: Check out exact candidate revision
         uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.candidate_sha }}
 
       - name: Set up Node 22
         uses: actions/setup-node@v7
@@ -285,4 +310,4 @@ jobs:
           test "$APK_RESULT" = 'success'
           test "$API35_RESULT" = 'success'
           test "$API36_RESULT" = 'success'
-          echo 'ANDROID_PR_VERIFICATION_PASS apk=verified api35=smoke api36=large-screen'
+          echo 'ANDROID_PR_VERIFICATION_PASS apk=verified-candidate-bundle api35=smoke api36=large-screen'

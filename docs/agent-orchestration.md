@@ -12,6 +12,8 @@ Ironshade Vector is moving from a purely linear Markdown execution queue toward 
 
 `agent/candidate-manifest.schema.json` and `agent/verification-ledger.schema.json` define exact-candidate evidence. A candidate manifest binds a task to its real base/head SHA range, changed files, impact selection, acceptance digest, required proofs, and external-QA references. A verification ledger is cryptographically bound to the canonical manifest and may only credit proof evidence or artifacts carrying that same candidate SHA.
 
+`agent/tools/candidate-artifact.mjs` defines the reusable web-bundle identity used by AO-5. It inventories every file in `dist/`, records each file SHA-256 plus an aggregate tree SHA-256, and binds the bundle to the producing candidate SHA. A browser or Android job must reject the bundle when its candidate SHA, file inventory, byte count, or tree digest differs.
+
 Do not select P28 or other product work from `agent/task-graph.json` during compatibility mode. The roadmap adapter may materialize product tasks as a graph for inspection and validation, but Markdown order remains authoritative until cutover.
 
 Affected-verification output optimizes the inspect/implement/test loop only. It does not waive a selected roadmap item's final production build, candidate CI, Android/APK, visual, or other proof obligations.
@@ -71,19 +73,31 @@ The verification ledger records proof status, CI/command/review/artifact source 
 - duplicate or unknown proof evidence;
 - incomplete required proofs unless explicitly validating an in-progress ledger.
 
-For AO migration PRs, Agent Orchestration CI explicitly checks out `github.event.pull_request.head.sha` instead of relying on GitHub's synthetic pull-request merge ref. After the exact-head validation job succeeds, a dependent evidence job regenerates the same manifest, creates a strict ledger for the test/CI proofs it just observed, validates the pair against git, and uploads both as a compact `agent-candidate-evidence-*` artifact.
+For AO migration PRs, Agent Orchestration CI explicitly checks out `github.event.pull_request.head.sha` instead of relying on GitHub's synthetic pull-request merge ref. AO-5 refines evidence timing: Agent Orchestration may publish a partial ledger for only the test/invariant proofs it actually observed, while downstream CI proofs remain pending until their producing workflow succeeds.
 
 AO-4 was proven on implementation candidate `04c14b25a83df201eb7e0e8c82c76483b8323b5c` by Agent Orchestration run `37625913285`. The uploaded artifact `agent-candidate-evidence-322-04c14b25a83df201eb7e0e8c82c76483b8323b5c` contains the manifest and ledger for that exact candidate. The manifest records all nine changed files and all three required AO-4 proofs; the ledger binds all three passing proof records to the same candidate SHA and canonical manifest digest.
 
-This avoids a self-reference problem: evidence files do not need to be committed into the candidate they describe. The immutable candidate SHA is data inside the manifest and ledger; AO-5 will build on these records to reuse expensive proof/artifact outputs across CI environments.
+This avoids a self-reference problem: evidence files do not need to be committed into the candidate they describe. The immutable candidate SHA is data inside the manifest and ledger.
 
 ### AO-5 — CI proof reuse
 
-Ready. Restructure final verification so expensive repository-wide work is not repeated independently by every downstream environment when the same exact candidate evidence can be reused safely.
+Verified. PR final verification is consolidated around `.github/workflows/pr-candidate.yml`.
+
+The PR execution graph is:
+
+`exact PR head -> one npm run build/full verification -> SHA-bound dist artifact -> browser desktop/mobile + Android packaging -> one APK artifact -> API35/API36 -> complete proof ledger`
+
+The candidate-build job owns the only PR `npm run build` producer. Its output is uploaded with `.candidate-artifact/candidate-web.json`. Browser E2E and Android are reusable workflow consumers and validate that manifest against the exact candidate SHA before testing or packaging the bundle.
+
+Browser E2E retains a separate single-producer path only for direct `push`/manual runs, where no PR candidate producer exists. It no longer has an independent `pull_request` trigger. Android likewise no longer has an independent PR trigger or `npm run verify:full` step; under PR orchestration it consumes the already verified web bundle and then publishes one APK artifact reused by API 35 and API 36 validation.
+
+`agent/tests/ci-proof-reuse.mjs` mechanically rejects topology drift such as restoring independent PR triggers, adding another Android/browser PR build, using caller event name to detect reusable invocation, or removing exact-artifact validation. `agent/tests/candidate-artifact.mjs` rejects wrong-SHA, tampered, extra-file, and malformed bundle records. Candidate-build concurrency serializes only the expensive producer; Android cancellation is keyed by PR so a newer candidate can replace stale downstream validation without stale reusable browser work blocking the next producer.
+
+AO-5 was proven on exact implementation candidate `8da57fa08719ac9ca6aa2fae927dce7204c1e60a` by PR Candidate Verification run `37631412805`. That run executed one full repository verification/production build, uploaded `ironshade-vector-pr-candidate-web-8da57fa08719ac9ca6aa2fae927dce7204c1e60a`, skipped the Browser E2E standalone producer, and passed both browser journeys from the shared candidate artifact. Android validated the same web artifact, built and uploaded one APK artifact, and API 35 plus API 36 both consumed that APK successfully. The final artifact `agent-candidate-evidence-323-8da57fa08719ac9ca6aa2fae927dce7204c1e60a` contains a strict ledger with all four AO-5 proofs passed and no unresolved external QA.
 
 ### AO-6 — Independent verifier and mechanical invariants
 
-Add a separate completion-review contract and promote stable architectural assumptions and recurring failure classes into deterministic checks where practical.
+Ready. Add a separate completion-review contract and promote stable architectural assumptions and recurring failure classes into deterministic checks where practical.
 
 ## Orchestration commands
 
@@ -176,27 +190,48 @@ node agent/tools/candidate-evidence.mjs validate \
   --verify-git
 ```
 
-Build a CI-backed ledger after the candidate checks pass, then validate it strictly:
+A workflow that has observed only part of the required proof set must record an incomplete ledger honestly:
 
 ```bash
 node agent/tools/candidate-evidence.mjs ledger \
   --manifest .agent-evidence/candidate-manifest.json \
-  --pass-kinds test,ci \
+  --pass-kinds test,invariant \
   --workflow 'Agent Orchestration' \
   --run-id "$GITHUB_RUN_ID" \
   --job 'validate-agent-orchestration' \
+  --allow-incomplete \
   --output .agent-evidence/verification-ledger.json
-
-node agent/tools/candidate-evidence.mjs validate \
-  --manifest .agent-evidence/candidate-manifest.json \
-  --ledger .agent-evidence/verification-ledger.json \
-  --verify-git
 ```
+
+Only the workflow that has observed all required gates should create and strictly validate the complete ledger.
 
 Run candidate-evidence regressions:
 
 ```bash
 node agent/tests/candidate-evidence.mjs
+```
+
+## Candidate artifact commands
+
+Create and validate a reusable bundle manifest:
+
+```bash
+node agent/tools/candidate-artifact.mjs create \
+  --candidate "$(git rev-parse HEAD)" \
+  --root dist \
+  --output .candidate-artifact/candidate-web.json
+
+node agent/tools/candidate-artifact.mjs validate \
+  --candidate "$(git rev-parse HEAD)" \
+  --root dist \
+  --manifest .candidate-artifact/candidate-web.json
+```
+
+Run bundle and CI-topology regressions:
+
+```bash
+node agent/tests/candidate-artifact.mjs
+node agent/tests/ci-proof-reuse.mjs
 ```
 
 ## State model
@@ -210,4 +245,4 @@ node agent/tests/candidate-evidence.mjs
 - `verified` — required technically available proofs passed.
 - `archived` — verified work retained only as history.
 
-The AO task-graph validator rejects cycles, unknown dependencies, multiple active tasks, actionable tasks whose dependencies are incomplete, and external blockers without named external dependencies. The roadmap adapter separately rejects duplicate unchecked IDs, missing `Done when` clauses, sidecar drift, unknown proof profiles/rules, and dependencies that point to a later active roadmap task. The impact-map validator rejects duplicate rules, unknown verification references, malformed path rules, and invalid fallback configuration. Candidate-evidence validation rejects cross-SHA evidence, manifest tampering, unknown/duplicate proof evidence, invalid artifact identities, and incomplete required proofs in strict mode.
+The AO task-graph validator rejects cycles, unknown dependencies, multiple active tasks, actionable tasks whose dependencies are incomplete, and external blockers without named external dependencies. The roadmap adapter separately rejects duplicate unchecked IDs, missing `Done when` clauses, sidecar drift, unknown proof profiles/rules, and dependencies that point to a later active roadmap task. The impact-map validator rejects duplicate rules, unknown verification references, malformed path rules, and invalid fallback configuration. Candidate-evidence validation rejects cross-SHA evidence, manifest tampering, unknown/duplicate proof evidence, invalid artifact identities, and incomplete required proofs in strict mode. Candidate-artifact validation rejects wrong-SHA, tampered, reordered, missing, or extra bundle contents.

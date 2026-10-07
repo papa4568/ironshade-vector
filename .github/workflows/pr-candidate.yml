@@ -1,0 +1,223 @@
+name: PR Candidate Verification
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  candidate-build:
+    name: Candidate Build and Full Verification
+    concurrency:
+      group: pr-candidate-build-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    outputs:
+      browser-required: ${{ steps.scope.outputs.browser-required }}
+      candidate-sha: ${{ steps.identity.outputs.candidate-sha }}
+      artifact-name: ${{ steps.identity.outputs.artifact-name }}
+    steps:
+      - name: Check out exact candidate revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Use npm 10.9.8
+        run: |
+          npm install --global npm@10.9.8
+          test "$(npm --version)" = '10.9.8'
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Verify candidate artifact integrity contract
+        run: node agent/tests/candidate-artifact.mjs
+
+      - name: Verify single-producer CI reuse contract
+        run: node agent/tests/ci-proof-reuse.mjs
+
+      - name: Audit runtime dependencies once
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4; do
+            set +e
+            output="$(npm audit --omit=dev --audit-level=high 2>&1)"
+            status=$?
+            set -e
+            printf '%s\n' "$output"
+            if [[ "$status" -eq 0 ]]; then
+              exit 0
+            fi
+            if grep -Eq '503 Service Unavailable|performing maintenance|audit endpoint returned an error' <<<"$output"; then
+              if [[ "$attempt" -lt 4 ]]; then
+                sleep $((attempt * 5))
+                continue
+              fi
+              echo "::warning::npm advisory service unavailable after retries; lockfile remains pinned and this gate will run again on the next candidate."
+              exit 0
+            fi
+            exit "$status"
+          done
+
+      - name: Run full repository verification and production build once
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+        run: npm run build
+
+      - name: Record candidate identity
+        id: identity
+        shell: bash
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          artifact_name="ironshade-vector-pr-candidate-web-${CANDIDATE_SHA}"
+          echo "candidate-sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"
+          echo "artifact-name=$artifact_name" >> "$GITHUB_OUTPUT"
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+
+      - name: Create exact candidate web artifact manifest
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          node agent/tools/candidate-artifact.mjs create \
+            --candidate "$CANDIDATE_SHA" \
+            --root dist \
+            --build-command 'npm run build' \
+            --output .candidate-artifact/candidate-web.json
+          node agent/tools/candidate-artifact.mjs validate \
+            --candidate "$CANDIDATE_SHA" \
+            --root dist \
+            --manifest .candidate-artifact/candidate-web.json
+
+      - name: Detect browser validation scope
+        id: scope
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          browser_required=false
+          while IFS= read -r path; do
+            case "$path" in
+              src/*|tests/*|scripts/*|package.json|package-lock.json|.nvmrc|vite.config.ts|index.html|.github/workflows/browser-e2e.yml|.github/workflows/pr-candidate.yml)
+                browser_required=true
+                break
+                ;;
+            esac
+          done < <(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          echo "browser-required=$browser_required" >> "$GITHUB_OUTPUT"
+          echo "PR_CANDIDATE_BROWSER_REQUIRED value=$browser_required"
+
+      - name: Upload exact candidate web bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: ironshade-vector-pr-candidate-web-${{ github.event.pull_request.head.sha }}
+          path: |
+            dist/
+            .candidate-artifact/candidate-web.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+  browser-e2e:
+    name: Browser E2E
+    needs: candidate-build
+    if: needs.candidate-build.outputs.browser-required == 'true'
+    uses: ./.github/workflows/browser-e2e.yml
+    with:
+      candidate_sha: ${{ needs.candidate-build.outputs.candidate-sha }}
+      candidate_artifact_name: ${{ needs.candidate-build.outputs.artifact-name }}
+
+  android:
+    name: Android PR
+    needs: candidate-build
+    uses: ./.github/workflows/pr-android-apk.yml
+    with:
+      candidate_sha: ${{ needs.candidate-build.outputs.candidate-sha }}
+      candidate_artifact_name: ${{ needs.candidate-build.outputs.artifact-name }}
+
+  candidate-verification:
+    name: PR Candidate Verification
+    if: always()
+    needs:
+      - candidate-build
+      - browser-e2e
+      - android
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Require exact candidate gates
+        env:
+          BUILD_RESULT: ${{ needs.candidate-build.result }}
+          BROWSER_RESULT: ${{ needs.browser-e2e.result }}
+          ANDROID_RESULT: ${{ needs.android.result }}
+          BROWSER_REQUIRED: ${{ needs.candidate-build.outputs.browser-required }}
+          CANDIDATE_SHA: ${{ needs.candidate-build.outputs.candidate-sha }}
+        run: |
+          set -euo pipefail
+          test "$BUILD_RESULT" = 'success'
+          test "$ANDROID_RESULT" = 'success'
+          if [[ "$BROWSER_REQUIRED" == 'true' ]]; then
+            test "$BROWSER_RESULT" = 'success'
+          else
+            test "$BROWSER_RESULT" = 'skipped'
+          fi
+          echo "PR_CANDIDATE_VERIFICATION_PASS candidate=$CANDIDATE_SHA fullVerification=once browser=$BROWSER_RESULT android=$ANDROID_RESULT"
+
+      - name: Check out exact candidate revision for proof ledger
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Set up Node 22 for proof ledger
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Generate complete AO-5 exact-candidate evidence
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          node agent/tools/candidate-evidence.mjs manifest \
+            --task AO-5 \
+            --base "$BASE_SHA" \
+            --head "$HEAD_SHA" \
+            --branch "$HEAD_BRANCH" \
+            --output .agent-evidence/candidate-manifest.json
+          node agent/tools/candidate-evidence.mjs ledger \
+            --manifest .agent-evidence/candidate-manifest.json \
+            --pass-kinds test,ci,invariant \
+            --workflow 'PR Candidate Verification' \
+            --run-id "$GITHUB_RUN_ID" \
+            --job 'candidate-verification' \
+            --output .agent-evidence/verification-ledger.json
+          node agent/tools/candidate-evidence.mjs validate \
+            --manifest .agent-evidence/candidate-manifest.json \
+            --ledger .agent-evidence/verification-ledger.json \
+            --verify-git
+
+      - name: Upload complete AO-5 candidate evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: agent-candidate-evidence-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: .agent-evidence/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
