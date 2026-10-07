@@ -57,7 +57,22 @@ jobs:
       - name: Verify refinery lighting source contract
         run: npm run test:babylon-refinery-lighting
       - name: Verify graphics content contracts
-        run: npm run test:graphics:content
+        id: graphics
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:graphics:content 2>&1 | tee p28-c8-graphics-content.log
+      - name: Upload graphics content diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p28-c8-graphics-content-log
+          path: p28-c8-graphics-content.log
+          if-no-files-found: error
+      - name: Preserve graphics verification result
+        if: steps.graphics.outcome != 'success'
+        run: exit 1
       - name: Verify TypeScript
         run: npx tsc --noEmit
       - name: Verify clean patch
