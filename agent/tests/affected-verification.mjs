@@ -29,9 +29,16 @@ assert.equal(graphicsSelection.escalated, false);
 assert.deepEqual(graphicsSelection.unknownFiles, []);
 assert(graphicsSelection.domains.includes('graphics'));
 assert(graphicsSelection.domains.includes('assets'));
-assert(graphicsSelection.verifications.some(check => check.id === 'graphics-content'));
-assert(graphicsSelection.verifications.some(check => check.id === 'graphics-babylon'));
-assert(!graphicsSelection.verifications.some(check => check.id === 'verify-full'));
+assert.deepEqual(graphicsSelection.verifications.map(check => check.id), ['graphics-content', 'graphics-babylon']);
+
+const refineryPresentationSelection = selectAffectedVerification([
+  'src/game/babylonRefineryPresentation.ts',
+], impactMap);
+assert.equal(refineryPresentationSelection.mode, 'targeted');
+assert(refineryPresentationSelection.domains.includes('refinery'));
+assert(refineryPresentationSelection.verifications.some(check => check.id === 'refinery-lighting'));
+assert(refineryPresentationSelection.verifications.some(check => check.id === 'refinery-post-processing'));
+assert(!refineryPresentationSelection.verifications.some(check => check.id === 'graphics-content'));
 
 const docsSelection = selectAffectedVerification([
   'docs/content-roadmap-archive.md',
@@ -84,4 +91,4 @@ const malformed = structuredClone(impactMap);
 malformed.rules[0].verificationIds = ['missing-check'];
 assert.throws(() => validateImpactMap(malformed), /references unknown verification missing-check/);
 
-console.log(`AFFECTED_VERIFICATION_TEST_PASS rules=${summary.ruleCount} verifications=${summary.verificationCount} graphicsChecks=${graphicsSelection.verifications.length} unknownMode=${unknownSelection.mode}`);
+console.log(`AFFECTED_VERIFICATION_TEST_PASS rules=${summary.ruleCount} verifications=${summary.verificationCount} graphicsChecks=${graphicsSelection.verifications.length} refineryChecks=${refineryPresentationSelection.verifications.length} unknownMode=${unknownSelection.mode}`);
