@@ -67,7 +67,7 @@ Only active/future executable engineering work lives here. Completed and verifie
 
 - [ ] **P28-E3 — Upgrade refinery practical/emissive fixtures** — Give furnace ports, terminals, warning fixtures, and selected machinery authored emissive surfaces that visually correspond to existing practical lights and selective bloom sources. **Done when:** bright fixtures appear to emit the light already present in the scene, bloom remains controlled, dark-area navigation improves without extra HUD, and standard build/APK gates pass.
 
-- [ ] **P28-E4 — Add local reflection probes for refinery hero machinery and spaces** — Add Babylon reflection probes wherever they materially improve focal metal machinery/space reflections instead of enforcing a fixed probe-count ceiling. **Done when:** hero metal gains convincing localized reflection variation, probe placement/update behavior is deterministic, repository-visible performance/resource telemetry is available, and standard build/APK gates pass. Physical target-phone acceptance is tracked separately in `docs/external-qa.md`.
+- [ ] **P28-E4 — Add local reflection probes for refinery hero machinery and spaces** — Add Babylon reflection probes wherever they materially improve focal metal machinery/space reflections instead of enforcing a fixed probe-count ceiling. **Done when:** hero metal gains convincing localized reflection variation, probe placement/update behavior is deterministic, repository-visible performance/resource telemetry is available, and standard build/APK gates pass. Physical target-phone acceptance is tracked in `docs/external-qa.md`.
 
 #### F. Heavy authored-asset production and shipping gate
 
