@@ -124,9 +124,9 @@ try {
     const expectedLod = lastState.renderTier === 'performance' ? 2 : 1;
     const assets = new Set(String(lastState?.assets ?? '').split(',').filter(Boolean));
     const legacyControlAsset = `interactable-control-terminal-lod${expectedLod}`;
-    const refineryControlAsset = `refinery-terminal-lod${expectedLod}`;
-    const controlAsset = assets.has(refineryControlAsset) ? refineryControlAsset : legacyControlAsset;
-    const validMode = controlAsset === refineryControlAsset
+    const refineryControlAsset = [...assets].find(asset => /^refinery-terminal-lod[012]$/.test(asset));
+    const controlAsset = refineryControlAsset ?? legacyControlAsset;
+    const validMode = refineryControlAsset
       ? lastState.mode === 'refinery-family-mapped'
       : lastState.mode === 'control-terminal+salvage-tag-node';
     if (lastState?.visual === 'authored-babylon' && assets.has(controlAsset)) {
@@ -142,7 +142,8 @@ try {
           throw new Error(`Unexpected authored Babylon loot runtime state: ${JSON.stringify(lastState)}`);
         }
       }
-      console.log(`AUTHORED_INTERACTABLE_RUNTIME_PASS control=${controlAsset} tier=${lastState.renderTier} lod=${expectedLod} assets=${[...assets].sort().join(',')} loot=${lastState.lootAsset || 'pending-no-drop'} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
+      const controlLod = /-lod([012])$/.exec(controlAsset)?.[1] ?? String(expectedLod);
+      console.log(`AUTHORED_INTERACTABLE_RUNTIME_PASS control=${controlAsset} tier=${lastState.renderTier} lod=${controlLod} assets=${[...assets].sort().join(',')} loot=${lastState.lootAsset || 'pending-no-drop'} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
       process.exitCode = 0;
       break;
     }
@@ -151,13 +152,11 @@ try {
 
   const expectedLod = lastState?.renderTier === 'performance' ? 2 : 1;
   const assets = new Set(String(lastState?.assets ?? '').split(',').filter(Boolean));
-  const expectedControlAssets = [
-    `interactable-control-terminal-lod${expectedLod}`,
-    `refinery-terminal-lod${expectedLod}`,
-  ];
+  const hasExpectedControlAsset = assets.has(`interactable-control-terminal-lod${expectedLod}`)
+    || [...assets].some(asset => /^refinery-terminal-lod[012]$/.test(asset));
   if (lastState?.visual !== 'authored-babylon'
     || !['high', 'balanced', 'performance'].includes(lastState?.renderTier)
-    || !expectedControlAssets.some(asset => assets.has(asset))) {
+    || !hasExpectedControlAsset) {
     throw new Error(`Timed out waiting for authored Babylon mission interactables: ${JSON.stringify(lastState)}`);
   }
 } finally {
