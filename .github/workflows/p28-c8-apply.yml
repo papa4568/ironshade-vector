@@ -25,18 +25,26 @@ jobs:
       - name: Apply P28-C8 source patch
         run: node scripts/p28-c8-patch-runner.mjs
       - name: Focused graphics content verification
-        run: npm run test:graphics:content
+        run: npm run test:graphics:content 2>&1 | tee p28-c8-focused.log
       - name: Babylon asset integration verification
-        run: npm run test:graphics:babylon
+        run: npm run test:graphics:babylon 2>&1 | tee -a p28-c8-focused.log
       - name: Renderer verification
-        run: npm run test:render
+        run: npm run test:render 2>&1 | tee -a p28-c8-focused.log
       - name: Production build
-        run: npm run build:prod
+        run: npm run build:prod 2>&1 | tee -a p28-c8-focused.log
+      - name: Upload focused diagnostics
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: p28-c8-focused-diagnostics
+          path: p28-c8-focused.log
+          if-no-files-found: error
       - name: Commit verified implementation
         run: |
           rm scripts/apply-p28-c8-refinery-world-patch.mjs
           rm scripts/p28-c8-patch-runner.mjs
           rm .github/workflows/p28-c8-apply.yml
+          rm -f p28-c8-focused.log
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
