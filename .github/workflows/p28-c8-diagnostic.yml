@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 276f9d9c3b9fb1ef1f4a7ce9e35fa7590ad6790b
+          ref: ba1628eb160f7845bc527bf72d42a9256ac13ed3
       - uses: actions/setup-node@v4
         with:
           node-version: 22.23.2
@@ -75,7 +75,7 @@ jobs:
           done
           cat p28-mobile-chrome.log
           exit 1
-      - name: Replay mobile journey with command boundaries
+      - name: Replay verifier chain with command boundaries
         id: journey
         continue-on-error: true
         env:
@@ -94,7 +94,7 @@ jobs:
           set -o pipefail
           run_one() {
             label="$1"; shift
-            echo "=== P28_C8_MOBILE_BEGIN $label ==="
+            echo "=== P28_C8_MOBILE_BEGIN $label ===" | tee -a p28-c8-mobile-journey.log
             "$@" 2>&1 | tee -a p28-c8-mobile-journey.log
             status=${PIPESTATUS[0]}
             echo "=== P28_C8_MOBILE_END $label status=$status ===" | tee -a p28-c8-mobile-journey.log
@@ -105,16 +105,12 @@ jobs:
           run_one weapons node scripts/verify-authored-weapons.mjs || exit $?
           run_one interactables node scripts/verify-authored-interactables.mjs || exit $?
           run_one refinery node scripts/verify-authored-refinery.mjs || exit $?
-          echo "=== P28_C8_MOBILE_BEGIN browser-runtime-smoke ===" | tee -a p28-c8-mobile-journey.log
-          node scripts/browser-runtime-smoke.mjs 2>&1 | tee -a p28-c8-mobile-journey.log
-          status=${PIPESTATUS[0]}
-          echo "=== P28_C8_MOBILE_END browser-runtime-smoke status=$status ===" | tee -a p28-c8-mobile-journey.log
-          exit "$status"
+          run_one browser-runtime-smoke node scripts/browser-runtime-smoke.mjs || exit $?
       - name: Upload mobile diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: p28-c8-mobile-diagnostics
+          name: p28-c8-verifier-diagnostics
           path: |
             p28-c8-mobile-journey.log
             p28-mobile-preview.log
@@ -122,6 +118,6 @@ jobs:
             p28-c8-mobile*.png
             p28-c8-mobile.performance.json
           if-no-files-found: warn
-      - name: Preserve mobile result
+      - name: Preserve result
         if: steps.journey.outcome != 'success'
         run: exit 1
