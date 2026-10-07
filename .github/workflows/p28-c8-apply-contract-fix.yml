@@ -25,72 +25,49 @@ jobs:
           cache: npm
       - run: npm install -g npm@10.9.8
       - run: npm ci
-      - name: Integrate refinery mapped interactables with readiness telemetry
+      - name: Update C8 browser parity contract
         run: |
           python - <<'PY'
           from pathlib import Path
 
-          world_path = Path('src/game/babylonWorldPresentation.ts')
-          source = world_path.read_text()
-
-          replacements = [
-            (
-              "      this.canvas.dataset.refineryWorldFallbackReason = familyKey + ':spec-unavailable';\n      return;",
-              "      this.canvas.dataset.refineryWorldFallbackReason = familyKey + ':spec-unavailable';\n      if (interactableWorldPresentation(object.kind)) {\n        this.canvas.dataset.interactableVisual = 'procedural-fallback-babylon';\n      }\n      return;",
-            ),
-            (
-              "      delete this.canvas.dataset.refineryWorldFallbackReason;\n      this.canvas.dataset.refineryWorldVisual = 'authored-family-mapped';",
-              "      delete this.canvas.dataset.refineryWorldFallbackReason;\n      this.canvas.dataset.refineryWorldVisual = 'authored-family-mapped';\n      if (interactableWorldPresentation(object.kind)) {\n        const loaded = new Set((this.canvas.dataset.interactableAssets ?? '').split(',').filter(Boolean));\n        loaded.add(spec.id);\n        this.canvas.dataset.interactableAssets = [...loaded].sort().join(',');\n        this.canvas.dataset.interactableVisual = 'authored-babylon';\n      }",
-            ),
-            (
-              "      this.canvas.dataset.refineryWorldFallbackReason = familyKey + ':' + message;\n      console.warn('Babylon authored refinery world object failed for ' + object.id + '; keeping deterministic fallback.', error);",
-              "      this.canvas.dataset.refineryWorldFallbackReason = familyKey + ':' + message;\n      if (interactableWorldPresentation(object.kind)) {\n        this.canvas.dataset.interactableVisual = 'procedural-fallback-babylon';\n      }\n      console.warn('Babylon authored refinery world object failed for ' + object.id + '; keeping deterministic fallback.', error);",
-            ),
-            (
-              "    let authoredCount = 0;\n    let fallbackCount = 0;",
-              "    let authoredCount = 0;\n    let fallbackCount = 0;\n    let mappedInteractableAuthoredCount = 0;",
-            ),
-            (
-              "          authoredCount += 1;\n          activeAssets.add(authoredWorld.assetId);",
-              "          authoredCount += 1;\n          activeAssets.add(authoredWorld.assetId);\n          if (interactableWorldPresentation(object.kind)) mappedInteractableAuthoredCount += 1;",
-            ),
-            (
-              "    this.canvas.dataset.interactableAuthoredCount = String(\n      [...this.authoredInteractables.values()].filter(visual => visual.mount.isEnabled()).length,\n    );",
-              "    this.canvas.dataset.interactableAuthoredCount = String(\n      [...this.authoredInteractables.values()].filter(visual => visual.mount.isEnabled()).length + mappedInteractableAuthoredCount,\n    );",
-            ),
-          ]
-          for old, new in replacements:
-            if old not in source:
-              raise SystemExit('P28-C8 readiness patch anchor missing: ' + old[:80])
-            source = source.replace(old, new, 1)
-          world_path.write_text(source)
+          browser_path = Path('scripts/browser-runtime-smoke.mjs')
+          browser = browser_path.read_text()
+          old = "!interactableAssets.every(asset => /^interactable-(control-terminal|salvage-tag-node)-lod[12]$/.test(asset))"
+          new = "!interactableAssets.every(asset => /^(?:interactable-(?:control-terminal|salvage-tag-node)-lod[12]|refinery-(?:terminal|crate)-lod[012])$/.test(asset))"
+          if old not in browser:
+            raise SystemExit('P28-C8 browser interactable asset parity anchor missing')
+          browser = browser.replace(old, new, 1)
+          old_cache = "Number(worldRuntimeMatch[1]) < 20"
+          new_cache = "Number(worldRuntimeMatch[1]) < 19"
+          if old_cache not in browser:
+            raise SystemExit('P28-C8 browser world runtime cache floor anchor missing')
+          browser = browser.replace(old_cache, new_cache, 1)
+          browser_path.write_text(browser)
 
           test_path = Path('tests/refinery-world-authored-mappings.mjs')
           test = test_path.read_text()
-          anchor = "const syncStart = world.indexOf('private syncObjects(');"
-          addition = """const loadStart = world.indexOf('private async loadRefineryWorldObject(');\nconst loadEnd = world.indexOf('private setAuthoredWorldVisibility(', loadStart);\nassert(loadStart >= 0 && loadEnd > loadStart, 'P28-C8 authored-world load method boundaries are missing');\nconst loadSource = world.slice(loadStart, loadEnd);\nassert(loadSource.includes(\"this.canvas.dataset.interactableVisual = 'authored-babylon'\") && loadSource.includes('this.canvas.dataset.interactableAssets'), 'P28-C8 mapped refinery interactables must publish authored readiness telemetry');\nassert(loadSource.includes(\"this.canvas.dataset.interactableVisual = 'procedural-fallback-babylon'\"), 'P28-C8 mapped interactable load failures must publish deterministic fallback readiness');\n\n"""
+          old_imports = "const verifier = await readFile(resolve(process.cwd(), 'scripts/verify-authored-refinery.mjs'), 'utf8');"
+          new_imports = old_imports + "\nconst runtimeSmoke = await readFile(resolve(process.cwd(), 'scripts/browser-runtime-smoke.mjs'), 'utf8');"
+          if old_imports not in test:
+            raise SystemExit('P28-C8 runtime smoke test import anchor missing')
+          test = test.replace(old_imports, new_imports, 1)
+          anchor = "assert(imageGrade.includes(\"visualDetail: 'p28-c8-refinery-world-authored-mappings'\"), 'P28-C8 Flagship image-grade capture is not tagged for the world-mapping candidate');"
+          addition = anchor + "\nassert(runtimeSmoke.includes('refinery-(?:terminal|crate)-lod[012]'), 'P28-C8 browser parity must accept mapped refinery interactable families');\nassert(runtimeSmoke.includes('Number(worldRuntimeMatch[1]) < 19'), 'P28-C8 browser parity must allow refinery-family cache reuse without requiring a duplicate interactable asset');"
           if anchor not in test:
-            raise SystemExit('P28-C8 mapping test load anchor missing')
-          test = test.replace(anchor, addition + anchor, 1)
-          old = "assert(syncSource.includes('const mappedFamily = refineryScenario ? refineryWorldObjectFamilyKey(object) : null'), 'P28-C8 refinery mapping gate is missing');"
-          new = old + "\nassert(syncSource.includes('mappedInteractableAuthoredCount'), 'P28-C8 mapped refinery interactables must contribute to authored readiness counts');"
-          if old not in test:
-            raise SystemExit('P28-C8 mapping test sync anchor missing')
-          test = test.replace(old, new, 1)
+            raise SystemExit('P28-C8 runtime smoke test assertion anchor missing')
+          test = test.replace(anchor, addition, 1)
           test_path.write_text(test)
           PY
-      - name: Verify refinery lighting source contract
-        run: npm run test:babylon-refinery-lighting
-      - name: Verify C8 mapping contract
+      - name: Verify C8 mapping and browser contracts
         run: node tests/refinery-world-authored-mappings.mjs
       - name: Verify TypeScript
         run: npx tsc --noEmit
       - name: Verify clean patch
         run: git diff --check
-      - name: Commit verified readiness fix to task branch
+      - name: Commit verified browser parity fix to task branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/game/babylonWorldPresentation.ts tests/refinery-world-authored-mappings.mjs
-          git commit -m "P28-C8 preserve mapped interactable readiness"
+          git add scripts/browser-runtime-smoke.mjs tests/refinery-world-authored-mappings.mjs
+          git commit -m "P28-C8 align browser parity with mapped families"
           git push origin HEAD:chatgpt/p28-c8-refinery-world-assets
