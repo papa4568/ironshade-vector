@@ -29,26 +29,39 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re
           path = Path('src/game/babylonWorldPresentation.ts')
           source = path.read_text()
           start = source.index('  private syncObjects(')
           end = source.index('  private ensureObjective()', start)
           section = source[start:end]
-          if 'const fallback = this.objectVisuals.get(object.id);' not in section:
-              raise SystemExit('P28-C8 sync fallback local not found')
-          section = re.sub(r'\bfallback\b', 'visual', section)
+          replacements = {
+              'const fallback = this.objectVisuals.get(object.id);': 'const visual = this.objectVisuals.get(object.id);',
+              'if (fallback) {': 'if (visual) {',
+              'fallback.mesh': 'visual.mesh',
+              'fallback.height': 'visual.height',
+              'fallback.premiumDetailMeshes': 'visual.premiumDetailMeshes',
+              'fallback.premiumCover': 'visual.premiumCover',
+              'fallback.material': 'visual.material',
+          }
+          for old, new in replacements.items():
+              if old not in section:
+                  raise SystemExit(f'P28-C8 sync fallback token not found: {old}')
+              section = section.replace(old, new)
           updated = source[:start] + section + source[end:]
           if updated == source or 'visual.material.metallic =' not in section or 'visual.material.roughness =' not in section:
               raise SystemExit('P28-C8 world-material contract patch did not apply')
+          if "refineryScenario ? 'authored-family-mapped' : 'procedural-fallback-babylon'" not in section:
+              raise SystemExit('P28-C8 telemetry string changed unexpectedly')
           path.write_text(updated)
           PY
-      - name: Verify affected source contracts
-        run: |
-          npm run test:babylon-refinery-lighting
-          npm run test:graphics:content
-          npx tsc --noEmit
-          git diff --check
+      - name: Verify refinery lighting source contract
+        run: npm run test:babylon-refinery-lighting
+      - name: Verify graphics content contracts
+        run: npm run test:graphics:content
+      - name: Verify TypeScript
+        run: npx tsc --noEmit
+      - name: Verify clean patch
+        run: git diff --check
       - name: Commit verified fix to task branch
         run: |
           git config user.name "github-actions[bot]"
