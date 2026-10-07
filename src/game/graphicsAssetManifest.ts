@@ -376,6 +376,7 @@ export const REFINERY_ASSET_FAMILIES = {
   crate: {
     id: 'refinery-crate',
     lods: {
+      0: createGraphicsAssetSpec('refinery-crate-lod0', 'environment-module', '/assets/models/environments/refinery-crate-lod0.glb', 0),
       1: createGraphicsAssetSpec('refinery-crate-lod1', 'environment-module', '/assets/models/environments/refinery-crate-lod1.glb', 1),
       2: createGraphicsAssetSpec('refinery-crate-lod2', 'environment-module', '/assets/models/environments/refinery-crate-lod2.glb', 2),
     },
