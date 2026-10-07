@@ -1,0 +1,145 @@
+{
+  "$schema": "./roadmap-metadata.schema.json",
+  "schemaVersion": 1,
+  "roadmap": "docs/content-roadmap.md",
+  "roadmapIds": [
+    "P28-C4",
+    "P28-C5",
+    "P28-C6",
+    "P28-C7",
+    "P28-C8",
+    "P28-C9",
+    "P28-D0",
+    "P28-D1",
+    "P28-D2",
+    "P28-D3",
+    "P28-D4",
+    "P28-D5",
+    "P28-D6",
+    "P28-D7",
+    "P28-D8",
+    "P28-E1",
+    "P28-E2",
+    "P28-E3",
+    "P28-E4",
+    "P28-F0",
+    "P28-F1",
+    "P28-F2",
+    "P28-F3",
+    "P28-F4",
+    "P28-F5",
+    "P28-F6",
+    "P28-F7",
+    "P28-G1",
+    "P28-G2",
+    "P28-G3",
+    "P28-G4",
+    "P28-G5",
+    "P28-G6",
+    "P28-G7",
+    "P28-G8",
+    "P28-G9",
+    "P28-H1",
+    "P28-H2",
+    "P28-H3",
+    "P28-H4"
+  ],
+  "proofProfiles": {
+    "p28-visual-standard": [
+      {
+        "id": "targeted-regressions",
+        "kind": "test",
+        "required": true,
+        "description": "Run the narrow task-specific regressions needed to disprove the implementation before final verification."
+      },
+      {
+        "id": "production-build",
+        "kind": "build",
+        "required": true,
+        "description": "The production client build and packaged graphics checks pass.",
+        "command": "npm run build:prod"
+      },
+      {
+        "id": "flagship-capture",
+        "kind": "review",
+        "required": true,
+        "description": "Deterministic Flagship visual evidence required by the roadmap item is captured and remains gameplay-readable."
+      },
+      {
+        "id": "candidate-ci",
+        "kind": "ci",
+        "required": true,
+        "description": "Repository-required final browser/CI gates pass on the exact candidate revision."
+      },
+      {
+        "id": "verified-apk",
+        "kind": "artifact",
+        "required": true,
+        "description": "The exact candidate produces the required verified Android APK artifact."
+      }
+    ]
+  },
+  "rules": [
+    {
+      "prefix": "P28-C",
+      "affectedDomains": ["graphics", "refinery", "assets"],
+      "proofProfile": "p28-visual-standard"
+    },
+    {
+      "prefix": "P28-D",
+      "affectedDomains": ["graphics", "characters", "assets", "combat-presentation"],
+      "proofProfile": "p28-visual-standard"
+    },
+    {
+      "prefix": "P28-E",
+      "affectedDomains": ["graphics", "refinery", "vfx", "lighting"],
+      "proofProfile": "p28-visual-standard"
+    },
+    {
+      "prefix": "P28-F",
+      "affectedDomains": ["graphics", "assets", "packaging", "performance"],
+      "proofProfile": "p28-visual-standard"
+    },
+    {
+      "prefix": "P28-G",
+      "affectedDomains": ["graphics", "location-presentation"],
+      "proofProfile": "p28-visual-standard"
+    },
+    {
+      "prefix": "P28-H",
+      "affectedDomains": ["graphics", "capstone-presentation"],
+      "proofProfile": "p28-visual-standard"
+    }
+  ],
+  "overrides": {
+    "P28-D1": { "dependsOn": ["P28-D0"] },
+    "P28-D2": { "dependsOn": ["P28-D0"] },
+    "P28-D3": { "dependsOn": ["P28-D0"] },
+    "P28-D4": { "dependsOn": ["P28-D0"] },
+    "P28-D5": { "dependsOn": ["P28-D0"] },
+    "P28-D6": { "dependsOn": ["P28-D0"] },
+    "P28-D7": { "dependsOn": ["P28-D0"] },
+    "P28-D8": { "dependsOn": ["P28-D0"] },
+    "P28-E2": { "dependsOn": ["P28-E1"] },
+    "P28-F1": { "dependsOn": ["P28-F0"] },
+    "P28-F2": { "dependsOn": ["P28-F0"] },
+    "P28-F3": { "dependsOn": ["P28-F0"] },
+    "P28-F4": { "dependsOn": ["P28-F0"] },
+    "P28-F5": { "dependsOn": ["P28-F0"] },
+    "P28-F6": { "dependsOn": ["P28-F1", "P28-F2", "P28-F3", "P28-F4", "P28-F5"] },
+    "P28-F7": { "dependsOn": ["P28-F6"] },
+    "P28-G1": { "dependsOn": ["P28-F7"] },
+    "P28-G2": { "dependsOn": ["P28-F7"] },
+    "P28-G3": { "dependsOn": ["P28-F7"] },
+    "P28-G4": { "dependsOn": ["P28-F7"] },
+    "P28-G5": { "dependsOn": ["P28-F7"] },
+    "P28-G6": { "dependsOn": ["P28-F7"] },
+    "P28-G7": { "dependsOn": ["P28-F7"] },
+    "P28-G8": { "dependsOn": ["P28-F7"] },
+    "P28-G9": { "dependsOn": ["P28-F7"] },
+    "P28-H1": { "dependsOn": ["P28-F7"] },
+    "P28-H2": { "dependsOn": ["P28-F7"] },
+    "P28-H3": { "dependsOn": ["P28-F7"] },
+    "P28-H4": { "dependsOn": ["P28-F7"] }
+  }
+}
