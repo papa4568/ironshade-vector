@@ -6,8 +6,6 @@ on:
       - main
     paths:
       - 'agent/**'
-      - 'scripts/agent/**'
-      - 'tests/agent-task-graph.mjs'
       - 'docs/agent-orchestration.md'
       - 'AGENTS.md'
       - '.github/workflows/agent-orchestration.yml'
@@ -16,8 +14,6 @@ on:
       - main
     paths:
       - 'agent/**'
-      - 'scripts/agent/**'
-      - 'tests/agent-task-graph.mjs'
       - 'docs/agent-orchestration.md'
       - 'AGENTS.md'
       - '.github/workflows/agent-orchestration.yml'
@@ -40,12 +36,12 @@ jobs:
           node-version: '22.23.2'
 
       - name: Validate task graph
-        run: node scripts/agent/validate-task-graph.mjs
+        run: node agent/tools/validate-task-graph.mjs
 
       - name: Verify deterministic task selection
         run: |
-          node scripts/agent/next-task.mjs
-          node scripts/agent/next-task.mjs --json
+          node agent/tools/next-task.mjs
+          node agent/tools/next-task.mjs --json
 
       - name: Run orchestration regressions
-        run: node tests/agent-task-graph.mjs
+        run: node agent/tests/task-graph.mjs
