@@ -60,7 +60,7 @@ The selector de-duplicates overlapping rules. Representative P28 asset-generatio
 
 ### AO-4 — Candidate manifest and verification ledger
 
-Active. `agent/tools/candidate-evidence.mjs` generates exact-candidate manifests from a real git base/head range and validates that the manifest changed-file inventory still matches that range. The manifest records the task, acceptance digest, base/head commit SHAs, branch, changed files, impact selection, required proofs, and external-QA references.
+Verified. `agent/tools/candidate-evidence.mjs` generates exact-candidate manifests from a real git base/head range and validates that the manifest changed-file inventory still matches that range. The manifest records the task, acceptance digest, base/head commit SHAs, branch, changed files, impact selection, required proofs, and external-QA references.
 
 The verification ledger records proof status, CI/command/review/artifact source identity, artifact name/digest/location when available, and unresolved external QA. The ledger stores a SHA-256 digest of the canonical manifest. Validation rejects:
 
@@ -71,13 +71,15 @@ The verification ledger records proof status, CI/command/review/artifact source 
 - duplicate or unknown proof evidence;
 - incomplete required proofs unless explicitly validating an in-progress ledger.
 
-For AO migration PRs, Agent Orchestration CI now explicitly checks out `github.event.pull_request.head.sha` instead of relying on GitHub's synthetic pull-request merge ref. After the exact-head validation job succeeds, a dependent evidence job regenerates the same manifest, creates a strict ledger for the test/CI proofs it just observed, validates the pair against git, and uploads both as a compact `agent-candidate-evidence-*` artifact.
+For AO migration PRs, Agent Orchestration CI explicitly checks out `github.event.pull_request.head.sha` instead of relying on GitHub's synthetic pull-request merge ref. After the exact-head validation job succeeds, a dependent evidence job regenerates the same manifest, creates a strict ledger for the test/CI proofs it just observed, validates the pair against git, and uploads both as a compact `agent-candidate-evidence-*` artifact.
 
-This avoids a self-reference problem: the evidence files do not need to be committed into the candidate they describe. The immutable candidate SHA is data inside the manifest and ledger; AO-5 will build on these records to reuse expensive proof/artifact outputs across CI environments.
+AO-4 was proven on implementation candidate `04c14b25a83df201eb7e0e8c82c76483b8323b5c` by Agent Orchestration run `37625913285`. The uploaded artifact `agent-candidate-evidence-322-04c14b25a83df201eb7e0e8c82c76483b8323b5c` contains the manifest and ledger for that exact candidate. The manifest records all nine changed files and all three required AO-4 proofs; the ledger binds all three passing proof records to the same candidate SHA and canonical manifest digest.
+
+This avoids a self-reference problem: evidence files do not need to be committed into the candidate they describe. The immutable candidate SHA is data inside the manifest and ledger; AO-5 will build on these records to reuse expensive proof/artifact outputs across CI environments.
 
 ### AO-5 — CI proof reuse
 
-Restructure final verification so expensive repository-wide work is not repeated independently by every downstream environment when the same exact candidate evidence can be reused safely.
+Ready. Restructure final verification so expensive repository-wide work is not repeated independently by every downstream environment when the same exact candidate evidence can be reused safely.
 
 ### AO-6 — Independent verifier and mechanical invariants
 
