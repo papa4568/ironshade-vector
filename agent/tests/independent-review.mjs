@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   buildIndependentReviewPacket,
   validateIndependentReviewPacket,
@@ -82,5 +83,18 @@ assert.equal(validateIndependentReviewResult(packet, fail).verdict, 'fail');
 const crossSha = structuredClone(pass);
 crossSha.candidateSha = 'c'.repeat(40);
 assert.throws(() => validateIndependentReviewResult(packet, crossSha), /candidateSha does not match/);
+
+const workflow = readFileSync('.github/workflows/pr-candidate.yml', 'utf8');
+assert.match(workflow, /independent-review-context:/, 'PR candidate workflow must provide a separate review context job');
+assert.match(workflow, /name: Independent Review Context/);
+assert.match(workflow, /persist-credentials: false/, 'review checkout must not retain repository write credentials');
+assert.match(workflow, /node agent\/tools\/independent-review\.mjs packet/, 'review context must generate the machine-readable packet');
+assert.match(workflow, /needs:\n\s+- candidate-build\n\s+- independent-review-context/, 'final candidate gate must depend on the review context');
+assert.match(workflow, /--pass-kinds test,ci,invariant,review/, 'active AO final evidence must wait for the review-context gate');
+
+const verifierContract = readFileSync('agent/INDEPENDENT_VERIFIER.md', 'utf8');
+assert.match(verifierContract, /read-only adversarial verifier/i);
+assert.match(verifierContract, /Do not implement fixes/);
+assert.match(verifierContract, /same branch/);
 
 console.log('INDEPENDENT_REVIEW_TEST_PASS');
