@@ -10,6 +10,8 @@ Ironshade Vector is moving from a purely linear Markdown execution queue toward 
 
 `agent/impact-map.json` is the implementation-time change-impact map. It maps changed paths to affected domains and verification commands. It is conservative by design: unknown paths and high-risk build/dependency/Android/CI paths expand to `npm run verify:full` instead of silently selecting too little verification.
 
+`agent/candidate-manifest.schema.json` and `agent/verification-ledger.schema.json` define exact-candidate evidence. A candidate manifest binds a task to its real base/head SHA range, changed files, impact selection, acceptance digest, required proofs, and external-QA references. A verification ledger is cryptographically bound to the canonical manifest and may only credit proof evidence or artifacts carrying that same candidate SHA.
+
 Do not select P28 or other product work from `agent/task-graph.json` during compatibility mode. The roadmap adapter may materialize product tasks as a graph for inspection and validation, but Markdown order remains authoritative until cutover.
 
 Affected-verification output optimizes the inspect/implement/test loop only. It does not waive a selected roadmap item's final production build, candidate CI, Android/APK, visual, or other proof obligations.
@@ -58,7 +60,20 @@ The selector de-duplicates overlapping rules. Representative P28 asset-generatio
 
 ### AO-4 — Candidate manifest and verification ledger
 
-Bind proof evidence to an exact task/base/head SHA and record changed files, tests, CI runs, artifacts, APK identity, and unresolved external QA in a compact machine-readable record.
+Active. `agent/tools/candidate-evidence.mjs` generates exact-candidate manifests from a real git base/head range and validates that the manifest changed-file inventory still matches that range. The manifest records the task, acceptance digest, base/head commit SHAs, branch, changed files, impact selection, required proofs, and external-QA references.
+
+The verification ledger records proof status, CI/command/review/artifact source identity, artifact name/digest/location when available, and unresolved external QA. The ledger stores a SHA-256 digest of the canonical manifest. Validation rejects:
+
+- a ledger whose task or candidate SHA differs from the manifest;
+- proof evidence attached to another candidate SHA;
+- artifacts attached to another candidate SHA;
+- edited manifests whose canonical digest no longer matches the ledger;
+- duplicate or unknown proof evidence;
+- incomplete required proofs unless explicitly validating an in-progress ledger.
+
+For AO migration PRs, Agent Orchestration CI now explicitly checks out `github.event.pull_request.head.sha` instead of relying on GitHub's synthetic pull-request merge ref. After the exact-head validation job succeeds, a dependent evidence job regenerates the same manifest, creates a strict ledger for the test/CI proofs it just observed, validates the pair against git, and uploads both as a compact `agent-candidate-evidence-*` artifact.
+
+This avoids a self-reference problem: the evidence files do not need to be committed into the candidate they describe. The immutable candidate SHA is data inside the manifest and ledger; AO-5 will build on these records to reuse expensive proof/artifact outputs across CI environments.
 
 ### AO-5 — CI proof reuse
 
@@ -138,6 +153,50 @@ Run affected-verification regressions:
 node agent/tests/affected-verification.mjs
 ```
 
+## Candidate evidence commands
+
+Generate a manifest for the current active AO migration task:
+
+```bash
+node agent/tools/candidate-evidence.mjs manifest \
+  --task active \
+  --base main \
+  --head HEAD \
+  --branch "$(git branch --show-current)" \
+  --output .agent-evidence/candidate-manifest.json
+```
+
+Validate that manifest against the exact git diff:
+
+```bash
+node agent/tools/candidate-evidence.mjs validate \
+  --manifest .agent-evidence/candidate-manifest.json \
+  --verify-git
+```
+
+Build a CI-backed ledger after the candidate checks pass, then validate it strictly:
+
+```bash
+node agent/tools/candidate-evidence.mjs ledger \
+  --manifest .agent-evidence/candidate-manifest.json \
+  --pass-kinds test,ci \
+  --workflow 'Agent Orchestration' \
+  --run-id "$GITHUB_RUN_ID" \
+  --job 'validate-agent-orchestration' \
+  --output .agent-evidence/verification-ledger.json
+
+node agent/tools/candidate-evidence.mjs validate \
+  --manifest .agent-evidence/candidate-manifest.json \
+  --ledger .agent-evidence/verification-ledger.json \
+  --verify-git
+```
+
+Run candidate-evidence regressions:
+
+```bash
+node agent/tests/candidate-evidence.mjs
+```
+
 ## State model
 
 - `planned` — known work whose dependencies may not yet be complete.
@@ -149,4 +208,4 @@ node agent/tests/affected-verification.mjs
 - `verified` — required technically available proofs passed.
 - `archived` — verified work retained only as history.
 
-The AO task-graph validator rejects cycles, unknown dependencies, multiple active tasks, actionable tasks whose dependencies are incomplete, and external blockers without named external dependencies. The roadmap adapter separately rejects duplicate unchecked IDs, missing `Done when` clauses, sidecar drift, unknown proof profiles/rules, and dependencies that point to a later active roadmap task. The impact-map validator rejects duplicate rules, unknown verification references, malformed path rules, and invalid fallback configuration.
+The AO task-graph validator rejects cycles, unknown dependencies, multiple active tasks, actionable tasks whose dependencies are incomplete, and external blockers without named external dependencies. The roadmap adapter separately rejects duplicate unchecked IDs, missing `Done when` clauses, sidecar drift, unknown proof profiles/rules, and dependencies that point to a later active roadmap task. The impact-map validator rejects duplicate rules, unknown verification references, malformed path rules, and invalid fallback configuration. Candidate-evidence validation rejects cross-SHA evidence, manifest tampering, unknown/duplicate proof evidence, invalid artifact identities, and incomplete required proofs in strict mode.
