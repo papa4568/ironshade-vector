@@ -521,6 +521,7 @@ export class BabylonRefineryWorldPresentation {
         loaded.add(spec.id);
         this.canvas.dataset.interactableAssets = [...loaded].sort().join(',');
         this.canvas.dataset.interactableVisual = 'authored-babylon';
+        this.canvas.dataset.interactableMode = 'refinery-family-mapped';
       }
     } catch (error) {
       if (this.disposed

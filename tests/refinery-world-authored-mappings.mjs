@@ -11,6 +11,7 @@ const manifest = await readFile(resolve(process.cwd(), 'src/game/graphicsAssetMa
 const imageGrade = await readFile(resolve(process.cwd(), 'scripts/p28a5-image-grade-capture.mjs'), 'utf8');
 const verifier = await readFile(resolve(process.cwd(), 'scripts/verify-authored-refinery.mjs'), 'utf8');
 const runtimeSmoke = await readFile(resolve(process.cwd(), 'scripts/browser-runtime-smoke.mjs'), 'utf8');
+const interactableVerifier = await readFile(resolve(process.cwd(), 'scripts/verify-authored-interactables.mjs'), 'utf8');
 
 const expectedMappings = {
   cover: 'crate',
@@ -71,5 +72,7 @@ assert(verifier.includes('mapped world-object coverage'), 'P28-C8 live verifier 
 assert(imageGrade.includes("visualDetail: 'p28-c8-refinery-world-authored-mappings'"), 'P28-C8 Flagship image-grade capture is not tagged for the world-mapping candidate');
 assert(runtimeSmoke.includes('refinery-(?:terminal|crate)-lod[012]'), 'P28-C8 browser parity must accept mapped refinery interactable families');
 assert(runtimeSmoke.includes('Number(worldRuntimeMatch[1]) < 19'), 'P28-C8 browser parity must allow refinery-family cache reuse without requiring a duplicate interactable asset');
+assert(world.includes("this.canvas.dataset.interactableMode = 'refinery-family-mapped'"), 'P28-C8 mapped refinery interactables must publish an explicit verifier mode');
+assert(interactableVerifier.includes('refineryControlAsset') && interactableVerifier.includes("lastState.mode === 'refinery-family-mapped'"), 'P28-C8 authored-interactable verifier must accept mapped refinery terminal families while preserving legacy mode checks');
 
 console.log(`REFINERY_WORLD_AUTHORED_MAPPINGS_PASS mappedKinds=${Object.keys(expectedMappings).length} families=${[...new Set(Object.values(expectedMappings))].sort().join('+')} center=simulation-owned fallback=load-failure+unmapped`);

@@ -123,9 +123,14 @@ try {
     }
     const expectedLod = lastState.renderTier === 'performance' ? 2 : 1;
     const assets = new Set(String(lastState?.assets ?? '').split(',').filter(Boolean));
-    const controlAsset = `interactable-control-terminal-lod${expectedLod}`;
+    const legacyControlAsset = `interactable-control-terminal-lod${expectedLod}`;
+    const refineryControlAsset = `refinery-terminal-lod${expectedLod}`;
+    const controlAsset = assets.has(refineryControlAsset) ? refineryControlAsset : legacyControlAsset;
+    const validMode = controlAsset === refineryControlAsset
+      ? lastState.mode === 'refinery-family-mapped'
+      : lastState.mode === 'control-terminal+salvage-tag-node';
     if (lastState?.visual === 'authored-babylon' && assets.has(controlAsset)) {
-      if (lastState.mode !== 'control-terminal+salvage-tag-node') {
+      if (!validMode) {
         throw new Error(`Unexpected authored interactable mode: ${JSON.stringify(lastState)}`);
       }
       if (!(lastState.width > 0 && lastState.height > 0)) {
@@ -146,9 +151,13 @@ try {
 
   const expectedLod = lastState?.renderTier === 'performance' ? 2 : 1;
   const assets = new Set(String(lastState?.assets ?? '').split(',').filter(Boolean));
+  const expectedControlAssets = [
+    `interactable-control-terminal-lod${expectedLod}`,
+    `refinery-terminal-lod${expectedLod}`,
+  ];
   if (lastState?.visual !== 'authored-babylon'
     || !['high', 'balanced', 'performance'].includes(lastState?.renderTier)
-    || !assets.has(`interactable-control-terminal-lod${expectedLod}`)) {
+    || !expectedControlAssets.some(asset => assets.has(asset))) {
     throw new Error(`Timed out waiting for authored Babylon mission interactables: ${JSON.stringify(lastState)}`);
   }
 } finally {
