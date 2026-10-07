@@ -44,6 +44,7 @@ const secondTask = roadmapTasks[1];
 
 validateRoadmapMetadata(metadata);
 assert.equal(metadata.roadmap, 'docs/content-roadmap.md');
+// Queue cardinality intentionally follows the live roadmap so closing a verified item cannot make this adapter test stale.
 assert(roadmapTasks.length > 0, 'active roadmap should contain at least one executable task');
 assert.deepEqual(metadata.roadmapIds, roadmapIds);
 assert(!metadataRaw.includes(firstTask.title));
