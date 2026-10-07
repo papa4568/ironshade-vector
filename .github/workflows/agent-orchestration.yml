@@ -58,3 +58,12 @@ jobs:
 
       - name: Run roadmap adapter regressions
         run: node agent/tests/roadmap-adapter.mjs
+
+      - name: Validate affected-verification map
+        run: node agent/tools/select-affected-verification.mjs --validate-only
+
+      - name: Exercise deterministic affected-verification selection
+        run: node agent/tools/select-affected-verification.mjs --files scripts/prepare-refinery-premium-surfaces.mjs,src/game/graphicsAssetManifest.ts --json
+
+      - name: Run affected-verification regressions
+        run: node agent/tests/affected-verification.mjs
