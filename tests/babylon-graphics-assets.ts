@@ -56,11 +56,15 @@ const operatorLod2 = selectGraphicsAssetSpec(OPERATOR_ASSET_FAMILY, 0.5);
 const refineryLod1 = selectGraphicsAssetSpec(SHOWCASE_REFINERY_MODULE_FAMILY, 0.72);
 const refineryFloorLod0 = selectGraphicsAssetSpec(REFINERY_ASSET_FAMILIES.floor, 1);
 const refineryGrateLod0 = selectGraphicsAssetSpec(REFINERY_ASSET_FAMILIES.floorGrate, 1);
+const refineryBulkheadLod0 = selectGraphicsAssetSpec(REFINERY_ASSET_FAMILIES.bulkhead, 1);
+const refineryWallPanelLod0 = selectGraphicsAssetSpec(REFINERY_ASSET_FAMILIES.wallPanel, 1);
 assert(operatorLod1?.lod === 1, 'Babylon operator test must request authored LOD1');
 assert(operatorLod2?.lod === 2, 'Babylon operator test must request authored LOD2');
 assert(refineryLod1?.lod === 1, 'Babylon refinery test must request authored LOD1');
 assert(refineryFloorLod0?.lod === 0, 'Flagship refinery floor must select authored LOD0');
 assert(refineryGrateLod0?.lod === 0, 'Flagship refinery service grate must select authored LOD0');
+assert(refineryBulkheadLod0?.lod === 0, 'Flagship refinery bulkhead must select authored LOD0');
+assert(refineryWallPanelLod0?.lod === 0, 'Flagship refinery wall service panel must select authored LOD0');
 
 const engine = new NullEngine();
 const scene = new Scene(engine);
@@ -111,11 +115,17 @@ async function run() {
   const flagshipScene = new Scene(flagshipEngine);
   const floorContainer = await loadLocalGlb(refineryFloorLod0, flagshipScene, `${refineryFloorLod0.id}-flagship`);
   const grateContainer = await loadLocalGlb(refineryGrateLod0, flagshipScene, `${refineryGrateLod0.id}-flagship`);
+  const bulkheadContainer = await loadLocalGlb(refineryBulkheadLod0, flagshipScene, `${refineryBulkheadLod0.id}-flagship`);
+  const wallPanelContainer = await loadLocalGlb(refineryWallPanelLod0, flagshipScene, `${refineryWallPanelLod0.id}-flagship`);
   assert(floorContainer.meshes.length >= 6, `Flagship refinery floor LOD0 must load authored bevel/detail meshes, got ${floorContainer.meshes.length}`);
   assert(grateContainer.meshes.length >= 7, `Flagship refinery service grate LOD0 must load authored frame/slat meshes, got ${grateContainer.meshes.length}`);
-  assert(externalAtlasLoads === 2, `Flagship LOD0 floor assets must both resolve the shared refinery route atlas, got ${externalAtlasLoads}`);
+  assert(bulkheadContainer.meshes.length >= 7, `Flagship refinery bulkhead LOD0 must load authored inset/gusset meshes, got ${bulkheadContainer.meshes.length}`);
+  assert(wallPanelContainer.meshes.length >= 9, `Flagship refinery wall panel LOD0 must load authored inset/service meshes, got ${wallPanelContainer.meshes.length}`);
+  assert(externalAtlasLoads === 4, `Flagship LOD0 refinery assets must resolve the shared refinery route atlas, got ${externalAtlasLoads}`);
   floorContainer.dispose();
   grateContainer.dispose();
+  bulkheadContainer.dispose();
+  wallPanelContainer.dispose();
   flagshipScene.dispose();
   flagshipEngine.dispose();
   externalAtlasLoads = 0;
@@ -213,7 +223,7 @@ async function run() {
   teardownEngine.dispose();
 
   console.log(
-    `BABYLON_GRAPHICS_ASSETS_PASS operatorLod1=${operatorLod1.id} operatorLod2=${operatorLod2.id} refinery=${refineryLod1.id} flagshipFloor=${refineryFloorLod0.id} flagshipGrate=${refineryGrateLod0.id} localCodecs=true externalAtlas=${externalAtlasLoads} instancing=static-native cacheTrim=count+bytes cacheLoads=${[...loadCounts.values()].reduce((sum, count) => sum + count, 0)} teardownDispose=${teardownDisposeCount} webglContextRelease=true`,
+    `BABYLON_GRAPHICS_ASSETS_PASS operatorLod1=${operatorLod1.id} operatorLod2=${operatorLod2.id} refinery=${refineryLod1.id} flagshipFloor=${refineryFloorLod0.id} flagshipGrate=${refineryGrateLod0.id} flagshipBulkhead=${refineryBulkheadLod0.id} flagshipWall=${refineryWallPanelLod0.id} localCodecs=true externalAtlas=${externalAtlasLoads} instancing=static-native cacheTrim=count+bytes cacheLoads=${[...loadCounts.values()].reduce((sum, count) => sum + count, 0)} teardownDispose=${teardownDisposeCount} webglContextRelease=true`,
   );
 
 }
