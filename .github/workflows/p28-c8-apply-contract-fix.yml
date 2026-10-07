@@ -47,8 +47,7 @@ jobs:
               '  - **Next: P28-C9 — Consolidate repeated refinery geometry without reducing visible quality.**',
               '',
           ]
-          entry = '\n'.join(lines) + '\n'
-          path.write_text(source.replace(heading, heading + entry, 1))
+          path.write_text(source.replace(heading, heading + '\n'.join(lines) + '\n', 1))
           PY
           git diff --check
           git config user.name "github-actions[bot]"
@@ -61,12 +60,10 @@ jobs:
           from pathlib import Path
           path = Path('docs/content-roadmap.md')
           source = path.read_text()
-          start = source.find('- [ ] **P28-C8 — Replace refinery generic world boxes with authored family mappings.**')
-          if start < 0:
-              raise SystemExit('P28-C8 active roadmap block missing')
-          end = source.find('- [ ] **P28-C9 —', start)
-          if end < 0:
-              raise SystemExit('P28-C9 boundary missing')
+          start = source.find('- [ ] **P28-C8 —')
+          end = source.find('- [ ] **P28-C9 —', start + 1)
+          if start < 0 or end < 0:
+              raise SystemExit(f'P28 closeout boundaries missing: C8={start} C9={end}')
           source = source[:start] + source[end:]
           first_unchecked = next((line for line in source.splitlines() if line.startswith('- [ ] **')), '')
           if not first_unchecked.startswith('- [ ] **P28-C9 —'):
