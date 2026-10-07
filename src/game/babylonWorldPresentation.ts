@@ -480,6 +480,9 @@ export class BabylonRefineryWorldPresentation {
     if (!spec) {
       this.ensureObjectFallback(object, object.kind === 'cover' && Boolean(this.getPremiumSurfaceLibrary));
       this.canvas.dataset.refineryWorldFallbackReason = familyKey + ':spec-unavailable';
+      if (interactableWorldPresentation(object.kind)) {
+        this.canvas.dataset.interactableVisual = 'procedural-fallback-babylon';
+      }
       return;
     }
     const current = this.authoredWorldObjects.get(object.id);
@@ -513,6 +516,12 @@ export class BabylonRefineryWorldPresentation {
       }
       delete this.canvas.dataset.refineryWorldFallbackReason;
       this.canvas.dataset.refineryWorldVisual = 'authored-family-mapped';
+      if (interactableWorldPresentation(object.kind)) {
+        const loaded = new Set((this.canvas.dataset.interactableAssets ?? '').split(',').filter(Boolean));
+        loaded.add(spec.id);
+        this.canvas.dataset.interactableAssets = [...loaded].sort().join(',');
+        this.canvas.dataset.interactableVisual = 'authored-babylon';
+      }
     } catch (error) {
       if (this.disposed
         || generation !== this.loadGeneration
@@ -522,6 +531,9 @@ export class BabylonRefineryWorldPresentation {
       }
       const message = error instanceof Error ? error.message : String(error);
       this.canvas.dataset.refineryWorldFallbackReason = familyKey + ':' + message;
+      if (interactableWorldPresentation(object.kind)) {
+        this.canvas.dataset.interactableVisual = 'procedural-fallback-babylon';
+      }
       console.warn('Babylon authored refinery world object failed for ' + object.id + '; keeping deterministic fallback.', error);
     }
   }
@@ -544,6 +556,7 @@ export class BabylonRefineryWorldPresentation {
     let mappedCount = 0;
     let authoredCount = 0;
     let fallbackCount = 0;
+    let mappedInteractableAuthoredCount = 0;
 
     for (const object of state.objects) {
       activeIds.add(object.id);
@@ -597,6 +610,7 @@ export class BabylonRefineryWorldPresentation {
         if (object.active) {
           authoredCount += 1;
           activeAssets.add(authoredWorld.assetId);
+          if (interactableWorldPresentation(object.kind)) mappedInteractableAuthoredCount += 1;
         }
       }
 
@@ -641,7 +655,7 @@ export class BabylonRefineryWorldPresentation {
     this.canvas.dataset.worldObjectCount = String(activeCount);
     this.canvas.dataset.interactableActive = String(interactableCount);
     this.canvas.dataset.interactableAuthoredCount = String(
-      [...this.authoredInteractables.values()].filter(visual => visual.mount.isEnabled()).length,
+      [...this.authoredInteractables.values()].filter(visual => visual.mount.isEnabled()).length + mappedInteractableAuthoredCount,
     );
     this.canvas.dataset.babylonCoverPremiumCount = String(premiumCoverCount);
     this.canvas.dataset.babylonCoverPremiumSurfaces = refineryScenario && this.getPremiumSurfaceLibrary

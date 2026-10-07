@@ -48,6 +48,13 @@ const fallbackSource = world.slice(fallbackStart, fallbackEnd);
 assert(fallbackSource.includes('MeshBuilder.CreateBox'), 'P28-C8 explicit procedural fallback no longer creates the deterministic box fallback');
 assert(fallbackSource.includes('Math.max(0.15, scaled(object.w))') && fallbackSource.includes('Math.max(0.15, scaled(object.h))'), 'P28-C8 fallback footprint no longer preserves simulation dimensions');
 
+const loadStart = world.indexOf('private async loadRefineryWorldObject(');
+const loadEnd = world.indexOf('private setAuthoredWorldVisibility(', loadStart);
+assert(loadStart >= 0 && loadEnd > loadStart, 'P28-C8 authored-world load method boundaries are missing');
+const loadSource = world.slice(loadStart, loadEnd);
+assert(loadSource.includes("this.canvas.dataset.interactableVisual = 'authored-babylon'") && loadSource.includes('this.canvas.dataset.interactableAssets'), 'P28-C8 mapped refinery interactables must publish authored readiness telemetry');
+assert(loadSource.includes("this.canvas.dataset.interactableVisual = 'procedural-fallback-babylon'"), 'P28-C8 mapped interactable load failures must publish deterministic fallback readiness');
+
 const syncStart = world.indexOf('private syncObjects(');
 const syncEnd = world.indexOf('private ensureObjective()', syncStart);
 assert(syncStart >= 0 && syncEnd > syncStart, 'P28-C8 syncObjects boundary is missing');
@@ -56,6 +63,7 @@ assert(!syncSource.includes('MeshBuilder.CreateBox'), 'P28-C8 mapped sync path m
 assert(syncSource.includes('scaled(object.x + object.w / 2)') && syncSource.includes('scaled(object.y + object.h / 2)'), 'P28-C8 presentation must retain simulation-owned interaction/object centers');
 assert(syncSource.includes('authoredWorld.mount.scaling.set(fit.scaleX, fit.scaleY * durabilityScale, fit.scaleZ)'), 'P28-C8 authored object footprint/durability fitting is missing');
 assert(syncSource.includes('const mappedFamily = refineryScenario ? refineryWorldObjectFamilyKey(object) : null'), 'P28-C8 refinery mapping gate is missing');
+assert(syncSource.includes('mappedInteractableAuthoredCount'), 'P28-C8 mapped refinery interactables must contribute to authored readiness counts');
 
 assert(verifier.includes('refineryWorldVisual') && verifier.includes('refineryWorldMappedCount') && verifier.includes('refineryWorldAuthoredCount') && verifier.includes('refineryWorldFallbackCount'), 'P28-C8 live refinery verifier does not inspect world-family mapping telemetry');
 assert(verifier.includes('mapped world-object coverage'), 'P28-C8 live verifier does not require authored mapped coverage');
