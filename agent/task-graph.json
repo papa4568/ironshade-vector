@@ -12,7 +12,7 @@
       "id": "AO-1",
       "title": "Establish machine-readable task graph foundation",
       "priority": 10,
-      "status": "active",
+      "status": "verified",
       "dependsOn": [],
       "acceptance": [
         "A versioned task-graph schema and migration graph are committed without changing product-roadmap authority.",
@@ -56,7 +56,7 @@
       "id": "AO-2",
       "title": "Add roadmap compatibility adapter and sidecar task metadata",
       "priority": 20,
-      "status": "planned",
+      "status": "ready",
       "dependsOn": ["AO-1"],
       "acceptance": [
         "Active roadmap items can be represented in the graph without manually duplicating their acceptance text.",
