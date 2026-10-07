@@ -92,7 +92,7 @@
       "id": "AO-3",
       "title": "Add change-impact and affected-verification selection",
       "priority": 30,
-      "status": "ready",
+      "status": "active",
       "dependsOn": ["AO-2"],
       "acceptance": [
         "Changed files map to affected domains and focused verification commands.",
@@ -105,7 +105,21 @@
           "id": "impact-tests",
           "kind": "test",
           "required": true,
-          "description": "Impact-map and affected-test selection regressions pass."
+          "description": "Impact-map validation, glob matching, deterministic selection, escalation, and de-duplication regressions pass.",
+          "command": "node agent/tests/affected-verification.mjs"
+        },
+        {
+          "id": "impact-cli",
+          "kind": "test",
+          "required": true,
+          "description": "The repository impact map validates and representative P28 graphics changes resolve to machine-readable targeted checks.",
+          "command": "node agent/tools/select-affected-verification.mjs --validate-only && node agent/tools/select-affected-verification.mjs --files scripts/prepare-refinery-premium-surfaces.mjs,src/game/graphicsAssetManifest.ts --json"
+        },
+        {
+          "id": "impact-ci",
+          "kind": "ci",
+          "required": true,
+          "description": "Agent Orchestration CI passes the affected-verification map, representative selector run, and regressions on the exact candidate revision."
         }
       ],
       "externalDependencies": []
