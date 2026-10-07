@@ -23,6 +23,7 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          from textwrap import dedent
 
           roadmap_path = Path('docs/content-roadmap.md')
           archive_path = Path('docs/content-roadmap-archive.md')
@@ -45,7 +46,8 @@ jobs:
           marker = '## P28 — Babylon flagship visual-quality overhaul\n\n'
           if marker not in archive:
               raise SystemExit('P28 archive marker not found')
-          block = '''- [x] **P28-C3 — Add LOD0 refinery pipe and cable modules** — added deterministic Flagship LOD0 variants for refinery pipe rack and cable tray families with materially richer mechanical layering while preserving stable identity pivots, existing gameplay/placement bounds, lower-LOD recovery, and premium PBR material contracts.
+          block = dedent('''\
+          - [x] **P28-C3 — Add LOD0 refinery pipe and cable modules** — added deterministic Flagship LOD0 variants for refinery pipe rack and cable tray families with materially richer mechanical layering while preserving stable identity pivots, existing gameplay/placement bounds, lower-LOD recovery, and premium PBR material contracts.
             - Added `scripts/prepare-refinery-pipe-cable-lod0.mjs` and wired it through `scripts/prepare-graphics-assets.mjs`. Pipe rack LOD0 adds layered pipe runs, clamps/fittings, braces/supports; cable tray LOD0 adds layered rails, rungs/support brackets, cable bundle detail. Both retain identity `environment-root` pivots and unchanged authored gameplay bounds.
             - Updated `src/game/graphics/assetManifest.ts` so Flagship/high detail selects `refinery-pipe-rack-lod0` and `refinery-cable-tray-lod0` before existing LOD1/LOD2 recovery, reusing the shared P28 premium PBR material bindings.
             - Extended `tests/refinery-machinery-premium-surfaces.mjs` and `tests/babylon-graphics-assets.ts` to verify deterministic regeneration, stable bounds/pivots, indexed POSITION/NORMAL/TANGENT/TEXCOORD_0 payloads, richer mechanical detail, premium materials, Flagship manifest selection, and Babylon GLB loading.
@@ -54,10 +56,9 @@ jobs:
             - Verified PR artifact `ironshade-vector-pr-android-apk` (artifact `11456016941`, artifact digest `sha256:a030843dbb916517fac16dc7a05cde8216360fba70b42ca81ce3d96e8482f395`) contains `Ironshade-Vector-Android-Debug.apk` (10,374,236 bytes; package `app.ironshade.vector`; version `0.0.1-pr.119 (119)`; min SDK 24; target/compile SDK 36; APK Signature Scheme v2 verified; signer SHA-256 `7cafe8377e225c340000e842885cc3e58f762954328bdf34511aa2f4fd7f1945`; APK SHA-256 `b369077a6f486cf955e9e1e1caa90ad26309537c6ce7e58fcfae8520bcd2c99c`).
             - **Next: P28-C4 — Add LOD0 refinery conduit and gantry modules.**
 
-'''
+          ''')
           if 'P28-C3 — Add LOD0 refinery pipe and cable modules' not in archive:
-              archive = archive.replace(marker, marker + block, 1)
-              archive_path.write_text(archive)
+              archive_path.write_text(archive.replace(marker, marker + block, 1))
 
           workflow_path.unlink()
           PY
