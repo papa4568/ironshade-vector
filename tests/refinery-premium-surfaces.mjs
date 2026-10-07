@@ -291,7 +291,7 @@ assert(manifestSource.includes("0: createGraphicsAssetSpec('refinery-floor-servi
 assert(manifestSource.includes("0: createGraphicsAssetSpec('refinery-bulkhead-lod0'"), 'P28-C2 refinery bulkhead LOD0 is not registered in the asset manifest');
 assert(manifestSource.includes("0: createGraphicsAssetSpec('refinery-wall-service-panel-lod0'"), 'P28-C2 refinery wall-panel LOD0 is not registered in the asset manifest');
 assert(assetContractSource.includes('if (detailScale >= 0.9) return 0;') && assetContractSource.includes('0: [0, 1, 2]'), 'Flagship detail selection must prefer LOD0 then recover to LOD1/LOD2');
-assert(imageGradeSource.includes("visualDetail: 'p28-c2-refinery-wall-lod0'"), 'P28-C2 Flagship image-grade capture is not tagged for the LOD0 wall candidate');
+assert(imageGradeSource.includes("visualDetail: 'p28-c3-refinery-pipe-cable-lod0'"), 'P28-C3 Flagship image-grade capture is not tagged for the pipe/cable LOD0 candidate');
 
 const lod0TargetCount = REFINERY_FLOOR_LOD0_TARGETS.length + REFINERY_WALL_LOD0_TARGETS.length;
 console.log(`REFINERY_PREMIUM_SURFACES_PASS targets=${REFINERY_PREMIUM_SURFACE_TARGETS.length} routeTargets=${REFINERY_ROUTE_DECAL_TARGETS.length} lod0Targets=${lod0TargetCount} attributes=POSITION+NORMAL+TANGENT+TEXCOORD_0 bounds=unchanged route=${expectedRouteFamilies.join('+')} detail=${routeDetails.join('+')}`);
