@@ -4,9 +4,11 @@ Ironshade Vector is moving from a purely linear Markdown execution queue toward 
 
 ## Compatibility rule
 
-`docs/content-roadmap.md` remains the authoritative product/game queue until an explicit migration phase changes that rule. The machine-readable graph in `agent/task-graph.json` is initially authoritative only for `AO-*` orchestration-migration tasks.
+`docs/content-roadmap.md` remains the authoritative product/game queue until an explicit migration phase changes that rule. The machine-readable graph in `agent/task-graph.json` is authoritative only for `AO-*` orchestration-migration tasks during compatibility mode.
 
-Do not select P28 or other product work from `agent/task-graph.json` during compatibility mode.
+`agent/roadmap-metadata.json` is a sidecar, not a duplicate roadmap. It stores only machine-oriented information: the active unchecked ID/order inventory, affected-domain rules, proof profiles, and optional dependency overrides. Product task titles, descriptions, and `Done when` acceptance text are parsed directly from `docs/content-roadmap.md` and are not copied into the sidecar.
+
+Do not select P28 or other product work from `agent/task-graph.json` during compatibility mode. The roadmap adapter may materialize product tasks as a graph for inspection and validation, but Markdown order remains authoritative until cutover.
 
 ## Target model
 
@@ -22,11 +24,21 @@ A task is complete only when the exact candidate revision satisfies its required
 
 ### AO-1 — Task graph foundation
 
-Add the versioned graph format, semantic validator, deterministic next-task selector, focused regression tests, and a CI gate. Keep product-roadmap behavior unchanged.
+Verified. Added the versioned orchestration graph, semantic validator, deterministic next-task selector, focused regression tests, and dedicated CI without changing product-roadmap authority.
 
 ### AO-2 — Roadmap compatibility adapter
 
 Connect active roadmap IDs to sidecar graph metadata without duplicating roadmap acceptance text. Validate drift and preserve existing roadmap ordering until cutover.
+
+The adapter reads unchecked top-level roadmap checkboxes, extracts their title and `Done when` acceptance directly from Markdown, merges machine-only metadata from `agent/roadmap-metadata.json`, and validates the resulting task graph. The first unchecked Markdown item remains the next product task.
+
+When roadmap IDs are added, removed, or reordered, synchronize the sidecar in the same change:
+
+```bash
+node agent/tools/sync-roadmap-metadata.mjs --write
+```
+
+CI runs the same command in check mode and fails if the sidecar is stale.
 
 ### AO-3 — Change-impact verification
 
@@ -44,9 +56,9 @@ Restructure final verification so expensive repository-wide work is not repeated
 
 Add a separate completion-review contract and promote stable architectural assumptions and recurring failure classes into deterministic checks where practical.
 
-## Phase-1 commands
+## Orchestration commands
 
-Validate the graph:
+Validate the AO migration graph:
 
 ```bash
 node agent/tools/validate-task-graph.mjs
@@ -59,10 +71,32 @@ node agent/tools/next-task.mjs
 node agent/tools/next-task.mjs --json
 ```
 
-Run focused regressions:
+Run AO graph regressions:
 
 ```bash
 node agent/tests/task-graph.mjs
+```
+
+## Roadmap compatibility commands
+
+Require exact active-ID/order synchronization between Markdown and the sidecar:
+
+```bash
+node agent/tools/sync-roadmap-metadata.mjs --check
+```
+
+Materialize and validate the active product roadmap as a machine-readable graph:
+
+```bash
+node agent/tools/roadmap-adapter.mjs --validate-only
+node agent/tools/roadmap-adapter.mjs
+node agent/tools/roadmap-adapter.mjs --json
+```
+
+Run roadmap-adapter regressions:
+
+```bash
+node agent/tests/roadmap-adapter.mjs
 ```
 
 ## State model
@@ -76,4 +110,4 @@ node agent/tests/task-graph.mjs
 - `verified` — required technically available proofs passed.
 - `archived` — verified work retained only as history.
 
-The validator rejects cycles, unknown dependencies, multiple active tasks, actionable tasks whose dependencies are incomplete, and external blockers without named external dependencies.
+The AO task-graph validator rejects cycles, unknown dependencies, multiple active tasks, actionable tasks whose dependencies are incomplete, and external blockers without named external dependencies. The roadmap adapter separately rejects duplicate unchecked IDs, missing `Done when` clauses, sidecar drift, unknown proof profiles/rules, and dependencies that point to a later active roadmap task.
