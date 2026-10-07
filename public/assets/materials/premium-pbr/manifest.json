@@ -1,0 +1,124 @@
+{
+  "version": 1,
+  "format": "KTX2",
+  "supercompression": "Zstandard",
+  "resolution": 512,
+  "mipmapped": true,
+  "ormPacking": {
+    "occlusion": "R",
+    "roughness": "G",
+    "metallic": "B"
+  },
+  "surfaces": [
+    {
+      "id": "painted-metal",
+      "label": "Painted metal",
+      "maps": {
+        "base-color": {
+          "file": "painted-metal-base-color.ktx2",
+          "bytes": 71620,
+          "srgb": true
+        },
+        "normal": {
+          "file": "painted-metal-normal.ktx2",
+          "bytes": 551535,
+          "srgb": false
+        },
+        "orm": {
+          "file": "painted-metal-orm.ktx2",
+          "bytes": 174005,
+          "srgb": false
+        }
+      }
+    },
+    {
+      "id": "bare-metal",
+      "label": "Bare metal",
+      "maps": {
+        "base-color": {
+          "file": "bare-metal-base-color.ktx2",
+          "bytes": 45020,
+          "srgb": true
+        },
+        "normal": {
+          "file": "bare-metal-normal.ktx2",
+          "bytes": 671289,
+          "srgb": false
+        },
+        "orm": {
+          "file": "bare-metal-orm.ktx2",
+          "bytes": 161927,
+          "srgb": false
+        }
+      }
+    },
+    {
+      "id": "deck-plate",
+      "label": "Deck plate",
+      "maps": {
+        "base-color": {
+          "file": "deck-plate-base-color.ktx2",
+          "bytes": 75141,
+          "srgb": true
+        },
+        "normal": {
+          "file": "deck-plate-normal.ktx2",
+          "bytes": 493488,
+          "srgb": false
+        },
+        "orm": {
+          "file": "deck-plate-orm.ktx2",
+          "bytes": 178360,
+          "srgb": false
+        }
+      }
+    },
+    {
+      "id": "polymer-rubber",
+      "label": "Polymer / rubber",
+      "maps": {
+        "base-color": {
+          "file": "polymer-rubber-base-color.ktx2",
+          "bytes": 23009,
+          "srgb": true
+        },
+        "normal": {
+          "file": "polymer-rubber-normal.ktx2",
+          "bytes": 816317,
+          "srgb": false
+        },
+        "orm": {
+          "file": "polymer-rubber-orm.ktx2",
+          "bytes": 145291,
+          "srgb": false
+        }
+      }
+    },
+    {
+      "id": "emissive-fixture",
+      "label": "Emissive fixture",
+      "maps": {
+        "base-color": {
+          "file": "emissive-fixture-base-color.ktx2",
+          "bytes": 16755,
+          "srgb": true
+        },
+        "normal": {
+          "file": "emissive-fixture-normal.ktx2",
+          "bytes": 367399,
+          "srgb": false
+        },
+        "orm": {
+          "file": "emissive-fixture-orm.ktx2",
+          "bytes": 82568,
+          "srgb": false
+        },
+        "emissive": {
+          "file": "emissive-fixture-emissive.ktx2",
+          "bytes": 1761,
+          "srgb": true
+        }
+      }
+    }
+  ]
+}

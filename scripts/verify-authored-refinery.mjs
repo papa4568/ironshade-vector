@@ -110,6 +110,11 @@ try {
         materialDetail: canvas.dataset.babylonEnvironmentMaterialDetail ?? '',
         coverPremiumSurfaces: canvas.dataset.babylonCoverPremiumSurfaces ?? '',
         coverPremiumCount: Number(canvas.dataset.babylonCoverPremiumCount ?? 0),
+        refineryWorldVisual: canvas.dataset.refineryWorldVisual ?? '',
+        refineryWorldMappedCount: Number(canvas.dataset.refineryWorldMappedCount ?? 0),
+        refineryWorldAuthoredCount: Number(canvas.dataset.refineryWorldAuthoredCount ?? 0),
+        refineryWorldFallbackCount: Number(canvas.dataset.refineryWorldFallbackCount ?? 0),
+        refineryWorldAssets: canvas.dataset.refineryWorldAssets ?? '',
         machineDetail: canvas.dataset.environmentMachineDetail ?? '',
         composition: canvas.dataset.environmentComposition ?? '',
         lightingProfile: canvas.dataset.babylonLightingProfile ?? '',
@@ -171,6 +176,15 @@ try {
       if (lastState.coverPremiumSurfaces !== 'painted-metal+bare-metal+polymer-rubber' || lastState.coverPremiumCount < 1) {
         throw new Error(`P28-B3 premium refinery cover presentation is incomplete: ${JSON.stringify(lastState)}`);
       }
+      if (lastState.refineryWorldFallbackCount > 0) {
+        throw new Error(`P28-C8 mapped world-object coverage entered deterministic fallback: ${JSON.stringify(lastState)}`);
+      }
+      if (lastState.refineryWorldVisual !== 'authored-family-mapped'
+        || lastState.refineryWorldMappedCount < 1
+        || lastState.refineryWorldAuthoredCount !== lastState.refineryWorldMappedCount) {
+        await sleep(200);
+        continue;
+      }
       if (lastState.machineDetail !== 'processor-functional:3+floor-grate:8') {
         throw new Error(`Authored Babylon refinery processor/floor detail coverage is incomplete: ${JSON.stringify(lastState)}`);
       }
@@ -214,7 +228,7 @@ try {
       if (!(lastState.width > 0 && lastState.height > 0)) {
         throw new Error(`Authored Babylon refinery canvas is not visible: ${JSON.stringify(lastState)}`);
       }
-      console.log(`AUTHORED_REFINERY_RUNTIME_PASS lod=${lastState.lod} kit=${[...kit].sort().join(',')} instances=${lastState.instances} terminals=${lastState.terminals} landmark=${lastState.landmark} premium=${lastState.premiumSurfaces} cover=${lastState.coverPremiumCount}:${lastState.coverPremiumSurfaces} lighting=${lastState.lighting} grounding=${lastState.actorGrounding} actors=${lastState.actorGroundingActors} ibl=${lastState.ibl} post=${lastState.postStack} tier=${lastState.renderTier} frame=${lastState.renderFrameMs}ms budget=${lastState.renderBudget} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
+      console.log(`AUTHORED_REFINERY_RUNTIME_PASS lod=${lastState.lod} kit=${[...kit].sort().join(',')} instances=${lastState.instances} terminals=${lastState.terminals} landmark=${lastState.landmark} premium=${lastState.premiumSurfaces} cover=${lastState.coverPremiumCount}:${lastState.coverPremiumSurfaces} world=${lastState.refineryWorldAuthoredCount}/${lastState.refineryWorldMappedCount}:fallback-${lastState.refineryWorldFallbackCount} assets=${lastState.refineryWorldAssets} lighting=${lastState.lighting} grounding=${lastState.actorGrounding} actors=${lastState.actorGroundingActors} ibl=${lastState.ibl} post=${lastState.postStack} tier=${lastState.renderTier} frame=${lastState.renderFrameMs}ms budget=${lastState.renderBudget} canvas=${Math.round(lastState.width)}x${Math.round(lastState.height)}`);
       process.exitCode = 0;
       break;
     }

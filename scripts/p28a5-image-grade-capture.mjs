@@ -3,7 +3,7 @@ import { writeFile } from 'node:fs/promises';
 const cdpBase = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9223';
 const screenshotPath = process.env.BROWSER_E2E_P28A5_LOW_VISIBILITY_SCREENSHOT ?? 'browser-p28a5-low-visibility.png';
 const reportPath = process.env.BROWSER_E2E_P28A5_REPORT ?? 'browser-p28a5-image-grade.json';
-// Historical proof markers retained for completed candidates: visualDetail: 'p28-c5-refinery-processor-lod0'; visualDetail: 'p28-c6-refinery-terminal-lod0'
+// Historical proof markers retained for completed candidates: visualDetail: 'p28-c5-refinery-processor-lod0'; visualDetail: 'p28-c6-refinery-terminal-lod0'; visualDetail: 'p28-c7-refinery-crate-lod0'
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 if (typeof WebSocket !== 'function') {
@@ -71,6 +71,10 @@ const readGradeStateExpression = `(() => {
     protected: canvas.dataset.environmentAtmosphereProtected ?? '',
     priority: canvas.dataset.effectPriority ?? '',
     stack: canvas.dataset.babylonPostStack ?? '',
+    refineryWorldVisual: canvas.dataset.refineryWorldVisual ?? '',
+    refineryWorldMappedCount: Number(canvas.dataset.refineryWorldMappedCount ?? 0),
+    refineryWorldAuthoredCount: Number(canvas.dataset.refineryWorldAuthoredCount ?? 0),
+    refineryWorldFallbackCount: Number(canvas.dataset.refineryWorldFallbackCount ?? 0),
     width: Math.round(rect.width),
     height: Math.round(rect.height),
   };
@@ -87,7 +91,13 @@ try {
   })()`, 'normal Flagship refinery grade');
 
   const normal = await evaluate(readGradeStateExpression);
-  if (!normal || normal.tier !== 'high' || !normal.atmosphere.includes('exposure-1.055:contrast-0.985:grade-p28-a5-dark-separation-v1')) {
+  if (!normal
+    || normal.tier !== 'high'
+    || !normal.atmosphere.includes('exposure-1.055:contrast-0.985:grade-p28-a5-dark-separation-v1')
+    || normal.refineryWorldVisual !== 'authored-family-mapped'
+    || normal.refineryWorldMappedCount < 1
+    || normal.refineryWorldAuthoredCount !== normal.refineryWorldMappedCount
+    || normal.refineryWorldFallbackCount !== 0) {
     throw new Error(`P28-A5 normal Flagship grade is not deterministic: ${JSON.stringify(normal)}`);
   }
 
@@ -127,7 +137,7 @@ try {
 
   await writeFile(reportPath, JSON.stringify({
     viewport: 'desktop',
-    visualDetail: 'p28-c7-refinery-crate-lod0',
+    visualDetail: 'p28-c8-refinery-world-authored-mappings',
     normal,
     lowVisibility,
     screenshot: screenshotPath,
@@ -147,7 +157,7 @@ try {
       && canvas?.dataset.environmentAtmosphere?.includes('exposure-1.055:contrast-0.985:grade-p28-a5-dark-separation-v1');
   })()`, 'restored normal Flagship refinery grade');
 
-  console.log(`BROWSER_P28A5_IMAGE_GRADE_PASS tier=${lowVisibility.tier} detail=p28-c7-refinery-crate-lod0 normal=${normal.atmosphere} lowVisibility=${lowVisibility.atmosphere} tone=${lowVisibility.tone} cues=1.00 screenshot=${screenshotPath} bytes=${png.length}`);
+  console.log(`BROWSER_P28A5_IMAGE_GRADE_PASS tier=${lowVisibility.tier} detail=p28-c8-refinery-world-authored-mappings normal=${normal.atmosphere} lowVisibility=${lowVisibility.atmosphere} tone=${lowVisibility.tone} cues=1.00 screenshot=${screenshotPath} bytes=${png.length}`);
 } finally {
   socket.close();
 }

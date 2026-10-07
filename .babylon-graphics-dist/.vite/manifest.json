@@ -1,0 +1,18 @@
+{
+  "src/game/babylonGltfLoader.ts": {
+    "file": "assets/babylonGltfLoader-CpD6dkH-.js",
+    "name": "babylonGltfLoader",
+    "src": "src/game/babylonGltfLoader.ts",
+    "isDynamicEntry": true
+  },
+  "tests/babylon-graphics-assets.ts": {
+    "file": "babylon-graphics-assets.js",
+    "name": "babylon-graphics-assets",
+    "src": "tests/babylon-graphics-assets.ts",
+    "isEntry": true,
+    "dynamicImports": [
+      "src/game/babylonGltfLoader.ts",
+      "src/game/babylonGltfLoader.ts"
+    ]
+  }
+}

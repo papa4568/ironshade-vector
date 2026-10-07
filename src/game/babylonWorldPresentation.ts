@@ -1,6 +1,7 @@
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial';
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { Color3 } from '@babylonjs/core/Maths/math.color';
+import { AbstractMesh } from '@babylonjs/core/Meshes/abstractMesh';
 import { Mesh } from '@babylonjs/core/Meshes/mesh';
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
@@ -17,6 +18,12 @@ import {
   PICKUP_ASSET_FAMILY,
 } from './graphicsAssetManifest';
 import { selectGraphicsAssetSpec } from './graphicsAssets';
+import {
+  refineryWorldObjectAssetFamily,
+  refineryWorldObjectFamilyKey,
+  refineryWorldObjectFit,
+  type RefineryWorldObjectFamilyKey,
+} from './refineryWorldObjectAssets';
 import type { BabylonPremiumPbrSurfaceLibrary } from './babylonPremiumPbrSurfaceLibrary';
 import { findNavigationPath } from './mapPathfinding';
 import type { CombatObject, Hazard, SimState } from './sim';
@@ -53,6 +60,13 @@ type AuthoredInteractableVisual = {
   instance: BabylonGraphicsAssetInstance;
   mount: TransformNode;
   assetId: string;
+};
+
+type AuthoredWorldObjectVisual = {
+  instance: BabylonGraphicsAssetInstance;
+  mount: TransformNode;
+  assetId: string;
+  family: RefineryWorldObjectFamilyKey;
 };
 
 type GroundLootVisual = {
@@ -135,6 +149,8 @@ export class BabylonRefineryWorldPresentation {
   private readonly interactableCues = new Map<string, WorldCueVisual>();
   private readonly authoredInteractables = new Map<string, AuthoredInteractableVisual>();
   private readonly interactableRequests = new Set<string>();
+  private readonly authoredWorldObjects = new Map<string, AuthoredWorldObjectVisual>();
+  private readonly refineryObjectRequests = new Map<string, string>();
   private readonly hazards: WorldCueVisual[] = [];
   private readonly breaches: RingVisual[] = [];
   private readonly loot: GroundLootVisual[] = [];
@@ -194,11 +210,19 @@ export class BabylonRefineryWorldPresentation {
     if (!this.active
       && this.objectVisuals.size === 0
       && this.authoredInteractables.size === 0
+      && this.authoredWorldObjects.size === 0
       && this.loot.length === 0) {
       return;
     }
     this.active = false;
     this.loadGeneration += 1;
+
+    for (const visual of this.authoredWorldObjects.values()) {
+      visual.instance.release();
+      visual.mount.dispose();
+    }
+    this.authoredWorldObjects.clear();
+    this.refineryObjectRequests.clear();
 
     for (const visual of this.authoredInteractables.values()) {
       visual.instance.release();
@@ -266,6 +290,11 @@ export class BabylonRefineryWorldPresentation {
     this.canvas.dataset.breachActive = '0';
     this.canvas.dataset.babylonCoverPremiumCount = '0';
     this.canvas.dataset.babylonCoverPremiumSurfaces = 'inactive';
+    this.canvas.dataset.refineryWorldVisual = 'released';
+    this.canvas.dataset.refineryWorldMappedCount = '0';
+    this.canvas.dataset.refineryWorldAuthoredCount = '0';
+    this.canvas.dataset.refineryWorldFallbackCount = '0';
+    this.canvas.dataset.refineryWorldAssets = '';
     this.canvas.dataset.babylonWorldRelease = reason + ':deterministic';
   }
 
@@ -384,91 +413,192 @@ export class BabylonRefineryWorldPresentation {
     }
   }
 
+  private disposeObjectFallback(visual: WorldObjectVisual) {
+    visual.mesh.dispose();
+    visual.material.dispose();
+  }
+
+  private ensureObjectFallback(object: CombatObject, premiumCover: boolean) {
+    let visual = this.objectVisuals.get(object.id);
+    if (visual && visual.premiumCover !== premiumCover) {
+      this.disposeObjectFallback(visual);
+      this.objectVisuals.delete(object.id);
+      visual = undefined;
+    }
+    if (visual) return visual;
+
+    const height = panelObject(object) ? 0.7 : object.kind === 'cover' ? 1.25 : 1.05;
+    const material = new PBRMaterial('p27-b5-object-material-' + object.id, this.scene);
+    material.albedoColor = colorFromHex(objectColor(object));
+    material.metallic = 0.55;
+    material.roughness = 0.48;
+    const width = Math.max(0.15, scaled(object.w));
+    const depth = Math.max(0.15, scaled(object.h));
+    const mesh = MeshBuilder.CreateBox('p28-c8-fallback-object-' + object.id, { width, height, depth }, this.scene);
+    const premiumDetailMeshes: Mesh[] = [];
+    if (premiumCover && this.getPremiumSurfaceLibrary) {
+      const surfaces = this.getPremiumSurfaceLibrary();
+      mesh.material = surfaces.get('painted-metal');
+
+      const cap = MeshBuilder.CreateBox('p28-c8-fallback-cover-bare-cap-' + object.id, {
+        width: Math.max(0.12, width * 0.90),
+        height: 0.10,
+        depth: Math.max(0.12, depth * 0.90),
+      }, this.scene);
+      cap.parent = mesh;
+      cap.position.y = height * 0.5 - 0.05;
+      cap.material = surfaces.get('bare-metal');
+      cap.isPickable = false;
+      premiumDetailMeshes.push(cap);
+
+      const bumperDepth = Math.max(0.035, Math.min(0.07, depth * 0.08));
+      for (const side of [-1, 1]) {
+        const bumper = MeshBuilder.CreateBox('p28-c8-fallback-cover-polymer-' + (side > 0 ? 'front' : 'back') + '-' + object.id, {
+          width: Math.max(0.12, width * 0.76),
+          height: 0.18,
+          depth: bumperDepth,
+        }, this.scene);
+        bumper.parent = mesh;
+        bumper.position.set(0, -height * 0.22, side * (depth * 0.5 + bumperDepth * 0.18));
+        bumper.material = surfaces.get('polymer-rubber');
+        bumper.isPickable = false;
+        premiumDetailMeshes.push(bumper);
+      }
+    } else {
+      mesh.material = material;
+    }
+    mesh.isPickable = false;
+    visual = { mesh, material, height, premiumCover, premiumDetailMeshes };
+    this.objectVisuals.set(object.id, visual);
+    return visual;
+  }
+
+  private async loadRefineryWorldObject(object: CombatObject, detailScale: number) {
+    const family = refineryWorldObjectAssetFamily(object);
+    const familyKey = refineryWorldObjectFamilyKey(object);
+    const spec = selectGraphicsAssetSpec(family, detailScale);
+    if (!spec) {
+      this.ensureObjectFallback(object, object.kind === 'cover' && Boolean(this.getPremiumSurfaceLibrary));
+      this.canvas.dataset.refineryWorldFallbackReason = familyKey + ':spec-unavailable';
+      return;
+    }
+    const current = this.authoredWorldObjects.get(object.id);
+    if (current?.assetId === spec.id || this.refineryObjectRequests.get(object.id) === spec.id) return;
+
+    this.refineryObjectRequests.set(object.id, spec.id);
+    const generation = this.loadGeneration;
+    try {
+      const instance = await getBabylonGraphicsAssetRuntime(this.scene).instantiate(spec);
+      if (this.disposed
+        || !this.active
+        || generation !== this.loadGeneration
+        || this.refineryObjectRequests.get(object.id) !== spec.id) {
+        instance.release();
+        return;
+      }
+      const mount = new TransformNode('p28-c8-authored-world-object-' + object.id, this.scene);
+      mount.setEnabled(false);
+      instance.rootNodes.forEach(root => {
+        root.parent = mount;
+      });
+
+      const previous = this.authoredWorldObjects.get(object.id);
+      previous?.instance.release();
+      previous?.mount.dispose();
+      this.authoredWorldObjects.set(object.id, { instance, mount, assetId: spec.id, family: familyKey });
+      const fallback = this.objectVisuals.get(object.id);
+      if (fallback) {
+        this.disposeObjectFallback(fallback);
+        this.objectVisuals.delete(object.id);
+      }
+      delete this.canvas.dataset.refineryWorldFallbackReason;
+      this.canvas.dataset.refineryWorldVisual = 'authored-family-mapped';
+    } catch (error) {
+      if (this.disposed
+        || generation !== this.loadGeneration
+        || this.refineryObjectRequests.get(object.id) !== spec.id) return;
+      if (!this.authoredWorldObjects.has(object.id)) {
+        this.ensureObjectFallback(object, object.kind === 'cover' && Boolean(this.getPremiumSurfaceLibrary));
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      this.canvas.dataset.refineryWorldFallbackReason = familyKey + ':' + message;
+      console.warn('Babylon authored refinery world object failed for ' + object.id + '; keeping deterministic fallback.', error);
+    }
+  }
+
+  private setAuthoredWorldVisibility(visual: AuthoredWorldObjectVisual, visibility: number) {
+    for (const root of visual.instance.rootNodes) {
+      if (root instanceof AbstractMesh) root.visibility = visibility;
+      for (const mesh of root.getChildMeshes(false)) mesh.visibility = visibility;
+    }
+  }
+
   private syncObjects(state: SimState, detailScale: number) {
     const refineryScenario = this.premiumRefineryScenario;
     const quality = worldMaterialQualityProfile(worldQualityName(detailScale));
     const activeIds = new Set<string>();
+    const activeAssets = new Set<string>();
     let activeCount = 0;
     let interactableCount = 0;
     let premiumCoverCount = 0;
+    let mappedCount = 0;
+    let authoredCount = 0;
+    let fallbackCount = 0;
+
     for (const object of state.objects) {
       activeIds.add(object.id);
-      const premiumCover = refineryScenario && object.kind === 'cover' && Boolean(this.getPremiumSurfaceLibrary);
-      let visual = this.objectVisuals.get(object.id);
-      if (visual && visual.premiumCover !== premiumCover) {
-        visual.mesh.dispose();
-        visual.material.dispose();
-        this.objectVisuals.delete(object.id);
-        visual = undefined;
-      }
-      if (!visual) {
-        const height = panelObject(object) ? 0.7 : object.kind === 'cover' ? 1.25 : 1.05;
-        const material = new PBRMaterial('p27-b5-object-material-' + object.id, this.scene);
-        material.albedoColor = colorFromHex(objectColor(object));
-        material.metallic = 0.55;
-        material.roughness = 0.48;
-        const width = Math.max(0.15, scaled(object.w));
-        const depth = Math.max(0.15, scaled(object.h));
-        const mesh = MeshBuilder.CreateBox('p27-b5-object-' + object.id, { width, height, depth }, this.scene);
-        const premiumDetailMeshes: Mesh[] = [];
-        if (premiumCover && this.getPremiumSurfaceLibrary) {
-          const surfaces = this.getPremiumSurfaceLibrary();
-          mesh.material = surfaces.get('painted-metal');
-
-          const cap = MeshBuilder.CreateBox('p28-b3-cover-bare-cap-' + object.id, {
-            width: Math.max(0.12, width * 0.90),
-            height: 0.10,
-            depth: Math.max(0.12, depth * 0.90),
-          }, this.scene);
-          cap.parent = mesh;
-          cap.position.y = height * 0.5 - 0.05;
-          cap.material = surfaces.get('bare-metal');
-          cap.isPickable = false;
-          premiumDetailMeshes.push(cap);
-
-          const bumperDepth = Math.max(0.035, Math.min(0.07, depth * 0.08));
-          for (const side of [-1, 1]) {
-            const bumper = MeshBuilder.CreateBox('p28-b3-cover-polymer-' + (side > 0 ? 'front' : 'back') + '-' + object.id, {
-              width: Math.max(0.12, width * 0.76),
-              height: 0.18,
-              depth: bumperDepth,
-            }, this.scene);
-            bumper.parent = mesh;
-            bumper.position.set(0, -height * 0.22, side * (depth * 0.5 + bumperDepth * 0.18));
-            bumper.material = surfaces.get('polymer-rubber');
-            bumper.isPickable = false;
-            premiumDetailMeshes.push(bumper);
-          }
-        } else {
-          mesh.material = material;
-        }
-        mesh.isPickable = false;
-        visual = { mesh, material, height, premiumCover, premiumDetailMeshes };
-        this.objectVisuals.set(object.id, visual);
+      const mappedFamily = refineryScenario ? refineryWorldObjectFamilyKey(object) : null;
+      if (mappedFamily) {
+        if (object.active) mappedCount += 1;
+        void this.loadRefineryWorldObject(object, detailScale);
+      } else {
+        this.ensureObjectFallback(object, false);
         if (panelObject(object)) void this.loadInteractable(object, detailScale);
       }
 
       if (object.active) activeCount += 1;
-      if (visual.premiumCover && object.active) premiumCoverCount += 1;
-      const authored = this.authoredInteractables.get(object.id);
-      visual.mesh.setEnabled(object.active && !authored);
-      visual.mesh.position.set(scaled(object.x + object.w / 2), visual.height / 2, scaled(object.y + object.h / 2));
-      const response = materialWorldResponse(object.material);
+      if (refineryScenario && object.kind === 'cover' && object.active) premiumCoverCount += 1;
+
+      const authoredWorld = mappedFamily ? this.authoredWorldObjects.get(object.id) : undefined;
+      const authoredInteractable = mappedFamily ? undefined : this.authoredInteractables.get(object.id);
+      const fallback = this.objectVisuals.get(object.id);
       const coverVisibility = object.kind === 'cover'
         && Math.hypot(object.x + object.w / 2 - state.player.x, object.y + object.h / 2 - state.player.y) < 155
         ? 0.48
         : 1;
-      visual.mesh.visibility = coverVisibility;
-      for (const detail of visual.premiumDetailMeshes) detail.visibility = coverVisibility;
-      if (!visual.premiumCover) {
-        visual.material.albedoColor = colorFromHex(objectColor(object));
-        visual.material.alpha = coverVisibility;
-        visual.material.emissiveColor = object.exposed ? colorFromHex(0xd69b4d).scale(0.32) : Color3.Black();
-        visual.material.metallic = lerp(0.32, response.metalness, quality.materialDepthScale);
-        visual.material.roughness = lerp(0.62, response.roughness, quality.materialDepthScale);
-      }
       const hpRatio = object.maxHp > 0 ? Math.max(0.18, Math.min(1, object.hp / object.maxHp)) : 1;
-      visual.mesh.scaling.y = object.destructible && object.maxHp < 9000 ? 0.72 + hpRatio * 0.28 : 1;
+      const durabilityScale = object.destructible && object.maxHp < 9000 ? 0.72 + hpRatio * 0.28 : 1;
+
+      if (fallback) {
+        const useFallback = object.active && !authoredWorld && !authoredInteractable;
+        fallback.mesh.setEnabled(useFallback);
+        fallback.mesh.position.set(scaled(object.x + object.w / 2), fallback.height / 2, scaled(object.y + object.h / 2));
+        fallback.mesh.visibility = coverVisibility;
+        for (const detail of fallback.premiumDetailMeshes) detail.visibility = coverVisibility;
+        if (!fallback.premiumCover) {
+          const response = materialWorldResponse(object.material);
+          fallback.material.albedoColor = colorFromHex(objectColor(object));
+          fallback.material.alpha = coverVisibility;
+          fallback.material.emissiveColor = object.exposed ? colorFromHex(0xd69b4d).scale(0.32) : Color3.Black();
+          fallback.material.metallic = lerp(0.32, response.metalness, quality.materialDepthScale);
+          fallback.material.roughness = lerp(0.62, response.roughness, quality.materialDepthScale);
+        }
+        fallback.mesh.scaling.y = durabilityScale;
+        if (useFallback) fallbackCount += 1;
+      }
+
+      if (authoredWorld) {
+        const fit = refineryWorldObjectFit(object, WORLD_SCALE);
+        authoredWorld.mount.setEnabled(object.active);
+        authoredWorld.mount.position.set(scaled(object.x + object.w / 2), 0, scaled(object.y + object.h / 2));
+        authoredWorld.mount.rotation.y = fit.rotationY;
+        authoredWorld.mount.scaling.set(fit.scaleX, fit.scaleY * durabilityScale, fit.scaleZ);
+        this.setAuthoredWorldVisibility(authoredWorld, coverVisibility);
+        if (object.active) {
+          authoredCount += 1;
+          activeAssets.add(authoredWorld.assetId);
+        }
+      }
 
       const presentation = interactableWorldPresentation(object.kind);
       const cue = this.ensureInteractableCue(object);
@@ -494,18 +624,19 @@ export class BabylonRefineryWorldPresentation {
           + state.time * 0.22 * quality.stateMotionScale;
       }
 
-      if (authored) {
-        authored.mount.setEnabled(object.active);
-        authored.mount.position.set(scaled(object.x + object.w / 2), 0, scaled(object.y + object.h / 2));
+      if (authoredInteractable) {
+        authoredInteractable.mount.setEnabled(object.active);
+        authoredInteractable.mount.position.set(scaled(object.x + object.w / 2), 0, scaled(object.y + object.h / 2));
         const footprintScale = Math.max(0.72, Math.min(1.08, scaled(Math.max(object.w, object.h)) * 0.82));
         const authoredScale = object.kind === 'salvageNode' ? Math.max(0.82, footprintScale) : footprintScale;
-        authored.mount.scaling.set(authoredScale, authoredScale, authoredScale);
+        authoredInteractable.mount.scaling.set(authoredScale, authoredScale, authoredScale);
       }
     }
 
     for (const [id, visual] of this.objectVisuals) if (!activeIds.has(id)) visual.mesh.setEnabled(false);
     for (const [id, visual] of this.interactableCues) if (!activeIds.has(id)) visual.root.setEnabled(false);
-    for (const [id, visual] of this.authoredInteractables) if (!activeIds.has(id)) visual.mount.setEnabled(false);
+    for (const [id, visual] of this.authoredInteractables) if (!activeIds.has(id) || refineryScenario) visual.mount.setEnabled(false);
+    for (const [id, visual] of this.authoredWorldObjects) if (!activeIds.has(id) || !refineryScenario) visual.mount.setEnabled(false);
 
     this.canvas.dataset.worldObjectCount = String(activeCount);
     this.canvas.dataset.interactableActive = String(interactableCount);
@@ -516,6 +647,11 @@ export class BabylonRefineryWorldPresentation {
     this.canvas.dataset.babylonCoverPremiumSurfaces = refineryScenario && this.getPremiumSurfaceLibrary
       ? 'painted-metal+bare-metal+polymer-rubber'
       : 'inactive';
+    this.canvas.dataset.refineryWorldVisual = refineryScenario ? 'authored-family-mapped' : 'procedural-fallback-babylon';
+    this.canvas.dataset.refineryWorldMappedCount = String(mappedCount);
+    this.canvas.dataset.refineryWorldAuthoredCount = String(authoredCount);
+    this.canvas.dataset.refineryWorldFallbackCount = String(fallbackCount);
+    this.canvas.dataset.refineryWorldAssets = [...activeAssets].sort().join(',');
     this.canvas.dataset.interactableReadability = 'shape-coded+state-emissive+floor-cue:quality-safe';
   }
 
