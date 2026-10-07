@@ -28,14 +28,14 @@
           "kind": "test",
           "required": true,
           "description": "Task graph validator and selector regression tests pass.",
-          "command": "node tests/agent-task-graph.mjs"
+          "command": "node agent/tests/task-graph.mjs"
         },
         {
           "id": "graph-cli",
           "kind": "test",
           "required": true,
           "description": "The repository graph validates and the selector resolves AO-1 deterministically.",
-          "command": "node scripts/agent/validate-task-graph.mjs && node scripts/agent/next-task.mjs --json"
+          "command": "node agent/tools/validate-task-graph.mjs && node agent/tools/next-task.mjs --json"
         },
         {
           "id": "orchestration-ci",
