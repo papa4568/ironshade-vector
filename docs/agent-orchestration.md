@@ -46,7 +46,7 @@ CI runs the same command in check mode and fails if the sidecar is stale.
 
 ### AO-3 — Change-impact verification
 
-Active. `agent/impact-map.json` defines repository path rules, affected domains, reusable verification commands, and explicit high-risk fallbacks. `agent/tools/select-affected-verification.mjs` accepts either a comma-separated changed-file list or a git base/head range and emits deterministic human- or machine-readable selection output.
+Verified. `agent/impact-map.json` defines repository path rules, affected domains, reusable verification commands, and explicit high-risk fallbacks. `agent/tools/select-affected-verification.mjs` accepts either a comma-separated changed-file list or a git base/head range and emits deterministic human- or machine-readable selection output.
 
 Selection modes:
 
@@ -54,7 +54,7 @@ Selection modes:
 - `targeted` — recognized low-risk impact; run the listed focused checks first.
 - `full` — at least one changed file is unclassified or matches a high-risk rule; run `npm run verify:full` rather than guessing narrowly.
 
-The selector intentionally de-duplicates overlapping rules. For example, a graphics asset change can map to both asset and renderer domains while each check appears only once.
+The selector de-duplicates overlapping rules. Representative P28 asset-generation changes resolve to `npm run test:graphics:content` plus `npm run test:graphics:babylon`; refinery presentation changes retain the refinery renderer checks. Unknown, build/dependency, Android, and CI impact escalates instead of silently under-testing.
 
 ### AO-4 — Candidate manifest and verification ledger
 
