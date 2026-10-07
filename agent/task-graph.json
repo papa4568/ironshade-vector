@@ -23,32 +23,10 @@
       ],
       "affectedDomains": ["agent-orchestration", "repository-governance"],
       "proofs": [
-        {
-          "id": "graph-tests",
-          "kind": "test",
-          "required": true,
-          "description": "Task graph validator and selector regression tests pass.",
-          "command": "node agent/tests/task-graph.mjs"
-        },
-        {
-          "id": "graph-cli",
-          "kind": "test",
-          "required": true,
-          "description": "The repository graph validates and the selector resolves AO-1 deterministically.",
-          "command": "node agent/tools/validate-task-graph.mjs && node agent/tools/next-task.mjs --json"
-        },
-        {
-          "id": "orchestration-ci",
-          "kind": "ci",
-          "required": true,
-          "description": "Agent Orchestration CI passes on the exact candidate revision."
-        },
-        {
-          "id": "compatibility-boundary",
-          "kind": "invariant",
-          "required": true,
-          "description": "docs/content-roadmap.md remains authoritative for product/game task selection during compatibility mode."
-        }
+        {"id":"graph-tests","kind":"test","required":true,"description":"Task graph validator and selector regression tests pass.","command":"node agent/tests/task-graph.mjs"},
+        {"id":"graph-cli","kind":"test","required":true,"description":"The repository graph validates and the selector resolves AO-1 deterministically.","command":"node agent/tools/validate-task-graph.mjs && node agent/tools/next-task.mjs --json"},
+        {"id":"orchestration-ci","kind":"ci","required":true,"description":"Agent Orchestration CI passes on the exact candidate revision."},
+        {"id":"compatibility-boundary","kind":"invariant","required":true,"description":"docs/content-roadmap.md remains authoritative for product/game task selection during compatibility mode."}
       ],
       "externalDependencies": []
     },
@@ -65,26 +43,9 @@
       ],
       "affectedDomains": ["agent-orchestration", "roadmap"],
       "proofs": [
-        {
-          "id": "roadmap-adapter-tests",
-          "kind": "test",
-          "required": true,
-          "description": "Roadmap parsing, graph materialization, ID/order matching, sync behavior, and drift detection tests pass.",
-          "command": "node agent/tests/roadmap-adapter.mjs"
-        },
-        {
-          "id": "roadmap-adapter-cli",
-          "kind": "test",
-          "required": true,
-          "description": "The active Markdown roadmap and sidecar are synchronized and materialize into a valid product task graph.",
-          "command": "node agent/tools/sync-roadmap-metadata.mjs --check && node agent/tools/roadmap-adapter.mjs --validate-only"
-        },
-        {
-          "id": "roadmap-compatibility-ci",
-          "kind": "ci",
-          "required": true,
-          "description": "Agent Orchestration CI passes the roadmap adapter and drift checks on the exact candidate revision."
-        }
+        {"id":"roadmap-adapter-tests","kind":"test","required":true,"description":"Roadmap parsing, graph materialization, ID/order matching, sync behavior, and drift detection tests pass.","command":"node agent/tests/roadmap-adapter.mjs"},
+        {"id":"roadmap-adapter-cli","kind":"test","required":true,"description":"The active Markdown roadmap and sidecar are synchronized and materialize into a valid product task graph.","command":"node agent/tools/sync-roadmap-metadata.mjs --check && node agent/tools/roadmap-adapter.mjs --validate-only"},
+        {"id":"roadmap-compatibility-ci","kind":"ci","required":true,"description":"Agent Orchestration CI passes the roadmap adapter and drift checks on the exact candidate revision."}
       ],
       "externalDependencies": []
     },
@@ -101,26 +62,9 @@
       ],
       "affectedDomains": ["agent-orchestration", "verification", "testing"],
       "proofs": [
-        {
-          "id": "impact-tests",
-          "kind": "test",
-          "required": true,
-          "description": "Impact-map validation, glob matching, deterministic selection, escalation, and de-duplication regressions pass.",
-          "command": "node agent/tests/affected-verification.mjs"
-        },
-        {
-          "id": "impact-cli",
-          "kind": "test",
-          "required": true,
-          "description": "The repository impact map validates and representative P28 graphics changes resolve to machine-readable targeted checks.",
-          "command": "node agent/tools/select-affected-verification.mjs --validate-only && node agent/tools/select-affected-verification.mjs --files scripts/prepare-refinery-premium-surfaces.mjs,src/game/graphicsAssetManifest.ts --json"
-        },
-        {
-          "id": "impact-ci",
-          "kind": "ci",
-          "required": true,
-          "description": "Agent Orchestration CI passes the affected-verification map, representative selector run, and regressions on the exact candidate revision."
-        }
+        {"id":"impact-tests","kind":"test","required":true,"description":"Impact-map validation, glob matching, deterministic selection, escalation, and de-duplication regressions pass.","command":"node agent/tests/affected-verification.mjs"},
+        {"id":"impact-cli","kind":"test","required":true,"description":"The repository impact map validates and representative P28 graphics changes resolve to machine-readable targeted checks.","command":"node agent/tools/select-affected-verification.mjs --validate-only && node agent/tools/select-affected-verification.mjs --files scripts/prepare-refinery-premium-surfaces.mjs,src/game/graphicsAssetManifest.ts --json"},
+        {"id":"impact-ci","kind":"ci","required":true,"description":"Agent Orchestration CI passes the affected-verification map, representative selector run, and regressions on the exact candidate revision."}
       ],
       "externalDependencies": []
     },
@@ -137,26 +81,9 @@
       ],
       "affectedDomains": ["agent-orchestration", "verification", "artifacts"],
       "proofs": [
-        {
-          "id": "candidate-evidence-tests",
-          "kind": "test",
-          "required": true,
-          "description": "Candidate-manifest and verification-ledger integrity regressions reject cross-SHA evidence and manifest tampering.",
-          "command": "node agent/tests/candidate-evidence.mjs"
-        },
-        {
-          "id": "candidate-evidence-cli",
-          "kind": "test",
-          "required": true,
-          "description": "The active AO task can generate and strictly validate a manifest and ledger from the exact PR base/head candidate.",
-          "command": "node agent/tools/candidate-evidence.mjs manifest --task active --base <base-sha> --head <head-sha> --branch <branch> --output .agent-evidence/candidate-manifest.json"
-        },
-        {
-          "id": "candidate-evidence-ci",
-          "kind": "ci",
-          "required": true,
-          "description": "Agent Orchestration CI checks out the exact PR head SHA and publishes a validated candidate manifest plus verification ledger artifact for the successful candidate."
-        }
+        {"id":"candidate-evidence-tests","kind":"test","required":true,"description":"Candidate-manifest and verification-ledger integrity regressions reject cross-SHA evidence and manifest tampering.","command":"node agent/tests/candidate-evidence.mjs"},
+        {"id":"candidate-evidence-cli","kind":"test","required":true,"description":"The active AO task can generate and strictly validate a manifest and ledger from the exact PR base/head candidate.","command":"node agent/tools/candidate-evidence.mjs manifest --task active --base <base-sha> --head <head-sha> --branch <branch> --output .agent-evidence/candidate-manifest.json"},
+        {"id":"candidate-evidence-ci","kind":"ci","required":true,"description":"Agent Orchestration CI checks out the exact PR head SHA and publishes a validated candidate manifest plus verification ledger artifact for the successful candidate."}
       ],
       "externalDependencies": []
     },
@@ -173,31 +100,10 @@
       ],
       "affectedDomains": ["ci", "verification", "android", "browser-e2e"],
       "proofs": [
-        {
-          "id": "candidate-artifact-tests",
-          "kind": "test",
-          "required": true,
-          "description": "Candidate web artifact identity and integrity regressions reject wrong-SHA or modified bundles.",
-          "command": "node agent/tests/candidate-artifact.mjs"
-        },
-        {
-          "id": "single-final-verification",
-          "kind": "invariant",
-          "required": true,
-          "description": "PR orchestration contains exactly one full-repository verification/production-build producer for the candidate web bundle."
-        },
-        {
-          "id": "browser-artifact-reuse",
-          "kind": "ci",
-          "required": true,
-          "description": "Desktop and mobile browser validation consume the same exact-SHA candidate web artifact instead of rebuilding it."
-        },
-        {
-          "id": "android-artifact-reuse",
-          "kind": "ci",
-          "required": true,
-          "description": "Android packaging consumes the same exact-SHA candidate web artifact and Android emulator jobs reuse the resulting APK artifact."
-        }
+        {"id":"candidate-artifact-tests","kind":"test","required":true,"description":"Candidate web artifact identity and integrity regressions reject wrong-SHA or modified bundles.","command":"node agent/tests/candidate-artifact.mjs"},
+        {"id":"single-final-verification","kind":"invariant","required":true,"description":"PR orchestration contains exactly one full-repository verification/production-build producer for the candidate web bundle."},
+        {"id":"browser-artifact-reuse","kind":"ci","required":true,"description":"Desktop and mobile browser validation consume the same exact-SHA candidate web artifact instead of rebuilding it."},
+        {"id":"android-artifact-reuse","kind":"ci","required":true,"description":"Android packaging consumes the same exact-SHA candidate web artifact and Android emulator jobs reuse the resulting APK artifact."}
       ],
       "externalDependencies": []
     },
@@ -205,7 +111,7 @@
       "id": "AO-6",
       "title": "Add independent review and mechanical architecture proofs",
       "priority": 60,
-      "status": "active",
+      "status": "verified",
       "dependsOn": ["AO-5"],
       "acceptance": [
         "Final candidates support an independent verifier context that attempts to disprove completion without creating a competing implementation.",
@@ -214,38 +120,11 @@
       ],
       "affectedDomains": ["agent-orchestration", "architecture", "review"],
       "proofs": [
-        {
-          "id": "architecture-invariant-tests",
-          "kind": "test",
-          "required": true,
-          "description": "Config validation and regression tests prove stable architecture rules fail closed when boundaries drift.",
-          "command": "node agent/tests/architecture-invariants.mjs && node agent/tools/check-architecture-invariants.mjs"
-        },
-        {
-          "id": "independent-review-contract-tests",
-          "kind": "test",
-          "required": true,
-          "description": "Read-only review packet/result validation rejects cross-SHA reviews and unsupported pass verdicts.",
-          "command": "node agent/tests/independent-review.mjs"
-        },
-        {
-          "id": "review-contract",
-          "kind": "review",
-          "required": true,
-          "description": "The exact candidate produces a read-only adversarial review context that cannot modify the implementation and can validate a separate verifier result."
-        },
-        {
-          "id": "architecture-invariants",
-          "kind": "invariant",
-          "required": true,
-          "description": "Stable renderer/simulation, renderer-neutral entrypoint, and asset/simulation boundaries pass mechanically on the exact candidate."
-        },
-        {
-          "id": "ao6-candidate-ci",
-          "kind": "ci",
-          "required": true,
-          "description": "Agent Orchestration and PR Candidate Verification exercise the architecture and review contracts on the exact AO-6 candidate revision."
-        }
+        {"id":"architecture-invariant-tests","kind":"test","required":true,"description":"Config validation and regression tests prove stable architecture rules fail closed when boundaries drift.","command":"node agent/tests/architecture-invariants.mjs && node agent/tools/check-architecture-invariants.mjs"},
+        {"id":"independent-review-contract-tests","kind":"test","required":true,"description":"Read-only review packet/result validation rejects cross-SHA reviews and unsupported pass verdicts.","command":"node agent/tests/independent-review.mjs"},
+        {"id":"review-contract","kind":"review","required":true,"description":"The exact candidate produces a read-only adversarial review context that cannot modify the implementation and can validate a separate verifier result."},
+        {"id":"architecture-invariants","kind":"invariant","required":true,"description":"Stable renderer/simulation, renderer-neutral entrypoint, and asset/simulation boundaries pass mechanically on the exact candidate."},
+        {"id":"ao6-candidate-ci","kind":"ci","required":true,"description":"Agent Orchestration and PR Candidate Verification exercise the architecture and review contracts on the exact AO-6 candidate revision."}
       ],
       "externalDependencies": []
     }
