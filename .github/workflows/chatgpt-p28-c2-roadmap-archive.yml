@@ -1,0 +1,56 @@
+name: ChatGPT P28-C2 Roadmap Archive
+
+on:
+  push:
+    branches:
+      - chatgpt/p28-c2-refinery-wall-lod0
+
+permissions:
+  contents: write
+
+jobs:
+  archive-roadmap:
+    if: github.ref == 'refs/heads/chatgpt/p28-c2-refinery-wall-lod0'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Move verified C2 to archive
+        shell: python
+        run: |
+          from pathlib import Path
+
+          roadmap_path = Path('docs/content-roadmap.md')
+          archive_path = Path('docs/content-roadmap-archive.md')
+          helper_path = Path('.github/workflows/chatgpt-p28-c2-roadmap-archive.yml')
+          roadmap = roadmap_path.read_text()
+          archive = archive_path.read_text()
+
+          c2_active = """- [ ] **P28-C2 — Add LOD0 refinery wall modules** — Author and register full-detail LOD0 variants for the refinery bulkhead and wall service panel families. **Done when:** Flagship selects the new assets, wall silhouettes/insets are visibly richer without changing gameplay bounds, and standard build/APK gates pass.\n\n"""
+
+          c2_archive = """- [x] **P28-C2 — Add LOD0 refinery wall modules** — added deterministic Flagship LOD0 variants for the refinery bulkhead and wall service-panel families with materially richer hard-surface depth and silhouette breakup while preserving gameplay/placement bounds, stable pivots, lower-LOD recovery, premium material bindings, and route-detail contracts.\n  - Added `scripts/prepare-refinery-wall-lod0.mjs` and wired it through the existing graphics-asset preparation path. The bulkhead LOD0 adds recessed face insets, silhouette gussets, and cap ribs; the wall service-panel LOD0 adds recessed service depth, layered vents, junction hardware, and fasteners. Both retain identity `environment-root` pivots and explicitly unchanged gameplay bounds.\n  - Updated the model manifest so Flagship/high detail selects `refinery-bulkhead-lod0` and `refinery-wall-service-panel-lod0` before LOD1/LOD2, while lower tiers retain existing LOD1/LOD2 recovery. Existing P28 premium material slots and P28-B6 Deep Salvage route decals carry forward to both new LOD0 assets.\n  - Extended `tests/refinery-premium-surfaces.mjs` and `tests/babylon-graphics-assets.ts` to verify byte-for-byte deterministic regeneration, stable visual/gameplay bounds, LOD1/LOD2 recovery, richer inset/gusset/service geometry, indexed POSITION/NORMAL/TANGENT/TEXCOORD_0 payloads, route-decal carry-forward, Flagship manifest selection, and Babylon GLB loading.\n  - Exact implementation head `a7d47cca45972c52da183d290219c2d25c2c537e` passed Browser E2E run `37553611972` on desktop and mobile-landscape, P28 Image Grade Visual run `37553611991`, and PR Android APK run `37553612012` including full repository verification, native Android generation, APK build/sign/delivery checks, API 35 product smoke, API 36 large-screen smoke, and aggregate Android verification.\n  - Deterministic content evidence: the final decal-bearing bulkhead/wall-panel LOD0 assets are 35,664 / 55,000 bytes and 168 / 282 triangles respectively; `BABYLON_GRAPHICS_ASSETS_PASS` selects `refinery-bulkhead-lod0` and `refinery-wall-service-panel-lod0` for Flagship while `REFINERY_PREMIUM_SURFACES_PASS` reports unchanged bounds and 14 route-detail targets.\n  - Verified PR artifact `ironshade-vector-pr-android-apk` (artifact `11454325810`, artifact digest `sha256:3216493b4776d630685692dae5dad86121a1f4b07e891f624c4929a026897a2a`) contains `Ironshade-Vector-Android-Debug.apk` (10,346,019 bytes; package `app.ironshade.vector`; version `0.0.1-pr.112 (112)`; min SDK 24; target/compile SDK 36; APK Signature Scheme v2 verified; signer SHA-256 `8c12c8eac2ef7b8a7121a3c98f45fb32cf99dd69102c566b6d94248e842a82d1`; APK SHA-256 `dafe28ca12df1cd01f3e494a3ab52a0f7d3bf12fc1385d650e41846a730845a0`).\n  - **Next: P28-C3 — Add LOD0 refinery pipe and cable modules.**\n\n"""
+
+          if c2_active in roadmap:
+              roadmap = roadmap.replace(c2_active, '', 1)
+          elif '**P28-C2 — Add LOD0 refinery wall modules**' in roadmap:
+              raise SystemExit('C2 is present in active roadmap but exact verified block did not match')
+
+          marker = '## P28 — Babylon flagship visual-quality overhaul\n\n'
+          if c2_archive not in archive:
+              if archive.count(marker) != 1:
+                  raise SystemExit(f'expected one P28 archive marker, found {archive.count(marker)}')
+              archive = archive.replace(marker, marker + c2_archive, 1)
+
+          roadmap_path.write_text(roadmap)
+          archive_path.write_text(archive)
+          helper_path.unlink()
+
+      - name: Commit roadmap archive
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/content-roadmap.md docs/content-roadmap-archive.md .github/workflows/chatgpt-p28-c2-roadmap-archive.yml
+          git commit -m "docs: archive verified P28-C2"
+          git push origin HEAD:chatgpt/p28-c2-refinery-wall-lod0
