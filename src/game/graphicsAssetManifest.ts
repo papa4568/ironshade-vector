@@ -335,6 +335,7 @@ export const REFINERY_ASSET_FAMILIES = {
   pipeRack: {
     id: 'refinery-pipe-rack',
     lods: {
+      0: createGraphicsAssetSpec('refinery-pipe-rack-lod0', 'environment-module', '/assets/models/environments/refinery-pipe-rack-lod0.glb', 0),
       1: createGraphicsAssetSpec('refinery-pipe-rack-lod1', 'environment-module', '/assets/models/environments/refinery-pipe-rack-lod1.glb', 1),
       2: createGraphicsAssetSpec('refinery-pipe-rack-lod2', 'environment-module', '/assets/models/environments/refinery-pipe-rack-lod2.glb', 2),
     },
@@ -350,6 +351,7 @@ export const REFINERY_ASSET_FAMILIES = {
   cableTray: {
     id: 'refinery-cable-tray',
     lods: {
+      0: createGraphicsAssetSpec('refinery-cable-tray-lod0', 'environment-module', '/assets/models/environments/refinery-cable-tray-lod0.glb', 0),
       1: createGraphicsAssetSpec('refinery-cable-tray-lod1', 'environment-module', '/assets/models/environments/refinery-cable-tray-lod1.glb', 1),
       2: createGraphicsAssetSpec('refinery-cable-tray-lod2', 'environment-module', '/assets/models/environments/refinery-cable-tray-lod2.glb', 2),
     },
