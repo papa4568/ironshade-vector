@@ -25,34 +25,59 @@ jobs:
           cache: npm
       - run: npm install -g npm@10.9.8
       - run: npm ci
-      - name: Restore established world-material source contract
+      - name: Integrate refinery mapped interactables with readiness telemetry
         run: |
           python - <<'PY'
           from pathlib import Path
-          path = Path('src/game/babylonWorldPresentation.ts')
-          source = path.read_text()
-          start = source.index('  private syncObjects(')
-          end = source.index('  private ensureObjective()', start)
-          section = source[start:end]
-          replacements = {
-              'const fallback = this.objectVisuals.get(object.id);': 'const visual = this.objectVisuals.get(object.id);',
-              'if (fallback) {': 'if (visual) {',
-              'fallback.mesh': 'visual.mesh',
-              'fallback.height': 'visual.height',
-              'fallback.premiumDetailMeshes': 'visual.premiumDetailMeshes',
-              'fallback.premiumCover': 'visual.premiumCover',
-              'fallback.material': 'visual.material',
-          }
-          for old, new in replacements.items():
-              if old not in section:
-                  raise SystemExit(f'P28-C8 sync fallback token not found: {old}')
-              section = section.replace(old, new)
-          updated = source[:start] + section + source[end:]
-          if updated == source or 'visual.material.metallic =' not in section or 'visual.material.roughness =' not in section:
-              raise SystemExit('P28-C8 world-material contract patch did not apply')
-          if "refineryScenario ? 'authored-family-mapped' : 'procedural-fallback-babylon'" not in section:
-              raise SystemExit('P28-C8 telemetry string changed unexpectedly')
-          path.write_text(updated)
+
+          world_path = Path('src/game/babylonWorldPresentation.ts')
+          source = world_path.read_text()
+
+          replacements = [
+            (
+              "      this.canvas.dataset.refineryWorldFallbackReason = familyKey + ':spec-unavailable';\n      return;",
+              "      this.canvas.dataset.refineryWorldFallbackReason = familyKey + ':spec-unavailable';\n      if (interactableWorldPresentation(object.kind)) {\n        this.canvas.dataset.interactableVisual = 'procedural-fallback-babylon';\n      }\n      return;",
+            ),
+            (
+              "      delete this.canvas.dataset.refineryWorldFallbackReason;\n      this.canvas.dataset.refineryWorldVisual = 'authored-family-mapped';",
+              "      delete this.canvas.dataset.refineryWorldFallbackReason;\n      this.canvas.dataset.refineryWorldVisual = 'authored-family-mapped';\n      if (interactableWorldPresentation(object.kind)) {\n        const loaded = new Set((this.canvas.dataset.interactableAssets ?? '').split(',').filter(Boolean));\n        loaded.add(spec.id);\n        this.canvas.dataset.interactableAssets = [...loaded].sort().join(',');\n        this.canvas.dataset.interactableVisual = 'authored-babylon';\n      }",
+            ),
+            (
+              "      this.canvas.dataset.refineryWorldFallbackReason = familyKey + ':' + message;\n      console.warn('Babylon authored refinery world object failed for ' + object.id + '; keeping deterministic fallback.', error);",
+              "      this.canvas.dataset.refineryWorldFallbackReason = familyKey + ':' + message;\n      if (interactableWorldPresentation(object.kind)) {\n        this.canvas.dataset.interactableVisual = 'procedural-fallback-babylon';\n      }\n      console.warn('Babylon authored refinery world object failed for ' + object.id + '; keeping deterministic fallback.', error);",
+            ),
+            (
+              "    let authoredCount = 0;\n    let fallbackCount = 0;",
+              "    let authoredCount = 0;\n    let fallbackCount = 0;\n    let mappedInteractableAuthoredCount = 0;",
+            ),
+            (
+              "          authoredCount += 1;\n          activeAssets.add(authoredWorld.assetId);",
+              "          authoredCount += 1;\n          activeAssets.add(authoredWorld.assetId);\n          if (interactableWorldPresentation(object.kind)) mappedInteractableAuthoredCount += 1;",
+            ),
+            (
+              "    this.canvas.dataset.interactableAuthoredCount = String(\n      [...this.authoredInteractables.values()].filter(visual => visual.mount.isEnabled()).length,\n    );",
+              "    this.canvas.dataset.interactableAuthoredCount = String(\n      [...this.authoredInteractables.values()].filter(visual => visual.mount.isEnabled()).length + mappedInteractableAuthoredCount,\n    );",
+            ),
+          ]
+          for old, new in replacements:
+            if old not in source:
+              raise SystemExit('P28-C8 readiness patch anchor missing: ' + old[:80])
+            source = source.replace(old, new, 1)
+          world_path.write_text(source)
+
+          test_path = Path('tests/refinery-world-authored-mappings.mjs')
+          test = test_path.read_text()
+          anchor = "const syncStart = world.indexOf('private syncObjects(');"
+          addition = """const loadStart = world.indexOf('private async loadRefineryWorldObject(');\nconst loadEnd = world.indexOf('private setAuthoredWorldVisibility(', loadStart);\nassert(loadStart >= 0 && loadEnd > loadStart, 'P28-C8 authored-world load method boundaries are missing');\nconst loadSource = world.slice(loadStart, loadEnd);\nassert(loadSource.includes(\"this.canvas.dataset.interactableVisual = 'authored-babylon'\") && loadSource.includes('this.canvas.dataset.interactableAssets'), 'P28-C8 mapped refinery interactables must publish authored readiness telemetry');\nassert(loadSource.includes(\"this.canvas.dataset.interactableVisual = 'procedural-fallback-babylon'\"), 'P28-C8 mapped interactable load failures must publish deterministic fallback readiness');\n\n"""
+          if anchor not in test:
+            raise SystemExit('P28-C8 mapping test load anchor missing')
+          test = test.replace(anchor, addition + anchor, 1)
+          old = "assert(syncSource.includes('const mappedFamily = refineryScenario ? refineryWorldObjectFamilyKey(object) : null'), 'P28-C8 refinery mapping gate is missing');"
+          new = old + "\nassert(syncSource.includes('mappedInteractableAuthoredCount'), 'P28-C8 mapped refinery interactables must contribute to authored readiness counts');"
+          if old not in test:
+            raise SystemExit('P28-C8 mapping test sync anchor missing')
+          test = test.replace(old, new, 1)
+          test_path.write_text(test)
           PY
       - name: Verify refinery lighting source contract
         run: npm run test:babylon-refinery-lighting
@@ -62,10 +87,10 @@ jobs:
         run: npx tsc --noEmit
       - name: Verify clean patch
         run: git diff --check
-      - name: Commit verified fix to task branch
+      - name: Commit verified readiness fix to task branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/game/babylonWorldPresentation.ts
-          git commit -m "P28-C8 preserve refinery world material fallback contract"
+          git add src/game/babylonWorldPresentation.ts tests/refinery-world-authored-mappings.mjs
+          git commit -m "P28-C8 preserve mapped interactable readiness"
           git push origin HEAD:chatgpt/p28-c8-refinery-world-assets
