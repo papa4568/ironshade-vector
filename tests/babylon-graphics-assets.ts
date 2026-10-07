@@ -14,6 +14,7 @@ import {
 } from '../src/game/babylonGraphicsAssets';
 import {
   OPERATOR_ASSET_FAMILY,
+  REFINERY_ASSET_FAMILIES,
   SHOWCASE_REFINERY_MODULE_FAMILY,
 } from '../src/game/graphicsAssetManifest';
 import { selectGraphicsAssetSpec } from '../src/game/graphicsAssets';
@@ -53,9 +54,13 @@ assert(KhronosTextureContainer2.URLConfig.wasmZSTDDecoder === decoderUrls.zstdDe
 const operatorLod1 = selectGraphicsAssetSpec(OPERATOR_ASSET_FAMILY, 0.72);
 const operatorLod2 = selectGraphicsAssetSpec(OPERATOR_ASSET_FAMILY, 0.5);
 const refineryLod1 = selectGraphicsAssetSpec(SHOWCASE_REFINERY_MODULE_FAMILY, 0.72);
+const refineryFloorLod0 = selectGraphicsAssetSpec(REFINERY_ASSET_FAMILIES.floor, 1);
+const refineryGrateLod0 = selectGraphicsAssetSpec(REFINERY_ASSET_FAMILIES.floorGrate, 1);
 assert(operatorLod1?.lod === 1, 'Babylon operator test must request authored LOD1');
 assert(operatorLod2?.lod === 2, 'Babylon operator test must request authored LOD2');
 assert(refineryLod1?.lod === 1, 'Babylon refinery test must request authored LOD1');
+assert(refineryFloorLod0?.lod === 0, 'Flagship refinery floor must select authored LOD0');
+assert(refineryGrateLod0?.lod === 0, 'Flagship refinery service grate must select authored LOD0');
 
 const engine = new NullEngine();
 const scene = new Scene(engine);
@@ -100,6 +105,21 @@ const loadContainer: BabylonGraphicsAssetContainerLoader = async (spec, targetSc
 };
 
 async function run() {
+  await import('../src/game/babylonGltfLoader');
+
+  const flagshipEngine = new NullEngine();
+  const flagshipScene = new Scene(flagshipEngine);
+  const floorContainer = await loadLocalGlb(refineryFloorLod0, flagshipScene, `${refineryFloorLod0.id}-flagship`);
+  const grateContainer = await loadLocalGlb(refineryGrateLod0, flagshipScene, `${refineryGrateLod0.id}-flagship`);
+  assert(floorContainer.meshes.length >= 6, `Flagship refinery floor LOD0 must load authored bevel/detail meshes, got ${floorContainer.meshes.length}`);
+  assert(grateContainer.meshes.length >= 7, `Flagship refinery service grate LOD0 must load authored frame/slat meshes, got ${grateContainer.meshes.length}`);
+  assert(externalAtlasLoads === 2, `Flagship LOD0 floor assets must both resolve the shared refinery route atlas, got ${externalAtlasLoads}`);
+  floorContainer.dispose();
+  grateContainer.dispose();
+  flagshipScene.dispose();
+  flagshipEngine.dispose();
+  externalAtlasLoads = 0;
+
   const runtime = new BabylonGraphicsAssetRuntime(scene, loadContainer);
 
   const operatorA = await runtime.instantiate(operatorLod1);
@@ -193,7 +213,7 @@ async function run() {
   teardownEngine.dispose();
 
   console.log(
-    `BABYLON_GRAPHICS_ASSETS_PASS operatorLod1=${operatorLod1.id} operatorLod2=${operatorLod2.id} refinery=${refineryLod1.id} localCodecs=true externalAtlas=${externalAtlasLoads} instancing=static-native cacheTrim=count+bytes cacheLoads=${[...loadCounts.values()].reduce((sum, count) => sum + count, 0)} teardownDispose=${teardownDisposeCount} webglContextRelease=true`,
+    `BABYLON_GRAPHICS_ASSETS_PASS operatorLod1=${operatorLod1.id} operatorLod2=${operatorLod2.id} refinery=${refineryLod1.id} flagshipFloor=${refineryFloorLod0.id} flagshipGrate=${refineryGrateLod0.id} localCodecs=true externalAtlas=${externalAtlasLoads} instancing=static-native cacheTrim=count+bytes cacheLoads=${[...loadCounts.values()].reduce((sum, count) => sum + count, 0)} teardownDispose=${teardownDisposeCount} webglContextRelease=true`,
   );
 
 }

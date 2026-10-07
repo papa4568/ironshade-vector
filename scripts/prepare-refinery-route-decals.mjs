@@ -2,6 +2,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { REFINERY_DECAL_ATLAS } from './prepare-refinery-decal-atlas.mjs';
+import { writeRefineryFloorLod0Assets } from './prepare-refinery-floor-lod0.mjs';
 
 const ATLAS_URI = 'refinery-decal-atlas.png';
 const ATLAS_COLUMNS = REFINERY_DECAL_ATLAS.columns;
@@ -121,8 +122,10 @@ const terminalCards = Object.freeze([
 ]);
 
 export const REFINERY_ROUTE_DECAL_TARGETS = Object.freeze([
+  { family: 'floor', routeRole: 'navigation-rhythm', opacity: 0.34, relativePath: 'environments/refinery-floor-panel-lod0.glb', cards: floorCards },
   { family: 'floor', routeRole: 'navigation-rhythm', opacity: 0.34, relativePath: 'environments/refinery-floor-panel-lod1.glb', cards: floorCards },
   { family: 'floor', routeRole: 'navigation-rhythm', opacity: 0.34, relativePath: 'environments/refinery-floor-panel-lod2.glb', cards: floorCards },
+  { family: 'floorGrate', routeRole: 'service-threshold', opacity: 0.46, relativePath: 'environments/refinery-floor-service-grate-lod0.glb', cards: floorGrateCards },
   { family: 'floorGrate', routeRole: 'service-threshold', opacity: 0.46, relativePath: 'environments/refinery-floor-service-grate-lod1.glb', cards: floorGrateCards },
   { family: 'floorGrate', routeRole: 'service-threshold', opacity: 0.46, relativePath: 'environments/refinery-floor-service-grate-lod2.glb', cards: floorGrateCards },
   { family: 'bulkhead', routeRole: 'threshold-hierarchy', opacity: 0.72, relativePath: 'environments/refinery-bulkhead-lod1.glb', cards: bulkheadCards },
@@ -376,6 +379,7 @@ export function upgradeRefineryRouteDecalGlb(input, target) {
 }
 
 export async function writeRefineryRouteDecals() {
+  await writeRefineryFloorLod0Assets();
   const results = [];
   for (const target of REFINERY_ROUTE_DECAL_TARGETS) {
     const outputPath = resolve(process.cwd(), 'public/assets/models', target.relativePath);

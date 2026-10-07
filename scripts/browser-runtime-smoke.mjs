@@ -2452,6 +2452,9 @@ async function p27A2BabylonBackendAudit() {
   const expectedRefineryKit = new Set(['floor', 'floor-grate', 'bulkhead', 'processor', 'pipe-rack', 'wall-panel', 'cable-tray', 'service-conduit', 'gantry', 'crate', 'terminal']);
   const refineryKit = new Set(String(state.environmentKit).split(',').filter(Boolean));
   const refineryLods = String(state.environmentLod).split(',').filter(Boolean);
+  const refineryLodsSupported = refineryLods.length >= 1
+    && refineryLods.every(value => value === '0' || value === '1' || value === '2');
+  const refineryFlagshipLodPresent = state.renderTier !== 'high' || refineryLods.includes('0');
   const environmentRuntimeMatch = /^cached:(\d+)\|active:(\d+)\|bytes:(\d+)$/.exec(state.environmentRuntime);
   const sceneTelemetryMatch = /^meshes:(\d+)\|materials:(\d+)\|textures:(\d+)\|roots:(\d+)$/.exec(state.sceneTelemetry);
   const activeInstances = Number(environmentRuntimeMatch?.[2] ?? NaN);
@@ -2462,8 +2465,8 @@ async function p27A2BabylonBackendAudit() {
     || state.environmentVisual !== 'authored-refinery-babylon'
     || state.environmentError
     || ![...expectedRefineryKit].every(item => refineryKit.has(item))
-    || refineryLods.length < 1
-    || !refineryLods.every(value => value === '1' || value === '2')
+    || !refineryLodsSupported
+    || !refineryFlagshipLodPresent
     || state.environmentAssets !== 11
     || state.environmentPlacements !== state.environmentInstances
     || state.environmentInstances < 69
