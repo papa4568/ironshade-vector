@@ -33,8 +33,6 @@ Only active/future executable engineering work lives here. Completed and verifie
 
 #### D. Hero operators and enemy presentation
 
-- [ ] **P28-D0 — Upgrade the character asset source path beyond box-node bodies** — Add a premium character-mesh source path that preserves the existing named operator/enemy rig nodes, animation hooks, sockets, hitbox ownership, and cue attachment contracts while allowing non-box body/armor/tool meshes and textured PBR materials. **Done when:** one representative generated/committed character runs through the production asset preparation path with a clearly non-box silhouette, existing animation/socket/cue tests still align, rebuilds remain deterministic, and standard build/APK gates pass.
-
 - [ ] **P28-D1 — Ship Vanguard operator LOD0** — Add a hero-quality Vanguard LOD0 model/material set using the proven operator rig/socket contract while preserving current animation and gameplay bounds. **Done when:** Flagship selects Vanguard LOD0, all required animation/socket states remain valid, the model is clearly more detailed at gameplay zoom, and standard build/APK gates pass.
 
 - [ ] **P28-D2 — Ship Vector operator LOD0** — Add the Vector hero LOD0 on the same validated rig/socket/material contract with class-specific silhouette detail. **Done when:** Flagship selection, animation/socket compatibility, class readability, and standard build/APK gates pass.
