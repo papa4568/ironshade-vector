@@ -53,6 +53,26 @@ function parseGlb(buffer, label = 'GLB') {
   return JSON.parse(buffer.subarray(20, 20 + jsonLength).toString('utf8').trim());
 }
 
+function ensureFloorRecoveryMaterialAnchor(gltf, target) {
+  if (target.family !== 'floor' || !target.relativePath.endsWith('refinery-floor-panel-lod2.glb')) return;
+  gltf.nodes ??= [];
+  if (gltf.nodes.some(node => node.name === 'refinery-floor-recovery-service-plate')) return;
+  const root = gltf.nodes.find(node => node.name === 'environment-root');
+  if (!root) throw new Error(`${target.relativePath}: environment-root is missing`);
+  const shellMeshIndex = (gltf.meshes ?? []).findIndex(mesh =>
+    (mesh.primitives ?? []).some(primitive => gltf.materials?.[primitive.material]?.name === 'refinery-shell'));
+  if (shellMeshIndex < 0) throw new Error(`${target.relativePath}: refinery-shell mesh is missing`);
+  const anchorIndex = gltf.nodes.length;
+  gltf.nodes.push({
+    name: 'refinery-floor-recovery-service-plate',
+    mesh: shellMeshIndex,
+    translation: [1.1, 0.09, -1.0],
+    scale: [0.72, 0.035, 0.48],
+  });
+  root.children ??= [];
+  root.children.push(anchorIndex);
+}
+
 function texturedCubeGeometry() {
   const h = 0.5;
   const faces = [
@@ -131,6 +151,7 @@ export function upgradeRefineryPremiumSurfaceGlb(input, target) {
   const gltf = parseGlb(input, target.relativePath);
   if (gltf.extras?.ironshadeP28B5DecalAtlas?.version === 1 || gltf.extras?.ironshadeP28B6RouteDecals?.version === 1) return input;
   if (!Array.isArray(gltf.meshes) || gltf.meshes.length === 0) throw new Error(`${target.relativePath}: no meshes found`);
+  ensureFloorRecoveryMaterialAnchor(gltf, target);
   const geometry = texturedCubeGeometry();
   const { binary, views } = packGeometry(geometry);
   for (const mesh of gltf.meshes) {
