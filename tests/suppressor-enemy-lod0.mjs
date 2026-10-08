@@ -92,7 +92,7 @@ for (const name of contract.roleSilhouetteNodes) assert(nodeByName(gltf, name), 
 for (const name of ['suppressor-chest-upper', 'suppressor-chest-lower', 'suppressor-left-breacher-brace', 'suppressor-right-breacher-brace', 'suppressor-pack-vent-left', 'suppressor-pack-vent-right']) {
   assert(nodeByName(gltf, name), `Suppressor enemy LOD0 is missing authored detail node ${name}`);
 }
-const leftPauldron = nodeByName(gltf, 'suppressor-left-pauldron');
+const leftPauldron = nodeByName(gltf, 'suppressor-shoulder-left');
 const rightPauldron = nodeByName(gltf, 'suppressor-right-pauldron');
 const leftBrace = nodeByName(gltf, 'suppressor-left-breacher-brace');
 const rightBrace = nodeByName(gltf, 'suppressor-right-breacher-brace');

@@ -115,7 +115,10 @@ export function buildSuppressorEnemyLod0Glb() {
 
   // Suppressors carry stabilizer armor on the positive-Z/off-weapon side so the
   // negative-Z weapon lane stays visually clear around the shared external socket.
-  setScale(gltf, 'suppressor-left-pauldron', [1.26, 0.98, 1.18]);
+  const stabilizerShoulder = nodeByName(gltf, 'suppressor-left-pauldron');
+  if (!stabilizerShoulder) throw new Error('Suppressor LOD0 source is missing suppressor-left-pauldron');
+  stabilizerShoulder.name = 'suppressor-shoulder-left';
+  setScale(gltf, 'suppressor-shoulder-left', [1.26, 0.98, 1.18]);
   setScale(gltf, 'suppressor-right-pauldron', [0.82, 0.78, 0.78]);
   setScale(gltf, 'suppressor-left-forearm', [0.94, 1.02, 0.92]);
   setScale(gltf, 'suppressor-right-forearm', [0.76, 0.90, 0.76]);
@@ -173,7 +176,7 @@ export function buildSuppressorEnemyLod0Glb() {
       namedRigNodes: ['enemy-rig', 'hip', 'torso', 'helmet', 'arm-left', 'arm-right', 'leg-left', 'leg-right', 'backpack', 'weapon-socket'],
       animationHooks: ['hip', 'torso', 'helmet', 'arm-left', 'arm-right', 'leg-left', 'leg-right', 'backpack'],
       socketNodes: ['weapon-socket'],
-      roleSilhouetteNodes: ['suppressor-ram-plate', 'suppressor-left-pauldron', 'suppressor-left-breacher-brace', 'suppressor-reactive-pack', 'suppressor-command-visor', 'suppressor-guard-light'],
+      roleSilhouetteNodes: ['suppressor-ram-plate', 'suppressor-shoulder-left', 'suppressor-left-breacher-brace', 'suppressor-reactive-pack', 'suppressor-command-visor', 'suppressor-guard-light'],
       weaponArmorSeparation: {
         weaponSide: 'negative-z',
         armoredSide: 'positive-z',
