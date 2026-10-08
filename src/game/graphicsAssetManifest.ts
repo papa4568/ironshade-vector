@@ -15,6 +15,7 @@ export const OPERATOR_CLASS_ASSET_FAMILIES = {
   vanguard: {
     id: 'operator-vanguard',
     lods: {
+      0: createGraphicsAssetSpec('operator-vanguard-lod0', 'operator', '/assets/models/operators/operator-vanguard-lod0.glb', 0),
       1: createGraphicsAssetSpec('operator-vanguard-lod1', 'operator', '/assets/models/operators/operator-vanguard-lod1.glb', 1),
       2: createGraphicsAssetSpec('operator-vanguard-lod2', 'operator', '/assets/models/operators/operator-vanguard-lod2.glb', 2),
     },
@@ -574,7 +575,7 @@ export const JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES = {
     id: 'jovian-harvester-storm-bus-isolator',
     lods: {
       1: createGraphicsAssetSpec('jovian-harvester-storm-bus-isolator-lod1', 'interactable', '/assets/models/interactables/jovian-harvester-storm-bus-isolator-lod1.glb', 1),
-      2: createGraphicsAssetSpec('jovian-harvester-storm-bus-isolator-lod2', 'interactable', '/assets/models/interactables/jovian-harvester-storm-bus-isolator-lod2.glb', 2),
+      2: createGraphicsAssetSpec('jovian-harvester-storm-bus-isolator-lod2', 'interactable', '/assets/models/interactables/spin-habitat-spin-bus-isolator-lod2.glb', 2),
     },
   },
   deckMassTrim: {
