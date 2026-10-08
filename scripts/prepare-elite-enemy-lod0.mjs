@@ -236,6 +236,8 @@ export async function writeEliteEnemyLod0() {
   await mkdir(dirname(outputPath), { recursive: true });
   await writeFile(outputPath, glb);
   console.log(`[graphics] wrote ${ELITE_ENEMY_LOD0_RELATIVE_PATH} (${glb.length} bytes)`);
+  const { writeRefineryBossLod0 } = await import('./prepare-refinery-boss-lod0.mjs');
+  await writeRefineryBossLod0();
   return { outputPath, bytes: glb.length };
 }
 

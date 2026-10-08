@@ -1,3 +1,4 @@
+import type { Scene } from '@babylonjs/core/scene';
 import type { Contract } from './campaign';
 import type { CombatCameraFeedbackSample } from './combatCameraFeedback';
 import type { EquipmentFaction } from './factionGear';
@@ -88,9 +89,16 @@ export interface CombatGraphicsBackendFactory {
   create(canvas: HTMLCanvasElement, coarse: boolean, options?: CombatGraphicsBackendCreateOptions): CombatGraphicsBackend;
 }
 
+type BabylonRefineryBossPresentationHandle = {
+  sync(state: SimState, qualityMode: GraphicsQualityMode): void;
+  dispose(): void;
+};
+
 class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
   readonly id = 'babylon' as const;
   private delegate: CombatGraphicsBackend | null = null;
+  private bossPresentation: BabylonRefineryBossPresentationHandle | null = null;
+  private bossPresentationInitialization: Promise<void> | null = null;
   private disposed = false;
   private webGpuRenderSurface: HTMLCanvasElement | null = null;
   private webGpuFallbackInFlight = false;
@@ -122,10 +130,23 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
     const reducedEffects = args[8] ?? false;
     const effectiveQuality = normalizeProductionRenderQuality(args[3], qualityMode, reducedEffects);
     this.canvas.dataset.renderQualityInput = `requested:${args[3].toFixed(2)}+effective:${effectiveQuality.toFixed(2)}`;
-    if (!this.delegate) return;
+    const delegate = this.delegate;
+    if (!delegate) return;
     const normalizedArgs: CombatGraphicsRenderArgs = [...args];
     normalizedArgs[3] = effectiveQuality;
-    this.delegate.render(...normalizedArgs);
+    const state = normalizedArgs[0];
+    const bossNeeded = state.enemies.some(enemy => enemy.role === 'boss' && enemy.active)
+      || (typeof location !== 'undefined' && new URLSearchParams(location.search).get('p28d8BossQa') === '1');
+    if (bossNeeded && !this.bossPresentation) void this.initializeBossPresentation(delegate);
+    try {
+      this.bossPresentation?.sync(state, qualityMode);
+    } catch (error) {
+      this.canvas.dataset.babylonBossPresentation = 'failed';
+      this.canvas.dataset.babylonBossFallbackReason = error instanceof Error ? error.message : String(error);
+      this.bossPresentation?.dispose();
+      this.bossPresentation = null;
+    }
+    delegate.render(...normalizedArgs);
     this.canvas.dataset.renderDowngradeReason = resolveRenderDowngradeReason(
       this.canvas.dataset.renderTier,
       qualityMode,
@@ -144,6 +165,8 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    this.bossPresentation?.dispose();
+    this.bossPresentation = null;
     this.delegate?.dispose();
     this.delegate = null;
     this.releaseWebGpuRenderSurface();
@@ -201,6 +224,10 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
           : failureStage === 'runtime-device-lost' ? 'runtime-device-lost' : 'init-fallback';
         this.canvas.dataset.babylonBackendFallback = `webgpu->webgl2:${fallbackKind}`;
         this.canvas.dataset.babylonBackendFallbackReason = error instanceof Error ? error.message : String(error);
+        this.bossPresentation?.dispose();
+        this.bossPresentation = null;
+        this.delegate?.dispose();
+        this.delegate = null;
         this.releaseWebGpuRenderSurface();
         console.warn('P27-D1 Babylon WebGPU unavailable; recreating with Babylon WebGL2.', error);
       }
@@ -219,6 +246,8 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
 
     const failedRenderer = this.delegate;
     this.delegate = null;
+    this.bossPresentation?.dispose();
+    this.bossPresentation = null;
     failedRenderer?.dispose();
     this.releaseWebGpuRenderSurface();
 
@@ -243,11 +272,38 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
       this.canvas.dataset.babylonInit = 'ready';
     } catch (error) {
       if (this.disposed) return;
+      this.bossPresentation?.dispose();
+      this.bossPresentation = null;
+      this.delegate?.dispose();
+      this.delegate = null;
       this.canvas.dataset.babylonInit = 'failed';
       this.canvas.dataset.babylonBackendLoaded = 'failed';
       this.canvas.dataset.babylonFallbackReason = error instanceof Error ? error.message : String(error);
       console.warn('P27-D8 Babylon WebGL2 fallback initialization failed; Canvas 2D safety rendering remains available.', error);
     }
+  }
+
+  private initializeBossPresentation(renderer: CombatGraphicsBackend) {
+    if (this.disposed || this.bossPresentation) return Promise.resolve();
+    if (this.bossPresentationInitialization) return this.bossPresentationInitialization;
+    const initialization = (async () => {
+      try {
+        const { BabylonRefineryBossPresentation } = await import('./babylonRefineryBossPresentation');
+        if (this.disposed || this.delegate !== renderer || this.bossPresentation) return;
+        const scene = (renderer as unknown as { scene?: Scene }).scene;
+        if (!scene || scene.isDisposed) throw new Error('Babylon combat renderer scene unavailable for refinery boss presentation');
+        this.bossPresentation = new BabylonRefineryBossPresentation(scene, this.canvas);
+      } catch (error) {
+        if (this.disposed || this.delegate !== renderer) return;
+        this.canvas.dataset.babylonBossPresentation = 'failed';
+        this.canvas.dataset.babylonBossFallbackReason = error instanceof Error ? error.message : String(error);
+      }
+    })();
+    this.bossPresentationInitialization = initialization;
+    void initialization.finally(() => {
+      if (this.bossPresentationInitialization === initialization) this.bossPresentationInitialization = null;
+    });
+    return initialization;
   }
 
   private createWebGpuRenderSurface() {
