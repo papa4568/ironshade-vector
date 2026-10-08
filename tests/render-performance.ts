@@ -59,7 +59,7 @@ assert(resolveRenderDowngradeReason('high','adaptive',false)==='none','healthy a
 assert(resolveRenderDowngradeReason('balanced','adaptive',false)==='sustained-frame-pressure','adaptive downgrade telemetry must name sustained frame pressure');
 assert(resolveRenderDowngradeReason('performance','performance',false)==='performance-mode','explicit performance mode must be distinguishable from runtime pressure');
 assert(resolveRenderDowngradeReason('balanced','adaptive',true)==='reduced-effects','reduced effects must be distinguishable from runtime pressure');
-assert(resolveRenderDowngradeReason('performance','adaptive',true)==='reduced-effects+sustained-frame-pressure','telemetry must preserve both user reduction and additional runtime pressure');
+assert(resolveRenderDowngradeReason('performance','adaptive',true)==='sustained-frame-pressure','additional runtime pressure must be the dominant downgrade cause when reduced effects are already selected');
 const flagship=new AdaptiveRenderBudget(true).sample(16.7,1,'flagship'); const perf=new AdaptiveRenderBudget(true).sample(16.7,1,'performance');
 assert(flagship.tierName==='high' && perf.tierName==='performance' && flagship.gameplayCueScale===1 && perf.gameplayCueScale===1,'explicit quality modes must alter cost without scaling critical cues');
 assert(boundarySource.includes("return reducedEffects ? 0.62 : 1") && boundarySource.includes("renderDeviceClassPolicy = coarse ? 'flagship-default:coarse-hint-ignored' : 'flagship-default'"),'production Babylon boundary must neutralize legacy mobile/coarse ceilings while preserving explicit reduced effects');
