@@ -153,9 +153,9 @@ export function buildTechnicianEnemyLod0Glb() {
   setScale(gltf, 'technician-scanner-module', [1.10, 0.86, 1.22]);
   setTranslation(gltf, 'technician-scanner-module', [0.01, 0.05, 0.26]);
   setScale(gltf, 'technician-helmet-right-guard', [0.48, 0.58, 0.52]);
-  renameNode(gltf, 'technician-helmet-beacon', 'technician-sensor-mast');
-  setScale(gltf, 'technician-sensor-mast', [0.66, 2.20, 0.66]);
-  setTranslation(gltf, 'technician-sensor-mast', [0.02, 0.39, 0.13]);
+  renameNode(gltf, 'technician-helmet-beacon', 'technician-mast');
+  setScale(gltf, 'technician-mast', [0.66, 2.20, 0.66]);
+  setTranslation(gltf, 'technician-mast', [0.02, 0.39, 0.13]);
   renameNode(gltf, 'technician-guard-light', 'technician-work-light');
   setTranslation(gltf, 'technician-work-light', [0.38, 0.17, 0.26]);
   setScale(gltf, 'technician-work-light', [0.88, 0.88, 0.88]);
@@ -199,7 +199,7 @@ export function buildTechnicianEnemyLod0Glb() {
       namedRigNodes: ['enemy-rig', 'hip', 'torso', 'helmet', 'arm-left', 'arm-right', 'leg-left', 'leg-right', 'backpack', 'weapon-socket'],
       animationHooks: ['hip', 'torso', 'helmet', 'arm-left', 'arm-right', 'leg-left', 'leg-right', 'backpack'],
       socketNodes: ['weapon-socket'],
-      roleSilhouetteNodes: ['technician-tool-harness', 'technician-sensor-shoulder', 'technician-field-tool', 'technician-tool-rack', 'technician-scanner-module', 'technician-sensor-mast', 'technician-work-light'],
+      roleSilhouetteNodes: ['technician-tool-harness', 'technician-sensor-shoulder', 'technician-field-tool', 'technician-tool-rack', 'technician-scanner-module', 'technician-mast', 'technician-work-light'],
       toolHardwareReadability: {
         utilitySide: 'positive-z',
         weaponSide: 'negative-z',
