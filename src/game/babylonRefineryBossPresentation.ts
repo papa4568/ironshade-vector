@@ -56,6 +56,10 @@ export function refineryBossDetailScale(
   return qualityMode === 'performance' ? 0.5 : 1;
 }
 
+export function refineryBossQaPreviewEnabled(search: string) {
+  return new URLSearchParams(search).get('p28d8BossQa') === '1';
+}
+
 function clamp01(value: number) {
   return Math.max(0, Math.min(1, value));
 }
@@ -127,6 +131,7 @@ export class BabylonRefineryBossPresentation {
   private readonly fallbackRoot: TransformNode;
   private readonly fallbackMaterial: StandardMaterial;
   private readonly runtime;
+  private readonly qaPreview: boolean;
   private instance: BabylonGraphicsAssetInstance | null = null;
   private assetMount: TransformNode | null = null;
   private rig: BossRig | null = null;
@@ -144,6 +149,7 @@ export class BabylonRefineryBossPresentation {
     private readonly canvas: HTMLCanvasElement,
   ) {
     this.runtime = getBabylonGraphicsAssetRuntime(scene);
+    this.qaPreview = typeof location !== 'undefined' && refineryBossQaPreviewEnabled(location.search);
     this.root = new TransformNode('p28-d8-refinery-boss-root', scene);
     this.fallbackRoot = new TransformNode('p28-d8-refinery-boss-fallback', scene);
     this.fallbackRoot.parent = this.root;
@@ -155,6 +161,7 @@ export class BabylonRefineryBossPresentation {
     this.canvas.dataset.babylonBossPresentation = 'ready:fallback';
     this.canvas.dataset.babylonBossAsset = 'none';
     this.canvas.dataset.babylonBossPhaseCue = 'idle';
+    this.canvas.dataset.babylonBossQaPreview = this.qaPreview ? 'enabled' : 'disabled';
   }
 
   sync(
@@ -162,17 +169,23 @@ export class BabylonRefineryBossPresentation {
     qualityMode: GraphicsQualityMode,
   ) {
     if (this.disposed || this.scene.isDisposed) return;
+    const runtimeTier = this.canvas.dataset.renderTier as RefineryBossPresentationTier;
+    const detailScale = refineryBossDetailScale(qualityMode, runtimeTier);
     const boss = state.enemies.find(enemy => enemy.role === 'boss' && enemy.active);
     if (!boss) {
-      this.root.setEnabled(false);
-      this.canvas.dataset.babylonBossPhaseCue = 'inactive';
+      if (!this.qaPreview) {
+        this.root.setEnabled(false);
+        this.canvas.dataset.babylonBossPhaseCue = 'inactive';
+        return;
+      }
+      this.root.setEnabled(true);
+      this.ensureAsset(detailScale);
+      this.syncQaPreview(state, detailScale);
       return;
     }
 
     this.root.setEnabled(true);
     this.syncIdentity(state, boss);
-    const runtimeTier = this.canvas.dataset.renderTier as RefineryBossPresentationTier;
-    const detailScale = refineryBossDetailScale(qualityMode, runtimeTier);
     this.ensureAsset(detailScale);
 
     this.root.position.set(boss.x * WORLD_SCALE, 0, boss.y * WORLD_SCALE);
@@ -220,6 +233,29 @@ export class BabylonRefineryBossPresentation {
     this.root.dispose();
     this.fallbackMaterial.dispose();
     this.canvas.dataset.babylonBossPresentation = 'disposed';
+  }
+
+  private syncQaPreview(state: SimState, detailScale: number) {
+    this.root.position.set((state.player.x + 120) * WORLD_SCALE, 0, (state.player.y - 30) * WORLD_SCALE);
+    this.root.rotation.set(0, -0.95, 0);
+    if (this.rig) {
+      for (const [node, rest] of this.rig.rest) resetNode(node, rest);
+      this.rig.hip.position.y += 0.18;
+      this.rig.torso.position.y += 0.06;
+      this.rig.torso.rotation.z -= 0.08;
+      this.rig.leftArm.rotation.z -= 0.18;
+      this.rig.rightArm.rotation.z += 0.24;
+      this.rig.helmet.rotation.z -= 0.04;
+      this.rig.backpack.rotation.x += 0.08;
+      for (const node of this.rig.phaseNodes) {
+        const rest = this.rig.rest.get(node);
+        if (!rest) continue;
+        node.scaling.set(rest.scaling.x * 1.28, rest.scaling.y * 1.28, rest.scaling.z * 1.28);
+      }
+    }
+    this.canvas.dataset.babylonBossPhaseCue = 'qa-preview:phase-2';
+    this.canvas.dataset.babylonBossCueTiming = 'enemyBossAnimation:unchanged';
+    this.canvas.dataset.babylonBossDetailScale = detailScale.toFixed(2);
   }
 
   private syncIdentity(state: SimState, boss: Enemy) {
