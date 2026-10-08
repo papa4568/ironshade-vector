@@ -3,7 +3,7 @@ import { writeFile } from 'node:fs/promises';
 const cdpBase = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9223';
 const screenshotPath = process.env.BROWSER_E2E_P28A5_LOW_VISIBILITY_SCREENSHOT ?? 'browser-p28a5-low-visibility.png';
 const reportPath = process.env.BROWSER_E2E_P28A5_REPORT ?? 'browser-p28a5-image-grade.json';
-// Historical proof markers retained for completed candidates: visualDetail: 'p28-c5-refinery-processor-lod0'; visualDetail: 'p28-c6-refinery-terminal-lod0'; visualDetail: 'p28-c7-refinery-crate-lod0'; visualDetail: 'p28-c8-refinery-world-authored-mappings'; visualDetail: 'p28-c9-refinery-geometry-reuse'; visualDetail: 'p28-d0-premium-character-source'; visualDetail: 'p28-d1-vanguard-operator-lod0'; visualDetail: 'p28-d2-vector-operator-lod0'
+// Historical proof markers retained for completed candidates: visualDetail: 'p28-c5-refinery-processor-lod0'; visualDetail: 'p28-c6-refinery-terminal-lod0'; visualDetail: 'p28-c7-refinery-crate-lod0'; visualDetail: 'p28-c8-refinery-world-authored-mappings'; visualDetail: 'p28-c9-refinery-geometry-reuse'; visualDetail: 'p28-d0-premium-character-source'; visualDetail: 'p28-d1-vanguard-operator-lod0'; visualDetail: 'p28-d2-vector-operator-lod0'; visualDetail: 'p28-d3-systems-operator-lod0'
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 if (typeof WebSocket !== 'function') {
@@ -70,7 +70,7 @@ async function clickButton(label) {
     button.click();
     return true;
   })()`);
-  if (!clicked) throw new Error(`Could not activate ${label} while preparing the P28-D3 capture.`);
+  if (!clicked) throw new Error(`Could not activate ${label} while preparing the P28-D4 capture.`);
 }
 
 const readGradeStateExpression = `(() => {
@@ -96,6 +96,23 @@ const readGradeStateExpression = `(() => {
     operatorClassAsset: canvas.dataset.operatorClassAsset ?? '',
     operatorRig: canvas.dataset.operatorRig ?? '',
     operatorSocket: canvas.dataset.operatorSocket ?? '',
+    enemyCatalogState: canvas.dataset.babylonEnemyCatalogState ?? '',
+    enemyCatalogAssets: canvas.dataset.babylonEnemyCatalogAssets ?? '',
+    enemyCatalogLod: canvas.dataset.babylonEnemyCatalogLod ?? '',
+    enemyCatalogRuntime: canvas.dataset.babylonEnemyCatalogRuntime ?? '',
+    enemyVisual: canvas.dataset.enemyVisual ?? '',
+    enemyAssets: canvas.dataset.enemyAssets ?? '',
+    enemyRoles: canvas.dataset.enemyRoles ?? '',
+    enemyFallbackCount: Number(canvas.dataset.enemyFallbackCount ?? 0),
+    enemyTelegraphs: canvas.dataset.babylonEnemyTelegraphs ?? '',
+    enemyTelegraphOwnership: canvas.dataset.babylonEnemyTelegraphSimulationOwnership ?? '',
+    enemyTelegraphEffectsMode: canvas.dataset.babylonEnemyTelegraphEffectsMode ?? '',
+    protocolStatusVisuals: canvas.dataset.babylonProtocolStatusVisuals ?? '',
+    protocolStatusOwnership: canvas.dataset.babylonProtocolStatusSimulationOwnership ?? '',
+    protocolStatusPriority: canvas.dataset.babylonProtocolStatusPriority ?? '',
+    enemyLifecycleTracked: Number(canvas.dataset.babylonEnemyLifecycleTracked ?? 0),
+    enemyLifecycleOwnership: canvas.dataset.babylonEnemyLifecycleSimulationOwnership ?? '',
+    enemyLifecycleEffectsMode: canvas.dataset.babylonEnemyLifecycleEffectsMode ?? '',
     assetRuntime: canvas.dataset.babylonWorldRuntime ?? '',
     sceneTelemetry: canvas.dataset.babylonSceneTelemetry ?? '',
     width: Math.round(rect.width),
@@ -131,7 +148,7 @@ try {
     location.reload();
     return true;
   })()`);
-  if (!systemsSeeded) throw new Error('Could not seed the deterministic Systems operator profile for P28-D3 capture.');
+  if (!systemsSeeded) throw new Error('Could not seed the deterministic Systems operator profile for P28-D4 capture.');
 
   await waitFor(`performance.timeOrigin !== ${JSON.stringify(previousTimeOrigin)}`, 'Systems profile browser reload', 20_000);
   await waitFor(`(() => {
@@ -148,22 +165,26 @@ try {
     button.click();
     return true;
   })()`);
-  if (!refinerySelected) throw new Error('Could not select the asteroid-refinery contract for the P28-D3 capture.');
+  if (!refinerySelected) throw new Error('Could not select the asteroid-refinery contract for the P28-D4 capture.');
   await waitFor(`[...document.querySelectorAll('button[data-location]')].some(button => button.dataset.location === 'asteroid-refinery' && button.classList.contains('selected'))`, 'Systems asteroid-refinery contract selection', 20_000);
   await clickButton('Deploy Selected Contract');
   await waitFor(`document.querySelectorAll('canvas').length > 0`, 'Systems combat surface', 20_000);
 
   await waitFor(`(() => {
     const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
+    const catalog = canvas?.dataset.babylonEnemyCatalogAssets ?? '';
     return canvas?.dataset.babylonPostStack === 'on:qa-explicit'
       && canvas?.dataset.environmentImageGrade === 'p28-a5-dark-separation-v1'
       && canvas?.dataset.environmentImageGradeMode === 'normal'
       && canvas?.dataset.operatorVisual === 'authored-0-babylon'
       && canvas?.dataset.operatorAsset === 'operator-systems-lod0'
-      && canvas?.dataset.operatorClassAsset === 'systems';
-  })()`, 'normal Flagship refinery grade with Systems LOD0', 90_000);
+      && canvas?.dataset.operatorClassAsset === 'systems'
+      && canvas?.dataset.babylonEnemyCatalogState === 'ready'
+      && catalog.split(',').includes('enemy-assault-lod0');
+  })()`, 'normal Flagship refinery grade with assault enemy LOD0', 90_000);
 
   const normal = await evaluate(readGradeStateExpression);
+  const expectedCatalog = 'enemy-assault-lod0,enemy-suppressor-lod1,enemy-technician-lod1,enemy-elite-lod1';
   if (!normal
     || normal.tier !== 'high'
     || !normal.atmosphere.includes('exposure-1.055:contrast-0.985:grade-p28-a5-dark-separation-v1')
@@ -176,11 +197,24 @@ try {
     || normal.operatorClassAsset !== 'systems'
     || normal.operatorRig !== 'articulated'
     || normal.operatorSocket !== 'weapon-socket'
+    || normal.enemyCatalogState !== 'ready'
+    || normal.enemyCatalogAssets !== expectedCatalog
+    || normal.enemyCatalogLod !== '0,1'
+    || !normal.enemyCatalogRuntime.includes('cached:')
+    || normal.enemyTelegraphs !== 'attack+aim+range+boss-pattern+phase'
+    || normal.enemyTelegraphOwnership !== 'read-only-presentation'
+    || normal.enemyTelegraphEffectsMode !== 'full'
+    || normal.protocolStatusVisuals !== 'protocol+mutation+enemy-status+player-status'
+    || normal.protocolStatusOwnership !== 'read-only-presentation'
+    || normal.protocolStatusPriority !== 'telegraph>status>protocol+mutation'
+    || normal.enemyLifecycleTracked < 1
+    || normal.enemyLifecycleOwnership !== 'read-only-presentation'
+    || normal.enemyLifecycleEffectsMode !== 'full'
     || !normal.assetRuntime.includes('cached:')
     || !normal.assetRuntime.includes('active:')
     || !normal.sceneTelemetry.includes('meshes:')
     || !normal.sceneTelemetry.includes('materials:')) {
-    throw new Error(`P28-A5 normal Flagship grade is not deterministic: ${JSON.stringify(normal)}`);
+    throw new Error(`P28-D4 normal Flagship assault LOD0 proof is not deterministic: ${JSON.stringify(normal)}`);
   }
 
   const enabled = await evaluate(`(() => {
@@ -207,12 +241,21 @@ try {
     || lowVisibility.operatorVisual !== 'authored-0-babylon'
     || lowVisibility.operatorAsset !== 'operator-systems-lod0'
     || lowVisibility.operatorClassAsset !== 'systems'
+    || lowVisibility.enemyCatalogState !== 'ready'
+    || lowVisibility.enemyCatalogAssets !== expectedCatalog
+    || lowVisibility.enemyCatalogLod !== '0,1'
+    || lowVisibility.enemyTelegraphs !== 'attack+aim+range+boss-pattern+phase'
+    || lowVisibility.enemyTelegraphOwnership !== 'read-only-presentation'
+    || lowVisibility.protocolStatusVisuals !== 'protocol+mutation+enemy-status+player-status'
+    || lowVisibility.protocolStatusOwnership !== 'read-only-presentation'
+    || lowVisibility.enemyLifecycleTracked < 1
+    || lowVisibility.enemyLifecycleOwnership !== 'read-only-presentation'
     || !/^aces-exposure-\d+\.\d{2}\+contrast-\d+\.\d{2}$/.test(lowVisibility.tone)
     || !lowVisibility.bloom.startsWith('selective:refinery-selective-v1:')
     || lowVisibility.protected !== 'hud+enemies+hazards+objectives+loot+interactables'
     || !lowVisibility.priority.includes('critical:hazards+telegraphs+class-cues@1.00')
     || lowVisibility.stack !== 'on:qa-explicit') {
-    throw new Error(`P28-A5 low-visibility telemetry is incomplete: ${JSON.stringify(lowVisibility)}`);
+    throw new Error(`P28-D4 low-visibility assault LOD0 telemetry is incomplete: ${JSON.stringify(lowVisibility)}`);
   }
 
   const capture = await call('Page.captureScreenshot', { format: 'png', fromSurface: true });
@@ -222,7 +265,7 @@ try {
 
   await writeFile(reportPath, JSON.stringify({
     viewport: 'desktop',
-    visualDetail: 'p28-d3-systems-operator-lod0',
+    visualDetail: 'p28-d4-assault-enemy-lod0',
     normal,
     lowVisibility,
     screenshot: screenshotPath,
@@ -242,7 +285,7 @@ try {
       && canvas?.dataset.environmentAtmosphere?.includes('exposure-1.055:contrast-0.985:grade-p28-a5-dark-separation-v1');
   })()`, 'restored normal Flagship refinery grade');
 
-  console.log(`BROWSER_P28A5_IMAGE_GRADE_PASS tier=${lowVisibility.tier} detail=p28-d3-systems-operator-lod0 normal=${normal.atmosphere} lowVisibility=${lowVisibility.atmosphere} tone=${lowVisibility.tone} cues=1.00 runtime=${normal.assetRuntime} scene=${normal.sceneTelemetry} screenshot=${screenshotPath} bytes=${png.length}`);
+  console.log(`BROWSER_P28A5_IMAGE_GRADE_PASS tier=${lowVisibility.tier} detail=p28-d4-assault-enemy-lod0 catalog=${normal.enemyCatalogAssets} lods=${normal.enemyCatalogLod} telegraphs=${normal.enemyTelegraphs} protocol=${normal.protocolStatusVisuals} lifecycle=${normal.enemyLifecycleTracked} normal=${normal.atmosphere} lowVisibility=${lowVisibility.atmosphere} tone=${lowVisibility.tone} cues=1.00 runtime=${normal.assetRuntime} scene=${normal.sceneTelemetry} screenshot=${screenshotPath} bytes=${png.length}`);
 } finally {
   socket.close();
 }

@@ -2553,7 +2553,14 @@ async function p27A2BabylonBackendAudit() {
   const enemyAssets = String(state.enemyAssets).split(',').filter(Boolean);
   const enemyVariants = String(state.enemyVariants).split(',').filter(Boolean);
   const expectedEnemyRoles = ['assault', 'suppressor', 'technician', 'elite'];
-  const expectedEnemyAssets = expectedEnemyRoles.map(role => `enemy-${role}-lod${expectedSharedLod}`);
+  const expectedEnemyLodByRole = Object.fromEntries(expectedEnemyRoles.map(role => [
+    role,
+    role === 'assault' && state.renderTier === 'high' ? 0 : expectedSharedLod,
+  ]));
+  const expectedEnemyAssets = expectedEnemyRoles.map(role => `enemy-${role}-lod${expectedEnemyLodByRole[role]}`);
+  const expectedEnemyCatalogLods = [...new Set(expectedEnemyRoles.map(role => expectedEnemyLodByRole[role]))]
+    .sort((left, right) => left - right)
+    .join(',');
   const enemyRuntimeMatch = /^cached:(\d+)\|active:(\d+)\|bytes:(\d+)$/.exec(state.enemyRuntime);
   const enemyCatalogRuntimeMatch = /^cached:(\d+)\|active:(\d+)\|bytes:(\d+)$/.exec(state.enemyCatalogRuntime);
   const enemyTrackingMatch = /^active:(\d+)\|authored:(\d+)\|fallback:(\d+)\|loading:(\d+)$/.exec(state.enemyTracking);
@@ -2565,7 +2572,7 @@ async function p27A2BabylonBackendAudit() {
     || enemyCatalogRoles.size !== expectedEnemyRoles.length
     || !expectedEnemyAssets.every(asset => enemyCatalogAssets.has(asset))
     || enemyCatalogAssets.size !== expectedEnemyAssets.length
-    || state.enemyCatalogLod !== String(expectedSharedLod)
+    || state.enemyCatalogLod !== expectedEnemyCatalogLods
     || !enemyCatalogRuntimeMatch
     || Number(enemyCatalogRuntimeMatch[1]) < expectedEnemyAssets.length
     || state.enemyState !== 'ready'
@@ -2577,7 +2584,7 @@ async function p27A2BabylonBackendAudit() {
     || state.enemyLoadingCount !== 0
     || ![...enemyRoles].every(role => expectedEnemyRoles.includes(role))
     || enemyRoles.size < 1
-    || !enemyAssets.every(asset => /^enemy-(assault|suppressor|technician|elite)-lod[12]$/.test(asset))
+    || !enemyAssets.every(asset => expectedEnemyAssets.includes(asset))
     || enemyAssets.length < 1
     || !enemyVariants.every(value => /:(standard|mobile|braced|technical|drone)$/.test(value))
     || enemyVariants.length < 1

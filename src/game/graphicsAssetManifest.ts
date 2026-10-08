@@ -466,6 +466,7 @@ export const ENEMY_ASSET_FAMILIES = {
   assault: {
     id: 'enemy-assault',
     lods: {
+      0: createGraphicsAssetSpec('enemy-assault-lod0', 'enemy', '/assets/models/enemies/enemy-assault-lod0.glb', 0),
       1: createGraphicsAssetSpec('enemy-assault-lod1', 'enemy', '/assets/models/enemies/enemy-assault-lod1.glb', 1),
       2: createGraphicsAssetSpec('enemy-assault-lod2', 'enemy', '/assets/models/enemies/enemy-assault-lod2.glb', 2),
     },
