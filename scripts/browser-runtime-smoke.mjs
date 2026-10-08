@@ -2555,7 +2555,7 @@ async function p27A2BabylonBackendAudit() {
   const expectedEnemyRoles = ['assault', 'suppressor', 'technician', 'elite'];
   const expectedEnemyLodByRole = Object.fromEntries(expectedEnemyRoles.map(role => [
     role,
-    role === 'assault' && state.renderTier === 'high' ? 0 : expectedSharedLod,
+    (role === 'assault' || role === 'suppressor') && state.renderTier === 'high' ? 0 : expectedSharedLod,
   ]));
   const expectedEnemyAssets = expectedEnemyRoles.map(role => `enemy-${role}-lod${expectedEnemyLodByRole[role]}`);
   const expectedEnemyCatalogLods = [...new Set(expectedEnemyRoles.map(role => expectedEnemyLodByRole[role]))]

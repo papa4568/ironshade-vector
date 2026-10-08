@@ -474,6 +474,7 @@ export const ENEMY_ASSET_FAMILIES = {
   suppressor: {
     id: 'enemy-suppressor',
     lods: {
+      0: createGraphicsAssetSpec('enemy-suppressor-lod0', 'enemy', '/assets/models/enemies/enemy-suppressor-lod0.glb', 0),
       1: createGraphicsAssetSpec('enemy-suppressor-lod1', 'enemy', '/assets/models/enemies/enemy-suppressor-lod1.glb', 1),
       2: createGraphicsAssetSpec('enemy-suppressor-lod2', 'enemy', '/assets/models/enemies/enemy-suppressor-lod2.glb', 2),
     },

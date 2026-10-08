@@ -33,8 +33,6 @@ Only active/future executable engineering work lives here. Completed and verifie
 
 #### D. Hero operators and enemy presentation
 
-- [ ] **P28-D5 — Ship suppressor enemy LOD0** — Add a full-detail LOD0 for the suppressor family with stronger weapon/armor silhouette separation. **Done when:** rig/overlay alignment, combat readability, visual improvement, and standard build/APK gates pass.
-
 - [ ] **P28-D6 — Ship technician enemy LOD0** — Add a full-detail LOD0 for the technician family with readable tool/hardware silhouette detail. **Done when:** rig/overlay alignment, combat readability, visual improvement, and standard build/APK gates pass.
 
 - [ ] **P28-D7 — Ship elite enemy LOD0** — Add a hero LOD0 for the elite family that reads as higher threat through silhouette/material detail before HUD labels. **Done when:** elite identity is distinguishable at gameplay zoom without hue-only dependence, lifecycle/telegraph alignment remains correct, and standard build/APK gates pass.
