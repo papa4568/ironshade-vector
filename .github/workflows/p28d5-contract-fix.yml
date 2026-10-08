@@ -1,0 +1,55 @@
+name: Temporary P28-D5 suppressor marker contract fix
+
+on:
+  push:
+    branches:
+      - chatgpt/p28-d5-suppressor-enemy-lod0
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: chatgpt/p28-d5-suppressor-enemy-lod0
+          fetch-depth: 0
+      - name: Align LOD0 with established suppressor silhouette marker
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          generator = Path('scripts/prepare-suppressor-enemy-lod0.mjs')
+          text = generator.read_text()
+          old = "  setScale(gltf, 'suppressor-left-pauldron', [1.26, 0.98, 1.18]);"
+          new = "  const stabilizerShoulder = nodeByName(gltf, 'suppressor-left-pauldron');\n  if (!stabilizerShoulder) throw new Error('Suppressor LOD0 source is missing suppressor-left-pauldron');\n  stabilizerShoulder.name = 'suppressor-shoulder-left';\n  setScale(gltf, 'suppressor-shoulder-left', [1.26, 0.98, 1.18]);"
+          if text.count(old) != 1:
+              raise SystemExit(f'unexpected left-pauldron scale anchor count: {text.count(old)}')
+          text = text.replace(old, new, 1)
+          old_role = "roleSilhouetteNodes: ['suppressor-ram-plate', 'suppressor-left-pauldron', 'suppressor-left-breacher-brace', 'suppressor-reactive-pack', 'suppressor-command-visor', 'suppressor-guard-light']"
+          new_role = "roleSilhouetteNodes: ['suppressor-ram-plate', 'suppressor-shoulder-left', 'suppressor-left-breacher-brace', 'suppressor-reactive-pack', 'suppressor-command-visor', 'suppressor-guard-light']"
+          if text.count(old_role) != 1:
+              raise SystemExit(f'unexpected role marker anchor count: {text.count(old_role)}')
+          generator.write_text(text.replace(old_role, new_role, 1))
+
+          test = Path('tests/suppressor-enemy-lod0.mjs')
+          text = test.read_text()
+          old_test = "const leftPauldron = nodeByName(gltf, 'suppressor-left-pauldron');"
+          new_test = "const leftPauldron = nodeByName(gltf, 'suppressor-shoulder-left');"
+          if text.count(old_test) != 1:
+              raise SystemExit(f'unexpected suppressor test shoulder anchor count: {text.count(old_test)}')
+          test.write_text(text.replace(old_test, new_test, 1))
+          PY
+      - name: Self-remove helper and commit fix
+        run: |
+          set -euo pipefail
+          rm .github/workflows/p28d5-contract-fix.yml
+          git diff --check
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add scripts/prepare-suppressor-enemy-lod0.mjs tests/suppressor-enemy-lod0.mjs .github/workflows/p28d5-contract-fix.yml
+          git commit -m "P28-D5 align suppressor LOD0 silhouette marker"
+          git push origin HEAD:chatgpt/p28-d5-suppressor-enemy-lod0
