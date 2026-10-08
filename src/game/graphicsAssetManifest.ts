@@ -1,7 +1,7 @@
 import { createGraphicsAssetSpec, type GraphicsAssetFamily } from './graphicsAssets';
 
 // LOD1 is the articulated mobile gameplay model; LOD2 remains the ultra-light fallback.
-// Hero-quality LOD0 will be added after the animation and socket contract is proven.
+// The generic field suit remains LOD1/LOD2; class families may add proven hero LOD0 assets.
 // Keeping only shipped files in the family guarantees adaptive selection falls back to a real asset.
 export const OPERATOR_ASSET_FAMILY: GraphicsAssetFamily = {
   id: 'operator-field-suit',
@@ -575,7 +575,7 @@ export const JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES = {
     id: 'jovian-harvester-storm-bus-isolator',
     lods: {
       1: createGraphicsAssetSpec('jovian-harvester-storm-bus-isolator-lod1', 'interactable', '/assets/models/interactables/jovian-harvester-storm-bus-isolator-lod1.glb', 1),
-      2: createGraphicsAssetSpec('jovian-harvester-storm-bus-isolator-lod2', 'interactable', '/assets/models/interactables/spin-habitat-spin-bus-isolator-lod2.glb', 2),
+      2: createGraphicsAssetSpec('jovian-harvester-storm-bus-isolator-lod2', 'interactable', '/assets/models/interactables/jovian-harvester-storm-bus-isolator-lod2.glb', 2),
     },
   },
   deckMassTrim: {

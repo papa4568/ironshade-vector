@@ -3,7 +3,7 @@ import { writeFile } from 'node:fs/promises';
 const cdpBase = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9223';
 const screenshotPath = process.env.BROWSER_E2E_P28A5_LOW_VISIBILITY_SCREENSHOT ?? 'browser-p28a5-low-visibility.png';
 const reportPath = process.env.BROWSER_E2E_P28A5_REPORT ?? 'browser-p28a5-image-grade.json';
-// Historical proof markers retained for completed candidates: visualDetail: 'p28-c5-refinery-processor-lod0'; visualDetail: 'p28-c6-refinery-terminal-lod0'; visualDetail: 'p28-c7-refinery-crate-lod0'; visualDetail: 'p28-c8-refinery-world-authored-mappings'; visualDetail: 'p28-c9-refinery-geometry-reuse'
+// Historical proof markers retained for completed candidates: visualDetail: 'p28-c5-refinery-processor-lod0'; visualDetail: 'p28-c6-refinery-terminal-lod0'; visualDetail: 'p28-c7-refinery-crate-lod0'; visualDetail: 'p28-c8-refinery-world-authored-mappings'; visualDetail: 'p28-c9-refinery-geometry-reuse'; visualDetail: 'p28-d0-premium-character-source'
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 if (typeof WebSocket !== 'function') {
@@ -75,6 +75,11 @@ const readGradeStateExpression = `(() => {
     refineryWorldMappedCount: Number(canvas.dataset.refineryWorldMappedCount ?? 0),
     refineryWorldAuthoredCount: Number(canvas.dataset.refineryWorldAuthoredCount ?? 0),
     refineryWorldFallbackCount: Number(canvas.dataset.refineryWorldFallbackCount ?? 0),
+    operatorVisual: canvas.dataset.operatorVisual ?? '',
+    operatorAsset: canvas.dataset.operatorAsset ?? '',
+    operatorClassAsset: canvas.dataset.operatorClassAsset ?? '',
+    operatorRig: canvas.dataset.operatorRig ?? '',
+    operatorSocket: canvas.dataset.operatorSocket ?? '',
     assetRuntime: canvas.dataset.babylonWorldRuntime ?? '',
     sceneTelemetry: canvas.dataset.babylonSceneTelemetry ?? '',
     width: Math.round(rect.width),
@@ -89,7 +94,9 @@ try {
     const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
     return canvas?.dataset.babylonPostStack === 'on:qa-explicit'
       && canvas?.dataset.environmentImageGrade === 'p28-a5-dark-separation-v1'
-      && canvas?.dataset.environmentImageGradeMode === 'normal';
+      && canvas?.dataset.environmentImageGradeMode === 'normal'
+      && canvas?.dataset.operatorVisual === 'authored-0-babylon'
+      && canvas?.dataset.operatorAsset === 'operator-vanguard-lod0';
   })()`, 'normal Flagship refinery grade');
 
   const normal = await evaluate(readGradeStateExpression);
@@ -100,6 +107,11 @@ try {
     || normal.refineryWorldMappedCount < 1
     || normal.refineryWorldAuthoredCount !== normal.refineryWorldMappedCount
     || normal.refineryWorldFallbackCount !== 0
+    || normal.operatorVisual !== 'authored-0-babylon'
+    || normal.operatorAsset !== 'operator-vanguard-lod0'
+    || normal.operatorClassAsset !== 'vanguard'
+    || normal.operatorRig !== 'articulated'
+    || normal.operatorSocket !== 'weapon-socket'
     || !normal.assetRuntime.includes('cached:')
     || !normal.assetRuntime.includes('active:')
     || !normal.sceneTelemetry.includes('meshes:')
@@ -128,6 +140,8 @@ try {
     || lowVisibility.tier !== 'high'
     || lowVisibility.grade !== 'p28-a5-dark-separation-v1'
     || lowVisibility.mode !== 'low-visibility'
+    || lowVisibility.operatorVisual !== 'authored-0-babylon'
+    || lowVisibility.operatorAsset !== 'operator-vanguard-lod0'
     || !/^aces-exposure-\d+\.\d{2}\+contrast-\d+\.\d{2}$/.test(lowVisibility.tone)
     || !lowVisibility.bloom.startsWith('selective:refinery-selective-v1:')
     || lowVisibility.protected !== 'hud+enemies+hazards+objectives+loot+interactables'
@@ -143,7 +157,7 @@ try {
 
   await writeFile(reportPath, JSON.stringify({
     viewport: 'desktop',
-    visualDetail: 'p28-d0-premium-character-source',
+    visualDetail: 'p28-d1-vanguard-operator-lod0',
     normal,
     lowVisibility,
     screenshot: screenshotPath,
@@ -163,7 +177,7 @@ try {
       && canvas?.dataset.environmentAtmosphere?.includes('exposure-1.055:contrast-0.985:grade-p28-a5-dark-separation-v1');
   })()`, 'restored normal Flagship refinery grade');
 
-  console.log(`BROWSER_P28A5_IMAGE_GRADE_PASS tier=${lowVisibility.tier} detail=p28-d0-premium-character-source normal=${normal.atmosphere} lowVisibility=${lowVisibility.atmosphere} tone=${lowVisibility.tone} cues=1.00 runtime=${normal.assetRuntime} scene=${normal.sceneTelemetry} screenshot=${screenshotPath} bytes=${png.length}`);
+  console.log(`BROWSER_P28A5_IMAGE_GRADE_PASS tier=${lowVisibility.tier} detail=p28-d1-vanguard-operator-lod0 normal=${normal.atmosphere} lowVisibility=${lowVisibility.atmosphere} tone=${lowVisibility.tone} cues=1.00 runtime=${normal.assetRuntime} scene=${normal.sceneTelemetry} screenshot=${screenshotPath} bytes=${png.length}`);
 } finally {
   socket.close();
 }

@@ -1980,7 +1980,7 @@ async function p27A2BabylonBackendAudit() {
       && canvas?.dataset.babylonEnvironmentState === 'ready'
       && canvas?.dataset.environmentVisual === 'authored-refinery-babylon'
       && canvas?.dataset.babylonPlayerState === 'ready'
-      && /^authored-[12]-babylon$/.test(canvas?.dataset.operatorVisual ?? '')
+      && /^authored-[012]-babylon$/.test(canvas?.dataset.operatorVisual ?? '')
       && canvas?.dataset.operatorRig === 'articulated'
       && canvas?.dataset.operatorSocket === 'weapon-socket'
       && canvas?.dataset.weaponVisual === 'authored-babylon'
@@ -2485,17 +2485,18 @@ async function p27A2BabylonBackendAudit() {
   }
 
 
-  const expectedPlayerLod = state.renderTier === 'performance' ? 2 : 1;
+  const expectedSharedLod = state.renderTier === 'performance' ? 2 : 1;
+  const expectedOperatorLod = state.operatorClass === 'vanguard' && state.renderTier === 'high' ? 0 : expectedSharedLod;
   const expectedOperatorAsset = state.operatorClass && state.operatorClass !== 'generic'
-    ? `operator-${state.operatorClass}-lod${expectedPlayerLod}`
-    : `operator-field-suit-lod${expectedPlayerLod}`;
+    ? `operator-${state.operatorClass}-lod${expectedOperatorLod}`
+    : `operator-field-suit-lod${expectedSharedLod}`;
   const weaponRoles = new Set(String(state.weaponRoles).split(',').filter(Boolean));
   const playerRuntimeMatch = /^cached:(\d+)\|active:(\d+)\|bytes:(\d+)$/.exec(state.playerRuntime);
   const muzzle = String(state.weaponMuzzle).split(',').map(Number);
   const handlingBlendPattern = /^move:\d+\.\d+,aim:\d+\.\d+,recoil:\d+\.\d+,reload:\d+\.\d+,charge:\d+\.\d+,vent:\d+\.\d+,overheat:\d+\.\d+,dodge:\d+\.\d+,hit:\d+\.\d+$/;
   if (state.playerState !== 'ready'
     || state.playerError
-    || state.operatorVisual !== `authored-${expectedPlayerLod}-babylon`
+    || state.operatorVisual !== `authored-${expectedOperatorLod}-babylon`
     || state.operatorAsset !== expectedOperatorAsset
     || !['generic', 'vanguard', 'vector', 'systems'].includes(state.operatorClass)
     || state.operatorRig !== 'articulated'
@@ -2507,7 +2508,7 @@ async function p27A2BabylonBackendAudit() {
     || state.weaponFallback
     || !['carbine', 'breacher', 'rail'].every(id => weaponRoles.has(id))
     || !['carbine', 'breacher', 'rail'].includes(state.weaponActive)
-    || state.weaponAsset !== `weapon-${state.weaponActive}-lod${expectedPlayerLod}`
+    || state.weaponAsset !== `weapon-${state.weaponActive}-lod${expectedSharedLod}`
     || !state.weaponHandling
     || !['nominal', 'warning', 'critical'].includes(state.weaponThermalCue)
     || !Number.isFinite(Number(state.weaponHeat))
@@ -2552,7 +2553,7 @@ async function p27A2BabylonBackendAudit() {
   const enemyAssets = String(state.enemyAssets).split(',').filter(Boolean);
   const enemyVariants = String(state.enemyVariants).split(',').filter(Boolean);
   const expectedEnemyRoles = ['assault', 'suppressor', 'technician', 'elite'];
-  const expectedEnemyAssets = expectedEnemyRoles.map(role => `enemy-${role}-lod${expectedPlayerLod}`);
+  const expectedEnemyAssets = expectedEnemyRoles.map(role => `enemy-${role}-lod${expectedSharedLod}`);
   const enemyRuntimeMatch = /^cached:(\d+)\|active:(\d+)\|bytes:(\d+)$/.exec(state.enemyRuntime);
   const enemyCatalogRuntimeMatch = /^cached:(\d+)\|active:(\d+)\|bytes:(\d+)$/.exec(state.enemyCatalogRuntime);
   const enemyTrackingMatch = /^active:(\d+)\|authored:(\d+)\|fallback:(\d+)\|loading:(\d+)$/.exec(state.enemyTracking);
@@ -2564,7 +2565,7 @@ async function p27A2BabylonBackendAudit() {
     || enemyCatalogRoles.size !== expectedEnemyRoles.length
     || !expectedEnemyAssets.every(asset => enemyCatalogAssets.has(asset))
     || enemyCatalogAssets.size !== expectedEnemyAssets.length
-    || state.enemyCatalogLod !== String(expectedPlayerLod)
+    || state.enemyCatalogLod !== String(expectedSharedLod)
     || !enemyCatalogRuntimeMatch
     || Number(enemyCatalogRuntimeMatch[1]) < expectedEnemyAssets.length
     || state.enemyState !== 'ready'
@@ -5510,15 +5511,16 @@ try {
   }
   console.log(`BROWSER_P13G_READABILITY_PASS viewport=${viewportMode} coarse=${coarseCombatSurface} policy=${enemyHudReadability}`);
 
-  const expectedCombatLod = coarseCombatSurface ? '2' : '1';
+  const expectedOperatorLod = coarseCombatSurface ? '2' : '0';
+  const expectedWeaponLod = coarseCombatSurface ? '2' : '1';
   await waitFor(`(() => {
     const canvas = document.querySelector('canvas');
     return canvas?.dataset.operatorClassAsset === 'vanguard'
-      && canvas?.dataset.operatorVisual === 'authored-${expectedCombatLod}'
-      && (canvas?.dataset.operatorAsset ?? '').includes('operator-vanguard-lod${expectedCombatLod}')
-      && (canvas?.dataset.weaponAsset ?? '').includes('weapon-breacher-lod${expectedCombatLod}');
+      && canvas?.dataset.operatorVisual === 'authored-${expectedOperatorLod}'
+      && (canvas?.dataset.operatorAsset ?? '').includes('operator-vanguard-lod${expectedOperatorLod}')
+      && (canvas?.dataset.weaponAsset ?? '').includes('weapon-breacher-lod${expectedWeaponLod}');
   })()`, 'Vanguard authored mobile combat assets', 20_000);
-  console.log(`BROWSER_MOBILE_ASSET_PASS viewport=${viewportMode} icons=loaded operatorLod=${expectedCombatLod} weaponLod=${expectedCombatLod}`);
+  console.log(`BROWSER_MOBILE_ASSET_PASS viewport=${viewportMode} icons=loaded operatorLod=${expectedOperatorLod} weaponLod=${expectedWeaponLod}`);
   console.log(`BROWSER_CLASS_ASSET_PASS viewport=${viewportMode} operator=vanguard`);
 
   const combat = await snapshot();
