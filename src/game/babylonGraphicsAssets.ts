@@ -228,7 +228,7 @@ export class BabylonGraphicsAssetRuntime {
 
     for (const [url, entry] of idleEntries) {
       if (estimatedCompressedBytes <= this.budget.maxCachedCompressedBytes && this.cache.size <= this.budget.maxCachedAssets) break;
-      if (this.cache.get(url) !== entry) continue;
+      if (this.cache.get(url) !== entry || entry.activeInstances > 0 || entry.pendingDispose) continue;
       this.cache.delete(url);
       entry.pendingDispose = true;
       estimatedCompressedBytes -= entry.spec.compressedByteBudget;

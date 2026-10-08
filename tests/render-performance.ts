@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { normalizeProductionRenderQuality, resolveRenderDowngradeReason } from '../src/game/combatGraphicsBackend';
-import { AdaptiveRenderBudget } from '../src/game/renderQuality';
+import { AdaptiveRenderBudget, MAX_MEASURED_FRAME_MS, SUSPEND_GAP_MS } from '../src/game/renderQuality';
 import { spinHabitatRenderProfile } from '../src/game/spinHabitatArchitecture';
 import { jovianHarvesterRenderProfile } from '../src/game/jovianHarvesterVisualLanguage';
 import { solarYardRenderProfile } from '../src/game/solarYardVisualProfile';
@@ -17,9 +17,16 @@ const rendererSource=readFileSync(resolve(process.cwd(),'src/game/babylonCombatR
 const assetsSource=readFileSync(resolve(process.cwd(),'src/game/babylonGraphicsAssets.ts'),'utf8');
 const worldSource=readFileSync(resolve(process.cwd(),'src/game/babylonWorldPresentation.ts'),'utf8');
 const postSource=readFileSync(resolve(process.cwd(),'src/game/babylonRefineryPostProcessing.ts'),'utf8');
+const recoveryFloorBytes=readFileSync(resolve(process.cwd(),'public/assets/models/environments/refinery-floor-panel-lod2.glb'));
+const recoveryFloorJsonLength=recoveryFloorBytes.readUInt32LE(12);
+const recoveryFloorGltf=JSON.parse(recoveryFloorBytes.subarray(20,20+recoveryFloorJsonLength).toString('utf8').trim()) as { materials?: { name?: string }[]; meshes?: { primitives?: { material?: number }[] }[]; nodes?: { mesh?: number }[] };
+const recoveryFloorShellMaterial=recoveryFloorGltf.materials?.findIndex(material=>material.name==='refinery-shell') ?? -1;
+const recoveryFloorShellMeshes=new Set((recoveryFloorGltf.meshes??[]).flatMap((mesh,index)=>(mesh.primitives??[]).some(primitive=>primitive.material===recoveryFloorShellMaterial)?[index]:[]));
+assert(recoveryFloorShellMaterial>=0 && (recoveryFloorGltf.nodes??[]).some(node=>typeof node.mesh==='number' && recoveryFloorShellMeshes.has(node.mesh)),'performance-tier refinery floor LOD2 must keep a mounted refinery-shell premium surface');
 assert(!gameCanvasSource.includes('useRef<SimState>(createMissionState(firstMission))') && gameCanvasSource.includes('useState(() => createMissionState(firstMission))'),'GameCanvas simulation must use lazy one-time initialization');
 assert(gameCanvasSource.includes('profileSettingsRef.current.graphicsQuality') && gameCanvasSource.includes('canvas.dataset.graphicsQuality = selectedQuality'),'combat loop must consume/expose graphics quality mode');
 assert(armorySource.includes('aria-label="Graphics quality"') && armorySource.includes('<option value="flagship">Flagship</option>') && armorySource.includes('<option value="performance">Performance</option>'),'settings must expose Flagship and Performance');
+assert(MAX_MEASURED_FRAME_MS===250 && SUSPEND_GAP_MS===1000,'catastrophic active frames must remain measurable while multi-second suspend gaps are excluded');
 const desktop=new AdaptiveRenderBudget(false); let snapshot=desktop.sample(16.7,1);
 assert(snapshot.tierName==='high' && snapshot.shadowMapSize===1024 && snapshot.vfxDensity===1 && snapshot.transparencyScale===1,'desktop must start at high quality');
 assert(snapshot.refineryIblScale===1 && snapshot.refineryBloomScale===1 && snapshot.refineryContactDepthScale===1 && snapshot.refineryAtmosphereScale===1 && snapshot.gameplayCueScale===1,'high tier must retain full secondary and critical cue budgets');
@@ -27,6 +34,29 @@ for(let i=0;i<180;i+=1) snapshot=desktop.sample(30,1);
 assert(snapshot.tierName==='performance' && !snapshot.shadows && snapshot.shadowMapSize===256 && snapshot.vfxDensity===0.45 && snapshot.transparencyScale===0.4,'sustained slow frames must reach performance tier');
 assert(snapshot.refineryIblScale<0.5 && snapshot.refineryBloomScale<0.5 && snapshot.refineryContactDepthScale<0.5 && snapshot.refineryAtmosphereScale<0.5 && snapshot.gameplayCueScale===1,'performance tier must shed secondary effects while preserving critical cues');
 for(let i=0;i<700;i+=1) snapshot=desktop.sample(16.4,1); assert(snapshot.tierName==='high','healthy frames must recover desktop quality');
+for(const severeFrameMs of [90,160,250]) {
+  const severeBudget=new AdaptiveRenderBudget(false);
+  let severeSnapshot=severeBudget.sample(16.7,1);
+  const transitions:string[]=[];
+  let severeSamples=0;
+  while(severeSamples<60 && severeSnapshot.runtimeTierName!=='performance') {
+    const previousTransitionCount=severeSnapshot.tierTransitionCount;
+    severeSnapshot=severeBudget.sample(severeFrameMs,1);
+    severeSamples+=1;
+    if(severeSnapshot.tierTransitionCount>previousTransitionCount) transitions.push(severeSnapshot.lastTierTransition);
+  }
+  assert(severeSnapshot.runtimeTierName==='performance' && severeSamples*severeFrameMs<=5000,`sustained ${severeFrameMs}ms frames must reach performance tier within a bounded five-second pressure window`);
+  assert(transitions.join(',')==='high->balanced,balanced->performance',`sustained ${severeFrameMs}ms frames must expose ordered adaptive tier transitions`);
+  assert(severeSnapshot.rawFrameMs===severeFrameMs && severeSnapshot.measuredFrameMs===severeFrameMs && severeSnapshot.frameSampleState==='measured',`sustained ${severeFrameMs}ms frames must remain first-class measured telemetry`);
+}
+const gapBudget=new AdaptiveRenderBudget(false); const beforeGap=gapBudget.sample(16.7,1); let gapSnapshot=beforeGap;
+for(let i=0;i<8;i+=1) gapSnapshot=gapBudget.sample(5000,1);
+assert(gapSnapshot.runtimeTierName==='high' && gapSnapshot.tierTransitionCount===0,'background/suspend gaps must not trigger adaptive downgrades');
+assert(gapSnapshot.frameSampleState==='ignored-suspend-gap' && gapSnapshot.rawFrameMs===5000 && gapSnapshot.measuredFrameMs===0 && gapSnapshot.smoothedFrameMs===beforeGap.smoothedFrameMs,'suspend-gap telemetry must preserve the raw gap without contaminating measured frame pressure');
+const catastrophicRecovery=new AdaptiveRenderBudget(false); let recoverySnapshot=catastrophicRecovery.sample(16.7,1);
+while(recoverySnapshot.runtimeTierName!=='performance') recoverySnapshot=catastrophicRecovery.sample(250,1);
+for(let i=0;i<700;i+=1) recoverySnapshot=catastrophicRecovery.sample(16.4,1);
+assert(recoverySnapshot.runtimeTierName==='high' && recoverySnapshot.lastTierTransition==='balanced->high' && recoverySnapshot.tierTransitionCount===4,'healthy-frame hysteresis must recover catastrophic pressure through performance->balanced->high');
 const coarse=new AdaptiveRenderBudget(true); snapshot=coarse.sample(16.7,1);
 assert(snapshot.tierName==='high' && snapshot.pixelRatioScale===1 && snapshot.detailScale===1 && snapshot.shadows && snapshot.shadowMapSize===1024 && snapshot.reflectionScale===1 && snapshot.vfxDensity===1 && snapshot.transparencyScale===1 && snapshot.textureAnisotropy===4 && snapshot.assetCacheEntryBudget===32,'coarse input must not impose a pre-emptive production quality ceiling');
 assert(normalizeProductionRenderQuality(0.72,'adaptive',false)===1,'adaptive mobile layout hints must normalize to the richest production input');
@@ -35,11 +65,12 @@ assert(resolveRenderDowngradeReason('high','adaptive',false)==='none','healthy a
 assert(resolveRenderDowngradeReason('balanced','adaptive',false)==='sustained-frame-pressure','adaptive downgrade telemetry must name sustained frame pressure');
 assert(resolveRenderDowngradeReason('performance','performance',false)==='performance-mode','explicit performance mode must be distinguishable from runtime pressure');
 assert(resolveRenderDowngradeReason('balanced','adaptive',true)==='reduced-effects','reduced effects must be distinguishable from runtime pressure');
-assert(resolveRenderDowngradeReason('performance','adaptive',true)==='reduced-effects+sustained-frame-pressure','telemetry must preserve both user reduction and additional runtime pressure');
+assert(resolveRenderDowngradeReason('performance','adaptive',true)==='sustained-frame-pressure','additional runtime pressure must be the dominant downgrade cause when reduced effects are already selected');
 const flagship=new AdaptiveRenderBudget(true).sample(16.7,1,'flagship'); const perf=new AdaptiveRenderBudget(true).sample(16.7,1,'performance');
 assert(flagship.tierName==='high' && perf.tierName==='performance' && flagship.gameplayCueScale===1 && perf.gameplayCueScale===1,'explicit quality modes must alter cost without scaling critical cues');
 assert(boundarySource.includes("return reducedEffects ? 0.62 : 1") && boundarySource.includes("renderDeviceClassPolicy = coarse ? 'flagship-default:coarse-hint-ignored' : 'flagship-default'"),'production Babylon boundary must neutralize legacy mobile/coarse ceilings while preserving explicit reduced effects');
 assert(boundarySource.includes('dataset.renderDowngradeReason = resolveRenderDowngradeReason(') && boundarySource.includes('dataset.renderQualityInput = `requested:'),'production QA must expose effective quality and downgrade cause');
+assert(boundarySource.includes('dataset.renderRawFrameMs = rawFrameMs.toFixed(2)') && boundarySource.includes("dataset.renderSmoothedFrameMs = this.canvas.dataset.renderFrameMs ?? ''") && boundarySource.includes('dataset.renderTierTransition = `${this.lastObservedRenderTier}->${observedTier}`') && boundarySource.includes('dataset.renderTierTransitionCount = String(this.renderTierTransitionCount)'),'production runtime telemetry must expose raw/smoothed frame time and observed tier transitions');
 assert(rendererSource.includes('const budget = this.renderBudget.sample(frameMs, quality, qualityMode)') && rendererSource.includes('budget.vfxDensity') && rendererSource.includes('budget.transparencyScale'),'Babylon renderer must consume adaptive visual budgets');
 assert(rendererSource.includes('getBabylonGraphicsAssetRuntime(this.scene).configureBudget({') && rendererSource.includes('dataset.renderMemoryBudget'),'Babylon renderer must apply/expose asset cache budget');
 assert(rendererSource.includes('dataset.renderTier = budget.tierName') && rendererSource.includes('dataset.renderFrameMs = budget.smoothedFrameMs.toFixed(2)') && rendererSource.includes('dataset.renderBudget = ['),'Babylon runtime QA must expose tier/frame/budget telemetry');
@@ -52,4 +83,4 @@ assert(profiles.every(profile=>profile.name==='performance'),'all authored envir
 const worst=new AdaptiveRenderBudget(true); let worstSnapshot=worst.sample(16.7,1); for(let i=0;i<180;i+=1) worstSnapshot=worst.sample(45,1);
 assert(worstSnapshot.tierName==='performance' && worstSnapshot.pixelRatioScale<=0.68 && worstSnapshot.detailScale<=0.5 && !worstSnapshot.shadows,'worst-case pressure must reduce raster/detail/shadow cost');
 assert(worstSnapshot.gameplayCueScale===1,'worst-case rendering must preserve gameplay-critical information');
-console.log('RENDER_PERFORMANCE_PASS owner=babylon flagship-default=phone+desktop sustained=degrade+recover telemetry=reasoned cache=bounded post=adaptive');
+console.log('RENDER_PERFORMANCE_PASS owner=babylon flagship-default=phone+desktop sustained=degrade+recover catastrophic=90-250ms<=5s suspend-gaps=ignored telemetry=raw+smoothed+transitions cache=bounded post=adaptive');

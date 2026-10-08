@@ -62,12 +62,11 @@ export function resolveRenderDowngradeReason(
   reducedEffects: boolean,
 ) {
   if (tier !== 'high' && tier !== 'balanced' && tier !== 'performance') return 'pending';
-  const reasons: string[] = [];
   const selectedTierCost = qualityMode === 'performance' ? 2 : reducedEffects ? 1 : 0;
-  if (qualityMode === 'performance') reasons.push('performance-mode');
-  if (reducedEffects) reasons.push('reduced-effects');
-  if (RENDER_TIER_COST[tier] > selectedTierCost) reasons.push('sustained-frame-pressure');
-  return reasons.length ? reasons.join('+') : 'none';
+  if (RENDER_TIER_COST[tier] > selectedTierCost) return 'sustained-frame-pressure';
+  if (qualityMode === 'performance') return 'performance-mode';
+  if (reducedEffects) return 'reduced-effects';
+  return 'none';
 }
 
 export interface CombatGraphicsLifecycle {
@@ -94,6 +93,9 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
   private disposed = false;
   private webGpuRenderSurface: HTMLCanvasElement | null = null;
   private webGpuFallbackInFlight = false;
+  private lastRenderAt = 0;
+  private lastObservedRenderTier: string | null = null;
+  private renderTierTransitionCount = 0;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -107,6 +109,8 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
     canvas.dataset.babylonBackendLoaded = 'initializing';
     canvas.dataset.babylonBackendFallback = '';
     canvas.dataset.babylonBackendFallbackReason = '';
+    canvas.dataset.renderTierTransition = 'none';
+    canvas.dataset.renderTierTransitionCount = '0';
     // Compact/coarse input remains a framing hint; it must never lower startup render quality.
     canvas.dataset.renderDeviceClassPolicy = coarse ? 'flagship-default:coarse-hint-ignored' : 'flagship-default';
     canvas.dataset.renderDowngradeReason = 'pending';
@@ -118,6 +122,10 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
   }
 
   render(...args: CombatGraphicsRenderArgs) {
+    const now = performance.now();
+    const rawFrameMs = this.lastRenderAt > 0 ? Math.max(0, now - this.lastRenderAt) : 1000 / 60;
+    this.lastRenderAt = now;
+    this.canvas.dataset.renderRawFrameMs = rawFrameMs.toFixed(2);
     const qualityMode = args[4];
     const reducedEffects = args[8] ?? false;
     const effectiveQuality = normalizeProductionRenderQuality(args[3], qualityMode, reducedEffects);
@@ -126,6 +134,16 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
     const normalizedArgs: CombatGraphicsRenderArgs = [...args];
     normalizedArgs[3] = effectiveQuality;
     this.delegate.render(...normalizedArgs);
+    this.canvas.dataset.renderSmoothedFrameMs = this.canvas.dataset.renderFrameMs ?? '';
+    const observedTier = this.canvas.dataset.renderTier ?? '';
+    if (observedTier) {
+      if (this.lastObservedRenderTier && observedTier !== this.lastObservedRenderTier) {
+        this.renderTierTransitionCount += 1;
+        this.canvas.dataset.renderTierTransition = `${this.lastObservedRenderTier}->${observedTier}`;
+        this.canvas.dataset.renderTierTransitionCount = String(this.renderTierTransitionCount);
+      }
+      this.lastObservedRenderTier = observedTier;
+    }
     this.canvas.dataset.renderDowngradeReason = resolveRenderDowngradeReason(
       this.canvas.dataset.renderTier,
       qualityMode,
