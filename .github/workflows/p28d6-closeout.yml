@@ -1,5 +1,6 @@
 name: P28-D6 roadmap closeout
 
+# Retry after tightening the completed-entry assertion.
 on:
   push:
     branches:
