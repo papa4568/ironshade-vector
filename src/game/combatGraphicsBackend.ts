@@ -297,11 +297,12 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
         if (this.disposed || this.delegate !== renderer) return;
         this.canvas.dataset.babylonBossPresentation = 'failed';
         this.canvas.dataset.babylonBossFallbackReason = error instanceof Error ? error.message : String(error);
-      } finally {
-        if (this.bossPresentationInitialization === initialization) this.bossPresentationInitialization = null;
       }
     })();
     this.bossPresentationInitialization = initialization;
+    void initialization.finally(() => {
+      if (this.bossPresentationInitialization === initialization) this.bossPresentationInitialization = null;
+    });
     return initialization;
   }
 
