@@ -1,9 +1,8 @@
 name: P28-D5 maintenance patch
 
 on:
-  push:
-    branches:
-      - chatgpt/p28-d5-suppressor-enemy-lod0
+  pull_request:
+    types: [opened, synchronize]
 
 permissions:
   contents: write
@@ -14,6 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
       - name: Apply exact asserted replacements
         shell: bash
@@ -41,4 +41,4 @@ jobs:
           git add scripts/browser-runtime-smoke.mjs src/game/graphicsAssetManifest.ts
           git diff --cached --check
           git commit -m 'P28-D5 align runtime proof and restore manifest path'
-          git push origin HEAD:${GITHUB_REF_NAME}
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
