@@ -33,8 +33,6 @@ Only active/future executable engineering work lives here. Completed and verifie
 
 #### D. Hero operators and enemy presentation
 
-- [ ] **P28-D3 — Ship Systems operator LOD0** — Add the Systems hero LOD0 on the same validated rig/socket/material contract with class-specific silhouette detail. **Done when:** Flagship selection, animation/socket compatibility, class readability, and standard build/APK gates pass.
-
 - [ ] **P28-D4 — Ship assault enemy LOD0** — Add a hero-near-camera LOD0 for the common assault enemy family without changing hitboxes, targeting, or lifecycle cues. **Done when:** Flagship uses the LOD0 where appropriate, telegraphs/status/lifecycle overlays still align, and standard build/APK gates pass.
 
 - [ ] **P28-D5 — Ship suppressor enemy LOD0** — Add a full-detail LOD0 for the suppressor family with stronger weapon/armor silhouette separation. **Done when:** rig/overlay alignment, combat readability, visual improvement, and standard build/APK gates pass.
