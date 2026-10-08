@@ -3,7 +3,7 @@ import { writeFile } from 'node:fs/promises';
 const cdpBase = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9223';
 const screenshotPath = process.env.BROWSER_E2E_P28A5_LOW_VISIBILITY_SCREENSHOT ?? 'browser-p28a5-low-visibility.png';
 const reportPath = process.env.BROWSER_E2E_P28A5_REPORT ?? 'browser-p28a5-image-grade.json';
-// Historical proof markers retained for completed candidates: visualDetail: 'p28-c5-refinery-processor-lod0'; visualDetail: 'p28-c6-refinery-terminal-lod0'; visualDetail: 'p28-c7-refinery-crate-lod0'; visualDetail: 'p28-c8-refinery-world-authored-mappings'; visualDetail: 'p28-c9-refinery-geometry-reuse'; visualDetail: 'p28-d0-premium-character-source'; visualDetail: 'p28-d1-vanguard-operator-lod0'; visualDetail: 'p28-d3-systems-operator-lod0'
+// Historical proof markers retained for completed candidates: visualDetail: 'p28-c5-refinery-processor-lod0'; visualDetail: 'p28-c6-refinery-terminal-lod0'; visualDetail: 'p28-c7-refinery-crate-lod0'; visualDetail: 'p28-c8-refinery-world-authored-mappings'; visualDetail: 'p28-c9-refinery-geometry-reuse'; visualDetail: 'p28-d0-premium-character-source'; visualDetail: 'p28-d1-vanguard-operator-lod0'; visualDetail: 'p28-d2-vector-operator-lod0'
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 if (typeof WebSocket !== 'function') {
