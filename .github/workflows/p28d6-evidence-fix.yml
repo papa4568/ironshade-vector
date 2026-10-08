@@ -1,0 +1,61 @@
+name: P28-D6 archived evidence correction
+
+on:
+  push:
+    branches:
+      - chatgpt/p28-d6-technician-enemy-lod0
+    paths:
+      - .github/workflows/p28d6-evidence-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  correct-evidence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Correct archived artifact identifiers
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('docs/content-roadmap-archive.md')
+          text = path.read_text()
+          replacements = [
+              (
+                  "Candidate artifact `ironshade-vector-pr-candidate-8cf646c849482b0cdb4ee919d7131fd5fc5e1f0e` is `11568290174` (digest `sha256:d5be605800653f130ded4db12386afb2d7d93bf02174212ccbdd783527b7f71c`); candidate evidence artifact `11568765803` records the exact implementation proof ledger.",
+                  "Candidate artifact `ironshade-vector-pr-candidate-web-8cf646c849482b0cdb4ee919d7131fd5fc5e1f0e` is `11568530303` (digest `sha256:a31ce100b1740ad37c27fa3678ab839e770536b03dc6649b4def74e06149de60`); candidate evidence artifact `11567514912` (digest `sha256:9b67567a207b926b43552a8222449bab45035a8300302d2ef6dec5fa405adc95`) records the exact implementation proof ledger.",
+                  'candidate artifacts',
+              ),
+              (
+                  "P28 Image Grade run `37817307582` passed with artifact `p28a5-mobile-combat-image-grade` (`11568395638`, digest `sha256:77acc29fc6720500dd65943cd90450766219c3c602172729adc5db19463f1146`). Browser evidence artifacts are desktop `11568488688` and mobile-landscape `11568718727`.",
+                  "P28 Image Grade run `37817307582` passed with artifact `ironshade-vector-p28a5-image-grade` (`11568395638`, digest `sha256:a4b162b134c36fe003dc11cd159d73e0b2c69bbaf219b302ab25d175d0490f6d`). Browser evidence artifacts are desktop `11567908123` (digest `sha256:0bc944acf80670485eccb034005b5fad0f111abf7bdc419284f9b89cb0540ccf`) and mobile-landscape `11567773632` (digest `sha256:28ce80d307f44d9b0e022c14ba60762ed3f916efd6ce7cc74fbb86296e83241e`).",
+                  'visual/browser artifacts',
+              ),
+              (
+                  "Verified implementation APK artifact `ironshade-vector-pr-android-apk` (`11568372261`, artifact digest `sha256:1c33bf9b1a73ebfdc7b59f1bbebfe6eaa9fdff3dbbd4ef1e8806c2fc97252424`) contains `ironshade-vector-pr-debug.apk` (10,571,099 bytes; package `app.ironshade.vector`; version `0.0.1-pr.92 (92)`; min SDK 24; target SDK 36; APK SHA-256 `58a6842940b6485687096952fd9f8d11bc0095b237c3c624c6a03d6b10995c81`; APK Signature Scheme v2 verified). API 35 artifact `11568746880` and API 36 artifact `11568734728` preserve emulator evidence for the same implementation candidate.",
+                  "Verified implementation APK artifact `ironshade-vector-pr-android-apk` (`11568346148`, artifact digest `sha256:569989f9ade14ac1f3e8a2834c22029dfb0e87ff3b7a9596196c561a4466027c`) contains `Ironshade-Vector-Android-Debug.apk` (10,571,099 bytes; package `app.ironshade.vector`; version `0.0.1-pr.92 (92)`; min SDK 24; target SDK 36; APK SHA-256 `58a684d34069589fc9317a80eb2f71448d49bad508b7bd1c450f048ad7195c81`; APK Signature Scheme v2 verified). API 35 artifact `11568601824` (digest `sha256:269ecb9ed86815507b7214b7e5fd127eb096d207b550d88b6685f1667d0fe4f4`) and API 36 artifact `11568387070` (digest `sha256:b7d64458e7d99cdf03d032cec846f207e6a8fd2385b265c609e58e9ce0916311`) preserve emulator evidence for the same implementation candidate.",
+                  'APK/API artifacts',
+              ),
+          ]
+          for old, new, label in replacements:
+              count = text.count(old)
+              assert count == 1, f'{label} match count: {count}'
+              text = text.replace(old, new, 1)
+          path.write_text(text)
+          PY
+      - name: Verify archive and commit correction
+        shell: bash
+        run: |
+          grep -F '11568346148' docs/content-roadmap-archive.md
+          grep -F '58a684d34069589fc9317a80eb2f71448d49bad508b7bd1c450f048ad7195c81' docs/content-roadmap-archive.md
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/content-roadmap-archive.md
+          git diff --cached --check
+          git commit -m 'P28-D6 correct archived artifact evidence'
+          git push origin HEAD:${GITHUB_REF_NAME}
