@@ -31,10 +31,6 @@ Only active/future executable engineering work lives here. Completed and verifie
 
 ### P28 — Babylon flagship visual-quality overhaul
 
-#### C. Refinery authored geometry and silhouette upgrade
-
-- [ ] **P28-C9 — Consolidate repeated refinery geometry without reducing visible quality** — Use Babylon instances/thin instances or existing asset-runtime reuse for repeated static modules where it preserves the full-detail result. **Done when:** repeated LOD0 modules reuse resources correctly, scene re-entry/disposal is stable, no visible module is simplified solely to hit an arbitrary draw/triangle cap, repository-visible telemetry remains available for later target-phone measurement, and standard build/APK gates pass. Physical target-phone acceptance is tracked in `docs/external-qa.md`.
-
 #### D. Hero operators and enemy presentation
 
 - [ ] **P28-D0 — Upgrade the character asset source path beyond box-node bodies** — Add a premium character-mesh source path that preserves the existing named operator/enemy rig nodes, animation hooks, sockets, hitbox ownership, and cue attachment contracts while allowing non-box body/armor/tool meshes and textured PBR materials. **Done when:** one representative generated/committed character runs through the production asset preparation path with a clearly non-box silhouette, existing animation/socket/cue tests still align, rebuilds remain deterministic, and standard build/APK gates pass.

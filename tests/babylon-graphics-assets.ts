@@ -39,6 +39,10 @@ assert(
   runtimeSource.includes("engine.getClassName() !== 'Engine'") && runtimeSource.includes('creationOptions.loseContextOnDispose = true'),
   'Babylon WebGL engine teardown must explicitly release its WebGL context while leaving WebGPU untouched',
 );
+assert(
+  runtimeSource.includes('{ doNotInstantiate: false }') && runtimeSource.includes('activeNativeMeshInstances'),
+  'Babylon asset runtime must retain native instance reuse and repository-visible reuse telemetry',
+);
 
 const decoderUrls = configureBabylonGraphicsDecoders();
 for (const [name, url] of Object.entries(decoderUrls)) {
@@ -130,6 +134,42 @@ async function run() {
   assert(pipeRackContainer.meshes.length >= 8, `Flagship refinery pipe rack LOD0 must load authored round-pipe/support meshes, got ${pipeRackContainer.meshes.length}`);
   assert(cableTrayContainer.meshes.length >= 8, `Flagship refinery cable tray LOD0 must load authored rail/rung/cable meshes, got ${cableTrayContainer.meshes.length}`);
   assert(externalAtlasLoads === 4, `Flagship route-detailed LOD0 refinery assets must resolve the shared refinery route atlas, got ${externalAtlasLoads}`);
+
+  const flagshipReuseRuntime = new BabylonGraphicsAssetRuntime(flagshipScene, loadContainer);
+  const floorReuseA = await flagshipReuseRuntime.instantiate(refineryFloorLod0);
+  const floorReuseB = await flagshipReuseRuntime.instantiate(refineryFloorLod0);
+  assert(loadCounts.get(refineryFloorLod0.url) === 1, 'repeated refinery LOD0 modules must share one cached GLB source load');
+  assert(floorReuseA.spec.lod === 0 && floorReuseB.spec.lod === 0, 'resource reuse must preserve the selected full-detail refinery LOD0 spec');
+  assert(floorReuseB.nativeMeshInstances > 0, 'repeated refinery LOD0 modules must use native Babylon mesh instances');
+  const floorVerticesA = floorReuseA.rootNodes
+    .flatMap(root => root.getChildMeshes(false))
+    .reduce((sum, mesh) => sum + mesh.getTotalVertices(), 0);
+  const floorVerticesB = floorReuseB.rootNodes
+    .flatMap(root => root.getChildMeshes(false))
+    .reduce((sum, mesh) => sum + mesh.getTotalVertices(), 0);
+  assert(floorVerticesA > 0 && floorVerticesB === floorVerticesA, 'instanced refinery LOD0 modules must preserve the same visible geometry instead of simplifying for a draw/triangle cap');
+  const reuseStats = flagshipReuseRuntime.stats();
+  assert(reuseStats.activeInstances === 2, `expected two active repeated LOD0 modules, got ${reuseStats.activeInstances}`);
+  assert(
+    reuseStats.activeNativeMeshInstances === floorReuseA.nativeMeshInstances + floorReuseB.nativeMeshInstances,
+    'runtime telemetry must report native Babylon mesh-instance reuse for later target-device measurement',
+  );
+  floorReuseA.release();
+  assert(flagshipReuseRuntime.stats().activeInstances === 1, 'releasing one repeated LOD0 module must keep the other module live');
+  floorReuseB.release();
+  assert(flagshipReuseRuntime.stats().activeInstances === 0, 'repeated LOD0 module release must clear active module ownership');
+  assert(flagshipReuseRuntime.stats().activeNativeMeshInstances === 0, 'native instance telemetry must return to zero after repeated LOD0 release');
+  await flagshipReuseRuntime.dispose();
+  assert((disposeCounts.get(refineryFloorLod0.url) ?? 0) === 1, 'refinery LOD0 shared source resources must dispose exactly once after runtime teardown');
+
+  const flagshipReentryRuntime = new BabylonGraphicsAssetRuntime(flagshipScene, loadContainer);
+  const floorAfterReentry = await flagshipReentryRuntime.instantiate(refineryFloorLod0);
+  assert(loadCounts.get(refineryFloorLod0.url) === 2, 'scene re-entry must reload a disposed refinery LOD0 source without retaining stale cache ownership');
+  assert(floorAfterReentry.rootNodes.length > 0, 'scene re-entry must restore the full-detail refinery LOD0 module');
+  floorAfterReentry.release();
+  await flagshipReentryRuntime.dispose();
+  assert((disposeCounts.get(refineryFloorLod0.url) ?? 0) === 2, 'scene re-entry teardown must dispose the reloaded refinery LOD0 source exactly once');
+
   floorContainer.dispose();
   grateContainer.dispose();
   bulkheadContainer.dispose();
@@ -171,6 +211,7 @@ async function run() {
   const refineryShared = await runtime.instantiate(refineryLod1);
   const sharedStaticMeshes = refineryShared.rootNodes.flatMap(root => root.getChildMeshes(false)).filter(mesh => mesh.isAnInstance);
   assert(sharedStaticMeshes.length > 0, 'repeated static Babylon GLB geometry must use native InstancedMesh reuse');
+  assert(refineryShared.nativeMeshInstances === sharedStaticMeshes.length, 'per-instance native reuse telemetry must match instantiated refinery meshes');
   refineryShared.release();
 
   const statsWithRefinery = runtime.stats();
@@ -227,13 +268,14 @@ async function run() {
   await teardownRuntime.instantiate(operatorLod1);
   teardownRuntime.disposeForSceneTeardown();
   assert(teardownRuntime.stats().cachedAssets === 0, 'renderer teardown must synchronously drop Babylon runtime cache references before scene disposal');
+  assert(teardownRuntime.stats().activeNativeMeshInstances === 0, 'renderer teardown must synchronously drop native instance telemetry with cache ownership');
   teardownScene.dispose();
   await Promise.resolve();
   assert(teardownDisposeCount === 1, `renderer teardown must leave source-container ownership to Babylon scene disposal, got ${teardownDisposeCount} disposals`);
   teardownEngine.dispose();
 
   console.log(
-    `BABYLON_GRAPHICS_ASSETS_PASS operatorLod1=${operatorLod1.id} operatorLod2=${operatorLod2.id} refinery=${refineryLod1.id} flagshipFloor=${refineryFloorLod0.id} flagshipGrate=${refineryGrateLod0.id} flagshipBulkhead=${refineryBulkheadLod0.id} flagshipWall=${refineryWallPanelLod0.id} flagshipPipe=${refineryPipeRackLod0.id} flagshipCable=${refineryCableTrayLod0.id} localCodecs=true externalAtlas=${externalAtlasLoads} instancing=static-native cacheTrim=count+bytes cacheLoads=${[...loadCounts.values()].reduce((sum, count) => sum + count, 0)} teardownDispose=${teardownDisposeCount} webglContextRelease=true`,
+    `BABYLON_GRAPHICS_ASSETS_PASS operatorLod1=${operatorLod1.id} operatorLod2=${operatorLod2.id} refinery=${refineryLod1.id} flagshipFloor=${refineryFloorLod0.id} flagshipGrate=${refineryGrateLod0.id} flagshipBulkhead=${refineryBulkheadLod0.id} flagshipWall=${refineryWallPanelLod0.id} flagshipPipe=${refineryPipeRackLod0.id} flagshipCable=${refineryCableTrayLod0.id} localCodecs=true externalAtlas=${externalAtlasLoads} instancing=static-native lod0ReuseVertices=${floorVerticesB} lod0Reentry=true cacheTrim=count+bytes cacheLoads=${[...loadCounts.values()].reduce((sum, count) => sum + count, 0)} teardownDispose=${teardownDisposeCount} webglContextRelease=true`,
   );
 
 }
