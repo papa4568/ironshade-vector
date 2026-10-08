@@ -3,6 +3,9 @@
   "schemaVersion": 1,
   "roadmap": "docs/content-roadmap.md",
   "roadmapIds": [
+    "P28-P0",
+    "P28-P1",
+    "P28-P2",
     "P28-D8",
     "P28-E1",
     "P28-E2",
@@ -63,9 +66,52 @@
         "required": true,
         "description": "The exact candidate produces the required verified Android APK artifact."
       }
+    ],
+    "p28-performance-standard": [
+      {
+        "id": "targeted-regressions",
+        "kind": "test",
+        "required": true,
+        "description": "Run focused deterministic performance/recovery regressions for the changed runtime path."
+      },
+      {
+        "id": "production-build",
+        "kind": "build",
+        "required": true,
+        "description": "The production client build and packaged graphics checks pass.",
+        "command": "npm run build:prod"
+      },
+      {
+        "id": "runtime-cost-evidence",
+        "kind": "invariant",
+        "required": true,
+        "description": "Repository-visible runtime evidence proves the requested adaptive transition or bounded expensive-work behavior without substituting emulator timing for physical-phone acceptance."
+      },
+      {
+        "id": "candidate-ci",
+        "kind": "ci",
+        "required": true,
+        "description": "Repository-required final browser/CI gates pass on the exact candidate revision."
+      },
+      {
+        "id": "verified-apk",
+        "kind": "artifact",
+        "required": true,
+        "description": "The exact candidate produces the required verified Android APK artifact."
+      }
     ]
   },
   "rules": [
+    {
+      "prefix": "P28-P",
+      "affectedDomains": [
+        "graphics",
+        "performance",
+        "runtime",
+        "refinery"
+      ],
+      "proofProfile": "p28-performance-standard"
+    },
     {
       "prefix": "P28-C",
       "affectedDomains": [
@@ -123,6 +169,12 @@
     }
   ],
   "overrides": {
+    "P28-P2": {
+      "dependsOn": [
+        "P28-P0",
+        "P28-P1"
+      ]
+    },
     "P28-E2": {
       "dependsOn": [
         "P28-E1"
