@@ -128,8 +128,8 @@ function createRig(instance: BabylonGraphicsAssetInstance): BossRig | null {
 
 export class BabylonRefineryBossPresentation {
   private readonly root: TransformNode;
-  private readonly fallbackRoot: TransformNode;
-  private readonly fallbackMaterial: StandardMaterial;
+  private fallbackRoot: TransformNode | null = null;
+  private fallbackMaterial: StandardMaterial | null = null;
   private readonly runtime;
   private readonly qaPreview: boolean;
   private instance: BabylonGraphicsAssetInstance | null = null;
@@ -151,14 +151,8 @@ export class BabylonRefineryBossPresentation {
     this.runtime = getBabylonGraphicsAssetRuntime(scene);
     this.qaPreview = typeof location !== 'undefined' && refineryBossQaPreviewEnabled(location.search);
     this.root = new TransformNode('p28-d8-refinery-boss-root', scene);
-    this.fallbackRoot = new TransformNode('p28-d8-refinery-boss-fallback', scene);
-    this.fallbackRoot.parent = this.root;
-    this.fallbackMaterial = new StandardMaterial('p28-d8-refinery-boss-fallback-material', scene);
-    this.fallbackMaterial.diffuseColor = Color3.FromInts(111, 43, 35);
-    this.fallbackMaterial.specularColor = Color3.FromInts(92, 75, 62);
-    this.createFallbackGeometry();
     this.root.setEnabled(false);
-    this.canvas.dataset.babylonBossPresentation = 'ready:fallback';
+    this.canvas.dataset.babylonBossPresentation = 'ready:idle';
     this.canvas.dataset.babylonBossAsset = 'none';
     this.canvas.dataset.babylonBossPhaseCue = 'idle';
     this.canvas.dataset.babylonBossQaPreview = this.qaPreview ? 'enabled' : 'disabled';
@@ -229,9 +223,11 @@ export class BabylonRefineryBossPresentation {
     this.disposed = true;
     this.loadGeneration += 1;
     this.releaseAsset();
-    this.fallbackRoot.dispose();
+    this.fallbackRoot?.dispose();
+    this.fallbackRoot = null;
     this.root.dispose();
-    this.fallbackMaterial.dispose();
+    this.fallbackMaterial?.dispose();
+    this.fallbackMaterial = null;
     this.canvas.dataset.babylonBossPresentation = 'disposed';
   }
 
@@ -281,7 +277,8 @@ export class BabylonRefineryBossPresentation {
     this.assetSignature = signature;
     const generation = ++this.loadGeneration;
     this.releaseAsset();
-    this.fallbackRoot.setEnabled(true);
+    const fallbackRoot = this.ensureFallback();
+    fallbackRoot.setEnabled(true);
     this.canvas.dataset.babylonBossPresentation = `loading:${spec.id}`;
     this.canvas.dataset.babylonBossAsset = spec.id;
 
@@ -303,7 +300,7 @@ export class BabylonRefineryBossPresentation {
       this.instance = instance;
       this.assetMount = mount;
       this.rig = rig;
-      this.fallbackRoot.setEnabled(false);
+      this.fallbackRoot?.setEnabled(false);
       mount.setEnabled(true);
       this.canvas.dataset.babylonBossPresentation = `authored:${spec.id}`;
       this.canvas.dataset.babylonBossAsset = spec.id;
@@ -312,7 +309,7 @@ export class BabylonRefineryBossPresentation {
       if (this.disposed || generation !== this.loadGeneration) return;
       this.canvas.dataset.babylonBossPresentation = 'ready:fallback';
       this.canvas.dataset.babylonBossFallbackReason = error instanceof Error ? error.message : String(error);
-      this.fallbackRoot.setEnabled(true);
+      this.ensureFallback().setEnabled(true);
     });
   }
 
@@ -385,20 +382,33 @@ export class BabylonRefineryBossPresentation {
     }
   }
 
-  private createFallbackGeometry() {
+  private ensureFallback() {
+    if (this.fallbackRoot) return this.fallbackRoot;
+    const fallbackRoot = new TransformNode('p28-d8-refinery-boss-fallback', this.scene);
+    fallbackRoot.parent = this.root;
+    const fallbackMaterial = new StandardMaterial('p28-d8-refinery-boss-fallback-material', this.scene);
+    fallbackMaterial.diffuseColor = Color3.FromInts(111, 43, 35);
+    fallbackMaterial.specularColor = Color3.FromInts(92, 75, 62);
+    this.fallbackRoot = fallbackRoot;
+    this.fallbackMaterial = fallbackMaterial;
+    this.createFallbackGeometry(fallbackRoot, fallbackMaterial);
+    return fallbackRoot;
+  }
+
+  private createFallbackGeometry(fallbackRoot: TransformNode, fallbackMaterial: StandardMaterial) {
     const body = MeshBuilder.CreateBox('p28-d8-boss-fallback-body', { width: 0.82, height: 1.28, depth: 0.72 }, this.scene);
     body.position.y = 0.72;
-    body.parent = this.fallbackRoot;
-    body.material = this.fallbackMaterial;
+    body.parent = fallbackRoot;
+    body.material = fallbackMaterial;
     for (const side of [-1, 1]) {
       const shoulder = MeshBuilder.CreateBox(`p28-d8-boss-fallback-shoulder-${side}`, { width: 0.38, height: 0.28, depth: 0.46 }, this.scene);
       shoulder.position.set(0, 1.16, side * 0.56);
-      shoulder.parent = this.fallbackRoot;
-      shoulder.material = this.fallbackMaterial;
+      shoulder.parent = fallbackRoot;
+      shoulder.material = fallbackMaterial;
     }
     const crest = MeshBuilder.CreateBox('p28-d8-boss-fallback-crest', { width: 0.18, height: 0.54, depth: 0.18 }, this.scene);
     crest.position.set(0, 1.66, 0);
-    crest.parent = this.fallbackRoot;
-    crest.material = this.fallbackMaterial;
+    crest.parent = fallbackRoot;
+    crest.material = fallbackMaterial;
   }
 }
