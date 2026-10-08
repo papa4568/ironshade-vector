@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { ENEMY_ASSET_FAMILIES, OPERATOR_CLASS_ASSET_FAMILIES } from '../src/game/graphicsAssetManifest';
+import { REFINERY_BOSS_ASSET_FAMILY, refineryBossDetailScale } from '../src/game/babylonRefineryBossPresentation';
 import { GRAPHICS_ASSET_STANDARDS, createGraphicsAssetSpec, graphicsAssetLodForDetailScale, selectGraphicsAssetSpec, validateGraphicsAssetSpec, type GraphicsAssetFamily } from '../src/game/graphicsAssets';
 function assert(condition: unknown, message: string) { if (!condition) throw new Error(message); }
 assert(GRAPHICS_ASSET_STANDARDS.runtimeFormat==='glb' && GRAPHICS_ASSET_STANDARDS.unitScaleMeters===1 && GRAPHICS_ASSET_STANDARDS.upAxis==='+Y' && GRAPHICS_ASSET_STANDARDS.forwardAxis==='+X','authored runtime asset coordinate/format contract changed');
@@ -34,11 +35,16 @@ assert(selectGraphicsAssetSpec(technicianFamily,0.78)?.id==='enemy-technician-lo
 const eliteFamily=ENEMY_ASSET_FAMILIES.elite;
 assert(selectGraphicsAssetSpec(eliteFamily,1)?.id==='enemy-elite-lod0','Flagship detail must select the authored elite enemy LOD0 asset');
 assert(selectGraphicsAssetSpec(eliteFamily,0.78)?.id==='enemy-elite-lod1' && selectGraphicsAssetSpec(eliteFamily,0.5)?.id==='enemy-elite-lod2','Elite balanced/performance LOD selection must remain budgeted');
+assert(selectGraphicsAssetSpec(REFINERY_BOSS_ASSET_FAMILY,1)?.id==='enemy-boss-lod0','Flagship detail must select the authored refinery boss LOD0 asset');
+assert(selectGraphicsAssetSpec(REFINERY_BOSS_ASSET_FAMILY,0.78)?.id==='enemy-boss-lod1' && selectGraphicsAssetSpec(REFINERY_BOSS_ASSET_FAMILY,0.5)?.id==='enemy-boss-lod2','Refinery boss balanced/performance LOD selection must remain budgeted');
+assert(refineryBossDetailScale('flagship','high')===1 && refineryBossDetailScale('adaptive','balanced')===0.78 && refineryBossDetailScale('performance','performance')===0.5,'Refinery boss presentation must follow the renderer runtime tier without lowering Flagship startup quality');
 const contractSource=readFileSync(resolve(process.cwd(),'src/game/graphicsAssets.ts'),'utf8');
 const runtimeSource=readFileSync(resolve(process.cwd(),'src/game/babylonGraphicsAssets.ts'),'utf8');
 const loaderSource=readFileSync(resolve(process.cwd(),'src/game/babylonGltfLoader.ts'),'utf8');
 const manifestSource=readFileSync(resolve(process.cwd(),'src/game/graphicsAssetManifest.ts'),'utf8');
 const rendererSource=readFileSync(resolve(process.cwd(),'src/game/babylonCombatRenderer.ts'),'utf8');
+const backendSource=readFileSync(resolve(process.cwd(),'src/game/combatGraphicsBackend.ts'),'utf8');
+const bossPresentationSource=readFileSync(resolve(process.cwd(),'src/game/babylonRefineryBossPresentation.ts'),'utf8');
 const prepareCodecs=readFileSync(resolve(process.cwd(),'scripts/prepare-graphics-codecs.mjs'),'utf8');
 assert(!contractSource.includes("from 'three'") && !contractSource.includes('@babylonjs/'),'shared graphics asset contract must remain renderer-neutral');
 assert(runtimeSource.includes("import('./babylonGltfLoader')") && loaderSource.includes("import '@babylonjs/loaders/glTF/2.0/glTFLoader'"),'Babylon GLB loader must remain deferred and scoped to glTF 2.0');
@@ -49,4 +55,6 @@ for (const token of ['OPERATOR_ASSET_FAMILY','OPERATOR_CLASS_ASSET_FAMILIES','EN
 assert(rendererSource.includes("from './graphicsAssetManifest'") && rendererSource.includes("from './graphicsAssets'") && rendererSource.includes("from './babylonGraphicsAssets'"),'Babylon combat renderer must consume shared manifest/contract through Babylon runtime');
 assert(rendererSource.includes('runtime.preload(') && rendererSource.includes('runtime.instantiate('),'Babylon combat renderer must use the shared cached asset runtime');
 assert(rendererSource.includes("dataset.operatorVisual = 'authored-fallback-babylon'") && rendererSource.includes("dataset.weaponVisual = 'authored-fallback-babylon'") && rendererSource.includes("dataset.environmentVisual = 'authored-fallback-babylon'"),'authored asset failures must preserve Babylon procedural presentation fallbacks');
-console.log('GRAPHICS_ASSET_PIPELINE_PASS contract=renderer-neutral runtime=babylon codecs=local lod=adaptive cache=bounded fallbacks=preserved assault-lod0=flagship suppressor-lod0=flagship technician-lod0=flagship elite-lod0=flagship');
+assert(backendSource.includes("import('./babylonRefineryBossPresentation')") && backendSource.includes('this.bossPresentation?.sync(normalizedArgs[0], qualityMode)'),'Babylon backend must attach and synchronize the refinery boss presentation before rendering');
+assert(bossPresentationSource.includes("cueTimingOwnership")===false && bossPresentationSource.includes("resolveEnemyBossAnimation"),'runtime boss presentation must consume existing boss timing signals rather than own gameplay timing');
+console.log('GRAPHICS_ASSET_PIPELINE_PASS contract=renderer-neutral runtime=babylon codecs=local lod=adaptive cache=bounded fallbacks=preserved assault-lod0=flagship suppressor-lod0=flagship technician-lod0=flagship elite-lod0=flagship boss-lod0=flagship');
