@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { OPERATOR_CLASS_ASSET_FAMILIES } from '../src/game/graphicsAssetManifest';
+import { ENEMY_ASSET_FAMILIES, OPERATOR_CLASS_ASSET_FAMILIES } from '../src/game/graphicsAssetManifest';
 import { GRAPHICS_ASSET_STANDARDS, createGraphicsAssetSpec, graphicsAssetLodForDetailScale, selectGraphicsAssetSpec, validateGraphicsAssetSpec, type GraphicsAssetFamily } from '../src/game/graphicsAssets';
 function assert(condition: unknown, message: string) { if (!condition) throw new Error(message); }
 assert(GRAPHICS_ASSET_STANDARDS.runtimeFormat==='glb' && GRAPHICS_ASSET_STANDARDS.unitScaleMeters===1 && GRAPHICS_ASSET_STANDARDS.upAxis==='+Y' && GRAPHICS_ASSET_STANDARDS.forwardAxis==='+X','authored runtime asset coordinate/format contract changed');
@@ -22,6 +22,10 @@ assert(selectGraphicsAssetSpec(vectorFamily,0.78)?.id==='operator-vector-lod1' &
 const systemsFamily=OPERATOR_CLASS_ASSET_FAMILIES.systems;
 assert(selectGraphicsAssetSpec(systemsFamily,1)?.id==='operator-systems-lod0','Flagship detail must select the authored Systems LOD0 asset');
 assert(selectGraphicsAssetSpec(systemsFamily,0.78)?.id==='operator-systems-lod1' && selectGraphicsAssetSpec(systemsFamily,0.5)?.id==='operator-systems-lod2','Systems balanced/performance LOD selection must remain budgeted');
+const assaultFamily=ENEMY_ASSET_FAMILIES.assault;
+assert(selectGraphicsAssetSpec(assaultFamily,1)?.id==='enemy-assault-lod0','Flagship detail must select the authored assault enemy LOD0 asset');
+assert(selectGraphicsAssetSpec(assaultFamily,0.78)?.id==='enemy-assault-lod1' && selectGraphicsAssetSpec(assaultFamily,0.5)?.id==='enemy-assault-lod2','Assault balanced/performance LOD selection must remain budgeted');
+assert(selectGraphicsAssetSpec(ENEMY_ASSET_FAMILIES.suppressor,1)?.id==='enemy-suppressor-lod1' && selectGraphicsAssetSpec(ENEMY_ASSET_FAMILIES.technician,1)?.id==='enemy-technician-lod1' && selectGraphicsAssetSpec(ENEMY_ASSET_FAMILIES.elite,1)?.id==='enemy-elite-lod1','Unpromoted enemy families must retain their proven Flagship fallback until P28-D5 through P28-D7');
 const contractSource=readFileSync(resolve(process.cwd(),'src/game/graphicsAssets.ts'),'utf8');
 const runtimeSource=readFileSync(resolve(process.cwd(),'src/game/babylonGraphicsAssets.ts'),'utf8');
 const loaderSource=readFileSync(resolve(process.cwd(),'src/game/babylonGltfLoader.ts'),'utf8');
@@ -37,4 +41,4 @@ for (const token of ['OPERATOR_ASSET_FAMILY','OPERATOR_CLASS_ASSET_FAMILIES','EN
 assert(rendererSource.includes("from './graphicsAssetManifest'") && rendererSource.includes("from './graphicsAssets'") && rendererSource.includes("from './babylonGraphicsAssets'"),'Babylon combat renderer must consume shared manifest/contract through Babylon runtime');
 assert(rendererSource.includes('runtime.preload(') && rendererSource.includes('runtime.instantiate('),'Babylon combat renderer must use the shared cached asset runtime');
 assert(rendererSource.includes("dataset.operatorVisual = 'authored-fallback-babylon'") && rendererSource.includes("dataset.weaponVisual = 'authored-fallback-babylon'") && rendererSource.includes("dataset.environmentVisual = 'authored-fallback-babylon'"),'authored asset failures must preserve Babylon procedural presentation fallbacks');
-console.log('GRAPHICS_ASSET_PIPELINE_PASS contract=renderer-neutral runtime=babylon codecs=local lod=adaptive cache=bounded fallbacks=preserved');
+console.log('GRAPHICS_ASSET_PIPELINE_PASS contract=renderer-neutral runtime=babylon codecs=local lod=adaptive cache=bounded fallbacks=preserved assault-lod0=flagship');
