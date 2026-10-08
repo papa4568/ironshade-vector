@@ -482,6 +482,7 @@ export const ENEMY_ASSET_FAMILIES = {
   technician: {
     id: 'enemy-technician',
     lods: {
+      0: createGraphicsAssetSpec('enemy-technician-lod0', 'enemy', '/assets/models/enemies/enemy-technician-lod0.glb', 0),
       1: createGraphicsAssetSpec('enemy-technician-lod1', 'enemy', '/assets/models/enemies/enemy-technician-lod1.glb', 1),
       2: createGraphicsAssetSpec('enemy-technician-lod2', 'enemy', '/assets/models/enemies/enemy-technician-lod2.glb', 2),
     },
