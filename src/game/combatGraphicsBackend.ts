@@ -62,12 +62,11 @@ export function resolveRenderDowngradeReason(
   reducedEffects: boolean,
 ) {
   if (tier !== 'high' && tier !== 'balanced' && tier !== 'performance') return 'pending';
-  const reasons: string[] = [];
   const selectedTierCost = qualityMode === 'performance' ? 2 : reducedEffects ? 1 : 0;
-  if (qualityMode === 'performance') reasons.push('performance-mode');
-  if (reducedEffects) reasons.push('reduced-effects');
-  if (RENDER_TIER_COST[tier] > selectedTierCost) reasons.push('sustained-frame-pressure');
-  return reasons.length ? reasons.join('+') : 'none';
+  if (RENDER_TIER_COST[tier] > selectedTierCost) return 'sustained-frame-pressure';
+  if (qualityMode === 'performance') return 'performance-mode';
+  if (reducedEffects) return 'reduced-effects';
+  return 'none';
 }
 
 export interface CombatGraphicsLifecycle {
