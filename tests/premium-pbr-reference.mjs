@@ -3,6 +3,7 @@ import './premium-character-source.mjs';
 import './vanguard-operator-lod0.mjs';
 import './vector-operator-lod0.mjs';
 import './systems-operator-lod0.mjs';
+import './assault-enemy-lod0.mjs';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { NullEngine } from '@babylonjs/core/Engines/nullEngine.js';
