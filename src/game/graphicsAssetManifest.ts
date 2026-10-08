@@ -23,6 +23,7 @@ export const OPERATOR_CLASS_ASSET_FAMILIES = {
   vector: {
     id: 'operator-vector',
     lods: {
+      0: createGraphicsAssetSpec('operator-vector-lod0', 'operator', '/assets/models/operators/operator-vector-lod0.glb', 0),
       1: createGraphicsAssetSpec('operator-vector-lod1', 'operator', '/assets/models/operators/operator-vector-lod1.glb', 1),
       2: createGraphicsAssetSpec('operator-vector-lod2', 'operator', '/assets/models/operators/operator-vector-lod2.glb', 2),
     },

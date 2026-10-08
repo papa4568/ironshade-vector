@@ -252,6 +252,8 @@ if (process.argv[1] && resolve(process.argv[1]) === modulePath) {
   await writePremiumCharacterSourceReference();
   const { writeVanguardOperatorLod0 } = await import('./prepare-vanguard-operator-lod0.mjs');
   await writeVanguardOperatorLod0();
+  const { writeVectorOperatorLod0 } = await import('./prepare-vector-operator-lod0.mjs');
+  await writeVectorOperatorLod0();
   const { writePremiumPbrSurfaceLibrary } = await import('./prepare-premium-pbr-library.mjs');
   await writePremiumPbrSurfaceLibrary();
 }

@@ -153,13 +153,14 @@ try {
         throw new Error(`Authored operator render tier telemetry is missing: ${JSON.stringify(lastState)}`);
       }
       const expectedSharedLod = lastState.renderTier === 'performance' ? 2 : 1;
-      const expectedOperatorLod = lastState.operatorClass === 'vanguard' && lastState.renderTier === 'high'
+      const hasHeroLod0 = lastState.operatorClass === 'vanguard' || lastState.operatorClass === 'vector';
+      const expectedOperatorLod = hasHeroLod0 && lastState.renderTier === 'high'
         ? 0
         : expectedSharedLod;
       const validAssets = new Set([
         `operator-field-suit-lod${expectedSharedLod}`,
-        `operator-vanguard-lod${expectedOperatorLod}`,
-        `operator-vector-lod${expectedSharedLod}`,
+        `operator-vanguard-lod${lastState.renderTier === 'high' ? 0 : expectedSharedLod}`,
+        `operator-vector-lod${lastState.renderTier === 'high' ? 0 : expectedSharedLod}`,
         `operator-systems-lod${expectedSharedLod}`,
       ]);
       if (!validAssets.has(lastState.asset)) {

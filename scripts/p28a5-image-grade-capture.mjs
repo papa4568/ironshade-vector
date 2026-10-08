@@ -3,7 +3,7 @@ import { writeFile } from 'node:fs/promises';
 const cdpBase = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9223';
 const screenshotPath = process.env.BROWSER_E2E_P28A5_LOW_VISIBILITY_SCREENSHOT ?? 'browser-p28a5-low-visibility.png';
 const reportPath = process.env.BROWSER_E2E_P28A5_REPORT ?? 'browser-p28a5-image-grade.json';
-// Historical proof markers retained for completed candidates: visualDetail: 'p28-c5-refinery-processor-lod0'; visualDetail: 'p28-c6-refinery-terminal-lod0'; visualDetail: 'p28-c7-refinery-crate-lod0'; visualDetail: 'p28-c8-refinery-world-authored-mappings'; visualDetail: 'p28-c9-refinery-geometry-reuse'; visualDetail: 'p28-d0-premium-character-source'
+// Historical proof markers retained for completed candidates: visualDetail: 'p28-c5-refinery-processor-lod0'; visualDetail: 'p28-c6-refinery-terminal-lod0'; visualDetail: 'p28-c7-refinery-crate-lod0'; visualDetail: 'p28-c8-refinery-world-authored-mappings'; visualDetail: 'p28-c9-refinery-geometry-reuse'; visualDetail: 'p28-d0-premium-character-source'; visualDetail: 'p28-d1-vanguard-operator-lod0'
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 if (typeof WebSocket !== 'function') {
@@ -57,6 +57,22 @@ async function waitFor(expression, label, timeoutMs = 10_000) {
   throw new Error(`Timed out waiting for ${label}.`);
 }
 
+async function clickButton(label) {
+  const clicked = await evaluate(`(() => {
+    const target = ${JSON.stringify(label.toLowerCase())};
+    const button = [...document.querySelectorAll('button')].find(candidate => {
+      const aria = (candidate.getAttribute('aria-label') || '').trim().toLowerCase();
+      const text = (candidate.textContent || '').trim().toLowerCase();
+      return aria === target || text === target;
+    });
+    if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+    button.focus();
+    button.click();
+    return true;
+  })()`);
+  if (!clicked) throw new Error(`Could not activate ${label} while preparing the P28-D2 capture.`);
+}
+
 const readGradeStateExpression = `(() => {
   const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
   if (!(canvas instanceof HTMLCanvasElement)) return null;
@@ -90,14 +106,62 @@ const readGradeStateExpression = `(() => {
 try {
   await call('Runtime.enable');
   await call('Page.enable');
+  const previousTimeOrigin = await evaluate('performance.timeOrigin');
+  const vectorSeeded = await evaluate(`(() => {
+    const stateKey = 'ironshade-vector-state-v1';
+    const state = JSON.parse(localStorage.getItem(stateKey) || 'null');
+    if (!state?.profile) return false;
+    state.profile.operatorClass = 'vector';
+    state.profile.classSelectionComplete = true;
+    state.profile.specialization = null;
+    state.profile.specializationOverclock = false;
+    state.profile.level = 7;
+    state.profile.xp = Math.max(Number(state.profile.xp || 0), 1890);
+    state.profile.progressionPoints = 6;
+    state.profile.allocatedNodes = [];
+    state.profile.operatorNetwork = {
+      schemaVersion: 3,
+      startNodeId: 'start-vector',
+      allocatedNodeIds: [],
+      unspentPoints: 6,
+      plannedTargetNodeIds: [],
+    };
+    state.operatorNetworkSchemaVersion = 3;
+    localStorage.setItem(stateKey, JSON.stringify(state));
+    location.reload();
+    return true;
+  })()`);
+  if (!vectorSeeded) throw new Error('Could not seed the deterministic Vector operator profile for P28-D2 capture.');
+
+  await waitFor(`performance.timeOrigin !== ${JSON.stringify(previousTimeOrigin)}`, 'Vector profile browser reload', 20_000);
+  await waitFor(`(() => {
+    const labels = [...document.querySelectorAll('button[data-primary-area]')].map(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase());
+    return document.readyState === 'complete' && labels.includes('operations');
+  })()`, 'Vector seeded Command Deck', 20_000);
+  await clickButton('Operations');
+  await waitFor(`[...document.querySelectorAll('button')].some(button => (button.textContent || '').trim().toLowerCase() === 'contracts')`, 'Vector Operations navigation', 20_000);
+  await clickButton('Contracts');
+  await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('contract board') && [...document.querySelectorAll('button')].some(button => (button.textContent || '').trim().toLowerCase() === 'deploy selected contract')`, 'Vector Contract Board', 20_000);
+  const refinerySelected = await evaluate(`(() => {
+    const button = [...document.querySelectorAll('button[data-location]')].find(candidate => candidate.dataset.location === 'asteroid-refinery');
+    if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+    button.click();
+    return true;
+  })()`);
+  if (!refinerySelected) throw new Error('Could not select the asteroid-refinery contract for the P28-D2 capture.');
+  await waitFor(`[...document.querySelectorAll('button[data-location]')].some(button => button.dataset.location === 'asteroid-refinery' && button.classList.contains('selected'))`, 'Vector asteroid-refinery contract selection', 20_000);
+  await clickButton('Deploy Selected Contract');
+  await waitFor(`document.querySelectorAll('canvas').length > 0`, 'Vector combat surface', 20_000);
+
   await waitFor(`(() => {
     const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
     return canvas?.dataset.babylonPostStack === 'on:qa-explicit'
       && canvas?.dataset.environmentImageGrade === 'p28-a5-dark-separation-v1'
       && canvas?.dataset.environmentImageGradeMode === 'normal'
       && canvas?.dataset.operatorVisual === 'authored-0-babylon'
-      && canvas?.dataset.operatorAsset === 'operator-vanguard-lod0';
-  })()`, 'normal Flagship refinery grade');
+      && canvas?.dataset.operatorAsset === 'operator-vector-lod0'
+      && canvas?.dataset.operatorClassAsset === 'vector';
+  })()`, 'normal Flagship refinery grade with Vector LOD0', 90_000);
 
   const normal = await evaluate(readGradeStateExpression);
   if (!normal
@@ -108,8 +172,8 @@ try {
     || normal.refineryWorldAuthoredCount !== normal.refineryWorldMappedCount
     || normal.refineryWorldFallbackCount !== 0
     || normal.operatorVisual !== 'authored-0-babylon'
-    || normal.operatorAsset !== 'operator-vanguard-lod0'
-    || normal.operatorClassAsset !== 'vanguard'
+    || normal.operatorAsset !== 'operator-vector-lod0'
+    || normal.operatorClassAsset !== 'vector'
     || normal.operatorRig !== 'articulated'
     || normal.operatorSocket !== 'weapon-socket'
     || !normal.assetRuntime.includes('cached:')
@@ -141,7 +205,8 @@ try {
     || lowVisibility.grade !== 'p28-a5-dark-separation-v1'
     || lowVisibility.mode !== 'low-visibility'
     || lowVisibility.operatorVisual !== 'authored-0-babylon'
-    || lowVisibility.operatorAsset !== 'operator-vanguard-lod0'
+    || lowVisibility.operatorAsset !== 'operator-vector-lod0'
+    || lowVisibility.operatorClassAsset !== 'vector'
     || !/^aces-exposure-\d+\.\d{2}\+contrast-\d+\.\d{2}$/.test(lowVisibility.tone)
     || !lowVisibility.bloom.startsWith('selective:refinery-selective-v1:')
     || lowVisibility.protected !== 'hud+enemies+hazards+objectives+loot+interactables'
@@ -157,7 +222,7 @@ try {
 
   await writeFile(reportPath, JSON.stringify({
     viewport: 'desktop',
-    visualDetail: 'p28-d1-vanguard-operator-lod0',
+    visualDetail: 'p28-d2-vector-operator-lod0',
     normal,
     lowVisibility,
     screenshot: screenshotPath,
@@ -177,7 +242,7 @@ try {
       && canvas?.dataset.environmentAtmosphere?.includes('exposure-1.055:contrast-0.985:grade-p28-a5-dark-separation-v1');
   })()`, 'restored normal Flagship refinery grade');
 
-  console.log(`BROWSER_P28A5_IMAGE_GRADE_PASS tier=${lowVisibility.tier} detail=p28-d1-vanguard-operator-lod0 normal=${normal.atmosphere} lowVisibility=${lowVisibility.atmosphere} tone=${lowVisibility.tone} cues=1.00 runtime=${normal.assetRuntime} scene=${normal.sceneTelemetry} screenshot=${screenshotPath} bytes=${png.length}`);
+  console.log(`BROWSER_P28A5_IMAGE_GRADE_PASS tier=${lowVisibility.tier} detail=p28-d2-vector-operator-lod0 normal=${normal.atmosphere} lowVisibility=${lowVisibility.atmosphere} tone=${lowVisibility.tone} cues=1.00 runtime=${normal.assetRuntime} scene=${normal.sceneTelemetry} screenshot=${screenshotPath} bytes=${png.length}`);
 } finally {
   socket.close();
 }
