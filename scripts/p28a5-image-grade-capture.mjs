@@ -57,6 +57,22 @@ async function waitFor(expression, label, timeoutMs = 10_000) {
   throw new Error(`Timed out waiting for ${label}.`);
 }
 
+async function clickButton(label) {
+  const clicked = await evaluate(`(() => {
+    const target = ${JSON.stringify(label.toLowerCase())};
+    const button = [...document.querySelectorAll('button')].find(candidate => {
+      const aria = (candidate.getAttribute('aria-label') || '').trim().toLowerCase();
+      const text = (candidate.textContent || '').trim().toLowerCase();
+      return aria === target || text === target;
+    });
+    if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+    button.focus();
+    button.click();
+    return true;
+  })()`);
+  if (!clicked) throw new Error(`Could not activate ${label} while preparing the P28-D2 capture.`);
+}
+
 const readGradeStateExpression = `(() => {
   const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
   if (!(canvas instanceof HTMLCanvasElement)) return null;
@@ -90,6 +106,7 @@ const readGradeStateExpression = `(() => {
 try {
   await call('Runtime.enable');
   await call('Page.enable');
+  const previousTimeOrigin = await evaluate('performance.timeOrigin');
   const vectorSeeded = await evaluate(`(() => {
     const stateKey = 'ironshade-vector-state-v1';
     const state = JSON.parse(localStorage.getItem(stateKey) || 'null');
@@ -98,12 +115,15 @@ try {
     state.profile.classSelectionComplete = true;
     state.profile.specialization = null;
     state.profile.specializationOverclock = false;
-    const currentNetwork = state.profile.operatorNetwork ?? {};
+    state.profile.level = 7;
+    state.profile.xp = Math.max(Number(state.profile.xp || 0), 1890);
+    state.profile.progressionPoints = 6;
+    state.profile.allocatedNodes = [];
     state.profile.operatorNetwork = {
-      ...currentNetwork,
       schemaVersion: 3,
       startNodeId: 'start-vector',
       allocatedNodeIds: [],
+      unspentPoints: 6,
       plannedTargetNodeIds: [],
     };
     state.operatorNetworkSchemaVersion = 3;
@@ -113,6 +133,26 @@ try {
   })()`);
   if (!vectorSeeded) throw new Error('Could not seed the deterministic Vector operator profile for P28-D2 capture.');
 
+  await waitFor(`performance.timeOrigin !== ${JSON.stringify(previousTimeOrigin)}`, 'Vector profile browser reload', 20_000);
+  await waitFor(`(() => {
+    const labels = [...document.querySelectorAll('button[data-primary-area]')].map(button => (button.getAttribute('aria-label') || button.textContent || '').trim().toLowerCase());
+    return document.readyState === 'complete' && labels.includes('operations');
+  })()`, 'Vector seeded Command Deck', 20_000);
+  await clickButton('Operations');
+  await waitFor(`[...document.querySelectorAll('button')].some(button => (button.textContent || '').trim().toLowerCase() === 'contracts')`, 'Vector Operations navigation', 20_000);
+  await clickButton('Contracts');
+  await waitFor(`(document.body?.innerText ?? '').toLowerCase().includes('contract board') && [...document.querySelectorAll('button')].some(button => (button.textContent || '').trim().toLowerCase() === 'deploy selected contract')`, 'Vector Contract Board', 20_000);
+  const refinerySelected = await evaluate(`(() => {
+    const button = [...document.querySelectorAll('button[data-location]')].find(candidate => candidate.dataset.location === 'asteroid-refinery');
+    if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+    button.click();
+    return true;
+  })()`);
+  if (!refinerySelected) throw new Error('Could not select the asteroid-refinery contract for the P28-D2 capture.');
+  await waitFor(`[...document.querySelectorAll('button[data-location]')].some(button => button.dataset.location === 'asteroid-refinery' && button.classList.contains('selected'))`, 'Vector asteroid-refinery contract selection', 20_000);
+  await clickButton('Deploy Selected Contract');
+  await waitFor(`document.querySelectorAll('canvas').length > 0`, 'Vector combat surface', 20_000);
+
   await waitFor(`(() => {
     const canvas = [...document.querySelectorAll('canvas')].find(candidate => candidate.dataset.environmentVisual === 'authored-refinery-babylon');
     return canvas?.dataset.babylonPostStack === 'on:qa-explicit'
@@ -121,7 +161,7 @@ try {
       && canvas?.dataset.operatorVisual === 'authored-0-babylon'
       && canvas?.dataset.operatorAsset === 'operator-vector-lod0'
       && canvas?.dataset.operatorClassAsset === 'vector';
-  })()`, 'normal Flagship refinery grade with Vector LOD0');
+  })()`, 'normal Flagship refinery grade with Vector LOD0', 90_000);
 
   const normal = await evaluate(readGradeStateExpression);
   if (!normal
