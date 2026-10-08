@@ -94,7 +94,7 @@ for (const name of contract.roleSilhouetteNodes) assert(nodeByName(gltf, name), 
 for (const name of ['technician-power-cell-left', 'technician-power-cell-right', 'technician-tool-canister-left', 'technician-tool-canister-right', 'technician-tool-gauntlet', 'technician-rack-status']) {
   assert(nodeByName(gltf, name), `Technician enemy LOD0 is missing authored hardware node ${name}`);
 }
-const mast = nodeByName(gltf, 'technician-sensor-mast');
+const mast = nodeByName(gltf, 'technician-mast');
 const rack = nodeByName(gltf, 'technician-tool-rack');
 const fieldTool = nodeByName(gltf, 'technician-field-tool');
 const harness = nodeByName(gltf, 'technician-tool-harness');
