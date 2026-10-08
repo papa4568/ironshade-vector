@@ -17,6 +17,12 @@ const rendererSource=readFileSync(resolve(process.cwd(),'src/game/babylonCombatR
 const assetsSource=readFileSync(resolve(process.cwd(),'src/game/babylonGraphicsAssets.ts'),'utf8');
 const worldSource=readFileSync(resolve(process.cwd(),'src/game/babylonWorldPresentation.ts'),'utf8');
 const postSource=readFileSync(resolve(process.cwd(),'src/game/babylonRefineryPostProcessing.ts'),'utf8');
+const recoveryFloorBytes=readFileSync(resolve(process.cwd(),'public/assets/models/environments/refinery-floor-panel-lod2.glb'));
+const recoveryFloorJsonLength=recoveryFloorBytes.readUInt32LE(12);
+const recoveryFloorGltf=JSON.parse(recoveryFloorBytes.subarray(20,20+recoveryFloorJsonLength).toString('utf8').trim()) as { materials?: { name?: string }[]; meshes?: { primitives?: { material?: number }[] }[]; nodes?: { mesh?: number }[] };
+const recoveryFloorShellMaterial=recoveryFloorGltf.materials?.findIndex(material=>material.name==='refinery-shell') ?? -1;
+const recoveryFloorShellMeshes=new Set((recoveryFloorGltf.meshes??[]).flatMap((mesh,index)=>(mesh.primitives??[]).some(primitive=>primitive.material===recoveryFloorShellMaterial)?[index]:[]));
+assert(recoveryFloorShellMaterial>=0 && (recoveryFloorGltf.nodes??[]).some(node=>typeof node.mesh==='number' && recoveryFloorShellMeshes.has(node.mesh)),'performance-tier refinery floor LOD2 must keep a mounted refinery-shell premium surface');
 assert(!gameCanvasSource.includes('useRef<SimState>(createMissionState(firstMission))') && gameCanvasSource.includes('useState(() => createMissionState(firstMission))'),'GameCanvas simulation must use lazy one-time initialization');
 assert(gameCanvasSource.includes('profileSettingsRef.current.graphicsQuality') && gameCanvasSource.includes('canvas.dataset.graphicsQuality = selectedQuality'),'combat loop must consume/expose graphics quality mode');
 assert(armorySource.includes('aria-label="Graphics quality"') && armorySource.includes('<option value="flagship">Flagship</option>') && armorySource.includes('<option value="performance">Performance</option>'),'settings must expose Flagship and Performance');
