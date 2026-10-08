@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   patch:
-    if: github.event.head_commit.message == 'chore: apply exact P28-D5 maintenance patch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,26 +20,24 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-
           smoke = Path('scripts/browser-runtime-smoke.mjs')
           smoke_text = smoke.read_text()
           old_smoke = "    role === 'assault' && state.renderTier === 'high' ? 0 : expectedSharedLod,"
           new_smoke = "    (role === 'assault' || role === 'suppressor') && state.renderTier === 'high' ? 0 : expectedSharedLod,"
-          assert smoke_text.count(old_smoke) == 1, f'unexpected browser smoke match count: {smoke_text.count(old_smoke)}'
+          assert smoke_text.count(old_smoke) == 1
           smoke.write_text(smoke_text.replace(old_smoke, new_smoke))
-
           manifest = Path('src/game/graphicsAssetManifest.ts')
           manifest_text = manifest.read_text()
           old_manifest = "      2: createGraphicsAssetSpec('jovian-harvester-storm-bus-isolator-lod2', 'interactable', '/assets/models/interactables/spin-habitat-spin-bus-isolator-lod2.glb', 2),"
           new_manifest = "      2: createGraphicsAssetSpec('jovian-harvester-storm-bus-isolator-lod2', 'interactable', '/assets/models/interactables/jovian-harvester-storm-bus-isolator-lod2.glb', 2),"
-          assert manifest_text.count(old_manifest) == 1, f'unexpected manifest repair match count: {manifest_text.count(old_manifest)}'
+          assert manifest_text.count(old_manifest) == 1
           manifest.write_text(manifest_text.replace(old_manifest, new_manifest))
           PY
       - name: Commit exact patch
         shell: bash
         run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add scripts/browser-runtime-smoke.mjs src/game/graphicsAssetManifest.ts
           git diff --cached --check
           git commit -m 'P28-D5 align runtime proof and restore manifest path'
