@@ -1,7 +1,7 @@
 import { createGraphicsAssetSpec, type GraphicsAssetFamily } from './graphicsAssets';
 
 // LOD1 is the articulated mobile gameplay model; LOD2 remains the ultra-light fallback.
-// Hero-quality LOD0 will be added after the animation and socket contract is proven.
+// The generic field suit remains LOD1/LOD2; class families may add proven hero LOD0 assets.
 // Keeping only shipped files in the family guarantees adaptive selection falls back to a real asset.
 export const OPERATOR_ASSET_FAMILY: GraphicsAssetFamily = {
   id: 'operator-field-suit',
@@ -15,6 +15,7 @@ export const OPERATOR_CLASS_ASSET_FAMILIES = {
   vanguard: {
     id: 'operator-vanguard',
     lods: {
+      0: createGraphicsAssetSpec('operator-vanguard-lod0', 'operator', '/assets/models/operators/operator-vanguard-lod0.glb', 0),
       1: createGraphicsAssetSpec('operator-vanguard-lod1', 'operator', '/assets/models/operators/operator-vanguard-lod1.glb', 1),
       2: createGraphicsAssetSpec('operator-vanguard-lod2', 'operator', '/assets/models/operators/operator-vanguard-lod2.glb', 2),
     },
