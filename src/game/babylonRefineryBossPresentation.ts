@@ -10,11 +10,20 @@ import {
 } from './babylonGraphicsAssets';
 import { resolveEnemyBossAnimation } from './enemyBossAnimation';
 import { ENEMY_ASSET_FAMILIES } from './graphicsAssetManifest';
-import { selectGraphicsAssetSpec } from './graphicsAssets';
+import { createGraphicsAssetSpec, selectGraphicsAssetSpec, type GraphicsAssetFamily } from './graphicsAssets';
 import type { GraphicsQualityMode } from './renderQuality';
 import type { Enemy, SimState } from './sim';
 
 const WORLD_SCALE = 0.02;
+
+export const REFINERY_BOSS_ASSET_FAMILY = {
+  id: ENEMY_ASSET_FAMILIES.boss.id,
+  lods: {
+    0: createGraphicsAssetSpec('enemy-boss-lod0', 'boss', '/assets/models/bosses/enemy-boss-lod0.glb', 0),
+    1: ENEMY_ASSET_FAMILIES.boss.lods[1],
+    2: ENEMY_ASSET_FAMILIES.boss.lods[2],
+  },
+} as const satisfies GraphicsAssetFamily;
 
 type BossRigRest = {
   position: { x: number; y: number; z: number };
@@ -229,7 +238,7 @@ export class BabylonRefineryBossPresentation {
   }
 
   private ensureAsset(detailScale: number) {
-    const spec = selectGraphicsAssetSpec(ENEMY_ASSET_FAMILIES.boss, detailScale);
+    const spec = selectGraphicsAssetSpec(REFINERY_BOSS_ASSET_FAMILY, detailScale);
     if (!spec) return;
     const signature = `${spec.id}:${detailScale.toFixed(2)}`;
     if (signature === this.assetSignature) return;
