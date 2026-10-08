@@ -33,8 +33,6 @@ Only active/future executable engineering work lives here. Completed and verifie
 
 #### D. Hero operators and enemy presentation
 
-- [ ] **P28-D7 — Ship elite enemy LOD0** — Add a hero LOD0 for the elite family that reads as higher threat through silhouette/material detail before HUD labels. **Done when:** elite identity is distinguishable at gameplay zoom without hue-only dependence, lifecycle/telegraph alignment remains correct, and standard build/APK gates pass.
-
 - [ ] **P28-D8 — Ship refinery boss LOD0** — Add a boss-quality LOD0 with stronger phase-readable hard-surface detail and emissive anchors while keeping boss mechanics and cue timing unchanged. **Done when:** Flagship uses the boss LOD0, phase cues align with the authored model, visual quality is materially above the current asset, and standard build/APK gates pass.
 
 #### E. Refinery ambience and local visual richness
