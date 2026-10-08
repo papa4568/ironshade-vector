@@ -47,9 +47,7 @@ test -n "$PORTRAIT_PID"
 adb forward --remove tcp:9222 >/dev/null 2>&1 || true
 adb forward tcp:9222 "localabstract:webview_devtools_remote_${PORTRAIT_PID}"
 ANDROID_P27D5_PHASE=large-screen CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-babylon-lifecycle-smoke.mjs | tee -a "$REPORT"
-ANDROID_LARGE_SCREEN_PHASE=portrait ANDROID_LARGE_SCREEN_REPORT_PATH=android-large-screen-portrait.json CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-large-screen-smoke.mjs | tee -a "$REPORT"
-
-adb exec-out screencap -p > android-large-screen-portrait.png
+ANDROID_LARGE_SCREEN_PHASE=portrait ANDROID_LARGE_SCREEN_REPORT_PATH=android-large-screen-portrait.json ANDROID_LARGE_SCREEN_SCREENSHOT_PATH=android-large-screen-portrait.png CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-large-screen-smoke.mjs | tee -a "$REPORT"
 test -s android-large-screen-portrait.png
 
 adb shell wm size 1800x1400
@@ -62,9 +60,7 @@ fi
 
 adb forward --remove tcp:9222 >/dev/null 2>&1 || true
 adb forward tcp:9222 "localabstract:webview_devtools_remote_${RESIZED_PID}"
-ANDROID_LARGE_SCREEN_PHASE=resized ANDROID_LARGE_SCREEN_REPORT_PATH=android-large-screen-resized.json CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-large-screen-smoke.mjs | tee -a "$REPORT"
-
-adb exec-out screencap -p > android-large-screen-resized.png
+ANDROID_LARGE_SCREEN_PHASE=resized ANDROID_LARGE_SCREEN_REPORT_PATH=android-large-screen-resized.json ANDROID_LARGE_SCREEN_SCREENSHOT_PATH=android-large-screen-resized.png CDP_ENDPOINT=http://127.0.0.1:9222 node scripts/android-large-screen-smoke.mjs | tee -a "$REPORT"
 test -s android-large-screen-resized.png
 
 adb shell dumpsys activity activities | grep -E 'mResumedActivity|mCurrentFocus|app\.ironshade\.vector' | head -n 30 | tee -a "$REPORT" || true
