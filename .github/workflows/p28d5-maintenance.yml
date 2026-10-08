@@ -1,44 +1,49 @@
-name: P28-D5 maintenance patch
+name: Temporary P28-D5 maintenance patch
 
 on:
-  pull_request:
-    types: [opened, synchronize]
+  push:
+    branches:
+      - chatgpt/p28-d5-suppressor-enemy-lod0
 
 permissions:
   contents: write
 
 jobs:
   patch:
-    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: chatgpt/p28-d5-suppressor-enemy-lod0
           fetch-depth: 0
       - name: Apply exact asserted replacements
-        shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
+
           smoke = Path('scripts/browser-runtime-smoke.mjs')
           smoke_text = smoke.read_text()
           old_smoke = "    role === 'assault' && state.renderTier === 'high' ? 0 : expectedSharedLod,"
           new_smoke = "    (role === 'assault' || role === 'suppressor') && state.renderTier === 'high' ? 0 : expectedSharedLod,"
-          assert smoke_text.count(old_smoke) == 1
-          smoke.write_text(smoke_text.replace(old_smoke, new_smoke))
+          if smoke_text.count(old_smoke) != 1:
+              raise SystemExit('browser runtime suppressor expectation anchor not found exactly once')
+          smoke.write_text(smoke_text.replace(old_smoke, new_smoke, 1))
+
           manifest = Path('src/game/graphicsAssetManifest.ts')
           manifest_text = manifest.read_text()
           old_manifest = "      2: createGraphicsAssetSpec('jovian-harvester-storm-bus-isolator-lod2', 'interactable', '/assets/models/interactables/spin-habitat-spin-bus-isolator-lod2.glb', 2),"
           new_manifest = "      2: createGraphicsAssetSpec('jovian-harvester-storm-bus-isolator-lod2', 'interactable', '/assets/models/interactables/jovian-harvester-storm-bus-isolator-lod2.glb', 2),"
-          assert manifest_text.count(old_manifest) == 1
-          manifest.write_text(manifest_text.replace(old_manifest, new_manifest))
+          if manifest_text.count(old_manifest) != 1:
+              raise SystemExit('Jovian manifest repair anchor not found exactly once')
+          manifest.write_text(manifest_text.replace(old_manifest, new_manifest, 1))
           PY
       - name: Commit exact patch
-        shell: bash
         run: |
+          set -euo pipefail
+          git diff --check
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add scripts/browser-runtime-smoke.mjs src/game/graphicsAssetManifest.ts
-          git diff --cached --check
-          git commit -m 'P28-D5 align runtime proof and restore manifest path'
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          git commit -m "P28-D5 align runtime proof and restore manifest path"
+          git push origin HEAD:chatgpt/p28-d5-suppressor-enemy-lod0
