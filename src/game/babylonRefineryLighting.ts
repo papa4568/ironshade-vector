@@ -501,8 +501,7 @@ export class BabylonRefineryLighting {
         + ':coverage-' + (profile.shadow.orthoExtent + profile.shadow.casterPadding)
         + ':snap-' + profile.shadow.anchorSnap
         + ':casters-' + shadowCasterCount
-        + ':rebuilds-' + this.workProfile.shadowListRebuildCount
-      : 'key:off:rebuilds-' + this.workProfile.shadowListRebuildCount;
+      : 'key:off';
     this.canvas.dataset.actorGrounding = REFINERY_ACTOR_GROUNDING_PROFILE.id
       + ':radius-' + REFINERY_ACTOR_GROUNDING_PROFILE.nearbyRadius
       + ':alpha-' + REFINERY_ACTOR_GROUNDING_PROFILE.alphaTextureSize;
@@ -516,8 +515,7 @@ export class BabylonRefineryLighting {
       + ':aces-' + this.scene.imageProcessingConfiguration.exposure.toFixed(2);
     this.canvas.dataset.babylonPbrMaterials = 'pbr:' + materialStats.pbr
       + '|standard:' + materialStats.standard
-      + '|max-lights:' + budget.maxSimultaneousLights
-      + '|material-rebuilds:' + this.workProfile.materialLightRebuildCount;
+      + '|max-lights:' + budget.maxSimultaneousLights;
     this.canvas.dataset.refineryLightingWork = [
       'frames:' + this.workProfile.frameCount,
       'shadow-rebuilds:' + this.workProfile.shadowListRebuildCount,
