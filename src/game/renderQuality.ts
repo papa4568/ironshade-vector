@@ -39,6 +39,7 @@ export type RenderBudgetSnapshot = {
 export const TARGET_FRAME_MS = 1000 / 60;
 export const MAX_MEASURED_FRAME_MS = 250;
 export const SUSPEND_GAP_MS = 1000;
+const MAX_SMOOTHED_FRAME_SAMPLE_MS = 80;
 const TIER_NAME: Record<AdaptiveRenderTier, AdaptiveRenderTierName> = { 0: 'high', 1: 'balanced', 2: 'performance' };
 const PIXEL_RATIO_SCALE: Record<AdaptiveRenderTier, number> = { 0: 1, 1: 0.84, 2: 0.68 };
 const DETAIL_SCALE: Record<AdaptiveRenderTier, number> = { 0: 1, 1: 0.78, 2: 0.5 };
@@ -66,7 +67,7 @@ function qualityFloorTier(requestedQuality: number): AdaptiveRenderTier {
 }
 
 function severeFramePressureWeight(frameMs: number) {
-  if (frameMs <= 80) return 1;
+  if (frameMs <= MAX_SMOOTHED_FRAME_SAMPLE_MS) return 1;
   return Math.min(8, Math.max(2, Math.ceil(frameMs / 50)));
 }
 
@@ -94,7 +95,10 @@ export class AdaptiveRenderBudget {
     const previousRuntimeTier = this.runtimeTier;
 
     if (frameSampleState === 'measured') {
-      this.smoothedFrameMs = this.smoothedFrameMs * 0.92 + measuredFrameMs * 0.08;
+      // Keep the historical EMA bounded so a catastrophic frame cannot poison recovery for seconds,
+      // while still counting the full measured sample below as weighted runtime pressure.
+      const smoothedSampleMs = Math.min(measuredFrameMs, MAX_SMOOTHED_FRAME_SAMPLE_MS);
+      this.smoothedFrameMs = this.smoothedFrameMs * 0.92 + smoothedSampleMs * 0.08;
       if (this.smoothedFrameMs > 21.5) {
         const pressureWeight = severeFramePressureWeight(measuredFrameMs);
         this.slowSamples += pressureWeight;
