@@ -31,7 +31,9 @@ assert(selectGraphicsAssetSpec(suppressorFamily,0.78)?.id==='enemy-suppressor-lo
 const technicianFamily=ENEMY_ASSET_FAMILIES.technician;
 assert(selectGraphicsAssetSpec(technicianFamily,1)?.id==='enemy-technician-lod0','Flagship detail must select the authored technician enemy LOD0 asset');
 assert(selectGraphicsAssetSpec(technicianFamily,0.78)?.id==='enemy-technician-lod1' && selectGraphicsAssetSpec(technicianFamily,0.5)?.id==='enemy-technician-lod2','Technician balanced/performance LOD selection must remain budgeted');
-assert(selectGraphicsAssetSpec(ENEMY_ASSET_FAMILIES.elite,1)?.id==='enemy-elite-lod1','Unpromoted elite family must retain its proven Flagship fallback until P28-D7');
+const eliteFamily=ENEMY_ASSET_FAMILIES.elite;
+assert(selectGraphicsAssetSpec(eliteFamily,1)?.id==='enemy-elite-lod0','Flagship detail must select the authored elite enemy LOD0 asset');
+assert(selectGraphicsAssetSpec(eliteFamily,0.78)?.id==='enemy-elite-lod1' && selectGraphicsAssetSpec(eliteFamily,0.5)?.id==='enemy-elite-lod2','Elite balanced/performance LOD selection must remain budgeted');
 const contractSource=readFileSync(resolve(process.cwd(),'src/game/graphicsAssets.ts'),'utf8');
 const runtimeSource=readFileSync(resolve(process.cwd(),'src/game/babylonGraphicsAssets.ts'),'utf8');
 const loaderSource=readFileSync(resolve(process.cwd(),'src/game/babylonGltfLoader.ts'),'utf8');
@@ -47,4 +49,4 @@ for (const token of ['OPERATOR_ASSET_FAMILY','OPERATOR_CLASS_ASSET_FAMILIES','EN
 assert(rendererSource.includes("from './graphicsAssetManifest'") && rendererSource.includes("from './graphicsAssets'") && rendererSource.includes("from './babylonGraphicsAssets'"),'Babylon combat renderer must consume shared manifest/contract through Babylon runtime');
 assert(rendererSource.includes('runtime.preload(') && rendererSource.includes('runtime.instantiate('),'Babylon combat renderer must use the shared cached asset runtime');
 assert(rendererSource.includes("dataset.operatorVisual = 'authored-fallback-babylon'") && rendererSource.includes("dataset.weaponVisual = 'authored-fallback-babylon'") && rendererSource.includes("dataset.environmentVisual = 'authored-fallback-babylon'"),'authored asset failures must preserve Babylon procedural presentation fallbacks');
-console.log('GRAPHICS_ASSET_PIPELINE_PASS contract=renderer-neutral runtime=babylon codecs=local lod=adaptive cache=bounded fallbacks=preserved assault-lod0=flagship suppressor-lod0=flagship technician-lod0=flagship');
+console.log('GRAPHICS_ASSET_PIPELINE_PASS contract=renderer-neutral runtime=babylon codecs=local lod=adaptive cache=bounded fallbacks=preserved assault-lod0=flagship suppressor-lod0=flagship technician-lod0=flagship elite-lod0=flagship');

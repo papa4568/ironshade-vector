@@ -490,6 +490,7 @@ export const ENEMY_ASSET_FAMILIES = {
   elite: {
     id: 'enemy-elite',
     lods: {
+      0: createGraphicsAssetSpec('enemy-elite-lod0', 'enemy', '/assets/models/enemies/enemy-elite-lod0.glb', 0),
       1: createGraphicsAssetSpec('enemy-elite-lod1', 'enemy', '/assets/models/enemies/enemy-elite-lod1.glb', 1),
       2: createGraphicsAssetSpec('enemy-elite-lod2', 'enemy', '/assets/models/enemies/enemy-elite-lod2.glb', 2),
     },
