@@ -260,6 +260,8 @@ if (process.argv[1] && resolve(process.argv[1]) === modulePath) {
   await writeAssaultEnemyLod0();
   const { writeSuppressorEnemyLod0 } = await import('./prepare-suppressor-enemy-lod0.mjs');
   await writeSuppressorEnemyLod0();
+  const { writeTechnicianEnemyLod0 } = await import('./prepare-technician-enemy-lod0.mjs');
+  await writeTechnicianEnemyLod0();
   const { writePremiumPbrSurfaceLibrary } = await import('./prepare-premium-pbr-library.mjs');
   await writePremiumPbrSurfaceLibrary();
 }
