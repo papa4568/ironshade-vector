@@ -31,6 +31,7 @@ export const OPERATOR_CLASS_ASSET_FAMILIES = {
   systems: {
     id: 'operator-systems',
     lods: {
+      0: createGraphicsAssetSpec('operator-systems-lod0', 'operator', '/assets/models/operators/operator-systems-lod0.glb', 0),
       1: createGraphicsAssetSpec('operator-systems-lod1', 'operator', '/assets/models/operators/operator-systems-lod1.glb', 1),
       2: createGraphicsAssetSpec('operator-systems-lod2', 'operator', '/assets/models/operators/operator-systems-lod2.glb', 2),
     },

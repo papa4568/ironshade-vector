@@ -254,6 +254,8 @@ if (process.argv[1] && resolve(process.argv[1]) === modulePath) {
   await writeVanguardOperatorLod0();
   const { writeVectorOperatorLod0 } = await import('./prepare-vector-operator-lod0.mjs');
   await writeVectorOperatorLod0();
+  const { writeSystemsOperatorLod0 } = await import('./prepare-systems-operator-lod0.mjs');
+  await writeSystemsOperatorLod0();
   const { writePremiumPbrSurfaceLibrary } = await import('./prepare-premium-pbr-library.mjs');
   await writePremiumPbrSurfaceLibrary();
 }

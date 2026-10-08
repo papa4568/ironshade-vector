@@ -3,6 +3,7 @@ import { writeFileSync } from 'node:fs';
 const cdpBase = process.env.CDP_ENDPOINT ?? 'http://127.0.0.1:9222';
 const phase = process.env.ANDROID_LARGE_SCREEN_PHASE ?? 'portrait';
 const reportPath = process.env.ANDROID_LARGE_SCREEN_REPORT_PATH ?? `android-large-screen-${phase}.json`;
+const screenshotPath = process.env.ANDROID_LARGE_SCREEN_SCREENSHOT_PATH ?? '';
 const sentinelToken = 'ironshade-p25b-live-resize';
 const timeoutMs = Number(process.env.ANDROID_LARGE_SCREEN_TIMEOUT_MS ?? 45_000);
 const cdpCallTimeoutMs = Number(process.env.ANDROID_LARGE_SCREEN_CDP_TIMEOUT_MS ?? 20_000);
@@ -187,5 +188,17 @@ const report = {
   babylonRendererPreserved,
 };
 writeFileSync(reportPath, JSON.stringify(report, null, 2) + '\n');
+
+if (screenshotPath) {
+  await session.call('Page.enable');
+  const screenshot = await session.call('Page.captureScreenshot', {
+    format: 'png',
+    fromSurface: true,
+    captureBeyondViewport: false,
+  });
+  if (!screenshot?.data) throw new Error(`CDP screenshot capture returned no data for ${phase} phase.`);
+  writeFileSync(screenshotPath, Buffer.from(screenshot.data, 'base64'));
+}
+
 console.log(`ANDROID_P25B_LARGE_SCREEN_PHASE_PASS phase=${phase} viewport=${width}x${height} sw=${smallestWidth} orientation=${metrics.orientation} overflow=none preserved=${phase === 'resized' ? 'true' : 'armed'} babylon=webgl2 renderer=${phase === 'resized' ? 'preserved' : 'armed'}`);
 socket.close();

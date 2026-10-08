@@ -19,6 +19,9 @@ assert(selectGraphicsAssetSpec(vanguardFamily,0.78)?.id==='operator-vanguard-lod
 const vectorFamily=OPERATOR_CLASS_ASSET_FAMILIES.vector;
 assert(selectGraphicsAssetSpec(vectorFamily,1)?.id==='operator-vector-lod0','Flagship detail must select the authored Vector LOD0 asset');
 assert(selectGraphicsAssetSpec(vectorFamily,0.78)?.id==='operator-vector-lod1' && selectGraphicsAssetSpec(vectorFamily,0.5)?.id==='operator-vector-lod2','Vector balanced/performance LOD selection must remain budgeted');
+const systemsFamily=OPERATOR_CLASS_ASSET_FAMILIES.systems;
+assert(selectGraphicsAssetSpec(systemsFamily,1)?.id==='operator-systems-lod0','Flagship detail must select the authored Systems LOD0 asset');
+assert(selectGraphicsAssetSpec(systemsFamily,0.78)?.id==='operator-systems-lod1' && selectGraphicsAssetSpec(systemsFamily,0.5)?.id==='operator-systems-lod2','Systems balanced/performance LOD selection must remain budgeted');
 const contractSource=readFileSync(resolve(process.cwd(),'src/game/graphicsAssets.ts'),'utf8');
 const runtimeSource=readFileSync(resolve(process.cwd(),'src/game/babylonGraphicsAssets.ts'),'utf8');
 const loaderSource=readFileSync(resolve(process.cwd(),'src/game/babylonGltfLoader.ts'),'utf8');
