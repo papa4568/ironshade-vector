@@ -63,6 +63,8 @@ KTX2/Basis Universal remains the preferred mobile runtime texture format. `scrip
 - Repeated static props should remain instancing-friendly where practical, but visible quality takes priority over forcing every asset into a shared instancing shape.
 - Skinning, bone counts, morph targets, and material slots may be as complex as the visual result requires, then simplified only where profiling shows a meaningful target-device cost.
 
+`scripts/prepare-premium-character-source.mjs` is the P28 character-authoring reference path used by the production graphics preparation command. It generates `operators/operator-premium-source-reference-lod0.glb` from cylindrical limbs/tools, chamfered suit/armor bodies, wedge armor/visor details, UV0/tangents, and embedded textured metallic/roughness PBR inputs instead of the legacy cube primitive. The reference keeps the existing `operator-rig`, `hip`, `torso`, `helmet`, arm/leg, `backpack`, and `weapon-socket` node names and transforms so animation, socket, and cue attachment code can adopt richer meshes without changing simulation-owned hitboxes. It is intentionally reference-only; P28-D1 and later hero-family tasks may reuse the proven source contract without changing current runtime LOD selection in D0.
+
 Meshopt remains the geometry-compression target where it preserves asset fidelity. Babylon's glTF loader uses the packaged local Meshopt decoder, and loader registration remains deferred so authored-asset decoding is not added to the synchronous application boot graph.
 
 `graphicsAssetLodForDetailScale()` remains available for runtime fallback/recovery. Flagship/high quality should prefer the authored LOD0 whenever one exists and the target device is not under real measured pressure.
@@ -88,7 +90,7 @@ Meshopt remains the geometry-compression target where it preserves asset fidelit
 ## Validation
 
 - `npm run test:graphics` validates the renderer-neutral asset contract, LOD behavior, Babylon loader/cache ownership, fallbacks, and local decoder configuration.
-- `npm run test:graphics:content` loads and instantiates committed GLBs through Babylon, verifies the deterministic premium-PBR reference rebuild plus UV0/tangent/material texture bindings, and validates content/runtime compatibility and authored bounds.
+- `npm run test:graphics:content` loads and instantiates authored GLBs through Babylon, verifies the deterministic premium-PBR reference rebuild, verifies the premium character source path preserves rig/socket/cue hooks while using non-box textured PBR geometry, and validates content/runtime compatibility and authored bounds.
 - P28-B0 pins the committed premium-PBR reference at `4,288` deterministic bytes; the content test verifies regeneration stability rather than treating that reference size as an art-quality target.
 - `npm run test:graphics:dist` verifies production output contains the Babylon codec payload and does not restore the retired Three Basis codec directory.
 - `scripts/verify-no-three-delivery.mjs` rejects unintended Three packages, imports, chunks, or retired codec assets in browser/APK delivery.
