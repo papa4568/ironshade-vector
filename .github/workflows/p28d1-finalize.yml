@@ -3,7 +3,9 @@ name: P28-D1 finalize source
 on:
   push:
     branches: [chatgpt/p28-d1-vanguard-lod0]
-    paths: ['scripts/p28d1-finalize-source.mjs']
+    paths:
+      - 'scripts/p28d1-finalize-source.mjs'
+      - '.github/workflows/p28d1-finalize.yml'
 
 permissions:
   contents: write
