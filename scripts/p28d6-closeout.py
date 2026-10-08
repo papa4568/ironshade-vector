@@ -24,6 +24,6 @@ entry = """- [x] **P28-D6 — Ship technician enemy LOD0** — Completed 2026-10
   - **Next: P28-D7 — Ship elite enemy LOD0.**
 
 """
-assert 'P28-D6 — Ship technician enemy LOD0' not in archive, 'P28-D6 is already archived'
+assert '- [x] **P28-D6 — Ship technician enemy LOD0**' not in archive, 'P28-D6 is already archived as completed'
 archive = archive.replace(anchor, anchor + entry, 1)
 ARCHIVE.write_text(archive)
