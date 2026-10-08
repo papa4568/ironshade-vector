@@ -19,14 +19,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ "$(git log -1 --pretty=%s)" != "chore: retry P28-D7 verified closeout" ]; then
+          if [ "$(git log -1 --pretty=%s)" != "chore: retry P28-D7 verified closeout native sync" ]; then
             echo "Skipping closeout for non-trigger commit."
             exit 0
           fi
           python scripts/p28d7-closeout.py
+          node agent/tools/sync-roadmap-metadata.mjs --write
           git rm .github/workflows/p28d7-closeout.yml scripts/p28d7-closeout.py
           git diff --check
-          npm run roadmap:validate
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add docs/content-roadmap.md docs/content-roadmap-archive.md agent/roadmap-metadata.json
