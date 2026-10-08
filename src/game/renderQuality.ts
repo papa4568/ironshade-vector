@@ -1,11 +1,20 @@
 export type AdaptiveRenderTier = 0 | 1 | 2;
+export type AdaptiveRenderTierName = 'high' | 'balanced' | 'performance';
 export type GraphicsQualityMode = 'adaptive' | 'flagship' | 'performance';
+export type RenderFrameSampleState = 'measured' | 'ignored-invalid' | 'ignored-suspend-gap';
+export type RenderTierTransition = 'none' | `${AdaptiveRenderTierName}->${AdaptiveRenderTierName}`;
 
 export type RenderBudgetSnapshot = {
   tier: AdaptiveRenderTier;
-  tierName: 'high' | 'balanced' | 'performance';
+  tierName: AdaptiveRenderTierName;
+  runtimeTierName: AdaptiveRenderTierName;
   qualityMode: GraphicsQualityMode;
+  rawFrameMs: number;
+  measuredFrameMs: number;
+  frameSampleState: RenderFrameSampleState;
   smoothedFrameMs: number;
+  lastTierTransition: RenderTierTransition;
+  tierTransitionCount: number;
   targetFrameMs: number;
   frameHeadroomMs: number;
   framePressure: 'healthy' | 'watch' | 'over';
@@ -28,7 +37,9 @@ export type RenderBudgetSnapshot = {
 };
 
 export const TARGET_FRAME_MS = 1000 / 60;
-const TIER_NAME: Record<AdaptiveRenderTier, RenderBudgetSnapshot['tierName']> = { 0: 'high', 1: 'balanced', 2: 'performance' };
+export const MAX_MEASURED_FRAME_MS = 250;
+export const SUSPEND_GAP_MS = 1000;
+const TIER_NAME: Record<AdaptiveRenderTier, AdaptiveRenderTierName> = { 0: 'high', 1: 'balanced', 2: 'performance' };
 const PIXEL_RATIO_SCALE: Record<AdaptiveRenderTier, number> = { 0: 1, 1: 0.84, 2: 0.68 };
 const DETAIL_SCALE: Record<AdaptiveRenderTier, number> = { 0: 1, 1: 0.78, 2: 0.5 };
 const SHADOW_MAP_SIZE: Record<AdaptiveRenderTier, 1024 | 512 | 256> = { 0: 1024, 1: 512, 2: 256 };
@@ -54,21 +65,40 @@ function qualityFloorTier(requestedQuality: number): AdaptiveRenderTier {
   return 0;
 }
 
+function severeFramePressureWeight(frameMs: number) {
+  if (frameMs <= 80) return 1;
+  return Math.min(8, Math.max(2, Math.ceil(frameMs / 50)));
+}
+
 export class AdaptiveRenderBudget {
   // Device class never lowers quality; explicit player settings or sustained measured runtime pressure may do so.
   private runtimeTier: AdaptiveRenderTier = 0;
-  private smoothedFrameMs = 1000 / 60;
+  private smoothedFrameMs = TARGET_FRAME_MS;
   private slowSamples = 0;
   private fastSamples = 0;
+  private lastTierTransition: RenderTierTransition = 'none';
+  private tierTransitionCount = 0;
 
   constructor(_coarse: boolean) {}
 
   sample(frameMs: number, requestedQuality: number, qualityMode: GraphicsQualityMode = 'adaptive'): RenderBudgetSnapshot {
-    if (Number.isFinite(frameMs) && frameMs >= 4 && frameMs <= 80) {
-      this.smoothedFrameMs = this.smoothedFrameMs * 0.92 + frameMs * 0.08;
+    const rawFrameMs = Number.isFinite(frameMs) ? Math.max(0, frameMs) : 0;
+    const frameSampleState: RenderFrameSampleState = !Number.isFinite(frameMs) || frameMs < 4
+      ? 'ignored-invalid'
+      : frameMs > SUSPEND_GAP_MS
+        ? 'ignored-suspend-gap'
+        : 'measured';
+    const measuredFrameMs = frameSampleState === 'measured'
+      ? Math.min(rawFrameMs, MAX_MEASURED_FRAME_MS)
+      : 0;
+    const previousRuntimeTier = this.runtimeTier;
+
+    if (frameSampleState === 'measured') {
+      this.smoothedFrameMs = this.smoothedFrameMs * 0.92 + measuredFrameMs * 0.08;
       if (this.smoothedFrameMs > 21.5) {
-        this.slowSamples += 1;
-        this.fastSamples = Math.max(0, this.fastSamples - 3);
+        const pressureWeight = severeFramePressureWeight(measuredFrameMs);
+        this.slowSamples += pressureWeight;
+        this.fastSamples = Math.max(0, this.fastSamples - 3 * pressureWeight);
       } else if (this.smoothedFrameMs < 17.4) {
         this.fastSamples += 1;
         this.slowSamples = Math.max(0, this.slowSamples - 2);
@@ -88,14 +118,25 @@ export class AdaptiveRenderBudget {
       }
     }
 
+    if (this.runtimeTier !== previousRuntimeTier) {
+      this.lastTierTransition = `${TIER_NAME[previousRuntimeTier]}->${TIER_NAME[this.runtimeTier]}`;
+      this.tierTransitionCount += 1;
+    }
+
     const requested = Math.max(0.35, Math.min(1, requestedQuality));
     const modeFloor: AdaptiveRenderTier = qualityMode === 'performance' ? 2 : 0;
     const tier = Math.max(this.runtimeTier, modeFloor, qualityFloorTier(requested)) as AdaptiveRenderTier;
     return {
       tier,
       tierName: TIER_NAME[tier],
+      runtimeTierName: TIER_NAME[this.runtimeTier],
       qualityMode,
+      rawFrameMs,
+      measuredFrameMs,
+      frameSampleState,
       smoothedFrameMs: this.smoothedFrameMs,
+      lastTierTransition: this.lastTierTransition,
+      tierTransitionCount: this.tierTransitionCount,
       targetFrameMs: TARGET_FRAME_MS,
       frameHeadroomMs: TARGET_FRAME_MS - this.smoothedFrameMs,
       framePressure: this.smoothedFrameMs > 21.5 ? 'over' : this.smoothedFrameMs > 18 ? 'watch' : 'healthy',
