@@ -5,9 +5,11 @@ on:
     paths:
       - 'src/game/babylonRefineryPostProcessing.ts'
       - 'src/game/refineryAtmosphere.ts'
+      - 'src/game/babylonRefineryBossPresentation.ts'
       - 'tests/babylon-refinery-post-processing.ts'
       - 'tests/refinery-atmosphere.ts'
       - 'scripts/p28a5-image-grade-capture.mjs'
+      - 'scripts/p28d8-boss-capture.mjs'
       - '.github/workflows/p28-image-grade-visual.yml'
   workflow_dispatch:
 
@@ -111,7 +113,7 @@ jobs:
           cat p28-image-grade-chrome.log
           exit 1
 
-      - name: Capture Flagship normal and low-visibility grades
+      - name: Capture Flagship normal, low-visibility, and boss grades
         env:
           CDP_ENDPOINT: http://127.0.0.1:9223
           BROWSER_E2E_APP_URL: http://127.0.0.1:4173/
@@ -121,11 +123,14 @@ jobs:
           BROWSER_E2E_SCREENSHOT: browser-p28a5-normal.png
           BROWSER_E2E_P28A5_LOW_VISIBILITY_SCREENSHOT: browser-p28a5-low-visibility.png
           BROWSER_E2E_P28A5_REPORT: browser-p28a5-image-grade.json
+          BROWSER_E2E_P28D8_BOSS_SCREENSHOT: browser-p28d8-boss.png
+          BROWSER_E2E_P28D8_BOSS_REPORT: browser-p28d8-boss.json
         run: |
           node scripts/browser-runtime-smoke.mjs
           node scripts/p28a5-image-grade-capture.mjs
+          node scripts/p28d8-boss-capture.mjs
 
-      - name: Upload P28-A5 visual evidence
+      - name: Upload P28 visual evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@v7
         with:
@@ -134,6 +139,8 @@ jobs:
             browser-p28a5-normal.png
             browser-p28a5-low-visibility.png
             browser-p28a5-image-grade.json
+            browser-p28d8-boss.png
+            browser-p28d8-boss.json
             p28-image-grade-preview.log
             p28-image-grade-chrome.log
           if-no-files-found: warn
