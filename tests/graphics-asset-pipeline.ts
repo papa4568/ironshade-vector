@@ -25,7 +25,10 @@ assert(selectGraphicsAssetSpec(systemsFamily,0.78)?.id==='operator-systems-lod1'
 const assaultFamily=ENEMY_ASSET_FAMILIES.assault;
 assert(selectGraphicsAssetSpec(assaultFamily,1)?.id==='enemy-assault-lod0','Flagship detail must select the authored assault enemy LOD0 asset');
 assert(selectGraphicsAssetSpec(assaultFamily,0.78)?.id==='enemy-assault-lod1' && selectGraphicsAssetSpec(assaultFamily,0.5)?.id==='enemy-assault-lod2','Assault balanced/performance LOD selection must remain budgeted');
-assert(selectGraphicsAssetSpec(ENEMY_ASSET_FAMILIES.suppressor,1)?.id==='enemy-suppressor-lod1' && selectGraphicsAssetSpec(ENEMY_ASSET_FAMILIES.technician,1)?.id==='enemy-technician-lod1' && selectGraphicsAssetSpec(ENEMY_ASSET_FAMILIES.elite,1)?.id==='enemy-elite-lod1','Unpromoted enemy families must retain their proven Flagship fallback until P28-D5 through P28-D7');
+const suppressorFamily=ENEMY_ASSET_FAMILIES.suppressor;
+assert(selectGraphicsAssetSpec(suppressorFamily,1)?.id==='enemy-suppressor-lod0','Flagship detail must select the authored suppressor enemy LOD0 asset');
+assert(selectGraphicsAssetSpec(suppressorFamily,0.78)?.id==='enemy-suppressor-lod1' && selectGraphicsAssetSpec(suppressorFamily,0.5)?.id==='enemy-suppressor-lod2','Suppressor balanced/performance LOD selection must remain budgeted');
+assert(selectGraphicsAssetSpec(ENEMY_ASSET_FAMILIES.technician,1)?.id==='enemy-technician-lod1' && selectGraphicsAssetSpec(ENEMY_ASSET_FAMILIES.elite,1)?.id==='enemy-elite-lod1','Unpromoted enemy families must retain their proven Flagship fallback until P28-D6 through P28-D7');
 const contractSource=readFileSync(resolve(process.cwd(),'src/game/graphicsAssets.ts'),'utf8');
 const runtimeSource=readFileSync(resolve(process.cwd(),'src/game/babylonGraphicsAssets.ts'),'utf8');
 const loaderSource=readFileSync(resolve(process.cwd(),'src/game/babylonGltfLoader.ts'),'utf8');
@@ -41,4 +44,4 @@ for (const token of ['OPERATOR_ASSET_FAMILY','OPERATOR_CLASS_ASSET_FAMILIES','EN
 assert(rendererSource.includes("from './graphicsAssetManifest'") && rendererSource.includes("from './graphicsAssets'") && rendererSource.includes("from './babylonGraphicsAssets'"),'Babylon combat renderer must consume shared manifest/contract through Babylon runtime');
 assert(rendererSource.includes('runtime.preload(') && rendererSource.includes('runtime.instantiate('),'Babylon combat renderer must use the shared cached asset runtime');
 assert(rendererSource.includes("dataset.operatorVisual = 'authored-fallback-babylon'") && rendererSource.includes("dataset.weaponVisual = 'authored-fallback-babylon'") && rendererSource.includes("dataset.environmentVisual = 'authored-fallback-babylon'"),'authored asset failures must preserve Babylon procedural presentation fallbacks');
-console.log('GRAPHICS_ASSET_PIPELINE_PASS contract=renderer-neutral runtime=babylon codecs=local lod=adaptive cache=bounded fallbacks=preserved assault-lod0=flagship');
+console.log('GRAPHICS_ASSET_PIPELINE_PASS contract=renderer-neutral runtime=babylon codecs=local lod=adaptive cache=bounded fallbacks=preserved assault-lod0=flagship suppressor-lod0=flagship');
