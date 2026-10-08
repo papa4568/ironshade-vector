@@ -1,0 +1,31 @@
+name: P28 D0 Generate Asset
+
+on:
+  push:
+    branches:
+      - chatgpt/p28-d0-premium-character-source
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    if: ${{ !contains(github.event.head_commit.message, '[generated-asset]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Generate deterministic premium character reference
+        run: node scripts/prepare-premium-character-source.mjs
+      - name: Commit generated GLB
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/assets/models/operators/operator-premium-source-reference-lod0.glb
+          if git diff --cached --quiet; then
+            echo "Generated asset already matches the branch."
+            exit 0
+          fi
+          git commit -m "P28-D0 commit generated character reference [generated-asset]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
