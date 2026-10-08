@@ -579,7 +579,7 @@ export const JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES = {
     id: 'jovian-harvester-storm-bus-isolator',
     lods: {
       1: createGraphicsAssetSpec('jovian-harvester-storm-bus-isolator-lod1', 'interactable', '/assets/models/interactables/jovian-harvester-storm-bus-isolator-lod1.glb', 1),
-      2: createGraphicsAssetSpec('jovian-harvester-storm-bus-isolator-lod2', 'interactable', '/assets/models/interactables/spin-habitat-spin-bus-isolator-lod2.glb', 2),
+      2: createGraphicsAssetSpec('jovian-harvester-storm-bus-isolator-lod2', 'interactable', '/assets/models/interactables/jovian-harvester-storm-bus-isolator-lod2.glb', 2),
     },
   },
   deckMassTrim: {
