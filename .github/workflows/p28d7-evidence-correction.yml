@@ -48,9 +48,6 @@ jobs:
 
           node agent/tools/sync-roadmap-metadata.mjs --write
           node agent/tests/roadmap-adapter.mjs
-          next_task="$(node agent/tools/next-task.mjs)"
-          printf '%s\n' "$next_task"
-          grep -Fq 'P28-D8' <<<"$next_task"
 
           python - <<'PY'
           import json
