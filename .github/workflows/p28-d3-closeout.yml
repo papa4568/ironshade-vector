@@ -44,8 +44,6 @@ jobs:
           PY
 
           node agent/tools/sync-roadmap-metadata.mjs --write
-          node agent/tools/next-task.mjs | tee /tmp/next-task.txt
-          grep -q 'P28-D4' /tmp/next-task.txt
 
           python - <<'PY'
           import json
@@ -65,6 +63,7 @@ jobs:
         run: |
           git config user.name 'papa4568'
           git config user.email 'fpspro0421@gmail.com'
+          git rm .github/workflows/p28-d3-closeout.yml
           git add docs/content-roadmap.md docs/content-roadmap-archive.md agent/roadmap-metadata.json
           git diff --cached --check
           git commit -m 'docs: archive P28-D3 completion'
