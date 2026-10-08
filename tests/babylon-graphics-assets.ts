@@ -252,6 +252,34 @@ async function run() {
   scene.dispose();
   engine.dispose();
 
+  const raceEngine = new NullEngine();
+  const raceScene = new Scene(raceEngine);
+  const raceRuntime = new BabylonGraphicsAssetRuntime(raceScene, async (spec, targetScene) => loadLocalGlb(spec, targetScene, `${spec.id}-reactivation-race`));
+  for (const spec of [operatorLod1, operatorLod2, refineryLod1]) {
+    const instance = await raceRuntime.instantiate(spec);
+    instance.release();
+  }
+  const raceControls = raceRuntime as unknown as {
+    budget: { maxCachedCompressedBytes: number; maxTextureAnisotropy: number; maxCachedAssets: number };
+    enforceCacheBudget: () => Promise<void>;
+  };
+  raceControls.budget = {
+    maxCachedCompressedBytes: 64 * 1024 * 1024,
+    maxTextureAnisotropy: 4,
+    maxCachedAssets: 1,
+  };
+  const raceEviction = raceControls.enforceCacheBudget();
+  const reactivatedPromise = raceRuntime.instantiate(operatorLod2);
+  await raceEviction;
+  const reactivatedOperator = await reactivatedPromise;
+  assert(raceRuntime.isCached(operatorLod2.url), 'cache pressure must not evict an entry reactivated after the idle eviction snapshot');
+  assert(raceRuntime.stats().activeInstances === 1, 'reactivated cache entry must retain its live instance ownership during eviction');
+  assert(reactivatedOperator.rootNodes.length > 0, 'reactivated cached source must remain fully instantiable after concurrent eviction');
+  reactivatedOperator.release();
+  await raceRuntime.dispose();
+  raceScene.dispose();
+  raceEngine.dispose();
+
   const teardownEngine = new NullEngine();
   const teardownScene = new Scene(teardownEngine);
   let teardownDisposeCount = 0;
@@ -275,7 +303,7 @@ async function run() {
   teardownEngine.dispose();
 
   console.log(
-    `BABYLON_GRAPHICS_ASSETS_PASS operatorLod1=${operatorLod1.id} operatorLod2=${operatorLod2.id} refinery=${refineryLod1.id} flagshipFloor=${refineryFloorLod0.id} flagshipGrate=${refineryGrateLod0.id} flagshipBulkhead=${refineryBulkheadLod0.id} flagshipWall=${refineryWallPanelLod0.id} flagshipPipe=${refineryPipeRackLod0.id} flagshipCable=${refineryCableTrayLod0.id} localCodecs=true externalAtlas=${externalAtlasLoads} instancing=static-native lod0ReuseVertices=${floorVerticesB} lod0Reentry=true cacheTrim=count+bytes cacheLoads=${[...loadCounts.values()].reduce((sum, count) => sum + count, 0)} teardownDispose=${teardownDisposeCount} webglContextRelease=true`,
+    `BABYLON_GRAPHICS_ASSETS_PASS operatorLod1=${operatorLod1.id} operatorLod2=${operatorLod2.id} refinery=${refineryLod1.id} flagshipFloor=${refineryFloorLod0.id} flagshipGrate=${refineryGrateLod0.id} flagshipBulkhead=${refineryBulkheadLod0.id} flagshipWall=${refineryWallPanelLod0.id} flagshipPipe=${refineryPipeRackLod0.id} flagshipCable=${refineryCableTrayLod0.id} localCodecs=true externalAtlas=${externalAtlasLoads} instancing=static-native lod0ReuseVertices=${floorVerticesB} lod0Reentry=true cacheTrim=count+bytes cacheReactivation=protected cacheLoads=${[...loadCounts.values()].reduce((sum, count) => sum + count, 0)} teardownDispose=${teardownDisposeCount} webglContextRelease=true`,
   );
 
 }
