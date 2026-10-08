@@ -1,0 +1,114 @@
+name: P28-D3 Source Patch
+
+on:
+  push:
+    branches:
+      - chatgpt/p28-d3-systems-operator-lod0
+    paths:
+      - '.github/workflows/p28-d3-source-patch.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out task branch
+        uses: actions/checkout@v7
+        with:
+          ref: chatgpt/p28-d3-systems-operator-lod0
+          fetch-depth: 0
+
+      - name: Apply exact P28-D3 source edits
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new):
+              target = Path(path)
+              text = target.read_text()
+              if old not in text:
+                  raise SystemExit(f'missing expected source block in {path}: {old!r}')
+              if text.count(old) != 1:
+                  raise SystemExit(f'expected exactly one source block in {path}: {old!r}')
+              target.write_text(text.replace(old, new))
+
+          replace(
+              'src/game/graphicsAssetManifest.ts',
+              "  systems: {\n    id: 'operator-systems',\n    lods: {\n      1: createGraphicsAssetSpec('operator-systems-lod1', 'operator', '/assets/models/operators/operator-systems-lod1.glb', 1),",
+              "  systems: {\n    id: 'operator-systems',\n    lods: {\n      0: createGraphicsAssetSpec('operator-systems-lod0', 'operator', '/assets/models/operators/operator-systems-lod0.glb', 0),\n      1: createGraphicsAssetSpec('operator-systems-lod1', 'operator', '/assets/models/operators/operator-systems-lod1.glb', 1),",
+          )
+
+          replace(
+              'scripts/prepare-premium-pbr-reference.mjs',
+              "  const { writeVectorOperatorLod0 } = await import('./prepare-vector-operator-lod0.mjs');\n  await writeVectorOperatorLod0();\n  const { writePremiumPbrSurfaceLibrary } = await import('./prepare-premium-pbr-library.mjs');",
+              "  const { writeVectorOperatorLod0 } = await import('./prepare-vector-operator-lod0.mjs');\n  await writeVectorOperatorLod0();\n  const { writeSystemsOperatorLod0 } = await import('./prepare-systems-operator-lod0.mjs');\n  await writeSystemsOperatorLod0();\n  const { writePremiumPbrSurfaceLibrary } = await import('./prepare-premium-pbr-library.mjs');",
+          )
+
+          replace(
+              'tests/premium-pbr-reference.mjs',
+              "import './vector-operator-lod0.mjs';\n",
+              "import './vector-operator-lod0.mjs';\nimport './systems-operator-lod0.mjs';\n",
+          )
+
+          replace(
+              'tests/graphics-asset-pipeline.ts',
+              "const vectorFamily=OPERATOR_CLASS_ASSET_FAMILIES.vector;\nassert(selectGraphicsAssetSpec(vectorFamily,1)?.id==='operator-vector-lod0','Flagship detail must select the authored Vector LOD0 asset');\nassert(selectGraphicsAssetSpec(vectorFamily,0.78)?.id==='operator-vector-lod1' && selectGraphicsAssetSpec(vectorFamily,0.5)?.id==='operator-vector-lod2','Vector balanced/performance LOD selection must remain budgeted');\n",
+              "const vectorFamily=OPERATOR_CLASS_ASSET_FAMILIES.vector;\nassert(selectGraphicsAssetSpec(vectorFamily,1)?.id==='operator-vector-lod0','Flagship detail must select the authored Vector LOD0 asset');\nassert(selectGraphicsAssetSpec(vectorFamily,0.78)?.id==='operator-vector-lod1' && selectGraphicsAssetSpec(vectorFamily,0.5)?.id==='operator-vector-lod2','Vector balanced/performance LOD selection must remain budgeted');\nconst systemsFamily=OPERATOR_CLASS_ASSET_FAMILIES.systems;\nassert(selectGraphicsAssetSpec(systemsFamily,1)?.id==='operator-systems-lod0','Flagship detail must select the authored Systems LOD0 asset');\nassert(selectGraphicsAssetSpec(systemsFamily,0.78)?.id==='operator-systems-lod1' && selectGraphicsAssetSpec(systemsFamily,0.5)?.id==='operator-systems-lod2','Systems balanced/performance LOD selection must remain budgeted');\n",
+          )
+
+          replace(
+              'scripts/verify-authored-operator.mjs',
+              "      const hasHeroLod0 = lastState.operatorClass === 'vanguard' || lastState.operatorClass === 'vector';",
+              "      const hasHeroLod0 = lastState.operatorClass === 'vanguard' || lastState.operatorClass === 'vector' || lastState.operatorClass === 'systems';",
+          )
+          replace(
+              'scripts/verify-authored-operator.mjs',
+              "        `operator-vector-lod${lastState.renderTier === 'high' ? 0 : expectedSharedLod}`,\n        `operator-systems-lod${expectedSharedLod}`,",
+              "        `operator-vector-lod${lastState.renderTier === 'high' ? 0 : expectedSharedLod}`,\n        `operator-systems-lod${lastState.renderTier === 'high' ? 0 : expectedSharedLod}`,",
+          )
+
+          capture = Path('scripts/p28a5-image-grade-capture.mjs')
+          text = capture.read_text()
+          edits = [
+              ("visualDetail: 'p28-d1-vanguard-operator-lod0'", "visualDetail: 'p28-d1-vanguard-operator-lod0'; visualDetail: 'p28-d2-vector-operator-lod0'"),
+              ('P28-D2 capture', 'P28-D3 capture'),
+              ("state.profile.operatorClass = 'vector';", "state.profile.operatorClass = 'systems';"),
+              ("startNodeId: 'start-vector'", "startNodeId: 'start-systems'"),
+              ('vectorSeeded', 'systemsSeeded'),
+              ('Vector operator profile', 'Systems operator profile'),
+              ('Vector profile browser reload', 'Systems profile browser reload'),
+              ('Vector seeded Command Deck', 'Systems seeded Command Deck'),
+              ('Vector Operations navigation', 'Systems Operations navigation'),
+              ('Vector Contract Board', 'Systems Contract Board'),
+              ('Vector asteroid-refinery contract selection', 'Systems asteroid-refinery contract selection'),
+              ('Vector combat surface', 'Systems combat surface'),
+              ("operatorAsset === 'operator-vector-lod0'", "operatorAsset === 'operator-systems-lod0'"),
+              ("operatorClassAsset === 'vector'", "operatorClassAsset === 'systems'"),
+              ('normal Flagship refinery grade with Vector LOD0', 'normal Flagship refinery grade with Systems LOD0'),
+              ("normal.operatorAsset !== 'operator-vector-lod0'", "normal.operatorAsset !== 'operator-systems-lod0'"),
+              ("normal.operatorClassAsset !== 'vector'", "normal.operatorClassAsset !== 'systems'"),
+              ("lowVisibility.operatorAsset !== 'operator-vector-lod0'", "lowVisibility.operatorAsset !== 'operator-systems-lod0'"),
+              ("lowVisibility.operatorClassAsset !== 'vector'", "lowVisibility.operatorClassAsset !== 'systems'"),
+              ("visualDetail: 'p28-d2-vector-operator-lod0'", "visualDetail: 'p28-d3-systems-operator-lod0'"),
+              ('detail=p28-d2-vector-operator-lod0', 'detail=p28-d3-systems-operator-lod0'),
+          ]
+          for old, new in edits:
+              if old not in text:
+                  raise SystemExit(f'missing expected capture token: {old!r}')
+              text = text.replace(old, new)
+          capture.write_text(text)
+          PY
+
+      - name: Commit source wiring
+        shell: bash
+        run: |
+          git config user.name 'papa4568'
+          git config user.email 'fpspro0421@gmail.com'
+          git add src/game/graphicsAssetManifest.ts scripts/prepare-premium-pbr-reference.mjs tests/premium-pbr-reference.mjs tests/graphics-asset-pipeline.ts scripts/verify-authored-operator.mjs scripts/p28a5-image-grade-capture.mjs
+          git diff --cached --check
+          git commit -m 'feat: wire Systems operator LOD0'
+          git push origin HEAD:chatgpt/p28-d3-systems-operator-lod0
