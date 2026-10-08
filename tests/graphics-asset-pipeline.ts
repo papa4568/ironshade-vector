@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { OPERATOR_CLASS_ASSET_FAMILIES } from '../src/game/graphicsAssetManifest';
 import { GRAPHICS_ASSET_STANDARDS, createGraphicsAssetSpec, graphicsAssetLodForDetailScale, selectGraphicsAssetSpec, validateGraphicsAssetSpec, type GraphicsAssetFamily } from '../src/game/graphicsAssets';
 function assert(condition: unknown, message: string) { if (!condition) throw new Error(message); }
 assert(GRAPHICS_ASSET_STANDARDS.runtimeFormat==='glb' && GRAPHICS_ASSET_STANDARDS.unitScaleMeters===1 && GRAPHICS_ASSET_STANDARDS.upAxis==='+Y' && GRAPHICS_ASSET_STANDARDS.forwardAxis==='+X','authored runtime asset coordinate/format contract changed');
@@ -12,6 +13,9 @@ assert(validateGraphicsAssetSpec(createGraphicsAssetSpec('operator-meridian-lod0
 assert(graphicsAssetLodForDetailScale(1)===0 && graphicsAssetLodForDetailScale(0.72)===1 && graphicsAssetLodForDetailScale(0.5)===2,'adaptive LOD thresholds changed');
 const family:GraphicsAssetFamily={id:'test',lods:{1:createGraphicsAssetSpec('test-lod1','enemy','/assets/models/enemies/test-lod1.glb',1),2:createGraphicsAssetSpec('test-lod2','enemy','/assets/models/enemies/test-lod2.glb',2)}};
 assert(selectGraphicsAssetSpec(family,1)?.lod===1 && selectGraphicsAssetSpec(family,0.5)?.lod===2,'LOD selection fallback must remain deterministic');
+const vanguardFamily=OPERATOR_CLASS_ASSET_FAMILIES.vanguard;
+assert(selectGraphicsAssetSpec(vanguardFamily,1)?.id==='operator-vanguard-lod0','Flagship detail must select the authored Vanguard LOD0 asset');
+assert(selectGraphicsAssetSpec(vanguardFamily,0.78)?.id==='operator-vanguard-lod1' && selectGraphicsAssetSpec(vanguardFamily,0.5)?.id==='operator-vanguard-lod2','Vanguard balanced/performance LOD selection must remain budgeted');
 const contractSource=readFileSync(resolve(process.cwd(),'src/game/graphicsAssets.ts'),'utf8');
 const runtimeSource=readFileSync(resolve(process.cwd(),'src/game/babylonGraphicsAssets.ts'),'utf8');
 const loaderSource=readFileSync(resolve(process.cwd(),'src/game/babylonGltfLoader.ts'),'utf8');
