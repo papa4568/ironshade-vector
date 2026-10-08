@@ -675,7 +675,8 @@ export class BabylonRefineryLighting {
     const topologyToken = resolveRefineryTopologyToken(this.scene.meshes);
     const anchorKey = anchor.x.toFixed(4) + ',' + anchor.z.toFixed(4);
     const workKey = resolveRefineryShadowWorkKey(topologyToken, anchor, budget.shadowMapSize);
-    if (this.shadowGenerator && !this.workProfile.needsShadowListRebuild(workKey)) {
+    const needsRebuild = this.workProfile.needsShadowListRebuild(workKey);
+    if (this.shadowGenerator && !needsRebuild) {
       return this.shadowCasterCount;
     }
 
