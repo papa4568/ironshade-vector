@@ -474,6 +474,7 @@ export const ENEMY_ASSET_FAMILIES = {
   suppressor: {
     id: 'enemy-suppressor',
     lods: {
+      0: createGraphicsAssetSpec('enemy-suppressor-lod0', 'enemy', '/assets/models/enemies/enemy-suppressor-lod0.glb', 0),
       1: createGraphicsAssetSpec('enemy-suppressor-lod1', 'enemy', '/assets/models/enemies/enemy-suppressor-lod1.glb', 1),
       2: createGraphicsAssetSpec('enemy-suppressor-lod2', 'enemy', '/assets/models/enemies/enemy-suppressor-lod2.glb', 2),
     },
@@ -578,7 +579,7 @@ export const JOVIAN_HARVESTER_INTERACTABLE_ASSET_FAMILIES = {
     id: 'jovian-harvester-storm-bus-isolator',
     lods: {
       1: createGraphicsAssetSpec('jovian-harvester-storm-bus-isolator-lod1', 'interactable', '/assets/models/interactables/jovian-harvester-storm-bus-isolator-lod1.glb', 1),
-      2: createGraphicsAssetSpec('jovian-harvester-storm-bus-isolator-lod2', 'interactable', '/assets/models/interactables/jovian-harvester-storm-bus-isolator-lod2.glb', 2),
+      2: createGraphicsAssetSpec('jovian-harvester-storm-bus-isolator-lod2', 'interactable', '/assets/models/interactables/spin-habitat-spin-bus-isolator-lod2.glb', 2),
     },
   },
   deckMassTrim: {
