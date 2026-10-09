@@ -32,6 +32,74 @@ export type CombatGraphicsPerformanceStats = {
   triangles: number;
 };
 
+export const LOCATION_FRAME_COST_SIGNATURE_VERSION = 'p28-p2-v1';
+export const LOCATION_FRAME_COST_ROUTES = [
+  'asteroid-refinery',
+  'orbital-station',
+  'damaged-vessel',
+  'spin-habitat',
+  'jovian-harvester',
+  'ice-mine',
+  'solar-yard',
+  'lattice-annex',
+  'momentum-exchange',
+  'cryo-reserve',
+  'parallax-array',
+] as const;
+
+export type LocationFrameCostSnapshot = {
+  route: string;
+  renderWidth: number;
+  renderHeight: number;
+  pixelRatio: number;
+  rawFrameMs: number;
+  smoothedFrameMs: number;
+  tier: string;
+  transition: string;
+  transitionCount: number;
+  drawCalls: number;
+  triangles: number;
+  activeMeshes: number;
+  shadowMap: number;
+  shadowCasters: number;
+  ssao: 'on' | 'off';
+  bloom: 'on' | 'off';
+  ibl: 'on' | 'off';
+  assetInstances: number;
+  cachedAssets: number;
+};
+
+export function formatLocationFrameCostSignature(snapshot: LocationFrameCostSnapshot) {
+  return [
+    LOCATION_FRAME_COST_SIGNATURE_VERSION,
+    `route:${snapshot.route}`,
+    `resolution:${snapshot.renderWidth}x${snapshot.renderHeight}`,
+    `pixelRatio:${snapshot.pixelRatio.toFixed(2)}`,
+    `rawMs:${snapshot.rawFrameMs.toFixed(2)}`,
+    `smoothMs:${snapshot.smoothedFrameMs.toFixed(2)}`,
+    `tier:${snapshot.tier}`,
+    `transition:${snapshot.transition}`,
+    `transitionCount:${snapshot.transitionCount}`,
+    `drawCalls:${snapshot.drawCalls}`,
+    `triangles:${snapshot.triangles}`,
+    `activeMeshes:${snapshot.activeMeshes}`,
+    `shadowMap:${snapshot.shadowMap}`,
+    `shadowCasters:${snapshot.shadowCasters}`,
+    `ssao:${snapshot.ssao}`,
+    `bloom:${snapshot.bloom}`,
+    `ibl:${snapshot.ibl}`,
+    `assetInstances:${snapshot.assetInstances}`,
+    `cachedAssets:${snapshot.cachedAssets}`,
+  ].join('|');
+}
+
+function datasetMetric(value: string | undefined, pattern: RegExp, fallback = 0) {
+  const match = value?.match(pattern);
+  if (!match) return fallback;
+  const parsed = Number(match[1]);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 export type CombatGraphicsPointerProjectionArgs = [
   clientX: number,
   clientY: number,
@@ -87,6 +155,16 @@ export interface CombatGraphicsBackendFactory {
   create(canvas: HTMLCanvasElement, coarse: boolean, options?: CombatGraphicsBackendCreateOptions): CombatGraphicsBackend;
 }
 
+type BabylonRuntimeCostSource = {
+  engine?: {
+    _drawCalls?: { current?: number };
+  };
+  scene?: {
+    getActiveIndices?: () => number;
+    getActiveMeshes?: () => { length: number };
+  };
+};
+
 class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
   readonly id = 'babylon' as const;
   private delegate: CombatGraphicsBackend | null = null;
@@ -111,6 +189,10 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
     canvas.dataset.babylonBackendFallbackReason = '';
     canvas.dataset.renderTierTransition = 'none';
     canvas.dataset.renderTierTransitionCount = '0';
+    canvas.dataset.renderLocationCostVersion = LOCATION_FRAME_COST_SIGNATURE_VERSION;
+    canvas.dataset.renderLocationCostChannels = 'cpu:raw+smoothed|gpu:draw+triangles+active-meshes+shadows+ssao+bloom+ibl|assets:instances+cache';
+    canvas.dataset.renderLocationCostRouteCoverage = LOCATION_FRAME_COST_ROUTES.join(',');
+    canvas.dataset.renderLocationCostCaveat = 'runtime-frame-cost-not-physical-phone-fps';
     // Compact/coarse input remains a framing hint; it must never lower startup render quality.
     canvas.dataset.renderDeviceClassPolicy = coarse ? 'flagship-default:coarse-hint-ignored' : 'flagship-default';
     canvas.dataset.renderDowngradeReason = 'pending';
@@ -149,6 +231,7 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
       qualityMode,
       reducedEffects,
     );
+    this.updateLocationFrameCostTelemetry(args[5].location, rawFrameMs);
   }
 
   performanceStats() {
@@ -168,6 +251,58 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
     const previousDisposeCount = Number.parseInt(this.canvas.dataset.babylonDisposeCount ?? '0', 10);
     this.canvas.dataset.babylonDisposeCount = String(Number.isFinite(previousDisposeCount) ? previousDisposeCount + 1 : 1);
     this.canvas.dataset.babylonDisposed = 'true';
+  }
+
+  private updateLocationFrameCostTelemetry(route: string, rawFrameMs: number) {
+    if (!this.delegate) return;
+    const runtime = this.delegate as CombatGraphicsBackend & BabylonRuntimeCostSource;
+    const fallbackStats = runtime.engine?._drawCalls && runtime.scene?.getActiveIndices
+      ? null
+      : this.delegate.performanceStats();
+    const drawCalls = Math.max(0, Math.round(runtime.engine?._drawCalls?.current ?? fallbackStats?.drawCalls ?? 0));
+    const triangles = Math.max(0, Math.floor((runtime.scene?.getActiveIndices?.() ?? (fallbackStats?.triangles ?? 0) * 3) / 3));
+    const activeMeshes = Math.max(
+      0,
+      Math.round(runtime.scene?.getActiveMeshes?.().length
+        ?? datasetMetric(this.canvas.dataset.babylonSceneTelemetry, /(?:^|\|)meshes:(\d+)/)),
+    );
+    const viewport = this.canvas.dataset.babylonViewport ?? '';
+    const renderWidth = Math.max(1, Math.round(datasetMetric(viewport, /buffer:(\d+)x\d+/, this.canvas.width || 1)));
+    const renderHeight = Math.max(1, Math.round(datasetMetric(viewport, /buffer:\d+x(\d+)/, this.canvas.height || 1)));
+    const pixelRatio = Math.max(0.01, datasetMetric(viewport, /@ratio:([0-9.]+)/, 1));
+    const refinery = route === 'asteroid-refinery';
+    const shadowMap = refinery
+      ? Math.max(0, Math.round(datasetMetric(this.canvas.dataset.babylonLightingBudget, /(?:^|\|)shadow:(\d+)/)))
+      : 0;
+    const shadowCasters = refinery && shadowMap > 0
+      ? Math.max(0, Math.round(datasetMetric(this.canvas.dataset.environmentShadowBudget, /casters-(\d+)/)))
+      : 0;
+    const runtimeStats = this.canvas.dataset.babylonEnemyRuntime ?? this.canvas.dataset.babylonPlayerRuntime ?? '';
+    const assetInstances = Math.max(0, Math.round(datasetMetric(runtimeStats, /(?:^|\|)active:(\d+)/)));
+    const cachedAssets = Math.max(0, Math.round(datasetMetric(runtimeStats, /(?:^|\|)cached:(\d+)/)));
+    const smoothedFrameMs = Math.max(0, Number.parseFloat(this.canvas.dataset.renderSmoothedFrameMs ?? '') || 0);
+
+    this.canvas.dataset.renderLocationCost = formatLocationFrameCostSignature({
+      route,
+      renderWidth,
+      renderHeight,
+      pixelRatio,
+      rawFrameMs,
+      smoothedFrameMs,
+      tier: this.canvas.dataset.renderTier || 'pending',
+      transition: this.canvas.dataset.renderTierTransition || 'none',
+      transitionCount: this.renderTierTransitionCount,
+      drawCalls,
+      triangles,
+      activeMeshes,
+      shadowMap,
+      shadowCasters,
+      ssao: refinery && this.canvas.dataset.environmentSsao2?.startsWith('primary:') ? 'on' : 'off',
+      bloom: refinery && this.canvas.dataset.environmentBloom?.startsWith('selective:') ? 'on' : 'off',
+      ibl: refinery && Boolean(this.canvas.dataset.environmentIbl) && !this.canvas.dataset.environmentIbl?.startsWith('off:') ? 'on' : 'off',
+      assetInstances,
+      cachedAssets,
+    });
   }
 
   private async initialize() {
