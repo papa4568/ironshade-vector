@@ -105,7 +105,10 @@ async function capture() {
         gridTriggered: director.gridTriggered,
         pressureTriggered: director.pressureTriggered,
         gravityTriggered: director.gravityTriggered,
-        environmentalActive: director.environmental.active,
+        environmentalPlan: (director.environmental.plan ?? []).map(event => `${event.id}@${event.at}`),
+        environmentalWarned: [...director.environmental.warned],
+        environmentalFired: [...director.environmental.fired],
+        environmentalEffects: director.environmental.effects.map(effect => effect.kind).sort(),
         eventText: missionState.eventText,
       },
       presentation: {
