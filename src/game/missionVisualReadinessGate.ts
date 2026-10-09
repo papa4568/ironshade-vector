@@ -146,7 +146,7 @@ class BrowserMissionVisualFrameGate implements MissionVisualFrameGate {
       if (!suppressed) return;
       try {
         if (existingOwnDescriptor) Object.defineProperty(navigator, 'getGamepads', existingOwnDescriptor);
-        else delete navigator.getGamepads;
+        else Reflect.deleteProperty(navigator, 'getGamepads');
       } catch {
         // Best effort only; restoring the browser-owned method is preferred but a hostile
         // test double must not break mission deployment cleanup.
