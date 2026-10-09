@@ -76,6 +76,26 @@ jobs:
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
         run: npm run build
 
+      - name: Capture EV-3 behavioral genome shadow evidence
+        id: behavioral-genome-shadow
+        continue-on-error: true
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          node scripts/run-behavioral-genome-shadow.mjs \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --output-dir .agent-genome
+
+      - name: Upload EV-3 behavioral genome advisory evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: behavioral-genome-shadow-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: .agent-genome/
+          if-no-files-found: warn
+          include-hidden-files: true
+          retention-days: 30
+
       - name: Record candidate identity
         id: identity
         shell: bash
