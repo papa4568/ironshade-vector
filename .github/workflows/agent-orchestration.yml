@@ -128,6 +128,12 @@ jobs:
           include-hidden-files: true
           retention-days: 30
 
+      - name: Run causal proof cache shadow regressions
+        run: node agent/tests/causal-proof-cache.mjs
+
+      - name: Validate exact-SHA causal proof cache history
+        run: node agent/tools/causal-proof-cache.mjs history-check
+
       - name: Validate affected-verification map
         run: node agent/tools/select-affected-verification.mjs --validate-only
 
