@@ -3,7 +3,10 @@ import { fileURLToPath } from 'node:url';
 
 const smokePath = fileURLToPath(new URL('./browser-runtime-smoke.mjs', import.meta.url));
 const args = [smokePath, ...process.argv.slice(2)];
-const readinessRacePattern = /"(?:environmentState|enemyState)":"loading"/;
+const readinessRacePattern = /"(?:environmentState|playerState|enemyState)":"loading"/;
+const maxAttempts = 4;
+const settleMs = 2_000;
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 function runSmoke() {
   return new Promise(resolve => {
@@ -30,9 +33,12 @@ function runSmoke() {
   });
 }
 
-let result = await runSmoke();
-if (result.code !== 0 && readinessRacePattern.test(result.diagnostic)) {
-  console.log('BROWSER_RUNTIME_READINESS_RETRY reason=authored-scene-loading attempts=1');
+let result = { code: 1, diagnostic: '' };
+for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
   result = await runSmoke();
+  if (result.code === 0) break;
+  if (!readinessRacePattern.test(result.diagnostic) || attempt === maxAttempts) break;
+  console.log(`BROWSER_RUNTIME_READINESS_RETRY reason=authored-scene-loading next=${attempt + 1}/${maxAttempts} settleMs=${settleMs}`);
+  await sleep(settleMs);
 }
 process.exitCode = result.code;
