@@ -48,20 +48,24 @@ class BrowserMissionVisualFrameGate implements MissionVisualFrameGate {
   private originalRequestAnimationFrame: Raf | null = null;
   private patchedRequestAnimationFrame: Raf | null = null;
   private frozenTimestamp = 0;
+  private readonly qaPointerObservation: boolean;
   private readonly onBlockedKeyDown = (event: KeyboardEvent) => {
     if (!this.blocked || !BLOCKED_COMBAT_KEYS.has(event.code)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
   };
   private readonly onBlockedPointerInput = (event: Event) => {
-    // Untrusted synthetic events are observation-only QA probes, not player input.
-    if (!event.isTrusted) return;
+    // Explicit graphics-comparison mode uses observation-only pointer/touch probes.
+    // Production routes still suppress every trusted player pointer/touch event.
+    if (!event.isTrusted || this.qaPointerObservation) return;
     if (!this.blocked) return;
     if (event.cancelable) event.preventDefault();
     event.stopImmediatePropagation();
   };
 
   constructor(private readonly canvas: HTMLCanvasElement) {
+    const search = canvas.ownerDocument.defaultView?.location.search ?? '';
+    this.qaPointerObservation = new URLSearchParams(search).get('graphicsCompare') === '1';
     this.block('startup');
   }
 
