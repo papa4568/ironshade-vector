@@ -10,9 +10,11 @@ Keep always-on context small. Read only the documents relevant to the current ta
 - `agent/impact-map.json` — machine-readable change-impact map for selecting focused iteration checks from changed files. Unknown or high-risk impact escalates to `npm run verify:full`; affected-verification selection never replaces a roadmap item's required final proof gates.
 - `agent/candidate-manifest.schema.json` and `agent/verification-ledger.schema.json` — exact-candidate evidence contracts. A ledger is valid only when its task, candidate SHA, canonical manifest digest, proof evidence, and artifact identities agree.
 - `agent/tools/candidate-artifact.mjs` — exact-SHA web-bundle manifest and integrity verifier used before browser/Android consumers trust a reusable `dist/` artifact.
+- `agent/tools/acceptance-attack-compiler.mjs` and `agent/acceptance-attack-templates.json` — advisory EV-1 acceptance-attack planner/executor. Dishonest variants run only in disposable clone state, and a surviving attack is a proof gap, never a pass.
 - `.github/workflows/pr-candidate.yml` — authoritative PR final-candidate orchestrator: one full verification/build producer fans the same verified web bundle out to browser and Android validation.
 - `docs/agent-orchestration.md` — migration contract and phased rollout for proof-graph orchestration.
 - `docs/experimental-verification-roadmap.md` — opt-in speculative verification-engineering queue (`EV-*`). Never select it automatically; work it only when the user explicitly requests the experimental track or names an `EV-*` item.
+- `docs/experimental-verification-archive.md` — completed EV experiments and their proof/rollback history. Do not execute work from this file.
 - `docs/external-qa.md` — validation that requires unavailable physical hardware, manual inspection, credentials, permissions, or other external access. Do not execute this file as the normal coding queue.
 - `docs/content-roadmap-archive.md` — completed work and verification history. Do not execute work from this file.
 - `docs/product-constraints.md` — stable product, design, platform, and performance constraints.
