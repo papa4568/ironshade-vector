@@ -154,7 +154,7 @@ const browserWorkflowSource = readFileSync(resolve(root, '.github/workflows/brow
 assert(
   boundarySource.includes("export type CombatGraphicsBackendId = 'babylon'")
     && boundarySource.includes("productionCombatGraphicsBackendId: CombatGraphicsBackendId = 'babylon'")
-    && boundarySource.includes("await import('./babylonCombatRenderer')")
+    && boundarySource.includes("import('./babylonCombatRenderer')")
     && boundarySource.includes('factories: readonly CombatGraphicsBackendFactory[] = [babylonCombatGraphicsBackendFactory]')
     && !boundarySource.includes('ThreeCombatRenderer')
     && !boundarySource.includes("./threeCombatRenderer")

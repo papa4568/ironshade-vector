@@ -1,6 +1,7 @@
 import type { Contract } from './campaign';
 import type { CombatCameraFeedbackSample } from './combatCameraFeedback';
 import type { EquipmentFaction } from './factionGear';
+import { createMissionVisualFrameGate, type MissionVisualFrameGate } from './missionVisualReadinessGate';
 import type { GraphicsQualityMode } from './renderQuality';
 import type { Player, SimState } from './sim';
 
@@ -30,6 +31,16 @@ export type CombatGraphicsRenderArgs = [
 export type CombatGraphicsPerformanceStats = {
   drawCalls: number;
   triangles: number;
+};
+
+export type MissionVisualReadiness = {
+  generation: number;
+  missionKey: string;
+  phase: 'loading' | 'ready';
+  mode: 'authored' | 'fallback';
+  shell: 'loading' | 'authored' | 'fallback';
+  world: 'loading' | 'authored' | 'fallback';
+  reason: string | null;
 };
 
 export const LOCATION_FRAME_COST_SIGNATURE_VERSION = 'p28-p2-v1';
@@ -145,6 +156,7 @@ export interface CombatGraphicsBackend extends CombatGraphicsLifecycle {
   readonly id: CombatGraphicsImplementationId;
   readonly loadedId: CombatGraphicsLoadedBackendId;
   render(...args: CombatGraphicsRenderArgs): void;
+  missionVisualReadiness?(): MissionVisualReadiness;
   performanceStats(): CombatGraphicsPerformanceStats;
   screenDirection(...args: CombatGraphicsPointerProjectionArgs): CombatGraphicsPointerDirection;
 }
@@ -174,12 +186,14 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
   private lastRenderAt = 0;
   private lastObservedRenderTier: string | null = null;
   private renderTierTransitionCount = 0;
+  private readonly missionVisualGate: MissionVisualFrameGate;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
     private readonly coarse: boolean,
     private readonly requestedBackend: BabylonGraphicsBackendId,
   ) {
+    this.missionVisualGate = createMissionVisualFrameGate(canvas);
     canvas.dataset.babylonInit = 'initializing';
     canvas.dataset.babylonDisposed = 'false';
     canvas.dataset.babylonDisposeCount ||= '0';
@@ -187,6 +201,13 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
     canvas.dataset.babylonBackendLoaded = 'initializing';
     canvas.dataset.babylonBackendFallback = '';
     canvas.dataset.babylonBackendFallbackReason = '';
+    canvas.dataset.missionVisualReadiness = 'loading';
+    canvas.dataset.missionVisualMode = 'authored';
+    canvas.dataset.missionVisualShell = 'loading';
+    canvas.dataset.missionVisualWorld = 'loading';
+    canvas.dataset.missionVisualGeneration = '0';
+    canvas.dataset.missionVisualMissionKey = 'initializing';
+    canvas.dataset.missionVisualReason = '';
     canvas.dataset.renderTierTransition = 'none';
     canvas.dataset.renderTierTransitionCount = '0';
     canvas.dataset.renderLocationCostVersion = LOCATION_FRAME_COST_SIGNATURE_VERSION;
@@ -234,6 +255,18 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
     this.updateLocationFrameCostTelemetry(args[5].location, rawFrameMs);
   }
 
+  missionVisualReadiness(): MissionVisualReadiness {
+    return this.delegate?.missionVisualReadiness?.() ?? {
+      generation: Number.parseInt(this.canvas.dataset.missionVisualGeneration ?? '0', 10) || 0,
+      missionKey: this.canvas.dataset.missionVisualMissionKey || 'initializing',
+      phase: 'loading',
+      mode: 'authored',
+      shell: 'loading',
+      world: 'loading',
+      reason: null,
+    };
+  }
+
   performanceStats() {
     return this.delegate?.performanceStats() ?? { drawCalls: 0, triangles: 0 };
   }
@@ -247,6 +280,7 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
     this.disposed = true;
     this.delegate?.dispose();
     this.delegate = null;
+    this.missionVisualGate.dispose();
     this.releaseWebGpuRenderSurface();
     const previousDisposeCount = Number.parseInt(this.canvas.dataset.babylonDisposeCount ?? '0', 10);
     this.canvas.dataset.babylonDisposeCount = String(Number.isFinite(previousDisposeCount) ? previousDisposeCount + 1 : 1);
@@ -306,7 +340,10 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
   }
 
   private async initialize() {
-    const { createBabylonCombatRenderer } = await import('./babylonCombatRenderer');
+    const [{ createBabylonCombatRenderer }, { createBabylonMissionVisualReadinessBackend }] = await Promise.all([
+      import('./babylonCombatRenderer'),
+      import('./babylonRefineryMissionReadiness'),
+    ]);
 
     if (this.requestedBackend === 'webgpu') {
       let webGpuReady = false;
@@ -335,8 +372,9 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
           this.releaseWebGpuRenderSurface();
           return;
         }
-        this.delegate = renderer;
-        this.canvas.dataset.graphicsPathLoaded = renderer.loadedId;
+        const guardedRenderer = createBabylonMissionVisualReadinessBackend(renderer, this.canvas, this.missionVisualGate);
+        this.delegate = guardedRenderer;
+        this.canvas.dataset.graphicsPathLoaded = guardedRenderer.loadedId;
         this.canvas.dataset.graphicsPathFallback = '';
         this.canvas.dataset.babylonInit = 'ready';
         webGpuReady = true;
@@ -354,6 +392,7 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
           : failureStage === 'runtime-device-lost' ? 'runtime-device-lost' : 'init-fallback';
         this.canvas.dataset.babylonBackendFallback = `webgpu->webgl2:${fallbackKind}`;
         this.canvas.dataset.babylonBackendFallbackReason = error instanceof Error ? error.message : String(error);
+        this.missionVisualGate.setDetail('backend-fallback');
         this.releaseWebGpuRenderSurface();
         console.warn('P27-D1 Babylon WebGPU unavailable; recreating with Babylon WebGL2.', error);
       }
@@ -365,10 +404,14 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
   private async fallbackFromWebGpu(reason: string) {
     if (this.disposed || this.webGpuFallbackInFlight || this.requestedBackend !== 'webgpu') return;
     this.webGpuFallbackInFlight = true;
+    this.missionVisualGate.block('backend-fallback');
     this.canvas.dataset.babylonBackendFallback = 'webgpu->webgl2:runtime-device-lost';
     this.canvas.dataset.babylonBackendFallbackReason = reason;
     this.canvas.dataset.babylonBackendLoaded = 'initializing';
     this.canvas.dataset.babylonInit = 'initializing';
+    this.canvas.dataset.missionVisualReadiness = 'loading';
+    this.canvas.dataset.missionVisualShell = 'loading';
+    this.canvas.dataset.missionVisualWorld = 'loading';
 
     const failedRenderer = this.delegate;
     this.delegate = null;
@@ -383,19 +426,24 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
   }
 
   private async initializeWebGl2() {
-    const { createBabylonCombatRenderer } = await import('./babylonCombatRenderer');
+    const [{ createBabylonCombatRenderer }, { createBabylonMissionVisualReadinessBackend }] = await Promise.all([
+      import('./babylonCombatRenderer'),
+      import('./babylonRefineryMissionReadiness'),
+    ]);
     try {
       const renderer = await createBabylonCombatRenderer(this.canvas, this.coarse, 'webgl2', this.canvas);
       if (this.disposed) {
         renderer.dispose();
         return;
       }
-      this.delegate = renderer;
-      this.canvas.dataset.graphicsPathLoaded = renderer.loadedId;
+      const guardedRenderer = createBabylonMissionVisualReadinessBackend(renderer, this.canvas, this.missionVisualGate);
+      this.delegate = guardedRenderer;
+      this.canvas.dataset.graphicsPathLoaded = guardedRenderer.loadedId;
       this.canvas.dataset.graphicsPathFallback = '';
       this.canvas.dataset.babylonInit = 'ready';
     } catch (error) {
       if (this.disposed) return;
+      this.missionVisualGate.setDetail('backend-fallback');
       this.canvas.dataset.babylonInit = 'failed';
       this.canvas.dataset.babylonBackendLoaded = 'failed';
       this.canvas.dataset.babylonFallbackReason = error instanceof Error ? error.message : String(error);
