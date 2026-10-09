@@ -57,6 +57,53 @@ export type BabylonRefineryLightingBudget = {
   maxSimultaneousLights: 3 | 5 | 6;
 };
 
+export function resolveRefineryTopologyToken(items: readonly { uniqueId: number }[]) {
+  const last = items.length ? items[items.length - 1].uniqueId : 0;
+  return items.length + ':' + last;
+}
+
+export function resolveRefineryShadowWorkKey(
+  meshTopologyToken: string,
+  anchor: RefineryShadowAnchor,
+  shadowMapSize: BabylonRefineryLightingBudget['shadowMapSize'],
+) {
+  return meshTopologyToken + '|' + shadowMapSize + '|' + anchor.x.toFixed(4) + ',' + anchor.z.toFixed(4);
+}
+
+export function resolveRefineryMaterialWorkKey(materialTopologyToken: string, maxSimultaneousLights: number) {
+  return materialTopologyToken + '|' + maxSimultaneousLights;
+}
+
+export class RefineryLightingWorkProfile {
+  frameCount = 0;
+  shadowListRebuildCount = 0;
+  materialLightRebuildCount = 0;
+  private shadowKey = '';
+  private materialKey = '';
+
+  beginFrame() {
+    this.frameCount += 1;
+  }
+
+  needsShadowListRebuild(key: string) {
+    if (key === this.shadowKey) return false;
+    this.shadowKey = key;
+    this.shadowListRebuildCount += 1;
+    return true;
+  }
+
+  invalidateShadowList() {
+    this.shadowKey = '';
+  }
+
+  needsMaterialLightRebuild(key: string) {
+    if (key === this.materialKey) return false;
+    this.materialKey = key;
+    this.materialLightRebuildCount += 1;
+    return true;
+  }
+}
+
 function scaled(value: number) {
   return value * WORLD_SCALE;
 }
@@ -148,7 +195,7 @@ export function refineryActorGroundingScale(role: Enemy['role']) {
 }
 
 function isShadowReceiver(mesh: AbstractMesh) {
-  if (!mesh.isEnabled() || !mesh.isVisible || mesh.visibility < 0.85 || mesh.getTotalVertices() <= 0) return false;
+  if (mesh.getTotalVertices() <= 0) return false;
   const alpha = mesh.material?.alpha ?? 1;
   if (alpha < 0.82) return false;
   return !/(ring|glyph|beam|marker|telegraph|protocol|status|lifecycle|muzzle|flash|signal|cue|objective-guide|hazard|grounding)/i.test(mesh.name);
@@ -187,12 +234,22 @@ export class BabylonRefineryLighting {
   private readonly actorGroundingCoreSource: Mesh;
   private readonly actorGroundingPenumbraSource: Mesh;
   private readonly enemyGrounding = new Map<number, ActorGroundingVisual>();
+  private readonly workProfile = new RefineryLightingWorkProfile();
   private iblTexture: CubeTexture | RawCubeTexture | null = null;
   private authoredIblTexture: CubeTexture | null = null;
   private fallbackIblTexture: RawCubeTexture | null = null;
   private iblLoadState: RefineryIblLoadState = 'loading';
   private shadowGenerator: ShadowGenerator | null = null;
   private shadowMapSize = 0;
+  private shadowCasterCount = 0;
+  private shadowMeshTopologyToken = '';
+  private shadowAnchorKey = '';
+  private shadowRebuildReason = 'init';
+  private materialPbrCount = 0;
+  private materialStandardCount = 0;
+  private materialTopologyToken = '';
+  private materialMaxSimultaneousLights = 0;
+  private materialRebuildReason = 'init';
 
   constructor(scene: Scene, canvas: HTMLCanvasElement) {
     this.scene = scene;
@@ -341,6 +398,8 @@ export class BabylonRefineryLighting {
     this.shadowGenerator?.dispose();
     this.shadowGenerator = null;
     this.shadowMapSize = 0;
+    this.shadowCasterCount = 0;
+    this.workProfile.invalidateShadowList();
     if (this.scene.environmentTexture === this.iblTexture) this.scene.environmentTexture = null;
     this.scene.environmentIntensity = 0;
     this.emergencyLight.intensity = 0;
@@ -349,6 +408,7 @@ export class BabylonRefineryLighting {
   }
 
   sync(state: SimState, renderBudget: RenderBudgetSnapshot) {
+    this.workProfile.beginFrame();
     this.setEnabled(true);
     const profile = REFINERY_BABYLON_LIGHTING_PROFILE;
     const budget = resolveBabylonRefineryLightingBudget(renderBudget);
@@ -399,17 +459,7 @@ export class BabylonRefineryLighting {
     this.scene.environmentIntensity = iblEnabled ? budget.iblIntensity : 0;
     this.scene.imageProcessingConfiguration.exposure = profile.exposure * (budget.tierName === 'performance' ? 0.98 : 1);
 
-    let pbrMaterials = 0;
-    let standardMaterials = 0;
-    for (const material of this.scene.materials) {
-      if (material instanceof PBRMaterial) {
-        material.maxSimultaneousLights = budget.maxSimultaneousLights;
-        pbrMaterials += 1;
-      } else if (material.getClassName() === 'StandardMaterial') {
-        standardMaterials += 1;
-      }
-    }
-
+    const materialStats = this.syncMaterialLights(budget.maxSimultaneousLights);
     const groundedEnemyCount = this.syncActorGrounding(state, budget);
     const shadowCasterCount = this.syncShadows(budget, shadowAnchor);
     const authoredIblReady = this.iblLoadState === 'authored';
@@ -463,9 +513,45 @@ export class BabylonRefineryLighting {
       + '+ibl-' + (iblEnabled ? budget.iblIntensity.toFixed(2) : 'off');
     this.canvas.dataset.locationLighting = 'asteroid-refinery:' + profile.id
       + ':aces-' + this.scene.imageProcessingConfiguration.exposure.toFixed(2);
-    this.canvas.dataset.babylonPbrMaterials = 'pbr:' + pbrMaterials
-      + '|standard:' + standardMaterials
+    this.canvas.dataset.babylonPbrMaterials = 'pbr:' + materialStats.pbr
+      + '|standard:' + materialStats.standard
       + '|max-lights:' + budget.maxSimultaneousLights;
+    this.canvas.dataset.refineryLightingWork = [
+      'frames:' + this.workProfile.frameCount,
+      'shadow-rebuilds:' + this.workProfile.shadowListRebuildCount,
+      'material-rebuilds:' + this.workProfile.materialLightRebuildCount,
+      'shadow-reason:' + this.shadowRebuildReason,
+      'material-reason:' + this.materialRebuildReason,
+    ].join('|');
+  }
+
+  private syncMaterialLights(maxSimultaneousLights: BabylonRefineryLightingBudget['maxSimultaneousLights']) {
+    const topologyToken = resolveRefineryTopologyToken(this.scene.materials);
+    const workKey = resolveRefineryMaterialWorkKey(topologyToken, maxSimultaneousLights);
+    if (!this.workProfile.needsMaterialLightRebuild(workKey)) {
+      return { pbr: this.materialPbrCount, standard: this.materialStandardCount };
+    }
+
+    const reasons: string[] = [];
+    if (topologyToken !== this.materialTopologyToken) reasons.push('topology');
+    if (maxSimultaneousLights !== this.materialMaxSimultaneousLights) reasons.push('tier');
+    this.materialRebuildReason = reasons.join('+') || 'initial';
+    this.materialTopologyToken = topologyToken;
+    this.materialMaxSimultaneousLights = maxSimultaneousLights;
+
+    let pbrMaterials = 0;
+    let standardMaterials = 0;
+    for (const material of this.scene.materials) {
+      if (material instanceof PBRMaterial) {
+        material.maxSimultaneousLights = maxSimultaneousLights;
+        pbrMaterials += 1;
+      } else if (material.getClassName() === 'StandardMaterial') {
+        standardMaterials += 1;
+      }
+    }
+    this.materialPbrCount = pbrMaterials;
+    this.materialStandardCount = standardMaterials;
+    return { pbr: pbrMaterials, standard: standardMaterials };
   }
 
   private syncActorGrounding(state: SimState, budget: BabylonRefineryLightingBudget) {
@@ -579,8 +665,26 @@ export class BabylonRefineryLighting {
       this.shadowGenerator?.dispose();
       this.shadowGenerator = null;
       this.shadowMapSize = 0;
+      this.shadowCasterCount = 0;
+      this.workProfile.invalidateShadowList();
       return 0;
     }
+
+    const topologyToken = resolveRefineryTopologyToken(this.scene.meshes);
+    const anchorKey = anchor.x.toFixed(4) + ',' + anchor.z.toFixed(4);
+    const workKey = resolveRefineryShadowWorkKey(topologyToken, anchor, budget.shadowMapSize);
+    const needsRebuild = this.workProfile.needsShadowListRebuild(workKey);
+    if (this.shadowGenerator && !needsRebuild) {
+      return this.shadowCasterCount;
+    }
+
+    const reasons: string[] = [];
+    if (topologyToken !== this.shadowMeshTopologyToken) reasons.push('topology');
+    if (anchorKey !== this.shadowAnchorKey) reasons.push('anchor');
+    if (budget.shadowMapSize !== this.shadowMapSize) reasons.push('tier');
+    this.shadowRebuildReason = reasons.join('+') || 'initial';
+    this.shadowMeshTopologyToken = topologyToken;
+    this.shadowAnchorKey = anchorKey;
 
     if (!this.shadowGenerator || this.shadowMapSize !== budget.shadowMapSize) {
       this.shadowGenerator?.dispose();
@@ -601,6 +705,7 @@ export class BabylonRefineryLighting {
       .sort((a, b) => shadowPriority(a) - shadowPriority(b) || a.name.localeCompare(b.name));
     const map = this.shadowGenerator.getShadowMap();
     if (map) map.renderList = casters;
+    this.shadowCasterCount = casters.length;
     return casters.length;
   }
 

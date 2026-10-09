@@ -40,6 +40,8 @@ export const TARGET_FRAME_MS = 1000 / 60;
 export const MAX_MEASURED_FRAME_MS = 250;
 export const SUSPEND_GAP_MS = 1000;
 const MAX_SMOOTHED_FRAME_SAMPLE_MS = 80;
+const INITIAL_ADAPTIVE_DOWNSHIFT_SAMPLES = 20;
+const CATASTROPHIC_DIRECT_PERFORMANCE_MS = 150;
 const TIER_NAME: Record<AdaptiveRenderTier, AdaptiveRenderTierName> = { 0: 'high', 1: 'balanced', 2: 'performance' };
 const PIXEL_RATIO_SCALE: Record<AdaptiveRenderTier, number> = { 0: 1, 1: 0.84, 2: 0.68 };
 const DETAIL_SCALE: Record<AdaptiveRenderTier, number> = { 0: 1, 1: 0.78, 2: 0.5 };
@@ -74,6 +76,7 @@ function severeFramePressureWeight(frameMs: number) {
 export class AdaptiveRenderBudget {
   // Device class never lowers quality; explicit player settings or sustained measured runtime pressure may do so.
   private runtimeTier: AdaptiveRenderTier = 0;
+  private measuredRuntimeSamples = 0;
   private smoothedFrameMs = TARGET_FRAME_MS;
   private slowSamples = 0;
   private fastSamples = 0;
@@ -95,6 +98,7 @@ export class AdaptiveRenderBudget {
     const previousRuntimeTier = this.runtimeTier;
 
     if (frameSampleState === 'measured') {
+      this.measuredRuntimeSamples += 1;
       // Keep the historical EMA bounded so a catastrophic frame cannot poison recovery for seconds,
       // while still counting the full measured sample below as weighted runtime pressure.
       const smoothedSampleMs = Math.min(measuredFrameMs, MAX_SMOOTHED_FRAME_SAMPLE_MS);
@@ -111,8 +115,12 @@ export class AdaptiveRenderBudget {
         this.fastSamples = Math.max(0, this.fastSamples - 1);
       }
 
-      if (this.slowSamples >= 45 && this.runtimeTier < 2) {
-        this.runtimeTier = (this.runtimeTier + 1) as AdaptiveRenderTier;
+      const initialDownshiftReady = this.runtimeTier !== 0
+        || this.measuredRuntimeSamples >= INITIAL_ADAPTIVE_DOWNSHIFT_SAMPLES;
+      if (this.slowSamples >= 45 && this.runtimeTier < 2 && initialDownshiftReady) {
+        this.runtimeTier = this.runtimeTier === 0 && measuredFrameMs >= CATASTROPHIC_DIRECT_PERFORMANCE_MS
+          ? 2
+          : (this.runtimeTier + 1) as AdaptiveRenderTier;
         this.slowSamples = 0;
         this.fastSamples = 0;
       } else if (this.fastSamples >= 240 && this.runtimeTier > 0) {
