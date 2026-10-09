@@ -1,0 +1,10 @@
+{
+  "$schema": "./impact-calibration.schema.json",
+  "schemaVersion": 1,
+  "mode": "advisory",
+  "confidence": {
+    "minimumTrustedFailureObservations": 3,
+    "failClosedThreshold": 0.8
+  },
+  "trustedObservations": []
+}
