@@ -6,6 +6,7 @@ import {
   validateIndependentReviewResult,
 } from '../tools/independent-review.mjs';
 import { extractReviewResult, selectAuthoritativeReviewComment } from '../tools/review-comment-gate.mjs';
+import { selectOrchestrationReviewTask, selectReviewTask } from '../tools/select-review-task.mjs';
 import { sha256Value } from '../tools/candidate-evidence.mjs';
 
 const acceptance = ['criterion one', 'criterion two'];
@@ -122,10 +123,31 @@ assert.throws(
   /latest independent review verdict.*fail/,
 );
 
+const currentGraph = JSON.parse(readFileSync('agent/task-graph.json', 'utf8'));
+const baseGraph = structuredClone(currentGraph);
+const currentAo6 = currentGraph.tasks.find(entry => entry.id === 'AO-6');
+const baseAo6 = baseGraph.tasks.find(entry => entry.id === 'AO-6');
+assert.equal(currentAo6.status, 'verified', 'AO-6 closeout candidate must carry its verified state');
+baseAo6.status = 'active';
+const closeoutSelection = selectOrchestrationReviewTask(currentGraph, { baseGraph });
+assert.equal(closeoutSelection.task.id, 'AO-6');
+assert.equal(closeoutSelection.mode, 'orchestration-closeout');
+
+const unchangedBase = structuredClone(currentGraph);
+assert.equal(selectOrchestrationReviewTask(currentGraph, { baseGraph: unchangedBase }), null);
+const postMigrationSelection = await selectReviewTask();
+assert.equal(postMigrationSelection.mode, 'product', 'after AO-6 is already verified outside a closeout diff, review selection must fall back to product work');
+assert.equal(postMigrationSelection.source, 'docs/content-roadmap.md');
+
+const selectorSource = readFileSync('agent/tools/select-review-task.mjs', 'utf8');
+assert.match(selectorSource, /GITHUB_EVENT_PATH/, 'PR review selection must inspect the exact pull-request base and head refs');
+assert.match(selectorSource, /orchestration-closeout/, 'review selection must preserve a just-verified AO task as the closeout review target');
+
 const workflow = readFileSync('.github/workflows/pr-candidate.yml', 'utf8');
 assert.match(workflow, /independent-review-context:/, 'PR candidate workflow must provide a separate review context job');
 assert.match(workflow, /name: Independent Review Context/);
 assert.match(workflow, /persist-credentials: false/, 'review checkout must not retain repository write credentials');
+assert.match(workflow, /node agent\/tools\/select-review-task\.mjs/, 'review flow must resolve its task through the closeout-aware selector');
 assert.match(workflow, /node agent\/tools\/independent-review\.mjs packet/, 'review context must generate the machine-readable packet');
 assert.match(workflow, /node agent\/tools\/review-comment-gate\.mjs gate/, 'final candidate workflow must require an actual review result');
 assert.match(workflow, /gh api --paginate/, 'final candidate workflow must read PR conversation evidence');

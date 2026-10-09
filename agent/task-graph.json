@@ -205,7 +205,7 @@
       "id": "AO-6",
       "title": "Add mandatory independent review and mechanical architecture proofs",
       "priority": 60,
-      "status": "active",
+      "status": "verified",
       "dependsOn": ["AO-5"],
       "acceptance": [
         "Final candidates support a separate read-only verifier context that attempts to disprove completion without creating a competing implementation.",
