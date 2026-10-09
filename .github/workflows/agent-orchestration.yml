@@ -83,6 +83,7 @@ jobs:
           name: acceptance-attack-shadow-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'push' }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           path: .agent-attacks/
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 30
 
       - name: Validate affected-verification map
