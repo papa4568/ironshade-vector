@@ -1,0 +1,37 @@
+{
+  "$schema": "./proof-cache.schema.json",
+  "schemaVersion": 1,
+  "mode": "shadow",
+  "proofClasses": [
+    {
+      "id": "full-repository-build",
+      "command": "npm run build",
+      "expensive": true,
+      "repositoryClosure": {
+        "strategy": "all-tracked-except",
+        "excludedPrefixes": [
+          ".github/",
+          "agent/",
+          "android/",
+          "docs/"
+        ],
+        "excludedFiles": [
+          "scripts/android-large-screen-smoke.sh",
+          "scripts/run-behavioral-genome-shadow.mjs",
+          "tests/behavioral-genome-route.ts"
+        ]
+      },
+      "runtimeClosure": {
+        "runnerLabel": "ubuntu-24.04",
+        "captureNode": true,
+        "captureNpm": true,
+        "capturePlatform": true,
+        "environmentVariables": [
+          "ImageOS",
+          "ImageVersion",
+          "VITE_API_BASE_URL"
+        ]
+      }
+    }
+  ]
+}
