@@ -1,0 +1,6 @@
+{
+  "$schema": "./proof-cache.schema.json#/$defs/history",
+  "schemaVersion": 1,
+  "mode": "shadow",
+  "observations": []
+}
