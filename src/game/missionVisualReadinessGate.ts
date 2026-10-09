@@ -54,6 +54,8 @@ class BrowserMissionVisualFrameGate implements MissionVisualFrameGate {
     event.stopImmediatePropagation();
   };
   private readonly onBlockedPointerInput = (event: Event) => {
+    // Untrusted synthetic events are observation-only QA probes, not player input.
+    if (!event.isTrusted) return;
     if (!this.blocked) return;
     if (event.cancelable) event.preventDefault();
     event.stopImmediatePropagation();
