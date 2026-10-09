@@ -23,6 +23,8 @@ The independent-verifier and mechanical-invariant foundation from AO-6 should be
 
 ## Active experimental queue
 
+- [ ] **EV-1 — Acceptance Attack Compiler** — Add a repository tool that takes a selected task's acceptance criteria and produces temporary adversarial implementation variants intended to satisfy visible checks while violating the actual requirement. Run those variants only in isolated worktrees or disposable CI state; never commit them to the implementation branch. Start with deterministic attack templates for false readiness, fake telemetry, skipped quality work, hidden serialization, special-cased test routes, and omitted asset/resource work. **Done when:** a machine-readable attack plan is generated from a real roadmap task; at least one representative P28 criterion is challenged by multiple semantically dishonest variants; existing verification catches every known attack or the tool reports the surviving attack as a proof gap; no attack mutation can modify the candidate branch; and regressions prove the compiler itself cannot turn a surviving attack into a pass.
+
 - [ ] **EV-2 — Causal Evidence Independence** — Model how each important acceptance criterion is supported by observed signals and trace those signals back to their implementation sources. Detect circular proof where the code under test defines the same flag, metric, or state that the test merely re-reads. Require important criteria to have at least one materially independent observation path where practical. **Done when:** criteria, proof records, observed signals, and implementation dependencies can be represented as a machine-readable evidence graph; representative circular proofs are rejected; representative independent proofs pass; the system distinguishes unavoidable shared infrastructure from genuine circularity; and existing candidate evidence can reference the resulting independence result without replacing exact-SHA validation.
 
 - [ ] **EV-3 — Behavioral Genome** — Build deterministic hierarchical semantic fingerprints for selected game behavior rather than relying only on file/artifact hashes. Capture stable observations across simulation, mission progression, renderer state, asset/load readiness, resource ownership, and performance bands; organize them into domain-level digests so a candidate can declare which behavior families are expected to change. **Done when:** repeat runs of unchanged deterministic routes produce the same genome; an intentional renderer/loading change alters only declared presentation/load branches; an injected simulation change produces an unexplained genome delta and fails; noisy/non-deterministic observations are excluded or normalized instead of weakening the comparison; and genome evidence is bound to the exact candidate SHA.
@@ -37,11 +39,9 @@ The independent-verifier and mechanical-invariant foundation from AO-6 should be
 
 ## Intended dependency order
 
-EV-1 is verified and archived in `docs/experimental-verification-archive.md`. Remaining work proceeds conservatively as:
+`AO-6 -> EV-1 -> EV-2 -> EV-3 -> EV-4 -> EV-5 -> EV-6 -> EV-7`
 
-`AO-6 -> EV-2 -> EV-3 -> EV-4 -> EV-5 -> EV-6 -> EV-7`
-
-This order is conservative, not absolute. EV-4 and EV-5 may partially prototype in parallel after EV-2 establishes structured proof data, but only one implementation writer should own a given experimental item at a time.
+This order is conservative, not absolute. EV-4 and EV-5 may partially prototype in parallel after EV-1/EV-2 establish structured failure and proof data, but only one implementation writer should own a given experimental item at a time.
 
 ## Promotion rule
 
