@@ -23,8 +23,6 @@ The independent-verifier and mechanical-invariant foundation from AO-6 should be
 
 ## Active experimental queue
 
-- [ ] **EV-3 — Behavioral Genome** — Build deterministic hierarchical semantic fingerprints for selected game behavior rather than relying only on file/artifact hashes. Capture stable observations across simulation, mission progression, renderer state, asset/load readiness, resource ownership, and performance bands; organize them into domain-level digests so a candidate can declare which behavior families are expected to change. **Done when:** repeat runs of unchanged deterministic routes produce the same genome; an intentional renderer/loading change alters only declared presentation/load branches; an injected simulation change produces an unexplained genome delta and fails; noisy/non-deterministic observations are excluded or normalized instead of weakening the comparison; and genome evidence is bound to the exact candidate SHA.
-
 - [ ] **EV-4 — Repository Immune System** — Record recurring verification failures as structured failure memories containing failure signature, root cause, affected domain, escape stage, discovering proof, fix class, and the earlier proof that should ideally have caught it. Cluster repeated deterministic failure classes and generate proposed permanent antibodies as architecture invariants, impact-map rules, focused regressions, or telemetry checks. **Done when:** multiple historical/synthetic failure records can be clustered deterministically; the system proposes a concrete reusable check for a repeated class; proposals require explicit review before enforcement; an accepted antibody catches recurrence of the same class; and failure-memory growth remains compact enough for future agents to consume without replaying PR history.
 
 - [ ] **EV-5 — Self-Calibrating Impact Map** — Compare `agent/impact-map.json` predictions against the actual failures and affected domains observed during full verification. Record false-negative impact predictions and automatically propose conservative rule expansion; do not automatically reduce coverage. Add calibration metrics so the repository can detect when its change-impact model is becoming unreliable. **Done when:** each candidate can emit predicted versus observed impact; a synthetic miss produces a proposed wider rule; repeated misses in the same path/domain family converge on a deterministic expansion proposal; no automatic change can narrow verification; and CI can fail closed to `verify:full` when calibration confidence falls below a defined threshold.
@@ -35,9 +33,9 @@ The independent-verifier and mechanical-invariant foundation from AO-6 should be
 
 ## Intended dependency order
 
-EV-1 and EV-2 are verified and archived in `docs/experimental-verification-archive.md`. Remaining work proceeds conservatively as:
+EV-1 through EV-3 are verified and archived in `docs/experimental-verification-archive.md`. Remaining work proceeds conservatively as:
 
-`AO-6 -> EV-3 -> EV-4 -> EV-5 -> EV-6 -> EV-7`
+`AO-6 -> EV-4 -> EV-5 -> EV-6 -> EV-7`
 
 This order is conservative, not absolute. EV-4 and EV-5 may partially prototype in parallel after EV-2 establishes structured proof data, but only one implementation writer should own a given experimental item at a time.
 
