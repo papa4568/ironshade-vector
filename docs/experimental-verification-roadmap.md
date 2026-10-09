@@ -23,17 +23,15 @@ The independent-verifier and mechanical-invariant foundation from AO-6 should be
 
 ## Active experimental queue
 
-- [ ] **EV-5 — Self-Calibrating Impact Map** — Compare `agent/impact-map.json` predictions against the actual failures and affected domains observed during full verification. Record false-negative impact predictions and automatically propose conservative rule expansion; do not automatically reduce coverage. Add calibration metrics so the repository can detect when its change-impact model is becoming unreliable. **Done when:** each candidate can emit predicted versus observed impact; a synthetic miss produces a proposed wider rule; repeated misses in the same path/domain family converge on a deterministic expansion proposal; no automatic change can narrow verification; and CI can fail closed to `verify:full` when calibration confidence falls below a defined threshold.
-
 - [ ] **EV-6 — Causal Proof Cache** — Define a proof-input-closure digest for selected expensive proofs so the repository can determine whether every input capable of affecting that proof is unchanged between candidate SHAs. Begin in shadow mode: always rerun the proof while independently predicting whether reuse would have been safe, then compare prediction to reality over many candidates. **Done when:** at least one expensive proof has an explicit machine-readable input closure; unchanged closures produce stable digests; changed causal inputs invalidate the digest; shadow-mode reuse predictions agree with real reruns across a meaningful sample; disagreement automatically disables reuse for that proof class; and no cached proof is ever accepted solely because two candidates share similar changed-file lists.
 
 - [ ] **EV-7 — Roadmap Shadow Simulator** — Use upcoming roadmap items as architectural pressure tests for today's candidate. For selected future tasks, synthesize temporary minimal integration probes that do not implement the feature but test whether the current architecture exposes the expected extension points without forbidden dependencies, broad rewrites, or boundary violations. Score future friction only as advisory evidence until the signal proves stable. **Done when:** a current candidate can be tested against at least two later roadmap items; the simulator reports touched surfaces, required boundary violations, missing extension points, and rewrite pressure; deliberately coupling the current implementation increases the future-friction score; clean extension points reduce it; temporary probes never reach the implementation branch; and the score cannot block a candidate until validated against real later work.
 
 ## Intended dependency order
 
-EV-1 through EV-4 are verified and archived in `docs/experimental-verification-archive.md`. Remaining work proceeds conservatively as:
+EV-1 through EV-5 are verified and archived in `docs/experimental-verification-archive.md`. Remaining work proceeds conservatively as:
 
-`AO-6 -> EV-5 -> EV-6 -> EV-7`
+`AO-6 -> EV-6 -> EV-7`
 
 This order is conservative, not absolute. Advisory prototypes may continue under the prerequisite language above, but only one implementation writer should own a given experimental item at a time.
 
