@@ -3,7 +3,6 @@
   "schemaVersion": 1,
   "roadmap": "docs/content-roadmap.md",
   "roadmapIds": [
-    "P28-PLOAD1",
     "P28-PLOAD2",
     "P28-D8",
     "P28-E1",
@@ -168,11 +167,6 @@
     }
   ],
   "overrides": {
-    "P28-PLOAD2": {
-      "dependsOn": [
-        "P28-PLOAD1"
-      ]
-    },
     "P28-E2": {
       "dependsOn": [
         "P28-E1"
