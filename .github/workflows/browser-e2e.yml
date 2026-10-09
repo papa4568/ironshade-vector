@@ -320,13 +320,13 @@ jobs:
           node scripts/verify-authored-weapons.mjs
           node scripts/verify-authored-interactables.mjs
           node scripts/verify-authored-refinery.mjs
-          BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27a2-babylon.png node scripts/browser-runtime-smoke.mjs
+          BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27a2-babylon.png node scripts/browser-runtime-smoke-retry.mjs
           if [[ "${{ matrix.viewport }}" == "desktop" ]]; then
-            BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_BABYLON_BACKEND=webgpu BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27d1-babylon-webgpu.png node scripts/browser-runtime-smoke.mjs
+            BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_BABYLON_BACKEND=webgpu BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27d1-babylon-webgpu.png node scripts/browser-runtime-smoke-retry.mjs
           fi
-          BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=orbital-station BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c1-orbital-station.png node scripts/browser-runtime-smoke.mjs
-          BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=damaged-vessel BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c2-damaged-vessel.png node scripts/browser-runtime-smoke.mjs
-          BROWSER_E2E_LOCATION=damaged-vessel BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-damaged-vessel.png node scripts/browser-runtime-smoke.mjs
+          BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=orbital-station BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c1-orbital-station.png node scripts/browser-runtime-smoke-retry.mjs
+          BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=damaged-vessel BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c2-damaged-vessel.png node scripts/browser-runtime-smoke-retry.mjs
+          BROWSER_E2E_LOCATION=damaged-vessel BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-damaged-vessel.png node scripts/browser-runtime-smoke-retry.mjs
           node scripts/verify-authored-damaged-vessel.mjs
           node --input-type=module <<'NODE'
           const targets = await (await fetch('http://127.0.0.1:9223/json')).json();
@@ -371,8 +371,8 @@ jobs:
           if (result?.result?.exceptionDetails) throw new Error('Failed to seed Spin Habitat QA campaign cycle.');
           console.log('BROWSER_SPIN_HABITAT_SEED_PASS cycle=1');
           NODE
-          BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=spin-habitat BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c3-spin-habitat.png node scripts/browser-runtime-smoke.mjs
-          BROWSER_E2E_LOCATION=spin-habitat BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-spin-habitat.png node scripts/browser-runtime-smoke.mjs
+          BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=spin-habitat BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c3-spin-habitat.png node scripts/browser-runtime-smoke-retry.mjs
+          BROWSER_E2E_LOCATION=spin-habitat BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-spin-habitat.png node scripts/browser-runtime-smoke-retry.mjs
           node --input-type=module <<'NODE'
           const targets = await (await fetch('http://127.0.0.1:9223/json')).json();
           const target = targets.find(candidate => candidate.type === 'page' && candidate.webSocketDebuggerUrl);
@@ -416,8 +416,8 @@ jobs:
           if (result?.result?.exceptionDetails) throw new Error('Failed to seed Jovian Harvester QA campaign cycle.');
           console.log('BROWSER_JOVIAN_HARVESTER_SEED_PASS cycle=2');
           NODE
-          BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=jovian-harvester BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c4-jovian-harvester.png node scripts/browser-runtime-smoke.mjs
-          BROWSER_E2E_LOCATION=jovian-harvester BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-jovian-harvester.png node scripts/browser-runtime-smoke.mjs
+          BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=jovian-harvester BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c4-jovian-harvester.png node scripts/browser-runtime-smoke-retry.mjs
+          BROWSER_E2E_LOCATION=jovian-harvester BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-jovian-harvester.png node scripts/browser-runtime-smoke-retry.mjs
           node --input-type=module <<'NODE'
           const targets = await (await fetch('http://127.0.0.1:9223/json')).json();
           const target = targets.find(candidate => candidate.type === 'page' && candidate.webSocketDebuggerUrl);
@@ -461,8 +461,8 @@ jobs:
           if (result?.result?.exceptionDetails) throw new Error('Failed to seed Ice Mine QA campaign cycle.');
           console.log('BROWSER_ICE_MINE_SEED_PASS cycle=3');
           NODE
-          BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=ice-mine BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c5-ice-mine.png node scripts/browser-runtime-smoke.mjs
-          BROWSER_E2E_LOCATION=ice-mine BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-ice-mine.png node scripts/browser-runtime-smoke.mjs
+          BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=ice-mine BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c5-ice-mine.png node scripts/browser-runtime-smoke-retry.mjs
+          BROWSER_E2E_LOCATION=ice-mine BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-ice-mine.png node scripts/browser-runtime-smoke-retry.mjs
           node --input-type=module <<'NODE'
           const targets = await (await fetch('http://127.0.0.1:9223/json')).json();
           const target = targets.find(candidate => candidate.type === 'page' && candidate.webSocketDebuggerUrl);
@@ -506,8 +506,8 @@ jobs:
           if (result?.result?.exceptionDetails) throw new Error('Failed to seed Solar Yard QA campaign cycle.');
           console.log('BROWSER_SOLAR_YARD_SEED_PASS cycle=4');
           NODE
-          BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=solar-yard BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c6-solar-yard.png node scripts/browser-runtime-smoke.mjs
-          BROWSER_E2E_LOCATION=solar-yard BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-solar-yard.png node scripts/browser-runtime-smoke.mjs
+          BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=solar-yard BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c6-solar-yard.png node scripts/browser-runtime-smoke-retry.mjs
+          BROWSER_E2E_LOCATION=solar-yard BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-solar-yard.png node scripts/browser-runtime-smoke-retry.mjs
           node --input-type=module <<'NODE'
           const targets = await (await fetch('http://127.0.0.1:9223/json')).json();
           const target = targets.find(candidate => candidate.type === 'page' && candidate.webSocketDebuggerUrl);
@@ -566,8 +566,8 @@ jobs:
           if (result?.result?.exceptionDetails) throw new Error('Failed to seed Lattice Annex QA campaign finale.');
           console.log('BROWSER_LATTICE_ANNEX_SEED_PASS step=13');
           NODE
-          BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=lattice-annex BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c7-lattice-annex.png node scripts/browser-runtime-smoke.mjs
-          BROWSER_E2E_LOCATION=lattice-annex BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-lattice-annex.png node scripts/browser-runtime-smoke.mjs
+          BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=lattice-annex BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c7-lattice-annex.png node scripts/browser-runtime-smoke-retry.mjs
+          BROWSER_E2E_LOCATION=lattice-annex BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-lattice-annex.png node scripts/browser-runtime-smoke-retry.mjs
           node --input-type=module <<'NODE'
           const targets = await (await fetch('http://127.0.0.1:9223/json')).json();
           const target = targets.find(candidate => candidate.type === 'page' && candidate.webSocketDebuggerUrl);
@@ -633,8 +633,8 @@ jobs:
           if (result?.result?.exceptionDetails) throw new Error('Failed to seed Momentum Exchange QA Interdiction contract.');
           console.log('BROWSER_MOMENTUM_EXCHANGE_SEED_PASS interdiction=active step=0');
           NODE
-          BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=momentum-exchange BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c8-momentum-exchange.png node scripts/browser-runtime-smoke.mjs
-          BROWSER_E2E_LOCATION=momentum-exchange BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-momentum-exchange.png node scripts/browser-runtime-smoke.mjs
+          BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=momentum-exchange BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c8-momentum-exchange.png node scripts/browser-runtime-smoke-retry.mjs
+          BROWSER_E2E_LOCATION=momentum-exchange BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-momentum-exchange.png node scripts/browser-runtime-smoke-retry.mjs
           node --input-type=module <<'NODE'
           const targets = await (await fetch('http://127.0.0.1:9223/json')).json();
           const target = targets.find(candidate => candidate.type === 'page' && candidate.webSocketDebuggerUrl);
@@ -700,10 +700,10 @@ jobs:
           if (result?.result?.exceptionDetails) throw new Error('Failed to seed Cryo Reserve QA Interdiction contract.');
           console.log('BROWSER_CRYO_RESERVE_SEED_PASS interdiction=active step=1');
           NODE
-          BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=cryo-reserve BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c9-cryo-reserve.png node scripts/browser-runtime-smoke.mjs
-          BROWSER_E2E_LOCATION=cryo-reserve BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-cryo-reserve.png node scripts/browser-runtime-smoke.mjs
-          BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=parallax-array BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c10-parallax-array.png node scripts/browser-runtime-smoke.mjs
-          BROWSER_E2E_LOCATION=parallax-array BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-parallax-array.png node scripts/browser-runtime-smoke.mjs
+          BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=cryo-reserve BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c9-cryo-reserve.png node scripts/browser-runtime-smoke-retry.mjs
+          BROWSER_E2E_LOCATION=cryo-reserve BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-cryo-reserve.png node scripts/browser-runtime-smoke-retry.mjs
+          BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=parallax-array BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c10-parallax-array.png node scripts/browser-runtime-smoke-retry.mjs
+          BROWSER_E2E_LOCATION=parallax-array BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-parallax-array.png node scripts/browser-runtime-smoke-retry.mjs
           node scripts/browser-chapter3-playthrough.mjs
 
       - name: Upload browser QA evidence
