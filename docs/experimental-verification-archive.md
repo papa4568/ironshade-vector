@@ -207,3 +207,36 @@ Rollback is to remove the EV-6 prediction/comparison/upload steps from `.github/
 ### Promotion status
 
 Not promoted. EV-6 remains advisory/shadow-only; no proof is skipped and no cached result is accepted. AO-6 independent-verifier/mechanical-invariant foundations plus the roadmap promotion rule remain prerequisites before causal proof reuse can become a default optimization. The next experimental queue item is EV-7.
+
+## EV-7 — Roadmap Shadow Simulator
+
+Completed 2026-10-09 in advisory/shadow mode.
+
+### Implemented
+
+- Added `agent/roadmap-shadow-simulator.schema.json`, `agent/roadmap-shadow-simulator.json`, and `agent/tools/roadmap-shadow-simulator.mjs` to pressure-test current architecture against real later product-roadmap items while reusing the existing roadmap adapter rather than duplicating roadmap parsing or task order.
+- Configured two representative later tasks: `P28-PLOAD2` probes the shared mission-visual-readiness boundary, while `P28-G1` probes the orbital-station presentation lifecycle and renderer ownership boundary.
+- The simulator reports touched surfaces, required boundary violations, missing extension points, rewrite pressure, probe-compilation status, and a deterministic future-friction score. Clean extension points remain low-friction; missing shared contracts, forbidden renderer back-dependencies, broad rewrite pressure, and failed probe compilation all increase the score.
+- Temporary TypeScript probes are synthesized only under the operating system temp directory, type-checked against the current candidate with the repository TypeScript toolchain, deleted afterward, and guarded by before/after Git HEAD plus working-tree fingerprints. Probe source never reaches the implementation branch.
+- Added regressions that deliberately hide the shared readiness contract, inject a forbidden renderer back-dependency, broaden the required surface set, and simulate a compile failure. Each mutation raises advisory friction without mutating product code.
+- Integrated the regressions into Agent Orchestration and exact-SHA compiled probe capture into the existing PR Candidate producer. Reports hard-code `validatedAgainstRealLaterWork=false`, `acceptedForEnforcement=false`, `candidatePassGranted=false`, and `blocking=false`; `--enforce` is rejected until a future validated promotion.
+
+### Evidence
+
+Implementation candidate `6bf7adb411cfa9ad6e00e0627d97d06b10a9d512` passed Agent Orchestration run `37977243358` and PR Candidate Verification run `37977244710` before this archive closeout.
+
+The EV-7 regressions proved the clean readiness and orbital-presentation scenarios each score `1`; removing the shared readiness extension point raises that scenario to `8`; injecting the forbidden renderer back-dependency raises the orbital scenario to `10`; and expanding the orbital task across three additional core surfaces raises rewrite pressure to `high` with score `13`. These mutations are in-memory test fixtures only and never alter the candidate branch.
+
+Advisory evidence artifact `11639107889` (`roadmap-shadow-simulator-354-6bf7adb411cfa9ad6e00e0627d97d06b10a9d512`) is bound to the exact implementation candidate with GitHub Actions digest `sha256:6d6c2c1a5be95038315a783c4cef9f2e7178ed0e7b97e1fd1a2540c817a7e0cd`. Its exact-SHA report compiled both disposable probes successfully, recorded `missingExtensionPointCount=0`, `requiredBoundaryViolationCount=0`, `failedProbeCount=0`, `maximumFrictionScore=1`, and confirmed `outsideRepository=true`, `persisted=false`, and `repositoryUnchanged=true` for both probes. The report remained `validatedAgainstRealLaterWork=false`, `acceptedForEnforcement=false`, `candidatePassGranted=false`, and `blocking=false`.
+
+The exact implementation candidate also passed the authoritative full repository verification/production build, desktop and mobile-landscape browser E2E, APK construction/integrity and delivery checks, API 35 product smoke, API 36 large-screen smoke, the aggregate Android gate, and final PR Candidate Verification. APK artifact `11638664615` is bound to the same candidate with Actions digest `sha256:fa3dcb5a390f123b0240063e3f6e2ce0a9afc4d517c3180e51dc9fcebe56b560`. Final candidate evidence artifact `11639564046` has digest `sha256:b8d008cb02fd450b2f06ae81136829535fea785f49687e959f3b58e3bacc6166`.
+
+### Isolation and rollback
+
+EV-7 does not implement either future product task and does not alter runtime behavior. The only synthesized integration files live in disposable OS temp storage during verification; the tool removes them in a `finally` path and rejects any repository-state change. The committed configuration contains only task IDs, expected surfaces, boundary contracts, and probe source templates. Candidate acceptance continues to depend exclusively on the pre-existing full-build, browser, Android, APK, and exact-SHA evidence gates.
+
+Rollback is to remove the EV-7 capture/upload steps from `.github/workflows/pr-candidate.yml`, remove the EV-7 regression step from `.github/workflows/agent-orchestration.yml`, remove `agent/roadmap-shadow-simulator.json`, `agent/roadmap-shadow-simulator.schema.json`, `agent/tests/roadmap-shadow-simulator.mjs`, and `agent/tools/roadmap-shadow-simulator.mjs`, and remove the EV-7 source/rule entries from `AGENTS.md`. The previous verified pipeline then runs unchanged.
+
+### Promotion status
+
+Not promoted. EV-7 remains advisory because its predictions have not yet been compared with the actual later implementation work. AO-6 remains a prerequisite for default-enforced experimental behavior, and no Roadmap Shadow Simulator score can currently block a candidate. No additional EV item is queued.
