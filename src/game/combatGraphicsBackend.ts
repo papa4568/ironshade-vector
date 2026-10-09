@@ -1,6 +1,7 @@
 import type { Contract } from './campaign';
 import type { CombatCameraFeedbackSample } from './combatCameraFeedback';
 import type { EquipmentFaction } from './factionGear';
+import { createMissionVisualFrameGate, type MissionVisualFrameGate } from './missionVisualReadinessGate';
 import type { GraphicsQualityMode } from './renderQuality';
 import type { Player, SimState } from './sim';
 
@@ -185,12 +186,14 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
   private lastRenderAt = 0;
   private lastObservedRenderTier: string | null = null;
   private renderTierTransitionCount = 0;
+  private readonly missionVisualGate: MissionVisualFrameGate;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
     private readonly coarse: boolean,
     private readonly requestedBackend: BabylonGraphicsBackendId,
   ) {
+    this.missionVisualGate = createMissionVisualFrameGate(canvas);
     canvas.dataset.babylonInit = 'initializing';
     canvas.dataset.babylonDisposed = 'false';
     canvas.dataset.babylonDisposeCount ||= '0';
@@ -277,6 +280,7 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
     this.disposed = true;
     this.delegate?.dispose();
     this.delegate = null;
+    this.missionVisualGate.dispose();
     this.releaseWebGpuRenderSurface();
     const previousDisposeCount = Number.parseInt(this.canvas.dataset.babylonDisposeCount ?? '0', 10);
     this.canvas.dataset.babylonDisposeCount = String(Number.isFinite(previousDisposeCount) ? previousDisposeCount + 1 : 1);
@@ -368,7 +372,7 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
           this.releaseWebGpuRenderSurface();
           return;
         }
-        const guardedRenderer = createBabylonMissionVisualReadinessBackend(renderer, this.canvas);
+        const guardedRenderer = createBabylonMissionVisualReadinessBackend(renderer, this.canvas, this.missionVisualGate);
         this.delegate = guardedRenderer;
         this.canvas.dataset.graphicsPathLoaded = guardedRenderer.loadedId;
         this.canvas.dataset.graphicsPathFallback = '';
@@ -388,6 +392,7 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
           : failureStage === 'runtime-device-lost' ? 'runtime-device-lost' : 'init-fallback';
         this.canvas.dataset.babylonBackendFallback = `webgpu->webgl2:${fallbackKind}`;
         this.canvas.dataset.babylonBackendFallbackReason = error instanceof Error ? error.message : String(error);
+        this.missionVisualGate.setDetail('backend-fallback');
         this.releaseWebGpuRenderSurface();
         console.warn('P27-D1 Babylon WebGPU unavailable; recreating with Babylon WebGL2.', error);
       }
@@ -399,6 +404,7 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
   private async fallbackFromWebGpu(reason: string) {
     if (this.disposed || this.webGpuFallbackInFlight || this.requestedBackend !== 'webgpu') return;
     this.webGpuFallbackInFlight = true;
+    this.missionVisualGate.block('backend-fallback');
     this.canvas.dataset.babylonBackendFallback = 'webgpu->webgl2:runtime-device-lost';
     this.canvas.dataset.babylonBackendFallbackReason = reason;
     this.canvas.dataset.babylonBackendLoaded = 'initializing';
@@ -430,13 +436,14 @@ class BabylonCombatGraphicsBackend implements CombatGraphicsBackend {
         renderer.dispose();
         return;
       }
-      const guardedRenderer = createBabylonMissionVisualReadinessBackend(renderer, this.canvas);
+      const guardedRenderer = createBabylonMissionVisualReadinessBackend(renderer, this.canvas, this.missionVisualGate);
       this.delegate = guardedRenderer;
       this.canvas.dataset.graphicsPathLoaded = guardedRenderer.loadedId;
       this.canvas.dataset.graphicsPathFallback = '';
       this.canvas.dataset.babylonInit = 'ready';
     } catch (error) {
       if (this.disposed) return;
+      this.missionVisualGate.setDetail('backend-fallback');
       this.canvas.dataset.babylonInit = 'failed';
       this.canvas.dataset.babylonBackendLoaded = 'failed';
       this.canvas.dataset.babylonFallbackReason = error instanceof Error ? error.message : String(error);
