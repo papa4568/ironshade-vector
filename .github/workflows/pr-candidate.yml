@@ -71,6 +71,18 @@ jobs:
             exit "$status"
           done
 
+      - name: Predict EV-6 causal proof reuse in shadow mode
+        continue-on-error: true
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+        run: |
+          mkdir -p .agent-proof-cache
+          node agent/tools/causal-proof-cache.mjs predict \
+            --proof full-repository-build \
+            --candidate "$CANDIDATE_SHA" \
+            --output .agent-proof-cache/prediction.json
+
       - name: Run full repository verification and production build once
         id: full-verification
         env:
@@ -102,6 +114,32 @@ jobs:
         with:
           name: impact-map-calibration-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
           path: .agent-impact-calibration/
+          if-no-files-found: warn
+          include-hidden-files: true
+          retention-days: 30
+
+      - name: Compare EV-6 reuse prediction with the real rerun
+        if: always()
+        continue-on-error: true
+        env:
+          FULL_VERIFICATION_OUTCOME: ${{ steps.full-verification.outcome }}
+        run: |
+          if [[ -f .agent-proof-cache/prediction.json ]]; then
+            node agent/tools/causal-proof-cache.mjs observe \
+              --prediction .agent-proof-cache/prediction.json \
+              --outcome "$FULL_VERIFICATION_OUTCOME" \
+              --run-id "$GITHUB_RUN_ID" \
+              --output .agent-proof-cache/report.json
+          else
+            echo "EV6_PROOF_CACHE_PREDICTION_MISSING shadow-only prediction unavailable"
+          fi
+
+      - name: Upload EV-6 causal proof cache advisory evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: causal-proof-cache-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: .agent-proof-cache/
           if-no-files-found: warn
           include-hidden-files: true
           retention-days: 30
