@@ -134,6 +134,9 @@ jobs:
       - name: Validate exact-SHA causal proof cache history
         run: node agent/tools/causal-proof-cache.mjs history-check
 
+      - name: Run roadmap shadow simulator regressions
+        run: node agent/tests/roadmap-shadow-simulator.mjs
+
       - name: Validate affected-verification map
         run: node agent/tools/select-affected-verification.mjs --validate-only
 
