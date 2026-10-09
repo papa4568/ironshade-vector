@@ -12,6 +12,7 @@ import type {
   CombatGraphicsRenderArgs,
   MissionVisualReadiness,
 } from './combatGraphicsBackend';
+import { createMissionVisualFrameGate, type MissionVisualFrameGate } from './missionVisualReadinessGate';
 import { refineryWorldObjectFamilyKey } from './refineryWorldObjectAssets';
 import { getWorldSize, type CombatObject, type SimState } from './sim';
 
@@ -30,6 +31,7 @@ type ReadinessInput = {
 };
 
 type SceneBackedBackend = CombatGraphicsBackend & { scene?: Scene };
+type EngineBackedBackend = CombatGraphicsBackend & { engine?: unknown };
 
 type GuardVisuals = {
   root: TransformNode;
@@ -90,6 +92,8 @@ export class BabylonMissionVisualReadinessBackend implements CombatGraphicsBacke
   private generationStartedAt = 0;
   private framesInGeneration = 0;
   private guardVisuals: GuardVisuals | null = null;
+  private readonly visualGate: MissionVisualFrameGate;
+  private readonly ownsVisualGate: boolean;
   private readiness: MissionVisualReadiness = {
     generation: 0,
     missionKey: 'initializing',
@@ -103,7 +107,11 @@ export class BabylonMissionVisualReadinessBackend implements CombatGraphicsBacke
   constructor(
     private readonly delegate: CombatGraphicsBackend,
     private readonly canvas: HTMLCanvasElement,
+    visualGate?: MissionVisualFrameGate,
   ) {
+    this.visualGate = visualGate ?? createMissionVisualFrameGate(canvas);
+    this.ownsVisualGate = !visualGate;
+    this.visualGate.block('authored-assets');
     this.publish();
   }
 
@@ -113,6 +121,14 @@ export class BabylonMissionVisualReadinessBackend implements CombatGraphicsBacke
 
   get loadedId() {
     return this.delegate.loadedId;
+  }
+
+  get engine() {
+    return (this.delegate as EngineBackedBackend).engine;
+  }
+
+  get scene() {
+    return (this.delegate as SceneBackedBackend).scene;
   }
 
   render(...args: CombatGraphicsRenderArgs) {
@@ -139,10 +155,12 @@ export class BabylonMissionVisualReadinessBackend implements CombatGraphicsBacke
 
   dispose() {
     this.disposeGuardVisuals();
+    if (this.ownsVisualGate) this.visualGate.dispose();
     this.delegate.dispose();
   }
 
   private beginGeneration(missionKey: string, state: SimState) {
+    const reentry = this.generation > 0;
     this.missionKey = missionKey;
     this.generation += 1;
     this.generationStartedAt = performance.now();
@@ -157,6 +175,7 @@ export class BabylonMissionVisualReadinessBackend implements CombatGraphicsBacke
       world: 'loading',
       reason: null,
     };
+    this.visualGate.block(reentry ? 'route-transition' : 'authored-assets');
     this.canvas.dataset.missionVisualGeneration = String(this.generation);
     this.canvas.dataset.missionVisualMissionKey = missionKey;
     this.canvas.dataset.missionVisualGuard = 'initializing';
@@ -184,10 +203,13 @@ export class BabylonMissionVisualReadinessBackend implements CombatGraphicsBacke
     if (resolved.phase === 'ready' && resolved.mode === 'authored') {
       this.disposeGuardVisuals();
       this.canvas.dataset.missionVisualGuard = 'released-authored';
+      this.visualGate.release();
     } else if (resolved.phase === 'ready' && resolved.mode === 'fallback') {
       this.canvas.dataset.missionVisualGuard = 'active-fallback';
+      this.visualGate.release();
     } else {
       this.canvas.dataset.missionVisualGuard = 'active-loading';
+      this.visualGate.setDetail('authored-assets');
     }
     this.publish();
   }
@@ -198,12 +220,19 @@ export class BabylonMissionVisualReadinessBackend implements CombatGraphicsBacke
     this.canvas.dataset.missionVisualShell = this.readiness.shell;
     this.canvas.dataset.missionVisualWorld = this.readiness.world;
     this.canvas.dataset.missionVisualReason = this.readiness.reason ?? '';
+    const root = this.canvas.closest<HTMLElement>('.game-root');
+    if (root) {
+      root.dataset.missionVisualReadiness = this.readiness.phase;
+      root.dataset.missionVisualMode = this.readiness.mode;
+      root.dataset.missionVisualGeneration = String(this.readiness.generation);
+      root.dataset.missionVisualMissionKey = this.readiness.missionKey;
+    }
   }
 
   private ensureGuardVisuals(state: SimState, missionKey: string) {
     if (this.guardVisuals?.missionKey === missionKey) return;
     this.disposeGuardVisuals();
-    const scene = (this.delegate as SceneBackedBackend).scene;
+    const scene = this.scene;
     if (!scene) {
       this.canvas.dataset.missionVisualGuard = 'scene-unavailable';
       return;
@@ -282,6 +311,7 @@ export class BabylonMissionVisualReadinessBackend implements CombatGraphicsBacke
 export function createBabylonMissionVisualReadinessBackend(
   delegate: CombatGraphicsBackend,
   canvas: HTMLCanvasElement,
+  visualGate?: MissionVisualFrameGate,
 ) {
-  return new BabylonMissionVisualReadinessBackend(delegate, canvas);
+  return new BabylonMissionVisualReadinessBackend(delegate, canvas, visualGate);
 }
