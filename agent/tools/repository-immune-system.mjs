@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const SHA_PATTERN = /^[a-f0-9]{40}$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const FAILURE_SOURCES = new Set(['historical', 'synthetic']);
 const CHECK_KINDS = new Set([
   'architecture-invariant',
   'impact-map-rule',
@@ -38,6 +39,13 @@ function assertCheckKind(value, label) {
   assert(CHECK_KINDS.has(value), `${label} must be one of ${[...CHECK_KINDS].join(', ')}`);
 }
 
+function assertUniqueStrings(values, label, { minItems = 0 } = {}) {
+  assert(Array.isArray(values), `${label} must be an array`);
+  assert(values.length >= minItems, `${label} must contain at least ${minItems} item(s)`);
+  values.forEach((value, index) => assertString(value, `${label}[${index}]`));
+  assert(new Set(values).size === values.length, `${label} must not contain duplicates`);
+}
+
 export function normalizeObject(value) {
   if (Array.isArray(value)) return value.map(normalizeObject);
   if (!value || typeof value !== 'object') return value;
@@ -62,16 +70,26 @@ function validateProof(proof, label) {
   assertString(proof.id, `${label}.id`);
 }
 
+function validateCheckSpec(check, label) {
+  assertObject(check, label);
+  assertString(check.targetPath, `${label}.targetPath`);
+  assertUniqueStrings(check.requiredSubstrings, `${label}.requiredSubstrings`, { minItems: 1 });
+  assertUniqueStrings(check.forbiddenSubstrings, `${label}.forbiddenSubstrings`);
+  return check;
+}
+
 function validateEarlierProof(proof, label) {
   assertObject(proof, label);
   assertCheckKind(proof.kind, `${label}.kind`);
   assertString(proof.id, `${label}.id`);
   assertString(proof.gap, `${label}.gap`);
+  validateCheckSpec(proof.check, `${label}.check`);
 }
 
 export function validateFailureRecord(record, label = 'failure record') {
   assertObject(record, label);
   assertString(record.id, `${label}.id`);
+  assert(FAILURE_SOURCES.has(record.source), `${label}.source must be historical or synthetic`);
   assertDate(record.observedOn, `${label}.observedOn`);
   assertString(record.failureClass, `${label}.failureClass`);
   assertObject(record.failureSignature, `${label}.failureSignature`);
@@ -103,9 +121,10 @@ function proofKey(proof) {
   return `${proof.kind}:${proof.id}`;
 }
 
-export function clusterFailureRecords(records, { maxSamplesPerClass = 3 } = {}) {
+export function clusterFailureRecords(records, { maxSamplesPerClass = 3, maxSerializedBytes = 16384 } = {}) {
   assert(Array.isArray(records), 'failure records must be an array');
   assert(Number.isInteger(maxSamplesPerClass) && maxSamplesPerClass >= 1 && maxSamplesPerClass <= 10, 'maxSamplesPerClass must be an integer from 1 to 10');
+  assert(Number.isInteger(maxSerializedBytes) && maxSerializedBytes >= 1024, 'maxSerializedBytes must be an integer of at least 1024');
   const seenIds = new Set();
   const sorted = records.map((record, index) => validateFailureRecord(record, `failure record[${index}]`)).sort((a, b) =>
     `${a.failureClass}:${a.observedOn}:${a.id}`.localeCompare(`${b.failureClass}:${b.observedOn}:${b.id}`),
@@ -139,6 +158,7 @@ export function clusterFailureRecords(records, { maxSamplesPerClass = 3 } = {}) 
     const discoveringProofs = [...proofMap.values()].sort((a, b) => proofKey(a).localeCompare(proofKey(b)));
     const sampleOccurrences = group.slice(0, maxSamplesPerClass).map(record => ({
       id: record.id,
+      source: record.source,
       observedOn: record.observedOn,
       escapeStage: record.escapeStage,
       discoveringProofId: record.discoveringProof.id,
@@ -152,21 +172,25 @@ export function clusterFailureRecords(records, { maxSamplesPerClass = 3 } = {}) 
       failureSignature: identity.failureSignature,
       rootCause: identity.rootCause,
       affectedDomain: identity.affectedDomain,
-      escapeStages,
-      discoveringProofs,
       fixClass: identity.fixClass,
       earlierProof: identity.earlierProof,
+      escapeStages,
+      discoveringProofs,
       sampleOccurrences,
     });
   }
 
-  return {
+  const memory = {
     $schema: './failure-memory.schema.json',
     schemaVersion: 1,
     mode: 'advisory',
     maxSamplesPerClass,
+    maxSerializedBytes,
     classes,
   };
+  const bytes = Buffer.byteLength(canonicalJson(memory), 'utf8');
+  assert(bytes <= maxSerializedBytes, `compacted failure memory exceeds maxSerializedBytes: ${bytes} > ${maxSerializedBytes}`);
+  return memory;
 }
 
 export function validateFailureMemory(memory) {
@@ -174,6 +198,7 @@ export function validateFailureMemory(memory) {
   assert(memory.schemaVersion === 1, 'failure memory schemaVersion must be 1');
   assert(memory.mode === 'advisory', 'failure memory mode must remain advisory until promoted');
   assert(Number.isInteger(memory.maxSamplesPerClass) && memory.maxSamplesPerClass >= 1 && memory.maxSamplesPerClass <= 10, 'failure memory maxSamplesPerClass must be an integer from 1 to 10');
+  assert(Number.isInteger(memory.maxSerializedBytes) && memory.maxSerializedBytes >= 1024, 'failure memory maxSerializedBytes must be an integer of at least 1024');
   assert(Array.isArray(memory.classes), 'failure memory classes must be an array');
   const classNames = new Set();
   let previousClass = null;
@@ -196,9 +221,9 @@ export function validateFailureMemory(memory) {
     assertString(entry.rootCause.code, `${label}.rootCause.code`);
     assertString(entry.rootCause.summary, `${label}.rootCause.summary`);
     assertString(entry.affectedDomain, `${label}.affectedDomain`);
-    assert(Array.isArray(entry.escapeStages) && entry.escapeStages.length > 0, `${label}.escapeStages must be a non-empty array`);
-    assert(new Set(entry.escapeStages).size === entry.escapeStages.length, `${label}.escapeStages must not contain duplicates`);
-    entry.escapeStages.forEach((stage, stageIndex) => assertString(stage, `${label}.escapeStages[${stageIndex}]`));
+    assertCheckKind(entry.fixClass, `${label}.fixClass`);
+    validateEarlierProof(entry.earlierProof, `${label}.earlierProof`);
+    assertUniqueStrings(entry.escapeStages, `${label}.escapeStages`, { minItems: 1 });
     assert(Array.isArray(entry.discoveringProofs) && entry.discoveringProofs.length > 0, `${label}.discoveringProofs must be a non-empty array`);
     const proofKeys = new Set();
     for (const [proofIndex, proof] of entry.discoveringProofs.entries()) {
@@ -207,8 +232,6 @@ export function validateFailureMemory(memory) {
       assert(!proofKeys.has(key), `${label}.discoveringProofs must not contain duplicates`);
       proofKeys.add(key);
     }
-    assertCheckKind(entry.fixClass, `${label}.fixClass`);
-    validateEarlierProof(entry.earlierProof, `${label}.earlierProof`);
     assert(Array.isArray(entry.sampleOccurrences), `${label}.sampleOccurrences must be an array`);
     assert(entry.sampleOccurrences.length <= memory.maxSamplesPerClass, `${label}.sampleOccurrences exceeds maxSamplesPerClass`);
     assert(entry.sampleOccurrences.length <= entry.occurrenceCount, `${label}.sampleOccurrences cannot exceed occurrenceCount`);
@@ -219,12 +242,15 @@ export function validateFailureMemory(memory) {
       assertString(sample.id, `${sampleLabel}.id`);
       assert(!sampleIds.has(sample.id), `${label} has duplicate sample id ${sample.id}`);
       sampleIds.add(sample.id);
+      assert(FAILURE_SOURCES.has(sample.source), `${sampleLabel}.source must be historical or synthetic`);
       assertDate(sample.observedOn, `${sampleLabel}.observedOn`);
       assertString(sample.escapeStage, `${sampleLabel}.escapeStage`);
       assertString(sample.discoveringProofId, `${sampleLabel}.discoveringProofId`);
       if (sample.detail !== undefined) assertString(sample.detail, `${sampleLabel}.detail`);
     }
   }
+  const bytes = Buffer.byteLength(canonicalJson(memory), 'utf8');
+  assert(bytes <= memory.maxSerializedBytes, `failure memory exceeds maxSerializedBytes: ${bytes} > ${memory.maxSerializedBytes}`);
   return memory;
 }
 
@@ -259,6 +285,7 @@ export function proposeAntibodies(memory) {
         target: targetForKind(entry.earlierProof.kind),
         contract: `Reject recurrence of ${entry.failureClass} with signature ${entry.failureSignature.key}.`,
         closesGap: entry.earlierProof.gap,
+        check: entry.earlierProof.check,
       },
     }))
     .sort((a, b) => a.id.localeCompare(b.id));
@@ -277,6 +304,7 @@ function validateProposal(proposal) {
   assertString(proposal.matcher.failureSignature.key, 'antibody proposal.matcher.failureSignature.key');
   assertObject(proposal.suggestedCheck, 'antibody proposal.suggestedCheck');
   assertString(proposal.suggestedCheck.id, 'antibody proposal.suggestedCheck.id');
+  validateCheckSpec(proposal.suggestedCheck.check, 'antibody proposal.suggestedCheck.check');
   return proposal;
 }
 
@@ -308,6 +336,16 @@ function matchesAntibody(record, antibody) {
     && record.failureSignature.key === antibody.matcher.failureSignature.key;
 }
 
+function validateAcceptedAntibody(antibody) {
+  validateProposal(antibody);
+  assert(antibody.status === 'accepted' && antibody.acceptedForEnforcement === true, `antibody proposal ${antibody.id} has not been explicitly accepted and reviewed`);
+  assertObject(antibody.review, `accepted antibody ${antibody.id}.review`);
+  assert(antibody.review.decision === 'accept', `accepted antibody ${antibody.id} must retain an accept review decision`);
+  assertString(antibody.review.reviewer, `accepted antibody ${antibody.id}.review.reviewer`);
+  assertIsoInstant(antibody.review.reviewedAt, `accepted antibody ${antibody.id}.review.reviewedAt`);
+  return antibody;
+}
+
 export function checkAntibodyRecurrence(records, antibodies, { enforce = false } = {}) {
   assert(Array.isArray(records), 'recurrence records must be an array');
   assert(Array.isArray(antibodies), 'antibodies must be an array');
@@ -319,11 +357,7 @@ export function checkAntibodyRecurrence(records, antibodies, { enforce = false }
       if (enforce) throw new Error(`antibody proposal ${antibody.id} has not been explicitly accepted and reviewed`);
       continue;
     }
-    assertObject(antibody.review, `accepted antibody ${antibody.id}.review`);
-    assert(antibody.review.decision === 'accept', `accepted antibody ${antibody.id} must retain an accept review decision`);
-    assertString(antibody.review.reviewer, `accepted antibody ${antibody.id}.review.reviewer`);
-    assertIsoInstant(antibody.review.reviewedAt, `accepted antibody ${antibody.id}.review.reviewedAt`);
-    accepted.push(antibody);
+    accepted.push(validateAcceptedAntibody(antibody));
   }
   const matches = [];
   for (const record of validatedRecords) {
@@ -344,12 +378,34 @@ export function checkAntibodyRecurrence(records, antibodies, { enforce = false }
   return report;
 }
 
+export async function evaluateAcceptedAntibodyCheck(antibody, { readText = path => readFile(resolve(path), 'utf8'), enforce = false } = {}) {
+  validateAcceptedAntibody(antibody);
+  const check = antibody.suggestedCheck.check;
+  const source = await readText(check.targetPath);
+  assertString(source, `accepted antibody ${antibody.id} target content`);
+  const missingRequired = check.requiredSubstrings.filter(value => !source.includes(value));
+  const presentForbidden = check.forbiddenSubstrings.filter(value => source.includes(value));
+  const report = {
+    schema: 'ironshade-antibody-check-report:v1',
+    antibodyId: antibody.id,
+    targetPath: check.targetPath,
+    missingRequired,
+    presentForbidden,
+    status: missingRequired.length === 0 && presentForbidden.length === 0 ? 'pass' : 'fail',
+  };
+  if (enforce && report.status === 'fail') {
+    throw new Error(`accepted antibody check failed: ${antibody.id} missing=${missingRequired.join(',') || 'none'} forbidden=${presentForbidden.join(',') || 'none'}`);
+  }
+  return report;
+}
+
 export function analyzeFailureMemory(memory, { candidateSha = null } = {}) {
   validateFailureMemory(memory);
   if (candidateSha !== null) assert(SHA_PATTERN.test(candidateSha), 'candidateSha must be a full lowercase commit SHA');
   const proposals = proposeAntibodies(memory);
   const occurrences = memory.classes.reduce((sum, entry) => sum + entry.occurrenceCount, 0);
   const retainedSamples = memory.classes.reduce((sum, entry) => sum + entry.sampleOccurrences.length, 0);
+  const compactBytes = Buffer.byteLength(canonicalJson(memory), 'utf8');
   return {
     schema: 'ironshade-repository-immune-report:v1',
     mode: 'advisory',
@@ -363,7 +419,9 @@ export function analyzeFailureMemory(memory, { candidateSha = null } = {}) {
       occurrences,
       retainedSamples,
       maxSamplesPerClass: memory.maxSamplesPerClass,
-      compactBytes: Buffer.byteLength(canonicalJson(memory), 'utf8'),
+      compactBytes,
+      maxSerializedBytes: memory.maxSerializedBytes,
+      compactHeadroomBytes: memory.maxSerializedBytes - compactBytes,
       antibodyProposals: proposals.length,
     },
     proposals,
@@ -402,7 +460,7 @@ async function main() {
   const report = analyzeFailureMemory(memory, { candidateSha: options.candidateSha });
   if (options.output) await writeJson(options.output, report);
   if (options.json) process.stdout.write(canonicalJson(report));
-  else console.log(`REPOSITORY_IMMUNE_REPORT classes=${report.summary.failureClasses} recurring=${report.summary.recurringFailureClasses} proposals=${report.summary.antibodyProposals} retained=${report.summary.retainedSamples}/${report.summary.occurrences} advisory=${!report.acceptedForEnforcement}`);
+  else console.log(`REPOSITORY_IMMUNE_REPORT classes=${report.summary.failureClasses} recurring=${report.summary.recurringFailureClasses} proposals=${report.summary.antibodyProposals} retained=${report.summary.retainedSamples}/${report.summary.occurrences} bytes=${report.summary.compactBytes}/${report.summary.maxSerializedBytes} advisory=${!report.acceptedForEnforcement}`);
 }
 
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
