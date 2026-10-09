@@ -6,6 +6,7 @@ import {
   classifyAttackOutcome,
   compileAttackPlan,
   exerciseAttackPlan,
+  resolveSandboxMutationTarget,
 } from '../tools/acceptance-attack-compiler.mjs';
 
 const taskId = 'P28-PLOAD1';
@@ -44,6 +45,17 @@ assert.equal(
 );
 assert.equal(classifyAttackOutcome({ exitCode: 1 }), 'caught');
 
+await assert.rejects(
+  resolveSandboxMutationTarget('/tmp/ev1-sandbox', '../candidate.txt'),
+  /escapes disposable clone/,
+  'path traversal must fail before any mutation can reach candidate state',
+);
+await assert.rejects(
+  resolveSandboxMutationTarget('/tmp/ev1-sandbox', resolve('/tmp/candidate.txt')),
+  /must be repository-relative/,
+  'absolute mutation targets must fail before any write',
+);
+
 const report = await exerciseAttackPlan({ taskId, fixturePath });
 assert.equal(report.schema, 'ironshade-acceptance-attack-report:v1');
 assert.equal(report.mode, 'advisory');
@@ -67,4 +79,4 @@ if (evidenceDir) {
   await writeFile(resolve(resolved, 'p28-pload1-report.json'), `${JSON.stringify(report, null, 2)}\n`);
 }
 
-console.log(`ACCEPTANCE_ATTACK_COMPILER_REGRESSIONS_PASS task=${taskId} attacks=${report.summary.total} caught=${report.summary.caught} proofGaps=${report.summary.proofGaps} sourceUnchanged=${report.isolation.sourceUnchanged}`);
+console.log(`ACCEPTANCE_ATTACK_COMPILER_REGRESSIONS_PASS task=${taskId} attacks=${report.summary.total} caught=${report.summary.caught} proofGaps=${report.summary.proofGaps} sourceUnchanged=${report.isolation.sourceUnchanged} pathEscape=blocked-before-write`);
