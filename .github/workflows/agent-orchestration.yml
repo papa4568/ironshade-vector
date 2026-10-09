@@ -86,6 +86,27 @@ jobs:
           include-hidden-files: true
           retention-days: 30
 
+      - name: Run causal evidence independence regressions
+        run: node agent/tests/evidence-independence.mjs
+
+      - name: Record causal evidence independence advisory report
+        env:
+          CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node agent/tools/evidence-independence.mjs \
+            --graph agent/evidence-independence.json \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --output .agent-independence/report.json
+
+      - name: Upload causal evidence independence advisory evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: causal-evidence-independence-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'push' }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          path: .agent-independence/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
+
       - name: Validate affected-verification map
         run: node agent/tools/select-affected-verification.mjs --validate-only
 
