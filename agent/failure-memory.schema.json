@@ -4,103 +4,40 @@
   "title": "Ironshade repository failure memory",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "schemaVersion",
-    "mode",
-    "maxSamplesPerClass",
-    "maxSerializedBytes",
-    "classes"
-  ],
+  "required": ["schemaVersion", "mode", "maxSamplesPerClass", "classes"],
   "properties": {
-    "$schema": {
-      "type": "string"
-    },
-    "schemaVersion": {
-      "const": 1
-    },
-    "mode": {
-      "const": "advisory"
-    },
-    "maxSamplesPerClass": {
-      "type": "integer",
-      "minimum": 1,
-      "maximum": 10
-    },
-    "maxSerializedBytes": {
-      "type": "integer",
-      "minimum": 1024
-    },
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "mode": { "const": "advisory" },
+    "maxSamplesPerClass": { "type": "integer", "minimum": 1, "maximum": 10 },
     "classes": {
       "type": "array",
-      "items": {
-        "$ref": "#/$defs/failureClass"
-      }
+      "items": { "$ref": "#/$defs/failureClass" }
     }
   },
   "$defs": {
     "proof": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "kind",
-        "id"
-      ],
+      "required": ["kind", "id"],
       "properties": {
-        "kind": {
-          "type": "string",
-          "minLength": 1
-        },
-        "id": {
-          "type": "string",
-          "minLength": 1
-        }
+        "kind": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1 }
       }
     },
     "checkKind": {
-      "enum": [
-        "architecture-invariant",
-        "impact-map-rule",
-        "focused-regression",
-        "telemetry-check"
-      ]
+      "enum": ["architecture-invariant", "impact-map-rule", "focused-regression", "telemetry-check"]
     },
     "sample": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "source",
-        "observedOn",
-        "escapeStage",
-        "discoveringProofId"
-      ],
+      "required": ["id", "observedOn", "escapeStage", "discoveringProofId"],
       "properties": {
-        "id": {
-          "type": "string",
-          "minLength": 1
-        },
-        "source": {
-          "enum": [
-            "historical",
-            "synthetic"
-          ]
-        },
-        "observedOn": {
-          "type": "string",
-          "format": "date"
-        },
-        "escapeStage": {
-          "type": "string",
-          "minLength": 1
-        },
-        "discoveringProofId": {
-          "type": "string",
-          "minLength": 1
-        },
-        "detail": {
-          "type": "string",
-          "minLength": 1
-        }
+        "id": { "type": "string", "minLength": 1 },
+        "observedOn": { "type": "string", "format": "date" },
+        "escapeStage": { "type": "string", "minLength": 1 },
+        "discoveringProofId": { "type": "string", "minLength": 1 },
+        "detail": { "type": "string", "minLength": 1 }
       }
     },
     "failureClass": {
@@ -121,141 +58,54 @@
         "sampleOccurrences"
       ],
       "properties": {
-        "failureClass": {
-          "type": "string",
-          "minLength": 1
-        },
-        "occurrenceCount": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "firstObservedOn": {
-          "type": "string",
-          "format": "date"
-        },
-        "lastObservedOn": {
-          "type": "string",
-          "format": "date"
-        },
+        "failureClass": { "type": "string", "minLength": 1 },
+        "occurrenceCount": { "type": "integer", "minimum": 1 },
+        "firstObservedOn": { "type": "string", "format": "date" },
+        "lastObservedOn": { "type": "string", "format": "date" },
         "failureSignature": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "kind",
-            "key"
-          ],
+          "required": ["kind", "key"],
           "properties": {
-            "kind": {
-              "type": "string",
-              "minLength": 1
-            },
-            "key": {
-              "type": "string",
-              "minLength": 1
-            }
+            "kind": { "type": "string", "minLength": 1 },
+            "key": { "type": "string", "minLength": 1 }
           }
         },
         "rootCause": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "code",
-            "summary"
-          ],
+          "required": ["code", "summary"],
           "properties": {
-            "code": {
-              "type": "string",
-              "minLength": 1
-            },
-            "summary": {
-              "type": "string",
-              "minLength": 1
-            }
+            "code": { "type": "string", "minLength": 1 },
+            "summary": { "type": "string", "minLength": 1 }
           }
         },
-        "affectedDomain": {
-          "type": "string",
-          "minLength": 1
-        },
+        "affectedDomain": { "type": "string", "minLength": 1 },
         "escapeStages": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
+          "items": { "type": "string", "minLength": 1 }
         },
         "discoveringProofs": {
           "type": "array",
           "minItems": 1,
-          "items": {
-            "$ref": "#/$defs/proof"
-          }
+          "items": { "$ref": "#/$defs/proof" }
         },
-        "fixClass": {
-          "$ref": "#/$defs/checkKind"
-        },
+        "fixClass": { "$ref": "#/$defs/checkKind" },
         "earlierProof": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "kind",
-            "id",
-            "gap",
-            "check"
-          ],
+          "required": ["kind", "id", "gap"],
           "properties": {
-            "kind": {
-              "$ref": "#/$defs/checkKind"
-            },
-            "id": {
-              "type": "string",
-              "minLength": 1
-            },
-            "gap": {
-              "type": "string",
-              "minLength": 1
-            },
-            "check": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "targetPath",
-                "requiredSubstrings",
-                "forbiddenSubstrings"
-              ],
-              "properties": {
-                "targetPath": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "requiredSubstrings": {
-                  "type": "array",
-                  "minItems": 1,
-                  "uniqueItems": true,
-                  "items": {
-                    "type": "string",
-                    "minLength": 1
-                  }
-                },
-                "forbiddenSubstrings": {
-                  "type": "array",
-                  "uniqueItems": true,
-                  "items": {
-                    "type": "string",
-                    "minLength": 1
-                  }
-                }
-              }
-            }
+            "kind": { "$ref": "#/$defs/checkKind" },
+            "id": { "type": "string", "minLength": 1 },
+            "gap": { "type": "string", "minLength": 1 }
           }
         },
         "sampleOccurrences": {
           "type": "array",
-          "items": {
-            "$ref": "#/$defs/sample"
-          }
+          "items": { "$ref": "#/$defs/sample" }
         }
       }
     }
