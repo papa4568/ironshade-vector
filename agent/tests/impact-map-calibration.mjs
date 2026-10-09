@@ -31,6 +31,7 @@ Error: synthetic graphics content failure
 
 assert.equal(pathFamily('src/components/Hud.tsx'), 'src/components/**');
 assert.equal(pathFamily('scripts/prepare-refinery-premium-surfaces.mjs'), 'scripts/**');
+assert.equal(pathFamily('agent/impact-calibration.json'), 'agent/**');
 assert.equal(pathFamily('package.json'), 'package.json');
 assert.equal(parseFailedNpmScript(graphicsFailureLog), 'test:graphics:content');
 assert.deepEqual(verificationIdsForScript('test:graphics:content', impactMap), ['graphics-content']);
@@ -147,4 +148,4 @@ assert.equal(successReport.acceptedForEnforcement, false);
 assert.equal(successReport.candidatePassGranted, false);
 assert.deepEqual(successReport.proposals, []);
 
-console.log(`IMPACT_MAP_CALIBRATION_TEST_PASS syntheticMiss=proposal repeatedMiss=deterministic confidence=${lowStatus.confidence.toFixed(3)} failClosed=${failClosedSelection.mode} noNarrowing=pass candidateShadow=advisory`);
+console.log(`IMPACT_MAP_CALIBRATION_TEST_PASS syntheticMiss=proposal repeatedMiss=deterministic confidence=${lowStatus.confidence.toFixed(3)} failClosed=${failClosedSelection.mode} noNarrowing=pass candidateShadow=advisory rootFamily=pass`);
