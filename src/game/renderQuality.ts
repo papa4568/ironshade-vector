@@ -40,6 +40,7 @@ export const TARGET_FRAME_MS = 1000 / 60;
 export const MAX_MEASURED_FRAME_MS = 250;
 export const SUSPEND_GAP_MS = 1000;
 const MAX_SMOOTHED_FRAME_SAMPLE_MS = 80;
+const ASSET_DETAIL_TIER_STABLE_SAMPLES = 12;
 const TIER_NAME: Record<AdaptiveRenderTier, AdaptiveRenderTierName> = { 0: 'high', 1: 'balanced', 2: 'performance' };
 const PIXEL_RATIO_SCALE: Record<AdaptiveRenderTier, number> = { 0: 1, 1: 0.84, 2: 0.68 };
 const DETAIL_SCALE: Record<AdaptiveRenderTier, number> = { 0: 1, 1: 0.78, 2: 0.5 };
@@ -74,6 +75,9 @@ function severeFramePressureWeight(frameMs: number) {
 export class AdaptiveRenderBudget {
   // Device class never lowers quality; explicit player settings or sustained measured runtime pressure may do so.
   private runtimeTier: AdaptiveRenderTier = 0;
+  private assetDetailRuntimeTier: AdaptiveRenderTier = 0;
+  private assetDetailCandidateTier: AdaptiveRenderTier = 0;
+  private assetDetailStableSamples = 0;
   private smoothedFrameMs = TARGET_FRAME_MS;
   private slowSamples = 0;
   private fastSamples = 0;
@@ -127,9 +131,22 @@ export class AdaptiveRenderBudget {
       this.tierTransitionCount += 1;
     }
 
+    if (this.runtimeTier !== this.assetDetailCandidateTier) {
+      this.assetDetailCandidateTier = this.runtimeTier;
+      this.assetDetailStableSamples = 0;
+    } else if (frameSampleState === 'measured' && this.assetDetailRuntimeTier !== this.assetDetailCandidateTier) {
+      this.assetDetailStableSamples += 1;
+      if (this.assetDetailStableSamples >= ASSET_DETAIL_TIER_STABLE_SAMPLES) {
+        this.assetDetailRuntimeTier = this.assetDetailCandidateTier;
+        this.assetDetailStableSamples = 0;
+      }
+    }
+
     const requested = Math.max(0.35, Math.min(1, requestedQuality));
     const modeFloor: AdaptiveRenderTier = qualityMode === 'performance' ? 2 : 0;
-    const tier = Math.max(this.runtimeTier, modeFloor, qualityFloorTier(requested)) as AdaptiveRenderTier;
+    const requestedTier = Math.max(modeFloor, qualityFloorTier(requested)) as AdaptiveRenderTier;
+    const tier = Math.max(this.runtimeTier, requestedTier) as AdaptiveRenderTier;
+    const detailTier = Math.max(this.assetDetailRuntimeTier, requestedTier) as AdaptiveRenderTier;
     return {
       tier,
       tierName: TIER_NAME[tier],
@@ -145,7 +162,7 @@ export class AdaptiveRenderBudget {
       frameHeadroomMs: TARGET_FRAME_MS - this.smoothedFrameMs,
       framePressure: this.smoothedFrameMs > 21.5 ? 'over' : this.smoothedFrameMs > 18 ? 'watch' : 'healthy',
       pixelRatioScale: PIXEL_RATIO_SCALE[tier],
-      detailScale: DETAIL_SCALE[tier],
+      detailScale: DETAIL_SCALE[detailTier],
       shadows: requested > 0.62 && tier < 2,
       shadowMapSize: SHADOW_MAP_SIZE[tier],
       vfxDensity: VFX_DENSITY[tier],
