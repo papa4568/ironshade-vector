@@ -62,6 +62,7 @@ assert.equal(report.mode, 'advisory');
 assert.equal(report.taskId, taskId);
 assert.equal(report.candidatePassGranted, false);
 assert.equal(report.isolation.sourceUnchanged, true);
+assert.equal(report.isolation.sandboxRemoteDetached, true, 'disposable clone must not retain a remote back to candidate state');
 assert.equal(report.summary.total, 6);
 assert.ok(report.summary.caught >= 1, 'fixture must prove at least one dishonest variant is caught');
 assert.ok(report.summary.proofGaps >= 1, 'fixture must prove surviving dishonest variants become proof gaps');
@@ -79,4 +80,4 @@ if (evidenceDir) {
   await writeFile(resolve(resolved, 'p28-pload1-report.json'), `${JSON.stringify(report, null, 2)}\n`);
 }
 
-console.log(`ACCEPTANCE_ATTACK_COMPILER_REGRESSIONS_PASS task=${taskId} attacks=${report.summary.total} caught=${report.summary.caught} proofGaps=${report.summary.proofGaps} sourceUnchanged=${report.isolation.sourceUnchanged} pathEscape=blocked-before-write`);
+console.log(`ACCEPTANCE_ATTACK_COMPILER_REGRESSIONS_PASS task=${taskId} attacks=${report.summary.total} caught=${report.summary.caught} proofGaps=${report.summary.proofGaps} sourceUnchanged=${report.isolation.sourceUnchanged} remoteDetached=${report.isolation.sandboxRemoteDetached} pathEscape=blocked-before-write`);
