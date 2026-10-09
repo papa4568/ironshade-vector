@@ -48,8 +48,8 @@ export function selectOrchestrationReviewTask(currentGraph, { baseGraph = null }
   return transitioned.length === 1 ? { task: transitioned[0], mode: 'orchestration-closeout' } : null;
 }
 
-export async function selectReviewTask({ baseRef = null, headRef = null } = {}) {
-  if (!baseRef && !headRef) {
+export async function selectReviewTask({ baseRef = null, headRef = null, useEventRefs = true } = {}) {
+  if (useEventRefs && !baseRef && !headRef) {
     const eventRefs = githubPullRequestRefs();
     baseRef = eventRefs.baseRef;
     headRef = eventRefs.headRef;

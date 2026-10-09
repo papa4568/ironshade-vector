@@ -135,7 +135,7 @@ assert.equal(closeoutSelection.mode, 'orchestration-closeout');
 
 const unchangedBase = structuredClone(currentGraph);
 assert.equal(selectOrchestrationReviewTask(currentGraph, { baseGraph: unchangedBase }), null);
-const postMigrationSelection = await selectReviewTask();
+const postMigrationSelection = await selectReviewTask({ useEventRefs: false });
 assert.equal(postMigrationSelection.mode, 'product', 'after AO-6 is already verified outside a closeout diff, review selection must fall back to product work');
 assert.equal(postMigrationSelection.source, 'docs/content-roadmap.md');
 
