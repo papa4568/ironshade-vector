@@ -170,37 +170,15 @@
     }
   ],
   "overrides": {
-    "P28-PLOAD0": {
-      "affectedDomains": [
-        "graphics",
-        "runtime",
-        "mission-transition",
-        "location-presentation"
-      ]
-    },
     "P28-PLOAD1": {
       "dependsOn": [
         "P28-PLOAD0"
-      ],
-      "affectedDomains": [
-        "graphics",
-        "performance",
-        "runtime",
-        "assets",
-        "refinery"
       ]
     },
     "P28-PLOAD2": {
       "dependsOn": [
         "P28-PLOAD0",
         "P28-PLOAD1"
-      ],
-      "affectedDomains": [
-        "graphics",
-        "performance",
-        "runtime",
-        "loading",
-        "location-presentation"
       ]
     },
     "P28-E2": {
