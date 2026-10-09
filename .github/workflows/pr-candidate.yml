@@ -76,6 +76,41 @@ jobs:
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
         run: npm run build
 
+      - name: Run EV-3 behavioral genome regressions
+        run: node agent/tests/behavioral-genome.mjs
+
+      - name: Capture exact-candidate EV-3 semantic observations twice
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          rm -rf .behavioral-genome .behavioral-genome-dist
+          npx vite build --ssr tests/behavioral-genome-observer.ts --outDir .behavioral-genome-dist
+          BEHAVIORAL_GENOME_OBSERVATIONS=.behavioral-genome/observations-a.json node .behavioral-genome-dist/behavioral-genome-observer.js
+          BEHAVIORAL_GENOME_OBSERVATIONS=.behavioral-genome/observations-b.json node .behavioral-genome-dist/behavioral-genome-observer.js
+          node agent/tools/behavioral-genome.mjs create \
+            --input .behavioral-genome/observations-a.json \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --output .behavioral-genome/genome.json
+          node agent/tools/behavioral-genome.mjs create \
+            --input .behavioral-genome/observations-b.json \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --output .behavioral-genome/genome-repeat.json
+          node agent/tools/behavioral-genome.mjs compare \
+            --base .behavioral-genome/genome.json \
+            --candidate .behavioral-genome/genome-repeat.json \
+            --enforce \
+            --output .behavioral-genome/repeat-comparison.json
+
+      - name: Upload EV-3 behavioral genome advisory evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: behavioral-genome-shadow-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: .behavioral-genome/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
+
       - name: Record candidate identity
         id: identity
         shell: bash
