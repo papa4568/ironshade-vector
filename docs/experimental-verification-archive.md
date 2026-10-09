@@ -173,3 +173,37 @@ Rollback is to remove the EV-5 observe/upload steps and full-build log tee from 
 ### Promotion status
 
 Not promoted. EV-5 remains advisory/shadow-only and cannot edit or narrow the impact map. AO-6 independent-verifier/mechanical-invariant foundations and the experimental promotion rule remain prerequisites before calibration can become a default blocking or self-updating mechanism. The next experimental queue item is EV-6.
+
+## EV-6 — Causal Proof Cache
+
+Completed 2026-10-09 in advisory/shadow mode.
+
+### Implemented
+
+- Added `agent/proof-cache.schema.json`, `agent/proof-cache.json`, and bounded `agent/proof-cache-history.json` to define selected expensive proof classes, their machine-readable repository/runtime closure, and exact-SHA real-rerun observations.
+- Added `agent/tools/causal-proof-cache.mjs`. Repository input closure is derived from the exact Git tree objects selected by the proof policy, not from changed-file similarity; retained history is trusted only after recomputing each observation's repository digest from its immutable candidate SHA. Runtime closure binds the configured runner label, Node/npm versions, platform/architecture, and hashed presence/value of selected environment inputs.
+- The full-repository build proof uses an `all-tracked-except` closure whose exclusions are limited to repository surfaces that do not feed the existing web build/full verification. Changes to causal source/package inputs invalidate the repository digest, while proof-cache/governance history changes intentionally leave it stable.
+- Prediction is shadow-only. The PR candidate workflow predicts before the authoritative full build, always runs that build exactly once, then compares the prediction with the real outcome and uploads exact-SHA advisory evidence. Reports hard-code `acceptedForReuse=false`, `candidatePassGranted=false`, and `proofActuallyRerun=true`.
+- If observations with the same closure digest ever disagree, reuse is automatically disabled for that proof class. A prediction that expected success but observes a failing real rerun also disables reuse immediately.
+- Added adversarial regressions covering stable excluded changes, causal repository invalidation, runtime/toolchain invalidation, same-closure disagreement, real-rerun disagreement, tampered exact-SHA history, and the explicit absence of changed-file similarity from the reuse decision. Agent Orchestration validates both these regressions and every retained history observation against Git.
+- Updated the existing single-producer CI contract and `AGENTS.md` so EV-6 cannot skip, replace, or synthesize the authoritative proof while the experiment is unpromoted.
+
+### Evidence
+
+Baseline candidate `2903be4a83c37cd62c806ea76aa8d656e0d6be14` passed Agent Orchestration run `37969801666` and the authoritative full repository build in PR Candidate Verification run `37969802133`. Advisory artifact `11635501301` (`causal-proof-cache-353-2903be4a83c37cd62c806ea76aa8d656e0d6be14`) has GitHub Actions digest `sha256:e7fa8865dd9e95ab5d76763d06f453167ad21a030a6beecfa6702b8a6db6de18`. With no prior history, the report correctly made no reuse claim and recorded the successful real rerun as the first exact-SHA observation.
+
+The retained baseline had repository digest `35cb57a92c3fe622cb733c7ae3a977e72b3c538711aecb58a72378e8c2ccb0eb`, execution-context digest `4370aa6f3440d92311cfa6aab6c315bc307228dc218761b47e3a8df67c66f52f`, and combined causal-closure digest `24aa90a8838be2ce6a5601605cc0a34cb5055b80e1d88c54d24bbb4f269c078d`.
+
+Second candidate `01eabd2499573b9e663cf230c226c9a74ee6a3aa` changed only excluded proof-cache history. Agent Orchestration run `37970844546` passed the EV-6 regression/history validation and the wider orchestration contract. PR Candidate Verification run `37970844983` independently recomputed the identical repository, runtime, and combined closure digests before the proof ran; it therefore predicted `reuseWouldBeSafe=true` and `expectedOutcome="success"`. The authoritative full build then actually reran and succeeded, producing `comparison.agreement=true`, `disagreement=false`, and `reuseState.disabled=false`. Advisory artifact `11636720127` is bound to that exact SHA with Actions digest `sha256:3107ff90e13b7a34c98e5ade23d48ec6bec01ee83ffe222b3a970aa9e1ab3045`.
+
+The EV-6 regression reports `CAUSAL_PROOF_CACHE_TEST_PASS stableExcluded=pass causalInvalidation=pass runtimeInvalidation=pass realRerunAgreement=pass disagreementDisables=pass historyExactSha=pass changedFileSimilarity=unused mode=shadow`. The single-producer regression simultaneously requires the reuse prediction to precede the real proof, the comparison to follow it, and exactly one authoritative `npm run build` producer to remain. The closeout candidate retains both successful observations so its exact-candidate run provides another prediction-versus-rerun sample before merge.
+
+### Isolation and rollback
+
+EV-6 does not alter product/runtime behavior and cannot currently reuse a cached proof. The workflow only writes prediction/report files into ephemeral CI workspace state and uploads advisory artifacts; all existing full-build, browser, Android, APK, and ledger gates remain authoritative. Stored environment values are represented by SHA-256 fingerprints rather than plaintext values.
+
+Rollback is to remove the EV-6 prediction/comparison/upload steps from `.github/workflows/pr-candidate.yml`, remove the EV-6 regression/history-validation steps from `.github/workflows/agent-orchestration.yml`, restore the prior EV-5-only assertions in `agent/tests/ci-proof-reuse.mjs`, and remove `agent/proof-cache.json`, `agent/proof-cache-history.json`, `agent/proof-cache.schema.json`, `agent/tests/causal-proof-cache.mjs`, `agent/tools/causal-proof-cache.mjs`, and the EV-6 source/rule entries from `AGENTS.md`. The previous verified pipeline then runs unchanged, with the authoritative full proof still executed exactly once.
+
+### Promotion status
+
+Not promoted. EV-6 remains advisory/shadow-only; no proof is skipped and no cached result is accepted. AO-6 independent-verifier/mechanical-invariant foundations plus the roadmap promotion rule remain prerequisites before causal proof reuse can become a default optimization. The next experimental queue item is EV-7.

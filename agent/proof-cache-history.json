@@ -1,0 +1,40 @@
+{
+  "$schema": "./proof-cache.schema.json#/$defs/history",
+  "schemaVersion": 1,
+  "mode": "shadow",
+  "observations": [
+    {
+      "id": "candidate-2903be4a83c3-full-repository-build",
+      "source": "candidate-rerun",
+      "proofId": "full-repository-build",
+      "candidateSha": "2903be4a83c37cd62c806ea76aa8d656e0d6be14",
+      "repositoryDigest": "35cb57a92c3fe622cb733c7ae3a977e72b3c538711aecb58a72378e8c2ccb0eb",
+      "executionContextDigest": "4370aa6f3440d92311cfa6aab6c315bc307228dc218761b47e3a8df67c66f52f",
+      "closureDigest": "24aa90a8838be2ce6a5601605cc0a34cb5055b80e1d88c54d24bbb4f269c078d",
+      "outcome": "success",
+      "workflowRunId": "37969802133"
+    },
+    {
+      "id": "candidate-01eabd249957-full-repository-build",
+      "source": "candidate-rerun",
+      "proofId": "full-repository-build",
+      "candidateSha": "01eabd2499573b9e663cf230c226c9a74ee6a3aa",
+      "repositoryDigest": "35cb57a92c3fe622cb733c7ae3a977e72b3c538711aecb58a72378e8c2ccb0eb",
+      "executionContextDigest": "4370aa6f3440d92311cfa6aab6c315bc307228dc218761b47e3a8df67c66f52f",
+      "closureDigest": "24aa90a8838be2ce6a5601605cc0a34cb5055b80e1d88c54d24bbb4f269c078d",
+      "outcome": "success",
+      "workflowRunId": "37970844983"
+    },
+    {
+      "id": "candidate-8ae9fbdfbd4e-full-repository-build",
+      "source": "candidate-rerun",
+      "proofId": "full-repository-build",
+      "candidateSha": "8ae9fbdfbd4ec3eec23b55ea32cc7e1b56fe4921",
+      "repositoryDigest": "3c0afdf86d1788c2362c3dd8d54f297110358057ee8b18eaddcc494c70e72af8",
+      "executionContextDigest": "4370aa6f3440d92311cfa6aab6c315bc307228dc218761b47e3a8df67c66f52f",
+      "closureDigest": "37787231032e5f071f0a5709723b69fe6667363d6315a4bb5d6bff0c1834e8af",
+      "outcome": "success",
+      "workflowRunId": "37971735725"
+    }
+  ]
+}

@@ -26,6 +26,11 @@ assert.equal(
 );
 assert.match(candidate, /Run full repository verification and production build once[\s\S]*set -o pipefail[\s\S]*npm run build 2>&1 \| tee \.agent-impact-calibration\/full-verification\.log/, 'The one authoritative full build may be observed through tee only when pipefail preserves its failure status');
 assert.match(candidate, /Capture EV-5 impact-map calibration shadow evidence[\s\S]*if: always\(\)[\s\S]*impact-map-calibration\.mjs observe/, 'EV-5 must observe both successful and failed full-build outcomes without adding a second build');
+assert.match(candidate, /Predict EV-6 causal proof reuse in shadow mode[\s\S]*continue-on-error: true[\s\S]*causal-proof-cache\.mjs predict[\s\S]*--proof full-repository-build/, 'EV-6 must predict reuse before the authoritative proof while remaining shadow-only');
+assert.match(candidate, /Compare EV-6 reuse prediction with the real rerun[\s\S]*if: always\(\)[\s\S]*causal-proof-cache\.mjs observe[\s\S]*FULL_VERIFICATION_OUTCOME/, 'EV-6 must compare its prediction with the proof that actually reran');
+assert.match(candidate, /Upload EV-6 causal proof cache advisory evidence[\s\S]*causal-proof-cache-\$\{\{ github\.event\.pull_request\.number \}\}-\$\{\{ github\.event\.pull_request\.head\.sha \}\}/, 'EV-6 evidence must remain exact-candidate named advisory output');
+assert(candidate.indexOf('Predict EV-6 causal proof reuse in shadow mode') < candidate.indexOf('Run full repository verification and production build once'), 'EV-6 reuse prediction must be made before the real proof runs');
+assert(candidate.indexOf('Run full repository verification and production build once') < candidate.indexOf('Compare EV-6 reuse prediction with the real rerun'), 'EV-6 comparison must happen only after the real proof reruns');
 assert.doesNotMatch(candidate, /npm run verify:full/, 'PR candidate workflow must not add a second explicit full verification run');
 assert.match(candidate, /name: ironshade-vector-pr-candidate-web-\$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
 assert.match(candidate, /uses: \.\/\.github\/workflows\/browser-e2e\.yml/);
@@ -53,4 +58,4 @@ assert.match(android, /npx cap sync android/);
 assert.match(android, /Download PR APK/);
 assert.match(android, /sha256sum -c Ironshade-Vector-Android-Smoke\.sha256/);
 
-console.log('CI_PROOF_REUSE_TEST_PASS prFullBuilds=1 fullBuildLogging=pipefail browser=reuses-candidate android=reuses-candidate apk=reused-by-emulators reusableGuard=input producerConcurrency=job androidConcurrency=pr');
+console.log('CI_PROOF_REUSE_TEST_PASS prFullBuilds=1 fullBuildLogging=pipefail ev6Prediction=shadow-before-proof ev6Comparison=real-rerun browser=reuses-candidate android=reuses-candidate apk=reused-by-emulators reusableGuard=input producerConcurrency=job androidConcurrency=pr');
