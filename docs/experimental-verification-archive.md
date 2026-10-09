@@ -69,3 +69,37 @@ Rollback is to remove the EV-2 regression/report/upload steps from Agent Orchest
 ### Promotion status
 
 Not promoted. The repository report remains advisory and currently identifies one important criterion without a materially independent observation path. AO-6 independent-verifier/mechanical-invariant foundations and the experimental promotion rule remain prerequisites before any EV-2 enforcement can become a default gate. The next experimental queue item is EV-3.
+
+## EV-3 — Behavioral Genome
+
+Completed 2026-10-09 in advisory/shadow mode.
+
+### Implemented
+
+- Added `agent/tools/behavioral-genome.mjs`, a deterministic hierarchical semantic-fingerprint contract with six behavior domains: simulation, mission progression, renderer state, asset/load readiness, resource ownership, and performance bands.
+- Canonical observations sort object keys, normalize finite numeric values to four decimal places, and record explicitly excluded nondeterministic observations with reasons instead of silently tolerating runner noise.
+- Each domain receives its own SHA-256 digest and the ordered domain digests form a root genome digest. The emitted report records the immutable candidate SHA without mixing that SHA into the semantic digest, so behavior can be compared across candidates while evidence provenance remains exact.
+- Added a declared-domain comparator: changed domains are accepted only when every changed domain is explicitly declared. An undeclared semantic delta is mechanically rejected by `assertExplainedBehavioralDelta`.
+- Added deterministic regressions proving stable repeats, narrow renderer/load declarations, four-decimal noise normalization, exact-SHA binding, and an injected simulation mutation that produces an unexplained `simulation` delta and fails.
+- Added `tests/behavioral-genome-observer.ts`, which exercises real deterministic repository contracts: fixed-step simulation, generated campaign contracts and mission objectives, renderer-path selection, mission visual readiness, Babylon asset-runtime ownership/release behavior, and adaptive render-budget pressure/recovery.
+- PR Candidate Verification runs the observer twice after the one full repository build, creates two exact-SHA genomes, requires their semantic comparison to have no changed domains, and uploads the result as advisory evidence before the existing browser/Android consumers proceed. EV-3 does not compare a candidate against a previous baseline as a normal product gate.
+
+### Evidence
+
+Implementation candidate `f0e1d1a97ed8a37611739bbddd2e9a59d3220c0a` passed Agent Orchestration run `37955027585` and PR Candidate Verification run `37955028121` before this archive closeout.
+
+The real route `ev3-core-route-v1` produced root genome digest `10623d5d173a492299f302870ca22af71006e85882f446c1c072ffe87105f00a` on both independent executions of the exact implementation candidate. The repeat comparison recorded `changedDomains: []`, `unexplainedDomains: []`, and `accepted: true`. The persisted genome records candidate SHA `f0e1d1a97ed8a37611739bbddd2e9a59d3220c0a`, six domain digests, four-decimal numeric normalization, and explicit exclusions for host wall-clock timing and NullEngine frame timing.
+
+The dedicated regression independently proves the negative cases required by the experiment: a renderer/loading mutation changes exactly `rendererState` and `assetLoadReadiness` and is accepted only when those domains are declared; an injected simulation `playerHp` mutation changes `simulation`, remains unexplained when only presentation/load domains are declared, and throws in enforcement mode. A meaningful normalized performance-band change also changes that domain digest, while sub-precision jitter does not.
+
+Advisory evidence artifact `11627403694` (`behavioral-genome-shadow-350-f0e1d1a97ed8a37611739bbddd2e9a59d3220c0a`) is SHA-256 bound by GitHub Actions as `61288b65d10b32d6a701ff1279bd9928f49aa2efc577fcf16505f89e413b8cd2`. The exact implementation candidate also passed full repository verification/production build, desktop and mobile-landscape browser E2E, APK construction and delivery validation, API 35 product smoke, API 36 large-screen smoke, the aggregate Android gate, and final PR Candidate Verification. APK artifact `11627732377` has Actions digest `ae7ce768e833535afe94d2bf9ad6df00b1eef4dc45d2cad60720c8ec3c690488`; final candidate evidence artifact `11628595433` has digest `5bbd4978897585c4e8aecf6ba709829fbcb45759a4cf3e1af9c17cd35037fd0e`.
+
+### Isolation and rollback
+
+EV-3 remains advisory. Its repository write effects are limited to ephemeral CI workspaces and Actions artifacts; the observer reads or instantiates deterministic runtime contracts but does not mutate repository state or user data. The fail-closed comparator is used to validate the experiment itself, not to waive any existing proof obligation or to grant normal candidate acceptance.
+
+Rollback is to remove the EV-3 regression/capture/upload steps from PR Candidate Verification and remove `agent/tools/behavioral-genome.mjs`, `agent/tests/behavioral-genome.mjs`, and `tests/behavioral-genome-observer.ts`. Existing full verification, web-bundle identity, browser journeys, Android/API 35/API 36 verification, APK generation, and exact-candidate evidence remain unchanged.
+
+### Promotion status
+
+Not promoted. EV-3 remains advisory and has only established deterministic same-candidate repeatability plus controlled mutation behavior; it has not yet accumulated cross-candidate false-positive/false-negative evidence sufficient for normal blocking enforcement. AO-6 and the experimental promotion rule remain prerequisites before any Behavioral Genome comparison can become a default repository gate. The next experimental queue item is EV-4.
