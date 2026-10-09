@@ -315,28 +315,6 @@ jobs:
           BROWSER_E2E_CHAPTER3_SCREENSHOT: browser-chapter3-${{ matrix.viewport }}.png
           BROWSER_E2E_CHAPTER3_REPORT: browser-chapter3-${{ matrix.viewport }}.json
         run: |
-          run_p27c2_damaged_vessel() {
-            local attempt output status
-            for attempt in 1 2; do
-              set +e
-              output="$(BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=damaged-vessel BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c2-damaged-vessel.png node scripts/browser-runtime-smoke.mjs 2>&1)"
-              status=$?
-              set -e
-              printf '%s\n' "$output"
-              if [[ "$status" -eq 0 ]]; then
-                return 0
-              fi
-              if [[ "$attempt" -eq 1 ]] \
-                && grep -q 'P27-C2 Babylon Damaged Vessel parity invalid' <<<"$output" \
-                && grep -Eq '"(playerState|enemyState)":"loading"' <<<"$output"; then
-                echo "::warning::Retrying P27-C2 Damaged Vessel after a transient adaptive actor-presentation reload."
-                sleep 2
-                continue
-              fi
-              return "$status"
-            done
-          }
-
           node scripts/verify-authored-operator.mjs
           node scripts/verify-authored-enemies.mjs
           node scripts/verify-authored-weapons.mjs
@@ -347,7 +325,7 @@ jobs:
             BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_BABYLON_BACKEND=webgpu BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27d1-babylon-webgpu.png node scripts/browser-runtime-smoke.mjs
           fi
           BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=orbital-station BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c1-orbital-station.png node scripts/browser-runtime-smoke.mjs
-          run_p27c2_damaged_vessel
+          BROWSER_E2E_GRAPHICS_PATH=babylon BROWSER_E2E_LOCATION=damaged-vessel BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-p27c2-damaged-vessel.png node scripts/browser-runtime-smoke.mjs
           BROWSER_E2E_LOCATION=damaged-vessel BROWSER_E2E_SCREENSHOT=browser-e2e-${{ matrix.viewport }}-damaged-vessel.png node scripts/browser-runtime-smoke.mjs
           node scripts/verify-authored-damaged-vessel.mjs
           node --input-type=module <<'NODE'
