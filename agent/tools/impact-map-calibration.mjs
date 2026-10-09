@@ -55,7 +55,7 @@ export function pathFamily(filePath) {
   const normalized = filePath.replaceAll('\\', '/');
   const parts = normalized.split('/').filter(Boolean);
   if (parts.length <= 1) return normalized;
-  if (['src', 'public', 'agent', '.github'].includes(parts[0]) && parts.length >= 2) {
+  if (['src', 'public', 'agent', '.github'].includes(parts[0]) && parts.length >= 3) {
     return `${parts[0]}/${parts[1]}/**`;
   }
   return `${parts[0]}/**`;
