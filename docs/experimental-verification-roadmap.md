@@ -23,8 +23,6 @@ The independent-verifier and mechanical-invariant foundation from AO-6 should be
 
 ## Active experimental queue
 
-- [ ] **EV-4 — Repository Immune System** — Record recurring verification failures as structured failure memories containing failure signature, root cause, affected domain, escape stage, discovering proof, fix class, and the earlier proof that should ideally have caught it. Cluster repeated deterministic failure classes and generate proposed permanent antibodies as architecture invariants, impact-map rules, focused regressions, or telemetry checks. **Done when:** multiple historical/synthetic failure records can be clustered deterministically; the system proposes a concrete reusable check for a repeated class; proposals require explicit review before enforcement; an accepted antibody catches recurrence of the same class; and failure-memory growth remains compact enough for future agents to consume without replaying PR history.
-
 - [ ] **EV-5 — Self-Calibrating Impact Map** — Compare `agent/impact-map.json` predictions against the actual failures and affected domains observed during full verification. Record false-negative impact predictions and automatically propose conservative rule expansion; do not automatically reduce coverage. Add calibration metrics so the repository can detect when its change-impact model is becoming unreliable. **Done when:** each candidate can emit predicted versus observed impact; a synthetic miss produces a proposed wider rule; repeated misses in the same path/domain family converge on a deterministic expansion proposal; no automatic change can narrow verification; and CI can fail closed to `verify:full` when calibration confidence falls below a defined threshold.
 
 - [ ] **EV-6 — Causal Proof Cache** — Define a proof-input-closure digest for selected expensive proofs so the repository can determine whether every input capable of affecting that proof is unchanged between candidate SHAs. Begin in shadow mode: always rerun the proof while independently predicting whether reuse would have been safe, then compare prediction to reality over many candidates. **Done when:** at least one expensive proof has an explicit machine-readable input closure; unchanged closures produce stable digests; changed causal inputs invalidate the digest; shadow-mode reuse predictions agree with real reruns across a meaningful sample; disagreement automatically disables reuse for that proof class; and no cached proof is ever accepted solely because two candidates share similar changed-file lists.
@@ -33,11 +31,11 @@ The independent-verifier and mechanical-invariant foundation from AO-6 should be
 
 ## Intended dependency order
 
-EV-1 through EV-3 are verified and archived in `docs/experimental-verification-archive.md`. Remaining work proceeds conservatively as:
+EV-1 through EV-4 are verified and archived in `docs/experimental-verification-archive.md`. Remaining work proceeds conservatively as:
 
-`AO-6 -> EV-4 -> EV-5 -> EV-6 -> EV-7`
+`AO-6 -> EV-5 -> EV-6 -> EV-7`
 
-This order is conservative, not absolute. EV-4 and EV-5 may partially prototype in parallel after EV-2 establishes structured proof data, but only one implementation writer should own a given experimental item at a time.
+This order is conservative, not absolute. Advisory prototypes may continue under the prerequisite language above, but only one implementation writer should own a given experimental item at a time.
 
 ## Promotion rule
 

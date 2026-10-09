@@ -107,6 +107,27 @@ jobs:
           include-hidden-files: true
           retention-days: 30
 
+      - name: Run repository immune system regressions
+        run: node agent/tests/repository-immune-system.mjs
+
+      - name: Record repository immune system advisory report
+        env:
+          CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node agent/tools/repository-immune-system.mjs analyze \
+            --memory agent/failure-memory.json \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --output .agent-immune/report.json
+
+      - name: Upload repository immune system advisory evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: repository-immune-system-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'push' }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          path: .agent-immune/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
+
       - name: Validate affected-verification map
         run: node agent/tools/select-affected-verification.mjs --validate-only
 

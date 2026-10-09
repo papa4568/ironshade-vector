@@ -102,3 +102,38 @@ Rollback is to remove the EV-3 capture/upload steps from `.github/workflows/pr-c
 ### Promotion status
 
 Not promoted. EV-3 remains advisory/shadow-only. AO-6 independent-verifier/mechanical-invariant foundations plus the experimental promotion rule remain prerequisites before behavioral-genome results may become a default blocking gate. The next experimental queue item is EV-4.
+
+## EV-4 — Repository Immune System
+
+Completed 2026-10-09 in advisory/shadow mode.
+
+### Implemented
+
+- Added `agent/failure-memory.schema.json` and `agent/failure-memory.json` to retain recurring verification failures as compact structured classes with failure signature, root cause, affected domain, escape stages, discovering proofs, fix class, earlier missed proof, historical/synthetic provenance, and a bounded representative sample.
+- Added `agent/tools/repository-immune-system.mjs` to deterministically cluster raw failure records, reject incompatible records instead of over-clustering, enforce both per-class sample bounds and a serialized-memory byte budget, and generate concrete reusable antibody proposals only after a class repeats.
+- Antibody proposals name one of four reusable check kinds—architecture invariant, impact-map rule, focused regression, or telemetry check—and carry an actionable target/required/forbidden source contract. Proposals remain advisory until an explicit reviewer, timestamp, decision, and rationale accepts them; proposed antibodies cannot enforce and no antibody can grant candidate acceptance.
+- Added regressions proving deterministic clustering regardless of input order, explicit-review gating, fail-closed recurrence detection for accepted antibodies, an executable accepted-check contract, unrelated-class isolation, incompatible-class rejection, and compaction of 100 repeated occurrences to three retained samples under a configured byte budget.
+- Seeded repository memory with the two historical EV-2 API 36 screenshot-transport timeouts. The repeated class proposes `android-screenshot-capture-contract`, which requires the existing portrait/resized `adb exec-out screencap -p` evidence paths and rejects reintroduction of `Page.captureScreenshot`. The regression explicitly accepts this proposal only inside the test fixture, validates the current hardened source, and proves a deliberately regressed source fails.
+- Agent Orchestration now runs the EV-4 regression, binds the repository immune-system report to the exact candidate SHA, and uploads the report as advisory evidence. `AGENTS.md` records that EV-4 proposals require explicit review before enforcement and may never waive, replace, or synthesize an existing exact-SHA proof gate.
+
+### Evidence
+
+Implementation candidate `df9ae394156c23715ef01c2edfc03e15edf632c0` passed Agent Orchestration run `37959065258` and PR Candidate Verification run `37959065836` before this archive closeout.
+
+The EV-4 regression proved two deterministic synthetic classes cluster identically regardless of input order, only the repeated class generates a proposal, an unreviewed proposal cannot enforce, a reviewed antibody rejects a matching recurrence, and 100 repeated failures compact to three samples while preserving the total occurrence count. It also proved the actionable historical screenshot antibody passes against the current hardened `scripts/android-large-screen-smoke.sh` and fails when `Page.captureScreenshot` is deliberately reintroduced.
+
+Advisory evidence artifact `11629801726` (`repository-immune-system-351-df9ae394156c23715ef01c2edfc03e15edf632c0`) is bound to the exact implementation candidate and has GitHub Actions digest `sha256:caf6866997ff57754550a64d445bc34685b49ef028e47be76219e84978270f2f`. The report records one failure class, two historical occurrences, one recurring class, one antibody proposal, two retained samples, `compactBytes=2469` against `maxSerializedBytes=16384`, `acceptedForEnforcement=false`, and `candidatePassGranted=false`; its compact memory digest is `d6f151d1bb399943b959d2ff03f63c69ac1f78414d68ff353de685130aea2254`.
+
+The exact implementation candidate also passed the full repository verification/production build, APK construction/integrity, API 35 product smoke, API 36 large-screen smoke, the aggregate Android gate, and final PR Candidate Verification. Browser E2E was correctly skipped by the repository scope detector because EV-4 changed only verification/governance surfaces. APK artifact `11629898181` is bound to the candidate with Actions digest `sha256:ac09f4fe704ad5cf9133646a29f93cb199e331e6bd2151b6c213f9e368a9df69`. Final candidate evidence artifact `11630093454` has digest `sha256:2b91798489a2b5ea11abd0801098f8a2a0f430c711b73887b0a6ac74ace920b3`.
+
+Two intermediate Agent Orchestration attempts failed closed on EV-4's own contract mismatches: the first exposed missing historical/synthetic provenance in regression records, and the second exposed a repository memory that had not yet adopted the new byte-budget/actionable-check shape. Both were corrected on the same branch without weakening the acceptance goal; the final exact implementation candidate passed the strengthened contract.
+
+### Isolation and rollback
+
+EV-4 does not alter product/runtime behavior and does not automatically edit repository policy. Agent Orchestration runs read-only against repository contents, writes only an ephemeral exact-SHA report into the Actions workspace, and uploads advisory evidence. Explicit review acceptance exists as a tool/test contract only; repository CI does not persist accepted antibodies or turn proposals into blocking gates.
+
+Rollback is to remove the EV-4 regression/report/upload steps from `.github/workflows/agent-orchestration.yml`, remove `agent/failure-memory.json`, `agent/failure-memory.schema.json`, `agent/tests/repository-immune-system.mjs`, and `agent/tools/repository-immune-system.mjs`, and remove the EV-4 advisory rule/source entries from `AGENTS.md`. Existing full verification, exact-SHA candidate evidence, browser/Android validation, APK generation, and the underlying Android screenshot hardening remain intact.
+
+### Promotion status
+
+Not promoted. EV-4 remains advisory/shadow-only; no antibody is persisted as enforced repository policy. AO-6 independent-verifier/mechanical-invariant foundations and the experimental promotion rule remain prerequisites before an immune-system proposal may become a default gate. The next experimental queue item is EV-5.
