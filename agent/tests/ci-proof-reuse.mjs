@@ -11,11 +11,21 @@ function countExactLine(text, line) {
   return text.split(/\r?\n/).filter(entry => entry.trim() === line).length;
 }
 
+function countMatchingTrimmedLines(text, pattern) {
+  return text.split(/\r?\n/).filter(entry => pattern.test(entry.trim())).length;
+}
+
 assert.match(candidate, /name: PR Candidate Verification/);
 assert.match(candidate, /pull_request:/);
 assert.match(candidate, /group: pr-candidate-build-\$\{\{ github\.event\.pull_request\.number \}\}/, 'Only stale candidate-build producers should be cancelled by PR; downstream reusable jobs must not hold the next producer behind them');
 assert.doesNotMatch(candidate, /group: pr-candidate-\$\{\{ github\.event\.pull_request\.number \}\}/, 'Do not put whole-run PR concurrency around reusable downstream workflows');
-assert.equal(countExactLine(candidate, 'run: npm run build'), 1, 'PR candidate workflow must have exactly one full build producer');
+assert.equal(
+  countMatchingTrimmedLines(candidate, /^npm run build(?:\s+2>&1\s+\|\s+tee\s+\.agent-impact-calibration\/full-verification\.log)?$/),
+  1,
+  'PR candidate workflow must have exactly one full build producer',
+);
+assert.match(candidate, /Run full repository verification and production build once[\s\S]*set -o pipefail[\s\S]*npm run build 2>&1 \| tee \.agent-impact-calibration\/full-verification\.log/, 'The one authoritative full build may be observed through tee only when pipefail preserves its failure status');
+assert.match(candidate, /Capture EV-5 impact-map calibration shadow evidence[\s\S]*if: always\(\)[\s\S]*impact-map-calibration\.mjs observe/, 'EV-5 must observe both successful and failed full-build outcomes without adding a second build');
 assert.doesNotMatch(candidate, /npm run verify:full/, 'PR candidate workflow must not add a second explicit full verification run');
 assert.match(candidate, /name: ironshade-vector-pr-candidate-web-\$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
 assert.match(candidate, /uses: \.\/\.github\/workflows\/browser-e2e\.yml/);
@@ -43,4 +53,4 @@ assert.match(android, /npx cap sync android/);
 assert.match(android, /Download PR APK/);
 assert.match(android, /sha256sum -c Ironshade-Vector-Android-Smoke\.sha256/);
 
-console.log('CI_PROOF_REUSE_TEST_PASS prFullBuilds=1 browser=reuses-candidate android=reuses-candidate apk=reused-by-emulators reusableGuard=input producerConcurrency=job androidConcurrency=pr');
+console.log('CI_PROOF_REUSE_TEST_PASS prFullBuilds=1 fullBuildLogging=pipefail browser=reuses-candidate android=reuses-candidate apk=reused-by-emulators reusableGuard=input producerConcurrency=job androidConcurrency=pr');

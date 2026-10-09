@@ -72,9 +72,39 @@ jobs:
           done
 
       - name: Run full repository verification and production build once
+        id: full-verification
         env:
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
-        run: npm run build
+        run: |
+          set -o pipefail
+          mkdir -p .agent-impact-calibration
+          npm run build 2>&1 | tee .agent-impact-calibration/full-verification.log
+
+      - name: Capture EV-5 impact-map calibration shadow evidence
+        if: always()
+        continue-on-error: true
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          FULL_VERIFICATION_OUTCOME: ${{ steps.full-verification.outcome }}
+        run: |
+          node agent/tools/impact-map-calibration.mjs observe \
+            --base "$BASE_SHA" \
+            --head "$HEAD_SHA" \
+            --candidate-sha "$HEAD_SHA" \
+            --outcome "$FULL_VERIFICATION_OUTCOME" \
+            --log .agent-impact-calibration/full-verification.log \
+            --output .agent-impact-calibration/report.json
+
+      - name: Upload EV-5 impact-map calibration advisory evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: impact-map-calibration-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: .agent-impact-calibration/
+          if-no-files-found: warn
+          include-hidden-files: true
+          retention-days: 30
 
       - name: Capture EV-3 behavioral genome shadow evidence
         id: behavioral-genome-shadow
