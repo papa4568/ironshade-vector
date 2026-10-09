@@ -17,7 +17,7 @@ import { refineryWorldObjectFamilyKey } from './refineryWorldObjectAssets';
 import { getWorldSize, type CombatObject, type SimState } from './sim';
 
 const WORLD_SCALE = 0.02;
-export const MISSION_VISUAL_FALLBACK_TIMEOUT_MS = 8_000;
+export const MISSION_VISUAL_FALLBACK_TIMEOUT_MS = 4_000;
 
 type ReadinessInput = {
   refinery: boolean;
@@ -98,7 +98,8 @@ function objectHeight(object: CombatObject) {
 export class BabylonMissionVisualReadinessBackend implements CombatGraphicsBackend {
   private missionKey = '';
   private generation = 0;
-  private generationStartedAt = 0;
+  private readinessAttemptStartedAt = 0;
+  private sourcesIncomplete = true;
   private framesInGeneration = 0;
   private guardVisuals: GuardVisuals | null = null;
   private playerFallbackVisuals: PlayerFallbackVisuals | null = null;
@@ -196,7 +197,8 @@ export class BabylonMissionVisualReadinessBackend implements CombatGraphicsBacke
     this.playerAuthoredReadyOnce = false;
     this.missionKey = missionKey;
     this.generation += 1;
-    this.generationStartedAt = performance.now();
+    this.readinessAttemptStartedAt = performance.now();
+    this.sourcesIncomplete = true;
     this.framesInGeneration = 0;
     this.disposeGuardVisuals();
     this.readiness = {
@@ -219,15 +221,28 @@ export class BabylonMissionVisualReadinessBackend implements CombatGraphicsBacke
 
   private refreshReadiness(refinery: boolean) {
     if (this.framesInGeneration < 1) return;
+    const now = performance.now();
+    const environmentState = this.canvas.dataset.babylonEnvironmentState;
+    const worldState = this.canvas.dataset.babylonWorldState;
+    const mappedCount = datasetCount(this.canvas.dataset.refineryWorldMappedCount);
+    const authoredCount = datasetCount(this.canvas.dataset.refineryWorldAuthoredCount);
+    const fallbackCount = datasetCount(this.canvas.dataset.refineryWorldFallbackCount);
+    const mappedSettled = mappedCount === 0 || authoredCount + fallbackCount >= mappedCount;
+    const sourcesIncomplete = refinery
+      ? (environmentState !== 'ready' && environmentState !== 'error') || !mappedSettled
+      : worldState !== 'ready';
+    if (!this.sourcesIncomplete && sourcesIncomplete) this.readinessAttemptStartedAt = now;
+    this.sourcesIncomplete = sourcesIncomplete;
+
     const resolved = resolveMissionVisualReadiness({
       refinery,
-      elapsedMs: performance.now() - this.generationStartedAt,
-      environmentState: this.canvas.dataset.babylonEnvironmentState,
+      elapsedMs: now - this.readinessAttemptStartedAt,
+      environmentState,
       environmentError: this.canvas.dataset.babylonEnvironmentError,
-      worldState: this.canvas.dataset.babylonWorldState,
-      mappedCount: datasetCount(this.canvas.dataset.refineryWorldMappedCount),
-      authoredCount: datasetCount(this.canvas.dataset.refineryWorldAuthoredCount),
-      fallbackCount: datasetCount(this.canvas.dataset.refineryWorldFallbackCount),
+      worldState,
+      mappedCount,
+      authoredCount,
+      fallbackCount,
     });
     this.readiness = {
       generation: this.generation,
