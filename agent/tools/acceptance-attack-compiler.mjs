@@ -260,6 +260,8 @@ export async function exerciseAttackPlan({
     const clone = runGit(['clone', '--quiet', '--no-local', '--no-hardlinks', resolvedRoot, sandbox], dirname(resolvedRoot), { allowFailure: true });
     assert(clone.status === 0, `unable to create disposable attack clone: ${(clone.stderr || clone.stdout).trim()}`);
     runGit(['checkout', '--quiet', '--detach', sourceBefore.head], sandbox);
+    runGit(['remote', 'remove', 'origin'], sandbox);
+    assert(runGit(['remote'], sandbox).stdout.trim() === '', 'disposable attack clone must not retain a source-repository remote');
     baseline = runCommand(fixture.verifyCommand, sandbox);
     assert(baseline.exitCode === 0, `attack fixture baseline verification failed: ${baseline.stderr || baseline.stdout}`);
 
@@ -308,6 +310,7 @@ export async function exerciseAttackPlan({
       sourceBranch: sourceBefore.branch,
       sourceBranchRef: sourceBefore.branchRef,
       sourceUnchanged: true,
+      sandboxRemoteDetached: true,
     },
     verdict: summary.proofGaps > 0 ? 'proof-gap' : 'attacks-caught',
     candidatePassGranted: false,
