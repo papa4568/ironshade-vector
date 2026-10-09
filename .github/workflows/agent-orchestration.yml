@@ -7,6 +7,7 @@ on:
     paths:
       - 'agent/**'
       - 'docs/content-roadmap.md'
+      - 'docs/experimental-verification-roadmap.md'
       - 'docs/agent-orchestration.md'
       - 'AGENTS.md'
       - '.github/workflows/agent-orchestration.yml'
@@ -19,6 +20,7 @@ on:
     paths:
       - 'agent/**'
       - 'docs/content-roadmap.md'
+      - 'docs/experimental-verification-roadmap.md'
       - 'docs/agent-orchestration.md'
       - 'AGENTS.md'
       - '.github/workflows/agent-orchestration.yml'
@@ -69,6 +71,20 @@ jobs:
 
       - name: Run roadmap adapter regressions
         run: node agent/tests/roadmap-adapter.mjs
+
+      - name: Run acceptance attack compiler shadow regressions
+        env:
+          ACCEPTANCE_ATTACK_EVIDENCE_DIR: .agent-attacks
+        run: node agent/tests/acceptance-attack-compiler.mjs
+
+      - name: Upload acceptance attack advisory evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: acceptance-attack-shadow-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'push' }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          path: .agent-attacks/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
 
       - name: Validate affected-verification map
         run: node agent/tools/select-affected-verification.mjs --validate-only
