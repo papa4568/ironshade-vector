@@ -121,4 +121,6 @@ try {
   await rm(gitFixture, { recursive: true, force: true });
 }
 
-console.log(`AFFECTED_VERIFICATION_TEST_PASS rules=${summary.ruleCount} verifications=${summary.verificationCount} graphicsChecks=${graphicsSelection.verifications.length} refineryChecks=${refineryPresentationSelection.verifications.length} unknownMode=${unknownSelection.mode} gitDiff=pass`);
+await import('./impact-map-calibration.mjs');
+
+console.log(`AFFECTED_VERIFICATION_TEST_PASS rules=${summary.ruleCount} verifications=${summary.verificationCount} graphicsChecks=${graphicsSelection.verifications.length} refineryChecks=${refineryPresentationSelection.verifications.length} unknownMode=${unknownSelection.mode} gitDiff=pass calibration=pass`);
