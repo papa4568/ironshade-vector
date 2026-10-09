@@ -33,7 +33,7 @@ The independent-verifier and mechanical-invariant foundation from AO-6 should be
 
 ## Intended dependency order
 
-EV-1 through EV-3 are verified and archived in `docs/experimental-verification-archive.md`. Remaining default-enforcement work proceeds conservatively as:
+EV-1 through EV-3 are verified and archived in `docs/experimental-verification-archive.md`. Remaining default-enforcement dependency order proceeds conservatively as:
 
 `AO-6 -> EV-4 -> EV-5 -> EV-6 -> EV-7`
 
