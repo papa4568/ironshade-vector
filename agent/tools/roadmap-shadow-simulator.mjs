@@ -50,6 +50,31 @@ function validateContainsContract(contract, label) {
   assertString(contract.description, `${label}.description`);
 }
 
+function validateScenario(scenario, label) {
+  assertObject(scenario, label);
+  assertString(scenario.taskId, `${label}.taskId`);
+  assert(/^P[0-9A-Z-]+$/.test(scenario.taskId), `${label}.taskId must be a product roadmap id`);
+  assertString(scenario.probeId, `${label}.probeId`);
+  assertStringArray(scenario.expectedSurfaces, `${label}.expectedSurfaces`, { minItems: 1 });
+  assert(Number.isInteger(scenario.preferredSurfaceCount) && scenario.preferredSurfaceCount >= 1 && scenario.preferredSurfaceCount <= 12,
+    `${label}.preferredSurfaceCount must be an integer from 1 to 12`);
+  assert(Array.isArray(scenario.extensionPoints) && scenario.extensionPoints.length >= 1, `${label}.extensionPoints must contain at least one entry`);
+  scenario.extensionPoints.forEach((contract, index) => validateContainsContract(contract, `${label}.extensionPoints[${index}]`));
+  assert(Array.isArray(scenario.forbiddenDependencies), `${label}.forbiddenDependencies must be an array`);
+  scenario.forbiddenDependencies.forEach((contract, index) => validateContainsContract(contract, `${label}.forbiddenDependencies[${index}]`));
+  assertObject(scenario.probe, `${label}.probe`);
+  assert(Array.isArray(scenario.probe.imports) && scenario.probe.imports.length >= 1, `${label}.probe.imports must contain at least one import`);
+  scenario.probe.imports.forEach((probeImport, index) => {
+    const importLabel = `${label}.probe.imports[${index}]`;
+    assertObject(probeImport, importLabel);
+    assertString(probeImport.path, `${importLabel}.path`);
+    assert(typeof probeImport.typeOnly === 'boolean', `${importLabel}.typeOnly must be boolean`);
+    assertStringArray(probeImport.names, `${importLabel}.names`, { minItems: 1 });
+  });
+  assertStringArray(scenario.probe.body, `${label}.probe.body`, { minItems: 1 });
+  return scenario;
+}
+
 export function validateRoadmapShadowConfig(config) {
   assertObject(config, 'roadmap shadow simulator config');
   assert(config.schemaVersion === 1, 'roadmap shadow simulator schemaVersion must be 1');
@@ -61,32 +86,11 @@ export function validateRoadmapShadowConfig(config) {
   const taskIds = new Set();
   const probeIds = new Set();
   config.scenarios.forEach((scenario, index) => {
-    const label = `scenarios[${index}]`;
-    assertObject(scenario, label);
-    assertString(scenario.taskId, `${label}.taskId`);
-    assert(/^P[0-9A-Z-]+$/.test(scenario.taskId), `${label}.taskId must be a product roadmap id`);
-    assert(!taskIds.has(scenario.taskId), `${label}.taskId duplicates ${scenario.taskId}`);
+    validateScenario(scenario, `scenarios[${index}]`);
+    assert(!taskIds.has(scenario.taskId), `scenarios[${index}].taskId duplicates ${scenario.taskId}`);
     taskIds.add(scenario.taskId);
-    assertString(scenario.probeId, `${label}.probeId`);
-    assert(!probeIds.has(scenario.probeId), `${label}.probeId duplicates ${scenario.probeId}`);
+    assert(!probeIds.has(scenario.probeId), `scenarios[${index}].probeId duplicates ${scenario.probeId}`);
     probeIds.add(scenario.probeId);
-    assertStringArray(scenario.expectedSurfaces, `${label}.expectedSurfaces`, { minItems: 1 });
-    assert(Number.isInteger(scenario.preferredSurfaceCount) && scenario.preferredSurfaceCount >= 1 && scenario.preferredSurfaceCount <= 12,
-      `${label}.preferredSurfaceCount must be an integer from 1 to 12`);
-    assert(Array.isArray(scenario.extensionPoints) && scenario.extensionPoints.length >= 1, `${label}.extensionPoints must contain at least one entry`);
-    scenario.extensionPoints.forEach((contract, contractIndex) => validateContainsContract(contract, `${label}.extensionPoints[${contractIndex}]`));
-    assert(Array.isArray(scenario.forbiddenDependencies), `${label}.forbiddenDependencies must be an array`);
-    scenario.forbiddenDependencies.forEach((contract, contractIndex) => validateContainsContract(contract, `${label}.forbiddenDependencies[${contractIndex}]`));
-    assertObject(scenario.probe, `${label}.probe`);
-    assert(Array.isArray(scenario.probe.imports) && scenario.probe.imports.length >= 1, `${label}.probe.imports must contain at least one import`);
-    scenario.probe.imports.forEach((probeImport, importIndex) => {
-      const importLabel = `${label}.probe.imports[${importIndex}]`;
-      assertObject(probeImport, importLabel);
-      assertString(probeImport.path, `${importLabel}.path`);
-      assert(typeof probeImport.typeOnly === 'boolean', `${importLabel}.typeOnly must be boolean`);
-      assertStringArray(probeImport.names, `${importLabel}.names`, { minItems: 1 });
-    });
-    assertStringArray(scenario.probe.body, `${label}.probe.body`, { minItems: 1 });
   });
   return config;
 }
@@ -101,7 +105,7 @@ async function sourceForPath(path, sourceOverrides = {}) {
 }
 
 export async function analyzeRoadmapShadowScenario(scenario, { sourceOverrides = {}, compileResult = null } = {}) {
-  validateRoadmapShadowConfig({ schemaVersion: 1, mode: 'advisory', scenarios: [scenario, structuredClone(scenario)] });
+  validateScenario(scenario, 'scenario');
   const missingExtensionPoints = [];
   const requiredBoundaryViolations = [];
 
@@ -169,6 +173,7 @@ function moduleSpecifier(fromDir, targetPath) {
 }
 
 export function synthesizeProbeSource(scenario, probeDir, repoRoot = resolve('.')) {
+  validateScenario(scenario, 'scenario');
   const imports = scenario.probe.imports.map(probeImport => {
     const target = resolve(repoRoot, probeImport.path);
     const prefix = probeImport.typeOnly ? 'import type' : 'import';
@@ -182,13 +187,11 @@ async function repositoryFingerprint(repoRoot) {
     execFileAsync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot }),
     execFileAsync('git', ['status', '--porcelain=v1', '--untracked-files=all'], { cwd: repoRoot }),
   ]);
-  return {
-    head: head.trim(),
-    status: status.trim(),
-  };
+  return { head: head.trim(), status: status.trim() };
 }
 
 export async function compileRoadmapShadowProbe(scenario, { repoRoot = resolve('.') } = {}) {
+  validateScenario(scenario, 'scenario');
   const before = await repositoryFingerprint(repoRoot);
   const probeRoot = await mkdtemp(resolve(tmpdir(), 'ironshade-roadmap-shadow-'));
   assert(!pathIsInside(repoRoot, probeRoot), 'roadmap shadow probe directory must remain outside the repository');
@@ -238,15 +241,12 @@ export async function compileRoadmapShadowProbe(scenario, { repoRoot = resolve('
   };
 }
 
-export async function buildRoadmapShadowReport({
-  candidateSha,
-  config = null,
-  compile = false,
-  repoRoot = resolve('.'),
-} = {}) {
+export async function buildRoadmapShadowReport({ candidateSha, config = null, compile = false, repoRoot = resolve('.') } = {}) {
   assertString(candidateSha, 'candidateSha');
   assert(SHA_PATTERN.test(candidateSha), 'candidateSha must be a full lowercase SHA');
-  const loadedConfig = config ? validateRoadmapShadowConfig(config) : await loadRoadmapShadowConfig(resolve(repoRoot, 'agent/roadmap-shadow-simulator.json'));
+  const loadedConfig = config
+    ? validateRoadmapShadowConfig(config)
+    : await loadRoadmapShadowConfig(resolve(repoRoot, 'agent/roadmap-shadow-simulator.json'));
   const { roadmapTasks } = await loadRoadmapAdapter({
     metadataPath: resolve(repoRoot, 'agent/roadmap-metadata.json'),
     roadmapPath: resolve(repoRoot, 'docs/content-roadmap.md'),
@@ -290,10 +290,7 @@ export async function buildRoadmapShadowReport({
     candidatePassGranted: false,
     blocking: false,
   };
-  return {
-    ...report,
-    reportDigest: sha256(report),
-  };
+  return { ...report, reportDigest: sha256(report) };
 }
 
 function readArg(args, name) {
@@ -309,11 +306,7 @@ async function main() {
   const repoRoot = resolve(readArg(args, '--repo-root') ?? '.');
   const candidateSha = readArg(args, '--candidate') ?? (await execFileAsync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot })).stdout.trim();
   const outputPath = readArg(args, '--output');
-  const report = await buildRoadmapShadowReport({
-    candidateSha,
-    compile: args.includes('--compile'),
-    repoRoot,
-  });
+  const report = await buildRoadmapShadowReport({ candidateSha, compile: args.includes('--compile'), repoRoot });
   if (outputPath) {
     const resolvedOutput = resolve(repoRoot, outputPath);
     await mkdir(dirname(resolvedOutput), { recursive: true });
