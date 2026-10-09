@@ -4,6 +4,12 @@ const BLOCKED_COMBAT_KEYS = new Set([
   'Digit4', 'Digit5', 'Digit6',
 ]);
 
+const BLOCKED_POINTER_EVENTS = [
+  'pointerdown', 'pointermove', 'pointerup', 'pointercancel',
+  'touchstart', 'touchmove', 'touchend', 'touchcancel',
+  'mousedown', 'mousemove', 'mouseup', 'click',
+] as const;
+
 export type MissionVisualFrameGateStatus = {
   blocked: boolean;
   detail: string;
@@ -47,6 +53,11 @@ class BrowserMissionVisualFrameGate implements MissionVisualFrameGate {
     event.preventDefault();
     event.stopImmediatePropagation();
   };
+  private readonly onBlockedPointerInput = (event: Event) => {
+    if (!this.blocked) return;
+    if (event.cancelable) event.preventDefault();
+    event.stopImmediatePropagation();
+  };
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.block('startup');
@@ -62,7 +73,11 @@ class BrowserMissionVisualFrameGate implements MissionVisualFrameGate {
     if (!this.blocked) {
       this.blocked = true;
       this.freezeFrameClock();
-      this.canvas.ownerDocument.defaultView?.addEventListener('keydown', this.onBlockedKeyDown, true);
+      const view = this.canvas.ownerDocument.defaultView;
+      view?.addEventListener('keydown', this.onBlockedKeyDown, true);
+      for (const eventName of BLOCKED_POINTER_EVENTS) {
+        view?.addEventListener(eventName, this.onBlockedPointerInput, { capture: true, passive: false });
+      }
     }
     this.publishBlockedPresentation();
   }
@@ -71,9 +86,14 @@ class BrowserMissionVisualFrameGate implements MissionVisualFrameGate {
     if (!this.blocked) return;
     this.blocked = false;
     this.restoreFrameClock();
-    this.canvas.ownerDocument.defaultView?.removeEventListener('keydown', this.onBlockedKeyDown, true);
+    const view = this.canvas.ownerDocument.defaultView;
+    view?.removeEventListener('keydown', this.onBlockedKeyDown, true);
+    for (const eventName of BLOCKED_POINTER_EVENTS) {
+      view?.removeEventListener(eventName, this.onBlockedPointerInput, true);
+    }
     this.overlay?.remove();
     this.overlay = null;
+    this.canvas.dataset.missionVisualGate = 'ready';
     const root = gameRootFor(this.canvas);
     if (root) {
       root.dataset.missionVisualGate = 'ready';
@@ -136,8 +156,8 @@ class BrowserMissionVisualFrameGate implements MissionVisualFrameGate {
       });
       suppressed = true;
     } catch {
-      // Some runtimes make Navigator methods non-configurable. The opaque presentation
-      // gate still blocks pointer/keyboard input; frame time remains frozen either way.
+      // Some runtimes make Navigator methods non-configurable. Pointer/keyboard input
+      // is still captured and frame time remains frozen while presentation is gated.
     }
 
     try {
@@ -184,7 +204,7 @@ class BrowserMissionVisualFrameGate implements MissionVisualFrameGate {
         color: '#d8ebe4',
         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
         textAlign: 'center',
-        pointerEvents: 'auto',
+        pointerEvents: 'none',
         touchAction: 'none',
       });
       const kicker = document.createElement('small');
