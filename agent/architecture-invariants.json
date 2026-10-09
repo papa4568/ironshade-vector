@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "rules": [
+    {
+      "id": "renderer-sim-import-boundary",
+      "type": "namedImportAllowlist",
+      "description": "The concrete Babylon renderer may read simulation state but must not import simulation mutation APIs.",
+      "file": "src/game/babylonCombatRenderer.ts",
+      "module": "./sim",
+      "allowedValueImports": ["getWorldSize", "weaponHandlingProfiles"],
+      "allowedTypeImports": ["CombatObject", "Enemy", "SimState", "WeaponId"],
+      "requireExact": true
+    },
+    {
+      "id": "game-canvas-renderer-boundary",
+      "type": "sourceContract",
+      "description": "GameCanvas must use the renderer-neutral graphics backend rather than constructing Babylon directly.",
+      "file": "src/components/GameCanvas.tsx",
+      "required": ["createCombatGraphicsBackend("],
+      "forbidden": ["babylonCombatRenderer", "new BabylonCombatRenderer("]
+    },
+    {
+      "id": "asset-manifest-simulation-independence",
+      "type": "sourceContract",
+      "description": "Graphics asset metadata must remain independent from mutable simulation implementation details.",
+      "file": "src/game/graphicsAssetManifest.ts",
+      "required": ["export"],
+      "forbidden": ["from './sim'", "from \"./sim\""]
+    }
+  ]
+}

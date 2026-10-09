@@ -10,6 +10,10 @@
 
 `candidate-artifact.mjs` creates and verifies deterministic manifests for reusable candidate web bundles. The manifest binds every `dist/` file, byte count, file SHA-256, aggregate tree SHA-256, and producing candidate SHA. Browser and Android consumers validate this record before trusting the artifact.
 
+`architecture-invariants.json` contains mechanical architecture boundaries that final candidates must satisfy. `check-architecture-invariants.mjs` evaluates them fail-closed and `tests/architecture-invariants.mjs` locks the checker behavior.
+
+`INDEPENDENT_VERIFIER.md` defines the separate read-only adversarial verifier role. `select-review-task.mjs` chooses an active/verifying AO task when one exists and otherwise chooses the first executable product-roadmap task. `independent-review.mjs` creates the exact-SHA review packet and validates the result. `review-comment-gate.mjs` accepts only the latest trusted PR-conversation result that matches the selected task and current candidate SHA and requires a `pass` verdict.
+
 Useful commands:
 
 ```bash
@@ -26,16 +30,24 @@ node agent/tools/candidate-evidence.mjs manifest --task active --base main --hea
 node agent/tools/candidate-evidence.mjs validate --manifest .agent-evidence/candidate-manifest.json --verify-git
 node agent/tools/candidate-artifact.mjs create --candidate "$(git rev-parse HEAD)" --root dist --output .candidate-artifact/candidate-web.json
 node agent/tools/candidate-artifact.mjs validate --candidate "$(git rev-parse HEAD)" --root dist --manifest .candidate-artifact/candidate-web.json
+node agent/tools/check-architecture-invariants.mjs
+node agent/tools/select-review-task.mjs --json
+node agent/tools/independent-review.mjs packet --manifest .agent-evidence/candidate-manifest.json --output .independent-review/review-packet.json --verify-git
+node agent/tools/review-comment-gate.mjs gate --packet .independent-review/review-packet.json --comments .independent-review/pr-comments.json --output .independent-review/review-result.json
 node agent/tests/task-graph.mjs
 node agent/tests/roadmap-adapter.mjs
 node agent/tests/affected-verification.mjs
 node agent/tests/candidate-evidence.mjs
 node agent/tests/candidate-artifact.mjs
 node agent/tests/ci-proof-reuse.mjs
+node agent/tests/architecture-invariants.mjs
+node agent/tests/independent-review.mjs
 ```
 
 During compatibility mode, the Markdown roadmap remains authoritative for product task order and acceptance. The roadmap sidecar supplies machine-readable domains, proof profiles, and optional dependencies. The impact map only optimizes implementation-time verification; final build/CI/Android/APK requirements still come from the selected task's proof obligations.
 
 For PR final verification, `.github/workflows/pr-candidate.yml` is the single producer. It checks out the exact PR head, runs the audit and full repository verification/production build once, emits the SHA-bound candidate web artifact, then fans that same bundle out to reusable Browser E2E and Android workflows. Android then emits one APK artifact consumed by the API 35 and API 36 jobs.
 
-Agent Orchestration CI may upload a partial evidence ledger containing only proofs that job actually observed. Downstream CI proofs remain pending. The PR Candidate workflow emits the complete AO-5 ledger only after browser and Android gates actually pass, preventing premature proof credit.
+The same workflow emits a read-only exact-SHA independent-review packet. A separate verifier context must publish its machine-readable verdict as a top-level PR conversation comment using the `ironshade-independent-review:v1` envelope. Final `PR Candidate Verification` reads the PR conversation, ignores untrusted and stale-SHA results, validates the latest matching result, and refuses completion unless the verdict is `pass`. Any implementation commit changes the candidate SHA and therefore invalidates every older review automatically.
+
+Agent Orchestration CI may upload a partial evidence ledger containing only proofs that job actually observed. Downstream CI and review proofs remain pending. The final PR Candidate workflow emits the complete ledger only after browser/Android gates and the exact-SHA independent-review gate pass, preventing premature proof credit.
