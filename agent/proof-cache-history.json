@@ -13,6 +13,17 @@
       "closureDigest": "24aa90a8838be2ce6a5601605cc0a34cb5055b80e1d88c54d24bbb4f269c078d",
       "outcome": "success",
       "workflowRunId": "37969802133"
+    },
+    {
+      "id": "candidate-01eabd249957-full-repository-build",
+      "source": "candidate-rerun",
+      "proofId": "full-repository-build",
+      "candidateSha": "01eabd2499573b9e663cf230c226c9a74ee6a3aa",
+      "repositoryDigest": "35cb57a92c3fe622cb733c7ae3a977e72b3c538711aecb58a72378e8c2ccb0eb",
+      "executionContextDigest": "4370aa6f3440d92311cfa6aab6c315bc307228dc218761b47e3a8df67c66f52f",
+      "closureDigest": "24aa90a8838be2ce6a5601605cc0a34cb5055b80e1d88c54d24bbb4f269c078d",
+      "outcome": "success",
+      "workflowRunId": "37970844983"
     }
   ]
 }
