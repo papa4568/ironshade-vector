@@ -23,13 +23,11 @@ The independent-verifier and mechanical-invariant foundation from AO-6 should be
 
 ## Active experimental queue
 
-- [ ] **EV-7 — Roadmap Shadow Simulator** — Use upcoming roadmap items as architectural pressure tests for today's candidate. For selected future tasks, synthesize temporary minimal integration probes that do not implement the feature but test whether the current architecture exposes the expected extension points without forbidden dependencies, broad rewrites, or boundary violations. Score future friction only as advisory evidence until the signal proves stable. **Done when:** a current candidate can be tested against at least two later roadmap items; the simulator reports touched surfaces, required boundary violations, missing extension points, and rewrite pressure; deliberately coupling the current implementation increases the future-friction score; clean extension points reduce it; temporary probes never reach the implementation branch; and the score cannot block a candidate until validated against real later work.
+No EV item is currently queued.
 
 ## Intended dependency order
 
-EV-1 through EV-6 are verified and archived in `docs/experimental-verification-archive.md`. Remaining work proceeds conservatively as:
-
-`AO-6 -> EV-7`
+EV-1 through EV-7 are verified and archived in `docs/experimental-verification-archive.md`. No additional experimental item is currently queued.
 
 This order is conservative, not absolute. Advisory prototypes may continue under the prerequisite language above, but only one implementation writer should own a given experimental item at a time.
 
