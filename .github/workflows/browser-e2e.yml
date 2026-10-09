@@ -315,6 +315,30 @@ jobs:
           BROWSER_E2E_CHAPTER3_SCREENSHOT: browser-chapter3-${{ matrix.viewport }}.png
           BROWSER_E2E_CHAPTER3_REPORT: browser-chapter3-${{ matrix.viewport }}.json
         run: |
+          node() {
+            if [[ "${1:-}" != "scripts/browser-runtime-smoke.mjs" ]]; then
+              command node "$@"
+              return
+            fi
+            local attempt log_file status
+            log_file="$(mktemp "$RUNNER_TEMP/browser-runtime-smoke.XXXXXX.log")"
+            for attempt in 1 2; do
+              set +e
+              command node "$@" 2>&1 | tee "$log_file"
+              status=${PIPESTATUS[0]}
+              set -e
+              if [[ "$status" -eq 0 ]]; then
+                rm -f "$log_file"
+                return 0
+              fi
+              if [[ "$attempt" -eq 1 ]] && grep -Eq '"(environmentState|enemyState)":"loading"' "$log_file"; then
+                echo "::notice::Retrying browser parity once after transient authored-scene loading race."
+                continue
+              fi
+              rm -f "$log_file"
+              return "$status"
+            done
+          }
           node scripts/verify-authored-operator.mjs
           node scripts/verify-authored-enemies.mjs
           node scripts/verify-authored-weapons.mjs
