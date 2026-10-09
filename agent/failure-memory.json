@@ -7,8 +7,8 @@
     {
       "failureClass": "android-screenshot-capture-transport-timeout",
       "occurrenceCount": 2,
-      "firstObservedAt": "2026-10-09T14:20:00Z",
-      "lastObservedAt": "2026-10-09T14:30:00Z",
+      "firstObservedOn": "2026-10-09",
+      "lastObservedOn": "2026-10-09",
       "failureSignature": {
         "kind": "timeout",
         "key": "cdp-page-capture-screenshot-timeout"
@@ -36,17 +36,17 @@
       "sampleOccurrences": [
         {
           "id": "ev2-api36-capture-timeout-1",
-          "observedAt": "2026-10-09T14:20:00Z",
+          "observedOn": "2026-10-09",
           "escapeStage": "api36-large-screen-smoke",
           "discoveringProofId": "android-api36-large-screen",
-          "detail": "First exact-candidate API 36 run reached the semantic ready state before screenshot transport timed out."
+          "detail": "First observed EV-2 exact-candidate API 36 failure reached the semantic ready state before screenshot transport timed out."
         },
         {
           "id": "ev2-api36-capture-timeout-2",
-          "observedAt": "2026-10-09T14:30:00Z",
+          "observedOn": "2026-10-09",
           "escapeStage": "api36-large-screen-smoke",
           "discoveringProofId": "android-api36-large-screen",
-          "detail": "Unchanged retry reproduced the screenshot transport timeout, establishing a repeated deterministic failure class for repository memory."
+          "detail": "The unchanged retry reproduced the screenshot transport timeout, establishing a repeated failure class for repository memory."
         }
       ]
     }
