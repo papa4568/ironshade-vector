@@ -137,3 +137,39 @@ Rollback is to remove the EV-4 regression/report/upload steps from `.github/work
 ### Promotion status
 
 Not promoted. EV-4 remains advisory/shadow-only; no antibody is persisted as enforced repository policy. AO-6 independent-verifier/mechanical-invariant foundations and the experimental promotion rule remain prerequisites before an immune-system proposal may become a default gate. The next experimental queue item is EV-5.
+
+## EV-5 — Self-Calibrating Impact Map
+
+Completed 2026-10-09 in advisory/shadow mode.
+
+### Implemented
+
+- Added `agent/impact-calibration.schema.json` and `agent/impact-calibration.json` for bounded trusted calibration history, a minimum trusted-failure sample size, and an explicit confidence threshold. Candidate observations remain untrusted by default so a successful PR cannot self-certify the model that selected its checks.
+- Added `agent/tools/impact-map-calibration.mjs` to compare the existing `agent/impact-map.json` affected-verification prediction with the authoritative full-verification result, map failing npm scripts back to verification IDs/domains, group changed paths into deterministic path families, measure false-negative rate/confidence, and build conservative expansion proposals.
+- Expansion proposals are widen-only high-risk `verify-full` rules. They never edit `agent/impact-map.json` automatically, cannot narrow verification, and remain `acceptedForEnforcement=false` until a future reviewed promotion.
+- Added fail-closed selection behavior: once enough trusted failure observations exist, calibration confidence below the configured `0.8` threshold can only escalate the existing selection to `verify:full`; healthy calibration preserves the current selection and never removes checks.
+- Added deterministic regression coverage for a synthetic graphics miss, repeated misses converging on the same proposal, low-confidence full-verification fallback, healthy-confidence no-narrowing behavior, exact-SHA candidate shadow reports, and root-level path-family normalization such as `agent/impact-calibration.json -> agent/**`.
+- Integrated EV-5 into the existing PR candidate producer without adding a second full build. The one authoritative `npm run build` is observed through `tee` under `set -o pipefail`, preserving the producer's failure status while making its log available to the calibration observer. The advisory observe/upload steps run after that producer and cannot waive browser, Android, APK, ledger, or full-build gates.
+- Updated the existing single-producer CI regression and `AGENTS.md` so EV-5 is mechanically constrained to advisory, preserve-or-widen behavior.
+
+### Evidence
+
+Implementation candidate `c0527f25dea2d69dc8d7b7ab2ac5b54a61840fad` passed Agent Orchestration run `37964161844` and PR Candidate Verification run `37964162313` before this archive closeout.
+
+The affected-verification regression reported `IMPACT_MAP_CALIBRATION_TEST_PASS syntheticMiss=proposal repeatedMiss=deterministic confidence=0.333 failClosed=full noNarrowing=pass candidateShadow=advisory rootFamily=pass`. The single-producer contract simultaneously reported `CI_PROOF_REUSE_TEST_PASS prFullBuilds=1 fullBuildLogging=pipefail`, proving EV-5 observes the authoritative producer rather than creating a parallel full-verification path.
+
+Advisory evidence artifact `11631939442` (`impact-map-calibration-352-c0527f25dea2d69dc8d7b7ab2ac5b54a61840fad`) is bound to the exact implementation candidate with GitHub Actions digest `sha256:a37aea8266a63c229f8ccd329d1f0b759ba77ba4adec0682998f58b6d736ee4b`. Its real candidate report predicted `mode="full"` for the verification/CI/governance changes, observed a successful authoritative full verification, recorded `falseNegativeCount=0`, `falseNegativeRate=0`, no expansion proposals, `acceptedForEnforcement=false`, and `candidatePassGranted=false`.
+
+The exact implementation candidate also passed the full repository verification/production build, desktop and mobile-landscape browser E2E, APK construction/integrity, API 35 product smoke, API 36 large-screen smoke, the aggregate Android gate, and final PR Candidate Verification. APK artifact `11632459297` is bound to the same candidate with Actions digest `sha256:37439af96120b45930b1880d31fe420830f78fc1143960b7e1c338d369322d6d`. Final candidate evidence artifact `11633148276` has digest `sha256:ee530ceff430ee19be772523e524f7e2e6ddaab4d17ed0e75aefcead21c13035`.
+
+Verification also exposed an orchestration race while the PR head was moving: a retry of the superseded `06c9826b9f3385a013c81822d60f5c90628acb5c` run started while API 36 for `c0527f25dea2d69dc8d7b7ab2ac5b54a61840fad` was active. The reusable Android workflow's PR-scoped `cancel-in-progress` policy correctly cancelled the competing newer API 36 job after its smoke/evidence steps had succeeded. After the stale retry fully drained, rerunning only the failed current-head jobs on the unchanged exact candidate passed API 36, Android aggregation, and the final ledger. No verification rule was weakened and no workflow change was required.
+
+### Isolation and rollback
+
+EV-5 does not alter product/runtime behavior and has no automatic write path into `agent/impact-map.json`. Candidate observations and calibration reports are written only to ephemeral CI workspace state and uploaded as advisory artifacts. The configuration starts with no trusted observations, so the experiment cannot manufacture confidence from the candidate currently under test.
+
+Rollback is to remove the EV-5 observe/upload steps and full-build log tee from `.github/workflows/pr-candidate.yml`, restore the single-producer regression to the previous direct build shape, remove the EV-5 import from `agent/tests/affected-verification.mjs`, remove `agent/tests/impact-map-calibration.mjs`, `agent/tools/impact-map-calibration.mjs`, `agent/impact-calibration.json`, and `agent/impact-calibration.schema.json`, and remove the EV-5 source/rule entries from `AGENTS.md`. Existing affected-verification selection and all full candidate/browser/Android/APK/ledger gates remain intact.
+
+### Promotion status
+
+Not promoted. EV-5 remains advisory/shadow-only and cannot edit or narrow the impact map. AO-6 independent-verifier/mechanical-invariant foundations and the experimental promotion rule remain prerequisites before calibration can become a default blocking or self-updating mechanism. The next experimental queue item is EV-6.
