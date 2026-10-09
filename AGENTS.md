@@ -12,6 +12,7 @@ Keep always-on context small. Read only the documents relevant to the current ta
 - `agent/tools/candidate-artifact.mjs` — exact-SHA web-bundle manifest and integrity verifier used before browser/Android consumers trust a reusable `dist/` artifact.
 - `.github/workflows/pr-candidate.yml` — authoritative PR final-candidate orchestrator: one full verification/build producer fans the same verified web bundle out to browser and Android validation.
 - `docs/agent-orchestration.md` — migration contract and phased rollout for proof-graph orchestration.
+- `docs/experimental-verification-roadmap.md` — opt-in speculative verification-engineering queue (`EV-*`). Never select it automatically; work it only when the user explicitly requests the experimental track or names an `EV-*` item.
 - `docs/external-qa.md` — validation that requires unavailable physical hardware, manual inspection, credentials, permissions, or other external access. Do not execute this file as the normal coding queue.
 - `docs/content-roadmap-archive.md` — completed work and verification history. Do not execute work from this file.
 - `docs/product-constraints.md` — stable product, design, platform, and performance constraints.
@@ -24,6 +25,7 @@ Keep always-on context small. Read only the documents relevant to the current ta
 
 - User instructions override roadmap selection.
 - During agent-orchestration compatibility mode, normal product/game work still comes from `docs/content-roadmap.md`; do not select P28 or other product work from `agent/task-graph.json` until `docs/agent-orchestration.md` explicitly records the cutover.
+- Do not select `docs/experimental-verification-roadmap.md` as fallback or default work. It is an explicit opt-in queue and must not displace product work merely because it contains unchecked items.
 - For product-roadmap work, `node agent/tools/roadmap-adapter.mjs` may be used to materialize the Markdown task into machine-readable domains, dependencies, and proof obligations; it must not override Markdown queue order or acceptance text during compatibility mode.
 - Work on one roadmap item at a time.
 - One roadmap checkbox should fit one focused implementation → targeted test → final verification → APK cycle.
@@ -66,5 +68,6 @@ Keep always-on context small. Read only the documents relevant to the current ta
 - Checklist order is authoritative; do not maintain a duplicate "next task" section.
 - Move verified completion detail to the archive and remove it from the active roadmap.
 - Whenever unchecked roadmap IDs or their order change, run `node agent/tools/sync-roadmap-metadata.mjs --write` and commit the resulting `agent/roadmap-metadata.json` change with the roadmap update. CI treats unsynchronized metadata as a failure.
+- The experimental verification roadmap has its own opt-in ordering and must not be included in product-roadmap metadata synchronization unless a future explicit migration changes that rule.
 - Move hardware/manual/external-only acceptance work to `docs/external-qa.md`.
 - Keep permanent rules in `docs/product-constraints.md`, not in the active queue.
