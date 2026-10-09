@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
@@ -204,6 +204,25 @@ function assertSourceRepositoryUnchanged(before, after) {
   assert(after.statusDigest === before.statusDigest, 'source working tree changed during attack exercise');
 }
 
+export async function resolveSandboxMutationTarget(sandbox, targetFile) {
+  assert(typeof targetFile === 'string' && targetFile.trim(), 'attack targetFile must be non-empty');
+  assert(!isAbsolute(targetFile), `attack targetFile must be repository-relative: ${targetFile}`);
+  const lexicalRoot = resolve(sandbox);
+  const lexicalTarget = resolve(lexicalRoot, targetFile);
+  const lexicalRelative = relative(lexicalRoot, lexicalTarget);
+  assert(
+    lexicalRelative && lexicalRelative !== '..' && !lexicalRelative.startsWith(`..${sep}`) && !isAbsolute(lexicalRelative),
+    `attack targetFile escapes disposable clone: ${targetFile}`,
+  );
+  const [physicalRoot, physicalTarget] = await Promise.all([realpath(lexicalRoot), realpath(lexicalTarget)]);
+  const physicalRelative = relative(physicalRoot, physicalTarget);
+  assert(
+    physicalRelative && physicalRelative !== '..' && !physicalRelative.startsWith(`..${sep}`) && !isAbsolute(physicalRelative),
+    `attack targetFile resolves outside disposable clone: ${targetFile}`,
+  );
+  return physicalTarget;
+}
+
 async function applyMutation(filePath, replacements) {
   let content = await readFile(filePath, 'utf8');
   for (const [index, replacement] of replacements.entries()) {
@@ -249,7 +268,8 @@ export async function exerciseAttackPlan({
       if (!mutation) continue;
       runGit(['reset', '--hard', '--quiet', sourceBefore.head], sandbox);
       runGit(['clean', '-fdx', '--quiet'], sandbox);
-      await applyMutation(resolve(sandbox, fixture.targetFile), mutation.replacements);
+      const mutationTarget = await resolveSandboxMutationTarget(sandbox, fixture.targetFile);
+      await applyMutation(mutationTarget, mutation.replacements);
       const verification = runCommand(fixture.verifyCommand, sandbox);
       const outcome = classifyAttackOutcome(verification);
       results.push({
