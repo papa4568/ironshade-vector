@@ -8,6 +8,20 @@ If an external validation run reveals an actionable engineering defect, add a fo
 
 ## Pending
 
+### P28-P2 — Validate representative route FPS and thermal behavior on target phone hardware
+
+**Status:** WAITING_FOR_HARDWARE  
+**Depends on:** completed P28-P2 repository frame-cost telemetry and recovery regression coverage  
+**Does not block:** later independent P28 implementation work
+
+Run the same deterministic Deep Salvage/refinery and representative campaign-route moments on a current high-performance Android phone while recording the P28-P2 location cost signature alongside physical frame-pacing and thermal measurements. Repository, browser, CI, emulator, and hosted Android timing is diagnostic evidence only and must not be reported as physical target-phone FPS.
+
+**Accept when:**
+- sustained physical target-phone FPS and frame pacing are measured on the shipped Flagship path for the representative route set;
+- thermal behavior remains acceptable through sustained combat rather than only a cold-start capture;
+- the location cost signature provides enough render-resolution, geometry, effect, asset-instance, and tier-transition context to explain any measured hotspot or downgrade;
+- any future quality reduction is justified by measured phone evidence rather than by emulator or CI timing alone.
+
 ### P28-A4 — Validate upgraded refinery key-light shadows on target phone hardware
 
 **Status:** WAITING_FOR_HARDWARE  

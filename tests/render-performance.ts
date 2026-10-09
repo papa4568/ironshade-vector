@@ -1,6 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { normalizeProductionRenderQuality, resolveRenderDowngradeReason } from '../src/game/combatGraphicsBackend';
+import {
+  formatLocationFrameCostSignature,
+  LOCATION_FRAME_COST_ROUTES,
+  LOCATION_FRAME_COST_SIGNATURE_VERSION,
+  normalizeProductionRenderQuality,
+  resolveRenderDowngradeReason,
+} from '../src/game/combatGraphicsBackend';
 import { AdaptiveRenderBudget, MAX_MEASURED_FRAME_MS, SUSPEND_GAP_MS } from '../src/game/renderQuality';
 import { spinHabitatRenderProfile } from '../src/game/spinHabitatArchitecture';
 import { jovianHarvesterRenderProfile } from '../src/game/jovianHarvesterVisualLanguage';
@@ -17,6 +23,7 @@ const rendererSource=readFileSync(resolve(process.cwd(),'src/game/babylonCombatR
 const assetsSource=readFileSync(resolve(process.cwd(),'src/game/babylonGraphicsAssets.ts'),'utf8');
 const worldSource=readFileSync(resolve(process.cwd(),'src/game/babylonWorldPresentation.ts'),'utf8');
 const postSource=readFileSync(resolve(process.cwd(),'src/game/babylonRefineryPostProcessing.ts'),'utf8');
+const externalQaSource=readFileSync(resolve(process.cwd(),'docs/external-qa.md'),'utf8');
 const recoveryFloorBytes=readFileSync(resolve(process.cwd(),'public/assets/models/environments/refinery-floor-panel-lod2.glb'));
 const recoveryFloorJsonLength=recoveryFloorBytes.readUInt32LE(12);
 const recoveryFloorGltf=JSON.parse(recoveryFloorBytes.subarray(20,20+recoveryFloorJsonLength).toString('utf8').trim()) as { materials?: { name?: string }[]; meshes?: { primitives?: { material?: number }[] }[]; nodes?: { mesh?: number }[] };
@@ -57,6 +64,19 @@ for(const severeFrameMs of [90,160,250]) {
   assert(transitions.join(',')===expectedTransitions,`sustained ${severeFrameMs}ms frames must expose the expected adaptive tier transition path`);
   assert(severeSnapshot.rawFrameMs===severeFrameMs && severeSnapshot.measuredFrameMs===severeFrameMs && severeSnapshot.frameSampleState==='measured',`sustained ${severeFrameMs}ms frames must remain first-class measured telemetry`);
 }
+const locationCostFields=['p28-p2-v1','route','resolution','pixelRatio','rawMs','smoothMs','tier','transition','transitionCount','drawCalls','triangles','activeMeshes','shadowMap','shadowCasters','ssao','bloom','ibl','assetInstances','cachedAssets'];
+const locationCostSignatures:string[]=[];
+for(const [routeIndex,route] of LOCATION_FRAME_COST_ROUTES.entries()) {
+  const routeBudget=new AdaptiveRenderBudget(false); let routeSnapshot=routeBudget.sample(16.7,1); let pressureSamples=0;
+  while(pressureSamples<60 && routeSnapshot.runtimeTierName!=='performance') { routeSnapshot=routeBudget.sample(160,1); pressureSamples+=1; }
+  assert(routeSnapshot.runtimeTierName==='performance' && pressureSamples*160<=5000,`${route} severe-pressure harness must reach the Performance recovery tier within five seconds`);
+  const signature=formatLocationFrameCostSignature({route,renderWidth:1920,renderHeight:1080,pixelRatio:1.5,rawFrameMs:160,smoothedFrameMs:routeSnapshot.smoothedFrameMs,tier:routeSnapshot.runtimeTierName,transition:routeSnapshot.lastTierTransition,transitionCount:routeSnapshot.tierTransitionCount,drawCalls:120+routeIndex,triangles:42000+routeIndex,activeMeshes:200+routeIndex,shadowMap:0,shadowCasters:0,ssao:'off',bloom:'off',ibl:'off',assetInstances:12+routeIndex,cachedAssets:18+routeIndex});
+  const fields=signature.split('|').map((segment,index)=>index===0?segment:segment.slice(0,segment.indexOf(':')));
+  assert(fields.join(',')===locationCostFields.join(','),`${route} must emit the common P28-P2 frame-cost signature`);
+  assert(signature.includes(`route:${route}|resolution:1920x1080|pixelRatio:1.50|rawMs:160.00|`) && signature.includes('|tier:performance|transition:high->performance|'),`${route} signature must retain route/raster/frame/tier recovery evidence`);
+  locationCostSignatures.push(signature);
+}
+assert(LOCATION_FRAME_COST_SIGNATURE_VERSION==='p28-p2-v1' && locationCostSignatures.length===11 && new Set(LOCATION_FRAME_COST_ROUTES).size===11,'P28-P2 must cover the eleven currently ported deterministic location routes with one versioned signature');
 const gapBudget=new AdaptiveRenderBudget(false); const beforeGap=gapBudget.sample(16.7,1); let gapSnapshot=beforeGap;
 for(let i=0;i<8;i+=1) gapSnapshot=gapBudget.sample(5000,1);
 assert(gapSnapshot.runtimeTierName==='high' && gapSnapshot.tierTransitionCount===0,'background/suspend gaps must not trigger adaptive downgrades');
@@ -80,6 +100,8 @@ assert(perf.detailScale===0.5,'explicit Performance mode must apply Performance 
 assert(boundarySource.includes("return reducedEffects ? 0.62 : 1") && boundarySource.includes("renderDeviceClassPolicy = coarse ? 'flagship-default:coarse-hint-ignored' : 'flagship-default'"),'production Babylon boundary must neutralize legacy mobile/coarse ceilings while preserving explicit reduced effects');
 assert(boundarySource.includes('dataset.renderDowngradeReason = resolveRenderDowngradeReason(') && boundarySource.includes('dataset.renderQualityInput = `requested:'),'production QA must expose effective quality and downgrade cause');
 assert(boundarySource.includes('dataset.renderRawFrameMs = rawFrameMs.toFixed(2)') && boundarySource.includes("dataset.renderSmoothedFrameMs = this.canvas.dataset.renderFrameMs ?? ''") && boundarySource.includes('dataset.renderTierTransition = `${this.lastObservedRenderTier}->${observedTier}`') && boundarySource.includes('dataset.renderTierTransitionCount = String(this.renderTierTransitionCount)'),'production runtime telemetry must expose raw/smoothed frame time and observed tier transitions');
+assert(boundarySource.includes('dataset.renderLocationCost = formatLocationFrameCostSignature({') && boundarySource.includes('getActiveMeshes?.().length') && boundarySource.includes("renderLocationCostCaveat = 'runtime-frame-cost-not-physical-phone-fps'") && boundarySource.includes("const refinery = route === 'asteroid-refinery'"),'production route telemetry must expose comparable raster/geometry/effect/asset cost channels without treating runtime timing as physical-phone FPS');
+assert(externalQaSource.includes('P28-P2') && externalQaSource.includes('physical target-phone FPS') && externalQaSource.includes('thermal'),'P28-P2 physical-phone FPS and thermal acceptance must remain external QA rather than emulator/runtime claims');
 assert(rendererSource.includes('const budget = this.renderBudget.sample(frameMs, quality, qualityMode)') && rendererSource.includes('budget.vfxDensity') && rendererSource.includes('budget.transparencyScale'),'Babylon renderer must consume adaptive visual budgets');
 assert(rendererSource.includes('getBabylonGraphicsAssetRuntime(this.scene).configureBudget({') && rendererSource.includes('dataset.renderMemoryBudget'),'Babylon renderer must apply/expose asset cache budget');
 assert(rendererSource.includes('dataset.renderTier = budget.tierName') && rendererSource.includes('dataset.renderFrameMs = budget.smoothedFrameMs.toFixed(2)') && rendererSource.includes('dataset.renderBudget = ['),'Babylon runtime QA must expose tier/frame/budget telemetry');
@@ -92,4 +114,5 @@ assert(profiles.every(profile=>profile.name==='performance'),'all authored envir
 const worst=new AdaptiveRenderBudget(true); let worstSnapshot=worst.sample(16.7,1); for(let i=0;i<180;i+=1) worstSnapshot=worst.sample(45,1);
 assert(worstSnapshot.tierName==='performance' && worstSnapshot.pixelRatioScale<=0.68 && worstSnapshot.detailScale<=0.5 && !worstSnapshot.shadows,'worst-case pressure must reduce raster/detail/shadow cost');
 assert(worstSnapshot.gameplayCueScale===1,'worst-case rendering must preserve gameplay-critical information');
-console.log('RENDER_PERFORMANCE_PASS owner=babylon flagship-default=phone+desktop sustained=degrade+recover startup=20-sample-warmup catastrophic=90-250ms<=5s suspend-gaps=ignored telemetry=raw+smoothed+transitions cache=bounded post=adaptive');
+console.log(`P28_P2_LOCATION_FRAME_COST_PASS routes=${LOCATION_FRAME_COST_ROUTES.length} signature=${LOCATION_FRAME_COST_SIGNATURE_VERSION} recovery=all-performance telemetry=cpu+gpu+assets physical-fps=external-qa`);
+console.log('RENDER_PERFORMANCE_PASS owner=babylon flagship-default=phone+desktop sustained=degrade+recover startup=20-sample-warmup catastrophic=90-250ms<=5s suspend-gaps=ignored telemetry=raw+smoothed+transitions+location-cost cache=bounded post=adaptive');
