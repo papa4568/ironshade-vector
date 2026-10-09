@@ -1,0 +1,103 @@
+{
+  "$schema": "./roadmap-shadow-simulator.schema.json",
+  "schemaVersion": 1,
+  "mode": "advisory",
+  "scenarios": [
+    {
+      "taskId": "P28-PLOAD2",
+      "probeId": "mission-load-readiness-observer",
+      "expectedSurfaces": [
+        "src/game/combatGraphicsBackend.ts",
+        "src/game/missionVisualReadinessGate.ts"
+      ],
+      "preferredSurfaceCount": 2,
+      "extensionPoints": [
+        {
+          "path": "src/game/combatGraphicsBackend.ts",
+          "contains": "export type MissionVisualReadiness = {",
+          "description": "Shared backend readiness snapshot remains a public architecture contract."
+        },
+        {
+          "path": "src/game/combatGraphicsBackend.ts",
+          "contains": "missionVisualReadiness?(): MissionVisualReadiness;",
+          "description": "Load/readiness instrumentation can observe readiness without reaching into the Babylon implementation."
+        }
+      ],
+      "forbiddenDependencies": [
+        {
+          "path": "src/game/combatGraphicsBackend.ts",
+          "contains": "from './babylonCombatRenderer'",
+          "description": "The shared graphics boundary must not depend back on the concrete Babylon renderer."
+        }
+      ],
+      "probe": {
+        "imports": [
+          {
+            "path": "src/game/combatGraphicsBackend.ts",
+            "typeOnly": true,
+            "names": [
+              "CombatGraphicsBackend",
+              "MissionVisualReadiness"
+            ]
+          }
+        ],
+        "body": [
+          "export type MissionLoadReadinessObserver = NonNullable<CombatGraphicsBackend['missionVisualReadiness']>;",
+          "export type MissionLoadReadinessSnapshot = MissionVisualReadiness;",
+          "export function observeMissionReadiness(backend: CombatGraphicsBackend): MissionVisualReadiness | null {",
+          "  return backend.missionVisualReadiness?.() ?? null;",
+          "}"
+        ]
+      }
+    },
+    {
+      "taskId": "P28-G1",
+      "probeId": "orbital-station-refresh-extension",
+      "expectedSurfaces": [
+        "src/game/babylonOrbitalStationPresentation.ts",
+        "src/game/babylonCombatRenderer.ts"
+      ],
+      "preferredSurfaceCount": 2,
+      "extensionPoints": [
+        {
+          "path": "src/game/babylonOrbitalStationPresentation.ts",
+          "contains": "export class BabylonOrbitalStationPresentation",
+          "description": "The location presentation remains independently addressable for a future visual-stack refresh."
+        },
+        {
+          "path": "src/game/babylonOrbitalStationPresentation.ts",
+          "contains": "sync(state: SimState, renderBudget: RenderBudgetSnapshot, lowVisibility: boolean)",
+          "description": "The location refresh can consume simulation state and render budget through its existing presentation sync boundary."
+        },
+        {
+          "path": "src/game/babylonOrbitalStationPresentation.ts",
+          "contains": "release(reason: string)",
+          "description": "The location presentation exposes lifecycle release without changing simulation ownership."
+        }
+      ],
+      "forbiddenDependencies": [
+        {
+          "path": "src/game/babylonOrbitalStationPresentation.ts",
+          "contains": "from './babylonCombatRenderer'",
+          "description": "A location presentation must not depend back on the renderer that owns it."
+        }
+      ],
+      "probe": {
+        "imports": [
+          {
+            "path": "src/game/babylonOrbitalStationPresentation.ts",
+            "typeOnly": false,
+            "names": [
+              "BABYLON_ORBITAL_STATION_IDENTITY",
+              "BabylonOrbitalStationPresentation"
+            ]
+          }
+        ],
+        "body": [
+          "export type OrbitalRefreshExtension = Pick<BabylonOrbitalStationPresentation, 'sync' | 'release' | 'dispose'>;",
+          "export const orbitalRefreshIdentity = BABYLON_ORBITAL_STATION_IDENTITY;"
+        ]
+      }
+    }
+  ]
+}
