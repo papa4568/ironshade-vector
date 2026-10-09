@@ -168,14 +168,8 @@
     }
   ],
   "overrides": {
-    "P28-PLOAD1": {
-      "dependsOn": [
-        "P28-PLOAD0"
-      ]
-    },
     "P28-PLOAD2": {
       "dependsOn": [
-        "P28-PLOAD0",
         "P28-PLOAD1"
       ]
     },
