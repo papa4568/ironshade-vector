@@ -1,0 +1,93 @@
+{
+  "$schema": "./evidence-independence.schema.json",
+  "schemaVersion": 1,
+  "mode": "advisory",
+  "sources": [
+    {
+      "id": "candidate-evidence-tool",
+      "kind": "implementation",
+      "path": "agent/tools/candidate-evidence.mjs",
+      "description": "Builds and validates candidate manifests and verification ledgers."
+    },
+    {
+      "id": "candidate-evidence-regressions",
+      "kind": "observer",
+      "path": "agent/tests/candidate-evidence.mjs",
+      "description": "Exercises candidate-evidence rejection behavior from a separate regression source."
+    },
+    {
+      "id": "pr-candidate-orchestrator",
+      "kind": "implementation",
+      "path": ".github/workflows/pr-candidate.yml",
+      "description": "Owns exact-head production verification and candidate artifact fan-out."
+    },
+    {
+      "id": "agent-orchestration-workflow",
+      "kind": "observer",
+      "path": ".github/workflows/agent-orchestration.yml",
+      "description": "Runs repository-local verification of orchestration contracts."
+    },
+    {
+      "id": "git-cli",
+      "kind": "shared-infrastructure",
+      "path": "git",
+      "description": "Shared Git object database and command-line implementation used by candidate checks."
+    },
+    {
+      "id": "github-pr-event",
+      "kind": "shared-infrastructure",
+      "path": "github.event.pull_request.head.sha",
+      "description": "GitHub-hosted immutable pull-request head identity supplied to workflows."
+    }
+  ],
+  "signals": [
+    {
+      "id": "wrong-candidate-rejection",
+      "description": "The candidate-evidence regression observes rejection after substituting a different candidate SHA.",
+      "materiality": "material",
+      "sourceDependencies": [
+        { "sourceId": "candidate-evidence-regressions", "role": "derives" },
+        { "sourceId": "candidate-evidence-tool", "role": "derives" },
+        { "sourceId": "git-cli", "role": "shared-infrastructure" }
+      ]
+    },
+    {
+      "id": "orchestration-head-observation",
+      "description": "The orchestration workflow independently runs on the pull-request head identity while producing EV advisory evidence.",
+      "materiality": "material",
+      "sourceDependencies": [
+        { "sourceId": "agent-orchestration-workflow", "role": "derives" },
+        { "sourceId": "github-pr-event", "role": "shared-infrastructure" },
+        { "sourceId": "git-cli", "role": "shared-infrastructure" }
+      ]
+    }
+  ],
+  "proofRecords": [
+    {
+      "id": "candidate-evidence-self-regression",
+      "description": "Candidate evidence rejects a forged proof SHA, but the observation still executes the implementation under test.",
+      "signalIds": ["wrong-candidate-rejection"]
+    },
+    {
+      "id": "exact-head-workflow-observation",
+      "description": "A separate workflow observes the exact pull-request head identity through GitHub and Git infrastructure.",
+      "signalIds": ["orchestration-head-observation"]
+    }
+  ],
+  "criteria": [
+    {
+      "id": "candidate-evidence-rejects-cross-sha-proof",
+      "description": "Candidate evidence must reject proof records bound to a different candidate SHA.",
+      "importance": "important",
+      "implementationSourceIds": ["candidate-evidence-tool"],
+      "proofRecordIds": ["candidate-evidence-self-regression"]
+    },
+    {
+      "id": "candidate-workflows-use-exact-pr-head",
+      "description": "Candidate verification workflows must run against the immutable pull-request head revision rather than a synthetic merge revision.",
+      "importance": "important",
+      "implementationSourceIds": ["pr-candidate-orchestrator"],
+      "proofRecordIds": ["exact-head-workflow-observation"]
+    }
+  ]
+}
