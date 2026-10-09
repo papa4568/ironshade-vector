@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ironshade-vector.local/agent/failure-memory.schema.json",
+  "title": "Ironshade repository failure memory",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "mode", "maxSamplesPerClass", "classes"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "mode": { "const": "advisory" },
+    "maxSamplesPerClass": { "type": "integer", "minimum": 1, "maximum": 10 },
+    "classes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/failureClass" }
+    }
+  },
+  "$defs": {
+    "proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1 }
+      }
+    },
+    "checkKind": {
+      "enum": ["architecture-invariant", "impact-map-rule", "focused-regression", "telemetry-check"]
+    },
+    "sample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "observedAt", "escapeStage", "discoveringProofId"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "observedAt": { "type": "string", "format": "date-time" },
+        "escapeStage": { "type": "string", "minLength": 1 },
+        "discoveringProofId": { "type": "string", "minLength": 1 },
+        "detail": { "type": "string", "minLength": 1 }
+      }
+    },
+    "failureClass": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "failureClass",
+        "occurrenceCount",
+        "firstObservedAt",
+        "lastObservedAt",
+        "failureSignature",
+        "rootCause",
+        "affectedDomain",
+        "escapeStages",
+        "discoveringProofs",
+        "fixClass",
+        "earlierProof",
+        "sampleOccurrences"
+      ],
+      "properties": {
+        "failureClass": { "type": "string", "minLength": 1 },
+        "occurrenceCount": { "type": "integer", "minimum": 1 },
+        "firstObservedAt": { "type": "string", "format": "date-time" },
+        "lastObservedAt": { "type": "string", "format": "date-time" },
+        "failureSignature": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "key"],
+          "properties": {
+            "kind": { "type": "string", "minLength": 1 },
+            "key": { "type": "string", "minLength": 1 }
+          }
+        },
+        "rootCause": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code", "summary"],
+          "properties": {
+            "code": { "type": "string", "minLength": 1 },
+            "summary": { "type": "string", "minLength": 1 }
+          }
+        },
+        "affectedDomain": { "type": "string", "minLength": 1 },
+        "escapeStages": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "discoveringProofs": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/proof" }
+        },
+        "fixClass": { "$ref": "#/$defs/checkKind" },
+        "earlierProof": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "id", "gap"],
+          "properties": {
+            "kind": { "$ref": "#/$defs/checkKind" },
+            "id": { "type": "string", "minLength": 1 },
+            "gap": { "type": "string", "minLength": 1 }
+          }
+        },
+        "sampleOccurrences": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sample" }
+        }
+      }
+    }
+  }
+}
