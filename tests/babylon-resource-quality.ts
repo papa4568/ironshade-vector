@@ -20,12 +20,17 @@ let balanced = balancedBudget.sample(16.7, 1, 'adaptive');
 for (let frame = 0; frame < 90 && balanced.tierName === 'high'; frame += 1) {
   balanced = balancedBudget.sample(30, 1, 'adaptive');
 }
+const balancedTransitionDetail = balanced.detailScale;
+for (let frame = 0; frame < 12 && balanced.tierName === 'balanced'; frame += 1) {
+  balanced = balancedBudget.sample(30, 1, 'adaptive');
+}
 const performance = new AdaptiveRenderBudget(false).sample(16.7, 1, 'performance');
 
 assert(phoneDefault.tierName === 'high', 'P28-A0 coarse/mobile input must start at the flagship High baseline before measured frame pressure');
 assert(high.tierName === 'high' && balanced.tierName === 'balanced' && performance.tierName === 'performance', 'P27-D3 must retain deterministic High/Balanced/Performance tiers through flagship selection, measured pressure, and explicit Performance mode');
 assert(high.pixelRatioScale > balanced.pixelRatioScale && balanced.pixelRatioScale > performance.pixelRatioScale, 'Babylon hardware scaling budget must decrease each tier');
-assert(high.detailScale > balanced.detailScale && balanced.detailScale > performance.detailScale, 'Babylon authored detail budget must decrease each tier');
+assert(balancedTransitionDetail === high.detailScale, 'Babylon authored detail must hold its current LOD during the bounded adaptive-tier stabilization window');
+assert(high.detailScale > balanced.detailScale && balanced.detailScale > performance.detailScale, 'Babylon authored detail budget must decrease each stable tier');
 assert(high.assetCacheCompressedByteBudget > balanced.assetCacheCompressedByteBudget && balanced.assetCacheCompressedByteBudget > performance.assetCacheCompressedByteBudget, 'Babylon cache byte budget must decrease each tier');
 assert(high.assetCacheEntryBudget === 32 && balanced.assetCacheEntryBudget === 24 && performance.assetCacheEntryBudget === 20, 'Babylon cached resource count budget must be explicit per tier');
 assert(high.textureAnisotropy === 4 && balanced.textureAnisotropy === 2 && performance.textureAnisotropy === 1, 'Babylon texture sampling cost must decrease each tier');
@@ -57,5 +62,5 @@ assert(assetRuntimeSource.includes('this.cache.size <= this.budget.maxCachedAsse
 assert(browserSmokeSource.includes('BROWSER_P27D3_BABYLON_RESOURCE_QUALITY_PASS'), 'browser QA must record P27-D3 geometry/resource evidence');
 
 console.log(
-  `P27_D3_BABYLON_RESOURCE_QUALITY_PASS phoneDefault=${phoneDefault.tierName} tiers=${high.tierName}>${balanced.tierName}>${performance.tierName} detail=${high.detailScale.toFixed(2)}>${balanced.detailScale.toFixed(2)}>${performance.detailScale.toFixed(2)} cache=${high.assetCacheEntryBudget}>${balanced.assetCacheEntryBudget}>${performance.assetCacheEntryBudget} animation=${animationHigh}>${animationBalanced}>${animationPerformance} instancing=static-native measurement=draw+triangles+cache critical=full-cadence`,
+  `P27_D3_BABYLON_RESOURCE_QUALITY_PASS phoneDefault=${phoneDefault.tierName} tiers=${high.tierName}>${balanced.tierName}>${performance.tierName} detail=${high.detailScale.toFixed(2)}>${balanced.detailScale.toFixed(2)}>${performance.detailScale.toFixed(2)} detailHysteresis=12 cache=${high.assetCacheEntryBudget}>${balanced.assetCacheEntryBudget}>${performance.assetCacheEntryBudget} animation=${animationHigh}>${animationBalanced}>${animationPerformance} instancing=static-native measurement=draw+triangles+cache critical=full-cadence`,
 );
