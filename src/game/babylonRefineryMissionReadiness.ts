@@ -40,6 +40,15 @@ type GuardVisuals = {
   missionKey: string;
 };
 
+type PlayerFallbackVisuals = {
+  root: TransformNode;
+  material: StandardMaterial;
+  meshes: Mesh[];
+  missionKey: string;
+};
+
+type AuthoredPlayerState = 'loading' | 'ready' | 'error';
+
 function datasetCount(value: string | undefined) {
   const parsed = Number.parseInt(value ?? '0', 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
@@ -92,6 +101,10 @@ export class BabylonMissionVisualReadinessBackend implements CombatGraphicsBacke
   private generationStartedAt = 0;
   private framesInGeneration = 0;
   private guardVisuals: GuardVisuals | null = null;
+  private playerFallbackVisuals: PlayerFallbackVisuals | null = null;
+  private playerAuthoredState: AuthoredPlayerState = 'loading';
+  private playerAuthoredReadyOnce = false;
+  private playerFallbackActivations = 0;
   private readonly visualGate: MissionVisualFrameGate;
   private readonly ownsVisualGate: boolean;
   private readiness: MissionVisualReadiness = {
@@ -135,10 +148,17 @@ export class BabylonMissionVisualReadinessBackend implements CombatGraphicsBacke
     const [state, , , , , mission] = args;
     const missionKey = `${mission.id}:${mission.seed}`;
     if (missionKey !== this.missionKey) this.beginGeneration(missionKey, state);
-    this.ensureGuardVisuals(state, missionKey);
+    if (this.readiness.phase === 'loading' || this.readiness.mode === 'fallback') {
+      this.ensureGuardVisuals(state, missionKey);
+    }
     this.delegate.render(...args);
     this.framesInGeneration += 1;
+    this.observeAuthoredPlayerState();
     this.refreshReadiness(mission.location === 'asteroid-refinery');
+    if (this.readiness.phase === 'loading' || this.readiness.mode === 'fallback') {
+      this.ensureGuardVisuals(state, missionKey);
+    }
+    this.syncPlayerFallback(state, missionKey);
   }
 
   missionVisualReadiness() {
@@ -155,12 +175,25 @@ export class BabylonMissionVisualReadinessBackend implements CombatGraphicsBacke
 
   dispose() {
     this.disposeGuardVisuals();
+    this.disposePlayerFallbackVisuals();
     if (this.ownsVisualGate) this.visualGate.dispose();
     this.delegate.dispose();
   }
 
   private beginGeneration(missionKey: string, state: SimState) {
     const reentry = this.generation > 0;
+    if (this.playerFallbackVisuals) {
+      this.canvas.dataset.babylonPlayerState = this.playerAuthoredState;
+      this.canvas.dataset.operatorVisual = this.playerAuthoredState === 'error'
+        ? 'authored-fallback-babylon'
+        : 'authored-loading-babylon';
+      this.canvas.dataset.weaponVisual = this.playerAuthoredState === 'error'
+        ? 'authored-fallback-babylon'
+        : 'authored-loading-babylon';
+    }
+    this.disposePlayerFallbackVisuals();
+    this.playerAuthoredState = 'loading';
+    this.playerAuthoredReadyOnce = false;
     this.missionKey = missionKey;
     this.generation += 1;
     this.generationStartedAt = performance.now();
@@ -179,6 +212,7 @@ export class BabylonMissionVisualReadinessBackend implements CombatGraphicsBacke
     this.canvas.dataset.missionVisualGeneration = String(this.generation);
     this.canvas.dataset.missionVisualMissionKey = missionKey;
     this.canvas.dataset.missionVisualGuard = 'initializing';
+    this.canvas.dataset.missionVisualPlayerFallback = 'inactive';
     this.publish();
     this.ensureGuardVisuals(state, missionKey);
   }
@@ -209,7 +243,7 @@ export class BabylonMissionVisualReadinessBackend implements CombatGraphicsBacke
       this.visualGate.release();
     } else {
       this.canvas.dataset.missionVisualGuard = 'active-loading';
-      this.visualGate.setDetail('authored-assets');
+      this.visualGate.block('authored-assets');
     }
     this.publish();
   }
@@ -227,6 +261,108 @@ export class BabylonMissionVisualReadinessBackend implements CombatGraphicsBacke
       root.dataset.missionVisualGeneration = String(this.readiness.generation);
       root.dataset.missionVisualMissionKey = this.readiness.missionKey;
     }
+  }
+
+  private observeAuthoredPlayerState() {
+    const visual = this.canvas.dataset.operatorVisual ?? '';
+    const state = this.canvas.dataset.babylonPlayerState ?? '';
+    if (visual === 'authored-loading-babylon') {
+      this.playerAuthoredState = 'loading';
+    } else if (visual === 'authored-fallback-babylon' || state === 'error') {
+      this.playerAuthoredState = 'error';
+    } else if (state === 'ready' && visual.startsWith('authored-') && visual !== 'authored-fallback-babylon') {
+      this.playerAuthoredState = 'ready';
+      this.playerAuthoredReadyOnce = true;
+    }
+    this.canvas.dataset.babylonPlayerAuthoredState = this.playerAuthoredState;
+  }
+
+  private syncPlayerFallback(state: SimState, missionKey: string) {
+    const shouldFallback = this.readiness.phase === 'ready'
+      && this.playerAuthoredState !== 'ready'
+      && (this.playerAuthoredReadyOnce || this.playerAuthoredState === 'error');
+    if (!shouldFallback) {
+      this.disposePlayerFallbackVisuals();
+      this.canvas.dataset.missionVisualPlayerFallback = this.playerAuthoredState === 'ready'
+        ? 'inactive:authored-ready'
+        : `inactive:${this.playerAuthoredState}`;
+      return;
+    }
+
+    const visual = this.ensurePlayerFallbackVisuals(missionKey);
+    if (!visual) return;
+    visual.root.setEnabled(true);
+    visual.root.position.set(state.player.x * WORLD_SCALE, 0, state.player.y * WORLD_SCALE);
+    visual.root.rotation.y = Math.atan2(-state.player.aim.y, state.player.aim.x);
+    this.canvas.dataset.babylonPlayerState = 'ready';
+    this.canvas.dataset.operatorVisual = 'procedural-fallback-babylon';
+    this.canvas.dataset.weaponVisual = 'procedural-fallback-babylon';
+    this.canvas.dataset.missionVisualPlayerFallback = `active:${this.playerAuthoredState}`;
+    this.canvas.dataset.missionVisualPlayerFallbackActivations = String(this.playerFallbackActivations);
+  }
+
+  private ensurePlayerFallbackVisuals(missionKey: string) {
+    if (this.playerFallbackVisuals?.missionKey === missionKey) return this.playerFallbackVisuals;
+    this.disposePlayerFallbackVisuals();
+    const scene = this.scene;
+    if (!scene) {
+      this.canvas.dataset.missionVisualPlayerFallback = 'scene-unavailable';
+      return null;
+    }
+
+    const root = new TransformNode(`p28-pload0-player-fallback-${this.generation}`, scene);
+    root.setEnabled(false);
+    const material = new StandardMaterial(`p28-pload0-player-fallback-material-${this.generation}`, scene);
+    material.diffuseColor = new Color3(0.24, 0.42, 0.39);
+    material.emissiveColor = new Color3(0.035, 0.09, 0.085);
+    material.specularColor = Color3.Black();
+    const meshes: Mesh[] = [];
+
+    const body = MeshBuilder.CreateCylinder(`p28-pload0-player-fallback-body-${this.generation}`, {
+      height: 1.05,
+      diameterTop: 0.42,
+      diameterBottom: 0.58,
+      tessellation: 8,
+    }, scene);
+    body.parent = root;
+    body.position.y = 0.58;
+    body.material = material;
+    body.isPickable = false;
+    meshes.push(body);
+
+    const head = MeshBuilder.CreateSphere(`p28-pload0-player-fallback-head-${this.generation}`, {
+      diameter: 0.38,
+      segments: 8,
+    }, scene);
+    head.parent = root;
+    head.position.set(0, 1.28, 0);
+    head.material = material;
+    head.isPickable = false;
+    meshes.push(head);
+
+    const weapon = MeshBuilder.CreateBox(`p28-pload0-player-fallback-weapon-${this.generation}`, {
+      width: 0.72,
+      height: 0.10,
+      depth: 0.12,
+    }, scene);
+    weapon.parent = root;
+    weapon.position.set(0.48, 0.92, 0.04);
+    weapon.material = material;
+    weapon.isPickable = false;
+    meshes.push(weapon);
+
+    this.playerFallbackActivations += 1;
+    this.playerFallbackVisuals = { root, material, meshes, missionKey };
+    return this.playerFallbackVisuals;
+  }
+
+  private disposePlayerFallbackVisuals() {
+    const visual = this.playerFallbackVisuals;
+    if (!visual) return;
+    visual.meshes.forEach(mesh => mesh.dispose());
+    visual.material.dispose();
+    visual.root.dispose();
+    this.playerFallbackVisuals = null;
   }
 
   private ensureGuardVisuals(state: SimState, missionKey: string) {
