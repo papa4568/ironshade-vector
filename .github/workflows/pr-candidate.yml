@@ -71,6 +71,26 @@ jobs:
             exit "$status"
           done
 
+      - name: Capture EV-7 roadmap shadow simulator advisory evidence
+        continue-on-error: true
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          node agent/tools/roadmap-shadow-simulator.mjs \
+            --candidate "$CANDIDATE_SHA" \
+            --compile \
+            --output .agent-roadmap-shadow/report.json
+
+      - name: Upload EV-7 roadmap shadow simulator advisory evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: roadmap-shadow-simulator-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: .agent-roadmap-shadow/
+          if-no-files-found: warn
+          include-hidden-files: true
+          retention-days: 30
+
       - name: Predict EV-6 causal proof reuse in shadow mode
         continue-on-error: true
         env:
