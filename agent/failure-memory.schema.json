@@ -31,10 +31,10 @@
     "sample": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "observedAt", "escapeStage", "discoveringProofId"],
+      "required": ["id", "observedOn", "escapeStage", "discoveringProofId"],
       "properties": {
         "id": { "type": "string", "minLength": 1 },
-        "observedAt": { "type": "string", "format": "date-time" },
+        "observedOn": { "type": "string", "format": "date" },
         "escapeStage": { "type": "string", "minLength": 1 },
         "discoveringProofId": { "type": "string", "minLength": 1 },
         "detail": { "type": "string", "minLength": 1 }
@@ -46,8 +46,8 @@
       "required": [
         "failureClass",
         "occurrenceCount",
-        "firstObservedAt",
-        "lastObservedAt",
+        "firstObservedOn",
+        "lastObservedOn",
         "failureSignature",
         "rootCause",
         "affectedDomain",
@@ -60,8 +60,8 @@
       "properties": {
         "failureClass": { "type": "string", "minLength": 1 },
         "occurrenceCount": { "type": "integer", "minimum": 1 },
-        "firstObservedAt": { "type": "string", "format": "date-time" },
-        "lastObservedAt": { "type": "string", "format": "date-time" },
+        "firstObservedOn": { "type": "string", "format": "date" },
+        "lastObservedOn": { "type": "string", "format": "date" },
         "failureSignature": {
           "type": "object",
           "additionalProperties": false,
