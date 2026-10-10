@@ -2,13 +2,16 @@ import { checkRendererReadOnlyBoundaryFromConfig } from '../tools/check-renderer
 import { checkRendererMutationHardeningFromConfig } from '../tools/check-renderer-mutation-hardening.mjs';
 import { checkRendererAliasHardeningFromConfig } from '../tools/check-renderer-alias-hardening.mjs';
 import { checkRendererAliasEdgeHardeningFromConfig } from '../tools/check-renderer-alias-edge-hardening.mjs';
+import { checkRendererFlowGapHardeningFromConfig } from '../tools/check-renderer-flow-gap-hardening.mjs';
 await checkRendererReadOnlyBoundaryFromConfig();
 await checkRendererMutationHardeningFromConfig();
 await checkRendererAliasHardeningFromConfig();
 await checkRendererAliasEdgeHardeningFromConfig();
+await checkRendererFlowGapHardeningFromConfig();
 await import('./architecture-invariants-legacy.mjs');
 await import('./architecture-invariants-verifier-regressions.mjs');
 await import('./renderer-read-only-boundary.mjs');
 await import('./renderer-mutation-hardening.mjs');
 await import('./renderer-alias-hardening.mjs');
 await import('./renderer-alias-edge-hardening.mjs');
+await import('./renderer-flow-gap-hardening.mjs');
