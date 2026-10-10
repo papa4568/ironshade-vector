@@ -10,6 +10,7 @@ const ITER = new Map([
 const MUTATORS = new Set(['copyWithin', 'fill', 'pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'unshift', 'add', 'clear', 'delete', 'set']);
 const REFLECT = new Map([['Object', new Set(['assign', 'defineProperty', 'defineProperties', 'setPrototypeOf', 'preventExtensions', 'seal', 'freeze'])], ['Reflect', new Set(['set', 'defineProperty', 'deleteProperty', 'setPrototypeOf'])]]);
 const ASSIGN = new Set([ts.SyntaxKind.EqualsToken, ts.SyntaxKind.PlusEqualsToken, ts.SyntaxKind.MinusEqualsToken, ts.SyntaxKind.AsteriskEqualsToken, ts.SyntaxKind.AsteriskAsteriskEqualsToken, ts.SyntaxKind.SlashEqualsToken, ts.SyntaxKind.PercentEqualsToken, ts.SyntaxKind.LessThanLessThanEqualsToken, ts.SyntaxKind.GreaterThanGreaterThanEqualsToken, ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken, ts.SyntaxKind.AmpersandEqualsToken, ts.SyntaxKind.BarEqualsToken, ts.SyntaxKind.CaretEqualsToken, ts.SyntaxKind.BarBarEqualsToken, ts.SyntaxKind.AmpersandAmpersandEqualsToken, ts.SyntaxKind.QuestionQuestionEqualsToken]);
+const LOGICAL_FORWARD = new Set([ts.SyntaxKind.QuestionQuestionToken, ts.SyntaxKind.BarBarToken, ts.SyntaxKind.AmpersandAmpersandToken]);
 
 const fail = (condition, message) => { if (!condition) throw new Error(message); };
 function unwrap(node) { let value = node; while (value && (ts.isParenthesizedExpression(value) || ts.isAsExpression(value) || ts.isTypeAssertionExpression(value) || ts.isNonNullExpression(value))) value = value.expression; return value; }
@@ -72,7 +73,10 @@ function analyzer(checker, protectedSymbols, file, ast) {
     }
     if (ts.isPropertyAccessExpression(value) || ts.isElementAccessExpression(value) || ts.isAwaitExpression(value)) return provenance(value.expression, declaration, seenSymbols);
     if (ts.isConditionalExpression(value)) return new Set([...provenance(value.whenTrue, declaration, seenSymbols), ...provenance(value.whenFalse, declaration, seenSymbols)]);
-    if (ts.isBinaryExpression(value) && value.operatorToken.kind === ts.SyntaxKind.CommaToken) return provenance(value.right, declaration, seenSymbols);
+    if (ts.isBinaryExpression(value)) {
+      if (value.operatorToken.kind === ts.SyntaxKind.CommaToken) return provenance(value.right, declaration, seenSymbols);
+      if (LOGICAL_FORWARD.has(value.operatorToken.kind)) return new Set([...provenance(value.left, declaration, seenSymbols), ...provenance(value.right, declaration, seenSymbols)]);
+    }
     if (ts.isCallExpression(value)) { const inner = checker.getResolvedSignature(value)?.declaration; const output = new Set(); if (!inner) return output; for (const index of forwarded(inner)) if (value.arguments[index]) for (const outer of provenance(value.arguments[index], declaration, seenSymbols)) output.add(outer); return output; }
     return new Set();
   }
@@ -96,25 +100,49 @@ function analyzer(checker, protectedSymbols, file, ast) {
     return false;
   }
   function rootSymbol(expression) { let value = unwrap(expression); while (ts.isPropertyAccessExpression(value) || ts.isElementAccessExpression(value)) value = unwrap(value.expression); return ts.isIdentifier(value) ? symbolAt(checker, value) : null; }
-  function aliases(symbol) {
+  function aliases(symbol, before = Number.POSITIVE_INFINITY) {
     const result = new Set([symbol]); let changed = true;
-    while (changed) { changed = false; function visit(node) { let left = null; let right = null; if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) { left = node.name; right = node.initializer; } else if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isIdentifier(unwrap(node.left))) { left = unwrap(node.left); right = node.right; } const leftSymbol = left ? symbolAt(checker, left) : null; const rightSymbol = right ? rootSymbol(right) : null; if (leftSymbol && rightSymbol && result.has(rightSymbol) && !result.has(leftSymbol)) { result.add(leftSymbol); changed = true; } ts.forEachChild(node, visit); } visit(ast); }
+    while (changed) {
+      changed = false;
+      function visit(node) {
+        if (node.pos >= before) return;
+        let left = null; let right = null;
+        if (node.end <= before) {
+          if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) { left = node.name; right = node.initializer; }
+          else if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isIdentifier(unwrap(node.left))) { left = unwrap(node.left); right = node.right; }
+          const leftSymbol = left ? symbolAt(checker, left) : null; const rightSymbol = right ? rootSymbol(right) : null;
+          if (leftSymbol && rightSymbol && result.has(rightSymbol) && !result.has(leftSymbol)) { result.add(leftSymbol); changed = true; }
+        }
+        ts.forEachChild(node, visit);
+      }
+      visit(ast);
+    }
     return result;
   }
-  function hasWrites(symbol) {
-    const names = aliases(symbol); let found = false;
-    function visit(node) { if (found) return; if (ts.isBinaryExpression(node) && ASSIGN.has(node.operatorToken.kind)) { const target = unwrap(node.left); const targetSymbol = rootSymbol(target); const aliasCreation = node.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isIdentifier(target) && rootSymbol(node.right) && names.has(rootSymbol(node.right)); if (targetSymbol && names.has(targetSymbol) && !aliasCreation) { found = true; return; } } if (ts.isCallExpression(node)) { const name = member(node.expression); const target = owner(node.expression); if (target && name && MUTATORS.has(name) && names.has(rootSymbol(target))) { found = true; return; } } ts.forEachChild(node, visit); }
+  function hasWrites(symbol, before = Number.POSITIVE_INFINITY) {
+    const names = aliases(symbol, before); let found = false;
+    function visit(node) {
+      if (found || node.pos >= before) return;
+      if (node.end <= before) {
+        if (ts.isBinaryExpression(node) && ASSIGN.has(node.operatorToken.kind)) {
+          const target = unwrap(node.left); const targetSymbol = rootSymbol(target); const aliasCreation = node.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isIdentifier(target) && rootSymbol(node.right) && names.has(rootSymbol(node.right));
+          if (targetSymbol && names.has(targetSymbol) && !aliasCreation) { found = true; return; }
+        }
+        if (ts.isCallExpression(node)) { const name = member(node.expression); const target = owner(node.expression); if (target && name && MUTATORS.has(name) && names.has(rootSymbol(target))) { found = true; return; } }
+      }
+      ts.forEachChild(node, visit);
+    }
     visit(ast); return found;
   }
-  function stablePack(expression, seen = new Set()) {
+  function stablePack(expression, before = unwrap(expression)?.pos ?? Number.POSITIVE_INFINITY, seen = new Set()) {
     const value = unwrap(expression); if (!value) return false;
-    if (ts.isArrayLiteralExpression(value)) return value.elements.every(element => !ts.isSpreadElement(element) || stablePack(element.expression, seen));
-    if (!ts.isIdentifier(value)) return false; const symbol = symbolAt(checker, value); if (!symbol || seen.has(symbol) || hasWrites(symbol)) return false;
-    const declaration = (symbol.declarations ?? []).find(item => ts.isVariableDeclaration(item) && item.initializer); return Boolean(declaration && stablePack(declaration.initializer, new Set(seen).add(symbol)));
+    if (ts.isArrayLiteralExpression(value)) return value.elements.every(element => !ts.isSpreadElement(element) || stablePack(element.expression, before, seen));
+    if (!ts.isIdentifier(value)) return false; const symbol = symbolAt(checker, value); if (!symbol || seen.has(symbol) || hasWrites(symbol, before)) return false;
+    const declaration = (symbol.declarations ?? []).find(item => ts.isVariableDeclaration(item) && item.initializer && item.end <= before); return Boolean(declaration && stablePack(declaration.initializer, before, new Set(seen).add(symbol)));
   }
-  function packFirst(expression, seen = new Set()) {
-    const value = unwrap(expression); if (ts.isArrayLiteralExpression(value)) { const first = value.elements[0]; if (ts.isSpreadElement(first)) return packFirst(first.expression, seen); return first && !ts.isOmittedExpression(first) ? first : null; }
-    if (!ts.isIdentifier(value)) return null; const symbol = symbolAt(checker, value); if (!symbol || seen.has(symbol) || hasWrites(symbol)) return null; const declaration = (symbol.declarations ?? []).find(item => ts.isVariableDeclaration(item) && item.initializer); return declaration ? packFirst(declaration.initializer, new Set(seen).add(symbol)) : null;
+  function packFirst(expression, before = unwrap(expression)?.pos ?? Number.POSITIVE_INFINITY, seen = new Set()) {
+    const value = unwrap(expression); if (ts.isArrayLiteralExpression(value)) { const first = value.elements[0]; if (ts.isSpreadElement(first)) return packFirst(first.expression, before, seen); return first && !ts.isOmittedExpression(first) ? first : null; }
+    if (!ts.isIdentifier(value)) return null; const symbol = symbolAt(checker, value); if (!symbol || seen.has(symbol) || hasWrites(symbol, before)) return null; const declaration = (symbol.declarations ?? []).find(item => ts.isVariableDeclaration(item) && item.initializer && item.end <= before); return declaration ? packFirst(declaration.initializer, before, new Set(seen).add(symbol)) : null;
   }
   function globalObject(expression, seen = new Set()) {
     const value = unwrap(expression);

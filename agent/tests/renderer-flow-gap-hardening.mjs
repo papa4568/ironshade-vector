@@ -46,6 +46,18 @@ try {
     /reflective mutation Reflect\.set/,
   );
 
+  for (const operator of ['??', '||', '&&']) {
+    await expectRejected(
+      `import type { SimState } from './sim';\nfunction relay<T>(value: T): T { return value ${operator} value; }\nexport function mutate(state: SimState) { const each = relay(relay(state.enemies.forEach)); each.call(state.enemies, (_enemy, _index, collection) => { collection.push({ hp: 1 }); }); }\n`,
+      /mutating method push/,
+    );
+
+    await expectRejected(
+      `import type { SimState } from './sim';\nfunction relay<T>(value: T): T { return value ${operator} value; }\nexport function mutate(state: SimState) { const set = relay(relay(Reflect.set)); const args = [state.player, 'hp', 0] as const; set.apply(null, args); }\n`,
+      /reflective mutation Reflect\.set/,
+    );
+  }
+
   await expectRejected(
     "import type { SimState } from './sim';\nexport function mutate(state: SimState) { const view = { hp: 7 }; const args: [object, PropertyKey, unknown] = [view, 'hp', 0]; args[0] = state.player; Reflect.set.apply(null, [...args]); }\n",
     /argument pack cannot be proven stable/,
@@ -61,7 +73,7 @@ try {
     /argument pack cannot be proven stable/,
   );
 
-  await writeFile(join(root, 'safe.ts'), "import type { SimState } from './sim';\nfunction relay<T>(value: T): T { return value; }\nfunction relayCopy<T extends { hp: number }>(value: T) { let forwarded: { hp: number }; forwarded = { hp: value.hp }; return forwarded; }\nexport function mutate(state: SimState) { const each = state.enemies.forEach; const copy = state.enemies.map(enemy => ({ hp: enemy.hp })); each.call(copy, (_enemy, _index, collection) => { collection.push({ hp: 1 }); }); const view = relayCopy(state.player); view.hp = 0; const set = relay(Reflect.set); const args: [object, PropertyKey, unknown] = [view, 'hp', 1]; set.apply(null, [...args]); let result = { hp: state.player.hp }; result.hp = 1; result = state.player; return result.hp; }\n");
+  await writeFile(join(root, 'safe.ts'), "import type { SimState } from './sim';\nfunction relay<T>(value: T): T { return value; }\nfunction relayCopy<T extends { hp: number }>(value: T) { let forwarded: { hp: number }; forwarded = { hp: value.hp }; return forwarded; }\nexport function mutate(state: SimState) { const each = state.enemies.forEach; const copy = state.enemies.map(enemy => ({ hp: enemy.hp })); each.call(copy, (_enemy, _index, collection) => { collection.push({ hp: 1 }); }); const view = relayCopy(state.player); view.hp = 0; const set = relay(Reflect.set); const args: [object, PropertyKey, unknown] = [view, 'hp', 1]; set.apply(null, [...args]); const laterArgs: [object, PropertyKey, unknown] = [view, 'hp', 2]; Reflect.set.apply(null, laterArgs); laterArgs[0] = state.player; let result = { hp: state.player.hp }; result.hp = 1; result = state.player; return view.hp; }\n");
   await writeFile(join(root, 'renderer.ts'), "import { mutate } from './safe';\nexport const render = mutate;\n");
   await evaluateRendererFlowGapHardening(rule, { root });
 } finally {
