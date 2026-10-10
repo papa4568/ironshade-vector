@@ -1,0 +1,244 @@
+name: Automated Independent Review
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: automated-independent-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  independent-verifier:
+    name: Read-only adversarial verifier
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    permissions:
+      actions: read
+      contents: read
+      models: read
+    outputs:
+      verdict: ${{ steps.result.outputs.verdict }}
+      technical-run-id: ${{ steps.technical.outputs.technical-run-id }}
+    steps:
+      - name: Check out exact candidate without write credentials
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Verify automated-review contracts
+        run: node agent/tests/automated-independent-review.mjs
+
+      - name: Wait for exact-SHA technical gates
+        id: technical
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .automated-review
+          for attempt in $(seq 1 180); do
+            runs_json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/pr-candidate.yml/runs?event=pull_request&head_sha=${HEAD_SHA}&per_page=20")"
+            technical_run_id="$(jq -r --arg sha "$HEAD_SHA" --argjson pr "$PR_NUMBER" '
+              [.workflow_runs[]
+                | select(.head_sha == $sha)
+                | select(any(.pull_requests[]?; .number == $pr))]
+              | sort_by(.created_at)
+              | last
+              | .id // empty
+            ' <<<"$runs_json")"
+            if [[ -z "$technical_run_id" ]]; then
+              sleep 15
+              continue
+            fi
+
+            jobs_json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${technical_run_id}/jobs?per_page=100")"
+            final_job="$(jq -c '[.jobs[] | select(.name == "PR Candidate Verification")] | sort_by(.id) | last // empty' <<<"$jobs_json")"
+            if [[ -z "$final_job" ]]; then
+              sleep 15
+              continue
+            fi
+
+            final_status="$(jq -r '.status' <<<"$final_job")"
+            technical_step="$(jq -r '[.steps[]? | select(.name == "Require exact candidate technical gates")] | last | .conclusion // empty' <<<"$final_job")"
+            review_step="$(jq -r '[.steps[]? | select(.name == "Require actual exact-SHA independent-review pass")] | last | .conclusion // empty' <<<"$final_job")"
+
+            if [[ "$final_status" != 'completed' ]]; then
+              sleep 15
+              continue
+            fi
+            if [[ "$technical_step" != 'success' ]]; then
+              echo "Exact-SHA technical gate did not pass; automated independent review will not run." >&2
+              exit 1
+            fi
+
+            final_conclusion="$(jq -r '.conclusion' <<<"$final_job")"
+            if [[ "$final_conclusion" == 'failure' && "$review_step" != 'failure' ]]; then
+              echo "Candidate verification failed outside the independent-review gate; refusing to review around a technical failure." >&2
+              exit 1
+            fi
+            if [[ "$final_conclusion" != 'success' && "$final_conclusion" != 'failure' ]]; then
+              echo "Unexpected candidate verification conclusion: $final_conclusion" >&2
+              exit 1
+            fi
+
+            artifacts_json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${technical_run_id}/artifacts?per_page=100")"
+            printf '%s\n' "$jobs_json" > .automated-review/technical-jobs.json
+            printf '%s\n' "$artifacts_json" > .automated-review/technical-artifacts.json
+            final_job_id="$(jq -r '.id' <<<"$final_job")"
+            echo "technical-run-id=$technical_run_id" >> "$GITHUB_OUTPUT"
+            echo "final-job-id=$final_job_id" >> "$GITHUB_OUTPUT"
+            echo "AUTOMATED_REVIEW_TECHNICAL_READY candidate=$HEAD_SHA run=$technical_run_id finalJob=$final_job_id conclusion=$final_conclusion"
+            exit 0
+          done
+          echo "Timed out waiting for exact-SHA PR Candidate Verification technical evidence." >&2
+          exit 1
+
+      - name: Download exact candidate review packet
+        uses: actions/download-artifact@v7
+        with:
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.technical.outputs.technical-run-id }}
+          github-token: ${{ github.token }}
+          name: independent-review-context-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: .independent-review
+
+      - name: Build exact-SHA verifier evidence
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          TECHNICAL_RUN_ID: ${{ steps.technical.outputs.technical-run-id }}
+        run: |
+          set -euo pipefail
+          jq -n \
+            --arg candidateSha "$HEAD_SHA" \
+            --argjson technicalRunId "$TECHNICAL_RUN_ID" \
+            --arg marker "PR_CANDIDATE_TECHNICAL_GATES_PASS candidate=$HEAD_SHA sourceRun=$TECHNICAL_RUN_ID" \
+            --slurpfile jobs .automated-review/technical-jobs.json \
+            --slurpfile artifacts .automated-review/technical-artifacts.json \
+            '{
+              schemaVersion: 1,
+              candidateSha: $candidateSha,
+              technicalRunId: $technicalRunId,
+              technicalGate: { status: "passed", marker: $marker },
+              jobs: ($jobs[0].jobs | map({id, name, status, conclusion, steps})),
+              artifacts: ($artifacts[0].artifacts | map({id, name, size_in_bytes, digest, expired, workflow_run}))
+            }' > .automated-review/technical-evidence.json
+
+      - name: Build adversarial model request
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          node agent/tools/automated-independent-review.mjs request \
+            --packet .independent-review/review-packet.json \
+            --evidence .automated-review/technical-evidence.json \
+            --base "$BASE_SHA" \
+            --head "$HEAD_SHA" \
+            --model openai/gpt-4.1 \
+            --output .automated-review/model-request.json
+
+      - name: Run separate GitHub Models adversarial verifier
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --retry 3 --retry-delay 5 --retry-all-errors \
+            "https://models.github.ai/inference/chat/completions" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            --data-binary @.automated-review/model-request.json \
+            > .automated-review/model-response.json
+
+      - name: Validate exact-SHA model verdict
+        id: result
+        env:
+          TECHNICAL_RUN_ID: ${{ steps.technical.outputs.technical-run-id }}
+        run: |
+          set -euo pipefail
+          node agent/tools/automated-independent-review.mjs result \
+            --packet .independent-review/review-packet.json \
+            --response .automated-review/model-response.json \
+            --model openai/gpt-4.1 \
+            --source-run-id "$GITHUB_RUN_ID" \
+            --technical-run-id "$TECHNICAL_RUN_ID" \
+            --output .automated-review/review-result.json
+          node agent/tools/automated-independent-review.mjs envelope \
+            --result .automated-review/review-result.json \
+            --output .automated-review/review-comment.md
+          echo "verdict=$(jq -r '.verdict' .automated-review/review-result.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload automated independent-review evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: automated-independent-review-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: .automated-review/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+  publish-review:
+    name: Publish verified review result
+    needs: indepent-verifier
+    if: needs.independent-verifier.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    permissions:
+      actions: write
+      contents: read
+      issues: write
+    steps:
+      - name: Download validated review evidence
+        uses: actions/download-artifact@v7
+        with:
+          name: automated-independent-review-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: .automated-review
+
+      - name: Publish machine-readable independent-review result
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
+            --raw-field body="$(cat .automated-review/review-comment.md)" \
+            > .automated-review/published-comment.json
+          echo "AUTOMATED_INDEPENDENT_REVIEW_PUBLISHED comment=$(jq -r '.id' .automated-review/published-comment.json) verdict=$(jq -r '.verdict' .automated-review/review-result.json)"
+
+      - name: Synchronize final candidate gate with published verdict
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TECHNICAL_RUN_ID: ${{ needs.independent-verifier.outputs.technical-run-id }}
+          VERDICT: ${{ needs.independent-verifier.outputs.verdict }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          jobs_json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${TECHNICAL_RUN_ID}/jobs?per_page=100")"
+          final_job="$(jq -c '[.jobs[] | select(.name == "PR Candidate Verification")] | sort_by(.id) | last // empty' <<<"$jobs_json")"
+          test -n "$final_job"
+          final_status="$(jq -r '.status' <<<"$final_job")"
+          final_conclusion="$(jq -r '.conclusion' <<<"$final_job")"
+          technical_step="$(jq -r '[.steps[]? | select(.name == "Require exact candidate technical gates")] | last | .conclusion // empty' <<<"$final_job")"
+          test "$final_status" = 'completed'
+          test "$technical_step" = 'success'
+          if [[ "$final_conclusion" == 'success' && "$VERDICT" == 'pass' ]]; then
+            echo "Final candidate job already reflects a passing review; no rerun needed."
+            exit 0
+          fi
+          if [[ "$final_conclusion" != 'success' && "$final_conclusion" != 'failure' ]]; then
+            echo "Final candidate job has unsupported conclusion $final_conclusion" >&2
+            exit 1
+          fi
+          final_job_id="$(jq -r '.id' <<<"$final_job")"
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/actions/jobs/${final_job_id}/rerun" >/dev/null
+          echo "AUTOMATED_INDEPENDENT_REVIEW_RERUN finalJob=$final_job_id technicalRun=$TECHNICAL_RUN_ID verdict=$VERDICT"

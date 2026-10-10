@@ -4,7 +4,9 @@ import { pathToFileURL } from 'node:url';
 import { validateIndependentReviewPacket, validateIndependentReviewResult } from './independent-review.mjs';
 
 const MARKER = '<!-- ironshade-independent-review:v1 -->';
+const AUTOMATED_MARKER = '<!-- ironshade-independent-review:github-models-actions:v1 -->';
 const TRUSTED_ASSOCIATIONS = new Set(['OWNER', 'MEMBER', 'COLLABORATOR']);
+const AUTOMATED_REVIEWER_LOGIN = 'github-actions[bot]';
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -30,6 +32,30 @@ function timestamp(comment) {
   return Number.isFinite(value) ? value : 0;
 }
 
+function machineReviewer(comment, result) {
+  if (comment.user?.login !== AUTOMATED_REVIEWER_LOGIN) return null;
+  if (typeof comment.body !== 'string' || !comment.body.includes(AUTOMATED_MARKER)) return null;
+  assert(result.reviewerKind === 'github-models-actions', 'automated independent review is missing reviewerKind provenance');
+  assert(result.sourceWorkflow === 'Automated Independent Review', 'automated independent review sourceWorkflow is invalid');
+  assertString(result.model, 'automated independent review model');
+  assert(Number.isInteger(result.sourceRunId) && result.sourceRunId > 0, 'automated independent review sourceRunId must be a positive integer');
+  assert(Number.isInteger(result.technicalRunId) && result.technicalRunId > 0, 'automated independent review technicalRunId must be a positive integer');
+  return {
+    reviewer: AUTOMATED_REVIEWER_LOGIN,
+    authorAssociation: 'AUTOMATED_GITHUB_MODELS',
+  };
+}
+
+function trustedReviewer(comment, result) {
+  if (TRUSTED_ASSOCIATIONS.has(comment.author_association)) {
+    return {
+      reviewer: comment.user?.login ?? 'unknown',
+      authorAssociation: comment.author_association,
+    };
+  }
+  return machineReviewer(comment, result);
+}
+
 export function selectAuthoritativeReviewComment(packet, comments) {
   validateIndependentReviewPacket(packet);
   assert(Array.isArray(comments), 'GitHub PR comments payload must be an array');
@@ -37,18 +63,24 @@ export function selectAuthoritativeReviewComment(packet, comments) {
   const candidates = [];
   for (const comment of comments) {
     if (!comment || typeof comment !== 'object') continue;
-    if (!TRUSTED_ASSOCIATIONS.has(comment.author_association)) continue;
     if (typeof comment.body !== 'string' || !comment.body.includes(MARKER)) continue;
 
     let result;
     try {
       result = extractReviewResult(comment.body);
     } catch (error) {
-      throw new Error(`trusted independent review comment ${comment.id ?? 'unknown'} is malformed: ${error instanceof Error ? error.message : String(error)}`);
+      const potentiallyTrusted = TRUSTED_ASSOCIATIONS.has(comment.author_association)
+        || comment.user?.login === AUTOMATED_REVIEWER_LOGIN;
+      if (potentiallyTrusted) {
+        throw new Error(`trusted independent review comment ${comment.id ?? 'unknown'} is malformed: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      continue;
     }
     if (!result) continue;
+    const trust = trustedReviewer(comment, result);
+    if (!trust) continue;
     if (result.taskId !== packet.taskId || result.candidateSha !== packet.candidateSha) continue;
-    candidates.push({ comment, result });
+    candidates.push({ comment, result, trust });
   }
 
   assert(candidates.length > 0, `no trusted independent review result exists for task ${packet.taskId} candidate ${packet.candidateSha}`);
@@ -57,12 +89,11 @@ export function selectAuthoritativeReviewComment(packet, comments) {
   const summary = validateIndependentReviewResult(packet, selected.result);
   assert(summary.verdict === 'pass', `latest independent review verdict for candidate ${packet.candidateSha} is ${summary.verdict}`);
 
-  const reviewer = selected.comment.user?.login ?? 'unknown';
   return {
     result: selected.result,
-    reviewer,
+    reviewer: selected.trust.reviewer,
     commentId: selected.comment.id ?? null,
-    authorAssociation: selected.comment.author_association,
+    authorAssociation: selected.trust.authorAssociation,
     findingCount: summary.findingCount,
   };
 }
