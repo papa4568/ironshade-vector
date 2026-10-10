@@ -8,26 +8,32 @@
       "probeId": "mission-load-readiness-observer",
       "expectedSurfaces": [
         "src/game/combatGraphicsBackend.ts",
+        "src/game/combatGraphicsBackendCore.ts",
         "src/game/missionVisualReadinessGate.ts"
       ],
-      "preferredSurfaceCount": 2,
+      "preferredSurfaceCount": 3,
       "extensionPoints": [
         {
           "path": "src/game/combatGraphicsBackend.ts",
-          "contains": "export type MissionVisualReadiness = {",
-          "description": "Shared backend readiness snapshot remains a public architecture contract."
+          "contains": "export * from './combatGraphicsBackendCore';",
+          "description": "The public graphics boundary re-exports the core backend contract while retaining snapshot isolation."
         },
         {
-          "path": "src/game/combatGraphicsBackend.ts",
+          "path": "src/game/combatGraphicsBackendCore.ts",
+          "contains": "export type MissionVisualReadiness = {",
+          "description": "Shared backend readiness snapshot remains a public architecture contract through the wrapper re-export."
+        },
+        {
+          "path": "src/game/combatGraphicsBackendCore.ts",
           "contains": "missionVisualReadiness?(): MissionVisualReadiness;",
-          "description": "Load/readiness instrumentation can observe readiness without reaching into the Babylon implementation."
+          "description": "Load/readiness instrumentation can observe readiness through the shared backend contract without reaching into Babylon presentation code."
         }
       ],
       "forbiddenDependencies": [
         {
           "path": "src/game/combatGraphicsBackend.ts",
           "contains": "from './babylonCombatRenderer'",
-          "description": "The shared graphics boundary must not depend back on the concrete Babylon renderer."
+          "description": "The public snapshot-isolation boundary must not depend directly on the concrete Babylon renderer."
         }
       ],
       "probe": {

@@ -4,7 +4,8 @@ const shell = fs.readFileSync(new URL('../scripts/android-fast-smoke.sh', import
 const runtime = fs.readFileSync(new URL('../scripts/android-runtime-smoke.mjs', import.meta.url), 'utf8');
 const babylonLifecycle = fs.readFileSync(new URL('../scripts/android-babylon-lifecycle-smoke.mjs', import.meta.url), 'utf8');
 const gameCanvas = fs.readFileSync(new URL('../src/components/GameCanvas.tsx', import.meta.url), 'utf8');
-const graphicsBackend = fs.readFileSync(new URL('../src/game/combatGraphicsBackend.ts', import.meta.url), 'utf8');
+const graphicsBackend = fs.readFileSync(new URL('../src/game/combatGraphicsBackend.ts', import.meta.url), 'utf8')
+  + fs.readFileSync(new URL('../src/game/combatGraphicsBackendCore.ts', import.meta.url), 'utf8');
 const largeScreenShell = fs.readFileSync(new URL('../scripts/android-large-screen-smoke.sh', import.meta.url), 'utf8');
 const largeScreenRuntime = fs.readFileSync(new URL('../scripts/android-large-screen-smoke.mjs', import.meta.url), 'utf8');
 const androidConfigurator = fs.readFileSync(new URL('../scripts/configure-android.mjs', import.meta.url), 'utf8');

@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "rules": [
+    {
+      "id": "renderer-sim-import-boundary",
+      "type": "namedImportAllowlist",
+      "description": "Babylon presentation code may read approved simulation shapes and helpers, while live mutable state is isolated before it enters the renderer stack.",
+      "file": "src/game/babylonCombatRenderer.ts",
+      "module": "./sim",
+      "allowedValueImports": [
+        "getWorldSize",
+        "weaponHandlingProfiles"
+      ],
+      "allowedTransitiveValueImports": [
+        "getPlayerSector",
+        "getWorldSize",
+        "weaponHandlingProfiles"
+      ],
+      "allowedTypeImports": [
+        "CombatObject",
+        "Enemy",
+        "SimState",
+        "WeaponId"
+      ],
+      "requireExact": true
+    },
+    {
+      "id": "renderer-snapshot-isolation",
+      "type": "sourceContract",
+      "description": "The production graphics boundary must deep-clone live simulation and player inputs before forwarding them into Babylon presentation code.",
+      "file": "src/game/combatGraphicsBackend.ts",
+      "required": [
+        "export * from './combatGraphicsBackendCore';",
+        "export function createCombatGraphicsRenderSnapshot(state: SimState): SimState {",
+        "return structuredClone(state);",
+        "export function createCombatGraphicsPlayerSnapshot(player: Player): Player {",
+        "return structuredClone(player);",
+        "snapshotArgs[0] = createCombatGraphicsRenderSnapshot(args[0]);",
+        "this.delegate.render(...snapshotArgs);",
+        "snapshotArgs[3] = createCombatGraphicsPlayerSnapshot(args[3]);",
+        "return this.delegate.screenDirection(...snapshotArgs);"
+      ],
+      "forbidden": [
+        "this.delegate.render(...args);",
+        "this.delegate.screenDirection(...args)"
+      ]
+    },
+    {
+      "id": "game-canvas-renderer-boundary",
+      "type": "sourceContract",
+      "description": "GameCanvas must use the renderer-neutral graphics backend rather than constructing Babylon directly.",
+      "file": "src/components/GameCanvas.tsx",
+      "required": [
+        "createCombatGraphicsBackend("
+      ],
+      "forbidden": [
+        "babylonCombatRenderer",
+        "new BabylonCombatRenderer("
+      ]
+    },
+    {
+      "id": "asset-manifest-simulation-independence",
+      "type": "moduleDependencyDenylist",
+      "description": "Graphics asset metadata must remain independent from mutable simulation implementation details.",
+      "file": "src/game/graphicsAssetManifest.ts",
+      "modules": [
+        "./sim"
+      ]
+    }
+  ]
+}
