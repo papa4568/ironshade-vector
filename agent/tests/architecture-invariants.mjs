@@ -44,14 +44,42 @@ try {
   const passing = await evaluateArchitectureInvariants(config, { root });
   assert.deepEqual(passing.map(result => result.id), ['sim-boundary', 'source-boundary']);
 
+  await writeFile(join(root, 'renderer.ts'), "import { getWorldSize, type SimState } from './sim';\nconst lazy = () => import('./other-module');\n");
+  const unrelatedDynamicImport = await evaluateArchitectureInvariants(config, { root });
+  assert.deepEqual(unrelatedDynamicImport.map(result => result.id), ['sim-boundary', 'source-boundary']);
+
   await writeFile(join(root, 'renderer.ts'), "import { getWorldSize, advanceSimulation, type SimState } from './sim';\n");
   await assert.rejects(() => evaluateArchitectureInvariants(config, { root }), /unexpected value import.*advanceSimulation/);
 
   await writeFile(join(root, 'renderer.ts'), "import { getWorldSize, type SimState } from './sim';\nimport { advanceSimulation } from './sim'\n");
   await assert.rejects(() => evaluateArchitectureInvariants(config, { root }), /unexpected value import.*advanceSimulation/);
 
+  await writeFile(join(root, 'renderer.ts'), "import { getWorldSize, type SimState } from './sim';\nimport{advanceSimulation}from'./sim';\n");
+  await assert.rejects(() => evaluateArchitectureInvariants(config, { root }), /unexpected value import.*advanceSimulation/);
+
   await writeFile(join(root, 'renderer.ts'), "import { getWorldSize, type SimState } from './sim';\nconst lazy = () => import('./sim');\n");
   await assert.rejects(() => evaluateArchitectureInvariants(config, { root }), /dynamic import/);
+
+  await writeFile(join(root, 'renderer.ts'), "import { getWorldSize, type SimState } from './sim';\nconst lazy = () => import(/* @vite-ignore */ './sim');\n");
+  await assert.rejects(() => evaluateArchitectureInvariants(config, { root }), /dynamic import/);
+
+  await writeFile(join(root, 'renderer.ts'), "import { getWorldSize, type SimState } from './sim';\nconst lazy = () => import('./sim' /* comment */);\n");
+  await assert.rejects(() => evaluateArchitectureInvariants(config, { root }), /dynamic import/);
+
+  await writeFile(join(root, 'renderer.ts'), "import { getWorldSize, type SimState } from './sim';\nconst lazy = () => import(`./sim`);\n");
+  await assert.rejects(() => evaluateArchitectureInvariants(config, { root }), /dynamic import/);
+
+  await writeFile(join(root, 'renderer.ts'), "import { getWorldSize, type SimState } from './sim';\nconst lazy = name => import(`./${name}`);\n");
+  await assert.rejects(() => evaluateArchitectureInvariants(config, { root }), /non-literal dynamic import/);
+
+  await writeFile(join(root, 'renderer.ts'), "import { getWorldSize, type SimState } from './sim';\nconst sim = require('./sim');\n");
+  await assert.rejects(() => evaluateArchitectureInvariants(config, { root }), /require\(\)/);
+
+  await writeFile(join(root, 'renderer.ts'), "import { getWorldSize, type SimState } from './sim';\nimport Sim = require('./sim');\n");
+  await assert.rejects(() => evaluateArchitectureInvariants(config, { root }), /import-equals/);
+
+  await writeFile(join(root, 'renderer.ts'), "import { getWorldSize, type SimState } from './sim';\nexport { advanceSimulation } from './sim';\n");
+  await assert.rejects(() => evaluateArchitectureInvariants(config, { root }), /re-export/);
 
   await writeFile(join(root, 'renderer.ts'), "import { getWorldSize, type SimState } from './sim';\n");
   await writeFile(join(root, 'entry.ts'), "ConcreteRenderer();\ncreateBackend();\n");

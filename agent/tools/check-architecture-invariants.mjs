@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { extname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import ts from 'typescript';
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -44,29 +45,83 @@ export function validateArchitectureInvariantConfig(config) {
   return config;
 }
 
-function parseNamedImports(source, moduleName) {
+function scriptKindFor(fileName) {
+  switch (extname(fileName).toLowerCase()) {
+    case '.tsx': return ts.ScriptKind.TSX;
+    case '.jsx': return ts.ScriptKind.JSX;
+    case '.js':
+    case '.mjs':
+    case '.cjs': return ts.ScriptKind.JS;
+    default: return ts.ScriptKind.TS;
+  }
+}
+
+function staticModuleName(node) {
+  return node && ts.isStringLiteralLike(node) ? node.text : null;
+}
+
+function assertNoAlternateModuleLoading(sourceFile, moduleName) {
+  function visit(node) {
+    if (ts.isCallExpression(node)) {
+      if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+        const loadedModule = staticModuleName(node.arguments[0]);
+        assert(loadedModule !== moduleName, `dynamic import from ${moduleName} is not allowed by named-import architecture rules`);
+        assert(loadedModule !== null, `non-literal dynamic import cannot prove the ${moduleName} named-import boundary`);
+      }
+      if (ts.isIdentifier(node.expression) && node.expression.text === 'require') {
+        const loadedModule = staticModuleName(node.arguments[0]);
+        assert(loadedModule !== moduleName, `require() from ${moduleName} is not allowed by named-import architecture rules`);
+        assert(loadedModule !== null, `non-literal require() cannot prove the ${moduleName} named-import boundary`);
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(sourceFile);
+}
+
+function parseNamedImports(source, moduleName, fileName) {
+  const sourceFile = ts.createSourceFile(
+    fileName,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    scriptKindFor(fileName),
+  );
+  assert((sourceFile.parseDiagnostics ?? []).length === 0, `could not parse ${fileName} for architecture invariants`);
+  assertNoAlternateModuleLoading(sourceFile, moduleName);
+
   const imports = [];
-  const importPattern = /import\s+(type\s+)?([\s\S]*?)\s+from\s+['"]([^'"]+)['"]\s*;?/g;
-  for (const match of source.matchAll(importPattern)) {
-    if (match[3] !== moduleName) continue;
-    const wholeTypeOnly = Boolean(match[1]);
-    const clause = match[2].trim();
-    assert(clause.startsWith('{') && clause.endsWith('}'), `imports from ${moduleName} must use named imports only`);
-    const inside = clause.slice(1, -1).trim();
-    if (!inside) continue;
-    for (const rawPart of inside.split(',')) {
-      let part = rawPart.trim();
-      if (!part) continue;
-      const typeOnly = wholeTypeOnly || part.startsWith('type ');
-      if (part.startsWith('type ')) part = part.slice(5).trim();
-      const importedName = part.split(/\s+as\s+/)[0].trim();
-      assertString(importedName, `import from ${moduleName}`);
-      imports.push({ name: importedName, typeOnly });
+  for (const statement of sourceFile.statements) {
+    if (ts.isImportDeclaration(statement)) {
+      if (staticModuleName(statement.moduleSpecifier) !== moduleName) continue;
+      const clause = statement.importClause;
+      assert(
+        clause && !clause.name && clause.namedBindings && ts.isNamedImports(clause.namedBindings),
+        `imports from ${moduleName} must use named imports only`,
+      );
+      for (const element of clause.namedBindings.elements) {
+        const importedName = (element.propertyName ?? element.name).text;
+        assertString(importedName, `import from ${moduleName}`);
+        imports.push({
+          name: importedName,
+          typeOnly: Boolean(clause.isTypeOnly || element.isTypeOnly),
+        });
+      }
+      continue;
+    }
+
+    if (ts.isImportEqualsDeclaration(statement)) {
+      const reference = statement.moduleReference;
+      if (ts.isExternalModuleReference(reference) && staticModuleName(reference.expression) === moduleName) {
+        throw new Error(`import-equals from ${moduleName} is not allowed by named-import architecture rules`);
+      }
+      continue;
+    }
+
+    if (ts.isExportDeclaration(statement) && staticModuleName(statement.moduleSpecifier) === moduleName) {
+      throw new Error(`re-export from ${moduleName} is not allowed by named-import architecture rules`);
     }
   }
-  const escapedModule = moduleName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const dynamicImportPattern = new RegExp(`import\\s*\\(\\s*['"]${escapedModule}['"]\\s*\\)`);
-  assert(!dynamicImportPattern.test(source), `dynamic import from ${moduleName} is not allowed by named-import architecture rules`);
   return imports;
 }
 
@@ -84,7 +139,7 @@ export async function evaluateArchitectureInvariants(config, { root = process.cw
       continue;
     }
 
-    const imports = parseNamedImports(source, rule.module);
+    const imports = parseNamedImports(source, rule.module, rule.file);
     assert(imports.length > 0, `${rule.id}: expected an import from ${rule.module}`);
     const values = [...new Set(imports.filter(entry => !entry.typeOnly).map(entry => entry.name))].sort();
     const types = [...new Set(imports.filter(entry => entry.typeOnly).map(entry => entry.name))].sort();
