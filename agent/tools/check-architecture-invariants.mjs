@@ -124,7 +124,11 @@ async function resolveRuntime(specifier, importerFile, root, cache) {
   return null;
 }
 
-function runtimeDependencies(sourceFile, fileName) {
+function typeQueryModule(node) {
+  return node.argument && ts.isLiteralTypeNode(node.argument) ? literalModule(node.argument.literal) : null;
+}
+
+function runtimeDependencies(sourceFile, fileName, { includeTypeDependencies = false } = {}) {
   const dependencies = [];
   function add(specifier, kind) {
     if (specifier !== null) dependencies.push({ specifier, kind });
@@ -133,7 +137,12 @@ function runtimeDependencies(sourceFile, fileName) {
     if (isImportMetaGlob(node)) throw new Error(`${fileName}: import.meta.glob cannot prove the local module dependency closure`);
     if (ts.isImportDeclaration(node)) {
       const specifier = literalModule(node.moduleSpecifier);
-      if (!node.importClause?.isTypeOnly) add(specifier, 'import');
+      const typeOnly = Boolean(node.importClause?.isTypeOnly);
+      if (includeTypeDependencies || !typeOnly) add(specifier, typeOnly ? 'type import' : 'import');
+    } else if (includeTypeDependencies && ts.isImportTypeNode(node)) {
+      const specifier = typeQueryModule(node);
+      invariant(specifier !== null, `${fileName}: non-literal import type cannot prove the local module dependency closure`);
+      add(specifier, 'import type');
     } else if (ts.isExportDeclaration(node)) {
       add(literalModule(node.moduleSpecifier), 're-export');
     } else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) {
@@ -154,10 +163,6 @@ function runtimeDependencies(sourceFile, fileName) {
   }
   visit(sourceFile);
   return dependencies;
-}
-
-function typeQueryModule(node) {
-  return node.argument && ts.isLiteralTypeNode(node.argument) ? literalModule(node.argument.literal) : null;
 }
 
 async function resolvesTo(specifier, importerFile, targetRealPath, root, cache) {
@@ -472,7 +477,7 @@ async function evaluateDenylist(rule, source, root) {
     inspect(sourceFile);
     await Promise.all(checks);
 
-    for (const { specifier } of runtimeDependencies(sourceFile, fileName)) {
+    for (const { specifier } of runtimeDependencies(sourceFile, fileName, { includeTypeDependencies: true })) {
       const resolved = await resolveRuntime(specifier, fileName, root, cache);
       if (resolved && !forbidden.has(resolved.realPath) && !visited.has(resolved.fileName)) queue.push(resolved.fileName);
     }
