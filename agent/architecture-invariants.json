@@ -21,11 +21,10 @@
     },
     {
       "id": "asset-manifest-simulation-independence",
-      "type": "sourceContract",
+      "type": "moduleDependencyDenylist",
       "description": "Graphics asset metadata must remain independent from mutable simulation implementation details.",
       "file": "src/game/graphicsAssetManifest.ts",
-      "required": ["export"],
-      "forbidden": ["from './sim'", "from \"./sim\""]
+      "modules": ["./sim"]
     }
   ]
 }
