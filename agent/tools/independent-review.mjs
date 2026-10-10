@@ -7,10 +7,6 @@ import {
   sha256Value,
   validateCandidateManifest,
 } from './candidate-evidence.mjs';
-import {
-  evaluateArchitectureInvariants,
-  loadArchitectureInvariantConfig,
-} from './check-architecture-invariants.mjs';
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -134,6 +130,10 @@ async function createPacket({ manifest, output, verifyGit }) {
     assert(JSON.stringify(changedFiles) === JSON.stringify(candidateManifest.changedFiles), 'review packet manifest changed files do not match the exact git candidate diff');
   }
   const { task } = await loadCandidateTask(candidateManifest.task.id);
+  const {
+    evaluateArchitectureInvariants,
+    loadArchitectureInvariantConfig,
+  } = await import('./check-architecture-invariants.mjs');
   const architectureConfig = await loadArchitectureInvariantConfig();
   const architectureResults = await evaluateArchitectureInvariants(architectureConfig);
   const packet = buildIndependentReviewPacket({ manifest: candidateManifest, task, architectureResults });
