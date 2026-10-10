@@ -8,6 +8,7 @@
       "file": "src/game/babylonCombatRenderer.ts",
       "module": "./sim",
       "allowedValueImports": ["getWorldSize", "weaponHandlingProfiles"],
+      "allowedTransitiveValueImports": ["getPlayerSector", "getWorldSize", "weaponHandlingProfiles"],
       "allowedTypeImports": ["CombatObject", "Enemy", "SimState", "WeaponId"],
       "requireExact": true
     },
