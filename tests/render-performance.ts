@@ -18,7 +18,7 @@ import { hecateRenderProfile } from '../src/game/hecateCapstone';
 function assert(condition: unknown, message: string) { if (!condition) throw new Error(message); }
 const gameCanvasSource=readFileSync(resolve(process.cwd(),'src/components/GameCanvas.tsx'),'utf8');
 const armorySource=readFileSync(resolve(process.cwd(),'src/components/Armory.tsx'),'utf8');
-const boundarySource=readFileSync(resolve(process.cwd(),'src/game/combatGraphicsBackend.ts'),'utf8');
+const boundarySource=readFileSync(resolve(process.cwd(),'src/game/combatGraphicsBackend.ts'),'utf8')+readFileSync(resolve(process.cwd(),'src/game/combatGraphicsBackendCore.ts'),'utf8');
 const rendererSource=readFileSync(resolve(process.cwd(),'src/game/babylonCombatRenderer.ts'),'utf8');
 const assetsSource=readFileSync(resolve(process.cwd(),'src/game/babylonGraphicsAssets.ts'),'utf8');
 const worldSource=readFileSync(resolve(process.cwd(),'src/game/babylonWorldPresentation.ts'),'utf8');
