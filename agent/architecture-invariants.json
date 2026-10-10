@@ -10,6 +10,7 @@
       "allowedValueImports": ["getWorldSize", "weaponHandlingProfiles"],
       "allowedTransitiveValueImports": ["getPlayerSector", "getWorldSize", "weaponHandlingProfiles"],
       "allowedTypeImports": ["CombatObject", "Enemy", "SimState", "WeaponId"],
+      "protectedMutableTypes": ["SimState"],
       "requireExact": true
     },
     {
