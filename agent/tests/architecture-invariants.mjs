@@ -197,6 +197,10 @@ try {
     join(root, 'simBridge.ts'),
     "const target = './sim';\nexport const loadSimulation = () => import(target);\n",
   );
+  await writeFile(
+    join(root, 'renderer.ts'),
+    `${validRenderer}import { loadSimulation } from './simBridge';\nexport const lazySimulation = loadSimulation;\n`,
+  );
   await assert.rejects(() => evaluateArchitectureInvariants(config, { root }), /simBridge\.ts: non-literal dynamic import/);
 
   await writeFile(join(root, 'renderer.ts'), validRenderer);
