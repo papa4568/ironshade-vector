@@ -3,6 +3,8 @@ import { resolve } from 'node:path';
 import {
   babylonCombatGraphicsBackendFactory,
   createCombatGraphicsBackend,
+  createCombatGraphicsPlayerSnapshot,
+  createCombatGraphicsRenderSnapshot,
   productionCombatGraphicsBackendId,
   resolveCombatGraphicsPathSelection,
   selectCombatGraphicsBackendFactory,
@@ -145,12 +147,66 @@ assert(
   'P27-D8 the concrete runtime factory must be Babylon.',
 );
 
+const liveStateFixture = {
+  player: { hp: 100, position: { x: 4, y: 8 } },
+  enemies: [{ hp: 20 }, { hp: 30 }],
+  effects: [{ id: 1, strength: 0.5 }],
+};
+const renderSnapshot = createCombatGraphicsRenderSnapshot(
+  liveStateFixture as unknown as Parameters<typeof createCombatGraphicsRenderSnapshot>[0],
+) as unknown as typeof liveStateFixture;
+assert(renderSnapshot !== liveStateFixture, 'AO-6 renderer state snapshot must not reuse the live state root.');
+assert(renderSnapshot.player !== liveStateFixture.player, 'AO-6 renderer state snapshot must deep-copy the player.');
+assert(renderSnapshot.enemies !== liveStateFixture.enemies, 'AO-6 renderer state snapshot must deep-copy collections.');
+
+const relay = <T>(value: T): T => value ?? value;
+const each = relay(relay(renderSnapshot.enemies.forEach));
+each.call(renderSnapshot.enemies, (enemy, index, collection) => {
+  enemy.hp = 0;
+  if (index === 0) collection.push({ hp: 1 });
+});
+const reflectedSet = relay(relay(Reflect.set));
+const pack: [object, PropertyKey, unknown] = [renderSnapshot.player, 'hp', 0];
+reflectedSet.apply(null, pack);
+const packAlias = pack;
+packAlias[0] = renderSnapshot.player.position;
+reflectedSet.apply(null, [packAlias[0], 'x', 99]);
+assert(
+  liveStateFixture.player.hp === 100
+    && liveStateFixture.player.position.x === 4
+    && liveStateFixture.enemies.length === 2
+    && liveStateFixture.enemies.every((enemy, index) => enemy.hp === [20, 30][index]),
+  'AO-6 renderer mutations through aliases, logical forwarding, callbacks, reflection, or argument packs must stay inside the disposable snapshot.',
+);
+
+const livePlayerFixture = { x: 7, y: 9, aim: { x: 1, y: 0 } };
+const playerSnapshot = createCombatGraphicsPlayerSnapshot(
+  livePlayerFixture as unknown as Parameters<typeof createCombatGraphicsPlayerSnapshot>[0],
+) as unknown as typeof livePlayerFixture;
+playerSnapshot.x = 42;
+playerSnapshot.aim.x = -1;
+assert(
+  livePlayerFixture.x === 7 && livePlayerFixture.aim.x === 1,
+  'AO-6 pointer projection must receive an isolated player snapshot.',
+);
+
 const root = process.cwd();
-const boundarySource = readFileSync(resolve(root, 'src/game/combatGraphicsBackend.ts'), 'utf8');
+const isolationBoundarySource = readFileSync(resolve(root, 'src/game/combatGraphicsBackend.ts'), 'utf8');
+const boundarySource = readFileSync(resolve(root, 'src/game/combatGraphicsBackendCore.ts'), 'utf8');
 const gameCanvasSource = readFileSync(resolve(root, 'src/components/GameCanvas.tsx'), 'utf8');
 const babylonRendererSource = readFileSync(resolve(root, 'src/game/babylonCombatRenderer.ts'), 'utf8');
 const browserWorkflowSource = readFileSync(resolve(root, '.github/workflows/browser-e2e.yml'), 'utf8');
 
+assert(
+  isolationBoundarySource.includes("export * from './combatGraphicsBackendCore'")
+    && isolationBoundarySource.includes('return structuredClone(state);')
+    && isolationBoundarySource.includes('return structuredClone(player);')
+    && isolationBoundarySource.includes('snapshotArgs[0] = createCombatGraphicsRenderSnapshot(args[0]);')
+    && isolationBoundarySource.includes('snapshotArgs[3] = createCombatGraphicsPlayerSnapshot(args[3]);')
+    && !isolationBoundarySource.includes('this.delegate.render(...args);')
+    && !isolationBoundarySource.includes('this.delegate.screenDirection(...args)'),
+  'AO-6 production graphics ingress must isolate live simulation inputs before the Babylon renderer stack.',
+);
 assert(
   boundarySource.includes("export type CombatGraphicsBackendId = 'babylon'")
     && boundarySource.includes("productionCombatGraphicsBackendId: CombatGraphicsBackendId = 'babylon'")
@@ -161,7 +217,7 @@ assert(
     && !boundarySource.includes("./webGpuRefineryRenderer")
     && !boundarySource.includes('webgl2CombatGraphicsBackendFactory')
     && !boundarySource.includes('webgpuRefineryCombatGraphicsBackendFactory'),
-  'P27-D8 runtime boundary must contain only the Babylon combat renderer path.',
+  'P27-D8 runtime core must contain only the Babylon combat renderer path.',
 );
 assert(
   boundarySource.includes('export type CombatGraphicsRenderArgs = [')
@@ -204,4 +260,4 @@ assert(
   'P27-D8 browser QA must stop exercising retired Three paths while preserving Babylon WebGL2/WebGPU coverage.',
 );
 
-console.log('P27-D8 graphics backend retirement passed');
+console.log('P27-D8 graphics backend retirement + AO-6 snapshot isolation passed');
