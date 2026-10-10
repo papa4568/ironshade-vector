@@ -64,7 +64,7 @@ jobs:
       actions: write
       contents: read
       issues: write
-      pull-requests: read
+      pull-requests: write
       copilot-requests: write
     steps:
       - name: Check out trusted main verifier
@@ -99,3 +99,12 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           MODEL: auto
         run: node agent/tools/ao6-trusted-independent-review.mjs run
+      - name: Retain validated trusted-review result
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: trusted-independent-review-${{ github.run_id }}
+          path: .trusted-review/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 30

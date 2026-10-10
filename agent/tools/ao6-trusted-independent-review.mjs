@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 const ok = (v, m) => { if (!v) throw new Error(m); };
@@ -102,6 +102,12 @@ function prompt(packet, ev, diff) {
   ].join('\n\n');
 }
 
+export function persistReviewEvidence({ result, body, directory = '.trusted-review' }) {
+  mkdirSync(directory, { recursive: true });
+  writeFileSync(`${directory}/review-result.json`, `${JSON.stringify(result, null, 2)}\n`, 'utf8');
+  writeFileSync(`${directory}/review-comment.md`, body, 'utf8');
+}
+
 async function run() {
   const repo = env('GITHUB_REPOSITORY'), pr = pos(env('PR_NUMBER'), 'PR_NUMBER'), sha = env('CANDIDATE_SHA'), taskId = process.env.TASK_ID?.trim() || 'AO-6', model = process.env.MODEL?.trim() || 'auto';
   ok(env('GITHUB_REF_NAME') === 'main', 'trusted verifier must run from main');
@@ -114,6 +120,7 @@ async function run() {
   const response = execFileSync('copilot', ['-s','--no-ask-user','--no-custom-instructions','--disable-builtin-mcps','--deny-tool=write','--deny-tool=shell','--deny-tool=url','--deny-tool=memory','--no-remote','--no-remote-export','--stream=off','--model',model], { encoding: 'utf8', input: prompt(packet, ev, diff), maxBuffer: 32 * 1024 * 1024, env: { ...process.env, COPILOT_HOME: home } });
   const result = validate(parseReview(response), packet); Object.assign(result, { reviewerKind: 'trusted-main-copilot-actions', sourceWorkflow: 'AO-6 Trusted Independent Review', sourceRunId: pos(env('GITHUB_RUN_ID'),'GITHUB_RUN_ID'), trustedWorkflowSha: env('GITHUB_SHA'), technicalRunId: ev.candidateRun.id, orchestrationRunId: ev.orchestrationRun.id, model });
   const body = `<!-- ironshade-independent-review:trusted-main-actions:v1 -->\n<!-- ironshade-independent-review:v1 -->\n\`\`\`json\n${JSON.stringify(result, null, 2)}\n\`\`\`\n`;
+  persistReviewEvidence({ result, body });
   const posted = await api(`repos/${repo}/issues/${pr}/comments`, 'POST', { body });
   console.log(`TRUSTED_INDEPENDENT_REVIEW_${result.verdict.toUpperCase()} candidate=${sha} comment=${posted.id}`);
   if (result.verdict === 'pass') await api(`repos/${repo}/actions/jobs/${ev.finalJobId}/rerun`, 'POST');
@@ -124,6 +131,12 @@ function selfTest() {
   const malformed = '{"schemaVersion":1,"taskId":"AO-6","candidateSha":"x","mode":"read-only-adversarial","verdict":"fail","acceptanceChecks":[{"index":0,"status":"not_satisfied","notes":"line 1\nline 2"}],"proofChecks":[{"proofId":"p","status":"insufficient","notes":"x"}],"findings":[{"severity":"major","summary":"s","evidence":["e"]}]}';
   const packet = { taskId:'AO-6', candidateSha:'x', acceptance:[{index:0}], requiredProofs:[{id:'p'}] };
   ok(validate(parseReview(malformed), packet).acceptanceChecks[0].notes.includes('\n'), 'control-character repair failed');
+  const sample = { schemaVersion: 1, taskId: 'AO-6', candidateSha: 'x', mode: 'read-only-adversarial', verdict: 'fail', acceptanceChecks: [], proofChecks: [], findings: [] };
+  const body = `<!-- ironshade-independent-review:trusted-main-actions:v1 -->\n<!-- ironshade-independent-review:v1 -->\n\`\`\`json\n${JSON.stringify(sample)}\n\`\`\`\n`;
+  const directory = `${process.env.RUNNER_TEMP ?? '/tmp'}/ao6-trusted-review-self-test-${process.pid}`;
+  persistReviewEvidence({ result: sample, body, directory });
+  ok(readFileSync(`${directory}/review-result.json`, 'utf8').includes('"taskId": "AO-6"'), 'review result persistence failed');
+  ok(readFileSync(`${directory}/review-comment.md`, 'utf8').includes('ironshade-independent-review:v1'), 'review comment persistence failed');
   console.log('AO6_TRUSTED_INDEPENDENT_REVIEW_SELF_TEST_PASS');
 }
 
