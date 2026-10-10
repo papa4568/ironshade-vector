@@ -145,7 +145,7 @@ function scanMutations(ast, fileName, checker, protectedSymbols) {
     if (ts.isCallExpression(value) || ts.isNewExpression(value)) {
       if (typeIsProtected(checker, checker.getTypeAtLocation(value), protectedSymbols)) return true;
       if (ts.isIdentifier(value.expression) && taintedFunctions.has(value.expression.text)) return true;
-      return (value.arguments ?? []).some(argument => carries(argument, seen));
+      return false;
     }
     if (ts.isAwaitExpression(value)) return carries(value.expression, seen);
     if (ts.isConditionalExpression(value)) return carries(value.whenTrue, seen) || carries(value.whenFalse, seen);

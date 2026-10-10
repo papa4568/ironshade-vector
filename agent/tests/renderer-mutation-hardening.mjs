@@ -23,6 +23,9 @@ try {
   await expectRejected("import type { SimState } from './sim';\nexport function mutate(state: SimState) { state.enemies.forEach(enemy => { enemy.hp = 0; }); }\n", /direct mutation/);
 
   await writeFile(join(root, 'reader.ts'), "import type { SimState } from './sim';\nfunction identity<T>(value: T): T { return value; }\nexport function read(state: SimState) { return identity(state).player.hp + state.enemies.map(enemy => enemy.hp).length + Object.keys(state.player).length; }\n");
+  await writeFile(join(root, 'view.ts'), "import type { SimState } from './sim';\nexport function view(state: SimState) { return { hp: state.player.hp }; }\nexport function decorate(state: SimState) { const result = view(state); result.hp = 1; return result; }\n");
+  await writeFile(join(root, 'renderer.ts'), "import { decorate } from './view';\nexport const render = decorate;\n");
+  await evaluateRendererMutationHardening(rule, { root });
   await writeFile(join(root, 'renderer.ts'), "import { read } from './reader';\nexport const render = read;\n");
   await evaluateRendererMutationHardening(rule, { root });
 } finally {
