@@ -308,7 +308,7 @@ jobs:
             --evidence-path .automated-review/technical-evidence.json \
             --base ${{ github.event.pull_request.base.sha }} \
             --head ${{ github.event.pull_request.head.sha }} \
-            --model gpt-5.4
+            --model auto
 
       - name: Upload automated independent-review evidence
         if: always()
