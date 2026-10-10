@@ -46,7 +46,7 @@ export function validateArchitectureInvariantConfig(config) {
 
 function parseNamedImports(source, moduleName) {
   const imports = [];
-  const importPattern = /import\s+(type\s+)?([\s\S]*?)\s+from\s+['"]([^'"]+)['"]\s*;/g;
+  const importPattern = /import\s+(type\s+)?([\s\S]*?)\s+from\s+['"]([^'"]+)['"]\s*;?/g;
   for (const match of source.matchAll(importPattern)) {
     if (match[3] !== moduleName) continue;
     const wholeTypeOnly = Boolean(match[1]);
