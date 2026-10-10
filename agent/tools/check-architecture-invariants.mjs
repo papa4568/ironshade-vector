@@ -161,4 +161,283 @@ function parseNamedImports(source, moduleName, fileName, configuredFile) {
         assertString(importedName, `import from ${moduleName}`);
         imports.push({
           name: importedName,
- ²È="24°¹½Éµ…±¥é•‘MÁ•¥™¥•È¤¤ì(€…ÍÍ•ÉÐ (€€€¥µÁ½ÉÑ•‘A…Ñ €„ôô€œ¸¸œ€˜˜€…¥µÁ½ÉÑ•‘A…Ñ ¹ÍÑ…ÉÑÍ]¥Ñ  œ¸¸¼œ¤°(€€€€‘í¥µÁ½ÉÑ•É¥±•ôè±½…°µ½‘Õ±”‘•Á•¹‘•¹ä€‘íÍÁ•¥™¥•Éô•Í…Á•ÌÑ¡”…É¡¥Ñ•ÑÕÉ”É½½Ñ€°(€€¤ì((€½¹ÍÐ•áÁ±¥¥ÑáÑ•¹Í¥½¸€ô5=U1}aQ9M%=9L¹™¥¹¡…¹‘¥‘…Ñ”€ôø¥µÁ½ÉÑ•‘A…Ñ ¹•¹‘Í]¥Ñ ¡…¹‘¥‘…Ñ”¤¤€üü¹Õ±°ì(€½¹ÍÐ‰…Í•A…Ñ €ô•áÁ±¥¥ÑáÑ•¹Í¥½¸€ü¥µÁ½ÉÑ•‘A…Ñ ¹Í±¥” À°€µ•áÁ±¥¥ÑáÑ•¹Í¥½¸¹±•¹Ñ ¤€è¥µÁ½ÉÑ•‘A…Ñ ì(€½¹ÍÐ…¹‘¥‘…Ñ•Ì€ômtì(€¥˜€¡•áÁ±¥¥ÑáÑ•¹Í¥½¸¤…¹‘¥‘…Ñ•Ì¹ÁÕÍ ¡¥µÁ½ÉÑ•‘A…Ñ ¤ì(€™½È€¡½¹ÍÐ•áÑ•¹Í¥½¸½˜5=U1}aQ9M%=9L¤…¹‘¥‘…Ñ•Ì¹ÁÕÍ ¡€‘í‰…Í•A…Ñ¡ô‘í•áÑ•¹Í¥½¹õ€¤ì(€™½È€¡½¹ÍÐ•áÑ•¹Í¥½¸½˜5=U1}aQ9M%=9L¤…¹‘¥‘…Ñ•Ì¹ÁÕÍ ¡Á½Í¥à¹©½¥¸¡‰…Í•A…Ñ °¥¹‘•à‘í•áÑ•¹Í¥½¹õ€¤¤ì(€É•ÑÕÉ¸l¸¸¹¹•ÜM•Ð¡…¹‘¥‘…Ñ•Ì¥tì)ô()…Íå¹Œ™Õ¹Ñ¥½¸É•…‘=ÁÑ¥½¹…±M½ÕÉ”¡É½½Ð°™¥±•9…µ”°Í½ÕÉ•…¡”¤ì(€¥˜€¡Í½ÕÉ•…¡”¹¡…Ì¡™¥±•9…µ”¤¤É•ÑÕÉ¸Í½ÕÉ•…¡”¹•Ð¡™¥±•9…µ”¤ì(€ÑÉäì(€€€½¹ÍÐÍ½ÕÉ”€ô…Ý…¥ÐÉ•…‘¥±”¡É•Í½±Ù”¡É½½Ð°™¥±•9…µ”¤°€ÕÑ˜àœ¤ì(€€€Í½ÕÉ•…¡”¹Í•Ð¡™¥±•9…µ”°Í½ÕÉ”¤ì(€€€É•ÑÕÉ¸Í½ÕÉ”ì(€ô…Ñ €¡•ÉÉ½È¤ì(€€€¥˜€¡•ÉÉ½È€˜˜ÑåÁ•½˜•ÉÉ½È€ôôô€½‰©•Ðœ€˜˜l9=9Pœ°€9=Q%Ht¹¥¹±Õ‘•Ì¡•ÉÉ½È¹½‘”¤¤ì(€€€€€Í½ÕÉ•…¡”¹Í•Ð¡™¥±•9…µ”°¹Õ±°¤ì(€€€€€É•ÑÕÉ¸¹Õ±°ì(€€€ô(€€€Ñ¡É½Ü•ÉÉ½Èì(€ô)ô()…Íå¹Œ™Õ¹Ñ¥½¸É•Í½±Ù•1½…±5½‘Õ±•¥±”¡ÍÁ•¥™¥•È°¥µÁ½ÉÑ•É¥±”°É½½Ð°Í½ÕÉ•…¡”¤ì(€™½È€¡½¹ÍÐ…¹‘¥‘…Ñ”½˜±½…±5½‘Õ±•M½ÕÉ•…¹‘¥‘…Ñ•Ì¡ÍÁ•¥™¥•È°¥µÁ½ÉÑ•É¥±”¤¤ì(€€€½¹ÍÐÍ½ÕÉ”€ô…Ý…¥ÐÉ•…‘=ÁÑ¥½¹…±M½ÕÉ”¡É½½Ð°…¹‘¥‘…Ñ”°Í½ÕÉ•…¡”¤ì(€€€¥˜€¡Í½ÕÉ”€„ôô¹Õ±°¤ì(€€€€€É•ÑÕÉ¸ì(€€€€€€€™¥±•9…µ”è…¹‘¥‘…Ñ”°(€€€€€€€Í½ÕÉ”°(€€€€€€€É•…±A…Ñ è…Ý…¥ÐÉ•…±Á…Ñ ¡É•Í½±Ù”¡É½½Ð°…¹‘¥‘…Ñ”¤¤°(€€€€€ôì(€€€ô(€ô(€É•ÑÕÉ¸¹Õ±°ì)ô()…Íå¹Œ™Õ¹Ñ¥½¸•Ù…±Õ…Ñ•9…µ•‘%µÁ½ÉÑ±½ÍÕÉ”¡ÉÕ±”°Í½ÕÉ”°ìÉ½½Ðô¤ì(€½¹ÍÐÅÕ•Õ”€ômÉÕ±”¹™¥±•tì(€½¹ÍÐÙ¥Í¥Ñ•€ô¹•ÜM•Ð ¤ì(€½¹ÍÐÍ½ÕÉ•…¡”€ô¹•Ü5…À¡mmÉÕ±”¹™¥±”°Í½ÕÉ•ut¤ì(€½¹ÍÐÁÉ½Ñ•Ñ•‘5½‘Õ±”€ô…Ý…¥ÐÉ•Í½±Ù•1½…±5½‘Õ±•¥±”¡ÉÕ±”¹µ½‘Õ±”°ÉÕ±”¹™¥±”°É½½Ð°Í½ÕÉ•…¡”¤ì(€±•ÐÉ½½Ñ%µÁ½ÉÑÌ€ô¹Õ±°ì((€Ý¡¥±”€¡ÅÕ•Õ”¹±•¹Ñ €ø€À¤ì(€€€½¹ÍÐ™¥±•9…µ”€ôÅÕ•Õ”¹Í¡¥™Ð ¤ì(€€€¥˜€¡Ù¥Í¥Ñ•¹¡…Ì¡™¥±•9…µ”¤¤½¹Ñ¥¹Õ”ì(€€€Ù¥Í¥Ñ•¹…‘¡™¥±•9…µ”¤ì((€€€½¹ÍÐÕÉÉ•¹ÑM½ÕÉ”€ô…Ý…¥ÐÉ•…‘=ÁÑ¥½¹…±M½ÕÉ”¡É½½Ð°™¥±•9…µ”°Í½ÕÉ•…¡”¤ì(€€€…ÍÍ•ÉÐ¡ÕÉÉ•¹ÑM½ÕÉ”€„ôô¹Õ±°°€‘íÉÕ±”¹¥‘ôè½Õ±¹½ÐÉ•…‘•Á•¹‘•¹ä€‘í™¥±•9…µ•õ€¤ì(€€€½¹ÍÐ¥µÁ½ÉÑÌ€ôÁ…ÉÍ•9…µ•‘%µÁ½ÉÑÌ¡ÕÉÉ•¹ÑM½ÕÉ”°ÉÕ±”¹µ½‘Õ±”°™¥±•9…µ”°ÉÕ±”¹™¥±”¤ì(€€€…ÍÍ•ÉÑ9…µ•‘%µÁ½ÉÑM•Ð¡ÉÕ±”°¥µÁ½ÉÑÌ°™¥±•9…µ”°ì(€€€€€É•ÅÕ¥É•á…Ðè™¥±•9…µ”€ôôôÉÕ±”¹™¥±”€˜˜ÉÕ±”¹É•ÅÕ¥É•á…Ð°(€€€€€…±±½Ý¹åQåÁ•Ìè™¥±•9…µ”€„ôôÉÕ±”¹™¥±”°(€€€ô¤ì(€€€¥˜€¡™¥±•9…µ”€ôôôÉÕ±”¹™¥±”¤É½½Ñ%µÁ½ÉÑÌ€ô¥µÁ½ÉÑÌì((€€€™½È€¡½¹ÍÐ‘•Á•¹‘•¹ä½˜½±±•Ñ1¥Ñ•É…±5½‘Õ±••Á•¹‘•¹¥•Ì¡ÕÉÉ•¹ÑM½ÕÉ”°™¥±•9…µ”¤¤ì(€€€€€¥˜€¡µ½‘Õ±•MÁ•¥™¥•É5…Ñ¡•Ì¡‘•Á•¹‘•¹ä°ÉÕ±”¹µ½‘Õ±”°™¥±•9…µ”°ÉÕ±”¹™¥±”¤¤½¹Ñ¥¹Õ”ì(€€€€€½¹ÍÐÉ•Í½±Ù•‘•Á•¹‘•¹ä€ô…Ý…¥ÐÉ•Í½±Ù•1½…±5½‘Õ±•¥±”¡‘•Á•¹‘•¹ä°™¥±•9…µ”°É½½Ð°Í½ÕÉ•…¡”¤ì(€€€€€¥˜€¡É•Í½±Ù•‘•Á•¹‘•¹ä€˜˜ÁÉ½Ñ•Ñ•‘5½‘Õ±”€˜˜É•Í½±Ù•‘•Á•¹‘•¹ä¹É•…±A…Ñ €ôôôÁÉ½Ñ•Ñ•‘5½‘Õ±”¹É•…±A…Ñ ¤ì(€€€€€€€Ñ¡É½Ü¹•ÜÉÉ½È (€€€€€€€€€€‘íÉÕ±”¹¥‘ôè€‘í™¥±•9…µ•ôèµ½‘Õ±”‘•Á•¹‘•¹ä€‘í‘•Á•¹‘•¹åôÉ•Í½±Ù•ÌÑ¼ÁÉ½Ñ•Ñ•µ½‘Õ±”€‘íÉÕ±”¹µ½‘Õ±•ôÑ¡É½Õ …¸…±Ñ•É¹…Ñ”Á…Ñ¡€°(€€€€€€€€¤ì(€€€€€ô(€€€€€¥˜€¡É•Í½±Ù•‘•Á•¹‘•¹ä€˜˜€…Ù¥Í¥Ñ•¹¡…Ì¡É•Í½±Ù•‘•Á•¹‘•¹ä¹™¥±•9…µ”¤¤ÅÕ•Õ”¹ÁÕÍ ¡É•Í½±Ù•‘•Á•¹‘•¹ä¹™¥±•9…µ”¤ì(€€€ô(€ô((€…ÍÍ•ÉÐ¡É½½Ñ%µÁ½ÉÑÌ€˜˜É½½Ñ%µÁ½ÉÑÌ¹±•¹Ñ €ø€À°€‘íÉÕ±”¹¥‘ôè•áÁ•Ñ•…¸¥µÁ½ÉÐ™É½´€‘íÉÕ±”¹µ½‘Õ±•õ€¤ì(€É•ÑÕÉ¸É½½Ñ%µÁ½ÉÑÌì)ô()…Íå¹Œ™Õ¹Ñ¥½¸…ÍÍ•ÉÑ9½½É‰¥‘‘•¹5½‘Õ±••Á•¹‘•¹å±½ÍÕÉ”¡ÉÕ±”°Í½ÕÉ”°ìÉ½½Ðô¤ì(€½¹ÍÐÅÕ•Õ”€ômÉÕ±”¹™¥±•tì(€½¹ÍÐÙ¥Í¥Ñ•€ô¹•ÜM•Ð ¤ì(€½¹ÍÐÍ½ÕÉ•…¡”€ô¹•Ü5…À¡mmÉÕ±”¹™¥±”°Í½ÕÉ•ut¤ì(€½¹ÍÐ™½É‰¥‘‘•¹I•…±A…Ñ¡Ì€ô¹•Ü5…À ¤ì(€™½È€¡½¹ÍÐµ½‘Õ±•9…µ”½˜ÉÕ±”¹µ½‘Õ±•Ì¤ì(€€€½¹ÍÐÉ•Í½±Ù•‘5½‘Õ±”€ô…Ý…¥ÐÉ•Í½±Ù•1½…±5½‘Õ±•¥±”¡µ½‘Õ±•9…µ”°ÉÕ±”¹™¥±”°É½½Ð°Í½ÕÉ•…¡”¤ì(€€€¥˜€¡É•Í½±Ù•‘5½‘Õ±”¤™½É‰¥‘‘•¹I•…±A…Ñ¡Ì¹Í•Ð¡É•Í½±Ù•‘5½‘Õ±”¹É•…±A…Ñ °µ½‘Õ±•9…µ”¤ì(€ô((€Ý¡¥±”€¡ÅÕ•Õ”¹±•¹Ñ €ø€À¤ì(€€€½¹ÍÐ™¥±•9…µ”€ôÅÕ•Õ”¹Í¡¥™Ð ¤ì(€€€¥˜€¡Ù¥Í¥Ñ•¹¡…Ì¡™¥±•9…µ”¤¤½¹Ñ¥¹Õ”ì(€€€Ù¥Í¥Ñ•¹…‘¡™¥±•9…µ”¤ì((€€€½¹ÍÐÕÉÉ•¹ÑM½ÕÉ”€ô…Ý…¥ÐÉ•…‘=ÁÑ¥½¹…±M½ÕÉ”¡É½½Ð°™¥±•9…µ”°Í½ÕÉ•…¡”¤ì(€€€…ÍÍ•ÉÐ¡ÕÉÉ•¹ÑM½ÕÉ”€„ôô¹Õ±°°€‘íÉÕ±”¹¥‘ôè½Õ±¹½ÐÉ•…‘•Á•¹‘•¹ä€‘í™¥±•9…µ•õ€¤ì(€€€…ÍÍ•ÉÑ9½½É‰¥‘‘•¹5½‘Õ±••Á•¹‘•¹¥•Ì¡ÕÉÉ•¹ÑM½ÕÉ”°ÉÕ±”¹µ½‘Õ±•Ì°™¥±•9…µ”°ÉÕ±”¹™¥±”¤ì((€€€™½È€¡½¹ÍÐ‘•Á•¹‘•¹ä½˜½±±•Ñ1¥Ñ•É…±5½‘Õ±••Á•¹‘•¹¥•Ì¡ÕÉÉ•¹ÑM½ÕÉ”°™¥±•9…µ”¤¤ì(€€€€€¥˜€¡µ…Ñ¡¥¹½É‰¥‘‘•¹5½‘Õ±”¡‘•Á•¹‘•¹ä°ÉÕ±”¹µ½‘Õ±•Ì°™¥±•9…µ”°ÉÕ±”¹™¥±”¤¤½¹Ñ¥¹Õ”ì(€€€€€½¹ÍÐÉ•Í½±Ù•‘•Á•¹‘•¹ä€ô…Ý…¥ÐÉ•Í½±Ù•1½…±5½‘Õ±•¥±”¡‘•Á•¹‘•¹ä°™¥±•9…µ”°É½½Ð°Í½ÕÉ•…¡”¤ì(€€€€€½¹ÍÐ…±¥…Í•‘½É‰¥‘‘•¹5½‘Õ±”€ôÉ•Í½±Ù•‘•Á•¹‘•¹ä€ü™½É‰¥‘‘•¹I•…±A…Ñ¡Ì¹•Ð¡É•Í½±Ù•‘•Á•¹‘•¹ä¹É•…±A…Ñ ¤€è¹Õ±°ì(€€€€€¥˜€¡…±¥…Í•‘½É‰¥‘‘•¹5½‘Õ±”¤ì(€€€€€€€Ñ¡É½Ü¹•ÜÉÉ½È (€€€€€€€€€€‘í™¥±•9…µ•ôèµ½‘Õ±”‘•Á•¹‘•¹ä€‘í‘•Á•¹‘•¹åôÉ•Í½±Ù•ÌÑ¼™½É‰¥‘‘•¸µ½‘Õ±”€‘í…±¥…Í•‘½É‰¥‘‘•¹5½‘Õ±•ôÑ¡É½Õ …¸…±Ñ•É¹…Ñ”Á…Ñ¡€°(€€€€€€€€¤ì(€€€€€ô(€€€€€¥˜€¡É•Í½±Ù•‘•Á•¹‘•¹ä€˜˜€…Ù¥Í¥Ñ•¹¡…Ì¡É•Í½±Ù•‘•Á•¹‘•¹ä¹™¥±•9…µ”¤¤ÅÕ•Õ”¹ÁÕÍ ¡É•Í½±Ù•‘•Á•¹‘•¹ä¹™¥±•9…µ”¤ì(€€€ô(€ô)ô()•áÁ½ÉÐ…Íå¹Œ™Õ¹Ñ¥½¸•Ù…±Õ…Ñ•É¡¥Ñ•ÑÕÉ•%¹Ù…É¥…¹ÑÌ¡½¹™¥œ°ìÉ½½Ð€ôÁÉ½•ÍÌ¹Ý ¤ô€ôíô¤ì(€Ù…±¥‘…Ñ•É¡¥Ñ•ÑÕÉ•%¹Ù…É¥…¹Ñ½¹™¥œ¡½¹™¥œ¤ì(€½¹ÍÐÉ•ÍÕ±ÑÌ€ômtì(€™½È€¡½¹ÍÐÉÕ±”½˜½¹™¥œ¹ÉÕ±•Ì¤ì(€€€½¹ÍÐÍ½ÕÉ”€ô…Ý…¥ÐÉ•…‘¥±”¡É•Í½±Ù”¡É½½Ð°ÉÕ±”¹™¥±”¤°€ÕÑ˜àœ¤ì(€€€¥˜€¡ÉÕ±”¹ÑåÁ”€ôôô€Í½ÕÉ•½¹ÑÉ…Ðœ¤ì(€€€€€½¹ÍÐµ¥ÍÍ¥¹œ€ô€¡ÉÕ±”¹É•ÅÕ¥É•€üümt¤¹™¥±Ñ•È¡±¥Ñ•É…°€ôø€…Í½ÕÉ”¹¥¹±Õ‘•Ì¡±¥Ñ•É…°¤¤ì(€€€€€½¹ÍÐ™½É‰¥‘‘•¹AÉ•Í•¹Ð€ô€¡ÉÕ±”¹™½É‰¥‘‘•¸€üümt¤¹™¥±Ñ•È¡±¥Ñ•É…°€ôøÍ½ÕÉ”¹¥¹±Õ‘•Ì¡±¥Ñ•É…°¤¤ì(€€€€€…ÍÍ•ÉÐ¡µ¥ÍÍ¥¹œ¹±•¹Ñ €ôôô€À°€‘íÉÕ±”¹¥‘ôèµ¥ÍÍ¥¹œÉ•ÅÕ¥É•±¥Ñ•É…°¡Ì¤è€‘íµ¥ÍÍ¥¹œ¹©½¥¸ œ°€œ¥õ€¤ì(€€€€€…ÍÍ•ÉÐ¡™½É‰¥‘‘•¹AÉ•Í•¹Ð¹±•¹Ñ €ôôô€À°€‘íÉÕ±”¹¥‘ôè™½É‰¥‘‘•¸±¥Ñ•É…°¡Ì¤ÁÉ•Í•¹Ðè€‘í™½É‰¥‘‘•¹AÉ•Í•¹Ð¹©½¥¸ œ°€œ¥õ€¤ì(€€€€€É•ÍÕ±ÑÌ¹ÁÕÍ ¡ì¥èÉÕ±”¹¥°ÍÑ…ÑÕÌè€Á…ÍÍ•œ°™¥±”èÉÕ±”¹™¥±”°ÑåÁ”èÉÕ±”¹ÑåÁ”ô¤ì(€€€€€½¹Ñ¥¹Õ”ì(€€€ô((€€€¥˜€¡ÉÕ±”¹ÑåÁ”€ôôô€µ½‘Õ±••Á•¹‘•¹å•¹å±¥ÍÐœ¤ì(€€€€€…Ý…¥Ð…ÍÍ•ÉÑ9½½É‰¥‘‘•¹5½‘Õ±••Á•¹‘•¹å±½ÍÕÉ”¡ÉÕ±”°Í½ÕÉ”°ìÉ½½Ðô¤ì(€€€€€É•ÍÕ±ÑÌ¹ÁÕÍ ¡ì¥èÉÕ±”¹¥°ÍÑ…ÑÕÌè€Á…ÍÍ•œ°™¥±”èÉÕ±”¹™¥±”°ÑåÁ”èÉÕ±”¹ÑåÁ”°µ½‘Õ±•ÌèÉÕ±”¹µ½‘Õ±•Ìô¤ì(€€€€€½¹Ñ¥¹Õ”ì(€€€ô((€€€…Ý…¥Ð•Ù…±Õ…Ñ•9…µ•‘%µÁ½ÉÑ±½ÍÕÉ”¡ÉÕ±”°Í½ÕÉ”°ìÉ½½Ðô¤ì(€€€É•ÍÕ±ÑÌ¹ÁÕÍ ¡ì¥èÉÕ±”¹¥°ÍÑ…ÑÕÌè€Á…ÍÍ•œ°™¥±”èÉÕ±”¹™¥±”°ÑåÁ”èÉÕ±”¹ÑåÁ”°µ½‘Õ±”èÉÕ±”¹µ½‘Õ±”ô¤ì(€ô(€É•ÑÕÉ¸É•ÍÕ±ÑÌì)ô()•áÁ½ÉÐ…Íå¹Œ™Õ¹Ñ¥½¸±½…‘É¡¥Ñ•ÑÕÉ•%¹Ù…É¥…¹Ñ½¹™¥œ¡Á…Ñ €ô€…•¹Ð½…É¡¥Ñ•ÑÕÉ”µ¥¹Ù…É¥…¹ÑÌ¹©Í½¸œ°ìÉ½½Ð€ôÁÉ½•ÍÌ¹Ý ¤ô€ôíô¤ì(€É•ÑÕÉ¸Ù…±¥‘…Ñ•É¡¥Ñ•ÑÕÉ•%¹Ù…É¥…¹Ñ½¹™¥œ¡)M=8¹Á…ÉÍ”¡…Ý…¥ÐÉ•…‘¥±”¡É•Í½±Ù”¡É½½Ð°Á…Ñ ¤°€ÕÑ˜àœ¤¤¤ì)ô()…Íå¹Œ™Õ¹Ñ¥½¸µ…¥¸ ¤ì(€½¹ÍÐ…ÉÌ€ôÁÉ½•ÍÌ¹…ÉØ¹Í±¥” È¤ì(€±•Ð½¹™¥A…Ñ €ô€…•¹Ð½…É¡¥Ñ•ÑÕÉ”µ¥¹Ù…É¥…¹ÑÌ¹©Í½¸œì(€±•Ð©Í½¸€ô™…±Í”ì(€™½È€¡±•Ð¥¹‘•à€ô€Àì¥¹‘•à€ð…ÉÌ¹±•¹Ñ ì¥¹‘•à€¬ô€Ä¤ì(€€€¥˜€¡…ÉÍm¥¹‘•át€ôôô€œ´µ½¹™¥œœ¤½¹™¥A…Ñ €ô…ÉÍl¬­¥¹‘•átì(€€€•±Í”¥˜€¡…ÉÍm¥¹‘•át€ôôô€œ´µ©Í½¸œ¤©Í½¸€ôÑÉÕ”ì(€€€•±Í”Ñ¡É½Ü¹•ÜÉÉ½È¡Õ¹­¹½Ý¸…ÉÕµ•¹Ð€‘í…ÉÍm¥¹‘•áuõ€¤ì(€ô(€½¹ÍÐ½¹™¥œ€ô…Ý…¥Ð±½…‘É¡¥Ñ•ÑÕÉ•%¹Ù…É¥…¹Ñ½¹™¥œ¡½¹™¥A…Ñ ¤ì(€½¹ÍÐÉ•ÍÕ±ÑÌ€ô…Ý…¥Ð•Ù…±Õ…Ñ•É¡¥Ñ•ÑÕÉ•%¹Ù…É¥…¹ÑÌ¡½¹™¥œ¤ì(€¥˜€¡©Í½¸¤½¹Í½±”¹±½œ¡)M=8¹ÍÑÉ¥¹¥™ä¡ìÍÑ…ÑÕÌè€Á…ÍÍ•œ°½Õ¹ÐèÉ•ÍÕ±ÑÌ¹±•¹Ñ °É•ÍÕ±ÑÌô°¹Õ±°°€È¤¤ì(€•±Í”½¹Í½±”¹±½œ¡I!%QQUI}%9YI%9QM}AML½Õ¹Ðô‘íÉ•ÍÕ±ÑÌ¹±•¹Ñ¡ô¥‘Ìô‘íÉ•ÍÕ±ÑÌ¹µ…À¡É•ÍÕ±Ð€ôøÉ•ÍÕ±Ð¹¥¤¹©½¥¸ œ°œ¥õ€¤ì)ô()¥˜€¡¥µÁ½ÉÐ¹µ•Ñ„¹ÕÉ°€ôôôÁ…Ñ¡Q½¥±•UI0¡ÁÉ½•ÍÌ¹…ÉØ¹…Ð Ä¤€üü€œœ¤¹¡É•˜¤ì(€µ…¥¸ ¤¹…Ñ ¡•ÉÉ½È€ôøì(€€€½¹Í½±”¹•ÉÉ½È¡•ÉÉ½È¥¹ÍÑ…¹•½˜ÉÉ½È€ü•ÉÉ½È¹µ•ÍÍ…”€èMÑÉ¥¹œ¡•ÉÉ½È¤¤ì(€€€ÁÉ½•ÍÌ¹•á¥Ñ½‘”€ô€Äì(€ô¤ì)ô(
+          typeOnly: Boolean(clause.isTypeOnly || element.isTypeOnly),
+        });
+      }
+      continue;
+    }
+
+    if (ts.isImportEqualsDeclaration(statement)) {
+      const reference = statement.moduleReference;
+      if (
+        ts.isExternalModuleReference(reference)
+        && moduleSpecifierMatches(staticModuleName(reference.expression), moduleName, fileName, configuredFile)
+      ) {
+        throw new Error(`${fileName}: import-equals from ${moduleName} is not allowed by named-import architecture rules`);
+      }
+      continue;
+    }
+
+    if (
+      ts.isExportDeclaration(statement)
+      && moduleSpecifierMatches(staticModuleName(statement.moduleSpecifier), moduleName, fileName, configuredFile)
+    ) {
+      throw new Error(`${fileName}: re-export from ${moduleName} is not allowed by named-import architecture rules`);
+    }
+  }
+  return imports;
+}
+
+function assertNamedImportSet(rule, imports, fileName, { requireExact = false, allowAnyTypes = false } = {}) {
+  const values = [...new Set(imports.filter(entry => !entry.typeOnly).map(entry => entry.name))].sort();
+  const types = [...new Set(imports.filter(entry => entry.typeOnly).map(entry => entry.name))].sort();
+  const allowedValues = [...(fileName === rule.file
+    ? rule.allowedValueImports
+    : (rule.allowedTransitiveValueImports ?? rule.allowedValueImports))].sort();
+  const allowedTypes = [...rule.allowedTypeImports].sort();
+  const unexpectedValues = values.filter(name => !allowedValues.includes(name));
+  const unexpectedTypes = allowAnyTypes ? [] : types.filter(name => !allowedTypes.includes(name));
+  assert(
+    unexpectedValues.length === 0,
+    `${rule.id}: ${fileName}: unexpected value import(s) from ${rule.module}: ${unexpectedValues.join(', ')}`,
+  );
+  assert(
+    unexpectedTypes.length === 0,
+    `${rule.id}: ${fileName}: unexpected type import(s) from ${rule.module}: ${unexpectedTypes.join(', ')}`,
+  );
+  if (requireExact) {
+    assert(
+      JSON.stringify(values) === JSON.stringify(allowedValues),
+      `${rule.id}: value import set drifted; expected ${allowedValues.join(', ') || 'none'}, found ${values.join(', ') || 'none'}`,
+    );
+    assert(
+      JSON.stringify(types) === JSON.stringify(allowedTypes),
+      `${rule.id}: type import set drifted; expected ${allowedTypes.join(', ') || 'none'}, found ${types.join(', ') || 'none'}`,
+    );
+  }
+}
+
+function assertNoForbiddenModuleDependencies(source, modules, fileName, configuredFile) {
+  const sourceFile = parseSourceFile(source, fileName);
+
+  function assertAllowed(loadedModule, kind) {
+    const forbiddenModule = matchingForbiddenModule(loadedModule, modules, fileName, configuredFile);
+    assert(!forbiddenModule, `${fileName}: ${kind} from forbidden module ${forbiddenModule} is not allowed`);
+    assert(loadedModule !== null, `${fileName}: non-literal ${kind} cannot prove the module dependency denylist`);
+  }
+
+  function visit(node) {
+    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
+      const loadedModule = staticModuleName(node.moduleSpecifier);
+      if (loadedModule !== null) assertAllowed(loadedModule, ts.isImportDeclaration(node) ? 'import' : 're-export');
+    }
+    if (ts.isImportEqualsDeclaration(node)) {
+      const reference = node.moduleReference;
+      if (ts.isExternalModuleReference(reference)) assertAllowed(staticModuleName(reference.expression), 'import-equals');
+    }
+    if (ts.isImportTypeNode(node)) assertAllowed(importTypeModuleName(node), 'import type');
+    if (ts.isCallExpression(node)) {
+      if (node.expression.kind === ts.SyntaxKind.ImportKeyword) assertAllowed(staticModuleName(node.arguments[0]), 'dynamic import');
+      if (ts.isIdentifier(node.expression) && node.expression.text === 'require') assertAllowed(staticModuleName(node.arguments[0]), 'require()');
+    }
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+}
+
+function collectLiteralModuleDependencies(source, fileName) {
+  const sourceFile = parseSourceFile(source, fileName);
+  const dependencies = [];
+
+  function add(specifier) {
+    if (specifier !== null) dependencies.push(specifier);
+  }
+
+  function visit(node) {
+    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) add(staticModuleName(node.moduleSpecifier));
+    if (ts.isImportEqualsDeclaration(node)) {
+      const reference = node.moduleReference;
+      if (ts.isExternalModuleReference(reference)) add(staticModuleName(reference.expression));
+    }
+    if (ts.isImportTypeNode(node)) add(importTypeModuleName(node));
+    if (ts.isCallExpression(node)) {
+      if (node.expression.kind === ts.SyntaxKind.ImportKeyword) add(staticModuleName(node.arguments[0]));
+      if (ts.isIdentifier(node.expression) && node.expression.text === 'require') add(staticModuleName(node.arguments[0]));
+    }
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return [...new Set(dependencies)];
+}
+
+function localModuleSourceCandidates(specifier, importerFile) {
+  const normalizedSpecifier = specifier.replace(/\\/g, '/');
+  if (!normalizedSpecifier.startsWith('.')) return [];
+
+  const importedPath = posix.normalize(posix.join(posix.dirname(importerFile), normalizedSpecifier));
+  assert(
+    importedPath !== '..' && !importedPath.startsWith('../'),
+    `${importerFile}: local module dependency ${specifier} escapes the architecture root`,
+  );
+
+  const explicitExtension = MODULE_EXTENSIONS.find(candidate => importedPath.endsWith(candidate)) ?? null;
+  const basePath = explicitExtension ? importedPath.slice(0, -explicitExtension.length) : importedPath;
+  const candidates = [];
+  if (explicitExtension) candidates.push(importedPath);
+  for (const extension of MODULE_EXTENSIONS) candidates.push(`${basePath}${extension}`);
+  for (const extension of MODULE_EXTENSIONS) candidates.push(posix.join(basePath, `index${extension}`));
+  return [...new Set(candidates)];
+}
+
+async function readOptionalSource(root, fileName, sourceCache) {
+  if (sourceCache.has(fileName)) return sourceCache.get(fileName);
+  try {
+    const source = await readFile(resolve(root, fileName), 'utf8');
+    sourceCache.set(fileName, source);
+    return source;
+  } catch (error) {
+    if (error && typeof error === 'object' && ['ENOENT', 'ENOTDIR'].includes(error.code)) {
+      sourceCache.set(fileName, null);
+      return null;
+    }
+    throw error;
+  }
+}
+
+async function resolveLocalModuleFile(specifier, importerFile, root, sourceCache) {
+  for (const candidate of localModuleSourceCandidates(specifier, importerFile)) {
+    const source = await readOptionalSource(root, candidate, sourceCache);
+    if (source !== null) {
+      return {
+        fileName: candidate,
+        source,
+        realPath: await realpath(resolve(root, candidate)),
+      };
+    }
+  }
+  return null;
+}
+
+async function evaluateNamedImportClosure(rule, source, { root }) {
+  const queue = [rule.file];
+  const visited = new Set();
+  const sourceCache = new Map([[rule.file, source]]);
+  const protectedModule = await resolveLocalModuleFile(rule.module, rule.file, root, sourceCache);
+  let rootImports = null;
+
+  while (queue.length > 0) {
+    const fileName = queue.shift();
+    if (visited.has(fileName)) continue;
+    visited.add(fileName);
+
+    const currentSource = await readOptionalSource(root, fileName, sourceCache);
+    assert(currentSource !== null, `${rule.id}: could not read dependency ${fileName}`);
+    const imports = parseNamedImports(currentSource, rule.module, fileName, rule.file);
+    assertNamedImportSet(rule, imports, fileName, {
+      requireExact: fileName === rule.file && rule.requireExact,
+      allowAnyTypes: fileName !== rule.file,
+    });
+    if (fileName === rule.file) rootImports = imports;
+
+    for (const dependency of collectLiteralModuleDependencies(currentSource, fileName)) {
+      if (moduleSpecifierMatches(dependency, rule.module, fileName, rule.file)) continue;
+      const resolvedDependency = await resolveLocalModuleFile(dependency, fileName, root, sourceCache);
+      if (resolvedDependency && protectedModule && resolvedDependency.realPath === protectedModule.realPath) {
+        throw new Error(
+          `${rule.id}: ${fileName}: module dependency ${dependency} resolves to protected module ${rule.module} through an alternate path`,
+        );
+      }
+      if (resolvedDependency && !visited.has(resolvedDependency.fileName)) queue.push(resolvedDependency.fileName);
+    }
+  }
+
+  assert(rootImports && rootImports.length > 0, `${rule.id}: expected an import from ${rule.module}`);
+  return rootImports;
+}
+
+async function assertNoForbiddenModuleDependencyClosure(rule, source, { root }) {
+  const queue = [rule.file];
+  const visited = new Set();
+  const sourceCache = new Map([[rule.file, source]]);
+  const forbiddenRealPaths = new Map();
+  for (const moduleName of rule.modules) {
+    const resolvedModule = await resolveLocalModuleFile(moduleName, rule.file, root, sourceCache);
+    if (resolvedModule) forbiddenRealPaths.set(resolvedModule.realPath, moduleName);
+  }
+
+  while (queue.length > 0) {
+    const fileName = queue.shift();
+    if (visited.has(fileName)) continue;
+    visited.add(fileName);
+
+    const currentSource = await readOptionalSource(root, fileName, sourceCache);
+    assert(currentSource !== null, `${rule.id}: could not read dependency ${fileName}`);
+    assertNoForbiddenModuleDependencies(currentSource, rule.modules, fileName, rule.file);
+
+    for (const dependency of collectLiteralModuleDependencies(currentSource, fileName)) {
+      if (matchingForbiddenModule(dependency, rule.modules, fileName, rule.file)) continue;
+      const resolvedDependency = await resolveLocalModuleFile(dependency, fileName, root, sourceCache);
+      const aliasedForbiddenModule = resolvedDependency ? forbiddenRealPaths.get(resolvedDependency.realPath) : null;
+      if (aliasedForbiddenModule) {
+        throw new Error(
+          `${fileName}: module dependency ${dependency} resolves to forbidden module ${aliasedForbiddenModule} through an alternate path`,
+        );
+      }
+      if (resolvedDependency && !visited.has(resolvedDependency.fileName)) queue.push(resolvedDependency.fileName);
+    }
+  }
+}
+
+export async function evaluateArchitectureInvariants(config, { root = process.cwd() } = {}) {
+  validateArchitectureInvariantConfig(config);
+  const results = [];
+  for (const rule of config.rules) {
+    const source = await readFile(resolve(root, rule.file), 'utf8');
+    if (rule.type === 'sourceContract') {
+      const missing = (rule.required ?? []).filter(literal => !source.includes(literal));
+      const forbiddenPresent = (rule.forbidden ?? []).filter(literal => source.includes(literal));
+      assert(missing.length === 0, `${rule.id}: missing required literal(s): ${missing.join(', ')}`);
+      assert(forbiddenPresent.length === 0, `${rule.id}: forbidden literal(s) present: ${forbiddenPresent.join(', ')}`);
+      results.push({ id: rule.id, status: 'passed', file: rule.file, type: rule.type });
+      continue;
+    }
+
+    if (rule.type === 'moduleDependencyDenylist') {
+      await assertNoForbiddenModuleDependencyClosure(rule, source, { root });
+      results.push({ id: rule.id, status: 'passed', file: rule.file, type: rule.type, modules: rule.modules });
+      continue;
+    }
+
+    await evaluateNamedImportClosure(rule, source, { root });
+    results.push({ id: rule.id, status: 'passed', file: rule.file, type: rule.type, module: rule.module });
+  }
+  return results;
+}
+
+export async function loadArchitectureInvariantConfig(path = 'agent/architecture-invariants.json', { root = process.cwd() } = {}) {
+  return validateArchitectureInvariantConfig(JSON.parse(await readFile(resolve(root, path), 'utf8')));
+}
+
+async function main() {
+  const args = process.argv.slice(2);
+  let configPath = 'agent/architecture-invariants.json';
+  let json = false;
+  for (let index = 0; index < args.length; index += 1) {
+    if (args[index] === '--config') configPath = args[++index];
+    else if (args[index] === '--json') json = true;
+    else throw new Error(`unknown argument ${args[index]}`);
+  }
+  const config = await loadArchitectureInvariantConfig(configPath);
+  const results = await evaluateArchitectureInvariants(config);
+  if (json) console.log(JSON.stringify({ status: 'passed', count: results.length, results }, null, 2));
+  else console.log(`ARCHITECTURE_INVARIANTS_PASS count=${results.length} ids=${results.map(result => result.id).join(',')}`);
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+  main().catch(error => {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  });
+}
