@@ -56,10 +56,10 @@ function protectedType(checker, type, protectedSymbols, seen = new Set()) {
 
 function analyzer(checker, protectedSymbols, file, ast) {
   const forwardCache = new Map(); const forwardActive = new Set(); const scanned = new Set();
-  function sources(symbol) {
+  function sources(symbol, before = Number.POSITIVE_INFINITY) {
     const result = [];
-    for (const declaration of symbol?.declarations ?? []) if (ts.isVariableDeclaration(declaration) && declaration.initializer) result.push(declaration.initializer);
-    function visit(node) { if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isIdentifier(unwrap(node.left)) && symbolAt(checker, unwrap(node.left)) === symbol) result.push(node.right); ts.forEachChild(node, visit); }
+    for (const declaration of symbol?.declarations ?? []) if (ts.isVariableDeclaration(declaration) && declaration.initializer && declaration.end <= before) result.push(declaration.initializer);
+    function visit(node) { if (node.pos >= before) return; if (ts.isBinaryExpression(node) && node.end <= before && node.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isIdentifier(unwrap(node.left)) && symbolAt(checker, unwrap(node.left)) === symbol) result.push(node.right); ts.forEachChild(node, visit); }
     visit(ast); return result;
   }
   const params = declaration => (declaration.parameters ?? []).map(parameter => bindingSymbols(checker, parameter.name));
@@ -68,7 +68,7 @@ function analyzer(checker, protectedSymbols, file, ast) {
     if (ts.isIdentifier(value)) {
       const symbol = symbolAt(checker, value); const output = new Set(); parameterSets.forEach((set, index) => { if (symbol && set.has(symbol)) output.add(index); });
       if (!symbol || seenSymbols.has(symbol)) return output; const next = new Set(seenSymbols).add(symbol);
-      for (const source of sources(symbol)) for (const index of provenance(source, declaration, next)) output.add(index); return output;
+      for (const source of sources(symbol, value.pos)) for (const index of provenance(source, declaration, next)) output.add(index); return output;
     }
     if (ts.isPropertyAccessExpression(value) || ts.isElementAccessExpression(value) || ts.isAwaitExpression(value)) return provenance(value.expression, declaration, seenSymbols);
     if (ts.isConditionalExpression(value)) return new Set([...provenance(value.whenTrue, declaration, seenSymbols), ...provenance(value.whenFalse, declaration, seenSymbols)]);
@@ -82,9 +82,14 @@ function analyzer(checker, protectedSymbols, file, ast) {
     if (ts.isArrowFunction(declaration) && !ts.isBlock(declaration.body)) collect(declaration.body); else if (declaration.body) { function visit(node) { if (node !== declaration && (ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) || ts.isArrowFunction(node) || ts.isMethodDeclaration(node))) return; if (ts.isReturnStatement(node) && node.expression) collect(node.expression); else ts.forEachChild(node, visit); } visit(declaration.body); }
     forwardActive.delete(declaration); forwardCache.set(declaration, output); return output;
   }
+  function forwardedArguments(call) {
+    const declaration = checker.getResolvedSignature(call)?.declaration;
+    if (!declaration) return [];
+    return [...forwarded(declaration)].map(index => call.arguments[index]).filter(Boolean);
+  }
   function isProtected(expression, tainted = new Set(), seen = new Set()) {
     const value = unwrap(expression); if (!value) return false;
-    if (ts.isIdentifier(value)) { const symbol = symbolAt(checker, value); if (!symbol) return false; if (tainted.has(symbol) || protectedType(checker, checker.getTypeAtLocation(value), protectedSymbols)) return true; if (seen.has(symbol)) return false; return sources(symbol).some(source => isProtected(source, tainted, new Set(seen).add(symbol))); }
+    if (ts.isIdentifier(value)) { const symbol = symbolAt(checker, value); if (!symbol) return false; if (tainted.has(symbol) || protectedType(checker, checker.getTypeAtLocation(value), protectedSymbols)) return true; if (seen.has(symbol)) return false; return sources(symbol, value.pos).some(source => isProtected(source, tainted, new Set(seen).add(symbol))); }
     if (protectedType(checker, checker.getTypeAtLocation(value), protectedSymbols)) return true;
     if (ts.isPropertyAccessExpression(value) || ts.isElementAccessExpression(value) || ts.isAwaitExpression(value)) return isProtected(value.expression, tainted, seen);
     if (ts.isCallExpression(value)) { const declaration = checker.getResolvedSignature(value)?.declaration; return Boolean(declaration && [...forwarded(declaration)].some(index => isProtected(value.arguments[index], tainted, seen))); }
@@ -108,15 +113,29 @@ function analyzer(checker, protectedSymbols, file, ast) {
     const declaration = (symbol.declarations ?? []).find(item => ts.isVariableDeclaration(item) && item.initializer); return Boolean(declaration && stablePack(declaration.initializer, new Set(seen).add(symbol)));
   }
   function packFirst(expression, seen = new Set()) {
-    const value = unwrap(expression); if (ts.isArrayLiteralExpression(value)) { const first = value.elements[0]; return first && !ts.isSpreadElement(first) && !ts.isOmittedExpression(first) ? first : null; }
+    const value = unwrap(expression); if (ts.isArrayLiteralExpression(value)) { const first = value.elements[0]; if (ts.isSpreadElement(first)) return packFirst(first.expression, seen); return first && !ts.isOmittedExpression(first) ? first : null; }
     if (!ts.isIdentifier(value)) return null; const symbol = symbolAt(checker, value); if (!symbol || seen.has(symbol) || hasWrites(symbol)) return null; const declaration = (symbol.declarations ?? []).find(item => ts.isVariableDeclaration(item) && item.initializer); return declaration ? packFirst(declaration.initializer, new Set(seen).add(symbol)) : null;
   }
-  function globalObject(expression, seen = new Set()) { const value = unwrap(expression); if (ts.isIdentifier(value)) { if (REFLECT.has(value.text)) return value.text; const symbol = symbolAt(checker, value); if (!symbol || seen.has(symbol)) return null; for (const source of sources(symbol)) { const result = globalObject(source, new Set(seen).add(symbol)); if (result) return result; } return null; } const name = member(value); const target = owner(value); return name && target && ts.isIdentifier(target) && target.text === 'globalThis' && REFLECT.has(name) ? name : null; }
-  function reflective(expression, seen = new Set()) { const value = unwrap(expression); const name = member(value); const target = owner(value); if (name && target) { const global = globalObject(target); if (global && REFLECT.get(global)?.has(name)) return `${global}.${name}`; } if (!ts.isIdentifier(value)) return null; const symbol = symbolAt(checker, value); if (!symbol || seen.has(symbol)) return null; for (const source of sources(symbol)) { const result = reflective(source, new Set(seen).add(symbol)); if (result) return result; } return null; }
+  function globalObject(expression, seen = new Set()) {
+    const value = unwrap(expression);
+    if (ts.isCallExpression(value)) { for (const argument of forwardedArguments(value)) { const result = globalObject(argument, seen); if (result) return result; } return null; }
+    if (ts.isIdentifier(value)) { if (REFLECT.has(value.text)) return value.text; const symbol = symbolAt(checker, value); if (!symbol || seen.has(symbol)) return null; for (const source of sources(symbol, value.pos)) { const result = globalObject(source, new Set(seen).add(symbol)); if (result) return result; } return null; }
+    const name = member(value); const target = owner(value); return name && target && ts.isIdentifier(target) && target.text === 'globalThis' && REFLECT.has(name) ? name : null;
+  }
+  function reflective(expression, seen = new Set()) {
+    const value = unwrap(expression); const name = member(value); const target = owner(value); if (name && target) { const global = globalObject(target); if (global && REFLECT.get(global)?.has(name)) return `${global}.${name}`; }
+    if (ts.isCallExpression(value)) { for (const argument of forwardedArguments(value)) { const result = reflective(argument, seen); if (result) return result; } return null; }
+    if (!ts.isIdentifier(value)) return null; const symbol = symbolAt(checker, value); if (!symbol || seen.has(symbol)) return null; for (const source of sources(symbol, value.pos)) { const result = reflective(source, new Set(seen).add(symbol)); if (result) return result; } return null;
+  }
   function iteration(expression, tainted, seen = new Set()) {
     const value = unwrap(expression); const name = member(value); const target = owner(value); if (name && target && ITER.has(name) && isProtected(target, tainted)) return { method: name, receiver: target, bound: false };
+    if (ts.isCallExpression(value)) {
+      if (member(value.expression) === 'bind') { const inner = iteration(owner(value.expression), tainted, seen); if (inner && value.arguments[0] && isProtected(value.arguments[0], tainted)) return { ...inner, receiver: value.arguments[0], bound: true }; }
+      for (const argument of forwardedArguments(value)) { const result = iteration(argument, tainted, seen); if (result) return result; }
+      return null;
+    }
     if (!ts.isIdentifier(value)) return null; const symbol = symbolAt(checker, value); if (!symbol || seen.has(symbol)) return null;
-    for (const source of sources(symbol)) { const item = unwrap(source); if (ts.isCallExpression(item) && member(item.expression) === 'bind') { const inner = iteration(owner(item.expression), tainted, new Set(seen).add(symbol)); if (inner && item.arguments[0] && isProtected(item.arguments[0], tainted)) return { ...inner, receiver: item.arguments[0], bound: true }; } const direct = iteration(item, tainted, new Set(seen).add(symbol)); if (direct) return direct; }
+    for (const source of sources(symbol, value.pos)) { const direct = iteration(source, tainted, new Set(seen).add(symbol)); if (direct) return direct; }
     return null;
   }
   function callable(expression) { const value = unwrap(expression); if (ts.isArrowFunction(value) || ts.isFunctionExpression(value) || ts.isFunctionDeclaration(value) || ts.isMethodDeclaration(value)) return value; return checker.getSignaturesOfType(checker.getTypeAtLocation(value), ts.SignatureKind.Call).map(signature => signature.declaration).find(Boolean) ?? null; }
@@ -130,7 +149,19 @@ function analyzer(checker, protectedSymbols, file, ast) {
   const reject = kind => { throw new Error(`${file}: ${kind} of renderer-reachable protected simulation state is not allowed`); };
   function scan(node, tainted = new Set()) {
     if (ts.isBinaryExpression(node) && ASSIGN.has(node.operatorToken.kind)) { const target = unwrap(node.left); if ((ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target)) && isProtected(target, tainted)) reject('direct mutation'); }
-    if (ts.isCallExpression(node)) { const name = member(node.expression); const target = owner(node.expression); if (target && name && MUTATORS.has(name) && isProtected(target, tainted)) reject(`mutating method ${name}()`); if (name === 'apply' && target) { const method = reflective(target); if (method) fail(stablePack(node.arguments[1]), `${file}: ${method}.apply argument pack cannot be proven stable`); } scanIteration(node, tainted); }
+    if (ts.isCallExpression(node)) {
+      const name = member(node.expression); const target = owner(node.expression);
+      if (target && name && MUTATORS.has(name) && isProtected(target, tainted)) reject(`mutating method ${name}()`);
+      if (name === 'apply' && target) {
+        const method = reflective(target);
+        if (method) { fail(stablePack(node.arguments[1]), `${file}: ${method}.apply argument pack cannot be proven stable`); const first = packFirst(node.arguments[1]); fail(first, `${file}: ${method}.apply target cannot be proven`); if (isProtected(first, tainted)) reject(`reflective mutation ${method}()`); }
+      } else if (name === 'call' && target) {
+        const method = reflective(target); const first = node.arguments[1]; if (method && first && isProtected(first, tainted)) reject(`reflective mutation ${method}()`);
+      } else {
+        const method = reflective(node.expression); const first = node.arguments[0]; if (method && first && isProtected(first, tainted)) reject(`reflective mutation ${method}()`);
+      }
+      scanIteration(node, tainted);
+    }
     ts.forEachChild(node, child => scan(child, tainted));
   }
   return scan;
