@@ -7,26 +7,58 @@
       "description": "The concrete Babylon renderer may read simulation state but must not import simulation mutation APIs.",
       "file": "src/game/babylonCombatRenderer.ts",
       "module": "./sim",
-      "allowedValueImports": ["getWorldSize", "weaponHandlingProfiles"],
-      "allowedTransitiveValueImports": ["getPlayerSector", "getWorldSize", "weaponHandlingProfiles"],
-      "allowedTypeImports": ["CombatObject", "Enemy", "SimState", "WeaponId"],
-      "protectedMutableTypes": ["SimState"],
-      "requireExact": true
+      "allowedValueImports": [
+        "getWorldSize",
+        "weaponHandlingProfiles"
+      ],
+      "allowedTransitiveValueImports": [
+        "getPlayerSector",
+        "getWorldSize",
+        "weaponHandlingProfiles"
+      ],
+      "allowedTypeImports": [
+        "CombatObject",
+        "Enemy",
+        "SimState",
+        "WeaponId"
+      ],
+      "requireExact": true,
+      "readOnlyStateTypes": [
+        "SimState"
+      ],
+      "mutableStateOwnerFiles": {
+        "src/game/encounters.ts": [
+          "getMissionObjectiveStatus",
+          "getNextMissionObjectiveTarget"
+        ],
+        "src/game/mapNavigation.ts": [
+          "auditNavigation",
+          "getMapNavigationPlan",
+          "solidNavigationObject"
+        ]
+      }
     },
     {
       "id": "game-canvas-renderer-boundary",
       "type": "sourceContract",
       "description": "GameCanvas must use the renderer-neutral graphics backend rather than constructing Babylon directly.",
       "file": "src/components/GameCanvas.tsx",
-      "required": ["createCombatGraphicsBackend("],
-      "forbidden": ["babylonCombatRenderer", "new BabylonCombatRenderer("]
+      "required": [
+        "createCombatGraphicsBackend("
+      ],
+      "forbidden": [
+        "babylonCombatRenderer",
+        "new BabylonCombatRenderer("
+      ]
     },
     {
       "id": "asset-manifest-simulation-independence",
       "type": "moduleDependencyDenylist",
       "description": "Graphics asset metadata must remain independent from mutable simulation implementation details.",
       "file": "src/game/graphicsAssetManifest.ts",
-      "modules": ["./sim"]
+      "modules": [
+        "./sim"
+      ]
     }
   ]
 }
