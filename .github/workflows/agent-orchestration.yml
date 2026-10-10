@@ -155,6 +155,9 @@ jobs:
       - name: Enforce single-producer CI proof reuse contract
         run: node agent/tests/ci-proof-reuse.mjs
 
+      - name: Install locked dependencies for architecture checks
+        run: npm ci --ignore-scripts
+
       - name: Enforce mechanical architecture invariants
         run: |
           node agent/tools/check-architecture-invariants.mjs
