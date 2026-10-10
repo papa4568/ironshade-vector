@@ -99,7 +99,7 @@ export async function waitForTechnicalEvidence({ outputDir = '.automated-review'
 }
 
 export async function invokeModel({ packetPath, evidencePath, base, head, model = 'gpt-5.4', outputDir = '.automated-review' }) {
-  requiredEnv('GITHUB_TOKEN');
+  requiredEnv('COPILOT_GITHUB_TOKEN');
   const packet = JSON.parse(await readFile(packetPath, 'utf8'));
   const evidence = JSON.parse(await readFile(evidencePath, 'utf8'));
   validateIndependentReviewPacket(packet);

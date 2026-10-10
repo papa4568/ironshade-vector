@@ -158,8 +158,8 @@ jobs:
           node agent/tools/select-review-task.mjs --json
           node agent/tests/independent-review.mjs
 
-      - name: Run automated independent verifier regressions
-        run: node agent/tests/automated-independent-review.mjs
+      - name: Run automated verifier authentication regressions
+        run: node agent/tests/copilot-token-auth.mjs
 
       - name: Detect active orchestration evidence task
         id: evidence-task
@@ -257,7 +257,6 @@ jobs:
     permissions:
       actions: read
       contents: read
-      copilot-requests: write
     outputs:
       verdict: ${{ steps.review.outputs.verdict }}
       technical-run-id: ${{ steps.technical.outputs.technical-run-id }}
@@ -279,8 +278,8 @@ jobs:
           npm install --global @github/copilot@1.0.88
           copilot --version
 
-      - name: Verify automated-review contracts
-        run: node agent/tests/automated-independent-review.mjs
+      - name: Verify automated-review authentication contract
+        run: node agent/tests/copilot-token-auth.mjs
 
       - name: Wait for exact-SHA technical gates
         id: technical
@@ -302,7 +301,7 @@ jobs:
       - name: Run and validate Copilot CLI adversarial review
         id: review
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
         run: |
           node agent/tools/automated-independent-review-runner.mjs invoke \
             --packet-path .independent-review/review-packet.json \
