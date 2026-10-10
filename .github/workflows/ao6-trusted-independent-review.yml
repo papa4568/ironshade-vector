@@ -6,6 +6,9 @@ on:
     paths:
       - '.github/workflows/ao6-trusted-independent-review.yml'
       - 'agent/tools/ao6-trusted-independent-review.mjs'
+      - 'agent/tools/ao6-trusted-review-request.mjs'
+  issue_comment:
+    types: [created]
   workflow_dispatch:
     inputs:
       pr_number:
@@ -38,10 +41,23 @@ jobs:
         with:
           node-version: '22.23.2'
       - name: Verify trusted-review parser and fail-closed contract
-        run: node agent/tools/ao6-trusted-independent-review.mjs self-test
+        run: |
+          node agent/tools/ao6-trusted-independent-review.mjs self-test
+          node agent/tools/ao6-trusted-review-request.mjs self-test
 
   trusted-review:
-    if: github.event_name == 'workflow_dispatch'
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request &&
+        startsWith(github.event.comment.body, '/ao6-trusted-review ') &&
+        (
+          github.event.comment.author_association == 'OWNER' ||
+          github.event.comment.author_association == 'MEMBER' ||
+          github.event.comment.author_association == 'COLLABORATOR'
+        )
+      )
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -60,17 +76,26 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '22.23.2'
+      - name: Resolve trusted review request
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_PR_NUMBER: ${{ inputs.pr_number || '' }}
+          INPUT_CANDIDATE_SHA: ${{ inputs.candidate_sha || '' }}
+          INPUT_TASK_ID: ${{ inputs.task_id || '' }}
+          ISSUE_NUMBER: ${{ github.event.issue.number || '' }}
+          COMMENT_BODY: ${{ github.event.comment.body || '' }}
+          COMMENT_ASSOCIATION: ${{ github.event.comment.author_association || '' }}
+        run: node agent/tools/ao6-trusted-review-request.mjs resolve
       - name: Install pinned Copilot CLI
         run: |
           npm install --global @github/copilot@1.0.88
           copilot --version
       - name: Verify trusted-review parser and fail-closed contract
-        run: node agent/tools/ao6-trusted-independent-review.mjs self-test
+        run: |
+          node agent/tools/ao6-trusted-independent-review.mjs self-test
+          node agent/tools/ao6-trusted-review-request.mjs self-test
       - name: Run trusted exact-SHA adversarial review
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ inputs.pr_number }}
-          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
-          TASK_ID: ${{ inputs.task_id }}
           MODEL: auto
         run: node agent/tools/ao6-trusted-independent-review.mjs run
