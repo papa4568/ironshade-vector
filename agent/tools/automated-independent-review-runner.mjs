@@ -98,8 +98,8 @@ export async function waitForTechnicalEvidence({ outputDir = '.automated-review'
   throw new Error('timed out waiting for exact-SHA PR Candidate Verification technical evidence');
 }
 
-export async function invokeModel({ packetPath, evidencePath, base, head, model = 'openai/gpt-4.1', outputDir = '.automated-review' }) {
-  const token = requiredEnv('GITHUB_TOKEN');
+export async function invokeModel({ packetPath, evidencePath, base, head, model = 'gpt-5.4', outputDir = '.automated-review' }) {
+  requiredEnv('GITHUB_TOKEN');
   const packet = JSON.parse(await readFile(packetPath, 'utf8'));
   const evidence = JSON.parse(await readFile(evidencePath, 'utf8'));
   validateIndependentReviewPacket(packet);
@@ -107,32 +107,53 @@ export async function invokeModel({ packetPath, evidencePath, base, head, model 
   const { execFileSync } = await import('node:child_process');
   assert(execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim() === head, 'checked-out HEAD does not match requested candidate');
   execFileSync('git', ['cat-file', '-e', `${base}^{commit}`]);
-  const diff = execFileSync('git', ['diff', '--find-renames', '--find-copies', '--unified=40', `${base}...${head}`], {
+  const diff = execFileSync('git', ['diff', '--find-renames', '--find-copies', '--unified=16', `${base}...${head}`], {
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
   });
-  const request = buildAutomatedReviewRequest({ packet: packet, evidence: evidence, diff, model });
-  await writeFile(`${outputDir}/model-request.json`, `${JSON.stringify(request)}\n`);
-  const response = await fetch('https://models.github.ai/inference/chat/completions', {
-    method: 'POST',
-    headers: {
-      Accept: 'application/vnd.github+json',
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(request),
-  });
-  const responseText = await response.text();
-  await writeFile(`${outputDir}/model-response.json`, `${responseText}\n`);
-  assert(response.ok, `GitHub Models request failed ${response.status}: ${responseText}`);
+  const request = buildAutomatedReviewRequest({ packet, evidence, diff, model });
+  const prompt = request.messages.map(message => `${message.role.toUpperCase()}:\n${message.content}`).join('\n\n');
+  await mkdir(outputDir, { recursive: true });
+  await writeFile(`${outputDir}/model-request.json`, `${JSON.stringify({ ...request, transport: 'github-copilot-cli' })}\n`);
+
+  const copilotHome = `${process.env.RUNNER_TEMP ?? '/tmp'}/ironshade-copilot-review-${requiredEnv('GITHUB_RUN_ID')}`;
+  let responseText;
+  try {
+    responseText = execFileSync('copilot', [
+      '-p', prompt,
+      '-s',
+      '--no-ask-user',
+      '--no-custom-instructions',
+      '--disable-builtin-mcps',
+      '--deny-tool=write',
+      '--deny-tool=shell',
+      '--deny-tool=url',
+      '--deny-tool=memory',
+      '--no-remote',
+      '--no-remote-export',
+      '--stream=off',
+      '--model', model,
+    ], {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+      maxBuffer: 32 * 1024 * 1024,
+      env: { ...process.env, COPILOT_HOME: copilotHome },
+    });
+  } catch (error) {
+    const stdout = typeof error?.stdout === 'string' ? error.stdout : '';
+    const stderr = typeof error?.stderr === 'string' ? error.stderr : '';
+    await writeFile(`${outputDir}/copilot-error.txt`, `${stdout}\n${stderr}`);
+    throw new Error(`Copilot CLI independent review failed: ${stderr.trim() || error.message}`);
+  }
+  await writeFile(`${outputDir}/copilot-response.txt`, responseText);
   const result = extractAutomatedReviewResult({
     packet,
-    response: JSON.parse(responseText),
+    response: { choices: [{ message: { content: responseText } }] },
     model,
     sourceRunId: Number(requiredEnv('GITHUB_RUN_ID')),
     technicalRunId: evidence.technicalRunId,
   });
-  await writeFile(`${outputDir}/review-result.json`, `${JSON.stringify(esult, null, 2)}\n`);
+  await writeFile(`${outputDir}/review-result.json`, `${JSON.stringify(result, null, 2)}\n`);
   await writeFile(`${outputDir}/review-comment.md`, formatAutomatedReviewEnvelope(result));
   await output('verdict', result.verdict);
   console.log(`AUTOMATED_INDEPENDENT_REVIEW_RESULT_${result.verdict.toUpperCase()} candidate=${result.candidateSha} findings=${result.findings.length}`);
@@ -141,7 +162,7 @@ export async function invokeModel({ packetPath, evidencePath, base, head, model 
 
 export async function publishResult({ outputDir = '.automated-review' } = {}) {
   const repository = requiredEnv('GITHUB_REPOSITORY');
-  const prNumber = Number(requireEnv('PR_NUMBER'));
+  const prNumber = Number(requiredEnv('PR_NUMBER'));
   const technicalRunId = Number(requiredEnv('TECHNICAL_RUN_ID'));
   const result = JSON.parse(await readFile(`${outputDir}/review-result.json`, 'utf8'));
   const commentBody = await readFile(`${outputDir}/review-comment.md`, 'utf8');
