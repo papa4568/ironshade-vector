@@ -138,8 +138,8 @@ function rootProtectedBinding(expression, bindings) {
   return ts.isIdentifier(current) && bindings.has(current.text);
 }
 
-function rejectProtectedMutations(sourceFile, fileName, protectedTypeNames) {
-  if (protectedTypeNames.size === 0) return;
+function rejectProtectedMutations(sourceFile, fileName, protectedTypeNames, seedBindings = new Set()) {
+  if (protectedTypeNames.size === 0 && seedBindings.size === 0) return;
   let changed = true;
   while (changed) {
     changed = false;
@@ -151,7 +151,7 @@ function rejectProtectedMutations(sourceFile, fileName, protectedTypeNames) {
     }
   }
 
-  const bindings = new Set();
+  const bindings = new Set(seedBindings);
   function collect(node) {
     if ((ts.isParameter(node) || ts.isVariableDeclaration(node) || ts.isPropertyDeclaration(node)) && node.type && typeReferences(node.type, protectedTypeNames)) addBindingNames(node.name, bindings);
     ts.forEachChild(node, collect);
@@ -173,6 +173,11 @@ function rejectProtectedMutations(sourceFile, fileName, protectedTypeNames) {
         addBindingNames(node.name, bindings);
         if (bindings.size !== before) changed = true;
       }
+      if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken && carries(node.right)) {
+        const before = bindings.size;
+        if (ts.isIdentifier(node.left)) bindings.add(node.left.text);
+        if (bindings.size !== before) changed = true;
+      }
       ts.forEachChild(node, propagate);
     }
     propagate(sourceFile);
@@ -187,6 +192,10 @@ function rejectProtectedMutations(sourceFile, fileName, protectedTypeNames) {
     ts.SyntaxKind.QuestionQuestionEqualsToken,
   ]);
   const mutators = new Set(['copyWithin', 'fill', 'pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'unshift', 'add', 'clear', 'delete', 'set']);
+  const reflectiveMutators = new Map([
+    ['Object', new Set(['assign', 'defineProperty', 'defineProperties', 'setPrototypeOf', 'preventExtensions', 'seal', 'freeze'])],
+    ['Reflect', new Set(['set', 'defineProperty', 'deleteProperty', 'setPrototypeOf'])],
+  ]);
   const propertyTarget = expression => {
     const target = unwrap(expression);
     return (ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target)) && rootProtectedBinding(target, bindings);
@@ -200,8 +209,10 @@ function rejectProtectedMutations(sourceFile, fileName, protectedTypeNames) {
     if (ts.isCallExpression(node)) {
       const expression = unwrap(node.expression);
       if (ts.isPropertyAccessExpression(expression) && mutators.has(expression.name.text) && rootProtectedBinding(expression.expression, bindings)) reject(`mutating method ${expression.name.text}()`);
-      if (ts.isPropertyAccessExpression(expression) && ts.isIdentifier(expression.expression) && expression.expression.text === 'Object' && expression.name.text === 'assign' && carries(node.arguments[0])) reject('Object.assign mutation');
-      if (ts.isPropertyAccessExpression(expression) && ts.isIdentifier(expression.expression) && expression.expression.text === 'Reflect' && expression.name.text === 'set' && carries(node.arguments[0])) reject('Reflect.set mutation');
+      if (ts.isPropertyAccessExpression(expression) && ts.isIdentifier(expression.expression)) {
+        const globalMutators = reflectiveMutators.get(expression.expression.text);
+        if (globalMutators?.has(expression.name.text) && carries(node.arguments[0])) reject(`${expression.expression.text}.${expression.name.text} mutation`);
+      }
     }
     ts.forEachChild(node, visit);
   }
@@ -221,6 +232,79 @@ async function protectedTypeBindings(sourceFile, fileName, rule, protectedModule
     }
   }
   return names;
+}
+
+function unalias(checker, symbol) {
+  let current = symbol;
+  const seen = new Set();
+  while (current && (current.flags & ts.SymbolFlags.Alias) && !seen.has(current)) {
+    seen.add(current);
+    current = checker.getAliasedSymbol(current);
+  }
+  return current;
+}
+
+function typeIsProtected(checker, type, protectedSymbols, seen = new Set()) {
+  if (!type || seen.has(type)) return false;
+  seen.add(type);
+  const aliasSymbol = unalias(checker, type.aliasSymbol);
+  const symbol = unalias(checker, type.symbol);
+  if ((aliasSymbol && protectedSymbols.has(aliasSymbol)) || (symbol && protectedSymbols.has(symbol))) return true;
+  if (type.isUnionOrIntersection?.() && type.types.some(entry => typeIsProtected(checker, entry, protectedSymbols, seen))) return true;
+  for (const argument of type.aliasTypeArguments ?? []) if (typeIsProtected(checker, argument, protectedSymbols, seen)) return true;
+  for (const argument of type.typeArguments ?? []) if (typeIsProtected(checker, argument, protectedSymbols, seen)) return true;
+  const constraint = checker.getBaseConstraintOfType(type);
+  return Boolean(constraint && constraint !== type && typeIsProtected(checker, constraint, protectedSymbols, seen));
+}
+
+function semanticProtectedBindings(sourceFile, checker, protectedSymbols) {
+  const bindings = new Set();
+  function collect(node) {
+    if (ts.isParameter(node) || ts.isVariableDeclaration(node) || ts.isPropertyDeclaration(node)) {
+      const type = checker.getTypeAtLocation(node);
+      if (typeIsProtected(checker, type, protectedSymbols)) addBindingNames(node.name, bindings);
+    }
+    ts.forEachChild(node, collect);
+  }
+  collect(sourceFile);
+  return bindings;
+}
+
+function sourceFileFromProgram(program, root, fileName) {
+  const expected = resolve(root, fileName);
+  return program.getSourceFile(expected) ?? program.getSourceFiles().find(sourceFile => resolve(sourceFile.fileName) === expected) ?? null;
+}
+
+function semanticProgram(root, fileNames) {
+  return ts.createProgram({
+    rootNames: [...new Set(fileNames)].map(fileName => resolve(root, fileName)),
+    options: {
+      target: ts.ScriptTarget.Latest,
+      module: ts.ModuleKind.ESNext,
+      moduleResolution: ts.ModuleResolutionKind.Bundler,
+      jsx: ts.JsxEmit.Preserve,
+      allowJs: true,
+      checkJs: false,
+      allowImportingTsExtensions: true,
+      skipLibCheck: true,
+      noEmit: true,
+      strict: false,
+    },
+  });
+}
+
+function protectedTypeSymbols(program, checker, root, protectedModule, rule) {
+  const sourceFile = sourceFileFromProgram(program, root, protectedModule.fileName);
+  invariant(sourceFile, `${rule.id}: protected module ${protectedModule.fileName} is missing from semantic program`);
+  const moduleSymbol = checker.getSymbolAtLocation(sourceFile);
+  invariant(moduleSymbol, `${rule.id}: protected module ${protectedModule.fileName} has no module symbol`);
+  const configured = new Set(rule.readOnlyStateTypes ?? []);
+  const symbols = new Set();
+  for (const exported of checker.getExportsOfModule(moduleSymbol)) {
+    if (configured.has(exported.name)) symbols.add(unalias(checker, exported));
+  }
+  invariant(symbols.size === configured.size, `${rule.id}: could not resolve every readOnlyStateTypes export from ${protectedModule.fileName}`);
+  return symbols;
 }
 
 function assertOwnerEdge(rule, resolvedFile, dependency, importerFile) {
@@ -258,6 +342,16 @@ export async function evaluateRendererReadOnlyBoundary(rule, { root = process.cw
       if (assertOwnerEdge(rule, resolved.fileName, dependency, fileName)) continue;
       if (!visited.has(resolved.fileName)) queue.push(resolved.fileName);
     }
+  }
+
+  const program = semanticProgram(root, [...visited, protectedModule.fileName]);
+  const checker = program.getTypeChecker();
+  const protectedSymbols = protectedTypeSymbols(program, checker, root, protectedModule, rule);
+  for (const fileName of visited) {
+    const sourceFile = sourceFileFromProgram(program, root, fileName);
+    invariant(sourceFile, `${rule.id}: ${fileName} is missing from semantic program`);
+    const bindings = semanticProtectedBindings(sourceFile, checker, protectedSymbols);
+    rejectProtectedMutations(sourceFile, fileName, new Set(), bindings);
   }
 
   return { status: 'passed', ruleId: rule.id, filesChecked: visited.size };

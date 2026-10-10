@@ -23,6 +23,25 @@ try {
   await writeFile(join(root, 'renderer.ts'), "import { mutate } from './mutator';\nexport const render = mutate;\n");
   await assert.rejects(() => evaluateRendererReadOnlyBoundary(rule, { root }), /mutator\.ts: direct mutation/);
 
+  await writeFile(join(root, 'stateTypes.ts'), "import type { SimState } from './sim';\nexport type RendererState = SimState;\n");
+  await writeFile(join(root, 'mutator.ts'), "import type { RendererState } from './stateTypes';\nexport function mutate(state: RendererState) { state.player.hp = 0; }\n");
+  await writeFile(join(root, 'renderer.ts'), "import { mutate } from './mutator';\nexport const render = mutate;\n");
+  await assert.rejects(() => evaluateRendererReadOnlyBoundary(rule, { root }), /mutator\.ts: direct mutation/);
+
+  await writeFile(join(root, 'callbackMutator.ts'), "import type { SimState } from './sim';\nexport function mutate(state: SimState) { const callback: (value: SimState) => void = value => { value.player.hp = 0; }; callback(state); }\n");
+  await writeFile(join(root, 'renderer.ts'), "import { mutate } from './callbackMutator';\nexport const render = mutate;\n");
+  await assert.rejects(() => evaluateRendererReadOnlyBoundary(rule, { root }), /callbackMutator\.ts: direct mutation/);
+
+  await writeFile(join(root, 'reflectiveMutator.ts'), "import type { SimState } from './sim';\nexport function mutate(state: SimState) { Object.defineProperty(state.player, 'hp', { value: 0 }); }\n");
+  await writeFile(join(root, 'renderer.ts'), "import { mutate } from './reflectiveMutator';\nexport const render = mutate;\n");
+  await assert.rejects(() => evaluateRendererReadOnlyBoundary(rule, { root }), /reflectiveMutator\.ts: Object\.defineProperty mutation/);
+
+  await writeFile(join(root, 'reflectiveMutator.ts'), "import type { SimState } from './sim';\nexport function mutate(state: SimState) { Object.defineProperties(state.player, { hp: { value: 0 } }); }\n");
+  await assert.rejects(() => evaluateRendererReadOnlyBoundary(rule, { root }), /reflectiveMutator\.ts: Object\.defineProperties mutation/);
+
+  await writeFile(join(root, 'reflectiveMutator.ts'), "import type { SimState } from './sim';\nexport function mutate(state: SimState) { Reflect.defineProperty(state.player, 'hp', { value: 0 }); }\n");
+  await assert.rejects(() => evaluateRendererReadOnlyBoundary(rule, { root }), /reflectiveMutator\.ts: Reflect\.defineProperty mutation/);
+
   await writeFile(join(root, 'owner.ts'), "import type { SimState } from './sim';\nexport const readState = (state: SimState) => state.player.hp;\nexport const mutateState = (state: SimState) => { state.player.hp = 0; };\n");
   await writeFile(join(root, 'renderer.ts'), "import { readState } from './owner';\nexport const render = readState;\n");
   await evaluateRendererReadOnlyBoundary(rule, { root });
