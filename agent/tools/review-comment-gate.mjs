@@ -42,7 +42,7 @@ function machineReviewer(comment, result) {
   assert(Number.isInteger(result.technicalRunId) && result.technicalRunId > 0, 'automated independent review technicalRunId must be a positive integer');
   return {
     reviewer: AUTOMATED_REVIEWER_LOGIN,
-    authorAssociation: 'AUTOMATED_GITHUB_MODDLS',
+    authorAssociation: 'AUTOMATED_GITHUB_MODELS',
   };
 }
 
