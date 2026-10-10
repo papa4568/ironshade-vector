@@ -46,6 +46,7 @@ const envelope = result => `<!-- ironshade-independent-review:trusted-main-actio
 const comment = {
   id: 12,
   created_at: '2026-10-10T12:00:00Z',
+  issue_url: 'https://api.github.com/repos/papa4568/ironshade-vector/issues/346',
   author_association: 'NONE',
   user: { login: 'github-actions[bot]' },
   body: envelope(pass),
@@ -69,7 +70,7 @@ await assert.rejects(
 
 process.env.GITHUB_REPOSITORY = 'papa4568/ironshade-vector';
 const response = (value, status = 200) => new Response(typeof value === 'string' ? value : JSON.stringify(value), { status });
-const fetchImpl = async url => {
+const dispatchFetch = async url => {
   if (url.endsWith('/actions/runs/123')) return response({
     name: 'AO-6 Trusted Independent Review',
     event: 'workflow_dispatch',
@@ -82,10 +83,74 @@ const fetchImpl = async url => {
   if (url.endsWith('/actions/jobs/77/logs')) return response(`TRUSTED_INDEPENDENT_REVIEW_PASS candidate=${candidateSha} comment=12`);
   throw new Error(`unexpected URL ${url}`);
 };
-assert.deepEqual(await verifyTrustedMainMachineRun(comment, pass, { fetchImpl }), {
+assert.deepEqual(await verifyTrustedMainMachineRun(comment, pass, { fetchImpl: dispatchFetch }), {
   reviewer: 'github-actions[bot]',
   authorAssociation: 'TRUSTED_MAIN_ACTIONS',
 });
+
+const issueLogs = [
+  'EVENT_NAME: issue_comment',
+  'ISSUE_NUMBER: 346',
+  `COMMENT_BODY: /ao6-trusted-review 346 ${candidateSha} AO-6`,
+  'COMMENT_ASSOCIATION: OWNER',
+  `AO6_TRUSTED_REVIEW_REQUEST_RESOLVED pr=346 candidate=${candidateSha} task=AO-6`,
+  `TRUSTED_INDEPENDENT_REVIEW_PASS candidate=${candidateSha} comment=12`,
+].join('\n');
+const issueFetch = async url => {
+  if (url.endsWith('/actions/runs/123')) return response({
+    name: 'AO-6 Trusted Independent Review',
+    event: 'issue_comment',
+    head_branch: 'main',
+    head_sha: trustedWorkflowSha,
+    status: 'completed',
+    conclusion: 'success',
+    actor: { login: 'papa4568' },
+    triggering_actor: { login: 'papa4568' },
+  });
+  if (url.includes('/actions/runs/123/jobs')) return response({ jobs: [{ id: 77, name: 'trusted-review', status: 'completed', conclusion: 'success' }] });
+  if (url.endsWith('/actions/jobs/77/logs')) return response(issueLogs);
+  throw new Error(`unexpected URL ${url}`);
+};
+assert.deepEqual(await verifyTrustedMainMachineRun(comment, pass, { fetchImpl: issueFetch }), {
+  reviewer: 'github-actions[bot]',
+  authorAssociation: 'TRUSTED_MAIN_ACTIONS',
+});
+
+const untrustedIssueFetch = async url => {
+  if (url.endsWith('/actions/jobs/77/logs')) return response(issueLogs.replace('COMMENT_ASSOCIATION: OWNER', 'COMMENT_ASSOCIATION: NONE'));
+  return issueFetch(url);
+};
+await assert.rejects(
+  () => verifyTrustedMainMachineRun(comment, pass, { fetchImpl: untrustedIssueFetch }),
+  /OWNER, MEMBER, or COLLABORATOR/,
+);
+
+const wrongCommandIssueFetch = async url => {
+  if (url.endsWith('/actions/jobs/77/logs')) return response(issueLogs.replace(candidateSha, 'c'.repeat(40)));
+  return issueFetch(url);
+};
+await assert.rejects(
+  () => verifyTrustedMainMachineRun(comment, pass, { fetchImpl: wrongCommandIssueFetch }),
+  /command does not bind this task and candidate/,
+);
+
+const mismatchedActorIssueFetch = async url => {
+  if (url.endsWith('/actions/runs/123')) return response({
+    name: 'AO-6 Trusted Independent Review',
+    event: 'issue_comment',
+    head_branch: 'main',
+    head_sha: trustedWorkflowSha,
+    status: 'completed',
+    conclusion: 'success',
+    actor: { login: 'papa4568' },
+    triggering_actor: { login: 'someone-else' },
+  });
+  return issueFetch(url);
+};
+await assert.rejects(
+  () => verifyTrustedMainMachineRun(comment, pass, { fetchImpl: mismatchedActorIssueFetch }),
+  /actor provenance is invalid/,
+);
 
 const wrongBranchFetch = async url => {
   if (url.endsWith('/actions/runs/123')) return response({
@@ -96,7 +161,7 @@ const wrongBranchFetch = async url => {
     status: 'completed',
     conclusion: 'success',
   });
-  return fetchImpl(url);
+  return dispatchFetch(url);
 };
 await assert.rejects(() => verifyTrustedMainMachineRun(comment, pass, { fetchImpl: wrongBranchFetch }), /must execute on main/);
 
@@ -109,6 +174,9 @@ assert.match(workflow, /trusted-main-review-gate\.mjs/, 'trusted-main provenance
 const gateSource = readFileSync('agent/tools/review-comment-gate.mjs', 'utf8');
 assert.match(gateSource, /trusted-main-actions:v1/);
 assert.match(gateSource, /workflow_dispatch/);
+assert.match(gateSource, /issue_comment/);
+assert.match(gateSource, /COMMENT_ASSOCIATION/);
+assert.match(gateSource, /AO6_TRUSTED_REVIEW_REQUEST_RESOLVED/);
 assert.match(gateSource, /head_branch === 'main'/);
 assert.match(gateSource, /TRUSTED_INDEPENDENT_REVIEW_/);
 assert.match(gateSource, /actions\/jobs\/\$\{job\.id\}\/logs/);

@@ -99,6 +99,36 @@ async function github(path, { accept = 'application/vnd.github+json', text = fal
   return text ? body : JSON.parse(body);
 }
 
+function issueNumberFromComment(comment) {
+  const issueUrl = comment?.issue_url;
+  assertString(issueUrl, 'trusted-main automated review issue_url');
+  const match = issueUrl.match(/\/issues\/(\d+)(?:$|[?#])/);
+  assert(match, 'trusted-main automated review issue_url does not identify a PR number');
+  const value = Number(match[1]);
+  assert(Number.isInteger(value) && value > 0, 'trusted-main automated review PR number is invalid');
+  return value;
+}
+
+function verifyIssueCommentRequestProvenance(comment, result, run, logs) {
+  const prNumber = issueNumberFromComment(comment);
+  const actor = run.actor?.login;
+  const triggeringActor = run.triggering_actor?.login;
+  assertString(actor, 'trusted-main issue_comment actor');
+  assert(triggeringActor === actor && actor !== ACTIONS_LOGIN, 'trusted-main issue_comment actor provenance is invalid');
+
+  const association = [...TRUSTED_ASSOCIATIONS].find(value => logs.includes(`COMMENT_ASSOCIATION: ${value}`));
+  assert(association, 'trusted-main issue_comment source must have OWNER, MEMBER, or COLLABORATOR association');
+  assert(logs.includes(`ISSUE_NUMBER: ${prNumber}`), 'trusted-main issue_comment source PR number mismatch');
+  const fullCommand = `COMMENT_BODY: /ao6-trusted-review ${prNumber} ${result.candidateSha} ${result.taskId}`;
+  const defaultTaskCommand = `COMMENT_BODY: /ao6-trusted-review ${prNumber} ${result.candidateSha}`;
+  assert(
+    logs.includes(fullCommand) || (result.taskId === 'AO-6' && logs.includes(defaultTaskCommand)),
+    'trusted-main issue_comment command does not bind this task and candidate',
+  );
+  const resolved = `AO6_TRUSTED_REVIEW_REQUEST_RESOLVED pr=${prNumber} candidate=${result.candidateSha} task=${result.taskId}`;
+  assert(logs.includes(resolved), 'trusted-main issue_comment resolver did not bind this PR, task, and candidate');
+}
+
 export async function verifyTrustedMainMachineRun(comment, result, { fetchImpl = fetch } = {}) {
   assert(comment.user?.login === ACTIONS_LOGIN, 'trusted-main automated review must be authored by github-actions[bot]');
   assert(typeof comment.body === 'string' && comment.body.includes(TRUSTED_MAIN_MARKER), 'trusted-main automated review marker is missing');
@@ -114,7 +144,7 @@ export async function verifyTrustedMainMachineRun(comment, result, { fetchImpl =
   assertString(repository, 'GITHUB_REPOSITORY');
   const run = await github(`repos/${repository}/actions/runs/${result.sourceRunId}`, { fetchImpl });
   assert(run.name === TRUSTED_WORKFLOW, 'trusted-main source run workflow name mismatch');
-  assert(run.event === 'workflow_dispatch', 'trusted-main source run must be workflow_dispatch');
+  assert(['workflow_dispatch', 'issue_comment'].includes(run.event), 'trusted-main source run must be workflow_dispatch or trusted issue_comment');
   assert(run.head_branch === 'main', 'trusted-main source run must execute on main');
   assert(run.head_sha === result.trustedWorkflowSha, 'trusted-main source run SHA mismatch');
   const expectedConclusion = result.verdict === 'pass' ? 'success' : 'failure';
@@ -124,6 +154,7 @@ export async function verifyTrustedMainMachineRun(comment, result, { fetchImpl =
   const job = (jobsPayload.jobs ?? []).filter(entry => entry.name === TRUSTED_JOB).sort((a, b) => a.id - b.id).at(-1);
   assert(job?.status === 'completed' && job.conclusion === expectedConclusion, 'trusted-main review job conclusion does not match verdict');
   const logs = await github(`repos/${repository}/actions/jobs/${job.id}/logs`, { accept: 'text/plain', text: true, fetchImpl });
+  if (run.event === 'issue_comment') verifyIssueCommentRequestProvenance(comment, result, run, logs);
   const marker = `TRUSTED_INDEPENDENT_REVIEW_${result.verdict.toUpperCase()} candidate=${result.candidateSha} comment=${comment.id}`;
   assert(logs.includes(marker), 'trusted-main review job log does not bind this verdict to the candidate and comment');
   return {
