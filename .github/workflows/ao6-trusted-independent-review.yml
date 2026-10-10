@@ -1,0 +1,76 @@
+name: AO-6 Trusted Independent Review
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/ao6-trusted-independent-review.yml'
+      - 'agent/tools/ao6-trusted-independent-review.mjs'
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number to review
+        required: true
+        type: string
+      candidate_sha:
+        description: Exact PR head SHA to review
+        required: true
+        type: string
+      task_id:
+        description: AO task ID
+        required: false
+        default: AO-6
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  self-test:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+      - name: Verify trusted-review parser and fail-closed contract
+        run: node agent/tools/ao6-trusted-independent-review.mjs self-test
+
+  trusted-review:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      actions: write
+      contents: read
+      issues: write
+      pull-requests: read
+      copilot-requests: write
+    steps:
+      - name: Check out trusted main verifier
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+      - name: Install pinned Copilot CLI
+        run: |
+          npm install --global @github/copilot@1.0.88
+          copilot --version
+      - name: Verify trusted-review parser and fail-closed contract
+        run: node agent/tools/ao6-trusted-independent-review.mjs self-test
+      - name: Run trusted exact-SHA adversarial review
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          TASK_ID: ${{ inputs.task_id }}
+          MODEL: auto
+        run: node agent/tools/ao6-trusted-independent-review.mjs run
