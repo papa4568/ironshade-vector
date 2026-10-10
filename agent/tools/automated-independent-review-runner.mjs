@@ -114,13 +114,12 @@ export async function invokeModel({ packetPath, evidencePath, base, head, model 
   const request = buildAutomatedReviewRequest({ packet, evidence, diff, model });
   const prompt = request.messages.map(message => `${message.role.toUpperCase()}:\n${message.content}`).join('\n\n');
   await mkdir(outputDir, { recursive: true });
-  await writeFile(`${outputDir}/model-request.json`, `${JSON.stringify({ ...request, transport: 'github-copilot-cli' })}\n`);
+  await writeFile(`${outputDir}/model-request.json`, `${JSON.stringify({ ...request, transport: 'github-copilot-cli-stdin' })}\n`);
 
   const copilotHome = `${process.env.RUNNER_TEMP ?? '/tmp'}/ironshade-copilot-review-${requiredEnv('GITHUB_RUN_ID')}`;
   let responseText;
   try {
     responseText = execFileSync('copilot', [
-      '-p', prompt,
       '-s',
       '--no-ask-user',
       '--no-custom-instructions',
@@ -136,6 +135,7 @@ export async function invokeModel({ packetPath, evidencePath, base, head, model 
     ], {
       cwd: process.cwd(),
       encoding: 'utf8',
+      input: prompt,
       maxBuffer: 32 * 1024 * 1024,
       env: { ...process.env, COPILOT_HOME: copilotHome },
     });

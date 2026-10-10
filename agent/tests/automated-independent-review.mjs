@@ -25,6 +25,9 @@ assert.doesNotMatch(runnerSource, /models\.github\.ai/, 'retired GitHub Models i
 assert.match(runnerSource, /--no-custom-instructions/, 'candidate-authored custom instructions must not steer the verifier');
 assert.match(runnerSource, /--deny-tool=write/, 'model verifier must be denied file writes');
 assert.match(runnerSource, /--deny-tool=shell/, 'model verifier must be denied shell execution');
+assert.doesNotMatch(runnerSource, /'-p',\s*prompt/, 'large exact-candidate review prompts must not be passed through argv');
+assert.match(runnerSource, /input: prompt/, 'large exact-candidate review prompts must be streamed through stdin');
+assert.match(runnerSource, /github-copilot-cli-stdin/, 'review audit evidence must record stdin transport');
 assert.match(runnerSource, /JSON\.stringify\(result, null, 2\)/, 'validated result must be serialized under the correct variable name');
 assert.doesNotMatch(runnerSource, /JSON\.stringify\(esult/, 'misspelled result serialization must remain rejected');
 assert.match(runnerSource, /requiredEnv\('PR_NUMBER'\)/, 'publisher must read PR_NUMBER through the required environment helper');
