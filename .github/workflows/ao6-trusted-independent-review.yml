@@ -103,7 +103,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: trusted-independent-review-${{ env.PR_NUMBER || 'unknown' }}-${{ env.CANDIDATE_SHA || github.run_id }}
+          name: trusted-independent-review-${{ github.run_id }}
           path: .trusted-review/
           include-hidden-files: true
           if-no-files-found: ignore
