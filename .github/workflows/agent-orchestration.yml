@@ -4,16 +4,6 @@ on:
   pull_request:
     branches:
       - main
-    paths:
-      - 'agent/**'
-      - 'docs/content-roadmap.md'
-      - 'docs/experimental-verification-roadmap.md'
-      - 'docs/agent-orchestration.md'
-      - 'AGENTS.md'
-      - '.github/workflows/agent-orchestration.yml'
-      - '.github/workflows/pr-candidate.yml'
-      - '.github/workflows/browser-e2e.yml'
-      - '.github/workflows/pr-android-apk.yml'
   push:
     branches:
       - main
@@ -168,6 +158,9 @@ jobs:
           node agent/tools/select-review-task.mjs --json
           node agent/tests/independent-review.mjs
 
+      - name: Run automated independent verifier regressions
+        run: node agent/tests/automated-independent-review.mjs
+
       - name: Detect active orchestration evidence task
         id: evidence-task
         shell: bash
@@ -254,3 +247,107 @@ jobs:
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 30
+
+
+  automated-independent-verifier:
+    name: Read-only adversarial verifier
+    needs: validate-agent-orchestration
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    permissions:
+      actions: read
+      contents: read
+      models: read
+    outputs:
+      verdict: ${{ steps.review.outputs.verdict }}
+      technical-run-id: ${{ steps.technical.outputs.technical-run-id }}
+    steps:
+      - name: Check out exact candidate without write credentials
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Verify automated-review contracts
+        run: node agent/tests/automated-independent-review.mjs
+
+      - name: Wait for exact-SHA technical gates
+        id: technical
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: node agent/tools/automated-independent-review-runner.mjs wait
+
+      - name: Download exact candidate review packet
+        uses: actions/download-artifact@v7
+        with:
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.technical.outputs.technical-run-id }}
+          github-token: ${{ github.token }}
+          name: independent-review-context-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: .independent-review
+
+      - name: Run and validate GitHub Models adversarial review
+        id: review
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          node agent/tools/automated-independent-review-runner.mjs invoke \
+            --packet-path .independent-review/review-packet.json \
+            --evidence-path .automated-review/technical-evidence.json \
+            --base ${{ github.event.pull_request.base.sha }} \
+            --head ${{ github.event.pull_request.head.sha }} \
+            --model openai/gpt-4.1
+
+      - name: Upload automated independent-review evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: automated-independent-review-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: .automated-review/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+  publish-independent-review:
+    name: Publish verified review result
+    needs: automated-independent-verifier
+    if: github.event_name == 'pull_request' && needs.automated-independent-verifier.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    permissions:
+      actions: write
+      contents: read
+      issues: write
+    steps:
+      - name: Check out exact candidate without write credentials
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Download validated review evidence
+        uses: actions/download-artifact@v7
+        with:
+          name: automated-independent-review-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: .automated-review
+
+      - name: Publish result and synchronize final candidate gate
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          TECHNICAL_RUN_ID: ${{ needs.automated-independent-verifier.outputs.technical-run-id }}
+        run: node agent/tools/automated-independent-review-runner.mjs publish

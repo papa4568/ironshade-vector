@@ -113,7 +113,7 @@ export function extractAutomatedReviewResult({ packet, response, model = DEFAULT
   if (response.error) throw new Error(`GitHub Models API error: ${JSON.stringify(response.error)}`);
   const result = parseJsonObject(extractMessageContent(response));
   result.reviewerKind = 'github-models-actions';
-  result.sourceWorkflow = 'Automated Independent Review';
+  result.sourceWorkflow = 'Agent Orchestration';
   result.model = model;
   result.sourceRunId = Number(sourceRunId);
   result.technicalRunId = Number(technicalRunId);

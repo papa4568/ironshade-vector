@@ -8,7 +8,7 @@ Act as a read-only adversarial verifier. Your job is to try to disprove that the
 
 Do not implement fixes, edit files, push commits, change PR state, rerun workflows for convenience, or create a competing implementation. If you find a defect, report it so the implementation owner can fix it on the same branch and produce a new candidate SHA.
 
-The preferred repository-native path is the `Automated Independent Review` workflow. Its verifier job has read-only repository/action access plus `models: read`, runs in a separate job from implementation and publishing, and uses GitHub Models to perform the adversarial review without a manual second chat. A separate publisher job may publish the already-validated result and rerun only the blocked final candidate job after a PASS; it must not alter the verifier result.
+The preferred repository-native path is the `automated-independent-verifier` job in the existing `Agent Orchestration` workflow. It has read-only repository/action access plus `models: read`, runs separately from implementation and publishing, and uses GitHub Models to perform the adversarial review without a manual second chat. A separate publisher job may publish the already-validated result and rerun only the blocked final candidate job after a PASS; it must not alter the verifier result.
 
 A human read-only verifier remains a valid fallback when the automated model service is unavailable or when repository owners explicitly request human review.
 

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import {
   buildAutomatedReviewRequest,
@@ -7,6 +8,19 @@ import {
   validateTechnicalEvidence,
 } from '../tools/automated-independent-review.mjs';
 import { selectAuthoritativeReviewComment } from '../tools/review-comment-gate.mjs';
+
+
+const orchestrationWorkflow = readFileSync('.github/workflows/agent-orchestration.yml', 'utf8');
+assert.match(orchestrationWorkflow, /automated-independent-verifier:/, 'existing orchestration workflow must host the isolated verifier job');
+assert.match(orchestrationWorkflow, /models: read/, 'isolated verifier must have GitHub Models read permission');
+assert.match(orchestrationWorkflow, /persist-credentials: false/, 'isolated verifier checkout must not retain write credentials');
+assert.match(orchestrationWorkflow, /publish-independent-review:/, 'publishing must remain separate from model verification');
+assert.match(orchestrationWorkflow, /issues: write/, 'only the publisher needs issue-comment write access');
+assert.match(orchestrationWorkflow, /actions: write/, 'publisher needs action write access only to rerun the blocked final candidate job after PASS');
+
+const runnerSource = readFileSync('agent/tools/automated-independent-review-runner.mjs', 'utf8');
+assert.match(runnerSource, /models\.github\.ai\/inference\/chat\/completions/, 'isolated verifier runner must call the GitHub Models inference endpoint');
+assert.match(runnerSource, /actions\/jobs\/\$\{finalJob\.id\}\/rerun/, 'publisher runner must rerun only the already-failed final candidate job');
 
 const candidateSha = 'a'.repeat(40);
 const packet = {
@@ -90,7 +104,7 @@ const result = extractAutomatedReviewResult({
 });
 assert.equal(result.verdict, 'pass');
 assert.equal(result.reviewerKind, 'github-models-actions');
-assert.equal(result.sourceWorkflow, 'Automated Independent Review');
+assert.equal(result.sourceWorkflow, 'Agent Orchestration');
 assert.equal(result.sourceRunId, 456);
 assert.equal(result.technicalRunId, 123);
 
@@ -116,7 +130,7 @@ assert.throws(
     created_at: '2026-10-10T18:01:00Z',
     author_association: 'NONE',
     user: { login: 'github-actions[bot]' },
-    body: `<!-- ironshade-indepent-review:github-models-actions:v1 -->\n<!-- ironshade-independent-review:v1 -->\n\`\`\`json\n${JSON.stringify(missingProvenance)}\n\`\`\``,
+    body: `<!-- ironshade-independent-review:github-models-actions:v1 -->\n<!-- ironshade-independent-review:v1 -->\n\`\`\`json\n${JSON.stringify(missingProvenance)}\n\`\`\``,
   }]),
   /sourceRunId/,
 );

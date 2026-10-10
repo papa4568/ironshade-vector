@@ -36,13 +36,13 @@ function machineReviewer(comment, result) {
   if (comment.user?.login !== AUTOMATED_REVIEWER_LOGIN) return null;
   if (typeof comment.body !== 'string' || !comment.body.includes(AUTOMATED_MARKER)) return null;
   assert(result.reviewerKind === 'github-models-actions', 'automated independent review is missing reviewerKind provenance');
-  assert(result.sourceWorkflow === 'Automated Independent Review', 'automated independent review sourceWorkflow is invalid');
+  assert(result.sourceWorkflow === 'Agent Orchestration', 'automated independent review sourceWorkflow is invalid');
   assertString(result.model, 'automated independent review model');
   assert(Number.isInteger(result.sourceRunId) && result.sourceRunId > 0, 'automated independent review sourceRunId must be a positive integer');
   assert(Number.isInteger(result.technicalRunId) && result.technicalRunId > 0, 'automated independent review technicalRunId must be a positive integer');
   return {
     reviewer: AUTOMATED_REVIEWER_LOGIN,
-    authorAssociation: 'AUTOMATED_GITHUB_MODELS',
+    authorAssociation: 'AUTOMATED_GITHUB_MODDLS',
   };
 }
 
