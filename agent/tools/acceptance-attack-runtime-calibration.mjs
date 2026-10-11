@@ -162,6 +162,13 @@ async function validateDependencySymlinks(root, current = root) {
         pathInside(root, resolvedTarget),
         `runtime calibration dependency symlink escapes disposable clone: ${entryPath} -> ${target}`,
       );
+      const physicalTarget = await realpath(entryPath).catch(error => {
+        throw new Error(`runtime calibration dependency symlink target cannot be resolved: ${entryPath} -> ${target}: ${error.message}`);
+      });
+      assert(
+        pathInside(root, physicalTarget),
+        `runtime calibration dependency symlink escapes disposable clone after resolving link chain: ${entryPath} -> ${target} -> ${physicalTarget}`,
+      );
       symlinkCount += 1;
       continue;
     }
