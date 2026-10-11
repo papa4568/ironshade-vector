@@ -1,0 +1,30 @@
+name: Temporary P28-PLOAD1 Main Sync Helper
+
+on:
+  push:
+    branches:
+      - agent/p28-pload1-batched-refinery-instantiation
+
+permissions:
+  contents: write
+
+jobs:
+  sync-main:
+    if: github.event.head_commit.message == 'Add temporary P28-PLOAD1 main sync helper'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v7
+        with:
+          ref: agent/p28-pload1-batched-refinery-instantiation
+          fetch-depth: 0
+
+      - name: Merge current main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git merge --no-ff --no-edit origin/main
+          git push origin HEAD:agent/p28-pload1-batched-refinery-instantiation
