@@ -1,6 +1,8 @@
 import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
+import { parseExperimentalRoadmap } from './experimental-review-task.mjs';
+
 const ok = (value, message) => { if (!value) throw new Error(message); };
 const positive = (value, label) => {
   const parsed = Number(value);
@@ -83,6 +85,25 @@ function selfTest() {
   try { resolveTrustedReviewRequest({ eventName: 'issue_comment', issueNumber: '347', commentAssociation: 'OWNER', commentBody: `/ao6-trusted-review 346 ${sha}` }); throw new Error('cross-PR command was accepted'); } catch (error) { ok(/does not match event issue/.test(String(error)), 'cross-PR command did not fail closed'); }
   try { resolveTrustedReviewRequest({ eventName: 'issue_comment', issueNumber: '346', commentAssociation: 'OWNER', commentBody: `/ao6-trusted-review 346 ${sha.toUpperCase()}` }); throw new Error('uppercase SHA was accepted'); } catch (error) { ok(/command must be/.test(String(error)), 'malformed SHA did not fail closed'); }
   try { resolveTrustedReviewRequest({ eventName: 'issue_comment', issueNumber: '345', commentAssociation: 'OWNER', commentBody: `/ao6-trusted-review 345 ${sha} ZZ-1` }); throw new Error('unsupported task namespace was accepted'); } catch (error) { ok(/must be an AO task ID, EV task ID, or product-roadmap task ID/.test(String(error)), 'unsupported task namespace did not fail closed'); }
+
+  const malformedFirstEv = [
+    '# Experimental verification roadmap',
+    '',
+    '## Active experimental queue',
+    '',
+    '- [ ] **EV-8 - malformed separator**',
+    '  - This malformed first task must never be skipped.',
+    '',
+    '- [ ] **EV-9 — Later valid task**',
+    '  - A later valid task must not become authoritative.',
+  ].join('\n');
+  try {
+    parseExperimentalRoadmap(malformedFirstEv);
+    throw new Error('malformed first EV task was silently skipped');
+  } catch (error) {
+    ok(/malformed experimental task line/.test(String(error)), 'malformed first EV task did not fail closed');
+  }
+
   console.log('AO6_TRUSTED_REVIEW_REQUEST_SELF_TEST_PASS');
 }
 
