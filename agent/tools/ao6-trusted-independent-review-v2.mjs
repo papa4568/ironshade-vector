@@ -166,6 +166,15 @@ async function evidence(repo, sha, pr) {
   };
 }
 
+function canonicalProofId(proofId, expectedProofIds) {
+  ok(typeof proofId === 'string' && proofId.length > 0, 'proofId must be a non-empty string');
+  if (expectedProofIds.includes(proofId)) return proofId;
+  const compact = proofId.replace(/\s+/gu, '');
+  const matches = expectedProofIds.filter(id => id === compact);
+  ok(matches.length === 1, `unknown proof check ${proofId}`);
+  return matches[0];
+}
+
 function validate(result, packet) {
   ok(result && typeof result === 'object' && !Array.isArray(result), 'review must be object');
   ok(
@@ -182,9 +191,15 @@ function validate(result, packet) {
     ok(['satisfied', 'not_satisfied'].includes(check.status) && check.notes?.trim(), `invalid acceptance check ${check.index}`);
   }
   ok(Array.isArray(result.proofChecks) && result.proofChecks.length === packet.requiredProofs.length, 'proofChecks mismatch');
+  const expectedProofIds = packet.requiredProofs.map(proof => proof.id);
+  ok(new Set(expectedProofIds).size === expectedProofIds.length, 'trusted packet proof ids must be unique');
+  const seenProofIds = new Set();
   for (const check of result.proofChecks) {
-    ok(packet.requiredProofs.some(proof => proof.id === check.proofId), `unknown proof check ${check.proofId}`);
-    ok(['credible', 'insufficient'].includes(check.status) && check.notes?.trim(), `invalid proof check ${check.proofId}`);
+    const proofId = canonicalProofId(check.proofId, expectedProofIds);
+    ok(!seenProofIds.has(proofId), `duplicate proof check ${proofId}`);
+    seenProofIds.add(proofId);
+    check.proofId = proofId;
+    ok(['credible', 'insufficient'].includes(check.status) && check.notes?.trim(), `invalid proof check ${proofId}`);
   }
   ok(Array.isArray(result.findings), 'findings must be array');
   for (const finding of result.findings) {
@@ -294,6 +309,34 @@ function selfTest() {
   ok(parsedInvalidEscapes.note === String.raw`regex \. and \s and \d and literal \uZZZZ`, 'invalid JSON escape repair failed');
   const parsedValidEscapes = parseReview(String.raw`{"note":"quote \" slash \\ newline \n unicode \u263A"}`);
   ok(parsedValidEscapes.note === 'quote " slash \\ newline \n unicode ☺', 'valid JSON escape preservation failed');
+  const whitespaceProof = {
+    schemaVersion: 1,
+    taskId: 'AO-6',
+    candidateSha: 'a'.repeat(40),
+    mode: 'read-only-adversarial',
+    verdict: 'pass',
+    acceptanceChecks: [
+      { index: 0, status: 'satisfied', notes: 'checked' },
+      { index: 1, status: 'satisfied', notes: 'checked' },
+    ],
+    proofChecks: [
+      { proofId: 'review-contract', status: 'credible', notes: 'checked' },
+      { proofId: 'architecture-in\nvariants', status: 'credible', notes: 'checked' },
+    ],
+    findings: [],
+  };
+  const normalizedProof = validate(structuredClone(whitespaceProof), packet);
+  ok(normalizedProof.proofChecks[1].proofId === 'architecture-invariants', 'proof id whitespace normalization failed');
+  const nearMissProof = structuredClone(whitespaceProof);
+  nearMissProof.proofChecks[1].proofId = 'architecture-invariant';
+  let nearMissRejected = false;
+  try { validate(nearMissProof, packet); } catch { nearMissRejected = true; }
+  ok(nearMissRejected, 'non-whitespace proof id mutation must remain rejected');
+  const duplicateProof = structuredClone(whitespaceProof);
+  duplicateProof.proofChecks[1].proofId = 'review-contract';
+  let duplicateRejected = false;
+  try { validate(duplicateProof, packet); } catch { duplicateRejected = true; }
+  ok(duplicateRejected, 'duplicate proof ids must remain rejected');
   const text = buildPrompt(packet, { candidateRun: { conclusion: 'failure' } }, 'diff');
   ok(text.includes('SELF-REFERENCE RULE'), 'self-reference rule missing from prompt');
   ok(text.includes('never require a previously published review verdict'), 'circular-review regression missing from prompt');
