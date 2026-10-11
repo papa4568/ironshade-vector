@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -24,8 +24,11 @@ async function exerciseRuntimeIsolationRegression() {
   const targetPath = join(fixtureRoot, 'target.mjs');
   const sentinelPath = join(fixtureRoot, 'source-sentinel.txt');
   const verifierPath = join(fixtureRoot, 'verify.mjs');
+  const dependencyDir = join(fixtureRoot, 'node_modules');
+  const dependencySentinelPath = join(dependencyDir, 'dependency-sentinel.txt');
   const previousMutateSource = process.env.RUNTIME_CALIBRATION_MUTATE_SOURCE;
   const previousSourceSentinel = process.env.RUNTIME_CALIBRATION_SOURCE_SENTINEL;
+  const previousMutateDependency = process.env.RUNTIME_CALIBRATION_MUTATE_DEPENDENCY;
 
   try {
     execFileSync('git', ['init', '--quiet'], { cwd: fixtureRoot });
@@ -41,6 +44,14 @@ const remotes = execFileSync('git', ['remote'], { encoding: 'utf8' }).trim();
 if (remotes) {
   console.error(\`runtime calibration sandbox retained remote: \${remotes}\`);
   process.exit(2);
+}
+const dependencySentinel = readFileSync('node_modules/dependency-sentinel.txt', 'utf8');
+if (dependencySentinel !== 'source dependency sentinel\\n') {
+  console.error(\`runtime calibration dependency state leaked across trials: \${JSON.stringify(dependencySentinel)}\`);
+  process.exit(4);
+}
+if (process.env.RUNTIME_CALIBRATION_MUTATE_DEPENDENCY === '1') {
+  appendFileSync('node_modules/dependency-sentinel.txt', 'sandbox dependency mutation\\n');
 }
 if (process.env.RUNTIME_CALIBRATION_MUTATE_SOURCE === '1') {
   const sentinel = process.env.RUNTIME_CALIBRATION_SOURCE_SENTINEL;
@@ -61,14 +72,15 @@ process.exit(3);
 `);
     execFileSync('git', ['add', 'target.mjs', 'verify.mjs', 'source-sentinel.txt'], { cwd: fixtureRoot });
     execFileSync('git', ['commit', '--quiet', '-m', 'runtime isolation fixture'], { cwd: fixtureRoot });
-    await mkdir(join(fixtureRoot, 'node_modules'));
+    await mkdir(dependencyDir);
+    await writeFile(dependencySentinelPath, 'source dependency sentinel\n');
 
     const fixtureSha = git(['rev-parse', 'HEAD'], fixtureRoot);
     const fixtureConfig = {
       verifyCommand: 'node verify.mjs',
       targetFile: 'target.mjs',
       passMarker: 'RUNTIME_ISOLATION_FIXTURE_PASS',
-      dependencyStrategy: 'source-node-modules-symlink',
+      dependencyStrategy: 'isolated-node-modules-copy',
       negativeControls: [
         {
           id: 'equivalent-batch-expression',
@@ -90,6 +102,7 @@ process.exit(3);
 
     delete process.env.RUNTIME_CALIBRATION_MUTATE_SOURCE;
     delete process.env.RUNTIME_CALIBRATION_SOURCE_SENTINEL;
+    delete process.env.RUNTIME_CALIBRATION_MUTATE_DEPENDENCY;
     const report = await exerciseRuntimeCalibration({
       candidateSha: fixtureSha,
       config: fixtureConfig,
@@ -99,10 +112,29 @@ process.exit(3);
     assert.equal(report.isolation.sourceHead, fixtureSha);
     assert.equal(report.isolation.sourceUnchanged, true, 'runtime calibration must prove its source repository stayed unchanged');
     assert.equal(report.isolation.sandboxRemoteDetached, true, 'runtime verifier itself must observe a detached sandbox remote');
-    assert.equal(report.isolation.dependencyIsolation.strategy, 'source-node-modules-symlink');
+    assert.equal(report.isolation.dependencyIsolation.strategy, 'isolated-node-modules-copy');
+    assert.equal(report.isolation.dependencyIsolation.writableSourceDependencyPathExposed, false);
     assert.equal(report.negativeControls[0].falsePositive, false);
     assert.equal(report.attack.detected, true);
-    assert.equal(git(['status', '--porcelain=v1', '--untracked-files=all'], fixtureRoot), '', 'successful runtime calibration must not dirty the source fixture');
+    assert.equal(git(['status', '--porcelain=v1', '--untracked-files=all'], fixtureRoot), '?? node_modules/', 'successful runtime calibration must preserve the source fixture including its pre-existing dependency tree');
+
+    process.env.RUNTIME_CALIBRATION_MUTATE_DEPENDENCY = '1';
+    const dependencyMutationReport = await exerciseRuntimeCalibration({
+      candidateSha: fixtureSha,
+      config: fixtureConfig,
+      repoRoot: fixtureRoot,
+    });
+    assert.equal(dependencyMutationReport.isolation.dependencyIsolation.strategy, 'isolated-node-modules-copy');
+    assert.equal(dependencyMutationReport.isolation.dependencyIsolation.writableSourceDependencyPathExposed, false);
+    assert.equal(dependencyMutationReport.baseline.passed, true, 'sandbox dependency mutation must not contaminate the next control trial');
+    assert.equal(dependencyMutationReport.negativeControls[0].passed, true, 'each runtime trial must receive a fresh dependency copy');
+    assert.equal(dependencyMutationReport.attack.detected, true);
+    assert.equal(
+      await readFile(dependencySentinelPath, 'utf8'),
+      'source dependency sentinel\n',
+      'verifier writes through sandbox node_modules must never mutate source dependencies',
+    );
+    delete process.env.RUNTIME_CALIBRATION_MUTATE_DEPENDENCY;
 
     process.env.RUNTIME_CALIBRATION_MUTATE_SOURCE = '1';
     process.env.RUNTIME_CALIBRATION_SOURCE_SENTINEL = sentinelPath;
@@ -113,13 +145,15 @@ process.exit(3);
         repoRoot: fixtureRoot,
       }),
       /source working tree changed during runtime attack calibration/,
-      'runtime calibration must fail closed when its verifier mutates source state instead of the disposable clone',
+      'runtime calibration must fail closed when its verifier mutates tracked source state instead of disposable state',
     );
   } finally {
     if (previousMutateSource === undefined) delete process.env.RUNTIME_CALIBRATION_MUTATE_SOURCE;
     else process.env.RUNTIME_CALIBRATION_MUTATE_SOURCE = previousMutateSource;
     if (previousSourceSentinel === undefined) delete process.env.RUNTIME_CALIBRATION_SOURCE_SENTINEL;
     else process.env.RUNTIME_CALIBRATION_SOURCE_SENTINEL = previousSourceSentinel;
+    if (previousMutateDependency === undefined) delete process.env.RUNTIME_CALIBRATION_MUTATE_DEPENDENCY;
+    else process.env.RUNTIME_CALIBRATION_MUTATE_DEPENDENCY = previousMutateDependency;
     await rm(fixtureRoot, { recursive: true, force: true });
   }
 }
@@ -127,7 +161,7 @@ process.exit(3);
 await exerciseRuntimeIsolationRegression();
 
 const candidateSha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
-const policy = validateAcceptanceAttackPolicy(JSON.parse(await (await import('node:fs/promises')).readFile('agent/acceptance-attack-policy.json', 'utf8')));
+const policy = validateAcceptanceAttackPolicy(JSON.parse(await readFile('agent/acceptance-attack-policy.json', 'utf8')));
 assert.equal(policy.enforcementEnabled, true, 'EV-8 policy must enable the measured promoted scope by default');
 assert.equal(policy.scopes.length, 1, 'EV-8 must promote only the measured deterministic subset');
 const [scope] = policy.scopes;
@@ -138,6 +172,7 @@ assert.equal(
   'promotion must exercise the dedicated real P28-PLOAD1 runtime oracle without unrelated source-shape guards',
 );
 assert.equal(scope.runtimeCalibration.targetFile, 'src/game/babylonCombatRenderer.ts', 'promotion must mutate the production refinery loader');
+assert.equal(scope.runtimeCalibration.dependencyStrategy, 'isolated-node-modules-copy', 'runtime verifier dependencies must be copied into disposable state');
 assert.equal(scope.runtimeCalibration.negativeControls.length, 1, 'promotion must measure at least one negative control');
 assert.equal(scope.calibration.promotedFalsePositiveBudget, 0);
 assert.equal(scope.calibration.promotedFalseNegativeBudget, 0);
@@ -189,7 +224,7 @@ const runtimeReport = {
   isolation: {
     sourceUnchanged: true,
     sandboxRemoteDetached: true,
-    dependencyIsolation: { strategy: 'source-node-modules-symlink' },
+    dependencyIsolation: { strategy: 'isolated-node-modules-copy', writableSourceDependencyPathExposed: false },
   },
 };
 
@@ -221,7 +256,7 @@ assert.deepEqual(
 );
 assert.equal(result.isolation.runtimeSourceUnchanged, true);
 assert.equal(result.isolation.runtimeRemoteDetached, true);
-assert.equal(result.isolation.dependencyStrategy, 'source-node-modules-symlink');
+assert.equal(result.isolation.dependencyStrategy, 'isolated-node-modules-copy');
 
 const gate = buildAcceptanceAttackDecision({ policy, candidateSha, scopeResults: [{ ...result, sourceHead: candidateSha, fullShadowSummary: shadowReport.summary }] });
 assert.equal(gate.schema, 'ironshade-acceptance-attack-gate:v1');
@@ -316,4 +351,4 @@ assert.throws(
   'promotion policy must not relax the zero false-negative requirement',
 );
 
-console.log(`ACCEPTANCE_ATTACK_PROMOTION_REGRESSIONS_PASS candidate=${candidateSha} scope=${scope.id} runtimeIsolation=exercised+fault-tested measuredControl=true criterionMatchedFailure=true falsePositiveBudget=0 falseNegativeBudget=0 advisorySurvivors=${result.advisory.survivors.length} rollback=advisory`);
+console.log(`ACCEPTANCE_ATTACK_PROMOTION_REGRESSIONS_PASS candidate=${candidateSha} scope=${scope.id} runtimeIsolation=exercised+fault-tested dependencyIsolation=fresh-copy+fault-tested measuredControl=true criterionMatchedFailure=true falsePositiveBudget=0 falseNegativeBudget=0 advisorySurvivors=${result.advisory.survivors.length} rollback=advisory`);
