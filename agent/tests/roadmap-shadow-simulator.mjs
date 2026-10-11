@@ -14,7 +14,7 @@ import {
 const config = await loadRoadmapShadowConfig();
 assert.equal(config.mode, 'advisory');
 assert.equal(config.scenarios.length, 2, 'EV-7 must pressure-test at least two real future roadmap tasks');
-assert.deepEqual(config.scenarios.map(scenario => scenario.taskId), ['P28-PLOAD2', 'P28-G1']);
+assert.deepEqual(config.scenarios.map(scenario => scenario.taskId), ['P28-F6', 'P28-G1']);
 assert.throws(
   () => validateRoadmapShadowConfig({ ...config, mode: 'enforced' }),
   /mode must remain advisory/,
@@ -24,7 +24,7 @@ assert.throws(
 const report = await buildRoadmapShadowReport({ candidateSha: '1'.repeat(40) });
 assert.equal(report.schema, 'ironshade-roadmap-shadow-simulator-report:v1');
 assert.equal(report.scenarioCount, 2);
-assert.deepEqual(report.summary.taskIds, ['P28-PLOAD2', 'P28-G1']);
+assert.deepEqual(report.summary.taskIds, ['P28-F6', 'P28-G1']);
 assert.equal(report.summary.missingExtensionPointCount, 0, 'current architecture should expose the configured clean extension points');
 assert.equal(report.summary.requiredBoundaryViolationCount, 0, 'current architecture should not require configured forbidden dependencies');
 assert.equal(report.temporaryProbesPersisted, false);

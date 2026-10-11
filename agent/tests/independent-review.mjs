@@ -174,14 +174,14 @@ assert.equal(postMigrationSelection.source, 'docs/content-roadmap.md');
 const { graph: currentProductGraph } = await loadRoadmapAdapter();
 const productCloseoutGraph = structuredClone(currentProductGraph);
 const completedProductTask = productCloseoutGraph.tasks.shift();
-assert.equal(completedProductTask.id, 'P28-PLOAD1', 'fixture assumes the live first product task is P28-PLOAD1');
+assert(completedProductTask, 'product closeout fixture requires at least one live product task');
 productCloseoutGraph.tasks.forEach((entry, index) => {
   entry.priority = index;
   entry.status = index === 0 ? 'ready' : 'planned';
   entry.dependsOn = entry.dependsOn.filter(dependencyId => dependencyId !== completedProductTask.id);
 });
 const productCloseoutSelection = selectProductReviewTask(productCloseoutGraph, { baseGraph: currentProductGraph });
-assert.equal(productCloseoutSelection.task.id, 'P28-PLOAD1', 'product closeout must preserve the removed task identity');
+assert.equal(productCloseoutSelection.task.id, completedProductTask.id, 'product closeout must preserve the removed task identity');
 assert.equal(productCloseoutSelection.mode, 'product-closeout');
 
 const combinedProductCloseout = structuredClone(productCloseoutGraph);

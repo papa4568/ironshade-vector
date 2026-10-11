@@ -4,7 +4,7 @@
   "mode": "advisory",
   "scenarios": [
     {
-      "taskId": "P28-PLOAD2",
+      "taskId": "P28-F6",
       "probeId": "mission-load-readiness-observer",
       "expectedSurfaces": [
         "src/game/combatGraphicsBackend.ts",
