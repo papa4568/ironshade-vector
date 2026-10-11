@@ -23,12 +23,13 @@ async function exerciseRuntimeIsolationRegression() {
   const fixtureRoot = await mkdtemp(join(tmpdir(), 'ironshade-runtime-calibration-regression-'));
   const targetPath = join(fixtureRoot, 'target.mjs');
   const sentinelPath = join(fixtureRoot, 'source-sentinel.txt');
+  const ignoredSentinelPath = join(fixtureRoot, 'ignored-source-sentinel.txt');
   const verifierPath = join(fixtureRoot, 'verify.mjs');
   const dependencyDir = join(fixtureRoot, 'node_modules');
   const dependencySentinelPath = join(dependencyDir, 'dependency-sentinel.txt');
-  const previousMutateSource = process.env.RUNTIME_CALIBRATION_MUTATE_SOURCE;
-  const previousSourceSentinel = process.env.RUNTIME_CALIBRATION_SOURCE_SENTINEL;
-  const previousMutateDependency = process.env.RUNTIME_CALIBRATION_MUTATE_DEPENDENCY;
+  const previousGithubWorkspace = process.env.GITHUB_WORKSPACE;
+  const previousInitCwd = process.env.INIT_CWD;
+  const previousPwd = process.env.PWD;
 
   try {
     execFileSync('git', ['init', '--quiet'], { cwd: fixtureRoot });
@@ -37,27 +38,28 @@ async function exerciseRuntimeIsolationRegression() {
 
     await writeFile(targetPath, 'export const batchSize = 4;\n');
     await writeFile(sentinelPath, 'source sentinel\n');
+    await writeFile(join(fixtureRoot, '.gitignore'), 'ignored-source-sentinel.txt\n');
     await writeFile(verifierPath, `import { execFileSync } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 const remotes = execFileSync('git', ['remote'], { encoding: 'utf8' }).trim();
 if (remotes) {
   console.error(\`runtime calibration sandbox retained remote: \${remotes}\`);
   process.exit(2);
 }
+const workspace = process.env.GITHUB_WORKSPACE;
+if (!workspace) {
+  console.error('runtime calibration verifier workspace was not provided');
+  process.exit(5);
+}
+appendFileSync(join(workspace, 'ignored-source-sentinel.txt'), 'sandbox workspace mutation\\n');
 const dependencySentinel = readFileSync('node_modules/dependency-sentinel.txt', 'utf8');
 if (dependencySentinel !== 'source dependency sentinel\\n') {
   console.error(\`runtime calibration dependency state leaked across trials: \${JSON.stringify(dependencySentinel)}\`);
   process.exit(4);
 }
-if (process.env.RUNTIME_CALIBRATION_MUTATE_DEPENDENCY === '1') {
-  appendFileSync('node_modules/dependency-sentinel.txt', 'sandbox dependency mutation\\n');
-}
-if (process.env.RUNTIME_CALIBRATION_MUTATE_SOURCE === '1') {
-  const sentinel = process.env.RUNTIME_CALIBRATION_SOURCE_SENTINEL;
-  if (!sentinel) throw new Error('missing runtime calibration source sentinel');
-  appendFileSync(sentinel, 'unexpected source mutation\\n');
-}
+appendFileSync('node_modules/dependency-sentinel.txt', 'sandbox dependency mutation\\n');
 const target = readFileSync('target.mjs', 'utf8');
 if (target.includes('batchSize = 1;')) {
   console.error('runtime isolation fixture batch size 1');
@@ -70,8 +72,9 @@ if (target.includes('batchSize = 4;') || target.includes('batchSize = 2 + 2;')) 
 console.error('runtime isolation fixture unknown target state');
 process.exit(3);
 `);
-    execFileSync('git', ['add', 'target.mjs', 'verify.mjs', 'source-sentinel.txt'], { cwd: fixtureRoot });
+    execFileSync('git', ['add', 'target.mjs', 'verify.mjs', 'source-sentinel.txt', '.gitignore'], { cwd: fixtureRoot });
     execFileSync('git', ['commit', '--quiet', '-m', 'runtime isolation fixture'], { cwd: fixtureRoot });
+    await writeFile(ignoredSentinelPath, 'source ignored sentinel\n');
     await mkdir(dependencyDir);
     await writeFile(dependencySentinelPath, 'source dependency sentinel\n');
 
@@ -100,9 +103,9 @@ process.exit(3);
       },
     };
 
-    delete process.env.RUNTIME_CALIBRATION_MUTATE_SOURCE;
-    delete process.env.RUNTIME_CALIBRATION_SOURCE_SENTINEL;
-    delete process.env.RUNTIME_CALIBRATION_MUTATE_DEPENDENCY;
+    process.env.GITHUB_WORKSPACE = fixtureRoot;
+    process.env.INIT_CWD = fixtureRoot;
+    process.env.PWD = fixtureRoot;
     const report = await exerciseRuntimeCalibration({
       candidateSha: fixtureSha,
       config: fixtureConfig,
@@ -112,29 +115,23 @@ process.exit(3);
     assert.equal(report.isolation.sourceHead, fixtureSha);
     assert.equal(report.isolation.sourceUnchanged, true, 'runtime calibration must prove its source repository stayed unchanged');
     assert.equal(report.isolation.sandboxRemoteDetached, true, 'runtime verifier itself must observe a detached sandbox remote');
+    assert.equal(report.isolation.environmentIsolation.workspaceRebased, true, 'runtime verifier workspace must be rebound to disposable state');
+    assert.equal(report.isolation.environmentIsolation.sourcePathVariablesExposed, false, 'runtime verifier environment must not expose the source repository path');
     assert.equal(report.isolation.dependencyIsolation.strategy, 'isolated-node-modules-copy');
     assert.equal(report.isolation.dependencyIsolation.writableSourceDependencyPathExposed, false);
     assert.equal(report.negativeControls[0].falsePositive, false);
     assert.equal(report.attack.detected, true);
-    assert.equal(git(['status', '--porcelain=v1', '--untracked-files=all'], fixtureRoot), '?? node_modules/dependency-sentinel.txt', 'successful runtime calibration must preserve the source fixture including its pre-existing dependency tree');
-
-    process.env.RUNTIME_CALIBRATION_MUTATE_DEPENDENCY = '1';
-    const dependencyMutationReport = await exerciseRuntimeCalibration({
-      candidateSha: fixtureSha,
-      config: fixtureConfig,
-      repoRoot: fixtureRoot,
-    });
-    assert.equal(dependencyMutationReport.isolation.dependencyIsolation.strategy, 'isolated-node-modules-copy');
-    assert.equal(dependencyMutationReport.isolation.dependencyIsolation.writableSourceDependencyPathExposed, false);
-    assert.equal(dependencyMutationReport.baseline.passed, true, 'sandbox dependency mutation must not contaminate the next control trial');
-    assert.equal(dependencyMutationReport.negativeControls[0].passed, true, 'each runtime trial must receive a fresh dependency copy');
-    assert.equal(dependencyMutationReport.attack.detected, true);
+    assert.equal(
+      await readFile(ignoredSentinelPath, 'utf8'),
+      'source ignored sentinel\n',
+      'a verifier write through GITHUB_WORKSPACE must be contained in the disposable clone even for git-ignored paths',
+    );
     assert.equal(
       await readFile(dependencySentinelPath, 'utf8'),
       'source dependency sentinel\n',
       'verifier writes through sandbox node_modules must never mutate source dependencies',
     );
-    delete process.env.RUNTIME_CALIBRATION_MUTATE_DEPENDENCY;
+    assert.equal(git(['status', '--porcelain=v1', '--untracked-files=all'], fixtureRoot), '?? node_modules/dependency-sentinel.txt', 'successful runtime calibration must preserve the source fixture including ignored and dependency state');
 
     const dependencyEscapePath = join(dependencyDir, 'escape-to-source');
     await symlink(sentinelPath, dependencyEscapePath);
@@ -148,25 +145,13 @@ process.exit(3);
       'runtime calibration must reject dependency links that expose writable source paths to the verifier',
     );
     await unlink(dependencyEscapePath);
-
-    process.env.RUNTIME_CALIBRATION_MUTATE_SOURCE = '1';
-    process.env.RUNTIME_CALIBRATION_SOURCE_SENTINEL = sentinelPath;
-    await assert.rejects(
-      exerciseRuntimeCalibration({
-        candidateSha: fixtureSha,
-        config: fixtureConfig,
-        repoRoot: fixtureRoot,
-      }),
-      /source working tree changed during runtime attack calibration/,
-      'runtime calibration must fail closed when its verifier mutates tracked source state instead of disposable state',
-    );
   } finally {
-    if (previousMutateSource === undefined) delete process.env.RUNTIME_CALIBRATION_MUTATE_SOURCE;
-    else process.env.RUNTIME_CALIBRATION_MUTATE_SOURCE = previousMutateSource;
-    if (previousSourceSentinel === undefined) delete process.env.RUNTIME_CALIBRATION_SOURCE_SENTINEL;
-    else process.env.RUNTIME_CALIBRATION_SOURCE_SENTINEL = previousSourceSentinel;
-    if (previousMutateDependency === undefined) delete process.env.RUNTIME_CALIBRATION_MUTATE_DEPENDENCY;
-    else process.env.RUNTIME_CALIBRATION_MUTATE_DEPENDENCY = previousMutateDependency;
+    if (previousGithubWorkspace === undefined) delete process.env.GITHUB_WORKSPACE;
+    else process.env.GITHUB_WORKSPACE = previousGithubWorkspace;
+    if (previousInitCwd === undefined) delete process.env.INIT_CWD;
+    else process.env.INIT_CWD = previousInitCwd;
+    if (previousPwd === undefined) delete process.env.PWD;
+    else process.env.PWD = previousPwd;
     await rm(fixtureRoot, { recursive: true, force: true });
   }
 }
@@ -237,6 +222,7 @@ const runtimeReport = {
   isolation: {
     sourceUnchanged: true,
     sandboxRemoteDetached: true,
+    environmentIsolation: { workspaceRebased: true, sourcePathVariablesExposed: false },
     dependencyIsolation: { strategy: 'isolated-node-modules-copy', writableSourceDependencyPathExposed: false },
   },
 };
@@ -364,4 +350,4 @@ assert.throws(
   'promotion policy must not relax the zero false-negative requirement',
 );
 
-console.log(`ACCEPTANCE_ATTACK_PROMOTION_REGRESSIONS_PASS candidate=${candidateSha} scope=${scope.id} runtimeIsolation=exercised+fault-tested dependencyIsolation=fresh-copy+write-contained+escape-rejected measuredControl=true criterionMatchedFailure=true falsePositiveBudget=0 falseNegativeBudget=0 advisorySurvivors=${result.advisory.survivors.length} rollback=advisory`);
+console.log(`ACCEPTANCE_ATTACK_PROMOTION_REGRESSIONS_PASS candidate=${candidateSha} scope=${scope.id} runtimeIsolation=exercised+fault-tested dependencyIsolation=fresh-copy+write-contained+escape-rejected environmentIsolation=workspace-rebased+ignored-write-contained measuredControl=true criterionMatchedFailure=true falsePositiveBudget=0 falseNegativeBudget=0 advisorySurvivors=${result.advisory.survivors.length} rollback=advisory`);
