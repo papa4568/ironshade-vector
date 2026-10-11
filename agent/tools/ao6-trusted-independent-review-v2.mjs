@@ -59,6 +59,22 @@ export function parseReview(text) {
   throw new Error('model response has unterminated JSON object');
 }
 
+function normalizeProofCheckIds(result, packet) {
+  if (!Array.isArray(result?.proofChecks)) return result;
+  const known = new Map();
+  for (const proof of packet.requiredProofs) {
+    const compact = proof.id.replace(/\s+/g, '');
+    ok(!known.has(compact), `trusted packet proof ids collide after whitespace normalization: ${proof.id}`);
+    known.set(compact, proof.id);
+  }
+  for (const check of result.proofChecks) {
+    if (typeof check?.proofId !== 'string') continue;
+    const exact = known.get(check.proofId.replace(/\s+/g, ''));
+    if (exact) check.proofId = exact;
+  }
+  return result;
+}
+
 export function persistReviewEvidence({ result, body, directory = '.trusted-review' }) {
   mkdirSync(directory, { recursive: true });
   writeFileSync(`${directory}/review-result.json`, `${JSON.stringify(result, null, 2)}\n`, 'utf8');
@@ -250,7 +266,7 @@ async function run() {
     },
   );
 
-  const result = validate(parseReview(response), packet);
+  const result = validate(normalizeProofCheckIds(parseReview(response), packet), packet);
   Object.assign(result, {
     reviewerKind: 'trusted-main-copilot-actions',
     sourceWorkflow: 'AO-6 Trusted Independent Review',
@@ -294,6 +310,33 @@ function selfTest() {
   ok(parsedInvalidEscapes.note === String.raw`regex \. and \s and \d and literal \uZZZZ`, 'invalid JSON escape repair failed');
   const parsedValidEscapes = parseReview(String.raw`{"note":"quote \" slash \\ newline \n unicode \u263A"}`);
   ok(parsedValidEscapes.note === 'quote " slash \\ newline \n unicode ☺', 'valid JSON escape preservation failed');
+  const wrappedProof = {
+    schemaVersion: 1,
+    taskId: 'AO-6',
+    candidateSha: 'a'.repeat(40),
+    mode: 'read-only-adversarial',
+    verdict: 'pass',
+    acceptanceChecks: [
+      { index: 0, status: 'satisfied', notes: 'checked' },
+      { index: 1, status: 'satisfied', notes: 'checked' },
+    ],
+    proofChecks: [
+      { proofId: 'review-contract', status: 'credible', notes: 'checked' },
+      { proofId: 'architecture-in\nvariants', status: 'credible', notes: 'checked' },
+    ],
+    findings: [],
+  };
+  const normalizedProof = validate(normalizeProofCheckIds(wrappedProof, packet), packet);
+  ok(normalizedProof.proofChecks[1].proofId === 'architecture-invariants', 'wrapped trusted proof id normalization failed');
+  const unknownProof = structuredClone(wrappedProof);
+  unknownProof.proofChecks[1].proofId = 'architecture-in\nvariantz';
+  let rejectedUnknownProof = false;
+  try {
+    validate(normalizeProofCheckIds(unknownProof, packet), packet);
+  } catch {
+    rejectedUnknownProof = true;
+  }
+  ok(rejectedUnknownProof, 'unknown trusted proof id must remain rejected after whitespace normalization');
   const text = buildPrompt(packet, { candidateRun: { conclusion: 'failure' } }, 'diff');
   ok(text.includes('SELF-REFERENCE RULE'), 'self-reference rule missing from prompt');
   ok(text.includes('never require a previously published review verdict'), 'circular-review regression missing from prompt');
