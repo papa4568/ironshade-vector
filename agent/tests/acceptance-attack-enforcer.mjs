@@ -7,10 +7,27 @@ import {
   runRegisteredAcceptanceAttack,
   validateAcceptanceAttackPolicy,
 } from '../tools/acceptance-attack-enforcer.mjs';
+import { loadCandidateTask } from '../tools/candidate-evidence.mjs';
+import { selectExperimentalReviewTask } from '../tools/experimental-review-task.mjs';
 
 const policy = validateAcceptanceAttackPolicy(JSON.parse(await readFile('agent/acceptance-attack-policy.json', 'utf8')));
 assert.deepEqual(policy.enforcedTemplates, ['hidden-serialization']);
 assert.equal(policy.registrations.length, 1);
+
+const roadmapRaw = await readFile('docs/experimental-verification-roadmap.md', 'utf8');
+const activeExperimental = selectExperimentalReviewTask(roadmapRaw);
+assert.equal(activeExperimental?.task.id, 'EV-8', 'EV-8 must be the first executable experimental promotion');
+assert.equal(activeExperimental?.mode, 'experimental');
+assert.equal(activeExperimental.task.acceptance.length, 5, 'EV-8 review contract must preserve all roadmap acceptance bullets');
+assert.equal(activeExperimental.task.proofs.length, 6, 'EV-8 review contract must preserve all final proof kinds');
+const candidateTask = await loadCandidateTask('EV-8');
+assert.equal(candidateTask.source, 'docs/experimental-verification-roadmap.md', 'EV-8 exact-candidate evidence must come from the experimental roadmap');
+assert.equal(candidateTask.task.id, 'EV-8');
+assert.equal(candidateTask.task.proofs.length, 6);
+const closeoutRoadmap = roadmapRaw.replace(/- \[ \] \*\*EV-8[\s\S]*?(?=\n- \[ \] \*\*EV-9)/, '');
+const closeoutExperimental = selectExperimentalReviewTask(closeoutRoadmap, { baseMarkdown: roadmapRaw });
+assert.equal(closeoutExperimental?.task.id, 'EV-8', 'EV-8 closeout must preserve the removed base task identity');
+assert.equal(closeoutExperimental?.mode, 'experimental-closeout');
 
 const registration = policy.registrations[0];
 const { report, enforcement } = await runRegisteredAcceptanceAttack({ policy, registration });
@@ -81,4 +98,4 @@ if (evidenceDir) {
   }, null, 2)}\n`);
 }
 
-console.log('ACCEPTANCE_ATTACK_ENFORCER_REGRESSIONS_PASS promoted=hidden-serialization fp=0/1 fn=0/1 advisoryProofGaps=5 rollback=advisory isolation=source-unchanged+remote-detached failClosed=missing-attack+source-mutation');
+console.log('ACCEPTANCE_ATTACK_ENFORCER_REGRESSIONS_PASS promoted=hidden-serialization fp=0/1 fn=0/1 advisoryProofGaps=5 rollback=advisory isolation=source-unchanged+remote-detached exactCandidate=EV-8 failClosed=missing-attack+source-mutation');
