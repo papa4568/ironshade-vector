@@ -30,6 +30,7 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
   - Make the promoted scope a normal exact-candidate verification obligation without replacing the underlying tests, build, browser/Android, APK, or independent-review gates.
   - Add/retain regression coverage proving disposable-clone isolation, source immutability, fail-closed mutation handling, and rollback to the pre-promotion pipeline.
   - Update `AGENTS.md` and the relevant `agent/` contracts to describe the permanent enforced behavior, then archive EV-8 with exact-SHA evidence and independent-review result.
+  - Promotion candidate scope is intentionally narrow: enforce only `hidden-serialization`, the EV-1 mutation already caught by the representative real P28-PLOAD1 verification path; keep `false-readiness`, `fake-telemetry`, `skipped-quality-work`, `special-cased-test-route`, and `omitted-resource-work` advisory until separate evidence supports promotion.
 
 - [ ] **EV-9 — Promote EV-2 Causal Evidence Independence**
   - Resolve or explicitly exclude every currently important criterion that is circular or unsupported before enabling enforcement for that criterion.
