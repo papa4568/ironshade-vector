@@ -8,6 +8,7 @@ import {
 
 const candidateSha = 'a'.repeat(40);
 const trustedWorkflowSha = 'b'.repeat(40);
+const trustedWorkflowPath = '.github/workflows/ao6-trusted-independent-review.yml';
 const packet = {
   schemaVersion: 1,
   taskId: 'AO-6',
@@ -45,7 +46,8 @@ const pass = {
 const envelope = result => `<!-- ironshade-independent-review:trusted-main-actions:v1 -->\n<!-- ironshade-independent-review:v1 -->\n\`\`\`json\n${JSON.stringify(result)}\n\`\`\``;
 const comment = {
   id: 12,
-  created_at: '2026-10-10T12:00:00Z',
+  created_at: '2026-10-10T12:00:10Z',
+  updated_at: '2026-10-10T12:00:10Z',
   issue_url: 'https://api.github.com/repos/papa4568/ironshade-vector/issues/346',
   author_association: 'NONE',
   user: { login: 'github-actions[bot]' },
@@ -77,6 +79,7 @@ const response = (value, status = 200) => new Response(typeof value === 'string'
 const dispatchFetch = async url => {
   if (url.endsWith('/actions/runs/123')) return response({
     name: 'AO-6 Trusted Independent Review',
+    path: trustedWorkflowPath,
     event: 'workflow_dispatch',
     head_branch: 'main',
     head_sha: trustedWorkflowSha,
@@ -84,7 +87,6 @@ const dispatchFetch = async url => {
     conclusion: 'success',
   });
   if (url.includes('/actions/runs/123/jobs')) return response({ jobs: [{ id: 77, name: 'trusted-review', status: 'completed', conclusion: 'success' }] });
-  if (url.endsWith('/actions/jobs/77/logs')) return response(`TRUSTED_INDEPENDENT_REVIEW_PASS candidate=${candidateSha} comment=12`);
   throw new Error(`unexpected URL ${url}`);
 };
 assert.deepEqual(await verifyTrustedMainMachineRun(comment, pass, { fetchImpl: dispatchFetch }), {
@@ -92,73 +94,122 @@ assert.deepEqual(await verifyTrustedMainMachineRun(comment, pass, { fetchImpl: d
   authorAssociation: 'TRUSTED_MAIN_ACTIONS',
 });
 
-const issueLogs = [
-  'EVENT_NAME: issue_comment',
-  'ISSUE_NUMBER: 346',
-  `COMMENT_BODY: /ao6-trusted-review 346 ${candidateSha} AO-6`,
-  'COMMENT_ASSOCIATION: OWNER',
-  `AO6_TRUSTED_REVIEW_REQUEST_RESOLVED pr=346 candidate=${candidateSha} task=AO-6`,
-  `TRUSTED_INDEPENDENT_REVIEW_PASS candidate=${candidateSha} comment=12`,
-].join('\n');
+const sourceCommand = {
+  id: 11,
+  created_at: '2026-10-10T12:00:00Z',
+  updated_at: '2026-10-10T12:00:00Z',
+  issue_url: 'https://api.github.com/repos/papa4568/ironshade-vector/issues/346',
+  author_association: 'OWNER',
+  user: { login: 'papa4568' },
+  body: `/ao6-trusted-review 346 ${candidateSha} AO-6`,
+};
+const issueComments = [sourceCommand, comment];
 const issueFetch = async url => {
   if (url.endsWith('/actions/runs/123')) return response({
     name: 'AO-6 Trusted Independent Review',
+    path: trustedWorkflowPath,
     event: 'issue_comment',
     head_branch: 'main',
     head_sha: trustedWorkflowSha,
     status: 'completed',
     conclusion: 'success',
+    created_at: '2026-10-10T12:00:03Z',
     actor: { login: 'papa4568' },
     triggering_actor: { login: 'papa4568' },
   });
   if (url.includes('/actions/runs/123/jobs')) return response({ jobs: [{ id: 77, name: 'trusted-review', status: 'completed', conclusion: 'success' }] });
-  if (url.endsWith('/actions/jobs/77/logs')) return response(issueLogs);
   throw new Error(`unexpected URL ${url}`);
 };
-assert.deepEqual(await verifyTrustedMainMachineRun(comment, pass, { fetchImpl: issueFetch }), {
+assert.deepEqual(await verifyTrustedMainMachineRun(comment, pass, { fetchImpl: issueFetch, comments: issueComments }), {
   reviewer: 'github-actions[bot]',
   authorAssociation: 'TRUSTED_MAIN_ACTIONS',
 });
 
-const untrustedIssueFetch = async url => {
-  if (url.endsWith('/actions/jobs/77/logs')) return response(issueLogs.replace('COMMENT_ASSOCIATION: OWNER', 'COMMENT_ASSOCIATION: NONE'));
-  return issueFetch(url);
-};
 await assert.rejects(
-  () => verifyTrustedMainMachineRun(comment, pass, { fetchImpl: untrustedIssueFetch }),
-  /OWNER, MEMBER, or COLLABORATOR/,
+  () => verifyTrustedMainMachineRun(comment, pass, {
+    fetchImpl: issueFetch,
+    comments: [{ ...sourceCommand, author_association: 'NONE' }, comment],
+  }),
+  /recent trusted command comment/,
 );
 
-const wrongCommandIssueFetch = async url => {
-  if (url.endsWith('/actions/jobs/77/logs')) return response(issueLogs.replace(candidateSha, 'c'.repeat(40)));
-  return issueFetch(url);
-};
 await assert.rejects(
-  () => verifyTrustedMainMachineRun(comment, pass, { fetchImpl: wrongCommandIssueFetch }),
-  /command does not bind this task and candidate/,
+  () => verifyTrustedMainMachineRun(comment, pass, {
+    fetchImpl: issueFetch,
+    comments: [{ ...sourceCommand, body: `/ao6-trusted-review 346 ${'c'.repeat(40)} AO-6` }, comment],
+  }),
+  /recent trusted command comment/,
 );
 
 const mismatchedActorIssueFetch = async url => {
   if (url.endsWith('/actions/runs/123')) return response({
     name: 'AO-6 Trusted Independent Review',
+    path: trustedWorkflowPath,
     event: 'issue_comment',
     head_branch: 'main',
     head_sha: trustedWorkflowSha,
     status: 'completed',
     conclusion: 'success',
+    created_at: '2026-10-10T12:00:03Z',
     actor: { login: 'papa4568' },
     triggering_actor: { login: 'someone-else' },
   });
   return issueFetch(url);
 };
 await assert.rejects(
-  () => verifyTrustedMainMachineRun(comment, pass, { fetchImpl: mismatchedActorIssueFetch }),
+  () => verifyTrustedMainMachineRun(comment, pass, { fetchImpl: mismatchedActorIssueFetch, comments: issueComments }),
   /actor provenance is invalid/,
+);
+
+await assert.rejects(
+  () => verifyTrustedMainMachineRun(comment, pass, {
+    fetchImpl: issueFetch,
+    comments: [{ ...sourceCommand, created_at: '2026-10-10T11:55:00Z', updated_at: '2026-10-10T11:55:00Z' }, comment],
+  }),
+  /recent trusted command comment/,
+);
+
+await assert.rejects(
+  () => verifyTrustedMainMachineRun(comment, pass, {
+    fetchImpl: issueFetch,
+    comments: [{ ...sourceCommand, updated_at: '2026-10-10T12:00:04Z' }, comment],
+  }),
+  /recent trusted command comment/,
+);
+
+const wrongPathFetch = async url => {
+  if (url.endsWith('/actions/runs/123')) return response({
+    name: 'AO-6 Trusted Independent Review',
+    path: '.github/workflows/not-the-trusted-review.yml',
+    event: 'issue_comment',
+    head_branch: 'main',
+    head_sha: trustedWorkflowSha,
+    status: 'completed',
+    conclusion: 'success',
+    created_at: '2026-10-10T12:00:03Z',
+    actor: { login: 'papa4568' },
+    triggering_actor: { login: 'papa4568' },
+  });
+  return issueFetch(url);
+};
+await assert.rejects(
+  () => verifyTrustedMainMachineRun(comment, pass, { fetchImpl: wrongPathFetch, comments: issueComments }),
+  /workflow path mismatch/,
+);
+
+const skippedJobFetch = async url => {
+  if (url.includes('/actions/runs/123/jobs')) return response({ jobs: [{ id: 77, name: 'trusted-review', status: 'completed', conclusion: 'skipped' }] });
+  return issueFetch(url);
+};
+await assert.rejects(
+  () => verifyTrustedMainMachineRun(comment, pass, { fetchImpl: skippedJobFetch, comments: issueComments }),
+  /job conclusion does not match verdict/,
 );
 
 const wrongBranchFetch = async url => {
   if (url.endsWith('/actions/runs/123')) return response({
     name: 'AO-6 Trusted Independent Review',
+    path: trustedWorkflowPath,
     event: 'workflow_dispatch',
     head_branch: 'chatgpt/ao6-independent-verifier-v2',
     head_sha: trustedWorkflowSha,
@@ -186,11 +237,12 @@ const gateSource = readFileSync('agent/tools/review-comment-gate.mjs', 'utf8');
 assert.match(gateSource, /trusted-main-actions:v1/);
 assert.match(gateSource, /workflow_dispatch/);
 assert.match(gateSource, /issue_comment/);
-assert.match(gateSource, /COMMENT_ASSOCIATION/);
-assert.match(gateSource, /AO6_TRUSTED_REVIEW_REQUEST_RESOLVED/);
-assert.match(gateSource, /head_branch === 'main'/);
-assert.match(gateSource, /TRUSTED_INDEPENDENT_REVIEW_/);
-assert.match(gateSource, /actions\/jobs\/\$\{job\.id\}\/logs/);
+assert.match(gateSource, /TRUSTED_WORKFLOW_PATH/);
+assert.match(gateSource, /TRUSTED_REQUEST_MAX_AGE_MS/);
+assert.match(gateSource, /author_association/);
+assert.match(gateSource, /recent trusted command comment/);
+assert.match(gateSource, /run\.path === TRUSTED_WORKFLOW_PATH/);
+assert.doesNotMatch(gateSource, /actions\/jobs\/\$\{job\.id\}\/logs/, 'candidate gate must not require privileged cross-run job-log downloads');
 assert.match(gateSource, /GITHUB_EVENT_PATH/, 'human fallback must derive the PR author from the trusted pull-request event');
 assert.match(gateSource, /normalizedLogin\(reviewerLogin\) === prAuthorLogin/, 'human fallback must reject self-authored PR-author verdicts');
 

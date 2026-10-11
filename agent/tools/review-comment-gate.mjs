@@ -8,7 +8,9 @@ const TRUSTED_MAIN_MARKER = '<!-- ironshade-independent-review:trusted-main-acti
 const TRUSTED_ASSOCIATIONS = new Set(['OWNER', 'MEMBER', 'COLLABORATOR']);
 const ACTIONS_LOGIN = 'github-actions[bot]';
 const TRUSTED_WORKFLOW = 'AO-6 Trusted Independent Review';
+const TRUSTED_WORKFLOW_PATH = '.github/workflows/ao6-trusted-independent-review.yml';
 const TRUSTED_JOB = 'trusted-review';
+const TRUSTED_REQUEST_MAX_AGE_MS = 2 * 60 * 1000;
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -94,19 +96,18 @@ export function selectAuthoritativeReviewComment(packet, comments, options = {})
   return chooseLatestPass(packet, parseTrustedHumanCandidates(packet, comments, options));
 }
 
-async function github(path, { accept = 'application/vnd.github+json', text = false, fetchImpl = fetch } = {}) {
+async function github(path, { fetchImpl = fetch } = {}) {
   const token = process.env.GITHUB_TOKEN?.trim();
-  assert(accept !== 'text/plain', 'GitHub provenance requests must use the supported JSON API media type');
   const response = await fetchImpl(`https://api.github.com/${path.replace(/^\//, '')}`, {
     headers: {
-      Accept: accept,
+      Accept: 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   });
   const body = await response.text();
   assert(response.ok, `GitHub provenance request ${path} failed ${response.status}: ${body}`);
-  return text ? body : JSON.parse(body);
+  return JSON.parse(body);
 }
 
 function issueNumberFromComment(comment) {
@@ -119,27 +120,57 @@ function issueNumberFromComment(comment) {
   return value;
 }
 
-function verifyIssueCommentRequestProvenance(comment, result, run, logs) {
+function matchesIssueNumber(comment, prNumber) {
+  if (typeof comment?.issue_url !== 'string') return false;
+  return comment.issue_url.match(/\/issues\/(\d+)(?:$|[?#])/)?.[1] === String(prNumber);
+}
+
+function verifyIssueCommentRequestProvenance(comment, result, run, comments) {
   const prNumber = issueNumberFromComment(comment);
   const actor = run.actor?.login;
   const triggeringActor = run.triggering_actor?.login;
   assertString(actor, 'trusted-main issue_comment actor');
-  assert(triggeringActor === actor && actor !== ACTIONS_LOGIN, 'trusted-main issue_comment actor provenance is invalid');
-
-  const association = [...TRUSTED_ASSOCIATIONS].find(value => logs.includes(`COMMENT_ASSOCIATION: ${value}`));
-  assert(association, 'trusted-main issue_comment source must have OWNER, MEMBER, or COLLABORATOR association');
-  assert(logs.includes(`ISSUE_NUMBER: ${prNumber}`), 'trusted-main issue_comment source PR number mismatch');
-  const fullCommand = `COMMENT_BODY: /ao6-trusted-review ${prNumber} ${result.candidateSha} ${result.taskId}`;
-  const defaultTaskCommand = `COMMENT_BODY: /ao6-trusted-review ${prNumber} ${result.candidateSha}`;
+  assertString(triggeringActor, 'trusted-main issue_comment triggering actor');
   assert(
-    logs.includes(fullCommand) || (result.taskId === 'AO-6' && logs.includes(defaultTaskCommand)),
-    'trusted-main issue_comment command does not bind this task and candidate',
+    normalizedLogin(triggeringActor) === normalizedLogin(actor) && normalizedLogin(actor) !== normalizedLogin(ACTIONS_LOGIN),
+    'trusted-main issue_comment actor provenance is invalid',
   );
-  const resolved = `AO6_TRUSTED_REVIEW_REQUEST_RESOLVED pr=${prNumber} candidate=${result.candidateSha} task=${result.taskId}`;
-  assert(logs.includes(resolved), 'trusted-main issue_comment resolver did not bind this PR, task, and candidate');
+  assert(Array.isArray(comments), 'trusted-main issue_comment provenance comments must be an array');
+
+  const runCreatedAt = Date.parse(run.created_at ?? '');
+  assert(Number.isFinite(runCreatedAt), 'trusted-main issue_comment source run created_at is invalid');
+  const fullCommand = `/ao6-trusted-review ${prNumber} ${result.candidateSha} ${result.taskId}`;
+  const defaultTaskCommand = `/ao6-trusted-review ${prNumber} ${result.candidateSha}`;
+  const expectedCommands = new Set([
+    fullCommand,
+    ...(result.taskId === 'AO-6' ? [defaultTaskCommand] : []),
+  ]);
+
+  const sourceComment = comments
+    .filter(candidate => {
+      if (!candidate || typeof candidate !== 'object') return false;
+      if (!TRUSTED_ASSOCIATIONS.has(candidate.author_association)) return false;
+      if (typeof candidate.user?.login !== 'string' || normalizedLogin(candidate.user.login) !== normalizedLogin(actor)) return false;
+      if (!matchesIssueNumber(candidate, prNumber)) return false;
+      if (typeof candidate.body !== 'string' || !expectedCommands.has(candidate.body.trim())) return false;
+      const createdAt = Date.parse(candidate.created_at ?? '');
+      const updatedAt = Date.parse(candidate.updated_at ?? candidate.created_at ?? '');
+      return Number.isFinite(createdAt)
+        && Number.isFinite(updatedAt)
+        && createdAt <= runCreatedAt
+        && updatedAt <= runCreatedAt
+        && runCreatedAt - createdAt <= TRUSTED_REQUEST_MAX_AGE_MS;
+    })
+    .sort((left, right) => Date.parse(left.created_at) - Date.parse(right.created_at))
+    .at(-1);
+
+  assert(
+    sourceComment,
+    'trusted-main issue_comment source must have a recent trusted command comment bound to this PR, task, candidate, and actor',
+  );
 }
 
-export async function verifyTrustedMainMachineRun(comment, result, { fetchImpl = fetch } = {}) {
+export async function verifyTrustedMainMachineRun(comment, result, { fetchImpl = fetch, comments = [] } = {}) {
   assert(comment.user?.login === ACTIONS_LOGIN, 'trusted-main automated review must be authored by github-actions[bot]');
   assert(typeof comment.body === 'string' && comment.body.includes(TRUSTED_MAIN_MARKER), 'trusted-main automated review marker is missing');
   assert(result.reviewerKind === 'trusted-main-copilot-actions', 'trusted-main review reviewerKind is invalid');
@@ -154,6 +185,7 @@ export async function verifyTrustedMainMachineRun(comment, result, { fetchImpl =
   assertString(repository, 'GITHUB_REPOSITORY');
   const run = await github(`repos/${repository}/actions/runs/${result.sourceRunId}`, { fetchImpl });
   assert(run.name === TRUSTED_WORKFLOW, 'trusted-main source run workflow name mismatch');
+  assert(run.path === TRUSTED_WORKFLOW_PATH, 'trusted-main source run workflow path mismatch');
   assert(['workflow_dispatch', 'issue_comment'].includes(run.event), 'trusted-main source run must be workflow_dispatch or trusted issue_comment');
   assert(run.head_branch === 'main', 'trusted-main source run must execute on main');
   assert(run.head_sha === result.trustedWorkflowSha, 'trusted-main source run SHA mismatch');
@@ -163,10 +195,7 @@ export async function verifyTrustedMainMachineRun(comment, result, { fetchImpl =
   const jobsPayload = await github(`repos/${repository}/actions/runs/${result.sourceRunId}/jobs?per_page=100`, { fetchImpl });
   const job = (jobsPayload.jobs ?? []).filter(entry => entry.name === TRUSTED_JOB).sort((a, b) => a.id - b.id).at(-1);
   assert(job?.status === 'completed' && job.conclusion === expectedConclusion, 'trusted-main review job conclusion does not match verdict');
-  const logs = await github(`repos/${repository}/actions/jobs/${job.id}/logs`, { text: true, fetchImpl });
-  if (run.event === 'issue_comment') verifyIssueCommentRequestProvenance(comment, result, run, logs);
-  const marker = `TRUSTED_INDEPENDENT_REVIEW_${result.verdict.toUpperCase()} candidate=${result.candidateSha} comment=${comment.id}`;
-  assert(logs.includes(marker), 'trusted-main review job log does not bind this verdict to the candidate and comment');
+  if (run.event === 'issue_comment') verifyIssueCommentRequestProvenance(comment, result, run, comments);
   return {
     reviewer: ACTIONS_LOGIN,
     authorAssociation: 'TRUSTED_MAIN_ACTIONS',
@@ -189,7 +218,7 @@ export async function selectAuthoritativeReviewCommentWithProvenance(packet, com
       throw new Error(`trusted independent review comment ${comment.id ?? 'unknown'} is malformed: ${error instanceof Error ? error.message : String(error)}`);
     }
     if (!result || result.taskId !== packet.taskId || result.candidateSha !== packet.candidateSha) continue;
-    const trust = await verify(comment, result, options);
+    const trust = await verify(comment, result, { ...options, comments });
     candidates.push({ comment, result, trust });
   }
 
