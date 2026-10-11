@@ -10,10 +10,11 @@ import {
 } from '../tools/acceptance-attack-compiler.mjs';
 
 const taskId = 'P28-PLOAD1';
+const roadmapPath = 'agent/fixtures/acceptance-attacks/p28-pload1/roadmap.md';
 const fixturePath = 'agent/fixtures/acceptance-attacks/p28-pload1/fixture.json';
 
-const first = await compileAttackPlan({ taskId });
-const second = await compileAttackPlan({ taskId });
+const first = await compileAttackPlan({ taskId, roadmapPath });
+const second = await compileAttackPlan({ taskId, roadmapPath });
 assert.deepEqual(second, first, 'attack plan must be deterministic for an unchanged roadmap task');
 assert.equal(first.schema, 'ironshade-acceptance-attack-plan:v1');
 assert.equal(first.mode, 'advisory');
@@ -56,7 +57,7 @@ await assert.rejects(
   'absolute mutation targets must fail before any write',
 );
 
-const report = await exerciseAttackPlan({ taskId, fixturePath });
+const report = await exerciseAttackPlan({ taskId, fixturePath, roadmapPath });
 assert.equal(report.schema, 'ironshade-acceptance-attack-report:v1');
 assert.equal(report.mode, 'advisory');
 assert.equal(report.taskId, taskId);
