@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
+import { selectExperimentalReviewTask } from './experimental-review-task.mjs';
 import {
   loadRoadmapAdapter,
   materializeRoadmapGraph,
@@ -15,9 +16,17 @@ const AO6_MAINTENANCE_PATHS = new Set([
   'agent/INDEPENDENT_VERIFIER.md',
   'agent/tools/ao6-trusted-independent-review.mjs',
   'agent/tools/ao6-trusted-independent-review-v2.mjs',
+  'agent/tools/trusted-independent-review-v3.mjs',
+  'agent/tools/experimental-review-task.mjs',
   'agent/tools/ao6-trusted-review-request.mjs',
   'agent/tools/review-comment-gate.mjs',
   'agent/tools/select-review-task.mjs',
+]);
+
+const EXPERIMENTAL_PROMOTION_PATHS = new Set([
+  'agent/acceptance-attack-policy.json',
+  'agent/tools/acceptance-attack-enforcer.mjs',
+  'agent/tests/acceptance-attack-enforcer.mjs',
 ]);
 
 function assert(condition, message) {
@@ -39,6 +48,11 @@ function loadRoadmapGraphAtRef(ref) {
   assert(metadata?.roadmap === 'docs/content-roadmap.md', 'roadmap metadata must point to docs/content-roadmap.md');
   const roadmapRaw = execFileSync('git', ['show', `${ref}:docs/content-roadmap.md`], { encoding: 'utf8' });
   return materializeRoadmapGraph(parseRoadmap(roadmapRaw), metadata);
+}
+
+function loadExperimentalRoadmapAtRef(ref) {
+  assert(typeof ref === 'string' && ref.trim().length > 0, 'experimental roadmap git ref must be a non-empty string');
+  return execFileSync('git', ['show', `${ref}:docs/experimental-verification-roadmap.md`], { encoding: 'utf8' });
 }
 
 function changedFilesBetweenRefs(baseRef, headRef) {
@@ -87,6 +101,11 @@ export function selectOrchestrationMaintenanceTask(currentGraph, changedFiles) {
   return { task: ao6, mode: 'orchestration-maintenance' };
 }
 
+function isExperimentalPromotionCandidate(changedFiles) {
+  return changedFiles.includes('docs/experimental-verification-roadmap.md')
+    || changedFiles.some(path => EXPERIMENTAL_PROMOTION_PATHS.has(path));
+}
+
 export function selectProductReviewTask(currentGraph, { baseGraph = null } = {}) {
   validateTaskGraph(currentGraph);
   if (!baseGraph) {
@@ -131,7 +150,21 @@ export async function selectReviewTask({ baseRef = null, headRef = null, useEven
   }
 
   if (baseRef && headRef) {
-    const maintenance = selectOrchestrationMaintenanceTask(currentGraph, changedFilesBetweenRefs(baseRef, headRef));
+    const changedFiles = changedFilesBetweenRefs(baseRef, headRef);
+    if (isExperimentalPromotionCandidate(changedFiles)) {
+      const experimental = selectExperimentalReviewTask(
+        loadExperimentalRoadmapAtRef(headRef),
+        { baseMarkdown: loadExperimentalRoadmapAtRef(baseRef) },
+      );
+      assert(experimental, 'experimental promotion candidate has no executable EV task');
+      return {
+        taskId: experimental.task.id,
+        source: 'docs/experimental-verification-roadmap.md',
+        mode: experimental.mode,
+      };
+    }
+
+    const maintenance = selectOrchestrationMaintenanceTask(currentGraph, changedFiles);
     if (maintenance) {
       return {
         taskId: maintenance.task.id,
@@ -151,7 +184,7 @@ export async function selectReviewTask({ baseRef = null, headRef = null, useEven
     product = selectProductReviewTask(graph);
   }
 
-  if (!product) throw new Error('no active orchestration task or executable product-roadmap task is available for independent review');
+  if (!product) throw new Error('no active orchestration task, selected experimental promotion, or executable product-roadmap task is available for independent review');
   return { taskId: product.task.id, source: 'docs/content-roadmap.md', mode: product.mode };
 }
 
