@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { constants } from 'node:fs';
 import { cp, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
