@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "promotion": "EV-8",
+  "enabled": true,
+  "mode": "enforced-subset",
+  "enforcedTemplates": [
+    "hidden-serialization"
+  ],
+  "registrations": [
+    {
+      "taskId": "P28-PLOAD1",
+      "roadmap": "agent/fixtures/acceptance-attacks/p28-pload1/roadmap.md",
+      "fixture": "agent/fixtures/acceptance-attacks/p28-pload1/fixture.json",
+      "reason": "P28-PLOAD1 had a real serialized placement-instantiation defect; the archived production fix replaced the serial await chain with bounded batches, and the EV-1 fixture reproduces that dishonest regression class deterministically."
+    }
+  ],
+  "calibration": {
+    "honestControls": 1,
+    "dishonestControls": 1,
+    "expectedFalsePositives": 0,
+    "expectedFalseNegatives": 0,
+    "historicalReference": "docs/content-roadmap-archive.md#p28--babylon-flagship-visual-quality-overhaul"
+  },
+  "unsupportedTemplatesRemainAdvisory": true,
+  "rollback": {
+    "strategy": "set enabled=false",
+    "result": "The enforcer records the same attack report and measurements but does not block; the pre-EV-8 advisory pipeline remains authoritative."
+  }
+}
