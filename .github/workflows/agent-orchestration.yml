@@ -40,6 +40,9 @@ jobs:
         with:
           node-version: '22.23.2'
 
+      - name: Install locked dependencies for runtime calibration and architecture checks
+        run: npm ci --ignore-scripts
+
       - name: Validate orchestration task graph
         run: node agent/tools/validate-task-graph.mjs
 
@@ -67,7 +70,19 @@ jobs:
           ACCEPTANCE_ATTACK_EVIDENCE_DIR: .agent-attacks
         run: node agent/tests/acceptance-attack-compiler.mjs
 
-      - name: Upload acceptance attack advisory evidence
+      - name: Run promoted acceptance attack regressions
+        run: node agent/tests/acceptance-attack-promotion.mjs
+
+      - name: Enforce promoted acceptance attack scope
+        env:
+          CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node agent/tools/acceptance-attack-gate.mjs gate \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --policy agent/acceptance-attack-policy.json \
+            --output .agent-attacks/promotion-gate.json
+
+      - name: Upload acceptance attack advisory and enforcement evidence
         uses: actions/upload-artifact@v7
         with:
           name: acceptance-attack-shadow-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'push' }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
@@ -144,9 +159,6 @@ jobs:
 
       - name: Enforce single-producer CI proof reuse contract
         run: node agent/tests/ci-proof-reuse.mjs
-
-      - name: Install locked dependencies for architecture checks
-        run: npm ci --ignore-scripts
 
       - name: Enforce mechanical architecture invariants
         run: |

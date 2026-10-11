@@ -61,6 +61,24 @@ jobs:
           node agent/tools/select-review-task.mjs --json
           node agent/tests/independent-review.mjs
 
+      - name: Enforce promoted acceptance attack scope
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          node agent/tools/acceptance-attack-gate.mjs gate \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --policy agent/acceptance-attack-policy.json \
+            --output .agent-attacks/promotion-gate.json
+
+      - name: Upload promoted acceptance attack exact-SHA evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: acceptance-attack-gate-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: .agent-attacks/promotion-gate.json
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
+
       - name: Audit runtime dependencies once
         run: |
           set -euo pipefail

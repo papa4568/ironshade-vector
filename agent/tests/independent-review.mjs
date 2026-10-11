@@ -8,6 +8,7 @@ import {
 } from '../tools/independent-review.mjs';
 import { extractReviewResult, selectAuthoritativeReviewComment } from '../tools/review-comment-gate.mjs';
 import { loadRoadmapAdapter } from '../tools/roadmap-adapter.mjs';
+import { selectExperimentalReviewTask } from '../tools/experimental-review-task.mjs';
 import {
   selectExperimentalCandidateReviewTask,
   selectOrchestrationReviewTask,
@@ -263,8 +264,11 @@ assert.throws(
   'product closeout must reject combining multiple roadmap completions',
 );
 
-const experimentalCandidate = await loadCandidateTask('EV-8');
-assert.equal(experimentalCandidate.task.id, 'EV-8', 'candidate evidence must materialize the first exact experimental task');
+const currentExperimentalRoadmap = readFileSync('docs/experimental-verification-roadmap.md', 'utf8');
+const currentExperimentalSelection = selectExperimentalReviewTask(currentExperimentalRoadmap);
+assert(currentExperimentalSelection, 'candidate evidence regression requires at least one active experimental promotion item');
+const experimentalCandidate = await loadCandidateTask(currentExperimentalSelection.task.id);
+assert.equal(experimentalCandidate.task.id, currentExperimentalSelection.task.id, 'candidate evidence must materialize the first exact experimental task rather than a historical hard-coded EV item');
 assert.equal(experimentalCandidate.source, 'docs/experimental-verification-roadmap.md');
 assert(experimentalCandidate.task.proofs.some(proof => proof.id === 'independent-review' && proof.required), 'experimental candidate evidence must preserve the independent-review proof');
 
