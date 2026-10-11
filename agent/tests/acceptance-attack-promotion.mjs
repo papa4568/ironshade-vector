@@ -20,8 +20,8 @@ const [scope] = policy.scopes;
 assert.deepEqual(scope.enforcedTemplateIds, ['hidden-serialization'], 'unsupported EV-1 templates must remain advisory');
 assert.equal(
   scope.runtimeCalibration.verifyCommand,
-  'npm run prepare:graphics-assets && npm run test:graphics:babylon',
-  'promotion must prepare generated assets inside the disposable clone before exercising the real P28-PLOAD1 runtime regression',
+  'npm run prepare:graphics-assets && ./node_modules/.bin/vite build --ssr tests/p28-pload1-refinery-placement-runtime.ts --outDir .acceptance-attack-runtime-dist && node .acceptance-attack-runtime-dist/p28-pload1-refinery-placement-runtime.js',
+  'promotion must exercise the dedicated real P28-PLOAD1 runtime oracle without unrelated source-shape guards',
 );
 assert.equal(scope.runtimeCalibration.targetFile, 'src/game/babylonCombatRenderer.ts', 'promotion must mutate the production refinery loader');
 assert.equal(scope.runtimeCalibration.negativeControls.length, 1, 'promotion must measure at least one negative control');
