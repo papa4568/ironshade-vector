@@ -37,6 +37,7 @@ jobs:
           new = "assert.equal(productCloseoutSelection.task.id, completedProductTask.id, 'product closeout must preserve the removed task identity');"
           if text.count(old) != 1:
               raise SystemExit(f'independent-review closeout identity assertion count={text.count(old)}')
+          text = text.replace(old, new, 1)
           independent.write_text(text)
 
           shadow_test = Path('agent/tests/roadmap-shadow-simulator.mjs')
