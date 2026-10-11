@@ -248,7 +248,7 @@
       "id": "AO-7",
       "title": "Extend trusted independent review to experimental promotions",
       "priority": 70,
-      "status": "active",
+      "status": "verified",
       "dependsOn": ["AO-6"],
       "acceptance": [
         "Trusted-main review request parsing and exact-candidate packet resolution support EV-* promotion tasks without executing candidate-authored verifier code.",
