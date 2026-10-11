@@ -87,6 +87,7 @@ export function selectAuthoritativeReviewComment(packet, comments) {
 
 async function github(path, { accept = 'application/vnd.github+json', text = false, fetchImpl = fetch } = {}) {
   const token = process.env.GITHUB_TOKEN?.trim();
+  assert(accept !== 'text/plain', 'GitHub provenance requests must use the supported JSON API media type');
   const response = await fetchImpl(`https://api.github.com/${path.replace(/^\//, '')}`, {
     headers: {
       Accept: accept,
@@ -153,7 +154,7 @@ export async function verifyTrustedMainMachineRun(comment, result, { fetchImpl =
   const jobsPayload = await github(`repos/${repository}/actions/runs/${result.sourceRunId}/jobs?per_page=100`, { fetchImpl });
   const job = (jobsPayload.jobs ?? []).filter(entry => entry.name === TRUSTED_JOB).sort((a, b) => a.id - b.id).at(-1);
   assert(job?.status === 'completed' && job.conclusion === expectedConclusion, 'trusted-main review job conclusion does not match verdict');
-  const logs = await github(`repos/${repository}/actions/jobs/${job.id}/logs`, { accept: 'text/plain', text: true, fetchImpl });
+  const logs = await github(`repos/${repository}/actions/jobs/${job.id}/logs`, { text: true, fetchImpl });
   if (run.event === 'issue_comment') verifyIssueCommentRequestProvenance(comment, result, run, logs);
   const marker = `TRUSTED_INDEPENDENT_REVIEW_${result.verdict.toUpperCase()} candidate=${result.candidateSha} comment=${comment.id}`;
   assert(logs.includes(marker), 'trusted-main review job log does not bind this verdict to the candidate and comment');
