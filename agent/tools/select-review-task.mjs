@@ -2,7 +2,12 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
-import { loadRoadmapAdapter, selectNextRoadmapTask } from './roadmap-adapter.mjs';
+import {
+  loadRoadmapAdapter,
+  materializeRoadmapGraph,
+  parseRoadmap,
+  selectNextRoadmapTask,
+} from './roadmap-adapter.mjs';
 import { loadTaskGraph, validateTaskGraph } from './validate-task-graph.mjs';
 
 function assert(condition, message) {
@@ -15,6 +20,15 @@ function loadTaskGraphAtRef(ref) {
   const graph = JSON.parse(raw);
   validateTaskGraph(graph);
   return graph;
+}
+
+function loadRoadmapGraphAtRef(ref) {
+  assert(typeof ref === 'string' && ref.trim().length > 0, 'roadmap git ref must be a non-empty string');
+  const metadataRaw = execFileSync('git', ['show', `${ref}:agent/roadmap-metadata.json`], { encoding: 'utf8' });
+  const metadata = JSON.parse(metadataRaw);
+  assert(metadata?.roadmap === 'docs/content-roadmap.md', 'roadmap metadata must point to docs/content-roadmap.md');
+  const roadmapRaw = execFileSync('git', ['show', `${ref}:docs/content-roadmap.md`], { encoding: 'utf8' });
+  return materializeRoadmapGraph(parseRoadmap(roadmapRaw), metadata);
 }
 
 function githubPullRequestRefs() {
@@ -48,6 +62,32 @@ export function selectOrchestrationReviewTask(currentGraph, { baseGraph = null }
   return transitioned.length === 1 ? { task: transitioned[0], mode: 'orchestration-closeout' } : null;
 }
 
+export function selectProductReviewTask(currentGraph, { baseGraph = null } = {}) {
+  validateTaskGraph(currentGraph);
+  if (!baseGraph) {
+    const task = selectNextRoadmapTask(currentGraph);
+    return task ? { task, mode: 'product' } : null;
+  }
+
+  validateTaskGraph(baseGraph);
+  const baseIds = baseGraph.tasks.map(task => task.id);
+  const currentIds = currentGraph.tasks.map(task => task.id);
+  const baseFirst = baseGraph.tasks[0] ?? null;
+  if (baseFirst && !currentIds.includes(baseFirst.id)) {
+    const expectedIds = baseIds.slice(1);
+    assert(
+      JSON.stringify(currentIds) === JSON.stringify(expectedIds),
+      `product closeout for ${baseFirst.id} must remove only the first executable roadmap item without reordering or combining roadmap changes`,
+    );
+    return { task: baseFirst, mode: 'product-closeout' };
+  }
+
+  const removed = baseIds.filter(id => !currentIds.includes(id));
+  assert(removed.length === 0, `product roadmap removed non-current task(s): ${removed.join(', ')}`);
+  const task = selectNextRoadmapTask(currentGraph);
+  return task ? { task, mode: 'product' } : null;
+}
+
 export async function selectReviewTask({ baseRef = null, headRef = null, useEventRefs = true } = {}) {
   if (useEventRefs && !baseRef && !headRef) {
     const eventRefs = githubPullRequestRefs();
@@ -65,10 +105,18 @@ export async function selectReviewTask({ baseRef = null, headRef = null, useEven
     };
   }
 
-  const { graph } = await loadRoadmapAdapter();
-  const productTask = selectNextRoadmapTask(graph);
-  if (!productTask) throw new Error('no active orchestration task or executable product-roadmap task is available for independent review');
-  return { taskId: productTask.id, source: 'docs/content-roadmap.md', mode: 'product' };
+  let product;
+  if (headRef) {
+    const currentRoadmapGraph = loadRoadmapGraphAtRef(headRef);
+    const baseRoadmapGraph = baseRef ? loadRoadmapGraphAtRef(baseRef) : null;
+    product = selectProductReviewTask(currentRoadmapGraph, { baseGraph: baseRoadmapGraph });
+  } else {
+    const { graph } = await loadRoadmapAdapter();
+    product = selectProductReviewTask(graph);
+  }
+
+  if (!product) throw new Error('no active orchestration task or executable product-roadmap task is available for independent review');
+  return { taskId: product.task.id, source: 'docs/content-roadmap.md', mode: product.mode };
 }
 
 async function main() {

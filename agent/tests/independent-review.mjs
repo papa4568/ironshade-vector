@@ -6,7 +6,12 @@ import {
   validateIndependentReviewResult,
 } from '../tools/independent-review.mjs';
 import { extractReviewResult, selectAuthoritativeReviewComment } from '../tools/review-comment-gate.mjs';
-import { selectOrchestrationReviewTask, selectReviewTask } from '../tools/select-review-task.mjs';
+import { loadRoadmapAdapter } from '../tools/roadmap-adapter.mjs';
+import {
+  selectOrchestrationReviewTask,
+  selectProductReviewTask,
+  selectReviewTask,
+} from '../tools/select-review-task.mjs';
 import { sha256Value } from '../tools/candidate-evidence.mjs';
 
 const acceptance = ['criterion one', 'criterion two'];
@@ -166,9 +171,42 @@ const postMigrationSelection = await selectReviewTask({ useEventRefs: false });
 assert.equal(postMigrationSelection.mode, 'product', 'after AO-6 is already verified outside a closeout diff, review selection must fall back to product work');
 assert.equal(postMigrationSelection.source, 'docs/content-roadmap.md');
 
+const { graph: currentProductGraph } = await loadRoadmapAdapter();
+const productCloseoutGraph = structuredClone(currentProductGraph);
+const completedProductTask = productCloseoutGraph.tasks.shift();
+assert.equal(completedProductTask.id, 'P28-PLOAD1', 'fixture assumes the live first product task is P28-PLOAD1');
+productCloseoutGraph.tasks.forEach((entry, index) => {
+  entry.priority = index;
+  entry.status = index === 0 ? 'ready' : 'planned';
+  entry.dependsOn = entry.dependsOn.filter(dependencyId => dependencyId !== completedProductTask.id);
+});
+const productCloseoutSelection = selectProductReviewTask(productCloseoutGraph, { baseGraph: currentProductGraph });
+assert.equal(productCloseoutSelection.task.id, 'P28-PLOAD1', 'product closeout must preserve the removed task identity');
+assert.equal(productCloseoutSelection.mode, 'product-closeout');
+
+const combinedProductCloseout = structuredClone(productCloseoutGraph);
+combinedProductCloseout.tasks.shift();
+combinedProductCloseout.tasks.forEach((entry, index) => {
+  entry.priority = index;
+  entry.status = index === 0 ? 'ready' : 'planned';
+});
+assert.throws(
+  () => selectProductReviewTask(combinedProductCloseout, { baseGraph: currentProductGraph }),
+  /must remove only the first executable roadmap item/,
+  'product closeout must reject combining multiple roadmap completions',
+);
+
 const selectorSource = readFileSync('agent/tools/select-review-task.mjs', 'utf8');
 assert.match(selectorSource, /GITHUB_EVENT_PATH/, 'PR review selection must inspect the exact pull-request base and head refs');
 assert.match(selectorSource, /orchestration-closeout/, 'review selection must preserve a just-verified AO task as the closeout review target');
+assert.match(selectorSource, /product-closeout/, 'review selection must preserve a just-completed product task as the closeout review target');
+
+const candidateEvidenceSource = readFileSync('agent/tools/candidate-evidence.mjs', 'utf8');
+assert.match(candidateEvidenceSource, /baseRef/, 'candidate evidence must be able to recover a completed product task from the exact base roadmap');
+assert.match(candidateEvidenceSource, /loadProductTaskAtRef/, 'product closeout evidence must use an exact git-ref task contract');
+
+const independentReviewSource = readFileSync('agent/tools/independent-review.mjs', 'utf8');
+assert.match(independentReviewSource, /baseRef: candidateManifest\.candidate\.baseSha/, 'review packet generation must preserve the base product task contract after closeout');
 
 const workflow = readFileSync('.github/workflows/pr-candidate.yml', 'utf8');
 assert.match(workflow, /independent-review-context:/, 'PR candidate workflow must provide a separate review context job');
