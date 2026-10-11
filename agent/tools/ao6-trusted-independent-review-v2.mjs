@@ -388,7 +388,7 @@ function selfTest() {
       ],
     },
     rules: [{ prefix: 'P28-P', affectedDomains: ['graphics', 'performance'], proofProfile: 'performance' }],
-    overrides: { P28-PLOAD2: { dependsOn: ['P28-PLOAD1'] } },
+    overrides: { 'P28-PLOAD2': { dependsOn: ['P28-PLOAD1'] } },
   };
   const productPacket = packetFromRoadmap(
     baseProductMarkdown,
@@ -417,8 +417,13 @@ function selfTest() {
   let rejectedCombinedCloseout = false;
   try {
     packetFromProductRoadmaps({
-      headMarkdown: '',
-      headMetadata: { ...baseProductMetadata, roadmapIds: [], overrides: {} },
+      headMarkdown: '- [ ] **P28-D8 — Boss** — Ship boss. **Done when:** boss ships.\n',
+      headMetadata: {
+        ...baseProductMetadata,
+        roadmapIds: ['P28-D8'],
+        rules: [{ prefix: 'P28-', affectedDomains: ['graphics'], proofProfile: 'performance' }],
+        overrides: {},
+      },
       baseMarkdown: baseProductMarkdown,
       baseMetadata: baseProductMetadata,
       taskId: 'P28-PLOAD1',
