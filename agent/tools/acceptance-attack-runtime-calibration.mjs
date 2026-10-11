@@ -1,5 +1,5 @@
-import { createHash } from 'node:crypto';
-import { mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { cp, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -88,7 +88,7 @@ export function validateRuntimeCalibrationConfig(raw) {
   assert(typeof raw.verifyCommand === 'string' && raw.verifyCommand.trim(), 'runtime calibration verifyCommand must be non-empty');
   assert(typeof raw.targetFile === 'string' && raw.targetFile.trim(), 'runtime calibration targetFile must be non-empty');
   assert(typeof raw.passMarker === 'string' && raw.passMarker.trim(), 'runtime calibration passMarker must be non-empty');
-  assert(raw.dependencyStrategy === 'source-node-modules-symlink', 'runtime calibration dependencyStrategy must be source-node-modules-symlink');
+  assert(raw.dependencyStrategy === 'isolated-node-modules-copy', 'runtime calibration dependencyStrategy must be isolated-node-modules-copy');
   assert(Array.isArray(raw.negativeControls) && raw.negativeControls.length > 0, 'runtime calibration negativeControls must be non-empty');
   const controlIds = new Set();
   for (const [index, control] of raw.negativeControls.entries()) {
@@ -122,17 +122,25 @@ async function applyReplacement(filePath, replacement) {
   };
 }
 
-async function linkSourceDependencies(sandbox, repoRoot) {
+async function copySourceDependencies(sandbox, repoRoot) {
   const sourceNodeModules = await realpath(resolve(repoRoot, 'node_modules')).catch(() => null);
   assert(sourceNodeModules, 'runtime calibration requires locked dependencies installed in source node_modules');
-  const linkPath = resolve(sandbox, 'node_modules');
-  await rm(linkPath, { recursive: true, force: true });
-  await symlink(sourceNodeModules, linkPath, 'dir');
-  const linked = await realpath(linkPath);
-  assert(linked === sourceNodeModules, 'runtime calibration dependency link must resolve to the installed source dependency tree');
+  const sandboxNodeModules = resolve(sandbox, 'node_modules');
+  await rm(sandboxNodeModules, { recursive: true, force: true });
+  await cp(sourceNodeModules, sandboxNodeModules, {
+    recursive: true,
+    dereference: true,
+    preserveTimestamps: true,
+    mode: constants.COPYFILE_FICLONE,
+  });
+  const copied = await realpath(sandboxNodeModules);
+  assert(copied === sandboxNodeModules, 'runtime calibration dependencies must materialize inside the disposable clone');
+  assert(copied !== sourceNodeModules, 'runtime calibration dependencies must not resolve to source node_modules');
   return {
-    strategy: 'source-node-modules-symlink',
+    strategy: 'isolated-node-modules-copy',
     sourceDependencyPathDigest: createHash('sha256').update(sourceNodeModules).digest('hex'),
+    sandboxDependencyPathDigest: createHash('sha256').update(copied).digest('hex'),
+    writableSourceDependencyPathExposed: false,
   };
 }
 
@@ -187,7 +195,7 @@ export async function exerciseRuntimeCalibration({ candidateSha, config, repoRoo
     runGit(['reset', '--hard', '--quiet', sourceBefore.head], sandbox);
     runGit(['clean', '-fdx', '--quiet'], sandbox);
     assertSandboxRemoteDetached();
-    dependencyIsolation = await linkSourceDependencies(sandbox, resolvedRoot);
+    dependencyIsolation = await copySourceDependencies(sandbox, resolvedRoot);
   };
 
   try {
