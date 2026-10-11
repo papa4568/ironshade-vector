@@ -17,7 +17,7 @@
         "hidden-serialization"
       ],
       "runtimeCalibration": {
-        "verifyCommand": "npm run prepare:graphics-assets && npm run test:graphics:babylon",
+        "verifyCommand": "npm run prepare:graphics-assets && ./node_modules/.bin/vite build --ssr tests/p28-pload1-refinery-placement-runtime.ts --outDir .acceptance-attack-runtime-dist && node .acceptance-attack-runtime-dist/p28-pload1-refinery-placement-runtime.js",
         "targetFile": "src/game/babylonCombatRenderer.ts",
         "passMarker": "P28_PLOAD1_RUNTIME_PROFILE_PASS placements=73 batches=19 batchSize=4 peak=4 sourceFamilies=11",
         "dependencyStrategy": "source-node-modules-symlink",
