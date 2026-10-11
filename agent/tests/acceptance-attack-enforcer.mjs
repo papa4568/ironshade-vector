@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 
 import {
   evaluateAcceptanceAttackEnforcement,
@@ -62,5 +63,22 @@ assert.throws(
   /source repository must remain unchanged/,
   'source mutation must fail closed',
 );
+
+const evidenceDir = process.env.ACCEPTANCE_ATTACK_EVIDENCE_DIR;
+if (evidenceDir) {
+  const directory = resolve(evidenceDir);
+  await mkdir(directory, { recursive: true });
+  await writeFile(resolve(directory, 'ev8-enforcement.json'), `${JSON.stringify({
+    schema: 'ironshade-ev8-promotion-evidence:v1',
+    promotion: policy.promotion,
+    registration,
+    measurement: enforcement.measurement,
+    isolation: enforcement.isolation,
+    promotedVerdict: enforcement.verdict,
+    rollbackVerdict: rollback.verdict,
+    syntheticSurvivorVerdict: blocked.verdict,
+    candidatePassGranted: enforcement.candidatePassGranted,
+  }, null, 2)}\n`);
+}
 
 console.log('ACCEPTANCE_ATTACK_ENFORCER_REGRESSIONS_PASS promoted=hidden-serialization fp=0/1 fn=0/1 advisoryProofGaps=5 rollback=advisory isolation=source-unchanged+remote-detached failClosed=missing-attack+source-mutation');
