@@ -56,6 +56,10 @@ function outputText(verification) {
   return `${verification.stdout}\n${verification.stderr}`;
 }
 
+function logTrialFailure(kind, id, verification) {
+  console.log(`ACCEPTANCE_ATTACK_RUNTIME_${kind}_FAIL id=${id} exit=${verification.exitCode} output=${JSON.stringify(outputText(verification).slice(-4000))}`);
+}
+
 function snapshotSourceRepository(repoRoot) {
   const head = runGit(['rev-parse', 'HEAD'], repoRoot).stdout.trim();
   const branchResult = runGit(['symbolic-ref', '--short', '-q', 'HEAD'], repoRoot, { allowFailure: true });
@@ -193,6 +197,7 @@ export async function exerciseRuntimeCalibration({ candidateSha, config, repoRoo
     const baselineEvaluation = evaluatePassControl(baseline, validated.passMarker);
     assert(baselineEvaluation.passed, `real runtime verifier baseline failed: ${baseline.stderr || baseline.stdout}`);
     baseline = { ...baseline, ...baselineEvaluation };
+    console.log(`ACCEPTANCE_ATTACK_RUNTIME_BASELINE_PASS exit=${baseline.exitCode} markerMatched=${baseline.markerMatched}`);
 
     for (const control of validated.negativeControls) {
       await resetSandbox();
@@ -200,6 +205,8 @@ export async function exerciseRuntimeCalibration({ candidateSha, config, repoRoo
       const mutation = await applyReplacement(mutationTarget, control.replacement);
       const verification = runCommand(validated.verifyCommand, sandbox);
       const evaluation = evaluatePassControl(verification, validated.passMarker);
+      console.log(`ACCEPTANCE_ATTACK_RUNTIME_CONTROL id=${control.id} exit=${verification.exitCode} markerMatched=${evaluation.markerMatched} falsePositive=${evaluation.falsePositive}`);
+      if (evaluation.falsePositive) logTrialFailure('CONTROL', control.id, verification);
       negativeControls.push({
         id: control.id,
         mutation,
@@ -213,6 +220,8 @@ export async function exerciseRuntimeCalibration({ candidateSha, config, repoRoo
     const mutation = await applyReplacement(attackTarget, validated.attack.replacement);
     const verification = runCommand(validated.verifyCommand, sandbox);
     const evaluation = evaluateDishonestAttack(verification, validated.attack.expectedFailurePatterns);
+    console.log(`ACCEPTANCE_ATTACK_RUNTIME_ATTACK template=${validated.attack.templateId} exit=${verification.exitCode} matchedPatterns=${evaluation.matchedPatterns.length}/${evaluation.expectedFailurePatterns.length} detected=${evaluation.detected} falseNegative=${evaluation.falseNegative}`);
+    if (!evaluation.detected) logTrialFailure('ATTACK', validated.attack.templateId, verification);
     attack = {
       templateId: validated.attack.templateId,
       mutation,
