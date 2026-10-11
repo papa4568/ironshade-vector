@@ -156,22 +156,41 @@ assert.throws(
 );
 
 const currentGraph = JSON.parse(readFileSync('agent/task-graph.json', 'utf8'));
-const baseGraph = structuredClone(currentGraph);
-const currentAo6 = currentGraph.tasks.find(entry => entry.id === 'AO-6');
-const baseAo6 = baseGraph.tasks.find(entry => entry.id === 'AO-6');
-assert.equal(currentAo6.status, 'verified', 'AO-6 closeout candidate must carry its verified state');
+const activeTask = currentGraph.tasks.find(entry => entry.status === 'active' || entry.status === 'verifying');
+assert(activeTask, 'review-selection fixture requires one in-flight AO task');
+const inFlightSelection = await selectReviewTask({ useEventRefs: false });
+assert.equal(inFlightSelection.taskId, activeTask.id, 'review selection must target the actual in-flight AO task rather than a historical task ID');
+assert.equal(inFlightSelection.mode, 'orchestration');
+assert.equal(inFlightSelection.source, 'agent/task-graph.json');
+
+const closeoutCurrentGraph = structuredClone(currentGraph);
+const closeoutBaseGraph = structuredClone(currentGraph);
+for (const entry of closeoutCurrentGraph.tasks) {
+  if (entry.status === 'active' || entry.status === 'verifying') entry.status = 'planned';
+}
+for (const entry of closeoutBaseGraph.tasks) {
+  if (entry.status === 'active' || entry.status === 'verifying') entry.status = 'planned';
+}
+const currentAo6 = closeoutCurrentGraph.tasks.find(entry => entry.id === 'AO-6');
+const baseAo6 = closeoutBaseGraph.tasks.find(entry => entry.id === 'AO-6');
+assert.equal(currentAo6.status, 'verified', 'AO-6 closeout fixture must carry its verified state');
 baseAo6.status = 'active';
-const closeoutSelection = selectOrchestrationReviewTask(currentGraph, { baseGraph });
+const closeoutSelection = selectOrchestrationReviewTask(closeoutCurrentGraph, { baseGraph: closeoutBaseGraph });
 assert.equal(closeoutSelection.task.id, 'AO-6');
 assert.equal(closeoutSelection.mode, 'orchestration-closeout');
 
-const unchangedBase = structuredClone(currentGraph);
-assert.equal(selectOrchestrationReviewTask(currentGraph, { baseGraph: unchangedBase }), null);
-const postMigrationSelection = await selectReviewTask({ useEventRefs: false });
-assert.equal(postMigrationSelection.mode, 'product', 'after AO-6 is already verified outside a closeout diff, review selection must fall back to product work');
-assert.equal(postMigrationSelection.source, 'docs/content-roadmap.md');
+const postMigrationGraph = structuredClone(currentGraph);
+for (const entry of postMigrationGraph.tasks) {
+  if (entry.status === 'active' || entry.status === 'verifying') entry.status = 'verified';
+}
+const unchangedPostMigrationBase = structuredClone(postMigrationGraph);
+assert.equal(selectOrchestrationReviewTask(postMigrationGraph, { baseGraph: unchangedPostMigrationBase }), null, 'without an active or closing AO task orchestration selection must fall through');
 
 const { graph: currentProductGraph } = await loadRoadmapAdapter();
+const productFallbackSelection = selectProductReviewTask(currentProductGraph);
+assert.equal(productFallbackSelection.mode, 'product', 'after AO work is no longer in flight, review selection must fall back to product work');
+assert.equal(productFallbackSelection.task.id, currentProductGraph.tasks[0].id);
+
 const productCloseoutGraph = structuredClone(currentProductGraph);
 const completedProductTask = productCloseoutGraph.tasks.shift();
 assert(completedProductTask, 'product closeout fixture requires at least one live product task');
@@ -200,6 +219,7 @@ const selectorSource = readFileSync('agent/tools/select-review-task.mjs', 'utf8'
 assert.match(selectorSource, /GITHUB_EVENT_PATH/, 'PR review selection must inspect the exact pull-request base and head refs');
 assert.match(selectorSource, /orchestration-closeout/, 'review selection must preserve a just-verified AO task as the closeout review target');
 assert.match(selectorSource, /product-closeout/, 'review selection must preserve a just-completed product task as the closeout review target');
+assert.doesNotMatch(selectorSource, /orchestration-maintenance/, 'verified AO tasks must not override the required product fallback through a maintenance shortcut');
 
 const candidateEvidenceSource = readFileSync('agent/tools/candidate-evidence.mjs', 'utf8');
 assert.match(candidateEvidenceSource, /baseRef/, 'candidate evidence must be able to recover a completed product task from the exact base roadmap');
