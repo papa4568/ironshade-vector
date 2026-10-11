@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 const TASK_LINE = /^- \[ \] \*\*(EV-\d+) — (.+?)\*\*\s*$/;
-const EV_TASK_PREFIX = /^- \[ \] \*\*EV-\d+/;
+const EV_TASK_PREFIX = /^- \[ \] \*\*EV-/;
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
