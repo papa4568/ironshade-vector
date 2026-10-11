@@ -2166,24 +2166,31 @@ export class BabylonCombatRenderer implements CombatGraphicsBackend {
           throw rejected.reason;
         }
 
-        for (let index = 0; index < batch.length; index += 1) {
-          const task = batch[index];
-          const result = results[index];
-          if (!task || result?.status !== 'fulfilled') throw new Error('Refinery placement batch completed without a fulfilled instance');
-          const instance = result.value;
-          const { key, placement } = task;
-          const placementRoot = new TransformNode(`p27-b2-${key}-${task.index}`, this.scene);
-          placementRoot.parent = loadRoot;
-          placementRoot.position.set(placement.x, key === 'floor' ? 0.005 : key === 'floorGrate' ? 0.010 : 0, placement.z);
-          placementRoot.rotation.y = placement.rotationY ?? 0;
-          const scale = placement.scale ?? 1;
-          placementRoot.scaling.set(scale, scale, scale);
-          instance.rootNodes.forEach(root => {
-            root.parent = placementRoot;
-          });
-          this.applyRefineryPremiumSurfaces(key, instance, premiumSurfaceUsage);
-          mountedInstances.push(instance);
-          placementCount += 1;
+        const unmountedBatchInstances = new Set(batchInstances);
+        try {
+          for (let index = 0; index < batch.length; index += 1) {
+            const task = batch[index];
+            const result = results[index];
+            if (!task || result?.status !== 'fulfilled') throw new Error('Refinery placement batch completed without a fulfilled instance');
+            const instance = result.value;
+            const { key, placement } = task;
+            const placementRoot = new TransformNode(`p27-b2-${key}-${task.index}`, this.scene);
+            placementRoot.parent = loadRoot;
+            placementRoot.position.set(placement.x, key === 'floor' ? 0.005 : key === 'floorGrate' ? 0.010 : 0, placement.z);
+            placementRoot.rotation.y = placement.rotationY ?? 0;
+            const scale = placement.scale ?? 1;
+            placementRoot.scaling.set(scale, scale, scale);
+            instance.rootNodes.forEach(root => {
+              root.parent = placementRoot;
+            });
+            this.applyRefineryPremiumSurfaces(key, instance, premiumSurfaceUsage);
+            mountedInstances.push(instance);
+            unmountedBatchInstances.delete(instance);
+            placementCount += 1;
+          }
+        } catch (error) {
+          unmountedBatchInstances.forEach(instance => instance.release());
+          throw error;
         }
       }
 
