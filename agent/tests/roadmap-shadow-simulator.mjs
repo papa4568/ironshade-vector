@@ -35,15 +35,15 @@ assert.equal(report.blocking, false);
 
 const loadScenario = config.scenarios[0];
 const loadClean = await analyzeRoadmapShadowScenario(loadScenario);
-const backendSource = await readFile(resolve('src/game/combatGraphicsBackend.ts'), 'utf8');
-const coupledBackend = backendSource.replace(
+const backendCoreSource = await readFile(resolve('src/game/combatGraphicsBackendCore.ts'), 'utf8');
+const coupledBackendCore = backendCoreSource.replace(
   'missionVisualReadiness?(): MissionVisualReadiness;',
   '// deliberately coupled: readiness is no longer visible at the shared backend boundary',
 );
-assert.notEqual(coupledBackend, backendSource, 'load-readiness coupling mutation must alter the shared extension point');
+assert.notEqual(coupledBackendCore, backendCoreSource, 'load-readiness coupling mutation must alter the shared core extension point');
 const loadCoupled = await analyzeRoadmapShadowScenario(loadScenario, {
   sourceOverrides: {
-    'src/game/combatGraphicsBackend.ts': coupledBackend,
+    'src/game/combatGraphicsBackendCore.ts': coupledBackendCore,
   },
 });
 assert.equal(loadClean.missingExtensionPoints.length, 0);

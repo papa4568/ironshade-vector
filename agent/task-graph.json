@@ -203,22 +203,43 @@
     },
     {
       "id": "AO-6",
-      "title": "Add independent review and mechanical architecture proofs",
+      "title": "Add mandatory independent review and mechanical architecture proofs",
       "priority": 60,
-      "status": "ready",
+      "status": "verified",
       "dependsOn": ["AO-5"],
       "acceptance": [
-        "Final candidates support an independent verifier context that attempts to disprove completion without creating a competing implementation.",
-        "Stable architectural invariants are mechanically checked where practical.",
-        "Recurring failure classes can be promoted into reusable repository checks or telemetry."
+        "Final candidates support a separate read-only verifier context that attempts to disprove completion without creating a competing implementation.",
+        "Final PR verification requires an actual trusted independent-review pass result bound to the exact current candidate SHA; missing, stale, malformed, or failed review evidence blocks completion.",
+        "When no orchestration migration task is active, the independent-review packet automatically targets the first executable product-roadmap task so the gate remains useful after AO-6 is complete.",
+        "Stable architectural invariants are mechanically checked where practical, and recurring deterministic failure classes can be promoted into reusable repository checks or telemetry."
       ],
-      "affectedDomains": ["agent-orchestration", "architecture", "review"],
+      "affectedDomains": ["agent-orchestration", "architecture", "review", "ci"],
       "proofs": [
         {
-          "id": "review-contract",
+          "id": "architecture-invariants",
+          "kind": "invariant",
+          "required": true,
+          "description": "Mechanical architecture boundaries and their fail-closed regressions pass on the candidate.",
+          "command": "node agent/tools/check-architecture-invariants.mjs && node agent/tests/architecture-invariants.mjs"
+        },
+        {
+          "id": "independent-review-tests",
+          "kind": "test",
+          "required": true,
+          "description": "Independent review packet/result, trusted-comment selection, stale-SHA rejection, and workflow-gate regressions pass.",
+          "command": "node agent/tests/independent-review.mjs"
+        },
+        {
+          "id": "independent-review-verdict",
           "kind": "review",
           "required": true,
-          "description": "Independent verification contract and mechanical invariant checks are documented and exercised."
+          "description": "A separate verifier returns a validated pass result for this exact candidate SHA after attempting to falsify every acceptance criterion and required proof."
+        },
+        {
+          "id": "ao6-ci",
+          "kind": "ci",
+          "required": true,
+          "description": "Agent Orchestration and PR Candidate Verification pass on the same exact candidate revision with the review gate enforced."
         }
       ],
       "externalDependencies": []

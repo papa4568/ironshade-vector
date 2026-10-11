@@ -58,7 +58,7 @@ assert(readinessTimeout.phase === 'ready' && readinessTimeout.mode === 'fallback
 assert(MISSION_VISUAL_FALLBACK_TIMEOUT_MS > 0 && MISSION_VISUAL_FALLBACK_TIMEOUT_MS <= 10_000, 'P28-PLOAD0 readiness timeout must remain bounded for cold route entry.');
 
 const postSource = readFileSync(resolve(process.cwd(), 'src/game/babylonRefineryPostProcessing.ts'), 'utf8');
-const backendSource = readFileSync(resolve(process.cwd(), 'src/game/combatGraphicsBackend.ts'), 'utf8');
+const backendSource = readFileSync(resolve(process.cwd(), 'src/game/combatGraphicsBackend.ts'), 'utf8') + readFileSync(resolve(process.cwd(), 'src/game/combatGraphicsBackendCore.ts'), 'utf8');
 const readinessSource = readFileSync(resolve(process.cwd(), 'src/game/babylonRefineryMissionReadiness.ts'), 'utf8');
 const gateSource = readFileSync(resolve(process.cwd(), 'src/game/missionVisualReadinessGate.ts'), 'utf8');
 const browserSmokeSource = readFileSync(resolve(process.cwd(), 'scripts/browser-runtime-smoke.mjs'), 'utf8');

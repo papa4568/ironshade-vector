@@ -4,16 +4,6 @@ on:
   pull_request:
     branches:
       - main
-    paths:
-      - 'agent/**'
-      - 'docs/content-roadmap.md'
-      - 'docs/experimental-verification-roadmap.md'
-      - 'docs/agent-orchestration.md'
-      - 'AGENTS.md'
-      - '.github/workflows/agent-orchestration.yml'
-      - '.github/workflows/pr-candidate.yml'
-      - '.github/workflows/browser-e2e.yml'
-      - '.github/workflows/pr-android-apk.yml'
   push:
     branches:
       - main
@@ -155,6 +145,20 @@ jobs:
       - name: Enforce single-producer CI proof reuse contract
         run: node agent/tests/ci-proof-reuse.mjs
 
+      - name: Install locked dependencies for architecture checks
+        run: npm ci --ignore-scripts
+
+      - name: Enforce mechanical architecture invariants
+        run: |
+          node agent/tools/check-architecture-invariants.mjs
+          node agent/tests/architecture-invariants.mjs
+
+      - name: Run independent verifier gate regressions
+        run: |
+          node agent/tools/select-review-task.mjs --json
+          node agent/tests/independent-review.mjs
+          node agent/tests/trusted-main-review-gate.mjs
+
       - name: Detect active orchestration evidence task
         id: evidence-task
         shell: bash
@@ -225,7 +229,7 @@ jobs:
             --allow-incomplete \
             --output .agent-evidence/verification-ledger.json
 
-      - name: Validate partial candidate evidence without crediting downstream CI
+      - name: Validate partial candidate evidence without crediting downstream CI or review
         run: |
           node agent/tools/candidate-evidence.mjs validate \
             --manifest .agent-evidence/candidate-manifest.json \
