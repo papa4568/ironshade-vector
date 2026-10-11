@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, symlink, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -135,6 +135,19 @@ process.exit(3);
       'verifier writes through sandbox node_modules must never mutate source dependencies',
     );
     delete process.env.RUNTIME_CALIBRATION_MUTATE_DEPENDENCY;
+
+    const dependencyEscapePath = join(dependencyDir, 'escape-to-source');
+    await symlink(sentinelPath, dependencyEscapePath);
+    await assert.rejects(
+      exerciseRuntimeCalibration({
+        candidateSha: fixtureSha,
+        config: fixtureConfig,
+        repoRoot: fixtureRoot,
+      }),
+      /runtime calibration dependency symlink escapes disposable clone/,
+      'runtime calibration must reject dependency links that expose writable source paths to the verifier',
+    );
+    await unlink(dependencyEscapePath);
 
     process.env.RUNTIME_CALIBRATION_MUTATE_SOURCE = '1';
     process.env.RUNTIME_CALIBRATION_SOURCE_SENTINEL = sentinelPath;
@@ -351,4 +364,4 @@ assert.throws(
   'promotion policy must not relax the zero false-negative requirement',
 );
 
-console.log(`ACCEPTANCE_ATTACK_PROMOTION_REGRESSIONS_PASS candidate=${candidateSha} scope=${scope.id} runtimeIsolation=exercised+fault-tested dependencyIsolation=fresh-copy+fault-tested measuredControl=true criterionMatchedFailure=true falsePositiveBudget=0 falseNegativeBudget=0 advisorySurvivors=${result.advisory.survivors.length} rollback=advisory`);
+console.log(`ACCEPTANCE_ATTACK_PROMOTION_REGRESSIONS_PASS candidate=${candidateSha} scope=${scope.id} runtimeIsolation=exercised+fault-tested dependencyIsolation=fresh-copy+write-contained+escape-rejected measuredControl=true criterionMatchedFailure=true falsePositiveBudget=0 falseNegativeBudget=0 advisorySurvivors=${result.advisory.survivors.length} rollback=advisory`);
