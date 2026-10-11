@@ -15,8 +15,8 @@
       "extensionPoints": [
         {
           "path": "src/game/combatGraphicsBackend.ts",
-          "contains": "export * from './combatGraphicsBackendCore';",
-          "description": "The public graphics boundary re-exports the core backend contract while retaining snapshot isolation."
+          "contains": "export function createCombatGraphicsBackend(",
+          "description": "The public graphics boundary owns the snapshot-isolated backend creation entrypoint."
         },
         {
           "path": "src/game/combatGraphicsBackendCore.ts",

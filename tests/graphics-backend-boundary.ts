@@ -198,14 +198,19 @@ const babylonRendererSource = readFileSync(resolve(root, 'src/game/babylonCombat
 const browserWorkflowSource = readFileSync(resolve(root, '.github/workflows/browser-e2e.yml'), 'utf8');
 
 assert(
-  isolationBoundarySource.includes("export * from './combatGraphicsBackendCore'")
+  !isolationBoundarySource.includes("export * from './combatGraphicsBackendCore'")
+    && isolationBoundarySource.includes('export const babylonCombatGraphicsBackendFactory: CombatGraphicsBackendFactory = {')
+    && isolationBoundarySource.includes('new SnapshotIsolatedCombatGraphicsBackend(')
+    && isolationBoundarySource.includes('export function selectCombatGraphicsBackendFactory(')
+    && isolationBoundarySource.includes('export function createCombatGraphicsBackend(')
+    && isolationBoundarySource.includes('factories: readonly CombatGraphicsBackendFactory[] = [babylonCombatGraphicsBackendFactory]')
     && isolationBoundarySource.includes('return structuredClone(state);')
     && isolationBoundarySource.includes('return structuredClone(player);')
     && isolationBoundarySource.includes('snapshotArgs[0] = createCombatGraphicsRenderSnapshot(args[0]);')
     && isolationBoundarySource.includes('snapshotArgs[3] = createCombatGraphicsPlayerSnapshot(args[3]);')
     && !isolationBoundarySource.includes('this.delegate.render(...args);')
     && !isolationBoundarySource.includes('this.delegate.screenDirection(...args)'),
-  'AO-6 production graphics ingress must isolate live simulation inputs before the Babylon renderer stack.',
+  'AO-6 public production graphics ingress must own safe creation and isolate live simulation inputs before the Babylon renderer stack.',
 );
 assert(
   boundarySource.includes("export type CombatGraphicsBackendId = 'babylon'")

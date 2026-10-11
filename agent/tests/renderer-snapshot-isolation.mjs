@@ -4,6 +4,14 @@ import { readFile } from 'node:fs/promises';
 const boundary = await readFile(new URL('../../src/game/combatGraphicsBackend.ts', import.meta.url), 'utf8');
 const aggregator = await readFile(new URL('./architecture-invariants.mjs', import.meta.url), 'utf8');
 
+assert.doesNotMatch(boundary, /export \* from ['"]\.\/combatGraphicsBackendCore['"]/);
+assert.match(boundary, /export const babylonCombatGraphicsBackendFactory: CombatGraphicsBackendFactory = \{/);
+assert.match(boundary, /new SnapshotIsolatedCombatGraphicsBackend\(/);
+assert.match(boundary, /coreBabylonCombatGraphicsBackendFactory\.create\(canvas, coarse, options\)/);
+assert.match(boundary, /export function selectCombatGraphicsBackendFactory\(/);
+assert.match(boundary, /factories: readonly CombatGraphicsBackendFactory\[\] = \[babylonCombatGraphicsBackendFactory\]/);
+assert.match(boundary, /export function createCombatGraphicsBackend\(/);
+assert.match(boundary, /return selectCombatGraphicsBackendFactory\(factories, selectedId\)\?\.create\(canvas, coarse, options\) \?\? null;/);
 assert.match(boundary, /createCombatGraphicsRenderSnapshot\(state: SimState\)/);
 assert.match(boundary, /return structuredClone\(state\);/);
 assert.match(boundary, /snapshotArgs\[0\] = createCombatGraphicsRenderSnapshot\(args\[0\]\);/);

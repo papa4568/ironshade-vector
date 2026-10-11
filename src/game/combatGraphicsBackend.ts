@@ -1,4 +1,29 @@
-export * from './combatGraphicsBackendCore';
+export {
+  LOCATION_FRAME_COST_ROUTES,
+  LOCATION_FRAME_COST_SIGNATURE_VERSION,
+  formatLocationFrameCostSignature,
+  normalizeProductionRenderQuality,
+  productionCombatGraphicsBackendId,
+  resolveCombatGraphicsPathSelection,
+  resolveRenderDowngradeReason,
+} from './combatGraphicsBackendCore';
+export type {
+  BabylonGraphicsBackendId,
+  CombatGraphicsBackend,
+  CombatGraphicsBackendCreateOptions,
+  CombatGraphicsBackendFactory,
+  CombatGraphicsBackendId,
+  CombatGraphicsImplementationId,
+  CombatGraphicsLifecycle,
+  CombatGraphicsLoadedBackendId,
+  CombatGraphicsPathSelection,
+  CombatGraphicsPerformanceStats,
+  CombatGraphicsPointerDirection,
+  CombatGraphicsPointerProjectionArgs,
+  CombatGraphicsRenderArgs,
+  LocationFrameCostSnapshot,
+  MissionVisualReadiness,
+} from './combatGraphicsBackendCore';
 
 import {
   babylonCombatGraphicsBackendFactory as coreBabylonCombatGraphicsBackendFactory,

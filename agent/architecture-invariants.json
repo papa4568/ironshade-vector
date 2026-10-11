@@ -27,10 +27,16 @@
     {
       "id": "renderer-snapshot-isolation",
       "type": "sourceContract",
-      "description": "The production graphics boundary must deep-clone live simulation and player inputs before forwarding them into Babylon presentation code.",
+      "description": "The public production graphics boundary must own backend creation and deep-clone live simulation and player inputs before forwarding them into Babylon presentation code.",
       "file": "src/game/combatGraphicsBackend.ts",
       "required": [
-        "export * from './combatGraphicsBackendCore';",
+        "export const babylonCombatGraphicsBackendFactory: CombatGraphicsBackendFactory = {",
+        "new SnapshotIsolatedCombatGraphicsBackend(",
+        "coreBabylonCombatGraphicsBackendFactory.create(canvas, coarse, options),",
+        "export function selectCombatGraphicsBackendFactory(",
+        "factories: readonly CombatGraphicsBackendFactory[] = [babylonCombatGraphicsBackendFactory],",
+        "export function createCombatGraphicsBackend(",
+        "return selectCombatGraphicsBackendFactory(factories, selectedId)?.create(canvas, coarse, options) ?? null;",
         "export function createCombatGraphicsRenderSnapshot(state: SimState): SimState {",
         "return structuredClone(state);",
         "export function createCombatGraphicsPlayerSnapshot(player: Player): Player {",
@@ -41,6 +47,7 @@
         "return this.delegate.screenDirection(...snapshotArgs);"
       ],
       "forbidden": [
+        "export * from './combatGraphicsBackendCore';",
         "this.delegate.render(...args);",
         "this.delegate.screenDirection(...args)"
       ]
