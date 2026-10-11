@@ -17,7 +17,7 @@
         "hidden-serialization"
       ],
       "runtimeCalibration": {
-        "verifyCommand": "npm run test:graphics:babylon",
+        "verifyCommand": "npm run prepare:graphics-assets && npm run test:graphics:babylon",
         "targetFile": "src/game/babylonCombatRenderer.ts",
         "passMarker": "P28_PLOAD1_RUNTIME_PROFILE_PASS placements=73 batches=19 batchSize=4 peak=4 sourceFamilies=11",
         "dependencyStrategy": "source-node-modules-symlink",
