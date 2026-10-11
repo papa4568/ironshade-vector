@@ -171,6 +171,13 @@ assert.doesNotMatch(workflow, /publish-independent-review:/, 'candidate workflow
 assert.doesNotMatch(workflow, /COPILOT_GITHUB_TOKEN/, 'candidate workflow must never receive the long-lived Copilot token');
 assert.match(workflow, /trusted-main-review-gate\.mjs/, 'trusted-main provenance regression must run in orchestration CI');
 
+const candidateWorkflow = readFileSync('.github/workflows/pr-candidate.yml', 'utf8');
+assert.match(
+  candidateWorkflow,
+  /^permissions:\n  actions: read\n/m,
+  'candidate review gate must retain Actions read permission so trusted-main run and job provenance can be verified',
+);
+
 const gateSource = readFileSync('agent/tools/review-comment-gate.mjs', 'utf8');
 assert.match(gateSource, /trusted-main-actions:v1/);
 assert.match(gateSource, /workflow_dispatch/);
