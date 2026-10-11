@@ -10,7 +10,7 @@ Do not implement fixes, edit files, push commits, change PR state, rerun workflo
 
 The preferred repository-native path is the `automated-independent-verifier` job in the existing `Agent Orchestration` workflow. It has read-only repository/action access plus permission to make Copilot requests, runs separately from implementation and publishing, and invokes a pinned GitHub Copilot CLI in non-interactive mode to perform the adversarial review without a manual second chat. Candidate-authored custom instructions are disabled; write, shell, network, and memory tools are denied while read-only repository inspection remains available. A separate publisher job may publish the already-validated result and rerun only the blocked final candidate job after a PASS; it must not alter the verifier result.
 
-A human read-only verifier remains a valid fallback when Copilot automation is unavailable or when repository owners explicitly request human review.
+A human read-only verifier remains a valid fallback when Copilot automation is unavailable or when repository owners explicitly request human review. The human verifier must use a different GitHub account from the pull request author; for this fallback, the gate treats the pull request author as the implementation-owner identity and rejects that author's verdict even when the account has `OWNER`, `MEMBER`, or `COLLABORATOR` association.
 
 ## Inputs
 
@@ -52,7 +52,7 @@ For a GitHub pull request, publish the result as a top-level PR conversation com
 ```
 ````
 
-Repository-native automated results additionally carry the automated-review marker and validated provenance fields identifying the isolated Agent Orchestration workflow run, technical candidate run, and pinned Copilot model. The gate accepts those comments only from `github-actions[bot]`. Human results remain trusted only from repository participants with `OWNER`, `MEMBER`, or `COLLABORATOR` association.
+Repository-native automated results additionally carry the automated-review marker and validated provenance fields identifying the isolated Agent Orchestration workflow run, technical candidate run, and pinned Copilot model. The gate accepts those comments only from `github-actions[bot]`. Human results remain trusted only from repository participants with `OWNER`, `MEMBER`, or `COLLABORATOR` association whose GitHub login is different from the pull request author.
 
 The repository gate accepts a result only when its `candidateSha` matches the current PR head exactly. Any new commit invalidates every older verdict automatically. If multiple matching trusted results exist for the same candidate, the latest one is authoritative.
 

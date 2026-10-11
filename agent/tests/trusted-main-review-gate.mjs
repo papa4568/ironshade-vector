@@ -53,6 +53,7 @@ const comment = {
 };
 
 const selected = await selectAuthoritativeReviewCommentWithProvenance(packet, [comment], {
+  prAuthor: 'papa4568',
   verifyMachineRun: async () => ({ reviewer: 'github-actions[bot]', authorAssociation: 'TRUSTED_MAIN_ACTIONS' }),
 });
 assert.equal(selected.commentId, 12);
@@ -64,7 +65,10 @@ const oldCandidateBot = {
   body: `<!-- ironshade-independent-review:github-models-actions:v1 -->\n<!-- ironshade-independent-review:v1 -->\n\`\`\`json\n${JSON.stringify({ ...pass, reviewerKind: 'github-models-actions', sourceWorkflow: 'Agent Orchestration' })}\n\`\`\``,
 };
 await assert.rejects(
-  () => selectAuthoritativeReviewCommentWithProvenance(packet, [oldCandidateBot], { verifyMachineRun: async () => { throw new Error('must not execute'); } }),
+  () => selectAuthoritativeReviewCommentWithProvenance(packet, [oldCandidateBot], {
+    prAuthor: 'papa4568',
+    verifyMachineRun: async () => { throw new Error('must not execute'); },
+  }),
   /no trusted independent review result/,
 );
 
@@ -187,5 +191,7 @@ assert.match(gateSource, /AO6_TRUSTED_REVIEW_REQUEST_RESOLVED/);
 assert.match(gateSource, /head_branch === 'main'/);
 assert.match(gateSource, /TRUSTED_INDEPENDENT_REVIEW_/);
 assert.match(gateSource, /actions\/jobs\/\$\{job\.id\}\/logs/);
+assert.match(gateSource, /GITHUB_EVENT_PATH/, 'human fallback must derive the PR author from the trusted pull-request event');
+assert.match(gateSource, /normalizedLogin\(reviewerLogin\) === prAuthorLogin/, 'human fallback must reject self-authored PR-author verdicts');
 
 console.log('TRUSTED_MAIN_REVIEW_GATE_TEST_PASS');

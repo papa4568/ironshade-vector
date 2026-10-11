@@ -101,25 +101,52 @@ const comments = [
     id: 2,
     created_at: '2026-10-09T10:01:00Z',
     author_association: 'OWNER',
-    user: { login: 'owner' },
+    user: { login: 'independent-owner' },
     body: envelope,
   },
 ];
-const selected = selectAuthoritativeReviewComment(packet, comments);
+const humanReviewOptions = { prAuthor: 'implementation-owner' };
+const selected = selectAuthoritativeReviewComment(packet, comments, humanReviewOptions);
 assert.equal(selected.commentId, 2);
-assert.equal(selected.reviewer, 'owner');
+assert.equal(selected.reviewer, 'independent-owner');
+
+const selfAuthoredPass = {
+  ...comments[1],
+  id: 3,
+  created_at: '2026-10-09T10:02:00Z',
+  user: { login: 'IMPLEMENTATION-OWNER' },
+};
+assert.throws(
+  () => selectAuthoritativeReviewComment(packet, [selfAuthoredPass], humanReviewOptions),
+  /no trusted independent review result/,
+);
+const selectedIgnoringLaterSelfReview = selectAuthoritativeReviewComment(
+  packet,
+  [...comments, selfAuthoredPass],
+  humanReviewOptions,
+);
+assert.equal(selectedIgnoringLaterSelfReview.commentId, 2);
+assert.equal(selectedIgnoringLaterSelfReview.reviewer, 'independent-owner');
 
 const stale = structuredClone(pass);
 stale.candidateSha = 'c'.repeat(40);
 assert.throws(
-  () => selectAuthoritativeReviewComment(packet, [{ ...comments[1], body: `<!-- ironshade-independent-review:v1 -->\n\`\`\`json\n${JSON.stringify(stale)}\n\`\`\`` }]),
+  () => selectAuthoritativeReviewComment(
+    packet,
+    [{ ...comments[1], body: `<!-- ironshade-independent-review:v1 -->\n\`\`\`json\n${JSON.stringify(stale)}\n\`\`\`` }],
+    humanReviewOptions,
+  ),
   /no trusted independent review result/,
 );
 
 const latestFail = structuredClone(fail);
 const failEnvelope = `<!-- ironshade-independent-review:v1 -->\n\`\`\`json\n${JSON.stringify(latestFail)}\n\`\`\``;
 assert.throws(
-  () => selectAuthoritativeReviewComment(packet, [...comments, { ...comments[1], id: 3, created_at: '2026-10-09T10:02:00Z', body: failEnvelope }]),
+  () => selectAuthoritativeReviewComment(
+    packet,
+    [...comments, { ...comments[1], id: 4, created_at: '2026-10-09T10:03:00Z', body: failEnvelope }],
+    humanReviewOptions,
+  ),
   /latest independent review verdict.*fail/,
 );
 
@@ -154,10 +181,15 @@ assert.match(workflow, /gh api --paginate/, 'final candidate workflow must read 
 assert.match(workflow, /issues: read/, 'workflow must only request read access to PR conversation evidence');
 assert.match(workflow, /--pass-kinds test,build,ci,artifact,review,invariant/, 'final evidence must not credit review until the gate passes and must cover product proof kinds');
 
+const gateSource = readFileSync('agent/tools/review-comment-gate.mjs', 'utf8');
+assert.match(gateSource, /GITHUB_EVENT_PATH/, 'final gate must derive the PR author from the trusted GitHub pull-request event');
+assert.match(gateSource, /pull_request\?\.user\?\.login/, 'final gate must bind human-review eligibility to the PR author identity');
+
 const verifierContract = readFileSync('agent/INDEPENDENT_VERIFIER.md', 'utf8');
 assert.match(verifierContract, /read-only adversarial verifier/i);
 assert.match(verifierContract, /Do not implement fixes/);
 assert.match(verifierContract, /same branch/);
 assert.match(verifierContract, /ironshade-independent-review:v1/);
+assert.match(verifierContract, /different GitHub account from the pull request author/i);
 
 console.log('INDEPENDENT_REVIEW_TEST_PASS');

@@ -18,6 +18,10 @@ function assertString(value, label) {
   assert(typeof value === 'string' && value.trim().length > 0, `${label} must be a non-empty string`);
 }
 
+function normalizedLogin(value) {
+  return value.trim().toLowerCase();
+}
+
 export function extractReviewResult(body) {
   if (typeof body !== 'string' || !body.includes(MARKER)) return null;
   const match = body.match(/<!-- ironshade-independent-review:v1 -->\s*```json\s*([\s\S]*?)```/i);
@@ -60,11 +64,16 @@ function chooseLatestPass(packet, candidates) {
   };
 }
 
-function parseTrustedHumanCandidates(packet, comments) {
+function parseTrustedHumanCandidates(packet, comments, { prAuthor } = {}) {
+  assertString(prAuthor, 'pull request author');
+  const prAuthorLogin = normalizedLogin(prAuthor);
   const candidates = [];
   for (const comment of comments) {
     if (!comment || typeof comment !== 'object' || typeof comment.body !== 'string' || !comment.body.includes(MARKER)) continue;
     if (!isTrustedHuman(comment)) continue;
+    const reviewerLogin = comment.user?.login;
+    if (typeof reviewerLogin !== 'string' || reviewerLogin.trim().length === 0) continue;
+    if (normalizedLogin(reviewerLogin) === prAuthorLogin) continue;
     let result;
     try {
       result = extractReviewResult(comment.body);
@@ -79,10 +88,10 @@ function parseTrustedHumanCandidates(packet, comments) {
 
 // Preserve the synchronous human-review selector used by repository regressions and
 // manual fallback. Automated reviews are intentionally excluded from this path.
-export function selectAuthoritativeReviewComment(packet, comments) {
+export function selectAuthoritativeReviewComment(packet, comments, options = {}) {
   validateIndependentReviewPacket(packet);
   assert(Array.isArray(comments), 'GitHub PR comments payload must be an array');
-  return chooseLatestPass(packet, parseTrustedHumanCandidates(packet, comments));
+  return chooseLatestPass(packet, parseTrustedHumanCandidates(packet, comments, options));
 }
 
 async function github(path, { accept = 'application/vnd.github+json', text = false, fetchImpl = fetch } = {}) {
@@ -167,7 +176,7 @@ export async function verifyTrustedMainMachineRun(comment, result, { fetchImpl =
 export async function selectAuthoritativeReviewCommentWithProvenance(packet, comments, options = {}) {
   validateIndependentReviewPacket(packet);
   assert(Array.isArray(comments), 'GitHub PR comments payload must be an array');
-  const candidates = parseTrustedHumanCandidates(packet, comments);
+  const candidates = parseTrustedHumanCandidates(packet, comments, options);
   const verify = options.verifyMachineRun ?? verifyTrustedMainMachineRun;
 
   for (const comment of comments) {
@@ -187,13 +196,26 @@ export async function selectAuthoritativeReviewCommentWithProvenance(packet, com
   return chooseLatestPass(packet, candidates);
 }
 
-async function gate({ packet, comments, output }) {
+async function resolvePullRequestAuthor(explicitPrAuthor) {
+  const eventPath = process.env.GITHUB_EVENT_PATH?.trim();
+  if (eventPath) {
+    const event = JSON.parse(await readFile(eventPath, 'utf8'));
+    const eventPrAuthor = event?.pull_request?.user?.login;
+    assertString(eventPrAuthor, 'GitHub pull request author');
+    return eventPrAuthor;
+  }
+  assertString(explicitPrAuthor, '--pr-author');
+  return explicitPrAuthor;
+}
+
+async function gate({ packet, comments, output, prAuthor: explicitPrAuthor }) {
   assertString(packet, '--packet');
   assertString(comments, '--comments');
   assertString(output, '--output');
+  const prAuthor = await resolvePullRequestAuthor(explicitPrAuthor);
   const reviewPacket = JSON.parse(await readFile(packet, 'utf8'));
   const prComments = JSON.parse(await readFile(comments, 'utf8'));
-  const selected = await selectAuthoritativeReviewCommentWithProvenance(reviewPacket, prComments);
+  const selected = await selectAuthoritativeReviewCommentWithProvenance(reviewPacket, prComments, { prAuthor });
   await writeFile(output, `${JSON.stringify(selected.result, null, 2)}\n`, 'utf8');
   console.log(`INDEPENDENT_REVIEW_GATE_PASS task=${reviewPacket.taskId} candidate=${reviewPacket.candidateSha} reviewer=${selected.reviewer} association=${selected.authorAssociation} comment=${selected.commentId} findings=${selected.findingCount}`);
 }
@@ -208,7 +230,7 @@ async function main() {
     else throw new Error(`unknown argument ${arg}`);
   }
   if (command === 'gate') return gate(options);
-  throw new Error('usage: review-comment-gate.mjs gate --packet <path> --comments <path> --output <path>');
+  throw new Error('usage: review-comment-gate.mjs gate --packet <path> --comments <path> --output <path> [--pr-author <login>]');
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
