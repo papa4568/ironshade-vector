@@ -61,6 +61,19 @@ export function parseReview(text) {
   throw new Error('model response has unterminated JSON object');
 }
 
+export function normalizeReviewKeys(value) {
+  if (Array.isArray(value)) return value.map(normalizeReviewKeys);
+  if (!value || typeof value !== 'object') return value;
+  const normalized = {};
+  for (const [rawKey, rawValue] of Object.entries(value)) {
+    const key = rawKey.trim();
+    ok(key, 'trusted review contains an empty JSON key after whitespace normalization');
+    ok(!Object.hasOwn(normalized, key), `trusted review JSON keys collide after whitespace normalization: ${JSON.stringify(rawKey)} -> ${JSON.stringify(key)}`);
+    normalized[key] = normalizeReviewKeys(rawValue);
+  }
+  return normalized;
+}
+
 function normalizeEnum(value) {
   return typeof value === 'string' ? value.trim().toLowerCase().replace(/[\s-]+/g, '_') : value;
 }
@@ -363,7 +376,7 @@ async function run() {
 
   mkdirSync('.trusted-review', { recursive: true });
   writeFileSync('.trusted-review/raw-response.txt', response, 'utf8');
-  const result = validate(anchorReviewIdentity(normalizeProofCheckIds(normalizeReviewEnums(parseReview(response)), packet), packet), packet);
+  const result = validate(anchorReviewIdentity(normalizeProofCheckIds(normalizeReviewEnums(normalizeReviewKeys(parseReview(response))), packet), packet), packet);
   Object.assign(result, {
     reviewerKind: 'trusted-main-copilot-actions',
     sourceWorkflow: 'AO-6 Trusted Independent Review',
@@ -507,6 +520,21 @@ function selfTest() {
   ok(normalizedEnums.verdict === 'pass', 'trusted wrapper did not normalize verdict enum');
   ok(normalizedEnums.acceptanceChecks[0].status === 'satisfied', 'trusted wrapper did not normalize acceptance enum');
   ok(normalizedEnums.proofChecks[0].status === 'credible', 'trusted wrapper did not normalize proof enum');
+  const whitespaceKeys = {
+    schemaVersion: 1,
+    taskId: 'AO-6',
+    candidateSha: 'a'.repeat(40),
+    mode: 'read-only-adversarial',
+    verdict: 'pass',
+    acceptanceChecks: [
+      { index: 0, status: 'satisfied', '\nnotes': 'checked' },
+      { index: 1, status: 'satisfied', notes: 'checked' },
+    ],
+    proofChecks: structuredClone(wrappedProof.proofChecks),
+    findings: [],
+  };
+  const normalizedKeys = validate(anchorReviewIdentity(normalizeProofCheckIds(normalizeReviewEnums(normalizeReviewKeys(whitespaceKeys)), packet), packet), packet);
+  ok(normalizedKeys.acceptanceChecks[0].notes === 'checked', 'trusted wrapper did not normalize incidental JSON-key whitespace');
   const unknownProof = structuredClone(wrappedProof);
   unknownProof.proofChecks[1].proofId = 'architecture-in\nvariantz';
   let rejectedUnknownProof = false;
