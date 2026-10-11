@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 const TASK_LINE = /^- \[ \] \*\*(EV-\d+) — (.+?)\*\*\s*$/;
+const EV_TASK_PREFIX = /^- \[ \] \*\*EV-\d+/;
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -39,8 +40,8 @@ export function parseExperimentalRoadmap(markdown) {
       };
       continue;
     }
+    if (EV_TASK_PREFIX.test(line)) throw new Error(`malformed experimental task line at ${index + 1}`);
     if (!current) continue;
-    if (/^- \[ \] \*\*EV-\d+/.test(line)) throw new Error(`malformed experimental task line at ${index + 1}`);
     const bullet = line.match(/^  - (.+)$/);
     if (bullet) {
       current.acceptance.push(bullet[1].trim());
