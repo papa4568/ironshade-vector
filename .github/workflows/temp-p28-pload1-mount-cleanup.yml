@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   patch:
-    if: github.event.head_commit.message == 'Fix temporary P28-PLOAD1 patch helper'
+    if: github.event.head_commit.message == 'Correct temporary P28-PLOAD1 patch helper'
     runs-on: ubuntu-latest
     steps:
       - name: Check out branch
@@ -36,12 +36,12 @@ jobs:
               raise SystemExit('renderer cleanup fix is already present')
 
           inner = '\n'.join('  ' + line for line in old.rstrip('\n').split('\n')) + '\n'
-          mounted = "              mountedInstances.push(instance);\n"
+          mounted = "            mountedInstances.push(instance);\n"
           if inner.count(mounted) != 1:
               raise SystemExit(f'expected one mounted ownership line, found {inner.count(mounted)}')
           inner = inner.replace(
               mounted,
-              mounted + "              unmountedBatchInstances.delete(instance);\n",
+              mounted + "            unmountedBatchInstances.delete(instance);\n",
           )
           new = (
               "        const unmountedBatchInstances = new Set(batchInstances);\n"
