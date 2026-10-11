@@ -11,18 +11,6 @@ import {
 } from './roadmap-adapter.mjs';
 import { loadTaskGraph, validateTaskGraph } from './validate-task-graph.mjs';
 
-const AO6_MAINTENANCE_PATHS = new Set([
-  '.github/workflows/ao6-trusted-independent-review.yml',
-  'agent/INDEPENDENT_VERIFIER.md',
-  'agent/tools/ao6-trusted-independent-review.mjs',
-  'agent/tools/ao6-trusted-independent-review-v2.mjs',
-  'agent/tools/trusted-independent-review-v3.mjs',
-  'agent/tools/experimental-review-task.mjs',
-  'agent/tools/ao6-trusted-review-request.mjs',
-  'agent/tools/review-comment-gate.mjs',
-  'agent/tools/select-review-task.mjs',
-]);
-
 const EXPERIMENTAL_PROMOTION_PATHS = new Set([
   'agent/acceptance-attack-policy.json',
   'agent/tools/acceptance-attack-enforcer.mjs',
@@ -91,16 +79,6 @@ export function selectOrchestrationReviewTask(currentGraph, { baseGraph = null }
   return transitioned.length === 1 ? { task: transitioned[0], mode: 'orchestration-closeout' } : null;
 }
 
-export function selectOrchestrationMaintenanceTask(currentGraph, changedFiles) {
-  validateTaskGraph(currentGraph);
-  assert(Array.isArray(changedFiles), 'changedFiles must be an array');
-  const touchesTrustedReview = changedFiles.some(path => AO6_MAINTENANCE_PATHS.has(path));
-  if (!touchesTrustedReview) return null;
-  const ao6 = currentGraph.tasks.find(task => task.id === 'AO-6');
-  assert(ao6 && ['verified', 'archived'].includes(ao6.status), 'AO-6 maintenance requires the verified independent-review foundation');
-  return { task: ao6, mode: 'orchestration-maintenance' };
-}
-
 function isExperimentalPromotionCandidate(changedFiles) {
   return changedFiles.includes('docs/experimental-verification-roadmap.md')
     || changedFiles.some(path => EXPERIMENTAL_PROMOTION_PATHS.has(path));
@@ -161,15 +139,6 @@ export async function selectReviewTask({ baseRef = null, headRef = null, useEven
         taskId: experimental.task.id,
         source: 'docs/experimental-verification-roadmap.md',
         mode: experimental.mode,
-      };
-    }
-
-    const maintenance = selectOrchestrationMaintenanceTask(currentGraph, changedFiles);
-    if (maintenance) {
-      return {
-        taskId: maintenance.task.id,
-        source: 'agent/task-graph.json',
-        mode: maintenance.mode,
       };
     }
   }
