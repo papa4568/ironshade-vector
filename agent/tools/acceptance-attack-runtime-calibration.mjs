@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { constants } from 'node:fs';
 import { cp, mkdtemp, readFile, readdir, readlink, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { delimiter, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 import { resolveSandboxMutationTarget } from './acceptance-attack-compiler.mjs';
@@ -34,16 +34,44 @@ function runGit(args, cwd, { allowFailure = false } = {}) {
   return result;
 }
 
-function runCommand(command, cwd) {
+function pathInside(root, candidate) {
+  const rel = relative(root, candidate);
+  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
+}
+
+function buildVerifierEnvironment(sandbox, sourceRoot) {
+  const environment = {};
+  for (const key of ['HOME', 'TMPDIR', 'TEMP', 'TMP', 'LANG', 'LC_ALL', 'LC_CTYPE']) {
+    const value = process.env[key];
+    if (typeof value === 'string' && value.length > 0 && !value.includes(sourceRoot)) environment[key] = value;
+  }
+
+  const pathEntries = (process.env.PATH ?? '')
+    .split(delimiter)
+    .filter(Boolean)
+    .filter(entry => !pathInside(sourceRoot, resolve(entry)));
+  assert(pathEntries.length > 0, 'runtime calibration verifier PATH must retain at least one source-independent entry');
+
+  environment.PATH = pathEntries.join(delimiter);
+  environment.PWD = sandbox;
+  environment.INIT_CWD = sandbox;
+  environment.GITHUB_WORKSPACE = sandbox;
+  environment.CI = '1';
+  environment.IRONSHADE_ACCEPTANCE_ATTACK = '1';
+
+  for (const [key, value] of Object.entries(environment)) {
+    if (key === 'PATH') continue;
+    assert(!value.includes(sourceRoot), `runtime calibration verifier environment ${key} must not expose the source repository path`);
+  }
+  return environment;
+}
+
+function runCommand(command, cwd, environment) {
   const result = spawnSync(command, {
     cwd,
     encoding: 'utf8',
     shell: true,
-    env: {
-      ...process.env,
-      CI: '1',
-      IRONSHADE_ACCEPTANCE_ATTACK: '1',
-    },
+    env: environment,
   });
   return {
     exitCode: result.status ?? 1,
@@ -121,11 +149,6 @@ async function applyReplacement(filePath, replacement) {
     beforeDigest: createHash('sha256').update(content).digest('hex'),
     afterDigest: createHash('sha256').update(mutated).digest('hex'),
   };
-}
-
-function pathInside(root, candidate) {
-  const rel = relative(root, candidate);
-  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
 }
 
 async function validateDependencySymlinks(root, current = root) {
@@ -211,6 +234,7 @@ export async function exerciseRuntimeCalibration({ candidateSha, config, repoRoo
   const tempRoot = await mkdtemp(join(tmpdir(), 'ironshade-acceptance-runtime-'));
   const sandbox = join(tempRoot, 'sandbox');
   let dependencyIsolation;
+  let verifierEnvironment;
   let baseline;
   const negativeControls = [];
   let attack;
@@ -224,6 +248,7 @@ export async function exerciseRuntimeCalibration({ candidateSha, config, repoRoo
     runGit(['clean', '-fdx', '--quiet'], sandbox);
     assertSandboxRemoteDetached();
     dependencyIsolation = await copySourceDependencies(sandbox, resolvedRoot);
+    verifierEnvironment = buildVerifierEnvironment(sandbox, resolvedRoot);
   };
 
   try {
@@ -234,7 +259,7 @@ export async function exerciseRuntimeCalibration({ candidateSha, config, repoRoo
     assertSandboxRemoteDetached();
 
     await resetSandbox();
-    baseline = runCommand(validated.verifyCommand, sandbox);
+    baseline = runCommand(validated.verifyCommand, sandbox, verifierEnvironment);
     assertSandboxRemoteDetached();
     const baselineEvaluation = evaluatePassControl(baseline, validated.passMarker);
     assert(baselineEvaluation.passed, `real runtime verifier baseline failed: ${baseline.stderr || baseline.stdout}`);
@@ -245,7 +270,7 @@ export async function exerciseRuntimeCalibration({ candidateSha, config, repoRoo
       await resetSandbox();
       const mutationTarget = await resolveSandboxMutationTarget(sandbox, validated.targetFile);
       const mutation = await applyReplacement(mutationTarget, control.replacement);
-      const verification = runCommand(validated.verifyCommand, sandbox);
+      const verification = runCommand(validated.verifyCommand, sandbox, verifierEnvironment);
       assertSandboxRemoteDetached();
       const evaluation = evaluatePassControl(verification, validated.passMarker);
       console.log(`ACCEPTANCE_ATTACK_RUNTIME_CONTROL id=${control.id} exit=${verification.exitCode} markerMatched=${evaluation.markerMatched} falsePositive=${evaluation.falsePositive}`);
@@ -261,7 +286,7 @@ export async function exerciseRuntimeCalibration({ candidateSha, config, repoRoo
     await resetSandbox();
     const attackTarget = await resolveSandboxMutationTarget(sandbox, validated.targetFile);
     const mutation = await applyReplacement(attackTarget, validated.attack.replacement);
-    const verification = runCommand(validated.verifyCommand, sandbox);
+    const verification = runCommand(validated.verifyCommand, sandbox, verifierEnvironment);
     assertSandboxRemoteDetached();
     const evaluation = evaluateDishonestAttack(verification, validated.attack.expectedFailurePatterns);
     console.log(`ACCEPTANCE_ATTACK_RUNTIME_ATTACK template=${validated.attack.templateId} exit=${verification.exitCode} matchedPatterns=${evaluation.matchedPatterns.length}/${evaluation.expectedFailurePatterns.length} detected=${evaluation.detected} falseNegative=${evaluation.falseNegative}`);
@@ -303,6 +328,13 @@ export async function exerciseRuntimeCalibration({ candidateSha, config, repoRoo
       sourceBranchRef: sourceBefore.branchRef,
       sourceUnchanged: true,
       sandboxRemoteDetached: true,
+      environmentIsolation: {
+        workspaceRebased: verifierEnvironment.GITHUB_WORKSPACE === sandbox,
+        sourcePathVariablesExposed: false,
+        inheritedKeys: Object.keys(verifierEnvironment)
+          .filter(key => !['PWD', 'INIT_CWD', 'GITHUB_WORKSPACE', 'CI', 'IRONSHADE_ACCEPTANCE_ATTACK'].includes(key))
+          .sort(),
+      },
       dependencyIsolation,
     },
     candidatePassGranted: false,
