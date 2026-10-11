@@ -105,7 +105,15 @@ const selected = (Object.keys(REFINERY_ASSET_FAMILIES) as RefineryFamilyKey[]).m
   assert(spec, `P28-PLOAD1 runtime regression requires a selected refinery asset for ${key}`);
   return { key, spec };
 });
-const state = { objects: [] } as unknown as SimState;
+const state = {
+  objects: [
+    { active: true, kind: 'doorControl', x: 120, y: 90, w: 32, h: 28 },
+    { active: true, kind: 'gravityControl', x: 310, y: 180, w: 34, h: 30 },
+    { active: true, kind: 'sealControl', x: 480, y: 260, w: 30, h: 26 },
+    { active: true, kind: 'powerControl', x: 650, y: 330, w: 36, h: 32 },
+    { active: true, kind: 'salvageNode', x: 810, y: 410, w: 28, h: 24 },
+  ],
+} as unknown as SimState;
 
 async function successfulColdLoadProfile(): Promise<RuntimeProfile> {
   const { engine, scene, renderer, dataset } = buildHarness();
@@ -152,12 +160,16 @@ async function successfulColdLoadProfile(): Promise<RuntimeProfile> {
   });
 
   await renderer.loadRefineryEnvironment(state, 960, 540, selected, 1);
-  assert(dataset.babylonEnvironmentState === 'ready', `runtime refinery load must complete, got ${dataset.babylonEnvironmentState}`);
+  assert(
+    dataset.babylonEnvironmentState === 'ready',
+    `runtime refinery load must complete, got ${dataset.babylonEnvironmentState}: ${dataset.babylonEnvironmentError ?? 'no-error'}`,
+  );
   const telemetry = dataset.babylonEnvironmentPlacementLoad;
   assert(telemetry, 'runtime refinery load must publish placement batching telemetry');
   const parsed = parsePlacementTelemetry(telemetry);
   assert(parsed.strategy === 'bounded-batches', `runtime refinery load must report bounded batches, got ${parsed.strategy}`);
   assert(parsed.batchSize === 4, `runtime refinery load must retain batch size 4, got ${parsed.batchSize}`);
+  assert(parsed.placements === 73, `runtime cold-load profile must retain the established 73 refinery placements, got ${parsed.placements}`);
   assert(parsed.placements === instantiateCalls, `runtime placement count ${parsed.placements} must match actual instantiate calls ${instantiateCalls}`);
   assert(parsed.batches === Math.ceil(instantiateCalls / parsed.batchSize), `runtime batch count ${parsed.batches} must scale with batch size instead of one await per placement`);
   assert(peakInFlight === parsed.peak && parsed.peak === parsed.batchSize, `actual peak concurrency ${peakInFlight} must match telemetry ${parsed.peak}`);
