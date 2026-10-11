@@ -61,6 +61,19 @@ export function parseReview(text) {
   throw new Error('model response has unterminated JSON object');
 }
 
+function normalizeEnum(value) {
+  return typeof value === 'string' ? value.trim().toLowerCase().replace(/[\s-]+/g, '_') : value;
+}
+
+export function normalizeReviewEnums(result) {
+  if (!result || typeof result !== 'object' || Array.isArray(result)) return result;
+  result.verdict = normalizeEnum(result.verdict);
+  for (const check of result.acceptanceChecks ?? []) check.status = normalizeEnum(check?.status);
+  for (const check of result.proofChecks ?? []) check.status = normalizeEnum(check?.status);
+  for (const finding of result.findings ?? []) finding.severity = normalizeEnum(finding?.severity);
+  return result;
+}
+
 export function anchorReviewIdentity(result, packet) {
   ok(result && typeof result === 'object' && !Array.isArray(result), 'review must be object');
   return {
@@ -348,7 +361,9 @@ async function run() {
     },
   );
 
-  const result = validate(anchorReviewIdentity(normalizeProofCheckIds(parseReview(response), packet), packet), packet);
+  mkdirSync('.trusted-review', { recursive: true });
+  writeFileSync('.trusted-review/raw-response.txt', response, 'utf8');
+  const result = validate(anchorReviewIdentity(normalizeProofCheckIds(normalizeReviewEnums(parseReview(response)), packet), packet), packet);
   Object.assign(result, {
     reviewerKind: 'trusted-main-copilot-actions',
     sourceWorkflow: 'AO-6 Trusted Independent Review',
@@ -482,6 +497,16 @@ function selfTest() {
   ok(anchoredIdentity.taskId === packet.taskId, 'trusted wrapper did not anchor taskId');
   ok(anchoredIdentity.candidateSha === packet.candidateSha, 'trusted wrapper did not anchor candidateSha');
   ok(anchoredIdentity.mode === 'read-only-adversarial', 'trusted wrapper did not anchor review mode');
+  const noisyEnums = structuredClone(wrappedProof);
+  noisyEnums.verdict = ' PASS ';
+  noisyEnums.acceptanceChecks[0].status = ' Satisfied ';
+  noisyEnums.acceptanceChecks[1].status = 'satisfied';
+  noisyEnums.proofChecks[0].status = ' Credible ';
+  noisyEnums.proofChecks[1].status = 'credible';
+  const normalizedEnums = validate(anchorReviewIdentity(normalizeProofCheckIds(normalizeReviewEnums(noisyEnums), packet), packet), packet);
+  ok(normalizedEnums.verdict === 'pass', 'trusted wrapper did not normalize verdict enum');
+  ok(normalizedEnums.acceptanceChecks[0].status === 'satisfied', 'trusted wrapper did not normalize acceptance enum');
+  ok(normalizedEnums.proofChecks[0].status === 'credible', 'trusted wrapper did not normalize proof enum');
   const unknownProof = structuredClone(wrappedProof);
   unknownProof.proofChecks[1].proofId = 'architecture-in\nvariantz';
   let rejectedUnknownProof = false;
