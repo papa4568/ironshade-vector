@@ -116,7 +116,7 @@ process.exit(3);
     assert.equal(report.isolation.dependencyIsolation.writableSourceDependencyPathExposed, false);
     assert.equal(report.negativeControls[0].falsePositive, false);
     assert.equal(report.attack.detected, true);
-    assert.equal(git(['status', '--porcelain=v1', '--untracked-files=all'], fixtureRoot), '?? node_modules/', 'successful runtime calibration must preserve the source fixture including its pre-existing dependency tree');
+    assert.equal(git(['status', '--porcelain=v1', '--untracked-files=all'], fixtureRoot), '?? node_modules/dependency-sentinel.txt', 'successful runtime calibration must preserve the source fixture including its pre-existing dependency tree');
 
     process.env.RUNTIME_CALIBRATION_MUTATE_DEPENDENCY = '1';
     const dependencyMutationReport = await exerciseRuntimeCalibration({
