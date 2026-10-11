@@ -16,6 +16,31 @@
       "enforcedTemplateIds": [
         "hidden-serialization"
       ],
+      "runtimeCalibration": {
+        "verifyCommand": "npm run test:graphics:babylon",
+        "targetFile": "src/game/babylonCombatRenderer.ts",
+        "passMarker": "P28_PLOAD1_RUNTIME_PROFILE_PASS placements=73 batches=19 batchSize=4 peak=4 sourceFamilies=11",
+        "dependencyStrategy": "source-node-modules-symlink",
+        "negativeControls": [
+          {
+            "id": "equivalent-batch-size-expression",
+            "replacement": {
+              "find": "const REFINERY_PLACEMENT_INSTANTIATE_BATCH_SIZE = 4;",
+              "replace": "const REFINERY_PLACEMENT_INSTANTIATE_BATCH_SIZE = 2 + 2;"
+            }
+          }
+        ],
+        "attack": {
+          "templateId": "hidden-serialization",
+          "replacement": {
+            "find": "const REFINERY_PLACEMENT_INSTANTIATE_BATCH_SIZE = 4;",
+            "replace": "const REFINERY_PLACEMENT_INSTANTIATE_BATCH_SIZE = 1;"
+          },
+          "expectedFailurePatterns": [
+            "runtime refinery load must retain batch size 4, got 1"
+          ]
+        }
+      },
       "calibration": {
         "historicalAcceptanceFailure": "P28-PLOAD1 replaced a real per-placement serialized await chain with bounded parallel batches.",
         "prototypeShadowTrials": 6,
