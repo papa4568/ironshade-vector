@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   patch:
-    if: github.event.head_commit.message == 'Add temporary P28-PLOAD1 patch helper'
+    if: github.event.head_commit.message == 'Fix temporary P28-PLOAD1 patch helper'
     runs-on: ubuntu-latest
     steps:
       - name: Check out branch
@@ -27,56 +27,32 @@ jobs:
 
           path = Path('src/game/babylonCombatRenderer.ts')
           text = path.read_text()
-          old = '''        for (let index = 0; index < batch.length; index += 1) {
-            const task = batch[index];
-            const result = results[index];
-            if (!task || result?.status !== 'fulfilled') throw new Error('Refinery placement batch completed without a fulfilled instance');
-            const instance = result.value;
-            const { key, placement } = task;
-            const placementRoot = new TransformNode(`p27-b2-${key}-${task.index}`, this.scene);
-            placementRoot.parent = loadRoot;
-            placementRoot.position.set(placement.x, key === 'floor' ? 0.005 : key === 'floorGrate' ? 0.010 : 0, placement.z);
-            placementRoot.rotation.y = placement.rotationY ?? 0;
-            const scale = placement.scale ?? 1;
-            placementRoot.scaling.set(scale, scale, scale);
-            instance.rootNodes.forEach(root => {
-              root.parent = placementRoot;
-            });
-            this.applyRefineryPremiumSurfaces(key, instance, premiumSurfaceUsage);
-            mountedInstances.push(instance);
-            placementCount += 1;
-          }
-'''
-          new = '''        const unmountedBatchInstances = new Set(batchInstances);
-          try {
-            for (let index = 0; index < batch.length; index += 1) {
-              const task = batch[index];
-              const result = results[index];
-              if (!task || result?.status !== 'fulfilled') throw new Error('Refinery placement batch completed without a fulfilled instance');
-              const instance = result.value;
-              const { key, placement } = task;
-              const placementRoot = new TransformNode(`p27-b2-${key}-${task.index}`, this.scene);
-              placementRoot.parent = loadRoot;
-              placementRoot.position.set(placement.x, key === 'floor' ? 0.005 : key === 'floorGrate' ? 0.010 : 0, placement.z);
-              placementRoot.rotation.y = placement.rotationY ?? 0;
-              const scale = placement.scale ?? 1;
-              placementRoot.scaling.set(scale, scale, scale);
-              instance.rootNodes.forEach(root => {
-                root.parent = placementRoot;
-              });
-              this.applyRefineryPremiumSurfaces(key, instance, premiumSurfaceUsage);
-              mountedInstances.push(instance);
-              unmountedBatchInstances.delete(instance);
-              placementCount += 1;
-            }
-          } catch (error) {
-            unmountedBatchInstances.forEach(instance => instance.release());
-            throw error;
-          }
-'''
-          if text.count(old) != 1:
-              raise SystemExit(f'expected one exact renderer block, found {text.count(old)}')
-          path.write_text(text.replace(old, new))
+          search_from = text.index("        const rejected = results.find((result): result is PromiseRejectedResult")
+          start = text.index("        for (let index = 0; index < batch.length; index += 1) {", search_from)
+          end_marker = "          placementCount += 1;\n        }\n"
+          end = text.index(end_marker, start) + len(end_marker)
+          old = text[start:end]
+          if 'unmountedBatchInstances' in old:
+              raise SystemExit('renderer cleanup fix is already present')
+
+          inner = '\n'.join('  ' + line for line in old.rstrip('\n').split('\n')) + '\n'
+          mounted = "              mountedInstances.push(instance);\n"
+          if inner.count(mounted) != 1:
+              raise SystemExit(f'expected one mounted ownership line, found {inner.count(mounted)}')
+          inner = inner.replace(
+              mounted,
+              mounted + "              unmountedBatchInstances.delete(instance);\n",
+          )
+          new = (
+              "        const unmountedBatchInstances = new Set(batchInstances);\n"
+              "        try {\n"
+              + inner
+              + "        } catch (error) {\n"
+              "          unmountedBatchInstances.forEach(instance => instance.release());\n"
+              "          throw error;\n"
+              "        }\n"
+          )
+          path.write_text(text[:start] + new + text[end:])
           PY
 
           git diff --check
