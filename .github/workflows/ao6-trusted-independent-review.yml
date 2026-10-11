@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/ao6-trusted-independent-review.yml'
       - 'agent/tools/ao6-trusted-independent-review.mjs'
+      - 'agent/tools/ao6-trusted-independent-review-v2.mjs'
       - 'agent/tools/ao6-trusted-review-request.mjs'
   issue_comment:
     types: [created]
@@ -43,6 +44,7 @@ jobs:
       - name: Verify trusted-review parser and fail-closed contract
         run: |
           node agent/tools/ao6-trusted-independent-review.mjs self-test
+          node agent/tools/ao6-trusted-independent-review-v2.mjs self-test
           node agent/tools/ao6-trusted-review-request.mjs self-test
 
   trusted-review:
@@ -93,12 +95,13 @@ jobs:
       - name: Verify trusted-review parser and fail-closed contract
         run: |
           node agent/tools/ao6-trusted-independent-review.mjs self-test
+          node agent/tools/ao6-trusted-independent-review-v2.mjs self-test
           node agent/tools/ao6-trusted-review-request.mjs self-test
       - name: Run trusted exact-SHA adversarial review
         env:
           GITHUB_TOKEN: ${{ github.token }}
           MODEL: auto
-        run: node agent/tools/ao6-trusted-independent-review.mjs run
+        run: node agent/tools/ao6-trusted-independent-review-v2.mjs run
       - name: Retain validated trusted-review result
         if: always()
         uses: actions/upload-artifact@v7
