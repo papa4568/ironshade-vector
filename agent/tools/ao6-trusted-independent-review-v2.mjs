@@ -21,13 +21,30 @@ export function repairJson(text) {
 }
 
 export function parseReview(text) {
-  let source = text.trim();
-  const fence = source.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
-  if (fence) source = fence[1].trim();
+  const source = text.trim();
   const start = source.indexOf('{');
-  const end = source.lastIndexOf('}');
-  ok(start >= 0 && end > start, 'model response has no JSON object');
-  return JSON.parse(repairJson(source.slice(start, end + 1)));
+  ok(start >= 0, 'model response has no JSON object');
+
+  let depth = 0;
+  let quoted = false;
+  let escaped = false;
+  for (let index = start; index < source.length; index += 1) {
+    const ch = source[index];
+    if (quoted) {
+      if (escaped) { escaped = false; continue; }
+      if (ch === '\\') { escaped = true; continue; }
+      if (ch === '"') quoted = false;
+      continue;
+    }
+    if (ch === '"') { quoted = true; continue; }
+    if (ch === '{') depth += 1;
+    else if (ch === '}') {
+      depth -= 1;
+      ok(depth >= 0, 'model response has malformed JSON object boundaries');
+      if (depth === 0) return JSON.parse(repairJson(source.slice(start, index + 1)));
+    }
+  }
+  throw new Error('model response has unterminated JSON object');
 }
 
 export function persistReviewEvidence({ result, body, directory = '.trusted-review' }) {
@@ -257,6 +274,10 @@ function selfTest() {
   );
   ok(packet.acceptance.length === 2, 'exact candidate acceptance was not preserved');
   ok(packet.requiredProofs.length === 2, 'exact candidate required proofs were not preserved');
+  const parsedTrailing = parseReview('preface\n```json\n{"schemaVersion":1,"note":"quoted } brace"}\n```\ntrailing {"ignored":true}');
+  ok(parsedTrailing.schemaVersion === 1 && parsedTrailing.note === 'quoted } brace', 'balanced verdict extraction failed');
+  const parsedRawNewline = parseReview('{"note":"line 1\nline 2"} trailing');
+  ok(parsedRawNewline.note === 'line 1\nline 2', 'control-character repair failed');
   const text = buildPrompt(packet, { candidateRun: { conclusion: 'failure' } }, 'diff');
   ok(text.includes('SELF-REFERENCE RULE'), 'self-reference rule missing from prompt');
   ok(text.includes('never require a previously published review verdict'), 'circular-review regression missing from prompt');
