@@ -240,3 +240,41 @@ Rollback is to remove the EV-7 capture/upload steps from `.github/workflows/pr-c
 ### Promotion status
 
 Not promoted. EV-7 remains advisory because its predictions have not yet been compared with the actual later implementation work. AO-6 remains a prerequisite for default-enforced experimental behavior, and no Roadmap Shadow Simulator score can currently block a candidate. No additional EV item is queued.
+
+## EV-8 — Promote EV-1 Acceptance Attack Compiler
+
+Completed 2026-10-11 as a narrow enforced promotion of the EV-1 mechanism. The original EV-1 archive record above remains unchanged prototype history.
+
+### Implemented
+
+- Added `agent/acceptance-attack-policy.json` and `agent/tools/acceptance-attack-gate.mjs` to make one measured EV-1 mutation family a normal fail-closed exact-candidate gate.
+- Promoted only `hidden-serialization`. The remaining EV-1 templates—`false-readiness`, `fake-telemetry`, `skipped-quality-work`, `special-cased-test-route`, and `omitted-resource-work`—remain advisory and cannot block or synthesize a candidate pass.
+- Added `agent/tools/acceptance-attack-runtime-calibration.mjs` so promotion evidence exercises the real `src/game/babylonCombatRenderer.ts` P28-PLOAD1 path in disposable detached clones and runs the dedicated 73-placement runtime verifier rather than a parallel synthetic runtime.
+- The calibration measures a behavior-preserving negative control (`4 -> 2 + 2`) and the dishonest serialization mutation (`4 -> 1`). A dishonest trial counts as detected only when the verifier fails and its output matches the expected batching-criterion failure, so an unrelated nonzero verifier exit is not credited as a catch.
+- Added promotion regressions for the real runtime baseline/control/attack, an unrelated verifier crash, surviving promoted attacks, rejected benign controls, invalid policy, source immutability, detached remotes, and deterministic rollback.
+- Wired the gate into Agent Orchestration and the authoritative PR candidate producer without replacing the full repository build, browser E2E, Android/APK validation, exact-SHA evidence, or independent review.
+- Documented the permanent rule in `AGENTS.md`: the promoted gate may only block, never waive or synthesize proof, and `IRONSHADE_ACCEPTANCE_ATTACK_ENFORCEMENT=0` must restore advisory-only behavior while retaining evidence.
+
+### Evidence
+
+The first promotion candidate `89b6122bf585e678bc8e131f05bae8aa974df818` passed its technical gates but trusted review run `38161904280` correctly rejected it because it still calibrated against a synthetic four-placement fixture and hard-coded the false-positive result. Those findings were fixed on the same branch without weakening the promotion criterion.
+
+Corrected implementation candidate `f916982260c88b104def36a3ab7edc68bd86ab4e` passed Agent Orchestration run `38163152438` and every technically available gate in PR Candidate Verification run `38163152650`: the authoritative full repository verification/production build, desktop and mobile-landscape browser E2E, APK construction/integrity and delivery checks, API 35 product smoke, API 36 large-screen smoke, and the aggregate Android gate all succeeded. The final candidate job then failed only at the expected missing-review step before trusted review was requested.
+
+Exact-SHA promotion artifact `11710828125` (`acceptance-attack-gate-367-f916982260c88b104def36a3ab7edc68bd86ab4e`) has GitHub Actions digest `sha256:1ebb40099050272970a0a0467f366686a4b18bafebfad55c7d8d0d3d890cc522`. Its gate report digest is `7ad624b852efceb0223826088e0a8f8d6585d7a41bc581b095920ae2f73528ff`, runtime report digest is `1cb618519732f112b443d8d2b29c37ad2e719ad3775b3b20c65b290de88ae62f`, and policy digest is `0d37776a61e433a944e4659acf22d4c36ef4d1b30cb52d74aa189ae0aedb9ec8`.
+
+The real-runtime calibration recorded one benign control with zero false positives (`1` trial, `0` false positives, rate `0`) and one dishonest promoted trial with zero false negatives (`1` trial, `0` false negatives, rate `0`). The dishonest `4 -> 1` mutation was detected for the required runtime batching failure, while the shadow compiler continued to report the other five attacks as advisory survivors. Both the shadow compiler and runtime calibration reported source state unchanged and detached sandbox remotes.
+
+APK artifact `11710529038` is bound to `f916982260c88b104def36a3ab7edc68bd86ab4e` with GitHub Actions digest `sha256:022b37d48d0c675bfcd4fd52d0e0f217fd3ae52836c0fb0d9cb31fef4d6ed839`.
+
+Trusted implementation review run `38163977255` (PR comment `6112312995`) independently marked the runtime calibration, enforced scope, rollback, technical CI, APK/Android proof, and architecture invariants satisfied. It returned `fail` solely because this EV-8 archive entry did not yet exist; that fail-closed result triggered this closeout transition rather than being waived. The exact closeout candidate must still pass a fresh trusted EV-8 review before merge.
+
+### Isolation and rollback
+
+Both compiler attacks and runtime calibration execute only in disposable clones created without local hard links, at the exact source revision, with their repository remote removed before mutation. The runtime calibration mutates only the clone's configured target, uses the source dependency installation through a sandbox symlink, removes disposable state afterward, and verifies the source HEAD/ref/status fingerprint is unchanged.
+
+Rollback is deterministic: set `IRONSHADE_ACCEPTANCE_ATTACK_ENFORCEMENT=0` to retain the same shadow/runtime evidence while making the gate non-blocking. Removing the EV-8 policy/gate/runtime-calibration wiring entirely restores the pre-promotion pipeline; the original full build, browser, Android/APK, exact-SHA, and trusted-review gates remain authoritative throughout.
+
+### Promotion status
+
+Promoted only for `hidden-serialization` on the measured real P28-PLOAD1 runtime batching pattern. The five unsupported EV-1 attack templates remain experimental/advisory. The next experimental promotion item is EV-9.
