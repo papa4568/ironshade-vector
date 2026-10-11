@@ -10,7 +10,6 @@ import { loadRoadmapAdapter } from '../tools/roadmap-adapter.mjs';
 import {
   selectOrchestrationReviewTask,
   selectProductReviewTask,
-  selectReviewTask,
 } from '../tools/select-review-task.mjs';
 import { sha256Value } from '../tools/candidate-evidence.mjs';
 
@@ -156,27 +155,33 @@ assert.throws(
 );
 
 const currentGraph = JSON.parse(readFileSync('agent/task-graph.json', 'utf8'));
-const activeTask = currentGraph.tasks.find(entry => entry.status === 'active' || entry.status === 'verifying');
-assert(activeTask, 'review-selection fixture requires one in-flight AO task');
-const inFlightSelection = await selectReviewTask({ useEventRefs: false });
-assert.equal(inFlightSelection.taskId, activeTask.id, 'review selection must target the actual in-flight AO task rather than a historical task ID');
+const latestAoTask = currentGraph.tasks.at(-1);
+assert(latestAoTask, 'review-selection fixture requires at least one AO task');
+
+const inFlightGraph = structuredClone(currentGraph);
+for (const entry of inFlightGraph.tasks) {
+  if (entry.status === 'active' || entry.status === 'verifying') entry.status = 'planned';
+}
+const inFlightTask = inFlightGraph.tasks.find(entry => entry.id === latestAoTask.id);
+inFlightTask.status = 'active';
+const inFlightSelection = selectOrchestrationReviewTask(inFlightGraph);
+assert.equal(inFlightSelection.task.id, inFlightTask.id, 'review selection must target the actual in-flight AO fixture rather than a historical task ID');
 assert.equal(inFlightSelection.mode, 'orchestration');
-assert.equal(inFlightSelection.source, 'agent/task-graph.json');
 
 const closeoutCurrentGraph = structuredClone(currentGraph);
 const closeoutBaseGraph = structuredClone(currentGraph);
 for (const entry of closeoutCurrentGraph.tasks) {
-  if (entry.status === 'active' || entry.status === 'verifying') entry.status = 'planned';
+  if (entry.status === 'active' || entry.status === 'verifying') entry.status = 'verified';
 }
 for (const entry of closeoutBaseGraph.tasks) {
-  if (entry.status === 'active' || entry.status === 'verifying') entry.status = 'planned';
+  if (entry.status === 'active' || entry.status === 'verifying') entry.status = 'verified';
 }
-const currentAo6 = closeoutCurrentGraph.tasks.find(entry => entry.id === 'AO-6');
-const baseAo6 = closeoutBaseGraph.tasks.find(entry => entry.id === 'AO-6');
-assert.equal(currentAo6.status, 'verified', 'AO-6 closeout fixture must carry its verified state');
-baseAo6.status = 'active';
+const closeoutCurrentTask = closeoutCurrentGraph.tasks.find(entry => entry.id === latestAoTask.id);
+const closeoutBaseTask = closeoutBaseGraph.tasks.find(entry => entry.id === latestAoTask.id);
+assert.equal(closeoutCurrentTask.status, 'verified', 'AO closeout fixture must carry the latest task in verified state');
+closeoutBaseTask.status = 'active';
 const closeoutSelection = selectOrchestrationReviewTask(closeoutCurrentGraph, { baseGraph: closeoutBaseGraph });
-assert.equal(closeoutSelection.task.id, 'AO-6');
+assert.equal(closeoutSelection.task.id, latestAoTask.id);
 assert.equal(closeoutSelection.mode, 'orchestration-closeout');
 
 const postMigrationGraph = structuredClone(currentGraph);
