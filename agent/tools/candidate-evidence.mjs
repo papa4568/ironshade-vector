@@ -76,17 +76,38 @@ export function collectCandidateChangedFiles({ base, head, cwd = process.cwd() }
     .sort((a, b) => a.localeCompare(b));
 }
 
+function roadmapGraphFromRaw(roadmapRaw, metadataRaw, label = 'product roadmap') {
+  const metadata = typeof metadataRaw === 'string' ? JSON.parse(metadataRaw) : metadataRaw;
+  assert(metadata?.roadmap === 'docs/content-roadmap.md', `${label} metadata must point to docs/content-roadmap.md`);
+  return materializeRoadmapGraph(parseRoadmap(roadmapRaw), metadata);
+}
+
+function loadProductTaskAtRef(taskId, ref) {
+  assertString(ref, 'product task git ref');
+  const metadataRaw = execFileSync('git', ['show', `${ref}:agent/roadmap-metadata.json`], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  const roadmapRaw = execFileSync('git', ['show', `${ref}:docs/content-roadmap.md`], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  const graph = roadmapGraphFromRaw(roadmapRaw, metadataRaw, `product roadmap at ${ref}`);
+  const task = graph.tasks.find(entry => entry.id === taskId);
+  return task ? { task, source: 'docs/content-roadmap.md' } : null;
+}
+
 async function loadProductTask(taskId) {
   const [roadmapRaw, metadataRaw] = await Promise.all([
     readFile(resolve('docs/content-roadmap.md'), 'utf8'),
     readFile(resolve('agent/roadmap-metadata.json'), 'utf8'),
   ]);
-  const graph = materializeRoadmapGraph(parseRoadmap(roadmapRaw), JSON.parse(metadataRaw));
+  const graph = roadmapGraphFromRaw(roadmapRaw, metadataRaw);
   const task = graph.tasks.find(entry => entry.id === taskId);
   return task ? { task, source: 'docs/content-roadmap.md' } : null;
 }
 
-export async function loadCandidateTask(taskId = 'active') {
+export async function loadCandidateTask(taskId = 'active', { baseRef = null } = {}) {
   const graph = await loadTaskGraph();
   validateTaskGraph(graph);
 
@@ -100,8 +121,11 @@ export async function loadCandidateTask(taskId = 'active') {
   if (orchestrationTask) return { task: orchestrationTask, source: 'agent/task-graph.json' };
 
   const productTask = await loadProductTask(taskId);
-  assert(productTask, `task ${taskId} was not found in the orchestration graph or active product roadmap`);
-  return productTask;
+  if (productTask) return productTask;
+
+  const baseProductTask = baseRef ? loadProductTaskAtRef(taskId, baseRef) : null;
+  assert(baseProductTask, `task ${taskId} was not found in the orchestration graph, active product roadmap, or exact candidate base roadmap`);
+  return baseProductTask;
 }
 
 function requiredProofShape(proof) {
@@ -407,7 +431,7 @@ async function generateManifest(options) {
   const headSha = resolveGitSha(options.head);
   const changedFiles = collectCandidateChangedFiles({ base: baseSha, head: headSha });
   assert(changedFiles.length > 0, 'candidate diff contains no changed files');
-  const { task, source } = await loadCandidateTask(options.taskId);
+  const { task, source } = await loadCandidateTask(options.taskId, { baseRef: baseSha });
   const impactMap = await loadImpactMap();
   const impactSelection = selectAffectedVerification(changedFiles, impactMap);
   return buildCandidateManifest({
