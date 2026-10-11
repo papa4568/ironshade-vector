@@ -282,13 +282,20 @@ async function cancellationRecoveryProfile() {
   engine.dispose();
 }
 
-const coldA = await successfulColdLoadProfile();
-const coldB = await successfulColdLoadProfile();
-assert(JSON.stringify(coldA) === JSON.stringify(coldB), `deterministic cold-load placement profiles must match across runs: ${JSON.stringify(coldA)} vs ${JSON.stringify(coldB)}`);
-assert(coldA.placements > coldA.batchSize, 'cold-load runtime profile must exercise the full multi-batch refinery placement count');
-await failureRecoveryProfile();
-await cancellationRecoveryProfile();
+async function run() {
+  const coldA = await successfulColdLoadProfile();
+  const coldB = await successfulColdLoadProfile();
+  assert(JSON.stringify(coldA) === JSON.stringify(coldB), `deterministic cold-load placement profiles must match across runs: ${JSON.stringify(coldA)} vs ${JSON.stringify(coldB)}`);
+  assert(coldA.placements > coldA.batchSize, 'cold-load runtime profile must exercise the full multi-batch refinery placement count');
+  await failureRecoveryProfile();
+  await cancellationRecoveryProfile();
 
-console.log(
-  `P28_PLOAD1_RUNTIME_PROFILE_PASS placements=${coldA.placements} batches=${coldA.batches} batchSize=${coldA.batchSize} peak=${coldA.peak} sourceFamilies=${coldA.preloadFamilies} failureRecovery=fulfilled+mounted-release cancellation=releaseRefineryEnvironment deterministicRuns=2`,
-);
+  console.log(
+    `P28_PLOAD1_RUNTIME_PROFILE_PASS placements=${coldA.placements} batches=${coldA.batches} batchSize=${coldA.batchSize} peak=${coldA.peak} sourceFamilies=${coldA.preloadFamilies} failureRecovery=fulfilled+mounted-release cancellation=releaseRefineryEnvironment deterministicRuns=2`,
+  );
+}
+
+run().catch(error => {
+  console.error(error instanceof Error ? error.stack ?? error.message : String(error));
+  process.exitCode = 1;
+});
