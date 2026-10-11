@@ -18,7 +18,11 @@ assert.equal(policy.enforcementEnabled, true, 'EV-8 policy must enable the measu
 assert.equal(policy.scopes.length, 1, 'EV-8 must promote only the measured deterministic subset');
 const [scope] = policy.scopes;
 assert.deepEqual(scope.enforcedTemplateIds, ['hidden-serialization'], 'unsupported EV-1 templates must remain advisory');
-assert.equal(scope.runtimeCalibration.verifyCommand, 'npm run test:graphics:babylon', 'promotion must exercise the real P28-PLOAD1 runtime regression');
+assert.equal(
+  scope.runtimeCalibration.verifyCommand,
+  'npm run prepare:graphics-assets && npm run test:graphics:babylon',
+  'promotion must prepare generated assets inside the disposable clone before exercising the real P28-PLOAD1 runtime regression',
+);
 assert.equal(scope.runtimeCalibration.targetFile, 'src/game/babylonCombatRenderer.ts', 'promotion must mutate the production refinery loader');
 assert.equal(scope.runtimeCalibration.negativeControls.length, 1, 'promotion must measure at least one negative control');
 assert.equal(scope.calibration.promotedFalsePositiveBudget, 0);
