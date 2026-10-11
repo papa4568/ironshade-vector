@@ -29,39 +29,54 @@ jobs:
           path = Path('agent/tools/ao6-trusted-independent-review-v2.mjs')
           text = path.read_text()
 
-          anchor = '''function normalizeProofCheckIds(result, packet) {
-'''
+          anchor = "function normalizeProofCheckIds(result, packet) {\n"
           if text.count(anchor) != 1:
               raise SystemExit(f'normalizeProofCheckIds anchor count={text.count(anchor)}')
-          identity = '''export function anchorReviewIdentity(result, packet) {
-  ok(result && typeof result === 'object' && !Array.isArray(result), 'review must be object');
-  return {
-    ...result,
-    schemaVersion: 1,
-    taskId: packet.taskId,
-    candidateSha: packet.candidateSha,
-    mode: 'read-only-adversarial',
-  };
-}
-
-'''
+          identity = (
+              "export function anchorReviewIdentity(result, packet) {\n"
+              "  ok(result && typeof result === 'object' && !Array.isArray(result), 'review must be object');\n"
+              "  return {\n"
+              "    ...result,\n"
+              "    schemaVersion: 1,\n"
+              "    taskId: packet.taskId,\n"
+              "    candidateSha: packet.candidateSha,\n"
+              "    mode: 'read-only-adversarial',\n"
+              "  };\n"
+              "}\n\n"
+          )
           text = text.replace(anchor, identity + anchor, 1)
 
-          old = "    `EXPECTED SHAPE:\\n${JSON.stringify(shape, null, 2)}`,
-"
-          new = "    'IDENTITY ENVELOPE: schemaVersion, taskId, candidateSha, and mode are trusted wrapper-owned constants. Copy the EXPECTED SHAPE identity values exactly; semantic review is only verdict, acceptanceChecks, proofChecks, and findings.',\n" + old
+          old = "    `EXPECTED SHAPE:\\n${JSON.stringify(shape, null, 2)}`,\n"
+          new = (
+              "    'IDENTITY ENVELOPE: schemaVersion, taskId, candidateSha, and mode are trusted wrapper-owned constants. Copy the EXPECTED SHAPE identity values exactly; semantic review is only verdict, acceptanceChecks, proofChecks, and findings.',\n"
+              + old
+          )
           if text.count(old) != 1:
               raise SystemExit(f'prompt expected-shape anchor count={text.count(old)}')
           text = text.replace(old, new, 1)
 
-          old = '  const result = validate(normalizeProofCheckIds(parseReview(response), packet), packet);\n'
-          new = '  const result = validate(anchorReviewIdentity(normalizeProofCheckIds(parseReview(response), packet), packet), packet);\n'
+          old = "  const result = validate(normalizeProofCheckIds(parseReview(response), packet), packet);\n"
+          new = "  const result = validate(anchorReviewIdentity(normalizeProofCheckIds(parseReview(response), packet), packet), packet);\n"
           if text.count(old) != 1:
               raise SystemExit(f'run validation anchor count={text.count(old)}')
           text = text.replace(old, new, 1)
 
-          old = "  const normalizedProof = validate(normalizeProofCheckIds(wrappedProof, packet), packet);\n  ok(normalizedProof.proofChecks[1].proofId === 'architecture-invariants', 'wrapped trusted proof id normalization failed');\n"
-          new = old + "  const wrongIdentity = structuredClone(wrappedProof);\n  wrongIdentity.schemaVersion = 999;\n  wrongIdentity.taskId = 'P28-PLOAD1';\n  wrongIdentity.candidateSha = 'f'.repeat(40);\n  wrongIdentity.mode = 'wrong-mode';\n  const anchoredIdentity = validate(anchorReviewIdentity(wrongIdentity, packet), packet);\n  ok(anchoredIdentity.schemaVersion === 1, 'trusted wrapper did not anchor schemaVersion');\n  ok(anchoredIdentity.taskId === packet.taskId, 'trusted wrapper did not anchor taskId');\n  ok(anchoredIdentity.candidateSha === packet.candidateSha, 'trusted wrapper did not anchor candidateSha');\n  ok(anchoredIdentity.mode === 'read-only-adversarial', 'trusted wrapper did not anchor review mode');\n"
+          old = (
+              "  const normalizedProof = validate(normalizeProofCheckIds(wrappedProof, packet), packet);\n"
+              "  ok(normalizedProof.proofChecks[1].proofId === 'architecture-invariants', 'wrapped trusted proof id normalization failed');\n"
+          )
+          new = old + (
+              "  const wrongIdentity = structuredClone(wrappedProof);\n"
+              "  wrongIdentity.schemaVersion = 999;\n"
+              "  wrongIdentity.taskId = 'P28-PLOAD1';\n"
+              "  wrongIdentity.candidateSha = 'f'.repeat(40);\n"
+              "  wrongIdentity.mode = 'wrong-mode';\n"
+              "  const anchoredIdentity = validate(anchorReviewIdentity(wrongIdentity, packet), packet);\n"
+              "  ok(anchoredIdentity.schemaVersion === 1, 'trusted wrapper did not anchor schemaVersion');\n"
+              "  ok(anchoredIdentity.taskId === packet.taskId, 'trusted wrapper did not anchor taskId');\n"
+              "  ok(anchoredIdentity.candidateSha === packet.candidateSha, 'trusted wrapper did not anchor candidateSha');\n"
+              "  ok(anchoredIdentity.mode === 'read-only-adversarial', 'trusted wrapper did not anchor review mode');\n"
+          )
           if text.count(old) != 1:
               raise SystemExit(f'self-test normalizedProof anchor count={text.count(old)}')
           text = text.replace(old, new, 1)
