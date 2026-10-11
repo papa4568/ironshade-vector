@@ -10,16 +10,6 @@ import {
 } from './roadmap-adapter.mjs';
 import { loadTaskGraph, validateTaskGraph } from './validate-task-graph.mjs';
 
-const AO6_MAINTENANCE_PATHS = new Set([
-  '.github/workflows/ao6-trusted-independent-review.yml',
-  'agent/INDEPENDENT_VERIFIER.md',
-  'agent/tools/ao6-trusted-independent-review.mjs',
-  'agent/tools/ao6-trusted-independent-review-v2.mjs',
-  'agent/tools/ao6-trusted-review-request.mjs',
-  'agent/tools/review-comment-gate.mjs',
-  'agent/tools/select-review-task.mjs',
-]);
-
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
@@ -39,11 +29,6 @@ function loadRoadmapGraphAtRef(ref) {
   assert(metadata?.roadmap === 'docs/content-roadmap.md', 'roadmap metadata must point to docs/content-roadmap.md');
   const roadmapRaw = execFileSync('git', ['show', `${ref}:docs/content-roadmap.md`], { encoding: 'utf8' });
   return materializeRoadmapGraph(parseRoadmap(roadmapRaw), metadata);
-}
-
-function changedFilesBetweenRefs(baseRef, headRef) {
-  const output = execFileSync('git', ['diff', '--name-only', '--diff-filter=ACDMR', `${baseRef}...${headRef}`], { encoding: 'utf8' });
-  return [...new Set(output.split(/\r?\n/).map(entry => entry.trim()).filter(Boolean))].sort();
 }
 
 function githubPullRequestRefs() {
@@ -75,16 +60,6 @@ export function selectOrchestrationReviewTask(currentGraph, { baseGraph = null }
   });
   assert(transitioned.length <= 1, `multiple AO tasks transitioned to verified in one candidate: ${transitioned.map(task => task.id).join(', ')}`);
   return transitioned.length === 1 ? { task: transitioned[0], mode: 'orchestration-closeout' } : null;
-}
-
-export function selectOrchestrationMaintenanceTask(currentGraph, changedFiles) {
-  validateTaskGraph(currentGraph);
-  assert(Array.isArray(changedFiles), 'changedFiles must be an array');
-  const touchesTrustedReview = changedFiles.some(path => AO6_MAINTENANCE_PATHS.has(path));
-  if (!touchesTrustedReview) return null;
-  const ao6 = currentGraph.tasks.find(task => task.id === 'AO-6');
-  assert(ao6 && ['verified', 'archived'].includes(ao6.status), 'AO-6 maintenance requires the verified independent-review foundation');
-  return { task: ao6, mode: 'orchestration-maintenance' };
 }
 
 export function selectProductReviewTask(currentGraph, { baseGraph = null } = {}) {
@@ -128,17 +103,6 @@ export async function selectReviewTask({ baseRef = null, headRef = null, useEven
       source: 'agent/task-graph.json',
       mode: orchestration.mode,
     };
-  }
-
-  if (baseRef && headRef) {
-    const maintenance = selectOrchestrationMaintenanceTask(currentGraph, changedFilesBetweenRefs(baseRef, headRef));
-    if (maintenance) {
-      return {
-        taskId: maintenance.task.id,
-        source: 'agent/task-graph.json',
-        mode: maintenance.mode,
-      };
-    }
   }
 
   let product;
