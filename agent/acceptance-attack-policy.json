@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "enforcementEnabled": true,
+  "rollback": {
+    "environmentVariable": "IRONSHADE_ACCEPTANCE_ATTACK_ENFORCEMENT",
+    "disabledValue": "0",
+    "behavior": "Run the same attack exercise and retain advisory evidence without blocking candidate acceptance."
+  },
+  "scopes": [
+    {
+      "id": "p28-pload1-hidden-serialization",
+      "taskId": "P28-PLOAD1",
+      "roadmapPath": "agent/fixtures/acceptance-attacks/p28-pload1/roadmap.md",
+      "fixturePath": "agent/fixtures/acceptance-attacks/p28-pload1/fixture.json",
+      "templatesPath": "agent/acceptance-attack-templates.json",
+      "enforcedTemplateIds": [
+        "hidden-serialization"
+      ],
+      "calibration": {
+        "historicalAcceptanceFailure": "P28-PLOAD1 replaced a real per-placement serialized await chain with bounded parallel batches.",
+        "prototypeShadowTrials": 6,
+        "prototypeCaught": 1,
+        "prototypeProofGaps": 5,
+        "promotedFalsePositiveBudget": 0,
+        "promotedFalseNegativeBudget": 0
+      }
+    }
+  ]
+}
