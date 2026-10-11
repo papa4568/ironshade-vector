@@ -1,0 +1,48 @@
+name: Temporary P28-PLOAD1 Metadata Cleanup Helper
+
+on:
+  push:
+    branches:
+      - agent/p28-pload1-batched-refinery-instantiation
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: github.event.head_commit.message == 'Add temporary P28-PLOAD1 metadata cleanup helper'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v7
+        with:
+          ref: agent/p28-pload1-batched-refinery-instantiation
+          fetch-depth: 0
+
+      - name: Remove no-op archived dependency override
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path('agent/roadmap-metadata.json')
+          metadata = json.loads(path.read_text())
+          if metadata.get('overrides', {}).get('P28-PLOAD2') != {}:
+              raise SystemExit('expected P28-PLOAD2 to have only the now-pruned empty override')
+          del metadata['overrides']['P28-PLOAD2']
+          path.write_text(json.dumps(metadata, indent=2) + '\n')
+          PY
+          node agent/tools/sync-roadmap-metadata.mjs --check
+          node agent/tests/roadmap-adapter.mjs
+          git diff --check
+
+      - name: Commit metadata cleanup
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add agent/roadmap-metadata.json
+          git commit -m 'Drop no-op P28-PLOAD2 metadata override'
+          git push origin HEAD:agent/p28-pload1-batched-refinery-instantiation
