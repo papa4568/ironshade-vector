@@ -1,0 +1,92 @@
+name: Temporary P28-PLOAD1 Mount Cleanup Patch
+
+on:
+  push:
+    branches:
+      - agent/p28-pload1-batched-refinery-instantiation
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message == 'Add temporary P28-PLOAD1 patch helper'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v7
+        with:
+          ref: agent/p28-pload1-batched-refinery-instantiation
+          fetch-depth: 0
+
+      - name: Apply exact renderer cleanup fix
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/game/babylonCombatRenderer.ts')
+          text = path.read_text()
+          old = '''        for (let index = 0; index < batch.length; index += 1) {
+            const task = batch[index];
+            const result = results[index];
+            if (!task || result?.status !== 'fulfilled') throw new Error('Refinery placement batch completed without a fulfilled instance');
+            const instance = result.value;
+            const { key, placement } = task;
+            const placementRoot = new TransformNode(`p27-b2-${key}-${task.index}`, this.scene);
+            placementRoot.parent = loadRoot;
+            placementRoot.position.set(placement.x, key === 'floor' ? 0.005 : key === 'floorGrate' ? 0.010 : 0, placement.z);
+            placementRoot.rotation.y = placement.rotationY ?? 0;
+            const scale = placement.scale ?? 1;
+            placementRoot.scaling.set(scale, scale, scale);
+            instance.rootNodes.forEach(root => {
+              root.parent = placementRoot;
+            });
+            this.applyRefineryPremiumSurfaces(key, instance, premiumSurfaceUsage);
+            mountedInstances.push(instance);
+            placementCount += 1;
+          }
+'''
+          new = '''        const unmountedBatchInstances = new Set(batchInstances);
+          try {
+            for (let index = 0; index < batch.length; index += 1) {
+              const task = batch[index];
+              const result = results[index];
+              if (!task || result?.status !== 'fulfilled') throw new Error('Refinery placement batch completed without a fulfilled instance');
+              const instance = result.value;
+              const { key, placement } = task;
+              const placementRoot = new TransformNode(`p27-b2-${key}-${task.index}`, this.scene);
+              placementRoot.parent = loadRoot;
+              placementRoot.position.set(placement.x, key === 'floor' ? 0.005 : key === 'floorGrate' ? 0.010 : 0, placement.z);
+              placementRoot.rotation.y = placement.rotationY ?? 0;
+              const scale = placement.scale ?? 1;
+              placementRoot.scaling.set(scale, scale, scale);
+              instance.rootNodes.forEach(root => {
+                root.parent = placementRoot;
+              });
+              this.applyRefineryPremiumSurfaces(key, instance, premiumSurfaceUsage);
+              mountedInstances.push(instance);
+              unmountedBatchInstances.delete(instance);
+              placementCount += 1;
+            }
+          } catch (error) {
+            unmountedBatchInstances.forEach(instance => instance.release());
+            throw error;
+          }
+'''
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one exact renderer block, found {text.count(old)}')
+          path.write_text(text.replace(old, new))
+          PY
+
+          git diff --check
+          git diff -- src/game/babylonCombatRenderer.ts
+
+      - name: Commit renderer fix
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/game/babylonCombatRenderer.ts
+          git commit -m 'Release fulfilled refinery batch on mount failure'
+          git push origin HEAD:agent/p28-pload1-batched-refinery-instantiation
