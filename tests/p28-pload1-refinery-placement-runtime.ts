@@ -241,6 +241,61 @@ async function failureRecoveryProfile() {
   engine.dispose();
 }
 
+async function mountingFailureRecoveryProfile() {
+  const { engine, scene, renderer, dataset } = buildHarness();
+  const runtime = getBabylonGraphicsAssetRuntime(scene);
+  let calls = 0;
+  let releases = 0;
+  let active = 0;
+  let surfaceApplications = 0;
+
+  runtime.preload = async specs => ({ requested: specs.length, loaded: specs.length, failed: 0, workerCount: 2 });
+  runtime.instantiate = async spec => {
+    const id = ++calls;
+    await Promise.resolve();
+    active += 1;
+    const root = new TransformNode(`p28-pload1-mount-failure-${id}`, scene);
+    let released = false;
+    return {
+      spec,
+      rootNodes: [root],
+      animationGroups: [],
+      nativeMeshInstances: 1,
+      release: () => {
+        if (released) return;
+        released = true;
+        releases += 1;
+        active -= 1;
+        root.dispose();
+      },
+    };
+  };
+  runtime.stats = () => ({
+    cachedAssets: selected.length,
+    activeInstances: active,
+    activeNativeMeshInstances: active,
+    estimatedCachedCompressedBytes: 0,
+    maxCachedCompressedBytes: 64 * 1024 * 1024,
+    maxCachedAssets: 32,
+  });
+  renderer.applyRefineryPremiumSurfaces = (key, _instance, usage) => {
+    surfaceApplications += 1;
+    if (surfaceApplications === 6) throw new Error('p28-pload1-injected-mount-failure');
+    usage.set(key, new Set(PREMIUM_BY_KEY[key]));
+  };
+
+  await renderer.loadRefineryEnvironment(state, 960, 540, selected, 1);
+  assert(dataset.babylonEnvironmentState === 'error', 'runtime mount failure must put refinery load in error state');
+  assert(dataset.babylonEnvironmentError === 'p28-pload1-injected-mount-failure', `runtime mount failure reason must be preserved, got ${dataset.babylonEnvironmentError}`);
+  assert(calls === 8, `mount failure in the second batch must occur after all four batch instances fulfill, got ${calls} instantiate calls`);
+  assert(surfaceApplications === 6, `mount failure regression must fail while processing the second fulfilled batch, got ${surfaceApplications} surface applications`);
+  assert(active === 0, 'runtime mount failure must release current, remaining, and previously mounted fulfilled instances');
+  assert(releases === calls, `runtime mount failure must release all ${calls} fulfilled instances, got ${releases}`);
+  assert(renderer.refineryAssetInstances.length === 0 && renderer.refineryMountRoot === null, 'mount-failed runtime load must not publish partial refinery ownership');
+  scene.dispose();
+  engine.dispose();
+}
+
 async function cancellationRecoveryProfile() {
   const { engine, scene, renderer, dataset } = buildHarness();
   const runtime = getBabylonGraphicsAssetRuntime(scene);
@@ -300,10 +355,11 @@ async function run() {
   assert(JSON.stringify(coldA) === JSON.stringify(coldB), `deterministic cold-load placement profiles must match across runs: ${JSON.stringify(coldA)} vs ${JSON.stringify(coldB)}`);
   assert(coldA.placements > coldA.batchSize, 'cold-load runtime profile must exercise the full multi-batch refinery placement count');
   await failureRecoveryProfile();
+  await mountingFailureRecoveryProfile();
   await cancellationRecoveryProfile();
 
   console.log(
-    `P28_PLOAD1_RUNTIME_PROFILE_PASS placements=${coldA.placements} batches=${coldA.batches} batchSize=${coldA.batchSize} peak=${coldA.peak} sourceFamilies=${coldA.preloadFamilies} failureRecovery=fulfilled+mounted-release cancellation=releaseRefineryEnvironment deterministicRuns=2`,
+    `P28_PLOAD1_RUNTIME_PROFILE_PASS placements=${coldA.placements} batches=${coldA.batches} batchSize=${coldA.batchSize} peak=${coldA.peak} sourceFamilies=${coldA.preloadFamilies} failureRecovery=fulfilled+mounted-release mountFailure=fulfilled-batch-release cancellation=releaseRefineryEnvironment deterministicRuns=2`,
   );
 }
 
