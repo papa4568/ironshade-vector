@@ -129,7 +129,7 @@ async function createPacket({ manifest, output, verifyGit }) {
     const changedFiles = collectCandidateChangedFiles({ base: candidateManifest.candidate.baseSha, head: candidateManifest.candidate.headSha });
     assert(JSON.stringify(changedFiles) === JSON.stringify(candidateManifest.changedFiles), 'review packet manifest changed files do not match the exact git candidate diff');
   }
-  const { task } = await loadCandidateTask(candidateManifest.task.id);
+  const { task } = await loadCandidateTask(candidateManifest.task.id, { baseRef: candidateManifest.candidate.baseSha });
   const {
     evaluateArchitectureInvariants,
     loadArchitectureInvariantConfig,

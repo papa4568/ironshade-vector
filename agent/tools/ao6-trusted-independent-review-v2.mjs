@@ -2,6 +2,8 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
+import { materializeRoadmapGraph, parseRoadmap } from './roadmap-adapter.mjs';
+
 const ok = (value, message) => { if (!value) throw new Error(message); };
 const env = name => { const value = process.env[name]?.trim(); ok(value, `${name} is required`); return value; };
 const positive = (value, name) => { const parsed = Number(value); ok(Number.isInteger(parsed) && parsed > 0, `${name} must be positive`); return parsed; };
@@ -110,6 +112,11 @@ async function diffText(repo, pr) {
   return text;
 }
 
+function decodeContentFile(file, label) {
+  ok(file?.encoding === 'base64' && typeof file.content === 'string', `${label} payload is invalid`);
+  return Buffer.from(file.content.replace(/\s/g, ''), 'base64').toString('utf8');
+}
+
 export function packetFromTaskGraph(graph, taskId, candidateSha) {
   ok(graph && typeof graph === 'object' && Array.isArray(graph.tasks), 'candidate task graph is invalid');
   const task = graph.tasks.find(entry => entry.id === taskId);
@@ -128,11 +135,74 @@ export function packetFromTaskGraph(graph, taskId, candidateSha) {
   };
 }
 
-async function exactCandidatePacket(repo, candidateSha, taskId) {
-  const file = await api(`repos/${repo}/contents/agent/task-graph.json?ref=${encodeURIComponent(candidateSha)}`);
-  ok(file?.encoding === 'base64' && typeof file.content === 'string', 'exact candidate task graph payload is invalid');
-  const raw = Buffer.from(file.content.replace(/\s/g, ''), 'base64').toString('utf8');
-  return packetFromTaskGraph(JSON.parse(raw), taskId, candidateSha);
+function roadmapGraph(markdown, metadata, label) {
+  ok(metadata?.roadmap === 'docs/content-roadmap.md', `${label} roadmap metadata must point to docs/content-roadmap.md`);
+  return materializeRoadmapGraph(parseRoadmap(markdown), metadata);
+}
+
+export function packetFromProductRoadmaps({
+  headMarkdown,
+  headMetadata,
+  baseMarkdown = null,
+  baseMetadata = null,
+  taskId,
+  candidateSha,
+}) {
+  const headGraph = roadmapGraph(headMarkdown, headMetadata, 'candidate');
+  if (headGraph.tasks[0]?.id === taskId) return packetFromTaskGraph(headGraph, taskId, candidateSha);
+
+  ok(baseMarkdown && baseMetadata, `product task ${taskId} is not the first executable exact-candidate roadmap item`);
+  const baseGraph = roadmapGraph(baseMarkdown, baseMetadata, 'base');
+  ok(baseGraph.tasks[0]?.id === taskId, `product task ${taskId} is not the first executable exact-candidate or base roadmap item`);
+  const baseIds = baseGraph.tasks.map(task => task.id);
+  const headIds = headGraph.tasks.map(task => task.id);
+  ok(
+    JSON.stringify(headIds) === JSON.stringify(baseIds.slice(1)),
+    `product closeout for ${taskId} must remove only the first executable roadmap item without reordering or combining roadmap changes`,
+  );
+  return packetFromTaskGraph(baseGraph, taskId, candidateSha);
+}
+
+export function packetFromRoadmap(markdown, metadata, taskId, candidateSha) {
+  return packetFromProductRoadmaps({ headMarkdown: markdown, headMetadata: metadata, taskId, candidateSha });
+}
+
+async function exactCandidatePacket(repo, candidateSha, taskId, baseSha = null) {
+  if (/^AO-\d+$/.test(taskId)) {
+    const file = await api(`repos/${repo}/contents/agent/task-graph.json?ref=${encodeURIComponent(candidateSha)}`);
+    return packetFromTaskGraph(JSON.parse(decodeContentFile(file, 'exact candidate task graph')), taskId, candidateSha);
+  }
+
+  if (/^P\d+(?:-[A-Z0-9]+)+$/.test(taskId)) {
+    const [roadmapFile, metadataFile] = await Promise.all([
+      api(`repos/${repo}/contents/docs/content-roadmap.md?ref=${encodeURIComponent(candidateSha)}`),
+      api(`repos/${repo}/contents/agent/roadmap-metadata.json?ref=${encodeURIComponent(candidateSha)}`),
+    ]);
+    const headMarkdown = decodeContentFile(roadmapFile, 'exact candidate product roadmap');
+    const headMetadata = JSON.parse(decodeContentFile(metadataFile, 'exact candidate roadmap metadata'));
+
+    let baseMarkdown = null;
+    let baseMetadata = null;
+    if (baseSha) {
+      const [baseRoadmapFile, baseMetadataFile] = await Promise.all([
+        api(`repos/${repo}/contents/docs/content-roadmap.md?ref=${encodeURIComponent(baseSha)}`),
+        api(`repos/${repo}/contents/agent/roadmap-metadata.json?ref=${encodeURIComponent(baseSha)}`),
+      ]);
+      baseMarkdown = decodeContentFile(baseRoadmapFile, 'exact base product roadmap');
+      baseMetadata = JSON.parse(decodeContentFile(baseMetadataFile, 'exact base roadmap metadata'));
+    }
+
+    return packetFromProductRoadmaps({
+      headMarkdown,
+      headMetadata,
+      baseMarkdown,
+      baseMetadata,
+      taskId,
+      candidateSha,
+    });
+  }
+
+  throw new Error(`unsupported trusted review task id ${taskId}`);
 }
 
 function compactJobs(jobs) {
@@ -249,7 +319,7 @@ async function run() {
   const main = await api(`repos/${repo}/branches/main`);
   ok(main.commit?.sha === env('GITHUB_SHA'), 'workflow SHA is not current main');
 
-  const packet = await exactCandidatePacket(repo, sha, taskId);
+  const packet = await exactCandidatePacket(repo, sha, taskId, pull.base?.sha ?? null);
   const ev = await evidence(repo, sha, pr);
   const diff = await diffText(repo, pr);
   ok(diff.trim(), 'candidate diff is empty');
@@ -302,6 +372,68 @@ function selfTest() {
   );
   ok(packet.acceptance.length === 2, 'exact candidate acceptance was not preserved');
   ok(packet.requiredProofs.length === 2, 'exact candidate required proofs were not preserved');
+
+  const baseProductMarkdown = [
+    '- [ ] **P28-PLOAD1 — Remove serialized map instantiation** — Replace serial placement waits with bounded batches. **Done when:** placement creation is bounded and exact-candidate gates pass.',
+    '- [ ] **P28-PLOAD2 — Measure load readiness** — Record load phases. **Done when:** load timing is deterministic.',
+  ].join('\n');
+  const baseProductMetadata = {
+    schemaVersion: 1,
+    roadmap: 'docs/content-roadmap.md',
+    roadmapIds: ['P28-PLOAD1', 'P28-PLOAD2'],
+    proofProfiles: {
+      performance: [
+        { id: 'targeted-regressions', kind: 'test', required: true, description: 'focused proof' },
+        { id: 'candidate-ci', kind: 'ci', required: true, description: 'exact candidate proof' },
+      ],
+    },
+    rules: [{ prefix: 'P28-P', affectedDomains: ['graphics', 'performance'], proofProfile: 'performance' }],
+    overrides: { 'P28-PLOAD2': { dependsOn: ['P28-PLOAD1'] } },
+  };
+  const productPacket = packetFromRoadmap(
+    baseProductMarkdown,
+    baseProductMetadata,
+    'P28-PLOAD1',
+    'b'.repeat(40),
+  );
+  ok(productPacket.taskId === 'P28-PLOAD1', 'product roadmap packet task was not preserved');
+  ok(productPacket.acceptance.length === 1 && productPacket.acceptance[0].text.includes('bounded'), 'product roadmap acceptance was not preserved');
+  ok(productPacket.requiredProofs.length === 2, 'product roadmap required proofs were not preserved');
+
+  const closeoutProductPacket = packetFromProductRoadmaps({
+    headMarkdown: '- [ ] **P28-PLOAD2 — Measure load readiness** — Record load phases. **Done when:** load timing is deterministic.\n',
+    headMetadata: {
+      ...baseProductMetadata,
+      roadmapIds: ['P28-PLOAD2'],
+      overrides: {},
+    },
+    baseMarkdown: baseProductMarkdown,
+    baseMetadata: baseProductMetadata,
+    taskId: 'P28-PLOAD1',
+    candidateSha: 'c'.repeat(40),
+  });
+  ok(closeoutProductPacket.taskId === 'P28-PLOAD1', 'product closeout packet lost completed task identity');
+  ok(closeoutProductPacket.acceptance[0].text.includes('bounded'), 'product closeout packet must preserve base acceptance');
+  let rejectedCombinedCloseout = false;
+  try {
+    packetFromProductRoadmaps({
+      headMarkdown: '- [ ] **P28-D8 — Boss** — Ship boss. **Done when:** boss ships.\n',
+      headMetadata: {
+        ...baseProductMetadata,
+        roadmapIds: ['P28-D8'],
+        rules: [{ prefix: 'P28-', affectedDomains: ['graphics'], proofProfile: 'performance' }],
+        overrides: {},
+      },
+      baseMarkdown: baseProductMarkdown,
+      baseMetadata: baseProductMetadata,
+      taskId: 'P28-PLOAD1',
+      candidateSha: 'd'.repeat(40),
+    });
+  } catch {
+    rejectedCombinedCloseout = true;
+  }
+  ok(rejectedCombinedCloseout, 'product closeout must reject removal of more than the current task');
+
   const parsedTrailing = parseReview('preface\n```json\n{"schemaVersion":1,"note":"quoted } brace"}\n```\ntrailing {"ignored":true}');
   ok(parsedTrailing.schemaVersion === 1 && parsedTrailing.note === 'quoted } brace', 'balanced verdict extraction failed');
   const parsedRawNewline = parseReview('{"note":"line 1\nline 2"} trailing');
