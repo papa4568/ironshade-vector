@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { materializeExperimentalTasks } from './experimental-review-task.mjs';
 import { materializeRoadmapGraph, parseRoadmap } from './roadmap-adapter.mjs';
 import { loadImpactMap, selectAffectedVerification } from './select-affected-verification.mjs';
 import { loadTaskGraph, validateTaskGraph } from './validate-task-graph.mjs';
@@ -82,6 +83,22 @@ function roadmapGraphFromRaw(roadmapRaw, metadataRaw, label = 'product roadmap')
   return materializeRoadmapGraph(parseRoadmap(roadmapRaw), metadata);
 }
 
+function loadExperimentalTaskAtRef(taskId, ref) {
+  assertString(ref, 'experimental task git ref');
+  const roadmapRaw = execFileSync('git', ['show', `${ref}:docs/experimental-verification-roadmap.md`], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  const task = materializeExperimentalTasks(roadmapRaw).find(entry => entry.id === taskId);
+  return task ? { task, source: 'docs/experimental-verification-roadmap.md' } : null;
+}
+
+async function loadExperimentalTask(taskId) {
+  const roadmapRaw = await readFile(resolve('docs/experimental-verification-roadmap.md'), 'utf8');
+  const task = materializeExperimentalTasks(roadmapRaw).find(entry => entry.id === taskId);
+  return task ? { task, source: 'docs/experimental-verification-roadmap.md' } : null;
+}
+
 function loadProductTaskAtRef(taskId, ref) {
   assertString(ref, 'product task git ref');
   const metadataRaw = execFileSync('git', ['show', `${ref}:agent/roadmap-metadata.json`], {
@@ -120,11 +137,17 @@ export async function loadCandidateTask(taskId = 'active', { baseRef = null } = 
   const orchestrationTask = graph.tasks.find(task => task.id === taskId);
   if (orchestrationTask) return { task: orchestrationTask, source: 'agent/task-graph.json' };
 
+  const experimentalTask = await loadExperimentalTask(taskId);
+  if (experimentalTask) return experimentalTask;
+
   const productTask = await loadProductTask(taskId);
   if (productTask) return productTask;
 
+  const baseExperimentalTask = baseRef ? loadExperimentalTaskAtRef(taskId, baseRef) : null;
+  if (baseExperimentalTask) return baseExperimentalTask;
+
   const baseProductTask = baseRef ? loadProductTaskAtRef(taskId, baseRef) : null;
-  assert(baseProductTask, `task ${taskId} was not found in the orchestration graph, active product roadmap, or exact candidate base roadmap`);
+  assert(baseProductTask, `task ${taskId} was not found in the orchestration graph, active experimental roadmap, active product roadmap, or exact candidate base roadmaps`);
   return baseProductTask;
 }
 
@@ -336,7 +359,7 @@ export function validateVerificationLedger(manifest, ledger, { allowIncomplete =
     assertString(artifact.kind, `ledger artifact ${artifact.name}.kind`);
     assert(artifact.candidateSha === manifest.candidate.headSha, `artifact ${artifact.name} is for a different candidate SHA`);
     if (artifact.sha256 !== undefined) assert(SHA256_PATTERN.test(artifact.sha256), `artifact ${artifact.name}.sha256 must be SHA-256`);
-    if (artifact.location !== undefined) assertString(artifact.location, `artifact ${artifact.name}.location`);
+    if (artifact.location !== undefined) assertString(artifact.location, `ledger artifact ${artifact.name}.location`);
   }
 
   assert(Array.isArray(ledger.unresolvedExternalQa), 'ledger.unresolvedExternalQa must be an array');
