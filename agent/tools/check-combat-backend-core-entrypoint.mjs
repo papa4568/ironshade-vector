@@ -1,99 +1,175 @@
-import { readFile, readdir, realpath, stat } from 'node:fs/promises';
-import { dirname, extname, relative, resolve } from 'node:path';
+import { readFile, readdir, realpath } from 'node:fs/promises';
+import { dirname, extname, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import ts from 'typescript';
 
-const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs']);
-const RESOLVE_EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs'];
+const BOUNDARY_ID = 'combat-backend-core-entrypoint';
+const SOURCE_ROOT = 'src';
 const CORE_FILE = 'src/game/combatGraphicsBackendCore.ts';
 const ALLOWED_IMPORTER = 'src/game/combatGraphicsBackend.ts';
-const CORE_TOKEN = 'combatGraphicsBackendCore';
+const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs']);
+const MODULE_EXTENSIONS = ['.d.mts', '.d.cts', '.d.ts', '.tsx', '.mts', '.cts', '.mjs', '.cjs', '.jsx', '.ts', '.js'];
 
 function invariant(condition, message) {
   if (!condition) throw new Error(message);
 }
 
 function slash(value) {
-  return value.replace(/\\/g, '/');
+  return value.split(sep).join('/');
 }
 
-async function exists(path) {
-  try {
-    await stat(path);
-    return true;
-  } catch (error) {
-    if (error && typeof error === 'object' && ['ENOENT', 'ENOTDIR'].includes(error.code)) return false;
-    throw error;
+function scriptKind(fileName) {
+  switch (extname(fileName).toLowerCase()) {
+    case '.tsx': return ts.ScriptKind.TSX;
+    case '.jsx': return ts.ScriptKind.JSX;
+    case '.js':
+    case '.mjs':
+    case '.cjs': return ts.ScriptKind.JS;
+    default: return ts.ScriptKind.TS;
   }
 }
 
-async function listSourceFiles(directory, root, output = []) {
-  for (const entry of await readdir(directory, { withFileTypes: true })) {
-    const fullPath = resolve(directory, entry.name);
-    if (entry.isDirectory()) {
-      await listSourceFiles(fullPath, root, output);
-      continue;
-    }
-    if (!entry.isFile() || !SOURCE_EXTENSIONS.has(extname(entry.name))) continue;
-    output.push(slash(relative(root, fullPath)));
-  }
-  return output;
+function parse(source, fileName) {
+  const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, scriptKind(fileName));
+  invariant((sourceFile.parseDiagnostics ?? []).length === 0, `${BOUNDARY_ID}: could not parse ${fileName}`);
+  return sourceFile;
 }
 
-function literalModuleSpecifiers(source) {
-  const specifiers = new Set();
-  const patterns = [
-    /\bimport\s+(?:type\s+)?(?:[\s\S]*?\s+from\s+)?['"]([^'"]+)['"]/g,
-    /\bexport\s+(?:type\s+)?(?:\*(?:\s+as\s+[A-Za-z_$][\w$]*)?|\{[\s\S]*?\})\s+from\s+['"]([^'"]+)['"]/g,
-    /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
-    /\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+function literalModule(node) {
+  return node && ts.isStringLiteralLike(node) ? node.text : null;
+}
+
+function importTypeModule(node) {
+  return node.argument && ts.isLiteralTypeNode(node.argument) ? literalModule(node.argument.literal) : null;
+}
+
+function importMetaMember(expression) {
+  if (
+    ts.isPropertyAccessExpression(expression)
+    && ts.isMetaProperty(expression.expression)
+    && expression.expression.keywordToken === ts.SyntaxKind.ImportKeyword
+    && expression.expression.name.text === 'meta'
+  ) return expression.name.text;
+  if (
+    ts.isElementAccessExpression(expression)
+    && ts.isMetaProperty(expression.expression)
+    && expression.expression.keywordToken === ts.SyntaxKind.ImportKeyword
+    && expression.expression.name.text === 'meta'
+    && expression.argumentExpression
+    && ts.isStringLiteralLike(expression.argumentExpression)
+  ) return expression.argumentExpression.text;
+  return null;
+}
+
+function isImportMetaGlob(node) {
+  if (!ts.isCallExpression(node)) return false;
+  const member = importMetaMember(node.expression);
+  return member === 'glob' || member === 'globEager';
+}
+
+async function listSourceFiles(root, directory = SOURCE_ROOT) {
+  const entries = await readdir(resolve(root, directory), { withFileTypes: true });
+  const files = [];
+  for (const entry of entries) {
+    const fileName = slash(`${directory}/${entry.name}`);
+    if (entry.isDirectory()) files.push(...await listSourceFiles(root, fileName));
+    else if ((entry.isFile() || entry.isSymbolicLink()) && SOURCE_EXTENSIONS.has(extname(entry.name).toLowerCase())) files.push(fileName);
+  }
+  return files.sort();
+}
+
+function moduleCandidates(specifier, importerFile, root) {
+  let absolute;
+  if (specifier.startsWith('.')) absolute = resolve(root, dirname(importerFile), specifier);
+  else if (specifier.startsWith('/src/')) absolute = resolve(root, `.${specifier}`);
+  else return [];
+
+  if (MODULE_EXTENSIONS.some(extension => absolute.endsWith(extension))) return [absolute];
+  return [
+    absolute,
+    ...MODULE_EXTENSIONS.map(extension => `${absolute}${extension}`),
+    ...MODULE_EXTENSIONS.map(extension => resolve(absolute, `index${extension}`)),
   ];
-  for (const pattern of patterns) {
-    for (const match of source.matchAll(pattern)) specifiers.add(match[1]);
-  }
-  return [...specifiers];
 }
 
 async function resolveLocalModule(specifier, importerFile, root) {
-  if (!specifier.startsWith('.')) return null;
-  const importerDir = dirname(resolve(root, importerFile));
-  const base = resolve(importerDir, specifier);
-  const candidates = [base];
-  if (!RESOLVE_EXTENSIONS.some(extension => base.endsWith(extension))) {
-    for (const extension of RESOLVE_EXTENSIONS) candidates.push(`${base}${extension}`);
-    for (const extension of RESOLVE_EXTENSIONS) candidates.push(resolve(base, `index${extension}`));
-  }
-  for (const candidate of candidates) {
-    if (await exists(candidate)) return realpath(candidate);
+  for (const candidate of moduleCandidates(specifier, importerFile, root)) {
+    try {
+      return await realpath(candidate);
+    } catch (error) {
+      if (error && typeof error === 'object' && ['ENOENT', 'ENOTDIR'].includes(error.code)) continue;
+      throw error;
+    }
   }
   return null;
 }
 
+function collectModuleLoads(sourceFile, fileName) {
+  const loads = [];
+  function add(specifier, kind) {
+    if (specifier !== null) loads.push({ specifier, kind });
+  }
+  function rejectUnprovable(kind) {
+    throw new Error(`${BOUNDARY_ID}: ${fileName}: ${kind} cannot prove the raw graphics core remains behind the snapshot boundary`);
+  }
+  function visit(node) {
+    if (isImportMetaGlob(node)) rejectUnprovable('import.meta.glob');
+    if (ts.isImportDeclaration(node)) {
+      add(literalModule(node.moduleSpecifier), node.importClause?.isTypeOnly ? 'type import' : 'import');
+    } else if (ts.isExportDeclaration(node) && node.moduleSpecifier) {
+      add(literalModule(node.moduleSpecifier), node.isTypeOnly ? 'type re-export' : 're-export');
+    } else if (ts.isImportTypeNode(node)) {
+      const specifier = importTypeModule(node);
+      invariant(specifier !== null, `${BOUNDARY_ID}: ${fileName}: non-literal import type cannot prove the raw graphics core boundary`);
+      add(specifier, 'import type');
+    } else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) {
+      const specifier = literalModule(node.moduleReference.expression);
+      invariant(specifier !== null, `${BOUNDARY_ID}: ${fileName}: non-literal import-equals cannot prove the raw graphics core boundary`);
+      add(specifier, 'import-equals');
+    } else if (ts.isCallExpression(node)) {
+      if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+        const specifier = literalModule(node.arguments[0]);
+        if (specifier === null) rejectUnprovable('non-literal dynamic import');
+        add(specifier, 'dynamic import');
+      } else if (ts.isIdentifier(node.expression) && node.expression.text === 'require') {
+        const specifier = literalModule(node.arguments[0]);
+        if (specifier === null) rejectUnprovable('non-literal require()');
+        add(specifier, 'require()');
+      } else if (ts.isIdentifier(node.expression) && ['eval', 'Function'].includes(node.expression.text)) {
+        rejectUnprovable(`${node.expression.text}()`);
+      }
+    } else if (ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'Function') {
+      rejectUnprovable('new Function()');
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(sourceFile);
+  return loads;
+}
+
 export async function checkCombatBackendCoreEntrypoint({ root = process.cwd() } = {}) {
-  const sourceRoot = resolve(root, 'src');
   const coreRealPath = await realpath(resolve(root, CORE_FILE));
-  const files = await listSourceFiles(sourceRoot, root);
-  let checked = 0;
+  const files = await listSourceFiles(root);
+  let approvedEdges = 0;
 
-  for (const file of files) {
-    if (file === CORE_FILE || file === ALLOWED_IMPORTER) continue;
-    const source = await readFile(resolve(root, file), 'utf8');
-    checked += 1;
-
-    invariant(
-      !source.includes(CORE_TOKEN),
-      `${file}: direct reference to ${CORE_TOKEN} is forbidden; import ${ALLOWED_IMPORTER} instead`,
-    );
-
-    for (const specifier of literalModuleSpecifiers(source)) {
-      const resolved = await resolveLocalModule(specifier, file, root);
-      invariant(
-        resolved !== coreRealPath,
-        `${file}: module dependency ${specifier} resolves to ${CORE_FILE}; import ${ALLOWED_IMPORTER} instead`,
+  for (const fileName of files) {
+    const source = await readFile(resolve(root, fileName), 'utf8');
+    const sourceFile = parse(source, fileName);
+    for (const { specifier, kind } of collectModuleLoads(sourceFile, fileName)) {
+      const target = await resolveLocalModule(specifier, fileName, root);
+      if (target !== coreRealPath) continue;
+      if (fileName === ALLOWED_IMPORTER) {
+        approvedEdges += 1;
+        continue;
+      }
+      throw new Error(
+        `${BOUNDARY_ID}: ${fileName}: ${kind} resolves to ${CORE_FILE}; import ${ALLOWED_IMPORTER} instead`,
       );
     }
   }
 
-  return { checked, core: CORE_FILE, allowedImporter: ALLOWED_IMPORTER };
+  invariant(approvedEdges > 0, `${BOUNDARY_ID}: ${ALLOWED_IMPORTER} no longer consumes ${CORE_FILE}`);
+  return { checked: files.length, core: CORE_FILE, allowedImporter: ALLOWED_IMPORTER };
 }
 
 async function main() {
