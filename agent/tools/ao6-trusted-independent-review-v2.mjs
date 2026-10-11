@@ -2,6 +2,8 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
+import { materializeRoadmapGraph, parseRoadmap } from './roadmap-adapter.mjs';
+
 const ok = (value, message) => { if (!value) throw new Error(message); };
 const env = name => { const value = process.env[name]?.trim(); ok(value, `${name} is required`); return value; };
 const positive = (value, name) => { const parsed = Number(value); ok(Number.isInteger(parsed) && parsed > 0, `${name} must be positive`); return parsed; };
@@ -110,6 +112,11 @@ async function diffText(repo, pr) {
   return text;
 }
 
+function decodeContentFile(file, label) {
+  ok(file?.encoding === 'base64' && typeof file.content === 'string', `${label} payload is invalid`);
+  return Buffer.from(file.content.replace(/\s/g, ''), 'base64').toString('utf8');
+}
+
 export function packetFromTaskGraph(graph, taskId, candidateSha) {
   ok(graph && typeof graph === 'object' && Array.isArray(graph.tasks), 'candidate task graph is invalid');
   const task = graph.tasks.find(entry => entry.id === taskId);
@@ -128,11 +135,30 @@ export function packetFromTaskGraph(graph, taskId, candidateSha) {
   };
 }
 
+export function packetFromRoadmap(markdown, metadata, taskId, candidateSha) {
+  ok(metadata?.roadmap === 'docs/content-roadmap.md', 'candidate roadmap metadata must point to docs/content-roadmap.md');
+  const graph = materializeRoadmapGraph(parseRoadmap(markdown), metadata);
+  ok(graph.tasks[0]?.id === taskId, `product task ${taskId} is not the first executable exact-candidate roadmap item`);
+  return packetFromTaskGraph(graph, taskId, candidateSha);
+}
+
 async function exactCandidatePacket(repo, candidateSha, taskId) {
-  const file = await api(`repos/${repo}/contents/agent/task-graph.json?ref=${encodeURIComponent(candidateSha)}`);
-  ok(file?.encoding === 'base64' && typeof file.content === 'string', 'exact candidate task graph payload is invalid');
-  const raw = Buffer.from(file.content.replace(/\s/g, ''), 'base64').toString('utf8');
-  return packetFromTaskGraph(JSON.parse(raw), taskId, candidateSha);
+  if (/^AO-\d+$/.test(taskId)) {
+    const file = await api(`repos/${repo}/contents/agent/task-graph.json?ref=${encodeURIComponent(candidateSha)}`);
+    return packetFromTaskGraph(JSON.parse(decodeContentFile(file, 'exact candidate task graph')), taskId, candidateSha);
+  }
+
+  if (/^P\d+(?:-[A-Z0-9]+)+$/.test(taskId)) {
+    const [roadmapFile, metadataFile] = await Promise.all([
+      api(`repos/${repo}/contents/docs/content-roadmap.md?ref=${encodeURIComponent(candidateSha)}`),
+      api(`repos/${repo}/contents/agent/roadmap-metadata.json?ref=${encodeURIComponent(candidateSha)}`),
+    ]);
+    const roadmap = decodeContentFile(roadmapFile, 'exact candidate product roadmap');
+    const metadata = JSON.parse(decodeContentFile(metadataFile, 'exact candidate roadmap metadata'));
+    return packetFromRoadmap(roadmap, metadata, taskId, candidateSha);
+  }
+
+  throw new Error(`unsupported trusted review task id ${taskId}`);
 }
 
 function compactJobs(jobs) {
@@ -302,6 +328,29 @@ function selfTest() {
   );
   ok(packet.acceptance.length === 2, 'exact candidate acceptance was not preserved');
   ok(packet.requiredProofs.length === 2, 'exact candidate required proofs were not preserved');
+
+  const productPacket = packetFromRoadmap(
+    '- [ ] **P28-PLOAD1 — Remove serialized map instantiation** — Replace serial placement waits with bounded batches. **Done when:** placement creation is bounded and exact-candidate gates pass.\n',
+    {
+      schemaVersion: 1,
+      roadmap: 'docs/content-roadmap.md',
+      roadmapIds: ['P28-PLOAD1'],
+      proofProfiles: {
+        performance: [
+          { id: 'targeted-regressions', kind: 'test', required: true, description: 'focused proof' },
+          { id: 'candidate-ci', kind: 'ci', required: true, description: 'exact candidate proof' },
+        ],
+      },
+      rules: [{ prefix: 'P28-P', affectedDomains: ['graphics', 'performance'], proofProfile: 'performance' }],
+      overrides: {},
+    },
+    'P28-PLOAD1',
+    'b'.repeat(40),
+  );
+  ok(productPacket.taskId === 'P28-PLOAD1', 'product roadmap packet task was not preserved');
+  ok(productPacket.acceptance.length === 1 && productPacket.acceptance[0].text.includes('bounded'), 'product roadmap acceptance was not preserved');
+  ok(productPacket.requiredProofs.length === 2, 'product roadmap required proofs were not preserved');
+
   const parsedTrailing = parseReview('preface\n```json\n{"schemaVersion":1,"note":"quoted } brace"}\n```\ntrailing {"ignored":true}');
   ok(parsedTrailing.schemaVersion === 1 && parsedTrailing.note === 'quoted } brace', 'balanced verdict extraction failed');
   const parsedRawNewline = parseReview('{"note":"line 1\nline 2"} trailing');
