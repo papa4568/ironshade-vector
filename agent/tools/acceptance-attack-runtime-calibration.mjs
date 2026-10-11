@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import { constants } from 'node:fs';
-import { cp, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, readFile, readdir, readlink, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 import { resolveSandboxMutationTarget } from './acceptance-attack-compiler.mjs';
@@ -123,6 +123,30 @@ async function applyReplacement(filePath, replacement) {
   };
 }
 
+function pathInside(root, candidate) {
+  const rel = relative(root, candidate);
+  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
+}
+
+async function validateDependencySymlinks(root, current = root) {
+  let symlinkCount = 0;
+  for (const entry of await readdir(current, { withFileTypes: true })) {
+    const entryPath = join(current, entry.name);
+    if (entry.isSymbolicLink()) {
+      const target = await readlink(entryPath);
+      const resolvedTarget = resolve(dirname(entryPath), target);
+      assert(
+        pathInside(root, resolvedTarget),
+        `runtime calibration dependency symlink escapes disposable clone: ${entryPath} -> ${target}`,
+      );
+      symlinkCount += 1;
+      continue;
+    }
+    if (entry.isDirectory()) symlinkCount += await validateDependencySymlinks(root, entryPath);
+  }
+  return symlinkCount;
+}
+
 async function copySourceDependencies(sandbox, repoRoot) {
   const sourceNodeModules = await realpath(resolve(repoRoot, 'node_modules')).catch(() => null);
   assert(sourceNodeModules, 'runtime calibration requires locked dependencies installed in source node_modules');
@@ -130,18 +154,21 @@ async function copySourceDependencies(sandbox, repoRoot) {
   await rm(sandboxNodeModules, { recursive: true, force: true });
   await cp(sourceNodeModules, sandboxNodeModules, {
     recursive: true,
-    dereference: true,
+    dereference: false,
+    verbatimSymlinks: true,
     preserveTimestamps: true,
     mode: constants.COPYFILE_FICLONE,
   });
   const copied = await realpath(sandboxNodeModules);
   assert(copied === sandboxNodeModules, 'runtime calibration dependencies must materialize inside the disposable clone');
   assert(copied !== sourceNodeModules, 'runtime calibration dependencies must not resolve to source node_modules');
+  const validatedSymlinks = await validateDependencySymlinks(copied);
   return {
     strategy: 'isolated-node-modules-copy',
     sourceDependencyPathDigest: createHash('sha256').update(sourceNodeModules).digest('hex'),
     sandboxDependencyPathDigest: createHash('sha256').update(copied).digest('hex'),
     writableSourceDependencyPathExposed: false,
+    validatedSymlinks,
   };
 }
 
