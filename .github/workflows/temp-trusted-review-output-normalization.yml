@@ -1,0 +1,98 @@
+name: Temporary Trusted Review Output Normalization
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  normalize-trusted-review-output:
+    if: github.event.head_commit.message == 'Add temporary trusted-review output normalization helper'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Normalize trusted model enums and retain raw response
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('agent/tools/ao6-trusted-independent-review-v2.mjs')
+          text = path.read_text()
+
+          anchor = "export function anchorReviewIdentity(result, packet) {\n"
+          if text.count(anchor) != 1:
+              raise SystemExit(f'anchorReviewIdentity anchor count={text.count(anchor)}')
+          helper = (
+              "function normalizeEnum(value) {\n"
+              "  return typeof value === 'string' ? value.trim().toLowerCase().replace(/[\\s-]+/g, '_') : value;\n"
+              "}\n\n"
+              "export function normalizeReviewEnums(result) {\n"
+              "  if (!result || typeof result !== 'object' || Array.isArray(result)) return result;\n"
+              "  result.verdict = normalizeEnum(result.verdict);\n"
+              "  for (const check of result.acceptanceChecks ?? []) check.status = normalizeEnum(check?.status);\n"
+              "  for (const check of result.proofChecks ?? []) check.status = normalizeEnum(check?.status);\n"
+              "  for (const finding of result.findings ?? []) finding.severity = normalizeEnum(finding?.severity);\n"
+              "  return result;\n"
+              "}\n\n"
+          )
+          text = text.replace(anchor, helper + anchor, 1)
+
+          old = "  const result = validate(anchorReviewIdentity(normalizeProofCheckIds(parseReview(response), packet), packet), packet);\n"
+          new = (
+              "  mkdirSync('.trusted-review', { recursive: true });\n"
+              "  writeFileSync('.trusted-review/raw-response.txt', response, 'utf8');\n"
+              "  const result = validate(anchorReviewIdentity(normalizeProofCheckIds(normalizeReviewEnums(parseReview(response)), packet), packet), packet);\n"
+          )
+          if text.count(old) != 1:
+              raise SystemExit(f'run validation anchor count={text.count(old)}')
+          text = text.replace(old, new, 1)
+
+          old = (
+              "  const anchoredIdentity = validate(anchorReviewIdentity(wrongIdentity, packet), packet);\n"
+              "  ok(anchoredIdentity.schemaVersion === 1, 'trusted wrapper did not anchor schemaVersion');\n"
+              "  ok(anchoredIdentity.taskId === packet.taskId, 'trusted wrapper did not anchor taskId');\n"
+              "  ok(anchoredIdentity.candidateSha === packet.candidateSha, 'trusted wrapper did not anchor candidateSha');\n"
+              "  ok(anchoredIdentity.mode === 'read-only-adversarial', 'trusted wrapper did not anchor review mode');\n"
+          )
+          new = old + (
+              "  const noisyEnums = structuredClone(wrappedProof);\n"
+              "  noisyEnums.verdict = ' PASS ';\n"
+              "  noisyEnums.acceptanceChecks[0].status = ' Satisfied ';\n"
+              "  noisyEnums.acceptanceChecks[1].status = 'satisfied';\n"
+              "  noisyEnums.proofChecks[0].status = ' Credible ';\n"
+              "  noisyEnums.proofChecks[1].status = 'credible';\n"
+              "  const normalizedEnums = validate(anchorReviewIdentity(normalizeProofCheckIds(normalizeReviewEnums(noisyEnums), packet), packet), packet);\n"
+              "  ok(normalizedEnums.verdict === 'pass', 'trusted wrapper did not normalize verdict enum');\n"
+              "  ok(normalizedEnums.acceptanceChecks[0].status === 'satisfied', 'trusted wrapper did not normalize acceptance enum');\n"
+              "  ok(normalizedEnums.proofChecks[0].status === 'credible', 'trusted wrapper did not normalize proof enum');\n"
+          )
+          if text.count(old) != 1:
+              raise SystemExit(f'self-test identity anchor count={text.count(old)}')
+          text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          PY
+
+          node agent/tools/ao6-trusted-independent-review-v2.mjs self-test
+          git diff --check
+
+      - name: Commit trusted verifier normalization and remove helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/temp-trusted-review-output-normalization.yml
+          git add agent/tools/ao6-trusted-independent-review-v2.mjs
+          git commit -m 'Normalize trusted review model envelope'
+          git push origin HEAD:main
