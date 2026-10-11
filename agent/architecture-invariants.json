@@ -46,6 +46,16 @@
       ]
     },
     {
+      "id": "renderer-core-entrypoint-isolation",
+      "type": "sourceContract",
+      "description": "Every final candidate must run the repository-wide guard that makes the snapshot wrapper the only production consumer of combatGraphicsBackendCore.",
+      "file": "agent/tests/architecture-invariants.mjs",
+      "required": [
+        "await import('./combat-backend-core-entrypoint.mjs');"
+      ],
+      "forbidden": []
+    },
+    {
       "id": "game-canvas-renderer-boundary",
       "type": "sourceContract",
       "description": "GameCanvas must use the renderer-neutral graphics backend rather than constructing Babylon directly.",
