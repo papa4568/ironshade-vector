@@ -179,9 +179,14 @@ export async function exerciseRuntimeCalibration({ candidateSha, config, repoRoo
   const negativeControls = [];
   let attack;
 
+  const assertSandboxRemoteDetached = () => {
+    assert(runGit(['remote'], sandbox).stdout.trim() === '', 'disposable runtime attack clone must not retain a source-repository remote');
+  };
+
   const resetSandbox = async () => {
     runGit(['reset', '--hard', '--quiet', sourceBefore.head], sandbox);
     runGit(['clean', '-fdx', '--quiet'], sandbox);
+    assertSandboxRemoteDetached();
     dependencyIsolation = await linkSourceDependencies(sandbox, resolvedRoot);
   };
 
@@ -190,10 +195,11 @@ export async function exerciseRuntimeCalibration({ candidateSha, config, repoRoo
     assert(clone.status === 0, `unable to create disposable runtime attack clone: ${(clone.stderr || clone.stdout).trim()}`);
     runGit(['checkout', '--quiet', '--detach', sourceBefore.head], sandbox);
     runGit(['remote', 'remove', 'origin'], sandbox);
-    assert(runGit(['remote'], sandbox).stdout.trim() === '', 'disposable runtime attack clone must not retain a source-repository remote');
+    assertSandboxRemoteDetached();
 
     await resetSandbox();
     baseline = runCommand(validated.verifyCommand, sandbox);
+    assertSandboxRemoteDetached();
     const baselineEvaluation = evaluatePassControl(baseline, validated.passMarker);
     assert(baselineEvaluation.passed, `real runtime verifier baseline failed: ${baseline.stderr || baseline.stdout}`);
     baseline = { ...baseline, ...baselineEvaluation };
@@ -204,6 +210,7 @@ export async function exerciseRuntimeCalibration({ candidateSha, config, repoRoo
       const mutationTarget = await resolveSandboxMutationTarget(sandbox, validated.targetFile);
       const mutation = await applyReplacement(mutationTarget, control.replacement);
       const verification = runCommand(validated.verifyCommand, sandbox);
+      assertSandboxRemoteDetached();
       const evaluation = evaluatePassControl(verification, validated.passMarker);
       console.log(`ACCEPTANCE_ATTACK_RUNTIME_CONTROL id=${control.id} exit=${verification.exitCode} markerMatched=${evaluation.markerMatched} falsePositive=${evaluation.falsePositive}`);
       if (evaluation.falsePositive) logTrialFailure('CONTROL', control.id, verification);
@@ -219,6 +226,7 @@ export async function exerciseRuntimeCalibration({ candidateSha, config, repoRoo
     const attackTarget = await resolveSandboxMutationTarget(sandbox, validated.targetFile);
     const mutation = await applyReplacement(attackTarget, validated.attack.replacement);
     const verification = runCommand(validated.verifyCommand, sandbox);
+    assertSandboxRemoteDetached();
     const evaluation = evaluateDishonestAttack(verification, validated.attack.expectedFailurePatterns);
     console.log(`ACCEPTANCE_ATTACK_RUNTIME_ATTACK template=${validated.attack.templateId} exit=${verification.exitCode} matchedPatterns=${evaluation.matchedPatterns.length}/${evaluation.expectedFailurePatterns.length} detected=${evaluation.detected} falseNegative=${evaluation.falseNegative}`);
     if (!evaluation.detected) logTrialFailure('ATTACK', validated.attack.templateId, verification);
