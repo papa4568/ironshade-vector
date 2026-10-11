@@ -3,10 +3,14 @@ import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 
 import {
+  buildAcceptanceAttackDecision,
   evaluateAcceptanceAttackScope,
-  runAcceptanceAttackGate,
   validateAcceptanceAttackPolicy,
 } from '../tools/acceptance-attack-gate.mjs';
+import {
+  evaluateDishonestAttack,
+  validateRuntimeCalibrationConfig,
+} from '../tools/acceptance-attack-runtime-calibration.mjs';
 
 const candidateSha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 const policy = validateAcceptanceAttackPolicy(JSON.parse(await readFile('agent/acceptance-attack-policy.json', 'utf8')));
@@ -14,27 +18,74 @@ assert.equal(policy.enforcementEnabled, true, 'EV-8 policy must enable the measu
 assert.equal(policy.scopes.length, 1, 'EV-8 must promote only the measured deterministic subset');
 const [scope] = policy.scopes;
 assert.deepEqual(scope.enforcedTemplateIds, ['hidden-serialization'], 'unsupported EV-1 templates must remain advisory');
+assert.equal(scope.runtimeCalibration.verifyCommand, 'npm run test:graphics:babylon', 'promotion must exercise the real P28-PLOAD1 runtime regression');
+assert.equal(scope.runtimeCalibration.targetFile, 'src/game/babylonCombatRenderer.ts', 'promotion must mutate the production refinery loader');
+assert.equal(scope.runtimeCalibration.negativeControls.length, 1, 'promotion must measure at least one negative control');
 assert.equal(scope.calibration.promotedFalsePositiveBudget, 0);
 assert.equal(scope.calibration.promotedFalseNegativeBudget, 0);
+validateRuntimeCalibrationConfig(scope.runtimeCalibration);
 
-const gate = await runAcceptanceAttackGate({ candidateSha });
-assert.equal(gate.schema, 'ironshade-acceptance-attack-gate:v1');
-assert.equal(gate.candidateSha, candidateSha, 'gate evidence must bind to the exact repository HEAD');
-assert.equal(gate.mode, 'enforced');
-assert.equal(gate.enforcementEnabled, true);
-assert.equal(gate.verdict, 'pass');
-assert.equal(gate.blocking, false);
-assert.equal(gate.candidatePassGranted, false, 'the attack gate may block but must never synthesize candidate acceptance');
-assert.equal(gate.scopes.length, 1);
-const [result] = gate.scopes;
-assert.equal(result.sourceHead, candidateSha, 'attack exercise source head must equal the exact candidate SHA');
+const shadowReport = {
+  taskId: scope.taskId,
+  baseline: { exitCode: 0 },
+  isolation: { sourceUnchanged: true, sandboxRemoteDetached: true },
+  results: [
+    { templateId: 'false-readiness', outcome: 'proof-gap' },
+    { templateId: 'fake-telemetry', outcome: 'proof-gap' },
+    { templateId: 'skipped-quality-work', outcome: 'proof-gap' },
+    { templateId: 'hidden-serialization', outcome: 'caught' },
+    { templateId: 'special-cased-test-route', outcome: 'proof-gap' },
+    { templateId: 'omitted-resource-work', outcome: 'proof-gap' },
+  ],
+  summary: { total: 6, caught: 1, proofGaps: 5 },
+};
+
+const runtimeReport = {
+  candidateSha,
+  baseline: { exitCode: 0, passed: true, markerMatched: true },
+  negativeControls: [
+    {
+      id: 'equivalent-batch-size-expression',
+      passed: true,
+      falsePositive: false,
+      markerMatched: true,
+    },
+  ],
+  attack: {
+    templateId: 'hidden-serialization',
+    detected: true,
+    falseNegative: false,
+    nonZeroExit: true,
+    matchedPatterns: ['runtime refinery load must retain batch size 4, got 1'],
+    expectedFailurePatterns: ['runtime refinery load must retain batch size 4, got 1'],
+    failureReason: null,
+  },
+  calibration: {
+    falsePositiveTrials: 1,
+    falsePositives: 0,
+    falsePositiveRate: 0,
+    falseNegativeTrials: 1,
+    falseNegatives: 0,
+    falseNegativeRate: 0,
+  },
+  isolation: {
+    sourceUnchanged: true,
+    sandboxRemoteDetached: true,
+    dependencyIsolation: { strategy: 'source-node-modules-symlink' },
+  },
+};
+
+const result = evaluateAcceptanceAttackScope({ shadowReport, runtimeReport }, scope);
 assert.equal(result.pass, true);
 assert.deepEqual(result.enforcedTemplateIds, ['hidden-serialization']);
 assert.deepEqual(result.enforcedResults, [
   {
     templateId: 'hidden-serialization',
-    outcome: 'caught',
-    criterionId: 'P28-PLOAD1:criterion:1',
+    detected: true,
+    falseNegative: false,
+    nonZeroExit: true,
+    matchedFailurePatterns: ['runtime refinery load must retain batch size 4, got 1'],
+    expectedFailurePatterns: ['runtime refinery load must retain batch size 4, got 1'],
   },
 ]);
 assert.deepEqual(result.calibration.promoted, {
@@ -45,64 +96,95 @@ assert.deepEqual(result.calibration.promoted, {
   falseNegatives: 0,
   falseNegativeRate: 0,
 });
-assert.equal(result.fullShadowSummary.total, 6, 'all EV-1 variants must remain visible in shadow evidence');
-assert.equal(result.fullShadowSummary.caught, 1);
-assert.equal(result.fullShadowSummary.proofGaps, 5);
 assert.deepEqual(
   result.advisory.survivors,
   ['fake-telemetry', 'false-readiness', 'omitted-resource-work', 'skipped-quality-work', 'special-cased-test-route'],
   'unsupported dishonest variants must stay advisory instead of becoming accidental blockers',
 );
-assert.equal(result.isolation.sourceUnchanged, true);
-assert.equal(result.isolation.sandboxRemoteDetached, true);
+assert.equal(result.isolation.runtimeSourceUnchanged, true);
+assert.equal(result.isolation.runtimeRemoteDetached, true);
+assert.equal(result.isolation.dependencyStrategy, 'source-node-modules-symlink');
 
-const simulatedSurvivor = evaluateAcceptanceAttackScope({
-  taskId: scope.taskId,
-  baseline: { exitCode: 0 },
-  isolation: { sourceUnchanged: true, sandboxRemoteDetached: true },
-  results: [
-    {
-      templateId: 'hidden-serialization',
-      outcome: 'proof-gap',
-      criterionId: 'P28-PLOAD1:criterion:1',
-    },
-  ],
-}, scope);
-assert.equal(simulatedSurvivor.pass, false, 'a surviving promoted dishonest mutation must fail closed');
-assert.equal(simulatedSurvivor.calibration.promoted.falseNegatives, 1);
-assert.match(simulatedSurvivor.blockingReasons.join('\n'), /false negatives 1 exceed budget 0/);
+const gate = buildAcceptanceAttackDecision({ policy, candidateSha, scopeResults: [{ ...result, sourceHead: candidateSha, fullShadowSummary: shadowReport.summary }] });
+assert.equal(gate.schema, 'ironshade-acceptance-attack-gate:v1');
+assert.equal(gate.candidateSha, candidateSha);
+assert.equal(gate.mode, 'enforced');
+assert.equal(gate.verdict, 'pass');
+assert.equal(gate.blocking, false);
+assert.equal(gate.candidatePassGranted, false, 'the attack gate may block but must never synthesize candidate acceptance');
 
-assert.throws(
-  () => evaluateAcceptanceAttackScope({
-    taskId: scope.taskId,
-    baseline: { exitCode: 0 },
-    isolation: { sourceUnchanged: true, sandboxRemoteDetached: true },
-    results: [
-      {
-        templateId: 'fake-telemetry',
-        outcome: 'proof-gap',
-        criterionId: 'P28-PLOAD1:criterion:1',
-      },
-    ],
-  }, scope),
-  /enforced template hidden-serialization was not exercised/,
-  'missing promoted mutations must fail closed instead of being treated as a pass',
+const survivingAttack = {
+  ...runtimeReport,
+  attack: {
+    ...runtimeReport.attack,
+    detected: false,
+    falseNegative: true,
+    nonZeroExit: false,
+    matchedPatterns: [],
+    failureReason: 'dishonest runtime mutation survived the real verifier',
+  },
+  calibration: {
+    ...runtimeReport.calibration,
+    falseNegatives: 1,
+    falseNegativeRate: 1,
+  },
+};
+const survivorResult = evaluateAcceptanceAttackScope({ shadowReport, runtimeReport: survivingAttack }, scope);
+assert.equal(survivorResult.pass, false, 'a surviving promoted dishonest mutation must fail closed');
+assert.equal(survivorResult.calibration.promoted.falseNegatives, 1);
+assert.match(survivorResult.blockingReasons.join('\n'), /false negatives 1 exceed budget 0/);
+assert.match(survivorResult.blockingReasons.join('\n'), /survived the real verifier/);
+
+const unrelatedFailure = evaluateDishonestAttack(
+  { exitCode: 1, signal: null, stdout: '', stderr: 'SyntaxError: unrelated verifier crash' },
+  ['runtime refinery load must retain batch size 4, got 1'],
 );
+assert.equal(unrelatedFailure.detected, false, 'an arbitrary nonzero verifier exit must not count as catching the promoted attack');
+assert.equal(unrelatedFailure.falseNegative, true);
+assert.equal(unrelatedFailure.nonZeroExit, true);
+assert.match(unrelatedFailure.failureReason, /did not match the promoted acceptance criterion/);
 
-const rollback = await runAcceptanceAttackGate({ candidateSha, enforcementOverride: false });
+const falsePositiveControl = {
+  ...runtimeReport,
+  negativeControls: [{
+    id: 'equivalent-batch-size-expression',
+    passed: false,
+    falsePositive: true,
+    markerMatched: false,
+  }],
+  calibration: {
+    ...runtimeReport.calibration,
+    falsePositives: 1,
+    falsePositiveRate: 1,
+  },
+};
+const falsePositiveResult = evaluateAcceptanceAttackScope({ shadowReport, runtimeReport: falsePositiveControl }, scope);
+assert.equal(falsePositiveResult.pass, false, 'a verifier that rejects the equivalent negative control must fail promotion');
+assert.match(falsePositiveResult.blockingReasons.join('\n'), /false positives 1 exceed budget 0/);
+
+const rollback = buildAcceptanceAttackDecision({
+  policy,
+  candidateSha,
+  scopeResults: [{ ...survivorResult, sourceHead: candidateSha, fullShadowSummary: shadowReport.summary }],
+  enforcementOverride: false,
+});
 assert.equal(rollback.mode, 'advisory-rollback');
 assert.equal(rollback.enforcementEnabled, false);
 assert.equal(rollback.verdict, 'disabled-advisory');
-assert.equal(rollback.blocking, false);
+assert.equal(rollback.blocking, false, 'rollback must disable only the promoted blocking decision');
+assert.deepEqual(rollback.scopes[0].fullShadowSummary, shadowReport.summary, 'rollback must retain the pre-promotion shadow evidence');
 assert.equal(rollback.rollback.restoresAdvisoryBehavior, true);
 assert.equal(rollback.candidatePassGranted, false);
-assert.equal(rollback.scopes[0].fullShadowSummary.total, 6, 'rollback must retain the pre-promotion shadow exercise');
-assert.equal(rollback.scopes[0].sourceHead, candidateSha);
 
 assert.throws(
   () => validateAcceptanceAttackPolicy({ ...policy, scopes: [{ ...scope, enforcedTemplateIds: [] }] }),
   /enforcedTemplateIds must be non-empty/,
   'an empty promoted scope must fail closed',
+);
+assert.throws(
+  () => validateAcceptanceAttackPolicy({ ...policy, scopes: [{ ...scope, runtimeCalibration: undefined }] }),
+  /runtime calibration config must be an object/,
+  'missing measured runtime calibration must fail closed',
 );
 assert.throws(
   () => validateAcceptanceAttackPolicy({
@@ -116,4 +198,4 @@ assert.throws(
   'promotion policy must not relax the zero false-negative requirement',
 );
 
-console.log(`ACCEPTANCE_ATTACK_PROMOTION_REGRESSIONS_PASS candidate=${candidateSha} scope=${scope.id} falsePositives=0/1 falseNegatives=0/1 advisorySurvivors=${result.advisory.survivors.length} rollback=advisory sourceUnchanged=true remoteDetached=true`);
+console.log(`ACCEPTANCE_ATTACK_PROMOTION_REGRESSIONS_PASS candidate=${candidateSha} scope=${scope.id} measuredControl=true criterionMatchedFailure=true falsePositiveBudget=0 falseNegativeBudget=0 advisorySurvivors=${result.advisory.survivors.length} rollback=advisory`);
