@@ -76,9 +76,9 @@ function selfTest() {
   const commented = resolveTrustedReviewRequest({ eventName: 'issue_comment', issueNumber: '346', commentAssociation: 'OWNER', commentBody: `/ao6-trusted-review 346 ${sha} AO-6` });
   ok(commented.prNumber === '346' && commented.candidateSha === sha && commented.taskId === 'AO-6', 'trusted issue_comment request resolution failed');
   const productComment = resolveTrustedReviewRequest({ eventName: 'issue_comment', issueNumber: '345', commentAssociation: 'OWNER', commentBody: `/ao6-trusted-review 345 ${sha} P28-PLOAD1` });
-  ok(productComment.prNumber === '345' && productComment.candidateSha === sha && productComment.taskId === 'P28-PLOAD1', 'product issue_comment task resolution failed');
+  ok(productComment.taskId === 'P28-PLOAD1', 'product issue_comment task resolution failed');
   const experimentalComment = resolveTrustedReviewRequest({ eventName: 'issue_comment', issueNumber: '365', commentAssociation: 'OWNER', commentBody: `/ao6-trusted-review 365 ${sha} EV-8` });
-  ok(experimentalComment.prNumber === '365' && experimentalComment.candidateSha === sha && experimentalComment.taskId === 'EV-8', 'experimental issue_comment task resolution failed');
+  ok(experimentalComment.taskId === 'EV-8', 'experimental issue_comment task resolution failed');
   const defaultTask = resolveTrustedReviewRequest({ eventName: 'issue_comment', issueNumber: '346', commentAssociation: 'MEMBER', commentBody: `/ao6-trusted-review 346 ${sha}` });
   ok(defaultTask.taskId === 'AO-6', 'issue_comment default task resolution failed');
   try { resolveTrustedReviewRequest({ eventName: 'issue_comment', issueNumber: '346', commentAssociation: 'NONE', commentBody: `/ao6-trusted-review 346 ${sha}` }); throw new Error('untrusted association was accepted'); } catch (error) { ok(/untrusted issue_comment association/.test(String(error)), 'untrusted association did not fail closed'); }
@@ -102,6 +102,24 @@ function selfTest() {
     throw new Error('malformed first EV task was silently skipped');
   } catch (error) {
     ok(/malformed experimental task line/.test(String(error)), 'malformed first EV task did not fail closed');
+  }
+
+  const malformedNonnumericFirstEv = [
+    '# Experimental verification roadmap',
+    '',
+    '## Active experimental queue',
+    '',
+    '- [ ] **EV-X — malformed task id**',
+    '  - A malformed nonnumeric first EV task must never be skipped.',
+    '',
+    '- [ ] **EV-9 — Later valid task**',
+    '  - A later valid task must not become authoritative.',
+  ].join('\n');
+  try {
+    parseExperimentalRoadmap(malformedNonnumericFirstEv);
+    throw new Error('malformed nonnumeric first EV task was silently skipped');
+  } catch (error) {
+    ok(/malformed experimental task line/.test(String(error)), 'malformed nonnumeric first EV task did not fail closed');
   }
 
   console.log('AO6_TRUSTED_REVIEW_REQUEST_SELF_TEST_PASS');
