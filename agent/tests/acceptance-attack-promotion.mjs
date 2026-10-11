@@ -145,6 +145,26 @@ process.exit(3);
       'runtime calibration must reject dependency links that expose writable source paths to the verifier',
     );
     await unlink(dependencyEscapePath);
+
+    const dependencyPivotPath = join(dependencyDir, 'internal-pivot');
+    const dependencyChainedEscapePath = join(dependencyDir, 'escape-via-internal-pivot');
+    await symlink('.', dependencyPivotPath);
+    await symlink('internal-pivot/../source-sentinel.txt', dependencyChainedEscapePath);
+    await assert.rejects(
+      exerciseRuntimeCalibration({
+        candidateSha: fixtureSha,
+        config: fixtureConfig,
+        repoRoot: fixtureRoot,
+      }),
+      error => {
+        assert.match(error.message, /runtime calibration dependency symlink escapes disposable clone after resolving link chain/);
+        assert.match(error.message, /escape-via-internal-pivot/);
+        return true;
+      },
+      'runtime calibration must realpath-resolve dependency link chains before declaring them contained',
+    );
+    await unlink(dependencyChainedEscapePath);
+    await unlink(dependencyPivotPath);
   } finally {
     if (previousGithubWorkspace === undefined) delete process.env.GITHUB_WORKSPACE;
     else process.env.GITHUB_WORKSPACE = previousGithubWorkspace;
@@ -350,4 +370,4 @@ assert.throws(
   'promotion policy must not relax the zero false-negative requirement',
 );
 
-console.log(`ACCEPTANCE_ATTACK_PROMOTION_REGRESSIONS_PASS candidate=${candidateSha} scope=${scope.id} runtimeIsolation=exercised+fault-tested dependencyIsolation=fresh-copy+write-contained+escape-rejected environmentIsolation=workspace-rebased+ignored-write-contained measuredControl=true criterionMatchedFailure=true falsePositiveBudget=0 falseNegativeBudget=0 advisorySurvivors=${result.advisory.survivors.length} rollback=advisory`);
+console.log(`ACCEPTANCE_ATTACK_PROMOTION_REGRESSIONS_PASS candidate=${candidateSha} scope=${scope.id} runtimeIsolation=exercised+fault-tested dependencyIsolation=fresh-copy+write-contained+escape-rejected+chain-resolved environmentIsolation=workspace-rebased+ignored-write-contained measuredControl=true criterionMatchedFailure=true falsePositiveBudget=0 falseNegativeBudget=0 advisorySurvivors=${result.advisory.survivors.length} rollback=advisory`);
