@@ -31,6 +31,7 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
   - Add/retain regression coverage proving disposable-clone isolation, source immutability, fail-closed mutation handling, and rollback to the pre-promotion pipeline.
   - Update `AGENTS.md` and the relevant `agent/` contracts to describe the permanent enforced behavior, then archive EV-8 with exact-SHA evidence and independent-review result.
   - Promotion candidate scope is intentionally narrow: enforce only `hidden-serialization`, the EV-1 mutation already caught by the representative real P28-PLOAD1 verification path; keep `false-readiness`, `fake-telemetry`, `skipped-quality-work`, `special-cased-test-route`, and `omitted-resource-work` advisory until separate evidence supports promotion.
+  - Promotion calibration must mutate the real `src/game/babylonCombatRenderer.ts` P28-PLOAD1 path and execute the dedicated 73-placement runtime verifier in a disposable clone. Measure false positives with the behavior-preserving batch-size expression `4 -> 2 + 2`; measure false negatives with the dishonest serialization mutation `4 -> 1`; require the dishonest trial to fail for the runtime batching criterion rather than merely returning an unrelated nonzero exit.
 
 - [ ] **EV-9 — Promote EV-2 Causal Evidence Independence**
   - Resolve or explicitly exclude every currently important criterion that is circular or unsupported before enabling enforcement for that criterion.
