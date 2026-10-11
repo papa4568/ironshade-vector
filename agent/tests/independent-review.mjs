@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import {
   buildIndependentReviewPacket,
@@ -8,11 +9,11 @@ import {
 import { extractReviewResult, selectAuthoritativeReviewComment } from '../tools/review-comment-gate.mjs';
 import { loadRoadmapAdapter } from '../tools/roadmap-adapter.mjs';
 import {
+  selectExperimentalCandidateReviewTask,
   selectOrchestrationReviewTask,
   selectProductReviewTask,
-  selectReviewTask,
 } from '../tools/select-review-task.mjs';
-import { sha256Value } from '../tools/candidate-evidence.mjs';
+import { loadCandidateTask, sha256Value } from '../tools/candidate-evidence.mjs';
 
 const acceptance = ['criterion one', 'criterion two'];
 const manifest = {
@@ -156,22 +157,88 @@ assert.throws(
 );
 
 const currentGraph = JSON.parse(readFileSync('agent/task-graph.json', 'utf8'));
-const baseGraph = structuredClone(currentGraph);
-const currentAo6 = currentGraph.tasks.find(entry => entry.id === 'AO-6');
-const baseAo6 = baseGraph.tasks.find(entry => entry.id === 'AO-6');
-assert.equal(currentAo6.status, 'verified', 'AO-6 closeout candidate must carry its verified state');
-baseAo6.status = 'active';
-const closeoutSelection = selectOrchestrationReviewTask(currentGraph, { baseGraph });
-assert.equal(closeoutSelection.task.id, 'AO-6');
+const latestAoTask = currentGraph.tasks.at(-1);
+assert(latestAoTask, 'review-selection fixture requires at least one AO task');
+
+const inFlightGraph = structuredClone(currentGraph);
+for (const entry of inFlightGraph.tasks) {
+  if (entry.status === 'active' || entry.status === 'verifying') entry.status = 'planned';
+}
+const inFlightTask = inFlightGraph.tasks.find(entry => entry.id === latestAoTask.id);
+inFlightTask.status = 'active';
+const inFlightSelection = selectOrchestrationReviewTask(inFlightGraph);
+assert.equal(inFlightSelection.task.id, inFlightTask.id, 'review selection must target the actual in-flight AO fixture rather than a historical task ID');
+assert.equal(inFlightSelection.mode, 'orchestration');
+
+const closeoutCurrentGraph = structuredClone(currentGraph);
+const closeoutBaseGraph = structuredClone(currentGraph);
+for (const entry of closeoutCurrentGraph.tasks) {
+  if (entry.status === 'active' || entry.status === 'verifying') entry.status = 'verified';
+}
+for (const entry of closeoutBaseGraph.tasks) {
+  if (entry.status === 'active' || entry.status === 'verifying') entry.status = 'verified';
+}
+const closeoutCurrentTask = closeoutCurrentGraph.tasks.find(entry => entry.id === latestAoTask.id);
+const closeoutBaseTask = closeoutBaseGraph.tasks.find(entry => entry.id === latestAoTask.id);
+assert.equal(closeoutCurrentTask.status, 'verified', 'AO closeout fixture must carry the latest task in verified state');
+closeoutBaseTask.status = 'active';
+const closeoutSelection = selectOrchestrationReviewTask(closeoutCurrentGraph, { baseGraph: closeoutBaseGraph });
+assert.equal(closeoutSelection.task.id, latestAoTask.id);
 assert.equal(closeoutSelection.mode, 'orchestration-closeout');
 
-const unchangedBase = structuredClone(currentGraph);
-assert.equal(selectOrchestrationReviewTask(currentGraph, { baseGraph: unchangedBase }), null);
-const postMigrationSelection = await selectReviewTask({ useEventRefs: false });
-assert.equal(postMigrationSelection.mode, 'product', 'after AO-6 is already verified outside a closeout diff, review selection must fall back to product work');
-assert.equal(postMigrationSelection.source, 'docs/content-roadmap.md');
+const introducedCloseoutBaseGraph = structuredClone(closeoutCurrentGraph);
+introducedCloseoutBaseGraph.tasks = introducedCloseoutBaseGraph.tasks.filter(entry => entry.id !== latestAoTask.id);
+const introducedCloseoutSelection = selectOrchestrationReviewTask(closeoutCurrentGraph, { baseGraph: introducedCloseoutBaseGraph });
+assert.equal(introducedCloseoutSelection.task.id, latestAoTask.id, 'a newly introduced verified AO task must remain the exact closeout review target');
+assert.equal(introducedCloseoutSelection.mode, 'orchestration-closeout');
+
+const postMigrationGraph = structuredClone(currentGraph);
+for (const entry of postMigrationGraph.tasks) {
+  if (entry.status === 'active' || entry.status === 'verifying') entry.status = 'verified';
+}
+const unchangedPostMigrationBase = structuredClone(postMigrationGraph);
+assert.equal(selectOrchestrationReviewTask(postMigrationGraph, { baseGraph: unchangedPostMigrationBase }), null, 'without an active or closing AO task orchestration selection must fall through');
+
+const baseExperimentalRoadmap = [
+  '# Experimental verification roadmap',
+  '',
+  '## Active experimental queue',
+  '',
+  '- [ ] **EV-8 — Promote acceptance attacks**',
+  '  - Measure dishonest variants.',
+  '  - Preserve rollback.',
+  '',
+  '- [ ] **EV-9 — Promote independence**',
+  '  - Resolve circular evidence.',
+].join('\n');
+assert.equal(
+  selectExperimentalCandidateReviewTask(baseExperimentalRoadmap, { baseMarkdown: baseExperimentalRoadmap }),
+  null,
+  'an unchanged experimental queue must never displace the normal product fallback',
+);
+const experimentalCloseoutRoadmap = baseExperimentalRoadmap.replace(
+  '- [ ] **EV-8 — Promote acceptance attacks**\n  - Measure dishonest variants.\n  - Preserve rollback.\n\n',
+  '',
+);
+const experimentalCloseoutSelection = selectExperimentalCandidateReviewTask(
+  experimentalCloseoutRoadmap,
+  { baseMarkdown: baseExperimentalRoadmap },
+);
+assert.equal(experimentalCloseoutSelection.task.id, 'EV-8', 'experimental closeout must preserve the first removed EV task identity');
+assert.equal(experimentalCloseoutSelection.mode, 'experimental-closeout');
+const changedExperimentalAcceptance = baseExperimentalRoadmap.replace('Measure dishonest variants.', 'Measure dishonest variants precisely.');
+const changedExperimentalSelection = selectExperimentalCandidateReviewTask(
+  changedExperimentalAcceptance,
+  { baseMarkdown: baseExperimentalRoadmap },
+);
+assert.equal(changedExperimentalSelection.task.id, 'EV-8', 'a changed experimental task contract must select the first EV promotion');
+assert.equal(changedExperimentalSelection.mode, 'experimental');
 
 const { graph: currentProductGraph } = await loadRoadmapAdapter();
+const productFallbackSelection = selectProductReviewTask(currentProductGraph);
+assert.equal(productFallbackSelection.mode, 'product', 'after AO work is no longer in flight, review selection must fall back to product work');
+assert.equal(productFallbackSelection.task.id, currentProductGraph.tasks[0].id);
+
 const productCloseoutGraph = structuredClone(currentProductGraph);
 const completedProductTask = productCloseoutGraph.tasks.shift();
 assert(completedProductTask, 'product closeout fixture requires at least one live product task');
@@ -196,14 +263,22 @@ assert.throws(
   'product closeout must reject combining multiple roadmap completions',
 );
 
+const experimentalCandidate = await loadCandidateTask('EV-8');
+assert.equal(experimentalCandidate.task.id, 'EV-8', 'candidate evidence must materialize the first exact experimental task');
+assert.equal(experimentalCandidate.source, 'docs/experimental-verification-roadmap.md');
+assert(experimentalCandidate.task.proofs.some(proof => proof.id === 'independent-review' && proof.required), 'experimental candidate evidence must preserve the independent-review proof');
+
 const selectorSource = readFileSync('agent/tools/select-review-task.mjs', 'utf8');
 assert.match(selectorSource, /GITHUB_EVENT_PATH/, 'PR review selection must inspect the exact pull-request base and head refs');
 assert.match(selectorSource, /orchestration-closeout/, 'review selection must preserve a just-verified AO task as the closeout review target');
+assert.match(selectorSource, /experimental-closeout|selectExperimentalReviewTask/, 'review selection must preserve a changed experimental promotion contract');
 assert.match(selectorSource, /product-closeout/, 'review selection must preserve a just-completed product task as the closeout review target');
+assert.doesNotMatch(selectorSource, /orchestration-maintenance/, 'verified AO tasks must not override the required product fallback through a maintenance shortcut');
 
 const candidateEvidenceSource = readFileSync('agent/tools/candidate-evidence.mjs', 'utf8');
 assert.match(candidateEvidenceSource, /baseRef/, 'candidate evidence must be able to recover a completed product task from the exact base roadmap');
 assert.match(candidateEvidenceSource, /loadProductTaskAtRef/, 'product closeout evidence must use an exact git-ref task contract');
+assert.match(candidateEvidenceSource, /loadExperimentalTask/, 'candidate evidence must materialize an exact active or closeout EV task when selected');
 
 const independentReviewSource = readFileSync('agent/tools/independent-review.mjs', 'utf8');
 assert.match(independentReviewSource, /baseRef: candidateManifest\.candidate\.baseSha/, 'review packet generation must preserve the base product task contract after closeout');
@@ -229,5 +304,10 @@ assert.match(verifierContract, /Do not implement fixes/);
 assert.match(verifierContract, /same branch/);
 assert.match(verifierContract, /ironshade-independent-review:v1/);
 assert.match(verifierContract, /different GitHub account from the pull request author/i);
+
+const trustedV3SelfTest = execFileSync(process.execPath, ['agent/tools/trusted-independent-review-v3.mjs', 'self-test'], { encoding: 'utf8' });
+assert.match(trustedV3SelfTest, /TRUSTED_INDEPENDENT_REVIEW_V3_SELF_TEST_PASS/, 'candidate review regressions must execute the trusted EV packet self-test');
+const trustedRequestSelfTest = execFileSync(process.execPath, ['agent/tools/ao6-trusted-review-request.mjs', 'self-test'], { encoding: 'utf8' });
+assert.match(trustedRequestSelfTest, /AO6_TRUSTED_REVIEW_REQUEST_SELF_TEST_PASS/, 'candidate review regressions must execute the trusted request parser self-test');
 
 console.log('INDEPENDENT_REVIEW_TEST_PASS');

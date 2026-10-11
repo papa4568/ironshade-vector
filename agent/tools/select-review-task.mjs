@@ -3,6 +3,10 @@ import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 import {
+  parseExperimentalRoadmap,
+  selectExperimentalReviewTask,
+} from './experimental-review-task.mjs';
+import {
   loadRoadmapAdapter,
   materializeRoadmapGraph,
   parseRoadmap,
@@ -31,6 +35,11 @@ function loadRoadmapGraphAtRef(ref) {
   return materializeRoadmapGraph(parseRoadmap(roadmapRaw), metadata);
 }
 
+function loadExperimentalRoadmapAtRef(ref) {
+  assert(typeof ref === 'string' && ref.trim().length > 0, 'experimental-roadmap git ref must be a non-empty string');
+  return execFileSync('git', ['show', `${ref}:docs/experimental-verification-roadmap.md`], { encoding: 'utf8' });
+}
+
 function githubPullRequestRefs() {
   const eventPath = process.env.GITHUB_EVENT_PATH;
   if (!eventPath) return { baseRef: null, headRef: null };
@@ -45,6 +54,22 @@ function githubPullRequestRefs() {
   }
 }
 
+function experimentalContract(markdown) {
+  return parseExperimentalRoadmap(markdown).map(task => ({
+    id: task.id,
+    title: task.title,
+    acceptance: [...task.acceptance],
+  }));
+}
+
+export function selectExperimentalCandidateReviewTask(headMarkdown, { baseMarkdown = null } = {}) {
+  if (!baseMarkdown) return null;
+  const headContract = experimentalContract(headMarkdown);
+  const baseContract = experimentalContract(baseMarkdown);
+  if (JSON.stringify(headContract) === JSON.stringify(baseContract)) return null;
+  return selectExperimentalReviewTask(headMarkdown, { baseMarkdown });
+}
+
 export function selectOrchestrationReviewTask(currentGraph, { baseGraph = null } = {}) {
   validateTaskGraph(currentGraph);
   const inFlight = currentGraph.tasks.find(task => task.status === 'active' || task.status === 'verifying');
@@ -56,9 +81,9 @@ export function selectOrchestrationReviewTask(currentGraph, { baseGraph = null }
   const transitioned = currentGraph.tasks.filter(task => {
     if (task.status !== 'verified') return false;
     const baseTask = baseById.get(task.id);
-    return baseTask && !['verified', 'archived'].includes(baseTask.status);
+    return !baseTask || !['verified', 'archived'].includes(baseTask.status);
   });
-  assert(transitioned.length <= 1, `multiple AO tasks transitioned to verified in one candidate: ${transitioned.map(task => task.id).join(', ')}`);
+  assert(transitioned.length <= 1, `multiple AO tasks entered verified state in one candidate: ${transitioned.map(task => task.id).join(', ')}`);
   return transitioned.length === 1 ? { task: transitioned[0], mode: 'orchestration-closeout' } : null;
 }
 
@@ -105,6 +130,20 @@ export async function selectReviewTask({ baseRef = null, headRef = null, useEven
     };
   }
 
+  if (headRef && baseRef) {
+    const experimental = selectExperimentalCandidateReviewTask(
+      loadExperimentalRoadmapAtRef(headRef),
+      { baseMarkdown: loadExperimentalRoadmapAtRef(baseRef) },
+    );
+    if (experimental) {
+      return {
+        taskId: experimental.task.id,
+        source: 'docs/experimental-verification-roadmap.md',
+        mode: experimental.mode,
+      };
+    }
+  }
+
   let product;
   if (headRef) {
     const currentRoadmapGraph = loadRoadmapGraphAtRef(headRef);
@@ -115,7 +154,7 @@ export async function selectReviewTask({ baseRef = null, headRef = null, useEven
     product = selectProductReviewTask(graph);
   }
 
-  if (!product) throw new Error('no active orchestration task or executable product-roadmap task is available for independent review');
+  if (!product) throw new Error('no active orchestration task, changed experimental promotion contract, or executable product-roadmap task is available for independent review');
   return { taskId: product.task.id, source: 'docs/content-roadmap.md', mode: product.mode };
 }
 

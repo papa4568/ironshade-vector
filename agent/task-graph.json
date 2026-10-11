@@ -243,6 +243,49 @@
         }
       ],
       "externalDependencies": []
+    },
+    {
+      "id": "AO-7",
+      "title": "Extend trusted independent review to experimental promotions",
+      "priority": 70,
+      "status": "verified",
+      "dependsOn": ["AO-6"],
+      "acceptance": [
+        "Trusted-main review request parsing and exact-candidate packet resolution support EV-* promotion tasks without executing candidate-authored verifier code.",
+        "When no AO task is active or closing, ordinary candidates still fall back to the first executable product-roadmap task exactly as AO-6 requires.",
+        "Experimental task resolution derives the first EV promotion or a single-item closeout from the exact head/base experimental roadmap and fails closed on combined or reordered removals.",
+        "Trusted-review self-tests cover EV request namespaces, experimental active/closeout selection, unsupported task namespaces, and fail-closed combined closeout behavior."
+      ],
+      "affectedDomains": ["agent-orchestration", "verification", "review", "ci"],
+      "proofs": [
+        {
+          "id": "trusted-ev-review-tests",
+          "kind": "test",
+          "required": true,
+          "description": "Trusted review request parsing plus exact EV active/closeout packet regressions pass.",
+          "command": "node agent/tools/trusted-independent-review-v3.mjs self-test && node agent/tools/ao6-trusted-review-request.mjs self-test"
+        },
+        {
+          "id": "product-fallback-compatibility",
+          "kind": "invariant",
+          "required": true,
+          "description": "AO-6 product-roadmap fallback remains unchanged whenever no AO task is active or closing.",
+          "command": "node agent/tests/independent-review.mjs"
+        },
+        {
+          "id": "independent-review-verdict",
+          "kind": "review",
+          "required": true,
+          "description": "A separate trusted verifier returns a validated pass for the exact AO-7 candidate SHA after falsification attempts."
+        },
+        {
+          "id": "ao7-ci",
+          "kind": "ci",
+          "required": true,
+          "description": "Agent Orchestration and PR Candidate Verification pass on the exact AO-7 candidate revision with the review gate enforced."
+        }
+      ],
+      "externalDependencies": []
     }
   ]
 }

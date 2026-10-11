@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { selectExperimentalReviewTask } from './experimental-review-task.mjs';
 import { materializeRoadmapGraph, parseRoadmap } from './roadmap-adapter.mjs';
 import { loadImpactMap, selectAffectedVerification } from './select-affected-verification.mjs';
 import { loadTaskGraph, validateTaskGraph } from './validate-task-graph.mjs';
@@ -107,6 +108,19 @@ async function loadProductTask(taskId) {
   return task ? { task, source: 'docs/content-roadmap.md' } : null;
 }
 
+async function loadExperimentalTask(taskId, { baseRef = null } = {}) {
+  const headMarkdown = await readFile(resolve('docs/experimental-verification-roadmap.md'), 'utf8');
+  const baseMarkdown = baseRef
+    ? execFileSync('git', ['show', `${baseRef}:docs/experimental-verification-roadmap.md`], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })
+    : null;
+  const selection = selectExperimentalReviewTask(headMarkdown, { baseMarkdown });
+  if (!selection || selection.task.id !== taskId) return null;
+  return { task: selection.task, source: 'docs/experimental-verification-roadmap.md' };
+}
+
 export async function loadCandidateTask(taskId = 'active', { baseRef = null } = {}) {
   const graph = await loadTaskGraph();
   validateTaskGraph(graph);
@@ -120,11 +134,17 @@ export async function loadCandidateTask(taskId = 'active', { baseRef = null } = 
   const orchestrationTask = graph.tasks.find(task => task.id === taskId);
   if (orchestrationTask) return { task: orchestrationTask, source: 'agent/task-graph.json' };
 
+  if (/^EV-\d+$/.test(taskId)) {
+    const experimentalTask = await loadExperimentalTask(taskId, { baseRef });
+    assert(experimentalTask, `experimental task ${taskId} is not the first executable exact-candidate or closeout EV item`);
+    return experimentalTask;
+  }
+
   const productTask = await loadProductTask(taskId);
   if (productTask) return productTask;
 
   const baseProductTask = baseRef ? loadProductTaskAtRef(taskId, baseRef) : null;
-  assert(baseProductTask, `task ${taskId} was not found in the orchestration graph, active product roadmap, or exact candidate base roadmap`);
+  assert(baseProductTask, `task ${taskId} was not found in the orchestration graph, eligible experimental promotion contract, active product roadmap, or exact candidate base roadmap`);
   return baseProductTask;
 }
 

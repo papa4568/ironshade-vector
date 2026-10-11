@@ -6,7 +6,7 @@ Ironshade Vector is moving from a purely linear Markdown execution queue toward 
 
 `docs/content-roadmap.md` remains the authoritative product/game queue until an explicit migration phase changes that rule. The machine-readable graph in `agent/task-graph.json` is authoritative only for `AO-*` orchestration-migration tasks during compatibility mode.
 
-`agent/roadmap-metadata.json` is a sidecar, not a duplicate roadmap. It stores only machine-oriented information: the active unchecked ID/order inventory, affected-domain rules, proof profiles, and optional dependency overrides. Product task titles, descriptions, and `Done when` acceptance text are parsed directly from `docs/content-roadmap.md` and are not copied into the sidecar.
+`agent/roadmap-metadata.json` is a sidecar, not a duplicate roadmap. It stores only machine-oriented information: the active unchecked ID/order inventory, affected-domain rules, proof profiles, and optional dependency overrides. Product task titles/descriptions/acceptance remain authoritative only in `docs/content-roadmap.md`.
 
 `agent/impact-map.json` is the implementation-time change-impact map. It maps changed paths to affected domains and verification commands. It is conservative by design: unknown paths and high-risk build/dependency/Android/CI paths expand to `npm run verify:full` instead of silently selecting too little verification.
 
@@ -112,6 +112,14 @@ The authoritative PR candidate flow is therefore:
 `exact PR head -> full build/invariants -> exact-SHA review packet -> browser/Android/APK -> trusted independent-review PASS -> complete evidence ledger`
 
 Any implementation commit changes the candidate SHA and invalidates all older verdicts automatically. A failed review returns to the same writer branch, produces a new exact candidate, and must be reviewed again from scratch.
+
+### AO-7 — Trusted experimental-promotion review routing
+
+Verified candidate. AO-7 extends the trusted-main independent-review request and packet path to `EV-*` tasks while preserving AO-6's ordinary no-AO fallback to the first executable product-roadmap item.
+
+The trusted workflow still executes verifier code from current `main`, never from the candidate. EV task identity and acceptance are resolved from the exact candidate/base copies of `docs/experimental-verification-roadmap.md`. Active EV review selects the first executable promotion item; closeout review may recover only that single removed first item from the base roadmap and fails closed on combined or reordered removals. This extension does not make the experimental queue a default work source: EV selection remains explicit and candidate-scoped.
+
+The AO-7 implementation candidate passed Agent Orchestration, full repository verification/production build, exact candidate review-context generation, APK packaging, API 35 smoke, and API 36 large-screen smoke before this closeout transition. This verified closeout candidate is itself required to receive a trusted exact-SHA independent-review PASS and the final candidate gate before merge; only after that merge may EV-8 rely on the trusted-main EV packet path.
 
 ## Orchestration commands
 

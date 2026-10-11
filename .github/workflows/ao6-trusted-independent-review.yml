@@ -7,6 +7,8 @@ on:
       - '.github/workflows/ao6-trusted-independent-review.yml'
       - 'agent/tools/ao6-trusted-independent-review.mjs'
       - 'agent/tools/ao6-trusted-independent-review-v2.mjs'
+      - 'agent/tools/trusted-independent-review-v3.mjs'
+      - 'agent/tools/experimental-review-task.mjs'
       - 'agent/tools/ao6-trusted-review-request.mjs'
   issue_comment:
     types: [created]
@@ -21,7 +23,7 @@ on:
         required: true
         type: string
       task_id:
-        description: AO task ID
+        description: AO, EV, or product task ID
         required: false
         default: AO-6
         type: string
@@ -45,6 +47,7 @@ jobs:
         run: |
           node agent/tools/ao6-trusted-independent-review.mjs self-test
           node agent/tools/ao6-trusted-independent-review-v2.mjs self-test
+          node agent/tools/trusted-independent-review-v3.mjs self-test
           node agent/tools/ao6-trusted-review-request.mjs self-test
 
   trusted-review:
@@ -96,12 +99,13 @@ jobs:
         run: |
           node agent/tools/ao6-trusted-independent-review.mjs self-test
           node agent/tools/ao6-trusted-independent-review-v2.mjs self-test
+          node agent/tools/trusted-independent-review-v3.mjs self-test
           node agent/tools/ao6-trusted-review-request.mjs self-test
       - name: Run trusted exact-SHA adversarial review
         env:
           GITHUB_TOKEN: ${{ github.token }}
           MODEL: auto
-        run: node agent/tools/ao6-trusted-independent-review-v2.mjs run
+        run: node agent/tools/trusted-independent-review-v3.mjs run
       - name: Retain validated trusted-review result
         if: always()
         uses: actions/upload-artifact@v7
