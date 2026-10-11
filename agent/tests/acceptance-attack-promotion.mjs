@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import {
   buildAcceptanceAttackDecision,
@@ -9,11 +11,123 @@ import {
 } from '../tools/acceptance-attack-gate.mjs';
 import {
   evaluateDishonestAttack,
+  exerciseRuntimeCalibration,
   validateRuntimeCalibrationConfig,
 } from '../tools/acceptance-attack-runtime-calibration.mjs';
 
+function git(args, cwd) {
+  return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
+}
+
+async function exerciseRuntimeIsolationRegression() {
+  const fixtureRoot = await mkdtemp(join(tmpdir(), 'ironshade-runtime-calibration-regression-'));
+  const targetPath = join(fixtureRoot, 'target.mjs');
+  const sentinelPath = join(fixtureRoot, 'source-sentinel.txt');
+  const verifierPath = join(fixtureRoot, 'verify.mjs');
+  const previousMutateSource = process.env.RUNTIME_CALIBRATION_MUTATE_SOURCE;
+  const previousSourceSentinel = process.env.RUNTIME_CALIBRATION_SOURCE_SENTINEL;
+
+  try {
+    execFileSync('git', ['init', '--quiet'], { cwd: fixtureRoot });
+    execFileSync('git', ['config', 'user.email', 'ev8-runtime-isolation@example.invalid'], { cwd: fixtureRoot });
+    execFileSync('git', ['config', 'user.name', 'EV-8 Runtime Isolation Regression'], { cwd: fixtureRoot });
+
+    await writeFile(targetPath, 'export const batchSize = 4;\n');
+    await writeFile(sentinelPath, 'source sentinel\n');
+    await writeFile(verifierPath, `import { execFileSync } from 'node:child_process';
+import { appendFileSync, readFileSync } from 'node:fs';
+
+const remotes = execFileSync('git', ['remote'], { encoding: 'utf8' }).trim();
+if (remotes) {
+  console.error(\`runtime calibration sandbox retained remote: \${remotes}\`);
+  process.exit(2);
+}
+if (process.env.RUNTIME_CALIBRATION_MUTATE_SOURCE === '1') {
+  const sentinel = process.env.RUNTIME_CALIBRATION_SOURCE_SENTINEL;
+  if (!sentinel) throw new Error('missing runtime calibration source sentinel');
+  appendFileSync(sentinel, 'unexpected source mutation\\n');
+}
+const target = readFileSync('target.mjs', 'utf8');
+if (target.includes('batchSize = 1;')) {
+  console.error('runtime isolation fixture batch size 1');
+  process.exit(1);
+}
+if (target.includes('batchSize = 4;') || target.includes('batchSize = 2 + 2;')) {
+  console.log('RUNTIME_ISOLATION_FIXTURE_PASS');
+  process.exit(0);
+}
+console.error('runtime isolation fixture unknown target state');
+process.exit(3);
+`);
+    execFileSync('git', ['add', 'target.mjs', 'verify.mjs', 'source-sentinel.txt'], { cwd: fixtureRoot });
+    execFileSync('git', ['commit', '--quiet', '-m', 'runtime isolation fixture'], { cwd: fixtureRoot });
+    await mkdir(join(fixtureRoot, 'node_modules'));
+
+    const fixtureSha = git(['rev-parse', 'HEAD'], fixtureRoot);
+    const fixtureConfig = {
+      verifyCommand: 'node verify.mjs',
+      targetFile: 'target.mjs',
+      passMarker: 'RUNTIME_ISOLATION_FIXTURE_PASS',
+      dependencyStrategy: 'source-node-modules-symlink',
+      negativeControls: [
+        {
+          id: 'equivalent-batch-expression',
+          replacement: {
+            find: 'export const batchSize = 4;',
+            replace: 'export const batchSize = 2 + 2;',
+          },
+        },
+      ],
+      attack: {
+        templateId: 'hidden-serialization',
+        replacement: {
+          find: 'export const batchSize = 4;',
+          replace: 'export const batchSize = 1;',
+        },
+        expectedFailurePatterns: ['runtime isolation fixture batch size 1'],
+      },
+    };
+
+    delete process.env.RUNTIME_CALIBRATION_MUTATE_SOURCE;
+    delete process.env.RUNTIME_CALIBRATION_SOURCE_SENTINEL;
+    const report = await exerciseRuntimeCalibration({
+      candidateSha: fixtureSha,
+      config: fixtureConfig,
+      repoRoot: fixtureRoot,
+    });
+    assert.equal(report.isolation.strategy, 'disposable-clone');
+    assert.equal(report.isolation.sourceHead, fixtureSha);
+    assert.equal(report.isolation.sourceUnchanged, true, 'runtime calibration must prove its source repository stayed unchanged');
+    assert.equal(report.isolation.sandboxRemoteDetached, true, 'runtime verifier itself must observe a detached sandbox remote');
+    assert.equal(report.isolation.dependencyIsolation.strategy, 'source-node-modules-symlink');
+    assert.equal(report.negativeControls[0].falsePositive, false);
+    assert.equal(report.attack.detected, true);
+    assert.equal(git(['status', '--porcelain=v1', '--untracked-files=all'], fixtureRoot), '', 'successful runtime calibration must not dirty the source fixture');
+
+    process.env.RUNTIME_CALIBRATION_MUTATE_SOURCE = '1';
+    process.env.RUNTIME_CALIBRATION_SOURCE_SENTINEL = sentinelPath;
+    await assert.rejects(
+      exerciseRuntimeCalibration({
+        candidateSha: fixtureSha,
+        config: fixtureConfig,
+        repoRoot: fixtureRoot,
+      }),
+      /source working tree changed during runtime attack calibration/,
+      'runtime calibration must fail closed when its verifier mutates source state instead of the disposable clone',
+    );
+  } finally {
+    if (previousMutateSource === undefined) delete process.env.RUNTIME_CALIBRATION_MUTATE_SOURCE;
+    else process.env.RUNTIME_CALIBRATION_MUTATE_SOURCE = previousMutateSource;
+    if (previousSourceSentinel === undefined) delete process.env.RUNTIME_CALIBRATION_SOURCE_SENTINEL;
+    else process.env.RUNTIME_CALIBRATION_SOURCE_SENTINEL = previousSourceSentinel;
+    await rm(fixtureRoot, { recursive: true, force: true });
+  }
+}
+
+await exerciseRuntimeIsolationRegression();
+
 const candidateSha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
-const policy = validateAcceptanceAttackPolicy(JSON.parse(await readFile('agent/acceptance-attack-policy.json', 'utf8')));
+const policy = validateAcceptanceAttackPolicy(JSON.parse(await (await import('node:fs/promises')).readFile('agent/acceptance-attack-policy.json', 'utf8')));
 assert.equal(policy.enforcementEnabled, true, 'EV-8 policy must enable the measured promoted scope by default');
 assert.equal(policy.scopes.length, 1, 'EV-8 must promote only the measured deterministic subset');
 const [scope] = policy.scopes;
@@ -202,4 +316,4 @@ assert.throws(
   'promotion policy must not relax the zero false-negative requirement',
 );
 
-console.log(`ACCEPTANCE_ATTACK_PROMOTION_REGRESSIONS_PASS candidate=${candidateSha} scope=${scope.id} measuredControl=true criterionMatchedFailure=true falsePositiveBudget=0 falseNegativeBudget=0 advisorySurvivors=${result.advisory.survivors.length} rollback=advisory`);
+console.log(`ACCEPTANCE_ATTACK_PROMOTION_REGRESSIONS_PASS candidate=${candidateSha} scope=${scope.id} runtimeIsolation=exercised+fault-tested measuredControl=true criterionMatchedFailure=true falsePositiveBudget=0 falseNegativeBudget=0 advisorySurvivors=${result.advisory.survivors.length} rollback=advisory`);
