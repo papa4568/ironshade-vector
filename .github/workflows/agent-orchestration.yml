@@ -67,7 +67,19 @@ jobs:
           ACCEPTANCE_ATTACK_EVIDENCE_DIR: .agent-attacks
         run: node agent/tests/acceptance-attack-compiler.mjs
 
-      - name: Upload acceptance attack advisory evidence
+      - name: Run promoted acceptance attack regressions
+        run: node agent/tests/acceptance-attack-promotion.mjs
+
+      - name: Enforce promoted acceptance attack scope
+        env:
+          CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node agent/tools/acceptance-attack-gate.mjs gate \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --policy agent/acceptance-attack-policy.json \
+            --output .agent-attacks/promotion-gate.json
+
+      - name: Upload acceptance attack advisory and enforcement evidence
         uses: actions/upload-artifact@v7
         with:
           name: acceptance-attack-shadow-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'push' }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
