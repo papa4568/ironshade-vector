@@ -1,0 +1,69 @@
+name: Temporary P28-PLOAD1 Closeout Regression Fix
+
+on:
+  push:
+    branches:
+      - agent/p28-pload1-batched-refinery-instantiation
+
+permissions:
+  contents: write
+
+jobs:
+  fix-closeout-regressions:
+    if: github.event.head_commit.message == 'Add temporary P28-PLOAD1 closeout regression helper'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v7
+        with:
+          ref: agent/p28-pload1-batched-refinery-instantiation
+          fetch-depth: 0
+
+      - name: Make closeout regressions queue-advance safe
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          independent = Path('agent/tests/independent-review.mjs')
+          text = independent.read_text()
+          old = "assert.equal(completedProductTask.id, 'P28-PLOAD1', 'fixture assumes the live first product task is P28-PLOAD1');"
+          new = "assert(completedProductTask, 'product closeout fixture requires at least one live product task');"
+          if text.count(old) != 1:
+              raise SystemExit(f'independent-review stale assertion count={text.count(old)}')
+          text = text.replace(old, new, 1)
+          old = "assert.equal(productCloseoutSelection.task.id, 'P28-PLOAD1', 'product closeout must preserve the removed task identity');"
+          new = "assert.equal(productCloseoutSelection.task.id, completedProductTask.id, 'product closeout must preserve the removed task identity');"
+          if text.count(old) != 1:
+              raise SystemExit(f'independent-review closeout identity assertion count={text.count(old)}')
+          independent.write_text(text)
+
+          shadow_test = Path('agent/tests/roadmap-shadow-simulator.mjs')
+          text = shadow_test.read_text()
+          old = "['P28-PLOAD2', 'P28-G1']"
+          if text.count(old) != 2:
+              raise SystemExit(f'roadmap-shadow expected id list count={text.count(old)}')
+          shadow_test.write_text(text.replace(old, "['P28-F6', 'P28-G1']"))
+
+          shadow_config = Path('agent/roadmap-shadow-simulator.json')
+          text = shadow_config.read_text()
+          old = '"taskId": "P28-PLOAD2"'
+          if text.count(old) != 1:
+              raise SystemExit(f'roadmap-shadow P28-PLOAD2 scenario count={text.count(old)}')
+          shadow_config.write_text(text.replace(old, '"taskId": "P28-F6"', 1))
+          PY
+
+          git diff --check
+          node agent/tests/independent-review.mjs
+          node agent/tests/roadmap-shadow-simulator.mjs
+          node agent/tools/roadmap-shadow-simulator.mjs --candidate "$(git rev-parse HEAD)"
+
+      - name: Commit fixes
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add agent/tests/independent-review.mjs agent/tests/roadmap-shadow-simulator.mjs agent/roadmap-shadow-simulator.json
+          git commit -m 'Keep closeout regressions stable after roadmap advance'
+          git push origin HEAD:agent/p28-pload1-batched-refinery-instantiation
