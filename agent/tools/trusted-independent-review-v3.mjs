@@ -6,7 +6,6 @@ import {
   anchorReviewIdentity,
   buildPrompt,
   normalizeReviewEnums,
-  normalizeReviewKeys,
   packetFromProductRoadmaps,
   packetFromTaskGraph,
   parseReview,
@@ -50,6 +49,19 @@ async function diffText(repo, pr) {
 function decodeContentFile(file, label) {
   ok(file?.encoding === 'base64' && typeof file.content === 'string', `${label} payload is invalid`);
   return Buffer.from(file.content.replace(/\s/g, ''), 'base64').toString('utf8');
+}
+
+function normalizeTrustedReviewKeys(value) {
+  if (Array.isArray(value)) return value.map(normalizeTrustedReviewKeys);
+  if (!value || typeof value !== 'object') return value;
+  const normalized = {};
+  for (const [rawKey, rawValue] of Object.entries(value)) {
+    const key = rawKey.replace(/[\r\n\t]+/g, '').trim();
+    ok(key, 'trusted review contains an empty JSON key after control-whitespace normalization');
+    ok(!Object.hasOwn(normalized, key), `trusted review JSON keys collide after control-whitespace normalization: ${JSON.stringify(rawKey)} -> ${JSON.stringify(key)}`);
+    normalized[key] = normalizeTrustedReviewKeys(rawValue);
+  }
+  return normalized;
 }
 
 export async function exactCandidatePacket(repo, candidateSha, taskId, baseSha = null) {
@@ -177,13 +189,19 @@ function validate(result, packet) {
   );
   ok(['pass', 'fail'].includes(result.verdict), 'invalid verdict');
   ok(Array.isArray(result.acceptanceChecks) && result.acceptanceChecks.length === packet.acceptance.length, 'acceptanceChecks mismatch');
+  const acceptanceIndexes = new Set();
   for (const check of result.acceptanceChecks) {
     ok(packet.acceptance.some(item => item.index === check.index), `unknown acceptance check ${check.index}`);
+    ok(!acceptanceIndexes.has(check.index), `duplicate acceptance check ${check.index}`);
+    acceptanceIndexes.add(check.index);
     ok(['satisfied', 'not_satisfied'].includes(check.status) && check.notes?.trim(), `invalid acceptance check ${check.index}`);
   }
   ok(Array.isArray(result.proofChecks) && result.proofChecks.length === packet.requiredProofs.length, 'proofChecks mismatch');
+  const proofIds = new Set();
   for (const check of result.proofChecks) {
     ok(packet.requiredProofs.some(proof => proof.id === check.proofId), `unknown proof check ${check.proofId}`);
+    ok(!proofIds.has(check.proofId), `duplicate proof check ${check.proofId}`);
+    proofIds.add(check.proofId);
     ok(['credible', 'insufficient'].includes(check.status) && check.notes?.trim(), `invalid proof check ${check.proofId}`);
   }
   ok(Array.isArray(result.findings), 'findings must be array');
@@ -231,7 +249,7 @@ async function run() {
 
   mkdirSync('.trusted-review', { recursive: true });
   writeFileSync('.trusted-review/raw-response.txt', response, 'utf8');
-  const result = validate(anchorReviewIdentity(normalizeProofCheckIds(normalizeReviewEnums(normalizeReviewKeys(parseReview(response))), packet), packet), packet);
+  const result = validate(anchorReviewIdentity(normalizeProofCheckIds(normalizeReviewEnums(normalizeTrustedReviewKeys(parseReview(response))), packet), packet), packet);
   Object.assign(result, {
     reviewerKind: 'trusted-main-copilot-actions',
     sourceWorkflow: 'AO-6 Trusted Independent Review',
@@ -277,9 +295,66 @@ function selfTest() {
     combinedRejected = true;
   }
   ok(combinedRejected, 'EV closeout must reject removal of multiple promotion items');
+  const malformedWhitespaceFirst = [
+    '# Experimental verification roadmap',
+    '',
+    '## Active experimental queue',
+    '',
+    '- [ ]  EV-8 — malformed first item',
+    '  - This malformed item must not be skipped.',
+    '',
+    '- [ ] **EV-9 — Later valid item**',
+    '  - A later valid item must not become authoritative.',
+  ].join('\n');
+  let malformedWhitespaceRejected = false;
+  try {
+    selectExperimentalReviewTask(malformedWhitespaceFirst);
+  } catch (error) {
+    malformedWhitespaceRejected = /malformed experimental task line/.test(String(error));
+  }
+  ok(malformedWhitespaceRejected, 'whitespace-malformed first EV item must fail closed');
+
   const packet = packetFromTaskGraph({ tasks: [active.task] }, 'EV-8', 'a'.repeat(40));
   ok(packet.taskId === 'EV-8' && packet.acceptance.length === 2, 'EV trusted packet did not preserve acceptance');
   ok(packet.requiredProofs.length >= 6, 'EV trusted packet did not preserve final proof obligations');
+  const validReview = {
+    schemaVersion: 1,
+    taskId: packet.taskId,
+    candidateSha: packet.candidateSha,
+    mode: 'read-only-adversarial',
+    verdict: 'pass',
+    acceptanceChecks: packet.acceptance.map(item => ({ index: item.index, status: 'satisfied', notes: 'checked' })),
+    proofChecks: packet.requiredProofs.map(proof => ({ proofId: proof.id, status: 'credible', notes: 'checked' })),
+    findings: [],
+  };
+  validate(validReview, packet);
+  const wrappedKeyReview = structuredClone(validReview);
+  wrappedKeyReview.acceptanceChecks[0]['no\ntes'] = wrappedKeyReview.acceptanceChecks[0].notes;
+  delete wrappedKeyReview.acceptanceChecks[0].notes;
+  const normalizedWrappedKey = normalizeTrustedReviewKeys(wrappedKeyReview);
+  validate(normalizedWrappedKey, packet);
+  ok(normalizedWrappedKey.acceptanceChecks[0].notes === 'checked', 'trusted review key normalization did not repair control-whitespace wrapping');
+
+  const duplicateAcceptance = structuredClone(validReview);
+  duplicateAcceptance.acceptanceChecks[1].index = duplicateAcceptance.acceptanceChecks[0].index;
+  let duplicateAcceptanceRejected = false;
+  try {
+    validate(duplicateAcceptance, packet);
+  } catch (error) {
+    duplicateAcceptanceRejected = /duplicate acceptance check/.test(String(error));
+  }
+  ok(duplicateAcceptanceRejected, 'duplicate trusted acceptance checks must fail closed');
+
+  const duplicateProof = structuredClone(validReview);
+  duplicateProof.proofChecks[1].proofId = duplicateProof.proofChecks[0].proofId;
+  let duplicateProofRejected = false;
+  try {
+    validate(duplicateProof, packet);
+  } catch (error) {
+    duplicateProofRejected = /duplicate proof check/.test(String(error));
+  }
+  ok(duplicateProofRejected, 'duplicate trusted proof checks must fail closed');
+
   const prompt = buildPrompt(packet, { candidateRun: { conclusion: 'failure' } }, 'diff');
   ok(prompt.includes('read-only adversarial verifier'), 'trusted prompt contract missing');
   console.log('TRUSTED_INDEPENDENT_REVIEW_V3_SELF_TEST_PASS');
