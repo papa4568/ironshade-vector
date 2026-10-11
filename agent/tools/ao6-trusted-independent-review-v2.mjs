@@ -7,12 +7,24 @@ const env = name => { const value = process.env[name]?.trim(); ok(value, `${name
 const positive = (value, name) => { const parsed = Number(value); ok(Number.isInteger(parsed) && parsed > 0, `${name} must be positive`); return parsed; };
 
 export function repairJson(text) {
-  let out = '', quoted = false, escaped = false;
-  for (const ch of text) {
+  let out = '', quoted = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const ch = text[index];
     if (!quoted) { out += ch; if (ch === '"') quoted = true; continue; }
-    if (escaped) { out += ch; escaped = false; continue; }
-    if (ch === '\\') { out += ch; escaped = true; continue; }
     if (ch === '"') { out += ch; quoted = false; continue; }
+    if (ch === '\\') {
+      const next = text[index + 1];
+      if (next === undefined) { out += '\\\\'; continue; }
+      if ('"\\/bfnrt'.includes(next)) { out += `\\${next}`; index += 1; continue; }
+      if (next === 'u' && /^[0-9a-fA-F]{4}$/.test(text.slice(index + 2, index + 6))) {
+        out += text.slice(index, index + 6);
+        index += 5;
+        continue;
+      }
+      out += `\\\\${next}`;
+      index += 1;
+      continue;
+    }
     const code = ch.codePointAt(0);
     if (code < 32) out += ch === '\n' ? '\\n' : ch === '\r' ? '\\r' : ch === '\t' ? '\\t' : `\\u${code.toString(16).padStart(4, '0')}`;
     else out += ch;
@@ -278,6 +290,10 @@ function selfTest() {
   ok(parsedTrailing.schemaVersion === 1 && parsedTrailing.note === 'quoted } brace', 'balanced verdict extraction failed');
   const parsedRawNewline = parseReview('{"note":"line 1\nline 2"} trailing');
   ok(parsedRawNewline.note === 'line 1\nline 2', 'control-character repair failed');
+  const parsedInvalidEscapes = parseReview(String.raw`{"note":"regex \. and \s and \d and literal \uZZZZ"}`);
+  ok(parsedInvalidEscapes.note === String.raw`regex \. and \s and \d and literal \uZZZZ`, 'invalid JSON escape repair failed');
+  const parsedValidEscapes = parseReview(String.raw`{"note":"quote \" slash \\ newline \n unicode \u263A"}`);
+  ok(parsedValidEscapes.note === 'quote " slash \\ newline \n unicode ☺', 'valid JSON escape preservation failed');
   const text = buildPrompt(packet, { candidateRun: { conclusion: 'failure' } }, 'diff');
   ok(text.includes('SELF-REFERENCE RULE'), 'self-reference rule missing from prompt');
   ok(text.includes('never require a previously published review verdict'), 'circular-review regression missing from prompt');
