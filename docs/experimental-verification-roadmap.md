@@ -12,6 +12,9 @@ These ideas deliberately combine known software-engineering primitives in unusua
 - Work this roadmap only when the user explicitly asks to execute the experimental verification track or names one of the `EV-*` items below.
 - Execute top to bottom unless the user changes priority or an item is blocked by an unmet dependency.
 - One checkbox should fit one implementation -> targeted test -> final verification cycle. Split an item before coding if it contains independent experiments.
+- When enforcement depends on measured evidence, separate calibration/evidence collection from default enforcement into different roadmap items. Calibration items must remain advisory and must not flip default enforcement.
+- An enforcement item may promote only the scope justified by already-recorded calibration evidence. Do not expand the calibration corpus, invent a second experiment, or combine unrelated refactoring in the same ownership cycle.
+- If a task needs more than one independent verification closure (for example calibration plus enforcement plus rollback), split it before implementation. Keep one active EV implementation PR at a time.
 - Promotion is new engineering work. Never rewrite the archived EV-1 through EV-7 records to imply they were previously enforced.
 - Experiments and promotion candidates must fail closed. No promotion may weaken an existing proof gate, exact-SHA evidence, Android/browser coverage, or independent-review requirement.
 - Promotion may enforce only behavior supported by measured shadow evidence. If the evidence supports only a narrower deterministic subset, promote that subset and leave the unsupported remainder advisory.
@@ -31,44 +34,65 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
   - Preserve an explicit rollback path to the current advisory analyzer and verify existing exact-SHA candidate evidence remains authoritative.
   - Update `AGENTS.md` and the evidence-independence contract, then archive EV-9 with exact-SHA evidence and independent-review result.
 
-- [ ] **EV-10 — Promote EV-3 Behavioral Genome**
-  - Validate the genome against representative intentional behavioral changes and known non-semantic noise; quantify unexplained-delta false positives and missed semantic-change false negatives for the proposed enforced domains.
-  - Define which domain deltas are blocking, which are declaration-required, and which remain informational. A genome match must never replace the tests that produced or independently verify behavior.
-  - Enable fail-closed enforcement for unexplained deltas only where the measured evidence supports it, while preserving deterministic normalization/exclusion rules and exact-SHA binding.
+- [ ] **EV-10 — Calibrate EV-3 Behavioral Genome**
+  - Build or reuse a representative corpus of intentional behavioral changes and known non-semantic noise, then record unexplained-delta false positives and missed semantic-change false negatives by candidate domain.
+  - Keep the genome advisory in this item: do not add a new blocking rule, change default enforcement, or replace the tests that produce or independently verify behavior.
+  - Done when the measured evidence identifies the exact domains, normalization/exclusion rules, and unresolved cases that EV-11 may or may not promote.
+
+- [ ] **EV-11 — Enforce Validated Behavioral Genome Scope**
+  - Use only EV-10 evidence to classify validated domain deltas as blocking, declaration-required, or informational; unsupported domains remain advisory.
+  - Add fail-closed enforcement only for the validated scope while preserving deterministic normalization/exclusion rules, exact-SHA binding, and the underlying behavioral tests.
   - Verify disabling genome enforcement restores the previous pipeline cleanly and leaves product/runtime behavior unchanged.
-  - Update `AGENTS.md` and the behavioral-genome contract, then archive EV-10 with exact-SHA evidence and independent-review result.
+  - Done when `AGENTS.md` and the behavioral-genome contract document the promoted scope and rollback, and the exact candidate is archived with required proofs and independent review.
 
-- [ ] **EV-11 — Promote EV-4 Repository Immune System**
-  - Validate recurrence clustering and accepted-antibody behavior against representative historical and synthetic failures; measure over-clustering, under-clustering, and recurrence-detection errors.
-  - Define the permanent review/ownership process for accepting, updating, or retiring antibodies. Unreviewed proposals must remain non-enforcing.
-  - Promote accepted deterministic antibodies into normal repository checks using the narrowest appropriate mechanism (regression, architecture invariant, impact-map rule, or telemetry contract) without creating a second competing source of truth.
-  - Prove bounded memory/compaction remains deterministic and that rollback removes enforcement without losing unrelated repository history.
-  - Update `AGENTS.md` and failure-memory/antibody contracts, then archive EV-11 with exact-SHA evidence and independent-review result.
+- [ ] **EV-12 — Calibrate EV-4 Failure Recurrence**
+  - Validate recurrence clustering against representative historical and synthetic failures; measure over-clustering, under-clustering, and recurrence-detection errors.
+  - Prove bounded memory/compaction remains deterministic for the measured corpus without enabling any new antibody as a blocking repository check.
+  - Done when the evidence identifies which recurrence signatures are stable enough for governance and which remain advisory.
 
-- [ ] **EV-12 — Promote EV-5 Change-Impact Calibration**
-  - Compare historical/current affected-verification predictions with full-verification outcomes and quantify miss/over-selection rates for each promotable rule class.
-  - Promote calibration only as preserve-or-widen logic: it may add checks or escalate to `verify:full`, but it must never narrow existing required checks or final proof gates.
-  - Require deterministic, reviewed impact-map updates for learned widenings; unknown or low-confidence change classes must fail safe to broader verification.
-  - Verify rollback restores the existing static impact-map behavior and that no candidate evidence is reused across SHAs.
-  - Update `AGENTS.md`, `agent/impact-map.json` policy, and calibration contracts, then archive EV-12 with exact-SHA evidence and independent-review result.
+- [ ] **EV-13 — Define Antibody Governance**
+  - Define the permanent ownership and review process for proposing, accepting, updating, and retiring antibodies; unreviewed proposals must remain non-enforcing.
+  - Map accepted antibody types to the existing narrowest source of truth (regression, architecture invariant, impact-map rule, or telemetry contract) without creating a second competing check registry.
+  - Done when the governance contract is deterministic, reviewed, and ready for one narrow enforcement candidate in EV-14.
 
-- [ ] **EV-13 — Promote EV-6 Causal Proof Cache**
-  - Measure cache prediction agreement across repeated exact-closure runs and representative invalidation changes; record false-hit, false-miss, and same-closure disagreement behavior for each proof class considered for reuse.
-  - Enable proof reuse only for proof classes with demonstrated deterministic causal closure and zero unresolved same-closure disagreements in the promotion evidence set.
-  - Require exact input/context digests, immutable candidate identity, auditable cache provenance, and fail-closed fallback to the real proof whenever any dependency, environment input, or cache record is unknown or inconsistent.
-  - Prove cache disablement forces the original proof to rerun and yields the previous verified pipeline without changing acceptance semantics.
-  - Update `AGENTS.md` and proof-cache contracts, then archive EV-13 with exact-SHA evidence and independent-review result.
+- [ ] **EV-14 — Promote One Accepted Antibody**
+  - Select one deterministic antibody justified by EV-12 evidence and EV-13 governance, and promote only that antibody into the existing appropriate repository check.
+  - Verify rollback removes the promoted enforcement without losing unrelated failure history or changing other acceptance semantics.
+  - Done when permanent documentation is updated and the exact candidate is archived with required proofs and independent review; additional antibodies require separate roadmap items.
 
-- [ ] **EV-14 — Promote EV-7 Roadmap Shadow Simulator**
-  - Validate prior shadow-friction predictions against the actual implementation outcomes of later roadmap work and quantify useful predictions, false alarms, and missed integration pressure.
-  - Define the permanent role of roadmap pressure signals. Only signals with validated predictive value may become normal planning/architecture obligations; unvalidated scoring must remain advisory and must not block product candidates.
-  - Where evidence supports enforcement, convert the validated signal into a deterministic architecture invariant, proof obligation, or roadmap rule rather than making a heuristic score itself authoritative.
-  - Verify disposable probes remain outside product/runtime state and that disabling the simulator restores the previous planning/verification path.
-  - Update `AGENTS.md` and the roadmap-shadow contract, then archive EV-14 with exact-SHA evidence and independent-review result.
+- [ ] **EV-15 — Calibrate EV-5 Change-Impact Predictions**
+  - Compare historical/current affected-verification predictions with full-verification outcomes and quantify miss and over-selection rates by candidate rule class.
+  - Identify only preserve-or-widen candidates; no calibration result may narrow existing required checks or final proof gates, and this item must not change default impact-map behavior.
+  - Done when the evidence names the exact safe widening candidates, confidence limits, and unresolved classes for EV-16.
+
+- [ ] **EV-16 — Enforce Validated Change-Impact Widenings**
+  - Apply only EV-15-supported deterministic, reviewed widenings to `agent/impact-map.json` policy; unknown or low-confidence change classes must fail safe to broader verification.
+  - Preserve exact-SHA evidence isolation and verify rollback restores the previous static impact-map behavior.
+  - Done when policy/contracts are documented and the exact candidate is archived with required proofs and independent review.
+
+- [ ] **EV-17 — Calibrate EV-6 Proof-Cache Closure**
+  - Measure cache prediction agreement across repeated exact-closure runs and representative invalidation changes; record false hits, false misses, and same-closure disagreements by proof class.
+  - Keep proof reuse disabled in this item; identify proof classes with demonstrated deterministic causal closure and explicitly reject any class with unresolved same-closure disagreement.
+  - Done when the evidence names at most the proof classes eligible for a narrow reuse candidate in EV-18 and documents all required input/environment closure.
+
+- [ ] **EV-18 — Reuse One Validated Proof Class**
+  - Enable reuse for one proof class justified by EV-17, requiring exact input/context digests, immutable candidate identity, auditable cache provenance, and fail-closed fallback to the real proof for any unknown or inconsistent dependency.
+  - Prove cache disablement forces the original proof to rerun and preserves prior acceptance semantics.
+  - Done when `AGENTS.md` and proof-cache contracts document the promoted class and rollback, and the exact candidate is archived with required proofs and independent review; further proof classes require separate roadmap items.
+
+- [ ] **EV-19 — Validate EV-7 Roadmap Shadow Predictions**
+  - Compare prior shadow-friction predictions with actual implementation outcomes from later roadmap work and quantify useful predictions, false alarms, and missed integration pressure.
+  - Keep all roadmap-pressure scoring advisory in this item and confirm disposable probes remain outside product/runtime state.
+  - Done when the evidence identifies any signal with repeatable predictive value and records unsupported signals that must remain advisory.
+
+- [ ] **EV-20 — Graduate One Roadmap-Pressure Signal**
+  - Using only EV-19 evidence, either convert one validated signal into a deterministic architecture invariant, proof obligation, or roadmap rule, or explicitly record that no signal is ready for enforcement.
+  - Do not make a heuristic score authoritative; verify disabling the simulator restores the previous planning/verification path.
+  - Done when the permanent rule or no-promotion decision is documented and, if enforcement changes, the exact candidate is archived with required proofs and independent review.
 
 ## Intended dependency order
 
-EV-8 through EV-14 should normally execute in order. EV-8 through EV-10 establish stronger acceptance/evidence/behavior semantics; EV-11 and EV-12 learn reusable checks and verification widening from observed failures; EV-13 may reuse expensive proofs only after those proof dependencies are trustworthy; EV-14 graduates future-pressure signals only after they can be compared with real later implementation outcomes.
+EV-8 through EV-20 should normally execute in order. EV-8 and EV-9 establish stronger acceptance and evidence semantics. EV-10/11, EV-12/13/14, EV-15/16, EV-17/18, and EV-19/20 deliberately separate calibration from governance or enforcement so each ownership cycle has one primary verification closure.
 
 EV-1 through EV-7 remain verified prototype history in `docs/experimental-verification-archive.md`. Completing a promotion item does not rewrite that history; the promotion itself receives a new archived record.
 
@@ -86,6 +110,8 @@ A promotion item may leave this roadmap only after:
 6. the exact promotion candidate passes the independent verifier;
 7. the permanent behavior is documented in `AGENTS.md`, the relevant `agent/` contract, architecture/impact policy, or active product verification policy; and
 8. the promotion evidence and rollback history are moved to `docs/experimental-verification-archive.md`.
+
+Calibration-only items may complete when their measured evidence is recorded and independently reproducible; they must not claim promotion or default enforcement. Their paired promotion item remains responsible for the full promotion completion rule above.
 
 ## Research boundary
 
