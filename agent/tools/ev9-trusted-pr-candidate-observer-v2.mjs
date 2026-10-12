@@ -5,6 +5,8 @@ const SHA_PATTERN = /^[a-f0-9]{40}$/;
 const CHECKOUT_ACTION = 'actions/checkout@v7';
 const PR_HEAD = '${{ github.event.pull_request.head.sha }}';
 const PRODUCER_HEAD = '${{ needs.candidate-build.outputs.candidate-sha }}';
+const IDENTITY_HEAD_ASSERTION = 'test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"';
+const IDENTITY_OUTPUT_ASSERTION = 'echo "candidate-sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"';
 
 function ok(value, message) {
   if (!value) throw new Error(message);
@@ -61,8 +63,18 @@ function nestedMap(lines, start, end, parentIndent) {
   return result;
 }
 
+function blockScalar(lines, start, end, parentIndent) {
+  const values = [];
+  for (let index = start; index < end; index += 1) {
+    const line = lines[index];
+    if (line.active && line.indent <= parentIndent) break;
+    if (line.indent > parentIndent) values.push(line.text);
+  }
+  return values.join('\n');
+}
+
 function parseStep(lines, start, end) {
-  const step = { with: {} };
+  const step = { with: {}, env: {} };
   const first = keyValue(lines[start].text.slice(2).trim());
   if (first?.value) step[first.key] = first.value;
   for (let index = start + 1; index < end; index += 1) {
@@ -70,7 +82,8 @@ function parseStep(lines, start, end) {
     if (!line.active || line.indent !== 8) continue;
     const parsed = keyValue(line.text);
     if (!parsed) continue;
-    if (parsed.key === 'with' && !parsed.value) step.with = nestedMap(lines, index + 1, end, 8);
+    if ((parsed.key === 'with' || parsed.key === 'env') && !parsed.value) step[parsed.key] = nestedMap(lines, index + 1, end, 8);
+    else if (parsed.key === 'run' && ['|', '|-', '>', '>-'].includes(parsed.value)) step.run = blockScalar(lines, index + 1, end, 8);
     else if (parsed.value) step[parsed.key] = parsed.value;
   }
   return step;
@@ -125,6 +138,11 @@ function uniqueCheckout(job, expectedRef) {
   return steps.length === 1 && steps[0].uses === CHECKOUT_ACTION && steps[0].with.ref === expectedRef;
 }
 
+function identityStep(job) {
+  const steps = job?.steps?.filter(step => step.id === 'identity') ?? [];
+  return steps.length === 1 ? steps[0] : null;
+}
+
 function check(id, pass, evidence) {
   return { id, pass, evidence };
 }
@@ -136,11 +154,21 @@ export function observeTrustedPrCandidateContract({ workflowText }) {
   const browser = jobs.get('browser-e2e');
   const android = jobs.get('android');
   const final = jobs.get('candidate-verification');
+  const identity = identityStep(producer);
   const required = [['candidate-build', producer], ['independent-review-context', review], ['browser-e2e', browser], ['android', android], ['candidate-verification', final]];
+  const identityRun = identity?.run ?? '';
   const checks = [
     check('required-jobs-present', required.every(([, job]) => Boolean(job)), 'trusted observation requires producer, review, browser, Android, and final jobs'),
     check('candidate-build-exact-head', Boolean(producer) && uniqueCheckout(producer, PR_HEAD), 'candidate-build must contain exactly one actions/checkout@v7 bound to the PR head'),
     check('candidate-output-exact-head', producer?.outputs?.['candidate-sha'] === '${{ steps.identity.outputs.candidate-sha }}', 'candidate-build must expose its runtime-asserted candidate-sha output'),
+    check(
+      'candidate-identity-runtime-exact-head',
+      Boolean(identity)
+        && identity.env?.CANDIDATE_SHA === PR_HEAD
+        && identityRun.includes(IDENTITY_OUTPUT_ASSERTION)
+        && identityRun.includes(IDENTITY_HEAD_ASSERTION),
+      'identity step must bind CANDIDATE_SHA to the PR head, publish that SHA, and assert the checked-out HEAD matches it at runtime',
+    ),
     check('review-context-exact-producer', Boolean(review) && uniqueCheckout(review, PRODUCER_HEAD), 'independent-review-context must check out the producer candidate-sha output'),
     check('browser-exact-producer', browser?.uses === './.github/workflows/browser-e2e.yml' && browser?.with?.candidate_sha === PRODUCER_HEAD, 'browser consumer must use the producer candidate-sha output'),
     check('android-exact-producer', android?.uses === './.github/workflows/pr-android-apk.yml' && android?.with?.candidate_sha === PRODUCER_HEAD, 'Android consumer must use the producer candidate-sha output'),
@@ -160,7 +188,7 @@ function replaceOnce(text, find, replacement) {
 }
 
 function fixture() {
-  return `name: PR Candidate Verification\non:\n  pull_request:\njobs:\n  candidate-build:\n    outputs:\n      candidate-sha: \${{ steps.identity.outputs.candidate-sha }}\n    steps:\n      - name: Check out exact candidate revision\n        uses: actions/checkout@v7\n        with:\n          ref: ${PR_HEAD}\n  independent-review-context:\n    steps:\n      - name: Check out exact candidate read-only\n        uses: actions/checkout@v7\n        with:\n          ref: ${PRODUCER_HEAD}\n  browser-e2e:\n    uses: ./.github/workflows/browser-e2e.yml\n    with:\n      candidate_sha: ${PRODUCER_HEAD}\n  android:\n    uses: ./.github/workflows/pr-android-apk.yml\n    with:\n      candidate_sha: ${PRODUCER_HEAD}\n  candidate-verification:\n    steps:\n      - name: Check out exact candidate revision for final evidence\n        uses: actions/checkout@v7\n        with:\n          ref: ${PR_HEAD}\n`;
+  return `name: PR Candidate Verification\non:\n  pull_request:\njobs:\n  candidate-build:\n    outputs:\n      candidate-sha: \${{ steps.identity.outputs.candidate-sha }}\n    steps:\n      - name: Check out exact candidate revision\n        uses: actions/checkout@v7\n        with:\n          ref: ${PR_HEAD}\n      - name: Record candidate identity\n        id: identity\n        shell: bash\n        env:\n          CANDIDATE_SHA: ${PR_HEAD}\n        run: |\n          echo "candidate-sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"\n          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"\n  independent-review-context:\n    steps:\n      - name: Check out exact candidate read-only\n        uses: actions/checkout@v7\n        with:\n          ref: ${PRODUCER_HEAD}\n  browser-e2e:\n    uses: ./.github/workflows/browser-e2e.yml\n    with:\n      candidate_sha: ${PRODUCER_HEAD}\n  android:\n    uses: ./.github/workflows/pr-android-apk.yml\n    with:\n      candidate_sha: ${PRODUCER_HEAD}\n  candidate-verification:\n    steps:\n      - name: Check out exact candidate revision for final evidence\n        uses: actions/checkout@v7\n        with:\n          ref: ${PR_HEAD}\n`;
 }
 
 export function selfTest() {
@@ -170,6 +198,7 @@ export function selfTest() {
   const attacks = [
     [replaceOnce(baseline, `ref: ${PR_HEAD}`, 'ref: ${{ github.sha }}'), 'candidate-build-exact-head'],
     [replaceOnce(baseline, `candidate-sha: \${{ steps.identity.outputs.candidate-sha }}`, 'candidate-sha: ${{ github.sha }}'), 'candidate-output-exact-head'],
+    [replaceOnce(baseline, IDENTITY_HEAD_ASSERTION, 'test "$(git rev-parse HEAD)" = "$GITHUB_SHA"'), 'candidate-identity-runtime-exact-head'],
     [replaceOnce(baseline, `candidate_sha: ${PRODUCER_HEAD}`, 'candidate_sha: ${{ github.sha }}'), 'browser-exact-producer'],
     [replaceOnce(baseline, `      - name: Check out exact candidate revision for final evidence\n        uses: ${CHECKOUT_ACTION}\n        with:\n          ref: ${PR_HEAD}`, `      - name: Check out exact candidate revision for final evidence\n        uses: ${CHECKOUT_ACTION}\n        with:\n          ref: \${{ github.sha }}`), 'final-exact-head'],
   ];
