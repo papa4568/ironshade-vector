@@ -187,6 +187,14 @@ jobs:
           cp -a "$snapshot/dist" dist
           test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
 
+      - name: Record source-bound candidate web digest
+        id: source-bound-dist
+        shell: bash
+        run: |
+          set -euo pipefail
+          dist_sha256="$(tar --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner -cf - dist | sha256sum | cut -d' ' -f1)"
+          echo "dist-sha256=$dist_sha256" >> "$GITHUB_OUTPUT"
+
       - name: Capture EV-5 impact-map calibration shadow evidence
         if: always()
         continue-on-error: true
@@ -271,20 +279,6 @@ jobs:
           echo "artifact-name=$artifact_name" >> "$GITHUB_OUTPUT"
           test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
 
-      - name: Create exact candidate web artifact manifest
-        env:
-          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          node agent/tools/candidate-artifact.mjs create \
-            --candidate "$CANDIDATE_SHA" \
-            --root dist \
-            --build-command 'npm run build' \
-            --output .candidate-artifact/candidate-web.json
-          node agent/tools/candidate-artifact.mjs validate \
-            --candidate "$CANDIDATE_SHA" \
-            --root dist \
-            --manifest .candidate-artifact/candidate-web.json
-
       - name: Detect browser validation scope
         id: scope
         shell: bash
@@ -304,6 +298,27 @@ jobs:
           done < <(git diff --name-only "$BASE_SHA...$HEAD_SHA")
           echo "browser-required=$browser_required" >> "$GITHUB_OUTPUT"
           echo "PR_CANDIDATE_BROWSER_REQUIRED value=$browser_required"
+
+      - name: Create exact candidate web artifact manifest
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+          SOURCE_BOUND_DIST_SHA256: ${{ steps.source-bound-dist.outputs.dist-sha256 }}
+        run: |
+          set -euo pipefail
+          digest() {
+            tar --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner -cf - dist | sha256sum | cut -d' ' -f1
+          }
+          test "$(digest)" = "$SOURCE_BOUND_DIST_SHA256"
+          node agent/tools/candidate-artifact.mjs create \
+            --candidate "$CANDIDATE_SHA" \
+            --root dist \
+            --build-command 'npm run build' \
+            --output .candidate-artifact/candidate-web.json
+          node agent/tools/candidate-artifact.mjs validate \
+            --candidate "$CANDIDATE_SHA" \
+            --root dist \
+            --manifest .candidate-artifact/candidate-web.json
+          test "$(digest)" = "$SOURCE_BOUND_DIST_SHA256"
 
       - name: Upload exact candidate web bundle
         uses: actions/upload-artifact@v7
