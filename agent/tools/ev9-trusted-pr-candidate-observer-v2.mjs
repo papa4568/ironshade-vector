@@ -357,6 +357,12 @@ function replaceOnce(text, find, replacement) {
   return `${text.slice(0, index)}${replacement}${text.slice(index + find.length)}`;
 }
 
+function replaceLast(text, find, replacement) {
+  const index = text.lastIndexOf(find);
+  ok(index >= 0, `self-test mutation target missing: ${find}`);
+  return `${text.slice(0, index)}${replacement}${text.slice(index + find.length)}`;
+}
+
 function yamlScript(lines) {
   return lines.map(line => `          ${line}`).join('\n');
 }
@@ -383,7 +389,7 @@ export function selfTest() {
   assert.equal(observeTrustedPrCandidateContract(baseline).pass, true);
   const benign = {
     ...baseline,
-    workflowText: `# behavior-preserving workflow comment\n${replaceOnce(baseline.workflowText, IDENTITY_SCRIPT.at(-1), `# behavior-preserving identity comment\n          ${IDENTITY_SCRIPT.at(-1)}`)}`,
+    workflowText: `# behavior-preserving workflow comment\n${replaceLast(baseline.workflowText, IDENTITY_SCRIPT.at(-1), `# behavior-preserving identity comment\n          ${IDENTITY_SCRIPT.at(-1)}`)}`,
   };
   assert.equal(observeTrustedPrCandidateContract(benign).pass, true);
 
@@ -393,7 +399,7 @@ export function selfTest() {
     [{ ...baseline, workflowText: replaceOnce(baseline.workflowText, '      - name: Run full repository verification and production build once\n', `${refSwitch}      - name: Run full repository verification and production build once\n`) }, 'candidate-producer-no-revision-switches'],
     [{ ...baseline, workflowText: replaceOnce(baseline.workflowText, 'git archive --format=tar "$CANDIDATE_SHA" | tar -xf - -C "$snapshot"', 'git archive --format=tar HEAD | tar -xf - -C "$snapshot"') }, 'candidate-build-exact-snapshot'],
     [{ ...baseline, workflowText: replaceOnce(baseline.workflowText, `candidate-sha: \${{ steps.identity.outputs.candidate-sha }}`, 'candidate-sha: ${{ github.sha }}') }, 'candidate-output-exact-head'],
-    [{ ...baseline, workflowText: replaceOnce(baseline.workflowText, IDENTITY_SCRIPT.at(-1), `${IDENTITY_SCRIPT.at(-1)} || true`) }, 'candidate-identity-runtime-exact-head'],
+    [{ ...baseline, workflowText: replaceLast(baseline.workflowText, IDENTITY_SCRIPT.at(-1), `${IDENTITY_SCRIPT.at(-1)} || true`) }, 'candidate-identity-runtime-exact-head'],
     [{ ...baseline, workflowText: replaceOnce(baseline.workflowText, `candidate_sha: ${PRODUCER_HEAD}`, 'candidate_sha: ${{ github.sha }}') }, 'browser-exact-producer'],
     [{ ...baseline, workflowText: replaceOnce(baseline.workflowText, `      - name: Check out exact candidate revision for final evidence\n        uses: ${CHECKOUT_ACTION}\n        with:\n          ref: ${PR_HEAD}`, `      - name: Check out exact candidate revision for final evidence\n        uses: ${CHECKOUT_ACTION}\n        with:\n          ref: \${{ github.sha }}`) }, 'final-exact-head'],
     [{ ...baseline, browserWorkflowText: replaceOnce(baseline.browserWorkflowText, 'candidate_sha="${INPUT_SHA:-$DEFAULT_SHA}"', 'candidate_sha="$DEFAULT_SHA"') }, 'browser-resolver-exact-input'],
