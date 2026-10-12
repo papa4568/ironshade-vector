@@ -5,6 +5,15 @@ import { readFileSync } from 'node:fs';
 const PR_BASE = '${{ github.event.pull_request.base.sha }}';
 const PR_HEAD = '${{ github.event.pull_request.head.sha }}';
 const BASE_ATTACK_COUNT = 42;
+const TRUSTED_CONSUMER_DEPENDENCIES = [
+  'scripts',
+  'agent/tools/candidate-artifact.mjs',
+  'tests/android-fast-smoke-contract.mjs',
+  'package.json',
+  'package-lock.json',
+  'vite.config.ts',
+  'capacitor.config.ts',
+];
 const SCOPE_SCRIPT = [
   'set -euo pipefail',
   'browser_required=false',
@@ -77,11 +86,24 @@ function scopeChecks(workflowText, parsePrCandidateWorkflow) {
   ];
 }
 
+function dependencyChecks(candidateRefs = {}, trustedRefs = {}) {
+  return TRUSTED_CONSUMER_DEPENDENCIES.map(path => ({
+    id: `consumer-dependency-trusted-exact:${path}`,
+    pass: typeof candidateRefs[path] === 'string'
+      && candidateRefs[path].length > 0
+      && candidateRefs[path] === trustedRefs[path],
+    evidence: `${path} must resolve to the exact trusted-base Git object because browser/Android consumer verification executes or loads it`,
+  }));
+}
+
 export async function observeTrustedPrCandidateContractV6(candidateInputs, trustedInputs) {
   const v5 = await loadV5();
   const parser = await loadParser();
   const baseResult = await v5.observeTrustedPrCandidateContractV5(candidateInputs, trustedInputs);
-  const additions = scopeChecks(candidateInputs.workflowText, parser.parsePrCandidateWorkflow);
+  const additions = [
+    ...scopeChecks(candidateInputs.workflowText, parser.parsePrCandidateWorkflow),
+    ...dependencyChecks(candidateInputs.dependencyRefs, trustedInputs.dependencyRefs),
+  ];
   const failedCheckIds = [
     ...baseResult.failedCheckIds,
     ...additions.filter(entry => !entry.pass).map(entry => entry.id),
@@ -100,11 +122,17 @@ function replaceOnce(text, find, replacement) {
   return `${text.slice(0, index)}${replacement}${text.slice(index + find.length)}`;
 }
 
+function gitObjectRefs(revision = 'HEAD') {
+  const git = (...args) => execFileSync('/usr/bin/git', args, { encoding: 'utf8', env: { PATH: '/usr/bin:/bin', HOME: '/tmp' } }).trim();
+  return Object.fromEntries(TRUSTED_CONSUMER_DEPENDENCIES.map(path => [path, git('rev-parse', `${revision}:${path}`)]));
+}
+
 function liveFixture() {
   return {
     workflowText: readFileSync('.github/workflows/pr-candidate.yml', 'utf8'),
     browserWorkflowText: readFileSync('.github/workflows/browser-e2e.yml', 'utf8'),
     androidWorkflowText: readFileSync('.github/workflows/pr-android-apk.yml', 'utf8'),
+    dependencyRefs: gitObjectRefs(),
   };
 }
 
@@ -112,33 +140,53 @@ export async function selfTest() {
   const v5 = await loadV5();
   const trusted = liveFixture();
   await v5.selfTest();
-  assert.equal((await observeTrustedPrCandidateContractV6(trusted, trusted)).pass, true, 'live browser scope must satisfy the trusted exact semantics');
+  assert.equal((await observeTrustedPrCandidateContractV6(trusted, trusted)).pass, true, 'live browser scope and consumer dependencies must satisfy trusted exact semantics');
 
   const benign = {
     ...trusted,
     workflowText: `# behavior-preserving PR-candidate scope control\n${trusted.workflowText}`,
+    dependencyRefs: { ...trusted.dependencyRefs },
   };
   assert.equal((await observeTrustedPrCandidateContractV6(benign, trusted)).pass, true, 'behavior-preserving workflow comment must not create a false positive');
 
   const attacks = [
     {
-      ...trusted,
-      workflowText: replaceOnce(trusted.workflowText, '                browser_required=true', '                browser_required=false'),
+      expected: 'browser-scope-semantics-trusted-exact',
+      candidateInputs: {
+        ...trusted,
+        workflowText: replaceOnce(trusted.workflowText, '                browser_required=true', '                browser_required=false'),
+      },
     },
     {
-      ...trusted,
-      workflowText: replaceOnce(trusted.workflowText, '|.github/workflows/pr-candidate.yml)', ')'),
+      expected: 'browser-scope-semantics-trusted-exact',
+      candidateInputs: {
+        ...trusted,
+        workflowText: replaceOnce(trusted.workflowText, '|.github/workflows/pr-candidate.yml)', ')'),
+      },
     },
     {
-      ...trusted,
-      workflowText: replaceOnce(trusted.workflowText, 'echo "browser-required=$browser_required" >> "$GITHUB_OUTPUT"', 'echo "browser-required=false" >> "$GITHUB_OUTPUT"'),
+      expected: 'browser-scope-semantics-trusted-exact',
+      candidateInputs: {
+        ...trusted,
+        workflowText: replaceOnce(trusted.workflowText, 'echo "browser-required=$browser_required" >> "$GITHUB_OUTPUT"', 'echo "browser-required=false" >> "$GITHUB_OUTPUT"'),
+      },
     },
+    ...TRUSTED_CONSUMER_DEPENDENCIES.map(path => ({
+      expected: `consumer-dependency-trusted-exact:${path}`,
+      candidateInputs: {
+        ...trusted,
+        dependencyRefs: {
+          ...trusted.dependencyRefs,
+          [path]: '0000000000000000000000000000000000000000',
+        },
+      },
+    })),
   ];
 
-  for (const candidateInputs of attacks) {
+  for (const { candidateInputs, expected } of attacks) {
     const result = await observeTrustedPrCandidateContractV6(candidateInputs, trusted);
-    assert.equal(result.pass, false, 'browser scope suppression mutation must fail');
-    assert.equal(result.failedCheckIds.includes('browser-scope-semantics-trusted-exact'), true, 'browser scope suppression mutation must trigger exact scope semantics check');
+    assert.equal(result.pass, false, `trusted observer attack must fail: ${expected}`);
+    assert.equal(result.failedCheckIds.includes(expected), true, `trusted observer attack must trigger ${expected}`);
   }
 
   console.log(`EV9_TRUSTED_PR_CANDIDATE_OBSERVER_V6_SELF_TEST_PASS falsePositives=0 falseNegatives=0 attacks=${BASE_ATTACK_COUNT + attacks.length}`);
@@ -149,12 +197,20 @@ export async function verify() {
   const parser = await loadParser();
   await v5.verify();
   const candidateSha = process.env.CANDIDATE_SHA?.trim();
+  const trustedBaseSha = process.env.TRUSTED_BASE_SHA?.trim();
   ok(candidateSha, 'CANDIDATE_SHA is required');
+  ok(trustedBaseSha, 'TRUSTED_BASE_SHA is required');
   const git = (...args) => execFileSync('/usr/bin/git', args, { encoding: 'utf8', env: { PATH: '/usr/bin:/bin', HOME: '/tmp' } }).trim();
+  ok(git('rev-parse', 'HEAD') === trustedBaseSha, 'trusted observer must execute from the exact trusted base SHA');
   const workflowText = git('show', `${candidateSha}:.github/workflows/pr-candidate.yml`);
-  const failed = scopeChecks(workflowText, parser.parsePrCandidateWorkflow).filter(entry => !entry.pass).map(entry => entry.id);
+  const candidateRefs = gitObjectRefs(candidateSha);
+  const trustedRefs = gitObjectRefs(trustedBaseSha);
+  const failed = [
+    ...scopeChecks(workflowText, parser.parsePrCandidateWorkflow),
+    ...dependencyChecks(candidateRefs, trustedRefs),
+  ].filter(entry => !entry.pass).map(entry => entry.id);
   ok(failed.length === 0, `trusted PR candidate v6 observation failed: ${failed.join(',')}`);
-  console.log(`EV9_TRUSTED_PR_CANDIDATE_OBSERVER_V6_PASS candidate=${candidateSha} scopeChecks=1 falsePositives=0 falseNegatives=0`);
+  console.log(`EV9_TRUSTED_PR_CANDIDATE_OBSERVER_V6_PASS candidate=${candidateSha} scopeChecks=1 dependencyChecks=${TRUSTED_CONSUMER_DEPENDENCIES.length} falsePositives=0 falseNegatives=0`);
 }
 
 const command = process.argv[2];
