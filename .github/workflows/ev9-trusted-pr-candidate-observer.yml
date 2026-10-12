@@ -6,58 +6,61 @@ on:
       - main
     paths:
       - '.github/workflows/ev9-trusted-pr-candidate-observer.yml'
-      - 'agent/tools/ev9-trusted-pr-candidate-observer.mjs'
+      - 'agent/tools/ev9-trusted-pr-candidate-observer-v2.mjs'
       - 'agent/task-graph.json'
-  workflow_call:
-    inputs:
-      candidate_sha:
-        required: true
-        type: string
+      - '.github/workflows/agent-orchestration.yml'
+  pull_request_target:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
 
 jobs:
   self-test:
-    if: inputs.candidate_sha == ''
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Check out bootstrap candidate
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
       - name: Set up Node 22
         uses: actions/setup-node@v7
         with:
           node-version: '22.23.2'
       - name: Verify trusted observer parser and attack calibration
-        run: node agent/tools/ev9-trusted-pr-candidate-observer.mjs self-test
+        run: node agent/tools/ev9-trusted-pr-candidate-observer-v2.mjs self-test
 
-  verify-observer-source:
-    if: inputs.candidate_sha != ''
+  verify-pr-candidate:
+    if: github.event_name == 'pull_request_target'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - name: Check out trusted observer revision
+      - name: Check out exact trusted base revision
         uses: actions/checkout@v7
         with:
-          ref: ${{ job.workflow_sha }}
+          ref: ${{ github.event.pull_request.base.sha }}
           fetch-depth: 0
           persist-credentials: false
       - name: Set up Node 22
         uses: actions/setup-node@v7
         with:
           node-version: '22.23.2'
-      - name: Fetch exact candidate object
+      - name: Fetch candidate object as untrusted data
         shell: /usr/bin/bash -e {0}
         env:
-          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
-        run: git fetch --no-tags --force origin "$CANDIDATE_SHA"
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          git fetch --no-tags --force origin "pull/${PR_NUMBER}/head"
+          test "$(git rev-parse FETCH_HEAD)" = "$CANDIDATE_SHA"
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.base.sha }}"
       - name: Verify trusted exact-head observation
         env:
-          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
-          EVENT_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
-          TRUSTED_WORKFLOW_REF: ${{ job.workflow_ref }}
-          TRUSTED_WORKFLOW_SHA: ${{ job.workflow_sha }}
-        run: node agent/tools/ev9-trusted-pr-candidate-observer.mjs verify
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+          TRUSTED_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node agent/tools/ev9-trusted-pr-candidate-observer-v2.mjs verify
