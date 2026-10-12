@@ -45,19 +45,19 @@ jobs:
           ref: ${{ job.workflow_sha }}
           fetch-depth: 0
           persist-credentials: false
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
       - name: Fetch exact candidate object
         shell: /usr/bin/bash -e {0}
         env:
           CANDIDATE_SHA: ${{ inputs.candidate_sha }}
         run: git fetch --no-tags --force origin "$CANDIDATE_SHA"
       - name: Verify trusted exact-head observation
-        shell: /usr/bin/node {0}
         env:
           CANDIDATE_SHA: ${{ inputs.candidate_sha }}
           EVENT_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
           TRUSTED_WORKFLOW_REF: ${{ job.workflow_ref }}
           TRUSTED_WORKFLOW_SHA: ${{ job.workflow_sha }}
-        run: |
-          import './agent/tools/ev9-trusted-pr-candidate-observer.mjs';
-          const module = await import('./agent/tools/ev9-trusted-pr-candidate-observer.mjs');
-          module.verify();
+        run: node agent/tools/ev9-trusted-pr-candidate-observer.mjs verify
