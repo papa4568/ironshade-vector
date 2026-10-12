@@ -6,6 +6,7 @@ const PRODUCER_HEAD = '${{ needs.candidate-build.outputs.candidate-sha }}';
 const PRODUCER_ARTIFACT = '${{ needs.candidate-build.outputs.artifact-name }}';
 const IDENTITY_ARTIFACT_OUTPUT = '${{ steps.identity.outputs.artifact-name }}';
 const EVENT_SHA = '${{ github.sha }}';
+const FULL_VERIFICATION_NAME = 'Run full repository verification and production build once';
 
 function ok(value, message) {
   if (!value) throw new Error(message);
@@ -26,7 +27,16 @@ function artifactChecks(workflowText, parsePrCandidateWorkflow) {
   const producer = jobs.get('candidate-build');
   const browser = jobs.get('browser-e2e');
   const android = jobs.get('android');
+  const fullVerificationSteps = (producer?.steps ?? []).filter(step => step.name === FULL_VERIFICATION_NAME);
+  const fullVerification = fullVerificationSteps.length === 1 ? fullVerificationSteps[0] : null;
   return [
+    {
+      id: 'candidate-snapshot-build-fail-closed',
+      pass: Boolean(fullVerification)
+        && !Object.hasOwn(fullVerification, 'if')
+        && !Object.hasOwn(fullVerification, 'continue-on-error'),
+      evidence: 'exact candidate snapshot verification/build must run unconditionally and fail the producer job on any error',
+    },
     {
       id: 'candidate-artifact-output-exact-head',
       pass: producer?.outputs?.['artifact-name'] === IDENTITY_ARTIFACT_OUTPUT,
@@ -97,7 +107,16 @@ export async function selfTest() {
   const reviewCheckout = `      - name: Check out exact candidate read-only\n        uses: actions/checkout@v7\n        with:\n          ref: ${PRODUCER_HEAD}`;
   const artifactHandoff = `candidate_artifact_name: ${PRODUCER_ARTIFACT}`;
   const shaHandoff = `candidate_sha: ${PRODUCER_HEAD}`;
+  const fullVerificationHeader = `      - name: ${FULL_VERIFICATION_NAME}\n        id: full-verification`;
   const attacks = [
+    [
+      { ...baseline, workflowText: replaceOnce(baseline.workflowText, fullVerificationHeader, `      - name: ${FULL_VERIFICATION_NAME}\n        if: false\n        id: full-verification`) },
+      'candidate-snapshot-build-fail-closed',
+    ],
+    [
+      { ...baseline, workflowText: replaceOnce(baseline.workflowText, fullVerificationHeader, `      - name: ${FULL_VERIFICATION_NAME}\n        continue-on-error: true\n        id: full-verification`) },
+      'candidate-snapshot-build-fail-closed',
+    ],
     [
       { ...baseline, workflowText: replaceOnce(baseline.workflowText, `artifact-name: ${IDENTITY_ARTIFACT_OUTPUT}`, 'artifact-name: unrelated-artifact') },
       'candidate-artifact-output-exact-head',
