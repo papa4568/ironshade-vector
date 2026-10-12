@@ -286,6 +286,48 @@
         }
       ],
       "externalDependencies": []
+    },
+    {
+      "id": "AO-8",
+      "title": "Bootstrap trusted EV-9 exact-head observer",
+      "priority": 80,
+      "status": "verified",
+      "dependsOn": ["AO-7"],
+      "acceptance": [
+        "A reusable observer workflow executes parser code from an immutable trusted-main revision while treating the EV candidate workflow as untrusted data.",
+        "The trusted observer directly verifies the PR Candidate exact-head producer, exact-SHA downstream consumers, final evidence checkout, source-auth dependency, and the literal reusable-workflow pin back to its own trusted SHA.",
+        "Trusted observer self-tests include a behavior-preserving control plus retargeted-workflow, removed-dependency, synthetic-merge-ref, and downstream-SHA attacks with zero false positives and zero false negatives.",
+        "The bootstrap changes only trusted verification infrastructure and task state; EV-9 implementation remains on its existing experimental promotion PR."
+      ],
+      "affectedDomains": ["agent-orchestration", "verification", "review", "ci"],
+      "proofs": [
+        {
+          "id": "trusted-observer-tests",
+          "kind": "test",
+          "required": true,
+          "description": "Trusted EV-9 observer parser and attack calibration self-test passes.",
+          "command": "node agent/tools/ev9-trusted-pr-candidate-observer.mjs self-test"
+        },
+        {
+          "id": "architecture-invariants",
+          "kind": "invariant",
+          "required": true,
+          "description": "Mechanical architecture and independent-review contracts continue to pass for the bootstrap candidate."
+        },
+        {
+          "id": "independent-review-verdict",
+          "kind": "review",
+          "required": true,
+          "description": "A separate trusted verifier returns a validated pass for the exact AO-8 bootstrap candidate SHA."
+        },
+        {
+          "id": "ao8-ci",
+          "kind": "ci",
+          "required": true,
+          "description": "Agent Orchestration and PR Candidate Verification pass on the exact AO-8 bootstrap candidate revision."
+        }
+      ],
+      "externalDependencies": []
     }
   ]
 }
