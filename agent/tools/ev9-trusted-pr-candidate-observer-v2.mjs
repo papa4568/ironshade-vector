@@ -10,12 +10,61 @@ const INPUT_CANDIDATE_SHA = '${{ inputs.candidate_sha }}';
 const INPUT_CANDIDATE_ARTIFACT = '${{ inputs.candidate_artifact_name }}';
 const BROWSER_CANDIDATE_SHA = '${{ steps.candidate.outputs.candidate-sha }}';
 const BROWSER_CANDIDATE_ARTIFACT = '${{ steps.candidate.outputs.artifact-name }}';
+const ALLOWED_PRODUCER_GIT = new Set(['archive', 'diff', 'rev-parse']);
 
 const IDENTITY_SCRIPT = [
   'set -euo pipefail',
   'artifact_name="ironshade-vector-pr-candidate-web-${CANDIDATE_SHA}"',
   'echo "candidate-sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"',
   'echo "artifact-name=$artifact_name" >> "$GITHUB_OUTPUT"',
+  'test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"',
+];
+const FULL_VERIFICATION_SCRIPT = [
+  'set -euo pipefail',
+  'mkdir -p .agent-impact-calibration',
+  'snapshot="$(mktemp -d)"',
+  'image="ironshade-candidate-node:${CANDIDATE_SHA}"',
+  'cleanup() {',
+  'rm -rf "$snapshot"',
+  'docker image rm "$image" >/dev/null 2>&1 || true',
+  '}',
+  'trap cleanup EXIT',
+  'test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"',
+  'git archive --format=tar "$CANDIDATE_SHA" | tar -xf - -C "$snapshot"',
+  'test ! -e "$snapshot/.git"',
+  "docker build --pull --tag \"$image\" - <<'DOCKERFILE'",
+  'FROM node:22.23.2-bookworm',
+  'RUN npm install --global npm@10.9.8 \\',
+  '&& test "$(npm --version)" = \'10.9.8\'',
+  'DOCKERFILE',
+  'docker run --rm \\',
+  '--volume "$snapshot:/workspace" \\',
+  '--workdir /workspace \\',
+  '--env HOME=/tmp \\',
+  '--user "$(id -u):$(id -g)" \\',
+  '"$image" \\',
+  'npm ci --ignore-scripts --no-audit --no-fund',
+  'set -o pipefail',
+  'set +e',
+  'docker run --rm \\',
+  '--network none \\',
+  '--volume "$snapshot:/workspace" \\',
+  '--workdir /workspace \\',
+  '--env HOME=/tmp \\',
+  '--env npm_config_ignore_scripts=true \\',
+  '--env VITE_API_BASE_URL \\',
+  '--user "$(id -u):$(id -g)" \\',
+  '"$image" \\',
+  'npm run build 2>&1 | tee .agent-impact-calibration/full-verification.log',
+  'status=${PIPESTATUS[0]}',
+  'set -e',
+  'if [[ "$status" -ne 0 ]]; then',
+  'exit "$status"',
+  'fi',
+  'test -d "$snapshot/dist"',
+  'test ! -L "$snapshot/dist"',
+  'rm -rf dist',
+  'cp -a "$snapshot/dist" dist',
   'test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"',
 ];
 const BROWSER_RESOLVER_SCRIPT = [
@@ -182,6 +231,10 @@ function stepByName(job, name) {
   return steps.length === 1 ? steps[0] : null;
 }
 
+function stepIndex(job, step) {
+  return step ? (job?.steps ?? []).indexOf(step) : -1;
+}
+
 function uniqueActionStep(job, action, expectedName) {
   const steps = (job?.steps ?? []).filter(step => step.uses === action && step.with?.name === expectedName);
   return steps.length === 1;
@@ -195,6 +248,18 @@ function exactRun(step, expected) {
   return JSON.stringify(runLines(step)) === JSON.stringify(expected);
 }
 
+function producerGitCommands(job) {
+  const commands = [];
+  for (const [stepIndexValue, step] of (job?.steps ?? []).entries()) {
+    for (const line of runLines(step)) {
+      for (const match of line.matchAll(/\bgit\s+([^\s;&|()]+)/g)) {
+        commands.push({ stepIndex: stepIndexValue, stepName: step.name ?? null, subcommand: match[1], line });
+      }
+    }
+  }
+  return commands;
+}
+
 function check(id, pass, evidence) {
   return { id, pass, evidence };
 }
@@ -206,6 +271,7 @@ export function observeTrustedPrCandidateContract({ workflowText, browserWorkflo
   const browser = jobs.get('browser-e2e');
   const android = jobs.get('android');
   const final = jobs.get('candidate-verification');
+  const fullVerification = stepById(producer, 'full-verification');
   const identity = stepById(producer, 'identity');
   const required = [['candidate-build', producer], ['independent-review-context', review], ['browser-e2e', browser], ['android', android], ['candidate-verification', final]];
 
@@ -219,10 +285,25 @@ export function observeTrustedPrCandidateContract({ workflowText, browserWorkflo
   const android35 = androidJobs.get('android-pr-api35-smoke');
   const android36 = androidJobs.get('android-pr-api36-large-screen');
   const androidVerify = stepByName(androidApk, 'Verify exact candidate web bundle');
+  const producerGit = producerGitCommands(producer);
 
   const checks = [
     check('required-jobs-present', required.every(([, job]) => Boolean(job)), 'trusted observation requires producer, review, browser, Android, and final jobs'),
     check('candidate-build-exact-head', Boolean(producer) && uniqueCheckout(producer, PR_HEAD), 'candidate-build must contain exactly one actions/checkout@v7 bound to the PR head'),
+    check(
+      'candidate-build-exact-snapshot',
+      Boolean(fullVerification)
+        && fullVerification.env?.CANDIDATE_SHA === PR_HEAD
+        && exactRun(fullVerification, FULL_VERIFICATION_SCRIPT)
+        && stepIndex(producer, fullVerification) >= 0
+        && stepIndex(producer, identity) > stepIndex(producer, fullVerification),
+      'full verification must use the reviewed Git-less exact-SHA snapshot build and complete before candidate identity is published',
+    ),
+    check(
+      'candidate-producer-no-revision-switches',
+      producerGit.every(command => ALLOWED_PRODUCER_GIT.has(command.subcommand)),
+      'candidate-build run steps may use only reviewed non-revision-changing git subcommands',
+    ),
     check('candidate-output-exact-head', producer?.outputs?.['candidate-sha'] === '${{ steps.identity.outputs.candidate-sha }}', 'candidate-build must expose its runtime-asserted candidate-sha output'),
     check(
       'candidate-identity-runtime-exact-head',
@@ -267,7 +348,7 @@ export function observeTrustedPrCandidateContract({ workflowText, browserWorkflo
   const checkoutRefs = [...jobs.values()].flatMap(job => checkoutSteps(job).map(step => step.with.ref ?? null));
   checks.push(check('no-synthetic-checkout-ref', checkoutRefs.length > 0 && checkoutRefs.every(ref => allowedRefs.has(ref)), 'PR candidate checkout refs may use only PR head or producer exact SHA'));
   const failedCheckIds = checks.filter(entry => !entry.pass).map(entry => entry.id);
-  return { checks, checkoutRefs, failedCheckIds, pass: failedCheckIds.length === 0 };
+  return { checks, checkoutRefs, producerGit, failedCheckIds, pass: failedCheckIds.length === 0 };
 }
 
 function replaceOnce(text, find, replacement) {
@@ -276,8 +357,12 @@ function replaceOnce(text, find, replacement) {
   return `${text.slice(0, index)}${replacement}${text.slice(index + find.length)}`;
 }
 
+function yamlScript(lines) {
+  return lines.map(line => `          ${line}`).join('\n');
+}
+
 function prCandidateFixture() {
-  return `name: PR Candidate Verification\non:\n  pull_request:\njobs:\n  candidate-build:\n    outputs:\n      candidate-sha: \${{ steps.identity.outputs.candidate-sha }}\n    steps:\n      - name: Check out exact candidate revision\n        uses: actions/checkout@v7\n        with:\n          ref: ${PR_HEAD}\n      - name: Record candidate identity\n        id: identity\n        shell: bash\n        env:\n          CANDIDATE_SHA: ${PR_HEAD}\n        run: |\n          set -euo pipefail\n          artifact_name="ironshade-vector-pr-candidate-web-\${CANDIDATE_SHA}"\n          echo "candidate-sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"\n          echo "artifact-name=$artifact_name" >> "$GITHUB_OUTPUT"\n          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"\n  independent-review-context:\n    steps:\n      - name: Check out exact candidate read-only\n        uses: actions/checkout@v7\n        with:\n          ref: ${PRODUCER_HEAD}\n  browser-e2e:\n    uses: ./.github/workflows/browser-e2e.yml\n    with:\n      candidate_sha: ${PRODUCER_HEAD}\n  android:\n    uses: ./.github/workflows/pr-android-apk.yml\n    with:\n      candidate_sha: ${PRODUCER_HEAD}\n  candidate-verification:\n    steps:\n      - name: Check out exact candidate revision for final evidence\n        uses: actions/checkout@v7\n        with:\n          ref: ${PR_HEAD}\n`;
+  return `name: PR Candidate Verification\non:\n  pull_request:\njobs:\n  candidate-build:\n    outputs:\n      candidate-sha: \${{ steps.identity.outputs.candidate-sha }}\n    steps:\n      - name: Check out exact candidate revision\n        uses: actions/checkout@v7\n        with:\n          ref: ${PR_HEAD}\n      - name: Run full repository verification and production build once\n        id: full-verification\n        env:\n          CANDIDATE_SHA: ${PR_HEAD}\n          VITE_API_BASE_URL: \${{ vars.VITE_API_BASE_URL }}\n        run: |\n${yamlScript(FULL_VERIFICATION_SCRIPT)}\n      - name: Record candidate identity\n        id: identity\n        shell: bash\n        env:\n          CANDIDATE_SHA: ${PR_HEAD}\n        run: |\n          set -euo pipefail\n          artifact_name="ironshade-vector-pr-candidate-web-\${CANDIDATE_SHA}"\n          echo "candidate-sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"\n          echo "artifact-name=$artifact_name" >> "$GITHUB_OUTPUT"\n          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"\n  independent-review-context:\n    steps:\n      - name: Check out exact candidate read-only\n        uses: actions/checkout@v7\n        with:\n          ref: ${PRODUCER_HEAD}\n  browser-e2e:\n    uses: ./.github/workflows/browser-e2e.yml\n    with:\n      candidate_sha: ${PRODUCER_HEAD}\n  android:\n    uses: ./.github/workflows/pr-android-apk.yml\n    with:\n      candidate_sha: ${PRODUCER_HEAD}\n  candidate-verification:\n    steps:\n      - name: Check out exact candidate revision for final evidence\n        uses: actions/checkout@v7\n        with:\n          ref: ${PR_HEAD}\n`;
 }
 
 function browserFixture() {
@@ -302,8 +387,11 @@ export function selfTest() {
   };
   assert.equal(observeTrustedPrCandidateContract(benign).pass, true);
 
+  const refSwitch = `      - name: Switch producer revision and restore\n        run: |\n          git checkout deadbeefdeadbeefdeadbeefdeadbeefdeadbeef\n          git checkout "$CANDIDATE_SHA"\n`;
   const attacks = [
     [{ ...baseline, workflowText: replaceOnce(baseline.workflowText, `ref: ${PR_HEAD}`, 'ref: ${{ github.sha }}') }, 'candidate-build-exact-head'],
+    [{ ...baseline, workflowText: replaceOnce(baseline.workflowText, '      - name: Run full repository verification and production build once\n', `${refSwitch}      - name: Run full repository verification and production build once\n`) }, 'candidate-producer-no-revision-switches'],
+    [{ ...baseline, workflowText: replaceOnce(baseline.workflowText, 'git archive --format=tar "$CANDIDATE_SHA" | tar -xf - -C "$snapshot"', 'git archive --format=tar HEAD | tar -xf - -C "$snapshot"') }, 'candidate-build-exact-snapshot'],
     [{ ...baseline, workflowText: replaceOnce(baseline.workflowText, `candidate-sha: \${{ steps.identity.outputs.candidate-sha }}`, 'candidate-sha: ${{ github.sha }}') }, 'candidate-output-exact-head'],
     [{ ...baseline, workflowText: replaceOnce(baseline.workflowText, IDENTITY_SCRIPT.at(-1), `${IDENTITY_SCRIPT.at(-1)} || true`) }, 'candidate-identity-runtime-exact-head'],
     [{ ...baseline, workflowText: replaceOnce(baseline.workflowText, `candidate_sha: ${PRODUCER_HEAD}`, 'candidate_sha: ${{ github.sha }}') }, 'browser-exact-producer'],
