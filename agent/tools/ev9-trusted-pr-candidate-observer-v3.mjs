@@ -7,6 +7,9 @@ const PRODUCER_ARTIFACT = '${{ needs.candidate-build.outputs.artifact-name }}';
 const IDENTITY_ARTIFACT_OUTPUT = '${{ steps.identity.outputs.artifact-name }}';
 const EVENT_SHA = '${{ github.sha }}';
 const FULL_VERIFICATION_NAME = 'Run full repository verification and production build once';
+const PRIMARY_BROWSER_IF = "needs.candidate-build.outputs.browser-required == 'true'";
+const FINAL_IF = 'always()';
+const REUSABLE_BROWSER_IF = "${{ always() && (needs.prepare-browser-candidate.result == 'success' || needs.prepare-browser-candidate.result == 'skipped') }}";
 
 function ok(value, message) {
   if (!value) throw new Error(message);
@@ -22,6 +25,37 @@ async function loadBaseObserver() {
   }
 }
 
+function uniqueStep(job, selector) {
+  const steps = (job?.steps ?? []).filter(selector);
+  return steps.length === 1 ? steps[0] : null;
+}
+
+function stepById(job, id) {
+  return uniqueStep(job, step => step.id === id);
+}
+
+function stepByName(job, name) {
+  return uniqueStep(job, step => step.name === name);
+}
+
+function failClosedStep(step) {
+  return Boolean(step)
+    && !Object.hasOwn(step, 'if')
+    && !Object.hasOwn(step, 'continue-on-error');
+}
+
+function exactJobExecution(job, expectedIf = null) {
+  if (!job || Object.hasOwn(job, 'continue-on-error')) return false;
+  if (expectedIf === null) return !Object.hasOwn(job, 'if');
+  return job.if === expectedIf;
+}
+
+function allFailClosedSteps(job, selectors) {
+  return selectors.every(selector => failClosedStep(
+    selector.id ? stepById(job, selector.id) : stepByName(job, selector.name),
+  ));
+}
+
 function artifactChecks(workflowText, parsePrCandidateWorkflow) {
   const jobs = parsePrCandidateWorkflow(workflowText);
   const producer = jobs.get('candidate-build');
@@ -32,9 +66,7 @@ function artifactChecks(workflowText, parsePrCandidateWorkflow) {
   return [
     {
       id: 'candidate-snapshot-build-fail-closed',
-      pass: Boolean(fullVerification)
-        && !Object.hasOwn(fullVerification, 'if')
-        && !Object.hasOwn(fullVerification, 'continue-on-error'),
+      pass: failClosedStep(fullVerification),
       evidence: 'exact candidate snapshot verification/build must run unconditionally and fail the producer job on any error',
     },
     {
@@ -55,10 +87,129 @@ function artifactChecks(workflowText, parsePrCandidateWorkflow) {
   ];
 }
 
+function executionChecks(inputs, parsePrCandidateWorkflow) {
+  const jobs = parsePrCandidateWorkflow(inputs.workflowText);
+  const producer = jobs.get('candidate-build');
+  const review = jobs.get('independent-review-context');
+  const browser = jobs.get('browser-e2e');
+  const android = jobs.get('android');
+  const final = jobs.get('candidate-verification');
+
+  const browserJobs = parsePrCandidateWorkflow(inputs.browserWorkflowText);
+  const browserConsumer = browserJobs.get('browser-e2e');
+
+  const androidJobs = parsePrCandidateWorkflow(inputs.androidWorkflowText);
+  const androidApk = androidJobs.get('android-pr-apk');
+  const android35 = androidJobs.get('android-pr-api35-smoke');
+  const android36 = androidJobs.get('android-pr-api36-large-screen');
+  const androidFinal = androidJobs.get('android-pr-verification');
+
+  const producerSteps = [
+    { name: 'Check out exact candidate revision' },
+    { id: 'full-verification' },
+    { id: 'identity' },
+    { name: 'Create exact candidate web artifact manifest' },
+    { id: 'scope' },
+    { name: 'Upload exact candidate web bundle' },
+  ];
+  const reviewSteps = [
+    { name: 'Check out exact candidate read-only' },
+    { id: 'review-task' },
+    { name: 'Generate exact candidate review packet' },
+    { name: 'Upload read-only independent review context' },
+  ];
+  const finalSteps = [
+    { name: 'Require exact candidate technical gates' },
+    { name: 'Check out exact candidate revision for final evidence' },
+    { name: 'Download exact candidate independent-review packet' },
+    { name: 'Fetch trusted PR conversation evidence' },
+    { name: 'Require actual exact-SHA independent-review pass' },
+    { name: 'Generate complete exact-candidate evidence' },
+    { name: 'Upload complete candidate evidence' },
+  ];
+  const browserSteps = [
+    { id: 'candidate' },
+    { name: 'Check out exact candidate revision' },
+    { name: 'Download exact candidate web bundle' },
+    { name: 'Verify exact candidate web bundle' },
+    { name: 'Verify browser player journey' },
+  ];
+  const androidApkSteps = [
+    { name: 'Check out exact candidate revision' },
+    { name: 'Download exact candidate web bundle' },
+    { name: 'Verify exact candidate web bundle' },
+    { name: 'Generate native Android project from verified bundle' },
+    { name: 'Build installable debug APK' },
+    { name: 'Verify and stage APK' },
+    { name: 'Verify Android delivery contract' },
+    { name: 'Upload PR APK' },
+  ];
+  const android35Steps = [
+    { name: 'Check out exact candidate revision' },
+    { name: 'Download PR APK' },
+    { name: 'Verify APK digest' },
+    { name: 'Run API 35 product smoke' },
+  ];
+  const android36Steps = [
+    { name: 'Check out exact candidate revision' },
+    { name: 'Download PR APK' },
+    { name: 'Verify APK digest' },
+    { name: 'Run Android 16 large-screen smoke' },
+  ];
+
+  return [
+    {
+      id: 'required-job-execution-fail-closed',
+      pass: exactJobExecution(producer)
+        && exactJobExecution(review)
+        && exactJobExecution(browser, PRIMARY_BROWSER_IF)
+        && exactJobExecution(android)
+        && exactJobExecution(final, FINAL_IF),
+      evidence: 'producer, review, browser, Android, and final jobs must keep their reviewed execution conditions and may not mask job failures',
+    },
+    {
+      id: 'candidate-required-steps-fail-closed',
+      pass: allFailClosedSteps(producer, producerSteps),
+      evidence: 'producer checkout, exact snapshot build, identity, artifact manifest, scope, and artifact upload must not be conditionally skipped or error-masked',
+    },
+    {
+      id: 'review-required-steps-fail-closed',
+      pass: allFailClosedSteps(review, reviewSteps),
+      evidence: 'independent-review context checkout, task resolution, packet generation, and upload must not be conditionally skipped or error-masked',
+    },
+    {
+      id: 'final-required-steps-fail-closed',
+      pass: allFailClosedSteps(final, finalSteps),
+      evidence: 'final technical, exact-head, trusted-review, and evidence steps must not be conditionally skipped or error-masked',
+    },
+    {
+      id: 'browser-required-execution-fail-closed',
+      pass: exactJobExecution(browserConsumer, REUSABLE_BROWSER_IF)
+        && allFailClosedSteps(browserConsumer, browserSteps),
+      evidence: 'browser exact-candidate resolver, checkout, artifact validation, and player journey must keep the reviewed job condition and run fail-closed',
+    },
+    {
+      id: 'android-required-execution-fail-closed',
+      pass: exactJobExecution(androidApk)
+        && exactJobExecution(android35)
+        && exactJobExecution(android36)
+        && exactJobExecution(androidFinal, FINAL_IF)
+        && allFailClosedSteps(androidApk, androidApkSteps)
+        && allFailClosedSteps(android35, android35Steps)
+        && allFailClosedSteps(android36, android36Steps)
+        && failClosedStep(stepByName(androidFinal, 'Require all Android PR gates')),
+      evidence: 'Android APK, API 35, API 36, and aggregate gates plus their candidate-binding and product-smoke steps must run fail-closed',
+    },
+  ];
+}
+
 export async function observeTrustedPrCandidateContractV3(inputs) {
   const base = await loadBaseObserver();
   const baseResult = base.observeTrustedPrCandidateContract(inputs);
-  const additions = artifactChecks(inputs.workflowText, base.parsePrCandidateWorkflow);
+  const additions = [
+    ...artifactChecks(inputs.workflowText, base.parsePrCandidateWorkflow),
+    ...executionChecks(inputs, base.parsePrCandidateWorkflow),
+  ];
   const failedCheckIds = [
     ...baseResult.failedCheckIds,
     ...additions.filter(entry => !entry.pass).map(entry => entry.id),
@@ -108,6 +259,10 @@ export async function selfTest() {
   const artifactHandoff = `candidate_artifact_name: ${PRODUCER_ARTIFACT}`;
   const shaHandoff = `candidate_sha: ${PRODUCER_HEAD}`;
   const fullVerificationHeader = `      - name: ${FULL_VERIFICATION_NAME}\n        id: full-verification`;
+  const identityHeader = '      - name: Record candidate identity\n        id: identity';
+  const finalReviewHeader = '      - name: Require actual exact-SHA independent-review pass\n        run: |';
+  const browserVerifyHeader = '      - name: Verify exact candidate web bundle\n        shell: bash';
+  const android35SmokeHeader = '      - name: Run API 35 product smoke\n        uses: ReactiveCircus/android-emulator-runner@v2.38.0';
   const attacks = [
     [
       { ...baseline, workflowText: replaceOnce(baseline.workflowText, fullVerificationHeader, `      - name: ${FULL_VERIFICATION_NAME}\n        if: false\n        id: full-verification`) },
@@ -116,6 +271,26 @@ export async function selfTest() {
     [
       { ...baseline, workflowText: replaceOnce(baseline.workflowText, fullVerificationHeader, `      - name: ${FULL_VERIFICATION_NAME}\n        continue-on-error: true\n        id: full-verification`) },
       'candidate-snapshot-build-fail-closed',
+    ],
+    [
+      { ...baseline, workflowText: replaceOnce(baseline.workflowText, '  candidate-build:\n    name:', '  candidate-build:\n    if: false\n    name:') },
+      'required-job-execution-fail-closed',
+    ],
+    [
+      { ...baseline, workflowText: replaceOnce(baseline.workflowText, identityHeader, '      - name: Record candidate identity\n        if: false\n        id: identity') },
+      'candidate-required-steps-fail-closed',
+    ],
+    [
+      { ...baseline, workflowText: replaceOnce(baseline.workflowText, finalReviewHeader, '      - name: Require actual exact-SHA independent-review pass\n        if: false\n        run: |') },
+      'final-required-steps-fail-closed',
+    ],
+    [
+      { ...baseline, browserWorkflowText: replaceOnce(baseline.browserWorkflowText, browserVerifyHeader, '      - name: Verify exact candidate web bundle\n        if: false\n        shell: bash') },
+      'browser-required-execution-fail-closed',
+    ],
+    [
+      { ...baseline, androidWorkflowText: replaceOnce(baseline.androidWorkflowText, android35SmokeHeader, '      - name: Run API 35 product smoke\n        if: false\n        uses: ReactiveCircus/android-emulator-runner@v2.38.0') },
+      'android-required-execution-fail-closed',
     ],
     [
       { ...baseline, workflowText: replaceOnce(baseline.workflowText, `artifact-name: ${IDENTITY_ARTIFACT_OUTPUT}`, 'artifact-name: unrelated-artifact') },
@@ -155,11 +330,18 @@ export async function verify() {
   const candidateSha = process.env.CANDIDATE_SHA?.trim();
   ok(candidateSha, 'CANDIDATE_SHA is required');
   const git = (...args) => execFileSync('/usr/bin/git', args, { encoding: 'utf8', env: { PATH: '/usr/bin:/bin', HOME: '/tmp' } }).trim();
-  const workflowText = git('show', `${candidateSha}:.github/workflows/pr-candidate.yml`);
-  const checks = artifactChecks(workflowText, base.parsePrCandidateWorkflow);
+  const inputs = {
+    workflowText: git('show', `${candidateSha}:.github/workflows/pr-candidate.yml`),
+    browserWorkflowText: git('show', `${candidateSha}:.github/workflows/browser-e2e.yml`),
+    androidWorkflowText: git('show', `${candidateSha}:.github/workflows/pr-android-apk.yml`),
+  };
+  const checks = [
+    ...artifactChecks(inputs.workflowText, base.parsePrCandidateWorkflow),
+    ...executionChecks(inputs, base.parsePrCandidateWorkflow),
+  ];
   const failedCheckIds = checks.filter(entry => !entry.pass).map(entry => entry.id);
-  ok(failedCheckIds.length === 0, `trusted PR candidate artifact observation failed: ${failedCheckIds.join(',')}`);
-  console.log(`EV9_TRUSTED_PR_CANDIDATE_OBSERVER_V3_PASS candidate=${candidateSha} artifactChecks=${checks.length} falsePositives=0 falseNegatives=0`);
+  ok(failedCheckIds.length === 0, `trusted PR candidate v3 observation failed: ${failedCheckIds.join(',')}`);
+  console.log(`EV9_TRUSTED_PR_CANDIDATE_OBSERVER_V3_PASS candidate=${candidateSha} checks=${checks.length} falsePositives=0 falseNegatives=0`);
 }
 
 const command = process.argv[2];
