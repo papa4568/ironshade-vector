@@ -2,14 +2,68 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
+const PR_HEAD = '${{ github.event.pull_request.head.sha }}';
 const PRODUCER_HEAD = '${{ needs.candidate-build.outputs.candidate-sha }}';
 const PRODUCER_ARTIFACT = '${{ needs.candidate-build.outputs.artifact-name }}';
 const IDENTITY_ARTIFACT_OUTPUT = '${{ steps.identity.outputs.artifact-name }}';
+const SOURCE_BOUND_DIGEST_OUTPUT = '${{ steps.source-bound-dist.outputs.dist-sha256 }}';
 const EVENT_SHA = '${{ github.sha }}';
 const FULL_VERIFICATION_NAME = 'Run full repository verification and production build once';
+const SOURCE_BOUND_DIGEST_NAME = 'Record source-bound candidate web digest';
+const MANIFEST_NAME = 'Create exact candidate web artifact manifest';
+const UPLOAD_NAME = 'Upload exact candidate web bundle';
+const UPLOAD_ACTION = 'actions/upload-artifact@v7';
+const UPLOAD_ARTIFACT_NAME = 'ironshade-vector-pr-candidate-web-${{ github.event.pull_request.head.sha }}';
 const PRIMARY_BROWSER_IF = "needs.candidate-build.outputs.browser-required == 'true'";
 const FINAL_IF = 'always()';
 const REUSABLE_BROWSER_IF = "${{ always() && (needs.prepare-browser-candidate.result == 'success' || needs.prepare-browser-candidate.result == 'skipped') }}";
+const SOURCE_BOUND_DIGEST_SCRIPT = [
+  'set -euo pipefail',
+  'dist_sha256="$(tar --sort=name --mtime=\'@0\' --owner=0 --group=0 --numeric-owner -cf - dist | sha256sum | cut -d\' \' -f1)"',
+  'echo "dist-sha256=$dist_sha256" >> "$GITHUB_OUTPUT"',
+];
+const MANIFEST_SCRIPT = [
+  'set -euo pipefail',
+  'digest() {',
+  'tar --sort=name --mtime=\'@0\' --owner=0 --group=0 --numeric-owner -cf - dist | sha256sum | cut -d\' \' -f1',
+  '}',
+  'test "$(digest)" = "$SOURCE_BOUND_DIST_SHA256"',
+  'node agent/tools/candidate-artifact.mjs create \\',
+  '--candidate "$CANDIDATE_SHA" \\',
+  '--root dist \\',
+  "--build-command 'npm run build' \\",
+  '--output .candidate-artifact/candidate-web.json',
+  'node agent/tools/candidate-artifact.mjs validate \\',
+  '--candidate "$CANDIDATE_SHA" \\',
+  '--root dist \\',
+  '--manifest .candidate-artifact/candidate-web.json',
+  'test "$(digest)" = "$SOURCE_BOUND_DIST_SHA256"',
+];
+const PRODUCER_ARTIFACT_WINDOW = [
+  SOURCE_BOUND_DIGEST_NAME,
+  'Capture EV-5 impact-map calibration shadow evidence',
+  'Upload EV-5 impact-map calibration advisory evidence',
+  'Compare EV-6 reuse prediction with the real rerun',
+  'Upload EV-6 causal proof cache advisory evidence',
+  'Capture EV-3 behavioral genome shadow evidence',
+  'Upload EV-3 behavioral genome advisory evidence',
+  'Record candidate identity',
+  'Detect browser validation scope',
+  MANIFEST_NAME,
+  UPLOAD_NAME,
+];
+const EXACT_UPLOAD_BLOCK = [
+  `      - name: ${UPLOAD_NAME}`,
+  `        uses: ${UPLOAD_ACTION}`,
+  '        with:',
+  `          name: ${UPLOAD_ARTIFACT_NAME}`,
+  '          path: |',
+  '            dist/',
+  '            .candidate-artifact/candidate-web.json',
+  '          include-hidden-files: true',
+  '          if-no-files-found: error',
+  '          retention-days: 30',
+].join('\n');
 
 function ok(value, message) {
   if (!value) throw new Error(message);
@@ -38,6 +92,23 @@ function stepByName(job, name) {
   return uniqueStep(job, step => step.name === name);
 }
 
+function stepIndex(job, step) {
+  return step ? (job?.steps ?? []).indexOf(step) : -1;
+}
+
+function runLines(step) {
+  return (step?.run ?? '').split('\n').map(line => line.trim()).filter(Boolean);
+}
+
+function exactRun(step, expected) {
+  return JSON.stringify(runLines(step)) === JSON.stringify(expected);
+}
+
+function countOccurrences(text, needle) {
+  if (!needle) return 0;
+  return text.split(needle).length - 1;
+}
+
 function failClosedStep(step) {
   return Boolean(step)
     && !Object.hasOwn(step, 'if')
@@ -63,11 +134,55 @@ function artifactChecks(workflowText, parsePrCandidateWorkflow) {
   const android = jobs.get('android');
   const fullVerificationSteps = (producer?.steps ?? []).filter(step => step.name === FULL_VERIFICATION_NAME);
   const fullVerification = fullVerificationSteps.length === 1 ? fullVerificationSteps[0] : null;
+  const sourceBoundDigest = stepById(producer, 'source-bound-dist');
+  const manifest = stepByName(producer, MANIFEST_NAME);
+  const upload = stepByName(producer, UPLOAD_NAME);
+  const fullIndex = stepIndex(producer, fullVerification);
+  const digestIndex = stepIndex(producer, sourceBoundDigest);
+  const manifestIndex = stepIndex(producer, manifest);
+  const uploadIndex = stepIndex(producer, upload);
+  const artifactWindow = fullIndex >= 0 && uploadIndex > fullIndex
+    ? producer.steps.slice(fullIndex + 1, uploadIndex + 1).map(step => step.name ?? null)
+    : [];
   return [
     {
       id: 'candidate-snapshot-build-fail-closed',
       pass: failClosedStep(fullVerification),
       evidence: 'exact candidate snapshot verification/build must run unconditionally and fail the producer job on any error',
+    },
+    {
+      id: 'candidate-source-bound-digest-immediate',
+      pass: failClosedStep(sourceBoundDigest)
+        && sourceBoundDigest?.shell === 'bash'
+        && exactRun(sourceBoundDigest, SOURCE_BOUND_DIGEST_SCRIPT)
+        && digestIndex === fullIndex + 1,
+      evidence: 'the exact snapshot build must be bound immediately to an immutable SHA-256 step output before any later producer step can touch dist',
+    },
+    {
+      id: 'candidate-artifact-producer-window-exact-sequence',
+      pass: JSON.stringify(artifactWindow) === JSON.stringify(PRODUCER_ARTIFACT_WINDOW),
+      evidence: 'the post-build producer window through publication must contain only the reviewed steps in the reviewed order, rejecting injected mutation steps',
+    },
+    {
+      id: 'candidate-manifest-revalidates-source-bound-digest',
+      pass: failClosedStep(manifest)
+        && manifest?.env?.CANDIDATE_SHA === PR_HEAD
+        && manifest?.env?.SOURCE_BOUND_DIST_SHA256 === SOURCE_BOUND_DIGEST_OUTPUT
+        && exactRun(manifest, MANIFEST_SCRIPT),
+      evidence: 'manifest creation must verify the immutable source-bound digest before and after candidate manifest tooling runs',
+    },
+    {
+      id: 'candidate-artifact-publish-protected-window',
+      pass: failClosedStep(upload)
+        && uploadIndex === manifestIndex + 1
+        && upload?.uses === UPLOAD_ACTION
+        && upload?.with?.name === UPLOAD_ARTIFACT_NAME
+        && upload?.with?.path === '|'
+        && upload?.with?.['include-hidden-files'] === 'true'
+        && upload?.with?.['if-no-files-found'] === 'error'
+        && upload?.with?.['retention-days'] === '30'
+        && countOccurrences(workflowText, EXACT_UPLOAD_BLOCK) === 1,
+      evidence: 'the exact source-bound dist and manifest must be uploaded immediately after digest revalidation with the reviewed artifact action and paths',
     },
     {
       id: 'candidate-artifact-output-exact-head',
@@ -107,10 +222,11 @@ function executionChecks(inputs, parsePrCandidateWorkflow) {
   const producerSteps = [
     { name: 'Check out exact candidate revision' },
     { id: 'full-verification' },
+    { id: 'source-bound-dist' },
     { id: 'identity' },
-    { name: 'Create exact candidate web artifact manifest' },
     { id: 'scope' },
-    { name: 'Upload exact candidate web bundle' },
+    { name: MANIFEST_NAME },
+    { name: UPLOAD_NAME },
   ];
   const reviewSteps = [
     { name: 'Check out exact candidate read-only' },
@@ -170,7 +286,7 @@ function executionChecks(inputs, parsePrCandidateWorkflow) {
     {
       id: 'candidate-required-steps-fail-closed',
       pass: allFailClosedSteps(producer, producerSteps),
-      evidence: 'producer checkout, exact snapshot build, identity, artifact manifest, scope, and artifact upload must not be conditionally skipped or error-masked',
+      evidence: 'producer checkout, exact snapshot build, source-bound digest, identity, scope, artifact manifest, and artifact upload must not be conditionally skipped or error-masked',
     },
     {
       id: 'review-required-steps-fail-closed',
@@ -259,7 +375,10 @@ export async function selfTest() {
   const artifactHandoff = `candidate_artifact_name: ${PRODUCER_ARTIFACT}`;
   const shaHandoff = `candidate_sha: ${PRODUCER_HEAD}`;
   const fullVerificationHeader = `      - name: ${FULL_VERIFICATION_NAME}\n        id: full-verification`;
+  const sourceBoundDigestHeader = `      - name: ${SOURCE_BOUND_DIGEST_NAME}\n        id: source-bound-dist`;
   const identityHeader = '      - name: Record candidate identity\n        id: identity';
+  const manifestHeader = `      - name: ${MANIFEST_NAME}\n        env:`;
+  const uploadHeader = `      - name: ${UPLOAD_NAME}\n        uses: ${UPLOAD_ACTION}`;
   const finalReviewHeader = '      - name: Require actual exact-SHA independent-review pass\n        run: |';
   const browserVerifyHeader = '      - name: Verify exact candidate web bundle\n        shell: bash';
   const android35SmokeHeader = '      - name: Run API 35 product smoke\n        uses: ReactiveCircus/android-emulator-runner@v2.38.0';
@@ -271,6 +390,26 @@ export async function selfTest() {
     [
       { ...baseline, workflowText: replaceOnce(baseline.workflowText, fullVerificationHeader, `      - name: ${FULL_VERIFICATION_NAME}\n        continue-on-error: true\n        id: full-verification`) },
       'candidate-snapshot-build-fail-closed',
+    ],
+    [
+      { ...baseline, workflowText: replaceOnce(baseline.workflowText, sourceBoundDigestHeader, `      - name: Mutate built dist before source binding\n        run: echo compromised >> dist/index.html\n\n${sourceBoundDigestHeader}`) },
+      'candidate-source-bound-digest-immediate',
+    ],
+    [
+      { ...baseline, workflowText: replaceOnce(baseline.workflowText, manifestHeader, `      - name: Mutate source-bound dist before manifest\n        run: echo compromised >> dist/index.html\n\n${manifestHeader}`) },
+      'candidate-artifact-producer-window-exact-sequence',
+    ],
+    [
+      { ...baseline, workflowText: replaceOnce(baseline.workflowText, 'SOURCE_BOUND_DIST_SHA256: ${{ steps.source-bound-dist.outputs.dist-sha256 }}', 'SOURCE_BOUND_DIST_SHA256: ${{ github.sha }}') },
+      'candidate-manifest-revalidates-source-bound-digest',
+    ],
+    [
+      { ...baseline, workflowText: replaceOnce(baseline.workflowText, uploadHeader, `      - name: Mutate dist after manifest validation\n        run: echo compromised >> dist/index.html\n\n${uploadHeader}`) },
+      'candidate-artifact-publish-protected-window',
+    ],
+    [
+      { ...baseline, workflowText: replaceOnce(baseline.workflowText, '            dist/\n            .candidate-artifact/candidate-web.json', '            dist/\n            substituted/') },
+      'candidate-artifact-publish-protected-window',
     ],
     [
       { ...baseline, workflowText: replaceOnce(baseline.workflowText, '  candidate-build:\n    name:', '  candidate-build:\n    if: false\n    name:') },
