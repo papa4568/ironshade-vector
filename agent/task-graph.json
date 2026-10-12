@@ -294,10 +294,11 @@
       "status": "verified",
       "dependsOn": ["AO-7"],
       "acceptance": [
-        "A reusable observer workflow executes parser code from an immutable trusted-main revision while treating the EV candidate workflow as untrusted data.",
-        "The trusted observer directly verifies the PR Candidate exact-head producer, exact-SHA downstream consumers, final evidence checkout, source-auth dependency, and the literal reusable-workflow pin back to its own trusted SHA.",
-        "Trusted observer self-tests include a behavior-preserving control plus retargeted-workflow, removed-dependency, synthetic-merge-ref, and downstream-SHA attacks with zero false positives and zero false negatives.",
-        "The bootstrap changes only trusted verification infrastructure and task state; EV-9 implementation remains on its existing experimental promotion PR."
+        "A pull_request_target observer executes only exact-base checked-out trusted code while reading the PR head's PR Candidate workflow as untrusted Git data; it never checks out or executes candidate code.",
+        "The trusted observer directly verifies the PR Candidate exact-head producer, runtime candidate output, exact-SHA review/browser/Android consumers, final evidence checkout, and rejects synthetic checkout refs.",
+        "Trusted observer self-tests include a behavior-preserving control plus producer-ref, candidate-output, downstream-SHA, and final-ref attacks with zero false positives and zero false negatives, and Agent Orchestration exposes that self-test as exact-SHA proof.",
+        "This prerequisite only lands the base-controlled trust mechanism and its proof. EV-9's live enforcement integration remains on PR #368 and begins only after this bootstrap is merged to trusted main.",
+        "AO-8 uses the repository's introduced-verified closeout representation so the trusted reviewer targets this bootstrap; the final candidate gate remains authoritative and the bootstrap must not merge without its exact-SHA review pass."
       ],
       "affectedDomains": ["agent-orchestration", "verification", "review", "ci"],
       "proofs": [
@@ -305,8 +306,8 @@
           "id": "trusted-observer-tests",
           "kind": "test",
           "required": true,
-          "description": "Trusted EV-9 observer parser and attack calibration self-test passes.",
-          "command": "node agent/tools/ev9-trusted-pr-candidate-observer.mjs self-test"
+          "description": "Agent Orchestration runs the trusted EV-9 observer parser and attack calibration self-test on the exact candidate SHA.",
+          "command": "node agent/tools/ev9-trusted-pr-candidate-observer-v2.mjs self-test"
         },
         {
           "id": "architecture-invariants",
@@ -324,7 +325,7 @@
           "id": "ao8-ci",
           "kind": "ci",
           "required": true,
-          "description": "Agent Orchestration and PR Candidate Verification pass on the exact AO-8 bootstrap candidate revision."
+          "description": "Agent Orchestration and PR Candidate Verification pass on the exact AO-8 bootstrap candidate revision; the PR Candidate final job may be rerun after the trusted verdict is published."
         }
       ],
       "externalDependencies": []
