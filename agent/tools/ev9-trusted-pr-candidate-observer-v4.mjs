@@ -1,12 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import {
-  observeTrustedPrCandidateContractV3,
-  selfTest as selfTestV3,
-  verify as verifyV3,
-} from './ev9-trusted-pr-candidate-observer-v3.mjs';
-import { parsePrCandidateWorkflow } from './ev9-trusted-pr-candidate-observer-v2.mjs';
 
 const PR_HEAD = '${{ github.event.pull_request.head.sha }}';
 const FINAL_IF = 'always()';
@@ -119,6 +113,24 @@ function ok(value, message) {
   if (!value) throw new Error(message);
 }
 
+async function loadModule(path) {
+  const command = process.argv[2];
+  process.argv[2] = '__ev9_v4_import__';
+  try {
+    return await import(path);
+  } finally {
+    process.argv[2] = command;
+  }
+}
+
+async function loadV3() {
+  return loadModule('./ev9-trusted-pr-candidate-observer-v3.mjs');
+}
+
+async function loadV2() {
+  return loadModule('./ev9-trusted-pr-candidate-observer-v2.mjs');
+}
+
 function uniqueStep(job, selector) {
   const steps = (job?.steps ?? []).filter(selector);
   return steps.length === 1 ? steps[0] : null;
@@ -159,7 +171,7 @@ function exactRunStep(step, expectedRun, expectedEnv = {}) {
     && exactRun(step, expectedRun);
 }
 
-function finalSemanticChecks(workflowText) {
+function finalSemanticChecks(workflowText, parsePrCandidateWorkflow) {
   const jobs = parsePrCandidateWorkflow(workflowText);
   const final = jobs.get('candidate-verification');
   const technical = stepByName(final, FINAL_TECHNICAL_NAME);
@@ -226,8 +238,10 @@ function finalSemanticChecks(workflowText) {
 }
 
 export async function observeTrustedPrCandidateContractV4(inputs) {
-  const baseResult = await observeTrustedPrCandidateContractV3(inputs);
-  const additions = finalSemanticChecks(inputs.workflowText);
+  const v3 = await loadV3();
+  const v2 = await loadV2();
+  const baseResult = await v3.observeTrustedPrCandidateContractV3(inputs);
+  const additions = finalSemanticChecks(inputs.workflowText, v2.parsePrCandidateWorkflow);
   const failedCheckIds = [
     ...baseResult.failedCheckIds,
     ...additions.filter(entry => !entry.pass).map(entry => entry.id),
@@ -269,7 +283,8 @@ function liveFixture() {
 }
 
 export async function selfTest() {
-  await selfTestV3();
+  const v3 = await loadV3();
+  await v3.selfTest();
   const baseline = liveFixture();
   assert.equal((await observeTrustedPrCandidateContractV4(baseline)).pass, true, 'live candidate workflow must satisfy v4 final-gate semantics');
 
@@ -281,6 +296,7 @@ export async function selfTest() {
 
   const uploadHeader = `      - name: ${FINAL_UPLOAD_EVIDENCE_NAME}\n        uses: ${UPLOAD_ACTION}`;
   const reviewHeader = `      - name: ${FINAL_REVIEW_GATE_NAME}\n        run: |`;
+  const finalCheckoutBlock = `      - name: ${FINAL_CHECKOUT_NAME}\n        uses: actions/checkout@v7\n        with:\n          ref: ${PR_HEAD}\n          fetch-depth: 0\n          persist-credentials: false`;
   const attacks = [
     [
       { ...baseline, workflowText: replaceStepRun(baseline.workflowText, FINAL_TECHNICAL_NAME, ['echo bypass']) },
@@ -311,7 +327,7 @@ export async function selfTest() {
       'final-evidence-upload-semantics-exact',
     ],
     [
-      { ...baseline, workflowText: replaceOnce(baseline.workflowText, `          ref: ${PR_HEAD}`, `          ref: ${EVENT_SHA}`) },
+      { ...baseline, workflowText: replaceOnce(baseline.workflowText, finalCheckoutBlock, finalCheckoutBlock.replace(PR_HEAD, EVENT_SHA)) },
       'final-exact-head-context-semantics-exact',
     ],
   ];
@@ -326,12 +342,14 @@ export async function selfTest() {
 }
 
 export async function verify() {
-  await verifyV3();
+  const v3 = await loadV3();
+  const v2 = await loadV2();
+  await v3.verify();
   const candidateSha = process.env.CANDIDATE_SHA?.trim();
   ok(candidateSha, 'CANDIDATE_SHA is required');
   const git = (...args) => execFileSync('/usr/bin/git', args, { encoding: 'utf8', env: { PATH: '/usr/bin:/bin', HOME: '/tmp' } }).trim();
   const workflowText = git('show', `${candidateSha}:.github/workflows/pr-candidate.yml`);
-  const failed = finalSemanticChecks(workflowText).filter(entry => !entry.pass).map(entry => entry.id);
+  const failed = finalSemanticChecks(workflowText, v2.parsePrCandidateWorkflow).filter(entry => !entry.pass).map(entry => entry.id);
   ok(failed.length === 0, `trusted PR candidate v4 observation failed: ${failed.join(',')}`);
   console.log(`EV9_TRUSTED_PR_CANDIDATE_OBSERVER_V4_PASS candidate=${candidateSha} finalChecks=6 falsePositives=0 falseNegatives=0`);
 }
