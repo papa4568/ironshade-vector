@@ -174,7 +174,7 @@ function failClosed(step) {
 }
 
 function runLines(step) {
-  return (step?.run ?? '').split('\n').map(line => line.trim()).filter(Boolean);
+  return (step?.run ?? '').split('\n').map(line => uncomment(line).trim()).filter(Boolean);
 }
 
 function installScriptsDisabled(producer) {
@@ -190,7 +190,7 @@ function sourceBoundBuildContract(producer) {
   const build = stepByName(producer, 'Run full repository verification and production build once');
   if (!failClosed(build) || build?.id !== 'full-verification') return false;
   if (build?.env?.CANDIDATE_SHA !== PR_HEAD) return false;
-  const run = build.run ?? '';
+  const run = runLines(build).join('\n');
   const required = [
     'test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"',
     'git archive --format=tar "$CANDIDATE_SHA" | tar -xf - -C "$snapshot"',
@@ -313,6 +313,11 @@ export function calibratePrCandidateHeadObserver({ workflowText, candidateSha } 
     {
       id: 'source-bound-build-uses-synthetic-event-sha',
       workflowText: replaceOnce(workflowText, 'git archive --format=tar "$CANDIDATE_SHA"', `git archive --format=tar "${SYNTHETIC_EVENT_SHA}"`, 'source-bound archive'),
+      expected: ['candidate-build-source-bound-snapshot'],
+    },
+    {
+      id: 'source-bound-build-comment-spoof',
+      workflowText: replaceOnce(workflowText, '          git archive --format=tar "$CANDIDATE_SHA" | tar -xf - -C "$snapshot"', '          # git archive --format=tar "$CANDIDATE_SHA" | tar -xf - -C "$snapshot"\n          echo "source-bound archive command removed"', 'source-bound archive comment spoof'),
       expected: ['candidate-build-source-bound-snapshot'],
     },
     {
