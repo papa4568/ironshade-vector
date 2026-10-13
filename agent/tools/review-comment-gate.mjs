@@ -35,14 +35,14 @@ export function extractReviewResult(body) {
   }
 }
 
-function rawCandidateSha(body) {
-  if (typeof body !== 'string') return null;
-  return body.match(/"candidateSha"\s*:\s*"([a-f0-9]{40})"/)?.[1] ?? null;
+function rawCandidateShas(body) {
+  if (typeof body !== 'string') return [];
+  return [...body.matchAll(/"candidateSha"\s*:\s*"([a-f0-9]{40})"/g)].map(match => match[1]);
 }
 
 function conclusivelyTargetsDifferentCandidate(packet, body) {
-  const candidateSha = rawCandidateSha(body);
-  return candidateSha !== null && candidateSha !== packet.candidateSha;
+  const candidateShas = rawCandidateShas(body);
+  return candidateShas.length > 0 && candidateShas.every(candidateSha => candidateSha !== packet.candidateSha);
 }
 
 function timestamp(comment) {
