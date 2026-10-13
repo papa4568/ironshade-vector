@@ -18,7 +18,7 @@ jobs:
       group: pr-candidate-build-${{ github.event.pull_request.number }}
       cancel-in-progress: true
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 40
     outputs:
       browser-required: ${{ steps.scope.outputs.browser-required }}
       candidate-sha: ${{ steps.identity.outputs.candidate-sha }}
@@ -247,23 +247,24 @@ jobs:
           include-hidden-files: true
           retention-days: 30
 
-      - name: Capture EV-3 behavioral genome shadow evidence
+      - name: Enforce promoted behavioral genome scope
         id: behavioral-genome-shadow
-        continue-on-error: true
         env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           node scripts/run-behavioral-genome-shadow.mjs \
+            --base-sha "$BASE_SHA" \
             --candidate-sha "$CANDIDATE_SHA" \
             --output-dir .agent-genome
 
-      - name: Upload EV-3 behavioral genome advisory evidence
+      - name: Upload behavioral genome shadow and promotion evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: behavioral-genome-shadow-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
           path: .agent-genome/
-          if-no-files-found: warn
+          if-no-files-found: error
           include-hidden-files: true
           retention-days: 30
 
@@ -406,6 +407,28 @@ jobs:
           node agent/tools/behavioral-genome-calibration-evidence.mjs \
             --candidate-sha "$CANDIDATE_SHA" \
             --report .independent-review/ev10-calibration/calibration.json \
+            --require-pass
+
+      - name: Download EV-11 exact-candidate behavioral genome evidence
+        if: steps.review-task.outputs.task == 'EV-11'
+        uses: actions/download-artifact@v7
+        with:
+          name: behavioral-genome-shadow-${{ github.event.pull_request.number }}-${{ needs.candidate-build.outputs.candidate-sha }}
+          path: .independent-review/ev11-genome
+
+      - name: Verify EV-11 exact-candidate promotion evidence
+        if: steps.review-task.outputs.task == 'EV-11'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          CANDIDATE_SHA: ${{ needs.candidate-build.outputs.candidate-sha }}
+        run: |
+          node agent/tools/behavioral-genome-promotion-evidence.mjs \
+            --base-sha "$BASE_SHA" \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --task-id EV-11 \
+            --base-observations .independent-review/ev11-genome/base-observations.json \
+            --candidate-observations .independent-review/ev11-genome/observations-a.json \
+            --report .independent-review/ev11-genome/promotion-gate.json \
             --require-pass
 
       - name: Generate exact candidate review packet
