@@ -27,11 +27,6 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
 
 ## Active experimental queue
 
-- [ ] **EV-12 — Calibrate EV-4 Failure Recurrence**
-  - Validate recurrence clustering against representative historical and synthetic failures; measure over-clustering, under-clustering, and recurrence-detection errors.
-  - Prove bounded memory/compaction remains deterministic for the measured corpus without enabling any new antibody as a blocking repository check.
-  - Done when the evidence identifies which recurrence signatures are stable enough for governance and which remain advisory.
-
 - [ ] **EV-13 — Define Antibody Governance**
   - Define the permanent ownership and review process for proposing, accepting, updating, and retiring antibodies; unreviewed proposals must remain non-enforcing.
   - Map accepted antibody types to the existing narrowest source of truth (regression, architecture invariant, impact-map rule, or telemetry contract) without creating a second competing check registry.
