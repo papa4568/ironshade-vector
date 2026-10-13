@@ -115,6 +115,18 @@ function expectAttack(workflowText, expectedCheckId, label) {
   assert.equal(failed.includes(expectedCheckId), true, `${label} must fail ${expectedCheckId}; failed=${failed.join(',')}`);
 }
 
+function fullVerificationHeader(extraLines = []) {
+  return [
+    `      - name: ${FULL_VERIFICATION_NAME}`,
+    '        id: full-verification',
+    '        env:',
+    `          CANDIDATE_SHA: ${PR_HEAD}`,
+    `          VITE_API_BASE_URL: ${VITE_API}`,
+    ...extraLines,
+    '        run: |',
+  ].join('\n');
+}
+
 export async function selfTest() {
   const v7 = await loadV7();
   await v7.selfTest();
@@ -125,8 +137,8 @@ export async function selfTest() {
 
   const stepEnvAttack = replaceOnce(
     workflowText,
-    `          VITE_API_BASE_URL: ${VITE_API}\n        run: |`,
-    `          VITE_API_BASE_URL: ${VITE_API}\n          BASH_ENV: ./candidate-hook.sh\n        run: |`,
+    fullVerificationHeader(),
+    fullVerificationHeader(['          BASH_ENV: ./candidate-hook.sh']),
   );
   expectAttack(stepEnvAttack, 'candidate-full-verification-exact-execution-context', 'step-level BASH_ENV injection');
 
@@ -146,8 +158,8 @@ export async function selfTest() {
 
   const customShellAttack = replaceOnce(
     workflowText,
-    `          VITE_API_BASE_URL: ${VITE_API}\n        run: |`,
-    `          VITE_API_BASE_URL: ${VITE_API}\n        shell: bash --rcfile ./candidate-hook.sh {0}\n        run: |`,
+    fullVerificationHeader(),
+    fullVerificationHeader(['        shell: bash --rcfile ./candidate-hook.sh {0}']),
   );
   expectAttack(customShellAttack, 'candidate-full-verification-exact-execution-context', 'custom shell startup injection');
 
