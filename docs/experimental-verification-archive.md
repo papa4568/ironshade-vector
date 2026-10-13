@@ -132,7 +132,7 @@ Two intermediate Agent Orchestration attempts failed closed on EV-4's own contra
 
 EV-4 does not alter product/runtime behavior and does not automatically edit repository policy. Agent Orchestration runs read-only against repository contents, writes only an ephemeral exact-SHA report into the Actions workspace, and uploads advisory evidence. Explicit review acceptance exists as a tool/test contract only; repository CI does not persist accepted antibodies or turn proposals into blocking gates.
 
-Rollback is to remove the EV-4 regression/report/upload steps from `.github/workflows/agent-orchestration.yml`, remove `agent/failure-memory.json`, `agent/failure-memory.schema.json`, `agent/tests/repository-immune-system.mjs`, and `agent/tools/repository-immune-system.mjs`, and remove the EV-4 source/rule entries from `AGENTS.md`. Existing full verification, exact-SHA candidate evidence, browser/Android validation, APK generation, and the underlying Android screenshot hardening remain intact.
+Rollback is to remove the EV-4 regression/report/upload steps from `.github/workflows/agent-orchestration.yml`, remove `agent/failure-memory.json`, `agent/failure-memory.schema.json`, `agent/tests/repository-immune-system.mjs`, and `agent/tools/repository-immune-system.mjs`, and remove the EV-4 advisory rule/source entries from `AGENTS.md`. Existing full verification, exact-SHA candidate evidence, browser/Android validation, APK generation, and the underlying Android screenshot hardening remain intact.
 
 ### Promotion status
 
