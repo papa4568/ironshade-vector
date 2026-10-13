@@ -81,6 +81,15 @@ function compactJobs(jobs) {
   }));
 }
 
+function compactArtifacts(artifacts) {
+  return artifacts.map(artifact => ({
+    id: artifact.id,
+    name: artifact.name,
+    digest: artifact.digest,
+    expired: artifact.expired,
+  }));
+}
+
 function latestNamedJob(jobs, name) {
   return jobs.filter(job => job.name === name).sort((left, right) => left.id - right.id).at(-1);
 }
@@ -151,6 +160,47 @@ async function exactRun(repo, workflow, sha, pr) {
   return run;
 }
 
+export function selectSupplementalRuns(workflowRuns, sha, pr, excludedRunIds = new Set()) {
+  const latestByWorkflow = new Map();
+  const matches = (Array.isArray(workflowRuns) ? workflowRuns : [])
+    .filter(run => (
+      run?.head_sha === sha
+      && (run.pull_requests ?? []).some(pull => pull.number === pr)
+      && !excludedRunIds.has(run.id)
+    ))
+    .sort((left, right) => (
+      Date.parse(left.created_at ?? 0) - Date.parse(right.created_at ?? 0)
+      || Number(left.id ?? 0) - Number(right.id ?? 0)
+    ));
+  for (const run of matches) latestByWorkflow.set(run.workflow_id ?? run.name, run);
+  return [...latestByWorkflow.values()].sort((left, right) => Number(left.id ?? 0) - Number(right.id ?? 0));
+}
+
+async function supplementalEvidence(repo, sha, pr, excludedRunIds) {
+  const list = await api(`repos/${repo}/actions/runs?event=pull_request&head_sha=${encodeURIComponent(sha)}&per_page=100`);
+  const runs = selectSupplementalRuns(list.workflow_runs, sha, pr, excludedRunIds);
+  ok(runs.length <= 20, 'too many exact-SHA supplemental workflow runs to review safely');
+  const evidence = [];
+  for (const run of runs) {
+    const [jobsPayload, artifactsPayload] = await Promise.all([
+      api(`repos/${repo}/actions/runs/${run.id}/jobs?per_page=100`),
+      api(`repos/${repo}/actions/runs/${run.id}/artifacts?per_page=100`),
+    ]);
+    evidence.push({
+      id: run.id,
+      workflowId: run.workflow_id,
+      name: run.name,
+      event: run.event,
+      headSha: run.head_sha,
+      status: run.status,
+      conclusion: run.conclusion,
+      jobs: compactJobs(jobsPayload.jobs ?? []),
+      artifacts: compactArtifacts(artifactsPayload.artifacts ?? []),
+    });
+  }
+  return evidence;
+}
+
 async function evidence(repo, sha, pr) {
   const candidate = await exactRun(repo, 'pr-candidate.yml', sha, pr);
   const candidateJobs = (await api(`repos/${repo}/actions/runs/${candidate.id}/jobs?per_page=100`)).jobs ?? [];
@@ -167,10 +217,12 @@ async function evidence(repo, sha, pr) {
   ok(validation?.conclusion === 'success', 'Agent Orchestration validation did not pass');
 
   const artifacts = (await api(`repos/${repo}/actions/runs/${candidate.id}/artifacts?per_page=100`)).artifacts ?? [];
+  const supplementalRuns = await supplementalEvidence(repo, sha, pr, new Set([candidate.id, orchestration.id]));
   return {
     candidateRun: { id: candidate.id, conclusion: candidate.conclusion, jobs: compactJobs(candidateJobs) },
     orchestrationRun: { id: orchestration.id, conclusion: orchestration.conclusion, jobs: compactJobs(orchestrationJobs) },
-    artifacts: artifacts.map(artifact => ({ id: artifact.id, name: artifact.name, digest: artifact.digest, expired: artifact.expired })),
+    artifacts: compactArtifacts(artifacts),
+    supplementalRuns,
     finalGateEvidence,
     finalJobId: final.id,
   };
@@ -344,6 +396,15 @@ function selfTest() {
   const successfulFallback = evaluateFinalCandidateEvidence({ status: 'completed', conclusion: 'success', steps: [] }, successfulFallbackLog, packet.candidateSha);
   ok(!successfulFallback.reviewOnlyFailure, 'successful log fallback must require the exact completion marker');
 
+  const supplemental = selectSupplementalRuns([
+    { id: 10, workflow_id: 1, name: 'PR Candidate Verification', head_sha: packet.candidateSha, created_at: '2026-01-01T00:00:00Z', pull_requests: [{ number: 375 }] },
+    { id: 20, workflow_id: 2, name: 'EV-12 Failure Recurrence Calibration', head_sha: packet.candidateSha, created_at: '2026-01-01T00:01:00Z', pull_requests: [{ number: 375 }] },
+    { id: 21, workflow_id: 2, name: 'EV-12 Failure Recurrence Calibration', head_sha: packet.candidateSha, created_at: '2026-01-01T00:02:00Z', pull_requests: [{ number: 375 }] },
+    { id: 30, workflow_id: 3, name: 'Wrong SHA', head_sha: 'b'.repeat(40), created_at: '2026-01-01T00:03:00Z', pull_requests: [{ number: 375 }] },
+    { id: 40, workflow_id: 4, name: 'Wrong PR', head_sha: packet.candidateSha, created_at: '2026-01-01T00:04:00Z', pull_requests: [{ number: 999 }] },
+  ], packet.candidateSha, 375, new Set([10]));
+  ok(supplemental.length === 1 && supplemental[0].id === 21, 'supplemental evidence must retain only the latest exact-SHA exact-PR run per workflow and exclude core runs');
+
   const validReview = {
     schemaVersion: 1,
     taskId: packet.taskId,
@@ -355,8 +416,13 @@ function selfTest() {
     findings: [],
   };
   validate(validReview, packet);
-  const prompt = buildPrompt(packet, { candidateRun: { conclusion: 'failure' }, finalGateEvidence: fallback }, 'diff');
+  const prompt = buildPrompt(packet, {
+    candidateRun: { conclusion: 'failure' },
+    supplementalRuns: [{ name: 'EV-12 Failure Recurrence Calibration', conclusion: 'success' }],
+    finalGateEvidence: fallback,
+  }, 'diff');
   ok(prompt.includes('read-only adversarial verifier'), 'trusted prompt contract missing');
+  ok(prompt.includes('EV-12 Failure Recurrence Calibration'), 'supplemental exact-SHA workflow evidence must be serialized into the trusted prompt');
   console.log('TRUSTED_INDEPENDENT_REVIEW_V4_SELF_TEST_PASS');
 }
 
