@@ -329,6 +329,49 @@
         }
       ],
       "externalDependencies": []
+    },
+    {
+      "id": "AO-9",
+      "title": "Permit trusted EV-9 live integration boundary",
+      "priority": 90,
+      "status": "verified",
+      "dependsOn": ["AO-8"],
+      "acceptance": [
+        "The trusted exact-head observer permits candidate changes only to the fixed EV-9 evidence-independence implementation file set while continuing to pin unrelated agent helpers to trusted base objects.",
+        "If any permitted EV-9 implementation file changes, PR Candidate Verification must contain the exact three-step EV-9 regression, enforcement, and evidence-upload block immediately after the source-bound candidate web artifact is published.",
+        "The trusted observer rejects EV-9 integration before artifact publication, a neutralized promotion gate, and unrelated agent-helper mutation while preserving all AO-8 exact-head, consumer, review, and final-evidence checks.",
+        "This compatibility bootstrap changes only the trusted observer boundary; EV-9 policy, graph, enforcement implementation, archive transition, and live workflow integration remain exclusively on PR #368.",
+        "AO-9 uses the repository's introduced-verified closeout representation so the trusted reviewer targets this prerequisite; it must not merge without exact-SHA technical proof and independent-review pass."
+      ],
+      "affectedDomains": ["agent-orchestration", "verification", "review", "ci"],
+      "proofs": [
+        {
+          "id": "trusted-observer-compat-tests",
+          "kind": "test",
+          "required": true,
+          "description": "Agent Orchestration runs the trusted EV-9 observer self-test including live-integration ordering and agent-file allowlist attacks on the exact candidate SHA.",
+          "command": "node agent/tools/ev9-trusted-pr-candidate-observer-v8.mjs self-test"
+        },
+        {
+          "id": "architecture-invariants",
+          "kind": "invariant",
+          "required": true,
+          "description": "Mechanical architecture and independent-review contracts continue to pass for the compatibility bootstrap."
+        },
+        {
+          "id": "independent-review-verdict",
+          "kind": "review",
+          "required": true,
+          "description": "A separate trusted verifier returns a validated pass for the exact AO-9 compatibility candidate SHA."
+        },
+        {
+          "id": "ao9-ci",
+          "kind": "ci",
+          "required": true,
+          "description": "Agent Orchestration, EV-9 trusted observer self-test, and PR Candidate Verification pass on the exact AO-9 candidate; the final candidate job may be rerun after the trusted verdict is published."
+        }
+      ],
+      "externalDependencies": []
     }
   ]
 }
