@@ -372,6 +372,49 @@
         }
       ],
       "externalDependencies": []
+    },
+    {
+      "id": "AO-10",
+      "title": "Make trusted EV-9 observer calibration lifecycle-safe",
+      "priority": 100,
+      "status": "verified",
+      "dependsOn": ["AO-9"],
+      "acceptance": [
+        "Trusted EV-9 observer calibration passes both before and after the exact reviewed live EV-9 integration block is present by normalizing only that exact block from the self-test fixture.",
+        "Lifecycle normalization is exact and fail-closed: it recognizes at most one byte-exact reviewed three-step integration block at the candidate-build publication boundary and round-trips an integrated fixture byte-for-byte.",
+        "Live trusted verification semantics remain unchanged by delegating candidate verification to the already-reviewed v8 verifier.",
+        "The exact AO-10 candidate runs the lifecycle-safe observer self-test while preserving architecture, candidate, Android, and independent-review proof obligations.",
+        "This prerequisite changes no EV-9 promotion policy, graph, archive, implementation, or live integration; PR #368 remains the sole EV-9 promotion candidate."
+      ],
+      "affectedDomains": ["agent-orchestration", "verification", "review", "ci"],
+      "proofs": [
+        {
+          "id": "trusted-observer-lifecycle-tests",
+          "kind": "test",
+          "required": true,
+          "description": "The lifecycle-safe observer wrapper exercises v8 calibration from an integration-free normalized fixture and validates exact integration strip/reinsert behavior.",
+          "command": "node agent/tools/ev9-trusted-pr-candidate-observer-v10.mjs self-test"
+        },
+        {
+          "id": "architecture-invariants",
+          "kind": "invariant",
+          "required": true,
+          "description": "Mechanical architecture and independent-review contracts continue to pass for the lifecycle bootstrap."
+        },
+        {
+          "id": "independent-review-verdict",
+          "kind": "review",
+          "required": true,
+          "description": "A separate trusted verifier returns a validated pass for the exact AO-10 lifecycle candidate SHA."
+        },
+        {
+          "id": "ao10-ci",
+          "kind": "ci",
+          "required": true,
+          "description": "EV-9 trusted observer self-test, Agent Orchestration, and PR Candidate Verification pass on the exact AO-10 candidate; the final candidate job may be rerun after the trusted verdict is published."
+        }
+      ],
+      "externalDependencies": []
     }
   ]
 }
