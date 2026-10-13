@@ -27,11 +27,6 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
 
 ## Active experimental queue
 
-- [ ] **EV-10 — Calibrate EV-3 Behavioral Genome**
-  - Build or reuse a representative corpus of intentional behavioral changes and known non-semantic noise, then record unexplained-delta false positives and missed semantic-change false negatives by candidate domain.
-  - Keep the genome advisory in this item: do not add a new blocking rule, change default enforcement, or replace the tests that produce or independently verify behavior.
-  - Done when the measured evidence identifies the exact domains, normalization/exclusion rules, and unresolved cases that EV-11 may or may not promote.
-
 - [ ] **EV-11 — Enforce Validated Behavioral Genome Scope**
   - Use only EV-10 evidence to classify validated domain deltas as blocking, declaration-required, or informational; unsupported domains remain advisory.
   - Add fail-closed enforcement only for the validated scope while preserving deterministic normalization/exclusion rules, exact-SHA binding, and the underlying behavioral tests.
