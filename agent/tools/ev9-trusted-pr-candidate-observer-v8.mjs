@@ -56,12 +56,16 @@ function directMapping(lines, keyIndent, key) {
   return values;
 }
 
+function keyPresentAtIndent(lines, indent, key) {
+  return lines.some(line => line.indent === indent && (line.text === `${key}:` || line.text.startsWith(`${key}: `)));
+}
+
 function rootMappingPresent(lines, key) {
-  return lines.some(line => line.indent === 0 && line.text === `${key}:`);
+  return keyPresentAtIndent(lines, 0, key);
 }
 
 function jobMappingPresent(jobLines, key) {
-  return jobLines?.some(line => line.indent === 4 && line.text === `${key}:`) ?? false;
+  return jobLines ? keyPresentAtIndent(jobLines, 4, key) : false;
 }
 
 function fullVerificationBoundary(workflowText) {
