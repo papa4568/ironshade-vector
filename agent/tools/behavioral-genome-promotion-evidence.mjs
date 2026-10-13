@@ -9,6 +9,7 @@ import {
 } from './behavioral-genome-promotion-gate.mjs';
 
 const SHA_PATTERN = /^[a-f0-9]{40}$/;
+const TASK_PATTERN = /^(?:AO-\d+|EV-\d+|P\d+(?:-[A-Z0-9]+)+)$/;
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -28,6 +29,20 @@ async function readOptionalJson(path) {
   }
 }
 
+export function resolveBehavioralGenomeDeclarationPath(policy, taskId, explicitPath = null) {
+  assert(TASK_PATTERN.test(taskId ?? ''), 'taskId must be a supported task ID');
+  if (explicitPath) return resolve(explicitPath);
+  assert(
+    typeof policy?.declarations?.directory === 'string' && policy.declarations.directory.trim(),
+    'behavioral genome promotion policy declarations.directory must be non-empty',
+  );
+  return resolve(policy.declarations.directory, `${taskId}.json`);
+}
+
+export async function readBehavioralGenomePromotionDeclaration(policy, taskId, explicitPath = null) {
+  return readOptionalJson(resolveBehavioralGenomeDeclarationPath(policy, taskId, explicitPath));
+}
+
 export function verifyBehavioralGenomePromotionEvidence(report, {
   policy,
   config,
@@ -43,7 +58,7 @@ export function verifyBehavioralGenomePromotionEvidence(report, {
 } = {}) {
   assert(SHA_PATTERN.test(baseSha ?? ''), 'baseSha must be a full lowercase commit SHA');
   assert(SHA_PATTERN.test(candidateSha ?? ''), 'candidateSha must be a full lowercase commit SHA');
-  assert(typeof taskId === 'string' && taskId.trim(), 'taskId must be non-empty');
+  assert(TASK_PATTERN.test(taskId ?? ''), 'taskId must be a supported task ID');
   const expectedEnforcement = resolveBehavioralGenomeEnforcement(policy, undefined, env);
   const expected = evaluateBehavioralGenomePromotion({
     policy,
@@ -116,15 +131,15 @@ function parseArguments(argv) {
 
 async function main() {
   const options = parseArguments(process.argv.slice(2));
-  const [policy, config, corpus, baseObservations, candidateObservations, declaration, report] = await Promise.all([
+  const [policy, config, corpus, baseObservations, candidateObservations, report] = await Promise.all([
     readJson(options.policy),
     readJson(options.config),
     readJson(options.corpus),
     readJson(options.baseObservations),
     readJson(options.candidateObservations),
-    readOptionalJson(options.declaration),
     readJson(options.report),
   ]);
+  const declaration = await readBehavioralGenomePromotionDeclaration(policy, options.taskId, options.declaration);
   verifyBehavioralGenomePromotionEvidence(report, {
     policy,
     config,
@@ -137,7 +152,7 @@ async function main() {
     taskId: options.taskId,
     requirePass: options.requirePass,
   });
-  console.log(`BEHAVIORAL_GENOME_PROMOTION_EVIDENCE_PASS task=${options.taskId} base=${options.baseSha} candidate=${options.candidateSha} verdict=${report.verdict} falsePositives=${report.calibration.falsePositives} falseNegatives=${report.calibration.falseNegatives} blocking=${report.blocking}`);
+  console.log(`BEHAVIORAL_GENOME_PROMOTION_EVIDENCE_PASS task=${options.taskId} base=${options.baseSha} candidate=${options.candidateSha} verdict=${report.verdict} declaration=${declaration ? 'present' : 'none'} falsePositives=${report.calibration.falsePositives} falseNegatives=${report.calibration.falseNegatives} blocking=${report.blocking}`);
 }
 
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
