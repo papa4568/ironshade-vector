@@ -132,7 +132,7 @@ Two intermediate Agent Orchestration attempts failed closed on EV-4's own contra
 
 EV-4 does not alter product/runtime behavior and does not automatically edit repository policy. Agent Orchestration runs read-only against repository contents, writes only an ephemeral exact-SHA report into the Actions workspace, and uploads advisory evidence. Explicit review acceptance exists as a tool/test contract only; repository CI does not persist accepted antibodies or turn proposals into blocking gates.
 
-Rollback is to remove the EV-4 regression/report/upload steps from `.github/workflows/agent-orchestration.yml`, remove `agent/failure-memory.json`, `agent/failure-memory.schema.json`, `agent/tests/repository-immune-system.mjs`, and `agent/tools/repository-immune-system.mjs`, and remove the EV-4 advisory rule/source entries from `AGENTS.md`. Existing full verification, exact-SHA candidate evidence, browser/Android validation, APK generation, and the underlying Android screenshot hardening remain intact.
+Rollback is to remove the EV-4 regression/report/upload steps from `.github/workflows/agent-orchestration.yml`, remove `agent/failure-memory.json`, `agent/failure-memory.schema.json`, `agent/tests/repository-immune-system.mjs`, and `agent/tools/repository-immune-system.mjs`, and remove the EV-4 source/rule entries from `AGENTS.md`. Existing full verification, exact-SHA candidate evidence, browser/Android validation, APK generation, and the underlying Android screenshot hardening remain intact.
 
 ### Promotion status
 
@@ -357,3 +357,39 @@ Rollback is deterministic: set `IRONSHADE_EVIDENCE_INDEPENDENCE_ENFORCEMENT=0` t
 ### Promotion status
 
 Promoted only for `candidate-workflows-use-exact-pr-head`. `candidate-evidence-rejects-cross-sha-proof` remains experimental/advisory because its current material path is circular. The next experimental promotion item is EV-10.
+
+## EV-10 — Calibrate EV-3 Behavioral Genome
+
+Completed 2026-10-13 as an advisory calibration of the EV-3 mechanism. The original EV-3 archive record above remains unchanged advisory prototype history.
+
+### Implemented
+
+- Added `agent/behavioral-genome-calibration-corpus.json` with zero false-positive and false-negative budgets, three behavior-preserving controls, and one representative intentional semantic change for each EV-3 domain: simulation, mission, presentation, load, resources, and performance.
+- Added `agent/tools/behavioral-genome-calibration.mjs` to reuse the existing canonical behavioral-genome normalizers/digests instead of maintaining a second fingerprint implementation. The analyzer binds evidence to a full exact candidate SHA, reports per-domain semantic trials plus false positives/false negatives, and emits an EV-11 promotion scope containing the reviewed normalizers, exclusions, and unresolved limitations.
+- Added `agent/tests/behavioral-genome-calibration.mjs` to prove deterministic repeat calibration, zero-error classification on the representative corpus, a deliberately mislabeled semantic-as-noise trial is counted as a false positive and fails the zero budget, a deliberately normalized-away semantic trial is counted as a false negative and fails the zero budget, exact-SHA binding is mandatory, and prototype/path escapes are rejected.
+- Extended `scripts/run-behavioral-genome-shadow.mjs` so the existing exact-SHA EV-3 shadow artifact also writes `calibration.json`; EV-10 does not add a second build, route, product runtime, or blocking gate.
+- Documented the EV-10 advisory contract and rollback boundary in `AGENTS.md`. A calibration pass only makes the measured post-normalization domain probes eligible for EV-11 review; the report remains `acceptedForEnforcement=false` and `candidatePassGranted=false`.
+
+### Evidence
+
+Implementation candidate `258b070dbe96fc45d801f92fe5d134b4678238ae` passed Agent Orchestration run `38429490019` and the authoritative candidate-build/full-verification producer in PR Candidate Verification run `38429490090`. The producer passed architecture invariants, independent-review contract regressions, EV-8 acceptance-attack enforcement, EV-9 causal-evidence enforcement, the complete repository verification/production build, source-bound candidate digest generation, the EV-3 repeat route, and EV-10 calibration capture. It also produced and verified the installable Android APK from the same exact-SHA web bundle before this archive-only closeout transition.
+
+The first producer attempt failed before any EV-10 code ran because isolated `npm ci` omitted the lockfile-declared optional platform package `@esbuild/linux-x64` and Vite/esbuild could not start. The same immutable workflow/lockfile had installed that package on the immediately preceding candidate. A targeted retry of only the failed producer job on the unchanged SHA installed the complete locked dependency set and passed; the one-off environment failure did not recur and no repository rule was weakened or permanently changed.
+
+Exact-SHA advisory artifact `11830304148` (`behavioral-genome-shadow-373-258b070dbe96fc45d801f92fe5d134b4678238ae`) has GitHub Actions digest `sha256:0f4b8de200d670b177a972fc3ee85d1381d981a766b1cf2b8356d41f4ed982c6`. Its calibration report is bound to `258b070dbe96fc45d801f92fe5d134b4678238ae`, has config digest `ee78e5fbdd6013a62452d1a53c761b5319d5c6a79be988bc2207aa1f714e4a9e`, corpus digest `1450d50e1337580e9732cf9a53e22f41a3dcbe1615580da613a923439418b360`, `calibrationPass=true`, `falsePositives=0`, `falseNegatives=0`, `acceptedForEnforcement=false`, and `candidatePassGranted=false`.
+
+Each required domain had exactly one representative semantic trial and exactly one detection, with zero false positives and zero false negatives: `simulation`, `mission`, `presentation`, `load`, `resources`, and `performance`. The three behavior-preserving controls also classified correctly: sub-threshold simulation rounding noise produced no delta, changing excluded `load.loadDurationMs` produced no delta, and sub-bucket performance jitter produced no delta. The real EV-3 route was captured twice on the same SHA; its only volatile load-duration values were `27.497445` and `26.918020999999996` milliseconds, while both normalized genomes retained root digest `d0b8e3b370dcd2892b29fb19c597c3ab166d2f9e5f73798e88a22133499e0e40` and the repeat comparison reported `changedDomains=[]`, `unexplainedDomains=[]`, and `status="pass"`.
+
+EV-11 may review all six measured post-normalization domain probes, but the evidence carries three explicit constraints. `load.loadDurationMs` remains excluded and therefore cannot support a load-latency enforcement claim. Configured rounding/bucketing intentionally hides sub-threshold numeric jitter, so EV-11 must preserve those thresholds unless separately recalibrated. Finally, the representative route proves sensitivity/noise handling for its observed signals rather than completeness over every possible product behavior, so behavioral-genome evidence may supplement but never replace the underlying behavioral tests, browser/Android checks, exact-SHA evidence, APK proof, or independent review.
+
+This archive transition follows the repository's established independent-review self-reference rule: it records the immutable pre-archive implementation candidate and measured artifact, while the resulting closeout SHA cannot literally contain its own Git SHA because that SHA depends on these archive contents. The resulting exact closeout candidate must therefore pass all required technical gates and a fresh trusted EV-10 review; no earlier candidate verdict is inherited and no final evidence is synthesized from the predecessor.
+
+### Isolation and rollback
+
+EV-10 changes verification/governance only. Calibration mutates structured observation clones in memory, runs against the existing EV-3 semantic implementation, writes only ephemeral CI evidence, and does not alter product/runtime state or default candidate acceptance.
+
+Rollback is deterministic: remove the EV-10 calibration invocation from `scripts/run-behavioral-genome-shadow.mjs`, remove `agent/behavioral-genome-calibration-corpus.json`, `agent/tools/behavioral-genome-calibration.mjs`, and `agent/tests/behavioral-genome-calibration.mjs`, and remove the EV-10 calibration rule/source entries from `AGENTS.md`. The pre-EV-10 EV-3 shadow route and all existing build, browser, Android/APK, exact-SHA, EV-8, EV-9, and independent-review gates remain unchanged.
+
+### Promotion status
+
+Calibration complete; no behavioral-genome enforcement was promoted in EV-10. All six measured post-normalization domain probes are eligible for EV-11 review under the recorded exclusions/normalization limits, while load latency, sub-threshold normalized changes, and unobserved product behavior remain outside the claim. The next experimental promotion item is EV-11.
