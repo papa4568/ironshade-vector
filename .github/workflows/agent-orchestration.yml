@@ -173,7 +173,7 @@ jobs:
           node agent/tests/trusted-main-review-gate.mjs
 
       - name: Verify trusted EV-9 observer bootstrap
-        run: node agent/tools/ev9-trusted-pr-candidate-observer-v7.mjs self-test
+        run: node agent/tools/ev9-trusted-pr-candidate-observer-v8.mjs self-test
 
       - name: Detect active orchestration evidence task
         id: evidence-task
