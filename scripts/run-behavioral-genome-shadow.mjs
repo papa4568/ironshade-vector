@@ -56,6 +56,7 @@ async function main() {
   await mkdir(outputDir, { recursive: true });
 
   await run(process.execPath, ['agent/tests/behavioral-genome.mjs']);
+  await run(process.execPath, ['agent/tests/behavioral-genome-calibration.mjs']);
   await captureRoute(resolve(outputDir, 'observations-a.json'));
   await captureRoute(resolve(outputDir, 'observations-b.json'));
 
@@ -87,6 +88,19 @@ async function main() {
     resolve(outputDir, 'repeat-comparison.json'),
     '--enforce',
   ]);
+
+  await run(process.execPath, [
+    'agent/tools/behavioral-genome-calibration.mjs',
+    '--candidate-sha',
+    options.candidateSha,
+    '--config',
+    'agent/behavioral-genome.config.json',
+    '--corpus',
+    'agent/behavioral-genome-calibration-corpus.json',
+    '--output',
+    resolve(outputDir, 'calibration.json'),
+  ]);
+
   console.log(`BEHAVIORAL_GENOME_SHADOW_PASS candidate=${options.candidateSha} output=${outputDir}`);
 }
 

@@ -361,6 +361,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
+      actions: read
       contents: read
     steps:
       - name: Check out exact candidate read-only
@@ -389,6 +390,23 @@ jobs:
           appendFileSync(process.env.GITHUB_OUTPUT, `task=${selection.taskId}\n`);
           console.log(`INDEPENDENT_REVIEW_TASK task=${selection.taskId} mode=${selection.mode} source=${selection.source}`);
           NODE
+
+      - name: Download EV-10 exact-candidate calibration evidence
+        if: steps.review-task.outputs.task == 'EV-10'
+        uses: actions/download-artifact@v7
+        with:
+          name: behavioral-genome-shadow-${{ github.event.pull_request.number }}-${{ needs.candidate-build.outputs.candidate-sha }}
+          path: .independent-review/ev10-calibration
+
+      - name: Verify EV-10 exact-candidate calibration closeout evidence
+        if: steps.review-task.outputs.task == 'EV-10'
+        env:
+          CANDIDATE_SHA: ${{ needs.candidate-build.outputs.candidate-sha }}
+        run: |
+          node agent/tools/behavioral-genome-calibration-evidence.mjs \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --report .independent-review/ev10-calibration/calibration.json \
+            --require-pass
 
       - name: Generate exact candidate review packet
         env:
