@@ -41,23 +41,27 @@ function integrationBlock() {
   ].join('\n');
 }
 
+function integrationInsertion() {
+  return `\n${integrationBlock()}`;
+}
+
 function insertIntegrationAfterUpload(workflowText) {
   const marker = '\n  independent-review-context:';
   const index = workflowText.indexOf(marker);
   assert.notEqual(index, -1, 'v10 lifecycle self-test independent-review-context marker missing');
-  return `${workflowText.slice(0, index)}\n${integrationBlock()}${workflowText.slice(index)}`;
+  return `${workflowText.slice(0, index)}${integrationInsertion()}${workflowText.slice(index)}`;
 }
 
 function normalizeLifecycleFixture(workflowText) {
-  const block = integrationBlock();
-  const first = workflowText.indexOf(block);
+  const insertion = integrationInsertion();
+  const first = workflowText.indexOf(insertion);
   if (first < 0) return { workflowText, hadIntegration: false };
-  const second = workflowText.indexOf(block, first + block.length);
+  const second = workflowText.indexOf(insertion, first + insertion.length);
   assert.equal(second, -1, 'v10 lifecycle self-test requires at most one exact EV-9 integration block');
   const before = workflowText.slice(0, first);
-  const after = workflowText.slice(first + block.length);
+  const after = workflowText.slice(first + insertion.length);
   assert.equal(
-    before.endsWith('\n') && after.startsWith('  independent-review-context:'),
+    after.startsWith('\n  independent-review-context:'),
     true,
     'v10 lifecycle self-test only strips the exact reviewed EV-9 block at the candidate-build publication boundary',
   );
