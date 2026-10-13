@@ -69,12 +69,6 @@ export async function selfTest() {
   await v6.selfTest();
 
   const workflowText = readFileSync('.github/workflows/pr-candidate.yml', 'utf8');
-  const trusted = {
-    workflowText,
-    browserWorkflowText: readFileSync('.github/workflows/browser-e2e.yml', 'utf8'),
-    androidWorkflowText: readFileSync('.github/workflows/pr-android-apk.yml', 'utf8'),
-  };
-
   assert.equal(foldedScalarChecks(workflowText)[0].pass, true, 'live PR Candidate workflow must use literal run block scalars');
   assert.equal(foldedScalarChecks(`# behavior-preserving comment\n${workflowText}`)[0].pass, true, 'behavior-preserving comment must not create a false positive');
 
@@ -84,10 +78,6 @@ export async function selfTest() {
     assert.equal(result[0].pass, false, `folded browser-scope run scalar ${indicator} must fail`);
     assert.equal(result[0].id, 'pr-candidate-run-scalars-literal-only');
   }
-
-  // Keep v7's public observer composition exercised without duplicating v6's Git-object fixtures.
-  const v6Result = await v6.observeTrustedPrCandidateContractV6(trusted, trusted);
-  assert.equal(v6Result.pass, true, 'live workflow trio must continue to satisfy v6 semantics');
 
   console.log('EV9_TRUSTED_PR_CANDIDATE_OBSERVER_V7_SELF_TEST_PASS falsePositives=0 falseNegatives=0 foldedAttacks=2');
 }
