@@ -11,6 +11,7 @@ on:
       - 'agent/tools/ev9-trusted-pr-candidate-observer-v4.mjs'
       - 'agent/tools/ev9-trusted-pr-candidate-observer-v5.mjs'
       - 'agent/tools/ev9-trusted-pr-candidate-observer-v6.mjs'
+      - 'agent/tools/ev9-trusted-pr-candidate-observer-v7.mjs'
       - 'agent/task-graph.json'
       - '.github/workflows/agent-orchestration.yml'
   pull_request_target:
@@ -37,7 +38,7 @@ jobs:
         with:
           node-version: '22.23.2'
       - name: Verify trusted observer parser and attack calibration
-        run: node agent/tools/ev9-trusted-pr-candidate-observer-v6.mjs self-test
+        run: node agent/tools/ev9-trusted-pr-candidate-observer-v7.mjs self-test
 
   verify-pr-candidate:
     if: github.event_name == 'pull_request_target'
@@ -67,4 +68,4 @@ jobs:
         env:
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
           TRUSTED_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: node agent/tools/ev9-trusted-pr-candidate-observer-v6.mjs verify
+        run: node agent/tools/ev9-trusted-pr-candidate-observer-v7.mjs verify
