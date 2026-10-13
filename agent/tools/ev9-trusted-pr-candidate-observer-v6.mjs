@@ -126,6 +126,20 @@ function producerPrefixChecks(candidateWorkflowText, trustedWorkflowText, parseP
   ];
 }
 
+function reviewContextChecks(candidateWorkflowText, trustedWorkflowText, parsePrCandidateWorkflow) {
+  const candidateReview = parsePrCandidateWorkflow(candidateWorkflowText).get('independent-review-context');
+  const trustedReview = parsePrCandidateWorkflow(trustedWorkflowText).get('independent-review-context');
+  return [
+    {
+      id: 'review-context-semantics-trusted-exact',
+      pass: Boolean(candidateReview)
+        && Boolean(trustedReview)
+        && JSON.stringify(candidateReview) === JSON.stringify(trustedReview),
+      evidence: 'the complete parsed independent-review-context job must match trusted base, including task resolution, packet generation, environment bindings, step order, and artifact upload semantics',
+    },
+  ];
+}
+
 function dependencyChecks(candidateRefs = {}, trustedRefs = {}) {
   return TRUSTED_CONSUMER_DEPENDENCIES.map(path => ({
     id: `consumer-dependency-trusted-exact:${path}`,
@@ -158,6 +172,7 @@ export async function observeTrustedPrCandidateContractV6(candidateInputs, trust
   const additions = [
     ...scopeChecks(candidateInputs.workflowText, parser.parsePrCandidateWorkflow),
     ...producerPrefixChecks(candidateInputs.workflowText, trustedInputs.workflowText, parser.parsePrCandidateWorkflow),
+    ...reviewContextChecks(candidateInputs.workflowText, trustedInputs.workflowText, parser.parsePrCandidateWorkflow),
     ...dependencyChecks(candidateInputs.dependencyRefs, trustedInputs.dependencyRefs),
     ...agentTrustChecks(candidateInputs.agentRefs, trustedInputs.agentRefs),
   ];
@@ -218,7 +233,7 @@ export async function selfTest() {
   const v5 = await loadV5();
   const trusted = liveFixture();
   await v5.selfTest();
-  assert.equal((await observeTrustedPrCandidateContractV6(trusted, trusted)).pass, true, 'live browser scope, producer prefix, and trusted dependency closure must satisfy exact semantics');
+  assert.equal((await observeTrustedPrCandidateContractV6(trusted, trusted)).pass, true, 'live browser scope, producer prefix, review context, and trusted dependency closure must satisfy exact semantics');
 
   const benign = {
     ...trusted,
@@ -259,6 +274,35 @@ export async function selfTest() {
       candidateInputs: {
         ...trusted,
         workflowText: replaceOnce(trusted.workflowText, fullVerificationHeader, injectedDockerStep),
+      },
+    },
+    {
+      expected: 'review-context-semantics-trusted-exact',
+      candidateInputs: {
+        ...trusted,
+        workflowText: replaceOnce(
+          trusted.workflowText,
+          '          const selection = await selectReviewTask();',
+          '          const selection = { taskId: "AO-8", mode: "bypass", source: "candidate" };',
+        ),
+      },
+    },
+    {
+      expected: 'review-context-semantics-trusted-exact',
+      candidateInputs: {
+        ...trusted,
+        workflowText: replaceOnce(trusted.workflowText, '            --verify-git', '            --skip-git-verification'),
+      },
+    },
+    {
+      expected: 'review-context-semantics-trusted-exact',
+      candidateInputs: {
+        ...trusted,
+        workflowText: replaceOnce(
+          trusted.workflowText,
+          '          name: independent-review-context-${{ github.event.pull_request.number }}-${{ needs.candidate-build.outputs.candidate-sha }}',
+          '          name: independent-review-context-untrusted',
+        ),
       },
     },
     {
@@ -310,11 +354,12 @@ export async function verify() {
   const failed = [
     ...scopeChecks(workflowText, parser.parsePrCandidateWorkflow),
     ...producerPrefixChecks(workflowText, trustedWorkflowText, parser.parsePrCandidateWorkflow),
+    ...reviewContextChecks(workflowText, trustedWorkflowText, parser.parsePrCandidateWorkflow),
     ...dependencyChecks(candidateRefs, trustedRefs),
     ...agentTrustChecks(candidateAgentRefs, trustedAgentRefs),
   ].filter(entry => !entry.pass).map(entry => entry.id);
   ok(failed.length === 0, `trusted PR candidate v6 observation failed: ${failed.join(',')}`);
-  console.log(`EV9_TRUSTED_PR_CANDIDATE_OBSERVER_V6_PASS candidate=${candidateSha} scopeChecks=1 producerPrefixChecks=1 dependencyChecks=${TRUSTED_CONSUMER_DEPENDENCIES.length} agentTrustChecks=1 falsePositives=0 falseNegatives=0`);
+  console.log(`EV9_TRUSTED_PR_CANDIDATE_OBSERVER_V6_PASS candidate=${candidateSha} scopeChecks=1 producerPrefixChecks=1 reviewContextChecks=1 dependencyChecks=${TRUSTED_CONSUMER_DEPENDENCIES.length} agentTrustChecks=1 falsePositives=0 falseNegatives=0`);
 }
 
 const command = process.argv[2];
