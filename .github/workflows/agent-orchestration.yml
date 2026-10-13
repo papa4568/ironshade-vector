@@ -158,6 +158,9 @@ jobs:
       - name: Run roadmap shadow simulator regressions
         run: node agent/tests/roadmap-shadow-simulator.mjs
 
+      - name: Run behavioral genome calibration regressions
+        run: node agent/tests/behavioral-genome-calibration.mjs
+
       - name: Validate affected-verification map
         run: node agent/tools/select-affected-verification.mjs --validate-only
 
