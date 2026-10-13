@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import {
   runBehavioralGenomeCalibration,
@@ -15,6 +18,7 @@ const first = runBehavioralGenomeCalibration(corpus, config, { candidateSha });
 const second = runBehavioralGenomeCalibration(corpus, config, { candidateSha });
 assert.deepEqual(second, first, 'EV-10 calibration must be deterministic for an unchanged corpus/config/candidate');
 assert.equal(first.mode, 'advisory', 'EV-10 must remain advisory');
+assert.equal(first.blocking, false, 'EV-10 calibration must never become a blocking decision');
 assert.equal(first.acceptedForEnforcement, false, 'EV-10 must not accept any domain for enforcement itself');
 assert.equal(first.candidatePassGranted, false, 'EV-10 calibration must never grant candidate acceptance');
 assert.equal(first.calibrationPass, true, 'representative calibration corpus must meet its measured error budgets');
@@ -54,6 +58,7 @@ falsePositiveCorpus.cases.push({
 });
 const falsePositive = runBehavioralGenomeCalibration(falsePositiveCorpus, config, { candidateSha });
 assert.equal(falsePositive.calibrationPass, false, 'a false positive above the zero budget must fail calibration');
+assert.equal(falsePositive.blocking, false, 'a calibration-budget failure must remain advisory');
 assert.equal(falsePositive.falsePositives, 1, 'the mislabeled simulation change must count as one false positive');
 assert.equal(falsePositive.domainMetrics.simulation.falsePositives, 1, 'false positive must be attributed to the simulation domain');
 
@@ -62,8 +67,42 @@ const simulationCase = falseNegativeCorpus.cases.find(entry => entry.id === 'sim
 simulationCase.mutations = [{ path: 'domains.simulation.time', value: 2.0000001 }];
 const falseNegative = runBehavioralGenomeCalibration(falseNegativeCorpus, config, { candidateSha });
 assert.equal(falseNegative.calibrationPass, false, 'a false negative above the zero budget must fail calibration');
+assert.equal(falseNegative.blocking, false, 'a false-negative calibration result must remain advisory');
 assert.equal(falseNegative.falseNegatives, 1, 'normalized-away semantic trial must count as one false negative');
 assert.equal(falseNegative.domainMetrics.simulation.falseNegatives, 1, 'false negative must be attributed to the simulation domain');
+
+const cliTemp = await mkdtemp(join(tmpdir(), 'ironshade-ev10-calibration-'));
+try {
+  const failingCorpusPath = join(cliTemp, 'failing-corpus.json');
+  await writeFile(failingCorpusPath, JSON.stringify(falsePositiveCorpus), 'utf8');
+  const advisoryCli = spawnSync(process.execPath, [
+    'agent/tools/behavioral-genome-calibration.mjs',
+    '--candidate-sha',
+    candidateSha,
+    '--config',
+    'agent/behavioral-genome.config.json',
+    '--corpus',
+    failingCorpusPath,
+    '--json',
+  ], { cwd: process.cwd(), encoding: 'utf8' });
+  assert.equal(advisoryCli.status, 0, `advisory calibration-budget failure must not fail CI: ${advisoryCli.stderr}`);
+  const advisoryReport = JSON.parse(advisoryCli.stdout);
+  assert.equal(advisoryReport.calibrationPass, false, 'CLI must preserve the failed calibration signal');
+  assert.equal(advisoryReport.blocking, false, 'CLI report must explicitly remain non-blocking');
+
+  const malformedCli = spawnSync(process.execPath, [
+    'agent/tools/behavioral-genome-calibration.mjs',
+    '--candidate-sha',
+    'not-a-sha',
+    '--config',
+    'agent/behavioral-genome.config.json',
+    '--corpus',
+    failingCorpusPath,
+  ], { cwd: process.cwd(), encoding: 'utf8' });
+  assert.notEqual(malformedCli.status, 0, 'invalid calibration invocation must still fail closed as a tooling error');
+} finally {
+  await rm(cliTemp, { recursive: true, force: true });
+}
 
 assert.throws(
   () => runBehavioralGenomeCalibration(corpus, config, { candidateSha: 'not-a-sha' }),
@@ -79,4 +118,4 @@ assert.throws(
   'calibration mutations must not escape through prototype paths',
 );
 
-console.log(`BEHAVIORAL_GENOME_CALIBRATION_PASS cases=${first.cases.length} validated=${first.validatedDomains.join(',')} falsePositives=${first.falsePositives} falseNegatives=${first.falseNegatives} unresolved=${first.unresolvedCases.length} mode=advisory`);
+console.log(`BEHAVIORAL_GENOME_CALIBRATION_PASS cases=${first.cases.length} validated=${first.validatedDomains.join(',')} falsePositives=${first.falsePositives} falseNegatives=${first.falseNegatives} unresolved=${first.unresolvedCases.length} blocking=${first.blocking} mode=advisory`);
