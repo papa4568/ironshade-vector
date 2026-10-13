@@ -1,0 +1,69 @@
+name: EV-12 Failure Recurrence Calibration
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+    paths:
+      - 'agent/failure-recurrence-calibration-corpus.json'
+      - 'agent/failure-memory.json'
+      - 'agent/tools/failure-recurrence-calibration.mjs'
+      - 'agent/tools/failure-recurrence-calibration-evidence.mjs'
+      - 'agent/tools/repository-immune-system.mjs'
+      - 'agent/tests/failure-recurrence-calibration.mjs'
+      - '.github/workflows/ev12-failure-recurrence-calibration.yml'
+      - 'docs/experimental-verification-roadmap.md'
+      - 'docs/experimental-verification-archive.md'
+      - 'AGENTS.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  calibrate:
+    name: Exact Candidate Failure Recurrence Calibration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out exact candidate revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Run EV-12 measured calibration regressions
+        run: node agent/tests/failure-recurrence-calibration.mjs
+
+      - name: Generate and verify exact-SHA EV-12 calibration evidence
+        env:
+          CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          mkdir -p .agent-immune-calibration
+          node agent/tools/failure-recurrence-calibration.mjs \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --output .agent-immune-calibration/calibration.json
+          node agent/tools/failure-recurrence-calibration-evidence.mjs \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --report .agent-immune-calibration/calibration.json \
+            --require-pass
+
+      - name: Upload exact-SHA EV-12 calibration evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: failure-recurrence-calibration-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'push' }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          path: .agent-immune-calibration/calibration.json
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
