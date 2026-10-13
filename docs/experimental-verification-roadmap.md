@@ -27,13 +27,6 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
 
 ## Active experimental queue
 
-- [ ] **EV-9 — Promote EV-2 Causal Evidence Independence**
-  - Resolve or explicitly exclude every currently important criterion that is circular or unsupported before enabling enforcement for that criterion.
-  - Measure classification stability and false-positive/false-negative behavior using representative independent, circular, unsupported, and shared-infrastructure cases.
-  - Enforce independence only for criteria with a materially independent observation path; unknown/malformed evidence must fail closed and no independence result may synthesize missing proof.
-  - Preserve an explicit rollback path to the current advisory analyzer and verify existing exact-SHA candidate evidence remains authoritative.
-  - Update `AGENTS.md` and the evidence-independence contract, then archive EV-9 with exact-SHA evidence and independent-review result.
-
 - [ ] **EV-10 — Calibrate EV-3 Behavioral Genome**
   - Build or reuse a representative corpus of intentional behavioral changes and known non-semantic noise, then record unexplained-delta false positives and missed semantic-change false negatives by candidate domain.
   - Keep the genome advisory in this item: do not add a new blocking rule, change default enforcement, or replace the tests that produce or independently verify behavior.

@@ -22,6 +22,12 @@
       "description": "Owns exact-head production verification and candidate artifact fan-out."
     },
     {
+      "id": "pr-candidate-head-observer",
+      "kind": "observer",
+      "path": "agent/tools/pr-candidate-head-observer.mjs",
+      "description": "Independently inspects the PR Candidate workflow's exact-head checkout, candidate identity propagation, downstream consumers, and final evidence checkout."
+    },
+    {
       "id": "agent-orchestration-workflow",
       "kind": "observer",
       "path": ".github/workflows/agent-orchestration.yml",
@@ -53,10 +59,10 @@
     },
     {
       "id": "orchestration-head-observation",
-      "description": "The orchestration workflow independently runs on the pull-request head identity while producing EV advisory evidence.",
+      "description": "A separate semantic observer inspects the PR Candidate workflow itself and verifies its exact-head checkout, identity propagation, downstream consumers, and final evidence checkout.",
       "materiality": "material",
       "sourceDependencies": [
-        { "sourceId": "agent-orchestration-workflow", "role": "derives" },
+        { "sourceId": "pr-candidate-head-observer", "role": "derives" },
         { "sourceId": "github-pr-event", "role": "shared-infrastructure" },
         { "sourceId": "git-cli", "role": "shared-infrastructure" }
       ]
@@ -70,7 +76,7 @@
     },
     {
       "id": "exact-head-workflow-observation",
-      "description": "A separate workflow observes the exact pull-request head identity through GitHub and Git infrastructure.",
+      "description": "A separate repository observer directly inspects the PR Candidate workflow's immutable-head contract and its identity propagation to browser, Android, review, and final evidence consumers.",
       "signalIds": ["orchestration-head-observation"]
     }
   ],

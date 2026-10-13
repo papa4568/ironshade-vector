@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "enforcementEnabled": true,
+  "rollback": {
+    "environmentVariable": "IRONSHADE_EVIDENCE_INDEPENDENCE_ENFORCEMENT",
+    "disabledValue": "0",
+    "behavior": "Run the same evidence graph analysis, semantic observer, and calibrations, retain exact-SHA evidence, and remove only the promoted blocking decision."
+  },
+  "enforcedCriterionIds": [
+    "candidate-workflows-use-exact-pr-head"
+  ],
+  "excludedImportantCriteria": [
+    {
+      "criterionId": "candidate-evidence-rejects-cross-sha-proof",
+      "reason": "The current material observation executes agent/tools/candidate-evidence.mjs itself, so the EV-2 graph correctly classifies this criterion as circular. Existing candidate-evidence regressions and exact-SHA ledger validation remain authoritative while independence enforcement for this criterion stays advisory until a materially independent observer exists."
+    }
+  ],
+  "semanticObserver": {
+    "criterionId": "candidate-workflows-use-exact-pr-head",
+    "observerSourceId": "pr-candidate-head-observer",
+    "workflowPath": ".github/workflows/pr-candidate.yml",
+    "falsePositiveBudget": 0,
+    "falseNegativeBudget": 0
+  },
+  "calibration": {
+    "requiredCaseIds": [
+      "independent-observer",
+      "circular-implementation",
+      "unsupported-supporting-only",
+      "independent-with-shared-infrastructure"
+    ],
+    "stabilityRuns": 2,
+    "falsePositiveBudget": 0,
+    "falseNegativeBudget": 0
+  }
+}

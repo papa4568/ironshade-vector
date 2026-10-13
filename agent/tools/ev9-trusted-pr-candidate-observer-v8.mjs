@@ -121,13 +121,11 @@ function fullVerificationBoundary(workflowText) {
   const directKeys = full
     ? full.filter(line => line.indent === 8 && line.text.includes(':')).map(line => line.text.split(':', 1)[0])
     : [];
-
   const exactEnv = env !== null
     && env.length === 2
     && env[0] === `CANDIDATE_SHA: ${PR_HEAD}`
     && env[1] === `VITE_API_BASE_URL: ${VITE_API}`;
   const exactStepShape = JSON.stringify(directKeys) === JSON.stringify(['id', 'env', 'run']);
-
   return [
     {
       id: 'candidate-workflow-no-global-shell-injection',
@@ -136,8 +134,7 @@ function fullVerificationBoundary(workflowText) {
     },
     {
       id: 'candidate-build-no-job-shell-injection',
-      pass: Boolean(producer)
-        && !['env', 'defaults', 'container', 'services'].some(key => jobMappingPresent(producer, key)),
+      pass: Boolean(producer) && !['env', 'defaults', 'container', 'services'].some(key => jobMappingPresent(producer, key)),
       evidence: 'candidate-build may not define job-level env/defaults/container/services that alter the reviewed host execution boundary',
     },
     {
@@ -206,7 +203,6 @@ function liveIntegrationChecks(workflowText, ev9ChangedPaths, parsePrCandidateWo
       'include-hidden-files': 'true',
       'retention-days': '30',
     });
-
   return [
     {
       id: 'ev9-live-integration-required-iff-implementation-changed',
@@ -321,6 +317,16 @@ function integrationBlock() {
   ].join('\n');
 }
 
+function removeIntegration(workflowText) {
+  const startMarker = `\n      - name: ${EV9_REGRESSION_NAME}\n`;
+  const endMarker = '\n  independent-review-context:';
+  const start = workflowText.indexOf(startMarker);
+  if (start < 0) return workflowText;
+  const end = workflowText.indexOf(endMarker, start + startMarker.length);
+  ok(end > start, 'v8 self-test live integration end marker missing');
+  return `${workflowText.slice(0, start)}${workflowText.slice(end)}`;
+}
+
 function insertIntegrationAfterUpload(workflowText) {
   const marker = '\n  independent-review-context:';
   const index = workflowText.indexOf(marker);
@@ -363,13 +369,17 @@ export async function selfTest() {
   expectAttack(containerAttack, 'candidate-build-no-job-shell-injection', 'job-level container substitution');
 
   const changedPath = [...EV9_LIVE_AGENT_PATHS][0];
-  const noIntegration = liveIntegrationChecks(workflowText, [changedPath], parser.parsePrCandidateWorkflow);
+  const withoutIntegration = removeIntegration(workflowText);
+  const noIntegration = liveIntegrationChecks(withoutIntegration, [changedPath], parser.parsePrCandidateWorkflow);
   assert.equal(noIntegration.find(check => check.id === 'ev9-live-integration-required-iff-implementation-changed')?.pass, false, 'EV-9 implementation change without live integration must fail');
 
-  const integrated = insertIntegrationAfterUpload(workflowText);
+  const integrated = insertIntegrationAfterUpload(withoutIntegration);
   assert.equal(liveIntegrationChecks(integrated, [changedPath], parser.parsePrCandidateWorkflow).every(check => check.pass), true, 'exact post-publication EV-9 live integration must pass');
+  if (workflowText.includes(`- name: ${EV9_REGRESSION_NAME}`)) {
+    assert.equal(liveIntegrationChecks(workflowText, [changedPath], parser.parsePrCandidateWorkflow).every(check => check.pass), true, 'live EV-9 candidate integration must satisfy the reviewed block');
+  }
 
-  const beforeUpload = insertIntegrationBeforeUpload(workflowText);
+  const beforeUpload = insertIntegrationBeforeUpload(withoutIntegration);
   assert.equal(liveIntegrationChecks(beforeUpload, [changedPath], parser.parsePrCandidateWorkflow).find(check => check.id === 'ev9-live-integration-required-iff-implementation-changed')?.pass, false, 'pre-publication EV-9 integration must fail');
 
   const bypassGate = replaceOnce(integrated, 'node agent/tools/evidence-independence-promotion-gate.mjs gate \\', 'echo bypass \\');

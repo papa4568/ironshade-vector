@@ -95,6 +95,11 @@ jobs:
       - name: Run causal evidence independence regressions
         run: node agent/tests/evidence-independence.mjs
 
+      - name: Run promoted causal evidence independence regressions
+        run: |
+          node agent/tests/evidence-independence-promotion.mjs
+          node agent/tests/pr-candidate-head-observer.mjs
+
       - name: Record causal evidence independence advisory report
         env:
           CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
@@ -104,7 +109,17 @@ jobs:
             --candidate-sha "$CANDIDATE_SHA" \
             --output .agent-independence/report.json
 
-      - name: Upload causal evidence independence advisory evidence
+      - name: Enforce promoted causal evidence independence scope
+        env:
+          CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node agent/tools/evidence-independence-promotion-gate.mjs gate \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --graph agent/evidence-independence.json \
+            --policy agent/evidence-independence-policy.json \
+            --output .agent-independence/promotion-gate.json
+
+      - name: Upload causal evidence independence advisory and enforcement evidence
         uses: actions/upload-artifact@v7
         with:
           name: causal-evidence-independence-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'push' }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
