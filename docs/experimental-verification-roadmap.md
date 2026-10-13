@@ -27,12 +27,6 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
 
 ## Active experimental queue
 
-- [ ] **EV-11 — Enforce Validated Behavioral Genome Scope**
-  - Use only EV-10 evidence to classify validated domain deltas as blocking, declaration-required, or informational; unsupported domains remain advisory.
-  - Add fail-closed enforcement only for the validated scope while preserving deterministic normalization/exclusion rules, exact-SHA binding, and the underlying behavioral tests.
-  - Verify disabling genome enforcement restores the previous pipeline cleanly and leaves product/runtime behavior unchanged.
-  - Done when `AGENTS.md` and the behavioral-genome contract document the promoted scope and rollback, and the exact candidate is archived with required proofs and independent review.
-
 - [ ] **EV-12 — Calibrate EV-4 Failure Recurrence**
   - Validate recurrence clustering against representative historical and synthetic failures; measure over-clustering, under-clustering, and recurrence-detection errors.
   - Prove bounded memory/compaction remains deterministic for the measured corpus without enabling any new antibody as a blocking repository check.

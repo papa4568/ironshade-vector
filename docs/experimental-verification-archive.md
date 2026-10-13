@@ -393,3 +393,41 @@ Rollback is deterministic: remove the EV-10 calibration invocation from `scripts
 ### Promotion status
 
 Calibration complete; no behavioral-genome enforcement was promoted in EV-10. All six measured post-normalization domain probes are eligible for EV-11 review under the recorded exclusions/normalization limits, while load latency, sub-threshold normalized changes, and unobserved product behavior remain outside the claim. The next experimental promotion item is EV-11.
+
+## EV-11 — Enforce Validated Behavioral Genome Scope
+
+Completed 2026-10-13 as a narrow enforced promotion of the EV-3 behavioral genome using only EV-10-calibrated scope. The original EV-3 prototype and EV-10 calibration records above remain unchanged history.
+
+### Implemented
+
+- Added `agent/behavioral-genome-promotion-policy.json`, pinned to the exact EV-10 config digest `ee78e5fbdd6013a62452d1a53c761b5319d5c6a79be988bc2207aa1f714e4a9e`, corpus digest `1450d50e1337580e9732cf9a53e22f41a3dcbe1615580da613a923439418b360`, zero false-positive/false-negative budgets, and the same representative route.
+- Promoted only the six EV-10-validated post-normalization domains—`simulation`, `mission`, `presentation`, `load`, `resources`, and `performance`—as declaration-required. A changed promoted-domain digest blocks when undeclared; an exact task-bound declaration keeps the delta visible but does not synthesize a candidate pass.
+- Kept the three EV-10 unresolved constraints explicitly informational: excluded `load.loadDurationMs`, sub-threshold values hidden by the pinned rounding/bucketing normalizers, and behavior not observed by the representative route. Any config/corpus/normalizer/promotion-scope drift requires separate recalibration and reviewed policy change.
+- Added `agent/tools/behavioral-genome-promotion-gate.mjs`, `agent/tests/behavioral-genome-promotion.mjs`, and `agent/tools/behavioral-genome-promotion-evidence.mjs` for fail-closed policy/declaration validation, exact base/head binding, measured promotion regressions, rollback behavior, and independent exact-evidence recomputation.
+- Upgraded `scripts/run-behavioral-genome-shadow.mjs` to capture the representative route on the exact PR base and exact PR head after the authoritative full verification/build, while retaining repeat stability and EV-10 calibration evidence. Same-lockfile base capture reuses only the already locked dependency installation; changed lockfiles force isolated `npm ci`.
+- Made the existing trusted EV-3 producer slot blocking in `.github/workflows/pr-candidate.yml` without adding a second full build, and added EV-11 exact-evidence verification to the independent-review context when EV-11 is the selected review task.
+- Documented the permanent enforcement, declaration, exclusion, proof-preservation, and rollback contract in `AGENTS.md`.
+
+### Evidence
+
+The first enforcement candidate `b8847f225065e77993b3f05032b01c950c04333e` exposed an existing EV-9 trust-boundary dependency: renaming the two post-build EV-3 workflow slots caused Agent Orchestration run `38445558125` to fail the trusted EV-9 observer bootstrap even though the underlying EV-9 gate itself passed. The same branch restored the exact trusted slot names and the original producer timeout while retaining EV-11's blocking semantics; no EV-9 rule was weakened.
+
+Corrected implementation candidate `07bcba40a1e0881621a5139151d3005d735bd05c` passed Agent Orchestration run `38446044168` and every technically available exact-candidate runtime/build gate in PR Candidate Verification run `38446044202` before this archive transition: the authoritative full repository verification/production build, architecture invariants, EV-8 enforcement, EV-9 enforcement, EV-11 base/head gate, exact candidate bundle, desktop and mobile-landscape browser journeys, APK construction/integrity and delivery, API 35 product smoke, API 36 large-screen smoke, and aggregate Android verification all succeeded.
+
+Exact-SHA EV-11 artifact `11839225028` (`behavioral-genome-shadow-374-07bcba40a1e0881621a5139151d3005d735bd05c`) has GitHub Actions digest `sha256:131570f1462bb1bf381c9e9e8ffa261eb2e1c3ecd2307debfdbc6de5621924ae`. Its promotion report is bound to base `97d1303aa1f43fafdd7f7751c7260baa5bfa219e` and candidate `07bcba40a1e0881621a5139151d3005d735bd05c`, has policy digest `c26634340c7a94078c28d1871d25b205ea641dbb7afbceba8b58e812d27c6a30`, report digest `13ab25b9342d303d4dd9140a2647358476bcdca68825e46d35755385fd126d62`, `mode="enforced"`, `verdict="pass"`, `blocking=false`, `wouldBlock=false`, `changedDomains=[]`, `blockingDomains=[]`, and `candidatePassGranted=false`. The exact base and candidate normalized root digests both equal `d0b8e3b370dcd2892b29fb19c597c3ab166d2f9e5f73798e88a22133499e0e40`.
+
+The EV-11 promotion regression re-ran the EV-10 corpus under the pinned policy and measured zero false positives across all three behavior-preserving controls (`0/3`) and zero false negatives across the six representative semantic domain trials (`0/6`). Each calibrated semantic trial blocks when undeclared and becomes non-blocking only when its exact changed domain is explicitly declared; the three noise/unresolved controls remain outside promoted semantic resolution. The rollback regression proves a calibrated undeclared delta still reports `wouldBlock=true` while enforcement disabled produces `blocking=false` and `verdict="disabled-advisory"`.
+
+APK artifact `11839710202` is bound to the same implementation candidate with GitHub Actions digest `sha256:18762f8b6250de52d5c8fa01bb86aac34cc18e0bea88965d81481384d5a48cc5`. Desktop browser artifact `11839416077` has digest `sha256:98e55f8d8497364eaf80963220d9297f8e8b70062a20914c13997c1681203f7c`; mobile-landscape browser artifact `11839306358` has digest `sha256:bea407c90c3b5115abf146fe2cd0b8ffbfdb5fb533c6c488d6fab4c23b0e4ca0`; API 35 artifact `11839515963` has digest `sha256:007082489cc17761ca06084ca8e7825e1c589531169bf348572f376b185c2492`; and API 36 large-screen artifact `11838757125` has digest `sha256:266ad6bb99ac3696407e23579eed88fe3c389c5be39217d58f1317acb1bad377`.
+
+This archive transition follows the repository's independent-review self-reference rule. It records the immutable pre-archive implementation candidate and measured exact-SHA proof set. The resulting closeout SHA cannot literally contain its own Git SHA because that SHA depends on these archive contents, so it must pass all technically available exact-head gates and a fresh trusted EV-11 review; no predecessor review is inherited and no final evidence is synthesized from `07bcba40a1e0881621a5139151d3005d735bd05c`.
+
+### Isolation and rollback
+
+EV-11 changes verification/governance only. Base capture is created from an exact `git archive` into disposable temporary state, candidate route evidence is written only into the CI workspace, and the gate compares canonical post-normalization domain digests without mutating product/runtime state. Existing full-build, browser, Android/APK, exact-SHA, EV-8, EV-9, architecture-invariant, and independent-review gates remain authoritative.
+
+Rollback is deterministic: set `IRONSHADE_BEHAVIORAL_GENOME_ENFORCEMENT=0` to run the same exact-base/exact-head route captures, EV-10 calibration, declaration parsing, and evidence generation while removing only the EV-11 blocking decision. Removing the EV-11 policy/gate/evidence wiring restores the pre-EV-11 advisory EV-3/EV-10 behavior; product/runtime behavior and every pre-existing proof obligation remain unchanged.
+
+### Promotion status
+
+Promoted for the six EV-10-validated post-normalization domains as declaration-required candidate evidence. Load latency via excluded `load.loadDurationMs`, sub-threshold normalized changes, and unobserved product behavior remain advisory/outside the claim. EV-4 failure recurrence and antibody governance remain experimental; the next experimental task is EV-12.
