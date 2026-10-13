@@ -467,3 +467,36 @@ Rollback is deterministic: remove `.github/workflows/ev12-failure-recurrence-cal
 ### Promotion status
 
 Calibration complete; no antibody was accepted or promoted. Only the two zero-error measured signatures named above are eligible for EV-13 governance review. The known artifact-upload ambiguity and ready-state aliasing limitations remain advisory. The next experimental promotion item is EV-13.
+
+## EV-13 — Define Antibody Governance
+
+Completed 2026-10-13 as a governance-only graduation of the EV-4/EV-12 antibody mechanism. No antibody enforcement was enabled.
+
+### Implemented
+
+- Added `agent/antibody-governance-policy.json` and `agent/antibody-governance.schema.json` as the permanent reviewed lifecycle contract. The policy keeps `enforcementEnabled=false`, requires trusted review for `accept`, `update`, and `retire`, and requires update/retire transitions to bind the exact prior decision digest.
+- Pinned governance admission to the EV-12 corpus digest `ab1be48150edfad5f16f97339f7e5c62a8d8eb6f56382b47749a1ac008c2c493` and EV-4 failure-memory digest `d6f151d1bb399943b959d2ff03f63c69ac1f78414d68ff353de685130aea2254`. Only `android-screenshot-capture-transport-timeout` and `candidate-artifact-integrity-drift` are eligible for governance review; all EV-12 advisory/ambiguous groups remain ineligible until separately recalibrated.
+- Mapped accepted antibody kinds to the existing canonical source of truth instead of a second executable registry: architecture invariants to `agent/architecture-invariants.json`, impact-map rules to `agent/impact-map.json`, and focused regressions/telemetry checks to existing repository check files. Governance decisions under `agent/antibody-decisions/` are audit pointers only and cannot serve as the executable check source.
+- Added `agent/antibody-governance-calibration-corpus.json`, `agent/tools/antibody-governance.mjs`, `agent/tools/antibody-governance-evidence.mjs`, and `agent/tests/antibody-governance.mjs`. The corpus covers reviewed valid acceptance for both eligible signatures, unreviewed rejection, advisory-scope rejection, wrong-source rejection, duplicate-registry rejection, exact-digest update, stale-digest rejection, and reviewed retirement.
+- Added `.github/workflows/ev13-antibody-governance.yml` to run the governance regression and independently recompute both active and rollback reports from the exact PR head. EV-13 commits no accepted decision record, leaves `acceptedForEnforcement=false` and `candidatePassGranted=false`, and reserves the first narrow promotion for EV-14.
+- Documented the permanent ownership, source-of-truth, lifecycle, proof-preservation, and rollback rules in `AGENTS.md`.
+
+### Evidence
+
+Implementation candidate `14c11716f3e6f5882e4159a59625e84acae76f34` passed EV-13 Antibody Governance run `38480296094`. Exact-SHA artifact `11855848379` (`antibody-governance-381-14c11716f3e6f5882e4159a59625e84acae76f34`) has GitHub Actions digest `sha256:3338c1072cb40bffb3e2e574ebd555292b0ee6a9402ab9f17fd2a9b9c9e36485`.
+
+The active report records `governancePass=true`, `governanceEnabled=true`, `enforcementEnabled=false`, `acceptedForEnforcement=false`, `candidatePassGranted=false`, and exactly the two EV-12 zero-error truth IDs. Across the reviewed lifecycle corpus it measured `transitionFalsePositives=0`, `transitionFalseNegatives=0`, `promotionFalsePositives=0`, and `promotionFalseNegatives=0`, all within zero budgets. The same exact head also passed EV-12 Failure Recurrence Calibration run `38480295579`, re-establishing the pinned eligibility boundary independently of EV-13's governance logic.
+
+The rollback report for the same candidate ran with `IRONSHADE_ANTIBODY_GOVERNANCE=0`, remained `governancePass=true`, recomputed the same calibration evidence, authorized zero promotions, preserved `agent/failure-memory.json` unchanged, kept EV-4 advisory, and reported `existingEnforcementChanged=false`. No accepted governance decision was committed.
+
+This archive transition follows the repository's independent-review self-reference rule. It records the immutable pre-archive implementation candidate and exact-SHA governance artifact. The resulting closeout SHA cannot literally contain its own Git SHA because that SHA depends on these archive contents, so it must pass all technically available exact-head gates and a fresh trusted EV-13 review; no predecessor review is inherited and no final evidence is synthesized from `14c11716f3e6f5882e4159a59625e84acae76f34`.
+
+### Isolation and rollback
+
+EV-13 changes verification/governance only. The validator reads committed EV-12/EV-4 evidence and governance contracts, evaluates cloned decision fixtures in memory, writes only ephemeral exact-SHA reports in CI, and cannot alter product/runtime state or any existing candidate-acceptance gate. Decision history is review metadata and never replaces the canonical executable check.
+
+Rollback is deterministic: set `IRONSHADE_ANTIBODY_GOVERNANCE=0` to recompute the same eligibility and lifecycle calibration while authorizing zero future promotions. Removing the EV-13 policy/schema/calibration/tool/test/workflow restores the pre-EV-13 advisory EV-4/EV-12 state. Existing full verification, architecture invariants, EV-8/EV-9/EV-11 enforcement, browser/Android/APK, exact-SHA evidence, and trusted independent review remain authoritative throughout rollback.
+
+### Promotion status
+
+Governance promoted as permanent repository policy, but no antibody was accepted for enforcement and no executable gate was added. The two EV-12 zero-error signatures remain the only governance-eligible candidates, and EV-14 must select and promote at most one of them through its existing canonical check surface. The next experimental promotion item is EV-14.
