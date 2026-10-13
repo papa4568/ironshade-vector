@@ -71,7 +71,7 @@ assert.equal(calibration.baselinePass, true);
 assert.equal(calibration.falsePositiveTrials, 4);
 assert.equal(calibration.falsePositives, 0);
 assert.equal(calibration.falsePositiveRate, 0);
-assert.equal(calibration.falseNegativeTrials, 10);
+assert.equal(calibration.falseNegativeTrials, 11);
 assert.equal(calibration.falseNegatives, 0);
 assert.equal(calibration.falseNegativeRate, 0);
 assert.equal(calibration.negativeControls.every(entry => entry.passed && !entry.falsePositive), true);
@@ -81,6 +81,7 @@ for (const id of [
   'comment-spoofs-exact-head-ref',
   'later-checkout-overrides-producer',
   'source-bound-build-uses-synthetic-event-sha',
+  'source-bound-build-comment-spoof',
   'identity-assertion-commented-out',
   'review-context-synthetic-event-sha',
   'browser-consumer-synthetic-event-sha',
