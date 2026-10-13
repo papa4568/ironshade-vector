@@ -6,10 +6,12 @@ import {
   evaluateBehavioralGenomePromotion,
   validateBehavioralGenomePromotionPolicy,
 } from '../tools/behavioral-genome-promotion-gate.mjs';
+import { verifyBehavioralGenomePromotionEvidence } from '../tools/behavioral-genome-promotion-evidence.mjs';
 
 const policy = JSON.parse(await readFile(new URL('../behavioral-genome-promotion-policy.json', import.meta.url), 'utf8'));
 const config = JSON.parse(await readFile(new URL('../behavioral-genome.config.json', import.meta.url), 'utf8'));
 const corpus = JSON.parse(await readFile(new URL('../behavioral-genome-calibration-corpus.json', import.meta.url), 'utf8'));
+const prCandidateWorkflow = await readFile(new URL('../../.github/workflows/pr-candidate.yml', import.meta.url), 'utf8');
 
 function mutateAtPath(root, path, value) {
   const segments = path.split('.').filter(Boolean);
@@ -36,12 +38,13 @@ assert.equal(calibration.falseNegatives, 0, 'EV-11 promotion scope must have zer
 assert.deepEqual(calibration.validatedDomains, ['load', 'mission', 'performance', 'presentation', 'resources', 'simulation']);
 assert.equal(calibration.candidatePassGranted, false, 'calibration must never grant candidate acceptance');
 
+const stableCandidateObservations = structuredClone(corpus.baselineObservations);
 const stable = evaluateBehavioralGenomePromotion({
   policy,
   config,
   corpus,
   baseObservations: corpus.baselineObservations,
-  candidateObservations: structuredClone(corpus.baselineObservations),
+  candidateObservations: stableCandidateObservations,
   baseSha,
   candidateSha,
   taskId: 'EV-11',
@@ -50,6 +53,18 @@ assert.equal(stable.verdict, 'pass', 'unchanged normalized behavior must pass th
 assert.equal(stable.blocking, false);
 assert.deepEqual(stable.changedDomains, []);
 assert.equal(stable.candidatePassGranted, false, 'promoted genome evidence may only block/report');
+verifyBehavioralGenomePromotionEvidence(stable, {
+  policy,
+  config,
+  corpus,
+  baseObservations: corpus.baselineObservations,
+  candidateObservations: stableCandidateObservations,
+  baseSha,
+  candidateSha,
+  taskId: 'EV-11',
+  requirePass: true,
+  env: {},
+});
 
 const semanticCases = corpus.cases.filter(entry => entry.kind === 'semantic-change');
 for (const entry of semanticCases) {
@@ -110,12 +125,13 @@ for (const entry of noiseCases) {
 
 const simulationCase = semanticCases.find(entry => entry.expectedChangedDomains.includes('simulation'));
 assert(simulationCase, 'simulation semantic calibration case is required');
+const rollbackCandidateObservations = observationsFor(simulationCase);
 const rollback = evaluateBehavioralGenomePromotion({
   policy,
   config,
   corpus,
   baseObservations: corpus.baselineObservations,
-  candidateObservations: observationsFor(simulationCase),
+  candidateObservations: rollbackCandidateObservations,
   baseSha,
   candidateSha,
   taskId: 'EV-11',
@@ -126,6 +142,39 @@ assert.equal(rollback.blocking, false, 'rollback must remove only the blocking d
 assert.equal(rollback.verdict, 'disabled-advisory');
 assert.equal(rollback.mode, 'advisory-rollback');
 assert.deepEqual(rollback.blockingDomains, ['simulation']);
+verifyBehavioralGenomePromotionEvidence(rollback, {
+  policy,
+  config,
+  corpus,
+  baseObservations: corpus.baselineObservations,
+  candidateObservations: rollbackCandidateObservations,
+  baseSha,
+  candidateSha,
+  taskId: 'EV-11',
+  requirePass: true,
+  env: { IRONSHADE_BEHAVIORAL_GENOME_ENFORCEMENT: '0' },
+});
+assert.throws(
+  () => verifyBehavioralGenomePromotionEvidence(rollback, {
+    policy,
+    config,
+    corpus,
+    baseObservations: corpus.baselineObservations,
+    candidateObservations: rollbackCandidateObservations,
+    baseSha,
+    candidateSha,
+    taskId: 'EV-11',
+    requirePass: true,
+    env: {},
+  }),
+  /does not match exact base\/head evidence recomputation|does not match the active rollback setting/,
+  'rollback evidence must fail closed when the verifier is not running under the same rollback setting',
+);
+assert.match(
+  prCandidateWorkflow,
+  /Verify EV-11 exact-candidate promotion evidence[\s\S]*behavioral-genome-promotion-evidence\.mjs[\s\S]*--require-pass/,
+  'the authoritative independent-review workflow must exercise the rollback-aware EV-11 evidence verifier',
+);
 
 const tamperedConfig = structuredClone(config);
 tamperedConfig.domains.simulation.normalizers.time.decimals = 2;
@@ -171,4 +220,4 @@ assert.throws(
   'promotion evidence must bind distinct exact base/head revisions',
 );
 
-console.log('BEHAVIORAL_GENOME_PROMOTION_PASS falsePositives=0/3 falseNegatives=0/6 declarations=required rollback=advisory exactSha=bound scope=ev10-pinned');
+console.log('BEHAVIORAL_GENOME_PROMOTION_PASS falsePositives=0/3 falseNegatives=0/6 declarations=required rollback=workflow-verified exactSha=bound scope=ev10-pinned');
