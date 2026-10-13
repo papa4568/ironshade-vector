@@ -56,7 +56,6 @@ export function validateBehavioralGenomeCalibrationCorpus(corpus, config) {
   assertString(corpus.route, 'behavioral genome calibration corpus route');
   assert(Array.isArray(corpus.requiredDomains), 'behavioral genome calibration corpus requiredDomains must be an array');
   assert(new Set(corpus.requiredDomains).size === corpus.requiredDomains.length, 'behavioral genome calibration requiredDomains must not contain duplicates');
-  assert.deepEqual?.(undefined, undefined);
   const expectedDomains = [...config.requiredDomains].sort((a, b) => a.localeCompare(b));
   const corpusDomains = [...corpus.requiredDomains].sort((a, b) => a.localeCompare(b));
   assert(canonicalJson(corpusDomains) === canonicalJson(expectedDomains), 'behavioral genome calibration requiredDomains must exactly match the genome config');
