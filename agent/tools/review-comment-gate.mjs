@@ -35,6 +35,16 @@ export function extractReviewResult(body) {
   }
 }
 
+function rawCandidateSha(body) {
+  if (typeof body !== 'string') return null;
+  return body.match(/"candidateSha"\s*:\s*"([a-f0-9]{40})"/)?.[1] ?? null;
+}
+
+function conclusivelyTargetsDifferentCandidate(packet, body) {
+  const candidateSha = rawCandidateSha(body);
+  return candidateSha !== null && candidateSha !== packet.candidateSha;
+}
+
 function timestamp(comment) {
   const value = Date.parse(comment.updated_at ?? comment.created_at ?? '');
   return Number.isFinite(value) ? value : 0;
@@ -76,6 +86,7 @@ function parseTrustedHumanCandidates(packet, comments, { prAuthor } = {}) {
     const reviewerLogin = comment.user?.login;
     if (typeof reviewerLogin !== 'string' || reviewerLogin.trim().length === 0) continue;
     if (normalizedLogin(reviewerLogin) === prAuthorLogin) continue;
+    if (conclusivelyTargetsDifferentCandidate(packet, comment.body)) continue;
     let result;
     try {
       result = extractReviewResult(comment.body);
@@ -211,6 +222,7 @@ export async function selectAuthoritativeReviewCommentWithProvenance(packet, com
   for (const comment of comments) {
     if (!comment || typeof comment !== 'object' || comment.user?.login !== ACTIONS_LOGIN) continue;
     if (typeof comment.body !== 'string' || !comment.body.includes(TRUSTED_MAIN_MARKER)) continue;
+    if (conclusivelyTargetsDifferentCandidate(packet, comment.body)) continue;
     let result;
     try {
       result = extractReviewResult(comment.body);
