@@ -11,6 +11,7 @@ const PRODUCER_HEAD = '${{ needs.candidate-build.outputs.candidate-sha }}';
 const PRODUCER_ARTIFACT = '${{ needs.candidate-build.outputs.artifact-name }}';
 const SYNTHETIC_EVENT_SHA = '${{ github.sha }}';
 const CHECKOUT_ACTION = 'actions/checkout@v7';
+const SOURCE_BOUND_BUILD_ACTIVE_SHA256 = 'f3566aeed8d4bcbfa84ddf9c779047e30405d9c49a9a22f66704961a421703c5';
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -190,17 +191,8 @@ function sourceBoundBuildContract(producer) {
   const build = stepByName(producer, 'Run full repository verification and production build once');
   if (!failClosed(build) || build?.id !== 'full-verification') return false;
   if (build?.env?.CANDIDATE_SHA !== PR_HEAD) return false;
-  const run = runLines(build).join('\n');
-  const required = [
-    'test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"',
-    'git archive --format=tar "$CANDIDATE_SHA" | tar -xf - -C "$snapshot"',
-    'test ! -e "$snapshot/.git"',
-    'npm ci --ignore-scripts --no-audit --no-fund',
-    '--network none',
-    'npm run build',
-    'cp -a "$snapshot/dist" dist',
-  ];
-  return required.every(fragment => run.includes(fragment));
+  const activeRun = runLines(build).join('\n');
+  return sha256(activeRun) === SOURCE_BOUND_BUILD_ACTIVE_SHA256;
 }
 
 function outputContract(producer) {
@@ -241,7 +233,7 @@ export function observePrCandidateHeadContract({ workflowText, candidateSha } = 
   const checks = [
     check('candidate-build-checkout', 'Producer checks out the immutable PR head exactly once.', uniqueCheckout(producer, PR_HEAD), 'candidate-build must contain exactly one actions/checkout@v7 step bound to github.event.pull_request.head.sha'),
     check('candidate-build-install-scripts-disabled', 'Producer dependency installation is fail-closed against lifecycle hooks.', installScriptsDisabled(producer), 'candidate-build must use the reviewed npm ci --ignore-scripts command unconditionally'),
-    check('candidate-build-source-bound-snapshot', 'Full verification builds only the exact PR-head Git archive in a Git-less, networkless snapshot.', sourceBoundBuildContract(producer), 'full-verification must assert HEAD, archive CANDIDATE_SHA, remove Git metadata from the build surface, disable lifecycle hooks, and run the build with network disabled'),
+    check('candidate-build-source-bound-snapshot', 'Full verification builds only the exact PR-head Git archive in a Git-less, networkless snapshot.', sourceBoundBuildContract(producer), 'full-verification active shell body must exactly match the reviewed ordered source-bound build contract after comments are removed'),
     check('candidate-output-contract', 'Producer exposes the runtime-asserted exact SHA and artifact identity.', outputContract(producer), 'candidate-build outputs candidate-sha and artifact-name must come from the identity step'),
     check('candidate-identity-runtime-assertion', 'Producer identity output is tied to an unconditional runtime HEAD assertion.', identityContract(producer), 'id: identity must bind CANDIDATE_SHA to PR head, emit candidate/artifact outputs, and assert git rev-parse HEAD'),
     check('review-context-consumer', 'Independent review context consumes the producer exact SHA.', uniqueCheckout(review, PRODUCER_HEAD), 'independent-review-context must contain exactly one checkout bound to producer candidate-sha'),
@@ -318,6 +310,11 @@ export function calibratePrCandidateHeadObserver({ workflowText, candidateSha } 
     {
       id: 'source-bound-build-comment-spoof',
       workflowText: replaceOnce(workflowText, '          git archive --format=tar "$CANDIDATE_SHA" | tar -xf - -C "$snapshot"', '          # git archive --format=tar "$CANDIDATE_SHA" | tar -xf - -C "$snapshot"\n          echo "source-bound archive command removed"', 'source-bound archive comment spoof'),
+      expected: ['candidate-build-source-bound-snapshot'],
+    },
+    {
+      id: 'source-bound-build-quoted-string-spoof',
+      workflowText: replaceOnce(workflowText, '          git archive --format=tar "$CANDIDATE_SHA" | tar -xf - -C "$snapshot"', '          printf \'%s\\n\' \'git archive --format=tar "$CANDIDATE_SHA" | tar -xf - -C "$snapshot"\'', 'source-bound archive quoted-string spoof'),
       expected: ['candidate-build-source-bound-snapshot'],
     },
     {
