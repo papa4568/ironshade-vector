@@ -151,7 +151,44 @@ async function exactRun(repo, workflow, sha, pr) {
   return run;
 }
 
-async function evidence(repo, sha, pr) {
+export function extractEv12CalibrationMarkers(logs, sha) {
+  ok(typeof logs === 'string' && logs.trim(), 'EV-12 calibration log is unavailable');
+  const marker = prefix => logs
+    .split(/\r?\n/)
+    .map(line => line.slice(Math.max(0, line.indexOf(prefix))))
+    .find(line => line.startsWith(prefix));
+  const regression = marker('FAILURE_RECURRENCE_CALIBRATION_PASS ');
+  const report = marker('FAILURE_RECURRENCE_CALIBRATION mode=');
+  const evidencePass = marker('FAILURE_RECURRENCE_CALIBRATION_EVIDENCE_PASS ');
+  ok(regression, 'EV-12 regression PASS marker is missing');
+  ok(report?.includes(`candidate=${sha}`) && report.includes('pass=true') && report.includes('blocking=false'), 'EV-12 exact-SHA calibration report marker is invalid');
+  ok(evidencePass?.includes(`candidate=${sha}`) && evidencePass.includes('calibrationPass=true') && evidencePass.includes('blocking=false'), 'EV-12 exact-SHA evidence PASS marker is invalid');
+  return { regression, report, evidencePass };
+}
+
+async function exactExperimentalEvidence(repo, sha, pr, taskId) {
+  if (taskId !== 'EV-12') return null;
+  const run = await exactRun(repo, 'ev12-failure-recurrence-calibration.yml', sha, pr);
+  ok(run.conclusion === 'success', 'EV-12 exact-SHA calibration workflow did not pass');
+  const jobs = (await api(`repos/${repo}/actions/runs/${run.id}/jobs?per_page=100`)).jobs ?? [];
+  const calibration = latestNamedJob(jobs, 'Exact Candidate Failure Recurrence Calibration');
+  ok(calibration?.conclusion === 'success', 'EV-12 exact-SHA calibration job did not pass');
+  const logs = await apiText(`repos/${repo}/actions/jobs/${calibration.id}/logs`);
+  const markers = extractEv12CalibrationMarkers(logs, sha);
+  const artifacts = (await api(`repos/${repo}/actions/runs/${run.id}/artifacts?per_page=100`)).artifacts ?? [];
+  const expectedName = `failure-recurrence-calibration-${pr}-${sha}`;
+  const artifact = artifacts.find(entry => entry.name === expectedName);
+  ok(artifact && !artifact.expired && /^sha256:[0-9a-f]{64}$/i.test(artifact.digest ?? ''), 'EV-12 exact-SHA calibration artifact is missing, expired, or lacks a digest');
+  return {
+    taskId,
+    workflow: 'EV-12 Failure Recurrence Calibration',
+    run: { id: run.id, conclusion: run.conclusion, jobs: compactJobs(jobs) },
+    markers,
+    artifact: { id: artifact.id, name: artifact.name, digest: artifact.digest, expired: artifact.expired },
+  };
+}
+
+async function evidence(repo, sha, pr, taskId) {
   const candidate = await exactRun(repo, 'pr-candidate.yml', sha, pr);
   const candidateJobs = (await api(`repos/${repo}/actions/runs/${candidate.id}/jobs?per_page=100`)).jobs ?? [];
   requireProducerResults(candidateJobs);
@@ -167,10 +204,12 @@ async function evidence(repo, sha, pr) {
   ok(validation?.conclusion === 'success', 'Agent Orchestration validation did not pass');
 
   const artifacts = (await api(`repos/${repo}/actions/runs/${candidate.id}/artifacts?per_page=100`)).artifacts ?? [];
+  const experimentalEvidence = await exactExperimentalEvidence(repo, sha, pr, taskId);
   return {
     candidateRun: { id: candidate.id, conclusion: candidate.conclusion, jobs: compactJobs(candidateJobs) },
     orchestrationRun: { id: orchestration.id, conclusion: orchestration.conclusion, jobs: compactJobs(orchestrationJobs) },
     artifacts: artifacts.map(artifact => ({ id: artifact.id, name: artifact.name, digest: artifact.digest, expired: artifact.expired })),
+    experimentalEvidence,
     finalGateEvidence,
     finalJobId: final.id,
   };
@@ -245,7 +284,7 @@ async function run() {
   ok(main.commit?.sha === env('GITHUB_SHA'), 'workflow SHA is not current main');
 
   const packet = await exactCandidatePacket(repo, sha, taskId, pull.base?.sha ?? null);
-  const ev = await evidence(repo, sha, pr);
+  const ev = await evidence(repo, sha, pr, taskId);
   const diff = await diffText(repo, pr);
   ok(diff.trim(), 'candidate diff is empty');
 
@@ -344,6 +383,21 @@ function selfTest() {
   const successfulFallback = evaluateFinalCandidateEvidence({ status: 'completed', conclusion: 'success', steps: [] }, successfulFallbackLog, packet.candidateSha);
   ok(!successfulFallback.reviewOnlyFailure, 'successful log fallback must require the exact completion marker');
 
+  const ev12Log = [
+    '2026-10-13T20:32:33Z FAILURE_RECURRENCE_CALIBRATION_PASS globalOver=1 globalUnder=1 recurrenceFp=2 recurrenceFn=2 eligibleOver=0 eligibleUnder=0 stable=android-screenshot-capture-transport-timeout,candidate-artifact-integrity-drift compaction=3/100 blocking=false mode=advisory',
+    `2026-10-13T20:32:33Z FAILURE_RECURRENCE_CALIBRATION mode=advisory blocking=false candidate=${packet.candidateSha} pass=true over=1 under=1 recurrenceFp=2 recurrenceFn=2 eligible=android-screenshot-capture-transport-timeout,candidate-artifact-integrity-drift`,
+    `2026-10-13T20:32:33Z FAILURE_RECURRENCE_CALIBRATION_EVIDENCE_PASS candidate=${packet.candidateSha} calibrationPass=true requirePass=true blocking=false`,
+  ].join('\n');
+  const ev12Markers = extractEv12CalibrationMarkers(ev12Log, packet.candidateSha);
+  ok(ev12Markers.regression.includes('eligibleOver=0') && ev12Markers.regression.includes('compaction=3/100'), 'EV-12 regression marker lost measured calibration evidence');
+  let wrongEv12CandidateRejected = false;
+  try {
+    extractEv12CalibrationMarkers(ev12Log, 'b'.repeat(40));
+  } catch (error) {
+    wrongEv12CandidateRejected = /report marker is invalid/.test(String(error));
+  }
+  ok(wrongEv12CandidateRejected, 'EV-12 marker extraction must reject a different candidate SHA');
+
   const validReview = {
     schemaVersion: 1,
     taskId: packet.taskId,
@@ -355,8 +409,9 @@ function selfTest() {
     findings: [],
   };
   validate(validReview, packet);
-  const prompt = buildPrompt(packet, { candidateRun: { conclusion: 'failure' }, finalGateEvidence: fallback }, 'diff');
+  const prompt = buildPrompt(packet, { candidateRun: { conclusion: 'failure' }, finalGateEvidence: fallback, experimentalEvidence: { taskId: 'EV-12', markers: ev12Markers } }, 'diff');
   ok(prompt.includes('read-only adversarial verifier'), 'trusted prompt contract missing');
+  ok(prompt.includes('FAILURE_RECURRENCE_CALIBRATION_EVIDENCE_PASS'), 'trusted prompt must include exact-SHA EV-12 calibration evidence');
   console.log('TRUSTED_INDEPENDENT_REVIEW_V4_SELF_TEST_PASS');
 }
 
