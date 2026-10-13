@@ -190,6 +190,7 @@ export function runBehavioralGenomeCalibration(corpus, config, { candidateSha } 
   return {
     schema: 'ironshade-behavioral-genome-calibration:v1',
     mode: 'advisory',
+    blocking: false,
     candidateSha,
     route: corpus.route,
     configSha256: sha256Value(config),
@@ -245,8 +246,7 @@ async function main() {
   const report = runBehavioralGenomeCalibration(corpus, config, { candidateSha: options.candidateSha });
   if (options.output) await writeJson(options.output, report);
   if (options.json) process.stdout.write(canonicalJson(report));
-  else console.log(`BEHAVIORAL_GENOME_CALIBRATION mode=${report.mode} candidate=${report.candidateSha} pass=${report.calibrationPass} falsePositives=${report.falsePositives} falseNegatives=${report.falseNegatives} validated=${report.validatedDomains.join(',')}`);
-  if (!report.calibrationPass) process.exitCode = 1;
+  else console.log(`BEHAVIORAL_GENOME_CALIBRATION mode=${report.mode} blocking=${report.blocking} candidate=${report.candidateSha} pass=${report.calibrationPass} falsePositives=${report.falsePositives} falseNegatives=${report.falseNegatives} validated=${report.validatedDomains.join(',')}`);
 }
 
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
