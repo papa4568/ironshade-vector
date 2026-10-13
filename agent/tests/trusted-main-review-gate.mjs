@@ -44,6 +44,7 @@ const pass = {
 };
 
 const envelope = result => `<!-- ironshade-independent-review:trusted-main-actions:v1 -->\n<!-- ironshade-independent-review:v1 -->\n\`\`\`json\n${JSON.stringify(result)}\n\`\`\``;
+const malformedEnvelope = sha => `<!-- ironshade-independent-review:trusted-main-actions:v1 -->\n<!-- ironshade-independent-review:v1 -->\n\`\`\`json\n{"taskId":"AO-6","candidateSha":"${sha}","verdict":"fail","notes":"bad\\q"}\n\`\`\``;
 const comment = {
   id: 12,
   created_at: '2026-10-10T12:00:10Z',
@@ -61,9 +62,29 @@ const selected = await selectAuthoritativeReviewCommentWithProvenance(packet, [c
 assert.equal(selected.commentId, 12);
 assert.equal(selected.authorAssociation, 'TRUSTED_MAIN_ACTIONS');
 
-const oldCandidateBot = {
+const staleMalformed = {
   ...comment,
   id: 13,
+  body: malformedEnvelope('c'.repeat(40)),
+};
+const selectedPastStaleMalformed = await selectAuthoritativeReviewCommentWithProvenance(packet, [staleMalformed, comment], {
+  prAuthor: 'papa4568',
+  verifyMachineRun: async () => ({ reviewer: 'github-actions[bot]', authorAssociation: 'TRUSTED_MAIN_ACTIONS' }),
+});
+assert.equal(selectedPastStaleMalformed.commentId, 12, 'malformed trusted review for a conclusively different candidate must not poison the current exact-SHA gate');
+
+await assert.rejects(
+  () => selectAuthoritativeReviewCommentWithProvenance(packet, [{ ...staleMalformed, id: 14, body: malformedEnvelope(candidateSha) }, comment], {
+    prAuthor: 'papa4568',
+    verifyMachineRun: async () => ({ reviewer: 'github-actions[bot]', authorAssociation: 'TRUSTED_MAIN_ACTIONS' }),
+  }),
+  /trusted independent review comment 14 is malformed/,
+  'malformed trusted review that claims the current candidate must remain fail closed',
+);
+
+const oldCandidateBot = {
+  ...comment,
+  id: 15,
   body: `<!-- ironshade-independent-review:github-models-actions:v1 -->\n<!-- ironshade-independent-review:v1 -->\n\`\`\`json\n${JSON.stringify({ ...pass, reviewerKind: 'github-models-actions', sourceWorkflow: 'Agent Orchestration' })}\n\`\`\``,
 };
 await assert.rejects(
@@ -242,6 +263,7 @@ assert.match(gateSource, /TRUSTED_REQUEST_MAX_AGE_MS/);
 assert.match(gateSource, /author_association/);
 assert.match(gateSource, /recent trusted command comment/);
 assert.match(gateSource, /run\.path === TRUSTED_WORKFLOW_PATH/);
+assert.match(gateSource, /conclusivelyTargetsDifferentCandidate/);
 assert.doesNotMatch(gateSource, /actions\/jobs\/\$\{job\.id\}\/logs/, 'candidate gate must not require privileged cross-run job-log downloads');
 assert.match(gateSource, /GITHUB_EVENT_PATH/, 'human fallback must derive the PR author from the trusted pull-request event');
 assert.match(gateSource, /normalizedLogin\(reviewerLogin\) === prAuthorLogin/, 'human fallback must reject self-authored PR-author verdicts');
