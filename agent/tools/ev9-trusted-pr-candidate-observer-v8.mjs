@@ -190,7 +190,7 @@ function liveIntegrationChecks(workflowText, ev9ChangedPaths, parsePrCandidateWo
     && uploadIndex >= 0
     && JSON.stringify(integrationIndexes) === JSON.stringify([uploadIndex + 1, uploadIndex + 2, uploadIndex + 3]);
   const regressionExact = failClosedStep(regressions)
-    && !Object.hasOwn(regressions, 'env')
+    && exactMap(regressions?.env, {})
     && !Object.hasOwn(regressions, 'shell')
     && exactRun(regressions, EV9_REGRESSION_SCRIPT);
   const gateExact = failClosedStep(gate)
