@@ -3,7 +3,10 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { canonicalJson } from './behavioral-genome.mjs';
-import { evaluateBehavioralGenomePromotion } from './behavioral-genome-promotion-gate.mjs';
+import {
+  evaluateBehavioralGenomePromotion,
+  resolveBehavioralGenomeEnforcement,
+} from './behavioral-genome-promotion-gate.mjs';
 
 const SHA_PATTERN = /^[a-f0-9]{40}$/;
 
@@ -36,10 +39,12 @@ export function verifyBehavioralGenomePromotionEvidence(report, {
   candidateSha,
   taskId,
   requirePass = false,
+  env = process.env,
 } = {}) {
   assert(SHA_PATTERN.test(baseSha ?? ''), 'baseSha must be a full lowercase commit SHA');
   assert(SHA_PATTERN.test(candidateSha ?? ''), 'candidateSha must be a full lowercase commit SHA');
   assert(typeof taskId === 'string' && taskId.trim(), 'taskId must be non-empty');
+  const expectedEnforcement = resolveBehavioralGenomeEnforcement(policy, undefined, env);
   const expected = evaluateBehavioralGenomePromotion({
     policy,
     config,
@@ -50,21 +55,26 @@ export function verifyBehavioralGenomePromotionEvidence(report, {
     baseSha,
     candidateSha,
     taskId,
-    enforcementOverride: report.enforcementEnabled,
+    enforcementOverride: expectedEnforcement,
   });
   assert(canonicalJson(report) === canonicalJson(expected), 'behavioral genome promotion report does not match exact base/head evidence recomputation');
   assert(report.baseSha === baseSha, 'behavioral genome promotion evidence base SHA mismatch');
   assert(report.candidateSha === candidateSha, 'behavioral genome promotion evidence candidate SHA mismatch');
   assert(report.taskId === taskId, 'behavioral genome promotion evidence task mismatch');
+  assert(report.enforcementEnabled === expectedEnforcement, 'behavioral genome promotion evidence enforcement state does not match the active rollback setting');
   assert(report.calibration.falsePositives === 0, 'behavioral genome promotion evidence contains false positives');
   assert(report.calibration.falseNegatives === 0, 'behavioral genome promotion evidence contains false negatives');
   assert(report.candidatePassGranted === false, 'behavioral genome promotion evidence must never grant candidate acceptance');
   if (requirePass) {
-    assert(report.enforcementEnabled === true, 'EV-11 closeout requires default behavioral genome enforcement to be enabled');
-    assert(report.mode === 'enforced', 'EV-11 closeout requires enforced mode');
     assert(report.blocking === false, 'EV-11 closeout behavioral genome evidence must not be blocking');
-    assert(report.verdict === 'pass', 'EV-11 closeout requires a passing behavioral genome promotion verdict');
     assert(report.calibration.calibrationPass === true, 'EV-11 closeout requires the pinned EV-10 calibration to pass');
+    if (expectedEnforcement) {
+      assert(report.mode === 'enforced', 'EV-11 closeout requires enforced mode when enforcement is enabled');
+      assert(report.verdict === 'pass', 'EV-11 closeout requires a passing behavioral genome promotion verdict when enforcement is enabled');
+    } else {
+      assert(report.mode === 'advisory-rollback', 'EV-11 rollback evidence requires advisory-rollback mode when enforcement is disabled');
+      assert(report.verdict === 'disabled-advisory', 'EV-11 rollback evidence requires a disabled-advisory verdict when enforcement is disabled');
+    }
   }
   return report;
 }
