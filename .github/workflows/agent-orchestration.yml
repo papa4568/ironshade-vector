@@ -158,8 +158,39 @@ jobs:
       - name: Run roadmap shadow simulator regressions
         run: node agent/tests/roadmap-shadow-simulator.mjs
 
-      - name: Run behavioral genome calibration regressions
-        run: node agent/tests/behavioral-genome-calibration.mjs
+      - name: Require exact-SHA EV-10 calibration proof
+        env:
+          CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          node agent/tests/behavioral-genome-calibration.mjs
+          mkdir -p .agent-genome-calibration
+          node agent/tools/behavioral-genome-calibration.mjs \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --output .agent-genome-calibration/calibration.json
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const report = JSON.parse(readFileSync('.agent-genome-calibration/calibration.json', 'utf8'));
+          const expectedSha = process.env.CANDIDATE_SHA;
+          const requiredDomains = ['load', 'mission', 'performance', 'presentation', 'resources', 'simulation'];
+          const fail = message => { throw new Error(`EV10_CALIBRATION_PROOF_FAIL ${message}`); };
+          if (report.candidateSha !== expectedSha) fail(`candidateSha expected=${expectedSha} actual=${report.candidateSha}`);
+          if (report.mode !== 'advisory' || report.blocking !== false) fail('report must remain advisory and non-blocking');
+          if (report.calibrationPass !== true) fail('representative calibration must pass its zero-error budgets');
+          if (report.falsePositives !== 0 || report.falseNegatives !== 0) fail(`errors fp=${report.falsePositives} fn=${report.falseNegatives}`);
+          if (report.acceptedForEnforcement !== false || report.candidatePassGranted !== false) fail('report must not grant enforcement or candidate acceptance');
+          if (JSON.stringify(report.validatedDomains) !== JSON.stringify(requiredDomains)) fail(`validatedDomains=${JSON.stringify(report.validatedDomains)}`);
+          console.log(`EV10_CALIBRATION_PROOF_PASS candidate=${report.candidateSha} falsePositives=0 falseNegatives=0 domains=${report.validatedDomains.join(',')} blocking=${report.blocking}`);
+          NODE
+
+      - name: Upload exact-SHA EV-10 calibration proof
+        uses: actions/upload-artifact@v7
+        with:
+          name: behavioral-genome-calibration-proof-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'push' }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          path: .agent-genome-calibration/calibration.json
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
 
       - name: Validate affected-verification map
         run: node agent/tools/select-affected-verification.mjs --validate-only
