@@ -1,12 +1,18 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import {
   calibrateBehavioralGenomePromotion,
   evaluateBehavioralGenomePromotion,
   validateBehavioralGenomePromotionPolicy,
 } from '../tools/behavioral-genome-promotion-gate.mjs';
-import { verifyBehavioralGenomePromotionEvidence } from '../tools/behavioral-genome-promotion-evidence.mjs';
+import {
+  readBehavioralGenomePromotionDeclaration,
+  resolveBehavioralGenomeDeclarationPath,
+  verifyBehavioralGenomePromotionEvidence,
+} from '../tools/behavioral-genome-promotion-evidence.mjs';
 
 const policy = JSON.parse(await readFile(new URL('../behavioral-genome-promotion-policy.json', import.meta.url), 'utf8'));
 const config = JSON.parse(await readFile(new URL('../behavioral-genome.config.json', import.meta.url), 'utf8'));
@@ -83,6 +89,12 @@ for (const entry of semanticCases) {
   assert.deepEqual(undeclared.blockingDomains, [...entry.expectedChangedDomains].sort(), `${entry.id} must identify exactly its calibrated domain`);
   assert.equal(undeclared.verdict, 'fail');
 
+  const declaration = {
+    schemaVersion: 1,
+    taskId: 'EV-11',
+    domains: entry.expectedChangedDomains,
+    rationale: `intentional ${entry.id}`,
+  };
   const declared = evaluateBehavioralGenomePromotion({
     policy,
     config,
@@ -92,12 +104,7 @@ for (const entry of semanticCases) {
     baseSha,
     candidateSha,
     taskId: 'EV-11',
-    declaration: {
-      schemaVersion: 1,
-      taskId: 'EV-11',
-      domains: entry.expectedChangedDomains,
-      rationale: `intentional ${entry.id}`,
-    },
+    declaration,
   });
   assert.equal(declared.blocking, false, `${entry.id} must pass when the exact changed domain is explicitly declared`);
   assert.equal(declared.verdict, 'pass');
@@ -105,6 +112,52 @@ for (const entry of semanticCases) {
   for (const domain of entry.expectedChangedDomains) {
     assert.equal(declared.domainResults.find(result => result.domain === domain)?.outcome, 'declared');
   }
+}
+
+const simulationCase = semanticCases.find(entry => entry.expectedChangedDomains.includes('simulation'));
+assert(simulationCase, 'simulation semantic calibration case is required');
+const declaredTempDirectory = await mkdtemp(join(tmpdir(), 'ironshade-ev11-declaration-'));
+try {
+  const declaredPolicy = structuredClone(policy);
+  declaredPolicy.declarations.directory = declaredTempDirectory;
+  const declaration = {
+    schemaVersion: 1,
+    taskId: 'EV-11',
+    domains: ['simulation'],
+    rationale: 'exercise policy-derived declaration discovery in the exact-evidence verifier',
+  };
+  const declarationPath = resolveBehavioralGenomeDeclarationPath(declaredPolicy, 'EV-11');
+  assert.equal(declarationPath, join(declaredTempDirectory, 'EV-11.json'));
+  await writeFile(declarationPath, `${JSON.stringify(declaration)}\n`, 'utf8');
+  const discoveredDeclaration = await readBehavioralGenomePromotionDeclaration(declaredPolicy, 'EV-11');
+  assert.deepEqual(discoveredDeclaration, declaration, 'the evidence verifier must auto-discover the same task-bound declaration as the producer');
+  const declaredCandidateObservations = observationsFor(simulationCase);
+  const declaredReport = evaluateBehavioralGenomePromotion({
+    policy: declaredPolicy,
+    config,
+    corpus,
+    baseObservations: corpus.baselineObservations,
+    candidateObservations: declaredCandidateObservations,
+    baseSha,
+    candidateSha,
+    taskId: 'EV-11',
+    declaration,
+  });
+  verifyBehavioralGenomePromotionEvidence(declaredReport, {
+    policy: declaredPolicy,
+    config,
+    corpus,
+    baseObservations: corpus.baselineObservations,
+    candidateObservations: declaredCandidateObservations,
+    declaration: discoveredDeclaration,
+    baseSha,
+    candidateSha,
+    taskId: 'EV-11',
+    requirePass: true,
+    env: {},
+  });
+} finally {
+  await rm(declaredTempDirectory, { recursive: true, force: true });
 }
 
 const noiseCases = corpus.cases.filter(entry => entry.kind === 'noise-control');
@@ -123,8 +176,6 @@ for (const entry of noiseCases) {
   assert.deepEqual(noise.changedDomains, [], `${entry.id} must remain outside promoted semantic resolution`);
 }
 
-const simulationCase = semanticCases.find(entry => entry.expectedChangedDomains.includes('simulation'));
-assert(simulationCase, 'simulation semantic calibration case is required');
 const rollbackCandidateObservations = observationsFor(simulationCase);
 const rollback = evaluateBehavioralGenomePromotion({
   policy,
@@ -220,4 +271,4 @@ assert.throws(
   'promotion evidence must bind distinct exact base/head revisions',
 );
 
-console.log('BEHAVIORAL_GENOME_PROMOTION_PASS falsePositives=0/3 falseNegatives=0/6 declarations=required rollback=workflow-verified exactSha=bound scope=ev10-pinned');
+console.log('BEHAVIORAL_GENOME_PROMOTION_PASS falsePositives=0/3 falseNegatives=0/6 declarations=producer+verifier rollback=workflow-verified exactSha=bound scope=ev10-pinned');
