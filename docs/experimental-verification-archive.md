@@ -431,3 +431,39 @@ Rollback is deterministic: set `IRONSHADE_BEHAVIORAL_GENOME_ENFORCEMENT=0` to ru
 ### Promotion status
 
 Promoted for the six EV-10-validated post-normalization domains as declaration-required candidate evidence. Load latency via excluded `load.loadDurationMs`, sub-threshold normalized changes, and unobserved product behavior remain advisory/outside the claim. EV-4 failure recurrence and antibody governance remain experimental; the next experimental task is EV-12.
+
+## EV-12 — Calibrate EV-4 Failure Recurrence
+
+Completed 2026-10-13 as an advisory calibration of the EV-4 repository immune-system mechanism. The original EV-4 prototype record above remains unchanged advisory history.
+
+### Implemented
+
+- Added `agent/failure-recurrence-calibration-corpus.json` with reviewed ground-truth recurrence groups deliberately independent of the current `failureClass` clustering key. The corpus combines the two historical EV-2 Android screenshot-transport timeouts with representative synthetic recurrence, ambiguity, aliasing, rejection, and bounded-compaction controls.
+- Added `agent/tools/failure-recurrence-calibration.mjs` and `agent/tests/failure-recurrence-calibration.mjs` to measure pairwise over-clustering/under-clustering plus recurrence false-positive/false-negative behavior while reusing EV-4's real clustering and antibody proposal implementation.
+- The reviewed global baseline intentionally records one over-clustered pair, one under-clustered pair, two recurrence false-positive records, and two recurrence false-negative records. Those known limitations remain visible and advisory instead of being normalized away.
+- The governance-candidate scope uses a zero-error budget. `android-screenshot-capture-transport-timeout` and `candidate-artifact-integrity-drift` each measure zero over-clustering, zero under-clustering, zero recurrence false positives, and zero recurrence false negatives and are therefore eligible only for EV-13 governance review. The artifact-upload detail ambiguity and Android ready-state aliasing controls remain advisory.
+- Added an incompatible same-label identity rejection control and a deterministic compaction probe that feeds 100 repeated observations through EV-4, retains only three representative samples, preserves the total occurrence count, produces the same digest under reversed input order, stays inside the configured byte budget, and fails closed when the byte budget is deliberately too small.
+- Added `agent/tools/failure-recurrence-calibration-evidence.mjs` plus `.github/workflows/ev12-failure-recurrence-calibration.yml` to bind the report to the exact PR head, independently recompute it from the committed corpus and `agent/failure-memory.json`, and upload exact-SHA evidence. The workflow is read-only and the report hard-codes `mode="advisory"`, `blocking=false`, `acceptedForEnforcement=false`, and `candidatePassGranted=false`.
+- Documented the permanent EV-12 advisory boundary in `AGENTS.md`. EV-12 cannot accept or enable an antibody; EV-13 owns governance and EV-14 owns any later enforcement promotion.
+
+### Evidence
+
+The first exact-head implementation candidate `e089eafa7e06c69802cf188b857c73bf2af491b1` failed EV-12's own workflow because the rollback report referenced `sourceFailureMemoryUnchanged` instead of the computed `sourceMemoryUnchanged` local. The same branch corrected that implementation defect without changing the calibration goal, corpus, measured budgets, or advisory semantics.
+
+Corrected implementation candidate `1a03cf7e0da37ef96935acb59903807d48deaee7` passed EV-12 Failure Recurrence Calibration run `38462667535`. Exact-SHA artifact `11846586283` (`failure-recurrence-calibration-375-1a03cf7e0da37ef96935acb59903807d48deaee7`) has GitHub Actions digest `sha256:1a36dc567d2ddd9dbd1ba4c123b338b7f2792d41089885fca08b331022c10fc3`.
+
+The exact report records the reviewed global known-limit errors as `overClusteringPairs=1`, `underClusteringPairs=1`, `recurrenceFalsePositiveRecords=2`, and `recurrenceFalseNegativeRecords=2`, while the EV-13-eligible scope records zero for all four metrics. Historical screenshot calibration records bind to the existing EV-4 failure-memory identity and occurrence count. All measured antibody proposals remain `acceptedForEnforcement=false`.
+
+The deterministic compaction probe records `occurrences=100`, `retainedSamples=3`, identical forward/reverse digests, and a passing configured byte budget; the deliberately undersized budget is rejected rather than silently discarding evidence. The incompatible same-label identity control is also rejected as required.
+
+This archive transition follows the repository's independent-review self-reference rule. It records the immutable pre-archive implementation candidate and measured exact-SHA calibration artifact. The resulting closeout SHA cannot literally contain its own Git SHA because that SHA depends on these archive contents, so it must pass the repository's exact-head technical gates and a fresh trusted EV-12 review; no predecessor verdict is inherited.
+
+### Isolation and rollback
+
+EV-12 changes verification/governance only. The analyzer reads the committed calibration corpus and EV-4 failure memory, clusters cloned records in process memory, writes only ephemeral CI evidence, and does not mutate `agent/failure-memory.json`, product/runtime state, or candidate acceptance.
+
+Rollback is deterministic: remove `.github/workflows/ev12-failure-recurrence-calibration.yml`, `agent/failure-recurrence-calibration-corpus.json`, `agent/tools/failure-recurrence-calibration.mjs`, `agent/tools/failure-recurrence-calibration-evidence.mjs`, `agent/tests/failure-recurrence-calibration.mjs`, and the EV-12 calibration entries from `AGENTS.md`. The pre-EV-12 EV-4 memory/proposal semantics, failure history, product/runtime behavior, and all existing exact-SHA proof gates remain unchanged.
+
+### Promotion status
+
+Calibration complete; no antibody was accepted or promoted. Only the two zero-error measured signatures named above are eligible for EV-13 governance review. The known artifact-upload ambiguity and ready-state aliasing limitations remain advisory. The next experimental promotion item is EV-13.
