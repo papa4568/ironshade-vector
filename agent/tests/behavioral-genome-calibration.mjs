@@ -8,6 +8,7 @@ import {
   runBehavioralGenomeCalibration,
   validateBehavioralGenomeCalibrationCorpus,
 } from '../tools/behavioral-genome-calibration.mjs';
+import { verifyBehavioralGenomeCalibrationEvidence } from '../tools/behavioral-genome-calibration-evidence.mjs';
 
 const config = JSON.parse(await readFile(new URL('../behavioral-genome.config.json', import.meta.url), 'utf8'));
 const corpus = JSON.parse(await readFile(new URL('../behavioral-genome-calibration-corpus.json', import.meta.url), 'utf8'));
@@ -47,6 +48,7 @@ assert.deepEqual(
 assert(first.promotionScope.load.unresolvedCaseIds.includes('load-duration-excluded'), 'load promotion scope must disclose excluded wall-clock duration');
 assert(first.promotionScope.performance.unresolvedCaseIds.includes('normalized-thresholds-not-semantic-resolution'), 'performance promotion scope must disclose bucketing limits');
 assert(first.promotionScope.simulation.unresolvedCaseIds.includes('representative-route-not-complete-product-observer'), 'promotion scope must disclose representative-route coverage limits');
+verifyBehavioralGenomeCalibrationEvidence(first, corpus, config, { candidateSha, requirePass: true });
 
 const falsePositiveCorpus = structuredClone(corpus);
 falsePositiveCorpus.cases.push({
@@ -61,6 +63,12 @@ assert.equal(falsePositive.calibrationPass, false, 'a false positive above the z
 assert.equal(falsePositive.blocking, false, 'a calibration-budget failure must remain advisory');
 assert.equal(falsePositive.falsePositives, 1, 'the mislabeled simulation change must count as one false positive');
 assert.equal(falsePositive.domainMetrics.simulation.falsePositives, 1, 'false positive must be attributed to the simulation domain');
+verifyBehavioralGenomeCalibrationEvidence(falsePositive, falsePositiveCorpus, config, { candidateSha });
+assert.throws(
+  () => verifyBehavioralGenomeCalibrationEvidence(falsePositive, falsePositiveCorpus, config, { candidateSha, requirePass: true }),
+  /EV-10 closeout requires the exact-candidate calibration to meet its measured budgets/,
+  'EV-10 closeout proof must reject a measured calibration failure without changing advisory runtime semantics',
+);
 
 const falseNegativeCorpus = structuredClone(corpus);
 const simulationCase = falseNegativeCorpus.cases.find(entry => entry.id === 'simulation-player-health-change');
@@ -70,11 +78,21 @@ assert.equal(falseNegative.calibrationPass, false, 'a false negative above the z
 assert.equal(falseNegative.blocking, false, 'a false-negative calibration result must remain advisory');
 assert.equal(falseNegative.falseNegatives, 1, 'normalized-away semantic trial must count as one false negative');
 assert.equal(falseNegative.domainMetrics.simulation.falseNegatives, 1, 'false negative must be attributed to the simulation domain');
+assert.throws(
+  () => verifyBehavioralGenomeCalibrationEvidence(first, corpus, config, { candidateSha: 'e'.repeat(40), requirePass: true }),
+  /does not match exact candidate config\/corpus recomputation/,
+  'EV-10 closeout evidence must reject a report from a different candidate SHA',
+);
 
 const cliTemp = await mkdtemp(join(tmpdir(), 'ironshade-ev10-calibration-'));
 try {
   const failingCorpusPath = join(cliTemp, 'failing-corpus.json');
+  const passingReportPath = join(cliTemp, 'passing-report.json');
+  const failingReportPath = join(cliTemp, 'failing-report.json');
   await writeFile(failingCorpusPath, JSON.stringify(falsePositiveCorpus), 'utf8');
+  await writeFile(passingReportPath, JSON.stringify(first), 'utf8');
+  await writeFile(failingReportPath, JSON.stringify(falsePositive), 'utf8');
+
   const advisoryCli = spawnSync(process.execPath, [
     'agent/tools/behavioral-genome-calibration.mjs',
     '--candidate-sha',
@@ -89,6 +107,39 @@ try {
   const advisoryReport = JSON.parse(advisoryCli.stdout);
   assert.equal(advisoryReport.calibrationPass, false, 'CLI must preserve the failed calibration signal');
   assert.equal(advisoryReport.blocking, false, 'CLI report must explicitly remain non-blocking');
+
+  const passingEvidenceCli = spawnSync(process.execPath, [
+    'agent/tools/behavioral-genome-calibration-evidence.mjs',
+    '--candidate-sha',
+    candidateSha,
+    '--report',
+    passingReportPath,
+    '--require-pass',
+  ], { cwd: process.cwd(), encoding: 'utf8' });
+  assert.equal(passingEvidenceCli.status, 0, `exact-candidate EV-10 closeout proof should accept the measured passing report: ${passingEvidenceCli.stderr}`);
+
+  const advisoryEvidenceCli = spawnSync(process.execPath, [
+    'agent/tools/behavioral-genome-calibration-evidence.mjs',
+    '--candidate-sha',
+    candidateSha,
+    '--corpus',
+    failingCorpusPath,
+    '--report',
+    failingReportPath,
+  ], { cwd: process.cwd(), encoding: 'utf8' });
+  assert.equal(advisoryEvidenceCli.status, 0, `advisory evidence verification should preserve a measured failing report: ${advisoryEvidenceCli.stderr}`);
+
+  const failingCloseoutCli = spawnSync(process.execPath, [
+    'agent/tools/behavioral-genome-calibration-evidence.mjs',
+    '--candidate-sha',
+    candidateSha,
+    '--corpus',
+    failingCorpusPath,
+    '--report',
+    failingReportPath,
+    '--require-pass',
+  ], { cwd: process.cwd(), encoding: 'utf8' });
+  assert.notEqual(failingCloseoutCli.status, 0, 'EV-10 closeout proof must fail when the exact report misses its measured budgets');
 
   const malformedCli = spawnSync(process.execPath, [
     'agent/tools/behavioral-genome-calibration.mjs',
@@ -118,4 +169,4 @@ assert.throws(
   'calibration mutations must not escape through prototype paths',
 );
 
-console.log(`BEHAVIORAL_GENOME_CALIBRATION_PASS cases=${first.cases.length} validated=${first.validatedDomains.join(',')} falsePositives=${first.falsePositives} falseNegatives=${first.falseNegatives} unresolved=${first.unresolvedCases.length} blocking=${first.blocking} mode=advisory`);
+console.log(`BEHAVIORAL_GENOME_CALIBRATION_PASS cases=${first.cases.length} validated=${first.validatedDomains.join(',')} falsePositives=${first.falsePositives} falseNegatives=${first.falseNegatives} unresolved=${first.unresolvedCases.length} blocking=${first.blocking} mode=advisory closeoutProof=exact-sha`);
