@@ -27,11 +27,6 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
 
 ## Active experimental queue
 
-- [ ] **EV-13 — Define Antibody Governance**
-  - Define the permanent ownership and review process for proposing, accepting, updating, and retiring antibodies; unreviewed proposals must remain non-enforcing.
-  - Map accepted antibody types to the existing narrowest source of truth (regression, architecture invariant, impact-map rule, or telemetry contract) without creating a second competing check registry.
-  - Done when the governance contract is deterministic, reviewed, and ready for one narrow enforcement candidate in EV-14.
-
 - [ ] **EV-14 — Promote One Accepted Antibody**
   - Select one deterministic antibody justified by EV-12 evidence and EV-13 governance, and promote only that antibody into the existing appropriate repository check.
   - Verify rollback removes the promoted enforcement without losing unrelated failure history or changing other acceptance semantics.
