@@ -286,6 +286,49 @@
         }
       ],
       "externalDependencies": []
+    },
+    {
+      "id": "AO-8",
+      "title": "Bootstrap trusted EV-9 exact-head observer",
+      "priority": 80,
+      "status": "verified",
+      "dependsOn": ["AO-7"],
+      "acceptance": [
+        "A pull_request_target observer executes only exact-base checked-out trusted code while reading the PR head's PR Candidate workflow as untrusted Git data; it never checks out or executes candidate code.",
+        "The trusted observer directly verifies the PR Candidate exact-head producer, runtime candidate output, exact-SHA review/browser/Android consumers, final evidence checkout, and rejects synthetic checkout refs.",
+        "Trusted observer self-tests include a behavior-preserving control plus producer-ref, candidate-output, downstream-SHA, final-ref, and downstream consumer-semantic attacks with zero false positives and zero false negatives, and Agent Orchestration exposes that self-test as exact-SHA proof.",
+        "This prerequisite only lands the base-controlled trust mechanism and its proof. EV-9's live enforcement integration remains on PR #368 and begins only after this bootstrap is merged to trusted main.",
+        "AO-8 uses the repository's introduced-verified closeout representation so the trusted reviewer targets this bootstrap; the final candidate gate remains authoritative and the bootstrap must not merge without its exact-SHA review pass."
+      ],
+      "affectedDomains": ["agent-orchestration", "verification", "review", "ci"],
+      "proofs": [
+        {
+          "id": "trusted-observer-tests",
+          "kind": "test",
+          "required": true,
+          "description": "Agent Orchestration runs the trusted EV-9 observer parser and attack calibration self-test on the exact candidate SHA.",
+          "command": "node agent/tools/ev9-trusted-pr-candidate-observer-v5.mjs self-test"
+        },
+        {
+          "id": "architecture-invariants",
+          "kind": "invariant",
+          "required": true,
+          "description": "Mechanical architecture and independent-review contracts continue to pass for the bootstrap candidate."
+        },
+        {
+          "id": "independent-review-verdict",
+          "kind": "review",
+          "required": true,
+          "description": "A separate trusted verifier returns a validated pass for the exact AO-8 bootstrap candidate SHA."
+        },
+        {
+          "id": "ao8-ci",
+          "kind": "ci",
+          "required": true,
+          "description": "Agent Orchestration and PR Candidate Verification pass on the exact AO-8 bootstrap candidate revision; the PR Candidate final job may be rerun after the trusted verdict is published."
+        }
+      ],
+      "externalDependencies": []
     }
   ]
 }

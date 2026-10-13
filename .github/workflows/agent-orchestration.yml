@@ -17,6 +17,7 @@ on:
       - '.github/workflows/pr-candidate.yml'
       - '.github/workflows/browser-e2e.yml'
       - '.github/workflows/pr-android-apk.yml'
+      - '.github/workflows/ev9-trusted-pr-candidate-observer.yml'
   workflow_dispatch:
 
 permissions:
@@ -170,6 +171,9 @@ jobs:
           node agent/tools/select-review-task.mjs --json
           node agent/tests/independent-review.mjs
           node agent/tests/trusted-main-review-gate.mjs
+
+      - name: Verify trusted EV-9 observer bootstrap
+        run: node agent/tools/ev9-trusted-pr-candidate-observer-v8.mjs self-test
 
       - name: Detect active orchestration evidence task
         id: evidence-task
