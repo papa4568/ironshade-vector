@@ -421,7 +421,7 @@ export function runFailureRecurrenceCalibration(corpus, repositoryMemory, { cand
       acceptedForEnforcement: proposal.acceptedForEnforcement,
     })),
     rollback: {
-      sourceFailureMemoryUnchanged,
+      sourceFailureMemoryUnchanged: sourceMemoryUnchanged,
       ev4ModeRemainsAdvisory: repositoryMemory.mode === 'advisory',
       enforcementChanged: false,
       disablePath: 'Remove the EV-12 calibration workflow and calibration-only corpus/tool/tests; EV-4 failure memory and antibody semantics remain unchanged.',
