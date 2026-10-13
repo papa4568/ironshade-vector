@@ -331,6 +331,30 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      - name: Run promoted causal evidence independence regressions
+        run: |
+          node agent/tests/evidence-independence-promotion.mjs
+          node agent/tests/pr-candidate-head-observer.mjs
+
+      - name: Enforce promoted causal evidence independence scope
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          node agent/tools/evidence-independence-promotion-gate.mjs gate \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --graph agent/evidence-independence.json \
+            --policy agent/evidence-independence-policy.json \
+            --output .agent-independence/promotion-gate.json
+
+      - name: Upload promoted causal evidence independence exact-SHA evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: evidence-independence-gate-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: .agent-independence/promotion-gate.json
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
+
   independent-review-context:
     name: Independent Review Context
     needs: candidate-build
