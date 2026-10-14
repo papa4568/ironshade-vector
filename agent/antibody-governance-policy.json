@@ -13,7 +13,12 @@
     "authority": "trusted-repository-participant",
     "actionsRequiringReview": ["accept", "update", "retire"],
     "minimumRationaleCharacters": 20,
-    "evidenceRequirement": "pull-request-or-independent-review"
+    "evidenceRequirement": "pull-request-or-independent-review",
+    "provenance": {
+      "source": "github-pr-conversation",
+      "verifier": "agent/tools/review-comment-gate.mjs",
+      "requireRepositoryFetch": true
+    }
   },
   "calibration": {
     "sourceTask": "EV-12",
