@@ -10,29 +10,21 @@
   "historicalObservations": [
     {
       "id": "p28-pload1-exact-success",
-      "baseSha": "1e7b5fd666485e7c0473e69f135bc89d25c759be",
+      "mergeBaseSha": "b2315161f5e660eedc1e7973852a69cf90a822a9",
       "candidateSha": "207274334514594547afe5eca8530cdea02f3687",
       "pullRequest": 345,
       "fullVerificationRunId": 38115851910,
       "fullVerificationOutcome": "success",
       "changedFiles": [
-        "agent/fixtures/acceptance-attacks/p28-pload1/roadmap.md",
-        "agent/roadmap-metadata.json",
-        "agent/roadmap-shadow-simulator.json",
-        "agent/tests/acceptance-attack-compiler.mjs",
-        "agent/tests/independent-review.mjs",
-        "agent/tests/roadmap-shadow-simulator.mjs",
-        "docs/content-roadmap-archive.md",
-        "docs/content-roadmap.md",
         "src/game/babylonCombatRenderer.ts",
         "tests/babylon-graphics-assets.ts",
         "tests/p28-pload1-refinery-placement-runtime.ts"
       ],
-      "rationale": "Exact product candidate with a successful authoritative full verification. Its mixed known and currently-unclassified test paths exercise the existing fail-safe full fallback and may not justify narrowing."
+      "rationale": "Exact product candidate with a successful authoritative full verification. The immutable merge-base-to-candidate diff contains the three implementation/runtime-verifier paths that existed at this exact run; later PR closeout files are excluded from this historical candidate."
     },
     {
       "id": "ev10-exact-success",
-      "baseSha": "44632391b61b80a9ff08895327ae85fbace47c64",
+      "mergeBaseSha": "44632391b61b80a9ff08895327ae85fbace47c64",
       "candidateSha": "7f0628b23a0127d59eae081ef61d7a51a6ae2402",
       "pullRequest": 373,
       "fullVerificationRunId": 38440867525,
