@@ -290,7 +290,7 @@ function callExpressionName(expression) {
 function expressionHasBehaviorSubject(node, sourceFile) {
   if (!node) return false;
   if (ts.isParenthesizedExpression(node)) return expressionHasBehaviorSubject(node.expression, sourceFile);
-  if (ts.isTrueKeyword(node) || ts.isFalseKeyword(node) || ts.isStringLiteralLike(node) || ts.isNumericLiteral(node) || node.kind === ts.SyntaxKind.NullKeyword) return false;
+  if (node.kind === ts.SyntaxKind.TrueKeyword || node.kind === ts.SyntaxKind.FalseKeyword || ts.isStringLiteralLike(node) || ts.isNumericLiteral(node) || node.kind === ts.SyntaxKind.NullKeyword) return false;
   if (ts.isIdentifier(node) || ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node) || ts.isCallExpression(node) || ts.isAwaitExpression(node) || ts.isArrowFunction(node) || ts.isFunctionExpression(node)) return true;
   let found = false;
   ts.forEachChild(node, child => {
