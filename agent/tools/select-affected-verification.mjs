@@ -72,6 +72,14 @@ export function effectiveRuleRisk(rule, env = process.env) {
   return rule.risk;
 }
 
+export function impactWideningEnforcementEnabled(impactMap, env = process.env) {
+  const promotionRules = impactMap.rules.filter(rule => rule.promotion?.taskId === 'EV-16');
+  if (promotionRules.length === 0) return false;
+  assert(promotionRules.length === 1, `EV-16 selector requires exactly one promoted rule, found ${promotionRules.length}`);
+  const promotion = promotionRules[0].promotion;
+  return env?.[promotion.disableEnvironmentVariable] !== promotion.disabledValue;
+}
+
 export function validateImpactMap(impactMap) {
   assert(impactMap && typeof impactMap === 'object' && !Array.isArray(impactMap), 'impact map must be an object');
   assert(impactMap.schemaVersion === 1, 'impact map schemaVersion must be 1');
@@ -155,8 +163,10 @@ export function selectAffectedVerification(changedFiles, impactMap, { env = proc
   const normalVerificationIds = [];
   const matchedRuleIds = new Set();
   const highRiskRules = new Map();
+  const lowConfidenceRules = new Map();
   const unknownFiles = [];
   const fileImpacts = [];
+  const wideningEnforcementEnabled = impactWideningEnforcementEnabled(impactMap, env);
 
   for (const file of files) {
     const matchedRules = impactMap.rules.filter(rule => ruleMatchesFile(rule, file));
@@ -180,6 +190,9 @@ export function selectAffectedVerification(changedFiles, impactMap, { env = proc
       if (ruleRisk === 'high') {
         fileRisk = 'high';
         highRiskRules.set(rule.id, rule.reason ?? `${rule.id} is high risk`);
+      } else if (wideningEnforcementEnabled && rule.risk === 'normal') {
+        if (fileRisk !== 'high') fileRisk = 'low-confidence';
+        lowConfidenceRules.set(rule.id, `${rule.id} remains unresolved/low-confidence under EV-16`);
       }
     }
     fileImpacts.push({
@@ -197,6 +210,9 @@ export function selectAffectedVerification(changedFiles, impactMap, { env = proc
   for (const [ruleId, reason] of highRiskRules) {
     escalationReasons.push(`${ruleId}: ${reason}`);
   }
+  for (const [ruleId, reason] of lowConfidenceRules) {
+    escalationReasons.push(`${ruleId}: ${reason}`);
+  }
 
   const escalated = escalationReasons.length > 0;
   let verificationIds;
@@ -204,7 +220,7 @@ export function selectAffectedVerification(changedFiles, impactMap, { env = proc
   if (escalated) {
     verificationIds = [
       ...(unknownFiles.length > 0 ? impactMap.fallback.unknownVerificationIds : []),
-      ...(highRiskRules.size > 0 ? impactMap.fallback.highRiskVerificationIds : []),
+      ...(highRiskRules.size > 0 || lowConfidenceRules.size > 0 ? impactMap.fallback.highRiskVerificationIds : []),
     ];
     mode = 'full';
   } else if (normalVerificationIds.length > 0) {
@@ -221,6 +237,7 @@ export function selectAffectedVerification(changedFiles, impactMap, { env = proc
     files,
     domains: [...domains].sort(),
     matchedRuleIds: [...matchedRuleIds].sort(),
+    lowConfidenceRuleIds: [...lowConfidenceRules.keys()].sort(),
     unknownFiles,
     escalationReasons,
     verifications: materializeVerifications(verificationIds, impactMap),

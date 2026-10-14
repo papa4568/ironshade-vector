@@ -304,7 +304,7 @@
         "design-system"
       ],
       "risk": "high",
-      "reason": "EV-16 promotes the EV-15-calibrated UI/typecheck miss class to the existing verify-full fail-safe; no other normal-risk rule is widened.",
+      "reason": "EV-16 promotes the EV-15-calibrated UI/typecheck miss class to the existing verify-full fail-safe; unpromoted normal-risk rules remain unchanged in the map and fail safe as low-confidence while enforcement is active.",
       "promotion": {
         "taskId": "EV-16",
         "sourceTaskId": "EV-15",

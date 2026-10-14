@@ -27,6 +27,11 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
 
 ## Active experimental queue
 
+- [ ] **EV-16 — Enforce Validated Change-Impact Widenings**
+  - Apply only EV-15-supported deterministic, reviewed widenings to `agent/impact-map.json` policy; unknown or low-confidence change classes must fail safe to broader verification.
+  - Preserve exact-SHA evidence isolation and verify rollback restores the previous static impact-map behavior.
+  - Done when policy/contracts are documented and the exact candidate is archived with required proofs and independent review.
+
 - [ ] **EV-17 — Calibrate EV-6 Proof-Cache Closure**
   - Measure cache prediction agreement across repeated exact-closure runs and representative invalidation changes; record false hits, false misses, and same-closure disagreements by proof class.
   - Keep proof reuse disabled in this item; identify proof classes with demonstrated deterministic causal closure and explicitly reject any class with unresolved same-closure disagreement.

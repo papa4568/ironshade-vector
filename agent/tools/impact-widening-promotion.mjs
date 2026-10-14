@@ -30,6 +30,7 @@ function signature(selection) {
     escalated: selection.escalated,
     verificationIds: selection.verifications.map(entry => entry.id),
     matchedRuleIds: [...selection.matchedRuleIds],
+    lowConfidenceRuleIds: [...(selection.lowConfidenceRuleIds ?? [])],
     unknownFiles: [...selection.unknownFiles],
   };
 }
@@ -123,6 +124,7 @@ export function calibrateImpactWidening({ impactMap, baselineMap, corpus }) {
   let falsePositives = 0;
   let falseNegatives = 0;
   const positiveTrials = [];
+  const lowConfidenceTrials = [];
   const negativeTrials = [];
   const rollbackTrials = [];
 
@@ -137,9 +139,26 @@ export function calibrateImpactWidening({ impactMap, baselineMap, corpus }) {
     rollbackTrials.push({ id: probe.id, rollbackMatches, rollback: signature(rollback), baseline: signature(baseline) });
   }
 
+  const lowConfidenceControls = [
+    { id: 'unpromoted-normal-rule', expectedRuleId: 'babylon-ability-vfx', files: ['src/game/babylonAbilityVfx.ts'] },
+    { id: 'documentation-only', expectedRuleId: 'documentation-only', files: ['docs/product-constraints.md'] },
+  ];
+  for (const control of lowConfidenceControls) {
+    const baseline = selectAffectedVerification(control.files, baselineMap, { env: activeEnv });
+    const active = selectAffectedVerification(control.files, impactMap, { env: activeEnv });
+    const rollback = selectAffectedVerification(control.files, impactMap, { env: rollbackEnv });
+    const detected = active.mode === 'full'
+      && active.verifications.map(entry => entry.id).join(',') === 'verify-full'
+      && active.lowConfidenceRuleIds.includes(control.expectedRuleId);
+    if (!detected) falseNegatives += 1;
+    const rollbackMatches = same(signature(rollback), signature(baseline));
+    lowConfidenceTrials.push({ id: control.id, expectedRuleId: control.expectedRuleId, detected, active: signature(active), baseline: signature(baseline) });
+    rollbackTrials.push({ id: control.id, rollbackMatches, rollback: signature(rollback), baseline: signature(baseline) });
+  }
+
   const controls = [
-    { id: 'unpromoted-normal-rule', files: ['src/game/babylonAbilityVfx.ts'] },
-    { id: 'documentation-only', files: ['docs/product-constraints.md'] },
+    { id: 'already-high-risk', files: ['package.json'] },
+    { id: 'unknown-file', files: ['mystery/new-subsystem.xyz'] },
   ];
   for (const control of controls) {
     const baseline = selectAffectedVerification(control.files, baselineMap, { env: activeEnv });
@@ -156,6 +175,7 @@ export function calibrateImpactWidening({ impactMap, baselineMap, corpus }) {
     falsePositives,
     falseNegatives,
     positiveTrials,
+    lowConfidenceTrials,
     negativeTrials,
     rollbackTrials,
     rollbackPass: rollbackTrials.every(trial => trial.rollbackMatches),
@@ -199,6 +219,7 @@ export async function generateImpactWideningReport({ candidateSha }) {
       errorBudget: { falsePositives: 0, falseNegatives: 0 },
       measuredErrors: { falsePositives: calibration.falsePositives, falseNegatives: calibration.falseNegatives },
       positiveTrials: calibration.positiveTrials,
+      lowConfidenceTrials: calibration.lowConfidenceTrials,
       negativeTrials: calibration.negativeTrials,
     },
     rollback: {
@@ -208,6 +229,7 @@ export async function generateImpactWideningReport({ candidateSha }) {
       trials: calibration.rollbackTrials,
     },
     unresolvedNormalRiskRules: impactMap.rules.filter(rule => rule.risk === 'normal').map(rule => rule.id).sort(),
+    lowConfidenceFailSafeRuleIds: impactMap.rules.filter(rule => rule.risk === 'normal').map(rule => rule.id).sort(),
     acceptedForEnforcement: true,
     blocking: true,
     candidatePassGranted: false,

@@ -17,6 +17,7 @@ const impactMap = await loadImpactMap(resolve('agent/impact-map.json'));
 const summary = validateImpactMap(impactMap);
 assert(summary.ruleCount >= 10);
 assert(summary.verificationCount >= 10);
+const rollbackEnv = { IRONSHADE_IMPACT_WIDENING_ENFORCEMENT: '0' };
 
 assert(matchesGlob('agent/tools/example.mjs', 'agent/**'));
 assert(matchesGlob('src/game/babylonCombatRenderer.ts', 'src/game/*.ts'));
@@ -27,7 +28,7 @@ assert(globToRegExp('public/assets/models/**').test('public/assets/models/refine
 const graphicsSelection = selectAffectedVerification([
   'src/game/graphicsAssetManifest.ts',
   'scripts/prepare-refinery-premium-surfaces.mjs',
-], impactMap);
+], impactMap, { env: rollbackEnv });
 assert.equal(graphicsSelection.mode, 'targeted');
 assert.equal(graphicsSelection.escalated, false);
 assert.deepEqual(graphicsSelection.unknownFiles, []);
@@ -37,7 +38,7 @@ assert.deepEqual(graphicsSelection.verifications.map(check => check.id), ['graph
 
 const refineryPresentationSelection = selectAffectedVerification([
   'src/game/babylonRefineryPresentation.ts',
-], impactMap);
+], impactMap, { env: rollbackEnv });
 assert.equal(refineryPresentationSelection.mode, 'targeted');
 assert(refineryPresentationSelection.domains.includes('refinery'));
 assert(refineryPresentationSelection.verifications.some(check => check.id === 'refinery-lighting'));
@@ -47,15 +48,27 @@ assert(!refineryPresentationSelection.verifications.some(check => check.id === '
 const docsSelection = selectAffectedVerification([
   'docs/content-roadmap-archive.md',
   'docs/product-constraints.md',
-], impactMap);
+], impactMap, { env: rollbackEnv });
 assert.equal(docsSelection.mode, 'none');
 assert.equal(docsSelection.escalated, false);
 assert.deepEqual(docsSelection.verifications, []);
 assert.deepEqual(docsSelection.domains, ['documentation']);
 
-const roadmapSelection = selectAffectedVerification(['docs/content-roadmap.md'], impactMap);
+const roadmapSelection = selectAffectedVerification(['docs/content-roadmap.md'], impactMap, { env: rollbackEnv });
 assert.equal(roadmapSelection.mode, 'targeted');
 assert.deepEqual(roadmapSelection.verifications.map(check => check.id), ['roadmap-adapter']);
+
+const graphicsFailSafeSelection = selectAffectedVerification(['src/game/babylonAbilityVfx.ts'], impactMap, { env: {} });
+assert.equal(graphicsFailSafeSelection.mode, 'full');
+assert.equal(graphicsFailSafeSelection.escalated, true);
+assert.deepEqual(graphicsFailSafeSelection.verifications.map(check => check.id), ['verify-full']);
+assert.deepEqual(graphicsFailSafeSelection.lowConfidenceRuleIds, ['babylon-ability-vfx']);
+assert(graphicsFailSafeSelection.escalationReasons.some(reason => reason.includes('unresolved/low-confidence')));
+
+const docsFailSafeSelection = selectAffectedVerification(['docs/product-constraints.md'], impactMap, { env: {} });
+assert.equal(docsFailSafeSelection.mode, 'full');
+assert.deepEqual(docsFailSafeSelection.verifications.map(check => check.id), ['verify-full']);
+assert.deepEqual(docsFailSafeSelection.lowConfidenceRuleIds, ['documentation-only']);
 
 const unknownSelection = selectAffectedVerification(['mystery/new-subsystem.xyz'], impactMap);
 assert.equal(unknownSelection.mode, 'full');
@@ -77,7 +90,7 @@ assert.deepEqual(uiPromotionSelection.verifications.map(check => check.id), ['ve
 assert(uiPromotionSelection.matchedRuleIds.includes('ui-and-design-system'));
 
 const uiRollbackSelection = selectAffectedVerification(['src/components/AppErrorBoundary.tsx'], impactMap, {
-  env: { IRONSHADE_IMPACT_WIDENING_ENFORCEMENT: '0' },
+  env: rollbackEnv,
 });
 assert.equal(uiRollbackSelection.mode, 'targeted');
 assert.equal(uiRollbackSelection.escalated, false);
@@ -143,4 +156,4 @@ try {
   else process.env.IRONSHADE_IMPACT_WIDENING_ENFORCEMENT = previousImpactWideningEnforcement;
 }
 
-console.log(`AFFECTED_VERIFICATION_TEST_PASS rules=${summary.ruleCount} verifications=${summary.verificationCount} graphicsChecks=${graphicsSelection.verifications.length} refineryChecks=${refineryPresentationSelection.verifications.length} uiPromotion=${uiPromotionSelection.mode} uiRollback=${uiRollbackSelection.mode} unknownMode=${unknownSelection.mode} gitDiff=pass calibration=rollback-pass`);
+console.log(`AFFECTED_VERIFICATION_TEST_PASS rules=${summary.ruleCount} verifications=${summary.verificationCount} graphicsChecks=${graphicsSelection.verifications.length} refineryChecks=${refineryPresentationSelection.verifications.length} lowConfidenceGraphics=${graphicsFailSafeSelection.mode} lowConfidenceDocs=${docsFailSafeSelection.mode} uiPromotion=${uiPromotionSelection.mode} uiRollback=${uiRollbackSelection.mode} unknownMode=${unknownSelection.mode} gitDiff=pass calibration=rollback-pass`);

@@ -23,15 +23,32 @@ assert.equal(calibration.falsePositives, 0);
 assert.equal(calibration.falseNegatives, 0);
 assert.equal(calibration.rollbackPass, true);
 assert.equal(calibration.pass, true);
+assert.equal(calibration.lowConfidenceTrials.length, 2);
+assert(calibration.lowConfidenceTrials.every(trial => trial.detected));
 
 const active = selectAffectedVerification(['src/components/UiPrimitives.tsx'], impactMap, { env: {} });
 assert.equal(active.mode, 'full');
 assert.deepEqual(active.verifications.map(entry => entry.id), ['verify-full']);
+const rollbackEnv = { IRONSHADE_IMPACT_WIDENING_ENFORCEMENT: '0' };
 const rollback = selectAffectedVerification(['src/components/UiPrimitives.tsx'], impactMap, {
-  env: { IRONSHADE_IMPACT_WIDENING_ENFORCEMENT: '0' },
+  env: rollbackEnv,
 });
 assert.equal(rollback.mode, 'targeted');
 assert.deepEqual(rollback.verifications.map(entry => entry.id), ['ui-readability', 'design-system']);
+
+const lowConfidence = selectAffectedVerification(['src/game/babylonAbilityVfx.ts'], impactMap, { env: {} });
+assert.equal(lowConfidence.mode, 'full');
+assert.deepEqual(lowConfidence.verifications.map(entry => entry.id), ['verify-full']);
+assert.deepEqual(lowConfidence.lowConfidenceRuleIds, ['babylon-ability-vfx']);
+const lowConfidenceRollback = selectAffectedVerification(['src/game/babylonAbilityVfx.ts'], impactMap, { env: rollbackEnv });
+assert.equal(lowConfidenceRollback.mode, 'targeted');
+assert.deepEqual(lowConfidenceRollback.verifications.map(entry => entry.id), ['babylon-ability-vfx']);
+
+const docsLowConfidence = selectAffectedVerification(['docs/product-constraints.md'], impactMap, { env: {} });
+assert.equal(docsLowConfidence.mode, 'full');
+assert.deepEqual(docsLowConfidence.lowConfidenceRuleIds, ['documentation-only']);
+const docsRollback = selectAffectedVerification(['docs/product-constraints.md'], impactMap, { env: rollbackEnv });
+assert.equal(docsRollback.mode, 'none');
 
 const extraPromotion = structuredClone(impactMap);
 extraPromotion.rules.find(rule => rule.id === 'babylon-ability-vfx').promotion = structuredClone(promotion);
@@ -58,4 +75,4 @@ assert.throws(
   'EV-16 must reject unrelated impact-map changes inside the promotion contract',
 );
 
-console.log(`EV16_IMPACT_WIDENING_TEST_PASS rule=${contract.rule.id} falsePositives=${calibration.falsePositives} falseNegatives=${calibration.falseNegatives} rollback=${calibration.rollbackPass} scope=single-rule`);
+console.log(`EV16_IMPACT_WIDENING_TEST_PASS rule=${contract.rule.id} falsePositives=${calibration.falsePositives} falseNegatives=${calibration.falseNegatives} lowConfidence=${calibration.lowConfidenceTrials.length} rollback=${calibration.rollbackPass} scope=single-promoted-rule-plus-fail-safe`);
