@@ -35,6 +35,11 @@ export async function verifyAntibodyGovernanceEvidence(report, policy, calibrati
   assert(report.enforcementEnabled === false, 'EV-13 must not enable antibody enforcement');
   assert(report.acceptedForEnforcement === false, 'EV-13 must not accept an antibody for enforcement');
   assert(report.candidatePassGranted === false, 'EV-13 evidence must never grant candidate acceptance');
+  assert(report.lifecycle.trustedReviewProvenanceRequired === true, 'EV-13 must require GitHub-backed trusted review provenance');
+  assert(report.lifecycle.canonicalSourceEntryRequired === true, 'EV-13 must verify the named canonical source entry exists');
+  assert(report.lifecycle.directDecisionEvaluatorExported === false, 'EV-13 must not expose a raw decision evaluator that bypasses trusted authorization');
+  assert(report.ev12.pinnedCorpusDigestVerified === true, 'EV-13 must verify the policy-pinned EV-12 corpus digest');
+  assert(report.ev12.pinnedFailureMemoryDigestVerified === true, 'EV-13 must verify the policy-pinned EV-4 failure-memory digest');
   assert(report.rollback.sourceFailureMemoryUnchanged === true, 'EV-13 must prove failure memory is unchanged');
   assert(report.rollback.ev4ModeRemainsAdvisory === true, 'EV-13 must leave EV-4 failure memory advisory');
   assert(report.rollback.existingEnforcementChanged === false, 'EV-13 rollback must not change existing enforcement');
