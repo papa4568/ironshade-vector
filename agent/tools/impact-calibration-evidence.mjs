@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -26,13 +26,9 @@ function sha256(value) {
   return createHash('sha256').update(typeof value === 'string' ? value : canonicalJson(value)).digest('hex');
 }
 
-function orderedUnique(values) {
-  return [...new Set(values)].sort((a, b) => a.localeCompare(b));
-}
-
-function run(command, { expectFailure = false } = {}) {
+function run(command, { expectFailure = false, cwd = process.cwd() } = {}) {
   const result = spawnSync('bash', ['-lc', command], {
-    cwd: process.cwd(),
+    cwd,
     encoding: 'utf8',
     env: { ...process.env, CI: process.env.CI ?? '1' },
     maxBuffer: 32 * 1024 * 1024,
@@ -150,8 +146,10 @@ async function runProbe(probe, impactMap) {
   const originalDigest = sha256(original);
   const trackedBefore = run('git status --porcelain --untracked-files=no').output;
   assert(trackedBefore.trim() === '', `${probe.id} requires a clean tracked workspace before mutation`);
-  let focused = [];
-  let full;
+
+  const focused = [];
+  let full = null;
+  let trackedDuringProbe = '';
   try {
     await writeFile(targetPath, `${original}${probe.mutationSuffix}`, 'utf8');
     for (const verification of selection.verifications) {
@@ -159,16 +157,18 @@ async function runProbe(probe, impactMap) {
       focused.push({ id: verification.id, command: verification.command, outcome: 'success', outputDigest: sha256(result.output) });
     }
     full = run('npm run verify:full', { expectFailure: true });
+    trackedDuringProbe = run('git status --porcelain --untracked-files=no').output;
   } finally {
-    await writeFile(targetPath, original, 'utf8');
+    run('git restore --source=HEAD --worktree -- .');
   }
 
+  assert(full, `${probe.id} did not execute full verification`);
   const restored = await readFile(targetPath, 'utf8');
   const trackedAfter = run('git status --porcelain --untracked-files=no').output;
   const failedScript = parseFailedNpmScript(full.output);
   const criterionMatched = full.output.includes(probe.expectedFailurePattern);
   const sourceRestored = sha256(restored) === originalDigest && trackedAfter === trackedBefore;
-  assert(sourceRestored, `${probe.id} did not restore tracked source state exactly`);
+  assert(sourceRestored, `${probe.id} rollback did not restore the exact candidate tracked state: ${trackedAfter || '<clean expected>'}`);
   assert(failedScript === probe.expectedFailureScript, `${probe.id} expected full verification to fail in ${probe.expectedFailureScript}, got ${failedScript ?? 'unknown'}`);
   assert(criterionMatched, `${probe.id} full verification failed without the expected typecheck criterion`);
 
@@ -195,7 +195,10 @@ async function runProbe(probe, impactMap) {
       overSelectedVerificationIdsForThisTrial: selectedIds,
       overSelectionRateForThisTrial: selectedIds.length === 0 ? 0 : 1,
     },
-    sourceRestored,
+    rollback: {
+      trackedMutationObserved: trackedDuringProbe.trim().length > 0,
+      sourceRestored,
+    },
     wideningAction: probe.wideningAction,
   };
 }
@@ -306,14 +309,16 @@ export async function runImpactCalibrationEvidence({ candidateSha, executeProbes
     rollback: {
       defaultImpactMapChanged: false,
       enforcementEnabled: false,
-      sourceMutationsRestored: probes.every(entry => entry.sourceRestored),
+      sourceMutationsRestored: probes.every(entry => entry.rollback.sourceRestored),
       rollbackAction: 'remove EV-15 calibration-only corpus/tool/test/workflow; agent/impact-map.json and existing candidate proof gates remain unchanged',
     },
     acceptedForEnforcement: false,
     candidatePassGranted: false,
   };
+
   assert(report.safeWideningCandidates.length <= 1, 'EV-15 must not silently expand beyond the single measured widening candidate');
   assert(report.rollback.defaultImpactMapChanged === false && report.rollback.enforcementEnabled === false, 'EV-15 must remain calibration-only');
+  assert(report.rollback.sourceMutationsRestored, 'EV-15 probe mutations must be rolled back exactly');
   return report;
 }
 
