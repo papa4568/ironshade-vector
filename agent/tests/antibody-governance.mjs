@@ -7,6 +7,7 @@ import {
   authorizeAntibodyGovernanceDecision,
   runAntibodyGovernanceAssessment,
   validateAntibodyCanonicalSourceEntry,
+  validateAntibodyDecisionHistory,
   validateAntibodyGovernanceCalibrationCorpus,
   validateAntibodyGovernancePolicy,
 } from '../tools/antibody-governance.mjs';
@@ -51,8 +52,12 @@ assert.equal(report.lifecycle.exactReviewPacketRequired, true, 'trusted review m
 assert.equal(report.lifecycle.exactCommittedDecisionRequired, true, 'authorization must load the committed decision from the candidate SHA');
 assert.equal(report.lifecycle.repositoryPinnedInputsRequired, true, 'authorization must load pinned governance inputs from the candidate SHA');
 assert.equal(report.lifecycle.completeReviewHistoryRequired, true, 'authorization must inspect complete PR review history');
+assert.equal(report.lifecycle.completeDecisionHistoryRequired, true, 'authorization must inspect the complete committed antibody decision history');
+assert.equal(report.lifecycle.latestDecisionHeadRequired, true, 'update/retire must extend only the latest committed lifecycle head');
+assert.equal(report.lifecycle.appendOnlyDecisionHistoryRequired, true, 'decision history must be append-only');
 assert.equal(report.lifecycle.canonicalSourceEntryRequired, true, 'governance must verify the named canonical check entry exists');
 assert.equal(report.lifecycle.canonicalSourceContractRequired, true, 'focused-regression and telemetry governance must bind the exact EV-4 target contract');
+assert.equal(report.lifecycle.executableSourceContractRequired, true, 'existing check files must prove executable contract behavior instead of inert marker text');
 assert.equal(report.lifecycle.directDecisionEvaluatorExported, false, 'callers must not bypass the trusted authorization wrapper');
 assert.deepEqual(report.eligibleTruthIds, ['android-screenshot-capture-transport-timeout', 'candidate-artifact-integrity-drift']);
 assert.equal(report.ev12.pinnedCorpusDigestVerified, true);
@@ -160,6 +165,20 @@ assert.throws(
   /exact candidate commit/,
   'authorization inputs must come from the reviewed candidate commit',
 );
+const historyBindingWeakened = structuredClone(policy);
+historyBindingWeakened.decisions.historyBinding = 'caller-selected-parent';
+assert.throws(
+  () => validateAntibodyGovernancePolicy(historyBindingWeakened),
+  /latest committed lifecycle head/,
+  'policy must not allow a caller-selected stale lifecycle parent',
+);
+const appendOnlyWeakened = structuredClone(policy);
+appendOnlyWeakened.decisions.appendOnly = false;
+assert.throws(
+  () => validateAntibodyGovernancePolicy(appendOnlyWeakened),
+  /append-only/,
+  'governance decisions must not rewrite committed lifecycle history',
+);
 const sourceBindingWeakened = structuredClone(policy);
 sourceBindingWeakened.sourceOfTruthByKind['focused-regression'].binding = 'entry-id-substring';
 assert.throws(
@@ -249,6 +268,29 @@ await assert.rejects(
   'an unrelated impact-map rule with the same id must not satisfy antibody governance',
 );
 
+const artifactGroup = ev12Corpus.truthGroups.find(entry => entry.truthId === 'candidate-artifact-integrity-drift');
+const artifactMemory = clusterFailureRecords(artifactGroup.records, {
+  maxSamplesPerClass: ev12Corpus.calibrationMaxSamplesPerClass,
+  maxSerializedBytes: ev12Corpus.calibrationMaxSerializedBytes,
+});
+const artifactProposal = proposeAntibodies(artifactMemory)[0];
+const artifactSource = {
+  kind: 'focused-regression',
+  path: 'agent/tests/candidate-artifact.mjs',
+  entryId: 'candidate-artifact-integrity',
+};
+const executableArtifactBinding = await validateAntibodyCanonicalSourceEntry(policy, artifactProposal, artifactSource, {
+  readText: async () => `import assert from 'node:assert/strict';\nawait assert.rejects(Promise.reject(new Error('wrong sha')), /wrong sha/, 'candidate-artifact-integrity candidate-sha-match rejects stale identity');\n`,
+});
+assert.equal(executableArtifactBinding.binding, 'executable-proposal-target-contract', 'focused regressions must bind executable assertion evidence');
+await assert.rejects(
+  () => validateAntibodyCanonicalSourceEntry(policy, artifactProposal, artifactSource, {
+    readText: async () => `const CHECK_ID = 'candidate-artifact-integrity';\nconst CHECK_CONTRACT = 'candidate-sha-match';\nconsole.log(CHECK_ID, CHECK_CONTRACT);\n`,
+  }),
+  /not bound to an assertion|missing required EV-4 contract behavior/,
+  'inert constants or console markers must not satisfy focused-regression source binding',
+);
+
 function jsonResponse(value, status = 200) {
   return {
     ok: status >= 200 && status < 300,
@@ -290,6 +332,48 @@ const committedDecision = {
   },
   promotion: { state: 'not-promoted', taskId: 'EV-14' },
 };
+
+const historyAcceptPath = 'agent/antibody-decisions/history-r1.json';
+const historyUpdatePath = 'agent/antibody-decisions/history-r2.json';
+const historyForkPath = 'agent/antibody-decisions/history-stale-fork.json';
+const historyAccept = structuredClone(committedDecision);
+const historyUpdate = {
+  ...structuredClone(committedDecision),
+  revision: 2,
+  action: 'update',
+  previousDecisionDigest: sha256Value(historyAccept),
+  review: {
+    required: true,
+    taskId: 'EV-13',
+    rationale: 'A newer reviewed update becomes the only valid lifecycle head for later decisions.',
+  },
+};
+const staleFork = {
+  ...structuredClone(committedDecision),
+  revision: 2,
+  action: 'update',
+  previousDecisionDigest: sha256Value(historyAccept),
+  review: {
+    required: true,
+    taskId: 'EV-13',
+    rationale: 'This correctly digested but stale-parent fork must be rejected by repository history.',
+  },
+};
+assert.throws(
+  () => validateAntibodyDecisionHistory(policy, {
+    decisionPath: historyForkPath,
+    decision: staleFork,
+    previousDecisionPath: historyAcceptPath,
+    records: [
+      { path: historyAcceptPath, decision: historyAccept },
+      { path: historyUpdatePath, decision: historyUpdate },
+      { path: historyForkPath, decision: staleFork },
+    ],
+  }),
+  /previousDecisionPath must reference latest committed decision head/,
+  'a correctly digested stale parent must not authorize a competing lifecycle fork',
+);
+
 const baseSha = 'e'.repeat(40);
 const branch = 'agent/ev13-authorization-fixture';
 const ev13Acceptance = 'Define one trusted governance path whose review packet is derived from the exact candidate and cannot be caller-rewritten.';
@@ -402,13 +486,16 @@ function buildFetch({ commentPages = [[happyComment]], architectureConfig = fixt
       const page = Number(parsed.searchParams.get('page') ?? '1');
       return jsonResponse(commentPages[page - 1] ?? []);
     }
-    if (pathname === `/repos/${repository}/pulls/${prNumber}/files`) return jsonResponse([{ filename: decisionPath }]);
+    if (pathname === `/repos/${repository}/pulls/${prNumber}/files`) return jsonResponse([{ filename: decisionPath, status: 'added' }]);
     const contentsPrefix = `/repos/${repository}/contents/`;
     if (pathname.startsWith(contentsPrefix)) {
       const ref = parsed.searchParams.get('ref');
       const path = decodeURIComponent(pathname.slice(contentsPrefix.length));
       if (path === 'docs/experimental-verification-roadmap.md' && ref === baseSha) return jsonResponse(contentPayload(baseExperimentalRoadmap));
       assert.equal(ref, candidateSha, 'all non-base-roadmap authorization content must be fetched from the exact candidate SHA');
+      if (path === 'agent/antibody-decisions') {
+        return jsonResponse([{ type: 'file', name: 'ev14-screenshot.json', path: decisionPath }]);
+      }
       const values = new Map([
         ['agent/antibody-governance-policy.json', policy],
         ['agent/failure-recurrence-calibration-corpus.json', ev12Corpus],
@@ -442,12 +529,18 @@ assert.equal(authorized.reviewPacketChangedFilesVerified, true, 'public authoriz
 assert.equal(authorized.reviewPacketCandidateDerived, true, 'public authorization must bind the review result to the exact candidate-derived packet');
 assert.equal(authorized.reviewPacketSha256, sha256Value(reviewPacket));
 assert.equal(authorized.completeReviewHistoryVerified, true, 'public authorization must inspect all PR comment pages');
+assert.equal(authorized.completeDecisionHistoryVerified, true, 'public authorization must inspect every committed antibody decision record');
+assert.equal(authorized.decisionHistoryAppendOnlyVerified, true, 'public authorization must require a newly added decision record');
+assert.equal(authorized.latestDecisionHeadVerified, true, 'public authorization must bind lifecycle changes to the repository-derived latest head');
 assert.equal(authorized.decisionBoundToReviewedCandidate, true, 'public authorization must bind the exact decision path/digest to the reviewed candidate');
 assert.equal(authorized.reviewAuthorization.decisionDigest, sha256Value(committedDecision));
 assert.equal(authorized.reviewAuthorization.decisionPath, decisionPath);
+assert.equal(authorized.decisionHistory.committedRecords, 1);
+assert.equal(authorized.decisionHistory.relatedRecords, 0);
 assert(requestedUrls.some(url => url.includes('/contents/agent/antibody-governance-policy.json?ref=')), 'authorization must fetch committed policy');
 assert(requestedUrls.some(url => url.includes('/contents/agent/failure-recurrence-calibration-corpus.json?ref=')), 'authorization must fetch committed EV-12 corpus');
 assert(requestedUrls.some(url => url.includes('/contents/agent/failure-memory.json?ref=')), 'authorization must fetch committed failure memory');
+assert(requestedUrls.some(url => url.includes('/contents/agent/antibody-decisions?ref=')), 'authorization must enumerate complete committed decision history');
 assert(requestedUrls.some(url => url.includes(`/contents/${decisionPath}?ref=`)), 'authorization must fetch the exact committed decision');
 assert(requestedUrls.some(url => url.includes('/contents/docs/experimental-verification-roadmap.md?ref=')), 'authorization must reconstruct review acceptance from the exact roadmap');
 assert(requestedUrls.some(url => url.includes('/contents/agent/impact-map.json?ref=')), 'authorization must reconstruct review impact from the exact candidate impact map');
@@ -534,4 +627,4 @@ await assert.rejects(
   'authorization must evaluate exact-candidate architecture invariants instead of synthesizing passed statuses',
 );
 
-console.log('ANTIBODY_GOVERNANCE_PASS eligible=2 transitionFp=0 transitionFn=0 promotionFp=0 promotionFn=0 decisions=0 enforcement=false rollback=clean+public-authorization lifecycle=accept+update+retire review=github-provenance+exact-decision+exact-packet eligibility=pinned sourceEntry=verified sourceContract=exact-target+fixed-rule-semantics invariantPacket=evaluated pagination=complete publicAuthorization=exercised');
+console.log('ANTIBODY_GOVERNANCE_PASS eligible=2 transitionFp=0 transitionFn=0 promotionFp=0 promotionFn=0 decisions=0 enforcement=false rollback=clean+public-authorization lifecycle=accept+update+retire+latest-head+append-only review=github-provenance+exact-decision+exact-packet eligibility=pinned sourceEntry=verified sourceContract=executable+exact-target+fixed-rule-semantics invariantPacket=evaluated pagination=complete publicAuthorization=exercised');
