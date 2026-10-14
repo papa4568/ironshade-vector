@@ -109,29 +109,31 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
-          mkdir -p .agent-antibody-promotion .independent-review
+          AUTH_DIR="$RUNNER_TEMP/ev14-antibody-authorization"
+          rm -rf "$AUTH_DIR"
+          mkdir -p "$AUTH_DIR"
           node agent/tools/candidate-evidence.mjs manifest \
             --task EV-14 \
             --base "$BASE_SHA" \
             --head "$CANDIDATE_SHA" \
             --branch "$HEAD_BRANCH" \
-            --output .independent-review/candidate-manifest.json
+            --output "$AUTH_DIR/candidate-manifest.json"
           node agent/tools/independent-review.mjs packet \
-            --manifest .independent-review/candidate-manifest.json \
-            --output .independent-review/review-packet.json \
+            --manifest "$AUTH_DIR/candidate-manifest.json" \
+            --output "$AUTH_DIR/review-packet.json" \
             --verify-git
           node agent/tools/antibody-promotion.mjs authorize \
             --candidate-sha "$CANDIDATE_SHA" \
             --repository "$GITHUB_REPOSITORY" \
             --pr-number "$PR_NUMBER" \
-            --review-packet .independent-review/review-packet.json \
-            --output .agent-antibody-promotion/authorization.json
+            --review-packet "$AUTH_DIR/review-packet.json" \
+            --output "$AUTH_DIR/authorization.json"
 
       - name: Upload trusted EV-14 governance authorization
         uses: actions/upload-artifact@v7
         with:
           name: antibody-promotion-authorization-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
-          path: .agent-antibody-promotion/authorization.json
+          path: ${{ runner.temp }}/ev14-antibody-authorization/authorization.json
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 30
