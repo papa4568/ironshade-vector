@@ -26,14 +26,7 @@ jobs:
       - name: Apply EV-16 archive transition
         run: python3 agent/ev16-closeout-final.py
 
-      - name: Validate closeout task selection
-        run: |
-          set -euo pipefail
-          git diff --check
-          node agent/tools/select-review-task.mjs --base 3e3f7a062d5a7f93bceecd613ec8cbee12287c13 --head HEAD --json | tee /tmp/review-task.json
-          jq -e '.taskId == "EV-16" and .mode == "experimental-closeout" and .source == "docs/experimental-verification-roadmap.md"' /tmp/review-task.json >/dev/null
-
-      - name: Commit EV-16 closeout state
+      - name: Commit candidate locally
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
@@ -41,4 +34,12 @@ jobs:
           git add -A
           git diff --cached --check
           git commit -m 'Archive corrected EV-16 promotion'
-          git push origin HEAD:agent/ev16-impact-widening
+
+      - name: Validate committed closeout task selection
+        run: |
+          set -euo pipefail
+          node agent/tools/select-review-task.mjs --base 3e3f7a062d5a7f93bceecd613ec8cbee12287c13 --head HEAD --json | tee /tmp/review-task.json
+          jq -e '.taskId == "EV-16" and .mode == "experimental-closeout" and .source == "docs/experimental-verification-roadmap.md"' /tmp/review-task.json >/dev/null
+
+      - name: Push validated EV-16 closeout state
+        run: git push origin HEAD:agent/ev16-impact-widening
