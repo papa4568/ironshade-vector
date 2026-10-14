@@ -46,11 +46,13 @@
     },
     "focused-regression": {
       "mode": "existing-check-file",
+      "binding": "proposal-target-contract",
       "allowedPrefixes": ["agent/tests/", "tests/", "scripts/"],
       "forbiddenPrefixes": ["agent/antibody-decisions/", "agent/antibody-governance"]
     },
     "telemetry-check": {
       "mode": "existing-check-file",
+      "binding": "proposal-target-contract",
       "allowedPrefixes": ["src/", "agent/", "tests/", "scripts/"],
       "forbiddenPrefixes": ["agent/antibody-decisions/", "agent/antibody-governance"]
     }
