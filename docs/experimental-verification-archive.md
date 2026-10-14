@@ -426,7 +426,7 @@ This archive transition follows the repository's independent-review self-referen
 
 EV-11 changes verification/governance only. Base capture is created from an exact `git archive` into disposable temporary state, candidate route evidence is written only into the CI workspace, and the gate compares canonical post-normalization domain digests without mutating product/runtime state. Existing full-build, browser, Android/APK, exact-SHA, EV-8, EV-9, architecture-invariant, and independent-review gates remain authoritative.
 
-Rollback is deterministic: set `IRONSHADE_BEHAVIORAL_GENOME_ENFORCEMENT=0` to run the same exact-base/exact-head route captures, EV-10 calibration, declaration parsing, and evidence generation while removing only the EV-11 blocking decision. Removing the EV-11 policy/gate/evidence wiring restores the pre-EV-11 advisory EV-3/EV-10 behavior; product/runtime behavior and every pre-existing proof obligation remain unchanged.
+Rollback is deterministic: set `IRONSHADE_BEHAVIORAL_GENOME_ENFORCEMENT=0` to run the same exact-base/exact-head route captures, EV-10 calibration, declaration parsing, and evidence generation while removing only the behavioral-genome blocking decision. Removing the EV-11 policy/gate/evidence wiring restores the pre-EV-11 advisory EV-3/EV-10 behavior; product/runtime behavior and every pre-existing proof obligation remain unchanged.
 
 ### Promotion status
 
@@ -500,3 +500,15 @@ Rollback is deterministic: set `IRONSHADE_ANTIBODY_GOVERNANCE=0` to recompute th
 ### Promotion status
 
 Governance promoted as permanent repository policy, but no antibody was accepted for enforcement and no executable gate was added. The two EV-12 zero-error signatures remain the only governance-eligible candidates, and EV-14 must select and promote at most one of them through its existing canonical check surface. The next experimental promotion item is EV-14.
+
+### Trusted review hardening
+
+Trusted review run `38482346916` (PR comment `6157129450`) on closeout candidate `a5708c82183c5b15065adbbafa191f743bfbcb70` accepted the exact-SHA technical proof as credible but returned `fail` on two trust-boundary defects: decision review fields were self-attested rather than authenticated against a trusted repository review, and the exported decision evaluator could bypass the policy-pinned EV-12 scope while source validation proved only an allowed file/path rather than the named canonical check entry.
+
+The same branch corrected both findings without enabling enforcement. The raw decision evaluator is now private; the public authorization path fetches the exact PR and PR comments from GitHub and reuses `agent/tools/review-comment-gate.mjs` to authenticate review provenance. Every authorization revalidates the policy-pinned EV-12 corpus and EV-4 failure-memory digests, reruns the exact zero-error eligible scope, and verifies the named canonical check entry exists in the referenced source-of-truth file. The governance corpus now includes explicit self-attested-review and missing-canonical-entry attacks; both are rejected while the two legitimate eligible signatures remain accepted within the zero false-positive/false-negative budgets.
+
+Corrected implementation candidate `fe852b0bd0d619ff328609f58f9b4b6ea1888245` passed EV-13 Antibody Governance run `38491675575`. Exact-SHA artifact `11861897427` (`antibody-governance-381-fe852b0bd0d619ff328609f58f9b4b6ea1888245`) has GitHub Actions digest `sha256:0a348d3f70e9b72954fc62f8575eb7ab0e1e0862142d63e92a2d402e0c05fcea`. The same candidate passed Agent Orchestration run `38491675580`.
+
+PR Candidate Verification run `38491675759` on the same exact SHA passed the authoritative full repository verification/production build, mechanical architecture invariants, exact candidate bundle/evidence producers, APK construction/integrity/delivery, API 35 product smoke, API 36 large-screen smoke, and aggregate Android verification. Browser E2E was correctly skipped by scope because EV-13 changes only verification/governance. Exact-SHA APK artifact `11861578768` has digest `sha256:2b69a6605940cd4d8482b46515b013c2b16091ca4bc8d3143268c10244a1fd90`; API 35 artifact `11862870515` has digest `sha256:5fa92aab9b320943ec8de1ad4f38d643f7cad33e64e83d4f95345d721d24604e`; API 36 artifact `11862905737` has digest `sha256:291136fd79d649259f36fef3fc1bd6b080a40991b8459218e2ac8c7437e974af`.
+
+This archive-only transition records the immutable corrected candidate and the failed trusted-review finding that caused the hardening. The resulting closeout SHA cannot contain its own Git SHA because it depends on these archive contents, so it must pass fresh exact-head technical gates and a fresh trusted EV-13 review; no verdict or technical proof from `fe852b0bd0d619ff328609f58f9b4b6ea1888245` is inherited.
