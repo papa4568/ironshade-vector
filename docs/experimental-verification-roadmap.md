@@ -27,11 +27,6 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
 
 ## Active experimental queue
 
-- [ ] **EV-14 — Promote One Accepted Antibody**
-  - Select one deterministic antibody justified by EV-12 evidence and EV-13 governance, and promote only that antibody into the existing appropriate repository check.
-  - Verify rollback removes the promoted enforcement without losing unrelated failure history or changing other acceptance semantics.
-  - Done when permanent documentation is updated and the exact candidate is archived with required proofs and independent review; additional antibodies require separate roadmap items.
-
 - [ ] **EV-15 — Calibrate EV-5 Change-Impact Predictions**
   - Compare historical/current affected-verification predictions with full-verification outcomes and quantify miss and over-selection rates by candidate rule class.
   - Identify only preserve-or-widen candidates; no calibration result may narrow existing required checks or final proof gates, and this item must not change default impact-map behavior.
