@@ -567,7 +567,7 @@ Completed 2026-10-14 as the first narrow enforced promotion of an EV-4 repositor
 - Added `agent/tools/antibody-promotion.mjs` and `agent/tests/antibody-promotion.mjs`. The gate independently recomputes the selected EV-4 proposal from EV-12 truth, validates the exact committed decision intent and canonical source, and calibrates one behavior-preserving source control plus two dishonest source-contract mutations.
 - The measured calibration budget is zero false positives and zero false negatives. The behavior-preserving appended-comment control is accepted; removal of the required `candidate-sha-match` outcome binding and injection of forbidden `accept-cross-sha-artifact` behavior are both detected. A deliberately regressed canonical source is blocking in enforced mode.
 - Added `.github/workflows/ev14-antibody-promotion.yml` to emit exact-SHA promotion/rollback evidence and, only after a trusted exact-SHA EV-14 review exists, authorize the committed decision through EV-13's GitHub-backed governance path. `candidatePassGranted` remains false throughout.
-- Preserved EV-13 as the historical governance-only zero-decision calibration by making its evidence workflow explicitly recompute the EV-13 closeout state with `decisionRecordCount=0`; EV-14 authorization separately validates the actual complete live decision history from the reviewed candidate.
+- The initial EV-14 compatibility attempt modeled EV-13's historical zero-decision closeout by injecting `decisionRecordCount=0` while EV-14 authorization separately validated live decision history. Trusted review later rejected that production override because it hid the newly committed EV-14 decision from EV-13 current-state evidence; the corrected live-history behavior is recorded below.
 - Documented EV-14's permanent enforcement, source-of-truth, proof-preservation, independent-review, and rollback rules in `AGENTS.md`.
 
 ### Evidence
@@ -593,3 +593,12 @@ Rollback is deterministic: set `IRONSHADE_ANTIBODY_ENFORCEMENT=0` to run the sam
 ### Promotion status
 
 Promoted only for `candidate-artifact-integrity-drift` through its existing canonical candidate-artifact regression. `android-screenshot-capture-transport-timeout` and all EV-12 advisory/ambiguous recurrence classes remain unpromoted. The next experimental task is EV-15.
+
+
+### EV-14 trusted-review hardening
+
+Trusted review run `38582693230` (PR comment `6171010931`) on exact candidate `3d0c06d33ddf82faa065ff3bb93c08eec85a6714` accepted the selected antibody scope, zero-error promotion calibration, rollback isolation, full production build, Agent Orchestration, architecture invariants, installable APK, API 35 smoke, API 36 large-screen smoke, and aggregate Android proof. It returned `fail` for one major trust-boundary defect: the EV-13 evidence workflow hard-coded `decisionRecordCount=0`, causing post-EV-13 current-state evidence to hide the committed EV-14 decision and synthesize EV-13's historical closeout predicate.
+
+The same branch removed that production override. EV-13 current-state evidence now enumerates the actual committed `agent/antibody-decisions/` directory, requires later decision history to remain visible, preserves `allowCommittedDecisionsInEv13=false` as the historical EV-13 rule, and explicitly reports that the old EV-13 closeout predicate no longer applies once a later decision exists. `agent/tests/antibody-governance-current-state.mjs` reproduces the rejected zero-count spoof and requires current-state verification to reject it. Historical EV-13 zero-decision fixtures remain test/archive evidence only and cannot override live repository history.
+
+This review-driven correction changes the candidate SHA, so no proof or verdict from `3d0c06d33ddf82faa065ff3bb93c08eec85a6714` is inherited. The exact corrected closeout candidate must rerun every technically available EV-14 proof and receive a fresh trusted EV-14 independent review and governance authorization before merge.
