@@ -1,0 +1,76 @@
+name: EV-14 Closeout Archive Append
+
+on:
+  push:
+    branches:
+      - agent/ev14-promote-candidate-artifact-antibody
+
+permissions:
+  contents: write
+
+jobs:
+  append-and-remove-self:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out branch head
+        uses: actions/checkout@v7
+        with:
+          ref: agent/ev14-promote-candidate-artifact-antibody
+          fetch-depth: 0
+
+      - name: Append EV-14 archive record without rewriting prior history
+        run: |
+          set -euo pipefail
+          if grep -q '^## EV-14 — Promote One Accepted Antibody$' docs/experimental-verification-archive.md; then
+            echo 'EV-14 archive record already exists; refusing duplicate append.' >&2
+            exit 1
+          fi
+          cat >> docs/experimental-verification-archive.md <<'EOF'
+
+## EV-14 — Promote One Accepted Antibody
+
+Completed 2026-10-14 as the first narrow enforced promotion of an EV-4 repository-immune-system antibody. The original EV-4 prototype, EV-12 recurrence calibration, and EV-13 governance records above remain unchanged history.
+
+### Implemented
+
+- Selected only `candidate-artifact-integrity-drift`, one of EV-12's two zero-error governance-eligible recurrence signatures. `android-screenshot-capture-transport-timeout` remains governance-eligible but unpromoted and requires a separate promotion item before it may block.
+- Added `agent/antibody-promotion-policy.json`, pinned to EV-13 governance policy digest `500ccf844b7e00b609960ffb61633b63d7dd456bbf8adab2f161008e4d58dcd2`, EV-12 corpus digest `ab1be48150edfad5f16f97339f7e5c62a8d8eb6f56382b47749a1ac008c2c493`, EV-4 failure-memory digest `d6f151d1bb399943b959d2ff03f63c69ac1f78414d68ff353de685130aea2254`, and selected EV-4 proposal digest `aa1baf06adc51206a4faf015420c3c1c45462d5388eeb8f0d41c0354704fcd1e`.
+- Added append-only acceptance-intent record `agent/antibody-decisions/candidate-artifact-integrity-drift-r1.json`. The decision remains an audit pointer; executable enforcement stays in the existing `agent/tests/candidate-artifact.mjs` `candidate-artifact-integrity` / `candidate-sha-match` wrong-SHA rejection contract rather than creating a second check registry.
+- Added `agent/tools/antibody-promotion.mjs` and `agent/tests/antibody-promotion.mjs`. The gate independently recomputes the selected EV-4 proposal from EV-12 truth, validates the exact committed decision intent and canonical source, and calibrates one behavior-preserving source control plus two dishonest source-contract mutations.
+- The measured calibration budget is zero false positives and zero false negatives. The behavior-preserving appended-comment control is accepted; removal of the required `candidate-sha-match` outcome binding and injection of forbidden `accept-cross-sha-artifact` behavior are both detected. A deliberately regressed canonical source is blocking in enforced mode.
+- Added `.github/workflows/ev14-antibody-promotion.yml` to emit exact-SHA promotion/rollback evidence and, only after a trusted exact-SHA EV-14 review exists, authorize the committed decision through EV-13's GitHub-backed governance path. `candidatePassGranted` remains false throughout.
+- Preserved EV-13 as the historical governance-only zero-decision calibration by making its evidence workflow explicitly recompute the EV-13 closeout state with `decisionRecordCount=0`; EV-14 authorization separately validates the actual complete live decision history from the reviewed candidate.
+- Documented EV-14's permanent enforcement, source-of-truth, proof-preservation, independent-review, and rollback rules in `AGENTS.md`.
+
+### Evidence
+
+Immutable implementation candidate `155284dc1ca13cf2d86af9bf9a0d127ad7840604` passed EV-12 Failure Recurrence Calibration run `38575027310`, EV-13 Antibody Governance run `38575027418`, and Agent Orchestration run `38575027474`.
+
+EV-14 Antibody Promotion run `38575027357` passed its `promotion-gate` job. Exact-SHA artifact `11899656942` (`antibody-promotion-382-155284dc1ca13cf2d86af9bf9a0d127ad7840604`) has GitHub Actions digest `sha256:a4d657a2dae4ff4a4946886ae1ba61a37538738b4fced2120562485b0a2a81f2`. The evidence records the selected truth/proposal and exact pinned governance inputs, `falsePositives=0`, `falseNegatives=0`, a passing canonical baseline, both dishonest mutations detected, and rollback recomputation with the EV-14 blocking decision disabled.
+
+PR Candidate Verification run `38575027173` on the same exact implementation SHA passed the authoritative full repository verification/production build, promoted verification gates, mechanical architecture invariants, exact candidate web bundle, independent-review context generation, APK construction/integrity/delivery, API 35 product smoke, API 36 large-screen smoke, and aggregate Android verification. Browser E2E was correctly skipped by scope because EV-14 changes only verification/governance surfaces. The final candidate job failed only at the expected missing exact-SHA independent-review decision step before this closeout transition.
+
+Exact-SHA web-bundle artifact `11900087313` has digest `sha256:46b3ae35dda0e9f10dc76e9a136f4d7f87a8d58212b88d25d37ddcfe98e6f31e`. Independent-review context artifact `11900485646` has digest `sha256:df69b46550aea4239e1da580d163cc07240cdd6073f188814aca8a2029b11a6e`. APK artifact `11899393513` has digest `sha256:3a1f83388fb53d49ce0dc27e214f2908856949afd4128618d1c0e7b73044b3d8`. API 35 artifact `11899753936` has digest `sha256:423b25ea0736657e54205749d68fea2276a9d9d147e80adfc143ce40acf28153`; API 36 large-screen artifact `11901710725` has digest `sha256:6bd94660fd4333c546b3263a733f40537d2381375d32230055b1f2d3dc4e7465`.
+
+The first EV-14 authorization attempt on predecessor `edb4a6626ad4ac9e5512adb4bd207b3e2faa094d` failed closed because authorization scratch files were created inside the exact-candidate checkout; EV-13 correctly rejected the dirty workspace. The same branch moved reconstructed review inputs into `$RUNNER_TEMP`. On `155284dc1ca13cf2d86af9bf9a0d127ad7840604`, authorization then reached the trusted-review lookup and failed only because no EV-14 review existed yet, proving the clean-checkout defect was corrected without weakening governance.
+
+This archive transition follows the repository's independent-review self-reference rule. It records the immutable technically complete pre-archive implementation candidate and its measured exact-SHA proof set. The resulting closeout SHA cannot literally contain its own Git SHA because that SHA depends on these archive contents, so it must pass all technically available exact-head gates, receive a fresh trusted EV-14 review from an authorized reviewer/requester independent of the PR author, and pass EV-14 governance authorization before merge. No review verdict or final candidate proof is inherited from `155284dc1ca13cf2d86af9bf9a0d127ad7840604`.
+
+### Isolation and rollback
+
+EV-14 changes verification/governance only. It reuses the existing candidate-artifact regression rather than changing product/runtime behavior or creating a parallel proof producer. The promotion gate reads committed policy/governance/calibration/failure-memory/decision state, mutates source text only in in-memory calibration strings, writes ephemeral exact-SHA CI reports, and cannot grant candidate acceptance.
+
+Rollback is deterministic: set `IRONSHADE_ANTIBODY_ENFORCEMENT=0` to run the same pinned policy, decision-intent, canonical-source, and calibration checks while removing only EV-14's blocking decision. The original candidate-artifact wrong-SHA/tamper/file-inventory checks remain required, EV-4 failure history and EV-13 append-only governance history remain intact, and unrelated full-build, browser, Android/APK, exact-SHA, architecture-invariant, and independent-review acceptance semantics are unchanged.
+
+### Promotion status
+
+Promoted only for `candidate-artifact-integrity-drift` through its existing canonical candidate-artifact regression. `android-screenshot-capture-transport-timeout` and all EV-12 advisory/ambiguous recurrence classes remain unpromoted. The next experimental task is EV-15.
+EOF
+          rm .github/workflows/ev14-closeout-append.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/experimental-verification-archive.md .github/workflows/ev14-closeout-append.yml
+          git diff --cached --check
+          git commit -m 'Archive EV-14 promotion'
+          git push origin HEAD:agent/ev14-promote-candidate-artifact-antibody
