@@ -1,7 +1,8 @@
 import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { dirname, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import ts from 'typescript';
 
 import { buildCandidateManifest } from './candidate-evidence.mjs';
 import { selectExperimentalReviewTask } from './experimental-review-task.mjs';
@@ -40,6 +41,8 @@ const FAILURE_MEMORY_PATH = 'agent/failure-memory.json';
 const EXPERIMENTAL_ROADMAP_PATH = 'docs/experimental-verification-roadmap.md';
 const IMPACT_MAP_PATH = 'agent/impact-map.json';
 const ARCHITECTURE_INVARIANTS_PATH = 'agent/architecture-invariants.json';
+const JAVASCRIPT_EXTENSIONS = new Set(['.js', '.jsx', '.mjs', '.cjs', '.ts', '.tsx', '.mts', '.cts']);
+const SHELL_EXTENSIONS = new Set(['.sh', '.bash']);
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -137,7 +140,7 @@ export function validateAntibodyGovernancePolicy(policy) {
   for (const kind of ['focused-regression', 'telemetry-check']) {
     const mapping = policy.sourceOfTruthByKind[kind];
     assert(mapping.mode === 'existing-check-file', `${kind} must bind an existing check file instead of a governance registry`);
-    assert(mapping.binding === 'proposal-target-contract', `${kind} must bind the exact EV-4 proposed target and check contract`);
+    assert(mapping.binding === 'executable-proposal-target-contract', `${kind} must bind the exact EV-4 proposed target and check contract`);
     assert(Array.isArray(mapping.allowedPrefixes) && mapping.allowedPrefixes.length > 0, `${kind}.allowedPrefixes must be non-empty`);
     assert(Array.isArray(mapping.forbiddenPrefixes) && mapping.forbiddenPrefixes.length > 0, `${kind}.forbiddenPrefixes must be non-empty`);
   }
@@ -148,6 +151,8 @@ export function validateAntibodyGovernancePolicy(policy) {
   assert(policy.decisions.initialPromotionTask === 'EV-14', 'the first governance promotion candidate must remain EV-14');
   assert(policy.decisions.allowCommittedDecisionsInEv13 === false, 'EV-13 must not commit an accepted antibody decision');
   assert(policy.decisions.authorizationInput === 'exact-candidate-github-content', 'authorization must load governance inputs from the exact candidate commit');
+  assert(policy.decisions.historyBinding === 'latest-committed-decision-head', 'update/retire authorization must bind the latest committed lifecycle head');
+  assert(policy.decisions.appendOnly === true, 'antibody decision history must be append-only');
 
   assertObject(policy.rollback, 'policy.rollback');
   assert(policy.rollback.environmentVariable === 'IRONSHADE_ANTIBODY_GOVERNANCE', 'rollback environment variable must be stable');
@@ -248,6 +253,86 @@ function validateFixedFileEntryContract(proposal, normalized, entry) {
   };
 }
 
+function scriptKindForSource(path) {
+  const extension = extname(path).toLowerCase();
+  if (extension === '.tsx') return ts.ScriptKind.TSX;
+  if (extension === '.jsx') return ts.ScriptKind.JSX;
+  if (['.js', '.mjs', '.cjs'].includes(extension)) return ts.ScriptKind.JS;
+  return ts.ScriptKind.TS;
+}
+
+function callExpressionName(expression) {
+  if (ts.isIdentifier(expression)) return expression.text;
+  if (ts.isPropertyAccessExpression(expression)) {
+    const parent = callExpressionName(expression.expression);
+    return parent ? `${parent}.${expression.name.text}` : expression.name.text;
+  }
+  return '';
+}
+
+function javascriptExecutableEvidence(text, path) {
+  const sourceFile = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true, scriptKindForSource(path));
+  assert((sourceFile.parseDiagnostics ?? []).length === 0, `canonical executable source could not be parsed: ${path}`);
+  const testLike = /(^|\/)(?:tests?|__tests__)\//.test(path) || /\.(?:test|spec)\.[^.]+$/.test(path);
+  const evidence = [];
+  function visit(node) {
+    if (ts.isCallExpression(node)) {
+      const name = callExpressionName(node.expression);
+      const loggingOnly = name.startsWith('console.') || name === 'process.stdout.write' || name === 'process.stderr.write';
+      const assertion = name === 'assert' || name.startsWith('assert.');
+      if (!loggingOnly && (!testLike || assertion)) evidence.push(node.getText(sourceFile));
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(sourceFile);
+  return { evidence, namedEntryRequired: testLike };
+}
+
+function shellExecutableEvidence(text) {
+  const evidence = [];
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#') || line === '{' || line === '}') continue;
+    if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(line)) continue;
+    if (/^(?:echo|printf)\b/.test(line)) continue;
+    if (/^[A-Za-z_][A-Za-z0-9_]*\(\)\s*\{/.test(line)) continue;
+    evidence.push(line);
+  }
+  return { evidence, namedEntryRequired: false };
+}
+
+function validateExecutableCheckContract(proposal, normalized, text) {
+  const contract = validateCheckContract(proposal.suggestedCheck.check);
+  const extension = extname(normalized.path).toLowerCase();
+  let executable;
+  if (JAVASCRIPT_EXTENSIONS.has(extension)) executable = javascriptExecutableEvidence(text, normalized.path);
+  else if (SHELL_EXTENSIONS.has(extension)) executable = shellExecutableEvidence(text);
+  else throw new Error(`canonical executable check source type is unsupported for ${normalized.path}`);
+
+  assert(executable.evidence.length > 0, `canonical source-of-truth file has no executable check evidence: ${normalized.path}`);
+  if (executable.namedEntryRequired) {
+    assert(
+      executable.evidence.some(snippet => snippet.includes(normalized.entryId)),
+      `canonical executable check entry ${normalized.entryId} is not bound to an assertion in ${normalized.path}`,
+    );
+  }
+  for (const required of contract.requiredSubstrings) {
+    assert(
+      executable.evidence.some(snippet => snippet.includes(required)),
+      `canonical executable check ${normalized.entryId} is missing required EV-4 contract behavior in ${normalized.path}: ${required}`,
+    );
+  }
+  for (const forbidden of contract.forbiddenSubstrings) {
+    assert(!text.includes(forbidden), `canonical source-of-truth contract contains forbidden content in ${normalized.path}: ${forbidden}`);
+  }
+  return {
+    ...normalized,
+    binding: 'executable-proposal-target-contract',
+    contractDigest: sha256Value(proposal.suggestedCheck.check),
+    executableEvidenceDigest: sha256Value(executable.evidence),
+  };
+}
+
 async function validateCanonicalSourceEntry(policy, proposal, sourceOfTruth, {
   readText = async path => readFile(resolve(path), 'utf8'),
 } = {}) {
@@ -274,13 +359,7 @@ async function validateCanonicalSourceEntry(policy, proposal, sourceOfTruth, {
 
   const contract = validateCheckContract(proposal.suggestedCheck.check);
   assert(normalized.path === contract.targetPath, `canonical source-of-truth path must match the EV-4 proposed target ${contract.targetPath}`);
-  for (const required of contract.requiredSubstrings) {
-    assert(text.includes(required), `canonical source-of-truth contract is missing required content in ${normalized.path}: ${required}`);
-  }
-  for (const forbidden of contract.forbiddenSubstrings) {
-    assert(!text.includes(forbidden), `canonical source-of-truth contract contains forbidden content in ${normalized.path}: ${forbidden}`);
-  }
-  return { ...normalized, binding: 'proposal-target-contract', contractDigest: sha256Value(proposal.suggestedCheck.check) };
+  return validateExecutableCheckContract(proposal, normalized, text);
 }
 
 export async function validateAntibodyCanonicalSourceEntry(policy, proposal, sourceOfTruth, options = {}) {
@@ -610,6 +689,104 @@ function validateDecisionPath(policy, path, label = 'decisionPath') {
   return normalized;
 }
 
+function validateHistoryRecord(record, label) {
+  assertObject(record, label);
+  assert(record.schemaVersion === 1, `${label}.schemaVersion must be 1`);
+  assertString(record.antibodyId, `${label}.antibodyId`);
+  assertString(record.truthId, `${label}.truthId`);
+  assertString(record.sourceFailureClass, `${label}.sourceFailureClass`);
+  assert(DIGEST_PATTERN.test(record.proposalDigest ?? ''), `${label}.proposalDigest must be a SHA-256 digest`);
+  assert(Number.isInteger(record.revision) && record.revision >= 1, `${label}.revision must be a positive integer`);
+  assert(ACTIONS.has(record.action), `${label}.action must be accept, update, or retire`);
+  return record;
+}
+
+export function validateAntibodyDecisionHistory(policy, {
+  decisionPath,
+  decision,
+  previousDecisionPath = null,
+  records,
+}) {
+  validateAntibodyGovernancePolicy(policy);
+  const normalizedDecisionPath = validateDecisionPath(policy, decisionPath);
+  const normalizedPreviousPath = previousDecisionPath === null ? null : validateDecisionPath(policy, previousDecisionPath, 'previousDecisionPath');
+  validateHistoryRecord(decision, 'current antibody decision');
+  assert(Array.isArray(records) && records.length > 0, 'committed antibody decision history must contain the current decision');
+
+  const normalizedRecords = records.map((entry, index) => {
+    assertObject(entry, `decision history entry[${index}]`);
+    const path = validateDecisionPath(policy, entry.path, `decision history entry[${index}].path`);
+    return { path, decision: validateHistoryRecord(entry.decision, `decision history entry[${index}].decision`) };
+  });
+  const paths = normalizedRecords.map(entry => entry.path);
+  assert(new Set(paths).size === paths.length, 'committed antibody decision history contains duplicate paths');
+  const current = normalizedRecords.find(entry => entry.path === normalizedDecisionPath);
+  assert(current, `committed antibody decision history does not contain current decision ${normalizedDecisionPath}`);
+  assert(canonicalJson(current.decision) === canonicalJson(decision), 'committed antibody decision history current record does not match the exact reviewed decision');
+
+  const priorRecords = normalizedRecords.filter(entry => entry.path !== normalizedDecisionPath);
+  const related = priorRecords.filter(entry => entry.decision.antibodyId === decision.antibodyId || entry.decision.truthId === decision.truthId);
+  for (const entry of related) {
+    assert(entry.decision.antibodyId === decision.antibodyId && entry.decision.truthId === decision.truthId, `committed decision history has conflicting antibody/truth identity at ${entry.path}`);
+    assert(entry.decision.sourceFailureClass === decision.sourceFailureClass, `committed decision history sourceFailureClass drift at ${entry.path}`);
+    assert(entry.decision.proposalDigest === decision.proposalDigest, `committed decision history proposalDigest drift at ${entry.path}`);
+  }
+  related.sort((left, right) => left.decision.revision - right.decision.revision || left.path.localeCompare(right.path));
+
+  for (const [index, entry] of related.entries()) {
+    const expectedRevision = index + 1;
+    assert(entry.decision.revision === expectedRevision, `committed decision history for ${decision.antibodyId} has missing or duplicate revision ${expectedRevision}`);
+    if (index === 0) {
+      assert(entry.decision.action === 'accept', `committed decision history for ${decision.antibodyId} must start with accept`);
+      assert(entry.decision.previousDecisionDigest === null, `initial committed decision for ${decision.antibodyId} must have null previousDecisionDigest`);
+      continue;
+    }
+    const previous = related[index - 1].decision;
+    assert(previous.action !== 'retire', `committed decision history for ${decision.antibodyId} continues after retirement`);
+    assert(entry.decision.action === 'update' || entry.decision.action === 'retire', `committed decision history revision ${entry.decision.revision} must update or retire the active head`);
+    assert(entry.decision.previousDecisionDigest === decisionDigest(previous), `committed decision history revision ${entry.decision.revision} does not bind its immediate predecessor`);
+  }
+
+  if (decision.action === 'accept') {
+    assert(normalizedPreviousPath === null, 'initial acceptance cannot supply previousDecisionPath');
+    assert(related.length === 0, `initial acceptance for ${decision.antibodyId} conflicts with existing committed decision history`);
+    return {
+      previousDecision: null,
+      previousDecisionPath: null,
+      committedHistoryRecords: normalizedRecords.length,
+      relatedHistoryRecords: 0,
+      latestPriorRevision: 0,
+    };
+  }
+
+  assert(normalizedPreviousPath !== null, 'update/retire authorization requires previousDecisionPath');
+  assert(related.length > 0, `update/retire for ${decision.antibodyId} requires committed prior decision history`);
+  const head = related[related.length - 1];
+  assert(head.decision.action === 'accept' || head.decision.action === 'update', `latest committed decision for ${decision.antibodyId} is retired and cannot be extended`);
+  assert(normalizedPreviousPath === head.path, `previousDecisionPath must reference latest committed decision head ${head.path}`);
+  assert(decision.revision === head.decision.revision + 1, 'update/retire revision must increment the latest committed decision head by one');
+  assert(decision.previousDecisionDigest === decisionDigest(head.decision), 'update/retire previousDecisionDigest must bind the latest committed decision head');
+  return {
+    previousDecision: head.decision,
+    previousDecisionPath: head.path,
+    committedHistoryRecords: normalizedRecords.length,
+    relatedHistoryRecords: related.length,
+    latestPriorRevision: head.decision.revision,
+  };
+}
+
+async function githubDecisionRecords(repository, policy, candidateSha, { fetchImpl = fetch } = {}) {
+  const payload = await githubJson(repository, `contents/${policy.decisions.directory}?ref=${encodeURIComponent(candidateSha)}`, { fetchImpl });
+  assert(Array.isArray(payload), `GitHub decision history ${policy.decisions.directory} must be a directory listing`);
+  const jsonEntries = payload.filter(entry => entry?.type === 'file' && typeof entry?.path === 'string' && entry.path.endsWith('.json'));
+  assert(jsonEntries.length === payload.length, `decision history directory ${policy.decisions.directory} may contain only JSON decision records`);
+  const records = await Promise.all(jsonEntries.map(async entry => ({
+    path: validateDecisionPath(policy, entry.path, 'GitHub decision history path'),
+    decision: await githubContentJson(repository, entry.path, candidateSha, { fetchImpl }),
+  })));
+  return records.sort((left, right) => left.path.localeCompare(right.path));
+}
+
 function assertExactCandidateCheckout(candidateSha) {
   const head = execFileSync('git', ['rev-parse', 'HEAD'], {
     encoding: 'utf8',
@@ -681,11 +858,11 @@ export async function authorizeAntibodyGovernanceDecision({
 
   const normalizedDecisionPath = validateDecisionPath(policy, decisionPath);
   const normalizedPreviousPath = previousDecisionPath === null ? null : validateDecisionPath(policy, previousDecisionPath, 'previousDecisionPath');
-  const [ev12Corpus, failureMemory, decision, previousDecision, comments, prFiles] = await Promise.all([
+  const [ev12Corpus, failureMemory, decision, decisionRecords, comments, prFiles] = await Promise.all([
     githubContentJson(repository, EV12_CORPUS_PATH, candidateSha, { fetchImpl }),
     githubContentJson(repository, FAILURE_MEMORY_PATH, candidateSha, { fetchImpl }),
     githubContentJson(repository, normalizedDecisionPath, candidateSha, { fetchImpl }),
-    normalizedPreviousPath ? githubContentJson(repository, normalizedPreviousPath, candidateSha, { fetchImpl }) : Promise.resolve(null),
+    githubDecisionRecords(repository, policy, candidateSha, { fetchImpl }),
     githubAllPages(repository, `issues/${prNumber}/comments`, { fetchImpl }),
     githubAllPages(repository, `pulls/${prNumber}/files`, { fetchImpl }),
   ]);
@@ -695,8 +872,9 @@ export async function authorizeAntibodyGovernanceDecision({
   const changedFiles = prFiles.map(file => file?.filename).filter(value => typeof value === 'string').sort((a, b) => a.localeCompare(b));
   assert(changedFiles.length === prFiles.length, 'PR changed-file payload contains an invalid filename');
   assert(exactArray(changedFiles, sorted(reviewPacket.changedFiles ?? [])), 'trusted review packet changedFiles do not match the complete GitHub PR diff');
-  const changedDecisionPaths = changedFiles.filter(path => path.startsWith(`${policy.decisions.directory}/`) && path.endsWith('.json'));
-  assert(exactArray(changedDecisionPaths, [normalizedDecisionPath]), 'authorization requires exactly one changed antibody decision record, bound to decisionPath');
+  const changedDecisionFiles = prFiles.filter(file => typeof file?.filename === 'string' && file.filename.startsWith(`${policy.decisions.directory}/`) && file.filename.endsWith('.json'));
+  assert(changedDecisionFiles.length === 1 && changedDecisionFiles[0].filename === normalizedDecisionPath, 'authorization requires exactly one changed antibody decision record, bound to decisionPath');
+  assert(changedDecisionFiles[0].status === 'added', 'antibody decision history is append-only; authorization requires a newly added decision record');
 
   const exactReviewPacket = await buildExactCandidateReviewPacket({
     repository,
@@ -711,11 +889,12 @@ export async function authorizeAntibodyGovernanceDecision({
     'trusted review packet does not match the exact candidate-derived independent-review packet',
   );
 
-  if (decision.action === 'accept') {
-    assert(normalizedPreviousPath === null, 'initial acceptance cannot supply previousDecisionPath');
-  } else {
-    assert(normalizedPreviousPath !== null && previousDecision, 'update/retire authorization requires previousDecisionPath');
-  }
+  const history = validateAntibodyDecisionHistory(policy, {
+    decisionPath: normalizedDecisionPath,
+    decision,
+    previousDecisionPath: normalizedPreviousPath,
+    records: decisionRecords,
+  });
 
   const selected = await selectAuthoritativeReviewCommentWithProvenance(exactReviewPacket, comments, {
     prAuthor: pr.user.login,
@@ -744,7 +923,7 @@ export async function authorizeAntibodyGovernanceDecision({
     failureMemory,
     candidateSha,
     decision,
-    previousDecision,
+    previousDecision: history.previousDecision,
     governanceEnabled: effectiveGovernanceEnabled,
     verifiedReview: capability,
     decisionPath: normalizedDecisionPath,
@@ -761,8 +940,17 @@ export async function authorizeAntibodyGovernanceDecision({
     reviewPacketCandidateDerived: true,
     reviewPacketSha256: sha256Value(exactReviewPacket),
     completeReviewHistoryVerified: true,
+    completeDecisionHistoryVerified: true,
+    decisionHistoryAppendOnlyVerified: true,
+    latestDecisionHeadVerified: true,
     decisionBoundToReviewedCandidate: true,
     rollbackEnvironmentApplied: environmentDisabled,
+    decisionHistory: {
+      committedRecords: history.committedHistoryRecords,
+      relatedRecords: history.relatedHistoryRecords,
+      latestPriorRevision: history.latestPriorRevision,
+      previousDecisionPath: history.previousDecisionPath,
+    },
     reviewAuthorization: {
       reviewer: capability.reviewer,
       reviewedAt: capability.reviewedAt,
@@ -854,8 +1042,12 @@ export async function runAntibodyGovernanceAssessment(policy, calibrationCorpus,
       exactCommittedDecisionRequired: true,
       repositoryPinnedInputsRequired: true,
       completeReviewHistoryRequired: true,
+      completeDecisionHistoryRequired: true,
+      latestDecisionHeadRequired: true,
+      appendOnlyDecisionHistoryRequired: true,
       canonicalSourceEntryRequired: true,
       canonicalSourceContractRequired: true,
+      executableSourceContractRequired: true,
       directDecisionEvaluatorExported: false,
     },
     sourceOfTruthKinds: structuredClone(policy.sourceOfTruthByKind),
