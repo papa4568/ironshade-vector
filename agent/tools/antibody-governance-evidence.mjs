@@ -25,11 +25,15 @@ export async function verifyAntibodyGovernanceEvidence(report, policy, calibrati
   candidateSha,
   requirePass = false,
   governanceOverride = null,
+  decisionRecordCount = null,
 } = {}) {
   assert(SHA_PATTERN.test(candidateSha ?? ''), 'candidateSha must be a full lowercase commit SHA');
+  const recomputeDecisionRecordCount = decisionRecordCount ?? report?.lifecycle?.decisionRecordCount ?? null;
+  assert(recomputeDecisionRecordCount === null || (Number.isInteger(recomputeDecisionRecordCount) && recomputeDecisionRecordCount >= 0), 'antibody governance evidence decision count must be a non-negative integer');
   const expected = await runAntibodyGovernanceAssessment(policy, calibration, ev12Corpus, memory, {
     candidateSha,
     governanceOverride,
+    decisionRecordCount: recomputeDecisionRecordCount,
   });
   assert(canonicalJson(report) === canonicalJson(expected), 'antibody governance report does not match exact candidate policy/corpus/memory recomputation');
   assert(report.enforcementEnabled === false, 'EV-13 must not enable antibody enforcement');
@@ -54,7 +58,7 @@ export async function verifyAntibodyGovernanceEvidence(report, policy, calibrati
   if (requirePass) {
     assert(report.governancePass === true, 'EV-13 closeout requires exact-candidate governance validation to pass');
     assert(report.ev12.calibrationPass === true && report.ev12.eligibleScopeWithinBudget === true, 'EV-13 closeout requires exact-candidate EV-12 eligibility proof');
-    assert(report.lifecycle.decisionRecordCount === 0, 'EV-13 closeout must not commit an accepted antibody decision');
+    assert(report.lifecycle.decisionRecordCount === 0, 'EV-13 closeout calibration must model the EV-13 no-decision state');
     assert(report.calibration.withinBudget === true, 'EV-13 governance calibration must stay within its zero-error budget');
     for (const key of METRIC_KEYS) assert(report.calibration.measuredErrors[key] === 0, `EV-13 closeout ${key} must be zero`);
   }
@@ -71,6 +75,7 @@ function parseArguments(argv) {
     report: null,
     disabled: false,
     requirePass: false,
+    decisionRecordCount: null,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
@@ -82,9 +87,11 @@ function parseArguments(argv) {
     else if (argument === '--report') options.report = argv[++index] ?? null;
     else if (argument === '--disabled') options.disabled = true;
     else if (argument === '--require-pass') options.requirePass = true;
+    else if (argument === '--decision-record-count') options.decisionRecordCount = Number.parseInt(argv[++index] ?? '', 10);
     else throw new Error(`unknown argument ${argument}`);
   }
   assert(options.report, '--report is required');
+  assert(options.decisionRecordCount === null || (Number.isInteger(options.decisionRecordCount) && options.decisionRecordCount >= 0), '--decision-record-count must be a non-negative integer');
   return options;
 }
 
@@ -101,6 +108,7 @@ async function main() {
     candidateSha: options.candidateSha,
     requirePass: options.requirePass,
     governanceOverride: options.disabled ? false : null,
+    decisionRecordCount: options.decisionRecordCount,
   });
   console.log(`ANTIBODY_GOVERNANCE_EVIDENCE_PASS candidate=${options.candidateSha} governancePass=${report.governancePass} requirePass=${options.requirePass} enforcement=${report.enforcementEnabled}`);
 }
