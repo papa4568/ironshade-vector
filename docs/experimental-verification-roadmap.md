@@ -27,11 +27,6 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
 
 ## Active experimental queue
 
-- [ ] **EV-15 — Calibrate EV-5 Change-Impact Predictions**
-  - Compare historical/current affected-verification predictions with full-verification outcomes and quantify miss and over-selection rates by candidate rule class.
-  - Identify only preserve-or-widen candidates; no calibration result may narrow existing required checks or final proof gates, and this item must not change default impact-map behavior.
-  - Done when the evidence names the exact safe widening candidates, confidence limits, and unresolved classes for EV-16.
-
 - [ ] **EV-16 — Enforce Validated Change-Impact Widenings**
   - Apply only EV-15-supported deterministic, reviewed widenings to `agent/impact-map.json` policy; unknown or low-confidence change classes must fail safe to broader verification.
   - Preserve exact-SHA evidence isolation and verify rollback restores the previous static impact-map behavior.
