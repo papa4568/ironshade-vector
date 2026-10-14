@@ -45,39 +45,11 @@
     "review": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["authority", "reviewer", "reviewedAt", "rationale", "evidence"],
+      "required": ["required", "taskId", "rationale"],
       "properties": {
-        "authority": { "const": "trusted-repository-participant" },
-        "reviewer": { "type": "string", "minLength": 1 },
-        "reviewedAt": { "type": "string", "format": "date-time" },
-        "rationale": { "type": "string", "minLength": 20 },
-        "evidence": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "type",
-            "taskId",
-            "candidateSha",
-            "commentId",
-            "reviewResultSha256",
-            "authorAssociation",
-            "sourceRunId"
-          ],
-          "properties": {
-            "type": { "const": "github-pr-review" },
-            "taskId": { "type": "string", "pattern": "^EV-[0-9]+$" },
-            "candidateSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
-            "commentId": { "type": "integer", "minimum": 1 },
-            "reviewResultSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
-            "authorAssociation": { "enum": ["OWNER", "MEMBER", "COLLABORATOR", "TRUSTED_MAIN_ACTIONS"] },
-            "sourceRunId": {
-              "oneOf": [
-                { "type": "integer", "minimum": 1 },
-                { "type": "null" }
-              ]
-            }
-          }
-        }
+        "required": { "const": true },
+        "taskId": { "type": "string", "pattern": "^EV-[0-9]+$" },
+        "rationale": { "type": "string", "minLength": 20 }
       }
     },
     "promotion": {
