@@ -7,6 +7,7 @@ import {
   recommendWidening,
   validateHistoricalRunEvidence,
   validateImpactCalibrationCorpus,
+  verifyHistoricalGitRange,
 } from '../tools/impact-calibration-evidence.mjs';
 import { loadImpactMap, selectAffectedVerification } from '../tools/select-affected-verification.mjs';
 
@@ -59,6 +60,16 @@ const historicalSelection = selectAffectedVerification(historicalPload.changedFi
 assert.equal(historicalSelection.mode, 'full', 'mixed P28 history must retain fail-safe full fallback');
 assert(historicalSelection.unknownFiles.length > 0, 'historical P28 control should preserve currently-unclassified paths as unresolved rather than infer narrowing');
 
+const historicalGitRange = verifyHistoricalGitRange(historicalPload);
+assert.equal(historicalGitRange.authenticated, true);
+assert.equal(historicalGitRange.mergeBaseSha, 'b2315161f5e660eedc1e7973852a69cf90a822a9', 'diverged P28 history must resolve its immutable merge base');
+assert.deepEqual(historicalGitRange.changedFiles, [...historicalPload.changedFiles].sort(), 'historical changed files must come from the exact Git three-dot range');
+assert.throws(
+  () => verifyHistoricalGitRange({ ...historicalPload, changedFiles: historicalPload.changedFiles.slice(1) }),
+  /exact Git changed-file range mismatch/,
+  'historical authentication must reject a candidate-asserted changed-file inventory that does not match Git',
+);
+
 const validHistoricalEvidence = {
   runRecord: {
     id: historicalPload.fullVerificationRunId,
@@ -86,7 +97,6 @@ const validHistoricalEvidence = {
     head: { ref: 'agent/p28-pload1-batched-refinery-instantiation' },
   },
   pullRequestCommits: [{ sha: historicalPload.candidateSha }],
-  pullRequestFiles: historicalPload.changedFiles.map(filename => ({ filename })),
 };
 assert.equal(validateHistoricalRunEvidence(historicalPload, validHistoricalEvidence).authenticated, true);
 assert.throws(
@@ -110,14 +120,14 @@ assert.throws(
 assert.throws(
   () => validateHistoricalRunEvidence(historicalPload, {
     ...validHistoricalEvidence,
-    pullRequestFiles: validHistoricalEvidence.pullRequestFiles.slice(1),
+    pullRequest: { ...validHistoricalEvidence.pullRequest, base: { sha: 'f'.repeat(40) } },
   }),
-  /GitHub PR changed files mismatch/,
-  'historical authentication must bind the changed-file inventory',
+  /pull request base SHA mismatch/,
+  'historical authentication must bind the cited PR base identity',
 );
 
 const highRiskCi = selectAffectedVerification(['.github/workflows/pr-candidate.yml'], impactMap);
 assert.equal(highRiskCi.mode, 'full');
 assert.deepEqual(highRiskCi.verifications.map(entry => entry.id), ['verify-full']);
 
-console.log(`EV15_IMPACT_CALIBRATION_TEST_PASS probes=${corpus.executableMissProbes.length} historical=${corpus.historicalObservations.length} wideningThreshold=${corpus.minimumIndependentMissesForWidening} uiDefault=${uiRule.risk} observer=measured historyAuth=fail-closed noNarrowing=pass`);
+console.log(`EV15_IMPACT_CALIBRATION_TEST_PASS probes=${corpus.executableMissProbes.length} historical=${corpus.historicalObservations.length} wideningThreshold=${corpus.minimumIndependentMissesForWidening} uiDefault=${uiRule.risk} observer=measured historyAuth=run+git-range noNarrowing=pass`);
