@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -8,6 +9,11 @@ import { parseFailedNpmScript } from './impact-map-calibration.mjs';
 import { loadImpactMap, selectAffectedVerification, validateImpactMap } from './select-affected-verification.mjs';
 
 const SHA_PATTERN = /^[a-f0-9]{40}$/;
+const HISTORICAL_WORKFLOW_NAME = 'PR Candidate Verification';
+const HISTORICAL_WORKFLOW_PATH = '.github/workflows/pr-candidate.yml';
+const HISTORICAL_PRODUCER_JOB = 'Candidate Build and Full Verification';
+const HISTORICAL_FULL_STEP = 'Run full repository verification and production build once';
+const HISTORICAL_FINAL_JOB = 'PR Candidate Verification';
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -26,11 +32,15 @@ function sha256(value) {
   return createHash('sha256').update(typeof value === 'string' ? value : canonicalJson(value)).digest('hex');
 }
 
-function run(command, { expectFailure = false, cwd = process.cwd() } = {}) {
+function orderedUnique(values) {
+  return [...new Set(values)].sort((a, b) => a.localeCompare(b));
+}
+
+function run(command, { expectFailure = false, cwd = process.cwd(), env = {} } = {}) {
   const result = spawnSync('bash', ['-lc', command], {
     cwd,
     encoding: 'utf8',
-    env: { ...process.env, CI: process.env.CI ?? '1' },
+    env: { ...process.env, CI: process.env.CI ?? '1', ...env },
     maxBuffer: 32 * 1024 * 1024,
   });
   const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
@@ -40,8 +50,21 @@ function run(command, { expectFailure = false, cwd = process.cwd() } = {}) {
   return { status: result.status, output };
 }
 
+function git(args, { expectStatus = 0 } = {}) {
+  const result = spawnSync('git', args, { cwd: process.cwd(), encoding: 'utf8' });
+  if (result.error) throw result.error;
+  assert(result.status === expectStatus, `git ${args.join(' ')} failed with status ${result.status}: ${(result.stderr ?? '').slice(-2000)}`);
+  return `${result.stdout ?? ''}`;
+}
+
 function assertString(value, label) {
   assert(typeof value === 'string' && value.trim().length > 0, `${label} must be a non-empty string`);
+}
+
+function assertSameStringSet(actual, expected, label) {
+  const actualSorted = orderedUnique(actual);
+  const expectedSorted = orderedUnique(expected);
+  assert(canonicalJson(actualSorted) === canonicalJson(expectedSorted), `${label} mismatch: expected ${expectedSorted.join(', ')}, got ${actualSorted.join(', ')}`);
 }
 
 export function validateImpactCalibrationCorpus(corpus, impactMap) {
@@ -61,7 +84,9 @@ export function validateImpactCalibrationCorpus(corpus, impactMap) {
     assertString(observation.id, 'historical observation id');
     assert(!ids.has(observation.id), `duplicate corpus id ${observation.id}`);
     ids.add(observation.id);
+    assert(SHA_PATTERN.test(observation.baseSha ?? ''), `${observation.id}.baseSha must be a full lowercase SHA`);
     assert(SHA_PATTERN.test(observation.candidateSha ?? ''), `${observation.id}.candidateSha must be a full lowercase SHA`);
+    assert(observation.baseSha !== observation.candidateSha, `${observation.id}.baseSha must differ from candidateSha`);
     assert(Number.isInteger(observation.pullRequest) && observation.pullRequest > 0, `${observation.id}.pullRequest must be positive`);
     assert(Number.isInteger(observation.fullVerificationRunId) && observation.fullVerificationRunId > 0, `${observation.id}.fullVerificationRunId must be positive`);
     assert(observation.fullVerificationOutcome === 'success', `${observation.id} historical control must be a successful full-verification observation`);
@@ -81,6 +106,11 @@ export function validateImpactCalibrationCorpus(corpus, impactMap) {
     assert(probe.expectedMode === 'targeted', `${probe.id}.expectedMode must be targeted`);
     assert(Array.isArray(probe.expectedVerificationIds) && probe.expectedVerificationIds.length > 0, `${probe.id}.expectedVerificationIds must be non-empty`);
     probe.expectedVerificationIds.forEach(id => assert(impactMap.verifications[id], `${probe.id} references unknown verification ${id}`));
+    assert(Array.isArray(probe.expectedDirectlyObservedVerificationIds), `${probe.id}.expectedDirectlyObservedVerificationIds must be an array`);
+    assert(Array.isArray(probe.expectedOverSelectedVerificationIds), `${probe.id}.expectedOverSelectedVerificationIds must be an array`);
+    const partition = orderedUnique([...probe.expectedDirectlyObservedVerificationIds, ...probe.expectedOverSelectedVerificationIds]);
+    assertSameStringSet(partition, probe.expectedVerificationIds, `${probe.id} observation partition`);
+    assert(probe.expectedDirectlyObservedVerificationIds.every(id => !probe.expectedOverSelectedVerificationIds.includes(id)), `${probe.id} observation partition must not overlap`);
     assertString(probe.mutationSuffix, `${probe.id}.mutationSuffix`);
     assertString(probe.expectedFailureScript, `${probe.id}.expectedFailureScript`);
     assertString(probe.expectedFailurePattern, `${probe.id}.expectedFailurePattern`);
@@ -129,9 +159,138 @@ function wilson95(successes, trials) {
   return { lower: Math.max(0, centre - margin), upper: Math.min(1, centre + margin) };
 }
 
-function verifyHistoricalCommitExists(candidateSha) {
-  const result = spawnSync('git', ['cat-file', '-e', `${candidateSha}^{commit}`], { cwd: process.cwd(), encoding: 'utf8' });
-  return result.status === 0;
+function verifyHistoricalGitRange(observation) {
+  git(['cat-file', '-e', `${observation.baseSha}^{commit}`]);
+  git(['cat-file', '-e', `${observation.candidateSha}^{commit}`]);
+  git(['merge-base', '--is-ancestor', observation.baseSha, observation.candidateSha]);
+  const changedFiles = git(['diff', '--name-only', `${observation.baseSha}...${observation.candidateSha}`])
+    .split(/\r?\n/)
+    .map(value => value.trim())
+    .filter(Boolean);
+  assertSameStringSet(changedFiles, observation.changedFiles, `${observation.id} exact Git changed-file range`);
+  return {
+    baseSha: observation.baseSha,
+    candidateSha: observation.candidateSha,
+    changedFiles: orderedUnique(changedFiles),
+    changedFilesDigest: sha256(orderedUnique(changedFiles)),
+    authenticated: true,
+  };
+}
+
+export function validateHistoricalRunEvidence(observation, { runRecord, jobs, pullRequest, pullRequestCommits, pullRequestFiles }) {
+  assert(Number(runRecord?.id) === observation.fullVerificationRunId, `${observation.id} workflow run id mismatch`);
+  assert(runRecord.name === HISTORICAL_WORKFLOW_NAME, `${observation.id} must reference ${HISTORICAL_WORKFLOW_NAME}`);
+  assert(runRecord.path === HISTORICAL_WORKFLOW_PATH, `${observation.id} workflow path mismatch`);
+  assert(runRecord.event === 'pull_request', `${observation.id} historical run must be a pull_request run`);
+  assert(runRecord.status === 'completed', `${observation.id} historical run must be completed`);
+  assert(runRecord.conclusion === observation.fullVerificationOutcome, `${observation.id} historical run conclusion mismatch`);
+  assert(runRecord.head_sha === observation.candidateSha, `${observation.id} historical run head SHA mismatch`);
+
+  assert(Number(pullRequest?.number) === observation.pullRequest, `${observation.id} pull request number mismatch`);
+  assert(pullRequest.base?.sha === observation.baseSha, `${observation.id} pull request base SHA mismatch`);
+  assert(pullRequest.head?.ref === runRecord.head_branch, `${observation.id} workflow head branch does not match pull request head branch`);
+  assert(Array.isArray(pullRequestCommits) && pullRequestCommits.some(commit => commit?.sha === observation.candidateSha), `${observation.id} candidate SHA is not a commit in PR #${observation.pullRequest}`);
+  assertSameStringSet((pullRequestFiles ?? []).map(file => file?.filename).filter(Boolean), observation.changedFiles, `${observation.id} GitHub PR changed files`);
+
+  const producer = jobs.find(job => job.name === HISTORICAL_PRODUCER_JOB);
+  assert(producer?.status === 'completed' && producer?.conclusion === 'success', `${observation.id} historical producer job did not pass`);
+  const fullStep = producer.steps?.find(step => step.name === HISTORICAL_FULL_STEP);
+  assert(fullStep?.status === 'completed' && fullStep?.conclusion === 'success', `${observation.id} authoritative full-verification step did not pass`);
+  const final = jobs.find(job => job.name === HISTORICAL_FINAL_JOB);
+  assert(final?.status === 'completed' && final?.conclusion === 'success', `${observation.id} historical final candidate gate did not pass`);
+
+  return {
+    authenticated: true,
+    workflowRunId: runRecord.id,
+    workflowName: runRecord.name,
+    workflowPath: runRecord.path,
+    workflowConclusion: runRecord.conclusion,
+    workflowHeadSha: runRecord.head_sha,
+    pullRequest: pullRequest.number,
+    pullRequestBaseSha: pullRequest.base.sha,
+    pullRequestHeadBranch: pullRequest.head.ref,
+    candidateCommitInPullRequest: true,
+    producerJobId: producer.id,
+    fullVerificationStep: HISTORICAL_FULL_STEP,
+    finalCandidateJobId: final.id,
+  };
+}
+
+async function githubJson(path) {
+  const repository = process.env.GITHUB_REPOSITORY?.trim();
+  const token = process.env.GITHUB_TOKEN?.trim();
+  assert(repository, 'GITHUB_REPOSITORY is required to authenticate historical EV-15 evidence');
+  assert(token, 'GITHUB_TOKEN is required to authenticate historical EV-15 evidence');
+  const response = await fetch(`https://api.github.com/repos/${repository}${path}`, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      Authorization: `Bearer ${token}`,
+      'X-GitHub-Api-Version': '2022-11-28',
+      'User-Agent': 'ironshade-ev15-impact-calibration',
+    },
+  });
+  assert(response.ok, `GitHub API ${path} failed with ${response.status}: ${(await response.text()).slice(0, 1000)}`);
+  return response.json();
+}
+
+async function githubPages(path) {
+  const values = [];
+  for (let page = 1; page <= 20; page += 1) {
+    const separator = path.includes('?') ? '&' : '?';
+    const batch = await githubJson(`${path}${separator}per_page=100&page=${page}`);
+    assert(Array.isArray(batch), `GitHub API ${path} pagination must return an array`);
+    values.push(...batch);
+    if (batch.length < 100) return values;
+  }
+  throw new Error(`GitHub API ${path} exceeded EV-15 pagination bound`);
+}
+
+async function authenticateHistoricalObservation(observation) {
+  const [runRecord, jobsPayload, pullRequest, pullRequestCommits, pullRequestFiles] = await Promise.all([
+    githubJson(`/actions/runs/${observation.fullVerificationRunId}`),
+    githubJson(`/actions/runs/${observation.fullVerificationRunId}/jobs?per_page=100`),
+    githubJson(`/pulls/${observation.pullRequest}`),
+    githubPages(`/pulls/${observation.pullRequest}/commits`),
+    githubPages(`/pulls/${observation.pullRequest}/files`),
+  ]);
+  const jobs = jobsPayload?.jobs;
+  assert(Array.isArray(jobs), `${observation.id} historical jobs payload is malformed`);
+  const github = validateHistoricalRunEvidence(observation, { runRecord, jobs, pullRequest, pullRequestCommits, pullRequestFiles });
+  const gitRange = verifyHistoricalGitRange(observation);
+  return { github, gitRange, authenticated: github.authenticated && gitRange.authenticated };
+}
+
+export async function observeVerificationTargetRead(command, targetPath) {
+  const sandbox = await mkdtemp(join(tmpdir(), 'ironshade-ev15-observe-'));
+  const logPath = join(sandbox, 'reads.log');
+  const observerPath = resolve('agent/tools/verification-file-observer.cjs');
+  const absoluteTarget = resolve(targetPath);
+  try {
+    const nodeOptions = [process.env.NODE_OPTIONS?.trim(), `--require=${observerPath}`].filter(Boolean).join(' ');
+    const result = run(command, {
+      env: {
+        NODE_OPTIONS: nodeOptions,
+        IRONSHADE_OBSERVED_FILE: absoluteTarget,
+        IRONSHADE_OBSERVATION_LOG: logPath,
+      },
+    });
+    let observations = [];
+    try {
+      observations = (await readFile(logPath, 'utf8')).split(/\r?\n/).map(value => value.trim()).filter(Boolean);
+    } catch (error) {
+      if (error?.code !== 'ENOENT') throw error;
+    }
+    const matching = observations.filter(value => resolve(value) === absoluteTarget);
+    return {
+      outcome: 'success',
+      command,
+      outputDigest: sha256(result.output),
+      directTargetObserved: matching.length > 0,
+      targetReadObservationCount: matching.length,
+    };
+  } finally {
+    await rm(sandbox, { recursive: true, force: true });
+  }
 }
 
 async function runProbe(probe, impactMap) {
@@ -145,16 +304,22 @@ async function runProbe(probe, impactMap) {
   const original = await readFile(targetPath, 'utf8');
   const originalDigest = sha256(original);
   const trackedBefore = run('git status --porcelain --untracked-files=no').output;
-  assert(trackedBefore.trim() === '', `${probe.id} requires a clean tracked workspace before mutation`);
+  assert(trackedBefore.trim() === '', `${probe.id} requires a clean tracked workspace before baseline observation`);
 
-  const focused = [];
+  const baselineFocused = [];
+  for (const verification of selection.verifications) {
+    baselineFocused.push({ id: verification.id, ...(await observeVerificationTargetRead(verification.command, probe.targetPath)) });
+  }
+  const trackedAfterBaseline = run('git status --porcelain --untracked-files=no').output;
+  assert(trackedAfterBaseline === trackedBefore, `${probe.id} baseline focused checks changed tracked state`);
+
+  const mutatedFocused = [];
   let full = null;
   let trackedDuringProbe = '';
   try {
     await writeFile(targetPath, `${original}${probe.mutationSuffix}`, 'utf8');
     for (const verification of selection.verifications) {
-      const result = run(verification.command);
-      focused.push({ id: verification.id, command: verification.command, outcome: 'success', outputDigest: sha256(result.output) });
+      mutatedFocused.push({ id: verification.id, ...(await observeVerificationTargetRead(verification.command, probe.targetPath)) });
     }
     full = run('npm run verify:full', { expectFailure: true });
     trackedDuringProbe = run('git status --porcelain --untracked-files=no').output;
@@ -172,6 +337,24 @@ async function runProbe(probe, impactMap) {
   assert(failedScript === probe.expectedFailureScript, `${probe.id} expected full verification to fail in ${probe.expectedFailureScript}, got ${failedScript ?? 'unknown'}`);
   assert(criterionMatched, `${probe.id} full verification failed without the expected typecheck criterion`);
 
+  const observationRows = selectedIds.map(id => {
+    const baseline = baselineFocused.find(entry => entry.id === id);
+    const mutated = mutatedFocused.find(entry => entry.id === id);
+    assert(baseline && mutated, `${probe.id} missing focused observation for ${id}`);
+    assert(baseline.directTargetObserved === mutated.directTargetObserved, `${probe.id} target-read observation for ${id} changed between baseline and mutation`);
+    return {
+      id,
+      baseline,
+      mutated,
+      directTargetObserved: mutated.directTargetObserved,
+      overSelectedForTarget: !mutated.directTargetObserved,
+    };
+  });
+  const directlyObservedVerificationIds = observationRows.filter(entry => entry.directTargetObserved).map(entry => entry.id);
+  const overSelectedVerificationIds = observationRows.filter(entry => entry.overSelectedForTarget).map(entry => entry.id);
+  assertSameStringSet(directlyObservedVerificationIds, probe.expectedDirectlyObservedVerificationIds, `${probe.id} directly observed focused checks`);
+  assertSameStringSet(overSelectedVerificationIds, probe.expectedOverSelectedVerificationIds, `${probe.id} measured over-selected focused checks`);
+
   return {
     id: probe.id,
     targetPath: probe.targetPath,
@@ -181,7 +364,7 @@ async function runProbe(probe, impactMap) {
       verificationIds: selectedIds,
       domains: selection.domains,
     },
-    focusedVerification: focused,
+    focusedVerification: observationRows,
     fullVerification: {
       outcome: 'failure',
       command: 'npm run verify:full',
@@ -192,14 +375,41 @@ async function runProbe(probe, impactMap) {
     comparison: {
       falseNegative: true,
       reason: `all predicted focused checks passed, but full verification failed in unpredicted ${failedScript}`,
-      overSelectedVerificationIdsForThisTrial: selectedIds,
-      overSelectionRateForThisTrial: selectedIds.length === 0 ? 0 : 1,
+      overSelectionMethod: 'runtime-file-read-observation',
+      selectedVerificationCount: selectedIds.length,
+      directlyObservedVerificationCount: directlyObservedVerificationIds.length,
+      directlyObservedVerificationIds,
+      overSelectedVerificationCount: overSelectedVerificationIds.length,
+      overSelectedVerificationIdsForThisTrial: overSelectedVerificationIds,
+      overSelectionRateForThisTrial: selectedIds.length === 0 ? 0 : overSelectedVerificationIds.length / selectedIds.length,
+      overSelectionInterpretation: 'A selected focused check is counted as over-selected for this target only when the real focused command never reads the changed target during either baseline or mutated execution. A check that reads the target is not counted as over-selected even when it misses this injected defect.',
     },
     rollback: {
       trackedMutationObserved: trackedDuringProbe.trim().length > 0,
       sourceRestored,
     },
     wideningAction: probe.wideningAction,
+  };
+}
+
+function summarizeRuleClass(ruleId, entries) {
+  const missCount = entries.filter(entry => entry.comparison.falseNegative).length;
+  const selectedVerificationCount = entries.reduce((sum, entry) => sum + entry.comparison.selectedVerificationCount, 0);
+  const overSelectedVerificationCount = entries.reduce((sum, entry) => sum + entry.comparison.overSelectedVerificationCount, 0);
+  return {
+    ruleId,
+    trialCount: entries.length,
+    independentTargetCount: new Set(entries.map(entry => entry.targetPath)).size,
+    missCount,
+    observedMissRate: entries.length === 0 ? 0 : missCount / entries.length,
+    missRateWilson95: wilson95(missCount, entries.length),
+    selectedVerificationCount,
+    directlyObservedVerificationCount: selectedVerificationCount - overSelectedVerificationCount,
+    overSelectedVerificationCount,
+    observedOverSelectionRate: selectedVerificationCount === 0 ? 0 : overSelectedVerificationCount / selectedVerificationCount,
+    overSelectionRateWilson95: wilson95(overSelectedVerificationCount, selectedVerificationCount),
+    overSelectionMethod: 'runtime-file-read-observation',
+    evidenceProbeIds: entries.map(entry => entry.id).sort(),
   };
 }
 
@@ -217,11 +427,14 @@ export async function runImpactCalibrationEvidence({ candidateSha, executeProbes
   const decisionCalibration = calibrateDecision(corpus);
   assert(decisionCalibration.pass, 'EV-15 widening decision calibration exceeded its zero-error budget');
 
-  const historical = corpus.historicalObservations.map(observation => {
+  const historical = [];
+  for (const observation of corpus.historicalObservations) {
     const selection = selectAffectedVerification(observation.changedFiles, impactMap);
-    return {
+    const authentication = await authenticateHistoricalObservation(observation);
+    assert(authentication.authenticated, `${observation.id} historical evidence did not authenticate`);
+    historical.push({
       ...observation,
-      candidateCommitAvailable: verifyHistoricalCommitExists(observation.candidateSha),
+      authentication,
       currentPrediction: {
         mode: selection.mode,
         ruleIds: selection.matchedRuleIds,
@@ -231,11 +444,10 @@ export async function runImpactCalibrationEvidence({ candidateSha, executeProbes
       comparison: {
         falseNegative: false,
         overSelectionKnown: false,
-        reason: 'successful full verification proves no observed miss; it does not prove that selected checks are unnecessary, so narrowing is not inferred',
+        reason: 'Authenticated successful full verification proves no observed miss for this historical candidate. It does not prove any selected check unnecessary, so historical over-selection remains unknown and cannot justify narrowing.',
       },
-    };
-  });
-  assert(historical.every(entry => entry.candidateCommitAvailable), 'one or more historical candidate SHAs are unavailable from the exact checkout history');
+    });
+  }
 
   const probes = [];
   if (executeProbes) {
@@ -248,24 +460,28 @@ export async function runImpactCalibrationEvidence({ candidateSha, executeProbes
     group.push(entry);
     byRule.set(entry.ruleId, group);
   }
+  const ruleClassMetrics = [...byRule.entries()].map(([ruleId, entries]) => summarizeRuleClass(ruleId, entries));
 
   const safeWideningCandidates = [];
   for (const [ruleId, entries] of byRule) {
-    const missCount = entries.filter(entry => entry.comparison.falseNegative).length;
-    const targetCount = new Set(entries.map(entry => entry.targetPath)).size;
-    if (!recommendWidening({ missCount, independentTargetCount: targetCount }, corpus.minimumIndependentMissesForWidening)) continue;
+    const metrics = ruleClassMetrics.find(entry => entry.ruleId === ruleId);
+    if (!recommendWidening({ missCount: metrics.missCount, independentTargetCount: metrics.independentTargetCount }, corpus.minimumIndependentMissesForWidening)) continue;
     assert(entries.every(entry => entry.wideningAction === 'escalate-rule-to-full'), `${ruleId} probes disagree on widening action`);
     safeWideningCandidates.push({
       ruleId,
       action: 'set-risk-high',
       resultingVerification: 'verify-full',
-      missCount,
-      trialCount: entries.length,
-      observedMissRate: missCount / entries.length,
-      missRateWilson95: wilson95(missCount, entries.length),
-      trialOverSelectionRate: entries.reduce((sum, entry) => sum + entry.comparison.overSelectionRateForThisTrial, 0) / entries.length,
-      evidenceProbeIds: entries.map(entry => entry.id).sort(),
-      scopeLimit: 'Evidence proves a deterministic client-TypeScript typecheck gap for this rule class only. It does not justify narrowing any existing check or widening any unmeasured rule class.',
+      missCount: metrics.missCount,
+      trialCount: metrics.trialCount,
+      observedMissRate: metrics.observedMissRate,
+      missRateWilson95: metrics.missRateWilson95,
+      selectedVerificationCount: metrics.selectedVerificationCount,
+      overSelectedVerificationCount: metrics.overSelectedVerificationCount,
+      observedOverSelectionRate: metrics.observedOverSelectionRate,
+      overSelectionRateWilson95: metrics.overSelectionRateWilson95,
+      overSelectionMethod: metrics.overSelectionMethod,
+      evidenceProbeIds: metrics.evidenceProbeIds,
+      scopeLimit: 'Evidence proves a deterministic client-TypeScript typecheck gap for this rule class and measures direct target observation by its currently selected checks. It does not justify narrowing any existing check or widening any unmeasured rule class.',
     });
   }
 
@@ -281,6 +497,8 @@ export async function runImpactCalibrationEvidence({ candidateSha, executeProbes
         : 'No two independent executable full-verification miss probes establish a widening for this class; preserve current behavior until separately calibrated.',
     }));
 
+  const totalSelected = probes.reduce((sum, entry) => sum + entry.comparison.selectedVerificationCount, 0);
+  const totalOverSelected = probes.reduce((sum, entry) => sum + entry.comparison.overSelectedVerificationCount, 0);
   const report = {
     schema: 'ironshade-impact-calibration-evidence:v1',
     schemaVersion: 1,
@@ -291,12 +509,17 @@ export async function runImpactCalibrationEvidence({ candidateSha, executeProbes
     impactMapDigest: sha256(impactMapRaw),
     historicalObservations: historical,
     executableMissProbes: probes,
+    ruleClassMetrics,
     metrics: {
       historicalObservationCount: historical.length,
+      authenticatedHistoricalObservationCount: historical.filter(entry => entry.authentication.authenticated).length,
       executableProbeCount: probes.length,
       falseNegativeCount: probes.filter(entry => entry.comparison.falseNegative).length,
       falseNegativeRate: probes.length === 0 ? 0 : probes.filter(entry => entry.comparison.falseNegative).length / probes.length,
-      trialOverSelectionRate: probes.length === 0 ? 0 : probes.reduce((sum, entry) => sum + entry.comparison.overSelectionRateForThisTrial, 0) / probes.length,
+      selectedVerificationObservationCount: totalSelected,
+      overSelectedVerificationCount: totalOverSelected,
+      measuredOverSelectionRate: totalSelected === 0 ? 0 : totalOverSelected / totalSelected,
+      overSelectionMethod: 'runtime-file-read-observation',
       decisionCalibration,
     },
     safeWideningCandidates,
@@ -310,12 +533,13 @@ export async function runImpactCalibrationEvidence({ candidateSha, executeProbes
       defaultImpactMapChanged: false,
       enforcementEnabled: false,
       sourceMutationsRestored: probes.every(entry => entry.rollback.sourceRestored),
-      rollbackAction: 'remove EV-15 calibration-only corpus/tool/test/workflow; agent/impact-map.json and existing candidate proof gates remain unchanged',
+      rollbackAction: 'remove EV-15 calibration-only corpus/tool/test/workflow and file-observer helper; agent/impact-map.json and existing candidate proof gates remain unchanged',
     },
     acceptedForEnforcement: false,
     candidatePassGranted: false,
   };
 
+  assert(report.metrics.authenticatedHistoricalObservationCount === report.metrics.historicalObservationCount, 'every EV-15 historical observation must authenticate independently');
   assert(report.safeWideningCandidates.length <= 1, 'EV-15 must not silently expand beyond the single measured widening candidate');
   assert(report.rollback.defaultImpactMapChanged === false && report.rollback.enforcementEnabled === false, 'EV-15 must remain calibration-only');
   assert(report.rollback.sourceMutationsRestored, 'EV-15 probe mutations must be rolled back exactly');
@@ -340,7 +564,7 @@ async function main() {
     await mkdir(dirname(outputPath), { recursive: true });
     await writeFile(outputPath, canonicalJson(report), 'utf8');
   }
-  console.log(`EV15_IMPACT_CALIBRATION_PASS candidate=${report.candidateSha} historical=${report.metrics.historicalObservationCount} probes=${report.metrics.executableProbeCount} misses=${report.metrics.falseNegativeCount} widenings=${report.safeWideningCandidates.length} fp=${report.metrics.decisionCalibration.falsePositiveWidenings} fn=${report.metrics.decisionCalibration.falseNegativeWidenings} advisory=true`);
+  console.log(`EV15_IMPACT_CALIBRATION_PASS candidate=${report.candidateSha} historical=${report.metrics.historicalObservationCount}/${report.metrics.authenticatedHistoricalObservationCount} probes=${report.metrics.executableProbeCount} misses=${report.metrics.falseNegativeCount} overSelected=${report.metrics.overSelectedVerificationCount}/${report.metrics.selectedVerificationObservationCount} widenings=${report.safeWideningCandidates.length} fp=${report.metrics.decisionCalibration.falsePositiveWidenings} fn=${report.metrics.decisionCalibration.falseNegativeWidenings} advisory=true`);
 }
 
 const invokedPath = process.argv[1] ? resolve(process.argv[1]) : null;
