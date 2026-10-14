@@ -17,7 +17,9 @@
     "provenance": {
       "source": "github-pr-conversation",
       "verifier": "agent/tools/review-comment-gate.mjs",
-      "requireRepositoryFetch": true
+      "requireRepositoryFetch": true,
+      "decisionBinding": "exact-candidate-committed-decision",
+      "commentPagination": "complete"
     }
   },
   "calibration": {
@@ -61,7 +63,8 @@
     "directory": "agent/antibody-decisions",
     "schema": "../antibody-governance.schema.json",
     "initialPromotionTask": "EV-14",
-    "allowCommittedDecisionsInEv13": false
+    "allowCommittedDecisionsInEv13": false,
+    "authorizationInput": "exact-candidate-github-content"
   },
   "rollback": {
     "environmentVariable": "IRONSHADE_ANTIBODY_GOVERNANCE",
