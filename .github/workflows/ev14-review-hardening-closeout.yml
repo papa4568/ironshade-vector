@@ -1,0 +1,55 @@
+name: EV-14 Review Hardening Closeout
+
+on:
+  push:
+    branches:
+      - agent/ev14-promote-candidate-artifact-antibody
+
+permissions:
+  contents: write
+
+jobs:
+  document-and-remove-self:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out branch head
+        uses: actions/checkout@v7
+        with:
+          ref: agent/ev14-promote-candidate-artifact-antibody
+          fetch-depth: 0
+
+      - name: Record permanent live-history rule and review fix
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { readFile, writeFile } from 'node:fs/promises';
+
+          const agentsPath = 'AGENTS.md';
+          let agents = await readFile(agentsPath, 'utf8');
+          const agentsAnchor = '- EV-13 rollback is deterministic: setting `IRONSHADE_ANTIBODY_GOVERNANCE=0` must recompute the same EV-12 eligibility and governance calibration evidence while authorizing zero promotions. `agent/failure-memory.json` remains advisory, existing checks and exact-SHA gates remain unchanged, and rollback must not delete governance history or synthesize candidate acceptance.';
+          const liveHistoryRule = '- After EV-13, governance evidence for later antibody promotions must enumerate the actual committed `agent/antibody-decisions/` history. A later promotion may not inject or synthesize a zero decision count to preserve EV-13\'s historical closeout predicate; the EV-13 archive remains the proof of its original no-decision state, while live current-state evidence must surface later records and promotion-specific authorization governs their acceptance.';
+          if (!agents.includes(liveHistoryRule)) {
+            if (!agents.includes(agentsAnchor)) throw new Error('AGENTS EV-13 rollback anchor missing');
+            agents = agents.replace(agentsAnchor, `${agentsAnchor}\n${liveHistoryRule}`);
+            await writeFile(agentsPath, agents);
+          }
+
+          const archivePath = 'docs/experimental-verification-archive.md';
+          let archive = await readFile(archivePath, 'utf8');
+          const oldBullet = '- Preserved EV-13 as the historical governance-only zero-decision calibration by making its evidence workflow explicitly recompute the EV-13 closeout state with `decisionRecordCount=0`; EV-14 authorization separately validates the actual complete live decision history from the reviewed candidate.';
+          const historicalBullet = '- The initial EV-14 compatibility attempt modeled EV-13\'s historical zero-decision closeout by injecting `decisionRecordCount=0` while EV-14 authorization separately validated live decision history. Trusted review later rejected that production override because it hid the newly committed EV-14 decision from EV-13 current-state evidence; the corrected live-history behavior is recorded below.';
+          if (archive.includes(oldBullet)) archive = archive.replace(oldBullet, historicalBullet);
+          const hardeningHeading = '### EV-14 trusted-review hardening';
+          if (!archive.includes(hardeningHeading)) {
+            archive += `\n\n${hardeningHeading}\n\nTrusted review run \`38582693230\` (PR comment \`6171010931\`) on exact candidate \`3d0c06d33ddf82faa065ff3bb93c08eec85a6714\` accepted the selected antibody scope, zero-error promotion calibration, rollback isolation, full production build, Agent Orchestration, architecture invariants, installable APK, API 35 smoke, API 36 large-screen smoke, and aggregate Android proof. It returned \`fail\` for one major trust-boundary defect: the EV-13 evidence workflow hard-coded \`decisionRecordCount=0\`, causing post-EV-13 current-state evidence to hide the committed EV-14 decision and synthesize EV-13's historical closeout predicate.\n\nThe same branch removed that production override. EV-13 current-state evidence now enumerates the actual committed \`agent/antibody-decisions/\` directory, requires later decision history to remain visible, preserves \`allowCommittedDecisionsInEv13=false\` as the historical EV-13 rule, and explicitly reports that the old EV-13 closeout predicate no longer applies once a later decision exists. \`agent/tests/antibody-governance-current-state.mjs\` reproduces the rejected zero-count spoof and requires current-state verification to reject it. Historical EV-13 zero-decision fixtures remain test/archive evidence only and cannot override live repository history.\n\nThis review-driven correction changes the candidate SHA, so no proof or verdict from \`3d0c06d33ddf82faa065ff3bb93c08eec85a6714\` is inherited. The exact corrected closeout candidate must rerun every technically available EV-14 proof and receive a fresh trusted EV-14 independent review and governance authorization before merge.\n`;
+          }
+          await writeFile(archivePath, archive);
+          NODE
+          rm .github/workflows/ev14-review-hardening-closeout.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add AGENTS.md docs/experimental-verification-archive.md .github/workflows/ev14-review-hardening-closeout.yml
+          git diff --cached --check
+          git commit -m 'Record EV-14 trusted-review hardening'
+          git push origin HEAD:agent/ev14-promote-candidate-artifact-antibody
