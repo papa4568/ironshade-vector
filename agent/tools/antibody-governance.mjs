@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -212,10 +213,39 @@ function validateSourceMapping(policy, proposal, sourceOfTruth) {
   return { ...sourceOfTruth, path };
 }
 
-function jsonContainsCanonicalEntry(kind, parsed, entryId) {
-  if (kind === 'architecture-invariant') return Array.isArray(parsed?.rules) && parsed.rules.some(entry => entry?.id === entryId);
-  if (kind === 'impact-map-rule') return Array.isArray(parsed?.rules) && parsed.rules.some(entry => entry?.id === entryId);
-  return false;
+function canonicalJsonEntry(kind, parsed, entryId) {
+  if (!['architecture-invariant', 'impact-map-rule'].includes(kind) || !Array.isArray(parsed?.rules)) return null;
+  return parsed.rules.find(entry => entry?.id === entryId) ?? null;
+}
+
+function validateFixedFileEntryContract(proposal, normalized, entry) {
+  const contract = validateCheckContract(proposal.suggestedCheck.check);
+  if (normalized.kind === 'architecture-invariant') {
+    assert(entry?.type === 'sourceContract', `canonical architecture invariant ${normalized.entryId} must be a sourceContract to implement the EV-4 substring contract`);
+    assert(entry.file === contract.targetPath, `canonical architecture invariant ${normalized.entryId} targets ${entry.file ?? 'unknown'} instead of EV-4 target ${contract.targetPath}`);
+    assert(Array.isArray(entry.required) && Array.isArray(entry.forbidden), `canonical architecture invariant ${normalized.entryId} must declare required and forbidden source contract arrays`);
+    for (const required of contract.requiredSubstrings) {
+      assert(entry.required.includes(required), `canonical architecture invariant ${normalized.entryId} is missing required EV-4 contract content: ${required}`);
+    }
+    for (const forbidden of contract.forbiddenSubstrings) {
+      assert(entry.forbidden.includes(forbidden), `canonical architecture invariant ${normalized.entryId} is missing forbidden EV-4 contract content: ${forbidden}`);
+    }
+  } else {
+    assert(contract.targetPath === normalized.path, `canonical impact-map rule ${normalized.entryId} must bind EV-4 target ${normalized.path}, found ${contract.targetPath}`);
+    const entryText = canonicalJson(entry);
+    for (const required of contract.requiredSubstrings) {
+      assert(entryText.includes(required), `canonical impact-map rule ${normalized.entryId} is missing required EV-4 contract content: ${required}`);
+    }
+    for (const forbidden of contract.forbiddenSubstrings) {
+      assert(!entryText.includes(forbidden), `canonical impact-map rule ${normalized.entryId} contains forbidden EV-4 contract content: ${forbidden}`);
+    }
+  }
+  return {
+    ...normalized,
+    binding: 'named-json-entry-contract',
+    contractDigest: sha256Value(proposal.suggestedCheck.check),
+    canonicalEntryDigest: sha256Value(entry),
+  };
 }
 
 async function validateCanonicalSourceEntry(policy, proposal, sourceOfTruth, {
@@ -237,8 +267,9 @@ async function validateCanonicalSourceEntry(policy, proposal, sourceOfTruth, {
     } catch {
       throw new Error(`canonical ${normalized.kind} source is not valid JSON: ${normalized.path}`);
     }
-    assert(jsonContainsCanonicalEntry(normalized.kind, parsed, normalized.entryId), `canonical source-of-truth entry ${normalized.entryId} does not exist in ${normalized.path}`);
-    return { ...normalized, binding: 'named-json-entry' };
+    const entry = canonicalJsonEntry(normalized.kind, parsed, normalized.entryId);
+    assert(entry, `canonical source-of-truth entry ${normalized.entryId} does not exist in ${normalized.path}`);
+    return validateFixedFileEntryContract(proposal, normalized, entry);
   }
 
   const contract = validateCheckContract(proposal.suggestedCheck.check);
@@ -250,6 +281,10 @@ async function validateCanonicalSourceEntry(policy, proposal, sourceOfTruth, {
     assert(!text.includes(forbidden), `canonical source-of-truth contract contains forbidden content in ${normalized.path}: ${forbidden}`);
   }
   return { ...normalized, binding: 'proposal-target-contract', contractDigest: sha256Value(proposal.suggestedCheck.check) };
+}
+
+export async function validateAntibodyCanonicalSourceEntry(policy, proposal, sourceOfTruth, options = {}) {
+  return validateCanonicalSourceEntry(policy, proposal, sourceOfTruth, options);
 }
 
 function proposalForTruth(corpus, truthId) {
@@ -575,6 +610,19 @@ function validateDecisionPath(policy, path, label = 'decisionPath') {
   return normalized;
 }
 
+function assertExactCandidateCheckout(candidateSha) {
+  const head = execFileSync('git', ['rev-parse', 'HEAD'], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }).trim();
+  assert(head === candidateSha, `local checkout ${head} does not match exact candidate ${candidateSha}`);
+  const status = execFileSync('git', ['status', '--porcelain', '--untracked-files=all'], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }).trim();
+  assert(status.length === 0, 'exact candidate architecture evaluation requires a clean checkout');
+}
+
 async function buildExactCandidateReviewPacket({ repository, pr, candidateSha, taskId, changedFiles, fetchImpl }) {
   assert(SHA_PATTERN.test(pr?.base?.sha ?? ''), 'pull request base SHA must be a full lowercase commit SHA');
   assertString(pr?.head?.ref, 'pull request head branch');
@@ -598,12 +646,9 @@ async function buildExactCandidateReviewPacket({ repository, pr, candidateSha, t
     changedFiles,
     impactSelection,
   });
-  const architectureResults = architectureConfig.rules.map(rule => ({
-    id: rule.id,
-    status: 'passed',
-    file: rule.file,
-    type: rule.type,
-  }));
+  assertExactCandidateCheckout(candidateSha);
+  const { evaluateArchitectureInvariants } = await import('./check-architecture-invariants.mjs');
+  const architectureResults = await evaluateArchitectureInvariants(architectureConfig);
   return buildIndependentReviewPacket({ manifest, task: selection.task, architectureResults });
 }
 
