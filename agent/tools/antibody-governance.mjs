@@ -589,6 +589,8 @@ export async function authorizeAntibodyGovernanceDecision({
     githubContentJson(repository, POLICY_PATH, candidateSha, { fetchImpl }),
   ]);
   validateAntibodyGovernancePolicy(policy);
+  const environmentDisabled = process.env[policy.rollback.environmentVariable] === policy.rollback.disabledValue;
+  const effectiveGovernanceEnabled = governanceEnabled && !environmentDisabled;
   assert(pr?.state === 'open' && pr?.head?.sha === candidateSha, 'trusted review PR must be open and its head must match the antibody decision candidate');
   assertString(pr?.user?.login, 'pull request author');
 
@@ -645,7 +647,7 @@ export async function authorizeAntibodyGovernanceDecision({
     candidateSha,
     decision,
     previousDecision,
-    governanceEnabled,
+    governanceEnabled: effectiveGovernanceEnabled,
     verifiedReview: capability,
     decisionPath: normalizedDecisionPath,
     readText: path => githubContentText(repository, path, candidateSha, { fetchImpl }),
@@ -660,6 +662,7 @@ export async function authorizeAntibodyGovernanceDecision({
     reviewPacketChangedFilesVerified: true,
     completeReviewHistoryVerified: true,
     decisionBoundToReviewedCandidate: true,
+    rollbackEnvironmentApplied: environmentDisabled,
     reviewAuthorization: {
       reviewer: capability.reviewer,
       reviewedAt: capability.reviewedAt,
