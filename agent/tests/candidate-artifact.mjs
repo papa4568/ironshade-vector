@@ -46,6 +46,7 @@ try {
   await assert.rejects(
     validateCandidateArtifact({ manifest, artifactRoot: dist, expectedCandidateSha: OTHER }),
     /belongs to .* expected/,
+    'candidate-artifact-integrity candidate-sha-match must reject an artifact from another candidate SHA',
   );
 
   await writeFile(join(dist, 'assets', 'app.js'), 'console.log("tampered");\n');
