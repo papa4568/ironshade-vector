@@ -16,9 +16,16 @@ on:
       - 'agent/failure-memory.json'
       - 'agent/tools/antibody-governance.mjs'
       - 'agent/tools/antibody-governance-evidence.mjs'
+      - 'agent/tools/candidate-evidence.mjs'
+      - 'agent/tools/check-architecture-invariants.mjs'
+      - 'agent/tools/experimental-review-task.mjs'
       - 'agent/tools/failure-recurrence-calibration.mjs'
+      - 'agent/tools/independent-review.mjs'
       - 'agent/tools/repository-immune-system.mjs'
+      - 'agent/tools/select-affected-verification.mjs'
       - 'agent/tests/antibody-governance.mjs'
+      - 'agent/impact-map.json'
+      - 'agent/architecture-invariants.json'
       - '.github/workflows/ev13-antibody-governance.yml'
       - 'docs/experimental-verification-roadmap.md'
       - 'docs/experimental-verification-archive.md'
@@ -32,7 +39,7 @@ jobs:
   govern:
     name: Exact Candidate Antibody Governance
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - name: Check out exact candidate revision
         uses: actions/checkout@v7
@@ -45,6 +52,12 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: '22.23.2'
+
+      - name: Use npm 10.9.8
+        run: npm install --global npm@10.9.8
+
+      - name: Install locked dependencies for architecture checks
+        run: npm ci --ignore-scripts
 
       - name: Run EV-13 governance regressions
         run: node agent/tests/antibody-governance.mjs
