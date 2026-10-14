@@ -20,7 +20,8 @@
       "requireRepositoryFetch": true,
       "decisionBinding": "exact-candidate-committed-decision",
       "packetBinding": "exact-candidate-derived-review-packet",
-      "commentPagination": "complete"
+      "commentPagination": "complete",
+      "requireRequesterIndependentOfPrAuthor": true
     }
   },
   "calibration": {
