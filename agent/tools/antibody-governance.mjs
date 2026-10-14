@@ -42,18 +42,20 @@ function assertString(value, label) {
   assert(typeof value === 'string' && value.trim().length > 0, `${label} must be a non-empty string`);
 }
 
+function assertBoolean(value, label) {
+  assert(typeof value === 'boolean', `${label} must be boolean`);
+}
+
 function assertIsoInstant(value, label) {
   assertString(value, label);
   assert(!Number.isNaN(Date.parse(value)) && /T/.test(value), `${label} must be an ISO date-time`);
 }
 
-function assertBoolean(value, label) {
-  assert(typeof value === 'boolean', `${label} must be boolean`);
-}
-
 function assertMetricObject(value, keys, label) {
   assertObject(value, label);
-  for (const key of keys) assert(Number.isInteger(value[key]) && value[key] >= 0, `${label}.${key} must be a non-negative integer`);
+  for (const key of keys) {
+    assert(Number.isInteger(value[key]) && value[key] >= 0, `${label}.${key} must be a non-negative integer`);
+  }
 }
 
 function normalizePath(path) {
@@ -63,11 +65,22 @@ function normalizePath(path) {
 }
 
 function sorted(values) {
-  return [...values].sort((a, b) => a.localeCompare(b));
+  return [...values].sort((left, right) => left.localeCompare(right));
 }
 
 function exactArray(left, right) {
   return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function validateCheckContract(check, label = 'antibody proposal check') {
+  assertObject(check, label);
+  const targetPath = normalizePath(check.targetPath);
+  assert(Array.isArray(check.requiredSubstrings), `${label}.requiredSubstrings must be an array`);
+  assert(Array.isArray(check.forbiddenSubstrings), `${label}.forbiddenSubstrings must be an array`);
+  for (const [index, value] of check.requiredSubstrings.entries()) assertString(value, `${label}.requiredSubstrings[${index}]`);
+  for (const [index, value] of check.forbiddenSubstrings.entries()) assertString(value, `${label}.forbiddenSubstrings[${index}]`);
+  assert(check.requiredSubstrings.length + check.forbiddenSubstrings.length > 0, `${label} must contain at least one required or forbidden substring`);
+  return { targetPath, requiredSubstrings: [...check.requiredSubstrings], forbiddenSubstrings: [...check.forbiddenSubstrings] };
 }
 
 export function validateAntibodyGovernancePolicy(policy) {
@@ -110,6 +123,7 @@ export function validateAntibodyGovernancePolicy(policy) {
   for (const kind of ['focused-regression', 'telemetry-check']) {
     const mapping = policy.sourceOfTruthByKind[kind];
     assert(mapping.mode === 'existing-check-file', `${kind} must bind an existing check file instead of a governance registry`);
+    assert(mapping.binding === 'proposal-target-contract', `${kind} must bind the exact EV-4 proposed target and check contract`);
     assert(Array.isArray(mapping.allowedPrefixes) && mapping.allowedPrefixes.length > 0, `${kind}.allowedPrefixes must be non-empty`);
     assert(Array.isArray(mapping.forbiddenPrefixes) && mapping.forbiddenPrefixes.length > 0, `${kind}.forbiddenPrefixes must be non-empty`);
   }
@@ -196,6 +210,8 @@ function validateSourceMapping(policy, proposal, sourceOfTruth) {
   } else {
     assert(mapping.allowedPrefixes.some(prefix => path.startsWith(prefix)), `${sourceOfTruth.kind} source-of-truth path is outside its allowed repository check surfaces`);
     assert(!mapping.forbiddenPrefixes.some(prefix => path.startsWith(prefix)), `${sourceOfTruth.kind} source-of-truth path cannot point into antibody governance history or policy`);
+    const contract = validateCheckContract(proposal.suggestedCheck.check);
+    assert(path === contract.targetPath, `canonical source-of-truth entry ${sourceOfTruth.entryId} does not exist at ${path}; EV-4 canonical target is ${contract.targetPath}`);
   }
   return { ...sourceOfTruth, path };
 }
@@ -217,6 +233,7 @@ async function validateCanonicalSourceEntry(policy, proposal, sourceOfTruth, {
     throw new Error(`canonical source-of-truth file does not exist or is unreadable: ${normalized.path}`);
   }
   assert(typeof text === 'string', `canonical source-of-truth reader must return text for ${normalized.path}`);
+
   if (normalized.kind === 'architecture-invariant' || normalized.kind === 'impact-map-rule') {
     let parsed;
     try {
@@ -225,10 +242,18 @@ async function validateCanonicalSourceEntry(policy, proposal, sourceOfTruth, {
       throw new Error(`canonical ${normalized.kind} source is not valid JSON: ${normalized.path}`);
     }
     assert(jsonContainsCanonicalEntry(normalized.kind, parsed, normalized.entryId), `canonical source-of-truth entry ${normalized.entryId} does not exist in ${normalized.path}`);
-  } else {
-    assert(text.includes(normalized.entryId), `canonical source-of-truth entry ${normalized.entryId} does not exist in ${normalized.path}`);
+    return { ...normalized, binding: 'named-json-entry' };
   }
-  return normalized;
+
+  const contract = validateCheckContract(proposal.suggestedCheck.check);
+  assert(normalized.path === contract.targetPath, `canonical source-of-truth path must match the EV-4 proposed target ${contract.targetPath}`);
+  for (const required of contract.requiredSubstrings) {
+    assert(text.includes(required), `canonical source-of-truth contract is missing required content in ${normalized.path}: ${required}`);
+  }
+  for (const forbidden of contract.forbiddenSubstrings) {
+    assert(!text.includes(forbidden), `canonical source-of-truth contract contains forbidden content in ${normalized.path}: ${forbidden}`);
+  }
+  return { ...normalized, binding: 'proposal-target-contract', contractDigest: sha256Value(proposal.suggestedCheck.check) };
 }
 
 function proposalForTruth(corpus, truthId) {
@@ -395,6 +420,7 @@ async function evaluateDecision({
     reviewProvenanceVerified: true,
     pinnedEligibilityVerified: true,
     canonicalSourceEntryVerified: true,
+    canonicalSourceContractVerified: true,
     wouldBePromotionEligible,
     promotionEligible: governanceEnabled && wouldBePromotionEligible,
     enforcementEnabled: false,
@@ -573,6 +599,7 @@ async function classifyCalibrationCase({ policy, ev12Corpus, failureMemory, entr
     reviewProvenanceVerified: result?.reviewProvenanceVerified === true,
     pinnedEligibilityVerified: result?.pinnedEligibilityVerified === true,
     canonicalSourceEntryVerified: result?.canonicalSourceEntryVerified === true,
+    canonicalSourceContractVerified: result?.canonicalSourceContractVerified === true,
     error,
   };
 }
@@ -670,6 +697,7 @@ export async function runAntibodyGovernanceAssessment(policy, calibrationCorpus,
       initialPromotionTask: policy.decisions.initialPromotionTask,
       trustedReviewProvenanceRequired: true,
       canonicalSourceEntryRequired: true,
+      canonicalSourceContractRequired: true,
       directDecisionEvaluatorExported: false,
     },
     sourceOfTruthKinds: structuredClone(policy.sourceOfTruthByKind),
