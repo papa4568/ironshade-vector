@@ -29,6 +29,9 @@ const EV12_METRICS = [
   'recurrenceFalsePositiveRecords',
   'recurrenceFalseNegativeRecords',
 ];
+const POLICY_PATH = 'agent/antibody-governance-policy.json';
+const EV12_CORPUS_PATH = 'agent/failure-recurrence-calibration-corpus.json';
+const FAILURE_MEMORY_PATH = 'agent/failure-memory.json';
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -58,9 +61,9 @@ function assertMetricObject(value, keys, label) {
   }
 }
 
-function normalizePath(path) {
-  assertString(path, 'sourceOfTruth.path');
-  assert(!path.startsWith('/') && !path.includes('..') && !path.includes('\\'), 'sourceOfTruth.path must be a repository-relative normalized path');
+function normalizePath(path, label = 'sourceOfTruth.path') {
+  assertString(path, label);
+  assert(!path.startsWith('/') && !path.includes('..') && !path.includes('\\'), `${label} must be a repository-relative normalized path`);
   return path;
 }
 
@@ -74,7 +77,7 @@ function exactArray(left, right) {
 
 function validateCheckContract(check, label = 'antibody proposal check') {
   assertObject(check, label);
-  const targetPath = normalizePath(check.targetPath);
+  const targetPath = normalizePath(check.targetPath, `${label}.targetPath`);
   assert(Array.isArray(check.requiredSubstrings), `${label}.requiredSubstrings must be an array`);
   assert(Array.isArray(check.forbiddenSubstrings), `${label}.forbiddenSubstrings must be an array`);
   for (const [index, value] of check.requiredSubstrings.entries()) assertString(value, `${label}.requiredSubstrings[${index}]`);
@@ -106,6 +109,8 @@ export function validateAntibodyGovernancePolicy(policy) {
   assert(policy.review.provenance.source === 'github-pr-conversation', 'trusted review provenance must come from the GitHub PR conversation');
   assert(policy.review.provenance.verifier === 'agent/tools/review-comment-gate.mjs', 'trusted review provenance must reuse the repository review-comment gate');
   assert(policy.review.provenance.requireRepositoryFetch === true, 'trusted review provenance must be fetched from GitHub rather than supplied by the decision record');
+  assert(policy.review.provenance.decisionBinding === 'exact-candidate-committed-decision', 'trusted review must bind the exact committed decision from the reviewed candidate SHA');
+  assert(policy.review.provenance.commentPagination === 'complete', 'trusted review authorization must inspect the complete PR comment history');
 
   assertObject(policy.calibration, 'policy.calibration');
   assert(policy.calibration.sourceTask === 'EV-12', 'EV-13 eligibility must be sourced only from EV-12');
@@ -133,6 +138,7 @@ export function validateAntibodyGovernancePolicy(policy) {
   assert(policy.decisions.schema === '../antibody-governance.schema.json', 'decision records must use the EV-13 schema');
   assert(policy.decisions.initialPromotionTask === 'EV-14', 'the first governance promotion candidate must remain EV-14');
   assert(policy.decisions.allowCommittedDecisionsInEv13 === false, 'EV-13 must not commit an accepted antibody decision');
+  assert(policy.decisions.authorizationInput === 'exact-candidate-github-content', 'authorization must load governance inputs from the exact candidate commit');
 
   assertObject(policy.rollback, 'policy.rollback');
   assert(policy.rollback.environmentVariable === 'IRONSHADE_ANTIBODY_GOVERNANCE', 'rollback environment variable must be stable');
@@ -167,34 +173,16 @@ export function validateAntibodyGovernanceCalibrationCorpus(calibrationCorpus) {
   return calibrationCorpus;
 }
 
-function validateReviewEvidenceShape(evidence) {
-  assertObject(evidence, 'antibody decision.review.evidence');
-  assert(evidence.type === 'github-pr-review', 'antibody review evidence type must be github-pr-review');
-  assert(/^EV-\d+$/.test(evidence.taskId ?? ''), 'antibody review evidence taskId must be an EV task');
-  assert(SHA_PATTERN.test(evidence.candidateSha ?? ''), 'antibody review evidence candidateSha must be a full lowercase commit SHA');
-  assert(Number.isInteger(evidence.commentId) && evidence.commentId > 0, 'antibody review evidence commentId must be positive');
-  assert(DIGEST_PATTERN.test(evidence.reviewResultSha256 ?? ''), 'antibody review evidence reviewResultSha256 must be SHA-256');
-  assert(TRUSTED_ASSOCIATIONS.has(evidence.authorAssociation), 'antibody review evidence authorAssociation is not trusted');
-  assert(evidence.sourceRunId === null || (Number.isInteger(evidence.sourceRunId) && evidence.sourceRunId > 0), 'antibody review evidence sourceRunId must be null or positive');
-}
-
-function validateReview(policy, decisionReview, verifiedReview) {
+function validateReviewIntent(policy, decisionReview, verifiedReview, decision, decisionPath = null) {
   assertObject(decisionReview, 'antibody decision.review');
-  assert(verifiedReview?.[REVIEW_CAPABILITY] === true, 'trusted review provenance is required; self-attested review fields cannot authorize an antibody');
-  assert(decisionReview.authority === policy.review.authority, `antibody review authority must be ${policy.review.authority}`);
-  assertString(decisionReview.reviewer, 'antibody decision.review.reviewer');
-  assertIsoInstant(decisionReview.reviewedAt, 'antibody decision.review.reviewedAt');
+  assert(decisionReview.required === true, 'antibody decision.review.required must be true');
+  assert(/^EV-\d+$/.test(decisionReview.taskId ?? ''), 'antibody decision.review.taskId must be an EV task');
   assertString(decisionReview.rationale, 'antibody decision.review.rationale');
   assert(decisionReview.rationale.trim().length >= policy.review.minimumRationaleCharacters, `antibody review rationale must contain at least ${policy.review.minimumRationaleCharacters} characters`);
-  validateReviewEvidenceShape(decisionReview.evidence);
-  assert(decisionReview.reviewer === verifiedReview.reviewer, 'antibody review reviewer does not match trusted GitHub review provenance');
-  assert(decisionReview.reviewedAt === verifiedReview.reviewedAt, 'antibody review reviewedAt does not match trusted GitHub review provenance');
-  assert(decisionReview.evidence.taskId === verifiedReview.taskId, 'antibody review task does not match trusted review provenance');
-  assert(decisionReview.evidence.candidateSha === verifiedReview.candidateSha, 'antibody review candidate does not match trusted review provenance');
-  assert(decisionReview.evidence.commentId === verifiedReview.commentId, 'antibody review comment does not match trusted review provenance');
-  assert(decisionReview.evidence.reviewResultSha256 === verifiedReview.reviewResultSha256, 'antibody review result digest does not match trusted review provenance');
-  assert(decisionReview.evidence.authorAssociation === verifiedReview.authorAssociation, 'antibody review association does not match trusted review provenance');
-  assert(decisionReview.evidence.sourceRunId === verifiedReview.sourceRunId, 'antibody review source run does not match trusted review provenance');
+  assert(verifiedReview?.[REVIEW_CAPABILITY] === true, 'trusted review provenance is required; review intent alone cannot authorize an antibody');
+  assert(decisionReview.taskId === verifiedReview.taskId, 'antibody review task does not match trusted review provenance');
+  assert(decisionDigest(decision) === verifiedReview.decisionDigest, 'trusted review is not bound to the exact antibody decision digest');
+  if (decisionPath !== null) assert(decisionPath === verifiedReview.decisionPath, 'trusted review is not bound to the exact antibody decision path');
 }
 
 function validateSourceMapping(policy, proposal, sourceOfTruth) {
@@ -288,7 +276,7 @@ function validatePinnedEligibility(policy, ev12Corpus, failureMemory, candidateS
   return { ev12, eligibleTruthIds };
 }
 
-function trustedReviewCapability({ reviewer, reviewedAt, taskId, candidateSha, commentId, reviewResultSha256, authorAssociation, sourceRunId }) {
+function trustedReviewCapability({ reviewer, reviewedAt, taskId, candidateSha, commentId, reviewResultSha256, authorAssociation, sourceRunId, decisionDigest: boundDecisionDigest, decisionPath }) {
   assertString(reviewer, 'trusted review reviewer');
   assertIsoInstant(reviewedAt, 'trusted review reviewedAt');
   assert(/^EV-\d+$/.test(taskId ?? ''), 'trusted review taskId must be an EV task');
@@ -297,6 +285,8 @@ function trustedReviewCapability({ reviewer, reviewedAt, taskId, candidateSha, c
   assert(DIGEST_PATTERN.test(reviewResultSha256 ?? ''), 'trusted review result digest must be SHA-256');
   assert(TRUSTED_ASSOCIATIONS.has(authorAssociation), 'trusted review authorAssociation is invalid');
   assert(sourceRunId === null || (Number.isInteger(sourceRunId) && sourceRunId > 0), 'trusted review sourceRunId must be null or positive');
+  assert(DIGEST_PATTERN.test(boundDecisionDigest ?? ''), 'trusted review decisionDigest must be SHA-256');
+  const normalizedDecisionPath = decisionPath === null ? null : normalizePath(decisionPath, 'trusted review decisionPath');
   return Object.freeze({
     [REVIEW_CAPABILITY]: true,
     reviewer,
@@ -307,51 +297,17 @@ function trustedReviewCapability({ reviewer, reviewedAt, taskId, candidateSha, c
     reviewResultSha256,
     authorAssociation,
     sourceRunId,
+    decisionDigest: boundDecisionDigest,
+    decisionPath: normalizedDecisionPath,
   });
 }
 
-function calibrationReviewCapability(entry, candidateSha) {
-  if (!entry.reviewed || entry.trustedReview === false) return null;
-  const commentId = 9000000000 + [...entry.id].reduce((sum, char) => sum + char.codePointAt(0), 0);
-  return trustedReviewCapability({
-    reviewer: 'ev13-calibration-reviewer',
-    reviewedAt: '2026-10-13T22:45:00Z',
-    taskId: 'EV-13',
-    candidateSha,
-    commentId,
-    reviewResultSha256: sha256Value({ calibrationCase: entry.id, verdict: 'pass' }),
-    authorAssociation: 'COLLABORATOR',
-    sourceRunId: null,
-  });
-}
-
-function reviewFromCapability(entry, capability) {
+function reviewIntentForCase(entry) {
   if (!entry.reviewed) return undefined;
-  const evidence = capability
-    ? {
-        type: 'github-pr-review',
-        taskId: capability.taskId,
-        candidateSha: capability.candidateSha,
-        commentId: capability.commentId,
-        reviewResultSha256: capability.reviewResultSha256,
-        authorAssociation: capability.authorAssociation,
-        sourceRunId: capability.sourceRunId,
-      }
-    : {
-        type: 'github-pr-review',
-        taskId: 'EV-13',
-        candidateSha: 'f'.repeat(40),
-        commentId: 1,
-        reviewResultSha256: '0'.repeat(64),
-        authorAssociation: 'COLLABORATOR',
-        sourceRunId: null,
-      };
   return {
-    authority: 'trusted-repository-participant',
-    reviewer: capability?.reviewer ?? 'self-attested-reviewer',
-    reviewedAt: capability?.reviewedAt ?? '2026-10-13T22:45:00Z',
+    required: true,
+    taskId: 'EV-13',
     rationale: `EV-13 deterministic governance calibration for ${entry.id}.`,
-    evidence,
   };
 }
 
@@ -366,6 +322,7 @@ async function evaluateDecision({
   verifiedReview,
   pinnedEligibility = null,
   readText,
+  decisionPath = null,
 }) {
   validateAntibodyGovernancePolicy(policy);
   const eligibility = pinnedEligibility ?? validatePinnedEligibility(policy, ev12Corpus, failureMemory, candidateSha);
@@ -383,7 +340,7 @@ async function evaluateDecision({
   assert(decision.sourceFailureClass === proposal.sourceFailureClass, 'antibody decision sourceFailureClass must match the EV-4 proposal');
   assert(decision.proposalDigest === sha256Value(proposal), 'antibody decision proposalDigest must match the exact EV-4 proposal');
   const sourceOfTruth = await validateCanonicalSourceEntry(policy, proposal, decision.sourceOfTruth, { readText });
-  validateReview(policy, decision.review, verifiedReview);
+  validateReviewIntent(policy, decision.review, verifiedReview, decision, decisionPath);
   assertObject(decision.promotion, 'antibody decision.promotion');
 
   if (decision.action === 'accept') {
@@ -418,6 +375,7 @@ async function evaluateDecision({
     sourceOfTruth,
     decisionDigest: decisionDigest(decision),
     reviewProvenanceVerified: true,
+    reviewBoundToDecisionDigest: true,
     pinnedEligibilityVerified: true,
     canonicalSourceEntryVerified: true,
     canonicalSourceContractVerified: true,
@@ -428,76 +386,20 @@ async function evaluateDecision({
   };
 }
 
-async function githubJson(path) {
-  const repository = process.env.GITHUB_REPOSITORY?.trim();
-  assertString(repository, 'GITHUB_REPOSITORY');
-  const token = process.env.GITHUB_TOKEN?.trim() || process.env.GH_TOKEN?.trim();
-  const response = await fetch(`https://api.github.com/${path.replace(/^\//, '')}`, {
-    headers: {
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
-  const body = await response.text();
-  assert(response.ok, `GitHub governance provenance request ${path} failed ${response.status}: ${body}`);
-  return body ? JSON.parse(body) : null;
-}
-
-export async function authorizeAntibodyGovernanceDecision({
-  policy,
-  ev12Corpus,
-  failureMemory,
-  candidateSha,
-  decision,
-  previousDecision = null,
-  reviewPacket,
-  repository,
-  prNumber,
-  governanceEnabled = true,
-}) {
-  validateAntibodyGovernancePolicy(policy);
-  assertString(repository, 'repository');
-  assert(process.env.GITHUB_REPOSITORY?.trim() === repository, 'repository must match GITHUB_REPOSITORY for trusted review provenance');
-  assert(Number.isInteger(prNumber) && prNumber > 0, 'prNumber must be a positive integer');
-  assertObject(reviewPacket, 'reviewPacket');
-  assert(reviewPacket.candidateSha === candidateSha, 'review packet candidate must match antibody decision candidate');
-  assert(/^EV-\d+$/.test(reviewPacket.taskId ?? ''), 'review packet task must be an EV task');
-  assert(decision?.review?.evidence?.taskId === reviewPacket.taskId, 'decision review task must match the trusted review packet');
-
-  const [pr, comments] = await Promise.all([
-    githubJson(`repos/${repository}/pulls/${prNumber}`),
-    githubJson(`repos/${repository}/issues/${prNumber}/comments?per_page=100`),
-  ]);
-  assert(pr?.head?.sha === candidateSha, 'trusted review PR head no longer matches the antibody decision candidate');
-  assertString(pr?.user?.login, 'pull request author');
-  assert(Array.isArray(comments), 'GitHub PR comments payload must be an array');
-
-  const selected = await selectAuthoritativeReviewCommentWithProvenance(reviewPacket, comments, { prAuthor: pr.user.login });
-  const selectedComment = comments.find(comment => comment?.id === selected.commentId);
-  assert(selectedComment, `trusted review comment ${selected.commentId} is missing from the fetched PR conversation`);
-  const reviewedAt = selectedComment.updated_at ?? selectedComment.created_at;
-  assertIsoInstant(reviewedAt, 'trusted review comment timestamp');
-  const capability = trustedReviewCapability({
-    reviewer: selected.reviewer,
-    reviewedAt,
-    taskId: reviewPacket.taskId,
+function calibrationReviewCapability(entry, candidateSha, decision) {
+  if (!entry.reviewed || entry.trustedReview === false) return null;
+  const commentId = 9000000000 + [...entry.id].reduce((sum, char) => sum + char.codePointAt(0), 0);
+  return trustedReviewCapability({
+    reviewer: 'ev13-calibration-reviewer',
+    reviewedAt: '2026-10-13T22:45:00Z',
+    taskId: decision.review.taskId,
     candidateSha,
-    commentId: selected.commentId,
-    reviewResultSha256: sha256Value(selected.result),
-    authorAssociation: selected.authorAssociation,
-    sourceRunId: Number.isInteger(selected.result?.sourceRunId) ? selected.result.sourceRunId : null,
-  });
-
-  return evaluateDecision({
-    policy,
-    ev12Corpus,
-    failureMemory,
-    candidateSha,
-    decision,
-    previousDecision,
-    governanceEnabled,
-    verifiedReview: capability,
+    commentId,
+    reviewResultSha256: sha256Value({ calibrationCase: entry.id, decisionDigest: decisionDigest(decision), verdict: 'pass' }),
+    authorAssociation: 'COLLABORATOR',
+    sourceRunId: null,
+    decisionDigest: decisionDigest(decision),
+    decisionPath: null,
   });
 }
 
@@ -505,37 +407,8 @@ function sourceForPrevious(entry) {
   return structuredClone(entry.sourceOfTruth);
 }
 
-function decisionForCase(entry, proposal, policy, candidateSha, previousDecision = null) {
-  const capability = calibrationReviewCapability(entry, candidateSha);
-  const action = entry.action;
-  const revision = previousDecision ? previousDecision.revision + 1 : 1;
-  const previousDecisionDigest = previousDecision
-    ? (entry.tamperPreviousDecisionDigest ? '0'.repeat(64) : decisionDigest(previousDecision))
-    : null;
-  return {
-    capability,
-    decision: {
-      schemaVersion: 1,
-      antibodyId: proposal.id,
-      truthId: entry.truthId,
-      sourceFailureClass: proposal.sourceFailureClass,
-      proposalDigest: sha256Value(proposal),
-      revision,
-      action,
-      previousDecisionDigest,
-      sourceOfTruth: structuredClone(entry.sourceOfTruth),
-      ...(entry.reviewed ? { review: reviewFromCapability(entry, capability) } : {}),
-      promotion: action === 'retire'
-        ? { state: 'retired', taskId: null }
-        : { state: 'not-promoted', taskId: policy.decisions.initialPromotionTask },
-    },
-  };
-}
-
-function buildPreviousDecision(entry, proposal, policy, candidateSha) {
+function buildPreviousDecision(entry, proposal, policy) {
   if (entry.action === 'accept') return null;
-  const previousEntry = { ...entry, id: `${entry.id}:prior`, reviewed: true, trustedReview: true };
-  const capability = calibrationReviewCapability(previousEntry, candidateSha);
   return {
     schemaVersion: 1,
     antibodyId: proposal.id,
@@ -547,21 +420,34 @@ function buildPreviousDecision(entry, proposal, policy, candidateSha) {
     previousDecisionDigest: null,
     sourceOfTruth: sourceForPrevious(entry),
     review: {
-      authority: 'trusted-repository-participant',
-      reviewer: capability.reviewer,
-      reviewedAt: capability.reviewedAt,
+      required: true,
+      taskId: 'EV-13',
       rationale: `EV-13 deterministic prior acceptance for ${entry.id}.`,
-      evidence: {
-        type: 'github-pr-review',
-        taskId: capability.taskId,
-        candidateSha: capability.candidateSha,
-        commentId: capability.commentId,
-        reviewResultSha256: capability.reviewResultSha256,
-        authorAssociation: capability.authorAssociation,
-        sourceRunId: capability.sourceRunId,
-      },
     },
     promotion: { state: 'not-promoted', taskId: policy.decisions.initialPromotionTask },
+  };
+}
+
+function decisionForCase(entry, proposal, policy, previousDecision = null) {
+  const action = entry.action;
+  const revision = previousDecision ? previousDecision.revision + 1 : 1;
+  const previousDecisionDigest = previousDecision
+    ? (entry.tamperPreviousDecisionDigest ? '0'.repeat(64) : decisionDigest(previousDecision))
+    : null;
+  return {
+    schemaVersion: 1,
+    antibodyId: proposal.id,
+    truthId: entry.truthId,
+    sourceFailureClass: proposal.sourceFailureClass,
+    proposalDigest: sha256Value(proposal),
+    revision,
+    action,
+    previousDecisionDigest,
+    sourceOfTruth: structuredClone(entry.sourceOfTruth),
+    ...(entry.reviewed ? { review: reviewIntentForCase(entry) } : {}),
+    promotion: action === 'retire'
+      ? { state: 'retired', taskId: null }
+      : { state: 'not-promoted', taskId: policy.decisions.initialPromotionTask },
   };
 }
 
@@ -570,8 +456,9 @@ async function classifyCalibrationCase({ policy, ev12Corpus, failureMemory, entr
   let error = null;
   try {
     const proposal = proposalForTruth(ev12Corpus, entry.truthId);
-    const previousDecision = buildPreviousDecision(entry, proposal, policy, candidateSha);
-    const { decision, capability } = decisionForCase(entry, proposal, policy, candidateSha, previousDecision);
+    const previousDecision = buildPreviousDecision(entry, proposal, policy);
+    const decision = decisionForCase(entry, proposal, policy, previousDecision);
+    const capability = calibrationReviewCapability(entry, candidateSha, decision);
     result = await evaluateDecision({
       policy,
       ev12Corpus,
@@ -597,6 +484,7 @@ async function classifyCalibrationCase({ policy, ev12Corpus, failureMemory, entr
     actualPromotionEligible: result?.promotionEligible === true,
     wouldBePromotionEligible: result?.wouldBePromotionEligible === true,
     reviewProvenanceVerified: result?.reviewProvenanceVerified === true,
+    reviewBoundToDecisionDigest: result?.reviewBoundToDecisionDigest === true,
     pinnedEligibilityVerified: result?.pinnedEligibilityVerified === true,
     canonicalSourceEntryVerified: result?.canonicalSourceEntryVerified === true,
     canonicalSourceContractVerified: result?.canonicalSourceContractVerified === true,
@@ -623,6 +511,168 @@ async function countDecisionRecords(directory) {
     if (error && typeof error === 'object' && error.code === 'ENOENT') return 0;
     throw error;
   }
+}
+
+async function githubJson(repository, path, { fetchImpl = fetch } = {}) {
+  assertString(repository, 'repository');
+  const token = process.env.GITHUB_TOKEN?.trim() || process.env.GH_TOKEN?.trim();
+  const response = await fetchImpl(`https://api.github.com/repos/${repository}/${path.replace(/^\//, '')}`, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  const body = await response.text();
+  assert(response.ok, `GitHub governance request ${path} failed ${response.status}: ${body}`);
+  return body ? JSON.parse(body) : null;
+}
+
+function decodeContentPayload(payload, label) {
+  assertObject(payload, label);
+  assert(payload.encoding === 'base64' && typeof payload.content === 'string', `${label} must be a base64 GitHub contents payload`);
+  return Buffer.from(payload.content.replace(/\s/g, ''), 'base64').toString('utf8');
+}
+
+async function githubContentText(repository, path, candidateSha, { fetchImpl = fetch } = {}) {
+  const normalized = normalizePath(path, 'GitHub content path');
+  const payload = await githubJson(repository, `contents/${normalized}?ref=${encodeURIComponent(candidateSha)}`, { fetchImpl });
+  return decodeContentPayload(payload, `GitHub content ${normalized}`);
+}
+
+async function githubContentJson(repository, path, candidateSha, options = {}) {
+  const text = await githubContentText(repository, path, candidateSha, options);
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`GitHub content ${path} at ${candidateSha} is not valid JSON`);
+  }
+}
+
+async function githubAllPages(repository, path, { fetchImpl = fetch } = {}) {
+  const all = [];
+  for (let page = 1; ; page += 1) {
+    const separator = path.includes('?') ? '&' : '?';
+    const payload = await githubJson(repository, `${path}${separator}per_page=100&page=${page}`, { fetchImpl });
+    assert(Array.isArray(payload), `GitHub paginated response for ${path} must be an array`);
+    all.push(...payload);
+    if (payload.length < 100) return all;
+    assert(page < 1000, `GitHub pagination for ${path} exceeded safety limit`);
+  }
+}
+
+function validateDecisionPath(policy, path, label = 'decisionPath') {
+  const normalized = normalizePath(path, label);
+  assert(normalized.startsWith(`${policy.decisions.directory}/`) && normalized.endsWith('.json'), `${label} must be a JSON record under ${policy.decisions.directory}/`);
+  return normalized;
+}
+
+export async function authorizeAntibodyGovernanceDecision({
+  candidateSha,
+  repository,
+  prNumber,
+  decisionPath,
+  previousDecisionPath = null,
+  reviewPacket,
+  governanceEnabled = true,
+  fetchImpl = fetch,
+}) {
+  assert(SHA_PATTERN.test(candidateSha ?? ''), 'candidateSha must be a full lowercase commit SHA');
+  assertString(repository, 'repository');
+  assert(Number.isInteger(prNumber) && prNumber > 0, 'prNumber must be a positive integer');
+  assertObject(reviewPacket, 'reviewPacket');
+  assert(reviewPacket.candidateSha === candidateSha, 'review packet candidate must match antibody decision candidate');
+  assert(/^EV-\d+$/.test(reviewPacket.taskId ?? ''), 'review packet task must be an EV task');
+
+  const [pr, policy] = await Promise.all([
+    githubJson(repository, `pulls/${prNumber}`, { fetchImpl }),
+    githubContentJson(repository, POLICY_PATH, candidateSha, { fetchImpl }),
+  ]);
+  validateAntibodyGovernancePolicy(policy);
+  assert(pr?.state === 'open' && pr?.head?.sha === candidateSha, 'trusted review PR must be open and its head must match the antibody decision candidate');
+  assertString(pr?.user?.login, 'pull request author');
+
+  const normalizedDecisionPath = validateDecisionPath(policy, decisionPath);
+  const normalizedPreviousPath = previousDecisionPath === null ? null : validateDecisionPath(policy, previousDecisionPath, 'previousDecisionPath');
+  const [ev12Corpus, failureMemory, decision, previousDecision, comments, prFiles] = await Promise.all([
+    githubContentJson(repository, EV12_CORPUS_PATH, candidateSha, { fetchImpl }),
+    githubContentJson(repository, FAILURE_MEMORY_PATH, candidateSha, { fetchImpl }),
+    githubContentJson(repository, normalizedDecisionPath, candidateSha, { fetchImpl }),
+    normalizedPreviousPath ? githubContentJson(repository, normalizedPreviousPath, candidateSha, { fetchImpl }) : Promise.resolve(null),
+    githubAllPages(repository, `issues/${prNumber}/comments`, { fetchImpl }),
+    githubAllPages(repository, `pulls/${prNumber}/files`, { fetchImpl }),
+  ]);
+
+  assertObject(decision.review, 'antibody decision.review');
+  assert(decision.review.taskId === reviewPacket.taskId, 'committed antibody review task must match the trusted review packet');
+  const changedFiles = prFiles.map(file => file?.filename).filter(value => typeof value === 'string').sort((a, b) => a.localeCompare(b));
+  assert(changedFiles.length === prFiles.length, 'PR changed-file payload contains an invalid filename');
+  assert(exactArray(changedFiles, sorted(reviewPacket.changedFiles ?? [])), 'trusted review packet changedFiles do not match the complete GitHub PR diff');
+  const changedDecisionPaths = changedFiles.filter(path => path.startsWith(`${policy.decisions.directory}/`) && path.endsWith('.json'));
+  assert(exactArray(changedDecisionPaths, [normalizedDecisionPath]), 'authorization requires exactly one changed antibody decision record, bound to decisionPath');
+
+  if (decision.action === 'accept') {
+    assert(normalizedPreviousPath === null, 'initial acceptance cannot supply previousDecisionPath');
+  } else {
+    assert(normalizedPreviousPath !== null && previousDecision, 'update/retire authorization requires previousDecisionPath');
+  }
+
+  const selected = await selectAuthoritativeReviewCommentWithProvenance(reviewPacket, comments, {
+    prAuthor: pr.user.login,
+    fetchImpl,
+  });
+  const selectedComment = comments.find(comment => comment?.id === selected.commentId);
+  assert(selectedComment, `trusted review comment ${selected.commentId} is missing from the complete fetched PR conversation`);
+  const reviewedAt = selectedComment.updated_at ?? selectedComment.created_at;
+  assertIsoInstant(reviewedAt, 'trusted review comment timestamp');
+  const capability = trustedReviewCapability({
+    reviewer: selected.reviewer,
+    reviewedAt,
+    taskId: reviewPacket.taskId,
+    candidateSha,
+    commentId: selected.commentId,
+    reviewResultSha256: sha256Value(selected.result),
+    authorAssociation: selected.authorAssociation,
+    sourceRunId: Number.isInteger(selected.result?.sourceRunId) ? selected.result.sourceRunId : null,
+    decisionDigest: decisionDigest(decision),
+    decisionPath: normalizedDecisionPath,
+  });
+
+  const result = await evaluateDecision({
+    policy,
+    ev12Corpus,
+    failureMemory,
+    candidateSha,
+    decision,
+    previousDecision,
+    governanceEnabled,
+    verifiedReview: capability,
+    decisionPath: normalizedDecisionPath,
+    readText: path => githubContentText(repository, path, candidateSha, { fetchImpl }),
+  });
+
+  return {
+    ...result,
+    repository,
+    prNumber,
+    decisionPath: normalizedDecisionPath,
+    repositoryInputsLoadedFromCandidate: true,
+    reviewPacketChangedFilesVerified: true,
+    completeReviewHistoryVerified: true,
+    decisionBoundToReviewedCandidate: true,
+    reviewAuthorization: {
+      reviewer: capability.reviewer,
+      reviewedAt: capability.reviewedAt,
+      taskId: capability.taskId,
+      candidateSha: capability.candidateSha,
+      commentId: capability.commentId,
+      reviewResultSha256: capability.reviewResultSha256,
+      authorAssociation: capability.authorAssociation,
+      sourceRunId: capability.sourceRunId,
+      decisionDigest: capability.decisionDigest,
+      decisionPath: capability.decisionPath,
+    },
+  };
 }
 
 export async function runAntibodyGovernanceAssessment(policy, calibrationCorpus, ev12Corpus, failureMemory, {
@@ -696,6 +746,10 @@ export async function runAntibodyGovernanceAssessment(policy, calibrationCorpus,
       committedDecisionAllowedInEv13: policy.decisions.allowCommittedDecisionsInEv13,
       initialPromotionTask: policy.decisions.initialPromotionTask,
       trustedReviewProvenanceRequired: true,
+      reviewBoundToDecisionDigest: true,
+      exactCommittedDecisionRequired: true,
+      repositoryPinnedInputsRequired: true,
+      completeReviewHistoryRequired: true,
       canonicalSourceEntryRequired: true,
       canonicalSourceContractRequired: true,
       directDecisionEvaluatorExported: false,
@@ -743,10 +797,10 @@ async function writeJson(path, value) {
 function parseArguments(argv) {
   const options = {
     candidateSha: null,
-    policy: 'agent/antibody-governance-policy.json',
+    policy: POLICY_PATH,
     calibration: 'agent/antibody-governance-calibration-corpus.json',
-    ev12Corpus: 'agent/failure-recurrence-calibration-corpus.json',
-    memory: 'agent/failure-memory.json',
+    ev12Corpus: EV12_CORPUS_PATH,
+    memory: FAILURE_MEMORY_PATH,
     output: null,
     disabled: false,
     json: false,
