@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "mode": "governance-only",
+  "governanceEnabled": true,
+  "enforcementEnabled": false,
+  "ownership": {
+    "proposalOwner": "implementation-owner",
+    "decisionOwner": "trusted-repository-participant",
+    "sourceCheckOwner": "canonical-check-owner",
+    "historyOwner": "repository"
+  },
+  "review": {
+    "authority": "trusted-repository-participant",
+    "actionsRequiringReview": ["accept", "update", "retire"],
+    "minimumRationaleCharacters": 20,
+    "evidenceRequirement": "pull-request-or-independent-review",
+    "provenance": {
+      "source": "github-pr-conversation",
+      "verifier": "agent/tools/review-comment-gate.mjs",
+      "requireRepositoryFetch": true,
+      "decisionBinding": "exact-candidate-committed-decision",
+      "packetBinding": "exact-candidate-derived-review-packet",
+      "commentPagination": "complete",
+      "requireRequesterIndependentOfPrAuthor": true
+    }
+  },
+  "calibration": {
+    "sourceTask": "EV-12",
+    "corpusSha256": "ab1be48150edfad5f16f97339f7e5c62a8d8eb6f56382b47749a1ac008c2c493",
+    "sourceFailureMemorySha256": "d6f151d1bb399943b959d2ff03f63c69ac1f78414d68ff353de685130aea2254",
+    "eligibleTruthIds": [
+      "android-screenshot-capture-transport-timeout",
+      "candidate-artifact-integrity-drift"
+    ],
+    "errorBudget": {
+      "overClusteringPairs": 0,
+      "underClusteringPairs": 0,
+      "recurrenceFalsePositiveRecords": 0,
+      "recurrenceFalseNegativeRecords": 0
+    }
+  },
+  "sourceOfTruthByKind": {
+    "architecture-invariant": {
+      "mode": "fixed-file",
+      "path": "agent/architecture-invariants.json"
+    },
+    "impact-map-rule": {
+      "mode": "fixed-file",
+      "path": "agent/impact-map.json"
+    },
+    "focused-regression": {
+      "mode": "existing-check-file",
+      "binding": "executable-proposal-target-contract",
+      "allowedPrefixes": ["agent/tests/", "tests/", "scripts/"],
+      "forbiddenPrefixes": ["agent/antibody-decisions/", "agent/antibody-governance"]
+    },
+    "telemetry-check": {
+      "mode": "existing-check-file",
+      "binding": "executable-proposal-target-contract",
+      "allowedPrefixes": ["src/", "agent/", "tests/", "scripts/"],
+      "forbiddenPrefixes": ["agent/antibody-decisions/", "agent/antibody-governance"]
+    }
+  },
+  "decisions": {
+    "directory": "agent/antibody-decisions",
+    "schema": "../antibody-governance.schema.json",
+    "initialPromotionTask": "EV-14",
+    "allowCommittedDecisionsInEv13": false,
+    "authorizationInput": "exact-candidate-github-content",
+    "historyBinding": "latest-committed-decision-head",
+    "appendOnly": true
+  },
+  "rollback": {
+    "environmentVariable": "IRONSHADE_ANTIBODY_GOVERNANCE",
+    "disabledValue": "0",
+    "behavior": "Recompute the same EV-12 eligibility and EV-13 calibration evidence while disabling all antibody promotion authorization; EV-4 memory, existing checks, and candidate gates remain unchanged."
+  }
+}

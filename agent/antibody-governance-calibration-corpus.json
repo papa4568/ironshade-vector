@@ -1,0 +1,187 @@
+{
+  "schemaVersion": 1,
+  "mode": "governance-only",
+  "errorBudget": {
+    "transitionFalsePositives": 0,
+    "transitionFalseNegatives": 0,
+    "promotionFalsePositives": 0,
+    "promotionFalseNegatives": 0
+  },
+  "cases": [
+    {
+      "id": "reviewed-screenshot-accept",
+      "truthId": "android-screenshot-capture-transport-timeout",
+      "action": "accept",
+      "reviewed": true,
+      "sourceOfTruth": {
+        "kind": "focused-regression",
+        "path": "scripts/android-large-screen-smoke.sh",
+        "entryId": "android-screenshot-capture-contract"
+      },
+      "expectedTransitionValid": true,
+      "expectedPromotionEligible": true
+    },
+    {
+      "id": "reviewed-candidate-artifact-accept",
+      "truthId": "candidate-artifact-integrity-drift",
+      "action": "accept",
+      "reviewed": true,
+      "sourceOfTruth": {
+        "kind": "focused-regression",
+        "path": "agent/tests/candidate-artifact.mjs",
+        "entryId": "candidate-artifact-integrity"
+      },
+      "expectedTransitionValid": true,
+      "expectedPromotionEligible": true
+    },
+    {
+      "id": "unreviewed-proposal-cannot-authorize",
+      "truthId": "android-screenshot-capture-transport-timeout",
+      "action": "accept",
+      "reviewed": false,
+      "sourceOfTruth": {
+        "kind": "focused-regression",
+        "path": "scripts/android-large-screen-smoke.sh",
+        "entryId": "android-screenshot-capture-contract"
+      },
+      "expectedTransitionValid": false,
+      "expectedPromotionEligible": false
+    },
+    {
+      "id": "self-attested-review-cannot-authorize",
+      "truthId": "android-screenshot-capture-transport-timeout",
+      "action": "accept",
+      "reviewed": true,
+      "trustedReview": false,
+      "sourceOfTruth": {
+        "kind": "focused-regression",
+        "path": "scripts/android-large-screen-smoke.sh",
+        "entryId": "android-screenshot-capture-contract"
+      },
+      "expectedTransitionValid": false,
+      "expectedPromotionEligible": false
+    },
+    {
+      "id": "trusted-main-pr-author-self-review-cannot-authorize",
+      "truthId": "android-screenshot-capture-transport-timeout",
+      "action": "accept",
+      "reviewed": true,
+      "reviewAuthorAssociation": "TRUSTED_MAIN_ACTIONS",
+      "reviewRequester": "ev13-calibration-pr-author",
+      "prAuthor": "ev13-calibration-pr-author",
+      "sourceOfTruth": {
+        "kind": "focused-regression",
+        "path": "scripts/android-large-screen-smoke.sh",
+        "entryId": "android-screenshot-capture-contract"
+      },
+      "expectedTransitionValid": false,
+      "expectedPromotionEligible": false
+    },
+    {
+      "id": "vacuous-assertion-cannot-authorize",
+      "truthId": "candidate-artifact-integrity-drift",
+      "action": "accept",
+      "reviewed": true,
+      "canonicalSourceFixture": "import assert from 'node:assert/strict';\nawait assert.rejects(Promise.reject(new Error('wrong sha')), /wrong sha/, 'candidate-artifact-integrity candidate-sha-match');\n",
+      "sourceOfTruth": {
+        "kind": "focused-regression",
+        "path": "agent/tests/candidate-artifact.mjs",
+        "entryId": "candidate-artifact-integrity"
+      },
+      "expectedTransitionValid": false,
+      "expectedPromotionEligible": false
+    },
+    {
+      "id": "advisory-ev12-scope-cannot-authorize",
+      "truthId": "artifact-upload-dns-resolution",
+      "action": "accept",
+      "reviewed": true,
+      "sourceOfTruth": {
+        "kind": "focused-regression",
+        "path": "agent/tests/candidate-artifact.mjs",
+        "entryId": "artifact-upload-transport-contract"
+      },
+      "expectedTransitionValid": false,
+      "expectedPromotionEligible": false
+    },
+    {
+      "id": "wrong-source-kind-cannot-authorize",
+      "truthId": "android-screenshot-capture-transport-timeout",
+      "action": "accept",
+      "reviewed": true,
+      "sourceOfTruth": {
+        "kind": "impact-map-rule",
+        "path": "agent/impact-map.json",
+        "entryId": "android-screenshot-capture-contract"
+      },
+      "expectedTransitionValid": false,
+      "expectedPromotionEligible": false
+    },
+    {
+      "id": "noncanonical-file-with-entry-id-cannot-authorize",
+      "truthId": "android-screenshot-capture-transport-timeout",
+      "action": "accept",
+      "reviewed": true,
+      "sourceOfTruth": {
+        "kind": "focused-regression",
+        "path": "agent/tests/repository-immune-system.mjs",
+        "entryId": "android-screenshot-capture-contract"
+      },
+      "expectedTransitionValid": false,
+      "expectedPromotionEligible": false
+    },
+    {
+      "id": "governance-registry-cannot-be-source-of-truth",
+      "truthId": "android-screenshot-capture-transport-timeout",
+      "action": "accept",
+      "reviewed": true,
+      "sourceOfTruth": {
+        "kind": "focused-regression",
+        "path": "agent/antibody-decisions/android-screenshot-capture-transport-timeout.json",
+        "entryId": "android-screenshot-capture-contract"
+      },
+      "expectedTransitionValid": false,
+      "expectedPromotionEligible": false
+    },
+    {
+      "id": "reviewed-update-preserves-authorization",
+      "truthId": "android-screenshot-capture-transport-timeout",
+      "action": "update",
+      "reviewed": true,
+      "sourceOfTruth": {
+        "kind": "focused-regression",
+        "path": "scripts/android-large-screen-smoke.sh",
+        "entryId": "android-screenshot-capture-contract"
+      },
+      "expectedTransitionValid": true,
+      "expectedPromotionEligible": true
+    },
+    {
+      "id": "stale-update-digest-cannot-authorize",
+      "truthId": "android-screenshot-capture-transport-timeout",
+      "action": "update",
+      "reviewed": true,
+      "tamperPreviousDecisionDigest": true,
+      "sourceOfTruth": {
+        "kind": "focused-regression",
+        "path": "scripts/android-large-screen-smoke.sh",
+        "entryId": "android-screenshot-capture-contract"
+      },
+      "expectedTransitionValid": false,
+      "expectedPromotionEligible": false
+    },
+    {
+      "id": "reviewed-retirement-revokes-authorization",
+      "truthId": "android-screenshot-capture-transport-timeout",
+      "action": "retire",
+      "reviewed": true,
+      "sourceOfTruth": {
+        "kind": "focused-regression",
+        "path": "scripts/android-large-screen-smoke.sh",
+        "entryId": "android-screenshot-capture-contract"
+      },
+      "expectedTransitionValid": true,
+      "expectedPromotionEligible": false
+    }
+  ]
+}

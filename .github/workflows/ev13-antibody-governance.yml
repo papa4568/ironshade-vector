@@ -1,0 +1,94 @@
+name: EV-13 Antibody Governance
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+    paths:
+      - 'agent/antibody-governance-policy.json'
+      - 'agent/antibody-governance.schema.json'
+      - 'agent/antibody-governance-calibration-corpus.json'
+      - 'agent/antibody-decisions/**'
+      - 'agent/failure-recurrence-calibration-corpus.json'
+      - 'agent/failure-memory.json'
+      - 'agent/tools/antibody-governance.mjs'
+      - 'agent/tools/antibody-governance-evidence.mjs'
+      - 'agent/tools/candidate-evidence.mjs'
+      - 'agent/tools/check-architecture-invariants.mjs'
+      - 'agent/tools/experimental-review-task.mjs'
+      - 'agent/tools/failure-recurrence-calibration.mjs'
+      - 'agent/tools/independent-review.mjs'
+      - 'agent/tools/repository-immune-system.mjs'
+      - 'agent/tools/select-affected-verification.mjs'
+      - 'agent/tests/antibody-governance.mjs'
+      - 'agent/impact-map.json'
+      - 'agent/architecture-invariants.json'
+      - '.github/workflows/ev13-antibody-governance.yml'
+      - 'docs/experimental-verification-roadmap.md'
+      - 'docs/experimental-verification-archive.md'
+      - 'AGENTS.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  govern:
+    name: Exact Candidate Antibody Governance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Check out exact candidate revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Use npm 10.9.8
+        run: npm install --global npm@10.9.8
+
+      - name: Install locked dependencies for architecture checks
+        run: npm ci --ignore-scripts
+
+      - name: Run EV-13 governance regressions
+        run: node agent/tests/antibody-governance.mjs
+
+      - name: Generate and verify exact-SHA EV-13 governance evidence
+        env:
+          CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          mkdir -p .agent-antibody-governance
+          node agent/tools/antibody-governance.mjs \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --output .agent-antibody-governance/governance.json
+          node agent/tools/antibody-governance-evidence.mjs \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --report .agent-antibody-governance/governance.json \
+            --require-pass
+          IRONSHADE_ANTIBODY_GOVERNANCE=0 node agent/tools/antibody-governance.mjs \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --output .agent-antibody-governance/rollback.json
+          node agent/tools/antibody-governance-evidence.mjs \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --report .agent-antibody-governance/rollback.json \
+            --disabled
+
+      - name: Upload exact-SHA EV-13 governance evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: antibody-governance-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'push' }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          path: .agent-antibody-governance/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
