@@ -20,7 +20,13 @@ jobs:
           fetch-depth: 0
 
       - name: Apply EV-16 archive and roadmap closeout
-        run: python3 agent/ev16-closeout.py
+        run: |
+          python3 agent/ev16-closeout.py
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('docs/experimental-verification-archive.md')
+          path.write_text(path.read_text().rstrip() + '\n')
+          PY
 
       - name: Commit closeout state
         run: |
