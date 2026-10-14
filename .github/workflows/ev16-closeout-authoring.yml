@@ -1,0 +1,33 @@
+name: EV-16 Closeout Authoring
+
+on:
+  push:
+    branches:
+      - agent/ev16-impact-widening
+
+permissions:
+  contents: write
+
+jobs:
+  closeout:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: agent/ev16-impact-widening
+          fetch-depth: 0
+
+      - name: Apply EV-16 archive and roadmap closeout
+        run: python3 agent/ev16-closeout.py
+
+      - name: Commit closeout state
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git commit -m 'Archive EV-16 promotion'
+          git push origin HEAD:agent/ev16-impact-widening
