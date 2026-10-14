@@ -287,7 +287,7 @@ await assert.rejects(
   () => validateAntibodyCanonicalSourceEntry(policy, artifactProposal, artifactSource, {
     readText: async () => `const CHECK_ID = 'candidate-artifact-integrity';\nconst CHECK_CONTRACT = 'candidate-sha-match';\nconsole.log(CHECK_ID, CHECK_CONTRACT);\n`,
   }),
-  /not bound to an assertion|missing required EV-4 contract behavior/,
+  /no executable check evidence|not bound to an assertion|missing required EV-4 contract behavior/,
   'inert constants or console markers must not satisfy focused-regression source binding',
 );
 
