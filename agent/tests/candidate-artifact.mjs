@@ -93,12 +93,17 @@ try {
     decision,
     { candidateSha },
   );
-  assert.equal(promoted.enforcementContractPass, true, 'EV-14 promoted candidate-artifact antibody must pass');
-  assert.equal(promoted.calibration.measuredErrors.falsePositives, 0, 'EV-14 promoted antibody must have zero measured false positives');
-  assert.equal(promoted.calibration.measuredErrors.falseNegatives, 0, 'EV-14 promoted antibody must have zero measured false negatives');
-  assert.equal(promoted.wouldBlock, false, 'EV-14 canonical candidate-artifact source must satisfy the promoted antibody');
+  if (promoted.enforcementEnabled) {
+    assert.equal(promoted.enforcementContractPass, true, 'EV-14 promoted candidate-artifact antibody must pass while enforcement is enabled');
+    assert.equal(promoted.calibration.measuredErrors.falsePositives, 0, 'EV-14 promoted antibody must have zero measured false positives while enforcement is enabled');
+    assert.equal(promoted.calibration.measuredErrors.falseNegatives, 0, 'EV-14 promoted antibody must have zero measured false negatives while enforcement is enabled');
+    assert.equal(promoted.wouldBlock, false, 'EV-14 canonical candidate-artifact source must satisfy the promoted antibody while enforcement is enabled');
+  } else {
+    assert.equal(promoted.blocking, false, 'EV-14 rollback must remove only the promoted blocking decision');
+    assert.equal(promoted.candidatePassGranted, false, 'EV-14 rollback must not synthesize candidate acceptance');
+  }
 
-  console.log(`CANDIDATE_ARTIFACT_TEST_PASS check=${CHECK_ID} contract=${CHECK_CONTRACT} files=${manifest.fileCount} treeSha256=${manifest.treeSha256} wrongSha=reject tamper=reject extraFile=reject ev14=pass`);
+  console.log(`CANDIDATE_ARTIFACT_TEST_PASS check=${CHECK_ID} contract=${CHECK_CONTRACT} files=${manifest.fileCount} treeSha256=${manifest.treeSha256} wrongSha=reject tamper=reject extraFile=reject ev14=${promoted.enforcementEnabled ? 'enforced-pass' : 'rollback-advisory'}`);
 } finally {
   await rm(root, { recursive: true, force: true });
 }
