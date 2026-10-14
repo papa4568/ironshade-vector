@@ -69,19 +69,38 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
           mkdir -p .agent-antibody-governance
-          node agent/tools/antibody-governance.mjs \
-            --candidate-sha "$CANDIDATE_SHA" \
-            --output .agent-antibody-governance/governance.json
+          CANDIDATE_SHA="$CANDIDATE_SHA" node --input-type=module <<'NODE'
+          import { readFile, writeFile } from 'node:fs/promises';
+          import { runAntibodyGovernanceAssessment } from './agent/tools/antibody-governance.mjs';
+          import { canonicalJson } from './agent/tools/repository-immune-system.mjs';
+          const readJson = async path => JSON.parse(await readFile(path, 'utf8'));
+          const [policy, calibration, ev12Corpus, memory] = await Promise.all([
+            readJson('agent/antibody-governance-policy.json'),
+            readJson('agent/antibody-governance-calibration-corpus.json'),
+            readJson('agent/failure-recurrence-calibration-corpus.json'),
+            readJson('agent/failure-memory.json'),
+          ]);
+          const active = await runAntibodyGovernanceAssessment(policy, calibration, ev12Corpus, memory, {
+            candidateSha: process.env.CANDIDATE_SHA,
+            decisionRecordCount: 0,
+          });
+          const rollback = await runAntibodyGovernanceAssessment(policy, calibration, ev12Corpus, memory, {
+            candidateSha: process.env.CANDIDATE_SHA,
+            governanceOverride: false,
+            decisionRecordCount: 0,
+          });
+          await writeFile('.agent-antibody-governance/governance.json', canonicalJson(active));
+          await writeFile('.agent-antibody-governance/rollback.json', canonicalJson(rollback));
+          NODE
           node agent/tools/antibody-governance-evidence.mjs \
             --candidate-sha "$CANDIDATE_SHA" \
             --report .agent-antibody-governance/governance.json \
+            --decision-record-count 0 \
             --require-pass
-          IRONSHADE_ANTIBODY_GOVERNANCE=0 node agent/tools/antibody-governance.mjs \
-            --candidate-sha "$CANDIDATE_SHA" \
-            --output .agent-antibody-governance/rollback.json
           node agent/tools/antibody-governance-evidence.mjs \
             --candidate-sha "$CANDIDATE_SHA" \
             --report .agent-antibody-governance/rollback.json \
+            --decision-record-count 0 \
             --disabled
 
       - name: Upload exact-SHA EV-13 governance evidence
