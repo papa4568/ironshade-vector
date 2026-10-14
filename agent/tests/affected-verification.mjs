@@ -70,7 +70,7 @@ assert.equal(highRiskSelection.escalated, true);
 assert.deepEqual(highRiskSelection.verifications.map(check => check.id), ['verify-full']);
 assert(highRiskSelection.domains.includes('dependencies'));
 
-const uiPromotionSelection = selectAffectedVerification(['src/components/AppErrorBoundary.tsx'], impactMap);
+const uiPromotionSelection = selectAffectedVerification(['src/components/AppErrorBoundary.tsx'], impactMap, { env: {} });
 assert.equal(uiPromotionSelection.mode, 'full');
 assert.equal(uiPromotionSelection.escalated, true);
 assert.deepEqual(uiPromotionSelection.verifications.map(check => check.id), ['verify-full']);
@@ -134,6 +134,13 @@ try {
   await rm(gitFixture, { recursive: true, force: true });
 }
 
-await import('./impact-map-calibration.mjs');
+const previousImpactWideningEnforcement = process.env.IRONSHADE_IMPACT_WIDENING_ENFORCEMENT;
+process.env.IRONSHADE_IMPACT_WIDENING_ENFORCEMENT = '0';
+try {
+  await import('./impact-map-calibration.mjs');
+} finally {
+  if (previousImpactWideningEnforcement === undefined) delete process.env.IRONSHADE_IMPACT_WIDENING_ENFORCEMENT;
+  else process.env.IRONSHADE_IMPACT_WIDENING_ENFORCEMENT = previousImpactWideningEnforcement;
+}
 
-console.log(`AFFECTED_VERIFICATION_TEST_PASS rules=${summary.ruleCount} verifications=${summary.verificationCount} graphicsChecks=${graphicsSelection.verifications.length} refineryChecks=${refineryPresentationSelection.verifications.length} uiPromotion=${uiPromotionSelection.mode} uiRollback=${uiRollbackSelection.mode} unknownMode=${unknownSelection.mode} gitDiff=pass calibration=pass`);
+console.log(`AFFECTED_VERIFICATION_TEST_PASS rules=${summary.ruleCount} verifications=${summary.verificationCount} graphicsChecks=${graphicsSelection.verifications.length} refineryChecks=${refineryPresentationSelection.verifications.length} uiPromotion=${uiPromotionSelection.mode} uiRollback=${uiRollbackSelection.mode} unknownMode=${unknownSelection.mode} gitDiff=pass calibration=rollback-pass`);
