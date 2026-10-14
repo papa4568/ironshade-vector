@@ -31,6 +31,8 @@ jobs:
     name: Exact Candidate Impact Calibration
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    env:
+      IRONSHADE_IMPACT_WIDENING_ENFORCEMENT: '0'
     steps:
       - name: Check out exact candidate revision
         uses: actions/checkout@v7

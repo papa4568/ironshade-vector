@@ -201,6 +201,27 @@ jobs:
       - name: Run affected-verification regressions
         run: node agent/tests/affected-verification.mjs
 
+      - name: Run promoted impact-widening regressions
+        run: node agent/tests/impact-widening-promotion.mjs
+
+      - name: Enforce EV-16 impact-widening scope and rollback contract
+        env:
+          CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          mkdir -p .agent-impact-widening
+          node agent/tools/impact-widening-promotion.mjs \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --output .agent-impact-widening/promotion.json
+
+      - name: Upload exact-SHA EV-16 impact-widening evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: impact-widening-ev16-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'push' }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          path: .agent-impact-widening/promotion.json
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
+
       - name: Run candidate evidence regressions
         run: node agent/tests/candidate-evidence.mjs
 
