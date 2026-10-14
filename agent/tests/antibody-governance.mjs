@@ -30,6 +30,7 @@ assert.equal(report.acceptedForEnforcement, false, 'EV-13 must leave all antibod
 assert.equal(report.lifecycle.decisionRecordCount, 0, 'EV-13 must not commit an accepted antibody record');
 assert.equal(report.lifecycle.trustedReviewProvenanceRequired, true, 'all lifecycle transitions must require externally verified review provenance');
 assert.equal(report.lifecycle.canonicalSourceEntryRequired, true, 'governance must verify the named canonical check entry exists');
+assert.equal(report.lifecycle.canonicalSourceContractRequired, true, 'focused-regression and telemetry governance must bind the exact EV-4 target contract');
 assert.equal(report.lifecycle.directDecisionEvaluatorExported, false, 'callers must not bypass the trusted authorization wrapper');
 assert.deepEqual(report.eligibleTruthIds, ['android-screenshot-capture-transport-timeout', 'candidate-artifact-integrity-drift']);
 assert.equal(report.ev12.pinnedCorpusDigestVerified, true);
@@ -46,16 +47,18 @@ assert.equal(reviewedScreenshot.actualPromotionEligible, true);
 assert.equal(reviewedScreenshot.reviewProvenanceVerified, true);
 assert.equal(reviewedScreenshot.pinnedEligibilityVerified, true);
 assert.equal(reviewedScreenshot.canonicalSourceEntryVerified, true);
+assert.equal(reviewedScreenshot.canonicalSourceContractVerified, true, 'screenshot governance must bind the exact Android smoke contract');
 const reviewedArtifact = report.calibration.cases.find(entry => entry.id === 'reviewed-candidate-artifact-accept');
 assert.equal(reviewedArtifact.actualPromotionEligible, true);
-assert.equal(reviewedArtifact.canonicalSourceEntryVerified, true, 'candidate artifact regression must expose its stable canonical check id');
+assert.equal(reviewedArtifact.canonicalSourceEntryVerified, true, 'candidate artifact regression must resolve to its canonical source');
+assert.equal(reviewedArtifact.canonicalSourceContractVerified, true, 'candidate artifact governance must bind its exact proposed regression contract');
 
 const selfAttested = report.calibration.cases.find(entry => entry.id === 'self-attested-review-cannot-authorize');
 assert.equal(selfAttested.actualTransitionValid, false);
 assert.match(selfAttested.error, /trusted review provenance is required/, 'review-shaped fields without verified GitHub provenance must fail closed');
-const missingEntry = report.calibration.cases.find(entry => entry.id === 'missing-canonical-entry-cannot-authorize');
-assert.equal(missingEntry.actualTransitionValid, false);
-assert.match(missingEntry.error, /canonical source-of-truth entry .* does not exist/, 'an allowed source file without the named canonical check entry must fail closed');
+const phantomSource = report.calibration.cases.find(entry => entry.id === 'noncanonical-file-with-entry-id-cannot-authorize');
+assert.equal(phantomSource.actualTransitionValid, false);
+assert.match(phantomSource.error, /canonical source-of-truth entry .* does not exist at .*EV-4 canonical target/, 'an allowed file that merely mentions the entry id must not become a phantom canonical check');
 const unreviewed = report.calibration.cases.find(entry => entry.id === 'unreviewed-proposal-cannot-authorize');
 assert.equal(unreviewed.actualTransitionValid, false);
 assert.match(unreviewed.error, /antibody decision\.review must be an object/);
@@ -107,4 +110,12 @@ assert.throws(
   'policy must not allow self-attested review provenance',
 );
 
-console.log('ANTIBODY_GOVERNANCE_PASS eligible=2 transitionFp=0 transitionFn=0 promotionFp=0 promotionFn=0 decisions=0 enforcement=false rollback=clean lifecycle=accept+update+retire review=github-provenance eligibility=pinned sourceEntry=verified');
+const sourceBindingWeakened = structuredClone(policy);
+sourceBindingWeakened.sourceOfTruthByKind['focused-regression'].binding = 'entry-id-substring';
+assert.throws(
+  () => validateAntibodyGovernancePolicy(sourceBindingWeakened),
+  /must bind the exact EV-4 proposed target and check contract/,
+  'focused regressions must not fall back to substring-based source binding',
+);
+
+console.log('ANTIBODY_GOVERNANCE_PASS eligible=2 transitionFp=0 transitionFn=0 promotionFp=0 promotionFn=0 decisions=0 enforcement=false rollback=clean lifecycle=accept+update+retire review=github-provenance eligibility=pinned sourceEntry=verified sourceContract=exact-target');
