@@ -24,6 +24,7 @@ on:
       - 'agent/tools/repository-immune-system.mjs'
       - 'agent/tools/select-affected-verification.mjs'
       - 'agent/tests/antibody-governance.mjs'
+      - 'agent/tests/antibody-governance-current-state.mjs'
       - 'agent/impact-map.json'
       - 'agent/architecture-invariants.json'
       - '.github/workflows/ev13-antibody-governance.yml'
@@ -60,7 +61,9 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Run EV-13 governance regressions
-        run: node agent/tests/antibody-governance.mjs
+        run: |
+          node agent/tests/antibody-governance.mjs
+          node agent/tests/antibody-governance-current-state.mjs
 
       - name: Generate and verify exact-SHA EV-13 governance evidence
         env:
