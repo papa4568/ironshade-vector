@@ -2,6 +2,9 @@ import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { buildCandidateManifest } from './candidate-evidence.mjs';
+import { selectExperimentalReviewTask } from './experimental-review-task.mjs';
+import { buildIndependentReviewPacket } from './independent-review.mjs';
 import {
   canonicalJson,
   clusterFailureRecords,
@@ -10,6 +13,7 @@ import {
 } from './repository-immune-system.mjs';
 import { runFailureRecurrenceCalibration } from './failure-recurrence-calibration.mjs';
 import { selectAuthoritativeReviewCommentWithProvenance } from './review-comment-gate.mjs';
+import { selectAffectedVerification } from './select-affected-verification.mjs';
 
 const SHA_PATTERN = /^[a-f0-9]{40}$/;
 const DIGEST_PATTERN = /^[a-f0-9]{64}$/;
@@ -32,6 +36,9 @@ const EV12_METRICS = [
 const POLICY_PATH = 'agent/antibody-governance-policy.json';
 const EV12_CORPUS_PATH = 'agent/failure-recurrence-calibration-corpus.json';
 const FAILURE_MEMORY_PATH = 'agent/failure-memory.json';
+const EXPERIMENTAL_ROADMAP_PATH = 'docs/experimental-verification-roadmap.md';
+const IMPACT_MAP_PATH = 'agent/impact-map.json';
+const ARCHITECTURE_INVARIANTS_PATH = 'agent/architecture-invariants.json';
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -110,6 +117,7 @@ export function validateAntibodyGovernancePolicy(policy) {
   assert(policy.review.provenance.verifier === 'agent/tools/review-comment-gate.mjs', 'trusted review provenance must reuse the repository review-comment gate');
   assert(policy.review.provenance.requireRepositoryFetch === true, 'trusted review provenance must be fetched from GitHub rather than supplied by the decision record');
   assert(policy.review.provenance.decisionBinding === 'exact-candidate-committed-decision', 'trusted review must bind the exact committed decision from the reviewed candidate SHA');
+  assert(policy.review.provenance.packetBinding === 'exact-candidate-derived-review-packet', 'trusted review must bind the exact candidate-derived independent-review packet');
   assert(policy.review.provenance.commentPagination === 'complete', 'trusted review authorization must inspect the complete PR comment history');
 
   assertObject(policy.calibration, 'policy.calibration');
@@ -567,6 +575,38 @@ function validateDecisionPath(policy, path, label = 'decisionPath') {
   return normalized;
 }
 
+async function buildExactCandidateReviewPacket({ repository, pr, candidateSha, taskId, changedFiles, fetchImpl }) {
+  assert(SHA_PATTERN.test(pr?.base?.sha ?? ''), 'pull request base SHA must be a full lowercase commit SHA');
+  assertString(pr?.head?.ref, 'pull request head branch');
+  const [headRoadmap, baseRoadmap, impactMap, architectureConfig] = await Promise.all([
+    githubContentText(repository, EXPERIMENTAL_ROADMAP_PATH, candidateSha, { fetchImpl }),
+    githubContentText(repository, EXPERIMENTAL_ROADMAP_PATH, pr.base.sha, { fetchImpl }),
+    githubContentJson(repository, IMPACT_MAP_PATH, candidateSha, { fetchImpl }),
+    githubContentJson(repository, ARCHITECTURE_INVARIANTS_PATH, candidateSha, { fetchImpl }),
+  ]);
+  const selection = selectExperimentalReviewTask(headRoadmap, { baseMarkdown: baseRoadmap });
+  assert(selection?.task?.id === taskId, `exact candidate-derived review task ${selection?.task?.id ?? 'none'} does not match antibody review task ${taskId}`);
+  assert(Array.isArray(architectureConfig?.rules) && architectureConfig.rules.length > 0, 'exact candidate architecture invariant config must contain rules');
+  const impactSelection = selectAffectedVerification(changedFiles, impactMap);
+  const manifest = buildCandidateManifest({
+    repository,
+    task: selection.task,
+    taskSource: EXPERIMENTAL_ROADMAP_PATH,
+    baseSha: pr.base.sha,
+    headSha: candidateSha,
+    branch: pr.head.ref,
+    changedFiles,
+    impactSelection,
+  });
+  const architectureResults = architectureConfig.rules.map(rule => ({
+    id: rule.id,
+    status: 'passed',
+    file: rule.file,
+    type: rule.type,
+  }));
+  return buildIndependentReviewPacket({ manifest, task: selection.task, architectureResults });
+}
+
 export async function authorizeAntibodyGovernanceDecision({
   candidateSha,
   repository,
@@ -613,13 +653,26 @@ export async function authorizeAntibodyGovernanceDecision({
   const changedDecisionPaths = changedFiles.filter(path => path.startsWith(`${policy.decisions.directory}/`) && path.endsWith('.json'));
   assert(exactArray(changedDecisionPaths, [normalizedDecisionPath]), 'authorization requires exactly one changed antibody decision record, bound to decisionPath');
 
+  const exactReviewPacket = await buildExactCandidateReviewPacket({
+    repository,
+    pr,
+    candidateSha,
+    taskId: decision.review.taskId,
+    changedFiles,
+    fetchImpl,
+  });
+  assert(
+    canonicalJson(reviewPacket) === canonicalJson(exactReviewPacket),
+    'trusted review packet does not match the exact candidate-derived independent-review packet',
+  );
+
   if (decision.action === 'accept') {
     assert(normalizedPreviousPath === null, 'initial acceptance cannot supply previousDecisionPath');
   } else {
     assert(normalizedPreviousPath !== null && previousDecision, 'update/retire authorization requires previousDecisionPath');
   }
 
-  const selected = await selectAuthoritativeReviewCommentWithProvenance(reviewPacket, comments, {
+  const selected = await selectAuthoritativeReviewCommentWithProvenance(exactReviewPacket, comments, {
     prAuthor: pr.user.login,
     fetchImpl,
   });
@@ -630,7 +683,7 @@ export async function authorizeAntibodyGovernanceDecision({
   const capability = trustedReviewCapability({
     reviewer: selected.reviewer,
     reviewedAt,
-    taskId: reviewPacket.taskId,
+    taskId: exactReviewPacket.taskId,
     candidateSha,
     commentId: selected.commentId,
     reviewResultSha256: sha256Value(selected.result),
@@ -660,6 +713,8 @@ export async function authorizeAntibodyGovernanceDecision({
     decisionPath: normalizedDecisionPath,
     repositoryInputsLoadedFromCandidate: true,
     reviewPacketChangedFilesVerified: true,
+    reviewPacketCandidateDerived: true,
+    reviewPacketSha256: sha256Value(exactReviewPacket),
     completeReviewHistoryVerified: true,
     decisionBoundToReviewedCandidate: true,
     rollbackEnvironmentApplied: environmentDisabled,
@@ -750,6 +805,7 @@ export async function runAntibodyGovernanceAssessment(policy, calibrationCorpus,
       initialPromotionTask: policy.decisions.initialPromotionTask,
       trustedReviewProvenanceRequired: true,
       reviewBoundToDecisionDigest: true,
+      exactReviewPacketRequired: true,
       exactCommittedDecisionRequired: true,
       repositoryPinnedInputsRequired: true,
       completeReviewHistoryRequired: true,
