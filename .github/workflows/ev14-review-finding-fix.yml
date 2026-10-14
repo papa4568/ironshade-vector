@@ -1,0 +1,377 @@
+name: EV-14 Review Finding Fix
+
+on:
+  push:
+    branches:
+      - agent/ev14-promote-candidate-artifact-antibody
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-remove-self:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out branch head
+        uses: actions/checkout@v7
+        with:
+          ref: agent/ev14-promote-candidate-artifact-antibody
+          fetch-depth: 0
+
+      - name: Apply trusted-review finding fix
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected one replacement, found {count}')
+              file.write_text(text.replace(old, new, 1))
+
+          governance = 'agent/tools/antibody-governance.mjs'
+          replace_once(
+              governance,
+              """async function countDecisionRecords(directory) {
+            try {
+              const entries = await readdir(resolve(directory), { withFileTypes: true });
+              return entries.filter(entry => entry.isFile() && entry.name.endsWith('.json')).length;
+            } catch (error) {
+              if (error && typeof error === 'object' && error.code === 'ENOENT') return 0;
+              throw error;
+            }
+          }
+          """,
+              """async function inspectDecisionRecords(directory) {
+            try {
+              const entries = await readdir(resolve(directory), { withFileTypes: true });
+              const jsonEntries = entries.filter(entry => entry.isFile() && entry.name.endsWith('.json'));
+              const records = [];
+              for (const entry of jsonEntries) {
+                let record;
+                try {
+                  record = JSON.parse(await readFile(resolve(directory, entry.name), 'utf8'));
+                } catch {
+                  throw new Error(`committed antibody decision record is not valid JSON: ${entry.name}`);
+                }
+                assertObject(record, `committed antibody decision ${entry.name}`);
+                assertObject(record.review, `committed antibody decision ${entry.name}.review`);
+                assert(/^EV-\\d+$/.test(record.review.taskId ?? ''), `committed antibody decision ${entry.name}.review.taskId must be an EV task`);
+                records.push(record);
+              }
+              const decisionTaskIds = records.map(record => record.review.taskId).sort((left, right) => left.localeCompare(right));
+              return {
+                decisionRecordCount: records.length,
+                ev13DecisionRecordCount: decisionTaskIds.filter(taskId => taskId === 'EV-13').length,
+                decisionTaskIds,
+              };
+            } catch (error) {
+              if (error && typeof error === 'object' && error.code === 'ENOENT') {
+                return { decisionRecordCount: 0, ev13DecisionRecordCount: 0, decisionTaskIds: [] };
+              }
+              throw error;
+            }
+          }
+          """,
+          )
+          replace_once(
+              governance,
+              """export async function runAntibodyGovernanceAssessment(policy, calibrationCorpus, ev12Corpus, failureMemory, {
+            candidateSha,
+            governanceOverride = null,
+            decisionRecordCount = null,
+            readText,
+          } = {}) {
+          """,
+              """export async function runAntibodyGovernanceAssessment(policy, calibrationCorpus, ev12Corpus, failureMemory, {
+            candidateSha,
+            governanceOverride = null,
+            readText,
+          } = {}) {
+          """,
+          )
+          replace_once(
+              governance,
+              """  const rollbackMeasuredErrors = measureGovernanceCases(rollbackCases);
+            const rollbackPromotionAuthorizations = rollbackCases.filter(entry => entry.actualPromotionEligible).length;
+            const recordCount = decisionRecordCount ?? await countDecisionRecords(policy.decisions.directory);
+            const sourceMemoryUnchanged = canonicalJson(failureMemory) === sourceMemoryBefore;
+            const pass = withinBudget
+              && sourceMemoryUnchanged
+              && pinnedEligibility.ev12.calibrationPass
+              && (!policy.decisions.allowCommittedDecisionsInEv13 ? recordCount === 0 : true)
+              && rollbackPromotionAuthorizations === 0;
+          """,
+              """  const rollbackMeasuredErrors = measureGovernanceCases(rollbackCases);
+            const rollbackPromotionAuthorizations = rollbackCases.filter(entry => entry.actualPromotionEligible).length;
+            const decisionState = await inspectDecisionRecords(policy.decisions.directory);
+            const sourceMemoryUnchanged = canonicalJson(failureMemory) === sourceMemoryBefore;
+            const pass = withinBudget
+              && sourceMemoryUnchanged
+              && pinnedEligibility.ev12.calibrationPass
+              && (!policy.decisions.allowCommittedDecisionsInEv13 ? decisionState.ev13DecisionRecordCount === 0 : true)
+              && rollbackPromotionAuthorizations === 0;
+          """,
+          )
+          replace_once(
+              governance,
+              """      reviewedActions: [...policy.review.actionsRequiringReview],
+                decisionRecordCount: recordCount,
+                committedDecisionAllowedInEv13: policy.decisions.allowCommittedDecisionsInEv13,
+          """,
+              """      reviewedActions: [...policy.review.actionsRequiringReview],
+                decisionRecordCount: decisionState.decisionRecordCount,
+                ev13DecisionRecordCount: decisionState.ev13DecisionRecordCount,
+                decisionTaskIds: decisionState.decisionTaskIds,
+                committedDecisionAllowedInEv13: policy.decisions.allowCommittedDecisionsInEv13,
+          """,
+          )
+
+          evidence = 'agent/tools/antibody-governance-evidence.mjs'
+          replace_once(
+              evidence,
+              """  governanceOverride = null,
+            decisionRecordCount = null,
+          } = {}) {
+            assert(SHA_PATTERN.test(candidateSha ?? ''), 'candidateSha must be a full lowercase commit SHA');
+            const recomputeDecisionRecordCount = decisionRecordCount ?? report?.lifecycle?.decisionRecordCount ?? null;
+            assert(recomputeDecisionRecordCount === null || (Number.isInteger(recomputeDecisionRecordCount) && recomputeDecisionRecordCount >= 0), 'antibody governance evidence decision count must be a non-negative integer');
+            const expected = await runAntibodyGovernanceAssessment(policy, calibration, ev12Corpus, memory, {
+              candidateSha,
+              governanceOverride,
+              decisionRecordCount: recomputeDecisionRecordCount,
+            });
+          """,
+              """  governanceOverride = null,
+          } = {}) {
+            assert(SHA_PATTERN.test(candidateSha ?? ''), 'candidateSha must be a full lowercase commit SHA');
+            const expected = await runAntibodyGovernanceAssessment(policy, calibration, ev12Corpus, memory, {
+              candidateSha,
+              governanceOverride,
+            });
+          """,
+          )
+          replace_once(
+              evidence,
+              """    assert(report.lifecycle.decisionRecordCount === 0, 'EV-13 closeout calibration must model the EV-13 no-decision state');
+          """,
+              """    assert(report.lifecycle.ev13DecisionRecordCount === 0, 'EV-13 closeout must prove EV-13 authored no committed antibody decisions');
+          """,
+          )
+          replace_once(
+              evidence,
+              """    requirePass: false,
+            decisionRecordCount: null,
+          };
+          """,
+              """    requirePass: false,
+          };
+          """,
+          )
+          replace_once(
+              evidence,
+              """    else if (argument === '--require-pass') options.requirePass = true;
+            else if (argument === '--decision-record-count') options.decisionRecordCount = Number.parseInt(argv[++index] ?? '', 10);
+            else throw new Error(`unknown argument ${argument}`);
+            }
+            assert(options.report, '--report is required');
+            assert(options.decisionRecordCount === null || (Number.isInteger(options.decisionRecordCount) && options.decisionRecordCount >= 0), '--decision-record-count must be a non-negative integer');
+          """,
+              """    else if (argument === '--require-pass') options.requirePass = true;
+            else throw new Error(`unknown argument ${argument}`);
+            }
+            assert(options.report, '--report is required');
+          """,
+          )
+          replace_once(
+              evidence,
+              """    governanceOverride: options.disabled ? false : null,
+              decisionRecordCount: options.decisionRecordCount,
+            });
+          """,
+              """    governanceOverride: options.disabled ? false : null,
+            });
+          """,
+          )
+
+          tests = 'agent/tests/antibody-governance.mjs'
+          replace_once(tests, "import { readFile } from 'node:fs/promises';", "import { readFile, readdir } from 'node:fs/promises';")
+          replace_once(
+              tests,
+              """const report = await runAntibodyGovernanceAssessment(policy, calibration, ev12Corpus, memory, {
+            candidateSha,
+            decisionRecordCount: 0,
+          });
+          """,
+              """let liveDecisionRecordCount = 0;
+          try {
+            liveDecisionRecordCount = (await readdir(new URL('../antibody-decisions/', import.meta.url), { withFileTypes: true }))
+              .filter(entry => entry.isFile() && entry.name.endsWith('.json')).length;
+          } catch (error) {
+            if (!(error && typeof error === 'object' && error.code === 'ENOENT')) throw error;
+          }
+          const report = await runAntibodyGovernanceAssessment(policy, calibration, ev12Corpus, memory, { candidateSha });
+          """,
+          )
+          replace_once(
+              tests,
+              """assert.equal(report.lifecycle.decisionRecordCount, 0, 'EV-13 must not commit an accepted antibody record');
+          """,
+              """assert.equal(report.lifecycle.decisionRecordCount, liveDecisionRecordCount, 'governance evidence must report the actual committed antibody decision count');
+          assert.equal(report.lifecycle.ev13DecisionRecordCount, 0, 'EV-13 itself must not author a committed antibody decision');
+          assert.equal(report.lifecycle.decisionTaskIds.filter(taskId => taskId === 'EV-14').length, liveDecisionRecordCount, 'the current committed decision history must be attributed to EV-14 rather than hidden from EV-13 evidence');
+          """,
+          )
+          replace_once(
+              tests,
+              """const rollback = await runAntibodyGovernanceAssessment(policy, calibration, ev12Corpus, memory, {
+            candidateSha,
+            governanceOverride: false,
+            decisionRecordCount: 0,
+          });
+          """,
+              """const rollback = await runAntibodyGovernanceAssessment(policy, calibration, ev12Corpus, memory, {
+            candidateSha,
+            governanceOverride: false,
+          });
+          """,
+          )
+          replace_once(
+              tests,
+              """  () => runAntibodyGovernanceAssessment(policy, calibration, tamperedCorpus, memory, { candidateSha, decisionRecordCount: 0 }),
+          """,
+              """  () => runAntibodyGovernanceAssessment(policy, calibration, tamperedCorpus, memory, { candidateSha }),
+          """,
+          )
+          replace_once(
+              tests,
+              """assert.equal(report.rollback.existingEnforcementChanged, false, 'EV-13 rollback must leave existing verification semantics intact');
+          await verifyAntibodyGovernanceEvidence(report, policy, calibration, ev12Corpus, memory, {
+          """,
+              """assert.equal(report.rollback.existingEnforcementChanged, false, 'EV-13 rollback must leave existing verification semantics intact');
+          const legacyOverrideAttempt = await runAntibodyGovernanceAssessment(policy, calibration, ev12Corpus, memory, {
+            candidateSha,
+            decisionRecordCount: 0,
+          });
+          assert.equal(legacyOverrideAttempt.lifecycle.decisionRecordCount, liveDecisionRecordCount, 'caller-supplied decision-count hints must not replace repository decision history');
+          await verifyAntibodyGovernanceEvidence(report, policy, calibration, ev12Corpus, memory, {
+          """,
+          )
+
+          Path('.github/workflows/ev13-antibody-governance.yml').write_text("""name: EV-13 Antibody Governance
+
+          on:
+            pull_request:
+              branches:
+                - main
+            push:
+              branches:
+                - main
+              paths:
+                - 'agent/antibody-governance-policy.json'
+                - 'agent/antibody-governance.schema.json'
+                - 'agent/antibody-governance-calibration-corpus.json'
+                - 'agent/antibody-decisions/**'
+                - 'agent/failure-recurrence-calibration-corpus.json'
+                - 'agent/failure-memory.json'
+                - 'agent/tools/antibody-governance.mjs'
+                - 'agent/tools/antibody-governance-evidence.mjs'
+                - 'agent/tools/candidate-evidence.mjs'
+                - 'agent/tools/check-architecture-invariants.mjs'
+                - 'agent/tools/experimental-review-task.mjs'
+                - 'agent/tools/failure-recurrence-calibration.mjs'
+                - 'agent/tools/independent-review.mjs'
+                - 'agent/tools/repository-immune-system.mjs'
+                - 'agent/tools/select-affected-verification.mjs'
+                - 'agent/tests/antibody-governance.mjs'
+                - 'agent/impact-map.json'
+                - 'agent/architecture-invariants.json'
+                - '.github/workflows/ev13-antibody-governance.yml'
+                - 'docs/experimental-verification-roadmap.md'
+                - 'docs/experimental-verification-archive.md'
+                - 'AGENTS.md'
+            workflow_dispatch:
+
+          permissions:
+            contents: read
+
+          jobs:
+            govern:
+              name: Exact Candidate Antibody Governance
+              runs-on: ubuntu-24.04
+              timeout-minutes: 8
+              steps:
+                - name: Check out exact candidate revision
+                  uses: actions/checkout@v7
+                  with:
+                    ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+                    fetch-depth: 0
+                    persist-credentials: false
+
+                - name: Set up Node 22
+                  uses: actions/setup-node@v7
+                  with:
+                    node-version: '22.23.2'
+
+                - name: Use npm 10.9.8
+                  run: npm install --global npm@10.9.8
+
+                - name: Install locked dependencies for architecture checks
+                  run: npm ci --ignore-scripts
+
+                - name: Run EV-13 governance regressions
+                  run: node agent/tests/antibody-governance.mjs
+
+                - name: Generate and verify exact-SHA EV-13 governance evidence
+                  env:
+                    CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+                  run: |
+                    set -euo pipefail
+                    test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+                    mkdir -p .agent-antibody-governance
+                    node agent/tools/antibody-governance.mjs \
+                      --candidate-sha "$CANDIDATE_SHA" \
+                      --output .agent-antibody-governance/governance.json
+                    node agent/tools/antibody-governance-evidence.mjs \
+                      --candidate-sha "$CANDIDATE_SHA" \
+                      --report .agent-antibody-governance/governance.json \
+                      --require-pass
+                    IRONSHADE_ANTIBODY_GOVERNANCE=0 node agent/tools/antibody-governance.mjs \
+                      --candidate-sha "$CANDIDATE_SHA" \
+                      --output .agent-antibody-governance/rollback.json
+                    node agent/tools/antibody-governance-evidence.mjs \
+                      --candidate-sha "$CANDIDATE_SHA" \
+                      --report .agent-antibody-governance/rollback.json \
+                      --disabled
+
+                - name: Upload exact-SHA EV-13 governance evidence
+                  uses: actions/upload-artifact@v7
+                  with:
+                    name: antibody-governance-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'push' }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+                    path: .agent-antibody-governance/
+                    if-no-files-found: error
+                    include-hidden-files: true
+                    retention-days: 30
+          """.replace('\n          ', '\n').lstrip())
+
+          archive = 'docs/experimental-verification-archive.md'
+          replace_once(
+              archive,
+              """- Preserved EV-13 as the historical governance-only zero-decision calibration by making its evidence workflow explicitly recompute the EV-13 closeout state with `decisionRecordCount=0`; EV-14 authorization separately validates the actual complete live decision history from the reviewed candidate.
+          """,
+              """- Preserved EV-13's historical no-decision guarantee without hiding later governance history: EV-13 evidence now reads the actual committed decision directory, requires that EV-13 itself authored zero decision records, and reports later EV-14 decision records instead of overriding the live count. EV-14 authorization separately validates the complete append-only lifecycle history from the reviewed candidate.
+          """,
+          )
+
+          Path('.github/workflows/ev14-review-finding-fix.yml').unlink()
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add agent/tools/antibody-governance.mjs agent/tools/antibody-governance-evidence.mjs agent/tests/antibody-governance.mjs .github/workflows/ev13-antibody-governance.yml docs/experimental-verification-archive.md .github/workflows/ev14-review-finding-fix.yml
+          git diff --cached --check
+          git commit -m 'Harden EV-13 live decision accounting'
+          git push origin HEAD:agent/ev14-promote-candidate-artifact-antibody
