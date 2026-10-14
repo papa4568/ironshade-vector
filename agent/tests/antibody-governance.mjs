@@ -520,7 +520,7 @@ await assert.rejects(
 );
 
 const failingArchitectureConfig = structuredClone(fixtureArchitectureConfig);
-failingArchitectureConfig.rules[0].required = ['THIS_INVARIANT_MARKER_DOES_NOT_EXIST'];
+failingArchitectureConfig.rules[0].forbidden = ['ANTIBODY_GOVERNANCE_PASS'];
 await assert.rejects(
   () => authorizeAntibodyGovernanceDecision({
     candidateSha,
@@ -530,7 +530,7 @@ await assert.rejects(
     reviewPacket,
     fetchImpl: buildFetch({ architectureConfig: failingArchitectureConfig }),
   }),
-  /fixture-review-boundary|required/i,
+  /fixture-review-boundary|required|forbidden/i,
   'authorization must evaluate exact-candidate architecture invariants instead of synthesizing passed statuses',
 );
 
