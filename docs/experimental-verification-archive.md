@@ -602,3 +602,39 @@ Trusted review run `38582693230` (PR comment `6171010931`) on exact candidate `3
 The same branch removed that production override. EV-13 current-state evidence now enumerates the actual committed `agent/antibody-decisions/` directory, requires later decision history to remain visible, preserves `allowCommittedDecisionsInEv13=false` as the historical EV-13 rule, and explicitly reports that the old EV-13 closeout predicate no longer applies once a later decision exists. `agent/tests/antibody-governance-current-state.mjs` reproduces the rejected zero-count spoof and requires current-state verification to reject it. Historical EV-13 zero-decision fixtures remain test/archive evidence only and cannot override live repository history.
 
 This review-driven correction changes the candidate SHA, so no proof or verdict from `3d0c06d33ddf82faa065ff3bb93c08eec85a6714` is inherited. The exact corrected closeout candidate must rerun every technically available EV-14 proof and receive a fresh trusted EV-14 independent review and governance authorization before merge.
+
+## EV-15 — Calibrate EV-5 Change-Impact Predictions
+
+Completed 2026-10-14 as an advisory calibration of the EV-5 affected-verification mechanism. The original EV-5 prototype record above remains unchanged advisory history.
+
+### Implemented
+
+- Added reviewed `agent/impact-calibration-corpus.json` with two immutable exact-SHA successful full-verification controls, two independent executable UI miss probes, a minimum of two independent target misses before any widening may be named, and zero false-positive/false-negative widening-decision budgets.
+- Added `agent/tools/impact-calibration-evidence.mjs` and `agent/tests/impact-calibration-evidence.mjs`. The evidence path reuses the existing `agent/impact-map.json` selector, proves the predicted focused commands first, then injects a disposable client-TypeScript type error and runs authoritative `npm run verify:full` to expose any missed proof. Every probe restores the exact candidate tracked state before the next probe or report is accepted.
+- Added `.github/workflows/ev15-impact-calibration.yml` with exact-head checkout, full Git history for historical-SHA validation, deterministic contract regressions, executable calibration, fail-closed report validation, and exact-SHA artifact upload.
+- Kept `agent/impact-map.json` unchanged. EV-15 remains `mode="advisory"`, `acceptedForEnforcement=false`, and `candidatePassGranted=false`; EV-16 owns any reviewed default widening.
+- Documented the permanent EV-15 calibration, confidence, unresolved-class, no-narrowing, exact-rollback, and EV-16 handoff contract in `AGENTS.md`.
+
+### Evidence
+
+The first exact-head calibration attempt on candidate `566f9cbe313dde4e50ff434d87ac91029f3b0ca7` passed the pure contract regression but failed its own executable rollback assertion because authoritative full verification generated tracked build artifacts after the disposable source mutation. The same branch corrected the evidence runner to restore the entire tracked worktree from exact `HEAD` in a `finally` path and then require byte-identical target content plus the original clean tracked status. The calibration goal, selector expectations, zero-error budgets, and advisory boundary were unchanged.
+
+Corrected implementation candidate `295ec87024e34be6d724cee60fa432b375712a96` passed EV-15 Impact Calibration run `38624196233` and Agent Orchestration run `38624196209`. Exact-SHA EV-15 artifact `11923980804` (`impact-calibration-ev15-383-295ec87024e34be6d724cee60fa432b375712a96`) has GitHub Actions digest `sha256:5acf0a2ab2429a01868bda7de61b846cd6f82f89f29d4eff8c947f4ea093ae53`.
+
+Both independent UI probes were predicted as `mode="targeted"` by `ui-and-design-system`, selecting only `ui-readability` and `design-system`. Both selected focused commands succeeded, while `npm run verify:full` then failed in the unpredicted `test:beta` TypeScript proof on the injected mismatch. The measured selector scope therefore records `falseNegativeCount=2/2`, false-negative rate `1.0`, and trial over-selection rate `1.0` for these two typecheck defects because neither selected focused check detected the mutation. This result is a calibration of this measured rule/defect class, not a claim about unmeasured UI failures.
+
+The widening-decision calibration itself recorded `falsePositiveWidenings=0` and `falseNegativeWidenings=0` under zero-error budgets. With two independent target misses, the single safe widening candidate is `ui-and-design-system -> risk: high`, which reuses the existing fail-safe `verify-full` path. Its observed miss rate is `1.0`; the Wilson 95% interval is approximately `0.34238–1.0`, so the evidence supports widening but not narrowing or a completeness claim. The two historical successful-full-verification controls remain no-narrowing evidence only: P28-PLOAD1 (`207274334514594547afe5eca8530cdea02f3687`, run `38115851910`) and EV-10 (`7f0628b23a0127d59eae081ef61d7a51a6ae2402`, run `38440867525`).
+
+Every other normal-risk impact-map rule remains unresolved because EV-15 did not establish two independent executable misses for it. Existing high-risk build/dependency, Android, and CI classes remain already fail-safe and were not narrowed. The exact report records `defaultImpactMapChanged=false`, `enforcementEnabled=false`, and `sourceMutationsRestored=true`.
+
+This archive transition follows the repository's independent-review self-reference rule. It records the immutable pre-archive implementation candidate and measured exact-SHA calibration evidence. The resulting closeout SHA cannot literally contain its own Git SHA because that SHA depends on these archive contents, so it must pass fresh exact-head technical gates and a fresh trusted EV-15 independent review before merge; no predecessor verdict or candidate proof is inherited from `295ec87024e34be6d724cee60fa432b375712a96`.
+
+### Isolation and rollback
+
+EV-15 changes verification/governance only. Executable probes mutate one tracked component at a time inside the exact GitHub Actions checkout, run the current selector's focused commands and the authoritative full verifier, then restore the complete tracked worktree from exact `HEAD` and prove the source digest/status match the pre-probe candidate. Historical observations are immutable exact-SHA references, and the workflow writes only ephemeral report state before artifact upload.
+
+Rollback is deterministic: remove `.github/workflows/ev15-impact-calibration.yml`, `agent/impact-calibration-corpus.json`, `agent/tools/impact-calibration-evidence.mjs`, `agent/tests/impact-calibration-evidence.mjs`, and the EV-15 entries in `AGENTS.md`. The pre-EV-15 EV-5 advisory observer, static `agent/impact-map.json`, product/runtime state, full build, browser/Android/APK, exact-SHA evidence, architecture invariants, and trusted independent-review gates remain unchanged.
+
+### Promotion status
+
+Calibration complete; no default enforcement was promoted in EV-15. Only the measured `ui-and-design-system -> risk: high / verify-full` widening is eligible for EV-16 review. All other normal-risk classes remain unresolved/experimental, existing high-risk classes remain fail-safe, and the next experimental task is EV-16.
