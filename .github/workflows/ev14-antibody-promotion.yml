@@ -80,11 +80,90 @@ jobs:
           include-hidden-files: true
           retention-days: 30
 
-  authorize-after-trusted-review:
+  request-independent-governance-review:
     if: github.event_name == 'pull_request'
     needs: promotion-gate
     runs-on: ubuntu-24.04
-    timeout-minutes: 8
+    timeout-minutes: 35
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Wait for exact-candidate producer workflows and dispatch trusted-main review
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          node --input-type=module <<'NODE'
+          const repository = process.env.GITHUB_REPOSITORY;
+          const token = process.env.GITHUB_TOKEN;
+          const candidateSha = process.env.CANDIDATE_SHA;
+          const prNumber = Number(process.env.PR_NUMBER);
+          const headers = {
+            Accept: 'application/vnd.github+json',
+            Authorization: `Bearer ${token}`,
+            'X-GitHub-Api-Version': '2022-11-28',
+          };
+          const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+          const api = async (path, options = {}) => {
+            const response = await fetch(`https://api.github.com/repos/${repository}/${path}`, {
+              ...options,
+              headers: { ...headers, ...(options.headers ?? {}) },
+            });
+            const text = await response.text();
+            if (!response.ok) throw new Error(`GitHub API ${options.method ?? 'GET'} ${path} failed ${response.status}: ${text}`);
+            return text ? JSON.parse(text) : null;
+          };
+          const exactRun = async workflow => {
+            const payload = await api(`actions/workflows/${workflow}/runs?event=pull_request&head_sha=${candidateSha}&per_page=30`);
+            return (payload.workflow_runs ?? [])
+              .filter(run => run.head_sha === candidateSha && (run.pull_requests ?? []).some(pull => pull.number === prNumber))
+              .sort((left, right) => Date.parse(left.created_at) - Date.parse(right.created_at))
+              .at(-1) ?? null;
+          };
+
+          let producerReady = false;
+          for (let attempt = 0; attempt < 105; attempt += 1) {
+            const [candidate, orchestration] = await Promise.all([
+              exactRun('pr-candidate.yml'),
+              exactRun('agent-orchestration.yml'),
+            ]);
+            if (candidate?.status === 'completed' && orchestration?.status === 'completed') {
+              producerReady = true;
+              console.log(`EV14_REVIEW_PRODUCERS_READY candidateRun=${candidate.id} candidateConclusion=${candidate.conclusion} orchestrationRun=${orchestration.id} orchestrationConclusion=${orchestration.conclusion}`);
+              break;
+            }
+            await sleep(15000);
+          }
+          if (!producerReady) throw new Error('EV14_TRUSTED_REVIEW_DISPATCH_FAIL exact-candidate producer workflows did not complete');
+
+          await api('actions/workflows/ao6-trusted-independent-review.yml/dispatches', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ref: 'main',
+              inputs: {
+                pr_number: String(prNumber),
+                candidate_sha: candidateSha,
+                task_id: 'EV-14',
+              },
+            }),
+          });
+          console.log(`EV14_TRUSTED_REVIEW_DISPATCHED candidate=${candidateSha} pr=${prNumber}`);
+          NODE
+
+  authorize-after-trusted-review:
+    if: github.event_name == 'pull_request'
+    needs:
+      - promotion-gate
+      - request-independent-governance-review
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
     steps:
       - name: Check out exact candidate revision
         uses: actions/checkout@v7
@@ -99,6 +178,43 @@ jobs:
 
       - name: Install locked dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Wait for exact trusted-main review result
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          node --input-type=module <<'NODE'
+          const repository = process.env.GITHUB_REPOSITORY;
+          const token = process.env.GITHUB_TOKEN;
+          const candidateSha = process.env.CANDIDATE_SHA;
+          const prNumber = Number(process.env.PR_NUMBER);
+          const headers = {
+            Accept: 'application/vnd.github+json',
+            Authorization: `Bearer ${token}`,
+            'X-GitHub-Api-Version': '2022-11-28',
+          };
+          const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+          const marker = '<!-- ironshade-independent-review:trusted-main-actions:v1 -->';
+          const candidateNeedle = `\"candidateSha\": \"${candidateSha}\"`;
+          const taskNeedle = '\"taskId\": \"EV-14\"';
+          let found = false;
+          for (let attempt = 0; attempt < 125; attempt += 1) {
+            const response = await fetch(`https://api.github.com/repos/${repository}/issues/${prNumber}/comments?per_page=100`, { headers });
+            const text = await response.text();
+            if (!response.ok) throw new Error(`GitHub review-comment poll failed ${response.status}: ${text}`);
+            const comments = JSON.parse(text);
+            found = comments.some(comment => typeof comment?.body === 'string'
+              && comment.body.includes(marker)
+              && comment.body.includes(candidateNeedle)
+              && comment.body.includes(taskNeedle));
+            if (found) break;
+            await sleep(10000);
+          }
+          if (!found) throw new Error('EV14_TRUSTED_REVIEW_WAIT_FAIL exact-candidate trusted-main review result did not arrive');
+          console.log(`EV14_TRUSTED_REVIEW_RESULT_PRESENT candidate=${candidateSha} pr=${prNumber}`);
+          NODE
 
       - name: Reconstruct exact review packet and require trusted EV-14 governance authorization
         env:
