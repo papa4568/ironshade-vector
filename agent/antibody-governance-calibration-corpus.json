@@ -62,6 +62,36 @@
       "expectedPromotionEligible": false
     },
     {
+      "id": "trusted-main-pr-author-self-review-cannot-authorize",
+      "truthId": "android-screenshot-capture-transport-timeout",
+      "action": "accept",
+      "reviewed": true,
+      "reviewAuthorAssociation": "TRUSTED_MAIN_ACTIONS",
+      "reviewRequester": "ev13-calibration-pr-author",
+      "prAuthor": "ev13-calibration-pr-author",
+      "sourceOfTruth": {
+        "kind": "focused-regression",
+        "path": "scripts/android-large-screen-smoke.sh",
+        "entryId": "android-screenshot-capture-contract"
+      },
+      "expectedTransitionValid": false,
+      "expectedPromotionEligible": false
+    },
+    {
+      "id": "vacuous-assertion-cannot-authorize",
+      "truthId": "candidate-artifact-integrity-drift",
+      "action": "accept",
+      "reviewed": true,
+      "canonicalSourceFixture": "import assert from 'node:assert/strict';\nassert.equal(true, true, 'candidate-artifact-integrity candidate-sha-match');\n",
+      "sourceOfTruth": {
+        "kind": "focused-regression",
+        "path": "agent/tests/candidate-artifact.mjs",
+        "entryId": "candidate-artifact-integrity"
+      },
+      "expectedTransitionValid": false,
+      "expectedPromotionEligible": false
+    },
+    {
       "id": "advisory-ev12-scope-cannot-authorize",
       "truthId": "artifact-upload-dns-resolution",
       "action": "accept",
