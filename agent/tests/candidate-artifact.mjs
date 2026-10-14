@@ -10,6 +10,7 @@ import {
   validateCandidateArtifactManifestShape,
 } from '../tools/candidate-artifact.mjs';
 
+const CHECK_ID = 'candidate-artifact-integrity';
 const CANDIDATE = '1111111111111111111111111111111111111111';
 const OTHER = '2222222222222222222222222222222222222222';
 const root = await mkdtemp(join(tmpdir(), 'ironshade-candidate-artifact-'));
@@ -63,7 +64,7 @@ try {
   malformed.files.reverse();
   assert.throws(() => validateCandidateArtifactManifestShape(malformed), /strictly sorted/);
 
-  console.log(`CANDIDATE_ARTIFACT_TEST_PASS files=${manifest.fileCount} treeSha256=${manifest.treeSha256} wrongSha=reject tamper=reject extraFile=reject`);
+  console.log(`CANDIDATE_ARTIFACT_TEST_PASS check=${CHECK_ID} files=${manifest.fileCount} treeSha256=${manifest.treeSha256} wrongSha=reject tamper=reject extraFile=reject`);
 } finally {
   await rm(root, { recursive: true, force: true });
 }
