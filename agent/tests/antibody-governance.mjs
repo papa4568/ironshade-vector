@@ -52,12 +52,14 @@ assert.equal(report.lifecycle.exactReviewPacketRequired, true, 'trusted review m
 assert.equal(report.lifecycle.exactCommittedDecisionRequired, true, 'authorization must load the committed decision from the candidate SHA');
 assert.equal(report.lifecycle.repositoryPinnedInputsRequired, true, 'authorization must load pinned governance inputs from the candidate SHA');
 assert.equal(report.lifecycle.completeReviewHistoryRequired, true, 'authorization must inspect complete PR review history');
+assert.equal(report.lifecycle.reviewIndependentFromPrAuthorRequired, true, 'antibody authorization must require review independence from the PR author');
 assert.equal(report.lifecycle.completeDecisionHistoryRequired, true, 'authorization must inspect the complete committed antibody decision history');
 assert.equal(report.lifecycle.latestDecisionHeadRequired, true, 'update/retire must extend only the latest committed lifecycle head');
 assert.equal(report.lifecycle.appendOnlyDecisionHistoryRequired, true, 'decision history must be append-only');
 assert.equal(report.lifecycle.canonicalSourceEntryRequired, true, 'governance must verify the named canonical check entry exists');
 assert.equal(report.lifecycle.canonicalSourceContractRequired, true, 'focused-regression and telemetry governance must bind the exact EV-4 target contract');
 assert.equal(report.lifecycle.executableSourceContractRequired, true, 'existing check files must prove executable contract behavior instead of inert marker text');
+assert.equal(report.lifecycle.behaviorBearingAssertionRequired, true, 'test-source contracts must bind markers to assertion outcomes rather than messages');
 assert.equal(report.lifecycle.directDecisionEvaluatorExported, false, 'callers must not bypass the trusted authorization wrapper');
 assert.deepEqual(report.eligibleTruthIds, ['android-screenshot-capture-transport-timeout', 'candidate-artifact-integrity-drift']);
 assert.equal(report.ev12.pinnedCorpusDigestVerified, true);
@@ -73,6 +75,7 @@ const reviewedScreenshot = report.calibration.cases.find(entry => entry.id === '
 assert.equal(reviewedScreenshot.actualPromotionEligible, true);
 assert.equal(reviewedScreenshot.reviewProvenanceVerified, true);
 assert.equal(reviewedScreenshot.reviewBoundToDecisionDigest, true);
+assert.equal(reviewedScreenshot.reviewIndependentFromPrAuthor, true);
 assert.equal(reviewedScreenshot.pinnedEligibilityVerified, true);
 assert.equal(reviewedScreenshot.canonicalSourceEntryVerified, true);
 assert.equal(reviewedScreenshot.canonicalSourceContractVerified, true, 'screenshot governance must bind the exact Android smoke contract');
@@ -84,6 +87,12 @@ assert.equal(reviewedArtifact.canonicalSourceContractVerified, true, 'candidate 
 const selfAttested = report.calibration.cases.find(entry => entry.id === 'self-attested-review-cannot-authorize');
 assert.equal(selfAttested.actualTransitionValid, false);
 assert.match(selfAttested.error, /trusted review provenance is required/, 'review intent without verified GitHub provenance must fail closed');
+const selfRequested = report.calibration.cases.find(entry => entry.id === 'trusted-main-pr-author-self-review-cannot-authorize');
+assert.equal(selfRequested.actualTransitionValid, false);
+assert.match(selfRequested.error, /must differ from the pull request author/, 'trusted-main review requested by the PR author must fail closed for antibody authorization');
+const unrelatedAssertion = report.calibration.cases.find(entry => entry.id === 'vacuous-assertion-cannot-authorize');
+assert.equal(unrelatedAssertion.actualTransitionValid, false);
+assert.match(unrelatedAssertion.error, /not bound to an assertion outcome|missing required EV-4 contract behavior in assertion outcome/, 'marker text in an unrelated rejected promise must not satisfy canonical source validation');
 const phantomSource = report.calibration.cases.find(entry => entry.id === 'noncanonical-file-with-entry-id-cannot-authorize');
 assert.equal(phantomSource.actualTransitionValid, false);
 assert.match(phantomSource.error, /canonical source-of-truth entry .* does not exist at .*EV-4 canonical target/, 'an allowed file that merely mentions the entry id must not become a phantom canonical check');
@@ -136,6 +145,13 @@ assert.throws(
   () => validateAntibodyGovernancePolicy(provenanceWeakened),
   /must be fetched from GitHub/,
   'policy must not allow self-attested review provenance',
+);
+const independenceWeakened = structuredClone(policy);
+independenceWeakened.review.provenance.requireRequesterIndependentOfPrAuthor = false;
+assert.throws(
+  () => validateAntibodyGovernancePolicy(independenceWeakened),
+  /must require the trusted review requester or reviewer to differ from the PR author/,
+  'policy must not permit PR-author-requested trusted-main antibody authorization',
 );
 const bindingWeakened = structuredClone(policy);
 bindingWeakened.review.provenance.decisionBinding = 'task-and-sha-only';
@@ -280,14 +296,21 @@ const artifactSource = {
   entryId: 'candidate-artifact-integrity',
 };
 const executableArtifactBinding = await validateAntibodyCanonicalSourceEntry(policy, artifactProposal, artifactSource, {
-  readText: async () => `import assert from 'node:assert/strict';\nawait assert.rejects(Promise.reject(new Error('wrong sha')), /wrong sha/, 'candidate-artifact-integrity candidate-sha-match rejects stale identity');\n`,
+  readText: async () => `import assert from 'node:assert/strict';\nconst validateCandidateArtifact = async () => { throw new Error('wrong sha'); };\nconst CHECK_BINDINGS = { 'candidate-artifact-integrity': { 'candidate-sha-match': validateCandidateArtifact } };\nawait assert.rejects(CHECK_BINDINGS['candidate-artifact-integrity']['candidate-sha-match'](), /wrong sha/, 'bound candidate artifact check');\n`,
 });
-assert.equal(executableArtifactBinding.binding, 'executable-proposal-target-contract', 'focused regressions must bind executable assertion evidence');
+assert.equal(executableArtifactBinding.binding, 'executable-proposal-target-contract', 'focused regressions must bind executable assertion outcome evidence');
+await assert.rejects(
+  () => validateAntibodyCanonicalSourceEntry(policy, artifactProposal, artifactSource, {
+    readText: async () => `import assert from 'node:assert/strict';\nawait assert.rejects(Promise.reject(new Error('wrong sha')), /wrong sha/, 'candidate-artifact-integrity candidate-sha-match rejects stale identity');\n`,
+  }),
+  /not bound to an assertion outcome|missing required EV-4 contract behavior in assertion outcome/,
+  'an unrelated rejected promise with marker text only in the assertion message must not satisfy source binding',
+);
 await assert.rejects(
   () => validateAntibodyCanonicalSourceEntry(policy, artifactProposal, artifactSource, {
     readText: async () => `const CHECK_ID = 'candidate-artifact-integrity';\nconst CHECK_CONTRACT = 'candidate-sha-match';\nconsole.log(CHECK_ID, CHECK_CONTRACT);\n`,
   }),
-  /no executable check evidence|not bound to an assertion|missing required EV-4 contract behavior/,
+  /no executable check evidence|not bound to an assertion outcome|missing required EV-4 contract behavior in assertion outcome/,
   'inert constants or console markers must not satisfy focused-regression source binding',
 );
 
@@ -533,8 +556,10 @@ assert.equal(authorized.completeDecisionHistoryVerified, true, 'public authoriza
 assert.equal(authorized.decisionHistoryAppendOnlyVerified, true, 'public authorization must require a newly added decision record');
 assert.equal(authorized.latestDecisionHeadVerified, true, 'public authorization must bind lifecycle changes to the repository-derived latest head');
 assert.equal(authorized.decisionBoundToReviewedCandidate, true, 'public authorization must bind the exact decision path/digest to the reviewed candidate');
+assert.equal(authorized.reviewIndependentFromPrAuthorVerified, true, 'public authorization must prove trusted review independence from the PR author');
 assert.equal(authorized.reviewAuthorization.decisionDigest, sha256Value(committedDecision));
 assert.equal(authorized.reviewAuthorization.decisionPath, decisionPath);
+assert.equal(authorized.reviewAuthorization.reviewRequester, 'trusted-reviewer');
 assert.equal(authorized.decisionHistory.committedRecords, 1);
 assert.equal(authorized.decisionHistory.relatedRecords, 0);
 assert(requestedUrls.some(url => url.includes('/contents/agent/antibody-governance-policy.json?ref=')), 'authorization must fetch committed policy');
@@ -627,4 +652,4 @@ await assert.rejects(
   'authorization must evaluate exact-candidate architecture invariants instead of synthesizing passed statuses',
 );
 
-console.log('ANTIBODY_GOVERNANCE_PASS eligible=2 transitionFp=0 transitionFn=0 promotionFp=0 promotionFn=0 decisions=0 enforcement=false rollback=clean+public-authorization lifecycle=accept+update+retire+latest-head+append-only review=github-provenance+exact-decision+exact-packet eligibility=pinned sourceEntry=verified sourceContract=executable+exact-target+fixed-rule-semantics invariantPacket=evaluated pagination=complete publicAuthorization=exercised');
+console.log('ANTIBODY_GOVERNANCE_PASS eligible=2 transitionFp=0 transitionFn=0 promotionFp=0 promotionFn=0 decisions=0 enforcement=false rollback=clean+public-authorization lifecycle=accept+update+retire+latest-head+append-only review=github-provenance+independent-requester+exact-decision+exact-packet eligibility=pinned sourceEntry=verified sourceContract=executable+assertion-outcome+exact-target+fixed-rule-semantics invariantPacket=evaluated pagination=complete publicAuthorization=exercised');
