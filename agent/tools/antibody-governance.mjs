@@ -352,7 +352,7 @@ function validateExecutableCheckContract(proposal, normalized, text) {
   else if (SHELL_EXTENSIONS.has(extension)) executable = shellExecutableEvidence(text);
   else throw new Error(`canonical executable check source type is unsupported for ${normalized.path}`);
 
-  assert(executable.evidence.length > 0, `canonical source-of-truth file has no behavior-bearing executable check evidence: ${normalized.path}`);
+  assert(executable.evidence.length > 0, `canonical source-of-truth file has no executable check evidence with a behavior-bearing assertion: ${normalized.path}`);
   if (executable.namedEntryRequired) {
     assert(
       executable.evidence.some(snippet => snippet.includes(normalized.entryId)),
