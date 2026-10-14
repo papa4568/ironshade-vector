@@ -1,0 +1,25 @@
+{
+  "$schema": "../antibody-governance.schema.json",
+  "schemaVersion": 1,
+  "antibodyId": "antibody-candidate-artifact-integrity-drift",
+  "truthId": "candidate-artifact-integrity-drift",
+  "sourceFailureClass": "candidate-artifact-integrity-drift",
+  "proposalDigest": "aa1baf06adc51206a4faf015420c3c1c45462d5388eeb8f0d41c0354704fcd1e",
+  "revision": 1,
+  "action": "accept",
+  "previousDecisionDigest": null,
+  "sourceOfTruth": {
+    "kind": "focused-regression",
+    "path": "agent/tests/candidate-artifact.mjs",
+    "entryId": "candidate-artifact-integrity"
+  },
+  "review": {
+    "required": true,
+    "taskId": "EV-14",
+    "rationale": "Promote only the EV-12 zero-error candidate-artifact integrity antibody into its existing exact-SHA regression check."
+  },
+  "promotion": {
+    "state": "not-promoted",
+    "taskId": "EV-14"
+  }
+}

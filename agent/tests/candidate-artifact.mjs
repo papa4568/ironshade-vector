@@ -1,5 +1,6 @@
+import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -9,6 +10,7 @@ import {
   validateCandidateArtifact,
   validateCandidateArtifactManifestShape,
 } from '../tools/candidate-artifact.mjs';
+import { runAntibodyPromotionGate } from '../tools/antibody-promotion.mjs';
 
 const CHECK_ID = 'candidate-artifact-integrity';
 const CHECK_CONTRACT = 'candidate-sha-match';
@@ -75,7 +77,33 @@ try {
   malformed.files.reverse();
   assert.throws(() => validateCandidateArtifactManifestShape(malformed), /strictly sorted/);
 
-  console.log(`CANDIDATE_ARTIFACT_TEST_PASS check=${CHECK_ID} contract=${CHECK_CONTRACT} files=${manifest.fileCount} treeSha256=${manifest.treeSha256} wrongSha=reject tamper=reject extraFile=reject`);
+  const [promotionPolicy, governancePolicy, ev12Corpus, failureMemory, decision] = await Promise.all([
+    readFile(new URL('../antibody-promotion-policy.json', import.meta.url), 'utf8').then(JSON.parse),
+    readFile(new URL('../antibody-governance-policy.json', import.meta.url), 'utf8').then(JSON.parse),
+    readFile(new URL('../failure-recurrence-calibration-corpus.json', import.meta.url), 'utf8').then(JSON.parse),
+    readFile(new URL('../failure-memory.json', import.meta.url), 'utf8').then(JSON.parse),
+    readFile(new URL('../antibody-decisions/candidate-artifact-integrity-drift-r1.json', import.meta.url), 'utf8').then(JSON.parse),
+  ]);
+  const candidateSha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+  const promoted = await runAntibodyPromotionGate(
+    promotionPolicy,
+    governancePolicy,
+    ev12Corpus,
+    failureMemory,
+    decision,
+    { candidateSha },
+  );
+  if (promoted.enforcementEnabled) {
+    assert.equal(promoted.enforcementContractPass, true, 'EV-14 promoted candidate-artifact antibody must pass while enforcement is enabled');
+    assert.equal(promoted.calibration.measuredErrors.falsePositives, 0, 'EV-14 promoted antibody must have zero measured false positives while enforcement is enabled');
+    assert.equal(promoted.calibration.measuredErrors.falseNegatives, 0, 'EV-14 promoted antibody must have zero measured false negatives while enforcement is enabled');
+    assert.equal(promoted.wouldBlock, false, 'EV-14 canonical candidate-artifact source must satisfy the promoted antibody while enforcement is enabled');
+  } else {
+    assert.equal(promoted.blocking, false, 'EV-14 rollback must remove only the promoted blocking decision');
+    assert.equal(promoted.candidatePassGranted, false, 'EV-14 rollback must not synthesize candidate acceptance');
+  }
+
+  console.log(`CANDIDATE_ARTIFACT_TEST_PASS check=${CHECK_ID} contract=${CHECK_CONTRACT} files=${manifest.fileCount} treeSha256=${manifest.treeSha256} wrongSha=reject tamper=reject extraFile=reject ev14=${promoted.enforcementEnabled ? 'enforced-pass' : 'rollback-advisory'}`);
 } finally {
   await rm(root, { recursive: true, force: true });
 }
