@@ -277,6 +277,7 @@ const authorized = await authorizeAntibodyGovernanceDecision({
 });
 assert.equal(authorized.transitionValid, true, 'exported authorization path must accept the exact reviewed committed decision');
 assert.equal(authorized.promotionEligible, true);
+assert.equal(authorized.rollbackEnvironmentApplied, false);
 assert.equal(authorized.repositoryInputsLoadedFromCandidate, true, 'public authorization must load policy/calibration inputs from the candidate commit');
 assert.equal(authorized.reviewPacketChangedFilesVerified, true, 'public authorization must bind the review packet to the complete GitHub PR diff');
 assert.equal(authorized.completeReviewHistoryVerified, true, 'public authorization must inspect all PR comment pages');
@@ -287,6 +288,26 @@ assert(requestedUrls.some(url => url.includes('/contents/agent/antibody-governan
 assert(requestedUrls.some(url => url.includes('/contents/agent/failure-recurrence-calibration-corpus.json?ref=')), 'authorization must fetch committed EV-12 corpus');
 assert(requestedUrls.some(url => url.includes('/contents/agent/failure-memory.json?ref=')), 'authorization must fetch committed failure memory');
 assert(requestedUrls.some(url => url.includes(`/contents/${decisionPath}?ref=`)), 'authorization must fetch the exact committed decision');
+
+const previousRollbackEnvironment = process.env[policy.rollback.environmentVariable];
+process.env[policy.rollback.environmentVariable] = policy.rollback.disabledValue;
+try {
+  const rollbackAuthorized = await authorizeAntibodyGovernanceDecision({
+    candidateSha,
+    repository,
+    prNumber,
+    decisionPath,
+    reviewPacket,
+    fetchImpl: buildFetch(),
+  });
+  assert.equal(rollbackAuthorized.transitionValid, true, 'rollback may preserve decision validation evidence');
+  assert.equal(rollbackAuthorized.governanceEnabled, false, 'documented rollback must disable public authorization');
+  assert.equal(rollbackAuthorized.promotionEligible, false, 'documented rollback must authorize zero promotions through the public API');
+  assert.equal(rollbackAuthorized.rollbackEnvironmentApplied, true, 'public authorization must report that the rollback environment disabled governance');
+} finally {
+  if (previousRollbackEnvironment === undefined) delete process.env[policy.rollback.environmentVariable];
+  else process.env[policy.rollback.environmentVariable] = previousRollbackEnvironment;
+}
 
 const oldPass = reviewComment(7100, reviewResult('pass'), { timestamp: '2026-10-13T23:30:00Z' });
 const filler = Array.from({ length: 99 }, (_, index) => ({ id: 7200 + index, body: `noise-${index}`, user: { login: 'noise' }, author_association: 'NONE', created_at: '2026-10-13T23:31:00Z', updated_at: '2026-10-13T23:31:00Z' }));
@@ -319,4 +340,4 @@ await assert.rejects(
   'callers must not forge a review packet to replay a trusted pass onto another decision path',
 );
 
-console.log('ANTIBODY_GOVERNANCE_PASS eligible=2 transitionFp=0 transitionFn=0 promotionFp=0 promotionFn=0 decisions=0 enforcement=false rollback=clean lifecycle=accept+update+retire review=github-provenance+exact-decision eligibility=pinned sourceEntry=verified sourceContract=exact-target pagination=complete publicAuthorization=exercised');
+console.log('ANTIBODY_GOVERNANCE_PASS eligible=2 transitionFp=0 transitionFn=0 promotionFp=0 promotionFn=0 decisions=0 enforcement=false rollback=clean+public-authorization lifecycle=accept+update+retire review=github-provenance+exact-decision eligibility=pinned sourceEntry=verified sourceContract=exact-target pagination=complete publicAuthorization=exercised');
