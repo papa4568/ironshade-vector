@@ -24,11 +24,18 @@ async function readJson(path) {
 export async function verifyAntibodyGovernanceEvidence(report, policy, calibration, ev12Corpus, memory, {
   candidateSha,
   requirePass = false,
+  requireCurrentState = false,
   governanceOverride = null,
-  decisionRecordCount = null,
 } = {}) {
   assert(SHA_PATTERN.test(candidateSha ?? ''), 'candidateSha must be a full lowercase commit SHA');
-  const recomputeDecisionRecordCount = decisionRecordCount ?? report?.lifecycle?.decisionRecordCount ?? null;
+  assert(!(requirePass && requireCurrentState), 'EV-13 closeout and post-EV13 current-state verification are mutually exclusive');
+
+  // Historical EV-13 unit fixtures intentionally model the zero-decision closeout state.
+  // Production current-state verification must ignore that fixture count and enumerate
+  // the repository decision directory itself through runAntibodyGovernanceAssessment.
+  const recomputeDecisionRecordCount = requireCurrentState
+    ? null
+    : (report?.lifecycle?.decisionRecordCount ?? null);
   assert(recomputeDecisionRecordCount === null || (Number.isInteger(recomputeDecisionRecordCount) && recomputeDecisionRecordCount >= 0), 'antibody governance evidence decision count must be a non-negative integer');
   const expected = await runAntibodyGovernanceAssessment(policy, calibration, ev12Corpus, memory, {
     candidateSha,
@@ -55,6 +62,15 @@ export async function verifyAntibodyGovernanceEvidence(report, policy, calibrati
   assert(report.rollback.disabledPromotionAuthorizations === 0, 'EV-13 rollback must disable every promotion authorization');
   assert(report.rollback.evidenceStillMeasured === true, 'EV-13 rollback must preserve the same measured governance evidence');
 
+  if (requireCurrentState) {
+    assert(report.lifecycle.decisionRecordCount > 0, 'post-EV-13 current-state verification must observe committed antibody decision history');
+    assert(report.lifecycle.committedDecisionAllowedInEv13 === false, 'post-EV-13 current-state verification must preserve the historical EV-13 no-decision rule');
+    assert(report.governancePass === false, 'post-EV-13 current-state verification must surface that the historical EV-13 closeout predicate no longer applies');
+    assert(report.ev12.calibrationPass === true && report.ev12.eligibleScopeWithinBudget === true, 'post-EV-13 current-state verification requires exact-candidate EV-12 eligibility proof');
+    assert(report.calibration.withinBudget === true, 'post-EV-13 governance calibration must stay within its zero-error budget');
+    for (const key of METRIC_KEYS) assert(report.calibration.measuredErrors[key] === 0, `post-EV-13 current-state ${key} must be zero`);
+  }
+
   if (requirePass) {
     assert(report.governancePass === true, 'EV-13 closeout requires exact-candidate governance validation to pass');
     assert(report.ev12.calibrationPass === true && report.ev12.eligibleScopeWithinBudget === true, 'EV-13 closeout requires exact-candidate EV-12 eligibility proof');
@@ -75,7 +91,7 @@ function parseArguments(argv) {
     report: null,
     disabled: false,
     requirePass: false,
-    decisionRecordCount: null,
+    requireCurrentState: false,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
@@ -87,11 +103,11 @@ function parseArguments(argv) {
     else if (argument === '--report') options.report = argv[++index] ?? null;
     else if (argument === '--disabled') options.disabled = true;
     else if (argument === '--require-pass') options.requirePass = true;
-    else if (argument === '--decision-record-count') options.decisionRecordCount = Number.parseInt(argv[++index] ?? '', 10);
+    else if (argument === '--require-current-state') options.requireCurrentState = true;
     else throw new Error(`unknown argument ${argument}`);
   }
   assert(options.report, '--report is required');
-  assert(options.decisionRecordCount === null || (Number.isInteger(options.decisionRecordCount) && options.decisionRecordCount >= 0), '--decision-record-count must be a non-negative integer');
+  assert(!(options.requirePass && options.requireCurrentState), '--require-pass and --require-current-state are mutually exclusive');
   return options;
 }
 
@@ -107,10 +123,10 @@ async function main() {
   await verifyAntibodyGovernanceEvidence(report, policy, calibration, ev12Corpus, memory, {
     candidateSha: options.candidateSha,
     requirePass: options.requirePass,
+    requireCurrentState: options.requireCurrentState,
     governanceOverride: options.disabled ? false : null,
-    decisionRecordCount: options.decisionRecordCount,
   });
-  console.log(`ANTIBODY_GOVERNANCE_EVIDENCE_PASS candidate=${options.candidateSha} governancePass=${report.governancePass} requirePass=${options.requirePass} enforcement=${report.enforcementEnabled}`);
+  console.log(`ANTIBODY_GOVERNANCE_EVIDENCE_PASS candidate=${options.candidateSha} governancePass=${report.governancePass} requirePass=${options.requirePass} currentState=${options.requireCurrentState} decisions=${report.lifecycle.decisionRecordCount} enforcement=${report.enforcementEnabled}`);
 }
 
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
