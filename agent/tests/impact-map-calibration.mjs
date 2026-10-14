@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 
 import {
@@ -17,7 +18,11 @@ import {
   selectAffectedVerification,
 } from '../tools/select-affected-verification.mjs';
 
-const impactMap = await loadImpactMap(resolve('agent/impact-map.json'));
+const currentImpactMap = await loadImpactMap(resolve('agent/impact-map.json'));
+const promotedUiRule = currentImpactMap.rules.find(rule => rule.id === 'ui-and-design-system' && rule.promotion?.taskId === 'EV-16');
+const impactMap = promotedUiRule
+  ? JSON.parse(execFileSync('git', ['cat-file', '-p', promotedUiRule.promotion.sourceImpactMapGitBlobSha], { encoding: 'utf8' }))
+  : currentImpactMap;
 const config = validateCalibrationConfig(JSON.parse(await (await import('node:fs/promises')).readFile(resolve('agent/impact-calibration.json'), 'utf8')));
 const graphicsFailureLog = `
 > ironshade-vector@0.0.1 build
@@ -148,4 +153,4 @@ assert.equal(successReport.acceptedForEnforcement, false);
 assert.equal(successReport.candidatePassGranted, false);
 assert.deepEqual(successReport.proposals, []);
 
-console.log(`IMPACT_MAP_CALIBRATION_TEST_PASS syntheticMiss=proposal repeatedMiss=deterministic confidence=${lowStatus.confidence.toFixed(3)} failClosed=${failClosedSelection.mode} noNarrowing=pass candidateShadow=advisory rootFamily=pass`);
+console.log(`IMPACT_MAP_CALIBRATION_TEST_PASS syntheticMiss=proposal repeatedMiss=deterministic confidence=${lowStatus.confidence.toFixed(3)} failClosed=${failClosedSelection.mode} noNarrowing=pass candidateShadow=advisory rootFamily=pass baseline=${promotedUiRule ? 'pre-ev16' : 'current'}`);
