@@ -49,13 +49,13 @@
     },
     "focused-regression": {
       "mode": "existing-check-file",
-      "binding": "proposal-target-contract",
+      "binding": "executable-proposal-target-contract",
       "allowedPrefixes": ["agent/tests/", "tests/", "scripts/"],
       "forbiddenPrefixes": ["agent/antibody-decisions/", "agent/antibody-governance"]
     },
     "telemetry-check": {
       "mode": "existing-check-file",
-      "binding": "proposal-target-contract",
+      "binding": "executable-proposal-target-contract",
       "allowedPrefixes": ["src/", "agent/", "tests/", "scripts/"],
       "forbiddenPrefixes": ["agent/antibody-decisions/", "agent/antibody-governance"]
     }
@@ -65,7 +65,9 @@
     "schema": "../antibody-governance.schema.json",
     "initialPromotionTask": "EV-14",
     "allowCommittedDecisionsInEv13": false,
-    "authorizationInput": "exact-candidate-github-content"
+    "authorizationInput": "exact-candidate-github-content",
+    "historyBinding": "latest-committed-decision-head",
+    "appendOnly": true
   },
   "rollback": {
     "environmentVariable": "IRONSHADE_ANTIBODY_GOVERNANCE",
