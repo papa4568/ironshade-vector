@@ -229,7 +229,10 @@ async function githubJson(path) {
       'User-Agent': 'ironshade-ev15-impact-calibration',
     },
   });
-  assert(response.ok, `GitHub API ${path} failed with ${response.status}: ${(await response.text()).slice(0, 1000)}`);
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`GitHub API ${path} failed with ${response.status}: ${body.slice(0, 1000)}`);
+  }
   return response.json();
 }
 
