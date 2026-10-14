@@ -12,6 +12,11 @@ import {
 
 const CHECK_ID = 'candidate-artifact-integrity';
 const CHECK_CONTRACT = 'candidate-sha-match';
+const CHECK_BINDINGS = Object.freeze({
+  [CHECK_ID]: Object.freeze({
+    [CHECK_CONTRACT]: validateCandidateArtifact,
+  }),
+});
 const CANDIDATE = '1111111111111111111111111111111111111111';
 const OTHER = '2222222222222222222222222222222222222222';
 const root = await mkdtemp(join(tmpdir(), 'ironshade-candidate-artifact-'));
@@ -44,7 +49,11 @@ try {
   assert.equal(valid.treeSha256, manifest.treeSha256);
 
   await assert.rejects(
-    validateCandidateArtifact({ manifest, artifactRoot: dist, expectedCandidateSha: OTHER }),
+    CHECK_BINDINGS['candidate-artifact-integrity']['candidate-sha-match']({
+      manifest,
+      artifactRoot: dist,
+      expectedCandidateSha: OTHER,
+    }),
     /belongs to .* expected/,
     'candidate-artifact-integrity candidate-sha-match must reject an artifact from another candidate SHA',
   );
