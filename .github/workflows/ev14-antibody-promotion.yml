@@ -1,0 +1,137 @@
+name: EV-14 Antibody Promotion
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+    paths:
+      - 'agent/antibody-promotion-policy.json'
+      - 'agent/antibody-decisions/**'
+      - 'agent/tools/antibody-promotion.mjs'
+      - 'agent/tests/antibody-promotion.mjs'
+      - 'agent/tests/candidate-artifact.mjs'
+      - '.github/workflows/ev14-antibody-promotion.yml'
+      - 'AGENTS.md'
+      - 'docs/experimental-verification-roadmap.md'
+      - 'docs/experimental-verification-archive.md'
+
+permissions:
+  actions: read
+  contents: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  promotion-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Check out exact candidate revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run EV-14 promotion regressions
+        run: node agent/tests/antibody-promotion.mjs
+
+      - name: Enforce the single promoted antibody and prove rollback
+        env:
+          CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p .agent-antibody-promotion
+          node agent/tools/antibody-promotion.mjs gate \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --output .agent-antibody-promotion/enforced.json
+          IRONSHADE_ANTIBODY_ENFORCEMENT=0 node agent/tools/antibody-promotion.mjs gate \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --output .agent-antibody-promotion/rollback.json
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const active = JSON.parse(readFileSync('.agent-antibody-promotion/enforced.json', 'utf8'));
+          const rollback = JSON.parse(readFileSync('.agent-antibody-promotion/rollback.json', 'utf8'));
+          if (!active.enforcementContractPass || active.calibration.measuredErrors.falsePositives !== 0 || active.calibration.measuredErrors.falseNegatives !== 0) {
+            throw new Error('EV14_PROMOTION_EVIDENCE_FAIL active calibration or enforcement failed');
+          }
+          if (rollback.blocking !== false || rollback.rollback.failureHistoryUnchanged !== true || rollback.rollback.existingCandidateArtifactCheckStillRequired !== true) {
+            throw new Error('EV14_PROMOTION_EVIDENCE_FAIL rollback did not preserve prior semantics');
+          }
+          console.log(`EV14_PROMOTION_EVIDENCE_PASS candidate=${active.candidateSha} truth=${active.selectedTruthId} falsePositives=0 falseNegatives=0 rollback=verified`);
+          NODE
+
+      - name: Upload exact-SHA EV-14 promotion evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: antibody-promotion-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'push' }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          path: .agent-antibody-promotion/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
+
+  authorize-after-trusted-review:
+    if: github.event_name == 'pull_request'
+    needs: promotion-gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Check out exact candidate revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Reconstruct exact review packet and require trusted EV-14 governance authorization
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          mkdir -p .agent-antibody-promotion .independent-review
+          node agent/tools/candidate-evidence.mjs manifest \
+            --task EV-14 \
+            --base "$BASE_SHA" \
+            --head "$CANDIDATE_SHA" \
+            --branch "$HEAD_BRANCH" \
+            --output .independent-review/candidate-manifest.json
+          node agent/tools/independent-review.mjs packet \
+            --manifest .independent-review/candidate-manifest.json \
+            --output .independent-review/review-packet.json \
+            --verify-git
+          node agent/tools/antibody-promotion.mjs authorize \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --repository "$GITHUB_REPOSITORY" \
+            --pr-number "$PR_NUMBER" \
+            --review-packet .independent-review/review-packet.json \
+            --output .agent-antibody-promotion/authorization.json
+
+      - name: Upload trusted EV-14 governance authorization
+        uses: actions/upload-artifact@v7
+        with:
+          name: antibody-promotion-authorization-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: .agent-antibody-promotion/authorization.json
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
