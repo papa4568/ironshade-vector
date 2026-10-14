@@ -36,6 +36,10 @@ export async function verifyAntibodyGovernanceEvidence(report, policy, calibrati
   assert(report.acceptedForEnforcement === false, 'EV-13 must not accept an antibody for enforcement');
   assert(report.candidatePassGranted === false, 'EV-13 evidence must never grant candidate acceptance');
   assert(report.lifecycle.trustedReviewProvenanceRequired === true, 'EV-13 must require GitHub-backed trusted review provenance');
+  assert(report.lifecycle.reviewBoundToDecisionDigest === true, 'EV-13 must bind trusted review to the exact committed decision digest');
+  assert(report.lifecycle.exactCommittedDecisionRequired === true, 'EV-13 authorization must load the exact committed decision from the reviewed candidate');
+  assert(report.lifecycle.repositoryPinnedInputsRequired === true, 'EV-13 authorization must load pinned policy/calibration inputs from the reviewed candidate');
+  assert(report.lifecycle.completeReviewHistoryRequired === true, 'EV-13 authorization must inspect complete PR review history');
   assert(report.lifecycle.canonicalSourceEntryRequired === true, 'EV-13 must verify the named canonical source entry exists');
   assert(report.lifecycle.canonicalSourceContractRequired === true, 'EV-13 must bind focused-regression and telemetry sources to the exact proposed target contract');
   assert(report.lifecycle.directDecisionEvaluatorExported === false, 'EV-13 must not expose a raw decision evaluator that bypasses trusted authorization');
