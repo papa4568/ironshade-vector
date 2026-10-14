@@ -9,11 +9,15 @@ import {
   validateAntibodyGovernancePolicy,
 } from '../tools/antibody-governance.mjs';
 import { verifyAntibodyGovernanceEvidence } from '../tools/antibody-governance-evidence.mjs';
+import { buildCandidateManifest } from '../tools/candidate-evidence.mjs';
+import { selectExperimentalReviewTask } from '../tools/experimental-review-task.mjs';
+import { buildIndependentReviewPacket } from '../tools/independent-review.mjs';
 import {
   clusterFailureRecords,
   proposeAntibodies,
   sha256Value,
 } from '../tools/repository-immune-system.mjs';
+import { selectAffectedVerification } from '../tools/select-affected-verification.mjs';
 
 const policy = JSON.parse(await readFile(new URL('../antibody-governance-policy.json', import.meta.url), 'utf8'));
 const calibration = JSON.parse(await readFile(new URL('../antibody-governance-calibration-corpus.json', import.meta.url), 'utf8'));
@@ -36,6 +40,7 @@ assert.equal(report.acceptedForEnforcement, false, 'EV-13 must leave all antibod
 assert.equal(report.lifecycle.decisionRecordCount, 0, 'EV-13 must not commit an accepted antibody record');
 assert.equal(report.lifecycle.trustedReviewProvenanceRequired, true, 'all lifecycle transitions must require externally verified review provenance');
 assert.equal(report.lifecycle.reviewBoundToDecisionDigest, true, 'trusted review must bind the exact decision digest');
+assert.equal(report.lifecycle.exactReviewPacketRequired, true, 'trusted review must bind the exact candidate-derived review packet');
 assert.equal(report.lifecycle.exactCommittedDecisionRequired, true, 'authorization must load the committed decision from the candidate SHA');
 assert.equal(report.lifecycle.repositoryPinnedInputsRequired, true, 'authorization must load pinned governance inputs from the candidate SHA');
 assert.equal(report.lifecycle.completeReviewHistoryRequired, true, 'authorization must inspect complete PR review history');
@@ -127,6 +132,13 @@ assert.throws(
   /must bind the exact committed decision/,
   'policy must not allow same-SHA review replay onto a different decision',
 );
+const packetBindingWeakened = structuredClone(policy);
+packetBindingWeakened.review.provenance.packetBinding = 'task-sha-and-files-only';
+assert.throws(
+  () => validateAntibodyGovernancePolicy(packetBindingWeakened),
+  /exact candidate-derived independent-review packet/,
+  'policy must not allow a trusted result to be replayed against altered review packet content',
+);
 const paginationWeakened = structuredClone(policy);
 paginationWeakened.review.provenance.commentPagination = 'first-page';
 assert.throws(
@@ -190,30 +202,78 @@ const committedDecision = {
   },
   promotion: { state: 'not-promoted', taskId: 'EV-14' },
 };
-const reviewPacket = {
+const baseSha = 'e'.repeat(40);
+const branch = 'agent/ev13-authorization-fixture';
+const ev13Acceptance = 'Define one trusted governance path whose review packet is derived from the exact candidate and cannot be caller-rewritten.';
+const baseExperimentalRoadmap = `# Experimental Verification\n\n- [ ] **EV-13 — Define Antibody Governance**\n  - ${ev13Acceptance}\n\n- [ ] **EV-14 — Promote One Accepted Antibody**\n  - Promote exactly one reviewed antibody.\n`;
+const headExperimentalRoadmap = `# Experimental Verification\n\n- [ ] **EV-14 — Promote One Accepted Antibody**\n  - Promote exactly one reviewed antibody.\n`;
+const fixtureImpactMap = {
   schemaVersion: 1,
-  taskId: 'EV-13',
-  candidateSha,
-  branch: 'agent/ev13-authorization-fixture',
-  mode: 'read-only-adversarial',
-  mutationsAllowed: false,
-  changedFiles: [decisionPath],
-  impact: { mode: 'targeted', escalated: false, domains: [], verificationIds: [], unknownFiles: [], escalationReasons: [] },
-  acceptance: [{ index: 0, text: 'Authorize only the exact reviewed governance decision.' }],
-  requiredProofs: [{ id: 'experimental-regressions', kind: 'test', required: true, description: 'Governance authorization regression.' }],
-  architectureInvariants: [{ id: 'fixture', status: 'passed', file: 'agent/architecture-invariants.json', type: 'sourceContract' }],
-  verifierInstructions: ['read only', 'try to disprove', 'check exact candidate', 'fail unsupported claims'],
-  adversarialQuestions: ['exact decision?', 'exact SHA?', 'complete comments?', 'pinned inputs?'],
+  fallback: {
+    unknownDomains: ['verification'],
+    unknownVerificationIds: ['verify:full'],
+    highRiskVerificationIds: ['verify:full'],
+  },
+  verifications: {
+    'verify:full': { command: 'npm run verify:full', cost: 'full', purpose: 'Fallback full verification.' },
+    'ev13-governance': { command: 'node agent/tests/antibody-governance.mjs', cost: 'focused', purpose: 'EV-13 governance regression.' },
+  },
+  rules: [{
+    id: 'antibody-decision-fixture',
+    include: ['agent/antibody-decisions/**'],
+    exclude: [],
+    domains: ['verification'],
+    verificationIds: ['ev13-governance'],
+    risk: 'normal',
+  }],
 };
-function reviewResult(verdict, note = 'Exact decision binding is supported.') {
+const fixtureArchitectureConfig = {
+  schemaVersion: 1,
+  rules: [{
+    id: 'fixture-review-boundary',
+    type: 'sourceContract',
+    description: 'Fixture invariant for exact review packet construction.',
+    file: 'agent/tests/antibody-governance.mjs',
+    required: ['ANTIBODY_GOVERNANCE_PASS'],
+    forbidden: [],
+  }],
+};
+const fixtureSelection = selectExperimentalReviewTask(headExperimentalRoadmap, { baseMarkdown: baseExperimentalRoadmap });
+assert.equal(fixtureSelection.task.id, 'EV-13');
+const fixtureChangedFiles = [decisionPath];
+const fixtureImpactSelection = selectAffectedVerification(fixtureChangedFiles, fixtureImpactMap);
+const fixtureManifest = buildCandidateManifest({
+  repository: 'papa4568/ironshade-vector',
+  task: fixtureSelection.task,
+  taskSource: 'docs/experimental-verification-roadmap.md',
+  baseSha,
+  headSha: candidateSha,
+  branch,
+  changedFiles: fixtureChangedFiles,
+  impactSelection: fixtureImpactSelection,
+});
+const reviewPacket = buildIndependentReviewPacket({
+  manifest: fixtureManifest,
+  task: fixtureSelection.task,
+  architectureResults: fixtureArchitectureConfig.rules.map(rule => ({ id: rule.id, status: 'passed', file: rule.file, type: rule.type })),
+});
+function reviewResult(verdict, note = 'Exact decision and exact candidate-derived review packet binding are supported.') {
   return {
     schemaVersion: 1,
     taskId: 'EV-13',
     candidateSha,
     mode: 'read-only-adversarial',
     verdict,
-    acceptanceChecks: [{ index: 0, status: verdict === 'pass' ? 'satisfied' : 'not_satisfied', notes: note }],
-    proofChecks: [{ proofId: 'experimental-regressions', status: 'credible', notes: 'Fixture proof is credible.' }],
+    acceptanceChecks: reviewPacket.acceptance.map(entry => ({
+      index: entry.index,
+      status: verdict === 'pass' ? 'satisfied' : 'not_satisfied',
+      notes: note,
+    })),
+    proofChecks: reviewPacket.requiredProofs.map(proof => ({
+      proofId: proof.id,
+      status: 'credible',
+      notes: 'Fixture proof is credible.',
+    })),
     findings: verdict === 'pass' ? [] : [{ severity: 'major', summary: 'Newer review rejects authorization.', evidence: ['pagination fixture'] }],
   };
 }
@@ -242,7 +302,12 @@ function buildFetch({ commentPages = [[happyComment]] } = {}) {
     const parsed = new URL(url);
     const pathname = parsed.pathname;
     if (pathname === `/repos/${repository}/pulls/${prNumber}`) {
-      return jsonResponse({ state: 'open', head: { sha: candidateSha }, user: { login: 'implementation-author' } });
+      return jsonResponse({
+        state: 'open',
+        base: { sha: baseSha },
+        head: { sha: candidateSha, ref: branch },
+        user: { login: 'implementation-author' },
+      });
     }
     if (pathname === `/repos/${repository}/issues/${prNumber}/comments`) {
       const page = Number(parsed.searchParams.get('page') ?? '1');
@@ -251,14 +316,19 @@ function buildFetch({ commentPages = [[happyComment]] } = {}) {
     if (pathname === `/repos/${repository}/pulls/${prNumber}/files`) return jsonResponse([{ filename: decisionPath }]);
     const contentsPrefix = `/repos/${repository}/contents/`;
     if (pathname.startsWith(contentsPrefix)) {
-      assert.equal(parsed.searchParams.get('ref'), candidateSha, 'all authorization content must be fetched from the exact candidate SHA');
+      const ref = parsed.searchParams.get('ref');
       const path = decodeURIComponent(pathname.slice(contentsPrefix.length));
+      if (path === 'docs/experimental-verification-roadmap.md' && ref === baseSha) return jsonResponse(contentPayload(baseExperimentalRoadmap));
+      assert.equal(ref, candidateSha, 'all non-base-roadmap authorization content must be fetched from the exact candidate SHA');
       const values = new Map([
         ['agent/antibody-governance-policy.json', policy],
         ['agent/failure-recurrence-calibration-corpus.json', ev12Corpus],
         ['agent/failure-memory.json', memory],
         [decisionPath, committedDecision],
         ['scripts/android-large-screen-smoke.sh', sourceContractText],
+        ['docs/experimental-verification-roadmap.md', headExperimentalRoadmap],
+        ['agent/impact-map.json', fixtureImpactMap],
+        ['agent/architecture-invariants.json', fixtureArchitectureConfig],
       ]);
       if (!values.has(path)) return jsonResponse({ message: 'not found' }, 404);
       return jsonResponse(contentPayload(values.get(path)));
@@ -280,6 +350,8 @@ assert.equal(authorized.promotionEligible, true);
 assert.equal(authorized.rollbackEnvironmentApplied, false);
 assert.equal(authorized.repositoryInputsLoadedFromCandidate, true, 'public authorization must load policy/calibration inputs from the candidate commit');
 assert.equal(authorized.reviewPacketChangedFilesVerified, true, 'public authorization must bind the review packet to the complete GitHub PR diff');
+assert.equal(authorized.reviewPacketCandidateDerived, true, 'public authorization must bind the review result to the exact candidate-derived packet');
+assert.equal(authorized.reviewPacketSha256, sha256Value(reviewPacket));
 assert.equal(authorized.completeReviewHistoryVerified, true, 'public authorization must inspect all PR comment pages');
 assert.equal(authorized.decisionBoundToReviewedCandidate, true, 'public authorization must bind the exact decision path/digest to the reviewed candidate');
 assert.equal(authorized.reviewAuthorization.decisionDigest, sha256Value(committedDecision));
@@ -288,6 +360,9 @@ assert(requestedUrls.some(url => url.includes('/contents/agent/antibody-governan
 assert(requestedUrls.some(url => url.includes('/contents/agent/failure-recurrence-calibration-corpus.json?ref=')), 'authorization must fetch committed EV-12 corpus');
 assert(requestedUrls.some(url => url.includes('/contents/agent/failure-memory.json?ref=')), 'authorization must fetch committed failure memory');
 assert(requestedUrls.some(url => url.includes(`/contents/${decisionPath}?ref=`)), 'authorization must fetch the exact committed decision');
+assert(requestedUrls.some(url => url.includes('/contents/docs/experimental-verification-roadmap.md?ref=')), 'authorization must reconstruct review acceptance from the exact roadmap');
+assert(requestedUrls.some(url => url.includes('/contents/agent/impact-map.json?ref=')), 'authorization must reconstruct review impact from the exact candidate impact map');
+assert(requestedUrls.some(url => url.includes('/contents/agent/architecture-invariants.json?ref=')), 'authorization must reconstruct the exact review invariant packet');
 
 const previousRollbackEnvironment = process.env[policy.rollback.environmentVariable];
 process.env[policy.rollback.environmentVariable] = policy.rollback.disabledValue;
@@ -340,4 +415,19 @@ await assert.rejects(
   'callers must not forge a review packet to replay a trusted pass onto another decision path',
 );
 
-console.log('ANTIBODY_GOVERNANCE_PASS eligible=2 transitionFp=0 transitionFn=0 promotionFp=0 promotionFn=0 decisions=0 enforcement=false rollback=clean+public-authorization lifecycle=accept+update+retire review=github-provenance+exact-decision eligibility=pinned sourceEntry=verified sourceContract=exact-target pagination=complete publicAuthorization=exercised');
+const alteredAcceptancePacket = structuredClone(reviewPacket);
+alteredAcceptancePacket.acceptance[0].text += ' Caller-injected alternate criterion.';
+await assert.rejects(
+  () => authorizeAntibodyGovernanceDecision({
+    candidateSha,
+    repository,
+    prNumber,
+    decisionPath,
+    reviewPacket: alteredAcceptancePacket,
+    fetchImpl: buildFetch(),
+  }),
+  /does not match the exact candidate-derived independent-review packet/,
+  'a trusted same-task same-SHA review result must not be replayable against altered acceptance text',
+);
+
+console.log('ANTIBODY_GOVERNANCE_PASS eligible=2 transitionFp=0 transitionFn=0 promotionFp=0 promotionFn=0 decisions=0 enforcement=false rollback=clean+public-authorization lifecycle=accept+update+retire review=github-provenance+exact-decision+exact-packet eligibility=pinned sourceEntry=verified sourceContract=exact-target pagination=complete publicAuthorization=exercised');
