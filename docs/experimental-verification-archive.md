@@ -426,7 +426,7 @@ This archive transition follows the repository's independent-review self-referen
 
 EV-11 changes verification/governance only. Base capture is created from an exact `git archive` into disposable temporary state, candidate route evidence is written only into the CI workspace, and the gate compares canonical post-normalization domain digests without mutating product/runtime state. Existing full-build, browser, Android/APK, exact-SHA, EV-8, EV-9, architecture-invariant, and independent-review gates remain authoritative.
 
-Rollback is deterministic: set `IRONSHADE_BEHAVIORAL_GENOME_ENFORCEMENT=0` to run the same exact-base/exact-head route captures, EV-10 calibration, declaration parsing, and evidence generation while removing only the behavioral-genome blocking decision. Removing the EV-11 policy/gate/evidence wiring restores the pre-EV-11 advisory EV-3/EV-10 behavior; product/runtime behavior and every pre-existing proof obligation remain unchanged.
+Rollback is deterministic: set `IRONSHADE_BEHAVIORAL_GENOME_ENFORCEMENT=0` to run the same exact-base/exact-head route captures, EV-10 calibration, declaration parsing, and evidence generation while removing only the EV-11 blocking decision. Removing the EV-11 policy/gate/evidence wiring restores the pre-EV-11 advisory EV-3/EV-10 behavior; product/runtime behavior and every pre-existing proof obligation remain unchanged.
 
 ### Promotion status
 
