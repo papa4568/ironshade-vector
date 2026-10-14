@@ -70,6 +70,19 @@ assert.equal(highRiskSelection.escalated, true);
 assert.deepEqual(highRiskSelection.verifications.map(check => check.id), ['verify-full']);
 assert(highRiskSelection.domains.includes('dependencies'));
 
+const uiPromotionSelection = selectAffectedVerification(['src/components/AppErrorBoundary.tsx'], impactMap);
+assert.equal(uiPromotionSelection.mode, 'full');
+assert.equal(uiPromotionSelection.escalated, true);
+assert.deepEqual(uiPromotionSelection.verifications.map(check => check.id), ['verify-full']);
+assert(uiPromotionSelection.matchedRuleIds.includes('ui-and-design-system'));
+
+const uiRollbackSelection = selectAffectedVerification(['src/components/AppErrorBoundary.tsx'], impactMap, {
+  env: { IRONSHADE_IMPACT_WIDENING_ENFORCEMENT: '0' },
+});
+assert.equal(uiRollbackSelection.mode, 'targeted');
+assert.equal(uiRollbackSelection.escalated, false);
+assert.deepEqual(uiRollbackSelection.verifications.map(check => check.id), ['ui-readability', 'design-system']);
+
 const mixedHighRiskSelection = selectAffectedVerification([
   'src/game/graphicsAssetManifest.ts',
   '.github/workflows/browser-e2e.yml',
@@ -123,4 +136,4 @@ try {
 
 await import('./impact-map-calibration.mjs');
 
-console.log(`AFFECTED_VERIFICATION_TEST_PASS rules=${summary.ruleCount} verifications=${summary.verificationCount} graphicsChecks=${graphicsSelection.verifications.length} refineryChecks=${refineryPresentationSelection.verifications.length} unknownMode=${unknownSelection.mode} gitDiff=pass calibration=pass`);
+console.log(`AFFECTED_VERIFICATION_TEST_PASS rules=${summary.ruleCount} verifications=${summary.verificationCount} graphicsChecks=${graphicsSelection.verifications.length} refineryChecks=${refineryPresentationSelection.verifications.length} uiPromotion=${uiPromotionSelection.mode} uiRollback=${uiRollbackSelection.mode} unknownMode=${unknownSelection.mode} gitDiff=pass calibration=pass`);

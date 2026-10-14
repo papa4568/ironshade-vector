@@ -27,7 +27,9 @@ assert.equal(recommendWidening({ missCount: 0, independentTargetCount: 2 }, corp
 
 const uiRule = impactMap.rules.find(rule => rule.id === 'ui-and-design-system');
 assert(uiRule, 'UI rule must exist');
-assert.equal(uiRule.risk, 'normal', 'EV-15 must not promote the UI widening itself');
+assert.equal(uiRule.risk, 'high', 'EV-16 must leave the promoted UI widening visible in the committed impact map');
+assert.equal(uiRule.promotion?.taskId, 'EV-16', 'EV-15 post-promotion reproduction must identify EV-16 as the owner of the widening');
+assert.equal(process.env.IRONSHADE_IMPACT_WIDENING_ENFORCEMENT, '0', 'EV-15 post-promotion reproduction must run with EV-16 rollback enabled');
 assert.deepEqual(uiRule.verificationIds, ['ui-readability', 'design-system']);
 
 for (const probe of corpus.executableMissProbes) {
@@ -130,4 +132,4 @@ const highRiskCi = selectAffectedVerification(['.github/workflows/pr-candidate.y
 assert.equal(highRiskCi.mode, 'full');
 assert.deepEqual(highRiskCi.verifications.map(entry => entry.id), ['verify-full']);
 
-console.log(`EV15_IMPACT_CALIBRATION_TEST_PASS probes=${corpus.executableMissProbes.length} historical=${corpus.historicalObservations.length} wideningThreshold=${corpus.minimumIndependentMissesForWidening} uiDefault=${uiRule.risk} observer=measured historyAuth=run+git-range noNarrowing=pass`);
+console.log(`EV15_IMPACT_CALIBRATION_TEST_PASS probes=${corpus.executableMissProbes.length} historical=${corpus.historicalObservations.length} wideningThreshold=${corpus.minimumIndependentMissesForWidening} uiCommitted=${uiRule.risk} rollbackCalibration=enabled observer=measured historyAuth=run+git-range noNarrowing=pass`);
