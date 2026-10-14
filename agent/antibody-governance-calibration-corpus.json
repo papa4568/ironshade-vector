@@ -82,7 +82,7 @@
       "truthId": "candidate-artifact-integrity-drift",
       "action": "accept",
       "reviewed": true,
-      "canonicalSourceFixture": "import assert from 'node:assert/strict';\nassert.equal(true, true, 'candidate-artifact-integrity candidate-sha-match');\n",
+      "canonicalSourceFixture": "import assert from 'node:assert/strict';\nawait assert.rejects(Promise.reject(new Error('wrong sha')), /wrong sha/, 'candidate-artifact-integrity candidate-sha-match');\n",
       "sourceOfTruth": {
         "kind": "focused-regression",
         "path": "agent/tests/candidate-artifact.mjs",
