@@ -48,6 +48,20 @@
       "expectedPromotionEligible": false
     },
     {
+      "id": "self-attested-review-cannot-authorize",
+      "truthId": "android-screenshot-capture-transport-timeout",
+      "action": "accept",
+      "reviewed": true,
+      "trustedReview": false,
+      "sourceOfTruth": {
+        "kind": "focused-regression",
+        "path": "agent/tests/repository-immune-system.mjs",
+        "entryId": "android-screenshot-capture-contract"
+      },
+      "expectedTransitionValid": false,
+      "expectedPromotionEligible": false
+    },
+    {
       "id": "advisory-ev12-scope-cannot-authorize",
       "truthId": "artifact-upload-dns-resolution",
       "action": "accept",
@@ -68,6 +82,19 @@
       "sourceOfTruth": {
         "kind": "impact-map-rule",
         "path": "agent/impact-map.json",
+        "entryId": "android-screenshot-capture-contract"
+      },
+      "expectedTransitionValid": false,
+      "expectedPromotionEligible": false
+    },
+    {
+      "id": "missing-canonical-entry-cannot-authorize",
+      "truthId": "android-screenshot-capture-transport-timeout",
+      "action": "accept",
+      "reviewed": true,
+      "sourceOfTruth": {
+        "kind": "focused-regression",
+        "path": "agent/tests/affected-verification.mjs",
         "entryId": "android-screenshot-capture-contract"
       },
       "expectedTransitionValid": false,
