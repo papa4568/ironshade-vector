@@ -22,7 +22,17 @@ jobs:
       - name: Apply EV-16 implementation
         run: python3 agent/ev16-authoring.py
 
-      - name: Commit implementation
+      - name: Restore workflow files for connector-owned commit
+        run: |
+          set -euo pipefail
+          git restore --source=HEAD -- \
+            .github/workflows/ev16-authoring.yml \
+            .github/workflows/agent-orchestration.yml \
+            .github/workflows/ev15-impact-calibration.yml \
+            agent/ev16-authoring.py
+          rm -f .github/workflows/ev16-impact-widening.yml
+
+      - name: Commit non-workflow implementation
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
