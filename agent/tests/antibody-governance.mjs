@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
@@ -5,11 +6,13 @@ import * as governanceModule from '../tools/antibody-governance.mjs';
 import {
   authorizeAntibodyGovernanceDecision,
   runAntibodyGovernanceAssessment,
+  validateAntibodyCanonicalSourceEntry,
   validateAntibodyGovernanceCalibrationCorpus,
   validateAntibodyGovernancePolicy,
 } from '../tools/antibody-governance.mjs';
 import { verifyAntibodyGovernanceEvidence } from '../tools/antibody-governance-evidence.mjs';
 import { buildCandidateManifest } from '../tools/candidate-evidence.mjs';
+import { evaluateArchitectureInvariants } from '../tools/check-architecture-invariants.mjs';
 import { selectExperimentalReviewTask } from '../tools/experimental-review-task.mjs';
 import { buildIndependentReviewPacket } from '../tools/independent-review.mjs';
 import {
@@ -29,7 +32,11 @@ validateAntibodyGovernanceCalibrationCorpus(calibration);
 assert.equal(Object.hasOwn(governanceModule, 'evaluateAntibodyGovernanceDecision'), false, 'the raw decision evaluator must not be externally callable');
 assert.equal(typeof authorizeAntibodyGovernanceDecision, 'function', 'real decision authorization must use the GitHub-backed provenance path');
 
-const candidateSha = 'd'.repeat(40);
+const candidateSha = execFileSync('git', ['rev-parse', 'HEAD'], {
+  encoding: 'utf8',
+  stdio: ['ignore', 'pipe', 'pipe'],
+}).trim();
+assert.match(candidateSha, /^[a-f0-9]{40}$/, 'governance regression must run from an exact git candidate');
 const report = await runAntibodyGovernanceAssessment(policy, calibration, ev12Corpus, memory, {
   candidateSha,
   decisionRecordCount: 0,
@@ -161,6 +168,87 @@ assert.throws(
   'focused regressions must not fall back to substring-based source binding',
 );
 
+const architectureProposal = {
+  kind: 'architecture-invariant',
+  suggestedCheck: {
+    id: 'fixture-architecture-antibody',
+    check: {
+      targetPath: 'src/game/fixture-guard.ts',
+      requiredSubstrings: ['required-guard-marker'],
+      forbiddenSubstrings: ['forbidden-guard-marker'],
+    },
+  },
+};
+const architectureSource = {
+  kind: 'architecture-invariant',
+  path: 'agent/architecture-invariants.json',
+  entryId: 'fixture-architecture-antibody',
+};
+const validArchitectureEntry = {
+  schemaVersion: 1,
+  rules: [{
+    id: 'fixture-architecture-antibody',
+    type: 'sourceContract',
+    description: 'Fixture architecture antibody.',
+    file: 'src/game/fixture-guard.ts',
+    required: ['required-guard-marker'],
+    forbidden: ['forbidden-guard-marker'],
+  }],
+};
+const architectureBinding = await validateAntibodyCanonicalSourceEntry(policy, architectureProposal, architectureSource, {
+  readText: async () => JSON.stringify(validArchitectureEntry),
+});
+assert.equal(architectureBinding.binding, 'named-json-entry-contract', 'architecture fixed-file entries must bind the EV-4 proposed contract, not just the rule id');
+const unrelatedArchitectureEntry = structuredClone(validArchitectureEntry);
+unrelatedArchitectureEntry.rules[0].file = 'src/game/unrelated.ts';
+await assert.rejects(
+  () => validateAntibodyCanonicalSourceEntry(policy, architectureProposal, architectureSource, {
+    readText: async () => JSON.stringify(unrelatedArchitectureEntry),
+  }),
+  /targets .* instead of EV-4 target/,
+  'an unrelated architecture rule with the same id must not satisfy antibody governance',
+);
+
+const impactProposal = {
+  kind: 'impact-map-rule',
+  suggestedCheck: {
+    id: 'fixture-impact-antibody',
+    check: {
+      targetPath: 'agent/impact-map.json',
+      requiredSubstrings: ['verify:android'],
+      forbiddenSubstrings: ['verify:none'],
+    },
+  },
+};
+const impactSource = {
+  kind: 'impact-map-rule',
+  path: 'agent/impact-map.json',
+  entryId: 'fixture-impact-antibody',
+};
+const validImpactEntry = {
+  schemaVersion: 1,
+  rules: [{
+    id: 'fixture-impact-antibody',
+    include: ['src/android/**'],
+    domains: ['android'],
+    verificationIds: ['verify:android'],
+    risk: 'normal',
+  }],
+};
+const impactBinding = await validateAntibodyCanonicalSourceEntry(policy, impactProposal, impactSource, {
+  readText: async () => JSON.stringify(validImpactEntry),
+});
+assert.equal(impactBinding.binding, 'named-json-entry-contract', 'impact-map fixed-file entries must bind the EV-4 proposed contract, not just the rule id');
+const unrelatedImpactEntry = structuredClone(validImpactEntry);
+unrelatedImpactEntry.rules[0].verificationIds = ['verify:web'];
+await assert.rejects(
+  () => validateAntibodyCanonicalSourceEntry(policy, impactProposal, impactSource, {
+    readText: async () => JSON.stringify(unrelatedImpactEntry),
+  }),
+  /missing required EV-4 contract content/,
+  'an unrelated impact-map rule with the same id must not satisfy antibody governance',
+);
+
 function jsonResponse(value, status = 200) {
   return {
     ok: status >= 200 && status < 300,
@@ -252,10 +340,11 @@ const fixtureManifest = buildCandidateManifest({
   changedFiles: fixtureChangedFiles,
   impactSelection: fixtureImpactSelection,
 });
+const fixtureArchitectureResults = await evaluateArchitectureInvariants(fixtureArchitectureConfig);
 const reviewPacket = buildIndependentReviewPacket({
   manifest: fixtureManifest,
   task: fixtureSelection.task,
-  architectureResults: fixtureArchitectureConfig.rules.map(rule => ({ id: rule.id, status: 'passed', file: rule.file, type: rule.type })),
+  architectureResults: fixtureArchitectureResults,
 });
 function reviewResult(verdict, note = 'Exact decision and exact candidate-derived review packet binding are supported.') {
   return {
@@ -296,7 +385,7 @@ const repository = 'papa4568/ironshade-vector';
 const prNumber = 42;
 const happyComment = reviewComment(7001, reviewResult('pass'));
 const requestedUrls = [];
-function buildFetch({ commentPages = [[happyComment]] } = {}) {
+function buildFetch({ commentPages = [[happyComment]], architectureConfig = fixtureArchitectureConfig } = {}) {
   return async url => {
     requestedUrls.push(url);
     const parsed = new URL(url);
@@ -328,7 +417,7 @@ function buildFetch({ commentPages = [[happyComment]] } = {}) {
         ['scripts/android-large-screen-smoke.sh', sourceContractText],
         ['docs/experimental-verification-roadmap.md', headExperimentalRoadmap],
         ['agent/impact-map.json', fixtureImpactMap],
-        ['agent/architecture-invariants.json', fixtureArchitectureConfig],
+        ['agent/architecture-invariants.json', architectureConfig],
       ]);
       if (!values.has(path)) return jsonResponse({ message: 'not found' }, 404);
       return jsonResponse(contentPayload(values.get(path)));
@@ -430,4 +519,19 @@ await assert.rejects(
   'a trusted same-task same-SHA review result must not be replayable against altered acceptance text',
 );
 
-console.log('ANTIBODY_GOVERNANCE_PASS eligible=2 transitionFp=0 transitionFn=0 promotionFp=0 promotionFn=0 decisions=0 enforcement=false rollback=clean+public-authorization lifecycle=accept+update+retire review=github-provenance+exact-decision+exact-packet eligibility=pinned sourceEntry=verified sourceContract=exact-target pagination=complete publicAuthorization=exercised');
+const failingArchitectureConfig = structuredClone(fixtureArchitectureConfig);
+failingArchitectureConfig.rules[0].required = ['THIS_INVARIANT_MARKER_DOES_NOT_EXIST'];
+await assert.rejects(
+  () => authorizeAntibodyGovernanceDecision({
+    candidateSha,
+    repository,
+    prNumber,
+    decisionPath,
+    reviewPacket,
+    fetchImpl: buildFetch({ architectureConfig: failingArchitectureConfig }),
+  }),
+  /fixture-review-boundary|required/i,
+  'authorization must evaluate exact-candidate architecture invariants instead of synthesizing passed statuses',
+);
+
+console.log('ANTIBODY_GOVERNANCE_PASS eligible=2 transitionFp=0 transitionFn=0 promotionFp=0 promotionFn=0 decisions=0 enforcement=false rollback=clean+public-authorization lifecycle=accept+update+retire review=github-provenance+exact-decision+exact-packet eligibility=pinned sourceEntry=verified sourceContract=exact-target+fixed-rule-semantics invariantPacket=evaluated pagination=complete publicAuthorization=exercised');
