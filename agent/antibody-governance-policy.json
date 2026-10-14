@@ -19,6 +19,7 @@
       "verifier": "agent/tools/review-comment-gate.mjs",
       "requireRepositoryFetch": true,
       "decisionBinding": "exact-candidate-committed-decision",
+      "packetBinding": "exact-candidate-derived-review-packet",
       "commentPagination": "complete"
     }
   },
