@@ -11,6 +11,7 @@ on:
       - 'agent/impact-calibration-corpus.json'
       - 'agent/impact-map.json'
       - 'agent/tools/impact-calibration-evidence.mjs'
+      - 'agent/tools/verification-file-observer.cjs'
       - 'agent/tools/impact-map-calibration.mjs'
       - 'agent/tools/select-affected-verification.mjs'
       - 'agent/tests/impact-calibration-evidence.mjs'
@@ -21,7 +22,9 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
+  pull-requests: read
 
 jobs:
   calibrate:
@@ -51,6 +54,7 @@ jobs:
       - name: Generate exact-SHA EV-15 calibration evidence
         env:
           CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
@@ -58,7 +62,22 @@ jobs:
           node agent/tools/impact-calibration-evidence.mjs \
             --candidate-sha "$CANDIDATE_SHA" \
             --output .agent-impact-calibration-ev15/calibration.json
-          node -e "const fs=require('fs'); const r=JSON.parse(fs.readFileSync('.agent-impact-calibration-ev15/calibration.json','utf8')); if(r.taskId!=='EV-15'||r.candidateSha!==process.env.CANDIDATE_SHA||r.acceptedForEnforcement!==false||r.candidatePassGranted!==false||r.rollback.defaultImpactMapChanged!==false||r.rollback.enforcementEnabled!==false||r.metrics.decisionCalibration.pass!==true||r.safeWideningCandidates.length!==1||r.safeWideningCandidates[0].ruleId!=='ui-and-design-system'||r.safeWideningCandidates[0].action!=='set-risk-high'){throw new Error('EV-15 exact-SHA calibration evidence failed closed validation')}"
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const report = JSON.parse(readFileSync('.agent-impact-calibration-ev15/calibration.json', 'utf8'));
+          const fail = message => { throw new Error(`EV15_EXACT_EVIDENCE_FAIL ${message}`); };
+          if (report.taskId !== 'EV-15' || report.candidateSha !== process.env.CANDIDATE_SHA) fail('task/candidate binding mismatch');
+          if (report.acceptedForEnforcement !== false || report.candidatePassGranted !== false) fail('calibration must not grant enforcement or candidate acceptance');
+          if (report.rollback.defaultImpactMapChanged !== false || report.rollback.enforcementEnabled !== false || report.rollback.sourceMutationsRestored !== true) fail('rollback/default-impact-map contract failed');
+          if (report.metrics.decisionCalibration.pass !== true || report.metrics.decisionCalibration.falsePositiveWidenings !== 0 || report.metrics.decisionCalibration.falseNegativeWidenings !== 0) fail('widening decision zero-error calibration failed');
+          if (report.metrics.authenticatedHistoricalObservationCount !== report.metrics.historicalObservationCount || report.metrics.historicalObservationCount !== 2) fail('historical full-verification controls are not independently authenticated');
+          if (!report.historicalObservations.every(entry => entry.authentication?.authenticated === true && entry.authentication?.github?.authenticated === true && entry.authentication?.gitRange?.authenticated === true)) fail('historical authentication detail missing');
+          if (report.ruleClassMetrics.length !== 1 || report.ruleClassMetrics[0].ruleId !== 'ui-and-design-system') fail('unexpected measured rule-class scope');
+          const ui = report.ruleClassMetrics[0];
+          if (ui.missCount !== 2 || ui.trialCount !== 2 || ui.selectedVerificationCount !== 4 || ui.overSelectedVerificationCount !== 3 || ui.observedOverSelectionRate !== 0.75 || ui.overSelectionMethod !== 'runtime-file-read-observation') fail('measured UI miss/over-selection metrics drifted');
+          if (report.safeWideningCandidates.length !== 1 || report.safeWideningCandidates[0].ruleId !== 'ui-and-design-system' || report.safeWideningCandidates[0].action !== 'set-risk-high') fail('safe widening scope drifted');
+          console.log(`EV15_EXACT_EVIDENCE_PASS candidate=${report.candidateSha} history=${report.metrics.authenticatedHistoricalObservationCount}/${report.metrics.historicalObservationCount} misses=${ui.missCount}/${ui.trialCount} overSelected=${ui.overSelectedVerificationCount}/${ui.selectedVerificationCount} widening=${report.safeWideningCandidates[0].ruleId}`);
+          NODE
 
       - name: Upload exact-SHA EV-15 calibration evidence
         uses: actions/upload-artifact@v7
