@@ -287,30 +287,44 @@ function callExpressionName(expression) {
   return '';
 }
 
-function expressionHasBehaviorSubject(node, sourceFile) {
+function expressionHasBehaviorSubject(node) {
   if (!node) return false;
-  if (ts.isParenthesizedExpression(node)) return expressionHasBehaviorSubject(node.expression, sourceFile);
+  if (ts.isParenthesizedExpression(node)) return expressionHasBehaviorSubject(node.expression);
   if (node.kind === ts.SyntaxKind.TrueKeyword || node.kind === ts.SyntaxKind.FalseKeyword || ts.isStringLiteralLike(node) || ts.isNumericLiteral(node) || node.kind === ts.SyntaxKind.NullKeyword) return false;
-  if (ts.isIdentifier(node) || ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node) || ts.isCallExpression(node) || ts.isAwaitExpression(node) || ts.isArrowFunction(node) || ts.isFunctionExpression(node)) return true;
+  if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) return false;
+  if (ts.isIdentifier(node) || ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node) || ts.isCallExpression(node) || ts.isNewExpression(node) || ts.isAwaitExpression(node)) return true;
   let found = false;
   ts.forEachChild(node, child => {
-    if (!found && expressionHasBehaviorSubject(child, sourceFile)) found = true;
+    if (!found && expressionHasBehaviorSubject(child)) found = true;
   });
   return found;
 }
 
-function assertionHasBehaviorSubject(node, sourceFile) {
+function assertionBehaviorSubjectText(node, sourceFile) {
   const name = callExpressionName(node.expression);
-  if (!(name === 'assert' || name.startsWith('assert.'))) return false;
+  if (!(name === 'assert' || name.startsWith('assert.'))) return null;
   const args = [...node.arguments];
-  if (args.length === 0) return false;
-  if (name === 'assert' || name === 'assert.ok') return expressionHasBehaviorSubject(args[0], sourceFile);
-  if (['assert.equal', 'assert.strictEqual', 'assert.deepEqual', 'assert.deepStrictEqual', 'assert.notEqual', 'assert.notStrictEqual', 'assert.notDeepEqual', 'assert.notDeepStrictEqual'].includes(name)) {
-    if (args.length < 2) return false;
-    if (args[0].getText(sourceFile) === args[1].getText(sourceFile)) return false;
-    return expressionHasBehaviorSubject(args[0], sourceFile) || expressionHasBehaviorSubject(args[1], sourceFile);
+  if (args.length === 0) return null;
+
+  const callableAssertions = new Set(['assert.throws', 'assert.rejects', 'assert.doesNotThrow', 'assert.doesNotReject']);
+  if (callableAssertions.has(name) && (ts.isArrowFunction(args[0]) || ts.isFunctionExpression(args[0]))) {
+    const matcher = args[1] && !ts.isStringLiteralLike(args[1]) ? `\n${args[1].getText(sourceFile)}` : '';
+    return `${args[0].getText(sourceFile)}${matcher}`;
   }
-  return expressionHasBehaviorSubject(args[0], sourceFile);
+
+  if (name === 'assert' || name === 'assert.ok') {
+    return expressionHasBehaviorSubject(args[0]) ? args[0].getText(sourceFile) : null;
+  }
+
+  if (['assert.equal', 'assert.strictEqual', 'assert.deepEqual', 'assert.deepStrictEqual', 'assert.notEqual', 'assert.notStrictEqual', 'assert.notDeepEqual', 'assert.notDeepStrictEqual'].includes(name)) {
+    if (args.length < 2 || args[0].getText(sourceFile) === args[1].getText(sourceFile)) return null;
+    const subjects = args.slice(0, 2).filter(argument => expressionHasBehaviorSubject(argument));
+    return subjects.length > 0 ? subjects.map(argument => argument.getText(sourceFile)).join('\n') : null;
+  }
+
+  if (!expressionHasBehaviorSubject(args[0])) return null;
+  const matcher = args[1] && !ts.isStringLiteralLike(args[1]) ? `\n${args[1].getText(sourceFile)}` : '';
+  return `${args[0].getText(sourceFile)}${matcher}`;
 }
 
 function javascriptExecutableEvidence(text, path) {
@@ -322,8 +336,15 @@ function javascriptExecutableEvidence(text, path) {
     if (ts.isCallExpression(node)) {
       const name = callExpressionName(node.expression);
       const loggingOnly = name.startsWith('console.') || name === 'process.stdout.write' || name === 'process.stderr.write';
-      const assertion = name === 'assert' || name.startsWith('assert.');
-      if (!loggingOnly && (!testLike || (assertion && assertionHasBehaviorSubject(node, sourceFile)))) evidence.push(node.getText(sourceFile));
+      if (!loggingOnly) {
+        if (testLike) {
+          const behaviorSubject = assertionBehaviorSubjectText(node, sourceFile);
+          if (behaviorSubject) evidence.push({ snippet: node.getText(sourceFile), behaviorSubject });
+        } else {
+          const snippet = node.getText(sourceFile);
+          evidence.push({ snippet, behaviorSubject: snippet });
+        }
+      }
     }
     ts.forEachChild(node, visit);
   }
@@ -339,7 +360,7 @@ function shellExecutableEvidence(text) {
     if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(line)) continue;
     if (/^(?:echo|printf)\b/.test(line)) continue;
     if (/^[A-Za-z_][A-Za-z0-9_]*\(\)\s*\{/.test(line)) continue;
-    evidence.push(line);
+    evidence.push({ snippet: line, behaviorSubject: line });
   }
   return { evidence, namedEntryRequired: false };
 }
@@ -353,16 +374,19 @@ function validateExecutableCheckContract(proposal, normalized, text) {
   else throw new Error(`canonical executable check source type is unsupported for ${normalized.path}`);
 
   assert(executable.evidence.length > 0, `canonical source-of-truth file has no executable check evidence with a behavior-bearing assertion: ${normalized.path}`);
+  const contractEvidence = executable.namedEntryRequired
+    ? executable.evidence.filter(entry => entry.behaviorSubject.includes(normalized.entryId))
+    : executable.evidence;
   if (executable.namedEntryRequired) {
     assert(
-      executable.evidence.some(snippet => snippet.includes(normalized.entryId)),
-      `canonical executable check entry ${normalized.entryId} is not bound to a behavior-bearing assertion in ${normalized.path}`,
+      contractEvidence.length > 0,
+      `canonical executable check entry ${normalized.entryId} is not bound to an assertion outcome in ${normalized.path}`,
     );
   }
   for (const required of contract.requiredSubstrings) {
     assert(
-      executable.evidence.some(snippet => snippet.includes(required)),
-      `canonical executable check ${normalized.entryId} is missing required EV-4 contract behavior in ${normalized.path}: ${required}`,
+      contractEvidence.some(entry => entry.behaviorSubject.includes(required)),
+      `canonical executable check ${normalized.entryId} is missing required EV-4 contract behavior in assertion outcome for ${normalized.path}: ${required}`,
     );
   }
   for (const forbidden of contract.forbiddenSubstrings) {
