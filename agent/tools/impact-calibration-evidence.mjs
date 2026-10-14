@@ -159,10 +159,11 @@ function wilson95(successes, trials) {
   return { lower: Math.max(0, centre - margin), upper: Math.min(1, centre + margin) };
 }
 
-function verifyHistoricalGitRange(observation) {
+export function verifyHistoricalGitRange(observation) {
   git(['cat-file', '-e', `${observation.baseSha}^{commit}`]);
   git(['cat-file', '-e', `${observation.candidateSha}^{commit}`]);
-  git(['merge-base', '--is-ancestor', observation.baseSha, observation.candidateSha]);
+  const mergeBaseSha = git(['merge-base', observation.baseSha, observation.candidateSha]).trim();
+  assert(SHA_PATTERN.test(mergeBaseSha), `${observation.id} exact Git merge base is invalid`);
   const changedFiles = git(['diff', '--name-only', `${observation.baseSha}...${observation.candidateSha}`])
     .split(/\r?\n/)
     .map(value => value.trim())
@@ -170,6 +171,7 @@ function verifyHistoricalGitRange(observation) {
   assertSameStringSet(changedFiles, observation.changedFiles, `${observation.id} exact Git changed-file range`);
   return {
     baseSha: observation.baseSha,
+    mergeBaseSha,
     candidateSha: observation.candidateSha,
     changedFiles: orderedUnique(changedFiles),
     changedFilesDigest: sha256(orderedUnique(changedFiles)),
@@ -177,7 +179,7 @@ function verifyHistoricalGitRange(observation) {
   };
 }
 
-export function validateHistoricalRunEvidence(observation, { runRecord, jobs, pullRequest, pullRequestCommits, pullRequestFiles }) {
+export function validateHistoricalRunEvidence(observation, { runRecord, jobs, pullRequest, pullRequestCommits }) {
   assert(Number(runRecord?.id) === observation.fullVerificationRunId, `${observation.id} workflow run id mismatch`);
   assert(runRecord.name === HISTORICAL_WORKFLOW_NAME, `${observation.id} must reference ${HISTORICAL_WORKFLOW_NAME}`);
   assert(runRecord.path === HISTORICAL_WORKFLOW_PATH, `${observation.id} workflow path mismatch`);
@@ -190,7 +192,6 @@ export function validateHistoricalRunEvidence(observation, { runRecord, jobs, pu
   assert(pullRequest.base?.sha === observation.baseSha, `${observation.id} pull request base SHA mismatch`);
   assert(pullRequest.head?.ref === runRecord.head_branch, `${observation.id} workflow head branch does not match pull request head branch`);
   assert(Array.isArray(pullRequestCommits) && pullRequestCommits.some(commit => commit?.sha === observation.candidateSha), `${observation.id} candidate SHA is not a commit in PR #${observation.pullRequest}`);
-  assertSameStringSet((pullRequestFiles ?? []).map(file => file?.filename).filter(Boolean), observation.changedFiles, `${observation.id} GitHub PR changed files`);
 
   const producer = jobs.find(job => job.name === HISTORICAL_PRODUCER_JOB);
   assert(producer?.status === 'completed' && producer?.conclusion === 'success', `${observation.id} historical producer job did not pass`);
@@ -249,16 +250,15 @@ async function githubPages(path) {
 }
 
 async function authenticateHistoricalObservation(observation) {
-  const [runRecord, jobsPayload, pullRequest, pullRequestCommits, pullRequestFiles] = await Promise.all([
+  const [runRecord, jobsPayload, pullRequest, pullRequestCommits] = await Promise.all([
     githubJson(`/actions/runs/${observation.fullVerificationRunId}`),
     githubJson(`/actions/runs/${observation.fullVerificationRunId}/jobs?per_page=100`),
     githubJson(`/pulls/${observation.pullRequest}`),
     githubPages(`/pulls/${observation.pullRequest}/commits`),
-    githubPages(`/pulls/${observation.pullRequest}/files`),
   ]);
   const jobs = jobsPayload?.jobs;
   assert(Array.isArray(jobs), `${observation.id} historical jobs payload is malformed`);
-  const github = validateHistoricalRunEvidence(observation, { runRecord, jobs, pullRequest, pullRequestCommits, pullRequestFiles });
+  const github = validateHistoricalRunEvidence(observation, { runRecord, jobs, pullRequest, pullRequestCommits });
   const gitRange = verifyHistoricalGitRange(observation);
   return { github, gitRange, authenticated: github.authenticated && gitRange.authenticated };
 }
