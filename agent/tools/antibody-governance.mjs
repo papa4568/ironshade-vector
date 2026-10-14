@@ -86,6 +86,11 @@ function exactArray(left, right) {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
+function normalizedLogin(value, label) {
+  assertString(value, label);
+  return value.trim().toLowerCase();
+}
+
 function validateCheckContract(check, label = 'antibody proposal check') {
   assertObject(check, label);
   const targetPath = normalizePath(check.targetPath, `${label}.targetPath`);
@@ -123,6 +128,7 @@ export function validateAntibodyGovernancePolicy(policy) {
   assert(policy.review.provenance.decisionBinding === 'exact-candidate-committed-decision', 'trusted review must bind the exact committed decision from the reviewed candidate SHA');
   assert(policy.review.provenance.packetBinding === 'exact-candidate-derived-review-packet', 'trusted review must bind the exact candidate-derived independent-review packet');
   assert(policy.review.provenance.commentPagination === 'complete', 'trusted review authorization must inspect the complete PR comment history');
+  assert(policy.review.provenance.requireRequesterIndependentOfPrAuthor === true, 'antibody authorization must require the trusted review requester or reviewer to differ from the PR author');
 
   assertObject(policy.calibration, 'policy.calibration');
   assert(policy.calibration.sourceTask === 'EV-12', 'EV-13 eligibility must be sourced only from EV-12');
@@ -179,6 +185,10 @@ export function validateAntibodyGovernanceCalibrationCorpus(calibrationCorpus) {
     assert(ACTIONS.has(entry.action), `${label}.action must be accept, update, or retire`);
     assertBoolean(entry.reviewed, `${label}.reviewed`);
     if (entry.trustedReview !== undefined) assertBoolean(entry.trustedReview, `${label}.trustedReview`);
+    if (entry.reviewAuthorAssociation !== undefined) assert(TRUSTED_ASSOCIATIONS.has(entry.reviewAuthorAssociation), `${label}.reviewAuthorAssociation must be a trusted association`);
+    if (entry.reviewRequester !== undefined) assertString(entry.reviewRequester, `${label}.reviewRequester`);
+    if (entry.prAuthor !== undefined) assertString(entry.prAuthor, `${label}.prAuthor`);
+    if (entry.canonicalSourceFixture !== undefined) assertString(entry.canonicalSourceFixture, `${label}.canonicalSourceFixture`);
     assertObject(entry.sourceOfTruth, `${label}.sourceOfTruth`);
     assertBoolean(entry.expectedTransitionValid, `${label}.expectedTransitionValid`);
     assertBoolean(entry.expectedPromotionEligible, `${label}.expectedPromotionEligible`);
@@ -187,7 +197,7 @@ export function validateAntibodyGovernanceCalibrationCorpus(calibrationCorpus) {
   return calibrationCorpus;
 }
 
-function validateReviewIntent(policy, decisionReview, verifiedReview, decision, decisionPath = null) {
+function validateReviewIntent(policy, decisionReview, verifiedReview, decision, decisionPath = null, prAuthor = null) {
   assertObject(decisionReview, 'antibody decision.review');
   assert(decisionReview.required === true, 'antibody decision.review.required must be true');
   assert(/^EV-\d+$/.test(decisionReview.taskId ?? ''), 'antibody decision.review.taskId must be an EV task');
@@ -197,6 +207,13 @@ function validateReviewIntent(policy, decisionReview, verifiedReview, decision, 
   assert(decisionReview.taskId === verifiedReview.taskId, 'antibody review task does not match trusted review provenance');
   assert(decisionDigest(decision) === verifiedReview.decisionDigest, 'trusted review is not bound to the exact antibody decision digest');
   if (decisionPath !== null) assert(decisionPath === verifiedReview.decisionPath, 'trusted review is not bound to the exact antibody decision path');
+  if (policy.review.provenance.requireRequesterIndependentOfPrAuthor) {
+    const authorLogin = normalizedLogin(prAuthor, 'pull request author');
+    const authorityLogin = verifiedReview.authorAssociation === 'TRUSTED_MAIN_ACTIONS'
+      ? normalizedLogin(verifiedReview.reviewRequester, 'trusted-main review requester')
+      : normalizedLogin(verifiedReview.reviewer, 'trusted review reviewer');
+    assert(authorityLogin !== authorLogin, 'antibody trusted review requester or reviewer must differ from the pull request author');
+  }
 }
 
 function validateSourceMapping(policy, proposal, sourceOfTruth) {
@@ -270,6 +287,32 @@ function callExpressionName(expression) {
   return '';
 }
 
+function expressionHasBehaviorSubject(node, sourceFile) {
+  if (!node) return false;
+  if (ts.isParenthesizedExpression(node)) return expressionHasBehaviorSubject(node.expression, sourceFile);
+  if (ts.isTrueKeyword(node) || ts.isFalseKeyword(node) || ts.isStringLiteralLike(node) || ts.isNumericLiteral(node) || node.kind === ts.SyntaxKind.NullKeyword) return false;
+  if (ts.isIdentifier(node) || ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node) || ts.isCallExpression(node) || ts.isAwaitExpression(node) || ts.isArrowFunction(node) || ts.isFunctionExpression(node)) return true;
+  let found = false;
+  ts.forEachChild(node, child => {
+    if (!found && expressionHasBehaviorSubject(child, sourceFile)) found = true;
+  });
+  return found;
+}
+
+function assertionHasBehaviorSubject(node, sourceFile) {
+  const name = callExpressionName(node.expression);
+  if (!(name === 'assert' || name.startsWith('assert.'))) return false;
+  const args = [...node.arguments];
+  if (args.length === 0) return false;
+  if (name === 'assert' || name === 'assert.ok') return expressionHasBehaviorSubject(args[0], sourceFile);
+  if (['assert.equal', 'assert.strictEqual', 'assert.deepEqual', 'assert.deepStrictEqual', 'assert.notEqual', 'assert.notStrictEqual', 'assert.notDeepEqual', 'assert.notDeepStrictEqual'].includes(name)) {
+    if (args.length < 2) return false;
+    if (args[0].getText(sourceFile) === args[1].getText(sourceFile)) return false;
+    return expressionHasBehaviorSubject(args[0], sourceFile) || expressionHasBehaviorSubject(args[1], sourceFile);
+  }
+  return expressionHasBehaviorSubject(args[0], sourceFile);
+}
+
 function javascriptExecutableEvidence(text, path) {
   const sourceFile = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true, scriptKindForSource(path));
   assert((sourceFile.parseDiagnostics ?? []).length === 0, `canonical executable source could not be parsed: ${path}`);
@@ -280,7 +323,7 @@ function javascriptExecutableEvidence(text, path) {
       const name = callExpressionName(node.expression);
       const loggingOnly = name.startsWith('console.') || name === 'process.stdout.write' || name === 'process.stderr.write';
       const assertion = name === 'assert' || name.startsWith('assert.');
-      if (!loggingOnly && (!testLike || assertion)) evidence.push(node.getText(sourceFile));
+      if (!loggingOnly && (!testLike || (assertion && assertionHasBehaviorSubject(node, sourceFile)))) evidence.push(node.getText(sourceFile));
     }
     ts.forEachChild(node, visit);
   }
@@ -309,11 +352,11 @@ function validateExecutableCheckContract(proposal, normalized, text) {
   else if (SHELL_EXTENSIONS.has(extension)) executable = shellExecutableEvidence(text);
   else throw new Error(`canonical executable check source type is unsupported for ${normalized.path}`);
 
-  assert(executable.evidence.length > 0, `canonical source-of-truth file has no executable check evidence: ${normalized.path}`);
+  assert(executable.evidence.length > 0, `canonical source-of-truth file has no behavior-bearing executable check evidence: ${normalized.path}`);
   if (executable.namedEntryRequired) {
     assert(
       executable.evidence.some(snippet => snippet.includes(normalized.entryId)),
-      `canonical executable check entry ${normalized.entryId} is not bound to an assertion in ${normalized.path}`,
+      `canonical executable check entry ${normalized.entryId} is not bound to a behavior-bearing assertion in ${normalized.path}`,
     );
   }
   for (const required of contract.requiredSubstrings) {
@@ -398,8 +441,9 @@ function validatePinnedEligibility(policy, ev12Corpus, failureMemory, candidateS
   return { ev12, eligibleTruthIds };
 }
 
-function trustedReviewCapability({ reviewer, reviewedAt, taskId, candidateSha, commentId, reviewResultSha256, authorAssociation, sourceRunId, decisionDigest: boundDecisionDigest, decisionPath }) {
+function trustedReviewCapability({ reviewer, reviewRequester, reviewedAt, taskId, candidateSha, commentId, reviewResultSha256, authorAssociation, sourceRunId, decisionDigest: boundDecisionDigest, decisionPath }) {
   assertString(reviewer, 'trusted review reviewer');
+  assertString(reviewRequester, 'trusted review requester');
   assertIsoInstant(reviewedAt, 'trusted review reviewedAt');
   assert(/^EV-\d+$/.test(taskId ?? ''), 'trusted review taskId must be an EV task');
   assert(SHA_PATTERN.test(candidateSha ?? ''), 'trusted review candidateSha must be a full lowercase commit SHA');
@@ -412,6 +456,7 @@ function trustedReviewCapability({ reviewer, reviewedAt, taskId, candidateSha, c
   return Object.freeze({
     [REVIEW_CAPABILITY]: true,
     reviewer,
+    reviewRequester,
     reviewedAt,
     taskId,
     candidateSha,
@@ -445,6 +490,7 @@ async function evaluateDecision({
   pinnedEligibility = null,
   readText,
   decisionPath = null,
+  prAuthor = null,
 }) {
   validateAntibodyGovernancePolicy(policy);
   const eligibility = pinnedEligibility ?? validatePinnedEligibility(policy, ev12Corpus, failureMemory, candidateSha);
@@ -462,7 +508,7 @@ async function evaluateDecision({
   assert(decision.sourceFailureClass === proposal.sourceFailureClass, 'antibody decision sourceFailureClass must match the EV-4 proposal');
   assert(decision.proposalDigest === sha256Value(proposal), 'antibody decision proposalDigest must match the exact EV-4 proposal');
   const sourceOfTruth = await validateCanonicalSourceEntry(policy, proposal, decision.sourceOfTruth, { readText });
-  validateReviewIntent(policy, decision.review, verifiedReview, decision, decisionPath);
+  validateReviewIntent(policy, decision.review, verifiedReview, decision, decisionPath, prAuthor);
   assertObject(decision.promotion, 'antibody decision.promotion');
 
   if (decision.action === 'accept') {
@@ -498,6 +544,7 @@ async function evaluateDecision({
     decisionDigest: decisionDigest(decision),
     reviewProvenanceVerified: true,
     reviewBoundToDecisionDigest: true,
+    reviewIndependentFromPrAuthor: true,
     pinnedEligibilityVerified: true,
     canonicalSourceEntryVerified: true,
     canonicalSourceContractVerified: true,
@@ -511,15 +558,18 @@ async function evaluateDecision({
 function calibrationReviewCapability(entry, candidateSha, decision) {
   if (!entry.reviewed || entry.trustedReview === false) return null;
   const commentId = 9000000000 + [...entry.id].reduce((sum, char) => sum + char.codePointAt(0), 0);
+  const authorAssociation = entry.reviewAuthorAssociation ?? 'COLLABORATOR';
+  const reviewRequester = entry.reviewRequester ?? 'ev13-calibration-reviewer';
   return trustedReviewCapability({
-    reviewer: 'ev13-calibration-reviewer',
+    reviewer: authorAssociation === 'TRUSTED_MAIN_ACTIONS' ? 'github-actions[bot]' : 'ev13-calibration-reviewer',
+    reviewRequester,
     reviewedAt: '2026-10-13T22:45:00Z',
     taskId: decision.review.taskId,
     candidateSha,
     commentId,
     reviewResultSha256: sha256Value({ calibrationCase: entry.id, decisionDigest: decisionDigest(decision), verdict: 'pass' }),
-    authorAssociation: 'COLLABORATOR',
-    sourceRunId: null,
+    authorAssociation,
+    sourceRunId: authorAssociation === 'TRUSTED_MAIN_ACTIONS' ? 9000000001 : null,
     decisionDigest: decisionDigest(decision),
     decisionPath: null,
   });
@@ -581,6 +631,13 @@ async function classifyCalibrationCase({ policy, ev12Corpus, failureMemory, entr
     const previousDecision = buildPreviousDecision(entry, proposal, policy);
     const decision = decisionForCase(entry, proposal, policy, previousDecision);
     const capability = calibrationReviewCapability(entry, candidateSha, decision);
+    const caseReadText = entry.canonicalSourceFixture === undefined
+      ? readText
+      : async path => {
+        if (path === entry.sourceOfTruth.path) return entry.canonicalSourceFixture;
+        if (readText) return readText(path);
+        return readFile(resolve(path), 'utf8');
+      };
     result = await evaluateDecision({
       policy,
       ev12Corpus,
@@ -591,7 +648,8 @@ async function classifyCalibrationCase({ policy, ev12Corpus, failureMemory, entr
       governanceEnabled,
       verifiedReview: capability,
       pinnedEligibility,
-      readText,
+      readText: caseReadText,
+      prAuthor: entry.prAuthor ?? 'ev13-calibration-pr-author',
     });
   } catch (caught) {
     error = caught instanceof Error ? caught.message : String(caught);
@@ -607,6 +665,7 @@ async function classifyCalibrationCase({ policy, ev12Corpus, failureMemory, entr
     wouldBePromotionEligible: result?.wouldBePromotionEligible === true,
     reviewProvenanceVerified: result?.reviewProvenanceVerified === true,
     reviewBoundToDecisionDigest: result?.reviewBoundToDecisionDigest === true,
+    reviewIndependentFromPrAuthor: result?.reviewIndependentFromPrAuthor === true,
     pinnedEligibilityVerified: result?.pinnedEligibilityVerified === true,
     canonicalSourceEntryVerified: result?.canonicalSourceEntryVerified === true,
     canonicalSourceContractVerified: result?.canonicalSourceContractVerified === true,
@@ -904,8 +963,16 @@ export async function authorizeAntibodyGovernanceDecision({
   assert(selectedComment, `trusted review comment ${selected.commentId} is missing from the complete fetched PR conversation`);
   const reviewedAt = selectedComment.updated_at ?? selectedComment.created_at;
   assertIsoInstant(reviewedAt, 'trusted review comment timestamp');
+  let reviewRequester = selected.reviewer;
+  if (selected.authorAssociation === 'TRUSTED_MAIN_ACTIONS') {
+    assert(Number.isInteger(selected.result?.sourceRunId) && selected.result.sourceRunId > 0, 'trusted-main antibody review must name its source workflow run');
+    const sourceRun = await githubJson(repository, `actions/runs/${selected.result.sourceRunId}`, { fetchImpl });
+    reviewRequester = sourceRun?.triggering_actor?.login ?? sourceRun?.actor?.login;
+    assertString(reviewRequester, 'trusted-main antibody review requester');
+  }
   const capability = trustedReviewCapability({
     reviewer: selected.reviewer,
+    reviewRequester,
     reviewedAt,
     taskId: exactReviewPacket.taskId,
     candidateSha,
@@ -928,6 +995,7 @@ export async function authorizeAntibodyGovernanceDecision({
     verifiedReview: capability,
     decisionPath: normalizedDecisionPath,
     readText: path => githubContentText(repository, path, candidateSha, { fetchImpl }),
+    prAuthor: pr.user.login,
   });
 
   return {
@@ -944,6 +1012,7 @@ export async function authorizeAntibodyGovernanceDecision({
     decisionHistoryAppendOnlyVerified: true,
     latestDecisionHeadVerified: true,
     decisionBoundToReviewedCandidate: true,
+    reviewIndependentFromPrAuthorVerified: true,
     rollbackEnvironmentApplied: environmentDisabled,
     decisionHistory: {
       committedRecords: history.committedHistoryRecords,
@@ -953,6 +1022,7 @@ export async function authorizeAntibodyGovernanceDecision({
     },
     reviewAuthorization: {
       reviewer: capability.reviewer,
+      reviewRequester: capability.reviewRequester,
       reviewedAt: capability.reviewedAt,
       taskId: capability.taskId,
       candidateSha: capability.candidateSha,
@@ -1042,12 +1112,14 @@ export async function runAntibodyGovernanceAssessment(policy, calibrationCorpus,
       exactCommittedDecisionRequired: true,
       repositoryPinnedInputsRequired: true,
       completeReviewHistoryRequired: true,
+      reviewIndependentFromPrAuthorRequired: true,
       completeDecisionHistoryRequired: true,
       latestDecisionHeadRequired: true,
       appendOnlyDecisionHistoryRequired: true,
       canonicalSourceEntryRequired: true,
       canonicalSourceContractRequired: true,
       executableSourceContractRequired: true,
+      behaviorBearingAssertionRequired: true,
       directDecisionEvaluatorExported: false,
     },
     sourceOfTruthKinds: structuredClone(policy.sourceOfTruthByKind),
