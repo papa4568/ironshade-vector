@@ -4,7 +4,7 @@ import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const LEGACY_ANCHOR_SHA = 'ad4ec884ba2aa262b06f91a03411a972550cbb87';
-const EV18_REFERENCE_SHA = '4d091498d7eac780663552d706353905cb173758';
+const EV18_REFERENCE_SHA = 'b37d564c773e47df0dcc65a6367384037ea6d963';
 const PR_CANDIDATE_PATH = '.github/workflows/pr-candidate.yml';
 const BROWSER_WORKFLOW_PATH = '.github/workflows/browser-e2e.yml';
 const ANDROID_WORKFLOW_PATH = '.github/workflows/pr-android-apk.yml';
@@ -23,6 +23,7 @@ const EV18_TRANSITION_PATHS = [
   'agent/tests/proof-cache-promotion.mjs',
   'agent/tools/pr-candidate-head-observer.mjs',
   'agent/tools/proof-cache-promotion.mjs',
+  'docs/experimental-verification-roadmap.md',
 ].sort((a, b) => a.localeCompare(b));
 
 const EV18_AGENT_TRANSITION_PATHS = new Set(EV18_TRANSITION_PATHS.filter(path => path.startsWith('agent/')));
