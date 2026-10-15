@@ -19,6 +19,9 @@ fi
 base_image='node:22.23.2-bookworm'
 prepared_image='ironshade-proof-closed:node-22.23.2-npm-10.9.8'
 work_root="${FULL_REPOSITORY_BUILD_PREPARED_ROOT:-.agent-proof-cache-closure}"
+if [[ "$work_root" != /* ]]; then
+  work_root="$PWD/$work_root"
+fi
 prepared_dir="$work_root/$candidate_sha"
 snapshot="$prepared_dir/snapshot"
 
