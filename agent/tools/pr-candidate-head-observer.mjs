@@ -344,6 +344,7 @@ export function calibratePrCandidateHeadObserver({ workflowText, candidateSha } 
     { id: 'identity-comment-mentions-checkout', workflowText: replaceOnce(workflowText, '          set -euo pipefail\n          artifact_name=', `          # git checkout ${SYNTHETIC_EVENT_SHA} is documentation only\n          set -euo pipefail\n          artifact_name=`, 'identity comment control') },
   ];
 
+  const fullVerificationHeadBinding = `      - name: Run authoritative full repository verification or reuse validated closed proof\n        id: full-verification\n        env:\n          CANDIDATE_SHA: ${PR_HEAD}`;
   const dishonest = [
     {
       id: 'producer-synthetic-event-sha',
@@ -362,7 +363,7 @@ export function calibratePrCandidateHeadObserver({ workflowText, candidateSha } 
     },
     {
       id: 'source-bound-build-uses-synthetic-event-sha',
-      workflowText: replaceOnce(workflowText, '      - name: Run authoritative full repository verification or reuse validated closed proof\n        id: full-verification\n        env:\n          CANDIDATE_SHA: ${'${{ github.event.pull_request.head.sha }}'}', `      - name: Run authoritative full repository verification or reuse validated closed proof\n        id: full-verification\n        env:\n          CANDIDATE_SHA: ${SYNTHETIC_EVENT_SHA}`, 'source-bound proof candidate binding'),
+      workflowText: replaceOnce(workflowText, fullVerificationHeadBinding, fullVerificationHeadBinding.replace(PR_HEAD, SYNTHETIC_EVENT_SHA), 'source-bound proof candidate binding'),
       expected: ['candidate-build-source-bound-snapshot'],
     },
     {
