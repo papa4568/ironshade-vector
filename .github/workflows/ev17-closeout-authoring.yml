@@ -22,6 +22,7 @@ jobs:
       - name: Apply EV-17 roadmap and archive closeout
         run: |
           python3 agent/ev17-closeout-author.py
+          python3 -c "from pathlib import Path; p=Path('docs/experimental-verification-archive.md'); p.write_text(p.read_text().rstrip() + '\n')"
           git diff --check
           test "$(grep -c '^## EV-17 — Calibrate EV-6 Proof-Cache Closure$' docs/experimental-verification-archive.md)" = '1'
           test "$(grep -c '^- \[ \] \*\*EV-17 —' docs/experimental-verification-roadmap.md || true)" = '0'
