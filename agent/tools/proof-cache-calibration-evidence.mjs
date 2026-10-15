@@ -344,6 +344,10 @@ export async function runProofCacheCalibrationEvidence({ candidateSha, workflowR
 
     if (executeProofs) {
       const baselineExecution = run(proofEntry.expectedCommand, { expectedOutcome: 'success' });
+      const baselineGeneratedTrackedState = git(['status', '--porcelain', '--untracked-files=no']);
+      git(['reset', '--hard', candidateSha]);
+      assert(git(['rev-parse', 'HEAD']) === candidateSha, `${proofEntry.proofId} baseline rollback did not restore exact candidate HEAD`);
+      assert(git(['status', '--porcelain', '--untracked-files=no']) === '', `${proofEntry.proofId} baseline rollback did not restore clean tracked state`);
       trialRows.push({
         id: 'exact-candidate-baseline',
         kind: 'baseline',
@@ -360,7 +364,13 @@ export async function runProofCacheCalibrationEvidence({ candidateSha, workflowR
         proofActuallyRerun: true,
         acceptedForReuse: false,
         candidatePassGranted: false,
-        rollback: { sourceRestored: true, headRestored: true },
+        rollback: {
+          sourceRestored: true,
+          headRestored: true,
+          trackedStateRestored: true,
+          generatedTrackedStateObserved: baselineGeneratedTrackedState.length > 0,
+          generatedTrackedStateDigest: sha256(baselineGeneratedTrackedState),
+        },
       });
       const baselineHistory = validateProofCacheHistory({
         schemaVersion: 1,
