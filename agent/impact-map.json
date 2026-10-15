@@ -2,9 +2,15 @@
   "$schema": "./impact-map.schema.json",
   "schemaVersion": 1,
   "fallback": {
-    "unknownDomains": ["unknown"],
-    "unknownVerificationIds": ["verify-full"],
-    "highRiskVerificationIds": ["verify-full"]
+    "unknownDomains": [
+      "unknown"
+    ],
+    "unknownVerificationIds": [
+      "verify-full"
+    ],
+    "highRiskVerificationIds": [
+      "verify-full"
+    ]
   },
   "verifications": {
     "agent-orchestration": {
@@ -101,31 +107,57 @@
   "rules": [
     {
       "id": "agent-orchestration",
-      "include": ["agent/**"],
-      "domains": ["agent-orchestration"],
-      "verificationIds": ["agent-orchestration"],
+      "include": [
+        "agent/**"
+      ],
+      "domains": [
+        "agent-orchestration"
+      ],
+      "verificationIds": [
+        "agent-orchestration"
+      ],
       "risk": "normal"
     },
     {
       "id": "active-roadmap",
-      "include": ["docs/content-roadmap.md"],
-      "domains": ["roadmap"],
-      "verificationIds": ["roadmap-adapter"],
+      "include": [
+        "docs/content-roadmap.md"
+      ],
+      "domains": [
+        "roadmap"
+      ],
+      "verificationIds": [
+        "roadmap-adapter"
+      ],
       "risk": "normal"
     },
     {
       "id": "documentation-only",
-      "include": ["docs/**", "README.md"],
-      "exclude": ["docs/content-roadmap.md"],
-      "domains": ["documentation"],
+      "include": [
+        "docs/**",
+        "README.md"
+      ],
+      "exclude": [
+        "docs/content-roadmap.md"
+      ],
+      "domains": [
+        "documentation"
+      ],
       "verificationIds": [],
       "risk": "normal"
     },
     {
       "id": "repository-agent-map",
-      "include": ["AGENTS.md"],
-      "domains": ["repository-governance", "agent-orchestration"],
-      "verificationIds": ["agent-orchestration"],
+      "include": [
+        "AGENTS.md"
+      ],
+      "domains": [
+        "repository-governance",
+        "agent-orchestration"
+      ],
+      "verificationIds": [
+        "agent-orchestration"
+      ],
       "risk": "normal"
     },
     {
@@ -141,8 +173,14 @@
         "tests/graphics-*.mjs",
         "tests/*refinery*-surfaces.mjs"
       ],
-      "domains": ["graphics", "assets"],
-      "verificationIds": ["graphics-content", "graphics-babylon"],
+      "domains": [
+        "graphics",
+        "assets"
+      ],
+      "verificationIds": [
+        "graphics-content",
+        "graphics-babylon"
+      ],
       "risk": "normal"
     },
     {
@@ -154,7 +192,10 @@
         "tests/refinery-contact-depth.*",
         "tests/refinery-atmosphere.*"
       ],
-      "domains": ["graphics", "refinery"],
+      "domains": [
+        "graphics",
+        "refinery"
+      ],
       "verificationIds": [
         "graphics-babylon",
         "refinery-lighting",
@@ -167,45 +208,117 @@
     },
     {
       "id": "babylon-renderer-core",
-      "include": ["src/game/babylonCombatRenderer.ts", "src/game/babylonGraphicsAssets.ts", "src/game/babylonGltfLoader.ts"],
-      "domains": ["graphics", "renderer"],
-      "verificationIds": ["graphics-backend", "graphics-babylon", "render-performance"],
+      "include": [
+        "src/game/babylonCombatRenderer.ts",
+        "src/game/babylonGraphicsAssets.ts",
+        "src/game/babylonGltfLoader.ts"
+      ],
+      "domains": [
+        "graphics",
+        "renderer"
+      ],
+      "verificationIds": [
+        "graphics-backend",
+        "graphics-babylon",
+        "render-performance"
+      ],
       "risk": "normal"
     },
     {
       "id": "babylon-ability-vfx",
-      "include": ["src/game/babylonAbilityVfx.ts", "tests/*ability*vfx*.*"],
-      "domains": ["graphics", "vfx", "combat-presentation"],
-      "verificationIds": ["babylon-ability-vfx"],
+      "include": [
+        "src/game/babylonAbilityVfx.ts",
+        "tests/*ability*vfx*.*"
+      ],
+      "domains": [
+        "graphics",
+        "vfx",
+        "combat-presentation"
+      ],
+      "verificationIds": [
+        "babylon-ability-vfx"
+      ],
       "risk": "normal"
     },
     {
       "id": "babylon-enemy-telegraphs",
-      "include": ["src/game/babylonEnemyTelegraphs.ts", "tests/*enemy*telegraph*.*"],
-      "domains": ["graphics", "combat-presentation", "telegraphs"],
-      "verificationIds": ["babylon-enemy-telegraphs"],
+      "include": [
+        "src/game/babylonEnemyTelegraphs.ts",
+        "tests/*enemy*telegraph*.*"
+      ],
+      "domains": [
+        "graphics",
+        "combat-presentation",
+        "telegraphs"
+      ],
+      "verificationIds": [
+        "babylon-enemy-telegraphs"
+      ],
       "risk": "normal"
     },
     {
       "id": "babylon-enemy-lifecycle",
-      "include": ["src/game/babylonEnemyLifecycleVisuals.ts", "tests/*enemy*lifecycle*.*"],
-      "domains": ["graphics", "combat-presentation", "enemy-lifecycle"],
-      "verificationIds": ["babylon-enemy-lifecycle"],
+      "include": [
+        "src/game/babylonEnemyLifecycleVisuals.ts",
+        "tests/*enemy*lifecycle*.*"
+      ],
+      "domains": [
+        "graphics",
+        "combat-presentation",
+        "enemy-lifecycle"
+      ],
+      "verificationIds": [
+        "babylon-enemy-lifecycle"
+      ],
       "risk": "normal"
     },
     {
       "id": "babylon-protocol-status",
-      "include": ["src/game/babylonProtocolStatus*.ts", "tests/*protocol*status*.*"],
-      "domains": ["graphics", "combat-presentation", "status"],
-      "verificationIds": ["babylon-protocol-status"],
+      "include": [
+        "src/game/babylonProtocolStatus*.ts",
+        "tests/*protocol*status*.*"
+      ],
+      "domains": [
+        "graphics",
+        "combat-presentation",
+        "status"
+      ],
+      "verificationIds": [
+        "babylon-protocol-status"
+      ],
       "risk": "normal"
     },
     {
       "id": "ui-and-design-system",
-      "include": ["src/*.css", "src/components/**", "public/assets/ui/**"],
-      "domains": ["ui", "design-system"],
-      "verificationIds": ["ui-readability", "design-system"],
-      "risk": "normal"
+      "include": [
+        "src/*.css",
+        "src/components/**",
+        "public/assets/ui/**"
+      ],
+      "domains": [
+        "ui",
+        "design-system"
+      ],
+      "verificationIds": [
+        "ui-readability",
+        "design-system"
+      ],
+      "risk": "high",
+      "reason": "EV-16 promotes the EV-15-calibrated UI/typecheck miss class to the existing verify-full fail-safe; unpromoted normal-risk rules remain unchanged in the map and fail safe as low-confidence while enforcement is active.",
+      "promotion": {
+        "taskId": "EV-16",
+        "sourceTaskId": "EV-15",
+        "sourceCorpusPath": "agent/impact-calibration-corpus.json",
+        "sourceCorpusGitBlobSha": "56620952b96eb0711569bc6f01f4aee8fcb58b1f",
+        "sourceImpactMapGitBlobSha": "7212e618374cff242fcc992faa260fad328e7026",
+        "sourceCandidateSha": "295ec87024e34be6d724cee60fa432b375712a96",
+        "sourceWorkflowRunId": 38624196233,
+        "sourceArtifactId": 11923980804,
+        "sourceArtifactDigest": "sha256:5acf0a2ab2429a01868bda7de61b846cd6f82f89f29d4eff8c947f4ea093ae53",
+        "previousRisk": "normal",
+        "disableEnvironmentVariable": "IRONSHADE_IMPACT_WIDENING_ENFORCEMENT",
+        "disabledValue": "0"
+      }
     },
     {
       "id": "high-risk-build-and-dependencies",
@@ -216,23 +329,39 @@
         "tsconfig*.json",
         "capacitor.config.*"
       ],
-      "domains": ["build", "dependencies", "tooling"],
+      "domains": [
+        "build",
+        "dependencies",
+        "tooling"
+      ],
       "verificationIds": [],
       "risk": "high",
       "reason": "Build, dependency, or bundling changes have repository-wide impact."
     },
     {
       "id": "high-risk-android",
-      "include": ["android/**", "scripts/android-*.mjs"],
-      "domains": ["android", "packaging", "runtime"],
+      "include": [
+        "android/**",
+        "scripts/android-*.mjs"
+      ],
+      "domains": [
+        "android",
+        "packaging",
+        "runtime"
+      ],
       "verificationIds": [],
       "risk": "high",
       "reason": "Android packaging or runtime-harness changes can invalidate release-wide assumptions."
     },
     {
       "id": "high-risk-ci",
-      "include": [".github/workflows/**"],
-      "domains": ["ci", "verification"],
+      "include": [
+        ".github/workflows/**"
+      ],
+      "domains": [
+        "ci",
+        "verification"
+      ],
       "verificationIds": [],
       "risk": "high",
       "reason": "Workflow changes alter the verification system itself."
