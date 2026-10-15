@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 
 const TASK_LINE = /^- \[ \] \*\*(EV-\d+) — (.+?)\*\*\s*$/;
 const EV_TASK_PREFIX = /^\s*-\s*\[\s\]\s*(?:\*\*)?EV-/i;
+const BLOCKED_ACCEPTANCE_PREFIX = /^\*\*Blocked\b|^Blocked\b/i;
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -19,6 +20,10 @@ export const EXPERIMENTAL_PROMOTION_PROOFS = Object.freeze([
 
 function cloneProofs() {
   return EXPERIMENTAL_PROMOTION_PROOFS.map(proof => ({ ...proof }));
+}
+
+function isExplicitlyBlocked(task) {
+  return task.acceptance.some(entry => BLOCKED_ACCEPTANCE_PREFIX.test(entry));
 }
 
 export function parseExperimentalRoadmap(markdown) {
@@ -63,29 +68,38 @@ export function parseExperimentalRoadmap(markdown) {
 }
 
 export function materializeExperimentalTasks(markdown) {
-  return parseExperimentalRoadmap(markdown).map((task, index) => ({
-    id: task.id,
-    title: task.title,
-    priority: index,
-    status: index === 0 ? 'ready' : 'planned',
-    dependsOn: [],
-    acceptance: [...task.acceptance],
-    affectedDomains: ['agent-orchestration', 'verification'],
-    proofs: cloneProofs(),
-    externalDependencies: [],
-    notes: `Derived from docs/experimental-verification-roadmap.md line ${task.roadmapLine}; Markdown order and acceptance remain authoritative.`,
-  }));
+  const tasks = parseExperimentalRoadmap(markdown);
+  const firstActionableIndex = tasks.findIndex(task => !isExplicitlyBlocked(task));
+  return tasks.map((task, index) => {
+    const blocked = isExplicitlyBlocked(task);
+    return {
+      id: task.id,
+      title: task.title,
+      priority: index,
+      status: blocked ? 'blocked' : index === firstActionableIndex ? 'ready' : 'planned',
+      dependsOn: [],
+      acceptance: [...task.acceptance],
+      affectedDomains: ['agent-orchestration', 'verification'],
+      proofs: cloneProofs(),
+      externalDependencies: [],
+      notes: `Derived from docs/experimental-verification-roadmap.md line ${task.roadmapLine}; Markdown order, explicit blocked state, and acceptance remain authoritative.`,
+    };
+  });
+}
+
+function firstActionableTask(tasks) {
+  return tasks.find(task => task.status !== 'blocked') ?? null;
 }
 
 export function selectExperimentalReviewTask(headMarkdown, { baseMarkdown = null } = {}) {
   const headTasks = materializeExperimentalTasks(headMarkdown);
-  const headFirst = headTasks[0] ?? null;
+  const headFirst = firstActionableTask(headTasks);
   if (!baseMarkdown) return headFirst ? { task: headFirst, mode: 'experimental' } : null;
 
   const baseTasks = materializeExperimentalTasks(baseMarkdown);
-  const baseFirst = baseTasks[0] ?? null;
+  const baseFirst = firstActionableTask(baseTasks);
   if (baseFirst && !headTasks.some(task => task.id === baseFirst.id)) {
-    const expectedIds = baseTasks.slice(1).map(task => task.id);
+    const expectedIds = baseTasks.filter(task => task.id !== baseFirst.id).map(task => task.id);
     const headIds = headTasks.map(task => task.id);
     assert(
       JSON.stringify(headIds) === JSON.stringify(expectedIds),
