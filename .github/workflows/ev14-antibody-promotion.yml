@@ -28,6 +28,8 @@ jobs:
   promotion-gate:
     runs-on: ubuntu-24.04
     timeout-minutes: 8
+    outputs:
+      governance-review-required: ${{ steps.governance-review-scope.outputs.required }}
     steps:
       - name: Check out exact candidate revision
         uses: actions/checkout@v7
@@ -35,6 +37,25 @@ jobs:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Scope exact-SHA promotion governance review
+        if: github.event_name == 'pull_request'
+        id: governance-review-scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only "$BASE_SHA...$CANDIDATE_SHA" -- \
+            agent/antibody-promotion-policy.json \
+            agent/antibody-decisions/)"
+          if [ -n "$changed" ]; then
+            echo 'required=true' >> "$GITHUB_OUTPUT"
+            echo 'EV14_GOVERNANCE_REVIEW_SCOPE required=true'
+          else
+            echo 'required=false' >> "$GITHUB_OUTPUT"
+            echo 'EV14_GOVERNANCE_REVIEW_SCOPE required=false'
+          fi
 
       - uses: actions/setup-node@v7
         with:
@@ -81,7 +102,7 @@ jobs:
           retention-days: 30
 
   request-independent-governance-review:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && needs.promotion-gate.outputs.governance-review-required == 'true'
     needs: promotion-gate
     runs-on: ubuntu-24.04
     timeout-minutes: 35
@@ -158,7 +179,7 @@ jobs:
           NODE
 
   authorize-after-trusted-review:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && needs.promotion-gate.outputs.governance-review-required == 'true'
     needs:
       - promotion-gate
       - request-independent-governance-review
