@@ -21,78 +21,12 @@ jobs:
           fetch-depth: 0
       - name: Apply EV-17 roadmap and archive closeout
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          roadmap_path = Path('docs/experimental-verification-roadmap.md')
-          archive_path = Path('docs/experimental-verification-archive.md')
-
-          roadmap = roadmap_path.read_text()
-          start = '- [ ] **EV-17 — Calibrate EV-6 Proof-Cache Closure**\n'
-          next_task = '- [ ] **EV-18 — Reuse One Validated Proof Class**\n'
-          if start not in roadmap:
-              raise SystemExit('EV-17 active roadmap block not found')
-          before, remainder = roadmap.split(start, 1)
-          if next_task not in remainder:
-              raise SystemExit('EV-18 successor block not found')
-          _, after = remainder.split(next_task, 1)
-          roadmap_path.write_text(before + next_task + after)
-
-          archive = archive_path.read_text()
-          heading = '## EV-17 — Calibrate EV-6 Proof-Cache Closure'
-          if heading in archive:
-              raise SystemExit('EV-17 already archived')
-          entry = r'''
-
-## EV-17 — Calibrate EV-6 Proof-Cache Closure
-
-Completed 2026-10-14 as an advisory calibration of the EV-6 causal proof-cache mechanism. The original EV-6 prototype record above remains unchanged advisory history; proof reuse remains disabled.
-
-### Implemented
-
-- Added `agent/proof-cache-calibration-corpus.json`, `agent/tools/proof-cache-calibration-evidence.mjs`, `agent/tests/proof-cache-calibration-evidence.mjs`, and `.github/workflows/ev17-proof-cache-calibration.yml` as the exact-SHA calibration contract for the current `full-repository-build` proof class.
-- Pinned calibration to the real EV-6 proof definition: `npm run build`; the existing `all-tracked-except` repository closure; and the Ubuntu 24.04 runtime closure containing runner label, Node, npm, platform, architecture, `ImageOS`, `ImageVersion`, and `VITE_API_BASE_URL`.
-- Added one excluded-input same-closure control spanning every EV-6 repository exclusion category, one benign included-input invalidation, and one representative included TypeScript defect. Every trial reruns the real proof; no result may grant candidate acceptance or cached-proof reuse.
-- Added retained-history validation against immutable Git SHAs, same-closure disagreement measurement, runtime-dimension invalidation controls, zero false-hit/zero disagreement budgets, explicit conservative false-miss accounting, and exact candidate restoration after baseline/probe execution.
-- Updated `AGENTS.md` with the permanent EV-17 calibration boundary. Only a proof class satisfying the reviewed decision boundary may be named for EV-18, and EV-18 remains responsible for any enforcement/reuse promotion.
-
-### Evidence
-
-An early exact-head attempt failed closed because the baseline build left tracked generated state before the first disposable probe. The evidence runner was corrected to restore the complete tracked checkout to the exact candidate after the baseline and after every probe, then require exact HEAD plus a clean tracked status before proceeding. The calibration criterion was not weakened.
-
-Corrected implementation candidate `616dd3103cfa1b01060cd85721c1321a22cf5b14` passed EV-17 Proof Cache Calibration run `38670834633`. Exact-SHA artifact `11944222213` (`proof-cache-calibration-ev17-385-616dd3103cfa1b01060cd85721c1321a22cf5b14`) has GitHub Actions digest `sha256:9e69e5b3feb6b553b3a6fe7ce3fd4a8538dc461908a78401a9582dc0595425ae`.
-
-The report executed four measured trials and recorded `falseHits=0`, `falseMisses=1`, `sameClosureDisagreements=0`, and `retainedHistoricalSameClosureDisagreements=0`. The conservative false miss is the behavior-preserving included-source invalidation: EV-6 correctly refused reuse, then the real build succeeded. The representative TypeScript defect was invalidated and failed as expected. The same-closure baseline/control both succeeded, giving `sameClosureRunCount=2`, and the retained EV-6 history contains no same-closure disagreement.
-
-The runtime audit recorded no missing closure inputs and proved that changing each captured dimension—`runnerLabel`, `node`, `npm`, `platform`, `arch`, `env:ImageOS`, `env:ImageVersion`, and `env:VITE_API_BASE_URL`—changes the causal closure digest. The report therefore named only `full-repository-build` as eligible for narrow EV-18 review, while retaining `acceptedForReuse=false`, `acceptedForEnforcement=false`, `candidatePassGranted=false`, and `reuse=false`.
-
-PR Candidate Verification run `38670834931` on the same candidate passed the authoritative full repository verification/production build, mechanical architecture invariants, promoted verification gates, exact candidate web bundle, APK construction/integrity/delivery, API 35 product smoke, API 36 large-screen smoke, and aggregate Android verification. Browser E2E was correctly scope-skipped because EV-17 changes verification/governance only. APK artifact `11943832274` is bound to the candidate with GitHub Actions digest `sha256:8ed0639acf5e4cbf17e7d508d1a83a3a7587311e9cda01f2c8a2e116ac1037ff`.
-
-While EV-17 remained active without a roadmap transition, the generic final PR packet correctly selected the normal product task `P28-PLOAD2`; that product-task review result is not credited as EV-17 completion evidence. EV-17 used its dedicated exact-SHA calibration evidence plus trusted EV-17 review instead.
-
-The first trusted EV-17 review run `38671589013` raced the still-running Android aggregate and failed closed before review because that prerequisite was not yet green. No code changed. After the unchanged candidate's Android aggregate passed, trusted review run `38673214190` completed successfully and reported `TRUSTED_INDEPENDENT_REVIEW_PASS candidate=616dd3103cfa1b01060cd85721c1321a22cf5b14`. Trusted-review artifact `11944619508` has GitHub Actions digest `sha256:6bd45ab7237d545890376f9527120ee9eebe01b44bd7253ed5740d892c9563de`.
-
-### Isolation and rollback
-
-EV-17 changes verification/governance only. Disposable probe commits are reset back to the exact candidate after each trial, source content and tracked status must be restored exactly, retained observations are recomputed against immutable Git SHAs, and the proof continues to rerun for every candidate. No cache result is accepted and no product/runtime behavior changes.
-
-Rollback is deterministic: remove the EV-17 calibration workflow/corpus/tool/test and the EV-17 `AGENTS.md` entries. EV-6 then returns to its pre-EV-17 advisory shadow state with the authoritative full repository build still executing exactly once; all full-build, browser, Android/APK, exact-SHA, architecture-invariant, promoted-gate, and trusted-review obligations remain intact.
-
-This archive transition follows the repository's independent-review self-reference rule. It records the immutable reviewed pre-archive implementation candidate and its exact-SHA calibration evidence. The resulting closeout SHA cannot literally contain its own Git SHA because that SHA depends on these archive contents, so it must pass fresh exact-head technical gates and a fresh trusted EV-17 independent review. Removing only EV-17 from the first active experimental position makes `agent/tools/select-review-task.mjs` resolve that candidate as `EV-17 / experimental-closeout`; no predecessor verdict is inherited.
-
-### Promotion status
-
-Calibration complete; no cached proof reuse was promoted in EV-17. Only `full-repository-build` is eligible for the narrow EV-18 reuse proposal under the measured closure and zero-unsafe-hit boundary. EV-6 remains shadow-only until EV-18 separately proves and enables an allowed reuse path. The next experimental task is EV-18 — Reuse One Validated Proof Class.
-'''
-          archive_path.write_text(archive.rstrip() + entry + '\n')
-          PY
-
+          python3 agent/ev17-closeout-author.py
           git diff --check
           test "$(grep -c '^## EV-17 — Calibrate EV-6 Proof-Cache Closure$' docs/experimental-verification-archive.md)" = '1'
           test "$(grep -c '^- \[ \] \*\*EV-17 —' docs/experimental-verification-roadmap.md || true)" = '0'
           test "$(grep -c '^- \[ \] \*\*EV-18 — Reuse One Validated Proof Class\*\*$' docs/experimental-verification-roadmap.md)" = '1'
-          git rm .github/workflows/ev17-closeout-authoring.yml
-
+          git rm .github/workflows/ev17-closeout-authoring.yml agent/ev17-closeout-author.py
       - name: Commit EV-17 closeout
         run: |
           git config user.name 'github-actions[bot]'
