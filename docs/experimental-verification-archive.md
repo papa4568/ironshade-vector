@@ -46,7 +46,7 @@ Completed 2026-10-09 in advisory/shadow mode.
 - Added validation that shared-infrastructure exemptions can only reference sources whose kind is actually `shared-infrastructure`; implementation or observer sources cannot be relabeled to disguise circularity.
 - Added regressions proving a material signal derived from the implementation under test is rejected for enforcement, a separate observer path passes, unchanged graphs analyze deterministically, and the repository graph intentionally surfaces one circular and one independent important criterion.
 - Added compatibility coverage proving an EV-2 report can be attached to the existing candidate verification ledger as a SHA-bound artifact while cross-SHA independence evidence is still rejected by the existing exact-candidate contract.
-- Agent Orchestration now emits and uploads the advisory independence report for the exact candidate SHA. The report cannot grant a candidate pass and does not replace any existing candidate, browser, Android, APK, or ledger gate.
+- Agent Orchestration now emits and uploads the advisory independence report for the exact PR head. The report cannot grant a candidate pass and does not replace any existing candidate, browser, Android, APK, or ledger gate.
 
 ### Evidence
 
@@ -720,42 +720,3 @@ This archive transition follows the repository's independent-review self-referen
 ### Promotion status
 
 Calibration complete; **no cached proof class was promoted or found eligible for EV-18**. EV-6 remains shadow-only. EV-18 stays uncompleted and blocked until Docker base-image identity, Docker engine version, external setup-network availability, and npm-registry response/artifact identity are causally bound or eliminated from the proof and independently recalibrated. Under the roadmap's top-to-bottom-unless-blocked rule, the next actionable experimental item is EV-19 — Validate EV-7 Roadmap Shadow Predictions.
-
-## EV-21 — Close EV-18 Proof-Cache Causal Inputs
-
-Completed 2026-10-15 as an advisory calibration that closes the causal-input gap EV-17 measured. No cached proof reuse is enabled by EV-21; EV-18 owns any later promotion.
-
-### Implemented
-
-- Added a second shadow proof class, `full-repository-build-closed`, while preserving the legacy authoritative `full-repository-build` producer and EV-6 history unchanged.
-- Added `scripts/prepare-full-repository-build-proof-closed.sh` as a mandatory networked preflight. It resolves the immutable `node:22.23.2-bookworm` repo digest, prepares the pinned npm toolchain, captures the exact prepared toolchain image ID, captures a deterministic installed npm CLI tree digest, captures the Docker engine version, installs the exact candidate dependency tree, and records a deterministic dependency-tree digest before any reuse decision can be made.
-- Added `scripts/run-full-repository-build-proof-closed.sh` as the calibrated expensive segment. It revalidates the captured identities and executes the real `npm run build` only under Docker `--network none`; all post-preflight container execution is networkless.
-- Bound five causal identity dimensions into the closed proof execution context: immutable base-image ref, exact prepared toolchain image ID, deterministic installed npm CLI tree digest, Docker engine version, and deterministic installed dependency-tree digest. External network availability and npm-registry response identity are eliminated from the reused build segment by completing acquisition before the closure is computed.
-- Added `agent/proof-cache-closure-calibration-corpus.json`, `agent/tools/proof-cache-closure-calibration-evidence.mjs`, `agent/tests/proof-cache-closure-calibration-evidence.mjs`, and `.github/workflows/ev21-proof-cache-closure-calibration.yml` for exact-SHA advisory calibration. The corpus reruns the closed proof for an exact-candidate baseline, a complete excluded-input same-closure control, a benign included-input invalidation, and a representative failing invalidation, then restores exact candidate state.
-- Kept `acceptedForReuse=false`, `acceptedForEnforcement=false`, and `candidatePassGranted=false`. The authoritative PR candidate producer remains on the legacy proof class/profile in EV-21.
-
-### Review-driven correction
-
-The first trusted EV-21 review on candidate `137aadea1b49ad1744272b63eeb1ab8ad4d2a8f0` correctly returned `fail` in source run `38776290196`: the prepared toolchain image ID was resolved and used to execute the proof but was not closure-bound or exercised as an invalidation dimension. The same branch corrected the contract rather than weakening the criterion. `IRONSHADE_PROOF_PREPARED_IMAGE_ID` is now part of the runtime closure and required-bound-input set, its preflight/environment identity is checked, and an independent invalidation control proves that changing it changes the closure digest.
-
-### Exact implementation evidence
-
-Corrected implementation candidate `945b44853742e43e92f3657df1b7cee1dfe5b0e1` passed EV-21 Proof Cache Closure Calibration run `38777138277`. Exact-SHA artifact `11994293248` (`proof-cache-closure-calibration-ev21-388-945b44853742e43e92f3657df1b7cee1dfe5b0e1`) has GitHub Actions digest `sha256:a311ab890247ae9f68f6a14f2e3dcac0f075dd192df8b4836fb1e7b5a0fee66c`.
-
-The report measured four real proof trials with `falseHits=0`, one conservative false miss, two same-closure successful runs, `sameClosureDisagreements=0`, and zero retained historical same-closure disagreements. The representative failing invalidation was detected `1/1`. All five required identity dimensions were captured and independently proved closure-invalidating. The preflight manifest recorded `networkPhase="completed-before-cache-decision"`, `buildNetwork="none"`, and registry-result binding through the installed npm CLI and dependency-tree identities. The eligible set is exactly `full-repository-build-closed`; the unresolved set is empty. Source mutations, prepared state, tracked state, and exact HEAD were restored after the disposable trials.
-
-The same candidate passed retained EV-17 Proof Cache Calibration run `38777138309` and Agent Orchestration run `38777138308`, including causal-proof-cache history validation, architecture invariants, single-producer CI reuse, and independent-review contract regressions. PR Candidate Verification run `38777138553` passed the authoritative full repository verification/production build, desktop and mobile-landscape browser journeys, installable APK construction/integrity/delivery, API 35 product smoke, API 36 large-screen smoke, aggregate Android verification, exact candidate evidence, and the final trusted-review gate. Exact-SHA APK artifact `11994608081` has digest `sha256:e3b256fccf303a9e450c92add5495c48d8d27b7f46dcbe3d1092fb628fb026d8`; final candidate evidence artifact `11995401020` has digest `sha256:e548f66d38abb16f6f866612ef116e635c0ba10ef0b8db182377701e790e2660`.
-
-Fresh trusted review source run `38779563157` on `945b44853742e43e92f3657df1b7cee1dfe5b0e1` returned `verdict="pass"`, with all EV-21 acceptance checks satisfied, every required proof class credible, and `findings=[]`. That reviewed implementation SHA is the immutable predecessor evidence for this archive transition; the resulting closeout SHA must still pass its own exact-head technical gates and fresh EV-21 review under the repository self-reference rule.
-
-### Isolation and rollback
-
-EV-21 changes verification/governance only. Networked image/toolchain/dependency acquisition occurs only in the mandatory preflight before the reuse key is computed; the calibrated expensive build and all post-preflight container identity checks are networkless. Disposable source mutations and prepared state are removed after each trial, and the legacy authoritative proof continues to rerun for every PR candidate.
-
-Rollback is deterministic: remove the EV-21 calibration workflow/corpus/tool/test, the `full-repository-build-closed` shadow proof class, and the two closed-proof scripts. The repository then returns to the archived EV-17 state: legacy `full-repository-build` remains authoritative, proof reuse remains disabled, and all existing full-build, browser, Android/APK, exact-SHA, architecture-invariant, promoted-gate, and trusted-review obligations remain unchanged.
-
-This archive transition follows the repository's established independent-review self-reference rule. It records the immutable reviewed implementation candidate and exact-SHA calibration evidence while removing only EV-21 from the first active experimental position. The resulting closeout candidate must pass fresh exact-head technical gates and a fresh trusted EV-21 independent review; no proof or verdict is inherited from `945b44853742e43e92f3657df1b7cee1dfe5b0e1`.
-
-### Promotion status
-
-Calibration complete; no proof reuse was enabled in EV-21. Exactly one proof class, `full-repository-build-closed`, is eligible for EV-18 promotion review under the measured five-input closure and mandatory-preflight/networkless-build boundary. The legacy `full-repository-build` class remains ineligible for reuse. EV-18 is now the next actionable experimental item.
