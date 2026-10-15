@@ -88,6 +88,18 @@ export function validateProofCacheCalibrationCorpus(corpus, policy) {
     sameJson(entry.expectedRepositoryClosure, proof.repositoryClosure, `${entry.proofId}.expectedRepositoryClosure`);
     sameJson(entry.expectedRuntimeClosure, proof.runtimeClosure, `${entry.proofId}.expectedRuntimeClosure`);
     assert(Array.isArray(entry.requiredEnvironmentInputs) && entry.requiredEnvironmentInputs.length > 0, `${entry.proofId}.requiredEnvironmentInputs must be non-empty`);
+    assert(Array.isArray(entry.requiredExternalInputs) && entry.requiredExternalInputs.length > 0, `${entry.proofId}.requiredExternalInputs must be non-empty`);
+    assert(Array.isArray(entry.externalDependencyEvidence) && entry.externalDependencyEvidence.length === entry.requiredExternalInputs.length, `${entry.proofId}.externalDependencyEvidence must cover every required external input`);
+    const externalInputs = new Set();
+    for (const dependency of entry.externalDependencyEvidence) {
+      assertString(dependency.input, `${entry.proofId}.externalDependencyEvidence.input`);
+      assert(entry.requiredExternalInputs.includes(dependency.input), `${entry.proofId}.externalDependencyEvidence references undeclared input ${dependency.input}`);
+      assert(!externalInputs.has(dependency.input), `${entry.proofId}.externalDependencyEvidence duplicates ${dependency.input}`);
+      externalInputs.add(dependency.input);
+      assert(Array.isArray(dependency.profilePatterns) && dependency.profilePatterns.length > 0, `${entry.proofId}.${dependency.input}.profilePatterns must be non-empty`);
+      for (const pattern of dependency.profilePatterns) assertString(pattern, `${entry.proofId}.${dependency.input}.profilePatterns`);
+    }
+    for (const input of entry.requiredExternalInputs) assert(externalInputs.has(input), `${entry.proofId}.externalDependencyEvidence is missing ${input}`);
     assert(Array.isArray(entry.knownClosureGaps), `${entry.proofId}.knownClosureGaps must be an array`);
     for (const gap of entry.knownClosureGaps) {
       assertString(gap.id, `${entry.proofId}.knownClosureGaps.id`);
@@ -173,7 +185,7 @@ function runtimeVariant(context, dimension) {
   return next;
 }
 
-function runtimeClosureAudit({ proofEntry, policy, candidateSha, baselineClosure }) {
+function runtimeClosureAudit({ proofEntry, policy, candidateSha, baselineClosure, executionProfileText }) {
   const context = baselineClosure.executionContext;
   const proof = policy.proofClasses.find(entry => entry.id === proofEntry.proofId);
   assert(proof, `unknown proof class ${proofEntry.proofId}`);
@@ -188,8 +200,24 @@ function runtimeClosureAudit({ proofEntry, policy, candidateSha, baselineClosure
     VITE_API_BASE_URL: Object.hasOwn(context.env ?? {}, 'VITE_API_BASE_URL'),
     'docker-base-image-identity': false,
     'docker-engine-version': false,
+    'external-network-availability': false,
+    'npm-registry-response-identity': false,
   };
-  const missingInputs = proofEntry.requiredEnvironmentInputs.filter(input => captured[input] !== true);
+  const requiredInputs = [...proofEntry.requiredEnvironmentInputs, ...proofEntry.requiredExternalInputs];
+  const missingInputs = requiredInputs.filter(input => captured[input] !== true);
+  const externalDependencyAudit = proofEntry.externalDependencyEvidence.map(dependency => {
+    const observedPatterns = dependency.profilePatterns.filter(pattern => executionProfileText.includes(pattern));
+    const knownBlockingGap = proofEntry.knownClosureGaps.some(gap => gap.input === dependency.input && gap.blocksEligibility === true);
+    return {
+      input: dependency.input,
+      profilePatterns: dependency.profilePatterns,
+      observedPatterns,
+      profileReferencesInput: observedPatterns.length === dependency.profilePatterns.length,
+      boundByExecutionContext: captured[dependency.input] === true,
+      knownBlockingGap,
+    };
+  });
+  const externalDependencyAccountingPass = externalDependencyAudit.every(entry => entry.profileReferencesInput && (entry.boundByExecutionContext || entry.knownBlockingGap));
   const dimensions = ['runnerLabel', 'node', 'npm', 'platform', 'arch', ...proofEntry.expectedRuntimeClosure.environmentVariables.map(name => `env:${name}`)];
   const invalidationControls = dimensions.map(dimension => {
     const changed = computeClosure({
@@ -206,10 +234,14 @@ function runtimeClosureAudit({ proofEntry, policy, candidateSha, baselineClosure
   });
   const invalidationControlsPass = invalidationControls.every(entry => entry.invalidatesClosure);
   return {
-    requiredInputs: proofEntry.requiredEnvironmentInputs,
+    requiredInputs,
+    requiredEnvironmentInputs: proofEntry.requiredEnvironmentInputs,
+    requiredExternalInputs: proofEntry.requiredExternalInputs,
     captured,
     missingInputs,
     requiredInputsClosed: missingInputs.length === 0,
+    externalDependencyAudit,
+    externalDependencyAccountingPass,
     runnerLabel: context.runnerLabel,
     runnerImageIdentityBound: captured['runner-image-os'] && captured['runner-image-version'],
     executionProfilePath: proofEntry.executionProfilePath,
@@ -237,6 +269,7 @@ export function evaluateProofClassEligibility({ corpus, proofEntry, trialRows, r
     && detectedInvalidationDefects === invalidationDefects.length
     && runtimeAudit.requiredInputsClosed
     && runtimeAudit.executionProfileInRepositoryClosure !== false
+    && runtimeAudit.externalDependencyAccountingPass !== false
     && runtimeAudit.invalidationControlsPass !== false
     && blockingGaps.length === 0;
   const reasons = [];
@@ -247,6 +280,7 @@ export function evaluateProofClassEligibility({ corpus, proofEntry, trialRows, r
   if (detectedInvalidationDefects !== invalidationDefects.length) reasons.push('representative defect invalidation did not fail closed');
   if (!runtimeAudit.requiredInputsClosed) reasons.push(`runtime closure missing required inputs: ${runtimeAudit.missingInputs.join(', ')}`);
   if (runtimeAudit.executionProfileInRepositoryClosure === false) reasons.push('authoritative proof execution profile is outside the repository closure');
+  if (runtimeAudit.externalDependencyAccountingPass === false) reasons.push('authoritative proof has an external dependency that is neither closure-bound nor declared as a blocking gap');
   if (runtimeAudit.invalidationControlsPass === false) reasons.push('one or more declared runtime inputs do not invalidate the closure digest');
   for (const gap of blockingGaps) reasons.push(gap.reason);
   return {
@@ -381,7 +415,8 @@ export async function runProofCacheCalibrationEvidence({ candidateSha, workflowR
   const proofReports = [];
   for (const proofEntry of corpus.proofClasses) {
     const baselineClosure = computeClosure({ policy, proofId: proofEntry.proofId, revision: candidateSha });
-    const runtimeAudit = runtimeClosureAudit({ proofEntry, policy, candidateSha, baselineClosure });
+    const executionProfileText = await readFile(resolve(proofEntry.executionProfilePath), 'utf8');
+    const runtimeAudit = runtimeClosureAudit({ proofEntry, policy, candidateSha, baselineClosure, executionProfileText });
     const historical = summarizeHistoricalDisagreements(retainedHistory, proofEntry.proofId);
     const trialRows = [];
 

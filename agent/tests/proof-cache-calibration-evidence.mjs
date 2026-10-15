@@ -22,9 +22,16 @@ assert.equal(proofEntry.proofId, 'full-repository-build');
 assert.equal(proofEntry.expectedCommand, 'npm run build');
 assert.equal(proofEntry.calibrationCommand, 'bash scripts/run-full-repository-build-proof.sh');
 assert.equal(proofEntry.executionProfilePath, 'scripts/run-full-repository-build-proof.sh');
+assert.deepEqual(proofEntry.requiredExternalInputs, [
+  'external-network-availability',
+  'npm-registry-response-identity',
+]);
+assert.deepEqual(proofEntry.externalDependencyEvidence.map(entry => entry.input), proofEntry.requiredExternalInputs);
 assert.deepEqual(proofEntry.knownClosureGaps.map(entry => entry.id), [
   'docker-base-image-identity-not-bound',
   'docker-engine-version-not-bound',
+  'external-network-availability-not-bound',
+  'npm-registry-response-identity-not-bound',
 ]);
 assert.equal(proofEntry.knownClosureGaps.every(entry => entry.blocksEligibility === true), true);
 
@@ -39,6 +46,7 @@ const closedRuntime = {
   requiredInputsClosed: true,
   missingInputs: [],
   executionProfileInRepositoryClosure: true,
+  externalDependencyAccountingPass: true,
   invalidationControlsPass: true,
 };
 const blockedByDockerClosure = evaluateProofClassEligibility({
@@ -55,6 +63,8 @@ assert.equal(blockedByDockerClosure.sameClosureRunCount, 2);
 assert.equal(blockedByDockerClosure.sameClosureDisagreements, 0);
 assert.match(blockedByDockerClosure.reasons.join('\n'), /immutable pulled node:22\.23\.2-bookworm image identity/);
 assert.match(blockedByDockerClosure.reasons.join('\n'), /Docker engine version/);
+assert.match(blockedByDockerClosure.reasons.join('\n'), /external network access/);
+assert.match(blockedByDockerClosure.reasons.join('\n'), /npm@10\.9\.8/);
 
 const noGapProof = { ...proofEntry, knownClosureGaps: [] };
 const eligibleWhenClosureIsActuallyComplete = evaluateProofClassEligibility({
@@ -85,8 +95,9 @@ const missingRuntime = evaluateProofClassEligibility({
   trialRows: safeTrials,
   runtimeAudit: {
     requiredInputsClosed: false,
-    missingInputs: ['docker-base-image-identity', 'docker-engine-version'],
+    missingInputs: ['docker-base-image-identity', 'docker-engine-version', 'external-network-availability', 'npm-registry-response-identity'],
     executionProfileInRepositoryClosure: true,
+    externalDependencyAccountingPass: true,
     invalidationControlsPass: true,
   },
   historicalDisagreementCount: 0,
@@ -94,6 +105,8 @@ const missingRuntime = evaluateProofClassEligibility({
 assert.equal(missingRuntime.eligible, false);
 assert.match(missingRuntime.reasons.join('\n'), /docker-base-image-identity/);
 assert.match(missingRuntime.reasons.join('\n'), /docker-engine-version/);
+assert.match(missingRuntime.reasons.join('\n'), /external-network-availability/);
+assert.match(missingRuntime.reasons.join('\n'), /npm-registry-response-identity/);
 
 const profileOutsideClosure = evaluateProofClassEligibility({
   corpus,
@@ -129,4 +142,4 @@ const mutatedCorpus = structuredClone(corpus);
 mutatedCorpus.mode = 'enforced';
 assert.throws(() => validateProofCacheCalibrationCorpus(mutatedCorpus, policy), /must remain advisory/);
 
-console.log('EV17_PROOF_CACHE_CALIBRATION_TEST_PASS advisory=pass dockerProfile=pass noEligibility=pass falseHit=pass falseMissMeasured=pass runtimeGap=pass reuse=disabled');
+console.log('EV17_PROOF_CACHE_CALIBRATION_TEST_PASS advisory=pass dockerProfile=pass externalDependencies=accounted noEligibility=pass falseHit=pass falseMissMeasured=pass runtimeGap=pass reuse=disabled');

@@ -28,7 +28,7 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
 ## Active experimental queue
 
 - [ ] **EV-18 — Reuse One Validated Proof Class**
-  - **Blocked by EV-17 calibration evidence:** no proof class is currently eligible. The real full-repository-build proof depends on a pulled Docker base-image identity and Docker engine version that EV-6 does not bind into its causal execution-context digest. Do not enable reuse until a separately reviewed calibration closes those dynamic inputs.
+  - **Blocked by EV-17 calibration evidence:** no proof class is currently eligible. The real full-repository-build proof depends on four causal inputs that EV-6 does not bind into its execution-context digest: pulled Docker base-image identity, Docker engine version, external network availability during proof setup, and npm-registry response/artifact identity. Do not enable reuse until a separately reviewed calibration binds or eliminates all of those inputs.
   - Enable reuse for one proof class justified by EV-17, requiring exact input/context digests, immutable candidate identity, auditable cache provenance, and fail-closed fallback to the real proof for any unknown or inconsistent dependency.
   - Prove cache disablement forces the original proof to rerun and preserves prior acceptance semantics.
   - Done when `AGENTS.md` and proof-cache contracts document the promoted class and rollback, and the exact candidate is archived with required proofs and independent review; further proof classes require separate roadmap items.

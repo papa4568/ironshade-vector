@@ -60,6 +60,18 @@
           "input": "docker-engine-version",
           "reason": "The authoritative proof executes through Docker, but EV-6 does not bind the Docker engine version into its execution-context digest.",
           "blocksEligibility": true
+        },
+        {
+          "id": "external-network-availability-not-bound",
+          "input": "external-network-availability",
+          "reason": "The authoritative proof needs external network access for the Docker base-image pull, the Docker build that installs the pinned npm CLI, and npm ci before the final networkless build; EV-6 does not bind network availability or endpoint reachability into its execution-context digest.",
+          "blocksEligibility": true
+        },
+        {
+          "id": "npm-registry-response-identity-not-bound",
+          "input": "npm-registry-response-identity",
+          "reason": "The authoritative proof resolves npm@10.9.8 and locked dependency fetches through the configured npm registry. package-lock integrity constrains locked project package bytes, but EV-6 does not bind the registry endpoint/response identity or the globally installed npm artifact digest into its execution-context digest.",
+          "blocksEligibility": true
         }
       ],
       "probes": [
@@ -131,7 +143,28 @@
         }
       ],
       "calibrationCommand": "bash scripts/run-full-repository-build-proof.sh",
-      "executionProfilePath": "scripts/run-full-repository-build-proof.sh"
+      "executionProfilePath": "scripts/run-full-repository-build-proof.sh",
+      "requiredExternalInputs": [
+        "external-network-availability",
+        "npm-registry-response-identity"
+      ],
+      "externalDependencyEvidence": [
+        {
+          "input": "external-network-availability",
+          "profilePatterns": [
+            "docker pull \"$base_image\"",
+            "docker build --tag \"$image\"",
+            "npm ci --ignore-scripts --no-audit --no-fund"
+          ]
+        },
+        {
+          "input": "npm-registry-response-identity",
+          "profilePatterns": [
+            "npm install --global npm@10.9.8",
+            "npm ci --ignore-scripts --no-audit --no-fund"
+          ]
+        }
+      ]
     }
   ]
 }
