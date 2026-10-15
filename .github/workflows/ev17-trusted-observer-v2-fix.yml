@@ -34,7 +34,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add agent/tools/ev9-trusted-pr-candidate-observer-v2.mjs
+          git add agent/tools/ev9-trusted-pr-candidate-observer-v2.mjs agent/tools/ev9-trusted-pr-candidate-observer-v8.mjs
           git diff --cached --check
-          git commit -m 'Teach trusted observer the shared build proof'
+          git commit -m 'Teach trusted observers the shared build proof'
           git push origin HEAD:agent/ev17-proof-cache-calibration
