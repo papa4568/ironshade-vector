@@ -106,7 +106,7 @@ export function validateProofCacheClosureCalibrationCorpus(corpus, policy) {
   assert(entry.preflightCommand.includes(entry.preflightProfilePath), 'EV-21 preflight command must execute the declared preflight profile');
   assert(entry.calibrationCommand.includes(entry.executionProfilePath), 'EV-21 calibration command must execute the declared build profile');
 
-  assert(Array.isArray(entry.requiredBoundInputs) && entry.requiredBoundInputs.length === 4, 'EV-21 must bind four concrete runtime identities');
+  assert(Array.isArray(entry.requiredBoundInputs) && entry.requiredBoundInputs.length === 5, 'EV-21 must bind five concrete runtime identities');
   const boundIds = new Set();
   const boundVariables = new Set();
   for (const input of entry.requiredBoundInputs) {
@@ -285,6 +285,7 @@ async function buildClosureAudit({ policy, proof, proofEntry, candidateSha, base
     && buildForbiddenNetworkOperations.every(entry => entry.absent);
   const registryResponseBound = baselinePreparation.manifest.registryResultBoundBy.includes('npmCliTreeSha256')
     && baselinePreparation.manifest.registryResultBoundBy.includes('dependencyTreeSha256')
+    && baselinePreparation.manifest.preparedImageId === baselinePreparation.closureEnv.IRONSHADE_PROOF_PREPARED_IMAGE_ID
     && baselinePreparation.manifest.npmCliTreeSha256 === baselinePreparation.closureEnv.IRONSHADE_PROOF_NPM_CLI_TREE_SHA256
     && baselinePreparation.manifest.dependencyTreeSha256 === baselinePreparation.closureEnv.IRONSHADE_PROOF_DEPENDENCY_TREE_SHA256;
 
