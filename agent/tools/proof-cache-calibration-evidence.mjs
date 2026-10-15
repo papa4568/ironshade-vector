@@ -98,8 +98,14 @@ export function validateProofCacheCalibrationCorpus(corpus, policy) {
       assert(!probeIds.has(probe.id), `duplicate probe id ${probe.id}`);
       probeIds.add(probe.id);
       assert(['same-closure-control', 'invalidation-control', 'invalidation-defect'].includes(probe.kind), `${probe.id}.kind is invalid`);
-      assertString(probe.targetPath, `${probe.id}.targetPath`);
-      assertString(probe.mutationSuffix, `${probe.id}.mutationSuffix`);
+      assert(Array.isArray(probe.mutations) && probe.mutations.length > 0, `${probe.id}.mutations must be non-empty`);
+      const targets = new Set();
+      for (const mutation of probe.mutations) {
+        assertString(mutation.targetPath, `${probe.id}.mutations.targetPath`);
+        assertString(mutation.mutationSuffix, `${probe.id}.mutations.mutationSuffix`);
+        assert(!targets.has(mutation.targetPath), `${probe.id} repeats target ${mutation.targetPath}`);
+        targets.add(mutation.targetPath);
+      }
       assert(['same', 'different'].includes(probe.expectedClosureRelation), `${probe.id}.expectedClosureRelation is invalid`);
       assert(['success', 'failure'].includes(probe.expectedOutcome), `${probe.id}.expectedOutcome is invalid`);
       assert(['hit', 'miss'].includes(probe.expectedPrediction), `${probe.id}.expectedPrediction is invalid`);
@@ -145,7 +151,62 @@ function summarizeHistoricalDisagreements(history, proofId) {
   };
 }
 
-export function evaluateProofClassEligibility({ corpus, proofEntry, trialRows, runtimeAudit }) {
+function runtimeVariant(context, dimension) {
+  const next = structuredClone(context);
+  if (dimension === 'runnerLabel') next.runnerLabel = `${next.runnerLabel}-ev17-probe`;
+  else if (dimension === 'node') next.node = `${next.node}-ev17-probe`;
+  else if (dimension === 'npm') next.npm = `${next.npm}-ev17-probe`;
+  else if (dimension === 'platform') next.platform = `${next.platform}-ev17-probe`;
+  else if (dimension === 'arch') next.arch = `${next.arch}-ev17-probe`;
+  else {
+    assert(dimension.startsWith('env:'), `unknown runtime dimension ${dimension}`);
+    const name = dimension.slice(4);
+    assert(Object.hasOwn(next.env, name), `runtime context does not capture ${name}`);
+    next.env[name] = { present: true, valueSha256: sha256(`ev17-runtime-probe:${name}`) };
+  }
+  return next;
+}
+
+function runtimeClosureAudit({ proofEntry, policy, candidateSha, baselineClosure }) {
+  const context = baselineClosure.executionContext;
+  const captured = {
+    'runner-image-os': context.env?.ImageOS?.present === true,
+    'runner-image-version': context.env?.ImageVersion?.present === true,
+    'node-version': typeof context.node === 'string' && context.node.length > 0,
+    'npm-version': typeof context.npm === 'string' && context.npm.length > 0,
+    platform: typeof context.platform === 'string' && context.platform.length > 0,
+    architecture: typeof context.arch === 'string' && context.arch.length > 0,
+    VITE_API_BASE_URL: Object.hasOwn(context.env ?? {}, 'VITE_API_BASE_URL'),
+  };
+  const missingInputs = proofEntry.requiredEnvironmentInputs.filter(input => captured[input] !== true);
+  const dimensions = ['runnerLabel', 'node', 'npm', 'platform', 'arch', ...proofEntry.expectedRuntimeClosure.environmentVariables.map(name => `env:${name}`)];
+  const invalidationControls = dimensions.map(dimension => {
+    const changed = computeClosure({
+      policy,
+      proofId: proofEntry.proofId,
+      revision: candidateSha,
+      executionContext: runtimeVariant(context, dimension),
+    });
+    return {
+      dimension,
+      invalidatesClosure: changed.closureDigest !== baselineClosure.closureDigest,
+      closureDigest: changed.closureDigest,
+    };
+  });
+  const invalidationControlsPass = invalidationControls.every(entry => entry.invalidatesClosure);
+  return {
+    requiredInputs: proofEntry.requiredEnvironmentInputs,
+    captured,
+    missingInputs,
+    requiredInputsClosed: missingInputs.length === 0,
+    runnerLabel: context.runnerLabel,
+    runnerImageIdentityBound: captured['runner-image-os'] && captured['runner-image-version'],
+    invalidationControls,
+    invalidationControlsPass,
+  };
+}
+
+export function evaluateProofClassEligibility({ corpus, proofEntry, trialRows, runtimeAudit, historicalDisagreementCount = 0 }) {
   const baseline = trialRows.find(row => row.kind === 'baseline');
   assert(baseline?.outcome === 'success', `${proofEntry.proofId} requires a successful baseline rerun`);
   const sameClosureRows = trialRows.filter(row => row.closureRelation === 'same');
@@ -157,17 +218,21 @@ export function evaluateProofClassEligibility({ corpus, proofEntry, trialRows, r
   const blockingGaps = proofEntry.knownClosureGaps.filter(gap => gap.blocksEligibility);
   const eligible = falseHits <= corpus.errorBudget.falseHits
     && sameClosureDisagreements <= corpus.errorBudget.sameClosureDisagreements
+    && historicalDisagreementCount === 0
     && sameClosureRows.length >= corpus.minimumSameClosureRuns
     && invalidationDefects.length > 0
     && detectedInvalidationDefects === invalidationDefects.length
     && runtimeAudit.requiredInputsClosed
+    && runtimeAudit.invalidationControlsPass !== false
     && blockingGaps.length === 0;
   const reasons = [];
   if (falseHits > corpus.errorBudget.falseHits) reasons.push(`false hits ${falseHits} exceed budget ${corpus.errorBudget.falseHits}`);
   if (sameClosureDisagreements > corpus.errorBudget.sameClosureDisagreements) reasons.push(`same-closure disagreements ${sameClosureDisagreements} exceed budget ${corpus.errorBudget.sameClosureDisagreements}`);
+  if (historicalDisagreementCount > 0) reasons.push(`retained history contains ${historicalDisagreementCount} same-closure disagreement group(s)`);
   if (sameClosureRows.length < corpus.minimumSameClosureRuns) reasons.push(`same-closure runs ${sameClosureRows.length} are below minimum ${corpus.minimumSameClosureRuns}`);
   if (detectedInvalidationDefects !== invalidationDefects.length) reasons.push('representative defect invalidation did not fail closed');
   if (!runtimeAudit.requiredInputsClosed) reasons.push(`runtime closure missing required inputs: ${runtimeAudit.missingInputs.join(', ')}`);
+  if (runtimeAudit.invalidationControlsPass === false) reasons.push('one or more declared runtime inputs do not invalidate the closure digest');
   for (const gap of blockingGaps) reasons.push(gap.reason);
   return {
     eligible,
@@ -175,44 +240,27 @@ export function evaluateProofClassEligibility({ corpus, proofEntry, trialRows, r
     falseMisses,
     sameClosureRunCount: sameClosureRows.length,
     sameClosureDisagreements,
+    historicalSameClosureDisagreements: historicalDisagreementCount,
     invalidationDefectCount: invalidationDefects.length,
     detectedInvalidationDefectCount: detectedInvalidationDefects,
     reasons,
   };
 }
 
-function runtimeClosureAudit(proofEntry, baselineClosure) {
-  const context = baselineClosure.executionContext;
-  const captured = {
-    'runner-image-identity': false,
-    'node-version': typeof context.node === 'string' && context.node.length > 0,
-    'npm-version': typeof context.npm === 'string' && context.npm.length > 0,
-    platform: typeof context.platform === 'string' && context.platform.length > 0,
-    architecture: typeof context.arch === 'string' && context.arch.length > 0,
-    NODE_ENV: Boolean(context.env?.NODE_ENV),
-  };
-  const missingInputs = proofEntry.requiredEnvironmentInputs.filter(input => captured[input] !== true);
-  return {
-    requiredInputs: proofEntry.requiredEnvironmentInputs,
-    captured,
-    missingInputs,
-    requiredInputsClosed: missingInputs.length === 0,
-    runnerLabel: context.runnerLabel,
-    runnerLabelIsImmutableIdentity: false,
-    reason: 'ubuntu-latest is a mutable runner alias, not an immutable hosted-runner image/version identity',
-  };
-}
-
 async function runProbe({ probe, policy, proofEntry, baselineClosure, baselineHistory, candidateSha, workflowRunId }) {
-  const original = await readFile(resolve(probe.targetPath), 'utf8');
-  const originalDigest = sha256(original);
+  const originals = [];
   const cleanBefore = git(['status', '--porcelain', '--untracked-files=no']);
   assert(cleanBefore === '', `${probe.id} requires a clean tracked checkout`);
   let syntheticSha = null;
   let trial = null;
   try {
-    await writeFile(resolve(probe.targetPath), `${original}${probe.mutationSuffix}`, 'utf8');
-    git(['add', '--', probe.targetPath]);
+    for (const mutation of probe.mutations) {
+      const path = resolve(mutation.targetPath);
+      const content = await readFile(path, 'utf8');
+      originals.push({ targetPath: mutation.targetPath, path, content, digest: sha256(content) });
+      await writeFile(path, `${content}${mutation.mutationSuffix}`, 'utf8');
+    }
+    git(['add', '--', ...probe.mutations.map(entry => entry.targetPath)]);
     git(['-c', 'user.name=EV-17 Calibration', '-c', 'user.email=ev17@example.invalid', 'commit', '-m', `EV-17 disposable probe ${probe.id}`]);
     syntheticSha = git(['rev-parse', 'HEAD']);
     assert(SHA_PATTERN.test(syntheticSha), `${probe.id} synthetic commit SHA is invalid`);
@@ -244,7 +292,7 @@ async function runProbe({ probe, policy, proofEntry, baselineClosure, baselineHi
     trial = {
       id: probe.id,
       kind: probe.kind,
-      targetPath: probe.targetPath,
+      targetPaths: probe.mutations.map(entry => entry.targetPath),
       syntheticSha,
       closureRelation,
       closureDigest: closure.closureDigest,
@@ -262,17 +310,19 @@ async function runProbe({ probe, policy, proofEntry, baselineClosure, baselineHi
   } finally {
     git(['reset', '--hard', candidateSha]);
   }
-  const restored = await readFile(resolve(probe.targetPath), 'utf8');
+  for (const original of originals) {
+    const restored = await readFile(original.path, 'utf8');
+    assert(sha256(restored) === original.digest, `${probe.id} did not restore ${original.targetPath}`);
+  }
   const cleanAfter = git(['status', '--porcelain', '--untracked-files=no']);
-  assert(sha256(restored) === originalDigest && cleanAfter === '', `${probe.id} did not restore exact candidate tracked state`);
+  assert(cleanAfter === '', `${probe.id} did not restore exact candidate tracked state`);
   return { ...trial, rollback: { sourceRestored: true, headRestored: git(['rev-parse', 'HEAD']) === candidateSha } };
 }
 
 export async function runProofCacheCalibrationEvidence({ candidateSha, workflowRunId = process.env.GITHUB_RUN_ID ?? '0', executeProofs = true } = {}) {
   assert(SHA_PATTERN.test(candidateSha ?? ''), 'candidateSha must be a full lowercase commit SHA');
   assert(git(['rev-parse', 'HEAD']) === candidateSha, `candidateSha ${candidateSha} does not match checked-out HEAD`);
-  const cleanStart = git(['status', '--porcelain', '--untracked-files=no']);
-  assert(cleanStart === '', 'EV-17 evidence requires a clean tracked checkout');
+  assert(git(['status', '--porcelain', '--untracked-files=no']) === '', 'EV-17 evidence requires a clean tracked checkout');
 
   const [policyRaw, historyRaw, corpusRaw] = await Promise.all([
     readFile(resolve('agent/proof-cache.json'), 'utf8'),
@@ -288,7 +338,7 @@ export async function runProofCacheCalibrationEvidence({ candidateSha, workflowR
   const proofReports = [];
   for (const proofEntry of corpus.proofClasses) {
     const baselineClosure = computeClosure({ policy, proofId: proofEntry.proofId, revision: candidateSha });
-    const runtimeAudit = runtimeClosureAudit(proofEntry, baselineClosure);
+    const runtimeAudit = runtimeClosureAudit({ proofEntry, policy, candidateSha, baselineClosure });
     const historical = summarizeHistoricalDisagreements(retainedHistory, proofEntry.proofId);
     const trialRows = [];
 
@@ -297,7 +347,7 @@ export async function runProofCacheCalibrationEvidence({ candidateSha, workflowR
       trialRows.push({
         id: 'exact-candidate-baseline',
         kind: 'baseline',
-        targetPath: null,
+        targetPaths: [],
         syntheticSha: candidateSha,
         closureRelation: 'same',
         closureDigest: baselineClosure.closureDigest,
@@ -327,7 +377,13 @@ export async function runProofCacheCalibrationEvidence({ candidateSha, workflowR
     }
 
     const eligibility = executeProofs
-      ? evaluateProofClassEligibility({ corpus, proofEntry, trialRows, runtimeAudit })
+      ? evaluateProofClassEligibility({
+        corpus,
+        proofEntry,
+        trialRows,
+        runtimeAudit,
+        historicalDisagreementCount: historical.disagreementCount,
+      })
       : { eligible: false, falseHits: null, falseMisses: null, sameClosureRunCount: null, sameClosureDisagreements: null, reasons: ['proof execution disabled'] };
 
     proofReports.push({
@@ -387,9 +443,10 @@ export async function runProofCacheCalibrationEvidence({ candidateSha, workflowR
 
   assert(report.metrics.falseHits <= corpus.errorBudget.falseHits, 'EV-17 false-hit budget exceeded');
   assert(report.metrics.sameClosureDisagreements <= corpus.errorBudget.sameClosureDisagreements, 'EV-17 same-closure disagreement budget exceeded');
+  assert(report.metrics.retainedHistoricalSameClosureDisagreements === 0, 'EV-17 retained history contains a same-closure disagreement');
   assert(report.rollback.proofReuseEnabled === false && report.rollback.proofPolicyChanged === false, 'EV-17 must not change reuse enforcement');
   assert(report.rollback.sourceMutationsRestored && report.rollback.exactHeadRestored && report.rollback.trackedStateClean, 'EV-17 did not restore exact candidate state');
-  assert(report.eligibleProofClasses.length === 0, 'EV-17 must fail closed while immutable runner-image identity is absent from the EV-6 runtime closure');
+  if (executeProofs) assert(report.eligibleProofClasses.length === corpus.proofClasses.length, 'EV-17 measured proof class did not satisfy the calibrated EV-18 eligibility boundary');
   return report;
 }
 
@@ -411,7 +468,7 @@ async function main() {
     await mkdir(dirname(outputPath), { recursive: true });
     await writeFile(outputPath, canonicalJson(report), 'utf8');
   }
-  console.log(`EV17_PROOF_CACHE_CALIBRATION_PASS candidate=${report.candidateSha} trials=${report.metrics.executedTrialCount} falseHits=${report.metrics.falseHits} falseMisses=${report.metrics.falseMisses} disagreements=${report.metrics.sameClosureDisagreements} eligible=${report.eligibleProofClasses.length} reuse=false`);
+  console.log(`EV17_PROOF_CACHE_CALIBRATION_PASS candidate=${report.candidateSha} trials=${report.metrics.executedTrialCount} falseHits=${report.metrics.falseHits} falseMisses=${report.metrics.falseMisses} disagreements=${report.metrics.sameClosureDisagreements} eligible=${report.eligibleProofClasses.join(',') || 'none'} reuse=false`);
 }
 
 const isDirectRun = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
