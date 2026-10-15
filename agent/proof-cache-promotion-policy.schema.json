@@ -51,14 +51,28 @@
     "cache": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["provider", "keyPrefix", "exactKeyOnly", "path", "receiptPath", "distPath"],
+      "required": ["provider", "keyPrefix", "exactKeyOnly", "path", "receiptPath", "distPath", "provenance"],
       "properties": {
         "provider": { "const": "github-actions-cache" },
         "keyPrefix": { "type": "string", "minLength": 1 },
         "exactKeyOnly": { "const": true },
         "path": { "const": ".agent-proof-cache-ev18/cache" },
         "receiptPath": { "const": ".agent-proof-cache-ev18/cache/receipt.json" },
-        "distPath": { "const": ".agent-proof-cache-ev18/cache/dist" }
+        "distPath": { "const": ".agent-proof-cache-ev18/cache/dist" },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["workflowName", "workflowPath", "event", "producerJobName", "realProofStepName", "recordStepName", "cacheSaveStepName"],
+          "properties": {
+            "workflowName": { "const": "PR Candidate Verification" },
+            "workflowPath": { "const": ".github/workflows/pr-candidate.yml" },
+            "event": { "const": "pull_request" },
+            "producerJobName": { "const": "Candidate Build and Full Verification" },
+            "realProofStepName": { "const": "Run authoritative full repository verification or reuse validated closed proof" },
+            "recordStepName": { "const": "Record EV-18 real-proof cache entry" },
+            "cacheSaveStepName": { "const": "Save EV-18 validated proof cache" }
+          }
+        }
       }
     },
     "calibration": {
