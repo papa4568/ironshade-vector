@@ -1,0 +1,97 @@
+name: EV-18 Proof Cache Promotion
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'agent/proof-cache.json'
+      - 'agent/proof-cache.schema.json'
+      - 'agent/proof-cache-calibration-corpus.json'
+      - 'agent/proof-cache-closure-calibration-corpus.json'
+      - 'agent/proof-cache-promotion-policy.json'
+      - 'agent/tools/causal-proof-cache.mjs'
+      - 'agent/tools/proof-cache-promotion.mjs'
+      - 'agent/tests/proof-cache-promotion.mjs'
+      - 'agent/tests/ci-proof-reuse.mjs'
+      - 'scripts/prepare-full-repository-build-proof-closed.sh'
+      - 'scripts/run-full-repository-build-proof-closed.sh'
+      - 'scripts/run-full-repository-build-proof.sh'
+      - '.github/workflows/pr-candidate.yml'
+      - '.github/workflows/ev18-proof-cache-promotion.yml'
+      - 'AGENTS.md'
+      - 'docs/experimental-verification-roadmap.md'
+      - 'docs/experimental-verification-archive.md'
+  push:
+    branches:
+      - main
+    paths:
+      - 'agent/proof-cache-promotion-policy.json'
+      - 'agent/tools/proof-cache-promotion.mjs'
+      - 'agent/tests/proof-cache-promotion.mjs'
+      - 'agent/tests/ci-proof-reuse.mjs'
+      - '.github/workflows/pr-candidate.yml'
+      - '.github/workflows/ev18-proof-cache-promotion.yml'
+      - 'AGENTS.md'
+      - 'docs/experimental-verification-roadmap.md'
+      - 'docs/experimental-verification-archive.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  promotion-gate:
+    name: Exact Candidate Proof Cache Promotion
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out exact candidate revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+
+      - name: Run EV-18 promotion regressions
+        run: |
+          node agent/tests/proof-cache-promotion.mjs
+          node agent/tests/ci-proof-reuse.mjs
+
+      - name: Generate exact-SHA EV-18 promotion evidence
+        env:
+          CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          mkdir -p .agent-proof-cache-promotion-ev18
+          node agent/tools/proof-cache-promotion.mjs evidence \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --output .agent-proof-cache-promotion-ev18/promotion.json
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const report = JSON.parse(readFileSync('.agent-proof-cache-promotion-ev18/promotion.json', 'utf8'));
+          const fail = message => { throw new Error(`EV18_EXACT_EVIDENCE_FAIL ${message}`); };
+          if (report.schema !== 'ironshade-proof-cache-promotion:v1' || report.taskId !== 'EV-18' || report.candidateSha !== process.env.CANDIDATE_SHA) fail('schema/task/candidate binding mismatch');
+          if (report.proofId !== 'full-repository-build-closed') fail('promoted proof class drifted');
+          if (report.calibration.measuredErrors.falsePositives !== 0 || report.calibration.measuredErrors.falseNegatives !== 0) fail('promotion error budget exceeded');
+          if (report.rollback.forcesPrePromotionLegacyProof !== true) fail('rollback no longer forces the pre-EV-18 producer');
+          if (report.producer.pass !== true || !Object.values(report.producer.checks).every(Boolean)) fail('authoritative producer integration incomplete');
+          if (report.cache.exactKeyOnly !== true || !report.cache.provenanceFields.includes('sourceCandidateSha') || !report.cache.provenanceFields.includes('sourceWorkflowRunId')) fail('cache identity/provenance contract drifted');
+          if (report.acceptedForReuse !== true || report.blocking !== true || report.candidatePassGranted !== false) fail('promotion enforcement semantics drifted');
+          console.log(`EV18_EXACT_EVIDENCE_PASS candidate=${report.candidateSha} proof=${report.proofId} falsePositives=0 falseNegatives=0 rollback=legacy`);
+          NODE
+
+      - name: Upload exact-SHA EV-18 promotion evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: proof-cache-promotion-ev18-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'push' }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          path: .agent-proof-cache-promotion-ev18/promotion.json
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
