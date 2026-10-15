@@ -2,7 +2,7 @@
 
 This roadmap tracks speculative repository-level engineering intended to make Ironshade Vector's AI development environment improve its own verification quality over time.
 
-These ideas deliberately combine known software-engineering primitives in unusual ways. Treat them as experiments until repository evidence proves they are reliable. EV-1 through EV-7 completed their prototype/shadow phases and are archived in `docs/experimental-verification-archive.md`; completed graduation/calibration items EV-8 through EV-17 and EV-19 are archived there as well. The active queue below contains only remaining experimental work.
+These ideas deliberately combine known software-engineering primitives in unusual ways. Treat them as experiments until repository evidence proves they are reliable. EV-1 through EV-7 completed their prototype/shadow phases and are archived in `docs/experimental-verification-archive.md`; the active queue below is the explicit graduation path from experimental mechanisms to normal repository infrastructure.
 
 ## Execution contract
 
@@ -27,6 +27,11 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
 
 ## Active experimental queue
 
+- [ ] **EV-19 — Validate EV-7 Roadmap Shadow Predictions**
+  - Compare prior shadow-friction predictions with actual implementation outcomes from later roadmap work and quantify useful predictions, false alarms, and missed integration pressure.
+  - Keep all roadmap-pressure scoring advisory in this item and confirm disposable probes remain outside product/runtime state.
+  - Done when the evidence identifies any signal with repeatable predictive value and records unsupported signals that must remain advisory.
+
 - [ ] **EV-18 — Reuse One Validated Proof Class**
   - **Blocked by EV-17 calibration evidence:** no proof class is currently eligible. The real full-repository-build proof depends on four causal inputs that EV-6 does not bind into its execution-context digest: pulled Docker base-image identity, Docker engine version, external network availability during proof setup, and npm-registry response/artifact identity. Do not enable reuse until a separately reviewed calibration binds or eliminates all of those inputs.
   - Enable reuse for one proof class justified by EV-17, requiring exact input/context digests, immutable candidate identity, auditable cache provenance, and fail-closed fallback to the real proof for any unknown or inconsistent dependency.
@@ -35,7 +40,6 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
 
 - [ ] **EV-20 — Graduate One Roadmap-Pressure Signal**
   - Using only EV-19 evidence, either convert one validated signal into a deterministic architecture invariant, proof obligation, or roadmap rule, or explicitly record that no signal is ready for enforcement.
-  - EV-19 found repeatable predictive value only in `shared-readiness-boundary` and `renderer-boundary-independence` across all ten measured P28-PLOAD2 implementation revisions. It also measured a false negative for surface-count pressure and has no later implementation outcome for P28-G1; those unsupported signals must remain advisory.
   - Do not make a heuristic score authoritative; verify disabling the simulator restores the previous planning/verification path.
   - Done when the permanent rule or no-promotion decision is documented and, if enforcement changes, the exact candidate is archived with required proofs and independent review.
 

@@ -720,37 +720,3 @@ This archive transition follows the repository's independent-review self-referen
 ### Promotion status
 
 Calibration complete; **no cached proof class was promoted or found eligible for EV-18**. EV-6 remains shadow-only. EV-18 stays uncompleted and blocked until Docker base-image identity, Docker engine version, external setup-network availability, and npm-registry response/artifact identity are causally bound or eliminated from the proof and independently recalibrated. Under the roadmap's top-to-bottom-unless-blocked rule, the next actionable experimental item is EV-19 — Validate EV-7 Roadmap Shadow Predictions.
-
-## EV-19 — Validate EV-7 Roadmap Shadow Predictions
-
-Completed 2026-10-15 as an advisory calibration of the EV-7 Roadmap Shadow Simulator. The original EV-7 prototype record remains unchanged advisory history; EV-19 promotes no Roadmap Shadow score or signal into default enforcement.
-
-### Implemented
-
-- Added `agent/roadmap-shadow-validation-corpus.json`, `agent/tools/roadmap-shadow-validation.mjs`, `agent/tests/roadmap-shadow-validation.mjs`, and `.github/workflows/ev19-roadmap-shadow-validation.yml` as the exact-SHA calibration contract for the frozen EV-7 P28-PLOAD2 prediction.
-- Authenticated the EV-7 scenario from closeout candidate `d1ddb444ba86c9b23b97b0e1987486b6ebc6cca0` and immutable simulator-config blob `522efd6e86b0dfde647b3fbfc981c995c216e165`, recomputing its clean friction score `1`, rewrite pressure `low`, preferred two production surfaces, extension points, and renderer-dependency boundary from Git.
-- Bound the real later implementation attempt to P28-PLOAD2 PR #366, exact base `9cf041f1c26ee7050f7e5cc4cad3f320b8feefb8`, and exact head `8215139c7146c25940f873dc038a85677952f201`. The analyzer derives its changed files and ten implementation revisions directly from Git and requires the task-identity test path.
-- Measured three pressure signals with an explicit confusion matrix. `shared-readiness-boundary` and `renderer-boundary-independence` were useful true-negative predictions. `surface-count-pressure` was a false negative because the implementation attempt spans four production surfaces instead of EV-7's preferred two. No false-positive signal was observed.
-- Repeated the two supported semantic-boundary observations across all ten P28-PLOAD2 implementation revisions. Both remained prediction-consistent in `10/10` revisions; only those two signals are eligible for EV-20 review.
-- Kept P28-G1 explicitly unsupported because no later implementation outcome exists yet. EV-19 records no accuracy claim for that scenario.
-- Preserved EV-7 simulator scoring, disposable-probe behavior, and product/runtime state. EV-19 remains `acceptedForEnforcement=false`, `candidatePassGranted=false`, and `blocking=false`; `--enforce` is rejected.
-
-### Measured evidence
-
-Implementation candidate `ac70d8190c0d34b96a05e0d5c76455d53a90059a` passed EV-19 Roadmap Shadow Validation run `38742760552` and Agent Orchestration run `38742760364` before this archive transition.
-
-Exact-SHA EV-19 artifact `11977150119` (`roadmap-shadow-validation-ev19-387-ac70d8190c0d34b96a05e0d5c76455d53a90059a`) has GitHub Actions digest `sha256:5e2f99d9844bd3fd3fbe7785edca7b60c2b988980a5259643b9144121f0771ef`. The report digest is `9c21ed4533c33185fd79a6188b5800f1a0c58e350d965e4e65f8960b96bfcae3`.
-
-The measured implementation outcome contains ten revisions, four production surfaces, and three test surfaces. Across the three calibrated pressure signals the report records `usefulPredictionCount=2`, `falsePositives=0`, `falseNegatives=1`, false-positive rate `0`, and false-negative rate `1.0` for the measured actual-positive class. This does not validate the overall low-friction score as an enforcement primitive.
-
-This archive transition follows the repository's independent-review self-reference rule. It records the immutable pre-archive implementation candidate and measured exact-SHA calibration evidence. The resulting closeout SHA must pass fresh exact-head technical gates and a fresh trusted EV-19 independent review before merge; no predecessor verdict or candidate proof is inherited from `ac70d8190c0d34b96a05e0d5c76455d53a90059a`.
-
-### Isolation and rollback
-
-EV-19 changes verification/governance only. It reads immutable Git history, writes only ephemeral calibration evidence, never alters the measured P28-PLOAD2 branch, and snapshots exact HEAD plus tracked status before/after report generation. The existing EV-7 disposable-probe regression is rerun alongside EV-19.
-
-Rollback is deterministic: remove the EV-19 workflow/corpus/tool/test and EV-19 policy entries from `AGENTS.md`. The original EV-7 simulator remains advisory and all pre-existing build, browser, Android/APK, exact-SHA, architecture-invariant, and independent-review obligations remain unchanged.
-
-### Promotion status
-
-Calibration complete; **no Roadmap Shadow enforcement was promoted in EV-19**. Only `shared-readiness-boundary` and `renderer-boundary-independence` have repeatable measured predictive value eligible for EV-20 review. `surface-count-pressure` is a measured false negative and P28-G1 remains unsupported. EV-18 remains blocked by EV-17's four unbound proof-cache causal inputs, so EV-20 is the next actionable experimental item.
