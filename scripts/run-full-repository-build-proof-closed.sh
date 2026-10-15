@@ -56,7 +56,7 @@ if [[ "$current_image_id" != "$IRONSHADE_PROOF_PREPARED_IMAGE_ID" ]]; then
 fi
 
 current_npm_cli_tree_sha256="$(
-  docker run --rm "$IRONSHADE_PROOF_PREPARED_IMAGE" sh -lc '
+  docker run --rm --network none "$IRONSHADE_PROOF_PREPARED_IMAGE" sh -lc '
     set -eu
     root="$(npm root -g)"
     tar --sort=name --mtime="@0" --owner=0 --group=0 --numeric-owner -C "$root" -cf - npm \
