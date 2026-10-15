@@ -276,7 +276,10 @@ async function runProbe({ probe, policy, proofEntry, baselineClosure, baselineHi
         await writeFile(path, `${content}${mutation.mutationSuffix}`, 'utf8');
       }
     }
-    git(['add', '--', ...probe.mutations.map(entry => entry.targetPath)]);
+    const existingTargets = probe.mutations.filter(entry => typeof entry.createContent !== 'string').map(entry => entry.targetPath);
+    const createdTargets = probe.mutations.filter(entry => typeof entry.createContent === 'string').map(entry => entry.targetPath);
+    if (existingTargets.length > 0) git(['add', '--', ...existingTargets]);
+    if (createdTargets.length > 0) git(['add', '-f', '--', ...createdTargets]);
     git(['-c', 'user.name=EV-17 Calibration', '-c', 'user.email=ev17@example.invalid', 'commit', '-m', `EV-17 disposable probe ${probe.id}`]);
     syntheticSha = git(['rev-parse', 'HEAD']);
     assert(SHA_PATTERN.test(syntheticSha), `${probe.id} synthetic commit SHA is invalid`);
