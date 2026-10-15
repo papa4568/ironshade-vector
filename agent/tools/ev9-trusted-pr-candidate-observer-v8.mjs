@@ -289,7 +289,7 @@ function fullVerificationHeader(extraLines = []) {
     `          CANDIDATE_SHA: ${PR_HEAD}`,
     `          VITE_API_BASE_URL: ${VITE_API}`,
     ...extraLines,
-    '        run: |',
+    '        run: bash scripts/run-full-repository-build-proof.sh',
   ].join('\n');
 }
 
