@@ -91,10 +91,18 @@ function firstActionableTask(tasks) {
   return tasks.find(task => task.status !== 'blocked') ?? null;
 }
 
+function firstBlockedTask(tasks) {
+  return tasks.find(task => task.status === 'blocked') ?? null;
+}
+
 export function selectExperimentalReviewTask(headMarkdown, { baseMarkdown = null } = {}) {
   const headTasks = materializeExperimentalTasks(headMarkdown);
   const headFirst = firstActionableTask(headTasks);
-  if (!baseMarkdown) return headFirst ? { task: headFirst, mode: 'experimental' } : null;
+  if (!baseMarkdown) {
+    if (headFirst) return { task: headFirst, mode: 'experimental' };
+    const blocked = firstBlockedTask(headTasks);
+    return blocked ? { task: blocked, mode: 'experimental-blocked' } : null;
+  }
 
   const baseTasks = materializeExperimentalTasks(baseMarkdown);
   const baseFirst = firstActionableTask(baseTasks);
@@ -110,7 +118,17 @@ export function selectExperimentalReviewTask(headMarkdown, { baseMarkdown = null
 
   const removed = baseTasks.map(task => task.id).filter(id => !headTasks.some(task => task.id === id));
   assert(removed.length === 0, `experimental roadmap removed non-current task(s): ${removed.join(', ')}`);
-  return headFirst ? { task: headFirst, mode: 'experimental' } : null;
+
+  if (baseFirst) {
+    const headVersion = headTasks.find(task => task.id === baseFirst.id);
+    if (headVersion?.status === 'blocked') {
+      return { task: headVersion, mode: 'experimental-blocked' };
+    }
+  }
+
+  if (headFirst) return { task: headFirst, mode: 'experimental' };
+  const blocked = firstBlockedTask(headTasks);
+  return blocked ? { task: blocked, mode: 'experimental-blocked' } : null;
 }
 
 export async function loadExperimentalRoadmap(path = resolve('docs/experimental-verification-roadmap.md')) {
