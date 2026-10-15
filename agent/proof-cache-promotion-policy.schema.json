@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ironshade-vector.local/agent/proof-cache-promotion-policy.schema.json",
+  "title": "Ironshade EV-18 proof cache promotion policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "mode", "enabled", "promotionTask", "proofClass", "sourceEvidence", "cache", "calibration", "rollback"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "mode": { "const": "single-proof-reuse" },
+    "enabled": { "const": true },
+    "promotionTask": { "const": "EV-18" },
+    "proofClass": { "const": "full-repository-build-closed" },
+    "sourceEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ev17", "ev21"],
+      "properties": {
+        "ev17": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["taskId", "corpusPath", "corpusGitBlobSha", "result"],
+          "properties": {
+            "taskId": { "const": "EV-17" },
+            "corpusPath": { "const": "agent/proof-cache-calibration-corpus.json" },
+            "corpusGitBlobSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+            "result": { "type": "string", "minLength": 1 }
+          }
+        },
+        "ev21": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["taskId", "corpusPath", "corpusGitBlobSha", "candidateSha", "workflowRunId", "artifactId", "artifactDigest", "eligibleProofClasses", "falseHits", "sameClosureDisagreements", "detectedInvalidationDefects"],
+          "properties": {
+            "taskId": { "const": "EV-21" },
+            "corpusPath": { "const": "agent/proof-cache-closure-calibration-corpus.json" },
+            "corpusGitBlobSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+            "candidateSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+            "workflowRunId": { "type": "string", "pattern": "^[0-9]+$" },
+            "artifactId": { "type": "string", "pattern": "^[0-9]+$" },
+            "artifactDigest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+            "eligibleProofClasses": { "type": "array", "const": ["full-repository-build-closed"] },
+            "falseHits": { "const": 0 },
+            "sameClosureDisagreements": { "const": 0 },
+            "detectedInvalidationDefects": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
+    },
+    "cache": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "keyPrefix", "exactKeyOnly", "path", "receiptPath", "distPath"],
+      "properties": {
+        "provider": { "const": "github-actions-cache" },
+        "keyPrefix": { "type": "string", "minLength": 1 },
+        "exactKeyOnly": { "const": true },
+        "path": { "const": ".agent-proof-cache-ev18/cache" },
+        "receiptPath": { "const": ".agent-proof-cache-ev18/cache/receipt.json" },
+        "distPath": { "const": ".agent-proof-cache-ev18/cache/dist" }
+      }
+    },
+    "calibration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["errorBudget", "positiveControls", "negativeControls"],
+      "properties": {
+        "errorBudget": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["falsePositives", "falseNegatives"],
+          "properties": {
+            "falsePositives": { "const": 0 },
+            "falseNegatives": { "const": 0 }
+          }
+        },
+        "positiveControls": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "negativeControls": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "rollback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["environmentVariable", "disabledValue", "behavior"],
+      "properties": {
+        "environmentVariable": { "const": "IRONSHADE_PROOF_CACHE_REUSE" },
+        "disabledValue": { "const": "0" },
+        "behavior": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
