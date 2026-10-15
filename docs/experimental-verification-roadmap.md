@@ -27,11 +27,6 @@ The AO-6 independent-verifier and mechanical-invariant foundation must be merged
 
 ## Active experimental queue
 
-- [ ] **EV-17 — Calibrate EV-6 Proof-Cache Closure**
-  - Measure cache prediction agreement across repeated exact-closure runs and representative invalidation changes; record false hits, false misses, and same-closure disagreements by proof class.
-  - Keep proof reuse disabled in this item; identify proof classes with demonstrated deterministic causal closure and explicitly reject any class with unresolved same-closure disagreement.
-  - Done when the evidence names at most the proof classes eligible for a narrow reuse candidate in EV-18 and documents all required input/environment closure.
-
 - [ ] **EV-18 — Reuse One Validated Proof Class**
   - Enable reuse for one proof class justified by EV-17, requiring exact input/context digests, immutable candidate identity, auditable cache provenance, and fail-closed fallback to the real proof for any unknown or inconsistent dependency.
   - Prove cache disablement forces the original proof to rerun and preserves prior acceptance semantics.
